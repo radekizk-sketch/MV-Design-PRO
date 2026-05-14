@@ -637,13 +637,10 @@
  * GRID_BASE_PX z theme/tokens.ts. Operatorzy CAD (ETAP/AutoCAD Electrical)
  * oczekują widocznej siatki nawet na pustym canvasie.
  * ========================================================================= */
-/* Iter 5 — ETAP-grade kontrast per CAD specjalista (iter 4 verify 5/10):
-   "potrzebne major ≥0.45 alpha LUB jaśniejsze tło canvas (#142238)"
-   Zastosowano OBIE rekomendacje:
-   - Background-color override na jaśniejsze #152033 (z #0F1620)
-   - dot 20×20: opacity 0.70 hue 150,185,220
-   - minor lines 20×20: opacity 0.22 hue 110,160,200
-   - major lines 100×100: opacity 0.50 hue 120,170,210 */
+/* Iter 6 — CAD-grade pełny grid per iter 5 verify (CAD 6.5/10 NO-GO):
+   "Major 0.50 → 0.65, linewidth 1.0 → 1.2px"
+   "Dodać MAJOR-MAJOR intersection markers (krzyżyki + jasne dots 0.85)"
+   "Origin axes (X=0, Y=0) wyraźne hue 0/60 @ 0.80 alpha"  */
 .sld-canvas-grid {
   background-color: #152033;
   background-image:
@@ -664,11 +661,37 @@
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(120, 170, 210, 0.50) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(120, 170, 210, 0.50) 1px, transparent 1px);
-  background-size: 100px 100px, 100px 100px;
-  background-position: 0 0, 0 0;
+    /* MAJOR lines 100×100 — 1.2 px alpha 0.65 (CAD-grade) */
+    linear-gradient(rgba(130, 180, 220, 0.65) 1.2px, transparent 1.2px),
+    linear-gradient(90deg, rgba(130, 180, 220, 0.65) 1.2px, transparent 1.2px),
+    /* MAJOR-MAJOR intersection markers (cross-hatch dots 0.85, 2.5px) */
+    radial-gradient(
+      circle,
+      rgba(180, 215, 240, 0.85) 2.5px,
+      transparent 3px
+    );
+  background-size: 100px 100px, 100px 100px, 100px 100px;
+  background-position: 0 0, 0 0, 0 0;
   z-index: 0;
+}
+
+/* Origin axes (X=0 / Y=0) — pomarańczowo-żółte CAD standard hue.
+   Pseudoelement ::after renderuje 1 px linie X/Y axis na pozycji 0,0. */
+.sld-canvas-grid::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to bottom, rgba(255, 180, 80, 0.80) 1px, transparent 1px),
+    linear-gradient(to right, rgba(255, 180, 80, 0.80) 1px, transparent 1px);
+  background-size: 100% 1px, 1px 100%;
+  background-position: 0 0, 0 0;
+  background-repeat: no-repeat, no-repeat;
+  z-index: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
