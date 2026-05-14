@@ -186,7 +186,7 @@ export function resolveCollidingLabels(
       resolved.set(lbl.id, { x: lbl.anchorX, y: lbl.anchorY, unresolved: false });
       continue;
     }
-    let x = lbl.anchorX;
+    const x = lbl.anchorX;
     let y = lbl.anchorY;
     let iter = 0;
     let direction = 1; // alternate down/up

@@ -137,7 +137,7 @@ export function buildSplitPreview(
   }
 
   // Project cursor onto segment
-  let t = projectOntoSegment(cursor, line.start, line.end);
+  const t = projectOntoSegment(cursor, line.start, line.end);
   // Clamp away from endpoints (split too close to endpoint is degenerate)
   if (t < minRatio || t > 1 - minRatio) {
     return null; // Cursor too close to endpoint
