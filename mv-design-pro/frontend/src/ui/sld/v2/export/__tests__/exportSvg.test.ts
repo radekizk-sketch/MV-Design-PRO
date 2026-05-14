@@ -88,6 +88,36 @@ describe('normalizeSvgForExport — V12K-007', () => {
     expect(out).toContain('fill: #000000');
     expect(out).toContain('stroke: #000000');
   });
+
+  it('AUDIT FIX #2: handles currentColor inside <style> block (no trailing semicolon)', () => {
+    // Embedded <style> block with CSS rule ending without `;` before </style>
+    const raw =
+      '<svg><style>.legend { stroke: currentColor }</style><line class="legend"/></svg>';
+    const out = normalizeSvgForExport(raw);
+    expect(out).toContain('stroke: #000000');
+    expect(out).not.toContain('currentColor');
+  });
+
+  it('AUDIT FIX #2: handles currentColor in <style> followed by </style> tag', () => {
+    // Audit edge case — currentColor immediately before `</style>` without `}`
+    const raw =
+      '<svg><style>line { stroke:currentColor;fill:currentColor</style></svg>';
+    const out = normalizeSvgForExport(raw);
+    // Both substituted (the second via the audit fix regex with `<` boundary)
+    expect(out).not.toContain('currentColor');
+    expect(out).toContain('stroke:#000000');
+    expect(out).toContain('fill:#000000');
+  });
+
+  it('AUDIT FIX #2: V12K-007 fingerprint stable when SVG has <style> block', async () => {
+    const raw =
+      '<svg><style>.foo{stroke:currentColor}</style><line class="foo"/></svg>';
+    const norm1 = normalizeSvgForExport(raw);
+    const norm2 = normalizeSvgForExport(raw);
+    // Idempotency under <style> block (V12K-007 invariant)
+    expect(norm1).toBe(norm2);
+    expect(norm1).not.toContain('currentColor');
+  });
 });
 
 describe('generateSvgFilenameHint', () => {

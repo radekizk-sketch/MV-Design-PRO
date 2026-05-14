@@ -91,7 +91,6 @@ export function normalizeSvgForExport(
   // CR-FIX (code-review ULEPSZENIE #3): naive /currentColor/g zamieniał też
   // currentColor w atrybutach id, klasach lub komentarzach. Precyzyjny regex
   // zamienia tylko gdy currentColor występuje jako VALUE atrybutu (po `="`).
-  // Word boundary chroni przed substrings (np. "id=myCurrentColor").
   // Replace currentColor with light_technical line primary (czarny).
   // currentColor is the canonical token used in all canonical_symbols/*.svg.
   svg = svg.replace(
@@ -102,6 +101,17 @@ export function normalizeSvgForExport(
   svg = svg.replace(
     /(:\s*)currentColor(\s*[;}])/g,
     `$1${LIGHT_TECHNICAL_COLOR_LINE_PRIMARY}$2`,
+  );
+  // AUDIT FIX #2 (observability/security): obsłuż również currentColor w
+  // `<style>` block bez kończącego średnika — np. `stroke:currentColor</style>`
+  // albo na końcu CSS rule bez `;`. Bez tego V12K-007 invariant mogłby zostać
+  // złamany w SVG eksportowanym z embedded <style>. Wzorzec wymaga aby przed
+  // currentColor była lub spacja-po-dwukropku (CSS values w style attribute)
+  // lub `>currentColor<` (text content w <style>) — chroni przed false-positive
+  // w atrybutach id/class.
+  svg = svg.replace(
+    /(:\s*)currentColor(\s*)(<)/g,
+    `$1${LIGHT_TECHNICAL_COLOR_LINE_PRIMARY}$2$3`,
   );
 
   // Optionally inject background rect (drukowanie A3 — białe tło).
