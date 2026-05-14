@@ -1259,16 +1259,24 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     const startX = run.pathPoints[0].x;
 
     expect(run.pathPoints.at(-1)?.x).toBe(startX + 360);
-    expect(run.segmentLabels?.map((label) => label.text)).toEqual([
+    // 3 segment labels + 1 voltage annotation (15 kV)
+    const segmentTextLabels = run.segmentLabels?.filter(
+      (l) => !l.segmentRef?.startsWith('voltage-kv-'),
+    );
+    expect(segmentTextLabels?.map((label) => label.text)).toEqual([
       'XRUHAKXS 120/25 · 210 m',
       'XRUHAKXS 120/25 · 230 m',
       'XRUHAKXS 120/25 · 180 m',
     ]);
-    expect(run.segmentLabels?.map((label) => label.x)).toEqual([
+    expect(segmentTextLabels?.map((label) => label.x)).toEqual([
       startX + 60,
       startX + 180,
       startX + 300,
     ]);
+    const voltageLabel = run.segmentLabels?.find(
+      (l) => l.segmentRef?.startsWith('voltage-kv-'),
+    );
+    expect(voltageLabel?.text).toBe('15 kV');
     expect(run.segmentPaths?.map((segmentPath) => segmentPath.pathPoints.at(-1)?.x)).toEqual([
       startX + 120,
       startX + 240,

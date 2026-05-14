@@ -1317,16 +1317,26 @@ function buildCableRuns(
         : endX;
       const baseSegmentLabels = buildRunSegmentLabels(runSegments, runStations, startX, y, terminalX);
       const feederOriginLabel = inferFeederOriginLabel(snapshot, startingBayRef);
-      const segmentLabels = feederOriginLabel
-        ? [
-            ...baseSegmentLabels,
-            {
-              segmentRef: `feeder-origin-${lineRun.id}`,
-              text: feederOriginLabel,
-              x: startX + 14,
-              y: GPZ_FIELD_CABLE_HEAD_Y + 14,
-            },
-          ]
+      const voltageKv = inferRunVoltageKv(snapshot, runSegments);
+      const extraLabels: { segmentRef: string; text: string; x: number; y: number }[] = [];
+      if (feederOriginLabel) {
+        extraLabels.push({
+          segmentRef: `feeder-origin-${lineRun.id}`,
+          text: feederOriginLabel,
+          x: startX + 14,
+          y: GPZ_FIELD_CABLE_HEAD_Y + 14,
+        });
+      }
+      if (voltageKv !== null) {
+        extraLabels.push({
+          segmentRef: `voltage-kv-${lineRun.id}`,
+          text: `${voltageKv} kV`,
+          x: startX + 30,
+          y: y - 8,
+        });
+      }
+      const segmentLabels = extraLabels.length > 0
+        ? [...baseSegmentLabels, ...extraLabels]
         : baseSegmentLabels;
       const segmentPaths = buildRunSegmentPaths(runSegments, runStations, startX, y, terminalX);
 
@@ -1476,6 +1486,18 @@ function inferFeederOriginLabel(
     (b) => b.ref_id === startingBayRef || b.id === startingBayRef,
   );
   return bay?.bay_number ?? bay?.feeder_short_name ?? null;
+}
+
+function inferRunVoltageKv(
+  snapshot: EnergyNetworkModel,
+  segments: readonly Branch[],
+): number | null {
+  if (segments.length === 0) return null;
+  const fromBusRef = segments[0].from_bus_ref;
+  const bus = (snapshot.buses ?? []).find(
+    (b) => b.ref_id === fromBusRef || b.id === fromBusRef,
+  );
+  return bus?.voltage_kv ?? null;
 }
 
 function buildCableRunLabel(
