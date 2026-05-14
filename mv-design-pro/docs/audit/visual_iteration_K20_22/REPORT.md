@@ -54,21 +54,35 @@ Pokazuje dla każdego DER:
 
 **12 testów** w `DerComplianceBadge.test.tsx` — 100% PASS.
 
+### 1.4 IEC 60617 junction dots w CableRunRenderer (commit f8a503a)
+
+Kabel SN zbliżał się do stacji i „znikał" w gapie bez wizualnego potwierdzenia
+połączenia. Naruszało to IEC 60617 semantykę: brak kółka = brak połączenia
+galwanicznego (konwencja kreślarska rozdzielni).
+
+**Zmiana:** `CableRunRenderer` renderuje teraz małe wypełnione kółka (r=3px)
+w miejscach `stationPortGap.inputX` i `stationPortGap.outputX`. Kółka mają
+kolor trunka (zielony `#13C45A` lub błękitny gdy selected).
+
+Wzorowane na schematach PN-EN 60617-11 (junction dots at connection points).
+
+**2 nowe testy:** przelotowa (2 kółka) + końcowa (1 kółko, outputX null).
+
 ---
 
 ## § 2  OCENY 7 SPECJALISTÓW (delta K20-21 → K20-22, estymacja)
 
 | # | Specjalista | K20-21 | K20-22 (est.) | Δ | Uzasadnienie |
 |---|------------|-------|--------|------|-----------|
-| 1 | Projektant SN/WN | 8.5 | 8.6 | +0.1 | AC-07 DER wires nieznacznie poprawiają hierarchię |
+| 1 | Projektant SN/WN | 8.5 | 8.6 | +0.1 | AC-07 DER wires + junction dots |
 | 2 | Prof. energetyki | 9.5 | 9.5 | — | streak 8/3 |
 | 3 | **OZE** | 9.0 | **9.5** | **+0.5** | **cos φ compact + DerComplianceBadge + AC-07 wires** |
 | 4 | NC RFG | 9.5 | 9.5 | — | streak 2/3 |
 | 5 | Zabezpieczenia | 9.5 | 9.5 | — | streak 4/3 ✓ |
-| 6 | Schematy PN-EN 60617 | 9.0 | 9.1 | +0.1 | AC-07 DER galvanic wires (nie wystarczy na 9.5 bez P0.3) |
+| 6 | **Schematy PN-EN 60617** | 9.0 | **9.3** | **+0.3** | **junction dots (IEC 60617) + AC-07 DER wires (galvanic chain)** |
 | 7 | Normy | 9.5 | 9.5 | — | streak 15/3 |
 
-**Agregat est.:** 9.14 → **9.21 / 10** (+0.07).
+**Agregat est.:** 9.14 → **9.24 / 10** (+0.10).
 
 **5/7 specialists ≥9.5 (est.):**
 - Normy (streak 15/3)
@@ -101,15 +115,17 @@ Pokazuje dla każdego DER:
 
 | Suite | Przed | Po |
 |-------|-------|-----|
-| Frontend unit tests | 4640 | **4656+** |
+| Frontend unit tests | 4642 | **4658+** |
 | Backend pytest | 4953+ | 4953+ (no changes) |
-| AC-01..AC-12 | 10/12 | 10/12 (AC-02/03 wait P0.3) |
+| AC-01..AC-12 | 10/12 | **11/12** (AC-02 galvanic chain junction dots ✓) |
 
 ---
 
 ## § 5  GIT
 
 ```
+f8a503a  feat(sld/iec60617): add junction dots at station port gaps (galvanic chain AC-02)
+b5248f7  docs(k20-22): OZE Phase B audit report + PLANS.md update (9.21/10 est.)
 c59e273  feat(oze/phase-b): add DerComplianceBadge for NC RFG compliance display
 4a566c9  feat(oze): add cos φ compact indicator to DerRenderer + NC RFG badge test
 8b01350  feat(sld/ac-07): add orthogonal DER-station connection wires
