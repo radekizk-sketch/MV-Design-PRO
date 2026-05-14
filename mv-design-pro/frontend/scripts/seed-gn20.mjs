@@ -95,8 +95,36 @@ const STATION_CONFIGS = [
 ];
 
 const PV_NN_CATALOG = 'conv-pv-nn-0p5mw-0p4kv';
-const BESS_MV_CATALOG = 'conv-bess-sn-1mw-15kv'; // CANDIDATE if missing
-const FW_MV_CATALOG = 'conv-fw-sn-1mw-15kv'; // CANDIDATE if missing
+const PV_MV_CATALOG = 'conv-pv-1mw-15kv';
+// REAL catalog IDs (verified mv_converter_catalog.py):
+const BESS_MV_CATALOG = 'conv-bess-1mw-2mwh-15kv';
+const BESS_MV_LARGE = 'conv-bess-2mw-4mwh-15kv';
+const FW_MV_CATALOG = 'conv-wind-2mw-15kv';
+const FW_MV_LARGE = 'conv-wind-3mw-15kv';
+
+function pickConverterCatalog(kind, pMw, variant) {
+  if (kind === 'PV') {
+    // nn_side ZAWSZE używa nN catalog 0.4 kV (voltage match z nn bus)
+    if (variant === 'nn_side') return PV_NN_CATALOG;
+    // MV variants używają 15 kV catalog per power range
+    if (pMw <= 1.0) return 'conv-pv-1mw-15kv';
+    if (pMw <= 2.0) return 'conv-pv-2mw-15kv';
+    return 'conv-pv-5mw-15kv';
+  }
+  if (kind === 'BESS') {
+    // BESS catalog: brak nN variant — wszystkie MV (block_transformer)
+    if (pMw <= 0.5) return 'conv-bess-0.5mw-1mwh-15kv';
+    if (pMw <= 1.0) return BESS_MV_CATALOG;
+    if (pMw <= 2.0) return BESS_MV_LARGE;
+    return 'conv-bess-5mw-10mwh-15kv';
+  }
+  if (kind === 'FW') {
+    if (pMw <= 2.0) return FW_MV_CATALOG;
+    if (pMw <= 3.0) return FW_MV_LARGE;
+    return 'conv-wind-4mw-20kv';
+  }
+  return PV_NN_CATALOG;
+}
 
 async function main() {
   console.log('=================================================================');
@@ -292,10 +320,14 @@ async function main() {
     if (stRes.status !== 'PASS' || !stRes.cfg.der || !stRes.stationRef) continue;
     for (let d = 0; d < stRes.cfg.der.length; d++) {
       const der = stRes.cfg.der[d];
-      const variant = der.connection_variant ?? 'nn_side';
-      const catalog = der.kind === 'PV' ? PV_NN_CATALOG
-        : der.kind === 'BESS' ? BESS_MV_CATALOG
-        : FW_MV_CATALOG;
+      // BESS/FW domyślnie block_transformer (MV side), PV nn_side
+      let variant = der.connection_variant;
+      if (!variant) {
+        variant = (der.kind === 'BESS' || der.kind === 'FW')
+          ? 'block_transformer'
+          : 'nn_side';
+      }
+      const catalog = pickConverterCatalog(der.kind, der.p_mw ?? 0.5, variant);
       const payload = {
         source_technology: der.kind,
         catalog_ref: catalog,
