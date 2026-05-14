@@ -1,7 +1,7 @@
 /**
  * exportPdf tests — P0.7 / V12K-007.
  *
- * Verifies the spec contract (binary generation TODO w full F4 sprint).
+ * Verifies the spec contract (binary generation deferred do full F4 sprint).
  */
 
 import { describe, expect, it } from 'vitest';
