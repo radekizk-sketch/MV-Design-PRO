@@ -5,6 +5,7 @@
  * Brief 2 §15: DER musi mieć jasno określony port przyłączenia, NIE wisi w powietrzu.
  */
 
+import { useSldLod } from '../lod/SldLodContext';
 import {
   COLOR_LINE_PRIMARY,
   COLOR_PANEL_RAISED,
@@ -78,6 +79,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
     id, x, y, kind, name, nominalPowerKw, hasBlockTransformer,
     selected, missingData, missingPcc, lod = 'full', onClick, onDoubleClick,
   } = props;
+  const { getFontSize } = useSldLod();
 
   // Naprawa hmi.3: LOD = 'marker' renderuje minimalną kropkę (overview zoom).
   if (lod === 'marker') {
@@ -138,7 +140,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
         textAnchor="middle"
           fill={COLOR_TEXT_PRIMARY}
           fontFamily={FONT_SANS}
-          fontSize={lod === 'compact' ? 9 : 13}
+          fontSize={lod === 'compact' ? Math.max(getFontSize('deviceQ') - 4, 10) : getFontSize('deviceQ')}
           fontWeight={700}
         >
         {KIND_LABEL_PL[kind]}
@@ -151,7 +153,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
           textAnchor="middle"
           fill={COLOR_TEXT_PRIMARY}
           fontFamily={FONT_SANS}
-          fontSize={10}
+          fontSize={getFontSize('parameter')}
         >
           {name}
         </text>
@@ -164,7 +166,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
           textAnchor="middle"
           fill={COLOR_TEXT_SECONDARY}
           fontFamily={FONT_MONO}
-          fontSize={10}
+          fontSize={getFontSize('fieldMeasurement')}
         >
           {nominalPowerKw.toFixed(0)} kW
         </text>
