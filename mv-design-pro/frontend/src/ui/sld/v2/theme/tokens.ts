@@ -140,6 +140,34 @@ export const STROKE_BRANCH_LINE_PX = 2 as const; // linia odgałęzienia (cieńs
 export const STROKE_TRUNK_LINE_PX = 3 as const; // linia ciągu głównego
 export const STROKE_DASHED_RING_DASH_PX = '6 4' as const; // dash array dla pierścieni
 
+/**
+ * SLD STROKE HIERARCHY — per AC-01 (SLD_VISUAL_ACCEPTANCE_CRITERIA.md):
+ * AC-01: "tor mocy czytelny — różne grubości linii"
+ *
+ * Hierarchia grubości linii klasy ETAP/DIgSILENT/AutoCAD Electrical:
+ *   - transmission (110 kV): 5 px (najgrubsze, najwyższe napięcie)
+ *   - transformer:           4 px
+ *   - busbar (SN szyna):     4 px (jak transformer — główny zbieracz mocy)
+ *   - trunk (ciąg główny):   3 px
+ *   - branch (odgałęzienie): 2 px
+ *   - detail (cable run):    1.5 px (najcieńsze, ostatnia mila)
+ *
+ * Aliasy: te wartości są referencyjne dla v2 renderer base sizes
+ * (per `frontend/src/ui/sld/v2/lod/lodScaling.ts:BASE_STROKE_WIDTHS`).
+ * Tokens-first API: gdy renderer potrzebuje grubości w stylu CAD
+ * industrial, używa SLD_STROKE_PX.<role> zamiast magic-number.
+ */
+export const SLD_STROKE_PX = {
+  transmission: 5,
+  transformer: 4,
+  busbar: 4,
+  trunk: 3,
+  branch: 2,
+  detail: 1.5,
+} as const;
+
+export type SldStrokeRole = keyof typeof SLD_STROKE_PX;
+
 export const NODE_DOT_SIZE_PX = 8 as const; // węzeł połączeniowy (zakres 7–9)
 export const DEVICE_BLOCK_SMALL = { width: 38, height: 54 } as const; // mały blok aparatu
 export const DEVICE_BLOCK_STANDARD = { width: 46, height: 64 } as const; // standardowy blok aparatu
