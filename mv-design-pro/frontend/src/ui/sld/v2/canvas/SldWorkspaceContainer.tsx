@@ -32,6 +32,8 @@ import {
 } from '../lod/layerToggle';
 import type { LodLevel } from '../lod/LodPolicy';
 import { ProofPacksPanel } from '../proof/ProofPacksPanel';
+import { NetworkHierarchyTree } from '../domain/NetworkHierarchyTree';
+import { buildHierarchy, type EnmInputForHierarchy } from '../domain/HierarchyTree';
 import { SldContextMenuController } from '../../../context-menu/SldContextMenuController';
 import type { SldContextMenuRequest } from '../../../context-menu/SldContextMenuController';
 import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
@@ -583,6 +585,77 @@ export function SldWorkspaceContainer(
     },
     [currentLod],
   );
+  // Iter 11 (per Projektant SN/WN blocker): buduj hierarchię z snapshot
+  // dla drzewa GPZ→Sekcja→Pole. Memoized — przelicza tylko przy zmianie
+  // snapshot. Brak modelu = pusta hierarchia (empty state w komponencie).
+  const [hierarchyPanelOpen, setHierarchyPanelOpen] = useState<boolean>(true);
+  const networkHierarchy = useMemo(() => {
+    if (!snapshot) {
+      return buildHierarchy({
+        substations: [],
+        bays: [],
+        buses: [],
+        sources: [],
+        line_runs: [],
+        generators: [],
+      });
+    }
+    // Mapowanie snapshot → EnmInputForHierarchy w trybie defensywnym.
+    // ENM snapshot types (z types/enm.ts) różnią się od HierarchyTree-input.
+    // Używamy strukturalnego match'u z fallbackami dla brakujących pól.
+    const enmInput = {
+      substations: ((snapshot.substations ?? []) as readonly unknown[]).map(
+        (raw): EnmInputForHierarchy['substations'][number] => {
+          const s = raw as Record<string, unknown>;
+          return {
+            ref_id: String(s.ref_id ?? ''),
+            name: String(s.name ?? s.ref_id ?? ''),
+            station_type: String(s.station_type ?? 'mv_lv'),
+            bus_refs: Array.isArray(s.bus_refs) ? (s.bus_refs as string[]) : [],
+            gpz_sections: Array.isArray(s.gpz_sections)
+              ? (s.gpz_sections as EnmInputForHierarchy['substations'][number]['gpz_sections'])
+              : undefined,
+          };
+        },
+      ),
+      bays: ((snapshot.bays ?? []) as readonly unknown[]).map(
+        (raw): EnmInputForHierarchy['bays'][number] => {
+          const b = raw as Record<string, unknown>;
+          return {
+            ref_id: String(b.ref_id ?? ''),
+            name: String(b.name ?? b.ref_id ?? ''),
+            bay_role: (b.bay_role as EnmInputForHierarchy['bays'][number]['bay_role']) ?? 'OUT',
+            substation_ref: String(b.substation_ref ?? ''),
+            bus_ref: String(b.bus_ref ?? ''),
+          };
+        },
+      ),
+      buses: ((snapshot.buses ?? []) as readonly unknown[]).map(
+        (raw): EnmInputForHierarchy['buses'][number] => {
+          const b = raw as Record<string, unknown>;
+          return {
+            ref_id: String(b.ref_id ?? ''),
+            voltage_kv: Number(b.voltage_kv ?? 15),
+            name: String(b.name ?? b.ref_id ?? ''),
+          };
+        },
+      ),
+      sources: ((snapshot.sources ?? []) as readonly unknown[]).map(
+        (raw): EnmInputForHierarchy['sources'][number] => {
+          const s = raw as Record<string, unknown>;
+          return {
+            ref_id: String(s.ref_id ?? ''),
+            bus_ref: String(s.bus_ref ?? ''),
+            sk3_mva: typeof s.sk3_mva === 'number' ? s.sk3_mva : null,
+          };
+        },
+      ),
+      line_runs: [],
+      generators: [],
+    } satisfies EnmInputForHierarchy;
+    return buildHierarchy(enmInput);
+  }, [snapshot]);
+
   const handleResetLayers = useCallback(() => {
     setLayerState(createInitialLayerState());
   }, []);
@@ -1119,6 +1192,30 @@ export function SldWorkspaceContainer(
         data-testid="sld-proof-packs-dock"
       >
         <ProofPacksPanel hasNetworkModel={!isEmpty} />
+      </div>
+
+      {/* Iter 11 (Projektant SN/WN blocker): NetworkHierarchyTree dock
+          w lewym górnym rogu canvasu (z toggle CTA). Drzewo GPZ→Sekcja→Pole. */}
+      <div
+        className="pointer-events-auto absolute left-3 top-3 z-20 flex flex-col items-start gap-1"
+        data-testid="sld-hierarchy-tree-dock"
+      >
+        <button
+          type="button"
+          onClick={() => setHierarchyPanelOpen((prev) => !prev)}
+          data-testid="sld-hierarchy-tree-toggle"
+          aria-label={hierarchyPanelOpen ? 'Zamknij drzewo modelu' : 'Otwórz drzewo modelu'}
+          title={hierarchyPanelOpen ? 'Zamknij drzewo modelu' : 'Drzewo modelu sieci'}
+          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+        >
+          {hierarchyPanelOpen ? '◂ Drzewo modelu' : '▸ Drzewo modelu'}
+        </button>
+        {hierarchyPanelOpen && (
+          <NetworkHierarchyTree
+            hierarchy={networkHierarchy}
+            className="w-[240px]"
+          />
+        )}
       </div>
 
       <section
