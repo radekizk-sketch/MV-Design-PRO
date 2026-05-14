@@ -455,6 +455,39 @@ describe('StationOnRunRenderer', () => {
     expect(badge).toBeTruthy();
     expect(badge?.getAttribute('fill')).toBe('#FFB020');
   });
+
+  it('isNop=true renderuje badge "NOP" (Normalnie Otwarty Punkt)', () => {
+    const { container, getByText } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-nop"
+          x={300}
+          y={400}
+          name="ST-NOP"
+          topologicalType="sekcyjna"
+          isNop={true}
+        />
+      </svg>,
+    );
+    const badge = container.querySelector('[data-testid="sld-v2-station-nop-badge-st-nop"]');
+    expect(badge).toBeTruthy();
+    expect(getByText('NOP')).toBeInTheDocument();
+  });
+
+  it('isNop=false/undefined → brak badge NOP', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-no-nop"
+          x={300}
+          y={400}
+          name="ST-01"
+          topologicalType="przelotowa"
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-station-nop-badge-st-no-nop"]')).toBeFalsy();
+  });
 });
 
 describe('DerRenderer', () => {

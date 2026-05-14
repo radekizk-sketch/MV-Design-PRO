@@ -1029,6 +1029,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
       if (!sub) return; // stacja nie jest field-station (np. GPZ) lub nie istnieje
       placed.add(sref.substation_ref);
       const stationSldDetails = buildStationMiniBlockDetails(snapshot, sub);
+      const isNop = lr.nop_station_ref === sub.ref_id || lr.nop_station_ref === sub.id;
       stations.push({
         id: sub.ref_id,
         x: X_STATIONS_START + posInRun * STATION_PITCH,
@@ -1042,6 +1043,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         transformerRefs: stationSldDetails.transformerRefs,
         nnFeedersCount: stationSldDetails.nnFeedersCount,
         derBadges: stationSldDetails.derBadges,
+        ...(isNop ? { isNop: true } : {}),
       });
     });
   });

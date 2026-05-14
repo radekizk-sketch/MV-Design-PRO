@@ -1633,6 +1633,31 @@ describe('buildStations — konsumuje line_runs.stations[] z explicit order', ()
       expect(result.stations).toEqual(reference.stations);
     }
   });
+
+  it('nop_station_ref w line_run → stacja z isNop=true (NOP badge dla Projektanta)', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 's1', ref_id: 'ST-NOP', name: 'Stacja NOP', tags: [], meta: {}, station_type: 'sectional', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'ST-REG', name: 'Stacja regularna', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-1', run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1', starting_port_ref: 'port-1',
+        segments: [],
+        nop_station_ref: 'ST-NOP',
+        stations: [
+          { substation_ref: 'ST-NOP', order: 2 },
+          { substation_ref: 'ST-REG', order: 1 },
+        ],
+      } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const nopStation = r.stations.find((s) => s.id === 'ST-NOP');
+    const regStation = r.stations.find((s) => s.id === 'ST-REG');
+    expect(nopStation?.isNop).toBe(true);
+    expect(regStation?.isNop).toBeUndefined();
+  });
 });
 
 describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (commit 13)', () => {

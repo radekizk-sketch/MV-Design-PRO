@@ -52,6 +52,9 @@ export interface StationOnRunRendererProps {
   readonly transformerRatedKva?: number | null;
   readonly nnFeedersCount?: number;
   readonly derBadges?: readonly MiniBlockDerBadge[];
+  /** Stacja jest punktem NMO (Normalnie Otwartym) — renderuje badge "NOP"
+   *  sygnalizujący granicę zasilania dwóch połówek ciągu (IEC 60617 ring). */
+  readonly isNop?: boolean;
 }
 
 const TYPE_TO_LABEL_PL: Record<StationOnRunRendererProps['topologicalType'], string> = {
@@ -114,7 +117,7 @@ function miniBlockVariantForLod(lod: LodLevel): 'overview' | 'compact' | 'detail
 function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element {
   const {
     id, x, y, name, topologicalType, nnVoltageLevelsCount,
-    selected, onClick, onDoubleClick, missingData,
+    selected, onClick, onDoubleClick, missingData, isNop,
   } = props;
   const connectionXs = connectionColumns(topologicalType);
   const voltageLabel = nnVoltageLevelsCount && nnVoltageLevelsCount > 1
@@ -259,6 +262,18 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
       >
         {voltageLabel}
       </text>
+
+      {isNop && (
+        <g
+          data-testid={`sld-v2-station-nop-badge-${id}`}
+          transform={`translate(0, ${CODE_Y + 32})`}
+        >
+          <rect x={-16} y={-8} width={32} height={14} rx={2} ry={2} fill="#C00000" opacity={0.85} />
+          <text x={0} y={4} textAnchor="middle" fill="#FFFFFF" fontFamily={FONT_SANS} fontSize={9} fontWeight={800} letterSpacing={0.5}>
+            NOP
+          </text>
+        </g>
+      )}
     </g>
   );
 }
