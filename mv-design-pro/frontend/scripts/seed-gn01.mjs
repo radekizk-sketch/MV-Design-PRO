@@ -91,16 +91,26 @@ async function main() {
       payload: {
         source_id: 'src_gpz_main',
         name_pl: 'GPZ Główny 110/15 kV',
+        voltage_kv: 15.0, // Wymagane: backend rzuca source.missing_voltage gdy brak
         // Backend syntezuje catalog_binding z payload.catalog_ref + namespace ZRODLO_SN
         // per backend/src/api/domain_ops_policy.py:194-201
         catalog_ref: 'src-gpz-15kv-100mva-rx008',
       },
     },
   });
-  if (!gpzRes.ok) {
-    console.error('K2 GPZ insert failed:', gpzRes.status, gpzRes.json);
+  // Backend zwraca HTTP 200 nawet przy błędach domain — sprawdź error_code
+  const gpzError = gpzRes.json?.error_code;
+  if (!gpzRes.ok || gpzError) {
+    console.error(
+      'K2 GPZ insert failed:',
+      gpzRes.status,
+      gpzError ?? gpzRes.json?.detail,
+      gpzRes.json?.error,
+    );
   } else {
-    log('K2', 'OK GPZ inserted');
+    log('K2', 'OK GPZ inserted', {
+      created: gpzRes.json?.changes?.created_element_ids?.length ?? 0,
+    });
   }
 
   log('K2', 'Weryfikuję topology po K2...');
@@ -123,7 +133,10 @@ async function main() {
       source_count_final: summary2.json.source_count ?? 0,
       revision_final: summary2.json.enm_revision ?? 1,
       k1_status: project.ok && caseRes.ok ? 'PASS' : 'FAIL',
-      k2_status: gpzRes.ok ? 'PASS' : `FAIL: ${gpzRes.status}`,
+      k2_status:
+        gpzRes.ok && !gpzRes.json?.error_code
+          ? 'PASS'
+          : `FAIL: ${gpzRes.status} ${gpzRes.json?.error_code ?? ''}`,
     },
     null,
     2,
