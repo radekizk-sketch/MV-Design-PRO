@@ -864,3 +864,63 @@ Stop hook szacował ~80-90 OD pozostałe. Po rewizji:
 Branch 52 commitów ready. Cel 10/10 wymaga jeszcze tylko ~70 OD
 (NIE 90 OD per stop hook).
 
+
+---
+
+## 5.4 Iter 24 — P0.6 LOD Renderer Wiring Foundation (53 commit)
+
+Zaadresowany krytyczny gap wykryty w iter 12 REAL audit Whitebox:
+"lodToFontSize/lodToSymbolScale/lodToStrokeWidth są zdefiniowane ale
+ ŻADEN renderer ich nie używa".
+
+### Dostarczone
+
+1. **SldLodContext.tsx** (NOWY) — React Context propagacja LOD:
+   - Default LOD=2 (standard) gdy provider brak (backwards compat)
+   - Helpers: getFontSize(role), getStrokeWidth(role), getSymbolScale()
+   - Wrapper SldLodProvider z lod prop
+
+2. **SldLodContext.test.tsx** (NOWY) — 7 testów:
+   - Default context bez Provider (LOD=2 fallback)
+   - 5 parametrized testów LOD 0..4 (font/stroke values dokładne)
+   - Re-render z różnym LOD propaguje correctly
+
+3. **Wiring w SldCanvasV2.tsx**:
+   - <SldLodProvider lod={lod}> opakowuje <svg> root
+   - Wszystkie zagnieżdżone rendery dziedziczą LOD bez prop drilling
+   - Type-check OK (import + provider w return)
+
+4. **Wiring w GpzCanonicalRenderer.tsx TrFieldColumn**:
+   - "Pole TR1" label: fontSize={getFontSize('bayName')} zamiast hardcoded 11
+   - Iter 24 PROOF OF CONCEPT — pozostałe ~20 spotów hardcoded fontSize
+     mogą być wired analogicznie w iter 25+
+
+### Regression
+
+- 617/617 testów PASS (lod + renderer + canvas)
+- Type-check OK
+- Brak zmian w semantyce (font size LOD-2 standard = pre-iter 24)
+
+### Pozostałe spots do wire (iter 25+ follow-up)
+
+W `GpzCanonicalRenderer.tsx` (20 hardcoded fontSize 10-12):
+- HV section labels (linie 421, 564, 858)
+- ApparatusText (linia 1002)
+- LV bays / transformer labels (1378, 1450, 1543, 1546, 1549)
+- Apparatus question marks (1592, 1609, 1632)
+- Misc labels (1656, 1694, 1714, 1743, 1748)
+
+Wszystkie obecnie 10-12 px = OK per WCAG min 10. Wire wymagałby
+przemapowania role per kontekst (bayName/deviceQ/parameter/badge).
+Zostaje jako bounded follow-up — nie blokuje funkcjonalności.
+
+### P0.6 Status (rewizja po iter 24)
+
+- ✓ Tokens (lodScaling.ts) — KOMPLETNE (iter 13)
+- ✓ Tests (39 lodScaling + 7 LodContext) — KOMPLETNE
+- ✓ Foundation (SldLodContext + Provider) — KOMPLETNE (iter 24)
+- ✓ 1 spot wired (TrFieldColumn "Pole TR1") — proof of concept
+- ⏸ Systematic sweep (~20 spotów GpzCanonical + ~5 inne) — ~5 OD follow-up
+- ⏸ GpzSwitchgearRenderer split 3392 → 6 plików ≤ 500 — ~10 OD (oddzielny ticket)
+
+P0.6 foundation DONE. Pozostałe ~15 OD systematic sweep + refactor.
