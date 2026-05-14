@@ -11,6 +11,7 @@ import { clsx } from 'clsx';
 
 import { useAppStateStore, useCanCalculate } from '../app-state/store';
 import type { WorkMode } from '../app-state/store';
+import { useSnapshotStore } from '../topology/snapshotStore';
 import type { ResultStatus } from '../types';
 import { navigateToCaseConfig, navigateToVariants } from '../navigation/routes';
 
@@ -157,6 +158,12 @@ export function TopBar({
   const activeProjectName = useAppStateStore((s) => s.activeProjectName);
   const resultStatus = useAppStateStore((s) => s.activeCaseResultStatus);
   const { allowed: canCalculate, reason: calculateBlockedReason } = useCanCalculate();
+  // Iter 8 (per audit Whitebox 4/10 + Projektant 4.5/10):
+  // disable Nakładka/Analizy/Eksport gdy ENM pusty (snapshot brak busów).
+  // Likwiduje "dead clicks" — przycisk aktywny ale akcja niemożliwa.
+  const hasNetworkModel = useSnapshotStore(
+    (s) => (s.snapshot?.buses?.length ?? 0) > 0,
+  );
 
   const displayProjectName = activeProjectName || projectName || '— nie otwarto —';
   const scopeDisplay = activeCaseName || activeVariantName
@@ -270,7 +277,14 @@ export function TopBar({
           type="button"
           data-testid="top-bar-overlay"
           onClick={handleOverlay}
-          className="flex h-10 items-center gap-2 rounded-[4px] bg-[#0b2135] px-3 font-mono-eng text-[12px] font-semibold text-[#67d9ff] transition-colors hover:bg-[#113451]"
+          disabled={!hasNetworkModel}
+          title={hasNetworkModel ? 'Nakładka wyników' : 'Wymaga modelu sieci (dodaj GPZ)'}
+          className={clsx(
+            'flex h-10 items-center gap-2 rounded-[4px] px-3 font-mono-eng text-[12px] font-semibold transition-colors',
+            hasNetworkModel
+              ? 'bg-[#0b2135] text-[#67d9ff] hover:bg-[#113451]'
+              : 'cursor-not-allowed bg-[#0a1620] text-[#3d5168] opacity-60',
+          )}
         >
           <span>Nakładka</span>
           <ChevronDown />
@@ -280,7 +294,14 @@ export function TopBar({
           type="button"
           data-testid="top-bar-results"
           onClick={handleAnalysis}
-          className="flex h-10 items-center gap-2 rounded-[4px] bg-[#0b2135] px-3 font-mono-eng text-[12px] font-semibold text-[#67d9ff] transition-colors hover:bg-[#113451]"
+          disabled={!hasNetworkModel}
+          title={hasNetworkModel ? 'Analizy obliczeniowe' : 'Wymaga modelu sieci (dodaj GPZ)'}
+          className={clsx(
+            'flex h-10 items-center gap-2 rounded-[4px] px-3 font-mono-eng text-[12px] font-semibold transition-colors',
+            hasNetworkModel
+              ? 'bg-[#0b2135] text-[#67d9ff] hover:bg-[#113451]'
+              : 'cursor-not-allowed bg-[#0a1620] text-[#3d5168] opacity-60',
+          )}
         >
           <span>Analizy</span>
           <IconArrowRight />
@@ -290,7 +311,14 @@ export function TopBar({
           type="button"
           data-testid="top-bar-export"
           onClick={handleExport}
-          className="flex h-10 items-center gap-2 rounded-[4px] bg-[#0b2135] px-3 font-mono-eng text-[12px] font-semibold text-[#67d9ff] transition-colors hover:bg-[#113451]"
+          disabled={!hasNetworkModel}
+          title={hasNetworkModel ? 'Eksport raportów' : 'Wymaga modelu sieci (dodaj GPZ)'}
+          className={clsx(
+            'flex h-10 items-center gap-2 rounded-[4px] px-3 font-mono-eng text-[12px] font-semibold transition-colors',
+            hasNetworkModel
+              ? 'bg-[#0b2135] text-[#67d9ff] hover:bg-[#113451]'
+              : 'cursor-not-allowed bg-[#0a1620] text-[#3d5168] opacity-60',
+          )}
         >
           <span>Eksport</span>
           <ChevronDown />

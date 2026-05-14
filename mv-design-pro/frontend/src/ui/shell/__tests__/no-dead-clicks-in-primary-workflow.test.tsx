@@ -22,6 +22,15 @@ vi.mock('../../app-state/store', () => ({
   useCanCalculate: () => ({ allowed: true, reason: null }),
 }));
 
+// Iter 8 (per Whitebox audit): topbar disabled przy pustym ENM.
+// Mock useSnapshotStore zwraca snapshot z buses[] żeby NIE blokować clicków.
+vi.mock('../../topology/snapshotStore', () => ({
+  useSnapshotStore: (selector: (s: Record<string, unknown>) => unknown) =>
+    selector({
+      snapshot: { buses: [{ id: 'bus_1', ref_id: 'bus_1', voltage_kv: 15 }] },
+    }),
+}));
+
 vi.mock('../../navigation/routes', () => ({
   navigateToCaseConfig: vi.fn(),
   navigateToVariants: vi.fn(),
