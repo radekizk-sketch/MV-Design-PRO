@@ -40,6 +40,7 @@ import {
   type GpzStationBalance,
   type TransmissionStatus,
 } from './GpzOperatorHeader';
+import { useSldLod } from '../lod/SldLodContext';
 
 /* =============================================================================
    Domain types (z ENM, projected to canonical SLD)
@@ -678,6 +679,7 @@ interface TrFieldColumnProps {
  */
 function TrFieldColumn(props: TrFieldColumnProps): JSX.Element {
   const { cx, topY, bottomY, transformerDesignation, transformerRef, onClickApparatus } = props;
+  const { getFontSize } = useSldLod();
   const height = bottomY - topY;
   // Pozycje 5 aparatów rozłożone równomiernie wzdłuż kolumny.
   const dsBusY = topY + height * 0.18;
@@ -771,13 +773,15 @@ function TrFieldColumn(props: TrFieldColumnProps): JSX.Element {
         <line x1={cx - 13} y1={esY + 5} x2={cx - 11} y2={esY + 5} stroke="#FF4040" strokeWidth={1.5} />
       </g>
 
-      {/* Etykieta pola (np. "Pole TR1") — WCAG iter 13: bump 9→11 px */}
+      {/* Etykieta pola (np. "Pole TR1") — iter 24 (P0.6 LOD wiring):
+          fontSize teraz pochodzi z useSldLod (bayName role) zamiast
+          hardcoded. LOD-2 standard = 16 px (z bumped BASE_FONT_SIZES). */}
       <text
         x={cx + 18}
         y={topY + 12}
         fill={COLOR_TEXT_SECONDARY}
         fontFamily={FONT_SANS}
-        fontSize={11}
+        fontSize={getFontSize('bayName')}
         fontWeight={600}
       >
         Pole {transformerDesignation}

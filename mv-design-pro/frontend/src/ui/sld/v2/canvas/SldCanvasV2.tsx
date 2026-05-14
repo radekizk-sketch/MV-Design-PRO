@@ -23,6 +23,7 @@ import {
   type LodLevel,
   type SldLayerId,
 } from '../lod/LodPolicy';
+import { SldLodProvider } from '../lod/SldLodContext';
 import { COLOR_BG, COLOR_PANEL } from '../theme/tokens';
 import {
   CableRunRenderer,
@@ -305,6 +306,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   );
 
   return (
+    <SldLodProvider lod={lod}>
     <svg
       ref={svgRef}
       data-testid="sld-canvas-v2"
@@ -667,6 +669,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         </text>
       </g>
     </svg>
+    </SldLodProvider>
   );
 }
 
