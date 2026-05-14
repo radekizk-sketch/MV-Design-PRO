@@ -1032,7 +1032,7 @@ export function SldWorkspaceContainer(
       data-testid="sld-workspace-container"
       data-readonly={readOnly}
       data-pending-drop={pendingDrop?.kind ?? ''}
-      className="relative flex h-full w-full overflow-hidden bg-scada-bg"
+      className="sld-canvas-grid relative flex h-full w-full overflow-hidden bg-scada-bg"
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onPointerDown={handlePointerDown}

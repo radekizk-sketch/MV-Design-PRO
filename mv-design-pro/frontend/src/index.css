@@ -630,3 +630,25 @@
     line-height: 1.25;
   }
 }
+
+/* =========================================================================
+ * SLD Canvas Grid — Iter 3 fix (CAD blocker #1)
+ * Dot-grid 20×20 px na canvas placeholder + warstwa rysunkowa, zgodnie z
+ * GRID_BASE_PX z theme/tokens.ts. Operatorzy CAD (ETAP/AutoCAD Electrical)
+ * oczekują widocznej siatki nawet na pustym canvasie.
+ * ========================================================================= */
+.sld-canvas-grid {
+  background-image: radial-gradient(
+    circle,
+    rgba(110, 138, 168, 0.18) 1px,
+    transparent 1px
+  );
+  background-size: 20px 20px;
+  background-position: 0 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sld-canvas-grid {
+    background-image: none;
+  }
+}
