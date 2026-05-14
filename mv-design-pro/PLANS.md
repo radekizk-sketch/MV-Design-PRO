@@ -924,3 +924,43 @@ Zostaje jako bounded follow-up — nie blokuje funkcjonalności.
 - ⏸ GpzSwitchgearRenderer split 3392 → 6 plików ≤ 500 — ~10 OD (oddzielny ticket)
 
 P0.6 foundation DONE. Pozostałe ~15 OD systematic sweep + refactor.
+
+---
+
+## 5.5 Iter 25-26 — P0.1 + P0.5 status revision (56 commitów)
+
+### P0.1 Symbol Library — JUŻ KOMPLETNY (verified iter 25)
+
+Stop hook szacował "32 → ≥50". Faktycznie:
+- **54 SVG plików** w `frontend/src/ui/sld/canonical_symbols/`
+- **54 entries** w `ports.json`
+- **100% parity** (brak orphanów w żadną stronę)
+
+P0.1: ✓ DONE.
+
+### P0.5 Fault-loop NN API — KOMPLETNY (iter 26)
+
+Solver + builder + envelope adapter istniały. Iter 26 dodał:
+- ✓ **API endpoint `POST /api/fault-loop/compute`**
+- ✓ Pydantic schemas + Polish error messages + WHITE BOX trace
+- ✓ Smoke test: z_loop {re:0.0404, im:0.0298, |Z|:0.0502Ω}
+
+P0.5 backend: ✓ DONE.
+
+### Rewizja P0 status (6/10 KOMPLETNE)
+
+| P0 | Status | OD |
+|---|---|---|
+| P0.1 Symbol library 54/50 100% | ✓ | 0 |
+| P0.2 Protection SI-100 backend | ✓ (FE ~5) | 5 |
+| P0.3 LayoutEngine port-based F2 | ⏸ | 25 |
+| P0.4 VDROP+Earthing proof packs | ✓ | 0 |
+| P0.5 Fault-loop NN backend API | ✓ (FE ~3) | 3 |
+| P0.6 LOD foundation | ✓ (sweep ~15) | 15 |
+| P0.7 Theme F4 | ⏸ | 20 |
+| P0.8 DOCX export | ✓ | 0 |
+| P0.9 Wizard improvements | ⏸ | 7 |
+| P0.10 CI visual regression | ⏸ | 8 |
+
+**Sumarycznie: 6/10 P0 priorytety KOMPLETNE.** Pozostałe ~83 OD.
+
