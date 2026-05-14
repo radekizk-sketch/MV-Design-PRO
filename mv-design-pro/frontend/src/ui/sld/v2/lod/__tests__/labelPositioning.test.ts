@@ -180,6 +180,56 @@ describe('resolveCollidingLabels — greedy nudge', () => {
     const second = result.find((r) => r.id === 'b')!;
     expect(second.resolvedY).not.toBe(50);
   });
+
+  it('unresolved=false for non-overlapping labels', () => {
+    const labels: LabelBox[] = [
+      { id: 'a', anchorX: 0, anchorY: 0, width: 10, height: 10, importance: 'critical' },
+      { id: 'b', anchorX: 100, anchorY: 0, width: 10, height: 10, importance: 'primary' },
+    ];
+    const result = resolveCollidingLabels(labels, LOD_2);
+    expect(result[0].unresolved).toBe(false);
+    expect(result[1].unresolved).toBe(false);
+  });
+
+  it('unresolved=false for invisible labels (never attempted)', () => {
+    const labels: LabelBox[] = [
+      { id: 'diag', anchorX: 50, anchorY: 50, width: 30, height: 20, importance: 'diagnostic' },
+    ];
+    const result = resolveCollidingLabels(labels, LOD_0);
+    expect(result[0].visible).toBe(false);
+    expect(result[0].unresolved).toBe(false);
+  });
+
+  it('unresolved=true when maxIterations exhausted under crowded conditions (AC-06 escape hatch)', () => {
+    // 5 critical labels at exact same spot, nudgeStep=1 but maxIter=2
+    // → cannot escape, must report unresolved
+    const labels: LabelBox[] = [
+      { id: 'a', anchorX: 50, anchorY: 50, width: 100, height: 100, importance: 'critical' },
+      { id: 'b', anchorX: 50, anchorY: 50, width: 100, height: 100, importance: 'critical' },
+      { id: 'c', anchorX: 50, anchorY: 50, width: 100, height: 100, importance: 'critical' },
+      { id: 'd', anchorX: 50, anchorY: 50, width: 100, height: 100, importance: 'critical' },
+      { id: 'e', anchorX: 50, anchorY: 50, width: 100, height: 100, importance: 'critical' },
+    ];
+    const result = resolveCollidingLabels(labels, LOD_2, {
+      nudgeStepPx: 1,
+      maxIterations: 2,
+    });
+    // First label always succeeds (no prior labels). At least one of b..e must fail.
+    expect(result[0].unresolved).toBe(false);
+    const someUnresolved = result.slice(1).some((r) => r.unresolved);
+    expect(someUnresolved).toBe(true);
+  });
+
+  it('unresolved=false when resolution succeeds (sufficient nudge)', () => {
+    const labels: LabelBox[] = [
+      { id: 'a', anchorX: 50, anchorY: 50, width: 30, height: 20, importance: 'critical' },
+      { id: 'b', anchorX: 50, anchorY: 50, width: 30, height: 20, importance: 'primary' },
+    ];
+    // Default nudge=8 px, height=20 → 2 nudges enough
+    const result = resolveCollidingLabels(labels, LOD_2);
+    expect(result[0].unresolved).toBe(false);
+    expect(result[1].unresolved).toBe(false);
+  });
 });
 
 describe('compactLabelText — LOD-aware abbreviation', () => {

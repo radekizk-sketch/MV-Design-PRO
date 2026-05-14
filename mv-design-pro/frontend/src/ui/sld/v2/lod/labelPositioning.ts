@@ -60,6 +60,15 @@ export interface ResolvedLabel extends LabelBox {
   readonly resolvedY: number;
   /** Whether label visible at this LOD. */
   readonly visible: boolean;
+  /**
+   * Whether collision resolution failed (maxIterations exhausted).
+   * Caller may emit a visual-regression warning or hide overlapping labels.
+   * Always false for invisible labels.
+   *
+   * AC-06 invariant: if `unresolved === true`, this label still overlaps
+   * with at least one previously-placed label after best-effort nudging.
+   */
+  readonly unresolved: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -170,26 +179,27 @@ export function resolveCollidingLabels(
 
   // Greedy placement
   const placed: Array<{ id: string; x: number; y: number; width: number; height: number }> = [];
-  const resolved = new Map<string, { x: number; y: number }>();
+  const resolved = new Map<string, { x: number; y: number; unresolved: boolean }>();
 
   for (const { lbl } of sorted) {
     if (!visibility.get(lbl.id)) {
-      resolved.set(lbl.id, { x: lbl.anchorX, y: lbl.anchorY });
+      resolved.set(lbl.id, { x: lbl.anchorX, y: lbl.anchorY, unresolved: false });
       continue;
     }
     let x = lbl.anchorX;
     let y = lbl.anchorY;
     let iter = 0;
     let direction = 1; // alternate down/up
+    let stillColliding = false;
     while (iter < maxIter) {
-      const collision = placed.some((p) =>
+      stillColliding = placed.some((p) =>
         boxesOverlap(
           { x, y, width: lbl.width, height: lbl.height },
           p,
           padding,
         ),
       );
-      if (!collision) break;
+      if (!stillColliding) break;
       y += direction * nudge;
       direction = -direction;
       // Increase nudge size every other iteration to break symmetric deadlocks
@@ -197,17 +207,18 @@ export function resolveCollidingLabels(
       iter++;
     }
     placed.push({ id: lbl.id, x, y, width: lbl.width, height: lbl.height });
-    resolved.set(lbl.id, { x, y });
+    resolved.set(lbl.id, { x, y, unresolved: stillColliding });
   }
 
   // Re-emit in INPUT order
   return labels.map((lbl) => {
-    const r = resolved.get(lbl.id) ?? { x: lbl.anchorX, y: lbl.anchorY };
+    const r = resolved.get(lbl.id) ?? { x: lbl.anchorX, y: lbl.anchorY, unresolved: false };
     return {
       ...lbl,
       resolvedX: r.x,
       resolvedY: r.y,
       visible: visibility.get(lbl.id) ?? false,
+      unresolved: r.unresolved,
     };
   });
 }
