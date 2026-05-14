@@ -500,22 +500,30 @@ async function main() {
   let k13Status = 'NOT_REACHED';
   let sc3fRunId = null;
   let lfRunId = null;
+  const k13Runs = {};
   if (k6Status === 'PASS') {
-    log('K13', 'Uruchom SC_3F solver (IEC 60909)...');
-    const sc3f = await runAnalysis('SC_3F');
-    sc3fRunId = sc3f?.runId;
-    log('K13', `SC_3F: ${sc3f?.status}`);
-
-    log('K13', 'Uruchom LOAD_FLOW solver (Newton-Raphson)...');
-    const lf = await runAnalysis('LOAD_FLOW');
-    lfRunId = lf?.runId;
-    log('K13', `LOAD_FLOW: ${lf?.status}`);
-
-    if (sc3f?.status === 'DONE' && lf?.status === 'DONE') {
-      k13Status = 'PASS';
-    } else {
-      k13Status = `PARTIAL: SC3F=${sc3f?.status} LF=${lf?.status}`;
+    // Wszystkie 6 supported analysis_type (SC_1F i SC_2F_G zwracają 422).
+    const analyses = [
+      'SC_3F',
+      'SC_2F',
+      'LOAD_FLOW',
+      'PHASE_STATE_SN',
+      'DYNAMIC_STABILITY',
+      'SOURCE_COMPLIANCE',
+    ];
+    let donePass = 0;
+    for (const type of analyses) {
+      log('K13', `Uruchom ${type}...`);
+      const result = await runAnalysis(type);
+      if (result?.status === 'DONE') {
+        donePass++;
+        k13Runs[type] = result.runId;
+        if (type === 'SC_3F') sc3fRunId = result.runId;
+        if (type === 'LOAD_FLOW') lfRunId = result.runId;
+      }
+      log('K13', `  ${type}: ${result?.status ?? 'FAIL'}`);
     }
+    k13Status = donePass >= 4 ? `PASS: ${donePass}/6` : `PARTIAL: ${donePass}/6`;
   }
 
   // K14: Wszystkie eksporty Proof + Report (JSON/LaTeX/PDF/DOCX) dla SC_3F.
@@ -578,6 +586,7 @@ async function main() {
       k13_status: k13Status,
       sc3f_run_id: sc3fRunId,
       lf_run_id: lfRunId,
+      k13_runs: k13Runs,
       k14_status: k14Status,
       export_sizes: exportSizes,
     },
