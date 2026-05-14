@@ -429,6 +429,37 @@ async function main() {
     }
   }
 
+  // K13: Solver SC_3F (Short Circuit 3-fazowy IEC 60909).
+  // Tworzy AnalysisRun (PENDING) + execute → status=DONE + ResultSet.
+  let k13Status = 'NOT_REACHED';
+  let sc3fRunId = null;
+  if (k6Status === 'PASS') {
+    log('K13', 'Uruchom SC_3F solver (IEC 60909)...');
+    const createRes = await api(
+      'POST',
+      `/api/execution/study-cases/${caseId}/runs`,
+      {
+        analysis_type: 'SC_3F',
+        solver_input: {},
+      },
+    );
+    if (createRes.ok && createRes.json?.id) {
+      sc3fRunId = createRes.json.id;
+      const execRes = await api(
+        'POST',
+        `/api/execution/runs/${sc3fRunId}/execute`,
+      );
+      if (execRes.ok && execRes.json?.status === 'DONE') {
+        k13Status = 'PASS';
+        log('K13', `OK SC_3F run done (run_id=${sc3fRunId})`);
+      } else {
+        k13Status = `FAIL_EXEC: ${execRes.json?.status} ${execRes.json?.error_message ?? ''}`;
+      }
+    } else {
+      k13Status = `FAIL_CREATE: ${createRes.status}`;
+    }
+  }
+
   log('K_final', 'Weryfikuję topology końcową...');
   const summaryFinal = await api('GET', `/api/cases/${caseId}/enm/topology/summary`);
 
@@ -453,6 +484,8 @@ async function main() {
       k7_status: k7Status,
       k8_status: k8Status,
       k10_status: k10Status,
+      k13_status: k13Status,
+      sc3f_run_id: sc3fRunId,
     },
     null,
     2,
