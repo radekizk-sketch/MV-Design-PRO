@@ -122,6 +122,18 @@ def _canonical_analysis_type(value: ExecutionAnalysisType) -> str:
         return "dynamic_stability"
     if value == ExecutionAnalysisType.SOURCE_COMPLIANCE:
         return "source_compliance"
+    # V12K-025: PROTECTION ma osobny endpoint (architektoniczna separacja
+    # bo wymaga sc_run_id + protection_case_id + protection_engine_v1).
+    if value == ExecutionAnalysisType.PROTECTION:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Analiza PROTECTION wymaga osobnego endpoint-u "
+                "POST /api/projects/{project_id}/protection-runs "
+                "(wymaga sc_run_id z poprzedniej analizy SC + protection_case_id "
+                "z study_case.protection_config). Patrz V12K-025 w REJESTR_KONFLIKTOW.md."
+            ),
+        )
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
         detail=f"Nieobslugiwany typ analizy: {value.value}",

@@ -171,6 +171,23 @@ class TestCreateRunEndpoint:
         assert response.status_code == 400
         assert "Nieprawid" in response.json()["detail"]
 
+    def test_create_run_protection_redirects_to_proper_endpoint(self, client, registered_case):
+        """V12K-025: PROTECTION via execution endpoint returns helpful error
+        pointing user to /api/projects/{id}/protection-runs."""
+        response = client.post(
+            f"/api/execution/study-cases/{registered_case}/runs",
+            json={
+                "analysis_type": "PROTECTION",
+                "solver_input": {},
+            },
+        )
+        assert response.status_code == 400
+        detail = response.json()["detail"]
+        assert "protection-runs" in detail
+        assert "sc_run_id" in detail
+        assert "protection_case_id" in detail
+        assert "V12K-025" in detail
+
     def test_create_run_without_canonical_enm_snapshot_is_rejected(self, client):
         fake_id = str(uuid4())
         response = client.post(
