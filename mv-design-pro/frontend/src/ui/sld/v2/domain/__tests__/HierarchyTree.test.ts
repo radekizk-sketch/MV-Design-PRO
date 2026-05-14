@@ -258,8 +258,8 @@ describe('buildHierarchy — CableRuns', () => {
     it('przelotowa (1 in + 1 out, no branch)', () => {
       const h = buildHierarchy(
         makeRun([
-          { id: 'p1', kind: 'sn_input' },
-          { id: 'p2', kind: 'sn_output' },
+          { id: 'port_in_1', kind: 'sn_input' },
+          { id: 'port_out_1', kind: 'sn_output' },
         ]),
       );
       expect(h.cableRuns[0].stations[0].topologicalType).toBe('przelotowa');
@@ -268,9 +268,9 @@ describe('buildHierarchy — CableRuns', () => {
     it('odgałęźna (1 in + 1 out + 1 branch)', () => {
       const h = buildHierarchy(
         makeRun([
-          { id: 'p1', kind: 'sn_input' },
-          { id: 'p2', kind: 'sn_output' },
-          { id: 'p3', kind: 'sn_branch' },
+          { id: 'port_in_1', kind: 'sn_input' },
+          { id: 'port_out_1', kind: 'sn_output' },
+          { id: 'port_branch_1', kind: 'sn_branch' },
         ]),
       );
       expect(h.cableRuns[0].stations[0].topologicalType).toBe('odgałęźna');
@@ -279,9 +279,9 @@ describe('buildHierarchy — CableRuns', () => {
     it('sekcyjna (2 in + 1 coupler)', () => {
       const h = buildHierarchy(
         makeRun([
-          { id: 'p1', kind: 'sn_input' },
-          { id: 'p2', kind: 'sn_input' },
-          { id: 'p3', kind: 'sn_coupler' },
+          { id: 'port_in_1', kind: 'sn_input' },
+          { id: 'port_in_2', kind: 'sn_input' },
+          { id: 'port_coupler_1', kind: 'sn_coupler' },
         ]),
       );
       expect(h.cableRuns[0].stations[0].topologicalType).toBe('sekcyjna');
