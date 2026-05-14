@@ -7,19 +7,17 @@
  * - docs/audit/SLD_VISUAL_QUALITY_AUDIT.md § 2.1 (KRYTYCZNE — brak port routing)
  * - frontend/src/ui/sld/canonical_symbols/ports.json (50 symboli z port_id+kind+voltage)
  *
- * Per audyt specjalisty (background F2 LayoutEngine):
- * 1. Edge.fromPortRef.portId nie istnieje w VisualEdgeV1 — wymaga extension w follow-up
- * 2. layoutPipeline.ts:1220 phase4_route_all_edges używa center-to-center
- * 3. findPathAStar w layoutEngine.ts jest private (nie exported)
+ * P0.3 F2 STATUS: ZINTEGROWANE (2026-05-14)
+ * 1. Edge.fromPortRef.portId zdefiniowane w VisualEdgeV1 (visualGraph.ts) ✓
+ * 2. layoutPipeline.ts phase4_route_all_edges używa buildEdgeRouteFromPorts ✓
+ *    Fallback do center-to-center gdy portId pusty lub symbol nieznany.
+ * 3. Dla pełnego A* obstacle avoidance → P0.3 sprint F2b (follow-up).
  *
- * Ten plik dostarcza CZYSTE FUNKCJE pomocnicze, które:
+ * Ten plik dostarcza CZYSTE FUNKCJE pomocnicze:
  * - Lookup port position w canonical_symbols/ports.json
  * - Compute Manhattan path między dwoma portami (deterministyczny)
  * - Generate orthogonal segments z grid snap
  * - Walidacja port compatibility (voltage_kv_compat overlap)
- *
- * Pełna integracja w phase4 routing odbywa się w F2 sprint follow-up
- * (zgodnie z audytem: feature flag + nowa phase4_route_all_edges_portbased).
  *
  * INVARIANTS:
  * - PURE functions (no side effects, no DOM access)

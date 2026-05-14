@@ -54,6 +54,12 @@ export interface DerRendererProps {
    *  - 'marker': kropka z kolorem typu (12px)
    */
   readonly lod?: 'full' | 'compact' | 'marker';
+  /**
+   * NC RFG Module wg ENEA profile (enea.yaml):
+   * A: Mikro (0.8–1000 kW), B: Małe (1–50 MW), C: Duże (50–75 MW), D: B. duże (>75 MW).
+   * null = nieprzypisany / brak profilu operatora.
+   */
+  readonly ncRfgModule?: 'A' | 'B' | 'C' | 'D' | null;
   readonly onClick?: (id: string) => void;
   readonly onDoubleClick?: (id: string) => void;
 }
@@ -74,10 +80,25 @@ const KIND_FILL_COLOR: Record<DerRendererProps['kind'], string> = {
   FW: '#7FB069',     // zielony (wiatrak)
 };
 
+// NC RFG Module colors per ENEA profile (enea.yaml source of truth)
+const NC_RFG_MODULE_COLOR: Record<'A' | 'B' | 'C' | 'D', string> = {
+  A: '#00A651',  // Mikro: zielony
+  B: '#0070C0',  // Małe: niebieski
+  C: '#FF8C00',  // Duże: pomarańczowy
+  D: '#C00000',  // B. duże: czerwony (najwyższe wymagania)
+};
+
+const NC_RFG_MODULE_LABEL_PL: Record<'A' | 'B' | 'C' | 'D', string> = {
+  A: 'Moduł A',
+  B: 'Moduł B',
+  C: 'Moduł C',
+  D: 'Moduł D',
+};
+
 export function DerRenderer(props: DerRendererProps): JSX.Element {
   const {
     id, x, y, kind, name, nominalPowerKw, hasBlockTransformer,
-    selected, missingData, missingPcc, lod = 'full', onClick, onDoubleClick,
+    selected, missingData, missingPcc, ncRfgModule, lod = 'full', onClick, onDoubleClick,
   } = props;
   const { getFontSize } = useSldLod();
 
@@ -183,6 +204,34 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
         >
           <title>Transformator blokowy obecny</title>
         </circle>
+      )}
+      {/* Badge: NC RFG Module A/B/C/D per ENEA profile (enea.yaml) */}
+      {ncRfgModule && lod !== 'marker' && (
+        <g data-testid={`sld-v2-der-${id}-nc-rfg-module`} data-nc-rfg-module={ncRfgModule}>
+          {/* Kółko z literą modułu — górny lewy róg symbolu */}
+          <circle
+            cx={-half + 6}
+            cy={-half + 6}
+            r={7}
+            fill={NC_RFG_MODULE_COLOR[ncRfgModule]}
+            stroke="#FFFFFF"
+            strokeWidth={1}
+            opacity={0.92}
+          >
+            <title>{`NC RFG ${NC_RFG_MODULE_LABEL_PL[ncRfgModule]} (ENEA Operator)`}</title>
+          </circle>
+          <text
+            x={-half + 6}
+            y={-half + 10}
+            textAnchor="middle"
+            fill="#FFFFFF"
+            fontFamily={FONT_SANS}
+            fontSize={8}
+            fontWeight={700}
+          >
+            {ncRfgModule}
+          </text>
+        </g>
       )}
       {/* Badge: brak danych */}
       {missingData && (

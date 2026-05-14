@@ -81,6 +81,7 @@ import type { LayoutEngineOptions } from './layoutEngine';
 import { createLayoutEngine } from './layoutEngine';
 import { buildSldSemanticGraphFromVisualGraph } from './semanticGraphBuilder';
 import { buildLayoutInputGraph, type LayoutInputGraphV1 } from './layoutInputGraph';
+import { buildEdgeRouteFromPorts } from './portBasedLayout';
 import {
   GRID_BASE,
   GRID_SPACING_MAIN,
@@ -1238,36 +1239,81 @@ function phase4_route_all_edges(
     const fromP = state.placements.get(edge.fromPortRef.nodeId);
     const toP = state.placements.get(edge.toPortRef.nodeId);
 
-    // Smart routing: when one endpoint is a root bus (wide GPZ busbar),
-    // use the OTHER endpoint's center X as the connection point on the bus.
-    // This creates clean vertical feeders from the bus at field positions.
+    // P0.3 F2: port-based routing gdy portId + symbolId dostępne.
+    // Fallback do center/smart routing gdy brak danych.
     let startX: number, startY: number, endX: number, endY: number;
+    let portBasedSegments: PathSegmentV1[] | null = null;
 
-    const fromIsRootBus = rootBusNodeIds.has(edge.fromPortRef.nodeId);
-    const toIsRootBus = rootBusNodeIds.has(edge.toPortRef.nodeId);
+    if (
+      fromP && toP &&
+      edge.fromPortRef.portId && edge.toPortRef.portId
+    ) {
+      const fromNode = graph.nodes.find(n => n.id === edge.fromPortRef.nodeId);
+      const toNode = graph.nodes.find(n => n.id === edge.toPortRef.nodeId);
+      const fromSymbolId = fromNode?.attributes?.symbolId as string | undefined;
+      const toSymbolId = toNode?.attributes?.symbolId as string | undefined;
 
-    if (fromIsRootBus && toP) {
-      // FROM root bus → use target's center X (feeder field position) on the bus
-      const targetCX = snap(toP.x + toP.width / 2);
-      startX = targetCX;
-      startY = fromP ? snap(fromP.y + fromP.height) : 0;  // bottom edge of bus
-      endX = targetCX;
-      endY = toP ? snap(toP.y) : 0;  // top edge of target
-    } else if (toIsRootBus && fromP) {
-      // TO root bus → use source's center X on the bus
-      const sourceCX = snap(fromP.x + fromP.width / 2);
-      startX = sourceCX;
-      startY = fromP ? snap(fromP.y + fromP.height) : 0;
-      endX = sourceCX;
-      endY = toP ? snap(toP.y) : 0;
-    } else {
-      // Normal: center-to-center
-      startX = fromP ? snap(fromP.x + fromP.width / 2) : snap(config.spineX);
-      startY = fromP ? snap(fromP.y + fromP.height / 2) : 0;
-      endX = toP ? snap(toP.x + toP.width / 2) : snap(config.spineX);
-      endY = toP ? snap(toP.y + toP.height / 2) : 0;
+      if (fromSymbolId && toSymbolId) {
+        const route = buildEdgeRouteFromPorts(
+          { symbolId: fromSymbolId, portId: edge.fromPortRef.portId, originX: fromP.x, originY: fromP.y },
+          { symbolId: toSymbolId, portId: edge.toPortRef.portId, originX: toP.x, originY: toP.y },
+          { gridStep: config.gridStep, firstLeg: 'vertical' },
+        );
+        if (route !== null && route.segments.length > 0) {
+          portBasedSegments = route.segments.map(s => ({
+            from: { x: snap(s.x1), y: snap(s.y1) },
+            to: { x: snap(s.x2), y: snap(s.y2) },
+          }));
+          startX = portBasedSegments[0].from.x;
+          startY = portBasedSegments[0].from.y;
+          endX = portBasedSegments[portBasedSegments.length - 1].to.x;
+          endY = portBasedSegments[portBasedSegments.length - 1].to.y;
+        }
+      }
     }
 
+    if (portBasedSegments === null) {
+      // Fallback: smart/center-to-center routing
+      const fromIsRootBus = rootBusNodeIds.has(edge.fromPortRef.nodeId);
+      const toIsRootBus = rootBusNodeIds.has(edge.toPortRef.nodeId);
+
+      if (fromIsRootBus && toP) {
+        const targetCX = snap(toP.x + toP.width / 2);
+        startX = targetCX;
+        startY = fromP ? snap(fromP.y + fromP.height) : 0;
+        endX = targetCX;
+        endY = toP ? snap(toP.y) : 0;
+      } else if (toIsRootBus && fromP) {
+        const sourceCX = snap(fromP.x + fromP.width / 2);
+        startX = sourceCX;
+        startY = fromP ? snap(fromP.y + fromP.height) : 0;
+        endX = sourceCX;
+        endY = toP ? snap(toP.y) : 0;
+      } else {
+        startX = fromP ? snap(fromP.x + fromP.width / 2) : snap(config.spineX);
+        startY = fromP ? snap(fromP.y + fromP.height / 2) : 0;
+        endX = toP ? snap(toP.x + toP.width / 2) : snap(config.spineX);
+        endY = toP ? snap(toP.y + toP.height / 2) : 0;
+      }
+    }
+
+    // P0.3 F2: gdy port-based routing zdał wynik, użyj bezpośrednio
+    if (portBasedSegments !== null) {
+      const pbStart = portBasedSegments[0].from;
+      const pbEnd = portBasedSegments[portBasedSegments.length - 1].to;
+      state.routes.push({
+        edgeId: edge.id,
+        edgeType: edge.edgeType,
+        segments: portBasedSegments,
+        startPoint: pbStart,
+        endPoint: pbEnd,
+        laneIndex: 0,
+        isNormallyOpen: edge.isNormallyOpen,
+      });
+      continue;
+    }
+
+    // Fallback: center/smart routing
     // Ensure start is above end (smaller Y first) for downward growth
     const [sx, sy, ex, ey] = startY <= endY
       ? [startX, startY, endX, endY]

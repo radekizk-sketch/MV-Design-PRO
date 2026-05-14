@@ -440,6 +440,46 @@ describe('DerRenderer', () => {
     );
     expect(getByText('2000 kW')).toBeInTheDocument();
   });
+
+  it('NC RFG Module A badge widoczny dla modułu A (Mikro)', () => {
+    const { container } = render(
+      <svg>
+        <DerRenderer id="d1" x={0} y={0} kind="PV" name="PV-01" ncRfgModule="A" />
+      </svg>,
+    );
+    const badge = container.querySelector('[data-testid="sld-v2-der-d1-nc-rfg-module"]');
+    expect(badge).toBeTruthy();
+    expect(badge?.getAttribute('data-nc-rfg-module')).toBe('A');
+  });
+
+  it('NC RFG Module D badge widoczny dla modułu D (B. duże)', () => {
+    const { container } = render(
+      <svg>
+        <DerRenderer id="d1" x={0} y={0} kind="BESS" name="BESS-01" ncRfgModule="D" />
+      </svg>,
+    );
+    const badge = container.querySelector('[data-testid="sld-v2-der-d1-nc-rfg-module"]');
+    expect(badge).toBeTruthy();
+    expect(badge?.getAttribute('data-nc-rfg-module')).toBe('D');
+  });
+
+  it('NC RFG Module badge NIE renderowany gdy null', () => {
+    const { container } = render(
+      <svg>
+        <DerRenderer id="d1" x={0} y={0} kind="FW" name="FW-01" ncRfgModule={null} />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-der-d1-nc-rfg-module"]')).toBeNull();
+  });
+
+  it('NC RFG Module badge NIE renderowany w trybie marker (LOD=marker)', () => {
+    const { container } = render(
+      <svg>
+        <DerRenderer id="d1" x={0} y={0} kind="PV" name="PV-01" ncRfgModule="B" lod="marker" />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-der-d1-nc-rfg-module"]')).toBeNull();
+  });
 });
 
 describe('SldCanvasV2 — smoke', () => {
