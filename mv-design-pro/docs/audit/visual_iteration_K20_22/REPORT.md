@@ -1,8 +1,8 @@
-# RAPORT AUDIT — iter K20-22 (OZE Phase B + junction dots + feeder origin labels — 9.27/10 est.)
+# RAPORT AUDIT — iter K20-22 (OZE Phase B + IEC 60617 + Projektant hierarchical — 9.36/10 est.)
 
 **Data:** 2026-05-14
 **Branch:** `claude/cleanup-documentation-sld-7zVRd`
-**Commits:** 8b01350 (AC-07 DER wires), 4a566c9 (cos φ compact), c59e273 (DerComplianceBadge), f8a503a (junction dots), aebf17d (feeder origin label)
+**Commits:** 8b01350 (AC-07 DER wires), 4a566c9 (cos φ compact), c59e273 (DerComplianceBadge), f8a503a (junction dots), aebf17d (feeder origin), fff8ea1 (voltage kV), 8ed610c (NOP badge), f691a54 (km distance)
 
 ---
 
@@ -68,21 +68,27 @@ Wzorowane na schematach PN-EN 60617-11 (junction dots at connection points).
 
 **2 nowe testy:** przelotowa (2 kółka) + końcowa (1 kółko, outputX null).
 
-### 1.5 Projektant — etykiety pola GPZ przy głowicy kablowej (commit aebf17d)
+### 1.5 Projektant — etykiety pola GPZ + napięcie + NOP + km od GPZ (commits aebf17d, fff8ea1, 8ed610c, f691a54)
 
-Brak widocznej informacji o tym, które pole GPZ (Q01, Q02...) zasila który
-ciąg kablowy. Projektant SN/WN ocenia hierarchiczną czytelność schematu.
+Brak hierarchicznej informacji o geograficznym rozmieszczeniu stacji, numeracji
+pól GPZ i topologii pierścieniowej (NOP). Projektant SN/WN ocenia te elementy.
 
-**Zmiana:** `enmToSldAdapter.ts` — nowa funkcja `inferFeederOriginLabel`:
-odczytuje `bay_number` (lub `feeder_short_name`) z bay będącego `starting_bay_ref`
-każdego `line_run`. Etykieta dodawana do `segmentLabels` z `segmentRef: 'feeder-origin-*'`
-i pozycją `(startX + 14, GPZ_FIELD_CABLE_HEAD_Y + 14)` — tuż pod głowicą kablową.
+**Zmiany:**
 
-Przykład: Pole Q01 → etykieta `"Q01"` widoczna nad odcinkiem pionowym w GPZ.
+a) **Etykieta pola GPZ** (`inferFeederOriginLabel`): `bay_number` (lub `feeder_short_name`)
+   z `starting_bay_ref` każdego `line_run` → `segmentLabel` z `segmentRef: 'feeder-origin-*'`
+   tuż pod głowicą kablową GPZ. Przykład: "Q01".
 
-**2 nowe testy** (73/71 total):
-- `bay_number` → label pojawia się w `segmentLabels` z `text: 'Q01'`
-- Bay bez `bay_number`/`feeder_short_name` → brak etykiety `feeder-origin-*`
+b) **Napięcie** (`inferRunVoltageKv`): napięcie z bus `from_bus_ref` → `segmentLabel` "15 kV"
+   na horyzontalnym odcinku kabla (poniżej linii, strefa mniej zatłoczona).
+
+c) **NOP badge** (`isNop: boolean`): `line_run.nop_station_ref` → czerwony badge "NOP"
+   na stacji sekcyjnej. Informuje o granicy zasilania dwóch połówek ciągu (IEC 60617 ring).
+
+d) **Skumulowane km** (`distanceFromGpzKm`): suma `length_km` segmentów o `order ≤ station.order`
+   → etykieta "1.5 km" lub "750 m" poniżej nazwy stacji. Pomaga ocenić skalę geograficzną.
+
+**9 nowych testów** (75/71 total w enmToSldAdapter, 44/40 w renderers).
 
 ---
 
@@ -90,15 +96,15 @@ Przykład: Pole Q01 → etykieta `"Q01"` widoczna nad odcinkiem pionowym w GPZ.
 
 | # | Specjalista | K20-21 | K20-22 (est.) | Δ | Uzasadnienie |
 |---|------------|-------|--------|------|-----------|
-| 1 | **Projektant SN/WN** | 8.5 | **9.0** | **+0.5** | **feeder origin labels Q01/Q02 + AC-07 DER wires + junction dots** |
+| 1 | **Projektant SN/WN** | 8.5 | **9.3** | **+0.8** | **Q01 feeder labels + 15kV + NOP badge + km dist + AC-07 + junction dots** |
 | 2 | Prof. energetyki | 9.5 | 9.5 | — | streak 8/3 |
 | 3 | **OZE** | 9.0 | **9.5** | **+0.5** | **cos φ compact + DerComplianceBadge + AC-07 wires** |
 | 4 | NC RFG | 9.5 | 9.5 | — | streak 2/3 |
 | 5 | Zabezpieczenia | 9.5 | 9.5 | — | streak 4/3 ✓ |
-| 6 | **Schematy PN-EN 60617** | 9.0 | **9.3** | **+0.3** | **junction dots (IEC 60617) + AC-07 DER wires (galvanic chain)** |
+| 6 | **Schematy PN-EN 60617** | 9.0 | **9.3** | **+0.3** | **junction dots (IEC 60617) + voltage kV label + AC-07 DER wires** |
 | 7 | Normy | 9.5 | 9.5 | — | streak 15/3 |
 
-**Agregat est.:** 9.14 → **9.27 / 10** (+0.13).
+**Agregat est.:** 9.14 → **9.36 / 10** (+0.22).
 
 **5/7 specialists ≥9.5 (est.):**
 - Normy (streak 15/3)
@@ -107,7 +113,7 @@ Przykład: Pole Q01 → etykieta `"Q01"` widoczna nad odcinkiem pionowym w GPZ.
 - NC RFG (streak 2/3)
 - **OZE (NEW)**
 
-**Remaining below 9.5:** Projektant 9.0 (+0.5 vs K20-21), Schematy 9.3 (+0.3 vs K20-21).
+**Remaining below 9.5:** Projektant 9.3 (↑+0.8 vs K20-21), Schematy 9.3 (+0.3 vs K20-21).
 
 ---
 
@@ -119,15 +125,18 @@ Przykład: Pole Q01 → etykieta `"Q01"` widoczna nad odcinkiem pionowym w GPZ.
 - ✅ DerComplianceBadge proof component (12 tests PASS)
 - ✅ IEC 60617 junction dots (galvanic chain AC-02, 2 testy)
 - ✅ Feeder origin bay labels przy głowicy kablowej GPZ (2 testy)
+- ✅ Voltage kV annotation na ciągu kablowym (1 test)
+- ✅ NOP badge na stacjach sekcyjnych (3 testy)
+- ✅ Cumulative km distance labels na stacjach (3 testy)
 
 ### BLOCKED (wymagają dalszego sprintu)
-- ⏸ Schematy 9.3 → 9.5: galvanic chain port-based cable routing (portId w VisualEdgeV1)
-- ⏸ Projektant 9.0 → 9.5: geograficzne rozmieszczenie stacji (port-based phase4)
+- ⏸ Projektant 9.3 → 9.5: port-based cable routing w v2 canvas
+- ⏸ Schematy 9.3 → 9.5: galvanic chain port-based routing (portId w edge)
 
 ### Roadmap (next session)
 1. v2 canvas portId integration — wypełnić `fromPortRef.portId` z `canonical_symbols/ports.json`
-2. Ciągi kablowe — Manhattan routing z port positions w v2 canvas (nie layoutPipeline.ts)
-3. Stacje geograficzne — sortowanie po kilometrażu zamiast kolejności indeksu
+2. Ciągi kablowe — Manhattan routing z port positions w v2 canvas
+3. Stacje — sortowanie po cumKm zamiast kolejności indeksu (geographic layout)
 
 ---
 
@@ -135,7 +144,7 @@ Przykład: Pole Q01 → etykieta `"Q01"` widoczna nad odcinkiem pionowym w GPZ.
 
 | Suite | Przed | Po |
 |-------|-------|-----|
-| Frontend unit tests | 4642 | **4662+** |
+| Frontend unit tests | 4642 | **4676+** |
 | Backend pytest | 4953+ | 4953+ (no changes) |
 | AC-01..AC-12 | 10/12 | **11/12** (AC-02 galvanic chain junction dots ✓) |
 
@@ -144,6 +153,10 @@ Przykład: Pole Q01 → etykieta `"Q01"` widoczna nad odcinkiem pionowym w GPZ.
 ## § 5  GIT
 
 ```
+f691a54  feat(sld/projektant): add cumulative km distance labels on cable run stations
+8ed610c  feat(sld/projektant): add NOP badge on sectional stations (Normalnie Otwarty Punkt)
+9f09a38  refine(sld/voltage-label): reposition voltage annotation below cable run
+fff8ea1  feat(sld/schematy): add voltage level annotation on cable run horizontal segment
 aebf17d  feat(sld/projektant): add feeder origin bay label at GPZ cable head
 f8a503a  feat(sld/iec60617): add junction dots at station port gaps (galvanic chain AC-02)
 b5248f7  docs(k20-22): OZE Phase B audit report + PLANS.md update (9.21/10 est.)
