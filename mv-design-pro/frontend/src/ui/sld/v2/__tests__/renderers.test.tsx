@@ -822,7 +822,7 @@ describe('SldCanvasV2 — smoke', () => {
         stations={[{
           id: 'st-inline',
           x: 150,
-          y: 154,
+          y: 180,
           name: 'ST przelotowa',
           topologicalType: 'przelotowa',
         }]}

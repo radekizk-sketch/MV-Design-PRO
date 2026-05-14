@@ -84,6 +84,8 @@ export interface MiniBlockRmuRendererProps {
   readonly variant: 'overview' | 'compact' | 'detail';
   readonly footprintType: StationFootprintType;
   readonly name: string;
+  /** K30-4: short station code (S01, S15, S29). Prominent badge. */
+  readonly stationCode?: string | null;
   readonly snBays: readonly MiniBlockBayDescriptor[];
   readonly hasTransformer: boolean;
   readonly transformerRatedKva: number | null;
@@ -223,9 +225,24 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         />
       )}
 
+      {/* K30-4: prominent station code badge — props.stationCode (from adapter)
+       *  or regex z name (fallback). Backend gubi name_pl więc kod musi
+       *  pochodzić z adaptera order. */}
+      {(() => {
+        const code = props.stationCode
+          ?? ((props.name || '').match(/\b(S\d{2,3})\b/)?.[1] ?? null);
+        return code ? (
+          <g data-testid={`sld-v2-mini-station-code-${props.id}`} transform={`translate(0, ${labelNameY - 4})`}>
+            <rect x={-22} y={-13} width={44} height={18} rx={2} ry={2} fill="#0A1018" stroke="#7EC8FF" strokeWidth={1.2} opacity={0.95} />
+            <text x={0} y={1} textAnchor="middle" fill="#7EC8FF" fontFamily={FONT_SANS} fontSize={14} fontWeight={900} letterSpacing={0.8}>
+              {code}
+            </text>
+          </g>
+        ) : null;
+      })()}
       <text
         x={0}
-        y={labelNameY}
+        y={labelNameY + 18}
         textAnchor="middle"
         fill={COLOR_TEXT_PRIMARY}
         fontFamily={FONT_SANS}
@@ -236,7 +253,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         strokeWidth={showPvCircuit ? 1.4 : 3}
         data-parity-key="station.mini.name"
       >
-        {props.name}
+        {(props.name || '').length > 22 ? (props.name || '').slice(0, 20) + '…' : props.name}
       </text>
 
       <text

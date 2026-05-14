@@ -872,7 +872,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
 
     const cableY = r.cableRuns[0].pathPoints.at(-1)?.y;
     expect(cableY).toBeDefined();
-    expect(r.stations[0].y).toBe(cableY! + 54);
+    expect(r.stations[0].y).toBe(cableY! + 80);
   });
 
   it('odcinek SN startuje z głowicy pola GPZ, a nie z szyny ani etykiety', () => {
@@ -935,7 +935,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(points[0].x).toBe(points[1].x);
     expect(points[1].y).toBe(points[2].y);
     expect(points[2].x).toBeGreaterThan(points[0].x);
-    expect(r.stations[0].y).toBe(points[2].y + 54);
+    expect(r.stations[0].y).toBe(points[2].y + 80);
     expect(r.cableRuns[0].label).toBe('XRUHAKXS 120/25 · 500 m');
     expect(r.cableRuns[0].segmentLabels?.[0]?.text).toBe('XRUHAKXS 120/25 · 500 m');
     expect(r.cableRuns[0].pendingEndpoint).toBe(false);
@@ -1339,7 +1339,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(r.stations.map((station) => station.id)).toEqual(['ST-1', 'ST-2']);
     const lastCablePoint = r.cableRuns[0].pathPoints.at(-1);
     expect(lastCablePoint?.x).toBeLessThan(r.stations[1].x);
-    expect(lastCablePoint?.y).toBe(r.stations[1].y - 54);
+    expect(lastCablePoint?.y).toBe(r.stations[1].y - 80);
     expect(r.stations[0].x).toBeLessThan(r.stations[1].x);
     expect(r.cableRuns[0].label).toBe('różne typy katalogowe · 1,2 km');
     expect(r.cableRuns[0].segmentLabels?.map((label) => label.text)).toEqual([

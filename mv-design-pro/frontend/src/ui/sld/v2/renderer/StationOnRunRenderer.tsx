@@ -24,14 +24,16 @@ import {
 } from './MiniBlockRmuRenderer';
 import type { StationFootprintType } from './MiniBlockFootprints';
 
-const STATION_SYMBOL_WIDTH = 176;
-const STATION_SYMBOL_HEIGHT = 124;
-const STATION_BUS_WIDTH = 120;
+// K30-4: enlarged for industrial readability (24+ px symbols @ LOD-2).
+// Previously: 176/124/120/30/48 (mikroskopijny w widoku K30 30-station chain).
+const STATION_SYMBOL_WIDTH = 280;
+const STATION_SYMBOL_HEIGHT = 200;
+const STATION_BUS_WIDTH = 200;
 const STATION_BUS_Y = 0;
-export const STATION_RUN_TRUNK_OFFSET_Y = 54;
+export const STATION_RUN_TRUNK_OFFSET_Y = 80;
 const TRUNK_Y = -STATION_RUN_TRUNK_OFFSET_Y;
-const LABEL_Y = 30;
-const CODE_Y = 48;
+const LABEL_Y = 36;
+const CODE_Y = 58;
 
 export interface StationOnRunRendererProps {
   readonly id: string;
@@ -58,6 +60,9 @@ export interface StationOnRunRendererProps {
   /** Skumulowana odległość od GPZ [km] — pomaga Projektantowi ocenić geograficzne
    *  rozmieszczenie stacji na ciągu (np. "1.5 km"). */
   readonly distanceFromGpzKm?: number | null;
+  /** Krótki kod stacji (S01, S15, S29...) wyświetlany jako prominent badge.
+   *  K30-4: zastępuje regex extraction z name (backend gubi name_pl). */
+  readonly stationCode?: string | null;
 }
 
 const TYPE_TO_LABEL_PL: Record<StationOnRunRendererProps['topologicalType'], string> = {
@@ -95,6 +100,7 @@ export function StationOnRunRenderer(props: StationOnRunRendererProps): JSX.Elem
         variant={variant}
         footprintType={footprintType}
         name={props.name}
+        stationCode={props.stationCode ?? null}
         snBays={props.snBays ?? []}
         hasTransformer={props.hasTransformer ?? true}
         transformerRatedKva={props.transformerRatedKva ?? null}
@@ -121,7 +127,7 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
   const {
     id, x, y, name, topologicalType, nnVoltageLevelsCount,
     selected, onClick, onDoubleClick, missingData, isNop, distanceFromGpzKm,
-    transformerRatedKva,
+    transformerRatedKva, stationCode,
   } = props;
   const connectionXs = connectionColumns(topologicalType);
   const voltageLabel = nnVoltageLevelsCount && nnVoltageLevelsCount > 1
@@ -248,9 +254,23 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
         </g>
       )}
 
+      {/* K30-4: prominent station code badge. Najpierw używa props.stationCode
+       *  (z adaptera — adresuje backend gubi name_pl), fallback z regex z name. */}
+      {(() => {
+        const code = stationCode
+          ?? (name.match(/\b(S\d{2,3})\b/)?.[1] ?? null);
+        return code ? (
+          <g data-testid={`sld-v2-station-code-${id}`} transform={`translate(0, ${LABEL_Y - 4})`}>
+            <rect x={-32} y={-18} width={64} height={26} rx={3} ry={3} fill="#0A1018" stroke="#7EC8FF" strokeWidth={1.4} opacity={0.95} />
+            <text x={0} y={2} textAnchor="middle" fill="#7EC8FF" fontFamily={FONT_SANS} fontSize={20} fontWeight={900} letterSpacing={1}>
+              {code}
+            </text>
+          </g>
+        ) : null;
+      })()}
       <text
         x={0}
-        y={LABEL_Y}
+        y={LABEL_Y + 26}
         textAnchor="middle"
         fill={COLOR_TEXT_PRIMARY}
         fontFamily={FONT_SANS}
@@ -260,16 +280,16 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
         stroke="#05070A"
         strokeWidth={3}
       >
-        {name}
+        {name.length > 24 ? name.slice(0, 22) + '…' : name}
       </text>
       <text
         x={0}
-        y={CODE_Y}
+        y={CODE_Y + 28}
         textAnchor="middle"
         fill={selected ? COLOR_SELECTION : '#7EC8FF'}
         fontFamily={FONT_SANS}
-        fontSize={FONT_SIZES.bayLabel}
-        fontWeight={800}
+        fontSize={14}
+        fontWeight={700}
         paintOrder="stroke"
         stroke="#05070A"
         strokeWidth={3}
@@ -278,7 +298,7 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
       </text>
       <text
         x={0}
-        y={CODE_Y + 14}
+        y={CODE_Y + 48}
         textAnchor="middle"
         fill={COLOR_TEXT_SECONDARY}
         fontFamily={FONT_SANS}
@@ -295,16 +315,16 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
         <text
           data-testid={`sld-v2-station-rated-kva-${id}`}
           x={0}
-          y={CODE_Y + 28}
+          y={CODE_Y + 66}
           textAnchor="middle"
           fill="#FFD166"
           fontFamily={FONT_SANS}
-          fontSize={FONT_SIZES.technicalPanel}
-          fontWeight={700}
+          fontSize={14}
+          fontWeight={800}
           paintOrder="stroke"
           stroke="#05070A"
           strokeWidth={2}
-          opacity={0.9}
+          opacity={0.95}
         >
           {transformerRatedKva >= 1000
             ? `${(transformerRatedKva / 1000).toFixed(1)} MVA`
@@ -315,10 +335,10 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
       {isNop && (
         <g
           data-testid={`sld-v2-station-nop-badge-${id}`}
-          transform={`translate(0, ${CODE_Y + 32 + extraSlotY})`}
+          transform={`translate(0, ${CODE_Y + 70 + extraSlotY})`}
         >
-          <rect x={-16} y={-8} width={32} height={14} rx={2} ry={2} fill="#C00000" opacity={0.85} />
-          <text x={0} y={4} textAnchor="middle" fill="#FFFFFF" fontFamily={FONT_SANS} fontSize={9} fontWeight={800} letterSpacing={0.5}>
+          <rect x={-24} y={-12} width={48} height={20} rx={3} ry={3} fill="#C00000" opacity={0.95} />
+          <text x={0} y={4} textAnchor="middle" fill="#FFFFFF" fontFamily={FONT_SANS} fontSize={13} fontWeight={800} letterSpacing={1}>
             NOP
           </text>
         </g>
@@ -328,7 +348,7 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
         <text
           data-testid={`sld-v2-station-distance-${id}`}
           x={0}
-          y={CODE_Y + (isNop ? 54 : 32) + extraSlotY}
+          y={CODE_Y + (isNop ? 96 : 70) + extraSlotY}
           textAnchor="middle"
           fill={COLOR_TEXT_SECONDARY}
           fontFamily={FONT_SANS}

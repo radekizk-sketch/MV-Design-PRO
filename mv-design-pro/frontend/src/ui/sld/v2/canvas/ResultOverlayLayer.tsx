@@ -55,9 +55,9 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
         const uKv = getMetric(payload, snBusRef, 'U_kV');
         const angleDeg = getMetric(payload, snBusRef, 'ANGLE_DEG');
         const color = severityColor(el.severity);
-        // Badge powyżej stacji (transform: -32 px) — nie koliduje z label name (30)
-        // ani type label (48).
-        const badgeY = st.y - 80;
+        // K30-4: badge enlarged dla industrial readability (font 9→16, box 72→140).
+        // Position above station: -120 (was -80, accommodates new 200px station height).
+        const badgeY = st.y - 130;
         return (
           <g
             key={`result-overlay-${st.id}`}
@@ -65,25 +65,25 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
             transform={`translate(${st.x}, ${badgeY})`}
           >
             <rect
-              x={-36}
-              y={-9}
-              width={72}
-              height={uKv && angleDeg ? 28 : 14}
-              rx={3}
-              ry={3}
+              x={-70}
+              y={-16}
+              width={140}
+              height={uKv && angleDeg ? 50 : 26}
+              rx={4}
+              ry={4}
               fill="#0A0E14"
               stroke={color}
-              strokeWidth={1.2}
-              opacity={0.92}
+              strokeWidth={2}
+              opacity={0.95}
             />
             {uKv && (
               <text
                 x={0}
-                y={2}
+                y={4}
                 textAnchor="middle"
                 fill={color}
                 fontFamily={FONT_SANS}
-                fontSize={9}
+                fontSize={16}
                 fontWeight={800}
               >
                 U={formatMetric(uKv)}
@@ -92,11 +92,11 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
             {angleDeg && (
               <text
                 x={0}
-                y={14}
+                y={26}
                 textAnchor="middle"
                 fill={COLOR_TEXT_PRIMARY}
                 fontFamily={FONT_SANS}
-                fontSize={8}
+                fontSize={13}
                 fontWeight={600}
                 opacity={0.85}
               >

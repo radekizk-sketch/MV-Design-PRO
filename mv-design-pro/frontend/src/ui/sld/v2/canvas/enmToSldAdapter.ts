@@ -211,9 +211,11 @@ const SECTION_X_BASE = 100;
 const SECTION_PITCH = 320;
 const SECTION_WIDTH = 280;
 
-const RUN_PITCH = 130;
+const RUN_PITCH = 220;
 const X_STATIONS_START = 900;
-const STATION_PITCH = 220;
+// K30-4: increased 220→380 dla czytelnego station-to-station spacing
+// (Projektant/CAD specjaliści: symbol min 24 px @ LOD-2 = effective).
+const STATION_PITCH = 380;
 
 const CANONICAL_PAGE_PADDING = 24;
 const CANONICAL_HEADER_WIDTH = 320;
@@ -1067,11 +1069,14 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
           const len = 'length_km' in (branch ?? {}) ? (branch as { length_km: number }).length_km : 0;
           return acc + (len ?? 0);
         }, 0);
+      // K30-4: stationCode based on order w line_run — adresuje backend gubi name_pl.
+      const stationCode = `S${String(sref.order).padStart(2, '0')}`;
       stations.push({
         id: sub.ref_id,
         x: X_STATIONS_START + posInRun * STATION_PITCH,
         y: Y_RUN_BASE + runIdx * RUN_PITCH + STATION_RUN_TRUNK_OFFSET_Y,
         name: sub.name || sub.ref_id,
+        stationCode,
         topologicalType: classifyTopologicalType(sub),
         nnVoltageLevelsCount: 1,
         footprintType: stationSldDetails.footprintType,
