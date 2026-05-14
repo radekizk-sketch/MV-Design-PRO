@@ -480,6 +480,37 @@ describe('DerRenderer', () => {
     );
     expect(container.querySelector('[data-testid="sld-v2-der-d1-nc-rfg-module"]')).toBeNull();
   });
+
+  it('P/Q widget widoczny przy LOD=full z operatingPMw', () => {
+    const { container } = render(
+      <svg>
+        <DerRenderer id="d1" x={0} y={0} kind="PV" name="PV-01"
+          operatingPMw={0.5} operatingQMvar={0.1} lod="full" />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-der-d1-pq-widget"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-der-d1-cos-phi"]')).not.toBeNull();
+  });
+
+  it('cos φ NIE renderowany gdy brak operatingPMw', () => {
+    const { container } = render(
+      <svg>
+        <DerRenderer id="d2" x={0} y={0} kind="BESS" name="BESS-01" lod="full" />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-der-d2-pq-widget"]')).toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-der-d2-cos-phi"]')).toBeNull();
+  });
+
+  it('P/Q widget NIE renderowany w trybie compact (LOD=compact)', () => {
+    const { container } = render(
+      <svg>
+        <DerRenderer id="d3" x={0} y={0} kind="FW" name="FW-01"
+          operatingPMw={1.0} operatingQMvar={0.2} lod="compact" />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-der-d3-pq-widget"]')).toBeNull();
+  });
 });
 
 describe('SldCanvasV2 — smoke', () => {

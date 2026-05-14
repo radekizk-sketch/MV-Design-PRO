@@ -43,6 +43,13 @@ export interface GridSourceFormData {
   grounding_r_ohm: number | null;
   grounding_x_ohm: number | null;
   thermal_time_s: number;
+  /**
+   * K3 toggle: tryb edycji formularza GPZ.
+   * 'simplified' — tylko Sk''SN + R/X (szybka definicja źródła zewnętrznego).
+   * 'advanced'   — pełna topologia: sekcje 110kV + TR + pola odpływowe GPZ.
+   * UI-only: nie jest wysyłany do backendu.
+   */
+  complexity_mode: 'simplified' | 'advanced';
 }
 
 export interface GridSourceEditorProps {
@@ -100,6 +107,7 @@ const DEFAULT_DATA: GridSourceFormData = {
   grounding_r_ohm: 12,
   grounding_x_ohm: null,
   thermal_time_s: 1,
+  complexity_mode: 'simplified',
 };
 
 const FIELD_LABEL_CLASS =
@@ -886,6 +894,47 @@ export function GridSourceEditor({
             previewStatus={previewStatus}
           />
 
+          {/* K3 toggle: Uproszczony / Zaawansowany */}
+          <div
+            className="flex items-center gap-0 overflow-hidden rounded-[3px] border border-[#15324f]"
+            data-testid="k3-complexity-toggle"
+            role="group"
+            aria-label="Tryb edycji GPZ"
+          >
+            <button
+              type="button"
+              data-testid="k3-mode-simplified"
+              onClick={() => handleChange('complexity_mode', 'simplified')}
+              className={clsx(
+                'flex-1 px-4 py-2 font-mono-eng text-[11px] font-bold transition-colors',
+                formData.complexity_mode === 'simplified'
+                  ? 'bg-[#06324c] text-[#66f6ff]'
+                  : 'bg-[#020812] text-[#6d8fb3] hover:bg-[#071828] hover:text-[#a8bed6]',
+              )}
+            >
+              Uproszczony
+            </button>
+            <div className="w-px self-stretch bg-[#15324f]" aria-hidden="true" />
+            <button
+              type="button"
+              data-testid="k3-mode-advanced"
+              onClick={() => handleChange('complexity_mode', 'advanced')}
+              className={clsx(
+                'flex-1 px-4 py-2 font-mono-eng text-[11px] font-bold transition-colors',
+                formData.complexity_mode === 'advanced'
+                  ? 'bg-[#06324c] text-[#66f6ff]'
+                  : 'bg-[#020812] text-[#6d8fb3] hover:bg-[#071828] hover:text-[#a8bed6]',
+              )}
+            >
+              Zaawansowany
+            </button>
+          </div>
+          {formData.complexity_mode === 'simplified' && (
+            <div className="rounded-[3px] border border-[#15324f] bg-[#050c17] px-3 py-2 font-mono-eng text-[10px] text-[#6d8fb3]">
+              Tryb uproszczony: definiuj S&#x2033;<sub>k</sub> SN + R/X. Sekcje GPZ i topologia 110kV/TR pomijane (domyślne).
+            </div>
+          )}
+
           <ScadaSection title="Źródło danych i katalog">
             <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
               <div className="grid grid-cols-2 gap-2">
@@ -1160,7 +1209,7 @@ export function GridSourceEditor({
             </div>
           </ScadaSection>
 
-          <ScadaSection title="Sekcje szyn GPZ">
+          {formData.complexity_mode === 'advanced' && <ScadaSection title="Sekcje szyn GPZ">
             <div className="grid gap-3 xl:grid-cols-2 2xl:grid-cols-3">
               <FieldShell label="Liczba sekcji szyn SN" error={getFieldError('sections_count')}>
                 <select
@@ -1316,9 +1365,9 @@ export function GridSourceEditor({
               <CheckLine checked={gpzBuildSections.length > 1} label="Sprzęgło sekcji między szynami" />
               <CheckLine checked label="Zacisk wyjściowy każdego pola liniowego" />
             </div>
-          </ScadaSection>
+          </ScadaSection>}
 
-          <ScadaSection title="Składowa zerowa">
+          {formData.complexity_mode === 'advanced' && <ScadaSection title="Składowa zerowa">
             <label className="flex items-center gap-2 font-mono-eng text-[12px] text-scada-text">
               <input
                 type="checkbox"
@@ -1358,7 +1407,7 @@ export function GridSourceEditor({
                 />
               </FieldShell>
             </div>
-          </ScadaSection>
+          </ScadaSection>}
 
           <ScadaSection title="Podsumowanie obliczone">
             <div className="rounded-[3px] border border-[#1d5b90] bg-[#081d33] p-3">

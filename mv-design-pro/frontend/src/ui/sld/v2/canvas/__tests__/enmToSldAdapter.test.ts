@@ -252,6 +252,28 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(r.ders[0].ncRfgModule).toBe('C');
   });
 
+  it('operatingPMw i operatingQMvar przekazywane z ENM Generator', () => {
+    const snap = buildEmptySnapshot();
+    snap.generators = [
+      { id: 'g1', ref_id: 'PV-Q', name: 'PV-Q', tags: [], meta: {}, bus_ref: 'b', p_mw: 2.5, q_mvar: 0.8, gen_type: 'pv_inverter' } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const der = r.ders.find((d) => d.id === 'PV-Q');
+    expect(der?.operatingPMw).toBe(2.5);
+    expect(der?.operatingQMvar).toBe(0.8);
+  });
+
+  it('operatingQMvar jest null gdy brak q_mvar w generatorze', () => {
+    const snap = buildEmptySnapshot();
+    snap.generators = [
+      { id: 'g2', ref_id: 'PV-NoQ', name: 'PV-NoQ', tags: [], meta: {}, bus_ref: 'b', p_mw: 1.0, gen_type: 'pv_inverter' } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const der = r.ders.find((d) => d.id === 'PV-NoQ');
+    expect(der?.operatingPMw).toBe(1.0);
+    expect(der?.operatingQMvar).toBeNull();
+  });
+
   it('GPZ → GpzRendererProps zawiera sections + couplers + bays z ENM (e2e wiring)', () => {
     const snap = buildEmptySnapshot();
     snap.buses = [

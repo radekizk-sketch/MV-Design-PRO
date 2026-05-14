@@ -26,6 +26,16 @@ export interface DerRendererProps {
   readonly selected?: boolean;
   readonly missingData?: boolean;
   /**
+   * Aktualny punkt pracy — moc czynna P (MW).
+   * Renderowany jako wskaźnik P/Q przy LOD=full.
+   */
+  readonly operatingPMw?: number | null;
+  /**
+   * Aktualny punkt pracy — moc bierna Q (Mvar).
+   * Przy podaniu obu P i Q wyliczany jest cos φ = P/sqrt(P²+Q²).
+   */
+  readonly operatingQMvar?: number | null;
+  /**
    * Phase 0C operator-grade SLD plan v2 (Acceptance Invariant 10):
    * DER zawsze ma PCC + connection_variant + port + voltage_level —
    * albo widoczny missing-connection blocker.
@@ -98,7 +108,9 @@ const NC_RFG_MODULE_LABEL_PL: Record<'A' | 'B' | 'C' | 'D', string> = {
 export function DerRenderer(props: DerRendererProps): JSX.Element {
   const {
     id, x, y, kind, name, nominalPowerKw, hasBlockTransformer,
-    selected, missingData, missingPcc, ncRfgModule, lod = 'full', onClick, onDoubleClick,
+    selected, missingData, missingPcc, ncRfgModule, lod = 'full',
+    operatingPMw, operatingQMvar,
+    onClick, onDoubleClick,
   } = props;
   const { getFontSize } = useSldLod();
 
@@ -192,6 +204,45 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
           {nominalPowerKw.toFixed(0)} kW
         </text>
       )}
+      {/* Punkt pracy P/Q + wskaźnik cos φ (LOD=full, jeśli podano operatingPMw) */}
+      {lod === 'full' && operatingPMw !== null && operatingPMw !== undefined && (() => {
+        const pKw = operatingPMw * 1000;
+        const hasQ = operatingQMvar !== null && operatingQMvar !== undefined;
+        const qKvar = hasQ ? (operatingQMvar as number) * 1000 : 0;
+        const s = Math.sqrt(pKw * pKw + qKvar * qKvar);
+        const cosPhi = s > 0 ? pKw / s : null;
+        const labelY = nominalPowerKw !== null && nominalPowerKw !== undefined
+          ? half + 44
+          : half + 30;
+        return (
+          <g data-testid={`sld-v2-der-${id}-pq-widget`}>
+            <text
+              x={0}
+              y={labelY}
+              textAnchor="middle"
+              fill={COLOR_TEXT_SECONDARY}
+              fontFamily={FONT_MONO}
+              fontSize={getFontSize('fieldMeasurement')}
+            >
+              P {pKw.toFixed(0)} kW
+              {hasQ && ` Q ${qKvar.toFixed(0)} kVAr`}
+            </text>
+            {cosPhi !== null && (
+              <text
+                x={0}
+                y={labelY + 12}
+                textAnchor="middle"
+                fill="#88BBDD"
+                fontFamily={FONT_MONO}
+                fontSize={Math.max(getFontSize('fieldMeasurement') - 1, 8)}
+                data-testid={`sld-v2-der-${id}-cos-phi`}
+              >
+                {`cosφ ${cosPhi.toFixed(2)}`}
+              </text>
+            )}
+          </g>
+        );
+      })()}
       {/* Badge: transformator blokowy */}
       {hasBlockTransformer && (
         <circle

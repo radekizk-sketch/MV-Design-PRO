@@ -1777,6 +1777,8 @@ function buildDers(
       nominalPowerKw: gen.p_mw !== null && gen.p_mw !== undefined ? gen.p_mw * 1000 : null,
       hasBlockTransformer: gen.connection_variant === 'block_transformer',
       ncRfgModule: gen.nc_rfg_module ?? deriveNcRfgModule(gen.p_mw),
+      operatingPMw: gen.p_mw ?? null,
+      operatingQMvar: gen.q_mvar ?? null,
       lod: 'compact',
     });
   }

@@ -87,13 +87,14 @@ describe('GridSourceEditor E-03B', () => {
     expect(screen.getByText(/Dodanie GPZ do modelu sieci.*15 kV/)).toBeInTheDocument();
     expect(screen.getByDisplayValue('GPZ 1')).toBeInTheDocument();
     expect(screen.getByDisplayValue('GPZ-01')).toBeInTheDocument();
+    expect(screen.getByTestId('k3-complexity-toggle')).toBeInTheDocument();
+    expect(screen.getByTestId('k3-mode-simplified')).toBeInTheDocument();
+    expect(screen.getByTestId('k3-mode-advanced')).toBeInTheDocument();
     expect(screen.getByText('Identyfikacja GPZ')).toBeInTheDocument();
     expect(screen.getByText('Parametry zwarciowe na szynach SN')).toBeInTheDocument();
-    expect(screen.getByText('Sekcje szyn GPZ')).toBeInTheDocument();
-    expect(screen.getByText('Liczba pól liniowych na sekcję')).toBeInTheDocument();
-    expect(screen.getByText('każde pole ma osobny zacisk wyjściowy')).toBeInTheDocument();
-    expect(screen.queryByText('Pola odpływowe - Sekcja A')).not.toBeInTheDocument();
-    expect(screen.queryByText('Pola odpływowe - Sekcja B')).not.toBeInTheDocument();
+    // K3 default = 'simplified' → GPZ topology sections not shown
+    expect(screen.queryByText('Sekcje szyn GPZ')).not.toBeInTheDocument();
+    expect(screen.queryByText('Liczba pól liniowych na sekcję')).not.toBeInTheDocument();
     expect(screen.getByText('Podsumowanie obliczone')).toBeInTheDocument();
     expect(screen.getByText('Gotowość GPZ')).toBeInTheDocument();
     expect(screen.getByText('Ik\'\' (1-faz. maks.)')).toBeInTheDocument();
@@ -136,6 +137,60 @@ describe('GridSourceEditor E-03B', () => {
       rx_ratio: 0.12,
     }));
     expect(screen.queryByText(/Pozycja katalogowa jest wymagana/)).not.toBeInTheDocument();
+  });
+
+  it('K3: domyślnie tryb Uproszczony — sekcje GPZ i R0/X0 ukryte', () => {
+    render(
+      <GridSourceEditor
+        isOpen
+        mode="create"
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    // Section title unique to "Sekcje szyn GPZ"
+    expect(screen.queryByText('Sekcje szyn GPZ')).not.toBeInTheDocument();
+    // Unique checkbox label inside "Składowa zerowa" section
+    expect(screen.queryByText('Definiuj R0/X0 dla obliczeń doziemnych')).not.toBeInTheDocument();
+    expect(screen.getByText('Parametry zwarciowe na szynach SN')).toBeInTheDocument();
+  });
+
+  it('K3: przełączenie na Zaawansowany pokazuje sekcje GPZ i R0/X0', () => {
+    render(
+      <GridSourceEditor
+        isOpen
+        mode="create"
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText('Sekcje szyn GPZ')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('k3-mode-advanced'));
+
+    expect(screen.getByText('Sekcje szyn GPZ')).toBeInTheDocument();
+    expect(screen.getByText('Definiuj R0/X0 dla obliczeń doziemnych')).toBeInTheDocument();
+    expect(screen.getByText('Liczba pól liniowych na sekcję')).toBeInTheDocument();
+  });
+
+  it('K3: powrót z Zaawansowany do Uproszczony chowa sekcje GPZ', () => {
+    render(
+      <GridSourceEditor
+        isOpen
+        mode="create"
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('k3-mode-advanced'));
+    expect(screen.getByText('Sekcje szyn GPZ')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('k3-mode-simplified'));
+    expect(screen.queryByText('Sekcje szyn GPZ')).not.toBeInTheDocument();
+    expect(screen.queryByText('Definiuj R0/X0 dla obliczeń doziemnych')).not.toBeInTheDocument();
   });
 
   it('wysyła nowe dane wejściowe do backendu i pokazuje zwrócone podsumowanie', async () => {
