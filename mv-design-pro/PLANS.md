@@ -396,6 +396,54 @@ Zrealizowane w jednym dniu (**20 commitów po cleanupie** — sprint kontynuowan
 adresowane (>50% postępu), 2 czekają (P0.5 fault-loop NN, P0.6 SLD F3 — duże
 architektoniczne).
 
+### 3.7 P0 implementation sprint kontynuacja (2026-05-13 night + 14)
+
+Dalsze 9 commitów po raporcie § 3.6:
+
+- [x] **P0.7 ThemeContext + exportSvg** (commit `64de787`) — SldThemeProvider hooks +
+  exportSvg vector-clean (24 testów)
+- [x] **P0.9 backend integration** (commit `0a7fa8c`) — sc_simplified_grid_source w
+  ShortCircuitPayload (11 testów)
+- [x] **P0.7 exportPdf spec** (commit `4057c5a`) — PDF spec foundation z ISO 216
+  sizes (20 testów)
+- [x] **P0.7 UI integration** (commit `9c20fd1`) — Browser download utility +
+  SldExportButton React component (12 testów)
+- [x] **P0.7 SC overlay primitive** (commit `7e89f83`) — FaultContributionArrow (16 testów)
+- [x] **P0.7 PF + Protection primitives** (commit `fe5c5ba`) — PowerFlowArrow + ProtectionZoneMarker (30 testów)
+- [x] **P0.1 SLD F1 final** (commit `9afb19e`, `98751ce`) — 50→54 symbole (94.7% IEC parity) ✅ HIT 90% target
+- [x] **P0.5 fault-loop NN MVP** (commit `9fe6153`) — FaultLoopSolver IEC 60364-4-41,
+  21 testów (3 klasy)
+- [x] **P0.3 F2 portBasedLayout helpers** (commit `74e78db`) — Pure functions +
+  buildEdgeRouteFromPorts (37 testów)
+- [x] **CR-fix specialist audit** (commit `877ad80`) — 3 KRYTYCZNE + 4 ulepszeń + 5
+  test gaps (gridStep=0 NaN, Z_MIN_OHM, SVG namespace, ProtectionZone neg dims,
+  exportSvg precise regex, fault_loop docstring, splitPreview tests)
+- [x] **PowerFlowArrow zero-flow** (commit `0d1d79b`) — CR-fix #2 zero edge case
+- [x] **P0.5 step 3 builder** (commit `8e9c74e`) — FaultLoopInputBuilder scaffolding (9 testów)
+- [x] **P0.9 splitLinePreview** (commit `8925330`) — Split-with-preview pure functions (31 testów)
+
+**Łączna liczba testów dodanych w sprincie:** ~370+ (poprzednie 270 + 100 nowych)
+**Łącznie testy systemu:** Backend ~800+ PASS, Frontend ~1700+ PASS
+
+**Status P0 po 29 commitach:**
+
+| # | Status | OD | Komentarz |
+|---|--------|----|-----------|
+| P0.1 | ✅ DONE | 10/10 | 94.7% IEC parity (54/57), GOAL ≥50 + ≥90% HIT |
+| P0.2 | ✅ DONE | 5/5 | Protection SI-100 stub removed |
+| P0.3 | ⚙️ ~16% | 4/25 | port_binding_guard ext + portBasedLayout helpers — main impl TODO |
+| P0.4 | ✅ DONE | 10/10 | VDROP + Earthing packs |
+| P0.5 | ⚙️ ~75% | 11/15 | Solver MVP + InputBuilder scaffolding done; service.py + FE TODO |
+| P0.6 | ⏳ TODO | 0/15 | LOD wiring w monolicie — duże architektoniczne |
+| P0.7 | ⚙️ ~75% | 15/20 | Theme + 2 exporters + UI button + 3 overlay primitives |
+| P0.8 | ✅ DONE | 5/5 | DOCX export |
+| P0.9 | ✅ DONE | 7/7 | Operator + SC toggle + backend integration + split-preview foundation |
+| P0.10 | ⚙️ ~38% | 3/8 | Visual regression scaffolding (baselines TODO) |
+
+**Postęp:** ~**60 OD z 120 OD goal P0 (~50%)**. 5 P0 pełne zamknięte
+(P0.1, P0.2, P0.4, P0.8, P0.9), 3 znacząco adresowane (P0.5 ~75%, P0.7 ~75%,
+P0.3 ~16%), 1 częściowo (P0.10 ~38%), 1 czeka (P0.6 deep refactor).
+
 ### 3.5 Docs cleanup + canon resolution (2026-05-13)
 
 Zakres zakończony w tym etapie:
