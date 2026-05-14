@@ -346,6 +346,36 @@ async function main() {
     }
   }
 
+  // K7: Odgałęzienie SN (start_branch_segment_sn) z portu BRANCH ZKSN
+  let k7Status = 'NOT_REACHED';
+  if (k8Status === 'PASS' && globalThis._k8_branch_port_1) {
+    log('K7', 'Wyprowadzenie odgałęzienia z portu BRANCH ZKSN...');
+    const branchRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+      project_id: projectId,
+      operation: {
+        name: 'start_branch_segment_sn',
+        idempotency_key: 'gn01_branch_001',
+        payload: {
+          from_ref: globalThis._k8_branch_port_1,
+          segment: {
+            rodzaj: 'KABEL',
+            dlugosc_m: 800,
+            catalog_ref: 'cable-base-epr-al-1c-120',
+          },
+        },
+      },
+    });
+    if (branchRes.ok && !branchRes.json?.error_code) {
+      k7Status = 'PASS';
+      log('K7', 'OK branch segment added', {
+        created: branchRes.json?.changes?.created_element_ids?.length ?? 0,
+      });
+    } else {
+      k7Status = `FAIL: ${branchRes.status} ${branchRes.json?.error_code ?? branchRes.json?.error ?? ''}`;
+      log('K7', k7Status);
+    }
+  }
+
   log('K_final', 'Weryfikuję topology końcową...');
   const summaryFinal = await api('GET', `/api/cases/${caseId}/enm/topology/summary`);
 
@@ -367,6 +397,7 @@ async function main() {
       k4_status: k4Status,
       k5_status: k5Status,
       k6_status: k6Status,
+      k7_status: k7Status,
       k8_status: k8Status,
     },
     null,
