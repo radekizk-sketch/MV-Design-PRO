@@ -227,8 +227,13 @@ async function main() {
       if (trunkRes.ok && !trunkRes.json?.error_code) {
         k5Status = 'PASS';
         const createdIds = trunkRes.json?.changes?.created_element_ids ?? [];
-        // Segment ID jest typowo pierwszym created_element_id dla trunk segment op
-        globalThis._k5_segment_id = createdIds[0] ?? null;
+        // Segment ref ma prefix 'seg/' (vs 'bus/' dla downstream terminal).
+        // Per K5 inspection: created = ['bus/.../downstream', 'seg/.../segment']
+        globalThis._k5_segment_id =
+          createdIds.find((id) => typeof id === 'string' && id.startsWith('seg/')) ??
+          createdIds[1] ??
+          createdIds[0] ??
+          null;
         log('K5', 'OK trunk segment added', {
           created: createdIds.length,
           segment_id: globalThis._k5_segment_id,
@@ -260,10 +265,14 @@ async function main() {
             idempotency_key: 'gn01_station_001',
             payload: {
               segment_id: segmentId,
-              insert_at: { offset_m: 1000, side: 'inline' },
+              insert_at: { mode: 'RATIO', value: 0.5 },
               station: {
                 name_pl: 'Stacja S01 (15/0.4 kV)',
-                station_type: 'mv_lv',
+                // Backend wymaga: inline, branch, terminal, sectional lub A-D
+                station_type: 'inline',
+                // Napięcia — topologiczne dziedziczenie z segmentu, jawne dla pewności
+                sn_voltage_kv: 15,
+                nn_voltage_kv: 0.4,
               },
               transformer: {
                 transformer_catalog_ref: 'tr-sn-nn-15-04-1000kva-dyn11',
