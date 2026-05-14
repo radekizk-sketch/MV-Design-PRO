@@ -113,7 +113,7 @@ export function ProofPacksPanel({
       ]
         .filter(Boolean)
         .join(' ')}
-      aria-label="Panel dowodów inżynierskich (8 proof packs)"
+      aria-label="Panel dowodów inżynierskich (8 pakietów uzasadnień)"
       data-testid="sld-proof-packs-panel"
     >
       <header className="flex items-center justify-between gap-2 border-b border-scada-border pb-1">
