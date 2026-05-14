@@ -196,6 +196,46 @@ async function main() {
     }
   }
 
+  // K5: Wyprowadzenie odcinka magistrali SN (continue_trunk_segment_sn)
+  let k5Status = 'NOT_REACHED';
+  if (k4Status === 'PASS') {
+    // K4 utworzyło bay — wyciągnij field_ref z snapshot
+    const enmAfterK4 = await api('GET', `/api/cases/${caseId}/enm`);
+    const fields = enmAfterK4.json?.line_fields ?? [];
+    const lineOutField = fields.find((f) => f.bay_role === 'LINE_OUT');
+    const snBus2 = (enmAfterK4.json?.buses ?? []).find(
+      (b) => b.voltage_kv === 15,
+    );
+    if (lineOutField || snBus2) {
+      log('K5', 'Wyprowadzenie kabla SN (continue_trunk_segment_sn)...');
+      const trunkRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+        project_id: projectId,
+        operation: {
+          name: 'continue_trunk_segment_sn',
+          idempotency_key: 'gn01_trunk_seg_001',
+          payload: {
+            field_ref: lineOutField?.ref_id,
+            from_terminal_id: snBus2?.ref_id,
+            segment: {
+              rodzaj: 'KABEL',
+              dlugosc_m: 1500,
+              catalog_ref: 'cable-base-epr-al-1c-150',
+            },
+          },
+        },
+      });
+      if (trunkRes.ok && !trunkRes.json?.error_code) {
+        k5Status = 'PASS';
+        log('K5', 'OK trunk segment added', {
+          created: trunkRes.json?.changes?.created_element_ids?.length ?? 0,
+        });
+      } else {
+        k5Status = `FAIL: ${trunkRes.status} ${trunkRes.json?.error_code ?? trunkRes.json?.error ?? ''}`;
+        log('K5', k5Status);
+      }
+    }
+  }
+
   log('K_final', 'Weryfikuję topology końcową...');
   const summaryFinal = await api('GET', `/api/cases/${caseId}/enm/topology/summary`);
 
@@ -205,6 +245,7 @@ async function main() {
       projectId,
       caseId,
       bus_count_final: summaryFinal.json.bus_count ?? 0,
+      branch_count_final: summaryFinal.json.branch_count ?? 0,
       source_count_final: summaryFinal.json.source_count ?? 0,
       revision_final: summaryFinal.json.enm_revision ?? 1,
       k1_status: project.ok && caseRes.ok ? 'PASS' : 'FAIL',
@@ -214,6 +255,7 @@ async function main() {
           : `FAIL: ${gpzRes.status} ${gpzRes.json?.error_code ?? ''}`,
       k3_status: k3Status,
       k4_status: k4Status,
+      k5_status: k5Status,
     },
     null,
     2,
