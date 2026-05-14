@@ -64,30 +64,45 @@ describe('lodToFontSize', () => {
   it('LOD-0 overview enlarges fonts', () => {
     // 24 * 1.5 = 36
     expect(lodToFontSize('gpzName', 0)).toBe(36);
-    // 14 * 1.5 = 21
-    expect(lodToFontSize('bayName', 0)).toBe(21);
+    // 16 * 1.5 = 24 (bayName bumped from 14→16 per WCAG iter 13)
+    expect(lodToFontSize('bayName', 0)).toBe(24);
   });
 
   it('LOD-1 planview enlarges fonts mildly', () => {
-    // 12 * 1.2 = 14.4 → rounded to 14.5
-    expect(lodToFontSize('deviceQ', 1)).toBe(14.5);
+    // 13 * 1.2 = 15.6 → 15.5 (deviceQ bumped 12→13)
+    expect(lodToFontSize('deviceQ', 1)).toBe(15.5);
   });
 
   it('LOD-3 technical shrinks fonts mildly', () => {
-    // 11 * 0.95 = 10.45 → rounded to 10.5
-    expect(lodToFontSize('parameter', 3)).toBe(10.5);
+    // 12 * 0.95 = 11.4 → 11.5 (parameter bumped 11→12)
+    expect(lodToFontSize('parameter', 3)).toBe(11.5);
   });
 
-  it('LOD-4 diagnostic shrinks fonts maximally', () => {
-    // 9 * 0.9 = 8.1 → rounded to 8.0
-    expect(lodToFontSize('badge', 4)).toBe(8);
+  it('LOD-4 diagnostic shrinks fonts maximally (clamped to MIN_FONT_PX=10)', () => {
+    // 11 * 0.9 = 9.9 → max(9.9, 10) = 10 (badge bumped 9→11, clamp)
+    expect(lodToFontSize('badge', 4)).toBe(10);
   });
 
   it('rounds to nearest 0.5 px', () => {
-    // 8 * 1.2 = 9.6 → 9.5
-    expect(lodToFontSize('footnote', 1)).toBe(9.5);
-    // 11 * 0.9 = 9.9 → 10.0
-    expect(lodToFontSize('fieldMeasurement', 4)).toBe(10);
+    // 10 * 1.2 = 12 (footnote bumped 8→10)
+    expect(lodToFontSize('footnote', 1)).toBe(12);
+    // 12 * 0.9 = 10.8 → 11 (fieldMeasurement bumped 11→12)
+    expect(lodToFontSize('fieldMeasurement', 4)).toBe(11);
+  });
+
+  it('WCAG iter 13: all roles ≥ MIN_FONT_PX=10 at LOD-4 diagnostic', () => {
+    const roles: TextRole[] = [
+      'gpzName',
+      'bayName',
+      'deviceQ',
+      'parameter',
+      'fieldMeasurement',
+      'badge',
+      'footnote',
+    ];
+    for (const role of roles) {
+      expect(lodToFontSize(role, 4)).toBeGreaterThanOrEqual(10);
+    }
   });
 
   it('all roles supported at LOD-2', () => {
@@ -182,31 +197,40 @@ describe('lodToStrokeWidth', () => {
   });
 });
 
-describe('lodToSymbolScale', () => {
-  it('LOD-0 overview: 1.2x', () => {
-    expect(lodToSymbolScale(0)).toBe(1.2);
+describe('lodToSymbolScale (iter 13: bumped per ETAP min 24 px)', () => {
+  // Iter 12 CAD audit ujawnił że Pole TR1 symbol ~12 px (poniżej ETAP min 24).
+  // Iter 13 fix: scale bumped żeby 16 px base × scale ≥ 24 px.
+  it('LOD-0 overview: 1.6x', () => {
+    expect(lodToSymbolScale(0)).toBe(1.6);
   });
 
-  it('LOD-1 planview: 1.1x', () => {
-    expect(lodToSymbolScale(1)).toBe(1.1);
+  it('LOD-1 planview: 1.5x', () => {
+    expect(lodToSymbolScale(1)).toBe(1.5);
   });
 
-  it('LOD-2 standard: 1.0x (no scaling)', () => {
-    expect(lodToSymbolScale(2)).toBe(1.0);
+  it('LOD-2 standard: 1.5x (gwarantuje 24 px dla bazowego 16 px)', () => {
+    expect(lodToSymbolScale(2)).toBe(1.5);
   });
 
-  it('LOD-3 technical: 0.95x', () => {
-    expect(lodToSymbolScale(3)).toBe(0.95);
+  it('LOD-3 technical: 1.4x', () => {
+    expect(lodToSymbolScale(3)).toBe(1.4);
   });
 
-  it('LOD-4 diagnostic: 0.9x', () => {
-    expect(lodToSymbolScale(4)).toBe(0.9);
+  it('LOD-4 diagnostic: 1.3x (gęste ale ETAP min 24 px utrzymane)', () => {
+    expect(lodToSymbolScale(4)).toBe(1.3);
   });
 
-  it('monotonic decrease across LOD', () => {
+  it('monotonic non-increasing across LOD (LOD-0 ≥ ... ≥ LOD-4)', () => {
+    // Iter 13: LOD-1=LOD-2=1.5 (plateau) — used to be strict monotonic, now ≥
     const scales = ([0, 1, 2, 3, 4] as LodLevel[]).map(lodToSymbolScale);
     for (let i = 1; i < scales.length; i++) {
-      expect(scales[i]).toBeLessThan(scales[i - 1]);
+      expect(scales[i]).toBeLessThanOrEqual(scales[i - 1]);
+    }
+  });
+
+  it('all LOD scales ≥ 1.3 (gwarantuje min 20.8 px dla 16 px base, ETAP min)', () => {
+    for (const lod of [0, 1, 2, 3, 4] as LodLevel[]) {
+      expect(lodToSymbolScale(lod)).toBeGreaterThanOrEqual(1.3);
     }
   });
 

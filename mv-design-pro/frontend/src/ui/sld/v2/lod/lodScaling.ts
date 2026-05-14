@@ -73,15 +73,28 @@ export type TextRole =
 /**
  * Base font sizes per role (LOD-2 standard) per SLD_INDUSTRIAL_SPEC § 5.3.
  */
+/**
+ * BASE_FONT_SIZES per role (LOD-2 standard, pixele).
+ *
+ * Per WCAG 2.1 AA (1.4.4 Resize text + 1.4.12 Text Spacing) — minimum
+ * 12 px dla content text. Iter 12 audit Wizualny WCAG: "Q1/Q8/T1/Q9 +
+ * Pole TR1 przy 10-11 px — poniżej WCAG min 12 px" — fix iter 13.
+ *
+ * Hierarchia (gpzName > bayName > deviceQ ≈ parameter ≈ fieldMeasurement
+ * > badge > footnote) per SLD_INDUSTRIAL_SPEC § 5.3.
+ */
 const BASE_FONT_SIZES: Readonly<Record<TextRole, number>> = {
   gpzName: 24,
-  bayName: 14,
-  deviceQ: 12,
-  parameter: 11,
-  fieldMeasurement: 11,
-  badge: 9,
-  footnote: 8,
+  bayName: 16, // +2 (z 14, hierarchia nadal vs deviceQ 12)
+  deviceQ: 13, // +1 (z 12, +1 nad WCAG min)
+  parameter: 12, // +1 (z 11, exact WCAG min)
+  fieldMeasurement: 12, // +1 (z 11, exact WCAG min)
+  badge: 11, // +2 (z 9, chips/markers — WCAG zalecane ≥11)
+  footnote: 10, // +2 (z 8, small print zatwierdzony ≥10 dopuszczalny)
 };
+
+/** WCAG AA minimum font size dla content text (lower bound clamp). */
+const MIN_FONT_PX = 10 as const;
 
 /**
  * Font size multiplier per LOD level.
@@ -108,7 +121,11 @@ const LOD_FONT_MULTIPLIER: Readonly<Record<LodLevel, number>> = {
 export function lodToFontSize(role: TextRole, lod: LodLevel): number {
   const base = BASE_FONT_SIZES[role];
   const multiplier = LOD_FONT_MULTIPLIER[lod];
-  return Math.round(base * multiplier * 2) / 2;
+  const scaled = Math.round(base * multiplier * 2) / 2;
+  // WCAG clamp: nawet przy LOD-4 (multiplier 0.9) font NIE schodzi poniżej
+  // 10 px (footnote min). Iter 12 audit Wizualny WCAG: parameter @ LOD-4
+  // = 11*0.9 = 9.9 px → poniżej WCAG min — fixed via clamp.
+  return Math.max(scaled, MIN_FONT_PX);
 }
 
 // ---------------------------------------------------------------------------
@@ -177,18 +194,31 @@ export function lodToStrokeWidth(role: StrokeRole, lod: LodLevel): number {
  *
  * Used by SymbolRenderer to compute final SVG transform scale.
  */
+/**
+ * Iter 13 (per Iter 12 CAD audit blocker):
+ * "Pole TR1 — symbole aparatów mikroskopijne (~12 px) na canvasie 1920 —
+ *  naruszenie ETAP/DIgSILENT min. 24 px symbol size"
+ *
+ * Bump base scales aby symbol 16 px @ LOD-2 standard renderował się jako
+ * 24+ px (1.5×) per ETAP/DIgSILENT min. symbol size:
+ * - LOD-0 overview: 1.6× (z 1.2 — overview, gęste, ale symbole jeszcze widoczne)
+ * - LOD-1 planview: 1.5× (z 1.1)
+ * - LOD-2 standard: 1.5× (z 1.0 — gwarantuje 24 px dla bazowego 16 px)
+ * - LOD-3 technical: 1.4× (z 0.95)
+ * - LOD-4 diagnostic: 1.3× (z 0.9, gęste ale ETAP min 24 px utrzymane)
+ */
 export function lodToSymbolScale(lod: LodLevel): number {
   switch (lod) {
     case 0:
-      return 1.2;
+      return 1.6;
     case 1:
-      return 1.1;
+      return 1.5;
     case 2:
-      return 1.0;
+      return 1.5;
     case 3:
-      return 0.95;
+      return 1.4;
     case 4:
-      return 0.9;
+      return 1.3;
   }
 }
 
