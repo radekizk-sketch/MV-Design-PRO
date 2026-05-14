@@ -487,4 +487,17 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
     });
     expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
+
+  it('F4: sld-theme-toggle i sld-export-svg są widoczne i mają opis dostępności', () => {
+    render(<SldWorkspaceContainer width={800} height={600} />);
+
+    const themeBtn = screen.getByTestId('sld-theme-toggle');
+    expect(themeBtn).toBeInTheDocument();
+    expect(themeBtn).toHaveAttribute('title');
+
+    const exportBtn = screen.getByTestId('sld-export-svg');
+    expect(exportBtn).toBeInTheDocument();
+    expect(exportBtn).toHaveAttribute('title');
+    expect(exportBtn.textContent).toContain('SVG');
+  });
 });

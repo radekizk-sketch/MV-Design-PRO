@@ -49,6 +49,7 @@ import {
   toastBus,
   type SldElementKindForMenu,
 } from '../command/SldCommandService';
+import { SldThemeProvider } from '../theme/themeContext';
 import { SldCanvasV2, type SldCanvasContextMenuRequest } from './SldCanvasV2';
 import { StationInternalView, type InternalDerDescriptor, type StationInternalViewProps } from './StationInternalView';
 import { buildSldDataFromSnapshot } from './enmToSldAdapter';
@@ -579,6 +580,7 @@ export function SldWorkspaceContainer(
   const [layerState, setLayerState] = useState<LayerState>(() => createInitialLayerState());
   const currentLod: LodLevel = 2;
   const [layerPanelOpen, setLayerPanelOpen] = useState<boolean>(false);
+  const [themeMode, setThemeMode] = useState<'dark_scada' | 'light_technical'>('dark_scada');
   const handleToggleLayer = useCallback(
     (layerId: LayerId) => {
       setLayerState((prev) => toggleLayer(prev, layerId, currentLod));
@@ -659,6 +661,20 @@ export function SldWorkspaceContainer(
   const handleResetLayers = useCallback(() => {
     setLayerState(createInitialLayerState());
   }, []);
+
+  const handleExportSvg = useCallback(() => {
+    const svgEl = containerRef.current?.querySelector<SVGSVGElement>('svg[data-testid="sld-canvas-v2"]');
+    if (!svgEl) return;
+    const serializer = new XMLSerializer();
+    const svgStr = serializer.serializeToString(svgEl);
+    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'schemat_sld.svg';
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [containerRef]);
 
   // Iteracja 11: real-data adapter snapshot → SLD renderers props.
   const sldData = useMemo(
@@ -1125,6 +1141,7 @@ export function SldWorkspaceContainer(
   );
 
   return (
+    <SldThemeProvider mode={themeMode}>
     <div
       ref={containerRef}
       data-testid="sld-workspace-container"
@@ -1162,8 +1179,29 @@ export function SldWorkspaceContainer(
       />
 
       {/* Iter 9 (SCADA blocker): floating LayerTogglePanel dock w prawym dolnym
-          rogu canvasu. Toggle CTA otwiera/zamyka pełen panel 13 warstw. */}
+          rogu canvasu. Toggle CTA otwiera/zamyka pełen panel 13 warstw.
+          F4: theme toggle + SVG export alongside layer toggle. */}
       <div className="pointer-events-auto absolute bottom-3 right-3 z-20 flex flex-col items-end gap-1">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setThemeMode((m) => (m === 'dark_scada' ? 'light_technical' : 'dark_scada'))}
+            data-testid="sld-theme-toggle"
+            title={themeMode === 'dark_scada' ? 'Przełącz na motyw jasny (eksport)' : 'Przełącz na motyw ciemny (SCADA)'}
+            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          >
+            {themeMode === 'dark_scada' ? '☀ Jasny' : '◉ SCADA'}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportSvg}
+            data-testid="sld-export-svg"
+            title="Eksportuj schemat SLD jako plik SVG"
+            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          >
+            ↓ SVG
+          </button>
+        </div>
         <button
           type="button"
           onClick={() => setLayerPanelOpen((prev) => !prev)}
@@ -1353,6 +1391,7 @@ export function SldWorkspaceContainer(
         </div>
       )}
     </div>
+    </SldThemeProvider>
   );
 }
 
