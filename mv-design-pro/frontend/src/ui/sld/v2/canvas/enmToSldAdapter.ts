@@ -1328,11 +1328,13 @@ function buildCableRuns(
         });
       }
       if (voltageKv !== null) {
+        // Etykieta napięcia przy początku ciągu, poniżej kabla (strefa mniej zatłoczona)
+        const runMidX = startX + Math.max(30, (terminalX - startX) / 4);
         extraLabels.push({
           segmentRef: `voltage-kv-${lineRun.id}`,
           text: `${voltageKv} kV`,
-          x: startX + 30,
-          y: y - 8,
+          x: runMidX,
+          y: y + 18,
         });
       }
       const segmentLabels = extraLabels.length > 0
