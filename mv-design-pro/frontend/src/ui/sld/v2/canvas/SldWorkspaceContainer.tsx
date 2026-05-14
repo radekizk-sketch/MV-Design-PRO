@@ -23,6 +23,14 @@ import {
 } from 'react';
 
 import { useAppStateStore } from '../../../app-state';
+import { LayerTogglePanel } from '../lod/LayerTogglePanel';
+import {
+  createInitialLayerState,
+  toggleLayer,
+  type LayerId,
+  type LayerState,
+} from '../lod/layerToggle';
+import type { LodLevel } from '../lod/LodPolicy';
 import { SldContextMenuController } from '../../../context-menu/SldContextMenuController';
 import type { SldContextMenuRequest } from '../../../context-menu/SldContextMenuController';
 import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
@@ -562,6 +570,22 @@ export function SldWorkspaceContainer(
   const lassoStartRef = useRef<{ x: number; y: number } | null>(null);
   const [pendingDrop, setPendingDrop] = useState<PaletteDragPayload | null>(null);
 
+  // Iter 9 (per SCADA audit blocker): state warstw + LOD 13 toggle panel.
+  // LOD na razie statycznie = 2 (standard) — pełna integracja LodController
+  // przyjdzie w follow-up (iter 10+).
+  const [layerState, setLayerState] = useState<LayerState>(() => createInitialLayerState());
+  const currentLod: LodLevel = 2;
+  const [layerPanelOpen, setLayerPanelOpen] = useState<boolean>(false);
+  const handleToggleLayer = useCallback(
+    (layerId: LayerId) => {
+      setLayerState((prev) => toggleLayer(prev, layerId, currentLod));
+    },
+    [currentLod],
+  );
+  const handleResetLayers = useCallback(() => {
+    setLayerState(createInitialLayerState());
+  }, []);
+
   // Iteracja 11: real-data adapter snapshot → SLD renderers props.
   const sldData = useMemo(
     () => buildSldDataFromSnapshot(snapshot, logicalViews),
@@ -1062,6 +1086,30 @@ export function SldWorkspaceContainer(
         onContextMenu={handleContextMenu}
         onViewportTransformChange={setViewportTransform}
       />
+
+      {/* Iter 9 (SCADA blocker): floating LayerTogglePanel dock w prawym dolnym
+          rogu canvasu. Toggle CTA otwiera/zamyka pełen panel 13 warstw. */}
+      <div className="pointer-events-auto absolute bottom-3 right-3 z-20 flex flex-col items-end gap-1">
+        <button
+          type="button"
+          onClick={() => setLayerPanelOpen((prev) => !prev)}
+          data-testid="sld-layer-panel-toggle"
+          aria-label={layerPanelOpen ? 'Zamknij panel warstw' : 'Otwórz panel warstw (13)'}
+          title={layerPanelOpen ? 'Zamknij panel warstw' : 'Warstwy (13)'}
+          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+        >
+          {layerPanelOpen ? '▾ Warstwy' : '▴ Warstwy (13)'}
+        </button>
+        {layerPanelOpen && (
+          <LayerTogglePanel
+            state={layerState}
+            currentLod={currentLod}
+            onToggleLayer={handleToggleLayer}
+            onResetAll={handleResetLayers}
+            className="w-[240px]"
+          />
+        )}
+      </div>
 
       <section
         data-testid="sld-readiness-stack"
