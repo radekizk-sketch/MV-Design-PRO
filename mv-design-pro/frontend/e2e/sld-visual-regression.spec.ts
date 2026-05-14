@@ -145,24 +145,37 @@ test.describe('SLD v2 Visual Regression — Symbol library (IEC 60617)', () => {
   // Symbol library has 54 SVG icons per canonical_symbols/ports.json.
   // Test SVGs render correctly via DOM snapshot (vector pixel-stable).
 
+  // Full symbol library coverage (54 PN-EN 60617 symbols per ports.json)
   const SYMBOL_TESTS = [
-    'circuit_breaker',
-    'disconnector',
-    'transformer_2w',
-    'transformer_3w',
-    'busbar',
-    'double_busbar',
-    'ring_busbar',
-    'fuse',
-    'load_switch',
-    'pv',
-    'bess',
-    'fw',
-    'ct',
-    'vt',
-    'surge_arrester',
-    'cb_drawout',
-    'busbar_section_marker',
+    // Switching apparatus (7)
+    'circuit_breaker', 'disconnector', 'fuse', 'load_switch',
+    'earthing_switch', 'switch_3pos', 'cb_drawout',
+    // Transformers + busbars (8)
+    'transformer_2w', 'transformer_3w', 'autotransformer',
+    'transformer_tap_changer', 'busbar', 'double_busbar',
+    'ring_busbar', 'busbar_coupler',
+    // Instrumentation (5)
+    'ct', 'vt', 'pq_meter', 'metering_cubicle', 'synchrocheck',
+    // Protection / Auxiliary (5)
+    'surge_arrester', 'surge_arrester_10ka', 'auto_recloser',
+    'lightning_rod', 'busbar_section_marker',
+    // Sources / DER (6)
+    'pv', 'pv_inverter_nc_rfg', 'bess', 'fw',
+    'wind_turbine_full_converter', 'generator',
+    // Loads / Lines (4)
+    'load', 'line_overhead', 'line_cable', 'pole',
+    // Grounding / Reactor (4)
+    'ground', 'grounding_reactor', 'grounding_resistor', 'reactor',
+    // Motors / Misc (5)
+    'motor', 'motor_squirrel_cage', 'motor_synchronous',
+    'motor_starter', 'voltage_regulator',
+    // Misc markers (5)
+    'capacitor', 'capacitor_bank', 'cable_head_triangle',
+    'cable_joint', 'nop',
+    // Source / utility (2)
+    'utility_source', 'utility_feeder',
+    // Markers (3)
+    'alarm_marker', 'missing_data_marker', 'zksn',
   ];
 
   for (const symbolName of SYMBOL_TESTS) {
