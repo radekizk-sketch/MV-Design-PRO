@@ -1100,33 +1100,39 @@ ZNALEZIONE BLOCKERY (wpisane do V12K-021..025 w REJESTR_KONFLIKTOW.md):
 | K20-3 | 4.99/10 | +0.57 | SC_3F + LF solver DONE dla K20 | 3eaadd2 |
 | K20-4 | 5.37/10 | +0.38 | Visual regression 4→26 + P0.1 verified | a50391d |
 | **K20-5** | **6.13/10** | **+0.76** | **58/58 guards PASS + 10/12 AC PASS** | 1ad60e1 |
+| K20-10 | 7.64/10 | +1.51 | Normy 9.5 trigger | — |
+| K20-15 | 8.43/10 | +0.79 | DOCX K20 verified | — |
+| K20-17 | 8.93/10 | +0.50 | V12K-014 RESOLVED | — |
+| K20-19 | 9.00/10 | +0.07 | Zabezpieczenia 9.5 | — |
+| K20-20 | 9.07/10 | +0.07 | OZE 9.0 | — |
+| **K20-21** | **9.14/10** | **+0.07** | **NC RFG 9.5 → 4/7 trigger** | c59e273..8b01350 |
+| **K20-22** | **9.21/10 (est.)** | **+0.07** | **OZE 9.5 est. (cos φ + DerComplianceBadge + AC-07)** | c59e273 |
 
-Trigger end-of-loop: 7 specjalistów ≥ 9.5 przez 3 iter. **Streak 0/3.**
+Trigger end-of-loop: 7 specjalistów ≥ 9.5 przez 3 iter. **Streak: NC RFG 2/3, OZE 1/3 (est.).**
 
-**Revised remaining OD (~36 z 71):**
-- P0.3 LayoutEngine F2 (25 OD) — biggest architectural blocker
-- V12K-021/022/023/024/025 (~17 OD total) — catalog seeds + workflow handlers
-- P0.10 expand 26→60 snapshots (4 OD)
-- DOCX K20 reports (5 OD)
-
-**Verified ZAMKNIETE w toku audit loop:**
-- P0.1 Symbol library 54/54 (108% DoD, stop hook stale)
+**Verified ZAMKNIETE do iter K20-22:**
+- P0.1 Symbol library 54/54 (108% DoD)
 - Guard suite 58/58 PASS (4 manual-only skipped)
 - AC-01, AC-04..AC-12 PASS (10/12), AC-02/AC-03 blocked by P0.3
+- AC-07 DER connection wires (L-shape, orthogonal) ✅ K20-22
+- OZE compact cos φ + DerComplianceBadge ✅ K20-22
+- 4656 frontend tests PASS (337 files)
+
+**Remaining (~22 OD):**
+- P0.3 LayoutEngine F2 (22 OD) — Schematy 9.0→9.5 + Projektant 8.5→9.5
 
 ### Artefakty K20
 
-- `docs/audit/visual_iteration_K20{,_2,_3,_4,_5}/REPORT.md` — 5 iter audit reports
+- `docs/audit/visual_iteration_K20{,_2..22}/REPORT.md` — 22 iter audit reports
 - `docs/audit/visual_iteration_K20/full_K20_*.png` + canvas_only — iter K20-1 scr
-- `docs/audit/visual_iteration_K20_2/full_K20_*.png` — iter K20-2 scr
 - `mv-design-pro/frontend/scripts/seed-gn20.mjs` — K20 seeder config-driven
 - `mv-design-pro/frontend/scripts/screenshot-k20.mjs` — Playwright scr harness (OUT_DIR env)
 - `mv-design-pro/scripts/run_all_guards.sh` — guard suite runner (58/58 verified)
 - `mv-design-pro/frontend/e2e/sld-visual-regression.spec.ts` — 26 visual regression tests
-- `docs/v12xx/REJESTR_KONFLIKTOW.md` — 5 nowych wpisów V12K-021..025
+- `docs/v12xx/REJESTR_KONFLIKTOW.md` — 6 wpisów V12K-014/021..025
 - `docs/audit/PROMPT_AUDIT_K20_SCADA_GRADE_LOOP.md` — prompt zespołu
 
-**Status K20 audit loop:** 5 iter completed (4.38 → 6.13/10, **61% to 10/10**),
-~36 OD pozostało (dominuje P0.3 LayoutEngine 25 OD). Loop kontynuowany w
+**Status K20 audit loop:** 22 iter completed (4.38 → 9.21/10 est., **92.1% to 10/10**),
+~22 OD pozostało (P0.3 LayoutEngine F2). Loop kontynuowany w
 kolejnych sesjach po implementacji architektonicznych blockerów.
 
