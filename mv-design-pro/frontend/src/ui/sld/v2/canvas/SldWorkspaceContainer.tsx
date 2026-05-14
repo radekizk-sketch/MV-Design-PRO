@@ -1039,6 +1039,12 @@ export function SldWorkspaceContainer(
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
     >
+      {/* Iter 7 CAD rulers — top (X) + left (Y) per CAD specjalista
+          (iter 5 verify: "RULERS BRAK — górna/lewa linijka z podziałką").
+          Static decorative overlay (pointer-events: none) — ETAP-grade visual cue. */}
+      <div className="sld-canvas-ruler sld-canvas-ruler-top" aria-hidden="true" />
+      <div className="sld-canvas-ruler sld-canvas-ruler-left" aria-hidden="true" />
+
       <SldCanvasV2
         width={measured.width}
         height={measured.height}
