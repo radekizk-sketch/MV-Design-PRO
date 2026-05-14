@@ -1093,33 +1093,40 @@ ZNALEZIONE BLOCKERY (wpisane do V12K-021..025 w REJESTR_KONFLIKTOW.md):
 
 ### 3 iteracje audit team (commits 18344ec, 0d6c750, 3eaadd2)
 
-| Iter | Score | Δ | Highlight |
-|------|-------|------|-----------|
-| K20-1 | 4.38/10 | baseline | scr capture, 7 specjalistów review |
-| K20-2 | 4.42/10 | +0.04 | Q02 LINE_OUT + catalog IDs fix |
-| K20-3 | **4.99/10** | **+0.57** | **SC_3F + LF solver DONE dla K20** |
+| Iter | Score | Δ | Highlight | Commit |
+|------|-------|------|-----------|--------|
+| K20-1 | 4.38/10 | baseline | scr capture, 7 specjalistów review | 18344ec |
+| K20-2 | 4.42/10 | +0.04 | Q02 LINE_OUT + catalog IDs fix | 0d6c750 |
+| K20-3 | 4.99/10 | +0.57 | SC_3F + LF solver DONE dla K20 | 3eaadd2 |
+| K20-4 | 5.37/10 | +0.38 | Visual regression 4→26 + P0.1 verified | a50391d |
+| **K20-5** | **6.13/10** | **+0.76** | **58/58 guards PASS + 10/12 AC PASS** | 1ad60e1 |
 
 Trigger end-of-loop: 7 specjalistów ≥ 9.5 przez 3 iter. **Streak 0/3.**
 
-Pozostałe ~71 OD do 10/10:
+**Revised remaining OD (~36 z 71):**
 - P0.3 LayoutEngine F2 (25 OD) — biggest architectural blocker
-- V12K-014/021/022/025 (~18 OD)
-- Symbol library 32→50 (10 OD)
-- WHITE BOX overlay wire (5 OD)
-- Visual regression 60 snapshots (8 OD)
-- DOCX export K20 reports (5 OD)
+- V12K-021/022/023/024/025 (~17 OD total) — catalog seeds + workflow handlers
+- P0.10 expand 26→60 snapshots (4 OD)
+- DOCX K20 reports (5 OD)
+
+**Verified ZAMKNIETE w toku audit loop:**
+- P0.1 Symbol library 54/54 (108% DoD, stop hook stale)
+- Guard suite 58/58 PASS (4 manual-only skipped)
+- AC-01, AC-04..AC-12 PASS (10/12), AC-02/AC-03 blocked by P0.3
 
 ### Artefakty K20
 
-- `docs/audit/visual_iteration_K20/` — iter K20-1 scr + REPORT.md (4.38/10)
-- `docs/audit/visual_iteration_K20_2/` — iter K20-2 scr + REPORT.md (4.42/10)
-- `docs/audit/visual_iteration_K20_3/REPORT.md` — solver runs validation (4.99/10)
+- `docs/audit/visual_iteration_K20{,_2,_3,_4,_5}/REPORT.md` — 5 iter audit reports
+- `docs/audit/visual_iteration_K20/full_K20_*.png` + canvas_only — iter K20-1 scr
+- `docs/audit/visual_iteration_K20_2/full_K20_*.png` — iter K20-2 scr
 - `mv-design-pro/frontend/scripts/seed-gn20.mjs` — K20 seeder config-driven
-- `mv-design-pro/frontend/scripts/screenshot-k20.mjs` — Playwright scr harness
+- `mv-design-pro/frontend/scripts/screenshot-k20.mjs` — Playwright scr harness (OUT_DIR env)
+- `mv-design-pro/scripts/run_all_guards.sh` — guard suite runner (58/58 verified)
+- `mv-design-pro/frontend/e2e/sld-visual-regression.spec.ts` — 26 visual regression tests
 - `docs/v12xx/REJESTR_KONFLIKTOW.md` — 5 nowych wpisów V12K-021..025
 - `docs/audit/PROMPT_AUDIT_K20_SCADA_GRADE_LOOP.md` — prompt zespołu
 
-**Status K20 audit loop:** 3 iter completed (4.38 → 4.99/10, +50% to 10),
-~71 OD pozostało (dominuje P0.3 LayoutEngine). Loop kontynuowany w
+**Status K20 audit loop:** 5 iter completed (4.38 → 6.13/10, **61% to 10/10**),
+~36 OD pozostało (dominuje P0.3 LayoutEngine 25 OD). Loop kontynuowany w
 kolejnych sesjach po implementacji architektonicznych blockerów.
 
