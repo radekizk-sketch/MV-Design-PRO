@@ -2078,11 +2078,40 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     bus_nn_ref = payload.get("bus_nn_ref")
     blocking_transformer_ref = payload.get("blocking_transformer_ref")
     if connection_variant == "block_transformer":
+        # V12K-022: Auto-resolve block_transformer per station if not provided.
+        # Polityka:
+        #  1. Jezeli blocking_transformer_ref jawnie podany - musi istniec.
+        #  2. Jezeli pusty i station ma exactly 1 transformer SN/nN - uzyj go
+        #     jako block_transformer (typowy scenariusz: jedyny TR stacji = block tr).
+        #  3. Jezeli station ma multiple transformers - blad ambiguous.
         if not isinstance(blocking_transformer_ref, str) or not blocking_transformer_ref.strip():
-            return _error_response(
-                "Wariant block_transformer wymaga blocking_transformer_ref.",
-                "generator.block_transformer_missing",
-            )
+            # Try auto-resolve from station_ref
+            station_ref_for_auto = payload.get("station_ref")
+            if isinstance(station_ref_for_auto, str) and station_ref_for_auto.strip():
+                station_for_auto = _resolve_station_for_field_write(
+                    enm,
+                    station_ref=station_ref_for_auto.strip(),
+                    bus_ref=None,
+                )
+                if station_for_auto is not None:
+                    station_buses = set(station_for_auto.get("bus_refs") or [])
+                    station_transformers = [
+                        tr for tr in enm.get("transformers", [])
+                        if tr.get("hv_bus_ref") in station_buses
+                        or tr.get("lv_bus_ref") in station_buses
+                    ]
+                    if len(station_transformers) == 1:
+                        blocking_transformer_ref = station_transformers[0].get("ref_id")
+                    elif len(station_transformers) > 1:
+                        return _error_response(
+                            "Stacja zawiera wiele transformatorow — wymagany jawny blocking_transformer_ref.",
+                            "generator.block_transformer_ambiguous",
+                        )
+            if not isinstance(blocking_transformer_ref, str) or not blocking_transformer_ref.strip():
+                return _error_response(
+                    "Wariant block_transformer wymaga blocking_transformer_ref albo station_ref z dokladnie 1 transformatorem.",
+                    "generator.block_transformer_missing",
+                )
         transformer = next(
             (
                 item

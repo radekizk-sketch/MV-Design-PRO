@@ -741,6 +741,98 @@ class TestNnFieldAdapters:
         assert "nn_source_field" in nn_specs_after[-1]["tags"]
         assert nn_specs_after[-1]["meta"]["source_field_kind"] == "PV"
 
+    def test_v12k_022_block_transformer_auto_resolve(self):
+        """V12K-022: block_transformer auto-resolve z station's single transformer.
+
+        Polityka: jezeli station_ref podany + station ma exactly 1 transformer SN/nN,
+        block_transformer connection_variant uzywa go automatycznie (typowy K20 case).
+        """
+        from enm.domain_operations_v2 import add_converter_source
+
+        enm = {
+            "substations": [
+                {
+                    "ref_id": "stn/test/station",
+                    "bus_refs": ["stn/test/sn_bus", "stn/test/nn_bus"],
+                    "station_type": "inline",
+                },
+            ],
+            "buses": [
+                {"ref_id": "stn/test/sn_bus", "voltage_kv": 15.0},
+                {"ref_id": "stn/test/nn_bus", "voltage_kv": 0.4},
+            ],
+            "transformers": [
+                {
+                    "ref_id": "stn/test/tr",
+                    "hv_bus_ref": "stn/test/sn_bus",
+                    "lv_bus_ref": "stn/test/nn_bus",
+                },
+            ],
+            "generators": [],
+        }
+
+        # BESS block_transformer bez jawnego blocking_transformer_ref —
+        # powinno auto-resolve z station_ref.
+        result = add_converter_source(
+            enm,
+            {
+                "source_technology": "BESS",
+                "connection_variant": "block_transformer",
+                "catalog_ref": "conv-bess-1mw-2mwh-15kv",
+                "station_ref": "stn/test/station",
+            },
+        )
+        err = result.get("error_code")
+        # Auto-resolve dziala gdy NIE jest block_transformer_missing.
+        # Mozliwe inne errors (catalog, voltage_mismatch) sa OK.
+        assert err != "generator.block_transformer_missing", (
+            f"V12K-022 auto-resolve nie zadzialal: {err}"
+        )
+
+    def test_v12k_022_block_transformer_ambiguous_with_multiple_trs(self):
+        """V12K-022: station with multiple transformers -> ambiguous error."""
+        from enm.domain_operations_v2 import add_converter_source
+
+        enm = {
+            "substations": [
+                {
+                    "ref_id": "stn/multi/station",
+                    "bus_refs": ["stn/multi/sn_bus", "stn/multi/nn_bus_a", "stn/multi/nn_bus_b"],
+                    "station_type": "inline",
+                },
+            ],
+            "buses": [
+                {"ref_id": "stn/multi/sn_bus", "voltage_kv": 15.0},
+                {"ref_id": "stn/multi/nn_bus_a", "voltage_kv": 0.4},
+                {"ref_id": "stn/multi/nn_bus_b", "voltage_kv": 0.4},
+            ],
+            "transformers": [
+                {
+                    "ref_id": "stn/multi/tr_a",
+                    "hv_bus_ref": "stn/multi/sn_bus",
+                    "lv_bus_ref": "stn/multi/nn_bus_a",
+                },
+                {
+                    "ref_id": "stn/multi/tr_b",
+                    "hv_bus_ref": "stn/multi/sn_bus",
+                    "lv_bus_ref": "stn/multi/nn_bus_b",
+                },
+            ],
+            "generators": [],
+        }
+
+        result = add_converter_source(
+            enm,
+            {
+                "source_technology": "BESS",
+                "connection_variant": "block_transformer",
+                "catalog_ref": "conv-bess-1mw-2mwh-15kv",
+                "station_ref": "stn/multi/station",
+            },
+        )
+        # Powinno zwrocic ambiguous error
+        assert result.get("error_code") == "generator.block_transformer_ambiguous"
+
     def test_v12k_023_connection_variant_aliases(self):
         """V12K-023/024: FE canonical connection variants alias-resolve to backend canonical.
 
