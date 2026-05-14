@@ -488,6 +488,39 @@ describe('StationOnRunRenderer', () => {
     );
     expect(container.querySelector('[data-testid="sld-v2-station-nop-badge-st-no-nop"]')).toBeFalsy();
   });
+
+  it('distanceFromGpzKm ≥ 1 → format "X.X km"', () => {
+    const { container, getByText } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-dist"
+          x={300}
+          y={400}
+          name="ST-01"
+          topologicalType="przelotowa"
+          distanceFromGpzKm={2.3}
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-station-distance-st-dist"]')).toBeTruthy();
+    expect(getByText('2.3 km')).toBeInTheDocument();
+  });
+
+  it('distanceFromGpzKm < 1 → format "XXX m"', () => {
+    const { getByText } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-dist-m"
+          x={300}
+          y={400}
+          name="ST-01"
+          topologicalType="przelotowa"
+          distanceFromGpzKm={0.75}
+        />
+      </svg>,
+    );
+    expect(getByText('750 m')).toBeInTheDocument();
+  });
 });
 
 describe('DerRenderer', () => {

@@ -55,6 +55,9 @@ export interface StationOnRunRendererProps {
   /** Stacja jest punktem NMO (Normalnie Otwartym) — renderuje badge "NOP"
    *  sygnalizujący granicę zasilania dwóch połówek ciągu (IEC 60617 ring). */
   readonly isNop?: boolean;
+  /** Skumulowana odległość od GPZ [km] — pomaga Projektantowi ocenić geograficzne
+   *  rozmieszczenie stacji na ciągu (np. "1.5 km"). */
+  readonly distanceFromGpzKm?: number | null;
 }
 
 const TYPE_TO_LABEL_PL: Record<StationOnRunRendererProps['topologicalType'], string> = {
@@ -117,7 +120,7 @@ function miniBlockVariantForLod(lod: LodLevel): 'overview' | 'compact' | 'detail
 function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element {
   const {
     id, x, y, name, topologicalType, nnVoltageLevelsCount,
-    selected, onClick, onDoubleClick, missingData, isNop,
+    selected, onClick, onDoubleClick, missingData, isNop, distanceFromGpzKm,
   } = props;
   const connectionXs = connectionColumns(topologicalType);
   const voltageLabel = nnVoltageLevelsCount && nnVoltageLevelsCount > 1
@@ -273,6 +276,27 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
             NOP
           </text>
         </g>
+      )}
+
+      {distanceFromGpzKm != null && (
+        <text
+          data-testid={`sld-v2-station-distance-${id}`}
+          x={0}
+          y={CODE_Y + (isNop ? 54 : 32)}
+          textAnchor="middle"
+          fill={COLOR_TEXT_SECONDARY}
+          fontFamily={FONT_SANS}
+          fontSize={FONT_SIZES.technicalPanel}
+          fontWeight={600}
+          opacity={0.75}
+          paintOrder="stroke"
+          stroke="#05070A"
+          strokeWidth={2}
+        >
+          {distanceFromGpzKm < 1
+            ? `${Math.round(distanceFromGpzKm * 1000)} m`
+            : `${distanceFromGpzKm.toFixed(1)} km`}
+        </text>
       )}
     </g>
   );

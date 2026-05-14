@@ -1020,16 +1020,27 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
    * Reszta to "orphans" (legacy fallback). */
   const placed = new Set<string>();
 
+  const branchByRef = new Map((snapshot.branches ?? []).map((b) => [b.ref_id, b]));
+
   // 1. Stacje z line_runs — deterministyczne sortowanie po lineRun.id, potem station.order.
   const sortedRuns = [...lineRuns].sort((a, b) => a.id.localeCompare(b.id));
   sortedRuns.forEach((lr, runIdx) => {
     const sortedStations = [...lr.stations].sort((a, b) => a.order - b.order);
+    // Skumulowane km do każdej stacji = suma length_km segmentów z order ≤ station.order
+    const sortedSegments = [...lr.segments].sort((a, b) => a.order - b.order);
     sortedStations.forEach((sref, posInRun) => {
       const sub = fieldStationByRef.get(sref.substation_ref);
       if (!sub) return; // stacja nie jest field-station (np. GPZ) lub nie istnieje
       placed.add(sref.substation_ref);
       const stationSldDetails = buildStationMiniBlockDetails(snapshot, sub);
       const isNop = lr.nop_station_ref === sub.ref_id || lr.nop_station_ref === sub.id;
+      const cumKm = sortedSegments
+        .filter((seg) => seg.order <= sref.order)
+        .reduce((acc, seg) => {
+          const branch = branchByRef.get(seg.segment_ref);
+          const len = 'length_km' in (branch ?? {}) ? (branch as { length_km: number }).length_km : 0;
+          return acc + (len ?? 0);
+        }, 0);
       stations.push({
         id: sub.ref_id,
         x: X_STATIONS_START + posInRun * STATION_PITCH,
@@ -1044,6 +1055,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         nnFeedersCount: stationSldDetails.nnFeedersCount,
         derBadges: stationSldDetails.derBadges,
         ...(isNop ? { isNop: true } : {}),
+        ...(cumKm > 0 ? { distanceFromGpzKm: Math.round(cumKm * 100) / 100 } : {}),
       });
     });
   });

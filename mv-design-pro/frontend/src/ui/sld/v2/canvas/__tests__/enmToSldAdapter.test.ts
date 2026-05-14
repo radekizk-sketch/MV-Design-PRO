@@ -1634,6 +1634,47 @@ describe('buildStations — konsumuje line_runs.stations[] z explicit order', ()
     }
   });
 
+  it('skumulowany km GPZ→stacja wyznaczany z długości segmentów o order ≤ station.order', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 's1', ref_id: 'ST-A', name: 'A', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'ST-B', name: 'B', tags: [], meta: {}, station_type: 'terminal', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    snap.branches = [
+      {
+        id: 'seg-1', ref_id: 'SEG-1', name: 'Odcinek 1', type: 'cable',
+        from_bus_ref: 'b15', to_bus_ref: 'b-st-a',
+        catalog_ref: 'XRUHAKXS 120/25', length_km: 1.5,
+        tags: [], meta: {},
+      } as never,
+      {
+        id: 'seg-2', ref_id: 'SEG-2', name: 'Odcinek 2', type: 'cable',
+        from_bus_ref: 'b-st-a', to_bus_ref: 'b-st-b',
+        catalog_ref: 'XRUHAKXS 120/25', length_km: 0.8,
+        tags: [], meta: {},
+      } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-1', run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1', starting_port_ref: 'port-1',
+        segments: [
+          { segment_ref: 'SEG-1', order: 1 },
+          { segment_ref: 'SEG-2', order: 2 },
+        ],
+        stations: [
+          { substation_ref: 'ST-A', order: 1 },  // po segmencie 1 (1.5 km)
+          { substation_ref: 'ST-B', order: 2 },  // po segmencie 1+2 (2.3 km)
+        ],
+      },
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const stA = r.stations.find((s) => s.id === 'ST-A');
+    const stB = r.stations.find((s) => s.id === 'ST-B');
+    expect(stA?.distanceFromGpzKm).toBeCloseTo(1.5, 2);
+    expect(stB?.distanceFromGpzKm).toBeCloseTo(2.3, 2);
+  });
+
   it('nop_station_ref w line_run → stacja z isNop=true (NOP badge dla Projektanta)', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [
