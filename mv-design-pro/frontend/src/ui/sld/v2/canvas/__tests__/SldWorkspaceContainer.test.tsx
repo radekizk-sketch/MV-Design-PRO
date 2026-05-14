@@ -500,4 +500,47 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
     expect(exportBtn).toHaveAttribute('title');
     expect(exportBtn.textContent).toContain('SVG');
   });
+
+  it('K7: SplitPreviewPanel widoczny gdy splitPreviewState podany', () => {
+    const mockPreviewState = {
+      kind: 'preview_ready' as const,
+      segment: { segmentRef: 'SEG-1', segmentType: 'cable' as const, lengthKm: 3.8, busFromRef: 'B1', busToRef: 'B2' },
+      insertAt: { mode: 'RATIO' as const, value: 0.4 },
+      insertedKind: 'station' as const,
+      preview: {
+        insertedStationId: 'STA-NEW',
+        stationType: 'ZKSN',
+        electricalImpact: {
+          topologyTypeChanged: false,
+          affectedObjectRefs: [],
+          halves: { firstSegmentId: null, secondSegmentId: null, firstLengthKm: 1.52, secondLengthKm: 2.28, splitRatio: 0.4 },
+          catalogInheritance: { sourceSegmentRef: null, sourceCatalogRef: null, firstInherits: true, secondInherits: true, rule: 'inherit_both' },
+          invalidatedResults: [],
+          affectedProofPacks: [],
+          missingDataAfter: [],
+          affectedBuses: [],
+        },
+      },
+    };
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+
+    render(
+      <SldWorkspaceContainer
+        width={800}
+        height={600}
+        splitPreviewState={mockPreviewState}
+        onSplitConfirm={onConfirm}
+        onSplitCancel={onCancel}
+      />
+    );
+
+    expect(screen.getByTestId('split-preview-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('split-preview-station')).toHaveTextContent('ZKSN');
+  });
+
+  it('K7: SplitPreviewPanel NIE jest widoczny gdy splitPreviewState=null', () => {
+    render(<SldWorkspaceContainer width={800} height={600} splitPreviewState={null} />);
+    expect(screen.queryByTestId('split-preview-panel')).not.toBeInTheDocument();
+  });
 });

@@ -50,6 +50,8 @@ import {
   type SldElementKindForMenu,
 } from '../command/SldCommandService';
 import { SldThemeProvider } from '../theme/themeContext';
+import { SplitPreviewPanel } from '../workflow/SplitPreviewPanel';
+import type { SplitStatePreviewReady } from '../workflow/ConsciousSplitController';
 import { SldCanvasV2, type SldCanvasContextMenuRequest } from './SldCanvasV2';
 import { StationInternalView, type InternalDerDescriptor, type StationInternalViewProps } from './StationInternalView';
 import { buildSldDataFromSnapshot } from './enmToSldAdapter';
@@ -503,6 +505,10 @@ export interface SldWorkspaceContainerProps {
   readonly width?: number;
   /** Override wysokości kanwy — używane w testach. */
   readonly height?: number;
+  /** Gdy podany, pokazuje SplitPreviewPanel (Wizard K7 — conscious-split preview_ready). */
+  readonly splitPreviewState?: SplitStatePreviewReady | null;
+  readonly onSplitConfirm?: () => void;
+  readonly onSplitCancel?: () => void;
 }
 
 /**
@@ -548,7 +554,14 @@ function useMeasuredSize(
 export function SldWorkspaceContainer(
   props: SldWorkspaceContainerProps = {},
 ): JSX.Element {
-  const { readOnly = false, width: widthOverride, height: heightOverride } = props;
+  const {
+    readOnly = false,
+    width: widthOverride,
+    height: heightOverride,
+    splitPreviewState = null,
+    onSplitConfirm,
+    onSplitCancel,
+  } = props;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const measured = useMeasuredSize(containerRef, 1024, 640, {
@@ -1353,6 +1366,15 @@ export function SldWorkspaceContainer(
         onAction={handleAction}
         onClose={closeContextMenu}
       />
+
+      {/* Wizard K7 — Conscious Split preview_ready panel. */}
+      {splitPreviewState !== null && splitPreviewState !== undefined && (
+        <SplitPreviewPanel
+          preview={splitPreviewState.preview}
+          onConfirm={onSplitConfirm ?? (() => {})}
+          onCancel={onSplitCancel ?? (() => {})}
+        />
+      )}
 
       {/* Lasso multi-select overlay (warstwa screen-space). */}
       {lassoRect && (
