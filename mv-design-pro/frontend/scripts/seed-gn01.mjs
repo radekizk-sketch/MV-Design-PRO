@@ -226,13 +226,65 @@ async function main() {
       });
       if (trunkRes.ok && !trunkRes.json?.error_code) {
         k5Status = 'PASS';
+        const createdIds = trunkRes.json?.changes?.created_element_ids ?? [];
+        // Segment ID jest typowo pierwszym created_element_id dla trunk segment op
+        globalThis._k5_segment_id = createdIds[0] ?? null;
         log('K5', 'OK trunk segment added', {
-          created: trunkRes.json?.changes?.created_element_ids?.length ?? 0,
+          created: createdIds.length,
+          segment_id: globalThis._k5_segment_id,
         });
       } else {
         k5Status = `FAIL: ${trunkRes.status} ${trunkRes.json?.error_code ?? trunkRes.json?.error ?? ''}`;
         log('K5', k5Status);
       }
+    }
+  }
+
+  // K6: Wstaw stację MV/LV na ciągu (insert_station_on_segment_sn)
+  let k6Status = 'NOT_REACHED';
+  let segmentId = null;
+  if (k5Status === 'PASS') {
+    // Użyj segment_id zapisanego z K5 createdElementIds (full ENM endpoint nie
+    // zwraca cable_segments_sn collection — branch_count=2 widoczne tylko w
+    // topology/summary; segment_id pochodzi z create operation response).
+    segmentId = globalThis._k5_segment_id;
+    if (segmentId) {
+      log('K6', `Wstaw stację MV/LV (insert_station_on_segment_sn)...`);
+      const stationRes = await api(
+        'POST',
+        `/api/cases/${caseId}/enm/domain-ops`,
+        {
+          project_id: projectId,
+          operation: {
+            name: 'insert_station_on_segment_sn',
+            idempotency_key: 'gn01_station_001',
+            payload: {
+              segment_id: segmentId,
+              insert_at: { offset_m: 1000, side: 'inline' },
+              station: {
+                name_pl: 'Stacja S01 (15/0.4 kV)',
+                station_type: 'mv_lv',
+              },
+              transformer: {
+                transformer_catalog_ref: 'tr-sn-nn-15-04-1000kva-dyn11',
+              },
+              sn_fields: ['IN', 'OUT', 'TR'],
+            },
+          },
+        },
+      );
+      if (stationRes.ok && !stationRes.json?.error_code) {
+        k6Status = 'PASS';
+        log('K6', 'OK station S01 inserted', {
+          created: stationRes.json?.changes?.created_element_ids?.length ?? 0,
+        });
+      } else {
+        k6Status = `FAIL: ${stationRes.status} ${stationRes.json?.error_code ?? stationRes.json?.error ?? ''}`;
+        log('K6', k6Status);
+      }
+    } else {
+      k6Status = 'FAIL: no segment_id from K5';
+      log('K6', k6Status);
     }
   }
 
@@ -256,6 +308,7 @@ async function main() {
       k3_status: k3Status,
       k4_status: k4Status,
       k5_status: k5Status,
+      k6_status: k6Status,
     },
     null,
     2,
