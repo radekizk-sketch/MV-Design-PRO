@@ -291,6 +291,41 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(ys[2]).toBeGreaterThan(ys[1]);
   });
 
+  it('DER podpięty do stacji generuje derConnections z ścieżką L-shape (AC-07)', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      {
+        id: 's1', ref_id: 'STA-DER-01', name: 'Stacja DER', tags: [], meta: {},
+        station_type: 'mv_lv', bus_refs: [], transformer_refs: [],
+      } as never,
+    ];
+    snap.generators = [
+      { id: 'g1', ref_id: 'PV-W1', name: 'PV W1', tags: [], meta: { station_ref: 'STA-DER-01' }, bus_ref: 'b', p_mw: 0.5, gen_type: 'pv_inverter' } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.derConnections).toHaveLength(1);
+    const wire = r.derConnections[0];
+    expect(wire.id).toBe('der-wire-PV-W1');
+    // L-shape: 3 points — bus exit → corner (vertical) → DER (horizontal)
+    expect(wire.pathPoints).toHaveLength(3);
+    // Vertical segment: points 0 and 1 share the same X
+    expect(wire.pathPoints[1].x).toBe(wire.pathPoints[0].x);
+    // Horizontal segment: points 1 and 2 share the same Y
+    expect(wire.pathPoints[2].y).toBe(wire.pathPoints[1].y);
+    // The path has non-zero length: DER Y is below bus Y
+    expect(wire.pathPoints[1].y).toBeGreaterThan(wire.pathPoints[0].y);
+  });
+
+  it('DER bez stacji nie generuje derConnections', () => {
+    const snap = buildEmptySnapshot();
+    snap.generators = [
+      { id: 'g1', ref_id: 'PV-ORPHAN', name: 'PV orphan', tags: [], meta: {}, bus_ref: 'b', p_mw: 0.5, gen_type: 'pv_inverter' } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.ders).toHaveLength(1);
+    expect(r.derConnections).toHaveLength(0);
+  });
+
   it('GPZ → GpzRendererProps zawiera sections + couplers + bays z ENM (e2e wiring)', () => {
     const snap = buildEmptySnapshot();
     snap.buses = [

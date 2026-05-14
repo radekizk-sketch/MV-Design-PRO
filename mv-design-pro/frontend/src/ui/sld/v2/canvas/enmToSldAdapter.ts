@@ -54,6 +54,7 @@ import {
   type MiniBlockDerBadge,
 } from '../renderer/MiniBlockRmuRenderer';
 import type { DerRendererProps } from '../renderer/DerRenderer';
+import type { ConnectionRendererProps } from '../renderer/ConnectionRenderer';
 import type {
   BayControlMode,
   EarthingSwitchState,
@@ -321,6 +322,8 @@ export interface SldDataPayload {
   readonly cableRuns: CableRunRendererPropsLight[];
   readonly stations: StationOnRunRendererProps[];
   readonly ders: DerRendererProps[];
+  /** Połączenia DER-stacja — ortogonalne ścieżki L kształtu od portu szyny stacji do DER. */
+  readonly derConnections: ConnectionRendererProps[];
   /** Wynik `SupplyPathHighlighter` — czysta topologia operatorska (bez fizyki).
    *  Renderery mogą subskrybować flagę `energized` na poziomie cableRuns /
    *  sections / stations, gdy tryb operatorski „Pokaż tor zasilania" jest
@@ -344,6 +347,7 @@ const EMPTY_SLD_DATA: SldDataPayload = Object.freeze({
   cableRuns: [],
   stations: [],
   ders: [],
+  derConnections: [],
   supplyPath: EMPTY_SUPPLY_PATH_FROZEN,
 });
 
@@ -361,7 +365,7 @@ export function buildSldDataFromSnapshot(
   const sections = buildSections(snapshot);
   const stations = buildStations(snapshot);
   const cableRuns = buildCableRuns(snapshot, logicalViews, stations);
-  const ders = buildDers(snapshot, stations);
+  const { ders, derConnections } = buildDers(snapshot, stations);
   const supplyPath = buildSupplyPathHighlight(snapshot);
 
   // Propaguj energized/openPoint na cableRuns na podstawie wyniku SupplyPath.
@@ -383,6 +387,7 @@ export function buildSldDataFromSnapshot(
     cableRuns: cableRunsAnnotated,
     stations,
     ders,
+    derConnections,
     supplyPath,
   };
 }
@@ -1754,12 +1759,16 @@ function stationMiniBlockPortOffsets(
 // DERs (PV/BESS/FW)
 // -----------------------------------------------------------------------------
 
+// X offset of station bus right end from station center (STATION_BUS_WIDTH / 2).
+const DER_BUS_EXIT_DX = 60;
+
 function buildDers(
   snapshot: EnergyNetworkModel,
   stations: readonly StationOnRunRendererProps[],
-): DerRendererProps[] {
+): { ders: DerRendererProps[]; derConnections: ConnectionRendererProps[] } {
   const generators = snapshot.generators ?? [];
   const ders: DerRendererProps[] = [];
+  const derConnections: ConnectionRendererProps[] = [];
   const stationDerIndex = new Map<string, number>();
 
   for (const gen of generators) {
@@ -1787,8 +1796,22 @@ function buildDers(
       operatingQMvar: gen.q_mvar ?? null,
       lod: 'compact',
     });
+
+    // Orthogonal L-path from station bus right port down to DER (AC-07).
+    if (station) {
+      const busExitX = station.x + DER_BUS_EXIT_DX;
+      const busExitY = station.y;
+      derConnections.push({
+        id: `der-wire-${gen.ref_id}`,
+        pathPoints: [
+          { x: busExitX, y: busExitY },
+          { x: busExitX, y: baseY },
+          { x: baseX, y: baseY },
+        ],
+      });
+    }
   }
-  return ders;
+  return { ders, derConnections };
 }
 
 function mapGenTypeToDerKind(gen: Generator): DerRendererProps['kind'] | null {

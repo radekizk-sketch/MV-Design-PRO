@@ -1182,7 +1182,7 @@ export function SldWorkspaceContainer(
         cableRuns={sldData.cableRuns}
         stations={sldData.stations}
         ders={sldData.ders}
-        connections={[]}
+        connections={sldData.derConnections}
         selectedId={selectedId}
         onSelectElement={handleSelectElement}
         onDoubleClickStation={handleDoubleClickStation}
