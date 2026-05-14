@@ -771,13 +771,13 @@ function TrFieldColumn(props: TrFieldColumnProps): JSX.Element {
         <line x1={cx - 13} y1={esY + 5} x2={cx - 11} y2={esY + 5} stroke="#FF4040" strokeWidth={1.5} />
       </g>
 
-      {/* Etykieta pola (np. "Pole TR1") */}
+      {/* Etykieta pola (np. "Pole TR1") — WCAG iter 13: bump 9→11 px */}
       <text
         x={cx + 18}
         y={topY + 12}
         fill={COLOR_TEXT_SECONDARY}
         fontFamily={FONT_SANS}
-        fontSize={9}
+        fontSize={11}
         fontWeight={600}
       >
         Pole {transformerDesignation}
