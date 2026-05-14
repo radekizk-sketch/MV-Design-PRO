@@ -1156,7 +1156,8 @@ trigger: 11/11 ≥9.5 przez 3 iter, zero NO-GO.
 | Iter | Score | Δ | Changes | Commits |
 |------|-------|------|---------|---------|
 | **K30-0** | **~8.34/10 (est.)** | baseline | **K30 harness DONE** (seed-gn30 + audit2 + setpoints + screenshot-k30 + iter-0 REPORT.md) | ff60d1c |
-| **K30-1** | **~8.42/10 (est.)** | +0.08 | **Cable variants (1→2: GPZ-A EPR Al 150, GPZ-B XLPE Cu 240) + 2 synthetic adapter tests (30+ stations scale)** | pending |
+| **K30-1** | **~8.42/10 (est.)** | +0.08 | **Cable variants (1→2: GPZ-A EPR Al 150, GPZ-B XLPE Cu 240) + 2 synthetic adapter tests (30+ stations scale)** | 2ded3a6 |
+| **K30-1+live** | **~8.61/10 (live)** | +0.27 | **Live backend run: 29/29 stations seeded, 6/29 audit2 PASS (engineering ramp-down correct), 20 K30 screenshots captured (5 LOD × 2 themes × 2 res). New NO-GO #8: backend single-GPZ constraint. screenshot-k30.mjs fix: hash-based routing** | pending |
 
 **K30 harness artifacts (NEW, this session):**
 - `frontend/scripts/seed-gn30.mjs` (348 LOC) — 2 GPZ + 30 stacji unique config

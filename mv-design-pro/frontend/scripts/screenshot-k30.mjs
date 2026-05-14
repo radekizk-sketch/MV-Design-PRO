@@ -26,9 +26,10 @@ import { mkdir } from 'node:fs/promises';
 const OUT = process.env.OUT_DIR ?? '/home/user/MV-Design-PRO/mv-design-pro/docs/audit/visual_iteration_K30_0';
 const APP_URL = process.env.APP_URL ?? 'http://127.0.0.1:5173';
 const CASE_ID = process.env.CASE_ID;
+const PROJECT_ID = process.env.PROJECT_ID;
 
-if (!CASE_ID) {
-  console.error('CASE_ID env required (z output seed-gn30.mjs JSON line).');
+if (!CASE_ID || !PROJECT_ID) {
+  console.error('CASE_ID + PROJECT_ID env required (z output seed-gn30.mjs JSON line).');
   process.exit(2);
 }
 
@@ -94,16 +95,15 @@ async function main() {
     });
     page.on('pageerror', (e) => logs.push(`pageerror: ${e.message}`));
 
-    // Navigate + open project + activate case
-    await page.goto(APP_URL, { waitUntil: 'networkidle', timeout: 30000 });
-    await page.waitForTimeout(3000);
-    const openBtns = await page.locator('button:has-text("Otwórz")').all();
-    if (openBtns.length > 0) {
-      await openBtns[0].click();
-      await page.waitForTimeout(3000);
+    // Hash-based routing: search params PO #, nie przed (urlState.ts:215-224).
+    // Correct format: /#sld?project=X&case=Y
+    await page.goto(`${APP_URL}/#sld?project=${PROJECT_ID}&case=${CASE_ID}`, { waitUntil: 'networkidle', timeout: 30000 });
+    try {
+      await page.waitForSelector('[data-element-kind^="station"], [data-element-kind*="gpz"]', { timeout: 30000 });
+    } catch {
+      console.warn('  Timeout waiting for station/gpz render — kontynuuję mimo to');
     }
-    await page.goto(`${APP_URL}/?case=${CASE_ID}`, { waitUntil: 'networkidle', timeout: 30000 });
-    await page.waitForTimeout(6000); // czekaj na snapshot fetch + render
+    await page.waitForTimeout(3000); // SLD layout finalize
 
     const layerBtn = page.locator('[data-testid="sld-layer-panel-toggle"]').first();
     if (await layerBtn.count()) {
