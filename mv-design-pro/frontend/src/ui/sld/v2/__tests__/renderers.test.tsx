@@ -298,6 +298,55 @@ describe('CableRunRenderer', () => {
     expect(container.querySelector('path')?.getAttribute('d')).toBe('M 0 0 L 200 0');
   });
 
+  it('renderuje junction dots na portach stacji (IEC 60617 galvanic chain)', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-junc"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 300, y: 0 }]}
+          stationPortGaps={[{
+            stationId: 'ST-A',
+            y: 0,
+            inputX: 90,
+            outputX: 110,
+          }]}
+        />
+      </svg>,
+    );
+    const junctionGroup = container.querySelector('[data-testid="sld-v2-run-r-junc-junction-ST-A"]');
+    expect(junctionGroup).toBeTruthy();
+    const circles = junctionGroup?.querySelectorAll('circle');
+    expect(circles).toHaveLength(2);
+    expect(Number(circles?.[0].getAttribute('cx'))).toBe(90);
+    expect(Number(circles?.[1].getAttribute('cx'))).toBe(110);
+  });
+
+  it('junction dot pojedynczy gdy outputX null (terminal station)', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-term"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 200, y: 0 }]}
+          stationPortGaps={[{
+            stationId: 'ST-END',
+            y: 0,
+            inputX: 180,
+            outputX: null,
+          }]}
+        />
+      </svg>,
+    );
+    const junctionGroup = container.querySelector('[data-testid="sld-v2-run-r-term-junction-ST-END"]');
+    expect(junctionGroup).toBeTruthy();
+    const circles = junctionGroup?.querySelectorAll('circle');
+    expect(circles).toHaveLength(1);
+    expect(Number(circles?.[0].getAttribute('cx'))).toBe(180);
+  });
+
   it('pokazuje typ, długość odcinka i wybór dalszego obiektu', () => {
     const onClick = vi.fn();
     const { getByText, container } = render(

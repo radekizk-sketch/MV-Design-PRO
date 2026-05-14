@@ -169,6 +169,32 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           pointerEvents="none"
         />
       ))}
+      {/* IEC 60617 junction dots — małe kółka w miejscach przyłączenia do szyny stacji.
+          Potwierdzają galwaniczne połączenie kabel→port stacji (brak kółka = brak połączenia). */}
+      {!missingEndpointPort && stationPortGaps.map((gap) => (
+        <g
+          key={`${id}-junction-${gap.stationId}`}
+          data-testid={`sld-v2-run-${id}-junction-${gap.stationId}`}
+          pointerEvents="none"
+        >
+          <circle
+            cx={gap.inputX}
+            cy={gap.y}
+            r={3}
+            fill={selected ? '#35C7FF' : strokeColor}
+            pointerEvents="none"
+          />
+          {gap.outputX !== null && (
+            <circle
+              cx={gap.outputX}
+              cy={gap.y}
+              r={3}
+              fill={selected ? '#35C7FF' : strokeColor}
+              pointerEvents="none"
+            />
+          )}
+        </g>
+      ))}
       {missingEndpointPort && (
         <g
           data-testid={`sld-v2-run-${id}-missing-port-marker`}
