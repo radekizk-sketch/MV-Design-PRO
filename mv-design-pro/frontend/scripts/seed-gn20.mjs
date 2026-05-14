@@ -253,36 +253,43 @@ async function main() {
       log(`K6.${cfg.id}`, `FAIL: ${stationRes.json?.error_code}`);
       continue;
     }
-    // Znajdź segment kontynuacji (RIGHT half po split) z snapshot — szukamy
-    // segmentu który ma ten sam terminal-from co poprzedni segment.
+    // Capture station ref_id from snapshot — backend nie preserve name_pl,
+    // więc szukamy nowo utworzonej stacji inline (po revision delta).
+    const createdIds = stationRes.json?.changes?.created_element_ids ?? [];
+    const stationRefFromCreate = createdIds.find(
+      (id) => typeof id === 'string' && id.startsWith('stn/') && id.endsWith('/station'),
+    );
+    // Znajdź segment kontynuacji (RIGHT half po split) z snapshot
     const enmAfter = await api('GET', `/api/cases/${caseId}/enm`);
     const branches = enmAfter.json?.branches ?? [];
     const cableSegs = branches.filter(
       (b) => typeof b.ref_id === 'string' && b.ref_id.startsWith('seg/') && b.type === 'cable',
     );
-    // Wybierz najdłuższy segment kabla (RIGHT half do split) lub ostatni
     if (cableSegs.length > 0) {
       currentSegmentId = cableSegs[cableSegs.length - 1].ref_id;
     }
-    stationResults.push({ id: cfg.id, status: 'PASS', cfg });
-    log(`K6.${cfg.id}`, `OK ${cfg.name.slice(0, 40)}...`);
+    // Znajdź nn_bus ref dla tej stacji
+    const nnBus = (enmAfter.json?.buses ?? []).find(
+      (b) =>
+        typeof b.ref_id === 'string' &&
+        stationRefFromCreate &&
+        b.ref_id.startsWith(stationRefFromCreate.replace('/station', '/')) &&
+        b.voltage_kv && b.voltage_kv <= 1.0,
+    );
+    stationResults.push({
+      id: cfg.id,
+      status: 'PASS',
+      cfg,
+      stationRef: stationRefFromCreate,
+      nnBusRef: nnBus?.ref_id,
+    });
+    log(`K6.${cfg.id}`, `OK station=${stationRefFromCreate?.slice(0, 40) ?? '?'} nn=${nnBus?.ref_id?.slice(0, 40) ?? '?'}`);
   }
 
-  // K10 loop: dodaj DER per station (PV/BESS/FW)
+  // K10 loop: dodaj DER per station (PV/BESS/FW) — ref_id tracking
   const derResults = [];
   for (const stRes of stationResults) {
-    if (stRes.status !== 'PASS' || !stRes.cfg.der) continue;
-    const enmNow = await api('GET', `/api/cases/${caseId}/enm`);
-    const stations = enmNow.json?.substations ?? [];
-    // Znajdź station po nazwie (insert_station_on_segment_sn syntezuje station)
-    const station = stations.find((s) => s.name_pl === stRes.cfg.name || s.name === stRes.cfg.name);
-    if (!station) {
-      derResults.push({ id: stRes.id, status: 'NO_STATION' });
-      continue;
-    }
-    const nnBus = (enmNow.json?.buses ?? []).find(
-      (b) => b.voltage_kv && b.voltage_kv <= 1.0 && b.substation_ref === station.ref_id,
-    );
+    if (stRes.status !== 'PASS' || !stRes.cfg.der || !stRes.stationRef) continue;
     for (let d = 0; d < stRes.cfg.der.length; d++) {
       const der = stRes.cfg.der[d];
       const variant = der.connection_variant ?? 'nn_side';
@@ -293,10 +300,10 @@ async function main() {
         source_technology: der.kind,
         catalog_ref: catalog,
         connection_variant: variant,
-        station_ref: station.ref_id,
+        station_ref: stRes.stationRef,
       };
-      if (variant === 'nn_side' && nnBus) {
-        payload.bus_nn_ref = nnBus.ref_id;
+      if (variant === 'nn_side' && stRes.nnBusRef) {
+        payload.bus_nn_ref = stRes.nnBusRef;
       }
       const derRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
         project_id: projectId,
