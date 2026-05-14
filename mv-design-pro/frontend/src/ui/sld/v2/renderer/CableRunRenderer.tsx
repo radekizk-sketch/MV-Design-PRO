@@ -51,6 +51,8 @@ export interface CableRunRendererProps {
   readonly stationPortGaps?: readonly CableRunStationPortGap[];
   readonly selected?: boolean;
   readonly onClick?: (id: string) => void;
+  /** LOD 0-1 → pokaż tylko główną etykietę, nie segmentLabels (AC-06 label declutter). */
+  readonly lod?: number;
 }
 
 export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | null {
@@ -68,7 +70,11 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     stationPortGaps = [],
     selected,
     onClick,
+    lod,
   } = props;
+  // AC-06: Na LOD 0-1 ukrywamy szczegółowe etykiety segmentów żeby uniknąć
+  // nakładania się etykiet. Główna etykieta (label) pozostaje widoczna.
+  const visibleSegmentLabels = lod !== undefined && lod < 2 ? [] : segmentLabels;
   if (pathPoints.length < 2) return null;
 
   const strokeWidth = runKind === 'branch'
@@ -96,12 +102,12 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     .map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`))
     .join(' ');
   const visiblePaths = buildVisibleCablePaths(pathPoints, stationPortGaps);
-  const labelPoint = label && segmentLabels.length === 0
+  const labelPoint = label && visibleSegmentLabels.length === 0
     ? findLongestHorizontalSegmentMidpoint(pathPoints)
     : null;
   const terminalPoint = pathPoints[pathPoints.length - 1];
   const readableSegmentLabels = declutterSegmentLabels(
-    segmentLabels
+    visibleSegmentLabels
       .map((segmentLabel) => avoidStationLabelCollision(segmentLabel, stationPortGaps))
       .map((segmentLabel) => (
         pendingEndpoint && terminalPoint

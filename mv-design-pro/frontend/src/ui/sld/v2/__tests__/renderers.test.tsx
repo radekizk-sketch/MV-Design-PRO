@@ -403,6 +403,45 @@ describe('CableRunRenderer', () => {
     expect(container.querySelector('[data-testid="sld-v2-run-r-segments-segment-hitbox-SEG-2"] polyline')?.getAttribute('points'))
       .toBe('160,100 300,100');
   });
+
+  it('LOD < 2 ukrywa segmentLabels (AC-06 label declutter)', () => {
+    const { queryByText } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-lod"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          segmentLabels={[
+            { segmentRef: 'SEG-1', text: 'Etykieta odcinka SEG-1', x: 80, y: 90 },
+            { segmentRef: 'SEG-2', text: 'Etykieta odcinka SEG-2', x: 220, y: 90 },
+          ]}
+          pathPoints={[{ x: 0, y: 100 }, { x: 300, y: 100 }]}
+          lod={1}
+        />
+      </svg>,
+    );
+    // Przy LOD=1 segmentLabels są ukryte
+    expect(queryByText('Etykieta odcinka SEG-1')).toBeNull();
+    expect(queryByText('Etykieta odcinka SEG-2')).toBeNull();
+  });
+
+  it('LOD ≥ 2 pokazuje segmentLabels', () => {
+    const { getByText } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-lod2"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          segmentLabels={[
+            { segmentRef: 'SEG-1', text: 'XRUHAKXS 120/25 · 500 m', x: 80, y: 90 },
+          ]}
+          pathPoints={[{ x: 0, y: 100 }, { x: 300, y: 100 }]}
+          lod={2}
+        />
+      </svg>,
+    );
+    expect(getByText('XRUHAKXS 120/25 · 500 m')).toBeInTheDocument();
+  });
 });
 
 describe('StationOnRunRenderer', () => {
