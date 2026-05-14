@@ -580,3 +580,77 @@ Current truth: this PLANS.md document.
 - [x] Wzmocniono wizualnie GPZ/magistralę/odgałęzienia/stację (większy blok GPZ, mocniejsza oś pionowa, większa ramka stacji, czytelniejsze etykiety).
 - [x] Ujednolicono etykiety scenariuszy referencyjnych do języka polskiego (bez anglicyzmów użytkowych).
 - [x] Dodano testy jakości widoku: minimalna skala, wykorzystanie obszaru, brak mikrotekstu, brak anglicyzmów.
+
+---
+
+## 5.0 Sesja Audytu Wizualnego (28 commitów, branch claude/cleanup-documentation-sld-7zVRd)
+
+### Wyniki pętli 11 iteracji (zespół 5 specjalistów)
+
+| Iter | Projektant | CAD | SCADA | Wizual | Whitebox | Średnia | GO/5 |
+|------|-----------|-----|-------|--------|----------|---------|------|
+| i=1 | 1.0 | 0.0 | 2.5 | 3.0 | 1.0 | **1.35** | 0/5 |
+| i=2 | 4.0 | 3.0 | 5.5 | 5.0 | 3.0 | **4.10** | 0/5 |
+| i=5 | 4.5 | 6.5 | 6.0 | ✓ 8.0 | 4.0 | **5.78** | 1/5 |
+| i=7 | 4.5 | ✓ 8.5 | 6.0 | 8.0 | 4.0 | **6.28** | 2/5 |
+| i=9 | 4.5 | 8.5 | ✓ 7.5 | 8.0 | 4.0 | **6.58** | 3/5 |
+| i=10 | 5.5 | 8.5 | 7.5 | 8.0 | ✓ 7.0 | **7.18** | 4/5 |
+| i=11 | ✓ 7.0 | 8.5 | 7.5 | 8.0 | 7.0 | **7.625** | **5/5 ✓** |
+
+Postęp: 1.35 → 7.625/10 (+6.275 pkt, ~465% wzrost).
+
+### Dostarczone UI komponenty (rozwiązane blokery)
+
+1. **Grid ETAP-grade + rulers** (CAD blocker iter 5-7):
+   - `frontend/src/index.css` — sld-canvas-grid: dot-grid 20×20 + minor 20×20 + major 100×100 + intersection markers + origin axes Y=0
+   - .sld-canvas-ruler-top (18px high) + .sld-canvas-ruler-left (24px wide) z tickami px co 20+100
+
+2. **LayerTogglePanel** (SCADA blocker iter 9):
+   - `frontend/src/ui/sld/v2/lod/LayerTogglePanel.tsx` (11 testów)
+   - 13 warstw z LAYER_IDS + LAYER_LABELS_PL + LOD badge + Reset CTA + override marker
+   - Integracja w SldWorkspaceContainer — floating dock prawy dolny
+
+3. **ProofPacksPanel** (Whitebox blocker iter 10):
+   - `frontend/src/ui/sld/v2/proof/ProofPacksPanel.tsx` (10 testów)
+   - 8 canonical proof packs (SC3F, VDROP, Equipment, PF, Losses, Protection, Earthing, LF Voltage)
+   - Status states (blocked / requires / available) z gating na hasNetworkModel
+   - Floating dock lewy dolny
+
+4. **NetworkHierarchyTree** (Projektant blocker iter 11):
+   - `frontend/src/ui/sld/v2/domain/NetworkHierarchyTree.tsx` (12 testów)
+   - Tree-view GPZ → Sekcja → Pole + Ciągi liniowe + Źródła OZE
+   - Collapsible per node, onSelectNode callback
+   - Defensive mapping snapshot → EnmInputForHierarchy
+   - Floating dock lewy górny
+
+5. **Fix dead-clicks topbar** (iter 8):
+   - Nakładka/Analizy/Eksport disabled gdy snapshot.buses[].length===0
+   - Polish tooltip "Wymaga modelu sieci (dodaj GPZ)"
+
+6. **SLD_STROKE_PX hierarchy tokens** (AC-01 iter 4):
+   - `frontend/src/ui/sld/v2/theme/tokens.ts` — transmission/transformer/busbar/trunk/branch/detail (5/4/4/3/2/1.5)
+
+7. **WCAG fix** (iter 3): "Zabezp." → "Zabezpieczenia" w areaRegistry
+
+### Pozostałe blokery do osiągnięcia 10/10 (~92 OD)
+
+- **Mostek katalog → symbol → SLD renderer** (Projektant warunek pełen GO, ~10 OD)
+- **Wizard kroki** (K3 simple/advanced toggle, K1 operator selector, K7 split-preview commit, ~7 OD = P0.9)
+- **Port-based routing F2** (~25 OD = P0.3) — LayoutEngine hierarchical-port-based, 100% edges port-based
+- **Theme switcher F4** (~20 OD = P0.7) — dark_scada/light_technical CSS variables + overlay SC/PF/Protection + SVG/PDF eksport vector
+- **LOD 5 poziomów + GpzSwitchgearRenderer refaktor** (~15 OD = P0.6)
+- **Fault-loop NN solver** (~15 OD = P0.5) — backend solver + FE FaultLoopResultPanel
+- **VDROP/Earthing proof packs golden tests** (~5 OD = część P0.4)
+- **CI visual regression** (~8 OD = P0.10) — Playwright toHaveScreenshot, 60 snapshotów
+- **Protection SI-100 FE "Uruchom Protection"** (~5 OD = P0.2)
+- **Symbol library expansion** (~5 OD = P0.1) — 54 → ≥50 z parity ≥90%
+- **DoD acceptance**: 67/67 guards, 32 views ≥9/10, performance 500ms/50ms benchmark
+
+### Foundation z poprzedniej sesji (13 commitów)
+
+- `lodScaling.ts` — LOD-aware font/stroke/symbol/padding (37 testów)
+- `fault_loop_iec60364` envelope adapter — P0.5 step 3 (10 testów)
+- 4 audit fixes (labelPositioning unresolved, exportSvg `<style>` block, fault_loop logger, lodScaling non-physics clarification)
+- 6 nowych modułów coverage (BuildSequence 31, HierarchicalLayout 17, HierarchyTree 21, routing 23, slot 28, overlayStore 21, tokens 15, RunButton 20)
+- ~244 nowych testów łącznie
+
