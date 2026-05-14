@@ -118,8 +118,12 @@ function pickConverterCatalog(kind, pMw, variant) {
  * Tworzy GPZ + bay + trunk + zwraca currentSegmentId dla downstream
  * insertion. Reusable per GPZ-A/GPZ-B (single trunk per GPZ jako N-1
  * surrogate gdy brak domain-op ring main).
+ *
+ * cable_catalog: 'cable-base-epr-al-1c-150' default (medium urban),
+ *   'cable-base-xlpe-cu-1c-240' (industrial high-current), inne per
+ *   mv_cable_line_catalog.py.
  */
-async function buildGpzTrunk(caseId, projectId, gpzKey, gpzName, designation) {
+async function buildGpzTrunk(caseId, projectId, gpzKey, gpzName, designation, cableCatalog = 'cable-base-epr-al-1c-150') {
   log(`K2.${gpzKey}`, `Wstaw ${gpzName}...`);
   const gpzRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
     project_id: projectId,
@@ -181,7 +185,7 @@ async function buildGpzTrunk(caseId, projectId, gpzKey, gpzName, designation) {
         segment: {
           rodzaj: 'KABEL',
           dlugosc_m: 5000,
-          catalog_ref: 'cable-base-epr-al-1c-150',
+          catalog_ref: cableCatalog,
         },
       },
     },
@@ -227,12 +231,19 @@ async function main() {
   const caseId = caseRes.json.id;
   log('K1', `OK projectId=${projectId} caseId=${caseId}`);
 
-  // K2-K5 A: GPZ Main + trunk A
-  const trunkA = await buildGpzTrunk(caseId, projectId, 'a_main', 'GPZ-A Główny 110/15 kV (K30)', 'Q01');
+  // K2-K5 A: GPZ Main + trunk A (kabel EPR Al 150 mm² — typowy miejski)
+  const trunkA = await buildGpzTrunk(
+    caseId, projectId, 'a_main', 'GPZ-A Główny 110/15 kV (K30)',
+    'Q01', 'cable-base-epr-al-1c-150',
+  );
   if (!trunkA) process.exit(2);
 
-  // K2-K5 B: GPZ Backup + trunk B
-  const trunkB = await buildGpzTrunk(caseId, projectId, 'b_backup', 'GPZ-B Backup 110/15 kV (K30)', 'Q01B');
+  // K2-K5 B: GPZ Backup + trunk B (kabel XLPE Cu 240 mm² — przemysłowy, większy
+  // przekrój, miedź — pokazuje na schemacie dywersyfikację catalog binding)
+  const trunkB = await buildGpzTrunk(
+    caseId, projectId, 'b_backup', 'GPZ-B Backup 110/15 kV (K30)',
+    'Q01B', 'cable-base-xlpe-cu-1c-240',
+  );
   if (!trunkB) {
     console.warn('GPZ-B build failed — kontynuuję z samym trunk A (N-1 surrogate degraded)');
   }

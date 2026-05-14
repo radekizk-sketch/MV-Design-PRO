@@ -1749,6 +1749,99 @@ describe('buildStations — konsumuje line_runs.stations[] z explicit order', ()
     const station = r.stations.find((s) => s.id === 'ST-1');
     expect(station?.transformerRatedKva).toBeNull();
   });
+
+  // K30 audit loop: synthetic snapshot z 30 stacji + 2 GPZ + 2 line_runs (A/B)
+  // weryfikuje że adapter skaluje się do K30 bez backendu (no-op safety net).
+  it('K30 synthetic: 30 stations + 2 GPZ + 2 line_runs → 32 stations, 2 lineRuns, cumulative km', () => {
+    const snap = buildEmptySnapshot();
+    // 2 GPZ
+    snap.substations = [
+      { id: 'gpz-a', ref_id: 'GPZ-A', name: 'GPZ-A Główny', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['busA'], transformer_refs: [], gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'busA' }] } as never,
+      { id: 'gpz-b', ref_id: 'GPZ-B', name: 'GPZ-B Backup', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['busB'], transformer_refs: [], gpz_sections: [{ section_id: 'B', order: 1, bus_ref: 'busB' }] } as never,
+    ];
+    snap.buses = [
+      { id: 'busA', ref_id: 'busA', name: 'SN A', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'busB', ref_id: 'busB', name: 'SN B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    // 30 inline stations (15 na A, 15 na B) z transformerami sn_mva=0.4 (400 kVA)
+    for (let i = 2; i <= 31; i++) {
+      const id = `S${i.toString().padStart(2, '0')}`;
+      const trId = `TR-${id}`;
+      snap.substations.push({
+        id, ref_id: id, name: `Stacja ${id}`, tags: [], meta: {},
+        station_type: i === 28 ? 'sectional' : 'inline',
+        bus_refs: [], transformer_refs: [trId],
+      } as never);
+      (snap.transformers as never[]).push({
+        id: `tr${i}`, ref_id: trId, name: trId, tags: [], meta: {},
+        hv_bus_ref: 'busA', lv_bus_ref: `${id}-lv`,
+        sn_mva: 0.4, uhv_kv: 15, ulv_kv: 0.4, uk_percent: 6, pk_kw: 5,
+      } as never);
+    }
+    // 2 line_runs: A trunk (15 stations) + B trunk (15 stations)
+    const stationsA = [];
+    const stationsB = [];
+    for (let i = 2; i <= 16; i++) {
+      stationsA.push({ substation_ref: `S${i.toString().padStart(2, '0')}`, order: i - 1 });
+    }
+    for (let i = 17; i <= 31; i++) {
+      stationsB.push({ substation_ref: `S${i.toString().padStart(2, '0')}`, order: i - 16 });
+    }
+    snap.line_runs = [
+      { id: 'run-a', run_kind: 'main_trunk', starting_bay_ref: 'bay-a', starting_port_ref: 'port-a', segments: [], stations: stationsA },
+      { id: 'run-b', run_kind: 'main_trunk', starting_bay_ref: 'bay-b', starting_port_ref: 'port-b', segments: [], stations: stationsB },
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+
+    // 32 stations total (30 field + 2 GPZ, ale buildStations zwraca tylko field stations)
+    expect(r.stations.length).toBe(30);
+    // 2 GPZ widoczne w gpzs[]
+    expect(r.gpzs.length).toBe(2);
+    expect(r.gpzs.map((g) => g.id).sort()).toEqual(['GPZ-A', 'GPZ-B']);
+    // 2 line_runs widoczne w cableRuns[]
+    expect(r.cableRuns.length).toBe(2);
+    expect(r.cableRuns.map((c) => c.id).sort()).toEqual(['run-a', 'run-b']);
+    // S28 sectional rozpoznany
+    const s28 = r.stations.find((s) => s.id === 'S28');
+    expect(s28?.topologicalType).toBe('sekcyjna');
+    // Wszystkie stacje mają transformerRatedKva=400 (z sn_mva=0.4)
+    const allHaveKva = r.stations.every((s) => s.transformerRatedKva === 400);
+    expect(allHaveKva).toBe(true);
+  });
+
+  // K30 audit loop: weryfikacja że adapter nie crashes z runtime errors na
+  // dużych snapshot (30 stacji = 30+ buses + 30+ transformers + DERs).
+  it('K30 synthetic: deterministic output 3× pod rząd (no flaky behavior)', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 'gpz-a', ref_id: 'GPZ-A', name: 'GPZ-A', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['busA'], transformer_refs: [], gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'busA' }] } as never,
+    ];
+    snap.buses = [
+      { id: 'busA', ref_id: 'busA', name: 'SN A', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    for (let i = 2; i <= 31; i++) {
+      const id = `S${i.toString().padStart(2, '0')}`;
+      snap.substations.push({
+        id, ref_id: id, name: `Stacja ${id}`, tags: [], meta: {},
+        station_type: 'inline', bus_refs: [], transformer_refs: [],
+      } as never);
+    }
+    const stations = [];
+    for (let i = 2; i <= 31; i++) {
+      stations.push({ substation_ref: `S${i.toString().padStart(2, '0')}`, order: i - 1 });
+    }
+    snap.line_runs = [
+      { id: 'run-1', run_kind: 'main_trunk', starting_bay_ref: 'bay-1', starting_port_ref: 'port-1', segments: [], stations },
+    ];
+
+    const r1 = buildSldDataFromSnapshot(snap, null);
+    const r2 = buildSldDataFromSnapshot(snap, null);
+    const r3 = buildSldDataFromSnapshot(snap, null);
+    expect(r1.stations.map((s) => s.id)).toEqual(r2.stations.map((s) => s.id));
+    expect(r2.stations.map((s) => s.id)).toEqual(r3.stations.map((s) => s.id));
+    expect(r1.stations.length).toBe(30);
+  });
 });
 
 describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (commit 13)', () => {

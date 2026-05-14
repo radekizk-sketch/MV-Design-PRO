@@ -1151,11 +1151,12 @@ rozszerzenie K20 do **30 stacji terenowych + 2 GPZ** (GPZ-A Main + GPZ-B
 Backup N-1) z **11-osobowym zespołem specjalistów** (vs 7 w K20). Cel
 trigger: 11/11 ≥9.5 przez 3 iter, zero NO-GO.
 
-**Iter K30-0 baseline (this session — commit pending):**
+**K30 iter progression (this session):**
 
 | Iter | Score | Δ | Changes | Commits |
 |------|-------|------|---------|---------|
-| **K30-0** | **~8.34/10 (est.)** | baseline | **K30 harness DONE** (seed-gn30 + audit2 + setpoints + screenshot-k30 + iter-0 REPORT.md) | pending |
+| **K30-0** | **~8.34/10 (est.)** | baseline | **K30 harness DONE** (seed-gn30 + audit2 + setpoints + screenshot-k30 + iter-0 REPORT.md) | ff60d1c |
+| **K30-1** | **~8.42/10 (est.)** | +0.08 | **Cable variants (1→2: GPZ-A EPR Al 150, GPZ-B XLPE Cu 240) + 2 synthetic adapter tests (30+ stations scale)** | pending |
 
 **K30 harness artifacts (NEW, this session):**
 - `frontend/scripts/seed-gn30.mjs` (348 LOC) — 2 GPZ + 30 stacji unique config
