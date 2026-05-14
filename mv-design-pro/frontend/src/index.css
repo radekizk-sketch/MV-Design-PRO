@@ -637,14 +637,18 @@
  * GRID_BASE_PX z theme/tokens.ts. Operatorzy CAD (ETAP/AutoCAD Electrical)
  * oczekują widocznej siatki nawet na pustym canvasie.
  * ========================================================================= */
-/* Iter 4 — kontrast podbity per CAD specjalista (ETAP-style):
-   - dot 20×20: opacity 0.70 (z 0.55), hue #5A8FB8 (jaśniejszy)
-   - minor lines 20×20: opacity 0.15 (z 0.07)
-   - major lines 100×100: opacity 0.30 (z 0.15) */
+/* Iter 5 — ETAP-grade kontrast per CAD specjalista (iter 4 verify 5/10):
+   "potrzebne major ≥0.45 alpha LUB jaśniejsze tło canvas (#142238)"
+   Zastosowano OBIE rekomendacje:
+   - Background-color override na jaśniejsze #152033 (z #0F1620)
+   - dot 20×20: opacity 0.70 hue 150,185,220
+   - minor lines 20×20: opacity 0.22 hue 110,160,200
+   - major lines 100×100: opacity 0.50 hue 120,170,210 */
 .sld-canvas-grid {
+  background-color: #152033;
   background-image:
-    linear-gradient(rgba(90, 143, 184, 0.15) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(90, 143, 184, 0.15) 1px, transparent 1px),
+    linear-gradient(rgba(110, 160, 200, 0.22) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(110, 160, 200, 0.22) 1px, transparent 1px),
     radial-gradient(
       circle,
       rgba(150, 185, 220, 0.70) 1.4px,
@@ -660,8 +664,8 @@
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(90, 143, 184, 0.30) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(90, 143, 184, 0.30) 1px, transparent 1px);
+    linear-gradient(rgba(120, 170, 210, 0.50) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 170, 210, 0.50) 1px, transparent 1px);
   background-size: 100px 100px, 100px 100px;
   background-position: 0 0, 0 0;
   z-index: 0;
