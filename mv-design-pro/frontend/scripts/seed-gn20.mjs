@@ -374,6 +374,9 @@ async function main() {
 
   // K11: Attach loads per STATION_CONFIGS (add_nn_outgoing_field +
   // add_nn_load). Wymaga: feeder nN field per stacja.
+  // V12K-021 resolved: LV apparatus catalog endpoint is /api/catalog/lv-apparatus-types
+  // (14 entries, ABB SACE Emax2 + Tmax XT + Jean Muller verified).
+  const NN_FEEDER_CATALOG = 'cb_nn_400a'; // Wylacznik glowny nN 400 A ABB
   const loadResults = [];
   for (const stRes of stationResults) {
     if (stRes.status !== 'PASS' || !stRes.cfg.load || !stRes.nnBusRef) continue;
@@ -388,6 +391,7 @@ async function main() {
           station_ref: stRes.stationRef,
           field_role: 'OUTGOING',
           field_name: `Odpływ nN ${stRes.cfg.id}`,
+          catalog_ref: NN_FEEDER_CATALOG,
         },
       },
     });
@@ -397,12 +401,21 @@ async function main() {
       continue;
     }
     const feederIds = feederRes.json?.changes?.created_element_ids ?? [];
-    const feederRef = feederIds.find((id) => typeof id === 'string' && id.includes('field'));
+    // Feeder ref format: nn/{hash}/outgoing per domain_operations_v2.add_nn_outgoing_field
+    const feederRef = feederIds.find(
+      (id) => typeof id === 'string' && id.startsWith('nn/') && id.endsWith('/outgoing'),
+    );
     if (!feederRef) {
       loadResults.push({ id: stRes.id, status: 'NO_FEEDER_REF' });
       continue;
     }
-    // 2. Attach load
+    // 2. Attach load — wymaga catalog_ref OBCIAZENIE namespace
+    // Wybór catalog per kind/p_kw:
+    let loadCatalog = 'load_mieszk_15kw';
+    if (stRes.cfg.load.kind === 'przemyslowy') loadCatalog = 'load_przem_75kw';
+    else if (stRes.cfg.load.kind === 'komunalny') loadCatalog = 'load_uslugi_30kw';
+    // bytowy/rolniczy -> load_mieszk_15kw (default)
+
     const loadRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
       project_id: projectId,
       operation: {
@@ -417,6 +430,7 @@ async function main() {
           connection_type: 'TROJFAZOWY',
           load_name: `Odbiór ${stRes.cfg.load.kind} ${stRes.cfg.load.p_kw} kW`,
           cos_phi: 0.95,
+          catalog_ref: loadCatalog,
         },
       },
     });
