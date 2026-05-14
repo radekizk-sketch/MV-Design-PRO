@@ -121,22 +121,63 @@ async function main() {
     revision: summary2.json.enm_revision,
   });
 
-  // K3..K6: similarly through domain-ops (when API stable).
-  // Skipped if K2 already failed — graceful exit.
+  // K3: Dodatkowa sekcja SN (2-sekcyjna rozdzielnia GPZ)
+  let k3Status = 'NOT_REACHED';
+  if (gpzRes.ok && !gpzRes.json?.error_code) {
+    // Wyciągnij substation_ref z snapshot
+    const snapshot = gpzRes.json?.snapshot;
+    const substations = snapshot?.substations ?? [];
+    const gpz = substations.find((s) => s.station_type === 'gpz');
+    const existingBus = (snapshot?.buses ?? []).find((b) => b.voltage_kv === 15);
+    if (gpz && existingBus) {
+      log('K3', 'Dodatkowa sekcja SN (add_gpz_section)...');
+      const sec2Res = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+        project_id: projectId,
+        operation: {
+          name: 'add_gpz_section',
+          idempotency_key: 'gn01_section_002',
+          payload: {
+            substation_ref: gpz.ref_id,
+            side: 'lv',
+            section_id: `${gpz.ref_id}/section/002`,
+            bus_ref: existingBus.ref_id, // ta sama szyna SN
+            order: 1,
+            name: 'Sekcja II',
+          },
+        },
+      });
+      if (sec2Res.ok && !sec2Res.json?.error_code) {
+        k3Status = 'PASS';
+        log('K3', 'OK section II added', {
+          created: sec2Res.json?.changes?.created_element_ids?.length ?? 0,
+        });
+      } else {
+        k3Status = `FAIL: ${sec2Res.status} ${sec2Res.json?.error_code ?? sec2Res.json?.error ?? ''}`;
+        log('K3', k3Status);
+      }
+    } else {
+      k3Status = 'FAIL: missing gpz/bus refs from K2 snapshot';
+      log('K3', k3Status);
+    }
+  }
+
+  log('K_final', 'Weryfikuję topology po K3...');
+  const summary3 = await api('GET', `/api/cases/${caseId}/enm/topology/summary`);
 
   console.log('\n=== SEEDER GN01 SUMMARY ===');
   console.log(JSON.stringify(
     {
       projectId,
       caseId,
-      bus_count_final: summary2.json.bus_count ?? 0,
-      source_count_final: summary2.json.source_count ?? 0,
-      revision_final: summary2.json.enm_revision ?? 1,
+      bus_count_final: summary3.json.bus_count ?? 0,
+      source_count_final: summary3.json.source_count ?? 0,
+      revision_final: summary3.json.enm_revision ?? 1,
       k1_status: project.ok && caseRes.ok ? 'PASS' : 'FAIL',
       k2_status:
         gpzRes.ok && !gpzRes.json?.error_code
           ? 'PASS'
           : `FAIL: ${gpzRes.status} ${gpzRes.json?.error_code ?? ''}`,
+      k3_status: k3Status,
     },
     null,
     2,
