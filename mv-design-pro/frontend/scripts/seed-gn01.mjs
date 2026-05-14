@@ -387,6 +387,48 @@ async function main() {
     }
   }
 
+  // K10: PV 0.5 MW 0.4 kV (add_converter_source) na nN szynie stacji.
+  // Wymaga: source_technology=PV, connection_variant='nn_side',
+  // station_ref + bus_nn_ref + catalog_ref pasujący do napięcia szyny.
+  let k10Status = 'NOT_REACHED';
+  if (k6Status === 'PASS') {
+    log('K10', 'Dodaj PV 0.5 MW na nN stacji (add_converter_source)...');
+    const enmAfterK6 = await api('GET', `/api/cases/${caseId}/enm`);
+    const station = enmAfterK6.json?.substations?.find(
+      (s) => s.station_type === 'inline',
+    );
+    const nnBus = enmAfterK6.json?.buses?.find(
+      (b) => b.voltage_kv && b.voltage_kv <= 1.0,
+    );
+    if (station && nnBus) {
+      const pvRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+        project_id: projectId,
+        operation: {
+          name: 'add_converter_source',
+          idempotency_key: 'gn01_pv_001',
+          payload: {
+            source_technology: 'PV',
+            catalog_ref: 'conv-pv-nn-0p5mw-0p4kv',
+            connection_variant: 'nn_side',
+            station_ref: station.ref_id,
+            bus_nn_ref: nnBus.ref_id,
+          },
+        },
+      });
+      if (pvRes.ok && !pvRes.json?.error_code) {
+        k10Status = 'PASS';
+        log('K10', 'OK PV inverter attached', {
+          created: pvRes.json?.changes?.created_element_ids?.length ?? 0,
+        });
+      } else {
+        k10Status = `FAIL: ${pvRes.status} ${pvRes.json?.error_code ?? ''}`;
+        log('K10', k10Status);
+      }
+    } else {
+      k10Status = 'FAIL: missing station/nn_bus';
+    }
+  }
+
   log('K_final', 'Weryfikuję topology końcową...');
   const summaryFinal = await api('GET', `/api/cases/${caseId}/enm/topology/summary`);
 
@@ -410,6 +452,7 @@ async function main() {
       k6_status: k6Status,
       k7_status: k7Status,
       k8_status: k8Status,
+      k10_status: k10Status,
     },
     null,
     2,
