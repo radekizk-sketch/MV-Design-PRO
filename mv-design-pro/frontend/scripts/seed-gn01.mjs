@@ -429,6 +429,55 @@ async function main() {
     }
   }
 
+  // K11: OZE setpoints (cos_phi/Q-limits/P-setpoint) via update_element_parameters.
+  // Allowlist generators: {name, p_mw, q_mvar, catalog_ref, quantity, n_parallel,
+  //   parameter_source, overrides, limits, connection_variant, blocking_transformer_ref,
+  //   station_ref, meta, in_service}. cos_phi w 'limits' subobject.
+  let k11Status = 'NOT_REACHED';
+  if (k10Status === 'PASS') {
+    log('K11', 'Update OZE setpoints (P/Q/limits cos_phi)...');
+    const enmAfterK10 = await api('GET', `/api/cases/${caseId}/enm`);
+    const pvGen = enmAfterK10.json?.generators?.find(
+      (g) => g.gen_type === 'pv_inverter',
+    );
+    if (pvGen) {
+      const setpRes = await api(
+        'POST',
+        `/api/cases/${caseId}/enm/domain-ops`,
+        {
+          project_id: projectId,
+          operation: {
+            name: 'update_element_parameters',
+            idempotency_key: 'gn01_pv_setpoints',
+            payload: {
+              element_ref: pvGen.ref_id,
+              parameters: {
+                name: 'PV-01 Farma 500 kW',
+                p_mw: 0.4,
+                q_mvar: 0.0,
+                limits: {
+                  p_max_mw: 0.5,
+                  q_min_mvar: -0.18,
+                  q_max_mvar: 0.18,
+                  cos_phi_min: 0.9,
+                  cos_phi_max: 1.0,
+                },
+              },
+            },
+          },
+        },
+      );
+      if (setpRes.ok && !setpRes.json?.error_code) {
+        k11Status = 'PASS';
+        log('K11', 'OK setpoints applied', {
+          updated: setpRes.json?.changes?.updated_element_ids?.length ?? 0,
+        });
+      } else {
+        k11Status = `FAIL: ${setpRes.json?.error_code ?? ''}`;
+      }
+    }
+  }
+
   // K13: Solver runs (SC_3F + LOAD_FLOW) — IEC 60909 + NR power flow.
   async function runAnalysis(analysisType) {
     const createRes = await api(
@@ -515,6 +564,7 @@ async function main() {
       k7_status: k7Status,
       k8_status: k8Status,
       k10_status: k10Status,
+      k11_status: k11Status,
       k13_status: k13Status,
       sc3f_run_id: sc3fRunId,
       lf_run_id: lfRunId,
