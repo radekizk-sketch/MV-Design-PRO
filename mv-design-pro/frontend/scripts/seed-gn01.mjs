@@ -346,17 +346,28 @@ async function main() {
     }
   }
 
-  // K7: Odgałęzienie SN (start_branch_segment_sn) z portu BRANCH ZKSN
+  // K7: Odgałęzienie SN (start_branch_segment_sn) z portu BRANCH_1 ZKSN.
+  // ZKSN udostępnia 2 porty branch: BRANCH_1 i BRANCH_2 (per zksn type w
+  // /backend/src/enm/domain_operations.py:3650).
+  // From_ref format: <element_ref>.BRANCH_<n> (np. bp/{hash}/zksn.BRANCH_1)
   let k7Status = 'NOT_REACHED';
-  if (k8Status === 'PASS' && globalThis._k8_branch_port_1) {
-    log('K7', 'Wyprowadzenie odgałęzienia z portu BRANCH ZKSN...');
+  let zksnRef = null;
+  if (k8Status === 'PASS') {
+    // Znajdź ZKSN w ENM snapshot (utworzony w K8).
+    const enmAfterK8 = await api('GET', `/api/cases/${caseId}/enm`);
+    const bps = enmAfterK8.json?.branch_points ?? [];
+    const zksn = bps.find((bp) => bp.branch_point_type === 'zksn');
+    if (zksn) zksnRef = zksn.ref_id;
+  }
+  if (zksnRef) {
+    log('K7', `Wyprowadzenie odgałęzienia z portu BRANCH_1 ZKSN ${zksnRef}...`);
     const branchRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
       project_id: projectId,
       operation: {
         name: 'start_branch_segment_sn',
         idempotency_key: 'gn01_branch_001',
         payload: {
-          from_ref: globalThis._k8_branch_port_1,
+          from_ref: `${zksnRef}.BRANCH_1`,
           segment: {
             rodzaj: 'KABEL',
             dlugosc_m: 800,
