@@ -1,0 +1,102 @@
+{
+  "iteration": 2,
+  "appUrl": "http://127.0.0.1:5173",
+  "viewports": [
+    {
+      "name": "1920x1080",
+      "w": 1920,
+      "h": 1080
+    },
+    {
+      "name": "4k_3840x2160",
+      "w": 3840,
+      "h": 2160
+    }
+  ],
+  "results": [
+    {
+      "route": "home",
+      "viewport": "1920x1080",
+      "status": "OK",
+      "errors": [],
+      "file": "home_1920x1080.png"
+    },
+    {
+      "route": "projects",
+      "viewport": "1920x1080",
+      "status": "OK",
+      "errors": [],
+      "file": "projects_1920x1080.png"
+    },
+    {
+      "route": "sld",
+      "viewport": "1920x1080",
+      "status": "OK",
+      "errors": [],
+      "file": "sld_1920x1080.png"
+    },
+    {
+      "route": "workspace",
+      "viewport": "1920x1080",
+      "status": "OK",
+      "errors": [],
+      "file": "workspace_1920x1080.png"
+    },
+    {
+      "route": "designer",
+      "viewport": "1920x1080",
+      "status": "OK",
+      "errors": [],
+      "file": "designer_1920x1080.png"
+    },
+    {
+      "route": "study-cases",
+      "viewport": "1920x1080",
+      "status": "OK",
+      "errors": [],
+      "file": "study-cases_1920x1080.png"
+    },
+    {
+      "route": "home",
+      "viewport": "4k_3840x2160",
+      "status": "OK",
+      "errors": [],
+      "file": "home_4k_3840x2160.png"
+    },
+    {
+      "route": "projects",
+      "viewport": "4k_3840x2160",
+      "status": "OK",
+      "errors": [],
+      "file": "projects_4k_3840x2160.png"
+    },
+    {
+      "route": "sld",
+      "viewport": "4k_3840x2160",
+      "status": "OK",
+      "errors": [],
+      "file": "sld_4k_3840x2160.png"
+    },
+    {
+      "route": "workspace",
+      "viewport": "4k_3840x2160",
+      "status": "OK",
+      "errors": [],
+      "file": "workspace_4k_3840x2160.png"
+    },
+    {
+      "route": "designer",
+      "viewport": "4k_3840x2160",
+      "status": "OK",
+      "errors": [],
+      "file": "designer_4k_3840x2160.png"
+    },
+    {
+      "route": "study-cases",
+      "viewport": "4k_3840x2160",
+      "status": "OK",
+      "errors": [],
+      "file": "study-cases_4k_3840x2160.png"
+    }
+  ]
+}
