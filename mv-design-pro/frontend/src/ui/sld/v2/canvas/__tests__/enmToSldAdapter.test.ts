@@ -274,6 +274,23 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(der?.operatingQMvar).toBeNull();
   });
 
+  it('wiele DER na tej samej stacji dostaje różne pozycje Y (bez nakładania)', () => {
+    const snap = buildEmptySnapshot();
+    snap.generators = [
+      { id: 'g1', ref_id: 'DER-1', name: 'PV-1', tags: [], meta: { station_ref: 'STA-1' }, bus_ref: 'b', p_mw: 0.5, gen_type: 'pv_inverter' } as never,
+      { id: 'g2', ref_id: 'DER-2', name: 'PV-2', tags: [], meta: { station_ref: 'STA-1' }, bus_ref: 'b', p_mw: 0.5, gen_type: 'pv_inverter' } as never,
+      { id: 'g3', ref_id: 'DER-3', name: 'PV-3', tags: [], meta: { station_ref: 'STA-1' }, bus_ref: 'b', p_mw: 0.5, gen_type: 'pv_inverter' } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.ders).toHaveLength(3);
+    const ys = r.ders.map((d) => d.y);
+    // Każdy DER musi mieć inną pozycję Y
+    expect(new Set(ys).size).toBe(3);
+    // DERy są posortowane od góry — każdy poniżej poprzedniego
+    expect(ys[1]).toBeGreaterThan(ys[0]);
+    expect(ys[2]).toBeGreaterThan(ys[1]);
+  });
+
   it('GPZ → GpzRendererProps zawiera sections + couplers + bays z ENM (e2e wiring)', () => {
     const snap = buildEmptySnapshot();
     snap.buses = [

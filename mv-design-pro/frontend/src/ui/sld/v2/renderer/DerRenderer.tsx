@@ -178,6 +178,20 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
         >
         {KIND_LABEL_PL[kind]}
       </text>
+      {/* Moc znamionowa przy compact LOD — skrócony zapis pod etykietą */}
+      {lod === 'compact' && nominalPowerKw !== null && nominalPowerKw !== undefined && (
+        <text
+          x={0}
+          y={half + 14}
+          textAnchor="middle"
+          fill={COLOR_TEXT_SECONDARY}
+          fontFamily={FONT_MONO}
+          fontSize={8}
+          data-testid={`sld-v2-der-${id}-compact-power`}
+        >
+          {nominalPowerKw.toFixed(0)} kW
+        </text>
+      )}
       {/* Nazwa DER pod symbolem (LOD=full only) */}
       {lod === 'full' && (
         <text

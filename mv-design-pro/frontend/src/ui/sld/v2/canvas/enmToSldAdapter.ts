@@ -243,6 +243,7 @@ const GPZ_FIELD_CABLE_HEAD_Y = CANONICAL_CABLE_HEAD_TIP_Y;
 const PENDING_RUN_LENGTH = 140;
 
 const DER_OFFSET_RIGHT = 80;
+const DER_COMPACT_STEP_Y = 40;
 
 // =============================================================================
 // Cable/line run helpers
@@ -1759,14 +1760,18 @@ function buildDers(
 ): DerRendererProps[] {
   const generators = snapshot.generators ?? [];
   const ders: DerRendererProps[] = [];
+  const stationDerIndex = new Map<string, number>();
 
   for (const gen of generators) {
     const kind = mapGenTypeToDerKind(gen);
     if (!kind) continue;
     const stationRef = generatorStationRef(gen);
+    const stationKey = stationRef ?? '__orphan__';
+    const indexAtStation = stationDerIndex.get(stationKey) ?? 0;
+    stationDerIndex.set(stationKey, indexAtStation + 1);
     const station = stationRef ? stations.find((s) => s.id === stationRef) : null;
     const baseX = station ? station.x + DER_OFFSET_RIGHT : 800;
-    const baseY = station ? station.y + 60 : Y_RUN_BASE + 60;
+    const baseY = (station ? station.y + 60 : Y_RUN_BASE + 60) + indexAtStation * DER_COMPACT_STEP_Y;
 
     ders.push({
       id: gen.ref_id,
