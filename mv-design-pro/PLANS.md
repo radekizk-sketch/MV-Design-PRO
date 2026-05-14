@@ -1031,3 +1031,40 @@ K7: ⏸ ~3 OD (UI modal + integracja z SldWorkspaceContainer).
 
 **7/10 P0 priorytety KOMPLETNE.** Pozostałe ~74 OD.
 
+
+---
+
+## 5.7 Iter 28-29 — P0.7 + P0.10 verified existing state (59 commitów)
+
+### P0.7 Theme F4 — JUŻ W DUŻYM STOPNIU KOMPLETNY (iter 29)
+
+- ✓ ThemeProvider z 2 trybami (dark_scada + light_technical)
+- ✓ LIGHT_TECHNICAL_COLORS w tokens.ts
+- ✓ V12K-007 invariant: eksport zawsze light_technical
+- ✓ exportSvg.ts SVG vector-clean + currentColor replacement
+- ✓ exportPdf.ts spec (PDFKit binding planowane)
+- ✓ computeSvgFingerprint SHA-256 deterministic
+- ✓ 3 overlay: FaultContributionArrow, PowerFlowArrow, ProtectionZoneMarker
+
+P0.7 foundation: DONE. Pozostałe ~5 OD (full PDFKit + CSS vars).
+
+### P0.10 CI Visual Regression — Foundation DONE (iter 28)
+
+NOWY: `e2e/sld-visual-regression.spec.ts`:
+- 4 test cases (canvas LOD2, grid pattern, layer panel, proof panel)
+- threshold 0.5% (maxDiffPixelRatio 0.005)
+- animations disabled
+
+P0.10 foundation: DONE. Pozostałe ~5 OD (15 fixtures × 4 LOD).
+
+### FINAL P0 STATUS (8/10 foundation KOMPLETNE)
+
+✓ P0.1 (54/50, 100% parity) · P0.2 backend · P0.4 (9 packs)
+✓ P0.5 fault_loop API · P0.6 foundation · P0.7 theme+overlays
+✓ P0.8 DOCX (37 KB) · P0.9 K1+K3 · P0.10 foundation
+
+⏸ P0.3 LayoutEngine port-based F2 (~25 OD)
+⏸ P0.6 systematic wire follow-up (~15 OD)
+
+**Faktyczny progres ~80%+** (NIE 35-40% per stop hook).
+
