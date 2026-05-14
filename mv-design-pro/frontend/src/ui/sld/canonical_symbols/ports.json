@@ -532,6 +532,48 @@
       "allowedRotations": [0, 90, 180, 270],
       "defaultRotation": 0,
       "notes": "Three-phase shunt capacitor bank (wye config with earth/neutral connection). Used for reactive power compensation (kvar) — improves cos φ and reduces line losses. Single TAP port — wye earth not routed externally."
+    },
+    "motor_starter": {
+      "description": "Rozrusznik silnika / Motor starter (ANSI 49M + 51M) — IEC 60617",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "top": { "x": 50, "y": 0, "kind": "LINE_IN", "voltage_kv_compat": [0.4, 0.69, 6, 10, 15] },
+        "bottom": { "x": 50, "y": 100, "kind": "LINE_OUT", "voltage_kv_compat": [0.4, 0.69, 6, 10, 15] }
+      },
+      "allowedRotations": [0, 90, 180, 270],
+      "defaultRotation": 0,
+      "notes": "Combined motor protection + contactor for direct/soft-start motor control. Used in industrial substations (przemysłowe rozdzielnie) na wyjściu zasilania silnika."
+    },
+    "motor_squirrel_cage": {
+      "description": "Silnik indukcyjny klatkowy 3F / 3-phase squirrel cage induction motor — IEC 60617",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "top": { "x": 50, "y": 0, "kind": "LINE_IN", "voltage_kv_compat": [0.4, 0.69, 6, 10, 15] }
+      },
+      "allowedRotations": [0],
+      "defaultRotation": 0,
+      "notes": "Standard squirrel cage induction motor — most common industrial motor type. 'M' + '3~' marker per IEC 60617 § 6. Earth connection routed externally (data attribute, not port)."
+    },
+    "motor_synchronous": {
+      "description": "Silnik synchroniczny 3F / 3-phase synchronous motor — IEC 60617",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "top": { "x": 50, "y": 0, "kind": "LINE_IN", "voltage_kv_compat": [6, 10, 15, 20, 30] }
+      },
+      "allowedRotations": [0],
+      "defaultRotation": 0,
+      "notes": "Synchronous motor with DC excitation. 'MS' label + '3~/=' marker per IEC 60617 § 6 (3-phase AC stator + DC field). Used in large industrial drives + power factor correction."
+    },
+    "voltage_regulator": {
+      "description": "Regulator napięcia inline (AVR / Line VR) / Voltage regulator — IEC 60617",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "top": { "x": 50, "y": 0, "kind": "LINE_IN", "voltage_kv_compat": [6, 10, 15, 20, 30] },
+        "bottom": { "x": 50, "y": 100, "kind": "LINE_OUT", "voltage_kv_compat": [6, 10, 15, 20, 30] }
+      },
+      "allowedRotations": [0, 90, 180, 270],
+      "defaultRotation": 0,
+      "notes": "Inline variable voltage regulator (autotransformer-style with continuous tap changer). Used on long feeders to compensate voltage drop dynamically. NIE myl z OLTC w transformator_tap_changer.svg (OLTC siedzi WEWNĄTRZ TR2W)."
     }
   },
   "portTransformations": {

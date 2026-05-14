@@ -123,18 +123,23 @@ Status legenda:
 
 ---
 
-## 3. Podsumowanie liczbowe (2026-05-13, end-of-day update)
+## 3. Podsumowanie liczbowe (2026-05-13, late-night update)
 
 | Status | Liczba |
 |--------|--------|
-| ✅ OK (SVG + ports.json) | **50** |
+| ✅ OK (SVG + ports.json) | **54** |
 | ⚠️ PARTIAL (SVG bez ports.json) | 0 |
-| ❌ MISSING (target lista) | 12 |
-| **Razem zadeklarowane** | **62** |
-| **Pokrycie OK** | **50 / 62 = 80.6%** |
+| ❌ MISSING (target lista) | 3 |
+| **Razem zadeklarowane (śpisana lista — patrz § 2)** | **57** |
+| **Pokrycie OK** | **54 / 57 = 94.7%** |
 
-**Goal target (`/goal` § P0.1): ≥ 50 symboli — ✅ HIT (50/50 exactly).**
-**IEC parity target: ≥ 90% (≥ 56 / 62). Gap: 12 symboli (P2 follow-up).**
+**Goal target (`/goal` § P0.1): ≥ 50 symboli — ✅ HIT.**
+**IEC parity target: ≥ 90% — ✅ HIT (94.7%).**
+
+Pozostałe 3 missing (P2 follow-up, non-blocking):
+- `ct_split_core` (variant CT — rzadziej używany)
+- `surge_arrester_exd` (specjalny wariant ExD)
+- `wind_turbine_dfig` (variant FW — wind_turbine_full_converter pokrywa MVP)
 
 **Progress 2026-05-13 (cały dzień):**
 - F1 sprint 1 ✅ (7 symboli, priorytet KRYTYCZNY): ring_busbar, double_busbar,

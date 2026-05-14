@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Squirrel cage induction motor / Silnik indukcyjny klatkowy — IEC 60617 -->
+  <!-- Standard induction motor representation: circle with "M" + "3~" subscript. -->
+  <!-- Top connection (3-phase supply) -->
+  <line x1="50" y1="0" x2="50" y2="20" stroke="currentColor" stroke-width="3"/>
+  <!-- Motor circle -->
+  <circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="3"/>
+  <!-- "M" letter -->
+  <text x="50" y="52" font-family="sans-serif" font-size="22" font-weight="bold" text-anchor="middle" fill="currentColor">M</text>
+  <!-- "3~" indicating 3-phase AC induction -->
+  <text x="50" y="68" font-family="sans-serif" font-size="9" text-anchor="middle" fill="currentColor">3~</text>
+  <!-- Earth connection at bottom -->
+  <line x1="50" y1="80" x2="50" y2="92" stroke="currentColor" stroke-width="2"/>
+  <line x1="44" y1="92" x2="56" y2="92" stroke="currentColor" stroke-width="2"/>
+  <line x1="46" y1="96" x2="54" y2="96" stroke="currentColor" stroke-width="2"/>
+  <!-- Ports: top (50, 0) 3-phase connection -->
+</svg>
