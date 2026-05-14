@@ -1,7 +1,7 @@
 /**
  * SLD SVG Export — P0.7 / PLAN_SLD_REWORK F4 — Eksport SVG vector-clean.
  *
- * STATUS: SCAFFOLDING (canvas integration TODO w pełnym F4)
+ * STATUS: SCAFFOLDING (canvas integration planowana w pełnym F4)
  * Reference:
  * - docs/v12xx/REJESTR_KONFLIKTOW.md V12K-007 (eksport zawsze light_technical)
  * - docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md § 8.1 (vector-clean SVG)

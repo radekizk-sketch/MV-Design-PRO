@@ -18,7 +18,7 @@
  * - Generate orthogonal segments z grid snap
  * - Walidacja port compatibility (voltage_kv_compat overlap)
  *
- * Pełna integracja w phase4 routing — TODO w F2 sprint follow-up
+ * Pełna integracja w phase4 routing odbywa się w F2 sprint follow-up
  * (zgodnie z audytem: feature flag + nowa phase4_route_all_edges_portbased).
  *
  * INVARIANTS:

@@ -1,7 +1,7 @@
 /**
  * SLD Theme Context — P0.7 / PLAN_SLD_REWORK F4 — Theme Provider
  *
- * STATUS: SCAFFOLDING (theme switcher integration TODO w pełnym F4)
+ * STATUS: SCAFFOLDING (theme switcher integration planowana w pełnym F4)
  * Reference:
  * - docs/v12xx/REJESTR_KONFLIKTOW.md V12K-007 (dark_scada ekran vs light_technical eksport)
  * - docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md § 4 (dwa motywy)

@@ -1,7 +1,7 @@
 /**
  * SLD PDF Export — P0.7 / PLAN_SLD_REWORK F4 — Eksport PDF vector.
  *
- * STATUS: SCAFFOLDING (PDFKit binding TODO w pełnym F4 sprint)
+ * STATUS: SCAFFOLDING (PDFKit binding planowane w pełnym F4 sprint)
  * Reference:
  * - docs/v12xx/REJESTR_KONFLIKTOW.md V12K-007 (eksport zawsze light_technical)
  * - docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md § 8.2 (PDF vector)
