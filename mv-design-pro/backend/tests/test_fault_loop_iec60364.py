@@ -242,6 +242,85 @@ class TestValidation:
             compute_fault_loop(bad)
 
 
+class TestErrorLogging:
+    """AUDIT FIX #3 (observability): each reject emits logger.warning
+    z fault_node_id + reason — batch fault scan ma audit trail bez
+    try/except scaffold."""
+
+    def test_invalid_u_nom_emits_warning_with_node_id(self, caplog: pytest.LogCaptureFixture) -> None:
+        bad = FaultLoopInput(
+            fault_node_id="bus_LV_42",
+            u_nom_v=0.0,
+            phase_conductor=LoopImpedanceComponent(label="L", r_ohm=0.1, x_ohm=0.05),
+            return_conductor=LoopImpedanceComponent(label="PE", r_ohm=0.1, x_ohm=0.05),
+            transformer_impedance=LoopImpedanceComponent(label="TR", r_ohm=0.01, x_ohm=0.04),
+        )
+        with caplog.at_level("WARNING", logger="src.network_model.solvers.fault_loop_iec60364"):
+            with pytest.raises(ValueError):
+                compute_fault_loop(bad)
+        # exactly one warning emitted
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert len(warnings) == 1
+        assert "u_nom_v" in warnings[0].message
+        assert getattr(warnings[0], "fault_node_id", None) == "bus_LV_42"
+
+    def test_tt_network_emits_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+        from src.network_model.solvers.fault_loop_iec60364 import NetworkType
+
+        bad = FaultLoopInput(
+            fault_node_id="bus_TT_1",
+            u_nom_v=230.0,
+            phase_conductor=LoopImpedanceComponent(label="L", r_ohm=0.1, x_ohm=0.05),
+            return_conductor=LoopImpedanceComponent(label="PE", r_ohm=0.1, x_ohm=0.05),
+            transformer_impedance=LoopImpedanceComponent(label="TR", r_ohm=0.01, x_ohm=0.04),
+            network_type=NetworkType.TT,
+        )
+        with caplog.at_level("WARNING", logger="src.network_model.solvers.fault_loop_iec60364"):
+            with pytest.raises(NotImplementedError):
+                compute_fault_loop(bad)
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert len(warnings) == 1
+        assert getattr(warnings[0], "network_type", None) == "TT"
+
+    def test_tiny_z_emits_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+        bad = FaultLoopInput(
+            fault_node_id="bus_x",
+            u_nom_v=230.0,
+            phase_conductor=LoopImpedanceComponent(label="L", r_ohm=1e-15, x_ohm=0),
+            return_conductor=LoopImpedanceComponent(label="PE", r_ohm=1e-15, x_ohm=0),
+            transformer_impedance=LoopImpedanceComponent(label="TR", r_ohm=1e-15, x_ohm=0),
+        )
+        with caplog.at_level("WARNING", logger="src.network_model.solvers.fault_loop_iec60364"):
+            with pytest.raises(ValueError):
+                compute_fault_loop(bad)
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert len(warnings) == 1
+        assert "Z_loop" in warnings[0].message or "z_magnitude" in str(
+            getattr(warnings[0], "z_magnitude_ohm", "")
+        )
+
+    def test_negative_impedance_emits_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+        bad = FaultLoopInput(
+            fault_node_id="bus_y",
+            u_nom_v=230.0,
+            phase_conductor=LoopImpedanceComponent(label="L", r_ohm=-0.1, x_ohm=0.05),
+            return_conductor=LoopImpedanceComponent(label="PE", r_ohm=0.1, x_ohm=0.05),
+            transformer_impedance=LoopImpedanceComponent(label="TR", r_ohm=0.01, x_ohm=0.04),
+        )
+        with caplog.at_level("WARNING", logger="src.network_model.solvers.fault_loop_iec60364"):
+            with pytest.raises(ValueError):
+                compute_fault_loop(bad)
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert len(warnings) == 1
+        assert getattr(warnings[0], "component", None) == "phase_conductor"
+
+    def test_success_path_emits_no_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Happy path nie powinien logować — tylko reject paths logują."""
+        with caplog.at_level("WARNING", logger="src.network_model.solvers.fault_loop_iec60364"):
+            compute_fault_loop(_make_typical_tn_s_input())
+        assert [r for r in caplog.records if r.levelname == "WARNING"] == []
+
+
 class TestSerialization:
     def test_to_dict_v12_pattern(self) -> None:
         """Per V12.xx canonical pattern: complex → {re, im, magnitude}."""

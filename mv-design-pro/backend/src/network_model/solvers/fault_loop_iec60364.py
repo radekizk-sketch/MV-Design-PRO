@@ -37,10 +37,13 @@ INVARIANTS:
 
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Types
@@ -167,13 +170,30 @@ class FaultLoopInput:
 
 
 def _validate_input(data: FaultLoopInput) -> None:
-    """Walidacja MVP — wymusza tylko bazowy sanity (no heuristics)."""
+    """
+    Walidacja MVP — wymusza tylko bazowy sanity (no heuristics).
+
+    AUDIT FIX #3 (observability): każdy reject loguje WHICH input failed
+    + dlaczego, żeby batch executor (np. fault scan na 100 buses) mógł
+    zebrać audit trail bez try/except scaffold po stronie caller'a.
+    """
     if data.u_nom_v <= 0:
+        logger.warning(
+            "fault_loop reject: u_nom_v <= 0",
+            extra={"fault_node_id": data.fault_node_id, "u_nom_v": data.u_nom_v},
+        )
         raise ValueError(
             f"u_nom_v MUSI być > 0 V, otrzymano {data.u_nom_v}. "
             "Sprawdź wejście — brak nominal voltage z NetworkGraph."
         )
     if data.network_type in (NetworkType.TT, NetworkType.IT):
+        logger.warning(
+            "fault_loop reject: unsupported network type",
+            extra={
+                "fault_node_id": data.fault_node_id,
+                "network_type": data.network_type.value,
+            },
+        )
         raise NotImplementedError(
             f"Typ sieci {data.network_type.value} nie jest objęty MVP "
             "(deferred do P0.5b). MVP obsługuje TN-S, TN-C-S, TN-C."
@@ -184,6 +204,15 @@ def _validate_input(data: FaultLoopInput) -> None:
         ("transformer_impedance", data.transformer_impedance),
     ):
         if comp.r_ohm < 0 or comp.x_ohm < 0:
+            logger.warning(
+                "fault_loop reject: negative impedance component",
+                extra={
+                    "fault_node_id": data.fault_node_id,
+                    "component": label,
+                    "r_ohm": comp.r_ohm,
+                    "x_ohm": comp.x_ohm,
+                },
+            )
             raise ValueError(
                 f"Składowa '{label}' ma ujemną R lub X "
                 f"(R={comp.r_ohm}, X={comp.x_ohm}). "
@@ -246,6 +275,14 @@ def compute_fault_loop(data: FaultLoopInput) -> FaultLoopResult:
     # IEEE 754 i nadawały overflow JSON.
     Z_MIN_OHM = 1e-6
     if z_magnitude < Z_MIN_OHM:
+        logger.warning(
+            "fault_loop reject: Z_loop below minimum threshold",
+            extra={
+                "fault_node_id": data.fault_node_id,
+                "z_magnitude_ohm": z_magnitude,
+                "z_min_ohm": Z_MIN_OHM,
+            },
+        )
         raise ValueError(
             f"Z_loop = {z_magnitude:.3e} Ω < {Z_MIN_OHM:.0e} Ω — pętla zerowa lub "
             "fizycznie niemożliwa (degenerated case). Realna nN ma Z_loop "
