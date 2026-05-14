@@ -654,3 +654,76 @@ Postęp: 1.35 → 7.625/10 (+6.275 pkt, ~465% wzrost).
 - 6 nowych modułów coverage (BuildSequence 31, HierarchicalLayout 17, HierarchyTree 21, routing 23, slot 28, overlayStore 21, tokens 15, RunButton 20)
 - ~244 nowych testów łącznie
 
+
+---
+
+## 5.1 Iter 12 — REAL SCHEMAT AUDIT (BREAKTHROUGH + REGRES)
+
+Po commicie 8a817f4 (auto-load activeCaseId) canvas pierwszy raz pokazuje
+REALNY schemat (svg=46, emptyState=0). Zespół 5 specjalistów wykonał
+audyt REAL state vs prev (placeholder).
+
+### Wyniki vs poprzednie iteracje (placeholder vs real)
+
+| Iter | Specjalista | Placeholder ocena | REAL ocena | Δ |
+|------|-------------|-------------------|------------|---|
+| 12   | Projektant  | 7.0               | 6.5        | -0.5 |
+| 12   | CAD         | 8.5               | 7.5        | -1.0 |
+| 12   | SCADA       | 7.5               | 7.0        | -0.5 |
+| 12   | Wizualny    | 8.0               | 7.0        | -1.0 |
+| 12   | Whitebox    | 7.0               | 7.5        | +0.5 |
+|      | Średnia     | 7.625             | 7.03       | -0.6 |
+
+Wniosek: poprzednie oceny 7.625/10 były FALSE-POSITIVE — zespół oceniał
+puste UI shell + Layers/ProofPacks panels, NIE realny schemat elektrotechniczny.
+
+### Ujawnione krytyczne blokery (po pokazaniu real schematu)
+
+A. PROJEKTANT SN/WN (PN-EN 60617 violation):
+   - Brak galwanicznego ciągu 110 kV → TR1 → Sekcja 1/II
+     (pixel region x=620-700, y=250-470 — TR1 wisi w powietrzu)
+   - Sekcja II ma tylko etykietę, brak pól Q1/Q8/T1/Q9
+     (asymetria rozdzielni dwusekcyjnej)
+   - Kabel SN 750 m wychodzi z nieistniejących pól
+
+B. CAD INDUSTRIAL:
+   - Pole TR1 symbol aparatów ~12 px (min ETAP/DIgSILENT = 24 px)
+   - Kabel czerwony nieortogonalny w punkcie wejścia do RMU
+     (skos pixel x=890-920)
+   - Labelki kabli nakładają się na geometrię (x=700-830, y=645)
+   - Drzewo modelu + Gotowość overlay nakładają się na ruler
+
+C. SCADA:
+   - Czerwony kabel przerywany sugeruje "fault/alarm" w trybie design
+     (mylące semantycznie dla operatora)
+   - Brak legendy stanów (energized/de-energized/fault)
+   - Brak severity coloring Blokady=7 / Ostrzeżenia=5
+
+D. WIZUALNY/WCAG:
+   - "Pole TR1" label kontrast ~3.2:1 (WCAG AA wymaga 4.5:1)
+   - Etykiety aparatów Q1/Q8/T1/Q9 + "Pole TR1" przy ~10-11 px
+     (WCAG min 12 px dla content text)
+   - Kolizja "System 110 kV" + ">110 kV" (x=240-340)
+
+E. WHITEBOX:
+   - Brak widocznego ID elementów (TR1 etykieta vs bus_id/branch_id)
+   - Sekcja II bez pól = trace gap dla tej szyny — NetworkValidator
+     powinien flagować
+
+### Następne sesje wymagane
+
+P0 KRYTYCZNE (rework rendererów):
+- SldLayoutPipeline faza 5 routing — wymusić ortogonalne busbar ↔ TR ↔ section
+- StationBlockBuilder — Sekcja II adapter snapshot→props symmetric per Sekcja 1
+- Min symbol size 24 px @ LOD2 — adaptacja SymbolRenderer scale
+- Min font 12 px content per WCAG (theme tokens override per LOD)
+
+P0 BLOKERY UX:
+- Reserved gutters dla rulers (top 20 px, left 30 px) — przesunąć overlays
+- Legenda stanów (design vs operational) — usunąć fault-style w trybie design
+- Severity coloring Blokady (czerwone) / Ostrzeżenia (żółte)
+
+P0 ENM VALIDATION:
+- NetworkValidator powinien wykrywać "section without bays" warning
+- Element ID overlay / tooltip dla audit trail
+
