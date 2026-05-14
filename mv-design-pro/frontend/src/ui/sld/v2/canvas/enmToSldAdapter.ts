@@ -1315,7 +1315,19 @@ function buildCableRuns(
       const terminalX = runStations.length > 0
         ? Math.max(endX, startX + STATION_PITCH)
         : endX;
-      const segmentLabels = buildRunSegmentLabels(runSegments, runStations, startX, y, terminalX);
+      const baseSegmentLabels = buildRunSegmentLabels(runSegments, runStations, startX, y, terminalX);
+      const feederOriginLabel = inferFeederOriginLabel(snapshot, startingBayRef);
+      const segmentLabels = feederOriginLabel
+        ? [
+            ...baseSegmentLabels,
+            {
+              segmentRef: `feeder-origin-${lineRun.id}`,
+              text: feederOriginLabel,
+              x: startX + 14,
+              y: GPZ_FIELD_CABLE_HEAD_Y + 14,
+            },
+          ]
+        : baseSegmentLabels;
       const segmentPaths = buildRunSegmentPaths(runSegments, runStations, startX, y, terminalX);
 
       const portStatus = detectMissingEndpointPorts(runSegments);
@@ -1448,6 +1460,22 @@ function buildCableRuns(
 
 function pendingRunEndX(startX: number, segmentCount: number): number {
   return startX + PENDING_RUN_LENGTH + Math.max(0, segmentCount - 1) * 110;
+}
+
+/**
+ * Wyciąga etykietę pola zasilającego (bay_number lub feeder_short_name) dla
+ * etykiety początku ciągu pod głowicą kablową GPZ. Pomaga Projektantowi
+ * odczytać który pole GPZ zasila który ciąg.
+ */
+function inferFeederOriginLabel(
+  snapshot: EnergyNetworkModel,
+  startingBayRef: string | null,
+): string | null {
+  if (!startingBayRef) return null;
+  const bay = (snapshot.bays ?? []).find(
+    (b) => b.ref_id === startingBayRef || b.id === startingBayRef,
+  );
+  return bay?.bay_number ?? bay?.feeder_short_name ?? null;
 }
 
 function buildCableRunLabel(
