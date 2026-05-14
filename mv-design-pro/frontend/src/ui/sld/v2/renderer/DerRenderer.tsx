@@ -178,7 +178,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
         >
         {KIND_LABEL_PL[kind]}
       </text>
-      {/* Moc znamionowa przy compact LOD — skrócony zapis pod etykietą */}
+      {/* Compact LOD: moc znamionowa + cos φ punkt pracy */}
       {lod === 'compact' && nominalPowerKw !== null && nominalPowerKw !== undefined && (
         <text
           x={0}
@@ -192,6 +192,27 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
           {nominalPowerKw.toFixed(0)} kW
         </text>
       )}
+      {lod === 'compact' && operatingPMw !== null && operatingPMw !== undefined && (() => {
+        const pKw = operatingPMw * 1000;
+        const hasQ = operatingQMvar !== null && operatingQMvar !== undefined;
+        const qKvar = hasQ ? (operatingQMvar as number) * 1000 : 0;
+        const s = Math.sqrt(pKw * pKw + qKvar * qKvar);
+        const cosPhi = s > 0 ? pKw / s : null;
+        if (cosPhi === null) return null;
+        return (
+          <text
+            x={0}
+            y={half + 26}
+            textAnchor="middle"
+            fill="#88BBDD"
+            fontFamily={FONT_MONO}
+            fontSize={7}
+            data-testid={`sld-v2-der-${id}-compact-cos-phi`}
+          >
+            {`cosφ ${cosPhi.toFixed(2)}`}
+          </text>
+        );
+      })()}
       {/* Nazwa DER pod symbolem (LOD=full only) */}
       {lod === 'full' && (
         <text

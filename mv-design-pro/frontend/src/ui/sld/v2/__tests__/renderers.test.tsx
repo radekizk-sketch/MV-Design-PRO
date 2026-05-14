@@ -511,6 +511,30 @@ describe('DerRenderer', () => {
     );
     expect(container.querySelector('[data-testid="sld-v2-der-d3-pq-widget"]')).toBeNull();
   });
+
+  it('cos φ compact renderowany gdy operatingPMw + operatingQMvar w LOD=compact', () => {
+    const { container } = render(
+      <svg>
+        <DerRenderer id="d4" x={0} y={0} kind="PV" name="PV-Cos"
+          operatingPMw={0.8} operatingQMvar={0.6} lod="compact" />
+      </svg>,
+    );
+    const badge = container.querySelector('[data-testid="sld-v2-der-d4-compact-cos-phi"]');
+    expect(badge).not.toBeNull();
+    // cos φ = 0.8 / sqrt(0.8² + 0.6²) = 0.8 / 1.0 = 0.80
+    expect(badge!.textContent).toContain('cosφ 0.80');
+  });
+
+  it('NC RFG badge widoczny w trybie compact', () => {
+    const { container } = render(
+      <svg>
+        <DerRenderer id="d5" x={0} y={0} kind="PV" name="PV-NCRFG"
+          ncRfgModule="B" lod="compact" />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-der-d5-nc-rfg-module"]')).not.toBeNull();
+    expect(container.querySelector('[data-nc-rfg-module="B"]')).not.toBeNull();
+  });
 });
 
 describe('SldCanvasV2 — smoke', () => {
