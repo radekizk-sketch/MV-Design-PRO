@@ -14,13 +14,22 @@
  * 3. lodToStrokeWidth — compute stroke width per LOD (thicker at overview)
  * 4. lodToSymbolScale — compute symbol scale factor per LOD
  *
- * Domyślne wartości zgodne z SLD_INDUSTRIAL_SPEC § 5.3 (Typografia hierarchiczna)
- * + AC-08 (LOD wzmacnia znaczenie elektryczne).
+ * SPEC BINDING: LOD zoom ranges są bindowane do SLD_INDUSTRIAL_SPEC § 5.1
+ * (patrz LodPolicy.ts). Stroke role base values wynikają z AC-01.
+ *
+ * KLASYFIKACJA STAŁYCH (V12.xx §9 No Heuristics — non-physics distinction):
+ * Mnożniki LOD (LOD_FONT_MULTIPLIER, LOD_STROKE_MULTIPLIER) oraz padding
+ * są PRESENTATION DEFAULTS — wartości dobranie empirycznie dla wizualnej
+ * czytelności (overview vs detail). NIE są wielkościami fizycznymi i NIE
+ * wpływają na obliczenia solverów (Z_loop, Ik, P, Q). Per AC-08 LOD
+ * wzmacnia znaczenie wizualne; same liczby są tunable w spec § 5.3
+ * tabeli defaults — przyszły design review może je zaktualizować bez
+ * łamania innych invariantów (Determinism, WHITE BOX, Frozen Result API).
  *
  * INVARIANTS:
  * - PURE functions (no side effects)
  * - DETERMINISTIC (same input → identical output)
- * - NO physics
+ * - NO physics (presentation-only multipliers, no solver impact)
  */
 
 import { LOD_ZOOM_THRESHOLDS, inferLodFromScale, type LodLevel } from './LodPolicy';
@@ -77,9 +86,10 @@ const BASE_FONT_SIZES: Readonly<Record<TextRole, number>> = {
 /**
  * Font size multiplier per LOD level.
  *
- * Strategia: overview używa lekko większych fontów (czytelność z daleka),
- * standard używa base, full-detail używa lekko mniejszych (więcej info per
- * unit area).
+ * PRESENTATION DEFAULT (non-physics): overview używa lekko większych fontów
+ * (czytelność z daleka), standard używa base, full-detail używa lekko
+ * mniejszych (więcej info per unit area). Wartości tunable bez wpływu na
+ * solver — patrz comment na górze pliku.
  */
 const LOD_FONT_MULTIPLIER: Readonly<Record<LodLevel, number>> = {
   0: 1.5, // overview: większe fonty żeby czytać przy małej skali
@@ -133,8 +143,10 @@ const BASE_STROKE_WIDTHS: Readonly<Record<StrokeRole, number>> = {
 /**
  * Stroke width multiplier per LOD.
  *
- * Strategia: overview podkreśla główne elementy grubszymi liniami,
- * detail LOD używa mniejszych grubości (więcej elementów na ekranie).
+ * PRESENTATION DEFAULT (non-physics): overview podkreśla główne elementy
+ * grubszymi liniami, detail LOD używa mniejszych grubości (więcej elementów
+ * na ekranie). Wartości tunable bez wpływu na solver — patrz comment na
+ * górze pliku.
  */
 const LOD_STROKE_MULTIPLIER: Readonly<Record<LodLevel, number>> = {
   0: 1.4,

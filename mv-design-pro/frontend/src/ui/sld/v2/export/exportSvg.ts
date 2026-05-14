@@ -106,11 +106,11 @@ export function normalizeSvgForExport(
   // `<style>` block bez kończącego średnika — np. `stroke:currentColor</style>`
   // albo na końcu CSS rule bez `;`. Bez tego V12K-007 invariant mogłby zostać
   // złamany w SVG eksportowanym z embedded <style>. Wzorzec wymaga aby przed
-  // currentColor była lub spacja-po-dwukropku (CSS values w style attribute)
-  // lub `>currentColor<` (text content w <style>) — chroni przed false-positive
-  // w atrybutach id/class.
+  // currentColor była `:` (CSS value) i po niej `<` (start tagu) lub `"`
+  // (koniec inline style="..."). Chroni przed false-positive w atrybutach
+  // id/class.
   svg = svg.replace(
-    /(:\s*)currentColor(\s*)(<)/g,
+    /(:\s*)currentColor(\s*)(<|")/g,
     `$1${LIGHT_TECHNICAL_COLOR_LINE_PRIMARY}$2$3`,
   );
 

@@ -118,6 +118,16 @@ describe('normalizeSvgForExport — V12K-007', () => {
     expect(norm1).toBe(norm2);
     expect(norm1).not.toContain('currentColor');
   });
+
+  it('AUDIT FIX #2: inline style="..." adjacent to next tag handled', () => {
+    // Edge case from audit: style attribute value ends with currentColor
+    // immediately followed by closing of style attr `"`. This was the original
+    // regex's domain — verify still works.
+    const raw = '<svg><line style="stroke: currentColor"/><rect/></svg>';
+    const out = normalizeSvgForExport(raw);
+    expect(out).not.toContain('currentColor');
+    expect(out).toContain('stroke: #000000');
+  });
 });
 
 describe('generateSvgFilenameHint', () => {
