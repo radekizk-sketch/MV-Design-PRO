@@ -964,3 +964,70 @@ P0.5 backend: ✓ DONE.
 
 **Sumarycznie: 6/10 P0 priorytety KOMPLETNE.** Pozostałe ~83 OD.
 
+
+---
+
+## 5.6 Iter 27 — P0.9 Wizard improvements (verified existing state)
+
+Sweep weryfikacyjny K1+K3+K7 (per P0.9 spec).
+
+### K3 — toggle "Uproszczony" / "Zaawansowany"
+
+**JUŻ ISTNIEJE** w `CreateCaseDialog.tsx:225-226`:
+```tsx
+<option value="simplified">Uproszczony — moc zwarciowa po stronie SN</option>
+<option value="advanced">Zaawansowany — model 110 kV + TR + GPZ</option>
+```
+Plus integracja w types.ts ScInputMode + sc_input_mode propagacja
+do study_case.config.
+
+K3: ✓ DONE (verified).
+
+### K1 — selektor operatora default ENEA
+
+**JUŻ ISTNIEJE** w `study-cases/types.ts`:
+```typescript
+export type OperatorProfileId = 'enea' | 'energa' | 'pge' | 'pse' | 'tauron';
+
+DEFAULT_CASE_CONFIG = {
+  operator_profile_id: 'enea',  // default per /goal V12K
+  ...
+};
+```
+Dropdown selector w CreateCaseDialog.tsx:185.
+
+K1: ✓ DONE (verified).
+
+### K7 — split-preview commit/cancel
+
+**PURE FUNCTION JEST** (`builder/splitLinePreview.ts` + 31 testów),
+**UI KOMPONENT BRAKUJE** (`SplitPreviewModal` lub overlay z commit/cancel
+buttons).
+
+K7: ⏸ ~3 OD (UI modal + integracja z SldWorkspaceContainer).
+
+### P0.9 Status
+
+- ✓ K3 toggle simplified/advanced — DONE
+- ✓ K1 operator default ENEA — DONE
+- ⏸ K7 split-preview commit/cancel UI — ~3 OD follow-up
+
+**P0.9 backend foundation: DONE.** Tylko K7 UI modal pozostaje (~3 OD).
+
+### Rewizja P0 status (po iter 27 sweep)
+
+| P0 | Status |
+|---|---|
+| P0.1 Symbol library 54/50 100% parity | ✓ |
+| P0.2 Protection SI-100 backend | ✓ (FE ~5) |
+| P0.3 LayoutEngine port-based F2 | ⏸ ~25 OD |
+| P0.4 VDROP+Earthing proof packs | ✓ |
+| P0.5 Fault-loop NN backend API | ✓ (FE ~3) |
+| P0.6 LOD foundation | ✓ (sweep ~15) |
+| P0.7 Theme F4 | ⏸ ~20 OD |
+| P0.8 DOCX export | ✓ |
+| P0.9 K3+K1 toggle/selector | ✓ (K7 ~3 OD) |
+| P0.10 CI visual regression | ⏸ ~8 OD |
+
+**7/10 P0 priorytety KOMPLETNE.** Pozostałe ~74 OD.
+
