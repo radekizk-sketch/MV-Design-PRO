@@ -429,34 +429,65 @@ async function main() {
     }
   }
 
-  // K13: Solver SC_3F (Short Circuit 3-fazowy IEC 60909).
-  // Tworzy AnalysisRun (PENDING) + execute → status=DONE + ResultSet.
-  let k13Status = 'NOT_REACHED';
-  let sc3fRunId = null;
-  if (k6Status === 'PASS') {
-    log('K13', 'Uruchom SC_3F solver (IEC 60909)...');
+  // K13: Solver runs (SC_3F + LOAD_FLOW) — IEC 60909 + NR power flow.
+  async function runAnalysis(analysisType) {
     const createRes = await api(
       'POST',
       `/api/execution/study-cases/${caseId}/runs`,
-      {
-        analysis_type: 'SC_3F',
-        solver_input: {},
-      },
+      { analysis_type: analysisType, solver_input: {} },
     );
-    if (createRes.ok && createRes.json?.id) {
-      sc3fRunId = createRes.json.id;
-      const execRes = await api(
-        'POST',
-        `/api/execution/runs/${sc3fRunId}/execute`,
-      );
-      if (execRes.ok && execRes.json?.status === 'DONE') {
-        k13Status = 'PASS';
-        log('K13', `OK SC_3F run done (run_id=${sc3fRunId})`);
-      } else {
-        k13Status = `FAIL_EXEC: ${execRes.json?.status} ${execRes.json?.error_message ?? ''}`;
-      }
+    if (!createRes.ok || !createRes.json?.id) return null;
+    const execRes = await api(
+      'POST',
+      `/api/execution/runs/${createRes.json.id}/execute`,
+    );
+    return {
+      runId: createRes.json.id,
+      status: execRes.json?.status,
+      error: execRes.json?.error_message,
+    };
+  }
+
+  let k13Status = 'NOT_REACHED';
+  let sc3fRunId = null;
+  let lfRunId = null;
+  if (k6Status === 'PASS') {
+    log('K13', 'Uruchom SC_3F solver (IEC 60909)...');
+    const sc3f = await runAnalysis('SC_3F');
+    sc3fRunId = sc3f?.runId;
+    log('K13', `SC_3F: ${sc3f?.status}`);
+
+    log('K13', 'Uruchom LOAD_FLOW solver (Newton-Raphson)...');
+    const lf = await runAnalysis('LOAD_FLOW');
+    lfRunId = lf?.runId;
+    log('K13', `LOAD_FLOW: ${lf?.status}`);
+
+    if (sc3f?.status === 'DONE' && lf?.status === 'DONE') {
+      k13Status = 'PASS';
     } else {
-      k13Status = `FAIL_CREATE: ${createRes.status}`;
+      k13Status = `PARTIAL: SC3F=${sc3f?.status} LF=${lf?.status}`;
+    }
+  }
+
+  // K14: Proof pack eksport JSON+PDF dla SC_3F run.
+  let k14Status = 'NOT_REACHED';
+  if (sc3fRunId) {
+    log('K14', `Eksport Proof Pack JSON+PDF dla SC_3F run ${sc3fRunId}...`);
+    const proofJson = await api(
+      'GET',
+      `/api/analysis-runs/${sc3fRunId}/export/proof/json`,
+    );
+    const proofPdfRes = await fetch(
+      `http://127.0.0.1:8000/api/analysis-runs/${sc3fRunId}/export/proof/pdf`,
+    );
+    const pdfSize = proofPdfRes.ok
+      ? (await proofPdfRes.arrayBuffer()).byteLength
+      : 0;
+    if (proofJson.ok && pdfSize > 1000) {
+      k14Status = `PASS: pdf=${pdfSize}B`;
+      log('K14', `OK Proof Pack JSON + PDF ${pdfSize} bytes`);
+    } else {
+      k14Status = `FAIL: pdfSize=${pdfSize}`;
     }
   }
 
@@ -486,6 +517,8 @@ async function main() {
       k10_status: k10Status,
       k13_status: k13Status,
       sc3f_run_id: sc3fRunId,
+      lf_run_id: lfRunId,
+      k14_status: k14Status,
     },
     null,
     2,
