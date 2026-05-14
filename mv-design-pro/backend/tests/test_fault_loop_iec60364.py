@@ -222,7 +222,23 @@ class TestValidation:
             return_conductor=LoopImpedanceComponent(label="PE", r_ohm=0.0, x_ohm=0.0),
             transformer_impedance=LoopImpedanceComponent(label="TR", r_ohm=0.0, x_ohm=0.0),
         )
-        with pytest.raises(ValueError, match="Z_loop = 0"):
+        with pytest.raises(ValueError, match=r"degenerated case"):
+            compute_fault_loop(bad)
+
+    def test_cr_fix_tiny_z_loop_rejected(self) -> None:
+        """CR-FIX (code review KRYTYCZNE #2): Z_loop < 1 µΩ rejected.
+
+        Bez tego guard'a ekstremalnie małe Z dawały Ik >> 100 kA (fizycznie
+        niemożliwe dla LV) i overflow serializacji JSON.
+        """
+        bad = FaultLoopInput(
+            fault_node_id="x",
+            u_nom_v=230.0,
+            phase_conductor=LoopImpedanceComponent(label="L", r_ohm=1e-15, x_ohm=1e-15),
+            return_conductor=LoopImpedanceComponent(label="PE", r_ohm=1e-15, x_ohm=1e-15),
+            transformer_impedance=LoopImpedanceComponent(label="TR", r_ohm=1e-15, x_ohm=1e-15),
+        )
+        with pytest.raises(ValueError, match=r"fizycznie niemożliwa|degenerated case"):
             compute_fault_loop(bad)
 
 

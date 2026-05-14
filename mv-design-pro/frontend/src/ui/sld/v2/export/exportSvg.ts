@@ -88,9 +88,21 @@ export function normalizeSvgForExport(
 
   let svg = rawSvg;
 
+  // CR-FIX (code-review ULEPSZENIE #3): naive /currentColor/g zamieniał też
+  // currentColor w atrybutach id, klasach lub komentarzach. Precyzyjny regex
+  // zamienia tylko gdy currentColor występuje jako VALUE atrybutu (po `="`).
+  // Word boundary chroni przed substrings (np. "id=myCurrentColor").
   // Replace currentColor with light_technical line primary (czarny).
   // currentColor is the canonical token used in all canonical_symbols/*.svg.
-  svg = svg.replace(/currentColor/g, LIGHT_TECHNICAL_COLOR_LINE_PRIMARY);
+  svg = svg.replace(
+    /(=")currentColor(")/g,
+    `$1${LIGHT_TECHNICAL_COLOR_LINE_PRIMARY}$2`,
+  );
+  // Also handle CSS-style usage (currentColor in style="..." or fill: currentColor)
+  svg = svg.replace(
+    /(:\s*)currentColor(\s*[;}])/g,
+    `$1${LIGHT_TECHNICAL_COLOR_LINE_PRIMARY}$2`,
+  );
 
   // Optionally inject background rect (drukowanie A3 — białe tło).
   if (options.includeBackground) {

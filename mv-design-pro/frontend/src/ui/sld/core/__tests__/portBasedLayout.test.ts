@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildEdgeRouteFromPorts,
   generateOrthogonalPath,
   getPortDefinition,
   getPortsManifestStats,
@@ -212,6 +213,136 @@ describe('generateOrthogonalPath — Manhattan routing', () => {
       { x: 100, y: 50, portId: 'b' },
     );
     expect(a).toEqual(b);
+  });
+});
+
+describe('buildEdgeRouteFromPorts — high-level edge resolver', () => {
+  it('builds full route for CB top → CB bottom (collinear vertical)', () => {
+    const route = buildEdgeRouteFromPorts(
+      { symbolId: 'circuit_breaker', portId: 'top', originX: 200, originY: 100 },
+      { symbolId: 'circuit_breaker', portId: 'bottom', originX: 200, originY: 100 },
+    );
+    expect(route).not.toBeNull();
+    expect(route?.fromPort.x).toBe(250); // 200 + 50 (top.x within symbol)
+    expect(route?.fromPort.y).toBe(100); // 100 + 0 (top.y)
+    expect(route?.toPort.x).toBe(250); // 200 + 50
+    expect(route?.toPort.y).toBe(200); // 100 + 100 (bottom.y)
+    expect(route?.segments).toHaveLength(1); // collinear vertical
+  });
+
+  it('builds L-shape route for cross-symbol connection', () => {
+    const route = buildEdgeRouteFromPorts(
+      { symbolId: 'busbar', portId: 'right', originX: 0, originY: 0 },
+      { symbolId: 'circuit_breaker', portId: 'top', originX: 200, originY: 50 },
+    );
+    expect(route).not.toBeNull();
+    expect(route?.fromPort.x).toBe(100); // 0 + 100 (right.x)
+    expect(route?.fromPort.y).toBe(50); // 0 + 50 (right.y)
+    expect(route?.toPort.x).toBe(250); // 200 + 50 (top.x)
+    expect(route?.toPort.y).toBe(50); // 50 + 0 (top.y)
+    // From (100, 50) to (250, 50) → collinear horizontal → 1 segment
+    expect(route?.segments).toHaveLength(1);
+  });
+
+  it('returns null when source port unknown', () => {
+    const route = buildEdgeRouteFromPorts(
+      { symbolId: 'circuit_breaker', portId: 'no-such-port', originX: 0, originY: 0 },
+      { symbolId: 'circuit_breaker', portId: 'top', originX: 200, originY: 100 },
+    );
+    expect(route).toBeNull();
+  });
+
+  it('returns null when target port unknown', () => {
+    const route = buildEdgeRouteFromPorts(
+      { symbolId: 'circuit_breaker', portId: 'top', originX: 0, originY: 0 },
+      { symbolId: 'circuit_breaker', portId: 'no-such-port', originX: 200, originY: 100 },
+    );
+    expect(route).toBeNull();
+  });
+
+  it('returns null when source symbol unknown', () => {
+    const route = buildEdgeRouteFromPorts(
+      { symbolId: 'unknown_symbol', portId: 'top', originX: 0, originY: 0 },
+      { symbolId: 'circuit_breaker', portId: 'top', originX: 200, originY: 100 },
+    );
+    expect(route).toBeNull();
+  });
+
+  it('respects scale option', () => {
+    const route = buildEdgeRouteFromPorts(
+      { symbolId: 'circuit_breaker', portId: 'top', originX: 0, originY: 0, scale: 2.0 },
+      { symbolId: 'circuit_breaker', portId: 'bottom', originX: 0, originY: 0, scale: 2.0 },
+    );
+    expect(route?.fromPort.x).toBe(100); // 50 × 2
+    expect(route?.toPort.y).toBe(200); // 100 × 2
+  });
+
+  it('forwards gridStep + firstLeg options to generateOrthogonalPath', () => {
+    const route = buildEdgeRouteFromPorts(
+      { symbolId: 'circuit_breaker', portId: 'top', originX: 0, originY: 0 },
+      { symbolId: 'circuit_breaker', portId: 'top', originX: 100, originY: 50 },
+      { firstLeg: 'horizontal' },
+    );
+    expect(route).not.toBeNull();
+    // From (50, 0) to (150, 50) — horizontal first leg
+    expect(route?.segments).toHaveLength(2);
+    expect(route?.segments[0]).toEqual({ x1: 50, y1: 0, x2: 150, y2: 0 });
+    expect(route?.segments[1]).toEqual({ x1: 150, y1: 0, x2: 150, y2: 50 });
+  });
+
+  it('determinizm — same spec → identical route', () => {
+    const spec = {
+      from: {
+        symbolId: 'circuit_breaker',
+        portId: 'top' as const,
+        originX: 100,
+        originY: 50,
+      },
+      to: {
+        symbolId: 'busbar',
+        portId: 'left' as const,
+        originX: 300,
+        originY: 200,
+      },
+    };
+    const a = buildEdgeRouteFromPorts(spec.from, spec.to);
+    const b = buildEdgeRouteFromPorts(spec.from, spec.to);
+    expect(a).toEqual(b);
+  });
+});
+
+describe('generateOrthogonalPath — robustness (CR-fix)', () => {
+  it('CR-FIX gridStep=0 clamps to 1 (no NaN segments)', () => {
+    const segs = generateOrthogonalPath(
+      { x: 10, y: 20, portId: 'a' },
+      { x: 50, y: 70, portId: 'b' },
+      { gridStep: 0 },
+    );
+    expect(segs.length).toBe(2);
+    for (const s of segs) {
+      expect(Number.isFinite(s.x1)).toBe(true);
+      expect(Number.isFinite(s.y1)).toBe(true);
+      expect(Number.isFinite(s.x2)).toBe(true);
+      expect(Number.isFinite(s.y2)).toBe(true);
+    }
+  });
+
+  it('CR-FIX gridStep negative clamps to 1', () => {
+    const segs = generateOrthogonalPath(
+      { x: 0, y: 0, portId: 'a' },
+      { x: 100, y: 50, portId: 'b' },
+      { gridStep: -10 },
+    );
+    expect(segs.every((s) => Number.isFinite(s.x1) && Number.isFinite(s.y2))).toBe(true);
+  });
+
+  it('CR-FIX gridStep NaN clamps to 1', () => {
+    const segs = generateOrthogonalPath(
+      { x: 0, y: 0, portId: 'a' },
+      { x: 100, y: 50, portId: 'b' },
+      { gridStep: NaN },
+    );
+    expect(segs.every((s) => Number.isFinite(s.x1))).toBe(true);
   });
 });
 

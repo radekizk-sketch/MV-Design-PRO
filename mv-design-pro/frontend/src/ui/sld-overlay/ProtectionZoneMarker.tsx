@@ -78,7 +78,11 @@ export function ProtectionZoneMarker({
   showBox = true,
   testId = 'sld-protection-zone-marker',
 }: ProtectionZoneMarkerProps): JSX.Element {
-  const [bx, by, bw, bh] = boxXywh;
+  const [bx, by, bwRaw, bhRaw] = boxXywh;
+  // CR-FIX (code-review ULEPSZENIE #1): SVG <rect> z negative width/height
+  // jest spec-error (Chrome ignoruje, Safari crashuje pipeline). Clamp do 0.
+  const bw = Math.max(0, Number.isFinite(bwRaw) ? bwRaw : 0);
+  const bh = Math.max(0, Number.isFinite(bhRaw) ? bhRaw : 0);
 
   const t51Label = formatTimeSeconds(t51Seconds);
   const upstreamLabel = formatMargin(margin?.upstream);

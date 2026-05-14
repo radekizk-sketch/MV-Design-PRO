@@ -70,6 +70,24 @@ describe('normalizeSvgForExport — V12K-007', () => {
     const out = normalizeSvgForExport(raw);
     expect(out).not.toContain('fill="#FFFFFF"');
   });
+
+  it('CR-FIX preserves id="currentColor_xyz" (precise regex, no naive replace)', () => {
+    const raw =
+      '<svg><g id="currentColor_legend"><line stroke="currentColor"/></g></svg>';
+    const out = normalizeSvgForExport(raw);
+    // The id attribute must remain intact (not substituted)
+    expect(out).toContain('id="currentColor_legend"');
+    // The stroke attribute MUST be substituted
+    expect(out).toContain('stroke="#000000"');
+  });
+
+  it('CR-FIX handles currentColor in style attribute', () => {
+    const raw =
+      '<svg><line style="fill: currentColor; stroke: currentColor;"/></svg>';
+    const out = normalizeSvgForExport(raw);
+    expect(out).toContain('fill: #000000');
+    expect(out).toContain('stroke: #000000');
+  });
 });
 
 describe('generateSvgFilenameHint', () => {

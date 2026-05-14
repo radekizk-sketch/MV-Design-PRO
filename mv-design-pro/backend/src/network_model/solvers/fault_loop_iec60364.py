@@ -13,10 +13,11 @@ STATUS: MVP (single station, TN-S, TN-C-S)
 WHITE BOX: pełen trace dla każdej decyzji (audytowalne).
 
 Scope MVP (krok 2 audytu):
-- Wyłącznie TN-S i TN-C-S (TT/IT deferred)
+- Wyłącznie TN-S, TN-C-S, TN-C (TT/IT deferred)
 - Pojedyncza stacja SN→nN z jednym transformatorem
 - Pojedynczy punkt zwarcia (jeden bus LV)
-- Hardcoded standard L-PE / L-PEN przewody w katalogu LV cable types
+- Caller dostarcza LoopImpedanceComponent (R+X) explicit per kabel + transformator;
+  Future P0.5b: auto-extract komponentów z NetworkGraph + catalog LV cable types
 
 Co solver NIE robi:
 - TT (oddzielne uziemienie) — deferred
@@ -238,10 +239,17 @@ def compute_fault_loop(data: FaultLoopInput) -> FaultLoopResult:
     )
 
     z_magnitude = abs(z_loop_complex)
-    if z_magnitude == 0:
+    # CR-FIX (code-review KRYTYCZNE #2): guard przeciw bardzo małemu Z.
+    # Z_loop < 1 µΩ jest fizycznie niemożliwe dla realnej sieci nN
+    # (PowerSCC dowolnego rozdzielacza ogranicza Ik do max ~100 kA).
+    # Bez tego guard'a ekstremalnie małe Z dawały Ik daleko poza zakresem
+    # IEEE 754 i nadawały overflow JSON.
+    Z_MIN_OHM = 1e-6
+    if z_magnitude < Z_MIN_OHM:
         raise ValueError(
-            "Z_loop = 0 Ω — pętla zwarciowa zerowa (degenerated case). "
-            "Sprawdź dane wejściowe — wszystkie komponenty mają R=0 i X=0."
+            f"Z_loop = {z_magnitude:.3e} Ω < {Z_MIN_OHM:.0e} Ω — pętla zerowa lub "
+            "fizycznie niemożliwa (degenerated case). Realna nN ma Z_loop "
+            "≥ kilkudziesięciu mΩ. Sprawdź dane wejściowe."
         )
 
     # Krok 2: oblicz Ik z c_factor MIN/MAX

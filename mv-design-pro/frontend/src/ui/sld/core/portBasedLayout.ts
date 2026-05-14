@@ -190,13 +190,16 @@ export function generateOrthogonalPath(
   fromPort: PortPosition,
   toPort: PortPosition,
   options?: {
-    /** Grid snap step in pixels (default 5). */
+    /** Grid snap step in pixels (default 5). Values <=0 or NaN are clamped to 1 (no snap). */
     gridStep?: number;
     /** First leg orientation ('vertical' | 'horizontal'). Default vertical. */
     firstLeg?: 'vertical' | 'horizontal';
   },
 ): OrthogonalSegment[] {
-  const gridStep = options?.gridStep ?? 5;
+  // CR-FIX (code-review KRYTYCZNE #1): gridStep=0 lub NaN dał NaN we
+  // wszystkich segmentach → SVG crash. Clamp do 1 (effective "no snap").
+  const requestedStep = options?.gridStep ?? 5;
+  const gridStep = Number.isFinite(requestedStep) && requestedStep > 0 ? requestedStep : 1;
   const firstLeg = options?.firstLeg ?? 'vertical';
 
   const snap = (v: number) => Math.round(v / gridStep) * gridStep;
@@ -233,6 +236,96 @@ export function generateOrthogonalPath(
 // ---------------------------------------------------------------------------
 // Public registry stats (for guards + reports)
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// High-level edge resolver
+// ---------------------------------------------------------------------------
+
+/**
+ * Path segment compatible z EdgeRouteV1.segments (frontend/.../layoutResult.ts).
+ *
+ * Re-export pod nazwą `PortBasedPathSegment` żeby nie wprowadzać twardej
+ * zależności od `EdgeRouteV1` (które przenosi inne pola). Compatible-shape only.
+ */
+export interface PortBasedPathSegment {
+  readonly x1: number;
+  readonly y1: number;
+  readonly x2: number;
+  readonly y2: number;
+}
+
+/**
+ * Wynik routing-u port-based edge.
+ *
+ * Output kompatybilny strukturalnie z EdgeRouteV1 (startPoint + endPoint +
+ * segments) — caller może mapować na EdgeRouteV1 wstawiając edgeId/edgeType.
+ */
+export interface PortBasedEdgeRoute {
+  /** Port początkowy z resolvePortPosition. */
+  readonly fromPort: PortPosition;
+  /** Port końcowy z resolvePortPosition. */
+  readonly toPort: PortPosition;
+  /** Ortogonalne segmenty (Manhattan). */
+  readonly segments: readonly PortBasedPathSegment[];
+}
+
+/**
+ * Specyfikacja edge resolvera — opisuje endpointy + opcje routing.
+ */
+export interface EdgeEndpointSpec {
+  /** Symbol_id z canonical_symbols/ports.json. */
+  symbolId: string;
+  /** Port_id w manifestu. */
+  portId: string;
+  /** Absolutne origin (top-left) symbolu na canvas. */
+  originX: number;
+  originY: number;
+  /** Skala (1.0 default). */
+  scale?: number;
+}
+
+/**
+ * Resolve edge → port positions + Manhattan path.
+ *
+ * Pure top-level helper łączący 3 niższe operacje:
+ * 1. resolvePortPosition(from)
+ * 2. resolvePortPosition(to)
+ * 3. generateOrthogonalPath
+ *
+ * Returns null gdy jakiś port nie jest znaleziony (defensive — caller decyduje
+ * jak zalogować/fallback do center-to-center).
+ *
+ * INVARIANT: deterministyczny — same spec → identyczny output.
+ */
+export function buildEdgeRouteFromPorts(
+  fromSpec: EdgeEndpointSpec,
+  toSpec: EdgeEndpointSpec,
+  options?: {
+    gridStep?: number;
+    firstLeg?: 'vertical' | 'horizontal';
+  },
+): PortBasedEdgeRoute | null {
+  const fromPort = resolvePortPosition(
+    fromSpec.symbolId,
+    fromSpec.portId,
+    fromSpec.originX,
+    fromSpec.originY,
+    fromSpec.scale ?? 1.0,
+  );
+  if (fromPort === null) return null;
+
+  const toPort = resolvePortPosition(
+    toSpec.symbolId,
+    toSpec.portId,
+    toSpec.originX,
+    toSpec.originY,
+    toSpec.scale ?? 1.0,
+  );
+  if (toPort === null) return null;
+
+  const segments = generateOrthogonalPath(fromPort, toPort, options);
+  return { fromPort, toPort, segments };
+}
 
 /**
  * Aggregate stats over canonical_symbols/ports.json — used by port_binding_guard

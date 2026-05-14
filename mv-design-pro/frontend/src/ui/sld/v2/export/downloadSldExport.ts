@@ -67,11 +67,17 @@ export function downloadSldSvgBySelector(
   if (root === null) {
     return null;
   }
-  // Find <svg> child or use root if it IS an SVG
-  const svgEl =
-    root.tagName.toLowerCase() === 'svg'
-      ? (root as SVGSVGElement)
-      : (root.querySelector('svg') as SVGSVGElement | null);
+  // CR-FIX (code-review KRYTYCZNE #3): tagName case sensitivity różni się
+  // między HTML DOM (lowercased) i XML DOM (preserved). Sprawdzamy przez
+  // namespaceURI + localName (cross-parser safe), z fallback na
+  // instanceof SVGSVGElement gdy dostępny w environment.
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const isSvgRoot =
+    (typeof SVGSVGElement !== 'undefined' && root instanceof SVGSVGElement) ||
+    (root.namespaceURI === SVG_NS && root.localName === 'svg');
+  const svgEl = isSvgRoot
+    ? (root as SVGSVGElement)
+    : (root.querySelector('svg') as SVGSVGElement | null);
   if (svgEl === null) {
     return null;
   }

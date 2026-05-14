@@ -147,6 +147,32 @@ describe('ProtectionZoneMarker — rendering', () => {
     );
   });
 
+  it('CR-FIX clamps negative width/height to 0 (SVG spec safety)', () => {
+    const { container } = renderInSvg(
+      <ProtectionZoneMarker
+        boxXywh={[100, 50, -200, -80]}
+        relayLabel="Q01"
+        t51Seconds={0.18}
+      />,
+    );
+    const box = container.querySelector('[data-testid$="-box"]');
+    expect(box?.getAttribute('width')).toBe('0');
+    expect(box?.getAttribute('height')).toBe('0');
+  });
+
+  it('CR-FIX handles NaN width/height (clamps to 0)', () => {
+    const { container } = renderInSvg(
+      <ProtectionZoneMarker
+        boxXywh={[100, 50, NaN, NaN]}
+        relayLabel="Q01"
+        t51Seconds={0.18}
+      />,
+    );
+    const box = container.querySelector('[data-testid$="-box"]');
+    expect(box?.getAttribute('width')).toBe('0');
+    expect(box?.getAttribute('height')).toBe('0');
+  });
+
   it('determinizm — same props → identyczny DOM', () => {
     const { container: a } = renderInSvg(
       <ProtectionZoneMarker
