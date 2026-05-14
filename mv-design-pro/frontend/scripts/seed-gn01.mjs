@@ -161,23 +161,59 @@ async function main() {
     }
   }
 
-  log('K_final', 'Weryfikuję topology po K3...');
-  const summary3 = await api('GET', `/api/cases/${caseId}/enm/topology/summary`);
+  // K4: Pole SN (add_sn_bay) — line_out bay z catalog binding APARAT_SN
+  let k4Status = 'NOT_REACHED';
+  if (k3Status === 'PASS') {
+    const enmAfterK3 = await api('GET', `/api/cases/${caseId}/enm`);
+    const snBus = (enmAfterK3.json?.buses ?? []).find(
+      (b) => b.voltage_kv === 15,
+    );
+    if (snBus) {
+      log('K4', 'Pole SN line_out (add_sn_bay)...');
+      const bayRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+        project_id: projectId,
+        operation: {
+          name: 'add_sn_bay',
+          idempotency_key: 'gn01_bay_q01_line_out',
+          payload: {
+            bus_ref: snBus.ref_id,
+            bay_role: 'LINE_OUT',
+            // namespace APARAT_SN syntezowane z catalog_ref per domain_ops_policy.py:212
+            catalog_ref: 'sw-ls-abb-nal-12kv-630a',
+            designation_q: 'Q01',
+          },
+        },
+      });
+      if (bayRes.ok && !bayRes.json?.error_code) {
+        k4Status = 'PASS';
+        log('K4', 'OK bay Q01 added', {
+          created: bayRes.json?.changes?.created_element_ids?.length ?? 0,
+        });
+      } else {
+        k4Status = `FAIL: ${bayRes.status} ${bayRes.json?.error_code ?? bayRes.json?.error ?? ''}`;
+        log('K4', k4Status);
+      }
+    }
+  }
+
+  log('K_final', 'Weryfikuję topology końcową...');
+  const summaryFinal = await api('GET', `/api/cases/${caseId}/enm/topology/summary`);
 
   console.log('\n=== SEEDER GN01 SUMMARY ===');
   console.log(JSON.stringify(
     {
       projectId,
       caseId,
-      bus_count_final: summary3.json.bus_count ?? 0,
-      source_count_final: summary3.json.source_count ?? 0,
-      revision_final: summary3.json.enm_revision ?? 1,
+      bus_count_final: summaryFinal.json.bus_count ?? 0,
+      source_count_final: summaryFinal.json.source_count ?? 0,
+      revision_final: summaryFinal.json.enm_revision ?? 1,
       k1_status: project.ok && caseRes.ok ? 'PASS' : 'FAIL',
       k2_status:
         gpzRes.ok && !gpzRes.json?.error_code
           ? 'PASS'
           : `FAIL: ${gpzRes.status} ${gpzRes.json?.error_code ?? ''}`,
       k3_status: k3Status,
+      k4_status: k4Status,
     },
     null,
     2,
