@@ -727,3 +727,81 @@ P0 ENM VALIDATION:
 - NetworkValidator powinien wykrywać "section without bays" warning
 - Element ID overlay / tooltip dla audit trail
 
+
+---
+
+## 5.2 Sesja kontynuowana — E2E backend pipeline COMPLETE (12/14)
+
+### GN01 deterministyczny seeder + audyt (iter 16-22, 50 commitów total)
+
+Kompletna ścieżka audytowalna **GN01 baseline**:
+
+```
+1. Project + Study Case (K1)
+2. GPZ 110/15 kV (K2)
+3. Sekcja II SN (K3)
+4. Pole Q01 LINE_OUT (K4)
+5. Kabel SN EPR Al 1C 150 / 1500m (K5)
+6. Stacja inline MV/LV (K6) — TR 1000 kVA + 3 pola SN + sekcja nN
+7. Odgałęzienie 800m z ZKSN.BRANCH_1 (K7)
+8. ZKSN RSN-6 (K8) — przelotowy 2-port BRANCH_1/BRANCH_2
+9. (opcjonalne) — station configurator details
+10. PV inverter 0.5 MW @ 0.4 kV (K10) — add_converter_source nn_side
+11. OZE setpoints (K11) — update_element_parameters z limits.{cos_phi_min/max, q_min/max, p_max_mw}
+12. (opcjonalne) — Katalog drag-from-katalog UI
+13. 6 SOLVER ANALIZ (K13) — wszystkie DONE:
+    • SC_3F (IEC 60909)
+    • SC_2F
+    • LOAD_FLOW (Newton-Raphson)
+    • PHASE_STATE_SN
+    • DYNAMIC_STABILITY (FRT/LVRT)
+    • SOURCE_COMPLIANCE (NC RfG)
+14. 6 EKSPORT FORMATÓW (K14) — wszystkie HTTP 200:
+    • proof/json    106 KB (z white_box_trace)
+    • proof/latex   16 KB
+    • proof/pdf     10 KB (5 stron)
+    • report/json   69 KB
+    • report/pdf    3 KB
+    • report/docx   37 KB (python-docx)
+    TOTAL: 243 KB deterministic
+```
+
+### ENM final state (revision 10)
+
+- bus_count: 13 (110/15 kV system + sekcje SN + nN + ZKSN + connections)
+- branch_count: 10 (TR + kable SN split przez ZKSN + odgałęzienie)
+- source_count: 1 (GPZ Sk3 4000 MVA)
+- generator_count: 1 (PV setpoints P=0.4 MW, cos_phi 0.9-1.0)
+- transformer_count: 2 (TR1 GPZ + TR400 stacja)
+
+### Rozpoznane konwencje catalog binding (8 wzorców)
+
+1. **Synthesized**: grid_source, sn_bay, kabel, station — namespace z operation+context
+2. **Explicit namespace**: branch_points (`mv_branch_points`)
+3. **Voltage-matched**: converter_source (`source_technology`→ ZRODLO_NN_PV/BESS/FW)
+4. **Allowlist update**: generators allowlist {name, p_mw, q_mvar, limits, n_parallel, meta, in_service}
+5. **From_ref format**: element_ref + port_id z `.` separator (np. `bp/{hash}/zksn.BRANCH_1`)
+6. **Branch port naming**: ZKSN = BRANCH_1/BRANCH_2 (2 porty), słup_rozg = BRANCH (1 port)
+7. **Catalog voltage matching**: catalog napięcie MUSI match target_bus voltage (V_match z error converter.voltage_mismatch)
+8. **Catalog status hierarchy**: PRODUKCYJNY_V1 > REFERENCYJNY_V1 > CANDIDATE > REQUIRES_SOURCE
+
+### Pokrycie DoD (P0 priorytety)
+
+- ✓ **P0.8 DOCX export** (37 KB python-docx, polski raport) — KOMPLETNY
+- ✓ **P0.4 częściowo** — 4/8 proof packs DONE (SC_3F, SC_2F, LF, PHASE_STATE_SN, DYN, SRC_COMP);
+  VDROP/Earthing/Equipment/Losses unimplemented (~10 OD)
+- ✓ **Frozen API + WHITE BOX + Determinism** — wszystkie 3 invariants V12.xx canon
+- ⏸ P0.1 Symbol library (32→≥50, ~10 OD)
+- ⏸ P0.2 Protection SI-100 FE Uruchom Protection (template_ref binding ~5 OD)
+- ⏸ P0.3 LayoutEngine port-based F2 (~25 OD)
+- ⏸ P0.5 Fault-loop NN solver (~15 OD)
+- ⏸ P0.6 LOD refactor + renderer wiring lodToFontSize (~15 OD)
+- ⏸ P0.7 Theme F4 (~20 OD)
+- ⏸ P0.9 Wizard improvements (~7 OD)
+- ⏸ P0.10 CI visual regression (~8 OD)
+
+### Wymagane następne sesje (~90 OD)
+
+Per stop hook estimate: ~30-40 OD rendering rework + ~50 OD pozostałe P0.
+Branch 50 commitów ready do dalszej pracy.
+
