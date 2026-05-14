@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CatalogPicker, type CatalogEntry } from './CatalogPicker';
 
 export type SegmentKind = 'KABEL_SN' | 'LINIA_NAPOWIETRZNA';
+export type TrunkNextStep = 'station' | 'zksn' | 'branch_pole' | 'continue';
 
 export interface TrunkContinueFormData {
   segment_kind: SegmentKind;
   length_m: number;
   catalog_ref: string | null;
+  next_step: TrunkNextStep;
   notes: string;
 }
 
@@ -38,6 +40,7 @@ const DEFAULT_DATA: TrunkContinueFormData = {
   segment_kind: 'KABEL_SN',
   length_m: 0,
   catalog_ref: null,
+  next_step: 'station',
   notes: '',
 };
 
@@ -47,6 +50,33 @@ const SEGMENT_KIND_LABELS: Record<SegmentKind, string> = {
 };
 
 const LENGTH_PRESETS = [100, 250, 500, 700, 1000];
+
+const NEXT_STEP_OPTIONS: Array<{
+  id: TrunkNextStep;
+  label: string;
+  submitLabel: string;
+}> = [
+  {
+    id: 'station',
+    label: 'Wstaw stację SN/nN',
+    submitLabel: 'Utwórz odcinek i wstaw stację SN/nN',
+  },
+  {
+    id: 'zksn',
+    label: 'Wstaw ZK SN',
+    submitLabel: 'Utwórz odcinek i wstaw ZK SN',
+  },
+  {
+    id: 'branch_pole',
+    label: 'Wstaw słup rozgałęźny',
+    submitLabel: 'Utwórz odcinek i wstaw słup rozgałęźny',
+  },
+  {
+    id: 'continue',
+    label: 'Kontynuuj kolejny odcinek',
+    submitLabel: 'Utwórz odcinek i kontynuuj ciąg',
+  },
+];
 
 function validateForm(data: TrunkContinueFormData): FieldError[] {
   const errors: FieldError[] = [];
@@ -82,6 +112,7 @@ function engineeringTrunkLabel(trunkId: string): string {
 function engineeringPortLabel(portId: string): string {
   const normalized = portId.trim().toLowerCase();
   if (normalized === 'trunk_end') return 'wolny koniec ciągu SN';
+  if (normalized === 'station_out') return 'port wyjściowy stacji SN';
   if (!normalized) return 'głowica odpływowa pola SN';
   if (normalized.includes('branch')) return 'głowica odgałęzienia SN';
   if (normalized.includes('out')) return 'głowica odpływowa pola SN';
@@ -142,7 +173,7 @@ function lengthLabel(lengthM: number): string {
 
 function saveBlockerLabel(reason: string | null, hasCatalog: boolean, lengthM: number): string | null {
   if (reason) {
-    return 'Nie znaleziono wolnego portu wyjściowego SN dla wybranego obiektu. Wybierz głowicę odpływową pola SN albo stację na końcu ciągu.';
+    return reason;
   }
   if (!hasCatalog) return 'Wybierz typ katalogowy odcinka SN.';
   if (!Number.isFinite(lengthM) || lengthM <= 0) {
@@ -175,6 +206,7 @@ export function TrunkContinueModal({
   });
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [touched, setTouched] = useState<Set<string>>(new Set());
+  const [catalogEdited, setCatalogEdited] = useState(false);
   const lockSegmentKind = Boolean(initialData?.segment_kind);
 
   useEffect(() => {
@@ -182,6 +214,7 @@ export function TrunkContinueModal({
       setFormData({ ...DEFAULT_DATA, ...initialData });
       setErrors([]);
       setTouched(new Set());
+      setCatalogEdited(false);
     }
   }, [isOpen, initialData]);
 
@@ -191,7 +224,13 @@ export function TrunkContinueModal({
   );
 
   useEffect(() => {
-    if (!isOpen || catalogLoading || formData.catalog_ref || activeCatalogEntries.length === 0) {
+    if (
+      !isOpen
+      || catalogLoading
+      || catalogEdited
+      || formData.catalog_ref
+      || activeCatalogEntries.length === 0
+    ) {
       return;
     }
 
@@ -199,7 +238,7 @@ export function TrunkContinueModal({
       ...prev,
       catalog_ref: activeCatalogEntries[0].id,
     }));
-  }, [activeCatalogEntries, catalogLoading, formData.catalog_ref, isOpen]);
+  }, [activeCatalogEntries, catalogEdited, catalogLoading, formData.catalog_ref, isOpen]);
 
   const selectedCatalogEntry = useMemo(
     () => activeCatalogEntries.find((entry) => entry.id === formData.catalog_ref) ?? null,
@@ -207,6 +246,18 @@ export function TrunkContinueModal({
   );
 
   const handleChange = useCallback((field: keyof TrunkContinueFormData, value: unknown) => {
+    if (field === 'catalog_ref') {
+      setCatalogEdited(true);
+    }
+    if (field === 'segment_kind') {
+      setCatalogEdited(false);
+    }
+    setErrors((prev) =>
+      prev.filter((error) => (
+        error.field !== field
+        && !(field === 'segment_kind' && error.field === 'catalog_ref')
+      )),
+    );
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -215,13 +266,32 @@ export function TrunkContinueModal({
     setTouched((prev) => new Set(prev).add(field));
   }, []);
 
-  const handleSubmit = useCallback(() => {
-    const validationErrors = validateForm(formData);
+  const submitData = useCallback((data: TrunkContinueFormData) => {
+    const validationErrors = validateForm(data);
     setErrors(validationErrors);
     if (validationErrors.length === 0 && !submitDisabled) {
-      onSubmit(formData);
+      onSubmit(data);
     }
-  }, [formData, onSubmit, submitDisabled]);
+  }, [onSubmit, submitDisabled]);
+
+  const handleSubmit = useCallback(() => {
+    submitData(formData);
+  }, [formData, submitData]);
+
+  const handleNextStepClick = useCallback((nextStep: TrunkNextStep) => {
+    const nextData = { ...formData, next_step: nextStep };
+    setFormData(nextData);
+    setTouched((prev) => {
+      const next = new Set(prev);
+      next.add('next_step');
+      if (!nextData.catalog_ref) next.add('catalog_ref');
+      if (!Number.isFinite(nextData.length_m) || nextData.length_m <= 0) {
+        next.add('length_m');
+      }
+      return next;
+    });
+    submitData(nextData);
+  }, [formData, submitData]);
 
   const getFieldError = (field: string): string | undefined => {
     if (!touched.has(field) && errors.length === 0) return undefined;
@@ -233,7 +303,9 @@ export function TrunkContinueModal({
   const terminalDisplayName = terminalName || engineeringPortLabel(terminalPortId);
   const trunkDisplayName = engineeringTrunkLabel(trunkId);
   const terminalPortDisplayName = engineeringPortLabel(terminalPortId);
-  const startsFromOpenEndpoint = terminalPortId.trim().toLowerCase() === 'trunk_end';
+  const startsFromOpenEndpoint = ['trunk_end', 'station_out'].includes(
+    terminalPortId.trim().toLowerCase(),
+  );
   const rows = techRows(selectedCatalogEntry, formData.segment_kind);
   const normRows = normativeRows(formData.segment_kind);
   const catalogDisplayName = selectedCatalogEntry?.name ?? SEGMENT_KIND_LABELS[formData.segment_kind];
@@ -243,12 +315,8 @@ export function TrunkContinueModal({
   const sourceHint = startsFromOpenEndpoint
     ? 'Kontynuacja zaczyna się za istniejącą stacją albo na wolnym końcu odcinka. Kolejny obiekt będzie końcem tworzonego odcinka.'
     : 'Odcinek zaczyna się dokładnie w głowicy odpływowej pola SN. Sekcja i szyna są tylko kontekstem rozdzielni.';
-  const nextStepOptions = [
-    'Wstaw stację SN/nN',
-    'Wstaw ZK SN',
-    'Wstaw słup rozgałęźny',
-    'Kontynuuj kolejny odcinek',
-  ];
+  const selectedNextStep =
+    NEXT_STEP_OPTIONS.find((option) => option.id === formData.next_step) ?? NEXT_STEP_OPTIONS[0];
   const formBlockedReason = saveBlockerLabel(
     submitDisabledReason,
     Boolean(formData.catalog_ref),
@@ -467,14 +535,25 @@ export function TrunkContinueModal({
                 </div>
               </dl>
               <div className="mt-4 grid grid-cols-2 gap-2">
-                {nextStepOptions.map((option) => (
-                  <div
-                    key={option}
-                    className="border border-[#28425f] bg-[#06101a] px-2 py-2 text-xs font-semibold text-[#d7ecff]"
-                  >
-                    {option}
-                  </div>
-                ))}
+                {NEXT_STEP_OPTIONS.map((option) => {
+                  const isSelected = formData.next_step === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => handleNextStepClick(option.id)}
+                      className={`border px-2 py-2 text-left text-xs font-semibold ${
+                        isSelected
+                          ? 'border-[#26f0b1] bg-[#073024] text-[#26f0b1]'
+                          : 'border-[#28425f] bg-[#06101a] text-[#d7ecff] hover:border-[#04d6ff] hover:text-white'
+                      }`}
+                      data-testid={`trunk-next-step-${option.id}`}
+                      aria-pressed={isSelected}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
               </div>
             </section>
 
@@ -531,7 +610,7 @@ export function TrunkContinueModal({
             disabled={buttonDisabled}
             className="border border-[#1e6bff] bg-[#2864e8] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3474ff] disabled:cursor-not-allowed disabled:border-[#22364e] disabled:bg-[#0b1623] disabled:text-[#607d99]"
           >
-            {mode === 'create' ? 'Utwórz odcinek SN' : 'Zapisz zmiany'}
+            {mode === 'create' ? selectedNextStep.submitLabel : 'Zapisz zmiany'}
           </button>
         </div>
       </div>

@@ -117,10 +117,11 @@ class SymphonyOrchestrator:
             started_at=started_at,
             status="running",
         )
-        prompt = render_prompt(self._prompt_template, issue, current_attempt)
-
-        result = self._agent_runner.run_attempt(run_attempt, prompt)
-        self.state.active_issue_ids.discard(issue.id)
+        try:
+            prompt = render_prompt(self._prompt_template, issue, current_attempt)
+            result = self._agent_runner.run_attempt(run_attempt, prompt)
+        finally:
+            self.state.active_issue_ids.discard(issue.id)
 
         if result.status == "success":
             self.state.attempts_by_issue_id.pop(issue.id, None)

@@ -15,7 +15,17 @@ import { useActiveOperationContext, useNetworkBuildStore } from '../networkBuild
 import { useAppStateStore } from '../../app-state';
 import { validateCatalogFirst } from './catalogFirstRules';
 import { catalogRefFromInput, normalizeCatalogBinding } from './catalogPayload';
-import { fetchConverterTypes, fetchTransformerTypes, getCatalogErrorMessage } from '../../catalog/api';
+import {
+  fetchCompleteBayTemplates,
+  fetchConverterTypes,
+  fetchManufacturers,
+  fetchSwitchgearFamilies,
+  fetchTransformerTypes,
+  getCatalogErrorMessage,
+} from '../../catalog/api';
+import type { BayKind, CompleteMvBayTemplateSummary } from '../../catalog/BayTemplatePicker';
+import type { Manufacturer } from '../../catalog/manufacturer';
+import type { SwitchgearFamily } from '../../catalog/SwitchgearFamilyPicker';
 import type { ConverterType, TransformerType } from '../../catalog/types';
 import { CatalogPicker, type CatalogEntry } from '../../topology/modals/CatalogPicker';
 import {
@@ -32,6 +42,23 @@ type NnConfiguration =
   | 'CUSTOM_NN';
 
 type NnFeederRole = 'ODPLYW_NN' | 'ZRODLO_NN_PV' | 'ZRODLO_NN_BESS' | 'ZRODLO_NN_FW';
+type SnFieldRole = 'LINIA_IN' | 'LINIA_OUT' | 'LINIA_ODG' | 'TRANSFORMATOROWE' | 'SPRZEGLO';
+
+interface StationSwitchgearChoice {
+  manufacturerRef: string;
+  switchgearFamilyRef: string | null;
+}
+
+interface StationSnFieldTemplate {
+  field_role: SnFieldRole;
+  catalog_bindings: Record<string, unknown> | null;
+  manufacturer_ref: string;
+  switchgear_family_ref: string | null;
+  bay_kind: BayKind;
+  bay_template_ref: string | null;
+  source_status: CompleteMvBayTemplateSummary['source_status'];
+  source_refs: readonly string[];
+}
 
 interface NnConfigurationOption {
   value: NnConfiguration;
@@ -79,9 +106,83 @@ const STATION_KIND_OPTIONS: Array<{
   },
 ];
 
-function buildDefaultSnFields(stationKind: TopologicalStationKind) {
+const STARTER_SWITCHGEAR_MANUFACTURERS: Manufacturer[] = [
+  {
+    manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+    name: 'ZPUE Włoszczowa',
+    normalized_code: 'ZPUE',
+    country: 'PL',
+    status: 'requires_catalog',
+    source_refs: [],
+    notes_pl: 'Pozycja startowa. Oficjalne karty katalogowe muszą zostać przypięte przed oznaczeniem jako katalog producenta.',
+  },
+  {
+    manufacturer_ref: 'ELEKTROMETAL',
+    name: 'Elektrometal',
+    normalized_code: 'ELEKTROMETAL',
+    country: 'PL',
+    status: 'requires_catalog',
+    source_refs: [],
+    notes_pl: 'Pozycja startowa. Wymaga zweryfikowanych kart rozdzielnic SN.',
+  },
+  {
+    manufacturer_ref: 'SIEMENS',
+    name: 'Siemens',
+    normalized_code: 'SIEMENS',
+    country: 'DE',
+    status: 'requires_catalog',
+    source_refs: [],
+    notes_pl: 'Pozycja startowa. Brak danych źródłowych blokuje status oficjalnego katalogu.',
+  },
+  {
+    manufacturer_ref: 'ABB',
+    name: 'ABB',
+    normalized_code: 'ABB',
+    country: 'CH',
+    status: 'requires_catalog',
+    source_refs: [],
+    notes_pl: 'Pozycja startowa. Szablony bez źródeł są oznaczane jako fallback kanoniczny.',
+  },
+];
+
+const SWITCHGEAR_MANUFACTURER_ORDER = [
+  'ZPUE_WLOSZCZOWA',
+  'ELEKTROMETAL',
+  'SIEMENS',
+  'ABB',
+];
+
+const SN_FIELD_ROLE_TO_BAY_KIND: Record<SnFieldRole, BayKind> = {
+  LINIA_IN: 'liniowe_doplywowe',
+  LINIA_OUT: 'liniowe_odplywowe',
+  LINIA_ODG: 'liniowe_odplywowe',
+  TRANSFORMATOROWE: 'transformatorowe',
+  SPRZEGLO: 'sprzeglowe_poprzeczne',
+};
+
+const SN_FIELD_ROLES: readonly SnFieldRole[] = [
+  'LINIA_IN',
+  'LINIA_OUT',
+  'LINIA_ODG',
+  'TRANSFORMATOROWE',
+  'SPRZEGLO',
+];
+
+const SOURCE_STATUS_LABEL_PL: Record<CompleteMvBayTemplateSummary['source_status'], string> = {
+  official_catalog: 'oficjalny katalog',
+  repo_verified: 'zweryfikowany w repo',
+  user_defined: 'użytkownika',
+  canonical_fallback: 'fallback kanoniczny',
+  requires_catalog: 'wymaga katalogu',
+  incomplete_requires_review: 'wymaga przeglądu',
+};
+
+function buildDefaultSnFields(stationKind: TopologicalStationKind): Array<{
+  field_role: SnFieldRole;
+  catalog_bindings: null;
+}> {
   const createField = (
-    fieldRole: 'LINIA_IN' | 'LINIA_OUT' | 'LINIA_ODG' | 'TRANSFORMATOROWE' | 'SPRZEGLO',
+    fieldRole: SnFieldRole,
   ) => ({
     field_role: fieldRole,
     catalog_bindings: null,
@@ -112,6 +213,114 @@ function buildDefaultSnFields(stationKind: TopologicalStationKind) {
         createField('TRANSFORMATOROWE'),
       ];
   }
+}
+
+function buildStationSnFields(
+  stationKind: TopologicalStationKind,
+  templatesByRole: Partial<Record<SnFieldRole, CompleteMvBayTemplateSummary>>,
+  switchgearChoice: StationSwitchgearChoice,
+): StationSnFieldTemplate[] {
+  return buildDefaultSnFields(stationKind).map((field) => {
+    const role = field.field_role as SnFieldRole;
+    const template = templatesByRole[role] ?? null;
+    return {
+      ...field,
+      manufacturer_ref: switchgearChoice.manufacturerRef,
+      switchgear_family_ref: switchgearChoice.switchgearFamilyRef,
+      bay_kind: SN_FIELD_ROLE_TO_BAY_KIND[role],
+      bay_template_ref: template?.template_ref ?? null,
+      source_status: template?.source_status ?? 'requires_catalog',
+      source_refs: template?.source_refs ?? [],
+      catalog_bindings: template
+        ? {
+            switchgear_template: {
+              catalog_namespace: 'ROZDZIELNICA_SN',
+              catalog_item_id: template.template_ref,
+              manufacturer_ref: switchgearChoice.manufacturerRef,
+              switchgear_family_ref: switchgearChoice.switchgearFamilyRef,
+              source_status: template.source_status,
+            },
+          }
+        : null,
+    };
+  });
+}
+
+function orderManufacturers(manufacturers: Manufacturer[]): Manufacturer[] {
+  const byRef = new Map(manufacturers.map((manufacturer) => [manufacturer.manufacturer_ref, manufacturer]));
+  const ordered = SWITCHGEAR_MANUFACTURER_ORDER
+    .map((ref) => byRef.get(ref))
+    .filter((manufacturer): manufacturer is Manufacturer => Boolean(manufacturer));
+  const rest = manufacturers
+    .filter((manufacturer) => !SWITCHGEAR_MANUFACTURER_ORDER.includes(manufacturer.manufacturer_ref))
+    .sort((a, b) => a.name.localeCompare(b.name, 'pl-PL'));
+  return [...ordered, ...rest];
+}
+
+function mergeStarterManufacturers(loaded: Manufacturer[]): Manufacturer[] {
+  const merged = new Map<string, Manufacturer>();
+  for (const manufacturer of STARTER_SWITCHGEAR_MANUFACTURERS) {
+    merged.set(manufacturer.manufacturer_ref, manufacturer);
+  }
+  for (const manufacturer of loaded) {
+    merged.set(manufacturer.manufacturer_ref, manufacturer);
+  }
+  return orderManufacturers([...merged.values()]);
+}
+
+function switchgearStatusLabel(manufacturer: Manufacturer | null): string {
+  if (!manufacturer) return 'wymaga wyboru';
+  if (manufacturer.status === 'verified' && manufacturer.source_refs.length > 0) return 'katalog zweryfikowany';
+  if (manufacturer.status === 'user_defined') return 'szablon użytkownika';
+  if (manufacturer.status === 'deprecated') return 'wycofany';
+  return 'wymaga kart katalogowych';
+}
+
+function findTemplateForRole(
+  templates: CompleteMvBayTemplateSummary[],
+  role: SnFieldRole,
+): CompleteMvBayTemplateSummary | null {
+  return templateOptionsForRole(templates, role)[0] ?? null;
+}
+
+function templateOptionsForRole(
+  templates: CompleteMvBayTemplateSummary[],
+  role: SnFieldRole,
+): CompleteMvBayTemplateSummary[] {
+  const bayKind = SN_FIELD_ROLE_TO_BAY_KIND[role];
+  return templates
+    .filter((template) => template.bay_kind === bayKind)
+    .sort(compareBayTemplateOptions);
+}
+
+function compareBayTemplateOptions(
+  left: CompleteMvBayTemplateSummary,
+  right: CompleteMvBayTemplateSummary,
+): number {
+  return sourceStatusRank(left.source_status) - sourceStatusRank(right.source_status)
+    || left.template_ref.localeCompare(right.template_ref, 'pl-PL');
+}
+
+function sourceStatusRank(status: CompleteMvBayTemplateSummary['source_status']): number {
+  switch (status) {
+    case 'official_catalog':
+      return 0;
+    case 'repo_verified':
+      return 1;
+    case 'user_defined':
+      return 2;
+    case 'canonical_fallback':
+      return 3;
+    case 'incomplete_requires_review':
+      return 4;
+    case 'requires_catalog':
+    default:
+      return 5;
+  }
+}
+
+function templateOptionLabel(template: CompleteMvBayTemplateSummary): string {
+  return `${template.template_ref} · ${SOURCE_STATUS_LABEL_PL[template.source_status]}`;
 }
 
 const FIELD_ROLE_LABELS: Record<string, string> = {
@@ -422,7 +631,9 @@ function StationSystemPreview({
   snVoltageKv,
   nnVoltageKv,
   requiredNnVoltageIsValid,
-  snFieldLabels,
+  snFields,
+  selectedManufacturer,
+  selectedFamily,
   outgoingFeederCount,
   nnConfigurationLabel,
   recommendedTransformer,
@@ -433,12 +644,15 @@ function StationSystemPreview({
   snVoltageKv: number;
   nnVoltageKv: number | null;
   requiredNnVoltageIsValid: boolean;
-  snFieldLabels: string[];
+  snFields: StationSnFieldTemplate[];
+  selectedManufacturer: Manufacturer | null;
+  selectedFamily: SwitchgearFamily | null;
   outgoingFeederCount: number;
   nnConfigurationLabel: string;
   recommendedTransformer: TransformerType | null;
   selectedConverter: ConverterType | null;
 }) {
+  const snFieldLabels = snFields.map((field) => FIELD_ROLE_LABELS[field.field_role] ?? field.field_role);
   const snFieldCount = snFieldLabels.length;
   const transformerLabel = recommendedTransformer
     ? `${recommendedTransformer.name} · ${formatMva(recommendedTransformer.rated_power_mva)} MVA`
@@ -476,51 +690,12 @@ function StationSystemPreview({
         </div>
 
         <div className="mt-4 border border-[#17314c] bg-[#07111c] p-3">
-          <div className="flex items-center gap-3">
-            <div className="w-20 shrink-0 font-mono-eng text-[10px] uppercase tracking-[0.14em] text-[#79d7ff]">
-              Szyna SN
-            </div>
-            <div className="h-[3px] flex-1 bg-[#e5f3ff]" />
-            <div className="shrink-0 border border-[#1d5b90] bg-[#071b34] px-2 py-1 text-xs font-semibold text-white">
-              {formatKv(snVoltageKv)} kV
-            </div>
-          </div>
-
-          <div
-            className="mt-3 grid gap-2"
-            style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.min(4, snFieldCount))}, minmax(0, 1fr))` }}
-          >
-            {snFieldLabels.map((label, index) => {
-              const isTransformerField = label.toLowerCase().includes('transformator');
-              return (
-                <div key={`${label}-${index}`} className="min-w-0">
-                  <div className="mx-auto h-5 w-[2px] bg-[#e5f3ff]" />
-                  <div
-                    className={`min-h-[86px] border px-2 py-2 text-center ${
-                      isTransformerField
-                        ? 'border-[#22c55e] bg-[#052019]'
-                        : 'border-[#d6a21d] bg-[#211806]'
-                    }`}
-                    title={label}
-                  >
-                    <div
-                      className={`mx-auto grid h-7 w-7 place-items-center border text-[11px] font-bold ${
-                        isTransformerField
-                          ? 'border-[#86efac] text-[#86efac]'
-                          : 'border-[#facc15] text-[#ffe08a]'
-                      }`}
-                    >
-                      {index + 1}
-                    </div>
-                    <div className="mt-2 text-[11px] font-semibold leading-4 text-white">
-                      {label}
-                    </div>
-                  </div>
-                  <div className="mx-auto h-5 w-[2px] bg-[#e5f3ff]" />
-                </div>
-              );
-            })}
-          </div>
+          <StationSwitchgearSld
+            snFields={snFields}
+            snVoltageKv={snVoltageKv}
+            selectedManufacturer={selectedManufacturer}
+            selectedFamily={selectedFamily}
+          />
 
           <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
             <div className="border border-[#14532d] bg-[#061f18] px-3 py-3">
@@ -612,6 +787,180 @@ function StationSystemPreview({
   );
 }
 
+function StationSwitchgearSld({
+  snFields,
+  snVoltageKv,
+  selectedManufacturer,
+  selectedFamily,
+}: {
+  snFields: StationSnFieldTemplate[];
+  snVoltageKv: number;
+  selectedManufacturer: Manufacturer | null;
+  selectedFamily: SwitchgearFamily | null;
+}) {
+  const bayCount = Math.max(snFields.length, 1);
+  const width = Math.max(520, 118 + bayCount * 112);
+  const busY = 48;
+  const bayPitch = (width - 120) / bayCount;
+  const bayStart = 60 + bayPitch / 2;
+  const familyLabel = selectedFamily
+    ? selectedFamily.family_name
+    : 'rodzina do potwierdzenia katalogiem';
+  const sourceWarning = selectedManufacturer?.status === 'verified'
+    ? 'źródła katalogowe zweryfikowane'
+    : 'brak source_ref = jawny fallback, nie oficjalna karta producenta';
+
+  return (
+    <div data-testid="station-switchgear-catalog-preview">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="font-mono-eng text-[10px] uppercase tracking-[0.14em] text-[#79d7ff]">
+            Rozdzielnica SN - szablony pól
+          </div>
+          <div className="mt-1 text-xs text-[#c7def4]">
+            {selectedManufacturer?.name ?? 'Producent do wyboru'} / {familyLabel}
+          </div>
+        </div>
+        <div className="border border-[#1d5b90] bg-[#071b34] px-2 py-1 text-xs font-semibold text-white">
+          {formatKv(snVoltageKv)} kV SN
+        </div>
+      </div>
+
+      <svg
+        className="mt-3 h-[210px] w-full overflow-visible border border-[#12304a] bg-[#050b12]"
+        viewBox={`0 0 ${width} 210`}
+        role="img"
+        aria-label="Podgląd rozdzielnicy SN stacji"
+      >
+        <line x1={36} y1={busY} x2={width - 36} y2={busY} stroke="#19c15f" strokeWidth={5} />
+        <text x={42} y={busY - 12} fill="#79d7ff" fontSize={10} fontFamily="monospace">
+          SZYNA SN
+        </text>
+        {snFields.map((field, index) => {
+          const cx = bayStart + index * bayPitch;
+          return (
+            <StationBaySldColumn
+              key={`${field.field_role}-${index}`}
+              field={field}
+              x={cx}
+              busY={busY}
+              index={index}
+            />
+          );
+        })}
+      </svg>
+
+      <div className="mt-2 grid gap-2 md:grid-cols-2">
+        {snFields.map((field) => (
+          <div
+            key={`${field.field_role}-${field.bay_template_ref ?? 'missing'}`}
+            className="border border-[#1d3550] bg-[#06111d] px-3 py-2 text-xs"
+          >
+            <span className="font-semibold text-white">
+              {FIELD_ROLE_LABELS[field.field_role] ?? field.field_role}
+            </span>
+            <span className="ml-2 text-[#8eb1cf]">
+              {field.bay_template_ref ?? 'brak szablonu'}
+            </span>
+            <span className="mt-1 block text-[#ffd166]">
+              {field.bay_template_ref
+                ? SOURCE_STATUS_LABEL_PL[field.source_status]
+                : 'brak szablonu - blocker katalogowy'}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 border border-[#6f4d12] bg-[#1d1704] px-3 py-2 text-xs leading-5 text-[#ffe08a]">
+        {sourceWarning}
+      </div>
+    </div>
+  );
+}
+
+function StationBaySldColumn({
+  field,
+  x,
+  busY,
+  index,
+}: {
+  field: StationSnFieldTemplate;
+  x: number;
+  busY: number;
+  index: number;
+}) {
+  const label = FIELD_ROLE_LABELS[field.field_role] ?? field.field_role;
+  const isTransformer = field.field_role === 'TRANSFORMATOROWE';
+  const isCoupler = field.field_role === 'SPRZEGLO';
+  const isMissing = field.source_status !== 'official_catalog' && field.source_status !== 'repo_verified';
+  const bayTop = busY + 14;
+  const switchY = bayTop + 28;
+  const ctY = switchY + 28;
+  const endY = isTransformer ? 168 : 154;
+
+  return (
+    <g data-testid={`station-switchgear-bay-${field.field_role}`}>
+      <rect
+        x={x - 34}
+        y={bayTop - 8}
+        width={68}
+        height={isTransformer ? 132 : 112}
+        fill="#091722"
+        stroke="#1b415b"
+        strokeWidth={0.8}
+        opacity={0.78}
+      />
+      <line x1={x} y1={busY} x2={x} y2={endY} stroke="#dce9f5" strokeWidth={2} />
+      <circle cx={x} cy={switchY - 18} r={7} fill="#050b12" stroke="#dce9f5" strokeWidth={1.6}>
+        <title>Odłącznik szynowy</title>
+      </circle>
+      {isTransformer ? (
+        <>
+          <rect x={x - 6} y={switchY - 5} width={12} height={18} fill="#0f9f58" stroke="#62e99f" strokeWidth={1.4}>
+            <title>Bezpiecznik / rozłącznik bezpiecznikowy pola TR</title>
+          </rect>
+          <circle cx={x - 8} cy={ctY + 22} r={10} fill="none" stroke="#a5c8ff" strokeWidth={2} />
+          <circle cx={x + 8} cy={ctY + 22} r={10} fill="none" stroke="#a5c8ff" strokeWidth={2} />
+        </>
+      ) : isCoupler ? (
+        <rect x={x - 9} y={switchY - 9} width={18} height={18} fill="none" stroke="#7ec8ff" strokeWidth={2}>
+          <title>Wyłącznik / sprzęgło sekcyjne</title>
+        </rect>
+      ) : (
+        <polygon
+          points={`${x},${switchY - 12} ${x + 12},${switchY} ${x},${switchY + 12} ${x - 12},${switchY}`}
+          fill={isMissing ? '#3a2a07' : '#0f9f58'}
+          stroke={isMissing ? '#ffb020' : '#62e99f'}
+          strokeWidth={1.5}
+        >
+          <title>Rozłącznik pola liniowego</title>
+        </polygon>
+      )}
+      {!isTransformer && (
+        <>
+          <circle cx={x} cy={ctY} r={7} fill="none" stroke="#ffcf5a" strokeWidth={1.8}>
+            <title>Przekładnik prądowy CT</title>
+          </circle>
+          <g>
+            <line x1={x + 14} y1={ctY + 20} x2={x + 28} y2={ctY + 20} stroke="#dce9f5" strokeWidth={1.2} />
+            <line x1={x + 28} y1={ctY + 20} x2={x + 28} y2={ctY + 34} stroke="#dce9f5" strokeWidth={1.2} strokeDasharray="2 2" />
+            <line x1={x + 22} y1={ctY + 34} x2={x + 34} y2={ctY + 34} stroke="#dce9f5" strokeWidth={1.2} />
+            <line x1={x + 24} y1={ctY + 38} x2={x + 32} y2={ctY + 38} stroke="#dce9f5" strokeWidth={1} />
+          </g>
+        </>
+      )}
+      <text x={x} y={28} textAnchor="middle" fill="#ffe08a" fontSize={12} fontWeight={800}>
+        {index + 1}
+      </text>
+      <text x={x} y={190} textAnchor="middle" fill="#e6f4ff" fontSize={10} fontWeight={700}>
+        {label.replace('Pole ', '')}
+      </text>
+      <text x={x} y={202} textAnchor="middle" fill={isMissing ? '#ffb020' : '#77e7a4'} fontSize={8}>
+        {SOURCE_STATUS_LABEL_PL[field.source_status]}
+      </text>
+    </g>
+  );
+}
+
 function SystemPreviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="border border-[#1d3550] bg-[#06111d] px-3 py-2">
@@ -638,6 +987,19 @@ export function InsertStationForm() {
   const [transformerTypes, setTransformerTypes] = useState<TransformerType[]>([]);
   const [converterTypes, setConverterTypes] = useState<ConverterType[]>([]);
   const [catalogsLoading, setCatalogsLoading] = useState(true);
+  const [manufacturers, setManufacturers] = useState<Manufacturer[]>(
+    STARTER_SWITCHGEAR_MANUFACTURERS,
+  );
+  const [switchgearFamilies, setSwitchgearFamilies] = useState<SwitchgearFamily[]>([]);
+  const [bayTemplates, setBayTemplates] = useState<CompleteMvBayTemplateSummary[]>([]);
+  const [switchgearCatalogError, setSwitchgearCatalogError] = useState<string | null>(null);
+  const [selectedManufacturerRef, setSelectedManufacturerRef] = useState(
+    STARTER_SWITCHGEAR_MANUFACTURERS[0].manufacturer_ref,
+  );
+  const [selectedFamilyRef, setSelectedFamilyRef] = useState<string | null>(null);
+  const [selectedBayTemplateRefs, setSelectedBayTemplateRefs] = useState<
+    Partial<Record<SnFieldRole, string>>
+  >({});
 
   const busOptions = useMemo(() => selectBusOptions(snapshot), [snapshot]);
   const nextStationOrdinal = useMemo(() => {
@@ -674,7 +1036,32 @@ export function InsertStationForm() {
     [context, snapshot],
   );
   const segmentLabel = useMemo(() => engineeringSegmentLabel(segmentId), [segmentId]);
-  const positionOnSegment = (context?.position_on_segment as number) ?? 0.5;
+  const rawPositionOnSegment = context?.position_on_segment;
+  const positionOnSegment =
+    typeof rawPositionOnSegment === 'number' && Number.isFinite(rawPositionOnSegment)
+      ? rawPositionOnSegment
+      : 0.5;
+  const endpointBusRef = useMemo(
+    () =>
+      contextString(context, [
+        'endpoint_bus_ref',
+        'terminal_id',
+        'terminalId',
+        'from_bus_ref',
+      ]),
+    [context],
+  );
+  const runRef = useMemo(
+    () => contextString(context, ['run_ref', 'corridor_ref', 'trunk_id', 'trunkId']),
+    [context],
+  );
+  const placementMode = String(context?.placement_mode ?? '').toUpperCase();
+  const isEndpointAppend =
+    Boolean(endpointBusRef)
+    && (placementMode === 'ENDPOINT_APPEND' || positionOnSegment >= 0.999);
+  const placementLabel = isEndpointAppend
+    ? 'koniec poprzedniego odcinka'
+    : `podział odcinka w ${positionOnSegment.toFixed(2)}`;
   const initialStationKind = useMemo(
     () =>
       normalizeTopologicalStationKind(
@@ -691,16 +1078,79 @@ export function InsertStationForm() {
     () => formatStationTypeLabelPl(stationKind),
     [stationKind],
   );
-  const snFieldPreview = useMemo(
-    () =>
-      buildDefaultSnFields(stationKind).map(
-        (field) => FIELD_ROLE_LABELS[field.field_role] ?? field.field_role,
-      ),
-    [stationKind],
-  );
   const stationSnVoltageKv = useMemo(
     () => deriveSnVoltageKv(snapshot, busOptions, segmentId),
     [busOptions, segmentId, snapshot],
+  );
+  const selectedManufacturer = useMemo(
+    () =>
+      manufacturers.find((manufacturer) => manufacturer.manufacturer_ref === selectedManufacturerRef)
+      ?? null,
+    [manufacturers, selectedManufacturerRef],
+  );
+  const familiesForManufacturer = useMemo(
+    () =>
+      switchgearFamilies
+        .filter((family) => family.manufacturer_ref === selectedManufacturerRef)
+        .filter(
+          (family) =>
+            family.voltage_levels.length === 0
+            || family.voltage_levels.some((voltage) =>
+              voltageMatches(voltage, stationSnVoltageKv, 0.5),
+            ),
+        )
+        .sort(
+          (left, right) =>
+            left.family_name.localeCompare(right.family_name, 'pl-PL')
+            || left.switchgear_family_ref.localeCompare(right.switchgear_family_ref),
+        ),
+    [selectedManufacturerRef, stationSnVoltageKv, switchgearFamilies],
+  );
+  const selectedFamily = useMemo(
+    () =>
+      familiesForManufacturer.find((family) => family.switchgear_family_ref === selectedFamilyRef)
+      ?? null,
+    [familiesForManufacturer, selectedFamilyRef],
+  );
+  const templatesForSwitchgear = useMemo(
+    () =>
+      bayTemplates.filter((template) => {
+        const manufacturerMatches =
+          template.manufacturer_ref == null || template.manufacturer_ref === selectedManufacturerRef;
+        const familyMatches =
+          !selectedFamilyRef
+          || template.switchgear_family_ref == null
+          || template.switchgear_family_ref === selectedFamilyRef;
+        return manufacturerMatches && familyMatches;
+      }),
+    [bayTemplates, selectedFamilyRef, selectedManufacturerRef],
+  );
+  const templatesByRole = useMemo(() => {
+    const byRole: Partial<Record<SnFieldRole, CompleteMvBayTemplateSummary>> = {};
+    for (const role of SN_FIELD_ROLES) {
+      const options = templateOptionsForRole(templatesForSwitchgear, role);
+      const selectedRef = selectedBayTemplateRefs[role];
+      byRole[role] =
+        options.find((template) => template.template_ref === selectedRef)
+        ?? findTemplateForRole(templatesForSwitchgear, role)
+        ?? undefined;
+    }
+    return byRole;
+  }, [selectedBayTemplateRefs, templatesForSwitchgear]);
+  const stationSnFields = useMemo(
+    () =>
+      buildStationSnFields(stationKind, templatesByRole, {
+        manufacturerRef: selectedManufacturerRef,
+        switchgearFamilyRef: selectedFamilyRef,
+      }),
+    [selectedFamilyRef, selectedManufacturerRef, stationKind, templatesByRole],
+  );
+  const snFieldPreview = useMemo(
+    () =>
+      stationSnFields.map(
+        (field) => FIELD_ROLE_LABELS[field.field_role] ?? field.field_role,
+      ),
+    [stationSnFields],
   );
   const selectedConfiguration = useMemo(
     () =>
@@ -824,6 +1274,89 @@ export function InsertStationForm() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
+    void Promise.all([fetchManufacturers(), fetchSwitchgearFamilies()])
+      .then(([loadedManufacturers, loadedFamilies]) => {
+        if (cancelled) return;
+        setManufacturers(mergeStarterManufacturers(loadedManufacturers));
+        setSwitchgearFamilies(loadedFamilies);
+        setSwitchgearCatalogError(null);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setManufacturers(STARTER_SWITCHGEAR_MANUFACTURERS);
+          setSwitchgearFamilies([]);
+          setSwitchgearCatalogError(getCatalogErrorMessage(error));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (manufacturers.some((manufacturer) => manufacturer.manufacturer_ref === selectedManufacturerRef)) {
+      return;
+    }
+    setSelectedManufacturerRef(manufacturers[0]?.manufacturer_ref ?? 'ZPUE_WLOSZCZOWA');
+  }, [manufacturers, selectedManufacturerRef]);
+
+  useEffect(() => {
+    if (
+      selectedFamilyRef
+      && familiesForManufacturer.some(
+        (family) => family.switchgear_family_ref === selectedFamilyRef,
+      )
+    ) {
+      return;
+    }
+    setSelectedFamilyRef(familiesForManufacturer[0]?.switchgear_family_ref ?? null);
+  }, [familiesForManufacturer, selectedFamilyRef]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void fetchCompleteBayTemplates(selectedManufacturerRef)
+      .then((loadedTemplates) => {
+        if (cancelled) return;
+        setBayTemplates(loadedTemplates);
+        setSwitchgearCatalogError(null);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setBayTemplates([]);
+          setSwitchgearCatalogError(getCatalogErrorMessage(error));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedManufacturerRef]);
+
+  useEffect(() => {
+    setSelectedBayTemplateRefs((previous) => {
+      const next: Partial<Record<SnFieldRole, string>> = {};
+      let changed = false;
+      for (const role of SN_FIELD_ROLES) {
+        const selectedRef = previous[role];
+        if (!selectedRef) continue;
+        const stillAvailable = templateOptionsForRole(templatesForSwitchgear, role).some(
+          (template) => template.template_ref === selectedRef,
+        );
+        if (stillAvailable) {
+          next[role] = selectedRef;
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : previous;
+    });
+  }, [templatesForSwitchgear]);
+
+  useEffect(() => {
     if (!filteredConverters.some((type) => type.id === selectedConverterId)) {
       setSelectedConverterId('');
     }
@@ -928,28 +1461,38 @@ export function InsertStationForm() {
         });
       }
 
-      const payload = {
-        segment_id: segmentId || undefined,
+      const stationPayload = {
+        name: stationNameFromData(data),
+        station_type: stationKind,
+        station_role: 'STACJA_SN_NN',
+        station_name: stationNameFromData(data),
+        sn_voltage_kv: hvBusVoltage,
+        nn_voltage_kv: stationNnVoltageKv,
+        switchgear: {
+          manufacturer_ref: selectedManufacturerRef,
+          manufacturer_name: selectedManufacturer?.name ?? null,
+          manufacturer_status: selectedManufacturer?.status ?? 'requires_catalog',
+          switchgear_family_ref: selectedFamilyRef,
+          switchgear_family_name: selectedFamily?.family_name ?? null,
+        },
+      };
+      const transformerPayload = {
+        create: true,
+        transformer_catalog_ref: selectedTransformerType.id,
+        catalog_ref: selectedTransformerType.id,
+        catalog_binding: transformerBinding ?? undefined,
+        model_type: 'DWU_UZWOJENIOWY',
+        tap_changer_present: data.tap_position !== 0,
+        sn_mva: selectedTransformerType.rated_power_mva,
+        uk_percent: selectedTransformerType.uk_percent,
+        pk_kw: selectedTransformerType.pk_kw,
+      };
+      const commonPayload = {
         name: data.name,
         station_type: stationKind,
-        insert_at: {
-          mode: 'RATIO',
-          value: positionOnSegment,
-        },
-        station: {
-          station_type: stationKind,
-          station_role: 'STACJA_SN_NN',
-          station_name: stationNameFromData(data),
-          sn_voltage_kv: hvBusVoltage,
-          nn_voltage_kv: stationNnVoltageKv,
-        },
-        sn_fields: buildDefaultSnFields(stationKind),
-        transformer: {
-          create: true,
-          catalog_binding: transformerBinding ?? undefined,
-          model_type: 'DWU_UZWOJENIOWY',
-          tap_changer_present: data.tap_position !== 0,
-        },
+        station: stationPayload,
+        sn_fields: stationSnFields,
+        transformer: transformerPayload,
         nn_block: {
           create_nn_bus: true,
           main_breaker_nn: true,
@@ -970,13 +1513,32 @@ export function InsertStationForm() {
           create_nn_bus: true,
         },
       };
-      const validationError = validateCatalogFirst('insert_station_on_segment_sn', payload);
-      if (validationError) {
-        setCatalogError(validationError);
-        return;
+      const payload = isEndpointAppend
+        ? {
+            ...commonPayload,
+            endpoint_bus_ref: endpointBusRef,
+            run_ref: runRef || undefined,
+          }
+        : {
+            ...commonPayload,
+            segment_id: segmentId || undefined,
+            insert_at: {
+              mode: 'RATIO',
+              value: positionOnSegment,
+            },
+          };
+      const operationName = isEndpointAppend
+        ? 'append_station_on_endpoint'
+        : 'insert_station_on_segment_sn';
+      if (!isEndpointAppend) {
+        const validationError = validateCatalogFirst('insert_station_on_segment_sn', payload);
+        if (validationError) {
+          setCatalogError(validationError);
+          return;
+        }
       }
       setCatalogError(null);
-      const response = await executeDomainOperation(activeCaseId, 'insert_station_on_segment_sn', payload);
+      const response = await executeDomainOperation(activeCaseId, operationName, payload);
       if (!response) {
         const operationError = useSnapshotStore.getState().error;
         setCatalogError(operationError ?? 'Nie udało się wstawić stacji SN/nN na odcinku.');
@@ -993,17 +1555,30 @@ export function InsertStationForm() {
       closeForm,
       compatibleTransformerTypes.length,
       configurationBlocker,
+      endpointBusRef,
       executeDomainOperation,
+      isEndpointAppend,
       nnConfiguration,
       outgoingFeederCount,
       positionOnSegment,
       requiredNnVoltageIsValid,
       requiredNnVoltageKv,
+      runRef,
       segmentId,
       selectedConverter?.id,
+      selectedConverter?.kind,
+      selectedConverter?.name,
+      selectedConverter?.pmax_mw,
+      selectedConverter?.sn_mva,
       selectedConverter?.un_kv,
+      selectedFamily?.family_name,
+      selectedFamilyRef,
+      selectedManufacturer?.name,
+      selectedManufacturer?.status,
+      selectedManufacturerRef,
       stationBusOptions,
       stationKind,
+      stationSnFields,
       stationSnVoltageKv,
       transformerTypes,
     ],
@@ -1033,10 +1608,10 @@ export function InsertStationForm() {
             </div>
             <div className="border border-[#28425f] bg-[#07111c] px-3 py-2">
               <div className="font-mono-eng text-[10px] uppercase tracking-[0.12em] text-[#8eb1cf]">
-                Pozycja na odcinku
+                Osadzenie
               </div>
               <div className="mt-1 text-xs font-semibold text-white">
-                {positionOnSegment.toFixed(2)}
+                {placementLabel}
               </div>
             </div>
             <div className="border border-[#28425f] bg-[#07111c] px-3 py-2">
@@ -1088,13 +1663,137 @@ export function InsertStationForm() {
             })}
           </div>
 
+          <div className="mt-4 border border-[#24405d] bg-[#06111d] p-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="font-mono-eng text-[10px] font-semibold uppercase tracking-[0.18em] text-[#19e6ff]">
+                  Katalog rozdzielnicy SN
+                </div>
+                <p className="mt-1 text-xs leading-5 text-[#a8c7e2]">
+                  Producent, rodzina i szablony pól są wspólne dla podglądu SLD, portów,
+                  blokad oraz danych przekazywanych do modelu.
+                </p>
+              </div>
+              <div className="border border-[#6f4d12] bg-[#1d1704] px-3 py-1 text-xs font-semibold text-[#ffe08a]">
+                {switchgearStatusLabel(selectedManufacturer)}
+              </div>
+            </div>
+
+            <div className="mt-3 grid gap-2 md:grid-cols-4">
+              {manufacturers.map((manufacturer) => {
+                const active = manufacturer.manufacturer_ref === selectedManufacturerRef;
+                return (
+                  <button
+                    key={manufacturer.manufacturer_ref}
+                    type="button"
+                    onClick={() => setSelectedManufacturerRef(manufacturer.manufacturer_ref)}
+                    className={`border px-3 py-2 text-left transition ${
+                      active
+                        ? 'border-[#04d6ff] bg-[#063047] text-white'
+                        : 'border-[#28425f] bg-[#07111c] text-[#a8c7e2] hover:border-[#3a668f]'
+                    }`}
+                  >
+                    <span className="block text-xs font-semibold">{manufacturer.name}</span>
+                    <span className="mt-1 block text-[10px] text-[#8eb1cf]">
+                      {switchgearStatusLabel(manufacturer)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+              <label className="block" htmlFor="insert-station-switchgear-family">
+                <span className="font-mono-eng text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
+                  Rodzina / typ rozdzielnicy
+                </span>
+                <select
+                  id="insert-station-switchgear-family"
+                  value={selectedFamilyRef ?? ''}
+                  onChange={(event) => setSelectedFamilyRef(event.target.value || null)}
+                  disabled={familiesForManufacturer.length === 0}
+                  className="mt-1 w-full border border-[#28425f] bg-[#07111c] px-3 py-2 text-sm text-[#e6f4ff] outline-none focus:border-[#04d6ff] disabled:opacity-60"
+                >
+                  <option value="">
+                    {familiesForManufacturer.length === 0
+                      ? 'wymaga uzupełnienia katalogu producenta'
+                      : 'wybierz rodzinę rozdzielnicy'}
+                  </option>
+                  {familiesForManufacturer.map((family) => (
+                    <option
+                      key={family.switchgear_family_ref}
+                      value={family.switchgear_family_ref}
+                    >
+                      {family.family_name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[11px] leading-5 text-[#8eb1cf]">
+                  Brak zweryfikowanej rodziny nie jest ukrywany: pola dostają jawny status
+                  katalogowy i nie udają oficjalnej karty producenta.
+                </p>
+              </label>
+
+              <div className="border border-[#28425f] bg-[#07111c] px-3 py-2">
+                <div className="font-mono-eng text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
+                  Szablony pól SN
+                </div>
+                <div className="mt-2 grid gap-2 md:grid-cols-2">
+                  {stationSnFields.map((field) => (
+                    <div
+                      key={`${field.field_role}-${field.bay_kind}`}
+                      className="border border-[#1d3550] bg-[#06111d] px-2 py-2 text-[11px]"
+                    >
+                      <div className="font-semibold text-white">
+                        {FIELD_ROLE_LABELS[field.field_role] ?? field.field_role}
+                      </div>
+                      <select
+                        aria-label={`Szablon pola ${FIELD_ROLE_LABELS[field.field_role] ?? field.field_role}`}
+                        value={field.bay_template_ref ?? ''}
+                        onChange={(event) => {
+                          const nextRef = event.target.value;
+                          setSelectedBayTemplateRefs((previous) => ({
+                            ...previous,
+                            [field.field_role]: nextRef || undefined,
+                          }));
+                        }}
+                        disabled={templateOptionsForRole(templatesForSwitchgear, field.field_role).length === 0}
+                        className="mt-1 w-full border border-[#28425f] bg-[#07111c] px-2 py-1 text-[11px] text-[#e6f4ff] outline-none focus:border-[#04d6ff] disabled:opacity-60"
+                      >
+                        <option value="">
+                          brak szablonu katalogowego
+                        </option>
+                        {templateOptionsForRole(templatesForSwitchgear, field.field_role).map((template) => (
+                          <option key={template.template_ref} value={template.template_ref}>
+                            {templateOptionLabel(template)}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="mt-1 text-[#ffd166]">
+                        {SOURCE_STATUS_LABEL_PL[field.source_status]}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {switchgearCatalogError && (
+              <div className="mt-3 border border-[#7f1d1d] bg-[#2a1014] px-3 py-2 text-xs text-[#ffb4b4]">
+                {switchgearCatalogError}
+              </div>
+            )}
+          </div>
+
           <StationSystemPreview
             stationTypeLabel={stationTypeLabelPl}
             stationKind={stationKind}
             snVoltageKv={stationSnVoltageKv}
             nnVoltageKv={requiredNnVoltageKv}
             requiredNnVoltageIsValid={requiredNnVoltageIsValid}
-            snFieldLabels={snFieldPreview}
+            snFields={stationSnFields}
+            selectedManufacturer={selectedManufacturer}
+            selectedFamily={selectedFamily}
             outgoingFeederCount={outgoingFeederCount}
             nnConfigurationLabel={selectedConfiguration.label}
             recommendedTransformer={recommendedTransformer}
@@ -1277,7 +1976,7 @@ export function InsertStationForm() {
           initialData={editorInitialData}
           busOptions={stationBusOptions}
           catalogEntries={transformerCatalogEntries}
-          submitLabel="Podziel odcinek i wstaw stację"
+          submitLabel={isEndpointAppend ? 'Zakończ odcinek stacją' : 'Podziel odcinek i wstaw stację'}
           onSubmit={handleSubmit}
           onCancel={closeForm}
         />

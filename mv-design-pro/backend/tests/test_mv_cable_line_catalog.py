@@ -213,6 +213,31 @@ class TestManufacturerTypeMapping:
         for tfk in tfk_types:
             assert tfk.trade_name is not None, f"Typ TFK {tfk.id} bez trade_name"
 
+    def test_enea_operator_standard_cables_are_first_and_marked_partial(self) -> None:
+        """Priorytetowa lista kabli dla projektanta zaczyna sie od standardow ENEA."""
+        records = get_all_cable_types()
+
+        assert [record["id"] for record in records[:4]] == [
+            "cable-enea-operator-xruhakxs-1x120",
+            "cable-enea-operator-xruhakxs-1x240",
+            "cable-enea-operator-na2xs2y-1x150",
+            "cable-enea-operator-na2xs2y-1x240",
+        ]
+        assert all(record["params"]["manufacturer"] == "ENEA Operator" for record in records[:4])
+        assert all(
+            record["params"]["verification_status"] == "CZESCIOWO_ZWERYFIKOWANY"
+            for record in records[:4]
+        )
+        assert all("ENEA Operator" in record["params"]["source_reference"] for record in records[:4])
+
+        catalog = get_default_mv_catalog()
+        assert [str(item.id) for item in catalog.list_cable_types()[:4]] == [
+            "cable-enea-operator-na2xs2y-1x150",
+            "cable-enea-operator-na2xs2y-1x240",
+            "cable-enea-operator-xruhakxs-1x120",
+            "cable-enea-operator-xruhakxs-1x240",
+        ]
+
 
 class TestCatalogDeterminism:
     """Testy deterministyczności katalogu."""

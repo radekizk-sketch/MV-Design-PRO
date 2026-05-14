@@ -236,6 +236,10 @@ export const useAppStateStore = create<AppState>()(
        * Set active case.
        */
       setActiveCase: (caseId, caseName = null, caseKind = null, resultStatus = 'NONE') => {
+        if (get().activeCaseId !== caseId) {
+          useSnapshotStore.getState().reset();
+          useReadinessLiveStore.getState().clear();
+        }
         set({
           activeCaseId: caseId,
           activeCaseName: caseName,

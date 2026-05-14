@@ -48,9 +48,10 @@ import {
   deriveFootprintType,
   type StationFootprintType,
 } from '../renderer/MiniBlockFootprints';
-import type {
-  MiniBlockBayDescriptor,
-  MiniBlockDerBadge,
+import {
+  miniBlockStationPortOffsets,
+  type MiniBlockBayDescriptor,
+  type MiniBlockDerBadge,
 } from '../renderer/MiniBlockRmuRenderer';
 import type { DerRendererProps } from '../renderer/DerRenderer';
 import type {
@@ -222,7 +223,9 @@ const CANONICAL_BAY_WIDTH = 74;
 const CANONICAL_BAY_PITCH = 82;
 const CANONICAL_TR_AREA_Y = 280;
 const CANONICAL_TR_HEIGHT = 80;
-const CANONICAL_LV_BUS_GAP = 16;
+// Musi być zgodne z GpzCanonicalRenderer.LV_BUS_GAP: przestrzeń pola TR
+// między dolnym zaciskiem transformatora a rozdzielnią SN.
+const CANONICAL_LV_BUS_GAP = 110;
 const CANONICAL_LV_BAY_HEIGHT = 250;
 const CANONICAL_LV_TRACK_HEIGHT = CANONICAL_LV_BAY_HEIGHT - 30;
 const CANONICAL_LV_BLOCK_Y = CANONICAL_TR_AREA_Y + CANONICAL_TR_HEIGHT + CANONICAL_LV_BUS_GAP;
@@ -994,6 +997,7 @@ function buildSections(snapshot: EnergyNetworkModel): SectionRendererProps[] {
 function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[] {
   const substations = snapshot.substations ?? [];
   const lineRuns = snapshot.line_runs ?? [];
+  const corridors = snapshot.corridors ?? [];
   const stations: StationOnRunRendererProps[] = [];
 
   const fieldStationKinds = new Set([
@@ -1036,9 +1040,39 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
     });
   });
 
-  // 2. Orphan field-stations — back-compat dla ENM bez line_runs[] albo ze
-  //    stacjami nieprzypisanymi. Wpadają w kanał za ostatnim lineRun.
-  const orphanRunBase = sortedRuns.length;
+  // 2. Stacje dopięte przez append_station_on_endpoint do corridor.station_refs[].
+  const sortedCorridorsWithStations = [...corridors]
+    .filter((corridor) => (corridor.station_refs ?? []).length > 0)
+    .sort((a, b) => a.ref_id.localeCompare(b.ref_id));
+  sortedCorridorsWithStations.forEach((corridor, corridorIdx) => {
+    (corridor.station_refs ?? []).forEach((substationRef, posInRun) => {
+      if (placed.has(substationRef)) return;
+      const sub = fieldStationByRef.get(substationRef);
+      if (!sub) return;
+      placed.add(substationRef);
+      const stationSldDetails = buildStationMiniBlockDetails(snapshot, sub);
+      stations.push({
+        id: sub.ref_id,
+        x: X_STATIONS_START + posInRun * STATION_PITCH,
+        y:
+          Y_RUN_BASE
+          + (sortedRuns.length + corridorIdx) * RUN_PITCH
+          + STATION_RUN_TRUNK_OFFSET_Y,
+        name: sub.name || sub.ref_id,
+        topologicalType: classifyTopologicalType(sub),
+        nnVoltageLevelsCount: 1,
+        footprintType: stationSldDetails.footprintType,
+        snBays: stationSldDetails.snBays,
+        hasTransformer: stationSldDetails.hasTransformer,
+        transformerRefs: stationSldDetails.transformerRefs,
+        nnFeedersCount: stationSldDetails.nnFeedersCount,
+        derBadges: stationSldDetails.derBadges,
+      });
+    });
+  });
+
+  // 3. Orphan field-stations — back-compat dla stacji bez line_runs/corridor station refs.
+  const orphanRunBase = sortedRuns.length + sortedCorridorsWithStations.length;
   const orphans = [...fieldStationByRef.values()]
     .filter((s) => !placed.has(s.ref_id))
     .sort((a, b) => a.ref_id.localeCompare(b.ref_id));
@@ -1081,7 +1115,8 @@ function buildStationMiniBlockDetails(
   const derBadges = buildStationDerBadges(snapshot, station.ref_id);
   const explicitBays = buildExplicitStationMiniBays(snapshot, station.ref_id);
   const explicitRoles = explicitBays.map((bay) => bay.fieldRole);
-  const footprintType = deriveFootprintType(station.station_type, explicitRoles, derBadges.length > 0);
+  const hasMvSideDer = derBadges.some((badge) => badge.connectionSide !== 'nn');
+  const footprintType = deriveFootprintType(station.station_type, explicitRoles, hasMvSideDer);
   const snBays = explicitBays.length > 0
     ? explicitBays
     : buildExpectedStationMiniBays(station.ref_id, MINI_BLOCK_FOOTPRINT[footprintType].defaultSnBayRoles);
@@ -1269,7 +1304,7 @@ function buildCableRuns(
       const startingBayRef = inferRunStartingBayRef(runSegments, lineRun.starting_bay_ref);
       const startX = inferStartingBayOutletX(snapshot, startingBayRef, idx);
       const endX = runStations.length > 0
-        ? runStations[runStations.length - 1].x + stationRunEndOffset(runStations[runStations.length - 1].topologicalType)
+        ? runStations[runStations.length - 1].x + stationRunEndOffset(runStations[runStations.length - 1])
         : pendingRunEndX(startX, runSegments.length);
       const terminalX = runStations.length > 0
         ? Math.max(endX, startX + STATION_PITCH)
@@ -1312,7 +1347,7 @@ function buildCableRuns(
       const xStart = inferStartingBayOutletX(snapshot, startingBayRef, idx);
       const stationsOnRun = stationsForConnectionY(stations, y);
       const xEnd = stationsOnRun.length > 0
-        ? stationsOnRun[stationsOnRun.length - 1].x + stationRunEndOffset(stationsOnRun[stationsOnRun.length - 1].topologicalType)
+        ? stationsOnRun[stationsOnRun.length - 1].x + stationRunEndOffset(stationsOnRun[stationsOnRun.length - 1])
         : pendingRunEndX(xStart, segments.length);
       const segmentKind = classifySegmentKind(segments[0]);
       const segmentLabels = buildRunSegmentLabels(segments, stationsOnRun, xStart, y, xEnd);
@@ -1377,7 +1412,7 @@ function buildCableRuns(
     const xStart = inferStartingBayOutletX(snapshot, startingBayRef, idx);
     const stationsOnRun = stationsForConnectionY(stations, y);
     const xEnd = stationsOnRun.length > 0
-      ? stationsOnRun[stationsOnRun.length - 1].x + stationRunEndOffset(stationsOnRun[stationsOnRun.length - 1].topologicalType)
+      ? stationsOnRun[stationsOnRun.length - 1].x + stationRunEndOffset(stationsOnRun[stationsOnRun.length - 1])
       : pendingRunEndX(xStart, 1);
     const segmentKind = classifySegmentKind(b);
     const segmentLabels = buildRunSegmentLabels([b], stationsOnRun, xStart, y, xEnd);
@@ -1530,12 +1565,12 @@ function runSegmentXBounds(
 
 function stationInputX(station: StationOnRunRendererProps | undefined): number | null {
   if (!station) return null;
-  return station.x + stationRunStartOffset(station.topologicalType);
+  return station.x + stationRunStartOffset(station);
 }
 
 function stationOutputX(station: StationOnRunRendererProps | undefined): number | null {
   if (!station) return null;
-  return station.x + stationRunEndOffset(station.topologicalType);
+  return station.x + stationRunEndOffset(station);
 }
 
 function distinctCatalogLabels(segments: readonly Branch[]): string[] {
@@ -1674,9 +1709,11 @@ function compareBaysForSld(a: Bay, b: Bay): number {
 }
 
 function stationRunEndOffset(
-  topologicalType: StationOnRunRendererProps['topologicalType'],
+  station: StationOnRunRendererProps,
 ): number {
-  switch (topologicalType) {
+  const miniBlockOffsets = stationMiniBlockPortOffsets(station);
+  if (miniBlockOffsets) return miniBlockOffsets[1] ?? miniBlockOffsets[0];
+  switch (station.topologicalType) {
     case 'przelotowa':
     case 'sekcyjna':
       return 28;
@@ -1689,9 +1726,11 @@ function stationRunEndOffset(
 }
 
 function stationRunStartOffset(
-  topologicalType: StationOnRunRendererProps['topologicalType'],
+  station: StationOnRunRendererProps,
 ): number {
-  switch (topologicalType) {
+  const miniBlockOffsets = stationMiniBlockPortOffsets(station);
+  if (miniBlockOffsets) return miniBlockOffsets[0];
+  switch (station.topologicalType) {
     case 'przelotowa':
     case 'sekcyjna':
       return -28;
@@ -1701,6 +1740,13 @@ function stationRunStartOffset(
     default:
       return 0;
   }
+}
+
+function stationMiniBlockPortOffsets(
+  station: StationOnRunRendererProps,
+): readonly [number, number | null] | null {
+  if (!station.snBays) return null;
+  return miniBlockStationPortOffsets('detail', station.snBays, station.derBadges ?? []);
 }
 
 // -----------------------------------------------------------------------------

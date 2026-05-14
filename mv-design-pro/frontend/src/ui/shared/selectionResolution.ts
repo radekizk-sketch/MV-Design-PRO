@@ -179,5 +179,15 @@ export function canonicalizeSelectedElement(
     }
   }
 
-  return resolveSelectedElementFromSnapshot(snapshot, element.id, element.name, element.type);
+  const resolved = resolveSelectedElementFromSnapshot(snapshot, element.id, element.name, element.type);
+  if (!resolved) {
+    return null;
+  }
+
+  return {
+    ...resolved,
+    ...(element.semanticElementKind ? { semanticElementKind: element.semanticElementKind } : {}),
+    ...(element.semanticEngineeringRole ? { semanticEngineeringRole: element.semanticEngineeringRole } : {}),
+    ...(element.semanticHash ? { semanticHash: element.semanticHash } : {}),
+  };
 }

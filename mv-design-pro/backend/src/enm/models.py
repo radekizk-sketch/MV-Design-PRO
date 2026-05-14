@@ -253,6 +253,10 @@ class Source(ENMElement):
     source_mode: Literal["KATALOG", "MIGRACJA", "EKSPERCKI_RECZNY"] | None = None
     materialized_params: dict | None = None
     overrides: list[ParameterOverride] = []
+    source_side: Literal["SN", "HV_110"] | None = None
+    sn_voltage_kv: float | None = None
+    voltage_hv_kv: float | None = None
+    sk3_hv_mva: float | None = None
     sk3_mva: float | None = None
     ik3_ka: float | None = None
     r_ohm: float | None = None
@@ -683,7 +687,7 @@ class Bay(ENMElement):
     # konsumuje to pole gdy obecne; brak → renderer pokazuje neutral 'unknown'
     # (Invariant 9). Field forward-deklarowany — typ BayRuntimeState w
     # późniejszej sekcji modułu.
-    runtime_state: "BayRuntimeState | None" = None
+    runtime_state: BayRuntimeState | None = None
 
 
 # ---------------------------------------------------------------------------

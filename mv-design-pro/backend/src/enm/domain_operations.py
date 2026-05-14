@@ -578,6 +578,29 @@ def _find_branch(enm: dict[str, Any], ref_id: str) -> dict[str, Any] | None:
     return None
 
 
+def _find_branch_or_split_child(enm: dict[str, Any], ref_id: str) -> dict[str, Any] | None:
+    """Znajdź gałąź albo jej połówkę po wstawieniu ZKSN/słupa."""
+    exact = _find_branch(enm, ref_id)
+    if exact:
+        return exact
+    split_prefix = f"{ref_id}_"
+    for branch in enm.get("branches", []):
+        if str(branch.get("ref_id") or "").startswith(split_prefix):
+            return branch
+    return None
+
+
+def _station_has_transformer(enm: dict[str, Any], station_ref: object) -> bool:
+    """Sprawdź, czy stacja ma transformator SN/nN powiązany prefiksem ref_id."""
+    if not isinstance(station_ref, str) or not station_ref.strip():
+        return False
+    station_prefix = station_ref.rsplit("/", 1)[0] + "/"
+    for transformer in enm.get("transformers", []):
+        if str(transformer.get("ref_id") or "").startswith(station_prefix):
+            return True
+    return False
+
+
 def _find_corridor_for_segment(enm: dict[str, Any], segment_ref: str) -> dict[str, Any] | None:
     """Znajdź magistralę (corridor) zawierającą dany segment."""
     for c in enm.get("corridors", []):
@@ -660,7 +683,10 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
         for gen in enm.get("generators", []):
             gen_type = (gen.get("gen_type") or "").lower()
             if "pv" in gen_type or "bess" in gen_type or "inverter" in gen_type:
-                has_trafo = bool(gen.get("blocking_transformer_ref"))
+                has_trafo = bool(gen.get("blocking_transformer_ref")) or _station_has_transformer(
+                    enm,
+                    gen.get("station_ref"),
+                )
                 cv = gen.get("connection_variant") or ""
                 if not has_trafo and "direct" not in cv.lower():
                     blockers.append(
@@ -695,7 +721,7 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
             main_out = bp.get("ports", {}).get("MAIN_OUT")
             branch_ports = bp.get("ports", {}).get("BRANCH", [])
 
-            parent = _find_branch(enm, parent_segment_id) if parent_segment_id else None
+            parent = _find_branch_or_split_child(enm, parent_segment_id) if parent_segment_id else None
             if not parent:
                 blockers.append(
                     {
@@ -779,7 +805,12 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
         # Domain-level check: switches/breakers without catalog_ref
         for b in enm.get("branches", []):
             b_type = b.get("type", "")
-            if b_type in ("switch", "breaker") and not b.get("catalog_ref"):
+            b_meta = b.get("meta") if isinstance(b.get("meta"), dict) else {}
+            if (
+                b_type in ("switch", "breaker")
+                and not b.get("catalog_ref")
+                and b_meta.get("requires_catalog_binding") is not False
+            ):
                 b_ref = b.get("ref_id", "")
                 blockers.append(
                     {
@@ -1693,7 +1724,20 @@ def _resolve_manual_source_equivalent(
             return None
         return normalized
 
-    voltage_kv = _as_positive_number(manual.get("voltage_kv", payload.get("voltage_kv")))
+    sn_voltage_kv = _as_positive_number(manual.get("sn_voltage_kv", payload.get("voltage_kv")))
+    input_side = (
+        str(manual.get("short_circuit_input_side", payload.get("short_circuit_input_side", "SN")))
+        .strip()
+        .upper()
+    )
+    if input_side in {"HV", "WN", "HV110", "110KV", "110_KV"}:
+        input_side = "HV_110"
+    if input_side != "HV_110":
+        input_side = "SN"
+    hv_voltage_kv = _as_positive_number(
+        manual.get("hv_voltage_kv", manual.get("voltage_hv_kv", payload.get("hv_voltage_kv", 110.0)))
+    )
+    voltage_kv = hv_voltage_kv if input_side == "HV_110" else sn_voltage_kv
     short_circuit_mode = (
         str(
             manual.get(
@@ -1705,14 +1749,23 @@ def _resolve_manual_source_equivalent(
     )
     ik3_ka = _as_positive_number(manual.get("ik3_ka", payload.get("ik3_ka")))
 
-    if voltage_kv is None:
+    if sn_voltage_kv is None:
         return _error_response(
             "Ręczna umowa równoważna GPZ wymaga dodatniego napięcia znamionowego SN.",
             "source.manual_equivalent_incomplete",
         )
 
+    if input_side == "HV_110" and voltage_kv is None:
+        return _error_response(
+            "Reczna umowa rownowazna GPZ WN/SN wymaga dodatniego napiecia strony WN.",
+            "source.manual_equivalent_incomplete",
+        )
+
     resolved: dict[str, Any] = {
         "voltage_kv": voltage_kv,
+        "sn_voltage_kv": sn_voltage_kv,
+        "voltage_hv_kv": hv_voltage_kv if input_side == "HV_110" else None,
+        "short_circuit_input_side": input_side,
         "manual_equivalent": True,
         "short_circuit_mode": short_circuit_mode,
     }
@@ -1743,9 +1796,18 @@ def _resolve_manual_source_equivalent(
             }
         )
     else:
-        sk3_mva = _as_positive_number(manual.get("sk3_mva", payload.get("sk3_mva")))
+        sk3_mva = _as_positive_number(
+            manual.get("sk3_hv_mva", payload.get("sk3_hv_mva"))
+            if input_side == "HV_110"
+            else manual.get("sk3_mva", payload.get("sk3_mva"))
+        )
         rx_ratio = _as_positive_number(manual.get("rx_ratio", payload.get("rx_ratio")))
         if sk3_mva is None:
+            if input_side == "HV_110":
+                return _error_response(
+                    "Reczna umowa rownowazna GPZ WN/SN wymaga dodatniej mocy zwarciowej Sk3 na szynie 110 kV.",
+                    "source.manual_equivalent_incomplete",
+                )
             return _error_response(
                 "Ręczna umowa równoważna GPZ wymaga dodatniej mocy zwarciowej Sk3.",
                 "source.manual_equivalent_incomplete",
@@ -1759,6 +1821,7 @@ def _resolve_manual_source_equivalent(
         resolved.update(
             {
                 "sk3_mva": sk3_mva,
+                "sk3_hv_mva": sk3_mva if input_side == "HV_110" else None,
                 "rx_ratio": rx_ratio,
                 "short_circuit_model": "short_circuit_power",
             }
@@ -1899,6 +1962,10 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "rx_ratio": manual_equivalent["rx_ratio"],
             "short_circuit_model": manual_equivalent["short_circuit_model"],
             "short_circuit_mode": manual_equivalent["short_circuit_mode"],
+            "short_circuit_input_side": manual_equivalent.get("short_circuit_input_side", "SN"),
+            "sn_voltage_kv": manual_equivalent.get("sn_voltage_kv"),
+            "voltage_hv_kv": manual_equivalent.get("voltage_hv_kv"),
+            "sk3_hv_mva": manual_equivalent.get("sk3_hv_mva"),
             "manual_equivalent": True,
         }
         if manual_equivalent.get("ik3_ka") is not None:
@@ -2034,6 +2101,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         )
 
     gpz_transformer_refs: list[str] = []
+    gpz_hv_bus_refs: list[str] = []
     for index in range(transformer_count):
         order = index + 1
         hv_bus_ref = _make_id("gpz", seed, f"transformer/{order:03d}/bus_110")
@@ -2066,6 +2134,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         events.append(
             {"event_seq": ev_seq, "event_type": "BUS_CREATED", "element_id": hv_bus_ref}
         )
+        gpz_hv_bus_refs.append(hv_bus_ref)
 
         transformer_rated_power_mva = float(payload.get("transformer_sn_mva") or 25.0)
         transformer_catalog_ref = _resolve_gpz_wn_sn_transformer_catalog_ref(
@@ -2136,13 +2205,23 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         )
 
     # Create source
+    source_bus_ref = (
+        gpz_hv_bus_refs[0]
+        if materialized_params.get("short_circuit_input_side") == "HV_110" and gpz_hv_bus_refs
+        else gpz_section_bus_refs[0]
+    )
     source_data = {
         "device_type": "source",
         "ref_id": source_ref,
         "name": payload.get("source_name") or f"Źródło GPZ {voltage_kv} kV",
-        "bus_ref": gpz_section_bus_refs[0],
+        "bus_ref": source_bus_ref,
         "substation_ref": substation_ref,
-        "gpz_section_id": gpz_sections[0]["section_id"] if gpz_sections else None,
+        "gpz_section_id": (
+            gpz_sections[0]["section_id"]
+            if gpz_sections and source_bus_ref == gpz_section_bus_refs[0]
+            else None
+        ),
+        "source_side": materialized_params.get("short_circuit_input_side", "SN"),
         "model": materialized_params.get("short_circuit_model", "short_circuit_power"),
         "catalog_ref": catalog_ref,
         "materialized_params": materialized_params,
@@ -2167,6 +2246,9 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         "r0_ohm",
         "x0_ohm",
         "z0_z1_ratio",
+        "sn_voltage_kv",
+        "voltage_hv_kv",
+        "sk3_hv_mva",
         "c_max",
         "c_min",
     ):
@@ -2364,9 +2446,9 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "ref_id": substation_ref,
             "name": payload.get("source_name") or f"GPZ {voltage_kv} kV",
             "station_type": "gpz",
-            "bus_refs": gpz_section_bus_refs,
+            "bus_refs": gpz_section_bus_refs + gpz_hv_bus_refs,
             "transformer_refs": gpz_transformer_refs,
-            "entry_point_ref": gpz_section_bus_refs[0],
+            "entry_point_ref": source_bus_ref,
             "gpz_sections": gpz_sections,
             "tags": [],
             "meta": {
@@ -2375,6 +2457,8 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "grounding": grounding_config,
                 "zero_sequence": zero_sequence_config,
                 "short_circuit_mode": materialized_params.get("short_circuit_mode"),
+                "short_circuit_input_side": materialized_params.get("short_circuit_input_side", "SN"),
+                "gpz_hv_bus_refs": gpz_hv_bus_refs,
                 "field_specs": field_specs,
             },
         }
@@ -2925,6 +3009,11 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         bay_role = role_map.get(field_role, "FEEDER")
         terminal_bus_ref = _make_id("stn", station_seed, f"sn_field_terminal/{idx:03d}")
         breaker_ref = _make_id("stn", station_seed, f"sn_field_breaker/{idx:03d}")
+        breaker_catalog_ref = (
+            field_spec.get("apparatus_catalog_ref")
+            or payload.get("field_apparatus_catalog_ref")
+            or "sw-cb-abb-vd4-17kv-630a"
+        )
 
         result = create_node(
             new_enm,
@@ -2961,7 +3050,9 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 "status": "closed",
                 "r_ohm": 0.0,
                 "x_ohm": 0.0,
-                "tags": ["station_field_device", "requires_catalog_binding"],
+                "catalog_ref": breaker_catalog_ref,
+                "catalog_namespace": "APARAT_SN",
+                "tags": ["station_field_device"],
                 "meta": {
                     "field_ref": field_ref,
                     "station_ref": stn_id,
@@ -2969,8 +3060,8 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                     "bay_role": bay_role,
                     "render_on_sld": False,
                     "show_in_project_tree": False,
-                    "requires_catalog_binding": True,
-                    "catalog_message": "Dobierz aparat pola SN z katalogu APARAT_SN.",
+                    "requires_catalog_binding": False,
+                    "catalog_message": "Aparat pola SN dobrany z katalogu APARAT_SN.",
                 },
             },
         )
@@ -5284,6 +5375,59 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     bay_in_ref = f"bay/{seed}/in"
     bay_tr_ref = f"bay/{seed}/tr"
     transformer_ref = f"tr/{seed}/transformer"
+    sn_fields_payload = payload.get("sn_fields")
+    raw_sn_fields = sn_fields_payload if isinstance(sn_fields_payload, list) else []
+    sn_fields: list[dict[str, Any]] = [
+        field for field in raw_sn_fields
+        if isinstance(field, dict)
+    ]
+    sn_field_role_to_bay_role = {
+        "LINIA_IN": "IN",
+        "LINIA_OUT": "OUT",
+        "LINIA_ODG": "FEEDER",
+        "TRANSFORMATOROWE": "TR",
+        "SPRZEGLO": "COUPLER",
+    }
+    field_role_counts: dict[str, int] = {}
+    field_specs: list[dict[str, Any]] = []
+    for index, field in enumerate(sn_fields, start=1):
+        field_role = str(field.get("field_role") or "").strip()
+        bay_role = sn_field_role_to_bay_role.get(field_role)
+        if not bay_role:
+            continue
+        field_role_counts[field_role] = field_role_counts.get(field_role, 0) + 1
+        role_index = field_role_counts[field_role]
+        if field_role == "LINIA_IN" and role_index == 1:
+            bay_ref = bay_in_ref
+        elif field_role == "TRANSFORMATOROWE" and role_index == 1:
+            bay_ref = bay_tr_ref
+        else:
+            bay_ref = f"bay/{seed}/{field_role.lower()}_{role_index}"
+        field_specs.append({
+            "field_ref": f"field/{seed}/{index}",
+            "bay_ref": bay_ref,
+            "field_role": field_role,
+            "bay_role": bay_role,
+            "bay_kind": field.get("bay_kind"),
+            "manufacturer_ref": field.get("manufacturer_ref"),
+            "switchgear_family_ref": field.get("switchgear_family_ref"),
+            "bay_template_ref": field.get("bay_template_ref"),
+            "source_status": field.get("source_status"),
+            "source_refs": list(field.get("source_refs") or []),
+            "catalog_bindings": field.get("catalog_bindings"),
+        })
+
+    def _field_spec_for_role(role: str) -> dict[str, Any] | None:
+        for spec in field_specs:
+            if spec.get("field_role") == role:
+                return spec
+        return None
+
+    def _field_spec_for_bay_ref(bay_ref: str) -> dict[str, Any] | None:
+        for spec in field_specs:
+            if spec.get("bay_ref") == bay_ref:
+                return spec
+        return None
 
     # Dry-run: deepcopy, zwracamy preview metadata
     new_enm = copy.deepcopy(enm)
@@ -5300,7 +5444,12 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         "bus_refs": [endpoint_bus_ref],
         "transformer_refs": [],
         "tags": [],
-        "meta": {"created_by": "append_station_on_endpoint"},
+        "meta": {
+            "created_by": "append_station_on_endpoint",
+            "station_type_semantic": station_type_raw,
+            "switchgear": station_payload.get("switchgear") or payload.get("switchgear") or {},
+            "field_specs": field_specs,
+        },
     }
     new_enm.setdefault("substations", []).append(new_substation)
     created.append(substation_ref)
@@ -5320,7 +5469,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         "bus_ref": endpoint_bus_ref,
         "equipment_refs": [],
         "tags": [],
-        "meta": {},
+        "meta": {"sn_field_template": _field_spec_for_role("LINIA_IN")},
     }
     new_enm.setdefault("bays", []).append(new_bay_in)
     created.append(bay_in_ref)
@@ -5402,7 +5551,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             "bus_ref": endpoint_bus_ref,
             "equipment_refs": [transformer_ref],
             "tags": [],
-            "meta": {},
+            "meta": {"sn_field_template": _field_spec_for_role("TRANSFORMATOROWE")},
         }
         new_enm.setdefault("bays", []).append(new_bay_tr)
         created.append(bay_tr_ref)
@@ -5411,6 +5560,36 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             "event_seq": ev_seq,
             "event_type": "FIELDS_CREATED_SN",
             "element_id": bay_tr_ref,
+        })
+
+    # Step 4B: dodatkowe pola SN z kreatora stacji (OUT/odgałęzienie/sprzęgło/TR bez trafo)
+    existing_bay_refs = {bay_in_ref}
+    if transformer_catalog_ref:
+        existing_bay_refs.add(bay_tr_ref)
+    for spec in field_specs:
+        bay_ref = str(spec.get("bay_ref") or "")
+        bay_role = str(spec.get("bay_role") or "")
+        if not bay_ref or bay_ref in existing_bay_refs:
+            continue
+        equipment_refs = [transformer_ref] if bay_role == "TR" and transformer_catalog_ref else []
+        new_bay = {
+            "ref_id": bay_ref,
+            "name": f"Pole {bay_role} — {station_name}",
+            "bay_role": bay_role,
+            "substation_ref": substation_ref,
+            "bus_ref": endpoint_bus_ref,
+            "equipment_refs": equipment_refs,
+            "tags": ["station_sn_field"],
+            "meta": {"sn_field_template": _field_spec_for_bay_ref(bay_ref)},
+        }
+        new_enm.setdefault("bays", []).append(new_bay)
+        existing_bay_refs.add(bay_ref)
+        created.append(bay_ref)
+        ev_seq += 1
+        events.append({
+            "event_seq": ev_seq,
+            "event_type": "FIELDS_CREATED_SN",
+            "element_id": bay_ref,
         })
 
     # Step 5: re-tag endpoint_bus jako część stacji

@@ -144,6 +144,45 @@ vi.mock('../../../catalog/api', () => ({
   ]),
 }));
 
+const ptpireeItems = vi.hoisted(() => [
+  {
+    id: 'ptpiree-pvco-pv-1-mw',
+    sourceId: 'ptpiree-test',
+    sourceVersion: 'WiPWC 1.3',
+    sourceUrl: 'https://ptpiree.pl/test.pdf',
+    sourcePage: 1,
+    sourceRow: 7,
+    documentNumber: 'PV-TEST-001',
+    acceptanceDate: '31.12.2026',
+    wosVersion: 'WOS 2025',
+    manufacturer: 'PV Co',
+    deviceKind: 'Falownik fotowoltaiczny',
+    model: 'PV 1 MW',
+    moduleTypes: ['A', 'B'],
+    firmware: '1.0',
+    certificateStatus: 'ptpiree_verified',
+    electricalDataStatus: 'requires_datasheet',
+  },
+] as const);
+
+vi.mock('../../station-der/ptpireeCertifiedInverters', () => ({
+  PTPIREE_CERTIFIED_INVERTERS: ptpireeItems,
+  loadPtpireeCertifiedInverters: vi.fn(async () => ptpireeItems),
+  getPtpireeCertifiedInverter: vi.fn((id: string | null | undefined, registry = ptpireeItems) =>
+    id ? registry.find((item) => item.id === id) ?? null : null,
+  ),
+  filterPtpireeCertifiedInverters: vi.fn((query: string, registry = ptpireeItems) => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return registry;
+    return registry.filter((item) =>
+      `${item.manufacturer} ${item.model} ${item.documentNumber}`.toLowerCase().includes(normalized),
+    );
+  }),
+  formatPtpireeCertificateLabel: vi.fn((item) =>
+    item ? `${item.manufacturer} ${item.model} (${item.documentNumber})` : 'brak certyfikatu PTPiREE',
+  ),
+}));
+
 vi.mock('../../../field/useFieldReadModel', () => ({
   useFieldReadModel: () => ({
     data: { fields: [] },
@@ -195,11 +234,14 @@ describe('AddConverterSourceForm', () => {
     render(<AddConverterSourceForm />);
 
     await waitFor(() => {
-      expect(screen.getByText(/wybierz:Przekształtnik PV/i)).toBeInTheDocument();
+      expect(screen.getByText('conv-pv-1')).toBeInTheDocument();
+      expect(screen.getByLabelText('Moc robocza P [MW]')).toHaveValue('1.000');
+      expect(screen.getByLabelText('Qmin [Mvar]')).toHaveValue('-0.200');
+      expect(screen.getByLabelText('Qmax [Mvar]')).toHaveValue('0.200');
+      expect(screen.getByLabelText('Certyfikat PTPiREE')).toHaveValue('ptpiree-pvco-pv-1-mw');
     });
 
     fireEvent.click(screen.getByText('wybierz:Aparat nN'));
-    fireEvent.click(screen.getByText(/wybierz:Przekształtnik PV/i));
     fireEvent.change(screen.getByLabelText('Moc robocza P [MW]'), { target: { value: '0.75' } });
     fireEvent.click(screen.getByRole('button', { name: /Dodaj/i }));
 
@@ -213,7 +255,7 @@ describe('AddConverterSourceForm', () => {
           station_ref: 'st-1',
           bus_nn_ref: 'bus-nn-1',
           placement: 'NEW_FIELD',
-          source_name: 'Blok PV',
+          source_name: 'PV 1 MW',
           quantity: 1,
           power_setpoint_mw: 0.75,
           catalog_binding: expect.objectContaining({
@@ -226,6 +268,16 @@ describe('AddConverterSourceForm', () => {
               catalog_namespace: 'APARAT_NN',
               catalog_item_id: 'ap-nn-1',
             }),
+          }),
+          materialized_params: expect.objectContaining({
+            catalog_item_id: 'conv-pv-1',
+            pmax_mw: 1,
+            qmin_mvar: -0.2,
+            qmax_mvar: 0.2,
+            ptpiree_certificate_ref: 'ptpiree-pvco-pv-1-mw',
+            ptpiree_document_number: 'PV-TEST-001',
+            ptpiree_module_types: ['A', 'B'],
+            ptpiree_electrical_data_status: 'requires_datasheet',
           }),
         }),
       );
@@ -240,15 +292,14 @@ describe('AddConverterSourceForm', () => {
     render(<AddConverterSourceForm />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Przekształtnik PV/i })).toBeInTheDocument();
+      expect(screen.getByText('conv-pv-1')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'BESS' }));
     fireEvent.click(screen.getByRole('button', { name: /Blokowe do SN/i }));
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Przekształtnik BESS/i })).toBeInTheDocument();
+      expect(screen.getByText('conv-bess-1')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole('button', { name: /Przekształtnik BESS/i }));
     fireEvent.click(screen.getByRole('button', { name: /Dodaj/i }));
 
     await waitFor(() => {

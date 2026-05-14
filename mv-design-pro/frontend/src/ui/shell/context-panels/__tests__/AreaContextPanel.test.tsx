@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+const openRouteSurface = vi.fn();
+
 vi.mock('../../../network-build/ProcessPanel', () => ({
   ProcessPanel: () => <div data-testid="mock-process-panel">ProcessPanel</div>,
 }));
@@ -16,11 +18,15 @@ vi.mock('../../../network-build/networkBuildStore', () => ({
     transformerCount: 0,
     generatorCount: 0,
     isReady: false,
+    blockersByCategory: { total: 0 },
     ozeSourceSummaries: [],
     stationSummaries: [],
     transformerSummaries: [],
   }),
-  useNetworkBuildStore: () => ({}),
+  useNetworkBuildStore: (selector?: (state: { openRouteSurface: typeof openRouteSurface }) => unknown) => {
+    const state = { openRouteSurface };
+    return typeof selector === 'function' ? selector(state) : state;
+  },
 }));
 
 vi.mock('../../../study-cases/StudyCaseList', () => ({
@@ -46,6 +52,7 @@ vi.mock('../../../shared/generatorTypeLabels', () => ({
 }));
 
 import { useAppStateStore } from '../../../app-state/store';
+import { useSelectionStore } from '../../../selection/store';
 import { type SnapshotState, useSnapshotStore } from '../../../topology/snapshotStore';
 import { AreaContextPanel } from '../AreaContextPanel';
 
@@ -189,6 +196,55 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
 
     errorSpy.mockRestore();
     act(() => {
+      useSnapshotStore.getState().reset();
+    });
+  });
+
+  it('Schemat: wyłącznik pola SN jest aparatem, a nie odcinkiem liniowym', () => {
+    openRouteSurface.mockClear();
+    act(() => {
+      useSelectionStore.getState().clearSelection();
+      useSnapshotStore.setState({
+        snapshot: {
+          sources: [],
+          buses: [],
+          bays: [],
+          substations: [],
+          branches: [{
+            id: 'brk-1',
+            ref_id: 'stn/1/sn_field_breaker/000',
+            name: 'Wyłącznik pola SN 1',
+            type: 'breaker',
+            status: 'closed',
+          }],
+        } as SnapshotState['snapshot'],
+        readiness: { ready: false, blockers: [], warnings: [] } as SnapshotState['readiness'],
+      });
+    });
+
+    render(<AreaContextPanel areaCode="SCHEMAT_TOPOLOGIA" />);
+
+    expect(screen.getByText('Aparatura SN')).toBeInTheDocument();
+    expect(screen.queryByText('Odcinki SN')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('model-tree-row-stn/1/sn_field_breaker/000'));
+
+    expect(useSelectionStore.getState().selectedElement).toMatchObject({
+      id: 'stn/1/sn_field_breaker/000',
+      type: 'Switch',
+      name: 'Wyłącznik pola SN 1',
+    });
+    expect(openRouteSurface).toHaveBeenCalledWith(
+      'E-11',
+      expect.objectContaining({
+        entityRef: 'stn/1/sn_field_breaker/000',
+        entityType: 'sn_bay',
+        tabId: 'aparatura',
+      }),
+    );
+
+    act(() => {
+      useSelectionStore.getState().clearSelection();
       useSnapshotStore.getState().reset();
     });
   });

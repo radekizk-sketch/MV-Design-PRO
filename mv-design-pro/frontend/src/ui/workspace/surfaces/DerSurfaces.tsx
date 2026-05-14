@@ -7,7 +7,7 @@
  * jako podstawowej treści UI.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../app-state';
 import {
@@ -38,6 +38,16 @@ import {
   selectDerById,
   useStationDerStore,
 } from '../../network-build/station-der';
+import {
+  PTPIREE_CERTIFIED_DEVICE_SOURCES,
+  PTPIREE_CERTIFIED_INVERTERS,
+  filterPtpireeCertifiedInverters,
+  formatPtpireeCertificateLabel,
+  getPtpireeCertifiedInverter,
+  getPtpireeSource,
+  getPtpireeSourceRecordCount,
+  loadPtpireeCertifiedInverters,
+} from '../../network-build/station-der/ptpireeCertifiedInverters';
 import type {
   ConnectionSide,
   DerCompleteness,
@@ -211,6 +221,8 @@ function buildDerFromGenerator(
     catalogs: {
       ...EMPTY_DER_CATALOGS,
       device_catalog_ref: catalogRef,
+      ptpiree_certificate_ref: stringFromRecord(materialized, ['ptpiree_certificate_ref'])
+        ?? stringFromRecord(meta, ['ptpiree_certificate_ref']),
       controller_catalog_ref: stringFromRecord(materialized, ['controller_catalog_ref'])
         ?? stringFromRecord(meta, ['controller_catalog_ref']),
       battery_catalog_ref: stringFromRecord(materialized, ['battery_catalog_ref'])
@@ -387,6 +399,10 @@ function assignedLabel(value: string | null | undefined, label: string): string 
   return value ? label : 'brak danych';
 }
 
+function ptpireeSourceSummary(): string {
+  return `${getPtpireeSourceRecordCount()} pozycji źródłowych PTPiREE`;
+}
+
 function FieldRow({ label, value }: { readonly label: string; readonly value: string }) {
   return (
     <div className="grid grid-cols-[170px_1fr] gap-3 border-b border-scada-border/60 py-1.5 last:border-b-0">
@@ -409,6 +425,7 @@ function buildDerCards(der: StationDerConnection): Partial<Record<DerCardId, JSX
     ? NC_RFG_PROFILE_CATALOG.find((profile) => profile.id === der.profiles.nc_rfg_profile_ref)
     : null;
   const inverter = findPvInverter(der);
+  const ptpireeCertificate = getPtpireeCertifiedInverter(der.catalogs.ptpiree_certificate_ref);
   const devicePower = findDeviceNominalPower(der);
   const faultCurrent = inverter?.fault_current_capability_pu
     ? `${inverter.fault_current_capability_pu.toFixed(2)} × In`
@@ -425,6 +442,7 @@ function buildDerCards(der: StationDerConnection): Partial<Record<DerCardId, JSX
           />
           <FieldRow label="Moc znamionowa AC" value={devicePower !== null ? `${devicePower} kW` : 'brak danych'} />
           <FieldRow label="Urządzenie katalogowe" value={findDeviceLabel(der)} />
+          <FieldRow label="Certyfikat PTPiREE" value={formatPtpireeCertificateLabel(ptpireeCertificate)} />
           <FieldRow label="Moduł NC RfG" value={moduleTypeLabel(der)} />
         </dl>
         <EngineeringNote>
@@ -447,7 +465,15 @@ function buildDerCards(der: StationDerConnection): Partial<Record<DerCardId, JSX
         </EngineeringNote>
       </section>
     ),
-    inverters: (
+    inverters: der.der_kind === 'PV' ? (
+      <PvInverterCatalogPanel
+        der={der}
+        inverterLabel={findDeviceLabel(der)}
+        inverterManufacturer={inverter?.manufacturer ?? null}
+        inverterVoltage={inverter ? `${inverter.nominal_voltage_kv} kV` : null}
+        faultCurrent={faultCurrent}
+      />
+    ) : (
       <section>
         <dl>
           <FieldRow label={der.der_kind === 'FW' ? 'Turbina z katalogu' : 'Falownik / PCS'} value={findDeviceLabel(der)} />
@@ -528,6 +554,195 @@ function buildDerCards(der: StationDerConnection): Partial<Record<DerCardId, JSX
       </section>
     ),
   };
+}
+
+function PvInverterCatalogPanel({
+  der,
+  inverterLabel,
+  inverterManufacturer,
+  inverterVoltage,
+  faultCurrent,
+}: {
+  readonly der: StationDerConnection;
+  readonly inverterLabel: string;
+  readonly inverterManufacturer: string | null;
+  readonly inverterVoltage: string | null;
+  readonly faultCurrent: string;
+}): JSX.Element {
+  const [query, setQuery] = useState('');
+  const [certificateRegistry, setCertificateRegistry] = useState(PTPIREE_CERTIFIED_INVERTERS);
+  useEffect(() => {
+    let mounted = true;
+    loadPtpireeCertifiedInverters().then((items) => {
+      if (mounted) setCertificateRegistry(items);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+  const selectedCertificate = getPtpireeCertifiedInverter(
+    der.catalogs.ptpiree_certificate_ref,
+    certificateRegistry,
+  );
+  const matchingCertificates = useMemo(
+    () => filterPtpireeCertifiedInverters(query, certificateRegistry),
+    [certificateRegistry, query],
+  );
+  const filteredCertificates = matchingCertificates.slice(0, 24);
+  const storeDer = useStationDerStore((state) => selectDerById(state, der.id));
+  const attachDer = useStationDerStore((state) => state.attachDer);
+  const updateDerCatalogs = useStationDerStore((state) => state.updateDerCatalogs);
+  const updateDerReadiness = useStationDerStore((state) => state.updateDerReadiness);
+
+  const applyCertificate = useCallback((certificateRef: string) => {
+    const nextCatalogs = {
+      ...der.catalogs,
+      ptpiree_certificate_ref: certificateRef,
+    };
+    const now = der.updated_at || der.created_at || '1970-01-01T00:00:00Z';
+
+    if (!storeDer) {
+      attachDer({
+        id: der.id,
+        project_id: der.project_id,
+        station_id: der.station_id,
+        der_kind: der.der_kind,
+        name: der.name,
+        connection_side: der.connection_side,
+        pcc_ref: der.pcc_ref,
+        bay_ref: der.bay_ref,
+        transformer_ref: der.transformer_ref,
+        lv_busbar_ref: der.lv_busbar_ref,
+        connection_node_ref: der.connection_node_ref,
+        internal_cable_ref: der.internal_cable_ref,
+        voltage_level_ref: der.voltage_level_ref,
+        catalogs: nextCatalogs,
+        profiles: der.profiles,
+        nominal_power_kw: der.nominal_power_kw,
+        created_at: der.created_at || now,
+      });
+      updateDerReadiness(der.id, der.readiness);
+      return;
+    }
+
+    updateDerCatalogs(der.id, { ptpiree_certificate_ref: certificateRef }, now);
+  }, [attachDer, der, storeDer, updateDerCatalogs, updateDerReadiness]);
+
+  return (
+    <section className="space-y-3">
+      <div className="rounded border border-scada-border bg-scada-surface/60 p-3">
+        <h3 className="text-sm font-semibold text-scada-text">Dobór techniczny falownika</h3>
+        <dl className="mt-2">
+          <FieldRow label="Falownik / PCS" value={inverterLabel} />
+          <FieldRow label="Producent" value={inverterManufacturer ?? MISSING_DASH} />
+          <FieldRow label="Napięcie urządzenia" value={inverterVoltage ?? MISSING_DASH} />
+          <FieldRow label="Prąd zwarciowy falownika" value={faultCurrent} />
+          <FieldRow label="Certyfikat PTPiREE" value={formatPtpireeCertificateLabel(selectedCertificate)} />
+          <FieldRow label="Zakres bazy źródłowej" value={ptpireeSourceSummary()} />
+        </dl>
+        <EngineeringNote>
+          Certyfikat PTPiREE potwierdza wpis urządzenia w wykazie NC RfG/WOS. Parametry Un, Sn, Ik, FRT i model dynamiczny nadal muszą pochodzić z karty katalogowej lub typu katalogowego.
+        </EngineeringNote>
+      </div>
+
+      <div className="rounded border border-scada-border bg-scada-surface/60 p-3">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-scada-text">Certyfikowane falowniki PTPiREE</h3>
+            <p className="mt-1 text-[11px] text-scada-muted">
+              Pełny indeks lokalny obejmuje {certificateRegistry.length} pozycji falownikowych i konwerterowych z oficjalnych wykazów PTPiREE.
+            </p>
+          </div>
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Szukaj producenta, modelu, dokumentu..."
+            className="min-h-9 w-full rounded border border-scada-border bg-scada-panel px-3 py-1 text-xs text-scada-text outline-none focus:border-cyan-400 md:w-80"
+            aria-label="Szukaj w certyfikatach PTPiREE"
+          />
+        </div>
+
+        <div className="mt-3 text-[11px] text-scada-muted">
+          {matchingCertificates.length} wyników; tabela pokazuje pierwsze 24. Użyj wyszukiwarki po producencie, modelu albo numerze dokumentu.
+        </div>
+
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {PTPIREE_CERTIFIED_DEVICE_SOURCES.map((source) => (
+            <a
+              key={source.id}
+              href={source.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded border border-scada-border bg-scada-panel p-2 text-xs text-scada-text hover:border-cyan-400"
+            >
+              <span className="block font-semibold">{source.version} · {source.publishedAt}</span>
+              <span className="mt-1 block text-scada-muted">{source.titlePl}</span>
+              <span className="mt-1 block text-cyan-200">{source.sourceRecordCount} pozycji w wykazie</span>
+            </a>
+          ))}
+        </div>
+
+        <div className="mt-3 overflow-x-auto">
+          <table className="min-w-full text-left text-[11px]">
+            <thead className="text-scada-muted">
+              <tr className="border-b border-scada-border">
+                <th className="py-2 pr-3 font-semibold">Producent / model</th>
+                <th className="py-2 pr-3 font-semibold">Dokument</th>
+                <th className="py-2 pr-3 font-semibold">WOS / PPM</th>
+                <th className="py-2 pr-3 font-semibold">Źródło</th>
+                <th className="py-2 text-right font-semibold">Akcja</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCertificates.map((item) => {
+                const source = getPtpireeSource(item.sourceId);
+                const selected = item.id === der.catalogs.ptpiree_certificate_ref;
+                return (
+                  <tr key={item.id} className="border-b border-scada-border/60 align-top">
+                    <td className="py-2 pr-3">
+                      <div className="font-semibold text-scada-text">{item.manufacturer}</div>
+                      <div className="text-scada-muted">{item.model}</div>
+                      <div className="text-scada-muted/80">{item.deviceKind}</div>
+                      <div className="mt-1 text-amber-200">{item.electricalDataStatus === 'requires_datasheet' ? 'wymaga karty katalogowej do parametrów elektrycznych' : ''}</div>
+                    </td>
+                    <td className="py-2 pr-3">
+                      <div className="font-medium text-scada-text">{item.documentNumber}</div>
+                      <div className="text-scada-muted">akceptacja: {item.acceptanceDate}</div>
+                    </td>
+                    <td className="py-2 pr-3">
+                      <div>{item.wosVersion ?? item.sourceVersion}</div>
+                      <div className="text-scada-muted">moduł {item.moduleTypes.length ? item.moduleTypes.join('/') : MISSING_DASH}</div>
+                    </td>
+                    <td className="py-2 pr-3">
+                      <a
+                        href={`${item.sourceUrl}#page=${item.sourcePage}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-cyan-200 hover:text-cyan-100"
+                      >
+                        {source?.version ?? item.sourceVersion}, poz. {item.sourceRow}
+                      </a>
+                    </td>
+                    <td className="py-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => applyCertificate(item.id)}
+                        className="rounded border border-scada-border px-2 py-1 text-[11px] font-semibold text-scada-text hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={selected}
+                      >
+                        {selected ? 'wybrano' : 'zastosuj'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function DerSurfaceShell({

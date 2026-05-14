@@ -5,7 +5,7 @@
  * w kanonicznym shellu (ekran E-01 "Główne środowisko pracy SLD").
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   computeBoundingBox,
@@ -46,6 +46,7 @@ import {
   STATION_RUN_TRUNK_OFFSET_Y,
   type StationOnRunRendererProps,
 } from '../renderer/StationOnRunRenderer';
+import { miniBlockStationPortOffsets } from '../renderer/MiniBlockRmuRenderer';
 import type { SldElementKindForMenu } from '../command/SldCommandService';
 
 export type SldElementContextKind = SldElementKindForMenu;
@@ -133,6 +134,41 @@ function estimateCanonicalGpzFootprint(gpz: GpzCanonicalRendererProps): { width:
   };
 }
 
+const OPERATOR_READABLE_MIN_SCALE = 0.72;
+
+function sameViewportTransform(a: ViewportTransform, b: ViewportTransform): boolean {
+  return (
+    Math.abs(a.scale - b.scale) < 0.001 &&
+    Math.abs(a.translateX - b.translateX) < 0.5 &&
+    Math.abs(a.translateY - b.translateY) < 0.5
+  );
+}
+
+function applyOperatorReadableInitialTransform(
+  fit: ViewportTransform,
+  bbox: { minX: number; minY: number; maxX: number; maxY: number },
+  args: {
+    readonly hasCanonicalGpz: boolean;
+    readonly stationCount: number;
+    readonly runCount: number;
+    readonly derCount: number;
+  },
+): ViewportTransform {
+  const smallOperatorTopology =
+    args.stationCount <= 8 &&
+    args.runCount <= 12 &&
+    args.derCount <= 6;
+  if (!args.hasCanonicalGpz || !smallOperatorTopology || fit.scale >= OPERATOR_READABLE_MIN_SCALE) {
+    return fit;
+  }
+
+  return {
+    scale: OPERATOR_READABLE_MIN_SCALE,
+    translateX: 48 - bbox.minX * OPERATOR_READABLE_MIN_SCALE,
+    translateY: 48 - bbox.minY * OPERATOR_READABLE_MIN_SCALE,
+  };
+}
+
 function isCanonicalGpzInteractiveDescendant(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
   return Boolean(
@@ -186,7 +222,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   }
 
   // Auto-fit przy pierwszym renderze (jeśli mamy obiekty)
-  useMemo(() => {
+  useEffect(() => {
     const allPoints: { x: number; y: number }[] = [];
     for (const g of gpzs) allPoints.push({ x: g.x, y: g.y });
     for (const gpz of canonicalGpzs ?? []) {
@@ -206,8 +242,18 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
       maxX: bbox.maxX + 200,
       maxY: bbox.maxY + 200,
     };
-    setTransform(fitToView(expanded, { width, height }));
-  }, [gpzs, canonicalGpzs, sections, stations, ders, width, height]);
+    const nextTransform = applyOperatorReadableInitialTransform(
+      fitToView(expanded, { width, height }),
+      expanded,
+      {
+        hasCanonicalGpz: (canonicalGpzs?.length ?? 0) > 0,
+        stationCount: stations.length,
+        runCount: cableRuns.length,
+        derCount: ders.length,
+      },
+    );
+    setTransform((current) => sameViewportTransform(current, nextTransform) ? current : nextTransform);
+  }, [gpzs, canonicalGpzs, sections, cableRuns, stations, ders, width, height]);
 
   /* LOD obliczany przez LodController — histereza FSM zapobiega flicker.
    * `update()` zwraca aktualne LOD po zastosowaniu deadband + debounce. */
@@ -311,6 +357,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
       ref={svgRef}
       data-testid="sld-canvas-v2"
       data-lod={lod}
+      data-scale={transform.scale.toFixed(3)}
       width={width}
       height={height}
       style={{ background: COLOR_BG, userSelect: 'none' }}
@@ -554,7 +601,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
               >
                 <CableRunRenderer
                   {...run}
-                  stationPortGaps={buildStationPortGapsForRun(run, stations)}
+                  stationPortGaps={buildStationPortGapsForRun(run, stations, lod)}
                   selected={selectedId === run.id}
                   onClick={onSelectElement ? (id) => onSelectElement(id, 'cable_run') : undefined}
                 />
@@ -563,61 +610,65 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
           </g>
         )}
 
-        {stations.map((st) => (
-          <g
-            key={st.id}
-            data-testid={`sld-v2-station-hit-${st.id}`}
-            data-element-kind="station"
-            data-element-id={st.id}
-            onContextMenu={
-              onContextMenu ? buildElementContextMenuHandler('station', st.id) : undefined
-            }
-            onClick={
-              onSelectElement
-                ? (e) => {
-                    e.stopPropagation();
-                    onSelectElement(st.id, 'station');
-                  }
-                : undefined
-            }
-            onDoubleClick={
-              onDoubleClickStation
-                ? (e) => {
-                    e.stopPropagation();
-                    onDoubleClickStation(st.id);
-                  }
-                : undefined
-            }
-            style={{ cursor: onSelectElement ? 'pointer' : 'default' }}
-          >
-            <StationOnRunRenderer
-              {...st}
-              lod={st.lod ?? lod}
-              selected={selectedId === st.id}
-              onClick={onSelectElement ? (id) => onSelectElement(id, 'station') : undefined}
-              onDoubleClick={onDoubleClickStation}
-            />
-            {st.transformerRefs?.map((transformerRef, index) => (
-              <g
-                key={`station-transformer-symbol-${transformerRef}`}
-                data-testid={`sld-symbol-transformer-${transformerRef}`}
-                data-element-kind="transformer_sn_nn"
-                data-element-id={transformerRef}
-                transform={`translate(${st.x + 46 + index * 18}, ${st.y + 16})`}
-                onClick={onSelectElement ? (event) => {
-                  event.stopPropagation();
-                  onSelectElement(transformerRef, 'transformer');
-                } : undefined}
-                style={{ cursor: onSelectElement ? 'pointer' : 'default' }}
-              >
-                <rect x={-16} y={-16} width={32} height={36} fill="transparent" />
-                <circle cx={0} cy={-4} r={7} fill="none" stroke="#18D26B" strokeWidth={1.4} />
-                <circle cx={0} cy={8} r={7} fill="none" stroke="#18D26B" strokeWidth={1.4} />
-                <title>Transformator SN/nN {transformerRef}</title>
-              </g>
-            ))}
-          </g>
-        ))}
+        {stations.map((st) => {
+          const stationLod = st.lod ?? lod;
+          const stationUsesMiniBlock = stationUsesMiniBlockRenderer(st, stationLod);
+          return (
+            <g
+              key={st.id}
+              data-testid={`sld-v2-station-hit-${st.id}`}
+              data-element-kind="station"
+              data-element-id={st.id}
+              onContextMenu={
+                onContextMenu ? buildElementContextMenuHandler('station', st.id) : undefined
+              }
+              onClick={
+                onSelectElement
+                  ? (e) => {
+                      e.stopPropagation();
+                      onSelectElement(st.id, 'station');
+                    }
+                  : undefined
+              }
+              onDoubleClick={
+                onDoubleClickStation
+                  ? (e) => {
+                      e.stopPropagation();
+                      onDoubleClickStation(st.id);
+                    }
+                  : undefined
+              }
+              style={{ cursor: onSelectElement ? 'pointer' : 'default' }}
+            >
+              <StationOnRunRenderer
+                {...st}
+                lod={stationLod}
+                selected={selectedId === st.id}
+                onClick={onSelectElement ? (id) => onSelectElement(id, 'station') : undefined}
+                onDoubleClick={onDoubleClickStation}
+              />
+              {!stationUsesMiniBlock && st.transformerRefs?.map((transformerRef, index) => (
+                <g
+                  key={`station-transformer-symbol-${transformerRef}`}
+                  data-testid={`sld-symbol-transformer-${transformerRef}`}
+                  data-element-kind="transformer_sn_nn"
+                  data-element-id={transformerRef}
+                  transform={`translate(${st.x + 46 + index * 18}, ${st.y + 16})`}
+                  onClick={onSelectElement ? (event) => {
+                    event.stopPropagation();
+                    onSelectElement(transformerRef, 'transformer');
+                  } : undefined}
+                  style={{ cursor: onSelectElement ? 'pointer' : 'default' }}
+                >
+                  <rect x={-16} y={-16} width={32} height={36} fill="transparent" />
+                  <circle cx={0} cy={-4} r={7} fill="none" stroke="#18D26B" strokeWidth={1.4} />
+                  <circle cx={0} cy={8} r={7} fill="none" stroke="#18D26B" strokeWidth={1.4} />
+                  <title>Transformator SN/nN {transformerRef}</title>
+                </g>
+              ))}
+            </g>
+          );
+        })}
 
         {/* DER (PV/BESS/FW) */}
         {layers.der && ders.map((d) => {
@@ -678,12 +729,13 @@ type CableRunForPortGaps = SldCanvasV2Props['cableRuns'][number];
 function buildStationPortGapsForRun(
   run: CableRunForPortGaps,
   stations: readonly StationOnRunRendererProps[],
+  currentLod: LodLevel,
 ): CableRunStationPortGap[] {
   const gaps: CableRunStationPortGap[] = [];
   for (const station of stations) {
     const connectionY = station.y - STATION_RUN_TRUNK_OFFSET_Y;
     if (!runHasHorizontalSegmentAtY(run, connectionY, station.x)) continue;
-    const [inputOffset, outputOffset] = stationPortOffsets(station.topologicalType);
+    const [inputOffset, outputOffset] = stationPortOffsets(station, currentLod);
     gaps.push({
       stationId: station.id,
       y: connectionY,
@@ -712,9 +764,18 @@ function runHasHorizontalSegmentAtY(
 }
 
 function stationPortOffsets(
-  topologicalType: StationOnRunRendererProps['topologicalType'],
+  station: StationOnRunRendererProps,
+  currentLod: LodLevel,
 ): readonly [number, number | null] {
-  switch (topologicalType) {
+  if (station.snBays) {
+    const miniBlockOffsets = miniBlockStationPortOffsets(
+      miniBlockVariantForLod(station.lod ?? currentLod),
+      station.snBays,
+      station.derBadges ?? [],
+    );
+    if (miniBlockOffsets) return miniBlockOffsets;
+  }
+  switch (station.topologicalType) {
     case 'przelotowa':
     case 'sekcyjna':
       return [-28, 28];
@@ -724,4 +785,17 @@ function stationPortOffsets(
     default:
       return [0, null];
   }
+}
+
+function miniBlockVariantForLod(lod: LodLevel): 'overview' | 'compact' | 'detail' {
+  if (lod <= 0) return 'overview';
+  if (lod === 1) return 'compact';
+  return 'detail';
+}
+
+function stationUsesMiniBlockRenderer(
+  station: StationOnRunRendererProps,
+  currentLod: LodLevel,
+): boolean {
+  return currentLod < 3 && station.snBays !== undefined;
 }

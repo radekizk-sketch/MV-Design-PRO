@@ -7,6 +7,9 @@ const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
 const fetchTransformerTypesMock = vi.fn();
 const fetchConverterTypesMock = vi.fn();
+const fetchManufacturersMock = vi.fn();
+const fetchSwitchgearFamiliesMock = vi.fn();
+const fetchCompleteBayTemplatesMock = vi.fn();
 
 const appState = { activeCaseId: 'case-1' };
 const baseOperationContext = {
@@ -128,6 +131,111 @@ const converterTypes = [
   },
 ];
 
+const switchgearManufacturers = [
+  {
+    manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+    name: 'ZPUE Włoszczowa',
+    normalized_code: 'ZPUE',
+    country: 'PL',
+    status: 'requires_catalog' as const,
+    source_refs: [],
+    notes_pl: null,
+  },
+  {
+    manufacturer_ref: 'ELEKTROMETAL',
+    name: 'Elektrometal',
+    normalized_code: 'ELEKTROMETAL',
+    country: 'PL',
+    status: 'requires_catalog' as const,
+    source_refs: [],
+    notes_pl: null,
+  },
+  {
+    manufacturer_ref: 'SIEMENS',
+    name: 'Siemens',
+    normalized_code: 'SIEMENS',
+    country: 'DE',
+    status: 'requires_catalog' as const,
+    source_refs: [],
+    notes_pl: null,
+  },
+  {
+    manufacturer_ref: 'ABB',
+    name: 'ABB',
+    normalized_code: 'ABB',
+    country: 'CH',
+    status: 'requires_catalog' as const,
+    source_refs: [],
+    notes_pl: null,
+  },
+];
+
+const switchgearFamilies = [
+  {
+    switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
+    manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+    family_name: 'RMU do uzupełnienia katalogiem',
+    series_name: null,
+    voltage_levels: [15, 20],
+    insulation_type: 'unknown' as const,
+    construction_type: 'RMU' as const,
+    status: 'requires_catalog' as const,
+    source_refs: [],
+    notes_pl: null,
+  },
+];
+
+const bayTemplates = [
+  {
+    template_ref: 'tpl-line-in',
+    manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+    switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
+    bay_kind: 'liniowe_doplywowe' as const,
+    bay_role: 'IN' as const,
+    source_status: 'canonical_fallback' as const,
+    source_refs: [],
+    version: 'test',
+    hash: 'h1',
+    notes_pl: null,
+  },
+  {
+    template_ref: 'tpl-line-out',
+    manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+    switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
+    bay_kind: 'liniowe_odplywowe' as const,
+    bay_role: 'OUT' as const,
+    source_status: 'canonical_fallback' as const,
+    source_refs: [],
+    version: 'test',
+    hash: 'h2',
+    notes_pl: null,
+  },
+  {
+    template_ref: 'tpl-tr',
+    manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+    switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
+    bay_kind: 'transformatorowe' as const,
+    bay_role: 'TR' as const,
+    source_status: 'canonical_fallback' as const,
+    source_refs: [],
+    version: 'test',
+    hash: 'h3',
+    notes_pl: null,
+  },
+  {
+    template_ref: 'tpl-coupler',
+    manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+    switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
+    bay_kind: 'sprzeglowe_poprzeczne' as const,
+    bay_role: 'COUPLER' as const,
+    source_status: 'canonical_fallback' as const,
+    source_refs: [],
+    version: 'test',
+    hash: 'h4',
+    notes_pl: null,
+  },
+];
+
 vi.mock('../../../app-state', () => ({
   useAppStateStore: (selector: (state: { activeCaseId: string }) => unknown) => selector(appState),
 }));
@@ -135,6 +243,10 @@ vi.mock('../../../app-state', () => ({
 vi.mock('../../../catalog/api', () => ({
   fetchTransformerTypes: () => fetchTransformerTypesMock(),
   fetchConverterTypes: () => fetchConverterTypesMock(),
+  fetchManufacturers: () => fetchManufacturersMock(),
+  fetchSwitchgearFamilies: () => fetchSwitchgearFamiliesMock(),
+  fetchCompleteBayTemplates: (manufacturerRef?: string | null) =>
+    fetchCompleteBayTemplatesMock(manufacturerRef),
   getCatalogErrorMessage: (error: unknown) => (error instanceof Error ? error.message : 'Błąd katalogu'),
 }));
 
@@ -261,8 +373,14 @@ describe('InsertStationForm', () => {
     executeDomainOperationMock.mockReset();
     fetchTransformerTypesMock.mockReset();
     fetchConverterTypesMock.mockReset();
+    fetchManufacturersMock.mockReset();
+    fetchSwitchgearFamiliesMock.mockReset();
+    fetchCompleteBayTemplatesMock.mockReset();
     fetchTransformerTypesMock.mockResolvedValue(transformerTypes);
     fetchConverterTypesMock.mockResolvedValue(converterTypes);
+    fetchManufacturersMock.mockResolvedValue(switchgearManufacturers);
+    fetchSwitchgearFamiliesMock.mockResolvedValue(switchgearFamilies);
+    fetchCompleteBayTemplatesMock.mockResolvedValue(bayTemplates);
     networkBuildState.activeOperationForm.context = { ...baseOperationContext };
     snapshotState.snapshot = { ...baseSnapshot };
   });
@@ -303,6 +421,68 @@ describe('InsertStationForm', () => {
         }),
       );
     });
+    expect(closeFormMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('dla terminala końca odcinka dopina stację przez append_station_on_endpoint, bez pozycji 0,5', async () => {
+    networkBuildState.activeOperationForm.context = {
+      segment_id: 'seg-1',
+      endpoint_bus_ref: 'bus-created-end',
+      terminal_id: 'bus-created-end',
+      corridor_ref: 'trunk-created',
+      placement_mode: 'ENDPOINT_APPEND',
+      position_on_segment: 1,
+      station_type: 'inline',
+      name: 'ST-END',
+    };
+    executeDomainOperationMock.mockResolvedValue({ snapshot: { header: { name: 'case-1' } } });
+
+    render(<InsertStationForm />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('transformer-options')).toHaveTextContent('TR-15-04');
+    });
+    expect(screen.getByText(/koniec poprzedniego odcinka/i)).toBeInTheDocument();
+    expect(screen.getByTestId('station-switchgear-catalog-preview')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByText('tpl-line-in').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getByTestId('station-submit'));
+
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'append_station_on_endpoint',
+        expect.objectContaining({
+          endpoint_bus_ref: 'bus-created-end',
+          run_ref: 'trunk-created',
+          station: expect.objectContaining({
+            station_type: 'inline',
+            switchgear: expect.objectContaining({
+              manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+              switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
+            }),
+          }),
+          sn_fields: expect.arrayContaining([
+            expect.objectContaining({
+              field_role: 'LINIA_IN',
+              bay_template_ref: 'tpl-line-in',
+            }),
+            expect.objectContaining({
+              field_role: 'LINIA_OUT',
+              bay_template_ref: 'tpl-line-out',
+            }),
+            expect.objectContaining({
+              field_role: 'TRANSFORMATOROWE',
+              bay_template_ref: 'tpl-tr',
+            }),
+          ]),
+        }),
+      );
+    });
+    const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+    expect(payload).not.toHaveProperty('insert_at');
     expect(closeFormMock).toHaveBeenCalledTimes(1);
   });
 

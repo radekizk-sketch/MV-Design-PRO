@@ -5,6 +5,7 @@ import type { FixAction } from '../../types/enm';
 import { notify } from '../notifications/store';
 import { useSelectionStore } from '../selection';
 import { executeFixActionSurface } from '../shared/fixActionSurfaceExecutor';
+import { resolveSelectedElementFromSnapshot } from '../shared/selectionResolution';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { useNetworkBuildDerived, useNetworkBuildStore } from './networkBuildStore';
 
@@ -78,10 +79,10 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
       if (!elementRef) {
         return;
       }
-      selectElement({ id: elementRef, type: 'Bus', name: elementRef });
+      selectElement(resolveSelectedElementFromSnapshot(snapshot, elementRef, elementRef));
       centerSldOnElement(elementRef);
     },
-    [centerSldOnElement, selectElement],
+    [centerSldOnElement, selectElement, snapshot],
   );
 
   const handleFixAction = useCallback(

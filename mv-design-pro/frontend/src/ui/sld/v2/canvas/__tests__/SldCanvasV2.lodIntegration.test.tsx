@@ -19,6 +19,7 @@ import { fireEvent, render, cleanup } from '@testing-library/react';
 
 import { SldCanvasV2 } from '../SldCanvasV2';
 import type { GpzRendererProps } from '../../renderer/GpzRenderer';
+import { FIELD_ROLE } from '../../domain/apparatusContracts';
 
 const EMPTY_GPZS: GpzRendererProps[] = [];
 
@@ -175,5 +176,54 @@ describe('SldCanvasV2 — LodController histereza runtime integration (Phase 0B-
      * po `rerender` i histereza nie miałaby ciągłości. Test: po 2 zoom in
      * z re-renderem w środku, LOD nadal stabilny. */
     expect(getLod(container)).toBe('2');
+  });
+
+  it('rozciąga przerwę kabla SN do rzeczywistych portów mini-RMU, a nie do atrapy ±28 px', () => {
+    const stationY = 220;
+    const runY = stationY - 54;
+    const { container } = render(
+      <SldCanvasV2
+        width={800}
+        height={600}
+        gpzs={EMPTY_GPZS}
+        sections={[]}
+        cableRuns={[
+          {
+            id: 'run-rmu',
+            runKind: 'main_trunk',
+            pathPoints: [
+              { x: 80, y: runY },
+              { x: 640, y: runY },
+            ],
+            segmentKind: 'cable_sn',
+          },
+        ]}
+        stations={[
+          {
+            id: 'st-rmu',
+            x: 360,
+            y: stationY,
+            name: 'Stacja PV',
+            topologicalType: 'przelotowa',
+            lod: 2,
+            footprintType: 'der_station',
+            snBays: [
+              { bayRef: 'in', fieldRole: FIELD_ROLE.RMU_LINE, designation: 'WE', hasMissingRequiredDevice: false },
+              { bayRef: 'tr', fieldRole: FIELD_ROLE.RMU_TRANSFORMER, designation: 'TR', hasMissingRequiredDevice: false },
+            ],
+            hasTransformer: true,
+            transformerRatedKva: 400,
+            nnFeedersCount: 2,
+            derBadges: [{ kind: 'PV', count: 2 }],
+          },
+        ]}
+        ders={[]}
+        lodOverride={2}
+      />,
+    );
+
+    const visible = container.querySelector('[data-testid="sld-v2-run-run-rmu-visible-0"]');
+    expect(visible?.getAttribute('d')).toBe('M 80 166 L 214 166');
+    expect(visible?.getAttribute('d')).not.toContain('332');
   });
 });

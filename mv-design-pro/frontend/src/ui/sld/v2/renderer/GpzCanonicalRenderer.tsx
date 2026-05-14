@@ -230,6 +230,12 @@ interface LvSectionLayout {
   readonly width: number;
 }
 
+interface HvTransformerTap {
+  readonly transformerRef: string;
+  readonly designation: string;
+  readonly x: number;
+}
+
 function getLvSectionWidth(section: CanonicalGpzSection): number {
   const bayCount = Math.max(section.bays.length, 1);
   const baySpan = (bayCount - 1) * BAY_PITCH + BAY_WIDTH;
@@ -272,6 +278,24 @@ export function GpzCanonicalRenderer(props: GpzCanonicalRendererProps): JSX.Elem
   const lvStartX = Math.max(PAGE_PADDING, (totalWidth - lvSwitchgearWidth) / 2);
   const lvSectionLayouts = buildLvSectionLayouts(props.sections, lvStartX, sectionsBlockY);
   const lvSectionLayoutById = new Map(lvSectionLayouts.map((layout) => [layout.section.sectionId, layout]));
+  const lvLayoutsByOrder = lvSectionLayouts
+    .slice()
+    .sort((a, b) => a.section.order - b.section.order);
+  const transformerHvTaps: HvTransformerTap[] = props.transformers
+    .map((transformer, index) => {
+      const mappedLayout = transformer.lvSectionId
+        ? lvSectionLayoutById.get(transformer.lvSectionId)
+        : undefined;
+      const fallbackLayout = lvLayoutsByOrder[index];
+      const layout = mappedLayout ?? fallbackLayout;
+      if (!layout) return null;
+      return {
+        transformerRef: transformer.transformerRef,
+        designation: transformer.designation,
+        x: layout.x + layout.width / 2,
+      };
+    })
+    .filter((tap): tap is HvTransformerTap => tap !== null);
 
   return (
     <g
@@ -319,6 +343,7 @@ export function GpzCanonicalRenderer(props: GpzCanonicalRendererProps): JSX.Elem
         width={totalWidth - PAGE_PADDING * 2}
         sections={props.hvSections ?? []}
         transformerCount={props.transformers.length}
+        transformerTaps={transformerHvTaps}
       />
 
       {/* 3. Transformatory NA OSI sekcji (TR1 → Sekcja 1, TR2 → Sekcja 2).
@@ -332,7 +357,7 @@ export function GpzCanonicalRenderer(props: GpzCanonicalRendererProps): JSX.Elem
         transformers={props.transformers}
         lvSectionLayouts={lvSectionLayouts}
         hvBusY={HV_BUS_Y - TR_AREA_Y}
-        lvBusY={TR_HEIGHT + 8}
+        fieldAnchorY={TR_HEIGHT + 8}
         onClickTransformer={props.onClickTransformer}
       />
 
@@ -390,8 +415,8 @@ export function GpzCanonicalRenderer(props: GpzCanonicalRendererProps): JSX.Elem
       {lvSectionLayouts.map((layout, index) => (
         <SectionLabel
           key={`section-label-${layout.section.sectionId}-${index}`}
-          x={layout.x + 4}
-          y={layout.y - 24}
+          x={layout.x + 10}
+          y={layout.y - 38}
           label={layout.section.label}
           voltageKv={layout.section.busVoltageKv}
         />
@@ -410,10 +435,11 @@ interface HvSectionProps {
   readonly width: number;
   readonly sections: readonly CanonicalGpzHvSection[];
   readonly transformerCount: number;
+  readonly transformerTaps: readonly HvTransformerTap[];
 }
 
 function HvSection(props: HvSectionProps): JSX.Element {
-  const { x, y, width, sections, transformerCount } = props;
+  const { x, y, width, sections, transformerCount, transformerTaps } = props;
   if (sections.length === 0 && transformerCount === 0) {
     return (
       <g data-testid="gpz-canonical-hv-empty" data-parity-key="gpz.hv.missing" transform={`translate(${x}, ${y})`}>
@@ -424,9 +450,15 @@ function HvSection(props: HvSectionProps): JSX.Element {
       </g>
     );
   }
+  const shouldSegmentImplicitHvBus = sections.length === 0 && transformerTaps.length > 1;
 
   return (
-    <g data-testid="gpz-canonical-hv" data-parity-key="gpz.hv" transform={`translate(${x}, ${y})`}>
+    <g
+      data-testid="gpz-canonical-hv"
+      data-parity-key="gpz.hv"
+      data-hv-bus-mode={shouldSegmentImplicitHvBus ? 'segmented_by_transformer' : 'continuous'}
+      transform={`translate(${x}, ${y})`}
+    >
       {/* Wskaźnik źródła systemu 110 kV — strzałka kierunku zasilania
           z lewej strony szyny (kanon SCADA: zasilanie przychodzi z systemu). */}
       <g data-testid="gpz-canonical-hv-source-indicator" data-parity-key="gpz.hv.source">
@@ -465,26 +497,32 @@ function HvSection(props: HvSectionProps): JSX.Element {
         </text>
       </g>
       {/* HV bus 110 kV — pozioma szyna */}
-      <line
-        x1={SECTION_LABEL_WIDTH}
-        y1={0}
-        x2={width}
-        y2={0}
-        stroke={COLOR_BUS_HV}
-        strokeWidth={2.5}
-        data-parity-key="gpz.bus.hv"
-        data-testid="gpz-canonical-hv-bus"
-      />
-      <text
-        x={4}
-        y={4}
-        fill={COLOR_TEXT_PRIMARY}
-        fontFamily={FONT_MONO}
-        fontSize={FONT_SIZES.bayLabel}
-        fontWeight={700}
-      >
-        110 kV
-      </text>
+      {shouldSegmentImplicitHvBus ? (
+        <ImplicitSegmentedHvBus transformerTaps={transformerTaps} originX={x} width={width} />
+      ) : (
+        <>
+          <line
+            x1={SECTION_LABEL_WIDTH}
+            y1={0}
+            x2={width}
+            y2={0}
+            stroke={COLOR_BUS_HV}
+            strokeWidth={2.5}
+            data-parity-key="gpz.bus.hv"
+            data-testid="gpz-canonical-hv-bus"
+          />
+          <text
+            x={SECTION_LABEL_WIDTH + 12}
+            y={-10}
+            fill={COLOR_TEXT_SECONDARY}
+            fontFamily={FONT_MONO}
+            fontSize={10}
+            fontWeight={700}
+          >
+            Szyna WN 110 kV
+          </text>
+        </>
+      )}
 
       {/* HV pola liniowe (powyżej szyny — wchodzą "z góry") */}
       {sections.flatMap((section, sectionIndex) =>
@@ -497,6 +535,64 @@ function HvSection(props: HvSectionProps): JSX.Element {
           />
         )),
       )}
+    </g>
+  );
+}
+
+interface ImplicitSegmentedHvBusProps {
+  readonly transformerTaps: readonly HvTransformerTap[];
+  readonly originX: number;
+  readonly width: number;
+}
+
+function ImplicitSegmentedHvBus(props: ImplicitSegmentedHvBusProps): JSX.Element {
+  const { transformerTaps, originX, width } = props;
+  const sortedTaps = transformerTaps.slice().sort((a, b) => a.x - b.x);
+  const segmentHalfWidth = 118;
+  return (
+    <g
+      data-testid="gpz-canonical-hv-bus-segmented"
+      data-parity-key="gpz.bus.hv.segmented"
+      data-hv-topology="independent_tr_feeds"
+    >
+      {sortedTaps.map((tap, index) => {
+        const localX = tap.x - originX;
+        const start = Math.max(SECTION_LABEL_WIDTH, localX - segmentHalfWidth);
+        const end = Math.min(width, localX + segmentHalfWidth);
+        return (
+          <g
+            key={`hv-segment-${tap.transformerRef}-${index}`}
+            data-testid={`gpz-canonical-hv-bus-segment-${tap.transformerRef}`}
+            data-transformer-ref={tap.transformerRef}
+          >
+            <line
+              x1={start}
+              y1={0}
+              x2={end}
+              y2={0}
+              stroke={COLOR_BUS_HV}
+              strokeWidth={2.5}
+              data-parity-key="gpz.bus.hv.segment"
+            />
+            <polygon
+              points={`${start - 8},-5 ${start - 8},5 ${start},0`}
+              fill={COLOR_BUS_HV}
+              data-parity-key="gpz.bus.hv.segment.source_arrow"
+            />
+            <text
+              x={localX}
+              y={-12}
+              textAnchor="middle"
+              fill={COLOR_TEXT_SECONDARY}
+              fontFamily={FONT_MONO}
+              fontSize={10}
+              fontWeight={700}
+            >
+              {tap.designation} / 110 kV
+            </text>
+          </g>
+        );
+      })}
     </g>
   );
 }
@@ -550,13 +646,13 @@ interface TransformersBlockProps {
   readonly lvSectionLayouts: readonly LvSectionLayout[];
   /** Y szyny 110 kV w lokalnym układzie bloku TR (translate y = TR_AREA_Y). */
   readonly hvBusY: number;
-  /** Y szyny SN (LV) w lokalnym układzie bloku TR. */
-  readonly lvBusY: number;
+  /** Y kotwy pola TR w lokalnym układzie bloku TR. Dalej do szyny SN prowadzi TrFieldColumn. */
+  readonly fieldAnchorY: number;
   readonly onClickTransformer?: (ref: string) => void;
 }
 
 function TransformersBlock(props: TransformersBlockProps): JSX.Element {
-  const { x, y, width, transformers, lvSectionLayouts, hvBusY, lvBusY, onClickTransformer } = props;
+  const { x, y, width, transformers, lvSectionLayouts, hvBusY, fieldAnchorY, onClickTransformer } = props;
   if (transformers.length === 0) {
     return (
       <g data-testid="gpz-canonical-transformers-empty" data-parity-key="gpz.transformer.missing" transform={`translate(${x}, ${y})`}>
@@ -599,7 +695,7 @@ function TransformersBlock(props: TransformersBlockProps): JSX.Element {
             y={0}
             transformer={tr}
             hvBusY={hvBusY}
-            lvBusY={lvBusY}
+            fieldAnchorY={fieldAnchorY}
             onClick={onClickTransformer}
           />
         );
@@ -806,16 +902,19 @@ interface TransformerSymbolProps {
   readonly transformer: CanonicalGpzTransformer;
   /** Y szyny 110 kV (lokalnie do bloku TR). */
   readonly hvBusY: number;
-  /** Y szyny SN (lokalnie do bloku TR). */
-  readonly lvBusY: number;
+  /** Y kotwy pola TR; nie jest to szyna SN. */
+  readonly fieldAnchorY: number;
   readonly onClick?: (ref: string) => void;
 }
 
 function TransformerSymbol(props: TransformerSymbolProps): JSX.Element {
-  const { x, y, transformer, hvBusY, lvBusY, onClick } = props;
+  const { x, y, transformer, hvBusY, fieldAnchorY, onClick } = props;
   const cx = TR_WIDTH / 2;
   const hvWindingY = 20;
   const lvWindingY = 48;
+  const hvBayDsY = hvBusY + 28;
+  const hvBayCbY = hvBusY + 56;
+  const hvBayCtY = hvBusY + 82;
   return (
     <g
       data-testid={`gpz-canonical-transformer-${transformer.transformerRef}`}
@@ -825,24 +924,55 @@ function TransformerSymbol(props: TransformerSymbolProps): JSX.Element {
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
       {/* HV connector: od szyny 110 kV DO górnego zacisku TR (Y). */}
-      <line
-        x1={cx}
-        y1={hvBusY}
-        x2={cx}
-        y2={hvWindingY - 14}
-        stroke={COLOR_LINE_PRIMARY}
-        strokeWidth={2}
-        data-parity-key="gpz.transformer.hv_connector"
-      />
-      {/* LV connector: od dolnego zacisku TR DO szyny SN sekcji. */}
+      <g
+        data-testid={`gpz-canonical-hv-tr-bay-${transformer.transformerRef}`}
+        data-parity-key="gpz.hv.tr_bay"
+        data-direct-110kv-tr-tie="false"
+      >
+        <line
+          x1={cx}
+          y1={hvBusY}
+          x2={cx}
+          y2={hvWindingY - 14}
+          stroke={COLOR_LINE_PRIMARY}
+          strokeWidth={2}
+          data-parity-key="gpz.transformer.hv_connector"
+          data-direct-110kv-tr-tie="false"
+          data-terminates-at="hv_tr_bay_apparatus"
+        />
+        <g data-testid={`gpz-canonical-hv-tr-bay-${transformer.transformerRef}-ds`}>
+          <ApparatusDs cx={cx} cy={hvBayDsY} state="unknown" />
+        </g>
+        <g data-testid={`gpz-canonical-hv-tr-bay-${transformer.transformerRef}-cb`}>
+          <ApparatusCb cx={cx} cy={hvBayCbY} state="unknown" />
+        </g>
+        <g data-testid={`gpz-canonical-hv-tr-bay-${transformer.transformerRef}-ct`}>
+          <circle cx={cx - 4} cy={hvBayCtY} r={4} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={1} />
+          <circle cx={cx + 4} cy={hvBayCtY} r={4} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={1} />
+        </g>
+        <text
+          x={cx + 16}
+          y={hvBayCbY + 4}
+          fill={COLOR_TEXT_SECONDARY}
+          fontFamily={FONT_SANS}
+          fontSize={9}
+          fontWeight={600}
+        >
+          Pole WN {transformer.designation}
+        </text>
+      </g>
+      {/* LV connector: od dolnego zacisku TR tylko DO kotwy pola TR.
+          Połączenie z szyną SN realizuje dopiero TrFieldColumn z aparaturą. */}
       <line
         x1={cx}
         y1={lvWindingY + 14}
         x2={cx}
-        y2={lvBusY}
+        y2={fieldAnchorY}
         stroke={COLOR_LINE_PRIMARY}
         strokeWidth={2}
-        data-parity-key="gpz.transformer.lv_connector"
+        data-parity-key="gpz.transformer.field_anchor_connector"
+        data-direct-sn-bus-tie="false"
+        data-terminates-at="tr_field_anchor"
       />
       {/* Krótkie połączenie między uzwojeniami (środek symbolu). */}
       <line
@@ -1027,6 +1157,17 @@ function apparatusId(bayRef: string, kind: CanonicalGpzApparatusKind): string {
   return `${bayRef}#${kind}`;
 }
 
+function compactBayFeederLabel(bay: CanonicalGpzBay): string | null {
+  const raw = bay.feederName?.trim();
+  if (!raw) return null;
+  const trailingNumber = raw.match(/(\d+[A-Z]?)$/i)?.[1] ?? bay.bayNumber ?? '';
+  if (/^pole\s+odp/i.test(raw)) {
+    return trailingNumber ? `Odpływ ${trailingNumber}` : 'Odpływ';
+  }
+  if (raw.length <= 12) return raw;
+  return `${raw.slice(0, 11)}…`;
+}
+
 function ClickableApparatus(props: ClickableApparatusProps): JSX.Element {
   const id = apparatusId(props.bay.bayRef, props.kind);
   const selection: CanonicalGpzApparatusSelection = {
@@ -1140,6 +1281,7 @@ function LvBay(props: LvBayProps): JSX.Element {
   const trackHeight = LV_BAY_HEIGHT - 30;
   const apparatus = getBayApparatusPolicy(bay.fieldRole);
   const esState = bay.esState ?? 'unknown';
+  const feederLabel = compactBayFeederLabel(bay);
   if (bay.fieldRole === 'TRANSFORMER') {
     return (
       <LvTransformerBay
@@ -1192,7 +1334,7 @@ function LvBay(props: LvBayProps): JSX.Element {
       <line x1={0} y1={0} x2={0} y2={trackHeight} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.6} data-parity-key="gpz.bay.power_path" />
 
       {/* Header pola — feeder name */}
-      {bay.feederName && (
+      {feederLabel && (
         <text
           x={0}
           y={18}
@@ -1204,7 +1346,7 @@ function LvBay(props: LvBayProps): JSX.Element {
           data-testid="gpz-bay-feeder-label"
           data-parity-key="gpz.bay.feeder_label"
         >
-          {bay.feederName.slice(0, 10)}
+          {feederLabel}
         </text>
       )}
 
@@ -1648,9 +1790,21 @@ interface SectionLabelProps {
 
 function SectionLabel(props: SectionLabelProps): JSX.Element {
   const { x, y, label, voltageKv } = props;
+  const width = Math.max(78, Math.min(124, label.length * 8 + 34));
   return (
     <g data-testid={`gpz-canonical-section-label-${label}`} data-parity-key="gpz.section.label" transform={`translate(${x}, ${y})`}>
-      <text fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={FONT_SIZES.bayLabel} fontWeight={700}>
+      <rect
+        x={-6}
+        y={-14}
+        width={width}
+        height={30}
+        rx={2}
+        fill="#0B141B"
+        stroke={COLOR_TEXT_MUTED}
+        strokeOpacity={0.24}
+        data-testid={`gpz-canonical-section-label-${label}-bg`}
+      />
+      <text fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={14} fontWeight={700}>
         {label}
       </text>
       <text y={12} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={10}>

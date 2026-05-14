@@ -31,6 +31,20 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
   });
 
   describe('GpzConfiguratorSurface (E-10)', () => {
+    it('tryb uproszczony GPZ pokazuje tylko moc zwarciowa po stronie SN', () => {
+      render(<GpzConfiguratorSurface surface={minimalSurface} />);
+      fireEvent.click(screen.getByTestId('gpz-card-tab-hv-side'));
+
+      expect(screen.getByText(/Moc zwarciowa S''k 110 kV/)).toBeInTheDocument();
+      expect(screen.getByText(/Stosunek R\/X/)).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('gpz-short-circuit-mode-sn'));
+
+      expect(screen.getByText(/Moc zwarciowa S''k po stronie SN/)).toBeInTheDocument();
+      expect(screen.queryByText(/Moc zwarciowa S''k 110 kV/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Stosunek R\/X/)).not.toBeInTheDocument();
+    });
+
     it('renderuje 5 kart konfiguracyjnych z polskimi etykietami', () => {
       render(<GpzConfiguratorSurface surface={minimalSurface} />);
       expect(screen.getByText('Identyfikacja')).toBeInTheDocument();

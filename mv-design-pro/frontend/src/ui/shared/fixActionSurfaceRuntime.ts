@@ -2,6 +2,7 @@ import type { CanonicalOpName } from '../../types/domainOps';
 import type { EnergyNetworkModel } from '../../types/enm';
 import type { FixActionSurfaceDescriptor } from '../../types/fixActionSurface';
 import type { ElementType } from '../types';
+import { resolveElementTypeFromSnapshot } from './selectionResolution';
 
 function hasRefId(entity: { ref_id?: string; id?: string }, elementRef: string): boolean {
   return entity.ref_id === elementRef || entity.id === elementRef;
@@ -35,11 +36,17 @@ export function resolveFixActionElementType(
   elementRef: string | null | undefined,
   explicitType: string | null | undefined,
 ): ElementType {
+  if (!snapshot || !elementRef) {
+    return explicitType ? mapSurfaceElementType(explicitType) : 'Bus';
+  }
+
+  const snapshotType = resolveElementTypeFromSnapshot(snapshot, elementRef);
+  if (snapshotType) {
+    return snapshotType;
+  }
+
   if (explicitType) {
     return mapSurfaceElementType(explicitType);
-  }
-  if (!snapshot || !elementRef) {
-    return 'Bus';
   }
 
   if ((snapshot.buses ?? []).some((bus) => hasRefId(bus, elementRef))) {

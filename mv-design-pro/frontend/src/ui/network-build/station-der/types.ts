@@ -33,6 +33,8 @@ export type DerCompleteness =
 export interface DerCatalogSelections {
   /** Katalog falownika PV / PCS BESS / turbiny FW. */
   readonly device_catalog_ref: string | null;
+  /** Wpis certyfikatu PTPiREE dla falownika/konwertera DER. */
+  readonly ptpiree_certificate_ref: string | null;
   /** Plant controller PV / regulator farmy FW (nie dotyczy BESS). */
   readonly controller_catalog_ref: string | null;
   /** Bateria BESS (tylko BESS). */
@@ -67,6 +69,7 @@ export interface DerCatalogSelections {
 
 export const EMPTY_DER_CATALOGS: DerCatalogSelections = Object.freeze({
   device_catalog_ref: null,
+  ptpiree_certificate_ref: null,
   controller_catalog_ref: null,
   battery_catalog_ref: null,
   transformer_catalog_ref: null,

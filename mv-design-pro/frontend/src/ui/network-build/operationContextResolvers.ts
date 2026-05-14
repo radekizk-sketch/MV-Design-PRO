@@ -44,6 +44,13 @@ export interface ContinueTrunkOperationContext extends ContinueTrunkSelection {
   existingSegmentCount: number;
 }
 
+interface StationCorridorEndpoint {
+  trunkId: string;
+  terminalId: string;
+  terminalPortId: string;
+  terminalBusRef: string;
+}
+
 export interface BranchStartOperationContext extends BranchSourceDisplayContext {
   stationRef: string | null;
   busRef: string | null;
@@ -753,7 +760,10 @@ function findTrunkTerminalForBus(
 }
 
 function isTerminalAvailableForContinuation(terminal: TerminalRef): boolean {
-  return terminal.status === 'OTWARTY' || terminal.status === 'ZAREZERWOWANY_DLA_RINGU';
+  return (
+    terminal.status === 'OTWARTY'
+    || terminal.status === 'ZAREZERWOWANY_DLA_RINGU'
+  );
 }
 
 function findTrunkTerminalForStation(
@@ -775,7 +785,20 @@ function findTrunkTerminalForStation(
     return null;
   }
 
-  const terminals = findMatchingTerminals(logicalViews, stationSnBusRefs)
+  const stationBayRefs = snapshot.bays
+    .filter((bay) => (
+      (bay.substation_ref === station.ref_id || bay.substation_ref === station.id)
+      && stationSnBusRefs.includes(bay.bus_ref)
+    ))
+    .flatMap((bay) => [bay.ref_id, bay.id])
+    .filter((ref): ref is string => typeof ref === 'string' && ref.length > 0);
+
+  const terminals = findMatchingTerminals(logicalViews, [
+    station.ref_id,
+    station.id,
+    ...stationSnBusRefs,
+    ...stationBayRefs,
+  ])
     .filter(isTerminalAvailableForContinuation)
     .sort((left, right) => {
       const leftEndScore = left.port_id === 'trunk_end' ? 0 : 1;
@@ -786,6 +809,60 @@ function findTrunkTerminalForStation(
     });
 
   return terminals[0] ?? null;
+}
+
+function findCorridorEndpointForStation(
+  snapshot: EnergyNetworkModel | null,
+  stationRef: string | null,
+): StationCorridorEndpoint | null {
+  const station = findStation(snapshot, stationRef);
+  if (!snapshot || !station) {
+    return null;
+  }
+
+  const stationSnBusRefs = new Set(
+    findBusRefsForStation(station)
+      .map((ref) => findBus(snapshot, ref))
+      .filter((bus): bus is NonNullable<typeof bus> => bus != null && isSnBusVoltage(bus.voltage_kv))
+      .map((bus) => bus.ref_id),
+  );
+  if (stationSnBusRefs.size === 0) {
+    return null;
+  }
+
+  for (const corridor of snapshot.corridors ?? []) {
+    const segments = corridor.ordered_segment_refs
+      .map((segmentRef) => findBranch(snapshot, segmentRef))
+      .filter((segment): segment is NonNullable<typeof segment> => Boolean(segment));
+    if (segments.length === 0) {
+      continue;
+    }
+
+    const stationSegmentIndex = segments.findIndex((segment) => (
+      stationSnBusRefs.has(segment.from_bus_ref)
+      || stationSnBusRefs.has(segment.to_bus_ref)
+    ));
+    if (stationSegmentIndex < 0) {
+      continue;
+    }
+
+    const tail = segments[segments.length - 1];
+    const terminalBusRef = stationSnBusRefs.has(tail.to_bus_ref)
+      ? tail.from_bus_ref
+      : tail.to_bus_ref;
+    if (!terminalBusRef) {
+      continue;
+    }
+
+    return {
+      trunkId: corridor.ref_id,
+      terminalId: terminalBusRef,
+      terminalPortId: 'trunk_end',
+      terminalBusRef,
+    };
+  }
+
+  return null;
 }
 
 export function resolveContinueTrunkSelection(
@@ -802,13 +879,20 @@ export function resolveContinueTrunkSelection(
       ? findTrunkTerminalForBus(snapshot, logicalViews, busRef, stationRef)
         ?? findTrunkTerminalForStation(snapshot, logicalViews, stationRef)
       : null;
-  const terminalId = terminal?.element_id ?? '';
-  const terminalBusRef = busRef ?? terminal?.element_id ?? '';
+  const corridorEndpoint = terminal ? null : findCorridorEndpointForStation(snapshot, stationRef);
+  const terminalId = terminal?.element_id ?? corridorEndpoint?.terminalId ?? '';
+  const terminalBay = findBay(snapshot, terminal?.element_id ?? null);
+  const terminalBusRef =
+    busRef
+    ?? terminalBay?.bus_ref
+    ?? corridorEndpoint?.terminalBusRef
+    ?? terminal?.element_id
+    ?? '';
 
   return {
-    trunkId: terminal?.trunk_id ?? '',
+    trunkId: terminal?.trunk_id ?? corridorEndpoint?.trunkId ?? '',
     terminalId,
-    terminalPortId: terminal?.port_id ?? '',
+    terminalPortId: terminal?.port_id ?? corridorEndpoint?.terminalPortId ?? '',
     terminalBusRef,
   };
 }
@@ -863,18 +947,19 @@ export function resolveContinueTrunkOperationContext(
     logicalViews,
     elementId,
     networkContext.busRef,
-    networkContext.stationRef,
+    elementType === 'Station' ? networkContext.stationRef : null,
   );
   const terminalBus = findBus(snapshot, selection.terminalBusRef || selection.terminalId);
   const corridor = findCorridor(snapshot, selection.trunkId);
   const station = elementType === 'Station' ? findStation(snapshot, networkContext.stationRef) : null;
   const stationContinuationName =
-    station && selection.terminalId
+    station
       ? `${formatElementContextLabel(station.name, station.ref_id)} - port wyjściowy SN`
       : '';
 
   return {
     ...selection,
+    terminalPortId: station ? 'station_out' : selection.terminalPortId,
     stationRef: networkContext.stationRef,
     busRef: networkContext.busRef,
     terminalName: stationContinuationName || terminalBus?.name || selection.terminalId,

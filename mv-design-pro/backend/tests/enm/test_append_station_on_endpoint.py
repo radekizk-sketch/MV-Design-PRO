@@ -242,6 +242,70 @@ def test_full_station_creates_transformer_and_nn_bus() -> None:
     assert tr_ref in bays_tr[0]["equipment_refs"]
 
 
+def test_endpoint_append_materializes_requested_station_sn_fields_without_splitting_segment() -> None:
+    """Payload z kreatora stacji tworzy pełne pola SN i nie rozcina poprzedniego odcinka."""
+    snap, endpoint = _build_gpz_with_endpoint()
+    original_branch_refs = {branch["ref_id"] for branch in snap.get("branches", [])}
+    response = append_station_on_endpoint(snap, {
+        "endpoint_bus_ref": endpoint,
+        "run_ref": snap.get("corridors", [{}])[-1].get("ref_id"),
+        "station": {
+            "name": "Stacja Przelotowa",
+            "station_type": "inline",
+            "switchgear": {
+                "manufacturer_ref": "ZPUE_WLOSZCZOWA",
+                "switchgear_family_ref": "ZPUE_CANONICAL_RMU",
+            },
+        },
+        "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+        "nn_voltage_kv": 0.4,
+        "sn_fields": [
+            {
+                "field_role": "LINIA_IN",
+                "bay_kind": "liniowe_doplywowe",
+                "manufacturer_ref": "ZPUE_WLOSZCZOWA",
+                "switchgear_family_ref": "ZPUE_CANONICAL_RMU",
+                "bay_template_ref": "tpl-line-in",
+                "source_status": "canonical_fallback",
+                "source_refs": [],
+            },
+            {
+                "field_role": "LINIA_OUT",
+                "bay_kind": "liniowe_odplywowe",
+                "manufacturer_ref": "ZPUE_WLOSZCZOWA",
+                "switchgear_family_ref": "ZPUE_CANONICAL_RMU",
+                "bay_template_ref": "tpl-line-out",
+                "source_status": "canonical_fallback",
+                "source_refs": [],
+            },
+            {
+                "field_role": "TRANSFORMATOROWE",
+                "bay_kind": "transformatorowe",
+                "manufacturer_ref": "ZPUE_WLOSZCZOWA",
+                "switchgear_family_ref": "ZPUE_CANONICAL_RMU",
+                "bay_template_ref": "tpl-tr",
+                "source_status": "canonical_fallback",
+                "source_refs": [],
+            },
+        ],
+    })
+
+    assert response.get("error") is None
+    new_snap = response["snapshot"]
+    assert {branch["ref_id"] for branch in new_snap.get("branches", [])} == original_branch_refs
+    sub = next(s for s in new_snap["substations"] if s["name"] == "Stacja Przelotowa")
+    field_specs = sub.get("meta", {}).get("field_specs") or []
+    assert {spec["field_role"] for spec in field_specs} == {
+        "LINIA_IN",
+        "LINIA_OUT",
+        "TRANSFORMATOROWE",
+    }
+    station_bays = [bay for bay in new_snap.get("bays", []) if bay.get("substation_ref") == sub["ref_id"]]
+    assert {bay["bay_role"] for bay in station_bays} >= {"IN", "OUT", "TR"}
+    out_bay = next(bay for bay in station_bays if bay["bay_role"] == "OUT")
+    assert out_bay["meta"]["sn_field_template"]["bay_template_ref"] == "tpl-line-out"
+
+
 # ---------------------------------------------------------------------------
 # Determinizm + re-tag + STATION_APPENDED_ON_ENDPOINT event
 # ---------------------------------------------------------------------------

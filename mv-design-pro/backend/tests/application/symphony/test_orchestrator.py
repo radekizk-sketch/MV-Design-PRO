@@ -5,7 +5,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import pytest
 from application.symphony.config import SymphonyConfig
+from application.symphony.image_payload import ImageAttachmentError
 from application.symphony.models import BlockerRef, Issue, RunAttempt
 from application.symphony.orchestrator import SymphonyOrchestrator
 from application.symphony.protocols import AgentRunResult
@@ -128,3 +130,29 @@ def test_orchestrator_skips_blocked_issues(tmp_path: Path) -> None:
 
     assert decisions[0].reason == "blocked"
     assert not runner.runs
+
+
+def test_orchestrator_rejects_empty_inline_image_before_agent_runner(tmp_path: Path) -> None:
+    issue = _issue("1", "ABC-1", priority=1, created_offset=0)
+    issue = Issue(
+        **{
+            **issue.__dict__,
+            "description": "Screenshot: ![broken](data:image/png;base64,)",
+        }
+    )
+    tracker = FakeTracker([issue])
+    runner = FakeRunner(results=[], runs=[], stopped=[])
+
+    orch = SymphonyOrchestrator(
+        _cfg(tmp_path),
+        "Issue {issue_identifier}\n{issue_description}",
+        tracker,
+        runner,
+        WorkspaceManager(_cfg(tmp_path)),
+    )
+
+    with pytest.raises(ImageAttachmentError, match="issue.description"):
+        orch.tick()
+
+    assert not runner.runs
+    assert issue.id not in orch.state.active_issue_ids

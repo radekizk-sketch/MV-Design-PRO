@@ -90,5 +90,5 @@ Token `COLOR_SELECTION` (a NIE hardkodowane `#35C7FF`). Używany dla wszystkich 
 
 ## 10. Testy (Phase 0A)
 
-- `renderer/__tests__/miniBlockRmu.test.tsx` - 32 cases (kompozycja z bays, blocker badge, DER badges, viewBox invariant, derive footprintów).
-- W połączeniu z `gpzCompactBlock.test.tsx` (21 cases) → 53 cases pokrywają mini-block + GPZ compact.
+- `renderer/__tests__/miniBlockRmu.test.tsx` - 33 cases (kompozycja z bays, blocker badge, DER badges, viewBox invariant, derive footprintów).
+- W połączeniu z `gpzCompactBlock.test.tsx` (21 cases) → 54 cases pokrywają mini-block + GPZ compact.
