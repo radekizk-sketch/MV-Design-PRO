@@ -1144,3 +1144,52 @@ Trigger end-of-loop: 7 specjalistów ≥ 9.5 przez 3 iter. **Streak: NC RFG 2/3,
 remaining: port-based v2 canvas routing for Projektant/Schematy 9.3→9.5.
 Loop kontynuowany w kolejnych sesjach.
 
+## 5.9 K30 Audit Loop — sieć referencyjna 30 stacji + 2 GPZ (launched 2026-05-14)
+
+Per `PROMPT_K30_E2E_FULL_AUDIT_10_10.md` + `PLAN_10_10_FOLLOWUP.md`, K30 to
+rozszerzenie K20 do **30 stacji terenowych + 2 GPZ** (GPZ-A Main + GPZ-B
+Backup N-1) z **11-osobowym zespołem specjalistów** (vs 7 w K20). Cel
+trigger: 11/11 ≥9.5 przez 3 iter, zero NO-GO.
+
+**Iter K30-0 baseline (this session — commit pending):**
+
+| Iter | Score | Δ | Changes | Commits |
+|------|-------|------|---------|---------|
+| **K30-0** | **~8.34/10 (est.)** | baseline | **K30 harness DONE** (seed-gn30 + audit2 + setpoints + screenshot-k30 + iter-0 REPORT.md) | pending |
+
+**K30 harness artifacts (NEW, this session):**
+- `frontend/scripts/seed-gn30.mjs` (348 LOC) — 2 GPZ + 30 stacji unique config
+- `frontend/scripts/k30_audit2_seed.sh` (92 LOC) — per-DER NC RFG specs (PV/BESS/FW)
+- `frontend/scripts/k30_setpoints.sh` (30 LOC) — NC RFG Module A baseline
+- `frontend/scripts/screenshot-k30.mjs` (121 LOC) — 5 LOD × 2 themes × 2 res
+- `docs/audit/visual_iteration_K30_0/REPORT.md` — iter K30-0 launch + 11-specialist methodology
+
+**Critical finding (exploration this session):** P0.3 phase4 port-based
+routing (cytowane 22 OD w PLAN_10_10_FOLLOWUP.md) jest **już zaimplementowane**:
+- `phase4_route_all_edges` w `layoutPipeline.ts:1221-1406` używa
+  `buildEdgeRouteFromPorts()` z portami z `ports.json` (54 symbols 100% SVG parity)
+- `PortRefV1` w `visualGraph.ts:142-149` ma flat `portId` field
+- 40/40 `portBasedLayout.test.ts` PASS, `port_binding_guard.py` 0 violations
+- Remaining: ~7 OD (A* obstacle avoidance + fixture migration), nie 22 OD
+
+**K30 NO-GO list (7 architectural blockers identified at K30-0 baseline):**
+1. Brak ring main domain-op (HIGH — Projektant, Eksploatacyjny)
+2. Brak NOP domain-op po ring (HIGH — Eksploatacyjny)
+3. Brak runtime_state alarms/trends (MEDIUM — SCADA HMI)
+4. Cable catalog 1 variant tylko (MEDIUM — Kabel nN/SN)
+5. Brak per-DER cos φ widget (MEDIUM — NC RFG, OZE)
+6. Brak A* obstacle avoidance (LOW — Schematy)
+7. 30 stations grid cluster 4×5 risk (MEDIUM — Projektant)
+
+**Next iter (K30-1) focus:**
+- P1: implementacja `set_nop_station` + ring closure w `continue_trunk_segment_sn`
+- P2: per-station cable catalog variants (1 → 4)
+- P3: visual smoke z backendem live po seed-gn30 + screenshot-k30
+
+**Realistic timeline do 10/10:** K30-1, K30-2, K30-3, K30-4 (4 follow-up
+sesje per PROMPT § 5.3 z multi-specialist visual review cycle).
+
+**Status K30 audit loop:** harness LAUNCHED (Iter K30-0 baseline scaffolding),
+backend run deferred to next session (uvicorn unavailable in this agent
+context). Real climbing starts iter K30-1 z backendem live.
+

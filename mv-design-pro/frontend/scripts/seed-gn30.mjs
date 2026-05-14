@@ -1,0 +1,451 @@
+#!/usr/bin/env node
+/**
+ * GN30 reference network seeder — K30 SCADA-CAD grade target.
+ *
+ * Buduje sieć K30: 2 GPZ + 30 stacji unique config (każda z innym
+ * OZE/odbiór/connection_variant) zgodnie z PROMPT_K30_E2E_FULL_AUDIT_10_10.md
+ * § 2.1. K30 = K20 (S02-S21) + 9 nowych konfiguracji (S22-S30).
+ *
+ * USAGE: node scripts/seed-gn30.mjs
+ * REQUIRES: backend at BACKEND_URL (default http://127.0.0.1:8000)
+ *
+ * OUTPUT: JSON summary stations/DER/loads PASS/FAIL + projectId/caseId
+ * dla downstream audit loop scripts (k30_audit2_seed + k30_setpoints +
+ * screenshot-k30).
+ *
+ * UWAGA: jeśli backend nie wspiera ring main domain-op, K30 stosuje
+ * dwa osobne trunki SN (jeden z każdego GPZ) i dokumentuje gap w REPORT.md.
+ */
+
+const BACKEND = process.env.BACKEND_URL ?? 'http://127.0.0.1:8000';
+
+async function api(method, path, body) {
+  const res = await fetch(BACKEND + path, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  let json;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    json = { _raw: text };
+  }
+  return { status: res.status, ok: res.ok, json };
+}
+
+function log(step, msg, data) {
+  const line = `[${step}] ${msg}`;
+  console.log(line);
+  if (data !== undefined) {
+    console.log('    ', JSON.stringify(data).slice(0, 200));
+  }
+}
+
+/**
+ * STATION_CONFIGS — 30 unique stacji per PROMPT_K30 § 2.1 macierz.
+ *
+ * S02-S21: identyczne jak K20 (21 stacji reused, audit continuity).
+ * S22-S30: 9 nowych konfiguracji rozszerzających K30.
+ *
+ * Pole feeder_source: 'A' (GPZ-A trunk) lub 'B' (GPZ-B trunk).
+ * Pierwsza połowa stacji idzie z GPZ-A, druga z GPZ-B (ring N-1 surrogate
+ * gdy backend nie wspiera ring main domain-op).
+ */
+const STATION_CONFIGS = [
+  // === K20 inheritance (S02-S21) ===
+  { id: 'S02', name: 'Stacja S02 ZKSN prosument PV', station_type: 'inline', der: [{ kind: 'PV', p_mw: 0.05 }], feeder_source: 'A', description: 'Słupowa ZKSN, PV prosument 50 kW' },
+  { id: 'S03', name: 'Stacja S03 ZKSN bytowa', station_type: 'inline', load: { p_kw: 30, kind: 'bytowy' }, feeder_source: 'A', description: 'Słupowa ZKSN, klasyczna bytowa' },
+  { id: 'S04', name: 'Stacja S04 K PV+przemysł', station_type: 'inline', der: [{ kind: 'PV', p_mw: 0.5 }], load: { p_kw: 100, kind: 'przemyslowy' }, feeder_source: 'A', description: 'Kontenerowa typ K, mini-block PV nN' },
+  { id: 'S05', name: 'Stacja S05 K BESS 1MW', station_type: 'inline', der: [{ kind: 'BESS', p_mw: 1.0, connection_variant: 'block_transformer' }], feeder_source: 'A', description: 'BESS 1 MW / 2 MWh block transformer 15 kV' },
+  { id: 'S06', name: 'Stacja S06 K FW 800kW', station_type: 'inline', der: [{ kind: 'FW', p_mw: 0.8, connection_variant: 'DEDICATED_MV_CONNECTION' }], feeder_source: 'A', description: 'FW dedicated MV connection' },
+  { id: 'S07', name: 'Stacja S07 K hybrid PV+BESS', station_type: 'inline', der: [{ kind: 'PV', p_mw: 2.0 }, { kind: 'BESS', p_mw: 0.5 }], load: { p_kw: 500, kind: 'przemyslowy' }, feeder_source: 'A', description: 'Hybrid PV+BESS dwa inwertery' },
+  { id: 'S08', name: 'Stacja S08 wnętrzowa PV+komun', station_type: 'inline', der: [{ kind: 'PV', p_mw: 1.0, connection_variant: 'LV_BEHIND_STATION_TRANSFORMER' }], load: { p_kw: 200, kind: 'komunalny' }, feeder_source: 'A', description: 'Wnętrzowa LV_BEHIND_STATION_TRANSFORMER' },
+  { id: 'S09', name: 'Stacja S09 wnętrzowa przemysł 2MW', station_type: 'inline', load: { p_kw: 2000, kind: 'przemyslowy' }, feeder_source: 'A', description: 'Klasyczny duży odbiór 2 MW' },
+  { id: 'S10', name: 'Stacja S10 K farma PV 5MW', station_type: 'inline', der: [{ kind: 'PV', p_mw: 5.0, connection_variant: 'SOURCE_CONNECTION_STATION' }], feeder_source: 'A', description: 'PV farma 5 MW source connection station' },
+  { id: 'S11', name: 'Stacja S11 słupowa mikro PV', station_type: 'inline', der: [{ kind: 'PV', p_mw: 0.03 }], load: { p_kw: 20, kind: 'bytowy' }, feeder_source: 'A', description: 'Mikroinstalacja prosumencka 30 kW' },
+  { id: 'S12', name: 'Stacja S12 wnętrzowa BESS 4MWh', station_type: 'inline', der: [{ kind: 'BESS', p_mw: 2.0, connection_variant: 'block_transformer' }], feeder_source: 'A', description: 'BESS 4 MWh peak shaving block 15 kV' },
+  { id: 'S13', name: 'Stacja S13 K FW 2x2MW', station_type: 'inline', der: [{ kind: 'FW', p_mw: 2.0 }, { kind: 'FW', p_mw: 2.0 }], feeder_source: 'A', description: 'Dwa generatory asynchroniczne 2 MW' },
+  { id: 'S14', name: 'Stacja S14 hybrid triple', station_type: 'inline', der: [{ kind: 'PV', p_mw: 1.0 }, { kind: 'BESS', p_mw: 0.5 }, { kind: 'FW', p_mw: 0.5 }], feeder_source: 'A', description: 'Triple-source hybrid station' },
+  { id: 'S15', name: 'Stacja S15 słupowa rolnictwo', station_type: 'inline', load: { p_kw: 50, kind: 'rolniczy' }, feeder_source: 'A', description: 'Rzadkie obciążenie sezonowe rolne' },
+  { id: 'S16', name: 'Stacja S16 wnętrzowa huta 5MW', station_type: 'inline', load: { p_kw: 5000, kind: 'przemyslowy' }, feeder_source: 'B', description: 'Duży zakład profil płaski' },
+  { id: 'S17', name: 'Stacja S17 K PV+cos phi reg', station_type: 'inline', der: [{ kind: 'PV', p_mw: 0.8 }], load: { p_kw: 300, kind: 'przemyslowy' }, feeder_source: 'B', description: 'PV z regulacją cos φ' },
+  { id: 'S18', name: 'Stacja S18 K BESS 2MW FCR', station_type: 'inline', der: [{ kind: 'BESS', p_mw: 2.0, connection_variant: 'block_transformer' }], feeder_source: 'B', description: 'BESS 2 MW / 4 MWh FCR/SR primary' },
+  { id: 'S19', name: 'Stacja S19 słupowa PV 100kW Q-U', station_type: 'inline', der: [{ kind: 'PV', p_mw: 0.1 }], load: { p_kw: 40, kind: 'bytowy' }, feeder_source: 'B', description: 'Prosument PV 100 kW Q-U regulation NC RFG' },
+  { id: 'S20', name: 'Stacja S20 wnętrzowa FW 3MW', station_type: 'inline', der: [{ kind: 'FW', p_mw: 3.0, connection_variant: 'DEDICATED_MV_CONNECTION' }], feeder_source: 'B', description: 'Single large wind turbine 3 MW' },
+  { id: 'S21', name: 'Stacja S21 mini-block PV', station_type: 'inline', der: [{ kind: 'PV', p_mw: 0.3 }], load: { p_kw: 50, kind: 'bytowy' }, feeder_source: 'B', description: 'Mini-block PV-only variant rebuild' },
+  // === K30 nowe konfiguracje (S22-S30) ===
+  { id: 'S22', name: 'Stacja S22 mini-block PV+odbiór', station_type: 'inline', der: [{ kind: 'PV', p_mw: 0.3 }], load: { p_kw: 50, kind: 'bytowy' }, feeder_source: 'B', description: 'Mini-block PV mała mocowość' },
+  { id: 'S23', name: 'Stacja S23 mini-block BESS', station_type: 'inline', der: [{ kind: 'BESS', p_mw: 1.0, connection_variant: 'block_transformer' }], feeder_source: 'B', description: 'Mini-block BESS 1 MW dedicated MV' },
+  { id: 'S24', name: 'Stacja S24 mini-block FW', station_type: 'inline', der: [{ kind: 'FW', p_mw: 1.5, connection_variant: 'DEDICATED_MV_CONNECTION' }], feeder_source: 'B', description: 'Mini-block FW 1.5 MW DEDICATED' },
+  { id: 'S25', name: 'Stacja S25 mini-block triple', station_type: 'inline', der: [{ kind: 'PV', p_mw: 0.4 }, { kind: 'BESS', p_mw: 0.3 }, { kind: 'FW', p_mw: 0.4 }], load: { p_kw: 100, kind: 'komunalny' }, feeder_source: 'B', description: 'Mini-block triple PV+BESS+FW' },
+  { id: 'S26', name: 'Stacja S26 przemysłowa HV motor', station_type: 'inline', load: { p_kw: 3000, kind: 'przemyslowy' }, feeder_source: 'B', description: 'Stacja przemysłowa duży silnik HV 3 MW' },
+  { id: 'S27', name: 'Stacja S27 kompaktowa prosument', station_type: 'inline', der: [{ kind: 'PV', p_mw: 0.25 }], load: { p_kw: 80, kind: 'bytowy' }, feeder_source: 'B', description: 'Kompaktowa klient prosumencki przemysłowy' },
+  { id: 'S28', name: 'Stacja S28 ZKSN sekcyjna', station_type: 'sectional', feeder_source: 'B', description: 'ZKSN łącznikowa, branch point sekcyjny' },
+  { id: 'S29', name: 'Stacja S29 ZKSN prosument zaawansowany', station_type: 'inline', der: [{ kind: 'PV', p_mw: 0.15 }], load: { p_kw: 60, kind: 'bytowy' }, feeder_source: 'B', description: 'Słupowa ZKSN, mikroinstalacja zaawansowana 150 kW' },
+  { id: 'S30', name: 'Stacja S30 hybrid Q-V reg', station_type: 'inline', der: [{ kind: 'PV', p_mw: 1.0 }, { kind: 'BESS', p_mw: 1.0, connection_variant: 'block_transformer' }], load: { p_kw: 400, kind: 'przemyslowy' }, feeder_source: 'B', description: 'Kontenerowa hybrid z Q-V regulation NC RFG B' },
+];
+
+const PV_NN_CATALOG = 'conv-pv-nn-0p5mw-0p4kv';
+const BESS_MV_CATALOG = 'conv-bess-1mw-2mwh-15kv';
+const BESS_MV_LARGE = 'conv-bess-2mw-4mwh-15kv';
+const FW_MV_CATALOG = 'conv-wind-2mw-15kv';
+const FW_MV_LARGE = 'conv-wind-3mw-15kv';
+
+function pickConverterCatalog(kind, pMw, variant) {
+  if (kind === 'PV') {
+    if (variant === 'nn_side') return PV_NN_CATALOG;
+    if (pMw <= 1.0) return 'conv-pv-1mw-15kv';
+    if (pMw <= 2.0) return 'conv-pv-2mw-15kv';
+    return 'conv-pv-5mw-15kv';
+  }
+  if (kind === 'BESS') {
+    if (pMw <= 0.5) return 'conv-bess-0.5mw-1mwh-15kv';
+    if (pMw <= 1.0) return BESS_MV_CATALOG;
+    if (pMw <= 2.0) return BESS_MV_LARGE;
+    return 'conv-bess-5mw-10mwh-15kv';
+  }
+  if (kind === 'FW') {
+    if (pMw <= 2.0) return FW_MV_CATALOG;
+    if (pMw <= 3.0) return FW_MV_LARGE;
+    return 'conv-wind-4mw-20kv';
+  }
+  return PV_NN_CATALOG;
+}
+
+/**
+ * Tworzy GPZ + bay + trunk + zwraca currentSegmentId dla downstream
+ * insertion. Reusable per GPZ-A/GPZ-B (single trunk per GPZ jako N-1
+ * surrogate gdy brak domain-op ring main).
+ */
+async function buildGpzTrunk(caseId, projectId, gpzKey, gpzName, designation) {
+  log(`K2.${gpzKey}`, `Wstaw ${gpzName}...`);
+  const gpzRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+    project_id: projectId,
+    operation: {
+      name: 'add_grid_source_sn',
+      idempotency_key: `gn30_gpz_${gpzKey}_v1`,
+      payload: {
+        source_id: `src_gpz_${gpzKey}_k30`,
+        name_pl: gpzName,
+        voltage_kv: 15.0,
+        catalog_ref: 'src-gpz-15kv-100mva-rx008',
+      },
+    },
+  });
+  if (!gpzRes.ok || gpzRes.json?.error_code) {
+    console.error(`K2.${gpzKey} FAIL:`, gpzRes.json?.error_code ?? gpzRes.json?.detail);
+    return null;
+  }
+  const snapshot = gpzRes.json?.snapshot;
+  const gpzList = (snapshot?.substations ?? []).filter((s) => s.station_type === 'gpz');
+  const gpz = gpzList[gpzList.length - 1];
+  const snBus = (snapshot?.buses ?? [])
+    .filter((b) => b.voltage_kv === 15)
+    .reverse()[0];
+  log(`K2.${gpzKey}`, `OK GPZ=${gpz?.ref_id} bus=${snBus?.ref_id}`);
+
+  log(`K4.${gpzKey}`, `Pole SN line_out ${designation}...`);
+  const bayRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+    project_id: projectId,
+    operation: {
+      name: 'add_sn_bay',
+      idempotency_key: `gn30_bay_${gpzKey}_${designation.toLowerCase()}`,
+      payload: {
+        bus_ref: snBus.ref_id,
+        bay_role: 'LINE_OUT',
+        catalog_ref: 'sw-ls-abb-nal-12kv-630a',
+        designation_q: designation,
+      },
+    },
+  });
+  if (!bayRes.ok || bayRes.json?.error_code) {
+    console.error(`K4.${gpzKey} FAIL:`, bayRes.json?.error_code);
+    return null;
+  }
+  log(`K4.${gpzKey}`, `OK ${designation}`);
+
+  log(`K5.${gpzKey}`, `Trunk segment SN 5000 m z ${gpzKey}...`);
+  const enm = await api('GET', `/api/cases/${caseId}/enm`);
+  const lineFields = (enm.json?.line_fields ?? []).filter((f) => f.bay_role === 'LINE_OUT');
+  const lineField = lineFields[lineFields.length - 1];
+  const trunkRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+    project_id: projectId,
+    operation: {
+      name: 'continue_trunk_segment_sn',
+      idempotency_key: `gn30_trunk_${gpzKey}`,
+      payload: {
+        field_ref: lineField?.ref_id,
+        from_terminal_id: snBus.ref_id,
+        segment: {
+          rodzaj: 'KABEL',
+          dlugosc_m: 5000,
+          catalog_ref: 'cable-base-epr-al-1c-150',
+        },
+      },
+    },
+  });
+  if (!trunkRes.ok || trunkRes.json?.error_code) {
+    console.error(`K5.${gpzKey} FAIL:`, trunkRes.json?.error_code);
+    return null;
+  }
+  const created = trunkRes.json?.changes?.created_element_ids ?? [];
+  const segmentId = created.find((id) => typeof id === 'string' && id.startsWith('seg/')) ?? created[1];
+  log(`K5.${gpzKey}`, `OK trunk segment=${segmentId}`);
+
+  return { gpz, snBus, segmentId };
+}
+
+async function main() {
+  console.log('=================================================================');
+  console.log('GN30 K30 SEEDER — 2 GPZ + 30 stacji unique config (audit K30-0)');
+  console.log('=================================================================');
+
+  const ready = await api('GET', '/ready');
+  if (!ready.ok) {
+    console.error('Backend nieosiągalny:', ready);
+    process.exit(1);
+  }
+
+  log('K1', 'Tworzę projekt GN30...');
+  const project = await api('POST', '/api/projects', {
+    name: 'GN30 — K30 reference network (30 stations + 2 GPZ)',
+    description: 'K30 SCADA-CAD grade target — audit loop seeder',
+  });
+  if (!project.ok) {
+    console.error('Project create failed:', project);
+    process.exit(1);
+  }
+  const projectId = project.json.id;
+
+  const caseRes = await api('POST', '/api/study-cases', {
+    project_id: projectId,
+    name: 'Wariant bazowy K30',
+    description: 'GN30 baseline — audit loop K30-0',
+  });
+  const caseId = caseRes.json.id;
+  log('K1', `OK projectId=${projectId} caseId=${caseId}`);
+
+  // K2-K5 A: GPZ Main + trunk A
+  const trunkA = await buildGpzTrunk(caseId, projectId, 'a_main', 'GPZ-A Główny 110/15 kV (K30)', 'Q01');
+  if (!trunkA) process.exit(2);
+
+  // K2-K5 B: GPZ Backup + trunk B
+  const trunkB = await buildGpzTrunk(caseId, projectId, 'b_backup', 'GPZ-B Backup 110/15 kV (K30)', 'Q01B');
+  if (!trunkB) {
+    console.warn('GPZ-B build failed — kontynuuję z samym trunk A (N-1 surrogate degraded)');
+  }
+
+  // K6 loop: 30 stacji per feeder_source ('A' lub 'B')
+  let currentSegmentA = trunkA.segmentId;
+  let currentSegmentB = trunkB?.segmentId ?? null;
+  const stationResults = [];
+  for (const cfg of STATION_CONFIGS) {
+    const useB = cfg.feeder_source === 'B' && currentSegmentB;
+    const targetSegment = useB ? currentSegmentB : currentSegmentA;
+    if (!targetSegment) {
+      stationResults.push({ id: cfg.id, status: 'FAIL', error: 'no_segment' });
+      log(`K6.${cfg.id}`, 'FAIL: no_segment (feeder unavailable)');
+      continue;
+    }
+    const stationRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+      project_id: projectId,
+      operation: {
+        name: 'insert_station_on_segment_sn',
+        idempotency_key: `gn30_station_${cfg.id}`,
+        payload: {
+          segment_id: targetSegment,
+          insert_at: { mode: 'RATIO', value: 0.5 },
+          station: {
+            name_pl: cfg.name,
+            station_type: cfg.station_type,
+            sn_voltage_kv: 15,
+            nn_voltage_kv: 0.4,
+          },
+          transformer: {
+            transformer_catalog_ref: 'tr-sn-nn-15-04-1000kva-dyn11',
+          },
+          sn_fields: ['IN', 'OUT', 'TR'],
+        },
+      },
+    });
+    const ok = stationRes.ok && !stationRes.json?.error_code;
+    if (!ok) {
+      stationResults.push({ id: cfg.id, status: 'FAIL', error: stationRes.json?.error_code, feeder: cfg.feeder_source });
+      log(`K6.${cfg.id}`, `FAIL: ${stationRes.json?.error_code}`);
+      continue;
+    }
+    const createdIds = stationRes.json?.changes?.created_element_ids ?? [];
+    const stationRefFromCreate = createdIds.find(
+      (id) => typeof id === 'string' && id.startsWith('stn/') && id.endsWith('/station'),
+    );
+    const enmAfter = await api('GET', `/api/cases/${caseId}/enm`);
+    const branches = enmAfter.json?.branches ?? [];
+    const cableSegs = branches.filter(
+      (b) => typeof b.ref_id === 'string' && b.ref_id.startsWith('seg/') && b.type === 'cable',
+    );
+    if (cableSegs.length > 0) {
+      const newest = cableSegs[cableSegs.length - 1].ref_id;
+      if (useB) currentSegmentB = newest;
+      else currentSegmentA = newest;
+    }
+    const nnBus = (enmAfter.json?.buses ?? []).find(
+      (b) =>
+        typeof b.ref_id === 'string' &&
+        stationRefFromCreate &&
+        b.ref_id.startsWith(stationRefFromCreate.replace('/station', '/')) &&
+        b.voltage_kv && b.voltage_kv <= 1.0,
+    );
+    stationResults.push({
+      id: cfg.id,
+      status: 'PASS',
+      cfg,
+      stationRef: stationRefFromCreate,
+      nnBusRef: nnBus?.ref_id,
+      feeder: cfg.feeder_source,
+    });
+    log(`K6.${cfg.id}`, `OK (feeder ${cfg.feeder_source}) station=${stationRefFromCreate?.slice(0, 40) ?? '?'} nn=${nnBus?.ref_id?.slice(0, 40) ?? '?'}`);
+  }
+
+  // K10 loop: dodaj DER per station
+  const derResults = [];
+  for (const stRes of stationResults) {
+    if (stRes.status !== 'PASS' || !stRes.cfg.der || !stRes.stationRef) continue;
+    for (let d = 0; d < stRes.cfg.der.length; d++) {
+      const der = stRes.cfg.der[d];
+      let variant = der.connection_variant;
+      if (!variant) {
+        variant = (der.kind === 'BESS' || der.kind === 'FW')
+          ? 'block_transformer'
+          : 'nn_side';
+      }
+      const catalog = pickConverterCatalog(der.kind, der.p_mw ?? 0.5, variant);
+      const payload = {
+        source_technology: der.kind,
+        catalog_ref: catalog,
+        connection_variant: variant,
+        station_ref: stRes.stationRef,
+      };
+      if (variant === 'nn_side' && stRes.nnBusRef) {
+        payload.bus_nn_ref = stRes.nnBusRef;
+      }
+      const derRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+        project_id: projectId,
+        operation: {
+          name: 'add_converter_source',
+          idempotency_key: `gn30_${stRes.id}_${der.kind}_${d}`,
+          payload,
+        },
+      });
+      const ok = derRes.ok && !derRes.json?.error_code;
+      derResults.push({
+        id: stRes.id,
+        kind: der.kind,
+        variant,
+        status: ok ? 'PASS' : `FAIL: ${derRes.json?.error_code ?? ''}`,
+      });
+    }
+  }
+
+  // K11: Loads per station (feeder nN + load)
+  const NN_FEEDER_CATALOG = 'cb_nn_400a';
+  const loadResults = [];
+  for (const stRes of stationResults) {
+    if (stRes.status !== 'PASS' || !stRes.cfg.load || !stRes.nnBusRef) continue;
+    const feederRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+      project_id: projectId,
+      operation: {
+        name: 'add_nn_outgoing_field',
+        idempotency_key: `gn30_${stRes.id}_nn_feeder`,
+        payload: {
+          bus_nn_ref: stRes.nnBusRef,
+          station_ref: stRes.stationRef,
+          field_role: 'OUTGOING',
+          field_name: `Odpływ nN ${stRes.cfg.id}`,
+          catalog_ref: NN_FEEDER_CATALOG,
+        },
+      },
+    });
+    const feederOk = feederRes.ok && !feederRes.json?.error_code;
+    if (!feederOk) {
+      loadResults.push({ id: stRes.id, status: `FEEDER_FAIL: ${feederRes.json?.error_code ?? ''}` });
+      continue;
+    }
+    const feederIds = feederRes.json?.changes?.created_element_ids ?? [];
+    const feederRef = feederIds.find(
+      (id) => typeof id === 'string' && id.startsWith('nn/') && id.endsWith('/outgoing'),
+    );
+    if (!feederRef) {
+      loadResults.push({ id: stRes.id, status: 'NO_FEEDER_REF' });
+      continue;
+    }
+    let loadCatalog = 'load_mieszk_15kw';
+    if (stRes.cfg.load.kind === 'przemyslowy') loadCatalog = 'load_przem_75kw';
+    else if (stRes.cfg.load.kind === 'komunalny') loadCatalog = 'load_uslugi_30kw';
+
+    const loadRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+      project_id: projectId,
+      operation: {
+        name: 'add_nn_load',
+        idempotency_key: `gn30_${stRes.id}_load`,
+        payload: {
+          feeder_ref: feederRef,
+          bus_nn_ref: stRes.nnBusRef,
+          active_power_kw: stRes.cfg.load.p_kw,
+          reactive_power_kvar: stRes.cfg.load.p_kw * 0.33,
+          load_kind: 'SKUPIONY',
+          connection_type: 'TROJFAZOWY',
+          load_name: `Odbiór ${stRes.cfg.load.kind} ${stRes.cfg.load.p_kw} kW`,
+          cos_phi: 0.95,
+          catalog_ref: loadCatalog,
+        },
+      },
+    });
+    const loadOk = loadRes.ok && !loadRes.json?.error_code;
+    loadResults.push({
+      id: stRes.id,
+      kind: stRes.cfg.load.kind,
+      p_kw: stRes.cfg.load.p_kw,
+      status: loadOk ? 'PASS' : `FAIL: ${loadRes.json?.error_code ?? ''}`,
+    });
+  }
+
+  // Final summary
+  const sumOk = stationResults.filter((r) => r.status === 'PASS').length;
+  const sumFail = stationResults.length - sumOk;
+  const derOk = derResults.filter((r) => r.status === 'PASS').length;
+  const derFail = derResults.length - derOk;
+  const loadOk = loadResults.filter((r) => r.status === 'PASS').length;
+  const loadFail = loadResults.length - loadOk;
+  const aOk = stationResults.filter((r) => r.status === 'PASS' && r.feeder === 'A').length;
+  const bOk = stationResults.filter((r) => r.status === 'PASS' && r.feeder === 'B').length;
+
+  console.log('=================================================================');
+  console.log('GN30 K30 SEED FINAL SUMMARY');
+  console.log('=================================================================');
+  console.log(`Stacje:   ${sumOk}/${stationResults.length} PASS (A=${aOk}, B=${bOk}) ${sumFail} FAIL`);
+  console.log(`DER:      ${derOk}/${derResults.length} PASS, ${derFail} FAIL`);
+  console.log(`Loads:    ${loadOk}/${loadResults.length} PASS, ${loadFail} FAIL`);
+  console.log(`Project:  ${projectId}`);
+  console.log(`Case:     ${caseId}`);
+  console.log('-----------------------------------------------------------------');
+  console.log('Station details:');
+  for (const r of stationResults) {
+    console.log(`  ${r.id} (feeder ${r.cfg?.feeder_source ?? r.feeder ?? '?'}): ${r.status}${r.error ? ` (${r.error})` : ''}`);
+  }
+
+  console.log('=================================================================');
+  console.log('JSON:', JSON.stringify({
+    projectId,
+    caseId,
+    stations: { pass: sumOk, fail: sumFail, total: stationResults.length, a: aOk, b: bOk },
+    der: { pass: derOk, fail: derFail, total: derResults.length },
+    loads: { pass: loadOk, fail: loadFail, total: loadResults.length },
+  }));
+}
+
+main().catch((e) => {
+  console.error('UNCAUGHT:', e);
+  process.exit(99);
+});
