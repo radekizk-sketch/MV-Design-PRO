@@ -151,7 +151,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
           textAnchor="middle"
           fill={COLOR_TEXT_PRIMARY}
           fontFamily={FONT_SANS}
-          fontSize={9}
+          fontSize={10}
         >
           {name}
         </text>
@@ -164,7 +164,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
           textAnchor="middle"
           fill={COLOR_TEXT_SECONDARY}
           fontFamily={FONT_MONO}
-          fontSize={9}
+          fontSize={10}
         >
           {nominalPowerKw.toFixed(0)} kW
         </text>

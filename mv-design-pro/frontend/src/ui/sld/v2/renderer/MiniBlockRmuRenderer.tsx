@@ -557,7 +557,7 @@ function LvSectionRow(props: LvSectionRowProps): JSX.Element {
         textAnchor="end"
         fill={COLOR_TEXT_SECONDARY}
         fontFamily={FONT_SANS}
-        fontSize={8}
+        fontSize={10}
       >
         {feedersCount > 0 ? `${feedersCount}× nN` : 'nN'}
       </text>
@@ -701,7 +701,7 @@ function PvConnectionTree(props: PvConnectionTreeProps): JSX.Element {
                 textAnchor="middle"
                 fill="#ffd166"
                 fontFamily={FONT_SANS}
-                fontSize={6}
+                fontSize={9}
                 fontWeight={800}
               >
                 e2
@@ -728,7 +728,7 @@ function PvConnectionTree(props: PvConnectionTreeProps): JSX.Element {
         y={inverterY - 2}
         fill={COLOR_DER_PV}
         fontFamily={FONT_SANS}
-        fontSize={8}
+        fontSize={10}
         fontWeight={800}
         paintOrder="stroke"
         stroke={COLOR_SCADA_SHADOW}

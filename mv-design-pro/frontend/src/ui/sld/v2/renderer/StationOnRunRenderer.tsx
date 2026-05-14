@@ -213,7 +213,7 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
           <circle r={6} fill={COLOR_WARN} stroke="#FFB020" strokeWidth={1}>
             <title>Brakuje danych do obliczeń</title>
           </circle>
-          <text x={0} y={4} textAnchor="middle" fill="#0B0E11" fontFamily={FONT_SANS} fontSize={9} fontWeight={800}>!</text>
+          <text x={0} y={4} textAnchor="middle" fill="#0B0E11" fontFamily={FONT_SANS} fontSize={10} fontWeight={800}>!</text>
         </g>
       )}
 
