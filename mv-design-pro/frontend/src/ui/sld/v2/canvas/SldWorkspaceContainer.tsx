@@ -31,6 +31,7 @@ import {
   type LayerState,
 } from '../lod/layerToggle';
 import type { LodLevel } from '../lod/LodPolicy';
+import { ProofPacksPanel } from '../proof/ProofPacksPanel';
 import { SldContextMenuController } from '../../../context-menu/SldContextMenuController';
 import type { SldContextMenuRequest } from '../../../context-menu/SldContextMenuController';
 import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
@@ -1109,6 +1110,15 @@ export function SldWorkspaceContainer(
             className="w-[240px]"
           />
         )}
+      </div>
+
+      {/* Iter 10 (Whitebox blocker): floating ProofPacksPanel w lewym dolnym
+          rogu z 8 canonical proof packs. Disable gdy ENM pusty. */}
+      <div
+        className="pointer-events-auto absolute bottom-3 left-3 z-20 w-[220px]"
+        data-testid="sld-proof-packs-dock"
+      >
+        <ProofPacksPanel hasNetworkModel={!isEmpty} />
       </div>
 
       <section
