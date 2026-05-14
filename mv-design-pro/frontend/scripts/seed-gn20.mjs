@@ -220,6 +220,23 @@ async function main() {
   }
   log('K4', 'OK Q01');
 
+  // K4b: Pole SN line_out na Sekcji II (Q02) — symetria sekcji
+  log('K4b', 'Pole SN line_out Q02 na Sekcji II...');
+  const bay2Res = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+    project_id: projectId,
+    operation: {
+      name: 'add_sn_bay',
+      idempotency_key: 'gn20_bay_q02',
+      payload: {
+        bus_ref: snBus.ref_id, // ta sama szyna SN (sec 1+2 współdzielą bus)
+        bay_role: 'LINE_OUT',
+        catalog_ref: 'sw-ls-abb-nal-12kv-630a',
+        designation_q: 'Q02',
+      },
+    },
+  });
+  log('K4b', bay2Res.ok && !bay2Res.json?.error_code ? 'OK Q02' : `FAIL: ${bay2Res.json?.error_code}`);
+
   // K5: Trunk segment SN
   log('K5', 'Trunk segment SN 5000 m...');
   const enm4 = await api('GET', `/api/cases/${caseId}/enm`);
@@ -355,6 +372,63 @@ async function main() {
     }
   }
 
+  // K11: Attach loads per STATION_CONFIGS (add_nn_outgoing_field +
+  // add_nn_load). Wymaga: feeder nN field per stacja.
+  const loadResults = [];
+  for (const stRes of stationResults) {
+    if (stRes.status !== 'PASS' || !stRes.cfg.load || !stRes.nnBusRef) continue;
+    // 1. Stwórz pole odpływowe nN
+    const feederRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+      project_id: projectId,
+      operation: {
+        name: 'add_nn_outgoing_field',
+        idempotency_key: `gn20_${stRes.id}_nn_feeder`,
+        payload: {
+          bus_nn_ref: stRes.nnBusRef,
+          station_ref: stRes.stationRef,
+          field_role: 'OUTGOING',
+          field_name: `Odpływ nN ${stRes.cfg.id}`,
+        },
+      },
+    });
+    const feederOk = feederRes.ok && !feederRes.json?.error_code;
+    if (!feederOk) {
+      loadResults.push({ id: stRes.id, status: `FEEDER_FAIL: ${feederRes.json?.error_code ?? ''}` });
+      continue;
+    }
+    const feederIds = feederRes.json?.changes?.created_element_ids ?? [];
+    const feederRef = feederIds.find((id) => typeof id === 'string' && id.includes('field'));
+    if (!feederRef) {
+      loadResults.push({ id: stRes.id, status: 'NO_FEEDER_REF' });
+      continue;
+    }
+    // 2. Attach load
+    const loadRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+      project_id: projectId,
+      operation: {
+        name: 'add_nn_load',
+        idempotency_key: `gn20_${stRes.id}_load`,
+        payload: {
+          feeder_ref: feederRef,
+          bus_nn_ref: stRes.nnBusRef,
+          active_power_kw: stRes.cfg.load.p_kw,
+          reactive_power_kvar: stRes.cfg.load.p_kw * 0.33, // cos φ ~ 0.95
+          load_kind: 'SKUPIONY',
+          connection_type: 'TROJFAZOWY',
+          load_name: `Odbiór ${stRes.cfg.load.kind} ${stRes.cfg.load.p_kw} kW`,
+          cos_phi: 0.95,
+        },
+      },
+    });
+    const loadOk = loadRes.ok && !loadRes.json?.error_code;
+    loadResults.push({
+      id: stRes.id,
+      kind: stRes.cfg.load.kind,
+      p_kw: stRes.cfg.load.p_kw,
+      status: loadOk ? 'PASS' : `FAIL: ${loadRes.json?.error_code ?? ''}`,
+    });
+  }
+
   // Final summary
   const sumOk = stationResults.filter((r) => r.status === 'PASS').length;
   const sumFail = stationResults.length - sumOk;
@@ -378,6 +452,14 @@ async function main() {
   for (const r of derResults) {
     console.log(`  ${r.id} ${r.kind} (${r.variant}): ${r.status}`);
   }
+  console.log('-----------------------------------------------------------------');
+  console.log('Load details:');
+  const loadOk = loadResults.filter((r) => r.status === 'PASS').length;
+  const loadFail = loadResults.length - loadOk;
+  console.log(`Loads: ${loadOk}/${loadResults.length} PASS, ${loadFail} FAIL`);
+  for (const r of loadResults) {
+    console.log(`  ${r.id} ${r.kind ?? ''} ${r.p_kw ? r.p_kw + ' kW' : ''}: ${r.status}`);
+  }
 
   // JSON output dla downstream scripts (audit loop)
   console.log('=================================================================');
@@ -386,6 +468,7 @@ async function main() {
     caseId,
     stations: { pass: sumOk, fail: sumFail, total: stationResults.length },
     der: { pass: derOk, fail: derFail, total: derResults.length },
+    loads: { pass: loadOk, fail: loadFail, total: loadResults.length },
   }));
 }
 

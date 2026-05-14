@@ -14,7 +14,7 @@
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 
-const OUT = '/home/user/MV-Design-PRO/mv-design-pro/docs/audit/visual_iteration_K20';
+const OUT = process.env.OUT_DIR ?? '/home/user/MV-Design-PRO/mv-design-pro/docs/audit/visual_iteration_K20';
 const APP_URL = 'http://127.0.0.1:5173';
 // Z seed-gn20.mjs ostatniego uruchomienia (DER fix iter):
 const CASE_ID = process.env.CASE_ID ?? '1a97f232-1c67-4828-986d-1096f4978792';
