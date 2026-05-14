@@ -560,6 +560,71 @@ describe('StationOnRunRenderer', () => {
     );
     expect(getByText('750 m')).toBeInTheDocument();
   });
+
+  it('IEC 60617: szyna SN ma terminatory na obu końcach (kreski prostopadłe)', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-busend"
+          x={300}
+          y={400}
+          name="ST-01"
+          topologicalType="przelotowa"
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-station-bus-end-left-st-busend"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="sld-v2-station-bus-end-right-st-busend"]')).toBeTruthy();
+  });
+
+  it('transformerRatedKva < 1000 → format "XXX kVA"', () => {
+    const { container, getByText } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-kva"
+          x={300}
+          y={400}
+          name="ST-01"
+          topologicalType="końcowa"
+          transformerRatedKva={630}
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-station-rated-kva-st-kva"]')).toBeTruthy();
+    expect(getByText('630 kVA')).toBeInTheDocument();
+  });
+
+  it('transformerRatedKva ≥ 1000 → format "X.X MVA"', () => {
+    const { getByText } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-mva"
+          x={300}
+          y={400}
+          name="ST-01"
+          topologicalType="końcowa"
+          transformerRatedKva={1600}
+        />
+      </svg>,
+    );
+    expect(getByText('1.6 MVA')).toBeInTheDocument();
+  });
+
+  it('transformerRatedKva=null → brak etykiety mocy', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-no-kva"
+          x={300}
+          y={400}
+          name="ST-01"
+          topologicalType="końcowa"
+          transformerRatedKva={null}
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-station-rated-kva-st-no-kva"]')).toBeFalsy();
+  });
 });
 
 describe('DerRenderer', () => {

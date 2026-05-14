@@ -1699,6 +1699,56 @@ describe('buildStations — konsumuje line_runs.stations[] z explicit order', ()
     expect(nopStation?.isNop).toBe(true);
     expect(regStation?.isNop).toBeUndefined();
   });
+
+  it('transformer.sn_mva → transformerRatedKva [kVA] na stacji (Projektant moc znamionowa)', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b-mv', ref_id: 'b-mv', name: 'MV', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b-lv', ref_id: 'b-lv', name: 'LV', voltage_kv: 0.4, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's1', ref_id: 'ST-1', name: 'ST-1', tags: [], meta: {},
+        station_type: 'inline', bus_refs: ['b-mv', 'b-lv'], transformer_refs: ['TR-1'],
+      } as never,
+    ];
+    snap.transformers = [
+      {
+        id: 't1', ref_id: 'TR-1', name: 'TR-1', tags: [], meta: {},
+        hv_bus_ref: 'b-mv', lv_bus_ref: 'b-lv',
+        sn_mva: 0.63, uhv_kv: 15, ulv_kv: 0.4, uk_percent: 6, pk_kw: 5,
+      } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-1', run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1', starting_port_ref: 'port-1',
+        segments: [],
+        stations: [{ substation_ref: 'ST-1', order: 1 }],
+      },
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const station = r.stations.find((s) => s.id === 'ST-1');
+    expect(station?.transformerRatedKva).toBe(630);
+  });
+
+  it('brak transformatora → transformerRatedKva=null', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 's1', ref_id: 'ST-1', name: 'ST-1', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-1', run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1', starting_port_ref: 'port-1',
+        segments: [],
+        stations: [{ substation_ref: 'ST-1', order: 1 }],
+      },
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const station = r.stations.find((s) => s.id === 'ST-1');
+    expect(station?.transformerRatedKva).toBeNull();
+  });
 });
 
 describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (commit 13)', () => {

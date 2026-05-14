@@ -1052,6 +1052,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         snBays: stationSldDetails.snBays,
         hasTransformer: stationSldDetails.hasTransformer,
         transformerRefs: stationSldDetails.transformerRefs,
+        transformerRatedKva: stationSldDetails.transformerRatedKva,
         nnFeedersCount: stationSldDetails.nnFeedersCount,
         derBadges: stationSldDetails.derBadges,
         ...(isNop ? { isNop: true } : {}),
@@ -1085,6 +1086,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         snBays: stationSldDetails.snBays,
         hasTransformer: stationSldDetails.hasTransformer,
         transformerRefs: stationSldDetails.transformerRefs,
+        transformerRatedKva: stationSldDetails.transformerRatedKva,
         nnFeedersCount: stationSldDetails.nnFeedersCount,
         derBadges: stationSldDetails.derBadges,
       });
@@ -1111,6 +1113,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
       snBays: stationSldDetails.snBays,
       hasTransformer: stationSldDetails.hasTransformer,
       transformerRefs: stationSldDetails.transformerRefs,
+      transformerRatedKva: stationSldDetails.transformerRatedKva,
       nnFeedersCount: stationSldDetails.nnFeedersCount,
       derBadges: stationSldDetails.derBadges,
     });
@@ -1126,6 +1129,7 @@ interface StationMiniBlockDetails {
   readonly transformerRefs: readonly string[];
   readonly nnFeedersCount: number;
   readonly derBadges: readonly MiniBlockDerBadge[];
+  readonly transformerRatedKva: number | null;
 }
 
 function buildStationMiniBlockDetails(
@@ -1141,6 +1145,7 @@ function buildStationMiniBlockDetails(
     ? explicitBays
     : buildExpectedStationMiniBays(station.ref_id, MINI_BLOCK_FOOTPRINT[footprintType].defaultSnBayRoles);
   const transformerRefs = collectStationTransformerRefs(snapshot, station);
+  const transformerRatedKva = inferTransformerRatedKva(snapshot, transformerRefs);
 
   return {
     footprintType,
@@ -1152,7 +1157,21 @@ function buildStationMiniBlockDetails(
       MINI_BLOCK_FOOTPRINT[footprintType].hasTransformer,
     nnFeedersCount: derBadges.some((badge) => badge.connectionSide === 'nn') ? 2 : 1,
     derBadges,
+    transformerRatedKva,
   };
+}
+
+function inferTransformerRatedKva(
+  snapshot: EnergyNetworkModel,
+  transformerRefs: readonly string[],
+): number | null {
+  if (transformerRefs.length === 0) return null;
+  const transformer = (snapshot.transformers ?? []).find(
+    (tr) => transformerRefs.includes(tr.ref_id) || transformerRefs.includes(tr.id ?? ''),
+  );
+  if (!transformer) return null;
+  const kva = Math.round(transformer.sn_mva * 1000);
+  return kva > 0 ? kva : null;
 }
 
 function collectStationTransformerRefs(

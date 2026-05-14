@@ -121,11 +121,14 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
   const {
     id, x, y, name, topologicalType, nnVoltageLevelsCount,
     selected, onClick, onDoubleClick, missingData, isNop, distanceFromGpzKm,
+    transformerRatedKva,
   } = props;
   const connectionXs = connectionColumns(topologicalType);
   const voltageLabel = nnVoltageLevelsCount && nnVoltageLevelsCount > 1
     ? `${nnVoltageLevelsCount}× nN`
     : 'SN/nN';
+  // Z mocą znamionową transformatora przesuwamy NOP/distance niżej (extraSlotY).
+  const extraSlotY = transformerRatedKva != null ? 14 : 0;
 
   return (
     <g
@@ -161,6 +164,28 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
         strokeWidth={4}
         strokeLinecap="butt"
         data-testid={`sld-v2-station-bus-${id}`}
+      />
+      {/* IEC 60617: terminatory szyny SN — krótkie kreski prostopadłe na końcach
+          szyny, sygnalizujące fizyczne zakończenie szyny (a nie kontynuację). */}
+      <line
+        x1={-STATION_BUS_WIDTH / 2}
+        y1={STATION_BUS_Y - 5}
+        x2={-STATION_BUS_WIDTH / 2}
+        y2={STATION_BUS_Y + 5}
+        stroke={COLOR_FIELD_TRUNK_ENERGIZED}
+        strokeWidth={2}
+        strokeLinecap="round"
+        data-testid={`sld-v2-station-bus-end-left-${id}`}
+      />
+      <line
+        x1={STATION_BUS_WIDTH / 2}
+        y1={STATION_BUS_Y - 5}
+        x2={STATION_BUS_WIDTH / 2}
+        y2={STATION_BUS_Y + 5}
+        stroke={COLOR_FIELD_TRUNK_ENERGIZED}
+        strokeWidth={2}
+        strokeLinecap="round"
+        data-testid={`sld-v2-station-bus-end-right-${id}`}
       />
 
       {connectionXs.map((cx, index) => (
@@ -266,10 +291,31 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
         {voltageLabel}
       </text>
 
+      {transformerRatedKva != null && (
+        <text
+          data-testid={`sld-v2-station-rated-kva-${id}`}
+          x={0}
+          y={CODE_Y + 28}
+          textAnchor="middle"
+          fill="#FFD166"
+          fontFamily={FONT_SANS}
+          fontSize={FONT_SIZES.technicalPanel}
+          fontWeight={700}
+          paintOrder="stroke"
+          stroke="#05070A"
+          strokeWidth={2}
+          opacity={0.9}
+        >
+          {transformerRatedKva >= 1000
+            ? `${(transformerRatedKva / 1000).toFixed(1)} MVA`
+            : `${transformerRatedKva} kVA`}
+        </text>
+      )}
+
       {isNop && (
         <g
           data-testid={`sld-v2-station-nop-badge-${id}`}
-          transform={`translate(0, ${CODE_Y + 32})`}
+          transform={`translate(0, ${CODE_Y + 32 + extraSlotY})`}
         >
           <rect x={-16} y={-8} width={32} height={14} rx={2} ry={2} fill="#C00000" opacity={0.85} />
           <text x={0} y={4} textAnchor="middle" fill="#FFFFFF" fontFamily={FONT_SANS} fontSize={9} fontWeight={800} letterSpacing={0.5}>
@@ -282,7 +328,7 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
         <text
           data-testid={`sld-v2-station-distance-${id}`}
           x={0}
-          y={CODE_Y + (isNop ? 54 : 32)}
+          y={CODE_Y + (isNop ? 54 : 32) + extraSlotY}
           textAnchor="middle"
           fill={COLOR_TEXT_SECONDARY}
           fontFamily={FONT_SANS}
