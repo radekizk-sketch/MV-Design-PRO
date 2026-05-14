@@ -297,6 +297,55 @@ async function main() {
     }
   }
 
+  // K8: ZKSN słup na kablu SN (insert_zksn_on_segment_sn).
+  // K6 mogło zmienić segment_id (split podczas insert station), więc
+  // bierzemy segment z snapshot po K6 jeśli K6 PASS, inaczej z K5.
+  let k8Status = 'NOT_REACHED';
+  if (k5Status === 'PASS' && segmentId) {
+    // Po K6 oryginalny segment K5 jest podzielony — bierz lewy half (z prefix _L)
+    // lub jeden z nowo utworzonych. Dla safety: spróbuj original segment_id z K5
+    // jeśli K6 NOT_PASS, lub wyszukaj segment z snapshot.
+    let zksnSegId = segmentId;
+    if (k6Status === 'PASS') {
+      // K6 split — szukamy aktywnego cable segment w snapshot.
+      const enmAfterK6 = await api('GET', `/api/cases/${caseId}/enm`);
+      const branches = enmAfterK6.json?.branches ?? [];
+      const cableSeg = branches.find(
+        (b) =>
+          typeof b.ref_id === 'string' &&
+          b.ref_id.startsWith('seg/') &&
+          b.type === 'cable',
+      );
+      if (cableSeg) zksnSegId = cableSeg.ref_id;
+    }
+    log('K8', `Wstaw ZKSN słup na kablu SN (segment=${zksnSegId})...`);
+    const zksnRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+      project_id: projectId,
+      operation: {
+        name: 'insert_zksn_on_segment_sn',
+        idempotency_key: 'gn01_zksn_001',
+        payload: {
+          segment_id: zksnSegId,
+          insert_at: { mode: 'RATIO', value: 0.3 },
+          catalog_ref: 'RSN-6', // ZKSN przelotowy z /api/catalog/branch-point-types
+          // Wymagany jawny namespace dla branch_pole / zksn ops (per
+          // backend/src/api/domain_ops_policy.py:221 _explicit_namespace).
+          catalog_namespace: 'mv_branch_points',
+          branch_ports_count: 2,
+        },
+      },
+    });
+    if (zksnRes.ok && !zksnRes.json?.error_code) {
+      k8Status = 'PASS';
+      log('K8', 'OK ZKSN inserted', {
+        created: zksnRes.json?.changes?.created_element_ids?.length ?? 0,
+      });
+    } else {
+      k8Status = `FAIL: ${zksnRes.status} ${zksnRes.json?.error_code ?? zksnRes.json?.error ?? ''}`;
+      log('K8', k8Status);
+    }
+  }
+
   log('K_final', 'Weryfikuję topology końcową...');
   const summaryFinal = await api('GET', `/api/cases/${caseId}/enm/topology/summary`);
 
@@ -318,6 +367,7 @@ async function main() {
       k4_status: k4Status,
       k5_status: k5Status,
       k6_status: k6Status,
+      k8_status: k8Status,
     },
     null,
     2,
