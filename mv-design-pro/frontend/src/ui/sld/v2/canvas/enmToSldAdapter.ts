@@ -1052,13 +1052,20 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
 
   // 1. Stacje z line_runs — deterministyczne sortowanie po lineRun.id, potem station.order.
   const sortedRuns = [...lineRuns].sort((a, b) => a.id.localeCompare(b.id));
+  // K30-10: multi-row layout dla long chains (≥15 stacji). Snake routing —
+  // row 1 left→right, row 2 right→left, row 3 left→right. Cable U-turns
+  // przy końcach rzędów. Adresuje cluster appearance dla K30 fit-to-screen.
+  const STATIONS_PER_ROW_THRESHOLD = 15;
+  const STATIONS_PER_ROW = 12;
+  const ROW_HEIGHT = 300; // vertical space per row (station body + margin)
+
   sortedRuns.forEach((lr, runIdx) => {
     const sortedStations = [...lr.stations].sort((a, b) => a.order - b.order);
-    // Skumulowane km do każdej stacji = suma length_km segmentów z order ≤ station.order
     const sortedSegments = [...lr.segments].sort((a, b) => a.order - b.order);
+    const useMultiRow = sortedStations.length >= STATIONS_PER_ROW_THRESHOLD;
     sortedStations.forEach((sref, posInRun) => {
       const sub = fieldStationByRef.get(sref.substation_ref);
-      if (!sub) return; // stacja nie jest field-station (np. GPZ) lub nie istnieje
+      if (!sub) return;
       placed.add(sref.substation_ref);
       const stationSldDetails = buildStationMiniBlockDetails(snapshot, sub);
       const isNop = lr.nop_station_ref === sub.ref_id || lr.nop_station_ref === sub.id;
@@ -1069,12 +1076,17 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
           const len = 'length_km' in (branch ?? {}) ? (branch as { length_km: number }).length_km : 0;
           return acc + (len ?? 0);
         }, 0);
-      // K30-4: stationCode based on order w line_run — adresuje backend gubi name_pl.
       const stationCode = `S${String(sref.order).padStart(2, '0')}`;
+
+      // Multi-row snake routing: row index + col index, reversed on odd rows
+      const rowIdx = useMultiRow ? Math.floor(posInRun / STATIONS_PER_ROW) : 0;
+      const colInRow = useMultiRow ? posInRun % STATIONS_PER_ROW : posInRun;
+      const colDir = rowIdx % 2 === 0 ? colInRow : (STATIONS_PER_ROW - 1 - colInRow);
+
       stations.push({
         id: sub.ref_id,
-        x: X_STATIONS_START + posInRun * STATION_PITCH,
-        y: Y_RUN_BASE + runIdx * RUN_PITCH + STATION_RUN_TRUNK_OFFSET_Y,
+        x: X_STATIONS_START + colDir * STATION_PITCH,
+        y: Y_RUN_BASE + runIdx * RUN_PITCH + rowIdx * ROW_HEIGHT + STATION_RUN_TRUNK_OFFSET_Y,
         name: sub.name || sub.ref_id,
         stationCode,
         topologicalType: classifyTopologicalType(sub),
@@ -1491,6 +1503,36 @@ function buildCableRuns(
       const segmentPaths = buildRunSegmentPaths(runSegments, runStations, startX, y, terminalX);
 
       const portStatus = detectMissingEndpointPorts(runSegments);
+      // K30-10: snake routing pathPoints przy multi-row layout. Jeśli stations
+      // są w ≥2 rows (detected by unique Y values), buduj zigzag path z U-turns.
+      const uniqueYs = [...new Set(runStations.map((s) => s.y - STATION_RUN_TRUNK_OFFSET_Y))].sort((a, b) => a - b);
+      let snakePoints: { x: number; y: number }[];
+      if (uniqueYs.length > 1) {
+        // Stacje pogrupowane per row Y. Per row: cable goes left↔right zgodnie z
+        // station X positions (snake reverses kierunek w parzystych rzędach).
+        snakePoints = [{ x: startX, y: GPZ_FIELD_CABLE_HEAD_Y }, { x: startX, y: uniqueYs[0] }];
+        uniqueYs.forEach((rowY, rowIdx) => {
+          const stationsInRow = runStations.filter((s) => (s.y - STATION_RUN_TRUNK_OFFSET_Y) === rowY);
+          if (stationsInRow.length === 0) return;
+          const xs = stationsInRow.map((s) => s.x);
+          const minX = Math.min(...xs);
+          const maxX = Math.max(...xs);
+          // Cable enters row z lewej (rowIdx parzysty) lub prawej (rowIdx nieparzysty) — snake direction
+          const enterX = rowIdx % 2 === 0 ? minX : maxX;
+          const exitX = rowIdx % 2 === 0 ? maxX : minX;
+          // jeśli to nie pierwszy row, dodaj vertical jump z poprzedniej Y
+          if (rowIdx > 0) snakePoints.push({ x: enterX, y: rowY });
+          else snakePoints[snakePoints.length - 1] = { x: enterX, y: rowY };
+          // horizontal traverse
+          snakePoints.push({ x: exitX, y: rowY });
+        });
+      } else {
+        snakePoints = [
+          { x: startX, y: GPZ_FIELD_CABLE_HEAD_Y },
+          { x: startX, y },
+          { x: terminalX, y },
+        ];
+      }
       runs.push({
         id: lineRun.id,
         runKind: lineRun.run_kind,
@@ -1502,11 +1544,7 @@ function buildCableRuns(
         pendingEndpoint: runStations.length === 0,
         missingEndpointPort: portStatus.missing,
         missingPortSegmentRefs: portStatus.missingSegmentRefs,
-        pathPoints: [
-          { x: startX, y: GPZ_FIELD_CABLE_HEAD_Y },
-          { x: startX, y },
-          { x: terminalX, y },
-        ],
+        pathPoints: snakePoints,
       });
     });
     return runs;
@@ -1544,6 +1582,28 @@ function buildCableRuns(
       const segmentLabels = buildRunSegmentLabels(runSegments, runStations, startX, y, terminalX);
       const segmentPaths = buildRunSegmentPaths(runSegments, runStations, startX, y, terminalX);
       const portStatus = detectMissingEndpointPorts(runSegments);
+      // K30-10: snake routing dla synthesized line_runs (multi-row case).
+      const synthUniqueYs = [...new Set(runStations.map((s) => s.y - STATION_RUN_TRUNK_OFFSET_Y))].sort((a, b) => a - b);
+      let synthSnakePoints: { x: number; y: number }[];
+      if (synthUniqueYs.length > 1) {
+        synthSnakePoints = [{ x: startX, y: GPZ_FIELD_CABLE_HEAD_Y }, { x: startX, y: synthUniqueYs[0] }];
+        synthUniqueYs.forEach((rowY, rowIdx) => {
+          const stationsInRow = runStations.filter((s) => (s.y - STATION_RUN_TRUNK_OFFSET_Y) === rowY);
+          if (stationsInRow.length === 0) return;
+          const xs = stationsInRow.map((s) => s.x);
+          const enterX = rowIdx % 2 === 0 ? Math.min(...xs) : Math.max(...xs);
+          const exitX = rowIdx % 2 === 0 ? Math.max(...xs) : Math.min(...xs);
+          if (rowIdx > 0) synthSnakePoints.push({ x: enterX, y: rowY });
+          else synthSnakePoints[synthSnakePoints.length - 1] = { x: enterX, y: rowY };
+          synthSnakePoints.push({ x: exitX, y: rowY });
+        });
+      } else {
+        synthSnakePoints = [
+          { x: startX, y: GPZ_FIELD_CABLE_HEAD_Y },
+          { x: startX, y },
+          { x: terminalX, y },
+        ];
+      }
       runs.push({
         id: lineRun.id,
         runKind: 'main_trunk',
@@ -1555,7 +1615,7 @@ function buildCableRuns(
         pendingEndpoint: false,
         missingEndpointPort: portStatus.missing,
         missingPortSegmentRefs: portStatus.missingSegmentRefs,
-        pathPoints: [
+        pathPoints: synthSnakePoints.length > 0 ? synthSnakePoints : [
           { x: startX, y: GPZ_FIELD_CABLE_HEAD_Y },
           { x: startX, y },
           { x: terminalX, y },
