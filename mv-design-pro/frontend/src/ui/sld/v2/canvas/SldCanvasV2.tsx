@@ -733,6 +733,29 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
           </text>
         </g>
 
+        {/* K30-13: grid frequency + voltage status panel (ENEA Operator NC RfG).
+         *  Static placeholder dla frequency stability + slack bus voltage.
+         *  Real data po backend doda P(f) feed; póki co mock 50.00 Hz.
+         */}
+        <g data-testid="sld-v2-grid-stability-panel" transform="translate(20, 88)" pointerEvents="none">
+          <rect x={0} y={0} width={260} height={62} rx={4} ry={4} fill="#0A0E14" stroke="#7EE0B5" strokeWidth={1.5} opacity={0.95} />
+          <text x={10} y={18} fill="#7EE0B5" fontFamily="sans-serif" fontSize={12} fontWeight={900}>
+            STAN SIECI · NC RfG
+          </text>
+          <text x={10} y={36} fill="#DDF7FF" fontFamily="monospace" fontSize={14} fontWeight={700}>
+            f = 50.00 Hz
+          </text>
+          <text x={10} y={52} fill="#88BBDD" fontFamily="sans-serif" fontSize={9}>
+            ±0.20 Hz (PN-EN 50160)
+          </text>
+          <text x={130} y={36} fill="#DDF7FF" fontFamily="monospace" fontSize={14} fontWeight={700}>
+            U = 110 kV
+          </text>
+          <text x={130} y={52} fill="#88BBDD" fontFamily="sans-serif" fontSize={9}>
+            Slack: GPZ HV
+          </text>
+        </g>
+
         {alarmSummary && (
           <g data-testid="sld-v2-alarm-summary-panel" transform="translate(20, 20)" pointerEvents="none">
             <rect x={0} y={0} width={260} height={56} rx={4} ry={4} fill="#0A0E14" stroke="#FFD166" strokeWidth={1.5} opacity={0.95} />
