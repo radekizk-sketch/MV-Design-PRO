@@ -625,6 +625,65 @@ describe('StationOnRunRenderer', () => {
     );
     expect(container.querySelector('[data-testid="sld-v2-station-rated-kva-st-no-kva"]')).toBeFalsy();
   });
+
+  it('K30-7: switchStateByColumn[0]="open" → connector ma stroke COLOR_DEVICE_OPEN i dashed', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-sw"
+          x={100}
+          y={100}
+          name="Stacja"
+          topologicalType="przelotowa"
+          switchStateByColumn={['open', 'closed']}
+        />
+      </svg>,
+    );
+    const conn0 = container.querySelector('[data-testid="sld-v2-station-connector-st-sw-0"]');
+    const conn1 = container.querySelector('[data-testid="sld-v2-station-connector-st-sw-1"]');
+    expect(conn0?.getAttribute('data-switch-state')).toBe('open');
+    expect(conn1?.getAttribute('data-switch-state')).toBe('closed');
+    // Connector 0 polygon fill should be 'none' (open), connector 1 should be filled
+    const poly0 = conn0?.querySelector('polygon');
+    const poly1 = conn1?.querySelector('polygon');
+    expect(poly0?.getAttribute('fill')).toBe('none');
+    expect(poly1?.getAttribute('fill')).toBe('#0A8D43');
+  });
+
+  it('K30-7: switchStateByColumn[0]="unknown" → wyświetla "?" overlay na polygon', () => {
+    const { container, getByText } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-q"
+          x={100}
+          y={100}
+          name="Stacja"
+          topologicalType="końcowa"
+          switchStateByColumn={['unknown']}
+        />
+      </svg>,
+    );
+    const conn = container.querySelector('[data-testid="sld-v2-station-connector-st-q-0"]');
+    expect(conn?.getAttribute('data-switch-state')).toBe('unknown');
+    // Renders the question mark
+    expect(getByText('?')).toBeInTheDocument();
+  });
+
+  it('K30-7: switchStateByColumn brak → wszystkie connectors w stanie "closed" (default back-compat)', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-d"
+          x={100}
+          y={100}
+          name="Stacja"
+          topologicalType="przelotowa"
+        />
+      </svg>,
+    );
+    const conn0 = container.querySelector('[data-testid="sld-v2-station-connector-st-d-0"]');
+    expect(conn0?.getAttribute('data-switch-state')).toBe('closed');
+  });
 });
 
 describe('DerRenderer', () => {

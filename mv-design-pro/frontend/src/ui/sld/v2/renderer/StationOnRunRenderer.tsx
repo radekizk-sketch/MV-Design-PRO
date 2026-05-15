@@ -63,6 +63,14 @@ export interface StationOnRunRendererProps {
   /** Krótki kod stacji (S01, S15, S29...) wyświetlany jako prominent badge.
    *  K30-4: zastępuje regex extraction z name (backend gubi name_pl). */
   readonly stationCode?: string | null;
+  /** K30-7: switching state per connection column (CB position).
+   *  Indeks per connectionColumns(): 0 = WE, 1 = WY, 2 = ODG (per topologicalType).
+   *  - 'closed' (default): polygon filled green = pole pod napięciem
+   *  - 'open': polygon stroke-only = wyłączone, brak napięcia
+   *  - 'unknown': polygon filled grey z '?' overlay = brak telemetrii
+   *  Domyślnie wszystko 'closed' (back-compat z testami).
+   */
+  readonly switchStateByColumn?: ReadonlyArray<'closed' | 'open' | 'unknown'>;
 }
 
 const TYPE_TO_LABEL_PL: Record<StationOnRunRendererProps['topologicalType'], string> = {
@@ -127,7 +135,7 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
   const {
     id, x, y, name, topologicalType, nnVoltageLevelsCount,
     selected, onClick, onDoubleClick, missingData, isNop, distanceFromGpzKm,
-    transformerRatedKva, stationCode,
+    transformerRatedKva, stationCode, switchStateByColumn,
   } = props;
   const connectionXs = connectionColumns(topologicalType);
   const voltageLabel = nnVoltageLevelsCount && nnVoltageLevelsCount > 1
@@ -194,25 +202,44 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
         data-testid={`sld-v2-station-bus-end-right-${id}`}
       />
 
-      {connectionXs.map((cx, index) => (
-        <g key={`${id}-connector-${index}`} data-testid={`sld-v2-station-connector-${id}-${index}`}>
+      {connectionXs.map((cx, index) => {
+        // K30-7: per-column switching state (CB open/closed/unknown)
+        const swState = switchStateByColumn?.[index] ?? 'closed';
+        const swFill = swState === 'closed' ? '#0A8D43' : swState === 'unknown' ? '#5A6878' : 'none';
+        const swStroke = swState === 'open' ? COLOR_DEVICE_OPEN : COLOR_FIELD_TRUNK_ENERGIZED;
+        const connectorStroke = swState === 'closed' ? COLOR_FIELD_TRUNK_ENERGIZED : COLOR_DEVICE_OPEN;
+        const connectorDash = swState === 'open' ? '4 3' : undefined;
+        return (
+        <g key={`${id}-connector-${index}`} data-testid={`sld-v2-station-connector-${id}-${index}`} data-switch-state={swState}>
           <line
             x1={cx}
             y1={TRUNK_Y}
             x2={cx}
             y2={STATION_BUS_Y}
-            stroke={COLOR_FIELD_TRUNK_ENERGIZED}
+            stroke={connectorStroke}
             strokeWidth={2.5}
+            strokeDasharray={connectorDash}
           />
           <polygon
             points={`${cx},${STATION_BUS_Y - 34} ${cx + 11},${STATION_BUS_Y - 23} ${cx},${STATION_BUS_Y - 12} ${cx - 11},${STATION_BUS_Y - 23}`}
-            fill="#0A8D43"
-            stroke={COLOR_FIELD_TRUNK_ENERGIZED}
-            strokeWidth={1.3}
+            fill={swFill}
+            stroke={swStroke}
+            strokeWidth={swState === 'open' ? 2 : 1.3}
             data-testid={`sld-v2-station-diamond-${id}-${index}`}
             data-apparatus-kind="switch_disconnector"
             data-symbol-canon="switch_disconnector_rotated_square"
           />
+          {swState === 'unknown' && (
+            <text
+              x={cx}
+              y={STATION_BUS_Y - 19}
+              textAnchor="middle"
+              fill="#FFFFFF"
+              fontFamily={FONT_SANS}
+              fontSize={10}
+              fontWeight={900}
+            >?</text>
+          )}
           <g
             data-apparatus-kind="earthing_switch"
             data-symbol-canon="earthing_switch_lateral_branch"
@@ -236,7 +263,8 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
             />
           )}
         </g>
-      ))}
+        );
+      })}
 
       {topologicalType === 'odgałęźna' && (
         <g data-testid={`sld-v2-station-branch-drop-${id}`}>
