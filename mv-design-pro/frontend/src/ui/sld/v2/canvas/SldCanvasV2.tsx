@@ -34,6 +34,7 @@ import {
 import { CadOverlay } from './CadOverlay';
 import { SldTitleBlock, type SldTitleBlockData } from './SldTitleBlock';
 import { SldLegendOverlay } from './SldLegendOverlay';
+import { SldScaleRuler } from './SldScaleRuler';
 import { DEFAULT_SNAP_STATE } from '../viewport/Snap';
 import { ConnectionRenderer } from '../renderer/ConnectionRenderer';
 import { DerRenderer, type DerRendererProps } from '../renderer/DerRenderer';
@@ -133,6 +134,8 @@ export interface SldCanvasV2Props {
   /** K30-39: pokaż legendę palet (voltage / cable variants / apparatus / DER).
    *  Default true. Set false dla cleanu w przypadkach print-only. */
   readonly showLegend?: boolean;
+  /** K30-43: pokaż skalę rysunku per PN-EN ISO 5455. Default true. */
+  readonly showScaleRuler?: boolean;
 }
 
 function estimateCanonicalGpzFootprint(gpz: GpzCanonicalRendererProps): { width: number; height: number } {
@@ -215,7 +218,7 @@ function readSldInteractiveTarget(target: EventTarget | null): {
 export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const {
     width, height, gpzs, canonicalGpzs, sections, cableRuns, stations, ders, connections = [],
-    selectedId, lodOverride, layerVisibility, titleBlockData, showLegend = true,
+    selectedId, lodOverride, layerVisibility, titleBlockData, showLegend = true, showScaleRuler = true,
     onSelectElement, onDoubleClickStation, onDoubleClickDer, onContextMenu, onViewportTransformChange,
   } = props;
 
@@ -718,6 +721,13 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
           visible={showLegend}
           x={width - 240}
           y={20}
+        />
+
+        {/* K30-43: skala rysunku per PN-EN ISO 5455 — bottom-left canvas. */}
+        <SldScaleRuler
+          visible={showScaleRuler}
+          x={20}
+          y={height - 60}
         />
 
         {/* K30-13: grid frequency + voltage status panel (ENEA Operator NC RfG).
