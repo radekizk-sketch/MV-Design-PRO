@@ -32,6 +32,8 @@ import {
   type CableRunStationPortGap,
 } from '../renderer/CableRunRenderer';
 import { CadOverlay } from './CadOverlay';
+import { SldTitleBlock, type SldTitleBlockData } from './SldTitleBlock';
+import { SldLegendOverlay } from './SldLegendOverlay';
 import { DEFAULT_SNAP_STATE } from '../viewport/Snap';
 import { ConnectionRenderer } from '../renderer/ConnectionRenderer';
 import { DerRenderer, type DerRendererProps } from '../renderer/DerRenderer';
@@ -126,6 +128,11 @@ export interface SldCanvasV2Props {
    */
   readonly onContextMenu?: (request: SldCanvasContextMenuRequest) => void;
   readonly onViewportTransformChange?: (transform: ViewportTransform) => void;
+  /** K30-38: metadata bloku tytułowego per PN-EN ISO 7200. Brak → defaults. */
+  readonly titleBlockData?: SldTitleBlockData | null;
+  /** K30-39: pokaż legendę palet (voltage / cable variants / apparatus / DER).
+   *  Default true. Set false dla cleanu w przypadkach print-only. */
+  readonly showLegend?: boolean;
 }
 
 function estimateCanonicalGpzFootprint(gpz: GpzCanonicalRendererProps): { width: number; height: number } {
@@ -208,7 +215,7 @@ function readSldInteractiveTarget(target: EventTarget | null): {
 export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const {
     width, height, gpzs, canonicalGpzs, sections, cableRuns, stations, ders, connections = [],
-    selectedId, lodOverride, layerVisibility,
+    selectedId, lodOverride, layerVisibility, titleBlockData, showLegend = true,
     onSelectElement, onDoubleClickStation, onDoubleClickDer, onContextMenu, onViewportTransformChange,
   } = props;
 
@@ -696,44 +703,22 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         <ResultOverlayLayer stations={stations} cableRuns={cableRuns} />
 
         {/* K30-11: aggregate alarm summary panel — count of station severities */}
-        {/* K30-12: CAD-grade title block A3 convention (bottom-right corner).
-         *  Pokazuje project info + drawing number + scale + sheet # + date —
-         *  standard PN-EN ISO 7200 dla schematów elektrycznych.
-         *  Static position relative to canvas bottom-right.
-         */}
-        <g data-testid="sld-v2-title-block-a3" transform={`translate(${width - 340}, ${height - 100})`} pointerEvents="none">
-          <rect x={0} y={0} width={320} height={84} fill="#0A0E14" stroke="#5A6878" strokeWidth={1.4} />
-          <line x1={0} y1={20} x2={320} y2={20} stroke="#5A6878" strokeWidth={0.8} />
-          <line x1={140} y1={20} x2={140} y2={84} stroke="#5A6878" strokeWidth={0.8} />
-          <line x1={0} y1={52} x2={320} y2={52} stroke="#5A6878" strokeWidth={0.8} />
-          <text x={6} y={14} fill="#DDF7FF" fontFamily="sans-serif" fontSize={10} fontWeight={800}>
-            MV-DESIGN-PRO · SCHEMAT ROZDZIELCZY SN/nN
-          </text>
-          <text x={6} y={34} fill="#88BBDD" fontFamily="sans-serif" fontSize={9}>
-            Sieć: K30 (30 stacji)
-          </text>
-          <text x={6} y={46} fill="#88BBDD" fontFamily="sans-serif" fontSize={9}>
-            GPZ-A 110/15 kV
-          </text>
-          <text x={146} y={34} fill="#88BBDD" fontFamily="sans-serif" fontSize={9}>
-            Format: A3
-          </text>
-          <text x={146} y={46} fill="#88BBDD" fontFamily="sans-serif" fontSize={9}>
-            Skala: 1:1000
-          </text>
-          <text x={6} y={66} fill="#7EE0B5" fontFamily="sans-serif" fontSize={9} fontWeight={700}>
-            PN-EN 60617 · IEC 60909
-          </text>
-          <text x={6} y={78} fill="#7EC8FF" fontFamily="sans-serif" fontSize={8}>
-            Rev. K30-12 · {new Date().toISOString().split('T')[0]}
-          </text>
-          <text x={146} y={66} fill="#FFD166" fontFamily="sans-serif" fontSize={9} fontWeight={700}>
-            STATUS: AUDIT
-          </text>
-          <text x={146} y={78} fill="#88BBDD" fontFamily="sans-serif" fontSize={8}>
-            Operator OSD: ENEA
-          </text>
+        {/* K30-38: industrial title block per PN-EN ISO 7200.
+         *  Wyodrębniony z inline (K30-12) do dedykowanego komponentu — pozwala
+         *  customize project info / designer / approver / drawing number via
+         *  titleBlockData prop. Backward-compat: defaults zachowują K30-12. */}
+        <g transform={`translate(${width - 380}, ${height - 124})`}>
+          <SldTitleBlock data={titleBlockData ?? undefined} />
         </g>
+
+        {/* K30-39: SLD legend overlay — klucz palet (voltage / cable variants /
+         *  apparatus state / DER). Pozycja: top-right canvas (poniżej grid
+         *  stability + alarm summary). Toggle via showLegend prop. */}
+        <SldLegendOverlay
+          visible={showLegend}
+          x={width - 240}
+          y={20}
+        />
 
         {/* K30-13: grid frequency + voltage status panel (ENEA Operator NC RfG).
          *  Static placeholder dla frequency stability + slack bus voltage.

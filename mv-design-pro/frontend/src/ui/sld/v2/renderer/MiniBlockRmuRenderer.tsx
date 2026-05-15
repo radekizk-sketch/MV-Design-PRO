@@ -101,6 +101,12 @@ export interface MiniBlockRmuRendererProps {
   readonly selected?: boolean;
   readonly onClick?: (id: string) => void;
   readonly onDoubleClick?: (id: string) => void;
+  /** K30-40: napięcie głównej szyny SN stacji [kV] — bay-column architecture
+   *  używa tego do tint kolorów szyny zgodnie z konwencją dyspozytorską
+   *  (110kV→czerwień, 15kV→zieleń, 0.4kV→błękit). Wartość przepuszczana
+   *  z adaptera (StationMiniBlockDetails.mainBusVoltageKv) przez
+   *  StationOnRunRenderer. Brak → fallback do COLOR_BUS_LV. */
+  readonly busVoltageKv?: number | null;
 }
 
 // =============================================================================
@@ -195,8 +201,10 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
       {/* K30-31: bay-column architecture per IEC 60617.
        *  Replaces SnBusRow + LvSectionRow + TransformerTriangle floating
        *  layout z proper bay-column structure: bus → bay columns → TR bay
-       *  → LV bus → feeder columns. User K30-29 (1/10) feedback eliminated. */}
+       *  → LV bus → feeder columns. User K30-29 (1/10) feedback eliminated.
+       *  K30-40: SN bus color z busVoltageKv (analogicznie do K30-37 dispatcher). */}
       {!isBlocker && (() => {
+        const snBusColor = miniBlockBusColorForVoltage(props.busVoltageKv ?? null);
         const layout = computeMiniBlockLayout(
           variant,
           props.snBays,
@@ -207,16 +215,18 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         const trBayX = layout.trColumn?.x ?? 0;
         return (
           <g data-testid={`sld-v2-mini-rmu-bay-layout-${props.id}`}>
-            {/* SN busbar — horizontal line connecting tops of all bay columns */}
+            {/* SN busbar — horizontal line connecting tops of all bay columns.
+                K30-40: stroke per voltage class (busVoltageKv). */}
             <line
               x1={layout.busLeft}
               y1={layout.busY}
               x2={layout.busRight}
               y2={layout.busY}
-              stroke={COLOR_BUS_LV}
+              stroke={snBusColor}
               strokeWidth={STROKE_BUSBAR_PX + 1}
               strokeLinecap="butt"
               data-parity-key="station.mini.bus.sn"
+              data-bus-voltage-kv={props.busVoltageKv ?? ''}
             />
 
             {/* SN bay columns — vertical stacks z apparatus per IEC 60617 */}
@@ -835,4 +845,23 @@ export function miniBlockViewBox(
   return variant === 'compact'
     ? { width: COMPACT_WIDTH, height: COMPACT_HEIGHT }
     : { width: DETAIL_WIDTH, height: DETAIL_HEIGHT };
+}
+
+/**
+ * K30-40: kolor szyny SN per voltage class w bay-column architecture.
+ * Analogous do K30-37 busColorForVoltage (StationOnRunRenderer) i K30-41
+ * cableColorForVoltage (CableRunRenderer). Wspólna konwencja OSD:
+ * - ≥100 kV (WN) → #E74C3C czerwień
+ * - 12-30 kV (SN) → COLOR_BUS_LV (zieleń energized — fallback default)
+ * - 5-10 kV (SN niskie) → #0A8D43
+ * - 0.2-1 kV (nN) → #7DD3FC
+ * - brak / inne → COLOR_BUS_LV (back-compat)
+ */
+function miniBlockBusColorForVoltage(kv: number | null): string {
+  if (kv == null || !Number.isFinite(kv) || kv <= 0) return COLOR_BUS_LV;
+  if (kv >= 100) return '#E74C3C';
+  if (kv >= 12) return COLOR_BUS_LV;
+  if (kv >= 5) return '#0A8D43';
+  if (kv >= 0.2) return '#7DD3FC';
+  return COLOR_BUS_LV;
 }

@@ -341,3 +341,39 @@ describe('MiniBlockFootprints — deriveFootprintType', () => {
     expect(deriveFootprintType('terminal', [FIELD_ROLE.RMU_LINE], false)).toBe('mv_lv_terminal');
   });
 });
+
+describe('MiniBlockRmuRenderer — K30-40 voltage-aware bus', () => {
+  function querySnBus(container: HTMLElement): SVGLineElement | null {
+    return container.querySelector('[data-parity-key="station.mini.bus.sn"]');
+  }
+
+  it('busVoltageKv=15 → SN bus stroke energized green (kanon)', () => {
+    const { container } = r('detail', { busVoltageKv: 15 });
+    const bus = querySnBus(container);
+    expect(bus?.getAttribute('stroke')).toBe('#13C45A');
+    expect(bus?.getAttribute('data-bus-voltage-kv')).toBe('15');
+  });
+
+  it('busVoltageKv=110 → SN bus stroke czerwień (WN)', () => {
+    const { container } = r('detail', { busVoltageKv: 110 });
+    const bus = querySnBus(container);
+    expect(bus?.getAttribute('stroke')).toBe('#E74C3C');
+  });
+
+  it('busVoltageKv=6 → SN bus stroke głębsza zieleń (SN niskie)', () => {
+    const { container } = r('detail', { busVoltageKv: 6 });
+    expect(querySnBus(container)?.getAttribute('stroke')).toBe('#0A8D43');
+  });
+
+  it('busVoltageKv=0.4 → SN bus stroke błękit nN', () => {
+    const { container } = r('detail', { busVoltageKv: 0.4 });
+    expect(querySnBus(container)?.getAttribute('stroke')).toBe('#7DD3FC');
+  });
+
+  it('brak busVoltageKv → fallback do COLOR_BUS_LV (backward-compat)', () => {
+    const { container } = r('detail', {});
+    const bus = querySnBus(container);
+    expect(bus?.getAttribute('stroke')).toBe('#13C45A');
+    expect(bus?.getAttribute('data-bus-voltage-kv')).toBe('');
+  });
+});

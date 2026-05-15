@@ -147,6 +147,7 @@ export function StationOnRunRenderer(props: StationOnRunRendererProps): JSX.Elem
         selected={props.selected}
         onClick={props.onClick}
         onDoubleClick={props.onDoubleClick}
+        busVoltageKv={props.busVoltageKv ?? null}
       />
     );
   }
