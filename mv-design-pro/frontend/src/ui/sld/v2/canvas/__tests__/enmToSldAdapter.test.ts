@@ -772,7 +772,8 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     const station = r.stations[0];
 
     expect(station.snBays).toBeDefined();
-    expect(station.snBays?.map((bay) => bay.designation)).toEqual(['WE', 'WY', 'TR']);
+    // K30-56: OSD-compliant Q-numeracja (Q01, Q02 for line bays, TR semantic kept)
+    expect(station.snBays?.map((bay) => bay.designation)).toEqual(['Q01', 'Q02', 'TR']);
     expect(station.snBays?.every((bay) => bay.hasMissingRequiredDevice)).toBe(true);
     expect(station.footprintType).toBe('mv_lv_inline');
   });

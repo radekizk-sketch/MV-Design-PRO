@@ -1453,12 +1453,13 @@ function expectedStationBayDesignation(
   fieldRole: MiniBlockBayDescriptor['fieldRole'],
   index: number,
 ): string {
+  // K30-56: OSD-compliant Q-numeracja (Q01, Q02, ...) for line bays.
+  // Special roles keep semantic name (TR/SPR/POM) per OSD convention.
   if (fieldRole === FIELD_ROLE.RMU_TRANSFORMER || fieldRole === FIELD_ROLE.TRANSFORMER) return 'TR';
   if (fieldRole === FIELD_ROLE.COUPLER) return 'SPR';
   if (fieldRole === FIELD_ROLE.MEASUREMENT) return 'POM';
-  if (index === 0) return 'WE';
-  if (index === 1) return 'WY';
-  return `ODG ${index - 1}`;
+  // K30-56: zeropadded Q-prefix dla wszystkich line bays (Q01, Q02, ...)
+  return `Q${String(index + 1).padStart(2, '0')}`;
 }
 
 function mapStationBayRoleToMiniRole(fieldRole: MiniBlockBayDescriptor['fieldRole']): MiniBlockBayDescriptor['fieldRole'] {

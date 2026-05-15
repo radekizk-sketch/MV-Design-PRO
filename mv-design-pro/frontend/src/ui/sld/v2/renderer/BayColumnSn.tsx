@@ -142,7 +142,32 @@ export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
               />
             )}
             {kind === 'CB' && (
-              <ApparatusCbSquare cx={x} cy={cy} state="closed" energized />
+              <>
+                <ApparatusCbSquare cx={x} cy={cy} state="closed" energized />
+                {/* K30-56: ANSI 51 protection badge obok CB (overcurrent relay).
+                    Real OSD bay zawsze ma protection relay — pokazujemy default
+                    50/51 obok CB jako mini-chip. */}
+                {variant === 'detail' && (
+                  <g
+                    data-testid={`sld-v2-bay-${bayRef}-protection-51`}
+                    data-ansi-code="51"
+                    transform={`translate(${x + 9}, ${cy})`}
+                  >
+                    <circle cx={0} cy={0} r={4} fill="#0A0E14" stroke="#FFD166" strokeWidth={0.8} />
+                    <text
+                      x={0}
+                      y={1.5}
+                      textAnchor="middle"
+                      fill="#FFD166"
+                      fontFamily="monospace"
+                      fontSize={4.5}
+                      fontWeight={900}
+                    >
+                      51
+                    </text>
+                  </g>
+                )}
+              </>
             )}
             {kind === 'ES' && (
               <ApparatusEarthingSwitch
