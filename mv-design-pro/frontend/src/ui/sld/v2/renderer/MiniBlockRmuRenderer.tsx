@@ -204,12 +204,53 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         data-parity-key="station.mini.body"
       />
 
+      {/* K30-57 END-TO-END FIX: TRUE LOD-aware rendering.
+       *  - variant='overview' (LOD 0, zoomed-out): SIMPLE station box +
+       *    code badge + voltage state ring. NO bay-column (zbyt zatłoczone
+       *    przy 30 stacjach × 220 px).
+       *  - variant='compact' (LOD 1): bay-column condensed.
+       *  - variant='detail' (LOD 2+): pełen bay-column z labels.
+       *  Industrial dispatcher screens (Energa SmartGrid / Tauron) renderują
+       *  WŁAŚNIE TAK: zoom-out = boxy z kodami, zoom-in = bay-column. */}
+      {!isBlocker && variant === 'overview' && (() => {
+        const snBusColor = miniBlockBusColorForVoltage(props.busVoltageKv ?? null);
+        return (
+          <g data-testid={`sld-v2-mini-rmu-overview-${props.id}`}>
+            {/* Simple station box — circle z voltage state ring */}
+            <circle
+              cx={0}
+              cy={0}
+              r={14}
+              fill="#0A1018"
+              stroke={snBusColor}
+              strokeWidth={2.5}
+              data-parity-key="station.mini.bus.sn"
+              data-bus-voltage-kv={props.busVoltageKv ?? ''}
+            />
+            {/* DER indicator dot (inside circle) — tylko gdy są generatory */}
+            {props.derBadges.length > 0 && (
+              <circle cx={0} cy={0} r={5} fill="#FFD166" opacity={0.85} />
+            )}
+            {/* Drop-line to virtual bus position dla overview connection do trunk */}
+            <line
+              x1={0}
+              y1={-14}
+              x2={0}
+              y2={-30}
+              stroke={snBusColor}
+              strokeWidth={2}
+            />
+          </g>
+        );
+      })()}
+
       {/* K30-31: bay-column architecture per IEC 60617.
        *  Replaces SnBusRow + LvSectionRow + TransformerTriangle floating
        *  layout z proper bay-column structure: bus → bay columns → TR bay
        *  → LV bus → feeder columns. User K30-29 (1/10) feedback eliminated.
-       *  K30-40: SN bus color z busVoltageKv (analogicznie do K30-37 dispatcher). */}
-      {!isBlocker && (() => {
+       *  K30-40: SN bus color z busVoltageKv (analogicznie do K30-37 dispatcher).
+       *  K30-57: gated to compact/detail variants tylko (overview = simple box). */}
+      {!isBlocker && variant !== 'overview' && (() => {
         const snBusColor = miniBlockBusColorForVoltage(props.busVoltageKv ?? null);
         const layout = computeMiniBlockLayout(
           variant,
@@ -425,21 +466,24 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
           </g>
         );
       })()}
-      <text
-        x={0}
-        y={labelNameY + 18}
-        textAnchor="middle"
-        fill={COLOR_TEXT_PRIMARY}
-        fontFamily={FONT_SANS}
-        fontSize={labelFontSize}
-        fontWeight={800}
-        paintOrder="stroke"
-        stroke={COLOR_SCADA_SHADOW}
-        strokeWidth={showPvCircuit ? 1.4 : 3}
-        data-parity-key="station.mini.name"
-      >
-        {(props.name || '').length > 22 ? (props.name || '').slice(0, 20) + '…' : props.name}
-      </text>
+      {/* K30-57: hide name label w overview variant (clutter at zoom-out) */}
+      {variant !== 'overview' && (
+        <text
+          x={0}
+          y={labelNameY + 18}
+          textAnchor="middle"
+          fill={COLOR_TEXT_PRIMARY}
+          fontFamily={FONT_SANS}
+          fontSize={labelFontSize}
+          fontWeight={800}
+          paintOrder="stroke"
+          stroke={COLOR_SCADA_SHADOW}
+          strokeWidth={showPvCircuit ? 1.4 : 3}
+          data-parity-key="station.mini.name"
+        >
+          {(props.name || '').length > 22 ? (props.name || '').slice(0, 20) + '…' : props.name}
+        </text>
+      )}
 
       {/* K30-15.3: load (L) + DER generation (G) badges per stacja.
        *  Eksploatacyjny diff: stacja z load 100 kW vs ZKSN bez load
@@ -521,7 +565,9 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         </g>
       )}
 
-      {props.derBadges.length > 0 && (
+      {/* K30-57: full DerBadges tylko w compact/detail; overview ma small
+          indicator dot wewnątrz station circle (już renderowany powyżej). */}
+      {variant !== 'overview' && props.derBadges.length > 0 && (
         showPvCircuit ? (
           <g aria-hidden="true" data-parity-key="station.mini.der_badges">
             <g data-parity-key="station.mini.der_badge" />
