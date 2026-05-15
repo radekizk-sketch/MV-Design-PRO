@@ -40,7 +40,12 @@ import {
   SldShortCircuitOverlay,
   type SldShortCircuitProjection,
 } from './SldShortCircuitOverlay';
+import {
+  SldProtectionZoneOverlay,
+  type SldProtectionZoneProjection,
+} from './SldProtectionZoneOverlay';
 import { computeLfDerivedMetrics } from './lfDerivedMetrics';
+import { computeScProjection, type ScBusMeta } from './scDerivedProjection';
 import { DEFAULT_SNAP_STATE } from '../viewport/Snap';
 import { ConnectionRenderer } from '../renderer/ConnectionRenderer';
 import { DerRenderer, type DerRendererProps } from '../renderer/DerRenderer';
@@ -145,8 +150,11 @@ export interface SldCanvasV2Props {
   /** K30-47: pokaż strzałkę N (north arrow) per PN-EN ISO 5456. Default false
    *  (SLD są topologiczne, geographic orientation rzadko relevant). */
   readonly showNorthArrow?: boolean;
-  /** K30-48: projekcja wyników zwarciowych per IEC 60909. Brak → overlay off. */
+  /** K30-48: projekcja wyników zwarciowych per IEC 60909. Brak → overlay off.
+   *  K30-50: gdy null + payload SC available, derived auto-from-payload. */
   readonly shortCircuitProjection?: SldShortCircuitProjection | null;
+  /** K30-46: projekcja stref ochrony Z1/Z2/Z3 per IEC 60255-127. */
+  readonly protectionZoneProjection?: SldProtectionZoneProjection | null;
 }
 
 function estimateCanonicalGpzFootprint(gpz: GpzCanonicalRendererProps): { width: number; height: number } {
@@ -230,7 +238,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const {
     width, height, gpzs, canonicalGpzs, sections, cableRuns, stations, ders, connections = [],
     selectedId, lodOverride, layerVisibility, titleBlockData, showLegend = true, showScaleRuler = true,
-    showNorthArrow = false, shortCircuitProjection,
+    showNorthArrow = false, shortCircuitProjection, protectionZoneProjection,
     onSelectElement, onDoubleClickStation, onDoubleClickDer, onContextMenu, onViewportTransformChange,
   } = props;
 
@@ -241,6 +249,22 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   // Wynik feedowany do StationOnRunRenderer (voltageDeviationPct) i
   // CableRunRenderer (loadingPct) jako data-driven projekcje K30-44/K30-45.
   const lfDerived = computeLfDerivedMetrics(overlayPayload, props.stations, props.cableRuns);
+
+  // K30-50: derive SC projection — jeśli explicit shortCircuitProjection nie
+  // podano, auto-build z payload SC results. Bus pozycje pochodzą z station
+  // layout (SN bus = stn/{hash}/sn_bus, posażenie = station.x/y).
+  const derivedScProjection = (() => {
+    if (shortCircuitProjection !== undefined && shortCircuitProjection !== null) {
+      return shortCircuitProjection;
+    }
+    const busMetas: ScBusMeta[] = props.stations.map((st) => {
+      const snBusId = st.id.endsWith('/station')
+        ? `${st.id.slice(0, -'/station'.length)}/sn_bus`
+        : `${st.id}/sn_bus`;
+      return { id: snBusId, label: st.stationCode ?? st.name, x: st.x, y: st.y };
+    });
+    return computeScProjection(overlayPayload, busMetas);
+  })();
 
   // K30-11: aggregate station alarm summary (count of severities).
   const alarmSummary = (() => {
@@ -760,8 +784,12 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
           y={height - 200}
         />
 
-        {/* K30-48: short-circuit results projection per IEC 60909. */}
-        <SldShortCircuitOverlay projection={shortCircuitProjection ?? null} />
+        {/* K30-48 + K30-50: short-circuit results projection per IEC 60909.
+            Priority: explicit prop > derived z SC payload. */}
+        <SldShortCircuitOverlay projection={derivedScProjection} />
+
+        {/* K30-46: protection zones Z1/Z2/Z3 per IEC 60255-127. */}
+        <SldProtectionZoneOverlay projection={protectionZoneProjection ?? null} />
 
         {/* K30-13: grid frequency + voltage status panel (ENEA Operator NC RfG).
          *  Static placeholder dla frequency stability + slack bus voltage.
