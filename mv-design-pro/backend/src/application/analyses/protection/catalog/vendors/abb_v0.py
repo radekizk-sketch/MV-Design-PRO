@@ -15,11 +15,22 @@ class AbbVendorAdapter(VendorAdapter):
 
     def supported_devices(self) -> tuple[str, ...]:
         return (
+            # Legacy ACME REX series
             "ACME_REX100_v1",
             "ACME_REX200_v1",
             "ACME_REX300_v1",
             "ACME_REX500_v1",
             "ACME_REX700_v1",
+            # K30-16: ABB Relion 615/620/630/650/670 — feeder + transformer
+            # + busbar + generator protections per technical manuals
+            "ABB_REF601",
+            "ABB_REF615",
+            "ABB_REF620",
+            "ABB_REF630",
+            "ABB_REF650",
+            "ABB_RET615",
+            "ABB_REB670",
+            "ABB_REG670",
         )
 
     def validate_vendor_support(

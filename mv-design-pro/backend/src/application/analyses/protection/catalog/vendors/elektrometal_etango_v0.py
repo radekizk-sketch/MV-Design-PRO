@@ -15,6 +15,7 @@ class ElektrometalEtangoVendorAdapter(VendorAdapter):
 
     def supported_devices(self) -> tuple[str, ...]:
         return (
+            # Legacy V0 entries (rated 400-2000, IEC_NI only) — kept dla wstecznej zgodności
             "EM_ETANGO_400_V0",
             "EM_ETANGO_600_V0",
             "EM_ETANGO_800_V0",
@@ -22,6 +23,15 @@ class ElektrometalEtangoVendorAdapter(VendorAdapter):
             "EM_ETANGO_1250_V0",
             "EM_ETANGO_1600_V0",
             "EM_ETANGO_2000_V0",
+            # K30-16 user-requested expansion: comprehensive E2Tango family
+            # (450/600/800/1000/1200) z extended functions + curves per
+            # actual karta techniczna producenta. Series 1200 to flagship z
+            # PMU + cyber security + adaptive protection.
+            "EM_E2TANGO_450",
+            "EM_E2TANGO_600",
+            "EM_E2TANGO_800",
+            "EM_E2TANGO_1000",
+            "EM_E2TANGO_1200",
         )
 
     def validate_vendor_support(
