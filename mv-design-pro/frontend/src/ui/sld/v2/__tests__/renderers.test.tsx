@@ -552,6 +552,133 @@ describe('CableRunRenderer', () => {
     const visiblePaths = container.querySelectorAll('[data-testid^="sld-v2-run-r-novar-visible-"]');
     expect(visiblePaths.length).toBeGreaterThan(0);
   });
+
+  it('K30-41: voltageKv=110 → uniform stroke red WN tint (gdy brak variant)', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-wn"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 200, y: 0 }]}
+          voltageKv={110}
+        />
+      </svg>,
+    );
+    const visible = container.querySelector('[data-testid="sld-v2-run-r-wn-visible-0"]');
+    expect(visible?.getAttribute('stroke')).toBe('#E74C3C');
+  });
+
+  it('K30-41: voltageKv=15 → uniform stroke energized green SN', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-sn"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 200, y: 0 }]}
+          voltageKv={15}
+        />
+      </svg>,
+    );
+    const visible = container.querySelector('[data-testid="sld-v2-run-r-sn-visible-0"]');
+    expect(visible?.getAttribute('stroke')).toBe('#13C45A');
+  });
+
+  it('K30-41: voltageKv=0.4 → uniform stroke nN błękit', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-nn"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 200, y: 0 }]}
+          voltageKv={0.4}
+        />
+      </svg>,
+    );
+    const visible = container.querySelector('[data-testid="sld-v2-run-r-nn-visible-0"]');
+    expect(visible?.getAttribute('stroke')).toBe('#7DD3FC');
+  });
+
+  it('K30-41: voltage chip renderowany przy starcie ciągu z "{kV} kV"', () => {
+    const { container, getByText } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-chip"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 50, y: 100 }, { x: 250, y: 100 }]}
+          voltageKv={15}
+        />
+      </svg>,
+    );
+    const chip = container.querySelector('[data-testid="sld-v2-run-r-chip-voltage-chip"]');
+    expect(chip).toBeTruthy();
+    expect(chip?.getAttribute('data-voltage-kv')).toBe('15');
+    // Chip umieszczony przy pathPoints[0]
+    expect(chip?.getAttribute('transform')).toContain('translate(56,');
+    expect(getByText('15 kV')).toBeInTheDocument();
+  });
+
+  it('K30-41: voltageKv=0.4 → chip pokazuje "400 V" (sub-kV format)', () => {
+    const { getByText } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-lv-chip"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 100, y: 0 }]}
+          voltageKv={0.4}
+        />
+      </svg>,
+    );
+    expect(getByText('400 V')).toBeInTheDocument();
+  });
+
+  it('K30-41: brak voltageKv → brak voltage chip + fallback uniform green', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-no-v"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 100, y: 0 }]}
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-run-r-no-v-voltage-chip"]')).toBeFalsy();
+    const visible = container.querySelector('[data-testid="sld-v2-run-r-no-v-visible-0"]');
+    expect(visible?.getAttribute('stroke')).toBe('#13C45A');
+  });
+
+  it('K30-41: variant rendering ma pierwszeństwo nad voltage tint dla strokes', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-mix"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 100, y: 0 }]}
+          voltageKv={110}
+          segmentPaths={[
+            {
+              segmentRef: 'seg-epr',
+              pathPoints: [{ x: 0, y: 0 }, { x: 100, y: 0 }],
+              variant: { insulation: 'EPR', conductor: 'Al' },
+            },
+          ]}
+        />
+      </svg>,
+    );
+    // Brak uniform visiblePaths (variant rendering active)
+    expect(container.querySelectorAll('[data-testid^="sld-v2-run-r-mix-visible-"]').length).toBe(0);
+    // Variant stroke gold #FFD166 zamiast voltage red #E74C3C
+    const eprPath = container.querySelector('[data-testid^="sld-v2-run-r-mix-variant-seg-epr-"]');
+    expect(eprPath?.getAttribute('stroke')).toBe('#FFD166');
+    // Voltage chip nadal widoczny niezależnie od variant
+    expect(container.querySelector('[data-testid="sld-v2-run-r-mix-voltage-chip"]')).toBeTruthy();
+  });
 });
 
 describe('StationOnRunRenderer', () => {

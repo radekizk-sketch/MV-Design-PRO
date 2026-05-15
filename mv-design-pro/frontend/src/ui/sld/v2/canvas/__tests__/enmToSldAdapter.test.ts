@@ -804,6 +804,59 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(r.stations[0].busVoltageKv).toBeNull();
   });
 
+  it('K30-41: adapter propaguje voltageKv ciągów kabli z `from_bus` voltage_kv', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 'g', ref_id: 'GPZ', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [] } as never,
+      { id: 's', ref_id: 'ST-1', name: 'Stacja', tags: [], meta: {}, station_type: 'inline', bus_refs: ['b-tgt'], transformer_refs: [] } as never,
+    ];
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B-SN', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b-tgt', ref_id: 'b-tgt', name: 'B-T', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.branches = [
+      {
+        id: 'c1', ref_id: 'c1', name: 'Cable-1', type: 'cable',
+        from_bus_ref: 'b15', to_bus_ref: 'b-tgt',
+        status: 'closed', length_km: 1.0, r_ohm_per_km: 0.2, x_ohm_per_km: 0.1,
+        catalog_ref: 'cable-base-xlpe-al-1c-185', tags: [], meta: {},
+      } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.cableRuns.length).toBeGreaterThan(0);
+    // Każdy run powinien mieć voltageKv = 15 (z b15.voltage_kv)
+    for (const run of r.cableRuns) {
+      expect(run.voltageKv).toBe(15);
+    }
+  });
+
+  it('K30-41: voltageKv=null gdy from_bus.voltage_kv niedostępne', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 'g', ref_id: 'GPZ', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['b-empty'], transformer_refs: [] } as never,
+      { id: 's', ref_id: 'ST-1', name: 'Stacja', tags: [], meta: {}, station_type: 'inline', bus_refs: ['b-tgt2'], transformer_refs: [] } as never,
+    ];
+    snap.buses = [
+      // No voltage_kv on either bus
+      { id: 'b-empty', ref_id: 'b-empty', name: 'B', phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b-tgt2', ref_id: 'b-tgt2', name: 'BT', phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.branches = [
+      {
+        id: 'c2', ref_id: 'c2', name: 'Cable-2', type: 'cable',
+        from_bus_ref: 'b-empty', to_bus_ref: 'b-tgt2',
+        status: 'closed', length_km: 0.5, r_ohm_per_km: 0.2, x_ohm_per_km: 0.1,
+        tags: [], meta: {},
+      } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    for (const run of r.cableRuns) {
+      expect(run.voltageKv).toBeNull();
+    }
+  });
+
   it('PV po stronie nN propaguje badge stacji i pozwala renderować wyłączniki nN', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [

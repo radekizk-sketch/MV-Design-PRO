@@ -291,6 +291,9 @@ interface CableRunRendererPropsLight {
   /** Czy któryś z segmentów jest punktem otwartym (NMO / status='open')
    *  zgodnie z `SupplyPathHighlighter.openPointBranchRefs`. */
   containsOpenPoint?: boolean;
+  /** K30-41: napięcie ciągu [kV] z `inferRunVoltageKv`. Renderer dobiera tint
+   *  stroke (gdy brak per-segment variant) + rysuje voltage chip przy starcie. */
+  voltageKv?: number | null;
 }
 
 function isCableLikeBranch(b: Branch): boolean {
@@ -1671,6 +1674,7 @@ function buildCableRuns(
         missingEndpointPort: portStatus.missing,
         missingPortSegmentRefs: portStatus.missingSegmentRefs,
         pathPoints: snakePoints,
+        voltageKv,
       });
     });
     return runs;
@@ -1708,6 +1712,7 @@ function buildCableRuns(
       const segmentLabels = buildRunSegmentLabels(runSegments, runStations, startX, y, terminalX);
       const segmentPaths = buildRunSegmentPaths(runSegments, runStations, startX, y, terminalX);
       const portStatus = detectMissingEndpointPorts(runSegments);
+      const voltageKv = inferRunVoltageKv(snapshot, runSegments);
       // K30-10: snake routing dla synthesized line_runs (multi-row case).
       const synthUniqueYs = [...new Set(runStations.map((s) => s.y - STATION_RUN_TRUNK_OFFSET_Y))].sort((a, b) => a - b);
       let synthSnakePoints: { x: number; y: number }[];
@@ -1746,6 +1751,7 @@ function buildCableRuns(
           { x: startX, y },
           { x: terminalX, y },
         ],
+        voltageKv,
       });
     });
     return runs;
@@ -1771,6 +1777,7 @@ function buildCableRuns(
       const segmentPaths = buildRunSegmentPaths(segments, stationsOnRun, xStart, y, xEnd);
 
       const portStatus = detectMissingEndpointPorts(segments);
+      const voltageKv = inferRunVoltageKv(snapshot, segments);
       runs.push({
         id: trunk.corridor_ref,
         runKind: 'main_trunk',
@@ -1787,6 +1794,7 @@ function buildCableRuns(
           { x: xStart, y },
           { x: xEnd, y },
         ],
+        voltageKv,
       });
     });
 
@@ -1802,6 +1810,7 @@ function buildCableRuns(
       const xEnd = xStart + 3 * STATION_PITCH;
 
       const portStatus = detectMissingEndpointPorts(segments);
+      const voltageKv = inferRunVoltageKv(snapshot, segments);
       runs.push({
         id: br.branch_id,
         runKind: 'branch',
@@ -1817,6 +1826,7 @@ function buildCableRuns(
           { x: xStart, y: yBranch },
           { x: xEnd, y: yBranch },
         ],
+        voltageKv,
       });
     });
     return runs;
@@ -1835,6 +1845,7 @@ function buildCableRuns(
     const segmentLabels = buildRunSegmentLabels([b], stationsOnRun, xStart, y, xEnd);
     const segmentPaths = buildRunSegmentPaths([b], stationsOnRun, xStart, y, xEnd);
     const portStatus = detectMissingEndpointPorts([b]);
+    const voltageKv = inferRunVoltageKv(snapshot, [b]);
     runs.push({
       id: b.ref_id,
       runKind: 'main_trunk',
@@ -1851,6 +1862,7 @@ function buildCableRuns(
         { x: xStart, y },
         { x: xEnd, y },
       ],
+      voltageKv,
     });
   });
 

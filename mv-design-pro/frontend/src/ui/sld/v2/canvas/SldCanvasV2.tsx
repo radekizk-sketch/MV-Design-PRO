@@ -85,6 +85,8 @@ export interface SldCanvasV2Props {
     label?: string;
     segmentLabels?: readonly CableRunSegmentLabel[];
     pendingEndpoint?: boolean;
+    /** K30-41: napięcie ciągu [kV] — voltage chip + tint stroke fallback. */
+    voltageKv?: number | null;
   }>;
   readonly stations: readonly StationOnRunRendererProps[];
   readonly ders: readonly DerRendererProps[];

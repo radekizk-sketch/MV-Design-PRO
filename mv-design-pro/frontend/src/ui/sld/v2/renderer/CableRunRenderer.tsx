@@ -64,6 +64,10 @@ export interface CableRunRendererProps {
   readonly onClick?: (id: string) => void;
   /** LOD 0-1 → pokaż tylko główną etykietę, nie segmentLabels (AC-06 label declutter). */
   readonly lod?: number;
+  /** K30-41: napięcie ciągu [kV] z `inferRunVoltageKv` w adapterze. Renderer
+   *  dobiera tint stroke (gdy brak per-segment variant rendering) zgodnie
+   *  z konwencją dyspozytorską OSD i rysuje voltage chip przy starcie ciągu. */
+  readonly voltageKv?: number | null;
 }
 
 export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | null {
@@ -82,6 +86,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     selected,
     onClick,
     lod,
+    voltageKv,
   } = props;
   // AC-06: Na LOD 0-1 ukrywamy szczegółowe etykiety segmentów żeby uniknąć
   // nakładania się etykiet. Główna etykieta (label) pozostaje widoczna.
@@ -103,11 +108,15 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
       : isOverhead
         ? '12 4'
         : undefined;
+  // K30-41: voltage-based default stroke (gdy brak per-segment variant).
+  // Variant rendering ma pierwszeństwo (K30-33 cable type identity). Tutaj
+  // tylko jako fallback dla uniform path.
+  const voltageBaseStroke = cableColorForVoltage(voltageKv ?? null);
   const strokeColor = missingEndpointPort
     ? '#FF6B6B'
     : selected
       ? '#35C7FF'
-      : COLOR_FIELD_TRUNK_ENERGIZED;
+      : voltageBaseStroke;
 
   const hitPath = pathPoints
     .map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`))
@@ -343,6 +352,41 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           {label}
         </text>
       )}
+      {/* K30-41: voltage-class chip przy starcie ciągu — kwadracik w kolorze
+          klasy napięcia (WN/SN/nN) z tekstem "{kV} kV". Pomaga zidentyfikować
+          klasę napięcia ciągu niezależnie od per-segment variant rendering. */}
+      {voltageKv != null && voltageKv > 0 && (
+        <g
+          data-testid={`sld-v2-run-${id}-voltage-chip`}
+          data-voltage-kv={voltageKv}
+          pointerEvents="none"
+          transform={`translate(${pathPoints[0].x + 6}, ${pathPoints[0].y - 12})`}
+        >
+          <rect
+            x={0}
+            y={-7}
+            width={32}
+            height={13}
+            rx={2}
+            fill={voltageBaseStroke}
+            opacity={0.85}
+          />
+          <text
+            x={16}
+            y={3}
+            textAnchor="middle"
+            fill="#0A0E14"
+            fontFamily="sans-serif"
+            fontSize={9}
+            fontWeight={800}
+            letterSpacing={0.3}
+          >
+            {voltageKv >= 1
+              ? `${Math.round(voltageKv)} kV`
+              : `${(voltageKv * 1000).toFixed(0)} V`}
+          </text>
+        </g>
+      )}
       {readableSegmentLabels.map((segmentLabel) => (
         <text
           key={`${id}-segment-label-${segmentLabel.segmentRef}`}
@@ -566,6 +610,24 @@ function segmentLabelsOverlap(
 
 function estimateLabelWidth(text: string): number {
   return Math.max(52, Math.min(220, text.length * 7.2));
+}
+
+/**
+ * K30-41: kolor stroke kabla per voltage class. Konwencja dyspozytorska OSD
+ * (analogicznie do `busColorForVoltage` w StationOnRunRenderer):
+ * - ≥ 100 kV (WN)         → #E74C3C (czerwień)
+ * - 12-30 kV (SN)          → #13C45A (energized green kanon)
+ * - 5-10 kV (SN niskie)    → #0A8D43 (głębsza zieleń)
+ * - 0.2-1 kV (nN)          → #7DD3FC (chłodny błękit)
+ * - inne / brak            → COLOR_FIELD_TRUNK_ENERGIZED (back-compat)
+ */
+function cableColorForVoltage(kv: number | null): string {
+  if (kv == null || !Number.isFinite(kv) || kv <= 0) return COLOR_FIELD_TRUNK_ENERGIZED;
+  if (kv >= 100) return '#E74C3C';
+  if (kv >= 12) return COLOR_FIELD_TRUNK_ENERGIZED;
+  if (kv >= 5) return '#0A8D43';
+  if (kv >= 0.2) return '#7DD3FC';
+  return COLOR_FIELD_TRUNK_ENERGIZED;
 }
 
 /**
