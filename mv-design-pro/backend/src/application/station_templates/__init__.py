@@ -13,6 +13,10 @@ Public API:
 - `get_template(template_id)` — pełna definicja z editable schema
 """
 
+from application.station_templates.apply import (
+    TemplateApplyError,
+    apply_template_to_case,
+)
 from application.station_templates.schema import (
     StationTemplate,
     TemplateCategory,
@@ -26,8 +30,10 @@ from application.station_templates.service import (
 
 __all__ = [
     "StationTemplate",
+    "TemplateApplyError",
     "TemplateCategory",
     "TemplateSchema",
+    "apply_template_to_case",
     "get_template",
     "list_templates",
     "list_templates_by_category",

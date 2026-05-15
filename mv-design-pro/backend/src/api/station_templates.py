@@ -10,6 +10,7 @@ REST endpoints:
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
 from application.station_templates import (
     StationTemplate,
@@ -18,10 +19,64 @@ from application.station_templates import (
     list_templates,
     list_templates_by_category,
 )
+from application.station_templates.apply import (
+    TemplateApplyError,
+    apply_template_to_case,
+)
 from application.station_templates.service import count_by_category
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/station-templates", tags=["station-templates"])
+
+
+class ApplyTemplateRequest(BaseModel):
+    """K30-20: Apply template payload."""
+
+    case_id: str = Field(..., description="Target case UUID")
+    target_segment_id: str = Field(..., description="Trunk segment_ref where station gets inserted")
+    insert_at_ratio: float = Field(default=0.5, ge=0.0, le=1.0, description="Position on segment")
+    params_override: dict[str, Any] = Field(default_factory=dict, description="User-edited params")
+    catalog_profile: str | None = Field(default=None, description="Manufacturer profile cascade")
+
+
+@router.post("/{template_id}/apply")
+def apply_station_template(
+    template_id: str,
+    request: ApplyTemplateRequest = Body(...),
+) -> dict[str, Any]:
+    """K30-20: apply station template do live case ENM.
+
+    Orchestrates sequence:
+    1. Lookup template z library
+    2. Merge user params_override z template defaults
+    3. Build insert_station_on_segment_sn payload
+    4. Execute domain operation
+    5. Optionally chain DER additions
+    6. Return created element refs + readiness report
+    """
+    template = get_template(template_id)
+    if template is None:
+        raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
+
+    try:
+        case_uuid = UUID(request.case_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid case_id: {exc}") from exc
+
+    try:
+        result = apply_template_to_case(
+            template=template,
+            case_id=case_uuid,
+            target_segment_id=request.target_segment_id,
+            insert_at_ratio=request.insert_at_ratio,
+            params_override=request.params_override,
+            catalog_profile=request.catalog_profile,
+        )
+    except TemplateApplyError as exc:
+        raise HTTPException(status_code=422, detail={"code": exc.code, "message_pl": exc.message_pl}) from exc
+
+    return result
 
 
 @router.get("")

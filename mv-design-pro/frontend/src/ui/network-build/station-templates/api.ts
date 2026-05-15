@@ -133,3 +133,36 @@ export async function fetchStationTemplate(templateId: string): Promise<StationT
   const response = await fetch(`${API_BASE}/${encodeURIComponent(templateId)}`);
   return handleResponse<StationTemplateFull>(response);
 }
+
+
+// K30-20: Apply template do live case ENM
+
+export interface ApplyTemplateRequest {
+  case_id: string;
+  target_segment_id: string;
+  insert_at_ratio?: number;
+  params_override?: Record<string, unknown>;
+  catalog_profile?: string | null;
+}
+
+export interface ApplyTemplateResult {
+  template_id: string;
+  template_name_pl: string;
+  station_ref: string | null;
+  created_element_refs: readonly string[];
+  operations_log: readonly Record<string, unknown>[];
+  catalog_profile_applied: string | null;
+  snapshot_hash: string | null;
+}
+
+export async function applyStationTemplate(
+  templateId: string,
+  request: ApplyTemplateRequest,
+): Promise<ApplyTemplateResult> {
+  const response = await fetch(`${API_BASE}/${encodeURIComponent(templateId)}/apply`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  return handleResponse<ApplyTemplateResult>(response);
+}

@@ -1185,6 +1185,26 @@ interface StationMiniBlockDetails {
   readonly totalGenerationKw: number;
 }
 
+/**
+ * K30-19: Count nN feeders dla station z ENM meta (nn_field_specs)
+ * filtered po bay_role='FEEDER'. Fallback do legacy heuristic gdy meta
+ * nieobecna (backward-compat z testami).
+ */
+function countNnFeedersFromMeta(
+  station: Substation,
+  derBadges: readonly MiniBlockDerBadge[],
+): number {
+  const meta = station.meta as { nn_field_specs?: { bay_role?: string }[] } | undefined;
+  const specs = meta?.nn_field_specs ?? [];
+  if (Array.isArray(specs) && specs.length > 0) {
+    const feeders = specs.filter((s) => s?.bay_role === 'FEEDER');
+    if (feeders.length > 0) return feeders.length;
+  }
+  // Legacy fallback: DER presence implies LV-side bus structure
+  return derBadges.some((b) => b.connectionSide === 'nn') ? 2 : 1;
+}
+
+
 function buildStationMiniBlockDetails(
   snapshot: EnergyNetworkModel,
   station: Substation,
@@ -1229,7 +1249,9 @@ function buildStationMiniBlockDetails(
       transformerRefs.length > 0 ||
       snBays.some((bay) => bay.fieldRole === FIELD_ROLE.RMU_TRANSFORMER || bay.fieldRole === FIELD_ROLE.TRANSFORMER) ||
       MINI_BLOCK_FOOTPRINT[footprintType].hasTransformer,
-    nnFeedersCount: derBadges.some((badge) => badge.connectionSide === 'nn') ? 2 : 1,
+    // K30-19: derive count z ENM meta (nn_field_specs filtered FEEDER role)
+    // jeśli dostępne. Backward-compat fallback do DER-presence heuristic.
+    nnFeedersCount: countNnFeedersFromMeta(station, derBadges),
     derBadges,
     transformerRatedKva,
     totalLoadKw,

@@ -84,3 +84,45 @@ def test_e2tango_protection_appears_in_options() -> None:
     assert any("E2TANGO" in p for p in protection_refs), (
         f"E2Tango must appear w protection options. Got: {protection_refs}"
     )
+
+
+def test_apply_endpoint_404_for_unknown_template() -> None:
+    """K30-20: POST /api/station-templates/{id}/apply rejects unknown id."""
+    client = _make_client()
+    response = client.post(
+        "/api/station-templates/tpl_nonexistent/apply",
+        json={
+            "case_id": "00000000-0000-0000-0000-000000000000",
+            "target_segment_id": "seg/abc/segment",
+            "insert_at_ratio": 0.5,
+        },
+    )
+    assert response.status_code == 404
+
+
+def test_apply_endpoint_validates_case_id_uuid() -> None:
+    """K30-20: case_id must be valid UUID."""
+    client = _make_client()
+    response = client.post(
+        "/api/station-templates/tpl_sn_nn_630kva/apply",
+        json={
+            "case_id": "not-a-uuid",
+            "target_segment_id": "seg/abc/segment",
+        },
+    )
+    assert response.status_code == 400
+    assert "Invalid case_id" in response.json()["detail"]
+
+
+def test_apply_endpoint_validates_ratio_bounds() -> None:
+    """K30-20: insert_at_ratio must be in [0, 1]."""
+    client = _make_client()
+    response = client.post(
+        "/api/station-templates/tpl_sn_nn_630kva/apply",
+        json={
+            "case_id": "00000000-0000-0000-0000-000000000000",
+            "target_segment_id": "seg/abc/segment",
+            "insert_at_ratio": 1.5,  # > 1
+        },
+    )
+    assert response.status_code == 422  # Pydantic validation error

@@ -2117,3 +2117,69 @@ describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (
     });
   });
 });
+
+
+describe('K30-19 countNnFeedersFromMeta — adapter respects station.meta.nn_field_specs', () => {
+  function buildStationFixture(meta: Record<string, unknown>) {
+    const snapshot = buildEmptySnapshot();
+    (snapshot as { substations: unknown[] }).substations = [
+      {
+        id: 'sub-1',
+        ref_id: 'stn/abc/station',
+        name: 'Stacja testowa',
+        tags: [],
+        meta,
+        station_type: 'inline',
+        bus_refs: ['stn/abc/sn_bus'],
+      },
+    ];
+    (snapshot as { buses: unknown[] }).buses = [
+      {
+        id: 'bus-1',
+        ref_id: 'stn/abc/sn_bus',
+        name: 'SN bus',
+        tags: [],
+        meta: { substation_ref: 'stn/abc/station' },
+        voltage_kv: 15,
+      },
+    ];
+    return snapshot;
+  }
+
+  it('uses meta.nn_field_specs FEEDER count when available', () => {
+    const snapshot = buildStationFixture({
+      nn_field_specs: [
+        { bay_role: 'FEEDER', field_index: 0 },
+        { bay_role: 'FEEDER', field_index: 1 },
+        { bay_role: 'FEEDER', field_index: 2 },
+        { bay_role: 'OZE', field_index: 3 }, // not a FEEDER
+      ],
+    });
+    const result = buildSldDataFromSnapshot(snapshot);
+    const station = result.stations.find((s) => s.id === 'stn/abc/station');
+    expect(station).toBeDefined();
+    expect(station!.nnFeedersCount).toBe(3);
+  });
+
+  it('falls back to DER heuristic when meta absent', () => {
+    const snapshot = buildStationFixture({});
+    const result = buildSldDataFromSnapshot(snapshot);
+    const station = result.stations.find((s) => s.id === 'stn/abc/station');
+    expect(station).toBeDefined();
+    expect(station!.nnFeedersCount).toBe(1); // no DER → 1
+  });
+
+  it('respects different feeder counts (1, 4, 8)', () => {
+    for (const count of [1, 4, 8]) {
+      const snapshot = buildStationFixture({
+        nn_field_specs: Array.from({ length: count }, (_, i) => ({
+          bay_role: 'FEEDER',
+          field_index: i,
+        })),
+      });
+      const result = buildSldDataFromSnapshot(snapshot);
+      const station = result.stations.find((s) => s.id === 'stn/abc/station');
+      expect(station!.nnFeedersCount).toBe(count);
+    }
+  });
+});

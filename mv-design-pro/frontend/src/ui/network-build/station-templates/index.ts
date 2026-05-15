@@ -9,6 +9,7 @@ export {
   fetchStationTemplates,
   fetchStationTemplateCategories,
   fetchStationTemplate,
+  applyStationTemplate,
 } from './api';
 export type {
   StationTemplateSummary,
@@ -22,6 +23,8 @@ export type {
   BayRoleSpec,
   DerKindSpec,
   ProtectionRelaySpec,
+  ApplyTemplateRequest,
+  ApplyTemplateResult,
 } from './api';
 export { StationTemplateWizard } from './StationTemplateWizard';
 export type {

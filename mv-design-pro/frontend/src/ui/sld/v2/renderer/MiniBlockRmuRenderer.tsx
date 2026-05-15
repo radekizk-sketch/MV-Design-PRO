@@ -44,7 +44,16 @@ const DETAIL_DER_HEIGHT = 280;
 
 const FIELD_TOP_LEAD = 38;
 const FIELD_DEVICE_CENTER_ABOVE_BUS = 20;
-const FIELD_DEVICE_SIZE = 11;
+
+// K30-19: variant-aware device sizing per IEC 60617-5 industrial scaling.
+// Previous hardcoded FIELD_DEVICE_SIZE=11 (22×22 px) too small dla LOD2/LOD3.
+// New scaling: overview compact dla fit-to-screen, detail scaled-up dla
+// engineering readability.
+const FIELD_DEVICE_SIZE_BY_VARIANT: Record<'overview' | 'compact' | 'detail', number> = {
+  overview: 9,
+  compact: 13,
+  detail: 17,
+};
 const SECTION_BAR_HEIGHT = 4;
 
 const COLOR_TR_TRIANGLE = '#A5C8FF';
@@ -514,6 +523,9 @@ function BayMarker(props: BayMarkerProps): JSX.Element {
   const switchY = y - FIELD_DEVICE_CENTER_ABOVE_BUS;
   const topY = y - FIELD_TOP_LEAD;
   const elementId = `${stationId}/bay/${bayRef}`;
+  // K30-19: variant-aware device size dla IEC 60617-5 industrial readability.
+  // overview=9, compact=13, detail=17 vs legacy hardcoded 11.
+  const deviceSize = FIELD_DEVICE_SIZE_BY_VARIANT[variant];
 
   return (
     <g
@@ -601,7 +613,7 @@ function BayMarker(props: BayMarkerProps): JSX.Element {
         >
           <line x1={x} y1={topY} x2={x} y2={y} stroke={COLOR_BUS_LV} strokeWidth={STROKE_FIELD_TRACK_PX} />
           <polygon
-            points={`${x},${switchY - FIELD_DEVICE_SIZE} ${x + FIELD_DEVICE_SIZE},${switchY} ${x},${switchY + FIELD_DEVICE_SIZE} ${x - FIELD_DEVICE_SIZE},${switchY}`}
+            points={`${x},${switchY - deviceSize} ${x + deviceSize},${switchY} ${x},${switchY + deviceSize} ${x - deviceSize},${switchY}`}
             fill={hasMissing ? COLOR_MISSING : COLOR_DEVICE_CLOSED}
             stroke={hasMissing ? '#FFB020' : COLOR_DEVICE_CLOSED_BORDER}
             strokeWidth={1.3}
