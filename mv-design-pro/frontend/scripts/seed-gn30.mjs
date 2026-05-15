@@ -386,6 +386,100 @@ async function main() {
     }
   }
 
+  // K30-15.4: ODGAŁĘZIENIA — wstaw branch poles (słupy odgałęźne ZKSN) co kilka
+  // stacji na trunk A + start short branch segments. Każde odgałęzienie symuluje
+  // promień do peryferyjnej stacji obsługującej obszar poza głównym ciągiem.
+  // Per Specialist Projektant K30-14 demand: 'schemat nie uwzględnia odgałęzień'.
+  const enmAfterK10 = await api('GET', `/api/cases/${caseId}/enm`);
+  const allBranches = enmAfterK10.json?.branches ?? [];
+  const trunkASegments = allBranches.filter(
+    (b) => b.type === 'cable' && b.ref_id?.startsWith('seg/')
+      && b.length_km && b.length_km > 0.05  // skip zero-length artifacts
+  );
+  // Pick 4 segments at quartile positions for branches
+  const branchTargets = [
+    Math.floor(trunkASegments.length * 0.2),
+    Math.floor(trunkASegments.length * 0.4),
+    Math.floor(trunkASegments.length * 0.6),
+    Math.floor(trunkASegments.length * 0.8),
+  ].filter((idx, i, arr) => arr.indexOf(idx) === i && idx < trunkASegments.length);
+  const branchResults = [];
+  for (let i = 0; i < branchTargets.length; i++) {
+    const targetSeg = trunkASegments[branchTargets[i]];
+    if (!targetSeg) continue;
+    // 1. Insert branch pole on segment
+    const poleRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+      project_id: projectId,
+      operation: {
+        name: 'insert_zksn_on_segment_sn',
+        idempotency_key: `gn30_branch_pole_${i}`,
+        payload: {
+          segment_id: targetSeg.ref_id,
+          insert_at: { mode: 'RATIO', value: 0.5 },
+          catalog_binding: {
+            catalog_namespace: 'BRANCH_POINT_SN',
+            catalog_item_id: 'ZKSN-2P-630A',
+            catalog_item_version: '2024.1',
+            materialize: true,
+          },
+          name_pl: `Słup ZKSN odgałęźny ${i + 1}`,
+          branch_ports_count: 1,
+        },
+      },
+    });
+    const poleOk = poleRes.ok && !poleRes.json?.error_code;
+    if (!poleOk) {
+      const errMsg = poleRes.json?.error_code ?? (typeof poleRes.json?.detail === 'string' ? poleRes.json.detail : JSON.stringify(poleRes.json?.detail || poleRes.json));
+      log(`K12.B${i}.pole`, `FAIL: ${errMsg}`);
+      branchResults.push({ idx: i, status: `POLE_FAIL: ${errMsg}` });
+      continue;
+    }
+    const poleCreated = poleRes.json?.changes?.created_element_ids ?? [];
+    const poleRefId = poleCreated.find((id) => typeof id === 'string' && (id.includes('/zksn') || id.includes('/branch_pole')));
+    if (!poleRefId) {
+      log(`K12.B${i}.pole`, 'NO_POLE_REF');
+      branchResults.push({ idx: i, status: 'NO_POLE_REF' });
+      continue;
+    }
+    // Pobierz bus ref dla BRANCH port (per ZKSN.ports.BRANCH[0])
+    const snapAfterPole = await api('GET', `/api/cases/${caseId}/enm`);
+    const bps = snapAfterPole.json?.branch_points ?? [];
+    const myBp = bps.find((b) => b.ref_id === poleRefId);
+    const branchBusRef = myBp?.ports?.BRANCH?.[0];
+    if (!branchBusRef) {
+      log(`K12.B${i}.seg`, 'NO_BRANCH_BUS');
+      branchResults.push({ idx: i, status: 'NO_BRANCH_BUS' });
+      continue;
+    }
+    // 2. Start branch segment from ZKSN BRANCH bus
+    const branchSegRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+      project_id: projectId,
+      operation: {
+        name: 'start_branch_segment_sn',
+        idempotency_key: `gn30_branch_seg_${i}`,
+        payload: {
+          from_bus_ref: branchBusRef,
+          segment: {
+            rodzaj: 'KABEL',
+            dlugosc_m: 1500 + (i * 200),  // varied 1.5-2.1 km branches
+            catalog_ref: i % 2 === 0 ? 'cable-base-epr-al-1c-150' : 'cable-base-xlpe-al-1c-185',
+          },
+        },
+      },
+    });
+    const segOk = branchSegRes.ok && !branchSegRes.json?.error_code;
+    branchResults.push({
+      idx: i,
+      pole: poleRefId,
+      status: segOk ? 'PASS' : `SEG_FAIL: ${branchSegRes.json?.error_code ?? branchSegRes.json?.detail ?? ''}`,
+    });
+    if (!segOk) {
+      log(`K12.B${i}.seg`, `FAIL: ${branchSegRes.json?.error_code ?? ''}`);
+    }
+  }
+  const branchOk = branchResults.filter((r) => r.status === 'PASS').length;
+  log('K12', `Odgałęzienia: ${branchOk}/${branchResults.length} PASS`);
+
   // K11: Loads per station (feeder nN + load)
   const NN_FEEDER_CATALOG = 'cb_nn_400a';
   const loadResults = [];
