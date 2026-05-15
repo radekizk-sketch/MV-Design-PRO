@@ -136,6 +136,11 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     ? findLongestHorizontalSegmentMidpoint(pathPoints)
     : null;
   const terminalPoint = pathPoints[pathPoints.length - 1];
+  // K30-42: power flow direction arrow — kierunek z start → end pathPoints.
+  // Renderowane na najdłuższym horizontal segmencie w midpoincie. Pomaga
+  // operatorowi natychmiast zidentyfikować kierunek zasilania (upstream →
+  // downstream), kluczowe w dispatcher operations.
+  const flowArrow = computeFlowArrowMarker(pathPoints);
   const readableSegmentLabels = declutterSegmentLabels(
     visibleSegmentLabels
       .map((segmentLabel) => avoidStationLabelCollision(segmentLabel, stationPortGaps))
@@ -386,6 +391,26 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
               : `${(voltageKv * 1000).toFixed(0)} V`}
           </text>
         </g>
+      )}
+      {/* K30-42: power flow direction arrow at midpoint of longest horizontal
+          segment. Pomocne dla operatora — natychmiast widać direction
+          zasilania (upstream→downstream). Pomijamy gdy missingEndpointPort
+          (warning state) lub pendingEndpoint (incomplete connection). */}
+      {flowArrow && !missingEndpointPort && !pendingEndpoint && (
+        <polygon
+          data-testid={`sld-v2-run-${id}-flow-arrow`}
+          data-flow-direction={flowArrow.direction}
+          points={
+            flowArrow.direction === 'right'
+              ? `${flowArrow.x - 5},${flowArrow.y - 4} ${flowArrow.x + 5},${flowArrow.y} ${flowArrow.x - 5},${flowArrow.y + 4}`
+              : `${flowArrow.x + 5},${flowArrow.y - 4} ${flowArrow.x - 5},${flowArrow.y} ${flowArrow.x + 5},${flowArrow.y + 4}`
+          }
+          fill={selected ? '#35C7FF' : voltageBaseStroke}
+          stroke="#05070A"
+          strokeWidth={0.6}
+          opacity={0.92}
+          pointerEvents="none"
+        />
       )}
       {readableSegmentLabels.map((segmentLabel) => (
         <text
@@ -661,6 +686,37 @@ function cableVariantStyle(
     default:
       return { stroke: COLOR_FIELD_TRUNK_ENERGIZED, widthDelta: conductorBonus };
   }
+}
+
+/**
+ * K30-42: oblicza pozycję + kierunek strzałki przepływu mocy dla ciągu.
+ * Strzałka rysowana w midpoincie najdłuższego horizontal segmentu, kierunek
+ * wynika z order pathPoints (start → end). Industrial SLD convention:
+ * cable run = upstream → downstream, strzałka pokazuje kierunek zasilania.
+ *
+ * Returns null gdy nie ma horizontal segmentu wystarczającej długości
+ * (min 20 px — zbyt krótki nie mieści strzałki estetycznie).
+ */
+function computeFlowArrowMarker(
+  points: readonly Point[],
+): { x: number; y: number; direction: 'right' | 'left' } | null {
+  let best: { x: number; y: number; direction: 'right' | 'left'; length: number } | null = null;
+  for (let index = 0; index < points.length - 1; index++) {
+    const start = points[index];
+    const end = points[index + 1];
+    if (Math.abs(start.y - end.y) > 0.5) continue;
+    const length = Math.abs(end.x - start.x);
+    if (length < 20) continue;
+    if (!best || length > best.length) {
+      best = {
+        x: (start.x + end.x) / 2,
+        y: start.y,
+        direction: end.x >= start.x ? 'right' : 'left',
+        length,
+      };
+    }
+  }
+  return best ? { x: best.x, y: best.y, direction: best.direction } : null;
 }
 
 function findLongestHorizontalSegmentMidpoint(points: readonly Point[]): Point | null {

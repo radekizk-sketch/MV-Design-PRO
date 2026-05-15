@@ -679,6 +679,115 @@ describe('CableRunRenderer', () => {
     // Voltage chip nadal widoczny niezależnie od variant
     expect(container.querySelector('[data-testid="sld-v2-run-r-mix-voltage-chip"]')).toBeTruthy();
   });
+
+  it('K30-42: flow arrow rendered pointing right gdy pathPoints idą L→R', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-flow"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 200, y: 0 }]}
+        />
+      </svg>,
+    );
+    const arrow = container.querySelector('[data-testid="sld-v2-run-r-flow-flow-arrow"]');
+    expect(arrow).toBeTruthy();
+    expect(arrow?.getAttribute('data-flow-direction')).toBe('right');
+    // Midpoint x = 100, polygon zawiera tip ostro do prawej (x=105)
+    expect(arrow?.getAttribute('points')).toContain('105');
+  });
+
+  it('K30-42: flow arrow pointing left gdy pathPoints idą R→L (reverse direction)', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-rev"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 200, y: 0 }, { x: 0, y: 0 }]}
+        />
+      </svg>,
+    );
+    const arrow = container.querySelector('[data-testid="sld-v2-run-r-rev-flow-arrow"]');
+    expect(arrow?.getAttribute('data-flow-direction')).toBe('left');
+  });
+
+  it('K30-42: flow arrow color dziedziczy voltage tint (#E74C3C dla 110 kV)', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-vc"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 200, y: 0 }]}
+          voltageKv={110}
+        />
+      </svg>,
+    );
+    const arrow = container.querySelector('[data-testid="sld-v2-run-r-vc-flow-arrow"]');
+    expect(arrow?.getAttribute('fill')).toBe('#E74C3C');
+  });
+
+  it('K30-42: brak horizontal segmentu ≥ 20 px → brak strzałki', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-short"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 10, y: 0 }]}
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-run-r-short-flow-arrow"]')).toBeFalsy();
+  });
+
+  it('K30-42: missingEndpointPort → strzałka NIE renderowana (warning state)', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-warn"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 200, y: 0 }]}
+          missingEndpointPort
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-run-r-warn-flow-arrow"]')).toBeFalsy();
+  });
+
+  it('K30-42: pendingEndpoint → strzałka NIE renderowana (incomplete connection)', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-pend"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 200, y: 0 }]}
+          pendingEndpoint
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-run-r-pend-flow-arrow"]')).toBeFalsy();
+  });
+
+  it('K30-42: selected → strzałka fill #35C7FF (highlight color)', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-sel"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 200, y: 0 }]}
+          selected
+        />
+      </svg>,
+    );
+    const arrow = container.querySelector('[data-testid="sld-v2-run-r-sel-flow-arrow"]');
+    expect(arrow?.getAttribute('fill')).toBe('#35C7FF');
+  });
 });
 
 describe('StationOnRunRenderer', () => {
