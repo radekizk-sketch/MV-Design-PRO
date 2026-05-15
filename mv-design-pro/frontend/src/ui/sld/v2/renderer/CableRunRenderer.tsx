@@ -68,6 +68,15 @@ export interface CableRunRendererProps {
    *  dobiera tint stroke (gdy brak per-segment variant rendering) zgodnie
    *  z konwencją dyspozytorską OSD i rysuje voltage chip przy starcie ciągu. */
   readonly voltageKv?: number | null;
+  /** K30-45: obciążenie kabla [%] względem ampacity (I_actual/I_max × 100).
+   *  Wynika z LF results (I) podzielonego przez catalog ampacity (I_max).
+   *  Renderer rysuje loading chip + opcjonalny overload red overlay:
+   *   - ≤ 60% → green chip
+   *   - 60-80% → amber chip
+   *   - 80-100% → orange chip
+   *   - > 100% → red chip + red dashed overlay (THERMAL OVERLOAD)
+   *  Brak → chip pomijany. */
+  readonly loadingPct?: number | null;
 }
 
 export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | null {
@@ -87,6 +96,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     onClick,
     lod,
     voltageKv,
+    loadingPct,
   } = props;
   // AC-06: Na LOD 0-1 ukrywamy szczegółowe etykiety segmentów żeby uniknąć
   // nakładania się etykiet. Główna etykieta (label) pozostaje widoczna.
@@ -392,6 +402,50 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           </text>
         </g>
       )}
+      {/* K30-45: cable loading chip near voltage chip — pokazuje % ampacity.
+          Pomijany gdy missingEndpointPort lub loadingPct nieobecne. */}
+      {loadingPct != null && Number.isFinite(loadingPct) && loadingPct > 0 && !missingEndpointPort && (() => {
+        const cls = classifyCableLoading(loadingPct);
+        const x0 = pathPoints[0].x + 44;
+        const y0 = pathPoints[0].y - 12;
+        return (
+          <g
+            data-testid={`sld-v2-run-${id}-loading-chip`}
+            data-loading-pct={loadingPct.toFixed(1)}
+            data-loading-class={cls.label}
+            pointerEvents="none"
+            transform={`translate(${x0}, ${y0})`}
+          >
+            <rect x={0} y={-7} width={42} height={13} rx={2} fill={cls.color} opacity={0.85} />
+            <text
+              x={21}
+              y={3}
+              textAnchor="middle"
+              fill="#0A0E14"
+              fontFamily="sans-serif"
+              fontSize={9}
+              fontWeight={800}
+            >
+              {`I ${loadingPct.toFixed(0)}%`}
+            </text>
+          </g>
+        );
+      })()}
+      {/* K30-45: cable overload overlay — gdy loadingPct > 100, narysuj dashed
+          red overlay nad cablem sygnalizujący THERMAL OVERLOAD. */}
+      {loadingPct != null && Number.isFinite(loadingPct) && loadingPct > 100 && !missingEndpointPort && !useVariantRendering && (
+        <path
+          data-testid={`sld-v2-run-${id}-overload-overlay`}
+          d={hitPath}
+          fill="none"
+          stroke="#FF333D"
+          strokeWidth={strokeWidth + 2}
+          strokeDasharray="4 4"
+          strokeLinecap="round"
+          opacity={0.5}
+          pointerEvents="none"
+        />
+      )}
       {/* K30-42: power flow direction arrow at midpoint of longest horizontal
           segment. Pomocne dla operatora — natychmiast widać direction
           zasilania (upstream→downstream). Pomijamy gdy missingEndpointPort
@@ -686,6 +740,20 @@ function cableVariantStyle(
     default:
       return { stroke: COLOR_FIELD_TRUNK_ENERGIZED, widthDelta: conductorBonus };
   }
+}
+
+/**
+ * K30-45: klasyfikator cable loading (I/I_max %):
+ * - ≤ 60% → green (normal)
+ * - 60-80% → amber (warning)
+ * - 80-100% → orange (high)
+ * - > 100% → red (THERMAL OVERLOAD — needs immediate action)
+ */
+function classifyCableLoading(pct: number): { color: string; label: string } {
+  if (pct <= 60) return { color: '#13C45A', label: 'normal' };
+  if (pct <= 80) return { color: '#FFD166', label: 'warning' };
+  if (pct <= 100) return { color: '#FF8B5C', label: 'high' };
+  return { color: '#FF333D', label: 'overload' };
 }
 
 /**

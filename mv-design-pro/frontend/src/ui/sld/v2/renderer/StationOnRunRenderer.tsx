@@ -97,6 +97,14 @@ export interface StationOnRunRendererProps {
    *  zgodnie z konwencją dyspozytorską (110kV → czerwień WN, 15kV → zieleń SN,
    *  0.4kV → błękit nN). Brak → fallback do COLOR_FIELD_TRUNK_ENERGIZED. */
   readonly busVoltageKv?: number | null;
+  /** K30-44: aktualne odchylenie napięcia od nominalnego [%] — z LF results.
+   *  Renderer dobiera ring colour station code badge per PN-EN 50160:
+   *   - |ΔU| ≤ 2%  → green (energized OK)
+   *   - 2% < |ΔU| ≤ 5%  → amber (warning, w granicach PN-EN 50160 ±10%)
+   *   - 5% < |ΔU| ≤ 10% → orange (significant, blisko granicy)
+   *   - |ΔU| > 10% → red (poza granicą PN-EN 50160)
+   *  Brak → ring color domyślny (cyan #7EC8FF). */
+  readonly voltageDeviationPct?: number | null;
 }
 
 const TYPE_TO_LABEL_PL: Record<StationOnRunRendererProps['topologicalType'], string> = {
@@ -166,7 +174,7 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
     id, x, y, name, topologicalType, nnVoltageLevelsCount,
     selected, onClick, onDoubleClick, missingData, isNop, distanceFromGpzKm,
     transformerRatedKva, stationCode, switchStateByColumn, alarmSeverity,
-    nnFeedersCount, bayRoleByColumn, busVoltageKv,
+    nnFeedersCount, bayRoleByColumn, busVoltageKv, voltageDeviationPct,
   } = props;
   // K30-37: tint szyny stacji per voltage class (SCADA dispatcher konwencja).
   const busColor = busColorForVoltage(busVoltageKv ?? null);
@@ -346,16 +354,42 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
       )}
 
       {/* K30-4: prominent station code badge. Najpierw używa props.stationCode
-       *  (z adaptera — adresuje backend gubi name_pl), fallback z regex z name. */}
+       *  (z adaptera — adresuje backend gubi name_pl), fallback z regex z name.
+       *  K30-44: ring color klasyfikuje voltage deviation per PN-EN 50160. */}
       {(() => {
         const code = stationCode
           ?? (name.match(/\b(S\d{2,3})\b/)?.[1] ?? null);
+        const dev = voltageDeviationPct ?? null;
+        const ringColor = classifyVoltageDeviation(dev);
+        const ringText = classifyVoltageDeviationText(dev);
         return code ? (
-          <g data-testid={`sld-v2-station-code-${id}`} transform={`translate(0, ${LABEL_Y - 4})`}>
-            <rect x={-32} y={-18} width={64} height={26} rx={3} ry={3} fill="#0A1018" stroke="#7EC8FF" strokeWidth={1.4} opacity={0.95} />
-            <text x={0} y={2} textAnchor="middle" fill="#7EC8FF" fontFamily={FONT_SANS} fontSize={20} fontWeight={900} letterSpacing={1}>
+          <g
+            data-testid={`sld-v2-station-code-${id}`}
+            data-voltage-deviation-pct={dev ?? ''}
+            data-voltage-deviation-class={ringText}
+            transform={`translate(0, ${LABEL_Y - 4})`}
+          >
+            <rect x={-32} y={-18} width={64} height={26} rx={3} ry={3} fill="#0A1018" stroke={ringColor} strokeWidth={1.8} opacity={0.95} />
+            <text x={0} y={2} textAnchor="middle" fill={ringColor} fontFamily={FONT_SANS} fontSize={20} fontWeight={900} letterSpacing={1}>
               {code}
             </text>
+            {dev != null && Number.isFinite(dev) && (
+              <text
+                data-testid={`sld-v2-station-vdev-${id}`}
+                x={0}
+                y={20}
+                textAnchor="middle"
+                fill={ringColor}
+                fontFamily={FONT_SANS}
+                fontSize={9}
+                fontWeight={700}
+                paintOrder="stroke"
+                stroke="#05070A"
+                strokeWidth={2}
+              >
+                {`ΔU ${dev >= 0 ? '+' : ''}${dev.toFixed(1)}%`}
+              </text>
+            )}
           </g>
         ) : null;
       })()}
@@ -526,6 +560,32 @@ function connectionColumns(topologicalType: StationOnRunRendererProps['topologic
     default:
       return [0];
   }
+}
+
+/**
+ * K30-44: klasyfikator voltage deviation per PN-EN 50160 (±10% U_n limit).
+ *  - |ΔU| ≤ 2%  → green (OK)
+ *  - 2% < |ΔU| ≤ 5%  → amber (warning)
+ *  - 5% < |ΔU| ≤ 10% → orange (significant)
+ *  - |ΔU| > 10% → red (out of PN-EN 50160 limit)
+ *  - null → cyan default (no LF data)
+ */
+function classifyVoltageDeviation(devPct: number | null): string {
+  if (devPct == null || !Number.isFinite(devPct)) return '#7EC8FF';
+  const abs = Math.abs(devPct);
+  if (abs <= 2) return '#13C45A';     // green OK
+  if (abs <= 5) return '#FFD166';     // amber warning
+  if (abs <= 10) return '#FF8B5C';    // orange significant
+  return '#FF6B6B';                    // red out-of-spec
+}
+
+function classifyVoltageDeviationText(devPct: number | null): string {
+  if (devPct == null || !Number.isFinite(devPct)) return 'none';
+  const abs = Math.abs(devPct);
+  if (abs <= 2) return 'ok';
+  if (abs <= 5) return 'warn';
+  if (abs <= 10) return 'significant';
+  return 'out-of-spec';
 }
 
 /**

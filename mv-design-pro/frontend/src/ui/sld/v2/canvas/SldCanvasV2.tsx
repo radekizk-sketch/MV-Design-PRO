@@ -35,6 +35,11 @@ import { CadOverlay } from './CadOverlay';
 import { SldTitleBlock, type SldTitleBlockData } from './SldTitleBlock';
 import { SldLegendOverlay } from './SldLegendOverlay';
 import { SldScaleRuler } from './SldScaleRuler';
+import { SldNorthArrow } from './SldNorthArrow';
+import {
+  SldShortCircuitOverlay,
+  type SldShortCircuitProjection,
+} from './SldShortCircuitOverlay';
 import { DEFAULT_SNAP_STATE } from '../viewport/Snap';
 import { ConnectionRenderer } from '../renderer/ConnectionRenderer';
 import { DerRenderer, type DerRendererProps } from '../renderer/DerRenderer';
@@ -136,6 +141,11 @@ export interface SldCanvasV2Props {
   readonly showLegend?: boolean;
   /** K30-43: pokaż skalę rysunku per PN-EN ISO 5455. Default true. */
   readonly showScaleRuler?: boolean;
+  /** K30-47: pokaż strzałkę N (north arrow) per PN-EN ISO 5456. Default false
+   *  (SLD są topologiczne, geographic orientation rzadko relevant). */
+  readonly showNorthArrow?: boolean;
+  /** K30-48: projekcja wyników zwarciowych per IEC 60909. Brak → overlay off. */
+  readonly shortCircuitProjection?: SldShortCircuitProjection | null;
 }
 
 function estimateCanonicalGpzFootprint(gpz: GpzCanonicalRendererProps): { width: number; height: number } {
@@ -219,6 +229,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const {
     width, height, gpzs, canonicalGpzs, sections, cableRuns, stations, ders, connections = [],
     selectedId, lodOverride, layerVisibility, titleBlockData, showLegend = true, showScaleRuler = true,
+    showNorthArrow = false, shortCircuitProjection,
     onSelectElement, onDoubleClickStation, onDoubleClickDer, onContextMenu, onViewportTransformChange,
   } = props;
 
@@ -729,6 +740,16 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
           x={20}
           y={height - 60}
         />
+
+        {/* K30-47: north arrow per PN-EN ISO 5456 (opcjonalny). */}
+        <SldNorthArrow
+          visible={showNorthArrow}
+          x={width - 80}
+          y={height - 200}
+        />
+
+        {/* K30-48: short-circuit results projection per IEC 60909. */}
+        <SldShortCircuitOverlay projection={shortCircuitProjection ?? null} />
 
         {/* K30-13: grid frequency + voltage status panel (ENEA Operator NC RfG).
          *  Static placeholder dla frequency stability + slack bus voltage.

@@ -788,6 +788,106 @@ describe('CableRunRenderer', () => {
     const arrow = container.querySelector('[data-testid="sld-v2-run-r-sel-flow-arrow"]');
     expect(arrow?.getAttribute('fill')).toBe('#35C7FF');
   });
+
+  it('K30-45: loadingPct=45 → green chip "I 45%" (normal)', () => {
+    const { container, getByText } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-load"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 200, y: 0 }]}
+          loadingPct={45}
+        />
+      </svg>,
+    );
+    const chip = container.querySelector('[data-testid="sld-v2-run-r-load-loading-chip"]');
+    expect(chip).toBeTruthy();
+    expect(chip?.getAttribute('data-loading-class')).toBe('normal');
+    expect(chip?.querySelector('rect')?.getAttribute('fill')).toBe('#13C45A');
+    expect(getByText('I 45%')).toBeInTheDocument();
+  });
+
+  it('K30-45: loadingPct=75 → amber chip (warning)', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-warn"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 200, y: 0 }]}
+          loadingPct={75}
+        />
+      </svg>,
+    );
+    const chip = container.querySelector('[data-testid="sld-v2-run-r-warn-loading-chip"]');
+    expect(chip?.getAttribute('data-loading-class')).toBe('warning');
+    expect(chip?.querySelector('rect')?.getAttribute('fill')).toBe('#FFD166');
+  });
+
+  it('K30-45: loadingPct=120 → red chip + overload overlay (THERMAL OVERLOAD)', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-ov"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 200, y: 0 }]}
+          loadingPct={120}
+        />
+      </svg>,
+    );
+    const chip = container.querySelector('[data-testid="sld-v2-run-r-ov-loading-chip"]');
+    expect(chip?.getAttribute('data-loading-class')).toBe('overload');
+    expect(chip?.querySelector('rect')?.getAttribute('fill')).toBe('#FF333D');
+    // Overload overlay path
+    expect(container.querySelector('[data-testid="sld-v2-run-r-ov-overload-overlay"]')).toBeTruthy();
+  });
+
+  it('K30-45: loadingPct ≤ 100 → brak overload overlay', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-100"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 200, y: 0 }]}
+          loadingPct={95}
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-run-r-100-overload-overlay"]')).toBeFalsy();
+  });
+
+  it('K30-45: brak loadingPct → brak loading chip (back-compat)', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-no-load"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 200, y: 0 }]}
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-run-r-no-load-loading-chip"]')).toBeFalsy();
+  });
+
+  it('K30-45: missingEndpointPort → loading chip pomijany (warning override)', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-miss"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 200, y: 0 }]}
+          loadingPct={50}
+          missingEndpointPort
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-run-r-miss-loading-chip"]')).toBeFalsy();
+  });
 });
 
 describe('StationOnRunRenderer', () => {
@@ -1189,6 +1289,120 @@ describe('StationOnRunRenderer', () => {
     const right = container.querySelector('[data-testid="sld-v2-station-bus-end-right-st-term"]');
     expect(left?.getAttribute('stroke')).toBe('#E74C3C');
     expect(right?.getAttribute('stroke')).toBe('#E74C3C');
+  });
+
+  it('K30-44: voltageDeviationPct=1.0 → ring green (OK ≤ 2%)', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-ok"
+          x={0}
+          y={0}
+          name="ST-OK"
+          topologicalType="końcowa"
+          stationCode="S01"
+          voltageDeviationPct={1.0}
+        />
+      </svg>,
+    );
+    const code = container.querySelector('[data-testid="sld-v2-station-code-st-ok"]');
+    expect(code?.getAttribute('data-voltage-deviation-class')).toBe('ok');
+    expect(code?.querySelector('rect')?.getAttribute('stroke')).toBe('#13C45A');
+  });
+
+  it('K30-44: voltageDeviationPct=3.5 → ring amber (warn 2-5%)', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-w"
+          x={0}
+          y={0}
+          name="ST"
+          topologicalType="końcowa"
+          stationCode="S02"
+          voltageDeviationPct={3.5}
+        />
+      </svg>,
+    );
+    const code = container.querySelector('[data-testid="sld-v2-station-code-st-w"]');
+    expect(code?.getAttribute('data-voltage-deviation-class')).toBe('warn');
+    expect(code?.querySelector('rect')?.getAttribute('stroke')).toBe('#FFD166');
+  });
+
+  it('K30-44: voltageDeviationPct=-7.5 → ring orange (significant 5-10%, sign-aware)', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-s"
+          x={0}
+          y={0}
+          name="ST"
+          topologicalType="końcowa"
+          stationCode="S03"
+          voltageDeviationPct={-7.5}
+        />
+      </svg>,
+    );
+    const code = container.querySelector('[data-testid="sld-v2-station-code-st-s"]');
+    expect(code?.getAttribute('data-voltage-deviation-class')).toBe('significant');
+    expect(code?.querySelector('rect')?.getAttribute('stroke')).toBe('#FF8B5C');
+  });
+
+  it('K30-44: voltageDeviationPct=12 → ring red (out-of-spec >10% PN-EN 50160)', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-os"
+          x={0}
+          y={0}
+          name="ST"
+          topologicalType="końcowa"
+          stationCode="S04"
+          voltageDeviationPct={12}
+        />
+      </svg>,
+    );
+    const code = container.querySelector('[data-testid="sld-v2-station-code-st-os"]');
+    expect(code?.getAttribute('data-voltage-deviation-class')).toBe('out-of-spec');
+    expect(code?.querySelector('rect')?.getAttribute('stroke')).toBe('#FF6B6B');
+  });
+
+  it('K30-44: voltageDeviationPct renderuje ΔU label "+3.5%" / "-7.5%"', () => {
+    const { container, getByText } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-lab"
+          x={0}
+          y={0}
+          name="ST"
+          topologicalType="końcowa"
+          stationCode="S05"
+          voltageDeviationPct={3.5}
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-station-vdev-st-lab"]')).toBeTruthy();
+    expect(getByText('ΔU +3.5%')).toBeInTheDocument();
+  });
+
+  it('K30-44: brak voltageDeviationPct → ring default cyan (back-compat K30-4)', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-d"
+          x={0}
+          y={0}
+          name="ST"
+          topologicalType="końcowa"
+          stationCode="S06"
+        />
+      </svg>,
+    );
+    const code = container.querySelector('[data-testid="sld-v2-station-code-st-d"]');
+    expect(code?.getAttribute('data-voltage-deviation-class')).toBe('none');
+    expect(code?.querySelector('rect')?.getAttribute('stroke')).toBe('#7EC8FF');
+    // Brak ΔU label
+    expect(container.querySelector('[data-testid="sld-v2-station-vdev-st-d"]')).toBeFalsy();
   });
 });
 
