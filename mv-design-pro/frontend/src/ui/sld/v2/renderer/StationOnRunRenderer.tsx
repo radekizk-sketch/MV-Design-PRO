@@ -71,6 +71,12 @@ export interface StationOnRunRendererProps {
    *  Domyślnie wszystko 'closed' (back-compat z testami).
    */
   readonly switchStateByColumn?: ReadonlyArray<'closed' | 'open' | 'unknown'>;
+  /** K30-8: alarm summary indicator — gdy stacja ma WARNING/IMPORTANT/CRITICAL
+   *  z overlay (np. SC_3F Ik" > threshold), pokazuj alarm icon przy code badge.
+   *  Wartość: 'critical' (red triangle), 'important' (orange), 'warning' (amber).
+   *  null/undefined = brak alarmu (no overlay icon).
+   */
+  readonly alarmSeverity?: 'warning' | 'important' | 'critical' | null;
 }
 
 const TYPE_TO_LABEL_PL: Record<StationOnRunRendererProps['topologicalType'], string> = {
@@ -109,6 +115,7 @@ export function StationOnRunRenderer(props: StationOnRunRendererProps): JSX.Elem
         footprintType={footprintType}
         name={props.name}
         stationCode={props.stationCode ?? null}
+        alarmSeverity={props.alarmSeverity ?? null}
         snBays={props.snBays ?? []}
         hasTransformer={props.hasTransformer ?? true}
         transformerRatedKva={props.transformerRatedKva ?? null}
@@ -135,7 +142,7 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
   const {
     id, x, y, name, topologicalType, nnVoltageLevelsCount,
     selected, onClick, onDoubleClick, missingData, isNop, distanceFromGpzKm,
-    transformerRatedKva, stationCode, switchStateByColumn,
+    transformerRatedKva, stationCode, switchStateByColumn, alarmSeverity,
   } = props;
   const connectionXs = connectionColumns(topologicalType);
   const voltageLabel = nnVoltageLevelsCount && nnVoltageLevelsCount > 1
@@ -295,6 +302,20 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
             </text>
           </g>
         ) : null;
+      })()}
+
+      {/* K30-8: alarm summary triangle obok code badge gdy stacja ma WARNING/IMPORTANT/CRITICAL */}
+      {alarmSeverity && (() => {
+        const color = alarmSeverity === 'critical' ? '#FF6B6B' : alarmSeverity === 'important' ? '#FF8B5C' : '#FFD166';
+        const symbol = alarmSeverity === 'critical' ? '!' : alarmSeverity === 'important' ? '!' : '⚠';
+        return (
+          <g data-testid={`sld-v2-station-alarm-${id}`} data-alarm-severity={alarmSeverity} transform={`translate(36, ${LABEL_Y - 5})`}>
+            <polygon points={`0,-14 12,7 -12,7`} fill={color} stroke="#0A0E14" strokeWidth={1.2} />
+            <text x={0} y={4} textAnchor="middle" fill="#0A0E14" fontFamily={FONT_SANS} fontSize={13} fontWeight={900}>
+              {symbol}
+            </text>
+          </g>
+        );
       })()}
       <text
         x={0}

@@ -86,6 +86,8 @@ export interface MiniBlockRmuRendererProps {
   readonly name: string;
   /** K30-4: short station code (S01, S15, S29). Prominent badge. */
   readonly stationCode?: string | null;
+  /** K30-8: alarm severity (CRITICAL/IMPORTANT/WARNING). */
+  readonly alarmSeverity?: 'warning' | 'important' | 'critical' | null;
   readonly snBays: readonly MiniBlockBayDescriptor[];
   readonly hasTransformer: boolean;
   readonly transformerRatedKva: number | null;
@@ -239,6 +241,19 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
             </text>
           </g>
         ) : null;
+      })()}
+
+      {/* K30-8: alarm triangle obok code badge (mini block layout) */}
+      {props.alarmSeverity && (() => {
+        const color = props.alarmSeverity === 'critical' ? '#FF6B6B' : props.alarmSeverity === 'important' ? '#FF8B5C' : '#FFD166';
+        return (
+          <g data-testid={`sld-v2-mini-station-alarm-${props.id}`} data-alarm-severity={props.alarmSeverity} transform={`translate(26, ${labelNameY - 4})`}>
+            <polygon points="0,-11 9,5 -9,5" fill={color} stroke="#0A0E14" strokeWidth={1} />
+            <text x={0} y={3} textAnchor="middle" fill="#0A0E14" fontFamily={FONT_SANS} fontSize={10} fontWeight={900}>
+              !
+            </text>
+          </g>
+        );
       })()}
       <text
         x={0}

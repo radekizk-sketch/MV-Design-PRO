@@ -48,6 +48,7 @@ import {
 } from '../renderer/StationOnRunRenderer';
 import { miniBlockStationPortOffsets } from '../renderer/MiniBlockRmuRenderer';
 import { ResultOverlayLayer } from './ResultOverlayLayer';
+import { useRawResultOverlayStore, type RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import type { SldElementKindForMenu } from '../command/SldCommandService';
 
 export type SldElementContextKind = SldElementKindForMenu;
@@ -208,6 +209,9 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     selectedId, lodOverride, layerVisibility,
     onSelectElement, onDoubleClickStation, onDoubleClickDer, onContextMenu, onViewportTransformChange,
   } = props;
+
+  // K30-8: subskrybuj raw overlay payload by compute per-station alarm severity.
+  const overlayPayload = useRawResultOverlayStore((state) => state.payload);
 
   const [transform, setTransform] = useState<ViewportTransform>(IDENTITY_TRANSFORM);
   const isDraggingRef = useRef(false);
@@ -643,6 +647,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
             >
               <StationOnRunRenderer
                 {...st}
+                alarmSeverity={st.alarmSeverity ?? computeStationAlarmSeverity(st, overlayPayload)}
                 lod={stationLod}
                 selected={selectedId === st.id}
                 onClick={onSelectElement ? (id) => onSelectElement(id, 'station') : undefined}
@@ -802,4 +807,40 @@ function stationUsesMiniBlockRenderer(
   currentLod: LodLevel,
 ): boolean {
   return currentLod < 3 && station.snBays !== undefined;
+}
+
+
+/**
+ * K30-8: compute alarm severity per station z overlay payload.
+ * Patrzy na bus SN ref (mapping station_id → sn_bus_ref) + sprawdza
+ * thresholds (Ik > 25 kA → critical, > 20 → important, > 15 → warning).
+ * Returns null gdy brak alarm.
+ */
+function computeStationAlarmSeverity(
+  station: StationOnRunRendererProps,
+  payload: RawOverlayPayload | null,
+): 'warning' | 'important' | 'critical' | null {
+  if (!payload) return null;
+  const snBusRef = station.id.endsWith('/station')
+    ? `${station.id.slice(0, -'/station'.length)}/sn_bus`
+    : `${station.id}/sn_bus`;
+  const el = payload.elements[snBusRef];
+  if (!el) return null;
+  const analysisType = payload.analysis_type;
+  const isSc3F = analysisType?.toLowerCase().includes('short_circuit') || analysisType === 'SC_3F';
+  if (isSc3F) {
+    const ik = el.metrics?.IK_3F_A?.value;
+    if (ik === null || ik === undefined) return null;
+    if (ik > 25) return 'critical';
+    if (ik > 20) return 'important';
+    if (ik > 15) return 'warning';
+  } else {
+    const u = el.metrics?.U_kV?.value;
+    if (u === null || u === undefined) return null;
+    const pu = Math.abs(u / 15 - 1);
+    if (pu > 0.1) return 'critical';
+    if (pu > 0.07) return 'important';
+    if (pu > 0.05) return 'warning';
+  }
+  return null;
 }
