@@ -186,13 +186,15 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
       }
       style={{ cursor: props.onClick ? 'pointer' : 'default' }}
     >
+      {/* K30-30: usunięty dim "klocki" background — zamiast tła robimy
+       *  hit-area transparent z zachowaniem stroke (visible tylko gdy selected). */}
       <rect
         x={offsetX}
         y={offsetY}
         width={width}
         height={height}
         fill={COLOR_PANEL_RAISED}
-        opacity={props.selected || isBlocker ? 0.18 : 0.04}
+        opacity={props.selected || isBlocker ? 0.18 : 0}
         stroke={stroke}
         strokeWidth={strokeWidth}
         rx={4}
@@ -223,13 +225,48 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
       )}
 
       {variant === 'detail' && props.hasTransformer && (
-        <TransformerTriangle
-          cx={0}
-          cy={showPvCircuit ? 2 : 6}
-          ratedKva={props.transformerRatedKva}
-          stationId={props.id}
-          onSymbolClick={handleSymbolClick}
-        />
+        <>
+          {/* K30-30: explicit electrical connections per IEC 60617:
+           *  SN bus → TR primary (dropline)
+           *  TR secondary → LV bus (dropline)
+           *  Bez tych lini schematy wyglądały jak floating boxes.
+           *  TR circles cy=trCy, r=8, so top=trCy-8, bottom=trCy+8. */}
+          {(() => {
+            const trCy = showPvCircuit ? 2 : 6;
+            const lvBusY = showPvCircuit ? 22 : 16;
+            const trTop = trCy - 8;
+            const trBottom = trCy + 8;
+            return (
+              <g data-testid={`sld-v2-mini-rmu-tr-connections-${props.id}`}>
+                <line
+                  x1={0}
+                  y1={busY}
+                  x2={0}
+                  y2={trTop}
+                  stroke="#4EC9B0"
+                  strokeWidth={2}
+                  data-parity-key="station.mini.tr.primary_lead"
+                />
+                <line
+                  x1={0}
+                  y1={trBottom}
+                  x2={0}
+                  y2={lvBusY}
+                  stroke="#4EC9B0"
+                  strokeWidth={2}
+                  data-parity-key="station.mini.tr.secondary_lead"
+                />
+              </g>
+            );
+          })()}
+          <TransformerTriangle
+            cx={0}
+            cy={showPvCircuit ? 2 : 6}
+            ratedKva={props.transformerRatedKva}
+            stationId={props.id}
+            onSymbolClick={handleSymbolClick}
+          />
+        </>
       )}
 
       {showPvCircuit && (
@@ -755,16 +792,9 @@ function LvSectionRow(props: LvSectionRowProps): JSX.Element {
           />
         </g>
       ))}
-      <text
-        x={offsetX + width - 18}
-        y={rowY + 13}
-        textAnchor="end"
-        fill={COLOR_TEXT_SECONDARY}
-        fontFamily={FONT_SANS}
-        fontSize={10}
-      >
-        {feedersCount > 0 ? `${feedersCount}× nN` : 'nN'}
-      </text>
+      {/* K30-30: usunięte floating "Nx nN" tekst label — redundant z
+       *  per-feeder droplines (visible per-icon) + zielony "Nn" badge
+       *  obok station code. Mniej clutter. */}
     </g>
   );
 }
