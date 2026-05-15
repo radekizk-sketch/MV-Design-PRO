@@ -32,6 +32,7 @@ from api.sld import router as sld_router
 from api.sld_overrides import router as sld_overrides_router
 from api.solver_capabilities import router as solver_capabilities_router
 from api.solver_input import router as solver_input_router
+from api.station_templates import router as station_templates_router
 from api.study_cases import router as study_cases_router
 from api.switchgear_config import router as switchgear_config_router
 from api.xlsx_import import router as xlsx_import_router
@@ -114,6 +115,7 @@ app.include_router(protection_comparisons_router)
 app.include_router(protection_analysis_runs_router, prefix="/api")
 app.include_router(reference_patterns_router)
 app.include_router(sld_router)
+app.include_router(station_templates_router)
 app.include_router(study_cases_router)
 app.include_router(xlsx_import_router)
 app.include_router(enm_router)
