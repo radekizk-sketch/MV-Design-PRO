@@ -131,10 +131,10 @@ describe('ResultOverlayLayer — K30-6 result overlay', () => {
     const layer = container.querySelector('[data-testid="sld-v2-result-overlay-layer"]');
     expect(layer?.getAttribute('data-analysis-type')).toBe('LOAD_FLOW');
     const html = container.innerHTML;
-    // K30-52: format zmieniony na "U=X.XXkV ±Y.Y°" single-line compact
-    expect(html).toContain('14.50');
-    expect(html).toContain('-1.2');
-    expect(html).toContain('13.00');
+    // K30-55 Phase F: IEC format z polskim przecinkiem "U=14,50 kV ∠ -1,2°"
+    expect(html).toContain('14,50');
+    expect(html).toContain('-1,2');
+    expect(html).toContain('13,00');
   });
 
   it('renderuje legendę z tytułem analysis_type', () => {

@@ -246,7 +246,8 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
               <>
                 {uKv && (
                   <text x={0} y={6} textAnchor="middle" fill={color} fontFamily="monospace" fontSize={10} fontWeight={800}>
-                    {`U=${uKv.value?.toFixed(2) ?? '—'}kV ${angleDeg?.value != null ? (angleDeg.value >= 0 ? `+${angleDeg.value.toFixed(1)}` : angleDeg.value.toFixed(1)) + '°' : ''}`}
+                    {/* K30-55 Phase F: IEC format "U=14,95 kV ∠ -0,1°" (Polish comma decimal + angle symbol). */}
+                    {`U=${uKv.value?.toFixed(2).replace('.', ',') ?? '—'} kV${angleDeg?.value != null ? ` ∠ ${angleDeg.value >= 0 ? '+' : ''}${angleDeg.value.toFixed(1).replace('.', ',')}°` : ''}`}
                   </text>
                 )}
               </>
@@ -295,25 +296,44 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
             ? deriveOperationalSeverity(true, ik3fBranch?.value ?? null)
             : deriveOperationalSeverity(false, iA?.value ?? null, 400 /* nominal cable ampacity ref */);
           const branchColor = severityColor(branchSeverity);
+          // K30-55 Phase A: pełen LF readout P+jQ + I_A z direction sign.
+          // Real industrial format zgodny z IEC 61850 PTOC visualization.
+          const pVal = pMw?.value;
+          const qVal = qMvar?.value;
+          const iVal = iA?.value;
+          const directionArrow = (typeof pVal === 'number' && pVal < 0) ? '←' : (typeof pVal === 'number' && pVal > 0) ? '→' : '';
           return (
             <g
               key={`branch-overlay-${sp.segmentRef}`}
               data-testid={`sld-v2-branch-overlay-${sp.segmentRef}`}
               transform={`translate(${midX}, ${midY + 26})`}
             >
-              <rect x={-44} y={-9} width={88} height={18} rx={3} ry={3} fill="#0A0E14" stroke={branchColor} strokeWidth={1.2} opacity={0.92} />
               {isSc3F && ik3fBranch ? (
-                <text x={0} y={4} textAnchor="middle" fill={branchColor} fontFamily={FONT_SANS} fontSize={11} fontWeight={700}>
-                  {`Ik″ ${formatMetric(ik3fBranch)}`}
-                </text>
-              ) : pMw && qMvar ? (
-                <text x={0} y={4} textAnchor="middle" fill={branchColor} fontFamily={FONT_SANS} fontSize={10} fontWeight={700}>
-                  {`P ${pMw.value?.toFixed(2)}MW`}
-                </text>
-              ) : iA ? (
-                <text x={0} y={4} textAnchor="middle" fill={branchColor} fontFamily={FONT_SANS} fontSize={11} fontWeight={700}>
-                  {`I ${formatMetric(iA)}`}
-                </text>
+                <>
+                  <rect x={-44} y={-9} width={88} height={18} rx={3} ry={3} fill="#0A0E14" stroke={branchColor} strokeWidth={1.2} opacity={0.92} />
+                  <text x={0} y={4} textAnchor="middle" fill={branchColor} fontFamily="monospace" fontSize={10} fontWeight={700}>
+                    {`Ik″ ${formatMetric(ik3fBranch)}`}
+                  </text>
+                </>
+              ) : (typeof pVal === 'number' || typeof iVal === 'number') ? (
+                <>
+                  <rect x={-58} y={-22} width={116} height={42} rx={3} ry={3} fill="#0A0E14" stroke={branchColor} strokeWidth={1.2} opacity={0.94} />
+                  {typeof pVal === 'number' && (
+                    <text x={0} y={-9} textAnchor="middle" fill={branchColor} fontFamily="monospace" fontSize={10} fontWeight={800}>
+                      {`P=${Math.abs(pVal).toFixed(2)} MW ${directionArrow}`}
+                    </text>
+                  )}
+                  {typeof qVal === 'number' && (
+                    <text x={0} y={4} textAnchor="middle" fill="#FFD166" fontFamily="monospace" fontSize={9} fontWeight={700}>
+                      {`Q=${qVal >= 0 ? '+' : ''}${qVal.toFixed(2)} Mvar`}
+                    </text>
+                  )}
+                  {typeof iVal === 'number' && iVal > 0 && (
+                    <text x={0} y={16} textAnchor="middle" fill="#DDF7FF" fontFamily="monospace" fontSize={9} fontWeight={600}>
+                      {`I=${iVal.toFixed(0)} A`}
+                    </text>
+                  )}
+                </>
               ) : null}
             </g>
           );
