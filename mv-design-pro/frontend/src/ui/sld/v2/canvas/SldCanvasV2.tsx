@@ -40,6 +40,7 @@ import {
   SldShortCircuitOverlay,
   type SldShortCircuitProjection,
 } from './SldShortCircuitOverlay';
+import { computeLfDerivedMetrics } from './lfDerivedMetrics';
 import { DEFAULT_SNAP_STATE } from '../viewport/Snap';
 import { ConnectionRenderer } from '../renderer/ConnectionRenderer';
 import { DerRenderer, type DerRendererProps } from '../renderer/DerRenderer';
@@ -235,6 +236,11 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
 
   // K30-8: subskrybuj raw overlay payload by compute per-station alarm severity.
   const overlayPayload = useRawResultOverlayStore((state) => state.payload);
+
+  // K30-49: derive LF metrics — voltage deviation per station + cable loading.
+  // Wynik feedowany do StationOnRunRenderer (voltageDeviationPct) i
+  // CableRunRenderer (loadingPct) jako data-driven projekcje K30-44/K30-45.
+  const lfDerived = computeLfDerivedMetrics(overlayPayload, props.stations, props.cableRuns);
 
   // K30-11: aggregate station alarm summary (count of severities).
   const alarmSummary = (() => {
@@ -645,6 +651,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                   {...run}
                   stationPortGaps={buildStationPortGapsForRun(run, stations, lod)}
                   selected={selectedId === run.id}
+                  loadingPct={lfDerived.cableLoadingPctByRunId.get(run.id) ?? null}
                   onClick={onSelectElement ? (id) => onSelectElement(id, 'cable_run') : undefined}
                 />
               </g>
@@ -685,6 +692,11 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
               <StationOnRunRenderer
                 {...st}
                 alarmSeverity={st.alarmSeverity ?? computeStationAlarmSeverity(st, overlayPayload)}
+                voltageDeviationPct={
+                  st.voltageDeviationPct
+                    ?? lfDerived.voltageDeviationPctByStationId.get(st.id)
+                    ?? null
+                }
                 lod={stationLod}
                 selected={selectedId === st.id}
                 onClick={onSelectElement ? (id) => onSelectElement(id, 'station') : undefined}
