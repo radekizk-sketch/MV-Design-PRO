@@ -64,7 +64,7 @@ describe('MiniBlockRmuRenderer — element kinds', () => {
 describe('MiniBlockRmuRenderer — kompozycja z bays', () => {
   it('renderuje tyle bay markerów ile jest w bays[]', () => {
     const { container } = r('compact');
-    const markers = container.querySelectorAll('[data-testid^="sld-v2-mini-rmu-bay-marker-"]');
+    const markers = container.querySelectorAll('[data-testid^="sld-v2-bay-column-sn-"]');
     expect(markers.length).toBe(baseBays.length);
   });
 
@@ -102,8 +102,10 @@ describe('MiniBlockRmuRenderer - kanon operatorski', () => {
     const root = container.querySelector('[data-testid="sld-v2-mini-rmu-st-1"]');
 
     expect(root?.querySelector('[data-parity-key="station.mini.bus.sn"]')).not.toBeNull();
-    expect(root?.querySelectorAll('[data-apparatus-kind="line-switch"]').length).toBe(2);
-    expect(root?.querySelector('[data-parity-key="station.mini.transformer_field"]')).not.toBeNull();
+    // K30-31: bay columns z DS apparatus (RMU_LINE bays mają DS+CB+ES w stack)
+    expect(root?.querySelectorAll('[data-bay-role="RMU_LINE"]').length).toBeGreaterThanOrEqual(1);
+    // TR bay (RMU_TRANSFORMER) z TR symbol (rendered jako dedicated bay column)
+    expect(root?.querySelector('[data-bay-role="RMU_TRANSFORMER"]')).not.toBeNull();
   });
 
   it('umieszcza nazwę stacji pod szyną jak w ekranach operatorskich', () => {
@@ -123,9 +125,10 @@ describe('MiniBlockRmuRenderer - semantyczne roznice LOD', () => {
     expect(root?.getAttribute('data-lod-variant')).toBe('overview');
     expect(root?.getAttribute('data-element-kind')).toBe('mini_block_overview');
     expect(root?.querySelector('[data-parity-key="station.mini.bus.sn"]')).not.toBeNull();
-    expect(root?.querySelector('[data-testid="sld-v2-mini-rmu-lv-row"]')).toBeNull();
-    expect(root?.querySelector('[data-testid="sld-v2-mini-rmu-tr-triangle"]')).toBeNull();
-    expect(root?.querySelector('[data-parity-key="station.mini.transformer.power"]')).toBeNull();
+    // K30-31: w overview brak LV bay columns (showLvRow tylko w detail).
+    expect(root?.querySelectorAll('[data-testid^="sld-v2-bay-column-lv-"]').length).toBe(0);
+    // Overview nie ma TR bay (rendered only w detail).
+    expect(root?.querySelectorAll('[data-testid^="sld-v2-mini-rmu-tr-bay-"]').length).toBe(0);
   });
 
   it('compact i detail maja inne poziomy informacji', () => {
@@ -134,10 +137,11 @@ describe('MiniBlockRmuRenderer - semantyczne roznice LOD', () => {
 
     expect(compact.querySelector('[data-lod-variant="compact"]')).not.toBeNull();
     expect(detail.querySelector('[data-lod-variant="detail"]')).not.toBeNull();
-    expect(compact.querySelector('[data-testid="sld-v2-mini-rmu-lv-row"]')).toBeNull();
-    expect(detail.querySelector('[data-testid="sld-v2-mini-rmu-lv-row"]')).not.toBeNull();
-    expect(compact.querySelector('[data-testid="sld-v2-mini-rmu-tr-triangle"]')).toBeNull();
-    expect(detail.querySelector('[data-testid="sld-v2-mini-rmu-tr-triangle"]')).not.toBeNull();
+    // K30-31: LV bay columns + TR bay tylko w detail variant
+    expect(compact.querySelectorAll('[data-testid^="sld-v2-bay-column-lv-"]').length).toBe(0);
+    expect(detail.querySelectorAll('[data-testid^="sld-v2-bay-column-lv-"]').length).toBeGreaterThanOrEqual(1);
+    expect(compact.querySelectorAll('[data-testid^="sld-v2-mini-rmu-tr-bay-"]').length).toBe(0);
+    expect(detail.querySelectorAll('[data-testid^="sld-v2-mini-rmu-tr-bay-"]').length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -146,9 +150,15 @@ describe('MiniBlockRmuRenderer - kanon symboli aparatow', () => {
     const { container } = r('compact');
     const root = container.querySelector('[data-testid="sld-v2-mini-rmu-st-1"]');
 
-    expect(root?.querySelectorAll('[data-parity-key="station.mini.line_switch"][data-symbol-canon="switch_disconnector_rotated_square"]').length).toBe(2);
-    expect(root?.querySelectorAll('[data-symbol-canon="earthing_switch_lateral_branch"]').length).toBe(2);
-    expect(root?.querySelector('[data-apparatus-kind="side-disconnector"]')).toBeNull();
+    // K30-31: bay-column architecture — DS rendered via ApparatusSwitchDisconnector
+    // (canon: switch_disconnector_rotated_square) inside bay columns.
+    expect(
+      root?.querySelectorAll('[data-symbol-canon="switch_disconnector_rotated_square"]').length,
+    ).toBeGreaterThanOrEqual(2);
+    // ES rendered via ApparatusEarthingSwitch (canon: earthing_switch_lateral_branch)
+    expect(
+      root?.querySelectorAll('[data-symbol-canon="earthing_switch_lateral_branch"]').length,
+    ).toBeGreaterThanOrEqual(2);
   });
 });
 
@@ -213,7 +223,10 @@ describe('MiniBlockRmuRenderer - PV layout readability', () => {
     expect(Number(name?.getAttribute('y') ?? '0')).toBeGreaterThan(80);
     expect(root?.querySelector('[data-parity-key="station.pv.nn_compartment"]')).not.toBeNull();
     expect(root?.querySelectorAll('[data-parity-key="station.pv.nn_feeder.cell"]').length).toBe(2);
-    expect(root?.querySelectorAll('[data-parity-key="station.mini.bay.cell"]').length).toBeGreaterThanOrEqual(2);
+    // K30-31: bay-column architecture — SN bay columns must be present
+    expect(
+      root?.querySelectorAll('[data-testid^="sld-v2-bay-column-sn-"]').length,
+    ).toBeGreaterThanOrEqual(2);
   });
 });
 

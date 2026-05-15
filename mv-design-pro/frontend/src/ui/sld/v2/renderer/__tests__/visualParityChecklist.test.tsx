@@ -49,18 +49,18 @@ const REQUIRED_GPZ_PARITY_KEYS = [
   'gpz.section.label',
 ] as const;
 
+// K30-31: bay-column architecture parity keys. Legacy
+// (sn_row/bay/line_switch/transformer_field/lv_row/transformer) replaced z
+// bay column components (BayColumnSn / BayColumnLv) + ApparatusTransformerSymbol.
 const REQUIRED_MINI_RMU_PARITY_KEYS = [
   'station.mini.root',
   'station.mini.body',
   'station.mini.name',
   'station.mini.type',
-  'station.mini.sn_row',
   'station.mini.bus.sn',
-  'station.mini.bay',
-  'station.mini.line_switch',
-  'station.mini.transformer_field',
-  'station.mini.lv_row',
-  'station.mini.transformer',
+  'station.mini.bus.lv',
+  'station.mini.tr.primary_lead',
+  'station.mini.tr.secondary_lead',
   'station.mini.der_badges',
   'station.mini.der_badge',
   'station.mini.missing',

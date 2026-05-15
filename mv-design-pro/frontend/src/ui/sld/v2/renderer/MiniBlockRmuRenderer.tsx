@@ -12,7 +12,6 @@ import {
   COLOR_BUS_LV,
   COLOR_DEVICE_CLOSED,
   COLOR_DEVICE_CLOSED_BORDER,
-  COLOR_DEVICE_OPEN,
   COLOR_LINE_PRIMARY,
   COLOR_PANEL_RAISED,
   COLOR_SELECTION,
@@ -28,6 +27,14 @@ import {
   MINI_BLOCK_FOOTPRINT,
   type StationFootprintType,
 } from './MiniBlockFootprints';
+import { BayColumnLv } from './BayColumnLv';
+import { BayColumnSn } from './BayColumnSn';
+import {
+  computeMiniBlockLayout,
+  getVariantApparatusGap,
+  getVariantApparatusHeight,
+} from './MiniBlockBayLayout';
+import { ApparatusTransformerSymbol } from './GpzApparatusSymbols';
 
 // =============================================================================
 // Constants
@@ -42,30 +49,14 @@ const DETAIL_HEIGHT = 164;
 const DETAIL_DER_WIDTH = 340;
 const DETAIL_DER_HEIGHT = 280;
 
-const FIELD_TOP_LEAD = 38;
-const FIELD_DEVICE_CENTER_ABOVE_BUS = 20;
+// K30-19/31: variant-aware device sizing now via getVariantApparatusHeight()
+// w MiniBlockBayLayout. DER + blocker colors local konstantami.
 
-// K30-19: variant-aware device sizing per IEC 60617-5 industrial scaling.
-// Previous hardcoded FIELD_DEVICE_SIZE=11 (22×22 px) too small dla LOD2/LOD3.
-// New scaling: overview compact dla fit-to-screen, detail scaled-up dla
-// engineering readability.
-const FIELD_DEVICE_SIZE_BY_VARIANT: Record<'overview' | 'compact' | 'detail', number> = {
-  overview: 9,
-  compact: 13,
-  detail: 17,
-};
-const SECTION_BAR_HEIGHT = 4;
-
-const COLOR_TR_TRIANGLE = '#A5C8FF';
-const COLOR_MEASUREMENT = '#FFB020';
 const COLOR_DER_PV = '#FFC857';
 const COLOR_DER_BESS = '#5BB8FF';
 const COLOR_DER_FW = '#5BFFD9';
-const COLOR_MISSING = '#FFC857';
 const COLOR_BLOCKER = '#FF5560';
 const COLOR_SCADA_SHADOW = '#05070A';
-const COLOR_BAY_CELL = '#0A1720';
-const COLOR_BAY_CELL_STROKE = '#17435A';
 
 type SymbolClickHandler = (elementId: string) => (e: MouseEvent<SVGGElement>) => void;
 
@@ -122,9 +113,8 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
   const { width, height } = miniBlockDimensions(variant, showPvCircuit);
   const offsetX = -width / 2;
   const offsetY = -height / 2;
-  const busY = variant === 'overview' ? -8 : variant === 'compact' ? -10 : showPvCircuit ? -34 : -22;
-  const visibleSnBays = variant === 'overview' ? props.snBays.slice(0, 4) : props.snBays;
-  const showLvRow = variant === 'detail' && MINI_BLOCK_FOOTPRINT[props.footprintType].hasLvSection;
+  // K30-31: busY/visibleSnBays/showLvRow now computed wewnątrz
+  // computeMiniBlockLayout — used by bay-column refactor below.
   const labelNameY = variant === 'overview'
     ? 18
     : variant === 'compact'
@@ -202,72 +192,140 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         data-parity-key="station.mini.body"
       />
 
-      {!isBlocker && (
-        <SnBusRow
-          offsetX={offsetX}
-          width={width}
-          rowY={busY}
-          bays={visibleSnBays}
-          stationId={props.id}
-          variant={variant}
-          onSymbolClick={handleSymbolClick}
-        />
-      )}
+      {/* K30-31: bay-column architecture per IEC 60617.
+       *  Replaces SnBusRow + LvSectionRow + TransformerTriangle floating
+       *  layout z proper bay-column structure: bus → bay columns → TR bay
+       *  → LV bus → feeder columns. User K30-29 (1/10) feedback eliminated. */}
+      {!isBlocker && (() => {
+        const layout = computeMiniBlockLayout(
+          variant,
+          props.snBays,
+          props.hasTransformer,
+          variant === 'detail' && MINI_BLOCK_FOOTPRINT[props.footprintType].hasLvSection ? props.nnFeedersCount : 0,
+          showPvCircuit,
+        );
+        const trBayX = layout.trColumn?.x ?? 0;
+        return (
+          <g data-testid={`sld-v2-mini-rmu-bay-layout-${props.id}`}>
+            {/* SN busbar — horizontal line connecting tops of all bay columns */}
+            <line
+              x1={layout.busLeft}
+              y1={layout.busY}
+              x2={layout.busRight}
+              y2={layout.busY}
+              stroke={COLOR_BUS_LV}
+              strokeWidth={STROKE_BUSBAR_PX + 1}
+              strokeLinecap="butt"
+              data-parity-key="station.mini.bus.sn"
+            />
 
-      {showLvRow && (
-        <LvSectionRow
-          offsetX={offsetX}
-          width={width}
-          rowY={showPvCircuit ? 22 : 16}
-          feedersCount={props.nnFeedersCount}
-          hasTransformer={props.hasTransformer}
-        />
-      )}
+            {/* SN bay columns — vertical stacks z apparatus per IEC 60617 */}
+            {layout.snColumns.map((col) => (
+              <BayColumnSn
+                key={col.bay.bayRef}
+                x={col.x}
+                busY={layout.busY}
+                bayRole={col.bay.fieldRole}
+                bayRef={col.bay.bayRef}
+                designation={col.bay.designation}
+                apparatusStack={col.apparatusStack}
+                variant={variant}
+                stationId={props.id}
+                hasMissing={col.bay.hasMissingRequiredDevice}
+                onSymbolClick={handleSymbolClick}
+              />
+            ))}
 
-      {variant === 'detail' && props.hasTransformer && (
-        <>
-          {/* K30-30: explicit electrical connections per IEC 60617:
-           *  SN bus → TR primary (dropline)
-           *  TR secondary → LV bus (dropline)
-           *  Bez tych lini schematy wyglądały jak floating boxes.
-           *  TR circles cy=trCy, r=8, so top=trCy-8, bottom=trCy+8. */}
-          {(() => {
-            const trCy = showPvCircuit ? 2 : 6;
-            const lvBusY = showPvCircuit ? 22 : 16;
-            const trTop = trCy - 8;
-            const trBottom = trCy + 8;
-            return (
-              <g data-testid={`sld-v2-mini-rmu-tr-connections-${props.id}`}>
+            {/* TR symbol (dedicated rendering z bay column above + explicit
+             *  vertical leads bus → TR primary, TR secondary → LV bus). */}
+            {variant === 'detail' && props.hasTransformer && layout.trCenterY != null && (() => {
+              const trCy = layout.trCenterY;
+              // ApparatusTransformerSymbol z hardcoded r=5, gap=4 — total height ≈ 18px
+              const trTop = trCy - 9;
+              const trBottom = trCy + 9;
+              // Find bottom of TR bay apparatus stack
+              const trBayCol = layout.snColumns.find((c) => c.isTransformerBay) ?? layout.snColumns[layout.snColumns.length - 1];
+              const stackBottomY =
+                trBayCol == null
+                  ? layout.busY + 4
+                  : layout.busY + 4 + trBayCol.apparatusStack.length *
+                    (getVariantApparatusHeight(variant) + getVariantApparatusGap(variant)) -
+                    getVariantApparatusGap(variant);
+              return (
+                <g data-testid={`sld-v2-mini-rmu-tr-bay-${props.id}`}>
+                  {/* Lead from TR bay stack bottom → TR primary terminal */}
+                  <line
+                    x1={trBayX}
+                    y1={stackBottomY}
+                    x2={trBayX}
+                    y2={trTop}
+                    stroke={COLOR_BUS_LV}
+                    strokeWidth={STROKE_FIELD_TRACK_PX}
+                    data-parity-key="station.mini.tr.primary_lead"
+                  />
+                  {/* TR symbol (2 circles) */}
+                  <ApparatusTransformerSymbol cx={trBayX} cy={trCy} />
+                  {/* Lead from TR secondary → LV bus */}
+                  <line
+                    x1={trBayX}
+                    y1={trBottom}
+                    x2={trBayX}
+                    y2={layout.lvBusY}
+                    stroke={COLOR_BUS_LV}
+                    strokeWidth={STROKE_FIELD_TRACK_PX}
+                    data-parity-key="station.mini.tr.secondary_lead"
+                  />
+                  {/* TR rated kVA label (detail variant only) */}
+                  {props.transformerRatedKva != null && (
+                    <text
+                      x={trBayX + 16}
+                      y={trCy + 3}
+                      textAnchor="start"
+                      fill={COLOR_TEXT_PRIMARY}
+                      fontFamily={FONT_SANS}
+                      fontSize={9}
+                      fontWeight={700}
+                      data-testid={`sld-v2-mini-tr-kva-${props.id}`}
+                    >
+                      {props.transformerRatedKva >= 1000
+                        ? `${(props.transformerRatedKva / 1000).toFixed(1)} MVA`
+                        : `${props.transformerRatedKva} kVA`}
+                    </text>
+                  )}
+                </g>
+              );
+            })()}
+
+            {/* LV busbar (detail variant only, gdy footprint hasLvSection) */}
+            {layout.lvColumns.length > 0 && (
+              <>
                 <line
-                  x1={0}
-                  y1={busY}
-                  x2={0}
-                  y2={trTop}
-                  stroke="#4EC9B0"
-                  strokeWidth={2}
-                  data-parity-key="station.mini.tr.primary_lead"
+                  x1={layout.busLeft + 18}
+                  y1={layout.lvBusY}
+                  x2={layout.busRight - 18}
+                  y2={layout.lvBusY}
+                  stroke={COLOR_BUS_LV}
+                  strokeWidth={STROKE_BUSBAR_PX}
+                  data-parity-key="station.mini.bus.lv"
                 />
-                <line
-                  x1={0}
-                  y1={trBottom}
-                  x2={0}
-                  y2={lvBusY}
-                  stroke="#4EC9B0"
-                  strokeWidth={2}
-                  data-parity-key="station.mini.tr.secondary_lead"
-                />
-              </g>
-            );
-          })()}
-          <TransformerTriangle
-            cx={0}
-            cy={showPvCircuit ? 2 : 6}
-            ratedKva={props.transformerRatedKva}
-            stationId={props.id}
-            onSymbolClick={handleSymbolClick}
-          />
-        </>
-      )}
+                {layout.lvColumns.map((col) => (
+                  <BayColumnLv
+                    key={`lv-${col.index}`}
+                    x={col.x}
+                    lvBusY={layout.lvBusY}
+                    index={col.index}
+                    variant={variant}
+                    cbCatalogRef={col.cbCatalogRef}
+                    loadKw={col.loadKw}
+                    stationId={props.id}
+                    onSymbolClick={handleSymbolClick}
+                  />
+                ))}
+              </>
+            )}
+          </g>
+        );
+      })()}
 
       {showPvCircuit && (
         <PvConnectionTree
@@ -454,7 +512,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
           cx={offsetX + width - 9}
           cy={offsetY + 9}
           r={5}
-          fill={COLOR_MISSING}
+          fill={'#FFC857'}
           stroke="#FFB020"
           strokeWidth={1}
           data-parity-key="station.mini.missing"
@@ -517,326 +575,6 @@ function isLineLikeFieldRole(role: FieldRole): boolean {
 // Sub-renderers
 // =============================================================================
 
-interface SnBusRowProps {
-  offsetX: number;
-  width: number;
-  rowY: number;
-  bays: readonly MiniBlockBayDescriptor[];
-  stationId: string;
-  variant: MiniBlockRmuRendererProps['variant'];
-  onSymbolClick?: SymbolClickHandler;
-}
-
-function SnBusRow(props: SnBusRowProps): JSX.Element {
-  const { offsetX, width, rowY, bays, stationId, variant, onSymbolClick } = props;
-  const left = offsetX + 24;
-  const right = offsetX + width - 24;
-  const span = right - left;
-
-  return (
-    <g data-testid="sld-v2-mini-rmu-sn-row" data-parity-key="station.mini.sn_row">
-      <line
-        x1={offsetX + 14}
-        y1={rowY}
-        x2={offsetX + width - 14}
-        y2={rowY}
-        stroke={COLOR_BUS_LV}
-        strokeWidth={STROKE_BUSBAR_PX + 1}
-        strokeLinecap="butt"
-        data-parity-key="station.mini.bus.sn"
-      />
-      {bays.map((bay, idx) => {
-        const x = bays.length === 1 ? 0 : left + (span * idx) / (bays.length - 1);
-        return (
-          <BayMarker
-            key={bay.bayRef}
-            x={x}
-            y={rowY}
-            fieldRole={bay.fieldRole}
-            hasMissing={bay.hasMissingRequiredDevice}
-            designation={bay.designation}
-            stationId={stationId}
-            bayRef={bay.bayRef}
-            variant={variant}
-            onSymbolClick={onSymbolClick}
-          />
-        );
-      })}
-    </g>
-  );
-}
-
-interface BayMarkerProps {
-  x: number;
-  y: number;
-  fieldRole: FieldRole;
-  hasMissing: boolean;
-  designation: string;
-  stationId: string;
-  bayRef: string;
-  variant: MiniBlockRmuRendererProps['variant'];
-  onSymbolClick?: SymbolClickHandler;
-}
-
-function BayMarker(props: BayMarkerProps): JSX.Element {
-  const { x, y, fieldRole, hasMissing, designation, stationId, bayRef, variant, onSymbolClick } = props;
-  const isTransformer =
-    fieldRole === FIELD_ROLE.TRANSFORMER || fieldRole === FIELD_ROLE.RMU_TRANSFORMER;
-  const isCoupler = fieldRole === FIELD_ROLE.COUPLER;
-  const isMeasurement = fieldRole === FIELD_ROLE.MEASUREMENT;
-  const apparatusKind = isTransformer
-    ? 'transformer-field'
-    : isCoupler
-      ? 'coupler'
-      : isMeasurement
-        ? 'measurement'
-        : 'line-switch';
-  const switchY = y - FIELD_DEVICE_CENTER_ABOVE_BUS;
-  const topY = y - FIELD_TOP_LEAD;
-  const elementId = `${stationId}/bay/${bayRef}`;
-  // K30-19: variant-aware device size dla IEC 60617-5 industrial readability.
-  // overview=9, compact=13, detail=17 vs legacy hardcoded 11.
-  const deviceSize = FIELD_DEVICE_SIZE_BY_VARIANT[variant];
-
-  return (
-    <g
-      data-testid={`sld-v2-mini-rmu-bay-marker-${fieldRole}`}
-      data-parity-key="station.mini.bay"
-      data-apparatus-kind={apparatusKind}
-      data-element-kind="station_bay"
-      data-element-id={elementId}
-      onClick={onSymbolClick?.(elementId)}
-      style={{ cursor: onSymbolClick ? 'pointer' : 'default' }}
-    >
-      <title>{`${designation} (${fieldRole})`}</title>
-      {variant !== 'overview' && (
-        <rect
-          x={x - 16}
-          y={topY - 5}
-          width={32}
-          height={isTransformer ? 76 : 52}
-          fill={COLOR_BAY_CELL}
-          fillOpacity={0.58}
-          stroke={COLOR_BAY_CELL_STROKE}
-          strokeWidth={0.8}
-          rx={2}
-          ry={2}
-          data-parity-key="station.mini.bay.cell"
-          data-cell-role={fieldRole}
-        />
-      )}
-
-      {variant === 'overview' ? (
-        <g
-          data-parity-key="station.mini.overview_field"
-          data-apparatus-kind={isTransformer ? 'transformer-field' : 'line-switch'}
-          data-symbol-canon={isTransformer ? 'transformer_field_aggregated' : 'switch_disconnector_rotated_square'}
-        >
-          <line x1={x} y1={topY + 12} x2={x} y2={y} stroke={COLOR_BUS_LV} strokeWidth={STROKE_FIELD_TRACK_PX} />
-          {isTransformer ? (
-            <rect
-              x={x - 5}
-              y={y + 6}
-              width={10}
-              height={10}
-              fill="none"
-              stroke={COLOR_MEASUREMENT}
-              strokeWidth={1.3}
-              rx={5}
-            />
-          ) : (
-            <polygon
-              points={`${x},${switchY - 8} ${x + 8},${switchY} ${x},${switchY + 8} ${x - 8},${switchY}`}
-              fill={hasMissing ? COLOR_MISSING : COLOR_DEVICE_CLOSED}
-              stroke={hasMissing ? '#FFB020' : COLOR_DEVICE_CLOSED_BORDER}
-              strokeWidth={1.1}
-            />
-          )}
-        </g>
-      ) : isTransformer ? (
-        <g data-parity-key="station.mini.transformer_field">
-          <line x1={x} y1={y} x2={x} y2={y + 28} stroke={COLOR_BUS_LV} strokeWidth={STROKE_FIELD_TRACK_PX} />
-          <rect x={x - 8} y={y + 7} width={5} height={14} fill={COLOR_TR_TRIANGLE} stroke={COLOR_LINE_PRIMARY} strokeWidth={0.8} data-apparatus-kind="fuse" />
-          <rect x={x + 3} y={y + 7} width={5} height={14} fill={COLOR_TR_TRIANGLE} stroke={COLOR_LINE_PRIMARY} strokeWidth={0.8} data-apparatus-kind="fuse" />
-          <circle cx={x - 5} cy={y + 30} r={6} fill="none" stroke={COLOR_MEASUREMENT} strokeWidth={1.6} />
-          <circle cx={x + 5} cy={y + 30} r={6} fill="none" stroke={COLOR_MEASUREMENT} strokeWidth={1.6} />
-        </g>
-      ) : isCoupler ? (
-        <g data-parity-key="station.mini.coupler">
-          <line x1={x} y1={topY} x2={x} y2={y} stroke={COLOR_BUS_LV} strokeWidth={STROKE_FIELD_TRACK_PX} />
-          <rect x={x - 7} y={switchY - 7} width={14} height={14} fill="none" stroke={COLOR_SELECTION} strokeWidth={2} />
-        </g>
-      ) : isMeasurement ? (
-        <g data-parity-key="station.mini.measurement">
-          <line x1={x} y1={topY} x2={x} y2={y} stroke={COLOR_BUS_LV} strokeWidth={STROKE_FIELD_TRACK_PX} />
-          <circle cx={x} cy={switchY} r={6} fill="none" stroke={COLOR_MEASUREMENT} strokeWidth={2} />
-          <circle cx={x} cy={switchY + 12} r={5} fill="none" stroke={COLOR_MEASUREMENT} strokeWidth={1.6} />
-        </g>
-      ) : (
-        <g
-          data-parity-key="station.mini.line_switch"
-          data-apparatus-kind="switch_disconnector"
-          data-symbol-canon="switch_disconnector_rotated_square"
-          data-element-kind="switch_disconnector"
-          data-element-id={`${elementId}/switch-disconnector`}
-          onClick={onSymbolClick?.(`${elementId}/switch-disconnector`)}
-          style={{ cursor: onSymbolClick ? 'pointer' : 'default' }}
-        >
-          <line x1={x} y1={topY} x2={x} y2={y} stroke={COLOR_BUS_LV} strokeWidth={STROKE_FIELD_TRACK_PX} />
-          <polygon
-            points={`${x},${switchY - deviceSize} ${x + deviceSize},${switchY} ${x},${switchY + deviceSize} ${x - deviceSize},${switchY}`}
-            fill={hasMissing ? COLOR_MISSING : COLOR_DEVICE_CLOSED}
-            stroke={hasMissing ? '#FFB020' : COLOR_DEVICE_CLOSED_BORDER}
-            strokeWidth={1.3}
-            data-symbol-canon="switch_disconnector_rotated_square"
-          />
-          <g
-            data-apparatus-kind="earthing_switch"
-            data-symbol-canon="earthing_switch_lateral_branch"
-            data-element-kind="earthing_switch"
-            data-element-id={`${elementId}/earthing-switch`}
-            onClick={onSymbolClick?.(`${elementId}/earthing-switch`)}
-            style={{ cursor: onSymbolClick ? 'pointer' : 'default' }}
-          >
-            <line x1={x + 12} y1={switchY} x2={x + 23} y2={switchY} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
-            <line x1={x + 23} y1={switchY} x2={x + 23} y2={switchY + 10} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} strokeDasharray="2 2" />
-            <line x1={x + 18} y1={switchY + 10} x2={x + 28} y2={switchY + 10} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
-            <line x1={x + 20} y1={switchY + 13} x2={x + 26} y2={switchY + 13} stroke={COLOR_LINE_PRIMARY} strokeWidth={1} />
-            <line x1={x + 22} y1={switchY + 16} x2={x + 24} y2={switchY + 16} stroke={COLOR_LINE_PRIMARY} strokeWidth={0.9} />
-          </g>
-          {hasMissing && (
-            <line
-              x1={x - 16}
-              y1={switchY}
-              x2={x - 6}
-              y2={switchY}
-              stroke={COLOR_DEVICE_OPEN}
-              strokeWidth={2}
-            />
-          )}
-        </g>
-      )}
-    </g>
-  );
-}
-
-interface LvSectionRowProps {
-  offsetX: number;
-  width: number;
-  rowY: number;
-  feedersCount: number;
-  hasTransformer: boolean;
-}
-
-function LvSectionRow(props: LvSectionRowProps): JSX.Element {
-  const { offsetX, width, rowY, feedersCount, hasTransformer } = props;
-  // K30-29: actual per-feeder droplines + CB symbols (replaces label-only).
-  // Distributes N feeders evenly w LV bus span. Engineer może wizualnie
-  // odczytać liczbę odpływów (1/2/3/4/N) per stacja zamiast czytać label.
-  const lvBusStart = offsetX + 32;
-  const lvBusEnd = offsetX + width - 32;
-  const lvBusSpan = lvBusEnd - lvBusStart;
-  const feederYStart = rowY + SECTION_BAR_HEIGHT;
-  // K30-29 round 2: 2× scale-up dla pixel-precise visibility w industrial review.
-  const dropLength = 18;
-  const cbSize = 10;
-  const safeCount = Math.max(1, feedersCount);
-  const positions: number[] = [];
-  if (safeCount === 1) {
-    positions.push(lvBusStart + lvBusSpan / 2);
-  } else {
-    // Margins 18% z each side dla aesthetics
-    const usableStart = lvBusStart + lvBusSpan * 0.18;
-    const usableEnd = lvBusEnd - lvBusSpan * 0.18;
-    const step = (usableEnd - usableStart) / (safeCount - 1);
-    for (let i = 0; i < safeCount; i++) {
-      positions.push(usableStart + step * i);
-    }
-  }
-
-  return (
-    <g data-testid="sld-v2-mini-rmu-lv-row" data-parity-key="station.mini.lv_row">
-      <rect
-        x={lvBusStart}
-        y={rowY}
-        width={lvBusEnd - lvBusStart}
-        height={SECTION_BAR_HEIGHT}
-        fill={COLOR_BUS_LV}
-        opacity={hasTransformer ? 0.8 : 0.35}
-      />
-      {/* Per-feeder dropline + CB rectangle. Engineer widzi N osobnych odpływów. */}
-      {positions.map((x, idx) => (
-        <g
-          key={`feeder-${idx}`}
-          data-testid={`sld-v2-mini-rmu-feeder-${idx}`}
-          data-feeder-index={idx}
-        >
-          <line
-            x1={x}
-            y1={feederYStart}
-            x2={x}
-            y2={feederYStart + dropLength}
-            stroke={COLOR_BUS_LV}
-            strokeWidth={1.5}
-            opacity={hasTransformer ? 0.9 : 0.4}
-          />
-          <rect
-            x={x - cbSize / 2}
-            y={feederYStart + dropLength}
-            width={cbSize}
-            height={cbSize}
-            fill={hasTransformer ? '#0D2818' : '#2A1810'}
-            stroke={COLOR_BUS_LV}
-            strokeWidth={0.8}
-            opacity={hasTransformer ? 0.85 : 0.4}
-          />
-        </g>
-      ))}
-      {/* K30-30: usunięte floating "Nx nN" tekst label — redundant z
-       *  per-feeder droplines (visible per-icon) + zielony "Nn" badge
-       *  obok station code. Mniej clutter. */}
-    </g>
-  );
-}
-
-interface TransformerTriangleProps {
-  cx: number;
-  cy: number;
-  ratedKva: number | null;
-  stationId?: string;
-  onSymbolClick?: SymbolClickHandler;
-}
-
-function TransformerTriangle(props: TransformerTriangleProps): JSX.Element {
-  const { cx, cy, ratedKva, stationId, onSymbolClick } = props;
-  const elementId = stationId ? `${stationId}/transformer/sn-nn` : 'transformer/sn-nn';
-  return (
-    <g
-      data-testid="sld-v2-mini-rmu-tr-triangle"
-      data-parity-key="station.mini.transformer"
-      data-element-kind="transformer_sn_nn"
-      data-element-id={elementId}
-      onClick={onSymbolClick?.(elementId)}
-      style={{ cursor: onSymbolClick ? 'pointer' : 'default' }}
-    >
-      <circle cx={cx - 6} cy={cy} r={7} fill="none" stroke={COLOR_TR_TRIANGLE} strokeWidth={1.5} />
-      <circle cx={cx + 6} cy={cy} r={7} fill="none" stroke={COLOR_TR_TRIANGLE} strokeWidth={1.5} />
-      {ratedKva !== null && (
-        <text
-          x={cx}
-          y={cy + 3}
-          textAnchor="middle"
-          fill={COLOR_TEXT_PRIMARY}
-          fontFamily={FONT_SANS}
-          fontSize={FONT_SIZES.technicalPanel - 2}
-          fontWeight={700}
-        >
-          TR
-        </text>
-      )}
-    </g>
-  );
-}
 
 interface PvConnectionTreeProps {
   stationId: string;
