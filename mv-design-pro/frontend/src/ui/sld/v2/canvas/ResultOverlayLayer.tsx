@@ -172,7 +172,10 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
           : `${st.id}/sn_bus`;
         const el = payload.elements[snBusRef];
         if (!el) return null;
-        const badgeY = st.y - 130;
+        // K30-32: anchor voltage badge closer to station body (was st.y-130 floating).
+        // Position 60px above station origin — visually adjacent z explicit leader line
+        // connecting badge → station bus, eliminating "floating" per user K30-29.
+        const badgeY = st.y - 60;
 
         // SC_3F: IK_3F_A (initial sc current) + IP_A (peak sc current) + SK_MVA
         const ik3f = isSc3F ? getMetric(payload, snBusRef, 'IK_3F_A') : null;
@@ -191,12 +194,27 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
         const lineCount = isSc3F ? 3 : 2;
         const boxHeight = 18 + lineCount * 16;
 
+        // K30-32: explicit leader line from badge bottom → station bus
+        // (eliminates "floating overlay" appearance per user K30-29 feedback).
+        const leaderLineDy = Math.max(0, st.y - badgeY - boxHeight + 18);
         return (
           <g
             key={`result-overlay-${st.id}`}
             data-testid={`sld-v2-result-overlay-${st.id}`}
             transform={`translate(${st.x}, ${badgeY})`}
           >
+            {/* Leader line: badge bottom → station bus */}
+            <line
+              x1={0}
+              y1={-18 + boxHeight}
+              x2={0}
+              y2={-18 + boxHeight + leaderLineDy}
+              stroke={color}
+              strokeWidth={1.5}
+              strokeDasharray="3 2"
+              opacity={0.75}
+              data-testid={`sld-v2-result-overlay-leader-${st.id}`}
+            />
             <rect
               x={-90}
               y={-18}
