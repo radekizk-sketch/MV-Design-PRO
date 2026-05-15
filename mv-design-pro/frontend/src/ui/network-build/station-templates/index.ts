@@ -10,6 +10,7 @@ export {
   fetchStationTemplateCategories,
   fetchStationTemplate,
   applyStationTemplate,
+  previewStationTemplate,
 } from './api';
 export type {
   StationTemplateSummary,
@@ -25,6 +26,8 @@ export type {
   ProtectionRelaySpec,
   ApplyTemplateRequest,
   ApplyTemplateResult,
+  PreviewTemplateRequest,
+  PreviewTemplateResult,
 } from './api';
 export { StationTemplateWizard } from './StationTemplateWizard';
 export type {

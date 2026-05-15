@@ -230,6 +230,29 @@ describe('StationTemplateWizard', () => {
       if (url === '/api/station-templates/tpl_sn_nn_630kva/apply' && init?.method === 'POST') {
         return Promise.resolve(_mockResponse(applyMock));
       }
+      if (url === '/api/station-templates/tpl_sn_nn_630kva/preview' && init?.method === 'POST') {
+        return Promise.resolve(_mockResponse({
+          template_id: 'tpl_sn_nn_630kva',
+          template_name_pl: 'Stacja SN/nN 630 kVA',
+          category: 'typowa_sn_nn',
+          nc_rfg_type: null,
+          station_type: 'inline',
+          catalog_profile_applied: 'ZPUE_WLOSZCZOWA',
+          effective_config: {
+            transformer_ref: 'tr-sn-nn-15-04-630kva-dyn11',
+            transformer_count: 1,
+            sn_bays_count: 3,
+            sn_bay_roles: ['IN', 'OUT', 'TR'],
+            sn_manufacturer: 'ZPUE_WLOSZCZOWA',
+            nn_feeders_count: 4,
+            nn_feeder_cb_ref: 'cb_nn_400a',
+            protection_relay_ref: 'EM_E2TANGO_600',
+            der_total_count: 0,
+            der_mix: [],
+          },
+          estimated_elements_count: 12,
+        }));
+      }
       return Promise.resolve({
         ok: false,
         status: 404,

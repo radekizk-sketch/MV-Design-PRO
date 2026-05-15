@@ -40,6 +40,109 @@ class ApplyTemplateRequest(BaseModel):
     catalog_profile: str | None = Field(default=None, description="Manufacturer profile cascade")
 
 
+class PreviewTemplateRequest(BaseModel):
+    """K30-27: Preview template config dry-run (no ENM mutation)."""
+
+    params_override: dict[str, Any] = Field(default_factory=dict)
+    catalog_profile: str | None = Field(default=None)
+
+
+@router.post("/{template_id}/preview")
+def preview_station_template(
+    template_id: str,
+    request: PreviewTemplateRequest = Body(...),
+) -> dict[str, Any]:
+    """K30-27: dry-run preview — returns resolved config bez touching ENM.
+
+    Generates summary z effective parameters po manufacturer cascade,
+    transformer/cable/CB choices resolved, DER mix summarized. Used by
+    wizard live preview step.
+    """
+    template = get_template(template_id)
+    if template is None:
+        raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
+
+    from application.station_templates.apply import (
+        _cascade_manufacturer_choice,
+        _first_default_choice,
+        _resolve_sn_bay_roles,
+        _resolve_station_type,
+    )
+
+    overrides = request.params_override
+    profile = request.catalog_profile
+
+    # Resolve effective config
+    sn_bays_count = int(overrides.get("sn_bays_count", template.schema.sn_bays_count.default))
+    nn_feeders_count = int(
+        overrides.get("nn_feeders_count", template.schema.nn_feeders_count.default)
+    )
+    der_count = int(overrides.get("der_total_count", template.schema.der_total_count.default))
+    transformer_count = int(
+        overrides.get("transformer_count", template.schema.transformer_count.default)
+    )
+
+    transformer_ref = (
+        overrides.get("transformer_ref")
+        or _cascade_manufacturer_choice(template.schema.transformer_options, profile)
+    )
+    cb_catalog = (
+        overrides.get("nn_feeder_cb_ref")
+        or _cascade_manufacturer_choice(template.schema.nn_feeder_cb_options, profile)
+    )
+    sn_manufacturer = overrides.get("sn_manufacturer", template.schema.sn_switchgear_default)
+    protection_ref = overrides.get("protection_ref")
+    if not protection_ref and template.schema.sn_bay_protection_options:
+        # Cascade protection too
+        for p in template.schema.sn_bay_protection_options:
+            if profile and profile.lower().replace(" ", "") in p.vendor.lower().replace(" ", ""):
+                protection_ref = p.device_catalog_ref
+                break
+        if not protection_ref:
+            protection_ref = template.schema.sn_bay_protection_options[0].device_catalog_ref
+
+    der_summary = []
+    for der_spec in template.schema.der_options:
+        der_ref = (
+            overrides.get(f"der_{der_spec.kind}_ref")
+            or _first_default_choice(der_spec.catalog_options)
+        )
+        der_summary.append({
+            "kind": der_spec.kind,
+            "catalog_ref": der_ref,
+            "connection_variant": der_spec.connection_variant_options[0],
+            "expected_count_per_kind": max(1, der_count // max(1, len(template.schema.der_options))),
+        })
+
+    return {
+        "template_id": template.id,
+        "template_name_pl": template.name_pl,
+        "category": template.category.value,
+        "nc_rfg_type": template.nc_rfg_type,
+        "station_type": _resolve_station_type(template),
+        "catalog_profile_applied": profile,
+        "effective_config": {
+            "transformer_ref": transformer_ref,
+            "transformer_count": transformer_count,
+            "sn_bays_count": sn_bays_count,
+            "sn_bay_roles": _resolve_sn_bay_roles(template, sn_bays_count),
+            "sn_manufacturer": sn_manufacturer,
+            "nn_feeders_count": nn_feeders_count,
+            "nn_feeder_cb_ref": cb_catalog,
+            "protection_relay_ref": protection_ref,
+            "der_total_count": der_count,
+            "der_mix": der_summary,
+        },
+        "estimated_elements_count": (
+            1  # station
+            + sn_bays_count
+            + transformer_count
+            + nn_feeders_count
+            + der_count
+        ),
+    }
+
+
 @router.post("/{template_id}/apply")
 def apply_station_template(
     template_id: str,

@@ -62,9 +62,10 @@ def apply_template_to_case(
 
     # Step 1: insert_station_on_segment_sn payload
     sn_bays_count = int(overrides.get("sn_bays_count", template.schema.sn_bays_count.default))
+    # K30-26: manufacturer cascade — uses catalog_profile gdy user nie override TR
     transformer_ref = (
         overrides.get("transformer_ref")
-        or _first_default_choice(template.schema.transformer_options)
+        or _cascade_manufacturer_choice(template.schema.transformer_options, catalog_profile)
     )
 
     sn_bay_roles = _resolve_sn_bay_roles(template, sn_bays_count)
@@ -112,7 +113,7 @@ def apply_template_to_case(
     extra_feeders = max(0, nn_feeders_requested - 1)  # insert_station creates 1 default
     cb_catalog = (
         overrides.get("nn_feeder_cb_ref")
-        or _first_default_choice(template.schema.nn_feeder_cb_options)
+        or _cascade_manufacturer_choice(template.schema.nn_feeder_cb_options, catalog_profile)
     )
 
     if station_ref and nn_bus_ref and extra_feeders > 0:
@@ -220,6 +221,27 @@ def _first_default_choice(options: tuple[Any, ...] | list[Any]) -> str | None:
         if getattr(o, "default", False):
             return getattr(o, "catalog_ref", None)
     return getattr(options[0], "catalog_ref", None)
+
+
+def _cascade_manufacturer_choice(
+    options: tuple[Any, ...] | list[Any],
+    manufacturer: str | None,
+) -> str | None:
+    """K30-26: manufacturer cascade — prefer catalog entry matching profile.
+
+    Returns first option whose catalog_ref contains manufacturer hint
+    (case-insensitive substring match). Falls back do default if no match.
+    """
+    if not options:
+        return None
+    if manufacturer:
+        normalized = manufacturer.lower().replace(" ", "-").replace("_", "-")
+        for o in options:
+            ref = (getattr(o, "catalog_ref", "") or "").lower()
+            # Match manufacturer hints (zpue, wzl, elektrometal, abb, siemens, etc.)
+            if any(token in ref for token in normalized.split("-") if len(token) > 2):
+                return getattr(o, "catalog_ref", None)
+    return _first_default_choice(options)
 
 
 def _resolve_sn_bay_roles(template: StationTemplate, count: int) -> list[str]:

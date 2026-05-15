@@ -166,3 +166,50 @@ export async function applyStationTemplate(
   });
   return handleResponse<ApplyTemplateResult>(response);
 }
+
+
+// K30-27: live preview endpoint
+
+export interface PreviewTemplateRequest {
+  params_override?: Record<string, unknown>;
+  catalog_profile?: string | null;
+}
+
+export interface PreviewTemplateResult {
+  template_id: string;
+  template_name_pl: string;
+  category: string;
+  nc_rfg_type: string | null;
+  station_type: string;
+  catalog_profile_applied: string | null;
+  effective_config: {
+    transformer_ref: string | null;
+    transformer_count: number;
+    sn_bays_count: number;
+    sn_bay_roles: readonly string[];
+    sn_manufacturer: string;
+    nn_feeders_count: number;
+    nn_feeder_cb_ref: string | null;
+    protection_relay_ref: string | null;
+    der_total_count: number;
+    der_mix: readonly {
+      kind: string;
+      catalog_ref: string | null;
+      connection_variant: string;
+      expected_count_per_kind: number;
+    }[];
+  };
+  estimated_elements_count: number;
+}
+
+export async function previewStationTemplate(
+  templateId: string,
+  request: PreviewTemplateRequest,
+): Promise<PreviewTemplateResult> {
+  const response = await fetch(`${API_BASE}/${encodeURIComponent(templateId)}/preview`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  return handleResponse<PreviewTemplateResult>(response);
+}

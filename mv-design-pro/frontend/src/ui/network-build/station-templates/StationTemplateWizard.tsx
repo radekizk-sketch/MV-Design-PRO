@@ -25,8 +25,10 @@ import {
   fetchStationTemplate,
   fetchStationTemplateCategories,
   fetchStationTemplates,
+  previewStationTemplate,
   type ApplyTemplateResult,
   type CategoryEntry,
+  type PreviewTemplateResult,
   type StationTemplateFull,
   type StationTemplateSummary,
 } from './api';
@@ -321,7 +323,11 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
         )}
 
         {state.step === 'preview' && activeTemplate != null && (
-          <PreviewStep template={activeTemplate} overrides={state.paramOverrides} />
+          <PreviewStep
+            template={activeTemplate}
+            overrides={state.paramOverrides}
+            catalogProfile={state.catalogProfile}
+          />
         )}
 
         {state.step === 'apply' && (
@@ -676,19 +682,116 @@ function ProfileStep(props: {
 function PreviewStep(props: {
   template: StationTemplateFull;
   overrides: Record<string, unknown>;
+  catalogProfile: string | null;
 }): JSX.Element {
+  const [preview, setPreview] = useState<PreviewTemplateResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  // K30-27: live preview z debounce 300ms gdy params change
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setLoading(true);
+      setPreviewError(null);
+      previewStationTemplate(props.template.id, {
+        params_override: props.overrides,
+        catalog_profile: props.catalogProfile,
+      })
+        .then((result) => {
+          if (!cancelled) setPreview(result);
+        })
+        .catch((err: Error) => {
+          if (!cancelled) setPreviewError(err.message);
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [props.template.id, props.overrides, props.catalogProfile]);
+
   return (
     <div data-testid="wizard-step-content-preview">
-      <h2 className="text-lg font-bold mb-3">Podgląd konfiguracji</h2>
-      <div className="bg-zinc-800 p-3 rounded text-xs font-mono whitespace-pre-wrap">
-        Szablon: {props.template.name_pl}
-        {'\n'}Parametry override:
-        {'\n'}
-        {JSON.stringify(props.overrides, null, 2)}
-      </div>
-      <div className="text-xs text-zinc-400 mt-3">
-        Live SLD preview będzie wyświetlany tutaj w kolejnej iteracji.
-      </div>
+      <h2 className="text-lg font-bold mb-3">Podgląd konfiguracji (live preview)</h2>
+      {loading && (
+        <div data-testid="preview-loading" className="text-zinc-400 text-sm mb-2">
+          Aktualizowanie podglądu…
+        </div>
+      )}
+      {previewError && (
+        <div className="bg-red-900/40 border border-red-700 text-red-200 px-3 py-2 mb-3 rounded text-sm">
+          Błąd podglądu: {previewError}
+        </div>
+      )}
+      {preview != null && (
+        <div data-testid="preview-content" className="space-y-3 text-sm">
+          <div className="bg-emerald-950 border border-emerald-700 px-3 py-2 rounded">
+            <div className="font-bold text-emerald-200">
+              {preview.template_name_pl}
+            </div>
+            <div className="text-xs text-emerald-300 mt-1">
+              Typ: {preview.station_type}
+              {preview.nc_rfg_type && ` · NC RfG typ ${preview.nc_rfg_type}`}
+              {preview.catalog_profile_applied &&
+                ` · Profil: ${preview.catalog_profile_applied}`}
+            </div>
+          </div>
+
+          <div className="bg-zinc-800 p-3 rounded space-y-2 text-xs">
+            <div>
+              <span className="text-zinc-400">Transformator: </span>
+              <span className="font-mono text-cyan-300">
+                {preview.effective_config.transformer_ref ?? '—'}
+              </span>
+              <span className="text-zinc-500"> × {preview.effective_config.transformer_count}</span>
+            </div>
+            <div>
+              <span className="text-zinc-400">Rozdzielnia SN: </span>
+              <span className="font-mono text-cyan-300">
+                {preview.effective_config.sn_manufacturer}
+              </span>
+              <span className="text-zinc-500"> ({preview.effective_config.sn_bays_count} pól)</span>
+            </div>
+            <div>
+              <span className="text-zinc-400">Pola SN: </span>
+              <span className="text-zinc-300">
+                {preview.effective_config.sn_bay_roles.join(' → ')}
+              </span>
+            </div>
+            <div>
+              <span className="text-zinc-400">Odpływy nN: </span>
+              <span className="text-zinc-300">{preview.effective_config.nn_feeders_count}</span>
+              <span className="text-zinc-500"> ({preview.effective_config.nn_feeder_cb_ref ?? 'auto'})</span>
+            </div>
+            <div>
+              <span className="text-zinc-400">Zabezpieczenia: </span>
+              <span className="font-mono text-cyan-300">
+                {preview.effective_config.protection_relay_ref ?? '—'}
+              </span>
+            </div>
+            {preview.effective_config.der_total_count > 0 && (
+              <div>
+                <span className="text-zinc-400">DER: </span>
+                <span className="text-zinc-300">{preview.effective_config.der_total_count}× </span>
+                <span className="text-xs text-zinc-500">
+                  ({preview.effective_config.der_mix.map((d) => `${d.kind} (${d.connection_variant})`).join(', ')})
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-amber-950/30 border border-amber-700/50 px-3 py-2 rounded text-xs">
+            <div className="text-amber-300">
+              📐 Szacowana liczba elementów do utworzenia:{' '}
+              <span className="font-bold">{preview.estimated_elements_count}</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
