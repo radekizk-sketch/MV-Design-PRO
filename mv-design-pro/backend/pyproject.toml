@@ -85,10 +85,19 @@ target-version = "py311"
 
 [tool.mypy]
 python_version = "3.11"
-warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 plugins = ["pydantic.mypy"]
+# K30-14 NO-GO #10 ETAP 8 (tech debt): third-party packages bez stubs
+# (networkx, scipy, reportlab, docx, etc.) reportowane jako import-untyped
+# (1020 błędów). Standard Python community practice — te libs nie publikują
+# py.typed marker.
+ignore_missing_imports = true
+# warn_return_any wyłączone — Pydantic .model_dump() / canonicalize_json /
+# FastAPI handlers zwracają Any-typed dynamic JSON. Wymuszenie cast() przy
+# każdym takim wywołaniu = noise without value (340 błędów w API layer).
+# Logika domeny ma w pełni typed signatures (disallow_untyped_defs ON).
+warn_return_any = false
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

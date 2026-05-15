@@ -18,6 +18,9 @@ CANONICAL ALIGNMENT:
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 from typing import Any
 
 from api.dependencies import get_uow_factory
@@ -187,7 +190,7 @@ P15b: Porównuje dwa ProtectionAnalysisRun i generuje deterministyczny ranking p
 )
 def create_protection_comparison(
     request: CreateProtectionComparisonRequest,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Create a protection comparison between two runs.
@@ -243,7 +246,7 @@ def create_protection_comparison(
 )
 def get_protection_comparison(
     comparison_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Get protection comparison metadata.
@@ -279,7 +282,7 @@ def get_protection_comparison(
 )
 def get_protection_comparison_results(
     comparison_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Get full protection comparison results.
@@ -306,7 +309,7 @@ def get_protection_comparison_results(
 )
 def get_protection_comparison_trace(
     comparison_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Get protection comparison trace for audit.

@@ -8,6 +8,9 @@ Endpoints:
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 from typing import Any
 
 from domain.study_case import StudyCaseConfig
@@ -112,7 +115,7 @@ class Audit2PowerFlowResponse(BaseModel):
 )
 def run_audit2_power_flow(
     req: Audit2PowerFlowRequest,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Audit2PowerFlowResponse:
     """Phase 33: pelna petla — DB audit2 -> wrapper -> graph mutation."""
     from uuid import UUID
@@ -249,7 +252,7 @@ async def get_solver_input(
     ),
     project_id: str | None = None,
     station_id: str | None = None,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> SolverInputResponse:
     """
     Generate and return solver-input for the given case and analysis type.

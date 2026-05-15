@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 from typing import Any
 
 from api.dependencies import get_uow_factory
@@ -18,7 +21,7 @@ router = APIRouter(prefix="/analyses/design-synth", tags=["design-synth"])
 @router.post("/connection-study", response_model=ConnectionStudyResponse)
 def create_connection_study(
     payload: ConnectionStudyRequest,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     try:
         result = run_connection_study(

@@ -12,6 +12,9 @@ CANONICAL ALIGNMENT:
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 from typing import Any
 from uuid import UUID
 
@@ -157,7 +160,7 @@ class RunComparisonResponse(BaseModel):
 )
 def compare_runs(
     request: CompareRunsRequest,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Compare two Study Run results.

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 import io
 import zipfile
 from datetime import datetime
@@ -50,7 +53,7 @@ def download_proof_pack(
     project_id: UUID,
     case_id: UUID,
     run_id: UUID,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
     _ = project_id, case_id, run_id, uow_factory
     raise HTTPException(

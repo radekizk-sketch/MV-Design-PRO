@@ -11,6 +11,9 @@ All assign/clear endpoints return 204 No Content.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 from typing import Any
 from uuid import UUID
 
@@ -144,7 +147,7 @@ def export_type_library(
     series: str = "Standard",
     revision: str = "1.0",
     description_pl: str = "",
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Export type library with deterministic fingerprint (P13b).
@@ -173,7 +176,7 @@ def export_type_library(
 def import_type_library(
     payload: ImportTypeLibraryPayload,
     mode: str = "merge",
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Import type library with conflict detection (P13b).
@@ -380,7 +383,7 @@ def list_complete_bay_templates_endpoint(
 
 @router.get("/protection/device-types")
 def list_protection_device_types(
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> list[dict[str, Any]]:
     """List protection devices from active library or analytical device catalog."""
     service = _build_service(uow_factory)
@@ -395,7 +398,7 @@ def list_protection_device_types(
 
 @router.get("/protection/curves")
 def list_protection_curves(
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> list[dict[str, Any]]:
     """List all protection curves from catalog (P14a - READ-ONLY)"""
     service = _build_service(uow_factory)
@@ -407,7 +410,7 @@ def list_protection_curves(
 
 @router.get("/protection/templates")
 def list_protection_setting_templates(
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> list[dict[str, Any]]:
     """List all protection setting templates from catalog (P14a - READ-ONLY)"""
     service = _build_service(uow_factory)
@@ -420,7 +423,7 @@ def list_protection_setting_templates(
 @router.get("/protection/device-types/{device_type_id}")
 def get_protection_device_type(
     device_type_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Get protection device from active library or analytical device catalog."""
     service = _build_service(uow_factory)
@@ -441,7 +444,7 @@ def get_protection_device_type(
 @router.get("/protection/curves/{curve_id}")
 def get_protection_curve(
     curve_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Get single protection curve by ID (P14a - READ-ONLY)"""
     service = _build_service(uow_factory)
@@ -457,7 +460,7 @@ def get_protection_curve(
 @router.get("/protection/templates/{template_id}")
 def get_protection_setting_template(
     template_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Get single protection setting template by ID (P14a - READ-ONLY)"""
     service = _build_service(uow_factory)
@@ -482,7 +485,7 @@ def export_protection_library(
     series: str = "Standard",
     revision: str = "1.0",
     description_pl: str = "",
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Export protection library with deterministic fingerprint (P14b).
@@ -511,7 +514,7 @@ def export_protection_library(
 def import_protection_library(
     payload: ImportProtectionLibraryPayload,
     mode: str = "merge",
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Import protection library with conflict detection and reference validation (P14b).
@@ -561,7 +564,7 @@ def assign_type_to_branch(
     project_id: str,
     branch_id: str,
     payload: AssignTypePayload,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
     """Assign type_ref to branch (LineBranch)"""
     try:
@@ -588,7 +591,7 @@ def assign_type_to_transformer(
     project_id: str,
     transformer_id: str,
     payload: AssignTypePayload,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
     """Assign type_ref to transformer (TransformerBranch)"""
     try:
@@ -615,7 +618,7 @@ def assign_equipment_type_to_switch(
     project_id: str,
     switch_id: str,
     payload: AssignTypePayload,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
     """Assign equipment_type to switch"""
     try:
@@ -646,7 +649,7 @@ def assign_equipment_type_to_switch(
 def clear_type_from_branch(
     project_id: str,
     branch_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
     """Clear type_ref from branch (set to null)"""
     try:
@@ -671,7 +674,7 @@ def clear_type_from_branch(
 def clear_type_from_transformer(
     project_id: str,
     transformer_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
     """Clear type_ref from transformer (set to null)"""
     try:
@@ -696,7 +699,7 @@ def clear_type_from_transformer(
 def clear_equipment_type_from_switch(
     project_id: str,
     switch_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
     """Clear equipment_type from switch"""
     try:

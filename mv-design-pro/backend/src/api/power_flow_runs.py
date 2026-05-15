@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 import io
 import math
 import zipfile
@@ -365,7 +368,7 @@ def list_power_flow_runs(
 def create_power_flow_run(
     project_id: UUID,
     request: PowerFlowRunCreateRequest,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     try:
         options = dict(request.options or {})

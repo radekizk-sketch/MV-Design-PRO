@@ -18,6 +18,10 @@ Diagnostic format aligned with DIgSILENT PowerFactory "Check Network Data":
 
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from network_model.core.graph import NetworkGraph
 
 
 class Severity(Enum):
@@ -173,7 +177,7 @@ class NetworkValidator:
     This is NOT a solver — it performs no physics calculations.
     """
 
-    def validate(self, graph) -> ValidationReport:
+    def validate(self, graph: "NetworkGraph") -> ValidationReport:
         """
         Run all validation rules on the network graph.
 
@@ -230,7 +234,7 @@ class NetworkValidator:
     # Rule 1: Empty network
     # =========================================================================
 
-    def _check_empty_network(self, graph, report: ValidationReport) -> ValidationReport:
+    def _check_empty_network(self, graph: "NetworkGraph", report: ValidationReport) -> ValidationReport:
         """Check if network has any nodes."""
         if not graph.nodes:
             return report.with_error(
@@ -246,7 +250,7 @@ class NetworkValidator:
     # Rule 2: Connectivity
     # =========================================================================
 
-    def _check_connectivity(self, graph, report: ValidationReport) -> ValidationReport:
+    def _check_connectivity(self, graph: "NetworkGraph", report: ValidationReport) -> ValidationReport:
         """
         Check if network graph is connected.
 
@@ -276,7 +280,7 @@ class NetworkValidator:
     # Rule 3: Source presence
     # =========================================================================
 
-    def _check_source_presence(self, graph, report: ValidationReport) -> ValidationReport:
+    def _check_source_presence(self, graph: "NetworkGraph", report: ValidationReport) -> ValidationReport:
         """
         Check if at least one source is present.
 
@@ -305,7 +309,7 @@ class NetworkValidator:
     # Rule 4: Dangling elements
     # =========================================================================
 
-    def _check_dangling_elements(self, graph, report: ValidationReport) -> ValidationReport:
+    def _check_dangling_elements(self, graph: "NetworkGraph", report: ValidationReport) -> ValidationReport:
         """
         Check for dangling elements (branches with invalid endpoints).
         """
@@ -345,7 +349,7 @@ class NetworkValidator:
     # Rule 5: Bus voltages
     # =========================================================================
 
-    def _check_bus_voltages(self, graph, report: ValidationReport) -> ValidationReport:
+    def _check_bus_voltages(self, graph: "NetworkGraph", report: ValidationReport) -> ValidationReport:
         """
         Check if all bus voltages are valid (> 0).
         """
@@ -369,7 +373,7 @@ class NetworkValidator:
     # Rule 6: Branch endpoints
     # =========================================================================
 
-    def _check_branch_endpoints(self, graph, report: ValidationReport) -> ValidationReport:
+    def _check_branch_endpoints(self, graph: "NetworkGraph", report: ValidationReport) -> ValidationReport:
         """
         Check if all branch endpoints exist and are valid.
         """
@@ -411,7 +415,7 @@ class NetworkValidator:
     # Rule 7: Transformer voltages
     # =========================================================================
 
-    def _check_transformer_voltages(self, graph, report: ValidationReport) -> ValidationReport:
+    def _check_transformer_voltages(self, graph: "NetworkGraph", report: ValidationReport) -> ValidationReport:
         """
         Check transformer HV/LV voltages are different and positive.
         """
@@ -467,7 +471,7 @@ class NetworkValidator:
     # Rule 8: SLACK node
     # =========================================================================
 
-    def _check_slack_node(self, graph, report: ValidationReport) -> ValidationReport:
+    def _check_slack_node(self, graph: "NetworkGraph", report: ValidationReport) -> ValidationReport:
         """
         Check for exactly one SLACK node for power flow.
         """
@@ -506,7 +510,7 @@ class NetworkValidator:
     # Rule 9: Switch endpoints (NEW — PowerFactory-grade)
     # =========================================================================
 
-    def _check_switch_endpoints(self, graph, report: ValidationReport) -> ValidationReport:
+    def _check_switch_endpoints(self, graph: "NetworkGraph", report: ValidationReport) -> ValidationReport:
         """
         Check if all switch endpoints exist in the network.
         """
@@ -560,7 +564,7 @@ class NetworkValidator:
     # Rule 10: Inverter source buses (NEW — PowerFactory-grade)
     # =========================================================================
 
-    def _check_inverter_source_buses(self, graph, report: ValidationReport) -> ValidationReport:
+    def _check_inverter_source_buses(self, graph: "NetworkGraph", report: ValidationReport) -> ValidationReport:
         """
         Check if all inverter source buses exist in the network.
         """
@@ -590,7 +594,7 @@ class NetworkValidator:
     # Rule 11: Branch impedance (non-zero for lines/cables) (NEW)
     # =========================================================================
 
-    def _check_branch_impedance(self, graph, report: ValidationReport) -> ValidationReport:
+    def _check_branch_impedance(self, graph: "NetworkGraph", report: ValidationReport) -> ValidationReport:
         """
         Check that line/cable branches have non-zero impedance.
 
@@ -641,7 +645,7 @@ class NetworkValidator:
     # Rule 12: Transformer HV/LV polarity vs bus voltages (NEW)
     # =========================================================================
 
-    def _check_transformer_polarity(self, graph, report: ValidationReport) -> ValidationReport:
+    def _check_transformer_polarity(self, graph: "NetworkGraph", report: ValidationReport) -> ValidationReport:
         """
         Check that transformer HV side connects to higher voltage bus.
 
@@ -686,7 +690,7 @@ class NetworkValidator:
     # Rule 13: Voltage level consistency on lines/cables (NEW)
     # =========================================================================
 
-    def _check_voltage_consistency(self, graph, report: ValidationReport) -> ValidationReport:
+    def _check_voltage_consistency(self, graph: "NetworkGraph", report: ValidationReport) -> ValidationReport:
         """
         Check that lines/cables connect buses at the same voltage level.
 

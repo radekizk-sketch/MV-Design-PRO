@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 from typing import Any
 from uuid import UUID
 
@@ -24,7 +27,7 @@ def _build_wizard_action_service(uow_factory: Any) -> WizardActionService:
 @router.get("/cases/{case_id}/sld")
 def get_case_sld(
     case_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     try:
         parsed_case_id = UUID(case_id)
@@ -44,7 +47,7 @@ def get_case_sld(
 @router.get("/cases/{case_id}/snapshot")
 def get_case_snapshot(
     case_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     try:
         parsed_case_id = UUID(case_id)
@@ -65,7 +68,7 @@ def get_case_snapshot(
 def submit_case_action_batch(
     case_id: str,
     payload: dict[str, Any],
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     try:
         parsed_case_id = UUID(case_id)

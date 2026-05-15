@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 import json
 from typing import Any
 from uuid import UUID
@@ -113,7 +116,7 @@ def get_analysis_run_results(run_id: UUID) -> dict[str, Any]:
 def get_analysis_run_overlay(
     run_id: UUID,
     diagram_id: UUID = Query(...),
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     canonical_run = _require_canonical_run(run_id)
     with uow_factory() as uow:
