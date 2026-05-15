@@ -213,6 +213,20 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   // K30-8: subskrybuj raw overlay payload by compute per-station alarm severity.
   const overlayPayload = useRawResultOverlayStore((state) => state.payload);
 
+  // K30-11: aggregate station alarm summary (count of severities).
+  const alarmSummary = (() => {
+    if (!overlayPayload) return null;
+    let c = 0, i = 0, w = 0;
+    for (const st of props.stations) {
+      const sev = computeStationAlarmSeverity(st, overlayPayload);
+      if (sev === 'critical') c++;
+      else if (sev === 'important') i++;
+      else if (sev === 'warning') w++;
+    }
+    if (c + i + w === 0) return null;
+    return { critical: c, important: i, warning: w, total: props.stations.length };
+  })();
+
   const [transform, setTransform] = useState<ViewportTransform>(IDENTITY_TRANSFORM);
   const isDraggingRef = useRef(false);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -678,6 +692,28 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
 
         {/* K30-3 NO-GO #9: result overlay metrics z LOAD_FLOW/SC_3F payload */}
         <ResultOverlayLayer stations={stations} cableRuns={cableRuns} />
+
+        {/* K30-11: aggregate alarm summary panel — count of station severities */}
+        {alarmSummary && (
+          <g data-testid="sld-v2-alarm-summary-panel" transform="translate(20, 20)" pointerEvents="none">
+            <rect x={0} y={0} width={260} height={56} rx={4} ry={4} fill="#0A0E14" stroke="#FFD166" strokeWidth={1.5} opacity={0.95} />
+            <text x={10} y={20} fill="#FFD166" fontFamily="sans-serif" fontSize={13} fontWeight={900}>
+              ALARMS NA SIECI ({alarmSummary.total} stacji)
+            </text>
+            <circle cx={20} cy={40} r={6} fill="#FF6B6B" />
+            <text x={32} y={44} fill="#FF6B6B" fontFamily="sans-serif" fontSize={12} fontWeight={700}>
+              {alarmSummary.critical} CRIT
+            </text>
+            <circle cx={100} cy={40} r={6} fill="#FF8B5C" />
+            <text x={112} y={44} fill="#FF8B5C" fontFamily="sans-serif" fontSize={12} fontWeight={700}>
+              {alarmSummary.important} IMP
+            </text>
+            <circle cx={180} cy={40} r={6} fill="#FFD166" />
+            <text x={192} y={44} fill="#FFD166" fontFamily="sans-serif" fontSize={12} fontWeight={700}>
+              {alarmSummary.warning} WARN
+            </text>
+          </g>
+        )}
 
         {/* DER (PV/BESS/FW) */}
         {layers.der && ders.map((d) => {
