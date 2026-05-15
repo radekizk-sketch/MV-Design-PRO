@@ -14,7 +14,7 @@
  * UI: małe etykiety nad stacją z napięciem SN [kV] + kątem [°];
  * przy nadmiarze wartości severity color coded.
  */
-import { COLOR_TEXT_PRIMARY, FONT_SANS } from '../theme/tokens';
+import { FONT_SANS } from '../theme/tokens';
 import {
   useRawResultOverlayStore,
   getMetric,
@@ -180,7 +180,7 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
         // SC_3F: IK_3F_A (initial sc current) + IP_A (peak sc current) + SK_MVA
         const ik3f = isSc3F ? getMetric(payload, snBusRef, 'IK_3F_A') : null;
         const ip = isSc3F ? getMetric(payload, snBusRef, 'IP_A') : null;
-        const skMva = isSc3F ? getMetric(payload, snBusRef, 'SK_MVA') : null;
+        void getMetric; void snBusRef;  // skMva removed K30-52 (overlay shrunk)
         // LOAD_FLOW: U_kV + ANGLE_DEG
         const uKv = !isSc3F ? getMetric(payload, snBusRef, 'U_kV') : null;
         const angleDeg = !isSc3F ? getMetric(payload, snBusRef, 'ANGLE_DEG') : null;
@@ -191,12 +191,14 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
           : deriveOperationalSeverity(false, uKv?.value ?? null);
         const color = severityColor(derivedSeverity);
 
-        const lineCount = isSc3F ? 3 : 2;
-        const boxHeight = 18 + lineCount * 16;
+        // K30-52: shrink overlay 180×big → 84×compact (sticker-style),
+        // eliminuje dominację stacji visualnie. Single line, monospace.
+        const lineCount = isSc3F ? 2 : 1;
+        const boxHeight = 8 + lineCount * 11;
 
         // K30-32: explicit leader line from badge bottom → station bus
         // (eliminates "floating overlay" appearance per user K30-29 feedback).
-        const leaderLineDy = Math.max(0, st.y - badgeY - boxHeight + 18);
+        const leaderLineDy = Math.max(0, st.y - badgeY - boxHeight + 4);
         return (
           <g
             key={`result-overlay-${st.id}`}
@@ -206,55 +208,45 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
             {/* Leader line: badge bottom → station bus */}
             <line
               x1={0}
-              y1={-18 + boxHeight}
+              y1={-4 + boxHeight}
               x2={0}
-              y2={-18 + boxHeight + leaderLineDy}
+              y2={-4 + boxHeight + leaderLineDy}
               stroke={color}
-              strokeWidth={1.5}
-              strokeDasharray="3 2"
-              opacity={0.75}
+              strokeWidth={1}
+              strokeDasharray="2 2"
+              opacity={0.6}
               data-testid={`sld-v2-result-overlay-leader-${st.id}`}
             />
             <rect
-              x={-90}
-              y={-18}
-              width={180}
+              x={-42}
+              y={-4}
+              width={84}
               height={boxHeight}
-              rx={4}
-              ry={4}
+              rx={2}
+              ry={2}
               fill="#0A0E14"
               stroke={color}
-              strokeWidth={2}
+              strokeWidth={1.2}
               opacity={0.95}
             />
             {isSc3F ? (
               <>
                 {ik3f && (
-                  <text x={0} y={2} textAnchor="middle" fill={color} fontFamily={FONT_SANS} fontSize={15} fontWeight={800}>
-                    Ik″={formatMetric(ik3f)}
+                  <text x={0} y={5} textAnchor="middle" fill={color} fontFamily="monospace" fontSize={9} fontWeight={800}>
+                    {`Ik″ ${formatMetric(ik3f)}`}
                   </text>
                 )}
                 {ip && (
-                  <text x={0} y={20} textAnchor="middle" fill="#FFD166" fontFamily={FONT_SANS} fontSize={13} fontWeight={700}>
-                    Ip={formatMetric(ip)}
-                  </text>
-                )}
-                {skMva && (
-                  <text x={0} y={38} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={12} fontWeight={600} opacity={0.85}>
-                    Sk={formatMetric(skMva)}
+                  <text x={0} y={16} textAnchor="middle" fill="#FFD166" fontFamily="monospace" fontSize={8} fontWeight={700}>
+                    {`Ip ${formatMetric(ip)}`}
                   </text>
                 )}
               </>
             ) : (
               <>
                 {uKv && (
-                  <text x={0} y={4} textAnchor="middle" fill={color} fontFamily={FONT_SANS} fontSize={16} fontWeight={800}>
-                    U={formatMetric(uKv)}
-                  </text>
-                )}
-                {angleDeg && (
-                  <text x={0} y={26} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={13} fontWeight={600} opacity={0.85}>
-                    δ={formatMetric(angleDeg)}
+                  <text x={0} y={6} textAnchor="middle" fill={color} fontFamily="monospace" fontSize={10} fontWeight={800}>
+                    {`U=${uKv.value?.toFixed(2) ?? '—'}kV ${angleDeg?.value != null ? (angleDeg.value >= 0 ? `+${angleDeg.value.toFixed(1)}` : angleDeg.value.toFixed(1)) + '°' : ''}`}
                   </text>
                 )}
               </>

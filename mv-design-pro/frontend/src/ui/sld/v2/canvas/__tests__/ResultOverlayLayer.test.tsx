@@ -118,10 +118,9 @@ describe('ResultOverlayLayer — K30-6 result overlay', () => {
     expect(layer?.getAttribute('data-analysis-type')).toBe('SC_3F');
     expect(container.querySelector('[data-testid="sld-v2-result-overlay-stn/abc/station"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="sld-v2-result-overlay-stn/def/station"]')).toBeTruthy();
-    // Sprawdzaj text content (Ik")
+    // K30-52: Sprawdzaj text content (Ik"). Sk usunięty (shrunk overlay).
     const html = container.innerHTML;
     expect(html).toContain('16.22');
-    expect(html).toContain('421.32'); // Sk
   });
 
   it('LOAD_FLOW: renderuje U_kV + ANGLE_DEG badges per stacja', () => {
@@ -132,9 +131,10 @@ describe('ResultOverlayLayer — K30-6 result overlay', () => {
     const layer = container.querySelector('[data-testid="sld-v2-result-overlay-layer"]');
     expect(layer?.getAttribute('data-analysis-type')).toBe('LOAD_FLOW');
     const html = container.innerHTML;
-    expect(html).toContain('14.50'); // U pierwszej stacji
-    expect(html).toContain('-1.20'); // angle
-    expect(html).toContain('13.00'); // U drugiej stacji
+    // K30-52: format zmieniony na "U=X.XXkV ±Y.Y°" single-line compact
+    expect(html).toContain('14.50');
+    expect(html).toContain('-1.2');
+    expect(html).toContain('13.00');
   });
 
   it('renderuje legendę z tytułem analysis_type', () => {

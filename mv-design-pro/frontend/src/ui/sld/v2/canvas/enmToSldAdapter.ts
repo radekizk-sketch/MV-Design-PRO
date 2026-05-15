@@ -1997,14 +1997,24 @@ function buildRunSegmentLabels(
   y: number,
   terminalX: number,
 ): NonNullable<CableRunRendererPropsLight['segmentLabels']> {
-  return segments.map((segment, index) => {
+  // K30-52: dedupe consecutive identical labels (np. "EPR Al 1C 150 · 167 m"
+  // powtarzane na każdym segmencie clutter trunk). Pokaż label tylko gdy
+  // typ kablowy zmienia się względem poprzedniego segmentu, lub gdy to
+  // pierwszy segment runa.
+  let previousLabel: string | null = null;
+  return segments.flatMap((segment, index) => {
+    const label = buildCableRunLabel([segment], classifySegmentKind(segment));
+    if (label === previousLabel) {
+      return [];
+    }
+    previousLabel = label;
     const { fromX, toX } = runSegmentXBounds(segments, stationsOnRun, startX, terminalX, index);
-    return {
+    return [{
       segmentRef: segment.ref_id,
-      text: buildCableRunLabel([segment], classifySegmentKind(segment)),
+      text: label,
       x: (fromX + toX) / 2,
       y: y + (index % 2 === 0 ? -12 : 18),
-    };
+    }];
   });
 }
 
