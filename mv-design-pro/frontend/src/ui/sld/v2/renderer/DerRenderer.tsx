@@ -199,20 +199,72 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
         const s = Math.sqrt(pKw * pKw + qKvar * qKvar);
         const cosPhi = s > 0 ? pKw / s : null;
         if (cosPhi === null) return null;
+        // K30-6: enlarged compact cos φ + P display (font 7→12, w/ pill background)
         return (
-          <text
-            x={0}
-            y={half + 26}
-            textAnchor="middle"
-            fill="#88BBDD"
-            fontFamily={FONT_MONO}
-            fontSize={7}
-            data-testid={`sld-v2-der-${id}-compact-cos-phi`}
-          >
-            {`cosφ ${cosPhi.toFixed(2)}`}
-          </text>
+          <g data-testid={`sld-v2-der-${id}-compact-cos-phi`}>
+            <rect
+              x={-32}
+              y={half + 14}
+              width={64}
+              height={26}
+              rx={3}
+              ry={3}
+              fill="#0A1018"
+              stroke="#88BBDD"
+              strokeWidth={1.1}
+              opacity={0.9}
+            />
+            <text
+              x={0}
+              y={half + 24}
+              textAnchor="middle"
+              fill="#88BBDD"
+              fontFamily={FONT_MONO}
+              fontSize={11}
+              fontWeight={700}
+            >
+              {`${pKw.toFixed(0)}kW`}
+            </text>
+            <text
+              x={0}
+              y={half + 36}
+              textAnchor="middle"
+              fill="#88BBDD"
+              fontFamily={FONT_MONO}
+              fontSize={10}
+              fontWeight={600}
+              opacity={0.85}
+            >
+              {`cosφ ${cosPhi.toFixed(2)}`}
+            </text>
+          </g>
         );
       })()}
+      {/* K30-6: NC RFG module badge w compact LOD (krytyka OZE/NC RFG) */}
+      {lod === 'compact' && ncRfgModule && (
+        <g data-testid={`sld-v2-der-${id}-compact-nc-rfg`}>
+          <rect
+            x={half - 18}
+            y={-half - 4}
+            width={20}
+            height={14}
+            rx={2}
+            ry={2}
+            fill={ncRfgModule === 'A' ? '#7EE0B5' : ncRfgModule === 'B' ? '#FFD166' : ncRfgModule === 'C' ? '#FF8B5C' : '#FF6B6B'}
+          />
+          <text
+            x={half - 8}
+            y={-half + 6}
+            textAnchor="middle"
+            fill="#0A0E14"
+            fontFamily={FONT_SANS}
+            fontSize={10}
+            fontWeight={900}
+          >
+            {ncRfgModule}
+          </text>
+        </g>
+      )}
       {/* Nazwa DER pod symbolem (LOD=full only) */}
       {lod === 'full' && (
         <text
