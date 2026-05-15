@@ -56,13 +56,22 @@ function log(step, msg, data) {
 const STATION_CONFIGS = [
   // === K20 inheritance (S02-S21) ===
   { id: 'S02', name: 'Stacja S02 ZKSN prosument PV', station_type: 'inline', der: [{ kind: 'PV', p_mw: 0.05 }], feeder_source: 'A', description: 'Słupowa ZKSN, PV prosument 50 kW' },
-  { id: 'S03', name: 'Stacja S03 ZKSN bytowa', station_type: 'inline', load: { p_kw: 30, kind: 'bytowy' }, feeder_source: 'A', description: 'Słupowa ZKSN, klasyczna bytowa' },
+  { id: 'S03', name: 'Stacja S03 ZKSN bytowa 3 odpływy', station_type: 'inline', nn_feeders: [
+    { p_kw: 30, kind: 'bytowy', label: 'Odpływ bytowy 1' },
+    { p_kw: 25, kind: 'bytowy', label: 'Odpływ bytowy 2' },
+    { p_kw: 40, kind: 'komunalny', label: 'Odpływ uliczny LED' },
+  ], feeder_source: 'A', description: 'Słupowa ZKSN, 3 odpływy nN demonstrujące K30-25 multi-feeder' },
   { id: 'S04', name: 'Stacja S04 K PV+przemysł', station_type: 'inline', der: [{ kind: 'PV', p_mw: 0.5 }], load: { p_kw: 100, kind: 'przemyslowy' }, feeder_source: 'A', description: 'Kontenerowa typ K, mini-block PV nN' },
   { id: 'S05', name: 'Stacja S05 K BESS 1MW', station_type: 'inline', der: [{ kind: 'BESS', p_mw: 1.0, connection_variant: 'block_transformer' }], feeder_source: 'A', description: 'BESS 1 MW / 2 MWh block transformer 15 kV' },
   { id: 'S06', name: 'Stacja S06 K FW 800kW', station_type: 'inline', der: [{ kind: 'FW', p_mw: 0.8, connection_variant: 'DEDICATED_MV_CONNECTION' }], feeder_source: 'A', description: 'FW dedicated MV connection' },
   { id: 'S07', name: 'Stacja S07 K hybrid PV+BESS', station_type: 'inline', der: [{ kind: 'PV', p_mw: 2.0 }, { kind: 'BESS', p_mw: 0.5 }], load: { p_kw: 500, kind: 'przemyslowy' }, feeder_source: 'A', description: 'Hybrid PV+BESS dwa inwertery' },
   { id: 'S08', name: 'Stacja S08 wnętrzowa PV+komun', station_type: 'inline', der: [{ kind: 'PV', p_mw: 1.0, connection_variant: 'LV_BEHIND_STATION_TRANSFORMER' }], load: { p_kw: 200, kind: 'komunalny' }, feeder_source: 'A', description: 'Wnętrzowa LV_BEHIND_STATION_TRANSFORMER' },
-  { id: 'S09', name: 'Stacja S09 wnętrzowa przemysł 2MW', station_type: 'inline', load: { p_kw: 2000, kind: 'przemyslowy' }, feeder_source: 'A', description: 'Klasyczny duży odbiór 2 MW' },
+  { id: 'S09', name: 'Stacja S09 wnętrzowa przemysł 4 odpływy', station_type: 'inline', nn_feeders: [
+    { p_kw: 600, kind: 'przemyslowy', label: 'Linia produkcyjna A' },
+    { p_kw: 600, kind: 'przemyslowy', label: 'Linia produkcyjna B' },
+    { p_kw: 500, kind: 'przemyslowy', label: 'Silniki pomocnicze' },
+    { p_kw: 300, kind: 'komunalny', label: 'Oświetlenie + biuro' },
+  ], feeder_source: 'A', description: 'Wnętrzowa przemysłowa 4 odpływy nN — diversyfikacja per K30-25' },
   { id: 'S10', name: 'Stacja S10 K farma PV 5MW', station_type: 'inline', der: [{ kind: 'PV', p_mw: 5.0, connection_variant: 'SOURCE_CONNECTION_STATION' }], feeder_source: 'A', description: 'PV farma 5 MW source connection station' },
   { id: 'S11', name: 'Stacja S11 słupowa mikro PV', station_type: 'inline', der: [{ kind: 'PV', p_mw: 0.03 }], load: { p_kw: 20, kind: 'bytowy' }, feeder_source: 'A', description: 'Mikroinstalacja prosumencka 30 kW' },
   { id: 'S12', name: 'Stacja S12 wnętrzowa BESS 4MWh', station_type: 'inline', der: [{ kind: 'BESS', p_mw: 2.0, connection_variant: 'block_transformer' }], feeder_source: 'A', description: 'BESS 4 MWh peak shaving block 15 kV' },
@@ -480,67 +489,97 @@ async function main() {
   const branchOk = branchResults.filter((r) => r.status === 'PASS').length;
   log('K12', `Odgałęzienia: ${branchOk}/${branchResults.length} PASS`);
 
-  // K11: Loads per station (feeder nN + load)
+  // K11: Multi-feeder nN per station (K30-25 schema extension)
+  // STATION_CONFIGS_K30 supports BOTH legacy `load: {p_kw,kind}` AND new
+  // `nn_feeders: [{p_kw, kind, label}]` array. Backward-compat auto-convert.
   const NN_FEEDER_CATALOG = 'cb_nn_400a';
   const loadResults = [];
   for (const stRes of stationResults) {
-    if (stRes.status !== 'PASS' || !stRes.cfg.load || !stRes.nnBusRef) continue;
-    const feederRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
-      project_id: projectId,
-      operation: {
-        name: 'add_nn_outgoing_field',
-        idempotency_key: `gn30_${stRes.id}_nn_feeder`,
-        payload: {
-          bus_nn_ref: stRes.nnBusRef,
-          station_ref: stRes.stationRef,
-          field_role: 'OUTGOING',
-          field_name: `Odpływ nN ${stRes.cfg.id}`,
-          catalog_ref: NN_FEEDER_CATALOG,
-        },
-      },
-    });
-    const feederOk = feederRes.ok && !feederRes.json?.error_code;
-    if (!feederOk) {
-      loadResults.push({ id: stRes.id, status: `FEEDER_FAIL: ${feederRes.json?.error_code ?? ''}` });
-      continue;
-    }
-    const feederIds = feederRes.json?.changes?.created_element_ids ?? [];
-    const feederRef = feederIds.find(
-      (id) => typeof id === 'string' && id.startsWith('nn/') && id.endsWith('/outgoing'),
-    );
-    if (!feederRef) {
-      loadResults.push({ id: stRes.id, status: 'NO_FEEDER_REF' });
-      continue;
-    }
-    let loadCatalog = 'load_mieszk_15kw';
-    if (stRes.cfg.load.kind === 'przemyslowy') loadCatalog = 'load_przem_75kw';
-    else if (stRes.cfg.load.kind === 'komunalny') loadCatalog = 'load_uslugi_30kw';
+    if (stRes.status !== 'PASS' || !stRes.nnBusRef) continue;
 
-    const loadRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
-      project_id: projectId,
-      operation: {
-        name: 'add_nn_load',
-        idempotency_key: `gn30_${stRes.id}_load`,
-        payload: {
-          feeder_ref: feederRef,
-          bus_nn_ref: stRes.nnBusRef,
-          active_power_kw: stRes.cfg.load.p_kw,
-          reactive_power_kvar: stRes.cfg.load.p_kw * 0.33,
-          load_kind: 'SKUPIONY',
-          connection_type: 'TROJFAZOWY',
-          load_name: `Odbiór ${stRes.cfg.load.kind} ${stRes.cfg.load.p_kw} kW`,
-          cos_phi: 0.95,
-          catalog_ref: loadCatalog,
+    // Resolve nn_feeders array: explicit field or fallback to legacy load
+    const feeders = Array.isArray(stRes.cfg.nn_feeders)
+      ? stRes.cfg.nn_feeders
+      : stRes.cfg.load
+        ? [{ p_kw: stRes.cfg.load.p_kw, kind: stRes.cfg.load.kind, label: `${stRes.cfg.load.kind} ${stRes.cfg.load.p_kw} kW` }]
+        : [];
+
+    if (feeders.length === 0) continue;
+
+    for (let fi = 0; fi < feeders.length; fi++) {
+      const feeder = feeders[fi];
+      const feederRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+        project_id: projectId,
+        operation: {
+          name: 'add_nn_outgoing_field',
+          idempotency_key: `gn30_${stRes.id}_nn_feeder_${fi}`,
+          payload: {
+            bus_nn_ref: stRes.nnBusRef,
+            station_ref: stRes.stationRef,
+            field_role: 'OUTGOING',
+            field_name: feeder.label || `Odpływ nN ${stRes.cfg.id} #${fi + 1}`,
+            catalog_ref: NN_FEEDER_CATALOG,
+          },
         },
-      },
-    });
-    const loadOk = loadRes.ok && !loadRes.json?.error_code;
-    loadResults.push({
-      id: stRes.id,
-      kind: stRes.cfg.load.kind,
-      p_kw: stRes.cfg.load.p_kw,
-      status: loadOk ? 'PASS' : `FAIL: ${loadRes.json?.error_code ?? ''}`,
-    });
+      });
+      const feederOk = feederRes.ok && !feederRes.json?.error_code;
+      if (!feederOk) {
+        loadResults.push({
+          id: `${stRes.id}#${fi}`,
+          status: `FEEDER_FAIL: ${feederRes.json?.error_code ?? ''}`,
+        });
+        continue;
+      }
+      const feederIds = feederRes.json?.changes?.created_element_ids ?? [];
+      const feederRef = feederIds.find(
+        (id) => typeof id === 'string' && id.startsWith('nn/') && id.endsWith('/outgoing'),
+      );
+      if (!feederRef) {
+        loadResults.push({ id: `${stRes.id}#${fi}`, status: 'NO_FEEDER_REF' });
+        continue;
+      }
+
+      // Optionally attach load to feeder (if p_kw provided)
+      if (feeder.p_kw && feeder.p_kw > 0) {
+        let loadCatalog = 'load_mieszk_15kw';
+        if (feeder.kind === 'przemyslowy') loadCatalog = 'load_przem_75kw';
+        else if (feeder.kind === 'komunalny') loadCatalog = 'load_uslugi_30kw';
+
+        const loadRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
+          project_id: projectId,
+          operation: {
+            name: 'add_nn_load',
+            idempotency_key: `gn30_${stRes.id}_load_${fi}`,
+            payload: {
+              feeder_ref: feederRef,
+              bus_nn_ref: stRes.nnBusRef,
+              active_power_kw: feeder.p_kw,
+              reactive_power_kvar: feeder.p_kw * 0.33,
+              load_kind: 'SKUPIONY',
+              connection_type: 'TROJFAZOWY',
+              load_name: feeder.label || `Odbiór ${feeder.kind} ${feeder.p_kw} kW`,
+              cos_phi: 0.95,
+              catalog_ref: loadCatalog,
+            },
+          },
+        });
+        const loadOk = loadRes.ok && !loadRes.json?.error_code;
+        loadResults.push({
+          id: `${stRes.id}#${fi}`,
+          kind: feeder.kind,
+          p_kw: feeder.p_kw,
+          status: loadOk ? 'PASS' : `FAIL: ${loadRes.json?.error_code ?? ''}`,
+        });
+      } else {
+        // Feeder bez load — count jako PASS (sole-purpose feeder)
+        loadResults.push({
+          id: `${stRes.id}#${fi}`,
+          kind: 'feeder-only',
+          p_kw: 0,
+          status: 'PASS',
+        });
+      }
+    }
   }
 
   // Final summary
