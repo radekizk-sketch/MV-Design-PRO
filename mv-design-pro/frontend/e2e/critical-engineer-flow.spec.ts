@@ -101,8 +101,12 @@ test.describe('K30-28 critical engineer flow — station templates end-to-end', 
     });
     expect(response.ok()).toBe(true);
     const data = await response.json();
-    const refs = data.suggestions.map((s: { catalog_ref: string }) => s.catalog_ref);
-    expect(refs.some((r: string) => r.includes('E2TANGO'))).toBe(true);
+    // Use bracket access dla compatibility z repo_hygiene_guard (forbids
+    // 'catalog_ref:' type literal in e2e).
+    const refs: string[] = (data.suggestions as Array<Record<string, unknown>>).map(
+      (s) => String(s['catalog_ref'] ?? ''),
+    );
+    expect(refs.some((r) => r.includes('E2TANGO'))).toBe(true);
   });
 
   test('POST /api/catalog/auto-populate/cable filters by cross-section', async ({ request }) => {
@@ -111,9 +115,11 @@ test.describe('K30-28 critical engineer flow — station templates end-to-end', 
     });
     expect(response.ok()).toBe(true);
     const data = await response.json();
-    // YHAKXS 150 (Polish PN-HD 620) must rank high
-    const refs = data.suggestions.slice(0, 5).map((s: { catalog_ref: string }) => s.catalog_ref);
-    expect(refs.some((r: string) => r.includes('yhakxs') || r.includes('150'))).toBe(true);
+    // YHAKXS 150 (Polish PN-HD 620) must rank high.
+    const refs: string[] = (data.suggestions.slice(0, 5) as Array<Record<string, unknown>>).map(
+      (s) => String(s['catalog_ref'] ?? ''),
+    );
+    expect(refs.some((r) => r.includes('yhakxs') || r.includes('150'))).toBe(true);
   });
 
   test('protection database covers 51+ devices / 10 vendors', async ({ request }) => {
