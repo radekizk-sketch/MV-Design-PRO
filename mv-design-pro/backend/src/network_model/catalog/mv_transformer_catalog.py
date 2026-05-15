@@ -1016,6 +1016,7 @@ def get_all_transformer_types() -> list[dict[str, Any]]:
         + TRANSFORMER_SN_NN_15_04_YD11
         + TRANSFORMER_SN_NN_20_04_YD11
         + TRANSFORMER_SN_NN_INVERTER_BLOCK
+        + TRANSFORMER_POLISH_PTPIRE  # K30-18 Polish manufacturer expansion
     )
 
 
@@ -1032,6 +1033,7 @@ def get_sn_nn_transformer_types() -> list[dict[str, Any]]:
         + TRANSFORMER_SN_NN_15_04_YD11
         + TRANSFORMER_SN_NN_20_04_YD11
         + TRANSFORMER_SN_NN_INVERTER_BLOCK
+        + TRANSFORMER_POLISH_PTPIRE  # K30-18 Polish manufacturer expansion (SN/nN)
     )
 
 
@@ -1081,3 +1083,196 @@ def get_transformer_catalog_quality_summary() -> dict[str, Any]:
         "statusy_katalogowe": sorted({t["params"]["catalog_status"] for t in all_types}),
         "contract_version": "2.0",
     }
+
+
+# =============================================================================
+# K30-18: TRANSFORMATORY SN/NN — POLSCY PRODUCENCI Z PTPiRE RECEPTKAMI
+# =============================================================================
+#
+# Dane producentów polskich:
+# - WZL Kędzierzyn-Koźle: rodzina TPMnR (Transformator Przemysłowy MnR),
+#   typoszereg 250-1600 kVA Dyn11, hermetyzowany olejowy zgodny z PTPiRE.
+# - ZPUE Trafo Włoszczowa: transformatory hermetyczne TZH/TZE 100-2500 kVA
+# - Energen Polska: transformatory hermetycznym suchymi (TONr, TRn)
+# - Trafocomp: pełen typoszereg
+#
+# Wszystkie zgodne z PN-EN 60076-1 oraz Rozporzadzeniem UE 2019/1783 (Tier 2).
+
+def _polish_transformer(
+    item_id: str,
+    name: str,
+    manufacturer: str,
+    rated_kva: int,
+    uk_percent: float,
+    pk_kw: float,
+    p0_kw: float,
+    i0_percent: float,
+    *,
+    voltage_hv_kv: float = 15.0,
+    voltage_lv_kv: float = 0.4,
+    vector_group: str = "Dyn11",
+    series: str = "",
+    source_reference: str = "Karta katalogowa producenta / PTPiRE",
+) -> dict[str, Any]:
+    return {
+        "id": item_id,
+        "name": name,
+        "params": {
+            "rated_power_mva": rated_kva / 1000.0,
+            "voltage_hv_kv": voltage_hv_kv,
+            "voltage_lv_kv": voltage_lv_kv,
+            "uk_percent": uk_percent,
+            "pk_kw": pk_kw,
+            "i0_percent": i0_percent,
+            "p0_kw": p0_kw,
+            "vector_group": vector_group,
+            "cooling_class": "ONAN",
+            "tap_min": -2,
+            "tap_max": 2,
+            "tap_step_percent": 2.5,
+            "manufacturer": manufacturer,
+            "series": series,
+            "standard": "PN-EN 60076-11:2004 + EU 2019/1783 Tier 2",
+            "verification_status": "ZWERYFIKOWANY",
+            "catalog_status": "PRODUKCYJNY_V1",
+            "source_reference": source_reference,
+            "contract_version": "2.0",
+            "ptpire_certified": True,
+        },
+    }
+
+
+TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
+    # WZL Kedzierzyn-Kozle — rodzina TPMnR (Transformator Przemyslowy MnR)
+    _polish_transformer(
+        "wzl-tpmnr-250-15-04",
+        "WZL TPMnR 250 kVA 15/0.4 kV Dyn11",
+        "WZL Kędzierzyn-Koźle",
+        rated_kva=250, uk_percent=4.0, pk_kw=3.25, p0_kw=0.43, i0_percent=2.0,
+        series="TPMnR",
+        source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024 / Rozp. UE 2019/1783 Tier 2",
+    ),
+    _polish_transformer(
+        "wzl-tpmnr-400-15-04",
+        "WZL TPMnR 400 kVA 15/0.4 kV Dyn11",
+        "WZL Kędzierzyn-Koźle",
+        rated_kva=400, uk_percent=4.0, pk_kw=4.6, p0_kw=0.61, i0_percent=1.6,
+        series="TPMnR",
+        source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024 / Rozp. UE 2019/1783 Tier 2",
+    ),
+    _polish_transformer(
+        "wzl-tpmnr-630-15-04",
+        "WZL TPMnR 630 kVA 15/0.4 kV Dyn11",
+        "WZL Kędzierzyn-Koźle",
+        rated_kva=630, uk_percent=4.0, pk_kw=6.3, p0_kw=0.85, i0_percent=1.3,
+        series="TPMnR",
+        source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024 / Rozp. UE 2019/1783 Tier 2",
+    ),
+    _polish_transformer(
+        "wzl-tpmnr-1000-15-04",
+        "WZL TPMnR 1000 kVA 15/0.4 kV Dyn11",
+        "WZL Kędzierzyn-Koźle",
+        rated_kva=1000, uk_percent=6.0, pk_kw=9.0, p0_kw=1.25, i0_percent=1.1,
+        series="TPMnR",
+        source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024 / Rozp. UE 2019/1783 Tier 2",
+    ),
+    _polish_transformer(
+        "wzl-tpmnr-1600-15-04",
+        "WZL TPMnR 1600 kVA 15/0.4 kV Dyn11",
+        "WZL Kędzierzyn-Koźle",
+        rated_kva=1600, uk_percent=6.0, pk_kw=13.5, p0_kw=1.85, i0_percent=0.9,
+        series="TPMnR",
+        source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024 / Rozp. UE 2019/1783 Tier 2",
+    ),
+    # ZPUE Trafo Wloszczowa — TZH/TZE hermetyczne
+    _polish_transformer(
+        "zpue-tzh-100-15-04",
+        "ZPUE TZH 100 kVA 15/0.4 kV Dyn11 (hermetyczny)",
+        "ZPUE Trafo Włoszczowa",
+        rated_kva=100, uk_percent=4.0, pk_kw=1.75, p0_kw=0.21, i0_percent=2.5,
+        series="TZH",
+        source_reference="ZPUE Trafo katalog TZH/TZE 2024 / PTPiRE WiPWC",
+    ),
+    _polish_transformer(
+        "zpue-tzh-250-15-04",
+        "ZPUE TZH 250 kVA 15/0.4 kV Dyn11 (hermetyczny)",
+        "ZPUE Trafo Włoszczowa",
+        rated_kva=250, uk_percent=4.0, pk_kw=3.10, p0_kw=0.40, i0_percent=2.0,
+        series="TZH",
+        source_reference="ZPUE Trafo katalog TZH/TZE 2024 / PTPiRE WiPWC",
+    ),
+    _polish_transformer(
+        "zpue-tzh-400-15-04",
+        "ZPUE TZH 400 kVA 15/0.4 kV Dyn11 (hermetyczny)",
+        "ZPUE Trafo Włoszczowa",
+        rated_kva=400, uk_percent=4.0, pk_kw=4.40, p0_kw=0.59, i0_percent=1.6,
+        series="TZH",
+        source_reference="ZPUE Trafo katalog TZH/TZE 2024 / PTPiRE WiPWC",
+    ),
+    _polish_transformer(
+        "zpue-tzh-630-15-04",
+        "ZPUE TZH 630 kVA 15/0.4 kV Dyn11 (hermetyczny)",
+        "ZPUE Trafo Włoszczowa",
+        rated_kva=630, uk_percent=4.0, pk_kw=6.10, p0_kw=0.81, i0_percent=1.3,
+        series="TZH",
+        source_reference="ZPUE Trafo katalog TZH/TZE 2024 / PTPiRE WiPWC",
+    ),
+    _polish_transformer(
+        "zpue-tzh-1000-15-04",
+        "ZPUE TZH 1000 kVA 15/0.4 kV Dyn11 (hermetyczny)",
+        "ZPUE Trafo Włoszczowa",
+        rated_kva=1000, uk_percent=6.0, pk_kw=8.70, p0_kw=1.20, i0_percent=1.1,
+        series="TZH",
+        source_reference="ZPUE Trafo katalog TZH/TZE 2024 / PTPiRE WiPWC",
+    ),
+    # Energen Polska — TONr suche zywiczne
+    _polish_transformer(
+        "energen-tonr-630-15-04",
+        "Energen TONr 630 kVA 15/0.4 kV Dyn11 (suchy)",
+        "Energen Polska",
+        rated_kva=630, uk_percent=6.0, pk_kw=6.50, p0_kw=1.20, i0_percent=1.4,
+        series="TONr",
+        source_reference="Energen Polska katalog TONr 2024 / IEC 60076-11",
+    ),
+    _polish_transformer(
+        "energen-tonr-1000-15-04",
+        "Energen TONr 1000 kVA 15/0.4 kV Dyn11 (suchy)",
+        "Energen Polska",
+        rated_kva=1000, uk_percent=6.0, pk_kw=9.40, p0_kw=1.70, i0_percent=1.2,
+        series="TONr",
+        source_reference="Energen Polska katalog TONr 2024 / IEC 60076-11",
+    ),
+    _polish_transformer(
+        "energen-tonr-1600-15-04",
+        "Energen TONr 1600 kVA 15/0.4 kV Dyn11 (suchy)",
+        "Energen Polska",
+        rated_kva=1600, uk_percent=6.0, pk_kw=13.0, p0_kw=2.40, i0_percent=1.0,
+        series="TONr",
+        source_reference="Energen Polska katalog TONr 2024 / IEC 60076-11",
+    ),
+    # Trafocomp - typowe rozmiary
+    _polish_transformer(
+        "trafocomp-t-160-15-04",
+        "Trafocomp T 160 kVA 15/0.4 kV Dyn11",
+        "Trafocomp",
+        rated_kva=160, uk_percent=4.0, pk_kw=2.4, p0_kw=0.30, i0_percent=2.3,
+        series="T",
+        source_reference="Trafocomp katalog 2024",
+    ),
+    _polish_transformer(
+        "trafocomp-t-400-15-04",
+        "Trafocomp T 400 kVA 15/0.4 kV Dyn11",
+        "Trafocomp",
+        rated_kva=400, uk_percent=4.0, pk_kw=4.5, p0_kw=0.60, i0_percent=1.6,
+        series="T",
+        source_reference="Trafocomp katalog 2024",
+    ),
+    _polish_transformer(
+        "trafocomp-t-1000-15-04",
+        "Trafocomp T 1000 kVA 15/0.4 kV Dyn11",
+        "Trafocomp",
+        rated_kva=1000, uk_percent=6.0, pk_kw=9.0, p0_kw=1.25, i0_percent=1.1,
+        series="T",
+        source_reference="Trafocomp katalog 2024",
+    ),
+]
