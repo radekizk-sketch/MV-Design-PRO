@@ -324,6 +324,11 @@ class PowerFlowGaussSeidelSolver:
         node_angle = {
             node_id: float(np.angle(voltage)) for node_id, voltage in node_voltage.items()
         }
+        # K30-14 NO-GO #10 (parity z power_flow_newton): include not_solved
+        # nodes z NaN markerem dla downstream JSON-safe propagation.
+        for not_solved_id in not_solved_nodes:
+            node_u_mag[not_solved_id] = float("nan")
+            node_angle[not_solved_id] = float("nan")
 
         # Compute branch flows
         slack_voltage_kv = graph.nodes[pf_input.slack.node_id].voltage_level
@@ -350,6 +355,10 @@ class PowerFlowGaussSeidelSolver:
                 node_voltage_kv[node_id] = float(abs(voltage) * voltage_level)
             else:
                 missing_voltage_base_nodes.append(node_id)
+        # K30-14 NO-GO #10: NaN-mark not_solved_nodes (parity z newton solver).
+        for not_solved_id in not_solved_nodes:
+            if not_solved_id not in node_voltage_kv:
+                node_voltage_kv[not_solved_id] = float("nan")
 
         # Build branch current in kA
         branch_current_ka: dict[str, float] = {}

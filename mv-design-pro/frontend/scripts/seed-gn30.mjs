@@ -252,6 +252,22 @@ async function main() {
   let currentSegmentA = trunkA.segmentId;
   let currentSegmentB = trunkB?.segmentId ?? null;
   const stationResults = [];
+  // K30-14 NO-GO #10 ROOT FIX: zamiast binary split 0.5 (po 30 split-ach
+  // rightmost segment ma długość ~9 nanometrów → Y-bus singular → Newton-Raphson
+  // diverguje), używaj progresywny ratio. Cel: równomierny rozkład N stations
+  // along trunk. Algorithm: ratio_i = 1/(remaining_count) gdy wstawiamy w prawą
+  // resztę. Wzór wynika z: chcemy stacje na 1/(N+1), 2/(N+1), ..., N/(N+1)
+  // długości; po i-tym wstawieniu w prawej reszcie chodzi o 1/(N-i+1).
+  //
+  // Counter per ACTUAL target segment (A lub B). Gdy GPZ-B fail i fallback do
+  // trunk A, wszystkie stacje liczone w placedInA — żeby remaining nie poszedł
+  // ujemnie.
+  let placedInA = 0;
+  let placedInB = 0;
+  const stationsToA = STATION_CONFIGS.filter(
+    (c) => c.feeder_source !== 'B' || !currentSegmentB,
+  ).length;
+  const stationsToB = STATION_CONFIGS.length - stationsToA;
   for (const cfg of STATION_CONFIGS) {
     const useB = cfg.feeder_source === 'B' && currentSegmentB;
     const targetSegment = useB ? currentSegmentB : currentSegmentA;
@@ -260,6 +276,14 @@ async function main() {
       log(`K6.${cfg.id}`, 'FAIL: no_segment (feeder unavailable)');
       continue;
     }
+    // Progresywny ratio. Najpierw wstawiamy w 1/(N+1) trunku, potem w prawej
+    // reszcie 1/N (czyli 2/(N+1) całości), 1/(N-1) (3/(N+1)), itd.
+    const total = useB ? stationsToB : stationsToA;
+    const placed = useB ? placedInB : placedInA;
+    const remaining = Math.max(1, total - placed);
+    const insertRatio = 1.0 / (remaining + 1);
+    if (useB) placedInB += 1;
+    else placedInA += 1;
     const stationRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
       project_id: projectId,
       operation: {
@@ -267,7 +291,7 @@ async function main() {
         idempotency_key: `gn30_station_${cfg.id}`,
         payload: {
           segment_id: targetSegment,
-          insert_at: { mode: 'RATIO', value: 0.5 },
+          insert_at: { mode: 'RATIO', value: insertRatio },
           station: {
             name_pl: cfg.name,
             station_type: cfg.station_type,

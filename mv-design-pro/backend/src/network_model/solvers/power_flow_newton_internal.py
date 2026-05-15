@@ -837,6 +837,31 @@ def _build_ybus_ohm(
     y_bus = np.zeros((size, size), dtype=complex)
     applied_taps: list[dict[str, Any]] = []
 
+    # K30-14 NO-GO #10 (singular Jacobian fix): closed switches connect buses
+    # topologically ale dotychczas NIE wstawiały do Y-bus admittance. Buses
+    # connected only via switches były dangling rows in Y-bus → Jacobian
+    # singular → Newton-Raphson divergence z step_norm=0.
+    # Standard engineering practice: zamknięty łącznik = bardzo mała impedancja
+    # (R=X=0.0001 ohm). Y_short = 1/(R+jX) = bardzo duża admittance →
+    # voltage equalization between bus endpoints przy minimalnym wpływie na flow.
+    # Open switches → no edge (correct: galvanic break).
+    Y_CLOSED_SWITCH = 1.0 / complex(0.0001, 0.0001)
+    for switch in graph.switches.values():
+        if not switch.in_service:
+            continue
+        # SwitchState.CLOSED only — open switches don't conduct
+        from network_model.core.switch import SwitchState
+        if switch.state != SwitchState.CLOSED:
+            continue
+        from_idx = node_id_to_index.get(switch.from_node_id)
+        to_idx = node_id_to_index.get(switch.to_node_id)
+        if from_idx is None or to_idx is None:
+            continue
+        y_bus[from_idx, to_idx] -= Y_CLOSED_SWITCH
+        y_bus[to_idx, from_idx] -= Y_CLOSED_SWITCH
+        y_bus[from_idx, from_idx] += Y_CLOSED_SWITCH
+        y_bus[to_idx, to_idx] += Y_CLOSED_SWITCH
+
     for branch in graph.branches.values():
         if not branch.in_service:
             continue
