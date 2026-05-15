@@ -1478,7 +1478,9 @@ function buildStationDerBadges(
   snapshot: EnergyNetworkModel,
   stationRef: string,
 ): MiniBlockDerBadge[] {
-  const counters = new Map<string, MiniBlockDerBadge>();
+  // K30-55 Phase E: aggregate {kind, side, count, totalPMw} — pokaż badge
+  // tylko gdy istnieją realne generators (p_mw available). Eliminuje atrapy.
+  const counters = new Map<string, { kind: 'PV' | 'BESS' | 'FW'; connectionSide?: 'nn' | 'sn' | 'dedicated'; count: number; totalPMw: number }>();
   for (const gen of snapshot.generators ?? []) {
     if (generatorStationRef(gen) !== stationRef) continue;
     const kind = mapGenTypeToDerKind(gen);
@@ -1486,13 +1488,22 @@ function buildStationDerBadges(
     const connectionSide = mapGeneratorConnectionSide(gen);
     const key = `${kind}:${connectionSide}`;
     const current = counters.get(key);
+    const pMw = (typeof gen.p_mw === 'number' && Number.isFinite(gen.p_mw)) ? gen.p_mw : 0;
     counters.set(key, {
       kind,
       connectionSide,
       count: (current?.count ?? 0) + 1,
+      totalPMw: (current?.totalPMw ?? 0) + pMw,
     });
   }
-  return [...counters.values()].sort((a, b) => `${a.kind}:${a.connectionSide}`.localeCompare(`${b.kind}:${b.connectionSide}`));
+  return [...counters.values()]
+    .map((b) => ({
+      kind: b.kind,
+      connectionSide: b.connectionSide,
+      count: b.count,
+      totalPMw: b.totalPMw > 0 ? Math.round(b.totalPMw * 1000) / 1000 : null,
+    }))
+    .sort((a, b) => `${a.kind}:${a.connectionSide}`.localeCompare(`${b.kind}:${b.connectionSide}`));
 }
 
 function generatorStationRef(gen: Generator): string | null {

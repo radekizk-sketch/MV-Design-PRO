@@ -882,7 +882,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     const station = r.stations[0];
 
     expect(station.footprintType).toBe('mv_lv_inline');
-    expect(station.derBadges).toEqual([{ kind: 'PV', connectionSide: 'nn', count: 1 }]);
+    expect(station.derBadges).toEqual([{ kind: 'PV', connectionSide: 'nn', count: 1, totalPMw: expect.any(Number) }]);
     expect(station.nnFeedersCount).toBe(2);
   });
 
@@ -908,7 +908,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
 
     const r = buildSldDataFromSnapshot(snap, null);
 
-    expect(r.stations[0].derBadges).toEqual([{ kind: 'PV', connectionSide: 'nn', count: 1 }]);
+    expect(r.stations[0].derBadges).toEqual([{ kind: 'PV', connectionSide: 'nn', count: 1, totalPMw: expect.any(Number) }]);
     expect(r.ders.find((der) => der.id === 'PV-1')).toEqual(
       expect.objectContaining({ kind: 'PV', connectionVariant: 'nn_side' }),
     );

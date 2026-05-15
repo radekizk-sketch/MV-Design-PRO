@@ -75,6 +75,9 @@ export interface MiniBlockDerBadge {
   readonly kind: 'PV' | 'BESS' | 'FW';
   readonly count: number;
   readonly connectionSide?: 'nn' | 'sn' | 'dedicated';
+  /** K30-55 Phase E: aggregated P_mw z generatorów (realna moc, nie atrapa).
+   *  Gdy null → badge ukryty (zamiast atrapy). */
+  readonly totalPMw?: number | null;
 }
 
 export interface MiniBlockRmuRendererProps {
@@ -107,6 +110,9 @@ export interface MiniBlockRmuRendererProps {
    *  z adaptera (StationMiniBlockDetails.mainBusVoltageKv) przez
    *  StationOnRunRenderer. Brak → fallback do COLOR_BUS_LV. */
   readonly busVoltageKv?: number | null;
+  /** K30-55 Phase D: stacja jest NMO (Normalnie Otwarty Punkt) na ring topology.
+   *  Renderer rysuje prominent ⨯ marker over station code badge. */
+  readonly isNop?: boolean;
 }
 
 // =============================================================================
@@ -347,18 +353,30 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
 
       {/* K30-4: prominent station code badge — props.stationCode (from adapter)
        *  or regex z name (fallback). Backend gubi name_pl więc kod musi
-       *  pochodzić z adaptera order. */}
+       *  pochodzić z adaptera order.
+       *  K30-55 Phase D: gdy isNop → ring color red + ⨯ marker overlay. */}
       {(() => {
         const code = props.stationCode
           ?? ((props.name || '').match(/\b(S\d{2,3})\b/)?.[1] ?? null);
-        return code ? (
-          <g data-testid={`sld-v2-mini-station-code-${props.id}`} transform={`translate(0, ${labelNameY - 4})`}>
-            <rect x={-22} y={-13} width={44} height={18} rx={2} ry={2} fill="#0A1018" stroke="#7EC8FF" strokeWidth={1.2} opacity={0.95} />
-            <text x={0} y={1} textAnchor="middle" fill="#7EC8FF" fontFamily={FONT_SANS} fontSize={14} fontWeight={900} letterSpacing={0.8}>
+        if (!code) return null;
+        const nopRing = props.isNop ? '#FF333D' : '#7EC8FF';
+        const nopText = props.isNop ? '#FF333D' : '#7EC8FF';
+        return (
+          <g data-testid={`sld-v2-mini-station-code-${props.id}`} data-is-nop={props.isNop ? 'true' : 'false'} transform={`translate(0, ${labelNameY - 4})`}>
+            <rect x={-22} y={-13} width={44} height={18} rx={2} ry={2} fill="#0A1018" stroke={nopRing} strokeWidth={props.isNop ? 1.8 : 1.2} opacity={0.95} />
+            <text x={0} y={1} textAnchor="middle" fill={nopText} fontFamily={FONT_SANS} fontSize={14} fontWeight={900} letterSpacing={0.8}>
               {code}
             </text>
+            {props.isNop && (
+              <g data-testid={`sld-v2-mini-station-nop-${props.id}`}>
+                {/* ⨯ marker w corner badge — IEC sectionalizer normally open */}
+                <line x1={-18} y1={-9} x2={-12} y2={-3} stroke="#FF333D" strokeWidth={1.8} />
+                <line x1={-12} y1={-9} x2={-18} y2={-3} stroke="#FF333D" strokeWidth={1.8} />
+                <text x={20} y={2} textAnchor="end" fill="#FF333D" fontFamily={FONT_SANS} fontSize={6} fontWeight={900}>NMO</text>
+              </g>
+            )}
           </g>
-        ) : null;
+        );
       })()}
 
       {/* K30-29 round 4: nN feeders count badge always visible (next to code).
@@ -825,6 +843,25 @@ function DerBadges(props: DerBadgesProps): JSX.Element {
                 fontWeight={900}
               >
                 ×{badge.count}
+              </text>
+            )}
+            {/* K30-55 Phase E: aggregated P_mw (realna moc generacji, nie atrapa) */}
+            {typeof badge.totalPMw === 'number' && badge.totalPMw > 0 && (
+              <text
+                x={cx}
+                y={cy + 18}
+                textAnchor="middle"
+                fill={fill}
+                fontFamily="monospace"
+                fontSize={8}
+                fontWeight={800}
+                paintOrder="stroke"
+                stroke="#05070A"
+                strokeWidth={2}
+              >
+                {badge.totalPMw >= 1
+                  ? `${badge.totalPMw.toFixed(2).replace('.', ',')} MW`
+                  : `${Math.round(badge.totalPMw * 1000)} kW`}
               </text>
             )}
           </g>

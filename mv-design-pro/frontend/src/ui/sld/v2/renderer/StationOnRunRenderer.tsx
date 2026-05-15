@@ -156,6 +156,7 @@ export function StationOnRunRenderer(props: StationOnRunRendererProps): JSX.Elem
         onClick={props.onClick}
         onDoubleClick={props.onDoubleClick}
         busVoltageKv={props.busVoltageKv ?? null}
+        isNop={props.isNop ?? false}
       />
     );
   }
