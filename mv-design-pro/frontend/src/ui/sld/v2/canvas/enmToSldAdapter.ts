@@ -222,9 +222,13 @@ const STATION_PITCH = 380;
 // used as distanceFromGpzKm label. Layout used uniform `posInRun * STATION_PITCH`.
 // Now we map cumKm → pixels so stations are spaced by actual cable length.
 const GPZ_TRUNK_HEAD_X = X_GPZ + GPZ_WIDTH + 60;  // GPZ end + connector gap
-const PX_PER_KM = 200;                              // 1 km ≈ 200 px (median run-length ~3 km)
-const STATION_MIN_PITCH = 160;                       // min px między sąsiednimi (no overlap)
-const STATION_DEFAULT_PITCH = 200;                   // fallback gdy cumKm==0 (no segments yet)
+const PX_PER_KM = 400;                              // K30-54: scale-up (was 200) — visible cable gaps
+// K30-54: STATION_MIN_PITCH bumped 160 → 320 (mini-block DETAIL_WIDTH=220 +
+// padding 50 each side = 320). Previous 160 caused mini-block overlap dla
+// K30 seed (avg segment ~100m → cumKm × 200 px/km = 20 px proposed,
+// Math.max(20, prev+160) = prev+160 → stations overlapping because 160 < 220 width).
+const STATION_MIN_PITCH = 320;
+const STATION_DEFAULT_PITCH = 320;
 
 /**
  * K30-51: oblicz station X z cumKm (cumulative cable length z GPZ).
