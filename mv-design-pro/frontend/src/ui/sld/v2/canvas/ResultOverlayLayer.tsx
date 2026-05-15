@@ -71,12 +71,23 @@ function deriveOperationalSeverity(
   return 'INFO';
 }
 
+interface CableRunForOverlay {
+  readonly id: string;
+  readonly segmentRefs?: readonly string[];
+  readonly segmentPaths?: ReadonlyArray<{
+    readonly segmentRef: string;
+    readonly pathPoints: ReadonlyArray<{ x: number; y: number }>;
+  }>;
+}
+
 interface ResultOverlayLayerProps {
   readonly stations: readonly StationOnRunRendererProps[];
+  /** K30-6: cable runs dla branch overlay (P/Q/I display po segmencie kabla) */
+  readonly cableRuns?: readonly CableRunForOverlay[];
 }
 
 export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element | null {
-  const { stations } = props;
+  const { stations, cableRuns } = props;
   const payload = useRawResultOverlayStore((state) => state.payload);
   if (!payload) return null;
 
@@ -216,6 +227,71 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
           </g>
         );
       })}
+
+      {/* K30-6: branch overlay — P/Q/I_A na każdym segmencie kabla. */}
+      {cableRuns?.map((run) =>
+        run.segmentPaths?.map((sp) => {
+          const el = payload.elements[sp.segmentRef];
+          if (!el) return null;
+          // LOAD_FLOW: P_MW + Q_MVAR + I_A; SC_3F: IK_3F_A
+          const pMw = !isSc3F ? getMetric(payload, sp.segmentRef, 'P_MW') : null;
+          const qMvar = !isSc3F ? getMetric(payload, sp.segmentRef, 'Q_MVAR') : null;
+          const iA = !isSc3F ? getMetric(payload, sp.segmentRef, 'I_A') : null;
+          const ik3fBranch = isSc3F ? getMetric(payload, sp.segmentRef, 'IK_3F_A') : null;
+          // Wybierz punkt środkowy segmentu dla label position
+          const points = sp.pathPoints;
+          if (points.length < 2) return null;
+          let midX = 0, midY = 0;
+          // Wybierz najdłuższy horizontal segment
+          let longest = -1;
+          for (let i = 0; i < points.length - 1; i++) {
+            const a = points[i], b = points[i + 1];
+            if (Math.abs(a.y - b.y) > 0.5) continue;
+            const len = Math.abs(b.x - a.x);
+            if (len > longest) {
+              longest = len;
+              midX = (a.x + b.x) / 2;
+              midY = a.y;
+            }
+          }
+          if (longest < 0) {
+            // fallback: midpoint pierwszej pary
+            midX = (points[0].x + points[1].x) / 2;
+            midY = (points[0].y + points[1].y) / 2;
+          }
+          // Pokaż badge TYLKO gdy mamy realną wartość (NIE nominalne nulle)
+          const hasLfData = (pMw && pMw.value !== null && pMw.value !== 0)
+            || (iA && iA.value !== null && iA.value !== 0);
+          const hasScData = ik3fBranch && ik3fBranch.value !== null && ik3fBranch.value !== 0;
+          if (!hasLfData && !hasScData) return null;
+          const branchSeverity = isSc3F
+            ? deriveOperationalSeverity(true, ik3fBranch?.value ?? null)
+            : deriveOperationalSeverity(false, iA?.value ?? null, 400 /* nominal cable ampacity ref */);
+          const branchColor = severityColor(branchSeverity);
+          return (
+            <g
+              key={`branch-overlay-${sp.segmentRef}`}
+              data-testid={`sld-v2-branch-overlay-${sp.segmentRef}`}
+              transform={`translate(${midX}, ${midY + 26})`}
+            >
+              <rect x={-44} y={-9} width={88} height={18} rx={3} ry={3} fill="#0A0E14" stroke={branchColor} strokeWidth={1.2} opacity={0.92} />
+              {isSc3F && ik3fBranch ? (
+                <text x={0} y={4} textAnchor="middle" fill={branchColor} fontFamily={FONT_SANS} fontSize={11} fontWeight={700}>
+                  {`Ik″ ${formatMetric(ik3fBranch)}`}
+                </text>
+              ) : pMw && qMvar ? (
+                <text x={0} y={4} textAnchor="middle" fill={branchColor} fontFamily={FONT_SANS} fontSize={10} fontWeight={700}>
+                  {`P ${pMw.value?.toFixed(2)}MW`}
+                </text>
+              ) : iA ? (
+                <text x={0} y={4} textAnchor="middle" fill={branchColor} fontFamily={FONT_SANS} fontSize={11} fontWeight={700}>
+                  {`I ${formatMetric(iA)}`}
+                </text>
+              ) : null}
+            </g>
+          );
+        }),
+      )}
     </g>
   );
 }

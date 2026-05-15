@@ -672,7 +672,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         })}
 
         {/* K30-3 NO-GO #9: result overlay metrics z LOAD_FLOW/SC_3F payload */}
-        <ResultOverlayLayer stations={stations} />
+        <ResultOverlayLayer stations={stations} cableRuns={cableRuns} />
 
         {/* DER (PV/BESS/FW) */}
         {layers.der && ders.map((d) => {
