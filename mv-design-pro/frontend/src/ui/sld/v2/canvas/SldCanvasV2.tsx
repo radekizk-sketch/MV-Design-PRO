@@ -694,6 +694,45 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         <ResultOverlayLayer stations={stations} cableRuns={cableRuns} />
 
         {/* K30-11: aggregate alarm summary panel — count of station severities */}
+        {/* K30-12: CAD-grade title block A3 convention (bottom-right corner).
+         *  Pokazuje project info + drawing number + scale + sheet # + date —
+         *  standard PN-EN ISO 7200 dla schematów elektrycznych.
+         *  Static position relative to canvas bottom-right.
+         */}
+        <g data-testid="sld-v2-title-block-a3" transform={`translate(${width - 340}, ${height - 100})`} pointerEvents="none">
+          <rect x={0} y={0} width={320} height={84} fill="#0A0E14" stroke="#5A6878" strokeWidth={1.4} />
+          <line x1={0} y1={20} x2={320} y2={20} stroke="#5A6878" strokeWidth={0.8} />
+          <line x1={140} y1={20} x2={140} y2={84} stroke="#5A6878" strokeWidth={0.8} />
+          <line x1={0} y1={52} x2={320} y2={52} stroke="#5A6878" strokeWidth={0.8} />
+          <text x={6} y={14} fill="#DDF7FF" fontFamily="sans-serif" fontSize={10} fontWeight={800}>
+            MV-DESIGN-PRO · SCHEMAT ROZDZIELCZY SN/nN
+          </text>
+          <text x={6} y={34} fill="#88BBDD" fontFamily="sans-serif" fontSize={9}>
+            Sieć: K30 (30 stacji)
+          </text>
+          <text x={6} y={46} fill="#88BBDD" fontFamily="sans-serif" fontSize={9}>
+            GPZ-A 110/15 kV
+          </text>
+          <text x={146} y={34} fill="#88BBDD" fontFamily="sans-serif" fontSize={9}>
+            Format: A3
+          </text>
+          <text x={146} y={46} fill="#88BBDD" fontFamily="sans-serif" fontSize={9}>
+            Skala: 1:1000
+          </text>
+          <text x={6} y={66} fill="#7EE0B5" fontFamily="sans-serif" fontSize={9} fontWeight={700}>
+            PN-EN 60617 · IEC 60909
+          </text>
+          <text x={6} y={78} fill="#7EC8FF" fontFamily="sans-serif" fontSize={8}>
+            Rev. K30-12 · {new Date().toISOString().split('T')[0]}
+          </text>
+          <text x={146} y={66} fill="#FFD166" fontFamily="sans-serif" fontSize={9} fontWeight={700}>
+            STATUS: AUDIT
+          </text>
+          <text x={146} y={78} fill="#88BBDD" fontFamily="sans-serif" fontSize={8}>
+            Operator OSD: ENEA
+          </text>
+        </g>
+
         {alarmSummary && (
           <g data-testid="sld-v2-alarm-summary-panel" transform="translate(20, 20)" pointerEvents="none">
             <rect x={0} y={0} width={260} height={56} rx={4} ry={4} fill="#0A0E14" stroke="#FFD166" strokeWidth={1.5} opacity={0.95} />
