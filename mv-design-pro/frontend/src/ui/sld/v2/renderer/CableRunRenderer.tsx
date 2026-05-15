@@ -351,6 +351,27 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           </text>
         </g>
       )}
+      {/* K30-53: IEC 60617 cable head triangle przy starcie trunk — anchor
+          visualny "głowica kabla". Industrial convention: kable wchodzą w pole
+          przez głowicę. Rysujemy tylko gdy main_trunk (nie branch) i brak
+          missingEndpointPort warning. */}
+      {!missingEndpointPort && runKind === 'main_trunk' && pathPoints.length > 0 && (
+        <g
+          data-testid={`sld-v2-run-${id}-cable-head`}
+          data-anchor="trunk-start"
+          pointerEvents="none"
+          transform={`translate(${pathPoints[0].x}, ${pathPoints[0].y})`}
+        >
+          {/* Triangle pointing UP (cable comes from below) — IEC 60617 cable head canonical */}
+          <polygon
+            points="0,-6 -5,4 5,4"
+            fill={selected ? '#35C7FF' : strokeColor}
+            stroke="#0A0E14"
+            strokeWidth={0.8}
+            opacity={0.95}
+          />
+        </g>
+      )}
       {label && labelPoint && (
         <text
           data-testid={`sld-v2-run-${id}-label`}
