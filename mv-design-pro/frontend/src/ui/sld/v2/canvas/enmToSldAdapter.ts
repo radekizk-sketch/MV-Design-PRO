@@ -261,6 +261,12 @@ interface CableRunRendererPropsLight {
   segmentPaths?: ReadonlyArray<{
     segmentRef: string;
     pathPoints: ReadonlyArray<{ x: number; y: number }>;
+    /** K30-33: per-segment wariant kabla (izolacja+materiał) — renderer
+     *  używa do różnicowania koloru/grubości stroke. */
+    variant?: {
+      insulation: 'XLPE' | 'EPR' | 'PVC' | 'PAPER' | 'OVERHEAD' | 'UNKNOWN';
+      conductor: 'Al' | 'Cu' | 'AlSt' | 'UNKNOWN';
+    };
   }>;
   label?: string;
   segmentLabels?: ReadonlyArray<{
@@ -312,6 +318,54 @@ function detectMissingEndpointPorts(
 
 function classifySegmentKind(b: Branch): 'cable_sn' | 'overhead_line_sn' {
   return b.type === 'cable' ? 'cable_sn' : 'overhead_line_sn';
+}
+
+/**
+ * K30-33: ekstrahuje wariant kabla (izolacja + materiał żyły) z catalog_ref,
+ * pola `insulation` (jeśli Cable), oraz materialized_params. Używane przez
+ * renderer do per-segment koloru/grubości.
+ *
+ * Heurystyka rozpoznawania:
+ * - Linia napowietrzna → OVERHEAD + Al (lub AlSt jeśli AFL)
+ * - Cable insulation explicit (XLPE/PVC/PAPER) → użyj
+ * - catalog_ref zawiera 'epr' → EPR
+ * - catalog_ref zawiera 'xlpe' → XLPE
+ * - catalog_ref zawiera 'pvc' → PVC
+ * - catalog_ref zawiera 'papier'/'paper'/'IRPSn' → PAPER
+ * - catalog_ref zawiera '-cu-' lub 'cu-' lub ' cu ' → Cu, default Al
+ */
+function inferCableVariant(branch: Branch): {
+  insulation: 'XLPE' | 'EPR' | 'PVC' | 'PAPER' | 'OVERHEAD' | 'UNKNOWN';
+  conductor: 'Al' | 'Cu' | 'AlSt' | 'UNKNOWN';
+} {
+  if (branch.type === 'line_overhead') {
+    const haystack = (branch.catalog_ref ?? '').toLowerCase();
+    const conductor = haystack.includes('afl') || haystack.includes('alst')
+      ? 'AlSt' as const
+      : haystack.includes('cu')
+        ? 'Cu' as const
+        : 'Al' as const;
+    return { insulation: 'OVERHEAD', conductor };
+  }
+  if (branch.type !== 'cable') {
+    return { insulation: 'UNKNOWN', conductor: 'UNKNOWN' };
+  }
+  const cable = branch as Cable;
+  const ref = (cable.catalog_ref ?? '').toLowerCase();
+  let insulation: 'XLPE' | 'EPR' | 'PVC' | 'PAPER' | 'UNKNOWN' = 'UNKNOWN';
+  if (cable.insulation === 'XLPE') insulation = 'XLPE';
+  else if (cable.insulation === 'PVC') insulation = 'PVC';
+  else if (cable.insulation === 'PAPER') insulation = 'PAPER';
+  if (insulation === 'UNKNOWN') {
+    if (ref.includes('xlpe')) insulation = 'XLPE';
+    else if (ref.includes('epr')) insulation = 'EPR';
+    else if (ref.includes('pvc')) insulation = 'PVC';
+    else if (ref.includes('papier') || ref.includes('paper') || ref.includes('irpsn')) {
+      insulation = 'PAPER';
+    }
+  }
+  const conductor = /\bcu\b|-cu-|cu-/i.test(ref) ? 'Cu' as const : 'Al' as const;
+  return { insulation, conductor };
 }
 
 // =============================================================================
@@ -1904,6 +1958,7 @@ function buildRunSegmentPaths(
     return {
       segmentRef: segment.ref_id,
       pathPoints,
+      variant: inferCableVariant(segment),
     };
   });
 }

@@ -486,6 +486,72 @@ describe('CableRunRenderer', () => {
     );
     expect(container.querySelector('[data-testid="sld-v2-run-r-mt-ring-indicator"]')).toBeFalsy();
   });
+
+  it('K30-33: per-segment wariant kabla renderuje różne stroke kolory', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-var"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 300, y: 0 }]}
+          segmentPaths={[
+            {
+              segmentRef: 'seg-epr',
+              pathPoints: [{ x: 0, y: 0 }, { x: 100, y: 0 }],
+              variant: { insulation: 'EPR', conductor: 'Al' },
+            },
+            {
+              segmentRef: 'seg-xlpe',
+              pathPoints: [{ x: 100, y: 0 }, { x: 200, y: 0 }],
+              variant: { insulation: 'XLPE', conductor: 'Cu' },
+            },
+            {
+              segmentRef: 'seg-paper',
+              pathPoints: [{ x: 200, y: 0 }, { x: 300, y: 0 }],
+              variant: { insulation: 'PAPER', conductor: 'Al' },
+            },
+          ]}
+        />
+      </svg>,
+    );
+    const eprPath = container.querySelector('[data-testid^="sld-v2-run-r-var-variant-seg-epr-"]');
+    const xlpePath = container.querySelector('[data-testid^="sld-v2-run-r-var-variant-seg-xlpe-"]');
+    const paperPath = container.querySelector('[data-testid^="sld-v2-run-r-var-variant-seg-paper-"]');
+    expect(eprPath?.getAttribute('stroke')).toBe('#FFD166');
+    expect(xlpePath?.getAttribute('stroke')).toBe('#13C45A');
+    expect(paperPath?.getAttribute('stroke')).toBe('#A8B5BD');
+    // PAPER ma dashed pattern
+    expect(paperPath?.getAttribute('stroke-dasharray')).toBe('6 3');
+    // Cu daje +0.6 px do stroke-width vs Al
+    expect(parseFloat(xlpePath!.getAttribute('stroke-width') ?? '0'))
+      .toBeGreaterThan(parseFloat(eprPath!.getAttribute('stroke-width') ?? '0'));
+    // Atrybuty data dla downstream audytu
+    expect(eprPath?.getAttribute('data-cable-insulation')).toBe('EPR');
+    expect(xlpePath?.getAttribute('data-cable-conductor')).toBe('Cu');
+  });
+
+  it('K30-33: backward-compat — segmentPaths bez variant nadal renderuje uniform stroke', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-novar"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 200, y: 0 }]}
+          segmentPaths={[
+            { segmentRef: 'seg-a', pathPoints: [{ x: 0, y: 0 }, { x: 100, y: 0 }] },
+            { segmentRef: 'seg-b', pathPoints: [{ x: 100, y: 0 }, { x: 200, y: 0 }] },
+          ]}
+        />
+      </svg>,
+    );
+    const variantPaths = container.querySelectorAll('[data-testid^="sld-v2-run-r-novar-variant-"]');
+    expect(variantPaths).toHaveLength(0);
+    // Uniform visible path nadal renderowany przez buildVisibleCablePaths
+    const visiblePaths = container.querySelectorAll('[data-testid^="sld-v2-run-r-novar-visible-"]');
+    expect(visiblePaths.length).toBeGreaterThan(0);
+  });
 });
 
 describe('StationOnRunRenderer', () => {

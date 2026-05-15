@@ -28,9 +28,20 @@ export interface CableRunSegmentLabel {
   readonly y: number;
 }
 
+/**
+ * K30-33: hint o wariancie kabla SN (izolacja + materiał żyły).
+ * Renderer używa go do per-segment koloru/grubości — odróżnia EPR Al od
+ * XLPE Cu od papierowego, zgodnie z PN-HD 620 S2 / IEC 60502-2.
+ */
+export interface CableSegmentVariantHint {
+  readonly insulation: 'XLPE' | 'EPR' | 'PVC' | 'PAPER' | 'OVERHEAD' | 'UNKNOWN';
+  readonly conductor: 'Al' | 'Cu' | 'AlSt' | 'UNKNOWN';
+}
+
 export interface CableRunSegmentPath {
   readonly segmentRef: string;
   readonly pathPoints: ReadonlyArray<{ x: number; y: number }>;
+  readonly variant?: CableSegmentVariantHint;
 }
 
 export interface CableRunRendererProps {
@@ -101,7 +112,17 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
   const hitPath = pathPoints
     .map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`))
     .join(' ');
-  const visiblePaths = buildVisibleCablePaths(pathPoints, stationPortGaps);
+  // K30-33: jeśli segmentPaths mają hint wariantu, renderujemy per-segment
+  // stroke odróżniający izolację/materiał. Fallback do uniform stroke
+  // gdy hint nie jest dostępny (backward-compat).
+  const variantSegments = segmentPaths.filter(
+    (sp): sp is CableRunSegmentPath & { variant: CableSegmentVariantHint } =>
+      sp.variant !== undefined,
+  );
+  const useVariantRendering = variantSegments.length > 0;
+  const visiblePaths = useVariantRendering
+    ? []
+    : buildVisibleCablePaths(pathPoints, stationPortGaps);
   const labelPoint = label && visibleSegmentLabels.length === 0
     ? findLongestHorizontalSegmentMidpoint(pathPoints)
     : null;
@@ -175,6 +196,40 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           pointerEvents="none"
         />
       ))}
+      {useVariantRendering && variantSegments.map((segmentPath) => {
+        const variantStyle = cableVariantStyle(segmentPath.variant);
+        const segmentVisiblePaths = buildVisibleCablePaths(
+          segmentPath.pathPoints,
+          stationPortGaps,
+        );
+        const segStroke = missingEndpointPort
+          ? '#FF6B6B'
+          : selected
+            ? '#35C7FF'
+            : variantStyle.stroke;
+        const segDasharray = missingEndpointPort
+          ? '5 4'
+          : isDashed
+            ? STROKE_DASHED_RING_DASH_PX
+            : variantStyle.dasharray ?? (isOverhead ? '12 4' : undefined);
+        const segWidth = (selected ? strokeWidth + 1 : strokeWidth) + variantStyle.widthDelta;
+        return segmentVisiblePaths.map((vp, vpIdx) => (
+          <path
+            key={`${id}-variant-${segmentPath.segmentRef}-${vpIdx}`}
+            data-testid={`sld-v2-run-${id}-variant-${segmentPath.segmentRef}-${vpIdx}`}
+            data-cable-insulation={segmentPath.variant.insulation}
+            data-cable-conductor={segmentPath.variant.conductor}
+            d={vp}
+            fill="none"
+            stroke={segStroke}
+            strokeWidth={segWidth}
+            strokeDasharray={segDasharray}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            pointerEvents="none"
+          />
+        ));
+      })}
       {/* IEC 60617 junction dots — małe kółka w miejscach przyłączenia do szyny stacji.
           Potwierdzają galwaniczne połączenie kabel→port stacji (brak kółka = brak połączenia). */}
       {!missingEndpointPort && stationPortGaps.map((gap) => (
@@ -511,6 +566,39 @@ function segmentLabelsOverlap(
 
 function estimateLabelWidth(text: string): number {
   return Math.max(52, Math.min(220, text.length * 7.2));
+}
+
+/**
+ * K30-33: mapuje wariant kabla (izolacja + materiał) na styl renderingu.
+ *
+ * Per IEC 60617 sam symbol kabla jest taki sam dla wszystkich typów, ale
+ * w industrial SLD (ABB/DIgSILENT) różne odcinki kolorowane są tonalnie
+ * dla odróżnienia generacji / standardu. Tu używamy subtelnych odcieni:
+ * - XLPE Al → bazowy zielony (#13C45A) — najczęstszy nowy kabel
+ * - XLPE Cu → zielony z +0.6 px szerokości (Cu ma większą amperowość)
+ * - EPR Al/Cu → ciepły gold (#FFD166) — kabel średnio-elastyczny
+ * - PVC → chłodny niebieski (#7DD3FC) — starszy/wewn.
+ * - PAPER → szary (#A8B5BD) + dashed (papier olej, generacja PE)
+ */
+function cableVariantStyle(
+  variant: CableSegmentVariantHint,
+): { stroke: string; widthDelta: number; dasharray?: string } {
+  const conductorBonus = variant.conductor === 'Cu' ? 0.6 : 0;
+  switch (variant.insulation) {
+    case 'XLPE':
+      return { stroke: COLOR_FIELD_TRUNK_ENERGIZED, widthDelta: conductorBonus };
+    case 'EPR':
+      return { stroke: '#FFD166', widthDelta: conductorBonus };
+    case 'PVC':
+      return { stroke: '#7DD3FC', widthDelta: conductorBonus };
+    case 'PAPER':
+      return { stroke: '#A8B5BD', widthDelta: conductorBonus, dasharray: '6 3' };
+    case 'OVERHEAD':
+      return { stroke: COLOR_FIELD_TRUNK_ENERGIZED, widthDelta: conductorBonus, dasharray: '12 4' };
+    case 'UNKNOWN':
+    default:
+      return { stroke: COLOR_FIELD_TRUNK_ENERGIZED, widthDelta: conductorBonus };
+  }
 }
 
 function findLongestHorizontalSegmentMidpoint(points: readonly Point[]): Point | null {
