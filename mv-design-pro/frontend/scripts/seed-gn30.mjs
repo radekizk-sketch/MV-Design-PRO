@@ -374,11 +374,14 @@ async function main() {
         },
       });
       const ok = derRes.ok && !derRes.json?.error_code;
+      if (!ok) {
+        log(`K10.${stRes.id}.${der.kind}`, `FAIL: ${derRes.json?.error_code ?? derRes.json?.detail ?? 'unknown'}`);
+      }
       derResults.push({
         id: stRes.id,
         kind: der.kind,
         variant,
-        status: ok ? 'PASS' : `FAIL: ${derRes.json?.error_code ?? ''}`,
+        status: ok ? 'PASS' : `FAIL: ${derRes.json?.error_code ?? derRes.json?.detail ?? ''}`,
       });
     }
   }
