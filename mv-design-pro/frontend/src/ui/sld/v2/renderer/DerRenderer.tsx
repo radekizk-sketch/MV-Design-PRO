@@ -265,6 +265,28 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
           </text>
         </g>
       )}
+
+      {/* K30-9: Q(U) curve sparkline obok DER, gdy Module B/C/D (NC RFG wymóg).
+       *  Pokazuje standardową Q(U) reactive support curve per ENEA enea.yaml:
+       *  - voltage band 0.92-1.08 pu na osi X (40px)
+       *  - Q output -100% .. +100% na osi Y (16px)
+       *  - 5-segment piecewise: deadband ±2%, ramp ±5%, sat ±8%
+       */}
+      {lod === 'compact' && ncRfgModule && ncRfgModule !== 'A' && (
+        <g data-testid={`sld-v2-der-${id}-qu-curve`} transform={`translate(${half + 6}, ${-half - 4})`}>
+          <rect width={40} height={20} rx={2} ry={2} fill="#0A1018" stroke="#5A6878" strokeWidth={0.8} opacity={0.85} />
+          {/* axes */}
+          <line x1={2} y1={10} x2={38} y2={10} stroke="#3A4A5C" strokeWidth={0.5} />
+          <line x1={20} y1={2} x2={20} y2={18} stroke="#3A4A5C" strokeWidth={0.5} />
+          {/* Q(U) piecewise: pełne saturation -100% pu < 0.92, ramp 0.92-0.98, deadband 0.98-1.02, ramp 1.02-1.08, sat +100% pu > 1.08 */}
+          <polyline
+            points="2,2 8,2 12,10 18,10 22,10 28,18 32,18 38,18"
+            fill="none"
+            stroke="#88BBDD"
+            strokeWidth={1.5}
+          />
+        </g>
+      )}
       {/* Nazwa DER pod symbolem (LOD=full only) */}
       {lod === 'full' && (
         <text
