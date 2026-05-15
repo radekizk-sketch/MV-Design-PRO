@@ -794,6 +794,78 @@ describe('StationOnRunRenderer', () => {
     const conn0 = container.querySelector('[data-testid="sld-v2-station-connector-st-d-0"]');
     expect(conn0?.getAttribute('data-switch-state')).toBe('closed');
   });
+
+  it('K30-36: stacja przelotowa default → bay-role labels "WE" + "WY"', () => {
+    const { container, getByText } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-pl"
+          x={300}
+          y={400}
+          name="ST-01"
+          topologicalType="przelotowa"
+        />
+      </svg>,
+    );
+    const role0 = container.querySelector('[data-testid="sld-v2-station-bay-role-st-pl-0"]');
+    const role1 = container.querySelector('[data-testid="sld-v2-station-bay-role-st-pl-1"]');
+    expect(role0?.textContent).toBe('WE');
+    expect(role1?.textContent).toBe('WY');
+    expect(getByText('WE')).toBeInTheDocument();
+    expect(getByText('WY')).toBeInTheDocument();
+    // data-bay-role atrybut na connector group dla downstream audytu
+    expect(container.querySelector('[data-testid="sld-v2-station-connector-st-pl-0"]')?.getAttribute('data-bay-role')).toBe('WE');
+  });
+
+  it('K30-36: stacja odgałęźna 3-kolumnowa → WE / TR / WY', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-od"
+          x={0}
+          y={0}
+          name="ST-ODG"
+          topologicalType="odgałęźna"
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-station-bay-role-st-od-0"]')?.textContent).toBe('WE');
+    expect(container.querySelector('[data-testid="sld-v2-station-bay-role-st-od-1"]')?.textContent).toBe('TR');
+    expect(container.querySelector('[data-testid="sld-v2-station-bay-role-st-od-2"]')?.textContent).toBe('WY');
+  });
+
+  it('K30-36: stacja sekcyjna default → SPR + WE', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-sk"
+          x={0}
+          y={0}
+          name="ST-SEK"
+          topologicalType="sekcyjna"
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-station-bay-role-st-sk-0"]')?.textContent).toBe('SPR');
+    expect(container.querySelector('[data-testid="sld-v2-station-bay-role-st-sk-1"]')?.textContent).toBe('WE');
+  });
+
+  it('K30-36: explicit bayRoleByColumn override defaults', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-ov"
+          x={0}
+          y={0}
+          name="ST-OV"
+          topologicalType="przelotowa"
+          bayRoleByColumn={['POM', 'ODG']}
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-station-bay-role-st-ov-0"]')?.textContent).toBe('POM');
+    expect(container.querySelector('[data-testid="sld-v2-station-bay-role-st-ov-1"]')?.textContent).toBe('ODG');
+  });
 });
 
 describe('DerRenderer', () => {

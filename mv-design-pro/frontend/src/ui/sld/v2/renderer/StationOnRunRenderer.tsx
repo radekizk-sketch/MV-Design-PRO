@@ -83,6 +83,16 @@ export interface StationOnRunRendererProps {
   readonly totalLoadKw?: number | null;
   /** K30-15.3: total generation capacity attached [kW]. */
   readonly totalGenerationKw?: number | null;
+  /** K30-36: krótkie etykiety roli pola per kolumna połączenia (WE/WY/TR/ODG/SPR/POM).
+   *  Index = pozycja w `connectionColumns(topologicalType)`. Wartości:
+   *   - 'WE' (wejściowe — Line IN od strony GPZ)
+   *   - 'WY' (wyjściowe — Line OUT do następnej stacji)
+   *   - 'TR' (transformator)
+   *   - 'ODG' (odgałęzienie do branch run)
+   *   - 'SPR' (sprzęgło sekcyjne)
+   *   - 'POM' (pomiar VT/CT)
+   *  Brak → renderer wyprowadza domyślną etykietę z `topologicalType`. */
+  readonly bayRoleByColumn?: ReadonlyArray<'WE' | 'WY' | 'TR' | 'ODG' | 'SPR' | 'POM'>;
 }
 
 const TYPE_TO_LABEL_PL: Record<StationOnRunRendererProps['topologicalType'], string> = {
@@ -151,7 +161,7 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
     id, x, y, name, topologicalType, nnVoltageLevelsCount,
     selected, onClick, onDoubleClick, missingData, isNop, distanceFromGpzKm,
     transformerRatedKva, stationCode, switchStateByColumn, alarmSeverity,
-    nnFeedersCount,
+    nnFeedersCount, bayRoleByColumn,
   } = props;
   // K30-29: per-feeder visualization w dispatcher (LOD3+). User K30-25 demand:
   // 'wszystko konfigurowalne' — liczba odpływów nN musi być widoczna pixel-precise
@@ -229,8 +239,12 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
         const swStroke = swState === 'open' ? COLOR_DEVICE_OPEN : COLOR_FIELD_TRUNK_ENERGIZED;
         const connectorStroke = swState === 'closed' ? COLOR_FIELD_TRUNK_ENERGIZED : COLOR_DEVICE_OPEN;
         const connectorDash = swState === 'open' ? '4 3' : undefined;
+        // K30-36: bay-role label below switch diamond — pomaga operatorowi
+        // odróżnić WE/WY/TR/ODG przy zoom-out (LOD3+).
+        const bayRoleLabel = bayRoleByColumn?.[index]
+          ?? defaultBayRoleForColumn(topologicalType, index, connectionXs.length);
         return (
-        <g key={`${id}-connector-${index}`} data-testid={`sld-v2-station-connector-${id}-${index}`} data-switch-state={swState}>
+        <g key={`${id}-connector-${index}`} data-testid={`sld-v2-station-connector-${id}-${index}`} data-switch-state={swState} data-bay-role={bayRoleLabel ?? ''}>
           <line
             x1={cx}
             y1={TRUNK_Y}
@@ -281,6 +295,27 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
               transform={`rotate(-90 ${cx} ${STATION_BUS_Y - 23})`}
               data-testid={`sld-v2-station-open-marker-${id}`}
             />
+          )}
+          {/* K30-36: bay-role label nad polygon diamond — operator widzi
+              od razu które pole to WE/WY/TR przy zoom-out (LOD3+). */}
+          {bayRoleLabel && (
+            <text
+              x={cx}
+              y={STATION_BUS_Y - 40}
+              textAnchor="middle"
+              fill={COLOR_TEXT_SECONDARY}
+              fontFamily={FONT_SANS}
+              fontSize={9}
+              fontWeight={800}
+              letterSpacing={0.4}
+              paintOrder="stroke"
+              stroke="#05070A"
+              strokeWidth={2.5}
+              data-testid={`sld-v2-station-bay-role-${id}-${index}`}
+              opacity={0.92}
+            >
+              {bayRoleLabel}
+            </text>
           )}
         </g>
         );
@@ -482,5 +517,32 @@ function connectionColumns(topologicalType: StationOnRunRendererProps['topologic
       return [-28, 28];
     default:
       return [0];
+  }
+}
+
+/**
+ * K30-36: domyślna etykieta roli pola dla kolumny połączenia w widoku
+ * dyspozytorskim (LOD3+) gdy `bayRoleByColumn` nie jest podane.
+ * Wynika z `topologicalType` + pozycji indeksu.
+ */
+function defaultBayRoleForColumn(
+  topologicalType: StationOnRunRendererProps['topologicalType'],
+  index: number,
+  totalColumns: number,
+): 'WE' | 'WY' | 'TR' | 'ODG' | 'SPR' | 'POM' | null {
+  switch (topologicalType) {
+    case 'końcowa':
+      return 'WE';
+    case 'przelotowa':
+      return index === 0 ? 'WE' : 'WY';
+    case 'odgałęźna':
+      // 3 kolumny: [-36, 0, 36] → [WE, TR, WY]; gdy łączy też odgałęzienie
+      // do branch run, środkowa to ODG (decyzja adaptera via prop).
+      if (totalColumns === 3) return index === 0 ? 'WE' : index === 1 ? 'TR' : 'WY';
+      return index === 0 ? 'WE' : index === 1 ? 'WY' : 'ODG';
+    case 'sekcyjna':
+      return index === 0 ? 'SPR' : 'WE';
+    default:
+      return null;
   }
 }
