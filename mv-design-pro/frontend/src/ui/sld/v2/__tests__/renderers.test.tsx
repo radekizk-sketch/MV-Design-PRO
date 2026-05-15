@@ -866,6 +866,94 @@ describe('StationOnRunRenderer', () => {
     expect(container.querySelector('[data-testid="sld-v2-station-bay-role-st-ov-0"]')?.textContent).toBe('POM');
     expect(container.querySelector('[data-testid="sld-v2-station-bay-role-st-ov-1"]')?.textContent).toBe('ODG');
   });
+
+  it('K30-37: busVoltageKv=110 → szyna czerwona (WN)', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-hv"
+          x={0}
+          y={0}
+          name="ST-HV"
+          topologicalType="końcowa"
+          busVoltageKv={110}
+        />
+      </svg>,
+    );
+    const bus = container.querySelector('[data-testid="sld-v2-station-bus-st-hv"]');
+    expect(bus?.getAttribute('stroke')).toBe('#E74C3C');
+    expect(bus?.getAttribute('data-bus-voltage-kv')).toBe('110');
+  });
+
+  it('K30-37: busVoltageKv=15 → szyna SN (energized green)', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-sn"
+          x={0}
+          y={0}
+          name="ST-SN"
+          topologicalType="przelotowa"
+          busVoltageKv={15}
+        />
+      </svg>,
+    );
+    const bus = container.querySelector('[data-testid="sld-v2-station-bus-st-sn"]');
+    expect(bus?.getAttribute('stroke')).toBe('#13C45A');
+  });
+
+  it('K30-37: busVoltageKv=0.4 → szyna nN (light blue)', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-lv"
+          x={0}
+          y={0}
+          name="ST-LV"
+          topologicalType="końcowa"
+          busVoltageKv={0.4}
+        />
+      </svg>,
+    );
+    const bus = container.querySelector('[data-testid="sld-v2-station-bus-st-lv"]');
+    expect(bus?.getAttribute('stroke')).toBe('#7DD3FC');
+  });
+
+  it('K30-37: brak busVoltageKv → fallback do energized green (backward-compat)', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-d"
+          x={0}
+          y={0}
+          name="ST-D"
+          topologicalType="końcowa"
+        />
+      </svg>,
+    );
+    const bus = container.querySelector('[data-testid="sld-v2-station-bus-st-d"]');
+    expect(bus?.getAttribute('stroke')).toBe('#13C45A');
+    expect(bus?.getAttribute('data-bus-voltage-kv')).toBe('');
+  });
+
+  it('K30-37: terminatory szyny dziedziczą voltage tint', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-term"
+          x={0}
+          y={0}
+          name="ST"
+          topologicalType="przelotowa"
+          busVoltageKv={110}
+        />
+      </svg>,
+    );
+    const left = container.querySelector('[data-testid="sld-v2-station-bus-end-left-st-term"]');
+    const right = container.querySelector('[data-testid="sld-v2-station-bus-end-right-st-term"]');
+    expect(left?.getAttribute('stroke')).toBe('#E74C3C');
+    expect(right?.getAttribute('stroke')).toBe('#E74C3C');
+  });
 });
 
 describe('DerRenderer', () => {

@@ -93,6 +93,10 @@ export interface StationOnRunRendererProps {
    *   - 'POM' (pomiar VT/CT)
    *  Brak → renderer wyprowadza domyślną etykietę z `topologicalType`. */
   readonly bayRoleByColumn?: ReadonlyArray<'WE' | 'WY' | 'TR' | 'ODG' | 'SPR' | 'POM'>;
+  /** K30-37: napięcie szyny stacji [kV]. Renderer dobiera tint koloru szyny
+   *  zgodnie z konwencją dyspozytorską (110kV → czerwień WN, 15kV → zieleń SN,
+   *  0.4kV → błękit nN). Brak → fallback do COLOR_FIELD_TRUNK_ENERGIZED. */
+  readonly busVoltageKv?: number | null;
 }
 
 const TYPE_TO_LABEL_PL: Record<StationOnRunRendererProps['topologicalType'], string> = {
@@ -161,8 +165,10 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
     id, x, y, name, topologicalType, nnVoltageLevelsCount,
     selected, onClick, onDoubleClick, missingData, isNop, distanceFromGpzKm,
     transformerRatedKva, stationCode, switchStateByColumn, alarmSeverity,
-    nnFeedersCount, bayRoleByColumn,
+    nnFeedersCount, bayRoleByColumn, busVoltageKv,
   } = props;
+  // K30-37: tint szyny stacji per voltage class (SCADA dispatcher konwencja).
+  const busColor = busColorForVoltage(busVoltageKv ?? null);
   // K30-29: per-feeder visualization w dispatcher (LOD3+). User K30-25 demand:
   // 'wszystko konfigurowalne' — liczba odpływów nN musi być widoczna pixel-precise
   // (1/2/3/4/N), nie tylko jako label tekstowy.
@@ -204,10 +210,11 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
         y1={STATION_BUS_Y}
         x2={STATION_BUS_WIDTH / 2}
         y2={STATION_BUS_Y}
-        stroke={COLOR_FIELD_TRUNK_ENERGIZED}
+        stroke={busColor}
         strokeWidth={4}
         strokeLinecap="butt"
         data-testid={`sld-v2-station-bus-${id}`}
+        data-bus-voltage-kv={busVoltageKv ?? ''}
       />
       {/* IEC 60617: terminatory szyny SN — krótkie kreski prostopadłe na końcach
           szyny, sygnalizujące fizyczne zakończenie szyny (a nie kontynuację). */}
@@ -216,7 +223,7 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
         y1={STATION_BUS_Y - 5}
         x2={-STATION_BUS_WIDTH / 2}
         y2={STATION_BUS_Y + 5}
-        stroke={COLOR_FIELD_TRUNK_ENERGIZED}
+        stroke={busColor}
         strokeWidth={2}
         strokeLinecap="round"
         data-testid={`sld-v2-station-bus-end-left-${id}`}
@@ -226,7 +233,7 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
         y1={STATION_BUS_Y - 5}
         x2={STATION_BUS_WIDTH / 2}
         y2={STATION_BUS_Y + 5}
-        stroke={COLOR_FIELD_TRUNK_ENERGIZED}
+        stroke={busColor}
         strokeWidth={2}
         strokeLinecap="round"
         data-testid={`sld-v2-station-bus-end-right-${id}`}
@@ -323,7 +330,7 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
 
       {topologicalType === 'odgałęźna' && (
         <g data-testid={`sld-v2-station-branch-drop-${id}`}>
-          <line x1={0} y1={STATION_BUS_Y} x2={0} y2={STATION_BUS_Y + 20} stroke={COLOR_FIELD_TRUNK_ENERGIZED} strokeWidth={2.5} />
+          <line x1={0} y1={STATION_BUS_Y} x2={0} y2={STATION_BUS_Y + 20} stroke={busColor} strokeWidth={2.5} />
           <line x1={-10} y1={STATION_BUS_Y + 14} x2={10} y2={STATION_BUS_Y + 14} stroke={COLOR_DEVICE_OPEN} strokeWidth={2} />
         </g>
       )}
@@ -518,6 +525,24 @@ function connectionColumns(topologicalType: StationOnRunRendererProps['topologic
     default:
       return [0];
   }
+}
+
+/**
+ * K30-37: kolor szyny stacji per voltage class, zgodnie z konwencją
+ * dyspozytorską OSD (Energa / Tauron / PSE):
+ * - 110 kV (WN): czerwień #E74C3C
+ * - 15 / 20 / 30 kV (SN): zieleń energized #13C45A (kanon SCADA)
+ * - 6 / 10 kV (SN niskie): głębsza zieleń #0A8D43
+ * - 0.4 / 1 kV (nN): chłodny błękit #7DD3FC
+ * - inne / brak: fallback do COLOR_FIELD_TRUNK_ENERGIZED.
+ */
+function busColorForVoltage(kv: number | null): string {
+  if (kv == null || !Number.isFinite(kv) || kv <= 0) return COLOR_FIELD_TRUNK_ENERGIZED;
+  if (kv >= 100) return '#E74C3C';     // 110 kV WN
+  if (kv >= 12) return COLOR_FIELD_TRUNK_ENERGIZED; // 15-30 kV SN
+  if (kv >= 5) return '#0A8D43';       // 6-10 kV SN niskie
+  if (kv >= 0.2) return '#7DD3FC';     // 0.4 / 1 kV nN
+  return COLOR_FIELD_TRUNK_ENERGIZED;
 }
 
 /**

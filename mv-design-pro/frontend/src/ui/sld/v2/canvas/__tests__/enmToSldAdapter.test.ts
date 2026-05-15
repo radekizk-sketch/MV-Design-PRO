@@ -777,6 +777,33 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(station.footprintType).toBe('mv_lv_inline');
   });
 
+  it('K30-37: adapter propaguje busVoltageKv z snapshot.buses (najwyższe > 0.5 kV)', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 'st', ref_id: 'ST-V', name: 'Stacja SN', tags: [], meta: {}, station_type: 'inline', bus_refs: ['b-sn', 'b-nn'], transformer_refs: [] } as never,
+    ];
+    snap.buses = [
+      { id: 'b-sn', ref_id: 'b-sn', name: 'BUS-SN-15', voltage_kv: 15, phase_system: '3ph', tags: [], meta: { substation_ref: 'ST-V' }, substation_ref: 'ST-V' } as never,
+      { id: 'b-nn', ref_id: 'b-nn', name: 'BUS-NN-04', voltage_kv: 0.4, phase_system: '3ph', tags: [], meta: { substation_ref: 'ST-V' }, substation_ref: 'ST-V' } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.stations[0].busVoltageKv).toBe(15);
+  });
+
+  it('K30-37: adapter zwraca busVoltageKv=null gdy stacja nie ma SN buses (LV-only excluded)', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 'st', ref_id: 'ST-LV', name: 'Stacja LV-only', tags: [], meta: {}, station_type: 'inline', bus_refs: ['b-nn'], transformer_refs: [] } as never,
+    ];
+    snap.buses = [
+      { id: 'b-nn', ref_id: 'b-nn', name: 'BUS-NN', voltage_kv: 0.4, phase_system: '3ph', tags: [], meta: { substation_ref: 'ST-LV' }, substation_ref: 'ST-LV' } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.stations[0].busVoltageKv).toBeNull();
+  });
+
   it('PV po stronie nN propaguje badge stacji i pozwala renderować wyłączniki nN', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [

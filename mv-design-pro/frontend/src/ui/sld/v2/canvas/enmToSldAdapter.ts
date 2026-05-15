@@ -1154,6 +1154,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         derBadges: stationSldDetails.derBadges,
         totalLoadKw: stationSldDetails.totalLoadKw,
         totalGenerationKw: stationSldDetails.totalGenerationKw,
+        busVoltageKv: stationSldDetails.mainBusVoltageKv,
         ...(isNop ? { isNop: true } : {}),
         ...(cumKm > 0 ? { distanceFromGpzKm: Math.round(cumKm * 100) / 100 } : {}),
       });
@@ -1190,6 +1191,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         derBadges: stationSldDetails.derBadges,
         totalLoadKw: stationSldDetails.totalLoadKw,
         totalGenerationKw: stationSldDetails.totalGenerationKw,
+        busVoltageKv: stationSldDetails.mainBusVoltageKv,
       });
     });
   });
@@ -1219,6 +1221,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
       derBadges: stationSldDetails.derBadges,
       totalLoadKw: stationSldDetails.totalLoadKw,
       totalGenerationKw: stationSldDetails.totalGenerationKw,
+      busVoltageKv: stationSldDetails.mainBusVoltageKv,
     });
   });
 
@@ -1237,6 +1240,10 @@ interface StationMiniBlockDetails {
   readonly totalLoadKw: number;
   /** K30-15.3: zsumowana DER generation [kW] (sum of enm.generators.p_mw na tej stacji). */
   readonly totalGenerationKw: number;
+  /** K30-37: napięcie głównej szyny SN stacji [kV] — najwyższe voltage_kv
+   *  spośród buses zakotwiczonych do tej stacji. Renderer dobiera tint koloru
+   *  szyny zgodnie z konwencją dyspozytorską (WN/SN/nN). */
+  readonly mainBusVoltageKv: number | null;
 }
 
 /**
@@ -1276,10 +1283,19 @@ function buildStationMiniBlockDetails(
 
   // K30-15.3: zsumuj load + DER generation per station (LV side buses)
   const stationBusRefs = new Set<string>();
+  // K30-37: znajdź główną szynę SN stacji (najwyższe voltage_kv > 0.5 kV).
+  // 0.4 kV LV-side wykluczamy z "main" — main = SN bus.
+  let mainBusVoltageKv: number | null = null;
   for (const bus of snapshot.buses ?? []) {
-    const scopedBus = bus as { substation_ref?: string; ref_id: string };
+    const scopedBus = bus as { substation_ref?: string; ref_id: string; voltage_kv?: number };
     if (scopedBus.substation_ref === station.ref_id || scopedBus.substation_ref === station.id) {
       stationBusRefs.add(scopedBus.ref_id);
+      const v = scopedBus.voltage_kv;
+      if (typeof v === 'number' && Number.isFinite(v) && v > 0.5) {
+        if (mainBusVoltageKv == null || v > mainBusVoltageKv) {
+          mainBusVoltageKv = v;
+        }
+      }
     }
   }
   const totalLoadKw = Math.round(
@@ -1310,6 +1326,7 @@ function buildStationMiniBlockDetails(
     transformerRatedKva,
     totalLoadKw,
     totalGenerationKw,
+    mainBusVoltageKv,
   };
 }
 
