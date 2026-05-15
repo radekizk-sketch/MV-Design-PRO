@@ -36,6 +36,11 @@ export interface RawOverlayPayload {
   readonly run_id: string;
   readonly analysis_type: string;
   readonly elements: Record<string, RawOverlayElement>;
+  /** K30-6: solver quality status z global_results (per ResultsContractV1).
+   *  Values: 'passing' | 'failed' | 'partial'. Pokazany w legendzie. */
+  readonly quality_status?: string | null;
+  /** Proof completeness: 'complete' | 'partial'. */
+  readonly proof_status?: string | null;
 }
 
 interface RawResultOverlayStore {

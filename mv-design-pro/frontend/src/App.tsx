@@ -410,6 +410,8 @@ function App() {
             run_id: payload.run_id ?? routeRunId,
             analysis_type: payload.analysis_type ?? data?.analysis_type ?? 'LOAD_FLOW',
             elements: payload.elements,
+            quality_status: data?.global_results?.quality_status ?? null,
+            proof_status: data?.global_results?.proof_status ?? null,
           });
         }
       } catch {

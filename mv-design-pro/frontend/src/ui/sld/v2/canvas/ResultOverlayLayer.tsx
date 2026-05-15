@@ -103,12 +103,29 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
 
   return (
     <g data-testid="sld-v2-result-overlay-layer" data-analysis-type={analysisType} pointerEvents="none">
-      {/* K30-6: legenda severity z analysis_type + thresholds */}
+      {/* K30-6: legenda severity z analysis_type + thresholds + quality */}
       <g data-testid="sld-v2-overlay-legend" transform={`translate(${legendX}, ${legendY})`}>
-        <rect x={0} y={0} width={240} height={120} rx={4} ry={4} fill="#0A0E14" stroke="#3A4A5C" strokeWidth={1.5} opacity={0.95} />
+        <rect x={0} y={0} width={240} height={140} rx={4} ry={4} fill="#0A0E14" stroke="#3A4A5C" strokeWidth={1.5} opacity={0.95} />
         <text x={10} y={20} fill="#DDF7FF" fontFamily={FONT_SANS} fontSize={13} fontWeight={800}>
           {`OVERLAY: ${isSc3F ? 'ZWARCIE 3-FAZOWE' : 'ROZPŁYW MOCY'}`}
         </text>
+        {/* K30-6: solver quality status badge */}
+        {(() => {
+          const qs = payload.quality_status;
+          const ps = payload.proof_status;
+          if (!qs && !ps) return null;
+          const qualityOk = qs !== 'failed';
+          const proofComplete = ps === 'complete';
+          const qsColor = qs === 'failed' ? '#FF6B6B' : qs === 'partial' ? '#FFD166' : '#7EE0B5';
+          return (
+            <g data-testid="sld-v2-overlay-quality-badge" transform="translate(150, 0)">
+              <rect x={0} y={6} width={84} height={16} rx={2} ry={2} fill={qsColor} opacity={0.85} />
+              <text x={42} y={18} textAnchor="middle" fill="#0A0E14" fontFamily={FONT_SANS} fontSize={10} fontWeight={900}>
+                {qualityOk && proofComplete ? 'QUALITY OK' : qs === 'failed' ? 'SOLVER FAIL' : 'PARTIAL'}
+              </text>
+            </g>
+          );
+        })()}
         {isSc3F ? (
           <>
             <circle cx={20} cy={42} r={6} fill={BADGE_COLOR_INFO} />
