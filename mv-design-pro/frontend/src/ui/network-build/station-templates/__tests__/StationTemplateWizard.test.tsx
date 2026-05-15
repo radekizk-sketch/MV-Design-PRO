@@ -206,4 +206,73 @@ describe('StationTemplateWizard', () => {
     fireEvent.click(screen.getByTestId('wizard-cancel'));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
+
+  it('K30-21: applies template via backend when caseId + targetSegment provided', async () => {
+    const applyMock = {
+      template_id: 'tpl_sn_nn_630kva',
+      template_name_pl: 'Stacja SN/nN 630 kVA',
+      station_ref: 'stn/abc/station',
+      created_element_refs: ['stn/abc/station', 'stn/abc/sn_bus', 'tr/abc/transformer'],
+      operations_log: [{ op: 'insert_station_on_segment_sn', status: 'OK' }],
+      catalog_profile_applied: 'ZPUE_WLOSZCZOWA',
+      snapshot_hash: 'abc123',
+    };
+    mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+      if (url === '/api/station-templates/categories') {
+        return Promise.resolve(_mockResponse(MOCK_CATEGORIES));
+      }
+      if (url === '/api/station-templates?category=typowa_sn_nn') {
+        return Promise.resolve(_mockResponse(MOCK_TEMPLATES_TYPOWE));
+      }
+      if (url === '/api/station-templates/tpl_sn_nn_630kva') {
+        return Promise.resolve(_mockResponse(MOCK_TEMPLATE_FULL));
+      }
+      if (url === '/api/station-templates/tpl_sn_nn_630kva/apply' && init?.method === 'POST') {
+        return Promise.resolve(_mockResponse(applyMock));
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({ detail: 'Not found' }),
+      } as unknown as Response);
+    });
+
+    const onAppliedSuccess = vi.fn();
+    render(
+      <StationTemplateWizard
+        caseId="00000000-0000-0000-0000-000000000001"
+        targetSegmentRef="seg/abc/segment"
+        onAppliedSuccess={onAppliedSuccess}
+      />,
+    );
+    // Navigate to apply step (one click at a time, wait for state transition)
+    await waitFor(() => screen.getByTestId('category-typowa_sn_nn'));
+    fireEvent.click(screen.getByTestId('category-typowa_sn_nn'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('template-tpl_sn_nn_630kva'));
+    fireEvent.click(screen.getByTestId('template-tpl_sn_nn_630kva'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    // location → params (wait dla active template load)
+    await waitFor(() => screen.getByTestId('wizard-step-content-location'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-params'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-profile'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-preview'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-apply'));
+
+    // Click Apply
+    fireEvent.click(screen.getByTestId('wizard-apply'));
+
+    // Verify pending indicator
+    await waitFor(() => {
+      expect(screen.getByTestId('apply-success')).toBeTruthy();
+    });
+
+    // Verify success display
+    expect(screen.getByText(/Station ref:/)).toBeTruthy();
+    expect(onAppliedSuccess).toHaveBeenCalledWith(applyMock);
+  });
 });

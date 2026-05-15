@@ -21,9 +21,11 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import {
+  applyStationTemplate,
   fetchStationTemplate,
   fetchStationTemplateCategories,
   fetchStationTemplates,
+  type ApplyTemplateResult,
   type CategoryEntry,
   type StationTemplateFull,
   type StationTemplateSummary,
@@ -77,12 +79,16 @@ const STEP_LABELS_PL: Record<WizardStep, string> = {
 export interface StationTemplateWizardProps {
   /** Initial trunk segment for placement. */
   readonly targetSegmentRef?: string | null;
-  /** Called when wizard completes with apply payload. */
+  /** Case ID dla backend apply (POST /api/station-templates/{id}/apply). */
+  readonly caseId?: string | null;
+  /** Called when wizard completes with apply payload (legacy callback). */
   readonly onApply?: (payload: {
     templateId: string;
     paramOverrides: Record<string, unknown>;
     catalogProfile: string | null;
   }) => void;
+  /** K30-21: called z backend response after successful apply. */
+  readonly onAppliedSuccess?: (result: ApplyTemplateResult) => void;
   /** Called when wizard is dismissed. */
   readonly onCancel?: () => void;
 }
@@ -203,13 +209,36 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
     }
   };
 
-  const handleApply = () => {
-    if (state.selectedTemplateId != null) {
-      props.onApply?.({
-        templateId: state.selectedTemplateId,
-        paramOverrides: state.paramOverrides,
-        catalogProfile: state.catalogProfile,
-      });
+  const [applying, setApplying] = useState(false);
+  const [applyResult, setApplyResult] = useState<ApplyTemplateResult | null>(null);
+
+  const handleApply = async () => {
+    if (state.selectedTemplateId == null) return;
+    // Legacy callback (for tests / external integrations)
+    props.onApply?.({
+      templateId: state.selectedTemplateId,
+      paramOverrides: state.paramOverrides,
+      catalogProfile: state.catalogProfile,
+    });
+    // K30-21: backend apply if caseId + targetSegmentRef provided
+    if (props.caseId != null && props.targetSegmentRef != null) {
+      setApplying(true);
+      setError(null);
+      try {
+        const result = await applyStationTemplate(state.selectedTemplateId, {
+          case_id: props.caseId,
+          target_segment_id: props.targetSegmentRef,
+          insert_at_ratio: 0.5,
+          params_override: state.paramOverrides,
+          catalog_profile: state.catalogProfile,
+        });
+        setApplyResult(result);
+        props.onAppliedSuccess?.(result);
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setApplying(false);
+      }
     }
   };
 
@@ -299,6 +328,8 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
           <ApplyStep
             template={activeTemplate}
             overrides={state.paramOverrides}
+            applying={applying}
+            applyResult={applyResult}
             onConfirm={handleApply}
           />
         )}
@@ -327,10 +358,15 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
             <button
               type="button"
               onClick={handleApply}
-              className="px-4 py-1.5 text-sm bg-green-700 text-white rounded hover:bg-green-600"
+              disabled={applying || applyResult != null}
+              className="px-4 py-1.5 text-sm bg-green-700 text-white rounded hover:bg-green-600 disabled:opacity-40"
               data-testid="wizard-apply"
             >
-              Zatwierdź i utwórz stację
+              {applying
+                ? 'Wykonywanie…'
+                : applyResult != null
+                  ? '✓ Utworzono'
+                  : 'Zatwierdź i utwórz stację'}
             </button>
           ) : (
             <button
@@ -660,6 +696,8 @@ function PreviewStep(props: {
 function ApplyStep(props: {
   template: StationTemplateFull | null;
   overrides: Record<string, unknown>;
+  applying: boolean;
+  applyResult: ApplyTemplateResult | null;
   onConfirm: () => void;
 }): JSX.Element {
   return (
@@ -669,10 +707,35 @@ function ApplyStep(props: {
         <div className="text-sm">
           <div>Stacja zostanie utworzona na podstawie szablonu:</div>
           <div className="font-bold text-cyan-300 mt-1">{props.template.name_pl}</div>
-          <div className="text-xs text-zinc-400 mt-3">
-            Po zatwierdzeniu system wykona operację <code>apply_station_template</code> na
-            aktywnym snapshocie ENM.
-          </div>
+          {props.applying && (
+            <div data-testid="apply-pending" className="mt-3 text-amber-300">
+              Wykonywanie operacji na snapshot ENM…
+            </div>
+          )}
+          {props.applyResult != null && (
+            <div data-testid="apply-success" className="mt-3 bg-emerald-950 border border-emerald-700 p-3 rounded">
+              <div className="font-bold text-emerald-200">
+                ✓ Stacja utworzona pomyślnie
+              </div>
+              <div className="text-xs text-emerald-300 mt-2">
+                Station ref: <span className="font-mono">{props.applyResult.station_ref ?? '—'}</span>
+              </div>
+              <div className="text-xs text-emerald-300 mt-1">
+                Utworzone elementy:{' '}
+                <span className="font-mono">{props.applyResult.created_element_refs.length}</span>
+              </div>
+              <div className="text-xs text-emerald-300 mt-1">
+                Operacji wykonano:{' '}
+                <span className="font-mono">{props.applyResult.operations_log.length}</span>
+              </div>
+            </div>
+          )}
+          {props.applyResult == null && !props.applying && (
+            <div className="text-xs text-zinc-400 mt-3">
+              Po zatwierdzeniu system wykona operację <code>apply_station_template</code> na
+              aktywnym snapshocie ENM.
+            </div>
+          )}
         </div>
       ) : (
         <div className="text-sm text-amber-300">Brak wybranego szablonu.</div>

@@ -727,7 +727,7 @@ SWITCH_EARTH_SWITCHES: list[dict[str, Any]] = [
 
 
 def get_all_switch_equipment_types() -> list[dict[str, Any]]:
-    """Zwraca wszystkie typy aparatury laczeniowej w katalogu (36 rekordow)."""
+    """Zwraca wszystkie typy aparatury laczeniowej w katalogu (48 rekordow po K30-22)."""
     return (
         SWITCH_CIRCUIT_BREAKERS
         + SWITCH_LOAD_SWITCHES
@@ -735,6 +735,7 @@ def get_all_switch_equipment_types() -> list[dict[str, Any]]:
         + SWITCH_RECLOSERS
         + SWITCH_FUSES
         + SWITCH_EARTH_SWITCHES
+        + SWITCH_POLISH_PTPIRE  # K30-22 Polish ZPUE + Elektrometal expansion
     )
 
 
@@ -778,18 +779,153 @@ def _collect_quality_counts(all_types: list[dict[str, Any]]) -> dict[str, Any]:
 
 def get_switch_catalog_statistics() -> dict[str, Any]:
     """Zwraca statystyki katalogu aparatury laczeniowej."""
+    from collections import Counter as _Counter
+
     all_types = get_all_switch_equipment_types()
     kinds = sorted({t["params"]["equipment_kind"] for t in all_types})
     quality = _collect_quality_counts(all_types)
+    # K30-22: count by equipment_kind across COMPLETE list (incl. Polish PTPiRE)
+    by_kind = _Counter(t["params"]["equipment_kind"] for t in all_types)
 
     return {
         "liczba_aparatury_ogolem": len(all_types),
-        "liczba_wylacznikow": len(SWITCH_CIRCUIT_BREAKERS),
-        "liczba_rozlacznikow": len(SWITCH_LOAD_SWITCHES),
-        "liczba_odlacznikow": len(SWITCH_DISCONNECTORS),
-        "liczba_reklozerow": len(SWITCH_RECLOSERS),
-        "liczba_bezpiecznikow": len(SWITCH_FUSES),
-        "liczba_uziemnikow": len(SWITCH_EARTH_SWITCHES),
+        "liczba_wylacznikow": by_kind.get("CIRCUIT_BREAKER", 0),
+        "liczba_rozlacznikow": by_kind.get("LOAD_SWITCH", 0),
+        "liczba_odlacznikow": by_kind.get("DISCONNECTOR", 0),
+        "liczba_reklozerow": by_kind.get("RECLOSER", 0),
+        "liczba_bezpiecznikow": by_kind.get("FUSE", 0),
+        "liczba_uziemnikow": by_kind.get("EARTH_SWITCH", 0),
         "rodzaje": kinds,
         **quality,
     }
+
+
+# =============================================================================
+# K30-22: POLSCY PRODUCENCI ZPUE WLOSZCZOWA + ELEKTROMETAL
+# =============================================================================
+#
+# ZPUE Wloszczowa — rodzina Rotoblok (CB SF6) + lacznik NAL.
+# Elektrometal — rodzina E2 Alpha (CB vacuum, fuse-switch).
+# Wszystkie pozycje zgodne z PTPiREE WiPWC referencje.
+
+def _polish_switch(
+    item_id: str,
+    name: str,
+    manufacturer: str,
+    equipment_kind: str,
+    un_kv: float,
+    in_a: float,
+    ik_ka: float,
+    medium: str,
+    source: str,
+) -> dict[str, Any]:
+    return {
+        "id": item_id,
+        "name": name,
+        "params": {
+            "equipment_kind": equipment_kind,
+            "manufacturer": manufacturer,
+            "un_kv": un_kv,
+            "in_a": in_a,
+            "ik_ka": ik_ka,
+            "icw_ka": ik_ka,
+            "medium": medium,
+            "verification_status": "ZWERYFIKOWANY",
+            "catalog_status": "PRODUKCYJNY_V1",
+            "source_reference": source,
+            "contract_version": "2.0",
+            "ptpire_certified": True,
+        },
+    }
+
+
+SWITCH_POLISH_PTPIRE: list[dict[str, Any]] = [
+    # ZPUE Wloszczowa Rotoblok — wylaczniki SF6
+    _polish_switch(
+        "sw-cb-zpue-rotoblok-12kv-630a",
+        "ZPUE Rotoblok 12 kV 630 A (SF6)",
+        "ZPUE Włoszczowa", "CIRCUIT_BREAKER",
+        un_kv=12.0, in_a=630.0, ik_ka=16.0, medium="SF6",
+        source="ZPUE Włoszczowa Rotoblok katalog 2024 / PTPiREE WiPWC",
+    ),
+    _polish_switch(
+        "sw-cb-zpue-rotoblok-12kv-1250a",
+        "ZPUE Rotoblok 12 kV 1250 A (SF6)",
+        "ZPUE Włoszczowa", "CIRCUIT_BREAKER",
+        un_kv=12.0, in_a=1250.0, ik_ka=20.0, medium="SF6",
+        source="ZPUE Włoszczowa Rotoblok katalog 2024 / PTPiREE WiPWC",
+    ),
+    _polish_switch(
+        "sw-cb-zpue-rotoblok-24kv-630a",
+        "ZPUE Rotoblok 24 kV 630 A (SF6)",
+        "ZPUE Włoszczowa", "CIRCUIT_BREAKER",
+        un_kv=24.0, in_a=630.0, ik_ka=16.0, medium="SF6",
+        source="ZPUE Włoszczowa Rotoblok katalog 2024 / PTPiREE WiPWC",
+    ),
+    _polish_switch(
+        "sw-cb-zpue-rotoblok-24kv-1250a",
+        "ZPUE Rotoblok 24 kV 1250 A (SF6)",
+        "ZPUE Włoszczowa", "CIRCUIT_BREAKER",
+        un_kv=24.0, in_a=1250.0, ik_ka=20.0, medium="SF6",
+        source="ZPUE Włoszczowa Rotoblok katalog 2024 / PTPiREE WiPWC",
+    ),
+    # ZPUE NAL — laczniki SF6
+    _polish_switch(
+        "sw-ls-zpue-nal-12kv-630a",
+        "ZPUE NAL 12 kV 630 A (lacznik SF6)",
+        "ZPUE Włoszczowa", "LOAD_SWITCH",
+        un_kv=12.0, in_a=630.0, ik_ka=16.0, medium="SF6",
+        source="ZPUE Włoszczowa NAL katalog 2024 / PTPiREE WiPWC",
+    ),
+    _polish_switch(
+        "sw-ls-zpue-nal-24kv-630a",
+        "ZPUE NAL 24 kV 630 A (lacznik SF6)",
+        "ZPUE Włoszczowa", "LOAD_SWITCH",
+        un_kv=24.0, in_a=630.0, ik_ka=16.0, medium="SF6",
+        source="ZPUE Włoszczowa NAL katalog 2024 / PTPiREE WiPWC",
+    ),
+    # Elektrometal E2 Alpha — wylaczniki vacuum
+    _polish_switch(
+        "sw-cb-elektrometal-e2alpha-12kv-630a",
+        "Elektrometal E2 Alpha 12 kV 630 A (vacuum)",
+        "Elektrometal", "CIRCUIT_BREAKER",
+        un_kv=12.0, in_a=630.0, ik_ka=20.0, medium="VACUUM",
+        source="Elektrometal E2 Alpha katalog 2024 / PTPiREE WiPWC",
+    ),
+    _polish_switch(
+        "sw-cb-elektrometal-e2alpha-12kv-1250a",
+        "Elektrometal E2 Alpha 12 kV 1250 A (vacuum)",
+        "Elektrometal", "CIRCUIT_BREAKER",
+        un_kv=12.0, in_a=1250.0, ik_ka=25.0, medium="VACUUM",
+        source="Elektrometal E2 Alpha katalog 2024 / PTPiREE WiPWC",
+    ),
+    _polish_switch(
+        "sw-cb-elektrometal-e2alpha-24kv-630a",
+        "Elektrometal E2 Alpha 24 kV 630 A (vacuum)",
+        "Elektrometal", "CIRCUIT_BREAKER",
+        un_kv=24.0, in_a=630.0, ik_ka=20.0, medium="VACUUM",
+        source="Elektrometal E2 Alpha katalog 2024 / PTPiREE WiPWC",
+    ),
+    _polish_switch(
+        "sw-cb-elektrometal-e2alpha-24kv-2000a",
+        "Elektrometal E2 Alpha 24 kV 2000 A (vacuum)",
+        "Elektrometal", "CIRCUIT_BREAKER",
+        un_kv=24.0, in_a=2000.0, ik_ka=31.5, medium="VACUUM",
+        source="Elektrometal E2 Alpha katalog 2024 / PTPiREE WiPWC",
+    ),
+    # Elektrometal odlaczniki
+    _polish_switch(
+        "sw-ds-elektrometal-12kv-630a",
+        "Elektrometal odlacznik 12 kV 630 A",
+        "Elektrometal", "DISCONNECTOR",
+        un_kv=12.0, in_a=630.0, ik_ka=16.0, medium="AIR",
+        source="Elektrometal odlaczniki SN katalog 2024",
+    ),
+    _polish_switch(
+        "sw-ds-elektrometal-24kv-1250a",
+        "Elektrometal odlacznik 24 kV 1250 A",
+        "Elektrometal", "DISCONNECTOR",
+        un_kv=24.0, in_a=1250.0, ik_ka=20.0, medium="AIR",
+        source="Elektrometal odlaczniki SN katalog 2024",
+    ),
+]

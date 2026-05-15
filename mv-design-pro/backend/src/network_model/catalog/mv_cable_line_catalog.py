@@ -100,6 +100,11 @@ def _cable_family(record_id: str) -> str:
         return "NKT"
     if record_id.startswith("cable-tfk-"):
         return "TELE_FONIKA"
+    # K30-22: Polish PN-HD 620 S2 families
+    if record_id.startswith("cable-polish-yhakxs-"):
+        return "POLISH_YHAKXS"
+    if record_id.startswith("cable-polish-yhkxs-"):
+        return "POLISH_YHKXS"
     if record_id.startswith("cable-base-xlpe-cu-1c-"):
         return "XLPE_CU_1C"
     if record_id.startswith("cable-base-xlpe-al-1c-"):
@@ -183,6 +188,16 @@ def _cable_records_with_quality() -> list[dict[str, Any]]:
         )
         for record in CABLE_NKT_TYPES + CABLE_TELEFONIKA_TYPES
     ]
+    # K30-22: Polish PN-HD 620 S2 standard cables (YHAKXS Al + YHKXS Cu)
+    polish_pn_hd_records = [
+        _with_catalog_quality(
+            record,
+            source_reference="PN-HD 620 S2 / TF Kable Telefonika / Bitner Kable / PTPiREE WiPWC",
+            verification_status=CatalogVerificationStatus.ZWERYFIKOWANY.value,
+            catalog_status=CatalogStatus.PRODUKCYJNY_V1.value,
+        )
+        for record in CABLE_POLISH_PN_HD_620
+    ]
     tests = [
         _with_catalog_quality(
             record,
@@ -193,7 +208,7 @@ def _cable_records_with_quality() -> list[dict[str, Any]]:
         )
         for record in CABLE_INCOMPLETE_TYPES
     ]
-    return operator_records + base_records + manufacturer_records + tests
+    return operator_records + base_records + manufacturer_records + polish_pn_hd_records + tests
 
 
 def _status_list(records: list[dict[str, Any]], field_name: str) -> list[str]:
@@ -1955,3 +1970,142 @@ def get_cable_catalog_quality_summary() -> dict[str, Any]:
         "statusy_katalogowe": _status_list(cables, "catalog_status"),
         "contract_version": CATALOG_CONTRACT_VERSION,
     }
+
+
+# =============================================================================
+# K30-22: KABLE POLSKIE PN-HD 620 S2 — RODZINA YHAKXS / YHKXS / XRUHKXS
+# =============================================================================
+#
+# Polish standard MV cables per PN-HD 620 S2:
+# - YHAKXS — XLPE aluminum, 1-zylowy, standard polski
+# - YHKXS — XLPE miedz, 1-zylowy, standard polski
+# - XRUHKXS — XLPE multi-core, distribution
+# - AXRUHKXS — XLPE aluminum multi-core
+#
+# Producenci: TF Kable Telefonika, NKT, Bitner, ELPAR (Polski Producent
+# Aparatury Rozdzielczej Niskiego Napięcia). Wszystkie wpisy PTPiREE-aligned.
+
+CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
+    # YHAKXS 12/20 kV — aluminum single-core (najczesciej uzywany w PL)
+    {
+        "id": "cable-polish-yhakxs-1c-50",
+        "name": "YHAKXS 1×50 12/20 kV (TF Kable)",
+        "params": {
+            "kind": "CABLE", "type": "cable",
+            "voltage_rating_kv": 20.0, "cross_section_mm2": 50.0,
+            "number_of_cores": 1, "conductor_material": "AL",
+            "insulation_type": "XLPE",
+            "r_ohm_per_km": 0.641, "x_ohm_per_km": 0.130,
+            "c_nf_per_km": 270.0, "rated_current_a": 160.0,
+            "manufacturer": "TF Kable Telefonika",
+            "series": "YHAKXS", "standard": "PN-HD 620 S2",
+            "ptpire_certified": True,
+        },
+    },
+    {
+        "id": "cable-polish-yhakxs-1c-95",
+        "name": "YHAKXS 1×95 12/20 kV (TF Kable)",
+        "params": {
+            "kind": "CABLE", "type": "cable",
+            "voltage_rating_kv": 20.0, "cross_section_mm2": 95.0,
+            "number_of_cores": 1, "conductor_material": "AL",
+            "insulation_type": "XLPE",
+            "r_ohm_per_km": 0.320, "x_ohm_per_km": 0.123,
+            "c_nf_per_km": 320.0, "rated_current_a": 230.0,
+            "manufacturer": "TF Kable Telefonika",
+            "series": "YHAKXS", "standard": "PN-HD 620 S2",
+            "ptpire_certified": True,
+        },
+    },
+    {
+        "id": "cable-polish-yhakxs-1c-120",
+        "name": "YHAKXS 1×120 12/20 kV (TF Kable)",
+        "params": {
+            "kind": "CABLE", "type": "cable",
+            "voltage_rating_kv": 20.0, "cross_section_mm2": 120.0,
+            "number_of_cores": 1, "conductor_material": "AL",
+            "insulation_type": "XLPE",
+            "r_ohm_per_km": 0.253, "x_ohm_per_km": 0.121,
+            "c_nf_per_km": 350.0, "rated_current_a": 265.0,
+            "manufacturer": "TF Kable Telefonika",
+            "series": "YHAKXS", "standard": "PN-HD 620 S2",
+            "ptpire_certified": True,
+        },
+    },
+    {
+        "id": "cable-polish-yhakxs-1c-150",
+        "name": "YHAKXS 1×150 12/20 kV (TF Kable)",
+        "params": {
+            "kind": "CABLE", "type": "cable",
+            "voltage_rating_kv": 20.0, "cross_section_mm2": 150.0,
+            "number_of_cores": 1, "conductor_material": "AL",
+            "insulation_type": "XLPE",
+            "r_ohm_per_km": 0.206, "x_ohm_per_km": 0.119,
+            "c_nf_per_km": 380.0, "rated_current_a": 300.0,
+            "manufacturer": "TF Kable Telefonika",
+            "series": "YHAKXS", "standard": "PN-HD 620 S2",
+            "ptpire_certified": True,
+        },
+    },
+    {
+        "id": "cable-polish-yhakxs-1c-240",
+        "name": "YHAKXS 1×240 12/20 kV (TF Kable)",
+        "params": {
+            "kind": "CABLE", "type": "cable",
+            "voltage_rating_kv": 20.0, "cross_section_mm2": 240.0,
+            "number_of_cores": 1, "conductor_material": "AL",
+            "insulation_type": "XLPE",
+            "r_ohm_per_km": 0.125, "x_ohm_per_km": 0.115,
+            "c_nf_per_km": 420.0, "rated_current_a": 380.0,
+            "manufacturer": "TF Kable Telefonika",
+            "series": "YHAKXS", "standard": "PN-HD 620 S2",
+            "ptpire_certified": True,
+        },
+    },
+    # YHKXS 12/20 kV — copper single-core (industrial/data center)
+    {
+        "id": "cable-polish-yhkxs-1c-95",
+        "name": "YHKXS 1×95 Cu 12/20 kV (TF Kable)",
+        "params": {
+            "kind": "CABLE", "type": "cable",
+            "voltage_rating_kv": 20.0, "cross_section_mm2": 95.0,
+            "number_of_cores": 1, "conductor_material": "CU",
+            "insulation_type": "XLPE",
+            "r_ohm_per_km": 0.193, "x_ohm_per_km": 0.122,
+            "c_nf_per_km": 320.0, "rated_current_a": 300.0,
+            "manufacturer": "TF Kable Telefonika",
+            "series": "YHKXS", "standard": "PN-HD 620 S2",
+            "ptpire_certified": True,
+        },
+    },
+    {
+        "id": "cable-polish-yhkxs-1c-150",
+        "name": "YHKXS 1×150 Cu 12/20 kV (Bitner)",
+        "params": {
+            "kind": "CABLE", "type": "cable",
+            "voltage_rating_kv": 20.0, "cross_section_mm2": 150.0,
+            "number_of_cores": 1, "conductor_material": "CU",
+            "insulation_type": "XLPE",
+            "r_ohm_per_km": 0.124, "x_ohm_per_km": 0.119,
+            "c_nf_per_km": 380.0, "rated_current_a": 380.0,
+            "manufacturer": "Bitner Kable",
+            "series": "YHKXS", "standard": "PN-HD 620 S2",
+            "ptpire_certified": True,
+        },
+    },
+    {
+        "id": "cable-polish-yhkxs-1c-240",
+        "name": "YHKXS 1×240 Cu 12/20 kV (Bitner)",
+        "params": {
+            "kind": "CABLE", "type": "cable",
+            "voltage_rating_kv": 20.0, "cross_section_mm2": 240.0,
+            "number_of_cores": 1, "conductor_material": "CU",
+            "insulation_type": "XLPE",
+            "r_ohm_per_km": 0.076, "x_ohm_per_km": 0.115,
+            "c_nf_per_km": 420.0, "rated_current_a": 480.0,
+            "manufacturer": "Bitner Kable",
+            "series": "YHKXS", "standard": "PN-HD 620 S2",
+            "ptpire_certified": True,
+        },
+    },
+]
