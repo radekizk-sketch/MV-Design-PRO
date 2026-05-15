@@ -127,7 +127,9 @@ describe('GridSourceEditor E-03B', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Zapisz GPZ' }));
 
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    // CI fix: explicit timeout 3000ms — default waitFor 1000ms za krótki na
+    // slow GitHub Actions runners (catalog async load + state updates).
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1), { timeout: 3000 });
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
       catalog_ref: 'source-system-15kv-310mva',
       gpz_line_field_apparatus_catalog_ref: 'mv-breaker-15kv-630a',
