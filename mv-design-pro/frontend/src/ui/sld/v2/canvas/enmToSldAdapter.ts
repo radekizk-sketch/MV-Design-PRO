@@ -1098,6 +1098,8 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         transformerRatedKva: stationSldDetails.transformerRatedKva,
         nnFeedersCount: stationSldDetails.nnFeedersCount,
         derBadges: stationSldDetails.derBadges,
+        totalLoadKw: stationSldDetails.totalLoadKw,
+        totalGenerationKw: stationSldDetails.totalGenerationKw,
         ...(isNop ? { isNop: true } : {}),
         ...(cumKm > 0 ? { distanceFromGpzKm: Math.round(cumKm * 100) / 100 } : {}),
       });
@@ -1132,6 +1134,8 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         transformerRatedKva: stationSldDetails.transformerRatedKva,
         nnFeedersCount: stationSldDetails.nnFeedersCount,
         derBadges: stationSldDetails.derBadges,
+        totalLoadKw: stationSldDetails.totalLoadKw,
+        totalGenerationKw: stationSldDetails.totalGenerationKw,
       });
     });
   });
@@ -1159,6 +1163,8 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
       transformerRatedKva: stationSldDetails.transformerRatedKva,
       nnFeedersCount: stationSldDetails.nnFeedersCount,
       derBadges: stationSldDetails.derBadges,
+      totalLoadKw: stationSldDetails.totalLoadKw,
+      totalGenerationKw: stationSldDetails.totalGenerationKw,
     });
   });
 
@@ -1173,6 +1179,10 @@ interface StationMiniBlockDetails {
   readonly nnFeedersCount: number;
   readonly derBadges: readonly MiniBlockDerBadge[];
   readonly transformerRatedKva: number | null;
+  /** K30-15.3: zsumowane load [kW] na LV side stacji (sum of enm.loads.p_mw). */
+  readonly totalLoadKw: number;
+  /** K30-15.3: zsumowana DER generation [kW] (sum of enm.generators.p_mw na tej stacji). */
+  readonly totalGenerationKw: number;
 }
 
 function buildStationMiniBlockDetails(
@@ -1190,6 +1200,27 @@ function buildStationMiniBlockDetails(
   const transformerRefs = collectStationTransformerRefs(snapshot, station);
   const transformerRatedKva = inferTransformerRatedKva(snapshot, transformerRefs);
 
+  // K30-15.3: zsumuj load + DER generation per station (LV side buses)
+  const stationBusRefs = new Set<string>();
+  for (const bus of snapshot.buses ?? []) {
+    const scopedBus = bus as { substation_ref?: string; ref_id: string };
+    if (scopedBus.substation_ref === station.ref_id || scopedBus.substation_ref === station.id) {
+      stationBusRefs.add(scopedBus.ref_id);
+    }
+  }
+  const totalLoadKw = Math.round(
+    (snapshot.loads ?? [])
+      .filter((l) => stationBusRefs.has(l.bus_ref))
+      .reduce((acc, l) => acc + (l.p_mw ?? 0) * 1000, 0)
+  );
+  const totalGenerationKw = Math.round(
+    (snapshot.generators ?? [])
+      .filter(
+        (g) => g.station_ref === station.ref_id || g.station_ref === station.id
+      )
+      .reduce((acc, g) => acc + (g.p_mw ?? 0) * 1000, 0)
+  );
+
   return {
     footprintType,
     snBays,
@@ -1201,6 +1232,8 @@ function buildStationMiniBlockDetails(
     nnFeedersCount: derBadges.some((badge) => badge.connectionSide === 'nn') ? 2 : 1,
     derBadges,
     transformerRatedKva,
+    totalLoadKw,
+    totalGenerationKw,
   };
 }
 

@@ -88,6 +88,10 @@ export interface MiniBlockRmuRendererProps {
   readonly stationCode?: string | null;
   /** K30-8: alarm severity (CRITICAL/IMPORTANT/WARNING). */
   readonly alarmSeverity?: 'warning' | 'important' | 'critical' | null;
+  /** K30-15.3: peak load attached to station's LV side [kW]. */
+  readonly totalLoadKw?: number | null;
+  /** K30-15.3: total generation capacity attached [kW]. */
+  readonly totalGenerationKw?: number | null;
   readonly snBays: readonly MiniBlockBayDescriptor[];
   readonly hasTransformer: boolean;
   readonly transformerRatedKva: number | null;
@@ -270,6 +274,26 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
       >
         {(props.name || '').length > 22 ? (props.name || '').slice(0, 20) + '…' : props.name}
       </text>
+
+      {/* K30-15.3: load (L) + DER generation (G) badges per stacja.
+       *  Eksploatacyjny diff: stacja z load 100 kW vs ZKSN bez load
+       *  vs hybrid PV+BESS 1500 kW visible bezpośrednio. */}
+      {props.totalLoadKw && props.totalLoadKw > 0 && (
+        <g data-testid={`sld-v2-mini-station-load-${props.id}`} transform={`translate(-28, ${labelNameY + 32})`}>
+          <rect x={-22} y={-9} width={44} height={16} rx={2} ry={2} fill="#5A2A1E" stroke="#FF8B5C" strokeWidth={1} />
+          <text x={0} y={2} textAnchor="middle" fill="#FF8B5C" fontFamily={FONT_SANS} fontSize={9} fontWeight={900}>
+            L {props.totalLoadKw >= 1000 ? `${(props.totalLoadKw / 1000).toFixed(1)}MW` : `${props.totalLoadKw}kW`}
+          </text>
+        </g>
+      )}
+      {props.totalGenerationKw != null && props.totalGenerationKw > 0 && (
+        <g data-testid={`sld-v2-mini-station-gen-${props.id}`} transform={`translate(28, ${labelNameY + 32})`}>
+          <rect x={-22} y={-9} width={44} height={16} rx={2} ry={2} fill="#1E4A2A" stroke="#7EE0B5" strokeWidth={1} />
+          <text x={0} y={2} textAnchor="middle" fill="#7EE0B5" fontFamily={FONT_SANS} fontSize={9} fontWeight={900}>
+            G {props.totalGenerationKw >= 1000 ? `${(props.totalGenerationKw / 1000).toFixed(1)}MW` : `${props.totalGenerationKw}kW`}
+          </text>
+        </g>
+      )}
 
       <text
         x={0}

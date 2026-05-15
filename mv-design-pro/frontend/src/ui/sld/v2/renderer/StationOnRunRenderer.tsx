@@ -77,6 +77,12 @@ export interface StationOnRunRendererProps {
    *  null/undefined = brak alarmu (no overlay icon).
    */
   readonly alarmSeverity?: 'warning' | 'important' | 'critical' | null;
+  /** K30-15.3: peak load attached to station's LV side [kW].
+   *  Wartość >0 → 'L' badge widoczny pod transformer pokazujący poziom odbioru
+   *  (Eksploatacyjny diff vs station bez load = ZKSN-only). */
+  readonly totalLoadKw?: number | null;
+  /** K30-15.3: total generation capacity attached [kW]. */
+  readonly totalGenerationKw?: number | null;
 }
 
 const TYPE_TO_LABEL_PL: Record<StationOnRunRendererProps['topologicalType'], string> = {
@@ -116,6 +122,8 @@ export function StationOnRunRenderer(props: StationOnRunRendererProps): JSX.Elem
         name={props.name}
         stationCode={props.stationCode ?? null}
         alarmSeverity={props.alarmSeverity ?? null}
+        totalLoadKw={props.totalLoadKw ?? null}
+        totalGenerationKw={props.totalGenerationKw ?? null}
         snBays={props.snBays ?? []}
         hasTransformer={props.hasTransformer ?? true}
         transformerRatedKva={props.transformerRatedKva ?? null}
