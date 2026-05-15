@@ -256,6 +256,40 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         ) : null;
       })()}
 
+      {/* K30-29 round 4: nN feeders count badge always visible (next to code).
+       *  Critical dla pixel-by-pixel expert review at all LOD variants. */}
+      {props.nnFeedersCount > 0 && (
+        <g
+          data-testid={`sld-v2-mini-station-nn-count-${props.id}`}
+          data-feeders-count={props.nnFeedersCount}
+          transform={`translate(28, ${labelNameY - 4})`}
+        >
+          <rect
+            x={-12}
+            y={-13}
+            width={24}
+            height={18}
+            rx={2}
+            ry={2}
+            fill="#0D2818"
+            stroke="#4EC9B0"
+            strokeWidth={1}
+            opacity={0.95}
+          />
+          <text
+            x={0}
+            y={1}
+            textAnchor="middle"
+            fill="#4EC9B0"
+            fontFamily={FONT_SANS}
+            fontSize={11}
+            fontWeight={900}
+          >
+            {`${props.nnFeedersCount}n`}
+          </text>
+        </g>
+      )}
+
       {/* K30-8: alarm triangle obok code badge (mini block layout) */}
       {props.alarmSeverity && (() => {
         const color = props.alarmSeverity === 'critical' ? '#FF6B6B' : props.alarmSeverity === 'important' ? '#FF8B5C' : '#FFD166';
@@ -659,16 +693,68 @@ interface LvSectionRowProps {
 
 function LvSectionRow(props: LvSectionRowProps): JSX.Element {
   const { offsetX, width, rowY, feedersCount, hasTransformer } = props;
+  // K30-29: actual per-feeder droplines + CB symbols (replaces label-only).
+  // Distributes N feeders evenly w LV bus span. Engineer może wizualnie
+  // odczytać liczbę odpływów (1/2/3/4/N) per stacja zamiast czytać label.
+  const lvBusStart = offsetX + 32;
+  const lvBusEnd = offsetX + width - 32;
+  const lvBusSpan = lvBusEnd - lvBusStart;
+  const feederYStart = rowY + SECTION_BAR_HEIGHT;
+  // K30-29 round 2: 2× scale-up dla pixel-precise visibility w industrial review.
+  const dropLength = 18;
+  const cbSize = 10;
+  const safeCount = Math.max(1, feedersCount);
+  const positions: number[] = [];
+  if (safeCount === 1) {
+    positions.push(lvBusStart + lvBusSpan / 2);
+  } else {
+    // Margins 18% z each side dla aesthetics
+    const usableStart = lvBusStart + lvBusSpan * 0.18;
+    const usableEnd = lvBusEnd - lvBusSpan * 0.18;
+    const step = (usableEnd - usableStart) / (safeCount - 1);
+    for (let i = 0; i < safeCount; i++) {
+      positions.push(usableStart + step * i);
+    }
+  }
+
   return (
     <g data-testid="sld-v2-mini-rmu-lv-row" data-parity-key="station.mini.lv_row">
       <rect
-        x={offsetX + 32}
+        x={lvBusStart}
         y={rowY}
-        width={width - 64}
+        width={lvBusEnd - lvBusStart}
         height={SECTION_BAR_HEIGHT}
         fill={COLOR_BUS_LV}
         opacity={hasTransformer ? 0.8 : 0.35}
       />
+      {/* Per-feeder dropline + CB rectangle. Engineer widzi N osobnych odpływów. */}
+      {positions.map((x, idx) => (
+        <g
+          key={`feeder-${idx}`}
+          data-testid={`sld-v2-mini-rmu-feeder-${idx}`}
+          data-feeder-index={idx}
+        >
+          <line
+            x1={x}
+            y1={feederYStart}
+            x2={x}
+            y2={feederYStart + dropLength}
+            stroke={COLOR_BUS_LV}
+            strokeWidth={1.5}
+            opacity={hasTransformer ? 0.9 : 0.4}
+          />
+          <rect
+            x={x - cbSize / 2}
+            y={feederYStart + dropLength}
+            width={cbSize}
+            height={cbSize}
+            fill={hasTransformer ? '#0D2818' : '#2A1810'}
+            stroke={COLOR_BUS_LV}
+            strokeWidth={0.8}
+            opacity={hasTransformer ? 0.85 : 0.4}
+          />
+        </g>
+      ))}
       <text
         x={offsetX + width - 18}
         y={rowY + 13}

@@ -151,7 +151,12 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
     id, x, y, name, topologicalType, nnVoltageLevelsCount,
     selected, onClick, onDoubleClick, missingData, isNop, distanceFromGpzKm,
     transformerRatedKva, stationCode, switchStateByColumn, alarmSeverity,
+    nnFeedersCount,
   } = props;
+  // K30-29: per-feeder visualization w dispatcher (LOD3+). User K30-25 demand:
+  // 'wszystko konfigurowalne' — liczba odpływów nN musi być widoczna pixel-precise
+  // (1/2/3/4/N), nie tylko jako label tekstowy.
+  const effectiveFeeders = nnFeedersCount ?? nnVoltageLevelsCount ?? 0;
   const connectionXs = connectionColumns(topologicalType);
   const voltageLabel = nnVoltageLevelsCount && nnVoltageLevelsCount > 1
     ? `${nnVoltageLevelsCount}× nN`
@@ -367,6 +372,46 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
       >
         {voltageLabel}
       </text>
+
+      {/* K30-29: per-feeder visualization — N short droplines + CB symbol */}
+      {effectiveFeeders > 0 && (
+        <g
+          data-testid={`sld-v2-station-feeders-viz-${id}`}
+          data-feeders-count={effectiveFeeders}
+          transform={`translate(0, ${CODE_Y + 44})`}
+        >
+          {/* LV bus bar */}
+          <rect x={-30} y={0} width={60} height={2.5} fill="#4EC9B0" opacity={0.9} />
+          {/* Per-feeder dropline + CB rectangle */}
+          {Array.from({ length: effectiveFeeders }).map((_, idx) => {
+            const margin = effectiveFeeders === 1 ? 0 : 22;
+            const span = effectiveFeeders === 1 ? 0 : 44;
+            const step = effectiveFeeders === 1 ? 0 : span / (effectiveFeeders - 1);
+            const fx = effectiveFeeders === 1 ? 0 : -margin + step * idx;
+            return (
+              <g key={`fd-${idx}`} data-testid={`sld-v2-station-feeder-${id}-${idx}`}>
+                <line
+                  x1={fx}
+                  y1={2.5}
+                  x2={fx}
+                  y2={10}
+                  stroke="#4EC9B0"
+                  strokeWidth={1.4}
+                />
+                <rect
+                  x={fx - 3}
+                  y={10}
+                  width={6}
+                  height={6}
+                  fill="#0D2818"
+                  stroke="#4EC9B0"
+                  strokeWidth={0.8}
+                />
+              </g>
+            );
+          })}
+        </g>
+      )}
 
       {transformerRatedKva != null && (
         <text
