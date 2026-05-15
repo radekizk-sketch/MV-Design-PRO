@@ -442,6 +442,50 @@ describe('CableRunRenderer', () => {
     );
     expect(getByText('XRUHAKXS 120/25 · 500 m')).toBeInTheDocument();
   });
+
+  it('K30-7: runKind="ring" renderuje ring indicator z text "RING"', () => {
+    const { container, getByText } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-ring"
+          runKind="ring"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 100, y: 200 }, { x: 600, y: 200 }]}
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-run-r-ring-ring-indicator"]')).toBeTruthy();
+    expect(getByText('RING')).toBeInTheDocument();
+  });
+
+  it('K30-7: runKind="loop" renderuje "LOOP" text', () => {
+    const { container, getByText } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-loop"
+          runKind="loop"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 100, y: 200 }, { x: 600, y: 200 }]}
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-run-r-loop-ring-indicator"]')).toBeTruthy();
+    expect(getByText('LOOP')).toBeInTheDocument();
+  });
+
+  it('K30-7: runKind="main_trunk" NIE renderuje ring indicator', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-mt"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 100, y: 200 }, { x: 600, y: 200 }]}
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-run-r-mt-ring-indicator"]')).toBeFalsy();
+  });
 });
 
 describe('StationOnRunRenderer', () => {

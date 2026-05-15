@@ -201,6 +201,35 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           )}
         </g>
       ))}
+      {/* K30-7: ring/loop closure indicator — small circle z text przy endpoincie */}
+      {(runKind === 'ring' || runKind === 'loop') && !missingEndpointPort && (
+        <g
+          data-testid={`sld-v2-run-${id}-ring-indicator`}
+          data-run-kind={runKind}
+          pointerEvents="none"
+        >
+          <circle
+            cx={terminalPoint.x}
+            cy={terminalPoint.y - 22}
+            r={12}
+            fill="#0A0E14"
+            stroke="#FFD166"
+            strokeWidth={1.6}
+          />
+          <text
+            x={terminalPoint.x}
+            y={terminalPoint.y - 18}
+            textAnchor="middle"
+            fill="#FFD166"
+            fontFamily="sans-serif"
+            fontSize={9}
+            fontWeight={900}
+            letterSpacing={0.5}
+          >
+            {runKind === 'ring' ? 'RING' : 'LOOP'}
+          </text>
+        </g>
+      )}
       {missingEndpointPort && (
         <g
           data-testid={`sld-v2-run-${id}-missing-port-marker`}
