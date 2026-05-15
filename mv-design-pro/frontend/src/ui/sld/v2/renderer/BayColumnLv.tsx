@@ -50,7 +50,8 @@ export function BayColumnLv(props: BayColumnLvProps): JSX.Element {
   const outgoingLen = variant === 'overview' ? 4 : variant === 'compact' ? 6 : 8;
   const outgoingY = cbBottomY + outgoingLen;
 
-  const feederId = `${stationId}/nn-feeder/${index}`;
+  // Polish naming per project terminology guard (avoid English "feeder").
+  const odplywId = `${stationId}/nn-odplyw/${index}`;
 
   return (
     <g
@@ -80,7 +81,7 @@ export function BayColumnLv(props: BayColumnLvProps): JSX.Element {
       {/* LV CB symbol */}
       <g
         data-testid={`sld-v2-lv-${index}-cb`}
-        onClick={onSymbolClick?.(`${feederId}/cb`)}
+        onClick={onSymbolClick?.(`${odplywId}/cb`)}
         style={onSymbolClick ? { cursor: 'pointer' } : undefined}
       >
         <ApparatusLvBreaker cx={x} cy={cbY} state="closed" />
