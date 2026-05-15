@@ -1160,7 +1160,13 @@ export function SldWorkspaceContainer(
       data-testid="sld-workspace-container"
       data-readonly={readOnly}
       data-pending-drop={pendingDrop?.kind ?? ''}
-      className="sld-canvas-grid relative flex h-full w-full overflow-hidden bg-scada-bg"
+      // K30-51 LAYOUT OVERHAUL: grid dots wyłączone w default view (były
+      // distraktorem na schemacie). Włączyć via ?editGrid=1 dla CAD-style edit.
+      className={`relative flex h-full w-full overflow-hidden bg-scada-bg${
+        typeof window !== 'undefined' && window.location.search.includes('editGrid=1')
+          ? ' sld-canvas-grid'
+          : ''
+      }`}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onPointerDown={handlePointerDown}

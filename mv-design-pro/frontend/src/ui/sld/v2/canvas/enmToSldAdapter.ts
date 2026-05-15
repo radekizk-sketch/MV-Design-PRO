@@ -217,6 +217,35 @@ const X_STATIONS_START = 900;
 // (Projektant/CAD specjaliści: symbol min 24 px @ LOD-2 = effective).
 const STATION_PITCH = 380;
 
+// K30-51 LAYOUT OVERHAUL — distance-based station X positioning.
+// `cumKm` is already computed in buildStations() (linia ~1129) but was only
+// used as distanceFromGpzKm label. Layout used uniform `posInRun * STATION_PITCH`.
+// Now we map cumKm → pixels so stations are spaced by actual cable length.
+const GPZ_TRUNK_HEAD_X = X_GPZ + GPZ_WIDTH + 60;  // GPZ end + connector gap
+const PX_PER_KM = 200;                              // 1 km ≈ 200 px (median run-length ~3 km)
+const STATION_MIN_PITCH = 160;                       // min px między sąsiednimi (no overlap)
+const STATION_DEFAULT_PITCH = 200;                   // fallback gdy cumKm==0 (no segments yet)
+
+/**
+ * K30-51: oblicz station X z cumKm (cumulative cable length z GPZ).
+ * Returns proposed X anchored za GPZ trunk head, clamped by min pitch
+ * vs previousX żeby unikać overlap. PosInRun fallback gdy cumKm=0.
+ */
+function stationXFromCumKm(
+  trunkStartX: number,
+  cumKm: number,
+  posInRun: number,
+  previousX: number | null,
+): number {
+  const distancePx =
+    cumKm > 0
+      ? cumKm * PX_PER_KM
+      : (posInRun + 1) * STATION_DEFAULT_PITCH;
+  const proposedX = trunkStartX + distancePx;
+  if (previousX === null) return proposedX;
+  return Math.max(proposedX, previousX + STATION_MIN_PITCH);
+}
+
 const CANONICAL_PAGE_PADDING = 24;
 const CANONICAL_HEADER_WIDTH = 320;
 const CANONICAL_SECTION_LABEL_WIDTH = 30;
@@ -1109,10 +1138,13 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
 
   // 1. Stacje z line_runs — deterministyczne sortowanie po lineRun.id, potem station.order.
   const sortedRuns = [...lineRuns].sort((a, b) => a.id.localeCompare(b.id));
-  // K30-10: multi-row layout dla long chains (≥15 stacji). Snake routing —
-  // row 1 left→right, row 2 right→left, row 3 left→right. Cable U-turns
-  // przy końcach rzędów. Adresuje cluster appearance dla K30 fit-to-screen.
-  const STATIONS_PER_ROW_THRESHOLD = 15;
+  // K30-51 LAYOUT OVERHAUL: stacje pozycjonowane przez `distanceFromGpzKm`
+  // (cumKm × PX_PER_KM), nie uniform pitch. Eliminuje 800px gap GPZ→stations
+  // i "klocki w gridzie" wygląd. Snake multi-row routing wyłączony domyślnie
+  // (threshold=100) — bo distance-based zwykle mieści się w widocznym canvasie
+  // (30 stacji × 100m avg = 3 km × 200 px/km = 600 px). Multi-row fallback
+  // tylko dla extreme cases > 100 stacji.
+  const STATIONS_PER_ROW_THRESHOLD = 100;
   const STATIONS_PER_ROW = 12;
   const ROW_HEIGHT = 300; // vertical space per row (station body + margin)
 
@@ -1120,6 +1152,9 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
     const sortedStations = [...lr.stations].sort((a, b) => a.order - b.order);
     const sortedSegments = [...lr.segments].sort((a, b) => a.order - b.order);
     const useMultiRow = sortedStations.length >= STATIONS_PER_ROW_THRESHOLD;
+    // K30-51: track previous station X per row for collision-avoidance (min pitch).
+    let previousXInRow: number | null = null;
+    let currentRowIdx = 0;
     sortedStations.forEach((sref, posInRun) => {
       const sub = fieldStationByRef.get(sref.substation_ref);
       if (!sub) return;
@@ -1135,14 +1170,22 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         }, 0);
       const stationCode = `S${String(sref.order).padStart(2, '0')}`;
 
-      // Multi-row snake routing: row index + col index, reversed on odd rows
+      // Multi-row snake routing fallback (K30-10 preserved for extreme cases)
       const rowIdx = useMultiRow ? Math.floor(posInRun / STATIONS_PER_ROW) : 0;
-      const colInRow = useMultiRow ? posInRun % STATIONS_PER_ROW : posInRun;
-      const colDir = rowIdx % 2 === 0 ? colInRow : (STATIONS_PER_ROW - 1 - colInRow);
+      if (rowIdx !== currentRowIdx) {
+        previousXInRow = null;
+        currentRowIdx = rowIdx;
+      }
+      // K30-51: distance-based X. CumKm > 0 → exact position from trunk start.
+      // CumKm = 0 (no segments yet) → fallback uniform pitch posInRun * default.
+      const stationX = useMultiRow
+        ? X_STATIONS_START + ((posInRun % STATIONS_PER_ROW)) * STATION_PITCH  // legacy K30-10
+        : stationXFromCumKm(GPZ_TRUNK_HEAD_X, cumKm, posInRun, previousXInRow);
+      previousXInRow = stationX;
 
       stations.push({
         id: sub.ref_id,
-        x: X_STATIONS_START + colDir * STATION_PITCH,
+        x: stationX,
         y: Y_RUN_BASE + runIdx * RUN_PITCH + rowIdx * ROW_HEIGHT + STATION_RUN_TRUNK_OFFSET_Y,
         name: sub.name || sub.ref_id,
         stationCode,

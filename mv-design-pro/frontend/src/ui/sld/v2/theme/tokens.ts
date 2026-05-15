@@ -136,8 +136,8 @@ export const SLD_V2_COLORS = {
 export const STROKE_BUSBAR_PX = 3 as const; // szyna główna
 export const STROKE_FIELD_TRACK_PX = 2 as const; // tor pola
 export const STROKE_GROUND_BRANCH_PX = 2 as const; // gałąź uziemnika
-export const STROKE_BRANCH_LINE_PX = 2 as const; // linia odgałęzienia (cieńsza niż trunk)
-export const STROKE_TRUNK_LINE_PX = 3 as const; // linia ciągu głównego
+export const STROKE_BRANCH_LINE_PX = 2.5 as const; // linia odgałęzienia (cieńsza niż trunk)
+export const STROKE_TRUNK_LINE_PX = 6 as const; // K30-51: trunk wyraźnie grubszy (2.4× branch) — visual hierarchy
 export const STROKE_DASHED_RING_DASH_PX = '6 4' as const; // dash array dla pierścieni
 
 /**

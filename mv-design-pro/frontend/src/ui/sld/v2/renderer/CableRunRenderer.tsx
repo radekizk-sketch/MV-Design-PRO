@@ -369,8 +369,9 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
       )}
       {/* K30-41: voltage-class chip przy starcie ciągu — kwadracik w kolorze
           klasy napięcia (WN/SN/nN) z tekstem "{kV} kV". Pomaga zidentyfikować
-          klasę napięcia ciągu niezależnie od per-segment variant rendering. */}
-      {voltageKv != null && voltageKv > 0 && (
+          klasę napięcia ciągu niezależnie od per-segment variant rendering.
+          K30-51: LOD gate ≥2 (zoom-in) — przy zoom-out chip clutters trunk. */}
+      {voltageKv != null && voltageKv > 0 && (lod === undefined || lod >= 2) && (
         <g
           data-testid={`sld-v2-run-${id}-voltage-chip`}
           data-voltage-kv={voltageKv}
@@ -404,7 +405,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
       )}
       {/* K30-45: cable loading chip near voltage chip — pokazuje % ampacity.
           Pomijany gdy missingEndpointPort lub loadingPct nieobecne. */}
-      {loadingPct != null && Number.isFinite(loadingPct) && loadingPct > 0 && !missingEndpointPort && (() => {
+      {loadingPct != null && Number.isFinite(loadingPct) && loadingPct > 0 && !missingEndpointPort && (lod === undefined || lod >= 2) && (() => {
         const cls = classifyCableLoading(loadingPct);
         const x0 = pathPoints[0].x + 44;
         const y0 = pathPoints[0].y - 12;
