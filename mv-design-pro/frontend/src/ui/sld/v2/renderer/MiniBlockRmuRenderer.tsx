@@ -857,33 +857,76 @@ interface DerBadgesProps {
 
 function DerBadges(props: DerBadgesProps): JSX.Element {
   const { offsetX, offsetY, badges } = props;
+  // K30-15.2: distinct geometric shape per DER type per IEC 60617-5 convention
+  // (PV=hexagon, BESS=square z napisem 'B', FW=triangle z napisem 'W').
+  // ENLARGED badge 6→10 px + label widoczny per typ przy zoomie LOD2+.
   return (
     <g data-testid="sld-v2-mini-rmu-der-badges" data-parity-key="station.mini.der_badges">
       {badges.map((badge, idx) => {
-        const cx = offsetX + 12 + idx * 18;
-        const cy = offsetY + 12;
+        const cx = offsetX + 14 + idx * 26;
+        const cy = offsetY + 14;
         const fill =
           badge.kind === 'PV' ? COLOR_DER_PV : badge.kind === 'BESS' ? COLOR_DER_BESS : COLOR_DER_FW;
+        const label = badge.kind === 'PV' ? 'PV' : badge.kind === 'BESS' ? 'B' : 'W';
         return (
           <g
             key={`${badge.kind}-${idx}`}
             data-testid={`sld-v2-mini-rmu-der-badge-${badge.kind}`}
             data-parity-key="station.mini.der_badge"
           >
-            <circle cx={cx} cy={cy} r={6} fill={fill} stroke={COLOR_LINE_PRIMARY} strokeWidth={0.8}>
-              <title>{`${badge.kind}: ${badge.count} szt.`}</title>
-            </circle>
+            {badge.kind === 'PV' && (
+              <polygon
+                points={`${cx},${cy - 10} ${cx + 8.66},${cy - 5} ${cx + 8.66},${cy + 5} ${cx},${cy + 10} ${cx - 8.66},${cy + 5} ${cx - 8.66},${cy - 5}`}
+                fill={fill}
+                stroke={COLOR_LINE_PRIMARY}
+                strokeWidth={1.2}
+              />
+            )}
+            {badge.kind === 'BESS' && (
+              <rect
+                x={cx - 9}
+                y={cy - 9}
+                width={18}
+                height={18}
+                fill={fill}
+                stroke={COLOR_LINE_PRIMARY}
+                strokeWidth={1.2}
+              />
+            )}
+            {badge.kind === 'FW' && (
+              <polygon
+                points={`${cx},${cy - 10} ${cx + 9},${cy + 6} ${cx - 9},${cy + 6}`}
+                fill={fill}
+                stroke={COLOR_LINE_PRIMARY}
+                strokeWidth={1.2}
+              />
+            )}
+            <title>{`${badge.kind}: ${badge.count} szt.`}</title>
             <text
               x={cx}
-              y={cy + 2}
+              y={cy + 4}
               textAnchor="middle"
-              fill={COLOR_TEXT_PRIMARY}
+              fill="#0A0E14"
               fontFamily={FONT_SANS}
-              fontSize={FONT_SIZES.technicalPanel - 3}
-              fontWeight={800}
+              fontSize={10}
+              fontWeight={900}
+              letterSpacing={0.3}
             >
-              {badge.count > 1 ? badge.count : ''}
+              {label}
             </text>
+            {badge.count > 1 && (
+              <text
+                x={cx + 11}
+                y={cy - 8}
+                textAnchor="start"
+                fill={fill}
+                fontFamily={FONT_SANS}
+                fontSize={9}
+                fontWeight={900}
+              >
+                ×{badge.count}
+              </text>
+            )}
           </g>
         );
       })}
