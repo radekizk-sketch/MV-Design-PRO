@@ -1221,6 +1221,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         totalLoadKw: stationSldDetails.totalLoadKw,
         totalGenerationKw: stationSldDetails.totalGenerationKw,
         busVoltageKv: stationSldDetails.mainBusVoltageKv,
+        transformerVectorGroup: stationSldDetails.transformerVectorGroup,
         ...(isNop ? { isNop: true } : {}),
         ...(cumKm > 0 ? { distanceFromGpzKm: Math.round(cumKm * 100) / 100 } : {}),
       });
@@ -1258,6 +1259,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         totalLoadKw: stationSldDetails.totalLoadKw,
         totalGenerationKw: stationSldDetails.totalGenerationKw,
         busVoltageKv: stationSldDetails.mainBusVoltageKv,
+        transformerVectorGroup: stationSldDetails.transformerVectorGroup,
       });
     });
   });
@@ -1310,6 +1312,9 @@ interface StationMiniBlockDetails {
    *  spośród buses zakotwiczonych do tej stacji. Renderer dobiera tint koloru
    *  szyny zgodnie z konwencją dyspozytorską (WN/SN/nN). */
   readonly mainBusVoltageKv: number | null;
+  /** K30-62: vector group transformatora (np. "Dyn5", "Yd11"). Real
+   *  industrial SLD pokazuje vector group obok TR symbol per IEC 60076-1. */
+  readonly transformerVectorGroup: string | null;
 }
 
 /**
@@ -1393,7 +1398,26 @@ function buildStationMiniBlockDetails(
     totalLoadKw,
     totalGenerationKw,
     mainBusVoltageKv,
+    transformerVectorGroup: inferTransformerVectorGroup(snapshot, transformerRefs),
   };
+}
+
+/**
+ * K30-62: zwróć vector_group z pierwszego transformatora linkowanego ze
+ * stacją. Industrial SLD pokazuje vector group per IEC 60076-1 (np. Dyn5,
+ * Yd11). Brak vector_group → null (no badge rendered).
+ */
+function inferTransformerVectorGroup(
+  snapshot: EnergyNetworkModel,
+  transformerRefs: readonly string[],
+): string | null {
+  for (const ref of transformerRefs) {
+    const tr = (snapshot.transformers ?? []).find(
+      (t) => t.ref_id === ref || t.id === ref,
+    );
+    if (tr?.vector_group) return tr.vector_group;
+  }
+  return null;
 }
 
 function inferTransformerRatedKva(

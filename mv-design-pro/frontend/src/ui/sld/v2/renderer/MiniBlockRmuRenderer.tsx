@@ -113,6 +113,9 @@ export interface MiniBlockRmuRendererProps {
   /** K30-55 Phase D: stacja jest NMO (Normalnie Otwarty Punkt) na ring topology.
    *  Renderer rysuje prominent ⨯ marker over station code badge. */
   readonly isNop?: boolean;
+  /** K30-62: vector group transformatora per IEC 60076-1 (np. "Dyn5", "Yd11").
+   *  Renderer pokazuje jako mini-badge obok TR symbol (detail variant). */
+  readonly transformerVectorGroup?: string | null;
 }
 
 // =============================================================================
@@ -660,6 +663,26 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
           data-parity-key="station.mini.transformer.power"
         >
           {props.transformerRatedKva}
+        </text>
+      )}
+
+      {/* K30-62: transformer vector group badge per IEC 60076-1 (Dyn5, Yd11).
+          Pokazany w detail variant obok TR rated kVA — industrial SLD canon. */}
+      {variant === 'detail' && !showPvCircuit && props.transformerVectorGroup && (
+        <text
+          x={0}
+          y={labelPowerY + 12}
+          textAnchor="middle"
+          fill="#FFD166"
+          fontFamily="monospace"
+          fontSize={9}
+          fontWeight={800}
+          paintOrder="stroke"
+          stroke={COLOR_SCADA_SHADOW}
+          strokeWidth={2}
+          data-testid={`sld-v2-mini-rmu-tr-vector-group-${props.id}`}
+        >
+          {props.transformerVectorGroup}
         </text>
       )}
 

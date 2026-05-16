@@ -97,6 +97,9 @@ export interface StationOnRunRendererProps {
    *  zgodnie z konwencją dyspozytorską (110kV → czerwień WN, 15kV → zieleń SN,
    *  0.4kV → błękit nN). Brak → fallback do COLOR_FIELD_TRUNK_ENERGIZED. */
   readonly busVoltageKv?: number | null;
+  /** K30-62: vector group transformatora (Dyn5, Yd11, Yzn11) per IEC 60076-1.
+   *  Industrial SLD pokazuje vector group obok TR symbol. */
+  readonly transformerVectorGroup?: string | null;
   /** K30-44: aktualne odchylenie napięcia od nominalnego [%] — z LF results.
    *  Renderer dobiera ring colour station code badge per PN-EN 50160:
    *   - |ΔU| ≤ 2%  → green (energized OK)
@@ -157,6 +160,7 @@ export function StationOnRunRenderer(props: StationOnRunRendererProps): JSX.Elem
         onDoubleClick={props.onDoubleClick}
         busVoltageKv={props.busVoltageKv ?? null}
         isNop={props.isNop ?? false}
+        transformerVectorGroup={props.transformerVectorGroup ?? null}
       />
     );
   }
