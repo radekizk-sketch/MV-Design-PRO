@@ -34,6 +34,7 @@ import {
 import { CadOverlay } from './CadOverlay';
 import { SldTitleBlock, type SldTitleBlockData } from './SldTitleBlock';
 import { SldRevisionTable, type SldRevisionEntry } from './SldRevisionTable';
+import { SldPowerBalancePanel, type PowerBalanceData } from './SldPowerBalancePanel';
 import { SldLegendOverlay } from './SldLegendOverlay';
 import { SldScaleRuler } from './SldScaleRuler';
 import { SldNorthArrow } from './SldNorthArrow';
@@ -145,6 +146,8 @@ export interface SldCanvasV2Props {
   readonly titleBlockData?: SldTitleBlockData | null;
   /** K30-100: revision history entries dla SldRevisionTable (OSD wniosek). */
   readonly revisionEntries?: readonly SldRevisionEntry[];
+  /** K30-101: bilans mocy panel data (LF analiza). */
+  readonly powerBalance?: PowerBalanceData | null;
   /** K30-39: pokaż legendę palet (voltage / cable variants / apparatus / DER).
    *  Default true. Set false dla cleanu w przypadkach print-only. */
   readonly showLegend?: boolean;
@@ -240,7 +243,7 @@ function readSldInteractiveTarget(target: EventTarget | null): {
 export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const {
     width, height, gpzs, canonicalGpzs, sections, cableRuns, stations, ders, connections = [],
-    selectedId, lodOverride, layerVisibility, titleBlockData, revisionEntries, showLegend = true, showScaleRuler = true,
+    selectedId, lodOverride, layerVisibility, titleBlockData, revisionEntries, powerBalance, showLegend = true, showScaleRuler = true,
     showNorthArrow = false, shortCircuitProjection, protectionZoneProjection,
     onSelectElement, onDoubleClickStation, onDoubleClickDer, onContextMenu, onViewportTransformChange,
   } = props;
@@ -798,6 +801,12 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
          *  Pozycja: lewa strona title block — bottom-right canvas. */}
         <g transform={`translate(${width - 700}, ${height - 100})`}>
           <SldRevisionTable entries={revisionEntries} />
+        </g>
+
+        {/* K30-101: Bilans mocy panel (OSD wniosek przyłączeniowy bilans).
+         *  Pozycja: bottom-left canvas (poniżej scale ruler). */}
+        <g transform={`translate(20, ${height - 130})`}>
+          <SldPowerBalancePanel data={powerBalance ?? null} />
         </g>
 
         {/* K30-39: SLD legend overlay — klucz palet (voltage / cable variants /
