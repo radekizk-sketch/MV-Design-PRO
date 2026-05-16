@@ -43,9 +43,21 @@ interface CtPrimaryProps {
 }
 
 export function CtPrimary(props: CtPrimaryProps): JSX.Element {
+  /* K30-115 MINOR fix (audyt #3): IEC 60617-7-12-01 wymaga pokazania
+   * "kabel przechodzący przez przekładnik" — pionowa linia poza okręgiem
+   * z góry i z dołu. Wyróżnia CT od VT (które ma bobinę wewnątrz). */
   const { cx, cy, ratio } = props;
   return (
-    <g data-testid="sld-v2-gpz-bay-ct-primary">
+    <g data-testid="sld-v2-gpz-bay-ct-primary" data-symbol-canon="ct_primary_with_conductor_line">
+      {/* Linia pierwotna przechodząca przez przekładnik (kanon IEC 7-12-01) */}
+      <line
+        x1={cx}
+        y1={cy - CT_RADIUS - 2.5}
+        x2={cx}
+        y2={cy + CT_RADIUS + 2.5}
+        stroke={COLOR_LINE_PRIMARY}
+        strokeWidth={1.4}
+      />
       <circle cx={cx} cy={cy} r={CT_RADIUS} fill={COLOR_PANEL_RAISED} stroke={COLOR_LINE_PRIMARY} strokeWidth={1} />
       {ratio && (
         <text
@@ -438,13 +450,14 @@ interface ApparatusSurgeArresterProps {
 }
 
 /**
- * Ogranicznik przepięć (kanon IEC 60617 S00345): prostokąt z poziomymi
- * zygzakami fazowymi. Renderowany na bocznej gałęzi LEWO od osi pola.
+ * Ogranicznik przepięć (kanon IEC 60617 S00345): prostokąt z zygzakiem
+ * błyskawicy (lightning bolt). Renderowany na bocznej gałęzi LEWO od osi pola.
+ * K30-115 MINOR fix (audyt #3): 2 kreski → polyline zygzak per IEC S00345.
  */
 export function ApparatusSurgeArrester(props: ApparatusSurgeArresterProps): JSX.Element {
   const { cx, cy } = props;
   return (
-    <g data-testid="sld-v2-gpz-bay-surge-arrester">
+    <g data-testid="sld-v2-gpz-bay-surge-arrester" data-symbol-canon="surge_arrester_lightning_bolt">
       <rect
         x={cx - 3.5}
         y={cy - 6}
@@ -455,9 +468,15 @@ export function ApparatusSurgeArrester(props: ApparatusSurgeArresterProps): JSX.
         strokeWidth={1.2}
         rx={0.5}
       />
-      {/* 2 poziome kreski fazowe wewnątrz (kanon HV arrester). */}
-      <line x1={cx - 2} y1={cy - 2} x2={cx + 2} y2={cy - 2} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.0} />
-      <line x1={cx - 2} y1={cy + 2} x2={cx + 2} y2={cy + 2} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.0} />
+      {/* Zygzak błyskawicy ⚡ (lightning bolt) — kanon IEC S00345 */}
+      <polyline
+        points={`${cx - 1.8},${cy - 4} ${cx + 0.5},${cy - 1} ${cx - 0.5},${cy + 1} ${cx + 1.8},${cy + 4}`}
+        fill="none"
+        stroke={COLOR_LINE_PRIMARY}
+        strokeWidth={1.2}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
       {/* Strzałka ziemi pod prostokątem. */}
       <line x1={cx - 2} y1={cy + 7} x2={cx + 2} y2={cy + 7} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
       <line x1={cx - 1} y1={cy + 8.5} x2={cx + 1} y2={cy + 8.5} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.0} />
