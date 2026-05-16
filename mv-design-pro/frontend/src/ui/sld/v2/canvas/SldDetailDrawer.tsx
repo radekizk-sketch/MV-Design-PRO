@@ -93,6 +93,14 @@ export interface SldDetailDrawerData {
     readonly value: string;
     readonly color?: string;
   }>;
+  /** K30-89: cable run spec dla cable_run drawer kind. */
+  readonly cableRunSpec?: {
+    readonly runKind: 'main_trunk' | 'branch' | 'ring' | 'loop' | null;
+    readonly segmentCount: number | null;
+    readonly stationCount: number | null;
+    readonly lengthKm: number | null;
+    readonly segmentKind: 'cable_sn' | 'overhead_line_sn' | null;
+  } | null;
 }
 
 export interface SldDetailDrawerProps {
@@ -398,6 +406,7 @@ function TabContent({ kind, tab, data }: TabContentProps): JSX.Element {
         nnSpec={data.nnSpec ?? null}
         existingDers={data.existingDers}
         apparatusSpec={data.apparatusSpec}
+        cableRunSpec={data.cableRunSpec ?? null}
       />
     </div>
   );
@@ -414,6 +423,7 @@ function PlaceholderTabBody({
   nnSpec,
   existingDers,
   apparatusSpec,
+  cableRunSpec,
 }: {
   kind: SldDetailKind;
   tab: string;
@@ -455,6 +465,13 @@ function PlaceholderTabBody({
     readonly label: string;
     readonly state: 'closed' | 'open' | 'unknown' | null;
   }>;
+  cableRunSpec?: {
+    readonly runKind: 'main_trunk' | 'branch' | 'ring' | 'loop' | null;
+    readonly segmentCount: number | null;
+    readonly stationCount: number | null;
+    readonly lengthKm: number | null;
+    readonly segmentKind: 'cable_sn' | 'overhead_line_sn' | null;
+  } | null;
 }): JSX.Element {
   // Tab-specific scaffolding — actual editor forms wired w K30-72+
   if (kind === 'station' && tab === 'transformator') {
@@ -721,17 +738,39 @@ function PlaceholderTabBody({
     );
   }
   if (kind === 'cable_run' && tab === 'trasa') {
+    const runKindLabel: Record<string, string> = {
+      main_trunk: 'ciąg główny',
+      branch: 'odgałęzienie',
+      ring: 'pętla',
+      loop: 'mufowany',
+    };
+    const segmentKindLabel: Record<string, string> = {
+      cable_sn: 'kablowy SN',
+      overhead_line_sn: 'napowietrzny SN',
+    };
     return (
       <div data-testid="drawer-cable-trasa">
         <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
           <dt style={{ color: '#7E8790' }}>Typ ciągu</dt>
-          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>kablowy SN</dd>
+          <dd data-testid="drawer-cable-run-kind" style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
+            {cableRunSpec?.runKind ? (runKindLabel[cableRunSpec.runKind] ?? cableRunSpec.runKind) : 'kablowy SN'}
+          </dd>
+          <dt style={{ color: '#7E8790' }}>Wykonanie</dt>
+          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
+            {cableRunSpec?.segmentKind ? (segmentKindLabel[cableRunSpec.segmentKind] ?? cableRunSpec.segmentKind) : '—'}
+          </dd>
           <dt style={{ color: '#7E8790' }}>Długość</dt>
-          <dd data-testid="drawer-cable-length" style={{ color: '#FFD166', fontFamily: 'monospace' }}>—</dd>
+          <dd data-testid="drawer-cable-length" style={{ color: '#FFD166', fontFamily: 'monospace' }}>
+            {cableRunSpec?.lengthKm != null ? `${cableRunSpec.lengthKm.toFixed(2)} km` : '—'}
+          </dd>
           <dt style={{ color: '#7E8790' }}>Liczba segmentów</dt>
-          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>—</dd>
+          <dd data-testid="drawer-cable-segment-count" style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
+            {cableRunSpec?.segmentCount ?? '—'}
+          </dd>
           <dt style={{ color: '#7E8790' }}>Liczba stacji</dt>
-          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>—</dd>
+          <dd data-testid="drawer-cable-station-count" style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
+            {cableRunSpec?.stationCount ?? '—'}
+          </dd>
         </dl>
       </div>
     );

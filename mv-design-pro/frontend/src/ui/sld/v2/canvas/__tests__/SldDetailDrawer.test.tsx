@@ -460,6 +460,25 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     cleanup();
   });
 
+  it('K30-89: cable_run trasa tab renders real cableRunSpec (length/segments)', () => {
+    const data: SldDetailDrawerData = {
+      kind: 'cable_run', elementId: 'run-1', label: 'Ciąg-1',
+      cableRunSpec: {
+        runKind: 'main_trunk',
+        segmentCount: 5,
+        stationCount: 8,
+        lengthKm: 12.345,
+        segmentKind: 'cable_sn',
+      },
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    expect(container.querySelector('[data-testid="drawer-cable-run-kind"]')?.textContent).toBe('ciąg główny');
+    expect(container.querySelector('[data-testid="drawer-cable-length"]')?.textContent).toBe('12.35 km');
+    expect(container.querySelector('[data-testid="drawer-cable-segment-count"]')?.textContent).toBe('5');
+    expect(container.querySelector('[data-testid="drawer-cable-station-count"]')?.textContent).toBe('8');
+    cleanup();
+  });
+
   it('K30-88: cable_run parametry tab renders ampacity + cable type', () => {
     const data: SldDetailDrawerData = { kind: 'cable_run', elementId: 'run-1', label: 'Ciąg-1' };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);

@@ -920,6 +920,35 @@ export function SldWorkspaceContainer(
           pMw: typeof g.p_mw === 'number' ? g.p_mw : null,
         }));
       }
+      // K30-89: cable run spec (gdy drawer kind='cable_run')
+      let cableRunSpec: SldDetailDrawerData['cableRunSpec'] = null;
+      if (drawerKind === 'cable_run') {
+        const run = sldData.cableRuns.find((r) => r.id === id);
+        if (run) {
+          let lengthKm: number | null = null;
+          if (snapshot && run.segmentRefs && run.segmentRefs.length > 0) {
+            let total = 0;
+            let countWithLength = 0;
+            for (const segRef of run.segmentRefs) {
+              const seg = (snapshot.branches ?? []).find(
+                (b: { ref_id?: string; id?: string }) => b.ref_id === segRef || b.id === segRef,
+              );
+              if (seg && 'length_km' in seg && typeof (seg as { length_km: number }).length_km === 'number') {
+                total += (seg as { length_km: number }).length_km;
+                countWithLength++;
+              }
+            }
+            if (countWithLength > 0) lengthKm = total;
+          }
+          cableRunSpec = {
+            runKind: run.runKind ?? null,
+            segmentCount: run.segmentRefs?.length ?? null,
+            stationCount: null,
+            lengthKm,
+            segmentKind: run.segmentKind ?? null,
+          };
+        }
+      }
       // K30-83: bay apparatus list (gdy drawer kind='bay')
       if (drawerKind === 'bay' && snapshot) {
         const bay = findBayByRef(snapshot, id);
@@ -974,6 +1003,7 @@ export function SldWorkspaceContainer(
         nnSpec,
         existingDers,
         apparatusSpec,
+        cableRunSpec,
         liveMetrics: buildLiveMetrics(overlayPayload, drawerKind, id, stationForDrawer?.busVoltageKv ?? null),
       });
     }
