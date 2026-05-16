@@ -447,4 +447,40 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
     cleanup();
   });
+
+  it('K30-88: cable_run kind → 3 tabs (Trasa/Parametry/Spadek)', () => {
+    const data: SldDetailDrawerData = { kind: 'cable_run', elementId: 'run-1', label: 'Ciąg-1' };
+    const { container, getByText } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    const tabsWrapper = container.querySelector('[data-testid="sld-v2-detail-drawer-tabs"]');
+    expect(tabsWrapper?.querySelectorAll('button')).toHaveLength(3);
+    expect(getByText('Trasa')).toBeInTheDocument();
+    expect(getByText('Parametry')).toBeInTheDocument();
+    expect(getByText('Spadek napięcia')).toBeInTheDocument();
+    expect(container.querySelector('[data-testid="drawer-cable-trasa"]')).toBeTruthy();
+    cleanup();
+  });
+
+  it('K30-88: cable_run parametry tab renders ampacity + cable type', () => {
+    const data: SldDetailDrawerData = { kind: 'cable_run', elementId: 'run-1', label: 'Ciąg-1' };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-parametry"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-cable-parametry"]')).toBeTruthy();
+    cleanup();
+  });
+
+  it('K30-88: Escape key wywołuje onClose', () => {
+    const onClose = vi.fn();
+    render(<SldDetailDrawer open data={STATION_DATA} onClose={onClose} />);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    cleanup();
+  });
+
+  it('K30-88: Escape key no-op gdy drawer closed', () => {
+    const onClose = vi.fn();
+    render(<SldDetailDrawer open={false} data={STATION_DATA} onClose={onClose} />);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+    cleanup();
+  });
 });

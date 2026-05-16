@@ -24,7 +24,7 @@
  */
 
 import type { JSX } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export type SldDetailKind = 'station' | 'bay' | 'apparatus' | 'der' | 'cable_run' | null;
 
@@ -132,11 +132,18 @@ const DER_TABS = [
   { id: 'protection', label: 'Zabezpieczenia DER' },
 ] as const;
 
+const CABLE_RUN_TABS = [
+  { id: 'trasa', label: 'Trasa' },
+  { id: 'parametry', label: 'Parametry' },
+  { id: 'spadek', label: 'Spadek napięcia' },
+] as const;
+
 function tabsForKind(kind: SldDetailKind): readonly { id: string; label: string }[] {
   if (kind === 'station') return STATION_TABS;
   if (kind === 'bay') return BAY_TABS;
   if (kind === 'apparatus') return APPARATUS_TABS;
   if (kind === 'der') return DER_TABS;
+  if (kind === 'cable_run') return CABLE_RUN_TABS;
   return [];
 }
 
@@ -144,6 +151,19 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
   const { open, data, onClose, width = 360, onSave } = props;
   const tabs = tabsForKind(data?.kind ?? null);
   const [activeTab, setActiveTab] = useState<string>(tabs[0]?.id ?? '');
+
+  // K30-88: Escape key closes drawer
+  useEffect(() => {
+    if (!open) return undefined;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, onClose]);
 
   if (!open || !data || data.kind === null || tabs.length === 0) return null;
 
@@ -697,6 +717,57 @@ function PlaceholderTabBody({
             </li>
           ))}
         </ul>
+      </div>
+    );
+  }
+  if (kind === 'cable_run' && tab === 'trasa') {
+    return (
+      <div data-testid="drawer-cable-trasa">
+        <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
+          <dt style={{ color: '#7E8790' }}>Typ ciągu</dt>
+          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>kablowy SN</dd>
+          <dt style={{ color: '#7E8790' }}>Długość</dt>
+          <dd data-testid="drawer-cable-length" style={{ color: '#FFD166', fontFamily: 'monospace' }}>—</dd>
+          <dt style={{ color: '#7E8790' }}>Liczba segmentów</dt>
+          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>—</dd>
+          <dt style={{ color: '#7E8790' }}>Liczba stacji</dt>
+          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>—</dd>
+        </dl>
+      </div>
+    );
+  }
+  if (kind === 'cable_run' && tab === 'parametry') {
+    return (
+      <div data-testid="drawer-cable-parametry">
+        <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
+          <dt style={{ color: '#7E8790' }}>Typ kabla</dt>
+          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>XRUHKXS 1×120</dd>
+          <dt style={{ color: '#7E8790' }}>Przekrój żyły</dt>
+          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>120 mm²</dd>
+          <dt style={{ color: '#7E8790' }}>Materiał</dt>
+          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>Al</dd>
+          <dt style={{ color: '#7E8790' }}>Ampacity I_max</dt>
+          <dd style={{ color: '#FFD166', fontFamily: 'monospace' }}>270 A</dd>
+          <dt style={{ color: '#7E8790' }}>Norma</dt>
+          <dd style={{ color: '#88BBDD', fontFamily: 'monospace', fontSize: 10 }}>PN-HD 620 S2</dd>
+        </dl>
+      </div>
+    );
+  }
+  if (kind === 'cable_run' && tab === 'spadek') {
+    return (
+      <div data-testid="drawer-cable-spadek">
+        <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
+          <dt style={{ color: '#7E8790' }}>ΔU pełen ciąg</dt>
+          <dd data-testid="drawer-cable-vdrop-total" style={{ color: '#FFD166', fontFamily: 'monospace', fontWeight: 700 }}>—</dd>
+          <dt style={{ color: '#7E8790' }}>ΔU max segment</dt>
+          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>—</dd>
+          <dt style={{ color: '#7E8790' }}>Loading max</dt>
+          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>—</dd>
+        </dl>
+        <div style={{ marginTop: 8, fontSize: 9, color: '#7E8790', fontStyle: 'italic' }}>
+          Wartości z LF overlay payload (load_flow analysis). Uruchom analizę Power Flow.
+        </div>
       </div>
     );
   }
