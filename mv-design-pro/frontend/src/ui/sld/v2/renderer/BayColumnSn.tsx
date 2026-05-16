@@ -76,11 +76,32 @@ export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
   const stackTopY = busY + 4;
   const stepHeight = apparatusHeight + apparatusGap;
 
-  // Outgoing point — bottom of last apparatus
+  /* K30-119 audyt #2 MAJOR: LOD-aware apparatus downsampling.
+   * - overview (LOD 0): render TYLKO 1 symbol (primary switching device)
+   *                     + ES jeśli jest (safety-critical BHP)
+   * - compact (LOD 1): render 2 symbole + ES jeśli jest (PN-EN 62271-102 BHP)
+   * - detail (LOD 2+): pełen stack (existing)
+   * Operator widzi w overview tylko esencjalne info zamiast clutter, ale
+   * uziemnik ZAWSZE widoczny (safety-critical per audyt #2). */
+  const visibleApparatusStack = variant === 'detail'
+    ? apparatusStack
+    : (() => {
+        const limit = variant === 'compact' ? 2 : 1;
+        const truncated = apparatusStack.slice(0, Math.min(limit, apparatusStack.length));
+        // Ensure ES always visible (safety-critical) gdy obecny w stack
+        const hasEs = apparatusStack.includes('ES' as typeof apparatusStack[number]);
+        const truncatedHasEs = truncated.includes('ES' as typeof apparatusStack[number]);
+        if (hasEs && !truncatedHasEs) {
+          return [...truncated, 'ES' as typeof apparatusStack[number]];
+        }
+        return truncated;
+      })();
+
+  // Outgoing point — bottom of last apparatus (K30-119: based on visible count)
   const outgoingY =
-    apparatusStack.length === 0
+    visibleApparatusStack.length === 0
       ? stackTopY
-      : stackTopY + apparatusStack.length * apparatusHeight + (apparatusStack.length - 1) * apparatusGap;
+      : stackTopY + visibleApparatusStack.length * apparatusHeight + (visibleApparatusStack.length - 1) * apparatusGap;
 
   const elementId = `${stationId}/bay/${bayRef}`;
 
@@ -109,8 +130,8 @@ export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
         strokeWidth={STROKE_FIELD_TRACK_PX}
       />
 
-      {/* Stacked apparatus z explicit interconnecting droplines */}
-      {apparatusStack.map((kind, idx) => {
+      {/* Stacked apparatus z explicit interconnecting droplines (K30-119: visible only) */}
+      {visibleApparatusStack.map((kind, idx) => {
         const cy =
           stackTopY + idx * stepHeight + apparatusHeight / 2;
         const prevBottomY =
