@@ -1333,7 +1333,9 @@ function LvBay(props: LvBayProps): JSX.Element {
       {/* Pionowy tor pola */}
       <line x1={0} y1={0} x2={0} y2={trackHeight} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.6} data-parity-key="gpz.bay.power_path" />
 
-      {/* Header pola — feeder name */}
+      {/* Header pola — feeder name. K30-69: zmniejszony font + opacity by
+          unikać dominacji przy zoom-out (industrial dispatcher canon —
+          labels visible but not dominating). */}
       {feederLabel && (
         <text
           x={0}
@@ -1341,8 +1343,9 @@ function LvBay(props: LvBayProps): JSX.Element {
           textAnchor="middle"
           fill={COLOR_TEXT_PRIMARY}
           fontFamily={FONT_SANS}
-          fontSize={10}
-          fontWeight={700}
+          fontSize={8}
+          fontWeight={600}
+          opacity={0.65}
           data-testid="gpz-bay-feeder-label"
           data-parity-key="gpz.bay.feeder_label"
         >
