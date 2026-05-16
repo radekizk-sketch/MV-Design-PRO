@@ -273,4 +273,29 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     expect(container.querySelector('[data-testid="drawer-nn-loads-count"]')?.textContent).toBe('0');
     cleanup();
   });
+
+  it('K30-82: station DER tab pokazuje istniejące DERs z existingDers', () => {
+    const data: SldDetailDrawerData = {
+      ...STATION_DATA,
+      existingDers: [
+        { id: 'pv-1', kind: 'PV', name: 'Panel PV 1', pMw: 0.5 },
+        { id: 'bess-1', kind: 'BESS', name: 'Magazyn 1', pMw: 0.2 },
+      ],
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-der"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-station-der"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="drawer-station-der-pv-1"]')?.textContent).toContain('PV');
+    expect(container.querySelector('[data-testid="drawer-station-der-bess-1"]')?.textContent).toContain('BESS');
+    expect(container.querySelector('[data-testid="drawer-station-der-total"]')?.textContent).toContain('0.70 MW');
+    cleanup();
+  });
+
+  it('K30-82: station DER tab "Brak DERs" CTA gdy existingDers puste', () => {
+    const data: SldDetailDrawerData = { ...STATION_DATA, existingDers: [] };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-der"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-station-der-empty"]')).toBeTruthy();
+    cleanup();
+  });
 });

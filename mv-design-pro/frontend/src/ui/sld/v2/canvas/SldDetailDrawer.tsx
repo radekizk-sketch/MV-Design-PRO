@@ -71,6 +71,13 @@ export interface SldDetailDrawerData {
       readonly qKvar: number | null;
     }>;
   } | null;
+  /** K30-82: lista istniejących DERs na stacji (kind='station' der tab). */
+  readonly existingDers?: ReadonlyArray<{
+    readonly id: string;
+    readonly kind: 'PV' | 'BESS' | 'FW' | null;
+    readonly name: string | null;
+    readonly pMw: number | null;
+  }>;
 }
 
 export interface SldDetailDrawerProps {
@@ -276,6 +283,7 @@ function TabContent({ kind, tab, data }: TabContentProps): JSX.Element {
         transformerSpec={data.transformerSpec ?? null}
         baysSpec={data.baysSpec}
         nnSpec={data.nnSpec ?? null}
+        existingDers={data.existingDers}
       />
     </div>
   );
@@ -290,6 +298,7 @@ function PlaceholderTabBody({
   transformerSpec,
   baysSpec,
   nnSpec,
+  existingDers,
 }: {
   kind: SldDetailKind;
   tab: string;
@@ -319,6 +328,12 @@ function PlaceholderTabBody({
       readonly qKvar: number | null;
     }>;
   } | null;
+  existingDers?: ReadonlyArray<{
+    readonly id: string;
+    readonly kind: 'PV' | 'BESS' | 'FW' | null;
+    readonly name: string | null;
+    readonly pMw: number | null;
+  }>;
 }): JSX.Element {
   // Tab-specific scaffolding — actual editor forms wired w K30-72+
   if (kind === 'station' && tab === 'transformator') {
@@ -414,6 +429,55 @@ function PlaceholderTabBody({
         <div style={{ marginTop: 12, color: '#7E8790', fontSize: 10 }}>
           Grid code: PN-EN 50549 / IEEE 1547 / IEC 61400-21 (FW)
         </div>
+      </div>
+    );
+  }
+  if (kind === 'station' && tab === 'der') {
+    const totalMw = (existingDers ?? []).reduce((sum, d) => sum + (d.pMw ?? 0), 0);
+    const colorFor = (k: 'PV' | 'BESS' | 'FW' | null) =>
+      k === 'PV' ? '#FFD166' : k === 'BESS' ? '#7DD3FC' : k === 'FW' ? '#7EE0B5' : '#7E8790';
+    return (
+      <div data-testid="drawer-station-der">
+        <div style={{ fontSize: 10, color: '#7E8790', marginBottom: 6, fontWeight: 700 }}>
+          DER na stacji ({(existingDers ?? []).length})
+          {totalMw > 0 && (
+            <span data-testid="drawer-station-der-total" style={{ marginLeft: 8, color: '#FFD166' }}>
+              Σ {totalMw.toFixed(2)} MW
+            </span>
+          )}
+        </div>
+        {existingDers && existingDers.length > 0 ? (
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {existingDers.map((der) => (
+              <li
+                key={der.id}
+                data-testid={`drawer-station-der-${der.id}`}
+                style={{
+                  background: '#171B20',
+                  border: `1px solid ${colorFor(der.kind)}40`,
+                  borderRadius: 3,
+                  padding: '6px 8px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: 11,
+                }}
+              >
+                <div>
+                  <span style={{ color: colorFor(der.kind), fontWeight: 700 }}>{der.kind ?? 'DER'}</span>
+                  <span style={{ color: '#DDF7FF', marginLeft: 6 }}>{der.name ?? der.id}</span>
+                </div>
+                <span style={{ color: '#88BBDD', fontFamily: 'monospace', fontSize: 10 }}>
+                  {der.pMw != null ? `${der.pMw.toFixed(2)} MW` : '—'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div data-testid="drawer-station-der-empty" style={{ color: '#7E8790', fontStyle: 'italic', fontSize: 10 }}>
+            Brak DERs. Użyj palety u góry (▸ DODAJ DER), by dodać PV/BESS/FW.
+          </div>
+        )}
       </div>
     );
   }

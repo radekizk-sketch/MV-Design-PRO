@@ -811,6 +811,8 @@ export function SldWorkspaceContainer(
       let baysSpec: SldDetailDrawerData['baysSpec'] = undefined;
       // K30-81: nN side spec (LV bus + loads)
       let nnSpec: SldDetailDrawerData['nnSpec'] = null;
+      // K30-82: existing DERs on station (snapshot.generators filter station_ref)
+      let existingDers: SldDetailDrawerData['existingDers'] = undefined;
       if (drawerKind === 'station' && snapshot) {
         const substation = findSubstationByRef(snapshot, id);
         const transformers = selectStationTransformers(snapshot, substation ?? null);
@@ -849,6 +851,24 @@ export function SldWorkspaceContainer(
             qKvar: typeof l.q_mvar === 'number' ? l.q_mvar * 1000 : null,
           })),
         };
+        // K30-82: existing DERs — generators with station_ref == substation
+        const substationRef = substation?.ref_id ?? substation?.id ?? id;
+        const dersOnStation = (snapshot.generators ?? []).filter(
+          (g) => g.station_ref === substationRef,
+        );
+        const genTypeToKind = (t: string | null | undefined): 'PV' | 'BESS' | 'FW' | null => {
+          if (!t) return null;
+          if (t === 'pv_inverter') return 'PV';
+          if (t === 'bess') return 'BESS';
+          if (t === 'wind_inverter' || t === 'fw_pmsg' || t === 'fw_dfig' || t === 'fw_scig') return 'FW';
+          return null;
+        };
+        existingDers = dersOnStation.map((g) => ({
+          id: g.ref_id ?? g.id,
+          kind: genTypeToKind(g.gen_type ?? null),
+          name: g.name ?? null,
+          pMw: typeof g.p_mw === 'number' ? g.p_mw : null,
+        }));
       }
       setDetailDrawerData({
         kind: drawerKind,
@@ -863,6 +883,7 @@ export function SldWorkspaceContainer(
         transformerSpec,
         baysSpec,
         nnSpec,
+        existingDers,
       });
     }
 
