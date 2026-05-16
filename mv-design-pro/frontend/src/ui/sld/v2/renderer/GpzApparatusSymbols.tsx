@@ -485,20 +485,29 @@ interface ApparatusSwitchDisconnectorProps {
  * SafeRing).
  */
 export function ApparatusSwitchDisconnector(props: ApparatusSwitchDisconnectorProps): JSX.Element {
+  /* K30-111: BLOCKER fix (audyt #2) — SD musi być WYRAŹNIE odróżnialny od DS.
+   * Bezpieczeństwo OSD (PN-EN 62271-102 § 7.2.1): operator MUSI wiedzieć
+   * czy łącznik ma load-break (SD = pod napięciem OK) czy nie (DS = blokada).
+   *  - Size 10 → 12 (większy, czytelniejszy przy zoom-out)
+   *  - Label "SD" wewnątrz diamond gdy state != unknown
+   *  - Load-break diagonal kreska wzmocniona (czerwona gdy open)
+   *  - 2 kropki styku stałe (jak DS) ale wewnątrz diamond
+   * IEC 60617-7-13-04 (load-break isolator). */
   const { cx, cy, state = 'unknown', energized } = props;
   const open = state === 'open';
   const unknown = state === 'unknown';
   const fill = unknown ? COLOR_TEXT_MUTED : open ? COLOR_PANEL_RAISED : energized ? COLOR_DEVICE_CLOSED : COLOR_TEXT_MUTED;
   const stroke = unknown ? COLOR_TEXT_MUTED : open ? COLOR_DEVICE_OPEN_BORDER : COLOR_DEVICE_CLOSED_BORDER;
-  const sdSize = 10;
+  const sdSize = 12;
+  const contactColor = open ? COLOR_DEVICE_OPEN : '#0A0E14';
   return (
     <g
       data-testid="sld-v2-gpz-bay-switch-disconnector"
       data-state={state}
       data-apparatus-kind="switch_disconnector"
-      data-symbol-canon="switch_disconnector_rotated_square"
+      data-symbol-canon="switch_disconnector_rotated_square_load_break"
     >
-      {/* Korpus okrągły większy niż DS (DS_RADIUS=4.5; SD radius=6). */}
+      {/* Korpus rotated square — 12 px (zwiększony z 10 dla zoom-out czytelności). */}
       <rect
         x={cx - sdSize / 2}
         y={cy - sdSize / 2}
@@ -506,20 +515,27 @@ export function ApparatusSwitchDisconnector(props: ApparatusSwitchDisconnectorPr
         height={sdSize}
         fill={fill}
         stroke={stroke}
-        strokeWidth={1.4}
+        strokeWidth={1.5}
         transform={`rotate(45 ${cx} ${cy})`}
       />
-      {/* Krótka kreska "load break" na zewnętrznej krawędzi (kanon SD). */}
+      {/* 2 kropki styku stałe na pionowej osi (IEC 7-13-04 contact points) */}
+      <circle cx={cx} cy={cy - sdSize / 2 + 1} r={0.9} fill={contactColor} />
+      <circle cx={cx} cy={cy + sdSize / 2 - 1} r={0.9} fill={contactColor} />
+      {/* Load-break diagonal kreska (kanon SD — distinct od DS i CB) */}
       <line
-        x1={cx + sdSize * 0.7}
-        y1={cy - 3}
-        x2={cx + sdSize}
-        y2={cy}
-        stroke={stroke}
-        strokeWidth={1.4}
+        x1={cx + sdSize * 0.55}
+        y1={cy - sdSize * 0.45}
+        x2={cx + sdSize * 0.85}
+        y2={cy - sdSize * 0.15}
+        stroke={open ? COLOR_DEVICE_OPEN : stroke}
+        strokeWidth={1.6}
+        strokeLinecap="round"
       />
-      {open && (
-        <line x1={cx - sdSize / 2} y1={cy} x2={cx + sdSize / 2} y2={cy} stroke={COLOR_DEVICE_OPEN} strokeWidth={1.4} />
+      {open ? (
+        <line x1={cx - sdSize / 2 + 1} y1={cy} x2={cx + sdSize / 2 - 1} y2={cy} stroke={COLOR_DEVICE_OPEN} strokeWidth={1.4} />
+      ) : !unknown && (
+        // Closed: pionowa linia łącząca styki
+        <line x1={cx} y1={cy - sdSize / 2 + 1.5} x2={cx} y2={cy + sdSize / 2 - 1.5} stroke={contactColor} strokeWidth={1.2} />
       )}
       {unknown && (
         <text x={cx} y={cy + 3} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={FONT_SIZES.badge} fontWeight={700}>?</text>

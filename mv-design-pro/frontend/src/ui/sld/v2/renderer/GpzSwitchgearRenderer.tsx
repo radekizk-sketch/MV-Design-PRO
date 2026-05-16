@@ -1293,9 +1293,21 @@ function BayColumn(props: BayColumnProps): JSX.Element {
 
   /* Tło kolumny — manipulation ma pierwszeństwo, potem per-role color
    * (audyt SLD §D.3 fix 10/12: operator szybko odróżnia klasę pola). */
-  const columnFill = bay.inManipulation ? COLOR_MANIPULATION_BG : bayRoleFillColor(bay.fieldRole);
-  const columnStroke = bay.inManipulation ? COLOR_BADGE_BG_YELLOW : COLOR_TEXT_MUTED;
-  const columnStrokeOpacity = bay.inManipulation ? 0.9 : 0.3;
+  /* K30-112: hasMissingRequiredDevice MUSI mieć distinct background — audyt #4 HIGH.
+   * Operator nie może pomylić niekompletnego pola z gotowym (safety-critical). */
+  const columnFill = bay.hasMissingRequiredDevice
+    ? '#3A2A2A' // dark red tint dla niekompletnego pola
+    : bay.inManipulation
+    ? COLOR_MANIPULATION_BG
+    : bayRoleFillColor(bay.fieldRole);
+  /* K30-112: missing device → czerwona obwódka dashed (visual cue dla operatora) */
+  const columnStroke = bay.hasMissingRequiredDevice
+    ? '#FF4D4D'
+    : bay.inManipulation
+    ? COLOR_BADGE_BG_YELLOW
+    : COLOR_TEXT_MUTED;
+  const columnStrokeOpacity = bay.hasMissingRequiredDevice || bay.inManipulation ? 0.9 : 0.3;
+  const columnStrokeDasharray = bay.hasMissingRequiredDevice ? '3 2' : undefined;
 
   /* Footer (numer pola + KAS + pomiary). */
   const numberY = columnBottomY + BAY_NUMBER_GAP - 2;
@@ -1329,9 +1341,11 @@ function BayColumn(props: BayColumnProps): JSX.Element {
         fill={columnFill}
         stroke={columnStroke}
         strokeOpacity={columnStrokeOpacity}
-        strokeWidth={bay.inManipulation ? 1.2 : 0.8}
+        strokeWidth={bay.hasMissingRequiredDevice ? 1.4 : bay.inManipulation ? 1.2 : 0.8}
+        strokeDasharray={columnStrokeDasharray}
         rx={1}
         data-testid="sld-v2-gpz-bay-body"
+        data-missing-device={bay.hasMissingRequiredDevice ? 'true' : 'false'}
       />
 
       {/* Nagłówek pola — feeder name lub designation */}

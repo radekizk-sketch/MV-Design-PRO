@@ -151,9 +151,9 @@ describe('MiniBlockRmuRenderer - kanon symboli aparatow', () => {
     const root = container.querySelector('[data-testid="sld-v2-mini-rmu-st-1"]');
 
     // K30-31: bay-column architecture — DS rendered via ApparatusSwitchDisconnector
-    // (canon: switch_disconnector_rotated_square) inside bay columns.
+    // K30-111: canon updated to switch_disconnector_rotated_square_load_break.
     expect(
-      root?.querySelectorAll('[data-symbol-canon="switch_disconnector_rotated_square"]').length,
+      root?.querySelectorAll('[data-symbol-canon="switch_disconnector_rotated_square_load_break"]').length,
     ).toBeGreaterThanOrEqual(2);
     // ES rendered via ApparatusEarthingSwitch (canon: earthing_switch_lateral_branch)
     expect(
