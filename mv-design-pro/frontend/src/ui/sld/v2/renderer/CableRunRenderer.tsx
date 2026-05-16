@@ -289,6 +289,24 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           )}
         </g>
       ))}
+      {/* K30-106: cable head termination (głowica kablowa) per IEC 60617-4 —
+          triangle ▲ na początku i końcu ciągu kablowego (segmentKind=cable_sn
+          only — overhead lines don't have terminations). Operator widzi
+          że kabel jest podłączony przez głowicę (nie zwykły mufa pass-through). */}
+      {segmentKind === 'cable_sn' && !missingEndpointPort && pathPoints.length >= 2 && (lod === undefined || lod >= 2) && (
+        <g data-testid={`sld-v2-run-${id}-cable-heads`} pointerEvents="none">
+          {[pathPoints[0], pathPoints[pathPoints.length - 1]].map((p, i) => (
+            <polygon
+              key={`${id}-head-${i}`}
+              points={`${p.x - 4},${p.y - 4} ${p.x + 4},${p.y - 4} ${p.x},${p.y + 4}`}
+              fill={strokeColor}
+              stroke="#0A0E14"
+              strokeWidth={0.6}
+              opacity={0.9}
+            />
+          ))}
+        </g>
+      )}
       {/* K30-105: power flow direction arrows (▷) per IEC 60617 — pokazuje
           operatorowi OSD kierunek przepływu mocy ze źródła do odbiorów.
           Render: jedna strzałka na każdej parze sąsiednich pathPoints
