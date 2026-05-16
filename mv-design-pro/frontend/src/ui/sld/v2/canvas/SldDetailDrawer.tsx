@@ -78,6 +78,13 @@ export interface SldDetailDrawerData {
     readonly name: string | null;
     readonly pMw: number | null;
   }>;
+  /** K30-83: bay apparatus list (kind='bay' apparatus tab). */
+  readonly apparatusSpec?: ReadonlyArray<{
+    readonly id: string;
+    readonly kind: 'CB' | 'DS' | 'ES' | 'CT' | 'VT' | 'OTHER';
+    readonly label: string;
+    readonly state: 'closed' | 'open' | 'unknown' | null;
+  }>;
 }
 
 export interface SldDetailDrawerProps {
@@ -284,6 +291,7 @@ function TabContent({ kind, tab, data }: TabContentProps): JSX.Element {
         baysSpec={data.baysSpec}
         nnSpec={data.nnSpec ?? null}
         existingDers={data.existingDers}
+        apparatusSpec={data.apparatusSpec}
       />
     </div>
   );
@@ -299,6 +307,7 @@ function PlaceholderTabBody({
   baysSpec,
   nnSpec,
   existingDers,
+  apparatusSpec,
 }: {
   kind: SldDetailKind;
   tab: string;
@@ -333,6 +342,12 @@ function PlaceholderTabBody({
     readonly kind: 'PV' | 'BESS' | 'FW' | null;
     readonly name: string | null;
     readonly pMw: number | null;
+  }>;
+  apparatusSpec?: ReadonlyArray<{
+    readonly id: string;
+    readonly kind: 'CB' | 'DS' | 'ES' | 'CT' | 'VT' | 'OTHER';
+    readonly label: string;
+    readonly state: 'closed' | 'open' | 'unknown' | null;
   }>;
 }): JSX.Element {
   // Tab-specific scaffolding — actual editor forms wired w K30-72+
@@ -429,6 +444,66 @@ function PlaceholderTabBody({
         <div style={{ marginTop: 12, color: '#7E8790', fontSize: 10 }}>
           Grid code: PN-EN 50549 / IEEE 1547 / IEC 61400-21 (FW)
         </div>
+      </div>
+    );
+  }
+  if (kind === 'bay' && tab === 'apparatus') {
+    const stateLabel: Record<string, string> = {
+      closed: 'zamknięty',
+      open: 'otwarty',
+      unknown: 'nieznany',
+    };
+    const stateColor: Record<string, string> = {
+      closed: '#13C45A',
+      open: '#F25F5F',
+      unknown: '#7E8790',
+    };
+    if (!apparatusSpec || apparatusSpec.length === 0) {
+      return (
+        <div data-testid="drawer-bay-apparatus-empty" style={{ color: '#7E8790', fontStyle: 'italic', fontSize: 10 }}>
+          Brak zdefiniowanych aparatów w polu. Skonfiguruj wyposażenie via E-11.
+        </div>
+      );
+    }
+    return (
+      <div data-testid="drawer-bay-apparatus">
+        <div style={{ fontSize: 10, color: '#7E8790', marginBottom: 6, fontWeight: 700 }}>
+          Aparatura ({apparatusSpec.length})
+        </div>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {apparatusSpec.map((app) => {
+            const stateKey = app.state ?? 'unknown';
+            return (
+              <li
+                key={app.id}
+                data-testid={`drawer-bay-app-${app.id}`}
+                style={{
+                  background: '#171B20',
+                  border: '1px solid #2A3441',
+                  borderRadius: 3,
+                  padding: '6px 8px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: 11,
+                }}
+              >
+                <div>
+                  <span style={{ color: '#FFD166', fontWeight: 700, fontFamily: 'monospace' }}>
+                    [{app.kind}]
+                  </span>
+                  <span style={{ color: '#DDF7FF', marginLeft: 6 }}>{app.label}</span>
+                </div>
+                <span
+                  data-testid={`drawer-bay-app-${app.id}-state`}
+                  style={{ color: stateColor[stateKey], fontFamily: 'monospace', fontSize: 10, fontWeight: 700 }}
+                >
+                  {stateLabel[stateKey]}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     );
   }

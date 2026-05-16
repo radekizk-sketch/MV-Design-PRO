@@ -813,6 +813,8 @@ export function SldWorkspaceContainer(
       let nnSpec: SldDetailDrawerData['nnSpec'] = null;
       // K30-82: existing DERs on station (snapshot.generators filter station_ref)
       let existingDers: SldDetailDrawerData['existingDers'] = undefined;
+      // K30-83: bay apparatus list (from bay.equipment_refs + runtime_state)
+      let apparatusSpec: SldDetailDrawerData['apparatusSpec'] = undefined;
       if (drawerKind === 'station' && snapshot) {
         const substation = findSubstationByRef(snapshot, id);
         const transformers = selectStationTransformers(snapshot, substation ?? null);
@@ -870,6 +872,45 @@ export function SldWorkspaceContainer(
           pMw: typeof g.p_mw === 'number' ? g.p_mw : null,
         }));
       }
+      // K30-83: bay apparatus list (gdy drawer kind='bay')
+      if (drawerKind === 'bay' && snapshot) {
+        const bay = findBayByRef(snapshot, id);
+        const states = bay?.runtime_state?.primary_device_states ?? {};
+        const inferKind = (appId: string): 'CB' | 'DS' | 'ES' | 'CT' | 'VT' | 'OTHER' => {
+          const lower = appId.toLowerCase();
+          if (lower.includes('breaker') || lower.endsWith('#cb')) return 'CB';
+          if (lower.includes('disconnector') || lower.endsWith('#ds')) return 'DS';
+          if (lower.includes('earthing') || lower.endsWith('#es')) return 'ES';
+          if (lower.includes('current_transformer') || lower.endsWith('#ct')) return 'CT';
+          if (lower.includes('voltage_transformer') || lower.endsWith('#vt')) return 'VT';
+          return 'OTHER';
+        };
+        const labelFor = (k: 'CB' | 'DS' | 'ES' | 'CT' | 'VT' | 'OTHER', appId: string): string => {
+          if (k === 'CB') return 'Wyłącznik';
+          if (k === 'DS') return appId.includes('out') ? 'Odłącznik odpływowy' : 'Odłącznik';
+          if (k === 'ES') return 'Uziemnik';
+          if (k === 'CT') return 'Przekładnik prądowy';
+          if (k === 'VT') return 'Przekładnik napięciowy';
+          return appId.split('#').pop() ?? appId;
+        };
+        const mapState = (raw: unknown): 'closed' | 'open' | 'unknown' => {
+          if (raw && typeof raw === 'object' && 'actual_state' in raw) {
+            const v = (raw as { actual_state: string }).actual_state;
+            if (v === 'zamkniety') return 'closed';
+            if (v === 'otwarty') return 'open';
+          }
+          return 'unknown';
+        };
+        apparatusSpec = (bay?.equipment_refs ?? []).map((eqId) => {
+          const k = inferKind(eqId);
+          return {
+            id: eqId,
+            kind: k,
+            label: labelFor(k, eqId),
+            state: mapState(states[eqId]),
+          };
+        });
+      }
       setDetailDrawerData({
         kind: drawerKind,
         elementId: id,
@@ -884,6 +925,7 @@ export function SldWorkspaceContainer(
         baysSpec,
         nnSpec,
         existingDers,
+        apparatusSpec,
       });
     }
 

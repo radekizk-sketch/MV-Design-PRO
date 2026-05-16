@@ -298,4 +298,32 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     expect(container.querySelector('[data-testid="drawer-station-der-empty"]')).toBeTruthy();
     cleanup();
   });
+
+  it('K30-83: bay apparatus tab renders apparatusSpec list z state colors', () => {
+    const data: SldDetailDrawerData = {
+      kind: 'bay', elementId: 'bay-q01', label: 'Q01',
+      apparatusSpec: [
+        { id: 'q01#breaker', kind: 'CB', label: 'Wyłącznik', state: 'closed' },
+        { id: 'q01#disconnector_in', kind: 'DS', label: 'Odłącznik', state: 'open' },
+        { id: 'q01#earthing', kind: 'ES', label: 'Uziemnik', state: 'unknown' },
+      ],
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    expect(container.querySelector('[data-testid="drawer-bay-apparatus"]')).toBeTruthy();
+    expect(container.querySelectorAll('[data-testid^="drawer-bay-app-"][data-testid$="-state"]')).toHaveLength(3);
+    expect(container.querySelector('[data-testid="drawer-bay-app-q01#breaker-state"]')?.textContent).toBe('zamknięty');
+    expect(container.querySelector('[data-testid="drawer-bay-app-q01#disconnector_in-state"]')?.textContent).toBe('otwarty');
+    expect(container.querySelector('[data-testid="drawer-bay-app-q01#earthing-state"]')?.textContent).toBe('nieznany');
+    cleanup();
+  });
+
+  it('K30-83: bay apparatus tab empty state', () => {
+    const data: SldDetailDrawerData = {
+      kind: 'bay', elementId: 'bay-q02', label: 'Q02',
+      apparatusSpec: [],
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    expect(container.querySelector('[data-testid="drawer-bay-apparatus-empty"]')).toBeTruthy();
+    cleanup();
+  });
 });
