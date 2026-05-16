@@ -56,15 +56,20 @@ per element kind:
 | K30-88 | 0a21b2b | cable_run kind 3 tabs + Escape key support |
 | K30-89 | ce3b142 | Real cable run spec (lengthKm sum from snapshot.branches) |
 | K30-90 | f6199fc | Arrow keys ← → navigate tabs |
+| K30-91 | eb23c5c | Action toolbar "Otwórz pełny widok" → StationInternalView |
+| K30-92 | a31493c | DerPaletteButton active state (inverted + glow + grabbing) |
+| K30-93 | 97bcf42 | Wire LF cable loading + ΔU% do Spadek napięcia tab (PN-EN 50160 severity) |
+| K30-94 | 0fef196 | ARIA roles (dialog/tablist/tab/tabpanel + aria-selected) |
+| K30-95 | e9a8986 | Alarm severity badge w drawer header (warning/important/critical) |
 
 ## §4 Test coverage
 
 | File | Tests | Coverage |
 |------|-------|----------|
-| `SldDetailDrawer.test.tsx` | 46 | 5 kinds × all tabs × edge cases (empty, defaults, pre-fill) |
-| `useDerDragDrop.test.tsx` | 10 | hook lifecycle + button variants + disabled |
+| `SldDetailDrawer.test.tsx` | 55 | 5 kinds × all tabs × edge cases × ARIA × alarm × cable LF |
+| `useDerDragDrop.test.tsx` | 12 | hook lifecycle + button variants + disabled + active state |
 | `SldWorkspaceContainer.test.tsx` | 14 | palette toolbar render, drag activation, cancel |
-| **Sld v2 total** | **1827 (was 1771)** | +56 nowych testów |
+| **Sld v2 total** | **1841 (was 1771)** | +70 nowych testów |
 
 Type-check OK, guards PASS (forbidden_ui_terms, no_codenames, sld_determinism).
 
