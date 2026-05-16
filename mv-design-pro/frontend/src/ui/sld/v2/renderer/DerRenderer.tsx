@@ -199,6 +199,9 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
         const s = Math.sqrt(pKw * pKw + qKvar * qKvar);
         const cosPhi = s > 0 ? pKw / s : null;
         if (cosPhi === null) return null;
+        // K30-61 RADICAL: cosφ widoczny TYLKO gdy Q explicit (hasQ).
+        // Bez Q wartość 1.0 jest atrapą (assumed unity power factor).
+        const showCosPhi = hasQ;
         // K30-6: enlarged compact cos φ + P display (font 7→12, w/ pill background)
         return (
           <g data-testid={`sld-v2-der-${id}-compact-cos-phi`}>
@@ -206,7 +209,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
               x={-32}
               y={half + 14}
               width={64}
-              height={26}
+              height={showCosPhi ? 26 : 16}
               rx={3}
               ry={3}
               fill="#0A1018"
@@ -225,18 +228,20 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
             >
               {`${pKw.toFixed(0)}kW`}
             </text>
-            <text
-              x={0}
-              y={half + 36}
-              textAnchor="middle"
-              fill="#88BBDD"
-              fontFamily={FONT_MONO}
-              fontSize={10}
-              fontWeight={600}
-              opacity={0.85}
-            >
-              {`cosφ ${cosPhi.toFixed(2)}`}
-            </text>
+            {showCosPhi && (
+              <text
+                x={0}
+                y={half + 36}
+                textAnchor="middle"
+                fill="#88BBDD"
+                fontFamily={FONT_MONO}
+                fontSize={10}
+                fontWeight={600}
+                opacity={0.85}
+              >
+                {`cosφ ${cosPhi.toFixed(2)}`}
+              </text>
+            )}
           </g>
         );
       })()}
@@ -336,7 +341,9 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
               P {pKw.toFixed(0)} kW
               {hasQ && ` Q ${qKvar.toFixed(0)} kVAr`}
             </text>
-            {cosPhi !== null && (
+            {/* K30-61: cosφ widoczny TYLKO gdy Q explicit. Bez Q wartość 1.0
+                jest atrapą (assumed unity power factor). */}
+            {cosPhi !== null && hasQ && (
               <text
                 x={0}
                 y={labelY + 12}

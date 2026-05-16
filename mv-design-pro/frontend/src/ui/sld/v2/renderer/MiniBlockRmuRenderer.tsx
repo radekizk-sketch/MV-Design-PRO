@@ -624,6 +624,10 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         </g>
       )}
 
+      {/* K30-61: shortCode "RMU·P" hidden w overview (rich card już zawiera
+          station class info via voltage tint border + code). Pokazane w
+          compact/detail variant. */}
+      {variant !== 'overview' && (
       <text
         x={0}
         y={labelTypeY}
@@ -639,6 +643,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
       >
         {MINI_BLOCK_FOOTPRINT[props.footprintType].shortCodePl}
       </text>
+      )}
 
       {variant !== 'overview' && !showPvCircuit && props.transformerRatedKva !== null && (
         <text
