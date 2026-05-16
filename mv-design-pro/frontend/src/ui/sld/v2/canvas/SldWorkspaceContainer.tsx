@@ -1495,6 +1495,7 @@ export function SldWorkspaceContainer(
             kind={kind}
             onStart={(k) => derDrag.startDrag(k)}
             disabled={derDrag.state !== null && derDrag.state.kind !== kind}
+            active={derDrag.state?.kind === kind}
           />
         ))}
         {derDrag.state && (

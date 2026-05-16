@@ -104,4 +104,20 @@ describe('DerPaletteButton — K30-77 palette UI', () => {
     expect(container.querySelector('[data-testid="der-palette-btn-FW"]')?.getAttribute('data-der-kind')).toBe('FW');
     cleanup();
   });
+
+  it('K30-92: active=true → aria-pressed + data-der-active=true', () => {
+    const { container } = render(<DerPaletteButton kind="PV" onStart={vi.fn()} active />);
+    const btn = container.querySelector('[data-testid="der-palette-btn-PV"]') as HTMLButtonElement;
+    expect(btn.getAttribute('data-der-active')).toBe('true');
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
+    cleanup();
+  });
+
+  it('K30-92: active=false (default) → data-der-active=false, brak aria-pressed', () => {
+    const { container } = render(<DerPaletteButton kind="PV" onStart={vi.fn()} />);
+    const btn = container.querySelector('[data-testid="der-palette-btn-PV"]') as HTMLButtonElement;
+    expect(btn.getAttribute('data-der-active')).toBe('false');
+    expect(btn.hasAttribute('aria-pressed')).toBe(false);
+    cleanup();
+  });
 });
