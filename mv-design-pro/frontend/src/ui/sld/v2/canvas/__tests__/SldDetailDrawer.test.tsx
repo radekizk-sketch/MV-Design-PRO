@@ -581,6 +581,25 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     cleanup();
   });
 
+  it('K30-98: breadcrumb pokazuje parent station + bay dla apparatus kind', () => {
+    const data: SldDetailDrawerData = {
+      kind: 'apparatus', elementId: 'cb-1', label: 'CB-1',
+      parentStationLabel: 'GPZ Centrum',
+      parentBayLabel: 'Pole Q01',
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    const crumb = container.querySelector('[data-testid="sld-v2-detail-drawer-breadcrumb"]');
+    expect(crumb?.textContent).toContain('GPZ Centrum');
+    expect(crumb?.textContent).toContain('Pole Q01');
+    cleanup();
+  });
+
+  it('K30-98: breadcrumb hidden gdy brak parent context', () => {
+    const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-breadcrumb"]')).toBeFalsy();
+    cleanup();
+  });
+
   it('K30-97: apparatus state tab pokazuje BŁĄD komunikacji + ZAŁOŻONA blokada', () => {
     const data: SldDetailDrawerData = {
       kind: 'apparatus', elementId: 'cb-1', label: 'CB-1',

@@ -96,6 +96,10 @@ export interface SldDetailDrawerData {
   /** K30-95: alarm severity badge w drawer header. Lowercase per
    *  StationOnRunRenderer (warning/important/critical). */
   readonly alarmSeverity?: 'warning' | 'important' | 'critical' | null;
+  /** K30-98: breadcrumb context — parent station label (Stacja › Pole). */
+  readonly parentStationLabel?: string | null;
+  /** K30-98: breadcrumb context — parent bay label dla apparatus kind. */
+  readonly parentBayLabel?: string | null;
   /** K30-97: real apparatus state z snapshot.equipmentStates (gdy
    *  drawer kind='apparatus'). */
   readonly apparatusState?: {
@@ -264,6 +268,15 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           <div data-testid="sld-v2-detail-drawer-kind" style={{ fontSize: 9, color: '#7E8790', textTransform: 'uppercase', letterSpacing: 1 }}>
             {kindLabel(data.kind)}
           </div>
+          {(data.parentStationLabel || data.parentBayLabel) && (
+            <div
+              data-testid="sld-v2-detail-drawer-breadcrumb"
+              style={{ fontSize: 10, color: '#88BBDD', marginTop: 2, fontFamily: 'monospace' }}
+            >
+              {[data.parentStationLabel, data.parentBayLabel].filter(Boolean).join(' › ')}
+              {' › '}
+            </div>
+          )}
           <div data-testid="sld-v2-detail-drawer-label" style={{ fontSize: 16, fontWeight: 800, color: accent, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
             <span>{data.label ?? data.elementId ?? 'Element'}</span>
             {data.alarmSeverity && (

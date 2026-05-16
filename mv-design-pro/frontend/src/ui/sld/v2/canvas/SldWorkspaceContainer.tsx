@@ -1050,6 +1050,25 @@ export function SldWorkspaceContainer(
           };
         }
       }
+      // K30-98: breadcrumb context dla bay/apparatus selections
+      let parentStationLabel: string | null = null;
+      let parentBayLabel: string | null = null;
+      if ((drawerKind === 'bay' || drawerKind === 'apparatus') && stationContext) {
+        parentStationLabel = stationContext.stationCode
+          ?? stationContext.name
+          ?? null;
+      }
+      if (drawerKind === 'apparatus' && snapshot) {
+        for (const sub of (snapshot.substations ?? []) as Array<{ name?: string; bays?: Array<{ name?: string; ref_id?: string; equipment_refs?: string[] }> }>) {
+          for (const b of sub.bays ?? []) {
+            if (b.equipment_refs?.includes(id)) {
+              parentBayLabel = b.name ?? b.ref_id ?? null;
+              break;
+            }
+          }
+          if (parentBayLabel) break;
+        }
+      }
       setDetailDrawerData({
         kind: drawerKind,
         elementId: id,
@@ -1069,6 +1088,8 @@ export function SldWorkspaceContainer(
         liveMetrics: buildLiveMetrics(overlayPayload, drawerKind, id, stationForDrawer?.busVoltageKv ?? null),
         alarmSeverity: stationForDrawer?.alarmSeverity ?? null,
         apparatusState,
+        parentStationLabel,
+        parentBayLabel,
       });
     }
 
