@@ -540,6 +540,14 @@ interface ApparatusTransformerSymbolProps {
    *  Per PN-EN 61936-1, transformator z neutralem uziemionym MUSI mieć
    *  oznaczenie uziemienia. Default true (typowy układ TN-C-S w sieci SN). */
   readonly neutralEarthed?: boolean;
+  /** K30-104: IEC 60076-1 vector group label (Dyn11, Yzn5, YNd1, …).
+   *  Renderowany obok symbolu — projektant identyfikuje przesunięcie
+   *  fazowe i konfigurację uzwojeń. */
+  readonly vectorGroup?: string | null;
+  /** K30-104: przełącznik zaczepów pod obciążeniem (on-load tap changer).
+   *  Per IEC 60617-2 + PN-EN 62271-102: strzałka diagonalna przez górne
+   *  uzwojenie (strona SN). */
+  readonly hasTapChanger?: boolean;
 }
 
 /**
@@ -547,7 +555,7 @@ interface ApparatusTransformerSymbolProps {
  * Renderowany NA OSI POLA (NIE jako separate column) — końcówka pola TR.
  */
 export function ApparatusTransformerSymbol(props: ApparatusTransformerSymbolProps): JSX.Element {
-  const { cx, cy, neutralEarthed = true } = props;
+  const { cx, cy, neutralEarthed = true, vectorGroup, hasTapChanger = false } = props;
   const r = 5;
   const gap = 4;
   return (
@@ -556,6 +564,25 @@ export function ApparatusTransformerSymbol(props: ApparatusTransformerSymbolProp
       <circle cx={cx} cy={cy - gap / 2} r={r} fill={COLOR_PANEL_RAISED} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
       {/* Okrąg dolny (strona nN). */}
       <circle cx={cx} cy={cy + gap / 2} r={r} fill={COLOR_PANEL_RAISED} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+      {/* K30-104: IEC 60617-2 tap-changer arrow (diagonalna strzałka przez
+          górne uzwojenie HV/SN) — per PN-EN 62271-102 wymóg dla OLTC. */}
+      {hasTapChanger && (
+        <g data-testid="sld-v2-gpz-bay-transformer-tap-changer" data-symbol-canon="tap_changer_oltc">
+          <line
+            x1={cx - r - 2}
+            y1={cy - gap / 2 + r + 2}
+            x2={cx + r + 2}
+            y2={cy - gap / 2 - r - 2}
+            stroke={COLOR_LINE_PRIMARY}
+            strokeWidth={1.4}
+          />
+          {/* Arrowhead (← directional) */}
+          <polygon
+            points={`${cx + r + 2},${cy - gap / 2 - r - 2} ${cx + r - 1},${cy - gap / 2 - r - 1} ${cx + r + 1},${cy - gap / 2 - r + 1}`}
+            fill={COLOR_LINE_PRIMARY}
+          />
+        </g>
+      )}
       {/* K30-103: IEC 60617-2 earthing symbol (3 horizontal bars decreasing
           in width) na punkcie neutralnym — PN-EN 61936-1 wymóg. */}
       {neutralEarthed && (
@@ -565,6 +592,20 @@ export function ApparatusTransformerSymbol(props: ApparatusTransformerSymbolProp
           <line x1={cx - 2.5} y1={cy + gap / 2 + r + 5} x2={cx + 2.5} y2={cy + gap / 2 + r + 5} stroke={COLOR_LINE_PRIMARY} strokeWidth={1} />
           <line x1={cx - 1} y1={cy + gap / 2 + r + 7} x2={cx + 1} y2={cy + gap / 2 + r + 7} stroke={COLOR_LINE_PRIMARY} strokeWidth={0.8} />
         </g>
+      )}
+      {/* K30-104: vector group label (Dyn11) obok symbolu — IEC 60076-1 wymóg. */}
+      {vectorGroup && (
+        <text
+          x={cx + r + 4}
+          y={cy + 2}
+          fill="#FFD166"
+          fontFamily="monospace"
+          fontSize={8}
+          fontWeight={800}
+          data-testid="sld-v2-gpz-bay-transformer-vector-group"
+        >
+          {vectorGroup}
+        </text>
       )}
     </g>
   );

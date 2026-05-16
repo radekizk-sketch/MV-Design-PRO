@@ -1820,6 +1820,28 @@ describe('GpzSwitchgearRenderer — commit 9: BAY_DEVICE_ORDER_POLICY pełna ite
     expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-transformer-earthing"]')).not.toBeNull();
   });
 
+  it('K30-104: ApparatusTransformerSymbol z vector group + tap changer (IEC 60617-2)', async () => {
+    const { ApparatusTransformerSymbol } = await import('../GpzApparatusSymbols');
+    const { container } = render(
+      <svg>
+        <ApparatusTransformerSymbol cx={50} cy={50} vectorGroup="Dyn11" hasTapChanger={true} />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-transformer-vector-group"]')?.textContent).toBe('Dyn11');
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-transformer-tap-changer"]')).not.toBeNull();
+  });
+
+  it('K30-104: ApparatusTransformerSymbol bez tap changer (default) → brak strzałki OLTC', async () => {
+    const { ApparatusTransformerSymbol } = await import('../GpzApparatusSymbols');
+    const { container } = render(
+      <svg>
+        <ApparatusTransformerSymbol cx={50} cy={50} />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-transformer-tap-changer"]')).toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-transformer-vector-group"]')).toBeNull();
+  });
+
   it('Pole TRANSFORMER ma fuse (TRANSFORMER_ORDER zawiera FUSE jako optional)', () => {
     const { container } = r({
       sections: [
