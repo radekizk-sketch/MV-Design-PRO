@@ -1284,11 +1284,14 @@ function BayColumn(props: BayColumnProps): JSX.Element {
   /* DS_BUS (Q1) — odłącznik szynowy, przed CB (kanon polskiego pola liniowego).
    * Renderowany TYLKO gdy bay.qDesignations.dsBus jest dostarczone (zwykle dla
    * pól GPZ/LINE_*; pola RMU/COUPLER/MEASUREMENT bez Q1). */
+  /* K30-113: unified APPARATUS_PITCH (18 px) per audyt #1 MAJOR + #4 MEDIUM.
+   * Poprzednio multiplier 0.7/0.85 powodował inconsistent spacing (12.6/15.3).
+   * Operator dyspozytorni widział "skurczenia" pomiędzy aparatami. */
   const dsBusY = bodyTopY + 4;
-  const cbY = bay.qDesignations?.dsBus ? dsBusY + APPARATUS_PITCH * 0.7 : bodyTopY + 8;
+  const cbY = bay.qDesignations?.dsBus ? dsBusY + APPARATUS_PITCH : bodyTopY + 8;
   const ctY = cbY + APPARATUS_PITCH;
   const dsY = ctY + APPARATUS_PITCH;
-  const triangleY = dsY + APPARATUS_PITCH * 0.85;
+  const triangleY = dsY + APPARATUS_PITCH;
   const columnBottomY = busY + BAY_COLUMN_HEIGHT;
 
   /* Tło kolumny — manipulation ma pierwszeństwo, potem per-role color

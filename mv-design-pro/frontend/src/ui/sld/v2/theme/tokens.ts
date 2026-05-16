@@ -262,7 +262,7 @@ export const GPZ_GEOMETRY = {
   sectionLabelGap: 18,
   /** Pole — szerokość, wysokość, gap między polami. */
   bayColumnWidth: 64,
-  bayColumnHeight: 110,
+  bayColumnHeight: 124, // K30-113: 110 → 124 dla unified APPARATUS_PITCH (audyt #4 MEDIUM)
   bayGap: 6,
   /** Nagłówek pola (feeder name). */
   bayHeaderHeight: 12,
