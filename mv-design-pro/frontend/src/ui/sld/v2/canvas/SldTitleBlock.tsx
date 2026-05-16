@@ -59,6 +59,16 @@ export interface SldTitleBlockData {
   readonly issueDate?: string;
   /** OSD / operator sieci dystrybucyjnej (PGE / Enea / Energa / Tauron). */
   readonly osdOperator?: string;
+  /** K30-99: SEP qualification number (uprawnienia budowlane / SEP D, E). */
+  readonly designerQualification?: string;
+  /** K30-99: SEP qualification number sprawdzającego. */
+  readonly approverQualification?: string;
+  /** K30-99: Inwestor (klient zlecający projekt). */
+  readonly investor?: string;
+  /** K30-99: Lokalizacja (adres / nr działki dla OSD wniosku). */
+  readonly location?: string;
+  /** K30-99: Phase (faza projektu — PB / PW / PR). */
+  readonly phase?: 'PB' | 'PW' | 'PR' | 'PK';
 }
 
 export interface SldTitleBlockProps {
@@ -89,6 +99,11 @@ const DEFAULTS = {
   revision: 'K30-38',
   issueDate: '',
   osdOperator: 'Operator OSD: ENEA',
+  designerQualification: '',
+  approverQualification: '',
+  investor: '',
+  location: '',
+  phase: 'PB' as const,
 };
 
 export function SldTitleBlock(props: SldTitleBlockProps): JSX.Element {
@@ -96,6 +111,7 @@ export function SldTitleBlock(props: SldTitleBlockProps): JSX.Element {
   const issueDate = data.issueDate || new Date().toISOString().split('T')[0];
   const statusColor = STATUS_COLORS[data.status];
 
+  const totalHeight = 178;
   return (
     <g
       data-testid="sld-v2-title-block"
@@ -103,7 +119,7 @@ export function SldTitleBlock(props: SldTitleBlockProps): JSX.Element {
       pointerEvents="none"
     >
       {/* Frame */}
-      <rect x={0} y={0} width={360} height={108} fill="#0A0E14" stroke="#5A6878" strokeWidth={1.4} />
+      <rect x={0} y={0} width={360} height={totalHeight} fill="#0A0E14" stroke="#5A6878" strokeWidth={1.4} />
       {/* Horizontal separators */}
       <line x1={0} y1={20} x2={360} y2={20} stroke="#5A6878" strokeWidth={0.8} />
       <line x1={0} y1={60} x2={360} y2={60} stroke="#5A6878" strokeWidth={0.8} />
@@ -174,6 +190,90 @@ export function SldTitleBlock(props: SldTitleBlockProps): JSX.Element {
           Nr rys.: {data.drawingNumber}
         </text>
       )}
+
+      {/* K30-99: Investor + Location row (110-128) — OSD wniosek-grade context */}
+      <line x1={0} y1={108} x2={360} y2={108} stroke="#5A6878" strokeWidth={0.8} />
+      {(data.investor || data.location) && (
+        <g data-testid="sld-v2-title-block-investor">
+          <text x={6} y={118} fill="#B9C0C7" fontFamily="sans-serif" fontSize={8} fontWeight={700}>
+            Inwestor:
+          </text>
+          <text x={50} y={118} fill="#DDF7FF" fontFamily="sans-serif" fontSize={8}>
+            {data.investor || '—'}
+          </text>
+          <text x={6} y={128} fill="#B9C0C7" fontFamily="sans-serif" fontSize={8} fontWeight={700}>
+            Lokalizacja:
+          </text>
+          <text x={62} y={128} fill="#DDF7FF" fontFamily="sans-serif" fontSize={8}>
+            {data.location || '—'}
+          </text>
+        </g>
+      )}
+      <text
+        x={354}
+        y={118}
+        textAnchor="end"
+        fill="#FFD166"
+        fontFamily="sans-serif"
+        fontSize={9}
+        fontWeight={700}
+        data-testid="sld-v2-title-block-phase"
+      >
+        Faza: {data.phase}
+      </text>
+
+      {/* K30-99: Signature row (132-178) — designer / approver / investor stamps */}
+      <line x1={0} y1={132} x2={360} y2={132} stroke="#5A6878" strokeWidth={0.8} />
+      <line x1={120} y1={132} x2={120} y2={totalHeight} stroke="#5A6878" strokeWidth={0.8} />
+      <line x1={240} y1={132} x2={240} y2={totalHeight} stroke="#5A6878" strokeWidth={0.8} />
+
+      <g data-testid="sld-v2-title-block-designer-sig">
+        <text x={6} y={142} fill="#7EC8FF" fontFamily="sans-serif" fontSize={8} fontWeight={700}>
+          PROJEKTANT
+        </text>
+        <text x={6} y={152} fill="#DDF7FF" fontFamily="sans-serif" fontSize={8}>
+          {data.designer || '—'}
+        </text>
+        <text x={6} y={162} fill="#88BBDD" fontFamily="sans-serif" fontSize={7}>
+          Upr.: {data.designerQualification || '—'}
+        </text>
+        <rect x={6} y={166} width={108} height={10} fill="none" stroke="#5A6878" strokeWidth={0.6} strokeDasharray="2 2" />
+        <text x={60} y={173} textAnchor="middle" fill="#5A6878" fontFamily="sans-serif" fontSize={6} fontStyle="italic">
+          [pieczęć / podpis]
+        </text>
+      </g>
+
+      <g data-testid="sld-v2-title-block-approver-sig">
+        <text x={126} y={142} fill="#7EC8FF" fontFamily="sans-serif" fontSize={8} fontWeight={700}>
+          SPRAWDZIŁ
+        </text>
+        <text x={126} y={152} fill="#DDF7FF" fontFamily="sans-serif" fontSize={8}>
+          {data.approver || '—'}
+        </text>
+        <text x={126} y={162} fill="#88BBDD" fontFamily="sans-serif" fontSize={7}>
+          Upr.: {data.approverQualification || '—'}
+        </text>
+        <rect x={126} y={166} width={108} height={10} fill="none" stroke="#5A6878" strokeWidth={0.6} strokeDasharray="2 2" />
+        <text x={180} y={173} textAnchor="middle" fill="#5A6878" fontFamily="sans-serif" fontSize={6} fontStyle="italic">
+          [pieczęć / podpis]
+        </text>
+      </g>
+
+      <g data-testid="sld-v2-title-block-investor-sig">
+        <text x={246} y={142} fill="#7EC8FF" fontFamily="sans-serif" fontSize={8} fontWeight={700}>
+          INWESTOR / ODBIÓR
+        </text>
+        <text x={246} y={152} fill="#DDF7FF" fontFamily="sans-serif" fontSize={8}>
+          {data.investor || '—'}
+        </text>
+        <text x={246} y={162} fill="#88BBDD" fontFamily="sans-serif" fontSize={7}>
+          Akceptacja OSD
+        </text>
+        <rect x={246} y={166} width={108} height={10} fill="none" stroke="#5A6878" strokeWidth={0.6} strokeDasharray="2 2" />
+        <text x={300} y={173} textAnchor="middle" fill="#5A6878" fontFamily="sans-serif" fontSize={6} fontStyle="italic">
+          [podpis · data]
+        </text>
+      </g>
     </g>
   );
 }

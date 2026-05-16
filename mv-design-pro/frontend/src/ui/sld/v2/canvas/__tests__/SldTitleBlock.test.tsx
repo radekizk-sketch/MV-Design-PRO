@@ -77,11 +77,39 @@ describe('SldTitleBlock — K30-38 industrial drawing metryka', () => {
     expect(container.querySelector('[data-testid="sld-v2-title-block"]')?.getAttribute('data-status')).toBe('RELEASED');
   });
 
-  it('frame ma 360×108 px (PN-EN ISO 7200 proportions)', () => {
+  it('K30-99: frame ma 360×178 px (PN-EN ISO 7200 + signature row)', () => {
     const { container } = render(<svg><SldTitleBlock /></svg>);
     const rect = container.querySelector('[data-testid="sld-v2-title-block"] rect');
     expect(rect?.getAttribute('width')).toBe('360');
-    expect(rect?.getAttribute('height')).toBe('108');
+    expect(rect?.getAttribute('height')).toBe('178');
+  });
+
+  it('K30-99: signature row renders designer/approver/investor blocks z SEP qualifications', () => {
+    const { container, getByText } = render(
+      <svg>
+        <SldTitleBlock data={{
+          designer: 'Jan Kowalski',
+          designerQualification: 'SEP-E1-12345',
+          approver: 'Anna Nowak',
+          approverQualification: 'SEP-D2-67890',
+          investor: 'GMINA WARSZAWA',
+          phase: 'PB',
+        }} />
+      </svg>
+    );
+    expect(container.querySelector('[data-testid="sld-v2-title-block-designer-sig"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="sld-v2-title-block-approver-sig"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="sld-v2-title-block-investor-sig"]')).toBeTruthy();
+    expect(getByText(/SEP-E1-12345/)).toBeInTheDocument();
+    expect(getByText(/SEP-D2-67890/)).toBeInTheDocument();
+    expect(container.querySelector('[data-testid="sld-v2-title-block-phase"]')?.textContent).toContain('PB');
+  });
+
+  it('K30-99: investor block widoczny gdy investor lub location podany', () => {
+    const { container } = render(
+      <svg><SldTitleBlock data={{ investor: 'XYZ', location: 'ul. Kwiatowa' }} /></svg>
+    );
+    expect(container.querySelector('[data-testid="sld-v2-title-block-investor"]')).toBeTruthy();
   });
 
   it('issueDate gdy brak → fallback do current ISO date', () => {
