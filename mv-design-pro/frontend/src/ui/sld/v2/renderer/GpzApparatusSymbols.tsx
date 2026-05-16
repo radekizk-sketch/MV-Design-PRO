@@ -265,26 +265,50 @@ export function ApparatusEarthingSwitch(props: ApparatusEarthingSwitchProps): JS
         stroke={stroke}
         strokeWidth={sw}
       />
-      {/* Krótka pionowa nóżka (przerwana = open, ciągła = closed) */}
+      {/* K30-108: IEC 60617-7-13-05 earthing switch contact:
+          - closed: pionowa linia solid z arrowhead (▼) wskazującym ziemię
+          - open: ANGLED LINE z górnego punktu styku do dolnego punktu —
+            wyraźna przerwa (NIE dashed line) per IEC 60617 "open switch"
+          - unknown: jak open ale szary z ? znacznikiem */}
       {closed ? (
-        <line
-          x1={branchEndX}
-          y1={cy}
-          x2={branchEndX}
-          y2={cy + ES_BRANCH_LEN * 0.55}
-          stroke={stroke}
-          strokeWidth={sw}
-        />
+        <>
+          <line
+            x1={branchEndX}
+            y1={cy}
+            x2={branchEndX}
+            y2={cy + ES_BRANCH_LEN * 0.55}
+            stroke={stroke}
+            strokeWidth={sw}
+          />
+          {/* Arrowhead ▼ wskazujący zwarcie do ziemi — IEC 7-13-05 directional */}
+          <polygon
+            points={`${branchEndX - 2.5},${cy + ES_BRANCH_LEN * 0.45} ${branchEndX + 2.5},${cy + ES_BRANCH_LEN * 0.45} ${branchEndX},${cy + ES_BRANCH_LEN * 0.55}`}
+            fill={stroke}
+          />
+        </>
       ) : (
-        <line
-          x1={branchEndX}
-          y1={cy + 1}
-          x2={branchEndX}
-          y2={cy + ES_BRANCH_LEN * 0.4}
-          stroke={stroke}
-          strokeWidth={sw}
-          strokeDasharray="1.5 1.5"
-        />
+        <>
+          {/* Górny punkt kontaktu (przy lateral branch) — kropka */}
+          <circle cx={branchEndX} cy={cy} r={1.2} fill={stroke} />
+          {/* ANGLED open switch contact — diagonalna linia od górnego punktu do
+              dolnego (IEC 60617 "open switch" zamiast dashed) */}
+          <line
+            x1={branchEndX}
+            y1={cy}
+            x2={branchEndX + (side === 'LEFT' ? -3 : 3)}
+            y2={cy + ES_BRANCH_LEN * 0.4}
+            stroke={stroke}
+            strokeWidth={sw}
+          />
+          {/* Dolny punkt kontaktu (przy arrowhead) — kropka */}
+          <circle cx={branchEndX} cy={cy + ES_BRANCH_LEN * 0.45} r={1.2} fill={stroke} />
+          {/* Arrowhead ▼ wskazujący zwarcie do ziemi (gdyby uziemnik był zamknięty) */}
+          <polygon
+            points={`${branchEndX - 2},${cy + ES_BRANCH_LEN * 0.45} ${branchEndX + 2},${cy + ES_BRANCH_LEN * 0.45} ${branchEndX},${cy + ES_BRANCH_LEN * 0.5}`}
+            fill={stroke}
+            opacity={0.5}
+          />
+        </>
       )}
       {/* Trójkąt ziemi (3 poziome kreski) */}
       <line x1={branchEndX - 3.5} y1={groundTopY + ES_BRANCH_LEN * 0.6} x2={branchEndX + 3.5} y2={groundTopY + ES_BRANCH_LEN * 0.6} stroke={stroke} strokeWidth={sw} />
