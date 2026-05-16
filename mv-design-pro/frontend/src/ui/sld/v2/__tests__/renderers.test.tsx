@@ -959,6 +959,26 @@ describe('StationOnRunRenderer', () => {
     expect(getByText('NOP')).toBeInTheDocument();
   });
 
+  it('K30-102: sekcyjna station → enhanced open-point marker z circle + rotated line (IEC 60617)', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-sek"
+          x={300}
+          y={400}
+          name="ST-SEK"
+          topologicalType="sekcyjna"
+        />
+      </svg>,
+    );
+    const marker = container.querySelector('[data-testid="sld-v2-station-open-marker-st-sek"]');
+    expect(marker).toBeTruthy();
+    expect(marker?.getAttribute('data-element-kind')).toBe('open-point-marker');
+    // Has both line + circle (visual emphasis vs old single tiny line)
+    expect(marker?.querySelectorAll('line').length).toBe(1);
+    expect(marker?.querySelectorAll('circle').length).toBe(1);
+  });
+
   it('isNop=false/undefined → brak badge NOP', () => {
     const { container } = render(
       <svg>

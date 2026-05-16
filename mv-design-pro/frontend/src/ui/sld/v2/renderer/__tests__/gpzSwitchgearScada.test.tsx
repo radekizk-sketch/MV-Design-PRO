@@ -1816,6 +1816,8 @@ describe('GpzSwitchgearRenderer — commit 9: BAY_DEVICE_ORDER_POLICY pełna ite
     expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-lv-breaker"]')).not.toBeNull();
     /* Brak głowicy kablowej. */
     expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-cable-head"]')).toBeNull();
+    /* K30-103: earthing symbol (⏚) na punkcie neutralnym per PN-EN 61936-1. */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-transformer-earthing"]')).not.toBeNull();
   });
 
   it('Pole TRANSFORMER ma fuse (TRANSFORMER_ORDER zawiera FUSE jako optional)', () => {

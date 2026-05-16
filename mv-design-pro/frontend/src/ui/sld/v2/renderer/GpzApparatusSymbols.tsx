@@ -536,6 +536,10 @@ export function ApparatusLvBreaker(props: ApparatusLvBreakerProps): JSX.Element 
 interface ApparatusTransformerSymbolProps {
   readonly cx: number;
   readonly cy: number;
+  /** K30-103: render IEC 60617-2 earthing symbol (⏚) na punkcie neutralnym.
+   *  Per PN-EN 61936-1, transformator z neutralem uziemionym MUSI mieć
+   *  oznaczenie uziemienia. Default true (typowy układ TN-C-S w sieci SN). */
+  readonly neutralEarthed?: boolean;
 }
 
 /**
@@ -543,7 +547,7 @@ interface ApparatusTransformerSymbolProps {
  * Renderowany NA OSI POLA (NIE jako separate column) — końcówka pola TR.
  */
 export function ApparatusTransformerSymbol(props: ApparatusTransformerSymbolProps): JSX.Element {
-  const { cx, cy } = props;
+  const { cx, cy, neutralEarthed = true } = props;
   const r = 5;
   const gap = 4;
   return (
@@ -552,6 +556,16 @@ export function ApparatusTransformerSymbol(props: ApparatusTransformerSymbolProp
       <circle cx={cx} cy={cy - gap / 2} r={r} fill={COLOR_PANEL_RAISED} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
       {/* Okrąg dolny (strona nN). */}
       <circle cx={cx} cy={cy + gap / 2} r={r} fill={COLOR_PANEL_RAISED} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+      {/* K30-103: IEC 60617-2 earthing symbol (3 horizontal bars decreasing
+          in width) na punkcie neutralnym — PN-EN 61936-1 wymóg. */}
+      {neutralEarthed && (
+        <g data-testid="sld-v2-gpz-bay-transformer-earthing" data-symbol-canon="earthing_neutral">
+          <line x1={cx} y1={cy + gap / 2 + r} x2={cx} y2={cy + gap / 2 + r + 3} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+          <line x1={cx - 4} y1={cy + gap / 2 + r + 3} x2={cx + 4} y2={cy + gap / 2 + r + 3} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+          <line x1={cx - 2.5} y1={cy + gap / 2 + r + 5} x2={cx + 2.5} y2={cy + gap / 2 + r + 5} stroke={COLOR_LINE_PRIMARY} strokeWidth={1} />
+          <line x1={cx - 1} y1={cy + gap / 2 + r + 7} x2={cx + 1} y2={cy + gap / 2 + r + 7} stroke={COLOR_LINE_PRIMARY} strokeWidth={0.8} />
+        </g>
+      )}
     </g>
   );
 }

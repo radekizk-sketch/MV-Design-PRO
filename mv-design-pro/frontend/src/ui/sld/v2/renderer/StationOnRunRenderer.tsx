@@ -306,16 +306,31 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
             <line x1={cx + 24} y1={STATION_BUS_Y - 5} x2={cx + 26} y2={STATION_BUS_Y - 5} stroke={COLOR_TEXT_SECONDARY} strokeWidth={0.9} />
           </g>
           {topologicalType === 'sekcyjna' && index === 0 && (
-            <line
-              x1={cx - 16}
-              y1={STATION_BUS_Y - 23}
-              x2={cx + 16}
-              y2={STATION_BUS_Y - 23}
-              stroke={COLOR_DEVICE_OPEN}
-              strokeWidth={2}
-              transform={`rotate(-90 ${cx} ${STATION_BUS_Y - 23})`}
+            <g
               data-testid={`sld-v2-station-open-marker-${id}`}
-            />
+              data-element-kind="open-point-marker"
+            >
+              {/* K30-102: open-point marker bardziej widoczny dla OSD —
+                  rotated red line z czerwoną kropką wskazującą fizyczne
+                  miejsce rozłącznika. Per IEC 60617 "open switch". */}
+              <line
+                x1={cx - 8}
+                y1={STATION_BUS_Y - 23}
+                x2={cx + 8}
+                y2={STATION_BUS_Y - 23}
+                stroke={COLOR_DEVICE_OPEN}
+                strokeWidth={2.4}
+                transform={`rotate(-90 ${cx} ${STATION_BUS_Y - 23})`}
+              />
+              <circle
+                cx={cx}
+                cy={STATION_BUS_Y - 23}
+                r={4}
+                fill="none"
+                stroke={COLOR_DEVICE_OPEN}
+                strokeWidth={1.6}
+              />
+            </g>
           )}
           {/* K30-36: bay-role label nad polygon diamond — operator widzi
               od razu które pole to WE/WY/TR przy zoom-out (LOD3+). */}
