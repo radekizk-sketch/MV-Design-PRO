@@ -1429,6 +1429,14 @@ export function SldWorkspaceContainer(
           selectElement(null);
           derDrag.cancel();
         }}
+        onSave={() => {
+          const label = detailDrawerData?.label ?? detailDrawerData?.elementId ?? '—';
+          notify(`Zapisano konfigurację: ${label} (K30-88 backend wire-up).`, 'success');
+          setDetailDrawerData(null);
+          setSelectedId(null);
+          selectElement(null);
+          derDrag.cancel();
+        }}
       />
 
       {/* K30-78: DER palette toolbar — kliknij ikonę DER (PV/BESS/FW)

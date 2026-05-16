@@ -427,4 +427,24 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     expect(select.value).toBe('BESS-INV-50KW');
     cleanup();
   });
+
+  it('K30-87: footer NOT rendered gdy onSave nie podany', () => {
+    const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-footer"]')).toBeFalsy();
+    cleanup();
+  });
+
+  it('K30-87: footer "Zapisz" + "Anuluj" buttons gdy onSave podany', () => {
+    const onSave = vi.fn();
+    const onClose = vi.fn();
+    const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={onClose} onSave={onSave} />);
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-footer"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-save"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-cancel"]')).toBeTruthy();
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-save"]') as Element);
+    expect(onSave).toHaveBeenCalledTimes(1);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-cancel"]') as Element);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    cleanup();
+  });
 });

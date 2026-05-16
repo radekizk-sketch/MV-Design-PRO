@@ -101,6 +101,9 @@ export interface SldDetailDrawerProps {
   readonly onClose: () => void;
   /** Width [px]. Default 360. */
   readonly width?: number;
+  /** K30-87: optional save handler — gdy podany, renderuje "Zapisz" CTA w
+   *  footer. Brak handler → footer ukryty. */
+  readonly onSave?: () => void;
 }
 
 const STATION_TABS = [
@@ -138,7 +141,7 @@ function tabsForKind(kind: SldDetailKind): readonly { id: string; label: string 
 }
 
 export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null {
-  const { open, data, onClose, width = 360 } = props;
+  const { open, data, onClose, width = 360, onSave } = props;
   const tabs = tabsForKind(data?.kind ?? null);
   const [activeTab, setActiveTab] = useState<string>(tabs[0]?.id ?? '');
 
@@ -287,6 +290,56 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
       >
         <TabContent kind={data.kind} tab={currentTab} data={data} />
       </div>
+
+      {/* K30-87: footer with Save/Cancel CTA (gdy onSave podany) */}
+      {onSave && (
+        <div
+          data-testid="sld-v2-detail-drawer-footer"
+          style={{
+            padding: '10px 16px',
+            borderTop: '1px solid #2A3441',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 8,
+            background: '#0E1218',
+          }}
+        >
+          <button
+            type="button"
+            data-testid="sld-v2-detail-drawer-cancel"
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: '1px solid #5A6878',
+              color: '#DDF7FF',
+              padding: '6px 12px',
+              borderRadius: 3,
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Anuluj
+          </button>
+          <button
+            type="button"
+            data-testid="sld-v2-detail-drawer-save"
+            onClick={onSave}
+            style={{
+              background: accent,
+              border: `1px solid ${accent}`,
+              color: '#0A0E14',
+              padding: '6px 14px',
+              borderRadius: 3,
+              fontSize: 11,
+              fontWeight: 800,
+              cursor: 'pointer',
+            }}
+          >
+            Zapisz
+          </button>
+        </div>
+      )}
     </div>
   );
 }
