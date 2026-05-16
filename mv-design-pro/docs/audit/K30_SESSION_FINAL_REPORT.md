@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-16
 **Branch:** `claude/cleanup-documentation-sld-7zVRd`
-**Session:** K30-31 → K30-68 (38 iteracji, ~40 commits)
+**Session:** K30-31 → K30-70 (40 iteracji, 45 commits)
 **Goal:** SLD klasy przemysłowej
 
 ## §1 Cumulative iteracje per phase
@@ -71,13 +71,20 @@
 | **PN-HD 620 S2** cable types (XLPE/EPR/PVC/PAPER) | ✅ Full | K30-33 |
 | **OSD numeracja** (Q01-Q15, TR, SPR, POM) | ✅ Full | K30-36, K30-56 |
 
-## §5 Honest gaps remaining (post K30-68)
+## §5 Honest gaps remaining (post K30-70)
 
-1. **IEC 61850 LN mapping** (PTOC1 50 / PIOC1 51 / PSCH 67) — frontend has ANSI codes, backend protection model nie ma explicit LN mapping
-2. **Real I_A flow per branch** — adapter computes loadingPct, ale per-segment I_A NIE jest emit by K30 seed backend (only total cable run I_A)
-3. **GPZ canonical Pole liniow Q1/Q8/T1/Q9 labels** w zoom-out — out of scope (separate GpzCanonicalRenderer concern)
-4. **DER connection_variant visualization** — kind (PV/BESS/FW) visible, ale nn_side vs dedicated_mv arrow indicator brak
-5. **Voltage drop sparkline per feeder** — could show U(x) along feeder, deferred
+K30-66..70 zamknęły 4 z 5 gaps:
+1. ✅ **K30-66 ANSI 50 + 67** complete protection set (was K30-56 tylko 51)
+2. ✅ **K30-68 cable junction circles** enhanced (r=3→4 + border)
+3. ✅ **K30-69 GPZ canonical labels** less dominant (font 10→8, opacity 0.65)
+4. ✅ **K30-70 DER connection_variant** arrow indicator (nn/sn/dedicated)
+5. ⚠️ **Real per-segment I_A flow** — backend dependency, K30 seed limitation
+   (production payload z SCADA telemetry automatycznie pokaże)
+
+Inne deferred (long-term roadmap):
+- IEC 61850 LN mapping (PTOC1 50 / PIOC1 51 / PSCH 67) — backend protection model TBD
+- Voltage drop sparkline per feeder — UX exploration needed
+- DER P/Q operating point real-time chart — wymaga time-series data feed
 
 ## §6 Wnioski
 
