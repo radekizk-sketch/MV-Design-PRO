@@ -5,7 +5,7 @@
  * w kanonicznym shellu (ekran E-01 "Główne środowisko pracy SLD").
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   computeBoundingBox,
@@ -249,6 +249,36 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   // Wynik feedowany do StationOnRunRenderer (voltageDeviationPct) i
   // CableRunRenderer (loadingPct) jako data-driven projekcje K30-44/K30-45.
   const lfDerived = computeLfDerivedMetrics(overlayPayload, props.stations, props.cableRuns);
+
+  // K30-76: PathHighlighter — gdy selectedId jest stacją, znajdź run zawierający
+  // tę stację i highlight całego toru mocy (cable run = path z GPZ).
+  // Zbioru runIds zostają renderowane jak selected (visual highlight).
+  const pathHighlightRunIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (!selectedId) return ids;
+    // Selected element może być stationId lub cableRunId
+    for (const run of props.cableRuns) {
+      const containsStation = run.segmentRefs?.some((segRef) => {
+        // Segment ref pattern: seg/{hash}/branch_segment lub similar
+        // Heurystyka: check whether segRef path contains selectedId fragment
+        return segRef.includes(selectedId.split('/')[1] ?? '___no_match___');
+      });
+      if (containsStation) ids.add(run.id);
+    }
+    // Also if selectedId is station, find runs whose segmentRefs map to its bus
+    const selectedStation = props.stations.find((s) => s.id === selectedId);
+    if (selectedStation) {
+      const stationHash = selectedStation.id.split('/')[1];
+      if (stationHash) {
+        for (const run of props.cableRuns) {
+          if (run.segmentRefs?.some((r) => r.includes(stationHash))) {
+            ids.add(run.id);
+          }
+        }
+      }
+    }
+    return ids;
+  }, [selectedId, props.cableRuns, props.stations]);
 
   // K30-50: derive SC projection — jeśli explicit shortCircuitProjection nie
   // podano, auto-build z payload SC results. Bus pozycje pochodzą z station
@@ -674,7 +704,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                 <CableRunRenderer
                   {...run}
                   stationPortGaps={buildStationPortGapsForRun(run, stations, lod)}
-                  selected={selectedId === run.id}
+                  selected={selectedId === run.id || pathHighlightRunIds.has(run.id)}
                   loadingPct={lfDerived.cableLoadingPctByRunId.get(run.id) ?? null}
                   onClick={onSelectElement ? (id) => onSelectElement(id, 'cable_run') : undefined}
                 />
