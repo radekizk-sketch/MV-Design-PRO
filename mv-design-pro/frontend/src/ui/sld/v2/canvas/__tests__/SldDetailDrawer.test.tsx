@@ -347,4 +347,35 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     expect(container.querySelector('[data-testid="drawer-bay-apparatus-empty"]')).toBeTruthy();
     cleanup();
   });
+
+  it('K30-85: DER "Moc" tab renders nominal power input + presets per kind', () => {
+    const data: SldDetailDrawerData = { kind: 'der', elementId: 'pv-1', label: 'PV-1', derKind: 'PV' };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-moc"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-der-power"]')).toBeTruthy();
+    const input = container.querySelector('[data-testid="drawer-der-power-input"]') as HTMLInputElement;
+    expect(input.defaultValue).toBe('100');
+    expect(container.querySelector('[data-testid="drawer-der-power-preset-500"]')).toBeTruthy();
+    cleanup();
+  });
+
+  it('K30-85: DER "Moc" BESS presets różnią się (50-1000 kW)', () => {
+    const data: SldDetailDrawerData = { kind: 'der', elementId: 'b-1', label: 'BESS-1', derKind: 'BESS' };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-moc"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-der-power-preset-1000"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="drawer-der-power-preset-2000"]')).toBeFalsy();
+    cleanup();
+  });
+
+  it('K30-85: DER "Protection" tab renders 6 ANSI codes (27/59/81U/81O/78/32R)', () => {
+    const data: SldDetailDrawerData = { kind: 'der', elementId: 'pv-1', label: 'PV-1' };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-protection"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-der-protection"]')).toBeTruthy();
+    for (const code of ['27', '59', '81U', '81O', '78', '32R']) {
+      expect(container.querySelector(`[data-testid="drawer-der-protection-${code}"]`)).toBeTruthy();
+    }
+    cleanup();
+  });
 });

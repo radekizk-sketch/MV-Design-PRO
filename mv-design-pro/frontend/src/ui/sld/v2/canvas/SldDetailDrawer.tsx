@@ -436,6 +436,58 @@ function PlaceholderTabBody({
       </div>
     );
   }
+  if (kind === 'der' && tab === 'moc') {
+    const presets = derKind === 'BESS'
+      ? [50, 100, 250, 500, 1000]
+      : derKind === 'FW'
+      ? [2000, 3000, 5000, 8000, 10000]
+      : [10, 50, 100, 250, 500];
+    return (
+      <div data-testid="drawer-der-power">
+        <label style={{ display: 'block', marginBottom: 6, color: '#7E8790', fontSize: 10, fontWeight: 700 }}>
+          Moc znamionowa [kW]
+        </label>
+        <input
+          type="number"
+          min={0}
+          step={10}
+          defaultValue={derKind === 'BESS' ? 200 : derKind === 'FW' ? 3000 : 100}
+          data-testid="drawer-der-power-input"
+          style={{
+            background: '#171B20',
+            color: '#FFD166',
+            border: '1px solid #5A6878',
+            padding: 6,
+            borderRadius: 3,
+            width: '100%',
+            fontSize: 12,
+            fontFamily: 'monospace',
+            fontWeight: 700,
+          }}
+        />
+        <div style={{ marginTop: 8, fontSize: 9, color: '#7E8790' }}>Typowe rozmiary {derKind ?? 'DER'}:</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+          {presets.map((kw) => (
+            <span
+              key={kw}
+              data-testid={`drawer-der-power-preset-${kw}`}
+              style={{
+                background: '#171B20',
+                color: '#88BBDD',
+                border: '1px solid #5A6878',
+                padding: '2px 6px',
+                borderRadius: 2,
+                fontSize: 10,
+                fontFamily: 'monospace',
+              }}
+            >
+              {kw} kW
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
   if (kind === 'der' && tab === 'punkt') {
     const variantDefault = derConnectionVariant ?? 'nn_side';
     return (
@@ -459,6 +511,47 @@ function PlaceholderTabBody({
             </label>
           ))}
         </div>
+      </div>
+    );
+  }
+  if (kind === 'der' && tab === 'protection') {
+    return (
+      <div data-testid="drawer-der-protection">
+        <div style={{ fontSize: 10, color: '#7E8790', marginBottom: 6, fontWeight: 700 }}>
+          Funkcje zabezpieczeniowe DER (PN-EN 50549-2 / IEC 60255)
+        </div>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {[
+            { code: '27', name: 'Podnapięciowe (U<)', defaultEnabled: true, setpoint: '0.85 Un' },
+            { code: '59', name: 'Nadnapięciowe (U>)', defaultEnabled: true, setpoint: '1.15 Un' },
+            { code: '81U', name: 'Podczęstotliwościowe (f<)', defaultEnabled: true, setpoint: '47.5 Hz' },
+            { code: '81O', name: 'Nadczęstotliwościowe (f>)', defaultEnabled: true, setpoint: '51.5 Hz' },
+            { code: '78', name: 'Anti-islanding (ROCOF/ROCOPP)', defaultEnabled: true, setpoint: '1 Hz/s' },
+            { code: '32R', name: 'Zwrotno-mocowe (P_rev)', defaultEnabled: false, setpoint: '-5% Sn' },
+          ].map((p) => (
+            <li
+              key={p.code}
+              data-testid={`drawer-der-protection-${p.code}`}
+              style={{
+                background: '#171B20',
+                border: '1px solid #2A3441',
+                borderRadius: 3,
+                padding: '5px 8px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontSize: 10,
+              }}
+            >
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#DDF7FF', cursor: 'pointer' }}>
+                <input type="checkbox" defaultChecked={p.defaultEnabled} />
+                <span style={{ color: '#FFD166', fontFamily: 'monospace', fontWeight: 700 }}>[{p.code}]</span>
+                <span>{p.name}</span>
+              </label>
+              <span style={{ color: '#88BBDD', fontFamily: 'monospace' }}>{p.setpoint}</span>
+            </li>
+          ))}
+        </ul>
       </div>
     );
   }
