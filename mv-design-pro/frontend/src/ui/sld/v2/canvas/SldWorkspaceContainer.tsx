@@ -25,6 +25,7 @@ import {
 import { useAppStateStore } from '../../../app-state';
 import { LayerTogglePanel } from '../lod/LayerTogglePanel';
 import { SldDetailDrawer, type SldDetailDrawerData } from './SldDetailDrawer';
+import { useDerDragDrop, DerPaletteButton, type DerDragKind } from './useDerDragDrop';
 import {
   createInitialLayerState,
   toggleLayer,
@@ -598,6 +599,8 @@ export function SldWorkspaceContainer(
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // K30-72: detail drawer state (SldDetailDrawer K30-71)
   const [detailDrawerData, setDetailDrawerData] = useState<SldDetailDrawerData | null>(null);
+  // K30-78: DER drag-drop palette → station → drawer DER tab pre-filled.
+  const derDrag = useDerDragDrop();
   const [viewportTransform, setViewportTransform] = useState<ViewportTransform>(IDENTITY_TRANSFORM);
   // Iteracja 12: lasso multi-select state.
   const [lassoRect, setLassoRect] = useState<LassoRect | null>(null);
@@ -775,6 +778,28 @@ export function SldWorkspaceContainer(
       return;
     }
 
+    // K30-78: intercept station click when DER drag active → drop+open DER tab.
+    if (kind === 'station' && derDrag.state) {
+      const dropResult = derDrag.dropOnStation(id);
+      if (dropResult) {
+        const stationForDrop = sldData.stations.find((s) => s.id === id);
+        setDetailDrawerData({
+          kind: 'der',
+          elementId: id,
+          label: stationForDrop?.stationCode
+            ?? stationForDrop?.name
+            ?? id.split('/').pop()
+            ?? id,
+          voltageKv: stationForDrop?.busVoltageKv ?? null,
+          stationCode: stationForDrop?.stationCode ?? null,
+          accentColor: dropResult.kind === 'PV' ? '#FFD166' : dropResult.kind === 'BESS' ? '#7DD3FC' : '#7EE0B5',
+          derKind: dropResult.kind,
+          derConnectionVariant: 'nn_side',
+        });
+        return;
+      }
+    }
+
     // K30-72: open SldDetailDrawer per element kind
     const drawerKind = mapKindToDrawerKind(kind);
     if (drawerKind) {
@@ -877,7 +902,7 @@ export function SldWorkspaceContainer(
 
     collapseSurfaceStackTo(null);
     selectElement(selected ?? { id, type: 'DescriptiveElement', name: id });
-  }, [collapseSurfaceStackTo, selectElement, snapshot, sldData]);
+  }, [collapseSurfaceStackTo, selectElement, snapshot, sldData, derDrag]);
 
   useEffect(() => {
     const root = containerRef.current;
@@ -1242,8 +1267,54 @@ export function SldWorkspaceContainer(
           setDetailDrawerData(null);
           setSelectedId(null);
           selectElement(null);
+          derDrag.cancel();
         }}
       />
+
+      {/* K30-78: DER palette toolbar — kliknij ikonę DER (PV/BESS/FW)
+          → następnie kliknij stację, by otworzyć drawer DER z pre-fillem. */}
+      <div
+        className="pointer-events-auto absolute top-3 z-20 flex items-center gap-1 rounded border border-scada-border bg-scada-panel/95 px-2 py-1 shadow-lg"
+        data-testid="sld-v2-der-palette"
+        style={{ left: '50%', transform: 'translateX(-50%)' }}
+      >
+        <span style={{ fontSize: 9, color: '#7E8790', marginRight: 4, fontWeight: 700, letterSpacing: 0.5 }}>
+          DODAJ DER:
+        </span>
+        {(['PV', 'BESS', 'FW'] as DerDragKind[]).map((kind) => (
+          <DerPaletteButton
+            key={kind}
+            kind={kind}
+            onStart={(k) => derDrag.startDrag(k)}
+            disabled={derDrag.state !== null && derDrag.state.kind !== kind}
+          />
+        ))}
+        {derDrag.state && (
+          <span
+            data-testid="sld-v2-der-palette-hint"
+            style={{ fontSize: 9, color: '#FFD166', marginLeft: 8, fontStyle: 'italic' }}
+          >
+            ▸ Kliknij stację, aby dodać {derDrag.state.kind}
+            <button
+              type="button"
+              onClick={derDrag.cancel}
+              data-testid="sld-v2-der-palette-cancel"
+              style={{
+                marginLeft: 6,
+                background: 'transparent',
+                border: '1px solid #5A6878',
+                color: '#DDF7FF',
+                borderRadius: 2,
+                padding: '1px 4px',
+                fontSize: 9,
+                cursor: 'pointer',
+              }}
+            >
+              Anuluj
+            </button>
+          </span>
+        )}
+      </div>
 
       {/* Iter 9 (SCADA blocker): floating LayerTogglePanel dock w prawym dolnym
           rogu canvasu. Toggle CTA otwiera/zamyka pełen panel 13 warstw.

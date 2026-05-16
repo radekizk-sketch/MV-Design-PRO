@@ -144,6 +144,44 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     cleanup();
   });
 
+  it('K30-78: DER typ tab respects derKind pre-fill (BESS)', () => {
+    const data: SldDetailDrawerData = {
+      kind: 'der', elementId: 'der-1', label: 'Stacja S-08',
+      derKind: 'BESS',
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    const select = container.querySelector('[data-testid="drawer-der-type-select"]') as HTMLSelectElement | null;
+    expect(select?.value).toBe('BESS');
+    cleanup();
+  });
+
+  it('K30-78: DER punkt tab pre-fills connection_variant=nn_side default', () => {
+    const data: SldDetailDrawerData = {
+      kind: 'der', elementId: 'der-1', label: 'Stacja S-08',
+      derKind: 'PV', derConnectionVariant: 'nn_side',
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-punkt"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-der-connection-variant"]')).toBeTruthy();
+    const nnRadio = container.querySelector('[data-testid="drawer-der-connection-nn_side"]') as HTMLInputElement;
+    const snRadio = container.querySelector('[data-testid="drawer-der-connection-sn_side"]') as HTMLInputElement;
+    expect(nnRadio.defaultChecked).toBe(true);
+    expect(snRadio.defaultChecked).toBe(false);
+    cleanup();
+  });
+
+  it('K30-78: DER punkt tab pre-fills connection_variant=sn_side when passed', () => {
+    const data: SldDetailDrawerData = {
+      kind: 'der', elementId: 'der-1', label: 'PV-1',
+      derKind: 'PV', derConnectionVariant: 'sn_side',
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-punkt"]') as Element);
+    const snRadio = container.querySelector('[data-testid="drawer-der-connection-sn_side"]') as HTMLInputElement;
+    expect(snRadio.defaultChecked).toBe(true);
+    cleanup();
+  });
+
   it('station tab "transformator" pokazuje vector group + rated kVA placeholders', () => {
     const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-transformator"]') as Element);

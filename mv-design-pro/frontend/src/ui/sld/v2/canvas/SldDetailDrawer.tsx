@@ -41,6 +41,10 @@ export interface SldDetailDrawerData {
   readonly stationCode?: string | null;
   /** Voltage tint stroke color (CSS color string). */
   readonly accentColor?: string;
+  /** K30-78: pre-filled DER kind when drawer opened via drag-drop. */
+  readonly derKind?: 'PV' | 'BESS' | 'FW';
+  /** K30-78: pre-filled connection variant when drawer opened via drag-drop. */
+  readonly derConnectionVariant?: 'nn_side' | 'sn_side' | 'dedicated';
 }
 
 export interface SldDetailDrawerProps {
@@ -237,7 +241,13 @@ function TabContent({ kind, tab, data }: TabContentProps): JSX.Element {
       <div style={{ color: '#7E8790', fontStyle: 'italic', marginBottom: 12 }}>
         Element: {data.elementId ?? '—'}
       </div>
-      <PlaceholderTabBody kind={kind} tab={tab} voltageKv={data.voltageKv ?? null} />
+      <PlaceholderTabBody
+        kind={kind}
+        tab={tab}
+        voltageKv={data.voltageKv ?? null}
+        derKind={data.derKind}
+        derConnectionVariant={data.derConnectionVariant}
+      />
     </div>
   );
 }
@@ -246,10 +256,14 @@ function PlaceholderTabBody({
   kind,
   tab,
   voltageKv,
+  derKind,
+  derConnectionVariant,
 }: {
   kind: SldDetailKind;
   tab: string;
   voltageKv: number | null;
+  derKind?: 'PV' | 'BESS' | 'FW';
+  derConnectionVariant?: 'nn_side' | 'sn_side' | 'dedicated';
 }): JSX.Element {
   // Tab-specific scaffolding — actual editor forms wired w K30-72+
   if (kind === 'station' && tab === 'transformator') {
@@ -274,7 +288,7 @@ function PlaceholderTabBody({
         <label style={{ display: 'block', marginBottom: 6, color: '#7E8790' }}>Typ DER</label>
         <select
           data-testid="drawer-der-type-select"
-          defaultValue="PV"
+          defaultValue={derKind ?? 'PV'}
           style={{
             background: '#171B20',
             color: '#DDF7FF',
@@ -289,6 +303,32 @@ function PlaceholderTabBody({
           <option value="BESS">BESS (magazyn energii)</option>
           <option value="FW">FW (farma wiatrowa)</option>
         </select>
+      </div>
+    );
+  }
+  if (kind === 'der' && tab === 'punkt') {
+    const variantDefault = derConnectionVariant ?? 'nn_side';
+    return (
+      <div data-testid="drawer-der-connection-variant">
+        <label style={{ display: 'block', marginBottom: 6, color: '#7E8790' }}>Punkt podłączenia</label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {[
+            { value: 'nn_side', label: 'Strona nN (po transformatorze SN/nN)' },
+            { value: 'sn_side', label: 'Strona SN (przez dedykowane pole)' },
+            { value: 'dedicated', label: 'Dedykowane przyłącze (osobna linia)' },
+          ].map((opt) => (
+            <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#DDF7FF' }}>
+              <input
+                type="radio"
+                name="der-connection-variant"
+                value={opt.value}
+                data-testid={`drawer-der-connection-${opt.value}`}
+                defaultChecked={opt.value === variantDefault}
+              />
+              {opt.label}
+            </label>
+          ))}
+        </div>
       </div>
     );
   }

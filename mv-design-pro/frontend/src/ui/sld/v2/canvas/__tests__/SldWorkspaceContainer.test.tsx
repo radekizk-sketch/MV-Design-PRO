@@ -543,4 +543,31 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
     render(<SldWorkspaceContainer width={800} height={600} splitPreviewState={null} />);
     expect(screen.queryByTestId('split-preview-panel')).not.toBeInTheDocument();
   });
+
+  it('K30-78: DER palette toolbar widoczny + 3 buttons PV/BESS/FW', () => {
+    render(<SldWorkspaceContainer width={800} height={600} />);
+    expect(screen.getByTestId('sld-v2-der-palette')).toBeInTheDocument();
+    expect(screen.getByTestId('der-palette-btn-PV')).toBeInTheDocument();
+    expect(screen.getByTestId('der-palette-btn-BESS')).toBeInTheDocument();
+    expect(screen.getByTestId('der-palette-btn-FW')).toBeInTheDocument();
+  });
+
+  it('K30-78: klik PV palette → hint widoczny + inne buttons disabled', () => {
+    render(<SldWorkspaceContainer width={800} height={600} />);
+    fireEvent.click(screen.getByTestId('der-palette-btn-PV'));
+    expect(screen.getByTestId('sld-v2-der-palette-hint')).toBeInTheDocument();
+    expect(screen.getByTestId('sld-v2-der-palette-hint').textContent).toContain('PV');
+    const bess = screen.getByTestId('der-palette-btn-BESS') as HTMLButtonElement;
+    const fw = screen.getByTestId('der-palette-btn-FW') as HTMLButtonElement;
+    expect(bess.disabled).toBe(true);
+    expect(fw.disabled).toBe(true);
+  });
+
+  it('K30-78: cancel button czyści drag state', () => {
+    render(<SldWorkspaceContainer width={800} height={600} />);
+    fireEvent.click(screen.getByTestId('der-palette-btn-BESS'));
+    expect(screen.getByTestId('sld-v2-der-palette-hint')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('sld-v2-der-palette-cancel'));
+    expect(screen.queryByTestId('sld-v2-der-palette-hint')).toBeNull();
+  });
 });
