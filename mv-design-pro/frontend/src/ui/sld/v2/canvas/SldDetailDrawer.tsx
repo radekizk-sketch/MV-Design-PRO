@@ -61,6 +61,16 @@ export interface SldDetailDrawerData {
     readonly bayNumber: string | null;
     readonly feederShortName: string | null;
   }>;
+  /** K30-81: nN side spec dla "Strona nN" tab. */
+  readonly nnSpec?: {
+    readonly busVoltageKv: number | null;
+    readonly loads: ReadonlyArray<{
+      readonly id: string;
+      readonly name: string | null;
+      readonly pKw: number | null;
+      readonly qKvar: number | null;
+    }>;
+  } | null;
 }
 
 export interface SldDetailDrawerProps {
@@ -265,6 +275,7 @@ function TabContent({ kind, tab, data }: TabContentProps): JSX.Element {
         derConnectionVariant={data.derConnectionVariant}
         transformerSpec={data.transformerSpec ?? null}
         baysSpec={data.baysSpec}
+        nnSpec={data.nnSpec ?? null}
       />
     </div>
   );
@@ -278,6 +289,7 @@ function PlaceholderTabBody({
   derConnectionVariant,
   transformerSpec,
   baysSpec,
+  nnSpec,
 }: {
   kind: SldDetailKind;
   tab: string;
@@ -298,6 +310,15 @@ function PlaceholderTabBody({
     readonly bayNumber: string | null;
     readonly feederShortName: string | null;
   }>;
+  nnSpec?: {
+    readonly busVoltageKv: number | null;
+    readonly loads: ReadonlyArray<{
+      readonly id: string;
+      readonly name: string | null;
+      readonly pKw: number | null;
+      readonly qKvar: number | null;
+    }>;
+  } | null;
 }): JSX.Element {
   // Tab-specific scaffolding — actual editor forms wired w K30-72+
   if (kind === 'station' && tab === 'transformator') {
@@ -393,6 +414,56 @@ function PlaceholderTabBody({
         <div style={{ marginTop: 12, color: '#7E8790', fontSize: 10 }}>
           Grid code: PN-EN 50549 / IEEE 1547 / IEC 61400-21 (FW)
         </div>
+      </div>
+    );
+  }
+  if (kind === 'station' && tab === 'nn') {
+    return (
+      <div data-testid="drawer-nn-side">
+        <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px', marginBottom: 12 }}>
+          <dt style={{ color: '#7E8790' }}>Szyna nN U</dt>
+          <dd data-testid="drawer-nn-bus-voltage" style={{ color: '#FFD166', fontFamily: 'monospace' }}>
+            {nnSpec?.busVoltageKv != null ? `${nnSpec.busVoltageKv} kV` : '0.4 kV (default)'}
+          </dd>
+          <dt style={{ color: '#7E8790' }}>Liczba odpływów</dt>
+          <dd data-testid="drawer-nn-loads-count" style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
+            {nnSpec?.loads?.length ?? 0}
+          </dd>
+        </dl>
+        {nnSpec?.loads && nnSpec.loads.length > 0 ? (
+          <>
+            <div style={{ fontSize: 10, color: '#7E8790', marginBottom: 6, fontWeight: 700 }}>
+              Odpływy nN
+            </div>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {nnSpec.loads.map((load) => (
+                <li
+                  key={load.id}
+                  data-testid={`drawer-nn-load-${load.id}`}
+                  style={{
+                    background: '#171B20',
+                    border: '1px solid #2A3441',
+                    borderRadius: 3,
+                    padding: '6px 8px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: 10,
+                  }}
+                >
+                  <span style={{ color: '#DDF7FF' }}>{load.name ?? load.id}</span>
+                  <span style={{ color: '#88BBDD', fontFamily: 'monospace' }}>
+                    {load.pKw != null ? `${load.pKw.toFixed(1)} kW` : '—'}
+                    {load.qKvar != null ? ` / ${load.qKvar.toFixed(1)} kvar` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <div data-testid="drawer-nn-no-loads" style={{ color: '#7E8790', fontStyle: 'italic', fontSize: 10 }}>
+            Brak zdefiniowanych odpływów nN.
+          </div>
+        )}
       </div>
     );
   }

@@ -241,4 +241,36 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     expect(container.querySelector('[data-testid="drawer-rozdzielnica-empty"]')).toBeTruthy();
     cleanup();
   });
+
+  it('K30-81: nN tab renders bus voltage + loads list z nnSpec', () => {
+    const data: SldDetailDrawerData = {
+      ...STATION_DATA,
+      nnSpec: {
+        busVoltageKv: 0.4,
+        loads: [
+          { id: 'load-1', name: 'Odbiór mieszkalny', pKw: 25.5, qKvar: 8.2 },
+          { id: 'load-2', name: 'Odbiór przemysłowy', pKw: 120, qKvar: 40 },
+        ],
+      },
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-nn"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-nn-side"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="drawer-nn-bus-voltage"]')?.textContent).toBe('0.4 kV');
+    expect(container.querySelector('[data-testid="drawer-nn-loads-count"]')?.textContent).toBe('2');
+    expect(container.querySelector('[data-testid="drawer-nn-load-load-1"]')?.textContent).toContain('25.5 kW');
+    cleanup();
+  });
+
+  it('K30-81: nN tab "Brak odpływów" gdy loads puste', () => {
+    const data: SldDetailDrawerData = {
+      ...STATION_DATA,
+      nnSpec: { busVoltageKv: 0.4, loads: [] },
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-nn"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-nn-no-loads"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="drawer-nn-loads-count"]')?.textContent).toBe('0');
+    cleanup();
+  });
 });

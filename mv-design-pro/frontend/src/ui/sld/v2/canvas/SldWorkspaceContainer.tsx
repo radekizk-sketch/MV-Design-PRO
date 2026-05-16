@@ -809,6 +809,8 @@ export function SldWorkspaceContainer(
       let transformerSpec: SldDetailDrawerData['transformerSpec'] = null;
       // K30-80: bay list dla rozdzielnica tab
       let baysSpec: SldDetailDrawerData['baysSpec'] = undefined;
+      // K30-81: nN side spec (LV bus + loads)
+      let nnSpec: SldDetailDrawerData['nnSpec'] = null;
       if (drawerKind === 'station' && snapshot) {
         const substation = findSubstationByRef(snapshot, id);
         const transformers = selectStationTransformers(snapshot, substation ?? null);
@@ -830,6 +832,23 @@ export function SldWorkspaceContainer(
           bayNumber: b.bay_number ?? null,
           feederShortName: b.feeder_short_name ?? null,
         }));
+        // K30-81: find LV bus + loads na nim
+        const lvBusRef = tr?.lv_bus_ref ?? null;
+        const lvBus = lvBusRef
+          ? (snapshot.buses ?? []).find((b) => b.ref_id === lvBusRef || b.id === lvBusRef)
+          : null;
+        const loadsOnLv = lvBusRef
+          ? (snapshot.loads ?? []).filter((l) => l.bus_ref === lvBusRef)
+          : [];
+        nnSpec = {
+          busVoltageKv: lvBus?.voltage_kv ?? tr?.ulv_kv ?? null,
+          loads: loadsOnLv.map((l) => ({
+            id: l.ref_id ?? l.id,
+            name: l.name ?? null,
+            pKw: typeof l.p_mw === 'number' ? l.p_mw * 1000 : null,
+            qKvar: typeof l.q_mvar === 'number' ? l.q_mvar * 1000 : null,
+          })),
+        };
       }
       setDetailDrawerData({
         kind: drawerKind,
@@ -843,6 +862,7 @@ export function SldWorkspaceContainer(
         accentColor: '#7EC8FF',
         transformerSpec,
         baysSpec,
+        nnSpec,
       });
     }
 
