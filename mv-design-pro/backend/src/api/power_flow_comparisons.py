@@ -22,6 +22,9 @@ CANONICAL ALIGNMENT:
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 from typing import Any
 
 from api.dependencies import get_uow_factory
@@ -222,7 +225,7 @@ P20c: Porownuje dwa PowerFlowRun i generuje deterministyczny ranking problemow.
 )
 def create_power_flow_comparison(
     request: CreatePowerFlowComparisonRequest,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Create a power flow comparison between two runs.
@@ -278,7 +281,7 @@ def create_power_flow_comparison(
 )
 def get_power_flow_comparison(
     comparison_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Get power flow comparison metadata.
@@ -314,7 +317,7 @@ def get_power_flow_comparison(
 )
 def get_power_flow_comparison_results(
     comparison_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Get full power flow comparison results.
@@ -341,7 +344,7 @@ def get_power_flow_comparison_results(
 )
 def get_power_flow_comparison_trace(
     comparison_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Get power flow comparison trace for audit.
@@ -373,7 +376,7 @@ def get_power_flow_comparison_trace(
 )
 def export_power_flow_comparison_json(
     comparison_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ):
     """P20d: Export power flow comparison to JSON file."""
     import json
@@ -415,7 +418,7 @@ def export_power_flow_comparison_json(
 )
 def export_power_flow_comparison_docx(
     comparison_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ):
     """P20d: Export power flow comparison to DOCX file."""
     import io
@@ -544,7 +547,7 @@ def export_power_flow_comparison_docx(
 )
 def export_power_flow_comparison_pdf(
     comparison_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ):
     """P20d: Export power flow comparison to PDF file."""
     import io

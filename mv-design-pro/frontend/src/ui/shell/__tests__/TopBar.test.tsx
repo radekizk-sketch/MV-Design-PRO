@@ -120,6 +120,11 @@ describe('TopBar - compact V12 chrome', () => {
   });
 
   it('Nakładka switches to result overlay mode and opens results', () => {
+    // Iter 8 (per Whitebox audit): topbar disabled przy pustym ENM.
+    // Snapshot z buses[] wymagany przed klikiem Nakładka/Analizy/Eksport.
+    act(() => {
+      useSnapshotStore.setState({ snapshot: makeCalculationReadySnapshot() });
+    });
     const onViewResults = vi.fn();
     render(<TopBar projectName="Test" onViewResults={onViewResults} />);
 
@@ -132,6 +137,9 @@ describe('TopBar - compact V12 chrome', () => {
   });
 
   it('Analizy opens the results/analysis surface', () => {
+    act(() => {
+      useSnapshotStore.setState({ snapshot: makeCalculationReadySnapshot() });
+    });
     const onViewResults = vi.fn();
     render(<TopBar projectName="Test" onViewResults={onViewResults} />);
 
@@ -141,5 +149,22 @@ describe('TopBar - compact V12 chrome', () => {
 
     expect(useAppStateStore.getState().activeWorkMode).toBe('TA');
     expect(onViewResults).toHaveBeenCalledOnce();
+  });
+
+  it('Nakładka/Analizy/Eksport są disabled gdy snapshot pusty (Iter 8 dead-clicks fix)', () => {
+    // Iter 8 audit Whitebox: dead clicks przy pustym ENM zlikwidowane.
+    act(() => {
+      useSnapshotStore.getState().reset();
+    });
+    const onViewResults = vi.fn();
+    render(<TopBar projectName="Test" onViewResults={onViewResults} />);
+
+    expect(screen.getByTestId('top-bar-overlay')).toBeDisabled();
+    expect(screen.getByTestId('top-bar-results')).toBeDisabled();
+    expect(screen.getByTestId('top-bar-export')).toBeDisabled();
+    expect(screen.getByTestId('top-bar-overlay')).toHaveAttribute(
+      'title',
+      'Wymaga modelu sieci (dodaj GPZ)',
+    );
   });
 });

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 from typing import Any
 
 from api.dependencies import get_uow_factory
@@ -17,7 +20,7 @@ def _build_service(uow_factory: Any) -> SnapshotService:
 @router.get("/snapshots/{snapshot_id}")
 def get_snapshot(
     snapshot_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     service = _build_service(uow_factory)
     try:
@@ -31,7 +34,7 @@ def get_snapshot(
 def submit_snapshot_action(
     snapshot_id: str,
     payload: dict[str, Any],
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     service = _build_service(uow_factory)
     try:
@@ -48,7 +51,7 @@ def submit_snapshot_action(
 def submit_snapshot_action_batch(
     snapshot_id: str,
     payload: dict[str, Any],
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     actions = payload.get("actions")
     if not isinstance(actions, list):

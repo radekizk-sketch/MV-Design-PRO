@@ -232,20 +232,23 @@ MV-Design-PRO/
 
 ## Document Hierarchy (BINDING)
 
-Authority order (highest first):
+Authority order (highest first). Updated 2026-05-13 per conflict resolution V12K-001 (see `mv-design-pro/docs/v12xx/REJESTR_KONFLIKTOW.md`):
 
 | Priority | Document | Purpose |
 |----------|----------|---------|
-| 1 | `mv-design-pro/docs/spec/` (18 chapters + supplements) | **Detailed specification** - SOURCE OF TRUTH |
-| 2 | `mv-design-pro/docs/spec/AUDIT_SPEC_VS_CODE.md` | Spec-vs-code gap analysis + decision matrix |
-| 3 | `mv-design-pro/SYSTEM_SPEC.md` | Executive overview + navigation hub (v4.0) |
-| 4 | `mv-design-pro/ARCHITECTURE.md` | Technical architecture reference (v4.0) |
-| 5 | `mv-design-pro/AGENTS.md` | Agent governance rules (v4.0) |
-| 6 | `mv-design-pro/POWERFACTORY_COMPLIANCE.md` | PowerFactory alignment checklist (v3.0) |
-| 7 | `mv-design-pro/PLANS.md` | Operational status & next steps (LIVING, v5.0) |
-| 8 | `docs/INDEX.md` | UI contracts index |
+| 1 | `mv-design-pro/docs/v12xx/KANON_V12_XX.md` + registries/matrices | **V12.xx canon — SOURCE OF TRUTH** (frozen 2026-04-24) |
+| 2 | `mv-design-pro/docs/system/SPEC_*.md` (6 binding specs) | V12.5 binding system specs (catalog/model/operations/readiness/results/types) |
+| 3 | `mv-design-pro/docs/domain/*.md` + `docs/sld/SLD_CONTRACT_FLOW_V1.md` + `SLD_SEMANTIC_MODEL_CANONICAL_V1.md` | Active operational & semantic contracts |
+| 4 | `mv-design-pro/SYSTEM_SPEC.md` | Executive overview + navigation hub |
+| 5 | `mv-design-pro/ARCHITECTURE.md` | Technical architecture reference |
+| 6 | `mv-design-pro/AGENTS.md` | Agent governance rules |
+| 7 | `mv-design-pro/POWERFACTORY_COMPLIANCE.md` | PowerFactory alignment checklist |
+| 8 | `mv-design-pro/PLANS.md` | Operational status & next steps (LIVING) |
+| 9 | `mv-design-pro/docs/INDEX.md` + `INDEX_KANONICZNY.md` | Active canon indexes |
+| 10 | `mv-design-pro/docs/spec/SPEC_CHAPTER_*.md` (18 chapters) | ARCHIVAL — V11 reference for spec-vs-code audit. All 28 files marked "Historical note (V12.5)". |
+| 11 | `mv-design-pro/docs/audit/archive/` + `historical_execplans/` | ARCHIVE (closed audits, ExecPlans) |
 
-In case of conflict: `docs/spec/` wins. Always consult before making architectural changes.
+In case of conflict: higher priority wins. Conflicts must be recorded in `docs/v12xx/REJESTR_KONFLIKTOW.md`. The latest canon documents (DOC_INVENTORY_2026-05, AUDYT_BRAKI_2026-05, PLAN_E2E_INDUSTRIAL_2026-05, SLD_INDUSTRIAL_SPEC_v1) live under `mv-design-pro/docs/audit/` and `mv-design-pro/docs/plan/` and `mv-design-pro/docs/sld/`.
 
 ## Architecture Layer Boundaries (CRITICAL)
 

@@ -27,6 +27,16 @@ from application.analyses.protection.catalog.vendors.elektrometal_etango_v0 impo
 from application.analyses.protection.catalog.vendors.elektrometal_etango_v0 import (
     build_adapter as build_elektrometal_adapter,
 )
+from application.analyses.protection.catalog.vendors.generic_v1 import (
+    build_elester_adapter,
+    build_energotest_adapter,
+    build_ge_adapter,
+    build_schneider_adapter,
+    build_sel_adapter,
+    build_siemens_adapter,
+    build_ziad_adapter,
+    build_zpas_adapter,
+)
 from application.analyses.run_envelope import AnalysisRunEnvelope
 from application.analyses.run_index import index_run
 from infrastructure.persistence.unit_of_work import UnitOfWork
@@ -233,10 +243,28 @@ def _build_trace_inline(
 
 
 def _resolve_vendor_adapter(vendor: str) -> VendorAdapter | None:
+    # K30-16: rozszerzona rodzina vendor-adapterów po expansion catalogów
+    # (E2Tango full + SIPROTEC + Relion + Easergy + SEL + GE Multilin + Polish).
     if vendor == ABB_VENDOR:
         return build_abb_adapter()
     if vendor == ELEKTROMETAL_VENDOR:
         return build_elektrometal_adapter()
+    if vendor == "SIEMENS":
+        return build_siemens_adapter()
+    if vendor == "SCHNEIDER":
+        return build_schneider_adapter()
+    if vendor == "SEL":
+        return build_sel_adapter()
+    if vendor == "GE":
+        return build_ge_adapter()
+    if vendor == "ZPAS":
+        return build_zpas_adapter()
+    if vendor == "ELESTER":
+        return build_elester_adapter()
+    if vendor == "ENERGOTEST":
+        return build_energotest_adapter()
+    if vendor == "ZIAD":
+        return build_ziad_adapter()
     return None
 
 

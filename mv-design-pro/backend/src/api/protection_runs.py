@@ -13,6 +13,9 @@ Endpoints:
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 from typing import Any
 from uuid import UUID
 
@@ -99,7 +102,7 @@ def _build_service(uow_factory: Any) -> ProtectionAnalysisService:
 def create_protection_run(
     project_id: UUID,
     request: CreateProtectionRunRequest,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Create a new protection analysis run.
@@ -141,7 +144,7 @@ def create_protection_run(
 )
 def execute_protection_run(
     run_id: UUID,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Execute a protection analysis run.
@@ -172,7 +175,7 @@ def execute_protection_run(
 )
 def get_protection_run(
     run_id: UUID,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Get protection run metadata.
@@ -197,7 +200,7 @@ def get_protection_run(
 )
 def get_protection_run_results(
     run_id: UUID,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Get protection analysis results.
@@ -247,7 +250,7 @@ def get_protection_run_results(
 )
 def get_protection_run_trace(
     run_id: UUID,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Get protection analysis trace.
@@ -302,7 +305,7 @@ def get_protection_sld_overlay(
     project_id: UUID,
     diagram_id: UUID,
     run_id: UUID = Query(..., description="Protection run ID for overlay"),
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     P15c: Get SLD overlay for protection analysis results.

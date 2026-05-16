@@ -18,11 +18,13 @@ Eksporty:
 - proof.json (kanoniczny, deterministyczny)
 - proof.tex (LaTeX-only, $$...$$)
 - proof.pdf (jesli pipeline istnieje)
+- proof.docx (polski raport edytowalny, light_technical theme — V12K-007)
 """
 
 from application.proof_engine.proof_inspector.exporters import (
     ExportResult,
     InspectorExporter,
+    export_to_docx,
     export_to_json,
     export_to_pdf,
     export_to_tex,
@@ -63,6 +65,7 @@ __all__ = [
     # Exporters
     "ExportResult",
     "InspectorExporter",
+    "export_to_docx",
     "export_to_json",
     "export_to_pdf",
     "export_to_tex",

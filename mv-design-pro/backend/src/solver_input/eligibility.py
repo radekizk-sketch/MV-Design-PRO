@@ -14,6 +14,7 @@ from network_model.catalog.repository import CatalogRepository
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import NodeType
+from network_model.core.switch import SwitchType
 from solver_input.contracts import (
     AnalysisEligibilityEntry,
     EligibilityMap,
@@ -166,14 +167,40 @@ def check_eligibility(
     blockers, warnings = _check_common_blockers(graph, catalog)
 
     if analysis_type == SolverAnalysisType.PROTECTION:
-        # Protection is stub in PR-12 — always ineligible
-        blockers.append(
-            SolverInputIssue(
-                code="SI-100",
-                severity=SolverInputIssueSeverity.BLOCKER,
-                message="Protection analysis solver-input not implemented (stub)",
+        # Protection analysis (overcurrent v1, IEC 60255 IDMT) consumes SC results
+        # read-only — see docs/analysis/PROTECTION_CONTRACTS.md.
+        #
+        # Eligibility prerequisites (NetworkGraph-level, no heuristics):
+        #   1. At least one BREAKER or RECLOSER apparatus exists in the graph
+        #      (something to protect with). Switches of type DISCONNECTOR /
+        #      LOAD_SWITCH / FUSE / EARTH_SWITCH do not interrupt fault current
+        #      and therefore do not count as protected apparatus for overcurrent
+        #      analysis.
+        #   2. SLACK (grid supply) node exists — already enforced by E-D01 in
+        #      _check_common_blockers above.
+        #
+        # Per-assignment validation (relay settings, CT/VT bindings, curve
+        # parameters) is performed at run-time by protection_engine_v1, not at
+        # eligibility gating — because eligibility runs before catalog binding /
+        # materialization for the protection device tree (ProtectionAssignment
+        # lives in ENM, not in NetworkGraph).
+        protectable_apparatus = [
+            switch
+            for switch in graph.switches.values()
+            if switch.switch_type in (SwitchType.BREAKER, SwitchType.RECLOSER)
+        ]
+        if not protectable_apparatus:
+            blockers.append(
+                SolverInputIssue(
+                    code="SI-100",
+                    severity=SolverInputIssueSeverity.BLOCKER,
+                    message=(
+                        "Protection analysis requires at least one BREAKER or "
+                        "RECLOSER apparatus in the network (no protectable "
+                        "switching device found)"
+                    ),
+                )
             )
-        )
 
     # Sort issues deterministically
     blockers.sort(key=lambda i: (i.code, i.element_ref or "", i.message))

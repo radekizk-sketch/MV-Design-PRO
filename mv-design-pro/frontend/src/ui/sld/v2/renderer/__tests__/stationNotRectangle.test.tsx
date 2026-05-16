@@ -53,11 +53,11 @@ describe('Mini-RMU: station NOT rectangle (PR 3 minimal guard)', () => {
     expect(rmu).not.toBeNull();
 
     // 2. Znacznik strony SN obecny (oddzielona szyna, nie blob).
-    const snRow = container.querySelector('[data-testid="sld-v2-mini-rmu-sn-row"]');
+    const snRow = container.querySelector('[data-parity-key="station.mini.bus.sn"]');
     expect(snRow, `${footprintType}: brak sn-row`).not.toBeNull();
 
     // 3. ≥2 markery pól (bay markers) — kluczowy test "nie prostokąt".
-    const bayMarkers = container.querySelectorAll('[data-testid^="sld-v2-mini-rmu-bay-marker-"]');
+    const bayMarkers = container.querySelectorAll('[data-testid^="sld-v2-bay-column-sn-"]');
     expect(
       bayMarkers.length,
       `${footprintType}: tylko ${bayMarkers.length} mini-pole — stacja redukuje się do prostokąta`,
@@ -84,10 +84,12 @@ describe('Mini-RMU: station NOT rectangle (PR 3 minimal guard)', () => {
       </svg>,
     );
 
-    expect(container.querySelector('[data-testid="sld-v2-mini-rmu-sn-row"]')).not.toBeNull();
-    expect(container.querySelector('[data-testid="sld-v2-mini-rmu-lv-row"]')).not.toBeNull();
-    expect(container.querySelector('[data-testid="sld-v2-mini-rmu-tr-triangle"]')).not.toBeNull();
-    const bayMarkers = container.querySelectorAll('[data-testid^="sld-v2-mini-rmu-bay-marker-"]');
+    expect(container.querySelector('[data-parity-key="station.mini.bus.sn"]')).not.toBeNull();
+    // K30-31: LV bus + LV bay columns (replacing old 'lv-row' + 'tr-triangle')
+    expect(container.querySelector('[data-parity-key="station.mini.bus.lv"]')).not.toBeNull();
+    expect(container.querySelectorAll('[data-testid^="sld-v2-bay-column-lv-"]').length).toBeGreaterThanOrEqual(1);
+    expect(container.querySelectorAll('[data-testid^="sld-v2-mini-rmu-tr-bay-"]').length).toBeGreaterThanOrEqual(1);
+    const bayMarkers = container.querySelectorAll('[data-testid^="sld-v2-bay-column-sn-"]');
     expect(bayMarkers.length).toBeGreaterThanOrEqual(2);
   });
 

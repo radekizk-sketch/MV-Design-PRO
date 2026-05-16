@@ -1843,6 +1843,29 @@ def _build_converter_materialized_params(
             "e_kwh": materialized_params.get("usable_capacity_kwh"),
         }, None
 
+    # K30-15: FW (turbiny wiatrowe) — brak dedykowanego namespace materializacji
+    # (catalog jest w CONVERTER_WIND list, nie indexed przez get_wind_inverter_type).
+    # Inline lookup z mv_converter_catalog dla un_kv, pmax_mw bez namespace pipeline.
+    if technology == "FW":
+        from network_model.catalog.mv_converter_catalog import get_wind_types
+        wind_types = get_wind_types()
+        match = next((w for w in wind_types if w.get("id") == catalog_ref), None)
+        if match is None:
+            return {}, "catalog.fw_type_not_found"
+        params = match.get("params") or {}
+        if not params.get("un_kv"):
+            return {}, "catalog.materialization_incomplete"
+        return {
+            "catalog_item_id": catalog_ref,
+            "catalog_item_version": "2024.1",
+            "un_kv": float(params.get("un_kv")),
+            "pmax_mw": float(params.get("pmax_mw") or 0.0),
+            "sn_mva": float(params.get("sn_mva") or params.get("pmax_mw") or 0.0),
+            "qmin_mvar": params.get("qmin_mvar"),
+            "qmax_mvar": params.get("qmax_mvar"),
+            "control_mode": params.get("control_mode") or payload.get("control_mode"),
+        }, None
+
     return {
         "catalog_item_id": catalog_ref,
         "catalog_item_version": "2024.1",
@@ -2053,7 +2076,19 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             "converter.source_technology_missing",
         )
 
-    connection_variant = payload.get("connection_variant")
+    # V12K-023: Backwards-compatible aliases for FE-canonical variants.
+    # FE DerRenderer.connectionVariant deklaruje 5 wartosci:
+    #   - nn_side, block_transformer (kanoniczne, backend OK)
+    #   - LV_BEHIND_STATION_TRANSFORMER -> alias nn_side (PV za trafo stacji nN)
+    #   - SOURCE_CONNECTION_STATION -> alias block_transformer (stacja przylaczeniowa)
+    #   - DEDICATED_MV_CONNECTION -> alias block_transformer (dedicated MV via block tr)
+    _VARIANT_ALIASES = {
+        "LV_BEHIND_STATION_TRANSFORMER": "nn_side",
+        "SOURCE_CONNECTION_STATION": "block_transformer",
+        "DEDICATED_MV_CONNECTION": "block_transformer",
+    }
+    connection_variant_raw = payload.get("connection_variant")
+    connection_variant = _VARIANT_ALIASES.get(connection_variant_raw, connection_variant_raw)
     if not isinstance(connection_variant, str) or connection_variant not in {
         "nn_side",
         "block_transformer",
@@ -2063,14 +2098,52 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             "converter.connection_variant_missing",
         )
 
+    # K30-15: rozwiąż catalog_ref wcześniej — potrzebny dla block_transformer
+    # voltage matching (MV-side BESS/FW vs LV-side PV decision).
+    catalog_ref, catalog_error = _resolve_converter_catalog_ref(payload, technology)
+    if catalog_error or not catalog_ref:
+        return _error_response(
+            f"Źródło {technology} wymaga poprawnego powiązania z katalogiem.",
+            catalog_error or "catalog.ref_required",
+        )
+
     bus_nn_ref = payload.get("bus_nn_ref")
     blocking_transformer_ref = payload.get("blocking_transformer_ref")
     if connection_variant == "block_transformer":
+        # V12K-022: Auto-resolve block_transformer per station if not provided.
+        # Polityka:
+        #  1. Jezeli blocking_transformer_ref jawnie podany - musi istniec.
+        #  2. Jezeli pusty i station ma exactly 1 transformer SN/nN - uzyj go
+        #     jako block_transformer (typowy scenariusz: jedyny TR stacji = block tr).
+        #  3. Jezeli station ma multiple transformers - blad ambiguous.
         if not isinstance(blocking_transformer_ref, str) or not blocking_transformer_ref.strip():
-            return _error_response(
-                "Wariant block_transformer wymaga blocking_transformer_ref.",
-                "generator.block_transformer_missing",
-            )
+            # Try auto-resolve from station_ref
+            station_ref_for_auto = payload.get("station_ref")
+            if isinstance(station_ref_for_auto, str) and station_ref_for_auto.strip():
+                station_for_auto = _resolve_station_for_field_write(
+                    enm,
+                    station_ref=station_ref_for_auto.strip(),
+                    bus_ref=None,
+                )
+                if station_for_auto is not None:
+                    station_buses = set(station_for_auto.get("bus_refs") or [])
+                    station_transformers = [
+                        tr for tr in enm.get("transformers", [])
+                        if tr.get("hv_bus_ref") in station_buses
+                        or tr.get("lv_bus_ref") in station_buses
+                    ]
+                    if len(station_transformers) == 1:
+                        blocking_transformer_ref = station_transformers[0].get("ref_id")
+                    elif len(station_transformers) > 1:
+                        return _error_response(
+                            "Stacja zawiera wiele transformatorow — wymagany jawny blocking_transformer_ref.",
+                            "generator.block_transformer_ambiguous",
+                        )
+            if not isinstance(blocking_transformer_ref, str) or not blocking_transformer_ref.strip():
+                return _error_response(
+                    "Wariant block_transformer wymaga blocking_transformer_ref albo station_ref z dokladnie 1 transformatorem.",
+                    "generator.block_transformer_missing",
+                )
         transformer = next(
             (
                 item
@@ -2085,7 +2158,31 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
                 "generator.block_transformer_invalid",
             )
         if not isinstance(bus_nn_ref, str) or not bus_nn_ref.strip():
-            bus_nn_ref = transformer.get("lv_bus_ref")
+            # K30-15: dla block_transformer wybierz bus side po stronie przyłącza
+            # converter zgodnie z un_kv katalogu. MV-side converters (BESS/FW 15 kV)
+            # podłączane przez block transformer do MV grid → bus_nn_ref = HV side.
+            # LV-side converters (typowe 0.4 kV) → bus_nn_ref = LV side.
+            tr_hv_kv = _as_float(transformer.get("uhv_kv"))
+            tr_lv_kv = _as_float(transformer.get("ulv_kv"))
+            # Quick lookup converter un_kv z catalog without full materialization
+            converter_un_kv: float | None = None
+            try:
+                _tmp_mp, _err = _build_converter_materialized_params(
+                    technology=technology, payload=payload, catalog_ref=catalog_ref
+                )
+                if not _err:
+                    converter_un_kv = _as_float(_tmp_mp.get("un_kv"))
+            except Exception:
+                converter_un_kv = None
+            if (
+                converter_un_kv is not None
+                and tr_hv_kv is not None
+                and tr_lv_kv is not None
+                and abs(converter_un_kv - tr_hv_kv) < abs(converter_un_kv - tr_lv_kv)
+            ):
+                bus_nn_ref = transformer.get("hv_bus_ref")
+            else:
+                bus_nn_ref = transformer.get("lv_bus_ref")
     if not isinstance(bus_nn_ref, str) or not bus_nn_ref.strip():
         return _error_response(
             "Brak szyny nN dla źródła przekształtnikowego.", "converter.bus_missing"
@@ -2106,13 +2203,6 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         return _error_response(
             f"Źródło {technology} wymaga transformatora w ścieżce zasilania stacji.",
             f"{technology.lower()}.transformer_required",
-        )
-
-    catalog_ref, catalog_error = _resolve_converter_catalog_ref(payload, technology)
-    if catalog_error or not catalog_ref:
-        return _error_response(
-            f"Źródło {technology} wymaga poprawnego powiązania z katalogiem.",
-            catalog_error or "catalog.ref_required",
         )
 
     materialized_params, materialization_error = _build_converter_materialized_params(

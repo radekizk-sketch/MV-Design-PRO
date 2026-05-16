@@ -21,6 +21,9 @@ LAYER ALIGNMENT:
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 import hashlib
 import json
 import logging
@@ -414,7 +417,7 @@ def _trace_steps_for_record(record: dict[str, Any]) -> list[dict[str, Any]]:
 def create_short_circuit_run(
     case_id: str,
     request: ShortCircuitRunRequest,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Utwórz przebieg analizy zwarciowej powiazany z przypadkiem obliczeniowym.
 
@@ -458,7 +461,7 @@ def create_short_circuit_run(
 def create_loadflow_run(
     case_id: str,
     request: LoadFlowRunRequest,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Utwórz przebieg analizy rozplywu mocy powiazany z przypadkiem.
 
@@ -499,7 +502,7 @@ def create_loadflow_run(
 def create_protection_settings_run(
     case_id: str,
     request: ProtectionSettingsRunRequest,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Utwórz przebieg analizy nastaw zabezpieczen (koordynacja IRiESD).
 
@@ -549,7 +552,7 @@ def list_case_runs(
     ),
     limit: int = Query(default=50, ge=1, le=500, description="Limit wynikow"),
     offset: int = Query(default=0, ge=0, description="Przesuniecie"),
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Pobierz liste wszystkich przebiegow analizy powiazanych z przypadkiem.
 
@@ -596,7 +599,7 @@ def list_case_runs(
 )
 def get_run_detail(
     run_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Pobierz szczegolowe informacje o przebiegu analizy.
 
@@ -627,7 +630,7 @@ def get_run_detail(
 )
 def get_run_trace(
     run_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Pobierz slad obliczeniowy (WHITE BOX trace) przebiegu analizy.
 
@@ -675,7 +678,7 @@ def get_run_trace(
 )
 def get_run_proof_pack(
     run_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Pobierz metadane pakietu dowodowego (Proof Pack) przebiegu analizy.
 

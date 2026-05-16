@@ -28,9 +28,20 @@ export interface CableRunSegmentLabel {
   readonly y: number;
 }
 
+/**
+ * K30-33: hint o wariancie kabla SN (izolacja + materiał żyły).
+ * Renderer używa go do per-segment koloru/grubości — odróżnia EPR Al od
+ * XLPE Cu od papierowego, zgodnie z PN-HD 620 S2 / IEC 60502-2.
+ */
+export interface CableSegmentVariantHint {
+  readonly insulation: 'XLPE' | 'EPR' | 'PVC' | 'PAPER' | 'OVERHEAD' | 'UNKNOWN';
+  readonly conductor: 'Al' | 'Cu' | 'AlSt' | 'UNKNOWN';
+}
+
 export interface CableRunSegmentPath {
   readonly segmentRef: string;
   readonly pathPoints: ReadonlyArray<{ x: number; y: number }>;
+  readonly variant?: CableSegmentVariantHint;
 }
 
 export interface CableRunRendererProps {
@@ -51,6 +62,25 @@ export interface CableRunRendererProps {
   readonly stationPortGaps?: readonly CableRunStationPortGap[];
   readonly selected?: boolean;
   readonly onClick?: (id: string) => void;
+  /** LOD 0-1 → pokaż tylko główną etykietę, nie segmentLabels (AC-06 label declutter). */
+  readonly lod?: number;
+  /** K30-41: napięcie ciągu [kV] z `inferRunVoltageKv` w adapterze. Renderer
+   *  dobiera tint stroke (gdy brak per-segment variant rendering) zgodnie
+   *  z konwencją dyspozytorską OSD i rysuje voltage chip przy starcie ciągu. */
+  readonly voltageKv?: number | null;
+  /** K30-45: obciążenie kabla [%] względem ampacity (I_actual/I_max × 100).
+   *  Wynika z LF results (I) podzielonego przez catalog ampacity (I_max).
+   *  Renderer rysuje loading chip + opcjonalny overload red overlay:
+   *   - ≤ 60% → green chip
+   *   - 60-80% → amber chip
+   *   - 80-100% → orange chip
+   *   - > 100% → red chip + red dashed overlay (THERMAL OVERLOAD)
+   *  Brak → chip pomijany. */
+  readonly loadingPct?: number | null;
+  /** K30-105: ciąg pod napięciem per SupplyPath (z source). Renderer
+   *  rysuje strzałkę kierunku przepływu mocy (▷) na midpoincie segmentów
+   *  per IEC 60617. Default false → brak strzałek (neutral / unknown). */
+  readonly energized?: boolean;
 }
 
 export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | null {
@@ -68,7 +98,14 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     stationPortGaps = [],
     selected,
     onClick,
+    lod,
+    voltageKv,
+    loadingPct,
+    energized = false,
   } = props;
+  // AC-06: Na LOD 0-1 ukrywamy szczegółowe etykiety segmentów żeby uniknąć
+  // nakładania się etykiet. Główna etykieta (label) pozostaje widoczna.
+  const visibleSegmentLabels = lod !== undefined && lod < 2 ? [] : segmentLabels;
   if (pathPoints.length < 2) return null;
 
   const strokeWidth = runKind === 'branch'
@@ -86,22 +123,41 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
       : isOverhead
         ? '12 4'
         : undefined;
+  // K30-41: voltage-based default stroke (gdy brak per-segment variant).
+  // Variant rendering ma pierwszeństwo (K30-33 cable type identity). Tutaj
+  // tylko jako fallback dla uniform path.
+  const voltageBaseStroke = cableColorForVoltage(voltageKv ?? null);
   const strokeColor = missingEndpointPort
     ? '#FF6B6B'
     : selected
       ? '#35C7FF'
-      : COLOR_FIELD_TRUNK_ENERGIZED;
+      : voltageBaseStroke;
 
   const hitPath = pathPoints
     .map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`))
     .join(' ');
-  const visiblePaths = buildVisibleCablePaths(pathPoints, stationPortGaps);
-  const labelPoint = label && segmentLabels.length === 0
+  // K30-33: jeśli segmentPaths mają hint wariantu, renderujemy per-segment
+  // stroke odróżniający izolację/materiał. Fallback do uniform stroke
+  // gdy hint nie jest dostępny (backward-compat).
+  const variantSegments = segmentPaths.filter(
+    (sp): sp is CableRunSegmentPath & { variant: CableSegmentVariantHint } =>
+      sp.variant !== undefined,
+  );
+  const useVariantRendering = variantSegments.length > 0;
+  const visiblePaths = useVariantRendering
+    ? []
+    : buildVisibleCablePaths(pathPoints, stationPortGaps);
+  const labelPoint = label && visibleSegmentLabels.length === 0
     ? findLongestHorizontalSegmentMidpoint(pathPoints)
     : null;
   const terminalPoint = pathPoints[pathPoints.length - 1];
+  // K30-42: power flow direction arrow — kierunek z start → end pathPoints.
+  // Renderowane na najdłuższym horizontal segmencie w midpoincie. Pomaga
+  // operatorowi natychmiast zidentyfikować kierunek zasilania (upstream →
+  // downstream), kluczowe w dispatcher operations.
+  const flowArrow = computeFlowArrowMarker(pathPoints);
   const readableSegmentLabels = declutterSegmentLabels(
-    segmentLabels
+    visibleSegmentLabels
       .map((segmentLabel) => avoidStationLabelCollision(segmentLabel, stationPortGaps))
       .map((segmentLabel) => (
         pendingEndpoint && terminalPoint
@@ -169,6 +225,165 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           pointerEvents="none"
         />
       ))}
+      {useVariantRendering && variantSegments.map((segmentPath) => {
+        const variantStyle = cableVariantStyle(segmentPath.variant);
+        const segmentVisiblePaths = buildVisibleCablePaths(
+          segmentPath.pathPoints,
+          stationPortGaps,
+        );
+        const segStroke = missingEndpointPort
+          ? '#FF6B6B'
+          : selected
+            ? '#35C7FF'
+            : variantStyle.stroke;
+        const segDasharray = missingEndpointPort
+          ? '5 4'
+          : isDashed
+            ? STROKE_DASHED_RING_DASH_PX
+            : variantStyle.dasharray ?? (isOverhead ? '12 4' : undefined);
+        const segWidth = (selected ? strokeWidth + 1 : strokeWidth) + variantStyle.widthDelta;
+        return segmentVisiblePaths.map((vp, vpIdx) => (
+          <path
+            key={`${id}-variant-${segmentPath.segmentRef}-${vpIdx}`}
+            data-testid={`sld-v2-run-${id}-variant-${segmentPath.segmentRef}-${vpIdx}`}
+            data-cable-insulation={segmentPath.variant.insulation}
+            data-cable-conductor={segmentPath.variant.conductor}
+            d={vp}
+            fill="none"
+            stroke={segStroke}
+            strokeWidth={segWidth}
+            strokeDasharray={segDasharray}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            pointerEvents="none"
+          />
+        ));
+      })}
+      {/* IEC 60617-4 junction symbols — distinct dla:
+          - galvanic połączenie (terminal switchgear port): filled circle
+          - mufa kablowa pass-through (joint pomiędzy segmentami): hollow
+            circle z grubszą obwódką. K30-107: dispatcher OSD widzi
+            że stacja jest pośrednia (pass-through) vs końcowa. */}
+      {!missingEndpointPort && stationPortGaps.map((gap) => {
+        // Pass-through station has BOTH input + output ports → mufa (hollow).
+        // Terminal station has only input → switchgear connection (filled).
+        const isPassThrough = gap.outputX !== null;
+        const junctionKind = isPassThrough ? 'mufa' : 'galwaniczne';
+        const fillColor = isPassThrough ? '#0A0E14' : (selected ? '#35C7FF' : strokeColor);
+        const strokeWidthVal = isPassThrough ? 1.4 : 0.8;
+        return (
+          <g
+            key={`${id}-junction-${gap.stationId}`}
+            data-testid={`sld-v2-run-${id}-junction-${gap.stationId}`}
+            data-junction-kind={junctionKind}
+            pointerEvents="none"
+          >
+            <circle
+              cx={gap.inputX}
+              cy={gap.y}
+              r={4}
+              fill={fillColor}
+              stroke={isPassThrough ? (selected ? '#35C7FF' : strokeColor) : '#0A0E14'}
+              strokeWidth={strokeWidthVal}
+              pointerEvents="none"
+            />
+            {gap.outputX !== null && (
+              <circle
+                cx={gap.outputX}
+                cy={gap.y}
+                r={4}
+                fill={fillColor}
+                stroke={isPassThrough ? (selected ? '#35C7FF' : strokeColor) : '#0A0E14'}
+                strokeWidth={strokeWidthVal}
+                pointerEvents="none"
+              />
+            )}
+          </g>
+        );
+      })}
+      {/* K30-106: cable head termination (głowica kablowa) per IEC 60617-4 —
+          triangle ▲ na początku i końcu ciągu kablowego (segmentKind=cable_sn
+          only — overhead lines don't have terminations). Operator widzi
+          że kabel jest podłączony przez głowicę (nie zwykły mufa pass-through). */}
+      {segmentKind === 'cable_sn' && !missingEndpointPort && pathPoints.length >= 2 && (lod === undefined || lod >= 2) && (
+        <g data-testid={`sld-v2-run-${id}-cable-heads`} pointerEvents="none">
+          {[pathPoints[0], pathPoints[pathPoints.length - 1]].map((p, i) => (
+            <polygon
+              key={`${id}-head-${i}`}
+              points={`${p.x - 4},${p.y - 4} ${p.x + 4},${p.y - 4} ${p.x},${p.y + 4}`}
+              fill={strokeColor}
+              stroke="#0A0E14"
+              strokeWidth={0.6}
+              opacity={0.9}
+            />
+          ))}
+        </g>
+      )}
+      {/* K30-105: power flow direction arrows (▷) per IEC 60617 — pokazuje
+          operatorowi OSD kierunek przepływu mocy ze źródła do odbiorów.
+          Render: jedna strzałka na każdej parze sąsiednich pathPoints
+          przy LOD≥2 i energized=true. Strzałka skierowana zgodnie z
+          orientacją pathPoints (source → load). */}
+      {energized && (lod === undefined || lod >= 2) && !missingEndpointPort && pathPoints.length >= 2 && (
+        <g
+          data-testid={`sld-v2-run-${id}-direction-arrows`}
+          pointerEvents="none"
+        >
+          {pathPoints.slice(0, -1).map((p, i) => {
+            const next = pathPoints[i + 1];
+            const mx = (p.x + next.x) / 2;
+            const my = (p.y + next.y) / 2;
+            const dx = next.x - p.x;
+            const dy = next.y - p.y;
+            const segLen = Math.sqrt(dx * dx + dy * dy);
+            // Skip very short segments to avoid clutter
+            if (segLen < 20) return null;
+            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+            const arrowSize = 4;
+            return (
+              <g
+                key={`${id}-arrow-${i}`}
+                transform={`translate(${mx}, ${my}) rotate(${angle})`}
+              >
+                <polygon
+                  points={`${-arrowSize},${-arrowSize} ${arrowSize},0 ${-arrowSize},${arrowSize}`}
+                  fill={strokeColor}
+                  opacity={0.85}
+                />
+              </g>
+            );
+          })}
+        </g>
+      )}
+      {/* K30-7: ring/loop closure indicator — small circle z text przy endpoincie */}
+      {(runKind === 'ring' || runKind === 'loop') && !missingEndpointPort && (
+        <g
+          data-testid={`sld-v2-run-${id}-ring-indicator`}
+          data-run-kind={runKind}
+          pointerEvents="none"
+        >
+          <circle
+            cx={terminalPoint.x}
+            cy={terminalPoint.y - 22}
+            r={12}
+            fill="#0A0E14"
+            stroke="#FFD166"
+            strokeWidth={1.6}
+          />
+          <text
+            x={terminalPoint.x}
+            y={terminalPoint.y - 18}
+            textAnchor="middle"
+            fill="#FFD166"
+            fontFamily="sans-serif"
+            fontSize={9}
+            fontWeight={900}
+            letterSpacing={0.5}
+          >
+            {runKind === 'ring' ? 'RING' : 'LOOP'}
+          </text>
+        </g>
+      )}
       {missingEndpointPort && (
         <g
           data-testid={`sld-v2-run-${id}-missing-port-marker`}
@@ -211,6 +426,27 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           </text>
         </g>
       )}
+      {/* K30-53: IEC 60617 cable head triangle przy starcie trunk — anchor
+          visualny "głowica kabla". Industrial convention: kable wchodzą w pole
+          przez głowicę. Rysujemy tylko gdy main_trunk (nie branch) i brak
+          missingEndpointPort warning. */}
+      {!missingEndpointPort && runKind === 'main_trunk' && pathPoints.length > 0 && (
+        <g
+          data-testid={`sld-v2-run-${id}-cable-head`}
+          data-anchor="trunk-start"
+          pointerEvents="none"
+          transform={`translate(${pathPoints[0].x}, ${pathPoints[0].y})`}
+        >
+          {/* Triangle pointing UP (cable comes from below) — IEC 60617 cable head canonical */}
+          <polygon
+            points="0,-6 -5,4 5,4"
+            fill={selected ? '#35C7FF' : strokeColor}
+            stroke="#0A0E14"
+            strokeWidth={0.8}
+            opacity={0.95}
+          />
+        </g>
+      )}
       {label && labelPoint && (
         <text
           data-testid={`sld-v2-run-${id}-label`}
@@ -226,6 +462,106 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
         >
           {label}
         </text>
+      )}
+      {/* K30-41: voltage-class chip przy starcie ciągu — kwadracik w kolorze
+          klasy napięcia (WN/SN/nN) z tekstem "{kV} kV". Pomaga zidentyfikować
+          klasę napięcia ciągu niezależnie od per-segment variant rendering.
+          K30-51: LOD gate ≥2 (zoom-in) — przy zoom-out chip clutters trunk. */}
+      {voltageKv != null && voltageKv > 0 && (lod === undefined || lod >= 2) && (
+        <g
+          data-testid={`sld-v2-run-${id}-voltage-chip`}
+          data-voltage-kv={voltageKv}
+          pointerEvents="none"
+          transform={`translate(${pathPoints[0].x + 6}, ${pathPoints[0].y - 12})`}
+        >
+          <rect
+            x={0}
+            y={-7}
+            width={32}
+            height={13}
+            rx={2}
+            fill={voltageBaseStroke}
+            opacity={0.85}
+          />
+          <text
+            x={16}
+            y={3}
+            textAnchor="middle"
+            fill="#0A0E14"
+            fontFamily="sans-serif"
+            fontSize={9}
+            fontWeight={800}
+            letterSpacing={0.3}
+          >
+            {voltageKv >= 1
+              ? `${Math.round(voltageKv)} kV`
+              : `${(voltageKv * 1000).toFixed(0)} V`}
+          </text>
+        </g>
+      )}
+      {/* K30-45: cable loading chip near voltage chip — pokazuje % ampacity.
+          Pomijany gdy missingEndpointPort lub loadingPct nieobecne. */}
+      {loadingPct != null && Number.isFinite(loadingPct) && loadingPct > 0 && !missingEndpointPort && (lod === undefined || lod >= 2) && (() => {
+        const cls = classifyCableLoading(loadingPct);
+        const x0 = pathPoints[0].x + 44;
+        const y0 = pathPoints[0].y - 12;
+        return (
+          <g
+            data-testid={`sld-v2-run-${id}-loading-chip`}
+            data-loading-pct={loadingPct.toFixed(1)}
+            data-loading-class={cls.label}
+            pointerEvents="none"
+            transform={`translate(${x0}, ${y0})`}
+          >
+            <rect x={0} y={-7} width={42} height={13} rx={2} fill={cls.color} opacity={0.85} />
+            <text
+              x={21}
+              y={3}
+              textAnchor="middle"
+              fill="#0A0E14"
+              fontFamily="sans-serif"
+              fontSize={9}
+              fontWeight={800}
+            >
+              {`I ${loadingPct.toFixed(0)}%`}
+            </text>
+          </g>
+        );
+      })()}
+      {/* K30-45: cable overload overlay — gdy loadingPct > 100, narysuj dashed
+          red overlay nad cablem sygnalizujący THERMAL OVERLOAD. */}
+      {loadingPct != null && Number.isFinite(loadingPct) && loadingPct > 100 && !missingEndpointPort && !useVariantRendering && (
+        <path
+          data-testid={`sld-v2-run-${id}-overload-overlay`}
+          d={hitPath}
+          fill="none"
+          stroke="#FF333D"
+          strokeWidth={strokeWidth + 2}
+          strokeDasharray="4 4"
+          strokeLinecap="round"
+          opacity={0.5}
+          pointerEvents="none"
+        />
+      )}
+      {/* K30-42: power flow direction arrow at midpoint of longest horizontal
+          segment. Pomocne dla operatora — natychmiast widać direction
+          zasilania (upstream→downstream). Pomijamy gdy missingEndpointPort
+          (warning state) lub pendingEndpoint (incomplete connection). */}
+      {flowArrow && !missingEndpointPort && !pendingEndpoint && (
+        <polygon
+          data-testid={`sld-v2-run-${id}-flow-arrow`}
+          data-flow-direction={flowArrow.direction}
+          points={
+            flowArrow.direction === 'right'
+              ? `${flowArrow.x - 5},${flowArrow.y - 4} ${flowArrow.x + 5},${flowArrow.y} ${flowArrow.x - 5},${flowArrow.y + 4}`
+              : `${flowArrow.x + 5},${flowArrow.y - 4} ${flowArrow.x - 5},${flowArrow.y} ${flowArrow.x + 5},${flowArrow.y + 4}`
+          }
+          fill={selected ? '#35C7FF' : voltageBaseStroke}
+          stroke="#05070A"
+          strokeWidth={0.6}
+          opacity={0.92}
+          pointerEvents="none"
+        />
       )}
       {readableSegmentLabels.map((segmentLabel) => (
         <text
@@ -450,6 +786,102 @@ function segmentLabelsOverlap(
 
 function estimateLabelWidth(text: string): number {
   return Math.max(52, Math.min(220, text.length * 7.2));
+}
+
+/**
+ * K30-41: kolor stroke kabla per voltage class. Konwencja dyspozytorska OSD
+ * (analogicznie do `busColorForVoltage` w StationOnRunRenderer):
+ * - ≥ 100 kV (WN)         → #E74C3C (czerwień)
+ * - 12-30 kV (SN)          → #13C45A (energized green kanon)
+ * - 5-10 kV (SN niskie)    → #0A8D43 (głębsza zieleń)
+ * - 0.2-1 kV (nN)          → #7DD3FC (chłodny błękit)
+ * - inne / brak            → COLOR_FIELD_TRUNK_ENERGIZED (back-compat)
+ */
+function cableColorForVoltage(kv: number | null): string {
+  if (kv == null || !Number.isFinite(kv) || kv <= 0) return COLOR_FIELD_TRUNK_ENERGIZED;
+  if (kv >= 100) return '#E74C3C';
+  if (kv >= 12) return COLOR_FIELD_TRUNK_ENERGIZED;
+  if (kv >= 5) return '#0A8D43';
+  if (kv >= 0.2) return '#7DD3FC';
+  return COLOR_FIELD_TRUNK_ENERGIZED;
+}
+
+/**
+ * K30-33: mapuje wariant kabla (izolacja + materiał) na styl renderingu.
+ *
+ * Per IEC 60617 sam symbol kabla jest taki sam dla wszystkich typów, ale
+ * w industrial SLD (ABB/DIgSILENT) różne odcinki kolorowane są tonalnie
+ * dla odróżnienia generacji / standardu. Tu używamy subtelnych odcieni:
+ * - XLPE Al → bazowy zielony (#13C45A) — najczęstszy nowy kabel
+ * - XLPE Cu → zielony z +0.6 px szerokości (Cu ma większą amperowość)
+ * - EPR Al/Cu → ciepły gold (#FFD166) — kabel średnio-elastyczny
+ * - PVC → chłodny niebieski (#7DD3FC) — starszy/wewn.
+ * - PAPER → szary (#A8B5BD) + dashed (papier olej, generacja PE)
+ */
+function cableVariantStyle(
+  variant: CableSegmentVariantHint,
+): { stroke: string; widthDelta: number; dasharray?: string } {
+  const conductorBonus = variant.conductor === 'Cu' ? 0.6 : 0;
+  switch (variant.insulation) {
+    case 'XLPE':
+      return { stroke: COLOR_FIELD_TRUNK_ENERGIZED, widthDelta: conductorBonus };
+    case 'EPR':
+      return { stroke: '#FFD166', widthDelta: conductorBonus };
+    case 'PVC':
+      return { stroke: '#7DD3FC', widthDelta: conductorBonus };
+    case 'PAPER':
+      return { stroke: '#A8B5BD', widthDelta: conductorBonus, dasharray: '6 3' };
+    case 'OVERHEAD':
+      return { stroke: COLOR_FIELD_TRUNK_ENERGIZED, widthDelta: conductorBonus, dasharray: '12 4' };
+    case 'UNKNOWN':
+    default:
+      return { stroke: COLOR_FIELD_TRUNK_ENERGIZED, widthDelta: conductorBonus };
+  }
+}
+
+/**
+ * K30-45: klasyfikator cable loading (I/I_max %):
+ * - ≤ 60% → green (normal)
+ * - 60-80% → amber (warning)
+ * - 80-100% → orange (high)
+ * - > 100% → red (THERMAL OVERLOAD — needs immediate action)
+ */
+function classifyCableLoading(pct: number): { color: string; label: string } {
+  if (pct <= 60) return { color: '#13C45A', label: 'normal' };
+  if (pct <= 80) return { color: '#FFD166', label: 'warning' };
+  if (pct <= 100) return { color: '#FF8B5C', label: 'high' };
+  return { color: '#FF333D', label: 'overload' };
+}
+
+/**
+ * K30-42: oblicza pozycję + kierunek strzałki przepływu mocy dla ciągu.
+ * Strzałka rysowana w midpoincie najdłuższego horizontal segmentu, kierunek
+ * wynika z order pathPoints (start → end). Industrial SLD convention:
+ * cable run = upstream → downstream, strzałka pokazuje kierunek zasilania.
+ *
+ * Returns null gdy nie ma horizontal segmentu wystarczającej długości
+ * (min 20 px — zbyt krótki nie mieści strzałki estetycznie).
+ */
+function computeFlowArrowMarker(
+  points: readonly Point[],
+): { x: number; y: number; direction: 'right' | 'left' } | null {
+  let best: { x: number; y: number; direction: 'right' | 'left'; length: number } | null = null;
+  for (let index = 0; index < points.length - 1; index++) {
+    const start = points[index];
+    const end = points[index + 1];
+    if (Math.abs(start.y - end.y) > 0.5) continue;
+    const length = Math.abs(end.x - start.x);
+    if (length < 20) continue;
+    if (!best || length > best.length) {
+      best = {
+        x: (start.x + end.x) / 2,
+        y: start.y,
+        direction: end.x >= start.x ? 'right' : 'left',
+        length,
+      };
+    }
+  }
+  return best ? { x: best.x, y: best.y, direction: best.direction } : null;
 }
 
 function findLongestHorizontalSegmentMidpoint(points: readonly Point[]): Point | null {

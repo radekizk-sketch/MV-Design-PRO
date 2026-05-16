@@ -9,6 +9,9 @@ All responses use Polish error messages for UI consistency.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 from typing import Any
 from uuid import UUID
 
@@ -163,7 +166,7 @@ def _parse_uuid(value: str, field_name: str = "id") -> UUID:
 @router.post("", response_model=StudyCaseResponse, status_code=status.HTTP_201_CREATED)
 def create_study_case(
     request: CreateStudyCaseRequest,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Utwórz nowy przypadek obliczeniowy.
@@ -187,7 +190,7 @@ def create_study_case(
 @router.get("/{case_id}", response_model=StudyCaseResponse)
 def get_study_case(
     case_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Pobierz przypadek obliczeniowy po ID.
@@ -210,7 +213,7 @@ def get_study_case(
 @router.get("/project/{project_id}", response_model=list[StudyCaseListItemResponse])
 def list_study_cases(
     project_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> list[dict[str, Any]]:
     """
     Lista wszystkich przypadków obliczeniowych w projekcie.
@@ -228,7 +231,7 @@ def list_study_cases(
 def update_study_case(
     case_id: str,
     request: UpdateStudyCaseRequest,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Aktualizuj przypadek obliczeniowy.
@@ -258,7 +261,7 @@ def update_study_case(
 @router.delete("/{case_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 def delete_study_case(
     case_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
     """
     Usuń przypadek obliczeniowy.
@@ -287,7 +290,7 @@ def delete_study_case(
 def clone_study_case(
     case_id: str,
     request: CloneStudyCaseRequest | None = None,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Klonuj przypadek obliczeniowy.
@@ -320,7 +323,7 @@ def clone_study_case(
 @router.get("/project/{project_id}/active", response_model=StudyCaseResponse | None)
 def get_active_case(
     project_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any] | None:
     """
     Pobierz aktywny przypadek obliczeniowy dla projektu.
@@ -337,7 +340,7 @@ def get_active_case(
 @router.post("/activate", response_model=StudyCaseResponse)
 def set_active_case(
     request: SetActiveRequest,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Ustaw przypadek jako aktywny.
@@ -368,7 +371,7 @@ def set_active_case(
 @router.post("/compare", response_model=StudyCaseComparisonResponse)
 def compare_study_cases(
     request: CompareRequest,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Porównaj dwa przypadki obliczeniowe.
@@ -399,7 +402,7 @@ def compare_study_cases(
 @router.post("/project/{project_id}/invalidate-all")
 def invalidate_all_cases(
     project_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Oznacz wszystkie przypadki jako OUTDATED.
@@ -421,7 +424,7 @@ def invalidate_all_cases(
 @router.post("/{case_id}/invalidate")
 def invalidate_case(
     case_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Oznacz przypadek jako OUTDATED.
@@ -441,7 +444,7 @@ def invalidate_case(
 @router.get("/{case_id}/can-calculate")
 def can_calculate_case(
     case_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Sprawdź czy przypadek może być obliczony.
@@ -461,7 +464,7 @@ def can_calculate_case(
 @router.get("/project/{project_id}/count")
 def count_cases(
     project_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Policz przypadki obliczeniowe w projekcie.
@@ -483,7 +486,7 @@ def count_cases(
 @router.get("/{case_id}/protection-config", response_model=ProtectionConfigResponse)
 def get_protection_config(
     case_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Pobierz konfigurację zabezpieczeń dla przypadku (P14c).
@@ -507,7 +510,7 @@ def get_protection_config(
 def update_protection_config(
     case_id: str,
     request: ProtectionConfigRequest,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Aktualizuj konfigurację zabezpieczeń dla przypadku (P14c).

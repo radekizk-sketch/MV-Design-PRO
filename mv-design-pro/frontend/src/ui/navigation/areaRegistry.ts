@@ -85,7 +85,7 @@ export const AREA_DEFINITIONS: readonly AreaDefinition[] = [
   {
     id: 'ZABEZPIECZENIA_AUTOMATYKA',
     labelFull: 'Zabezpieczenia i automatyka',
-    labelShort: 'Zabezp.',
+    labelShort: 'Zabezpieczenia',
     description: 'Nastawy, selektywność, automatyka i logika działania',
     icon: 'ikona-obszar-zabezpieczenia-automatyka',
     shortcut: 'Ctrl+5',

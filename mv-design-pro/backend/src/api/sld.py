@@ -9,6 +9,9 @@ Production contract:
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 from typing import Any
 from uuid import UUID
 
@@ -26,7 +29,7 @@ def get_sld_result_overlay(
     project_id: UUID,
     diagram_id: UUID,
     run_id: UUID = Query(..., description="Analysis run ID for result overlay"),
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     canonical_run = get_canonical_run(run_id)
     if canonical_run is None:

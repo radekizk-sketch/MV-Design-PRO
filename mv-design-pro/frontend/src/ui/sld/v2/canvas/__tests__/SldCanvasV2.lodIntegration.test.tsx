@@ -180,7 +180,7 @@ describe('SldCanvasV2 — LodController histereza runtime integration (Phase 0B-
 
   it('rozciąga przerwę kabla SN do rzeczywistych portów mini-RMU, a nie do atrapy ±28 px', () => {
     const stationY = 220;
-    const runY = stationY - 54;
+    const runY = stationY - 80; // K30-4: STATION_RUN_TRUNK_OFFSET_Y bumped 54→80
     const { container } = render(
       <SldCanvasV2
         width={800}
@@ -223,7 +223,7 @@ describe('SldCanvasV2 — LodController histereza runtime integration (Phase 0B-
     );
 
     const visible = container.querySelector('[data-testid="sld-v2-run-run-rmu-visible-0"]');
-    expect(visible?.getAttribute('d')).toBe('M 80 166 L 214 166');
+    expect(visible?.getAttribute('d')).toBe('M 80 140 L 214 140');
     expect(visible?.getAttribute('d')).not.toContain('332');
   });
 });

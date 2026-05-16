@@ -123,6 +123,9 @@ class TestSchemaLock:
             "c_factor",
             "thermal_time_seconds",
             "include_inverter_contribution",
+            # K3 wizard "Uproszczony" mode (P0.9 V12K K3 toggle): Sk_SN + R/X
+            # zamiast pelnego 110 kV + TR + GPZ modelu. Optional field.
+            "simplified_grid_source",
         }
         assert props == expected_props, (
             f"ShortCircuitPayload schema changed. "

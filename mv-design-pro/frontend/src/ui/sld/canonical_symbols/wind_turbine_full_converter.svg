@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Wind turbine with full-converter / Turbina wiatrowa full-converter (Type 4 IEC 61400) -->
+  <!-- Three-blade wind turbine + AC/DC/AC converter symbol. -->
+  <!-- Tower -->
+  <line x1="30" y1="50" x2="30" y2="85" stroke="currentColor" stroke-width="3"/>
+  <!-- Nacelle / hub -->
+  <circle cx="30" cy="50" r="3" fill="currentColor"/>
+  <!-- Three blades (120° apart) -->
+  <line x1="30" y1="50" x2="18" y2="32" stroke="currentColor" stroke-width="3"/>
+  <line x1="30" y1="50" x2="50" y2="44" stroke="currentColor" stroke-width="3"/>
+  <line x1="30" y1="50" x2="22" y2="68" stroke="currentColor" stroke-width="3"/>
+  <!-- Base earth -->
+  <line x1="22" y1="85" x2="38" y2="85" stroke="currentColor" stroke-width="3"/>
+  <!-- Full converter symbol (AC-DC-AC) on right -->
+  <rect x="58" y="35" width="38" height="30" fill="none" stroke="currentColor" stroke-width="2"/>
+  <text x="62" y="48" font-family="sans-serif" font-size="6" fill="currentColor">AC/DC/AC</text>
+  <text x="62" y="58" font-family="sans-serif" font-size="6" fill="currentColor">Type 4</text>
+  <!-- Connection: turbine to converter (top) -->
+  <line x1="40" y1="50" x2="58" y2="50" stroke="currentColor" stroke-width="2"/>
+  <!-- Connection: converter to grid (bottom) -->
+  <line x1="77" y1="65" x2="77" y2="100" stroke="currentColor" stroke-width="3"/>
+  <!-- Ports: bottom_right (77, 100) PCC to grid -->
+</svg>

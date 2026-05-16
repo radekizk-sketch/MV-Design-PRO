@@ -292,6 +292,13 @@ export interface Generator extends ENMElement {
 
   /** Referencja do stacji (ref_id substacji). Wymagana przy 'nn_side'. */
   station_ref?: string | null;
+
+  /**
+   * Moduł NC RFG per ENEA profile (enea.yaml source of truth):
+   * A: Mikro (0.8–1000 kW), B: Małe (1–50 MW), C: Duże (50–75 MW), D: B. duże (>75 MW).
+   * Ustawiany przez backend przy bind profilem operatora. null = brak profilu.
+   */
+  nc_rfg_module?: 'A' | 'B' | 'C' | 'D' | null;
 }
 
 // ---------------------------------------------------------------------------

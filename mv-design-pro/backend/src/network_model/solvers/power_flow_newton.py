@@ -187,6 +187,15 @@ class PowerFlowNewtonSolver:
             node_id: float(np.angle(voltage)) for node_id, voltage in node_voltage.items()
         }
 
+        # K30-14 NO-GO #10 fix: include not_solved_nodes z NaN marker — bez tego
+        # frontend overlay payload pomijał te bus refs, fallbackując do nominal
+        # voltage co user widział jako 'flat 15.0 kV everywhere'. NaN signals
+        # 'solver did not compute' (vs. 1.0 pu signaling 'solved at nominal').
+        # JSON serialization converts NaN → null (via float_nan_to_none helper).
+        for not_solved_id in not_solved_nodes:
+            node_u_mag[not_solved_id] = float("nan")
+            node_angle[not_solved_id] = float("nan")
+
         slack_voltage_kv = graph.nodes[pf_input.slack.node_id].voltage_level
         (
             branch_current,
@@ -210,6 +219,13 @@ class PowerFlowNewtonSolver:
                 node_voltage_kv[node_id] = float(abs(voltage) * voltage_level)
             else:
                 missing_voltage_base_nodes.append(node_id)
+
+        # K30-14 NO-GO #10 fix: not_solved_nodes z NaN kV (signals 'no solver
+        # result' — frontend distinguishes from actual computed nominal).
+        for not_solved_id in not_solved_nodes:
+            if not_solved_id in node_voltage_kv:
+                continue
+            node_voltage_kv[not_solved_id] = float("nan")
 
         branch_current_ka: dict[str, float] = {}
         for branch_id, current_pu in branch_current.items():

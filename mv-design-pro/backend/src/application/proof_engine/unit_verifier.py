@@ -10,6 +10,8 @@ zgodnie z regułami derywacji jednostek z rejestru równań.
 
 from __future__ import annotations
 
+from typing import Any
+
 from dataclasses import dataclass
 
 from application.proof_engine.types import UnitCheckResult
@@ -123,7 +125,7 @@ class UnitVerifier:
     """
 
     # Predefiniowane reguły derywacji dla znanych równań
-    DERIVATION_RULES: dict[str, dict[str, str]] = {
+    DERIVATION_RULES: dict[str, dict[str, Any]] = {
         # SC3F
         "EQ_SC3F_001": {
             "rule": "— · kV = kV",

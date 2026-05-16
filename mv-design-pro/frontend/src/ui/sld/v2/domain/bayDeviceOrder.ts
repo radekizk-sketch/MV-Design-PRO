@@ -88,11 +88,14 @@ const TRANSFORMER_ORDER: readonly BayDeviceSlot[] = [
   { apparatusKind: APPARATUS_KIND.LV_BREAKER, position: 'MAIN_AXIS', order: 6, optional: false },
 ];
 
-/** RMU_TRANSFORMER (pole transformatorowe RMU). */
+/** RMU_TRANSFORMER (pole transformatorowe RMU).
+ *  K30-114 audyt #2 MAJOR: CT zmienione z optional na MANDATORY per
+ *  PN-EN 62271-202 § 8.3.2 (każdy TR w RMU musi mieć CT do Diff+Earth-fault
+ *  protection). */
 const RMU_TRANSFORMER_ORDER: readonly BayDeviceSlot[] = [
   { apparatusKind: APPARATUS_KIND.SWITCH_DISCONNECTOR, position: 'MAIN_AXIS', order: 1, optional: false },
   { apparatusKind: APPARATUS_KIND.FUSE, position: 'MAIN_AXIS', order: 2, optional: true },
-  { apparatusKind: APPARATUS_KIND.CT, position: 'MAIN_AXIS', order: 3, optional: true },
+  { apparatusKind: APPARATUS_KIND.CT, position: 'MAIN_AXIS', order: 3, optional: false }, // K30-114: mandatory
   { apparatusKind: APPARATUS_KIND.EARTHING_SWITCH, position: 'LATERAL_BRANCH', order: 4, side: 'RIGHT', optional: false },
   { apparatusKind: APPARATUS_KIND.TRANSFORMER, position: 'MAIN_AXIS', order: 5, optional: false },
   { apparatusKind: APPARATUS_KIND.LV_BREAKER, position: 'MAIN_AXIS', order: 6, optional: false },

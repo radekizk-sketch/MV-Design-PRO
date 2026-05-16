@@ -5,7 +5,7 @@
  * w kanonicznym shellu (ekran E-01 "Główne środowisko pracy SLD").
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   computeBoundingBox,
@@ -23,6 +23,7 @@ import {
   type LodLevel,
   type SldLayerId,
 } from '../lod/LodPolicy';
+import { SldLodProvider } from '../lod/SldLodContext';
 import { COLOR_BG, COLOR_PANEL } from '../theme/tokens';
 import {
   CableRunRenderer,
@@ -31,6 +32,22 @@ import {
   type CableRunStationPortGap,
 } from '../renderer/CableRunRenderer';
 import { CadOverlay } from './CadOverlay';
+import { SldTitleBlock, type SldTitleBlockData } from './SldTitleBlock';
+import { SldRevisionTable, type SldRevisionEntry } from './SldRevisionTable';
+import { SldPowerBalancePanel, type PowerBalanceData } from './SldPowerBalancePanel';
+import { SldLegendOverlay } from './SldLegendOverlay';
+import { SldScaleRuler } from './SldScaleRuler';
+import { SldNorthArrow } from './SldNorthArrow';
+import {
+  SldShortCircuitOverlay,
+  type SldShortCircuitProjection,
+} from './SldShortCircuitOverlay';
+import {
+  SldProtectionZoneOverlay,
+  type SldProtectionZoneProjection,
+} from './SldProtectionZoneOverlay';
+import { computeLfDerivedMetrics } from './lfDerivedMetrics';
+import { computeScProjection, type ScBusMeta } from './scDerivedProjection';
 import { DEFAULT_SNAP_STATE } from '../viewport/Snap';
 import { ConnectionRenderer } from '../renderer/ConnectionRenderer';
 import { DerRenderer, type DerRendererProps } from '../renderer/DerRenderer';
@@ -46,6 +63,8 @@ import {
   type StationOnRunRendererProps,
 } from '../renderer/StationOnRunRenderer';
 import { miniBlockStationPortOffsets } from '../renderer/MiniBlockRmuRenderer';
+import { ResultOverlayLayer } from './ResultOverlayLayer';
+import { useRawResultOverlayStore, type RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import type { SldElementKindForMenu } from '../command/SldCommandService';
 
 export type SldElementContextKind = SldElementKindForMenu;
@@ -82,6 +101,8 @@ export interface SldCanvasV2Props {
     label?: string;
     segmentLabels?: readonly CableRunSegmentLabel[];
     pendingEndpoint?: boolean;
+    /** K30-41: napięcie ciągu [kV] — voltage chip + tint stroke fallback. */
+    voltageKv?: number | null;
   }>;
   readonly stations: readonly StationOnRunRendererProps[];
   readonly ders: readonly DerRendererProps[];
@@ -121,6 +142,25 @@ export interface SldCanvasV2Props {
    */
   readonly onContextMenu?: (request: SldCanvasContextMenuRequest) => void;
   readonly onViewportTransformChange?: (transform: ViewportTransform) => void;
+  /** K30-38: metadata bloku tytułowego per PN-EN ISO 7200. Brak → defaults. */
+  readonly titleBlockData?: SldTitleBlockData | null;
+  /** K30-100: revision history entries dla SldRevisionTable (OSD wniosek). */
+  readonly revisionEntries?: readonly SldRevisionEntry[];
+  /** K30-101: bilans mocy panel data (LF analiza). */
+  readonly powerBalance?: PowerBalanceData | null;
+  /** K30-39: pokaż legendę palet (voltage / cable variants / apparatus / DER).
+   *  Default true. Set false dla cleanu w przypadkach print-only. */
+  readonly showLegend?: boolean;
+  /** K30-43: pokaż skalę rysunku per PN-EN ISO 5455. Default true. */
+  readonly showScaleRuler?: boolean;
+  /** K30-47: pokaż strzałkę N (north arrow) per PN-EN ISO 5456. Default false
+   *  (SLD są topologiczne, geographic orientation rzadko relevant). */
+  readonly showNorthArrow?: boolean;
+  /** K30-48: projekcja wyników zwarciowych per IEC 60909. Brak → overlay off.
+   *  K30-50: gdy null + payload SC available, derived auto-from-payload. */
+  readonly shortCircuitProjection?: SldShortCircuitProjection | null;
+  /** K30-46: projekcja stref ochrony Z1/Z2/Z3 per IEC 60255-127. */
+  readonly protectionZoneProjection?: SldProtectionZoneProjection | null;
 }
 
 function estimateCanonicalGpzFootprint(gpz: GpzCanonicalRendererProps): { width: number; height: number } {
@@ -203,9 +243,78 @@ function readSldInteractiveTarget(target: EventTarget | null): {
 export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const {
     width, height, gpzs, canonicalGpzs, sections, cableRuns, stations, ders, connections = [],
-    selectedId, lodOverride, layerVisibility,
+    selectedId, lodOverride, layerVisibility, titleBlockData, revisionEntries, powerBalance, showLegend = true, showScaleRuler = true,
+    showNorthArrow = false, shortCircuitProjection, protectionZoneProjection,
     onSelectElement, onDoubleClickStation, onDoubleClickDer, onContextMenu, onViewportTransformChange,
   } = props;
+
+  // K30-8: subskrybuj raw overlay payload by compute per-station alarm severity.
+  const overlayPayload = useRawResultOverlayStore((state) => state.payload);
+
+  // K30-49: derive LF metrics — voltage deviation per station + cable loading.
+  // Wynik feedowany do StationOnRunRenderer (voltageDeviationPct) i
+  // CableRunRenderer (loadingPct) jako data-driven projekcje K30-44/K30-45.
+  const lfDerived = computeLfDerivedMetrics(overlayPayload, props.stations, props.cableRuns);
+
+  // K30-76: PathHighlighter — gdy selectedId jest stacją, znajdź run zawierający
+  // tę stację i highlight całego toru mocy (cable run = path z GPZ).
+  // Zbioru runIds zostają renderowane jak selected (visual highlight).
+  const pathHighlightRunIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (!selectedId) return ids;
+    // Selected element może być stationId lub cableRunId
+    for (const run of props.cableRuns) {
+      const containsStation = run.segmentRefs?.some((segRef) => {
+        // Segment ref pattern: seg/{hash}/branch_segment lub similar
+        // Heurystyka: check whether segRef path contains selectedId fragment
+        return segRef.includes(selectedId.split('/')[1] ?? '___no_match___');
+      });
+      if (containsStation) ids.add(run.id);
+    }
+    // Also if selectedId is station, find runs whose segmentRefs map to its bus
+    const selectedStation = props.stations.find((s) => s.id === selectedId);
+    if (selectedStation) {
+      const stationHash = selectedStation.id.split('/')[1];
+      if (stationHash) {
+        for (const run of props.cableRuns) {
+          if (run.segmentRefs?.some((r) => r.includes(stationHash))) {
+            ids.add(run.id);
+          }
+        }
+      }
+    }
+    return ids;
+  }, [selectedId, props.cableRuns, props.stations]);
+
+  // K30-50: derive SC projection — jeśli explicit shortCircuitProjection nie
+  // podano, auto-build z payload SC results. Bus pozycje pochodzą z station
+  // layout (SN bus = stn/{hash}/sn_bus, posażenie = station.x/y).
+  const derivedScProjection = (() => {
+    if (shortCircuitProjection !== undefined && shortCircuitProjection !== null) {
+      return shortCircuitProjection;
+    }
+    const busMetas: ScBusMeta[] = props.stations.map((st) => {
+      const snBusId = st.id.endsWith('/station')
+        ? `${st.id.slice(0, -'/station'.length)}/sn_bus`
+        : `${st.id}/sn_bus`;
+      return { id: snBusId, label: st.stationCode ?? st.name, x: st.x, y: st.y };
+    });
+    return computeScProjection(overlayPayload, busMetas);
+  })();
+
+  // K30-11: aggregate station alarm summary (count of severities).
+  const alarmSummary = (() => {
+    if (!overlayPayload) return null;
+    let c = 0, i = 0, w = 0;
+    for (const st of props.stations) {
+      const sev = computeStationAlarmSeverity(st, overlayPayload);
+      if (sev === 'critical') c++;
+      else if (sev === 'important') i++;
+      else if (sev === 'warning') w++;
+    }
+    if (c + i + w === 0) return null;
+    return { critical: c, important: i, warning: w, total: props.stations.length };
+  })();
 
   const [transform, setTransform] = useState<ViewportTransform>(IDENTITY_TRANSFORM);
   const isDraggingRef = useRef(false);
@@ -351,6 +460,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   );
 
   return (
+    <SldLodProvider lod={lod}>
     <svg
       ref={svgRef}
       data-testid="sld-canvas-v2"
@@ -600,7 +710,8 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                 <CableRunRenderer
                   {...run}
                   stationPortGaps={buildStationPortGapsForRun(run, stations, lod)}
-                  selected={selectedId === run.id}
+                  selected={selectedId === run.id || pathHighlightRunIds.has(run.id)}
+                  loadingPct={lfDerived.cableLoadingPctByRunId.get(run.id) ?? null}
                   onClick={onSelectElement ? (id) => onSelectElement(id, 'cable_run') : undefined}
                 />
               </g>
@@ -640,6 +751,12 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
             >
               <StationOnRunRenderer
                 {...st}
+                alarmSeverity={st.alarmSeverity ?? computeStationAlarmSeverity(st, overlayPayload)}
+                voltageDeviationPct={
+                  st.voltageDeviationPct
+                    ?? lfDerived.voltageDeviationPctByStationId.get(st.id)
+                    ?? null
+                }
                 lod={stationLod}
                 selected={selectedId === st.id}
                 onClick={onSelectElement ? (id) => onSelectElement(id, 'station') : undefined}
@@ -667,6 +784,104 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
             </g>
           );
         })}
+
+        {/* K30-3 NO-GO #9: result overlay metrics z LOAD_FLOW/SC_3F payload */}
+        <ResultOverlayLayer stations={stations} cableRuns={cableRuns} />
+
+        {/* K30-11: aggregate alarm summary panel — count of station severities */}
+        {/* K30-38: industrial title block per PN-EN ISO 7200.
+         *  Wyodrębniony z inline (K30-12) do dedykowanego komponentu — pozwala
+         *  customize project info / designer / approver / drawing number via
+         *  titleBlockData prop. Backward-compat: defaults zachowują K30-12. */}
+        <g transform={`translate(${width - 380}, ${height - 194})`}>
+          <SldTitleBlock data={titleBlockData ?? undefined} />
+        </g>
+
+        {/* K30-100: Tabela rewizji (OSD-required dla wniosku akceptacji).
+         *  Pozycja: lewa strona title block — bottom-right canvas. */}
+        <g transform={`translate(${width - 700}, ${height - 100})`}>
+          <SldRevisionTable entries={revisionEntries} />
+        </g>
+
+        {/* K30-101: Bilans mocy panel (OSD wniosek przyłączeniowy bilans).
+         *  Pozycja: bottom-left canvas (poniżej scale ruler). */}
+        <g transform={`translate(20, ${height - 130})`}>
+          <SldPowerBalancePanel data={powerBalance ?? null} />
+        </g>
+
+        {/* K30-39: SLD legend overlay — klucz palet (voltage / cable variants /
+         *  apparatus state / DER). Pozycja: top-right canvas (poniżej grid
+         *  stability + alarm summary). Toggle via showLegend prop. */}
+        <SldLegendOverlay
+          visible={showLegend}
+          x={width - 240}
+          y={20}
+        />
+
+        {/* K30-43: skala rysunku per PN-EN ISO 5455 — bottom-left canvas. */}
+        <SldScaleRuler
+          visible={showScaleRuler}
+          x={20}
+          y={height - 60}
+        />
+
+        {/* K30-47: north arrow per PN-EN ISO 5456 (opcjonalny). */}
+        <SldNorthArrow
+          visible={showNorthArrow}
+          x={width - 80}
+          y={height - 200}
+        />
+
+        {/* K30-48 + K30-50: short-circuit results projection per IEC 60909.
+            Priority: explicit prop > derived z SC payload. */}
+        <SldShortCircuitOverlay projection={derivedScProjection} />
+
+        {/* K30-46: protection zones Z1/Z2/Z3 per IEC 60255-127. */}
+        <SldProtectionZoneOverlay projection={protectionZoneProjection ?? null} />
+
+        {/* K30-13: grid frequency + voltage status panel (ENEA Operator NC RfG).
+         *  Static placeholder dla frequency stability + slack bus voltage.
+         *  Real data po backend doda P(f) feed; póki co mock 50.00 Hz.
+         */}
+        <g data-testid="sld-v2-grid-stability-panel" transform="translate(20, 88)" pointerEvents="none">
+          <rect x={0} y={0} width={260} height={62} rx={4} ry={4} fill="#0A0E14" stroke="#7EE0B5" strokeWidth={1.5} opacity={0.95} />
+          <text x={10} y={18} fill="#7EE0B5" fontFamily="sans-serif" fontSize={12} fontWeight={900}>
+            STAN SIECI · NC RfG
+          </text>
+          <text x={10} y={36} fill="#DDF7FF" fontFamily="monospace" fontSize={14} fontWeight={700}>
+            f = 50.00 Hz
+          </text>
+          <text x={10} y={52} fill="#88BBDD" fontFamily="sans-serif" fontSize={9}>
+            ±0.20 Hz (PN-EN 50160)
+          </text>
+          <text x={130} y={36} fill="#DDF7FF" fontFamily="monospace" fontSize={14} fontWeight={700}>
+            U = 110 kV
+          </text>
+          <text x={130} y={52} fill="#88BBDD" fontFamily="sans-serif" fontSize={9}>
+            Slack: GPZ HV
+          </text>
+        </g>
+
+        {alarmSummary && (
+          <g data-testid="sld-v2-alarm-summary-panel" transform="translate(20, 20)" pointerEvents="none">
+            <rect x={0} y={0} width={260} height={56} rx={4} ry={4} fill="#0A0E14" stroke="#FFD166" strokeWidth={1.5} opacity={0.95} />
+            <text x={10} y={20} fill="#FFD166" fontFamily="sans-serif" fontSize={13} fontWeight={900}>
+              ALARMS NA SIECI ({alarmSummary.total} stacji)
+            </text>
+            <circle cx={20} cy={40} r={6} fill="#FF6B6B" />
+            <text x={32} y={44} fill="#FF6B6B" fontFamily="sans-serif" fontSize={12} fontWeight={700}>
+              {alarmSummary.critical} CRIT
+            </text>
+            <circle cx={100} cy={40} r={6} fill="#FF8B5C" />
+            <text x={112} y={44} fill="#FF8B5C" fontFamily="sans-serif" fontSize={12} fontWeight={700}>
+              {alarmSummary.important} IMP
+            </text>
+            <circle cx={180} cy={40} r={6} fill="#FFD166" />
+            <text x={192} y={44} fill="#FFD166" fontFamily="sans-serif" fontSize={12} fontWeight={700}>
+              {alarmSummary.warning} WARN
+            </text>
+          </g>
+        )}
 
         {/* DER (PV/BESS/FW) */}
         {layers.der && ders.map((d) => {
@@ -718,6 +933,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         </text>
       </g>
     </svg>
+    </SldLodProvider>
   );
 }
 
@@ -795,4 +1011,40 @@ function stationUsesMiniBlockRenderer(
   currentLod: LodLevel,
 ): boolean {
   return currentLod < 3 && station.snBays !== undefined;
+}
+
+
+/**
+ * K30-8: compute alarm severity per station z overlay payload.
+ * Patrzy na bus SN ref (mapping station_id → sn_bus_ref) + sprawdza
+ * thresholds (Ik > 25 kA → critical, > 20 → important, > 15 → warning).
+ * Returns null gdy brak alarm.
+ */
+function computeStationAlarmSeverity(
+  station: StationOnRunRendererProps,
+  payload: RawOverlayPayload | null,
+): 'warning' | 'important' | 'critical' | null {
+  if (!payload) return null;
+  const snBusRef = station.id.endsWith('/station')
+    ? `${station.id.slice(0, -'/station'.length)}/sn_bus`
+    : `${station.id}/sn_bus`;
+  const el = payload.elements[snBusRef];
+  if (!el) return null;
+  const analysisType = payload.analysis_type;
+  const isSc3F = analysisType?.toLowerCase().includes('short_circuit') || analysisType === 'SC_3F';
+  if (isSc3F) {
+    const ik = el.metrics?.IK_3F_A?.value;
+    if (ik === null || ik === undefined) return null;
+    if (ik > 25) return 'critical';
+    if (ik > 20) return 'important';
+    if (ik > 15) return 'warning';
+  } else {
+    const u = el.metrics?.U_kV?.value;
+    if (u === null || u === undefined) return null;
+    const pu = Math.abs(u / 15 - 1);
+    if (pu > 0.1) return 'critical';
+    if (pu > 0.07) return 'important';
+    if (pu > 0.05) return 'warning';
+  }
+  return null;
 }

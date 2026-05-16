@@ -29,6 +29,7 @@ from application.proof_engine.proof_inspector import (
     InspectorExporter,
     InspectorView,
     ProofInspector,
+    export_to_docx,
     export_to_json,
     export_to_tex,
     inspect,
@@ -428,6 +429,56 @@ class TestInspectorExports:
         json_str = export_to_json(sc3f_proof)
         assert isinstance(json_str, str)
         assert "steps" in json_str
+
+    def test_export_docx_returns_valid_docx(self, sc3f_proof: ProofDocument):
+        """Eksport DOCX zwraca poprawny dokument Word (V12K-007 light_technical).
+
+        Wymóg P0.8: polskie raporty edytowalne dla projektanta.
+        """
+        exporter = InspectorExporter(sc3f_proof)
+        result = exporter.export_docx()
+
+        # Pominąć test gdy python-docx nie zainstalowany (CI bez dev deps)
+        if not result.success and result.error_message and "python-docx" in result.error_message:
+            import pytest
+
+            pytest.skip("python-docx not installed in this environment")
+
+        assert result.success, f"DOCX export failed: {result.error_message}"
+        assert result.format == "docx"
+        assert isinstance(result.content, bytes)
+        assert len(result.content) > 0
+        # DOCX (ZIP) magic bytes
+        assert result.content[:2] == b"PK", "DOCX should be a ZIP-based file"
+        # Sugerowana nazwa pliku ma rozszerzenie .docx
+        assert result.filename_hint.endswith(".docx")
+
+    def test_export_docx_convenience_function(self, sc3f_proof: ProofDocument):
+        """export_to_docx() convenience function działa i zwraca bytes."""
+        try:
+            import docx  # noqa: F401
+        except ImportError:
+            import pytest
+
+            pytest.skip("python-docx not installed")
+
+        docx_bytes = export_to_docx(sc3f_proof)
+        assert isinstance(docx_bytes, bytes)
+        assert len(docx_bytes) > 0
+        assert docx_bytes[:2] == b"PK"
+
+    def test_export_all_includes_docx(self, sc3f_proof: ProofDocument):
+        """export_all() zwraca 4 formaty: json + tex + pdf + docx (V12K-007)."""
+        exporter = InspectorExporter(sc3f_proof)
+        results = exporter.export_all()
+
+        assert "json" in results
+        assert "tex" in results
+        assert "pdf" in results
+        assert "docx" in results
+        assert results["json"].success
+        assert results["tex"].success
+        # PDF/DOCX mogą nie być dostępne w CI — sprawdzamy obecność klucza
 
         tex_str = export_to_tex(sc3f_proof)
         assert isinstance(tex_str, str)

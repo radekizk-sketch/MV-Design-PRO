@@ -809,6 +809,22 @@ export function ResultsInspectorPage({ runId, forcedTab, onClose }: ResultsInspe
     }
   }, [globalSelectedElement, busResults, branchResults, shortCircuitResults, setActiveTab]);
 
+  // K30-24: scroll-into-view matching row when selectedResultRow changes
+  // (covers BOTH directions: row click + SLD→Results sync). Bidirectional UX.
+  useEffect(() => {
+    if (!selectedResultRow) return;
+    const rowKey =
+      selectedResultRow.type === 'bus'
+        ? selectedResultRow.data.bus_id
+        : selectedResultRow.type === 'branch'
+          ? selectedResultRow.data.branch_id
+          : selectedResultRow.data.target_id;
+    const el = document.querySelector(`[data-testid="results-row-${rowKey}"]`);
+    if (el && 'scrollIntoView' in el) {
+      (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [selectedResultRow]);
+
   // Handle bus row selection
   const handleBusRowSelect = useCallback((row: BusResultRow) => {
     setSelectedResultRow({ type: 'bus', data: row });

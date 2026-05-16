@@ -11,6 +11,9 @@ All assign/clear endpoints return 204 No Content.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 from typing import Any
 from uuid import UUID
 
@@ -144,7 +147,7 @@ def export_type_library(
     series: str = "Standard",
     revision: str = "1.0",
     description_pl: str = "",
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Export type library with deterministic fingerprint (P13b).
@@ -173,7 +176,7 @@ def export_type_library(
 def import_type_library(
     payload: ImportTypeLibraryPayload,
     mode: str = "merge",
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Import type library with conflict detection (P13b).
@@ -380,7 +383,7 @@ def list_complete_bay_templates_endpoint(
 
 @router.get("/protection/device-types")
 def list_protection_device_types(
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> list[dict[str, Any]]:
     """List protection devices from active library or analytical device catalog."""
     service = _build_service(uow_factory)
@@ -395,7 +398,7 @@ def list_protection_device_types(
 
 @router.get("/protection/curves")
 def list_protection_curves(
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> list[dict[str, Any]]:
     """List all protection curves from catalog (P14a - READ-ONLY)"""
     service = _build_service(uow_factory)
@@ -407,7 +410,7 @@ def list_protection_curves(
 
 @router.get("/protection/templates")
 def list_protection_setting_templates(
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> list[dict[str, Any]]:
     """List all protection setting templates from catalog (P14a - READ-ONLY)"""
     service = _build_service(uow_factory)
@@ -420,7 +423,7 @@ def list_protection_setting_templates(
 @router.get("/protection/device-types/{device_type_id}")
 def get_protection_device_type(
     device_type_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Get protection device from active library or analytical device catalog."""
     service = _build_service(uow_factory)
@@ -441,7 +444,7 @@ def get_protection_device_type(
 @router.get("/protection/curves/{curve_id}")
 def get_protection_curve(
     curve_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Get single protection curve by ID (P14a - READ-ONLY)"""
     service = _build_service(uow_factory)
@@ -457,7 +460,7 @@ def get_protection_curve(
 @router.get("/protection/templates/{template_id}")
 def get_protection_setting_template(
     template_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Get single protection setting template by ID (P14a - READ-ONLY)"""
     service = _build_service(uow_factory)
@@ -482,7 +485,7 @@ def export_protection_library(
     series: str = "Standard",
     revision: str = "1.0",
     description_pl: str = "",
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Export protection library with deterministic fingerprint (P14b).
@@ -511,7 +514,7 @@ def export_protection_library(
 def import_protection_library(
     payload: ImportProtectionLibraryPayload,
     mode: str = "merge",
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Import protection library with conflict detection and reference validation (P14b).
@@ -561,7 +564,7 @@ def assign_type_to_branch(
     project_id: str,
     branch_id: str,
     payload: AssignTypePayload,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
     """Assign type_ref to branch (LineBranch)"""
     try:
@@ -588,7 +591,7 @@ def assign_type_to_transformer(
     project_id: str,
     transformer_id: str,
     payload: AssignTypePayload,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
     """Assign type_ref to transformer (TransformerBranch)"""
     try:
@@ -615,7 +618,7 @@ def assign_equipment_type_to_switch(
     project_id: str,
     switch_id: str,
     payload: AssignTypePayload,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
     """Assign equipment_type to switch"""
     try:
@@ -646,7 +649,7 @@ def assign_equipment_type_to_switch(
 def clear_type_from_branch(
     project_id: str,
     branch_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
     """Clear type_ref from branch (set to null)"""
     try:
@@ -671,7 +674,7 @@ def clear_type_from_branch(
 def clear_type_from_transformer(
     project_id: str,
     transformer_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
     """Clear type_ref from transformer (set to null)"""
     try:
@@ -696,7 +699,7 @@ def clear_type_from_transformer(
 def clear_equipment_type_from_switch(
     project_id: str,
     switch_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
     """Clear equipment_type from switch"""
     try:
@@ -715,6 +718,274 @@ def clear_equipment_type_from_switch(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
     return Response(status_code=204)
+
+
+# =============================================================================
+# K30-23: Auto-populate endpoint — suggest catalog types per element context
+# =============================================================================
+
+
+class AutoPopulateRequest(BaseModel):
+    """K30-23 user demand: 'dane mają się maksymalnie podczytywać'."""
+
+    voltage_kv: float | None = None
+    """Element voltage rating (15 / 20 / 0.4 kV typical)."""
+    expected_power_mva: float | None = None
+    """Expected power rating (0.063 - 2.5 MVA dla TR, etc.)."""
+    expected_current_a: float | None = None
+    """Expected nominal current (for switches/cables)."""
+    cross_section_mm2: float | None = None
+    """Cross-section dla cables (50/95/120/150/240/300 mm²)."""
+    prefer_manufacturer: str | None = None
+    """Preferred manufacturer cascade (ZPUE/Elektrometal/ABB/Siemens)."""
+    prefer_ptpire_certified: bool = True
+    """K30-23: prefer Polish PTPiRE-certified entries by default."""
+
+
+class AutoPopulateSuggestion(BaseModel):
+    catalog_ref: str
+    label_pl: str
+    manufacturer: str | None = None
+    confidence: float  # 0.0..1.0 — how well it matches request context
+    badge_pl: str | None = None  # 'PTPiRE certyfikat' jeśli applicable
+    rationale_pl: str  # Why this suggestion ranked
+
+
+class AutoPopulateResponse(BaseModel):
+    element_type: str
+    suggestions: list[AutoPopulateSuggestion]
+    total_candidates: int
+
+
+@router.post("/auto-populate/{element_type}")
+def auto_populate_catalog_suggestions(
+    element_type: str,
+    request: AutoPopulateRequest,
+) -> AutoPopulateResponse:
+    """K30-23: Return ranked catalog suggestions for element context.
+
+    Element types supported: transformer, cable, switch, branch_point, der.
+    Logic: filter by voltage compatibility + power/current range + manufacturer
+    cascade. PTPiRE-certified prefer (boost +0.2 confidence).
+    """
+    normalized = element_type.lower().strip()
+
+    if normalized == "transformer":
+        return _auto_populate_transformers(request)
+    if normalized == "cable":
+        return _auto_populate_cables(request)
+    if normalized in ("switch", "circuit_breaker", "breaker", "disconnector"):
+        return _auto_populate_switches(request, normalized)
+    if normalized in ("protection", "relay"):
+        return _auto_populate_protection(request)
+
+    raise HTTPException(
+        status_code=400,
+        detail=f"Unknown element_type '{element_type}'. Supported: transformer, cable, switch, protection.",
+    )
+
+
+def _confidence_with_ptpire(base: float, is_ptpire: bool, prefer: bool) -> float:
+    if not prefer:
+        return base
+    return min(1.0, base + 0.2) if is_ptpire else base
+
+
+def _auto_populate_transformers(req: AutoPopulateRequest) -> AutoPopulateResponse:
+    from network_model.catalog.mv_transformer_catalog import get_all_transformer_types
+
+    all_types = get_all_transformer_types()
+    suggestions: list[AutoPopulateSuggestion] = []
+
+    for entry in all_types:
+        params = entry.get("params", {})
+        rated_mva = params.get("rated_power_mva", 0.0)
+        v_hv = params.get("voltage_hv_kv", 0.0)
+        v_lv = params.get("voltage_lv_kv", 0.0)
+        manufacturer = params.get("manufacturer", "")
+        is_ptpire = bool(params.get("ptpire_certified", False))
+
+        # Voltage filter (within ±5%)
+        if req.voltage_kv is not None:
+            if not (
+                abs(v_hv - req.voltage_kv) / req.voltage_kv < 0.05
+                or abs(v_lv - req.voltage_kv) / max(v_lv, 0.001) < 0.05
+            ):
+                continue
+
+        # Power filter (within ±50% — wide net dla typical sizing)
+        if req.expected_power_mva is not None:
+            if rated_mva < req.expected_power_mva * 0.5 or rated_mva > req.expected_power_mva * 2.0:
+                continue
+
+        # Manufacturer cascade
+        confidence = 0.6
+        if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
+            confidence = 0.9
+        confidence = _confidence_with_ptpire(confidence, is_ptpire, req.prefer_ptpire_certified)
+
+        rationale = (
+            f"Sn={rated_mva*1000:.0f} kVA, U_HV={v_hv} kV, "
+            f"U_LV={v_lv} kV ({manufacturer})"
+        )
+
+        suggestions.append(
+            AutoPopulateSuggestion(
+                catalog_ref=entry["id"],
+                label_pl=entry.get("name", entry["id"]),
+                manufacturer=manufacturer or None,
+                confidence=confidence,
+                badge_pl="PTPiRE" if is_ptpire else None,
+                rationale_pl=rationale,
+            )
+        )
+
+    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    return AutoPopulateResponse(
+        element_type="transformer",
+        suggestions=suggestions[:20],
+        total_candidates=len(suggestions),
+    )
+
+
+def _auto_populate_cables(req: AutoPopulateRequest) -> AutoPopulateResponse:
+    from network_model.catalog.mv_cable_line_catalog import get_all_cable_types
+
+    all_types = get_all_cable_types()
+    suggestions: list[AutoPopulateSuggestion] = []
+
+    for entry in all_types:
+        params = entry.get("params", {})
+        v_kv = params.get("voltage_rating_kv", 0.0)
+        cross = params.get("cross_section_mm2", 0.0)
+        rated_i = params.get("rated_current_a", 0.0)
+        manufacturer = params.get("manufacturer", "")
+        is_ptpire = bool(params.get("ptpire_certified", False))
+
+        if req.voltage_kv is not None:
+            if abs(v_kv - req.voltage_kv) / max(req.voltage_kv, 0.001) > 0.2:
+                continue
+        if req.cross_section_mm2 is not None:
+            if abs(cross - req.cross_section_mm2) / max(req.cross_section_mm2, 0.001) > 0.3:
+                continue
+        if req.expected_current_a is not None:
+            if rated_i < req.expected_current_a * 0.9:
+                continue
+
+        confidence = 0.5
+        if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
+            confidence = 0.85
+        confidence = _confidence_with_ptpire(confidence, is_ptpire, req.prefer_ptpire_certified)
+
+        suggestions.append(
+            AutoPopulateSuggestion(
+                catalog_ref=entry["id"],
+                label_pl=entry.get("name", entry["id"]),
+                manufacturer=manufacturer or None,
+                confidence=confidence,
+                badge_pl="PTPiRE PN-HD 620" if is_ptpire else None,
+                rationale_pl=f"{int(cross)} mm² {v_kv} kV, In={int(rated_i)} A ({manufacturer})",
+            )
+        )
+
+    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    return AutoPopulateResponse(
+        element_type="cable",
+        suggestions=suggestions[:20],
+        total_candidates=len(suggestions),
+    )
+
+
+def _auto_populate_switches(req: AutoPopulateRequest, kind_filter: str) -> AutoPopulateResponse:
+    from network_model.catalog.mv_switch_catalog import get_all_switch_equipment_types
+
+    all_types = get_all_switch_equipment_types()
+    suggestions: list[AutoPopulateSuggestion] = []
+    target_kind = (
+        "CIRCUIT_BREAKER"
+        if kind_filter in ("circuit_breaker", "breaker")
+        else "DISCONNECTOR" if kind_filter == "disconnector" else None
+    )
+
+    for entry in all_types:
+        params = entry.get("params", {})
+        if target_kind and params.get("equipment_kind") != target_kind:
+            continue
+        v_kv = params.get("un_kv", 0.0)
+        rated_i = params.get("in_a", 0.0)
+        manufacturer = params.get("manufacturer", "")
+        is_ptpire = bool(params.get("ptpire_certified", False))
+
+        if req.voltage_kv is not None:
+            if abs(v_kv - req.voltage_kv) > req.voltage_kv * 0.3:
+                continue
+        if req.expected_current_a is not None:
+            if rated_i < req.expected_current_a * 0.9:
+                continue
+
+        confidence = 0.55
+        if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
+            confidence = 0.88
+        confidence = _confidence_with_ptpire(confidence, is_ptpire, req.prefer_ptpire_certified)
+
+        suggestions.append(
+            AutoPopulateSuggestion(
+                catalog_ref=entry["id"],
+                label_pl=entry.get("name", entry["id"]),
+                manufacturer=manufacturer or None,
+                confidence=confidence,
+                badge_pl="PTPiRE" if is_ptpire else None,
+                rationale_pl=(
+                    f"{int(v_kv)} kV / {int(rated_i)} A ({manufacturer})"
+                ),
+            )
+        )
+
+    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    return AutoPopulateResponse(
+        element_type="switch",
+        suggestions=suggestions[:20],
+        total_candidates=len(suggestions),
+    )
+
+
+def _auto_populate_protection(req: AutoPopulateRequest) -> AutoPopulateResponse:
+    from application.analyses.protection.catalog.catalog_store import list_devices
+
+    devices = list_devices()
+    suggestions: list[AutoPopulateSuggestion] = []
+    for d in devices:
+        manufacturer = d.vendor
+        rated = d.meta.get("rated") if isinstance(d.meta, dict) else None
+        confidence = 0.5
+        if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
+            confidence = 0.85
+        # PTPiRE = Polish vendors (Elektrometal, ZPAS, Elester, Energotest, ZIAD)
+        is_polish = manufacturer in {
+            "ELEKTROMETAL", "ZPAS", "ELESTER", "ENERGOTEST", "ZIAD"
+        }
+        confidence = _confidence_with_ptpire(confidence, is_polish, req.prefer_ptpire_certified)
+        # Current match
+        if req.expected_current_a is not None and isinstance(rated, int | float):
+            if rated < req.expected_current_a * 0.8:
+                continue
+        suggestions.append(
+            AutoPopulateSuggestion(
+                catalog_ref=d.device_id,
+                label_pl=f"{d.vendor} {d.model}",
+                manufacturer=manufacturer,
+                confidence=confidence,
+                badge_pl="Polski producent" if is_polish else None,
+                rationale_pl=f"{d.vendor} {d.model} — funkcje: {', '.join(d.functions_supported[:6])}",
+            )
+        )
+
+    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    return AutoPopulateResponse(
+        element_type="protection",
+        suggestions=suggestions[:20],
+        total_candidates=len(suggestions),
+    )
 
 
 _PRODUCTION_DISABLED_ROUTE_KEYS = {

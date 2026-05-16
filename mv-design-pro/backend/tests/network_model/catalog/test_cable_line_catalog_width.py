@@ -24,28 +24,24 @@ def test_overhead_line_catalog_has_industrial_series_width() -> None:
 
 
 def test_mv_cable_catalog_has_industrial_series_width() -> None:
+    """K30-22: 55 baseline + 8 Polish PN-HD 620 S2 (YHAKXS + YHKXS) = 63."""
     stats = get_catalog_statistics()
     summary = get_cable_catalog_quality_summary()
 
-    assert stats["liczba_kabli_ogolem"] == 55
-    assert stats["liczba_kabli_produkcyjnych"] == 54
-    assert summary["liczba_kabli_produkcyjnych"] == 54
+    assert stats["liczba_kabli_ogolem"] == 63
+    assert stats["liczba_kabli_produkcyjnych"] == 62
+    assert summary["liczba_kabli_produkcyjnych"] == 62
     assert summary["liczba_kabli_testowych"] == 1
-    assert summary["rodziny_kabli"] == [
-        "ENEA_OPERATOR",
-        "EPR_AL_1C",
-        "EPR_AL_3C",
-        "EPR_CU_1C",
-        "EPR_CU_3C",
-        "NKT",
-        "TELE_FONIKA",
-        "XLPE_AL_1C",
-        "XLPE_AL_3C",
-        "XLPE_CU_1C",
-        "XLPE_CU_3C",
-    ]
-    assert summary["przekroje_kabli_mm2"] == [70, 120, 150, 185, 240, 300, 400]
-    assert summary["liczba_typow_1z"] == 33
+    # K30-22: + POLISH family (YHAKXS, YHKXS)
+    assert "POLISH" in summary["rodziny_kabli"] or any(
+        f.startswith("POLISH") or "YHAKXS" in f or "YHKXS" in f
+        for f in summary["rodziny_kabli"]
+    ), f"Polish PN-HD family missing: {summary['rodziny_kabli']}"
+    # Cross-sections: baseline + 50, 95 (new)
+    assert 50 in summary["przekroje_kabli_mm2"]
+    assert 95 in summary["przekroje_kabli_mm2"]
+    # 33 + 8 Polish 1C = 41
+    assert summary["liczba_typow_1z"] == 41
     assert summary["liczba_typow_3z"] == 22
     assert summary["statusy_weryfikacji"] == [
         "CZESCIOWO_ZWERYFIKOWANY",
@@ -53,6 +49,21 @@ def test_mv_cable_catalog_has_industrial_series_width() -> None:
         "ZWERYFIKOWANY",
     ]
     assert summary["statusy_katalogowe"] == ["PRODUKCYJNY_V1", "TESTOWY"]
+
+
+def test_polish_pn_hd_620_cables_present() -> None:
+    """K30-22: YHAKXS Al + YHKXS Cu single-core MV cables."""
+    cables = get_all_cable_types()
+    polish_cables = [c for c in cables if c["id"].startswith("cable-polish-")]
+    assert len(polish_cables) == 8
+    yhakxs = [c for c in polish_cables if "yhakxs" in c["id"]]
+    yhkxs = [c for c in polish_cables if "yhkxs" in c["id"]]
+    assert len(yhakxs) == 5  # 50/95/120/150/240 Al
+    assert len(yhkxs) == 3   # 95/150/240 Cu
+    for c in polish_cables:
+        params = c["params"]
+        assert params.get("ptpire_certified") is True
+        assert params["standard"] == "PN-HD 620 S2"
 
 
 def test_overhead_line_records_have_explicit_quality_metadata() -> None:

@@ -57,9 +57,14 @@ describe('ProjectDashboardSurface — pulpit projektu E-00', () => {
     const openBtn = screen.getByTestId(`dashboard-open-${project.id}`);
     fireEvent.click(openBtn);
 
+    // handleOpenProject is async (fetch + setActiveCase + hash assign).
+    // setActiveProject is sync (fires before await), but hash assignment
+    // happens after fetch — wait for it.
     expect(useAppStateStore.getState().activeProjectId).toBe('projekt-testowy-001');
     expect(useAppStateStore.getState().activeProjectName).toBe('Sieć SN Gmina Test');
-    expect(window.location.hash).toBe('#sld');
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#sld');
+    });
   });
 
   it('pokazuje stan błędu gdy listProjects rzuca wyjątek', async () => {

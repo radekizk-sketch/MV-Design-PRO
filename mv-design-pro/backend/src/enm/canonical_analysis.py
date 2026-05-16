@@ -1189,6 +1189,7 @@ def _execute_power_flow(run: CanonicalRun) -> None:
         branch_s_to_mva=solution.branch_s_to_mva,
         losses_total=solution.losses_total,
         slack_power_pu=solution.slack_power,
+        unsolved_node_ids=tuple(solution.not_solved_nodes),
     )
 
     run.raw_result = {
@@ -1202,10 +1203,25 @@ def _execute_power_flow(run: CanonicalRun) -> None:
         "reporting_status_pl": (
             "raportowalny" if reporting_status == "reportable" else "nieraportowalny"
         ),
-        "quality_status": "accepted" if solution.converged else "failed",
+        # K30-14 NO-GO #10: quality_status reflects coverage too. Solver
+        # converged ALE not_solved_nodes non-empty → 'partial' (nie kłamiemy
+        # userowi że accepted gdy ~20% nodes nie ma policzonych wartości).
+        "quality_status": (
+            "accepted"
+            if (solution.converged and not solution.not_solved_nodes)
+            else ("partial" if solution.converged else "failed")
+        ),
         "applicability_status": "applicable",
-        "dopuszczalnosc_raportowa": solution.converged,
-        "reporting_limitations": [] if solution.converged else ["solver_non_convergence"],
+        "dopuszczalnosc_raportowa": solution.converged and not solution.not_solved_nodes,
+        "reporting_limitations": (
+            []
+            if (solution.converged and not solution.not_solved_nodes)
+            else (
+                ["unsolved_nodes_outside_slack_island"]
+                if solution.converged
+                else ["solver_non_convergence"]
+            )
+        ),
         "result_v1": result_v1.to_dict(),
         "node_voltage_kv": solution.node_voltage_kv,
         "branch_current_ka": solution.branch_current_ka,

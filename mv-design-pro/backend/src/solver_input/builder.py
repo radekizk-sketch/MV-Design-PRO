@@ -28,6 +28,7 @@ from solver_input.contracts import (
     ProvenanceEntrySchema,
     ProvenanceSummarySchema,
     ShortCircuitPayload,
+    SimplifiedGridSource,
     SolverAnalysisType,
     SolverInputEnvelope,
     SwitchPayload,
@@ -425,6 +426,18 @@ def build_solver_input(
             SolverAnalysisType.SHORT_CIRCUIT_3F,
             SolverAnalysisType.SHORT_CIRCUIT_1F,
         ):
+            # P0.9 V12K: emit SimplifiedGridSource when sc_input_mode='simplified'
+            # AND sc_simplified_sk_mva is provided. Solver-side consumption
+            # (rewiring IEC 60909 Thevenin to use S″k) is follow-up — for now
+            # payload carries the data deterministically so it lands in trace
+            # and JSON contract.
+            simplified_source: SimplifiedGridSource | None = None
+            if cfg.sc_input_mode == "simplified" and cfg.sc_simplified_sk_mva is not None:
+                simplified_source = SimplifiedGridSource(
+                    sk_mva=cfg.sc_simplified_sk_mva,
+                    r_x_ratio=cfg.sc_simplified_r_x_ratio,
+                )
+
             sc_payload = ShortCircuitPayload(
                 buses=buses,
                 branches=branches,
@@ -434,6 +447,7 @@ def build_solver_input(
                 c_factor=cfg.c_factor_max,
                 thermal_time_seconds=cfg.thermal_time_seconds,
                 include_inverter_contribution=cfg.include_inverter_contribution,
+                simplified_grid_source=simplified_source,
             )
             payload_dict = sc_payload.model_dump(mode="json")
 

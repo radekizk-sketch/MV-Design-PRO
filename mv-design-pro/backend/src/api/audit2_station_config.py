@@ -15,6 +15,9 @@ Endpointy (UPSERT pattern):
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -200,7 +203,7 @@ def upsert_station_audit2_config(
     project_id: UUID,
     station_id: str,
     body: StationAudit2ConfigBody,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     UPSERT konfiguracji audytu 2.
@@ -254,7 +257,7 @@ def upsert_station_audit2_config(
 def delete_station_audit2_config(
     project_id: UUID,
     station_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
     """Usuwa konfiguracje audytu 2 dla (project_id, station_id)."""
     with uow_factory() as uow:
@@ -276,7 +279,7 @@ def delete_station_audit2_config(
 def apply_audit2_to_network_model_endpoint(
     project_id: UUID,
     station_id: str,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Phase 26: aplikuje audit2 config (z DB) do dummy graph i zwraca audit trail
@@ -353,7 +356,7 @@ def apply_audit2_to_network_model_endpoint(
 @router.post("/_validate-all")
 def validate_all_audit2(
     project_id: UUID,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
     Phase 13: walidacja audytu 2 dla wszystkich stacji projektu (parallel to physics).

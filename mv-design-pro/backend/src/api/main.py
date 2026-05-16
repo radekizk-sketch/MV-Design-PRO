@@ -14,6 +14,7 @@ from api.enm import production_router as enm_router
 from api.equipment_proof_pack import router as equipment_proof_pack_router
 from api.exception_handlers import register_exception_handlers
 from api.execution_runs import router as execution_runs_router
+from api.fault_loop import router as fault_loop_router
 from api.fault_scenarios import router as fault_scenarios_router
 from api.grid_source_preview import router as grid_source_preview_router
 from api.health import router as health_router
@@ -31,6 +32,7 @@ from api.sld import router as sld_router
 from api.sld_overrides import router as sld_overrides_router
 from api.solver_capabilities import router as solver_capabilities_router
 from api.solver_input import router as solver_input_router
+from api.station_templates import router as station_templates_router
 from api.study_cases import router as study_cases_router
 from api.switchgear_config import router as switchgear_config_router
 from api.xlsx_import import router as xlsx_import_router
@@ -113,12 +115,14 @@ app.include_router(protection_comparisons_router)
 app.include_router(protection_analysis_runs_router, prefix="/api")
 app.include_router(reference_patterns_router)
 app.include_router(sld_router)
+app.include_router(station_templates_router)
 app.include_router(study_cases_router)
 app.include_router(xlsx_import_router)
 app.include_router(enm_router)
 app.include_router(execution_runs_router)
 app.include_router(unified_runs_router, prefix="/api")
 app.include_router(result_contract_v1_router)
+app.include_router(fault_loop_router)
 app.include_router(fault_scenarios_router)
 app.include_router(grid_source_preview_router)
 app.include_router(sld_overrides_router)

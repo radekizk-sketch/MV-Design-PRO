@@ -65,6 +65,15 @@ export default defineConfig({
   // Expect timeout (for assertions)
   expect: {
     timeout: 10000,
+    // Visual regression tolerance (V12K-013 SLD F5 — PLAN_SLD_REWORK § 7.4)
+    // Threshold 0.5% per snapshot to allow minor antialiasing differences
+    // across CI environments while catching real visual regressions.
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.005, // 0.5%
+      threshold: 0.2, // per-pixel color tolerance
+      animations: 'disabled',
+      caret: 'hide',
+    },
   },
 
   use: {

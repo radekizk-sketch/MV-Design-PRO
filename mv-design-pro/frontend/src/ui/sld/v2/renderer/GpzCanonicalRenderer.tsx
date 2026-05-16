@@ -40,6 +40,7 @@ import {
   type GpzStationBalance,
   type TransmissionStatus,
 } from './GpzOperatorHeader';
+import { useSldLod } from '../lod/SldLodContext';
 
 /* =============================================================================
    Domain types (z ENM, projected to canonical SLD)
@@ -774,6 +775,7 @@ interface TrFieldColumnProps {
  */
 function TrFieldColumn(props: TrFieldColumnProps): JSX.Element {
   const { cx, topY, bottomY, transformerDesignation, transformerRef, onClickApparatus } = props;
+  const { getFontSize } = useSldLod();
   const height = bottomY - topY;
   // Pozycje 5 aparatów rozłożone równomiernie wzdłuż kolumny.
   const dsBusY = topY + height * 0.18;
@@ -867,13 +869,15 @@ function TrFieldColumn(props: TrFieldColumnProps): JSX.Element {
         <line x1={cx - 13} y1={esY + 5} x2={cx - 11} y2={esY + 5} stroke="#FF4040" strokeWidth={1.5} />
       </g>
 
-      {/* Etykieta pola (np. "Pole TR1") */}
+      {/* Etykieta pola (np. "Pole TR1") — iter 24 (P0.6 LOD wiring):
+          fontSize teraz pochodzi z useSldLod (bayName role) zamiast
+          hardcoded. LOD-2 standard = 16 px (z bumped BASE_FONT_SIZES). */}
       <text
         x={cx + 18}
         y={topY + 12}
         fill={COLOR_TEXT_SECONDARY}
         fontFamily={FONT_SANS}
-        fontSize={9}
+        fontSize={getFontSize('bayName')}
         fontWeight={600}
       >
         Pole {transformerDesignation}
@@ -1125,7 +1129,7 @@ interface ApparatusTextProps {
 function ApparatusText(props: ApparatusTextProps): JSX.Element | null {
   if (!props.value) return null;
   return (
-    <text x={props.x} y={props.y} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
+    <text x={props.x} y={props.y} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={10}>
       {props.value}
     </text>
   );
@@ -1329,7 +1333,9 @@ function LvBay(props: LvBayProps): JSX.Element {
       {/* Pionowy tor pola */}
       <line x1={0} y1={0} x2={0} y2={trackHeight} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.6} data-parity-key="gpz.bay.power_path" />
 
-      {/* Header pola — feeder name */}
+      {/* Header pola — feeder name. K30-69: zmniejszony font + opacity by
+          unikać dominacji przy zoom-out (industrial dispatcher canon —
+          labels visible but not dominating). */}
       {feederLabel && (
         <text
           x={0}
@@ -1337,8 +1343,9 @@ function LvBay(props: LvBayProps): JSX.Element {
           textAnchor="middle"
           fill={COLOR_TEXT_PRIMARY}
           fontFamily={FONT_SANS}
-          fontSize={10}
-          fontWeight={700}
+          fontSize={8}
+          fontWeight={600}
+          opacity={0.65}
           data-testid="gpz-bay-feeder-label"
           data-parity-key="gpz.bay.feeder_label"
         >
@@ -1410,7 +1417,7 @@ function LvBay(props: LvBayProps): JSX.Element {
           <line x1={0} y1={72} x2={16} y2={72} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
           <circle cx={21} cy={66} r={5} fill="none" stroke="#FFB020" strokeWidth={1.4} />
           <circle cx={21} cy={78} r={5} fill="none" stroke="#FFB020" strokeWidth={1.4} />
-          <text x={30} y={75} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
+          <text x={30} y={75} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={10}>
             VT
           </text>
         </ClickableApparatus>
@@ -1513,7 +1520,7 @@ function LvBay(props: LvBayProps): JSX.Element {
           textAnchor="middle"
           fill={COLOR_TEXT_SECONDARY}
           fontFamily={FONT_MONO}
-          fontSize={9}
+          fontSize={10}
         >
           {bay.destinationLabel.slice(0, 12)}
         </text>
@@ -1681,10 +1688,10 @@ function LvTransformerBay(props: LvBayProps): JSX.Element {
         <text x={16} y={transformerY + 3} fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={10} fontWeight={700}>
           TR
         </text>
-        <text x={16} y={transformerY + 17} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={8}>
+        <text x={16} y={transformerY + 17} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={10}>
           WN/SN
         </text>
-        <text x={16} y={transformerY + 31} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={8}>
+        <text x={16} y={transformerY + 31} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={10}>
           param. w karcie TR
         </text>
       </ClickableApparatus>
@@ -1727,7 +1734,7 @@ function ApparatusCb(props: ApparatusProps): JSX.Element {
         <line x1={cx - 6} y1={cy} x2={cx + 6} y2={cy} stroke="#FF4040" strokeWidth={1.5} />
       )}
       {state === 'unknown' && (
-        <text x={cx} y={cy + 3} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={9} fontWeight={700}>?</text>
+        <text x={cx} y={cy + 3} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={10} fontWeight={700}>?</text>
       )}
     </g>
   );
@@ -1744,7 +1751,7 @@ function ApparatusDs(props: ApparatusProps): JSX.Element {
         <line x1={cx - 5} y1={cy} x2={cx + 5} y2={cy} stroke="#FF4040" strokeWidth={1.4} />
       )}
       {state === 'unknown' && (
-        <text x={cx} y={cy + 3} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={8} fontWeight={700}>?</text>
+        <text x={cx} y={cy + 3} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={10} fontWeight={700}>?</text>
       )}
     </g>
   );
@@ -1767,7 +1774,7 @@ function ApparatusSwitchDisconnector(props: ApparatusProps): JSX.Element {
         <line x1={cx - d} y1={cy} x2={cx + d} y2={cy} stroke="#FF4040" strokeWidth={1.4} />
       )}
       {state === 'unknown' && (
-        <text x={cx} y={cy + 3} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={8} fontWeight={700}>?</text>
+        <text x={cx} y={cy + 3} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={10} fontWeight={700}>?</text>
       )}
     </g>
   );
@@ -1803,7 +1810,7 @@ function SectionLabel(props: SectionLabelProps): JSX.Element {
       <text fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={14} fontWeight={700}>
         {label}
       </text>
-      <text y={12} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
+      <text y={12} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={10}>
         {voltageKv} kV
       </text>
     </g>
@@ -1841,7 +1848,7 @@ function CouplerSymbol(props: CouplerSymbolProps): JSX.Element {
         data-parity-key="gpz.coupler.bus_bridge"
       />
       <ApparatusCb cx={0} cy={0} state={coupler.closedState} />
-      <text x={0} y={-10} textAnchor="middle" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
+      <text x={0} y={-10} textAnchor="middle" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={10}>
         {coupler.designation}
       </text>
     </g>
@@ -1861,7 +1868,7 @@ function BayStatusBadges(props: BayStatusBadgesProps): JSX.Element {
       {flags.slice(0, 6).map((flag, idx) => (
         <g key={`flag-${flag}-${idx}`} data-testid={`gpz-canonical-flag-${flag}`}>
           <rect x={0} y={idx * 12} width={20} height={10} fill="#FFC857" fillOpacity={0.2} stroke="#FFC857" strokeWidth={0.5} rx={1} />
-          <text x={2} y={idx * 12 + 8} fill="#FFC857" fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>
+          <text x={2} y={idx * 12 + 8} fill="#FFC857" fontFamily={FONT_MONO} fontSize={10} fontWeight={700}>
             {flag}
           </text>
         </g>
@@ -1890,7 +1897,7 @@ function BayMeasurementsPanel(props: BayMeasurementsPanelProps): JSX.Element {
     <g data-testid="gpz-canonical-measurements" data-parity-key="gpz.measurements" transform={`translate(${x}, ${y})`}>
       {visibleRows.map((row, idx) => (
         <g key={`m-${row.label}-${idx}`} data-testid={`gpz-canonical-measurement-${row.label}`}>
-          <text x={0} y={idx * 10 + 6} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={8}>
+          <text x={0} y={idx * 10 + 6} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={10}>
             {row.label}
           </text>
           <text
@@ -1899,7 +1906,7 @@ function BayMeasurementsPanel(props: BayMeasurementsPanelProps): JSX.Element {
             textAnchor="end"
             fill={COLOR_TEXT_PRIMARY}
             fontFamily={FONT_MONO}
-            fontSize={8}
+            fontSize={10}
             fontWeight={600}
           >
             {row.value!.toFixed(1)} {row.unit}

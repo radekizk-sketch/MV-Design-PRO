@@ -96,10 +96,18 @@ def test_protection_catalog_has_industrial_series_width_and_semantic_split() -> 
 
 def test_abb_vendor_adapter_covers_reference_devices() -> None:
     adapter = build_adapter()
-    assert adapter.supported_devices() == (
-        "ACME_REX100_v1",
-        "ACME_REX200_v1",
-        "ACME_REX300_v1",
-        "ACME_REX500_v1",
-        "ACME_REX700_v1",
-    )
+    supported = adapter.supported_devices()
+    # Legacy ACME REX series — backward compatibility
+    assert "ACME_REX100_v1" in supported
+    assert "ACME_REX200_v1" in supported
+    assert "ACME_REX300_v1" in supported
+    assert "ACME_REX500_v1" in supported
+    assert "ACME_REX700_v1" in supported
+    # K30-16: ABB Relion expansion
+    assert "ABB_REF615" in supported
+    assert "ABB_REF620" in supported
+    assert "ABB_REF630" in supported
+    assert "ABB_REF650" in supported
+    assert "ABB_RET615" in supported
+    assert "ABB_REB670" in supported
+    assert "ABB_REG670" in supported

@@ -87,14 +87,19 @@ class SnapshotReadOnlyGuard:
         self._fingerprint_before = runtime_fingerprint(self._snapshot)
         return self._snapshot
 
-    def __exit__(self, exc_type, exc, tb) -> bool:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: object | None,
+    ) -> None:
         if exc_type is None:
             fingerprint_after = runtime_fingerprint(self._snapshot)
             if fingerprint_after != self._fingerprint_before:
                 raise SnapshotMutationError(
                     f"{self._operation} mutated NetworkSnapshot {self._snapshot.meta.snapshot_id}"
                 )
-        return False
+        return None
 
 
 def snapshot_read_only_guard(snapshot: NetworkSnapshot, *, operation: str) -> SnapshotReadOnlyGuard:

@@ -136,9 +136,37 @@ export const SLD_V2_COLORS = {
 export const STROKE_BUSBAR_PX = 3 as const; // szyna główna
 export const STROKE_FIELD_TRACK_PX = 2 as const; // tor pola
 export const STROKE_GROUND_BRANCH_PX = 2 as const; // gałąź uziemnika
-export const STROKE_BRANCH_LINE_PX = 2 as const; // linia odgałęzienia (cieńsza niż trunk)
-export const STROKE_TRUNK_LINE_PX = 3 as const; // linia ciągu głównego
+export const STROKE_BRANCH_LINE_PX = 2.5 as const; // linia odgałęzienia (cieńsza niż trunk)
+export const STROKE_TRUNK_LINE_PX = 8 as const; // K30-53: trunk dominantny tor mocy (3.2× branch)
 export const STROKE_DASHED_RING_DASH_PX = '6 4' as const; // dash array dla pierścieni
+
+/**
+ * SLD STROKE HIERARCHY — per AC-01 (SLD_VISUAL_ACCEPTANCE_CRITERIA.md):
+ * AC-01: "tor mocy czytelny — różne grubości linii"
+ *
+ * Hierarchia grubości linii klasy ETAP/DIgSILENT/AutoCAD Electrical:
+ *   - transmission (110 kV): 5 px (najgrubsze, najwyższe napięcie)
+ *   - transformer:           4 px
+ *   - busbar (SN szyna):     4 px (jak transformer — główny zbieracz mocy)
+ *   - trunk (ciąg główny):   3 px
+ *   - branch (odgałęzienie): 2 px
+ *   - detail (cable run):    1.5 px (najcieńsze, ostatnia mila)
+ *
+ * Aliasy: te wartości są referencyjne dla v2 renderer base sizes
+ * (per `frontend/src/ui/sld/v2/lod/lodScaling.ts:BASE_STROKE_WIDTHS`).
+ * Tokens-first API: gdy renderer potrzebuje grubości w stylu CAD
+ * industrial, używa SLD_STROKE_PX.<role> zamiast magic-number.
+ */
+export const SLD_STROKE_PX = {
+  transmission: 5,
+  transformer: 4,
+  busbar: 4,
+  trunk: 3,
+  branch: 2,
+  detail: 1.5,
+} as const;
+
+export type SldStrokeRole = keyof typeof SLD_STROKE_PX;
 
 export const NODE_DOT_SIZE_PX = 8 as const; // węzeł połączeniowy (zakres 7–9)
 export const DEVICE_BLOCK_SMALL = { width: 38, height: 54 } as const; // mały blok aparatu
@@ -234,7 +262,7 @@ export const GPZ_GEOMETRY = {
   sectionLabelGap: 18,
   /** Pole — szerokość, wysokość, gap między polami. */
   bayColumnWidth: 64,
-  bayColumnHeight: 110,
+  bayColumnHeight: 124, // K30-113: 110 → 124 dla unified APPARATUS_PITCH (audyt #4 MEDIUM)
   bayGap: 6,
   /** Nagłówek pola (feeder name). */
   bayHeaderHeight: 12,
@@ -355,3 +383,80 @@ export function getDeviceStyle(state: DeviceState): DeviceStyle {
       };
   }
 }
+
+// =============================================================================
+// LIGHT TECHNICAL THEME (export-grade, V12K-007)
+// =============================================================================
+//
+// Per V12K-007 w docs/v12xx/REJESTR_KONFLIKTOW.md: eksport raportu nigdy nie
+// używa dark_scada (ekranowego). Drukowany SLD w raporcie PDF/DOCX MUSI mieć
+// jasne tło (oszczędność tonera + zgodność z konwencją CAD).
+//
+// LIGHT_TECHNICAL_* stałe są używane przez:
+// - frontend/src/ui/sld/export/exportSvg.ts (planowany F4)
+// - frontend/src/ui/sld/export/exportPdf.ts (planowany F4)
+// - print stylesheets dla SLD viewer
+//
+// Klucze są równoległe do dark_scada tokenów (parity), tylko z zamienioną paletą.
+//
+// Reference: SLD_INDUSTRIAL_SCADA_CAD_TARGET § 4 + SLD_INDUSTRIAL_SPEC_v1 § 6.1.
+
+export const LIGHT_TECHNICAL_COLOR_BG = '#FFFFFF' as const; // białe tło (drukowalne)
+export const LIGHT_TECHNICAL_COLOR_PANEL = '#FAFAFA' as const; // jasny panel
+export const LIGHT_TECHNICAL_COLOR_PANEL_RAISED = '#F0F0F0' as const;
+
+export const LIGHT_TECHNICAL_COLOR_LINE_PRIMARY = '#000000' as const; // czarna linia główna
+export const LIGHT_TECHNICAL_COLOR_LINE_SECONDARY = '#404040' as const;
+export const LIGHT_TECHNICAL_COLOR_NODE = '#000000' as const;
+
+export const LIGHT_TECHNICAL_COLOR_DEVICE_CLOSED = '#007A3D' as const; // ciemny zielony (czytelność na białym)
+export const LIGHT_TECHNICAL_COLOR_DEVICE_CLOSED_BORDER = '#005828' as const;
+export const LIGHT_TECHNICAL_COLOR_DEVICE_OPEN = '#B71C1C' as const; // ciemny czerwony
+export const LIGHT_TECHNICAL_COLOR_DEVICE_OPEN_BORDER = '#8B0000' as const;
+export const LIGHT_TECHNICAL_COLOR_DEVICE_UNKNOWN = '#9E9E9E' as const;
+export const LIGHT_TECHNICAL_COLOR_DEVICE_FAULT = '#D32F2F' as const;
+
+export const LIGHT_TECHNICAL_COLOR_TEXT_PRIMARY = '#000000' as const;
+export const LIGHT_TECHNICAL_COLOR_TEXT_SECONDARY = '#4A4A4A' as const;
+export const LIGHT_TECHNICAL_COLOR_TEXT_MUTED = '#808080' as const;
+export const LIGHT_TECHNICAL_COLOR_VALUE = '#000000' as const;
+export const LIGHT_TECHNICAL_COLOR_SELECTION = '#0066CC' as const;
+
+export const LIGHT_TECHNICAL_COLOR_WARN = '#E08400' as const;
+export const LIGHT_TECHNICAL_COLOR_PARTIAL = '#B57E00' as const;
+
+/**
+ * Theme palette identifier. Frontend theme switcher (F4) wybiera między
+ * 'dark_scada' (ekran) i 'light_technical' (eksport).
+ */
+export type ThemeMode = 'dark_scada' | 'light_technical';
+
+/**
+ * Light technical palette object — równoległy z SLD_V2_COLORS dla łatwej
+ * substytucji w eksporterze SVG/PDF (V12K-007).
+ *
+ * Mapowanie jest zgodne strukturalnie z SLD_V2_COLORS — każdy klucz ma
+ * odpowiednik w obu motywach. Renderery używają theme provider'a (planowany F4)
+ * lub bezpośrednio dla eksportu.
+ */
+export const LIGHT_TECHNICAL_COLORS = {
+  bg: LIGHT_TECHNICAL_COLOR_BG,
+  panel: LIGHT_TECHNICAL_COLOR_PANEL,
+  panelRaised: LIGHT_TECHNICAL_COLOR_PANEL_RAISED,
+  linePrimary: LIGHT_TECHNICAL_COLOR_LINE_PRIMARY,
+  lineSecondary: LIGHT_TECHNICAL_COLOR_LINE_SECONDARY,
+  node: LIGHT_TECHNICAL_COLOR_NODE,
+  deviceClosed: LIGHT_TECHNICAL_COLOR_DEVICE_CLOSED,
+  deviceClosedBorder: LIGHT_TECHNICAL_COLOR_DEVICE_CLOSED_BORDER,
+  deviceOpen: LIGHT_TECHNICAL_COLOR_DEVICE_OPEN,
+  deviceOpenBorder: LIGHT_TECHNICAL_COLOR_DEVICE_OPEN_BORDER,
+  deviceUnknown: LIGHT_TECHNICAL_COLOR_DEVICE_UNKNOWN,
+  deviceFault: LIGHT_TECHNICAL_COLOR_DEVICE_FAULT,
+  textPrimary: LIGHT_TECHNICAL_COLOR_TEXT_PRIMARY,
+  textSecondary: LIGHT_TECHNICAL_COLOR_TEXT_SECONDARY,
+  textMuted: LIGHT_TECHNICAL_COLOR_TEXT_MUTED,
+  value: LIGHT_TECHNICAL_COLOR_VALUE,
+  selection: LIGHT_TECHNICAL_COLOR_SELECTION,
+  warn: LIGHT_TECHNICAL_COLOR_WARN,
+  partial: LIGHT_TECHNICAL_COLOR_PARTIAL,
+} as const;

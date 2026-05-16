@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 from api.dependencies import get_uow_factory
 from application.analyses.run_reader import read_run_envelope
 from application.analyses.run_registry import get_run_envelope_adapter
@@ -12,7 +15,7 @@ router = APIRouter(prefix="/analysis-runs", tags=["analysis-runs"])
 def get_analysis_run_envelope(
     analysis_type: str,
     run_id: str = Path(..., min_length=1),
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict:
     if not run_id.strip():
         raise HTTPException(

@@ -1,9 +1,9 @@
 # MV-DESIGN-PRO Agent Governance
 
-**Version:** 4.1
+**Version:** 4.2
 **Status:** CANONICAL & BINDING
-**Authority:** docs/spec/ > SYSTEM_SPEC.md > ARCHITECTURE.md > AGENTS.md > PLANS.md
-**Updated:** 2026-04-30 for GPT-5.5-oriented Codex workflows
+**Authority:** docs/v12xx/KANON_V12_XX.md > docs/system/ > docs/domain/+docs/sld/contracts > SYSTEM_SPEC.md > ARCHITECTURE.md > AGENTS.md > PLANS.md > docs/INDEX.md > docs/spec/ (ARCHIVAL)
+**Updated:** 2026-05-13 (V12K-011 conflict resolution: V12.xx canon wins; docs/spec/ archival)
 
 ---
 
@@ -46,14 +46,19 @@ Use these rules for agent behavior. They do not weaken any domain, solver, proof
 
 | Document | Purpose | Authority |
 |----------|---------|-----------|
-| **[`docs/spec/`](docs/spec/)** | Detailed specification (18 chapters) | SOURCE OF TRUTH |
-| **[`docs/spec/AUDIT_SPEC_VS_CODE.md`](docs/spec/AUDIT_SPEC_VS_CODE.md)** | Spec-vs-code gap analysis + decision matrix | BINDING |
-| **[`SYSTEM_SPEC.md`](SYSTEM_SPEC.md)** | Executive overview + navigation hub | BINDING |
+| **[`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md)** | V12.xx canon (frozen 2026-04-24) | SOURCE OF TRUTH |
+| **[`docs/v12xx/REJESTR_KONFLIKTOW.md`](docs/v12xx/REJESTR_KONFLIKTOW.md)** | Active conflict registry (V12K-*) | BINDING |
+| **[`docs/system/SPEC_*.md`](docs/system/)** | 6 binding system specs (catalog/model/operations/readiness/results/types) | BINDING |
+| **[`docs/domain/`](docs/domain/), [`docs/sld/SLD_CONTRACT_FLOW_V1.md`](docs/sld/SLD_CONTRACT_FLOW_V1.md), [`docs/sld/SLD_INDUSTRIAL_SPEC_v1.md`](docs/sld/SLD_INDUSTRIAL_SPEC_v1.md)** | Active operational & semantic contracts | BINDING |
+| **[`SYSTEM_SPEC.md`](SYSTEM_SPEC.md)** | Executive overview + navigation hub | BINDING (executive) |
 | **[`ARCHITECTURE.md`](ARCHITECTURE.md)** | Technical architecture reference | BINDING |
 | **[`AGENTS.md`](AGENTS.md)** | Agent governance rules (this file) | BINDING |
 | **[`PLANS.md`](PLANS.md)** | Operational status & next steps | LIVING |
+| **[`docs/INDEX.md`](docs/INDEX.md)** + **[`INDEX_KANONICZNY.md`](docs/INDEX_KANONICZNY.md)** | Active canon indexes | REFERENCE |
+| **[`docs/spec/SPEC_CHAPTER_*.md`](docs/spec/)** (18 chapters) | V11 reference — all 28 files carry "Historical note (V12.5)" disclaimer | ARCHIVAL |
+| **[`docs/audit/archive/`](docs/audit/archive/) + [`historical_execplans/`](docs/audit/historical_execplans/)** | Closed audits & ExecPlans | ARCHIVE |
 
-In case of conflict: `docs/spec/` wins (it is the most detailed and authoritative). SYSTEM_SPEC.md summarizes the spec chapters. No other document overrides the above.
+In case of conflict: higher priority wins. Record any conflict in `docs/v12xx/REJESTR_KONFLIKTOW.md` (V12K-* entries). For architecture changes, consult `docs/v12xx/KANON_V12_XX.md` and `docs/system/` first.
 
 ---
 

@@ -12,6 +12,9 @@ Backward compatible: existing per-type endpoints remain untouched.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 from typing import Any
 from uuid import UUID
 
@@ -107,7 +110,7 @@ def _summary_response(
 @router.post("/short-circuit", status_code=status.HTTP_201_CREATED)
 def dispatch_short_circuit(
     request: ShortCircuitDispatchRequest,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Dispatch short-circuit analysis through unified pipeline.
 
@@ -134,7 +137,7 @@ def dispatch_short_circuit(
 @router.post("/power-flow", status_code=status.HTTP_201_CREATED)
 def dispatch_power_flow(
     request: PowerFlowDispatchRequest,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Dispatch power flow analysis through unified pipeline.
 
@@ -159,7 +162,7 @@ def dispatch_power_flow(
 @router.post("/protection", status_code=status.HTTP_201_CREATED)
 def dispatch_protection(
     request: ProtectionDispatchRequest,
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Dispatch protection analysis through unified pipeline.
 

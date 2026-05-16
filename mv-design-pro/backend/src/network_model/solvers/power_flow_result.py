@@ -6,11 +6,22 @@ Po wprowadzeniu Result API jest zamrożone - wszelkie zmiany wymagają nowej wer
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import math
+from dataclasses import dataclass, field
 from typing import Any
 
 # P20a: Result API version (frozen after introduction)
 POWER_FLOW_RESULT_VERSION = "1.0.0"
+
+
+def _nan_to_none(value: float) -> float | None:
+    """K30-14: NaN-safe JSON serialization (RFC 8259 disallows NaN in JSON).
+    Solver marks not_solved nodes z NaN — converter zwraca None dla
+    downstream JSON-safe propagation. Skończone wartości zwracane bez zmian.
+    """
+    if isinstance(value, float) and math.isnan(value):
+        return None
+    return value
 
 
 @dataclass(frozen=True)
@@ -30,14 +41,19 @@ class PowerFlowBusResult:
     angle_deg: float
     p_injected_mw: float
     q_injected_mvar: float
+    # K30-14 NO-GO #10: explicit per-bus solver status. Backward-compatible
+    # default 'solved' dla pre-K30-14 callers — nowy 'not_solved' marker
+    # propagowany z solver.not_solved_nodes.
+    status: str = "solved"
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "bus_id": self.bus_id,
-            "v_pu": self.v_pu,
-            "angle_deg": self.angle_deg,
-            "p_injected_mw": self.p_injected_mw,
-            "q_injected_mvar": self.q_injected_mvar,
+            "v_pu": _nan_to_none(self.v_pu),
+            "angle_deg": _nan_to_none(self.angle_deg),
+            "p_injected_mw": _nan_to_none(self.p_injected_mw),
+            "q_injected_mvar": _nan_to_none(self.q_injected_mvar),
+            "status": self.status,
         }
 
 
@@ -134,6 +150,10 @@ class PowerFlowResultV1:
     bus_results: tuple[PowerFlowBusResult, ...]
     branch_results: tuple[PowerFlowBranchResult, ...]
     summary: PowerFlowSummary
+    # K30-14 NO-GO #10: explicit list of buses outside slack island (additive,
+    # frozen API preserved). Frontend deriveOperationalSeverity reads this
+    # to mark stations as 'not_solved' rather than nominal voltage placeholder.
+    unsolved_node_ids: tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict[str, Any]:
         """Serializacja do JSON (deterministyczna)."""
@@ -147,6 +167,7 @@ class PowerFlowResultV1:
             "bus_results": [br.to_dict() for br in self.bus_results],
             "branch_results": [br.to_dict() for br in self.branch_results],
             "summary": self.summary.to_dict(),
+            "unsolved_node_ids": list(self.unsolved_node_ids),
         }
 
 
@@ -165,22 +186,34 @@ def build_power_flow_result_v1(
     branch_s_to_mva: dict[str, complex],
     losses_total: complex,
     slack_power_pu: complex,
+    unsolved_node_ids: tuple[str, ...] = (),
 ) -> PowerFlowResultV1:
-    """P20a: Buduje PowerFlowResultV1 z danych solvera.
+    """P20a + K30-14: Buduje PowerFlowResultV1 z danych solvera.
 
     Konwertuje surowe dane z solvera na strukturę PowerFlowResultV1
     z deterministycznym sortowaniem.
-    """
-    import math
 
-    # Bus results (deterministycznie posortowane po bus_id)
+    K30-14 NO-GO #10: solver może oznaczyć nodes jako not_solved (poza
+    slack island). Te bus_ids muszą znaleźć się w bus_results z
+    `status='not_solved'` + v_pu=NaN (signal dla frontend overlay), inaczej
+    overlay wypełnia braki nominal voltage → user widzi 'flat 15.0 kV'.
+    """
+    unsolved_set = set(unsolved_node_ids)
+
+    # Bus results (deterministycznie posortowane po bus_id) — union
+    # solved + not_solved aby NIE gubić nodes outside slack island.
     bus_results: list[PowerFlowBusResult] = []
     for bus_id in sorted(node_u_mag.keys()):
         v_pu = node_u_mag.get(bus_id, 0.0)
         angle_rad = node_angle.get(bus_id, 0.0)
-        angle_deg = math.degrees(angle_rad)
+        angle_deg = (
+            float("nan")
+            if (isinstance(angle_rad, float) and math.isnan(angle_rad))
+            else math.degrees(angle_rad)
+        )
         p_pu = node_p_injected_pu.get(bus_id, 0.0)
         q_pu = node_q_injected_pu.get(bus_id, 0.0)
+        status = "not_solved" if bus_id in unsolved_set else "solved"
         bus_results.append(
             PowerFlowBusResult(
                 bus_id=bus_id,
@@ -188,6 +221,7 @@ def build_power_flow_result_v1(
                 angle_deg=angle_deg,
                 p_injected_mw=p_pu * base_mva,
                 q_injected_mvar=q_pu * base_mva,
+                status=status,
             )
         )
 
@@ -215,8 +249,8 @@ def build_power_flow_result_v1(
             )
         )
 
-    # Summary
-    v_values = list(node_u_mag.values())
+    # Summary — only SOLVED nodes (NaN values from not_solved skipped).
+    v_values = [v for v in node_u_mag.values() if not (isinstance(v, float) and math.isnan(v))]
     min_v = min(v_values) if v_values else 0.0
     max_v = max(v_values) if v_values else 0.0
     summary = PowerFlowSummary(
@@ -244,4 +278,5 @@ def build_power_flow_result_v1(
         bus_results=tuple(bus_results),
         branch_results=tuple(branch_results),
         summary=summary,
+        unsolved_node_ids=tuple(sorted(unsolved_set)),
     )

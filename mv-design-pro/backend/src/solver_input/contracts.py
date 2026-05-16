@@ -198,6 +198,35 @@ class SwitchPayload(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class SimplifiedGridSource(BaseModel):
+    """
+    Simplified grid Thevenin source per /goal V12K (P0.9 — toggle uproszczony).
+
+    Used when StudyCaseConfig.sc_input_mode == 'simplified'. Projektant
+    deklaruje moc zwarciową S″k oraz stosunek R/X po stronie SN, zamiast
+    pełnego modelu strony 110 kV + TR + GPZ.
+
+    Solver IEC 60909 oblicza Z_thevenin z S″k:
+        |Z| = c × U_n² / S″k
+        X = |Z| × sqrt(1 / (1 + (R/X)²))
+        R = X × (R/X)
+
+    Status: SCHEMA delivered. Solver consumption (rewiring IEC 60909 to
+    consume this when present) deferred do follow-up sprint.
+
+    Reference:
+    - docs/sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md Krok 3 (tryb uproszczony)
+    - docs/audit/ENGINEER_WORKFLOW_AUDIT.md § 3.1
+    """
+
+    sk_mva: float = Field(..., gt=0.0, description="Moc zwarciowa S″k po stronie SN [MVA]")
+    r_x_ratio: float = Field(
+        default=0.1, ge=0.0, description="Stosunek R/X po stronie SN (typowo 0.1 dla SN)"
+    )
+
+    model_config = {"frozen": True}
+
+
 class ShortCircuitPayload(BaseModel):
     """Payload for short-circuit analysis (3F or 1F)."""
 
@@ -209,6 +238,9 @@ class ShortCircuitPayload(BaseModel):
     c_factor: float = 1.10
     thermal_time_seconds: float = 1.0
     include_inverter_contribution: bool = True
+    # P0.9 V12K: simplified grid source (used when sc_input_mode == 'simplified').
+    # Optional — None means solver uses full 110 kV + TR model from buses/branches.
+    simplified_grid_source: SimplifiedGridSource | None = None
 
     model_config = {"frozen": True}
 

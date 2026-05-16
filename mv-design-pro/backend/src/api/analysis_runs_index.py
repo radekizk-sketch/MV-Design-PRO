@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from infrastructure.persistence.unit_of_work import UnitOfWork
+
 from datetime import UTC
 from typing import Any
 
@@ -15,7 +18,7 @@ def list_analysis_runs_index(
     analysis_type: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-    uow_factory=Depends(get_uow_factory),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     with uow_factory() as uow:
         entries = uow.analysis_runs_index.list(

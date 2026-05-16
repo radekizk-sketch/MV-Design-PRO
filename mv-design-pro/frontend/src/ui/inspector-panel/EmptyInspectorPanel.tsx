@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { clsx } from 'clsx';
 import type { SelectedElement, ElementType } from '../types';
-import { getVisibleInspectorTabs } from './inspectorTabRegistry';
+import { getVisibleInspectorTabs, type InspectorTabId } from './inspectorTabRegistry';
 
 const ELEMENT_TYPE_LABELS_PL: Record<ElementType, string> = {
   Bus: 'Szyna zbiorcza',
@@ -90,14 +91,26 @@ export interface EmptyInspectorPanelProps {
     sourceCount?: number;
   };
   className?: string;
+  /** K30-17: callback invoked when user clicks tab z aktywnym elementem.
+   *  Caller routes do appropriate config (StationConfigurator, PropertyGrid,
+   *  catalog picker, results view). */
+  onTabActivated?: (tabId: InspectorTabId, selectedElement: SelectedElement | null) => void;
 }
 
 export function EmptyInspectorPanel({
   selectedElement,
   isReadOnly = false,
   className,
+  onTabActivated,
 }: EmptyInspectorPanelProps) {
   const visibleTabs = getVisibleInspectorTabs(selectedElement?.type ?? null);
+  const [activeTabId, setActiveTabId] = useState<InspectorTabId>(
+    visibleTabs[0]?.id ?? 'identyfikacja',
+  );
+  const handleTabClick = (tabId: InspectorTabId) => {
+    setActiveTabId(tabId);
+    onTabActivated?.(tabId, selectedElement ?? null);
+  };
 
   if (!selectedElement) {
     return (
@@ -165,7 +178,11 @@ export function EmptyInspectorPanel({
       data-selection-id={selectedElement.id}
     >
       <InspectorHeader readOnly={isReadOnly} />
-      <InspectorTabs labels={visibleTabs.map((tab) => tab.label)} />
+      <InspectorTabs
+        tabs={visibleTabs.map((tab) => ({ id: tab.id, label: tab.label }))}
+        activeTabId={activeTabId}
+        onTabClick={handleTabClick}
+      />
 
       <div className="flex-1 overflow-auto p-4">
         <section className="rounded border border-scada-border bg-scada-surface p-3">
@@ -224,23 +241,33 @@ function InspectorHeader({ readOnly }: { readOnly: boolean }) {
   );
 }
 
-function InspectorTabs({ labels }: { labels: string[] }) {
+function InspectorTabs({
+  tabs,
+  activeTabId,
+  onTabClick,
+}: {
+  tabs: { id: InspectorTabId; label: string }[];
+  activeTabId: InspectorTabId;
+  onTabClick: (id: InspectorTabId) => void;
+}) {
   return (
     <div className="flex gap-1 overflow-x-auto border-b border-scada-border px-3 py-2" role="tablist">
-      {labels.map((label, index) => (
+      {tabs.map((tab) => (
         <button
-          key={label}
+          key={tab.id}
           type="button"
           role="tab"
-          aria-selected={index === 0}
+          aria-selected={tab.id === activeTabId}
+          data-testid={`inspector-tab-${tab.id}`}
+          onClick={() => onTabClick(tab.id)}
           className={clsx(
             'whitespace-nowrap rounded border px-2 py-1 text-[11px] font-semibold',
-            index === 0
+            tab.id === activeTabId
               ? 'border-scada-sn bg-scada-active text-scada-sn'
-              : 'border-scada-border bg-scada-bg text-scada-muted',
+              : 'border-scada-border bg-scada-bg text-scada-muted hover:bg-scada-bg-hover',
           )}
         >
-          {label}
+          {tab.label}
         </button>
       ))}
     </div>

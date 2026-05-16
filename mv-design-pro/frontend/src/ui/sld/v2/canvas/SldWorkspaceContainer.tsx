@@ -23,6 +23,21 @@ import {
 } from 'react';
 
 import { useAppStateStore } from '../../../app-state';
+import { LayerTogglePanel } from '../lod/LayerTogglePanel';
+import { SldDetailDrawer, type SldDetailDrawerData } from './SldDetailDrawer';
+import { useDerDragDrop, DerPaletteButton, type DerDragKind } from './useDerDragDrop';
+import { useRawResultOverlayStore, getMetric, formatMetric } from '../../../sld-overlay/rawResultOverlayStore';
+import { computeLfDerivedMetrics } from './lfDerivedMetrics';
+import {
+  createInitialLayerState,
+  toggleLayer,
+  type LayerId,
+  type LayerState,
+} from '../lod/layerToggle';
+import type { LodLevel } from '../lod/LodPolicy';
+import { ProofPacksPanel } from '../proof/ProofPacksPanel';
+import { NetworkHierarchyTree } from '../domain/NetworkHierarchyTree';
+import { buildHierarchy, type EnmInputForHierarchy } from '../domain/HierarchyTree';
 import { SldContextMenuController } from '../../../context-menu/SldContextMenuController';
 import type { SldContextMenuRequest } from '../../../context-menu/SldContextMenuController';
 import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
@@ -38,6 +53,9 @@ import {
   toastBus,
   type SldElementKindForMenu,
 } from '../command/SldCommandService';
+import { SldThemeProvider } from '../theme/themeContext';
+import { SplitPreviewPanel } from '../workflow/SplitPreviewPanel';
+import type { SplitStatePreviewReady } from '../workflow/ConsciousSplitController';
 import { SldCanvasV2, type SldCanvasContextMenuRequest } from './SldCanvasV2';
 import { StationInternalView, type InternalDerDescriptor, type StationInternalViewProps } from './StationInternalView';
 import { buildSldDataFromSnapshot } from './enmToSldAdapter';
@@ -428,6 +446,65 @@ function mapDerKindToElementType(kind: 'PV' | 'BESS' | 'FW'): ElementType {
   }
 }
 
+/**
+ * K30-72: map onSelectElement kind → SldDetailDrawer kind.
+ * Pewne kind values (gpz, lv_breaker, cable_run, protection, pcc) mapped
+ * to closest drawer category. null gdy element nie ma dedicated drawer.
+ */
+function mapKindToDrawerKind(kind: string): SldDetailDrawerData['kind'] | null {
+  if (kind === 'station' || kind === 'gpz') return 'station';
+  if (kind === 'bay') return 'bay';
+  if (kind === 'apparatus' || kind === 'lv_breaker' || kind === 'protection' || kind === 'pcc') return 'apparatus';
+  if (kind === 'der' || kind === 'pv_inverter') return 'der';
+  if (kind === 'cable_run') return 'cable_run';
+  return null;
+}
+
+/**
+ * K30-84: Build live metrics chips (V/U_pu/P/Q/I) for selected element z
+ * RawOverlayPayload (LF/SC). Returns empty array gdy brak payload lub brak
+ * matching element ref. Element id mapping: station → '{id}/sn_bus' za snBusRef.
+ */
+function buildLiveMetrics(
+  payload: import('../../../sld-overlay/rawResultOverlayStore').RawOverlayPayload | null,
+  drawerKind: SldDetailDrawerData['kind'],
+  elementId: string,
+  nominalKv: number | null,
+): SldDetailDrawerData['liveMetrics'] {
+  if (!payload) return undefined;
+  // Station → check SN bus metrics (U_kV, U_pu)
+  if (drawerKind === 'station') {
+    const snBusRef = elementId.endsWith('/station')
+      ? `${elementId.slice(0, -'/station'.length)}/sn_bus`
+      : `${elementId}/sn_bus`;
+    const uKv = getMetric(payload, snBusRef, 'U_kV');
+    const uPu = getMetric(payload, snBusRef, 'U_pu');
+    const chips: Array<{ label: string; value: string; color?: string }> = [];
+    if (uKv) chips.push({ label: 'U', value: formatMetric(uKv) });
+    if (uPu) {
+      const dev = uPu.value != null ? (uPu.value - 1) * 100 : null;
+      const color = dev == null ? undefined
+        : Math.abs(dev) <= 5 ? '#13C45A'
+        : Math.abs(dev) <= 10 ? '#FFD166'
+        : '#F25F5F';
+      chips.push({ label: 'U_pu', value: formatMetric(uPu), color });
+    }
+    if (chips.length === 0 && nominalKv != null) {
+      return undefined;
+    }
+    return chips.length > 0 ? chips : undefined;
+  }
+  // DER/Bay/Apparatus → check payload direct element ref
+  const el = payload.elements[elementId];
+  if (!el) return undefined;
+  const chips: Array<{ label: string; value: string }> = [];
+  for (const code of ['P_MW', 'Q_Mvar', 'I_A', 'U_kV']) {
+    const m = el.metrics?.[code];
+    if (m) chips.push({ label: code.split('_')[0], value: formatMetric(m) });
+  }
+  return chips.length > 0 ? chips : undefined;
+}
+
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
 const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   'show-readiness': 'E-04',
@@ -491,6 +568,10 @@ export interface SldWorkspaceContainerProps {
   readonly width?: number;
   /** Override wysokości kanwy — używane w testach. */
   readonly height?: number;
+  /** Gdy podany, pokazuje SplitPreviewPanel (Wizard K7 — conscious-split preview_ready). */
+  readonly splitPreviewState?: SplitStatePreviewReady | null;
+  readonly onSplitConfirm?: () => void;
+  readonly onSplitCancel?: () => void;
 }
 
 /**
@@ -536,7 +617,14 @@ function useMeasuredSize(
 export function SldWorkspaceContainer(
   props: SldWorkspaceContainerProps = {},
 ): JSX.Element {
-  const { readOnly = false, width: widthOverride, height: heightOverride } = props;
+  const {
+    readOnly = false,
+    width: widthOverride,
+    height: heightOverride,
+    splitPreviewState = null,
+    onSplitConfirm,
+    onSplitCancel,
+  } = props;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const measured = useMeasuredSize(containerRef, 1024, 640, {
@@ -556,11 +644,119 @@ export function SldWorkspaceContainer(
   const [contextRequest, setContextRequest] = useState<SldContextMenuRequest | null>(null);
   const [internalStationId, setInternalStationId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // K30-72: detail drawer state (SldDetailDrawer K30-71)
+  const [detailDrawerData, setDetailDrawerData] = useState<SldDetailDrawerData | null>(null);
+  // K30-78: DER drag-drop palette → station → drawer DER tab pre-filled.
+  const derDrag = useDerDragDrop();
+  // K30-84: subscribe to LF/SC overlay payload dla inline metric chips
+  const overlayPayload = useRawResultOverlayStore((s) => s.payload);
   const [viewportTransform, setViewportTransform] = useState<ViewportTransform>(IDENTITY_TRANSFORM);
   // Iteracja 12: lasso multi-select state.
   const [lassoRect, setLassoRect] = useState<LassoRect | null>(null);
   const lassoStartRef = useRef<{ x: number; y: number } | null>(null);
   const [pendingDrop, setPendingDrop] = useState<PaletteDragPayload | null>(null);
+
+  // Iter 9 (per SCADA audit blocker): state warstw + LOD 13 toggle panel.
+  // LOD na razie statycznie = 2 (standard) — pełna integracja LodController
+  // przyjdzie w follow-up (iter 10+).
+  const [layerState, setLayerState] = useState<LayerState>(() => createInitialLayerState());
+  const currentLod: LodLevel = 2;
+  const [layerPanelOpen, setLayerPanelOpen] = useState<boolean>(false);
+  const [themeMode, setThemeMode] = useState<'dark_scada' | 'light_technical'>('dark_scada');
+  const handleToggleLayer = useCallback(
+    (layerId: LayerId) => {
+      setLayerState((prev) => toggleLayer(prev, layerId, currentLod));
+    },
+    [currentLod],
+  );
+  // Iter 11 (per Projektant SN/WN blocker): buduj hierarchię z snapshot
+  // dla drzewa GPZ→Sekcja→Pole. Memoized — przelicza tylko przy zmianie
+  // snapshot. Brak modelu = pusta hierarchia (empty state w komponencie).
+  const [hierarchyPanelOpen, setHierarchyPanelOpen] = useState<boolean>(true);
+  const networkHierarchy = useMemo(() => {
+    if (!snapshot) {
+      return buildHierarchy({
+        substations: [],
+        bays: [],
+        buses: [],
+        sources: [],
+        line_runs: [],
+        generators: [],
+      });
+    }
+    // Mapowanie snapshot → EnmInputForHierarchy w trybie defensywnym.
+    // ENM snapshot types (z types/enm.ts) różnią się od HierarchyTree-input.
+    // Używamy strukturalnego match'u z fallbackami dla brakujących pól.
+    const enmInput = {
+      substations: ((snapshot.substations ?? []) as readonly unknown[]).map(
+        (raw): EnmInputForHierarchy['substations'][number] => {
+          const s = raw as Record<string, unknown>;
+          return {
+            ref_id: String(s.ref_id ?? ''),
+            name: String(s.name ?? s.ref_id ?? ''),
+            station_type: String(s.station_type ?? 'mv_lv'),
+            bus_refs: Array.isArray(s.bus_refs) ? (s.bus_refs as string[]) : [],
+            gpz_sections: Array.isArray(s.gpz_sections)
+              ? (s.gpz_sections as EnmInputForHierarchy['substations'][number]['gpz_sections'])
+              : undefined,
+          };
+        },
+      ),
+      bays: ((snapshot.bays ?? []) as readonly unknown[]).map(
+        (raw): EnmInputForHierarchy['bays'][number] => {
+          const b = raw as Record<string, unknown>;
+          return {
+            ref_id: String(b.ref_id ?? ''),
+            name: String(b.name ?? b.ref_id ?? ''),
+            bay_role: (b.bay_role as EnmInputForHierarchy['bays'][number]['bay_role']) ?? 'OUT',
+            substation_ref: String(b.substation_ref ?? ''),
+            bus_ref: String(b.bus_ref ?? ''),
+          };
+        },
+      ),
+      buses: ((snapshot.buses ?? []) as readonly unknown[]).map(
+        (raw): EnmInputForHierarchy['buses'][number] => {
+          const b = raw as Record<string, unknown>;
+          return {
+            ref_id: String(b.ref_id ?? ''),
+            voltage_kv: Number(b.voltage_kv ?? 15),
+            name: String(b.name ?? b.ref_id ?? ''),
+          };
+        },
+      ),
+      sources: ((snapshot.sources ?? []) as readonly unknown[]).map(
+        (raw): EnmInputForHierarchy['sources'][number] => {
+          const s = raw as Record<string, unknown>;
+          return {
+            ref_id: String(s.ref_id ?? ''),
+            bus_ref: String(s.bus_ref ?? ''),
+            sk3_mva: typeof s.sk3_mva === 'number' ? s.sk3_mva : null,
+          };
+        },
+      ),
+      line_runs: [],
+      generators: [],
+    } satisfies EnmInputForHierarchy;
+    return buildHierarchy(enmInput);
+  }, [snapshot]);
+
+  const handleResetLayers = useCallback(() => {
+    setLayerState(createInitialLayerState());
+  }, []);
+
+  const handleExportSvg = useCallback(() => {
+    const svgEl = containerRef.current?.querySelector<SVGSVGElement>('svg[data-testid="sld-canvas-v2"]');
+    if (!svgEl) return;
+    const serializer = new XMLSerializer();
+    const svgStr = serializer.serializeToString(svgEl);
+    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'schemat_sld.svg';
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [containerRef]);
 
   // Iteracja 11: real-data adapter snapshot → SLD renderers props.
   const sldData = useMemo(
@@ -627,7 +823,274 @@ export function SldWorkspaceContainer(
     setSelectedId(id);
     if (!id) {
       selectElement(null);
+      setDetailDrawerData(null);
       return;
+    }
+
+    // K30-78: intercept station click when DER drag active → drop+open DER tab.
+    if (kind === 'station' && derDrag.state) {
+      const dropResult = derDrag.dropOnStation(id);
+      if (dropResult) {
+        const stationForDrop = sldData.stations.find((s) => s.id === id);
+        setDetailDrawerData({
+          kind: 'der',
+          elementId: id,
+          label: stationForDrop?.stationCode
+            ?? stationForDrop?.name
+            ?? id.split('/').pop()
+            ?? id,
+          voltageKv: stationForDrop?.busVoltageKv ?? null,
+          stationCode: stationForDrop?.stationCode ?? null,
+          accentColor: dropResult.kind === 'PV' ? '#FFD166' : dropResult.kind === 'BESS' ? '#7DD3FC' : '#7EE0B5',
+          derKind: dropResult.kind,
+          derConnectionVariant: 'nn_side',
+        });
+        return;
+      }
+    }
+
+    // K30-72: open SldDetailDrawer per element kind
+    const drawerKind = mapKindToDrawerKind(kind);
+    if (drawerKind) {
+      const stationForDrawer = sldData.stations.find((s) => s.id === id);
+      const stationContext = kind === 'station' ? stationForDrawer : sldData.stations[0];
+      // K30-79: real transformer spec from snapshot (gdy station kind)
+      let transformerSpec: SldDetailDrawerData['transformerSpec'] = null;
+      // K30-80: bay list dla rozdzielnica tab
+      let baysSpec: SldDetailDrawerData['baysSpec'] = undefined;
+      // K30-81: nN side spec (LV bus + loads)
+      let nnSpec: SldDetailDrawerData['nnSpec'] = null;
+      // K30-82: existing DERs on station (snapshot.generators filter station_ref)
+      let existingDers: SldDetailDrawerData['existingDers'] = undefined;
+      // K30-83: bay apparatus list (from bay.equipment_refs + runtime_state)
+      let apparatusSpec: SldDetailDrawerData['apparatusSpec'] = undefined;
+      if (drawerKind === 'station' && snapshot) {
+        const substation = findSubstationByRef(snapshot, id);
+        const transformers = selectStationTransformers(snapshot, substation ?? null);
+        const tr = transformers[0];
+        if (tr) {
+          transformerSpec = {
+            vectorGroup: tr.vector_group ?? null,
+            snMva: typeof tr.sn_mva === 'number' ? tr.sn_mva : null,
+            uhvKv: typeof tr.uhv_kv === 'number' ? tr.uhv_kv : null,
+            ulvKv: typeof tr.ulv_kv === 'number' ? tr.ulv_kv : null,
+            ukPercent: typeof tr.uk_percent === 'number' ? tr.uk_percent : null,
+          };
+        }
+        const bays = selectStationBays(snapshot, substation ?? null);
+        baysSpec = bays.map((b) => ({
+          id: b.ref_id ?? b.id,
+          name: b.name ?? null,
+          bayRole: b.bay_role ?? null,
+          bayNumber: b.bay_number ?? null,
+          feederShortName: b.feeder_short_name ?? null,
+        }));
+        // K30-81: find LV bus + loads na nim
+        const lvBusRef = tr?.lv_bus_ref ?? null;
+        const lvBus = lvBusRef
+          ? (snapshot.buses ?? []).find((b) => b.ref_id === lvBusRef || b.id === lvBusRef)
+          : null;
+        const loadsOnLv = lvBusRef
+          ? (snapshot.loads ?? []).filter((l) => l.bus_ref === lvBusRef)
+          : [];
+        nnSpec = {
+          busVoltageKv: lvBus?.voltage_kv ?? tr?.ulv_kv ?? null,
+          loads: loadsOnLv.map((l) => ({
+            id: l.ref_id ?? l.id,
+            name: l.name ?? null,
+            pKw: typeof l.p_mw === 'number' ? l.p_mw * 1000 : null,
+            qKvar: typeof l.q_mvar === 'number' ? l.q_mvar * 1000 : null,
+          })),
+        };
+        // K30-82: existing DERs — generators with station_ref == substation
+        const substationRef = substation?.ref_id ?? substation?.id ?? id;
+        const dersOnStation = (snapshot.generators ?? []).filter(
+          (g) => g.station_ref === substationRef,
+        );
+        const genTypeToKind = (t: string | null | undefined): 'PV' | 'BESS' | 'FW' | null => {
+          if (!t) return null;
+          if (t === 'pv_inverter') return 'PV';
+          if (t === 'bess') return 'BESS';
+          if (t === 'wind_inverter' || t === 'fw_pmsg' || t === 'fw_dfig' || t === 'fw_scig') return 'FW';
+          return null;
+        };
+        existingDers = dersOnStation.map((g) => ({
+          id: g.ref_id ?? g.id,
+          kind: genTypeToKind(g.gen_type ?? null),
+          name: g.name ?? null,
+          pMw: typeof g.p_mw === 'number' ? g.p_mw : null,
+        }));
+      }
+      // K30-89: cable run spec (gdy drawer kind='cable_run')
+      // K30-93: + maxLoadingPct + maxVoltageDropPct z lfDerivedMetrics
+      let cableRunSpec: SldDetailDrawerData['cableRunSpec'] = null;
+      if (drawerKind === 'cable_run') {
+        const run = sldData.cableRuns.find((r) => r.id === id);
+        if (run) {
+          let lengthKm: number | null = null;
+          if (snapshot && run.segmentRefs && run.segmentRefs.length > 0) {
+            let total = 0;
+            let countWithLength = 0;
+            for (const segRef of run.segmentRefs) {
+              const seg = (snapshot.branches ?? []).find(
+                (b: { ref_id?: string; id?: string }) => b.ref_id === segRef || b.id === segRef,
+              );
+              if (seg && 'length_km' in seg && typeof (seg as { length_km: number }).length_km === 'number') {
+                total += (seg as { length_km: number }).length_km;
+                countWithLength++;
+              }
+            }
+            if (countWithLength > 0) lengthKm = total;
+          }
+          // K30-93: pull cable loading from LF derived metrics
+          let maxLoadingPct: number | null = null;
+          let maxVoltageDropPct: number | null = null;
+          if (overlayPayload) {
+            const lfMeta = computeLfDerivedMetrics(
+              overlayPayload,
+              sldData.stations.map((s) => ({ id: s.id, busVoltageKv: s.busVoltageKv })),
+              sldData.cableRuns.map((r) => ({
+                id: r.id,
+                segmentRefs: r.segmentRefs,
+                voltageKv: r.voltageKv,
+              })),
+            );
+            const loading = lfMeta.cableLoadingPctByRunId.get(run.id);
+            if (typeof loading === 'number') maxLoadingPct = loading;
+            // Voltage drop = max |station deviation| on stations along this run
+            const devs = Array.from(lfMeta.voltageDeviationPctByStationId.values());
+            if (devs.length > 0) {
+              maxVoltageDropPct = Math.max(...devs.map((d) => Math.abs(d)));
+            }
+          }
+          cableRunSpec = {
+            runKind: run.runKind ?? null,
+            segmentCount: run.segmentRefs?.length ?? null,
+            stationCount: null,
+            lengthKm,
+            segmentKind: run.segmentKind ?? null,
+            maxLoadingPct,
+            maxVoltageDropPct,
+          };
+        }
+      }
+      // K30-83: bay apparatus list (gdy drawer kind='bay')
+      if (drawerKind === 'bay' && snapshot) {
+        const bay = findBayByRef(snapshot, id);
+        const states = bay?.runtime_state?.primary_device_states ?? {};
+        const inferKind = (appId: string): 'CB' | 'DS' | 'ES' | 'CT' | 'VT' | 'OTHER' => {
+          const lower = appId.toLowerCase();
+          if (lower.includes('breaker') || lower.endsWith('#cb')) return 'CB';
+          if (lower.includes('disconnector') || lower.endsWith('#ds')) return 'DS';
+          if (lower.includes('earthing') || lower.endsWith('#es')) return 'ES';
+          if (lower.includes('current_transformer') || lower.endsWith('#ct')) return 'CT';
+          if (lower.includes('voltage_transformer') || lower.endsWith('#vt')) return 'VT';
+          return 'OTHER';
+        };
+        const labelFor = (k: 'CB' | 'DS' | 'ES' | 'CT' | 'VT' | 'OTHER', appId: string): string => {
+          if (k === 'CB') return 'Wyłącznik';
+          if (k === 'DS') return appId.includes('out') ? 'Odłącznik odpływowy' : 'Odłącznik';
+          if (k === 'ES') return 'Uziemnik';
+          if (k === 'CT') return 'Przekładnik prądowy';
+          if (k === 'VT') return 'Przekładnik napięciowy';
+          return appId.split('#').pop() ?? appId;
+        };
+        const mapState = (raw: unknown): 'closed' | 'open' | 'unknown' => {
+          if (raw && typeof raw === 'object' && 'actual_state' in raw) {
+            const v = (raw as { actual_state: string }).actual_state;
+            if (v === 'zamkniety') return 'closed';
+            if (v === 'otwarty') return 'open';
+          }
+          return 'unknown';
+        };
+        apparatusSpec = (bay?.equipment_refs ?? []).map((eqId) => {
+          const k = inferKind(eqId);
+          return {
+            id: eqId,
+            kind: k,
+            label: labelFor(k, eqId),
+            state: mapState(states[eqId]),
+          };
+        });
+      }
+      // K30-97: apparatus state (gdy drawer kind='apparatus')
+      let apparatusState: SldDetailDrawerData['apparatusState'] = null;
+      if (drawerKind === 'apparatus' && snapshot) {
+        // Look up state across all bays' primary_device_states
+        let raw: unknown = null;
+        for (const sub of (snapshot.substations ?? []) as Array<{ bays?: Array<{ runtime_state?: { primary_device_states?: Record<string, unknown> } }> }>) {
+          for (const b of sub.bays ?? []) {
+            const ds = b.runtime_state?.primary_device_states ?? {};
+            if (id in ds) { raw = ds[id]; break; }
+          }
+          if (raw) break;
+        }
+        if (raw && typeof raw === 'object') {
+          const r = raw as {
+            actual_state?: string;
+            control_mode?: string;
+            communication_ok?: boolean;
+            interlock_blocked?: boolean;
+            last_state_change_at?: string;
+          };
+          const mapState = (v: string | undefined): 'closed' | 'open' | 'unknown' | null =>
+            v === 'zamkniety' ? 'closed' : v === 'otwarty' ? 'open' : v === 'nieznany' ? 'unknown' : null;
+          const mapMode = (v: string | undefined): 'LOKALNY' | 'ZDALNY' | 'AUTO' | 'BLOKADA' | null => {
+            if (!v) return null;
+            const up = v.toUpperCase();
+            if (up === 'LOKALNY' || up === 'ZDALNY' || up === 'AUTO' || up === 'BLOKADA') return up;
+            return null;
+          };
+          apparatusState = {
+            actualState: mapState(r.actual_state),
+            controlMode: mapMode(r.control_mode),
+            communicationOk: r.communication_ok ?? null,
+            interlockBlocked: r.interlock_blocked ?? null,
+            lastChangeAt: r.last_state_change_at ?? null,
+          };
+        }
+      }
+      // K30-98: breadcrumb context dla bay/apparatus selections
+      let parentStationLabel: string | null = null;
+      let parentBayLabel: string | null = null;
+      if ((drawerKind === 'bay' || drawerKind === 'apparatus') && stationContext) {
+        parentStationLabel = stationContext.stationCode
+          ?? stationContext.name
+          ?? null;
+      }
+      if (drawerKind === 'apparatus' && snapshot) {
+        for (const sub of (snapshot.substations ?? []) as Array<{ name?: string; bays?: Array<{ name?: string; ref_id?: string; equipment_refs?: string[] }> }>) {
+          for (const b of sub.bays ?? []) {
+            if (b.equipment_refs?.includes(id)) {
+              parentBayLabel = b.name ?? b.ref_id ?? null;
+              break;
+            }
+          }
+          if (parentBayLabel) break;
+        }
+      }
+      setDetailDrawerData({
+        kind: drawerKind,
+        elementId: id,
+        label: stationForDrawer?.stationCode
+          ?? stationForDrawer?.name
+          ?? id.split('/').pop()
+          ?? id,
+        voltageKv: stationForDrawer?.busVoltageKv ?? null,
+        stationCode: stationContext?.stationCode ?? null,
+        accentColor: '#7EC8FF',
+        transformerSpec,
+        baysSpec,
+        nnSpec,
+        existingDers,
+        apparatusSpec,
+        cableRunSpec,
+        liveMetrics: buildLiveMetrics(overlayPayload, drawerKind, id, stationForDrawer?.busVoltageKv ?? null),
+        alarmSeverity: stationForDrawer?.alarmSeverity ?? null,
+        apparatusState,
+        parentStationLabel,
+        parentBayLabel,
+      });
     }
 
     let selected: SelectedElement | null = null;
@@ -714,7 +1177,7 @@ export function SldWorkspaceContainer(
 
     collapseSurfaceStackTo(null);
     selectElement(selected ?? { id, type: 'DescriptiveElement', name: id });
-  }, [collapseSurfaceStackTo, selectElement, snapshot, sldData]);
+  }, [collapseSurfaceStackTo, selectElement, snapshot, sldData, derDrag, overlayPayload]);
 
   useEffect(() => {
     const root = containerRef.current;
@@ -1027,18 +1490,31 @@ export function SldWorkspaceContainer(
   );
 
   return (
+    <SldThemeProvider mode={themeMode}>
     <div
       ref={containerRef}
       data-testid="sld-workspace-container"
       data-readonly={readOnly}
       data-pending-drop={pendingDrop?.kind ?? ''}
-      className="relative flex h-full w-full overflow-hidden bg-scada-bg"
+      // K30-51 LAYOUT OVERHAUL: grid dots wyłączone w default view (były
+      // distraktorem na schemacie). Włączyć via ?editGrid=1 dla CAD-style edit.
+      className={`relative flex h-full w-full overflow-hidden bg-scada-bg${
+        typeof window !== 'undefined' && window.location.search.includes('editGrid=1')
+          ? ' sld-canvas-grid'
+          : ''
+      }`}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
     >
+      {/* Iter 7 CAD rulers — top (X) + left (Y) per CAD specjalista
+          (iter 5 verify: "RULERS BRAK — górna/lewa linijka z podziałką").
+          Static decorative overlay (pointer-events: none) — ETAP-grade visual cue. */}
+      <div className="sld-canvas-ruler sld-canvas-ruler-top" aria-hidden="true" />
+      <div className="sld-canvas-ruler sld-canvas-ruler-left" aria-hidden="true" />
+
       <SldCanvasV2
         width={measured.width}
         height={measured.height}
@@ -1048,7 +1524,7 @@ export function SldWorkspaceContainer(
         cableRuns={sldData.cableRuns}
         stations={sldData.stations}
         ders={sldData.ders}
-        connections={[]}
+        connections={sldData.derConnections}
         selectedId={selectedId}
         onSelectElement={handleSelectElement}
         onDoubleClickStation={handleDoubleClickStation}
@@ -1056,6 +1532,161 @@ export function SldWorkspaceContainer(
         onContextMenu={handleContextMenu}
         onViewportTransformChange={setViewportTransform}
       />
+
+      {/* K30-72: SldDetailDrawer right-side panel — opens onClick element.
+          Tab interface adapts per kind (station/bay/apparatus/der/cable_run). */}
+      <SldDetailDrawer
+        open={detailDrawerData !== null}
+        data={detailDrawerData}
+        onClose={() => {
+          setDetailDrawerData(null);
+          setSelectedId(null);
+          selectElement(null);
+          derDrag.cancel();
+        }}
+        onSave={() => {
+          const label = detailDrawerData?.label ?? detailDrawerData?.elementId ?? '—';
+          notify(`Zapisano konfigurację: ${label} (K30-88 backend wire-up).`, 'success');
+          setDetailDrawerData(null);
+          setSelectedId(null);
+          selectElement(null);
+          derDrag.cancel();
+        }}
+        onOpenFullView={
+          detailDrawerData?.kind === 'station' && detailDrawerData.elementId
+            ? () => {
+                if (detailDrawerData.elementId) {
+                  setInternalStationId(detailDrawerData.elementId);
+                  setDetailDrawerData(null);
+                }
+              }
+            : undefined
+        }
+      />
+
+      {/* K30-78: DER palette toolbar — kliknij ikonę DER (PV/BESS/FW)
+          → następnie kliknij stację, by otworzyć drawer DER z pre-fillem. */}
+      <div
+        className="pointer-events-auto absolute top-3 z-20 flex items-center gap-1 rounded border border-scada-border bg-scada-panel/95 px-2 py-1 shadow-lg"
+        data-testid="sld-v2-der-palette"
+        style={{ left: '50%', transform: 'translateX(-50%)' }}
+      >
+        <span style={{ fontSize: 9, color: '#7E8790', marginRight: 4, fontWeight: 700, letterSpacing: 0.5 }}>
+          DODAJ DER:
+        </span>
+        {(['PV', 'BESS', 'FW'] as DerDragKind[]).map((kind) => (
+          <DerPaletteButton
+            key={kind}
+            kind={kind}
+            onStart={(k) => derDrag.startDrag(k)}
+            disabled={derDrag.state !== null && derDrag.state.kind !== kind}
+            active={derDrag.state?.kind === kind}
+          />
+        ))}
+        {derDrag.state && (
+          <span
+            data-testid="sld-v2-der-palette-hint"
+            style={{ fontSize: 9, color: '#FFD166', marginLeft: 8, fontStyle: 'italic' }}
+          >
+            ▸ Kliknij stację, aby dodać {derDrag.state.kind}
+            <button
+              type="button"
+              onClick={derDrag.cancel}
+              data-testid="sld-v2-der-palette-cancel"
+              style={{
+                marginLeft: 6,
+                background: 'transparent',
+                border: '1px solid #5A6878',
+                color: '#DDF7FF',
+                borderRadius: 2,
+                padding: '1px 4px',
+                fontSize: 9,
+                cursor: 'pointer',
+              }}
+            >
+              Anuluj
+            </button>
+          </span>
+        )}
+      </div>
+
+      {/* Iter 9 (SCADA blocker): floating LayerTogglePanel dock w prawym dolnym
+          rogu canvasu. Toggle CTA otwiera/zamyka pełen panel 13 warstw.
+          F4: theme toggle + SVG export alongside layer toggle. */}
+      <div className="pointer-events-auto absolute bottom-3 right-3 z-20 flex flex-col items-end gap-1">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setThemeMode((m) => (m === 'dark_scada' ? 'light_technical' : 'dark_scada'))}
+            data-testid="sld-theme-toggle"
+            title={themeMode === 'dark_scada' ? 'Przełącz na motyw jasny (eksport)' : 'Przełącz na motyw ciemny (SCADA)'}
+            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          >
+            {themeMode === 'dark_scada' ? '☀ Jasny' : '◉ SCADA'}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportSvg}
+            data-testid="sld-export-svg"
+            title="Eksportuj schemat SLD jako plik SVG"
+            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          >
+            ↓ SVG
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={() => setLayerPanelOpen((prev) => !prev)}
+          data-testid="sld-layer-panel-toggle"
+          aria-label={layerPanelOpen ? 'Zamknij panel warstw' : 'Otwórz panel warstw (13)'}
+          title={layerPanelOpen ? 'Zamknij panel warstw' : 'Warstwy (13)'}
+          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+        >
+          {layerPanelOpen ? '▾ Warstwy' : '▴ Warstwy (13)'}
+        </button>
+        {layerPanelOpen && (
+          <LayerTogglePanel
+            state={layerState}
+            currentLod={currentLod}
+            onToggleLayer={handleToggleLayer}
+            onResetAll={handleResetLayers}
+            className="w-[240px]"
+          />
+        )}
+      </div>
+
+      {/* Iter 10 (Whitebox blocker): floating ProofPacksPanel w lewym dolnym
+          rogu z 8 canonical proof packs. Disable gdy ENM pusty. */}
+      <div
+        className="pointer-events-auto absolute bottom-3 left-3 z-20 w-[220px]"
+        data-testid="sld-proof-packs-dock"
+      >
+        <ProofPacksPanel hasNetworkModel={!isEmpty} />
+      </div>
+
+      {/* Iter 11 (Projektant SN/WN blocker): NetworkHierarchyTree dock
+          w lewym górnym rogu canvasu (z toggle CTA). Drzewo GPZ→Sekcja→Pole. */}
+      <div
+        className="pointer-events-auto absolute left-3 top-3 z-20 flex flex-col items-start gap-1"
+        data-testid="sld-hierarchy-tree-dock"
+      >
+        <button
+          type="button"
+          onClick={() => setHierarchyPanelOpen((prev) => !prev)}
+          data-testid="sld-hierarchy-tree-toggle"
+          aria-label={hierarchyPanelOpen ? 'Zamknij drzewo modelu' : 'Otwórz drzewo modelu'}
+          title={hierarchyPanelOpen ? 'Zamknij drzewo modelu' : 'Drzewo modelu sieci'}
+          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+        >
+          {hierarchyPanelOpen ? '◂ Drzewo modelu' : '▸ Drzewo modelu'}
+        </button>
+        {hierarchyPanelOpen && (
+          <NetworkHierarchyTree
+            hierarchy={networkHierarchy}
+            className="w-[240px]"
+          />
+        )}
+      </div>
 
       <section
         data-testid="sld-readiness-stack"
@@ -1155,6 +1786,15 @@ export function SldWorkspaceContainer(
         onClose={closeContextMenu}
       />
 
+      {/* Wizard K7 — Conscious Split preview_ready panel. */}
+      {splitPreviewState !== null && splitPreviewState !== undefined && (
+        <SplitPreviewPanel
+          preview={splitPreviewState.preview}
+          onConfirm={onSplitConfirm ?? (() => {})}
+          onCancel={onSplitCancel ?? (() => {})}
+        />
+      )}
+
       {/* Lasso multi-select overlay (warstwa screen-space). */}
       {lassoRect && (
         <svg
@@ -1192,6 +1832,7 @@ export function SldWorkspaceContainer(
         </div>
       )}
     </div>
+    </SldThemeProvider>
   );
 }
 

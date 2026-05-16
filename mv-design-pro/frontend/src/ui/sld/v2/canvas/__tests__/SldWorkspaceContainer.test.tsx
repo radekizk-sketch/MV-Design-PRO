@@ -487,4 +487,87 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
     });
     expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
+
+  it('F4: sld-theme-toggle i sld-export-svg są widoczne i mają opis dostępności', () => {
+    render(<SldWorkspaceContainer width={800} height={600} />);
+
+    const themeBtn = screen.getByTestId('sld-theme-toggle');
+    expect(themeBtn).toBeInTheDocument();
+    expect(themeBtn).toHaveAttribute('title');
+
+    const exportBtn = screen.getByTestId('sld-export-svg');
+    expect(exportBtn).toBeInTheDocument();
+    expect(exportBtn).toHaveAttribute('title');
+    expect(exportBtn.textContent).toContain('SVG');
+  });
+
+  it('K7: SplitPreviewPanel widoczny gdy splitPreviewState podany', () => {
+    const mockPreviewState = {
+      kind: 'preview_ready' as const,
+      segment: { segmentRef: 'SEG-1', segmentType: 'cable' as const, lengthKm: 3.8, busFromRef: 'B1', busToRef: 'B2' },
+      insertAt: { mode: 'RATIO' as const, value: 0.4 },
+      insertedKind: 'station' as const,
+      preview: {
+        insertedStationId: 'STA-NEW',
+        stationType: 'ZKSN',
+        electricalImpact: {
+          topologyTypeChanged: false,
+          affectedObjectRefs: [],
+          halves: { firstSegmentId: null, secondSegmentId: null, firstLengthKm: 1.52, secondLengthKm: 2.28, splitRatio: 0.4 },
+          catalogInheritance: { sourceSegmentRef: null, sourceCatalogRef: null, firstInherits: true, secondInherits: true, rule: 'inherit_both' },
+          invalidatedResults: [],
+          affectedProofPacks: [],
+          missingDataAfter: [],
+          affectedBuses: [],
+        },
+      },
+    };
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+
+    render(
+      <SldWorkspaceContainer
+        width={800}
+        height={600}
+        splitPreviewState={mockPreviewState}
+        onSplitConfirm={onConfirm}
+        onSplitCancel={onCancel}
+      />
+    );
+
+    expect(screen.getByTestId('split-preview-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('split-preview-station')).toHaveTextContent('ZKSN');
+  });
+
+  it('K7: SplitPreviewPanel NIE jest widoczny gdy splitPreviewState=null', () => {
+    render(<SldWorkspaceContainer width={800} height={600} splitPreviewState={null} />);
+    expect(screen.queryByTestId('split-preview-panel')).not.toBeInTheDocument();
+  });
+
+  it('K30-78: DER palette toolbar widoczny + 3 buttons PV/BESS/FW', () => {
+    render(<SldWorkspaceContainer width={800} height={600} />);
+    expect(screen.getByTestId('sld-v2-der-palette')).toBeInTheDocument();
+    expect(screen.getByTestId('der-palette-btn-PV')).toBeInTheDocument();
+    expect(screen.getByTestId('der-palette-btn-BESS')).toBeInTheDocument();
+    expect(screen.getByTestId('der-palette-btn-FW')).toBeInTheDocument();
+  });
+
+  it('K30-78: klik PV palette → hint widoczny + inne buttons disabled', () => {
+    render(<SldWorkspaceContainer width={800} height={600} />);
+    fireEvent.click(screen.getByTestId('der-palette-btn-PV'));
+    expect(screen.getByTestId('sld-v2-der-palette-hint')).toBeInTheDocument();
+    expect(screen.getByTestId('sld-v2-der-palette-hint').textContent).toContain('PV');
+    const bess = screen.getByTestId('der-palette-btn-BESS') as HTMLButtonElement;
+    const fw = screen.getByTestId('der-palette-btn-FW') as HTMLButtonElement;
+    expect(bess.disabled).toBe(true);
+    expect(fw.disabled).toBe(true);
+  });
+
+  it('K30-78: cancel button czyści drag state', () => {
+    render(<SldWorkspaceContainer width={800} height={600} />);
+    fireEvent.click(screen.getByTestId('der-palette-btn-BESS'));
+    expect(screen.getByTestId('sld-v2-der-palette-hint')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('sld-v2-der-palette-cancel'));
+    expect(screen.queryByTestId('sld-v2-der-palette-hint')).toBeNull();
+  });
 });

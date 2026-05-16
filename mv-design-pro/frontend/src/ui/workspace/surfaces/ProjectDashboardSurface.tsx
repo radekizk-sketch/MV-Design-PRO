@@ -47,6 +47,7 @@ interface DashboardState {
 
 export function ProjectDashboardSurface(): JSX.Element {
   const setActiveProject = useAppStateStore((state) => state.setActiveProject);
+  const setActiveCase = useAppStateStore((state) => state.setActiveCase);
   const [state, setState] = useState<DashboardState>({
     status: 'idle',
     projects: [],
@@ -72,12 +73,35 @@ export function ProjectDashboardSurface(): JSX.Element {
   }, [refresh]);
 
   const handleOpenProject = useCallback(
-    (project: Project) => {
+    async (project: Project) => {
       setActiveProject(project.id, project.name);
+      // Auto-load aktywnego case dla projektu — usuwa workflow gap:
+      // po Otwórz nie wystarczyło ustawić activeProjectId, bo
+      // SldWorkspaceContainer ładuje snapshot DOPIERO po setActiveCase.
+      // Bez tego canvas pokazuje placeholder mimo zapełnionego ENM.
+      try {
+        const response = await fetch(
+          `/api/study-cases/project/${project.id}/active`,
+        );
+        if (response.ok) {
+          const activeCase = await response.json();
+          if (activeCase?.id) {
+            setActiveCase(
+              activeCase.id,
+              activeCase.name ?? null,
+              null,
+              activeCase.result_status ?? 'NONE',
+            );
+          }
+        }
+      } catch (e) {
+        // Nie blokuje nawigacji — case może być wybrany później.
+        console.warn('[ProjectDashboardSurface] Failed to fetch active case', e);
+      }
       window.location.hash = '#sld';
       notify(`Otwarto projekt "${project.name}".`, 'success');
     },
-    [setActiveProject],
+    [setActiveProject, setActiveCase],
   );
 
   const handleCreateProject = useCallback(

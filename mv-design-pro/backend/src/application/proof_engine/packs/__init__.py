@@ -8,14 +8,20 @@ Pakiety dowodowe:
 - P14: Power Flow Verification (convergence, balance)
 - P15: Operating Current (load currents, overload) - w proof_generator.py
 - P16: Losses Proof (P, Q losses)
-- P17: Voltage Drop - w proof_generator.py (P32 / VDROP)
+- P17: Voltage Drop (VDROP) — standalone pack: vdrop.py (2026-05, V12K-015)
 - P18: Branch Loading - w proof_generator.py (Protection)
-- P19: Thermal - w proof_generator.py (Earthing)
+- P19: Earthing / Ground Fault SN — standalone pack: earthing_ground_fault_sn.py
+       (2026-05, V12K-015)
 - SC Asymmetrical: 1F-Z, 2F, 2F-Z (§4.1 blocker resolution)
 - Protection Settings: I>/I>> (Hoppel method, IRiESD)
 - Q(U) Regulation: NC RfG compliance
 """
 
+from application.proof_engine.packs.earthing_ground_fault_sn import (
+    EarthingGroundFaultPackInput,
+    generate_earthing_ground_fault_pack,
+    serialize_earthing_pack,
+)
 from application.proof_engine.packs.p14_power_flow import (
     P14PowerFlowInput,
     P14PowerFlowProof,
@@ -40,6 +46,12 @@ from application.proof_engine.packs.sc_asymmetrical import (
     SCAsymmetricalPackResult,
     SCAsymmetricalProofPack,
 )
+from application.proof_engine.packs.vdrop import (
+    VDROPPackInput,
+    VDROPPackSegment,
+    generate_vdrop_pack,
+    serialize_vdrop_pack,
+)
 
 __all__ = [
     "P14PowerFlowInput",
@@ -56,4 +68,13 @@ __all__ = [
     "QURegulationProofInput",
     "QURegulationProofPack",
     "QURegulationProofResult",
+    # VDROP pack (V12K-015, 2026-05)
+    "VDROPPackInput",
+    "VDROPPackSegment",
+    "generate_vdrop_pack",
+    "serialize_vdrop_pack",
+    # Earthing / Ground Fault SN pack (V12K-015, 2026-05)
+    "EarthingGroundFaultPackInput",
+    "generate_earthing_ground_fault_pack",
+    "serialize_earthing_pack",
 ]

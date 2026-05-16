@@ -21,6 +21,7 @@ _DOCX_AVAILABLE = find_spec("docx") is not None
 
 if _DOCX_AVAILABLE:
     from docx import Document
+    from docx.document import Document as DocumentType
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Pt
 
@@ -52,13 +53,13 @@ def export_analysis_run_to_docx(bundle: dict[str, Any]) -> bytes:
     return make_docx_bytes_deterministic(output.getvalue())
 
 
-def _add_title(doc: Document, title: str) -> None:
+def _add_title(doc: "DocumentType", title: str) -> None:
     heading = doc.add_heading(title, level=0)
     heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
     doc.add_paragraph()
 
 
-def _add_header_section(doc: Document, bundle: dict[str, Any]) -> None:
+def _add_header_section(doc: "DocumentType", bundle: dict[str, Any]) -> None:
     doc.add_heading("A. Nagłówek", level=1)
     project = bundle.get("project", {})
     study_case = bundle.get("study_case") or bundle.get("operating_case", {})
@@ -82,7 +83,7 @@ def _add_header_section(doc: Document, bundle: dict[str, Any]) -> None:
     doc.add_paragraph()
 
 
-def _add_input_snapshot_section(doc: Document, bundle: dict[str, Any]) -> None:
+def _add_input_snapshot_section(doc: "DocumentType", bundle: dict[str, Any]) -> None:
     doc.add_heading("B. Input snapshot", level=1)
     run = bundle.get("run", {})
     doc.add_paragraph(f"Input hash: {run.get('input_hash') or '—'}")
@@ -91,7 +92,7 @@ def _add_input_snapshot_section(doc: Document, bundle: dict[str, Any]) -> None:
     doc.add_paragraph()
 
 
-def _add_result_summary_section(doc: Document, bundle: dict[str, Any]) -> None:
+def _add_result_summary_section(doc: "DocumentType", bundle: dict[str, Any]) -> None:
     doc.add_heading("C. Result summary", level=1)
     summary = bundle.get("result_summary", {})
     rows = []
@@ -105,7 +106,7 @@ def _add_result_summary_section(doc: Document, bundle: dict[str, Any]) -> None:
     doc.add_paragraph()
 
 
-def _add_white_box_section(doc: Document, bundle: dict[str, Any]) -> None:
+def _add_white_box_section(doc: "DocumentType", bundle: dict[str, Any]) -> None:
     doc.add_heading("D. White-box trace", level=1)
     steps = bundle.get("white_box_trace", [])
     if not steps:
@@ -130,7 +131,7 @@ def _add_white_box_section(doc: Document, bundle: dict[str, Any]) -> None:
         doc.add_paragraph()
 
 
-def _add_results_section(doc: Document, bundle: dict[str, Any]) -> None:
+def _add_results_section(doc: "DocumentType", bundle: dict[str, Any]) -> None:
     doc.add_heading("E. Wyniki", level=1)
     results = bundle.get("results", [])
     if not results:
@@ -159,7 +160,7 @@ def _add_results_section(doc: Document, bundle: dict[str, Any]) -> None:
     doc.add_paragraph()
 
 
-def _add_overlay_section(doc: Document, bundle: dict[str, Any]) -> None:
+def _add_overlay_section(doc: "DocumentType", bundle: dict[str, Any]) -> None:
     doc.add_heading("F. SLD overlay payload (JSON)", level=1)
     overlay = bundle.get("overlay")
     if not overlay:
@@ -178,7 +179,7 @@ def _add_overlay_section(doc: Document, bundle: dict[str, Any]) -> None:
     doc.add_paragraph()
 
 
-def _add_overlay_appendix(doc: Document, bundle: dict[str, Any]) -> None:
+def _add_overlay_appendix(doc: "DocumentType", bundle: dict[str, Any]) -> None:
     overlay = bundle.get("overlay")
     if not overlay:
         return
@@ -187,7 +188,7 @@ def _add_overlay_appendix(doc: Document, bundle: dict[str, Any]) -> None:
     doc.add_paragraph(_pretty_json(payload), style="No Spacing")
 
 
-def _add_key_value_table(doc: Document, rows: list[tuple[str, Any]]) -> None:
+def _add_key_value_table(doc: "DocumentType", rows: list[tuple[str, Any]]) -> None:
     table = doc.add_table(rows=1, cols=2)
     table.style = "Table Grid"
     header_cells = table.rows[0].cells
