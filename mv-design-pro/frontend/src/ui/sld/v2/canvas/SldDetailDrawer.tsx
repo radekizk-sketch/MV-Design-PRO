@@ -45,6 +45,14 @@ export interface SldDetailDrawerData {
   readonly derKind?: 'PV' | 'BESS' | 'FW';
   /** K30-78: pre-filled connection variant when drawer opened via drag-drop. */
   readonly derConnectionVariant?: 'nn_side' | 'sn_side' | 'dedicated';
+  /** K30-79: real transformer spec from ENM snapshot (gdy kind='station'). */
+  readonly transformerSpec?: {
+    readonly vectorGroup: string | null;
+    readonly snMva: number | null;
+    readonly uhvKv: number | null;
+    readonly ulvKv: number | null;
+    readonly ukPercent: number | null;
+  } | null;
 }
 
 export interface SldDetailDrawerProps {
@@ -247,6 +255,7 @@ function TabContent({ kind, tab, data }: TabContentProps): JSX.Element {
         voltageKv={data.voltageKv ?? null}
         derKind={data.derKind}
         derConnectionVariant={data.derConnectionVariant}
+        transformerSpec={data.transformerSpec ?? null}
       />
     </div>
   );
@@ -258,27 +267,47 @@ function PlaceholderTabBody({
   voltageKv,
   derKind,
   derConnectionVariant,
+  transformerSpec,
 }: {
   kind: SldDetailKind;
   tab: string;
   voltageKv: number | null;
   derKind?: 'PV' | 'BESS' | 'FW';
   derConnectionVariant?: 'nn_side' | 'sn_side' | 'dedicated';
+  transformerSpec?: {
+    readonly vectorGroup: string | null;
+    readonly snMva: number | null;
+    readonly uhvKv: number | null;
+    readonly ulvKv: number | null;
+    readonly ukPercent: number | null;
+  } | null;
 }): JSX.Element {
   // Tab-specific scaffolding — actual editor forms wired w K30-72+
   if (kind === 'station' && tab === 'transformator') {
+    const fmt = (v: number | null | undefined, unit: string) =>
+      v != null ? `${v} ${unit}` : '—';
+    const fmtKva = (mva: number | null | undefined) =>
+      mva != null ? `${(mva * 1000).toFixed(0)} kVA` : '—';
     return (
       <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
         <dt style={{ color: '#7E8790' }}>Vector group</dt>
-        <dd data-testid="drawer-tr-vector-group" style={{ color: '#FFD166', fontFamily: 'monospace' }}>—</dd>
+        <dd data-testid="drawer-tr-vector-group" style={{ color: '#FFD166', fontFamily: 'monospace' }}>
+          {transformerSpec?.vectorGroup ?? '—'}
+        </dd>
         <dt style={{ color: '#7E8790' }}>Rated power</dt>
-        <dd data-testid="drawer-tr-rated-kva" style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>—</dd>
+        <dd data-testid="drawer-tr-rated-kva" style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
+          {fmtKva(transformerSpec?.snMva)}
+        </dd>
         <dt style={{ color: '#7E8790' }}>U_HV / U_LV</dt>
         <dd data-testid="drawer-tr-voltages" style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
-          {voltageKv != null ? `${voltageKv} / 0.4 kV` : '—'}
+          {transformerSpec?.uhvKv != null && transformerSpec?.ulvKv != null
+            ? `${transformerSpec.uhvKv} / ${transformerSpec.ulvKv} kV`
+            : voltageKv != null ? `${voltageKv} / 0.4 kV` : '—'}
         </dd>
         <dt style={{ color: '#7E8790' }}>u_k%</dt>
-        <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>—</dd>
+        <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
+          {fmt(transformerSpec?.ukPercent, '%')}
+        </dd>
       </dl>
     );
   }

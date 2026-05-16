@@ -805,6 +805,22 @@ export function SldWorkspaceContainer(
     if (drawerKind) {
       const stationForDrawer = sldData.stations.find((s) => s.id === id);
       const stationContext = kind === 'station' ? stationForDrawer : sldData.stations[0];
+      // K30-79: real transformer spec from snapshot (gdy station kind)
+      let transformerSpec: SldDetailDrawerData['transformerSpec'] = null;
+      if (drawerKind === 'station' && snapshot) {
+        const substation = findSubstationByRef(snapshot, id);
+        const transformers = selectStationTransformers(snapshot, substation ?? null);
+        const tr = transformers[0];
+        if (tr) {
+          transformerSpec = {
+            vectorGroup: tr.vector_group ?? null,
+            snMva: typeof tr.sn_mva === 'number' ? tr.sn_mva : null,
+            uhvKv: typeof tr.uhv_kv === 'number' ? tr.uhv_kv : null,
+            ulvKv: typeof tr.ulv_kv === 'number' ? tr.ulv_kv : null,
+            ukPercent: typeof tr.uk_percent === 'number' ? tr.uk_percent : null,
+          };
+        }
+      }
       setDetailDrawerData({
         kind: drawerKind,
         elementId: id,
@@ -815,6 +831,7 @@ export function SldWorkspaceContainer(
         voltageKv: stationForDrawer?.busVoltageKv ?? null,
         stationCode: stationContext?.stationCode ?? null,
         accentColor: '#7EC8FF',
+        transformerSpec,
       });
     }
 

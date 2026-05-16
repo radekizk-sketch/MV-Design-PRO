@@ -190,4 +190,31 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     expect(container.querySelector('[data-testid="drawer-tr-voltages"]')).toBeTruthy();
     cleanup();
   });
+
+  it('K30-79: station tab "transformator" renders real ENM transformerSpec', () => {
+    const data: SldDetailDrawerData = {
+      ...STATION_DATA,
+      transformerSpec: {
+        vectorGroup: 'Dyn11',
+        snMva: 0.63,
+        uhvKv: 15,
+        ulvKv: 0.4,
+        ukPercent: 6.0,
+      },
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-transformator"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-tr-vector-group"]')?.textContent).toBe('Dyn11');
+    expect(container.querySelector('[data-testid="drawer-tr-rated-kva"]')?.textContent).toBe('630 kVA');
+    expect(container.querySelector('[data-testid="drawer-tr-voltages"]')?.textContent).toBe('15 / 0.4 kV');
+    cleanup();
+  });
+
+  it('K30-79: brak transformerSpec → wszystkie pola "—"', () => {
+    const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-transformator"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-tr-vector-group"]')?.textContent).toBe('—');
+    expect(container.querySelector('[data-testid="drawer-tr-rated-kva"]')?.textContent).toBe('—');
+    cleanup();
+  });
 });
