@@ -26,6 +26,7 @@ import { useAppStateStore } from '../../../app-state';
 import { LayerTogglePanel } from '../lod/LayerTogglePanel';
 import { SldDetailDrawer, type SldDetailDrawerData } from './SldDetailDrawer';
 import { useDerDragDrop, DerPaletteButton, type DerDragKind } from './useDerDragDrop';
+import { useRawResultOverlayStore, getMetric, formatMetric } from '../../../sld-overlay/rawResultOverlayStore';
 import {
   createInitialLayerState,
   toggleLayer,
@@ -458,6 +459,51 @@ function mapKindToDrawerKind(kind: string): SldDetailDrawerData['kind'] | null {
   return null;
 }
 
+/**
+ * K30-84: Build live metrics chips (V/U_pu/P/Q/I) for selected element z
+ * RawOverlayPayload (LF/SC). Returns empty array gdy brak payload lub brak
+ * matching element ref. Element id mapping: station → '{id}/sn_bus' za snBusRef.
+ */
+function buildLiveMetrics(
+  payload: import('../../../sld-overlay/rawResultOverlayStore').RawOverlayPayload | null,
+  drawerKind: SldDetailDrawerData['kind'],
+  elementId: string,
+  nominalKv: number | null,
+): SldDetailDrawerData['liveMetrics'] {
+  if (!payload) return undefined;
+  // Station → check SN bus metrics (U_kV, U_pu)
+  if (drawerKind === 'station') {
+    const snBusRef = elementId.endsWith('/station')
+      ? `${elementId.slice(0, -'/station'.length)}/sn_bus`
+      : `${elementId}/sn_bus`;
+    const uKv = getMetric(payload, snBusRef, 'U_kV');
+    const uPu = getMetric(payload, snBusRef, 'U_pu');
+    const chips: Array<{ label: string; value: string; color?: string }> = [];
+    if (uKv) chips.push({ label: 'U', value: formatMetric(uKv) });
+    if (uPu) {
+      const dev = uPu.value != null ? (uPu.value - 1) * 100 : null;
+      const color = dev == null ? undefined
+        : Math.abs(dev) <= 5 ? '#13C45A'
+        : Math.abs(dev) <= 10 ? '#FFD166'
+        : '#F25F5F';
+      chips.push({ label: 'U_pu', value: formatMetric(uPu), color });
+    }
+    if (chips.length === 0 && nominalKv != null) {
+      return undefined;
+    }
+    return chips.length > 0 ? chips : undefined;
+  }
+  // DER/Bay/Apparatus → check payload direct element ref
+  const el = payload.elements[elementId];
+  if (!el) return undefined;
+  const chips: Array<{ label: string; value: string }> = [];
+  for (const code of ['P_MW', 'Q_Mvar', 'I_A', 'U_kV']) {
+    const m = el.metrics?.[code];
+    if (m) chips.push({ label: code.split('_')[0], value: formatMetric(m) });
+  }
+  return chips.length > 0 ? chips : undefined;
+}
+
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
 const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   'show-readiness': 'E-04',
@@ -601,6 +647,8 @@ export function SldWorkspaceContainer(
   const [detailDrawerData, setDetailDrawerData] = useState<SldDetailDrawerData | null>(null);
   // K30-78: DER drag-drop palette → station → drawer DER tab pre-filled.
   const derDrag = useDerDragDrop();
+  // K30-84: subscribe to LF/SC overlay payload dla inline metric chips
+  const overlayPayload = useRawResultOverlayStore((s) => s.payload);
   const [viewportTransform, setViewportTransform] = useState<ViewportTransform>(IDENTITY_TRANSFORM);
   // Iteracja 12: lasso multi-select state.
   const [lassoRect, setLassoRect] = useState<LassoRect | null>(null);
@@ -926,6 +974,7 @@ export function SldWorkspaceContainer(
         nnSpec,
         existingDers,
         apparatusSpec,
+        liveMetrics: buildLiveMetrics(overlayPayload, drawerKind, id, stationForDrawer?.busVoltageKv ?? null),
       });
     }
 
@@ -1013,7 +1062,7 @@ export function SldWorkspaceContainer(
 
     collapseSurfaceStackTo(null);
     selectElement(selected ?? { id, type: 'DescriptiveElement', name: id });
-  }, [collapseSurfaceStackTo, selectElement, snapshot, sldData, derDrag]);
+  }, [collapseSurfaceStackTo, selectElement, snapshot, sldData, derDrag, overlayPayload]);
 
   useEffect(() => {
     const root = containerRef.current;

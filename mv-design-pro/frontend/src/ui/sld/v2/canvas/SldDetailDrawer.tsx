@@ -85,6 +85,14 @@ export interface SldDetailDrawerData {
     readonly label: string;
     readonly state: 'closed' | 'open' | 'unknown' | null;
   }>;
+  /** K30-84: live metrics chips (z LF/SC overlay payload) — wyświetlane w
+   *  header drawer pod label. Każdy chip ma label, value (już sformatowane)
+   *  i opcjonalny color (np. severity badge). */
+  readonly liveMetrics?: ReadonlyArray<{
+    readonly label: string;
+    readonly value: string;
+    readonly color?: string;
+  }>;
 }
 
 export interface SldDetailDrawerProps {
@@ -182,6 +190,31 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           {data.stationCode && data.kind !== 'station' && (
             <div data-testid="sld-v2-detail-drawer-breadcrumb" style={{ fontSize: 10, color: '#88BBDD', marginTop: 2 }}>
               ↑ Stacja {data.stationCode}
+            </div>
+          )}
+          {data.liveMetrics && data.liveMetrics.length > 0 && (
+            <div
+              data-testid="sld-v2-detail-drawer-live-metrics"
+              style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}
+            >
+              {data.liveMetrics.map((m, i) => (
+                <span
+                  key={`${m.label}-${i}`}
+                  data-testid={`sld-v2-detail-drawer-metric-${m.label}`}
+                  style={{
+                    background: '#171B20',
+                    border: `1px solid ${m.color ?? '#5A6878'}`,
+                    color: m.color ?? '#DDF7FF',
+                    padding: '2px 6px',
+                    borderRadius: 2,
+                    fontSize: 9,
+                    fontFamily: 'monospace',
+                    fontWeight: 700,
+                  }}
+                >
+                  {m.label}={m.value}
+                </span>
+              ))}
             </div>
           )}
         </div>

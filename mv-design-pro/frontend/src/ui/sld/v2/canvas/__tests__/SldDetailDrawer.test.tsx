@@ -317,6 +317,27 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     cleanup();
   });
 
+  it('K30-84: liveMetrics chips rendered w drawer header gdy podane', () => {
+    const data: SldDetailDrawerData = {
+      ...STATION_DATA,
+      liveMetrics: [
+        { label: 'U', value: '15.20 kV' },
+        { label: 'U_pu', value: '1.013 pu', color: '#13C45A' },
+      ],
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-live-metrics"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-metric-U"]')?.textContent).toBe('U=15.20 kV');
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-metric-U_pu"]')?.textContent).toBe('U_pu=1.013 pu');
+    cleanup();
+  });
+
+  it('K30-84: brak liveMetrics → no chip area rendered', () => {
+    const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-live-metrics"]')).toBeFalsy();
+    cleanup();
+  });
+
   it('K30-83: bay apparatus tab empty state', () => {
     const data: SldDetailDrawerData = {
       kind: 'bay', elementId: 'bay-q02', label: 'Q02',
