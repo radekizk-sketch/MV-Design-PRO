@@ -259,36 +259,48 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           />
         ));
       })}
-      {/* IEC 60617 junction dots — małe kółka w miejscach przyłączenia do szyny stacji.
-          Potwierdzają galwaniczne połączenie kabel→port stacji (brak kółka = brak połączenia). */}
-      {!missingEndpointPort && stationPortGaps.map((gap) => (
-        <g
-          key={`${id}-junction-${gap.stationId}`}
-          data-testid={`sld-v2-run-${id}-junction-${gap.stationId}`}
-          pointerEvents="none"
-        >
-          <circle
-            cx={gap.inputX}
-            cy={gap.y}
-            r={4}
-            fill={selected ? '#35C7FF' : strokeColor}
-            stroke="#0A0E14"
-            strokeWidth={0.8}
+      {/* IEC 60617-4 junction symbols — distinct dla:
+          - galvanic połączenie (terminal switchgear port): filled circle
+          - mufa kablowa pass-through (joint pomiędzy segmentami): hollow
+            circle z grubszą obwódką. K30-107: dispatcher OSD widzi
+            że stacja jest pośrednia (pass-through) vs końcowa. */}
+      {!missingEndpointPort && stationPortGaps.map((gap) => {
+        // Pass-through station has BOTH input + output ports → mufa (hollow).
+        // Terminal station has only input → switchgear connection (filled).
+        const isPassThrough = gap.outputX !== null;
+        const junctionKind = isPassThrough ? 'mufa' : 'galwaniczne';
+        const fillColor = isPassThrough ? '#0A0E14' : (selected ? '#35C7FF' : strokeColor);
+        const strokeWidthVal = isPassThrough ? 1.4 : 0.8;
+        return (
+          <g
+            key={`${id}-junction-${gap.stationId}`}
+            data-testid={`sld-v2-run-${id}-junction-${gap.stationId}`}
+            data-junction-kind={junctionKind}
             pointerEvents="none"
-          />
-          {gap.outputX !== null && (
+          >
             <circle
-              cx={gap.outputX}
+              cx={gap.inputX}
               cy={gap.y}
               r={4}
-              fill={selected ? '#35C7FF' : strokeColor}
-              stroke="#0A0E14"
-              strokeWidth={0.8}
+              fill={fillColor}
+              stroke={isPassThrough ? (selected ? '#35C7FF' : strokeColor) : '#0A0E14'}
+              strokeWidth={strokeWidthVal}
               pointerEvents="none"
             />
-          )}
-        </g>
-      ))}
+            {gap.outputX !== null && (
+              <circle
+                cx={gap.outputX}
+                cy={gap.y}
+                r={4}
+                fill={fillColor}
+                stroke={isPassThrough ? (selected ? '#35C7FF' : strokeColor) : '#0A0E14'}
+                strokeWidth={strokeWidthVal}
+                pointerEvents="none"
+              />
+            )}
+          </g>
+        );
+      })}
       {/* K30-106: cable head termination (głowica kablowa) per IEC 60617-4 —
           triangle ▲ na początku i końcu ciągu kablowego (segmentKind=cable_sn
           only — overhead lines don't have terminations). Operator widzi
