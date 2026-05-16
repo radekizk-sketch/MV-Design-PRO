@@ -565,6 +565,40 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     cleanup();
   });
 
+  it('K30-97: apparatus state tab renders real state z apparatusState prop', () => {
+    const data: SldDetailDrawerData = {
+      kind: 'apparatus', elementId: 'cb-1', label: 'CB-1',
+      apparatusState: {
+        actualState: 'open',
+        controlMode: 'ZDALNY',
+        communicationOk: true,
+        interlockBlocked: false,
+        lastChangeAt: '2026-05-16T08:30:00Z',
+      },
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    expect(container.querySelector('[data-testid="drawer-apparatus-actual-state"]')?.textContent).toBe('otwarty');
+    cleanup();
+  });
+
+  it('K30-97: apparatus state tab pokazuje BŁĄD komunikacji + ZAŁOŻONA blokada', () => {
+    const data: SldDetailDrawerData = {
+      kind: 'apparatus', elementId: 'cb-1', label: 'CB-1',
+      apparatusState: {
+        actualState: 'closed',
+        controlMode: 'LOKALNY',
+        communicationOk: false,
+        interlockBlocked: true,
+        lastChangeAt: null,
+      },
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    const dl = container.querySelector('[data-testid="drawer-apparatus-state"]');
+    expect(dl?.textContent).toContain('BŁĄD');
+    expect(dl?.textContent).toContain('ZAŁOŻONA');
+    cleanup();
+  });
+
   it('K30-94: ARIA — role="dialog" + aria-label na root drawer', () => {
     const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
     const root = container.querySelector('[data-testid="sld-v2-detail-drawer"]') as HTMLElement;

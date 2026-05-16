@@ -96,6 +96,15 @@ export interface SldDetailDrawerData {
   /** K30-95: alarm severity badge w drawer header. Lowercase per
    *  StationOnRunRenderer (warning/important/critical). */
   readonly alarmSeverity?: 'warning' | 'important' | 'critical' | null;
+  /** K30-97: real apparatus state z snapshot.equipmentStates (gdy
+   *  drawer kind='apparatus'). */
+  readonly apparatusState?: {
+    readonly actualState: 'closed' | 'open' | 'unknown' | null;
+    readonly controlMode: 'LOKALNY' | 'ZDALNY' | 'AUTO' | 'BLOKADA' | null;
+    readonly communicationOk: boolean | null;
+    readonly interlockBlocked: boolean | null;
+    readonly lastChangeAt: string | null;
+  } | null;
   /** K30-89: cable run spec dla cable_run drawer kind. */
   readonly cableRunSpec?: {
     readonly runKind: 'main_trunk' | 'branch' | 'ring' | 'loop' | null;
@@ -514,6 +523,7 @@ function TabContent({ kind, tab, data }: TabContentProps): JSX.Element {
         existingDers={data.existingDers}
         apparatusSpec={data.apparatusSpec}
         cableRunSpec={data.cableRunSpec ?? null}
+        apparatusState={data.apparatusState ?? null}
       />
     </div>
   );
@@ -531,6 +541,7 @@ function PlaceholderTabBody({
   existingDers,
   apparatusSpec,
   cableRunSpec,
+  apparatusState,
 }: {
   kind: SldDetailKind;
   tab: string;
@@ -580,6 +591,13 @@ function PlaceholderTabBody({
     readonly segmentKind: 'cable_sn' | 'overhead_line_sn' | null;
     readonly maxLoadingPct?: number | null;
     readonly maxVoltageDropPct?: number | null;
+  } | null;
+  apparatusState?: {
+    readonly actualState: 'closed' | 'open' | 'unknown' | null;
+    readonly controlMode: 'LOKALNY' | 'ZDALNY' | 'AUTO' | 'BLOKADA' | null;
+    readonly communicationOk: boolean | null;
+    readonly interlockBlocked: boolean | null;
+    readonly lastChangeAt: string | null;
   } | null;
 }): JSX.Element {
   // Tab-specific scaffolding — actual editor forms wired w K30-72+
@@ -940,19 +958,33 @@ function PlaceholderTabBody({
     );
   }
   if (kind === 'apparatus' && tab === 'state') {
+    const aps = apparatusState;
+    const stateLabel = aps?.actualState === 'closed' ? 'zamknięty'
+      : aps?.actualState === 'open' ? 'otwarty'
+      : aps?.actualState === 'unknown' ? 'nieznany'
+      : 'zamknięty';
+    const stateColor = aps?.actualState === 'open' ? '#FFD166'
+      : aps?.actualState === 'unknown' ? '#7E8790'
+      : '#13C45A';
     return (
       <div data-testid="drawer-apparatus-state">
         <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
           <dt style={{ color: '#7E8790' }}>Stan aktualny</dt>
-          <dd data-testid="drawer-apparatus-actual-state" style={{ color: '#13C45A', fontFamily: 'monospace', fontWeight: 700 }}>zamknięty</dd>
+          <dd data-testid="drawer-apparatus-actual-state" style={{ color: stateColor, fontFamily: 'monospace', fontWeight: 700 }}>{stateLabel}</dd>
           <dt style={{ color: '#7E8790' }}>Tryb sterowania</dt>
-          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>LOKALNY</dd>
+          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>{aps?.controlMode ?? 'LOKALNY'}</dd>
           <dt style={{ color: '#7E8790' }}>Komunikacja</dt>
-          <dd style={{ color: '#13C45A', fontFamily: 'monospace' }}>OK</dd>
+          <dd style={{ color: aps?.communicationOk === false ? '#F25F5F' : '#13C45A', fontFamily: 'monospace' }}>
+            {aps?.communicationOk === false ? 'BŁĄD' : 'OK'}
+          </dd>
           <dt style={{ color: '#7E8790' }}>Blokada operacyjna</dt>
-          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>brak</dd>
+          <dd style={{ color: aps?.interlockBlocked ? '#F25F5F' : '#DDF7FF', fontFamily: 'monospace' }}>
+            {aps?.interlockBlocked ? 'ZAŁOŻONA' : 'brak'}
+          </dd>
           <dt style={{ color: '#7E8790' }}>Ostatnia zmiana</dt>
-          <dd style={{ color: '#88BBDD', fontFamily: 'monospace', fontSize: 10 }}>—</dd>
+          <dd style={{ color: '#88BBDD', fontFamily: 'monospace', fontSize: 10 }}>
+            {aps?.lastChangeAt ?? '—'}
+          </dd>
         </dl>
       </div>
     );

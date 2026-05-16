@@ -1013,6 +1013,43 @@ export function SldWorkspaceContainer(
           };
         });
       }
+      // K30-97: apparatus state (gdy drawer kind='apparatus')
+      let apparatusState: SldDetailDrawerData['apparatusState'] = null;
+      if (drawerKind === 'apparatus' && snapshot) {
+        // Look up state across all bays' primary_device_states
+        let raw: unknown = null;
+        for (const sub of (snapshot.substations ?? []) as Array<{ bays?: Array<{ runtime_state?: { primary_device_states?: Record<string, unknown> } }> }>) {
+          for (const b of sub.bays ?? []) {
+            const ds = b.runtime_state?.primary_device_states ?? {};
+            if (id in ds) { raw = ds[id]; break; }
+          }
+          if (raw) break;
+        }
+        if (raw && typeof raw === 'object') {
+          const r = raw as {
+            actual_state?: string;
+            control_mode?: string;
+            communication_ok?: boolean;
+            interlock_blocked?: boolean;
+            last_state_change_at?: string;
+          };
+          const mapState = (v: string | undefined): 'closed' | 'open' | 'unknown' | null =>
+            v === 'zamkniety' ? 'closed' : v === 'otwarty' ? 'open' : v === 'nieznany' ? 'unknown' : null;
+          const mapMode = (v: string | undefined): 'LOKALNY' | 'ZDALNY' | 'AUTO' | 'BLOKADA' | null => {
+            if (!v) return null;
+            const up = v.toUpperCase();
+            if (up === 'LOKALNY' || up === 'ZDALNY' || up === 'AUTO' || up === 'BLOKADA') return up;
+            return null;
+          };
+          apparatusState = {
+            actualState: mapState(r.actual_state),
+            controlMode: mapMode(r.control_mode),
+            communicationOk: r.communication_ok ?? null,
+            interlockBlocked: r.interlock_blocked ?? null,
+            lastChangeAt: r.last_state_change_at ?? null,
+          };
+        }
+      }
       setDetailDrawerData({
         kind: drawerKind,
         elementId: id,
@@ -1031,6 +1068,7 @@ export function SldWorkspaceContainer(
         cableRunSpec,
         liveMetrics: buildLiveMetrics(overlayPayload, drawerKind, id, stationForDrawer?.busVoltageKv ?? null),
         alarmSeverity: stationForDrawer?.alarmSeverity ?? null,
+        apparatusState,
       });
     }
 
