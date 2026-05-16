@@ -522,6 +522,21 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     cleanup();
   });
 
+  it('K30-91: action toolbar widoczny gdy onOpenFullView podany', () => {
+    const onOpenFullView = vi.fn();
+    const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} onOpenFullView={onOpenFullView} />);
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-actions"]')).toBeTruthy();
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-open-full-view"]') as Element);
+    expect(onOpenFullView).toHaveBeenCalledTimes(1);
+    cleanup();
+  });
+
+  it('K30-91: action toolbar ukryty bez onOpenFullView', () => {
+    const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-actions"]')).toBeFalsy();
+    cleanup();
+  });
+
   it('K30-90: arrow keys ignored gdy input focused', () => {
     const data: SldDetailDrawerData = { kind: 'der', elementId: 'pv-1', label: 'PV-1' };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);

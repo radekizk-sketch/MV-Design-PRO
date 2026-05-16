@@ -1467,6 +1467,16 @@ export function SldWorkspaceContainer(
           selectElement(null);
           derDrag.cancel();
         }}
+        onOpenFullView={
+          detailDrawerData?.kind === 'station' && detailDrawerData.elementId
+            ? () => {
+                if (detailDrawerData.elementId) {
+                  setInternalStationId(detailDrawerData.elementId);
+                  setDetailDrawerData(null);
+                }
+              }
+            : undefined
+        }
       />
 
       {/* K30-78: DER palette toolbar — kliknij ikonę DER (PV/BESS/FW)

@@ -112,6 +112,10 @@ export interface SldDetailDrawerProps {
   /** K30-87: optional save handler — gdy podany, renderuje "Zapisz" CTA w
    *  footer. Brak handler → footer ukryty. */
   readonly onSave?: () => void;
+  /** K30-91: optional "Otwórz pełny widok" handler — gdy podany, renderuje
+   *  CTA w drawer toolbar (sub-header pod tabs). Typowo dla station/bay
+   *  otwiera drill-down (StationInternalView / pole edit). */
+  readonly onOpenFullView?: () => void;
 }
 
 const STATION_TABS = [
@@ -156,7 +160,7 @@ function tabsForKind(kind: SldDetailKind): readonly { id: string; label: string 
 }
 
 export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null {
-  const { open, data, onClose, width = 360, onSave } = props;
+  const { open, data, onClose, width = 360, onSave, onOpenFullView } = props;
   const tabs = tabsForKind(data?.kind ?? null);
   const [activeTab, setActiveTab] = useState<string>(tabs[0]?.id ?? '');
 
@@ -321,6 +325,38 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           </button>
         ))}
       </div>
+
+      {/* K30-91: action toolbar pod tabs (gdy onOpenFullView podany) */}
+      {onOpenFullView && (
+        <div
+          data-testid="sld-v2-detail-drawer-actions"
+          style={{
+            padding: '6px 12px',
+            borderBottom: '1px solid #2A3441',
+            display: 'flex',
+            gap: 6,
+            background: '#0E1218',
+          }}
+        >
+          <button
+            type="button"
+            data-testid="sld-v2-detail-drawer-open-full-view"
+            onClick={onOpenFullView}
+            style={{
+              background: 'transparent',
+              border: `1px solid ${accent}`,
+              color: accent,
+              padding: '4px 10px',
+              borderRadius: 3,
+              fontSize: 10,
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            ⇱ Otwórz pełny widok
+          </button>
+        </div>
+      )}
 
       {/* Tab content */}
       <div
