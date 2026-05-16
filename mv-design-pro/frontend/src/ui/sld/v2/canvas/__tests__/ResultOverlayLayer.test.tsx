@@ -9,7 +9,7 @@
  * - Branch overlay (P/Q/I per cable segment)
  * - No overlay when payload is null
  */
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { cleanup, render } from '@testing-library/react';
 
 import { ResultOverlayLayer } from '../ResultOverlayLayer';
@@ -95,7 +95,23 @@ function makeLoadFlowPayload(): RawOverlayPayload {
   };
 }
 
+// K30-60: legend + voltage badges hidden by default. Tests muszą set
+// `?overlay=1` URL param przed render aby aktywować old default visible.
+const originalLocation = window.location;
+
+beforeEach(() => {
+  // jsdom safe — redefine search via URL replacement
+  Object.defineProperty(window, 'location', {
+    writable: true,
+    value: { ...originalLocation, search: '?overlay=1' },
+  });
+});
+
 afterEach(() => {
+  Object.defineProperty(window, 'location', {
+    writable: true,
+    value: originalLocation,
+  });
   useRawResultOverlayStore.getState().clear();
   cleanup();
 });
