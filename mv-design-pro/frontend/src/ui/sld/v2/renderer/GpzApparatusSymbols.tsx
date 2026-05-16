@@ -77,8 +77,12 @@ interface ApparatusVisualProps {
 }
 
 export function ApparatusCbSquare(props: ApparatusVisualProps): JSX.Element {
-  /* INVARIANT 9: state='unknown' → neutral szary (NIE fałszywe closed/open).
-   * Operator widzi że nie ma telemetrii zamiast widzieć "wszystko zamknięte". */
+  /* K30-110: IEC 60617-7-13-08 compliant Circuit Breaker.
+   * Per norm: prostokąt z widocznym kontaktem styku wewnątrz.
+   *  - closed: kropka w środku reprezentująca zamknięty kontakt
+   *  - open: kreska pozioma (kontakt rozwarty)
+   *  - unknown: szary tło + "?" znak
+   * Operator natychmiast odróżnia CB od DS bo CB ma KWADRAT, nie okrąg. */
   const { cx, cy, state = 'unknown', energized } = props;
   const open = state === 'open';
   const unknown = state === 'unknown';
@@ -94,6 +98,7 @@ export function ApparatusCbSquare(props: ApparatusVisualProps): JSX.Element {
     : open
     ? COLOR_DEVICE_OPEN_BORDER
     : COLOR_DEVICE_CLOSED_BORDER;
+  const contactColor = open ? COLOR_DEVICE_OPEN : '#0A0E14';
   return (
     <g
       data-testid="sld-v2-gpz-bay-cb"
@@ -108,7 +113,7 @@ export function ApparatusCbSquare(props: ApparatusVisualProps): JSX.Element {
         height={CB_SIZE}
         fill={fill}
         stroke={stroke}
-        strokeWidth={1.2}
+        strokeWidth={1.4}
         rx={1}
       />
       {open && (
@@ -120,6 +125,21 @@ export function ApparatusCbSquare(props: ApparatusVisualProps): JSX.Element {
           stroke={COLOR_DEVICE_OPEN}
           strokeWidth={1.4}
         />
+      )}
+      {!open && !unknown && (
+        <>
+          {/* IEC 60617 closed contact: linia pionowa przez środek + 2 kropki styku */}
+          <line
+            x1={cx}
+            y1={cy - CB_SIZE / 2 + 1.5}
+            x2={cx}
+            y2={cy + CB_SIZE / 2 - 1.5}
+            stroke={contactColor}
+            strokeWidth={1.4}
+          />
+          <circle cx={cx} cy={cy - CB_SIZE / 2 + 1.5} r={0.9} fill={contactColor} />
+          <circle cx={cx} cy={cy + CB_SIZE / 2 - 1.5} r={0.9} fill={contactColor} />
+        </>
       )}
       {unknown && (
         <text
@@ -159,23 +179,59 @@ export function ApparatusDsCircle(props: ApparatusVisualProps): JSX.Element {
     : open
     ? COLOR_DEVICE_OPEN_BORDER
     : COLOR_DEVICE_CLOSED_BORDER;
+  /* K30-109: IEC 60617-7-13-02 compliant Disconnector.
+   * Per norm: dwa punkty styku (kropki) + dźwignia rozłączająca.
+   *  - closed: pionowa linia (dźwignia w pozycji "zamknięte")
+   *  - open: linia diagonalna pod kątem ~45° wskazująca rozłączenie
+   *  - 2 kropki styku stałe (zawsze widoczne)
+   * Wyróżnia DS od CB (kwadrat) i SD (większy z load-break diagonal). */
+  const contactColor = open ? COLOR_DEVICE_OPEN : '#0A0E14';
+  const leverColor = open ? COLOR_DEVICE_OPEN : (unknown ? COLOR_TEXT_PRIMARY : '#0A0E14');
   return (
     <g
       data-testid="sld-v2-gpz-bay-ds"
       data-state={state}
       data-apparatus-kind="disconnector"
-      data-symbol-canon="disconnector_circle"
+      data-symbol-canon="disconnector_two_contact_lever"
     >
       <circle cx={cx} cy={cy} r={DS_RADIUS} fill={fill} stroke={stroke} strokeWidth={1.2} />
-      {open && (
+      {/* 2 kropki styku stałe (IEC 7-13-02 — top + bottom contact points) */}
+      <circle cx={cx} cy={cy - DS_RADIUS + 0.5} r={0.9} fill={contactColor} />
+      <circle cx={cx} cy={cy + DS_RADIUS - 0.5} r={0.9} fill={contactColor} />
+      {/* Dźwignia rozłączająca — pionowa gdy closed, diagonalna gdy open */}
+      {!unknown && (open ? (
         <line
-          x1={cx - DS_RADIUS}
-          y1={cy}
-          x2={cx + DS_RADIUS}
-          y2={cy}
-          stroke={COLOR_DEVICE_OPEN}
-          strokeWidth={1.2}
+          x1={cx}
+          y1={cy - DS_RADIUS + 0.5}
+          x2={cx + DS_RADIUS * 0.85}
+          y2={cy + DS_RADIUS - 0.5}
+          stroke={leverColor}
+          strokeWidth={1.4}
+          strokeLinecap="round"
         />
+      ) : (
+        <line
+          x1={cx}
+          y1={cy - DS_RADIUS + 0.5}
+          x2={cx}
+          y2={cy + DS_RADIUS - 0.5}
+          stroke={leverColor}
+          strokeWidth={1.4}
+          strokeLinecap="round"
+        />
+      ))}
+      {unknown && (
+        <text
+          x={cx}
+          y={cy + 2}
+          textAnchor="middle"
+          fill={COLOR_TEXT_PRIMARY}
+          fontFamily={FONT_SANS}
+          fontSize={FONT_SIZES.badge}
+          fontWeight={700}
+        >
+          ?
+        </text>
       )}
     </g>
   );
