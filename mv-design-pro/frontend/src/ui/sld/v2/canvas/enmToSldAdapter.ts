@@ -1463,14 +1463,20 @@ function buildExplicitStationMiniBays(
   snapshot: EnergyNetworkModel,
   stationRef: string,
 ): MiniBlockBayDescriptor[] {
+  // K30-65: cache snapshot.branches by ref_id for O(1) equipment lookup
+  const branchByRef = new Map(
+    (snapshot.branches ?? []).map((b) => [b.ref_id, b]),
+  );
   return [...(snapshot.bays ?? [])]
     .filter((bay) => bay.substation_ref === stationRef)
     .sort(compareBaysForSld)
     .map((bay, index) => {
       const fieldRole = mapStationBayRoleToMiniRole(ENM_BAY_ROLE_TO_FIELD_ROLE[bay.bay_role]);
       // K30-64: wire actual switch state z bay.runtime_state.primary_device_states.
-      // Backend dostarcza per-device state (actual_state z BaySwitchState).
-      const states = bayRuntimeSwitchStates(bay);
+      // K30-65: fallback do bay.equipment_refs → snapshot.branches.status gdy
+      // runtime_state empty (typowy K30 seed case).
+      const states = bayRuntimeSwitchStates(bay)
+        ?? deriveBayStatesFromEquipment(bay, branchByRef);
       return {
         bayRef: bay.ref_id,
         fieldRole,
@@ -1481,6 +1487,34 @@ function buildExplicitStationMiniBays(
         esState: states.es,
       };
     });
+}
+
+/**
+ * K30-65: fallback when bay.runtime_state empty — derive CB/DS state
+ * z bay.equipment_refs lookup w snapshot.branches.
+ * Mapping branch.type → kind:
+ *   'breaker' / 'switch' → CB
+ *   'disconnector' / 'bus_coupler' → DS
+ *   ES nie ma w SwitchBranch type — default 'open' (rest).
+ */
+function deriveBayStatesFromEquipment(
+  bay: Bay,
+  branchByRef: Map<string, Branch>,
+): { cb: 'closed' | 'open' | 'unknown'; ds: 'closed' | 'open' | 'unknown'; es: 'closed' | 'open' | 'unknown' } {
+  let cb: 'closed' | 'open' | 'unknown' = 'closed';
+  let ds: 'closed' | 'open' | 'unknown' = 'closed';
+  const es: 'closed' | 'open' | 'unknown' = 'open';
+  for (const ref of bay.equipment_refs ?? []) {
+    const branch = branchByRef.get(ref);
+    if (!branch) continue;
+    const status: 'closed' | 'open' | 'unknown' =
+      branch.status === 'closed' ? 'closed'
+      : branch.status === 'open' ? 'open'
+      : 'unknown';
+    if (branch.type === 'breaker' || branch.type === 'switch') cb = status;
+    else if (branch.type === 'disconnector' || branch.type === 'bus_coupler') ds = status;
+  }
+  return { cb, ds, es };
 }
 
 /**
@@ -1498,8 +1532,9 @@ function bayRuntimeSwitchStates(bay: Bay): {
   cb: 'closed' | 'open' | 'unknown';
   ds: 'closed' | 'open' | 'unknown';
   es: 'closed' | 'open' | 'unknown';
-} {
-  const devices = bay.runtime_state?.primary_device_states ?? {};
+} | null {
+  const devices = bay.runtime_state?.primary_device_states;
+  if (!devices || Object.keys(devices).length === 0) return null;  // fallback
   const mapState = (raw: string | undefined): 'closed' | 'open' | 'unknown' => {
     if (!raw) return 'unknown';
     if (raw.includes('zamknięty') || raw === 'zamkniety') return 'closed';
