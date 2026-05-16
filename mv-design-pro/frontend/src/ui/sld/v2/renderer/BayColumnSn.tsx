@@ -251,21 +251,31 @@ export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
         data-testid={`sld-v2-bay-${bayRef}-outgoing`}
       />
 
-      {/* Q-designation label (detail variant only) */}
-      {variant === 'detail' && designation && (
-        <text
-          x={x}
-          y={busY - 4}
-          textAnchor="middle"
-          fill={COLOR_TEXT_PRIMARY}
-          fontFamily={FONT_SANS}
-          fontSize={9}
-          fontWeight={700}
-          data-testid={`sld-v2-bay-${bayRef}-designation`}
-        >
-          {designation}
-        </text>
-      )}
+      {/* Q-designation label — K30-124 audyt fix: render WSZYSTKICH variants
+       *  dla consistent UX (eliminacja flickering przy LOD toggle).
+       *  K30-121 audyt fix: label offset gdy DS jest w stack (lever może
+       *  kolidować z text gdy dsState='open' — diagonal sięga cx+DS_RADIUS×0.85).
+       *  Przesunięcie x o +8px gdy DS obecny (anti-collision). */}
+      {designation && (() => {
+        const hasDs = visibleApparatusStack.includes('DS' as typeof visibleApparatusStack[number]);
+        const labelX = hasDs ? x + 8 : x;
+        const labelAnchor = hasDs ? 'start' : 'middle';
+        const labelFontSize = variant === 'overview' ? 7 : variant === 'compact' ? 8 : 9;
+        return (
+          <text
+            x={labelX}
+            y={busY - 4}
+            textAnchor={labelAnchor}
+            fill={COLOR_TEXT_PRIMARY}
+            fontFamily={FONT_SANS}
+            fontSize={labelFontSize}
+            fontWeight={700}
+            data-testid={`sld-v2-bay-${bayRef}-designation`}
+          >
+            {designation}
+          </text>
+        );
+      })()}
 
       {/* Missing data indicator */}
       {hasMissing && (

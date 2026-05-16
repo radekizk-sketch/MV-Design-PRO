@@ -34,8 +34,10 @@ describe('apparatusStackForRole — IEC 60617 mapping', () => {
     expect(apparatusStackForRole(FIELD_ROLE.RMU_TRANSFORMER)).toEqual(['DS', 'CB']);
   });
 
-  it('MEASUREMENT → VT + CT (no CB)', () => {
-    expect(apparatusStackForRole(FIELD_ROLE.MEASUREMENT)).toEqual(['VT', 'CT']);
+  it('K30-120: MEASUREMENT → DS + VT + CT + ES (per BAY_DEVICE_ORDER_POLICY)', () => {
+    // K30-120 audyt fix: zgodne z bayDeviceOrder.ts MEASUREMENT_ORDER
+    // (DS mandatory → FUSE optional → VT mandatory → ES mandatory).
+    expect(apparatusStackForRole(FIELD_ROLE.MEASUREMENT)).toEqual(['DS', 'VT', 'CT', 'ES']);
   });
 
   it('COUPLER → DS + CB + DS', () => {

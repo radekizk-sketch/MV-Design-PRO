@@ -70,7 +70,10 @@ export function apparatusStackForRole(role: FieldRole): readonly ApparatusKind[]
       // via dedicated trColumn structure in MiniBlockLayout.
       return ['DS', 'CB'];
     case FIELD_ROLE.MEASUREMENT:
-      return ['VT', 'CT'];
+      // K30-120 audyt fix: per BAY_DEVICE_ORDER_POLICY[MEASUREMENT]
+      // (bayDeviceOrder.ts) pole pomiarowe ma DS → FUSE → VT → ES.
+      // CT renderowane jako optional, ale ES mandatory (safety BHP).
+      return ['DS', 'VT', 'CT', 'ES'];
     case FIELD_ROLE.COUPLER:
       // Bus coupler — DS + CB + DS (no ES between sections).
       return ['DS', 'CB', 'DS'];

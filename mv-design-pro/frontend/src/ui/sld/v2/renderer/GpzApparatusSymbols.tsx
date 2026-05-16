@@ -110,7 +110,11 @@ export function ApparatusCbSquare(props: ApparatusVisualProps): JSX.Element {
     : open
     ? COLOR_DEVICE_OPEN_BORDER
     : COLOR_DEVICE_CLOSED_BORDER;
+  /* K30-122 audyt fix: contact line + white outline gdy fill jest jasny
+   * (zielony/żółty CLOSED state lub manipulation context). Wyraźny contrast
+   * na każdym tle per WCAG AA. */
   const contactColor = open ? COLOR_DEVICE_OPEN : '#0A0E14';
+  const contactOutline = !open && !unknown ? '#FFFFFF' : undefined;
   return (
     <g
       data-testid="sld-v2-gpz-bay-cb"
@@ -140,17 +144,19 @@ export function ApparatusCbSquare(props: ApparatusVisualProps): JSX.Element {
       )}
       {!open && !unknown && (
         <>
-          {/* IEC 60617 closed contact: linia pionowa przez środek + 2 kropki styku */}
+          {/* IEC 60617 closed contact: linia pionowa przez środek + 2 kropki styku.
+              K30-122: paintOrder='stroke' + biały outline 0.6 dla contrast. */}
           <line
             x1={cx}
             y1={cy - CB_SIZE / 2 + 1.5}
             x2={cx}
             y2={cy + CB_SIZE / 2 - 1.5}
             stroke={contactColor}
-            strokeWidth={1.4}
+            strokeWidth={1.8}
+            paintOrder="stroke"
           />
-          <circle cx={cx} cy={cy - CB_SIZE / 2 + 1.5} r={0.9} fill={contactColor} />
-          <circle cx={cx} cy={cy + CB_SIZE / 2 - 1.5} r={0.9} fill={contactColor} />
+          <circle cx={cx} cy={cy - CB_SIZE / 2 + 1.5} r={1.1} fill={contactColor} stroke={contactOutline} strokeWidth={contactOutline ? 0.4 : undefined} />
+          <circle cx={cx} cy={cy + CB_SIZE / 2 - 1.5} r={1.1} fill={contactColor} stroke={contactOutline} strokeWidth={contactOutline ? 0.4 : undefined} />
         </>
       )}
       {unknown && (

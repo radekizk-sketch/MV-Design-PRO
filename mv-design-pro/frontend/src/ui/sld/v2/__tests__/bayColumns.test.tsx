@@ -116,7 +116,7 @@ describe('BayColumnSn — SN bay column z apparatus stack', () => {
     expect(label?.textContent).toBe('Q11');
   });
 
-  it('Designation HIDDEN w overview variant', () => {
+  it('K30-124: Designation VISIBLE w overview variant z mniejszą czcionką (UX consistency)', () => {
     const { container } = render(
       wrap(
         <BayColumnSn
@@ -131,7 +131,10 @@ describe('BayColumnSn — SN bay column z apparatus stack', () => {
         />,
       ),
     );
-    expect(container.querySelector('[data-testid="sld-v2-bay-B01-designation"]')).toBeNull();
+    // K30-124: label always present (anti-flickering), tylko fontSize różny per LOD
+    const label = container.querySelector('[data-testid="sld-v2-bay-B01-designation"]');
+    expect(label).not.toBeNull();
+    expect(label?.getAttribute('font-size')).toBe('7'); // overview = 7px
   });
 
   it('Missing indicator pokazany gdy hasMissing=true', () => {

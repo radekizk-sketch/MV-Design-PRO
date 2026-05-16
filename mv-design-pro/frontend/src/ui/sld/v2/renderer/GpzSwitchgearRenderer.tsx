@@ -1303,14 +1303,16 @@ function BayColumn(props: BayColumnProps): JSX.Element {
     : bay.inManipulation
     ? COLOR_MANIPULATION_BG
     : bayRoleFillColor(bay.fieldRole);
-  /* K30-112: missing device → czerwona obwódka dashed (visual cue dla operatora) */
+  /* K30-112: missing device → czerwona obwódka dashed (visual cue dla operatora).
+   * K30-123 audyt fix: brighter red #FF1744 (contrast ~3.5:1 na #3A2A2A bg
+   * vs 1.2:1 dla #FF4D4D — WCAG AA compliance). */
   const columnStroke = bay.hasMissingRequiredDevice
-    ? '#FF4D4D'
+    ? '#FF1744'
     : bay.inManipulation
     ? COLOR_BADGE_BG_YELLOW
     : COLOR_TEXT_MUTED;
-  const columnStrokeOpacity = bay.hasMissingRequiredDevice || bay.inManipulation ? 0.9 : 0.3;
-  const columnStrokeDasharray = bay.hasMissingRequiredDevice ? '3 2' : undefined;
+  const columnStrokeOpacity = bay.hasMissingRequiredDevice || bay.inManipulation ? 0.95 : 0.3;
+  const columnStrokeDasharray = bay.hasMissingRequiredDevice ? '4 2' : undefined;
 
   /* Footer (numer pola + KAS + pomiary). */
   const numberY = columnBottomY + BAY_NUMBER_GAP - 2;

@@ -60,8 +60,8 @@ describe('ApparatusCbSquare — K30-110 IEC 60617-7-13-08', () => {
     expect(cb?.getAttribute('data-symbol-canon')).toBe('circuit_breaker_square');
     // Powinien być rect (square frame)
     expect(cb?.querySelector('rect')).toBeTruthy();
-    // Contact dots — 2 circles r=0.9
-    const dots = Array.from(cb?.querySelectorAll('circle') ?? []).filter((c) => c.getAttribute('r') === '0.9');
+    // K30-122: Contact dots — 2 circles r=1.1 (zwiększone z 0.9 dla WCAG AA contrast)
+    const dots = Array.from(cb?.querySelectorAll('circle') ?? []).filter((c) => c.getAttribute('r') === '1.1');
     expect(dots.length).toBe(2);
     // Vertical contact line
     const lines = Array.from(cb?.querySelectorAll('line') ?? []);
@@ -76,8 +76,8 @@ describe('ApparatusCbSquare — K30-110 IEC 60617-7-13-08', () => {
       </svg>,
     );
     const cb = container.querySelector('[data-testid="sld-v2-gpz-bay-cb"]');
-    // Open: brak dots
-    const dots = Array.from(cb?.querySelectorAll('circle') ?? []).filter((c) => c.getAttribute('r') === '0.9');
+    // Open: brak contact dots (r=1.1 dla closed, brak dla open)
+    const dots = Array.from(cb?.querySelectorAll('circle') ?? []).filter((c) => c.getAttribute('r') === '1.1');
     expect(dots.length).toBe(0);
     // Open: horizontal line (y1 === y2)
     const lines = Array.from(cb?.querySelectorAll('line') ?? []);
