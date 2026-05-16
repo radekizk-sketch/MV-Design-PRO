@@ -177,6 +177,25 @@ describe('MiniBlockRmuRenderer - PV po stronie nN', () => {
     expect(root?.querySelectorAll('[data-element-kind="pv_inverter"]').length).toBe(2);
   });
 
+  it('K30-116: earthing scheme TN-S badge renderowany w detail variant', () => {
+    const { container } = r('detail', { earthingScheme: 'TN-S' });
+    const badge = container.querySelector('[data-testid="sld-v2-mini-rmu-earthing-scheme-st-1"]');
+    expect(badge).toBeTruthy();
+    const text = badge?.querySelector('text');
+    expect(text?.textContent).toContain('TN-S');
+    expect(text?.getAttribute('data-earthing-scheme')).toBe('TN-S');
+  });
+
+  it('K30-116: earthing scheme ukryty w overview variant (clutter prevention)', () => {
+    const { container } = r('overview', { earthingScheme: 'TN-C-S' });
+    expect(container.querySelector('[data-testid="sld-v2-mini-rmu-earthing-scheme-st-1"]')).toBeFalsy();
+  });
+
+  it('K30-116: bez earthingScheme prop → brak badge (backward-compat)', () => {
+    const { container } = r('detail');
+    expect(container.querySelector('[data-testid="sld-v2-mini-rmu-earthing-scheme-st-1"]')).toBeFalsy();
+  });
+
   it('widok szczegółowy PV nie dubluje badge i używa małej etykiety stacji', () => {
     const { container } = r('detail', {
       footprintType: 'der_station',

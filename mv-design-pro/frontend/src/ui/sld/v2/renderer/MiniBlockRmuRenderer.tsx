@@ -123,6 +123,9 @@ export interface MiniBlockRmuRendererProps {
   /** K30-62: vector group transformatora per IEC 60076-1 (np. "Dyn5", "Yd11").
    *  Renderer pokazuje jako mini-badge obok TR symbol (detail variant). */
   readonly transformerVectorGroup?: string | null;
+  /** K30-116 audyt #2 MAJOR: schemat uziemienia per PN-EN 60364-1 § 312.
+   * Wymagane przez OSD do procedur manewrów i testów impedancji. */
+  readonly earthingScheme?: 'TN-C' | 'TN-S' | 'TN-C-S' | 'IT' | 'TT' | null;
 }
 
 // =============================================================================
@@ -694,6 +697,35 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         >
           {props.transformerVectorGroup}
         </text>
+      )}
+
+      {/* K30-116: earthing scheme badge per PN-EN 60364-1 § 312 (TN/IT/TT).
+          OSD wymaga do procedur manewrów + testów impedancji. */}
+      {variant !== 'overview' && props.earthingScheme && (
+        <g data-testid={`sld-v2-mini-rmu-earthing-scheme-${props.id}`}>
+          <rect
+            x={-22}
+            y={labelPowerY + (props.transformerVectorGroup ? 18 : 6)}
+            width={44}
+            height={11}
+            fill="#0E1822"
+            stroke="#7EE0B5"
+            strokeWidth={0.8}
+            rx={2}
+          />
+          <text
+            x={0}
+            y={labelPowerY + (props.transformerVectorGroup ? 26 : 14)}
+            textAnchor="middle"
+            fill="#7EE0B5"
+            fontFamily="monospace"
+            fontSize={7}
+            fontWeight={800}
+            data-earthing-scheme={props.earthingScheme}
+          >
+            ⏚ {props.earthingScheme}
+          </text>
+        </g>
       )}
 
       {isBlocker && (
