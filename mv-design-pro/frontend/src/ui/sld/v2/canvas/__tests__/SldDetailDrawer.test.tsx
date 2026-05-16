@@ -217,4 +217,28 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     expect(container.querySelector('[data-testid="drawer-tr-rated-kva"]')?.textContent).toBe('—');
     cleanup();
   });
+
+  it('K30-80: station tab "rozdzielnica" lista bays z baysSpec', () => {
+    const data: SldDetailDrawerData = {
+      ...STATION_DATA,
+      baysSpec: [
+        { id: 'bay-q01', name: 'Q01', bayRole: 'IN', bayNumber: '1', feederShortName: 'Dopływ' },
+        { id: 'bay-q02', name: 'Q02', bayRole: 'OUT', bayNumber: '2', feederShortName: 'Odpływ' },
+        { id: 'bay-q03', name: 'Q03', bayRole: 'TR', bayNumber: '3', feederShortName: null },
+      ],
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    expect(container.querySelector('[data-testid="drawer-rozdzielnica-bays"]')).toBeTruthy();
+    expect(container.querySelectorAll('[data-testid^="drawer-rozdzielnica-bay-"]')).toHaveLength(3);
+    expect(container.querySelector('[data-testid="drawer-rozdzielnica-bay-bay-q01"]')?.textContent).toContain('Q1');
+    expect(container.querySelector('[data-testid="drawer-rozdzielnica-bay-bay-q02"]')?.textContent).toContain('Pole odpływowe');
+    cleanup();
+  });
+
+  it('K30-80: rozdzielnica empty state gdy baysSpec puste', () => {
+    const data: SldDetailDrawerData = { ...STATION_DATA, baysSpec: [] };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    expect(container.querySelector('[data-testid="drawer-rozdzielnica-empty"]')).toBeTruthy();
+    cleanup();
+  });
 });

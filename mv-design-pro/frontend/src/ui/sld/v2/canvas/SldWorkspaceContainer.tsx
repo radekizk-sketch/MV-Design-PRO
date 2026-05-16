@@ -807,6 +807,8 @@ export function SldWorkspaceContainer(
       const stationContext = kind === 'station' ? stationForDrawer : sldData.stations[0];
       // K30-79: real transformer spec from snapshot (gdy station kind)
       let transformerSpec: SldDetailDrawerData['transformerSpec'] = null;
+      // K30-80: bay list dla rozdzielnica tab
+      let baysSpec: SldDetailDrawerData['baysSpec'] = undefined;
       if (drawerKind === 'station' && snapshot) {
         const substation = findSubstationByRef(snapshot, id);
         const transformers = selectStationTransformers(snapshot, substation ?? null);
@@ -820,6 +822,14 @@ export function SldWorkspaceContainer(
             ukPercent: typeof tr.uk_percent === 'number' ? tr.uk_percent : null,
           };
         }
+        const bays = selectStationBays(snapshot, substation ?? null);
+        baysSpec = bays.map((b) => ({
+          id: b.ref_id ?? b.id,
+          name: b.name ?? null,
+          bayRole: b.bay_role ?? null,
+          bayNumber: b.bay_number ?? null,
+          feederShortName: b.feeder_short_name ?? null,
+        }));
       }
       setDetailDrawerData({
         kind: drawerKind,
@@ -832,6 +842,7 @@ export function SldWorkspaceContainer(
         stationCode: stationContext?.stationCode ?? null,
         accentColor: '#7EC8FF',
         transformerSpec,
+        baysSpec,
       });
     }
 

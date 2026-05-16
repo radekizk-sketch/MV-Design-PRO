@@ -53,6 +53,14 @@ export interface SldDetailDrawerData {
     readonly ulvKv: number | null;
     readonly ukPercent: number | null;
   } | null;
+  /** K30-80: bay list dla rozdzielnica tab (kind='station'). */
+  readonly baysSpec?: ReadonlyArray<{
+    readonly id: string;
+    readonly name: string | null;
+    readonly bayRole: string | null;
+    readonly bayNumber: string | null;
+    readonly feederShortName: string | null;
+  }>;
 }
 
 export interface SldDetailDrawerProps {
@@ -256,6 +264,7 @@ function TabContent({ kind, tab, data }: TabContentProps): JSX.Element {
         derKind={data.derKind}
         derConnectionVariant={data.derConnectionVariant}
         transformerSpec={data.transformerSpec ?? null}
+        baysSpec={data.baysSpec}
       />
     </div>
   );
@@ -268,6 +277,7 @@ function PlaceholderTabBody({
   derKind,
   derConnectionVariant,
   transformerSpec,
+  baysSpec,
 }: {
   kind: SldDetailKind;
   tab: string;
@@ -281,6 +291,13 @@ function PlaceholderTabBody({
     readonly ulvKv: number | null;
     readonly ukPercent: number | null;
   } | null;
+  baysSpec?: ReadonlyArray<{
+    readonly id: string;
+    readonly name: string | null;
+    readonly bayRole: string | null;
+    readonly bayNumber: string | null;
+    readonly feederShortName: string | null;
+  }>;
 }): JSX.Element {
   // Tab-specific scaffolding — actual editor forms wired w K30-72+
   if (kind === 'station' && tab === 'transformator') {
@@ -376,6 +393,59 @@ function PlaceholderTabBody({
         <div style={{ marginTop: 12, color: '#7E8790', fontSize: 10 }}>
           Grid code: PN-EN 50549 / IEEE 1547 / IEC 61400-21 (FW)
         </div>
+      </div>
+    );
+  }
+  if (kind === 'station' && tab === 'rozdzielnica') {
+    if (!baysSpec || baysSpec.length === 0) {
+      return (
+        <div data-testid="drawer-rozdzielnica-empty" style={{ color: '#7E8790', fontStyle: 'italic' }}>
+          Brak pól SN — dodaj pole via E-11 lub menu kontekstowe stacji.
+        </div>
+      );
+    }
+    const roleLabel: Record<string, string> = {
+      IN: 'Pole dopływowe',
+      OUT: 'Pole odpływowe',
+      TR: 'Pole transformatorowe',
+      COUPLER: 'Łącznik sekcyjny',
+      FEEDER: 'Pole zasilające',
+      MEASUREMENT: 'Pole pomiarowe',
+      OZE: 'Pole OZE',
+    };
+    return (
+      <div data-testid="drawer-rozdzielnica-bays">
+        <div style={{ fontSize: 10, color: '#7E8790', marginBottom: 6, fontWeight: 700 }}>
+          Pola SN ({baysSpec.length})
+        </div>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {baysSpec.map((bay) => (
+            <li
+              key={bay.id}
+              data-testid={`drawer-rozdzielnica-bay-${bay.id}`}
+              style={{
+                background: '#171B20',
+                border: '1px solid #2A3441',
+                borderRadius: 3,
+                padding: '6px 8px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <div>
+                <div style={{ color: '#DDF7FF', fontWeight: 600, fontSize: 11 }}>
+                  {bay.bayNumber ? `Q${bay.bayNumber}` : (bay.feederShortName ?? bay.name ?? bay.id)}
+                </div>
+                <div style={{ color: '#88BBDD', fontSize: 9 }}>
+                  {bay.bayRole ? (roleLabel[bay.bayRole] ?? bay.bayRole) : 'Pole'}
+                  {bay.feederShortName && bay.bayNumber ? ` · ${bay.feederShortName}` : ''}
+                </div>
+              </div>
+              <div style={{ fontSize: 9, color: '#7E8790', fontFamily: 'monospace' }}>{bay.bayRole ?? '—'}</div>
+            </li>
+          ))}
+        </ul>
       </div>
     );
   }
