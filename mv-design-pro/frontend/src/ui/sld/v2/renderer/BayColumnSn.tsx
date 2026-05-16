@@ -49,6 +49,12 @@ export interface BayColumnSnProps {
   readonly stationId: string;
   readonly hasMissing?: boolean;
   readonly onSymbolClick?: SymbolClickHandler;
+  /** K30-63: stan CB w bay (closed/open/unknown). Default 'closed'. */
+  readonly cbState?: 'closed' | 'open' | 'unknown';
+  /** K30-63: stan DS w bay (closed/open/unknown). Default 'closed'. */
+  readonly dsState?: 'closed' | 'open' | 'unknown';
+  /** K30-63: stan ES w bay (closed/open/unknown). Default 'open' (rest). */
+  readonly esState?: 'closed' | 'open' | 'unknown';
 }
 
 export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
@@ -137,13 +143,18 @@ export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
               <ApparatusSwitchDisconnector
                 cx={x}
                 cy={cy}
-                state="closed"
-                energized
+                state={props.dsState ?? 'closed'}
+                energized={(props.dsState ?? 'closed') === 'closed'}
               />
             )}
             {kind === 'CB' && (
               <>
-                <ApparatusCbSquare cx={x} cy={cy} state="closed" energized />
+                <ApparatusCbSquare
+                  cx={x}
+                  cy={cy}
+                  state={props.cbState ?? 'closed'}
+                  energized={(props.cbState ?? 'closed') === 'closed'}
+                />
                 {/* K30-56: ANSI 51 protection badge obok CB (overcurrent relay).
                     Real OSD bay zawsze ma protection relay — pokazujemy default
                     50/51 obok CB jako mini-chip. */}
@@ -173,7 +184,7 @@ export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
               <ApparatusEarthingSwitch
                 cxAxis={x}
                 cy={cy}
-                state="open"
+                state={props.esState ?? 'open'}
               />
             )}
             {kind === 'CT' && <CtPrimary cx={x} cy={cy} />}

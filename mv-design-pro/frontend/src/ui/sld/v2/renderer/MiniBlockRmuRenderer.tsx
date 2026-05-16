@@ -69,6 +69,13 @@ export interface MiniBlockBayDescriptor {
   readonly fieldRole: FieldRole;
   readonly designation: string;
   readonly hasMissingRequiredDevice: boolean;
+  /** K30-63: stan CB (wyłącznika) — pokazuje czerwoną open marker zamiast
+   *  domyślnie zielonego closed. 'unknown' → szary z '?'. */
+  readonly cbState?: 'closed' | 'open' | 'unknown';
+  /** K30-63: stan DS (odłącznika). */
+  readonly dsState?: 'closed' | 'open' | 'unknown';
+  /** K30-63: stan ES (uziemnika). Default 'open' (rest position). */
+  readonly esState?: 'closed' | 'open' | 'unknown';
 }
 
 export interface MiniBlockDerBadge {
@@ -411,6 +418,9 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                 stationId={props.id}
                 hasMissing={col.bay.hasMissingRequiredDevice}
                 onSymbolClick={handleSymbolClick}
+                cbState={col.bay.cbState}
+                dsState={col.bay.dsState}
+                esState={col.bay.esState}
               />
             ))}
 
