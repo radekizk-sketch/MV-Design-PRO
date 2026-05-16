@@ -394,7 +394,10 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         return (
           <g data-testid={`sld-v2-mini-rmu-bay-layout-${props.id}`}>
             {/* SN busbar — horizontal line connecting tops of all bay columns.
-                K30-40: stroke per voltage class (busVoltageKv). */}
+                K30-40: stroke per voltage class (busVoltageKv).
+                K30-118: data-busbar-topology indicator (ABB SafeRing=single,
+                Schneider RM6=cellular). Heuristic: footprint mv_lv_sectional
+                = cellular (sekcjowana), inne = single (wspólna szyna). */}
             <line
               x1={layout.busLeft}
               y1={layout.busY}
@@ -405,6 +408,9 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
               strokeLinecap="butt"
               data-parity-key="station.mini.bus.sn"
               data-bus-voltage-kv={props.busVoltageKv ?? ''}
+              data-busbar-topology={
+                props.footprintType === 'mv_lv_sectional' ? 'cellular' : 'single'
+              }
             />
 
             {/* SN bay columns — vertical stacks z apparatus per IEC 60617 */}

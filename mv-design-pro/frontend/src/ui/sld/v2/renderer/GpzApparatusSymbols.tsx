@@ -570,25 +570,44 @@ export function ApparatusSwitchDisconnector(props: ApparatusSwitchDisconnectorPr
 interface ApparatusVtThreePhaseProps {
   readonly cx: number;
   readonly cy: number;
+  /** K30-117 audyt #1 MAJOR: VT phase count flexibility.
+   *  - 3 (default): standardowy VT pomiarowy 3-fazowy (PSE/Energa)
+   *  - 1: VT pomocniczy 1-fazowy (RM6 aux supply) */
+  readonly phaseCount?: 1 | 3;
 }
 
 /**
- * Przekładnik napięciowy trójfazowy (VT — kanon polskiego pola pomiarowego PN).
+ * Przekładnik napięciowy (VT — kanon polskiego pola pomiarowego PN).
  *
  * Konstrukcja IEC 60617 S00310 + tradycja PSE/Energa:
- *   - 3 okręgi fazowe (uzwojenie pierwotne) ułożone w trójkąt.
- *   - Kreski Y/Δ w środku każdego okręgu.
- *   - Trójkąt ziemi pod neutral point (Y0).
+ *   - phaseCount=3: 3 okręgi fazowe (L1/L2/L3) w trójkąt + trójkąt ziemi
+ *   - phaseCount=1: 1 okrąg z neutral point + trójkąt ziemi
  *
  * Renderowany w polu MEASUREMENT (PN) ZAMIAST placeholdera "VT" tekstu.
  */
 export function ApparatusVtThreePhase(props: ApparatusVtThreePhaseProps): JSX.Element {
-  const { cx, cy } = props;
+  const { cx, cy, phaseCount = 3 } = props;
   const r = 4;
   const dx = 5;
   const dy = 4;
+  if (phaseCount === 1) {
+    // K30-117: 1-fazowy VT (auxiliary)
+    return (
+      <g data-testid="sld-v2-gpz-bay-vt-single-phase" data-phase-count="1">
+        {/* Single faza L1 — centered */}
+        <circle cx={cx} cy={cy} r={r} fill={COLOR_PANEL_RAISED} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+        <text x={cx} y={cy + 1.5} textAnchor="middle" fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={5}>L1</text>
+        {/* Neutral point connector */}
+        <line x1={cx} y1={cy + r} x2={cx} y2={cy + r + 4} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+        {/* Trójkąt ziemi */}
+        <line x1={cx - 3} y1={cy + r + 5} x2={cx + 3} y2={cy + r + 5} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+        <line x1={cx - 2} y1={cy + r + 6.5} x2={cx + 2} y2={cy + r + 6.5} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.0} />
+        <line x1={cx - 1} y1={cy + r + 8} x2={cx + 1} y2={cy + r + 8} stroke={COLOR_LINE_PRIMARY} strokeWidth={0.8} />
+      </g>
+    );
+  }
   return (
-    <g data-testid="sld-v2-gpz-bay-vt-three-phase">
+    <g data-testid="sld-v2-gpz-bay-vt-three-phase" data-phase-count="3">
       {/* Faza L1 (lewa-góra). */}
       <circle cx={cx - dx} cy={cy - dy} r={r} fill={COLOR_PANEL_RAISED} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
       <text x={cx - dx} y={cy - dy + 1.5} textAnchor="middle" fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={5}>L1</text>
