@@ -1102,6 +1102,37 @@ function DerBadges(props: DerBadgesProps): JSX.Element {
                   : `${Math.round(badge.totalPMw * 1000)} kW`}
               </text>
             )}
+            {/* K30-70: connection_variant arrow indicator — pokazuje gdzie DER
+                jest podłączony per IEC convention:
+                - 'nn'        → strzałka w dół (nN bus) #7DD3FC
+                - 'sn'        → strzałka w górę (SN bus) #13C45A
+                - 'dedicated' → strzałka kątowa (dedicated MV connection) #FFD166 */}
+            {badge.connectionSide && (
+              <g
+                data-testid={`sld-v2-mini-rmu-der-conn-${badge.kind}-${idx}`}
+                data-connection-side={badge.connectionSide}
+                transform={`translate(${cx + 8}, ${cy - 8})`}
+              >
+                <polygon
+                  points={
+                    badge.connectionSide === 'nn'
+                      ? '0,0 4,-4 -4,-4'  // strzałka w dół (do nN)
+                      : badge.connectionSide === 'sn'
+                        ? '0,-4 4,0 -4,0'  // strzałka w górę (do SN)
+                        : '-4,-4 4,-4 -4,4'  // strzałka kątowa (dedicated MV)
+                  }
+                  fill={
+                    badge.connectionSide === 'nn'
+                      ? '#7DD3FC'
+                      : badge.connectionSide === 'sn'
+                        ? '#13C45A'
+                        : '#FFD166'
+                  }
+                  stroke="#0A0E14"
+                  strokeWidth={0.6}
+                />
+              </g>
+            )}
           </g>
         );
       })}
