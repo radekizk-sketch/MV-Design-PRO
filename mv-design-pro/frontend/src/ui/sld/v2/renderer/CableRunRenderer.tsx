@@ -265,16 +265,20 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           <circle
             cx={gap.inputX}
             cy={gap.y}
-            r={3}
+            r={4}
             fill={selected ? '#35C7FF' : strokeColor}
+            stroke="#0A0E14"
+            strokeWidth={0.8}
             pointerEvents="none"
           />
           {gap.outputX !== null && (
             <circle
               cx={gap.outputX}
               cy={gap.y}
-              r={3}
+              r={4}
               fill={selected ? '#35C7FF' : strokeColor}
+              stroke="#0A0E14"
+              strokeWidth={0.8}
               pointerEvents="none"
             />
           )}
