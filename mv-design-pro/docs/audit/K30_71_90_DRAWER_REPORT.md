@@ -61,15 +61,18 @@ per element kind:
 | K30-93 | 97bcf42 | Wire LF cable loading + ΔU% do Spadek napięcia tab (PN-EN 50160 severity) |
 | K30-94 | 0fef196 | ARIA roles (dialog/tablist/tab/tabpanel + aria-selected) |
 | K30-95 | e9a8986 | Alarm severity badge w drawer header (warning/important/critical) |
+| K30-96 | 65a7c03 | Focus management (auto-focus close, restore on unmount) |
+| K30-97 | 8303597 | Real apparatus state z snapshot (closed/open/unknown, control mode, interlock) |
+| K30-98 | f55334b | Breadcrumb context (Stacja › Pole) dla bay/apparatus kind |
 
 ## §4 Test coverage
 
 | File | Tests | Coverage |
 |------|-------|----------|
-| `SldDetailDrawer.test.tsx` | 55 | 5 kinds × all tabs × edge cases × ARIA × alarm × cable LF |
+| `SldDetailDrawer.test.tsx` | 60 | 5 kinds × all tabs × ARIA × alarm × cable LF × focus × breadcrumb × apparatus state |
 | `useDerDragDrop.test.tsx` | 12 | hook lifecycle + button variants + disabled + active state |
 | `SldWorkspaceContainer.test.tsx` | 14 | palette toolbar render, drag activation, cancel |
-| **Sld v2 total** | **1841 (was 1771)** | +70 nowych testów |
+| **Sld v2 total** | **1846 (was 1771)** | +75 nowych testów |
 
 Type-check OK, guards PASS (forbidden_ui_terms, no_codenames, sld_determinism).
 
