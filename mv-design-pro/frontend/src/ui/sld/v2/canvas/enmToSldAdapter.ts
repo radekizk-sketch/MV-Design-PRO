@@ -357,6 +357,22 @@ function classifySegmentKind(b: Branch): 'cable_sn' | 'overhead_line_sn' {
 }
 
 /**
+ * K30-58: normalizacja station name z OSD-grade Polish terminology.
+ * K30 seed używa ad-hoc nazw "Stacja inline" / "Stacja terminal" które są
+ * non-IEC. Konwertujemy do canonical nazw per IEC 61850 / OSD convention.
+ */
+function normalizeStationName(rawName: string | null | undefined, fallback: string): string {
+  const name = (rawName ?? '').trim();
+  if (!name) return fallback;
+  // Replace ad-hoc "Stacja inline/terminal/branch/sectional" z OSD-compliant
+  return name
+    .replace(/^Stacja\s+inline\b/iu, 'Stacja przelotowa SN/nN')
+    .replace(/^Stacja\s+terminal\b/iu, 'Stacja końcowa SN/nN')
+    .replace(/^Stacja\s+branch\b/iu, 'Stacja odgałęźna SN/nN')
+    .replace(/^Stacja\s+sectional\b/iu, 'Stacja sekcyjna SN/nN');
+}
+
+/**
  * K30-33: ekstrahuje wariant kabla (izolacja + materiał żyły) z catalog_ref,
  * pola `insulation` (jeśli Cable), oraz materialized_params. Używane przez
  * renderer do per-segment koloru/grubości.
@@ -1191,7 +1207,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         id: sub.ref_id,
         x: stationX,
         y: Y_RUN_BASE + runIdx * RUN_PITCH + rowIdx * ROW_HEIGHT + STATION_RUN_TRUNK_OFFSET_Y,
-        name: sub.name || sub.ref_id,
+        name: normalizeStationName(sub.name, sub.ref_id),
         stationCode,
         topologicalType: classifyTopologicalType(sub),
         nnVoltageLevelsCount: 1,
@@ -1229,7 +1245,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
           Y_RUN_BASE
           + (sortedRuns.length + corridorIdx) * RUN_PITCH
           + STATION_RUN_TRUNK_OFFSET_Y,
-        name: sub.name || sub.ref_id,
+        name: normalizeStationName(sub.name, sub.ref_id),
         topologicalType: classifyTopologicalType(sub),
         nnVoltageLevelsCount: 1,
         footprintType: stationSldDetails.footprintType,
@@ -1259,7 +1275,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
       id: st.ref_id,
       x: X_STATIONS_START + positionInRun * STATION_PITCH,
       y: Y_RUN_BASE + runIndex * RUN_PITCH + STATION_RUN_TRUNK_OFFSET_Y,
-      name: st.name || st.ref_id,
+      name: normalizeStationName(st.name, st.ref_id),
       topologicalType: classifyTopologicalType(st),
       nnVoltageLevelsCount: 1,
       footprintType: stationSldDetails.footprintType,

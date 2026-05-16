@@ -101,9 +101,16 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
   const legendX = firstStation ? firstStation.x - 200 : 100;
   const legendY = firstStation ? firstStation.y - 280 : 80;
 
+  // K30-58: hide overlay legend gdy ?overlay=0 lub ?legend=0 w URL (cleaner
+  // dispatcher view bez floating legend box).
+  const hideLegend = typeof window !== 'undefined'
+    && (window.location.search.includes('overlay=0') || window.location.search.includes('legend=0'));
+
   return (
     <g data-testid="sld-v2-result-overlay-layer" data-analysis-type={analysisType} pointerEvents="none">
-      {/* K30-6: legenda severity z analysis_type + thresholds + quality */}
+      {/* K30-6: legenda severity z analysis_type + thresholds + quality.
+       *  K30-58: hide via ?overlay=0 / ?legend=0 URL param dla clean dispatcher. */}
+      {!hideLegend && (
       <g data-testid="sld-v2-overlay-legend" transform={`translate(${legendX}, ${legendY})`}>
         <rect x={0} y={0} width={240} height={140} rx={4} ry={4} fill="#0A0E14" stroke="#3A4A5C" strokeWidth={1.5} opacity={0.95} />
         <text x={10} y={20} fill="#DDF7FF" fontFamily={FONT_SANS} fontSize={13} fontWeight={800}>
@@ -166,6 +173,7 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
           </>
         )}
       </g>
+      )}
       {stations.map((st) => {
         const snBusRef = st.id.endsWith('/station')
           ? `${st.id.slice(0, -'/station'.length)}/sn_bus`
