@@ -378,4 +378,53 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     }
     cleanup();
   });
+
+  it('K30-86: apparatus "state" tab renders actual state + control mode', () => {
+    const data: SldDetailDrawerData = { kind: 'apparatus', elementId: 'cb-1', label: 'CB-1' };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    expect(container.querySelector('[data-testid="drawer-apparatus-state"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="drawer-apparatus-actual-state"]')?.textContent).toBe('zamknięty');
+    cleanup();
+  });
+
+  it('K30-86: apparatus "settings" tab renders ANSI 50/51/67 settings', () => {
+    const data: SldDetailDrawerData = { kind: 'apparatus', elementId: 'cb-1', label: 'CB-1' };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-settings"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-apparatus-settings"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="drawer-apparatus-setting-50"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="drawer-apparatus-setting-51"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="drawer-apparatus-setting-67"]')).toBeTruthy();
+    cleanup();
+  });
+
+  it('K30-86: bay "protection" tab renders 50/51/67/50N-51N/79', () => {
+    const data: SldDetailDrawerData = { kind: 'bay', elementId: 'q01', label: 'Q01' };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-protection"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-bay-protection"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="drawer-bay-protection-50"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="drawer-bay-protection-79"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="drawer-bay-protection-50N-51N"]')).toBeTruthy();
+    cleanup();
+  });
+
+  it('K30-86: DER "Inverter" tab renders catalog dropdown per kind', () => {
+    const data: SldDetailDrawerData = { kind: 'der', elementId: 'pv-1', label: 'PV-1', derKind: 'PV' };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-inverter"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-der-inverter"]')).toBeTruthy();
+    const select = container.querySelector('[data-testid="drawer-der-inverter-select"]') as HTMLSelectElement;
+    expect(select.value).toBe('PV-INV-50KW-04KV');
+    cleanup();
+  });
+
+  it('K30-86: DER "Inverter" tab BESS catalog options różnią się od PV', () => {
+    const data: SldDetailDrawerData = { kind: 'der', elementId: 'b-1', label: 'BESS-1', derKind: 'BESS' };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-inverter"]') as Element);
+    const select = container.querySelector('[data-testid="drawer-der-inverter-select"]') as HTMLSelectElement;
+    expect(select.value).toBe('BESS-INV-50KW');
+    cleanup();
+  });
 });

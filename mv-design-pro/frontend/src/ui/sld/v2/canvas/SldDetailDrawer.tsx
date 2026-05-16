@@ -436,6 +436,41 @@ function PlaceholderTabBody({
       </div>
     );
   }
+  if (kind === 'der' && tab === 'inverter') {
+    const options = derKind === 'BESS'
+      ? ['BESS-INV-50KW', 'BESS-INV-100KW', 'BESS-INV-250KW']
+      : derKind === 'FW'
+      ? ['FW-CONV-2MW-PMSG', 'FW-CONV-3MW-DFIG', 'FW-CONV-5MW-PMSG']
+      : ['PV-INV-50KW-04KV', 'PV-INV-100KW-04KV', 'PV-INV-250KW-04KV'];
+    return (
+      <div data-testid="drawer-der-inverter">
+        <label style={{ display: 'block', marginBottom: 6, color: '#7E8790', fontSize: 10, fontWeight: 700 }}>
+          Falownik z katalogu
+        </label>
+        <select
+          data-testid="drawer-der-inverter-select"
+          defaultValue={options[0]}
+          style={{
+            background: '#171B20',
+            color: '#DDF7FF',
+            border: '1px solid #5A6878',
+            padding: 6,
+            borderRadius: 3,
+            width: '100%',
+            fontSize: 11,
+            fontFamily: 'monospace',
+          }}
+        >
+          {options.map((opt) => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
+        <div style={{ marginTop: 8, fontSize: 9, color: '#7E8790' }}>
+          Katalog typu inverter dla {derKind ?? 'DER'} (immutable per Catalog Binding Rule).
+        </div>
+      </div>
+    );
+  }
   if (kind === 'der' && tab === 'moc') {
     const presets = derKind === 'BESS'
       ? [50, 100, 250, 500, 1000]
@@ -570,6 +605,98 @@ function PlaceholderTabBody({
         <div style={{ marginTop: 12, color: '#7E8790', fontSize: 10 }}>
           Grid code: PN-EN 50549 / IEEE 1547 / IEC 61400-21 (FW)
         </div>
+      </div>
+    );
+  }
+  if (kind === 'bay' && tab === 'protection') {
+    return (
+      <div data-testid="drawer-bay-protection">
+        <div style={{ fontSize: 10, color: '#7E8790', marginBottom: 6, fontWeight: 700 }}>
+          Zabezpieczenia pola (PN-EN 60255)
+        </div>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {[
+            { code: '50', name: 'I≫ zwarciowe', tier: 'pierwotne' },
+            { code: '51', name: 'I> zwłoczne', tier: 'pierwotne' },
+            { code: '67', name: 'Kierunkowe', tier: 'rezerwa' },
+            { code: '50N/51N', name: 'Zwarcie do ziemi', tier: 'pierwotne' },
+            { code: '79', name: 'Auto-reclose (SPZ)', tier: 'opcjonalne' },
+          ].map((p) => (
+            <li
+              key={p.code}
+              data-testid={`drawer-bay-protection-${p.code.replace('/', '-')}`}
+              style={{
+                background: '#171B20',
+                border: '1px solid #2A3441',
+                borderRadius: 3,
+                padding: '5px 8px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontSize: 10,
+              }}
+            >
+              <div>
+                <span style={{ color: '#FFD166', fontFamily: 'monospace', fontWeight: 700 }}>[{p.code}]</span>
+                <span style={{ color: '#DDF7FF', marginLeft: 6 }}>{p.name}</span>
+              </div>
+              <span style={{ color: '#88BBDD', fontFamily: 'monospace', fontSize: 9 }}>{p.tier}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+  if (kind === 'apparatus' && tab === 'state') {
+    return (
+      <div data-testid="drawer-apparatus-state">
+        <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
+          <dt style={{ color: '#7E8790' }}>Stan aktualny</dt>
+          <dd data-testid="drawer-apparatus-actual-state" style={{ color: '#13C45A', fontFamily: 'monospace', fontWeight: 700 }}>zamknięty</dd>
+          <dt style={{ color: '#7E8790' }}>Tryb sterowania</dt>
+          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>LOKALNY</dd>
+          <dt style={{ color: '#7E8790' }}>Komunikacja</dt>
+          <dd style={{ color: '#13C45A', fontFamily: 'monospace' }}>OK</dd>
+          <dt style={{ color: '#7E8790' }}>Blokada operacyjna</dt>
+          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>brak</dd>
+          <dt style={{ color: '#7E8790' }}>Ostatnia zmiana</dt>
+          <dd style={{ color: '#88BBDD', fontFamily: 'monospace', fontSize: 10 }}>—</dd>
+        </dl>
+      </div>
+    );
+  }
+  if (kind === 'apparatus' && tab === 'settings') {
+    return (
+      <div data-testid="drawer-apparatus-settings">
+        <div style={{ fontSize: 10, color: '#7E8790', marginBottom: 6, fontWeight: 700 }}>
+          Nastawy (IEC 60255 / ANSI)
+        </div>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {[
+            { code: '50', name: 'Nadprądowe zwarciowe (I≫)', setpoint: '8.0 × In', delay: '0.05 s' },
+            { code: '51', name: 'Nadprądowe zwłoczne (I>)', setpoint: '1.5 × In', delay: '1.2 s' },
+            { code: '67', name: 'Kierunkowe nadprądowe', setpoint: 'auto', delay: '0.4 s' },
+          ].map((p) => (
+            <li
+              key={p.code}
+              data-testid={`drawer-apparatus-setting-${p.code}`}
+              style={{
+                background: '#171B20',
+                border: '1px solid #2A3441',
+                borderRadius: 3,
+                padding: '6px 8px',
+                fontSize: 10,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#FFD166', fontFamily: 'monospace', fontWeight: 700 }}>[{p.code}]</span>
+                <span style={{ color: '#88BBDD', fontFamily: 'monospace' }}>{p.delay}</span>
+              </div>
+              <div style={{ color: '#DDF7FF', marginTop: 2 }}>{p.name}</div>
+              <div style={{ color: '#88BBDD', fontFamily: 'monospace', marginTop: 2 }}>I_set = {p.setpoint}</div>
+            </li>
+          ))}
+        </ul>
       </div>
     );
   }
