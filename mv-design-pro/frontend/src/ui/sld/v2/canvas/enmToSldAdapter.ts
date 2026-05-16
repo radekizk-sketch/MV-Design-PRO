@@ -1468,13 +1468,55 @@ function buildExplicitStationMiniBays(
     .sort(compareBaysForSld)
     .map((bay, index) => {
       const fieldRole = mapStationBayRoleToMiniRole(ENM_BAY_ROLE_TO_FIELD_ROLE[bay.bay_role]);
+      // K30-64: wire actual switch state z bay.runtime_state.primary_device_states.
+      // Backend dostarcza per-device state (actual_state z BaySwitchState).
+      const states = bayRuntimeSwitchStates(bay);
       return {
         bayRef: bay.ref_id,
         fieldRole,
         designation: bay.bay_number ?? bay.feeder_short_name ?? bay.name ?? `Pole ${index + 1}`,
         hasMissingRequiredDevice: bay.equipment_refs.length === 0,
+        cbState: states.cb,
+        dsState: states.ds,
+        esState: states.es,
       };
     });
+}
+
+/**
+ * K30-64: extract per-bay switch state (CB/DS/ES) z runtime_state.
+ * Heurystyka: scan primary_device_states z key naming 'cb'/'ds'/'es'
+ * (case-insensitive substring match). Real backend może używać explicit
+ * device kind labels per BayPrimaryDeviceKind enum.
+ *
+ * Default jeśli brak data:
+ *   cb → 'closed' (energized network normal)
+ *   ds → 'closed'
+ *   es → 'open' (rest position, only closed during maintenance)
+ */
+function bayRuntimeSwitchStates(bay: Bay): {
+  cb: 'closed' | 'open' | 'unknown';
+  ds: 'closed' | 'open' | 'unknown';
+  es: 'closed' | 'open' | 'unknown';
+} {
+  const devices = bay.runtime_state?.primary_device_states ?? {};
+  const mapState = (raw: string | undefined): 'closed' | 'open' | 'unknown' => {
+    if (!raw) return 'unknown';
+    if (raw.includes('zamknięty') || raw === 'zamkniety') return 'closed';
+    if (raw.includes('otwarty')) return 'open';
+    return 'unknown';
+  };
+  let cb: 'closed' | 'open' | 'unknown' = 'closed';
+  let ds: 'closed' | 'open' | 'unknown' = 'closed';
+  let es: 'closed' | 'open' | 'unknown' = 'open';
+  for (const [key, swState] of Object.entries(devices)) {
+    const k = key.toLowerCase();
+    const state = mapState(swState?.actual_state);
+    if (k.includes('cb') || k.includes('breaker') || k.includes('wyłącznik') || k.includes('wylacznik')) cb = state;
+    else if (k.includes('ds') || k.includes('disconnector') || k.includes('odłącznik') || k.includes('odlacznik')) ds = state;
+    else if (k.includes('es') || k.includes('earth') || k.includes('uziemnik')) es = state;
+  }
+  return { cb, ds, es };
 }
 
 function buildExpectedStationMiniBays(
