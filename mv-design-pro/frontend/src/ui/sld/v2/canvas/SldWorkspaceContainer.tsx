@@ -1030,6 +1030,7 @@ export function SldWorkspaceContainer(
         apparatusSpec,
         cableRunSpec,
         liveMetrics: buildLiveMetrics(overlayPayload, drawerKind, id, stationForDrawer?.busVoltageKv ?? null),
+        alarmSeverity: stationForDrawer?.alarmSeverity ?? null,
       });
     }
 

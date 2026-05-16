@@ -93,6 +93,9 @@ export interface SldDetailDrawerData {
     readonly value: string;
     readonly color?: string;
   }>;
+  /** K30-95: alarm severity badge w drawer header. Lowercase per
+   *  StationOnRunRenderer (warning/important/critical). */
+  readonly alarmSeverity?: 'warning' | 'important' | 'critical' | null;
   /** K30-89: cable run spec dla cable_run drawer kind. */
   readonly cableRunSpec?: {
     readonly runKind: 'main_trunk' | 'branch' | 'ring' | 'loop' | null;
@@ -241,8 +244,29 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           <div data-testid="sld-v2-detail-drawer-kind" style={{ fontSize: 9, color: '#7E8790', textTransform: 'uppercase', letterSpacing: 1 }}>
             {kindLabel(data.kind)}
           </div>
-          <div data-testid="sld-v2-detail-drawer-label" style={{ fontSize: 16, fontWeight: 800, color: accent, marginTop: 2 }}>
-            {data.label ?? data.elementId ?? 'Element'}
+          <div data-testid="sld-v2-detail-drawer-label" style={{ fontSize: 16, fontWeight: 800, color: accent, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>{data.label ?? data.elementId ?? 'Element'}</span>
+            {data.alarmSeverity && (
+              <span
+                data-testid="sld-v2-detail-drawer-alarm-badge"
+                data-severity={data.alarmSeverity}
+                style={{
+                  background: data.alarmSeverity === 'critical' ? '#F25F5F'
+                    : data.alarmSeverity === 'important' ? '#FF9500'
+                    : '#FFD166',
+                  color: '#0A0E14',
+                  padding: '1px 6px',
+                  borderRadius: 8,
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: 0.5,
+                  textTransform: 'uppercase',
+                  animation: data.alarmSeverity === 'critical' ? 'sld-drawer-alarm-pulse 1s infinite' : undefined,
+                }}
+              >
+                ⚠ {data.alarmSeverity}
+              </span>
+            )}
           </div>
           {data.stationCode && data.kind !== 'station' && (
             <div data-testid="sld-v2-detail-drawer-breadcrumb" style={{ fontSize: 10, color: '#88BBDD', marginTop: 2 }}>
