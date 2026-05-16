@@ -522,6 +522,46 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     cleanup();
   });
 
+  it('K30-93: cable_run Spadek tab renders real loading + vdrop z lfDerived', () => {
+    const data: SldDetailDrawerData = {
+      kind: 'cable_run', elementId: 'run-1', label: 'Ciąg-1',
+      cableRunSpec: {
+        runKind: 'main_trunk',
+        segmentCount: 5,
+        stationCount: 8,
+        lengthKm: 12.0,
+        segmentKind: 'cable_sn',
+        maxLoadingPct: 82.5,
+        maxVoltageDropPct: 6.3,
+      },
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-spadek"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-cable-vdrop-total"]')?.textContent).toBe('6.30 %');
+    expect(container.querySelector('[data-testid="drawer-cable-loading"]')?.textContent).toBe('82.5 %');
+    cleanup();
+  });
+
+  it('K30-93: cable_run Spadek tab "—" gdy brak metrics', () => {
+    const data: SldDetailDrawerData = {
+      kind: 'cable_run', elementId: 'run-1', label: 'Ciąg-1',
+      cableRunSpec: {
+        runKind: 'main_trunk',
+        segmentCount: 1,
+        stationCount: 1,
+        lengthKm: 1,
+        segmentKind: 'cable_sn',
+        maxLoadingPct: null,
+        maxVoltageDropPct: null,
+      },
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-spadek"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-cable-vdrop-total"]')?.textContent).toBe('—');
+    expect(container.querySelector('[data-testid="drawer-cable-loading"]')?.textContent).toBe('—');
+    cleanup();
+  });
+
   it('K30-91: action toolbar widoczny gdy onOpenFullView podany', () => {
     const onOpenFullView = vi.fn();
     const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} onOpenFullView={onOpenFullView} />);

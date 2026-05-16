@@ -27,6 +27,7 @@ import { LayerTogglePanel } from '../lod/LayerTogglePanel';
 import { SldDetailDrawer, type SldDetailDrawerData } from './SldDetailDrawer';
 import { useDerDragDrop, DerPaletteButton, type DerDragKind } from './useDerDragDrop';
 import { useRawResultOverlayStore, getMetric, formatMetric } from '../../../sld-overlay/rawResultOverlayStore';
+import { computeLfDerivedMetrics } from './lfDerivedMetrics';
 import {
   createInitialLayerState,
   toggleLayer,
@@ -921,6 +922,7 @@ export function SldWorkspaceContainer(
         }));
       }
       // K30-89: cable run spec (gdy drawer kind='cable_run')
+      // K30-93: + maxLoadingPct + maxVoltageDropPct z lfDerivedMetrics
       let cableRunSpec: SldDetailDrawerData['cableRunSpec'] = null;
       if (drawerKind === 'cable_run') {
         const run = sldData.cableRuns.find((r) => r.id === id);
@@ -940,12 +942,35 @@ export function SldWorkspaceContainer(
             }
             if (countWithLength > 0) lengthKm = total;
           }
+          // K30-93: pull cable loading from LF derived metrics
+          let maxLoadingPct: number | null = null;
+          let maxVoltageDropPct: number | null = null;
+          if (overlayPayload) {
+            const lfMeta = computeLfDerivedMetrics(
+              overlayPayload,
+              sldData.stations.map((s) => ({ id: s.id, busVoltageKv: s.busVoltageKv })),
+              sldData.cableRuns.map((r) => ({
+                id: r.id,
+                segmentRefs: r.segmentRefs,
+                voltageKv: r.voltageKv,
+              })),
+            );
+            const loading = lfMeta.cableLoadingPctByRunId.get(run.id);
+            if (typeof loading === 'number') maxLoadingPct = loading;
+            // Voltage drop = max |station deviation| on stations along this run
+            const devs = Array.from(lfMeta.voltageDeviationPctByStationId.values());
+            if (devs.length > 0) {
+              maxVoltageDropPct = Math.max(...devs.map((d) => Math.abs(d)));
+            }
+          }
           cableRunSpec = {
             runKind: run.runKind ?? null,
             segmentCount: run.segmentRefs?.length ?? null,
             stationCount: null,
             lengthKm,
             segmentKind: run.segmentKind ?? null,
+            maxLoadingPct,
+            maxVoltageDropPct,
           };
         }
       }

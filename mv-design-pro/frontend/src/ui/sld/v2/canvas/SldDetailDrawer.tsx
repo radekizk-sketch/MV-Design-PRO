@@ -100,6 +100,10 @@ export interface SldDetailDrawerData {
     readonly stationCount: number | null;
     readonly lengthKm: number | null;
     readonly segmentKind: 'cable_sn' | 'overhead_line_sn' | null;
+    /** K30-93: max loading % across segments (z lfDerivedMetrics). */
+    readonly maxLoadingPct?: number | null;
+    /** K30-93: max voltage drop ΔU % (deviation pomiędzy stacjami końcowymi). */
+    readonly maxVoltageDropPct?: number | null;
   } | null;
 }
 
@@ -523,6 +527,8 @@ function PlaceholderTabBody({
     readonly stationCount: number | null;
     readonly lengthKm: number | null;
     readonly segmentKind: 'cable_sn' | 'overhead_line_sn' | null;
+    readonly maxLoadingPct?: number | null;
+    readonly maxVoltageDropPct?: number | null;
   } | null;
 }): JSX.Element {
   // Tab-specific scaffolding — actual editor forms wired w K30-72+
@@ -846,19 +852,39 @@ function PlaceholderTabBody({
     );
   }
   if (kind === 'cable_run' && tab === 'spadek') {
+    const loading = cableRunSpec?.maxLoadingPct;
+    const vdrop = cableRunSpec?.maxVoltageDropPct;
+    const loadingColor = loading == null
+      ? '#7E8790'
+      : loading >= 95 ? '#F25F5F'
+      : loading >= 75 ? '#FFD166'
+      : '#13C45A';
+    const vdropColor = vdrop == null
+      ? '#7E8790'
+      : Math.abs(vdrop) >= 8 ? '#F25F5F'
+      : Math.abs(vdrop) >= 5 ? '#FFD166'
+      : '#13C45A';
     return (
       <div data-testid="drawer-cable-spadek">
         <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
-          <dt style={{ color: '#7E8790' }}>ΔU pełen ciąg</dt>
-          <dd data-testid="drawer-cable-vdrop-total" style={{ color: '#FFD166', fontFamily: 'monospace', fontWeight: 700 }}>—</dd>
-          <dt style={{ color: '#7E8790' }}>ΔU max segment</dt>
-          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>—</dd>
-          <dt style={{ color: '#7E8790' }}>Loading max</dt>
-          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>—</dd>
+          <dt style={{ color: '#7E8790' }}>ΔU max [%]</dt>
+          <dd data-testid="drawer-cable-vdrop-total" style={{ color: vdropColor, fontFamily: 'monospace', fontWeight: 700 }}>
+            {vdrop != null ? `${vdrop.toFixed(2)} %` : '—'}
+          </dd>
+          <dt style={{ color: '#7E8790' }}>Loading max [%]</dt>
+          <dd data-testid="drawer-cable-loading" style={{ color: loadingColor, fontFamily: 'monospace', fontWeight: 700 }}>
+            {loading != null ? `${loading.toFixed(1)} %` : '—'}
+          </dd>
+          <dt style={{ color: '#7E8790' }}>Klasa zgodności</dt>
+          <dd style={{ color: '#88BBDD', fontFamily: 'monospace', fontSize: 10 }}>
+            PN-EN 50160 (±10%)
+          </dd>
         </dl>
-        <div style={{ marginTop: 8, fontSize: 9, color: '#7E8790', fontStyle: 'italic' }}>
-          Wartości z LF overlay payload (load_flow analysis). Uruchom analizę Power Flow.
-        </div>
+        {(loading == null && vdrop == null) && (
+          <div style={{ marginTop: 8, fontSize: 9, color: '#7E8790', fontStyle: 'italic' }}>
+            Wartości z LF overlay payload (load_flow analysis). Uruchom analizę Power Flow.
+          </div>
+        )}
       </div>
     );
   }
