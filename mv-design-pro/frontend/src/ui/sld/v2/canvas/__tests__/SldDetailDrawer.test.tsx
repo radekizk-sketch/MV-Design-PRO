@@ -502,4 +502,36 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     expect(onClose).not.toHaveBeenCalled();
     cleanup();
   });
+
+  it('K30-90: ArrowRight switches do next tab (station 4 tabs wrap)', () => {
+    const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
+    const firstTab = container.querySelector('[data-testid="sld-v2-detail-drawer-tab-rozdzielnica"]');
+    expect(firstTab?.getAttribute('data-active')).toBe('true');
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    const trTab = container.querySelector('[data-testid="sld-v2-detail-drawer-tab-transformator"]');
+    expect(trTab?.getAttribute('data-active')).toBe('true');
+    expect(firstTab?.getAttribute('data-active')).toBe('false');
+    cleanup();
+  });
+
+  it('K30-90: ArrowLeft cofa do poprzedniej (wrap z 0 → last)', () => {
+    const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    const lastTab = container.querySelector('[data-testid="sld-v2-detail-drawer-tab-der"]');
+    expect(lastTab?.getAttribute('data-active')).toBe('true');
+    cleanup();
+  });
+
+  it('K30-90: arrow keys ignored gdy input focused', () => {
+    const data: SldDetailDrawerData = { kind: 'der', elementId: 'pv-1', label: 'PV-1' };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-moc"]') as Element);
+    const input = container.querySelector('[data-testid="drawer-der-power-input"]') as HTMLInputElement;
+    input.focus();
+    fireEvent.keyDown(input, { key: 'ArrowRight' });
+    // active tab should still be 'moc' (no nav)
+    const mocTab = container.querySelector('[data-testid="sld-v2-detail-drawer-tab-moc"]');
+    expect(mocTab?.getAttribute('data-active')).toBe('true');
+    cleanup();
+  });
 });

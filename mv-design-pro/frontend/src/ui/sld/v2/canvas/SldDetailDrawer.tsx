@@ -161,17 +161,33 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
   const [activeTab, setActiveTab] = useState<string>(tabs[0]?.id ?? '');
 
   // K30-88: Escape key closes drawer
+  // K30-90: ArrowLeft/ArrowRight navigate tabs
   useEffect(() => {
     if (!open) return undefined;
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
         onClose();
+        return;
+      }
+      if (tabs.length < 2) return;
+      // Skip if input/textarea/select focused
+      const target = e.target as HTMLElement | null;
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      const currentIdx = tabs.findIndex((t) => t.id === activeTab);
+      if (e.key === 'ArrowRight' && currentIdx >= 0) {
+        e.preventDefault();
+        const nextIdx = (currentIdx + 1) % tabs.length;
+        setActiveTab(tabs[nextIdx].id);
+      } else if (e.key === 'ArrowLeft' && currentIdx >= 0) {
+        e.preventDefault();
+        const prevIdx = (currentIdx - 1 + tabs.length) % tabs.length;
+        setActiveTab(tabs[prevIdx].id);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [open, onClose]);
+  }, [open, onClose, tabs, activeTab]);
 
   if (!open || !data || data.kind === null || tabs.length === 0) return null;
 
