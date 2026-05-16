@@ -204,45 +204,163 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         data-parity-key="station.mini.body"
       />
 
-      {/* K30-57 END-TO-END FIX: TRUE LOD-aware rendering.
-       *  - variant='overview' (LOD 0, zoomed-out): SIMPLE station box +
-       *    code badge + voltage state ring. NO bay-column (zbyt zatłoczone
-       *    przy 30 stacjach × 220 px).
+      {/* K30-59 BIG REFACTOR: rich compact station card w overview variant.
+       *  K30-57 dał simple circle ale to było zbyt sparse — user feedback.
+       *  Teraz: 76×46 px station card z kompletą informacji per stacja:
+       *  - Top center: station code S01-S29 (prominent, voltage state color)
+       *  - Below: voltage label "14,95 kV" (compact monospace)
+       *  - Bottom-right corner: DER icon + count (jeśli generatory)
+       *  - Bottom-left corner: load indicator dot (jeśli totalLoadKw > 0)
+       *  - Border: voltage class color (PN-EN convention)
+       *  - Drop-line vertical do trunk (top edge connection point)
+       *  Industrial dispatcher convention: każda stacja = mini-tile
+       *  z key information at-a-glance.
        *  - variant='compact' (LOD 1): bay-column condensed.
-       *  - variant='detail' (LOD 2+): pełen bay-column z labels.
-       *  Industrial dispatcher screens (Energa SmartGrid / Tauron) renderują
-       *  WŁAŚNIE TAK: zoom-out = boxy z kodami, zoom-in = bay-column. */}
+       *  - variant='detail' (LOD 2+): pełen bay-column z labels. */}
       {!isBlocker && variant === 'overview' && (() => {
         const snBusColor = miniBlockBusColorForVoltage(props.busVoltageKv ?? null);
+        const code = props.stationCode
+          ?? ((props.name || '').match(/\b(S\d{2,3})\b/)?.[1] ?? null);
+        const hasDer = props.derBadges.length > 0;
+        const derCount = props.derBadges.reduce((sum, b) => sum + b.count, 0);
+        const totalDerMw = props.derBadges.reduce((sum, b) => sum + (b.totalPMw ?? 0), 0);
+        const hasLoad = (props.totalLoadKw ?? 0) > 0;
+        const CARD_W = 76;
+        const CARD_H = 46;
         return (
           <g data-testid={`sld-v2-mini-rmu-overview-${props.id}`}>
-            {/* Simple station box — circle z voltage state ring */}
-            <circle
-              cx={0}
-              cy={0}
-              r={14}
-              fill="#0A1018"
+            {/* Drop-line do trunk (top edge connection point) */}
+            <line
+              x1={0}
+              y1={-CARD_H / 2}
+              x2={0}
+              y2={-CARD_H / 2 - 16}
               stroke={snBusColor}
               strokeWidth={2.5}
+            />
+            {/* Station card box */}
+            <rect
+              x={-CARD_W / 2}
+              y={-CARD_H / 2}
+              width={CARD_W}
+              height={CARD_H}
+              rx={3}
+              ry={3}
+              fill="#0A1018"
+              stroke={snBusColor}
+              strokeWidth={2}
               data-parity-key="station.mini.bus.sn"
               data-bus-voltage-kv={props.busVoltageKv ?? ''}
             />
-            {/* DER indicator dot (inside circle) — tylko gdy są generatory */}
-            {props.derBadges.length > 0 && (
-              <circle cx={0} cy={0} r={5} fill="#FFD166" opacity={0.85} />
+            {/* Station code (top center) */}
+            {code && (
+              <text
+                x={0}
+                y={-CARD_H / 2 + 14}
+                textAnchor="middle"
+                fill={snBusColor}
+                fontFamily="sans-serif"
+                fontSize={13}
+                fontWeight={900}
+                letterSpacing={0.6}
+              >
+                {code}
+              </text>
             )}
-            {/* Drop-line to virtual bus position dla overview connection do trunk */}
-            <line
-              x1={0}
-              y1={-14}
-              x2={0}
-              y2={-30}
-              stroke={snBusColor}
-              strokeWidth={2}
-            />
+            {/* Voltage (mid) */}
+            {props.busVoltageKv != null && (
+              <text
+                x={0}
+                y={-CARD_H / 2 + 28}
+                textAnchor="middle"
+                fill="#DDF7FF"
+                fontFamily="monospace"
+                fontSize={8}
+                fontWeight={700}
+              >
+                {props.busVoltageKv >= 1
+                  ? `${props.busVoltageKv.toFixed(1).replace('.', ',')} kV`
+                  : `${Math.round(props.busVoltageKv * 1000)} V`}
+              </text>
+            )}
+            {/* TR rated kVA badge (small, bottom row left) */}
+            {props.transformerRatedKva != null && (
+              <text
+                x={-CARD_W / 2 + 6}
+                y={CARD_H / 2 - 4}
+                textAnchor="start"
+                fill="#FFD166"
+                fontFamily="monospace"
+                fontSize={7}
+                fontWeight={700}
+              >
+                {props.transformerRatedKva >= 1000
+                  ? `${(props.transformerRatedKva / 1000).toFixed(1).replace('.', ',')} MVA`
+                  : `${props.transformerRatedKva} kVA`}
+              </text>
+            )}
+            {/* DER badge (small, bottom-right corner) */}
+            {hasDer && (
+              <g data-testid={`sld-v2-mini-rmu-overview-${props.id}-der`}>
+                <circle cx={CARD_W / 2 - 9} cy={CARD_H / 2 - 9} r={6} fill="#FFD166" stroke="#0A0E14" strokeWidth={0.8} />
+                <text
+                  x={CARD_W / 2 - 9}
+                  y={CARD_H / 2 - 7}
+                  textAnchor="middle"
+                  fill="#0A0E14"
+                  fontFamily="sans-serif"
+                  fontSize={7}
+                  fontWeight={900}
+                >
+                  {derCount > 9 ? '+' : derCount}
+                </text>
+                {totalDerMw > 0 && (
+                  <text
+                    x={CARD_W / 2 - 4}
+                    y={CARD_H / 2 - 14}
+                    textAnchor="end"
+                    fill="#FFD166"
+                    fontFamily="monospace"
+                    fontSize={6}
+                    fontWeight={700}
+                  >
+                    {totalDerMw >= 1
+                      ? `${totalDerMw.toFixed(1).replace('.', ',')}MW`
+                      : `${Math.round(totalDerMw * 1000)}kW`}
+                  </text>
+                )}
+              </g>
+            )}
+            {/* Load indicator dot (bottom-left corner) */}
+            {hasLoad && (
+              <circle cx={-CARD_W / 2 + 6} cy={-CARD_H / 2 + 8} r={2.5} fill="#7DD3FC" stroke="#0A0E14" strokeWidth={0.5} />
+            )}
+            {/* NMO marker (top-right corner) gdy isNop */}
+            {props.isNop && (
+              <g data-testid={`sld-v2-mini-rmu-overview-${props.id}-nop`}>
+                <circle cx={CARD_W / 2 - 8} cy={-CARD_H / 2 + 8} r={5} fill="#7A1414" stroke="#FF333D" strokeWidth={1.2} />
+                <text
+                  x={CARD_W / 2 - 8}
+                  y={-CARD_H / 2 + 10}
+                  textAnchor="middle"
+                  fill="#FFFFFF"
+                  fontFamily="sans-serif"
+                  fontSize={6}
+                  fontWeight={900}
+                >
+                  ⨯
+                </text>
+              </g>
+            )}
           </g>
         );
       })()}
+
+      {/* K30-31: bay-column architecture per IEC 60617.
+       *  Replaces SnBusRow + LvSectionRow + TransformerTriangle floating
+       *  layout z proper bay-column structure: bus → bay columns → TR bay
+       *  → LV bus → feeder columns. User K30-29 (1/10) feedback eliminated.
+       *  K30-40: SN bus color z busVoltageKv (analogicznie do K30-37 dispatcher).
 
       {/* K30-31: bay-column architecture per IEC 60617.
        *  Replaces SnBusRow + LvSectionRow + TransformerTriangle floating
@@ -395,8 +513,9 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
       {/* K30-4: prominent station code badge — props.stationCode (from adapter)
        *  or regex z name (fallback). Backend gubi name_pl więc kod musi
        *  pochodzić z adaptera order.
-       *  K30-55 Phase D: gdy isNop → ring color red + ⨯ marker overlay. */}
-      {(() => {
+       *  K30-55 Phase D: gdy isNop → ring color red + ⨯ marker overlay.
+       *  K30-59: skip dla overview (już renderowany w rich card branch). */}
+      {variant !== 'overview' && (() => {
         const code = props.stationCode
           ?? ((props.name || '').match(/\b(S\d{2,3})\b/)?.[1] ?? null);
         if (!code) return null;
