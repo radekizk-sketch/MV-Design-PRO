@@ -24,6 +24,7 @@ import {
 
 import { useAppStateStore } from '../../../app-state';
 import { LayerTogglePanel } from '../lod/LayerTogglePanel';
+import { SldDetailDrawer, type SldDetailDrawerData } from './SldDetailDrawer';
 import {
   createInitialLayerState,
   toggleLayer,
@@ -442,6 +443,20 @@ function mapDerKindToElementType(kind: 'PV' | 'BESS' | 'FW'): ElementType {
   }
 }
 
+/**
+ * K30-72: map onSelectElement kind → SldDetailDrawer kind.
+ * Pewne kind values (gpz, lv_breaker, cable_run, protection, pcc) mapped
+ * to closest drawer category. null gdy element nie ma dedicated drawer.
+ */
+function mapKindToDrawerKind(kind: string): SldDetailDrawerData['kind'] | null {
+  if (kind === 'station' || kind === 'gpz') return 'station';
+  if (kind === 'bay') return 'bay';
+  if (kind === 'apparatus' || kind === 'lv_breaker' || kind === 'protection' || kind === 'pcc') return 'apparatus';
+  if (kind === 'der' || kind === 'pv_inverter') return 'der';
+  if (kind === 'cable_run') return 'cable_run';
+  return null;
+}
+
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
 const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   'show-readiness': 'E-04',
@@ -581,6 +596,8 @@ export function SldWorkspaceContainer(
   const [contextRequest, setContextRequest] = useState<SldContextMenuRequest | null>(null);
   const [internalStationId, setInternalStationId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // K30-72: detail drawer state (SldDetailDrawer K30-71)
+  const [detailDrawerData, setDetailDrawerData] = useState<SldDetailDrawerData | null>(null);
   const [viewportTransform, setViewportTransform] = useState<ViewportTransform>(IDENTITY_TRANSFORM);
   // Iteracja 12: lasso multi-select state.
   const [lassoRect, setLassoRect] = useState<LassoRect | null>(null);
@@ -754,7 +771,26 @@ export function SldWorkspaceContainer(
     setSelectedId(id);
     if (!id) {
       selectElement(null);
+      setDetailDrawerData(null);
       return;
+    }
+
+    // K30-72: open SldDetailDrawer per element kind
+    const drawerKind = mapKindToDrawerKind(kind);
+    if (drawerKind) {
+      const stationForDrawer = sldData.stations.find((s) => s.id === id);
+      const stationContext = kind === 'station' ? stationForDrawer : sldData.stations[0];
+      setDetailDrawerData({
+        kind: drawerKind,
+        elementId: id,
+        label: stationForDrawer?.stationCode
+          ?? stationForDrawer?.name
+          ?? id.split('/').pop()
+          ?? id,
+        voltageKv: stationForDrawer?.busVoltageKv ?? null,
+        stationCode: stationContext?.stationCode ?? null,
+        accentColor: '#7EC8FF',
+      });
     }
 
     let selected: SelectedElement | null = null;
@@ -1195,6 +1231,18 @@ export function SldWorkspaceContainer(
         onDoubleClickDer={handleDoubleClickDer}
         onContextMenu={handleContextMenu}
         onViewportTransformChange={setViewportTransform}
+      />
+
+      {/* K30-72: SldDetailDrawer right-side panel — opens onClick element.
+          Tab interface adapts per kind (station/bay/apparatus/der/cable_run). */}
+      <SldDetailDrawer
+        open={detailDrawerData !== null}
+        data={detailDrawerData}
+        onClose={() => {
+          setDetailDrawerData(null);
+          setSelectedId(null);
+          selectElement(null);
+        }}
       />
 
       {/* Iter 9 (SCADA blocker): floating LayerTogglePanel dock w prawym dolnym
