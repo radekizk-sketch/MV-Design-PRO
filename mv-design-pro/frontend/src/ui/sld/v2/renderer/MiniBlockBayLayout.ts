@@ -17,7 +17,7 @@
 import { FIELD_ROLE, type FieldRole } from '../domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from './MiniBlockRmuRenderer';
 
-export type ApparatusKind = 'DS' | 'CB' | 'ES' | 'CT' | 'VT' | 'FUSE' | 'TR';
+export type ApparatusKind = 'DS' | 'CB' | 'ES' | 'CT' | 'VT' | 'FUSE' | 'TR' | 'SA' | 'SD';
 
 export interface SnBayColumn {
   readonly bay: MiniBlockBayDescriptor;

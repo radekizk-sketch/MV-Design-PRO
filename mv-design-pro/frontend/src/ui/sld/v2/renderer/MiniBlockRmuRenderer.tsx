@@ -397,21 +397,42 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                 K30-40: stroke per voltage class (busVoltageKv).
                 K30-118: data-busbar-topology indicator (ABB SafeRing=single,
                 Schneider RM6=cellular). Heuristic: footprint mv_lv_sectional
-                = cellular (sekcjowana), inne = single (wspólna szyna). */}
-            <line
-              x1={layout.busLeft}
-              y1={layout.busY}
-              x2={layout.busRight}
-              y2={layout.busY}
-              stroke={snBusColor}
-              strokeWidth={STROKE_BUSBAR_PX + 1}
-              strokeLinecap="butt"
-              data-parity-key="station.mini.bus.sn"
-              data-bus-voltage-kv={props.busVoltageKv ?? ''}
-              data-busbar-topology={
-                props.footprintType === 'mv_lv_sectional' ? 'cellular' : 'single'
-              }
-            />
+                = cellular (sekcjowana), inne = single (wspólna szyna).
+                K30-127 audyt fix: VISUAL DIFFERENTIATION — cellular bus
+                renderowany jako 2 parallel lines (3 px apart) per IEC 60617
+                ("segregated busbars"); single = standard solid line. */}
+            {(() => {
+              const isCellular = props.footprintType === 'mv_lv_sectional';
+              return (
+                <>
+                  <line
+                    x1={layout.busLeft}
+                    y1={layout.busY}
+                    x2={layout.busRight}
+                    y2={layout.busY}
+                    stroke={snBusColor}
+                    strokeWidth={STROKE_BUSBAR_PX + 1}
+                    strokeLinecap="butt"
+                    data-parity-key="station.mini.bus.sn"
+                    data-bus-voltage-kv={props.busVoltageKv ?? ''}
+                    data-busbar-topology={isCellular ? 'cellular' : 'single'}
+                  />
+                  {isCellular && (
+                    <line
+                      x1={layout.busLeft}
+                      y1={layout.busY + 3}
+                      x2={layout.busRight}
+                      y2={layout.busY + 3}
+                      stroke={snBusColor}
+                      strokeWidth={STROKE_BUSBAR_PX}
+                      strokeLinecap="butt"
+                      strokeDasharray="4 2"
+                      data-testid={`sld-v2-mini-rmu-bus-cellular-secondary-${props.id}`}
+                    />
+                  )}
+                </>
+              );
+            })()}
 
             {/* SN bay columns — vertical stacks z apparatus per IEC 60617 */}
             {layout.snColumns.map((col) => (

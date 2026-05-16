@@ -29,6 +29,8 @@ import {
 import {
   ApparatusCbSquare,
   ApparatusEarthingSwitch,
+  ApparatusFuse,
+  ApparatusSurgeArrester,
   ApparatusSwitchDisconnector,
   ApparatusVtThreePhase,
   CtPrimary,
@@ -238,6 +240,10 @@ export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
             )}
             {kind === 'CT' && <CtPrimary cx={x} cy={cy} />}
             {kind === 'VT' && <ApparatusVtThreePhase cx={x} cy={cy} />}
+            {/* K30-126 audyt fix: FUSE case (występuje w MEASUREMENT, RMU_TRANSFORMER). */}
+            {kind === 'FUSE' && <ApparatusFuse cx={x} cy={cy} state="unknown" />}
+            {/* K30-126: SA case (występuje w GPZ_LINE_BAY lateral). */}
+            {kind === 'SA' && <ApparatusSurgeArrester cx={x} cy={cy} />}
           </g>
         );
       })}
@@ -255,12 +261,18 @@ export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
        *  dla consistent UX (eliminacja flickering przy LOD toggle).
        *  K30-121 audyt fix: label offset gdy DS jest w stack (lever może
        *  kolidować z text gdy dsState='open' — diagonal sięga cx+DS_RADIUS×0.85).
-       *  Przesunięcie x o +8px gdy DS obecny (anti-collision). */}
+       *  K30-125 audyt fix: label truncation gdy designation > 6 znaków
+       *  (anti-overflow przy bay-column near edge). */}
       {designation && (() => {
         const hasDs = visibleApparatusStack.includes('DS' as typeof visibleApparatusStack[number]);
         const labelX = hasDs ? x + 8 : x;
         const labelAnchor = hasDs ? 'start' : 'middle';
         const labelFontSize = variant === 'overview' ? 7 : variant === 'compact' ? 8 : 9;
+        // Truncate dla anti-overflow: max 6 znaków w overview, 8 w compact, 12 w detail
+        const maxChars = variant === 'overview' ? 6 : variant === 'compact' ? 8 : 12;
+        const displayLabel = designation.length > maxChars
+          ? `${designation.substring(0, maxChars - 1)}…`
+          : designation;
         return (
           <text
             x={labelX}
@@ -271,8 +283,9 @@ export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
             fontSize={labelFontSize}
             fontWeight={700}
             data-testid={`sld-v2-bay-${bayRef}-designation`}
+            data-designation-truncated={designation.length > maxChars ? 'true' : 'false'}
           >
-            {designation}
+            {displayLabel}
           </text>
         );
       })()}
