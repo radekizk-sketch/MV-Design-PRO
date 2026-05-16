@@ -206,6 +206,8 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
 
   return (
     <div
+      role="dialog"
+      aria-label={`Detal: ${data.label ?? data.elementId ?? 'element'}`}
       data-testid="sld-v2-detail-drawer"
       data-element-kind={data.kind}
       data-element-id={data.elementId ?? ''}
@@ -294,8 +296,10 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
         </button>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs (K30-94: ARIA tablist + tab + tabpanel) */}
       <div
+        role="tablist"
+        aria-label={`Karty ${kindLabel(data.kind)}`}
         data-testid="sld-v2-detail-drawer-tabs"
         style={{
           display: 'flex',
@@ -305,29 +309,37 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           borderBottom: '1px solid #2A3441',
         }}
       >
-        {tabs.map((tab) => (
-          <button
-            type="button"
-            key={tab.id}
-            data-testid={`sld-v2-detail-drawer-tab-${tab.id}`}
-            data-active={currentTab === tab.id ? 'true' : 'false'}
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              background: currentTab === tab.id ? accent : 'transparent',
-              color: currentTab === tab.id ? '#0A0E14' : '#88BBDD',
-              border: 'none',
-              padding: '6px 10px',
-              cursor: 'pointer',
-              fontSize: 10,
-              fontWeight: 700,
-              borderRadius: '3px 3px 0 0',
-              marginRight: 2,
-              marginBottom: -1,
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {tabs.map((tab) => {
+          const isActive = currentTab === tab.id;
+          return (
+            <button
+              type="button"
+              role="tab"
+              key={tab.id}
+              id={`sld-v2-detail-drawer-tab-button-${tab.id}`}
+              aria-selected={isActive}
+              aria-controls={`sld-v2-detail-drawer-tabpanel-${tab.id}`}
+              tabIndex={isActive ? 0 : -1}
+              data-testid={`sld-v2-detail-drawer-tab-${tab.id}`}
+              data-active={isActive ? 'true' : 'false'}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                background: isActive ? accent : 'transparent',
+                color: isActive ? '#0A0E14' : '#88BBDD',
+                border: 'none',
+                padding: '6px 10px',
+                cursor: 'pointer',
+                fontSize: 10,
+                fontWeight: 700,
+                borderRadius: '3px 3px 0 0',
+                marginRight: 2,
+                marginBottom: -1,
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* K30-91: action toolbar pod tabs (gdy onOpenFullView podany) */}
@@ -362,8 +374,11 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
         </div>
       )}
 
-      {/* Tab content */}
+      {/* Tab content (K30-94: ARIA tabpanel) */}
       <div
+        role="tabpanel"
+        id={`sld-v2-detail-drawer-tabpanel-${currentTab}`}
+        aria-labelledby={`sld-v2-detail-drawer-tab-button-${currentTab}`}
         data-testid={`sld-v2-detail-drawer-content-${currentTab}`}
         style={{
           flex: 1,

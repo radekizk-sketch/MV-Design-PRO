@@ -542,6 +542,39 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     cleanup();
   });
 
+  it('K30-94: ARIA — role="dialog" + aria-label na root drawer', () => {
+    const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
+    const root = container.querySelector('[data-testid="sld-v2-detail-drawer"]') as HTMLElement;
+    expect(root.getAttribute('role')).toBe('dialog');
+    expect(root.getAttribute('aria-label')).toContain('Detal');
+    cleanup();
+  });
+
+  it('K30-94: ARIA — role="tablist" + role="tab" + aria-selected', () => {
+    const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
+    const tabs = container.querySelector('[data-testid="sld-v2-detail-drawer-tabs"]') as HTMLElement;
+    expect(tabs.getAttribute('role')).toBe('tablist');
+    const firstTab = container.querySelector('[data-testid="sld-v2-detail-drawer-tab-rozdzielnica"]') as HTMLElement;
+    expect(firstTab.getAttribute('role')).toBe('tab');
+    expect(firstTab.getAttribute('aria-selected')).toBe('true');
+    expect(firstTab.getAttribute('tabindex')).toBe('0');
+    const secondTab = container.querySelector('[data-testid="sld-v2-detail-drawer-tab-transformator"]') as HTMLElement;
+    expect(secondTab.getAttribute('aria-selected')).toBe('false');
+    expect(secondTab.getAttribute('tabindex')).toBe('-1');
+    cleanup();
+  });
+
+  it('K30-94: ARIA — role="tabpanel" linked do aktywnego tab via aria-controls', () => {
+    const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
+    const firstTab = container.querySelector('[data-testid="sld-v2-detail-drawer-tab-rozdzielnica"]') as HTMLElement;
+    const controlsId = firstTab.getAttribute('aria-controls');
+    expect(controlsId).toBe('sld-v2-detail-drawer-tabpanel-rozdzielnica');
+    const tabpanel = container.querySelector(`#${controlsId}`) as HTMLElement;
+    expect(tabpanel?.getAttribute('role')).toBe('tabpanel');
+    expect(tabpanel?.getAttribute('aria-labelledby')).toBe(firstTab.id);
+    cleanup();
+  });
+
   it('K30-93: cable_run Spadek tab "—" gdy brak metrics', () => {
     const data: SldDetailDrawerData = {
       kind: 'cable_run', elementId: 'run-1', label: 'Ciąg-1',
