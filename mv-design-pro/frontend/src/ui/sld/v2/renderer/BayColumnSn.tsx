@@ -156,26 +156,54 @@ export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
                   energized={(props.cbState ?? 'closed') === 'closed'}
                 />
                 {/* K30-56: ANSI 51 protection badge obok CB (overcurrent relay).
-                    Real OSD bay zawsze ma protection relay — pokazujemy default
-                    50/51 obok CB jako mini-chip. */}
+                    K30-66: + ANSI 50 (instantaneous) + 67 (directional) badges.
+                    Real OSD bay ma protection relay — pokazujemy ANSI codes
+                    50/51 (line bays) i 67 (kierunkowa, GPZ feeder) per IEC 60255-127. */}
                 {variant === 'detail' && (
-                  <g
-                    data-testid={`sld-v2-bay-${bayRef}-protection-51`}
-                    data-ansi-code="51"
-                    transform={`translate(${x + 9}, ${cy})`}
-                  >
-                    <circle cx={0} cy={0} r={4} fill="#0A0E14" stroke="#FFD166" strokeWidth={0.8} />
-                    <text
-                      x={0}
-                      y={1.5}
-                      textAnchor="middle"
-                      fill="#FFD166"
-                      fontFamily="monospace"
-                      fontSize={4.5}
-                      fontWeight={900}
+                  <g data-testid={`sld-v2-bay-${bayRef}-protection-ansi`}>
+                    {/* ANSI 50 — instantaneous overcurrent (top) */}
+                    <g
+                      data-testid={`sld-v2-bay-${bayRef}-protection-50`}
+                      data-ansi-code="50"
+                      transform={`translate(${x + 9}, ${cy - 9})`}
                     >
-                      51
-                    </text>
+                      <circle cx={0} cy={0} r={4} fill="#0A0E14" stroke="#FF8B5C" strokeWidth={0.8} />
+                      <text x={0} y={1.5} textAnchor="middle" fill="#FF8B5C" fontFamily="monospace" fontSize={4.5} fontWeight={900}>
+                        50
+                      </text>
+                    </g>
+                    {/* ANSI 51 — time-delayed overcurrent (middle) */}
+                    <g
+                      data-testid={`sld-v2-bay-${bayRef}-protection-51`}
+                      data-ansi-code="51"
+                      transform={`translate(${x + 9}, ${cy})`}
+                    >
+                      <circle cx={0} cy={0} r={4} fill="#0A0E14" stroke="#FFD166" strokeWidth={0.8} />
+                      <text
+                        x={0}
+                        y={1.5}
+                        textAnchor="middle"
+                        fill="#FFD166"
+                        fontFamily="monospace"
+                        fontSize={4.5}
+                        fontWeight={900}
+                      >
+                        51
+                      </text>
+                    </g>
+                    {/* ANSI 67 — directional overcurrent (bottom, GPZ feeders) */}
+                    {(bayRole === FIELD_ROLE.GPZ_LINE_BAY || bayRole === FIELD_ROLE.LINE_OUT) && (
+                      <g
+                        data-testid={`sld-v2-bay-${bayRef}-protection-67`}
+                        data-ansi-code="67"
+                        transform={`translate(${x + 9}, ${cy + 9})`}
+                      >
+                        <circle cx={0} cy={0} r={4} fill="#0A0E14" stroke="#7DD3FC" strokeWidth={0.8} />
+                        <text x={0} y={1.5} textAnchor="middle" fill="#7DD3FC" fontFamily="monospace" fontSize={4.5} fontWeight={900}>
+                          67
+                        </text>
+                      </g>
+                    )}
                   </g>
                 )}
               </>
