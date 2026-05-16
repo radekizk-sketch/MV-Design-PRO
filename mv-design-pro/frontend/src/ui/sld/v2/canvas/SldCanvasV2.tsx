@@ -33,6 +33,7 @@ import {
 } from '../renderer/CableRunRenderer';
 import { CadOverlay } from './CadOverlay';
 import { SldTitleBlock, type SldTitleBlockData } from './SldTitleBlock';
+import { SldRevisionTable, type SldRevisionEntry } from './SldRevisionTable';
 import { SldLegendOverlay } from './SldLegendOverlay';
 import { SldScaleRuler } from './SldScaleRuler';
 import { SldNorthArrow } from './SldNorthArrow';
@@ -142,6 +143,8 @@ export interface SldCanvasV2Props {
   readonly onViewportTransformChange?: (transform: ViewportTransform) => void;
   /** K30-38: metadata bloku tytułowego per PN-EN ISO 7200. Brak → defaults. */
   readonly titleBlockData?: SldTitleBlockData | null;
+  /** K30-100: revision history entries dla SldRevisionTable (OSD wniosek). */
+  readonly revisionEntries?: readonly SldRevisionEntry[];
   /** K30-39: pokaż legendę palet (voltage / cable variants / apparatus / DER).
    *  Default true. Set false dla cleanu w przypadkach print-only. */
   readonly showLegend?: boolean;
@@ -237,7 +240,7 @@ function readSldInteractiveTarget(target: EventTarget | null): {
 export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const {
     width, height, gpzs, canonicalGpzs, sections, cableRuns, stations, ders, connections = [],
-    selectedId, lodOverride, layerVisibility, titleBlockData, showLegend = true, showScaleRuler = true,
+    selectedId, lodOverride, layerVisibility, titleBlockData, revisionEntries, showLegend = true, showScaleRuler = true,
     showNorthArrow = false, shortCircuitProjection, protectionZoneProjection,
     onSelectElement, onDoubleClickStation, onDoubleClickDer, onContextMenu, onViewportTransformChange,
   } = props;
@@ -787,8 +790,14 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
          *  Wyodrębniony z inline (K30-12) do dedykowanego komponentu — pozwala
          *  customize project info / designer / approver / drawing number via
          *  titleBlockData prop. Backward-compat: defaults zachowują K30-12. */}
-        <g transform={`translate(${width - 380}, ${height - 124})`}>
+        <g transform={`translate(${width - 380}, ${height - 194})`}>
           <SldTitleBlock data={titleBlockData ?? undefined} />
+        </g>
+
+        {/* K30-100: Tabela rewizji (OSD-required dla wniosku akceptacji).
+         *  Pozycja: lewa strona title block — bottom-right canvas. */}
+        <g transform={`translate(${width - 700}, ${height - 100})`}>
+          <SldRevisionTable entries={revisionEntries} />
         </g>
 
         {/* K30-39: SLD legend overlay — klucz palet (voltage / cable variants /
