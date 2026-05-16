@@ -77,6 +77,10 @@ export interface CableRunRendererProps {
    *   - > 100% → red chip + red dashed overlay (THERMAL OVERLOAD)
    *  Brak → chip pomijany. */
   readonly loadingPct?: number | null;
+  /** K30-105: ciąg pod napięciem per SupplyPath (z source). Renderer
+   *  rysuje strzałkę kierunku przepływu mocy (▷) na midpoincie segmentów
+   *  per IEC 60617. Default false → brak strzałek (neutral / unknown). */
+  readonly energized?: boolean;
 }
 
 export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | null {
@@ -97,6 +101,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     lod,
     voltageKv,
     loadingPct,
+    energized = false,
   } = props;
   // AC-06: Na LOD 0-1 ukrywamy szczegółowe etykiety segmentów żeby uniknąć
   // nakładania się etykiet. Główna etykieta (label) pozostaje widoczna.
@@ -284,6 +289,42 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           )}
         </g>
       ))}
+      {/* K30-105: power flow direction arrows (▷) per IEC 60617 — pokazuje
+          operatorowi OSD kierunek przepływu mocy ze źródła do odbiorów.
+          Render: jedna strzałka na każdej parze sąsiednich pathPoints
+          przy LOD≥2 i energized=true. Strzałka skierowana zgodnie z
+          orientacją pathPoints (source → load). */}
+      {energized && (lod === undefined || lod >= 2) && !missingEndpointPort && pathPoints.length >= 2 && (
+        <g
+          data-testid={`sld-v2-run-${id}-direction-arrows`}
+          pointerEvents="none"
+        >
+          {pathPoints.slice(0, -1).map((p, i) => {
+            const next = pathPoints[i + 1];
+            const mx = (p.x + next.x) / 2;
+            const my = (p.y + next.y) / 2;
+            const dx = next.x - p.x;
+            const dy = next.y - p.y;
+            const segLen = Math.sqrt(dx * dx + dy * dy);
+            // Skip very short segments to avoid clutter
+            if (segLen < 20) return null;
+            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+            const arrowSize = 4;
+            return (
+              <g
+                key={`${id}-arrow-${i}`}
+                transform={`translate(${mx}, ${my}) rotate(${angle})`}
+              >
+                <polygon
+                  points={`${-arrowSize},${-arrowSize} ${arrowSize},0 ${-arrowSize},${arrowSize}`}
+                  fill={strokeColor}
+                  opacity={0.85}
+                />
+              </g>
+            );
+          })}
+        </g>
+      )}
       {/* K30-7: ring/loop closure indicator — small circle z text przy endpoincie */}
       {(runKind === 'ring' || runKind === 'loop') && !missingEndpointPort && (
         <g
