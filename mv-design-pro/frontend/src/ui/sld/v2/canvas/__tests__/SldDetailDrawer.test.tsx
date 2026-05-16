@@ -558,6 +558,13 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     cleanup();
   });
 
+  it('K30-96: auto-focus close button when drawer opens', () => {
+    const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
+    const closeBtn = container.querySelector('[data-testid="sld-v2-detail-drawer-close"]');
+    expect(document.activeElement).toBe(closeBtn);
+    cleanup();
+  });
+
   it('K30-94: ARIA — role="dialog" + aria-label na root drawer', () => {
     const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
     const root = container.querySelector('[data-testid="sld-v2-detail-drawer"]') as HTMLElement;

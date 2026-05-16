@@ -24,7 +24,7 @@
  */
 
 import type { JSX } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export type SldDetailKind = 'station' | 'bay' | 'apparatus' | 'der' | 'cable_run' | null;
 
@@ -170,6 +170,17 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
   const { open, data, onClose, width = 360, onSave, onOpenFullView } = props;
   const tabs = tabsForKind(data?.kind ?? null);
   const [activeTab, setActiveTab] = useState<string>(tabs[0]?.id ?? '');
+  // K30-96: auto-focus close button when drawer opens (ARIA dialog pattern)
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!open || !data) return;
+    lastFocusedRef.current = (document.activeElement as HTMLElement | null) ?? null;
+    closeButtonRef.current?.focus();
+    return () => {
+      lastFocusedRef.current?.focus?.();
+    };
+  }, [open, data?.elementId]);
 
   // K30-88: Escape key closes drawer
   // K30-90: ArrowLeft/ArrowRight navigate tabs
@@ -301,6 +312,7 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
         </div>
         <button
           type="button"
+          ref={closeButtonRef}
           data-testid="sld-v2-detail-drawer-close"
           onClick={onClose}
           aria-label="Zamknij panel"
