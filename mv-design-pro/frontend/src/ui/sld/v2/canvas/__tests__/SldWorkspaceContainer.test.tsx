@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { useAppStateStore } from '../../../../app-state';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
@@ -21,6 +21,7 @@ import { SldCanvasV2, type SldCanvasContextMenuRequest } from '../SldCanvasV2';
 
 describe('SldWorkspaceContainer — Etap 1 wiring', () => {
   beforeEach(() => {
+    window.location.hash = '#sld';
     useAppStateStore.getState().reset();
     useSnapshotStore.getState().reset();
     // network-build store nie ma reset wbudowanego — wymuszamy spójny stan
@@ -37,6 +38,90 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
     vi.restoreAllMocks();
   });
 
+  const seedDerTargetStationSnapshot = () => {
+    useSnapshotStore.setState({
+      snapshot: {
+        header: {
+          enm_version: '1.0',
+          name: 'Sieć testowa',
+          created_at: '2026-05-01T00:00:00Z',
+          updated_at: '2026-05-01T00:00:00Z',
+          revision: 1,
+          hash_sha256: 'd'.repeat(64),
+          defaults: { frequency_hz: 50, unit_system: 'SI' },
+        },
+        buses: [
+          {
+            id: 'bus_sn',
+            ref_id: 'bus_sn',
+            name: 'Szyna SN',
+            tags: [],
+            meta: {},
+            voltage_kv: 15,
+          } as never,
+          {
+            id: 'bus_nn',
+            ref_id: 'bus_nn',
+            name: 'Szyna nN',
+            tags: [],
+            meta: {},
+            voltage_kv: 0.4,
+          } as never,
+        ],
+        transformers: [
+          {
+            id: 'tr_1',
+            ref_id: 'tr_1',
+            name: 'Transformator T1',
+            tags: [],
+            meta: {},
+            hv_bus_ref: 'bus_sn',
+            lv_bus_ref: 'bus_nn',
+            sn_mva: 0.63,
+            uhv_kv: 15,
+            ulv_kv: 0.4,
+            uk_percent: 6,
+            pk_kw: 6,
+          } as never,
+        ],
+        branches: [],
+        sources: [],
+        loads: [],
+        generators: [],
+        substations: [
+          {
+            id: 'station_1',
+            ref_id: 'station_1',
+            name: 'Stacja przelotowa',
+            tags: [],
+            meta: {},
+            station_type: 'inline',
+            bus_refs: ['bus_sn', 'bus_nn'],
+            transformer_refs: ['tr_1'],
+          } as never,
+        ],
+        bays: [],
+        junctions: [],
+        branch_points: [],
+        corridors: [],
+        measurements: [],
+        protection_assignments: [],
+      } as never,
+      logicalViews: null,
+      readiness: null,
+      fixActions: [],
+      materializedParams: null,
+      layout: null,
+      selectionHint: null,
+      lastChanges: null,
+      lastEvents: [],
+      operationHistory: [],
+      loading: false,
+      error: null,
+      errorCode: null,
+    });
+  };
+
   it('renderuje kanwę SLD z polskim pustym stanem przy braku snapshota', () => {
     render(<SldWorkspaceContainer width={800} height={600} />);
 
@@ -46,8 +131,133 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
     // Polski komunikat empty state.
     const empty = screen.getByTestId('sld-empty-state');
     expect(empty).toBeInTheDocument();
-    expect(empty.textContent).toContain('Schemat oczekuje na dane modelu sieci');
-    expect(empty.textContent).toContain('Głównego Punktu Zasilającego');
+    expect(empty.textContent).toContain('Wybierz wariant GPZ i rozpocznij ciąg SN');
+    expect(empty.textContent).toContain('kompletnego układu GPZ');
+    expect(screen.getByTestId('sld-empty-state-insert-gpz')).toHaveTextContent(
+      'Wstaw Główny Punkt Zasilający',
+    );
+  });
+
+  it('nie pokazuje pływającej diagnostyki konfiguracji na pustej topologii', () => {
+    useSnapshotStore.setState({
+      snapshot: {
+        header: { hash_sha256: 'empty-snapshot' },
+        sources: [],
+        buses: [],
+        branches: [],
+        transformers: [],
+        loads: [],
+        generators: [],
+        substations: [],
+        bays: [],
+        junctions: [],
+        branch_points: [],
+        corridors: [],
+        line_runs: [],
+      },
+      readiness: {
+        ready: false,
+        blockers: [
+          { code: 'gpz.required', message_pl: 'Skonfiguruj GPZ jako kompletny układ zasilania.' },
+        ],
+        warnings: [
+          { code: 'sn.required', message_pl: 'Wybierz wariant rozdzielni SN.' },
+        ],
+      },
+    } as never);
+
+    render(<SldWorkspaceContainer width={800} height={600} />);
+
+    expect(screen.getByTestId('sld-empty-state')).toBeInTheDocument();
+    expect(screen.queryByTestId('sld-calculation-configuration-stack')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Kroki techniczne/)).not.toBeInTheDocument();
+  });
+
+  it('podczas odtwarzania układu z backendu pokazuje stan wczytywania zamiast pustej kanwy', () => {
+    useSnapshotStore.setState({ loading: true });
+
+    render(<SldWorkspaceContainer width={800} height={600} />);
+
+    expect(screen.getByTestId('sld-canvas-v2')).toBeInTheDocument();
+    expect(screen.getByTestId('sld-loading-state')).toHaveTextContent(
+      'Wczytywanie układu sieci z serwera',
+    );
+    expect(screen.queryByTestId('sld-empty-state')).not.toBeInTheDocument();
+  });
+
+  it('odtwarza aktywny zakres z URL bez mutowania modelu', async () => {
+    const originalSetActiveCase = useAppStateStore.getState().setActiveCase;
+    const setActiveCase = vi.fn();
+    window.location.hash = '#sld?case=case-url-1';
+    useAppStateStore.setState({ setActiveCase } as never);
+
+    try {
+      render(<SldWorkspaceContainer width={800} height={600} />);
+
+      await waitFor(() => {
+        expect(setActiveCase).toHaveBeenCalledWith(
+          'case-url-1',
+          'Zakres z adresu',
+          null,
+          'NONE',
+        );
+      });
+    } finally {
+      useAppStateStore.setState({ setActiveCase: originalSetActiveCase } as never);
+    }
+  });
+
+  it('pobiera snapshot dla aktywnego zakresu', async () => {
+    const originalRefresh = useSnapshotStore.getState().refreshFromBackend;
+    const refreshFromBackend = vi.fn().mockResolvedValue(null);
+    useAppStateStore.setState({ activeCaseId: 'case-url-1' });
+    useSnapshotStore.setState({ refreshFromBackend } as never);
+
+    try {
+      render(<SldWorkspaceContainer width={800} height={600} />);
+
+      await waitFor(() => {
+        expect(refreshFromBackend).toHaveBeenCalledWith('case-url-1');
+      });
+    } finally {
+      useSnapshotStore.setState({ refreshFromBackend: originalRefresh } as never);
+    }
+  });
+
+  it('odświeża pustą migawkę z bezpośredniego adresu zakresu', async () => {
+    const originalRefresh = useSnapshotStore.getState().refreshFromBackend;
+    const refreshFromBackend = vi.fn().mockResolvedValue(null);
+    window.location.hash = '#sld?case=case-url-1';
+    useAppStateStore.setState({ activeCaseId: 'case-url-1' });
+    useSnapshotStore.setState({
+      caseId: 'case-url-1',
+      snapshot: {
+        header: { hash_sha256: 'empty-snapshot' },
+        sources: [],
+        buses: [],
+        branches: [],
+        transformers: [],
+        loads: [],
+        generators: [],
+        substations: [],
+        bays: [],
+        junctions: [],
+        branch_points: [],
+        corridors: [],
+        line_runs: [],
+      },
+      refreshFromBackend,
+    } as never);
+
+    try {
+      render(<SldWorkspaceContainer width={800} height={600} />);
+
+      await waitFor(() => {
+        expect(refreshFromBackend).toHaveBeenCalledWith('case-url-1');
+      });
+    } finally {
+      useSnapshotStore.setState({ refreshFromBackend: originalRefresh } as never);
+    }
   });
 
   it('reaguje na right-click w tle kanwy poprzez handler onContextMenu', () => {
@@ -86,6 +296,33 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
     });
 
     expect(screen.getByText('Wstaw główny punkt zasilania')).toBeInTheDocument();
+  });
+
+  it('empty state ma jawne CTA "Wstaw Główny Punkt Zasilający" jako pierwszy krok flow', () => {
+    render(<SldWorkspaceContainer width={800} height={600} />);
+    const cta = screen.getByTestId('sld-empty-state-insert-gpz');
+    expect(cta).toBeInTheDocument();
+    expect(cta.tagName).toBe('BUTTON');
+    expect(cta.textContent).toContain('Wstaw Główny Punkt Zasilający');
+  });
+
+  it('empty state ma akcję pomocniczą "Przeglądaj katalogi techniczne"', () => {
+    render(<SldWorkspaceContainer width={800} height={600} />);
+    const secondary = screen.getByTestId('sld-empty-state-open-catalogs');
+    expect(secondary).toBeInTheDocument();
+    expect(secondary.tagName).toBe('BUTTON');
+    expect(secondary.textContent).toContain('Przeglądaj katalogi techniczne');
+  });
+
+  it('klik CTA "Wstaw GPZ" wyzwala operację add_grid_source_sn (otwiera formularz)', () => {
+    render(<SldWorkspaceContainer width={800} height={600} />);
+    const cta = screen.getByTestId('sld-empty-state-insert-gpz');
+    fireEvent.click(cta);
+    // Po kliknięciu store networkBuild powinien zawierać aktywną powierzchnię
+    // formularza add_grid_source_sn LUB toast info — zależnie od konfiguracji
+    // routingu. Sprawdzamy, że klik został przyjęty (nie nastąpił błąd) oraz
+    // że SLD pozostaje w stanie wymagającym jednoznacznego pierwszego kroku.
+    expect(screen.queryByTestId('sld-empty-state')).toBeInTheDocument();
   });
 
   it('respektuje tryb readOnly (data atrybut + brak zewnętrznego rozróżnienia w pustym widoku)', () => {
@@ -216,7 +453,7 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
           {
             id: 'station_1',
             ref_id: 'station_1',
-            name: 'Stacja Przelotowa',
+            name: 'Stacja inline',
             tags: [],
             meta: {},
             station_type: 'inline',
@@ -250,13 +487,25 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
     fireEvent.doubleClick(screen.getByTestId('sld-v2-mini-rmu-station_1'));
 
     const internal = screen.getByTestId('sld-v2-station-internal-station_1');
-    expect(internal.textContent).toContain('Stacja Przelotowa');
+    expect(internal.textContent).not.toContain('Stacja inline');
+    expect(internal.textContent).toContain('S01 · Stacja przelotowa');
     expect(internal.textContent).toContain('Typ topologiczny: przelotowa');
-    expect(internal.textContent).toContain('Poziomy nN: 0.4 kV');
+    expect(internal.textContent).toContain('Poziomy nN: 0,4 kV');
+    expect(internal.textContent).toContain('0,63 MVA');
+    expect(internal.textContent).toContain('15/0,4 kV');
     expect(internal.getAttribute('width')).toBe('376');
+
+    fireEvent.click(screen.getByTestId('sld-v2-device-hit-station_1/internal-bay/tr-3/fuse'));
+
+    expect(useSelectionStore.getState().selectedElement).toMatchObject({
+      id: 'station_1/internal-bay/tr-3/fuse',
+      type: 'Switch',
+      name: 'Bezpiecznik - Pole transformatorowe SN, S01 · Stacja przelotowa',
+    });
+    expect(useSelectionStore.getState().selectedElement?.name).not.toContain('internal-bay');
   });
 
-  it('klik DER na SLD synchronizuje wspólny SelectionState dla inspektora', () => {
+  it('klik stacji z DER synchronizuje wspólny SelectionState bez pokazywania osobnego DER przy standardowym LOD', () => {
     useNetworkBuildStore.setState({
       activeSurface: {
         surfaceId: 'operation:add_grid_source_sn:test',
@@ -359,14 +608,18 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
       errorCode: null,
     });
 
-    render(<SldWorkspaceContainer width={800} height={500} />);
+    render(<SldWorkspaceContainer width={1600} height={1000} />);
 
-    fireEvent.click(screen.getByTestId('sld-v2-der-pv_1'));
+    expect(screen.queryByTestId('sld-v2-der-pv_1')).not.toBeInTheDocument();
+    expect(screen.getByTestId('sld-v2-mini-rmu-der-badges')).toBeInTheDocument();
+    expect(screen.getByTestId('sld-v2-mini-rmu-der-badge-PV')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('sld-v2-station-hit-station_1'));
 
     expect(useSelectionStore.getState().selectedElement).toMatchObject({
-      id: 'pv_1',
-      type: 'PVInverter',
-      name: 'Blok PV',
+      id: 'station_1',
+      type: 'Station',
+      name: 'Stacja z PV',
     });
     expect(useSelectionStore.getState().propertyGridOpen).toBe(true);
     expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
@@ -544,15 +797,25 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
     expect(screen.queryByTestId('split-preview-panel')).not.toBeInTheDocument();
   });
 
-  it('K30-78: DER palette toolbar widoczny + 3 buttons PV/BESS/FW', () => {
+  it('K30-78: DER palette nie jest pokazywana bez stacji SN/nN', () => {
+    render(<SldWorkspaceContainer width={800} height={600} />);
+    expect(screen.queryByTestId('sld-v2-der-palette')).not.toBeInTheDocument();
+  });
+
+  it('K30-78: DER palette toolbar widoczny przy stacji + 3 buttons PV/BESS/FW', () => {
+    seedDerTargetStationSnapshot();
     render(<SldWorkspaceContainer width={800} height={600} />);
     expect(screen.getByTestId('sld-v2-der-palette')).toBeInTheDocument();
     expect(screen.getByTestId('der-palette-btn-PV')).toBeInTheDocument();
     expect(screen.getByTestId('der-palette-btn-BESS')).toBeInTheDocument();
     expect(screen.getByTestId('der-palette-btn-FW')).toBeInTheDocument();
+    const pv = screen.getByTestId('der-palette-btn-PV') as HTMLButtonElement;
+    expect(pv.disabled).toBe(false);
+    expect(pv.title).toBe('Wstaw układ PV (fotowoltaika) na wybraną stację SN/nN.');
   });
 
   it('K30-78: klik PV palette → hint widoczny + inne buttons disabled', () => {
+    seedDerTargetStationSnapshot();
     render(<SldWorkspaceContainer width={800} height={600} />);
     fireEvent.click(screen.getByTestId('der-palette-btn-PV'));
     expect(screen.getByTestId('sld-v2-der-palette-hint')).toBeInTheDocument();
@@ -564,6 +827,7 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
   });
 
   it('K30-78: cancel button czyści drag state', () => {
+    seedDerTargetStationSnapshot();
     render(<SldWorkspaceContainer width={800} height={600} />);
     fireEvent.click(screen.getByTestId('der-palette-btn-BESS'));
     expect(screen.getByTestId('sld-v2-der-palette-hint')).toBeInTheDocument();

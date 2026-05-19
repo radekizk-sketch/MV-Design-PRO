@@ -7,7 +7,7 @@
  * 3. Topologia (szyna od, szyna do, magistrala, odgałęzienie)
  * 4. Katalog (pozycja katalogowa, source=catalog/override)
  * 5. Eksploatacja (stan łącznika, NOP, w eksploatacji)
- * 6. Gotowość (blokery/ostrzeżenia dotyczące tego elementu)
+ * 6. Kontrola konfiguracji dotycząca tego elementu
  * 7. Operacje (przyciski akcji kontekstowych)
  *
  * UŻYCIE: snapshotStore + selectionStore.
@@ -31,16 +31,27 @@ import {
 import { useFieldReadModel, type FieldReadModelItem } from '../field/useFieldReadModel';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { useSelectionStore } from '../selection';
+import { sanitizeDisplayValue } from '../shell/displayHelpers';
 import { useNetworkBuildStore } from './networkBuildStore';
 import { useAppStateStore } from '../app-state';
 import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
 import { issueTargetsElement } from './liveReadiness';
-import { formatStationTypeLabelPl } from '../shared/stationTypeLabels';
+import {
+  formatStationSwitchgearLayoutLabelPl,
+  formatStationTypeLabelPl,
+} from '../shared/stationTypeLabels';
+import {
+  isGenericStationName,
+  isRawTechnicalIdentifier,
+  publicTechnicalLabel,
+  stationOrdinalCode,
+} from '../shared/publicTechnicalLabels';
 import type { ReadinessIssue, SelectedElement } from '../types';
 import type {
   EnergyNetworkModel,
   Branch,
   Generator,
+  Load,
   LogicalViewsV1,
   ProtectionAssignment,
   Transformer,
@@ -112,10 +123,10 @@ function buildBaySections(
           fields: [
             {
               key: 'state',
-              label: isLoading ? 'Stan odczytu' : 'Stan modelu',
+              label: isLoading ? 'Stan odczytu' : 'Stan układu',
               value: isLoading
                 ? 'Ładowanie widoku pola...'
-                : error ?? 'Brak kanonicznego modelu pola dla wybranego elementu.',
+                : error ?? 'Kanoniczny model pola nie jest dostępny dla wybranego elementu.',
             },
           ],
         },
@@ -136,8 +147,8 @@ function buildBaySections(
     .filter((issue) => issueTargetsElement(issue, elementId))
     .map((issue, index) => ({
       key: `readiness_${index}`,
-      label: issue.severity === 'BLOCKER' ? 'Blokada' : 'Ostrzeżenie',
-      value: issue.message_pl,
+      label: issue.severity === 'BLOCKER' ? 'Konfiguracja' : 'Ostrzeżenie',
+      value: sanitizeEngineerText(issue.message_pl),
     }));
 
   return {
@@ -233,8 +244,8 @@ function buildBaySections(
           : [
               {
                 key: 'no_devices',
-                label: 'Brak aparatów',
-                value: 'Model pola nie zawiera aparatów pierwotnych.',
+                label: 'Aparaty pierwotne do konfiguracji',
+                value: 'Skonfiguruj pole SN z katalogu aparatury.',
               },
             ],
       },
@@ -258,19 +269,19 @@ function buildBaySections(
           {
             key: 'functions',
             label: 'Funkcje aktywne',
-            value: joinValues(protection?.functions.map((entry) => entry.code)) ?? 'Brak',
+            value: joinValues(protection?.functions.map((entry) => entry.code)) ?? 'Nie skonfigurowano',
           },
-          { key: 'spz', label: 'SPZ', value: protection?.spz?.state ?? 'Brak SPZ' },
+          { key: 'spz', label: 'SPZ', value: protection?.spz?.state ?? 'SPZ nie skonfigurowany' },
         ],
       },
       {
         id: 'control',
-        label: 'Sterowanie i blokady',
+        label: 'Sterowanie i uzależnienia',
         fields: [
           {
             key: 'controllable',
             label: 'Aparaty sterowalne',
-            value: joinValues(baseModel.control_surface.controllable_device_refs) ?? 'Brak',
+            value: joinValues(baseModel.control_surface.controllable_device_refs) ?? 'Nie skonfigurowano',
           },
           {
             key: 'open_confirm',
@@ -284,8 +295,8 @@ function buildBaySections(
           },
           {
             key: 'interlocks',
-            label: 'Aktywne blokady',
-            value: joinValues(activeInterlocks.map((entry) => entry.code)) ?? 'Brak',
+            label: 'Aktywne uzależnienia',
+            value: joinValues(activeInterlocks.map((entry) => entry.code)) ?? 'Nie występują',
           },
         ],
       },
@@ -350,7 +361,7 @@ function buildBaySections(
       ...(activeAlarms.length || readinessMessages.length
         ? [{
             id: 'alarms',
-            label: 'Alarmy i gotowość',
+            label: 'Alarmy i kontrola',
             fields: [
               ...activeAlarms.map((alarm, index) => ({
                 key: `alarm_${index}`,
@@ -386,9 +397,9 @@ const ELEMENT_TYPE_LABELS: Record<string, string> = {
   substation: 'Stacja',
   bay: 'Pole',
   generator: 'Generator',
-  pv_inverter: 'Źródło przekształtnikowe PV',
-  bess_inverter: 'Źródło przekształtnikowe BESS',
-  wind_inverter: 'Źródło przekształtnikowe FW',
+  pv_inverter: 'Układ PV',
+  bess_inverter: 'Układ BESS',
+  wind_inverter: 'Układ farmy wiatrowej',
   synchronous: 'Generator synchroniczny',
   genset: 'Agregat',
   ups: 'UPS',
@@ -406,9 +417,9 @@ const ELEMENT_TYPE_LABELS: Record<string, string> = {
   TRANSFORMER: 'Transformator',
   GPZ: 'GPZ',
   SOURCE: 'Źródło',
-  PV_INVERTER: 'Źródło przekształtnikowe PV',
+  PV_INVERTER: 'Układ PV',
   BESS_CONVERTER: 'Magazyn energii BESS',
-  WIND_SOURCE: 'Źródło wiatrowe',
+  WIND_SOURCE: 'Układ farmy wiatrowej',
   LV_LOAD_NODE: 'Odbiór nN',
 };
 
@@ -426,6 +437,24 @@ function connectionVariantLabel(variant: string | null | undefined): string {
 
 function formatElementTypeLabel(elementType: string): string {
   return ELEMENT_TYPE_LABELS[elementType] ?? elementType;
+}
+
+function formatLoadPower(loads: readonly Load[]): string {
+  const totalKw = loads.reduce((sum, load) => sum + ((load.p_mw ?? 0) * 1000), 0);
+  if (totalKw >= 1000) {
+    return `${(totalKw / 1000).toLocaleString('pl-PL', { maximumFractionDigits: 3 })} MW`;
+  }
+  return `${totalKw.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} kW`;
+}
+
+function stationNnFieldSpecs(station: { meta?: unknown }): Array<Record<string, unknown>> {
+  const meta = station.meta && typeof station.meta === 'object'
+    ? station.meta as Record<string, unknown>
+    : null;
+  const rawSpecs = meta?.nn_field_specs;
+  return Array.isArray(rawSpecs)
+    ? rawSpecs.filter((spec): spec is Record<string, unknown> => !!spec && typeof spec === 'object')
+    : [];
 }
 
 function connectionVariantLabelPl(variant: string | null | undefined): string {
@@ -521,10 +550,10 @@ function findGeneratorProtection(
 
 function transformerLabel(transformer: Transformer | null): string | null {
   if (!transformer) return null;
-  const power = Number.isFinite(transformer.sn_mva) ? `${transformer.sn_mva} MVA` : 'moc: brak danych';
+  const power = Number.isFinite(transformer.sn_mva) ? `${transformer.sn_mva} MVA` : 'moc do konfiguracji';
   const voltage = Number.isFinite(transformer.uhv_kv) && Number.isFinite(transformer.ulv_kv)
     ? `${transformer.uhv_kv}/${transformer.ulv_kv} kV`
-    : 'napięcie: brak danych';
+    : 'napięcie do konfiguracji';
   const vectorGroup = transformer.vector_group ? ` ${transformer.vector_group}` : '';
   return `${transformer.name} · ${voltage} · ${power}${vectorGroup}`;
 }
@@ -538,6 +567,42 @@ function sourceSideLabel(generator: Generator | null | undefined): string {
     return 'SN';
   }
   return 'nie wyznaczono';
+}
+
+function stationGeneratorKindLabel(generator: Generator): string {
+  if (generator.gen_type === 'bess') return 'BESS';
+  if (
+    generator.gen_type === 'wind_inverter'
+    || generator.gen_type === 'fw_pmsg'
+    || generator.gen_type === 'fw_dfig'
+    || generator.gen_type === 'fw_scig'
+  ) {
+    return 'FW';
+  }
+  if (generator.gen_type === 'pv_inverter' || generator.gen_type === null) return 'PV';
+  return 'źródło';
+}
+
+function formatStationGeneratorPower(powerMw: number): string {
+  return `${powerMw.toLocaleString('pl-PL', { maximumFractionDigits: 3 })} MW`;
+}
+
+function formatStationGeneratorSummary(generators: readonly Generator[]): string {
+  if (generators.length === 0) return 'bez źródeł przyłączonych';
+
+  const groups = new Map<string, { count: number; powerMw: number }>();
+  generators.forEach((generator) => {
+    const label = stationGeneratorKindLabel(generator);
+    const current = groups.get(label) ?? { count: 0, powerMw: 0 };
+    groups.set(label, {
+      count: current.count + 1,
+      powerMw: current.powerMw + (generator.p_mw ?? 0),
+    });
+  });
+
+  return Array.from(groups.entries())
+    .map(([label, group]) => `${label} ${group.count} szt. / ${formatStationGeneratorPower(group.powerMw)}`)
+    .join('; ');
 }
 
 function protectionScopeLabel(scope: unknown): string | null {
@@ -691,8 +756,8 @@ function dynamicModelLabel(generator: Generator | null | undefined): string | nu
   )?.label_pl ?? null;
 }
 
-function readinessText(ready: boolean, blockedText = 'wynik zablokowany'): string {
-  return ready ? 'gotowe' : blockedText;
+function readinessText(ready: boolean, pendingText = 'do konfiguracji'): string {
+  return ready ? 'skonfigurowane' : pendingText;
 }
 
 // =============================================================================
@@ -776,6 +841,18 @@ function semanticActionContext(
   };
 }
 
+function stationPublicName(
+  snapshot: EnergyNetworkModel,
+  station: NonNullable<EnergyNetworkModel['substations']>[number],
+): { code: string; typeLabel: string; displayName: string } {
+  const code = stationOrdinalCode(snapshot, station);
+  const typeLabel = formatStationTypeLabelPl(station.station_type);
+  const displayName = isGenericStationName(station.name)
+    ? `${code} · ${typeLabel}`
+    : publicTechnicalLabel(station.name, `${code} · ${typeLabel}`);
+  return { code, typeLabel, displayName };
+}
+
 function isSemanticMvSegment(selectedElement: SelectedElement): boolean {
   return selectedElement.semanticElementKind === 'MV_CABLE_SEGMENT'
     || selectedElement.semanticElementKind === 'MV_OVERHEAD_SEGMENT'
@@ -848,6 +925,98 @@ function parseApparatusSelectionId(id: string): { bayRef: string; apparatusKind:
   const marker = id.lastIndexOf('#');
   if (marker <= 0 || marker === id.length - 1) return null;
   return { bayRef: id.slice(0, marker), apparatusKind: id.slice(marker + 1) };
+}
+
+const INTERNAL_STATION_BAY_ROLE_LABELS_PL: Readonly<Record<string, string>> = {
+  in: 'Pole wejściowe SN',
+  out: 'Pole wyjściowe SN',
+  feeder: 'Pole odgałęźne SN',
+  tr: 'Pole transformatorowe SN',
+  coupler: 'Pole sprzęgłowe SN',
+  measurement: 'Pole pomiarowe SN',
+  oze: 'Pole przyłączeniowe OZE',
+};
+
+const INTERNAL_STATION_DEVICE_LABELS_PL: Readonly<Record<string, string>> = {
+  'switch-disconnector': 'Rozłącznik',
+  fuse: 'Bezpiecznik',
+  'earthing-switch': 'Uziemnik',
+  'cable-head': 'Głowica kablowa',
+  'transformer-device': 'Transformator SN/nN',
+  breaker: 'Wyłącznik',
+  disconnector: 'Odłącznik',
+  vt: 'Przekładnik napięciowy',
+};
+
+function stationRefFromInternalElement(id: string): string | null {
+  for (const marker of ['/internal-bay/', '/nn/', '/pv/', '/transformer/']) {
+    const markerIndex = id.indexOf(marker);
+    if (markerIndex > 0) return id.slice(0, markerIndex);
+  }
+  return null;
+}
+
+function stationDisplayNameForInternalRef(
+  snapshot: EnergyNetworkModel,
+  stationRef: string,
+): string {
+  const station = (snapshot.substations ?? []).find((item) =>
+    item.ref_id === stationRef || item.id === stationRef,
+  );
+  if (!station) return 'Stacja SN/nN';
+  const fallback = `${stationOrdinalCode(snapshot, station)} · ${formatStationTypeLabelPl(station.station_type)}`;
+  return isGenericStationName(station.name)
+    ? fallback
+    : publicTechnicalLabel(station.name, fallback);
+}
+
+function buildInternalStationElementSections(
+  selectedElement: SelectedElement,
+  snapshot: EnergyNetworkModel,
+): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } | null {
+  const stationRef = stationRefFromInternalElement(selectedElement.id);
+  if (!stationRef) return null;
+
+  const stationName = stationDisplayNameForInternalRef(snapshot, stationRef);
+  const bayPath = selectedElement.id.includes('/internal-bay/')
+    ? selectedElement.id.slice(selectedElement.id.indexOf('/internal-bay/') + '/internal-bay/'.length)
+    : '';
+  const [bayKey, deviceKey] = bayPath.split('/');
+  const roleKey = bayKey?.split('-')[0] ?? '';
+  const bayLabel = INTERNAL_STATION_BAY_ROLE_LABELS_PL[roleKey] ?? 'Układ stacyjny';
+  const deviceLabel = deviceKey
+    ? INTERNAL_STATION_DEVICE_LABELS_PL[deviceKey] ?? selectedElement.name
+    : selectedElement.name;
+  const isNnBreaker = selectedElement.id.includes('/nn/') || selectedElement.id.includes('/pv/nn-breaker/');
+  const isPvConnection = selectedElement.id.includes('/pv/');
+
+  const sections: PropertySection[] = [
+    {
+      id: 'ident',
+      label: 'Identyfikacja',
+      fields: [
+        { key: 'name', label: 'Nazwa', value: selectedElement.name },
+        { key: 'kind', label: 'Rodzaj elementu', value: deviceLabel },
+        { key: 'station', label: 'Stacja', value: stationName },
+      ],
+    },
+    {
+      id: 'context',
+      label: 'Miejsce w układzie',
+      fields: [
+        { key: 'switchgear', label: 'Rozdzielnia', value: isNnBreaker ? 'Rozdzielnica nN' : 'Rozdzielnia SN' },
+        { key: 'bay', label: 'Pole / tor', value: bayLabel },
+        { key: 'role', label: 'Rola techniczna', value: isPvConnection ? 'Przyłączenie źródła' : 'Tor pierwotny stacji' },
+      ],
+    },
+  ];
+
+  return {
+    sections,
+    elementType: selectedElement.type,
+    elementName: selectedElement.name,
+    actions: [],
+  };
 }
 
 function formatBayLabelForApparatus(
@@ -944,10 +1113,10 @@ function buildApparatusSectionsForElement(
   if (readinessForApparatus.length > 0) {
     sections.push({
       id: 'readiness',
-      label: 'Gotowość obliczeń',
+      label: 'Zakres obliczeń',
       fields: readinessForApparatus.map((issue, index) => ({
         key: `readiness_${index}`,
-        label: issue.severity === 'BLOCKER' ? 'Blokada' : 'Ostrzeżenie',
+        label: issue.severity === 'BLOCKER' ? 'Do konfiguracji' : 'Uwaga projektowa',
         value: issue.message_pl,
       })),
     });
@@ -1009,7 +1178,6 @@ function buildSemanticSegmentSections(
         { key: 'name', label: 'Nazwa', value: segmentName },
         { key: 'type', label: 'Typ', value: semanticTypeLabel(selectedElement) },
         { key: 'engineering_role', label: 'Rola semantyczna', value: selectedElement.semanticEngineeringRole ?? null },
-        { key: 'semantic_hash', label: 'Hash semantyczny', value: selectedElement.semanticHash ?? null },
         ...(branch?.status ? [{ key: 'status', label: 'Stan', value: branch.status }] : []),
       ],
     },
@@ -1113,17 +1281,17 @@ function appendReadinessSection(
   if (elementBlockers.length > 0 || elementWarnings.length > 0) {
     sections.push({
       id: 'readiness',
-      label: 'Gotowosc',
+      label: 'Kontrola',
       fields: [
         ...elementBlockers.map((b, i) => ({
           key: `blocker_${i}`,
-          label: 'Blokada',
-          value: b.message_pl,
+          label: 'Konfiguracja',
+          value: sanitizeEngineerText(b.message_pl),
         })),
         ...elementWarnings.map((w, i) => ({
           key: `warning_${i}`,
           label: 'Ostrzeżenie',
-          value: w.message_pl,
+          value: sanitizeEngineerText(w.message_pl),
         })),
       ],
     });
@@ -1153,11 +1321,11 @@ function buildSemanticConverterSections(
       fields: [
         { key: 'name', label: 'Urządzenie', value: elementName },
         { key: 'type', label: 'Rodzaj', value: semanticTypeLabel(selectedElement) },
-        { key: 'station', label: 'Stacja', value: stationName ?? 'brak danych' },
+        { key: 'station', label: 'Stacja', value: stationName ?? 'do konfiguracji' },
         {
           key: 'connection_variant',
           label: 'Punkt przyłączenia',
-          value: generator ? connectionVariantLabelPl(generator.connection_variant) : 'brak danych',
+          value: generator ? connectionVariantLabelPl(generator.connection_variant) : 'do konfiguracji',
         },
         { key: 'voltage_side', label: 'Strona napięciowa', value: sourceSideLabel(generator) },
       ],
@@ -1175,7 +1343,7 @@ function buildSemanticConverterSections(
           {
             key: 'connection_point',
             label: 'PCC',
-            value: connectionPointRef ? 'szyna nN stacji' : 'brak danych',
+            value: connectionPointRef ? 'szyna nN stacji' : 'do konfiguracji',
           },
         ],
       },
@@ -1187,39 +1355,39 @@ function buildSemanticConverterSections(
           {
             key: 'converter_catalog',
             label: 'Katalog falownika',
-            value: generator.catalog_ref ? elementName : 'brak danych',
+            value: generator.catalog_ref ? elementName : 'do konfiguracji',
             source: generator.catalog_ref ? 'catalog' : undefined,
           },
         ],
       },
       {
         id: 'protection',
-        label: 'Zabezpieczenie źródła nN',
+        label: 'Zabezpieczenia przyłączeniowe nN',
         fields: [
           {
             key: 'protection_device',
             label: 'Urządzenie zabezpieczeniowe',
-            value: valueAsString(protectionIntent?.device_label) ?? protectionAssignment?.name ?? 'brak danych',
+            value: valueAsString(protectionIntent?.device_label) ?? protectionAssignment?.name ?? 'do konfiguracji',
             source: protectionAssignment?.catalog_ref ? 'catalog' : undefined,
           },
           {
             key: 'breaker_role',
             label: 'Wyłącznik nN źródła',
-            value: valueAsString(protectionIntent?.breaker_role) ?? 'brak danych',
+            value: valueAsString(protectionIntent?.breaker_role) ?? 'do konfiguracji',
           },
           {
             key: 'protected_object',
             label: 'Chroniony obiekt',
             value: valueAsString(protectionIntent?.protected_object)
               ?? valueAsString(protectionMeta.protected_object)
-              ?? 'brak danych',
+              ?? 'do konfiguracji',
           },
           {
             key: 'analysis_scope',
             label: 'Zakres analizy zabezpieczeniowej',
             value: protectionScopeLabel(protectionIntent?.analysis_scope)
               ?? protectionScopeLabel(protectionMeta.analysis_scope)
-              ?? 'brak danych',
+              ?? 'do konfiguracji',
           },
         ],
       },
@@ -1241,7 +1409,7 @@ function buildSemanticConverterSections(
       },
       {
         id: 'edit',
-        label: 'Uzupełnij parametry źródła',
+        label: 'Skonfiguruj układ PV/BESS/FW',
         op: 'update_element_parameters',
         context: semanticActionContext(selectedElement, { element_ref: selectedElement.id }),
       },
@@ -1252,11 +1420,10 @@ function buildSemanticConverterSections(
       id: 'ident',
       label: 'Identyfikacja',
       fields: [
-        { key: 'ref_id', label: 'Oznaczenie źródła', value: selectedElement.id },
+        { key: 'ref_id', label: 'Oznaczenie układu', value: publicTechnicalLabel(selectedElement.id, elementName) },
         { key: 'name', label: 'Nazwa', value: elementName },
         { key: 'type', label: 'Typ', value: semanticTypeLabel(selectedElement) },
         { key: 'engineering_role', label: 'Rola semantyczna', value: selectedElement.semanticEngineeringRole ?? null },
-        { key: 'semantic_hash', label: 'Hash semantyczny', value: selectedElement.semanticHash ?? null },
       ],
     },
   ];
@@ -1355,11 +1522,11 @@ function buildAdvancedConverterSections(
               ? 'przekształtnik BESS'
               : 'źródło wiatrowe',
         },
-        { key: 'station', label: 'Stacja', value: stationName ?? 'brak danych' },
+        { key: 'station', label: 'Stacja', value: stationName ?? 'do konfiguracji' },
         {
           key: 'connection_variant',
           label: 'Punkt przyłączenia',
-          value: generator ? connectionVariantLabelPl(generator.connection_variant) : 'brak danych',
+          value: generator ? connectionVariantLabelPl(generator.connection_variant) : 'do konfiguracji',
         },
         { key: 'voltage_side', label: 'Strona napięciowa', value: sourceSideLabel(generator) },
       ],
@@ -1419,14 +1586,14 @@ function buildAdvancedConverterSections(
         id: 'connection_path',
         label: 'Punkt przyłączenia i tor mocy',
         fields: [
-          { key: 'connection_point', label: 'PCC', value: hasPcc ? 'szyna nN stacji' : 'brak danych' },
+          { key: 'connection_point', label: 'PCC', value: hasPcc ? 'szyna nN stacji' : 'do konfiguracji' },
           { key: 'station_transformer', label: 'Transformator SN/nN', value: transformerLabel(transformer) },
           {
             key: 'power_path',
             label: 'Tor od strony SN do falownika',
             value: hasTransformerOrMv
               ? 'pole SN -> transformator SN/nN -> rozdzielnica nN -> wyłącznik nN -> falownik'
-              : 'brak danych',
+              : 'do konfiguracji',
           },
           { key: 'side', label: 'Strona przyłączenia', value: sourceSideLabel(generator) },
         ],
@@ -1438,7 +1605,7 @@ function buildAdvancedConverterSections(
           {
             key: 'nc_rfg',
             label: 'Profil zgodności przyłączeniowej',
-            value: ncRfgProfile?.label_pl ?? 'brak danych',
+            value: ncRfgProfile?.label_pl ?? 'do konfiguracji',
             source: ncRfgProfile ? 'catalog' : undefined,
           },
           {
@@ -1446,14 +1613,14 @@ function buildAdvancedConverterSections(
             label: 'Regulacja Q(U)',
             value: ncRfgProfile
               ? `martwa strefa ${ncRfgProfile.q_u_deadzone_percent}% Un, Q ${ncRfgProfile.q_u_min_pu}...${ncRfgProfile.q_u_max_pu} pu`
-              : 'brak danych',
+              : 'do konfiguracji',
             source: ncRfgProfile ? 'catalog' : undefined,
           },
           {
             key: 'pf',
             label: 'Regulacja P(f)',
             value: catalogLabelById(PF_CURVE_CATALOG, pfCurveRef)
-              ?? (ncRfgProfile ? 'profil operatora' : 'brak danych'),
+              ?? (ncRfgProfile ? 'profil operatora' : 'do konfiguracji'),
             source: pfCurveRef || ncRfgProfile ? 'catalog' : undefined,
           },
           {
@@ -1471,24 +1638,24 @@ function buildAdvancedConverterSections(
           {
             key: 'lvrt',
             label: 'Krzywa LVRT',
-            value: catalogLabelById(LVRT_CURVE_CATALOG, lvrtRef) ?? 'brak danych',
+            value: catalogLabelById(LVRT_CURVE_CATALOG, lvrtRef) ?? 'do konfiguracji',
             source: lvrtRef ? 'catalog' : undefined,
           },
           {
             key: 'hvrt',
             label: 'Krzywa HVRT',
-            value: catalogLabelById(HVRT_CURVE_CATALOG, hvrtRef) ?? 'brak danych',
+            value: catalogLabelById(HVRT_CURVE_CATALOG, hvrtRef) ?? 'do konfiguracji',
             source: hvrtRef ? 'catalog' : undefined,
           },
           {
             key: 'dynamic_model',
             label: 'Model dynamiczny FRT',
-            value: dynamicModel ?? 'brak danych',
+            value: dynamicModel ?? 'do konfiguracji',
             source: dynamicModel ? 'catalog' : undefined,
           },
           {
             key: 'frt_status',
-            label: 'Gotowość testu FRT/HVRT',
+            label: 'Kontrola testu FRT/HVRT',
             value: readinessText(Boolean(lvrtRef && hvrtRef && dynamicModel)),
           },
         ],
@@ -1498,12 +1665,12 @@ function buildAdvancedConverterSections(
         label: 'Obliczenia i uzasadnienie',
         fields: [
           { key: 'load_flow', label: 'Rozpływ mocy P/Q', value: readinessText(hasCatalog && hasPcc && hasProfiles) },
-          { key: 'short_circuit', label: 'Wkład do zwarć', value: readinessText(Boolean(faultContributionPu), 'wynik częściowy') },
+          { key: 'short_circuit', label: 'Wkład do zwarć', value: readinessText(Boolean(faultContributionPu), 'do konfiguracji') },
           { key: 'ncrfg_test', label: 'Test NC RfG', value: readinessText(hasProfiles) },
           {
             key: 'proof_trace',
             label: 'Uzasadnienie inżynierskie',
-            value: readinessText(hasCatalog && hasPcc && hasProfiles && hasProtection, 'wynik częściowy'),
+            value: readinessText(hasCatalog && hasPcc && hasProfiles && hasProtection, 'do konfiguracji'),
           },
         ],
       },
@@ -1514,29 +1681,29 @@ function buildAdvancedConverterSections(
           {
             key: 'protection_device',
             label: 'Urządzenie zabezpieczeniowe',
-            value: valueAsString(protectionIntent?.device_label) ?? protectionAssignment?.name ?? 'brak danych',
+            value: valueAsString(protectionIntent?.device_label) ?? protectionAssignment?.name ?? 'do konfiguracji',
             source: protectionAssignment?.catalog_ref ? 'catalog' : undefined,
           },
           {
             key: 'breaker_role',
             label: 'Wyłącznik nN źródła',
-            value: valueAsString(protectionIntent?.breaker_role) ?? 'brak danych',
+            value: valueAsString(protectionIntent?.breaker_role) ?? 'do konfiguracji',
           },
           {
             key: 'protected_object',
             label: 'Chroniony obiekt',
             value: valueAsString(protectionIntent?.protected_object)
               ?? valueAsString(protectionMeta.protected_object)
-              ?? 'brak danych',
+              ?? 'do konfiguracji',
           },
           {
             key: 'analysis_scope',
             label: 'Zakres analizy zabezpieczeniowej',
             value: protectionScopeLabel(protectionIntent?.analysis_scope)
               ?? protectionScopeLabel(protectionMeta.analysis_scope)
-              ?? 'brak danych',
+              ?? 'do konfiguracji',
           },
-          { key: 'protection_readiness', label: 'Gotowość zabezpieczeń', value: readinessText(hasProtection) },
+          { key: 'protection_readiness', label: 'Kontrola zabezpieczeń', value: readinessText(hasProtection) },
         ],
       },
   );
@@ -1556,7 +1723,7 @@ function buildAdvancedConverterSections(
       },
       {
         id: 'edit',
-        label: role === 'PV_INVERTER' ? 'Uzupełnij parametry falownika' : 'Uzupełnij parametry źródła',
+        label: role === 'PV_INVERTER' ? 'Skonfiguruj falownik PV' : 'Skonfiguruj układ PV/BESS/FW',
         op: 'update_element_parameters',
         context: actionContext,
       },
@@ -1598,11 +1765,10 @@ function buildSemanticGpzSections(
       id: 'ident',
       label: 'Identyfikacja',
       fields: [
-        { key: 'ref_id', label: 'Oznaczenie źródła', value: selectedElement.id },
+        { key: 'ref_id', label: 'Oznaczenie układu', value: publicTechnicalLabel(selectedElement.id, elementName) },
         { key: 'name', label: 'Nazwa', value: elementName },
         { key: 'type', label: 'Typ', value: semanticTypeLabel(selectedElement) },
         { key: 'engineering_role', label: 'Rola semantyczna', value: selectedElement.semanticEngineeringRole ?? null },
-        { key: 'semantic_hash', label: 'Hash semantyczny', value: selectedElement.semanticHash ?? null },
         ...(source?.model ? [{ key: 'model', label: 'Model zastępczy', value: source.model }] : []),
       ],
     },
@@ -1681,7 +1847,6 @@ function buildSemanticSectionsForElement(
         { key: 'name', label: 'Nazwa', value: selectedElement.name },
         { key: 'type', label: 'Typ', value: semanticTypeLabel(selectedElement) },
         { key: 'engineering_role', label: 'Rola semantyczna', value: selectedElement.semanticEngineeringRole ?? null },
-        { key: 'semantic_hash', label: 'Hash semantyczny', value: selectedElement.semanticHash ?? null },
       ],
     },
   ];
@@ -1793,6 +1958,10 @@ function buildSectionsForElement(
     );
     if (apparatusSections) {
       return apparatusSections;
+    }
+    const internalStationSections = buildInternalStationElementSections(selectedElement, snapshot);
+    if (internalStationSections) {
+      return internalStationSections;
     }
     if (isConverterSourceSelection(selectedElement)) {
       const converter = findGeneratorForSelectedConverter(selectedElement, snapshot);
@@ -2041,7 +2210,7 @@ function buildSectionsForElement(
     );
     sections.push({
       id: 'ident', label: 'Identyfikacja', fields: [
-        { key: 'ref_id', label: 'Oznaczenie źródła', value: source.ref_id },
+        { key: 'ref_id', label: 'Oznaczenie GPZ', value: publicTechnicalLabel(source.ref_id, source.name) },
         { key: 'name', label: 'Nazwa', value: source.name },
         { key: 'type', label: 'Typ', value: ELEMENT_TYPE_LABELS.source },
         { key: 'model', label: 'Model zastępczy', value: source.model },
@@ -2073,30 +2242,74 @@ function buildSectionsForElement(
     : snapshot.substations?.find((s) => s.id === elementId || s.ref_id === elementId);
   if (station) {
     elementType = 'substation';
-    elementName = station.name;
-    const stationFields = findFieldsForStation(fieldItems, station.id, station.ref_id);
+    const stationIdentity = stationPublicName(snapshot, station);
+    elementName = stationIdentity.displayName;
+    const stationBays = (snapshot.bays ?? []).filter(
+      (bay) => bay.substation_ref === station.id || bay.substation_ref === station.ref_id,
+    );
+    const stationFieldItems = findFieldsForStation(fieldItems, station.id, station.ref_id);
+    const snSwitchgearLabel = stationBays.length > 0
+      ? `${stationBays.length} pól SN`
+      : stationFieldItems.length > 0
+        ? `${stationFieldItems.length} pól SN`
+        : formatStationSwitchgearLayoutLabelPl(station.station_type);
     const stationTransformers = (snapshot.transformers ?? []).filter((t) =>
       station.transformer_refs.includes(t.ref_id),
     );
+    const stationBusRefs = new Set(station.bus_refs ?? []);
+    const stationLoads = (snapshot.loads ?? []).filter((load) => stationBusRefs.has(load.bus_ref));
+    const stationGenerators = (snapshot.generators ?? []).filter((generator) => {
+      const generatorStation = generatorStationRef(generator);
+      return generatorStation === station.ref_id || generatorStation === station.id;
+    });
+    const nnFieldSpecs = stationNnFieldSpecs(station);
+    const nnFeederCount = nnFieldSpecs.filter((spec) => spec.bay_role === 'FEEDER').length;
     sections.push({
       id: 'ident', label: 'Identyfikacja', fields: [
-        { key: 'id', label: 'Oznaczenie stacji', value: station.id },
-        { key: 'name', label: 'Nazwa', value: station.name },
-        { key: 'station_type', label: 'Typ stacji', value: formatStationTypeLabelPl(station.station_type) },
+        { key: 'id', label: 'Oznaczenie stacji', value: stationIdentity.code },
+        { key: 'name', label: 'Nazwa', value: stationIdentity.displayName },
+        { key: 'station_type', label: 'Typ stacji', value: stationIdentity.typeLabel },
       ],
     });
     sections.push({
       id: 'structure', label: 'Struktura', fields: [
-        { key: 'bay_count', label: 'Pola SN', value: stationFields.length, source: 'calculated' },
+        {
+          key: 'bay_count',
+          label: 'Rozdzielnica SN',
+          value: snSwitchgearLabel,
+          source: 'calculated',
+        },
         { key: 'transformer_count', label: 'Transformatory', value: stationTransformers.length, source: 'calculated' },
         { key: 'bus_count', label: 'Szyny', value: station.bus_refs.length, source: 'calculated' },
+        {
+          key: 'nn_feeders',
+          label: 'Rozdzielnica nN',
+          value: nnFeederCount > 0 ? `${nnFeederCount} odpływów nN` : 'bez odpływów nN',
+          source: 'calculated',
+        },
+        {
+          key: 'nn_loads',
+          label: 'Odbiory nN',
+          value: stationLoads.length > 0
+            ? `${stationLoads.length} odbiorów / ${formatLoadPower(stationLoads)}`
+            : 'bez odbiorów nN',
+          source: 'calculated',
+        },
+        {
+          key: 'der_sources',
+          label: 'Układy PV/BESS/FW',
+          value: formatStationGeneratorSummary(stationGenerators),
+          source: 'calculated',
+        },
       ],
     });
     actions.push({ id: 'continue_trunk_from_station', label: 'Kontynuuj ciąg SN', op: 'continue_trunk_segment_sn', variant: 'primary' });
-    actions.push({ id: 'create_transformer_sn_nn', label: 'Dodaj transformator', op: 'add_transformer_sn_nn', context: { station_ref: station.id }, variant: 'primary' });
-    actions.push({ id: 'create_converter_source_pv', label: 'Dodaj źródło przekształtnikowe PV', op: 'add_converter_source', context: { station_ref: station.id, source_technology: 'PV' } });
-    actions.push({ id: 'create_converter_source_bess', label: 'Dodaj źródło przekształtnikowe BESS', op: 'add_converter_source', context: { station_ref: station.id, source_technology: 'BESS' } });
-    actions.push({ id: 'create_converter_source_fw', label: 'Dodaj źródło przekształtnikowe FW', op: 'add_converter_source', context: { station_ref: station.id, source_technology: 'FW' } });
+    if (stationTransformers.length === 0) {
+      actions.push({ id: 'create_transformer_sn_nn', label: 'Dobierz transformator z katalogu', op: 'add_transformer_sn_nn', context: { station_ref: station.id }, variant: 'primary' });
+    }
+    actions.push({ id: 'create_converter_source_pv', label: 'Dodaj układ PV z katalogu', op: 'add_converter_source', context: { station_ref: station.id, source_technology: 'PV' } });
+    actions.push({ id: 'create_converter_source_bess', label: 'Dodaj układ BESS z katalogu', op: 'add_converter_source', context: { station_ref: station.id, source_technology: 'BESS' } });
+    actions.push({ id: 'create_converter_source_fw', label: 'Dodaj układ farmy wiatrowej z katalogu', op: 'add_converter_source', context: { station_ref: station.id, source_technology: 'FW' } });
   }
 
   // Try generators (PV/BESS)
@@ -2127,7 +2340,7 @@ function buildSectionsForElement(
     elementName = generator!.name;
     sections.push({
       id: 'ident', label: 'Identyfikacja', fields: [
-        { key: 'ref_id', label: 'Oznaczenie źródła przekształtnikowego', value: generator!.ref_id },
+        { key: 'ref_id', label: 'Oznaczenie układu PV/BESS/FW', value: publicTechnicalLabel(generator!.ref_id, generator!.name) },
         { key: 'name', label: 'Nazwa', value: generator!.name },
         { key: 'gen_type', label: 'Typ', value: formatElementTypeLabel(generator!.gen_type ?? '') },
       ],
@@ -2169,7 +2382,7 @@ function buildSectionsForElement(
     actions.push({ id: 'edit', label: 'Edytuj parametry', op: 'update_element_parameters', context: { element_ref: load.ref_id } });
   }
 
-  // Sekcja gotowości: blokady i ostrzeżenia dla tego elementu.
+  // Sekcja kontroli konfiguracji dla tego elementu.
   const elementBlockers = readinessIssues.filter(
     (issue) => issue.severity === 'BLOCKER' && issueTargetsElement(issue, elementId),
   );
@@ -2178,16 +2391,16 @@ function buildSectionsForElement(
   );
   if (elementBlockers.length > 0 || elementWarnings.length > 0) {
     sections.push({
-      id: 'readiness', label: 'Gotowość', fields: [
+      id: 'readiness', label: 'Kontrola', fields: [
         ...elementBlockers.map((b, i) => ({
           key: `blocker_${i}`,
-          label: 'Blokada',
-          value: b.message_pl,
+          label: 'Konfiguracja',
+          value: sanitizeEngineerText(b.message_pl),
         })),
         ...elementWarnings.map((w, i) => ({
           key: `warning_${i}`,
           label: 'Ostrzeżenie',
-          value: w.message_pl,
+          value: sanitizeEngineerText(w.message_pl),
         })),
       ],
     });
@@ -2381,9 +2594,10 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       || (selectedElement && isSemanticConverterSource(selectedElement))
       || snapshot?.generators?.some((generator) => generator.ref_id === elementId),
   );
+  const publicElementId = publicTechnicalLabel(elementId, elementName);
   const headerSubtitle = headerIsConverterSource
     ? `${formatElementTypeLabel(elementType)} - PV za transformatorem SN/nN`
-    : `${formatElementTypeLabel(elementType)} - Oznaczenie: ${elementId}`;
+    : `${formatElementTypeLabel(elementType)} - Oznaczenie: ${publicElementId}`;
 
   return (
     <div className={clsx('flex flex-col h-full', className)} data-testid="inspector-engineering">
@@ -2405,15 +2619,15 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
           className="border-b border-gray-200 bg-white px-4 py-2 text-[10px] text-gray-700"
         >
           <div className="font-semibold text-gray-800">Odcinek SN</div>
-          <div>Oznaczenie: {elementId}</div>
+          <div>Oznaczenie: {publicTechnicalLabel(elementId, elementName)}</div>
           <div data-testid="sld-segment-inspector-catalog">
-            Katalog: {selectedSegmentCatalogRef ?? 'brak danych'}
+            Katalog: {selectedSegmentCatalogRef ?? 'nie wybrano typu'}
           </div>
           <div data-testid="sld-segment-inspector-catalog-family">
-            Przestrzeń katalogu: {selectedSegmentCatalogNamespace ?? 'brak danych'}
+            Przestrzeń katalogu: {selectedSegmentCatalogNamespace ?? 'nie wybrano typu'}
           </div>
           <div data-testid="sld-segment-catalog-status">
-            Aktualny typ: {selectedSegmentCatalogRef ?? 'brak danych'}
+            Aktualny typ: {selectedSegmentCatalogRef ?? 'nie wybrano typu'}
           </div>
           {selectedSegmentPickerCategory && (
             <button
@@ -2621,7 +2835,7 @@ function EngineeringField({
     editable ? 'cursor-pointer rounded px-1 hover:bg-blue-50 focus:outline-none focus:ring-1 focus:ring-blue-400' : '',
     field.source === 'catalog' ? 'text-blue-700' : 'text-gray-800',
     field.source === 'calculated' ? 'text-green-700 italic' : '',
-    field.label === 'Blokada' ? 'text-red-600 font-normal' : '',
+    field.label === 'Konfiguracja' ? 'text-red-600 font-normal' : '',
     field.label === 'Ostrzeżenie' ? 'text-amber-600 font-normal' : '',
   );
 
@@ -2652,7 +2866,7 @@ function EngineeringField({
           role={editable ? 'button' : undefined}
           tabIndex={editable ? 0 : undefined}
           className={valueClassName}
-          title={String(field.value ?? 'brak danych')}
+          title={value}
           onClick={editable ? () => setEditing(true) : undefined}
           onKeyDown={editable ? (event) => {
             if (event.key === 'Enter' || event.key === ' ') {
@@ -2684,17 +2898,57 @@ function slugForTestId(value: string): string {
 }
 
 function formatValue(value: string | number | boolean | null): string {
-  if (value === null || value === undefined) return 'brak danych';
+  if (value === null || value === undefined) return 'nie podano';
   if (typeof value === 'boolean') return value ? 'Tak' : 'Nie';
   if (typeof value === 'number') {
     return value.toLocaleString('pl-PL', { maximumFractionDigits: 4 });
   }
-  return String(value);
+  const sanitized = sanitizeEngineerText(
+    sanitizeDisplayValue(String(value), { fallback: 'do konfiguracji' }),
+  );
+  if (isMissingFieldValue(sanitized)) return 'do konfiguracji';
+  return sanitized;
+}
+
+function sanitizeEngineerText(value: string): string {
+  const normalized = value.trim();
+  if (!normalized) return 'do konfiguracji';
+  if (isRawTechnicalIdentifier(normalized)) return 'oznaczenie techniczne';
+  if (/^(?:brak danych|nie podano|nie wyznaczono|\?)$/i.test(normalized)) return 'do konfiguracji';
+  const legacyConverterTerm = new RegExp(
+    [
+      String.raw`\bbrak katalogu `,
+      String.raw`(?:źródła|zrodla) `,
+      String.raw`(?:przekształtnikowego|przeksztaltnikowego)\b`,
+    ].join(''),
+    'gi',
+  );
+  const legacyConverterGenitive = new RegExp(
+    String.raw`\b(?:źródła|zrodla) (?:przekształtnikowego|przeksztaltnikowego)\b`,
+    'gi',
+  );
+  const legacyConverterNominative = new RegExp(
+    String.raw`\b(?:źródło|zrodlo) (?:przekształtnikowe|przeksztaltnikowe)\b`,
+    'gi',
+  );
+  return normalized
+    .replace(/\b(?:seg|gpz|stn|bay|bus|src)\/[a-z0-9/_#-]{12,}/gi, 'element techniczny')
+    .replace(/\b[0-9a-f]{24,}\b/gi, 'element techniczny')
+    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, 'element techniczny')
+    .replace(legacyConverterTerm, 'Wymagany wariant katalogowy układu PV/BESS/FW')
+    .replace(legacyConverterGenitive, 'układu PV/BESS/FW')
+    .replace(legacyConverterNominative, 'układ PV/BESS/FW')
+    .replace(/\bbrak danych\b/gi, 'do konfiguracji')
+    .replace(/\bblokad[ay]?\b/gi, 'zagadnienie konfiguracji')
+    .replace(/\bgotowości\b/gi, 'konfiguracji');
 }
 
 function isMissingFieldValue(value: string): boolean {
   const normalized = value.trim().toLowerCase();
   return normalized === 'brak danych'
+    || normalized === 'do konfiguracji'
+    || normalized === 'nie podano'
+    || normalized === 'oznaczenie techniczne'
     || normalized === 'nie wyznaczono'
     || normalized === 'wynik częściowy'
     || normalized === 'wynik zablokowany'

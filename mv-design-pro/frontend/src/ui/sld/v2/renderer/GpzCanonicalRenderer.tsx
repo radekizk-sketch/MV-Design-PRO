@@ -46,6 +46,19 @@ import { useSldLod } from '../lod/SldLodContext';
    Domain types (z ENM, projected to canonical SLD)
    ============================================================================= */
 
+/**
+ * Topologia szyny w sekcji GPZ — IEC 60617 + PLAN_SLD_REWORK F1 §3.3.
+ *
+ *   - `single`  : pojedyncza szyna (default, większość GPZ 110/SN)
+ *   - `double`  : dwie niezależne szyny S1 + S2 (operator wybiera per pole)
+ *   - `ring`    : dwie szyny S1 + S2 z zamknięciem po prawej (pierścień)
+ *
+ * Symbol kanoniczny: `canonical_symbols/double_busbar.svg` / `ring_busbar.svg`.
+ * Wybór topologii wynika z modelu domenowego (ENM) i nie zmienia liczby
+ * obiektów `Bay`, tylko warstwę wizualną szyny.
+ */
+export type CanonicalGpzBusbarTopology = 'single' | 'double' | 'ring';
+
 export interface CanonicalGpzSection {
   /** Stable id z ENM (`Substation.gpz_sections[].section_id`). */
   readonly sectionId: string;
@@ -57,6 +70,8 @@ export interface CanonicalGpzSection {
   readonly busVoltageKv: number;
   /** Lista pól na sekcji. */
   readonly bays: readonly CanonicalGpzBay[];
+  /** Topologia szyny (single/double/ring). Default: `single`. */
+  readonly busbarTopology?: CanonicalGpzBusbarTopology;
 }
 
 export interface CanonicalGpzBay {
@@ -222,6 +237,20 @@ const BAY_PITCH = 82;
 const TR_WIDTH = 60;
 const SECTION_LABEL_WIDTH = 30;
 const PAGE_PADDING = 24;
+
+function formatTechnicalNumberPl(value: number, fractionDigits = 2): string {
+  if (!Number.isFinite(value)) return '—';
+  if (Number.isInteger(value)) return value.toFixed(0);
+  return value
+    .toFixed(fractionDigits)
+    .replace(/0+$/, '')
+    .replace(/\.$/, '')
+    .replace('.', ',');
+}
+
+function formatMvaPl(value: number): string {
+  return `${formatTechnicalNumberPl(value)} MVA`;
+}
 
 interface LvSectionLayout {
   readonly section: CanonicalGpzSection;
@@ -445,7 +474,7 @@ function HvSection(props: HvSectionProps): JSX.Element {
       <g data-testid="gpz-canonical-hv-empty" data-parity-key="gpz.hv.missing" transform={`translate(${x}, ${y})`}>
         <rect x={0} y={-18} width={170} height={24} rx={3} fill="#101A27" stroke="#3C536A" strokeWidth={1} />
         <text x={10} y={0} fill={COLOR_TEXT_MUTED} fontFamily={FONT_SANS} fontSize={12} fontWeight={700}>
-          Brak danych 110 kV
+          Strona 110 kV do konfiguracji
         </text>
       </g>
     );
@@ -658,7 +687,7 @@ function TransformersBlock(props: TransformersBlockProps): JSX.Element {
       <g data-testid="gpz-canonical-transformers-empty" data-parity-key="gpz.transformer.missing" transform={`translate(${x}, ${y})`}>
         <rect x={0} y={-18} width={195} height={24} rx={3} fill="#101A27" stroke="#3C536A" strokeWidth={1} />
         <text x={10} y={0} fill={COLOR_TEXT_MUTED} fontFamily={FONT_SANS} fontSize={12} fontWeight={700}>
-          Brak transformatora WN/SN
+          Transformator WN/SN do konfiguracji
         </text>
       </g>
     );
@@ -990,14 +1019,36 @@ function TransformerSymbol(props: TransformerSymbolProps): JSX.Element {
       <circle cx={cx} cy={lvWindingY} r={14} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={2} data-parity-key="gpz.transformer.winding.sn" />
       <polygon points={`${cx - 6},${lvWindingY + 8} ${cx + 6},${lvWindingY + 8} ${cx},${lvWindingY - 6}`} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={1.5} />
       {/* Etykieta: TR1 */}
-      <text x={cx + 22} y={hvWindingY + 6} fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={FONT_SIZES.bayLabel} fontWeight={700}>
+      <text
+        data-testid={`gpz-canonical-tr-label-${transformer.transformerRef}-designation`}
+        x={cx + 24}
+        y={hvWindingY + 4}
+        fill={COLOR_TEXT_PRIMARY}
+        fontFamily={FONT_SANS}
+        fontSize={16}
+        fontWeight={700}
+      >
         {transformer.designation}
       </text>
       {/* Moc + napięcia */}
-      <text x={cx + 22} y={hvWindingY + 20} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={FONT_SIZES.numericValue}>
-        {transformer.snMva.toFixed(1)} MVA
+      <text
+        data-testid={`gpz-canonical-tr-label-${transformer.transformerRef}-power`}
+        x={cx + 24}
+        y={hvWindingY + 24}
+        fill={COLOR_TEXT_SECONDARY}
+        fontFamily={FONT_MONO}
+        fontSize={12}
+      >
+        {formatMvaPl(transformer.snMva)}
       </text>
-      <text x={cx + 22} y={hvWindingY + 32} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={FONT_SIZES.numericValue}>
+      <text
+        data-testid={`gpz-canonical-tr-label-${transformer.transformerRef}-voltage`}
+        x={cx + 24}
+        y={hvWindingY + 40}
+        fill={COLOR_TEXT_SECONDARY}
+        fontFamily={FONT_MONO}
+        fontSize={12}
+      >
         {transformer.uhvKv}/{transformer.ulvKv} kV
       </text>
     </g>
@@ -1021,6 +1072,9 @@ interface LvSectionProps {
   readonly onContextMenuApparatus?: (selection: CanonicalGpzApparatusSelection, evt: { clientX: number; clientY: number }) => void;
 }
 
+/** Offset Y dla szyny zapasowej S2 w topologii double/ring. */
+const LV_BUS_S2_OFFSET = -14;
+
 function LvSection(props: LvSectionProps): JSX.Element {
   const {
     section,
@@ -1034,13 +1088,19 @@ function LvSection(props: LvSectionProps): JSX.Element {
     onClickApparatus,
     onContextMenuApparatus,
   } = props;
+  const topology: CanonicalGpzBusbarTopology = section.busbarTopology ?? 'single';
   return (
     <g
       data-testid={`gpz-canonical-section-${section.sectionId}`}
       data-parity-key="gpz.section"
       data-section-label={section.label}
       data-section-voltage={String(section.busVoltageKv)}
-      data-section-layout="single-bus-segment"
+      data-section-layout={
+        topology === 'single' ? 'single-bus-segment' :
+        topology === 'double' ? 'double-bus-segment' :
+        'ring-bus-segment'
+      }
+      data-busbar-topology={topology}
       transform={`translate(${x}, ${y})`}
       onContextMenu={
         onContextMenuSection
@@ -1067,7 +1127,7 @@ function LvSection(props: LvSectionProps): JSX.Element {
         />
       ))}
 
-      {/* Szyna SN musi być warstwą nad kolumnami pól, jak w ekranach operatorskich. */}
+      {/* Szyna SN — primary (S1) zawsze widoczna, warstwą nad kolumnami pól. */}
       <line
         x1={0}
         y1={0}
@@ -1077,8 +1137,41 @@ function LvSection(props: LvSectionProps): JSX.Element {
         strokeWidth={4}
         strokeLinecap="square"
         data-parity-key="gpz.bus.sn"
+        data-busbar-role="primary"
         data-testid={`gpz-canonical-section-${section.sectionId}-bus`}
       />
+
+      {/* Szyna zapasowa (S2) — tylko dla double/ring (IEC 60617 §S00102). */}
+      {(topology === 'double' || topology === 'ring') && (
+        <line
+          x1={0}
+          y1={LV_BUS_S2_OFFSET}
+          x2={width}
+          y2={LV_BUS_S2_OFFSET}
+          stroke={COLOR_BUS_LV}
+          strokeWidth={3}
+          strokeLinecap="square"
+          strokeDasharray={topology === 'double' ? '6 3' : undefined}
+          data-parity-key="gpz.bus.sn.s2"
+          data-busbar-role="reserve"
+          data-testid={`gpz-canonical-section-${section.sectionId}-bus-s2`}
+        />
+      )}
+
+      {/* Zamknięcie pierścienia (right-side connector) — tylko dla ring. */}
+      {topology === 'ring' && (
+        <line
+          x1={width}
+          y1={LV_BUS_S2_OFFSET}
+          x2={width}
+          y2={0}
+          stroke={COLOR_BUS_LV}
+          strokeWidth={3}
+          strokeLinecap="square"
+          data-parity-key="gpz.bus.sn.ring-closure"
+          data-testid={`gpz-canonical-section-${section.sectionId}-ring-closure`}
+        />
+      )}
     </g>
   );
 }
@@ -1733,9 +1826,6 @@ function ApparatusCb(props: ApparatusProps): JSX.Element {
       {state === 'open' && (
         <line x1={cx - 6} y1={cy} x2={cx + 6} y2={cy} stroke="#FF4040" strokeWidth={1.5} />
       )}
-      {state === 'unknown' && (
-        <text x={cx} y={cy + 3} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={10} fontWeight={700}>?</text>
-      )}
     </g>
   );
 }
@@ -1749,9 +1839,6 @@ function ApparatusDs(props: ApparatusProps): JSX.Element {
       <circle cx={cx} cy={cy} r={5} fill={fill} stroke={stroke} strokeWidth={1.4} />
       {state === 'open' && (
         <line x1={cx - 5} y1={cy} x2={cx + 5} y2={cy} stroke="#FF4040" strokeWidth={1.4} />
-      )}
-      {state === 'unknown' && (
-        <text x={cx} y={cy + 3} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={10} fontWeight={700}>?</text>
       )}
     </g>
   );
@@ -1772,9 +1859,6 @@ function ApparatusSwitchDisconnector(props: ApparatusProps): JSX.Element {
       />
       {state === 'open' && (
         <line x1={cx - d} y1={cy} x2={cx + d} y2={cy} stroke="#FF4040" strokeWidth={1.4} />
-      )}
-      {state === 'unknown' && (
-        <text x={cx} y={cy + 3} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={10} fontWeight={700}>?</text>
       )}
     </g>
   );

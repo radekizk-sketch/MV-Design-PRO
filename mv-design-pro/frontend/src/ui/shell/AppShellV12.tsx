@@ -5,7 +5,7 @@
  *   Pasek obszarów roboczych
  *   Panel kontekstu obszaru
  *   Kanwa schematu jednokreskowego
- *   Inspektor techniczny
+ *   Karta techniczna
  *   [28px]  StatusBarV12    — dolny pasek statusu
  *
  * Tryby (TE/TW/TZ/TP/TA/TN) ZMIENIAJĄ nakładki i inspektor — geometria SLD stała.
@@ -20,20 +20,25 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 
-import { useActiveMode, useIssuePanelOpen } from '../app-state';
+import { useActiveMode } from '../app-state';
 import { EmptyInspectorPanel } from '../inspector-panel/EmptyInspectorPanel';
 import { GlobalSearch } from '../network-build/GlobalSearch';
 import { CommandPalette } from '../network-build/CommandPalette';
+import { GuidedBuildActionPanel } from '../network-build/GuidedBuildActionPanel';
 import { InspectorEngineeringView } from '../network-build/InspectorEngineeringView';
 import { notify } from '../notifications/store';
 import { ProjectMetadataModal } from '../network-build/ProjectMetadataModal';
+import type { ProjectMetadata } from '../network-build/ProjectMetadataModal';
 import { SnapshotHistoryModal } from '../network-build/SnapshotHistoryModal';
+import { MassReviewPanel } from '../network-build/mass-review';
+import { updateProject } from '../projects/api';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import { navigateToCatalog } from '../navigation/routes';
 import { useSelectionStore } from '../selection';
 import { WorkspaceSurfaceRouter } from '../workspace';
 import { useAppStateStore } from '../app-state/store';
 import type { AreaId } from '../navigation/areaRegistry';
+import { IconChevronLeft, IconChevronRight, IconClipboard } from '../icons/shellIcons';
 
 import { UndoRedoButtons } from '../history/UndoRedoButtons';
 import { NavigationRail } from './NavigationRail';
@@ -55,30 +60,6 @@ export interface AppShellV12Props {
   hideInspector?: boolean;
   onMenuAction?: (actionId: string) => void;
   networkStats?: { nodeCount?: number; branchCount?: number };
-}
-
-function IconChevronLeft({ className }: { className?: string }) {
-  return (
-    <svg className={clsx('h-4 w-4', className)} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-    </svg>
-  );
-}
-
-function IconChevronRight({ className }: { className?: string }) {
-  return (
-    <svg className={clsx('h-4 w-4', className)} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-    </svg>
-  );
-}
-
-function IconClipboard({ className }: { className?: string }) {
-  return (
-    <svg className={clsx('h-5 w-5', className)} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-    </svg>
-  );
 }
 
 function isEditableTarget(target: EventTarget | null) {
@@ -155,17 +136,19 @@ export function AppShellV12({
   onMenuAction,
   networkStats,
 }: AppShellV12Props) {
-  const issuePanelOpen = useIssuePanelOpen();
   const activeMode = useActiveMode();
   const selectedElement = useSelectionStore((state) => state.selectedElements[0] ?? null);
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
   const activeArea = useAppStateStore((s) => s.activeArea);
+  const activeProjectId = useAppStateStore((s) => s.activeProjectId);
+  const activeProjectName = useAppStateStore((s) => s.activeProjectName);
+  const setActiveProject = useAppStateStore((s) => s.setActiveProject);
 
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
   const [contextCollapsed, setContextCollapsed] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const [, setMassReviewOpen] = useState(false);
+  const [massReviewOpen, setMassReviewOpen] = useState(false);
   const [projectMetadataOpen, setProjectMetadataOpen] = useState(false);
   const [snapshotHistoryOpen, setSnapshotHistoryOpen] = useState(false);
 
@@ -213,6 +196,7 @@ export function AppShellV12({
 
   const isReadOnly = activeMode === 'RESULT_VIEW';
   const mainSurfaceExpanded = activeSurface?.openMode === 'expand_workspace';
+  const metadataProjectName = activeProjectName?.trim() ? activeProjectName : (projectName ?? '');
 
   useEffect(() => {
     if (activeSurface && activeSurface.openMode !== 'expand_workspace') {
@@ -232,10 +216,35 @@ export function AppShellV12({
 
   const toggleContextPanel = useCallback(() => setContextCollapsed((v) => !v), []);
   const toggleInspector = useCallback(() => setInspectorCollapsed((v) => !v), []);
+  const handleProjectMetadataSave = useCallback(
+    async (metadata: ProjectMetadata) => {
+      if (!activeProjectId) {
+        const message = 'Wybierz projekt przed zapisem metadanych.';
+        notify(message, 'warning');
+        throw new Error(message);
+      }
+      try {
+        const updated = await updateProject(activeProjectId, {
+          name: metadata.projectName.trim(),
+          description: metadata.description.trim() || null,
+        });
+        setActiveProject(updated.id, updated.name);
+        notify(`Zapisano metadane projektu "${updated.name}".`, 'success');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Nie udało się zapisać metadanych projektu.';
+        notify(message, 'error');
+        throw error;
+      }
+    },
+    [activeProjectId, setActiveProject],
+  );
 
   const resolvedInspectorContent = useMemo(() => {
     if (activeSurface && activeSurface.openMode !== 'expand_workspace') {
       return <WorkspaceSurfaceRouter region="panel" />;
+    }
+    if (activeMode === 'MODEL_EDIT' && !selectedElement) {
+      return <GuidedBuildActionPanel />;
     }
     if (inspectorContent) return inspectorContent;
     if (selectedElement) {
@@ -244,7 +253,7 @@ export function AppShellV12({
     return (
       <EmptyInspectorPanel selectedElement={selectedElement} isReadOnly={isReadOnly} />
     );
-  }, [activeSurface, inspectorContent, isReadOnly, selectedElement]);
+  }, [activeMode, activeSurface, inspectorContent, isReadOnly, selectedElement]);
 
   return (
     <div
@@ -320,7 +329,7 @@ export function AppShellV12({
               inspectorWidthClass,
             )}
           >
-            {/* Nagłówek inspektora */}
+            {/* Nagłówek karty technicznej */}
             <div className="flex h-8 shrink-0 items-center border-b border-scada-border px-2">
               <button
                 type="button"
@@ -337,7 +346,7 @@ export function AppShellV12({
               </button>
               {!inspectorCollapsed && (
                 <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wider text-scada-muted">
-                  Inspektor techniczny
+                  Karta techniczna
                 </span>
               )}
             </div>
@@ -363,11 +372,6 @@ export function AppShellV12({
           </aside>
         )}
 
-        {/* Panel zgłoszeń (issue panel) */}
-        {issuePanelOpen && (
-          <aside className="w-[360px] shrink-0 overflow-hidden border-l border-scada-border bg-scada-surface">
-          </aside>
-        )}
       </div>
 
       {/* === StatusBarV12 (28px) === */}
@@ -416,7 +420,13 @@ export function AppShellV12({
           },
         ]}
       />
-      <ProjectMetadataModal isOpen={projectMetadataOpen} onClose={() => setProjectMetadataOpen(false)} />
+      <MassReviewPanel isOpen={massReviewOpen} onClose={() => setMassReviewOpen(false)} initialTab="readiness" />
+      <ProjectMetadataModal
+        isOpen={projectMetadataOpen}
+        onClose={() => setProjectMetadataOpen(false)}
+        metadata={{ projectName: metadataProjectName }}
+        onSave={handleProjectMetadataSave}
+      />
       <SnapshotHistoryModal isOpen={snapshotHistoryOpen} onClose={() => setSnapshotHistoryOpen(false)} />
     </div>
   );

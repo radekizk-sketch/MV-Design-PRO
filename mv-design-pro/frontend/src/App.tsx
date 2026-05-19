@@ -20,7 +20,7 @@
  * - "" bez aktywnego projektu → Pulpit projektu E-00
  * - "" z aktywnym projektem / "#sld" → Schemat jednokreskowy E-01
  * - "#sld-view" → Podglad schematu (SLD Read-Only Viewer)
- * - "#analysis" → Poziom analityczny (E-24)
+ * - "#analysis" → Analizy techniczne (E-35)
  * - "#report" → Generator raportu (E-25)
  * - "#variants" / "#catalog" / "#case-config" → Helpery shell-a
  * - "#results" / "#proof" / "#protection-results" / "#power-flow-results" / "#compare"
@@ -31,15 +31,24 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 
 import { EnmInspectorPage } from './ui/enm-inspector';
 import { FaultScenariosPanel, FaultScenarioModal } from './ui/fault-scenarios';
-import { CanonicalLayout } from './ui/layout';
+import { CanonicalLayout as CanonicalLayoutV12 } from './ui/layout';
+import { CanonicalLayoutV3 } from './ui/layout/CanonicalLayoutV3';
+import { StationWizardSurface } from './ui/network-build/station-wizard-v2/StationWizardSurface';
+import { featureFlags } from './ui/config/featureFlags';
+
+// Feature flag: VITE_USE_LAYOUT_V3=1 włącza shell V3 (chrome -48% per
+// `docs/audit/DESIGN_IMPL_2026-05-19_KWranPTV.md` § 2). Domyślnie V12.
+const CanonicalLayout = featureFlags.USE_LAYOUT_V3 ? CanonicalLayoutV3 : CanonicalLayoutV12;
 import { SldWorkspaceContainer } from './ui/sld/v2/canvas/SldWorkspaceContainer';
 import { ProjectDashboardSurface } from './ui/workspace/surfaces/ProjectDashboardSurface';
 import { useAppStateStore } from './ui/app-state';
 import { useSnapshotStore } from './ui/topology/snapshotStore';
 import { useExecutionRunsStore } from './ui/study-cases/runStore';
+import { getStudyCase } from './ui/study-cases/api';
+import { getProject } from './ui/projects/api';
 import { useOverlayStore } from './ui/sld-overlay';
 import { useRawResultOverlayStore } from './ui/sld-overlay/rawResultOverlayStore';
-import type { ExecutionAnalysisType } from './ui/study-cases/types';
+import type { ExecutionAnalysisType, ExecutionRun } from './ui/study-cases/types';
 import {
   ROUTES,
   getCurrentHashRoute,
@@ -62,11 +71,13 @@ import {
 } from './ui/navigation';
 import { NotificationToast } from './ui/notifications/NotificationToast';
 import { notify } from './ui/notifications/store';
+import { sanitizePublicReadinessMessage } from './ui/shared/publicReadinessMessage';
 import { useNetworkStats } from './ui/topology/useNetworkStats';
 import { useNetworkBuildStore } from './ui/network-build/networkBuildStore';
 import { useSelectionStore } from './ui/selection/store';
 import type { AreaId } from './ui/navigation/areaRegistry';
 import type { SelectedElement } from './ui/types';
+import type { DomainOpResponseV1, EnergyNetworkModel } from './types/enm';
 import {
   ANALYSIS_SURFACE_SCREEN_CODE,
   ANALYSIS_ROUTE_DEFAULT_TAB,
@@ -119,6 +130,99 @@ function mapAnalysisTypeToExecutionType(
   }
 }
 
+type AnalysisRunHealth = {
+  status?: string | null;
+  result_status?: string | null;
+  results_valid?: boolean | null;
+  error_message?: string | null;
+  not_found?: boolean | null;
+};
+
+function isFailedAnalysisRun(run?: ExecutionRun | null, health?: AnalysisRunHealth | null): boolean {
+  const executionStatus = run?.status?.toUpperCase();
+  const canonicalStatus = health?.status?.toUpperCase();
+  const resultStatus = health?.result_status?.toUpperCase();
+
+  return executionStatus === 'FAILED'
+    || canonicalStatus === 'FAILED'
+    || resultStatus === 'FAILED';
+}
+
+function isTerminalExecutionRun(run: ExecutionRun): boolean {
+  return run.status === 'DONE' || run.status === 'FAILED';
+}
+
+async function fetchAnalysisRunHealth(runId: string): Promise<AnalysisRunHealth | null> {
+  try {
+    const response = await fetch(`/api/analysis-runs/${runId}`);
+    if (response.status === 404) {
+      return {
+        status: 'NOT_FOUND',
+        result_status: 'NONE',
+        results_valid: false,
+        error_message: 'RUN_NOT_FOUND',
+        not_found: true,
+      };
+    }
+    if (!response.ok) {
+      return null;
+    }
+    return {
+      ...((await response.json()) as AnalysisRunHealth),
+      not_found: false,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function isAnalysisRunMissing(health: AnalysisRunHealth | null): boolean {
+  return health?.not_found === true || health?.status?.toUpperCase() === 'NOT_FOUND';
+}
+
+function clearRunParamFromCurrentHash(routeRunId: string): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  const hash = window.location.hash || '';
+  const queryIndex = hash.indexOf('?');
+  if (queryIndex < 0) {
+    return false;
+  }
+  const routeHash = hash.slice(0, queryIndex) || ROUTES.SLD.hash;
+  const params = new URLSearchParams(hash.slice(queryIndex + 1));
+  if (params.get('run') !== routeRunId) {
+    return false;
+  }
+  params.delete('run');
+  const nextHash = params.toString() ? `${routeHash}?${params.toString()}` : routeHash;
+  window.history.replaceState(
+    window.history.state,
+    '',
+    `${window.location.pathname}${window.location.search}${nextHash}`,
+  );
+  return true;
+}
+
+function analysisRunFailureMessage(): string {
+  return 'Obliczenia nie zakończyły się wynikiem. Sprawdź konfigurację układu i dane katalogowe.';
+}
+
+async function waitForExecutionRunTerminalState(
+  initialRun: ExecutionRun,
+  pollRunStatus: (runId: string) => Promise<ExecutionRun>,
+): Promise<ExecutionRun> {
+  let current = initialRun;
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    if (isTerminalExecutionRun(current)) {
+      return current;
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 750));
+    current = await pollRunStatus(current.id);
+  }
+  return current;
+}
+
 function isResultsRoute(route: string): boolean {
   return (
     route === ROUTES.ANALYSIS.hash ||
@@ -161,6 +265,103 @@ function resolveRouteArea(route: string): AreaId | null {
     return 'HISTORIA_AUDYT';
   }
   return null;
+}
+
+function resolveRouteRunId(
+  params: URLSearchParams,
+  fallbackRunId: string | null,
+  activeCaseId: string | null,
+): string | null {
+  const routeRunId = params.get('run')?.trim();
+  if (routeRunId) {
+    return routeRunId;
+  }
+
+  const routeCaseId = params.get('case')?.trim();
+  if (routeCaseId && routeCaseId !== activeCaseId) {
+    return null;
+  }
+
+  return fallbackRunId?.trim() || null;
+}
+
+type AnalysisRunSnapshotPayload = {
+  run_id?: unknown;
+  snapshot_id?: unknown;
+  snapshot?: unknown;
+};
+
+const EMPTY_LOGICAL_VIEWS = {
+  trunks: [],
+  branches: [],
+  secondary_connectors: [],
+  terminals: [],
+};
+
+function isEnergyNetworkModel(value: unknown): value is EnergyNetworkModel {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const candidate = value as Partial<EnergyNetworkModel>;
+  return (
+    !!candidate.header
+    && Array.isArray(candidate.buses)
+    && Array.isArray(candidate.branches)
+    && Array.isArray(candidate.substations)
+  );
+}
+
+function hasTopologicalContent(snapshot: EnergyNetworkModel | null | undefined): boolean {
+  if (!snapshot) {
+    return false;
+  }
+  return [
+    snapshot.sources,
+    snapshot.buses,
+    snapshot.branches,
+    snapshot.transformers,
+    snapshot.loads,
+    snapshot.generators,
+    snapshot.substations,
+    snapshot.bays,
+    snapshot.junctions,
+    snapshot.branch_points,
+    snapshot.corridors,
+    snapshot.line_runs,
+  ].some((items) => Array.isArray(items) && items.length > 0);
+}
+
+function createAnalysisRunSnapshotEnvelope(
+  snapshot: EnergyNetworkModel,
+  snapshotId: string,
+): DomainOpResponseV1 {
+  const stableSnapshotId = snapshotId || snapshot.header.hash_sha256;
+  return {
+    snapshot,
+    logical_views: snapshot.logical_views ?? EMPTY_LOGICAL_VIEWS,
+    readiness: {
+      ready: true,
+      blockers: [],
+      warnings: [],
+    },
+    fix_actions: [],
+    changes: {
+      created_element_ids: [],
+      updated_element_ids: [],
+      deleted_element_ids: [],
+    },
+    selection_hint: null,
+    audit_trail: [],
+    domain_events: [],
+    materialized_params: {
+      lines_sn: {},
+      transformers_sn_nn: {},
+    },
+    layout: {
+      layout_hash: stableSnapshotId,
+      layout_version: 'analysis-run-snapshot',
+    },
+  };
 }
 
 interface DerSurfaceRouteTarget {
@@ -291,22 +492,103 @@ function App() {
   const activeCaseKind = useAppStateStore((state) => state.activeCaseKind);
   const activeAnalysisType = useAppStateStore((state) => state.activeAnalysisType);
   const activeRunId = useAppStateStore((state) => state.activeRunId);
+  const activeSnapshotId = useAppStateStore((state) => state.activeSnapshotId);
   const setActiveProject = useAppStateStore((state) => state.setActiveProject);
   const setActiveCase = useAppStateStore((state) => state.setActiveCase);
   const setActiveRun = useAppStateStore((state) => state.setActiveRun);
   const setActiveSnapshot = useAppStateStore((state) => state.setActiveSnapshot);
   const setActiveCaseResultStatus = useAppStateStore((state) => state.setActiveCaseResultStatus);
+  const executionActiveRunId = useExecutionRunsStore((state) => state.activeRunId);
   const setExecutionActiveRun = useExecutionRunsStore((state) => state.setActiveRun);
   const readiness = useSnapshotStore((state) => state.readiness);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const snapshotError = useSnapshotStore((state) => state.error);
   const refreshSnapshotFromBackend = useSnapshotStore((state) => state.refreshFromBackend);
+  const setSnapshotFromResponse = useSnapshotStore((state) => state.setSnapshot);
+  const resetSnapshotStore = useSnapshotStore((state) => state.reset);
   const createAndExecuteRun = useExecutionRunsStore((state) => state.createAndExecuteRun);
+  const pollRunStatus = useExecutionRunsStore((state) => state.pollRunStatus);
   const appReady = useAppReady();
   const projectName = useActiveProjectName();
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const clearRouteManagedSurface = useNetworkBuildStore((state) => state.clearRouteManagedSurface);
   const selectedElement = useSelectionStore((state) => state.selectedElement);
+  const effectiveRunId = activeRunId ?? executionActiveRunId;
+
+  const restoreAnalysisRunSnapshot = useCallback(
+    (routeRunId: string, expectedCaseId: string | null) => {
+      void Promise.all([
+        fetch(`/api/analysis-runs/${routeRunId}/snapshot`)
+          .then((response) => (response.ok ? response.json() : null)),
+        fetchAnalysisRunHealth(routeRunId),
+      ])
+        .then(([payload, runHealth]: [AnalysisRunSnapshotPayload | null, AnalysisRunHealth | null]) => {
+          const currentParams = getCurrentSearchParams();
+          const currentRunParam = currentParams.get('run')?.trim() || null;
+          const currentState = useAppStateStore.getState();
+          const currentExecutionRunId = useExecutionRunsStore.getState().activeRunId;
+          const runStillActive = currentRunParam
+            ? currentRunParam === routeRunId
+            : currentState.activeRunId === routeRunId || currentExecutionRunId === routeRunId;
+          const currentCaseParam = currentParams.get('case')?.trim() || null;
+          const caseStillActive = !expectedCaseId
+            || currentCaseParam === expectedCaseId
+            || currentState.activeCaseId === expectedCaseId;
+          if (!runStillActive || !caseStillActive) {
+            return;
+          }
+
+          const fallbackCaseId = expectedCaseId ?? currentState.activeCaseId;
+          if (isAnalysisRunMissing(runHealth)) {
+            setActiveRun(null);
+            setExecutionActiveRun(null);
+            setActiveSnapshot(null);
+            setActiveCaseResultStatus('NONE');
+            if (clearRunParamFromCurrentHash(routeRunId)) {
+              setHashVersion((current) => current + 1);
+            }
+            if (fallbackCaseId && !hasTopologicalContent(useSnapshotStore.getState().snapshot)) {
+              void refreshSnapshotFromBackend(fallbackCaseId);
+            }
+            return;
+          }
+
+          const snapshotId = typeof payload?.snapshot_id === 'string'
+            ? payload.snapshot_id.trim()
+            : '';
+          const failedRun = isFailedAnalysisRun(null, runHealth);
+          if (snapshotId) {
+            setActiveSnapshot(snapshotId);
+            setActiveCaseResultStatus(failedRun ? 'NONE' : 'FRESH');
+          }
+          if (isEnergyNetworkModel(payload?.snapshot) && hasTopologicalContent(payload.snapshot)) {
+            setSnapshotFromResponse(
+              createAnalysisRunSnapshotEnvelope(payload.snapshot, snapshotId),
+            );
+            return;
+          }
+
+          if (fallbackCaseId && !hasTopologicalContent(useSnapshotStore.getState().snapshot)) {
+            void refreshSnapshotFromBackend(fallbackCaseId);
+          }
+        })
+        .catch(() => {
+          const fallbackCaseId = expectedCaseId ?? useAppStateStore.getState().activeCaseId;
+          if (fallbackCaseId && !hasTopologicalContent(useSnapshotStore.getState().snapshot)) {
+            void refreshSnapshotFromBackend(fallbackCaseId);
+          }
+        });
+    },
+    [
+      refreshSnapshotFromBackend,
+      setActiveCaseResultStatus,
+      setActiveRun,
+      setActiveSnapshot,
+      setExecutionActiveRun,
+      setHashVersion,
+      setSnapshotFromResponse,
+    ],
+  );
 
   // NAVIGATION_SELECTOR_UI: Sync selection with URL (refresh preserves selection)
   useUrlSelectionSync();
@@ -322,6 +604,16 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // updateUrlWithSelection używa replaceState, więc odtwarzamy stan trasy,
+    // gdy hash zmienił się bez natywnego zdarzenia hashchange.
+    const currentRoute = getCurrentHashRoute();
+    if (currentRoute !== route) {
+      setRoute(currentRoute);
+      setHashVersion((current) => current + 1);
+    }
+  });
+
+  useEffect(() => {
     const routeArea = resolveRouteArea(route);
     if (routeArea) {
       setActiveArea(routeArea);
@@ -331,11 +623,34 @@ function App() {
   useEffect(() => {
     const params = getCurrentSearchParams();
     const routeProjectId = params.get('project')?.trim();
-    if (!routeProjectId || (routeProjectId === activeProjectId && projectName)) {
+    if (!routeProjectId) {
       return;
     }
 
-    setActiveProject(routeProjectId, routeProjectId);
+    if (routeProjectId !== activeProjectId) {
+      setActiveProject(routeProjectId, null);
+    }
+
+    if (routeProjectId === activeProjectId && projectName && projectName !== routeProjectId) {
+      return;
+    }
+
+    let cancelled = false;
+    void getProject(routeProjectId)
+      .then((project) => {
+        if (!cancelled && useAppStateStore.getState().activeProjectId === routeProjectId) {
+          setActiveProject(routeProjectId, project.name);
+        }
+      })
+      .catch(() => {
+        if (!cancelled && !useAppStateStore.getState().activeProjectName) {
+          setActiveProject(routeProjectId, routeProjectId);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     activeProjectId,
     hashVersion,
@@ -347,10 +662,85 @@ function App() {
   useEffect(() => {
     const params = getCurrentSearchParams();
     const routeCaseId = params.get('case')?.trim();
-    if (!routeCaseId || routeCaseId === activeCaseId) {
+    const routeProjectId = params.get('project')?.trim();
+    const routeRunId = params.get('run')?.trim();
+    const routeCaseAlreadyHydrated =
+      routeCaseId === activeCaseId
+      && (
+        Boolean(routeRunId)
+        || Boolean(routeProjectId && routeProjectId === activeProjectId)
+      );
+    if (!routeCaseId || routeCaseAlreadyHydrated) {
       return;
     }
 
+    if (!routeProjectId) {
+      let cancelled = false;
+
+      void getStudyCase(routeCaseId)
+        .then((studyCase) => {
+          if (cancelled) {
+            return;
+          }
+
+          const current = useAppStateStore.getState();
+          const projectChanged = current.activeProjectId !== studyCase.project_id;
+          const caseChanged = current.activeCaseId !== studyCase.id;
+
+          if (projectChanged) {
+            setActiveProject(studyCase.project_id, null);
+          }
+
+          void getProject(studyCase.project_id)
+            .then((project) => {
+              if (!cancelled && useAppStateStore.getState().activeProjectId === studyCase.project_id) {
+                setActiveProject(studyCase.project_id, project.name);
+              }
+            })
+            .catch(() => {
+              if (
+                !cancelled
+                && useAppStateStore.getState().activeProjectId === studyCase.project_id
+                && !useAppStateStore.getState().activeProjectName
+              ) {
+                setActiveProject(studyCase.project_id, null);
+              }
+            });
+
+          if (projectChanged || caseChanged) {
+            resetSnapshotStore();
+            setActiveSnapshot(null);
+          }
+
+          setActiveCase(
+            studyCase.id,
+            studyCase.name || 'Zakres obliczeń z adresu',
+            'ShortCircuitCase',
+            studyCase.result_status,
+          );
+        })
+        .catch(() => {
+          if (cancelled || useAppStateStore.getState().activeCaseId === routeCaseId) {
+            return;
+          }
+
+          resetSnapshotStore();
+          setActiveSnapshot(null);
+          setActiveCase(
+            routeCaseId,
+            'Zakres obliczeń z adresu',
+            'ShortCircuitCase',
+            'NONE',
+          );
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    resetSnapshotStore();
+    setActiveSnapshot(null);
     setActiveCase(
       routeCaseId,
       'Zakres obliczeń z adresu',
@@ -360,8 +750,11 @@ function App() {
   }, [
     activeCaseId,
     hashVersion,
+    resetSnapshotStore,
     route,
     setActiveCase,
+    setActiveProject,
+    setActiveSnapshot,
   ]);
 
   // Sync mode with route
@@ -377,9 +770,35 @@ function App() {
     if (!activeCaseId || snapshot || snapshotError) {
       return;
     }
+    const routeRunId = resolveRouteRunId(
+      getCurrentSearchParams(),
+      activeRunId ?? executionActiveRunId,
+      activeCaseId,
+    );
+    if (routeRunId) {
+      return;
+    }
 
     void refreshSnapshotFromBackend(activeCaseId);
-  }, [activeCaseId, refreshSnapshotFromBackend, snapshot, snapshotError]);
+  }, [
+    activeCaseId,
+    activeRunId,
+    executionActiveRunId,
+    hashVersion,
+    refreshSnapshotFromBackend,
+    route,
+    snapshot,
+    snapshotError,
+  ]);
+
+  useEffect(() => {
+    const snapshotHash = snapshot?.header?.hash_sha256;
+    if (!snapshotHash || activeSnapshotId) {
+      return;
+    }
+
+    setActiveSnapshot(snapshotHash);
+  }, [activeSnapshotId, setActiveSnapshot, snapshot?.header?.hash_sha256]);
 
   // K30-3 / NO-GO #9 fix: gdy URL ma ?run=<runId>, fetch overlay payload
   // z /api/execution/runs/{run_id}/results/v1 i load do useRawResultOverlayStore.
@@ -393,7 +812,9 @@ function App() {
   const activeRawRunId = useRawResultOverlayStore((state) => state.payload?.run_id ?? null);
   useEffect(() => {
     const params = getCurrentSearchParams();
-    const routeRunId = params.get('run')?.trim();
+    const routeRunId = isResultsRoute(route)
+      ? resolveRouteRunId(params, activeRunId ?? executionActiveRunId, activeCaseId)
+      : null;
     if (!routeRunId) {
       if (activeRawRunId) clearRawOverlay();
       return;
@@ -418,12 +839,36 @@ function App() {
         // network errors silently — overlay just won't be shown
       }
     })();
-  }, [hashVersion, activeRawRunId, setRawOverlay, clearRawOverlay]);
+  }, [
+    activeCaseId,
+    activeRawRunId,
+    activeRunId,
+    clearRawOverlay,
+    executionActiveRunId,
+    hashVersion,
+    route,
+    setRawOverlay,
+  ]);
 
   useEffect(() => {
     const params = getCurrentSearchParams();
-    const routeRunId = params.get('run');
+    const routeRunId = resolveRouteRunId(
+      params,
+      activeRunId ?? executionActiveRunId,
+      activeCaseId,
+    );
     if (isSldRoute(route)) {
+      if (routeRunId) {
+        if (activeRunId !== routeRunId) {
+          setActiveRun(routeRunId);
+        }
+        if (executionActiveRunId !== routeRunId) {
+          setExecutionActiveRun(routeRunId);
+        }
+        if (isUuid(routeRunId)) {
+          restoreAnalysisRunSnapshot(routeRunId, params.get('case')?.trim() || activeCaseId);
+        }
+      }
       const derSurface = resolveDerSurfaceFromSelectedElement(selectedElement)
         ?? resolveDerSurfaceFromSldSelection(params);
       if (derSurface) {
@@ -450,23 +895,17 @@ function App() {
       route === ROUTES.ANALYSIS.hash
       || isAnalysisRouteAlias(route)
     ) {
-      setActiveRun(routeRunId);
-      setExecutionActiveRun(routeRunId);
+      if (activeRunId !== routeRunId) {
+        setActiveRun(routeRunId);
+      }
+      if (executionActiveRunId !== routeRunId) {
+        setExecutionActiveRun(routeRunId);
+      }
       if (isUuid(routeRunId)) {
-        void fetch(`/api/analysis-runs/${routeRunId}/snapshot`)
-          .then((response) => (response.ok ? response.json() : null))
-          .then((payload: { snapshot_id?: unknown } | null) => {
-            if (typeof payload?.snapshot_id === 'string' && payload.snapshot_id.trim()) {
-              setActiveSnapshot(payload.snapshot_id);
-              setActiveCaseResultStatus('FRESH');
-            }
-          })
-          .catch(() => {
-            // Brak wersji modelu nie blokuje samej nawigacji; ekran wyników pokaże status braku.
-          });
+        restoreAnalysisRunSnapshot(routeRunId, params.get('case')?.trim() || activeCaseId);
       }
       openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
-        titlePl: 'Poziom analityczny',
+        titlePl: 'Analizy techniczne',
         tabId: resolveAnalysisSurfaceTab(route, params),
         entityRef: params.get('sel'),
         subjectKind: 'analysis_run',
@@ -474,25 +913,21 @@ function App() {
         payload: {
           runId: routeRunId,
           legacyRoute: route,
+          selectedName: params.get('name'),
+          selectedType: params.get('type'),
         },
       });
       return;
     }
     if (route === ROUTES.REPORT.hash) {
-      setActiveRun(routeRunId);
-      setExecutionActiveRun(routeRunId);
+      if (activeRunId !== routeRunId) {
+        setActiveRun(routeRunId);
+      }
+      if (executionActiveRunId !== routeRunId) {
+        setExecutionActiveRun(routeRunId);
+      }
       if (isUuid(routeRunId)) {
-        void fetch(`/api/analysis-runs/${routeRunId}/snapshot`)
-          .then((response) => (response.ok ? response.json() : null))
-          .then((payload: { snapshot_id?: unknown } | null) => {
-            if (typeof payload?.snapshot_id === 'string' && payload.snapshot_id.trim()) {
-              setActiveSnapshot(payload.snapshot_id);
-              setActiveCaseResultStatus('FRESH');
-            }
-          })
-          .catch(() => {
-            // Raport pozostaje otwarty; brak wersji modelu jest widoczny w sekcji statusu.
-          });
+        restoreAnalysisRunSnapshot(routeRunId, params.get('case')?.trim() || activeCaseId);
       }
       openRouteSurface(REPORT_SURFACE_SCREEN_CODE, {
         entityRef: params.get('sel'),
@@ -500,6 +935,8 @@ function App() {
         subjectRef: routeRunId,
         payload: {
           runId: routeRunId,
+          selectedName: params.get('name'),
+          selectedType: params.get('type'),
         },
       });
       return;
@@ -534,10 +971,14 @@ function App() {
     }
     clearRouteManagedSurface();
   }, [
+    activeCaseId,
+    activeRunId,
     clearRouteManagedSurface,
+    executionActiveRunId,
     hashVersion,
     openRouteSurface,
     route,
+    restoreAnalysisRunSnapshot,
     selectedElement,
     setActiveCaseResultStatus,
     setActiveRun,
@@ -580,13 +1021,18 @@ function App() {
 
   const handleCalculate = useCallback(async () => {
     if (!activeCaseId) {
-      notify('Brak aktywnego zakresu obliczeń.', 'error');
+      notify('Wybierz aktywny zakres obliczeń.', 'error');
       return;
     }
 
     if (readiness && !readiness.ready) {
       const firstBlocker = readiness.blockers?.[0];
-      notify(firstBlocker?.message_pl ?? 'Model nie jest gotowy do analizy.', 'warning');
+      notify(
+        firstBlocker
+          ? sanitizePublicReadinessMessage(firstBlocker.message_pl)
+          : 'Dokończ konfigurację układu przed analizą.',
+        'warning',
+      );
       return;
     }
 
@@ -602,8 +1048,23 @@ function App() {
           'NONE',
         );
       }
-      const run = await createAndExecuteRun(caseIdForRun, { analysis_type: analysisType });
+      const createdRun = await createAndExecuteRun(caseIdForRun, { analysis_type: analysisType });
+      const run = await waitForExecutionRunTerminalState(createdRun, pollRunStatus);
+      const runHealth = await fetchAnalysisRunHealth(run.id);
       setActiveRun(run.id);
+
+      if (isFailedAnalysisRun(run, runHealth)) {
+        setActiveCaseResultStatus('NONE');
+        notify(analysisRunFailureMessage(), 'error');
+        return;
+      }
+
+      if (run.status !== 'DONE') {
+        setActiveCaseResultStatus('NONE');
+        notify('Obliczenia są nadal wykonywane. Wyniki zostaną pokazane po zakończeniu solvera.', 'info');
+        return;
+      }
+
       setActiveCaseResultStatus('FRESH');
       try {
         const response = await fetch(`/api/analysis-runs/${run.id}/snapshot`);
@@ -629,6 +1090,7 @@ function App() {
     activeCaseName,
     createAndExecuteRun,
     navigateToResults,
+    pollRunStatus,
     readiness,
     setActiveCase,
     setActiveCaseResultStatus,
@@ -642,18 +1104,20 @@ function App() {
   const handleViewResults = useCallback(() => {
     const params = getCurrentSearchParams();
     openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
-      titlePl: 'Poziom analityczny',
+      titlePl: 'Analizy techniczne',
       tabId: ANALYSIS_ROUTE_DEFAULT_TAB,
       entityRef: params.get('sel'),
       subjectKind: 'analysis_run',
-      subjectRef: activeRunId,
+      subjectRef: effectiveRunId,
       payload: {
-        runId: activeRunId,
+        runId: effectiveRunId,
         legacyRoute: ROUTES.ANALYSIS.hash,
+        selectedName: params.get('name'),
+        selectedType: params.get('type'),
       },
     });
-    navigateToResults({ runId: activeRunId });
-  }, [activeRunId, navigateToResults, openRouteSurface]);
+    navigateToResults({ runId: effectiveRunId });
+  }, [effectiveRunId, navigateToResults, openRouteSurface]);
 
   const networkStats = useNetworkStats();
 
@@ -690,6 +1154,10 @@ function App() {
       case 'network-build':
         navigateToNetworkBuild();
         break;
+      case 'overlay':
+        setActiveArea('MODEL_SIECI');
+        navigateToNetworkBuild();
+        break;
       case 'switchgear':
         navigateToSwitchgear({ caseId: activeCaseId });
         break;
@@ -707,15 +1175,38 @@ function App() {
         break;
       case 'results':
       case 'analysis':
-        navigateToAnalysis({ runId: activeRunId });
+        openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
+          titlePl: 'Analizy techniczne',
+          tabId: ANALYSIS_ROUTE_DEFAULT_TAB,
+          entityRef: getCurrentSearchParams().get('sel'),
+          subjectKind: 'analysis_run',
+          subjectRef: effectiveRunId,
+          payload: {
+            runId: effectiveRunId,
+            legacyRoute: ROUTES.ANALYSIS.hash,
+            selectedName: getCurrentSearchParams().get('name'),
+            selectedType: getCurrentSearchParams().get('type'),
+          },
+        });
+        navigateToAnalysis({ runId: effectiveRunId });
         break;
       case 'compare':
-        navigateToCompare({ runId: activeRunId });
+        navigateToCompare({ runId: effectiveRunId });
         break;
       case 'report':
       case 'export':
         setActiveArea('RAPORTY_UZASADNIENIA');
-        navigateToReport({ runId: activeRunId });
+        openRouteSurface(REPORT_SURFACE_SCREEN_CODE, {
+          entityRef: getCurrentSearchParams().get('sel'),
+          subjectKind: 'report',
+          subjectRef: effectiveRunId,
+          payload: {
+            runId: effectiveRunId,
+            selectedName: getCurrentSearchParams().get('name'),
+            selectedType: getCurrentSearchParams().get('type'),
+          },
+        });
+        navigateToReport({ runId: effectiveRunId });
         break;
       case 'variants':
         navigateToVariants({ caseId: activeCaseId });
@@ -724,8 +1215,8 @@ function App() {
       case 'show-readiness':
         setActiveArea('MODEL_SIECI');
         openRouteSurface('E-04', {
-          titlePl: 'Gotowość modelu i lista braków',
-          tabId: 'braki',
+          titlePl: 'Konfiguracja techniczna układu',
+          tabId: 'kontrola',
           subjectKind: 'analysis_case',
           subjectRef: activeCaseId,
           route: 'analysis',
@@ -734,10 +1225,10 @@ function App() {
         break;
       case 'proof':
       case 'whitebox':
-        navigateToProof({ runId: activeRunId });
+        navigateToProof({ runId: effectiveRunId });
         break;
       case 'protection':
-        navigateToResultsProtection({ runId: activeRunId });
+        navigateToResultsProtection({ runId: effectiveRunId });
         break;
       case 'run-sc-3f':
       case 'run-sc-1f':
@@ -755,8 +1246,8 @@ function App() {
     }
   }, [
     activeCaseId,
-    activeRunId,
     handleCalculate,
+    effectiveRunId,
     navigateToAnalysis,
     navigateToCaseConfig,
     navigateToCatalog,
@@ -783,10 +1274,21 @@ function App() {
   };
 
   // Inspektor modelu ENM (v4.2 — diagnostyka inżynierska)
-  if (route === '#enm-inspector') {
+  // Zadanie 11 planu UI/UX 100%: dev tool ukryty domyślnie za feature flag.
+  if (route === '#enm-inspector' && featureFlags.ENM_INSPECTOR_VISIBLE) {
     return wrapWithReadyIndicator(
       <CanonicalLayout {...layoutProps}>
         <EnmInspectorPage />
+      </CanonicalLayout>
+    );
+  }
+
+  // Kreator Stacji KOMPLETNY v2 — 17-krokowy flow inżynierski
+  // (UI/UX 100% Zadanie 9 — wpięcie StationWizardSurface).
+  if (route === '#kreator-stacji-v2') {
+    return wrapWithReadyIndicator(
+      <CanonicalLayout {...layoutProps}>
+        <StationWizardSurface />
       </CanonicalLayout>
     );
   }

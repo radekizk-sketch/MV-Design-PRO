@@ -70,7 +70,7 @@ function buildNextAction(
     return {
       title: 'Połącz zacisk pola SN',
       detail: 'Pole odpływowe SN jest przygotowane. Teraz łączysz jego zacisk wyjściowy z zaciskiem wejściowym pierwszego obiektu sieciowego.',
-      buttonLabel: hasTrunkStart ? 'Połącz zacisk pola SN' : 'Brak wolnego zacisku pola',
+      buttonLabel: hasTrunkStart ? 'Połącz zacisk pola SN' : 'Przygotuj zacisk pola SN',
       enabled: hasTrunkStart,
       blockedReason: hasTrunkStart ? undefined : 'Pole SN nie udostępnia wolnego zacisku wyjściowego.',
     };
@@ -82,13 +82,13 @@ function buildNextAction(
       detail: 'Stację osadzasz na istniejącym odcinku magistrali, nie jako luźny rysunek na kanwie.',
       buttonLabel: hasSegment ? 'Wstaw stację SN/nN' : 'Najpierw utwórz odcinek magistrali',
       enabled: hasSegment,
-      blockedReason: hasSegment ? undefined : 'Brak odcinka SN, na którym można osadzić stację.',
+      blockedReason: hasSegment ? undefined : 'Utwórz odcinek SN, aby osadzić stację w ciągu magistrali.',
     };
   }
 
   return {
-    title: 'Uzupełnij dane techniczne modelu',
-    detail: 'Dopiero kompletny model przechodzi do obliczeń i nakładek wynikowych.',
+    title: 'Skonfiguruj dane techniczne układu',
+    detail: 'Po skonfigurowaniu układu uruchomisz obliczenia i nakładki wynikowe.',
     buttonLabel: 'Wybierz element na schemacie',
     enabled: false,
     blockedReason: 'Wskaż obiekt na SLD, aby otworzyć jego kartę techniczną.',
@@ -113,11 +113,11 @@ export function GuidedBuildActionPanel() {
   } = useNetworkBuildDerived();
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
 
-  const firstOpenTerminal = openTerminals[0] ?? null;
-  const firstConfiguredField = configuredGpzSnFields[0] ?? null;
-  const firstUnconfiguredField = unconfiguredGpzSnFields[0] ?? null;
+  const firstOpenTerminal = (openTerminals ?? [])[0] ?? null;
+  const firstConfiguredField = (configuredGpzSnFields ?? [])[0] ?? null;
+  const firstUnconfiguredField = (unconfiguredGpzSnFields ?? [])[0] ?? null;
   const firstOpenTerminalField = firstOpenTerminal
-    ? configuredGpzSnFields.find((field) => field.ref_id === firstOpenTerminal.element_id) ?? null
+    ? (configuredGpzSnFields ?? []).find((field) => field.ref_id === firstOpenTerminal.element_id) ?? null
     : null;
   const firstSegmentId = useMemo(
     () => (logicalViews?.trunks ?? []).flatMap((trunk) => trunk.segments)[0] ?? null,
@@ -293,7 +293,7 @@ export function GuidedBuildActionPanel() {
       </div>
 
       <div className="border-t border-[#17314c] px-5 py-3 text-[11px] text-[#88a9c9]">
-        {isReady ? 'Model może zostać przekazany do obliczeń.' : 'Obliczenia pozostają zablokowane do czasu kompletnego modelu.'}
+        {isReady ? 'Układ przygotowany do obliczeń.' : 'Skonfiguruj układ techniczny przed uruchomieniem obliczeń.'}
       </div>
     </div>
   );
