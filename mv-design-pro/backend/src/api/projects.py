@@ -17,7 +17,8 @@ Persistencja SQLAlchemy z pełnym docelowym schematem:
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import datetime
+from dataclasses import replace
+from datetime import UTC, datetime
 from enum import Enum
 from uuid import UUID
 
@@ -64,6 +65,30 @@ class ProjectCreate(BaseModel):
         if not v.strip():
             raise ValueError("Nazwa projektu nie może być pusta")
         return v.strip()
+
+
+class ProjectUpdate(BaseModel):
+    """Request body for PATCH /api/projects/{project_id}."""
+
+    name: str | None = Field(None, min_length=1, max_length=255, description="Nazwa projektu")
+    description: str | None = Field(None, max_length=1000, description="Opis projektu")
+    mode: ProjectMode | None = Field(None, description="Tryb projektu")
+    voltage_level_kv: float | None = Field(None, gt=0, description="Poziom napięcia sieci [kV]")
+    frequency_hz: float | None = Field(None, description="Częstotliwość sieci [Hz]")
+
+    @field_validator("frequency_hz")
+    @classmethod
+    def frequency_must_be_valid(cls, v: float | None) -> float | None:
+        if v is not None and v not in (50.0, 60.0):
+            raise ValueError("Częstotliwość musi wynosić 50.0 lub 60.0 Hz")
+        return v
+
+    @field_validator("name")
+    @classmethod
+    def name_not_blank(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("Nazwa projektu nie może być pusta")
+        return v.strip() if v is not None else None
 
 
 class ProjectResponse(BaseModel):
@@ -197,6 +222,66 @@ def get_project(
     GET /api/projects/{project_id}
     """
     with uow_factory() as uow:
+        orm = uow.projects.get_orm(project_id)
+        if orm is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Projekt nie istnieje: {project_id}",
+            )
+        return ProjectResponse(
+            id=orm.id,
+            name=orm.name,
+            description=orm.description,
+            mode=orm.mode,
+            voltage_level_kv=float(orm.voltage_level_kv),
+            frequency_hz=float(orm.frequency_hz),
+            connection_node_id=orm.connection_node_id,
+            connection_description=orm.connection_description,
+            owner_id=orm.owner_id,
+            created_at=orm.created_at,
+            updated_at=orm.updated_at,
+        )
+
+
+@router.patch("/{project_id}", response_model=ProjectResponse)
+def update_project(
+    project_id: UUID,
+    body: ProjectUpdate,
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> ProjectResponse:
+    """
+    Aktualizuje metadane projektu.
+
+    PATCH /api/projects/{project_id}
+    """
+    with uow_factory() as uow:
+        project = uow.projects.get(project_id)
+        if project is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Projekt nie istnieje: {project_id}",
+            )
+
+        updated = replace(
+            project,
+            name=body.name if body.name is not None else project.name,
+            description=(
+                body.description
+                if "description" in body.model_fields_set
+                else project.description
+            ),
+            mode=body.mode.value if body.mode is not None else project.mode,
+            voltage_level_kv=(
+                body.voltage_level_kv
+                if body.voltage_level_kv is not None
+                else project.voltage_level_kv
+            ),
+            frequency_hz=body.frequency_hz if body.frequency_hz is not None else project.frequency_hz,
+            updated_at=datetime.now(UTC),
+        )
+        uow.projects.update(updated, commit=False)
+        uow.commit()
+
         orm = uow.projects.get_orm(project_id)
         if orm is None:
             raise HTTPException(

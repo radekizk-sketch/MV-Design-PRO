@@ -109,6 +109,50 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
     cleanup();
   });
 
+  it('LOD 0 pokazuje czytelny znacznik GPZ jako zrodlo topologii', () => {
+    const { container } = render(
+      <SldCanvasV2
+        width={800}
+        height={600}
+        gpzs={[legacyGpzProps('gpz-1', 'GPZ-5 PST')]}
+        canonicalGpzs={[canonicalGpzProps('gpz-1', 'GPZ-5 PST')]}
+        sections={[]}
+        cableRuns={[]}
+        stations={[]}
+        ders={[]}
+        lodOverride={0}
+      />,
+    );
+
+    const overview = container.querySelector('[data-testid="sld-v2-gpz-overview-label-gpz-1"]');
+    expect(overview).toBeTruthy();
+    expect(overview?.textContent).toContain('GPZ-5 PST');
+    expect(overview?.textContent).toContain('źródło zasilania');
+    cleanup();
+  });
+
+  it('LOD 0 skraca długą nazwę GPZ w znaczniku topologii', () => {
+    const { container } = render(
+      <SldCanvasV2
+        width={800}
+        height={600}
+        gpzs={[legacyGpzProps('gpz-a', 'GPZ-A Główny 110/15 kV (K30)')]}
+        canonicalGpzs={[canonicalGpzProps('gpz-a', 'GPZ-A Główny 110/15 kV (K30)')]}
+        sections={[]}
+        cableRuns={[]}
+        stations={[]}
+        ders={[]}
+        lodOverride={0}
+      />,
+    );
+
+    const overview = container.querySelector('[data-testid="sld-v2-gpz-overview-label-gpz-a"]');
+    expect(overview?.textContent).toContain('GPZ-A');
+    expect(overview?.textContent).not.toContain('Główny 110/15');
+    expect(overview?.getAttribute('data-overview-name')).toBe('GPZ-A');
+    cleanup();
+  });
+
   it('klik pola w canonical GPZ wybiera konkretny obiekt BaySN', () => {
     const onSelectElement = vi.fn();
     const { container } = render(

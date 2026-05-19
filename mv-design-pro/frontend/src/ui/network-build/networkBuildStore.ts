@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
 import { resolveReadinessVisualState } from '../engineering-readiness/readinessVisualState';
 import { isOperationalBus } from '../shared/enmVisibility';
+import { stationPublicIdentity } from '../shared/publicTechnicalLabels';
 import { getOperationSurfaceByOp } from '../topology/modals/operationSurfaceRegistry';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import type { ElementType } from '../types';
@@ -410,7 +411,7 @@ function mapInspectorPanelMeta(
     case 'report':
       return { screenCode: REPORT_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Generator raportu', route: 'report', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
     case 'readiness':
-      return { screenCode: 'E-04', sizeClass: 'B', titlePl: 'Gotowosc modelu i lista brakow', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: false, stackLevel: 1 };
+      return { screenCode: 'E-04', sizeClass: 'B', titlePl: 'Przegląd techniczny układu', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: false, stackLevel: 1 };
     case 'history':
       return { screenCode: 'variants_runs', sizeClass: 'C', titlePl: 'Stan obliczeń wariantu', route: 'variants', openMode: 'expand_workspace', supportsMiniSld: false, stackLevel: 1 };
     case 'topology':
@@ -418,7 +419,7 @@ function mapInspectorPanelMeta(
       return { screenCode: 'E-29', sizeClass: 'B', titlePl: 'Skladowe symetryczne i siec zerowa', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 1 };
     case 'results':
     case 'trace':
-      return { screenCode: ANALYSIS_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Poziom analityczny', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
+      return { screenCode: ANALYSIS_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Analizy techniczne', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
     case 'coordination':
       return { screenCode: 'E-28', sizeClass: 'C', titlePl: 'Koordynacja zabezpieczeń', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
   }
@@ -499,7 +500,9 @@ function buildRouteSurfaceDescriptor(
     ?? (sizeClass === 'C' ? 'expand_workspace' : 'replace_right_panel');
   const entityRef = options.entityRef ?? null;
   const subjectKind = options.subjectKind ?? (isHelper ? 'helper_context' : screenDefinition!.subjectKind);
-  const subjectRef = options.subjectRef ?? entityRef;
+  const subjectRef = Object.prototype.hasOwnProperty.call(options, 'subjectRef')
+    ? options.subjectRef ?? null
+    : entityRef;
   const route = options.route ?? helperDefaults?.route ?? inferRouteKey(screenCode);
   const resolvedTabId = options.tabId ?? (isHelper ? null : screenMatrixEntry!.defaultTabId);
   const surfaceId = createSurfaceId(kind, entityRef ?? options.subjectRef ?? resolvedTabId);
@@ -988,6 +991,7 @@ export function selectStationSummaries(
   if (!snapshot) return [];
 
   return (snapshot.substations ?? [])
+    .filter((s) => String(s.station_type ?? '').toLowerCase() !== 'gpz')
     .map((s) => {
       const stationBays = (snapshot.bays ?? []).filter((b) => b.substation_ref === s.id);
       const branchBays = stationBays.filter(
@@ -998,9 +1002,11 @@ export function selectStationSummaries(
         (bus) => isOperationalBus(bus) && bus.voltage_kv < 1 && s.bus_refs.includes(bus.ref_id),
       );
 
+      const identity = stationPublicIdentity(snapshot, s);
+
       return {
         id: s.id,
-        name: s.name,
+        name: identity.displayName,
         stationType: s.station_type,
         trunkRef: null,
         hasTransformer,
@@ -1008,8 +1014,7 @@ export function selectStationSummaries(
         freeBranchPorts: branchBays.length,
         readinessOk: !blockerCountsByElement?.has(s.id),
       };
-    })
-    .sort((a, b) => a.id.localeCompare(b.id));
+    });
 }
 
 export function selectTransformerSummaries(
@@ -1092,6 +1097,10 @@ export function selectGridSourceStationRef(snapshot: EnergyNetworkModel | null):
 
   const gpzStation = snapshot.substations.find((station) => station.station_type === 'gpz');
   return gpzStation?.ref_id ?? snapshot.substations[0]?.ref_id ?? null;
+}
+
+export function selectSnFieldCount(snapshot: EnergyNetworkModel | null): number {
+  return snapshot?.bays?.length ?? 0;
 }
 
 export interface ConfiguredGridSourceSnField {
@@ -1319,15 +1328,15 @@ export function selectBlockersByCategory(
 export function buildPhaseLabel(phase: BuildPhase): string {
   switch (phase) {
     case 'NO_SOURCE':
-      return 'Brak źródła zasilania';
+      return 'Rozpocznij od GPZ';
     case 'HAS_SOURCE':
-      return 'GPZ zdefiniowany - dodaj pole SN GPZ i pierwszy odcinek';
+      return 'GPZ zdefiniowany - skonfiguruj pole SN i pierwszy odcinek';
     case 'HAS_TRUNKS':
-      return 'Magistrala wyprowadzona z pola GPZ - osadź stacje i ZKSN';
+      return 'Magistrala SN wyprowadzona - osadź stacje i ZKSN';
     case 'HAS_STATIONS':
-      return 'Stacje osadzone - uzupełnij dane';
+      return 'Stacje osadzone - skonfiguruj dane katalogowe';
     case 'READY':
-      return 'Gotowy do analizy';
+      return 'Do analizy';
   }
 }
 
@@ -1343,11 +1352,16 @@ export function useNetworkBuildDerived() {
 
   const sourceCount = snapshot?.sources?.length ?? 0;
   const trunkCount = logicalViews?.trunks?.length ?? 0;
+  const snapshotSnBranchCount = (snapshot?.branches ?? []).filter(
+    (branch) => branch.type === 'line_overhead' || branch.type === 'cable',
+  ).length;
+  const snFieldCount = selectSnFieldCount(snapshot);
   const trunkSegmentCount = (logicalViews?.trunks ?? []).reduce(
     (count, trunk) => count + (trunk.segments?.length ?? 0),
     0,
   );
   const branchCount = logicalViews?.branches?.length ?? 0;
+  const snSectionCount = Math.max(trunkSegmentCount + branchCount, snapshotSnBranchCount);
   const stationCount = snapshot?.substations?.length ?? 0;
   const transformerCount = snapshot?.transformers?.length ?? 0;
   const loadCount = snapshot?.loads?.length ?? 0;
@@ -1409,6 +1423,8 @@ export function useNetworkBuildDerived() {
     trunkCount,
     trunkSegmentCount,
     branchCount,
+    snSectionCount,
+    snFieldCount,
     stationCount,
     transformerCount,
     loadCount,

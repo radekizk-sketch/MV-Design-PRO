@@ -1,9 +1,8 @@
 /**
- * Karta 7 — Źródła i magazyny (PV/FV, BESS, FW).
+ * Układy PV/BESS/FW.
  *
- * Karta pomostowa E-13 ↔ E-21/E-22/E-23. Pokazuje wszystkie DERy przypięte
- * do bieżącej stacji (z `useStationDerStore`) wraz z statusem kompletności,
- * profilami NC RfG, gotowością obliczeń i akcjami nawigacyjnymi.
+ * Karta techniczna pokazuje wszystkie układy przyłączeniowe przypięte
+ * do bieżącej stacji wraz z konfiguracją katalogową i akcjami nawigacyjnymi.
  *
  * Single source of truth: ten sam StationDerConnection renderuje się tutaj
  * i w E-21/E-22/E-23 — zmiana w jednym miejscu propaguje się do drugiego.
@@ -24,6 +23,7 @@ export type AddDerKindRequest = 'PV' | 'BESS' | 'FW';
 export interface StationConfigDerSourcesCardProps {
   /** ID stacji (z entityRef surface'u). */
   readonly stationId: string;
+  readonly stationLabel?: string;
   /** Lista DERów przypiętych do stacji (z useStationDerStore). */
   readonly ders: readonly StationDerConnection[];
   /** Otwarcie konfiguratora dla DERa (E-21/E-22/E-23). */
@@ -34,6 +34,8 @@ export interface StationConfigDerSourcesCardProps {
   readonly onAddDer?: (kind: AddDerKindRequest) => void;
   /** Usunięcie DERa (po potwierdzeniu w UI). */
   readonly onDetachDer?: (derId: string) => void;
+  /** Czy dany DER moze byc odlaczony przez te karte bez pustej akcji. */
+  readonly canDetachDer?: (derId: string) => boolean;
 }
 
 const KIND_LABEL_PL: Record<AddDerKindRequest, string> = {
@@ -49,12 +51,12 @@ const KIND_BADGE_COLOR: Record<AddDerKindRequest, string> = {
 };
 
 const COMPLETENESS_LABEL_PL: Record<StationDerConnection['completeness'], string> = {
-  complete: 'kompletne',
-  partial: 'częściowe',
-  missing_catalog: 'brak katalogu',
-  missing_profile: 'brak profilu',
+  complete: 'skonfigurowane',
+  partial: 'w konfiguracji',
+  missing_catalog: 'wariant katalogowy do wyboru',
+  missing_profile: 'profil do wyboru',
   voltage_mismatch: 'niezgodność napięcia',
-  no_pcc: 'brak PCC',
+  no_pcc: 'PCC do wyboru',
 };
 
 const COMPLETENESS_TONE: Record<StationDerConnection['completeness'], string> = {
@@ -89,9 +91,19 @@ function buildRow(der: StationDerConnection): DerRow {
 export function StationConfigDerSourcesCard(
   props: StationConfigDerSourcesCardProps,
 ): JSX.Element {
-  const { stationId, ders, onOpenDer, onShowOnSld, onAddDer, onDetachDer } = props;
+  const {
+    stationId,
+    stationLabel,
+    ders,
+    onOpenDer,
+    onShowOnSld,
+    onAddDer,
+    onDetachDer,
+    canDetachDer,
+  } = props;
 
   const rows = useMemo(() => ders.map(buildRow), [ders]);
+  const displayStationLabel = stationLabel ?? 'Stacja';
   const counts = useMemo(() => {
     const pv = ders.filter((d) => d.der_kind === 'PV').length;
     const bess = ders.filter((d) => d.der_kind === 'BESS').length;
@@ -108,10 +120,10 @@ export function StationConfigDerSourcesCard(
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
-            Karta 7 · Źródła i magazyny
+            Układy PV/BESS/FW
           </div>
           <div className="mt-1 text-sm text-scada-text">
-            Stacja: <code className="text-scada-sn">{stationId}</code> · {counts.total} DER (PV: {counts.pv} · BESS: {counts.bess} · FW: {counts.fw})
+            Stacja: <span className="font-semibold text-scada-sn">{displayStationLabel}</span> · {counts.total} ukł. (PV: {counts.pv} · BESS: {counts.bess} · FW: {counts.fw})
           </div>
         </div>
         <div className="flex flex-wrap gap-1">
@@ -124,13 +136,12 @@ export function StationConfigDerSourcesCard(
       {rows.length === 0 ? (
         <div className="rounded border border-dashed border-scada-border bg-scada-surface p-4 text-center">
           <div className="text-[11px] font-bold uppercase tracking-widest text-scada-muted">
-            Brak źródeł i magazynów
+            Układy PV/BESS/FW do zaprojektowania
           </div>
           <p className="mt-2 text-xs text-scada-muted">
-            Stacja nie ma jeszcze przyłączonych źródeł OZE ani magazynów energii.
-            Użyj przycisków powyżej, aby uruchomić kreator dodawania PV/BESS/FW.
-            Wszystkie wybory techniczne (urządzenia, transformatory, kable, profile)
-            będą pochodzić z katalogów.
+            Wybierz gotowy wariant PV, BESS albo farmy wiatrowej z katalogu.
+            Kreator dobierze urządzenia, transformator dedykowany, profil NC RfG,
+            PCC i wymagane dane przyłączeniowe przed zapisem.
           </p>
         </div>
       ) : (
@@ -144,7 +155,7 @@ export function StationConfigDerSourcesCard(
                 <th className="px-2 py-1.5 text-right font-medium">Moc [kW]</th>
                 <th className="px-2 py-1.5 font-medium">Napięcie</th>
                 <th className="px-2 py-1.5 font-medium">Profil NC RfG</th>
-                <th className="px-2 py-1.5 font-medium">Status</th>
+                <th className="px-2 py-1.5 font-medium">Konfiguracja</th>
                 <th className="px-2 py-1.5 text-right font-medium">Akcje</th>
               </tr>
             </thead>
@@ -175,28 +186,34 @@ export function StationConfigDerSourcesCard(
                   </td>
                   <td className="px-2 py-1.5">
                     <div className="flex justify-end gap-1">
-                      <RowAction
-                        testId={`der-action-open-${der.id}`}
-                        title="Otwórz konfigurator DER"
-                        onClick={() => onOpenDer?.(der.id, der.der_kind)}
-                      >
-                        Otwórz
-                      </RowAction>
-                      <RowAction
-                        testId={`der-action-sld-${der.id}`}
-                        title="Pokaż na schemacie SLD"
-                        onClick={() => onShowOnSld?.(der.id)}
-                      >
-                        SLD
-                      </RowAction>
-                      <RowAction
-                        testId={`der-action-detach-${der.id}`}
-                        title="Odłącz DER (operacja wymaga potwierdzenia)"
-                        onClick={() => onDetachDer?.(der.id)}
-                        destructive
-                      >
-                        Usuń
-                      </RowAction>
+                      {onOpenDer && (
+                        <RowAction
+                          testId={`der-action-open-${der.id}`}
+                          title="Otwórz konfigurację układu"
+                          onClick={() => onOpenDer(der.id, der.der_kind)}
+                        >
+                          Otwórz
+                        </RowAction>
+                      )}
+                      {onShowOnSld && (
+                        <RowAction
+                          testId={`der-action-sld-${der.id}`}
+                          title="Pokaż na schemacie SLD"
+                          onClick={() => onShowOnSld(der.id)}
+                        >
+                          SLD
+                        </RowAction>
+                      )}
+                      {onDetachDer && (canDetachDer?.(der.id) ?? true) && (
+                        <RowAction
+                          testId={`der-action-detach-${der.id}`}
+                          title="Odłącz źródło lub magazyn (operacja wymaga potwierdzenia)"
+                          onClick={() => onDetachDer(der.id)}
+                          destructive
+                        >
+                          Usuń
+                        </RowAction>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -208,8 +225,8 @@ export function StationConfigDerSourcesCard(
 
       <p className="text-[10px] text-scada-muted">
         Wszystkie urządzenia, profile i parametry techniczne pochodzą z katalogów.
-        Klik wiersza otwiera odpowiedni konfigurator (E-21 dla PV, E-22 dla BESS,
-        E-23 dla FW) z zachowaniem kontekstu stacji.
+        Klik wiersza otwiera konfigurację właściwą dla PV, BESS albo farmy wiatrowej
+        z zachowaniem kontekstu stacji.
       </p>
     </div>
   );

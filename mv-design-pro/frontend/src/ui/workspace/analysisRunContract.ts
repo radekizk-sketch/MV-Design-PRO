@@ -82,7 +82,7 @@ const KEY_LABELS: Record<string, string> = {
   duration_ms: 'Czas trwania [ms]',
   first_step: 'Pierwszy krok',
   formula_set_version: 'Zestaw wzorow',
-  input_hash: 'Hash wejscia',
+  input_hash: 'Slad wejscia',
   iterations: 'Iteracje',
   load_assumptions_ref: 'Zalozenia obciazen',
   max_ikss_ka: 'Maks. Ikss [kA]',
@@ -92,12 +92,12 @@ const KEY_LABELS: Record<string, string> = {
   project_ref: 'Projekt',
   quality_gate: 'Bramka jakosci',
   quality_gate_policy_version: 'Polityka bramki',
-  result_hash: 'Hash wyniku',
+  result_hash: 'Slad wyniku',
   results_contract_version: 'Kontrakt wynikow',
   rounding_policy_ref: 'Polityka zaokraglen',
   row_count: 'Liczba rekordow',
   run_ref: 'Ostatnie obliczenie',
-  snapshot_ref: 'Wersja modelu',
+  snapshot_ref: 'Wersja ukladu',
   solver_family: 'Rodzina solvera',
   solver_version: 'Wersja solvera',
   source_assumptions_ref: 'Zalozenia zrodel',
@@ -125,6 +125,29 @@ function normalizeString(value: unknown): string | null {
   }
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : null;
+}
+
+function isInternalReferenceValue(value: string): boolean {
+  const normalized = value.trim();
+  const lower = normalized.toLowerCase();
+  if (!normalized) return false;
+  if (/[0-9a-f]{24,}/i.test(normalized)) return true;
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(normalized)) return true;
+  if (lower.includes('snapshot')) return true;
+  if (/^(project|case|run|snapshot|proof-pack|export|variant|catalog|result-hash|hash|tol|round|gate|dm|bay|results|proof)(?:[-:/_][\w./:-]+)$/i.test(normalized)) {
+    return true;
+  }
+  return /^(gpz|stn|seg|bus|bay|branch|source|load|pv|bess|fw|tr|trafo)\//i.test(normalized);
+}
+
+function formatTechnicalToken(value: string): string {
+  if (isInternalReferenceValue(value)) {
+    return 'Zapisane w śladzie audytu';
+  }
+  if (/^[a-z0-9]+(?:_[a-z0-9]+){1,}$/i.test(value)) {
+    return value.replace(/_/g, ' ');
+  }
+  return value;
 }
 
 function normalizeStringArray(value: unknown): string[] {
@@ -398,6 +421,8 @@ export function resolveSurfaceRunId(
   surface: WorkspaceSurfaceDescriptor,
   activeRunId: string | null,
 ): string | null {
+  const payloadRunId = normalizeString(surface.routeState.payload?.runId);
+
   if (
     surface.subjectKind === 'analysis_run'
     || surface.subjectKind === 'report'
@@ -405,8 +430,8 @@ export function resolveSurfaceRunId(
     || surface.subjectKind === 'proof_pack'
   ) {
     return normalizeString(surface.routeState.runRef)
+      ?? payloadRunId
       ?? normalizeString(surface.subjectRef)
-      ?? normalizeString(surface.entityRef)
       ?? activeRunId;
   }
 
@@ -498,7 +523,7 @@ function humanizeKey(key: string): string {
 
 export function formatContractValue(value: unknown): string {
   if (value == null) {
-    return 'Brak danych';
+    return 'Do konfiguracji';
   }
 
   if (typeof value === 'boolean') {
@@ -511,12 +536,12 @@ export function formatContractValue(value: unknown): string {
 
   if (typeof value === 'string') {
     const normalized = value.trim();
-    return normalized.length > 0 ? normalized : 'Brak danych';
+    return normalized.length > 0 ? formatTechnicalToken(normalized) : 'Do konfiguracji';
   }
 
   if (Array.isArray(value)) {
-    const formatted = value.map((entry) => formatContractValue(entry)).filter((entry) => entry !== 'Brak danych');
-    return formatted.length > 0 ? formatted.join(', ') : 'Brak danych';
+    const formatted = value.map((entry) => formatContractValue(entry)).filter((entry) => entry !== 'Do konfiguracji');
+    return formatted.length > 0 ? formatted.join(', ') : 'Do konfiguracji';
   }
 
   return JSON.stringify(value);
@@ -586,6 +611,6 @@ export function formatCompletenessStatus(status: ResultCompletenessStatus | null
     case 'not_applicable':
       return 'Nie dotyczy';
     default:
-      return 'Brak danych';
+      return 'Do konfiguracji';
   }
 }

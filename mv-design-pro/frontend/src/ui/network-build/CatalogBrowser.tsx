@@ -270,7 +270,7 @@ export function CatalogBrowser({ className, onSelectType, onClose }: CatalogBrow
               type="text"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Szukaj po nazwie, ID lub producencie..."
+              placeholder="Szukaj po nazwie, oznaczeniu lub producencie..."
               className="w-full rounded border border-gray-300 px-2.5 py-1.5 text-[11px]"
             />
           </div>
@@ -286,7 +286,7 @@ export function CatalogBrowser({ className, onSelectType, onClose }: CatalogBrow
               </div>
             ) : filteredTypes.length === 0 ? (
               <div className="flex h-full items-center justify-center">
-                <p className="text-[11px] text-gray-400">Brak typow w tej kategorii.</p>
+                <p className="text-[11px] text-gray-400">Nie znaleziono typów w tej kategorii.</p>
               </div>
             ) : (
               <table className="w-full text-[11px]">

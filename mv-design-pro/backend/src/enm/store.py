@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from enm.catalog_completion import complete_catalog_defaults
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
@@ -19,11 +20,15 @@ def get_enm(case_id: str) -> EnergyNetworkModel:
         )
         enm.header.hash_sha256 = compute_enm_hash(enm)
         _enm_store[case_id] = enm
+    completed, changed = complete_catalog_defaults(_enm_store[case_id])
+    if changed:
+        return set_enm(case_id, completed)
     return _enm_store[case_id]
 
 
 def set_enm(case_id: str, enm: EnergyNetworkModel) -> EnergyNetworkModel:
     """Persist an ENM snapshot with deterministic hash and revision management."""
+    enm, _ = complete_catalog_defaults(enm)
     existing = _enm_store.get(case_id)
     if existing is not None:
         same_revision_candidate = enm.model_copy(deep=True)

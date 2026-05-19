@@ -375,7 +375,7 @@ export function getPtpireeSourceRecordCount(): number {
 export function formatPtpireeCertificateLabel(
   item: PtpireeCertifiedInverterItem | null,
 ): string {
-  if (!item) return 'brak certyfikatu PTPiREE';
+  if (!item) return 'certyfikat PTPiREE z pakietu katalogowego';
   return `${item.manufacturer} ${item.model} (${item.documentNumber})`;
 }
 

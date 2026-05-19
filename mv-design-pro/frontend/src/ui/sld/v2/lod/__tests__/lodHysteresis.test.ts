@@ -8,11 +8,37 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  LOD_LEVEL_LABELS_PL,
   LOD_ZOOM_THRESHOLDS,
   createLodController,
   inferLodFromScale,
+  isVisibleAtLod,
+  type LodElementKind,
   type LodLevel,
 } from '../LodPolicy';
+
+const LOD_ELEMENT_KINDS: readonly LodElementKind[] = [
+  'gpz_block',
+  'section',
+  'bay_head',
+  'device',
+  'device_label',
+  'cable_run',
+  'station_block',
+  'station_internal',
+  'der_marker',
+  'der_full',
+  'measurement',
+  'q_label',
+  'missing_data_marker',
+  'alarm_marker',
+  'nop_marker',
+  'mini_block_overview',
+  'mini_block_compact',
+  'mini_block_detail',
+  'gpz_switchgear',
+  'der_sub_tree',
+];
 
 describe('createLodController — histereza zapobiega migotaniu', () => {
   it('bouncing zoom między 0.68 a 0.72 (próg 0.7 dla LOD 1↔2) → brak zmiany LOD', () => {
@@ -111,6 +137,23 @@ describe('createLodController — histereza zapobiega migotaniu', () => {
     expect(ctrl.getScale()).toBe(0.4);
   });
 
+  it('tryb kanwy projektowej przełącza LOD natychmiast po przekroczeniu progów', () => {
+    const ctrl = createLodController({
+      initialScale: 0.22,
+      hysteresisMargin: 0,
+      debounceMs: 0,
+      nowProvider: () => 0,
+    });
+
+    expect(ctrl.update(0.22, 0)).toBe(0);
+    expect(ctrl.update(0.297, 1)).toBe(0);
+    expect(ctrl.update(0.401, 2)).toBe(1);
+    expect(ctrl.update(0.72, 3)).toBe(2);
+    expect(ctrl.update(1.6, 4)).toBe(3);
+    expect(ctrl.update(3.2, 5)).toBe(4);
+    expect(ctrl.update(0.2, 6)).toBe(0);
+  });
+
   it('histereza jest symetryczna — przy spadku scale z LOD 2 do LOD 1', () => {
     const ctrl = createLodController({
       initialScale: 1.0,
@@ -126,8 +169,52 @@ describe('createLodController — histereza zapobiega migotaniu', () => {
     expect(ctrl.getLod()).toBe(1);
   });
 
+  it('duzy skok auto-fit z LOD 2 do LOD 0 synchronizuje LOD natychmiast', () => {
+    const ctrl = createLodController({
+      initialScale: 1.0,
+      hysteresisMargin: 0.15,
+      debounceMs: 250,
+      nowProvider: () => 1000,
+    });
+    expect(ctrl.getLod()).toBe(2);
+    expect(ctrl.update(0.2, 1000)).toBe(0);
+    expect(ctrl.getLod()).toBe(0);
+  });
+
   it('LodLevel typ przyjmuje 0..4', () => {
     const samples: LodLevel[] = [0, 1, 2, 3, 4];
     expect(samples.length).toBe(5);
+  });
+
+  it('etykiety LOD opisuja narastajacy zakres projektu', () => {
+    expect(LOD_LEVEL_LABELS_PL).toEqual({
+      0: 'Topologia sieci',
+      1: 'Odcinki i kierunki zasilania',
+      2: 'Stacje, długości i moce',
+      3: 'Pola, aparatura i zabezpieczenia',
+      4: 'Pomiary, nastawy i dowody',
+    });
+  });
+
+  it('widocznosc elementow jest monotoniczna wraz z przyblizeniem', () => {
+    const levels: readonly LodLevel[] = [0, 1, 2, 3, 4];
+    for (const kind of LOD_ELEMENT_KINDS) {
+      let wasVisible = false;
+      for (const lod of levels) {
+        const visible = isVisibleAtLod(kind, lod);
+        if (wasVisible) {
+          expect(visible, `${kind} must stay visible at LOD ${lod}`).toBe(true);
+        }
+        wasVisible = wasVisible || visible;
+      }
+    }
+  });
+
+  it('wnioskowanie LOD ze skali jest niemalejace', () => {
+    const samples = [0.05, 0.1, 0.29, 0.3, 0.5, 0.69, 0.7, 1.0, 1.49, 1.5, 2.0, 2.99, 3.0, 5.0];
+    const levels = samples.map(inferLodFromScale);
+    for (let i = 1; i < levels.length; i += 1) {
+      expect(levels[i]).toBeGreaterThanOrEqual(levels[i - 1]);
+    }
   });
 });

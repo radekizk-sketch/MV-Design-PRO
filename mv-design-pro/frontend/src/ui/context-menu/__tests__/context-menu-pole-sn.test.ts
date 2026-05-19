@@ -10,7 +10,7 @@ import { hasTechnicalIcon } from '../../icons/technicalIconRegistry';
 describe('context-menu-pole-sn - kanon menu pola SN', () => {
   it('ma wszystkie wymagane akcje i sekcje w kolejnosci kanonicznej', () => {
     expect(FIELD_SN_MENU_ACTIONS.map((action) => action.label)).toEqual([
-      'Otwórz w inspektorze',
+      'Otwórz kartę techniczną',
       'Edytuj konfigurację pola',
       'Zmień aparat łączeniowy',
       'Zmień przekładnik prądowy',
@@ -19,7 +19,7 @@ describe('context-menu-pole-sn - kanon menu pola SN', () => {
       'Edytuj automatykę pola',
       'Wyprowadź odcinek kablowy',
       'Wyprowadź odcinek napowietrzny',
-      'Sprawdź gotowość pola',
+      'Sprawdź konfigurację pola',
       'Pokaż wyniki pola',
       'Pokaż wartości na SLD',
       'Pokaż uzasadnienie inżynierskie',

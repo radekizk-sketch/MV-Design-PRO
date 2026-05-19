@@ -201,6 +201,70 @@ class TestAddGridSourceSNDuplicate:
             has_error or has_no_snapshot or has_blockers
         ), "Second add_grid_source_sn should fail (duplicate source)"
 
+    def test_add_grid_source_sn_allows_distinct_gpz_source_identity(self):
+        """Dwa niezależne GPZ wymagają jawnej, różnej tożsamości źródła."""
+        enm = _empty_enm()
+        result1 = execute_domain_operation(
+            enm_dict=enm,
+            op_name="add_grid_source_sn",
+            payload={
+                "voltage_kv": 15.0,
+                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "source_id": "gpz-a",
+                "source_name": "GPZ A 110/15 kV",
+            },
+        )
+        assert not result1.get("error")
+
+        result2 = execute_domain_operation(
+            enm_dict=result1["snapshot"],
+            op_name="add_grid_source_sn",
+            payload={
+                "voltage_kv": 15.0,
+                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "source_id": "gpz-b",
+                "source_name": "GPZ B 110/15 kV",
+            },
+        )
+
+        assert not result2.get("error"), result2.get("error")
+        snapshot2 = result2["snapshot"]
+        assert _count(snapshot2, "sources") == 2
+        assert len([s for s in snapshot2.get("substations", []) if s.get("station_type") == "gpz"]) == 2
+        source_ids = {
+            (source.get("meta") or {}).get("source_id")
+            for source in snapshot2.get("sources", [])
+        }
+        assert source_ids == {"gpz-a", "gpz-b"}
+
+    def test_add_grid_source_sn_rejects_duplicate_gpz_source_identity(self):
+        """Ten sam source_id nie może materializować dwóch GPZ."""
+        enm = _empty_enm()
+        result1 = execute_domain_operation(
+            enm_dict=enm,
+            op_name="add_grid_source_sn",
+            payload={
+                "voltage_kv": 15.0,
+                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "source_id": "gpz-a",
+                "source_name": "GPZ A 110/15 kV",
+            },
+        )
+        assert not result1.get("error")
+
+        result2 = execute_domain_operation(
+            enm_dict=result1["snapshot"],
+            op_name="add_grid_source_sn",
+            payload={
+                "voltage_kv": 15.0,
+                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "source_id": "gpz-a",
+                "source_name": "GPZ A powtórzony",
+            },
+        )
+
+        assert result2.get("error_code") == "source.already_exists"
+
 
 # ===========================================================================
 # TEST 3: test_continue_trunk_segment_sn
@@ -437,6 +501,36 @@ class TestInsertStationCreatesStructure:
             spec.get("bay_role") for spec in inserted_station.get("meta", {}).get("field_specs", [])
         ]
         assert field_roles == ["IN", "OUT"]
+
+    def test_insert_station_preserves_catalog_display_name_pl(self):
+        _, snapshot = _build_gpz_plus_segments(1)
+        first_seg = _get_first_segment_ref(snapshot)
+
+        result = execute_domain_operation(
+            enm_dict=snapshot,
+            op_name="insert_station_on_segment_sn",
+            payload={
+                "segment_ref": first_seg,
+                "station_type": "B",
+                "insert_at": {"value": 0.5},
+                "station": {
+                    "name_pl": "Stacja S17 K PV+cos phi reg",
+                    "sn_voltage_kv": 15.0,
+                    "nn_voltage_kv": 0.4,
+                },
+                "sn_fields": ["IN", "OUT", "TR"],
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
+            },
+        )
+
+        assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+        inserted_station = next(
+            sub for sub in result["snapshot"].get("substations", []) if sub.get("ref_id", "").startswith("stn/")
+        )
+        assert inserted_station["name"] == "Stacja S17 K PV+cos phi reg"
 
 
 class TestNnFieldAdapters:

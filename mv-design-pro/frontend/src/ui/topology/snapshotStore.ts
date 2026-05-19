@@ -38,6 +38,8 @@ import { executeDomainOp } from './domainApi';
 // ---------------------------------------------------------------------------
 
 export interface SnapshotState {
+  /** Case currently owning the in-memory ENM snapshot. */
+  caseId: string | null;
   /** ENM snapshot — single source of truth. */
   snapshot: EnergyNetworkModel | null;
   /** Deterministic logical views (trunks, branches, terminals). */
@@ -202,6 +204,7 @@ function createHistoryEntry(
 // ---------------------------------------------------------------------------
 
 export const useSnapshotStore = create<SnapshotState>((set, get) => ({
+  caseId: null,
   snapshot: null,
   logicalViews: null,
   readiness: null,
@@ -221,7 +224,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
     opName: string,
       payload: Record<string, unknown>,
   ) => {
-    set({ loading: true, error: null, errorCode: null });
+    set({ caseId, loading: true, error: null, errorCode: null });
     try {
       const response = await executeDomainOp(
         caseId,
@@ -229,6 +232,10 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
         payload,
         get().snapshot?.header.hash_sha256 ?? '',
       );
+
+      if (get().caseId !== caseId) {
+        return response;
+      }
 
       if (response.error) {
         set({
@@ -264,6 +271,9 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
 
       return response;
     } catch (err) {
+      if (get().caseId !== caseId) {
+        return null;
+      }
       const errorMsg = err instanceof Error ? err.message : String(err);
       const errorCode =
         typeof (err as { code?: unknown }).code === 'string'
@@ -283,7 +293,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
   },
 
   refreshFromBackend: async (caseId: string) => {
-    set({ loading: true, error: null, errorCode: null });
+    set({ caseId, loading: true, error: null, errorCode: null });
     try {
       const response = await executeDomainOp(
         caseId,
@@ -291,6 +301,10 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
         {},
         get().snapshot?.header.hash_sha256 ?? '',
       );
+
+      if (get().caseId !== caseId) {
+        return response;
+      }
 
       if (response.error) {
         set({ loading: false, error: response.error, errorCode: response.error_code ?? null });
@@ -314,6 +328,9 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
 
       return response;
     } catch (err) {
+      if (get().caseId !== caseId) {
+        return null;
+      }
       const errorMsg = err instanceof Error ? err.message : String(err);
       const errorCode =
         typeof (err as { code?: unknown }).code === 'string'
@@ -326,6 +343,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
 
   setSnapshot: (response: DomainOpResponseV1) => {
     set({
+      caseId: get().caseId,
       snapshot: response.snapshot,
       logicalViews: response.logical_views,
       readiness: response.readiness,
@@ -343,6 +361,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
 
   reset: () =>
     set({
+      caseId: null,
       snapshot: null,
       logicalViews: null,
       readiness: null,

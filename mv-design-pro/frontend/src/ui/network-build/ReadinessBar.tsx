@@ -5,6 +5,7 @@ import type { FixAction } from '../../types/enm';
 import { notify } from '../notifications/store';
 import { useSelectionStore } from '../selection';
 import { executeFixActionSurface } from '../shared/fixActionSurfaceExecutor';
+import { sanitizePublicReadinessMessage } from '../shared/publicReadinessMessage';
 import { resolveSelectedElementFromSnapshot } from '../shared/selectionResolution';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { useNetworkBuildDerived, useNetworkBuildStore } from './networkBuildStore';
@@ -113,9 +114,9 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
         data-ready="true"
       >
         <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500" />
-        <span className="text-[11px] font-semibold text-green-700">Gotowy do analizy</span>
+        <span className="text-[11px] font-semibold text-green-700">Układ dopuszczony do analizy</span>
         <span className="text-[10px] text-gray-500">
-          {warnings.length > 0 ? `${warnings.length} ostrzeżeń` : 'Brak zastrzeżeń'}
+          {warnings.length > 0 ? `${warnings.length} uwag projektowych` : 'Bez uwag projektowych'}
         </span>
       </div>
     );
@@ -132,7 +133,7 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
           type="button"
           onClick={() => setExpanded((prev) => !prev)}
           className="text-gray-400 hover:text-gray-600"
-          aria-label={expanded ? 'Zwiń pasek gotowości' : 'Rozwiń pasek gotowości'}
+          aria-label={expanded ? 'Zwiń kontrolę układu' : 'Rozwiń kontrolę układu'}
         >
           <svg
             className={clsx('h-3.5 w-3.5 transition-transform', expanded && 'rotate-180')}
@@ -148,12 +149,12 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
         <div className="flex flex-shrink-0 items-center gap-3">
           {blockersByCategory.total > 0 && (
             <span className="text-[11px] font-semibold text-red-600">
-              {blockersByCategory.total} blokad
+              {blockersByCategory.total} pozycji kontroli
             </span>
           )}
           {warnings.length > 0 && (
             <span className="text-[11px] font-semibold text-amber-600">
-              {warnings.length} ostrzeżeń
+              {warnings.length} uwag technicznych
             </span>
           )}
         </div>
@@ -195,15 +196,19 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
             const matchingFix = fixActions.find(
               (fixAction) => fixAction.element_ref === blocker.element_ref && fixAction.code === blocker.code,
             );
+            const publicMessage = sanitizePublicReadinessMessage(blocker.message_pl, snapshot);
+            const publicFixMessage = matchingFix
+              ? sanitizePublicReadinessMessage(matchingFix.message_pl, snapshot)
+              : null;
             return (
               <div key={`${blocker.code}-${index}`} className="group flex items-center gap-2">
                 <span className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-red-400" />
                 <span
                   className="max-w-[220px] cursor-pointer truncate text-[10px] text-red-700 hover:underline"
-                  title={blocker.message_pl}
+                  title={publicMessage}
                   onClick={() => blocker.element_ref && handleNavigateToElement(blocker.element_ref)}
                 >
-                  {blocker.message_pl}
+                  {publicMessage}
                 </span>
                 {blocker.element_ref && (
                   <button
@@ -220,9 +225,9 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
                     type="button"
                     onClick={() => handleFixAction(matchingFix)}
                     className="rounded bg-blue-50 px-1.5 py-0.5 text-[9px] text-blue-600 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-blue-100"
-                    title={matchingFix.message_pl}
+                    title={publicFixMessage ?? undefined}
                   >
-                    Napraw
+                    Konfiguruj
                   </button>
                 )}
               </div>

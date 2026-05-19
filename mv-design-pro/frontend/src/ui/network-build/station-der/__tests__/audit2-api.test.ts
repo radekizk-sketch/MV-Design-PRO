@@ -9,6 +9,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import {
   fetchAudit2CatalogSnapshot,
+  getStationAudit2Config,
   validateVtGroundingApi,
   validateDeviceWithstandApi,
   validateHostingCapacityExportApi,
@@ -83,6 +84,22 @@ describe('audit2 API client', () => {
         t_clearing_s: 1.0,
       }),
     ).rejects.toThrow('500');
+  });
+
+  it('koduje referencję stacji z ukośnikami w URL konfiguracji audit2', async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+    });
+
+    await expect(
+      getStationAudit2Config('project-1', 'stn/e7ac9af3834811e633a6a98f1d3d4112/station'),
+    ).resolves.toBeNull();
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/v1/projects/project-1/audit2-station-config/stn%2Fe7ac9af3834811e633a6a98f1d3d4112%2Fstation',
+    );
   });
 
   it('runAudit2PowerFlow parsuje wynik z audit trail (Phase 37)', async () => {

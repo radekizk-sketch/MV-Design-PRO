@@ -224,7 +224,7 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
   activateCase: async (caseId) => {
     const { projectId } = get();
     if (!projectId) {
-      throw new Error('Brak aktywnego projektu');
+      throw new Error('Wybierz projekt przed zmianą zakresu obliczeń');
     }
 
     set({ isActivating: true, error: null });
@@ -340,11 +340,11 @@ export function useIsLoading(): boolean {
  */
 export function useActiveCaseStatusLabel(): string {
   const status = useActiveCaseResultStatus();
-  if (!status) return 'Brak aktywnego przypadku';
+  if (!status) return 'Nie wybrano zakresu obliczeń';
 
   switch (status) {
     case 'NONE':
-      return 'Brak wyników';
+      return 'Wyniki nieuruchomione';
     case 'FRESH':
       return 'Wyniki aktualne';
     case 'OUTDATED':

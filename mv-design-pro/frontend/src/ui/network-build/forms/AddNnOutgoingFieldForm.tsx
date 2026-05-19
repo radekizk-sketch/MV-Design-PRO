@@ -48,7 +48,7 @@ export function AddNnOutgoingFieldForm() {
 
   const [busNnRef, setBusNnRef] = useState(resolvedBusRef ?? busOptions[0]?.ref_id ?? '');
   const [fieldName, setFieldName] = useState(
-    intent === 'SOURCE' ? 'Pole źródłowe nN' : 'Odpływ nN',
+    intent === 'SOURCE' ? 'Pole przyłączeniowe nN' : 'Odpływ nN',
   );
   const [catalogItemId, setCatalogItemId] = useState(initialCatalogRef);
   const [catalogEntries, setCatalogEntries] = useState<CatalogEntry[]>([]);
@@ -65,7 +65,7 @@ export function AddNnOutgoingFieldForm() {
   }, [initialCatalogRef]);
 
   useEffect(() => {
-    setFieldName(intent === 'SOURCE' ? 'Pole źródłowe nN' : 'Odpływ nN');
+    setFieldName(intent === 'SOURCE' ? 'Pole przyłączeniowe nN' : 'Odpływ nN');
   }, [intent]);
 
   useEffect(() => {
@@ -110,7 +110,7 @@ export function AddNnOutgoingFieldForm() {
 
   const handleSubmit = useCallback(async () => {
     if (!activeCaseId) {
-      setError('Brak aktywnego przypadku obliczeniowego.');
+      setError('Wybierz zakres obliczeń przed zapisem pola nN.');
       return;
     }
     if (!stationRef) {
@@ -163,7 +163,7 @@ export function AddNnOutgoingFieldForm() {
         submitError instanceof Error
           ? submitError.message
           : intent === 'SOURCE'
-            ? 'Nie udało się dodać pola źródłowego nN.'
+            ? 'Nie udało się dodać pola przyłączeniowego nN.'
             : 'Nie udało się dodać pola nN.',
       );
     } finally {
@@ -185,7 +185,7 @@ export function AddNnOutgoingFieldForm() {
     <div className="h-full overflow-y-auto bg-white" data-testid="add-nn-outgoing-field-form">
       <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
         <h3 className="text-sm font-semibold text-slate-900">
-          {intent === 'SOURCE' ? 'Nowe pole źródłowe nN' : 'Nowy odpływ nN'}
+          {intent === 'SOURCE' ? 'Nowe pole przyłączeniowe nN' : 'Nowy odpływ nN'}
         </h3>
         <p className="mt-1 text-[11px] text-slate-500">
           Stacja: <span className="font-medium text-slate-700">{stationLabel(snapshot, stationRef)}</span>
@@ -212,7 +212,7 @@ export function AddNnOutgoingFieldForm() {
             <div className="rounded border border-slate-200 bg-slate-50 px-2 py-2">
               <div className="text-[10px] uppercase tracking-wide text-slate-400">Obiekt</div>
               <div className="mt-1 font-medium text-slate-800">
-                {intent === 'SOURCE' ? 'Pole źródłowe nN' : 'Odpływ nN'}
+                {intent === 'SOURCE' ? 'Pole przyłączeniowe nN' : 'Odpływ nN'}
               </div>
             </div>
             <div className="rounded border border-slate-200 bg-slate-50 px-2 py-2">
@@ -252,7 +252,7 @@ export function AddNnOutgoingFieldForm() {
 
         {intent === 'SOURCE' && (
           <label className="block">
-            <span className="text-[11px] font-medium text-slate-700">Rodzina pola źródłowego</span>
+            <span className="text-[11px] font-medium text-slate-700">Rodzina pola przyłączeniowego</span>
             <select
               value={sourceFieldKind}
               disabled
@@ -303,7 +303,7 @@ export function AddNnOutgoingFieldForm() {
             disabled={isSubmitting}
             className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {isSubmitting ? 'Dodawanie…' : intent === 'SOURCE' ? 'Dodaj pole źródłowe' : 'Dodaj pole nN'}
+            {isSubmitting ? 'Dodawanie…' : intent === 'SOURCE' ? 'Dodaj pole przyłączeniowe' : 'Dodaj pole nN'}
           </button>
           <button
             type="button"

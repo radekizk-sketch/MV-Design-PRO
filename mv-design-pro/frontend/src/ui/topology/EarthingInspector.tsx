@@ -1,5 +1,5 @@
 /**
- * EarthingInspector — panel inspektora doziemienia (Pakiet E).
+ * EarthingInspector — karta techniczna doziemienia (Pakiet E).
  *
  * Wariant per element type (5 osobnych sekcji, jeden komponent):
  *   - GPZ — punkt neutralny strony SN

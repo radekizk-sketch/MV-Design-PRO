@@ -471,7 +471,7 @@ export function TypeLibraryBrowser({
           {!loading && !error && filteredTypes.length === 0 ? (
             <div className="flex h-32 items-center justify-center">
               <p className="text-gray-500">
-                {searchQuery ? 'Brak wyników dla zapytania.' : 'Brak typów w katalogu.'}
+                {searchQuery ? 'Nie znaleziono typu dla zapytania.' : 'Katalog typów wymaga konfiguracji.'}
               </p>
             </div>
           ) : null}
@@ -682,7 +682,7 @@ function TypeDetailsPanel({
         <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-700">
           Instancje używające tego typu
         </h3>
-        <p className="text-sm text-gray-500">Brak instancji (funkcja w przyszłej wersji)</p>
+        <p className="text-sm text-gray-500">Instancje katalogowe nie są dostępne w tym widoku.</p>
       </div>
     </div>
   );
@@ -696,7 +696,7 @@ function GenericTypeDetailsPanel({
   if (entries.length === 0) {
     return (
       <div className="col-span-2 rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
-        Brak jawnych pól szczegółowych dla tej kategorii.
+        Ta kategoria nie ma dodatkowych pól szczegółowych.
       </div>
     );
   }

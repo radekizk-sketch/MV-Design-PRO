@@ -4,7 +4,7 @@ import { useAppStateStore } from '../../app-state/store';
 function resultLabel(status: string): string {
   if (status === 'FRESH') return 'Wyniki aktualne';
   if (status === 'OUTDATED') return 'Wymaga ponownego obliczenia';
-  return 'Brak wyników';
+  return 'Wyniki nieuruchomione';
 }
 
 export function WynikiContextPanel() {

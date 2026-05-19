@@ -1,8 +1,8 @@
 /**
- * AddDerWizard — guided 5-step flow dodawania DER (PV/BESS/FW) ze stacji E-13.
+ * AddDerWizard — guided 5-step flow dodawania PV/BESS/FW ze stacji.
  *
  * Przepływ:
- *  Krok 1: Wybór wariantu przyłączenia (SN / nN / dedicated_transformer).
+ *  Krok 1: Wybór wariantu przyłączenia (SN / nN / transformator dedykowany).
  *  Krok 2: Wybór punktu przyłączenia (existing/new) — kontekstowy katalog.
  *  Krok 3: Wybór urządzenia z katalogu (falownik PV / PCS BESS / turbina FW).
  *  Krok 4: Wybór profilu NC RfG + krzywych LVRT/HVRT (zgodnie z operatorem).
@@ -17,7 +17,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { useAppStateStore } from '../../app-state';
 import { notify } from '../../notifications/store';
+import {
+  DerPersistenceApiError,
+  postDerGeneratorConfig,
+  type DerConnectionVariant,
+  type NcRfgModule,
+} from '../../sld/v2/canvas/derPersistenceApi';
+import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useAudit2CatalogSnapshot } from './audit2-hooks';
 import { generateDeterministicDerId, validateWizardSelections } from './wizard-validation';
 import {
@@ -68,6 +76,38 @@ const DER_KIND_LABELS: Record<DerKindUnified, string> = {
   FW: 'Farma wiatrowa',
 };
 
+function toBackendConnectionVariant(connectionSide: ConnectionSide): DerConnectionVariant {
+  return connectionSide === 'nN' ? 'nn_side' : 'dedicated';
+}
+
+function resolveBackendCatalogRef(
+  derKind: DerKindUnified,
+  connectionSide: ConnectionSide,
+): string {
+  if (derKind === 'PV') {
+    return connectionSide === 'nN' ? 'conv-pv-nn-0p5mw-0p4kv' : 'conv-pv-0.5mw-15kv';
+  }
+  if (derKind === 'BESS') {
+    return connectionSide === 'nN'
+      ? 'conv-bess-nn-0p5mw-0p4kv'
+      : 'conv-bess-0.5mw-1mwh-15kv';
+  }
+  return connectionSide === 'nN' ? 'conv-wind-nn-2mw-0p4kv' : 'conv-wind-2mw-15kv';
+}
+
+function resolveNcRfgModule(selections: WizardSelections): NcRfgModule {
+  const curve = LVRT_CURVE_CATALOG.find((entry) => entry.id === selections.lvrtCurveRef);
+  return curve?.module_type ?? 'B';
+}
+
+function formatConnectionSideForReview(
+  connectionSide: ConnectionSide | null,
+  variants: ReturnType<typeof selectConnectionVariantsForKind>,
+): string {
+  if (!connectionSide) return '';
+  return variants.find((variant) => variant.side === connectionSide)?.label_pl ?? connectionSide;
+}
+
 interface WizardSelections {
   connectionSide: ConnectionSide | null;
   voltageLevelRef: string | null;
@@ -81,7 +121,7 @@ interface WizardSelections {
   derName: string;
   /** Naprawa eng.10: tryby pracy BESS (multi-select). */
   bessOperationModeRefs: readonly string[];
-  /** Pakiet H: block-trafo catalog dla dedicated_transformer. */
+  /** Pakiet H: katalog transformatora dedykowanego dla dedicated_transformer. */
   blockTransformerCatalogRef: string | null;
   /** Pakiet H: krzywa P(f) — regulacja częstotliwości. */
   pfCurveRef: string | null;
@@ -106,8 +146,11 @@ const EMPTY_SELECTIONS: WizardSelections = {
 export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const { isOpen, stationId, stationName, derKind, projectId, onClose, nowIso } = props;
   const attachDer = useStationDerStore((state) => state.attachDer);
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
+  const setSnapshot = useSnapshotStore((state) => state.setSnapshot);
   const [step, setStep] = useState<StepId>('variant');
   const [selections, setSelections] = useState<WizardSelections>(EMPTY_SELECTIONS);
+  const [isCreating, setIsCreating] = useState(false);
   // Phase 9: pre-fetch backend catalog snapshot — lokalne staticki sluzą jako
   // fallback, ale snapshot z backendu warm-cache'uje React Query dla stations
   // pobierajacych je dalej. Hook sam zarzadza cache'em i refetch'em.
@@ -193,8 +236,12 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     }
   }, [step]);
 
-  const handleCreate = useCallback(() => {
+  const handleCreate = useCallback(async () => {
     if (!stationId || !selections.connectionSide) return;
+    if (!activeCaseId || !projectId || projectId === 'no-project') {
+      notify('Wybierz aktywny projekt i zakres obliczeń przed utworzeniem układu przyłączeniowego.', 'error');
+      return;
+    }
     // Walidacja runtime: catalog_refs muszą istnieć w katalogach
     // (chroni przed manipulacją selections w devtools).
     const validation = validateWizardSelections(selections, derKind);
@@ -217,6 +264,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     const pccRef = `pcc_${stationId}_${selections.pccLabel.trim()}`;
     const device = deviceCatalog.find((d) => d.id === selections.deviceCatalogRef);
     const nominalPowerKw = device && 'nominal_power_kw' in device ? device.nominal_power_kw : null;
+    const backendCatalogRef = resolveBackendCatalogRef(derKind, selections.connectionSide);
 
     // Naprawa B.2: connection_node_ref dla pozastacjonarnych wariantów.
     let connectionNodeRef: string | null = null;
@@ -228,46 +276,79 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       connectionNodeRef = `node_cable_joint_${selections.bayName}`;
     }
 
-    attachDer({
-      id,
-      project_id: projectId,
-      station_id: stationId,
-      der_kind: derKind,
-      name: selections.derName,
-      connection_side: selections.connectionSide,
-      pcc_ref: pccRef,
-      bay_ref:
-        selections.connectionSide === 'SN' ? `bay_${stationId}_${selections.bayName}` : null,
-      lv_busbar_ref:
-        selections.connectionSide === 'nN' ? `busbar_${stationId}_main` : null,
-      transformer_ref:
-        selections.connectionSide === 'dedicated_transformer'
-          ? `tr_dedicated_${id}`
-          : null,
-      connection_node_ref: connectionNodeRef,
-      voltage_level_ref: selections.voltageLevelRef,
-      nominal_power_kw: nominalPowerKw,
-      catalogs: {
-        device_catalog_ref: selections.deviceCatalogRef,
-        battery_catalog_ref: selections.batteryCatalogRef,
-        block_transformer_catalog_ref: selections.blockTransformerCatalogRef,
-      },
-      profiles: {
-        nc_rfg_profile_ref: selections.ncRfgProfileRef,
-        lvrt_curve_ref: selections.lvrtCurveRef,
-        hvrt_curve_ref: selections.hvrtCurveRef,
-        pf_curve_ref: selections.pfCurveRef,
-        bess_operation_mode_refs: selections.bessOperationModeRefs,
-      },
-      created_at: nowIso,
-    });
+    setIsCreating(true);
+    try {
+      const response = await postDerGeneratorConfig(projectId, activeCaseId, {
+        station_ref: stationId,
+        der_kind: derKind,
+        power_mw: Math.max((nominalPowerKw ?? 500) / 1000, 0.1),
+        connection_variant: toBackendConnectionVariant(selections.connectionSide),
+        catalog_ref: backendCatalogRef,
+        source_name: selections.derName,
+        quantity: 1,
+        nc_rfg_module: resolveNcRfgModule(selections),
+      });
 
-    notify(
-      `Utworzono ${DER_KIND_LABELS[derKind]} "${selections.derName}" w stacji "${stationName}".`,
-      'success',
-    );
-    handleClose();
+      if (response.snapshot) {
+        setSnapshot(response);
+      }
+
+      attachDer({
+        id,
+        project_id: projectId,
+        station_id: stationId,
+        der_kind: derKind,
+        name: selections.derName,
+        connection_side: selections.connectionSide,
+        pcc_ref: pccRef,
+        bay_ref:
+          selections.connectionSide === 'SN' ? `bay_${stationId}_${selections.bayName}` : null,
+        lv_busbar_ref:
+          selections.connectionSide === 'nN' ? `busbar_${stationId}_main` : null,
+        transformer_ref:
+          selections.connectionSide === 'dedicated_transformer'
+            ? `tr_dedicated_${id}`
+            : null,
+        connection_node_ref: connectionNodeRef,
+        voltage_level_ref: selections.voltageLevelRef,
+        nominal_power_kw: nominalPowerKw,
+        catalogs: {
+          device_catalog_ref: selections.deviceCatalogRef,
+          battery_catalog_ref: selections.batteryCatalogRef,
+          block_transformer_catalog_ref: selections.blockTransformerCatalogRef,
+        },
+        profiles: {
+          nc_rfg_profile_ref: selections.ncRfgProfileRef,
+          lvrt_curve_ref: selections.lvrtCurveRef,
+          hvrt_curve_ref: selections.hvrtCurveRef,
+          pf_curve_ref: selections.pfCurveRef,
+          bess_operation_mode_refs: selections.bessOperationModeRefs,
+        },
+        created_at: nowIso,
+      });
+
+      notify(
+        `Utworzono ${DER_KIND_LABELS[derKind]} "${selections.derName}" w stacji "${stationName}".`,
+        'success',
+      );
+      window.dispatchEvent(
+        new CustomEvent('mvdesignpro:der-created', {
+          detail: { stationId, derKind, sourceId: id },
+        }),
+      );
+      handleClose();
+    } catch (error) {
+      notify(
+        error instanceof DerPersistenceApiError
+          ? error.message
+          : 'Nie udało się zapisać układu przyłączeniowego w modelu sieci.',
+        'error',
+      );
+    } finally {
+      setIsCreating(false);
+    }
   }, [
+    activeCaseId,
     attachDer,
     deviceCatalog,
     derKind,
@@ -275,6 +356,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     handleClose,
     projectId,
     selections,
+    setSnapshot,
     stationId,
     stationName,
   ]);
@@ -294,7 +376,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       return (
         `Niezgodność napięcia: urządzenie ${deviceKv.toFixed(2)} kV vs `
         + `szyna nN ${lvLevel.nominal_kv.toFixed(2)} kV. `
-        + `Wymagany transformator dedykowany lub zmiana wariantu na "dedicated_transformer".`
+        + 'Wymagany transformator dedykowany albo zmiana wariantu przyłączenia.'
       );
     }
     return null;
@@ -317,7 +399,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
         <div className="flex items-center justify-between border-b border-scada-border bg-scada-surface px-5 py-3">
           <div>
             <div className="text-[11px] font-bold uppercase tracking-widest text-scada-muted">
-              Dodaj źródło / magazyn
+              Dodaj układ przyłączeniowy
             </div>
             <h3 className="text-sm font-semibold text-scada-text">
               {DER_KIND_LABELS[derKind]} → {stationName}
@@ -395,7 +477,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
           {step === 'point' && (
             <div data-testid="add-der-step-content-point" className="space-y-3">
               <p className="text-scada-muted">
-                Wybierz punkt przyłączenia (PCC) i podstawowe dane DER.
+                Wybierz punkt przyłączenia (PCC) i podstawowe dane układu.
                 Pola tekstowe to projektowe oznaczenia, niewybór z katalogu.
               </p>
               <Field
@@ -416,7 +498,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               />
               {selections.connectionSide === 'SN' && (
                 <Field
-                  label="Oznaczenie pola SN (do utworzenia/wyboru)"
+                  label="Oznaczenie pola SN"
                   required
                   value={selections.bayName}
                   onChange={(v) => setSelections((s) => ({ ...s, bayName: v }))}
@@ -467,19 +549,19 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   testId="add-der-voltage-level"
                 />
               )}
-              {/* Pakiet H: block-trafo selector dla dedicated_transformer. */}
+              {/* Pakiet H: transformator dedykowany dla dedicated_transformer. */}
               {selections.connectionSide === 'dedicated_transformer' && (() => {
                 const candidates = selectBlockTransformersForDer({ derKind });
                 return (
                   <Select
-                    label="Transformator dedykowany (block-trafo, z katalogu)"
+                    label="Transformator dedykowany z katalogu"
                     required
                     value={selections.blockTransformerCatalogRef ?? ''}
                     onChange={(v) =>
                       setSelections((s) => ({ ...s, blockTransformerCatalogRef: v || null }))
                     }
                     options={[
-                      { id: '', label: '— wybierz block-trafo —' },
+                      { id: '', label: '— wybierz transformator dedykowany —' },
                       ...candidates.map((b) => ({ id: b.id, label: b.label_pl })),
                     ]}
                     testId="add-der-block-transformer"
@@ -657,9 +739,9 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               </p>
               <ul className="space-y-1 rounded border border-scada-border bg-scada-surface p-3 text-[11px]">
                 <ReviewRow label="Stacja" value={stationName} />
-                <ReviewRow label="Rodzaj DER" value={DER_KIND_LABELS[derKind]} />
-                <ReviewRow label="Nazwa DER" value={selections.derName} />
-                <ReviewRow label="Wariant przyłączenia" value={selections.connectionSide ?? ''} />
+                <ReviewRow label="Rodzaj układu" value={DER_KIND_LABELS[derKind]} />
+                <ReviewRow label="Nazwa układu" value={selections.derName} />
+                <ReviewRow label="Wariant przyłączenia" value={formatConnectionSideForReview(selections.connectionSide, variants)} />
                 <ReviewRow label="PCC" value={selections.pccLabel} />
                 {selections.connectionSide === 'SN' && (
                   <ReviewRow label="Pole SN" value={selections.bayName} />
@@ -727,10 +809,11 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
             <button
               type="button"
               onClick={handleCreate}
+              disabled={isCreating}
               data-testid="add-der-create"
-              className="rounded bg-scada-sn px-4 py-1.5 text-xs font-medium text-scada-bg hover:bg-yellow-300"
+              className="rounded bg-scada-sn px-4 py-1.5 text-xs font-medium text-scada-bg hover:bg-yellow-300 disabled:cursor-wait disabled:opacity-60"
             >
-              Utwórz {DER_KIND_LABELS[derKind]}
+              {isCreating ? 'Tworzenie w modelu sieci...' : `Utwórz ${DER_KIND_LABELS[derKind]}`}
             </button>
           ) : (
             <button

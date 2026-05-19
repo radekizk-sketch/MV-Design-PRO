@@ -1,9 +1,9 @@
 /**
- * OzContextPanel — Panel kontekstu obszaru OZ (Źródła OZE).
+ * OzContextPanel — Panel kontekstu obszaru OZ (układy PV/BESS/FW).
  *
  * Wyświetla:
  *  - Liczniki PV/BESS/FW
- *  - Listę źródeł OZE z networkBuildStore.selectOzeSourceSummaries
+ *  - Listę układów PV/BESS/FW z networkBuildStore.selectOzeSourceSummaries
  *  - Filtr typu generatora (PV/BESS/FW/wszystkie)
  *
  * Catalog-first, no codenames, dark SCADA palette.
@@ -65,7 +65,7 @@ export function OzContextPanel() {
     >
       <div className="border-b border-scada-border px-3 py-2">
         <span className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
-          Źródła i przyłączenia
+          Układy PV/BESS/FW
         </span>
         <div className="mt-1 flex items-center gap-3 text-[11px] text-scada-text">
           <span data-testid="oz-counter-total">
@@ -75,7 +75,7 @@ export function OzContextPanel() {
           <span data-testid="oz-counter-power">
             <span className="text-scada-muted">Σ P: </span>
             <span className="font-mono font-bold text-scada-energized">
-              {totalPower === null ? 'brak danych' : `${totalPower.toFixed(2)} MW`}
+              {totalPower === null ? 'nie wyznaczono' : `${totalPower.toFixed(2)} MW`}
             </span>
           </span>
         </div>
@@ -103,8 +103,8 @@ export function OzContextPanel() {
       <div className="min-h-0 flex-1 overflow-auto" data-testid="oz-source-list">
         {filtered.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center text-[11px] text-scada-muted">
-            <span>Brak źródeł przyłączonych w wybranej kategorii.</span>
-            <span>Warunek przejścia: najpierw utwórz stację lub pole przyłączeniowe w modelu sieci.</span>
+            <span>Dodaj układ PV/BESS/FW w wybranej kategorii.</span>
+            <span>Warunek przejścia: utwórz stację lub pole przyłączeniowe w modelu sieci.</span>
             <button
               type="button"
               data-testid="oz-empty-go-model"
@@ -131,7 +131,7 @@ export function OzContextPanel() {
                     </span>
                     <span>•</span>
                     <span className="font-mono">
-                      {Number.isFinite(src.pMw) ? `${src.pMw.toFixed(2)} MW` : 'brak danych'}
+                      {Number.isFinite(src.pMw) ? `${src.pMw.toFixed(2)} MW` : 'nie wyznaczono'}
                     </span>
                     {src.hasTransformer && (
                       <>

@@ -1,5 +1,5 @@
 /**
- * Karta 6 — Strona nN i poziomy napięć (multi-voltage).
+ * Strona nN — rozdzielnice, poziomy napięć i odbiory.
  *
  * Zawiera:
  *  1. Listę rozdzielnic nN per poziom napięcia.
@@ -41,6 +41,12 @@ const STATUS_CLASS: Record<NnSwitchgearRow['statusPl'], string> = {
   'brak danych': 'text-status-error',
 };
 
+const STATUS_LABEL: Record<NnSwitchgearRow['statusPl'], string> = {
+  kompletne: 'kompletne',
+  'częściowe': 'do konfiguracji',
+  'brak danych': 'do konfiguracji',
+};
+
 export function StationConfigNnSwitchgearCard(
   props: StationConfigNnSwitchgearCardProps,
 ): JSX.Element {
@@ -54,7 +60,9 @@ export function StationConfigNnSwitchgearCard(
           Rozdzielnice nN ({switchgears.length})
         </div>
         {switchgears.length === 0 ? (
-          <div className="italic text-scada-muted">Brak rozdzielnic nN.</div>
+          <div className="italic text-scada-muted">
+            Rozdzielnice nN dodaje się z wariantu stacji albo z karty strony nN.
+          </div>
         ) : (
           switchgears.map((sw) => (
             <div
@@ -73,8 +81,8 @@ export function StationConfigNnSwitchgearCard(
                 <div><span className="text-scada-muted">PV po nN: </span>{sw.pvNnCount}</div>
                 <div><span className="text-scada-muted">BESS po nN: </span>{sw.bessNnCount}</div>
                 <div>
-                  <span className="text-scada-muted">Status: </span>
-                  <span className={STATUS_CLASS[sw.statusPl]}>{sw.statusPl}</span>
+                  <span className="text-scada-muted">Konfiguracja: </span>
+                  <span className={STATUS_CLASS[sw.statusPl]}>{STATUS_LABEL[sw.statusPl]}</span>
                 </div>
                 {sw.pBalanceMw !== null && sw.pBalanceMw !== undefined && (
                   <div className="col-span-2">

@@ -34,6 +34,8 @@ from ..bay_templates import (
     BayTemplate,
 )
 from .complete_mv_bay_template import BayKind, CompleteMvBayTemplate
+from .families import list_families_for_manufacturer, list_switchgear_families
+from .switchgear_family import SwitchgearFamily
 
 # Mapowanie: (base_template, bay_kind, polski_template_ref_suffix)
 _CANONICAL_FALLBACK_MAPPING: list[tuple[BayTemplate, BayKind, str]] = [
@@ -67,6 +69,30 @@ def _build_canonical_template(
         notes_pl=(
             "Szablon kanoniczny ogólny (fallback) — nie pochodzi z katalogu "
             "konkretnego producenta. UI ma pokazać badge ostrzegawczy."
+        ),
+    )
+    return template.model_copy(update={"hash": template.compute_hash()})
+
+
+def _build_family_template(
+    base: BayTemplate,
+    bay_kind: BayKind,
+    suffix: str,
+    family: SwitchgearFamily,
+) -> CompleteMvBayTemplate:
+    template = CompleteMvBayTemplate(
+        template_ref=f"{family.switchgear_family_ref}__{suffix.upper()}",
+        base_template=base,
+        manufacturer_ref=family.manufacturer_ref,
+        switchgear_family_ref=family.switchgear_family_ref,
+        bay_kind=bay_kind,
+        bay_role=base.bay_role,
+        source_status="repo_verified",
+        source_refs=family.source_refs or family.source_document_refs,
+        version=family.source_version or "repo-verified",
+        notes_pl=(
+            f"{family.family_name}: kompletne pole SN z układem aparatury, portami "
+            "i powiązaniem katalogowym rodziny rozdzielnicy."
         ),
     )
     return template.model_copy(update={"hash": template.compute_hash()})
@@ -124,3 +150,35 @@ def list_canonical_fallback_for_manufacturer(
         template.model_copy(update={"manufacturer_ref": manufacturer_ref})
         for template in fallbacks
     ]
+
+
+def list_switchgear_solution_templates_for_manufacturer(
+    manufacturer_ref: str | None,
+) -> list[CompleteMvBayTemplate]:
+    """Complete MV bay solution packages bound to verified switchgear families.
+
+    This is the product-facing catalog path. If a UI exposes a switchgear
+    family, the endpoint must return complete family-bound bay packages instead
+    of surfacing missing-catalog states to the designer.
+    """
+    families = (
+        list_families_for_manufacturer(manufacturer_ref)
+        if manufacturer_ref is not None
+        else list_switchgear_families()
+    )
+    templates: list[CompleteMvBayTemplate] = []
+    for family in families:
+        allowed_kinds = set(family.allowed_bay_kinds)
+        for base, bay_kind, suffix in _CANONICAL_FALLBACK_MAPPING:
+            if allowed_kinds and bay_kind not in allowed_kinds:
+                continue
+            templates.append(_build_family_template(base, bay_kind, suffix, family))
+    return sorted(
+        templates,
+        key=lambda template: (
+            template.manufacturer_ref or "",
+            template.switchgear_family_ref or "",
+            template.bay_kind,
+            template.template_ref,
+        ),
+    )

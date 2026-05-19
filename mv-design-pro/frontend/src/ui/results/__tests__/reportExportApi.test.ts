@@ -135,7 +135,7 @@ describe('format labels', () => {
     expect(REPORT_FORMAT_LABELS_PL.pdf).toContain('reportlab');
     expect(REPORT_FORMAT_LABELS_PL.docx).toContain('python-docx');
     expect(REPORT_FORMAT_LABELS_PL.json).toContain('JSON');
-    expect(REPORT_FORMAT_LABELS_PL.xlsx).toContain('XLSX');
+    expect(Object.keys(REPORT_FORMAT_LABELS_PL)).toEqual(['pdf', 'docx', 'json']);
   });
 
   it('Polskie etykiety formatów uzasadnienia inżynierskiego', () => {

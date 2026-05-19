@@ -11,9 +11,10 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render as rtlRender, screen, fireEvent } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { ReactElement } from 'react';
 
+import { useAppStateStore } from '../../../app-state/store';
 import { AddDerWizard } from '../AddDerWizard';
 
 function render(ui: ReactElement) {
@@ -39,6 +40,9 @@ import { useStationDerStore, selectAllDers } from '../store';
 describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
   beforeEach(() => {
     useStationDerStore.getState().reset();
+    useAppStateStore.getState().reset();
+    useAppStateStore.getState().setActiveProject('projekt-test-001', 'Projekt testowy');
+    useAppStateStore.getState().setActiveCase('case-test-001', 'Zakres testowy', 'ShortCircuitCase', 'NONE');
   });
 
   it('zapisuje block_transformer_catalog_ref w store dla dedicated_transformer', async () => {
@@ -83,8 +87,8 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     fireEvent.click(screen.getByTestId('add-der-create'));
 
     // Sprawdzamy ze DER zostal zapisany ze WSZYSTKIMI polami z Pakietu H.
+    await waitFor(() => expect(selectAllDers(useStationDerStore.getState())).toHaveLength(1));
     const ders = selectAllDers(useStationDerStore.getState());
-    expect(ders).toHaveLength(1);
 
     const der = ders[0];
     expect(der.catalogs.block_transformer_catalog_ref).toBe('btr_pv_15_069_2500');
@@ -134,8 +138,8 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
 
     fireEvent.click(screen.getByTestId('add-der-create'));
 
+    await waitFor(() => expect(selectAllDers(useStationDerStore.getState())).toHaveLength(1));
     const ders = selectAllDers(useStationDerStore.getState());
-    expect(ders).toHaveLength(1);
 
     const der = ders[0];
     expect(der.profiles.bess_operation_mode_refs).toContain('mode_fcr_n');

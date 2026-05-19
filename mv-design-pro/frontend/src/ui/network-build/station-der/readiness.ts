@@ -490,7 +490,7 @@ function buildBlockersForAxis(
       blockers.push({
         code: 'der.report.upstream_missing',
         message_pl:
-          'Raport zablokowany przez braki w wcześniejszych obliczeniach (SC/VDROP/NC RfG/EQUIPMENT).',
+          'Raport wymaga kompletu wyników wcześniejszych obliczeń (SC/VDROP/NC RfG/EQUIPMENT).',
         object_ref: der.id,
         target_screen: 'E-04',
         target_tab: 'list',

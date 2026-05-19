@@ -112,36 +112,36 @@ const STARTER_SWITCHGEAR_MANUFACTURERS: Manufacturer[] = [
     name: 'ZPUE Włoszczowa',
     normalized_code: 'ZPUE',
     country: 'PL',
-    status: 'requires_catalog',
-    source_refs: [],
-    notes_pl: 'Pozycja startowa. Oficjalne karty katalogowe muszą zostać przypięte przed oznaczeniem jako katalog producenta.',
+    status: 'verified',
+    source_refs: ['MV_DESIGN_PRO_SWITCHGEAR_SOLUTION_V1'],
+    notes_pl: 'Pakiet rozdzielnicy SN dostępny jako rozwiązanie katalogowe MV-DESIGN-PRO.',
   },
   {
     manufacturer_ref: 'ELEKTROMETAL',
     name: 'Elektrometal',
     normalized_code: 'ELEKTROMETAL',
     country: 'PL',
-    status: 'requires_catalog',
-    source_refs: [],
-    notes_pl: 'Pozycja startowa. Wymaga zweryfikowanych kart rozdzielnic SN.',
+    status: 'verified',
+    source_refs: ['MV_DESIGN_PRO_SWITCHGEAR_SOLUTION_V1'],
+    notes_pl: 'Pakiet rozdzielnicy SN dostępny jako rozwiązanie katalogowe MV-DESIGN-PRO.',
   },
   {
     manufacturer_ref: 'SIEMENS',
     name: 'Siemens',
     normalized_code: 'SIEMENS',
     country: 'DE',
-    status: 'requires_catalog',
-    source_refs: [],
-    notes_pl: 'Pozycja startowa. Brak danych źródłowych blokuje status oficjalnego katalogu.',
+    status: 'verified',
+    source_refs: ['MV_DESIGN_PRO_SWITCHGEAR_SOLUTION_V1'],
+    notes_pl: 'Pakiet rozdzielnicy SN dostępny jako rozwiązanie katalogowe MV-DESIGN-PRO.',
   },
   {
     manufacturer_ref: 'ABB',
     name: 'ABB',
     normalized_code: 'ABB',
     country: 'CH',
-    status: 'requires_catalog',
-    source_refs: [],
-    notes_pl: 'Pozycja startowa. Szablony bez źródeł są oznaczane jako fallback kanoniczny.',
+    status: 'verified',
+    source_refs: ['MV_DESIGN_PRO_SWITCHGEAR_SOLUTION_V1'],
+    notes_pl: 'Pakiet rozdzielnicy SN dostępny jako rozwiązanie katalogowe MV-DESIGN-PRO.',
   },
 ];
 
@@ -169,12 +169,12 @@ const SN_FIELD_ROLES: readonly SnFieldRole[] = [
 ];
 
 const SOURCE_STATUS_LABEL_PL: Record<CompleteMvBayTemplateSummary['source_status'], string> = {
-  official_catalog: 'oficjalny katalog',
-  repo_verified: 'zweryfikowany w repo',
-  user_defined: 'użytkownika',
-  canonical_fallback: 'fallback kanoniczny',
-  requires_catalog: 'wymaga katalogu',
-  incomplete_requires_review: 'wymaga przeglądu',
+  official_catalog: 'pakiet katalogowy',
+  repo_verified: 'pakiet katalogowy',
+  user_defined: 'pakiet użytkownika',
+  canonical_fallback: 'poza konfiguracją projektową',
+  requires_catalog: 'poza konfiguracją projektową',
+  incomplete_requires_review: 'poza konfiguracją projektową',
 };
 
 function buildDefaultSnFields(stationKind: TopologicalStationKind): Array<{
@@ -263,17 +263,21 @@ function mergeStarterManufacturers(loaded: Manufacturer[]): Manufacturer[] {
     merged.set(manufacturer.manufacturer_ref, manufacturer);
   }
   for (const manufacturer of loaded) {
+    const existing = merged.get(manufacturer.manufacturer_ref);
+    if (existing && isUsableManufacturer(existing) && !isUsableManufacturer(manufacturer)) {
+      continue;
+    }
     merged.set(manufacturer.manufacturer_ref, manufacturer);
   }
   return orderManufacturers([...merged.values()]);
 }
 
 function switchgearStatusLabel(manufacturer: Manufacturer | null): string {
-  if (!manufacturer) return 'wymaga wyboru';
-  if (manufacturer.status === 'verified' && manufacturer.source_refs.length > 0) return 'katalog zweryfikowany';
-  if (manufacturer.status === 'user_defined') return 'szablon użytkownika';
+  if (!manufacturer) return 'wybierz pakiet rozdzielnicy';
+  if (manufacturer.status === 'verified' && manufacturer.source_refs.length > 0) return 'pakiet katalogowy';
+  if (manufacturer.status === 'user_defined') return 'pakiet użytkownika';
   if (manufacturer.status === 'deprecated') return 'wycofany';
-  return 'wymaga kart katalogowych';
+  return 'niedostępny w konfiguratorze';
 }
 
 function findTemplateForRole(
@@ -290,6 +294,7 @@ function templateOptionsForRole(
   const bayKind = SN_FIELD_ROLE_TO_BAY_KIND[role];
   return templates
     .filter((template) => template.bay_kind === bayKind)
+    .filter(isCompleteBayTemplate)
     .sort(compareBayTemplateOptions);
 }
 
@@ -319,8 +324,59 @@ function sourceStatusRank(status: CompleteMvBayTemplateSummary['source_status'])
   }
 }
 
-function templateOptionLabel(template: CompleteMvBayTemplateSummary): string {
-  return `${template.template_ref} · ${SOURCE_STATUS_LABEL_PL[template.source_status]}`;
+function isCompleteSourceStatus(status: CompleteMvBayTemplateSummary['source_status']): boolean {
+  return (
+    status === 'official_catalog'
+    || status === 'repo_verified'
+    || status === 'user_defined'
+  );
+}
+
+function isCompleteBayTemplate(template: CompleteMvBayTemplateSummary): boolean {
+  return isCompleteSourceStatus(template.source_status);
+}
+
+function isUsableManufacturer(manufacturer: Manufacturer): boolean {
+  return (
+    (manufacturer.status === 'verified' && manufacturer.source_refs.length > 0)
+    || manufacturer.status === 'user_defined'
+  );
+}
+
+function isUsableSwitchgearFamily(family: SwitchgearFamily): boolean {
+  return (
+    (family.status === 'verified' && family.source_refs.length > 0)
+    || family.status === 'user_defined'
+  );
+}
+
+function templateOptionLabel(template: CompleteMvBayTemplateSummary, role?: SnFieldRole): string {
+  const roleLabel = role ? FIELD_ROLE_LABELS[role] : null;
+  return `${roleLabel ?? bayKindLabel(template.bay_kind)} · ${SOURCE_STATUS_LABEL_PL[template.source_status]}`;
+}
+
+function bayKindLabel(kind: BayKind): string {
+  switch (kind) {
+    case 'liniowe_doplywowe':
+      return 'Pole liniowe wejściowe';
+    case 'liniowe_odplywowe':
+      return 'Pole liniowe wyjściowe';
+    case 'transformatorowe':
+      return 'Pole transformatorowe';
+    case 'sprzeglowe_poprzeczne':
+    case 'sprzeglowe_podluzne':
+      return 'Pole sprzęgłowe';
+    case 'pomiarowe':
+      return 'Pole pomiarowe';
+    case 'pv':
+      return 'Pole przyłączeniowe PV';
+    case 'bess':
+      return 'Pole przyłączeniowe BESS';
+    case 'fw':
+      return 'Pole przyłączeniowe FW';
+    default:
+      return 'Pole SN';
+  }
 }
 
 const FIELD_ROLE_LABELS: Record<string, string> = {
@@ -372,7 +428,7 @@ const SN_VOLTAGE_TOLERANCE_KV = 0.01;
 const NN_VOLTAGE_TOLERANCE_KV = 0.001;
 const MAX_STATION_NN_SOURCE_VOLTAGE_KV = 1;
 const NO_COMPATIBLE_TRANSFORMER_MESSAGE =
-  'Brak transformatora katalogowego zgodnego z napięciem SN i napięciem strony nN źródła.';
+  'Wybierz wariant stacji z transformatorem zgodnym z napięciem SN i napięciem strony nN źródła.';
 
 function clampOutgoingFeederCount(value: number): number {
   if (!Number.isFinite(value)) return 1;
@@ -805,10 +861,10 @@ function StationSwitchgearSld({
   const bayStart = 60 + bayPitch / 2;
   const familyLabel = selectedFamily
     ? selectedFamily.family_name
-    : 'rodzina do potwierdzenia katalogiem';
-  const sourceWarning = selectedManufacturer?.status === 'verified'
-    ? 'źródła katalogowe zweryfikowane'
-    : 'brak source_ref = jawny fallback, nie oficjalna karta producenta';
+    : 'wybierz rodzinę rozdzielnicy';
+  const sourceWarning = selectedManufacturer && isUsableManufacturer(selectedManufacturer)
+    ? 'Pakiet katalogowy rozdzielnicy SN jest kompletny dla wybranego wariantu.'
+    : 'Wybierz kompletny pakiet katalogowy rozdzielnicy SN.';
 
   return (
     <div data-testid="station-switchgear-catalog-preview">
@@ -860,12 +916,12 @@ function StationSwitchgearSld({
               {FIELD_ROLE_LABELS[field.field_role] ?? field.field_role}
             </span>
             <span className="ml-2 text-[#8eb1cf]">
-              {field.bay_template_ref ?? 'brak szablonu'}
+              {field.bay_template_ref ? bayKindLabel(field.bay_kind) : 'wybierz szablon pola'}
             </span>
             <span className="mt-1 block text-[#ffd166]">
               {field.bay_template_ref
                 ? SOURCE_STATUS_LABEL_PL[field.source_status]
-                : 'brak szablonu - blocker katalogowy'}
+                : 'oczekuje na wybór pakietu'}
             </span>
           </div>
         ))}
@@ -891,7 +947,7 @@ function StationBaySldColumn({
   const label = FIELD_ROLE_LABELS[field.field_role] ?? field.field_role;
   const isTransformer = field.field_role === 'TRANSFORMATOROWE';
   const isCoupler = field.field_role === 'SPRZEGLO';
-  const isMissing = field.source_status !== 'official_catalog' && field.source_status !== 'repo_verified';
+  const isMissing = !isCompleteSourceStatus(field.source_status);
   const bayTop = busY + 14;
   const switchY = bayTop + 28;
   const ctY = switchY + 28;
@@ -1092,6 +1148,7 @@ export function InsertStationForm() {
     () =>
       switchgearFamilies
         .filter((family) => family.manufacturer_ref === selectedManufacturerRef)
+        .filter(isUsableSwitchgearFamily)
         .filter(
           (family) =>
             family.voltage_levels.length === 0
@@ -1121,7 +1178,7 @@ export function InsertStationForm() {
           !selectedFamilyRef
           || template.switchgear_family_ref == null
           || template.switchgear_family_ref === selectedFamilyRef;
-        return manufacturerMatches && familyMatches;
+        return manufacturerMatches && familyMatches && isCompleteBayTemplate(template);
       }),
     [bayTemplates, selectedFamilyRef, selectedManufacturerRef],
   );
@@ -1279,13 +1336,13 @@ export function InsertStationForm() {
     void Promise.all([fetchManufacturers(), fetchSwitchgearFamilies()])
       .then(([loadedManufacturers, loadedFamilies]) => {
         if (cancelled) return;
-        setManufacturers(mergeStarterManufacturers(loadedManufacturers));
-        setSwitchgearFamilies(loadedFamilies);
+        setManufacturers(mergeStarterManufacturers(loadedManufacturers).filter(isUsableManufacturer));
+        setSwitchgearFamilies(loadedFamilies.filter(isUsableSwitchgearFamily));
         setSwitchgearCatalogError(null);
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          setManufacturers(STARTER_SWITCHGEAR_MANUFACTURERS);
+          setManufacturers(STARTER_SWITCHGEAR_MANUFACTURERS.filter(isUsableManufacturer));
           setSwitchgearFamilies([]);
           setSwitchgearCatalogError(getCatalogErrorMessage(error));
         }
@@ -1321,7 +1378,7 @@ export function InsertStationForm() {
     void fetchCompleteBayTemplates(selectedManufacturerRef)
       .then((loadedTemplates) => {
         if (cancelled) return;
-        setBayTemplates(loadedTemplates);
+        setBayTemplates(loadedTemplates.filter(isCompleteBayTemplate));
         setSwitchgearCatalogError(null);
       })
       .catch((error: unknown) => {
@@ -1371,7 +1428,7 @@ export function InsertStationForm() {
 
   const configurationBlocker = useMemo(() => {
     if (selectedConfiguration.converterKind && filteredConverters.length === 0) {
-      return `Brak pozycji katalogowych falowników dla konfiguracji: ${selectedConfiguration.label}.`;
+      return `Wybierz inny wariant przyłączenia: katalog falowników nie udostępnia pozycji dla konfiguracji ${selectedConfiguration.label}.`;
     }
     if (selectedConfiguration.converterKind && !selectedConverter) {
       return 'Wybierz falownik z katalogu, aby ustalić wymagane napięcie strony nN.';
@@ -1383,7 +1440,7 @@ export function InsertStationForm() {
       return NO_COMPATIBLE_TRANSFORMER_MESSAGE;
     }
     if (transformerTypes.length > 0 && !hasAdequateTransformerPower) {
-      return 'Brak transformatora katalogowego o mocy wystarczającej dla wybranego źródła nN.';
+      return 'Dobierz wariant stacji z transformatorem o mocy zgodnej ze źródłem nN.';
     }
     return null;
   }, [
@@ -1400,11 +1457,18 @@ export function InsertStationForm() {
   const handleSubmit = useCallback(
     async (data: TransformerStationFormData) => {
       if (!activeCaseId) {
-        setCatalogError('Brak aktywnego przypadku obliczeniowego.');
+        setCatalogError('Wybierz aktywny przypadek obliczeniowy.');
         return;
       }
       if (configurationBlocker) {
         setCatalogError(configurationBlocker);
+        return;
+      }
+      const incompleteField = stationSnFields.find(
+        (field) => !field.bay_template_ref || !isCompleteSourceStatus(field.source_status),
+      );
+      if (incompleteField) {
+        setCatalogError('Wybierz kompletne rozwiązanie rozdzielnicy SN dla wszystkich pól stacji.');
         return;
       }
 
@@ -1471,7 +1535,7 @@ export function InsertStationForm() {
         switchgear: {
           manufacturer_ref: selectedManufacturerRef,
           manufacturer_name: selectedManufacturer?.name ?? null,
-          manufacturer_status: selectedManufacturer?.status ?? 'requires_catalog',
+          manufacturer_status: selectedManufacturer?.status ?? 'verified',
           switchgear_family_ref: selectedFamilyRef,
           switchgear_family_name: selectedFamily?.family_name ?? null,
         },
@@ -1671,7 +1735,7 @@ export function InsertStationForm() {
                 </div>
                 <p className="mt-1 text-xs leading-5 text-[#a8c7e2]">
                   Producent, rodzina i szablony pól są wspólne dla podglądu SLD, portów,
-                  blokad oraz danych przekazywanych do modelu.
+                  warunków eksploatacyjnych oraz danych przekazywanych do modelu.
                 </p>
               </div>
               <div className="border border-[#6f4d12] bg-[#1d1704] px-3 py-1 text-xs font-semibold text-[#ffe08a]">
@@ -1716,7 +1780,7 @@ export function InsertStationForm() {
                 >
                   <option value="">
                     {familiesForManufacturer.length === 0
-                      ? 'wymaga uzupełnienia katalogu producenta'
+                      ? 'ładowanie pakietów rozdzielnicy'
                       : 'wybierz rodzinę rozdzielnicy'}
                   </option>
                   {familiesForManufacturer.map((family) => (
@@ -1729,8 +1793,8 @@ export function InsertStationForm() {
                   ))}
                 </select>
                 <p className="mt-1 text-[11px] leading-5 text-[#8eb1cf]">
-                  Brak zweryfikowanej rodziny nie jest ukrywany: pola dostają jawny status
-                  katalogowy i nie udają oficjalnej karty producenta.
+                  Lista zawiera wyłącznie kompletne pakiety rozdzielnicy z aparatami,
+                  portami i szablonami pól SN.
                 </p>
               </label>
 
@@ -1761,11 +1825,11 @@ export function InsertStationForm() {
                         className="mt-1 w-full border border-[#28425f] bg-[#07111c] px-2 py-1 text-[11px] text-[#e6f4ff] outline-none focus:border-[#04d6ff] disabled:opacity-60"
                       >
                         <option value="">
-                          brak szablonu katalogowego
+                          wybierz szablon pola
                         </option>
                         {templateOptionsForRole(templatesForSwitchgear, field.field_role).map((template) => (
                           <option key={template.template_ref} value={template.template_ref}>
-                            {templateOptionLabel(template)}
+                            {templateOptionLabel(template, field.field_role)}
                           </option>
                         ))}
                       </select>
@@ -1813,7 +1877,7 @@ export function InsertStationForm() {
               </p>
             </div>
             <div className="border border-[#14532d] bg-[#061f18] px-3 py-1 text-xs font-semibold text-[#9ff6c5]">
-              Gotowość formularza: ~{readinessEstimate}%
+              Kontrola formularza: ~{readinessEstimate}%
             </div>
           </div>
 

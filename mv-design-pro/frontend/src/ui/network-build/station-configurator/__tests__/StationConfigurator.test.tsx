@@ -1,5 +1,5 @@
 /**
- * PR-8a — Testy StationConfigurator (10 kart).
+ * PR-8a — Testy StationConfigurator (17 kroków).
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
@@ -54,23 +54,30 @@ const minimalProps = {
   readiness: { items: [] },
 };
 
-describe('StationConfigurator — 10 kart', () => {
-  it('renderuje wszystkie 10 zakładek z polskimi etykietami', () => {
+describe('StationConfigurator — 17 kroków', () => {
+  it('renderuje cały przepływ konfiguracji z polskimi etykietami', () => {
     render(<StationConfigurator {...minimalProps} />);
     const labels = [
-      'Identyfikacja i szablon',
-      'Topologia, porty i PCC',
+      'Przyłączenie SN',
       'Rozdzielnia SN',
-      'Pola SN',
-      'Transformatory SN/nN',
-      /Strona nN i poziomy napi/i,
-      'Źródła i magazyny',
-      'Zabezpieczenia i automatyka',
-      /Pomiary, telemechanika i sygna/i,
-      'Gotowość obliczeń',
+      'Pola SN i blokady',
+      'Aparatura SN',
+      'Przekładniki CT',
+      'Przekładniki VT',
+      'Liczniki i telemechanika',
+      'Transformator',
+      'Uziemienie',
+      'Strona nN',
+      'PV, BESS i FW',
+      'Jakość energii',
+      'Zabezpieczenia',
+      'NC RfG i PTPiREE',
+      'SCADA i infrastruktura',
+      'Analiza sieciowa',
+      'Obliczenia i raport',
     ];
     for (const l of labels) {
-      expect(screen.getByText(l)).toBeInTheDocument();
+      expect(screen.getAllByText(l).length).toBeGreaterThan(0);
     }
   });
 

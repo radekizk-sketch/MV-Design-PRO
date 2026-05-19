@@ -188,7 +188,7 @@ export function TypePicker({
 
           {!loading && !error && filteredTypes.length === 0 ? (
             <div className="py-8 text-center text-gray-500">
-              {searchQuery ? 'Brak wynik?w dla zapytania.' : 'Brak typ?w w katalogu.'}
+              {searchQuery ? 'Nie znaleziono typu dla zapytania.' : 'Katalog typów wymaga konfiguracji.'}
             </div>
           ) : null}
 

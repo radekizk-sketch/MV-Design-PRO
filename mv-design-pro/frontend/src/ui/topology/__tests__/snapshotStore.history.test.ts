@@ -9,7 +9,7 @@ import { useSnapshotStore } from '../snapshotStore';
 
 const mockedExecuteDomainOp = vi.mocked(executeDomainOp);
 
-function createSuccessResponse() {
+function createSuccessResponse(busName = 'Szyna SN-1') {
   return {
     snapshot: {
       header: { revision: 2 },
@@ -17,7 +17,7 @@ function createSuccessResponse() {
         {
           id: 'bus-1',
           ref_id: 'bus-1',
-          name: 'Szyna SN-1',
+          name: busName,
         },
       ],
       branches: [],
@@ -64,7 +64,15 @@ function createSuccessResponse() {
         element_id: 'bus-1',
       },
     ],
-  } as any;
+} as any;
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((innerResolve) => {
+    resolve = innerResolve;
+  });
+  return { promise, resolve };
 }
 
 describe('snapshotStore operationHistory', () => {
@@ -124,5 +132,27 @@ describe('snapshotStore operationHistory', () => {
       elementName: null,
       status: 'error',
     });
+  });
+
+  it('ignores stale refresh responses after switching case context', async () => {
+    const oldRefresh = deferred<any>();
+    const newRefresh = deferred<any>();
+    mockedExecuteDomainOp
+      .mockReturnValueOnce(oldRefresh.promise)
+      .mockReturnValueOnce(newRefresh.promise);
+
+    const oldPromise = useSnapshotStore.getState().refreshFromBackend('case-old');
+    useSnapshotStore.getState().reset();
+    const newPromise = useSnapshotStore.getState().refreshFromBackend('case-new');
+
+    newRefresh.resolve(createSuccessResponse('Szyna nowego przypadku'));
+    await newPromise;
+
+    oldRefresh.resolve(createSuccessResponse('Szyna starego przypadku'));
+    await oldPromise;
+
+    const state = useSnapshotStore.getState();
+    expect(state.caseId).toBe('case-new');
+    expect(state.snapshot?.buses?.[0]?.name).toBe('Szyna nowego przypadku');
   });
 });

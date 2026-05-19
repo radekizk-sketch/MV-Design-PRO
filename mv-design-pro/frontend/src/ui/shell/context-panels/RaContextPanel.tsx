@@ -73,7 +73,7 @@ export function RaContextPanel() {
             ? 'Wyniki aktualne'
             : isOutdated
               ? 'Wymaga ponownego obliczenia'
-              : 'Brak wyników'}
+              : 'Wyniki nieuruchomione'}
         </div>
       </div>
 

@@ -803,7 +803,7 @@ describe('GpzSwitchgearRenderer — vertical Sterowanie label', () => {
     expect(label?.querySelector('text')?.getAttribute('fill')).toBe('#E5C828'); // COLOR_BADGE_BG_YELLOW
   });
 
-  it('controlMode="unknown" → "STEROWANIE ?" przygaszony', () => {
+  it('controlMode="unknown" → neutralna etykieta sterowania bez znaku zastępczego', () => {
     const { container } = r({
       sections: [
         {
@@ -813,7 +813,8 @@ describe('GpzSwitchgearRenderer — vertical Sterowanie label', () => {
       ],
     });
     const label = container.querySelector('[data-testid="sld-v2-gpz-bay-sterowanie"]');
-    expect(label?.textContent).toBe('STEROWANIE ?');
+    expect(label?.textContent).toBe('STEROWANIE');
+    expect(label?.textContent).not.toContain('?');
   });
 
   it('brak controlMode → brak etykiety', () => {
@@ -1292,7 +1293,7 @@ describe('GpzSwitchgearRenderer — uziemnik (ES) i Q-numeracja IEC 81346', () =
     expect(es?.getAttribute('data-state')).toBe('open');
   });
 
-  it('esState="unknown" → marker z ? (Invariant 9: brak telemetrii)', () => {
+  it('esState="unknown" → neutralny marker stanu aparatu', () => {
     const { container } = r({
       sections: [
         {
@@ -1470,7 +1471,7 @@ describe('GpzSwitchgearRenderer — interaktywność (audyt UX D2)', () => {
 });
 
 describe('GpzSwitchgearRenderer — Tier 1 fixes (BLOCKER konsensusowe)', () => {
-  it('Brak cbState w bay → renderer pokazuje neutral szary z "?" (Invariant 9 §15.1)', () => {
+  it('Brak cbState w bay → renderer pokazuje neutralny szary stan aparatu', () => {
     /* DEFAULT_BAYS[0] ma cbState='closed' explicit, ale stworzymy bay bez cbState. */
     const { container } = r({
       sections: [
@@ -1496,8 +1497,7 @@ describe('GpzSwitchgearRenderer — Tier 1 fixes (BLOCKER konsensusowe)', () => 
     });
     const cb = container.querySelector('[data-testid="sld-v2-gpz-bay-cb"]');
     expect(cb?.getAttribute('data-state')).toBe('unknown');
-    /* Znak '?' w środku CB. */
-    expect(cb?.textContent).toContain('?');
+    expect(cb?.textContent).not.toContain('?');
   });
 
   it('Brak dsState → DS data-state="unknown" (NIE fałszywe "closed")', () => {
@@ -1526,7 +1526,7 @@ describe('GpzSwitchgearRenderer — Tier 1 fixes (BLOCKER konsensusowe)', () => 
     expect(ds?.getAttribute('data-state')).toBe('unknown');
   });
 
-  it('voltageHighKvKnown=false → "?" zamiast wartości napięcia w title bar i bus labels', () => {
+  it('voltageHighKvKnown=false → klasa WN zamiast znaku zastępczego w title bar i bus labels', () => {
     const { container } = render(
       <svg>
         <GpzSwitchgearRenderer
@@ -1561,11 +1561,12 @@ describe('GpzSwitchgearRenderer — Tier 1 fixes (BLOCKER konsensusowe)', () => 
         />
       </svg>,
     );
-    /* Title bar pokazuje "? / 15 kV". */
+    /* Title bar pokazuje klasę WN bez znaku zastępczego. */
     const text = container.textContent ?? '';
-    expect(text).toContain('? / 15 kV');
-    /* HV bus labels pokazują "?kV". */
-    expect(text).toContain('?kV');
+    expect(text).toContain('WN / 15 kV');
+    /* HV bus labels pokazują klasę WN. */
+    expect(text).toContain('WNkV');
+    expect(text).not.toContain('?');
   });
 
   it('voltageHighKvKnown=true (default) → renderowane zwykłe wartości', () => {

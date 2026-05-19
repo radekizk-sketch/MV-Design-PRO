@@ -43,7 +43,7 @@ export interface NetworkHierarchyTreeProps {
  *         • ...
  *   ▼ Ciągi liniowe (3)
  *      • Run_1 — main_trunk (2 stacje)
- *   ▼ Źródła OZE (2)
+ *   ▼ Układy PV/BESS/FW (2)
  *      • PV-01 (PV)
  *      • BESS-01 (BESS)
  */
@@ -65,7 +65,7 @@ export function NetworkHierarchyTree({
     >
       <header className="border-b border-scada-border pb-1">
         <span className="font-semibold uppercase tracking-wider text-scada-muted">
-          Drzewo modelu sieci
+          Drzewo układu sieci
         </span>
       </header>
 
@@ -74,7 +74,7 @@ export function NetworkHierarchyTree({
           className="px-1 py-2 text-center text-scada-muted"
           data-testid="sld-hierarchy-empty"
         >
-          Brak modelu sieci — dodaj GPZ.
+          Rozpocznij układ sieci: wybierz wariant GPZ z katalogu.
         </div>
       ) : (
         <ul className="flex flex-col gap-px">
@@ -108,7 +108,7 @@ export function NetworkHierarchyTree({
           data-testid="sld-hierarchy-der"
         >
           <summary className="cursor-pointer font-semibold text-scada-text">
-            Źródła OZE ({hierarchy.derAttachments.length})
+            Układy PV/BESS/FW ({hierarchy.derAttachments.length})
           </summary>
           <ul className="ml-3 mt-1 flex flex-col gap-px">
             {hierarchy.derAttachments.map((der) => (

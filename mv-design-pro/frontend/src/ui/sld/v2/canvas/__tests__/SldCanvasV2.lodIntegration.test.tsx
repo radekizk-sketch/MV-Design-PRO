@@ -15,7 +15,7 @@
  * Uwaga: testy używają `vi.useFakeTimers` żeby kontrolować czas debounce.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, cleanup } from '@testing-library/react';
+import { fireEvent, render, cleanup, act } from '@testing-library/react';
 
 import { SldCanvasV2 } from '../SldCanvasV2';
 import type { GpzRendererProps } from '../../renderer/GpzRenderer';
@@ -42,6 +42,11 @@ function getLod(container: HTMLElement): string {
   return svg?.getAttribute('data-lod') ?? '';
 }
 
+function getScale(container: HTMLElement): number {
+  const svg = container.querySelector('[data-testid="sld-canvas-v2"]');
+  return Number(svg?.getAttribute('data-scale') ?? '0');
+}
+
 describe('SldCanvasV2 — LodController histereza runtime integration (Phase 0B-6)', () => {
   beforeEach(() => {
     vi.useFakeTimers({ now: new Date('2026-05-07T00:00:00Z') });
@@ -56,6 +61,29 @@ describe('SldCanvasV2 — LodController histereza runtime integration (Phase 0B-
     const { container } = renderEmptyCanvas();
     /* Identity transform scale=1.0 → LOD 2 (między LOD_1_MAX=0.7 a LOD_2_MAX=1.5). */
     expect(getLod(container)).toBe('2');
+  });
+
+  it('jawne przyciski widoku steruja skala bez ukrytego gestu scroll', () => {
+    const { container } = renderEmptyCanvas();
+    const initialScale = getScale(container);
+
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-zoom-in"]')!);
+    const zoomedInScale = getScale(container);
+    expect(zoomedInScale).toBeGreaterThan(initialScale);
+
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-zoom-out"]')!);
+    const zoomedOutScale = getScale(container);
+    expect(zoomedOutScale).toBeLessThan(zoomedInScale);
+
+    expect(container.querySelector('[data-testid="sld-v2-fit-view"] title')?.textContent)
+      .toBe('Dopasuj widok sieci');
+  });
+
+  it('opis poziomu szczegółowości nie pokazuje technicznego procentu zoomu', () => {
+    const { container } = renderEmptyCanvas();
+
+    expect(container.textContent).toMatch(/Topologia sieci|Odcinki i kierunki zasilania|Stacje, długości i moce|Pola, aparatura i zabezpieczenia|Nastawy, pomiary i dowody/);
+    expect(container.textContent).not.toMatch(/\b\d{2,4}%\b/);
   });
 
   it('lodOverride prop → atrybut data-lod === override (omija LodController)', () => {
@@ -89,13 +117,12 @@ describe('SldCanvasV2 — LodController histereza runtime integration (Phase 0B-
   it('Pojedynczy duży zoom-in scrollem → LOD może wzrosnąć po jednym kroku', () => {
     const { container } = renderEmptyCanvas();
     const svg = container.querySelector('[data-testid="sld-canvas-v2"]')!;
-    /* 5× zoom in: scale ~1.0 * 1.1^5 ≈ 1.61 — przekracza LOD_2_MAX=1.5 + margines.
-     * Z deadband 15% próg efektywny = 1.5 * 1.15 = 1.725.
-     * 1.61 < 1.725 → ciągle LOD 2 (deadband chroni przed flicker). */
+    /* 5× zoom in: scale ~1.0 * 1.1^5 ≈ 1.61 — przekracza LOD_2_MAX=1.5.
+     * Kanwa projektowa przełącza LOD natychmiast, bez deadband/debounce. */
     for (let i = 0; i < 5; i++) {
       fireEvent.wheel(svg, { deltaY: -100, clientX: 400, clientY: 300 });
     }
-    expect(getLod(container)).toBe('2');
+    expect(getLod(container)).toBe('3');
   });
 
   it('7× zoom in → przekroczenie progu z deadband + debounce → LOD 3', () => {
@@ -107,25 +134,24 @@ describe('SldCanvasV2 — LodController histereza runtime integration (Phase 0B-
     }
     /* Pierwsza klatka po przekroczeniu: pending transition (debounce 250ms).
      * Wymuszamy upływ czasu i jeden trigger update. */
-    vi.advanceTimersByTime(300);
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
     /* Trigger update przez kolejny wheel (re-render kalibruje LOD). */
     fireEvent.wheel(svg, { deltaY: -100, clientX: 400, clientY: 300 });
     expect(getLod(container)).toBe('3');
   });
 
-  it('Bouncing zoom (zoom in / zoom out na przemian) NIE migocze LOD bez debounce', () => {
+  it('Bouncing zoom przechodzi natychmiast do właściwego poziomu szczegółowości', () => {
     const { container } = renderEmptyCanvas();
     const svg = container.querySelector('[data-testid="sld-canvas-v2"]')!;
-    const initialLod = getLod(container);
-    /* Bouncing scroll: 5× zoom in, 5× zoom out, 5× zoom in — symuluje
-     * niezdecydowane scrollowanie operatora wokół progu. Bez histerezy
-     * LOD migotałby. Z LodController z deadband 15% — stabilny. */
+    /* Bouncing scroll: 5× zoom in, 5× zoom out, 5× zoom in.
+     * Aktualny kontrakt kanwy: LOD odzwierciedla bieżącą skalę natychmiast,
+     * żeby projektant widział przyrost informacji bez opóźnienia. */
     for (let i = 0; i < 5; i++) fireEvent.wheel(svg, { deltaY: -100, clientX: 400, clientY: 300 });
     for (let i = 0; i < 5; i++) fireEvent.wheel(svg, { deltaY: 100, clientX: 400, clientY: 300 });
     for (let i = 0; i < 5; i++) fireEvent.wheel(svg, { deltaY: -100, clientX: 400, clientY: 300 });
-    /* Po cyklu bouncing wracamy w okolicę 1.0 → LOD 2 (jak na początku). */
-    expect(getLod(container)).toBe(initialLod);
-    expect(getLod(container)).toBe('2');
+    expect(getLod(container)).toBe('3');
   });
 
   it('Zoom out poniżej progu LOD_2_MIN bez debounce → pozostaje LOD 2', () => {
@@ -147,7 +173,9 @@ describe('SldCanvasV2 — LodController histereza runtime integration (Phase 0B-
     for (let i = 0; i < 8; i++) {
       fireEvent.wheel(svg, { deltaY: 100, clientX: 400, clientY: 300 });
     }
-    vi.advanceTimersByTime(300);
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
     /* Trigger update — re-render kalibruje LOD. */
     fireEvent.wheel(svg, { deltaY: 100, clientX: 400, clientY: 300 });
     expect(getLod(container)).toBe('1');

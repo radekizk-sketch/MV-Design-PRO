@@ -29,7 +29,6 @@ import type {
   LogicalViewsV1,
   Bus,
   Branch,
-  OverheadLine,
   Substation,
   Source,
   Generator,
@@ -44,7 +43,6 @@ import {
   type StationOnRunRendererProps,
 } from '../renderer/StationOnRunRenderer';
 import {
-  MINI_BLOCK_FOOTPRINT,
   deriveFootprintType,
   type StationFootprintType,
 } from '../renderer/MiniBlockFootprints';
@@ -205,6 +203,11 @@ export function projectBayTelemetry(runtime: BayRuntimeState | null | undefined)
 const X_GPZ = 100;
 const Y_GPZ = 80;
 const GPZ_WIDTH = 200;
+const GPZ_SPACING = 520;
+
+function gpzXByIndex(index: number): number {
+  return X_GPZ + index * GPZ_SPACING;
+}
 
 const Y_SECTIONS = 200;
 const SECTION_X_BASE = 100;
@@ -329,20 +332,39 @@ interface CableRunRendererPropsLight {
   voltageKv?: number | null;
 }
 
+type RunPoint = { x: number; y: number };
+
 function isCableLikeBranch(b: Branch): boolean {
   return b.type === 'cable' || b.type === 'line_overhead';
 }
 
-/** Detekcja brakujących portów endpointu na segmentach kabla/linii. */
+function isMediumVoltageNetworkBranch(snapshot: EnergyNetworkModel, branch: Branch): boolean {
+  const voltages = [readBusVoltageKv(snapshot, branch.from_bus_ref), readBusVoltageKv(snapshot, branch.to_bus_ref)]
+    .filter((value): value is number => value !== null);
+  if (voltages.length === 0) return true;
+  return voltages.some((value) => value >= 1);
+}
+
+function readBusVoltageKv(snapshot: EnergyNetworkModel, busRef: string | null | undefined): number | null {
+  if (!busRef) return null;
+  const bus = (snapshot.buses ?? []).find((candidate) => candidate.ref_id === busRef || candidate.id === busRef);
+  return typeof bus?.voltage_kv === 'number' ? bus.voltage_kv : null;
+}
+
+/** Detekcja odcinków bez realnych terminali elektrycznych.
+ *
+ * `endpoint_a_port` / `endpoint_b_port` są precyzyjną geometrią portu, ale
+ * nie mogą same malować odcinka jako awaryjnego, jeżeli ENM ma poprawne
+ * `from_bus_ref` i `to_bus_ref`. W przeciwnym razie prawidłowe ciągi SN
+ * wyglądały jak błędne mimo zachowanej topologii.
+ */
 function detectMissingEndpointPorts(
   segments: readonly Branch[],
 ): { missing: boolean; missingSegmentRefs: readonly string[] } {
   const missingSegmentRefs: string[] = [];
   for (const seg of segments) {
     if (seg.type !== 'cable' && seg.type !== 'line_overhead') continue;
-    const a = (seg as Cable | OverheadLine).endpoint_a_port;
-    const b = (seg as Cable | OverheadLine).endpoint_b_port;
-    if (!a || !b) {
+    if (!seg.from_bus_ref || !seg.to_bus_ref) {
       missingSegmentRefs.push(seg.ref_id);
     }
   }
@@ -354,6 +376,12 @@ function detectMissingEndpointPorts(
 
 function classifySegmentKind(b: Branch): 'cable_sn' | 'overhead_line_sn' {
   return b.type === 'cable' ? 'cable_sn' : 'overhead_line_sn';
+}
+
+function stationCodeFromName(rawName: string | null | undefined, fallbackOrder: number): string {
+  const match = (rawName ?? '').match(/\bS\d{2,3}\b/i);
+  if (match) return match[0].toUpperCase();
+  return `S${String(fallbackOrder).padStart(2, '0')}`;
 }
 
 /**
@@ -564,11 +592,11 @@ function buildGpzs(snapshot: EnergyNetworkModel): GpzRendererProps[] {
 
     return {
       id: gpz.ref_id,
-      x: X_GPZ + idx * (GPZ_WIDTH + 80),
+      x: gpzXByIndex(idx),
       y: Y_GPZ,
       name: gpz.name || gpz.ref_id,
-      /* INVARIANT 9: gdy null → przekazujemy 110 jako display fallback ALE
-       * z `voltageHighKvKnown=false` flag żeby renderer mógł pokazać "?". */
+      /* INVARIANT 9: gdy null, przekazujemy wartość techniczną tylko dla geometrii,
+       * a renderer pokazuje klasę WN bez znaku zastępczego. */
       voltageHighKv: hvVoltageKv ?? 110,
       voltageHighKvKnown: hvVoltageKvKnown,
       voltageLowKv: lvVoltageKv,
@@ -993,6 +1021,11 @@ function readCatalogTypeLabel(branch: Branch): string | undefined {
 
 function formatCatalogTypeLabel(raw: string): string {
   const value = raw.trim();
+  const canonicalCable = value.match(/^cable-base-(xlpe|epr)-(al|cu)-([13])c-(\d+)$/i);
+  if (canonicalCable) {
+    const [, insulation, conductor, cores, section] = canonicalCable;
+    return `Kabel SN ${insulation.toUpperCase()} ${conductor.toLowerCase() === 'cu' ? 'Cu' : 'Al'} ${cores}x${section} mm²`;
+  }
   const directTypePattern = /^[A-Z0-9ĄĆĘŁŃÓŚŹŻ][A-Z0-9ĄĆĘŁŃÓŚŹŻ/ .-]{2,}$/u;
   if (directTypePattern.test(value) && !value.includes(':')) return value;
 
@@ -1024,8 +1057,8 @@ function formatCatalogTypeLabel(raw: string): string {
  *   3) Brak danych → `null` (Invariant 9: brak danych ≠ 110 kV default).
  *
  * Eliminacja heurystyki "voltage_kv > 30" (niejednoznaczne dla 30 kV
- * wytwórców). Zwracane null sygnalizuje renderowi brak danych — UI pokaże
- * placeholder zamiast fałszywego "110 kV".
+ * wytwórców). Zwracane null sygnalizuje rendererowi, żeby pokazał klasę WN
+ * bez zmyślania wartości liczbowej.
  */
 function inferHvVoltageKv(
   transformers: readonly Transformer[],
@@ -1108,47 +1141,210 @@ function buildSections(snapshot: EnergyNetworkModel): SectionRendererProps[] {
  *
  * Wynik: deterministyczna pozycja stacji w SLD, oparta na ENM truth (Inv 9).
  */
+type SldLineRunForLayout = {
+  id: string;
+  run_kind: 'main_trunk' | 'branch' | 'ring' | 'loop';
+  starting_bay_ref: string | null;
+  starting_port_ref: string | null;
+  segments: Array<{ segment_ref: string; order: number }>;
+  stations: Array<{ substation_ref: string; order: number }>;
+  nop_station_ref?: string | null;
+  parent_run_ref?: string | null;
+  branch_origin_station_ref?: string | null;
+};
+
+const FIELD_STATION_KINDS = new Set([
+  'mv_lv', 'inline', 'branch', 'terminal', 'sectional', 'switching', 'customer',
+]);
+
+function collectFieldStationByRef(snapshot: EnergyNetworkModel): Map<string, Substation> {
+  const fieldStationByRef = new Map<string, Substation>();
+  for (const station of snapshot.substations ?? []) {
+    if (FIELD_STATION_KINDS.has(station.station_type)) {
+      fieldStationByRef.set(station.ref_id, station);
+    }
+  }
+  return fieldStationByRef;
+}
+
+function stationShellsForLineInference(
+  fieldStationByRef: ReadonlyMap<string, Substation>,
+): StationOnRunRendererProps[] {
+  return [...fieldStationByRef.values()].map((station) => ({
+    id: station.ref_id,
+    x: 0,
+    y: 0,
+    name: station.name || station.ref_id,
+    topologicalType: classifyTopologicalType(station),
+    nnVoltageLevelsCount: 1,
+  }));
+}
+
+function resolveFieldStationRefForBus(
+  fieldStationByRef: ReadonlyMap<string, Substation>,
+  busRef: string | null | undefined,
+): string | null {
+  if (!busRef) return null;
+  for (const station of fieldStationByRef.values()) {
+    if ((station.bus_refs ?? []).includes(busRef)) return station.ref_id;
+    const baseRef = station.ref_id.endsWith('/station')
+      ? station.ref_id.slice(0, -'/station'.length)
+      : station.ref_id;
+    if (busRef.startsWith(`${baseRef}/`)) return station.ref_id;
+  }
+  return null;
+}
+
+function inferStationRefsForSegments(
+  segmentRefs: readonly string[],
+  branchByRef: ReadonlyMap<string, Branch>,
+  fieldStationByRef: ReadonlyMap<string, Substation>,
+): string[] {
+  const stationRefs: string[] = [];
+  for (const segmentRef of segmentRefs) {
+    const branch = branchByRef.get(segmentRef);
+    if (!branch) continue;
+    const candidates = [branch.to_bus_ref, branch.from_bus_ref]
+      .map((busRef) => resolveFieldStationRefForBus(fieldStationByRef, busRef))
+      .filter((stationRef): stationRef is string => Boolean(stationRef));
+    for (const stationRef of candidates) {
+      if (!stationRefs.includes(stationRef)) stationRefs.push(stationRef);
+    }
+  }
+  return stationRefs;
+}
+
+function normalizeLineRunForLayout(
+  lineRun: NonNullable<EnergyNetworkModel['line_runs']>[number],
+): SldLineRunForLayout {
+  return {
+    id: lineRun.id,
+    run_kind: lineRun.run_kind,
+    starting_bay_ref: lineRun.starting_bay_ref ?? null,
+    starting_port_ref: lineRun.starting_port_ref ?? null,
+    segments: [...lineRun.segments],
+    stations: [...lineRun.stations],
+    nop_station_ref: lineRun.nop_station_ref ?? null,
+    parent_run_ref: lineRun.parent_run_ref ?? null,
+    branch_origin_station_ref: lineRun.branch_origin_station_ref ?? null,
+  };
+}
+
+function compareLineRunsForLayout(a: SldLineRunForLayout, b: SldLineRunForLayout): number {
+  const aDerived = a.id.startsWith('synth_trunk_') || a.id.startsWith('corridor_sld_');
+  const bDerived = b.id.startsWith('synth_trunk_') || b.id.startsWith('corridor_sld_');
+  if (aDerived !== bDerived) return aDerived ? 1 : -1;
+  return a.id.localeCompare(b.id);
+}
+
+function buildSldLineRunsForLayout(
+  snapshot: EnergyNetworkModel,
+  fieldStationByRef: ReadonlyMap<string, Substation>,
+): SldLineRunForLayout[] {
+  const explicitRuns = (snapshot.line_runs ?? []).map(normalizeLineRunForLayout);
+  const coveredSegments = new Set<string>();
+  for (const run of explicitRuns) {
+    for (const segmentRef of lineRunSegmentRefs(run)) {
+      coveredSegments.add(segmentRef);
+    }
+  }
+
+  const cables = (snapshot.branches ?? [])
+    .filter((branch) => isCableLikeBranch(branch) && isMediumVoltageNetworkBranch(snapshot, branch));
+  const branchByRef = new Map(cables.map((branch) => [branch.ref_id, branch]));
+
+  const corridorRuns = [...(snapshot.corridors ?? [])]
+    .sort((a, b) => a.ref_id.localeCompare(b.ref_id))
+    .flatMap((corridor, corridorIndex): SldLineRunForLayout[] => {
+      const segmentRefs = (corridor.ordered_segment_refs ?? [])
+        .filter((segmentRef) => !coveredSegments.has(segmentRef));
+      if (segmentRefs.length === 0) return [];
+      for (const segmentRef of segmentRefs) coveredSegments.add(segmentRef);
+      const stationRefs = uniqueStrings([
+        ...(corridor.station_refs ?? []),
+        ...inferStationRefsForSegments(segmentRefs, branchByRef, fieldStationByRef),
+      ]).filter((stationRef) => fieldStationByRef.has(stationRef));
+      return [{
+        id: `corridor_sld_${corridor.ref_id || corridor.id || corridorIndex}`,
+        run_kind: corridor.corridor_type === 'ring' ? 'ring' : 'main_trunk',
+        starting_bay_ref: null,
+        starting_port_ref: null,
+        segments: segmentRefs.map((segment_ref, order) => ({ segment_ref, order: order + 1 })),
+        stations: stationRefs.map((substation_ref, order) => ({ substation_ref, order: order + 1 })),
+        nop_station_ref: corridor.no_point_ref ?? null,
+      }];
+    });
+
+  const uncoveredCables = cables.filter((branch) => !coveredSegments.has(branch.ref_id));
+  const layoutRuns: SldLineRunForLayout[] = [...explicitRuns, ...corridorRuns];
+  const synthesizedRuns = inferLineRunsFromBranchChain(
+    snapshot,
+    uncoveredCables,
+    stationShellsForLineInference(fieldStationByRef),
+  )
+    .filter((run) => run.segments.length > 0 && run.stations.length > 0);
+
+  synthesizedRuns.forEach((run, index) => {
+    const firstSegment = branchByRef.get(run.segments[0]?.segment_ref ?? '');
+    const originStationRef = resolveFieldStationRefForBus(fieldStationByRef, firstSegment?.from_bus_ref);
+    const existingRun = originStationRef
+      ? layoutRuns.find((candidate) =>
+        candidate.stations.some((station) => station.substation_ref === originStationRef),
+      )
+      : null;
+
+    if (existingRun) {
+      const segmentOrderBase = existingRun.segments.reduce(
+        (maxOrder, segment) => Math.max(maxOrder, segment.order),
+        0,
+      );
+      const stationOrderBase = existingRun.stations.reduce(
+        (maxOrder, station) => Math.max(maxOrder, station.order),
+        0,
+      );
+      existingRun.segments.push(
+        ...run.segments.map((segment, segmentIndex) => ({
+          ...segment,
+          order: segmentOrderBase + segmentIndex + 1,
+        })),
+      );
+      const knownStations = new Set(existingRun.stations.map((station) => station.substation_ref));
+      existingRun.stations.push(
+        ...run.stations
+          .filter((station) => !knownStations.has(station.substation_ref))
+          .map((station, stationIndex) => ({
+            ...station,
+            order: stationOrderBase + stationIndex + 1,
+          })),
+      );
+      return;
+    }
+
+    layoutRuns.push({
+      id: layoutRuns.length > 0 ? `synth_trunk_extra_${index}` : run.id,
+      run_kind: 'main_trunk',
+      starting_bay_ref: null,
+      starting_port_ref: null,
+      segments: run.segments,
+      stations: run.stations,
+      nop_station_ref: null,
+    });
+  });
+
+  return layoutRuns.sort(compareLineRunsForLayout);
+}
+
 function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[] {
-  const substations = snapshot.substations ?? [];
   const corridors = snapshot.corridors ?? [];
   const stations: StationOnRunRendererProps[] = [];
 
-  const fieldStationKinds = new Set([
-    'mv_lv', 'inline', 'branch', 'terminal', 'sectional', 'switching', 'customer',
-  ]);
-  const fieldStationByRef = new Map<string, Substation>();
-  for (const st of substations) {
-    if (fieldStationKinds.has(st.station_type)) {
-      fieldStationByRef.set(st.ref_id, st);
-    }
-  }
+  const fieldStationByRef = collectFieldStationByRef(snapshot);
 
   // K30 audit loop: jeśli ENM nie ma jawnych line_runs ALE branches tworzą
   // łańcuch GPZ→S→S→..., zsynchronizuj line_runs z buildCableRuns. Bez tego
   // stacje wpadają w orphan-fallback (4×5 grid cluster), a kable są jeden
   // wspólny main_trunk — visual inconsistency.
-  const explicitLineRuns = snapshot.line_runs ?? [];
-  const lineRuns = explicitLineRuns.length > 0
-    ? explicitLineRuns
-    : (() => {
-      const tempStations: StationOnRunRendererProps[] = [...fieldStationByRef.values()].map((s) => ({
-        id: s.ref_id, x: 0, y: 0, name: s.name || s.ref_id,
-        topologicalType: classifyTopologicalType(s), nnVoltageLevelsCount: 1,
-      }));
-      const cables = (snapshot.branches ?? []).filter(isCableLikeBranch);
-      const synth = inferLineRunsFromBranchChain(snapshot, cables, tempStations)
-        .filter((lr) => lr.segments.length >= 2);
-      // Dostosuj do EnergyNetworkModel.line_runs shape (run_kind itp.)
-      return synth.map((s) => ({
-        id: s.id,
-        run_kind: 'main_trunk' as const,
-        starting_bay_ref: null,
-        starting_port_ref: null,
-        segments: s.segments,
-        stations: s.stations,
-        nop_station_ref: null,
-      }));
-    })();
+  const lineRuns = buildSldLineRunsForLayout(snapshot, fieldStationByRef);
 
   /* Phase 0B-4: śledzimy które stacje już zostały umieszczone przez line_runs.
    * Reszta to "orphans" (legacy fallback). */
@@ -1157,16 +1353,14 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
   const branchByRef = new Map((snapshot.branches ?? []).map((b) => [b.ref_id, b]));
 
   // 1. Stacje z line_runs — deterministyczne sortowanie po lineRun.id, potem station.order.
-  const sortedRuns = [...lineRuns].sort((a, b) => a.id.localeCompare(b.id));
-  // K30-51 LAYOUT OVERHAUL: stacje pozycjonowane przez `distanceFromGpzKm`
-  // (cumKm × PX_PER_KM), nie uniform pitch. Eliminuje 800px gap GPZ→stations
-  // i "klocki w gridzie" wygląd. Snake multi-row routing wyłączony domyślnie
-  // (threshold=100) — bo distance-based zwykle mieści się w widocznym canvasie
-  // (30 stacji × 100m avg = 3 km × 200 px/km = 600 px). Multi-row fallback
-  // tylko dla extreme cases > 100 stacji.
-  const STATIONS_PER_ROW_THRESHOLD = 100;
+  const sortedRuns = [...lineRuns].sort(compareLineRunsForLayout);
+  // Długie ciągi terenowe zawijamy do kanałów SLD. To nie jest limit produktu:
+  // ENM może mieć dowolną liczbę stacji, a adapter zachowuje kolejność
+  // topologiczną przez układ wężowy zamiast ściskać dużą sieć w jednym rzędzie.
+  const STATIONS_PER_ROW_THRESHOLD = 24;
   const STATIONS_PER_ROW = 12;
-  const ROW_HEIGHT = 300; // vertical space per row (station body + margin)
+  let stationSequence = 1;
+  const ROW_HEIGHT = 320; // symbol stacji + etykiety odcinków + margines
 
   sortedRuns.forEach((lr, runIdx) => {
     const sortedStations = [...lr.stations].sort((a, b) => a.order - b.order);
@@ -1176,6 +1370,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
     let previousXInRow: number | null = null;
     let currentRowIdx = 0;
     sortedStations.forEach((sref, posInRun) => {
+      if (placed.has(sref.substation_ref)) return;
       const sub = fieldStationByRef.get(sref.substation_ref);
       if (!sub) return;
       placed.add(sref.substation_ref);
@@ -1188,10 +1383,12 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
           const len = 'length_km' in (branch ?? {}) ? (branch as { length_km: number }).length_km : 0;
           return acc + (len ?? 0);
         }, 0);
-      const stationCode = `S${String(sref.order).padStart(2, '0')}`;
+      const stationCode = stationCodeFromName(sub.name, stationSequence);
+      stationSequence += 1;
 
-      // Multi-row snake routing fallback (K30-10 preserved for extreme cases)
+      // Kanały terenowe: parzyste rzędy lewo→prawo, nieparzyste prawo→lewo.
       const rowIdx = useMultiRow ? Math.floor(posInRun / STATIONS_PER_ROW) : 0;
+      const positionInRow = posInRun % STATIONS_PER_ROW;
       if (rowIdx !== currentRowIdx) {
         previousXInRow = null;
         currentRowIdx = rowIdx;
@@ -1199,7 +1396,10 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
       // K30-51: distance-based X. CumKm > 0 → exact position from trunk start.
       // CumKm = 0 (no segments yet) → fallback uniform pitch posInRun * default.
       const stationX = useMultiRow
-        ? X_STATIONS_START + ((posInRun % STATIONS_PER_ROW)) * STATION_PITCH  // legacy K30-10
+        ? X_STATIONS_START
+          + (rowIdx % 2 === 1
+            ? STATIONS_PER_ROW - 1 - positionInRow
+            : positionInRow) * STATION_PITCH
         : stationXFromCumKm(GPZ_TRUNK_HEAD_X, cumKm, posInRun, previousXInRow);
       previousXInRow = stationX;
 
@@ -1247,6 +1447,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
           + (sortedRuns.length + corridorIdx) * RUN_PITCH
           + STATION_RUN_TRUNK_OFFSET_Y,
         name: normalizeStationName(sub.name, sub.ref_id),
+        stationCode: stationCodeFromName(sub.name, stationSequence),
         topologicalType: classifyTopologicalType(sub),
         nnVoltageLevelsCount: 1,
         footprintType: stationSldDetails.footprintType,
@@ -1261,6 +1462,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         busVoltageKv: stationSldDetails.mainBusVoltageKv,
         transformerVectorGroup: stationSldDetails.transformerVectorGroup,
       });
+      stationSequence += 1;
     });
   });
 
@@ -1278,6 +1480,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
       x: X_STATIONS_START + positionInRun * STATION_PITCH,
       y: Y_RUN_BASE + runIndex * RUN_PITCH + STATION_RUN_TRUNK_OFFSET_Y,
       name: normalizeStationName(st.name, st.ref_id),
+      stationCode: stationCodeFromName(st.name, stationSequence),
       topologicalType: classifyTopologicalType(st),
       nnVoltageLevelsCount: 1,
       footprintType: stationSldDetails.footprintType,
@@ -1290,7 +1493,9 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
       totalLoadKw: stationSldDetails.totalLoadKw,
       totalGenerationKw: stationSldDetails.totalGenerationKw,
       busVoltageKv: stationSldDetails.mainBusVoltageKv,
+      transformerVectorGroup: stationSldDetails.transformerVectorGroup,
     });
+    stationSequence += 1;
   });
 
   return stations;
@@ -1342,13 +1547,11 @@ function buildStationMiniBlockDetails(
   station: Substation,
 ): StationMiniBlockDetails {
   const derBadges = buildStationDerBadges(snapshot, station.ref_id);
-  const explicitBays = buildExplicitStationMiniBays(snapshot, station.ref_id);
+  const explicitBays = buildExplicitStationMiniBays(snapshot, station);
   const explicitRoles = explicitBays.map((bay) => bay.fieldRole);
   const hasMvSideDer = derBadges.some((badge) => badge.connectionSide !== 'nn');
   const footprintType = deriveFootprintType(station.station_type, explicitRoles, hasMvSideDer);
-  const snBays = explicitBays.length > 0
-    ? explicitBays
-    : buildExpectedStationMiniBays(station.ref_id, MINI_BLOCK_FOOTPRINT[footprintType].defaultSnBayRoles);
+  const snBays = explicitBays;
   const transformerRefs = collectStationTransformerRefs(snapshot, station);
   const transformerRatedKva = inferTransformerRatedKva(snapshot, transformerRefs);
 
@@ -1388,8 +1591,7 @@ function buildStationMiniBlockDetails(
     transformerRefs,
     hasTransformer:
       transformerRefs.length > 0 ||
-      snBays.some((bay) => bay.fieldRole === FIELD_ROLE.RMU_TRANSFORMER || bay.fieldRole === FIELD_ROLE.TRANSFORMER) ||
-      MINI_BLOCK_FOOTPRINT[footprintType].hasTransformer,
+      snBays.some((bay) => bay.fieldRole === FIELD_ROLE.RMU_TRANSFORMER || bay.fieldRole === FIELD_ROLE.TRANSFORMER),
     // K30-19: derive count z ENM meta (nn_field_specs filtered FEEDER role)
     // jeśli dostępne. Backward-compat fallback do DER-presence heuristic.
     nnFeedersCount: countNnFeedersFromMeta(station, derBadges),
@@ -1461,14 +1663,17 @@ function collectStationTransformerRefs(
 
 function buildExplicitStationMiniBays(
   snapshot: EnergyNetworkModel,
-  stationRef: string,
+  station: Substation,
 ): MiniBlockBayDescriptor[] {
   // K30-65: cache snapshot.branches by ref_id for O(1) equipment lookup
   const branchByRef = new Map(
     (snapshot.branches ?? []).map((b) => [b.ref_id, b]),
   );
-  return [...(snapshot.bays ?? [])]
-    .filter((bay) => bay.substation_ref === stationRef)
+  const fieldSpecBays = buildStationMiniBaysFromFieldSpecs(station, branchByRef);
+  const fieldSpecRefs = new Set(fieldSpecBays.map((bay) => bay.bayRef));
+  const stationRefs = new Set([station.ref_id, station.id].filter(Boolean));
+  const legacyBays = [...(snapshot.bays ?? [])]
+    .filter((bay) => stationRefs.has(bay.substation_ref))
     .sort(compareBaysForSld)
     .map((bay, index) => {
       const fieldRole = mapStationBayRoleToMiniRole(ENM_BAY_ROLE_TO_FIELD_ROLE[bay.bay_role]);
@@ -1487,6 +1692,188 @@ function buildExplicitStationMiniBays(
         esState: states.es,
       };
     });
+
+  if (fieldSpecBays.length === 0) return legacyBays;
+  return [
+    ...fieldSpecBays,
+    ...legacyBays.filter((bay) => !fieldSpecRefs.has(bay.bayRef)),
+  ];
+}
+
+interface StationFieldSpec {
+  readonly field_ref?: string;
+  readonly name?: string;
+  readonly bay_role?: string;
+  readonly bus_ref?: string;
+  readonly equipment_refs: readonly string[];
+  readonly protection_ref?: string | null;
+  readonly tags: readonly string[];
+  readonly meta: Record<string, unknown>;
+}
+
+function buildStationMiniBaysFromFieldSpecs(
+  station: Substation,
+  branchByRef: Map<string, Branch>,
+): MiniBlockBayDescriptor[] {
+  return readStationFieldSpecs(station)
+    .sort(compareStationFieldSpecs)
+    .map((spec, index) => {
+      const fieldRole = stationFieldRoleFromSpec(spec);
+      const states = deriveSwitchStatesFromEquipmentRefs(spec.equipment_refs, branchByRef);
+      return {
+        bayRef: spec.field_ref ?? `${station.ref_id}/field/${index + 1}`,
+        fieldRole: mapStationBayRoleToMiniRole(fieldRole),
+        designation: stationFieldDesignation(spec, index),
+        hasMissingRequiredDevice: spec.equipment_refs.length === 0,
+        cbState: states.cb,
+        dsState: states.ds,
+        esState: states.es,
+      };
+    });
+}
+
+function readStationFieldSpecs(station: Substation): StationFieldSpec[] {
+  const rawSpecs = station.meta?.field_specs;
+  if (!Array.isArray(rawSpecs)) return [];
+  return rawSpecs
+    .filter(isPlainRecord)
+    .map((raw): StationFieldSpec => ({
+      field_ref: getString(raw.field_ref),
+      name: getString(raw.name),
+      bay_role: getString(raw.bay_role),
+      bus_ref: getString(raw.bus_ref),
+      equipment_refs: getStringArray(raw.equipment_refs),
+      protection_ref: getString(raw.protection_ref),
+      tags: getStringArray(raw.tags),
+      meta: isPlainRecord(raw.meta) ? raw.meta : {},
+    }))
+    .filter((spec) => Boolean(spec.field_ref || spec.bus_ref || spec.equipment_refs.length > 0));
+}
+
+function compareStationFieldSpecs(a: StationFieldSpec, b: StationFieldSpec): number {
+  const rankDiff = stationFieldRoleRank(a) - stationFieldRoleRank(b);
+  if (rankDiff !== 0) return rankDiff;
+  return stationFieldStableKey(a).localeCompare(stationFieldStableKey(b), 'pl');
+}
+
+function stationFieldRoleRank(spec: StationFieldSpec): number {
+  const role = stationFieldRoleFromSpec(spec);
+  switch (role) {
+    case FIELD_ROLE.LINE_IN:
+      return 0;
+    case FIELD_ROLE.LINE_OUT:
+      return 1;
+    case FIELD_ROLE.LINE_BRANCH:
+      return 2;
+    case FIELD_ROLE.TRANSFORMER:
+      return 3;
+    case FIELD_ROLE.COUPLER:
+      return 4;
+    case FIELD_ROLE.MEASUREMENT:
+      return 5;
+    default:
+      return 99;
+  }
+}
+
+function stationFieldStableKey(spec: StationFieldSpec): string {
+  return [spec.field_ref, spec.name, spec.bus_ref].filter(Boolean).join('|');
+}
+
+function stationFieldRoleFromSpec(spec: StationFieldSpec): MiniBlockBayDescriptor['fieldRole'] {
+  const metaRole = getString(spec.meta.field_role);
+  return fieldRoleFromCatalogRole(metaRole)
+    ?? fieldRoleFromBayRole(spec.bay_role)
+    ?? FIELD_ROLE.LINE_BRANCH;
+}
+
+function fieldRoleFromCatalogRole(raw: string | undefined): MiniBlockBayDescriptor['fieldRole'] | null {
+  const role = normalizeRole(raw);
+  switch (role) {
+    case 'LINIA_IN':
+    case 'LINE_IN':
+    case 'IN':
+      return FIELD_ROLE.LINE_IN;
+    case 'LINIA_OUT':
+    case 'LINE_OUT':
+    case 'OUT':
+      return FIELD_ROLE.LINE_OUT;
+    case 'LINIA_ODG':
+    case 'LINE_BRANCH':
+    case 'FEEDER':
+      return FIELD_ROLE.LINE_BRANCH;
+    case 'TRANSFORMATOROWE':
+    case 'TRANSFORMER':
+    case 'TR':
+      return FIELD_ROLE.TRANSFORMER;
+    case 'SPRZEGLO':
+    case 'COUPLER':
+      return FIELD_ROLE.COUPLER;
+    case 'POMIAROWE':
+    case 'MEASUREMENT':
+      return FIELD_ROLE.MEASUREMENT;
+    default:
+      return null;
+  }
+}
+
+function fieldRoleFromBayRole(raw: string | undefined): MiniBlockBayDescriptor['fieldRole'] | null {
+  const role = normalizeRole(raw);
+  switch (role) {
+    case 'IN':
+      return FIELD_ROLE.LINE_IN;
+    case 'OUT':
+      return FIELD_ROLE.LINE_OUT;
+    case 'FEEDER':
+      return FIELD_ROLE.LINE_BRANCH;
+    case 'TR':
+      return FIELD_ROLE.TRANSFORMER;
+    case 'COUPLER':
+      return FIELD_ROLE.COUPLER;
+    case 'MEASUREMENT':
+      return FIELD_ROLE.MEASUREMENT;
+    case 'OZE':
+      return FIELD_ROLE.LINE_OUT;
+    default:
+      return null;
+  }
+}
+
+function stationFieldDesignation(spec: StationFieldSpec, index: number): string {
+  const role = stationFieldRoleFromSpec(spec);
+  switch (role) {
+    case FIELD_ROLE.LINE_IN:
+      return 'WE';
+    case FIELD_ROLE.LINE_OUT:
+      return 'WY';
+    case FIELD_ROLE.LINE_BRANCH:
+      return 'ODG';
+    case FIELD_ROLE.TRANSFORMER:
+      return 'TR';
+    case FIELD_ROLE.COUPLER:
+      return 'SPR';
+    case FIELD_ROLE.MEASUREMENT:
+      return 'POM';
+    default:
+      return spec.name ?? `Pole SN ${index + 1}`;
+  }
+}
+
+function normalizeRole(raw: string | undefined): string {
+  return (raw ?? '').trim().toUpperCase();
+}
+
+function getString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
+function getStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string' && item.length > 0);
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /**
@@ -1501,10 +1888,17 @@ function deriveBayStatesFromEquipment(
   bay: Bay,
   branchByRef: Map<string, Branch>,
 ): { cb: 'closed' | 'open' | 'unknown'; ds: 'closed' | 'open' | 'unknown'; es: 'closed' | 'open' | 'unknown' } {
+  return deriveSwitchStatesFromEquipmentRefs(bay.equipment_refs, branchByRef);
+}
+
+function deriveSwitchStatesFromEquipmentRefs(
+  equipmentRefs: readonly string[],
+  branchByRef: Map<string, Branch>,
+): { cb: 'closed' | 'open' | 'unknown'; ds: 'closed' | 'open' | 'unknown'; es: 'closed' | 'open' | 'unknown' } {
   let cb: 'closed' | 'open' | 'unknown' = 'closed';
   let ds: 'closed' | 'open' | 'unknown' = 'closed';
   const es: 'closed' | 'open' | 'unknown' = 'open';
-  for (const ref of bay.equipment_refs ?? []) {
+  for (const ref of equipmentRefs) {
     const branch = branchByRef.get(ref);
     if (!branch) continue;
     const status: 'closed' | 'open' | 'unknown' =
@@ -1552,31 +1946,6 @@ function bayRuntimeSwitchStates(bay: Bay): {
     else if (k.includes('es') || k.includes('earth') || k.includes('uziemnik')) es = state;
   }
   return { cb, ds, es };
-}
-
-function buildExpectedStationMiniBays(
-  stationRef: string,
-  defaultRoles: readonly MiniBlockBayDescriptor['fieldRole'][],
-): MiniBlockBayDescriptor[] {
-  return defaultRoles.map((fieldRole, index) => ({
-    bayRef: `${stationRef}/expected-bay/${index + 1}`,
-    fieldRole,
-    designation: expectedStationBayDesignation(fieldRole, index),
-    hasMissingRequiredDevice: true,
-  }));
-}
-
-function expectedStationBayDesignation(
-  fieldRole: MiniBlockBayDescriptor['fieldRole'],
-  index: number,
-): string {
-  // K30-56: OSD-compliant Q-numeracja (Q01, Q02, ...) for line bays.
-  // Special roles keep semantic name (TR/SPR/POM) per OSD convention.
-  if (fieldRole === FIELD_ROLE.RMU_TRANSFORMER || fieldRole === FIELD_ROLE.TRANSFORMER) return 'TR';
-  if (fieldRole === FIELD_ROLE.COUPLER) return 'SPR';
-  if (fieldRole === FIELD_ROLE.MEASUREMENT) return 'POM';
-  // K30-56: zeropadded Q-prefix dla wszystkich line bays (Q01, Q02, ...)
-  return `Q${String(index + 1).padStart(2, '0')}`;
 }
 
 function mapStationBayRoleToMiniRole(fieldRole: MiniBlockBayDescriptor['fieldRole']): MiniBlockBayDescriptor['fieldRole'] {
@@ -1692,6 +2061,9 @@ function inferLineRunsFromBranchChain(
   // Outgoing map: from_bus_ref → cable departing from this bus.
   // GPZ section buses naming: 'gpz/{hash}/section/NNN/bus_sn'.
   // K30 sample: 'gpz/.../section/001/bus_sn' ma outgoing cable.
+  const graphRuns = inferLineRunsFromMvBusGraph(snapshot, cables, stations, gpzBusRefs);
+  if (graphRuns.length > 0) return graphRuns;
+
   const outgoing = new Map<string, Branch>();
   for (const c of cables) {
     if (typeof c.from_bus_ref === 'string') outgoing.set(c.from_bus_ref, c);
@@ -1747,13 +2119,151 @@ function inferLineRunsFromBranchChain(
   return synthRuns;
 }
 
+function inferLineRunsFromMvBusGraph(
+  snapshot: EnergyNetworkModel,
+  cables: readonly Branch[],
+  stations: readonly StationOnRunRendererProps[],
+  gpzBusRefs: ReadonlySet<string>,
+): ReturnType<typeof inferLineRunsFromBranchChain> {
+  if (stations.length === 0 || cables.length === 0) return [];
+
+  const stationIds = new Set(stations.map((s) => s.id));
+  const busVoltageByRef = new Map<string, number>();
+  for (const bus of snapshot.buses ?? []) {
+    if (typeof bus.ref_id === 'string' && typeof bus.voltage_kv === 'number') {
+      busVoltageByRef.set(bus.ref_id, bus.voltage_kv);
+    }
+    if (typeof bus.id === 'string' && typeof bus.voltage_kv === 'number') {
+      busVoltageByRef.set(bus.id, bus.voltage_kv);
+    }
+  }
+
+  const stationByBusRef = new Map<string, string>();
+  const busRefsByStationRef = new Map<string, string[]>();
+  for (const substation of snapshot.substations ?? []) {
+    if (!stationIds.has(substation.ref_id)) continue;
+    const baseRef = substation.ref_id.endsWith('/station')
+      ? substation.ref_id.slice(0, -'/station'.length)
+      : substation.ref_id;
+    const busRefs = uniqueStrings([
+      ...(substation.bus_refs ?? []),
+      `${baseRef}/sn_bus`,
+      `${baseRef}/bus_sn`,
+      `${baseRef}/sn_bus_in`,
+      `${baseRef}/sn_bus_out`,
+    ]).filter((busRef) => {
+      const voltageKv = busVoltageByRef.get(busRef);
+      return voltageKv === undefined || voltageKv >= 1;
+    });
+    busRefsByStationRef.set(substation.ref_id, busRefs);
+    for (const busRef of busRefs) {
+      stationByBusRef.set(busRef, substation.ref_id);
+    }
+  }
+
+  const outgoing = new Map<string, Branch[]>();
+  for (const cable of [...cables].sort((a, b) => a.ref_id.localeCompare(b.ref_id))) {
+    if (typeof cable.from_bus_ref !== 'string') continue;
+    const list = outgoing.get(cable.from_bus_ref) ?? [];
+    list.push(cable);
+    outgoing.set(cable.from_bus_ref, list);
+  }
+
+  const stationRootBuses = [...busRefsByStationRef.values()]
+    .flat()
+    .filter((busRef) => outgoing.has(busRef));
+  const rootBuses = uniqueStrings([...outgoing.keys(), ...stationRootBuses])
+    .filter((busRef) =>
+      gpzBusRefs.has(busRef)
+      || (busRef.includes('/section/') && busRef.endsWith('/bus_sn'))
+      || stationByBusRef.has(busRef)
+    )
+    .sort();
+  if (rootBuses.length === 0) return [];
+
+  const visitedSegments = new Set<string>();
+  const runs: ReturnType<typeof inferLineRunsFromBranchChain> = [];
+  for (const rootBus of rootBuses) {
+    const chain: Branch[] = [];
+    const chainStationRefs: string[] = [];
+    let frontier = [rootBus];
+    let safetyCounter = 0;
+
+    while (frontier.length > 0 && safetyCounter < 1000) {
+      const cable = pickNextOutgoingCable(outgoing, frontier, visitedSegments);
+      if (!cable) break;
+      visitedSegments.add(cable.ref_id);
+      chain.push(cable);
+
+      const stationRef = resolveStationRefForBus(cable.to_bus_ref, stationByBusRef, stationIds);
+      if (stationRef && !chainStationRefs.includes(stationRef)) {
+        chainStationRefs.push(stationRef);
+      }
+      frontier = uniqueStrings([
+        ...(typeof cable.to_bus_ref === 'string' ? [cable.to_bus_ref] : []),
+        ...(stationRef ? busRefsByStationRef.get(stationRef) ?? [] : []),
+      ]);
+      safetyCounter += 1;
+    }
+
+    if (chain.length > 0 && chainStationRefs.length > 0) {
+      runs.push({
+        id: `synth_trunk_${runs.length}`,
+        segments: chain.map((c, i) => ({ segment_ref: c.ref_id, order: i + 1 })),
+        stations: chainStationRefs.map((ref, i) => ({ substation_ref: ref, order: i + 1 })),
+      });
+    }
+  }
+
+  return runs;
+}
+
+function pickNextOutgoingCable(
+  outgoing: ReadonlyMap<string, readonly Branch[]>,
+  frontier: readonly string[],
+  visitedSegments: ReadonlySet<string>,
+): Branch | null {
+  for (const busRef of uniqueStrings(frontier).sort()) {
+    const next = (outgoing.get(busRef) ?? []).find((branch) => !visitedSegments.has(branch.ref_id));
+    if (next) return next;
+  }
+  return null;
+}
+
+function resolveStationRefForBus(
+  busRef: string | null | undefined,
+  stationByBusRef: ReadonlyMap<string, string>,
+  stationIds: ReadonlySet<string>,
+): string | null {
+  if (!busRef) return null;
+  const exact = stationByBusRef.get(busRef);
+  if (exact) return exact;
+  const stnMatch = busRef.match(/^(stn\/[^/]+)\//);
+  if (stnMatch) {
+    const stationRef = `${stnMatch[1]}/station`;
+    if (stationIds.has(stationRef)) return stationRef;
+  }
+  for (const stationRef of stationIds) {
+    const baseRef = stationRef.endsWith('/station')
+      ? stationRef.slice(0, -'/station'.length)
+      : stationRef;
+    if (busRef.startsWith(`${baseRef}/`)) return stationRef;
+  }
+  return null;
+}
+
+function uniqueStrings(values: readonly string[]): string[] {
+  return [...new Set(values.filter((value) => value.length > 0))];
+}
+
 function buildCableRuns(
   snapshot: EnergyNetworkModel,
   logicalViews: LogicalViewsV1 | null,
   stations: readonly StationOnRunRendererProps[],
 ): CableRunRendererPropsLight[] {
-  const branches = (snapshot.branches ?? []).filter(isCableLikeBranch);
-  const lineRuns = [...(snapshot.line_runs ?? [])].sort((a, b) => a.id.localeCompare(b.id));
+  const branches = (snapshot.branches ?? [])
+    .filter((branch) => isCableLikeBranch(branch) && isMediumVoltageNetworkBranch(snapshot, branch));
+  const lineRuns = buildSldLineRunsForLayout(snapshot, collectFieldStationByRef(snapshot));
   const stationByRef = new Map(stations.map((station) => [station.id, station]));
   const runs: CableRunRendererPropsLight[] = [];
 
@@ -2141,12 +2651,13 @@ function buildRunSegmentLabels(
       return [];
     }
     previousLabel = label;
-    const { fromX, toX } = runSegmentXBounds(segments, stationsOnRun, startX, terminalX, index);
+    const pathPoints = buildRunSegmentPathPoints(segments, stationsOnRun, startX, y, terminalX, index);
+    const point = segmentLabelPointFromPath(pathPoints, index);
     return [{
       segmentRef: segment.ref_id,
       text: label,
-      x: (fromX + toX) / 2,
-      y: y + (index % 2 === 0 ? -12 : 18),
+      x: point.x,
+      y: point.y,
     }];
   });
 }
@@ -2159,52 +2670,131 @@ function buildRunSegmentPaths(
   terminalX: number,
 ): NonNullable<CableRunRendererPropsLight['segmentPaths']> {
   return segments.map((segment, index) => {
-    const { fromX, toX } = runSegmentXBounds(segments, stationsOnRun, startX, terminalX, index);
-    const pathPoints = index === 0
-      ? [
-          { x: fromX, y: GPZ_FIELD_CABLE_HEAD_Y },
-          { x: fromX, y },
-          { x: toX, y },
-        ]
-      : [
-          { x: fromX, y },
-          { x: toX, y },
-        ];
     return {
       segmentRef: segment.ref_id,
-      pathPoints,
+      pathPoints: buildRunSegmentPathPoints(segments, stationsOnRun, startX, y, terminalX, index),
       variant: inferCableVariant(segment),
     };
   });
 }
 
-function runSegmentXBounds(
+function buildRunSegmentPathPoints(
   segments: readonly Branch[],
   stationsOnRun: readonly StationOnRunRendererProps[],
   startX: number,
+  y: number,
   terminalX: number,
   index: number,
-): { fromX: number; toX: number } {
+): readonly RunPoint[] {
   const previousStation = stationsOnRun[index - 1];
   const nextStation = stationsOnRun[index];
   if (nextStation) {
-    const fromX = previousStation ? stationOutputX(previousStation) ?? startX : startX;
-    const toX = stationInputX(nextStation) ?? terminalX;
-    return { fromX, toX: Math.max(fromX, toX) };
+    const nextDirection = stationRunDirection(nextStation, stationsOnRun);
+    const toX = stationEntryX(nextStation, nextDirection) ?? terminalX;
+    const toY = stationRunY(nextStation);
+
+    if (!previousStation) {
+      return [
+        { x: startX, y: GPZ_FIELD_CABLE_HEAD_Y },
+        { x: startX, y: toY },
+        { x: toX, y: toY },
+      ];
+    }
+
+    const previousDirection = stationRunDirection(previousStation, stationsOnRun);
+    const fromX = stationExitX(previousStation, previousDirection) ?? startX;
+    const fromY = stationRunY(previousStation);
+    if (Math.abs(fromY - toY) <= 0.5) {
+      return [
+        { x: fromX, y: fromY },
+        { x: toX, y: toY },
+      ];
+    }
+
+    const points: RunPoint[] = [
+      { x: fromX, y: fromY },
+      { x: fromX, y: toY },
+    ];
+    if (Math.abs(fromX - toX) > 0.5) {
+      points.push({ x: toX, y: toY });
+    }
+    return points;
   }
 
   const anchoredSegments = Math.min(stationsOnRun.length, segments.length);
+  const lastStation = anchoredSegments > 0 ? stationsOnRun[anchoredSegments - 1] : null;
+  const lastDirection = lastStation ? stationRunDirection(lastStation, stationsOnRun) : 'ltr';
   const remainingStart = anchoredSegments > 0
-    ? stationOutputX(stationsOnRun[anchoredSegments - 1]) ?? startX
+    ? stationExitX(lastStation ?? undefined, lastDirection) ?? startX
     : startX;
+  const remainingEnd = lastDirection === 'rtl'
+    ? Math.min(remainingStart - STATION_PITCH, X_STATIONS_START - STATION_PITCH)
+    : terminalX;
+  const remainingY = lastStation ? stationRunY(lastStation) : y;
   const remainingSegments = Math.max(segments.length - anchoredSegments, 1);
   const remainingIndex = Math.max(0, index - anchoredSegments);
-  const segmentPitch = Math.max(40, (terminalX - remainingStart) / remainingSegments);
+  const segmentPitch = (remainingEnd - remainingStart) / remainingSegments;
   const fromX = remainingStart + segmentPitch * remainingIndex;
   const toX = remainingIndex === remainingSegments - 1
-    ? terminalX
+    ? remainingEnd
     : remainingStart + segmentPitch * (remainingIndex + 1);
-  return { fromX, toX };
+  return [
+    { x: fromX, y: remainingY },
+    { x: toX, y: remainingY },
+  ];
+}
+
+function stationRunY(station: StationOnRunRendererProps): number {
+  return station.y - STATION_RUN_TRUNK_OFFSET_Y;
+}
+
+function stationRunDirection(
+  station: StationOnRunRendererProps,
+  stationsOnRun: readonly StationOnRunRendererProps[],
+): 'ltr' | 'rtl' {
+  const rowY = stationRunY(station);
+  const rowIndex = [...new Set(stationsOnRun.map(stationRunY))]
+    .sort((a, b) => a - b)
+    .findIndex((candidate) => Math.abs(candidate - rowY) <= 0.5);
+  return rowIndex % 2 === 1 ? 'rtl' : 'ltr';
+}
+
+function stationEntryX(
+  station: StationOnRunRendererProps | undefined,
+  direction: 'ltr' | 'rtl',
+): number | null {
+  return direction === 'rtl' ? stationOutputX(station) : stationInputX(station);
+}
+
+function stationExitX(
+  station: StationOnRunRendererProps | undefined,
+  direction: 'ltr' | 'rtl',
+): number | null {
+  return direction === 'rtl' ? stationInputX(station) : stationOutputX(station);
+}
+
+function segmentLabelPointFromPath(
+  pathPoints: readonly RunPoint[],
+  index: number,
+): RunPoint {
+  let bestStart = pathPoints[0] ?? { x: 0, y: 0 };
+  let bestEnd = pathPoints[pathPoints.length - 1] ?? bestStart;
+  let bestLength = -1;
+  for (let pointIndex = 0; pointIndex < pathPoints.length - 1; pointIndex += 1) {
+    const start = pathPoints[pointIndex];
+    const end = pathPoints[pointIndex + 1];
+    if (Math.abs(start.y - end.y) > 0.5) continue;
+    const length = Math.abs(end.x - start.x);
+    if (length > bestLength) {
+      bestStart = start;
+      bestEnd = end;
+      bestLength = length;
+    }
+  }
+  return {
+    x: (bestStart.x + bestEnd.x) / 2,
+    y: bestStart.y + (index % 2 === 0 ? -12 : 18),
+  };
 }
 
 function stationInputX(station: StationOnRunRendererProps | undefined): number | null {
@@ -2231,7 +2821,7 @@ function stationsForConnectionY(
 }
 
 function lineRunSegmentRefs(
-  lineRun: NonNullable<EnergyNetworkModel['line_runs']>[number],
+  lineRun: { segments: readonly (string | { segment_ref?: string | null })[] },
 ): string[] {
   return lineRun.segments
     .map((segment) => typeof segment === 'string' ? segment : segment.segment_ref)
@@ -2263,11 +2853,17 @@ function inferStartingBayOutletX(
   const canonicalX = inferCanonicalGpzBayOutletX(snapshot, startingBayRef, runIndex);
   if (canonicalX !== null) return canonicalX;
 
+  const gpzCount = (snapshot.substations ?? []).filter((station) => station.station_type === 'gpz').length;
+  if (gpzCount > 1) {
+    const gpzIndex = Math.min(Math.max(runIndex, 0), gpzCount - 1);
+    return gpzXByIndex(gpzIndex) + 48;
+  }
+
   const bays = [...(snapshot.bays ?? [])]
     .filter((bay) => bay.bay_role === 'OUT' || bay.bay_role === 'FEEDER')
     .sort(compareBaysForSld);
   const selectedIndex = startingBayRef
-    ? Math.max(0, bays.findIndex((bay) => bay.ref_id === startingBayRef || bay.id === startingBayRef))
+    ? bays.findIndex((bay) => bay.ref_id === startingBayRef || bay.id === startingBayRef)
     : runIndex;
   const bayIndex = selectedIndex >= 0 ? selectedIndex : runIndex;
   return SECTION_X_BASE + 48 + bayIndex * 34;
@@ -2278,8 +2874,16 @@ function inferCanonicalGpzBayOutletX(
   startingBayRef: string | null,
   runIndex: number,
 ): number | null {
-  const gpz = (snapshot.substations ?? []).find((station) => station.station_type === 'gpz');
+  const gpzStations = (snapshot.substations ?? []).filter((station) => station.station_type === 'gpz');
+  const selectedBay = startingBayRef
+    ? (snapshot.bays ?? []).find((bay) => bay.ref_id === startingBayRef || bay.id === startingBayRef)
+    : null;
+  const gpzFromBay = selectedBay
+    ? gpzStations.find((station) => station.ref_id === selectedBay.substation_ref)
+    : null;
+  const gpz = gpzFromBay ?? gpzStations[Math.min(runIndex, Math.max(gpzStations.length - 1, 0))];
   if (!gpz) return null;
+  const gpzIndex = Math.max(0, gpzStations.findIndex((station) => station.ref_id === gpz.ref_id));
 
   const sectionIds = (gpz.gpz_sections ?? [])
     .slice()
@@ -2291,12 +2895,12 @@ function inferCanonicalGpzBayOutletX(
     .filter((bay) => bay.substation_ref === gpz.ref_id && bay.bay_role !== 'COUPLER');
   if (gpzBays.length === 0) return null;
 
-  const selectedBay = startingBayRef
+  const selectedGpzBay = startingBayRef
     ? gpzBays.find((bay) => bay.ref_id === startingBayRef || bay.id === startingBayRef)
     : null;
   const fallbackFeeders = gpzBays.filter((bay) => bay.bay_role === 'OUT' || bay.bay_role === 'FEEDER');
   const fallbackBay = fallbackFeeders[Math.max(0, runIndex % Math.max(fallbackFeeders.length, 1))] ?? gpzBays[0];
-  const bay = selectedBay ?? fallbackBay;
+  const bay = selectedGpzBay ?? fallbackBay;
   if (!bay) return null;
 
   const sectionOrder = new Map(sectionIds.map((sectionId, index) => [sectionId, index]));
@@ -2329,7 +2933,7 @@ function inferCanonicalGpzBayOutletX(
     sectionWidths.slice(0, targetSectionIndex).reduce((sum, width) => sum + width, 0)
     + targetSectionIndex * CANONICAL_LV_SECTION_COUPLER_GAP;
 
-  return X_GPZ + lvStartX + sectionOffset + 32 + bayIndex * CANONICAL_BAY_PITCH;
+  return gpzXByIndex(gpzIndex) + lvStartX + sectionOffset + 32 + bayIndex * CANONICAL_BAY_PITCH;
 }
 
 function canonicalLvSectionWidth(bayCountRaw: number): number {
@@ -2408,6 +3012,12 @@ function buildDers(
   const ders: DerRendererProps[] = [];
   const derConnections: ConnectionRendererProps[] = [];
   const stationDerIndex = new Map<string, number>();
+  const generatorRefCounts = new Map<string, number>();
+
+  for (const gen of generators) {
+    if (!mapGenTypeToDerKind(gen)) continue;
+    generatorRefCounts.set(gen.ref_id, (generatorRefCounts.get(gen.ref_id) ?? 0) + 1);
+  }
 
   for (const gen of generators) {
     const kind = mapGenTypeToDerKind(gen);
@@ -2419,6 +3029,9 @@ function buildDers(
     const station = stationRef ? stations.find((s) => s.id === stationRef) : null;
     const baseX = station ? station.x + DER_OFFSET_RIGHT : 800;
     const baseY = (station ? station.y + 60 : Y_RUN_BASE + 60) + indexAtStation * DER_COMPACT_STEP_Y;
+    const renderKey = (generatorRefCounts.get(gen.ref_id) ?? 0) > 1
+      ? `${gen.ref_id}:${gen.id || indexAtStation}`
+      : gen.ref_id;
 
     ders.push({
       id: gen.ref_id,
@@ -2440,7 +3053,7 @@ function buildDers(
       const busExitX = station.x + DER_BUS_EXIT_DX;
       const busExitY = station.y;
       derConnections.push({
-        id: `der-wire-${gen.ref_id}`,
+        id: `der-wire-${renderKey}`,
         pathPoints: [
           { x: busExitX, y: busExitY },
           { x: busExitX, y: baseY },

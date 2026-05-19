@@ -9,7 +9,7 @@
  * i zwraca status sukcesu albo polski komunikat błędu.
  */
 
-export type ReportExportFormat = 'pdf' | 'docx' | 'json' | 'xlsx';
+export type ReportExportFormat = 'pdf' | 'docx' | 'json';
 export type ProofExportFormat = 'json' | 'latex' | 'pdf';
 
 const REPORT_BASE = '/api/analysis-runs';
@@ -35,11 +35,6 @@ const REPORT_ENDPOINTS: Readonly<Record<ReportExportFormat, ExportEndpointSpec>>
     url: (runId) => `${REPORT_BASE}/${runId}/export/report/json`,
     defaultFilename: (runId) => `raport-${runId}.json`,
     mimeType: 'application/json',
-  },
-  xlsx: {
-    url: (runId) => `${REPORT_BASE}/${runId}/export/report/json`,
-    defaultFilename: (runId) => `raport-${runId}.xlsx`,
-    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   },
 };
 
@@ -140,7 +135,6 @@ export const REPORT_FORMAT_LABELS_PL: Readonly<Record<ReportExportFormat, string
   pdf: 'PDF (reportlab)',
   docx: 'DOCX (python-docx)',
   json: 'JSON (struktura raportu)',
-  xlsx: 'XLSX (arkusz danych)',
 };
 
 export const PROOF_FORMAT_LABELS_PL: Readonly<Record<ProofExportFormat, string>> = {

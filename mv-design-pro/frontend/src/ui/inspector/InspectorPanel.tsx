@@ -306,8 +306,8 @@ function ContributionsTabContent() {
 function LimitsNoDataContent() {
   return (
     <EmptyTabState
-      title="Brak danych"
-      description="Brak danych limitowych dla tego elementu w aktualnym widoku wyników."
+      title="Limity do wyliczenia"
+      description="Limity techniczne dla tego elementu będą dostępne po uruchomieniu właściwego zakresu obliczeń."
     />
   );
 }
@@ -345,7 +345,7 @@ function ProofTabContent() {
               className="text-xs text-slate-500"
               data-testid="open-proof-trace-blocked-proof"
             >
-              Brak aktywnego uruchomienia.
+              Nie wybrano przebiegu obliczeń.
             </div>
           ) : null}
         </div>
@@ -426,7 +426,7 @@ function TabContent({
   if (sections.length === 0) {
     return (
       <div className="p-4 text-sm text-slate-500">
-        Brak danych dla tej zakładki.
+        Zakres tej zakładki zostanie pokazany po konfiguracji właściwego układu.
       </div>
     );
   }
@@ -500,7 +500,7 @@ export function InspectorPanel({
       <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-            Inspektor elementu
+            Karta techniczna elementu
           </p>
           <h3 className="text-sm font-semibold text-slate-800" data-testid="inspector-title">
             {title}
@@ -511,7 +511,7 @@ export function InspectorPanel({
             type="button"
             onClick={onClose}
             className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            aria-label="Zamknij panel właściwości"
+            aria-label="Zamknij kartę techniczną"
             data-testid="inspector-close-button"
           >
             ×

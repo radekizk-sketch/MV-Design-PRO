@@ -105,7 +105,7 @@ const FW_MV_LARGE = 'conv-wind-3mw-15kv';
 function pickConverterCatalog(kind, pMw, variant) {
   if (kind === 'PV') {
     // nn_side ZAWSZE używa nN catalog 0.4 kV (voltage match z nn bus)
-    if (variant === 'nn_side') return PV_NN_CATALOG;
+    if (variant === 'nn_side' || variant === 'LV_BEHIND_STATION_TRANSFORMER') return PV_NN_CATALOG;
     // MV variants używają 15 kV catalog per power range
     if (pMw <= 1.0) return 'conv-pv-1mw-15kv';
     if (pMw <= 2.0) return 'conv-pv-2mw-15kv';
@@ -280,6 +280,8 @@ async function main() {
           segment_id: currentSegmentId,
           insert_at: { mode: 'RATIO', value: ratio },
           station: {
+            name: cfg.name,
+            station_name: cfg.name,
             name_pl: cfg.name,
             station_type: cfg.station_type,
             sn_voltage_kv: 15,
@@ -351,7 +353,8 @@ async function main() {
         connection_variant: variant,
         station_ref: stRes.stationRef,
       };
-      if (variant === 'nn_side' && stRes.nnBusRef) {
+      const usesStationNnBus = variant === 'nn_side' || variant === 'LV_BEHIND_STATION_TRANSFORMER';
+      if (usesStationNnBus && stRes.nnBusRef) {
         payload.bus_nn_ref = stRes.nnBusRef;
       }
       const derRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {

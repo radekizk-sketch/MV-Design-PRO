@@ -439,7 +439,7 @@ function EmptyCanvasHint({
       data-testid="sld-empty-state"
       onClick={onCanvasClick}
       role="button"
-      aria-label="Brak danych schematu jednokreskowego."
+      aria-label="Schemat jednokreskowy gotowy do budowy."
       style={{ cursor: onCanvasClick ? 'pointer' : 'default' }}
     >
       <text
@@ -450,7 +450,7 @@ function EmptyCanvasHint({
         fontSize={CANONICAL_TYPOGRAPHY.fontSize.large}
         fill="#8aa6b9"
       >
-        Brak danych schematu
+        Schemat gotowy do budowy
       </text>
       <text
         x={width / 2}
@@ -460,7 +460,7 @@ function EmptyCanvasHint({
         fontSize={CANONICAL_TYPOGRAPHY.fontSize.small}
         fill="#60798c"
       >
-        Kanwa zostanie wypełniona wyłącznie danymi z aktywnego modelu.
+        Wybierz GPZ albo wariant katalogowy, aby rozpocząć ciąg SN.
       </text>
     </g>
   );

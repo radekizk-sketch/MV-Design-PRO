@@ -404,7 +404,37 @@ describe('CableRunRenderer', () => {
       .toBe('160,100 300,100');
   });
 
-  it('LOD < 2 ukrywa segmentLabels (AC-06 label declutter)', () => {
+  it('dociaga segmentPaths do aktualnych portow stacji w danym LOD', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-snap"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 100 }, { x: 200, y: 100 }]}
+          stationPortGaps={[{
+            stationId: 'ST-1',
+            y: 100,
+            inputX: 90,
+            outputX: 110,
+          }]}
+          segmentPaths={[
+            { segmentRef: 'SEG-A', pathPoints: [{ x: 0, y: 100 }, { x: 42, y: 100 }] },
+            { segmentRef: 'SEG-B', pathPoints: [{ x: 158, y: 100 }, { x: 200, y: 100 }] },
+          ]}
+        />
+      </svg>,
+    );
+
+    expect(container.querySelector('[data-testid="sld-v2-run-r-snap-segment-SEG-A-0"]')?.getAttribute('d'))
+      .toBe('M 0 100 L 90 100');
+    expect(container.querySelector('[data-testid="sld-v2-run-r-snap-segment-SEG-B-0"]')?.getAttribute('d'))
+      .toBe('M 110 100 L 200 100');
+    expect(container.querySelector('[data-testid="sld-v2-run-r-snap-junction-ST-1"] circle')?.getAttribute('cx'))
+      .toBe('90');
+  });
+
+  it('LOD 0 ukrywa segmentLabels w widoku ogólnym (AC-06 label declutter)', () => {
     const { queryByText } = render(
       <svg>
         <CableRunRenderer
@@ -416,13 +446,35 @@ describe('CableRunRenderer', () => {
             { segmentRef: 'SEG-2', text: 'Etykieta odcinka SEG-2', x: 220, y: 90 },
           ]}
           pathPoints={[{ x: 0, y: 100 }, { x: 300, y: 100 }]}
-          lod={1}
+          lod={0}
         />
       </svg>,
     );
-    // Przy LOD=1 segmentLabels są ukryte
+    // Przy LOD=0 segmentLabels są ukryte, żeby daleki widok pokazywał topologię bez szumu.
     expect(queryByText('Etykieta odcinka SEG-1')).toBeNull();
     expect(queryByText('Etykieta odcinka SEG-2')).toBeNull();
+  });
+
+  it('LOD 0 powieksza strzalke kierunku zasilania przy dalekim widoku', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="r-arrow"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          pathPoints={[{ x: 0, y: 0 }, { x: 300, y: 0 }]}
+          lod={0}
+          viewportScale={0.22}
+        />
+      </svg>,
+    );
+
+    const arrow = container.querySelector('[data-testid="sld-v2-run-r-arrow-flow-arrow"]');
+    expect(arrow?.getAttribute('data-topology-arrow-scale')).toBe('4.00');
+    expect(arrow?.getAttribute('points')).toBe('130,-16 170,0 130,16');
+    const directionGroup = container.querySelector('[data-testid="sld-v2-run-r-arrow-direction-arrows"]');
+    expect(directionGroup?.getAttribute('data-topology-arrow-scale')).toBe('4.00');
+    expect(directionGroup?.querySelector('polygon')?.getAttribute('points')).toBe('-16,-16 16,0 -16,16');
   });
 
   it('LOD ≥ 2 pokazuje segmentLabels', () => {
@@ -548,9 +600,10 @@ describe('CableRunRenderer', () => {
     );
     const variantPaths = container.querySelectorAll('[data-testid^="sld-v2-run-r-novar-variant-"]');
     expect(variantPaths).toHaveLength(0);
-    // Uniform visible path nadal renderowany przez buildVisibleCablePaths
-    const visiblePaths = container.querySelectorAll('[data-testid^="sld-v2-run-r-novar-visible-"]');
+    // Uniform visible path nadal renderowany per segment, ale bez wariantowego prefiksu.
+    const visiblePaths = container.querySelectorAll('path[data-testid^="sld-v2-run-r-novar-segment-"]');
     expect(visiblePaths.length).toBeGreaterThan(0);
+    expect(visiblePaths[0]?.getAttribute('stroke')).toBe('#13C45A');
   });
 
   it('K30-41: voltageKv=110 → uniform stroke red WN tint (gdy brak variant)', () => {
@@ -907,6 +960,23 @@ describe('StationOnRunRenderer', () => {
     expect(getByText(/przelotowa/)).toBeInTheDocument();
   });
 
+  it('ukrywa generyczna nazwe stacji, gdy widoczny jest kod stacji', () => {
+    const { queryByTestId, getByText } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-generic"
+          x={300}
+          y={400}
+          name="Stacja przelotowa SN/nN"
+          stationCode="S01"
+          topologicalType="przelotowa"
+        />
+      </svg>,
+    );
+    expect(getByText('S01')).toBeInTheDocument();
+    expect(queryByTestId('sld-v2-station-name-st-generic')).toBeFalsy();
+  });
+
   it('multi-voltage stacja pokazuje "Nx nN"', () => {
     const { getByText } = render(
       <svg>
@@ -1060,7 +1130,7 @@ describe('StationOnRunRenderer', () => {
     expect(getByText('630 kVA')).toBeInTheDocument();
   });
 
-  it('transformerRatedKva ≥ 1000 → format "X.X MVA"', () => {
+  it('transformerRatedKva ≥ 1000 → format "X,X MVA"', () => {
     const { getByText } = render(
       <svg>
         <StationOnRunRenderer
@@ -1073,7 +1143,7 @@ describe('StationOnRunRenderer', () => {
         />
       </svg>,
     );
-    expect(getByText('1.6 MVA')).toBeInTheDocument();
+    expect(getByText('1,6 MVA')).toBeInTheDocument();
   });
 
   it('transformerRatedKva=null → brak etykiety mocy', () => {
@@ -1116,8 +1186,8 @@ describe('StationOnRunRenderer', () => {
     expect(poly1?.getAttribute('fill')).toBe('#0A8D43');
   });
 
-  it('K30-7: switchStateByColumn[0]="unknown" → wyświetla "?" overlay na polygon', () => {
-    const { container, getByText } = render(
+  it('K30-7: switchStateByColumn[0]="unknown" → pokazuje neutralne kreskowanie aparatu', () => {
+    const { container } = render(
       <svg>
         <StationOnRunRenderer
           id="st-q"
@@ -1131,8 +1201,8 @@ describe('StationOnRunRenderer', () => {
     );
     const conn = container.querySelector('[data-testid="sld-v2-station-connector-st-q-0"]');
     expect(conn?.getAttribute('data-switch-state')).toBe('unknown');
-    // Renders the question mark
-    expect(getByText('?')).toBeInTheDocument();
+    expect(container.querySelector('[data-testid="sld-v2-station-diamond-state-marker-st-q-0"]')?.getAttribute('data-state-marker'))
+      .toBe('neutral-hatch');
   });
 
   it('K30-7: switchStateByColumn brak → wszystkie connectors w stanie "closed" (default back-compat)', () => {
@@ -1574,6 +1644,7 @@ describe('SldCanvasV2 — smoke', () => {
           pathPoints: [{ x: 40, y: 260 }, { x: 40, y: 400 }, { x: 280, y: 400 }] }]}
         stations={[{ id: 'st1', x: 280, y: 400, name: 'ST-01', topologicalType: 'końcowa' }]}
         ders={[{ id: 'pv1', x: 380, y: 600, kind: 'PV', name: 'PV-01', nominalPowerKw: 1000 }]}
+        lodOverride={4}
       />,
     );
     expect(container.querySelector('[data-testid="sld-canvas-v2"]')).toBeTruthy();
@@ -1630,7 +1701,31 @@ describe('SldCanvasV2 — smoke', () => {
     );
     const visiblePaths = container.querySelectorAll('[data-testid^="sld-v2-run-run_ports-visible-"]');
     expect(visiblePaths).toHaveLength(2);
-    expect(visiblePaths[0]?.getAttribute('d')).toBe('M 0 100 L 122 100');
-    expect(visiblePaths[1]?.getAttribute('d')).toBe('M 178 100 L 300 100');
+    expect(visiblePaths[0]?.getAttribute('d')).toBe('M 0 100 L 132 100');
+    expect(visiblePaths[1]?.getAttribute('d')).toBe('M 168 100 L 300 100');
+  });
+
+  it('etykiety stacji z odplywami nN nie nakladaja opisu SN/nN na moc transformatora', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="st-label-stack"
+          x={300}
+          y={400}
+          name="S01"
+          topologicalType="przelotowa"
+          stationCode="S01"
+          transformerRatedKva={630}
+          nnFeedersCount={4}
+        />
+      </svg>,
+    );
+
+    const feederViz = container.querySelector('[data-testid="sld-v2-station-feeders-viz-st-label-stack"]');
+    const power = container.querySelector('[data-testid="sld-v2-station-rated-kva-st-label-stack"]');
+
+    expect(feederViz?.getAttribute('transform')).toBe('translate(0, 102)');
+    expect(power?.getAttribute('y')).toBe('140');
+    expect(container.textContent).not.toContain('SN/nN');
   });
 });

@@ -91,11 +91,26 @@ describe('DerPaletteButton — K30-77 palette UI', () => {
 
   it('disabled → onClick no-op + button disabled', () => {
     const onStart = vi.fn();
-    const { container } = render(<DerPaletteButton kind="BESS" onStart={onStart} disabled />);
+    const { container } = render(
+      <DerPaletteButton
+        kind="BESS"
+        onStart={onStart}
+        disabled
+        disabledReason="Najpierw wstaw stację SN/nN w ciągu SN."
+      />,
+    );
     const btn = container.querySelector('[data-testid="der-palette-btn-BESS"]') as HTMLButtonElement;
     expect(btn.disabled).toBe(true);
+    expect(btn.title).toBe('Najpierw wstaw stację SN/nN w ciągu SN.');
     fireEvent.click(btn);
     expect(onStart).not.toHaveBeenCalled();
+    cleanup();
+  });
+
+  it('enabled button explains expected DER placement flow', () => {
+    const { container } = render(<DerPaletteButton kind="PV" onStart={vi.fn()} />);
+    const btn = container.querySelector('[data-testid="der-palette-btn-PV"]') as HTMLButtonElement;
+    expect(btn.title).toBe('Wstaw układ PV (fotowoltaika) na wybraną stację SN/nN.');
     cleanup();
   });
 

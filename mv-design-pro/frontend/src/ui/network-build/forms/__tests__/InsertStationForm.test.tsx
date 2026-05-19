@@ -137,8 +137,8 @@ const switchgearManufacturers = [
     name: 'ZPUE Włoszczowa',
     normalized_code: 'ZPUE',
     country: 'PL',
-    status: 'requires_catalog' as const,
-    source_refs: [],
+    status: 'verified' as const,
+    source_refs: ['test-catalog'],
     notes_pl: null,
   },
   {
@@ -146,8 +146,8 @@ const switchgearManufacturers = [
     name: 'Elektrometal',
     normalized_code: 'ELEKTROMETAL',
     country: 'PL',
-    status: 'requires_catalog' as const,
-    source_refs: [],
+    status: 'verified' as const,
+    source_refs: ['test-catalog'],
     notes_pl: null,
   },
   {
@@ -155,8 +155,8 @@ const switchgearManufacturers = [
     name: 'Siemens',
     normalized_code: 'SIEMENS',
     country: 'DE',
-    status: 'requires_catalog' as const,
-    source_refs: [],
+    status: 'verified' as const,
+    source_refs: ['test-catalog'],
     notes_pl: null,
   },
   {
@@ -164,8 +164,8 @@ const switchgearManufacturers = [
     name: 'ABB',
     normalized_code: 'ABB',
     country: 'CH',
-    status: 'requires_catalog' as const,
-    source_refs: [],
+    status: 'verified' as const,
+    source_refs: ['test-catalog'],
     notes_pl: null,
   },
 ];
@@ -174,13 +174,13 @@ const switchgearFamilies = [
   {
     switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
     manufacturer_ref: 'ZPUE_WLOSZCZOWA',
-    family_name: 'RMU do uzupełnienia katalogiem',
+    family_name: 'RMU katalogowe',
     series_name: null,
     voltage_levels: [15, 20],
     insulation_type: 'unknown' as const,
     construction_type: 'RMU' as const,
-    status: 'requires_catalog' as const,
-    source_refs: [],
+    status: 'verified' as const,
+    source_refs: ['test-catalog'],
     notes_pl: null,
   },
 ];
@@ -192,8 +192,8 @@ const bayTemplates = [
     switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
     bay_kind: 'liniowe_doplywowe' as const,
     bay_role: 'IN' as const,
-    source_status: 'canonical_fallback' as const,
-    source_refs: [],
+    source_status: 'repo_verified' as const,
+    source_refs: ['test-catalog'],
     version: 'test',
     hash: 'h1',
     notes_pl: null,
@@ -204,8 +204,8 @@ const bayTemplates = [
     switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
     bay_kind: 'liniowe_odplywowe' as const,
     bay_role: 'OUT' as const,
-    source_status: 'canonical_fallback' as const,
-    source_refs: [],
+    source_status: 'repo_verified' as const,
+    source_refs: ['test-catalog'],
     version: 'test',
     hash: 'h2',
     notes_pl: null,
@@ -216,8 +216,8 @@ const bayTemplates = [
     switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
     bay_kind: 'transformatorowe' as const,
     bay_role: 'TR' as const,
-    source_status: 'canonical_fallback' as const,
-    source_refs: [],
+    source_status: 'repo_verified' as const,
+    source_refs: ['test-catalog'],
     version: 'test',
     hash: 'h3',
     notes_pl: null,
@@ -228,8 +228,8 @@ const bayTemplates = [
     switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
     bay_kind: 'sprzeglowe_poprzeczne' as const,
     bay_role: 'COUPLER' as const,
-    source_status: 'canonical_fallback' as const,
-    source_refs: [],
+    source_status: 'repo_verified' as const,
+    source_refs: ['test-catalog'],
     version: 'test',
     hash: 'h4',
     notes_pl: null,
@@ -445,8 +445,9 @@ describe('InsertStationForm', () => {
     expect(screen.getByText(/koniec poprzedniego odcinka/i)).toBeInTheDocument();
     expect(screen.getByTestId('station-switchgear-catalog-preview')).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getAllByText('tpl-line-in').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Pole liniowe wej/i).length).toBeGreaterThan(0);
     });
+    expect(screen.queryByText('tpl-line-in')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('station-submit'));
 
@@ -662,6 +663,48 @@ describe('InsertStationForm', () => {
     expect(screen.getByTestId('station-side-low')).toHaveTextContent('0,4 kV');
   });
 
+  it('nie pokazuje niekompletnych szablonów pól SN jako wariantów katalogowych', async () => {
+    fetchCompleteBayTemplatesMock.mockResolvedValue([
+      ...bayTemplates,
+      {
+        template_ref: 'tpl-line-in-incomplete',
+        manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+        switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
+        bay_kind: 'liniowe_doplywowe' as const,
+        bay_role: 'IN' as const,
+        source_status: 'requires_catalog' as const,
+        source_refs: [],
+        version: 'test',
+        hash: 'bad',
+        notes_pl: null,
+      },
+      {
+        template_ref: 'tpl-line-out-fallback',
+        manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+        switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
+        bay_kind: 'liniowe_odplywowe' as const,
+        bay_role: 'OUT' as const,
+        source_status: 'canonical_fallback' as const,
+        source_refs: [],
+        version: 'test',
+        hash: 'fallback',
+        notes_pl: null,
+      },
+    ]);
+
+    render(<InsertStationForm />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/Pole liniowe wej/i).length).toBeGreaterThan(0);
+    });
+
+    expect(screen.queryByText('tpl-line-in')).not.toBeInTheDocument();
+    expect(screen.queryByText('tpl-line-in-incomplete')).not.toBeInTheDocument();
+    expect(screen.queryByText('tpl-line-out-fallback')).not.toBeInTheDocument();
+    expect(screen.queryByText(/wymaga katalogu/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/fallback kanoniczny/i)).not.toBeInTheDocument();
+  });
+
   it('blokuje zapis, gdy falownik wymaga napięcia bez zgodnego transformatora katalogowego', async () => {
     fetchTransformerTypesMock.mockResolvedValue([transformerTypes[0]]);
 
@@ -673,7 +716,7 @@ describe('InsertStationForm', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Brak transformatora katalogowego zgodnego/i)).toBeInTheDocument();
+      expect(screen.getByText(/Wybierz wariant stacji z transformatorem zgodnym/i)).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByTestId('station-submit'));

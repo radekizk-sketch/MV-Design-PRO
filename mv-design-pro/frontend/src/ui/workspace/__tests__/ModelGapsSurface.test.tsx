@@ -21,7 +21,7 @@ import type { WorkspaceSurfaceDescriptor } from '../types';
 const E04_SURFACE: WorkspaceSurfaceDescriptor = {
   surfaceId: 'e04-test',
   screenCode: 'E-04',
-  titlePl: 'Gotowość modelu',
+  titlePl: 'Przegląd techniczny układu',
   entityRef: null,
   entityType: null,
   routeState: { payload: {} } as never,
@@ -38,20 +38,20 @@ const E04_SURFACE: WorkspaceSurfaceDescriptor = {
   tabId: null,
 } as never;
 
-describe('ModelGapsSurface (E-04) — gotowość modelu', () => {
+describe('ModelGapsSurface (E-04) — przegląd techniczny układu', () => {
   beforeEach(() => {
     useSnapshotStore.getState().reset();
     useSelectionStore.getState().clearSelection();
     useNetworkBuildStore.setState({ activeSurface: E04_SURFACE });
   });
 
-  it('renderuje komunikat o brakującym readiness gdy snapshot pusty', () => {
+  it('renderuje komunikat o odświeżeniu kontroli gdy dane są puste', () => {
     render(<WorkspaceSurfaceRouter region="main" />);
     expect(screen.getByTestId('model-gaps-surface')).toBeInTheDocument();
-    expect(screen.getByText(/Snapshot nie zawiera informacji o gotowości/)).toBeInTheDocument();
+    expect(screen.getByText(/odtworzył przegląd techniczny układu/)).toBeInTheDocument();
   });
 
-  it('renderuje zielony komunikat gdy ready=true bez blokerów', () => {
+  it('renderuje zielony komunikat gdy układ jest dopuszczony do analizy', () => {
     useSnapshotStore.setState({
       readiness: {
         ready: true,
@@ -63,10 +63,10 @@ describe('ModelGapsSurface (E-04) — gotowość modelu', () => {
 
     render(<WorkspaceSurfaceRouter region="main" />);
     expect(screen.getByTestId('model-gaps-surface')).toBeInTheDocument();
-    expect(screen.getByText(/Model przechodzi wszystkie reguły walidacji/)).toBeInTheDocument();
+    expect(screen.getByText(/Układ spełnia reguły projektowe/)).toBeInTheDocument();
   });
 
-  it('renderuje listę blokerów z kodami i polską wiadomością', () => {
+  it('renderuje listę pozycji kontroli z kodami i polską wiadomością', () => {
     useSnapshotStore.setState({
       readiness: {
         ready: false,
@@ -94,18 +94,27 @@ describe('ModelGapsSurface (E-04) — gotowość modelu', () => {
     expect(screen.getByText(/Brak katalogu dla kabla SN K-12/)).toBeInTheDocument();
     expect(screen.getByText('catalog.cable.missing')).toBeInTheDocument();
     expect(screen.getByTestId('gap-blocker-1')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Napraw teraz' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Konfiguruj układ' })).toHaveLength(2);
   });
 
-  it('renderuje listę ostrzeżeń osobno od blokerów', () => {
+  it('renderuje uwagi techniczne jako zagregowaną listę bez surowych referencji', () => {
     useSnapshotStore.setState({
+      snapshot: {
+        branches: [{ ref_id: 'seg/x', name: 'Odcinek /segment' }],
+      } as never,
       readiness: {
         ready: false,
         blockers: [],
         warnings: [
           {
             code: 'voltage.profile.warning',
-            message_pl: 'Profil napięcia poza zakresem ±5% w węźle BUS-12',
+            message_pl: "Gałąź 'seg/x' nie ma składowej zerowej (Z0)",
+            element_ref: 'seg_1',
+            severity: 'WARNING',
+          },
+          {
+            code: 'voltage.profile.warning',
+            message_pl: "Gałąź 'seg/x' nie ma składowej zerowej (Z0)",
             element_ref: 'bus_12',
             severity: 'WARNING',
           },
@@ -116,7 +125,10 @@ describe('ModelGapsSurface (E-04) — gotowość modelu', () => {
 
     render(<WorkspaceSurfaceRouter region="main" />);
     expect(screen.getByTestId('gap-warning-0')).toBeInTheDocument();
-    expect(screen.getByText(/Profil napięcia poza zakresem/)).toBeInTheDocument();
+    expect(screen.getAllByText('Uwagi projektowe').length).toBeGreaterThan(0);
+    expect(screen.getByText(/odcinek SN nie ma składowej zerowej/)).toBeInTheDocument();
+    expect(screen.getByText('2 wystąpień')).toBeInTheDocument();
+    expect(screen.queryByText(/\/segment/)).not.toBeInTheDocument();
   });
 
   it('liczniki KPI: blokery i ostrzeżenia', () => {
@@ -136,7 +148,7 @@ describe('ModelGapsSurface (E-04) — gotowość modelu', () => {
     });
 
     render(<WorkspaceSurfaceRouter region="main" />);
-    expect(screen.getByText('Status: 3 blokerów, 1 ostrzeżeń')).toBeInTheDocument();
+    expect(screen.getByText('3 do konfiguracji · 1 uwag projektowych')).toBeInTheDocument();
   });
 
   it('klik naprawy blockera wybiera element i otwiera powiazany formularz', () => {
@@ -184,7 +196,7 @@ describe('ModelGapsSurface (E-04) — gotowość modelu', () => {
 
     render(<WorkspaceSurfaceRouter region="main" />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Napraw teraz' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Konfiguruj układ' }));
 
     expect(useSelectionStore.getState().selectedElement).toMatchObject({
       id: 'gen_pv_1',

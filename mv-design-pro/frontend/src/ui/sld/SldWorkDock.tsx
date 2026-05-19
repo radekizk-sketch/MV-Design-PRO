@@ -156,7 +156,7 @@ export function SldWorkDock({
                 : 'border border-scada-border bg-scada-bg text-scada-muted hover:bg-scada-active hover:text-scada-text'
             }`}
           >
-            Proces i gotowosc
+            Proces i kontrola
           </button>
         </div>
       </div>
@@ -216,12 +216,12 @@ export function SldWorkDock({
             </div>
           ) : (
             <div className="rounded border border-scada-border bg-scada-bg px-3 py-2 text-xs text-scada-muted">
-              Brak zalecanej akcji. Wybierz element na schemacie albo otworz powierzchnie analityczne.
+              Wybierz element na schemacie albo otworz powierzchnie analityczne, aby przejsc do kolejnej operacji.
             </div>
           )}
         </Section>
 
-        <Section eyebrow="Blokady i naprawy" title="Braki, ryzyka i sciezki naprawy" testId="sld-dock-repair">
+        <Section eyebrow="Konfiguracja ukladu" title="Zagadnienia, ryzyka i sciezki projektowe" testId="sld-dock-repair">
           <div className="space-y-3">
             {interactionMessage && (
               <div className="rounded border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-100">
@@ -295,10 +295,10 @@ export function SldWorkDock({
           </div>
         </Section>
 
-        <Section eyebrow="Stan modelu" title="Przekroj topologii i gotowosci" testId="sld-dock-summary">
+        <Section eyebrow="Stan układu" title="Przekrój topologii i kontroli" testId="sld-dock-summary">
           <div className="grid grid-cols-2 gap-2">
             <StatCard label="Szyny" value={modelSummary.buses} />
-            <StatCard label="Galazie" value={modelSummary.branches} />
+            <StatCard label="Tory SN" value={modelSummary.branches} />
             <StatCard label="Stacje" value={modelSummary.stations} />
             <StatCard label="Otwarte porty" value={modelSummary.openTerminals} />
           </div>
@@ -315,7 +315,7 @@ export function SldWorkDock({
               processContent
             ) : (
               <div className="rounded border border-scada-border bg-scada-surface p-4 text-sm text-scada-muted shadow-sm shadow-cyan-950/10">
-                Brak aktywnego panelu procesu dla biezacego kontekstu.
+                Panel procesu nie jest dostępny dla bieżącego kontekstu.
               </div>
             )}
           </div>

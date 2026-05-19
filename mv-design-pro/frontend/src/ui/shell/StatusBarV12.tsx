@@ -2,7 +2,7 @@
  * StatusBarV12 — V12 dolny pasek statusu (28px)
  *
  * Zawiera: projekt, aktywny zakres obliczeń, wariant, wersję modelu,
- *          identyfikator ostatniego obliczenia, hash widoku, gotowość modelu, walidacja, sieć.
+ *          identyfikator ostatniego obliczenia, walidacja, sieć.
  */
 
 import { clsx } from 'clsx';
@@ -15,12 +15,12 @@ import {
   useActiveSnapshotId,
   useAppStateStore,
   useEnmHashChain,
-  shortHash,
   type EnmHashChain,
 } from '../app-state';
 import { useStudyCasesStore } from '../study-cases/store';
 import type { ResultStatus } from '../types';
 import { getAreaDefinition } from '../navigation/areaRegistry';
+import { calculationScopeDisplayName, stripTechnicalSuffix } from './publicNames';
 
 function getResultDot(status: ResultStatus) {
   if (status === 'FRESH') return 'text-scada-energized';
@@ -31,7 +31,7 @@ function getResultDot(status: ResultStatus) {
 function getResultLabel(status: ResultStatus) {
   if (status === 'FRESH') return 'Wyniki aktualne ◉';
   if (status === 'OUTDATED') return 'Wyniki nieaktualne ◯';
-  return 'Brak wyników';
+  return 'Wyniki nieuruchomione';
 }
 
 function looksLikeTechnicalId(value: string | null | undefined): boolean {
@@ -45,7 +45,7 @@ function looksLikeTechnicalId(value: string | null | undefined): boolean {
 }
 
 function projectDisplayName(name: string | null | undefined, id: string | null | undefined): string {
-  if (name && !looksLikeTechnicalId(name)) return name;
+  if (name && !looksLikeTechnicalId(name)) return stripTechnicalSuffix(name);
   if (id) return 'Projekt bez nazwy';
   return '— nie otwarto —';
 }
@@ -90,19 +90,24 @@ export function StatusBarV12({
   const snapshotDisplay = modelVersionDisplay(snapshotId);
 
   const runDisplay = runId ? 'wykonane' : null;
+  const caseDisplayName = calculationScopeDisplayName(caseName, caseId);
+  const variantDisplayName = variantName ? stripTechnicalSuffix(variantName) : null;
+  const hasExplicitEmptyNetworkStats = Boolean(
+    networkStats
+      && (networkStats.nodeCount ?? 0) === 0
+      && (networkStats.branchCount ?? 0) === 0,
+  );
 
-  // Hash audytu — preferuj chain V12S-010 (semantic). Fallback do viewHash gdy
-  // backend jeszcze nie populuje pól w storze.
+  // Odcisk audytu jest dostępny dla raportu, ale główny pasek nie pokazuje
+  // surowych hashy ani identyfikatorów technicznych.
   const hashChipPrimary = hashChain?.semantic ?? hashChain?.input ?? viewHash ?? null;
-  const hashDisplay = hashChipPrimary
-    ? hashChipPrimary.length > 10 ? hashChipPrimary.slice(0, 10) : hashChipPrimary
-    : null;
+  const hasAuditFingerprint = Boolean(hashChipPrimary);
   const hashTooltipTitle = buildHashTooltip(hashChain, viewHash);
 
   const modeLabel = activeMode === 'MODEL_EDIT' ? 'Edycja' : 'Odczyt';
   const areaLabel = getAreaDefinition(activeArea).labelShort;
   const workModeLabel = activeWorkMode === 'TE'
-    ? 'Model'
+    ? 'Układ'
     : activeWorkMode === 'TW'
       ? 'Wyniki'
       : activeWorkMode === 'TZ'
@@ -111,7 +116,8 @@ export function StatusBarV12({
           ? 'Porównanie'
           : activeWorkMode === 'TA'
             ? 'Audyt'
-            : 'Operator';
+          : 'Operator';
+  const showAuditHash = activeWorkMode === 'TA';
 
   return (
     <div
@@ -126,9 +132,9 @@ export function StatusBarV12({
       {/* Lewa: kontekst projektu i tryb */}
       <div className="flex items-center gap-2 overflow-hidden" data-testid="active-case-bar">
         <span className="sr-only">
-          Bieżący zestaw: {caseId ? caseName || '(bez nazwy)' : 'Nie wybrano'}.
-          Zakres obliczeń: {caseId ? caseName || '(bez nazwy)' : 'nie wybrano'}.
-          Wariant: {variantName || (caseId ? caseName || '(bez nazwy)' : 'nie wybrano')}.
+          Bieżący zestaw: {caseId ? caseDisplayName : 'Nie wybrano'}.
+          Zakres obliczeń: {caseId ? caseDisplayName : 'nie wybrano'}.
+          Wariant: {variantDisplayName || (caseId ? caseDisplayName : 'nie wybrano')}.
         </span>
         {/* Obszar + Tryb */}
         <span
@@ -158,7 +164,7 @@ export function StatusBarV12({
         <div className="flex items-center gap-1" data-testid="status-case">
           <span className="text-scada-muted">Zakres obliczeń:</span>
           {caseId ? (
-            <span className="font-medium text-scada-text">{caseName || 'Bez nazwy'}</span>
+            <span className="font-medium text-scada-text">{caseDisplayName}</span>
           ) : (
             <span className="italic text-scada-muted">nie wybrano</span>
           )}
@@ -169,8 +175,8 @@ export function StatusBarV12({
         {/* Wariant */}
         <div className="flex items-center gap-1" data-testid="status-variant">
           <span className="text-scada-muted">Wariant:</span>
-          {variantName ? (
-            <span className="font-medium text-scada-text">{variantName}</span>
+          {variantDisplayName ? (
+            <span className="font-medium text-scada-text">{variantDisplayName}</span>
           ) : (
             <span className="italic text-scada-muted">nie wybrano</span>
           )}
@@ -178,9 +184,9 @@ export function StatusBarV12({
 
         <Separator />
 
-        {/* Wersja modelu */}
+        {/* Wersja układu */}
         <div className="flex items-center gap-1" data-testid="status-snapshot">
-          <span className="text-scada-muted">Wersja modelu:</span>
+          <span className="text-scada-muted">Wersja układu:</span>
           <span className="font-mono text-scada-text">{snapshotDisplay}</span>
         </div>
 
@@ -189,7 +195,7 @@ export function StatusBarV12({
         <span data-testid="status-mode" className="text-scada-muted">{modeLabel}</span>
       </div>
 
-      {/* Prawa: wyniki, walidacja, sieć, run_id, hash */}
+      {/* Prawa: wyniki, walidacja, sieć, obliczenia, audyt */}
       <div className="flex items-center gap-2">
         {/* Status wyników */}
         {caseId && (
@@ -215,8 +221,8 @@ export function StatusBarV12({
           </>
         )}
 
-        {/* Hash audytu — V12S-010: jeden chip, tooltip rozwija 5 hashy */}
-        {hashDisplay && (
+        {/* Audyt — bez pokazywania surowych hashy w głównym UI */}
+        {showAuditHash && hasAuditFingerprint && (
           <>
             <div
               className="flex items-center gap-1 cursor-help"
@@ -224,19 +230,28 @@ export function StatusBarV12({
               title={hashTooltipTitle}
               aria-label={hashTooltipTitle}
             >
-              <span className="text-scada-muted">Hash audytu:</span>
-              <span className="font-mono text-[9px] text-scada-muted">{hashDisplay}</span>
+              <span className="text-scada-muted">Audyt:</span>
+              <span className="font-medium text-scada-text">dostępny</span>
             </div>
             <Separator />
           </>
         )}
 
         {/* Walidacja */}
-        {validationStatus && (
+        {validationStatus && hasExplicitEmptyNetworkStats && (
+          <>
+            <span data-testid="status-validation" className="text-cyan-200">
+              Układ: wybór GPZ
+            </span>
+            <Separator />
+          </>
+        )}
+
+        {validationStatus && !hasExplicitEmptyNetworkStats && (
           <>
             {validationStatus === 'valid' && (
               <span data-testid="status-validation" className="text-scada-energized">
-                ◉ Model prawidłowy
+                ◉ Układ sprawdzony
               </span>
             )}
             {validationStatus === 'warnings' && (
@@ -253,14 +268,14 @@ export function StatusBarV12({
           </>
         )}
 
-        {/* Statystyki sieci */}
+        {/* Statystyki układu widoczne językiem projektanta. */}
         {networkStats && (networkStats.nodeCount !== undefined || networkStats.branchCount !== undefined) && (
           <div className="flex items-center gap-2" data-testid="status-network">
             {networkStats.nodeCount !== undefined && (
-              <span>Węzły: <span className="font-medium text-scada-text">{networkStats.nodeCount}</span></span>
+              <span>Szyny: <span className="font-medium text-scada-text">{networkStats.nodeCount}</span></span>
             )}
             {networkStats.branchCount !== undefined && (
-              <span>Gałęzie: <span className="font-medium text-scada-text">{networkStats.branchCount}</span></span>
+              <span>Tory i TR: <span className="font-medium text-scada-text">{networkStats.branchCount}</span></span>
             )}
           </div>
         )}
@@ -274,24 +289,11 @@ function Separator() {
 }
 
 /**
- * Złóż wieloliniowy tooltip dla chipu „Hash audytu".
- * Pokazuje 5 hashy V12S-010 (semantic / input / case / variant / switching).
- * Każdy hash skrócony do 8 znaków; '—' gdy backend nie dostarczył wartości.
+ * Złóż tooltip dla chipu audytu bez ujawniania surowych hashy w głównym UI.
  */
 function buildHashTooltip(chain: EnmHashChain | null, fallbackViewHash?: string): string {
   if (!chain && !fallbackViewHash) {
-    return 'Hash audytu w toku — backend nie dostarczył pól.';
+    return 'Odcisk audytu zostanie zapisany po synchronizacji wyników.';
   }
-  const lines = [
-    'Hash audytu (V12S-010, kliknij, aby skopiować pełny):',
-    `  Semantyka:   ${shortHash(chain?.semantic)}    topologia + role + pasma + katalog`,
-    `  Wejścia:     ${shortHash(chain?.input)}    R/X/B, ratingi, długości, sk3`,
-    `  Obliczenia:  ${shortHash(chain?.case)}    parametry zakresu obliczeń`,
-    `  Stan:        ${shortHash(chain?.variant)}    delta wariantu modelu`,
-    `  Łączniki:    ${shortHash(chain?.switching)}    stany open/closed`,
-  ];
-  if (!chain && fallbackViewHash) {
-    lines.push('', `  Hash widoku: ${shortHash(fallbackViewHash)} (tryb zgodności)`);
-  }
-  return lines.join('\n');
+  return 'Odcisk audytu jest dostępny w artefaktach technicznych i eksporcie audytowym.';
 }

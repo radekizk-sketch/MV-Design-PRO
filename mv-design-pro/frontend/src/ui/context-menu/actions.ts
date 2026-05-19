@@ -203,7 +203,7 @@ function getDeleteLabel(elementType: ElementType): string {
     BaySN: 'Usuń pole SN...',
     BusNN: 'Usuń szynę nN...',
     FeederNN: 'Usuń odpływ nN...',
-    SourceFieldNN: 'Usuń pole źródłowe nN...',
+    SourceFieldNN: 'Usuń pole przyłączeniowe nN...',
     PVInverter: 'Usuń falownik PV...',
     BESSInverter: 'Usuń falownik BESS...',
     EnergyStorage: 'Usuń magazyn energii...',

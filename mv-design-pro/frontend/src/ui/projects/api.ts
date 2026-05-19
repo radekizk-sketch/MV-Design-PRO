@@ -25,6 +25,14 @@ export interface CreateProjectRequest {
   description?: string | null;
 }
 
+export interface UpdateProjectRequest {
+  name?: string;
+  description?: string | null;
+  mode?: 'AS-IS' | 'TO-BE';
+  voltage_level_kv?: number;
+  frequency_hz?: number;
+}
+
 /**
  * Obsługa błędów API.
  */
@@ -53,6 +61,18 @@ export async function createProject(request: CreateProjectRequest): Promise<Proj
  */
 export async function getProject(projectId: string): Promise<Project> {
   const response = await fetch(`${API_BASE}/${projectId}`);
+  return handleResponse<Project>(response);
+}
+
+/**
+ * Aktualizuj metadane projektu.
+ */
+export async function updateProject(projectId: string, request: UpdateProjectRequest): Promise<Project> {
+  const response = await fetch(`${API_BASE}/${projectId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
   return handleResponse<Project>(response);
 }
 

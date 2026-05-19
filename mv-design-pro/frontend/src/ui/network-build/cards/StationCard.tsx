@@ -194,7 +194,7 @@ export function StationCard({ elementId }: { elementId: string }) {
       fields:
         bayFields.length > 0
           ? bayFields
-          : [{ key: 'no_bays', label: 'Brak pól', value: 'Nie zdefiniowano pól SN', severity: 'warning' as const }],
+          : [{ key: 'no_bays', label: 'Pola SN do konfiguracji', value: 'Wybierz układ rozdzielnicy SN z katalogu', severity: 'warning' as const }],
     };
 
     // Transformer-to-bay assignment enrichment (via equipment_refs)
@@ -217,7 +217,7 @@ export function StationCard({ elementId }: { elementId: string }) {
       fields:
         enrichedTrFields.length > 0
           ? enrichedTrFields
-          : [{ key: 'no_tr', label: 'Brak transformatora', value: 'Brak przypisanego transformatora', severity: 'warning' as const }],
+          : [{ key: 'no_tr', label: 'Transformator do konfiguracji', value: 'Wybierz transformator SN/nN z katalogu', severity: 'warning' as const }],
     };
 
     const result: CardSection[] = [identSection, strukturaSection, baysSection, transformersSection];
@@ -231,7 +231,7 @@ export function StationCard({ elementId }: { elementId: string }) {
           { key: 'ik3', label: 'Pr?d zwarciowy Ik3', value: null, unit: 'kA', source: 'calculated' },
           { key: 'ik1', label: 'Pr?d zwarciowy Ik1', value: null, unit: 'kA', source: 'calculated' },
           { key: 'max_tr_loading', label: 'Maks. obciążenie trafo', value: null, unit: '%', source: 'calculated' },
-          { key: 'no_results', label: 'Status', value: 'Brak wyników — uruchom analizę', severity: 'warning' },
+          { key: 'no_results', label: 'Status', value: 'Uruchom analizę, aby pokazać wyniki', severity: 'warning' },
         ],
       });
     }

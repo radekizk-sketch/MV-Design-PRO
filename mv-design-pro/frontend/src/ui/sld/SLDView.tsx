@@ -1472,7 +1472,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
 
         if (operationId === 'delete' || operationId === 'delete_element') {
           if (!activeCaseId) {
-            notify('Brak aktywnego Study Case - nie można usunąć elementu.', 'error');
+            notify('Wybierz zakres obliczeń przed usunięciem elementu.', 'error');
             return;
           }
 

@@ -427,7 +427,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
             strokeWidth={1.5}
             opacity={0.95}
           >
-            <title>BLOKADA: Brak punktu przyłączenia (PCC) lub connection_variant</title>
+            <title>Konfiguracja PCC i wariantu przyłączenia wymaga decyzji projektowej</title>
           </circle>
           {/* Czerwony X jako symbol blocker */}
           <line

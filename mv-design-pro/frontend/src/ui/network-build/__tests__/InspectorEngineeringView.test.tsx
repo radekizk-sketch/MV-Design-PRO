@@ -140,7 +140,7 @@ describe('InspectorEngineeringView', () => {
         severity: 'BLOCKER',
         element_ref: 'gen-1',
         element_refs: [],
-        message_pl: 'Brak katalogu źródła przekształtnikowego',
+        message_pl: 'Wymagany wariant katalogowy układu PV/BESS/FW',
       },
     ];
     mockFieldReadModel = {
@@ -152,19 +152,19 @@ describe('InspectorEngineeringView', () => {
     };
   });
 
-  it('pokazuje kanoniczne etykiety dla stacji i zrodla przeksztaltnikowego', () => {
+  it('pokazuje kanoniczne etykiety dla stacji i układu PV/BESS/FW', () => {
     render(<InspectorEngineeringView />);
 
     expect(
-      screen.getAllByText((content) => content.includes('FW') && content.includes('przekszta')).length,
+      screen.getAllByText((content) => content.includes('Układ') && content.includes('wiatrowej')).length,
     ).toBeGreaterThan(0);
     expect(screen.getByText('Po stronie nN stacji')).toBeInTheDocument();
     expect(
       screen.getByText(
-        (content) => content.startsWith('Oznaczenie') && content.includes('przekszta'),
+        (content) => content.startsWith('Oznaczenie') && content.includes('układu'),
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText('Brak katalogu źródła przekształtnikowego')).toBeInTheDocument();
+    expect(screen.getByText('Wymagany wariant katalogowy układu PV/BESS/FW')).toBeInTheDocument();
     expect(screen.queryByText('mv_lv')).not.toBeInTheDocument();
     expect(screen.queryByText('nn_side')).not.toBeInTheDocument();
   });

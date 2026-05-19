@@ -34,6 +34,7 @@ describe('SLD ↔ DER integracja (Faza G)', () => {
             nominalPowerKw: 2500,
           },
         ]}
+        lodOverride={4}
         onDoubleClickDer={onDoubleClickDer}
       />,
     );
@@ -59,6 +60,7 @@ describe('SLD ↔ DER integracja (Faza G)', () => {
           { id: 'bess1', x: 200, y: 100, kind: 'BESS', name: 'BESS', nominalPowerKw: null },
           { id: 'fw1', x: 300, y: 100, kind: 'FW', name: 'FW', nominalPowerKw: null },
         ]}
+        lodOverride={4}
         onContextMenu={onContextMenu}
       />,
     );

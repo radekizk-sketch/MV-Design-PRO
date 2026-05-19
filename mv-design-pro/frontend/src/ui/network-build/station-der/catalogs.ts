@@ -605,9 +605,9 @@ export const CONNECTION_VARIANT_CATALOG: ReadonlyArray<ConnectionVariantItem> = 
     id: 'cv_dedicated',
     catalog_namespace: 'connection_variant',
     side: 'dedicated_transformer',
-    label_pl: 'Przez transformator dedykowany (block-trafo)',
+    label_pl: 'Przez transformator dedykowany',
     description_pl:
-      'DER przyłączony przez transformator dedykowany (block transformer). '
+      'DER przyłączony przez transformator dedykowany. '
       + 'Stosowane gdy napięcie urządzenia nie pasuje do żadnej szyny stacji '
       + 'albo dla farm PV/FW > 1 MW wymagających izolacji galwanicznej.',
     applicable_der_kinds: ['PV', 'BESS', 'FW'],
@@ -936,6 +936,17 @@ export const PV_INVERTER_CATALOG: ReadonlyArray<PvInverterItem> = Object.freeze(
     nominal_voltage_kv: 0.4,
     fault_current_capability_pu: 1.05,
     applicable_module_types: ['A', 'B'],
+  },
+  {
+    id: 'pv_inv_system_1000',
+    catalog_namespace: 'pv_inverter',
+    catalog_version: '2024.1',
+    label_pl: 'Pakiet katalogowy PV 1000 (1 000 kW · 0,69 kV)',
+    manufacturer: 'MV-DESIGN-PRO',
+    nominal_power_kw: 1000,
+    nominal_voltage_kv: 0.69,
+    fault_current_capability_pu: 1.10,
+    applicable_module_types: ['B'],
   },
   {
     id: 'pv_inv_fimer_3000',
@@ -1269,7 +1280,7 @@ export const DER_FAULT_CURRENT_DATA_CATALOG: ReadonlyArray<DerFaultCurrentDataIt
 // 7b. BlockTransformerCatalog (Naprawa B.5 — audyt projektanta SN)
 // =============================================================================
 //
-// Transformator dedykowany (block-trafo) dla DER. W odróżnieniu od standardowego
+// Transformator dedykowany dla DER. W odróżnieniu od standardowego
 // transformatora SN/nN obsługuje również przekładnie SN/SN (np. 15/3 kV dla
 // turbinowni FW) oraz dedykowane konfiguracje dla farm PV/BESS.
 //
@@ -1307,7 +1318,7 @@ export const BLOCK_TRANSFORMER_CATALOG: ReadonlyArray<BlockTransformerItem> = Ob
     id: 'btr_pv_15_069_2500',
     catalog_namespace: 'block_transformer',
     catalog_version: '2024.1',
-    label_pl: 'PV block-trafo 15/0,69 kV · 2500 kVA · Dyn5',
+    label_pl: 'PV transformator dedykowany 15/0,69 kV · 2500 kVA · Dyn5',
     manufacturer: 'ABB',
     sn_kva: 2500,
     hv_kv: 15,
@@ -1325,7 +1336,7 @@ export const BLOCK_TRANSFORMER_CATALOG: ReadonlyArray<BlockTransformerItem> = Ob
     id: 'btr_pv_15_04_1000',
     catalog_namespace: 'block_transformer',
     catalog_version: '2024.1',
-    label_pl: 'PV block-trafo 15/0,4 kV · 1000 kVA · Dyn11',
+    label_pl: 'PV transformator dedykowany 15/0,4 kV · 1000 kVA · Dyn11',
     manufacturer: 'Siemens',
     sn_kva: 1000,
     hv_kv: 15,
@@ -1343,7 +1354,7 @@ export const BLOCK_TRANSFORMER_CATALOG: ReadonlyArray<BlockTransformerItem> = Ob
     id: 'btr_bess_15_04_1600',
     catalog_namespace: 'block_transformer',
     catalog_version: '2024.1',
-    label_pl: 'BESS block-trafo 15/0,4 kV · 1600 kVA · Dyn11 (galwaniczna izolacja)',
+    label_pl: 'BESS transformator dedykowany 15/0,4 kV · 1600 kVA · Dyn11 (izolacja galwaniczna)',
     manufacturer: 'Schneider',
     sn_kva: 1600,
     hv_kv: 15,
@@ -1361,7 +1372,7 @@ export const BLOCK_TRANSFORMER_CATALOG: ReadonlyArray<BlockTransformerItem> = Ob
     id: 'btr_fw_30_15_30000',
     catalog_namespace: 'block_transformer',
     catalog_version: '2024.1',
-    label_pl: 'FW block-trafo 30/15 kV · 30 MVA · YNyn0 (turbinownia, SN/SN)',
+    label_pl: 'FW transformator dedykowany 30/15 kV · 30 MVA · YNyn0 (turbinownia, SN/SN)',
     manufacturer: 'ABB',
     sn_kva: 30000,
     hv_kv: 30,
@@ -1379,7 +1390,7 @@ export const BLOCK_TRANSFORMER_CATALOG: ReadonlyArray<BlockTransformerItem> = Ob
     id: 'btr_fw_15_069_3450',
     catalog_namespace: 'block_transformer',
     catalog_version: '2024.1',
-    label_pl: 'FW block-trafo turbinowy 15/0,69 kV · 3450 kVA · Dyn11',
+    label_pl: 'FW transformator dedykowany turbinowy 15/0,69 kV · 3450 kVA · Dyn11',
     manufacturer: 'Siemens',
     sn_kva: 3450,
     hv_kv: 15,
@@ -1555,7 +1566,7 @@ export function getMvNeutralGrounding(id: string): MvNeutralGroundingItem | null
 }
 
 /**
- * Naprawa B.5: filtruje block-trafo dla danej kombinacji DER + napięć.
+ * Naprawa B.5: filtruje transformatory dedykowane dla danej kombinacji DER + napięć.
  * Zwraca pozycje katalogowe pasujące do device_voltage / station_voltage.
  */
 export function selectBlockTransformersForDer(args: {
@@ -1573,7 +1584,7 @@ export function selectBlockTransformersForDer(args: {
   });
 }
 
-/** Pobiera block-trafo po id. */
+/** Pobiera transformator dedykowany po id. */
 export function getBlockTransformer(id: string): BlockTransformerItem | null {
   return BLOCK_TRANSFORMER_CATALOG.find((b) => b.id === id) ?? null;
 }

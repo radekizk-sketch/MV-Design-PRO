@@ -16,6 +16,7 @@ from api.exception_handlers import register_exception_handlers
 from api.execution_runs import router as execution_runs_router
 from api.fault_loop import router as fault_loop_router
 from api.fault_scenarios import router as fault_scenarios_router
+from api.generators import router as generators_router
 from api.grid_source_preview import router as grid_source_preview_router
 from api.health import router as health_router
 from api.middleware import RequestIdMiddleware
@@ -35,8 +36,8 @@ from api.solver_input import router as solver_input_router
 from api.station_templates import router as station_templates_router
 from api.study_cases import router as study_cases_router
 from api.switchgear_config import router as switchgear_config_router
-from api.xlsx_import import router as xlsx_import_router
 from api.unified_runs import router as unified_runs_router
+from api.xlsx_import import router as xlsx_import_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from infrastructure.persistence.db import (
@@ -124,6 +125,7 @@ app.include_router(unified_runs_router, prefix="/api")
 app.include_router(result_contract_v1_router)
 app.include_router(fault_loop_router)
 app.include_router(fault_scenarios_router)
+app.include_router(generators_router)
 app.include_router(grid_source_preview_router)
 app.include_router(sld_overrides_router)
 app.include_router(switchgear_config_router)

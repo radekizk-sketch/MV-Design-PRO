@@ -54,15 +54,15 @@ function simpleGpzEnm(): EnmInputForHierarchy {
 }
 
 describe('NetworkHierarchyTree — empty state', () => {
-  it('shows "Brak modelu sieci — dodaj GPZ." when no GPZ', () => {
+  it('prowadzi projektanta do wariantu GPZ z katalogu gdy układ nie ma GPZ', () => {
     render(<NetworkHierarchyTree hierarchy={buildHierarchy(emptyEnm())} />);
     expect(screen.getByTestId('sld-hierarchy-empty')).toBeInTheDocument();
-    expect(screen.getByText(/Brak modelu sieci — dodaj GPZ/)).toBeInTheDocument();
+    expect(screen.getByText(/Rozpocznij układ sieci: wybierz wariant GPZ z katalogu/)).toBeInTheDocument();
   });
 
-  it('renders header "Drzewo modelu sieci"', () => {
+  it('renders header "Drzewo układu sieci"', () => {
     render(<NetworkHierarchyTree hierarchy={buildHierarchy(emptyEnm())} />);
-    expect(screen.getByText(/Drzewo modelu sieci/)).toBeInTheDocument();
+    expect(screen.getByText(/Drzewo układu sieci/)).toBeInTheDocument();
   });
 });
 
@@ -155,7 +155,7 @@ describe('NetworkHierarchyTree — Cable runs + DER sections', () => {
     expect(screen.getByText(/Ciągi liniowe \(1\)/)).toBeInTheDocument();
   });
 
-  it('renders Źródła OZE section when DER present', () => {
+  it('renders Układy PV/BESS/FW section when DER present', () => {
     const enm: EnmInputForHierarchy = {
       ...simpleGpzEnm(),
       generators: [
@@ -169,7 +169,7 @@ describe('NetworkHierarchyTree — Cable runs + DER sections', () => {
       ],
     };
     render(<NetworkHierarchyTree hierarchy={buildHierarchy(enm)} />);
-    expect(screen.getByText(/Źródła OZE \(1\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Układy PV\/BESS\/FW \(1\)/)).toBeInTheDocument();
     expect(screen.getByText(/PV-01/)).toBeInTheDocument();
   });
 });

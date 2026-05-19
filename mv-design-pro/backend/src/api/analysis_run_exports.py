@@ -446,10 +446,72 @@ def build_analysis_run_trace_export_payload(run: CanonicalRun) -> dict[str, Any]
     trace_payload = canonicalize_json(build_extended_trace_response(run))
     if not trace_payload.get("white_box_trace"):
         raise ValueError("Ślad obliczeniowy niedostępny dla tego obliczenia.")
+    short_circuit_currents = _build_short_circuit_proof_currents(run)
+    if short_circuit_currents:
+        trace_payload["short_circuit_proof_currents"] = short_circuit_currents
     trace_payload["proof_pack_ref"] = resolve_proof_pack_ref(run)
     trace_payload["export_artifact"] = build_export_artifact(run, export_kind="whitebox_package")
     trace_payload["export_policy"] = build_export_policy("whitebox_package")
     return trace_payload
+
+
+def _amps_to_ka(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value) / 1000.0
+    except (TypeError, ValueError):
+        return None
+
+
+def _build_short_circuit_proof_currents(run: CanonicalRun) -> dict[str, Any] | None:
+    """Expose SC3F I_dyn/I_th proof aliases from solver result fields."""
+    if run.analysis_type != "short_circuit_sn":
+        return None
+    raw_result = run.raw_result or {}
+    if raw_result.get("short_circuit_type") != "3F":
+        return None
+    graph_nodes = (raw_result.get("graph") or {}).get("nodes", {})
+    rows: list[dict[str, Any]] = []
+    for item in raw_result.get("results", []):
+        target_id = item.get("fault_node_id")
+        node = graph_nodes.get(target_id, {}) if isinstance(graph_nodes, dict) else {}
+        rows.append(
+            {
+                "target_id": target_id,
+                "element_id": node.get("element_id") or target_id,
+                "target_name": node.get("name") or node.get("element_id") or target_id,
+                "fault_type": item.get("short_circuit_type")
+                or raw_result.get("short_circuit_type"),
+                "I_dyn": {
+                    "symbol": "I_dyn",
+                    "label_pl": "Prad dynamiczny do sprawdzenia aparatury",
+                    "value_ka": _amps_to_ka(item.get("ip_a")),
+                    "source_field": "ip_a",
+                    "source_standard": "IEC 60909",
+                },
+                "I_th": {
+                    "symbol": "I_th",
+                    "label_pl": "Prad cieplny zastepczy do sprawdzenia aparatury",
+                    "value_ka": _amps_to_ka(item.get("ith_a")),
+                    "source_field": "ith_a",
+                    "source_standard": "IEC 60909",
+                },
+                "proof_ref": item.get("proof_ref"),
+            }
+        )
+    if not rows:
+        return None
+    rows.sort(key=lambda row: str(row.get("target_id") or ""))
+    return {
+        "standard_basis": "IEC 60909",
+        "scope": "SC3F",
+        "symbols": {
+            "I_dyn": "Prad dynamiczny porownywany z wytrzymaloscia dynamiczna aparatury.",
+            "I_th": "Prad cieplny zastepczy porownywany z wytrzymaloscia cieplna aparatury.",
+        },
+        "rows": rows,
+    }
 
 
 def export_run_report_json_response(

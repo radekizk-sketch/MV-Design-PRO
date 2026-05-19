@@ -239,8 +239,8 @@ describe('InspectorEngineeringView - PV za transformatorem SN/nN', () => {
     expect(screen.getByText('FRT / LVRT / HVRT')).toBeInTheDocument();
     expect(screen.getByText('Obliczenia i uzasadnienie')).toBeInTheDocument();
     expect(screen.getByText('Zabezpieczenia falownika i strony nN')).toBeInTheDocument();
-    expect(screen.getAllByText('brak danych').length).toBeGreaterThan(4);
-    expect(document.body.textContent).not.toMatch(/brak danych(?:kW|kV|pu|MW|Mvar|A|kA)/);
+    expect(screen.getAllByText('do konfiguracji').length).toBeGreaterThan(4);
+    expect(document.body.textContent).not.toMatch(/(?:brak danych|do konfiguracji)(?:kW|kV|pu|MW|Mvar|A|kA)/);
     expect(screen.queryByText('0.00')).not.toBeInTheDocument();
 
     snapshot.generators = originalGenerators;

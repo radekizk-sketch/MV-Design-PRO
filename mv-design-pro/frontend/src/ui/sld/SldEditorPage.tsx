@@ -617,7 +617,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     () => projectEnmToSldCadV12(
       (enmSnapshot ?? null) as Record<string, unknown> | null,
       logicalViews ?? null,
-      { zoom: 1, hasActiveResults: resultStatusLabel !== 'Brak wynikow' },
+      { zoom: 1, hasActiveResults: resultStatusLabel !== 'Wyniki nieuruchomione' },
     ),
     [enmSnapshot, logicalViews, resultStatusLabel],
   );
@@ -1071,7 +1071,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         tone:
           resultStatusLabel === 'Wyniki aktualne'
             ? ('ok' as const)
-            : resultStatusLabel === 'Brak wynikow'
+            : resultStatusLabel === 'Wyniki nieuruchomione'
               ? ('warn' as const)
               : ('danger' as const),
       },
@@ -1218,7 +1218,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       return {
         title: 'Uruchom analize dla aktywnego przypadku',
         description:
-          'Model ma juz wymagany kontekst i gotowosc obliczeniowa. Przejdz do wariantow i uruchomien.',
+          'Model ma juz wymagany kontekst obliczeniowy. Przejdz do wariantow i uruchomien.',
         actionLabel: 'Otworz warianty i uruchomienia',
         onAction: openExecutionSurface,
       };
@@ -1858,7 +1858,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           onStatusDraftChange={setSegmentStatusDraft}
           onSave={() => {
             if (!activeCaseId) {
-              notify('Brak aktywnego przypadku do zapisu segmentu.', 'warning');
+              notify('Wybierz zakres obliczeń przed zapisem odcinka SN.', 'warning');
               return;
             }
             const length = Number(segmentLengthKmDraft);

@@ -1,11 +1,11 @@
 /**
  * Readiness Live Panel — §3 UX 10/10
  *
- * Stały panel pokazujący braki danych w czasie rzeczywistym.
+ * Stały panel kontroli konfiguracji technicznej w czasie rzeczywistym.
  * Automatyczna synchronizacja ze Snapshot + readiness backend.
  *
  * WYMAGANIA:
- * - Grupowanie: Magistrala / Stacje / Zabezpieczenia / Źródła
+ * - Grupowanie: Magistrala / Stacje / Zabezpieczenia / Układy PV/BESS/FW
  * - Każdy wpis: przycisk „Przejdź" (centerOnElement + highlight + openModal)
  * - Automatyczne znikanie po naprawie (diff-based re-render)
  * - 100% synchronizacja z backend readiness codes
@@ -37,7 +37,7 @@ const GROUP_LABELS: Record<ReadinessGroup, string> = {
   MAGISTRALA: 'Magistrala',
   STACJE: 'Stacje',
   ZABEZPIECZENIA: 'Zabezpieczenia',
-  ZRODLA: 'Źródła',
+  ZRODLA: 'Układy PV/BESS/FW',
 };
 
 const GROUP_ICONS: Record<ReadinessGroup, string> = {
@@ -175,7 +175,7 @@ export const ReadinessLivePanel: React.FC<ReadinessLivePanelProps> = ({
         data-testid="readiness-live-panel-blocked"
       >
         <div className="text-xs font-semibold uppercase tracking-wide text-amber-800">
-          Blokada warsztatowa
+          Kontrola konfiguracji
         </div>
         <div className="mt-2 text-sm font-semibold text-amber-950">{workspaceBlockState.title}</div>
         <div className="mt-1 text-xs text-amber-900">{workspaceBlockState.description}</div>
@@ -272,10 +272,10 @@ export const ReadinessLivePanel: React.FC<ReadinessLivePanelProps> = ({
           <span className="text-green-600 text-lg">✓</span>
         </div>
         <span className="text-sm text-green-700 font-medium">
-          Model kompletny
+          Układ skonfigurowany do analiz
         </span>
         <span className="text-xs text-gray-500 mt-1">
-          Brak brakujących danych
+          Topologia i dane katalogowe są spójne.
         </span>
       </div>
     );
@@ -290,7 +290,7 @@ export const ReadinessLivePanel: React.FC<ReadinessLivePanelProps> = ({
       <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-            Braki danych
+            Kontrola konfiguracji
           </span>
           {loading && (
             <span className="text-xs text-gray-400 animate-pulse">
@@ -411,10 +411,10 @@ export const ReadinessLivePanel: React.FC<ReadinessLivePanelProps> = ({
                             <button
                               onClick={() => handleFix(issue)}
                               className="px-2 py-0.5 text-xs text-green-600 hover:bg-green-50 rounded transition-colors"
-                              title="Napraw brak"
+                              title="Otwórz konfigurację"
                               data-testid={`live-fix-${issue.code}`}
                             >
-                              Napraw
+                              Skonfiguruj
                             </button>
                           )}
                         </div>

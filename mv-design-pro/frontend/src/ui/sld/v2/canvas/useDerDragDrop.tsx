@@ -56,15 +56,19 @@ export interface DerPaletteButtonProps {
   readonly kind: DerDragKind;
   readonly onStart: (kind: DerDragKind) => void;
   readonly disabled?: boolean;
+  readonly disabledReason?: string;
   /** K30-92: active stan (drag w toku z tym kind) → invert color scheme. */
   readonly active?: boolean;
 }
 
 /** Klikalne palette button — start drag akcji dla danego DER kind. */
 export function DerPaletteButton(props: DerPaletteButtonProps): JSX.Element {
-  const { kind, onStart, disabled, active } = props;
+  const { kind, onStart, disabled, disabledReason, active } = props;
   const label = kind === 'PV' ? 'PV (fotowoltaika)' : kind === 'BESS' ? 'BESS (magazyn)' : 'FW (wiatr)';
   const color = kind === 'PV' ? '#FFD166' : kind === 'BESS' ? '#7DD3FC' : '#7EE0B5';
+  const title = disabled
+    ? disabledReason ?? 'Zakończ bieżące wskazanie układu.'
+    : `Wstaw układ ${label} na wybraną stację SN/nN.`;
   return (
     <button
       type="button"
@@ -72,6 +76,7 @@ export function DerPaletteButton(props: DerPaletteButtonProps): JSX.Element {
       data-der-kind={kind}
       data-der-active={active ? 'true' : 'false'}
       aria-pressed={active ? true : undefined}
+      title={title}
       disabled={disabled}
       onClick={() => !disabled && onStart(kind)}
       style={{

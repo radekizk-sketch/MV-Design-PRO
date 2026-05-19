@@ -174,7 +174,7 @@ def list_station_audit2_configs(
         return [_to_dict(row) for row in rows]
 
 
-@router.get("/{station_id}")
+@router.get("/{station_id:path}")
 def get_station_audit2_config(
     project_id: UUID, station_id: str, uow_factory=Depends(get_uow_factory)
 ) -> dict[str, Any]:
@@ -198,7 +198,7 @@ def get_station_audit2_config(
         return _to_dict(row)
 
 
-@router.put("/{station_id}")
+@router.put("/{station_id:path}")
 def upsert_station_audit2_config(
     project_id: UUID,
     station_id: str,
@@ -253,7 +253,7 @@ def upsert_station_audit2_config(
         return _to_dict(new_row)
 
 
-@router.delete("/{station_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{station_id:path}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_station_audit2_config(
     project_id: UUID,
     station_id: str,
@@ -275,7 +275,7 @@ def delete_station_audit2_config(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/{station_id}/_apply-to-network-model")
+@router.post("/{station_id:path}/_apply-to-network-model")
 def apply_audit2_to_network_model_endpoint(
     project_id: UUID,
     station_id: str,

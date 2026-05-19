@@ -9,6 +9,10 @@ import { useCallback, useMemo } from 'react';
 
 import { useReadinessLiveStore } from '../../engineering-readiness/readinessLiveStore';
 import { useSelectionStore } from '../../selection';
+import {
+  publicElementLabelFromRef,
+  sanitizePublicReadinessMessage,
+} from '../../shared/publicReadinessMessage';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 
@@ -58,6 +62,7 @@ function categorizeBlocker(code: string): BlockerCategory {
 
 export function ReadinessBlockersReview() {
   const fixActions = useSnapshotStore((state) => state.fixActions);
+  const snapshot = useSnapshotStore((state) => state.snapshot);
   const readinessIssues = useReadinessLiveStore((state) => state.issues);
   const selectElement = useSelectionStore((state) => state.selectElement);
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
@@ -68,12 +73,16 @@ export function ReadinessBlockersReview() {
       ...issue,
       category: categorizeBlocker(issue.code),
       categoryLabel: CATEGORY_LABELS[categorizeBlocker(issue.code)],
+      publicElementLabel: issue.element_ref
+        ? publicElementLabelFromRef(snapshot, issue.element_ref)
+        : '—',
+      publicMessage: sanitizePublicReadinessMessage(issue.message_pl, snapshot),
       fix: fixActions.find(
         (action) =>
           action.element_ref === issue.element_ref && action.code === issue.code,
       ),
     }));
-  }, [fixActions, readinessIssues]);
+  }, [fixActions, readinessIssues, snapshot]);
 
   const warningsCount = useMemo(
     () => readinessIssues.filter((issue) => issue.severity !== 'BLOCKER').length,
@@ -102,7 +111,7 @@ export function ReadinessBlockersReview() {
   if (blockers.length === 0) {
     const helperMessage =
       warningsCount === 0
-        ? 'Sieć jest gotowa do analizy'
+        ? 'Sieć jest przygotowana do analizy'
         : warningsCount === 1
           ? 'Pozostało 1 ostrzeżenie.'
           : `Pozostały ${warningsCount} ostrzeżenia.`;
@@ -111,7 +120,7 @@ export function ReadinessBlockersReview() {
       <div className="flex flex-1 items-center justify-center p-8">
         <div className="text-center">
           <p className="text-sm font-medium text-green-600">
-            Brak blokerów gotowości
+            Kontrola konfiguracji bez zagadnień krytycznych
           </p>
           <p className="mt-1 text-xs text-gray-500">{helperMessage}</p>
         </div>
@@ -142,15 +151,15 @@ export function ReadinessBlockersReview() {
                 {blocker.code}
               </td>
               <td className="max-w-[140px] truncate px-3 py-1.5 text-gray-700">
-                {blocker.element_ref ?? '—'}
+                {blocker.publicElementLabel}
               </td>
               <td className="px-3 py-1.5">
                 <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[9px] text-gray-600">
                   {blocker.categoryLabel}
                 </span>
               </td>
-              <td className="px-3 py-1.5 text-gray-800" title={blocker.message_pl}>
-                {blocker.message_pl}
+              <td className="px-3 py-1.5 text-gray-800" title={blocker.publicMessage}>
+                {blocker.publicMessage}
               </td>
               <td className="px-3 py-1.5">
                 {blocker.fix && blocker.element_ref ? (

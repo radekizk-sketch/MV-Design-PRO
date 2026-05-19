@@ -406,7 +406,7 @@ function RankingTable({ ranking, filter }: RankingTableProps) {
   }, [ranking, filter]);
 
   if (filtered.length === 0) {
-    return <EmptyState message="Brak problemow do wyswietlenia." />;
+    return <EmptyState message="Kontrola rozpływu nie wskazuje zagadnień technicznych." />;
   }
 
   return (

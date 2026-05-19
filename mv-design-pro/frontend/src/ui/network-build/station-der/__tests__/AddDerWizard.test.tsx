@@ -4,9 +4,10 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { fireEvent, render as rtlRender, screen } from '@testing-library/react';
+import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
 import type { ReactElement } from 'react';
 
+import { useAppStateStore } from '../../../app-state/store';
 import { AddDerWizard } from '../AddDerWizard';
 import { useStationDerStore, selectDersOfStation } from '../store';
 
@@ -40,6 +41,9 @@ const FROZEN_NOW = '2026-05-06T10:00:00Z';
 describe('AddDerWizard — 5-krokowy guided flow', () => {
   beforeEach(() => {
     useStationDerStore.getState().reset();
+    useAppStateStore.getState().reset();
+    useAppStateStore.getState().setActiveProject('proj_test', 'Projekt testowy');
+    useAppStateStore.getState().setActiveCase('case_test', 'Zakres testowy', 'ShortCircuitCase', 'NONE');
   });
 
   it('zwraca null gdy isOpen=false', () => {
@@ -104,7 +108,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     expect(next.disabled).toBe(false);
   });
 
-  it('pełny flow PV po SN: 5 kroków → utwórz', () => {
+  it('pełny flow PV po SN: 5 kroków → utwórz', async () => {
     const onClose = vi.fn();
     render(
       <AddDerWizard
@@ -142,7 +146,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     fireEvent.click(screen.getByTestId('add-der-create'));
 
     // Po utworzeniu DER jest w store + onClose wywołany.
-    expect(onClose).toHaveBeenCalled();
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
     const ders = selectDersOfStation(useStationDerStore.getState(), 'station_test');
     expect(ders).toHaveLength(1);
     expect(ders[0].name).toBe('PV Test 1');

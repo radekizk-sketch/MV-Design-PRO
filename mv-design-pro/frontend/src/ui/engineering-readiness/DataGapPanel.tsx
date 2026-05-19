@@ -1,15 +1,15 @@
 /**
  * Data Gap Panel -- Spec 9
  *
- * Enhanced readiness panel: "Braki danych do obliczen"
+ * Enhanced configuration-control panel for calculation preparation.
  * Groups issues into 6 engineering categories per spec:
  *   Magistrala / Stacje / Transformatory / Zrodla / Zabezpieczenia / Katalog
  *
  * Each issue row provides:
- *   - Severity badge (BLOKADA = red, OSTRZEZENIE = amber)
+ *   - Severity badge (DECYZJA = red, OSTRZEZENIE = amber)
  *   - Polish engineering message
  *   - "Przejdz" navigation button (centerOnElement + highlight)
- *   - Context-aware quick fix button (e.g., "Zmien typ z katalogu")
+ *   - Context-aware configuration button (e.g., "Wybierz wariant katalogowy")
  *
  * Issues disappear in real-time after fix (driven by Snapshot diff via store).
  *
@@ -87,7 +87,7 @@ const GROUP_BADGE_COLORS: Record<DataGapGroup, string> = {
 // =============================================================================
 
 const SEVERITY_BADGE_LABEL: Record<ReadinessSeverity, string> = {
-  BLOCKER: 'BLOKADA',
+  BLOCKER: 'DECYZJA',
   IMPORTANT: 'OSTRZEZENIE',
   INFO: 'INFORMACJA',
 };
@@ -203,9 +203,9 @@ export function resolveQuickFixLabel(issue: ReadinessIssue): string {
   const code = issue.code.toUpperCase();
   const group = classifyDataGapGroup(issue);
 
-  // Catalog issues -> "Zmien typ z katalogu"
+  // Catalog issues -> "Wybierz wariant katalogowy"
   if (group === 'KATALOG') {
-    return 'Zmien typ z katalogu';
+    return 'Wybierz wariant katalogowy';
   }
 
   // Protection missing -> "Dodaj zabezpieczenie"
@@ -225,12 +225,12 @@ export function resolveQuickFixLabel(issue: ReadinessIssue): string {
     return 'Konfiguruj transformator';
   }
 
-  // Source issues -> "Konfiguruj zrodlo"
+  // Source issues -> "Konfiguruj układ"
   if (group === 'ZRODLA') {
     if (code.includes('PARAM') || code.includes('DATA')) {
-      return 'Uzupelnij parametry';
+      return 'Skonfiguruj parametry';
     }
-    return 'Konfiguruj zrodlo';
+    return 'Konfiguruj układ';
   }
 
   // Missing parameter patterns (any group)
@@ -239,7 +239,7 @@ export function resolveQuickFixLabel(issue: ReadinessIssue): string {
     code.includes('MISSING_DATA') ||
     code.includes('INCOMPLETE')
   ) {
-    return 'Uzupelnij parametry';
+    return 'Skonfiguruj parametry';
   }
 
   // Catalog binding refresh
@@ -248,7 +248,7 @@ export function resolveQuickFixLabel(issue: ReadinessIssue): string {
   }
 
   // Generic fallback
-  return 'Napraw';
+  return 'Skonfiguruj';
 }
 
 // =============================================================================
@@ -382,7 +382,7 @@ export const DataGapPanel: React.FC<DataGapPanelProps> = ({
   );
 
   // ---------------------------------------------------------------------------
-  // Empty state: green "Gotowe do obliczen" banner
+  // Empty state: green calculation-ready banner
   // ---------------------------------------------------------------------------
 
   if (!loading && issues.length === 0) {
@@ -407,7 +407,7 @@ export const DataGapPanel: React.FC<DataGapPanelProps> = ({
               compact ? 'text-xs' : 'text-sm',
             )}
           >
-            Braki danych do obliczen
+            Kontrola konfiguracji obliczeń
           </h2>
         </div>
 
@@ -420,10 +420,10 @@ export const DataGapPanel: React.FC<DataGapPanelProps> = ({
             <span className="text-green-600 text-xl">{'\u2713'}</span>
           </div>
           <span className="text-sm text-green-700 font-semibold">
-            Gotowe do obliczen
+            Układ przygotowany do obliczeń
           </span>
           <span className="text-xs text-gray-500 mt-1">
-            Wszystkie dane kompletne. Mozna uruchomic obliczenia.
+            Topologia i dane katalogowe pozwalają uruchomić obliczenia.
           </span>
         </div>
       </div>
@@ -456,7 +456,7 @@ export const DataGapPanel: React.FC<DataGapPanelProps> = ({
               compact ? 'text-xs' : 'text-sm',
             )}
           >
-            Braki danych do obliczen
+            Kontrola konfiguracji obliczeń
           </h2>
           {loading && (
             <span className="text-xs text-gray-400 animate-pulse">
@@ -470,7 +470,7 @@ export const DataGapPanel: React.FC<DataGapPanelProps> = ({
           {totalBlockers > 0 && (
             <span
               className="px-2 py-0.5 text-xs font-bold bg-red-600 text-white rounded"
-              title="Blokady"
+              title="Decyzje projektowe"
             >
               {totalBlockers}
             </span>
@@ -593,7 +593,7 @@ export const DataGapPanel: React.FC<DataGapPanelProps> = ({
                             )}
                           >
                             {issue.severity === 'BLOCKER'
-                              ? 'BLOKADA'
+                              ? 'DECYZJA'
                               : issue.severity === 'IMPORTANT'
                                 ? 'OSTRZ.'
                                 : 'INFO'}

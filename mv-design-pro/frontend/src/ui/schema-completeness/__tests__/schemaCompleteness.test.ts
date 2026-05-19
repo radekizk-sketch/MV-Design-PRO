@@ -192,7 +192,7 @@ describe('SchemaCompletenessPanel Polish labels', () => {
       MAGISTRALA: 'Magistrala SN',
       STACJE: 'Stacje',
       TRANSFORMATORY: 'Transformatory',
-      ZRODLA: 'Źródła',
+      ZRODLA: 'Układy PV/BESS/FW',
       ZABEZPIECZENIA: 'Zabezpieczenia',
       KATALOG: 'Katalog',
       INNE: 'Inne',

@@ -9,7 +9,7 @@ import { hasTechnicalIcon } from '../../icons/technicalIconRegistry';
 describe('context-menu-source - kanon menu zrodel i przylaczen', () => {
   it('ma akcje profili, charakterystyk i zgodnosci przylaczeniowej', () => {
     expect(SOURCE_CONNECTION_MENU_ACTIONS.map((action) => action.label)).toEqual([
-      'Otwórz w inspektorze',
+      'Otwórz kartę techniczną',
       'Edytuj źródło',
       'Edytuj punkt przyłączenia',
       'Edytuj profil operatora',

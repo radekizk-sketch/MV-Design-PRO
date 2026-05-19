@@ -68,7 +68,7 @@ export function StartBranchForm() {
   );
 
   const hasCanonicalSource = sourceContext.fromRef.trim().length > 0;
-  const missingSourceMessage = hasCanonicalSource ? null : 'Brak jawnego źródła odgałęzienia';
+  const missingSourceMessage = hasCanonicalSource ? null : 'Wskaż jawne źródło odgałęzienia';
 
   const selectedTargetBus = useMemo(() => {
     const explicit = typeof context?.to_bus_ref === 'string' ? context.to_bus_ref.trim() : '';

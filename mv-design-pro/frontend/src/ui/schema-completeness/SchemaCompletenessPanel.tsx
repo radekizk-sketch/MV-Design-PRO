@@ -1,8 +1,8 @@
 /**
- * SchemaCompletenessPanel — „Braki danych do obliczeń"
+ * SchemaCompletenessPanel — „Kontrola konfiguracji obliczeń"
  *
  * Panel wyświetlający braki danych wymaganych do obliczeń, pogrupowane
- * wg kategorii (Magistrala / Stacje / Transformatory / Źródła / Zabezpieczenia / Katalog).
+ * wg kategorii (Magistrala / Stacje / Transformatory / Układy PV/BESS/FW / Zabezpieczenia / Katalog).
  *
  * Każdy wpis ma:
  * - „Przejdź" — centrowanie + podświetlenie na SLD
@@ -47,7 +47,7 @@ const CATEGORY_LABELS: Record<IssueCategory, string> = {
   MAGISTRALA: 'Magistrala SN',
   STACJE: 'Stacje',
   TRANSFORMATORY: 'Transformatory',
-  ZRODLA: 'Źródła',
+  ZRODLA: 'Układy PV/BESS/FW',
   ZABEZPIECZENIA: 'Zabezpieczenia',
   KATALOG: 'Katalog',
   INNE: 'Inne',
@@ -194,7 +194,7 @@ export const SchemaCompletenessPanel: React.FC<SchemaCompletenessPanelProps> = (
       {/* Header */}
       <div className="px-4 py-3 bg-slate-800 text-white flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold">Braki danych do obliczeń</h3>
+          <h3 className="text-sm font-semibold">Kontrola konfiguracji obliczeń</h3>
           <p className="text-xs text-slate-300 mt-0.5">
             {summary.total === 0
               ? 'Wszystkie dane kompletne'

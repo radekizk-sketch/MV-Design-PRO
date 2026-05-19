@@ -58,13 +58,13 @@ describe('no dead clicks in primary workflow - TopBar', () => {
     expect(onViewResults).toHaveBeenCalledOnce();
   });
 
-  it('Nakładka button calls onViewResults', () => {
-    const onViewResults = vi.fn();
-    render(<TopBar onViewResults={onViewResults} />);
+  it('Nakładka button opens the SLD overlay action', () => {
+    const onMenuAction = vi.fn();
+    render(<TopBar onMenuAction={onMenuAction} />);
 
     fireEvent.click(screen.getByTestId('top-bar-overlay'));
 
-    expect(onViewResults).toHaveBeenCalledOnce();
+    expect(onMenuAction).toHaveBeenCalledWith('overlay');
   });
 
   it('Obliczenia button navigates to case-config', () => {

@@ -33,7 +33,7 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
   background: [
     { id: 'insert-gpz', labelPl: 'Wstaw główny punkt zasilania', group: 'budowa' },
     { id: 'open-catalogs', labelPl: 'Otwórz katalogi techniczne', group: 'widok' },
-    { id: 'show-readiness', labelPl: 'Pokaż gotowość modelu', group: 'widok' },
+    { id: 'show-readiness', labelPl: 'Pokaż kontrolę konfiguracji', group: 'widok' },
   ],
   gpz: [
     { id: 'open-source', labelPl: 'Edytuj główny punkt zasilania', group: 'edycja' },
@@ -43,7 +43,7 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
   section: [
     { id: 'add-bay', labelPl: 'Dodaj pole SN', group: 'budowa' },
     { id: 'show-sc-data', labelPl: 'Pokaż dane zwarciowe źródła', group: 'widok' },
-    { id: 'show-readiness', labelPl: 'Pokaż gotowość modelu', group: 'widok' },
+    { id: 'show-readiness', labelPl: 'Pokaż kontrolę konfiguracji', group: 'widok' },
   ],
   bay: [
     { id: 'open-bay', labelPl: 'Otwórz okno pola', group: 'edycja' },
@@ -101,9 +101,9 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'open-station-config', labelPl: 'Otwórz konfigurator stacji', group: 'edycja' },
     { id: 'continue-trunk', labelPl: 'Kontynuuj ciąg główny', group: 'budowa' },
     { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', group: 'budowa' },
-    { id: 'add-source', labelPl: 'Dodaj źródło', group: 'budowa' },
+    { id: 'add-source', labelPl: 'Dodaj układ PV/BESS/FW z katalogu', group: 'budowa' },
     { id: 'add-load', labelPl: 'Dodaj obciążenie nN', group: 'budowa' },
-    { id: 'show-readiness', labelPl: 'Pokaż gotowość stacji', group: 'widok' },
+    { id: 'show-readiness', labelPl: 'Pokaż konfigurację stacji', group: 'widok' },
     { id: 'show-results', labelPl: 'Pokaż wyniki stacji', group: 'widok' },
     { id: 'delete-station', labelPl: 'Usuń stację', group: 'usun' },
   ],

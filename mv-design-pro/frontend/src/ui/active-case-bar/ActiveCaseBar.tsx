@@ -158,9 +158,9 @@ export function ActiveCaseBar({
             <div
               data-testid="active-run-id"
               className="px-2 py-0.5 rounded-ind border border-indigo-200 bg-indigo-50 text-[11px] font-mono text-indigo-700"
-              title="Aktywny identyfikator uruchomienia obliczen"
+              title="Aktywny przebieg obliczeń"
             >
-              Id uruchomienia {visibleRunId}
+              Aktywny przebieg obliczeń
             </div>
           </>
         ) : null}
@@ -172,7 +172,7 @@ export function ActiveCaseBar({
           onClick={handleChangeCaseClick}
           className="ind-btn border border-chrome-200 bg-chrome-50 text-chrome-600 hover:bg-chrome-100"
         >
-          Przelacz zestaw
+          Przełącz zestaw
         </button>
 
         <button
@@ -206,7 +206,7 @@ export function ActiveCaseBar({
             )}
             title={
               !hasActiveCase
-                ? 'Wybierz wariant pracy, aby otworzyc akcje dodatkowe'
+                ? 'Wybierz wariant pracy, aby otworzyć akcje dodatkowe'
                 : 'Akcje dodatkowe'
             }
           >
@@ -239,11 +239,11 @@ export function ActiveCaseBar({
                 )}
                 title={
                   resultStatus === 'NONE'
-                    ? 'Brak wynikow - uruchom obliczenia'
-                    : 'Przegladaj wyniki'
+                    ? 'Uruchom obliczenia, aby przeglądać wyniki'
+                    : 'Przeglądaj wyniki'
                 }
               >
-                Podglad wynikow
+                Podgląd wyników
               </button>
             </div>
           ) : null}

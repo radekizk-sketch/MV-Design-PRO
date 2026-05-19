@@ -70,7 +70,7 @@ const SWITCH_STATE_LABELS: Record<NNSwitchState, string> = {
   OTWARTY: 'Otwarty', ZAMKNIETY: 'Zamknięty',
 };
 const PLACEMENT_LABELS: Record<SourcePlacement, string> = {
-  NEW_FIELD: 'Utwórz nowe pole źródłowe', EXISTING_FIELD: 'Użyj istniejącego pola',
+  NEW_FIELD: 'Utwórz nowe pole przyłączeniowe', EXISTING_FIELD: 'Użyj istniejącego pola',
 };
 
 function validateForm(data: UPSFormData): FieldError[] {

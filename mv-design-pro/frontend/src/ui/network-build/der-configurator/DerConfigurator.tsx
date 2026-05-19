@@ -2,7 +2,7 @@
  * Uniwersalny konfigurator DER dla E-21/E-22/E-23.
  *
  * Karty są inżynierskie: pokazują falownik lub PCS, punkt przyłączenia,
- * wymagania NC RfG, FRT/HVRT, gotowość obliczeń i zabezpieczenia. Brak danych
+ * wymagania NC RfG, FRT/HVRT, kontrolę obliczeń i zabezpieczenia. Brak danych
  * jest jawnie nazwany, nigdy nie jest zastępowany zerem.
  */
 
@@ -66,7 +66,7 @@ const CARD_LABELS_BY_KIND: Record<DerKind, Partial<Record<DerCardId, string>>> =
     'plant-controller': 'Regulacja PV',
     'frt-hvrt': 'FRT / LVRT / HVRT',
     ncrfg: 'Zgodność przyłączeniowa',
-    readiness: 'Gotowość obliczeń',
+    readiness: 'Zakres obliczeń',
   },
   BESS: {
     basic: 'Dane podstawowe',
@@ -75,7 +75,7 @@ const CARD_LABELS_BY_KIND: Record<DerKind, Partial<Record<DerCardId, string>>> =
     'plant-controller': 'Bateria i tryby pracy',
     'frt-hvrt': 'FRT / HVRT',
     ncrfg: 'Zgodność przyłączeniowa',
-    readiness: 'Gotowość obliczeń',
+    readiness: 'Zakres obliczeń',
   },
   FW: {
     basic: 'Dane podstawowe',
@@ -84,7 +84,7 @@ const CARD_LABELS_BY_KIND: Record<DerKind, Partial<Record<DerCardId, string>>> =
     'plant-controller': 'Sterowanie i regulacja',
     'frt-hvrt': 'FRT / HVRT',
     ncrfg: 'Zgodność przyłączeniowa',
-    readiness: 'Gotowość obliczeń',
+    readiness: 'Zakres obliczeń',
   },
 };
 
@@ -123,15 +123,15 @@ const DEFAULT_CARD_HINTS: Record<DerKind, Record<DerCardId, readonly string[]>> 
     ],
     'frt-hvrt': [
       'Wybierz krzywe LVRT i HVRT oraz model dynamiczny falownika.',
-      'Brak modelu dynamicznego blokuje pełną ocenę FRT/HVRT.',
+      'Skonfiguruj model dynamiczny, aby wykonać pełną ocenę FRT/HVRT.',
     ],
     ncrfg: [
       'Wybierz profil NC RfG operatora i moduł A/B/C/D.',
       'Sprawdź minimalną moc zwarciową w PCC oraz wymagania Q(U) i P(f).',
     ],
     readiness: [
-      'Gotowość wymaga PCC, falownika, profilu NC RfG, FRT/HVRT, danych zwarciowych i zabezpieczenia.',
-      'Braki prowadzą do konkretnego pola konfiguracji.',
+      'Kontrola wymaga PCC, falownika, profilu NC RfG, FRT/HVRT, danych zwarciowych i zabezpieczenia.',
+      'Wskazania prowadzą do konkretnego pola konfiguracji.',
     ],
   },
   BESS: {
@@ -152,7 +152,7 @@ const DEFAULT_CARD_HINTS: Record<DerKind, Record<DerCardId, readonly string[]>> 
     ],
     'frt-hvrt': ['Wybierz FRT/HVRT i model dynamiczny PCS.'],
     ncrfg: ['Wybierz profil NC RfG operatora i sprawdź zakres pracy P/Q.'],
-    readiness: ['Brak PCS, baterii, PCC lub profilu NC RfG blokuje obliczenia.'],
+    readiness: ['Wybierz PCS, baterię, PCC i profil NC RfG, aby uruchomić obliczenia.'],
   },
   FW: {
     basic: [
@@ -164,7 +164,7 @@ const DEFAULT_CARD_HINTS: Record<DerKind, Record<DerCardId, readonly string[]>> 
     'plant-controller': ['Wybierz regulator farmy, Q(U), P(f) i ograniczenia mocy.'],
     'frt-hvrt': ['Wybierz FRT/HVRT i model dynamiczny PMSG/DFIG/SCIG.'],
     ncrfg: ['Wybierz profil NC RfG oraz moduł B/C/D według mocy.'],
-    readiness: ['Brak turbiny, PCC, modelu dynamicznego lub zabezpieczeń blokuje pełną analizę.'],
+    readiness: ['Wybierz turbinę, PCC, model dynamiczny i zabezpieczenia, aby uruchomić pełną analizę.'],
   },
 };
 

@@ -85,6 +85,54 @@ def _make_id(prefix: str, seed: str, local_path: str) -> str:
     return f"{prefix}/{seed}/{local_path}"
 
 
+def _looks_internal_identifier(value: str) -> bool:
+    compact = value.replace("-", "")
+    return "/" in value or (len(compact) >= 24 and all(char in "0123456789abcdefABCDEF" for char in compact))
+
+
+def _branch_point_public_label(branch_point: dict[str, Any]) -> str:
+    name = str(branch_point.get("name") or "").strip()
+    if name and not _looks_internal_identifier(name):
+        return name
+    return (
+        "ZKSN"
+        if branch_point.get("branch_point_type") == "zksn"
+        else "Słup rozgałęźny SN"
+    )
+
+
+def _normalize_branch_point_switch_state(value: Any) -> str:
+    normalized = str(value or "").strip().lower()
+    if normalized in {"open", "otwarty", "normalnie_otwarty"}:
+        return "open"
+    return "closed"
+
+
+def _complete_catalog_branch_point_defaults(enm: dict[str, Any]) -> dict[str, Any]:
+    """Uzupełnij katalogowe domyślne stany łączników dla starszych snapshotów."""
+    source_branch_points = enm.get("branch_points")
+    if not isinstance(source_branch_points, list):
+        return enm
+
+    completed = enm
+    changed = False
+    for idx, bp in enumerate(source_branch_points):
+        if not isinstance(bp, dict):
+            continue
+        if bp.get("branch_point_type") not in {"zksn", "branch_pole"}:
+            continue
+        if not bp.get("catalog_ref") or bp.get("switch_state"):
+            continue
+        if not changed:
+            completed = copy.deepcopy(enm)
+            changed = True
+        completed_branch_points = completed.get("branch_points", [])
+        completed_bp = completed_branch_points[idx]
+        completed_bp["switch_state"] = "closed"
+
+    return completed
+
+
 def _quantize_ratio(value: float, quantum: float = 1e-6) -> float:
     """Kwantyzacja wartości ratio dla stabilności deterministycznej."""
     return round(value / quantum) * quantum
@@ -716,6 +764,7 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
         for bp in enm.get("branch_points", []):
             bp_ref = bp.get("ref_id")
             bp_type = bp.get("branch_point_type")
+            bp_label = _branch_point_public_label(bp)
             parent_segment_id = bp.get("parent_segment_id")
             main_in = bp.get("ports", {}).get("MAIN_IN")
             main_out = bp.get("ports", {}).get("MAIN_OUT")
@@ -726,7 +775,7 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
                 blockers.append(
                     {
                         "code": "branch_point.invalid_parent_medium",
-                        "message_pl": f"Punkt rozgałęzienia '{bp_ref}' nie ma poprawnego segmentu nadrzędnego.",
+                        "message_pl": f"{bp_label} wymaga poprawnego odcinka nadrzędnego.",
                         "element_ref": bp_ref,
                         "severity": "BLOKUJACE",
                     }
@@ -736,7 +785,9 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
                     blockers.append(
                         {
                             "code": "branch_point.invalid_parent_medium",
-                            "message_pl": f"Słup rozgałęźny '{bp_ref}' może być osadzony tylko na linii napowietrznej.",
+                            "message_pl": (
+                                "Słup rozgałęźny SN może być osadzony tylko na linii napowietrznej."
+                            ),
                             "element_ref": bp_ref,
                             "severity": "BLOKUJACE",
                         }
@@ -745,7 +796,7 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
                     blockers.append(
                         {
                             "code": "branch_point.invalid_parent_medium",
-                            "message_pl": f"ZKSN '{bp_ref}' może być osadzony tylko na kablu.",
+                            "message_pl": "ZKSN może być osadzony tylko na odcinku kablowym SN.",
                             "element_ref": bp_ref,
                             "severity": "BLOKUJACE",
                         }
@@ -755,7 +806,9 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
                 blockers.append(
                     {
                         "code": "branch_point.required_port_missing",
-                        "message_pl": f"Punkt '{bp_ref}' nie ma wymaganych portów MAIN_IN/MAIN_OUT.",
+                        "message_pl": (
+                            f"{bp_label} wymaga portu wejściowego i wyjściowego toru głównego."
+                        ),
                         "element_ref": bp_ref,
                         "severity": "BLOKUJACE",
                     }
@@ -765,7 +818,7 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
                 blockers.append(
                     {
                         "code": "branch_point.catalog_ref_missing",
-                        "message_pl": f"Punkt '{bp_ref}' nie ma przypisanej referencji katalogowej.",
+                        "message_pl": f"{bp_label} wymaga wariantu katalogowego.",
                         "element_ref": bp_ref,
                         "severity": "BLOKUJACE",
                     }
@@ -786,7 +839,7 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
                 blockers.append(
                     {
                         "code": "zksn.branch_count_invalid",
-                        "message_pl": f"ZKSN '{bp_ref}' ma niepoprawną liczbę portów odgałęźnych.",
+                        "message_pl": "ZKSN wymaga jednego albo dwóch portów odgałęźnych.",
                         "element_ref": bp_ref,
                         "severity": "BLOKUJACE",
                     }
@@ -796,7 +849,7 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
                 blockers.append(
                     {
                         "code": "branch_point.switch_state_missing",
-                        "message_pl": f"ZKSN '{bp_ref}' nie ma stanu łącznika (switch_state).",
+                        "message_pl": "ZKSN wymaga wskazania stanu normalnego łącznika.",
                         "element_ref": bp_ref,
                         "severity": "BLOKUJACE",
                     }
@@ -1614,6 +1667,7 @@ def _response(
     events: list[dict] | None = None,
 ) -> dict[str, Any]:
     """Zbuduj standardową odpowiedź operacji domenowej."""
+    enm = _complete_catalog_branch_point_defaults(enm)
     readiness, fix_actions = _build_readiness(enm)
     logical_views = _compute_logical_views(enm)
     materialized_params = _compute_materialized_params(enm)
@@ -1906,12 +1960,43 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "source.missing_voltage",
         )
 
-    # Check no existing source
-    if enm.get("sources"):
+    source_identity_raw = (
+        payload.get("source_id")
+        or payload.get("solution_ref")
+        or payload.get("source_name")
+        or payload.get("name_pl")
+    )
+    source_identity = (
+        source_identity_raw.strip()
+        if isinstance(source_identity_raw, str) and source_identity_raw.strip()
+        else None
+    )
+    display_name = (
+        payload.get("source_name")
+        or payload.get("name_pl")
+        or (f"GPZ {source_identity}" if source_identity else None)
+        or f"GPZ {voltage_kv} kV"
+    )
+
+    existing_sources = [source for source in enm.get("sources", []) if isinstance(source, dict)]
+    if existing_sources and not source_identity:
         return _error_response(
-            "Model sieci już ma źródło zasilania. Można dodać tylko jedno GPZ.",
-            "source.already_exists",
+            "Sieć ma już GPZ. Dodanie kolejnego GPZ wymaga unikalnego source_id albo solution_ref.",
+            "source.identity_required",
         )
+    if source_identity:
+        for source in existing_sources:
+            source_meta = source.get("meta") if isinstance(source.get("meta"), dict) else {}
+            existing_identity = (
+                source_meta.get("source_id")
+                or source_meta.get("solution_ref")
+                or source.get("source_id")
+            )
+            if existing_identity == source_identity:
+                return _error_response(
+                    "GPZ o podanym identyfikatorze jest już w sieci.",
+                    "source.already_exists",
+                )
 
     allowed_grounding_types = {
         "isolated",
@@ -2017,6 +2102,8 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "catalog_ref": catalog_ref,
             "voltage_kv": voltage_kv,
             "sections_count": sections_count,
+            "source_identity": source_identity or "primary",
+            "source_name": display_name,
             "manual_equivalent": manual_equivalent or None,
             "grounding": grounding_config,
             "zero_sequence": zero_sequence_config,
@@ -2213,7 +2300,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     source_data = {
         "device_type": "source",
         "ref_id": source_ref,
-        "name": payload.get("source_name") or f"Źródło GPZ {voltage_kv} kV",
+        "name": payload.get("source_name") or payload.get("name_pl") or f"Źródło GPZ {voltage_kv} kV",
         "bus_ref": source_bus_ref,
         "substation_ref": substation_ref,
         "gpz_section_id": (
@@ -2225,6 +2312,11 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         "model": materialized_params.get("short_circuit_model", "short_circuit_power"),
         "catalog_ref": catalog_ref,
         "materialized_params": materialized_params,
+        "meta": {
+            "source_id": source_identity,
+            "solution_ref": payload.get("solution_ref"),
+            "catalog_role": "GPZ_110_SN",
+        },
     }
     if binding_payload is not None:
         _apply_catalog_metadata(source_data, binding_payload, default_namespace="ZRODLO_SN")
@@ -2444,7 +2536,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     new_enm.setdefault("substations", []).append(
         {
             "ref_id": substation_ref,
-            "name": payload.get("source_name") or f"GPZ {voltage_kv} kV",
+            "name": display_name,
             "station_type": "gpz",
             "bus_refs": gpz_section_bus_refs + gpz_hv_bus_refs,
             "transformer_refs": gpz_transformer_refs,
@@ -2791,6 +2883,15 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         )
     # The semantic station_type stored in substation record
     substation_semantic_type = substation_type_map.get(station_type_raw, "mv_lv")
+    station_display_name = (
+        station.get("station_name")
+        or station.get("name")
+        or station.get("name_pl")
+        or payload.get("station_name")
+        or payload.get("name")
+        or payload.get("name_pl")
+        or f"Stacja {station_type_raw or station_type}"
+    )
 
     # Validate insert_at
     insert_mode = insert_at.get("mode", "RATIO")
@@ -2898,7 +2999,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         new_enm,
         {
             "ref_id": sn_bus_id,
-            "name": station.get("station_name") or "Szyna SN stacji",
+            "name": station_display_name,
             "voltage_kv": sn_voltage_kv,
         },
     )
@@ -3125,10 +3226,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     new_enm.setdefault("substations", []).append(
         {
             "ref_id": stn_id,
-            "name": station.get("station_name")
-            or station.get("name")
-            or payload.get("name")
-            or f"Stacja {station_type_raw or station_type}",
+            "name": station_display_name,
             "station_type": substation_semantic_type,
             "bus_refs": [sn_bus_id],
             "transformer_refs": [],
@@ -3610,6 +3708,7 @@ def _insert_branch_point_on_segment_sn(
     if isinstance(bp_catalog_ref, dict):
         return bp_catalog_ref
 
+    switch_state = _normalize_branch_point_switch_state(payload.get("switch_state"))
     insert_at = payload.get("insert_at", {"mode": "RATIO", "value": 0.5})
     length_km = float(segment.get("length_km", 0.0))
     ratio = float(insert_at.get("value", 0.5))
@@ -3723,7 +3822,7 @@ def _insert_branch_point_on_segment_sn(
         branch_port_bus_refs.append(port_bus)
 
         connector_ref = _make_id("bp", seed, f"branch_connector_{idx + 1}")
-        connector_status = "open" if payload.get("switch_state") == "open" else "closed"
+        connector_status = "open" if switch_state == "open" else "closed"
         connector_res = create_branch(
             new_enm,
             {
@@ -3774,13 +3873,14 @@ def _insert_branch_point_on_segment_sn(
                 "BRANCH": branch_port_bus_refs,
             },
             "branch_occupied": {},
-            "switch_state": payload.get("switch_state"),
+            "switch_state": switch_state,
             "materialized_params": payload.get("materialized_params"),
             "completeness_status": completeness,
             "runtime_inputs": {
                 "name": payload.get("name"),
                 "branch_ports_count": branch_ports_count,
                 "insert_at": insert_at,
+                "switch_state": switch_state,
             },
         }
     )

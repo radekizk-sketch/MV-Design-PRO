@@ -36,6 +36,7 @@ import {
   type LegacyAreaCode,
 } from '../navigation/areaRegistry';
 import type { EnergyNetworkModel } from '../../types/enm';
+import { useExecutionRunsStore } from '../study-cases/runStore';
 
 // =============================================================================
 // V12 — Area and Work-mode types
@@ -174,7 +175,7 @@ const initialState = {
 
 function getCalculationStructuralBlocker(snapshot: EnergyNetworkModel | null): string | null {
   if (!snapshot) {
-    return 'Brak aktywnej wersji modelu - odśwież model przed obliczeniami';
+    return 'Aktywuj wersję modelu przed analizą';
   }
 
   const sourceCount = snapshot.sources?.length ?? 0;
@@ -239,6 +240,7 @@ export const useAppStateStore = create<AppState>()(
         if (get().activeCaseId !== caseId) {
           useSnapshotStore.getState().reset();
           useReadinessLiveStore.getState().clear();
+          useExecutionRunsStore.getState().setActiveRun(null);
         }
         set({
           activeCaseId: caseId,
@@ -478,7 +480,7 @@ export function useResultStatusLabel(): string {
   const status = useAppStateStore((state) => state.activeCaseResultStatus);
   switch (status) {
     case 'NONE':
-      return 'Brak wynikow';
+      return 'Wyniki nieuruchomione';
     case 'FRESH':
       return 'Wyniki aktualne';
     case 'OUTDATED':
@@ -510,13 +512,13 @@ export function useCanCalculate(): { allowed: boolean; reason: string | null } {
   );
 
   if (!activeCaseId) {
-    return { allowed: false, reason: 'Wybierz aktywny zakres obliczen' };
+    return { allowed: false, reason: 'Wybierz aktywny zakres obliczeń' };
   }
 
   if (activeMode !== 'MODEL_EDIT') {
     return {
       allowed: false,
-      reason: 'Obliczenia sa dozwolone tylko w trybie Model sieci',
+      reason: 'Obliczenia są dostępne w trybie edycji sieci',
     };
   }
 
@@ -532,21 +534,21 @@ export function useCanCalculate(): { allowed: boolean; reason: string | null } {
     const blocker = readiness.blockers?.[0];
     return {
       allowed: false,
-      reason: blocker?.message_pl ?? 'Model nie jest gotowy do analizy - usun blokery',
+      reason: blocker?.message_pl ?? 'Skonfiguruj wskazane zakresy układu przed analizą',
     };
   }
 
   if (!liveReady || liveBlocker) {
     return {
       allowed: false,
-      reason: liveBlocker?.message_pl ?? 'Model nie jest gotowy do analizy - usun blokery',
+      reason: liveBlocker?.message_pl ?? 'Skonfiguruj wskazane zakresy układu przed analizą',
     };
   }
 
   if (resultStatus === 'FRESH') {
     return {
       allowed: false,
-      reason: 'Wyniki sa aktualne - brak potrzeby ponownego uruchomienia obliczen',
+      reason: 'Wyniki są aktualne. Zmień konfigurację układu, aby uruchomić analizę ponownie.',
     };
   }
 

@@ -42,7 +42,7 @@ export interface CanonicalContextMenuActionDefinition {
 }
 
 export const FIELD_SN_MENU_ACTIONS: readonly CanonicalContextMenuActionDefinition[] = [
-  field('open_inspector', 'Otwórz w inspektorze', 'Otwórz', 'ikona-ekran-inspektor-techniczny', 'onOpenInspector', 'always'),
+  field('open_inspector', 'Otwórz kartę techniczną', 'Otwórz', 'ikona-ekran-inspektor-techniczny', 'onOpenInspector', 'always'),
   field('edit_configuration', 'Edytuj konfigurację pola', 'Edytuj', 'ikona-obiekt-pole-sn', 'onEditConfiguration'),
   field('change_switchgear', 'Zmień aparat łączeniowy', 'Edytuj', 'ikona-obiekt-wylacznik', 'onChangeSwitchgear'),
   field('change_ct', 'Zmień przekładnik prądowy', 'Edytuj', 'ikona-analiza-prad', 'onChangeCT'),
@@ -51,7 +51,7 @@ export const FIELD_SN_MENU_ACTIONS: readonly CanonicalContextMenuActionDefinitio
   field('edit_automation', 'Edytuj automatykę pola', 'Edytuj', 'ikona-obszar-zabezpieczenia-automatyka', 'onEditAutomation'),
   field('derive_cable_section', 'Wyprowadź odcinek kablowy', 'Dodaj', 'ikona-obiekt-kabel-sn', 'onDeriveCableSection'),
   field('derive_overhead_section', 'Wyprowadź odcinek napowietrzny', 'Dodaj', 'ikona-obiekt-linia-napowietrzna', 'onDeriveOverheadSection'),
-  field('check_readiness', 'Sprawdź gotowość pola', 'Analizuj', 'ikona-ekran-gotowosc-modelu', 'onCheckReadiness', 'always'),
+  field('check_readiness', 'Sprawdź konfigurację pola', 'Analizuj', 'ikona-ekran-gotowosc-modelu', 'onCheckReadiness', 'always'),
   field('show_field_results', 'Pokaż wyniki pola', 'Wyniki', 'ikona-obszar-wyniki-analizy', 'onShowResults', 'result'),
   field('show_sld_values', 'Pokaż wartości na SLD', 'Wyniki', 'ikona-ekran-nakladki-wynikowe', 'onShowSldValues', 'result'),
   field('show_engineering_justification', 'Pokaż uzasadnienie inżynierskie', 'Uzasadnienie', 'ikona-wynik-uzasadnienie', 'onShowEngineeringJustification', 'result'),
@@ -62,7 +62,7 @@ export const FIELD_SN_MENU_ACTIONS: readonly CanonicalContextMenuActionDefinitio
 ];
 
 export const SOURCE_CONNECTION_MENU_ACTIONS: readonly CanonicalContextMenuActionDefinition[] = [
-  source('open_inspector', 'Otwórz w inspektorze', 'Otwórz', 'ikona-ekran-inspektor-techniczny', 'onOpenInspector', 'always'),
+  source('open_inspector', 'Otwórz kartę techniczną', 'Otwórz', 'ikona-ekran-inspektor-techniczny', 'onOpenInspector', 'always'),
   source('edit_source', 'Edytuj źródło', 'Edytuj', 'ikona-obszar-zrodla-przylaczenia', 'onEditSource'),
   source('edit_connection_point', 'Edytuj punkt przyłączenia', 'Edytuj', 'ikona-obiekt-gpz', 'onEditConnectionPoint'),
   source('edit_operator_profile', 'Edytuj profil operatora', 'Edytuj', 'ikona-dane-katalogowe', 'onEditOperatorProfile'),
@@ -79,7 +79,7 @@ export const SOURCE_CONNECTION_MENU_ACTIONS: readonly CanonicalContextMenuAction
 ];
 
 export const SEGMENT_SN_MENU_ACTIONS: readonly CanonicalContextMenuActionDefinition[] = [
-  segment('open_inspector', 'Otwórz w inspektorze', 'Otwórz', 'ikona-ekran-inspektor-techniczny', 'onOpenInspector', 'always'),
+  segment('open_inspector', 'Otwórz kartę techniczną', 'Otwórz', 'ikona-ekran-inspektor-techniczny', 'onOpenInspector', 'always'),
   segment('edit_segment', 'Edytuj odcinek', 'Edytuj', 'ikona-ekran-odcinek-sn', 'onEditSegment'),
   segment('assign_catalog', 'Zmień typ katalogowy', 'Edytuj', 'ikona-dane-katalogowe', 'onAssignCatalog'),
   segment('insert_station_on_segment_sn', 'Wstaw stację', 'Dodaj', 'ikona-obiekt-stacja-sn-nn', 'onInsertStation'),
@@ -93,14 +93,14 @@ export const SEGMENT_SN_MENU_ACTIONS: readonly CanonicalContextMenuActionDefinit
 ];
 
 export const STATION_SN_NN_MENU_ACTIONS: readonly CanonicalContextMenuActionDefinition[] = [
-  station('open_inspector', 'Otwórz w inspektorze', 'Otwórz', 'ikona-ekran-inspektor-techniczny', 'onOpenInspector', 'always'),
+  station('open_inspector', 'Otwórz kartę techniczną', 'Otwórz', 'ikona-ekran-inspektor-techniczny', 'onOpenInspector', 'always'),
   station('station_edit_simple', 'Edytuj kreatorem prostym', 'Edytuj', 'ikona-obiekt-stacja-sn-nn', 'onEditSimple'),
   station('station_edit_advanced', 'Edytuj kreatorem zaawansowanym', 'Edytuj', 'ikona-ekran-stacja-sn-nn', 'onEditAdvanced'),
   station('station_edit_sn_fields', 'Edytuj pola SN', 'Edytuj', 'ikona-obiekt-pole-sn', 'onEditSnFields'),
   station('station_edit_transformer', 'Edytuj transformator', 'Edytuj', 'ikona-obiekt-transformator', 'onEditTransformer'),
   station('station_edit_nn_side', 'Edytuj stronę nN', 'Edytuj', 'ikona-obiekt-strona-nn', 'onEditNnSide'),
   station('add_nn_load', 'Dodaj obciążenie', 'Dodaj', 'ikona-obiekt-obciazenie', 'onAddLoad'),
-  station('add_converter_source', 'Dodaj źródło', 'Dodaj', 'ikona-obszar-zrodla-przylaczenia', 'onAddSource'),
+  station('add_converter_source', 'Dodaj układ PV/BESS/FW z katalogu', 'Dodaj', 'ikona-obszar-zrodla-przylaczenia', 'onAddSource'),
   station('show_results', 'Pokaż wyniki stacji', 'Wyniki', 'ikona-obszar-wyniki-analizy', 'onShowResults', 'result'),
   station('show_engineering_justification', 'Pokaż uzasadnienie', 'Uzasadnienie', 'ikona-wynik-uzasadnienie', 'onShowEngineeringJustification', 'result'),
   station('add_to_report', 'Dodaj do raportu', 'Raport', 'ikona-wynik-raport', 'onAddToReport', 'always'),

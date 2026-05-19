@@ -136,7 +136,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   CableBranch: 'Kable',
   TransformerBranch: 'Transformatory',
   Switch: 'Łączniki',
-  Source: 'Źródła',
+  Source: 'Zasilanie GPZ',
   Load: 'Odbiory',
 };
 

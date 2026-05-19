@@ -67,6 +67,7 @@ def preview_station_template(
         _first_default_choice,
         _resolve_sn_bay_roles,
         _resolve_station_type,
+        _resolve_transformer_ref_for_template,
     )
 
     overrides = request.params_override
@@ -82,13 +83,13 @@ def preview_station_template(
         overrides.get("transformer_count", template.schema.transformer_count.default)
     )
 
-    transformer_ref = (
-        overrides.get("transformer_ref")
-        or _cascade_manufacturer_choice(template.schema.transformer_options, profile)
+    transformer_ref = _resolve_transformer_ref_for_template(
+        template,
+        overrides=overrides,
+        catalog_profile=profile,
     )
-    cb_catalog = (
-        overrides.get("nn_feeder_cb_ref")
-        or _cascade_manufacturer_choice(template.schema.nn_feeder_cb_options, profile)
+    cb_catalog = overrides.get("nn_feeder_cb_ref") or _cascade_manufacturer_choice(
+        template.schema.nn_feeder_cb_options, profile
     )
     sn_manufacturer = overrides.get("sn_manufacturer", template.schema.sn_switchgear_default)
     protection_ref = overrides.get("protection_ref")
@@ -103,16 +104,19 @@ def preview_station_template(
 
     der_summary = []
     for der_spec in template.schema.der_options:
-        der_ref = (
-            overrides.get(f"der_{der_spec.kind}_ref")
-            or _first_default_choice(der_spec.catalog_options)
+        der_ref = overrides.get(f"der_{der_spec.kind}_ref") or _first_default_choice(
+            der_spec.catalog_options
         )
-        der_summary.append({
-            "kind": der_spec.kind,
-            "catalog_ref": der_ref,
-            "connection_variant": der_spec.connection_variant_options[0],
-            "expected_count_per_kind": max(1, der_count // max(1, len(template.schema.der_options))),
-        })
+        der_summary.append(
+            {
+                "kind": der_spec.kind,
+                "catalog_ref": der_ref,
+                "connection_variant": der_spec.connection_variant_options[0],
+                "expected_count_per_kind": max(
+                    1, der_count // max(1, len(template.schema.der_options))
+                ),
+            }
+        )
 
     return {
         "template_id": template.id,
@@ -134,11 +138,7 @@ def preview_station_template(
             "der_mix": der_summary,
         },
         "estimated_elements_count": (
-            1  # station
-            + sn_bays_count
-            + transformer_count
-            + nn_feeders_count
-            + der_count
+            1 + sn_bays_count + transformer_count + nn_feeders_count + der_count  # station
         ),
     }
 
@@ -177,7 +177,9 @@ def apply_station_template(
             catalog_profile=request.catalog_profile,
         )
     except TemplateApplyError as exc:
-        raise HTTPException(status_code=422, detail={"code": exc.code, "message_pl": exc.message_pl}) from exc
+        raise HTTPException(
+            status_code=422, detail={"code": exc.code, "message_pl": exc.message_pl}
+        ) from exc
 
     return result
 

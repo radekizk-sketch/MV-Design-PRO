@@ -227,7 +227,7 @@ export function CommandPalette({
               data-testid="command-palette-empty"
               className="p-4 text-sm text-scada-muted"
             >
-              Brak komend pasujących do zapytania "{query}".
+              Nie znaleziono komend pasujących do zapytania "{query}".
             </div>
           )}
           {results.map((entry, index) => (

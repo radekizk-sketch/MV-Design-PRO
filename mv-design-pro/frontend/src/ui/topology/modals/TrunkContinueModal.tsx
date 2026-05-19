@@ -494,7 +494,7 @@ export function TrunkContinueModal({
             </section>
 
             <section className="border-t border-[#17314c] pt-4">
-              <h3 className={sectionTitleClass}>Uwagi techniczne</h3>
+              <h3 className={sectionTitleClass}>Uwagi projektowe</h3>
               <div className="mb-3 grid gap-2">
                 {normRows.map(([label, value]) => (
                   <div key={label} className="border border-[#17314c] bg-[#06101a] p-2 text-xs">

@@ -228,6 +228,22 @@ describe('AddConverterSourceForm', () => {
     };
   });
 
+  it('nie pokazuje fałszywego braku katalogu podczas pobierania falowników', async () => {
+    render(<AddConverterSourceForm />);
+
+    expect(
+      screen.getByText('Pobieranie katalogu przekształtników i aparatury nN.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Wariant wymaga falownika katalogowego/i)).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('Pobieranie katalogu przekształtników i aparatury nN.'),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/Wariant wymaga falownika katalogowego/i)).not.toBeInTheDocument();
+    });
+  });
+
   it('wysyla kanoniczny payload add_converter_source dla nowego pola nN', async () => {
     executeDomainOperationMock.mockResolvedValue({ snapshot: { header: { name: 'case-1' } } });
 
@@ -239,11 +255,11 @@ describe('AddConverterSourceForm', () => {
       expect(screen.getByLabelText('Qmin [Mvar]')).toHaveValue('-0.200');
       expect(screen.getByLabelText('Qmax [Mvar]')).toHaveValue('0.200');
       expect(screen.getByLabelText('Certyfikat PTPiREE')).toHaveValue('ptpiree-pvco-pv-1-mw');
+      expect(screen.getByText('ap-nn-1')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('wybierz:Aparat nN'));
     fireEvent.change(screen.getByLabelText('Moc robocza P [MW]'), { target: { value: '0.75' } });
-    fireEvent.click(screen.getByRole('button', { name: /Dodaj/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Zapisz układ z katalogu/i }));
 
     await waitFor(() => {
       expect(executeDomainOperationMock).toHaveBeenCalledWith(
@@ -300,7 +316,7 @@ describe('AddConverterSourceForm', () => {
     await waitFor(() => {
       expect(screen.getByText('conv-bess-1')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole('button', { name: /Dodaj/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Zapisz układ z katalogu/i }));
 
     await waitFor(() => {
       expect(executeDomainOperationMock).toHaveBeenCalledWith(
@@ -327,19 +343,19 @@ describe('AddConverterSourceForm', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('button', { name: /Użyj istniejącego pola źródłowego/i }),
+        screen.getByRole('button', { name: /Użyj istniejącego pola przyłączeniowego/i }),
       ).toBeInTheDocument();
     });
 
     fireEvent.click(
-      screen.getByRole('button', { name: /Użyj istniejącego pola źródłowego/i }),
+      screen.getByRole('button', { name: /Użyj istniejącego pola przyłączeniowego/i }),
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Dodaj pole źródłowe/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Dodaj pole przyłączeniowe/i })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Dodaj pole źródłowe/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Dodaj pole przyłączeniowe/i }));
 
     expect(openOperationFormMock).toHaveBeenCalledWith('add_nn_outgoing_field', {
       station_ref: 'st-1',

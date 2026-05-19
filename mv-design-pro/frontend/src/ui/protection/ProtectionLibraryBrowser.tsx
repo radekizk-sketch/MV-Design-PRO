@@ -304,7 +304,7 @@ export function ProtectionLibraryBrowser({
 
             {!loading && !error && filteredTypes.length === 0 && (
               <div className="flex items-center justify-center p-8 text-gray-500">
-                Brak typów zabezpieczeń
+                Katalog zabezpieczeń wymaga konfiguracji
               </div>
             )}
 

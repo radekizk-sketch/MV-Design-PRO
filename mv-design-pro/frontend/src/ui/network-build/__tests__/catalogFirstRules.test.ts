@@ -33,11 +33,11 @@ describe('catalogFirstRules', () => {
     expect(error).toMatch(/transformator/i);
   });
 
-  it('blokuje zrodlo przeksztaltnikowe bez katalogu konwertera', () => {
+  it('blokuje układ PV/BESS/FW bez katalogu rozwiązania', () => {
     const error = validateCatalogFirst('add_converter_source', {
       catalog_binding: null,
     });
-    expect(error).toMatch(/przekszt/i);
+    expect(error).toMatch(/PV\/BESS\/FW/i);
   });
 
   it('blokuje slup rozgalezny bez catalog_ref', () => {
@@ -56,7 +56,7 @@ describe('catalogFirstRules', () => {
     expect(error).toMatch(/ZKSN/i);
   });
 
-  it('pozwala na zrodlo przeksztaltnikowe z catalog_binding', () => {
+  it('pozwala na układ PV/BESS/FW z catalog_binding', () => {
     const error = validateCatalogFirst('add_converter_source', {
       catalog_binding: {
         catalog_namespace: 'CONVERTER',

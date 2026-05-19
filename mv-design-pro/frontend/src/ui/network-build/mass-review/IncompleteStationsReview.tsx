@@ -1,7 +1,7 @@
 /**
  * IncompleteStationsReview — tabela stacji z oceną kompletności.
  *
- * Kolumny: Nazwa | Typ | Transformatory | Pola SN | Pola nN | Gotowość.
+ * Kolumny: Nazwa | Typ | Transformatory | Pola SN | Pola nN | Kontrola.
  * Filtr na stacje z brakującymi elementami.
  *
  * BINDING: 100% PL etykiety.
@@ -102,8 +102,8 @@ export function IncompleteStationsReview() {
             <th className="px-3 py-2 font-medium text-gray-600 text-center">Transformatory</th>
             <th className="px-3 py-2 font-medium text-gray-600 text-center">Pola SN</th>
             <th className="px-3 py-2 font-medium text-gray-600 text-center">Szyny nN</th>
-            <th className="px-3 py-2 font-medium text-gray-600 text-center">Blokery</th>
-            <th className="px-3 py-2 font-medium text-gray-600">Gotowość</th>
+            <th className="px-3 py-2 font-medium text-gray-600 text-center">Zagadnienia</th>
+            <th className="px-3 py-2 font-medium text-gray-600">Kontrola</th>
           </tr>
         </thead>
         <tbody>

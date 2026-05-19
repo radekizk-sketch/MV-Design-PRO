@@ -2,7 +2,15 @@ from __future__ import annotations
 
 import pytest
 from enm.hash import compute_enm_hash
-from enm.models import Bus, EnergyNetworkModel, ENMDefaults, ENMHeader, Source
+from enm.models import (
+    BranchPointSN,
+    BranchPointSNPorts,
+    Bus,
+    EnergyNetworkModel,
+    ENMDefaults,
+    ENMHeader,
+    Source,
+)
 from enm.store import get_enm, reset_enm_store, set_enm
 
 
@@ -20,6 +28,77 @@ def _minimal_enm() -> EnergyNetworkModel:
                 rx_ratio=0.1,
             )
         ],
+    )
+
+
+def _station_with_nn_feeder_without_load() -> EnergyNetworkModel:
+    return EnergyNetworkModel.model_validate(
+        {
+            "header": {"name": "Migracja katalogowa", "defaults": {}},
+            "buses": [
+                {"ref_id": "bus-sn", "name": "Szyna SN", "voltage_kv": 15.0},
+                {"ref_id": "bus-nn", "name": "Szyna nN", "voltage_kv": 0.4},
+            ],
+            "substations": [
+                {
+                    "ref_id": "stn/test/station",
+                    "name": "Stacja testowa",
+                    "station_type": "inline",
+                    "bus_refs": ["bus-sn", "bus-nn"],
+                    "transformer_refs": [],
+                    "meta": {
+                        "nn_field_specs": [
+                            {
+                                "field_ref": "stn/test/nn_feeder/001",
+                                "name": "Odpływ nN 1",
+                                "bay_role": "FEEDER",
+                                "bus_ref": "bus-nn",
+                            }
+                        ]
+                    },
+                }
+            ],
+        }
+    )
+
+
+def _legacy_zksn_without_switch_state() -> EnergyNetworkModel:
+    return EnergyNetworkModel.model_validate(
+        {
+            "header": {"name": "Migracja ZKSN", "defaults": {}},
+            "buses": [
+                {"ref_id": "bus-a", "name": "Zacisk A", "voltage_kv": 15.0},
+                {"ref_id": "bus-b", "name": "Zacisk B", "voltage_kv": 15.0},
+                {"ref_id": "bus-zksn", "name": "ZKSN", "voltage_kv": 15.0},
+            ],
+            "branches": [
+                {
+                    "ref_id": "seg/main",
+                    "name": "Odcinek kablowy",
+                    "from_bus_ref": "bus-a",
+                    "to_bus_ref": "bus-b",
+                    "type": "cable",
+                    "length_km": 0.12,
+                    "r_ohm_per_km": 0.125,
+                    "x_ohm_per_km": 0.09,
+                }
+            ],
+            "branch_points": [
+                BranchPointSN(
+                    ref_id="bp/test/zksn",
+                    name="ZKSN test",
+                    branch_point_type="zksn",
+                    parent_segment_id="seg/main",
+                    bus_ref="bus-zksn",
+                    catalog_ref="ZKSN-2P-630A",
+                    ports=BranchPointSNPorts(
+                        MAIN_IN="bp/test/zksn/main_in",
+                        MAIN_OUT="bp/test/zksn/main_out",
+                        BRANCH=["bp/test/zksn/branch/1"],
+                    ),
+                )
+            ],
+        }
     )
 
 
@@ -45,3 +124,32 @@ def test_set_enm_noops_for_equivalent_snapshot_content() -> None:
 
     assert saved.header.revision == first.header.revision
     assert saved.header.hash_sha256 == first.header.hash_sha256
+
+
+def test_store_materializes_catalog_loads_for_legacy_station_feeders() -> None:
+    saved = set_enm("case-store-load-migration", _station_with_nn_feeder_without_load())
+
+    assert saved.loads
+    load = saved.loads[0]
+    assert load.bus_ref == "bus-nn"
+    assert load.catalog_ref == "load_uslugi_30kw"
+    assert load.catalog_namespace == "OBCIAZENIE"
+    assert load.meta["feeder_ref"] == "stn/test/nn_feeder/001"
+
+    reread = get_enm("case-store-load-migration")
+    assert len(reread.loads) == 1
+    assert reread.header.revision == saved.header.revision
+
+
+def test_store_materializes_catalog_switch_state_for_legacy_zksn() -> None:
+    saved = set_enm("case-store-zksn-migration", _legacy_zksn_without_switch_state())
+
+    assert saved.branch_points[0].switch_state == "closed"
+    assert saved.branch_points[0].runtime_inputs["switch_state"] == "closed"
+    assert saved.branch_points[0].runtime_inputs["completion_source"] == (
+        "branch_point_catalog_migration"
+    )
+
+    reread = get_enm("case-store-zksn-migration")
+    assert reread.branch_points[0].switch_state == "closed"
+    assert reread.header.revision == saved.header.revision

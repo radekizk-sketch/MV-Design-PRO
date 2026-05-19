@@ -74,6 +74,20 @@ def test_templates_have_editable_params() -> None:
         assert schema.sn_bays_count.max_value >= schema.sn_bays_count.default
 
 
+def test_templates_are_complete_catalog_solution_packages() -> None:
+    """Każdy szablon stacji jest kompletnym pakietem katalogowym, nie stanem do dopinania w UI."""
+    for template in list_templates():
+        schema = template.schema
+        assert schema.transformer_options, f"{template.id}: brak typoszeregu transformatorów"
+        assert schema.sn_bay_roles, f"{template.id}: brak ról pól SN"
+        assert schema.sn_bay_protection_options, f"{template.id}: brak zabezpieczeń pól SN"
+        assert schema.ct_options, f"{template.id}: brak przekładników CT"
+        assert schema.vt_options, f"{template.id}: brak przekładników VT"
+        assert schema.nn_feeder_cb_options, f"{template.id}: brak aparatów odpływów nN"
+        for role in schema.sn_bay_roles:
+            assert role.role and role.label_pl, f"{template.id}: niekompletna rola pola SN"
+
+
 def test_der_templates_have_inverter_count_editable() -> None:
     """DER templates: liczba falowników musi być editable per user demand."""
     der_categories = (

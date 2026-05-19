@@ -36,7 +36,18 @@ const snapshot = {
   sources: [],
   loads: [],
   generators: [],
-  substations: [],
+  substations: [
+    {
+      id: 'stn/abc/station',
+      ref_id: 'stn/abc/station',
+      name: 'Stacja inline',
+      tags: [],
+      meta: {},
+      station_type: 'inline',
+      bus_refs: [],
+      transformer_refs: [],
+    },
+  ],
   bays: [],
   junctions: [],
   branch_points: [],
@@ -85,5 +96,60 @@ describe('useUrlSelectionSync', () => {
     });
 
     expect(new URLSearchParams(window.location.hash.split('?')[1]).get('type')).toBe('Switch');
+  });
+
+  it('replaces generic station route names with public station labels', async () => {
+    act(() => {
+      window.history.replaceState(
+        null,
+        '',
+        '/#sld?sel=stn%2Fabc%2Fstation&type=Station&name=Stacja+inline',
+      );
+      useSelectionStore.getState().clearSelection();
+    });
+
+    act(() => {
+      render(<UrlSelectionSyncProbe />);
+    });
+
+    await waitFor(() => {
+      expect(useSelectionStore.getState().selectedElement).toMatchObject({
+        id: 'stn/abc/station',
+        type: 'Station',
+        name: 'S01 · Stacja przelotowa',
+      });
+    });
+
+    expect(new URLSearchParams(window.location.hash.split('?')[1]).get('name'))
+      .toBe('S01 · Stacja przelotowa');
+  });
+  it('replaces raw station-scoped apparatus route names with public technical labels', async () => {
+    act(() => {
+      window.history.replaceState(
+        null,
+        '',
+        '/#sld?sel=stn%2Fabc%2Fstation%2Fpv%2Fnn-breaker%2FQ2&type=Station&name=stn%2Fabc%2Fstation%2Fpv%2Fnn-breaker%2FQ2',
+      );
+      useSelectionStore.getState().clearSelection();
+    });
+
+    act(() => {
+      render(<UrlSelectionSyncProbe />);
+    });
+
+    await waitFor(() => {
+      expect(useSelectionStore.getState().selectedElement).toMatchObject({
+        id: 'stn/abc/station/pv/nn-breaker/Q2',
+        type: 'Station',
+      });
+      expect(useSelectionStore.getState().selectedElement?.name).toContain('Stacja przelotowa');
+      expect(useSelectionStore.getState().selectedElement?.name).toContain('PV Q2');
+      expect(useSelectionStore.getState().selectedElement?.name).not.toContain('stn/');
+    });
+
+    const name = new URLSearchParams(window.location.hash.split('?')[1]).get('name');
+    expect(name).toContain('Stacja przelotowa');
+    expect(name).toContain('PV Q2');
+    expect(name).not.toContain('stn/');
   });
 });

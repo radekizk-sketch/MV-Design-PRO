@@ -32,7 +32,7 @@ export interface ProjectMetadataModalProps {
   isOpen: boolean;
   onClose: () => void;
   metadata?: Partial<ProjectMetadata>;
-  onSave?: (metadata: ProjectMetadata) => void;
+  onSave?: (metadata: ProjectMetadata) => void | Promise<void>;
 }
 
 // =============================================================================
@@ -64,12 +64,15 @@ export function ProjectMetadataModal({
   onSave,
 }: ProjectMetadataModalProps) {
   const [form, setForm] = useState<ProjectMetadata>({ ...DEFAULT_METADATA, ...metadata });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const projectNameValid = form.projectName.trim().length > 0;
 
   useEffect(() => {
     if (isOpen) {
       setForm({ ...DEFAULT_METADATA, ...metadata });
+      setSaveError(null);
       requestAnimationFrame(() => {
         nameInputRef.current?.focus();
       });
@@ -78,18 +81,27 @@ export function ProjectMetadataModal({
 
   const handleChange = useCallback(
     (field: keyof ProjectMetadata, value: string) => {
+      setSaveError(null);
       setForm((prev) => ({ ...prev, [field]: value }));
     },
     [],
   );
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!form.projectName.trim()) {
       nameInputRef.current?.focus();
       return;
     }
-    onSave?.(form);
-    onClose();
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onSave?.(form);
+      onClose();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Nie udało się zapisać metadanych projektu.');
+    } finally {
+      setSaving(false);
+    }
   }, [form, onSave, onClose]);
 
   const handleKeyDown = useCallback(
@@ -243,6 +255,15 @@ export function ProjectMetadataModal({
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200 bg-gray-50">
+          {saveError ? (
+            <div
+              className="mr-auto max-w-[320px] text-[11px] leading-snug text-red-700"
+              role="alert"
+              data-testid="project-metadata-save-error"
+            >
+              {saveError}
+            </div>
+          ) : null}
           <button
             type="button"
             onClick={onClose}
@@ -253,11 +274,11 @@ export function ProjectMetadataModal({
           <button
             type="button"
             onClick={handleSave}
-            disabled={!projectNameValid}
+            disabled={!projectNameValid || saving}
             className="px-4 py-1.5 text-[11px] bg-blue-600 text-white rounded hover:bg-blue-700 font-medium disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
             data-testid="project-metadata-save"
           >
-            Zapisz
+            {saving ? 'Zapisywanie...' : 'Zapisz'}
           </button>
         </div>
       </div>

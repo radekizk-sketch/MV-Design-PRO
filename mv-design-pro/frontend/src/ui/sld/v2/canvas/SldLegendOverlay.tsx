@@ -156,7 +156,7 @@ export function SldLegendOverlay(props: SldLegendOverlayProps): JSX.Element | nu
       {/* §4 DER types */}
       <g data-testid="sld-v2-legend-der-types" transform="translate(10, 254)">
         <text x={0} y={0} fill={TEXT_TITLE} fontFamily="sans-serif" fontSize={9} fontWeight={700}>
-          ŹRÓDŁA ROZPROSZONE (DER)
+          UKŁADY PRZYŁĄCZENIOWE (DER)
         </text>
         {DER_TYPES.map((row, idx) => (
           <g key={`d-${row.symbol}`} transform={`translate(0, ${12 + idx * 14})`}>

@@ -81,7 +81,7 @@ export function EnmTree({
       { id: 'cat-cables', label: `Kable (${cables.length})`, icon: 'K', elements: cables, elementType: 'LineBranch' },
       { id: 'cat-transformers', label: `Transformatory (${transformers.length})`, icon: 'T', elements: transformers, elementType: 'TransformerBranch' },
       { id: 'cat-switches', label: `Łączniki (${switches.length})`, icon: 'S', elements: switches, elementType: 'Switch' },
-      { id: 'cat-sources', label: `Źródła (${sources.length})`, icon: 'Z', elements: sources, elementType: 'Source' },
+      { id: 'cat-sources', label: `Zasilanie GPZ (${sources.length})`, icon: 'Z', elements: sources, elementType: 'Source' },
       { id: 'cat-loads', label: `Obciążenia (${loads.length})`, icon: 'O', elements: loads, elementType: 'Load' },
     ],
     [buses, lines, cables, transformers, switches, sources, loads],

@@ -191,10 +191,10 @@ export function AddDispatchableSourceForm() {
       <div className="space-y-4 p-4">
         {(catalogError || fieldOptions.length === 0) && (
           <div className={`rounded-md px-3 py-2 text-xs ${catalogError ? 'border border-rose-200 bg-rose-50 text-rose-700' : 'border border-amber-200 bg-amber-50 text-amber-800'}`}>
-            {catalogError ?? 'Na tej szynie nN nie ma jeszcze pola źródłowego dla agregatu lub UPS.'}
+            {catalogError ?? 'Na tej szynie nN nie ma jeszcze pola przyłączeniowego dla agregatu lub UPS.'}
             {!catalogError && (
               <button type="button" onClick={handleCreateSourceField} className="ml-3 rounded-md border border-amber-300 bg-white px-2 py-1 font-medium text-amber-900">
-                Dodaj pole źródłowe
+                Dodaj pole przyłączeniowe
               </button>
             )}
           </div>

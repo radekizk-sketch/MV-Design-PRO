@@ -96,7 +96,7 @@ describe('Drzewo Projektu', () => {
         CABLES: 'Kable',
         TRANSFORMERS: 'Transformatory',
         SWITCHES: 'Łączniki',
-        SOURCES: 'Źródła',
+        SOURCES: 'Zasilanie GPZ',
         LOADS: 'Odbiory',
         TYPE_CATALOG: 'Katalog typów',
         LINE_TYPES: 'Typy linii',
@@ -675,13 +675,13 @@ describe('Polskie etykiety UI', () => {
       CABLES: 'Kable',
       TRANSFORMERS: 'Transformatory',
       SWITCHES: 'Łączniki',
-      SOURCES: 'Źródła',
+      SOURCES: 'Zasilanie GPZ',
       LOADS: 'Odbiory',
     };
 
     // Verify Polish characters present (uppercase Ł in Łączniki)
     expect(labels.SWITCHES.toLowerCase()).toContain('ł');
-    expect(labels.SOURCES).toContain('ó');
+    expect(labels.SOURCES).toContain('GPZ');
   });
 
   it('should have Polish labels for Data Manager columns', () => {

@@ -1,5 +1,5 @@
 /**
- * RenewableSourceCard — karta obiektu źródła OZE (PV, BESS, wiatrowego).
+ * RenewableSourceCard — karta obiektu układu PV/BESS/FW.
  *
  * Wyświetla identyfikację, parametry elektryczne (moc czynna/bierna, cos_phi, limity),
  * dane przyłączenia (wariant, stacja, transformator blokowy) oraz referencję katalogową.
@@ -286,7 +286,7 @@ export function RenewableSourceCard({ elementId }: { elementId: string }) {
             ? 'Katalog (zablokowane)'
             : generator.parameter_source === 'OVERRIDE'
               ? 'Nadpisanie ręczne'
-              : 'Brak katalogu — wymagane',
+              : 'Wariant katalogowy wymagany',
           severity: generator.catalog_ref == null ? 'warning' : 'ok',
         },
       ],

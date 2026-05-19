@@ -226,7 +226,7 @@ export function BayCard({ elementId }: { elementId: string }) {
             label: isFieldLoading ? 'Stan odczytu' : 'Stan modelu',
             value: isFieldLoading
               ? 'Ładowanie widoku pola...'
-              : 'Brak kanonicznego widoku pola dla tego elementu',
+              : 'Kanoniczny widok pola nie jest dostępny dla tego elementu',
             severity: 'warning',
           },
         ],
@@ -338,8 +338,8 @@ export function BayCard({ elementId }: { elementId: string }) {
           : [
               {
                 key: 'no_primary_devices',
-                label: 'Brak aparatow',
-                value: 'Model pola nie zawiera aparatow pierwotnych',
+                label: 'Aparaty pierwotne do konfiguracji',
+                value: 'Skonfiguruj pole SN z katalogu aparatury',
                 severity: 'warning',
               },
             ],
@@ -399,14 +399,14 @@ export function BayCard({ elementId }: { elementId: string }) {
         {
           key: 'prot_spz',
           label: 'SPZ',
-          value: protection?.spz?.state ?? 'Brak SPZ',
+          value: protection?.spz?.state ?? 'SPZ nie skonfigurowany',
         },
       ],
     });
 
     cardSections.push({
       id: 'control',
-      label: 'Sterowanie i blokady',
+      label: 'Sterowanie i uzależnienia',
       fields: [
         {
           key: 'controllable_devices',
@@ -425,8 +425,8 @@ export function BayCard({ elementId }: { elementId: string }) {
         },
         {
           key: 'active_interlocks',
-          label: 'Aktywne blokady',
-          value: activeInterlocks.map((entry) => entry.code).join(', ') || 'Brak',
+          label: 'Aktywne uzależnienia',
+          value: activeInterlocks.map((entry) => entry.code).join(', ') || 'Nie występują',
           severity: activeInterlocks.length > 0 ? 'warning' : undefined,
         },
       ],

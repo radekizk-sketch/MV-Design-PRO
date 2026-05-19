@@ -30,8 +30,8 @@ export interface StickyHeaderProps {
 
 const COMPLETENESS_LABEL: Record<CompletenessStatus, string> = {
   complete: 'kompletne',
-  partial: 'wynik częściowy',
-  missing: 'brak danych',
+  partial: 'do sprawdzenia',
+  missing: 'do konfiguracji',
   n_a: 'nie dotyczy',
 };
 

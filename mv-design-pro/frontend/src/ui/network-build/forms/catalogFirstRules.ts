@@ -5,7 +5,7 @@
  * - segmenty: segment.catalog_binding
  * - stacje na odcinku: transformer.catalog_binding
  * - transformatory, łączniki i GPZ: payload.catalog_binding
- * - źródła przekształtnikowe: kanonicznie add_converter_source
+ * - układy PV/BESS/FW: kanonicznie add_converter_source
  *
  * Kompatybilność:
  * - stare payloady PV/BESS nadal są rozpoznawane przy imporcie historii lub
@@ -132,7 +132,7 @@ const REQUIRED_CATALOG_MESSAGE: Record<string, string> = {
   insert_section_switch_sn: 'Wybierz aparat z katalogu przed wstawieniem łącznika.',
   connect_secondary_ring_sn: 'Wybierz typ kabla lub linii pierścienia z katalogu przed domknięciem pętli.',
   add_grid_source_sn: 'Wybierz źródło systemowe z katalogu przed utworzeniem zasilania GPZ.',
-  add_converter_source: 'Wybierz typ źródła przekształtnikowego z katalogu przed dodaniem źródła.',
+  add_converter_source: 'Wybierz układ PV/BESS/FW z katalogu przed dodaniem do stacji.',
   add_ct: 'Wybierz przekładnik prądowy z katalogu przed dodaniem go do pola SN.',
   add_vt: 'Wybierz przekładnik napięciowy z katalogu przed dodaniem go do pola SN.',
   add_relay: 'Wybierz zabezpieczenie z katalogu przed dodaniem go do pola SN.',

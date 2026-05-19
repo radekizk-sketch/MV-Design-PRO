@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 def _make_client():
     from api.main import app
+
     return TestClient(app)
 
 
@@ -81,9 +82,9 @@ def test_e2tango_protection_appears_in_options() -> None:
     assert response.status_code == 200
     schema = response.json()["schema"]
     protection_refs = [p["device_catalog_ref"] for p in schema["sn_bay_protection_options"]]
-    assert any("E2TANGO" in p for p in protection_refs), (
-        f"E2Tango must appear w protection options. Got: {protection_refs}"
-    )
+    assert any(
+        "E2TANGO" in p for p in protection_refs
+    ), f"E2Tango must appear w protection options. Got: {protection_refs}"
 
 
 def test_apply_endpoint_404_for_unknown_template() -> None:

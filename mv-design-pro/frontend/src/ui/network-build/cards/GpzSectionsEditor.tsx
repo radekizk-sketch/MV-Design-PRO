@@ -381,7 +381,7 @@ export function GpzSectionsEditor({ station }: Props) {
       <div className="mb-2">
         <div className="text-xs uppercase text-zinc-500">LV (SN)</div>
         {lvSections.length === 0 ? (
-          <div className="py-1 text-xs text-zinc-500">Brak sekcji.</div>
+          <div className="py-1 text-xs text-zinc-500">Sekcje do konfiguracji.</div>
         ) : (
           <ul data-testid="gpz-sections-editor-list-lv">
             {lvSections
@@ -395,7 +395,7 @@ export function GpzSectionsEditor({ station }: Props) {
       <div>
         <div className="text-xs uppercase text-zinc-500">HV (110 kV)</div>
         {hvSections.length === 0 ? (
-          <div className="py-1 text-xs text-zinc-500">Brak sekcji.</div>
+          <div className="py-1 text-xs text-zinc-500">Sekcje do konfiguracji.</div>
         ) : (
           <ul data-testid="gpz-sections-editor-list-hv">
             {hvSections

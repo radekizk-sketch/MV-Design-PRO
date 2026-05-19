@@ -51,9 +51,9 @@ export const KEYBOARD_SHORTCUTS: readonly KeyboardShortcutDef[] = [
   { keys: 'R', description_pl: 'Wejdź w tryb łączenia końców (rezerwa lub pierścień)', category: 'EDYCJA_MODELU', action_id: 'start_connect_ends', required_mode: 'MODEL_EDIT' },
   { keys: 'N', description_pl: 'Ustaw NOP (punkt normalnie otwarty)', category: 'EDYCJA_MODELU', action_id: 'set_normal_open_point', required_mode: 'MODEL_EDIT' },
 
-  // Źródła nN
-  { keys: 'Ctrl+Shift+P', description_pl: 'Dodaj źródło PV...', category: 'EDYCJA_MODELU', action_id: 'add_converter_source_pv', required_mode: 'MODEL_EDIT' },
-  { keys: 'Ctrl+Shift+B', description_pl: 'Dodaj źródło BESS...', category: 'EDYCJA_MODELU', action_id: 'add_converter_source_bess', required_mode: 'MODEL_EDIT' },
+  // Układy PV/BESS/FW
+  { keys: 'Ctrl+Shift+P', description_pl: 'Dodaj układ PV z katalogu...', category: 'EDYCJA_MODELU', action_id: 'add_converter_source_pv', required_mode: 'MODEL_EDIT' },
+  { keys: 'Ctrl+Shift+B', description_pl: 'Dodaj układ BESS z katalogu...', category: 'EDYCJA_MODELU', action_id: 'add_converter_source_bess', required_mode: 'MODEL_EDIT' },
   { keys: 'Ctrl+Shift+G', description_pl: 'Dodaj agregat...', category: 'EDYCJA_MODELU', action_id: 'add_genset_nn', required_mode: 'MODEL_EDIT' },
   { keys: 'Ctrl+Shift+U', description_pl: 'Dodaj UPS...', category: 'EDYCJA_MODELU', action_id: 'add_ups_nn', required_mode: 'MODEL_EDIT' },
 
@@ -61,10 +61,10 @@ export const KEYBOARD_SHORTCUTS: readonly KeyboardShortcutDef[] = [
   { keys: 'Ctrl+1', description_pl: 'Widok: Model sieci', category: 'WIDOKI', action_id: 'mode_model_edit', required_mode: null },
   { keys: 'Ctrl+2', description_pl: 'Otworz parametry analizy', category: 'WIDOKI', action_id: 'open_case_context', required_mode: null },
   { keys: 'Ctrl+3', description_pl: 'Widok: Analiza i wyniki', category: 'WIDOKI', action_id: 'mode_result_view', required_mode: null },
-  { keys: 'Ctrl+G', description_pl: 'Tryb: Tylko gotowość (podświetl blokery)', category: 'WIDOKI', action_id: 'filter_readiness_only', required_mode: null },
-  { keys: 'Ctrl+Shift+S', description_pl: 'Tryb: Tylko źródła (filtr wizualny)', category: 'WIDOKI', action_id: 'filter_sources_only', required_mode: null },
+  { keys: 'Ctrl+G', description_pl: 'Tryb: Tylko kontrola konfiguracji', category: 'WIDOKI', action_id: 'filter_readiness_only', required_mode: null },
+  { keys: 'Ctrl+Shift+S', description_pl: 'Tryb: Tylko układy wytwórcze (filtr wizualny)', category: 'WIDOKI', action_id: 'filter_sources_only', required_mode: null },
   { keys: 'F5', description_pl: 'Odśwież widok', category: 'WIDOKI', action_id: 'refresh_view', required_mode: null },
-  { keys: 'Ctrl+I', description_pl: 'Otwórz lub zamknij panel inspektora', category: 'WIDOKI', action_id: 'toggle_inspector', required_mode: null },
+  { keys: 'Ctrl+I', description_pl: 'Otwórz lub zamknij kartę techniczną', category: 'WIDOKI', action_id: 'toggle_inspector', required_mode: null },
   { keys: 'Ctrl+T', description_pl: 'Otwórz lub zamknij drzewo projektu', category: 'WIDOKI', action_id: 'toggle_project_tree', required_mode: null },
 
   // Analiza
@@ -101,14 +101,14 @@ export const VISUAL_FILTERS: readonly VisualFilterDef[] = [
   },
   {
     mode: 'READINESS_ONLY',
-    label_pl: 'Tylko gotowość',
-    description_pl: 'Podświetl elementy z problemami gotowości: blokery na czerwono, ostrzeżenia na żółto.',
+    label_pl: 'Tylko kontrola',
+    description_pl: 'Podświetl elementy wymagające konfiguracji: zagadnienia krytyczne na czerwono, ostrzeżenia na żółto.',
     shortcut: 'Ctrl+G',
   },
   {
     mode: 'SOURCES_ONLY',
-    label_pl: 'Tylko źródła',
-    description_pl: 'Pokaż tylko źródła energii, a pozostałe elementy wyszarz.',
+    label_pl: 'Tylko układy wytwórcze',
+    description_pl: 'Pokaż tylko układy PV/BESS/FW i zasilania, a pozostałe elementy wyszarz.',
     shortcut: 'Ctrl+Shift+S',
   },
   {

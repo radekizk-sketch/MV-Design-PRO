@@ -14,6 +14,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useAppStateStore } from '../store';
+import { useExecutionRunsStore } from '../../study-cases/runStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { makeCalculationReadySnapshot } from '../../../test/enmCalculationSnapshot';
 
@@ -21,6 +22,7 @@ describe('useAppStateStore', () => {
   beforeEach(() => {
     // Reset to initial state before each test
     useAppStateStore.getState().reset();
+    useExecutionRunsStore.getState().reset();
     useSnapshotStore.getState().reset();
   });
 
@@ -134,11 +136,13 @@ describe('useAppStateStore', () => {
     it('should clear run and snapshot when case changes', () => {
       useAppStateStore.getState().setActiveRun('run-1');
       useAppStateStore.getState().setActiveSnapshot('snap-1');
+      useExecutionRunsStore.setState({ activeRunId: 'run-1' });
 
       useAppStateStore.getState().setActiveCase('case-2', 'PF-001', 'PowerFlowCase');
 
       expect(useAppStateStore.getState().activeRunId).toBeNull();
       expect(useAppStateStore.getState().activeSnapshotId).toBeNull();
+      expect(useExecutionRunsStore.getState().activeRunId).toBeNull();
     });
 
     it('should use defaults for optional params', () => {

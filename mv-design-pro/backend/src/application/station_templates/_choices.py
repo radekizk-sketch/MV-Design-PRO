@@ -12,7 +12,6 @@ from application.station_templates.schema import (
     ProtectionRelaySpec,
 )
 
-
 # =============================================================================
 # Transformer options (TRAFO_SN_NN namespace)
 # =============================================================================
@@ -20,8 +19,8 @@ from application.station_templates.schema import (
 # Transformer catalog IDs match mv_transformer_catalog.py convention
 # (tr-sn-nn-{voltage_hv}-{voltage_lv}-{rating_kva}kva-{group})
 
-TR_OPTIONS_SMALL = (  # 50-400 kVA — słupowe i małe dystrybucyjne
-    CatalogChoice("tr-sn-nn-15-04-50kva-dyn11", "TR 50 kVA SN/nN 15/0.4 kV Dyn11", "TRAFO_SN_NN"),
+TR_OPTIONS_SMALL = (  # 63-400 kVA — słupowe i małe dystrybucyjne
+    CatalogChoice("tr-sn-nn-15-04-63kva-dyn11", "TR 63 kVA SN/nN 15/0.4 kV Dyn11", "TRAFO_SN_NN"),
     CatalogChoice("tr-sn-nn-15-04-100kva-dyn11", "TR 100 kVA SN/nN 15/0.4 kV Dyn11", "TRAFO_SN_NN"),
     CatalogChoice("tr-sn-nn-15-04-160kva-dyn11", "TR 160 kVA SN/nN 15/0.4 kV Dyn11", "TRAFO_SN_NN"),
     CatalogChoice("tr-sn-nn-15-04-250kva-dyn11", "TR 250 kVA SN/nN 15/0.4 kV Dyn11", "TRAFO_SN_NN"),
@@ -44,20 +43,18 @@ TR_OPTIONS_LARGE = (  # 1600-2500 kVA — duże stacje przemysłowe
 
 # Block transformer options dla farmy PV/BESS/FW (SN-side connection)
 TR_BLOCK_PV_OPTIONS = (
-    CatalogChoice("tr-block-pv-15-04-630kva", "Block TR PV 0.63 MVA 0.4/15 kV", "TRAFO_SN_NN"),
-    CatalogChoice("tr-block-pv-15-04-1250kva", "Block TR PV 1.25 MVA 0.4/15 kV", "TRAFO_SN_NN"),
-    CatalogChoice("tr-block-pv-15-04-2500kva", "Block TR PV 2.5 MVA 0.4/15 kV", "TRAFO_SN_NN"),
+    CatalogChoice("tr-sn-nn-15-04-630kva-dyn11", "Block TR PV 0.63 MVA 0.4/15 kV", "TRAFO_SN_NN"),
+    CatalogChoice("tr-sn-nn-15-04-1250kva-dyn11", "Block TR PV 1.25 MVA 0.4/15 kV", "TRAFO_SN_NN"),
+    CatalogChoice("tr-sn-nn-15-04-2500kva-dyn11", "Block TR PV 2.5 MVA 0.4/15 kV", "TRAFO_SN_NN"),
 )
 
 TR_BLOCK_BESS_OPTIONS = (
-    CatalogChoice("tr-block-bess-15-04-1250kva", "Block TR BESS 1.25 MVA", "TRAFO_SN_NN"),
-    CatalogChoice("tr-block-bess-15-04-2500kva", "Block TR BESS 2.5 MVA", "TRAFO_SN_NN"),
-    CatalogChoice("tr-block-bess-15-04-5000kva", "Block TR BESS 5 MVA", "TRAFO_SN_NN"),
+    CatalogChoice("tr-sn-nn-15-04-1250kva-dyn11", "Block TR BESS 1.25 MVA", "TRAFO_SN_NN"),
+    CatalogChoice("tr-sn-nn-15-04-2500kva-dyn11", "Block TR BESS 2.5 MVA", "TRAFO_SN_NN"),
 )
 
 TR_BLOCK_FW_OPTIONS = (
-    CatalogChoice("tr-block-wind-15-04-2500kva", "Block TR Wiatr 2.5 MVA", "TRAFO_SN_NN"),
-    CatalogChoice("tr-block-wind-15-04-3500kva", "Block TR Wiatr 3.5 MVA", "TRAFO_SN_NN"),
+    CatalogChoice("tr-sn-nn-15-04-2500kva-dyn11", "Block TR Wiatr 2.5 MVA", "TRAFO_SN_NN"),
 )
 
 

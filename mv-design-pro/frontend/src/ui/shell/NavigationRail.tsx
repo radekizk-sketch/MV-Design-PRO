@@ -8,9 +8,6 @@ import { TechnicalIcon } from '../icons/technicalIconRegistry';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 
 function statusMarker(areaId: AreaId, activeArea: AreaId) {
-  if (areaId === 'MODEL_SIECI') {
-    return { label: 'Braki modelu', className: 'border-scada-grounded text-scada-grounded', glyph: '!' };
-  }
   if (areaId === 'WYNIKI_ANALIZY') {
     return { label: 'Wyniki dostępne po obliczeniach', className: 'border-scada-energized text-scada-energized', glyph: 'W' };
   }

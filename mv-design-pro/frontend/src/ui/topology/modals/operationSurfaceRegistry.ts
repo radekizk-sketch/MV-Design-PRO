@@ -136,7 +136,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   entry(
     'add_converter_source',
     'AddConverterSourceForm',
-    'Dodaj źródło przekształtnikowe',
+    'Dodaj układ PV/BESS/FW z katalogu',
     'E-21',
     'B',
     'manual',

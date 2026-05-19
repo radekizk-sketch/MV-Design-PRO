@@ -55,14 +55,14 @@ export interface CableRunRendererProps {
   readonly label?: string;
   readonly segmentLabels?: readonly CableRunSegmentLabel[];
   readonly pendingEndpoint?: boolean;
-  /** True gdy któryś z segmentów ma brakujący endpoint_a_port lub
-   *  endpoint_b_port — wymaga ręcznego domknięcia w E-12 (segment SN).
-   *  Renderer pokazuje czerwony marker „brak portu" i dashed stroke. */
+  /** True gdy któryś z segmentów nie ma realnego terminala ENM
+   *  (`from_bus_ref` / `to_bus_ref`). Brak samej geometrii portu nie jest
+   *  pokazywany projektantowi jako przerwana topologia. */
   readonly missingEndpointPort?: boolean;
   readonly stationPortGaps?: readonly CableRunStationPortGap[];
   readonly selected?: boolean;
   readonly onClick?: (id: string) => void;
-  /** LOD 0-1 → pokaż tylko główną etykietę, nie segmentLabels (AC-06 label declutter). */
+  /** LOD 0-1 -> etykieta ciagu; LOD 2+ -> etykiety odcinkow. */
   readonly lod?: number;
   /** K30-41: napięcie ciągu [kV] z `inferRunVoltageKv` w adapterze. Renderer
    *  dobiera tint stroke (gdy brak per-segment variant rendering) zgodnie
@@ -77,10 +77,14 @@ export interface CableRunRendererProps {
    *   - > 100% → red chip + red dashed overlay (THERMAL OVERLOAD)
    *  Brak → chip pomijany. */
   readonly loadingPct?: number | null;
+  /** Aktualna skala viewportu SLD. Uzywana do czytelnosci symboli topologii. */
+  readonly viewportScale?: number;
   /** K30-105: ciąg pod napięciem per SupplyPath (z source). Renderer
    *  rysuje strzałkę kierunku przepływu mocy (▷) na midpoincie segmentów
    *  per IEC 60617. Default false → brak strzałek (neutral / unknown). */
   readonly energized?: boolean;
+  /** Presentation-only guide for stations that are placed but not bound to a real SN segment. */
+  readonly topologyGuide?: boolean;
 }
 
 export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | null {
@@ -101,12 +105,15 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     lod,
     voltageKv,
     loadingPct,
+    viewportScale,
     energized = false,
+    topologyGuide = false,
   } = props;
-  // AC-06: Na LOD 0-1 ukrywamy szczegółowe etykiety segmentów żeby uniknąć
-  // nakładania się etykiet. Główna etykieta (label) pozostaje widoczna.
+  // LOD 0-1 pokazuje przebieg sieci bez natloku opisow. Parametry
+  // poszczegolnych odcinkow SN pojawiaja sie od LOD 2.
   const visibleSegmentLabels = lod !== undefined && lod < 2 ? [] : segmentLabels;
   if (pathPoints.length < 2) return null;
+  const effectiveOnClick = topologyGuide ? undefined : onClick;
 
   const strokeWidth = runKind === 'branch'
     ? STROKE_BRANCH_LINE_PX
@@ -116,38 +123,47 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
   const isOverhead = segmentKind === 'overhead_line_sn';
 
   // Brakujący port endpointu → dashed warning stroke nad zwykłym dasharray.
-  const dasharray = missingEndpointPort
-    ? '5 4'
-    : isDashed
-      ? STROKE_DASHED_RING_DASH_PX
-      : isOverhead
-        ? '12 4'
-        : undefined;
+  const dasharray = topologyGuide
+    ? '8 5'
+    : missingEndpointPort
+      ? '5 4'
+      : isDashed
+        ? STROKE_DASHED_RING_DASH_PX
+        : isOverhead
+          ? '12 4'
+          : undefined;
   // K30-41: voltage-based default stroke (gdy brak per-segment variant).
   // Variant rendering ma pierwszeństwo (K30-33 cable type identity). Tutaj
   // tylko jako fallback dla uniform path.
   const voltageBaseStroke = cableColorForVoltage(voltageKv ?? null);
-  const strokeColor = missingEndpointPort
-    ? '#FF6B6B'
-    : selected
-      ? '#35C7FF'
-      : voltageBaseStroke;
+  const strokeColor = topologyGuide
+    ? '#FFD166'
+    : missingEndpointPort
+      ? '#FF6B6B'
+      : selected
+        ? '#35C7FF'
+        : voltageBaseStroke;
 
   const hitPath = pathPoints
     .map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`))
     .join(' ');
-  // K30-33: jeśli segmentPaths mają hint wariantu, renderujemy per-segment
-  // stroke odróżniający izolację/materiał. Fallback do uniform stroke
-  // gdy hint nie jest dostępny (backward-compat).
-  const variantSegments = segmentPaths.filter(
-    (sp): sp is CableRunSegmentPath & { variant: CableSegmentVariantHint } =>
-      sp.variant !== undefined,
-  );
-  const useVariantRendering = variantSegments.length > 0;
-  const visiblePaths = useVariantRendering
+  // K30-33: gdy adapter poda segmentPaths, każdy odcinek musi zostać narysowany.
+  // Wcześniej obecność choć jednego wariantu katalogowego ukrywała odcinki bez
+  // `variant`, przez co stacje wyglądały jak wiszące bez połączeń.
+  const useSegmentPathRendering = segmentPaths.length > 0;
+  const renderSegmentPaths = useSegmentPathRendering
+    ? segmentPaths.map((segmentPath) => ({
+        ...segmentPath,
+        pathPoints: snapSegmentPathToCurrentStationPorts(segmentPath.pathPoints, stationPortGaps),
+      }))
+    : [];
+  const visiblePaths = useSegmentPathRendering
     ? []
     : buildVisibleCablePaths(pathPoints, stationPortGaps);
-  const labelPoint = label && visibleSegmentLabels.length === 0
+  const runLabel = label && lod === 0
+    ? overviewRunLabel(runKind)
+    : label;
+  const labelPoint = runLabel && visibleSegmentLabels.length === 0
     ? findLongestHorizontalSegmentMidpoint(pathPoints)
     : null;
   const terminalPoint = pathPoints[pathPoints.length - 1];
@@ -156,6 +172,12 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
   // operatorowi natychmiast zidentyfikować kierunek zasilania (upstream →
   // downstream), kluczowe w dispatcher operations.
   const flowArrow = computeFlowArrowMarker(pathPoints);
+  const flowArrowSize = topologyDirectionArrowSize(viewportScale);
+  const showTopologyDirectionArrows =
+    !topologyGuide
+    && !missingEndpointPort
+    && pathPoints.length >= 2
+    && (energized || lod === 0 || lod === 1);
   const readableSegmentLabels = declutterSegmentLabels(
     visibleSegmentLabels
       .map((segmentLabel) => avoidStationLabelCollision(segmentLabel, stationPortGaps))
@@ -174,25 +196,26 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
       data-element-id={id}
       data-run-kind={runKind}
       data-segment-kind={segmentKind}
+      data-topology-guide={topologyGuide ? 'true' : undefined}
     >
       <path
         d={hitPath}
         fill="none"
         stroke="transparent"
         strokeWidth={Math.max(strokeWidth + 8, 12)}
-        onClick={onClick ? (e) => { e.stopPropagation(); onClick(id); } : undefined}
-        style={{ cursor: onClick ? 'pointer' : 'default' }}
+        onClick={effectiveOnClick ? (e) => { e.stopPropagation(); effectiveOnClick(id); } : undefined}
+        style={{ cursor: effectiveOnClick ? 'pointer' : 'default' }}
       />
       <polyline
         points={pathPoints.map((p) => `${p.x},${p.y}`).join(' ')}
         fill="none"
         stroke="transparent"
         strokeWidth={Math.max(strokeWidth + 10, 14)}
-        onClick={onClick ? (e) => { e.stopPropagation(); onClick(id); } : undefined}
-        style={{ cursor: onClick ? 'pointer' : 'default' }}
+        onClick={effectiveOnClick ? (e) => { e.stopPropagation(); effectiveOnClick(id); } : undefined}
+        style={{ cursor: effectiveOnClick ? 'pointer' : 'default' }}
       />
-      {(segmentPaths.length > 0
-        ? segmentPaths
+      {(renderSegmentPaths.length > 0
+        ? renderSegmentPaths
         : segmentRefs.map((segmentRef) => ({ segmentRef, pathPoints }))).map((segmentPath) => (
         <g
           key={`${id}-segment-hitbox-${segmentPath.segmentRef}`}
@@ -206,8 +229,8 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             fill="none"
             stroke="transparent"
             strokeWidth={Math.max(strokeWidth + 12, 16)}
-            onClick={onClick ? (e) => { e.stopPropagation(); onClick(segmentPath.segmentRef); } : undefined}
-            style={{ cursor: onClick ? 'pointer' : 'default' }}
+            onClick={effectiveOnClick ? (e) => { e.stopPropagation(); effectiveOnClick(segmentPath.segmentRef); } : undefined}
+            style={{ cursor: effectiveOnClick ? 'pointer' : 'default' }}
           />
         </g>
       ))}
@@ -225,29 +248,39 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           pointerEvents="none"
         />
       ))}
-      {useVariantRendering && variantSegments.map((segmentPath) => {
-        const variantStyle = cableVariantStyle(segmentPath.variant);
+      {useSegmentPathRendering && renderSegmentPaths.map((segmentPath) => {
+        const variantStyle = segmentPath.variant
+          ? cableVariantStyle(segmentPath.variant)
+          : null;
         const segmentVisiblePaths = buildVisibleCablePaths(
           segmentPath.pathPoints,
           stationPortGaps,
         );
-        const segStroke = missingEndpointPort
-          ? '#FF6B6B'
-          : selected
-            ? '#35C7FF'
-            : variantStyle.stroke;
-        const segDasharray = missingEndpointPort
-          ? '5 4'
-          : isDashed
-            ? STROKE_DASHED_RING_DASH_PX
-            : variantStyle.dasharray ?? (isOverhead ? '12 4' : undefined);
-        const segWidth = (selected ? strokeWidth + 1 : strokeWidth) + variantStyle.widthDelta;
+        const segStroke = topologyGuide
+          ? '#FFD166'
+          : missingEndpointPort
+            ? '#FF6B6B'
+            : selected
+              ? '#35C7FF'
+              : variantStyle?.stroke ?? strokeColor;
+        const segDasharray = topologyGuide
+          ? '8 5'
+          : missingEndpointPort
+            ? '5 4'
+            : isDashed
+              ? STROKE_DASHED_RING_DASH_PX
+              : variantStyle?.dasharray ?? (isOverhead ? '12 4' : undefined);
+        const segWidth = (selected ? strokeWidth + 1 : strokeWidth) + (variantStyle?.widthDelta ?? 0);
         return segmentVisiblePaths.map((vp, vpIdx) => (
           <path
-            key={`${id}-variant-${segmentPath.segmentRef}-${vpIdx}`}
-            data-testid={`sld-v2-run-${id}-variant-${segmentPath.segmentRef}-${vpIdx}`}
-            data-cable-insulation={segmentPath.variant.insulation}
-            data-cable-conductor={segmentPath.variant.conductor}
+            key={`${id}-segment-${segmentPath.segmentRef}-${vpIdx}`}
+            data-testid={
+              segmentPath.variant
+                ? `sld-v2-run-${id}-variant-${segmentPath.segmentRef}-${vpIdx}`
+                : `sld-v2-run-${id}-segment-${segmentPath.segmentRef}-${vpIdx}`
+            }
+            data-cable-insulation={segmentPath.variant?.insulation}
+            data-cable-conductor={segmentPath.variant?.conductor}
             d={vp}
             fill="none"
             stroke={segStroke}
@@ -305,7 +338,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           triangle ▲ na początku i końcu ciągu kablowego (segmentKind=cable_sn
           only — overhead lines don't have terminations). Operator widzi
           że kabel jest podłączony przez głowicę (nie zwykły mufa pass-through). */}
-      {segmentKind === 'cable_sn' && !missingEndpointPort && pathPoints.length >= 2 && (lod === undefined || lod >= 2) && (
+      {segmentKind === 'cable_sn' && !topologyGuide && !missingEndpointPort && pathPoints.length >= 2 && (lod === undefined || lod >= 2) && (
         <g data-testid={`sld-v2-run-${id}-cable-heads`} pointerEvents="none">
           {[pathPoints[0], pathPoints[pathPoints.length - 1]].map((p, i) => (
             <polygon
@@ -324,9 +357,10 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           Render: jedna strzałka na każdej parze sąsiednich pathPoints
           przy LOD≥2 i energized=true. Strzałka skierowana zgodnie z
           orientacją pathPoints (source → load). */}
-      {energized && (lod === undefined || lod >= 2) && !missingEndpointPort && pathPoints.length >= 2 && (
+      {showTopologyDirectionArrows && (
         <g
           data-testid={`sld-v2-run-${id}-direction-arrows`}
+          data-topology-arrow-scale={(flowArrowSize / 5).toFixed(2)}
           pointerEvents="none"
         >
           {pathPoints.slice(0, -1).map((p, i) => {
@@ -339,7 +373,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             // Skip very short segments to avoid clutter
             if (segLen < 20) return null;
             const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-            const arrowSize = 4;
+            const arrowSize = flowArrowSize * 0.8;
             return (
               <g
                 key={`${id}-arrow-${i}`}
@@ -430,7 +464,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           visualny "głowica kabla". Industrial convention: kable wchodzą w pole
           przez głowicę. Rysujemy tylko gdy main_trunk (nie branch) i brak
           missingEndpointPort warning. */}
-      {!missingEndpointPort && runKind === 'main_trunk' && pathPoints.length > 0 && (
+      {!topologyGuide && !missingEndpointPort && runKind === 'main_trunk' && pathPoints.length > 0 && (
         <g
           data-testid={`sld-v2-run-${id}-cable-head`}
           data-anchor="trunk-start"
@@ -447,7 +481,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           />
         </g>
       )}
-      {label && labelPoint && (
+      {runLabel && labelPoint && (
         <text
           data-testid={`sld-v2-run-${id}-label`}
           x={labelPoint.x}
@@ -460,14 +494,14 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           className="select-none text-[11px] font-semibold"
           pointerEvents="none"
         >
-          {label}
+          {runLabel}
         </text>
       )}
       {/* K30-41: voltage-class chip przy starcie ciągu — kwadracik w kolorze
           klasy napięcia (WN/SN/nN) z tekstem "{kV} kV". Pomaga zidentyfikować
           klasę napięcia ciągu niezależnie od per-segment variant rendering.
           K30-51: LOD gate ≥2 (zoom-in) — przy zoom-out chip clutters trunk. */}
-      {voltageKv != null && voltageKv > 0 && (lod === undefined || lod >= 2) && (
+      {voltageKv != null && voltageKv > 0 && !topologyGuide && (lod === undefined || lod >= 2) && (
         <g
           data-testid={`sld-v2-run-${id}-voltage-chip`}
           data-voltage-kv={voltageKv}
@@ -501,7 +535,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
       )}
       {/* K30-45: cable loading chip near voltage chip — pokazuje % ampacity.
           Pomijany gdy missingEndpointPort lub loadingPct nieobecne. */}
-      {loadingPct != null && Number.isFinite(loadingPct) && loadingPct > 0 && !missingEndpointPort && (lod === undefined || lod >= 2) && (() => {
+      {loadingPct != null && Number.isFinite(loadingPct) && loadingPct > 0 && !topologyGuide && !missingEndpointPort && (lod === undefined || lod >= 2) && (() => {
         const cls = classifyCableLoading(loadingPct);
         const x0 = pathPoints[0].x + 44;
         const y0 = pathPoints[0].y - 12;
@@ -530,7 +564,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
       })()}
       {/* K30-45: cable overload overlay — gdy loadingPct > 100, narysuj dashed
           red overlay nad cablem sygnalizujący THERMAL OVERLOAD. */}
-      {loadingPct != null && Number.isFinite(loadingPct) && loadingPct > 100 && !missingEndpointPort && !useVariantRendering && (
+      {loadingPct != null && Number.isFinite(loadingPct) && loadingPct > 100 && !topologyGuide && !missingEndpointPort && !useSegmentPathRendering && (
         <path
           data-testid={`sld-v2-run-${id}-overload-overlay`}
           d={hitPath}
@@ -547,14 +581,15 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           segment. Pomocne dla operatora — natychmiast widać direction
           zasilania (upstream→downstream). Pomijamy gdy missingEndpointPort
           (warning state) lub pendingEndpoint (incomplete connection). */}
-      {flowArrow && !missingEndpointPort && !pendingEndpoint && (
+      {flowArrow && !topologyGuide && !missingEndpointPort && !pendingEndpoint && (
         <polygon
           data-testid={`sld-v2-run-${id}-flow-arrow`}
           data-flow-direction={flowArrow.direction}
+          data-topology-arrow-scale={(flowArrowSize / 5).toFixed(2)}
           points={
             flowArrow.direction === 'right'
-              ? `${flowArrow.x - 5},${flowArrow.y - 4} ${flowArrow.x + 5},${flowArrow.y} ${flowArrow.x - 5},${flowArrow.y + 4}`
-              : `${flowArrow.x + 5},${flowArrow.y - 4} ${flowArrow.x - 5},${flowArrow.y} ${flowArrow.x + 5},${flowArrow.y + 4}`
+              ? `${flowArrow.x - flowArrowSize},${flowArrow.y - flowArrowSize * 0.8} ${flowArrow.x + flowArrowSize},${flowArrow.y} ${flowArrow.x - flowArrowSize},${flowArrow.y + flowArrowSize * 0.8}`
+              : `${flowArrow.x + flowArrowSize},${flowArrow.y - flowArrowSize * 0.8} ${flowArrow.x - flowArrowSize},${flowArrow.y} ${flowArrow.x + flowArrowSize},${flowArrow.y + flowArrowSize * 0.8}`
           }
           fill={selected ? '#35C7FF' : voltageBaseStroke}
           stroke="#05070A"
@@ -583,8 +618,8 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
       {pendingEndpoint && terminalPoint && (
         <g
           data-testid={`sld-v2-run-${id}-pending-end`}
-          onClick={onClick ? (e) => { e.stopPropagation(); onClick(id); } : undefined}
-          style={{ cursor: onClick ? 'pointer' : 'default' }}
+          onClick={effectiveOnClick ? (e) => { e.stopPropagation(); effectiveOnClick(id); } : undefined}
+          style={{ cursor: effectiveOnClick ? 'pointer' : 'default' }}
         >
           <rect
             x={terminalPoint.x - 28}
@@ -684,6 +719,44 @@ function buildVisibleCablePaths(
     : [points.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(' ')];
 }
 
+const STATION_PORT_SNAP_TOLERANCE_PX = 80;
+
+function snapSegmentPathToCurrentStationPorts(
+  points: readonly Point[],
+  gaps: readonly CableRunStationPortGap[],
+): readonly Point[] {
+  if (points.length < 2 || gaps.length === 0) return points;
+  return points.map((point, index) => {
+    const previous = points[index - 1];
+    const next = points[index + 1];
+    const isHorizontalEndpoint =
+      (previous !== undefined && Math.abs(previous.y - point.y) <= 0.5)
+      || (next !== undefined && Math.abs(next.y - point.y) <= 0.5);
+    if (!isHorizontalEndpoint) return point;
+    const snappedX = nearestStationPortBoundaryX(point, gaps);
+    return snappedX === null ? point : { ...point, x: snappedX };
+  });
+}
+
+function nearestStationPortBoundaryX(
+  point: Point,
+  gaps: readonly CableRunStationPortGap[],
+): number | null {
+  let best: { x: number; distance: number } | null = null;
+  for (const gap of gaps) {
+    if (Math.abs(gap.y - point.y) > 0.5) continue;
+    const boundaries = gap.outputX === null
+      ? [gap.inputX]
+      : [Math.min(gap.inputX, gap.outputX), Math.max(gap.inputX, gap.outputX)];
+    for (const boundary of boundaries) {
+      const distance = Math.abs(point.x - boundary);
+      if (distance > STATION_PORT_SNAP_TOLERANCE_PX) continue;
+      if (!best || distance < best.distance) best = { x: boundary, distance };
+    }
+  }
+  return best?.x ?? null;
+}
+
 function cutHorizontalInterval(
   a: Point,
   b: Point,
@@ -759,17 +832,29 @@ function declutterSegmentLabels(
   const placed: CableRunSegmentLabel[] = [];
   return labels.map((label) => {
     let candidate = label;
-    let attempts = 0;
-    while (placed.some((other) => segmentLabelsOverlap(candidate, other)) && attempts < 6) {
-      candidate = {
-        ...candidate,
-        y: candidate.y - 20,
-      };
-      attempts += 1;
+    const yOffsets = segmentLabelCandidateOffsets(labels.length);
+    for (const yOffset of yOffsets) {
+      candidate = { ...label, y: label.y + yOffset };
+      if (!placed.some((other) => segmentLabelsOverlap(candidate, other))) {
+        break;
+      }
+    }
+    if (placed.some((other) => segmentLabelsOverlap(candidate, other))) {
+      const overflowOffset = -20 * (placed.length + 1);
+      candidate = { ...label, y: label.y + overflowOffset };
     }
     placed.push(candidate);
     return candidate;
   });
+}
+
+function segmentLabelCandidateOffsets(labelCount: number): number[] {
+  const laneCount = Math.max(8, labelCount * 2 + 2);
+  const offsets: number[] = [0];
+  for (let lane = 1; lane <= laneCount; lane += 1) {
+    offsets.push(-20 * lane, 20 * lane);
+  }
+  return offsets;
 }
 
 function segmentLabelsOverlap(
@@ -851,6 +936,27 @@ function classifyCableLoading(pct: number): { color: string; label: string } {
   if (pct <= 80) return { color: '#FFD166', label: 'warning' };
   if (pct <= 100) return { color: '#FF8B5C', label: 'high' };
   return { color: '#FF333D', label: 'overload' };
+}
+
+function overviewRunLabel(runKind: CableRunRendererProps['runKind']): string {
+  switch (runKind) {
+    case 'branch':
+      return 'Odgałęzienie SN';
+    case 'ring':
+      return 'Pierścień SN';
+    case 'loop':
+      return 'Pętla SN';
+    case 'main_trunk':
+    default:
+      return 'Magistrala SN';
+  }
+}
+
+function topologyDirectionArrowSize(viewportScale: number | null | undefined): number {
+  if (viewportScale === null || viewportScale === undefined || !Number.isFinite(viewportScale) || viewportScale <= 0) {
+    return 5;
+  }
+  return 5 * Math.min(4, Math.max(1, 0.9 / viewportScale));
 }
 
 /**

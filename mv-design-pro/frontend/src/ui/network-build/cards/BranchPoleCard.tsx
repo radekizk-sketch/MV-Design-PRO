@@ -45,7 +45,7 @@ function completenessLabel(status: string | null | undefined): string {
     case 'NIEKOMPLETNY':
       return 'Niekompletny';
     case 'BRAK_KATALOGU':
-      return 'Brak powiązania katalogowego';
+      return 'Powiązanie katalogowe do konfiguracji';
     default:
       return '—';
   }

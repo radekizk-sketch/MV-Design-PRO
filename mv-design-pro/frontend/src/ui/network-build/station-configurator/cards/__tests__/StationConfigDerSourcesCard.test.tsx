@@ -42,11 +42,11 @@ function makeDer(
   };
 }
 
-describe('StationConfigDerSourcesCard — Karta 7 "Źródła i magazyny"', () => {
+describe('StationConfigDerSourcesCard — Karta 7 "Układy PV/BESS/FW"', () => {
   it('pokazuje empty state gdy brak DER', () => {
     render(<StationConfigDerSourcesCard stationId="station_1" ders={[]} />);
     expect(screen.getByTestId('station-config-der-sources')).toBeInTheDocument();
-    expect(screen.getByText(/Brak źródeł i magazynów/)).toBeInTheDocument();
+    expect(screen.getByText(/Układy PV\/BESS\/FW do zaprojektowania/)).toBeInTheDocument();
   });
 
   it('pokazuje 3 przyciski dodawania (PV/BESS/FW)', () => {
@@ -85,8 +85,9 @@ describe('StationConfigDerSourcesCard — Karta 7 "Źródła i magazyny"', () =>
       makeDer({ id: 'fw_a', der_kind: 'FW' }),
     ];
     render(<StationConfigDerSourcesCard stationId="station_1" ders={ders} />);
-    // 4 DER total: 2 PV + 1 BESS + 1 FW
-    expect(screen.getByText(/4 DER \(PV: 2 · BESS: 1 · FW: 1\)/)).toBeInTheDocument();
+    expect(screen.getByTestId('station-config-der-sources').textContent).toContain(
+      '4 ukł. (PV: 2 · BESS: 1 · FW: 1)',
+    );
   });
 
   it('klik "Otwórz" wywołuje onOpenDer z properem rodzajem', () => {
@@ -141,24 +142,30 @@ describe('StationConfigDerSourcesCard — Karta 7 "Źródła i magazyny"', () =>
     expect(onDetachDer).toHaveBeenCalledWith('der_1');
   });
 
-  it('status "no_pcc" jest wyświetlany jako "brak PCC" w polskim', () => {
+  it('status "no_pcc" prowadzi do wyboru PCC', () => {
     render(
       <StationConfigDerSourcesCard
         stationId="station_1"
         ders={[makeDer({ completeness: 'no_pcc' })]}
       />,
     );
-    expect(screen.getByText('brak PCC')).toBeInTheDocument();
+    expect(screen.getByText('PCC do wyboru')).toBeInTheDocument();
   });
 
-  it('status "missing_catalog" jest wyświetlany jako "brak katalogu"', () => {
+  it('status "missing_catalog" prowadzi do wyboru wariantu katalogowego', () => {
     render(
       <StationConfigDerSourcesCard
         stationId="station_1"
         ders={[makeDer({ completeness: 'missing_catalog' })]}
       />,
     );
-    expect(screen.getByText('brak katalogu')).toBeInTheDocument();
+    expect(screen.getByText('wariant katalogowy do wyboru')).toBeInTheDocument();
+  });
+
+  it('nie pokazuje technicznego stationId jako nazwy stacji', () => {
+    render(<StationConfigDerSourcesCard stationId="station_1" ders={[]} />);
+    expect(screen.getByTestId('station-config-der-sources').textContent).not.toContain('station_1');
+    expect(screen.getByText(/Stacja:/).textContent).toContain('Stacja');
   });
 
   it('moc renderowana jako toFixed(0) kW (brak fałszywego 0,00)', () => {

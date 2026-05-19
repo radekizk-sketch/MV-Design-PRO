@@ -51,7 +51,7 @@ describe('InspectorPanel', () => {
 
     fireEvent.click(screen.getByTestId('tab-limits'));
     expect(screen.queryByText('31,500')).not.toBeInTheDocument();
-    expect(screen.getByText('Brak danych')).toBeInTheDocument();
+    expect(screen.getByText('Limity do wyliczenia')).toBeInTheDocument();
   });
 
   it('renders Polish status labels in limits tab', () => {

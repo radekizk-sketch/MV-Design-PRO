@@ -180,7 +180,9 @@ def _catalog_binding_from_payload(
             normalized["catalog_namespace"] = namespace
         item_version = normalized.get("catalog_item_version") or payload.get("catalog_item_version")
         normalized["catalog_item_version"] = (
-            item_version.strip() if isinstance(item_version, str) and item_version.strip() else "2024.1"
+            item_version.strip()
+            if isinstance(item_version, str) and item_version.strip()
+            else "2024.1"
         )
         normalized.setdefault("materialize", True)
         normalized.setdefault("snapshot_mapping_version", "1.0")
@@ -221,7 +223,7 @@ def _bus_voltage_kv(enm: dict[str, Any], bus_ref: str) -> float | None:
         if not isinstance(bus, dict) or bus.get("ref_id") != bus_ref:
             continue
         voltage = bus.get("voltage_kv")
-        if isinstance(voltage, (int, float)) and voltage > 0:
+        if isinstance(voltage, int | float) and voltage > 0:
             return float(voltage)
     return None
 
@@ -273,7 +275,12 @@ def _default_relay_settings(relay_type: str) -> list[dict[str, Any]]:
     device_type = _relay_device_type(relay_type)
     if device_type == "earth_fault":
         return [
-            {"function_type": "earth_fault_50N", "threshold_a": None, "time_delay_s": None, "curve_type": "DT"},
+            {
+                "function_type": "earth_fault_50N",
+                "threshold_a": None,
+                "time_delay_s": None,
+                "curve_type": "DT",
+            },
             {
                 "function_type": "earth_fault_51N",
                 "threshold_a": None,
@@ -300,8 +307,18 @@ def _default_relay_settings(relay_type: str) -> list[dict[str, Any]]:
         ]
     if device_type == "overcurrent":
         return [
-            {"function_type": "overcurrent_50", "threshold_a": None, "time_delay_s": None, "curve_type": "DT"},
-            {"function_type": "overcurrent_51", "threshold_a": None, "time_delay_s": None, "curve_type": "IEC_SI"},
+            {
+                "function_type": "overcurrent_50",
+                "threshold_a": None,
+                "time_delay_s": None,
+                "curve_type": "DT",
+            },
+            {
+                "function_type": "overcurrent_51",
+                "threshold_a": None,
+                "time_delay_s": None,
+                "curve_type": "IEC_SI",
+            },
         ]
     return []
 
@@ -1349,14 +1366,18 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     apparatus_ref = _make_id("sn", seed, "bay_device")
     voltage_kv = _bus_voltage_kv(enm, bus_ref)
     if voltage_kv is None:
-        return _error_response("Nie znaleziono napięcia szyny SN dla pola.", "sn.bus_voltage_missing")
+        return _error_response(
+            "Nie znaleziono napięcia szyny SN dla pola.", "sn.bus_voltage_missing"
+        )
     catalog_binding = _catalog_binding_from_payload(payload, "APARAT_SN")
     catalog_namespace = _catalog_namespace(catalog_binding, "APARAT_SN")
     catalog_ref = _catalog_item_id(catalog_binding)
     branch_type = _sn_bay_branch_type(apparatus_kind)
 
     new_enm = copy.deepcopy(enm)
-    existing_equipment_refs = _field_equipment_refs(new_enm, field_ref) if existing_field_ref else []
+    existing_equipment_refs = (
+        _field_equipment_refs(new_enm, field_ref) if existing_field_ref else []
+    )
     existing_apparatus_ref = existing_equipment_refs[0] if existing_equipment_refs else None
 
     if existing_apparatus_ref:
@@ -1382,9 +1403,13 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                         "field_ref": field_ref,
                         "station_ref": station["ref_id"],
                         "bay_role": bay_role,
-                        "apparatus_kind": apparatus_kind if isinstance(apparatus_kind, str) else None,
+                        "apparatus_kind": (
+                            apparatus_kind if isinstance(apparatus_kind, str) else None
+                        ),
                         "requires_catalog_binding": catalog_ref is None,
-                        "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
+                        "catalog_binding": (
+                            copy.deepcopy(catalog_binding) if catalog_binding else None
+                        ),
                     }
                 )
             _update_field_spec(
@@ -1396,9 +1421,17 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                     "equipment_refs": existing_equipment_refs,
                     "gpz_section_id": gpz_section_id if isinstance(gpz_section_id, str) else None,
                     "meta": {
-                        **(existing_field.get("meta") if isinstance(existing_field.get("meta"), dict) else {}),
-                        "apparatus_kind": apparatus_kind if isinstance(apparatus_kind, str) else None,
-                        "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
+                        **(
+                            existing_field.get("meta")
+                            if isinstance(existing_field.get("meta"), dict)
+                            else {}
+                        ),
+                        "apparatus_kind": (
+                            apparatus_kind if isinstance(apparatus_kind, str) else None
+                        ),
+                        "catalog_binding": (
+                            copy.deepcopy(catalog_binding) if catalog_binding else None
+                        ),
                         "default_device_ref": existing_apparatus_ref,
                         "field_status": "CONFIGURED_FOR_TRUNK",
                     },
@@ -1537,7 +1570,11 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         selection_id=field_ref,
         selection_type="bay",
         events=[
-            {"event_seq": 1, "event_type": "FIELD_TERMINAL_CREATED_SN", "element_id": terminal_bus_ref},
+            {
+                "event_seq": 1,
+                "event_type": "FIELD_TERMINAL_CREATED_SN",
+                "element_id": terminal_bus_ref,
+            },
             {"event_seq": 2, "event_type": "FIELD_DEVICE_CREATED_SN", "element_id": apparatus_ref},
             {"event_seq": 3, "event_type": "FIELDS_CREATED_SN", "element_id": field_ref},
         ],
@@ -1826,7 +1863,12 @@ def _build_converter_materialized_params(
             namespace="ZRODLO_NN_BESS",
             catalog_ref=catalog_ref,
             explicit_params=None,
-            required_fields=["un_kv", "usable_capacity_kwh", "charge_power_kw", "discharge_power_kw"],
+            required_fields=[
+                "un_kv",
+                "usable_capacity_kwh",
+                "charge_power_kw",
+                "discharge_power_kw",
+            ],
         )
         if error or materialized_params is None:
             return {}, error or "catalog.materialization_incomplete"
@@ -1848,6 +1890,7 @@ def _build_converter_materialized_params(
     # Inline lookup z mv_converter_catalog dla un_kv, pmax_mw bez namespace pipeline.
     if technology == "FW":
         from network_model.catalog.mv_converter_catalog import get_wind_types
+
         wind_types = get_wind_types()
         match = next((w for w in wind_types if w.get("id") == catalog_ref), None)
         if match is None:
@@ -2128,7 +2171,8 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
                 if station_for_auto is not None:
                     station_buses = set(station_for_auto.get("bus_refs") or [])
                     station_transformers = [
-                        tr for tr in enm.get("transformers", [])
+                        tr
+                        for tr in enm.get("transformers", [])
                         if tr.get("hv_bus_ref") in station_buses
                         or tr.get("lv_bus_ref") in station_buses
                     ]
@@ -2139,7 +2183,10 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
                             "Stacja zawiera wiele transformatorow — wymagany jawny blocking_transformer_ref.",
                             "generator.block_transformer_ambiguous",
                         )
-            if not isinstance(blocking_transformer_ref, str) or not blocking_transformer_ref.strip():
+            if (
+                not isinstance(blocking_transformer_ref, str)
+                or not blocking_transformer_ref.strip()
+            ):
                 return _error_response(
                     "Wariant block_transformer wymaga blocking_transformer_ref albo station_ref z dokladnie 1 transformatorem.",
                     "generator.block_transformer_missing",
@@ -2243,16 +2290,25 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         materialized_params,
     )
     q_mvar = _first_number(payload.get("q_min_mvar"), 0.0)
-    source_seed = _compute_seed(
-        {
-            "op": "converter_source",
-            "station_ref": station_ref,
-            "bus": bus_nn_ref,
-            "technology": technology,
-            "catalog_ref": catalog_ref,
-            "name": name,
-        }
+    source_sequence = _next_converter_source_sequence(
+        enm,
+        station_ref=station_ref,
+        bus_ref=bus_nn_ref,
+        gen_type=gen_type,
+        catalog_ref=catalog_ref,
+        name=name,
     )
+    seed_payload = {
+        "op": "converter_source",
+        "station_ref": station_ref,
+        "bus": bus_nn_ref,
+        "technology": technology,
+        "catalog_ref": catalog_ref,
+        "name": name,
+    }
+    if source_sequence > 0:
+        seed_payload["source_sequence"] = source_sequence
+    source_seed = _compute_seed(seed_payload)
     prefix = technology.lower()
     generator_ref = _make_id(prefix, source_seed, "converter")
 
@@ -2274,6 +2330,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     generator_meta = {
         **meta,
         "field_ref": field_ref,
+        "source_sequence_index": source_sequence,
     }
     new_enm.setdefault("generators", []).append(
         {
@@ -2327,6 +2384,31 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         selection_type="bay" if field_ref else "generator",
         events=events,
     )
+
+
+def _next_converter_source_sequence(
+    enm: dict[str, Any],
+    *,
+    station_ref: str,
+    bus_ref: str,
+    gen_type: str,
+    catalog_ref: str,
+    name: str,
+) -> int:
+    """Return deterministic ordinal for repeated identical DER sources."""
+    sequence = 0
+    for existing in enm.get("generators", []):
+        if not isinstance(existing, dict):
+            continue
+        if (
+            existing.get("station_ref") == station_ref
+            and existing.get("bus_ref") == bus_ref
+            and existing.get("gen_type") == gen_type
+            and existing.get("catalog_ref") == catalog_ref
+            and existing.get("name") == name
+        ):
+            sequence += 1
+    return sequence
 
 
 def add_genset_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:

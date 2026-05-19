@@ -16,7 +16,6 @@ import {
   fetchAudit2CatalogSnapshot,
   generateAudit2ProofPack,
   generateAudit2Report,
-  getStationAudit2Config,
   listStationAudit2Configs,
   putStationAudit2Config,
   runAudit2PowerFlow,
@@ -53,7 +52,10 @@ export function useStationAudit2Config(
 ): UseQueryResult<StationAudit2ConfigResponse | null, Error> {
   return useQuery({
     queryKey: audit2QueryKeys.stationConfig(projectId ?? '', stationId ?? ''),
-    queryFn: () => getStationAudit2Config(projectId!, stationId!),
+    queryFn: async () => {
+      const configs = await listStationAudit2Configs(projectId!);
+      return configs.find((config) => config.station_id === stationId) ?? null;
+    },
     enabled: Boolean(projectId && stationId),
     staleTime: 30_000,
   });

@@ -50,12 +50,11 @@ const DETAIL_DER_WIDTH = 340;
 const DETAIL_DER_HEIGHT = 280;
 
 // K30-19/31: variant-aware device sizing now via getVariantApparatusHeight()
-// w MiniBlockBayLayout. DER + blocker colors local konstantami.
+// w MiniBlockBayLayout. Kolory DER trzymamy lokalnie przy rendererze stacji.
 
 const COLOR_DER_PV = '#FFC857';
 const COLOR_DER_BESS = '#5BB8FF';
 const COLOR_DER_FW = '#5BFFD9';
-const COLOR_BLOCKER = '#FF5560';
 const COLOR_SCADA_SHADOW = '#05070A';
 
 type SymbolClickHandler = (elementId: string) => (e: MouseEvent<SVGGElement>) => void;
@@ -126,11 +125,64 @@ export interface MiniBlockRmuRendererProps {
   /** K30-116 audyt #2 MAJOR: schemat uziemienia per PN-EN 60364-1 § 312.
    * Wymagane przez OSD do procedur manewrów i testów impedancji. */
   readonly earthingScheme?: 'TN-C' | 'TN-S' | 'TN-C-S' | 'IT' | 'TT' | null;
+  /** Aktualna skala viewportu SLD. Uzywana tylko do czytelnosci etykiet overview. */
+  readonly viewportScale?: number;
 }
 
 // =============================================================================
 // Renderer
 // =============================================================================
+
+function normalizeLabelToken(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function isGenericStationDisplayName(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const normalized = normalizeLabelToken(value);
+  return /^stacja\s+(przelotowa|koncowa|odgalezna|sekcyjna)(\s+sn\/nn)?$/.test(normalized);
+}
+
+function formatTransformerRatedPower(kva: number): string {
+  return kva >= 1000
+    ? `${(kva / 1000).toFixed(1).replace('.', ',')} MVA`
+    : `${kva} kVA`;
+}
+
+function overviewStationCodeScale(viewportScale: number | null | undefined): number {
+  if (viewportScale === null || viewportScale === undefined || !Number.isFinite(viewportScale) || viewportScale <= 0) {
+    return 1;
+  }
+  return Math.min(4, Math.max(1, 0.9 / viewportScale));
+}
+
+function overviewDerSummary(
+  derBadges: readonly MiniBlockDerBadge[],
+): { label: string; color: string } | null {
+  const first = derBadges.find((badge) => badge.count > 0);
+  if (!first) return null;
+  const suffix = first.count > 1 ? String(first.count) : '';
+  switch (first.kind) {
+    case 'PV':
+      return { label: `PV${suffix}`, color: COLOR_DER_PV };
+    case 'BESS':
+      return { label: `BESS${suffix}`, color: COLOR_DER_BESS };
+    case 'FW':
+      return { label: `FW${suffix}`, color: COLOR_DER_FW };
+  }
+}
+
+function overviewDerMarkerShape(
+  kind: MiniBlockDerBadge['kind'],
+): 'hexagon' | 'square' | 'triangle' {
+  if (kind === 'PV') return 'hexagon';
+  if (kind === 'BESS') return 'square';
+  return 'triangle';
+}
 
 export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Element {
   const { variant } = props;
@@ -146,7 +198,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
       ? 40
       : showPvCircuit
         ? offsetY + height - 28
-        : 56;
+        : 72;
   const labelTypeY = variant === 'overview'
     ? labelNameY + 13
     : variant === 'compact'
@@ -154,11 +206,23 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
       : showPvCircuit
         ? labelNameY + 12
         : labelNameY + 13;
-  const labelPowerY = labelTypeY + 12;
+  const stationNameTextY = labelTypeY + 16;
+  const labelPowerY = stationNameTextY
+    + (variant === 'compact' ? 24 : variant === 'detail' && !showPvCircuit ? 22 : 14);
+  const auxBadgeY = labelPowerY + 16;
+  const showDetailedBadges = variant !== 'overview' && (variant !== 'detail' || Boolean(props.selected));
+  const headerBadgeY = labelNameY - 4;
+  const nnCountBadgeX = variant === 'detail' ? 56 : 48;
+  const alarmBadgeX = showDetailedBadges && props.nnFeedersCount > 0 ? -34 : 26;
   const labelFontSize = variant === 'overview' ? 10 : variant === 'compact' ? 10 : showPvCircuit ? 9 : 10;
   const typeFontSize = variant === 'overview' ? 9 : variant === 'compact' ? 8 : showPvCircuit ? 8 : 9;
-  const isBlocker = props.snBays.length === 0;
-  const stroke = props.selected ? COLOR_SELECTION : isBlocker ? COLOR_BLOCKER : 'transparent';
+  const hasSnBayTopology = props.snBays.length > 0;
+  const stationCodeLabel = props.stationCode
+    ?? ((props.name || '').match(/\b(S\d{2,3})\b/)?.[1] ?? null);
+  const stationNameLabel = isGenericStationDisplayName(props.name) && stationCodeLabel
+    ? null
+    : (props.name || '').length > 22 ? (props.name || '').slice(0, 20) + '…' : props.name;
+  const stroke = props.selected ? COLOR_SELECTION : 'transparent';
   const strokeWidth = props.selected ? 2.5 : 1.5;
   const handleSymbolClick = props.onClick
     ? (elementId: string) => (e: MouseEvent<SVGGElement>) => {
@@ -166,7 +230,6 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         props.onClick?.(elementId);
       }
     : undefined;
-
   return (
     <g
       data-testid={`sld-v2-mini-rmu-${props.id}`}
@@ -209,7 +272,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         width={width}
         height={height}
         fill={COLOR_PANEL_RAISED}
-        opacity={props.selected || isBlocker ? 0.18 : 0}
+        opacity={props.selected ? 0.18 : 0}
         stroke={stroke}
         strokeWidth={strokeWidth}
         rx={4}
@@ -230,16 +293,17 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
        *  z key information at-a-glance.
        *  - variant='compact' (LOD 1): bay-column condensed.
        *  - variant='detail' (LOD 2+): pełen bay-column z labels. */}
-      {!isBlocker && variant === 'overview' && (() => {
+      {variant === 'overview' && (() => {
         const snBusColor = miniBlockBusColorForVoltage(props.busVoltageKv ?? null);
-        const code = props.stationCode
-          ?? ((props.name || '').match(/\b(S\d{2,3})\b/)?.[1] ?? null);
+        const code = stationCodeLabel;
         const hasDer = props.derBadges.length > 0;
-        const derCount = props.derBadges.reduce((sum, b) => sum + b.count, 0);
-        const totalDerMw = props.derBadges.reduce((sum, b) => sum + (b.totalPMw ?? 0), 0);
         const hasLoad = (props.totalLoadKw ?? 0) > 0;
         const CARD_W = 76;
         const CARD_H = 46;
+        const codeScale = overviewStationCodeScale(props.viewportScale);
+        const codeLabelWidth = Math.max(30, (code?.length ?? 3) * 8 + 12);
+        const derSummary = overviewDerSummary(props.derBadges);
+        const derMarkerShape = derSummary ? overviewDerMarkerShape(props.derBadges.find((badge) => badge.count > 0)?.kind ?? 'PV') : null;
         return (
           <g data-testid={`sld-v2-mini-rmu-overview-${props.id}`}>
             {/* Drop-line do trunk (top edge connection point) */}
@@ -267,18 +331,37 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
             />
             {/* Station code (top center) */}
             {code && (
-              <text
-                x={0}
-                y={-CARD_H / 2 + 14}
-                textAnchor="middle"
-                fill={snBusColor}
-                fontFamily="sans-serif"
-                fontSize={13}
-                fontWeight={900}
-                letterSpacing={0.6}
+              <g
+                data-testid={`sld-v2-mini-rmu-overview-code-${props.id}`}
+                data-overview-label-scale={codeScale.toFixed(2)}
+                transform={`translate(0, ${-CARD_H / 2 + 13}) scale(${codeScale})`}
               >
-                {code}
-              </text>
+                <rect
+                  x={-codeLabelWidth / 2}
+                  y={-8}
+                  width={codeLabelWidth}
+                  height={16}
+                  rx={2}
+                  ry={2}
+                  fill="#07111C"
+                  stroke={snBusColor}
+                  strokeWidth={0.4}
+                  opacity={0.92}
+                />
+                <text
+                  x={0}
+                  y={1}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill={snBusColor}
+                  fontFamily="sans-serif"
+                  fontSize={12}
+                  fontWeight={900}
+                  letterSpacing={0}
+                >
+                  {code}
+                </text>
+              </g>
             )}
             {/* Voltage (mid) */}
             {props.busVoltageKv != null && (
@@ -296,52 +379,44 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                   : `${Math.round(props.busVoltageKv * 1000)} V`}
               </text>
             )}
-            {/* TR rated kVA badge (small, bottom row left) */}
-            {props.transformerRatedKva != null && (
-              <text
-                x={-CARD_W / 2 + 6}
-                y={CARD_H / 2 - 4}
-                textAnchor="start"
-                fill="#FFD166"
-                fontFamily="monospace"
-                fontSize={7}
-                fontWeight={700}
+            {/* DER marker (small, bottom-right corner).
+                LOD overview ma pokazywac topologie bez kolizji etykiet; tekst
+                PV/BESS/FW pojawia sie dopiero w compact/detail. */}
+            {hasDer && derSummary && (
+              <g
+                data-testid={`sld-v2-mini-rmu-overview-${props.id}-der`}
+                data-overview-label-mode="marker"
+                data-der-kind={props.derBadges.find((badge) => badge.count > 0)?.kind ?? ''}
+                transform={`translate(${CARD_W / 2 - 8}, ${CARD_H / 2 - 8})`}
               >
-                {props.transformerRatedKva >= 1000
-                  ? `${(props.transformerRatedKva / 1000).toFixed(1).replace('.', ',')} MVA`
-                  : `${props.transformerRatedKva} kVA`}
-              </text>
-            )}
-            {/* DER badge (small, bottom-right corner) */}
-            {hasDer && (
-              <g data-testid={`sld-v2-mini-rmu-overview-${props.id}-der`}>
-                <circle cx={CARD_W / 2 - 9} cy={CARD_H / 2 - 9} r={6} fill="#FFD166" stroke="#0A0E14" strokeWidth={0.8} />
-                <text
-                  x={CARD_W / 2 - 9}
-                  y={CARD_H / 2 - 7}
-                  textAnchor="middle"
-                  fill="#0A0E14"
-                  fontFamily="sans-serif"
-                  fontSize={7}
-                  fontWeight={900}
-                >
-                  {derCount > 9 ? '+' : derCount}
-                </text>
-                {totalDerMw > 0 && (
-                  <text
-                    x={CARD_W / 2 - 4}
-                    y={CARD_H / 2 - 14}
-                    textAnchor="end"
-                    fill="#FFD166"
-                    fontFamily="monospace"
-                    fontSize={6}
-                    fontWeight={700}
-                  >
-                    {totalDerMw >= 1
-                      ? `${totalDerMw.toFixed(1).replace('.', ',')}MW`
-                      : `${Math.round(totalDerMw * 1000)}kW`}
-                  </text>
+                {derMarkerShape === 'hexagon' && (
+                  <polygon
+                    points="0,-5 4.3,-2.5 4.3,2.5 0,5 -4.3,2.5 -4.3,-2.5"
+                    fill={derSummary.color}
+                    stroke="#07111C"
+                    strokeWidth={1}
+                  />
                 )}
+                {derMarkerShape === 'square' && (
+                  <rect
+                    x={-4.5}
+                    y={-4.5}
+                    width={9}
+                    height={9}
+                    fill={derSummary.color}
+                    stroke="#07111C"
+                    strokeWidth={1}
+                  />
+                )}
+                {derMarkerShape === 'triangle' && (
+                  <polygon
+                    points="0,-5 5,4 -5,4"
+                    fill={derSummary.color}
+                    stroke="#07111C"
+                    strokeWidth={1}
+                  />
+                )}
+                <title>{derSummary.label}</title>
               </g>
             )}
             {/* Load indicator dot (bottom-left corner) */}
@@ -381,7 +456,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
        *  → LV bus → feeder columns. User K30-29 (1/10) feedback eliminated.
        *  K30-40: SN bus color z busVoltageKv (analogicznie do K30-37 dispatcher).
        *  K30-57: gated to compact/detail variants tylko (overview = simple box). */}
-      {!isBlocker && variant !== 'overview' && (() => {
+      {hasSnBayTopology && variant !== 'overview' && (() => {
         const snBusColor = miniBlockBusColorForVoltage(props.busVoltageKv ?? null);
         const layout = computeMiniBlockLayout(
           variant,
@@ -505,9 +580,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                       fontWeight={700}
                       data-testid={`sld-v2-mini-tr-kva-${props.id}`}
                     >
-                      {props.transformerRatedKva >= 1000
-                        ? `${(props.transformerRatedKva / 1000).toFixed(1)} MVA`
-                        : `${props.transformerRatedKva} kVA`}
+                      {formatTransformerRatedPower(props.transformerRatedKva)}
                     </text>
                   )}
                 </g>
@@ -559,13 +632,12 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
        *  K30-55 Phase D: gdy isNop → ring color red + ⨯ marker overlay.
        *  K30-59: skip dla overview (już renderowany w rich card branch). */}
       {variant !== 'overview' && (() => {
-        const code = props.stationCode
-          ?? ((props.name || '').match(/\b(S\d{2,3})\b/)?.[1] ?? null);
+        const code = stationCodeLabel;
         if (!code) return null;
         const nopRing = props.isNop ? '#FF333D' : '#7EC8FF';
         const nopText = props.isNop ? '#FF333D' : '#7EC8FF';
         return (
-          <g data-testid={`sld-v2-mini-station-code-${props.id}`} data-is-nop={props.isNop ? 'true' : 'false'} transform={`translate(0, ${labelNameY - 4})`}>
+          <g data-testid={`sld-v2-mini-station-code-${props.id}`} data-is-nop={props.isNop ? 'true' : 'false'} transform={`translate(0, ${headerBadgeY})`}>
             <rect x={-22} y={-13} width={44} height={18} rx={2} ry={2} fill="#0A1018" stroke={nopRing} strokeWidth={props.isNop ? 1.8 : 1.2} opacity={0.95} />
             <text x={0} y={1} textAnchor="middle" fill={nopText} fontFamily={FONT_SANS} fontSize={14} fontWeight={900} letterSpacing={0.8}>
               {code}
@@ -584,16 +656,16 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
 
       {/* K30-29 round 4: nN feeders count badge always visible (next to code).
        *  Critical dla pixel-by-pixel expert review at all LOD variants. */}
-      {props.nnFeedersCount > 0 && (
+      {showDetailedBadges && props.nnFeedersCount > 0 && (
         <g
           data-testid={`sld-v2-mini-station-nn-count-${props.id}`}
           data-feeders-count={props.nnFeedersCount}
-          transform={`translate(28, ${labelNameY - 4})`}
+          transform={`translate(${nnCountBadgeX}, ${headerBadgeY})`}
         >
           <rect
-            x={-12}
+            x={-15}
             y={-13}
-            width={24}
+            width={30}
             height={18}
             rx={2}
             ry={2}
@@ -608,10 +680,10 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
             textAnchor="middle"
             fill="#4EC9B0"
             fontFamily={FONT_SANS}
-            fontSize={11}
+            fontSize={10}
             fontWeight={900}
           >
-            {`${props.nnFeedersCount}n`}
+            {`${props.nnFeedersCount} nN`}
           </text>
         </g>
       )}
@@ -620,7 +692,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
       {props.alarmSeverity && (() => {
         const color = props.alarmSeverity === 'critical' ? '#FF6B6B' : props.alarmSeverity === 'important' ? '#FF8B5C' : '#FFD166';
         return (
-          <g data-testid={`sld-v2-mini-station-alarm-${props.id}`} data-alarm-severity={props.alarmSeverity} transform={`translate(26, ${labelNameY - 4})`}>
+        <g data-testid={`sld-v2-mini-station-alarm-${props.id}`} data-alarm-severity={props.alarmSeverity} transform={`translate(${alarmBadgeX}, ${headerBadgeY})`}>
             <polygon points="0,-11 9,5 -9,5" fill={color} stroke="#0A0E14" strokeWidth={1} />
             <text x={0} y={3} textAnchor="middle" fill="#0A0E14" fontFamily={FONT_SANS} fontSize={10} fontWeight={900}>
               !
@@ -629,10 +701,10 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         );
       })()}
       {/* K30-57: hide name label w overview variant (clutter at zoom-out) */}
-      {variant !== 'overview' && (
+      {variant !== 'overview' && stationNameLabel && (
         <text
           x={0}
-          y={labelNameY + 18}
+          y={stationNameTextY}
           textAnchor="middle"
           fill={COLOR_TEXT_PRIMARY}
           fontFamily={FONT_SANS}
@@ -643,23 +715,23 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
           strokeWidth={showPvCircuit ? 1.4 : 3}
           data-parity-key="station.mini.name"
         >
-          {(props.name || '').length > 22 ? (props.name || '').slice(0, 20) + '…' : props.name}
+          {stationNameLabel}
         </text>
       )}
 
       {/* K30-15.3: load (L) + DER generation (G) badges per stacja.
        *  Eksploatacyjny diff: stacja z load 100 kW vs ZKSN bez load
        *  vs hybrid PV+BESS 1500 kW visible bezpośrednio. */}
-      {props.totalLoadKw && props.totalLoadKw > 0 && (
-        <g data-testid={`sld-v2-mini-station-load-${props.id}`} transform={`translate(-28, ${labelNameY + 32})`}>
+      {showDetailedBadges && props.totalLoadKw && props.totalLoadKw > 0 && (
+        <g data-testid={`sld-v2-mini-station-load-${props.id}`} transform={`translate(-28, ${auxBadgeY})`}>
           <rect x={-22} y={-9} width={44} height={16} rx={2} ry={2} fill="#5A2A1E" stroke="#FF8B5C" strokeWidth={1} />
           <text x={0} y={2} textAnchor="middle" fill="#FF8B5C" fontFamily={FONT_SANS} fontSize={9} fontWeight={900}>
             L {props.totalLoadKw >= 1000 ? `${(props.totalLoadKw / 1000).toFixed(1)}MW` : `${props.totalLoadKw}kW`}
           </text>
         </g>
       )}
-      {props.totalGenerationKw != null && props.totalGenerationKw > 0 && (
-        <g data-testid={`sld-v2-mini-station-gen-${props.id}`} transform={`translate(28, ${labelNameY + 32})`}>
+      {showDetailedBadges && props.totalGenerationKw != null && props.totalGenerationKw > 0 && (
+        <g data-testid={`sld-v2-mini-station-gen-${props.id}`} transform={`translate(28, ${auxBadgeY})`}>
           <rect x={-22} y={-9} width={44} height={16} rx={2} ry={2} fill="#1E4A2A" stroke="#7EE0B5" strokeWidth={1} />
           <text x={0} y={2} textAnchor="middle" fill="#7EE0B5" fontFamily={FONT_SANS} fontSize={9} fontWeight={900}>
             G {props.totalGenerationKw >= 1000 ? `${(props.totalGenerationKw / 1000).toFixed(1)}MW` : `${props.totalGenerationKw}kW`}
@@ -688,7 +760,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
       </text>
       )}
 
-      {variant !== 'overview' && !showPvCircuit && props.transformerRatedKva !== null && (
+      {variant === 'compact' && !showPvCircuit && props.transformerRatedKva !== null && (
         <text
           x={0}
           y={labelPowerY}
@@ -702,7 +774,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
           strokeWidth={2}
           data-parity-key="station.mini.transformer.power"
         >
-          {props.transformerRatedKva}
+          {formatTransformerRatedPower(props.transformerRatedKva)}
         </text>
       )}
 
@@ -755,32 +827,6 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         </g>
       )}
 
-      {isBlocker && (
-        <g data-testid={`sld-v2-mini-rmu-blocker-${props.id}`} data-parity-key="station.mini.blocker">
-          <rect
-            x={-55}
-            y={-8}
-            width={110}
-            height={24}
-            fill={COLOR_BLOCKER}
-            opacity={0.18}
-            rx={2}
-            ry={2}
-          />
-          <text
-            x={0}
-            y={8}
-            textAnchor="middle"
-            fill={COLOR_BLOCKER}
-            fontFamily={FONT_SANS}
-            fontSize={FONT_SIZES.technicalPanel}
-            fontWeight={700}
-          >
-            Brak pól SN - uzupełnij konfigurację
-          </text>
-        </g>
-      )}
-
       {/* K30-57: full DerBadges tylko w compact/detail; overview ma small
           indicator dot wewnątrz station circle (już renderowany powyżej). */}
       {variant !== 'overview' && props.derBadges.length > 0 && (
@@ -793,6 +839,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
             offsetX={offsetX}
             offsetY={offsetY}
             badges={props.derBadges}
+            showLabels={variant !== 'detail' || Boolean(props.selected)}
           />
         )
       )}
@@ -807,7 +854,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
           strokeWidth={1}
           data-parity-key="station.mini.missing"
         >
-          <title>Brakuje danych do obliczeń</title>
+          <title>Zakres danych technicznych do przeliczenia</title>
         </circle>
       )}
     </g>
@@ -1033,17 +1080,23 @@ interface DerBadgesProps {
   offsetX: number;
   offsetY: number;
   badges: readonly MiniBlockDerBadge[];
+  showLabels?: boolean;
 }
 
 function DerBadges(props: DerBadgesProps): JSX.Element {
-  const { offsetX, offsetY, badges } = props;
+  const { offsetY, badges, showLabels = true } = props;
+  const labelYOffset = 19;
+  const powerYOffset = 31;
+  const badgePitch = 52;
+  const badgeStartX = -((badges.length - 1) * badgePitch) / 2;
   // K30-15.2: distinct geometric shape per DER type per IEC 60617-5 convention
   // (PV=hexagon, BESS=square z napisem 'B', FW=triangle z napisem 'W').
-  // ENLARGED badge 6→10 px + label widoczny per typ przy zoomie LOD2+.
+  // Etykiety mocy rozstawiamy od srodka, zeby uklady hybrydowe PV+BESS+FW
+  // pozostaly czytelne w LOD 2.
   return (
     <g data-testid="sld-v2-mini-rmu-der-badges" data-parity-key="station.mini.der_badges">
       {badges.map((badge, idx) => {
-        const cx = offsetX + 14 + idx * 26;
+        const cx = badgeStartX + idx * badgePitch;
         const cy = offsetY + 14;
         const fill =
           badge.kind === 'PV' ? COLOR_DER_PV : badge.kind === 'BESS' ? COLOR_DER_BESS : COLOR_DER_FW;
@@ -1114,22 +1167,25 @@ function DerBadges(props: DerBadgesProps): JSX.Element {
             <title>{`${badge.kind}: ${badge.count} szt.`}</title>
             {/* K30-67: label przeniesiony pod symbol (IEC 60617 nie ma labels
                 wewnątrz symbol — wewnątrz jest sinusoida/strzałka). */}
-            <text
-              x={cx}
-              y={cy + 18}
-              textAnchor="middle"
-              fill={fill}
-              fontFamily={FONT_SANS}
-              fontSize={8}
-              fontWeight={900}
-              letterSpacing={0.3}
-              paintOrder="stroke"
-              stroke="#05070A"
-              strokeWidth={2}
-            >
-              {label}
-            </text>
-            {badge.count > 1 && (
+            {showLabels && (
+              <text
+                data-testid={`sld-v2-mini-rmu-der-badge-label-${badge.kind}`}
+                x={cx}
+                y={cy + labelYOffset}
+                textAnchor="middle"
+                fill={fill}
+                fontFamily={FONT_SANS}
+                fontSize={8}
+                fontWeight={900}
+                letterSpacing={0}
+                paintOrder="stroke"
+                stroke="#05070A"
+                strokeWidth={2}
+              >
+                {label}
+              </text>
+            )}
+            {badge.count > 1 && showLabels && (
               <text
                 x={cx + 11}
                 y={cy - 8}
@@ -1143,14 +1199,15 @@ function DerBadges(props: DerBadgesProps): JSX.Element {
               </text>
             )}
             {/* K30-55 Phase E: aggregated P_mw (realna moc generacji, nie atrapa) */}
-            {typeof badge.totalPMw === 'number' && badge.totalPMw > 0 && (
+            {showLabels && typeof badge.totalPMw === 'number' && badge.totalPMw > 0 && (
               <text
+                data-testid={`sld-v2-mini-rmu-der-badge-power-${badge.kind}`}
                 x={cx}
-                y={cy + 18}
+                y={cy + powerYOffset}
                 textAnchor="middle"
                 fill={fill}
                 fontFamily="monospace"
-                fontSize={8}
+                fontSize={7.5}
                 fontWeight={800}
                 paintOrder="stroke"
                 stroke="#05070A"

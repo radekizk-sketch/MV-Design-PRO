@@ -95,8 +95,8 @@ export function DiagnosticsPanel({
         {filteredIssues.length === 0 ? (
           <div className="px-3 py-4 text-xs text-slate-400 text-center">
             {severityFilter
-              ? `Brak problemów typu "${SEVERITY_LABELS_PL[severityFilter]}"`
-              : 'Brak problemów diagnostycznych'}
+              ? `Filtr nie wskazuje pozycji typu "${SEVERITY_LABELS_PL[severityFilter]}"`
+              : 'Kontrola diagnostyczna nie wskazuje pozycji technicznych'}
           </div>
         ) : (
           <div className="divide-y divide-slate-100">

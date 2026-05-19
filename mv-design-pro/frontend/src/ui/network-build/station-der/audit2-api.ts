@@ -139,11 +139,16 @@ export interface StationAudit2ConfigResponse extends StationAudit2ConfigBody {
 
 const STATION_CONFIG_BASE = '/api/v1/projects';
 
+function stationAudit2ConfigUrl(projectId: string, stationId?: string): string {
+  const base = `${STATION_CONFIG_BASE}/${encodeURIComponent(projectId)}/audit2-station-config`;
+  return stationId ? `${base}/${encodeURIComponent(stationId)}` : base;
+}
+
 export async function listStationAudit2Configs(
   projectId: string,
 ): Promise<readonly StationAudit2ConfigResponse[]> {
   return getJson<readonly StationAudit2ConfigResponse[]>(
-    `${STATION_CONFIG_BASE}/${projectId}/audit2-station-config`,
+    stationAudit2ConfigUrl(projectId),
   );
 }
 
@@ -152,7 +157,7 @@ export async function getStationAudit2Config(
   stationId: string,
 ): Promise<StationAudit2ConfigResponse | null> {
   const res = await fetch(
-    `${STATION_CONFIG_BASE}/${projectId}/audit2-station-config/${stationId}`,
+    stationAudit2ConfigUrl(projectId, stationId),
   );
   if (res.status === 404) return null;
   if (!res.ok) {
@@ -167,7 +172,7 @@ export async function putStationAudit2Config(args: {
   readonly body: StationAudit2ConfigBody;
 }): Promise<StationAudit2ConfigResponse> {
   const res = await fetch(
-    `${STATION_CONFIG_BASE}/${args.projectId}/audit2-station-config/${args.stationId}`,
+    stationAudit2ConfigUrl(args.projectId, args.stationId),
     {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -185,7 +190,7 @@ export async function deleteStationAudit2Config(args: {
   readonly stationId: string;
 }): Promise<void> {
   const res = await fetch(
-    `${STATION_CONFIG_BASE}/${args.projectId}/audit2-station-config/${args.stationId}`,
+    stationAudit2ConfigUrl(args.projectId, args.stationId),
     { method: 'DELETE' },
   );
   if (res.status !== 204 && res.status !== 404) {

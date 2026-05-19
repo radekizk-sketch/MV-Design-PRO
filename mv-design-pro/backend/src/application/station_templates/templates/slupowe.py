@@ -7,10 +7,12 @@ zazwyczaj prostsza: 1 pole liniowe IN, 2-4 odpływy nN.
 from __future__ import annotations
 
 from application.station_templates._choices import (
+    CT_OPTIONS,
     DER_PV_NN,
     NN_CB_OPTIONS,
     PROT_FEEDER_OPTIONS,
     TR_OPTIONS_SMALL,
+    VT_OPTIONS,
 )
 from application.station_templates.schema import (
     BayRoleSpec,
@@ -59,6 +61,8 @@ def _slupowa(
             nn_feeder_cb_options=NN_CB_OPTIONS,
             der_options=der_options,
             der_total_count=der_count,
+            ct_options=CT_OPTIONS,
+            vt_options=VT_OPTIONS,
             protection_settings_default="tpl_feeder_15kv_typowa",
         ),
     )

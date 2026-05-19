@@ -62,7 +62,7 @@ export interface DerCatalogSelections {
    */
   readonly dynamic_model_ref: string | null;
   /**
-   * Pakiet H: catalog_ref do block-trafo gdy connection_side='dedicated_transformer'.
+   * Pakiet H: catalog_ref do transformatora dedykowanego gdy connection_side='dedicated_transformer'.
    */
   readonly block_transformer_catalog_ref: string | null;
 }
@@ -155,7 +155,7 @@ export const EMPTY_DER_READINESS: DerReadinessMatrix = Object.freeze({
  * Pełny rekord przyłączenia DER do stacji.
  *
  * Zasada single source of truth — ten obiekt jest używany jako:
- *   - rząd tabeli "Źródła i magazyny" w E-13 Karta 7
+ *   - rząd tabeli "Układy PV/BESS/FW" w E-13 Karta 7
  *   - dane konfiguratora w E-21/E-22/E-23
  *   - źródło kontekstu dla Proof (E-36) i Report (E-25/E-37)
  *   - źródło readiness (E-04)

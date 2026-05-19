@@ -80,6 +80,31 @@ const NN_BUSBAR_Y = 405;
 const BAY_PANEL_WIDTH = 54;
 const BAY_PANEL_HEIGHT = 214;
 const COLOR_DER_PV = '#FFC857';
+const TECHNICAL_NUMBER_FORMAT_PL = new Intl.NumberFormat('pl-PL', {
+  maximumFractionDigits: 2,
+});
+
+function formatTechnicalNumberPl(value: number): string {
+  return TECHNICAL_NUMBER_FORMAT_PL.format(value);
+}
+
+function formatKvPl(value: number): string {
+  return `${formatTechnicalNumberPl(value)} kV`;
+}
+
+function formatMvaPl(value: number): string {
+  return `${formatTechnicalNumberPl(value)} MVA`;
+}
+
+function formatNnFeedersPl(count: number): string {
+  const mod10 = Math.abs(count) % 10;
+  const mod100 = Math.abs(count) % 100;
+  if (count === 1) return '1 odpływ nN';
+  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) {
+    return `${count} odpływy nN`;
+  }
+  return `${count} odpływów nN`;
+}
 
 const CONSTRUCTION_TYPE_LABELS: Record<NonNullable<StationInternalViewProps['constructionType']>, string> = {
   wnetrzowa: 'wnętrzowa',
@@ -100,7 +125,7 @@ export function StationInternalView(props: StationInternalViewProps): JSX.Elemen
   const effectiveNnSwitchgears = nnSwitchgears.length > 0
     ? nnSwitchgears
     : nnVoltageLevels.map((voltage) => ({
-        designation: `Rozdzielnica nN ${voltage} kV`,
+        designation: `Rozdzielnica nN ${formatKvPl(voltage)}`,
         nnVoltageKv: voltage,
         feedersCount: ders.some((der) => der.connectionSide === 'nn') ? 2 : 1,
       }));
@@ -129,8 +154,8 @@ export function StationInternalView(props: StationInternalViewProps): JSX.Elemen
         <text x={16} y={40} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_SANS} fontSize={FONT_SIZES.technicalPanel}>
           Typ topologiczny: {topologicalType}
           {constructionType && ` • Konstrukcja: ${CONSTRUCTION_TYPE_LABELS[constructionType]}`}
-          {' • Napięcie SN: '}{snVoltageKv} kV
-          {nnVoltageLevels.length > 0 && ` • Poziomy nN: ${nnVoltageLevels.join(' / ')} kV`}
+          {' • Napięcie SN: '}{formatKvPl(snVoltageKv)}
+          {nnVoltageLevels.length > 0 && ` • Poziomy nN: ${nnVoltageLevels.map(formatKvPl).join(' / ')}`}
         </text>
         {onClose && (
           <g transform={`translate(${width - 40}, 12)`} style={{ cursor: 'pointer' }} onClick={onClose}>
@@ -228,10 +253,10 @@ export function StationInternalView(props: StationInternalViewProps): JSX.Elemen
                 {t.designation}
               </text>
               <text x={20} y={10} fontSize={FONT_SIZES.technicalPanel} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_SANS}>
-                {t.snMva.toFixed(1)} MVA
+                {formatMvaPl(t.snMva)}
               </text>
               <text x={20} y={24} fontSize={FONT_SIZES.technicalPanel} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_SANS}>
-                {t.uhvKv}/{t.ulvKv} kV
+                {formatTechnicalNumberPl(t.uhvKv)}/{formatTechnicalNumberPl(t.ulvKv)} kV
               </text>
             </g>
           );
@@ -260,7 +285,7 @@ export function StationInternalView(props: StationInternalViewProps): JSX.Elemen
               {sw.designation}
             </text>
             <text x={16} y={4} fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={FONT_SIZES.technicalPanel} fontWeight={500}>
-              {sw.nnVoltageKv} kV • {sw.feedersCount} odpływ.
+              {formatKvPl(sw.nnVoltageKv)} • {formatNnFeedersPl(sw.feedersCount)}
             </text>
             {/* Odpływy nN — proste pionowe linie */}
             {Array.from({ length: sw.feedersCount }).map((_, fi) => {
@@ -417,7 +442,7 @@ function FallbackTransformer(props: FallbackTransformerProps): JSX.Element {
       <circle cx={-10} cy={0} r={16} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={2} />
       <circle cx={10} cy={0} r={16} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={2} />
       <text x={0} y={32} textAnchor="middle" fontSize={FONT_SIZES.technicalPanel} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_SANS}>
-        Transformator SN/nN - brak danych katalogowych
+        Transformator SN/nN do doboru z katalogu
       </text>
     </g>
   );

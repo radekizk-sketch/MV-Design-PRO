@@ -68,6 +68,17 @@ export function DeviceRenderer(props: DeviceRendererProps): JSX.Element {
       onClick={onClick ? (e) => { e.stopPropagation(); onClick(id); } : undefined}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
+      {onClick && (
+        <rect
+          x={-18}
+          y={-18}
+          width={58}
+          height={36}
+          fill="transparent"
+          pointerEvents="all"
+          data-testid={`sld-v2-device-hit-${id}`}
+        />
+      )}
       {renderDeviceShape(kind, style)}
       {showQLabel && (
         <text

@@ -1,6 +1,7 @@
 import type { EnergyNetworkModel, Generator } from '../../types/enm';
 import type { ElementType, SelectedElement } from '../types';
 import { findOperationalBus, isOperationalBus } from './enmVisibility';
+import { stationPublicIdentity } from './publicTechnicalLabels';
 
 function matchByRef<T extends { ref_id: string; id: string; name: string }>(
   items: T[] | undefined,
@@ -34,6 +35,101 @@ function isLowVoltageBusRef(snapshot: EnergyNetworkModel | null, busRef: string 
 
   const bus = findOperationalBus(snapshot, busRef);
   return Boolean(bus && typeof bus.voltage_kv === 'number' && bus.voltage_kv > 0 && bus.voltage_kv < 1);
+}
+
+function stationScopedElementLabel(path: string, fallbackType: ElementType): string {
+  const normalized = path.toLowerCase();
+  const deviceCode = path.match(/(?:^|\/)(q\d+|t\d+|tr\d+)$/i)?.[1]?.toUpperCase() ?? null;
+  const suffix = deviceCode ? ` ${deviceCode}` : '';
+  const hasPvPath = normalized === 'pv' || normalized.startsWith('pv/') || normalized.includes('/pv/');
+  const hasBessPath = normalized === 'bess' || normalized.startsWith('bess/') || normalized.includes('/bess/');
+  const hasWindPath = normalized === 'fw'
+    || normalized.startsWith('fw/')
+    || normalized.includes('/fw/')
+    || normalized === 'wind'
+    || normalized.startsWith('wind/')
+    || normalized.includes('/wind/');
+
+  if (hasPvPath && normalized.includes('nn-breaker')) {
+    return `Wyłącznik nN źródła PV${suffix}`;
+  }
+  if (hasBessPath && normalized.includes('nn-breaker')) {
+    return `Wyłącznik nN magazynu BESS${suffix}`;
+  }
+  if (hasWindPath && normalized.includes('nn-breaker')) {
+    return `Wyłącznik nN farmy wiatrowej${suffix}`;
+  }
+  if (hasPvPath) {
+    return `Układ PV stacji${suffix}`;
+  }
+  if (hasBessPath) {
+    return `Układ BESS stacji${suffix}`;
+  }
+  if (hasWindPath) {
+    return `Układ farmy wiatrowej${suffix}`;
+  }
+  if (normalized.includes('breaker')) {
+    return `Wyłącznik stacji${suffix}`;
+  }
+  if (normalized.includes('fuse')) {
+    return `Bezpiecznik stacji${suffix}`;
+  }
+  if (normalized.includes('switch')) {
+    return `Aparat łączeniowy stacji${suffix}`;
+  }
+  if (normalized.includes('load')) {
+    return `Odbiór nN stacji${suffix}`;
+  }
+
+  switch (fallbackType) {
+    case 'PVInverter':
+      return `Falownik PV${suffix}`;
+    case 'BESSInverter':
+      return `Falownik BESS${suffix}`;
+    case 'Generator':
+      return `Źródło wytwórcze${suffix}`;
+    case 'LoadNN':
+    case 'Load':
+      return `Odbiór stacji${suffix}`;
+    case 'Switch':
+      return `Aparat łączeniowy stacji${suffix}`;
+    default:
+      return `Element stacji${suffix}`;
+  }
+}
+
+function resolveStationScopedElementFromSnapshot(
+  snapshot: EnergyNetworkModel | null,
+  refOrId: string,
+  fallbackType: ElementType,
+): SelectedElement | null {
+  if (!snapshot) {
+    return null;
+  }
+
+  const stations = [...(snapshot.substations ?? [])].sort((left, right) =>
+    Math.max(String(right.ref_id ?? '').length, String(right.id ?? '').length)
+    - Math.max(String(left.ref_id ?? '').length, String(left.id ?? '').length),
+  );
+
+  for (const station of stations) {
+    const prefixes = [station.ref_id, station.id]
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+    const prefix = prefixes.find((value) => refOrId !== value && refOrId.startsWith(`${value}/`));
+    if (!prefix) {
+      continue;
+    }
+
+    const stationIdentity = stationPublicIdentity(snapshot, station);
+    const scopedPath = refOrId.slice(prefix.length).replace(/^\/+/, '');
+    return {
+      id: refOrId,
+      type: fallbackType,
+      name: `${stationIdentity.displayName} - ${stationScopedElementLabel(scopedPath, fallbackType)}`,
+    };
+  }
+
+  return null;
 }
 
 export function resolveElementTypeFromSnapshot(
@@ -119,6 +215,11 @@ export function resolveSelectedElementFromSnapshot(
   }
 
   const normalizedRef = refOrId.trim();
+  const stationScoped = resolveStationScopedElementFromSnapshot(snapshot, normalizedRef, fallbackType);
+  if (stationScoped) {
+    return stationScoped;
+  }
+
   const elementType = resolveElementTypeFromSnapshot(snapshot, normalizedRef);
   if (!elementType) {
     return {
@@ -135,7 +236,6 @@ export function resolveSelectedElementFromSnapshot(
     snapshot?.sources ?? [],
     snapshot?.loads ?? [],
     snapshot?.generators ?? [],
-    snapshot?.substations ?? [],
     snapshot?.bays ?? [],
     snapshot?.junctions ?? [],
     snapshot?.corridors ?? [],
@@ -143,6 +243,15 @@ export function resolveSelectedElementFromSnapshot(
     snapshot?.protection_assignments ?? [],
     snapshot?.branch_points ?? [],
   ];
+
+  const substation = matchByRef(snapshot?.substations ?? [], normalizedRef);
+  if (substation) {
+    return {
+      id: normalizedRef,
+      type: elementType,
+      name: stationPublicIdentity(snapshot as EnergyNetworkModel, substation).displayName,
+    };
+  }
 
   for (const collection of collections) {
     const entry = matchByRef(collection, normalizedRef);

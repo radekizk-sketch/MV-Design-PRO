@@ -75,12 +75,14 @@ describe('MiniBlockRmuRenderer — kompozycja z bays', () => {
     ).toBe('1');
   });
 
-  it('pusta tablica bays → blocker badge "Brak pól SN"', () => {
+  it('pusta tablica bays nie pokazuje programistycznego komunikatu na SLD', () => {
     const { container } = r('compact', { snBays: [] });
-    const blocker = container.querySelector('[data-testid="sld-v2-mini-rmu-blocker-st-1"]');
-    expect(blocker).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-mini-rmu-blocker-st-1"]')).toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-mini-rmu-catalog-state-st-1"]')).toBeNull();
     const text = container.textContent ?? '';
-    expect(text).toContain('Brak pól SN');
+    expect(text).not.toContain('Wariant katalogowy');
+    expect(text).not.toContain('Brak pól SN');
+    expect(text).not.toContain('uzupełnij');
   });
 });
 
@@ -115,6 +117,73 @@ describe('MiniBlockRmuRenderer - kanon operatorski', () => {
 
     expect(Number(name?.getAttribute('y'))).toBeGreaterThan(Number(bus?.getAttribute('y1')));
   });
+  it('compact rozsuwa typ, nazwe, moc i badge bez nakladania tekstu', () => {
+    const { container } = r('compact', {
+      totalLoadKw: 320,
+      totalGenerationKw: 1500,
+    });
+    const type = container.querySelector('[data-parity-key="station.mini.type"]');
+    const name = container.querySelector('[data-parity-key="station.mini.name"]');
+    const power = container.querySelector('[data-parity-key="station.mini.transformer.power"]');
+    const gen = container.querySelector('[data-testid="sld-v2-mini-station-gen-st-1"]');
+    const genY = Number(gen?.getAttribute('transform')?.match(/,\s*([0-9.-]+)\)/)?.[1] ?? '0');
+
+    expect(power?.textContent).toBe('400 kVA');
+    expect(Number(name?.getAttribute('y')) - Number(type?.getAttribute('y'))).toBeGreaterThanOrEqual(14);
+    expect(Number(power?.getAttribute('y')) - Number(name?.getAttribute('y'))).toBeGreaterThanOrEqual(22);
+    expect(genY - Number(power?.getAttribute('y'))).toBeGreaterThanOrEqual(14);
+  });
+
+  it('compact pokazuje moc transformatora z jednostką MVA dla większych stacji', () => {
+    const { container } = r('compact', {
+      transformerRatedKva: 1600,
+    });
+    const power = container.querySelector('[data-parity-key="station.mini.transformer.power"]');
+
+    expect(power?.textContent).toBe('1,6 MVA');
+  });
+
+  it('compact pokazuje liczbę odpływów nN jako opis techniczny', () => {
+    const { container } = r('compact', {
+      nnFeedersCount: 4,
+    });
+    const badge = container.querySelector('[data-testid="sld-v2-mini-station-nn-count-st-1"]');
+
+    expect(badge?.textContent).toBe('4 nN');
+  });
+
+  it('badge odplywow nN jest odsuniety od kodu stacji', () => {
+    const { container } = r('detail', {
+      stationCode: 'S01',
+      nnFeedersCount: 4,
+      selected: true,
+    });
+    const badge = container.querySelector('[data-testid="sld-v2-mini-station-nn-count-st-1"]');
+    const transform = badge?.getAttribute('transform') ?? '';
+    const x = Number(transform.match(/translate\(([-0-9.]+)/)?.[1] ?? '0');
+
+    expect(x).toBeGreaterThanOrEqual(50);
+  });
+
+  it('detail nie dubluje mocy transformatora pod nazwa stacji', () => {
+    const { container } = r('detail', {
+      transformerRatedKva: 1000,
+    });
+
+    expect(container.querySelector('[data-parity-key="station.mini.transformer.power"]')).toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-mini-tr-kva-st-1"]')?.textContent).toBe('1,0 MVA');
+  });
+
+  it('detail odsuwa kod stacji pod sekcje nN', () => {
+    const { container } = r('detail', {
+      stationCode: 'S01',
+    });
+    const code = container.querySelector('[data-testid="sld-v2-mini-station-code-st-1"]');
+    const transform = code?.getAttribute('transform') ?? '';
+    const y = Number(transform.match(/,\s*([-0-9.]+)\)/)?.[1] ?? '0');
+
+    expect(y).toBeGreaterThanOrEqual(64);
+  });
 });
 
 describe('MiniBlockRmuRenderer - semantyczne roznice LOD', () => {
@@ -129,6 +198,60 @@ describe('MiniBlockRmuRenderer - semantyczne roznice LOD', () => {
     expect(root?.querySelectorAll('[data-testid^="sld-v2-bay-column-lv-"]').length).toBe(0);
     // Overview nie ma TR bay (rendered only w detail).
     expect(root?.querySelectorAll('[data-testid^="sld-v2-mini-rmu-tr-bay-"]').length).toBe(0);
+    expect(root?.textContent).not.toContain('Transformator SN/nN');
+  });
+
+  it('overview nie skleja kodu stacji z mocami - moce sa dopiero w blizszych LOD', () => {
+    const { container } = r('overview', {
+      stationCode: 'S04',
+      totalGenerationKw: 1500,
+      derBadges: [{ kind: 'PV', count: 2, totalPMw: 1.5 }],
+      transformerRatedKva: 1600,
+    });
+    const text = container.textContent ?? '';
+
+    expect(text).toContain('S04');
+    expect(text).not.toContain('S042');
+    expect(text).not.toContain('kVA');
+    expect(text).not.toContain('MVA');
+    expect(text).not.toContain('kW');
+    expect(text).not.toContain('MW');
+  });
+
+  it('overview powieksza kod stacji przy dalekim widoku bez zmiany modelowej geometrii', () => {
+    const { container } = r('overview', {
+      stationCode: 'S04',
+      viewportScale: 0.22,
+    });
+
+    const code = container.querySelector('[data-testid="sld-v2-mini-rmu-overview-code-st-1"]');
+    expect(code?.getAttribute('data-overview-label-scale')).toBe('4.00');
+    expect(code?.getAttribute('transform')).toContain('scale(4)');
+  });
+
+  it('overview pokazuje marker DER bez tekstowej kolizji z kodem stacji', () => {
+    const { container } = r('overview', {
+      viewportScale: 0.22,
+      derBadges: [{ kind: 'PV', count: 2, connectionSide: 'nn' }],
+    });
+
+    const der = container.querySelector('[data-testid="sld-v2-mini-rmu-overview-st-1-der"]');
+    expect(der?.getAttribute('data-overview-label-mode')).toBe('marker');
+    expect(der?.getAttribute('data-der-kind')).toBe('PV');
+    expect(der?.querySelector('text')).toBeNull();
+    expect(der?.querySelector('title')?.textContent).toBe('PV2');
+  });
+
+  it('overview nie doklada zewnetrznych badge L/G/nN nad karta stacji', () => {
+    const { container } = r('overview', {
+      totalLoadKw: 320,
+      totalGenerationKw: 1500,
+      nnFeedersCount: 6,
+    });
+
+    expect(container.querySelector('[data-testid^="sld-v2-mini-station-load-"]')).toBeNull();
+    expect(container.querySelector('[data-testid^="sld-v2-mini-station-gen-"]')).toBeNull();
+    expect(container.querySelector('[data-testid^="sld-v2-mini-station-nn-count-"]')).toBeNull();
   });
 
   it('compact i detail maja inne poziomy informacji', () => {
@@ -163,10 +286,23 @@ describe('MiniBlockRmuRenderer - kanon symboli aparatow', () => {
 });
 
 describe('MiniBlockRmuRenderer - PV po stronie nN', () => {
+  it('widok szczegółowy LOD 3 pokazuje tor PV/nN bez wymuszania zaznaczenia stacji', () => {
+    const { container } = r('detail', {
+      footprintType: 'der_station',
+      derBadges: [{ kind: 'PV', count: 2 }],
+    });
+    const root = container.querySelector('[data-testid="sld-v2-mini-rmu-st-1"]');
+
+    expect(root?.querySelector('[data-parity-key="station.pv.nn_connection"]')).not.toBeNull();
+    expect(root?.querySelectorAll('[data-element-kind="lv_breaker"][data-symbol-canon="circuit_breaker_square"]').length).toBe(2);
+    expect(root?.querySelectorAll('[data-element-kind="pv_inverter"]').length).toBe(2);
+  });
+
   it('pokazuje PCC, widoczne wyłączniki nN i falowniki PV', () => {
     const { container } = r('detail', {
       footprintType: 'der_station',
       derBadges: [{ kind: 'PV', count: 2 }],
+      selected: true,
     });
     const root = container.querySelector('[data-testid="sld-v2-mini-rmu-st-1"]');
 
@@ -200,6 +336,7 @@ describe('MiniBlockRmuRenderer - PV po stronie nN', () => {
     const { container } = r('detail', {
       footprintType: 'der_station',
       derBadges: [{ kind: 'PV', count: 2 }],
+      selected: true,
     });
     const root = container.querySelector('[data-testid="sld-v2-mini-rmu-st-1"]');
     const name = root?.querySelector('[data-parity-key="station.mini.name"]');
@@ -213,6 +350,7 @@ describe('MiniBlockRmuRenderer - PV po stronie nN', () => {
     const { container } = r('detail', {
       footprintType: 'der_station',
       derBadges: [{ kind: 'PV', count: 2 }],
+      selected: true,
       onClick: (id) => {
         clicked = id;
       },
@@ -235,6 +373,7 @@ describe('MiniBlockRmuRenderer - PV layout readability', () => {
     const { container } = r('detail', {
       footprintType: 'der_station',
       derBadges: [{ kind: 'PV', count: 2 }],
+      selected: true,
     });
     const root = container.querySelector('[data-testid="sld-v2-mini-rmu-st-1"]');
     const name = root?.querySelector('[data-parity-key="station.mini.name"]');
@@ -268,6 +407,49 @@ describe('MiniBlockRmuRenderer — DER badges', () => {
     expect(container.querySelector('[data-testid="sld-v2-mini-rmu-der-badge-PV"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="sld-v2-mini-rmu-der-badge-BESS"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="sld-v2-mini-rmu-der-badge-FW"]')).not.toBeNull();
+  });
+
+  it('rozstawia etykiety mocy DER bez kolizji w ukladzie hybrydowym', () => {
+    const { container } = r('compact', {
+      derBadges: [
+        { kind: 'PV', count: 2, totalPMw: 6 },
+        { kind: 'BESS', count: 1, totalPMw: 2.5 },
+        { kind: 'FW', count: 1, totalPMw: 1.2 },
+      ],
+    });
+
+    const pv = container.querySelector('[data-testid="sld-v2-mini-rmu-der-badge-power-PV"]');
+    const bess = container.querySelector('[data-testid="sld-v2-mini-rmu-der-badge-power-BESS"]');
+    const fw = container.querySelector('[data-testid="sld-v2-mini-rmu-der-badge-power-FW"]');
+
+    expect(pv).not.toBeNull();
+    expect(bess).not.toBeNull();
+    expect(fw).not.toBeNull();
+    expect(Number(bess?.getAttribute('x')) - Number(pv?.getAttribute('x'))).toBeGreaterThanOrEqual(52);
+    expect(Number(fw?.getAttribute('x')) - Number(bess?.getAttribute('x'))).toBeGreaterThanOrEqual(52);
+  });
+
+  it('etykieta typu DER i moc sa w osobnych wierszach', () => {
+    const { container } = r('compact', {
+      derBadges: [{ kind: 'PV', count: 1, totalPMw: 1.5 }],
+    });
+
+    const typeLabel = container.querySelector('[data-testid="sld-v2-mini-rmu-der-badge-label-PV"]');
+    const powerLabel = container.querySelector('[data-testid="sld-v2-mini-rmu-der-badge-power-PV"]');
+
+    expect(typeLabel).not.toBeNull();
+    expect(powerLabel).not.toBeNull();
+    expect(Number(powerLabel?.getAttribute('y')) - Number(typeLabel?.getAttribute('y'))).toBeGreaterThanOrEqual(10);
+  });
+
+  it('detail bez zaznaczenia ukrywa mnoznik DER przy symbolu pola', () => {
+    const { container } = r('detail', {
+      derBadges: [{ kind: 'FW', count: 2 }],
+    });
+    const badge = container.querySelector('[data-testid="sld-v2-mini-rmu-der-badge-FW"]');
+
+    expect(badge?.textContent).not.toContain('×2');
+    expect(badge?.textContent).not.toContain('Ă—2');
   });
 });
 

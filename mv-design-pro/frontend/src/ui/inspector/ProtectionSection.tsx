@@ -114,7 +114,7 @@ export function ProtectionSection({
             ))
           ) : (
             <div className="text-xs text-gray-500 italic">
-              Brak przypisanych zabezpieczen
+              Zabezpieczenia do konfiguracji
             </div>
           )}
 
@@ -179,7 +179,7 @@ interface SettingsSummaryViewProps {
 
 function SettingsSummaryView({ summary }: SettingsSummaryViewProps) {
   if (!summary.functions || summary.functions.length === 0) {
-    return <div className="text-xs text-gray-500 italic">Brak danych nastaw</div>;
+    return <div className="text-xs text-gray-500 italic">Nastawy do konfiguracji</div>;
   }
 
   return (

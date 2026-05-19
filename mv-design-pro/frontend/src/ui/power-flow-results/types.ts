@@ -202,7 +202,7 @@ export const POWER_FLOW_TAB_LABELS: Record<PowerFlowResultsTab, string> = {
  * Result status labels (Polish).
  */
 export const RESULT_STATUS_LABELS: Record<string, string> = {
-  NONE: 'Brak wyników',
+  NONE: 'Wyniki nieuruchomione',
   FRESH: 'Wyniki aktualne',
   VALID: 'Wyniki aktualne',
   OUTDATED: 'Wyniki nieaktualne',

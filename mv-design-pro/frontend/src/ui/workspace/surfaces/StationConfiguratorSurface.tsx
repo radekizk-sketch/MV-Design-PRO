@@ -1,9 +1,9 @@
 /**
- * StationConfiguratorSurface (E-13) — wrapper konfiguratora stacji SN/nN.
+ * StationConfiguratorSurface — wrapper konfiguratora stacji SN/nN.
  *
- * Karta 7 "Źródła i magazyny" jest pomostem do E-21/E-22/E-23: czyta
- * `useStationDerStore` aby pokazać DERy przypięte do tej stacji oraz
- * wywołuje `openRouteSurface('E-21'/'E-22'/'E-23')` z stationContext.
+ * Karta "Układy PV/BESS/FW" czyta `useStationDerStore`, aby pokazać układy
+ * przyłączeniowe przypięte do tej stacji oraz otwiera właściwe powierzchnie
+ * konfiguracji z zachowaniem kontekstu stacji.
  *
  * Punkt 3 Phase 4: konfiguracja audytu 2 (mvNeutralGroundingRef etc.)
  * pull-from-backend przez `useStationAudit2Config` + UPSERT przez
@@ -19,16 +19,25 @@ import type { ProtectionRow } from '../../network-build/station-configurator/car
 import type { StationConfigTransformerRow } from '../../network-build/station-configurator/cards/StationConfigTransformerCard';
 import {
   AddDerWizard,
+  EMPTY_DER_CATALOGS,
+  EMPTY_DER_PROFILES,
+  EMPTY_DER_READINESS,
+  computeDerCompleteness,
   useStationAudit2Config,
   useStationDerStore,
   useUpdateStationAudit2Config,
   selectDersOfStation,
+  type ConnectionSide,
+  type DerKindUnified,
+  type StationDerConnection,
 } from '../../network-build/station-der';
 import type { AddDerKindRequest } from '../../network-build/station-configurator/cards/StationConfigDerSourcesCard';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { notify } from '../../notifications/store';
+import { stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import type { WorkspaceSurfaceDescriptor } from '../types';
+import type { EnergyNetworkModel, Generator as EnmGenerator } from '../../../types/enm';
 
 interface StationConfiguratorSurfaceProps {
   readonly surface: WorkspaceSurfaceDescriptor;
@@ -71,12 +80,11 @@ function buildBaseStationProps(stationName: string, localConfig: StationLocalCon
       hasCoupler: false,
       baysCount: 0,
       reservesCount: 0,
-      readinessLabelPl: 'brak danych',
+      readinessLabelPl: 'do konfiguracji',
     },
     bays: { bays: [] },
     transformer: { transformers: [], availableLvVoltages: [0.4] },
-    // Karta 6 "Strona nN i poziomy napięć" zawiera rozdzielnice nN +
-    // sekcję "Odbiory nN" — niezbędną dla Power Flow i VDROP.
+    // Krok "Strona nN" zawiera rozdzielnice nN i odbiory techniczne.
     nnSwitchgear: { switchgears: [], loads: [] },
     protection: {
       relays: [],
@@ -111,16 +119,159 @@ const DER_KIND_TO_SCREEN: Record<AddDerKindRequest, 'E-21' | 'E-22' | 'E-23'> = 
   FW: 'E-23',
 };
 
+const DEFAULT_NC_RFG_PROFILE_REF = 'ncrfg_enea';
+const DEFAULT_LV_VOLTAGE_REF = 'lv_0_4kV';
+
+function readString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function readNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function derKindFromGenerator(generator: EnmGenerator): DerKindUnified | null {
+  const genType = (generator.gen_type ?? '').toLowerCase();
+  const catalogGroup = (generator.catalog_namespace ?? '').toUpperCase();
+  const ref = `${generator.ref_id} ${generator.name} ${generator.catalog_ref ?? ''}`.toLowerCase();
+  if (genType.includes('bess') || catalogGroup.includes('BESS') || ref.includes('bess')) return 'BESS';
+  if (genType.includes('wind') || genType.startsWith('fw_') || catalogGroup.includes('FW') || ref.includes('/fw/')) return 'FW';
+  if (genType.includes('pv') || catalogGroup.includes('PV') || ref.includes('/pv/')) return 'PV';
+  return null;
+}
+
+function connectionSideFromGenerator(generator: EnmGenerator): ConnectionSide {
+  switch (generator.connection_variant) {
+    case 'LV_BEHIND_STATION_TRANSFORMER':
+    case 'nn_side':
+      return 'nN';
+    case 'DEDICATED_MV_CONNECTION':
+    case 'block_transformer':
+      return 'dedicated_transformer';
+    case 'SOURCE_CONNECTION_STATION':
+      return 'SN';
+    default:
+      return generator.bus_ref.includes('/nn_') || generator.bus_ref.includes('/nn_bus') ? 'nN' : 'SN';
+  }
+}
+
+function isGeneratorAttachedToStation(generator: EnmGenerator, stationRef: string): boolean {
+  if (generator.station_ref === stationRef) return true;
+  const stationPrefix = stationRef.endsWith('/station')
+    ? stationRef.slice(0, -'/station'.length)
+    : stationRef;
+  return generator.bus_ref.startsWith(`${stationPrefix}/`);
+}
+
+function generatorDisplayName(generator: EnmGenerator, kind: DerKindUnified): string {
+  const meta = generator.meta ?? {};
+  const sourceIndex = readNumber(meta.source_sequence_index);
+  const ordinal = String((sourceIndex ?? 0) + 1).padStart(2, '0');
+  const baseName = generator.name?.trim();
+  if (baseName && !/^blok\s/i.test(baseName)) return baseName;
+  const label = kind === 'BESS' ? 'magazyn energii' : kind === 'FW' ? 'farma wiatrowa' : 'fotowoltaika';
+  return `${kind} ${ordinal} - ${label}`;
+}
+
+function deriveStationDersFromSnapshot(
+  snapshot: EnergyNetworkModel | null,
+  stationRef: string | null,
+  projectId: string | null,
+): readonly StationDerConnection[] {
+  if (!snapshot || !stationRef) return [];
+  const timestamp = snapshot.header.updated_at || snapshot.header.created_at || '1970-01-01T00:00:00Z';
+  return (snapshot.generators ?? [])
+    .filter((generator) => isGeneratorAttachedToStation(generator, stationRef))
+    .map((generator): StationDerConnection | null => {
+      const kind = derKindFromGenerator(generator);
+      if (!kind) return null;
+      const meta = generator.meta ?? {};
+      const connectionSide = connectionSideFromGenerator(generator);
+      const catalogs = {
+        ...EMPTY_DER_CATALOGS,
+        device_catalog_ref: generator.catalog_ref ?? null,
+        bay_catalog_ref: readString(meta.field_ref),
+        block_transformer_catalog_ref: readString(meta.block_transformer_catalog_ref),
+        protection_catalog_ref: readString(meta.protection_catalog_ref),
+        ct_catalog_ref: readString(meta.ct_catalog_ref),
+        vt_catalog_ref: readString(meta.vt_catalog_ref),
+        fault_current_data_ref: readString(meta.fault_current_data_ref),
+        dynamic_model_ref: readString(meta.dynamic_model_ref),
+      };
+      const profiles = {
+        ...EMPTY_DER_PROFILES,
+        nc_rfg_profile_ref:
+          readString(meta.nc_rfg_profile_ref)
+          ?? readString(meta.operator_profile_ref)
+          ?? DEFAULT_NC_RFG_PROFILE_REF,
+        regulation_profile_ref: readString(meta.regulation_profile_ref),
+        pf_curve_ref: readString(meta.pf_curve_ref),
+      };
+      const pccRef = readString(meta.pcc_ref) ?? generator.bus_ref;
+      const voltageLevelRef = connectionSide === 'nN'
+        ? readString(meta.voltage_level_ref) ?? DEFAULT_LV_VOLTAGE_REF
+        : readString(meta.voltage_level_ref);
+      return {
+        id: generator.ref_id,
+        project_id: projectId ?? 'project-from-enm',
+        station_id: stationRef,
+        der_kind: kind,
+        name: generatorDisplayName(generator, kind),
+        connection_side: connectionSide,
+        pcc_ref: pccRef,
+        bay_ref: readString(meta.field_ref),
+        transformer_ref: generator.blocking_transformer_ref ?? null,
+        lv_busbar_ref: connectionSide === 'nN' ? generator.bus_ref : null,
+        connection_node_ref: readString(meta.connection_node_ref),
+        internal_cable_ref: readString(meta.internal_cable_ref),
+        voltage_level_ref: voltageLevelRef,
+        catalogs,
+        profiles,
+        nominal_power_kw: Math.round(generator.p_mw * 1000),
+        completeness: computeDerCompleteness({
+          connection_side: connectionSide,
+          pcc_ref: pccRef,
+          catalogs,
+          profiles,
+          voltage_level_ref: voltageLevelRef,
+        }),
+        readiness: { ...EMPTY_DER_READINESS },
+        created_at: timestamp,
+        updated_at: timestamp,
+      };
+    })
+    .filter((der): der is StationDerConnection => der !== null)
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function mergeStationDers(
+  snapshotDers: readonly StationDerConnection[],
+  localDers: readonly StationDerConnection[],
+): readonly StationDerConnection[] {
+  const byId = new Map<string, StationDerConnection>();
+  snapshotDers.forEach((der) => byId.set(der.id, der));
+  localDers.forEach((der) => byId.set(der.id, der));
+  return [...byId.values()].sort((left, right) => left.id.localeCompare(right.id));
+}
+
 export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProps): JSX.Element {
   const { surface } = props;
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const stationRef = surface.entityRef ?? null;
-  const ders = useStationDerStore((state) =>
+  const localDers = useStationDerStore((state) =>
     stationRef ? selectDersOfStation(state, stationRef) : [],
   );
   const detachDer = useStationDerStore((state) => state.detachDer);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const projectId = useAppStateStore((state) => state.activeProjectId);
+  const snapshotDers = useMemo(
+    () => deriveStationDersFromSnapshot(snapshot, stationRef, projectId),
+    [snapshot, stationRef, projectId],
+  );
+  const ders = useMemo(
+    () => mergeStationDers(snapshotDers, localDers),
+    [snapshotDers, localDers],
+  );
 
   const [pendingDetach, setPendingDetach] = useState<{ derId: string; name: string } | null>(null);
   const [wizardKind, setWizardKind] = useState<AddDerKindRequest | null>(null);
@@ -137,7 +288,15 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
 
   // Punkt 3 Phase 5: sync der_specs -> backend gdy DERs zmieniaja sie w lokalnym
   // Zustand store. Zustand pozostaje dla SLD rendering (kompatybilnosc z istniejacym
-  // kodem); backend persystuje audit2-specific pola (BESS modes, block-trafo, P(f)).
+  // kodem); backend persystuje audit2-specific pola (BESS modes, transformator dedykowany, P(f)).
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent('mvdesignpro:station-configurator-opened', {
+        detail: { stationId: stationRef },
+      }),
+    );
+  }, [stationRef]);
+
   useEffect(() => {
     if (!projectId || !stationRef || !audit2Config.data) return;
     const targetDerSpecs = ders.map((d) => ({
@@ -178,11 +337,11 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
 
   const stationName = useMemo(() => {
     if (!stationRef) return 'Stacja niewybrana';
-    if (!snapshot) return stationRef;
+    if (!snapshot) return 'Wybrana stacja';
     const station = (snapshot.substations ?? []).find(
       (s: { ref_id: string; name?: string }) => s.ref_id === stationRef,
     );
-    return station?.name ?? stationRef;
+    return station ? stationPublicIdentity(snapshot, station).displayName : 'Wybrana stacja';
   }, [stationRef, snapshot]);
 
   const handleOpenDer = useCallback(
@@ -230,11 +389,11 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
 
   const requestDetach = useCallback(
     (derId: string) => {
-      const der = ders.find((d) => d.id === derId);
+      const der = localDers.find((d) => d.id === derId);
       if (!der) return;
       setPendingDetach({ derId, name: der.name });
     },
-    [ders],
+    [localDers],
   );
 
   const confirmDetach = useCallback(() => {
@@ -361,26 +520,28 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
       },
       derSources: {
         stationId: stationRef ?? 'unselected',
+        stationLabel: stationName,
         ders,
         onOpenDer: handleOpenDer,
         onShowOnSld: handleShowOnSld,
         onAddDer: handleAddDer,
         onDetachDer: requestDetach,
+        canDetachDer: (derId: string) => localDers.some((der) => der.id === derId),
       },
     };
-  }, [stationName, stationRef, ders, handleOpenDer, handleShowOnSld, handleAddDer, requestDetach, localConfig, audit2Config.data, mutateAudit2]);
+  }, [stationName, stationRef, ders, localDers, handleOpenDer, handleShowOnSld, handleAddDer, requestDetach, localConfig, audit2Config.data, mutateAudit2]);
 
   return (
     <div data-testid="station-configurator-surface" className="flex h-full w-full flex-col p-4">
       <div className="mb-4">
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
-          E-13 · Konfigurator stacji SN/nN
+          Konfigurator stacji SN/nN
         </div>
         <h2 className="mt-1 text-base font-semibold text-scada-text">{stationName}</h2>
         {!stationRef && (
           <p className="mt-2 rounded border border-amber-700 bg-amber-950/30 p-3 text-xs text-amber-200">
-            Brak referencji do stacji w kontekście. Wybierz stację z lewego nawigatora
-            modelu lub kliknij stację w SLD i wybierz "Otwórz konfigurator stacji".
+            Wybierz stację z drzewa układów albo kliknij stację w SLD i wybierz
+            "Otwórz konfigurator stacji".
           </p>
         )}
       </div>

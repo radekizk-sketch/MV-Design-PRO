@@ -57,6 +57,13 @@ const SELECTIVITY_CLASS: Record<ProtectionRow['selectivityStatus'], string> = {
   'brak danych': 'text-scada-muted',
 };
 
+const SELECTIVITY_LABEL: Record<ProtectionRow['selectivityStatus'], string> = {
+  kompletna: 'kompletna',
+  'częściowa': 'do konfiguracji',
+  błędna: 'do weryfikacji',
+  'brak danych': 'do konfiguracji',
+};
+
 export function StationConfigProtectionCard(
   props: StationConfigProtectionCardProps,
 ): JSX.Element {
@@ -112,7 +119,9 @@ export function StationConfigProtectionCard(
       <div data-testid="protection-relays-list">
         <div className="text-[10px] font-medium text-scada-muted">Przekaźniki ({relays.length})</div>
         {relays.length === 0 ? (
-          <div className="italic text-scada-muted">Brak zabezpieczeń.</div>
+          <div className="italic text-scada-muted">
+            Zabezpieczenia dodaje się z wariantu pola SN albo pakietu zabezpieczeniowego.
+          </div>
         ) : (
           <table className="w-full text-[11px]">
             <thead>
@@ -133,7 +142,7 @@ export function StationConfigProtectionCard(
                   <td className="font-mono text-[10px]">{r.functionsPl.join(', ')}</td>
                   <td className="text-right font-mono">{r.settingsCount}</td>
                   <td className={SELECTIVITY_CLASS[r.selectivityStatus]}>
-                    {r.selectivityStatus}
+                    {SELECTIVITY_LABEL[r.selectivityStatus]}
                   </td>
                   <td>
                     {/* Phase 18: VT select per row gdy onChangeVt dostarczony. */}
@@ -232,9 +241,9 @@ export function StationConfigProtectionCard(
 
       <div className="flex justify-between border-t border-scada-border pt-1.5 text-[11px]">
         <div>
-          <span className="text-scada-muted">Blokady łączeniowe: </span>
+          <span className="text-scada-muted">Uzależnienia łączeniowe: </span>
           <span className={interlocksConfigured ? 'text-status-ok' : 'text-status-warn'}>
-            {interlocksConfigured ? 'skonfigurowane' : 'brak'}
+            {interlocksConfigured ? 'skonfigurowane' : 'do konfiguracji'}
           </span>
         </div>
         <div>

@@ -48,7 +48,7 @@ export const OP_LABELS: Record<string, string> = {
   connect_secondary_ring_sn: 'Zamknięcie pierścienia / rezerwy',
   set_normal_open_point: 'Ustawienie punktu normalnie otwartego',
   add_transformer_sn_nn: 'Dodanie transformatora SN/nN',
-  add_converter_source: 'Dodanie źródła przekształtnikowego',
+  add_converter_source: 'Dodanie układu PV/BESS/FW',
   assign_catalog_to_element: 'Przypisanie typu katalogowego',
   update_element_parameters: 'Aktualizacja parametrów elementu',
   delete_element: 'Usunięcie elementu',

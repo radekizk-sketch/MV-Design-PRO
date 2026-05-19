@@ -7,7 +7,9 @@ const {
   mockActiveMode,
   mockNavigateToCatalog,
   mockNetworkBuildState,
+  mockAppState,
   mockSelectedElements,
+  mockSnapshot,
 } = vi.hoisted(() => ({
   mockNavigateToCatalog: vi.fn(),
   mockNetworkBuildState: {
@@ -20,6 +22,30 @@ const {
   mockActiveMode: { value: 'MODEL_EDIT' as 'MODEL_EDIT' | 'RESULT_VIEW' },
   mockSelectedElements: {
     value: [] as Array<{ id: string; type: string; name: string }>,
+  },
+  mockAppState: {
+    activeProjectName: 'Projekt testowy',
+  },
+  mockSnapshot: {
+    value: {
+      sources: [],
+      buses: [],
+      bays: [],
+      branches: [],
+      substations: [],
+      transformers: [],
+      generators: [],
+      loads: [],
+    } as null | {
+      sources?: unknown[];
+      buses: unknown[];
+      bays?: unknown[];
+      branches: unknown[];
+      substations: unknown[];
+      transformers?: unknown[];
+      generators?: unknown[];
+      loads?: unknown[];
+    },
   },
 }));
 
@@ -34,12 +60,14 @@ vi.mock('../../app-state/store', () => ({
     selector({
       activeArea: 'SCHEMAT_TOPOLOGIA',
       activeWorkMode: 'TE',
+      activeProjectId: 'project-1',
       activeCaseName: 'Przypadek testowy',
       activeCaseId: 'case-1',
       activeVariantName: 'Bazowy',
       activeSnapshotId: null,
-      activeProjectName: 'Projekt testowy',
+      activeProjectName: mockAppState.activeProjectName,
       activeCaseResultStatus: 'NONE',
+      setActiveProject: vi.fn(),
     }),
 }));
 
@@ -74,11 +102,7 @@ vi.mock('../../network-build/networkBuildStore', () => ({
 vi.mock('../../topology/snapshotStore', () => ({
   useSnapshotStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
-      snapshot: {
-        buses: [],
-        branches: [],
-        substations: [],
-      },
+      snapshot: mockSnapshot.value,
     }),
 }));
 
@@ -97,8 +121,14 @@ vi.mock('../../network-build/mass-review', () => ({
 }));
 
 vi.mock('../../network-build/ProjectMetadataModal', () => ({
-  ProjectMetadataModal: ({ isOpen }: { isOpen: boolean }) =>
-    isOpen ? <div data-testid="project-metadata-modal" /> : null,
+  ProjectMetadataModal: ({
+    isOpen,
+    metadata,
+  }: {
+    isOpen: boolean;
+    metadata?: { projectName?: string };
+  }) =>
+    isOpen ? <div data-testid="project-metadata-modal">{metadata?.projectName}</div> : null,
 }));
 
 vi.mock('../../network-build/SnapshotHistoryModal', () => ({
@@ -150,7 +180,18 @@ describe('AppShellV12 workflow strip actions', () => {
   beforeEach(() => {
     mockNetworkBuildState.activeSurface = null;
     mockActiveMode.value = 'MODEL_EDIT';
+    mockAppState.activeProjectName = 'Projekt testowy';
     mockSelectedElements.value = [];
+    mockSnapshot.value = {
+      sources: [],
+      buses: [],
+      bays: [],
+      branches: [],
+      substations: [],
+      transformers: [],
+      generators: [],
+      loads: [],
+    };
   });
 
   it('opens search, catalog, mass review, metadata and history from the workflow strip', () => {
@@ -160,10 +201,14 @@ describe('AppShellV12 workflow strip actions', () => {
       </AppShellV12>,
     );
 
-    expect(screen.getByText('brak długości')).toBeInTheDocument();
+    expect(screen.getByText('nie wyznaczono')).toBeInTheDocument();
     expect(screen.queryByText('0.00 km')).not.toBeInTheDocument();
-    expect(screen.getByTestId('workflow-blockers')).toHaveTextContent('Braki:2');
-    expect(screen.getByTestId('wcs-model-readiness')).toHaveTextContent('Gotowość:76%');
+    expect(screen.getByTestId('workflow-context-strip')).toHaveTextContent('Szyny');
+    expect(screen.getByTestId('workflow-context-strip')).toHaveTextContent('Odcinki SN');
+    expect(screen.getByTestId('workflow-context-strip')).not.toHaveTextContent('Elementy');
+    expect(screen.getByTestId('wcs-mass-review')).toHaveTextContent('Kontrola');
+    expect(screen.getByTestId('workflow-no-blockers')).toHaveTextContent('Układ:GPZ');
+    expect(screen.getByTestId('wcs-model-readiness')).toHaveTextContent('Następny krok:wybór GPZ');
 
     fireEvent.click(screen.getByTestId('wcs-search'));
     expect(screen.getByTestId('global-search-modal')).toBeInTheDocument();
@@ -171,11 +216,69 @@ describe('AppShellV12 workflow strip actions', () => {
     fireEvent.click(screen.getByTestId('wcs-catalog'));
     expect(mockNavigateToCatalog).toHaveBeenCalledOnce();
 
+    fireEvent.click(screen.getByTestId('wcs-mass-review'));
+    expect(screen.getByTestId('mass-review-panel')).toBeInTheDocument();
+
     fireEvent.click(screen.getByTestId('wcs-project-metadata'));
     expect(screen.getByTestId('project-metadata-modal')).toBeInTheDocument();
+    expect(screen.getByTestId('project-metadata-modal')).toHaveTextContent('Projekt testowy');
 
     fireEvent.click(screen.getByTestId('wcs-history'));
     expect(screen.getByTestId('snapshot-history-modal')).toBeInTheDocument();
+  });
+
+  it('wypeĹ‚nia metadane nazwÄ… widocznÄ… w nagĹ‚Ăłwku, gdy store nie ma nazwy projektu', () => {
+    mockAppState.activeProjectName = '';
+
+    render(
+      <AppShellV12 projectName="Projekt z nagĹ‚Ăłwka">
+        <div>SLD</div>
+      </AppShellV12>,
+    );
+
+    fireEvent.click(screen.getByTestId('wcs-project-metadata'));
+
+    expect(screen.getByTestId('project-metadata-modal')).toHaveTextContent('Projekt z nagĹ‚Ăłwka');
+  });
+
+  it('nie pokazuje startu GPZ podczas ładowania znanego zakresu', () => {
+    mockSnapshot.value = null;
+
+    render(
+      <AppShellV12>
+        <div>SLD</div>
+      </AppShellV12>,
+    );
+
+    expect(screen.getByTestId('wcs-model-loading')).toHaveTextContent('Ładowanie układu sieci');
+    expect(screen.queryByTestId('wcs-start-model')).not.toBeInTheDocument();
+    expect(screen.queryByText('Przejdź do budowy GPZ')).not.toBeInTheDocument();
+  });
+
+  it('po utworzeniu samego GPZ prowadzi do wyprowadzenia ciągu SN zamiast obliczeń', () => {
+    mockSnapshot.value = {
+      sources: [{ ref_id: 'gpz/1/source/main' }],
+      buses: [{ ref_id: 'gpz/1/bus/s1' }],
+      bays: [{ ref_id: 'gpz/1/bay/001' }],
+      branches: [{ ref_id: 'gpz/1/tr/1', type: 'transformer' }],
+      substations: [{ ref_id: 'gpz/1/substation', station_type: 'gpz' }],
+      transformers: [{ ref_id: 'gpz/1/tr/1' }],
+      generators: [],
+      loads: [],
+    };
+
+    render(
+      <AppShellV12>
+        <div>SLD</div>
+      </AppShellV12>,
+    );
+
+    expect(screen.getByTestId('wcs-model-readiness')).toHaveTextContent('Następny krok:wyprowadź ciąg SN');
+    expect(screen.getByTestId('workflow-build-phase')).toHaveAttribute(
+      'title',
+      'Następny krok: wyprowadź magistralę SN z pola GPZ',
+    );
+    expect(screen.getByTestId('wcs-model-readiness')).not.toHaveTextContent('Obliczenia:do uruchomienia');
   });
 
   it('ukrywa i pokazuje lewy oraz prawy pasek boczny', () => {

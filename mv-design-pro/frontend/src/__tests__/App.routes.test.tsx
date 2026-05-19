@@ -6,9 +6,16 @@ import App from '../App';
 import { useAppStateStore } from '../ui/app-state/store';
 import { useReadinessLiveStore } from '../ui/engineering-readiness/readinessLiveStore';
 import { useNetworkBuildStore } from '../ui/network-build/networkBuildStore';
+import { useNotificationStore } from '../ui/notifications/store';
 import { useSelectionStore } from '../ui/selection/store';
 import { useExecutionRunsStore } from '../ui/study-cases/runStore';
 import { useSnapshotStore } from '../ui/topology/snapshotStore';
+import {
+  ANALYSIS_SURFACE_SCREEN_CODE,
+  REPORT_SURFACE_SCREEN_CODE,
+} from '../ui/workspace/types';
+
+const originalCreateAndExecuteRun = useExecutionRunsStore.getState().createAndExecuteRun;
 
 vi.mock('../ui/layout', () => ({
   CanonicalLayout: ({
@@ -35,11 +42,14 @@ vi.mock('../ui/layout', () => ({
       <button type="button" data-testid="layout-menu-sld-view" onClick={() => onMenuAction?.('sld-view')}>
         Podglad
       </button>
+      <button type="button" data-testid="layout-menu-export" onClick={() => onMenuAction?.('export')}>
+        Eksport
+      </button>
       <button type="button" data-testid="layout-menu-network-build" onClick={() => onMenuAction?.('network-build')}>
         Budowa sieci
       </button>
       <button type="button" data-testid="layout-menu-readiness" onClick={() => onMenuAction?.('readiness')}>
-        Gotowosc
+        Kontrola
       </button>
       {(() => {
         const hash = window.location.hash;
@@ -105,12 +115,15 @@ vi.mock('../ui/fault-scenarios', () => ({
 
 describe('App hash routes', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     window.location.hash = '#sld';
     useAppStateStore.getState().reset();
     useExecutionRunsStore.getState().reset();
+    useExecutionRunsStore.setState({ createAndExecuteRun: originalCreateAndExecuteRun });
     useSnapshotStore.getState().reset();
     useReadinessLiveStore.getState().clear();
     useNetworkBuildStore.getState().reset();
+    useNotificationStore.getState().clearAll();
     useSelectionStore.getState().clearSelection();
   });
 
@@ -158,6 +171,226 @@ describe('App hash routes', () => {
     });
   });
 
+  it('odtwarza aktywne obliczenie z adresu schematu po odświeżeniu', async () => {
+    const runId = '11111111-2222-4333-8444-555555555555';
+    const refreshFromBackend = vi.fn().mockResolvedValue(null);
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => (
+      new Response(JSON.stringify({ snapshot_id: 'snapshot-from-run' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    ));
+    useAppStateStore
+      .getState()
+      .setActiveCase('case-1', 'Zakres E2E', 'ShortCircuitCase', 'NONE');
+    useSnapshotStore.setState({
+      snapshot: {
+        header: { hash_sha256: 'snapshot-current' },
+        sources: [],
+        buses: [],
+        branches: [],
+      } as never,
+      error: null,
+      refreshFromBackend,
+    });
+    window.location.hash = `#sld?case=case-1&run=${runId}`;
+
+    render(<App />);
+
+    expect(await screen.findByTestId('sld-workspace-container')).toBeInTheDocument();
+    await waitFor(() => {
+      const appState = useAppStateStore.getState();
+      expect(appState.activeRunId).toBe(runId);
+      expect(appState.activeSnapshotId).toBe('snapshot-from-run');
+      expect(appState.activeCaseResultStatus).toBe('FRESH');
+      expect(useExecutionRunsStore.getState().activeRunId).toBe(runId);
+      expect(fetchMock).toHaveBeenCalledWith(`/api/analysis-runs/${runId}/snapshot`);
+      expect(refreshFromBackend).toHaveBeenCalledWith('case-1');
+    });
+  });
+
+  it('zasila schemat migawka ENM z aktywnego obliczenia zamiast pustego zakresu', async () => {
+    const runId = '11111111-2222-4333-8444-555555555555';
+    const refreshFromBackend = vi.fn().mockResolvedValue(null);
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => (
+      new Response(JSON.stringify({
+        run_id: runId,
+        snapshot_id: 'snapshot-from-run',
+        snapshot: {
+          header: {
+            enm_version: '1.0',
+            name: 'Model z obliczenia',
+            created_at: '2026-05-17T00:00:00Z',
+            updated_at: '2026-05-17T00:00:00Z',
+            revision: 1,
+            hash_sha256: 'snapshot-from-run',
+            defaults: { frequency_hz: 50, unit_system: 'SI' },
+          },
+          buses: [
+            {
+              id: 'bus-1',
+              ref_id: 'bus-1',
+              name: 'Szyna GPZ',
+              tags: [],
+              meta: {},
+              voltage_kv: 15,
+              phase_system: '3ph',
+            },
+          ],
+          branches: [],
+          transformers: [],
+          sources: [],
+          loads: [],
+          generators: [],
+          substations: [],
+          bays: [],
+          junctions: [],
+          branch_points: [],
+          corridors: [],
+          measurements: [],
+          protection_assignments: [],
+          line_runs: [],
+        },
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    ));
+    useAppStateStore
+      .getState()
+      .setActiveCase('case-1', 'Zakres E2E', 'ShortCircuitCase', 'NONE');
+    useSnapshotStore.setState({
+      snapshot: null,
+      error: null,
+      refreshFromBackend,
+    });
+    window.location.hash = `#sld?case=case-1&run=${runId}`;
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(useSnapshotStore.getState().snapshot?.buses).toHaveLength(1);
+      expect(useSnapshotStore.getState().snapshot?.header.hash_sha256).toBe('snapshot-from-run');
+      expect(useAppStateStore.getState().activeSnapshotId).toBe('snapshot-from-run');
+      expect(fetchMock).toHaveBeenCalledWith(`/api/analysis-runs/${runId}/snapshot`);
+    });
+  });
+
+  it('wraca do aktualnego ENM zakresu, gdy migawka obliczenia nie zawiera topologii', async () => {
+    const runId = '11111111-2222-4333-8444-555555555555';
+    const refreshFromBackend = vi.fn().mockResolvedValue(null);
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith(`/api/analysis-runs/${runId}/snapshot`)) {
+        return new Response(JSON.stringify({ run_id: runId, snapshot_id: 'snapshot-from-run' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      if (url.endsWith(`/api/analysis-runs/${runId}`)) {
+        return new Response(JSON.stringify({ id: runId, status: 'FINISHED', result_status: 'FRESH' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response('{}', {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+    useAppStateStore
+      .getState()
+      .setActiveCase('case-1', 'Zakres E2E', 'ShortCircuitCase', 'NONE');
+    useSnapshotStore.setState({
+      snapshot: null,
+      error: null,
+      refreshFromBackend,
+    });
+    window.location.hash = `#sld?case=case-1&run=${runId}`;
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(useAppStateStore.getState().activeSnapshotId).toBe('snapshot-from-run');
+      expect(refreshFromBackend).toHaveBeenCalledWith('case-1');
+      expect(fetchMock).toHaveBeenCalledWith(`/api/analysis-runs/${runId}/snapshot`);
+    });
+  });
+
+  it('usuwa z adresu nieistniejące obliczenie i nie pokazuje fałszywie aktywnych wyników', async () => {
+    const runId = '11111111-2222-4333-8444-555555555555';
+    const refreshFromBackend = vi.fn().mockResolvedValue(null);
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (
+        url.endsWith(`/api/analysis-runs/${runId}/snapshot`)
+        || url.endsWith(`/api/analysis-runs/${runId}`)
+      ) {
+        return new Response(JSON.stringify({ detail: 'not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      if (url.endsWith('/api/study-cases/case-1')) {
+        return new Response(JSON.stringify({
+          id: 'case-1',
+          project_id: 'project-1',
+          name: 'Zakres E2E',
+          description: '',
+          config: {},
+          result_status: 'NONE',
+          results_valid: false,
+          is_active: true,
+          result_refs: [],
+          revision: 1,
+          created_at: '2026-05-17T00:00:00Z',
+          updated_at: '2026-05-17T00:00:00Z',
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      if (url.endsWith('/api/projects/project-1')) {
+        return new Response(JSON.stringify({
+          id: 'project-1',
+          name: 'Projekt E2E',
+          description: '',
+          created_at: '2026-05-17T00:00:00Z',
+          updated_at: '2026-05-17T00:00:00Z',
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response('{}', {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+    useAppStateStore
+      .getState()
+      .setActiveCase('case-1', 'Zakres E2E', 'ShortCircuitCase', 'FRESH');
+    useExecutionRunsStore.setState({ activeRunId: runId });
+    useSnapshotStore.setState({
+      snapshot: null,
+      error: null,
+      refreshFromBackend,
+    });
+    window.location.hash = `#sld?case=case-1&run=${runId}`;
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(useAppStateStore.getState().activeRunId).toBeNull();
+      expect(useExecutionRunsStore.getState().activeRunId).toBeNull();
+      expect(useAppStateStore.getState().activeCaseResultStatus).toBe('NONE');
+      expect(window.location.hash).toBe('#sld?case=case-1');
+      expect(refreshFromBackend).toHaveBeenCalledWith('case-1');
+      expect(fetchMock).toHaveBeenCalledWith(`/api/analysis-runs/${runId}/snapshot`);
+      expect(fetchMock).toHaveBeenCalledWith(`/api/analysis-runs/${runId}`);
+    });
+  });
+
   it('przełącza projekt i zakres z adresu oraz usuwa stary snapshot ENM', async () => {
     const refreshFromBackend = vi.fn().mockResolvedValue(null);
     useAppStateStore.getState().setActiveProject('old-project', 'Stary projekt');
@@ -183,6 +416,64 @@ describe('App hash routes', () => {
       expect(appState.activeCaseId).toBe('new-case');
       expect(useSnapshotStore.getState().snapshot).toBeNull();
       expect(refreshFromBackend).toHaveBeenCalledWith('new-case');
+    });
+  });
+
+  it('odtwarza projekt techniczny z przypadku, gdy adres nie zawiera project', async () => {
+    const refreshFromBackend = vi.fn().mockResolvedValue(null);
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith('/api/study-cases/case-from-route')) {
+        return new Response(
+          JSON.stringify({
+            id: 'case-from-route',
+            project_id: 'project-from-case',
+            name: 'Zakres z trasy',
+            description: '',
+            config: {},
+            result_status: 'FRESH',
+            results_valid: true,
+            is_active: true,
+            result_refs: [],
+            revision: 1,
+            created_at: '2026-05-17T00:00:00Z',
+            updated_at: '2026-05-17T00:00:00Z',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          id: 'project-from-case',
+          name: 'Projekt techniczny z adresu',
+          description: '',
+          created_at: '2026-05-17T00:00:00Z',
+          updated_at: '2026-05-17T00:00:00Z',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    });
+    useAppStateStore.getState().setActiveProject('wrong-project', 'Poprzedni projekt');
+    useAppStateStore.getState().setActiveCase('case-from-route', 'Poprzedni zakres', 'ShortCircuitCase', 'NONE');
+    useSnapshotStore.setState({
+      snapshot: null,
+      error: null,
+      refreshFromBackend,
+    });
+    window.location.hash = '#sld?case=case-from-route';
+
+    render(<App />);
+
+    await waitFor(() => {
+      const appState = useAppStateStore.getState();
+      expect(fetchMock).toHaveBeenCalledWith('/api/study-cases/case-from-route');
+      expect(fetchMock).toHaveBeenCalledWith('/api/projects/project-from-case');
+      expect(appState.activeProjectId).toBe('project-from-case');
+      expect(appState.activeProjectName).toBe('Projekt techniczny z adresu');
+      expect(appState.activeCaseId).toBe('case-from-route');
+      expect(appState.activeCaseName).toBe('Zakres z trasy');
+      expect(appState.activeCaseResultStatus).toBe('FRESH');
+      expect(refreshFromBackend).toHaveBeenCalledWith('case-from-route');
     });
   });
 
@@ -294,12 +585,66 @@ describe('App hash routes', () => {
     expect(window.location.hash).toBe('#sld');
   });
 
-  it('otwiera E-04 po akcji gotowosci z glownego paska', async () => {
+  it('nie pokazuje aktualnych wynikow, gdy backend zwraca przerwane obliczenia', async () => {
+    const caseId = '11111111-2222-4333-8444-555555555555';
+    const createAndExecuteRun = vi.fn().mockResolvedValue({
+      id: 'run-failed',
+      study_case_id: caseId,
+      analysis_type: 'SC_3F',
+      solver_input_hash: 'hash-run',
+      status: 'FAILED',
+      started_at: '2026-05-18T08:00:00Z',
+      finished_at: '2026-05-18T08:00:01Z',
+      error_message: null,
+    });
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: 'run-failed',
+          status: 'FAILED',
+          result_status: 'VALID',
+          results_valid: true,
+          error_message: null,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+
     useAppStateStore
       .getState()
-      .setActiveCase('case-readiness', 'Zakres gotowosci', 'ShortCircuitCase', 'OUTDATED');
+      .setActiveCase(caseId, 'Zakres obliczen', 'ShortCircuitCase', 'OUTDATED');
+    useExecutionRunsStore.setState({ createAndExecuteRun });
+    window.location.hash = `#sld?case=${caseId}`;
 
     render(<App />);
+
+    await act(async () => {
+      screen.getByTestId('layout-calculate').click();
+    });
+
+    await waitFor(() => {
+      const appState = useAppStateStore.getState();
+      const notification = useNotificationStore.getState().notifications.at(-1);
+      expect(createAndExecuteRun).toHaveBeenCalledWith(caseId, { analysis_type: 'SC_3F' });
+      expect(fetchMock).toHaveBeenCalledWith('/api/analysis-runs/run-failed');
+      expect(appState.activeCaseResultStatus).toBe('NONE');
+      expect(notification?.type).toBe('error');
+      expect(notification?.message).toContain('Obliczenia nie zakończyły się wynikiem');
+      expect(window.location.hash).toBe(`#sld?case=${caseId}`);
+    });
+  });
+
+  it('otwiera E-04 po akcji kontroli konfiguracji z glownego paska', async () => {
+    useAppStateStore
+      .getState()
+      .setActiveCase('case-readiness', 'Zakres kontroli', 'ShortCircuitCase', 'OUTDATED');
+
+    render(<App />);
+
+    await screen.findByTestId('sld-workspace-container');
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
 
     await act(async () => {
       screen.getByTestId('layout-menu-readiness').click();
@@ -308,8 +653,59 @@ describe('App hash routes', () => {
 
     const activeSurface = useNetworkBuildStore.getState().activeSurface;
     expect(activeSurface?.screenCode).toBe('E-04');
-    expect(activeSurface?.tabId).toBe('braki');
+    expect(activeSurface?.tabId).toBe('kontrola');
     expect(activeSurface?.subjectRef).toBe('case-readiness');
+  });
+
+  it('odtwarza nazwę projektu po wejściu w SLD z adresem przypadku', async () => {
+    window.location.hash = '#sld?case=case-z-adresu';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith('/api/study-cases/case-z-adresu')) {
+        return new Response(
+          JSON.stringify({
+            id: 'case-z-adresu',
+            project_id: 'project-z-adresu',
+            name: 'Wariant K30',
+            description: '',
+            config: {},
+            result_status: 'NONE',
+            results_valid: false,
+            is_active: true,
+            result_refs: [],
+            revision: 1,
+            created_at: '2026-05-18T00:00:00Z',
+            updated_at: '2026-05-18T00:00:00Z',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      if (url.endsWith('/api/projects/project-z-adresu')) {
+        return new Response(
+          JSON.stringify({
+            id: 'project-z-adresu',
+            name: 'Sieć przemysłowa K30',
+            description: 'Wariant referencyjny',
+            created_at: '2026-05-18T00:00:00Z',
+            updated_at: '2026-05-18T00:00:00Z',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      return new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(useAppStateStore.getState().activeProjectName).toBe('Sieć przemysłowa K30');
+      expect(useAppStateStore.getState().activeCaseName).toBe('Wariant K30');
+    });
+
+    fetchMock.mockRestore();
   });
 
   it('odtwarza E-21 po odswiezeniu adresu SLD z wybranym falownikiem PV', async () => {
@@ -447,6 +843,159 @@ describe('App hash routes', () => {
     expect(await screen.findByTestId('results-inspector-page')).toBeInTheDocument();
     await waitFor(() => {
       expect(useAppStateStore.getState().activeArea).toBe('WYNIKI_ANALIZY');
+    });
+  });
+
+  it('otwiera powierzchnie raportu z aktywnym runem, gdy #report nie ma parametru run', async () => {
+    useAppStateStore
+      .getState()
+      .setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'FRESH');
+    useAppStateStore.getState().setActiveRun('run-active');
+    useExecutionRunsStore.setState({ activeRunId: 'run-active' });
+    useSnapshotStore.setState({
+      snapshot: {
+        header: { hash_sha256: 'snapshot-active' },
+        sources: [],
+        buses: [],
+        branches: [],
+      } as never,
+    });
+    window.location.hash = '#report?case=case-1&sel=source-1&type=Source&name=GPZ';
+
+    render(<App />);
+
+    await waitFor(() => {
+      const appState = useAppStateStore.getState();
+      const activeSurface = useNetworkBuildStore.getState().activeSurface;
+      expect(appState.activeArea).toBe('RAPORTY_UZASADNIENIA');
+      expect(appState.activeRunId).toBe('run-active');
+      expect(appState.activeSnapshotId).toBe('snapshot-active');
+      expect(activeSurface?.screenCode).toBe(REPORT_SURFACE_SCREEN_CODE);
+      expect(activeSurface?.routeState.route).toBe('report');
+      expect(activeSurface?.entityRef).toBe('source-1');
+      expect(activeSurface?.subjectRef).toBe('run-active');
+      expect(activeSurface?.routeState.payload?.runId).toBe('run-active');
+    });
+  });
+
+  it('nie podstawia zaznaczonego obiektu jako subjectRef raportu bez aktywnego runu', async () => {
+    useAppStateStore
+      .getState()
+      .setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'NONE');
+    window.location.hash = '#report?case=case-1&sel=source-1&type=Source&name=GPZ';
+
+    render(<App />);
+
+    await waitFor(() => {
+      const activeSurface = useNetworkBuildStore.getState().activeSurface;
+      expect(activeSurface?.screenCode).toBe(REPORT_SURFACE_SCREEN_CODE);
+      expect(activeSurface?.entityRef).toBe('source-1');
+      expect(activeSurface?.subjectRef).toBeNull();
+      expect(activeSurface?.routeState.payload?.runId).toBeNull();
+    });
+  });
+
+  it('gorny przycisk Eksport odtwarza powierzchnie raportu, gdy hash juz jest #report', async () => {
+    useAppStateStore
+      .getState()
+      .setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'NONE');
+    window.location.hash = '#report?case=case-1&sel=source-1&type=Source&name=GPZ';
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe(
+        REPORT_SURFACE_SCREEN_CODE,
+      );
+    });
+
+    act(() => {
+      useNetworkBuildStore.getState().openRouteSurface('E-04', {
+        titlePl: 'Konfiguracja techniczna układu',
+        route: 'analysis',
+        subjectKind: 'analysis_case',
+        subjectRef: 'case-1',
+      });
+    });
+
+    expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-04');
+
+    await act(async () => {
+      screen.getByTestId('layout-menu-export').click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    await waitFor(() => {
+      const activeSurface = useNetworkBuildStore.getState().activeSurface;
+      expect(window.location.hash).toContain('#report');
+      expect(activeSurface?.screenCode).toBe(REPORT_SURFACE_SCREEN_CODE);
+      expect(activeSurface?.routeState.route).toBe('report');
+      expect(activeSurface?.entityRef).toBe('source-1');
+      expect(activeSurface?.subjectRef).toBeNull();
+    });
+  });
+
+  it('gorny przycisk Eksport uzywa aktywnego runu z execution store po powrocie do edycji', async () => {
+    useAppStateStore
+      .getState()
+      .setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'FRESH');
+    useAppStateStore.getState().setActiveRun(null);
+    useExecutionRunsStore.setState({ activeRunId: 'run-exec' });
+    window.location.hash = '#sld?case=case-1';
+
+    render(<App />);
+
+    await act(async () => {
+      screen.getByTestId('layout-menu-export').click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    await waitFor(() => {
+      const activeSurface = useNetworkBuildStore.getState().activeSurface;
+      expect(window.location.hash).toContain('#report');
+      expect(window.location.hash).toContain('run=run-exec');
+      expect(activeSurface?.screenCode).toBe(REPORT_SURFACE_SCREEN_CODE);
+      expect(activeSurface?.subjectRef).toBe('run-exec');
+      expect(activeSurface?.routeState.payload?.runId).toBe('run-exec');
+    });
+  });
+
+  it('dosynchronizowuje powierzchnie robocza, gdy hash zmieniono przez replaceState bez hashchange', async () => {
+    useAppStateStore
+      .getState()
+      .setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'FRESH');
+    useAppStateStore.getState().setActiveRun('run-active');
+    window.location.hash = '#analysis?case=case-1&run=run-active';
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe(
+        ANALYSIS_SURFACE_SCREEN_CODE,
+      );
+    });
+
+    await act(async () => {
+      window.history.replaceState(
+        null,
+        '',
+        `${window.location.pathname}#report?case=case-1&sel=source-1&type=Source&name=GPZ`,
+      );
+      useSelectionStore.getState().selectElement({
+        id: 'source-1',
+        type: 'Source',
+        name: 'GPZ',
+      });
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    await waitFor(() => {
+      const activeSurface = useNetworkBuildStore.getState().activeSurface;
+      expect(window.location.hash).toContain('#report');
+      expect(useAppStateStore.getState().activeArea).toBe('RAPORTY_UZASADNIENIA');
+      expect(activeSurface?.screenCode).toBe(REPORT_SURFACE_SCREEN_CODE);
+      expect(activeSurface?.routeState.route).toBe('report');
+      expect(activeSurface?.subjectRef).toBe('run-active');
     });
   });
 

@@ -100,7 +100,7 @@ export function StationConfigMeasurementsCard(
 
       {missingMeasurementsPl && missingMeasurementsPl.length > 0 && (
         <div data-testid="missing-measurements" className="rounded border border-scada-border bg-scada-panel-raised px-2 py-1 text-status-warn">
-          <div className="text-[10px] font-medium">Braki pomiarowe:</div>
+          <div className="text-[10px] font-medium">Pomiary do konfiguracji:</div>
           <ul className="ml-3 list-disc text-[11px]">
             {missingMeasurementsPl.map((m) => <li key={m}>{m}</li>)}
           </ul>

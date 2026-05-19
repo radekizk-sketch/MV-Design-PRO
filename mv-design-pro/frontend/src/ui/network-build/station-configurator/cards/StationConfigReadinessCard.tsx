@@ -1,5 +1,5 @@
 /**
- * Karta 10 — Gotowość obliczeń (macierz 10 typów, PR-8a brief §8 karta 10).
+ * Karta 10 — zakres obliczeń (macierz 10 typów, PR-8a brief §8 karta 10).
  */
 
 import type { ReadinessItem } from '../../build-sidebar/ReadinessSection';
@@ -16,7 +16,7 @@ export function StationConfigReadinessCard(
   return (
     <div data-testid="station-config-readiness" className="flex flex-col gap-2 text-xs">
       <div className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
-        Gotowość obliczeń (10 typów)
+        Zakres obliczeń (10 typów)
       </div>
       <div className="text-[10px] text-scada-muted">
         Macierz statusów dla wszystkich obliczeń projektu w kontekście tej stacji.

@@ -100,7 +100,7 @@ export function executeFixActionSurface(
 
   if (surface.kind === 'navigate_to_element') {
     if (!navigated) {
-      deps.notify('Brak elementu do nawigacji dla akcji naprawczej.', 'warning');
+      deps.notify('Wybierz element układu przed otwarciem karty konfiguracyjnej.', 'warning');
       return false;
     }
     return true;
@@ -110,7 +110,7 @@ export function executeFixActionSurface(
     const entry = getOperationSurfaceByOp(surface.operation);
     if (!entry?.implemented) {
       deps.notify(
-        `Brak aktywnego surface dla operacji ${surface.operation}.`,
+        `Operacja ${surface.operation} nie ma aktywnej karty konfiguracyjnej.`,
         'warning',
       );
       return false;
@@ -125,8 +125,8 @@ export function executeFixActionSurface(
 
   deps.notify(
     action.code
-      ? `Brak kanonicznej operacji naprawczej dla kodu ${action.code}.`
-      : `Brak kanonicznego surface descriptor dla akcji naprawczej (${surface.unresolved_reason_code ?? 'nieznane'}).`,
+      ? `Nie przypisano karty konfiguracyjnej do pozycji kontroli ${action.code}.`
+      : `Nie przypisano karty konfiguracyjnej do akcji (${surface.unresolved_reason_code ?? 'nieznane'}).`,
     'warning',
   );
   return false;

@@ -251,45 +251,45 @@ function AnalysisCaseContextPanel({
       <div className="grid gap-3 lg:grid-cols-3">
         <ContextField
           label="Rodzaj przypadku"
-          value={context.rodzaj_przypadku ?? context.case_kind ?? 'Brak'}
+          value={context.rodzaj_przypadku ?? context.case_kind ?? 'nie określono'}
         />
-        <ContextField label="Id przypadku" value={context.case_ref} />
-        <ContextField label="Id uruchomienia" value={context.run_ref} />
-        <ContextField label="Migawka" value={context.snapshot_ref ?? 'Brak'} />
-        <ContextField label="Pakiet uzasadnienia" value={context.proof_pack_ref} />
+        <ContextField label="Zakres obliczeń" value={context.case_ref ? 'aktywny' : 'nie wybrano'} />
+        <ContextField label="Przebieg obliczeń" value={context.run_ref ? 'aktywny' : 'nie wybrano'} />
+        <ContextField label="Wersja układu" value={context.snapshot_ref ? 'powiązana' : 'nie wybrano'} />
+        <ContextField label="Pakiet uzasadnienia" value={context.proof_pack_ref ? 'powiązany' : 'nie wybrano'} />
         <ContextField label="Zakres" value={applicability} />
       </div>
 
       <div className="grid gap-3 lg:grid-cols-3">
-        <ContextField label="Solver" value={reproducibility.solver_family ?? 'Brak'} />
+        <ContextField label="Solver" value={reproducibility.solver_family ?? 'nie określono'} />
         <ContextField
           label="Wersja solvera"
-          value={reproducibility.solver_version ?? 'Brak'}
+          value={reproducibility.solver_version ?? 'nie określono'}
         />
-        <ContextField label="Metoda" value={reproducibility.method_version ?? 'Brak'} />
+        <ContextField label="Metoda" value={reproducibility.method_version ?? 'nie określono'} />
         <ContextField
           label="Kontrakt wynikow"
-          value={reproducibility.results_contract_version ?? 'Brak'}
+          value={reproducibility.results_contract_version ?? 'nie określono'}
         />
         <ContextField
           label="Kontrakt pola"
-          value={reproducibility.bay_contract_version ?? 'Brak'}
+          value={reproducibility.bay_contract_version ?? 'nie określono'}
         />
         <ContextField
           label="Snapshot katalogow"
-          value={reproducibility.catalog_snapshot_ref ?? 'Brak'}
+          value={reproducibility.catalog_snapshot_ref ? 'powiązany' : 'nie wybrano'}
         />
         <ContextField
           label="Schemat katalogow"
-          value={reproducibility.catalog_schema_version ?? 'Brak'}
+          value={reproducibility.catalog_schema_version ?? 'nie określono'}
         />
         <ContextField
           label="Polityka tolerancji"
-          value={reproducibility.tolerance_policy_ref ?? 'Brak'}
+          value={reproducibility.tolerance_policy_ref ? 'powiązana' : 'nie wybrano'}
         />
         <ContextField
           label="Polityka zaokraglen"
-          value={reproducibility.rounding_policy_ref ?? 'Brak'}
+          value={reproducibility.rounding_policy_ref ? 'powiązana' : 'nie wybrano'}
         />
       </div>
 
@@ -329,7 +329,7 @@ function BusResultsTable({ selectedRowId, onRowSelect }: BusResultsTableProps) {
 
   if (isLoadingBuses) return <LoadingSpinner />;
   if (!busResults || busResults.rows.length === 0) {
-    return <EmptyState message="Brak wyników węzłowych dla tego obliczenia." />;
+    return <EmptyState message="Wyniki węzłowe nie są dostępne dla tego obliczenia." />;
   }
 
   return (
@@ -421,7 +421,7 @@ function BranchResultsTable({ selectedRowId, onRowSelect }: BranchResultsTablePr
 
   if (isLoadingBranches) return <LoadingSpinner />;
   if (!branchResults || branchResults.rows.length === 0) {
-    return <EmptyState message="Brak wyników gałęziowych dla tego obliczenia." />;
+    return <EmptyState message="Wyniki gałęziowe nie są dostępne dla tego obliczenia." />;
   }
 
   return (
@@ -526,7 +526,7 @@ function ShortCircuitResultsTable({ selectedRowId, onRowSelect }: ShortCircuitRe
 
   if (isLoadingShortCircuit) return <LoadingSpinner />;
   if (!shortCircuitResults || shortCircuitResults.rows.length === 0) {
-    return <EmptyState message="Brak wyników zwarciowych dla tego obliczenia." />;
+    return <EmptyState message="Wyniki zwarciowe nie są dostępne dla tego obliczenia." />;
   }
 
   return (

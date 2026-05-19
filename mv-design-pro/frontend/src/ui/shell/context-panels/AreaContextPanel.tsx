@@ -41,7 +41,7 @@ export function AreaContextPanel({ areaCode }: AreaContextPanelProps) {
           data-testid="unknown-context-panel"
           className="flex h-full items-center justify-center bg-scada-panel p-4 text-[11px] text-scada-muted"
         >
-          Nie można rozpoznać obszaru roboczego. Wróć do obszaru Model sieci.
+          Nie można rozpoznać obszaru roboczego. Wróć do obszaru Budowa sieci.
         </div>
       );
   }

@@ -35,8 +35,8 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
     render(<SnSegmentSurface surface={minimalSurface} />);
     expect(screen.getByTestId('sn-segment-surface')).toBeInTheDocument();
     expect(screen.getByText('Identyfikacja')).toBeInTheDocument();
-    expect(screen.getByText('Katalog & przewód')).toBeInTheDocument();
-    expect(screen.getByText('Trasa & ułożenie')).toBeInTheDocument();
+    expect(screen.getByText('Typ katalogowy i przewód')).toBeInTheDocument();
+    expect(screen.getByText('Trasa i ułożenie')).toBeInTheDocument();
     expect(screen.getByText('Obciążalność')).toBeInTheDocument();
 
     // Domyślnie kabel SN
@@ -46,7 +46,7 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
     // Przełączanie na linię napowietrzną
     fireEvent.change(familySelect, { target: { value: 'linia_napowietrzna_sn' } });
 
-    // Karta "Katalog & przewód"
+    // Karta "Typ katalogowy i przewód"
     fireEvent.click(screen.getByTestId('segment-tab-catalog'));
     expect(screen.getByText(/AFL-6 50 mm²/)).toBeInTheDocument();
   });

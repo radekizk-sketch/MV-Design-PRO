@@ -2,7 +2,7 @@
  * NnSwitchgearCard — karta przeglądu rozdzielnicy nN stacji.
  *
  * Wyświetla identyfikację stacji, pola nN (odbiorcy, szyny nN),
- * odbiorców (Load) przyłączonych do szyn nN oraz źródła OZE/BESS.
+ * odbiorców (Load) przyłączonych do szyn nN oraz układy PV/BESS/FW.
  * Akcje: Dodaj PV, Dodaj BESS, Dodaj obciążenie.
  *
  * Props: elementId — id Substation.
@@ -160,8 +160,8 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
           : [
               {
                 key: 'no_nn',
-                label: 'Brak szyn nN',
-                value: 'Stacja bez rozdzielnicy nN — wymagany transformator SN/nN',
+                label: 'Rozdzielnica nN do konfiguracji',
+                value: 'Dodaj transformator SN/nN i wariant rozdzielnicy nN z katalogu',
                 severity: 'warning' as const,
               },
             ],
@@ -185,13 +185,13 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
           ? [
               {
                 key: 'load_count',
-                label: 'Liczba odbiornik?w',
+                label: 'Liczba odbiorników',
                 value: nnLoads.length,
                 unit: 'szt.',
               },
               {
                 key: 'total_load',
-                label: '?czna moc czynna',
+                label: 'Łączna moc czynna',
                 value: totalLoadMw * 1000,
                 unit: 'kW',
                 source: 'calculated' as const,
@@ -201,8 +201,8 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
           : [
               {
                 key: 'no_loads',
-                label: 'Brak odbiorc?w',
-                value: 'Brak obciążeń przyłączonych do szyn nN',
+                label: 'Odbiory nN',
+                value: 'Nie skonfigurowano odpływów odbiorczych nN',
                 severity: 'warning' as const,
               },
             ],
@@ -243,7 +243,7 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
 
     const sourcesSection: CardSection = {
       id: 'sources',
-      label: 'Źródła OZE / BESS',
+      label: 'Układy PV/BESS/FW',
       fields:
         normalizedSourceFields.length > 0
           ? [
@@ -261,13 +261,13 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
               },
               {
                 key: 'fw_count',
-                label: 'Źródła FW',
+                label: 'Układy FW',
                 value: windGenerators.length,
                 unit: 'szt.',
               },
               {
                 key: 'total_gen',
-                label: '?czna moc generacji',
+                label: 'Łączna moc generacji',
                 value: totalGenMw * 1000,
                 unit: 'kWp',
                 source: 'calculated' as const,
@@ -277,17 +277,17 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
           : [
               {
                 key: 'no_sources',
-                label: 'Brak źródeł OZE',
-                value: 'Nie zdefiniowano źródeł OZE/BESS',
+                label: 'Układy PV/BESS/FW',
+                value: 'Nie zdefiniowano układów PV/BESS/FW',
               },
             ],
     };
-    sourcesSection.label = 'Źródła PV / BESS / FW';
+    sourcesSection.label = 'Układy PV/BESS/FW';
     if (normalizedSourceFields.length === 0) {
       sourcesSection.fields[0] = {
         key: 'no_sources',
-        label: 'Brak źródeł',
-        value: 'Nie zdefiniowano źródeł PV, BESS ani FW',
+        label: 'Układy PV/BESS/FW',
+        value: 'Nie zdefiniowano układów PV/BESS/FW',
       };
     }
 

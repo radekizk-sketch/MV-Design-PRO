@@ -14,33 +14,33 @@ const FULL_LABELS: Record<string, string> = {
   mv_lv: 'Stacja SN/nN',
   switching: 'Stacja rozdzielcza SN',
   customer: 'Stacja odbiorcza',
-  stacja_koncowa: 'Stacja koncowa',
+  stacja_koncowa: 'Stacja końcowa',
   stacja_przelotowa: 'Stacja przelotowa',
-  stacja_odgalezna: 'Stacja odgalezna',
+  stacja_odgalezna: 'Stacja odgałęźna',
   stacja_sekcyjna: 'Stacja sekcyjna',
-  STACJA_KONCOWA: 'Stacja koncowa',
+  STACJA_KONCOWA: 'Stacja końcowa',
   STACJA_PRZELOTOWA: 'Stacja przelotowa',
-  STACJA_ODGALEZNA: 'Stacja odgalezna',
+  STACJA_ODGALEZNA: 'Stacja odgałęźna',
   STACJA_SEKCYJNA: 'Stacja sekcyjna',
   inline: 'Stacja przelotowa',
-  branch: 'Stacja odgalezna',
-  terminal: 'Stacja koncowa',
+  branch: 'Stacja odgałęźna',
+  terminal: 'Stacja końcowa',
   sectional: 'Stacja sekcyjna',
-  a: 'Stacja koncowa',
+  a: 'Stacja końcowa',
   b: 'Stacja przelotowa',
-  c: 'Stacja odgalezna',
+  c: 'Stacja odgałęźna',
   d: 'Stacja sekcyjna',
-  type_a: 'Stacja koncowa',
+  type_a: 'Stacja końcowa',
   type_b: 'Stacja przelotowa',
-  type_c: 'Stacja odgalezna',
+  type_c: 'Stacja odgałęźna',
   type_d: 'Stacja sekcyjna',
-  A: 'Stacja koncowa',
+  A: 'Stacja końcowa',
   B: 'Stacja przelotowa',
-  C: 'Stacja odgalezna',
+  C: 'Stacja odgałęźna',
   D: 'Stacja sekcyjna',
-  TYPE_A: 'Stacja koncowa',
+  TYPE_A: 'Stacja końcowa',
   TYPE_B: 'Stacja przelotowa',
-  TYPE_C: 'Stacja odgalezna',
+  TYPE_C: 'Stacja odgałęźna',
   TYPE_D: 'Stacja sekcyjna',
 };
 
@@ -49,33 +49,33 @@ const SHORT_LABELS: Record<string, string> = {
   mv_lv: 'SN/nN',
   switching: 'Rozdz.',
   customer: 'Odb.',
-  stacja_koncowa: 'Konc.',
+  stacja_koncowa: 'Końc.',
   stacja_przelotowa: 'Przelot.',
-  stacja_odgalezna: 'Odgal.',
+  stacja_odgalezna: 'Odgał.',
   stacja_sekcyjna: 'Sekcyj.',
-  STACJA_KONCOWA: 'Konc.',
+  STACJA_KONCOWA: 'Końc.',
   STACJA_PRZELOTOWA: 'Przelot.',
-  STACJA_ODGALEZNA: 'Odgal.',
+  STACJA_ODGALEZNA: 'Odgał.',
   STACJA_SEKCYJNA: 'Sekcyj.',
   inline: 'Przelot.',
-  branch: 'Odgal.',
-  terminal: 'Konc.',
+  branch: 'Odgał.',
+  terminal: 'Końc.',
   sectional: 'Sekcyj.',
-  a: 'Konc.',
+  a: 'Końc.',
   b: 'Przelot.',
-  c: 'Odgal.',
+  c: 'Odgał.',
   d: 'Sekcyj.',
-  type_a: 'Konc.',
+  type_a: 'Końc.',
   type_b: 'Przelot.',
-  type_c: 'Odgal.',
+  type_c: 'Odgał.',
   type_d: 'Sekcyj.',
-  A: 'Konc.',
+  A: 'Końc.',
   B: 'Przelot.',
-  C: 'Odgal.',
+  C: 'Odgał.',
   D: 'Sekcyj.',
-  TYPE_A: 'Konc.',
+  TYPE_A: 'Końc.',
   TYPE_B: 'Przelot.',
-  TYPE_C: 'Odgal.',
+  TYPE_C: 'Odgał.',
   TYPE_D: 'Sekcyj.',
 };
 
@@ -118,14 +118,42 @@ export function mapTopologicalStationKindToDomainCode(
 
 export function formatStationTypeLabelPl(type: string | null | undefined): string {
   if (!type) {
-    return 'Brak danych';
+    return 'Typ stacji do wyboru';
   }
   return FULL_LABELS[type] ?? 'Stacja SN/nN';
 }
 
 export function formatStationTypeShortLabelPl(type: string | null | undefined): string {
   if (!type) {
-    return 'Brak';
+    return 'Do wyboru';
   }
   return SHORT_LABELS[type] ?? 'Stacja';
+}
+
+export function formatStationSwitchgearLayoutLabelPl(type: string | null | undefined): string {
+  switch (normalizeTopologicalStationKind(type)) {
+    case 'terminal':
+      return 'Układ końcowy SN';
+    case 'branch':
+      return 'Układ odgałęźny SN';
+    case 'sectional':
+      return 'Układ sekcyjny SN';
+    case 'inline':
+    default:
+      return 'Układ przelotowy SN';
+  }
+}
+
+export function formatStationSwitchgearDescriptionPl(type: string | null | undefined): string {
+  switch (normalizeTopologicalStationKind(type)) {
+    case 'terminal':
+      return 'Rozdzielnica SN: układ końcowy z polem zasilającym i polem transformatorowym.';
+    case 'branch':
+      return 'Rozdzielnica SN: układ odgałęźny z polem zasilającym, odpływowym, odgałęźnym i transformatorowym.';
+    case 'sectional':
+      return 'Rozdzielnica SN: układ sekcyjny z podziałem ciągu, polem sprzęgłowym i polem transformatorowym.';
+    case 'inline':
+    default:
+      return 'Rozdzielnica SN: układ przelotowy z polem wejściowym, wyjściowym i transformatorowym.';
+  }
 }

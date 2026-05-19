@@ -112,29 +112,108 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
   });
 
   describe('StationConfiguratorSurface (E-13)', () => {
-    it('renderuje StationConfigurator z 10 kartami', () => {
+    it('renderuje StationConfigurator z pełnym przepływem 17 kroków', () => {
       render(<StationConfiguratorSurface surface={minimalSurface} />);
       expect(screen.getByTestId('station-configurator-surface')).toBeInTheDocument();
       const cards = [
-        'Identyfikacja i szablon',
-        'Topologia, porty i PCC',
+        'Przyłączenie SN',
         'Rozdzielnia SN',
-        'Pola SN',
-        'Transformatory SN/nN',
-        'Strona nN i poziomy napięć',
-        'Źródła i magazyny',
-        'Zabezpieczenia i automatyka',
-        'Pomiary, telemechanika i sygnały',
-        'Gotowość obliczeń',
+        'Pola SN i blokady',
+        'Aparatura SN',
+        'Przekładniki CT',
+        'Przekładniki VT',
+        'Liczniki i telemechanika',
+        'Transformator',
+        'Uziemienie',
+        'Strona nN',
+        'PV, BESS i FW',
+        'Jakość energii',
+        'Zabezpieczenia',
+        'NC RfG i PTPiREE',
+        'SCADA i infrastruktura',
+        'Analiza sieciowa',
+        'Obliczenia i raport',
       ];
       for (const label of cards) {
-        expect(screen.getByRole('tab', { name: label })).toBeInTheDocument();
+        expect(screen.getByRole('tab', { name: new RegExp(label) })).toBeInTheDocument();
       }
     });
 
-    it('pokazuje komunikat o braku referencji gdy entityRef=null', () => {
+    it('prowadzi projektanta do wyboru stacji gdy entityRef=null', () => {
       render(<StationConfiguratorSurface surface={minimalSurface} />);
-      expect(screen.getByText(/Brak referencji do stacji/)).toBeInTheDocument();
+      expect(screen.getByText(/Wybierz stację z drzewa układów/)).toBeInTheDocument();
+    });
+
+    it('pokazuje zrodla OZE zapisane w ENM dla wybranej stacji', () => {
+      useSnapshotStore.setState({
+        snapshot: {
+          header: {
+            enm_version: '1.0',
+            name: 'Siec testowa',
+            created_at: '2026-05-18T00:00:00Z',
+            updated_at: '2026-05-18T00:00:00Z',
+            revision: 1,
+            hash_sha256: 'snapshot-test',
+            defaults: { frequency_hz: 50, unit_system: 'SI' },
+          },
+          buses: [],
+          branches: [],
+          transformers: [],
+          sources: [],
+          loads: [],
+          substations: [
+            {
+              id: 'station-01',
+              ref_id: 'stn/station-01/station',
+              name: 'Stacja S02 ZKSN prosument PV',
+              tags: [],
+              meta: {},
+              station_type: 'mv_lv',
+              bus_refs: ['stn/station-01/nn_bus'],
+              transformer_refs: [],
+            },
+          ],
+          generators: [
+            {
+              id: 'generator-01',
+              ref_id: 'pv/station-01/converter',
+              name: 'Blok PV',
+              tags: [],
+              meta: { source_sequence_index: 0 },
+              bus_ref: 'stn/station-01/nn_bus',
+              p_mw: 0.5,
+              q_mvar: 0,
+              gen_type: 'pv_inverter',
+              catalog_ref: 'conv-pv-nn-0p5mw-0p4kv',
+              catalog_namespace: 'ZRODLO_NN_PV',
+              connection_variant: 'nn_side',
+              station_ref: 'stn/station-01/station',
+            },
+          ],
+          bays: [],
+          junctions: [],
+          corridors: [],
+          measurements: [],
+          protection_assignments: [],
+          branch_points: [],
+          line_runs: [],
+          connection_nodes: [],
+        } as never,
+      });
+
+      render(
+        <StationConfiguratorSurface
+          surface={{
+            ...minimalSurface,
+            entityRef: 'stn/station-01/station',
+          }}
+        />,
+      );
+
+      expect(screen.getByText(/PV: 1/)).toBeInTheDocument();
+      expect(screen.getByText('PV 01 - fotowoltaika')).toBeInTheDocument();
+      expect(screen.getByText('500')).toBeInTheDocument();
+      expect(screen.queryByText('Usuń')).not.toBeInTheDocument();
     });
   });
 });

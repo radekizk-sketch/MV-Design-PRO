@@ -292,7 +292,7 @@ function buildAdjacency(graph: VisualGraphV1): Map<string, Array<{ nodeId: strin
  * Faza 1: Umieszczenie GPZ u góry schematu.
  *
  * VERTICAL SN LAYOUT:
- * - Źródła (GRID_SOURCE) na samej górze
+ * - Zasilanie GPZ (GRID_SOURCE) na samej górze
  * - Transformatory WN/SN pod źródłami
  * - Szyna SN GPZ (root busbar) pod transformatorami — JEDNA szyna GPZ
  * - WYŁĄCZNIE szyna GPZ (root) jest umieszczana w fazie 1

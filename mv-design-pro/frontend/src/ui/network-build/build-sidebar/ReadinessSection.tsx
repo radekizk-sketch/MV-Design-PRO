@@ -1,5 +1,5 @@
 /**
- * ReadinessSection — gotowość obliczeń 9 typów + raporty (PR-13).
+ * ReadinessSection — zakres obliczeń 9 typów + raporty (PR-13).
  *
  * Brief 2 §4 sekcja 4 + §16. Każdy element ma status:
  * gotowe / częściowe / zablokowane / brak modułu obliczeniowego / nie dotyczy.
@@ -24,7 +24,7 @@ export interface ReadinessSectionProps {
 const STATUS_LABEL: Record<ReadinessStatus, string> = {
   gotowe: 'gotowe',
   czesciowe: 'częściowe',
-  zablokowane: 'zablokowane',
+  zablokowane: 'do konfiguracji',
   'brak-modulu': 'brak modułu obliczeniowego',
   'nie-dotyczy': 'nie dotyczy',
 };
@@ -56,7 +56,7 @@ export function ReadinessSection(props: ReadinessSectionProps): JSX.Element {
   return (
     <div data-testid="readiness-section" className="flex flex-col py-1">
       <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-scada-muted">
-        Gotowość obliczeń
+        Zakres obliczeń
       </div>
       <div className="flex flex-col gap-1 px-2 py-1">
         {items.map((item) => (
@@ -74,12 +74,12 @@ export function ReadinessSection(props: ReadinessSectionProps): JSX.Element {
             </div>
             {item.missingFieldsPl && item.missingFieldsPl.length > 0 && (
               <div className="mt-1 text-[10px] text-scada-muted">
-                Brakuje: {item.missingFieldsPl.join(', ')}
+                Parametry do konfiguracji: {item.missingFieldsPl.join(', ')}
               </div>
             )}
             {item.blockingObjectsCount !== undefined && item.blockingObjectsCount > 0 && (
               <div className="mt-1 text-[10px] text-scada-muted">
-                Obiekty blokujące: {item.blockingObjectsCount}
+                Obiekty do konfiguracji: {item.blockingObjectsCount}
               </div>
             )}
             {(item.onShowOnSld || item.onFillData) && (
@@ -101,7 +101,7 @@ export function ReadinessSection(props: ReadinessSectionProps): JSX.Element {
                     onClick={item.onFillData}
                     className="rounded border border-scada-border px-1.5 py-0.5 text-[10px] text-scada-text hover:bg-scada-active"
                   >
-                    Uzupełnij dane
+                    Skonfiguruj
                   </button>
                 )}
               </div>

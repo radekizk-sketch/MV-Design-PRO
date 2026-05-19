@@ -58,7 +58,7 @@ export type ElementType =
   | 'LoadNN'                 // S: Odbiór nN
   | 'SwitchboardNN'          // T: Rozdzielnica nN
   | 'SourceFieldNN'          // U: Pole źródłowe nN
-  // Źródła nN (V–Z)
+  // Układy przyłączeniowe nN (V–Z)
   | 'PVInverter'             // V: Falownik PV
   | 'BESSInverter'           // W: Falownik BESS
   | 'EnergyStorage'          // X: Magazyn energii (moduł BESS)
@@ -654,5 +654,5 @@ export const ELIGIBILITY_ANALYSIS_LABELS: Record<EligibilityAnalysisType, string
  */
 export const ELIGIBILITY_STATUS_LABELS: Record<EligibilityStatus, string> = {
   ELIGIBLE: 'Możliwe',
-  INELIGIBLE: 'Zablokowane',
+  INELIGIBLE: 'Do konfiguracji',
 };

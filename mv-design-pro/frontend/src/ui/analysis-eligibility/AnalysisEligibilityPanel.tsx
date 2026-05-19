@@ -3,7 +3,7 @@
  *
  * Panel macierzy zdolności uruchomienia analiz.
  * Wyświetla status ELIGIBLE/INELIGIBLE dla każdego typu analizy
- * z listą blokad, ostrzeżeń i działań naprawczych.
+ * z listą wymagań konfiguracji, ostrzeżeń i działań projektowych.
  */
 
 import React, { useMemo, useState } from 'react';
@@ -38,7 +38,7 @@ const ISSUE_SEVERITY_COLORS: Record<string, string> = {
 };
 
 const ISSUE_SEVERITY_LABELS: Record<string, string> = {
-  BLOCKER: 'Blokada',
+  BLOCKER: 'Wymaganie konfiguracji',
   WARNING: 'Ostrzeżenie',
   INFO: 'Informacja',
 };
@@ -49,6 +49,22 @@ const ANALYSIS_TYPE_ORDER: EligibilityAnalysisType[] = [
   'SC_1F',
   'LOAD_FLOW',
 ];
+
+export function publicElementRefLabel(elementRef: string): string {
+  const value = elementRef.trim().toLowerCase();
+  if (!value) return 'Element układu';
+  if (value.startsWith('gpz/') && value.includes('/source')) return 'Źródło GPZ';
+  if (value.startsWith('gpz/') && value.includes('/bay/')) return 'Pole SN w GPZ';
+  if (value.startsWith('gpz/')) return 'Układ GPZ';
+  if (value.startsWith('stn/')) return 'Stacja SN/nN';
+  if (value.startsWith('seg/') || value.startsWith('line_') || value.startsWith('branch_')) return 'Odcinek SN';
+  if (value.startsWith('src') || value.includes('source')) return 'Źródło zasilania';
+  if (value.includes('transformer') || value.includes('/tr')) return 'Transformator';
+  if (value.includes('pv')) return 'Źródło PV';
+  if (value.includes('bess')) return 'Magazyn energii';
+  if (value.includes('fw') || value.includes('wind')) return 'Źródło wiatrowe';
+  return 'Element układu';
+}
 
 interface EligibilityIssueItemProps {
   issue: AnalysisEligibilityIssue;
@@ -85,12 +101,11 @@ const EligibilityIssueItem: React.FC<EligibilityIssueItemProps> = ({
         <span className="text-xs font-bold">
           {ISSUE_SEVERITY_LABELS[issue.severity] ?? issue.severity}
         </span>
-        <span className="font-mono text-xs text-gray-600">{issue.code}</span>
       </div>
       <div className="text-sm">{issue.message_pl}</div>
       {issue.element_ref && (
         <div className="mt-1 text-xs text-gray-600">
-          Element: <span className="font-mono font-semibold">{issue.element_ref}</span>
+          Zakres: <span className="font-semibold">{publicElementRefLabel(issue.element_ref)}</span>
         </div>
       )}
       <div className="mt-1 flex gap-2">
@@ -109,7 +124,7 @@ const EligibilityIssueItem: React.FC<EligibilityIssueItemProps> = ({
             className="rounded border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
             data-testid={`eligibility-fix-${issue.code}`}
           >
-            Napraw
+            Skonfiguruj
           </button>
         )}
       </div>
@@ -160,7 +175,7 @@ const AnalysisEntry: React.FC<AnalysisEntryProps> = ({
         <div className="flex items-center gap-2">
           {blockerCount > 0 && (
             <span className="text-xs font-medium text-red-600">
-              {blockerCount} {blockerCount === 1 ? 'blokada' : 'blokad'}
+              {blockerCount} {blockerCount === 1 ? 'wymaganie' : 'wymagań'}
             </span>
           )}
           {allIssues.length > 0 && (
@@ -234,8 +249,8 @@ export const AnalysisEligibilityPanel: React.FC<AnalysisEligibilityPanelProps> =
         {overall.eligible_all
           ? 'Wszystkie analizy dostępne'
           : overall.eligible_any
-            ? `Część analiz zablokowana (${overall.blockers_total} blokad)`
-            : `Wszystkie analizy zablokowane (${overall.blockers_total} blokad)`}
+            ? `Część analiz wymaga konfiguracji (${overall.blockers_total} wymagań)`
+            : `Analizy wymagają konfiguracji (${overall.blockers_total} wymagań)`}
       </div>
 
       <div className="p-4">

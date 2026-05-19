@@ -138,6 +138,9 @@ function mergeInitialData(initialData?: Partial<GridSourceFormData>): GridSource
 
   return {
     ...merged,
+    manual_mode: false,
+    short_circuit_input_side: 'SN',
+    short_circuit_mode: 'SHORT_CIRCUIT_POWER',
     sections_count: Math.max(1, Math.min(4, Math.trunc(merged.sections_count || 1))),
     transformer_count: Math.max(1, Math.min(4, Math.trunc(merged.transformer_count || 1))),
     line_fields_per_section: Math.max(
@@ -186,9 +189,7 @@ function isPositive(value: number | null): value is number {
 
 function validateForm(data: GridSourceFormData): FieldError[] {
   const errors: FieldError[] = [];
-  const sourceDescriptor = data.manual_mode
-    ? 'ręcznej umowy równoważnej GPZ'
-    : 'wybranego katalogu systemowego';
+  const sourceDescriptor = 'wybranego katalogu systemowego';
 
   if (!data.source_name.trim()) {
     errors.push({ field: 'source_name', message: 'Nazwa GPZ jest wymagana.' });
@@ -569,7 +570,7 @@ function getReadinessText(state: ReadinessState, fallback: string): string {
   if (state === 'warning') {
     return fallback;
   }
-  return 'Brak danych';
+  return 'Do konfiguracji';
 }
 
 export function GridSourceEditor({
@@ -636,13 +637,13 @@ export function GridSourceEditor({
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || formData.manual_mode || formData.catalog_ref || catalogItems.length === 0) {
+    if (!isOpen || formData.catalog_ref || catalogItems.length === 0) {
       return;
     }
 
     const firstCatalogItem = catalogItems[0];
     setFormData((previous) => {
-      if (previous.manual_mode || previous.catalog_ref) {
+      if (previous.catalog_ref) {
         return previous;
       }
 
@@ -661,7 +662,7 @@ export function GridSourceEditor({
           : previous.rx_ratio,
       };
     });
-  }, [catalogItems, formData.catalog_ref, formData.manual_mode, isOpen]);
+  }, [catalogItems, formData.catalog_ref, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -786,16 +787,13 @@ export function GridSourceEditor({
   ]);
   const gpzBuildSections = useMemo(() => buildEditorGpzSections(formData), [formData]);
   const gpzCouplerCount = Math.max(0, gpzBuildSections.length - 1);
-  const dataSourceLabel = formData.manual_mode
-    ? 'Ręczny równoważnik ekspercki'
-    : selectedCatalogItem?.name ?? formData.catalog_ref ?? 'Katalog źródła systemowego';
-  const catalogBindingLabel = formData.manual_mode
-    ? 'nie dotyczy'
-    : selectedCatalogItem
-      ? sourceCatalogLabel(selectedCatalogItem)
-      : formData.catalog_ref
-        ? 'wybrano pozycję katalogową'
-        : 'brak';
+  const dataSourceLabel =
+    selectedCatalogItem?.name ?? formData.catalog_ref ?? 'Katalog źródła systemowego';
+  const catalogBindingLabel = selectedCatalogItem
+    ? sourceCatalogLabel(selectedCatalogItem)
+    : formData.catalog_ref
+      ? 'wybrano pozycję katalogową'
+      : 'wybierz wariant katalogowy';
   const previewPayload = useMemo(() => buildPreviewPayload(formData), [formData]);
   const readinessRows = useMemo(() => getReadinessRows(formData), [formData]);
   const pendingMetricLabel = previewStatus === 'loading' ? 'obliczanie...' : '—';
@@ -937,28 +935,21 @@ export function GridSourceEditor({
 
           <ScadaSection title="Źródło danych i katalog">
             <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleChange('manual_mode', false)}
-                  className={modeButtonClass(!formData.manual_mode)}
-                >
-                  Katalog źródła systemowego
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleChange('manual_mode', true)}
-                  className={modeButtonClass(formData.manual_mode)}
-                >
-                  Ręczny równoważnik ekspercki
-                </button>
+              <div className="rounded-[3px] border border-[#15324f] bg-[#050c17] px-3 py-2">
+                <div className="font-mono-eng text-[11px] font-bold uppercase tracking-[0.12em] text-[#66f6ff]">
+                  Pakiet katalogowy GPZ
+                </div>
+                <p className="mt-1 font-mono-eng text-[10px] leading-snug text-[#8fb4d8]">
+                  Źródło systemowe, parametry zwarciowe, uziemienie i pola SN pochodzą
+                  z kompletnego wariantu katalogowego.
+                </p>
               </div>
 
               <FieldShell label="Typ źródła z katalogu" error={getFieldError('catalog_ref')}>
                 <select
                   value={formData.catalog_ref ?? ''}
                   onChange={(event) => handleCatalogSelect(event.target.value)}
-                  disabled={formData.manual_mode || catalogStatus === 'loading'}
+                  disabled={catalogStatus === 'loading'}
                   className={clsx(selectClass(getFieldError('catalog_ref')), INPUT_DISABLED_CLASS)}
                 >
                   <option value="">
@@ -986,7 +977,7 @@ export function GridSourceEditor({
               <AdvancedDataRow
                 label="Powiązanie katalogowe"
                 value={catalogBindingLabel}
-                tone={!formData.manual_mode && !formData.catalog_ref ? 'warning' : 'normal'}
+                tone={!formData.catalog_ref ? 'warning' : 'normal'}
               />
               <AdvancedDataRow
                 label="Zasada obliczeń"
@@ -1445,7 +1436,7 @@ export function GridSourceEditor({
             </div>
           </ScadaSection>
 
-          <ScadaSection title="Gotowość GPZ">
+          <ScadaSection title="Kontrola GPZ">
             <div className="divide-y divide-[#193451] border border-[#193451]">
               {readinessRows.map(([label, state, fallback]) => (
                 <ReadinessRow

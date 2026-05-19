@@ -23,6 +23,7 @@ import {
   type SldMenuAction,
 } from '../sld/v2/command/SldCommandService';
 import type { ContextMenuAction, ElementType, OperatingMode } from '../types';
+import { publicTechnicalLabel } from '../shared/publicTechnicalLabels';
 import { ContextMenu } from './ContextMenu';
 
 /** Zapytanie o pokazanie menu kontekstowego SLD. */
@@ -139,8 +140,11 @@ export function SldContextMenuController(
   }
 
   const elementType = KIND_TO_ELEMENT_TYPE[request.kind];
-  const headerText = elementName
-    ? `${KIND_HEADER_PL[request.kind]} — ${elementName}`
+  const publicElementName = elementName
+    ? publicTechnicalLabel(elementName, KIND_HEADER_PL[request.kind])
+    : null;
+  const headerText = publicElementName && publicElementName !== KIND_HEADER_PL[request.kind]
+    ? `${KIND_HEADER_PL[request.kind]} — ${publicElementName}`
     : KIND_HEADER_PL[request.kind];
 
   return (
@@ -149,7 +153,7 @@ export function SldContextMenuController(
       x={request.clientX}
       y={request.clientY}
       elementType={elementType}
-      elementName={elementName ?? KIND_HEADER_PL[request.kind]}
+      elementName={publicElementName ?? KIND_HEADER_PL[request.kind]}
       headerText={headerText}
       mode={mode}
       actions={actions}

@@ -151,7 +151,7 @@ export function FaultScenariosPanel({ studyCaseId, onHighlightElement }: FaultSc
 
       {selectedScenario && eligibility && (
         <div className="border-t border-slate-200 p-3" data-testid="fault-scenario-eligibility">
-          <div className="text-xs font-medium text-slate-600 mb-1">Gotowość analizy</div>
+          <div className="text-xs font-medium text-slate-600 mb-1">Kontrola analizy</div>
           <div className={`text-xs font-medium ${eligibility.status === 'ELIGIBLE' ? 'text-emerald-700' : 'text-rose-700'}`}>
             {eligibility.status === 'ELIGIBLE' ? 'Analiza dostępna' : 'Analiza zablokowana'}
           </div>

@@ -39,13 +39,15 @@ describe('ApparatusDsCircle — K30-109 IEC 60617-7-13-02', () => {
     expect(diagonalLever).toBeTruthy();
   });
 
-  it('unknown: "?" znacznik + brak dźwigni', () => {
-    const { container, getByText } = render(
+  it('unknown: neutralny symbol bez znaku zastępczego', () => {
+    const { container } = render(
       <svg>
         <ApparatusDsCircle cx={50} cy={50} state="unknown" />
       </svg>,
     );
-    expect(getByText('?')).toBeInTheDocument();
+    const ds = container.querySelector('[data-testid="sld-v2-gpz-bay-ds"]');
+    expect(ds?.getAttribute('data-state')).toBe('unknown');
+    expect(ds?.textContent).not.toContain('?');
   });
 });
 

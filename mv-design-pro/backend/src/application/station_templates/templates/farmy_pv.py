@@ -5,6 +5,7 @@ from __future__ import annotations
 from application.station_templates._choices import (
     CT_OPTIONS,
     DER_PV_SN,
+    NN_CB_OPTIONS,
     PROT_FEEDER_OPTIONS,
     TR_BLOCK_PV_OPTIONS,
     VT_OPTIONS,
@@ -45,6 +46,7 @@ def _farma(
             ),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
             nn_feeders_count=TemplateParamInt(default=0, min_value=0, max_value=2, label_pl="Liczba odpływów nN (usługi)"),
+            nn_feeder_cb_options=NN_CB_OPTIONS,
             der_options=(DER_PV_SN,),
             der_total_count=TemplateParamInt(
                 default=pv_count, min_value=1, max_value=20, label_pl="Liczba falowników PV"

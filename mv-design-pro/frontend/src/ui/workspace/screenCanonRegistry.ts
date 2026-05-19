@@ -103,8 +103,8 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
   }),
   'E-02': screen({
     id: 'E-02',
-    labelFull: 'Panel modelu sieci',
-    labelShort: 'Model sieci',
+    labelFull: 'Panel układu sieci',
+    labelShort: 'Układ sieci',
     areaId: 'MODEL_SIECI',
     icon: 'ikona-ekran-panel-modelu',
     canonicalRoute: '/workspace/network-model',
@@ -126,8 +126,8 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
   }),
   'E-03': screen({
     id: 'E-03',
-    labelFull: 'Inspektor techniczny',
-    labelShort: 'Inspektor',
+    labelFull: 'Karta techniczna układu',
+    labelShort: 'Karta',
     areaId: 'MODEL_SIECI',
     icon: 'ikona-ekran-inspektor-techniczny',
     canonicalRoute: '/workspace/technical-inspector',
@@ -149,8 +149,8 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
   }),
   'E-04': screen({
     id: 'E-04',
-    labelFull: 'Gotowość modelu',
-    labelShort: 'Gotowość',
+    labelFull: 'Przegląd techniczny układu',
+    labelShort: 'Kontrola',
     areaId: 'STUDIA_OBLICZENIOWE',
     icon: 'ikona-ekran-gotowosc-modelu',
     canonicalRoute: '/workspace/model-readiness',
@@ -264,7 +264,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
   }),
   'E-09': screen({
     id: 'E-09',
-    labelFull: 'Wersje modelu i historia obliczeń',
+    labelFull: 'Wersje układu i historia obliczeń',
     labelShort: 'Wersje',
     areaId: 'HISTORIA_AUDYT',
     icon: 'ikona-ekran-migawki-historia',

@@ -1,14 +1,13 @@
 /**
- * DerPccVariantInfo — informacja o wybranym wariancie przyłączenia DER (PCC).
+ * DerPccVariantInfo - informacja o wybranym wariancie przyłączenia DER (PCC).
  *
- * Komponent prezentacyjny dla goal §13: pokazuje 5 możliwych wariantów
- * `GeneratorConnectionVariant` z polskimi opisami i wymaganymi referencjami.
- * Operator widzi czy aktualny wariant jest kompletny (`station_ref` /
- * `blocking_transformer_ref` ustawione zgodnie z wariantem).
+ * Komponent prezentacyjny dla goal §13: pokazuje wariant katalogowy
+ * `GeneratorConnectionVariant` z polskimi opisami i wymaganymi powiązaniami.
+ * Operator widzi, czy aktualny wariant ma wskazaną stację lub transformator
+ * blokowy zgodnie z wariantem katalogowym.
  *
- * Reguła architektoniczna: komponent NIE walidator (walidacja jest w backend
- * ENMValidator E028/E029 + readiness blocker `generator.*_missing`). Tutaj
- * tylko **prezentacja** wymagań i stanu kompletności per wariant.
+ * Reguła architektoniczna: komponent nie jest walidatorem. Walidacja pozostaje
+ * w backendzie i ENMValidator. Tutaj pokazujemy stan konfiguracji przyłączenia.
  */
 
 import { clsx } from 'clsx';
@@ -16,11 +15,11 @@ import { clsx } from 'clsx';
 import type { GeneratorConnectionVariant } from '../../../types/enm';
 
 export interface DerPccVariantInfoProps {
-  /** Aktualny wariant; null → operator nie wybrał wariantu (blocker E028). */
+  /** Aktualny wariant; null oznacza, że operator nie wybrał wariantu PCC. */
   readonly connectionVariant: GeneratorConnectionVariant | null;
-  /** Referencja stacji (wymagana dla nn_side / LV_BEHIND_STATION_TRANSFORMER). */
+  /** Identyfikator stacji wymagany dla przyłączenia po stronie nN. */
   readonly stationRef: string | null;
-  /** Referencja transformatora blokowego (wymagana dla block_transformer). */
+  /** Identyfikator transformatora blokowego wymagany dla wariantu blokowego. */
   readonly blockingTransformerRef: string | null;
   readonly className?: string;
 }
@@ -38,15 +37,15 @@ const VARIANT_SPECS: readonly VariantSpec[] = [
     title_pl: 'Po stronie nN stacji SN/nN',
     description_pl:
       'Falownik/PCS przyłączony do szyny nN za transformatorem stacji. '
-      + 'Wymaga referencji stacji (station_ref).',
+      + 'Wybierz stację, która wyznacza punkt przyłączenia.',
     required_refs: ['station_ref'],
   },
   {
     variant: 'LV_BEHIND_STATION_TRANSFORMER',
-    title_pl: 'Za transformatorem stacji (legacy)',
+    title_pl: 'Po stronie nN za transformatorem stacji',
     description_pl:
-      'Wariant historyczny: PV/BESS po stronie nN za transformatorem stacji. '
-      + 'Wymaga station_ref.',
+      'PV/BESS/FW pracuje po stronie nN za transformatorem stacji. '
+      + 'Wybierz stację, która wyznacza tor przyłączenia.',
     required_refs: ['station_ref'],
   },
   {
@@ -54,7 +53,7 @@ const VARIANT_SPECS: readonly VariantSpec[] = [
     title_pl: 'Przez transformator blokowy',
     description_pl:
       'Falownik/PCS przyłączony do szyny SN przez dedykowany transformator '
-      + 'blokowy. Wymaga referencji transformatora (blocking_transformer_ref).',
+      + 'blokowy. Wybierz transformator blokowy i pole SN przyłączenia.',
     required_refs: ['blocking_transformer_ref'],
   },
   {
@@ -62,19 +61,23 @@ const VARIANT_SPECS: readonly VariantSpec[] = [
     title_pl: 'Dedykowane pole SN',
     description_pl:
       'Generator przyłączony przez dedykowane pole SN z własnym torem '
-      + 'pomiarowo-zabezpieczeniowym. Bez wymaganych dodatkowych referencji.',
+      + 'pomiarowo-zabezpieczeniowym. Wariant katalogowy zawiera wymagane powiązania.',
     required_refs: [],
   },
   {
     variant: 'SOURCE_CONNECTION_STATION',
     title_pl: 'Osobna stacja przyłączeniowa',
     description_pl:
-      'Generator z osobną stacją przyłączeniową źródła (rozdzielnia abonencka).',
+      'Generator z osobną stacją przyłączeniową źródła i rozdzielnią abonencką.',
     required_refs: [],
   },
 ];
 
-function isVariantComplete(spec: VariantSpec, stationRef: string | null, transformerRef: string | null): boolean {
+function isVariantComplete(
+  spec: VariantSpec,
+  stationRef: string | null,
+  transformerRef: string | null,
+): boolean {
   for (const required of spec.required_refs) {
     if (required === 'station_ref' && !stationRef) {
       return false;
@@ -84,6 +87,11 @@ function isVariantComplete(spec: VariantSpec, stationRef: string | null, transfo
     }
   }
   return true;
+}
+
+function requirementLabel(req: VariantSpec['required_refs'][number]): string {
+  if (req === 'station_ref') return 'Stacja przyłączenia';
+  return 'Transformator blokowy';
 }
 
 export function DerPccVariantInfo({
@@ -96,15 +104,14 @@ export function DerPccVariantInfo({
     return (
       <div
         className={clsx(
-          'rounded border border-red-300 bg-red-50 p-3 text-sm text-red-900',
+          'rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900',
           className,
         )}
         data-testid="der-pcc-variant-info-missing"
       >
-        <span className="font-semibold">Brak wybranego wariantu przyłączenia (PCC).</span>{' '}
-        Każdy falownik (PV/BESS/FW) wymaga jawnego `connection_variant` — bez tego
-        SLD nie wie jak narysować drzewo połączeń. Readiness blocker:{' '}
-        <span className="font-mono">generator.connection_variant_missing</span>.
+        <span className="font-semibold">Wybierz wariant przyłączenia PCC.</span>{' '}
+        Każde źródło PV/BESS/FW jest zapisywane jako gotowy wariant katalogowy
+        z punktem przyłączenia, pomiarem i wymaganym torem zabezpieczeniowym.
       </div>
     );
   }
@@ -119,7 +126,7 @@ export function DerPccVariantInfo({
         )}
         data-testid="der-pcc-variant-info-unknown"
       >
-        Nieznany wariant przyłączenia: <span className="font-mono">{connectionVariant}</span>.
+        Wariant przyłączenia nie jest obsługiwany przez katalog źródeł.
       </div>
     );
   }
@@ -147,7 +154,7 @@ export function DerPccVariantInfo({
               : 'border-amber-400 bg-amber-100 text-amber-900',
           )}
         >
-          {isComplete ? 'Kompletny' : 'Brakuje referencji'}
+          {isComplete ? 'Skonfigurowany' : 'Do konfiguracji'}
         </span>
       </div>
       <p className="mt-1 text-[12px] text-gray-700">{spec.description_pl}</p>
@@ -169,9 +176,9 @@ export function DerPccVariantInfo({
                     present ? 'bg-green-600' : 'bg-amber-600',
                   )}
                 />
-                <span className="font-mono">{req}</span>
+                <span>{requirementLabel(req)}</span>
                 <span className="text-gray-500">
-                  {present ? `→ ${value}` : '(wymagana — uzupełnij w karcie DER)'}
+                  {present ? '→ wybrano w układzie' : '→ wybierz w konfiguracji DER'}
                 </span>
               </li>
             );

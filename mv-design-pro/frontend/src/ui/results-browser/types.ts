@@ -465,7 +465,7 @@ export const RESULTS_BROWSER_LABELS = {
 
   table: {
     rows_shown: 'Wyświetlono {shown} z {total} wierszy',
-    no_results: 'Brak wyników spełniających kryteria',
+    no_results: 'Filtr nie wskazuje wyników spełniających kryteria',
     sort_asc: 'Sortuj rosnąco',
     sort_desc: 'Sortuj malejąco',
   },

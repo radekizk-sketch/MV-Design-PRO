@@ -10,6 +10,7 @@ CRUD endpoints:
 
 from __future__ import annotations
 
+from urllib.parse import quote
 from uuid import uuid4
 
 import pytest
@@ -103,6 +104,26 @@ def test_get_after_put_returns_config(app_client):
     data = res.json()
     assert data["mv_neutral_grounding_ref"] == "mng_resistor_low"
     assert data["der_specs"][0]["bess_operation_mode_refs"] == ["mode_fcr_n", "mode_voltage_support"]
+
+
+def test_station_id_accepts_enm_reference_with_slashes(app_client):
+    pid = _create_project(app_client)
+    station_ref = "stn/e7ac9af3834811e633a6a98f1d3d4112/station"
+    encoded_station_ref = quote(station_ref, safe="")
+    body = {"mv_neutral_grounding_ref": None, "tap_changer_refs": [], "der_specs": []}
+
+    put_res = app_client.put(
+        f"/api/v1/projects/{pid}/audit2-station-config/{encoded_station_ref}",
+        json=body,
+    )
+    assert put_res.status_code == 200
+    assert put_res.json()["station_id"] == station_ref
+
+    get_res = app_client.get(
+        f"/api/v1/projects/{pid}/audit2-station-config/{encoded_station_ref}",
+    )
+    assert get_res.status_code == 200
+    assert get_res.json()["station_id"] == station_ref
 
 
 def test_list_returns_multiple_stations(app_client):

@@ -245,7 +245,7 @@ export function LineSegmentCard({ elementId }: { elementId: string }) {
             ? 'Katalog (zablokowane)'
             : branch.parameter_source === 'OVERRIDE'
               ? 'Nadpisanie ręczne'
-              : 'Brak katalogu — wymagane',
+              : 'Wariant katalogowy wymagany',
           severity: branch.catalog_ref == null ? 'warning' : 'ok',
         },
       ],
@@ -286,7 +286,7 @@ export function LineSegmentCard({ elementId }: { elementId: string }) {
           { key: 'i_flow', label: 'Prąd I', value: null, unit: 'A', source: 'calculated' },
           { key: 'loading', label: 'Obciążenie In', value: null, unit: '%', source: 'calculated' },
           { key: 'du_percent', label: 'Spadek napięcia ΔU', value: null, unit: '%', source: 'calculated' },
-          { key: 'no_results', label: 'Status', value: 'Brak wyników — uruchom analizę', severity: 'warning' },
+          { key: 'no_results', label: 'Status', value: 'Uruchom analizę, aby pokazać wyniki', severity: 'warning' },
         ],
       });
     }

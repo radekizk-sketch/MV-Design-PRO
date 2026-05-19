@@ -25,7 +25,7 @@ const ANALYSIS_TYPES: AnalysisRow[] = [
   { code: 'LOAD_FLOW', label: 'Rozpływ mocy (Newton-Raphson)' },
   { code: 'PHASE_STATE_SN', label: 'Stan ustalony SN' },
   { code: 'PROTECTION', label: 'Koordynacja zabezpieczeń' },
-  { code: 'SOURCE_COMPLIANCE', label: 'Zgodność źródeł OZE' },
+  { code: 'SOURCE_COMPLIANCE', label: 'Zgodność układów PV/BESS/FW' },
 ];
 
 export function AnContextPanel() {

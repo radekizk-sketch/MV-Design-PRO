@@ -51,6 +51,12 @@ const STATUS_CLASS: Record<StationConfigBayRow['statusPl'], string> = {
   'brak danych': 'text-status-error',
 };
 
+const STATUS_LABEL: Record<StationConfigBayRow['statusPl'], string> = {
+  kompletne: 'kompletne',
+  'częściowe': 'do konfiguracji',
+  'brak danych': 'do konfiguracji',
+};
+
 export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.Element {
   const { bays, onOpenBay, onShowOnSld, onCopyConfig, onDeleteBay, onChangeHvFuse } = props;
 
@@ -60,7 +66,9 @@ export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.El
         Pola SN ({bays.length})
       </div>
       {bays.length === 0 ? (
-        <div className="italic text-scada-muted">Brak pól w stacji.</div>
+        <div className="italic text-scada-muted">
+          Pola SN dodaje się przez wariant rozdzielnicy albo kartę pola.
+        </div>
       ) : (
         <table className="w-full text-[11px]">
           <thead>
@@ -91,7 +99,7 @@ export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.El
                   /
                   <span className={b.hasMeasurements ? 'text-status-ok' : 'text-scada-muted'}>P</span>
                 </td>
-                <td className={STATUS_CLASS[b.statusPl]}>{b.statusPl}</td>
+                <td className={STATUS_CLASS[b.statusPl]}>{STATUS_LABEL[b.statusPl]}</td>
                 <td data-testid={`bay-fuse-${b.bayId}`} className="text-[10px]">
                   {onChangeHvFuse ? (
                     <select
