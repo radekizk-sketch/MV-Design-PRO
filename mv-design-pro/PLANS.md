@@ -220,6 +220,32 @@ Zakres zakończony:
 - [x] Dodano kontrakty integracyjne (`IssueTrackerClient`, `AgentRunner`) dla adaptera tracker/runner zgodnie z granicami specyfikacji Symphony.
 - [x] Dodano testy jednostkowe pokrywające parse workflow/config, bezpieczeństwo workspace i logikę dispatch/retry/blockers/concurrency.
 
+### 3.0.10 Audyt SLD + Designer Flow + Konfiguratory pól SN (2026-05-19, completed)
+
+Branch: `claude/audit-sld-designer-U4QYo`.
+
+Zakres zakończony:
+- [x] Trzy równoległe audyty Explore (SLD renderer / Designer flow / Catalog + plans). Synteza w `docs/audit/AUDYT_SLD_DESIGNER_2026-05-19.md`.
+- [x] Potwierdzono w aktywnym kodzie:
+  - `GpzCanonicalRenderer` (Phase R2) z guardem `no_direct_110kv_tr_tie_without_switchgear` — TR 110/SN nie zwiera się przez szynę, kolumna aparatów (DS+CB+CT+ES) wymagana. Test: `frontend/src/ui/sld/v2/renderer/__tests__/GpzCanonicalRenderer.noDirectTie.test.tsx`.
+  - `SldCommandService.SLD_MENU_REGISTRY` ma 10 typów elementów × 3–11 akcji per typ — menu kontekstowe jest w pełni domenowe.
+  - K30 (do 2026-05-16) zamknął 9.4/10 brutalny audyt SLD; 1916 testów SLD v2 zielone.
+- [x] Dodano regresyjny test kontraktu „naturalny flow projektanta": `frontend/src/ui/network-build/__tests__/designerFlowContract.test.ts` (21 testów, all green) — formalizuje 8 kroków flow jako executable specification: Wstaw GPZ → Dodaj sekcję → Dodaj pole SN → Wyprowadź ciąg → Zakończ stacją → Kontynuuj → Rozgałęzienie → Dodaj DER.
+- [x] Walidacja: `npm run type-check` zielone; `npm run lint` zielone; broader vitest suite (context-menu + sld/v2 + network-build) 947/947 zielone (+21 nowe); `no_codenames_guard`, `forbidden_ui_terms_guard`, `docs_guard`, `sld_determinism_guards` — all PASS.
+
+Pozostałe duże luki (zachowane jako P0/P1 per § 4.0):
+- F2 port-based routing main impl (P0.3 ~16%)
+- F3 LOD + refactor monolitów (P0.6 TODO)
+- F4 export SVG/PDF deep integration (P0.7 ~75%)
+- F5 visual regression baselines (P0.10 ~38%)
+- Vendor template 3-stage stepper (producent → typoszereg → pole) — propozycja w `AUDYT_SLD_DESIGNER_2026-05-19.md` §6.1
+- Explicit „Wstaw GPZ" first-step CTA dla pustego projektu — propozycja w §6.1
+- Backend POST endpoint dla DER config save (K30-NEXT-1)
+- E2E `critical-der-config.spec.ts` (K30-NEXT-2)
+- SldDetailDrawer form validation (react-hook-form + zod) (K30-NEXT-3)
+
+Rekomendacja dla następnej sesji: krótka, low-risk, high-impact 5-pakiet (§6.1) ~14 OD.
+
 
 ### 3.0.5 Hotfix CI TypeScript — referenceTopologies (completed)
 
