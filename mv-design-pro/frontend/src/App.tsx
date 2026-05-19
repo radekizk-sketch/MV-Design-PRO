@@ -31,7 +31,14 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 
 import { EnmInspectorPage } from './ui/enm-inspector';
 import { FaultScenariosPanel, FaultScenarioModal } from './ui/fault-scenarios';
-import { CanonicalLayout } from './ui/layout';
+import { CanonicalLayout as CanonicalLayoutV12 } from './ui/layout';
+import { CanonicalLayoutV3 } from './ui/layout/CanonicalLayoutV3';
+
+// Feature flag: VITE_USE_LAYOUT_V3=1 włącza shell V3 (chrome -48% per
+// `docs/audit/DESIGN_IMPL_2026-05-19_KWranPTV.md` § 2). Domyślnie V12.
+const CanonicalLayout = (import.meta.env.VITE_USE_LAYOUT_V3 === '1')
+  ? CanonicalLayoutV3
+  : CanonicalLayoutV12;
 import { SldWorkspaceContainer } from './ui/sld/v2/canvas/SldWorkspaceContainer';
 import { ProjectDashboardSurface } from './ui/workspace/surfaces/ProjectDashboardSurface';
 import { useAppStateStore } from './ui/app-state';

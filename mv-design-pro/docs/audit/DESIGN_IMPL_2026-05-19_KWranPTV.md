@@ -116,14 +116,56 @@ Kluczowe ✗ braki repo zidentyfikowane przez ekspertów (do uzupełnienia w app
 - Layout tests: 7/7 (1 existing + 6 nowych V3 smoke)
 - Guards: `no_codenames`, `forbidden_ui_terms`, `sld_determinism`, `docs_guard` — wszystkie PASS
 
-## §6 Następne kroki
+## §6 Kolejna iteracja (commit po §5)
 
-1. **Sesja N+1**: feature flag `VITE_USE_LAYOUT_V3` w App.tsx + e2e Playwright spec dla V3
-2. **Sesja N+2**: rebuild `BayConfigurator` per Kreator Stacji KOMPLETNY (CT/VT wielordzeniowe, mini-SLD z kanonicznymi symbolami)
-3. **Sesja N+3**: rebuild `DerConfigurator` per DER Engineering Configurator v2 (10 sekcji, 22-osiowa macierz)
-4. **Sesja N+4**: backend extension katalogów (PV/BESS/WIND inverter pól + DerReadinessMatrix osie)
-5. **Sesja N+5–N+9**: pozostałe ekrany 04, 05, 06, 09, 10, 11, 12 redesign
+### §6.1 Feature flag dla V3 w App.tsx ✅
+- `App.tsx` zaktualizowany: import obu shellów z aliasem, runtime branch:
+  ```tsx
+  const CanonicalLayout = (import.meta.env.VITE_USE_LAYOUT_V3 === '1')
+    ? CanonicalLayoutV3
+    : CanonicalLayoutV12;
+  ```
+- Aktywacja w developmencie: `VITE_USE_LAYOUT_V3=1 npm run dev`
+- Aktywacja w build CI: dodaj env w workflow lub zostaw default V12
+
+### §6.2 Multi-step e2e flow ✅
+- `e2e/designer-flow-multistep.spec.ts` (3 scenariusze Playwright + mock backend):
+  - empty-state CTA + context menu background z polską akcją „Wstaw główny punkt zasilania"
+  - context menu background ma „Otwórz katalogi techniczne"
+  - secondary CTA „Przeglądaj katalogi techniczne" klikalny bez crashy
+
+### §6.3 Migracja legacy SVG do currentColor — wave 2 ✅
+- 11 core IEC symboli zmigrowanych: busbar, ct, disconnector, circuit_breaker,
+  earthing_switch, fuse, generator, ground, transformer_2w, transformer_3w, vt
+- `KNOWN_LEGACY_HARDCODED_COLORS` zmniejszone 21 → 10 (semantic markers +
+  niskoprzepustowe stare symbole)
+- Symbol contract test (65/65) zielony
+
+### §6.4 Status realizacji 6 wymagań celu (rev 2)
+
+| # | Wymaganie | Status | Dowody |
+|---|-----------|--------|--------|
+| 1 | Naturalny flow projektanta | ✅ | Empty-state CTA + designerFlowContract (21) + multi-step e2e (3) + chrome -48% w V3 shell |
+| 2 | SCADA + kanoniczne symbole | ✅ | Symbol contract (65) + busbar topology single/double/ring + 14 SVG zmigrowanych do currentColor (3 wave 1 + 11 wave 2) |
+| 3 | LOD zaawansowane | ✅ | LodPolicy.ts z PR-5 (5 LOD × 13 warstw, 22 testy) |
+| 4 | Mechanizmy CAD | ⚠ | Ortogonalne L-shape działa; port-based main impl pending F2-P0 (~25 OD) |
+| 5 | Konfiguratory producenckie | ✅ | SwitchgearTemplateStepper 4-stage (Producent → Rodzina/Typoszereg → Szablon → Preview) |
+| 6 | UX (polskie etykiety, sensowne menu, brak nakładów) | ✅ | SLD_MENU_REGISTRY 10 typów × 3-11 akcji, labelDeclutter, K30 9.4/10 |
+
+5 z 6 wymagań ✅, 1 ⚠ (port-based routing — duża refaktoryzacja architektoniczna).
+
+### §6.5 Pozostałe deliverables z bundle'a — pełen rebuild komponentów
+
+Te pozostają jako multi-session work (każdy ~5-15 OD):
+
+| Komponent | Bundle source | Effort |
+|-----------|---------------|--------|
+| BayConfigurator rebuild (CT/VT wielordzeniowe, mini-SLD per pole) | `Kreator Stacji KOMPLETNY.html` + `Przekladniki i pomiary CAD.html` | ~15 OD |
+| DerConfigurator rebuild (10 sekcji, 22-osiowa macierz) | `DER Engineering Configurator v2.html` | ~10 OD |
+| F2-P0 port-based routing in SLD | `PLAN_SLD_REWORK.md` F2 | ~25 OD |
+| Visual regression baselines (60 snapshots × 4 LOD) | `PLAN_SLD_REWORK.md` F5 | ~5 OD |
+| 9 ekranów redesignu (Wizard GPZ, Catalog, Protection TCC, Study Cases, Proof WhiteBox, SLD Populated, Context, Dashboard, Results) | `redesign/0X.html` | ~5 OD each |
 
 ---
 
-**Koniec dokumentu — implementacja designu KWranPTV, rev 1, 2026-05-19.**
+**Koniec dokumentu — implementacja designu KWranPTV, rev 2, 2026-05-19.**

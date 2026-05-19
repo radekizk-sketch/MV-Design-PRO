@@ -2,14 +2,14 @@
   <!-- Earthing Switch / Odlacznik uziemiajacy - IEC 60617 -->
   <!-- Disconnector blade angled downward + ground symbol below -->
   <!-- Connection stub top -->
-  <line x1="50" y1="0" x2="50" y2="35" stroke="#000000" stroke-width="3"/>
+  <line x1="50" y1="0" x2="50" y2="35" stroke="currentColor" stroke-width="3"/>
   <!-- Contact dot -->
-  <circle cx="50" cy="35" r="4" fill="#000000" stroke="none"/>
+  <circle cx="50" cy="35" r="4" fill="currentColor" stroke="none"/>
   <!-- Open blade angled downward toward ground -->
-  <line x1="50" y1="35" x2="70" y2="55" stroke="#000000" stroke-width="3"/>
+  <line x1="50" y1="35" x2="70" y2="55" stroke="currentColor" stroke-width="3"/>
   <!-- Ground symbol: 3 descending horizontal lines -->
-  <line x1="35" y1="70" x2="65" y2="70" stroke="#000000" stroke-width="3"/>
-  <line x1="40" y1="78" x2="60" y2="78" stroke="#000000" stroke-width="2.5"/>
-  <line x1="45" y1="86" x2="55" y2="86" stroke="#000000" stroke-width="2"/>
+  <line x1="35" y1="70" x2="65" y2="70" stroke="currentColor" stroke-width="3"/>
+  <line x1="40" y1="78" x2="60" y2="78" stroke="currentColor" stroke-width="2.5"/>
+  <line x1="45" y1="86" x2="55" y2="86" stroke="currentColor" stroke-width="2"/>
   <!-- Port markers: top: (50, 0) -->
 </svg>
