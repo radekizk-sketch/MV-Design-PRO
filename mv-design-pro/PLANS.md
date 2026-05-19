@@ -232,6 +232,9 @@ Zakres zakończony:
   - K30 (do 2026-05-16) zamknął 9.4/10 brutalny audyt SLD; 1916 testów SLD v2 zielone.
 - [x] Dodano regresyjny test kontraktu „naturalny flow projektanta": `frontend/src/ui/network-build/__tests__/designerFlowContract.test.ts` (21 testów, all green) — formalizuje 8 kroków flow jako executable specification: Wstaw GPZ → Dodaj sekcję → Dodaj pole SN → Wyprowadź ciąg → Zakończ stacją → Kontynuuj → Rozgałęzienie → Dodaj DER.
 - [x] Walidacja: `npm run type-check` zielone; `npm run lint` zielone; broader vitest suite (context-menu + sld/v2 + network-build) 947/947 zielone (+21 nowe); `no_codenames_guard`, `forbidden_ui_terms_guard`, `docs_guard`, `sld_determinism_guards` — all PASS.
+- [x] **Pakiet A (wymaganie #1 - naturalny flow)**: empty-state CTA „Wstaw Główny Punkt Zasilający" w `SldWorkspaceContainer.tsx` — pierwszy krok flow jest teraz jawny (przycisk uruchamia `add_grid_source_sn`). 3 nowe testy.
+- [x] **Pakiet B (wymaganie #2 - SCADA)**: `symbolContract.test.ts` (65 testów) — kontrakt 54 SVG ↔ ports.json, ring_busbar i double_busbar mają 4 porty, NOWE symbole wymagają currentColor.
+- [x] Pełna walidacja regresji: 3194/3194 testów (`src/ui/sld + context-menu + network-build`) zielone, +44 nowych. Type-check + lint zielone. Wszystkie guardy CI PASS.
 
 Pozostałe duże luki (zachowane jako P0/P1 per § 4.0):
 - F2 port-based routing main impl (P0.3 ~16%)

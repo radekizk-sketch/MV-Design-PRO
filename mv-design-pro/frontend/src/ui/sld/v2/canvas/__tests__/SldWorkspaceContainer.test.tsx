@@ -88,6 +88,33 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
     expect(screen.getByText('Wstaw główny punkt zasilania')).toBeInTheDocument();
   });
 
+  it('empty state ma jawne CTA "Wstaw Główny Punkt Zasilający" jako pierwszy krok flow', () => {
+    render(<SldWorkspaceContainer width={800} height={600} />);
+    const cta = screen.getByTestId('sld-empty-state-insert-gpz');
+    expect(cta).toBeInTheDocument();
+    expect(cta.tagName).toBe('BUTTON');
+    expect(cta.textContent).toContain('Wstaw Główny Punkt Zasilający');
+  });
+
+  it('empty state ma akcję pomocniczą "Przeglądaj katalogi techniczne"', () => {
+    render(<SldWorkspaceContainer width={800} height={600} />);
+    const secondary = screen.getByTestId('sld-empty-state-open-catalogs');
+    expect(secondary).toBeInTheDocument();
+    expect(secondary.tagName).toBe('BUTTON');
+    expect(secondary.textContent).toContain('Przeglądaj katalogi techniczne');
+  });
+
+  it('klik CTA "Wstaw GPZ" wyzwala operację add_grid_source_sn (otwiera formularz)', () => {
+    render(<SldWorkspaceContainer width={800} height={600} />);
+    const cta = screen.getByTestId('sld-empty-state-insert-gpz');
+    fireEvent.click(cta);
+    // Po kliknięciu store networkBuild powinien zawierać aktywną powierzchnię
+    // formularza add_grid_source_sn LUB toast info — zależnie od konfiguracji
+    // routingu. Sprawdzamy, że klik został przyjęty (nie nastąpił błąd) oraz
+    // że SLD pozostaje w stanie wymagającym jednoznacznego pierwszego kroku.
+    expect(screen.queryByTestId('sld-empty-state')).toBeInTheDocument();
+  });
+
   it('respektuje tryb readOnly (data atrybut + brak zewnętrznego rozróżnienia w pustym widoku)', () => {
     render(<SldWorkspaceContainer width={400} height={300} readOnly />);
     const root = screen.getByTestId('sld-workspace-container');

@@ -1749,14 +1749,16 @@ export function SldWorkspaceContainer(
         />
       ))}
 
-      {/* Pusty stan — kanoniczny komunikat polski. */}
+      {/* Pusty stan — kanoniczny komunikat polski z aktywnym CTA "Wstaw GPZ".
+       *  Audyt 2026-05-19: pierwszy krok flow musi być jawny — operator nie
+       *  powinien zgadywać, że ma kliknąć prawym przyciskiem. */}
       {isEmpty && (
         <div
           data-testid="sld-empty-state"
-          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+          className="absolute inset-0 flex items-center justify-center"
           onContextMenu={handleEmptyStateContextMenu}
         >
-          <div className="pointer-events-none max-w-md rounded border border-scada-border bg-scada-panel/95 p-6 text-center text-scada-text shadow-xl">
+          <div className="max-w-md rounded border border-scada-border bg-scada-panel/95 p-6 text-center text-scada-text shadow-xl">
             <div className="mb-2 text-sm font-bold uppercase tracking-widest text-scada-muted">
               Schemat jednokreskowy
             </div>
@@ -1764,13 +1766,39 @@ export function SldWorkspaceContainer(
               Schemat oczekuje na dane modelu sieci
             </h2>
             <p className="text-sm leading-6 text-scada-muted">
-              Rozpocznij budowę od wstawienia Głównego Punktu Zasilającego.
-              Kliknij prawym przyciskiem myszy na kanwie, aby otworzyć menu
-              kontekstowe budowy modelu.
+              Rozpocznij budowę od wstawienia Głównego Punktu Zasilającego (GPZ).
+              Następne kroki: dodanie sekcji rozdzielni, pól SN, wyprowadzenie
+              ciągu kablowego i zakończenie stacją.
             </p>
+            <div className="mt-4 flex flex-col items-stretch gap-2">
+              <button
+                type="button"
+                data-testid="sld-empty-state-insert-gpz"
+                className="rounded border border-blue-500 bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleAction('insert-gpz', 'background', null);
+                }}
+              >
+                Wstaw Główny Punkt Zasilający
+              </button>
+              <button
+                type="button"
+                data-testid="sld-empty-state-open-catalogs"
+                className="rounded border border-scada-border bg-scada-surface px-4 py-2 text-sm text-scada-text hover:bg-scada-hover-nav focus:outline-none focus:ring-2 focus:ring-scada-border"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleAction('open-catalogs', 'background', null);
+                }}
+              >
+                Przeglądaj katalogi techniczne
+              </button>
+            </div>
             <p className="mt-3 text-xs text-scada-muted">
-              Pomoc inżynierska: prawy klik na elementach modelu otwiera akcje
-              właściwe dla danego obiektu (pole, stacja, kabel, źródło OZE).
+              Pomoc: prawy klik w dowolnym miejscu kanwy otwiera menu
+              kontekstowe budowy modelu.
             </p>
           </div>
         </div>

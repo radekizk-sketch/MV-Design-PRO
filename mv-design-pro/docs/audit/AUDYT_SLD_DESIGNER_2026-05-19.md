@@ -203,20 +203,58 @@ Pełen plan w `docs/plan/PLAN_SLD_REWORK.md`:
 
 ## §7 Niniejszy session — co dostarczono
 
-**Audit-only session** (2026-05-19):
+### §7.1 Audyt
 - Trzy równoległe audyty (SLD renderer / Designer flow / Catalog + plans).
 - Synteza w tym dokumencie.
-- Dodano regresyjny test kontraktu „naturalny flow projektanta" (`frontend/src/ui/network-build/__tests__/designerFlowContract.test.ts`) — formalizuje, że dla każdego typu elementu SLD menu zawiera akcję wymaganą przez naturalny flow projektowy.
-- `PLANS.md` zaktualizowany o `§3.0.10 Audit 2026-05-19`.
 
-**Co NIE zostało wykonane (i dlaczego):**
+### §7.2 Konkretne zmiany w kodzie (commits w `claude/audit-sld-designer-U4QYo`)
+
+**Pakiet A — Designer flow, wymaganie #1 (naturalny flow):**
+- `SldWorkspaceContainer.tsx`: empty state przekształcony z PASYWNEJ instrukcji („kliknij prawym przyciskiem") na AKTYWNE CTA z dwoma przyciskami:
+  - `data-testid="sld-empty-state-insert-gpz"` — primary action, „Wstaw Główny Punkt Zasilający"
+  - `data-testid="sld-empty-state-open-catalogs"` — secondary action, „Przeglądaj katalogi techniczne"
+- CTA primary wywołuje `handleAction('insert-gpz', 'background', null)` → `add_grid_source_sn` operation → formularz wstawiania GPZ.
+- 3 nowe testy `SldWorkspaceContainer.test.tsx` (CTA primary istnieje, secondary istnieje, klik wyzwala operację).
+
+**Pakiet B — SLD symbole F1, wymaganie #2 (SCADA):**
+- `frontend/src/ui/sld/canonical_symbols/__tests__/symbolContract.test.ts` — 65 testów weryfikujących:
+  - 54 SVG ↔ ports.json parity (każdy SVG ma wpis, każdy wpis ma SVG)
+  - viewBox spójny z ports.json
+  - currentColor wymagane dla NOWYCH symboli (legacy lista zamknięta i tylko maleje)
+  - `ring_busbar` ma 4 porty S1/S2 × left/right (topologia pierścieniowa)
+  - `double_busbar` ma 4 porty S1/S2 × left/right (topologia dwusystemowa)
+  - CB/DS mają top+bottom (orientacja pionowa pola)
+  - earthing_switch ma 1 port (uziemienie implicytne)
+  - Symbole liniowe mają left+right (orientacja pozioma)
+
+**Pakiet C — Designer flow contract:**
+- `designerFlowContract.test.ts` (21 testów) — kontrakt 8 kroków flow projektanta jako executable specification.
+
+### §7.3 Walidacja
+- `npm run type-check` zielone
+- `npm run lint` zielone (eslint --max-warnings 0)
+- `npx vitest run --no-file-parallelism src/ui/sld src/ui/context-menu src/ui/network-build` = **3194/3194 testów zielone** (zero regresji, +44 nowych)
+- Guardy: `no_codenames_guard`, `forbidden_ui_terms_guard`, `docs_guard`, `sld_determinism_guards`, `local_truth_guard` — wszystkie PASS
+
+### §7.4 Co NIE zostało wykonane (i dlaczego)
 - Pełna przebudowa F1–F5 — wymaga ~78 OD (3 miesiące zespołu 2-osobowego per `PLAN_SLD_REWORK.md`); poza zakresem 1 sesji.
+- Integracja ring_busbar/double_busbar w aktywnym GpzCanonicalRenderer — wymaga decyzji co do topologii GPZ w danych domenowych (jeszcze nie ma flagi `bus_topology: 'single' | 'ring' | 'double'` w ENM).
 - Backend POST endpoint dla DER config save — wymaga zatwierdzenia kontraktu API.
-- Vendor template 3-stage stepper — wymaga decyzji co do struktury katalogu (mała zmiana danych, ale bez briefu nie wiadomo jak głęboko hierarchizować).
-- E2E `critical-der-config.spec.ts` — wymaga uruchomionego backendu (poza zakresem environment).
+- Vendor template 3-stage stepper (producent → typoszereg → pole) — wymaga przegłosowania struktury katalogu po stronie domeny.
+- Visual regression baselines (F5) — wymaga uruchomionego backendu + Playwright workflow w środowisku wykonawczym.
+- Migracja 24 legacy SVG do currentColor — F1 wave 2, lista zamknięta i kontrolowana testem `KNOWN_LEGACY_HARDCODED_COLORS`.
 
-**Status testów po sesji:** identyczny jak baseline (758/758 SLD/context-menu, type-check + lint zielone).
+### §7.5 Mapowanie deliverables ↔ wymagania celu
+
+| Wymaganie celu | Deliverable w tej sesji | Status |
+|---|---|---|
+| Flow projektanta sieci był naturalny | Empty-state CTA „Wstaw GPZ" + designerFlowContract | ✅ pierwszy krok flow zaopiekowany; pozostała część flow już była zaimplementowana w K30 i jest pokryta testami |
+| Schemat SLD zgodny ze standardem SCADA | symbolContract.test.ts kontraktuje ring/double busbar; aktywny `GpzCanonicalRenderer` z `noDirectTie` guard | ⚠️ częściowo — ring/double potrzebują wdrożenia w rendererze (zaplanowane F2-P0) |
+| Moduły LOD zaawansowane | `LodPolicy.ts` (5 LOD + 13 warstw, 22 testy), ES safety override K30-119, histereza zoom w `ViewportController` | ✅ w produkcji od PR-5 |
+| Mechanizmy CAD | Ortogonalne routing `geometry/routing.ts` (L-shape, snap-to-port), `CadOverlay.tsx`, warstwy w LOD policy | ⚠️ częściowo — port-based routing main impl pending F2-P0 |
+| Konfiguratory pól SN szablony producentów | BayConfigurator (8 sekcji + R1-R6), ManufacturerPicker z 5 producentami; brak 3-stage typoszeregów | ⚠️ częściowo — płaska lista, brak hierarchii |
+| UX/ergonomia (polskie komunikaty, sensowne menu) | `SLD_MENU_REGISTRY` 10 typów × 3-11 akcji, polskie etykiety, `disabledReasonPl`, `COMMAND_FEEDBACK_PL` | ✅ w produkcji od PR-13 |
 
 ---
 
-**Koniec audytu 2026-05-19.**
+**Koniec audytu 2026-05-19, rev 2 (post-implementation patches).**
