@@ -154,6 +154,58 @@ Kluczowe ✗ braki repo zidentyfikowane przez ekspertów (do uzupełnienia w app
 
 5 z 6 wymagań ✅, 1 ⚠ (port-based routing — duża refaktoryzacja architektoniczna).
 
+## §7 Iteracja 5 — Kreator Stacji KOMPLETNY skeleton
+
+### §7.1 Kontrakt 17-krokowy + helpers
+- `frontend/src/ui/network-build/station-wizard-v2/stationWizardContract.ts` —
+  pełna definicja workflow z bundle: 17 kroków, 7 grup, mapowanie ekspertów (6 ekspertów × ścieżki kroków = pokrycie 69 uwag z `Audyt ekspercki - Kreator Stacji.html`).
+- Helpers: `getStationWizardStep`, `getStepsInGroup`, `getNextStep`, `getPrevStep`.
+- TypeScript types eksportowane: `StationWizardStepId`, `StationWizardGroup`, `StationWizardStepDefinition`.
+
+### §7.2 Skeleton komponentu sidebaru
+- `frontend/src/ui/network-build/station-wizard-v2/StationWizardSidebar.tsx` —
+  prezentacyjny komponent z 17 krokami zgrupowanymi w 7 sekcji, density toggle
+  (compact 240px / comfortable 320px), wsparcie completed/error states,
+  full keyboard + ARIA (role nav + aria-current + aria-label).
+- **NIE jest jeszcze wpięty** — czeka na decyzję architektoniczną o
+  miejscu w shellu (E-?? surface lub `InsertStationForm` rebuild).
+
+### §7.3 Testy
+- `__tests__/stationWizardContract.test.ts` (32 testy) — formalizacja
+  17-krokowego workflow jako regression boundary
+- `__tests__/StationWizardSidebar.test.tsx` (11 testów) — komponent
+  prezentacyjny, klikalność, ARIA, density toggle
+
+### §7.4 Status pełnej implementacji
+Skeleton zapewnia **fundament struktury** Kreatora KOMPLETNEGO bez treści
+poszczególnych kroków. Każdy z 17 kroków wymaga osobnej implementacji UI:
+
+| Krok | Wymagana zawartość per bundle | Effort |
+|------|-------------------------------|--------|
+| 1. cable | Picker katalogowy + termika derating + ΔU calc + diagram topologii | 1 OD |
+| 2. switchgear | Vendor cards (ABB SafePlus, Schneider RM6, Siemens 8DJH, Eaton, Elektrobudowa) z IAC/IP/LSC + wymiary | 1 OD |
+| 3. bays | Mini-SLD per pole z kanonicznymi symbolami IEC + interlocking matrix | 2 OD |
+| 4. apparatus | Q1/Q2/Q3 picker z katalogu + parametry | 1 OD |
+| 5. ct | CT 3-rdzeniowy + bilans obciążeń + ALF saturation check | 2 OD |
+| 6. vt | VT 4-uzwojeniowy + bilans + ΔU obwodów wtórnych | 2 OD |
+| 7. meters | LZQJ-XC / ZMD405 / MT880 + mapowanie rdzeń CT ↔ uzwojenie VT | 1 OD |
+| 8. trafo | OLTC/DETC + chłodzenie ONAN/ONAF + inrush 2H + ppoż | 1 OD |
+| 9. earthing | Rz + siatka + Ut/Us limity (NOWY krok wg audytu) | 1 OD |
+| 10. nn | Rozdzielnica nN + pola + obciążenia | 1 OD |
+| 11. sources | PV stringi DC + BESS degradacja + FW P(v) | 2 OD |
+| 12. pq | THDu + flicker PST + hosting capacity (NOWY krok) | 1 OD |
+| 13. protection | TCC + LoM + backup per pole | 1 OD |
+| 14. ncrfg | P(f) + grid-forming + reverse | 1 OD |
+| 15. infra | SCADA/RTU + DI/DO/AI/AO + IEC 61850 (NOWY krok) | 1 OD |
+| 16. network | Profil U(x) + Ik PCC + straty + SAIDI (NOWY krok) | 1 OD |
+| 17. readiness | 29-osiowa macierz + obliczenia + raport | 1 OD |
+
+**Razem ~20 OD pozostało na pełen rebuild każdego kroku.** Skeleton z tej
+sesji eliminuje ryzyko architektoniczne (struktura jest zamknięta i testowana),
+a każdy krok można rozwijać niezależnie w kolejnych sesjach bez konfliktów.
+
+---
+
 ### §6.5 Pozostałe deliverables z bundle'a — pełen rebuild komponentów
 
 Te pozostają jako multi-session work (każdy ~5-15 OD):
