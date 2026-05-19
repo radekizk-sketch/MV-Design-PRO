@@ -230,6 +230,25 @@ Pełen plan w `docs/plan/PLAN_SLD_REWORK.md`:
 **Pakiet C — Designer flow contract:**
 - `designerFlowContract.test.ts` (21 testów) — kontrakt 8 kroków flow projektanta jako executable specification.
 
+**Pakiet D — Busbar topology w GpzCanonicalRenderer (wymaganie #2 SCADA, F1):**
+- `GpzCanonicalRenderer.tsx`: dodano `CanonicalGpzBusbarTopology = 'single' | 'double' | 'ring'` w `CanonicalGpzSection`, default `single`.
+- `LvSection` rysuje:
+  - `single` (default): 1 szyna `data-busbar-role="primary"` (zachowanie wsteczne)
+  - `double`: 2 szyny (S1 primary + S2 reserve, S2 dasharray="6 3" IEC 60617)
+  - `ring`: 2 szyny (S1 + S2 solid) + ring closure po prawej (`data-testid="...ring-closure"`)
+- Atrybut `data-busbar-topology` i `data-section-layout` testowalny per sekcja.
+- 5 nowych testów `GpzCanonicalRenderer.busbarTopology.test.tsx` (single default, single explicit, double, ring, multi-section).
+- **WAŻNE**: zachowanie wsteczne — istniejące 42+1 testów `GpzCanonicalRenderer.test.tsx` + `noDirectTie.test.tsx` przechodzą bez zmian.
+
+**Pakiet E — Migracja legacy SVG do currentColor (F1 wave 2):**
+- `bess.svg`, `pv.svg`, `fw.svg` zmigrowane z `#000000` → `currentColor`.
+- Lista `KNOWN_LEGACY_HARDCODED_COLORS` w `symbolContract.test.ts` zmniejszona z 24 → 21 symboli (3 zmigrowane).
+- Test wymusza, że lista nie może rosnąć — każde dodanie symbolu bez currentColor zawiedzie CI.
+
+**Pakiet F — E2E spec dla designer flow (Playwright, mock backend):**
+- `e2e/designer-flow-empty-state-cta.spec.ts` — scenariusz: Dashboard → Nowy projekt → SLD workspace → empty state widoczny → 2 CTA widoczne i etykietowane po polsku → klik primary CTA → bez crashy / błędów konsoli.
+- Używa `page.route` (mock backend), nie wymaga uruchomionego serwera.
+
 ### §7.3 Walidacja
 - `npm run type-check` zielone
 - `npm run lint` zielone (eslint --max-warnings 0)
@@ -248,11 +267,11 @@ Pełen plan w `docs/plan/PLAN_SLD_REWORK.md`:
 
 | Wymaganie celu | Deliverable w tej sesji | Status |
 |---|---|---|
-| Flow projektanta sieci był naturalny | Empty-state CTA „Wstaw GPZ" + designerFlowContract | ✅ pierwszy krok flow zaopiekowany; pozostała część flow już była zaimplementowana w K30 i jest pokryta testami |
-| Schemat SLD zgodny ze standardem SCADA | symbolContract.test.ts kontraktuje ring/double busbar; aktywny `GpzCanonicalRenderer` z `noDirectTie` guard | ⚠️ częściowo — ring/double potrzebują wdrożenia w rendererze (zaplanowane F2-P0) |
+| Flow projektanta sieci był naturalny | Empty-state CTA „Wstaw GPZ" (Pakiet A) + designerFlowContract (21 testów) + E2E spec (Pakiet F) | ✅ pierwszy krok flow zaopiekowany; pozostała część flow zaimplementowana w K30 i pokryta testami |
+| Schemat SLD zgodny ze standardem SCADA | symbolContract (Pakiet B) + busbar topology single/double/ring w GpzCanonicalRenderer (Pakiet D) + currentColor migration (Pakiet E) | ✅ ring/double **wdrożone w aktywnym rendererze** (Pakiet D); migracja symboli rozpoczęta |
 | Moduły LOD zaawansowane | `LodPolicy.ts` (5 LOD + 13 warstw, 22 testy), ES safety override K30-119, histereza zoom w `ViewportController` | ✅ w produkcji od PR-5 |
-| Mechanizmy CAD | Ortogonalne routing `geometry/routing.ts` (L-shape, snap-to-port), `CadOverlay.tsx`, warstwy w LOD policy | ⚠️ częściowo — port-based routing main impl pending F2-P0 |
-| Konfiguratory pól SN szablony producentów | BayConfigurator (8 sekcji + R1-R6), ManufacturerPicker z 5 producentami; brak 3-stage typoszeregów | ⚠️ częściowo — płaska lista, brak hierarchii |
+| Mechanizmy CAD | Ortogonalne routing `geometry/routing.ts` (L-shape, snap-to-port), `CadOverlay.tsx`, warstwy w LOD policy | ⚠️ częściowo — port-based routing main impl pending F2-P0 (~25 OD) |
+| Konfiguratory pól SN szablony producentów | **`SwitchgearTemplateStepper.tsx` 3-stage (Producent → Rodzina/Typoszereg → Szablon → Preview) JUŻ ISTNIEJE**; backend ma `/api/catalog/switchgear-families`; BayConfigurator (8 sekcji + R1-R6); ManufacturerPicker z 5 producentami | ✅ pełna hierarchia istnieje, ten audyt potwierdza |
 | UX/ergonomia (polskie komunikaty, sensowne menu) | `SLD_MENU_REGISTRY` 10 typów × 3-11 akcji, polskie etykiety, `disabledReasonPl`, `COMMAND_FEEDBACK_PL` | ✅ w produkcji od PR-13 |
 
 ---

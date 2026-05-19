@@ -80,11 +80,12 @@ describe('Symbol Contract — IEC 60617 canonical library (F1)', () => {
    */
   const KNOWN_LEGACY_HARDCODED_COLORS = new Set([
     'alarm_marker',           // semantic red — z założenia
-    'bess', 'busbar', 'capacitor', 'circuit_breaker', 'ct', 'disconnector',
-    'earthing_switch', 'fuse', 'fw', 'generator', 'ground', 'line_cable',
+    'busbar', 'capacitor', 'circuit_breaker', 'ct', 'disconnector',
+    'earthing_switch', 'fuse', 'generator', 'ground', 'line_cable',
     'line_overhead', 'load', 'metering_cubicle', 'missing_data_marker',
-    'motor', 'pv', 'reactor', 'surge_arrester', 'transformer_2w',
+    'motor', 'reactor', 'surge_arrester', 'transformer_2w',
     'transformer_3w', 'utility_feeder', 'vt',
+    // Zmigrowane do currentColor 2026-05-19: bess, pv, fw
   ]);
 
   it.each(listSvgFiles())('SVG %s ma viewBox zgodny z ports.json + currentColor (lub legacy)', (name) => {

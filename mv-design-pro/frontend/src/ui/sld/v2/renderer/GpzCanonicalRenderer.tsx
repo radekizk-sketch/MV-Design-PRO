@@ -46,6 +46,19 @@ import { useSldLod } from '../lod/SldLodContext';
    Domain types (z ENM, projected to canonical SLD)
    ============================================================================= */
 
+/**
+ * Topologia szyny w sekcji GPZ — IEC 60617 + PLAN_SLD_REWORK F1 §3.3.
+ *
+ *   - `single`  : pojedyncza szyna (default, większość GPZ 110/SN)
+ *   - `double`  : dwie niezależne szyny S1 + S2 (operator wybiera per pole)
+ *   - `ring`    : dwie szyny S1 + S2 z zamknięciem po prawej (pierścień)
+ *
+ * Symbol kanoniczny: `canonical_symbols/double_busbar.svg` / `ring_busbar.svg`.
+ * Wybór topologii wynika z modelu domenowego (ENM) i nie zmienia liczby
+ * obiektów `Bay`, tylko warstwę wizualną szyny.
+ */
+export type CanonicalGpzBusbarTopology = 'single' | 'double' | 'ring';
+
 export interface CanonicalGpzSection {
   /** Stable id z ENM (`Substation.gpz_sections[].section_id`). */
   readonly sectionId: string;
@@ -57,6 +70,8 @@ export interface CanonicalGpzSection {
   readonly busVoltageKv: number;
   /** Lista pól na sekcji. */
   readonly bays: readonly CanonicalGpzBay[];
+  /** Topologia szyny (single/double/ring). Default: `single`. */
+  readonly busbarTopology?: CanonicalGpzBusbarTopology;
 }
 
 export interface CanonicalGpzBay {
@@ -1021,6 +1036,9 @@ interface LvSectionProps {
   readonly onContextMenuApparatus?: (selection: CanonicalGpzApparatusSelection, evt: { clientX: number; clientY: number }) => void;
 }
 
+/** Offset Y dla szyny zapasowej S2 w topologii double/ring. */
+const LV_BUS_S2_OFFSET = -14;
+
 function LvSection(props: LvSectionProps): JSX.Element {
   const {
     section,
@@ -1034,13 +1052,19 @@ function LvSection(props: LvSectionProps): JSX.Element {
     onClickApparatus,
     onContextMenuApparatus,
   } = props;
+  const topology: CanonicalGpzBusbarTopology = section.busbarTopology ?? 'single';
   return (
     <g
       data-testid={`gpz-canonical-section-${section.sectionId}`}
       data-parity-key="gpz.section"
       data-section-label={section.label}
       data-section-voltage={String(section.busVoltageKv)}
-      data-section-layout="single-bus-segment"
+      data-section-layout={
+        topology === 'single' ? 'single-bus-segment' :
+        topology === 'double' ? 'double-bus-segment' :
+        'ring-bus-segment'
+      }
+      data-busbar-topology={topology}
       transform={`translate(${x}, ${y})`}
       onContextMenu={
         onContextMenuSection
@@ -1067,7 +1091,7 @@ function LvSection(props: LvSectionProps): JSX.Element {
         />
       ))}
 
-      {/* Szyna SN musi być warstwą nad kolumnami pól, jak w ekranach operatorskich. */}
+      {/* Szyna SN — primary (S1) zawsze widoczna, warstwą nad kolumnami pól. */}
       <line
         x1={0}
         y1={0}
@@ -1077,8 +1101,41 @@ function LvSection(props: LvSectionProps): JSX.Element {
         strokeWidth={4}
         strokeLinecap="square"
         data-parity-key="gpz.bus.sn"
+        data-busbar-role="primary"
         data-testid={`gpz-canonical-section-${section.sectionId}-bus`}
       />
+
+      {/* Szyna zapasowa (S2) — tylko dla double/ring (IEC 60617 §S00102). */}
+      {(topology === 'double' || topology === 'ring') && (
+        <line
+          x1={0}
+          y1={LV_BUS_S2_OFFSET}
+          x2={width}
+          y2={LV_BUS_S2_OFFSET}
+          stroke={COLOR_BUS_LV}
+          strokeWidth={3}
+          strokeLinecap="square"
+          strokeDasharray={topology === 'double' ? '6 3' : undefined}
+          data-parity-key="gpz.bus.sn.s2"
+          data-busbar-role="reserve"
+          data-testid={`gpz-canonical-section-${section.sectionId}-bus-s2`}
+        />
+      )}
+
+      {/* Zamknięcie pierścienia (right-side connector) — tylko dla ring. */}
+      {topology === 'ring' && (
+        <line
+          x1={width}
+          y1={LV_BUS_S2_OFFSET}
+          x2={width}
+          y2={0}
+          stroke={COLOR_BUS_LV}
+          strokeWidth={3}
+          strokeLinecap="square"
+          data-parity-key="gpz.bus.sn.ring-closure"
+          data-testid={`gpz-canonical-section-${section.sectionId}-ring-closure`}
+        />
+      )}
     </g>
   );
 }
