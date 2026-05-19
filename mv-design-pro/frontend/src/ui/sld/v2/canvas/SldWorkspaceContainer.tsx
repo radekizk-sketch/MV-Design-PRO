@@ -1795,6 +1795,14 @@ export function SldWorkspaceContainer(
               >
                 Przeglądaj katalogi techniczne
               </button>
+              {/* Kreator Stacji KOMPLETNY v2 — 17 kroków per /goal */}
+              <a
+                href="#kreator-stacji-v2"
+                data-testid="sld-empty-state-open-station-wizard"
+                className="rounded border border-emerald-500/50 bg-emerald-500/10 px-4 py-2 text-center text-sm font-medium text-emerald-300 hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                Otwórz Kreator Stacji KOMPLETNY (17 kroków)
+              </a>
             </div>
             <p className="mt-3 text-xs text-scada-muted">
               Pomoc: prawy klik w dowolnym miejscu kanwy otwiera menu
