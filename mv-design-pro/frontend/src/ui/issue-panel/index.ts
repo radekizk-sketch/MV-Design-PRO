@@ -4,3 +4,5 @@
 
 export { IssuePanel } from './IssuePanel';
 export type { IssuePanelProps } from './IssuePanel';
+export { IssuePanelContainer } from './IssuePanelContainer';
+export type { IssuePanelContainerProps } from './IssuePanelContainer';

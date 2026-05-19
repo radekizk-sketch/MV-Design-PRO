@@ -113,11 +113,11 @@ export function GuidedBuildActionPanel() {
   } = useNetworkBuildDerived();
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
 
-  const firstOpenTerminal = openTerminals[0] ?? null;
-  const firstConfiguredField = configuredGpzSnFields[0] ?? null;
-  const firstUnconfiguredField = unconfiguredGpzSnFields[0] ?? null;
+  const firstOpenTerminal = (openTerminals ?? [])[0] ?? null;
+  const firstConfiguredField = (configuredGpzSnFields ?? [])[0] ?? null;
+  const firstUnconfiguredField = (unconfiguredGpzSnFields ?? [])[0] ?? null;
   const firstOpenTerminalField = firstOpenTerminal
-    ? configuredGpzSnFields.find((field) => field.ref_id === firstOpenTerminal.element_id) ?? null
+    ? (configuredGpzSnFields ?? []).find((field) => field.ref_id === firstOpenTerminal.element_id) ?? null
     : null;
   const firstSegmentId = useMemo(
     () => (logicalViews?.trunks ?? []).flatMap((trunk) => trunk.segments)[0] ?? null,

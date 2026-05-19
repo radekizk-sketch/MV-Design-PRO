@@ -30,8 +30,8 @@ describe('inspector-tabs - Inspektor techniczny', () => {
     render(<EmptyInspectorPanel selectedElement={null} />);
     expect(screen.queryByText('Karta semantyczna')).not.toBeInTheDocument();
     expect(screen.getByText('Inspektor techniczny')).toBeInTheDocument();
-    expect(screen.getByText('Brak wyboru')).toBeInTheDocument();
-    expect(screen.getByText(/Wybierz GPZ/)).toBeInTheDocument();
+    // Empty state nowy (UI/UX 100% Zadanie 7) — CTA + opis bez 10× "—".
+    expect(screen.getByText(/Wybierz element ze schematu/i)).toBeInTheDocument();
     expect(screen.queryByRole('tab')).not.toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { clsx } from 'clsx';
 import type { SelectedElement, ElementType } from '../types';
+import { formatDisplayId } from '../shell/displayHelpers';
 import { getVisibleInspectorTabs, type InspectorTabId } from './inspectorTabRegistry';
 
 const ELEMENT_TYPE_LABELS_PL: Record<ElementType, string> = {
@@ -120,46 +121,40 @@ export function EmptyInspectorPanel({
       >
         <InspectorSectionTitle title="Inspektor techniczny" />
         <div className="flex-1 overflow-auto p-3">
-          <section className="rounded border border-scada-border bg-scada-surface p-3">
-            <h3 className="text-[11px] font-semibold uppercase tracking-widest text-scada-muted">
-              Brak wyboru
-            </h3>
-            <p className="mt-2 text-[12px] leading-snug text-scada-muted">
-              Wybierz GPZ, pole SN, odcinek, stację albo wynik na schemacie, aby zobaczyć
-              parametry techniczne, braki danych, wyniki i dostępne akcje.
-            </p>
+          <section className="rounded border border-scada-border bg-scada-surface p-4">
+            <div className="flex items-start gap-3">
+              <span
+                aria-hidden
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-scada-border bg-scada-bg text-scada-muted"
+              >
+                <CursorIcon />
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-[12px] font-semibold uppercase tracking-widest text-scada-text">
+                  Wybierz element ze schematu
+                </h3>
+                <p className="mt-1.5 text-[11px] leading-relaxed text-scada-muted">
+                  Kliknij na kanwie SLD: GPZ, pole SN, aparat, odcinek, stację albo
+                  wynik analizy. Inspektor pokaże wówczas parametry techniczne, braki
+                  danych, ustawienia zabezpieczeń, wyniki obliczeń i dostępne akcje
+                  domenowe — bez szumu identyfikatorów programisty.
+                </p>
+              </div>
+            </div>
           </section>
 
-          <div className="mt-3 space-y-2">
-            <InspectorField label="Nazwa" value="—" />
-            <InspectorField label="Opis" value="—" />
-            <InspectorField label="Producent" value="—" />
-            <InspectorField label="Typ" value="—" />
-            <InspectorField label="Prąd znamionowy" value="—" />
-            <InspectorField label="Prąd zwarciowy wytrz." value="—" />
-            <InspectorField label="Napięcie znamionowe" value="—" />
-            <InspectorField label="Częstotliwość" value="—" />
-            <InspectorField label="Rodzaj pola" value="—" />
-            <InspectorField label="Zabudowa" value="—" />
-          </div>
-
-          <div className="mt-5 flex items-center justify-between">
-            <h3 className="text-[12px] font-semibold text-scada-text">Zabezpieczenia</h3>
-            <span className="text-emerald-400">●</span>
-          </div>
-          <div className="mt-2 space-y-2">
-            <InspectorField label="Typ zabezpieczenia" value="—" />
-            <InspectorField label="Funkcje" value="—" />
-            <InspectorField label="Nastawy" value="—" />
-          </div>
-
-          <div className="mt-5">
-            <h3 className="text-[12px] font-semibold text-scada-text">Uwagi</h3>
-            <div className="mt-2 flex h-8 items-center justify-between rounded-sm border border-scada-border bg-scada-bg px-2 text-[11px] text-scada-muted">
-              <span>0</span>
-              <span className="text-scada-text">+</span>
-            </div>
-          </div>
+          {!isReadOnly && (
+            <section className="mt-3 rounded border border-scada-border bg-scada-surface p-3">
+              <h4 className="text-[11px] font-semibold uppercase tracking-widest text-scada-muted">
+                Tryb budowy modelu
+              </h4>
+              <p className="mt-2 text-[11px] leading-snug text-scada-muted">
+                Aby rozpocząć projekt sieci SN: wstaw GPZ z menu kontekstowego kanwy,
+                dodaj sekcję rozdzielni, pola SN, wyprowadź odcinek, zakończ stacją
+                i kontynuuj ciąg. Każdy krok prowadzi prawy panel inspektora.
+              </p>
+            </section>
+          )}
         </div>
       </div>
     );
@@ -190,9 +185,16 @@ export function EmptyInspectorPanel({
             Identyfikacja
           </h3>
           <dl className="mt-3 space-y-2 text-[12px]">
-            <InspectorRow label="Nazwa" value={selectedElement.name || selectedElement.id} />
+            <InspectorRow
+              label="Nazwa"
+              value={formatDisplayId(selectedElement.id, selectedElement.name ?? null)}
+            />
             <InspectorRow label="Typ obiektu" value={typeLabel} />
-            <InspectorRow label="Identyfikator techniczny" value={selectedElement.id} mono />
+            <InspectorRow
+              label="Identyfikator techniczny"
+              value={formatDisplayId(selectedElement.id, null)}
+              mono
+            />
           </dl>
         </section>
 
@@ -286,37 +288,32 @@ function InspectorSectionTitle({ title }: { title: string }) {
   );
 }
 
-function InspectorField({
-  label,
-  value,
-  tone = 'default',
-}: {
-  label: string;
-  value: string;
-  tone?: 'default' | 'ok' | 'warn';
-}) {
-  return (
-    <label className="grid grid-cols-[112px_minmax(0,1fr)] items-center gap-2 text-[11px]">
-      <span className="truncate text-scada-muted" title={label}>{label}</span>
-      <span
-        className={clsx(
-          'flex h-7 min-w-0 items-center justify-between rounded-sm border border-scada-border bg-scada-bg px-2 text-scada-text',
-          tone === 'ok' && 'text-emerald-300',
-          tone === 'warn' && 'text-amber-300',
-        )}
-        title={value}
-      >
-        <span className="truncate">{value}</span>
-        <ChevronDown />
-      </span>
-    </label>
-  );
-}
+// InspectorField helper removed — 10 placeholder fields ("—") replaced
+// przez CTA guided stepper w empty state (Zadanie 7 planu UI/UX 100%).
 
 function ChevronDown() {
   return (
     <svg className="h-3 w-3 shrink-0 text-scada-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+    </svg>
+  );
+}
+
+function CursorIcon() {
+  return (
+    <svg
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      strokeWidth={1.6}
+      aria-hidden
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"
+      />
     </svg>
   );
 }

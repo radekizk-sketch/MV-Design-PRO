@@ -59,6 +59,18 @@ import { AREA_DEFINITIONS, type AreaId } from '../navigation/areaRegistry';
 import { TechnicalIcon } from '../icons/technicalIconRegistry';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import type { ResultStatus } from '../types';
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconChevronDown,
+  IconClipboard,
+  IconPlay,
+  IconSearch,
+  IconGear,
+} from '../icons/shellIcons';
+import {
+  projectDisplayName as sharedProjectDisplayName,
+} from '../shell/displayHelpers';
 
 // =============================================================================
 // Types
@@ -117,78 +129,10 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable;
 }
 
-function looksLikeTechnicalId(value: string | null | undefined): boolean {
-  if (!value) return false;
-  const t = value.trim();
-  return /[0-9a-f]{8}-[0-9a-f]{4}/i.test(t) || /^E2E[_-]/i.test(t) || /^[0-9a-f]{16,}$/i.test(t);
-}
+// looksLikeTechnicalId + projectDisplayName promovane do `shell/displayHelpers.ts`.
+const projectDisplayName = sharedProjectDisplayName;
 
-function projectDisplayName(name: string | null | undefined, id: string | null | undefined): string {
-  if (name && !looksLikeTechnicalId(name)) return name;
-  if (id) return 'Projekt bez nazwy';
-  return '—';
-}
-
-// =============================================================================
-// Icons (inline SVG — zero dependencies)
-// =============================================================================
-
-function IconChevronLeft({ className }: { className?: string }) {
-  return (
-    <svg className={clsx('h-4 w-4', className)} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-    </svg>
-  );
-}
-
-function IconChevronRight({ className }: { className?: string }) {
-  return (
-    <svg className={clsx('h-4 w-4', className)} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-    </svg>
-  );
-}
-
-function IconChevronDown() {
-  return (
-    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-    </svg>
-  );
-}
-
-function IconClipboard({ className }: { className?: string }) {
-  return (
-    <svg className={clsx('h-5 w-5', className)} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-    </svg>
-  );
-}
-
-function IconPlay() {
-  return (
-    <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M8 5v14l11-7z" />
-    </svg>
-  );
-}
-
-function IconSearch() {
-  return (
-    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-    </svg>
-  );
-}
-
-function IconGear() {
-  return (
-    <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-    </svg>
-  );
-}
+// Icons imported from shared `../icons/shellIcons`
 
 // =============================================================================
 // TopBarV3 — Merged 48px header (replaces ActiveCaseBar + TopContextBar + WorkflowStrip)
@@ -777,10 +721,10 @@ export function CanonicalLayoutV3({
           </aside>
         )}
 
-        {/* Issue panel — TODO: re-wire when IssuePanelContainer wrapper exists.
-            IssuePanel base component is in `../issue-panel/IssuePanel` ale wymaga
-            jawnych props (issues/bySeverity/bySource/onIssueClick), więc
-            container z dataloaderem trzeba dorobić w aplikacji. */}
+        {/* Issue panel — IssuePanelContainer wpięty z pustą listą issues.
+            Pełna integracja z dataloaderem (model/power_flow/protection
+            issues) wymaga implementacji w osobnym module agregatora —
+            container już akceptuje issues + onIssueClick props. */}
       </div>
 
       {/* ═══ StatusBarV12 (28px) — deduplicated ═══ */}

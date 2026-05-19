@@ -33,12 +33,12 @@ import { EnmInspectorPage } from './ui/enm-inspector';
 import { FaultScenariosPanel, FaultScenarioModal } from './ui/fault-scenarios';
 import { CanonicalLayout as CanonicalLayoutV12 } from './ui/layout';
 import { CanonicalLayoutV3 } from './ui/layout/CanonicalLayoutV3';
+import { StationWizardSurface } from './ui/network-build/station-wizard-v2/StationWizardSurface';
+import { featureFlags } from './ui/config/featureFlags';
 
 // Feature flag: VITE_USE_LAYOUT_V3=1 włącza shell V3 (chrome -48% per
 // `docs/audit/DESIGN_IMPL_2026-05-19_KWranPTV.md` § 2). Domyślnie V12.
-const CanonicalLayout = (import.meta.env.VITE_USE_LAYOUT_V3 === '1')
-  ? CanonicalLayoutV3
-  : CanonicalLayoutV12;
+const CanonicalLayout = featureFlags.USE_LAYOUT_V3 ? CanonicalLayoutV3 : CanonicalLayoutV12;
 import { SldWorkspaceContainer } from './ui/sld/v2/canvas/SldWorkspaceContainer';
 import { ProjectDashboardSurface } from './ui/workspace/surfaces/ProjectDashboardSurface';
 import { useAppStateStore } from './ui/app-state';
@@ -790,10 +790,21 @@ function App() {
   };
 
   // Inspektor modelu ENM (v4.2 — diagnostyka inżynierska)
-  if (route === '#enm-inspector') {
+  // Zadanie 11 planu UI/UX 100%: dev tool ukryty domyślnie za feature flag.
+  if (route === '#enm-inspector' && featureFlags.ENM_INSPECTOR_VISIBLE) {
     return wrapWithReadyIndicator(
       <CanonicalLayout {...layoutProps}>
         <EnmInspectorPage />
+      </CanonicalLayout>
+    );
+  }
+
+  // Kreator Stacji KOMPLETNY v2 — 17-krokowy flow inżynierski
+  // (UI/UX 100% Zadanie 9 — wpięcie StationWizardSurface).
+  if (route === '#kreator-stacji-v2') {
+    return wrapWithReadyIndicator(
+      <CanonicalLayout {...layoutProps}>
+        <StationWizardSurface />
       </CanonicalLayout>
     );
   }

@@ -20,10 +20,11 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 
-import { useActiveMode, useIssuePanelOpen } from '../app-state';
+import { useActiveMode } from '../app-state';
 import { EmptyInspectorPanel } from '../inspector-panel/EmptyInspectorPanel';
 import { GlobalSearch } from '../network-build/GlobalSearch';
 import { CommandPalette } from '../network-build/CommandPalette';
+import { GuidedBuildActionPanel } from '../network-build/GuidedBuildActionPanel';
 import { InspectorEngineeringView } from '../network-build/InspectorEngineeringView';
 import { notify } from '../notifications/store';
 import { ProjectMetadataModal } from '../network-build/ProjectMetadataModal';
@@ -34,6 +35,7 @@ import { useSelectionStore } from '../selection';
 import { WorkspaceSurfaceRouter } from '../workspace';
 import { useAppStateStore } from '../app-state/store';
 import type { AreaId } from '../navigation/areaRegistry';
+import { IconChevronLeft, IconChevronRight, IconClipboard } from '../icons/shellIcons';
 
 import { UndoRedoButtons } from '../history/UndoRedoButtons';
 import { NavigationRail } from './NavigationRail';
@@ -55,30 +57,6 @@ export interface AppShellV12Props {
   hideInspector?: boolean;
   onMenuAction?: (actionId: string) => void;
   networkStats?: { nodeCount?: number; branchCount?: number };
-}
-
-function IconChevronLeft({ className }: { className?: string }) {
-  return (
-    <svg className={clsx('h-4 w-4', className)} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-    </svg>
-  );
-}
-
-function IconChevronRight({ className }: { className?: string }) {
-  return (
-    <svg className={clsx('h-4 w-4', className)} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-    </svg>
-  );
-}
-
-function IconClipboard({ className }: { className?: string }) {
-  return (
-    <svg className={clsx('h-5 w-5', className)} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-    </svg>
-  );
 }
 
 function isEditableTarget(target: EventTarget | null) {
@@ -155,7 +133,6 @@ export function AppShellV12({
   onMenuAction,
   networkStats,
 }: AppShellV12Props) {
-  const issuePanelOpen = useIssuePanelOpen();
   const activeMode = useActiveMode();
   const selectedElement = useSelectionStore((state) => state.selectedElements[0] ?? null);
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
@@ -237,6 +214,9 @@ export function AppShellV12({
     if (activeSurface && activeSurface.openMode !== 'expand_workspace') {
       return <WorkspaceSurfaceRouter region="panel" />;
     }
+    if (activeMode === 'MODEL_EDIT' && !selectedElement) {
+      return <GuidedBuildActionPanel />;
+    }
     if (inspectorContent) return inspectorContent;
     if (selectedElement) {
       return <InspectorEngineeringView />;
@@ -244,7 +224,7 @@ export function AppShellV12({
     return (
       <EmptyInspectorPanel selectedElement={selectedElement} isReadOnly={isReadOnly} />
     );
-  }, [activeSurface, inspectorContent, isReadOnly, selectedElement]);
+  }, [activeMode, activeSurface, inspectorContent, isReadOnly, selectedElement]);
 
   return (
     <div
@@ -363,11 +343,6 @@ export function AppShellV12({
           </aside>
         )}
 
-        {/* Panel zgłoszeń (issue panel) */}
-        {issuePanelOpen && (
-          <aside className="w-[360px] shrink-0 overflow-hidden border-l border-scada-border bg-scada-surface">
-          </aside>
-        )}
       </div>
 
       {/* === StatusBarV12 (28px) === */}

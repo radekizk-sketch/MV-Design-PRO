@@ -31,6 +31,7 @@ import {
 import { useFieldReadModel, type FieldReadModelItem } from '../field/useFieldReadModel';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { useSelectionStore } from '../selection';
+import { sanitizeDisplayValue } from '../shell/displayHelpers';
 import { useNetworkBuildStore } from './networkBuildStore';
 import { useAppStateStore } from '../app-state';
 import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
@@ -1009,7 +1010,6 @@ function buildSemanticSegmentSections(
         { key: 'name', label: 'Nazwa', value: segmentName },
         { key: 'type', label: 'Typ', value: semanticTypeLabel(selectedElement) },
         { key: 'engineering_role', label: 'Rola semantyczna', value: selectedElement.semanticEngineeringRole ?? null },
-        { key: 'semantic_hash', label: 'Hash semantyczny', value: selectedElement.semanticHash ?? null },
         ...(branch?.status ? [{ key: 'status', label: 'Stan', value: branch.status }] : []),
       ],
     },
@@ -1256,7 +1256,6 @@ function buildSemanticConverterSections(
         { key: 'name', label: 'Nazwa', value: elementName },
         { key: 'type', label: 'Typ', value: semanticTypeLabel(selectedElement) },
         { key: 'engineering_role', label: 'Rola semantyczna', value: selectedElement.semanticEngineeringRole ?? null },
-        { key: 'semantic_hash', label: 'Hash semantyczny', value: selectedElement.semanticHash ?? null },
       ],
     },
   ];
@@ -1602,7 +1601,6 @@ function buildSemanticGpzSections(
         { key: 'name', label: 'Nazwa', value: elementName },
         { key: 'type', label: 'Typ', value: semanticTypeLabel(selectedElement) },
         { key: 'engineering_role', label: 'Rola semantyczna', value: selectedElement.semanticEngineeringRole ?? null },
-        { key: 'semantic_hash', label: 'Hash semantyczny', value: selectedElement.semanticHash ?? null },
         ...(source?.model ? [{ key: 'model', label: 'Model zastępczy', value: source.model }] : []),
       ],
     },
@@ -1681,7 +1679,6 @@ function buildSemanticSectionsForElement(
         { key: 'name', label: 'Nazwa', value: selectedElement.name },
         { key: 'type', label: 'Typ', value: semanticTypeLabel(selectedElement) },
         { key: 'engineering_role', label: 'Rola semantyczna', value: selectedElement.semanticEngineeringRole ?? null },
-        { key: 'semantic_hash', label: 'Hash semantyczny', value: selectedElement.semanticHash ?? null },
       ],
     },
   ];
@@ -2689,7 +2686,9 @@ function formatValue(value: string | number | boolean | null): string {
   if (typeof value === 'number') {
     return value.toLocaleString('pl-PL', { maximumFractionDigits: 4 });
   }
-  return String(value);
+  // Sanitize technical IDs (UUID/SHA/hex16/E2E_) → "Element #ABCD1234".
+  // Eliminuje "szum programisty" widoczny w polach `ref_id` / `semantic_hash`.
+  return sanitizeDisplayValue(String(value), { fallback: 'brak danych' });
 }
 
 function isMissingFieldValue(value: string): boolean {
