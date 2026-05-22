@@ -134,9 +134,9 @@ describe('Layer visibility — 13 warstw z briefa', () => {
     expect(DEFAULT_LAYER_VISIBILITY.stability).toBe(false);
   });
 
-  it('13 warstw zdefiniowanych', () => {
+  it('14 warstw zdefiniowanych (13 z briefa + spine preview)', () => {
     const ids = Object.keys(DEFAULT_LAYER_VISIBILITY) as SldLayerId[];
-    expect(ids.length).toBe(13);
+    expect(ids.length).toBe(14);
   });
 
   it('Każda warstwa ma polską etykietę', () => {

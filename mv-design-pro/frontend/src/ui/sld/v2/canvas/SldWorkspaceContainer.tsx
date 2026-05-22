@@ -36,6 +36,7 @@ import {
   type LayerState,
 } from '../lod/layerToggle';
 import { inferLodFromScale, type LodLevel } from '../lod/LodPolicy';
+import { mapLayerStateToRenderVisibility } from '../lod/layerMapping';
 import { ProofPacksPanel } from '../proof/ProofPacksPanel';
 import { NetworkHierarchyTree } from '../domain/NetworkHierarchyTree';
 import { buildHierarchy, type EnmInputForHierarchy } from '../domain/HierarchyTree';
@@ -2049,6 +2050,7 @@ export function SldWorkspaceContainer(
         readabilityReport={sldData.readabilityReport}
         selectedId={selectedId}
         centerOnElementId={centerOnElementId}
+        layerVisibility={mapLayerStateToRenderVisibility(layerState, currentLod)}
         onSelectElement={handleSelectElement}
         onDoubleClickStation={handleDoubleClickStation}
         onDoubleClickDer={handleDoubleClickDer}

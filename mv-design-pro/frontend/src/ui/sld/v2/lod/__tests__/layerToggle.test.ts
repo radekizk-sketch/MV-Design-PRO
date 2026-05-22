@@ -24,8 +24,8 @@ const LOD_3: LodLevel = 3;
 const LOD_4: LodLevel = 4;
 
 describe('LAYER_IDS — contract', () => {
-  it('exposes exactly 13 layers per SLD_INDUSTRIAL_SPEC § 5.2', () => {
-    expect(LAYER_IDS.length).toBe(13);
+  it('exposes 14 layers (13 z SLD_INDUSTRIAL_SPEC § 5.2 + spine preview)', () => {
+    expect(LAYER_IDS.length).toBe(14);
   });
 
   it('all required layers present', () => {
@@ -60,10 +60,14 @@ describe('LAYER_IDS — contract', () => {
 });
 
 describe('createInitialLayerState', () => {
-  it('all overrides set to null (use LOD defaults)', () => {
+  it('domyślne warstwy: overrides=null (use LOD defaults), spine: false (opt-in)', () => {
     const state = createInitialLayerState();
     for (const id of LAYER_IDS) {
-      expect(state.overrides[id]).toBeNull();
+      if (id === 'spine') {
+        expect(state.overrides[id]).toBe(false);
+      } else {
+        expect(state.overrides[id]).toBeNull();
+      }
     }
   });
 });
@@ -165,7 +169,7 @@ describe('setLayerVisibility + resetLayerToDefault', () => {
 });
 
 describe('resetAllLayers', () => {
-  it('clears all overrides back to null', () => {
+  it('przywraca initial state (spine: false jako opt-in, reszta: null)', () => {
     let state = setLayerVisibility(createInitialLayerState(), 'power', false);
     state = setLayerVisibility(state, 'grid', true);
     state = setLayerVisibility(state, 'ports', true);
@@ -175,16 +179,20 @@ describe('resetAllLayers', () => {
     expect(state.overrides.ports).toBe(true);
     const reset = resetAllLayers();
     for (const id of LAYER_IDS) {
-      expect(reset.overrides[id]).toBeNull();
+      if (id === 'spine') {
+        expect(reset.overrides[id]).toBe(false);
+      } else {
+        expect(reset.overrides[id]).toBeNull();
+      }
     }
   });
 });
 
 describe('listLayersWithVisibility', () => {
-  it('returns all 13 layers with visibility', () => {
+  it('returns all 14 layers with visibility (13 brief + spine preview)', () => {
     const state = createInitialLayerState();
     const list = listLayersWithVisibility(state, LOD_2);
-    expect(list).toHaveLength(13);
+    expect(list).toHaveLength(14);
     for (const item of list) {
       expect(item.id).toBeTruthy();
       expect(item.label).toBeTruthy();
