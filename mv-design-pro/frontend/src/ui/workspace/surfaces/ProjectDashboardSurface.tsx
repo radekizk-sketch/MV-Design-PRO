@@ -22,6 +22,7 @@ import {
   type Project,
 } from '../../projects';
 import { MISSING_DASH } from '../../shared/formatPolishValue';
+import { createStudyCase } from '../../study-cases/api';
 
 /** Format daty PL z ISO bez sztucznych zer. */
 function formatDatePl(iso: string | null | undefined): string {
@@ -117,7 +118,22 @@ export function ProjectDashboardSurface(): JSX.Element {
           description: metadata.description.trim() || null,
         });
         setActiveProject(created.id, created.name);
-        notify(`Utworzono projekt "${created.name}".`, 'success');
+        // Auto-create "Wariant bazowy" - eliminuje workflow gap. User dostaje
+        // pusty case od razu po stworzeniu projektu, więc może natychmiast
+        // edytować ENM (Etap 0 → Etap 1 GPZ flow bez ekstra kliknięć).
+        try {
+          const baseCase = await createStudyCase({
+            project_id: created.id,
+            name: 'Wariant bazowy',
+            description: 'Domyślny wariant pracy sieci utworzony automatycznie z projektem',
+            set_active: true,
+          });
+          setActiveCase(baseCase.id, baseCase.name, null, 'NONE');
+        } catch (caseError) {
+          // Nie blokuj nawigacji - case może być utworzony ręcznie później.
+          console.warn('[ProjectDashboardSurface] Auto-create base case failed', caseError);
+        }
+        notify(`Utworzono projekt "${created.name}" z wariantem bazowym.`, 'success');
         setCreateOpen(false);
         window.location.hash = '#sld';
       } catch (error) {
@@ -125,7 +141,7 @@ export function ProjectDashboardSurface(): JSX.Element {
         notify(message, 'error');
       }
     },
-    [setActiveProject],
+    [setActiveProject, setActiveCase],
   );
 
   const requestDelete = useCallback((project: Project) => {
