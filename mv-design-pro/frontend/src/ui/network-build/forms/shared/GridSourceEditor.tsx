@@ -1027,7 +1027,10 @@ export function GridSourceEditor({
                 />
               </FieldShell>
 
-              <FieldShell label="Napięcie SN">
+              <FieldShell
+                label="Napięcie SN"
+                tooltip="Napięcie nominalne sieci SN na szynach GPZ. Standardowe polskie poziomy: 15 kV (najczęściej, kable XLPE 12/20 kV), 20 kV (15.75 kV → 21 kV - rozbudowa), 30 kV (sieci napowietrzne długie). Wpływa na dobór katalogu transformatorów WN/SN i kabli."
+              >
                 <select
                   value={formData.sn_voltage_kv ?? ''}
                   onChange={(event) => handleChange('sn_voltage_kv', Number(event.target.value))}
@@ -1133,6 +1136,7 @@ export function GridSourceEditor({
                 label={isHvShortCircuitInput ? "Moc zwarciowa Sk'' na 110 kV" : "Moc zwarciowa Sk'' po stronie SN"}
                 unit="MVA"
                 error={getFieldError(shortCircuitPowerField)}
+                tooltip="Sk'' - początkowa symetryczna moc zwarciowa 3-faz (IEC 60909). Maksymalna wartość z dokumentacji PSE/OSD dla danego węzła sieciowego. Wpływa na dobór wyłączników (icc), kabli (Ith) i zabezpieczeń (Iset)."
               >
                 <input
                   type="number"
@@ -1143,7 +1147,11 @@ export function GridSourceEditor({
               </FieldShell>
 
               {showRxInput && (
-                <FieldShell label="Stosunek R/X" error={getFieldError('rx_ratio')}>
+                <FieldShell
+                  label="Stosunek R/X"
+                  error={getFieldError('rx_ratio')}
+                  tooltip="Stosunek rezystancji do reaktancji impedancji zastępczej źródła (IEC 60909). Wpływa na fazor prądu zwarciowego i prąd udarowy ip. Typowo R/X = 0.05-0.2 dla sieci 110 kV, 0.1-0.3 dla SN."
+                >
                   <input
                     type="number"
                     step="0.01"
