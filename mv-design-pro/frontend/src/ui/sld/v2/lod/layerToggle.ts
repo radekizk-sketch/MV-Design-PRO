@@ -40,6 +40,7 @@ export const LAYER_IDS = [
   'ports',
   'boundaries',
   'legend',
+  'spine',
 ] as const;
 
 export type LayerId = (typeof LAYER_IDS)[number];
@@ -61,6 +62,7 @@ export const LAYER_LABELS_PL: Readonly<Record<LayerId, string>> = {
   ports: 'Porty (debug)',
   boundaries: 'Granice stref',
   legend: 'Legenda',
+  spine: 'Ciąg SN (preview)',
 };
 
 /**
@@ -89,6 +91,9 @@ const DEFAULT_LAYER_LOD: Readonly<Record<LayerId, LodLevel>> = {
   ports: 4,
   boundaries: 3,
   legend: 0,
+  // Spine = opt-in preview overlay, domyślnie OFF (state.overrides = false)
+  // ale gdy włączony, widoczny od LOD 0 (overview - schematyczne ciągi).
+  spine: 0,
 };
 
 // ---------------------------------------------------------------------------
@@ -110,12 +115,15 @@ export interface LayerState {
 }
 
 /**
- * Create initial state — all layers use LOD defaults (no explicit overrides).
+ * Create initial state — większość warstw używa LOD defaults (null = no override).
+ *
+ * Wyjątek: spine (preview overlay) ma jawny explicit `false` - domyślnie OFF
+ * niezależnie od LOD. Użytkownik musi go świadomie włączyć w LayerTogglePanel.
  */
 export function createInitialLayerState(): LayerState {
   const overrides = {} as Record<LayerId, LayerOverride>;
   for (const id of LAYER_IDS) {
-    overrides[id] = null;
+    overrides[id] = id === 'spine' ? false : null;
   }
   return { overrides };
 }

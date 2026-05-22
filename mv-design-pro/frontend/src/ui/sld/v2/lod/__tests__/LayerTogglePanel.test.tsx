@@ -16,7 +16,7 @@ import type { LodLevel } from '../LodPolicy';
 const LOD2: LodLevel = 2;
 
 describe('LayerTogglePanel — render', () => {
-  it('renders header "Warstwy (13)"', () => {
+  it('renders header "Warstwy (14)"', () => {
     render(
       <LayerTogglePanel
         state={createInitialLayerState()}
@@ -24,7 +24,7 @@ describe('LayerTogglePanel — render', () => {
         onToggleLayer={vi.fn()}
       />,
     );
-    expect(screen.getByText(/Warstwy \(13\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Warstwy \(14\)/)).toBeInTheDocument();
   });
 
   it('renders LOD badge', () => {

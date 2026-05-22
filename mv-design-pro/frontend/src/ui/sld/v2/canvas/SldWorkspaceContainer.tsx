@@ -30,6 +30,7 @@ import { useRawResultOverlayStore, getMetric, formatMetric } from '../../../sld-
 import { computeLfDerivedMetrics } from './lfDerivedMetrics';
 import {
   createInitialLayerState,
+  isLayerVisible,
   toggleLayer,
   type LayerId,
   type LayerState,
@@ -1554,7 +1555,7 @@ export function SldWorkspaceContainer(
         connections={sldData.derConnections}
         selectedId={selectedId}
         spineModel={spineModel}
-        layerVisibility={spineModel ? { spine: true } : undefined}
+        layerVisibility={{ spine: isLayerVisible(layerState, 'spine', currentLod) }}
         onSelectElement={handleSelectElement}
         onDoubleClickStation={handleDoubleClickStation}
         onDoubleClickDer={handleDoubleClickDer}
@@ -1667,11 +1668,11 @@ export function SldWorkspaceContainer(
           type="button"
           onClick={() => setLayerPanelOpen((prev) => !prev)}
           data-testid="sld-layer-panel-toggle"
-          aria-label={layerPanelOpen ? 'Zamknij panel warstw' : 'Otwórz panel warstw (13)'}
-          title={layerPanelOpen ? 'Zamknij panel warstw' : 'Warstwy (13)'}
+          aria-label={layerPanelOpen ? 'Zamknij panel warstw' : 'Otwórz panel warstw (14)'}
+          title={layerPanelOpen ? 'Zamknij panel warstw' : 'Warstwy (14)'}
           className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
         >
-          {layerPanelOpen ? '▾ Warstwy' : '▴ Warstwy (13)'}
+          {layerPanelOpen ? '▾ Warstwy' : '▴ Warstwy (14)'}
         </button>
         {layerPanelOpen && (
           <LayerTogglePanel
