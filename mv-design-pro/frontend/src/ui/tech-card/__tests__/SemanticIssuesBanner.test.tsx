@@ -21,13 +21,36 @@ describe('SemanticIssuesBanner', () => {
     expect(container.querySelector('[data-testid="semantic-issues-banner"]')).toBeNull();
   });
 
-  it('Renderuje listę z liczbą naruszeń', () => {
-    const issues = [makeIssue(), makeIssue({ code: 'semantic.test2', message: 'Drugie' })];
-    const { getByText, getByTestId } = render(<SemanticIssuesBanner issues={issues} />);
+  it('Renderuje sekcję Błędy gdy są ERROR-y', () => {
+    const issues = [makeIssue({ severity: 'ERROR', message: 'Pierwszy błąd' })];
+    const { getByText, getByTestId, queryByTestId } = render(<SemanticIssuesBanner issues={issues} />);
     expect(getByTestId('semantic-issues-banner')).toBeTruthy();
-    expect(getByText(/Naruszenia semantyki \(2\)/)).toBeTruthy();
-    expect(getByText('Naruszenie testowe')).toBeTruthy();
-    expect(getByText('Drugie')).toBeTruthy();
+    expect(getByTestId('semantic-errors-group')).toBeTruthy();
+    expect(queryByTestId('semantic-warnings-group')).toBeNull();
+    expect(getByText(/Błędy \(1\)/)).toBeTruthy();
+    expect(getByText('Pierwszy błąd')).toBeTruthy();
+  });
+
+  it('Renderuje sekcję Ostrzeżenia gdy są WARNING-i', () => {
+    const issues = [makeIssue({ severity: 'WARNING', message: 'Ostrzeżenie' })];
+    const { getByText, getByTestId, queryByTestId } = render(<SemanticIssuesBanner issues={issues} />);
+    expect(queryByTestId('semantic-errors-group')).toBeNull();
+    expect(getByTestId('semantic-warnings-group')).toBeTruthy();
+    expect(getByText(/Ostrzeżenia \(1\)/)).toBeTruthy();
+    expect(getByText('Ostrzeżenie')).toBeTruthy();
+  });
+
+  it('Rozdziela ERROR od WARNING w osobne sekcje', () => {
+    const issues = [
+      makeIssue({ severity: 'ERROR', code: 'semantic.e1', message: 'Błąd 1' }),
+      makeIssue({ severity: 'WARNING', code: 'semantic.w1', message: 'Ostrzeżenie 1' }),
+      makeIssue({ severity: 'ERROR', code: 'semantic.e2', message: 'Błąd 2' }),
+    ];
+    const { getByTestId, getByText } = render(<SemanticIssuesBanner issues={issues} />);
+    expect(getByTestId('semantic-errors-group')).toBeTruthy();
+    expect(getByTestId('semantic-warnings-group')).toBeTruthy();
+    expect(getByText(/Błędy \(2\)/)).toBeTruthy();
+    expect(getByText(/Ostrzeżenia \(1\)/)).toBeTruthy();
   });
 
   it('Filtruje po elementId', () => {
@@ -67,13 +90,16 @@ describe('SemanticIssuesBanner', () => {
     expect(queryByText('Pokaż element')).toBeNull();
   });
 
-  it('WARNING ma żółty kolor, ERROR czerwony', () => {
+  it('data-issue-severity atrybut jest ustawiony', () => {
     const { container } = render(
       <SemanticIssuesBanner
-        issues={[makeIssue({ severity: 'WARNING', message: 'Ostrzeżenie' })]}
+        issues={[
+          makeIssue({ severity: 'ERROR' }),
+          makeIssue({ severity: 'WARNING', code: 'semantic.w' }),
+        ]}
       />,
     );
-    const msg = container.querySelector('.text-amber-700');
-    expect(msg).toBeTruthy();
+    expect(container.querySelector('[data-issue-severity="ERROR"]')).toBeTruthy();
+    expect(container.querySelector('[data-issue-severity="WARNING"]')).toBeTruthy();
   });
 });
