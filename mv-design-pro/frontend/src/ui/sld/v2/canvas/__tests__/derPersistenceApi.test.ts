@@ -41,7 +41,7 @@ describe('derPersistenceApi', () => {
     expect(caught).toBeInstanceOf(DerPersistenceApiError);
     const message = (caught as Error).message;
     expect(message).toBe(
-      'Aktywny przypadek obliczeniowy nie jest powiązany z wybranym projektem. Wybierz właściwy projekt albo aktywny przypadek.',
+      'Aktywny zakres obliczeń nie jest powiązany z wybranym projektem. Wybierz właściwy projekt albo zakres obliczeń.',
     );
     expect(message).not.toContain('/api/');
     expect(message).not.toContain('70a99b32');
