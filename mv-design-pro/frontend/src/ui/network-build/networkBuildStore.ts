@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
 import { resolveReadinessVisualState } from '../engineering-readiness/readinessVisualState';
-import { isOperationalBus } from '../shared/enmVisibility';
+import { isOperationalBus, isTerrainSnSegment } from '../shared/enmVisibility';
 import { stationPublicIdentity } from '../shared/publicTechnicalLabels';
 import { getOperationSurfaceByOp } from '../topology/modals/operationSurfaceRegistry';
 import { useSnapshotStore } from '../topology/snapshotStore';
@@ -898,12 +898,19 @@ export function computeBuildPhase(
   const hasTrunks = (logicalViews?.trunks ?? []).some((trunk) => (trunk.segments?.length ?? 0) > 0);
   if (!hasTrunks) return 'HAS_SOURCE';
 
-  const hasStations = (snapshot.substations?.length ?? 0) > 0;
+  const hasStations = selectFieldStationCount(snapshot) > 0;
   if (!hasStations) return 'HAS_TRUNKS';
 
   if (readiness?.ready) return 'READY';
 
   return 'HAS_STATIONS';
+}
+
+export function selectFieldStationCount(snapshot: EnergyNetworkModel | null): number {
+  if (!snapshot) return 0;
+  return (snapshot.substations ?? []).filter(
+    (station) => String(station.station_type ?? '').toLowerCase() !== 'gpz',
+  ).length;
 }
 
 export function selectOpenTerminals(logicalViews: LogicalViewsV1 | null): TerminalRef[] {
@@ -1100,7 +1107,43 @@ export function selectGridSourceStationRef(snapshot: EnergyNetworkModel | null):
 }
 
 export function selectSnFieldCount(snapshot: EnergyNetworkModel | null): number {
-  return snapshot?.bays?.length ?? 0;
+  if (!snapshot) return 0;
+
+  const knownRefs = new Set(
+    (snapshot.bays ?? [])
+      .map((bay) => bay.ref_id || bay.id)
+      .filter((ref): ref is string => typeof ref === 'string' && ref.length > 0),
+  );
+  let anonymousFieldSpecs = 0;
+
+  for (const substation of snapshot.substations ?? []) {
+    const meta = substation.meta as { field_specs?: unknown } | undefined;
+    const rawSpecs = meta?.field_specs;
+    if (!Array.isArray(rawSpecs)) {
+      continue;
+    }
+    for (const rawSpec of rawSpecs) {
+      if (!rawSpec || typeof rawSpec !== 'object') {
+        continue;
+      }
+      const spec = rawSpec as { field_ref?: unknown; ref_id?: unknown };
+      const ref = typeof spec.field_ref === 'string'
+        ? spec.field_ref
+        : typeof spec.ref_id === 'string'
+          ? spec.ref_id
+          : null;
+      if (ref && knownRefs.has(ref)) {
+        continue;
+      }
+      if (ref) {
+        knownRefs.add(ref);
+      } else {
+        anonymousFieldSpecs += 1;
+      }
+    }
+  }
+
+  return knownRefs.size + anonymousFieldSpecs;
 }
 
 export interface ConfiguredGridSourceSnField {
@@ -1353,7 +1396,7 @@ export function useNetworkBuildDerived() {
   const sourceCount = snapshot?.sources?.length ?? 0;
   const trunkCount = logicalViews?.trunks?.length ?? 0;
   const snapshotSnBranchCount = (snapshot?.branches ?? []).filter(
-    (branch) => branch.type === 'line_overhead' || branch.type === 'cable',
+    isTerrainSnSegment,
   ).length;
   const snFieldCount = selectSnFieldCount(snapshot);
   const trunkSegmentCount = (logicalViews?.trunks ?? []).reduce(
@@ -1362,7 +1405,7 @@ export function useNetworkBuildDerived() {
   );
   const branchCount = logicalViews?.branches?.length ?? 0;
   const snSectionCount = Math.max(trunkSegmentCount + branchCount, snapshotSnBranchCount);
-  const stationCount = snapshot?.substations?.length ?? 0;
+  const stationCount = selectFieldStationCount(snapshot);
   const transformerCount = snapshot?.transformers?.length ?? 0;
   const loadCount = snapshot?.loads?.length ?? 0;
   const generatorCount = snapshot?.generators?.length ?? 0;
@@ -1375,8 +1418,9 @@ export function useNetworkBuildDerived() {
     loading: readinessLoading,
     workspaceBlockState,
   });
+  const hasMinimumDesignFlow = sourceCount > 0 && (trunkSegmentCount + branchCount) > 0 && stationCount > 0;
 
-  const buildPhase = readinessVisualState === 'ready' && sourceCount > 0
+  const buildPhase = readinessVisualState === 'ready' && hasMinimumDesignFlow
     ? 'READY'
     : computeBuildPhase(snapshot, logicalViews, null);
   const openTerminals = selectOpenTerminals(logicalViews);
@@ -1392,7 +1436,7 @@ export function useNetworkBuildDerived() {
   const unconfiguredGpzSnFields = gpzSnFieldCandidates.filter((field) => !field.configured);
   const gridSourceStationRef = selectGridSourceStationRef(snapshot);
   const blockersByCategory = selectBlockersByCategory(readinessBlockers);
-  const isReady = readinessVisualState === 'ready' && sourceCount > 0;
+  const isReady = readinessVisualState === 'ready' && hasMinimumDesignFlow;
   const readiness = {
     ready: readinessReady,
     blockers: readinessIssues.filter((issue) => issue.severity === 'BLOCKER'),

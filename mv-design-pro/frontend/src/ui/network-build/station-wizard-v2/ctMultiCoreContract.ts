@@ -9,7 +9,7 @@
  * Standard pomiarowy w stacji 15/0.4 kV: 200/5/5/5A przekładnik prądowy
  * 3-rdzeniowy:
  *   I:   0.2s · FS5 · 7.5 VA → licznik LZQJ-XC (rozliczenie OSD)
- *   II:  0.2s · FS5 · 7.5 VA → analizator MT880 (jakość energii)
+ *   II:  0.2s · FS5 · 7.5 VA → analizator jakości energii klasy A
  *   III: 5P10 · ALF10 · 5 VA → zabezpieczenie e2Tango (relay)
  *
  * Bilans obciążenia wtórnego per IEC 61869-2 § 5.6:
@@ -187,7 +187,7 @@ export const CT_REFERENCE_200_3CORE: readonly CtCore[] = [
     ratedBurdenVa: 7.5,
     category: 'analysis',
     fsOrAlf: 5,
-    destinationPl: 'Analizator MT880',
+    destinationPl: 'Analizator jakości energii klasy A',
   },
   {
     id: 'III',

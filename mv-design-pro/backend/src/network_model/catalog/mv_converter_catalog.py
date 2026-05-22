@@ -162,6 +162,91 @@ CONVERTER_PV_NN: list[dict[str, Any]] = [
     )
 ]
 
+CONVERTER_PV_NN.extend(
+    [
+        _converter_record(
+            item_id="pv_inv_catalog_50",
+            name="Pakiet katalogowy PV 50 50 kW / 0.4 kV",
+            kind="PV",
+            un_kv=0.4,
+            sn_mva=_sn_mva_for_power(0.05),
+            pmax_mw=0.05,
+            qmin_mvar=-_reactive_limit(0.05),
+            qmax_mvar=_reactive_limit(0.05),
+            cosphi_min=0.9,
+            cosphi_max=1.0,
+            manufacturer="MV-DESIGN-PRO",
+            model="PV 50",
+            control_mode="Q_U_DROOP",
+            grid_code="NC_RfG_typ_A",
+        ),
+        _converter_record(
+            item_id="pv_inv_sma_2500",
+            name="SMA Sunny Central 2500-EV 2.5 MW / 0.69 kV",
+            kind="PV",
+            un_kv=0.69,
+            sn_mva=_sn_mva_for_power(2.5),
+            pmax_mw=2.5,
+            qmin_mvar=-_reactive_limit(2.5),
+            qmax_mvar=_reactive_limit(2.5),
+            cosphi_min=0.9,
+            cosphi_max=1.0,
+            manufacturer="SMA",
+            model="Sunny Central 2500-EV",
+            control_mode="Q_U_DROOP",
+            grid_code="NC_RfG_typ_C",
+        ),
+        _converter_record(
+            item_id="pv_inv_huawei_185",
+            name="Huawei SUN2000-185KTL 185 kW / 0.4 kV",
+            kind="PV",
+            un_kv=0.4,
+            sn_mva=_sn_mva_for_power(0.185),
+            pmax_mw=0.185,
+            qmin_mvar=-_reactive_limit(0.185),
+            qmax_mvar=_reactive_limit(0.185),
+            cosphi_min=0.9,
+            cosphi_max=1.0,
+            manufacturer="HUAWEI",
+            model="SUN2000-185KTL",
+            control_mode="Q_U_DROOP",
+            grid_code="NC_RfG_typ_B",
+        ),
+        _converter_record(
+            item_id="pv_inv_system_1000",
+            name="Pakiet katalogowy PV 1000 1 MW / 0.69 kV",
+            kind="PV",
+            un_kv=0.69,
+            sn_mva=_sn_mva_for_power(1.0),
+            pmax_mw=1.0,
+            qmin_mvar=-_reactive_limit(1.0),
+            qmax_mvar=_reactive_limit(1.0),
+            cosphi_min=0.9,
+            cosphi_max=1.0,
+            manufacturer="MV-DESIGN-PRO",
+            model="PV 1000",
+            control_mode="Q_U_DROOP",
+            grid_code="NC_RfG_typ_B",
+        ),
+        _converter_record(
+            item_id="pv_inv_fimer_3000",
+            name="FIMER PVS-3000-CSE 3 MW / 0.69 kV",
+            kind="PV",
+            un_kv=0.69,
+            sn_mva=_sn_mva_for_power(3.0),
+            pmax_mw=3.0,
+            qmin_mvar=-_reactive_limit(3.0),
+            qmax_mvar=_reactive_limit(3.0),
+            cosphi_min=0.9,
+            cosphi_max=1.0,
+            manufacturer="FIMER",
+            model="PVS-3000-CSE",
+            control_mode="Q_U_DROOP",
+            grid_code="NC_RfG_typ_C",
+        ),
+    ]
+)
+
 
 CONVERTER_BESS_NN: list[dict[str, Any]] = [
     record
@@ -176,6 +261,45 @@ CONVERTER_BESS_NN: list[dict[str, Any]] = [
         energy_hours=2.0,
     )
 ]
+
+CONVERTER_BESS_NN.extend(
+    [
+        _converter_record(
+            item_id="bess_pcs_sma_2200",
+            name="SMA Sunny Central Storage 2200 2.2 MW / 0.69 kV",
+            kind="BESS",
+            un_kv=0.69,
+            sn_mva=_sn_mva_for_power(2.2),
+            pmax_mw=2.2,
+            qmin_mvar=-_reactive_limit(2.2),
+            qmax_mvar=_reactive_limit(2.2),
+            cosphi_min=0.9,
+            cosphi_max=1.0,
+            manufacturer="SMA",
+            model="Sunny Central Storage 2200",
+            e_kwh=4400.0,
+            control_mode="Q_U_DROOP",
+            grid_code="NC_RfG_typ_C",
+        ),
+        _converter_record(
+            item_id="bess_pcs_abb_500",
+            name="ABB PCS100 ESS 500 kW / 0.4 kV",
+            kind="BESS",
+            un_kv=0.4,
+            sn_mva=_sn_mva_for_power(0.5),
+            pmax_mw=0.5,
+            qmin_mvar=-_reactive_limit(0.5),
+            qmax_mvar=_reactive_limit(0.5),
+            cosphi_min=0.9,
+            cosphi_max=1.0,
+            manufacturer="ABB",
+            model="PCS100 ESS",
+            e_kwh=1000.0,
+            control_mode="Q_U_DROOP",
+            grid_code="NC_RfG_typ_B",
+        ),
+    ]
+)
 
 
 CONVERTER_WIND_NN: list[dict[str, Any]] = [
@@ -575,6 +699,59 @@ CONVERTER_WIND: list[dict[str, Any]] = [
         },
     },
 ]
+
+CONVERTER_WIND.extend(
+    [
+        _converter_record(
+            item_id="wt_vestas_v117_3450",
+            name="Vestas V117-3.45 MW / 15 kV",
+            kind="WIND",
+            un_kv=15.0,
+            sn_mva=_sn_mva_for_power(3.45),
+            pmax_mw=3.45,
+            qmin_mvar=-_reactive_limit(3.45),
+            qmax_mvar=_reactive_limit(3.45),
+            cosphi_min=0.9,
+            cosphi_max=1.0,
+            manufacturer="VESTAS",
+            model="V117-3450",
+            control_mode="Q_U_DROOP",
+            grid_code="NC_RfG_typ_C",
+        ),
+        _converter_record(
+            item_id="wt_siemens_swt_2300_113",
+            name="Siemens SWT-2.3-113 2.3 MW / 15 kV",
+            kind="WIND",
+            un_kv=15.0,
+            sn_mva=_sn_mva_for_power(2.3),
+            pmax_mw=2.3,
+            qmin_mvar=-_reactive_limit(2.3),
+            qmax_mvar=_reactive_limit(2.3),
+            cosphi_min=0.9,
+            cosphi_max=1.0,
+            manufacturer="SIEMENS",
+            model="SWT-2.3-113",
+            control_mode="Q_U_DROOP",
+            grid_code="NC_RfG_typ_B",
+        ),
+        _converter_record(
+            item_id="wt_ge_158_5500",
+            name="GE Cypress 5.5-158 5.5 MW / 15 kV",
+            kind="WIND",
+            un_kv=15.0,
+            sn_mva=_sn_mva_for_power(5.5),
+            pmax_mw=5.5,
+            qmin_mvar=-_reactive_limit(5.5),
+            qmax_mvar=_reactive_limit(5.5),
+            cosphi_min=0.9,
+            cosphi_max=1.0,
+            manufacturer="GE_RENEWABLE",
+            model="Cypress-5500-158",
+            control_mode="Q_U_DROOP",
+            grid_code="NC_RfG_typ_C",
+        ),
+    ]
+)
 
 
 # =============================================================================

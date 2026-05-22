@@ -23,6 +23,10 @@ import {
 } from '../field/fieldControlSelectors';
 import { useFieldReadModel } from '../field/useFieldReadModel';
 import { useSnapshotStore } from '../topology/snapshotStore';
+import {
+  resolveBranchSourceContext,
+  resolveBranchSourceRef,
+} from './operationContextResolvers';
 
 type StatusLevel = 'done' | 'partial' | 'empty' | 'error';
 
@@ -419,12 +423,36 @@ function TrunksSection({
 
 function StationsSection({ stations }: { stations: StationSummary[] }) {
   const openForm = useNetworkBuildStore((state) => state.openOperationForm);
+  const snapshot = useSnapshotStore((state) => state.snapshot);
+
+  const branchContextForStation = useCallback(
+    (stationId: string): Record<string, unknown> | null => {
+      const fromRef = resolveBranchSourceRef(snapshot, stationId, stationId, null);
+      if (!fromRef) return null;
+
+      const sourceContext = resolveBranchSourceContext(snapshot, fromRef);
+      if (!sourceContext.sourceBusRef) return null;
+
+      return {
+        from_ref: fromRef,
+        station_ref: stationId,
+        source_bus_ref: sourceContext.sourceBusRef,
+        source_type_label: sourceContext.sourceType,
+        source_name: sourceContext.sourceName,
+        source_voltage_label: sourceContext.voltageLabel,
+        source_port_label: sourceContext.portLabel,
+      };
+    },
+    [snapshot],
+  );
 
   const handleStartBranch = useCallback(
     (stationId: string) => {
-      openForm('start_branch_segment_sn', { from_station_id: stationId });
+      const context = branchContextForStation(stationId);
+      if (!context) return;
+      openForm('start_branch_segment_sn', context);
     },
-    [openForm],
+    [branchContextForStation, openForm],
   );
 
   return (
@@ -435,32 +463,39 @@ function StationsSection({ stations }: { stations: StationSummary[] }) {
         </p>
       ) : (
         <div className="space-y-1">
-          {stations.map((station) => (
-            <div
-              key={station.id}
-              className={clsx('flex items-center gap-2 text-[11px] py-1 px-2 rounded', primaryTextClass, rowHoverClass)}
-            >
-              <span
-                className={clsx(
-                  'text-[10px] font-bold px-1 rounded',
-                  station.readinessOk ? 'bg-eng-green/20 text-eng-green' : 'bg-eng-amber/20 text-eng-amber',
-                )}
+          {stations.map((station) => {
+            const branchContext = station.freeBranchPorts > 0
+              ? branchContextForStation(station.id)
+              : null;
+            return (
+              <div
+                key={station.id}
+                className={clsx('flex items-center gap-2 text-[11px] py-1 px-2 rounded', primaryTextClass, rowHoverClass)}
               >
-                {formatStationTypeShortLabelPl(station.stationType)}
-              </span>
-              <span className="flex-1 truncate">{station.name}</span>
-              {station.hasTransformer && <span className="text-[10px] text-chrome-400">TR</span>}
-              {station.freeBranchPorts > 0 && (
-                <button
-                  type="button"
-                  onClick={() => handleStartBranch(station.id)}
-                  className="text-[10px] text-[#67d9ff] hover:text-scada-text"
+                <span
+                  className={clsx(
+                    'text-[10px] font-bold px-1 rounded',
+                    station.readinessOk ? 'bg-eng-green/20 text-eng-green' : 'bg-eng-amber/20 text-eng-amber',
+                  )}
                 >
-                  [Zacisk odg.]
-                </button>
-              )}
-            </div>
-          ))}
+                  {formatStationTypeShortLabelPl(station.stationType)}
+                </span>
+                <span className="flex-1 truncate">{station.name}</span>
+                {station.hasTransformer && <span className="text-[10px] text-chrome-400">TR</span>}
+                {station.freeBranchPorts > 0 && (
+                  <button
+                    type="button"
+                    disabled={!branchContext}
+                    onClick={() => handleStartBranch(station.id)}
+                    className="text-[10px] text-[#67d9ff] hover:text-scada-text disabled:cursor-not-allowed disabled:text-[#536b86]"
+                    title={branchContext ? 'Rozpocznij odgałęzienie z pola liniowego stacji' : 'Najpierw wybierz wolne pole liniowe stacji'}
+                  >
+                    [Pole liniowe]
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

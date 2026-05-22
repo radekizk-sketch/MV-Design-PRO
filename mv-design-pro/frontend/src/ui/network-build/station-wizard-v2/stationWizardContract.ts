@@ -24,7 +24,7 @@
 export type StationWizardStepId =
   | 'cable'        // 1.  Przyłączenie SN
   | 'switchgear'   // 2.  Rozdzielnica SN
-  | 'bays'         // 3.  Pola SN + blokady
+  | 'bays'         // 3.  Pola SN + uzależnienia
   | 'apparatus'    // 4.  Aparaty SN
   | 'ct'           // 5.  Przekładniki CT
   | 'vt'           // 6.  Przekładniki VT
@@ -38,7 +38,7 @@ export type StationWizardStepId =
   | 'ncrfg'        // 14. NC RfG
   | 'infra'        // 15. Infrastruktura
   | 'network'      // 16. Analiza sieciowa
-  | 'readiness';   // 17. Gotowość
+  | 'readiness';   // 17. Obliczenia i raport
 
 /** Grupowanie sidebaru per blok funkcjonalny. */
 export type StationWizardGroup =
@@ -48,7 +48,7 @@ export type StationWizardGroup =
   | 'OZE'         // Źródła PV/BESS/FW, jakość energii
   | 'Ochrona'     // Zabezpieczenia, NC RfG
   | 'Infrastr.'   // SCADA, analiza sieciowa
-  | 'Gotowość';   // Macierz + obliczenia + raport
+  | 'Obliczenia'; // Macierz + obliczenia + raport
 
 /**
  * Definicja jednego kroku kreatora.
@@ -78,7 +78,7 @@ export interface StationWizardStepDefinition {
 export const STATION_WIZARD_STEPS: readonly StationWizardStepDefinition[] = [
   { id: 'cable',      n: 1,  label: 'Przyłączenie SN',     sub: 'Kabel + termika + ΔU',             group: 'SN',         icon: '📍' },
   { id: 'switchgear', n: 2,  label: 'Rozdzielnica SN',     sub: 'Producent + IAC/IP/LSC',           group: 'SN',         icon: '⎆'  },
-  { id: 'bays',       n: 3,  label: 'Pola SN + blokady',   sub: 'Mini-SLD IEC + interlocking',      group: 'SN',         icon: '🔲' },
+  { id: 'bays',       n: 3,  label: 'Pola SN + uzależnienia', sub: 'Mini-SLD IEC + sekwencje łączeń', group: 'SN',         icon: '🔲' },
   { id: 'apparatus',  n: 4,  label: 'Aparaty SN',          sub: 'Q1/Q2/Q3 z katalogu',              group: 'SN',         icon: '⚙'  },
   { id: 'ct',         n: 5,  label: 'Przekładniki CT',     sub: '3-rdzeniowy + bilans + ALF',       group: 'Pomiary',    icon: '◎'  },
   { id: 'vt',         n: 6,  label: 'Przekładniki VT',     sub: '4-uzwojeniowy + bilans + ΔU',      group: 'Pomiary',    icon: '◌'  },
@@ -92,12 +92,12 @@ export const STATION_WIZARD_STEPS: readonly StationWizardStepDefinition[] = [
   { id: 'ncrfg',      n: 14, label: 'NC RfG',              sub: 'P(f) + grid-forming + reverse',    group: 'Ochrona',    icon: '🇪🇺' },
   { id: 'infra',      n: 15, label: 'Infrastruktura',      sub: 'SCADA/RTU + konstrukcja',          group: 'Infrastr.',  icon: '🏗'  },
   { id: 'network',    n: 16, label: 'Analiza sieciowa',    sub: 'U(x) + Ik PCC + straty',           group: 'Infrastr.',  icon: '🔌' },
-  { id: 'readiness',  n: 17, label: 'Gotowość',            sub: 'Macierz → obliczenia → raport',    group: 'Gotowość',   icon: '✓'  },
+  { id: 'readiness',  n: 17, label: 'Obliczenia i raport', sub: 'Macierz → obliczenia → raport',    group: 'Obliczenia', icon: '✓'  },
 ];
 
 /** Kanoniczna lista grup w kolejności wizualnej (sidebar). */
 export const STATION_WIZARD_GROUPS: readonly StationWizardGroup[] = [
-  'SN', 'Pomiary', 'Stacja', 'OZE', 'Ochrona', 'Infrastr.', 'Gotowość',
+  'SN', 'Pomiary', 'Stacja', 'OZE', 'Ochrona', 'Infrastr.', 'Obliczenia',
 ];
 
 /** Helper: znajdź definicję kroku po id. */

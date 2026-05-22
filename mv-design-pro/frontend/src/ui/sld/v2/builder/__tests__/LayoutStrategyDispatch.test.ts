@@ -5,7 +5,7 @@
  *   1. dispatchLayout: 4 strategie wybierane wg score.
  *   2. forceStrategy override.
  *   3. corridor strategy → corridor + cadCorridorBands populated.
- *   4. simple_radial/hierarchical → corridor=null.
+ *   4. simple_radial/hierarchical → corridor=null, sieć z >1 stacją terenową → corridor.
  *   5. corridor_with_locked → respectsManualLocks=true.
  *   6. Determinizm: same ENM → same dispatch result (5 reruny).
  *   7. dispatchLayoutMatches helper.
@@ -74,9 +74,10 @@ describe('dispatchLayout — strategy wybór wg score', () => {
     expect(result.respectsManualLocks).toBe(false);
   });
 
-  it('Small network (4 stacje, brak branch) → simple_radial', () => {
+  it('Small network z dwiema stacjami terenowymi → corridor', () => {
     const result = dispatchLayout(smallNetwork());
-    expect(result.strategy).toBe('simple_radial');
+    expect(result.strategy).toBe('corridor');
+    expect(result.corridor).not.toBeNull();
   });
 
   it('Large network (25+ stacji, 6 branch) → corridor', () => {
@@ -113,7 +114,7 @@ describe('dispatchLayout — forceStrategy override', () => {
 
 describe('dispatchLayout — Polish explanation', () => {
   it('simple_radial → "prosty radialny layout"', () => {
-    const result = dispatchLayout(smallNetwork());
+    const result = dispatchLayout(emptyEnm());
     expect(result.explanation).toMatch(/prosty radialny/);
   });
 
@@ -156,7 +157,7 @@ describe('dispatchLayoutMatches — helper', () => {
 
   it('Different strategies → false', () => {
     const a = dispatchLayout(smallNetwork());
-    const b = dispatchLayout(smallNetwork(), { forceStrategy: 'corridor' });
+    const b = dispatchLayout(smallNetwork(), { forceStrategy: 'simple_radial' });
     expect(dispatchLayoutMatches(a, b)).toBe(false);
   });
 });
@@ -169,7 +170,7 @@ describe('dispatchLayout — corridor result content', () => {
       for (const band of result.cadCorridorBands) {
         expect(band.id).toBeTruthy();
         expect(band.yMax).toBeGreaterThan(band.yMin);
-        expect(['gpz', 'feeder', 'branch', 'ring-return', 'label-zone']).toContain(band.kind);
+        expect(['gpz', 'main-trunk', 'branch', 'ring-return', 'der-connection', 'label-reserve']).toContain(band.kind);
       }
     }
   });

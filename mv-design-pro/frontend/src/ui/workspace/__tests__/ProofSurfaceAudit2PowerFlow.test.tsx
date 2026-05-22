@@ -86,6 +86,17 @@ describe('ProofSurface — audit2 Power Flow button (Phase 40)', () => {
     expect(screen.getByTestId('audit2-power-flow-run')).toBeDefined();
   });
 
+  it('publiczny widok dowodów nie pokazuje wewnętrznej nazwy audit2 ani endpointu API', () => {
+    useAppStateStore.setState({ activeProjectId: 'proj-1', activeRunId: 'run-1' });
+    renderWithFetchStub(<WorkspaceSurfaceRouter region="main" />, basicFetchStub);
+
+    expect(screen.getByText('Uzasadnienia rozszerzonej walidacji')).toBeInTheDocument();
+    expect(screen.getByText('Rozpływ mocy rozszerzony (z regulacją zaczepów)')).toBeInTheDocument();
+    expect(document.body.textContent ?? '').not.toMatch(
+      /Audit2|audit2|audytu 2|\/api\/cases\/audit2-power-flow|Proof Pack|E-36|SC3F_IEC60909|POWER_FLOW|EQUIPMENT_PROOF|EARTHING_GROUND_FAULT_SN|\bDER\b/i,
+    );
+  });
+
   it('button disabled gdy brak activeRunId', () => {
     useAppStateStore.setState({ activeProjectId: 'proj-1', activeRunId: null });
     renderWithFetchStub(<WorkspaceSurfaceRouter region="main" />, basicFetchStub);
@@ -191,8 +202,10 @@ describe('ProofSurface — audit2 Power Flow button (Phase 40)', () => {
       expect(screen.getByTestId('audit2-power-flow-result')).toBeDefined();
     });
     const result = screen.getByTestId('audit2-power-flow-result');
-    expect(result.textContent).toContain('TAK');
-    expect(result.textContent).toContain('5 wezlow');
-    expect(result.textContent).toContain('3 galezi');
+    expect(result.textContent).toContain('uruchomione');
+    expect(result.textContent).toContain('5 węzłów');
+    expect(result.textContent).toContain('3 gałęzi');
+    expect(result.textContent).toContain('rozszerzony rozpływ mocy');
+    expect(result.textContent).not.toMatch(/Audit2|audit2|station-A|power_flow_extensions/i);
   });
 });

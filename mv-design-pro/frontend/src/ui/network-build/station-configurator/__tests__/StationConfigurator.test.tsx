@@ -60,7 +60,7 @@ describe('StationConfigurator — 17 kroków', () => {
     const labels = [
       'Przyłączenie SN',
       'Rozdzielnia SN',
-      'Pola SN i blokady',
+      'Pola SN i uzależnienia',
       'Aparatura SN',
       'Przekładniki CT',
       'Przekładniki VT',
@@ -91,6 +91,17 @@ describe('StationConfigurator — 17 kroków', () => {
     render(<StationConfigurator {...minimalProps} />);
     fireEvent.click(screen.getByTestId('station-config-tab-transformer'));
     expect(screen.getByTestId('station-config-content-transformer')).toBeInTheDocument();
+  });
+  it('ostatni krok prowadzi do obliczen zamiast martwego przycisku', () => {
+    const onOpenCalculations = vi.fn();
+    render(<StationConfigurator {...minimalProps} onOpenCalculations={onOpenCalculations} />);
+
+    fireEvent.click(screen.getByTestId('station-config-tab-readiness'));
+    const button = screen.getByRole('button', { name: 'Obliczenia' });
+
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+    expect(onOpenCalculations).toHaveBeenCalledOnce();
   });
 });
 

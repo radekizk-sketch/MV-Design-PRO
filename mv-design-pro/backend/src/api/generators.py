@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any, Literal
 from uuid import UUID
 
@@ -10,8 +11,10 @@ from domain.canonical_operations import resolve_operation_name
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.store import get_enm as _get_enm
+from enm.store import has_enm as _has_enm
 from enm.store import set_enm as _set_enm
 from fastapi import APIRouter, HTTPException, Request, status
+from network_model.catalog.audit2_catalogs import get_block_transformer
 from pydantic import BaseModel, Field, field_validator
 
 router = APIRouter(prefix="/api/projects", tags=["generators"])
@@ -34,17 +37,23 @@ class DerGeneratorCreateRequest(BaseModel):
 
     station_ref: str = Field(..., min_length=1)
     der_kind: DerKind
-    power_mw: float = Field(..., ge=0.1, le=10.0)
+    power_mw: float = Field(..., gt=0.0, le=10.0)
     connection_variant: DerConnectionVariant = "nn_side"
     catalog_ref: str | None = Field(default=None, min_length=1)
     bus_ref: str | None = Field(default=None, min_length=1)
     blocking_transformer_ref: str | None = Field(default=None, min_length=1)
+    block_transformer_catalog_ref: str | None = Field(default=None, min_length=1)
     source_name: str | None = Field(default=None, min_length=1)
     quantity: int = Field(default=1, ge=1, le=100)
     nc_rfg_module: Literal["A", "B", "C", "D"] | None = None
 
     @field_validator(
-        "station_ref", "catalog_ref", "bus_ref", "blocking_transformer_ref", "source_name"
+        "station_ref",
+        "catalog_ref",
+        "bus_ref",
+        "blocking_transformer_ref",
+        "block_transformer_catalog_ref",
+        "source_name",
     )
     @classmethod
     def _strip_optional_strings(cls, value: str | None) -> str | None:
@@ -89,6 +98,8 @@ def _validate_project_case_context(request: Request, project_id: str, case_id: s
         study_case = uow.cases.get_study_case(parsed_case_id)
 
     if study_case is None:
+        if _has_enm(case_id):
+            return
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
@@ -141,6 +152,139 @@ def _bus_voltage_index(enm: dict[str, Any]) -> dict[str, float]:
     return index
 
 
+def _stable_ref_token(*parts: str | None) -> str:
+    source = "|".join(part.strip() for part in parts if isinstance(part, str) and part.strip())
+    return hashlib.sha1(source.encode("utf-8")).hexdigest()[:12]
+
+
+def _station_bus_ref_for_voltage(
+    enm: dict[str, Any],
+    station: dict[str, Any],
+    voltage_kv: float,
+) -> str | None:
+    voltages = _bus_voltage_index(enm)
+    candidates = [ref for ref in station.get("bus_refs", []) if isinstance(ref, str)]
+    for bus_ref in candidates:
+        bus_voltage = voltages.get(bus_ref)
+        if bus_voltage is not None and abs(bus_voltage - voltage_kv) <= 0.05:
+            return bus_ref
+    for bus_ref in candidates:
+        bus_voltage = voltages.get(bus_ref)
+        if bus_voltage is not None and bus_voltage > 1.0:
+            return bus_ref
+    return None
+
+
+def _ensure_catalog_block_transformer(
+    enm: dict[str, Any],
+    station: dict[str, Any],
+    req: DerGeneratorCreateRequest,
+) -> tuple[str, str]:
+    """Materializuj transformator blokowy z katalogu dla wariantu DER."""
+
+    catalog_ref = req.block_transformer_catalog_ref
+    if not catalog_ref:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "generator.block_transformer_catalog_missing",
+                "message_pl": "Wariant z transformatorem dedykowanym wymaga pozycji katalogowej transformatora.",
+            },
+        )
+
+    block_transformer = get_block_transformer(catalog_ref)
+    if block_transformer is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "generator.block_transformer_catalog_invalid",
+                "message_pl": "Nie znaleziono katalogowego transformatora dedykowanego dla DER.",
+            },
+        )
+    if req.der_kind not in block_transformer.applicable_der_kinds:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "generator.block_transformer_kind_mismatch",
+                "message_pl": "Wybrany transformator dedykowany nie jest dopuszczony dla tego typu DER.",
+            },
+        )
+
+    hv_bus_ref = _station_bus_ref_for_voltage(enm, station, float(block_transformer.hv_kv))
+    if hv_bus_ref is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "station.sn_bus_missing_for_block_transformer",
+                "message_pl": "Stacja nie ma szyny SN zgodnej z transformatorem dedykowanym.",
+            },
+        )
+
+    station_ref = str(station.get("ref_id") or station.get("id") or req.station_ref)
+    token = _stable_ref_token(
+        station_ref,
+        req.der_kind,
+        req.catalog_ref,
+        req.block_transformer_catalog_ref,
+        req.source_name,
+    )
+    lv_bus_ref = f"{station_ref}/der/{token}/bus-{block_transformer.lv_kv:g}kv"
+    transformer_ref = f"{station_ref}/der/{token}/tr-block"
+
+    if not any(bus.get("ref_id") == lv_bus_ref for bus in enm.get("buses", [])):
+        enm.setdefault("buses", []).append(
+            {
+                "ref_id": lv_bus_ref,
+                "name": f"Szyna DER {block_transformer.lv_kv:g} kV",
+                "voltage_kv": float(block_transformer.lv_kv),
+                "tags": ["DER", req.der_kind, "transformator_blokowy"],
+                "meta": {
+                    "station_ref": station_ref,
+                    "block_transformer_catalog_ref": catalog_ref,
+                },
+            }
+        )
+
+    if not any(
+        transformer.get("ref_id") == transformer_ref for transformer in enm.get("transformers", [])
+    ):
+        enm.setdefault("transformers", []).append(
+            {
+                "ref_id": transformer_ref,
+                "name": block_transformer.label_pl,
+                "hv_bus_ref": hv_bus_ref,
+                "lv_bus_ref": lv_bus_ref,
+                "sn_mva": float(block_transformer.sn_kva) / 1000.0,
+                "uhv_kv": float(block_transformer.hv_kv),
+                "ulv_kv": float(block_transformer.lv_kv),
+                "uk_percent": float(block_transformer.uk_percent),
+                "pk_kw": float(block_transformer.pk_kw),
+                "p0_kw": float(block_transformer.p0_kw),
+                "i0_percent": float(block_transformer.i0_percent),
+                "vector_group": block_transformer.vector_group,
+                "catalog_ref": catalog_ref,
+                "catalog_namespace": block_transformer.catalog_namespace,
+                "parameter_source": "CATALOG",
+                "source_mode": "KATALOG",
+                "materialized_params": block_transformer.to_dict(),
+                "tags": ["DER", req.der_kind, "transformator_blokowy"],
+                "meta": {
+                    "catalog_item_version": block_transformer.catalog_version,
+                    "station_ref": station_ref,
+                },
+            }
+        )
+
+    bus_refs = station.setdefault("bus_refs", [])
+    if lv_bus_ref not in bus_refs:
+        bus_refs.append(lv_bus_ref)
+    transformer_refs = station.setdefault("transformer_refs", [])
+    if transformer_ref not in transformer_refs:
+        transformer_refs.append(transformer_ref)
+
+    return transformer_ref, lv_bus_ref
+
+
 def _resolve_nn_bus_ref(enm: dict[str, Any], station: dict[str, Any]) -> str | None:
     for transformer in _station_transformers(enm, station):
         lv_bus_ref = transformer.get("lv_bus_ref")
@@ -169,6 +313,8 @@ def _build_domain_payload(
         )
 
     canonical_variant = _canonical_variant(req.connection_variant)
+    if req.block_transformer_catalog_ref:
+        canonical_variant = "block_transformer"
     catalog_ref = req.catalog_ref or _DEFAULT_CATALOG_BY_VARIANT[(req.der_kind, canonical_variant)]
     payload: dict[str, Any] = {
         "source_technology": req.der_kind,
@@ -190,6 +336,12 @@ def _build_domain_payload(
         payload["nc_rfg_module"] = req.nc_rfg_module
     if req.blocking_transformer_ref:
         payload["blocking_transformer_ref"] = req.blocking_transformer_ref
+    elif canonical_variant == "block_transformer":
+        transformer_ref, converter_bus_ref = _ensure_catalog_block_transformer(
+            enm_dict, station, req
+        )
+        payload["blocking_transformer_ref"] = transformer_ref
+        payload["bus_nn_ref"] = converter_bus_ref
 
     if req.bus_ref:
         payload["bus_nn_ref"] = req.bus_ref

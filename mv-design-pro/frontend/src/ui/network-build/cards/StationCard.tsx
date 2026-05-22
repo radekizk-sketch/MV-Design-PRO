@@ -14,6 +14,8 @@ import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
 import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
 import { GpzSectionsEditor } from './GpzSectionsEditor';
+import { stationSnapshotBays, stationSnFieldCount } from '../stationSnFields';
+import { selectStationDistributionTransformers } from '../stationTransformerSelection';
 
 // =============================================================================
 // Helpers
@@ -79,15 +81,17 @@ export function StationCard({ elementId }: { elementId: string }) {
   );
 
   const stationBays = useMemo(
-    () => (snapshot?.bays ?? []).filter((b) => b.substation_ref === elementId),
-    [snapshot, elementId],
+    () => stationSnapshotBays(snapshot?.bays, station),
+    [snapshot, station],
+  );
+
+  const stationBayCount = useMemo(
+    () => stationSnFieldCount(station, snapshot?.bays, []),
+    [snapshot, station],
   );
 
   const stationTransformers = useMemo(
-    () =>
-      (snapshot?.transformers ?? []).filter((t) =>
-        station?.transformer_refs?.includes(t.ref_id),
-      ),
+    () => selectStationDistributionTransformers(snapshot, station),
     [snapshot, station],
   );
 
@@ -136,9 +140,9 @@ export function StationCard({ elementId }: { elementId: string }) {
         {
           key: 'bays_count',
           label: 'Pola SN',
-          value: stationBays.length,
+          value: stationBayCount,
           unit: 'szt.',
-          severity: stationBays.length === 0 ? 'warning' : 'ok',
+          severity: stationBayCount === 0 ? 'warning' : 'ok',
         },
         {
           key: 'transformers_count',
@@ -237,7 +241,7 @@ export function StationCard({ elementId }: { elementId: string }) {
     }
 
     return result;
-  }, [station, stationBays, stationTransformers, snBuses, nnBuses, activeMode]);
+  }, [station, stationBays, stationBayCount, stationTransformers, snBuses, nnBuses, activeMode]);
 
   const handleAddTransformer = useCallback(() => {
     openOperationForm('add_transformer_sn_nn', { station_ref: elementId });

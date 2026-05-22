@@ -7,8 +7,13 @@ import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useSelectionStore } from '../../selection';
 import { formatLengthKm } from '../../shared/formatPolishValue';
 import { sanitizePublicReadinessMessage } from '../../shared/publicReadinessMessage';
+import { navigateToAnalysis } from '../../navigation/routes';
 import type { ElementType } from '../../types';
-import type { EntityTypeCode, WorkspaceSurfaceCode } from '../../workspace/types';
+import {
+  ANALYSIS_SURFACE_SCREEN_CODE,
+  type EntityTypeCode,
+  type WorkspaceSurfaceCode,
+} from '../../workspace/types';
 
 type RowState = 'ok' | 'warn' | 'danger' | 'group';
 
@@ -73,6 +78,8 @@ function slugForTestId(value: string): string {
 export function SchematContextPanel() {
   const setActiveArea = useAppStateStore((s) => s.setActiveArea);
   const setActiveWorkMode = useAppStateStore((s) => s.setActiveWorkMode);
+  const activeCaseId = useAppStateStore((s) => s.activeCaseId);
+  const activeRunId = useAppStateStore((s) => s.activeRunId);
   const selectElement = useSelectionStore((s) => s.selectElement);
   const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
@@ -117,7 +124,7 @@ export function SchematContextPanel() {
     () => COLLECTIONS.reduce((sum, key) => sum + getCollection(snapshot as SnapshotRecord | null, key).length, 0),
     [snapshot],
   );
-  const blockerCount = blockers.length || (blockersByCategory?.total ?? 0);
+  const blockerCount = blockers.length || (readiness ? 0 : (blockersByCategory?.total ?? 0));
   const hasNetworkTopology = elementCount > 0;
   const visibleBlockers = hasNetworkTopology ? blockers : [];
   const visibleBlockerCount = hasNetworkTopology ? blockerCount : 0;
@@ -272,7 +279,7 @@ export function SchematContextPanel() {
     });
   };
 
-  const openReadiness = () => {
+  const openTechnicalReview = () => {
     openRouteSurface('E-04', {
       entityType: 'analysis_case',
       entityRef: null,
@@ -283,6 +290,22 @@ export function SchematContextPanel() {
       route: 'analysis',
       openMode: 'replace_right_panel',
       supportsMiniSld: false,
+    });
+  };
+
+  const openAnalysisWorkspace = () => {
+    setActiveArea('WYNIKI_ANALIZY');
+    navigateToAnalysis({ caseId: activeCaseId, runId: activeRunId });
+    openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
+      entityType: 'analysis_run',
+      entityRef: activeRunId ?? null,
+      subjectKind: 'analysis_case',
+      subjectRef: activeCaseId ?? null,
+      tabId: 'results',
+      titlePl: 'Analiza sieciowa i obliczenia',
+      route: 'analysis',
+      openMode: 'replace_right_panel',
+      supportsMiniSld: true,
     });
   };
 
@@ -328,7 +351,12 @@ export function SchematContextPanel() {
       return;
     }
 
-    openReadiness();
+    if (designGuidance.tone === 'ready') {
+      openAnalysisWorkspace();
+      return;
+    }
+
+    openTechnicalReview();
   };
 
   return (
@@ -399,7 +427,7 @@ export function SchematContextPanel() {
             <button
               type="button"
               data-testid="schemat-action-show-result-layers"
-              onClick={openReadiness}
+              onClick={openTechnicalReview}
               className="text-[10px] text-cyan-300 hover:text-cyan-100"
             >
               Pokaż
@@ -507,7 +535,7 @@ export function SchematContextPanel() {
         <button
           type="button"
           data-testid="left-panel-mode-readiness"
-          onClick={openReadiness}
+          onClick={openTechnicalReview}
           className="h-9 rounded-sm border border-scada-border bg-[#0a141d] px-2 text-[10px] text-cyan-300 hover:border-cyan-500/55 hover:text-scada-text"
         >
           Konfiguracja
@@ -719,6 +747,7 @@ function getDisplayName(item: SnapshotRecord, fallbackLabel: string, ordinal: nu
 
 function containsTechnicalReference(value: string): boolean {
   return /\/(?:segment|station|source|bay|bus|branch)\b/i.test(value)
+    || /\b(?:do\s+punktu|za\s+punktem)\s+rozga/i.test(value)
     || /\b(?:seg|gpz|stn|bay|bus|src)\/[a-z0-9/_#-]{12,}/i.test(value)
     || /\b[0-9a-f]{24,}\b/i.test(value)
     || /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i.test(value);
@@ -778,45 +807,147 @@ function branchTypeLabel(value: unknown): string {
 }
 
 function readBranchCatalogLabel(item: SnapshotRecord): string | null {
+  const catalogData = readBranchCatalogData(item);
+  for (const key of ['trade_name', 'type_designation', 'type_label', 'catalog_label', 'display_name', 'designation', 'name']) {
+    const raw = catalogData?.[key];
+    if (typeof raw === 'string' && raw.trim()) {
+      return formatCatalogTypeLabel(raw, catalogData);
+    }
+  }
   const direct = item.catalog_ref;
   if (typeof direct === 'string' && direct.trim()) {
-    return formatCatalogTypeLabel(direct);
+    return formatCatalogTypeLabel(direct, catalogData);
   }
   const binding = item.catalog_binding;
   if (isRecord(binding)) {
     const catalogItemId = binding.catalog_item_id;
     if (typeof catalogItemId === 'string' && catalogItemId.trim()) {
-      return formatCatalogTypeLabel(catalogItemId);
+      return formatCatalogTypeLabel(catalogItemId, catalogData);
     }
   }
   return null;
 }
 
-function formatCatalogTypeLabel(raw: string): string {
+function readBranchCatalogData(item: SnapshotRecord): SnapshotRecord | null {
+  const materialized = isRecord(item.materialized_params)
+    ? { ...item.materialized_params }
+    : {};
+  for (const key of [
+    'return_conductor_cross_section_mm2',
+    'return_conductor_material',
+    'return_conductor_r_ohm_per_km_20c',
+    'return_conductor_jth_1s_a_per_mm2',
+    'return_conductor_ith_1s_a',
+    'cross_section_mm2',
+    'number_of_cores',
+    'conductor_material',
+  ]) {
+    const value = item[key];
+    if (value !== null && value !== undefined) materialized[key] = value;
+  }
+  return Object.keys(materialized).length > 0 ? materialized : null;
+}
+
+function formatCatalogTypeLabel(raw: string, catalogData?: SnapshotRecord | null): string {
   const value = raw.trim();
+  const overheadLineLabel = formatOverheadLineCatalogLabel(value);
+  if (overheadLineLabel) return overheadLineLabel;
   const canonicalCable = value.match(/^cable-base-(xlpe|epr)-(al|cu)-([13])c-(\d+)$/i);
   if (canonicalCable) {
     const [, insulation, conductor, cores, section] = canonicalCable;
-    return `Kabel SN ${insulation.toUpperCase()} ${conductor.toLowerCase() === 'cu' ? 'Cu' : 'Al'} ${cores}x${section} mm²`;
+    const phaseSet = cores === '1' ? `3×1×${section}` : `3×${section}`;
+    return `Kabel SN ${insulation.toUpperCase()} ${conductor.toLowerCase() === 'cu' ? 'Cu' : 'Al'} ${phaseSet} mm²`;
   }
   if (!value) return 'typ katalogowy nieokreślony';
   if (/^[A-Z0-9ĄĆĘŁŃÓŚŹŻ\s/.-]+$/.test(value) && /\d/.test(value)) {
-    return value.replace(/\s+/g, ' ');
+    return formatSingleCoreMvCableCircuitLabel(value.replace(/\s+/g, ' '), catalogData);
   }
   const normalized = value
     .replace(/^cable[-_]/i, '')
     .replace(/^line[-_]/i, '')
+    .replace(/^enea[-_\s]+operator[-_\s]+/i, '')
     .replace(/^tfk[-_]/i, '')
+    .replace(/^nkt[-_]/i, '')
     .replace(/[-_]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
   const label = normalized.replace(/^base\s+al\s+st\b/i, 'Al/St');
-  return label
-    .replace(/\b(yakxs|xruhakxs|yky|haknft|afl|al|st|cu)\b/gi, (match) => match.toUpperCase())
+  const publicLabel = label
+    .replace(/\b(na2xs2y|n2xs2y|yakxs|xruhakxs|yky|haknft|afl|al|st|cu)\b/gi, (match) => match.toUpperCase())
+    .replace(/\b1c\s+(\d+)\b/gi, '1x$1')
     .replace(/\b(\d+)x(\d+)\b/gi, (_match, cores: string, section: string) => `${cores}x${section}`)
     .replace(/\b([a-ząćęłńóśźż])/g, (match) => match.toUpperCase());
+  return formatSingleCoreMvCableCircuitLabel(publicLabel, catalogData);
 }
 
+function formatOverheadLineCatalogLabel(raw: string): string | null {
+  const value = raw.trim();
+  const match = value.match(/^line[-_\s]+base[-_\s]+(al[-_\s]*st|afl(?:[-_\s]*6)?|al|cu|st)[-_\s]+(\d{2,4})$/i)
+    ?? value.match(/^base\s+(al[-\s]*st|afl(?:[-\s]*6)?|al|cu|st)\s*(\d{2,4})$/i);
+  if (!match) return null;
+  const materialRaw = match[1].replace(/[-_\s]+/g, '').toLowerCase();
+  const material = materialRaw === 'alst'
+    ? 'Al/St'
+    : materialRaw.startsWith('afl')
+      ? 'AFL-6'
+      : materialRaw === 'al'
+        ? 'Al'
+        : materialRaw === 'cu'
+          ? 'Cu'
+          : 'St';
+  return `Linia napowietrzna ${material} ${match[2]} mm²`;
+}
+
+function formatSingleCoreMvCableCircuitLabel(raw: string, catalogData?: SnapshotRecord | null): string {
+  const value = addReturnConductorSection(stripCableOwnerPrefix(raw
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/\b([13])\s*[xX×]\s*([13])\s*[xX×]\s*(\d{2,4})/g, '$1×$2×$3')
+    .replace(/\b([13])\s*[xX×]\s*(\d{2,4})(\s*\/\s*\d{1,3})?/g, (_match, count: string, section: string, screen: string | undefined) => {
+      const normalizedScreen = screen ? screen.replace(/\s+/g, '') : '';
+      return `${count}×${section}${normalizedScreen}`;
+    })), catalogData);
+  if (!value) return raw;
+  if (/^3\s*[x×]\s+/i.test(value) || /\b3\s*[x×]\s*(?:1\s*[x×]\s*)?\d{2,4}\b/i.test(value)) {
+    return value;
+  }
+  if (
+    /\b1×\d{2,4}(?:\s*\/\s*\d{1,3})?\b/i.test(value)
+    && /\b(?:Kabel\s+SN|NA2XS2Y|N2XS2Y|XRUHAKXS|YHAKXS|YHKXS|YAKXS)\b/i.test(value)
+  ) {
+    const withUnit = /\bmm(?:2|²)\b/i.test(value)
+      ? value
+      : value.replace(/(\b1×\d{2,4}(?:\s*\/\s*\d{1,3})?)(?!\s*mm)/i, '$1 mm²');
+    return `3 × ${withUnit}`;
+  }
+  return value;
+}
+
+function stripCableOwnerPrefix(raw: string): string {
+  return raw
+    .replace(/^\s*ENEA\s+OPERATOR\s+STANDARD\s*[-–—]?\s*/i, '')
+    .replace(/^\s*ENEA\s+OPERATOR\s*[-–—]?\s*/i, '')
+    .replace(/^\s*TELE[-\s]?FONIKA\s+KABLE\s*[-–—]?\s*/i, '')
+    .replace(/^\s*TFK\s+STANDARD\s*[-–—]?\s*/i, '')
+    .replace(/^\s*NKT\s+STANDARD\s*[-–—]?\s*/i, '')
+    .trim();
+}
+
+function addReturnConductorSection(raw: string, catalogData?: SnapshotRecord | null): string {
+  const screenSection = readReturnConductorSection(catalogData);
+  if (!screenSection) return raw;
+  return raw.replace(
+    /\b1×(\d{2,4})(?!\s*\/)(\s*mm(?:2|²))?\b/i,
+    (_match, phaseSection: string, unit: string | undefined) => `1×${phaseSection}/${screenSection}${unit ?? ''}`,
+  );
+}
+
+function readReturnConductorSection(catalogData?: SnapshotRecord | null): string | null {
+  const raw = catalogData?.return_conductor_cross_section_mm2;
+  const value = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN;
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return value.toLocaleString('pl-PL', { maximumFractionDigits: 0 });
+}
 function formatStationType(item: SnapshotRecord): string | undefined {
   const type = asText(item.station_type).toLowerCase();
   if (type.includes('gpz')) return 'GPZ';

@@ -21,6 +21,10 @@ import { METER_REFERENCE_CATALOG } from './metersContract';
 import { LV_SWITCHGEAR_STANDARD_630 } from './lvSwitchgearContract';
 import { OSD_PROFILES, NC_RFG_REQUIREMENTS } from './ncRfgContract';
 import { EN_50160_HARMONIC_LIMITS } from './powerQualityContract';
+import {
+  POWER_QUALITY_ANALYZER_CATALOG,
+  POWER_QUALITY_STANDARD_LABEL_PL,
+} from './powerQualityAnalyzerContract';
 import { STANDARD_BAY_SCADA_SIGNALS } from './scadaInfrastructureContract';
 import {
   buildReadinessMatrix,
@@ -28,6 +32,12 @@ import {
 } from './readinessMatrixContract';
 import { CABLE_REFERENCE_XRUHAKXS_120 } from './cableSelectionContract';
 import { FIELD_PROTECTION_PROFILES } from './protectionContract';
+import {
+  PROJECT_CALCULATION_TEMPLATE_BLOCKS,
+  PROJECT_CALCULATION_TEMPLATE_SOURCE,
+  getCalculationTemplateBlocksForStep,
+  summarizeCalculationTemplateBlocks,
+} from './calculationTemplateContract';
 
 export interface StationWizardStepContentProps {
   readonly activeStep: StationWizardStepId;
@@ -48,6 +58,7 @@ export function StationWizardStepContent(
       className="flex h-full flex-col overflow-hidden"
     >
       <StepHeader step={step} />
+      <CalculationTemplatePanel activeStep={activeStep} />
       <div className="min-h-0 flex-1 overflow-auto p-4">
         {renderStepBody(activeStep, selectedVendorId, readinessStates)}
       </div>
@@ -75,6 +86,67 @@ function StepHeader({ step }: { step: ReturnType<typeof getStationWizardStep> })
         {step.group}
       </span>
     </header>
+  );
+}
+
+function CalculationTemplatePanel({ activeStep }: { activeStep: StationWizardStepId }) {
+  const blocks = getCalculationTemplateBlocksForStep(activeStep);
+  if (blocks.length === 0) return null;
+
+  return (
+    <aside
+      data-testid="calculation-template-panel"
+      className="shrink-0 border-b border-[#1a2a3a] bg-[#07111d] px-4 py-2"
+    >
+      <div className="mb-1 flex flex-wrap items-center gap-2">
+        <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#4a6a8a]">
+          Pakiet obliczeń projektowych
+        </span>
+        <span className="text-[10px] text-[#8a9aaa]">
+          {PROJECT_CALCULATION_TEMPLATE_SOURCE.workbook}
+        </span>
+      </div>
+      <div className="grid gap-2 lg:grid-cols-2">
+        {blocks.map((block) => (
+          <div
+            key={block.id}
+            data-testid={`calculation-template-block-${block.id}`}
+            className="rounded border border-[#16324a] bg-[#0a1724] p-2"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-[11px] font-bold text-scada-text">{block.title}</div>
+              <div className="text-[10px] text-[#66d9ff]">oblicza backend</div>
+            </div>
+            <div className="mt-1 text-[10px] text-[#8a9aaa]">{block.designerOutcome}</div>
+            <div className="mt-2 grid gap-1 sm:grid-cols-3">
+              <TemplateMiniList title="Dane" items={block.requiredInputs.slice(0, 3)} />
+              <TemplateMiniList title="Katalog" items={block.catalogBindings.slice(0, 3)} />
+              <TemplateMiniList title="Dowody" items={block.backendProofs.slice(0, 3)} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-1 text-[10px] text-[#4a6a8a]">
+        {PROJECT_CALCULATION_TEMPLATE_SOURCE.role}
+      </div>
+    </aside>
+  );
+}
+
+function TemplateMiniList({ title, items }: { title: string; items: readonly string[] }) {
+  return (
+    <div>
+      <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-[#4a6a8a]">
+        {title}
+      </div>
+      <ul className="mt-0.5 space-y-0.5 text-[10px] text-[#b8c7d8]">
+        {items.map((item) => (
+          <li key={item} className="leading-tight">
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -252,7 +324,7 @@ function StepApparatus() {
 // ============================================================================
 function StepCt() {
   return (
-    <CardSection label="CT 200/5/5/5A — 3-rdzeniowy (Excel MT880)" testId="step-body-ct">
+    <CardSection label="CT 200/5/5/5A — 3-rdzeniowy" testId="step-body-ct">
       <table className="w-full text-[11px]">
         <thead>
           <tr className="border-b border-[#1a2a3a] text-[10px] uppercase tracking-wider text-[#4a6a8a]">
@@ -321,10 +393,12 @@ function StepMeters() {
             <div className="font-bold text-scada-text">{m.modelRef}</div>
             <div className="text-[#8a9aaa]">{m.manufacturerRef}</div>
             <div className="mt-1 text-[10px]">
+              <div>Typ licznika: {m.typeLabelPl}</div>
               <div>Klasa: {m.accuracyClass}</div>
-              <div>Typ: {m.type}</div>
               <div>4Q: {m.fourQuadrant ? 'Tak' : 'Nie'}</div>
-              <div>Burden: {m.burdenVa} VA</div>
+              <div>Obwody U: {m.voltageCircuitBurdenVa} VA</div>
+              <div>Obwody I: {m.currentCircuitBurdenVa} VA</div>
+              <div>Wariant: {m.meteringVariantLabelPl}</div>
             </div>
           </div>
         ))}
@@ -423,22 +497,48 @@ function SourceTypeCard({ kind, desc }: { kind: string; desc: string }) {
 // ============================================================================
 function StepPq() {
   return (
-    <CardSection label="Limity harmonicznych PN-EN 50160" testId="step-body-pq">
-      <div className="grid grid-cols-5 gap-1 text-[10px]">
-        {EN_50160_HARMONIC_LIMITS.map((h) => (
-          <div key={h.order} className="rounded border border-[#1a2a3a] bg-[#0a1420] p-1.5 text-center">
-            <div className="text-[#4a6a8a]">Rząd {h.order}</div>
-            <div className="font-bold text-scada-text">{h.voltageLimitPct.toFixed(1)}%</div>
-          </div>
-        ))}
-      </div>
-      <div className="mt-2 text-[10px] text-[#8a9aaa]">
-        THDu limit = 8% · PST limit = 1.0 · PLT limit = 0.8
-      </div>
-    </CardSection>
+    <div className="flex flex-col gap-3" data-testid="step-body-pq">
+      <CardSection label="Analizatory jakości energii klasy A" testId="pq-analyzer-catalog">
+        <div className="grid gap-2 lg:grid-cols-3">
+          {POWER_QUALITY_ANALYZER_CATALOG.map((analyzer) => (
+            <article
+              key={analyzer.modelRef}
+              className="rounded border border-[#1a2a3a] bg-[#0a1420] p-2 text-[11px]"
+            >
+              <div className="font-bold text-scada-text">{analyzer.modelRef}</div>
+              <div className="text-[#8a9aaa]">{analyzer.manufacturerRef}</div>
+              <div className="mt-1 text-[10px] text-[#b8c7d8]">
+                <div>{analyzer.accuracyClassLabelPl}</div>
+                <div>Obwód U: {analyzer.voltageInputModePl}</div>
+                <div>Obwód I: {analyzer.currentInputModePl}</div>
+                <div>{analyzer.secondaryCircuitBurdenSourcePl}</div>
+              </div>
+              <div className="mt-1 text-[10px] text-[#66d9ff]">
+                {analyzer.reportStandards
+                  .map((standard) => POWER_QUALITY_STANDARD_LABEL_PL[standard])
+                  .join(' / ')}
+              </div>
+            </article>
+          ))}
+        </div>
+      </CardSection>
+
+      <CardSection label="Limity harmonicznych PN-EN 50160">
+        <div className="grid grid-cols-5 gap-1 text-[10px]">
+          {EN_50160_HARMONIC_LIMITS.map((h) => (
+            <div key={h.order} className="rounded border border-[#1a2a3a] bg-[#0a1420] p-1.5 text-center">
+              <div className="text-[#4a6a8a]">Rząd {h.order}</div>
+              <div className="font-bold text-scada-text">{h.voltageLimitPct.toFixed(1)}%</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 text-[10px] text-[#8a9aaa]">
+          THDu limit = 8% · PST limit = 1.0 · PLT limit = 0.8
+        </div>
+      </CardSection>
+    </div>
   );
 }
-
 // ============================================================================
 // Krok 13 — Zabezpieczenia
 // ============================================================================
@@ -561,8 +661,63 @@ function StepReadiness({ readinessStates }: { readinessStates?: readonly Readine
   const defaultStates: readonly ReadinessAxisState[] = readinessStates ??
     buildReadinessMatrix().map((a) => ({ axisId: a.id, status: 'partial' as const }));
   return (
-    <div data-testid="step-body-readiness" className="h-full">
-      <ReadinessMatrixGrid states={defaultStates} />
+    <div data-testid="step-body-readiness" className="flex h-full flex-col gap-3">
+      <CalculationTemplateSummary />
+      <div className="min-h-0 flex-1">
+        <ReadinessMatrixGrid states={defaultStates} />
+      </div>
+    </div>
+  );
+}
+
+function CalculationTemplateSummary() {
+  const summary = summarizeCalculationTemplateBlocks();
+  return (
+    <CardSection
+      label="Pełny pakiet danych i dowodów projektowych"
+      testId="calculation-template-summary"
+    >
+      <div className="mb-3 grid grid-cols-2 gap-2 text-[11px] md:grid-cols-5">
+        <SummaryPill label="Bloki" value={summary.blockCount} />
+        <SummaryPill label="Dane wejściowe" value={summary.inputCount} />
+        <SummaryPill label="Katalogi" value={summary.catalogBindingCount} />
+        <SummaryPill label="Dowody" value={summary.backendProofCount} />
+        <SummaryPill label="Arkusze" value={summary.sourceSheetCount} />
+      </div>
+
+      <div className="grid gap-2 lg:grid-cols-2">
+        {PROJECT_CALCULATION_TEMPLATE_BLOCKS.map((block) => (
+          <article
+            key={block.id}
+            data-testid={`calculation-template-summary-block-${block.id}`}
+            className="rounded border border-[#16324a] bg-[#0a1724] p-2"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-[11px] font-bold text-scada-text">{block.title}</h3>
+              <span className="text-[10px] text-[#66d9ff]">solver / dowód backendowy</span>
+            </div>
+            <div className="mt-1 text-[10px] text-[#4a6a8a]">
+              Źródło: {block.sourceSheets.join(', ')} · {block.sourceRangeHint}
+            </div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-3">
+              <TemplateMiniList title="Dane" items={block.requiredInputs} />
+              <TemplateMiniList title="Katalog" items={block.catalogBindings} />
+              <TemplateMiniList title="Dowody" items={block.backendProofs} />
+            </div>
+          </article>
+        ))}
+      </div>
+    </CardSection>
+  );
+}
+
+function SummaryPill({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded border border-[#1a2a3a] bg-[#07111d] px-2 py-1.5">
+      <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-[#4a6a8a]">
+        {label}
+      </div>
+      <div className="text-sm font-bold text-scada-text">{value}</div>
     </div>
   );
 }

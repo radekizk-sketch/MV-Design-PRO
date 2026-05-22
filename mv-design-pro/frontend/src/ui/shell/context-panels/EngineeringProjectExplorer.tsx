@@ -17,6 +17,7 @@ import { clsx } from 'clsx';
 import { useAppStateStore } from '../../app-state';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useSelectionStore } from '../../selection';
+import { isTerrainSnSegment } from '../../shared/enmVisibility';
 import { projectDisplayName } from '../displayHelpers';
 import type { ElementType, SelectedElement } from '../../types';
 
@@ -36,11 +37,11 @@ export function EngineeringProjectExplorer(): JSX.Element {
   const selectedElement = useSelectionStore((s) => s.selectedElement);
 
   const displayName = projectDisplayName(projectName, projectId);
-  // Readiness computed from snapshot readiness (jeśli istnieje).
+  // Stan konfiguracji układu obliczony z readiness snapshotu.
   const isReady = isSnapshotReady(snapshot);
   const buildPhaseLabel = computeBuildPhaseLabel(snapshot);
-  const readinessPct = isReady ? 100 : 50;
   const readinessTone = isReady ? 'success' : 'warning';
+  const configurationStateLabel = isReady ? 'Do analizy' : 'W konfiguracji';
 
   // Buduj drzewo z snapshot (lub pusty stan jeśli brak).
   const tree = useMemo(() => buildExplorerTree(snapshot), [snapshot]);
@@ -85,17 +86,17 @@ export function EngineeringProjectExplorer(): JSX.Element {
             </div>
           </div>
           <div className="shrink-0 text-right">
-            <div className="text-[10px] uppercase tracking-wider text-scada-muted">Gotowość</div>
+            <div className="text-[10px] uppercase tracking-wider text-scada-muted">Stan układu</div>
             <div className={clsx(
               'text-sm font-bold',
               readinessTone === 'success' ? 'text-emerald-300' : 'text-amber-300',
             )}>
-              {readinessPct}%
+              {configurationStateLabel}
             </div>
           </div>
         </div>
         <div className="mt-1 text-[10px] text-scada-muted">
-          Faza budowy: <span className="text-scada-text">{buildPhaseLabel ?? '—'}</span>
+          Etap projektu: <span className="text-scada-text">{buildPhaseLabel ?? '—'}</span>
         </div>
       </header>
 
@@ -118,20 +119,20 @@ export function EngineeringProjectExplorer(): JSX.Element {
         )}
       </div>
 
-      {/* Blockers inline (top 5) */}
+      {/* Zagadnienia konfiguracji układu (top 5) */}
       {blockers.length > 0 && (
         <section
           data-testid="explorer-blockers"
-          className="shrink-0 border-t border-red-500/30 bg-red-500/5 px-3 py-2"
+          className="shrink-0 border-t border-amber-500/30 bg-amber-500/5 px-3 py-2"
         >
-          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-red-300">
-            <span aria-hidden>🔴</span>
-            <span>Blokady gotowości ({blockers.length})</span>
+          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">
+            <span aria-hidden>!</span>
+            <span>Zagadnienia konfiguracji ({blockers.length})</span>
           </div>
           <ul className="mt-1 space-y-0.5">
             {blockers.slice(0, 5).map((b) => (
-              <li key={b.id} className="truncate text-[10px] text-red-200" title={b.message}>
-                • {b.message}
+              <li key={b.id} className="truncate text-[10px] text-amber-100" title={b.message}>
+                - {b.message}
               </li>
             ))}
           </ul>
@@ -151,7 +152,7 @@ export function EngineeringProjectExplorer(): JSX.Element {
           data-testid="explorer-add-element"
           className="rounded border border-[#00d4ff50] bg-[#00d4ff10] px-2 py-0.5 text-[10px] font-medium text-[#00d4ff] hover:bg-[#00d4ff20]"
         >
-          + Dodaj element
+          + Dodaj układ
         </button>
       </footer>
     </nav>
@@ -230,7 +231,7 @@ function EmptyExplorerHint(): JSX.Element {
       data-testid="explorer-empty"
       className="rounded border border-dashed border-scada-border bg-scada-bg p-3 text-center"
     >
-      <div className="text-[11px] font-semibold text-scada-text">Pusty model sieci</div>
+      <div className="text-[11px] font-semibold text-scada-text">Rozpocznij układ sieci</div>
       <p className="mt-1 text-[10px] leading-relaxed text-scada-muted">
         Zacznij od menu kontekstowego na kanwie SLD: wstaw GPZ, dodaj sekcję
         rozdzielni i pola SN.
@@ -252,7 +253,7 @@ function isSnapshotReady(snapshot: unknown): boolean {
 }
 
 function computeBuildPhaseLabel(snapshot: unknown): string {
-  if (!snapshot || typeof snapshot !== 'object') return 'Brak modelu';
+  if (!snapshot || typeof snapshot !== 'object') return 'Wstaw GPZ';
   const root = snapshot as Record<string, unknown>;
   const sources = Array.isArray(root.sources) ? root.sources.length : 0;
   const branches = Array.isArray(root.branches) ? root.branches.length : 0;
@@ -306,7 +307,9 @@ function buildExplorerTree(snapshot: unknown): readonly ExplorerNode[] {
   }
 
   // Branches (odcinki)
-  const branches = Array.isArray(root.branches) ? (root.branches as SnapshotEntity[]) : [];
+  const branches = Array.isArray(root.branches)
+    ? (root.branches as SnapshotEntity[]).filter(isTerrainSnSegment)
+    : [];
   if (branches.length > 0) {
     tree.push({
       id: 'group-branches',
@@ -385,9 +388,9 @@ function extractReadinessBlockers(snapshot: unknown): readonly Blocker[] {
     }
     if (b && typeof b === 'object') {
       const bo = b as Record<string, unknown>;
-      const msg = (bo.message_pl as string) ?? (bo.message as string) ?? (bo.code as string) ?? 'Blokada gotowości';
+      const msg = (bo.message_pl as string) ?? (bo.message as string) ?? (bo.code as string) ?? 'Zagadnienie konfiguracji';
       return { id: `blocker-${i}`, message: String(msg) };
     }
-    return { id: `blocker-${i}`, message: 'Blokada gotowości' };
+    return { id: `blocker-${i}`, message: 'Zagadnienie konfiguracji' };
   });
 }

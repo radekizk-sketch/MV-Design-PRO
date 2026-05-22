@@ -16,6 +16,7 @@ import { clsx } from 'clsx';
 import { useAppStateStore } from '../app-state/store';
 import { useNetworkBuildDerived } from '../network-build/networkBuildStore';
 import { formatLengthKm } from '../shared/formatPolishValue';
+import { isTerrainSnSegment } from '../shared/enmVisibility';
 import { useSnapshotStore } from '../topology/snapshotStore';
 
 const PHASE_CHIP: Record<string, string> = {
@@ -93,7 +94,13 @@ export function WorkflowContextStrip({
   const setActiveArea = useAppStateStore((state) => state.setActiveArea);
   const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
-  const { buildPhase, buildPhaseLabel, blockersByCategory, isReady } = useNetworkBuildDerived();
+  const {
+    buildPhase,
+    buildPhaseLabel,
+    blockersByCategory,
+    isReady,
+    snFieldCount = 0,
+  } = useNetworkBuildDerived();
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const hasCaseInRoute = typeof window !== 'undefined' && /(?:^|[?#&])case=/.test(window.location.hash);
 
@@ -106,6 +113,7 @@ export function WorkflowContextStrip({
     const branches = Array.isArray(model?.branches)
       ? model.branches as Array<Record<string, unknown>>
       : [];
+    const terrainSegments = branches.filter(isTerrainSnSegment);
     const substations = Array.isArray(model?.substations)
       ? model.substations as Array<Record<string, unknown>>
       : [];
@@ -113,7 +121,7 @@ export function WorkflowContextStrip({
       String(station.station_type ?? '').toLowerCase() !== 'gpz',
     ).length;
     let lengthBranchCount = 0;
-    const lengthKm = branches.reduce((sum, branch) => {
+    const lengthKm = terrainSegments.reduce((sum, branch) => {
       const raw = branch.length_km ?? branch.lengthKm ?? branch.length;
       const value = typeof raw === 'number' ? raw : Number(raw);
       if (!Number.isFinite(value) || value <= 0) {
@@ -124,7 +132,7 @@ export function WorkflowContextStrip({
     }, 0);
     return {
       buses: count('buses'),
-      branches: count('branches'),
+      branches: terrainSegments.length,
       stations: mvLvStationCount,
       sources: count('sources'),
       transformers: count('transformers'),
@@ -139,12 +147,14 @@ export function WorkflowContextStrip({
   const hasModel = Boolean(snapshot);
   const hasTopologyElements = stats.sources + stats.buses + stats.branches + stats.bays + stats.stations + stats.transformers + stats.generators + stats.loads > 0;
   const hasElectricalRoot = stats.sources > 0 || stats.stations > 0;
+  const hasMinimumDesignFlow = stats.sources > 0 && stats.lengthBranchCount > 0 && stats.stations > 0;
   const structuralBlockers = hasModel && hasTopologyElements
     ? [
       stats.sources === 0 && stats.stations === 0,
       stats.buses === 0,
       hasElectricalRoot && stats.buses > 0 && stats.lengthBranchCount === 0,
       hasElectricalRoot && stats.buses > 0 && stats.transformers === 0,
+      stats.lengthBranchCount > 0 && stats.stations === 0,
     ].filter(Boolean).length
     : 0;
   const rawBlockerCounts = blockersByCategory ?? { topologia: 0, katalogi: 0, eksploatacja: 0, analiza: 0, total: 0 };
@@ -155,7 +165,7 @@ export function WorkflowContextStrip({
       total: rawBlockerCounts.total + structuralBlockers,
     }
     : { topologia: 0, katalogi: 0, eksploatacja: 0, analiza: 0, total: 0 };
-  const isModelReady = hasTopologyElements && isReady && structuralBlockers === 0;
+  const isModelReady = hasTopologyElements && isReady && structuralBlockers === 0 && hasMinimumDesignFlow;
   const needsSnRun = hasTopologyElements && hasElectricalRoot && stats.lengthBranchCount === 0;
   const needsFirstStation = hasTopologyElements && stats.lengthBranchCount > 0 && stats.stations === 0;
   const visualBuildPhase = isModelReady ? buildPhase : hasElectricalRoot ? 'HAS_SOURCE' : 'NO_SOURCE';
@@ -192,7 +202,7 @@ export function WorkflowContextStrip({
     blockers: hasTopologyElements ? blockerCounts.total : 0,
     buses: hasModel ? stats.buses : '—',
     segments: hasModel ? stats.branches : '—',
-    bays: hasModel ? stats.bays || stats.branches : '—',
+    bays: hasModel ? stats.bays || snFieldCount : '—',
     stations: hasModel ? stats.stations : '—',
     lengthKm: hasModel
       ? stats.lengthBranchCount > 0

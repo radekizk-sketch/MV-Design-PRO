@@ -34,6 +34,8 @@ import {
   PV_INVERTER_CATALOG,
   VT_CATALOG,
   WIND_TURBINE_CATALOG,
+  BLOCK_TRANSFORMER_CATALOG,
+  getBlockTransformer,
   getNcRfgProfile,
   selectDerById,
   useStationDerStore,
@@ -298,6 +300,7 @@ function buildReadinessForGenerator(
 function buildDerFromGenerator(
   generator: Generator | null | undefined,
   fallbackKind: DerKind,
+  snapshot: EnergyNetworkModel | null,
 ): StationDerConnection | null {
   if (!generator) return null;
   const connectionSide = connectionSideFromGenerator(generator);
@@ -312,9 +315,13 @@ function buildDerFromGenerator(
     ?? stringFromRecord(meta, ['pcc_ref', 'pcc'])
     ?? generator.bus_ref
     ?? null;
-  const transformerRef = stringFromRecord(materialized, ['transformer_ref', 'station_transformer_ref'])
-    ?? stringFromRecord(meta, ['transformer_ref', 'station_transformer_ref'])
+  const transformerRef = generator.blocking_transformer_ref
+    ?? stringFromRecord(materialized, ['transformer_ref', 'station_transformer_ref', 'blocking_transformer_ref'])
+    ?? stringFromRecord(meta, ['transformer_ref', 'station_transformer_ref', 'blocking_transformer_ref'])
     ?? (connectionSide === 'dedicated_transformer' ? `tr_${generator.ref_id}` : null);
+  const blockTransformerCatalogRef = stringFromRecord(materialized, ['block_transformer_catalog_ref'])
+    ?? stringFromRecord(meta, ['block_transformer_catalog_ref'])
+    ?? inferBlockTransformerCatalogRef(snapshot, transformerRef);
   const lvBusbarRef = stringFromRecord(materialized, ['lv_busbar_ref', 'lv_bus_ref'])
     ?? stringFromRecord(meta, ['lv_busbar_ref', 'lv_bus_ref'])
     ?? (connectionSide === 'nN' ? generator.bus_ref ?? null : null);
@@ -368,6 +375,7 @@ function buildDerFromGenerator(
         ?? stringFromRecord(meta, ['dynamic_model_ref']),
       fault_current_data_ref: stringFromRecord(materialized, ['fault_current_data_ref'])
         ?? stringFromRecord(meta, ['fault_current_data_ref']),
+      block_transformer_catalog_ref: blockTransformerCatalogRef,
     },
     profiles: {
       ...EMPTY_DER_PROFILES,
@@ -435,6 +443,26 @@ function buildDerFromSurfaceContext(
   };
 }
 
+function inferBlockTransformerCatalogRef(
+  snapshot: EnergyNetworkModel | null,
+  transformerRef: string | null | undefined,
+): string | null {
+  if (!snapshot || !transformerRef) return null;
+  const transformer = (snapshot.transformers ?? []).find(
+    (candidate) => candidate.ref_id === transformerRef || candidate.id === transformerRef,
+  );
+  if (!transformer) return null;
+  const snKva = Math.round(transformer.sn_mva * 1000);
+  const vectorGroup = transformer.vector_group ?? null;
+  const match = BLOCK_TRANSFORMER_CATALOG.find((candidate) =>
+    candidate.sn_kva === snKva
+    && Math.abs(candidate.hv_kv - transformer.uhv_kv) < 0.01
+    && Math.abs(candidate.lv_kv - transformer.ulv_kv) < 0.01
+    && (!vectorGroup || candidate.vector_group === vectorGroup),
+  );
+  return match?.id ?? null;
+}
+
 function findDeviceLabel(der: StationDerConnection): string {
   if (der.der_kind === 'PV') return catalogLabel(PV_INVERTER_CATALOG, der.catalogs.device_catalog_ref);
   if (der.der_kind === 'BESS') return catalogLabel(BESS_PCS_CATALOG, der.catalogs.device_catalog_ref);
@@ -454,6 +482,16 @@ function findDeviceNominalPower(der: StationDerConnection): number | null {
   }
   return WIND_TURBINE_CATALOG.find((item) => item.id === der.catalogs.device_catalog_ref)?.nominal_power_kw
     ?? null;
+}
+
+function blockTransformerLabel(der: StationDerConnection): string {
+  const transformer = der.catalogs.block_transformer_catalog_ref
+    ? getBlockTransformer(der.catalogs.block_transformer_catalog_ref)
+    : null;
+  if (!transformer) return assignedLabel(der.transformer_ref, 'transformator blokowy przypisany');
+  const voltage = `${transformer.hv_kv.toLocaleString('pl-PL')}/${transformer.lv_kv.toLocaleString('pl-PL')} kV`;
+  const power = `${transformer.sn_kva.toLocaleString('pl-PL')} kVA`;
+  return `TR blokowy ${voltage} ${power} ${transformer.vector_group}`;
 }
 
 function dynamicModelLabel(der: StationDerConnection): string {
@@ -573,6 +611,7 @@ function buildDerCards(der: StationDerConnection): Partial<Record<DerCardId, JSX
   const faultCurrent = inverter?.fault_current_capability_pu
     ? `${inverter.fault_current_capability_pu.toFixed(2)} × In`
     : MISSING_DASH;
+  const isDedicatedTransformer = der.connection_side === 'dedicated_transformer';
 
   return {
     basic: (
@@ -587,6 +626,9 @@ function buildDerCards(der: StationDerConnection): Partial<Record<DerCardId, JSX
             label="Moc znamionowa AC"
             value={devicePower !== null ? `${devicePower} kW` : 'wg wybranego urządzenia katalogowego'}
           />
+          {isDedicatedTransformer && (
+            <FieldRow label="Transformator blokowy" value={blockTransformerLabel(der)} />
+          )}
           <FieldRow label="Urządzenie katalogowe" value={findDeviceLabel(der)} />
           <FieldRow label="Certyfikat PTPiREE" value={formatPtpireeCertificateLabel(ptpireeCertificate)} />
           <FieldRow label="Moduł NC RfG" value={moduleTypeLabel(der)} />
@@ -604,7 +646,10 @@ function buildDerCards(der: StationDerConnection): Partial<Record<DerCardId, JSX
           <FieldRow label="Tor mocy" value={pccPathLabel(der)} />
           <FieldRow label="Pole SN" value={assignedLabel(der.bay_ref, 'pole SN przypisane')} />
           <FieldRow label="Szyna nN" value={assignedLabel(der.lv_busbar_ref, 'szyna nN przypisana')} />
-          <FieldRow label="Transformator" value={assignedLabel(der.transformer_ref, 'transformator przypisany')} />
+          <FieldRow
+            label={isDedicatedTransformer ? 'Transformator blokowy' : 'Transformator'}
+            value={isDedicatedTransformer ? blockTransformerLabel(der) : assignedLabel(der.transformer_ref, 'transformator przypisany')}
+          />
         </dl>
         <EngineeringNote>
           Dla PV za transformatorem SN/nN wymagane są klikalne aparaty po stronie SN, transformator, szyna nN oraz wyłącznik nN chroniący falownik.
@@ -908,8 +953,9 @@ function DerSurfaceShell({
     () => buildDerFromGenerator(
       derId ? snapshot?.generators?.find((generator) => generator.ref_id === derId) : null,
       derKind,
+      snapshot ?? null,
     ),
-    [derId, derKind, snapshot?.generators],
+    [derId, derKind, snapshot],
   );
   const surfaceContextDer = useMemo(
     () => buildDerFromSurfaceContext(surface, derKind),
@@ -995,6 +1041,9 @@ function DerSurfaceShell({
                 : MISSING_DASH
             }
           />
+          {der.connection_side === 'dedicated_transformer' && (
+            <DerKpi label="Transformator blokowy" value={blockTransformerLabel(der)} />
+          )}
         </div>
       )}
     </div>

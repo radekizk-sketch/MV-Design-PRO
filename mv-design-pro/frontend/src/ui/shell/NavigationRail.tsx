@@ -3,7 +3,13 @@ import { clsx } from 'clsx';
 
 import { useAppStateStore } from '../app-state/store';
 import { AREA_DEFINITIONS, type AreaId } from '../navigation/areaRegistry';
-import { navigateToSld } from '../navigation/routes';
+import {
+  navigateToAnalysis,
+  navigateToCatalog,
+  navigateToReport,
+  navigateToSld,
+  navigateToVariants,
+} from '../navigation/routes';
 import { TechnicalIcon } from '../icons/technicalIconRegistry';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 
@@ -25,9 +31,26 @@ export function NavigationRail() {
   const navigateToArea = useCallback(
     (areaId: AreaId) => {
       setActiveArea(areaId);
-      if (areaId === 'SCHEMAT_TOPOLOGIA') {
-        collapseSurfaceStackTo(null);
-        navigateToSld();
+
+      switch (areaId) {
+        case 'SCHEMAT_TOPOLOGIA':
+          collapseSurfaceStackTo(null);
+          navigateToSld();
+          break;
+        case 'STUDIA_OBLICZENIOWE':
+          navigateToVariants();
+          break;
+        case 'WYNIKI_ANALIZY':
+          navigateToAnalysis();
+          break;
+        case 'KATALOGI_TECHNICZNE':
+          navigateToCatalog();
+          break;
+        case 'RAPORTY_UZASADNIENIA':
+          navigateToReport();
+          break;
+        default:
+          break;
       }
     },
     [collapseSurfaceStackTo, setActiveArea],

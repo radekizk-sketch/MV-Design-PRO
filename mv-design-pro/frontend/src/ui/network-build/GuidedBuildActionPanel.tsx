@@ -211,7 +211,7 @@ export function GuidedBuildActionPanel() {
     <div className="flex h-full flex-col bg-[#07111c] text-[#d7ecff]" data-testid="guided-build-action-panel">
       <div className="border-b border-[#17314c] px-5 py-4">
         <p className="font-mono-eng text-[10px] font-semibold uppercase tracking-[0.24em] text-[#58d8ff]">
-          Budowa modelu
+          Konfiguracja układu
         </p>
         <h2 className="mt-2 text-sm font-semibold text-white">{buildPhaseLabel}</h2>
       </div>
@@ -220,7 +220,7 @@ export function GuidedBuildActionPanel() {
         <section className="border border-[#1f3d5c] bg-[#0b1726]">
           <div className="border-b border-[#1f3d5c] px-4 py-3">
             <p className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.18em] text-[#00e7ff]">
-              Następna akcja
+              Następny krok projektowy
             </p>
             <h3 className="mt-2 text-base font-semibold text-white">{nextAction.title}</h3>
             <p className="mt-2 text-xs leading-5 text-[#95b8d8]">{nextAction.detail}</p>
@@ -248,7 +248,7 @@ export function GuidedBuildActionPanel() {
 
         <section className="space-y-3 border border-[#1f3d5c] bg-[#081522] px-4 py-4">
           <p className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7db6e8]">
-            Stan topologii
+            Struktura układu
           </p>
           <div className="space-y-3 text-xs">
             <div className="flex gap-3">
@@ -293,7 +293,7 @@ export function GuidedBuildActionPanel() {
       </div>
 
       <div className="border-t border-[#17314c] px-5 py-3 text-[11px] text-[#88a9c9]">
-        {isReady ? 'Układ przygotowany do obliczeń.' : 'Skonfiguruj układ techniczny przed uruchomieniem obliczeń.'}
+        {isReady ? 'Można uruchomić obliczenia.' : 'Skonfiguruj układ techniczny przed uruchomieniem obliczeń.'}
       </div>
     </div>
   );

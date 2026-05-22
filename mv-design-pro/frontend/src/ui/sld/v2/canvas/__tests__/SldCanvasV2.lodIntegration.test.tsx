@@ -75,8 +75,9 @@ describe('SldCanvasV2 — LodController histereza runtime integration (Phase 0B-
     const zoomedOutScale = getScale(container);
     expect(zoomedOutScale).toBeLessThan(zoomedInScale);
 
-    expect(container.querySelector('[data-testid="sld-v2-fit-view"] title')?.textContent)
-      .toBe('Dopasuj widok sieci');
+    const fitButton = container.querySelector('[data-testid="sld-v2-fit-view"]');
+    expect(fitButton?.getAttribute('title')).toBe('Dopasuj widok sieci');
+    expect(fitButton?.getAttribute('aria-label')).toBe('Dopasuj widok sieci');
   });
 
   it('opis poziomu szczegółowości nie pokazuje technicznego procentu zoomu', () => {
@@ -251,7 +252,7 @@ describe('SldCanvasV2 — LodController histereza runtime integration (Phase 0B-
     );
 
     const visible = container.querySelector('[data-testid="sld-v2-run-run-rmu-visible-0"]');
-    expect(visible?.getAttribute('d')).toBe('M 80 140 L 214 140');
+    expect(visible?.getAttribute('d')).toBe('M 80 140 L 289 140');
     expect(visible?.getAttribute('d')).not.toContain('332');
   });
 });

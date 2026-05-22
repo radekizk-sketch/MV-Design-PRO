@@ -156,7 +156,7 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const snapshot = {
       sources: [],
-      buses: [],
+      buses: [{ id: 'bus-sn-1', ref_id: 'bus-sn-1', name: 'Szyna SN 1' }],
       bays: [],
       branches: [],
       substations: [],
@@ -269,6 +269,7 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
     render(<AreaContextPanel areaCode="RAPORTY_UZASADNIENIA" />);
     expect(screen.getByTestId('ra-context-panel')).toBeInTheDocument();
     expect(screen.getByTestId('ra-template-list')).toBeInTheDocument();
+    expect(document.body.textContent ?? '').not.toMatch(/\[(POWER_FLOW|EQUIPMENT|EARTHING|VDROP|LOSSES|PROTECTION)\]/);
   });
 
   it('renderuje panel Historia i audyt', () => {

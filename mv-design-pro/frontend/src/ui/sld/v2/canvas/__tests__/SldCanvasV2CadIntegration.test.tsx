@@ -73,7 +73,7 @@ describe('SldCanvasV2 — z cadOverlay props', () => {
   it('corridors propagated → korytarze w overlay', () => {
     const corridors = [
       { id: 'c-gpz', yMin: 0, yMax: 100, kind: 'gpz' as const },
-      { id: 'c-feeder', yMin: 100, yMax: 240, kind: 'feeder' as const },
+      { id: 'c-feeder', yMin: 100, yMax: 240, kind: 'main-trunk' as const },
     ];
     const { container } = render(
       <SldCanvasV2 {...defaultProps()} cadOverlay={{ corridors }} />,
@@ -136,7 +136,7 @@ describe('SldCanvasV2 + CadOverlay — pełen workflow integration', () => {
           snapState: DEFAULT_SNAP_STATE,
           ghosts: [{ kind: 'append-station', position: { x: 200, y: 0 } }],
           selectedRoutes: [route],
-          corridors: [{ id: 'c-feeder', yMin: 0, yMax: 100, kind: 'feeder' }],
+          corridors: [{ id: 'c-feeder', yMin: 0, yMax: 100, kind: 'main-trunk' }],
         }}
       />,
     );

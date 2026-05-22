@@ -204,12 +204,15 @@ export function AppShellV12({
     }
   }, [activeSurface?.openMode, activeSurface?.surfaceId]);
 
+  // Panel boczny jest kartą techniczną, nie osobnym ekranem zasłaniającym SLD.
+  // Duże konfiguratory powinny używać expand_workspace; w trybie panelowym
+  // zostawiamy projektantowi czytelną kanwę topologii.
   const inspectorWidthClass = useMemo(() => {
     if (inspectorCollapsed) return 'w-10';
     switch (activeSurface?.sizeClass) {
       case 'A': return 'w-[420px]';
       case 'B': return 'w-[620px]';
-      case 'C': return 'w-[min(70vw,1100px)]';
+      case 'C': return 'w-[min(44vw,720px)]';
       default:  return 'w-[360px]';
     }
   }, [activeSurface, inspectorCollapsed]);

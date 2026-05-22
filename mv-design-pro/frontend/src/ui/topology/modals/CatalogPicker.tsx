@@ -19,6 +19,13 @@ export interface CatalogEntry {
   c_nf_per_km?: number;
   b_us_per_km?: number;
   max_temperature_c?: number;
+  number_of_cores?: number;
+  return_conductor_cross_section_mm2?: number | null;
+  return_conductor_material?: string | null;
+  return_conductor_r_ohm_per_km_20c?: number | null;
+  return_conductor_jth_1s_a_per_mm2?: number | null;
+  return_conductor_ith_1s_a?: number | null;
+  phase_set_label?: string;
   insulation_type?: string;
   conductor_material?: string;
   standard?: string;
@@ -38,6 +45,7 @@ interface CatalogPickerProps {
 function formatCatalogMeta(entry: CatalogEntry): string {
   const parts = [
     entry.voltage_rating_kv !== undefined ? `${entry.voltage_rating_kv} kV` : null,
+    entry.phase_set_label ?? null,
     entry.cross_section_mm2 !== undefined ? `${entry.cross_section_mm2} mm²` : null,
     entry.rated_current_a !== undefined ? `Iz ${entry.rated_current_a} A` : null,
   ].filter(Boolean);

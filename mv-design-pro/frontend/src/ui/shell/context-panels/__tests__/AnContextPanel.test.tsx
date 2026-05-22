@@ -100,4 +100,14 @@ describe('AnContextPanel', () => {
       }),
     );
   });
+
+  it('pokazuje publiczną etykietę wersji układu zamiast surowego identyfikatora', () => {
+    useAppStateStore.getState().setActiveSnapshot('ec29d86261aac580eb7b72743ad2e811f03ff1a8d9ecc8b3');
+
+    render(<AnContextPanel />);
+
+    const snapshotRow = screen.getByTestId('an-active-snapshot');
+    expect(snapshotRow).toHaveTextContent('Wersja układu: aktualna wersja układu');
+    expect(snapshotRow).not.toHaveTextContent('ec29d862');
+  });
 });

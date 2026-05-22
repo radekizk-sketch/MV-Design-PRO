@@ -15,6 +15,7 @@ import { render as rtlRender, screen, fireEvent, waitFor } from '@testing-librar
 import type { ReactElement } from 'react';
 
 import { useAppStateStore } from '../../../app-state/store';
+import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { AddDerWizard } from '../AddDerWizard';
 
 function render(ui: ReactElement) {
@@ -41,6 +42,7 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
   beforeEach(() => {
     useStationDerStore.getState().reset();
     useAppStateStore.getState().reset();
+    useSnapshotStore.getState().reset();
     useAppStateStore.getState().setActiveProject('projekt-test-001', 'Projekt testowy');
     useAppStateStore.getState().setActiveCase('case-test-001', 'Zakres testowy', 'ShortCircuitCase', 'NONE');
   });
@@ -145,5 +147,98 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     expect(der.profiles.bess_operation_mode_refs).toContain('mode_fcr_n');
     expect(der.profiles.bess_operation_mode_refs).toContain('mode_voltage_support');
     expect(der.profiles.bess_operation_mode_refs.length).toBe(2);
+  });
+
+  it('zapisuje DER do przypadku, który posiada aktualny snapshot ENM', async () => {
+    useAppStateStore.getState().setActiveCase(
+      'case-stale-ui-001',
+      'Zakres z paska',
+      'ShortCircuitCase',
+      'NONE',
+    );
+    useSnapshotStore.setState({
+      caseId: 'case-snapshot-001',
+      snapshot: {
+        substations: [{ ref_id: 'station-001', id: 'station-001' }],
+      } as never,
+    });
+
+    render(
+      <AddDerWizard
+        isOpen={true}
+        stationId="station-001"
+        stationName="Stacja Test"
+        derKind="PV"
+        projectId="projekt-test-001"
+        onClose={() => {}}
+        nowIso="2026-04-01T00:00:00Z"
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('variant-nN'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.change(screen.getByTestId('add-der-name'), { target: { value: 'PV Test' } });
+    fireEvent.change(screen.getByTestId('add-der-pcc-label'), { target: { value: 'PCC-01' } });
+    fireEvent.change(screen.getByTestId('add-der-voltage-level'), { target: { value: 'lv_0_4kV' } });
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.change(screen.getByTestId('add-der-device'), {
+      target: { value: 'pv_inv_huawei_185' },
+    });
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'ncrfg_enea' } });
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.click(screen.getByTestId('add-der-create'));
+
+    await waitFor(() => {
+      const generatorCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+        ([url]) => String(url).includes('/generators'),
+      );
+      expect(generatorCall?.[0]).toContain('/cases/case-snapshot-001/generators');
+      expect(JSON.parse(String(generatorCall?.[1]?.body))).toMatchObject({
+        catalog_ref: 'pv_inv_huawei_185',
+        power_mw: 0.185,
+      });
+    });
+  });
+
+  it('przekazuje do API katalogową moc PV 50 kW bez sztucznej podłogi 100 kW', async () => {
+    useSnapshotStore.setState({
+      caseId: 'case-snapshot-001',
+      snapshot: {
+        substations: [{ ref_id: 'station-001', id: 'station-001' }],
+      } as never,
+    });
+
+    render(
+      <AddDerWizard
+        isOpen={true}
+        stationId="station-001"
+        stationName="Stacja Test"
+        derKind="PV"
+        projectId="projekt-test-001"
+        onClose={() => {}}
+        nowIso="2026-04-01T00:00:00Z"
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('variant-nN'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.change(screen.getByTestId('add-der-device'), {
+      target: { value: 'pv_inv_catalog_50' },
+    });
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.click(screen.getByTestId('add-der-create'));
+
+    await waitFor(() => {
+      const generatorCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+        ([url]) => String(url).includes('/generators'),
+      );
+      expect(JSON.parse(String(generatorCall?.[1]?.body))).toMatchObject({
+        catalog_ref: 'pv_inv_catalog_50',
+        power_mw: 0.05,
+      });
+    });
   });
 });

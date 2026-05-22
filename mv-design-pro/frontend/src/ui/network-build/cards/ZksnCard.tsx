@@ -20,7 +20,15 @@ import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
+import {
+  resolveBranchPointBranchPortId,
+  resolveBranchPointBranchPortOccupancy,
+} from '../operationContextResolvers';
 import type { BranchPointSN } from '../../../types/enm';
+import {
+  isRawTechnicalIdentifier,
+  publicTechnicalLabel,
+} from '../../shared/publicTechnicalLabels';
 
 // =============================================================================
 // Helpers
@@ -69,6 +77,10 @@ function completenessStatus(status: string | null | undefined): 'ok' | 'warning'
   return 'error';
 }
 
+function branchPortDisplayLabel(index: number): string {
+  return `ODG ${index + 1}`;
+}
+
 // =============================================================================
 // ZksnCard
 // =============================================================================
@@ -94,14 +106,15 @@ export function ZksnCard({ elementId, onClose }: ZksnCardProps) {
     [branchPoint],
   );
 
-  const branchPorts: Array<{ portId: string; busRef: string; occupied: boolean }> = useMemo(() => {
+  const branchPorts: Array<{ portId: string; busRef: string; occupied: boolean; displayLabel: string }> = useMemo(() => {
     if (!branchPoint?.ports?.BRANCH) return [];
     return branchPoint.ports.BRANCH.map((busRef: string, idx: number) => {
-      const portId = `BRANCH_${idx + 1}`;
+      const portId = resolveBranchPointBranchPortId(branchPoint.ports.BRANCH.length, idx);
       return {
         portId,
         busRef,
-        occupied: !!(branchPoint.branch_occupied?.[portId]),
+        occupied: Boolean(resolveBranchPointBranchPortOccupancy(branchPoint, idx)),
+        displayLabel: branchPortDisplayLabel(idx),
       };
     });
   }, [branchPoint]);
@@ -111,29 +124,41 @@ export function ZksnCard({ elementId, onClose }: ZksnCardProps) {
 
     const portFields = branchPorts.map((port) => ({
       key: port.portId,
-      label: `Port ${port.portId}`,
+      label: `Port odgałęzienia ${port.displayLabel}`,
       value: port.occupied
-        ? `Zajęty (${branchPoint.branch_occupied?.[port.portId] ?? '?'})`
-        : `Wolny (szyna: ${port.busRef})`,
+        ? 'Zajęty (przyłączone odgałęzienie SN)'
+        : 'Wolny — gotowy do wyprowadzenia odgałęzienia',
     }));
+
+    const publicName = publicTechnicalLabel(branchPoint.name, 'ZKSN');
+    const parentSegmentLabel = isRawTechnicalIdentifier(branchPoint.parent_segment_id)
+      ? 'Magistrala SN'
+      : (branchPoint.parent_segment_id ?? 'Magistrala SN');
 
     const result: CardSection[] = [
       {
         id: 'ident',
         label: 'Identyfikacja',
         fields: [
-          { key: 'ref_id', label: 'Identyfikator', value: branchPoint.ref_id },
-          { key: 'name', label: 'Nazwa', value: branchPoint.name },
+          { key: 'name', label: 'Nazwa', value: publicName },
           { key: 'type', label: 'Typ obiektu', value: 'ZKSN (złączka kablowa SN)' },
-          { key: 'parent_segment', label: 'Odcinek nadrzędny', value: branchPoint.parent_segment_id },
+          { key: 'parent_segment', label: 'Odcinek nadrzędny', value: parentSegmentLabel },
         ],
       },
       {
         id: 'topology',
         label: 'Topologia',
         fields: [
-          { key: 'main_in', label: 'Port MAIN_IN', value: branchPoint.ports?.MAIN_IN ?? '—' },
-          { key: 'main_out', label: 'Port MAIN_OUT', value: branchPoint.ports?.MAIN_OUT ?? '—' },
+          {
+            key: 'main_in',
+            label: 'Wejście magistrali (MAIN_IN)',
+            value: branchPoint.ports?.MAIN_IN ? 'Podłączone' : '—',
+          },
+          {
+            key: 'main_out',
+            label: 'Wyjście magistrali (MAIN_OUT)',
+            value: branchPoint.ports?.MAIN_OUT ? 'Podłączone' : '—',
+          },
           ...portFields,
           {
             key: 'switch_state',
@@ -218,7 +243,7 @@ export function ZksnCard({ elementId, onClose }: ZksnCardProps) {
     branchPorts.forEach((port) => {
       acts.push({
         id: `add_branch_${port.portId}`,
-        label: `Dodaj odgałęzienie z ${port.portId}`,
+        label: `Dodaj odgałęzienie z ${port.displayLabel}`,
         variant: 'primary',
         onClick: () => handleAddBranchFromPort(port.portId),
         disabled: port.occupied,
@@ -245,14 +270,15 @@ export function ZksnCard({ elementId, onClose }: ZksnCardProps) {
   if (!branchPoint) {
     return (
       <div className="p-4 text-xs text-gray-500">
-        ZKSN nie znaleziony: {elementId}
+        Nie znaleziono obiektu ZKSN o tym oznaczeniu.
       </div>
     );
   }
 
+  const headerName = publicTechnicalLabel(branchPoint.name, 'ZKSN');
   return (
     <ObjectCard
-      elementName={branchPoint.name}
+      elementName={headerName}
       elementType="ZKSN (złączka kablowa SN)"
       elementId={elementId}
       statusDot={statusDot}

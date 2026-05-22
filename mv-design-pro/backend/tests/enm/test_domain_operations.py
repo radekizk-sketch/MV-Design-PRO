@@ -1220,6 +1220,75 @@ class TestPVBESSTransformerGate:
             has_pv_blocker
         ), f"Expected pv_bess.transformer_required blocker, got codes: {blocker_codes}"
 
+    def test_pv_nn_side_uses_station_transformer_refs(self):
+        """PV po stronie nN korzysta z transformatora stacyjnego, bez fałszywego blokera."""
+        _, snapshot = _build_gpz_plus_segments(2)
+        first_seg = _get_first_segment_ref(snapshot)
+
+        result_station = execute_domain_operation(
+            enm_dict=snapshot,
+            op_name="insert_station_on_segment_sn",
+            payload={
+                "segment_ref": first_seg,
+                "station_type": "B",
+                "insert_at": {"value": 0.5},
+                "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
+                "sn_fields": ["IN", "OUT"],
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
+            },
+        )
+        assert result_station.get("snapshot") is not None, f"Error: {result_station.get('error')}"
+        s = result_station["snapshot"]
+        voltage_by_bus = {
+            bus["ref_id"]: bus.get("voltage_kv", 999)
+            for bus in s.get("buses", [])
+        }
+        station = next(
+            candidate
+            for candidate in s["substations"]
+            if candidate.get("transformer_refs")
+            and any(voltage_by_bus.get(ref, 999) < 1 for ref in candidate.get("bus_refs", []))
+        )
+        assert station.get("transformer_refs"), "Fixture musi mieć transformator stacyjny"
+
+        nn_bus_refs = [
+            ref
+            for ref in station.get("bus_refs", [])
+            if voltage_by_bus.get(ref, 999) < 1
+        ]
+        assert nn_bus_refs, "Fixture musi mieć szynę nN stacji"
+
+        s_copy = copy.deepcopy(s)
+        s_copy.setdefault("generators", []).append(
+            {
+                "ref_id": "gen_pv_nn_test",
+                "name": "PV nN test",
+                "bus_ref": nn_bus_refs[0],
+                "p_mw": 0.185,
+                "q_mvar": 0.0,
+                "gen_type": "pv_inverter",
+                "station_ref": station["ref_id"],
+                "connection_variant": "nn_side",
+            }
+        )
+
+        any_bus = s_copy["buses"][0]
+        result = execute_domain_operation(
+            enm_dict=s_copy,
+            op_name="update_element_parameters",
+            payload={
+                "element_ref": any_bus["ref_id"],
+                "parameters": {"name": any_bus.get("name", "test")},
+            },
+        )
+
+        blockers = result.get("readiness", {}).get("blockers", [])
+        blocker_codes = {b.get("code") for b in blockers}
+        assert "pv_bess.transformer_required" not in blocker_codes
+
 
 # ===========================================================================
 # TEST 10: test_set_normal_open_point

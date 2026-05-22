@@ -19,14 +19,9 @@ const BROWSER_NAMESPACES: readonly CatalogNamespace[] = [
   'LINIA_SN',
   'KABEL_SN',
   'TRAFO_SN_NN',
-  'ZRODLO_SN',
   'APARAT_SN',
   'APARAT_NN',
   'KABEL_NN',
-  'OBCIAZENIE',
-  'ZRODLO_NN_PV',
-  'ZRODLO_NN_BESS',
-  'ZABEZPIECZENIE',
   'CT',
   'VT',
 ];
@@ -175,7 +170,7 @@ export function CatalogBrowser({ className, onSelectType, onClose }: CatalogBrow
       .catch((err: unknown) => {
         if (cancelled) return;
         setTypes([]);
-        setError(err instanceof Error ? err.message : 'Blad pobierania katalogu.');
+        setError(err instanceof Error ? err.message : 'Błąd pobierania katalogu.');
       })
       .finally(() => {
         if (!cancelled) {
@@ -222,15 +217,15 @@ export function CatalogBrowser({ className, onSelectType, onClose }: CatalogBrow
     <div className={clsx('flex h-full flex-col bg-white', className)} data-testid="catalog-browser">
       <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3">
         <div>
-          <h3 className="text-sm font-semibold text-gray-800">Przegladarka katalogow</h3>
-          <p className="mt-0.5 text-[10px] text-gray-500">Wybierz kategorie i typ elementu</p>
+          <h3 className="text-sm font-semibold text-gray-800">Przeglądarka katalogów</h3>
+          <p className="mt-0.5 text-[10px] text-gray-500">Wybierz kategorię i typ elementu pasywnego</p>
         </div>
         {onClose ? (
           <button
             type="button"
             onClick={onClose}
             className="flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-200"
-            aria-label="Zamknij przegladarke"
+            aria-label="Zamknij przeglądarkę"
           >
             x
           </button>
@@ -278,7 +273,7 @@ export function CatalogBrowser({ className, onSelectType, onClose }: CatalogBrow
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="flex h-full items-center justify-center">
-                <p className="text-[11px] text-gray-500">Ladowanie katalogu...</p>
+                <p className="text-[11px] text-gray-500">Ładowanie katalogu...</p>
               </div>
             ) : error ? (
               <div className="flex h-full items-center justify-center px-4">
@@ -330,8 +325,7 @@ export function CatalogBrowser({ className, onSelectType, onClose }: CatalogBrow
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[11px] font-medium text-gray-800">{selectedType.name}</p>
-                  <p className="text-[10px] text-gray-500">
-                    ID: {selectedType.id}
+                  <p className="hidden" aria-hidden="true">
                     {selectedType.manufacturer ? ` • ${selectedType.manufacturer}` : ''}
                   </p>
                 </div>

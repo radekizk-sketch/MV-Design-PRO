@@ -68,6 +68,17 @@ class TestMaterializationContracts:
         contract = MATERIALIZATION_CONTRACTS["KABEL_SN"]
         assert "r_ohm_per_km" in contract.solver_fields
         assert "x_ohm_per_km" in contract.solver_fields
+        assert "r0_ohm_per_km" in contract.solver_fields
+        assert "x0_ohm_per_km" in contract.solver_fields
+        assert "return_conductor_cross_section_mm2" in contract.solver_fields
+        assert "return_conductor_r_ohm_per_km_20c" in contract.solver_fields
+        assert "return_conductor_ith_1s_a" in contract.solver_fields
+
+    def test_linia_sn_includes_zero_sequence_fields(self) -> None:
+        """LINIA_SN contract MUST include zero-sequence impedance fields."""
+        contract = MATERIALIZATION_CONTRACTS["LINIA_SN"]
+        assert "r0_ohm_per_km" in contract.solver_fields
+        assert "x0_ohm_per_km" in contract.solver_fields
 
     def test_contracts_have_nonempty_solver_fields(self) -> None:
         """Every contract has at least one solver field."""
@@ -167,6 +178,63 @@ class TestMaterialization:
         assert "r_ohm_per_km" in result.solver_fields
         assert "x_ohm_per_km" in result.solver_fields
         assert result.solver_fields["r_ohm_per_km"] == cable.r_ohm_per_km
+        assert "return_conductor_cross_section_mm2" in result.solver_fields
+
+    def test_materialize_cable_return_conductor_from_catalog(self, catalog: CatalogRepository) -> None:
+        """Zyla powrotna kabla jest materializowana z rekordu katalogowego."""
+        binding = CatalogBinding(
+            catalog_namespace="KABEL_SN",
+            catalog_item_id="cable-enea-operator-na2xs2y-1x150",
+            catalog_item_version="2026.01",
+            materialize=True,
+        )
+
+        result = materialize_catalog_binding(binding, catalog)
+
+        assert result.success
+        assert result.solver_fields["trade_name"] == "NA2XS2Y 1x150/25"
+        assert result.solver_fields["return_conductor_cross_section_mm2"] == 25
+        assert result.solver_fields["return_conductor_material"] == "CU"
+        assert result.solver_fields["return_conductor_r_ohm_per_km_20c"] == pytest.approx(
+            17.241 / 25,
+            rel=1e-6,
+        )
+        assert result.solver_fields["return_conductor_ith_1s_a"] == pytest.approx(
+            143.0 * 25,
+            rel=1e-6,
+        )
+        assert result.solver_fields["r0_ohm_per_km"] == pytest.approx(
+            result.solver_fields["r_ohm_per_km"]
+            + result.solver_fields["return_conductor_r_ohm_per_km_20c"],
+            rel=1e-6,
+        )
+        assert result.solver_fields["x0_ohm_per_km"] == pytest.approx(
+            3.0 * result.solver_fields["x_ohm_per_km"],
+            rel=1e-6,
+        )
+
+    def test_materialize_overhead_line_zero_sequence_from_catalog(
+        self, catalog: CatalogRepository
+    ) -> None:
+        """Linia napowietrzna materializuje katalogowe R0/X0."""
+        binding = CatalogBinding(
+            catalog_namespace="LINIA_SN",
+            catalog_item_id="line-base-al-150",
+            catalog_item_version="2026.01",
+            materialize=True,
+        )
+
+        result = materialize_catalog_binding(binding, catalog)
+
+        assert result.success
+        assert result.solver_fields["r0_ohm_per_km"] == pytest.approx(
+            3.0 * result.solver_fields["r_ohm_per_km"],
+            rel=1e-6,
+        )
+        assert result.solver_fields["x0_ohm_per_km"] == pytest.approx(
+            3.0 * result.solver_fields["x_ohm_per_km"],
+            rel=1e-6,
+        )
 
     def test_materialize_transformer_type(self, catalog: CatalogRepository) -> None:
         """Materialize a transformer and verify voltage_lv_kv in solver_fields."""

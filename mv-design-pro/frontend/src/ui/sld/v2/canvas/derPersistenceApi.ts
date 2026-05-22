@@ -10,6 +10,7 @@ export interface DerGeneratorConfigRequest {
   readonly power_mw: number;
   readonly connection_variant: DerConnectionVariant;
   readonly catalog_ref: string;
+  readonly block_transformer_catalog_ref?: string | null;
   readonly source_name?: string;
   readonly quantity?: number;
   readonly nc_rfg_module?: NcRfgModule;

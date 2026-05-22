@@ -41,7 +41,7 @@ const GROUP_LABEL_PL: Record<StationWizardGroup, string> = {
   'OZE':        'Źródła OZE',
   'Ochrona':    'Ochrona',
   'Infrastr.':  'Infrastruktura',
-  'Gotowość':   'Gotowość',
+  'Obliczenia': 'Obliczenia i raport',
 };
 
 export function StationWizardSidebar({

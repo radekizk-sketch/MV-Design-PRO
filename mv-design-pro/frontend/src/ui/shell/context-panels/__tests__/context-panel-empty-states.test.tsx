@@ -1,11 +1,18 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const networkBuildMocks = vi.hoisted(() => ({
   openRouteSurface: vi.fn(),
   openOperationForm: vi.fn(),
+  derived: {
+    blockersByCategory: { total: 0 },
+  },
 }));
+
+beforeEach(() => {
+  networkBuildMocks.derived.blockersByCategory = { total: 0 };
+});
 
 vi.mock('../../../network-build/networkBuildStore', () => ({
   useNetworkBuildDerived: () => ({
@@ -19,7 +26,7 @@ vi.mock('../../../network-build/networkBuildStore', () => ({
     generatorCount: 1,
     trunkSegmentCount: 1,
     isReady: false,
-    blockersByCategory: { total: 0 },
+    blockersByCategory: networkBuildMocks.derived.blockersByCategory,
     ozeSourceSummaries: [],
     stationSummaries: [],
     transformerSummaries: [],
@@ -294,9 +301,45 @@ describe('context-panel-empty-states - stany puste z przyczyną i akcją', () =>
 
     render(<SchematContextPanel />);
 
-    expect(screen.getByText(/Kabel SN EPR Al 1x150 mm² · 0,31 km/)).toBeInTheDocument();
+    expect(screen.getByText(/Kabel SN EPR Al 3×1×150 mm² · 0,31 km/)).toBeInTheDocument();
     expect(screen.queryByText(/Base Epr/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/cable-base/i)).not.toBeInTheDocument();
+  });
+
+  it('ukrywa operatora i pokazuje żyłę powrotną kabla jednożyłowego SN', () => {
+    act(() => {
+      useSnapshotStore.setState({
+        snapshot: {
+          header: { hash_sha256: 'hash-e2e' },
+          sources: [],
+          buses: [],
+          bays: [],
+          branches: [
+            {
+              ref_id: 'seg/1/segment',
+              name: 'Odcinek SN',
+              type: 'cable',
+              catalog_ref: 'cable-enea-operator-na2xs2y-1x150',
+              materialized_params: {
+                catalog_label: 'ENEA Operator NA2XS2Y 1X150',
+                return_conductor_cross_section_mm2: 25,
+              },
+              length_km: 0.5,
+            },
+          ],
+          substations: [],
+          transformers: [],
+          generators: [],
+          loads: [],
+        } as any,
+        readiness: null,
+      });
+    });
+
+    render(<SchematContextPanel />);
+
+    expect(screen.getByText(/3 × NA2XS2Y 1×150\/25 mm² · 0,50 km/)).toBeInTheDocument();
+    expect(screen.queryByText(/ENEA Operator/i)).not.toBeInTheDocument();
   });
 
   it('oddziela nazwę źródła od opisu technicznego w drzewie schematu', () => {
@@ -452,5 +495,23 @@ describe('context-panel-empty-states - stany puste z przyczyną i akcją', () =>
     render(<WynikiContextPanel />);
     expect(screen.getByText(/Warunek przejścia/)).toBeInTheDocument();
     expect(screen.getByTestId('wyniki-action-go-studies')).toBeInTheDocument();
+  });
+
+  it('panel Wyniki i analizy nie pokazuje technicznego identyfikatora obliczenia', () => {
+    const runId = 'fae30fb3-88ff-4c94-981e-c6122bcd54bb';
+    act(() => {
+      useAppStateStore.getState().setActiveRun(runId);
+      useAppStateStore.getState().setActiveCaseResultStatus('FRESH');
+    });
+
+    const { container } = render(<WynikiContextPanel />);
+
+    expect(screen.getByTestId('wyniki-active-run-label')).toHaveTextContent('Aktywne wyniki obliczeń');
+    expect(container.textContent ?? '').not.toContain(runId);
+
+    act(() => {
+      useAppStateStore.getState().setActiveRun(null);
+      useAppStateStore.getState().setActiveCaseResultStatus('NONE');
+    });
   });
 });

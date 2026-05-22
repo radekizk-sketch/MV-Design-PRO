@@ -24,7 +24,7 @@ describe('STATION_WIZARD_STEPS — kontrakt 17 kroków', () => {
     expect(STATION_WIZARD_STEPS).toHaveLength(17);
   });
 
-  it('kanoniczna kolejność: SN → Pomiary → Stacja → OZE → Ochrona → Infrastr. → Gotowość', () => {
+  it('kanoniczna kolejność: SN → Pomiary → Stacja → OZE → Ochrona → Infrastr. → Obliczenia', () => {
     const expectedIds: StationWizardStepId[] = [
       'cable', 'switchgear', 'bays', 'apparatus',
       'ct', 'vt', 'meters',
@@ -98,9 +98,9 @@ describe('STATION_WIZARD_STEPS — kontrakt 17 kroków', () => {
     expect(infra.map((s) => s.id)).toEqual(['infra', 'network']);
   });
 
-  it('grupa Gotowość ma 1 krok finalny (readiness)', () => {
-    const gotowosc = getStepsInGroup('Gotowość');
-    expect(gotowosc.map((s) => s.id)).toEqual(['readiness']);
+  it('grupa Obliczenia ma 1 krok finalny (readiness)', () => {
+    const obliczenia = getStepsInGroup('Obliczenia');
+    expect(obliczenia.map((s) => s.id)).toEqual(['readiness']);
   });
 
   it('7 grup × kroków = 17 (suma per grupa)', () => {
@@ -113,7 +113,7 @@ describe('STATION_WIZARD_STEPS — kontrakt 17 kroków', () => {
 
   it('STATION_WIZARD_GROUPS ma 7 grup w kanonicznej kolejności', () => {
     expect(STATION_WIZARD_GROUPS).toEqual([
-      'SN', 'Pomiary', 'Stacja', 'OZE', 'Ochrona', 'Infrastr.', 'Gotowość',
+      'SN', 'Pomiary', 'Stacja', 'OZE', 'Ochrona', 'Infrastr.', 'Obliczenia',
     ]);
   });
 });

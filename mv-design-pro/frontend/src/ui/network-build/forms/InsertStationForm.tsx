@@ -13,6 +13,7 @@ import {
 import { useSnapshotStore, selectBusOptions } from '../../topology/snapshotStore';
 import { useActiveOperationContext, useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
+import { useSelectionStore } from '../../selection/store';
 import { validateCatalogFirst } from './catalogFirstRules';
 import { catalogRefFromInput, normalizeCatalogBinding } from './catalogPayload';
 import {
@@ -28,11 +29,14 @@ import type { Manufacturer } from '../../catalog/manufacturer';
 import type { SwitchgearFamily } from '../../catalog/SwitchgearFamilyPicker';
 import type { ConverterType, TransformerType } from '../../catalog/types';
 import { CatalogPicker, type CatalogEntry } from '../../topology/modals/CatalogPicker';
+import { isTerrainSnSegment } from '../../shared/enmVisibility';
 import {
   formatStationTypeLabelPl,
   normalizeTopologicalStationKind,
   type TopologicalStationKind,
 } from '../../shared/stationTypeLabels';
+import type { ElementType, SelectedElement } from '../../types';
+import type { DomainOpResponseV1, EnergyNetworkModel, Substation } from '../../../types/enm';
 
 type NnConfiguration =
   | 'LOAD_NN'
@@ -77,6 +81,106 @@ interface NnFeederPayload {
     protected_object: string;
     analysis_scope: string;
   };
+}
+
+function elementTypeFromSelectionHint(elementType: string | null | undefined): ElementType {
+  switch (elementType) {
+    case 'substation':
+    case 'station':
+      return 'Station';
+    case 'branch':
+    case 'line_branch':
+    case 'segment':
+      return 'LineBranch';
+    case 'bus':
+      return 'Bus';
+    case 'transformer':
+      return 'TransformerBranch';
+    case 'source':
+      return 'Source';
+    case 'bay':
+      return 'BaySN';
+    default:
+      return 'Station';
+  }
+}
+
+function resolveSelectionName(
+  snapshot: EnergyNetworkModel | null | undefined,
+  elementId: string,
+  fallbackName: string,
+): string {
+  const collections = [
+    snapshot?.substations,
+    snapshot?.branches,
+    snapshot?.buses,
+    snapshot?.transformers,
+    snapshot?.sources,
+    snapshot?.bays,
+  ];
+  for (const collection of collections) {
+    const match = collection?.find((item) => item.ref_id === elementId || item.id === elementId);
+    if (match?.name) {
+      return match.name;
+    }
+  }
+  return fallbackName;
+}
+
+function selectionFromDomainResponse(
+  response: DomainOpResponseV1,
+  fallbackName: string,
+): SelectedElement | null {
+  const hint = response.selection_hint;
+  if (!hint?.element_id) {
+    return null;
+  }
+  return {
+    id: hint.element_id,
+    type: elementTypeFromSelectionHint(hint.element_type),
+    name: resolveSelectionName(response.snapshot, hint.element_id, fallbackName),
+  };
+}
+
+function stationRef(station: Substation): string {
+  return station.ref_id || station.id;
+}
+
+function stationSelectionFromMaterialization(
+  response: DomainOpResponseV1,
+  fallbackName: string,
+  previousSnapshot: EnergyNetworkModel | null,
+): SelectedElement | null {
+  const hintedSelection = selectionFromDomainResponse(response, fallbackName);
+  const hintedStation = hintedSelection?.type === 'Station'
+    ? response.snapshot?.substations?.find(
+      (station) => stationRef(station) === hintedSelection.id || station.id === hintedSelection.id,
+    )
+    : null;
+  if (hintedSelection && hintedStation) {
+    return {
+      ...hintedSelection,
+      name: stationPublicName(hintedStation, fallbackName),
+    };
+  }
+
+  const previousStationRefs = new Set(
+    (previousSnapshot?.substations ?? []).map((station) => stationRef(station)),
+  );
+  const createdStation = (response.snapshot?.substations ?? [])
+    .filter((station) => station.station_type !== 'gpz')
+    .find((station) => !previousStationRefs.has(stationRef(station)));
+  if (!createdStation) return null;
+
+  return {
+    id: stationRef(createdStation),
+    type: 'Station',
+    name: stationPublicName(createdStation, fallbackName),
+  };
+}
+
+function stationPublicName(station: Substation, fallbackName: string): string {
+  return station.name?.trim() || fallbackName;
 }
 
 const STATION_KIND_OPTIONS: Array<{
@@ -435,15 +539,24 @@ function clampOutgoingFeederCount(value: number): number {
   return Math.max(1, Math.min(8, Math.trunc(value)));
 }
 
-function estimateReadiness(stationKind: TopologicalStationKind, nnConfiguration: NnConfiguration): number {
-  const base: Record<TopologicalStationKind, number> = {
-    terminal: 78,
-    inline: 82,
-    branch: 80,
-    sectional: 76,
+function describeConfigurationScope(
+  stationKind: TopologicalStationKind,
+  nnConfiguration: NnConfiguration,
+): string {
+  const stationScope: Record<TopologicalStationKind, string> = {
+    terminal: 'WE + TR + nN',
+    inline: 'WE + WY + TR + nN',
+    branch: 'WE + WY + ODG + TR + nN',
+    sectional: 'sekcje SN + TR + nN',
   };
-  const sourceBonus = nnConfiguration === 'LOAD_NN' || nnConfiguration === 'CUSTOM_NN' ? 0 : 5;
-  return Math.min(92, base[stationKind] + sourceBonus);
+  const sourceScope: Record<NnConfiguration, string> = {
+    LOAD_NN: 'odbiorcza',
+    PV_INVERTER: 'PV',
+    BESS_INVERTER: 'BESS',
+    FW_INVERTER: 'FW',
+    CUSTOM_NN: 'nN niestandardowe',
+  };
+  return `${stationScope[stationKind]} · ${sourceScope[nnConfiguration]}`;
 }
 
 function voltageMatches(
@@ -667,12 +780,33 @@ function branchExists(
   );
 }
 
-function engineeringSegmentLabel(segmentId: string): string {
+function engineeringSegmentLabel(
+  segmentId: string,
+  model: { branches?: Array<{ ref_id?: string; id?: string; name?: string; label?: string }> } | null,
+): string {
+  const branch = model?.branches?.find(
+    (candidate) => candidate.ref_id === segmentId || candidate.id === segmentId,
+  );
+  const terrainBranches = (model?.branches ?? []).filter(isTerrainSnSegment);
+  const terrainIndex = terrainBranches.findIndex(
+    (candidate) => candidate.ref_id === segmentId || candidate.id === segmentId,
+  );
+  const publicLabel = (branch?.name ?? branch?.label ?? '').trim();
+  if (
+    publicLabel
+    && !/\b(?:seg|ref|hash)\b/i.test(publicLabel)
+    && !/\/segment\b/i.test(publicLabel)
+  ) {
+    return publicLabel;
+  }
+  if (terrainIndex >= 0) {
+    return `Odcinek ${String(terrainIndex + 1).padStart(2, '0')}`;
+  }
   const match = segmentId.match(/(?:seg|segment|odcinek)[_/-]?(\d+)/i);
   if (match?.[1]) {
-    return `Magistrala SN / odcinek ${Number(match[1])}`;
+    return `Odcinek ${String(Number(match[1])).padStart(2, '0')}`;
   }
-  return 'Magistrala SN / odcinek 1';
+  return 'Odcinek SN';
 }
 
 function stationNameFromData(data: TransformerStationFormData): string | undefined {
@@ -690,6 +824,7 @@ function StationSystemPreview({
   snFields,
   selectedManufacturer,
   selectedFamily,
+  switchgearFamilyLabel,
   outgoingFeederCount,
   nnConfigurationLabel,
   recommendedTransformer,
@@ -703,6 +838,7 @@ function StationSystemPreview({
   snFields: StationSnFieldTemplate[];
   selectedManufacturer: Manufacturer | null;
   selectedFamily: SwitchgearFamily | null;
+  switchgearFamilyLabel: string;
   outgoingFeederCount: number;
   nnConfigurationLabel: string;
   recommendedTransformer: TransformerType | null;
@@ -751,6 +887,7 @@ function StationSystemPreview({
             snVoltageKv={snVoltageKv}
             selectedManufacturer={selectedManufacturer}
             selectedFamily={selectedFamily}
+            switchgearFamilyLabel={switchgearFamilyLabel}
           />
 
           <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
@@ -848,20 +985,20 @@ function StationSwitchgearSld({
   snVoltageKv,
   selectedManufacturer,
   selectedFamily,
+  switchgearFamilyLabel,
 }: {
   snFields: StationSnFieldTemplate[];
   snVoltageKv: number;
   selectedManufacturer: Manufacturer | null;
   selectedFamily: SwitchgearFamily | null;
+  switchgearFamilyLabel: string;
 }) {
   const bayCount = Math.max(snFields.length, 1);
   const width = Math.max(520, 118 + bayCount * 112);
   const busY = 48;
   const bayPitch = (width - 120) / bayCount;
   const bayStart = 60 + bayPitch / 2;
-  const familyLabel = selectedFamily
-    ? selectedFamily.family_name
-    : 'wybierz rodzinę rozdzielnicy';
+  const familyLabel = selectedFamily ? selectedFamily.family_name : switchgearFamilyLabel;
   const sourceWarning = selectedManufacturer && isUsableManufacturer(selectedManufacturer)
     ? 'Pakiet katalogowy rozdzielnicy SN jest kompletny dla wybranego wariantu.'
     : 'Wybierz kompletny pakiet katalogowy rozdzielnicy SN.';
@@ -1031,8 +1168,11 @@ function SystemPreviewRow({ label, value }: { label: string; value: string }) {
 export function InsertStationForm() {
   const context = useActiveOperationContext();
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
+  const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
   const snapshot = useSnapshotStore((s) => s.snapshot);
+  const selectElement = useSelectionStore((s) => s.selectElement);
+  const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [outgoingFeederCount, setOutgoingFeederCount] = useState(2);
@@ -1091,7 +1231,10 @@ export function InsertStationForm() {
     () => resolveSegmentIdFromContext(context, snapshot),
     [context, snapshot],
   );
-  const segmentLabel = useMemo(() => engineeringSegmentLabel(segmentId), [segmentId]);
+  const segmentLabel = useMemo(
+    () => engineeringSegmentLabel(segmentId, snapshot),
+    [segmentId, snapshot],
+  );
   const rawPositionOnSegment = context?.position_on_segment;
   const positionOnSegment =
     typeof rawPositionOnSegment === 'number' && Number.isFinite(rawPositionOnSegment)
@@ -1182,6 +1325,15 @@ export function InsertStationForm() {
       }),
     [bayTemplates, selectedFamilyRef, selectedManufacturerRef],
   );
+  const switchgearFamilyLabel = useMemo(() => {
+    if (selectedFamily) {
+      return selectedFamily.family_name;
+    }
+    if (familiesForManufacturer.length === 0 && templatesForSwitchgear.length > 0) {
+      return 'pakiet standardowy producenta';
+    }
+    return 'wybierz rodzinę rozdzielnicy';
+  }, [familiesForManufacturer.length, selectedFamily, templatesForSwitchgear.length]);
   const templatesByRole = useMemo(() => {
     const byRole: Partial<Record<SnFieldRole, CompleteMvBayTemplateSummary>> = {};
     for (const role of SN_FIELD_ROLES) {
@@ -1276,12 +1428,30 @@ export function InsertStationForm() {
     }),
     [initialData, recommendedTransformer?.id],
   );
+  const editorContextKey = useMemo(
+    () =>
+      [
+        isEndpointAppend ? 'endpoint' : 'segment',
+        endpointBusRef || segmentId || 'unknown-segment',
+        editorInitialData.ref_id || 'station',
+        editorInitialData.name || 'station-name',
+        editorInitialData.catalog_ref || 'transformer',
+      ].join(':'),
+    [
+      editorInitialData.catalog_ref,
+      editorInitialData.name,
+      editorInitialData.ref_id,
+      endpointBusRef,
+      isEndpointAppend,
+      segmentId,
+    ],
+  );
   const converterCatalogEntries = useMemo(
     () => toConverterCatalogEntries(filteredConverters),
     [filteredConverters],
   );
-  const readinessEstimate = useMemo(
-    () => estimateReadiness(stationKind, nnConfiguration),
+  const configurationScopeLabel = useMemo(
+    () => describeConfigurationScope(stationKind, nnConfiguration),
     [nnConfiguration, stationKind],
   );
   const stationBusOptions = useMemo(
@@ -1453,6 +1623,8 @@ export function InsertStationForm() {
     selectedConverter,
     transformerTypes.length,
   ]);
+  const recommendedStationSaveDisabled =
+    catalogsLoading || Boolean(configurationBlocker) || !editorInitialData.catalog_ref;
 
   const handleSubmit = useCallback(
     async (data: TransformerStationFormData) => {
@@ -1602,6 +1774,7 @@ export function InsertStationForm() {
         }
       }
       setCatalogError(null);
+      const previousSnapshot = snapshot;
       const response = await executeDomainOperation(activeCaseId, operationName, payload);
       if (!response) {
         const operationError = useSnapshotStore.getState().error;
@@ -1612,10 +1785,40 @@ export function InsertStationForm() {
         setCatalogError(response.error);
         return;
       }
+      const createdSelection = stationSelectionFromMaterialization(
+        response,
+        stationNameFromData(data) ?? 'Stacja SN/nN',
+        previousSnapshot,
+      );
+      if (!createdSelection) {
+        setCatalogError(
+          'Operacja nie potwierdziła utworzenia stacji SN/nN. Wybierz odcinek na schemacie i ponów zakończenie stacją.',
+        );
+        return;
+      }
+      selectElement(createdSelection);
+      centerSldOnElement(createdSelection.id);
       closeForm();
+      openRouteSurface('E-13', {
+        entityRef: createdSelection.id,
+        entityType: 'station',
+        subjectKind: 'entity',
+        subjectRef: createdSelection.id,
+        tabId: 'rozdzielnica-sn',
+        titlePl: createdSelection.name,
+        route: 'sld',
+        openMode: 'replace_right_panel',
+        supportsMiniSld: true,
+        payload: {
+          source: 'operation_result',
+          selectedName: createdSelection.name,
+          selectedType: createdSelection.type,
+        },
+      });
     },
     [
       activeCaseId,
+      centerSldOnElement,
       closeForm,
       compatibleTransformerTypes.length,
       configurationBlocker,
@@ -1624,11 +1827,14 @@ export function InsertStationForm() {
       isEndpointAppend,
       nnConfiguration,
       outgoingFeederCount,
+      openRouteSurface,
       positionOnSegment,
+      snapshot,
       requiredNnVoltageIsValid,
       requiredNnVoltageKv,
       runRef,
       segmentId,
+      selectElement,
       selectedConverter?.id,
       selectedConverter?.kind,
       selectedConverter?.name,
@@ -1647,6 +1853,30 @@ export function InsertStationForm() {
       transformerTypes,
     ],
   );
+  const handleSubmitRecommendedStation = useCallback(() => {
+    const catalogRef = editorInitialData.catalog_ref || recommendedTransformer?.id || '';
+    void handleSubmit({
+      ref_id: editorInitialData.ref_id || defaultStationRefId,
+      name: editorInitialData.name || defaultStationName,
+      hv_bus_ref: editorInitialData.hv_bus_ref || STATION_SN_SIDE_REF,
+      lv_bus_ref: editorInitialData.lv_bus_ref || STATION_NN_SIDE_REF,
+      tap_position: editorInitialData.tap_position ?? 0,
+      catalog_ref: catalogRef,
+      parameter_source: 'CATALOG',
+      overrides: [],
+    });
+  }, [
+    defaultStationName,
+    defaultStationRefId,
+    editorInitialData.catalog_ref,
+    editorInitialData.hv_bus_ref,
+    editorInitialData.lv_bus_ref,
+    editorInitialData.name,
+    editorInitialData.ref_id,
+    editorInitialData.tap_position,
+    handleSubmit,
+    recommendedTransformer?.id,
+  ]);
 
   return (
     <div className="h-full overflow-y-auto bg-[#07111c] text-[#d7ecff]" data-testid="insert-station-form">
@@ -1656,6 +1886,34 @@ export function InsertStationForm() {
           Osadzenie {stationTypeLabelPl.toLowerCase()} na wskazanym odcinku magistrali. Najpierw
           określ stronę nN, potem dobierz transformator z katalogu.
         </p>
+      </div>
+
+      <div className="sticky top-0 z-20 border-b border-[#214263] bg-[#07111c]/95 px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="font-mono-eng text-[10px] font-semibold uppercase tracking-[0.18em] text-[#26f0b1]">
+              Gotowe rozwiązanie katalogowe
+            </div>
+            <p className="mt-1 text-xs leading-5 text-[#a8c7e2]">
+              Zapisuje kompletną stację z rozdzielnią SN, transformatorem, stroną nN i polami
+              wynikającymi z wybranego wariantu katalogowego.
+            </p>
+          </div>
+          <button
+            type="button"
+            data-testid="insert-station-save-recommended"
+            onClick={handleSubmitRecommendedStation}
+            disabled={recommendedStationSaveDisabled}
+            className="border border-[#1e6bff] bg-[#2864e8] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3474ff] disabled:cursor-not-allowed disabled:border-[#22364e] disabled:bg-[#0b1623] disabled:text-[#607d99]"
+          >
+            Zapisz gotową stację z katalogu
+          </button>
+        </div>
+        {recommendedStationSaveDisabled && (
+          <p className="mt-2 text-xs text-[#ffc46b]">
+            {configurationBlocker ?? 'Ładowanie katalogu transformatorów i rozdzielnic SN.'}
+          </p>
+        )}
       </div>
 
       <div className="space-y-4 p-4">
@@ -1780,7 +2038,7 @@ export function InsertStationForm() {
                 >
                   <option value="">
                     {familiesForManufacturer.length === 0
-                      ? 'ładowanie pakietów rozdzielnicy'
+                      ? switchgearFamilyLabel
                       : 'wybierz rodzinę rozdzielnicy'}
                   </option>
                   {familiesForManufacturer.map((family) => (
@@ -1793,8 +2051,9 @@ export function InsertStationForm() {
                   ))}
                 </select>
                 <p className="mt-1 text-[11px] leading-5 text-[#8eb1cf]">
-                  Lista zawiera wyłącznie kompletne pakiety rozdzielnicy z aparatami,
-                  portami i szablonami pól SN.
+                  {familiesForManufacturer.length === 0 && templatesForSwitchgear.length > 0
+                    ? 'Wybrany producent udostępnia kompletny pakiet standardowy z aparatami, portami i szablonami pól SN.'
+                    : 'Lista zawiera wyłącznie kompletne pakiety rozdzielnicy z aparatami, portami i szablonami pól SN.'}
                 </p>
               </label>
 
@@ -1858,6 +2117,7 @@ export function InsertStationForm() {
             snFields={stationSnFields}
             selectedManufacturer={selectedManufacturer}
             selectedFamily={selectedFamily}
+            switchgearFamilyLabel={switchgearFamilyLabel}
             outgoingFeederCount={outgoingFeederCount}
             nnConfigurationLabel={selectedConfiguration.label}
             recommendedTransformer={recommendedTransformer}
@@ -1877,7 +2137,7 @@ export function InsertStationForm() {
               </p>
             </div>
             <div className="border border-[#14532d] bg-[#061f18] px-3 py-1 text-xs font-semibold text-[#9ff6c5]">
-              Kontrola formularza: ~{readinessEstimate}%
+              Zakres układu: {configurationScopeLabel}
             </div>
           </div>
 
@@ -2026,6 +2286,7 @@ export function InsertStationForm() {
         )}
 
         <TransformerStationEditor
+          key={editorContextKey}
           isOpen={true}
           mode="create"
           embedded={true}

@@ -345,6 +345,7 @@ _FIX_ACTION_MAP: dict[
     "branch_point.required_port_missing": _fix_branch_point_required_port,
     "zksn.branch_count_invalid": _fix_zksn_branch_count,
     "branch_connection.invalid_source_port": _fix_branch_connection_invalid_port,
+    "branch_connection.invalid_segment_family": _fix_branch_point_invalid_medium,
     "branch_connection.source_not_branch_capable": _fix_branch_connection_not_capable,
     # OZE / BESS
     "oze.transformer_required": _fix_oze_transformer_required,
@@ -424,6 +425,7 @@ KNOWN_BLOCKER_CODES: frozenset[str] = frozenset(
         "branch_point.required_port_missing",
         "zksn.branch_count_invalid",
         "branch_connection.invalid_source_port",
+        "branch_connection.invalid_segment_family",
         "branch_connection.source_not_branch_capable",
         # OZE / BESS
         "oze.transformer_required",

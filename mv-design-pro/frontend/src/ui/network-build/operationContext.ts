@@ -70,6 +70,9 @@ export function buildOperationContext({
       if (trunkContext.terminalBusRef) {
         context.from_bus_ref = trunkContext.terminalBusRef;
       }
+      if (trunkContext.lineFieldRef) {
+        context.field_ref = trunkContext.lineFieldRef;
+      }
       context.terminal_name = trunkContext.terminalName;
       context.terminal_voltage_label = trunkContext.terminalVoltageLabel;
       context.is_first_trunk_segment = trunkContext.isFirstTrunkSegment;
@@ -97,8 +100,8 @@ export function buildOperationContext({
         context.source_voltage_label = branchContext.voltageLabel;
         context.source_port_label = branchContext.portLabel;
       }
-      if (branchContext.busRef) {
-        context.from_bus_ref = branchContext.busRef;
+      if (branchContext.sourceBusRef || branchContext.busRef) {
+        context.from_bus_ref = branchContext.sourceBusRef || branchContext.busRef;
       }
       break;
     }

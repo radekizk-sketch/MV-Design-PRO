@@ -15,6 +15,7 @@ import {
   getNcRfgProfile,
   getLvVoltageLevel,
   getConnectionSideLabelPl,
+  getBlockTransformer,
   type StationDerConnection,
 } from '../../station-der';
 
@@ -72,6 +73,7 @@ interface DerRow {
   readonly der: StationDerConnection;
   readonly connectionSidePl: string;
   readonly voltagePl: string;
+  readonly blockTransformerPl: string | null;
   readonly profilePl: string;
 }
 
@@ -80,10 +82,20 @@ function buildRow(der: StationDerConnection): DerRow {
   const profile = der.profiles.nc_rfg_profile_ref
     ? getNcRfgProfile(der.profiles.nc_rfg_profile_ref)
     : null;
+  const blockTransformer = der.catalogs.block_transformer_catalog_ref
+    ? getBlockTransformer(der.catalogs.block_transformer_catalog_ref)
+    : null;
+  const blockTransformerPl = blockTransformer
+    ? `TR blokowy ${blockTransformer.sn_kva.toLocaleString('pl-PL')} kVA ${blockTransformer.vector_group}`
+    : null;
+  const voltagePl = blockTransformer
+    ? `${blockTransformer.hv_kv.toLocaleString('pl-PL')}/${blockTransformer.lv_kv.toLocaleString('pl-PL')} kV`
+    : voltage ? `${voltage.nominal_kv} kV` : der.connection_side === 'SN' ? 'SN' : MISSING_DASH;
   return {
     der,
     connectionSidePl: getConnectionSideLabelPl(der.connection_side),
-    voltagePl: voltage ? `${voltage.nominal_kv} kV` : der.connection_side === 'SN' ? 'SN' : MISSING_DASH,
+    voltagePl,
+    blockTransformerPl,
     profilePl: profile?.label_pl ?? MISSING_DASH,
   };
 }
@@ -160,7 +172,7 @@ export function StationConfigDerSourcesCard(
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ der, connectionSidePl, voltagePl, profilePl }) => (
+              {rows.map(({ der, connectionSidePl, voltagePl, blockTransformerPl, profilePl }) => (
                 <tr
                   key={der.id}
                   data-testid={`der-row-${der.id}`}
@@ -179,7 +191,17 @@ export function StationConfigDerSourcesCard(
                   <td className="px-2 py-1.5 text-right text-scada-text">
                     {der.nominal_power_kw !== null ? der.nominal_power_kw.toFixed(0) : MISSING_DASH}
                   </td>
-                  <td className="px-2 py-1.5 text-scada-muted">{voltagePl}</td>
+                  <td className="px-2 py-1.5 text-scada-muted">
+                    <div data-testid={`der-voltage-${der.id}`}>{voltagePl}</div>
+                    {blockTransformerPl && (
+                      <div
+                        data-testid={`der-block-transformer-${der.id}`}
+                        className="mt-0.5 text-[10px] font-semibold text-scada-text"
+                      >
+                        {blockTransformerPl}
+                      </div>
+                    )}
+                  </td>
                   <td className="px-2 py-1.5 text-scada-muted">{profilePl}</td>
                   <td className={`px-2 py-1.5 ${COMPLETENESS_TONE[der.completeness]}`}>
                     {COMPLETENESS_LABEL_PL[der.completeness]}

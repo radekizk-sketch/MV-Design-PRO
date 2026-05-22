@@ -61,6 +61,7 @@ export interface CableRunRendererProps {
   readonly missingEndpointPort?: boolean;
   readonly stationPortGaps?: readonly CableRunStationPortGap[];
   readonly selected?: boolean;
+  readonly selectedSegmentRefs?: readonly string[];
   readonly onClick?: (id: string) => void;
   /** LOD 0-1 -> etykieta ciagu; LOD 2+ -> etykiety odcinkow. */
   readonly lod?: number;
@@ -101,6 +102,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     missingEndpointPort,
     stationPortGaps = [],
     selected,
+    selectedSegmentRefs = [],
     onClick,
     lod,
     voltageKv,
@@ -114,6 +116,8 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
   const visibleSegmentLabels = lod !== undefined && lod < 2 ? [] : segmentLabels;
   if (pathPoints.length < 2) return null;
   const effectiveOnClick = topologyGuide ? undefined : onClick;
+  const pendingEndpointTargetId = segmentRefs[segmentRefs.length - 1] ?? id;
+  const selectedSegmentRefSet = new Set(selectedSegmentRefs);
 
   const strokeWidth = runKind === 'branch'
     ? STROKE_BRANCH_LINE_PX
@@ -167,6 +171,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     ? findLongestHorizontalSegmentMidpoint(pathPoints)
     : null;
   const terminalPoint = pathPoints[pathPoints.length - 1];
+  const pendingEndpointLabel = pendingEndpointLabels(segmentKind);
   // K30-42: power flow direction arrow — kierunek z start → end pathPoints.
   // Renderowane na najdłuższym horizontal segmencie w midpoincie. Pomaga
   // operatorowi natychmiast zidentyfikować kierunek zasilania (upstream →
@@ -203,6 +208,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
         fill="none"
         stroke="transparent"
         strokeWidth={Math.max(strokeWidth + 8, 12)}
+        pointerEvents="stroke"
         onClick={effectiveOnClick ? (e) => { e.stopPropagation(); effectiveOnClick(id); } : undefined}
         style={{ cursor: effectiveOnClick ? 'pointer' : 'default' }}
       />
@@ -211,29 +217,49 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
         fill="none"
         stroke="transparent"
         strokeWidth={Math.max(strokeWidth + 10, 14)}
+        pointerEvents="stroke"
         onClick={effectiveOnClick ? (e) => { e.stopPropagation(); effectiveOnClick(id); } : undefined}
         style={{ cursor: effectiveOnClick ? 'pointer' : 'default' }}
       />
       {(renderSegmentPaths.length > 0
         ? renderSegmentPaths
-        : segmentRefs.map((segmentRef) => ({ segmentRef, pathPoints }))).map((segmentPath) => (
-        <g
-          key={`${id}-segment-hitbox-${segmentPath.segmentRef}`}
-          data-testid={`sld-v2-run-${id}-segment-hitbox-${segmentPath.segmentRef}`}
-          data-connection-ref={segmentPath.segmentRef}
-          data-element-kind="cable_run"
-          data-element-id={segmentPath.segmentRef}
-        >
-          <polyline
-            points={segmentPath.pathPoints.map((p) => `${p.x},${p.y}`).join(' ')}
-            fill="none"
-            stroke="transparent"
-            strokeWidth={Math.max(strokeWidth + 12, 16)}
-            onClick={effectiveOnClick ? (e) => { e.stopPropagation(); effectiveOnClick(segmentPath.segmentRef); } : undefined}
-            style={{ cursor: effectiveOnClick ? 'pointer' : 'default' }}
-          />
-        </g>
-      ))}
+        : segmentRefs.map((segmentRef) => ({ segmentRef, pathPoints }))).map((segmentPath) => {
+        const segmentSelected = selectedSegmentRefSet.has(segmentPath.segmentRef);
+        const hitRects = buildPositiveHitRects(segmentPath.pathPoints, Math.max(strokeWidth + 12, 16));
+        return (
+          <g
+            key={`${id}-segment-hitbox-${segmentPath.segmentRef}`}
+            data-testid={`sld-v2-run-${id}-segment-hitbox-${segmentPath.segmentRef}`}
+            data-connection-ref={segmentPath.segmentRef}
+            data-element-kind="cable_run"
+            data-element-id={segmentPath.segmentRef}
+            data-selected={segmentSelected ? 'true' : undefined}
+          >
+            {hitRects.map((rect, rectIndex) => (
+              <rect
+                key={`${segmentPath.segmentRef}-hit-rect-${rectIndex}`}
+                x={rect.x}
+                y={rect.y}
+                width={rect.width}
+                height={rect.height}
+                fill="transparent"
+                pointerEvents="all"
+                onClick={effectiveOnClick ? (e) => { e.stopPropagation(); effectiveOnClick(segmentPath.segmentRef); } : undefined}
+                style={{ cursor: effectiveOnClick ? 'pointer' : 'default' }}
+              />
+            ))}
+            <polyline
+              points={segmentPath.pathPoints.map((p) => `${p.x},${p.y}`).join(' ')}
+              fill="none"
+              stroke="transparent"
+              strokeWidth={Math.max(strokeWidth + 12, 16)}
+              pointerEvents="stroke"
+              onClick={effectiveOnClick ? (e) => { e.stopPropagation(); effectiveOnClick(segmentPath.segmentRef); } : undefined}
+              style={{ cursor: effectiveOnClick ? 'pointer' : 'default' }}
+            />
+          </g>
+        );
+      })}
       {visiblePaths.map((visiblePath, index) => (
         <path
           key={`${id}-visible-${index}`}
@@ -252,6 +278,8 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
         const variantStyle = segmentPath.variant
           ? cableVariantStyle(segmentPath.variant)
           : null;
+        const segmentExactSelected = selectedSegmentRefSet.has(segmentPath.segmentRef);
+        const segmentHighlighted = Boolean(selected || segmentExactSelected);
         const segmentVisiblePaths = buildVisibleCablePaths(
           segmentPath.pathPoints,
           stationPortGaps,
@@ -260,7 +288,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           ? '#FFD166'
           : missingEndpointPort
             ? '#FF6B6B'
-            : selected
+            : segmentHighlighted
               ? '#35C7FF'
               : variantStyle?.stroke ?? strokeColor;
         const segDasharray = topologyGuide
@@ -270,7 +298,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             : isDashed
               ? STROKE_DASHED_RING_DASH_PX
               : variantStyle?.dasharray ?? (isOverhead ? '12 4' : undefined);
-        const segWidth = (selected ? strokeWidth + 1 : strokeWidth) + (variantStyle?.widthDelta ?? 0);
+        const segWidth = (segmentHighlighted ? strokeWidth + 1 : strokeWidth) + (variantStyle?.widthDelta ?? 0);
         return segmentVisiblePaths.map((vp, vpIdx) => (
           <path
             key={`${id}-segment-${segmentPath.segmentRef}-${vpIdx}`}
@@ -281,6 +309,8 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             }
             data-cable-insulation={segmentPath.variant?.insulation}
             data-cable-conductor={segmentPath.variant?.conductor}
+            data-selected={segmentExactSelected ? 'true' : undefined}
+            data-selected-segment={segmentExactSelected ? segmentPath.segmentRef : undefined}
             d={vp}
             fill="none"
             stroke={segStroke}
@@ -618,13 +648,17 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
       {pendingEndpoint && terminalPoint && (
         <g
           data-testid={`sld-v2-run-${id}-pending-end`}
-          onClick={effectiveOnClick ? (e) => { e.stopPropagation(); effectiveOnClick(id); } : undefined}
+          data-pending-target-ref={pendingEndpointTargetId}
+          data-pending-action-label={pendingEndpointLabel.title}
+          data-pending-action-detail={pendingEndpointLabel.detail}
+          aria-label={`${pendingEndpointLabel.title}: ${pendingEndpointLabel.detail}`}
+          onClick={effectiveOnClick ? (e) => { e.stopPropagation(); effectiveOnClick(pendingEndpointTargetId); } : undefined}
           style={{ cursor: effectiveOnClick ? 'pointer' : 'default' }}
         >
           <rect
             x={terminalPoint.x - 28}
             y={terminalPoint.y - 17}
-            width={210}
+            width={56}
             height={40}
             rx={3}
             fill="transparent"
@@ -658,37 +692,54 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             stroke="#FFD166"
             strokeWidth={1.2}
           />
-          <text
-            x={terminalPoint.x + 28}
-            y={terminalPoint.y - 4}
-            fill="#FFD166"
-            stroke="#050810"
-            strokeWidth={3}
-            paintOrder="stroke"
-            className="select-none text-[10px] font-semibold"
-            pointerEvents="none"
-          >
-            Wybierz kolejny obiekt
-          </text>
-          <text
-            x={terminalPoint.x + 28}
-            y={terminalPoint.y + 9}
-            fill="#DDF7FF"
-            stroke="#050810"
-            strokeWidth={3}
-            paintOrder="stroke"
-            className="select-none text-[9px] font-medium"
-            pointerEvents="none"
-          >
-            stacja / ZK SN / słup / ciąg
-          </text>
         </g>
       )}
     </g>
   );
 }
 
+
+function pendingEndpointLabels(
+  segmentKind: CableRunRendererProps['segmentKind'],
+): { title: string; detail: string } {
+  if (segmentKind === 'overhead_line_sn') {
+    return {
+      title: 'Zakończ linię napowietrzną SN',
+      detail: 'słup rozgałęźny / stacja słupowa / kolejny odcinek',
+    };
+  }
+  return {
+    title: 'Zakończ kabel SN',
+    detail: 'stacja SN/nN / ZK SN / kolejny odcinek kablowy',
+  };
+}
+
 type Point = { x: number; y: number };
+
+function buildPositiveHitRects(
+  points: readonly Point[],
+  minThickness: number,
+): Array<{ x: number; y: number; width: number; height: number }> {
+  const rects: Array<{ x: number; y: number; width: number; height: number }> = [];
+  const halfThickness = Math.max(6, minThickness / 2);
+  for (let index = 0; index < points.length - 1; index++) {
+    const start = points[index];
+    const end = points[index + 1];
+    if (!start || !end) continue;
+    const minX = Math.min(start.x, end.x);
+    const maxX = Math.max(start.x, end.x);
+    const minY = Math.min(start.y, end.y);
+    const maxY = Math.max(start.y, end.y);
+    const horizontal = Math.abs(start.y - end.y) <= Math.abs(start.x - end.x);
+    rects.push({
+      x: minX - (horizontal ? 0 : halfThickness),
+      y: minY - (horizontal ? halfThickness : 0),
+      width: Math.max(maxX - minX, 1) + (horizontal ? 0 : halfThickness * 2),
+      height: Math.max(maxY - minY, 1) + (horizontal ? halfThickness * 2 : 0),
+    });
+  }
+  return rects;
+}
 
 function buildVisibleCablePaths(
   points: readonly Point[],

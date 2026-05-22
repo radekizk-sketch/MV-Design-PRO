@@ -27,7 +27,7 @@
  *   → aliasy prowadzące do E-24
  */
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 
 import { EnmInspectorPage } from './ui/enm-inspector';
 import { FaultScenariosPanel, FaultScenarioModal } from './ui/fault-scenarios';
@@ -148,6 +148,24 @@ function isFailedAnalysisRun(run?: ExecutionRun | null, health?: AnalysisRunHeal
     || resultStatus === 'FAILED';
 }
 
+function hasRenderableRunResults(health: AnalysisRunHealth | null): boolean {
+  if (!health || health.not_found) {
+    return false;
+  }
+
+  const canonicalStatus = health.status?.toUpperCase();
+  const resultStatus = health.result_status?.toUpperCase();
+  const terminalRun =
+    canonicalStatus === 'FINISHED' || canonicalStatus === 'DONE' || canonicalStatus === 'COMPLETED';
+  const validResult = resultStatus === 'VALID' || resultStatus === 'FRESH';
+
+  if (canonicalStatus) {
+    return terminalRun && (validResult || health.results_valid === true);
+  }
+
+  return health.results_valid === true;
+}
+
 function isTerminalExecutionRun(run: ExecutionRun): boolean {
   return run.status === 'DONE' || run.status === 'FAILED';
 }
@@ -202,6 +220,18 @@ function clearRunParamFromCurrentHash(routeRunId: string): boolean {
     `${window.location.pathname}${window.location.search}${nextHash}`,
   );
   return true;
+}
+
+function openSldOverlayFromCurrentContext(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const params = getCurrentSearchParams();
+  params.set('overlay', '1');
+  params.set('legend', '1');
+  const query = params.toString();
+  window.location.hash = query ? `${ROUTES.SLD.hash}?${query}` : ROUTES.SLD.hash;
 }
 
 function analysisRunFailureMessage(): string {
@@ -482,10 +512,13 @@ function UnknownRoutePage({ route }: { route: string }) {
 
 function App() {
   // NAVIGATION_SELECTOR_UI: Use getCurrentHashRoute to strip query params from hash
+  const initialRouteRef = useRef(getCurrentHashRoute());
+  const initialSearchParamsRef = useRef(getCurrentSearchParams());
   const [route, setRoute] = useState(() => getCurrentHashRoute());
   const [hashVersion, setHashVersion] = useState(0);
   const setActiveMode = useAppStateStore((state) => state.setActiveMode);
   const setActiveArea = useAppStateStore((state) => state.setActiveArea);
+  const activeArea = useAppStateStore((state) => state.activeArea);
   const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeCaseName = useAppStateStore((state) => state.activeCaseName);
@@ -618,7 +651,17 @@ function App() {
     if (routeArea) {
       setActiveArea(routeArea);
     }
-  }, [route, setActiveArea]);
+  }, [hashVersion, route, setActiveArea]);
+
+  useEffect(() => {
+    if (!isSldRoute(route)) {
+      return;
+    }
+    const explicitRunId = getCurrentSearchParams().get('run')?.trim();
+    if (explicitRunId && activeArea !== 'SCHEMAT_TOPOLOGIA') {
+      setActiveArea('SCHEMAT_TOPOLOGIA');
+    }
+  }, [activeArea, hashVersion, route, setActiveArea]);
 
   useEffect(() => {
     const params = getCurrentSearchParams();
@@ -666,6 +709,7 @@ function App() {
     const routeRunId = params.get('run')?.trim();
     const routeCaseAlreadyHydrated =
       routeCaseId === activeCaseId
+      && Boolean(activeProjectId)
       && (
         Boolean(routeRunId)
         || Boolean(routeProjectId && routeProjectId === activeProjectId)
@@ -812,7 +856,10 @@ function App() {
   const activeRawRunId = useRawResultOverlayStore((state) => state.payload?.run_id ?? null);
   useEffect(() => {
     const params = getCurrentSearchParams();
-    const routeRunId = isResultsRoute(route)
+    const explicitRouteRunId = params.get('run')?.trim() || null;
+    const routeRunId = explicitRouteRunId && (isResultsRoute(route) || isSldRoute(route))
+      ? explicitRouteRunId
+      : isResultsRoute(route)
       ? resolveRouteRunId(params, activeRunId ?? executionActiveRunId, activeCaseId)
       : null;
     if (!routeRunId) {
@@ -822,6 +869,11 @@ function App() {
     if (routeRunId === activeRawRunId) return;
     void (async () => {
       try {
+        const runHealth = await fetchAnalysisRunHealth(routeRunId);
+        if (!hasRenderableRunResults(runHealth)) {
+          if (activeRawRunId) clearRawOverlay();
+          return;
+        }
         const res = await fetch(`/api/execution/runs/${routeRunId}/results/v1`);
         if (!res.ok) return;
         const data = await res.json();
@@ -920,6 +972,15 @@ function App() {
       return;
     }
     if (route === ROUTES.REPORT.hash) {
+      const initialReportParams = initialRouteRef.current === ROUTES.REPORT.hash
+        ? initialSearchParamsRef.current
+        : null;
+      const routeSelectionRef =
+        params.get('sel') ?? selectedElement?.id ?? initialReportParams?.get('sel') ?? null;
+      const routeSelectionName =
+        params.get('name') ?? selectedElement?.name ?? initialReportParams?.get('name') ?? null;
+      const routeSelectionType =
+        params.get('type') ?? selectedElement?.type ?? initialReportParams?.get('type') ?? null;
       if (activeRunId !== routeRunId) {
         setActiveRun(routeRunId);
       }
@@ -930,13 +991,13 @@ function App() {
         restoreAnalysisRunSnapshot(routeRunId, params.get('case')?.trim() || activeCaseId);
       }
       openRouteSurface(REPORT_SURFACE_SCREEN_CODE, {
-        entityRef: params.get('sel'),
+        entityRef: routeSelectionRef,
         subjectKind: 'report',
         subjectRef: routeRunId,
         payload: {
           runId: routeRunId,
-          selectedName: params.get('name'),
-          selectedType: params.get('type'),
+          selectedName: routeSelectionName,
+          selectedType: routeSelectionType,
         },
       });
       return;
@@ -1155,8 +1216,8 @@ function App() {
         navigateToNetworkBuild();
         break;
       case 'overlay':
-        setActiveArea('MODEL_SIECI');
-        navigateToNetworkBuild();
+        setActiveArea('SCHEMAT_TOPOLOGIA');
+        openSldOverlayFromCurrentContext();
         break;
       case 'switchgear':
         navigateToSwitchgear({ caseId: activeCaseId });
@@ -1213,7 +1274,7 @@ function App() {
         break;
       case 'readiness':
       case 'show-readiness':
-        setActiveArea('MODEL_SIECI');
+        setActiveArea('WYNIKI_ANALIZY');
         openRouteSurface('E-04', {
           titlePl: 'Konfiguracja techniczna układu',
           tabId: 'kontrola',
@@ -1222,6 +1283,7 @@ function App() {
           route: 'analysis',
           openMode: 'replace_right_panel',
         });
+        navigateToAnalysis({ caseId: activeCaseId, runId: effectiveRunId });
         break;
       case 'proof':
       case 'whitebox':

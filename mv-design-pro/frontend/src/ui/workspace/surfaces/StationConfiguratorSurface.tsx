@@ -13,12 +13,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppStateStore } from '../../app-state';
 
-import { StationConfigurator } from '../../network-build/station-configurator/StationConfigurator';
+import {
+  StationConfigurator,
+  type StationConfigCardId,
+} from '../../network-build/station-configurator/StationConfigurator';
 import type { StationConfigBayRow } from '../../network-build/station-configurator/cards/StationConfigBaysCard';
+import type { StationConfigPortRow } from '../../network-build/station-configurator/cards/StationConfigTopologyCard';
 import type { ProtectionRow } from '../../network-build/station-configurator/cards/StationConfigProtectionCard';
 import type { StationConfigTransformerRow } from '../../network-build/station-configurator/cards/StationConfigTransformerCard';
 import {
   AddDerWizard,
+  BLOCK_TRANSFORMER_CATALOG,
   EMPTY_DER_CATALOGS,
   EMPTY_DER_PROFILES,
   EMPTY_DER_READINESS,
@@ -33,11 +38,23 @@ import {
 } from '../../network-build/station-der';
 import type { AddDerKindRequest } from '../../network-build/station-configurator/cards/StationConfigDerSourcesCard';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
+import { stationSnFieldSpecs, stationSnapshotBays } from '../../network-build/stationSnFields';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { notify } from '../../notifications/store';
+import { navigateToAnalysis } from '../../navigation/routes';
 import { stationPublicIdentity } from '../../shared/publicTechnicalLabels';
+import { CANONICAL_CATALOG_VERSION } from '../../catalog/catalogBinding';
 import type { WorkspaceSurfaceDescriptor } from '../types';
-import type { EnergyNetworkModel, Generator as EnmGenerator } from '../../../types/enm';
+import { selectStationDistributionTransformers } from '../../network-build/stationTransformerSelection';
+import type {
+  Bay,
+  EnergyNetworkModel,
+  Generator as EnmGenerator,
+  Substation,
+  Transformer,
+} from '../../../types/enm';
+import { buildOperationContext } from '../../network-build/operationContext';
+import { BAY_ROLE_TO_PORT_KIND, type PortKind } from '../../sld/v2/core/ports';
 
 interface StationConfiguratorSurfaceProps {
   readonly surface: WorkspaceSurfaceDescriptor;
@@ -119,8 +136,28 @@ const DER_KIND_TO_SCREEN: Record<AddDerKindRequest, 'E-21' | 'E-22' | 'E-23'> = 
   FW: 'E-23',
 };
 
+function readAddDerKindRequest(value: unknown): AddDerKindRequest | null {
+  return value === 'PV' || value === 'BESS' || value === 'FW' ? value : null;
+}
+
 const DEFAULT_NC_RFG_PROFILE_REF = 'ncrfg_enea';
 const DEFAULT_LV_VOLTAGE_REF = 'lv_0_4kV';
+const DEFAULT_BRANCH_CABLE_SEGMENT = {
+  rodzaj: 'KABEL',
+  dlugosc_m: 1000,
+  catalog_binding: {
+    catalog_namespace: 'KABEL_SN',
+    catalog_item_id: 'cable-enea-operator-na2xs2y-1x150',
+    catalog_item_version: CANONICAL_CATALOG_VERSION,
+    materialize: true,
+    snapshot_mapping_version: '1.0',
+  },
+  catalog_label: '3 × NA2XS2Y 1×150/25 mm²',
+  type_designation: 'NA2XS2Y 1×150/25 mm²',
+  trade_name: 'NA2XS2Y 1x150/25',
+  cross_section_mm2: 150,
+  return_conductor_cross_section_mm2: 25,
+} as const;
 
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -187,11 +224,14 @@ function deriveStationDersFromSnapshot(
       if (!kind) return null;
       const meta = generator.meta ?? {};
       const connectionSide = connectionSideFromGenerator(generator);
+      const transformerRef = generator.blocking_transformer_ref ?? null;
+      const blockTransformerCatalogRef = readString(meta.block_transformer_catalog_ref)
+        ?? inferBlockTransformerCatalogRef(snapshot, transformerRef);
       const catalogs = {
         ...EMPTY_DER_CATALOGS,
         device_catalog_ref: generator.catalog_ref ?? null,
         bay_catalog_ref: readString(meta.field_ref),
-        block_transformer_catalog_ref: readString(meta.block_transformer_catalog_ref),
+        block_transformer_catalog_ref: blockTransformerCatalogRef,
         protection_catalog_ref: readString(meta.protection_catalog_ref),
         ct_catalog_ref: readString(meta.ct_catalog_ref),
         vt_catalog_ref: readString(meta.vt_catalog_ref),
@@ -220,7 +260,7 @@ function deriveStationDersFromSnapshot(
         connection_side: connectionSide,
         pcc_ref: pccRef,
         bay_ref: readString(meta.field_ref),
-        transformer_ref: generator.blocking_transformer_ref ?? null,
+        transformer_ref: transformerRef,
         lv_busbar_ref: connectionSide === 'nN' ? generator.bus_ref : null,
         connection_node_ref: readString(meta.connection_node_ref),
         internal_cable_ref: readString(meta.internal_cable_ref),
@@ -249,21 +289,374 @@ function mergeStationDers(
   localDers: readonly StationDerConnection[],
 ): readonly StationDerConnection[] {
   const byId = new Map<string, StationDerConnection>();
+  const snapshotSemanticKeys = new Set(snapshotDers.map(derSemanticKey));
   snapshotDers.forEach((der) => byId.set(der.id, der));
-  localDers.forEach((der) => byId.set(der.id, der));
+  localDers.forEach((der) => {
+    if (!byId.has(der.id) && snapshotSemanticKeys.has(derSemanticKey(der))) {
+      return;
+    }
+    byId.set(der.id, der);
+  });
   return [...byId.values()].sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function derSemanticKey(der: StationDerConnection): string {
+  return [
+    der.station_id,
+    der.der_kind,
+    der.connection_side,
+    der.name.trim().toLocaleLowerCase('pl-PL'),
+    der.catalogs.device_catalog_ref ?? '',
+    der.nominal_power_kw ?? '',
+  ].join('|');
+}
+
+function findStation(
+  snapshot: EnergyNetworkModel | null,
+  stationRef: string | null,
+): Substation | null {
+  if (!snapshot || !stationRef) return null;
+  return (snapshot.substations ?? []).find(
+    (station) => station.ref_id === stationRef || station.id === stationRef,
+  ) ?? null;
+}
+
+function stationTopologicalType(
+  stationType: Substation['station_type'] | null | undefined,
+): 'końcowa' | 'przelotowa' | 'odgałęźna' | 'sekcyjna' {
+  switch (stationType) {
+    case 'terminal':
+      return 'końcowa';
+    case 'branch':
+      return 'odgałęźna';
+    case 'sectional':
+      return 'sekcyjna';
+    case 'inline':
+    case 'mv_lv':
+    case 'customer':
+    case 'switching':
+    default:
+      return 'przelotowa';
+  }
+}
+
+function bayTypePlFromRole(role: string | null | undefined): StationConfigBayRow['bayTypePl'] {
+  switch ((role ?? '').toUpperCase()) {
+    case 'IN':
+      return 'liniowe wejściowe';
+    case 'OUT':
+    case 'FEEDER':
+      return 'liniowe wyjściowe';
+    case 'TR':
+      return 'transformatorowe';
+    case 'COUPLER':
+      return 'sprzęgłowe';
+    case 'MEASUREMENT':
+      return 'pomiarowe';
+    case 'OZE':
+      return 'PV/FV';
+    default:
+      return 'rezerwowe';
+  }
+}
+
+function bayDesignation(bay: Bay, index: number): string {
+  return bay.bay_number ?? bay.feeder_short_name ?? bay.name ?? `Pole ${index + 1}`;
+}
+
+function portKindFromBayRole(role: unknown): PortKind {
+  const normalized = typeof role === 'string' ? role.toUpperCase() : '';
+  if (normalized === 'BRANCH') return 'sn_branch';
+  return BAY_ROLE_TO_PORT_KIND[normalized] ?? 'sn_reserve';
+}
+
+function publicPortId(kind: PortKind, index: number): string {
+  switch (kind) {
+    case 'sn_input':
+      return `WE-${index}`;
+    case 'sn_output':
+      return `WY-${index}`;
+    case 'sn_branch':
+      return `ODG-${index}`;
+    case 'sn_transformer':
+      return `TR-${index}`;
+    case 'sn_coupler':
+      return `SPR-${index}`;
+    case 'sn_measurement':
+      return `POM-${index}`;
+    case 'sn_der_pv':
+      return `OZE-${index}`;
+    case 'sn_der_bess':
+      return `BESS-${index}`;
+    case 'sn_der_fw':
+      return `FW-${index}`;
+    case 'nn_der_pv':
+      return `nN-PV-${index}`;
+    case 'nn_der_bess':
+      return `nN-BESS-${index}`;
+    case 'nn_der_fw':
+      return `nN-FW-${index}`;
+    default:
+      return `REZ-${index}`;
+  }
+}
+
+function occupiedLabelForPort(kind: PortKind, bay?: Bay): string | null {
+  switch (kind) {
+    case 'sn_input':
+      return 'tor zasilający SN';
+    case 'sn_output':
+      return bay?.outgoing_destination_ref ? 'ciąg wyjściowy SN' : null;
+    case 'sn_branch':
+      return 'odgałęzienie SN';
+    case 'sn_transformer':
+      return 'transformator stacji';
+    case 'sn_coupler':
+      return 'sprzęgło sekcji';
+    case 'sn_measurement':
+      return 'układ pomiarowy';
+    case 'sn_der_pv':
+      return 'przyłącze PV';
+    case 'sn_der_bess':
+      return 'przyłącze BESS';
+    case 'sn_der_fw':
+      return 'przyłącze FW';
+    default:
+      return null;
+  }
+}
+
+function transformerShortLabel(transformer: Transformer | null): string | null {
+  if (!transformer) return null;
+  const voltage = `${transformer.uhv_kv.toLocaleString('pl-PL')}/${transformer.ulv_kv.toLocaleString('pl-PL')} kV`;
+  const power = `${Math.round(transformer.sn_mva * 1000).toLocaleString('pl-PL')} kVA`;
+  const group = transformer.vector_group ? ` ${transformer.vector_group}` : '';
+  return `${voltage} ${power}${group}`;
+}
+
+function inferBlockTransformerCatalogRef(
+  snapshot: EnergyNetworkModel | null,
+  transformerRef: string | null | undefined,
+): string | null {
+  if (!snapshot || !transformerRef) return null;
+  const transformer = (snapshot.transformers ?? []).find(
+    (candidate) => candidate.ref_id === transformerRef || candidate.id === transformerRef,
+  );
+  if (!transformer) return null;
+  const snKva = Math.round(transformer.sn_mva * 1000);
+  const vectorGroup = transformer.vector_group ?? null;
+  const match = BLOCK_TRANSFORMER_CATALOG.find((candidate) =>
+    candidate.sn_kva === snKva
+    && Math.abs(candidate.hv_kv - transformer.uhv_kv) < 0.01
+    && Math.abs(candidate.lv_kv - transformer.ulv_kv) < 0.01
+    && (!vectorGroup || candidate.vector_group === vectorGroup),
+  );
+  return match?.id ?? null;
+}
+
+function derConnectionPortKind(der: StationDerConnection): PortKind {
+  if (der.connection_side === 'nN') {
+    return der.der_kind === 'BESS' ? 'nn_der_bess' : der.der_kind === 'FW' ? 'nn_der_fw' : 'nn_der_pv';
+  }
+  return der.der_kind === 'BESS' ? 'sn_der_bess' : der.der_kind === 'FW' ? 'sn_der_fw' : 'sn_der_pv';
+}
+
+function derConnectionPortLabel(
+  der: StationDerConnection,
+  snapshot: EnergyNetworkModel | null,
+): string {
+  const powerMw = typeof der.nominal_power_kw === 'number' ? der.nominal_power_kw / 1000 : 0;
+  const power = `${powerMw.toLocaleString('pl-PL', { maximumFractionDigits: 3 })} MW`;
+  if (der.connection_side === 'dedicated_transformer') {
+    const transformer = (snapshot?.transformers ?? []).find(
+      (candidate) => candidate.ref_id === der.transformer_ref || candidate.id === der.transformer_ref,
+    ) ?? null;
+    const transformerLabel = transformerShortLabel(transformer);
+    return transformerLabel
+      ? `${der.der_kind} ${power} przez transformator blokowy ${transformerLabel}`
+      : `${der.der_kind} ${power} przez transformator blokowy`;
+  }
+  return `${der.der_kind} ${power}`;
+}
+
+function isPortExpectedToBeBound(kind: PortKind): boolean {
+  return kind !== 'sn_reserve' && !kind.startsWith('nn_');
+}
+
+function deriveStationPortRows(
+  snapshot: EnergyNetworkModel | null,
+  station: Substation | null,
+  nominalVoltageKv: number,
+  stationDers: readonly StationDerConnection[] = [],
+): StationConfigPortRow[] {
+  if (!station) return [];
+
+  const counters = new Map<PortKind, number>();
+  const nextPortId = (kind: PortKind): string => {
+    const next = (counters.get(kind) ?? 0) + 1;
+    counters.set(kind, next);
+    return publicPortId(kind, next);
+  };
+
+  const snapshotBays = stationSnapshotBays(snapshot?.bays ?? [], station);
+  const derPorts = stationDers
+    .map((der): StationConfigPortRow => {
+      const kind = derConnectionPortKind(der);
+      return {
+        portId: nextPortId(kind),
+        kind,
+        nominalVoltageKv: kind.startsWith('nn_') ? inferDerBusVoltage(snapshot, der) ?? 0.4 : nominalVoltageKv,
+        bayDesignation: der.name,
+        occupiedByLabelPl: derConnectionPortLabel(der, snapshot),
+      };
+    })
+
+  if (snapshotBays.length > 0) {
+    const bayPorts = snapshotBays.map((bay, index) => {
+      const kind = portKindFromBayRole(bay.bay_role);
+      return {
+        portId: nextPortId(kind),
+        kind,
+        nominalVoltageKv,
+        bayDesignation: bayDesignation(bay, index),
+        occupiedByLabelPl: occupiedLabelForPort(kind, bay),
+      };
+    });
+    return [...bayPorts, ...derPorts];
+  }
+
+  const stationFieldPorts = stationSnFieldSpecs(station).map((field, index) => {
+    const kind = portKindFromBayRole(field.bay_role);
+    return {
+      portId: nextPortId(kind),
+      kind,
+      nominalVoltageKv,
+      bayDesignation: String(field.name ?? `Pole ${index + 1}`),
+      occupiedByLabelPl: occupiedLabelForPort(kind),
+    };
+  });
+  return [...stationFieldPorts, ...derPorts];
+}
+
+function inferDerBusVoltage(
+  snapshot: EnergyNetworkModel | null,
+  der: StationDerConnection,
+): number | null {
+  const busRef = der.lv_busbar_ref ?? der.pcc_ref;
+  const bus = (snapshot?.buses ?? []).find((candidate) => candidate.ref_id === busRef);
+  return typeof bus?.voltage_kv === 'number' ? bus.voltage_kv : null;
+}
+
+function deriveStationBayRows(
+  snapshot: EnergyNetworkModel | null,
+  station: Substation | null,
+): StationConfigBayRow[] {
+  if (!station) return [];
+  const snapshotBays = stationSnapshotBays(snapshot?.bays ?? [], station);
+  if (snapshotBays.length > 0) {
+    return snapshotBays.map((bay, index) => ({
+      bayId: bay.ref_id ?? bay.id ?? `bay-${index}`,
+      designation: bayDesignation(bay, index),
+      bayTypePl: bayTypePlFromRole(bay.bay_role),
+      attachedObjectPl: bay.outgoing_destination_ref ?? undefined,
+      hasEquipment: (bay.equipment_refs ?? []).length > 0,
+      hasProtection: Boolean(bay.protection_ref),
+      hasMeasurements: true,
+      statusPl: 'kompletne',
+      hvFuseCatalogRef: null,
+    }));
+  }
+
+  return stationSnFieldSpecs(station).map((field, index) => ({
+    bayId: String(field.ref_id ?? field.field_ref ?? field.id ?? `field-${index}`),
+    designation: String(field.name ?? `Pole ${index + 1}`),
+    bayTypePl: bayTypePlFromRole(String(field.bay_role ?? '')),
+    hasEquipment: true,
+    hasProtection: true,
+    hasMeasurements: true,
+    statusPl: 'kompletne',
+    hvFuseCatalogRef: null,
+  }));
+}
+
+function deriveStationTransformerRows(
+  snapshot: EnergyNetworkModel | null,
+  station: Substation | null,
+): StationConfigTransformerRow[] {
+  if (!snapshot || !station) return [];
+
+  return selectStationDistributionTransformers(snapshot, station).map((transformer, index) => ({
+    transformerId: transformer.ref_id ?? transformer.id ?? `tr-${index}`,
+    designation: transformer.name ?? `TR ${index + 1}`,
+    snMva: transformer.sn_mva ?? null,
+    uhvKv: transformer.uhv_kv,
+    ulvKv: transformer.ulv_kv,
+    vectorGroup: transformer.vector_group ?? null,
+    ukPercent: transformer.uk_percent ?? null,
+    pkKw: transformer.pk_kw ?? null,
+    p0Kw: transformer.p0_kw ?? null,
+    tapPosition: transformer.tap_position ?? null,
+    tapMin: transformer.tap_min ?? null,
+    tapMax: transformer.tap_max ?? null,
+    tapChangerCatalogRef: null,
+    hvNeutralLabelPl: transformer.hv_neutral?.type ?? null,
+    lvNeutralLabelPl: transformer.lv_neutral?.type ?? null,
+    statusForSc: transformer.uk_percent ? 'gotowe' : 'częściowe',
+    statusForPf: transformer.sn_mva ? 'gotowe' : 'częściowe',
+    statusForAsymmetry: transformer.vector_group ? 'gotowe' : 'częściowe',
+  }));
+}
+
+function uniqueLvVoltages(transformers: readonly StationConfigTransformerRow[]): number[] {
+  const values = transformers.map((transformer) => transformer.ulvKv).filter(Number.isFinite);
+  return values.length > 0 ? Array.from(new Set(values)).sort((a, b) => a - b) : [0.4];
+}
+
+function stationDefaultCard(surface: WorkspaceSurfaceDescriptor): StationConfigCardId {
+  const payload = surface.routeState?.payload;
+  const defaultCard = payload && typeof payload === 'object'
+    ? (payload as Record<string, unknown>).defaultCard
+    : null;
+  if (defaultCard === 'der-sources') {
+    return 'der-sources';
+  }
+  return 'basic';
+}
+
+function hasContinuationStart(context: Record<string, unknown>): boolean {
+  const keys = ['from_terminal_id', 'terminal_id', 'terminalId', 'field_ref'];
+  return keys.some((key) => {
+    const value = context[key];
+    return typeof value === 'string' && value.trim().length > 0;
+  });
+}
+
+function hasBranchStart(context: Record<string, unknown>): boolean {
+  const fromRef = context.from_ref;
+  const fromBusRef = context.from_bus_ref;
+  return (
+    typeof fromRef === 'string'
+    && fromRef.trim().length > 0
+    && typeof fromBusRef === 'string'
+    && fromBusRef.trim().length > 0
+  );
 }
 
 export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProps): JSX.Element {
   const { surface } = props;
   const snapshot = useSnapshotStore((state) => state.snapshot);
+  const logicalViews = useSnapshotStore((state) => state.logicalViews);
   const stationRef = surface.entityRef ?? null;
   const localDers = useStationDerStore((state) =>
     stationRef ? selectDersOfStation(state, stationRef) : [],
   );
   const detachDer = useStationDerStore((state) => state.detachDer);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
+  const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
   const projectId = useAppStateStore((state) => state.activeProjectId);
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
+  const activeRunId = useAppStateStore((state) => state.activeRunId);
+  const defaultCard = useMemo(() => stationDefaultCard(surface), [surface]);
   const snapshotDers = useMemo(
     () => deriveStationDersFromSnapshot(snapshot, stationRef, projectId),
     [snapshot, stationRef, projectId],
@@ -275,6 +668,14 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
 
   const [pendingDetach, setPendingDetach] = useState<{ derId: string; name: string } | null>(null);
   const [wizardKind, setWizardKind] = useState<AddDerKindRequest | null>(null);
+  const [wizardResetKey, setWizardResetKey] = useState(0);
+  const requestedAddDerKind = readAddDerKindRequest(surface.routeState.payload?.addDerKind);
+  const requestedAddDerToken = readString(surface.routeState.payload?.addDerRequestId);
+
+  const openDerWizard = useCallback((kind: AddDerKindRequest) => {
+    setWizardKind(kind);
+    setWizardResetKey((current) => current + 1);
+  }, []);
 
   // Punkt 3 Phase 4: pull konfiguracji audytu 2 z backendu (React Query).
   const audit2Config = useStationAudit2Config(projectId, stationRef);
@@ -328,21 +729,67 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     const listener = (event: Event) => {
       const detail = (event as CustomEvent<{ stationId: string; kind: AddDerKindRequest }>).detail;
       if (detail?.stationId === stationRef && detail.kind) {
-        setWizardKind(detail.kind);
+        openDerWizard(detail.kind);
       }
     };
     window.addEventListener('mvdesignpro:add-der-request', listener);
     return () => window.removeEventListener('mvdesignpro:add-der-request', listener);
-  }, [stationRef]);
+  }, [openDerWizard, stationRef]);
+
+  useEffect(() => {
+    if (!stationRef || !requestedAddDerKind) return;
+    openDerWizard(requestedAddDerKind);
+  }, [openDerWizard, stationRef, requestedAddDerKind, requestedAddDerToken]);
+
+  const station = useMemo(
+    () => findStation(snapshot, stationRef),
+    [snapshot, stationRef],
+  );
+  const stationBays = useMemo(
+    () => deriveStationBayRows(snapshot, station),
+    [snapshot, station],
+  );
+  const stationTransformers = useMemo(
+    () => deriveStationTransformerRows(snapshot, station),
+    [snapshot, station],
+  );
+  const stationLvVoltages = useMemo(
+    () => uniqueLvVoltages(stationTransformers),
+    [stationTransformers],
+  );
+  const stationSnVoltageKv = useMemo(() => {
+    const busRefs = new Set(station?.bus_refs ?? []);
+    const bus = (snapshot?.buses ?? []).find(
+      (candidate) => busRefs.has(candidate.ref_id) && candidate.voltage_kv > 1,
+    );
+    return bus?.voltage_kv ?? stationTransformers[0]?.uhvKv ?? 15;
+  }, [snapshot?.buses, station?.bus_refs, stationTransformers]);
+  const stationPorts = useMemo(
+    () => deriveStationPortRows(snapshot, station, stationSnVoltageKv, ders),
+    [snapshot, station, stationSnVoltageKv, ders],
+  );
 
   const stationName = useMemo(() => {
     if (!stationRef) return 'Stacja niewybrana';
     if (!snapshot) return 'Wybrana stacja';
-    const station = (snapshot.substations ?? []).find(
-      (s: { ref_id: string; name?: string }) => s.ref_id === stationRef,
-    );
     return station ? stationPublicIdentity(snapshot, station).displayName : 'Wybrana stacja';
-  }, [stationRef, snapshot]);
+  }, [station, stationRef, snapshot]);
+
+  const continuationContext = useMemo(() => {
+    if (!stationRef) return null;
+    const context = buildOperationContext({
+      canonicalOp: 'continue_trunk_segment_sn',
+      elementId: stationRef,
+      elementType: 'Station',
+      snapshot,
+      logicalViews,
+      extraContext: {
+        station_ref: stationRef,
+        station_name: stationName,
+      },
+    });
+    return hasContinuationStart(context) ? context : null;
+  }, [logicalViews, snapshot, stationName, stationRef]);
 
   const handleOpenDer = useCallback(
     (derId: string, derKind: AddDerKindRequest) => {
@@ -362,16 +809,59 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         notify('Wybierz stację, aby dodać źródło lub magazyn.', 'warning');
         return;
       }
-      // Faza D doda kreator AddDerWizard (5-krokowy flow). Tutaj wystawiamy
-      // event w window — controller modalu nasłuchuje.
-      window.dispatchEvent(
-        new CustomEvent('mvdesignpro:add-der-request', {
-          detail: { stationId: stationRef, kind },
-        }),
-      );
+      openDerWizard(kind);
     },
-    [stationRef],
+    [openDerWizard, stationRef],
   );
+
+  const handleContinueTrunk = useCallback(() => {
+    if (!stationRef) {
+      notify('Wybierz stację SN/nN osadzoną w ciągu, aby kontynuować magistralę.', 'warning');
+      return;
+    }
+    if (!continuationContext) {
+      notify(
+        'Nie znaleziono wolnego portu wyjściowego SN dla tej stacji. Wybierz stację wpiętą w ciąg albo pole wyjściowe SN.',
+        'warning',
+      );
+      return;
+    }
+    openOperationForm('continue_trunk_segment_sn', continuationContext);
+  }, [continuationContext, openOperationForm, stationRef]);
+
+  const branchStartContext = useMemo(() => {
+    if (!stationRef) return null;
+    const context = buildOperationContext({
+      canonicalOp: 'start_branch_segment_sn',
+      elementId: stationRef,
+      elementType: 'Station',
+      snapshot,
+      logicalViews,
+      extraContext: {
+        station_ref: stationRef,
+        station_name: stationName,
+        segment: DEFAULT_BRANCH_CABLE_SEGMENT,
+        segment_type: 'cable',
+        segment_kind: 'KABEL',
+      },
+    });
+    return hasBranchStart(context) ? context : null;
+  }, [logicalViews, snapshot, stationName, stationRef]);
+
+  const handleStartBranch = useCallback(() => {
+    if (!stationRef) {
+      notify('Wybierz stację z wolnym polem odgałęźnym SN.', 'warning');
+      return;
+    }
+    if (!branchStartContext) {
+      notify(
+        'Ta stacja nie ma wolnego pola odgałęźnego SN. Odgałęzienie wyprowadź z pola ODG albo ZKSN.',
+        'warning',
+      );
+      return;
+    }
+    openOperationForm('start_branch_segment_sn', branchStartContext);
+  }, [branchStartContext, openOperationForm, stationRef]);
 
   const handleShowOnSld = useCallback(
     (derId: string) => {
@@ -386,6 +876,14 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     },
     [openRouteSurface, stationRef],
   );
+
+  const handleOpenCalculations = useCallback(() => {
+    navigateToAnalysis({
+      caseId: activeCaseId,
+      runId: activeRunId,
+      selectionId: stationRef,
+    });
+  }, [activeCaseId, activeRunId, stationRef]);
 
   const requestDetach = useCallback(
     (derId: string) => {
@@ -457,20 +955,47 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
       ...base,
       basic: {
         ...base.basic,
+        topologicalType: stationTopologicalType(station?.station_type),
+        snVoltageKv: stationSnVoltageKv,
+        nnVoltageLevels: stationLvVoltages,
+        completeness:
+          stationBays.length > 0 && stationTransformers.length > 0
+            ? 'complete' as const
+            : 'partial' as const,
         onChange: (changes: { mvNeutralGroundingRef?: string | null }) => {
           if ('mvNeutralGroundingRef' in changes) {
             mutateAudit2({ mv_neutral_grounding_ref: changes.mvNeutralGroundingRef ?? null });
           }
         },
       },
+      topology: {
+        ...base.topology,
+        externalPorts: stationPorts,
+        endToEndConnectionsCount: stationPorts.filter((port) => Boolean(port.occupiedByLabelPl)).length,
+        missingEndpointsCount: stationPorts.filter(
+          (port) => isPortExpectedToBeBound(port.kind) && !port.occupiedByLabelPl,
+        ).length,
+      },
+      snSwitchgear: {
+        ...base.snSwitchgear,
+        nominalVoltageKv: stationSnVoltageKv,
+        layout: stationBays.some((bay) => bay.bayTypePl === 'sprzęgłowe')
+          ? 'sectioned_busbar' as const
+          : 'single_busbar' as const,
+        sectionsCount: stationBays.some((bay) => bay.bayTypePl === 'sprzęgłowe') ? 2 : 1,
+        hasCoupler: stationBays.some((bay) => bay.bayTypePl === 'sprzęgłowe'),
+        baysCount: stationBays.length,
+        readinessLabelPl: stationBays.length > 0 ? 'wariant katalogowy' : 'do konfiguracji',
+      },
       transformer: {
         ...base.transformer,
         // Phase 8: rzutuj tapChangerCatalogRef per row + onChange przekazuje
         // patch transformer_tap_changers do mutateAudit2.
-        transformers: (base.transformer.transformers as readonly StationConfigTransformerRow[]).map((tr) => ({
+        transformers: stationTransformers.map((tr) => ({
           ...tr,
           tapChangerCatalogRef: transformerTapChangers[tr.transformerId] ?? null,
         })),
+        availableLvVoltages: stationLvVoltages,
         onChange: (transformerId: string, changes: { tapChangerCatalogRef?: string | null }) => {
           if ('tapChangerCatalogRef' in changes) {
             mutateAudit2({
@@ -485,7 +1010,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         ...base.bays,
         // Cast wymagany bo `base.bays.bays` w pustym stanie ma typ never[].
         // Mapowanie dziala poprawnie gdy snapshot dostarcza realne wpisy.
-        bays: (base.bays.bays as readonly StationConfigBayRow[]).map((b) => ({
+        bays: stationBays.map((b) => ({
           ...b,
           hvFuseCatalogRef: bayFuses[b.bayId] ?? null,
         })),
@@ -529,15 +1054,67 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         canDetachDer: (derId: string) => localDers.some((der) => der.id === derId),
       },
     };
-  }, [stationName, stationRef, ders, localDers, handleOpenDer, handleShowOnSld, handleAddDer, requestDetach, localConfig, audit2Config.data, mutateAudit2]);
+  }, [
+    station?.station_type,
+    stationBays,
+    stationLvVoltages,
+    stationName,
+    stationRef,
+    stationPorts,
+    stationSnVoltageKv,
+    stationTransformers,
+    ders,
+    localDers,
+    handleOpenDer,
+    handleShowOnSld,
+    handleAddDer,
+    requestDetach,
+    localConfig,
+    audit2Config.data,
+    mutateAudit2,
+  ]);
 
   return (
     <div data-testid="station-configurator-surface" className="flex h-full w-full flex-col p-4">
-      <div className="mb-4">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
-          Konfigurator stacji SN/nN
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
+            Konfigurator stacji SN/nN
+          </div>
+          <h2 className="mt-1 text-base font-semibold text-scada-text">{stationName}</h2>
         </div>
-        <h2 className="mt-1 text-base font-semibold text-scada-text">{stationName}</h2>
+        {stationRef && (
+          <div className="flex flex-wrap items-center gap-2">
+            {continuationContext && (
+              <button
+                type="button"
+                onClick={handleContinueTrunk}
+                className="rounded border border-scada-sn bg-scada-sn px-3 py-1.5 text-xs font-bold text-slate-950 transition hover:brightness-110"
+                data-testid="station-continue-trunk"
+              >
+                Kontynuuj ciąg SN
+              </button>
+            )}
+            {branchStartContext && (
+              <button
+                type="button"
+                onClick={handleStartBranch}
+                className="rounded border border-emerald-400 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-950/40"
+                data-testid="station-start-branch"
+              >
+                Wyprowadź odgałęzienie SN
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => handleAddDer('PV')}
+              className="rounded border border-amber-400 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:bg-amber-950/40"
+              data-testid="station-add-pv-shortcut"
+            >
+              Dodaj PV/BESS/FW
+            </button>
+          </div>
+        )}
         {!stationRef && (
           <p className="mt-2 rounded border border-amber-700 bg-amber-950/30 p-3 text-xs text-amber-200">
             Wybierz stację z drzewa układów albo kliknij stację w SLD i wybierz
@@ -546,11 +1123,16 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         )}
       </div>
       <div className="flex-1 overflow-auto rounded border border-scada-border bg-scada-panel">
-        <StationConfigurator {...configuratorProps} defaultCard="der-sources" />
+        <StationConfigurator
+          {...configuratorProps}
+          defaultCard={defaultCard}
+          onOpenCalculations={handleOpenCalculations}
+        />
       </div>
 
       {/* AddDerWizard — 5-krokowy kreator dodawania DER. */}
       <AddDerWizard
+        key={`${wizardKind ?? 'closed'}:${wizardResetKey}`}
         isOpen={wizardKind !== null}
         stationId={stationRef}
         stationName={stationName}

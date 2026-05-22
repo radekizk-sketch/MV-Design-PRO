@@ -74,7 +74,7 @@ export function StationConfigBasicCard(props: StationConfigBasicCardProps): JSX.
         <div>
           <span className="text-scada-muted">Typ topologiczny: </span>
           <span data-testid="station-topological-type" className="text-scada-text">{topologicalType}</span>
-          <span className="ml-2 text-[10px] text-scada-muted">(wynika z portów — brief 2 §6 pkt 7)</span>
+          <span className="ml-2 text-[10px] text-scada-muted">(określany z układu pól SN)</span>
         </div>
         <label className="flex flex-col">
           <span className="text-scada-muted">Typ konstrukcyjny</span>

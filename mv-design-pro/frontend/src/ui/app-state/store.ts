@@ -17,7 +17,7 @@
  * - No activeCaseId → [Oblicz] button DISABLED
  * - MODEL_EDIT: model mutable, results invalidated on change
  * - CASE_CONFIG: model read-only, case config mutable
- * - RESULT_VIEW: everything read-only
+ * - RESULT_VIEW: model remains read-only; solver runs can still be started for the active case
  */
 
 import { create } from 'zustand';
@@ -338,7 +338,8 @@ export const useAppStateStore = create<AppState>()(
 
       /**
        * Check if calculation can be started.
-       * Requires: active case + MODEL_EDIT mode + results not FRESH
+       * Requires: active case + calculation-ready network + results not FRESH.
+       * Solver execution is allowed from analysis/result surfaces because it does not mutate ENM.
        */
       canCalculate: () => {
         const state = get();
@@ -347,7 +348,6 @@ export const useAppStateStore = create<AppState>()(
         const structuralBlocker = getCalculationStructuralBlocker(snapshotState.snapshot);
         return (
           state.activeCaseId !== null &&
-          state.activeMode === 'MODEL_EDIT' &&
           !structuralBlocker &&
           (!readiness || readiness.ready) &&
           state.activeCaseResultStatus !== 'FRESH'
@@ -502,7 +502,6 @@ export function useHasActiveCase(): boolean {
  */
 export function useCanCalculate(): { allowed: boolean; reason: string | null } {
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
-  const activeMode = useAppStateStore((state) => state.activeMode);
   const resultStatus = useAppStateStore((state) => state.activeCaseResultStatus);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const readiness = useSnapshotStore((state) => state.readiness);
@@ -515,13 +514,6 @@ export function useCanCalculate(): { allowed: boolean; reason: string | null } {
     return { allowed: false, reason: 'Wybierz aktywny zakres obliczeń' };
   }
 
-  if (activeMode !== 'MODEL_EDIT') {
-    return {
-      allowed: false,
-      reason: 'Obliczenia są dostępne w trybie edycji sieci',
-    };
-  }
-
   const structuralBlocker = getCalculationStructuralBlocker(snapshot);
   if (structuralBlocker) {
     return {
@@ -530,15 +522,15 @@ export function useCanCalculate(): { allowed: boolean; reason: string | null } {
     };
   }
 
-  if (readiness && !readiness.ready) {
-    const blocker = readiness.blockers?.[0];
-    return {
-      allowed: false,
-      reason: blocker?.message_pl ?? 'Skonfiguruj wskazane zakresy układu przed analizą',
-    };
-  }
-
-  if (!liveReady || liveBlocker) {
+  if (readiness) {
+    if (!readiness.ready) {
+      const blocker = readiness.blockers?.[0];
+      return {
+        allowed: false,
+        reason: blocker?.message_pl ?? 'Skonfiguruj wskazane zakresy układu przed analizą',
+      };
+    }
+  } else if (!liveReady || liveBlocker) {
     return {
       allowed: false,
       reason: liveBlocker?.message_pl ?? 'Skonfiguruj wskazane zakresy układu przed analizą',

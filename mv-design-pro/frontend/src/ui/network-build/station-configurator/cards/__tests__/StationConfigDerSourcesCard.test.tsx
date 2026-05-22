@@ -77,6 +77,32 @@ describe('StationConfigDerSourcesCard — Karta 7 "Układy PV/BESS/FW"', () => {
     expect(screen.getByText('BESS-1')).toBeInTheDocument();
   });
 
+  it('dla PV przez transformator dedykowany pokazuje przekladnie i TR blokowy z katalogu', () => {
+    render(
+      <StationConfigDerSourcesCard
+        stationId="station_1"
+        ders={[
+          makeDer({
+            connection_side: 'dedicated_transformer',
+            transformer_ref: 'tr_block_pv',
+            catalogs: {
+              ...EMPTY_DER_CATALOGS,
+              device_catalog_ref: 'pv_inv_huawei_1000',
+              block_transformer_catalog_ref: 'btr_pv_15_069_1250',
+            },
+            nominal_power_kw: 1000,
+            voltage_level_ref: null,
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByTestId('der-voltage-der_1').textContent).toBe('15/0,69 kV');
+    expect(screen.getByTestId('der-block-transformer-der_1').textContent).toContain(
+      'TR blokowy 1250 kVA Dyn5',
+    );
+  });
+
   it('pokazuje liczniki PV/BESS/FW w nagłówku', () => {
     const ders = [
       makeDer({ id: 'pv_a', der_kind: 'PV' }),

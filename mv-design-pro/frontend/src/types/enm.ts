@@ -154,6 +154,14 @@ export interface Cable extends BranchBase {
   r0_ohm_per_km?: number | null;
   x0_ohm_per_km?: number | null;
   b0_siemens_per_km?: number | null;
+  conductor_material?: string | null;
+  cross_section_mm2?: number | null;
+  number_of_cores?: number | null;
+  return_conductor_cross_section_mm2?: number | null;
+  return_conductor_material?: string | null;
+  return_conductor_r_ohm_per_km_20c?: number | null;
+  return_conductor_jth_1s_a_per_mm2?: number | null;
+  return_conductor_ith_1s_a?: number | null;
   rating?: BranchRating | null;
   insulation?: 'XLPE' | 'PVC' | 'PAPER' | null;
   /** Jawny port endpointu A (od strony from_bus_ref). Opcjonalny dla

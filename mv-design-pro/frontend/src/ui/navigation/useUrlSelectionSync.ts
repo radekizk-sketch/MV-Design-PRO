@@ -13,9 +13,12 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { useNetworkBuildStore, type NetworkBuildState } from '../network-build/networkBuildStore';
 import { useSelectionStore } from '../selection/store';
 import { canonicalizeSelectedElement } from '../shared/selectionResolution';
 import { useSnapshotStore } from '../topology/snapshotStore';
+import type { SelectedElement } from '../types';
+import type { EntityTypeCode, WorkspaceSurfaceCode } from '../workspace/types';
 import { readSelectionFromUrl, updateUrlWithSelection } from './urlState';
 
 type CanonicalSelection = ReturnType<typeof canonicalizeSelectedElement>;
@@ -29,6 +32,61 @@ function sameSelection(left: CanonicalSelection, right: CanonicalSelection): boo
     && left.semanticElementKind === right.semanticElementKind
     && left.semanticEngineeringRole === right.semanticEngineeringRole
     && left.semanticHash === right.semanticHash;
+}
+
+function surfaceTargetForSelection(
+  selection: SelectedElement,
+): {
+  screenCode: WorkspaceSurfaceCode;
+  entityType: EntityTypeCode;
+  tabId: string;
+} | null {
+  switch (selection.type) {
+    case 'Station':
+      return { screenCode: 'E-13', entityType: 'station', tabId: 'rozdzielnica-sn' };
+    case 'LineBranch':
+      return { screenCode: 'E-12', entityType: 'segment', tabId: 'identyfikacja' };
+    case 'Source':
+      return { screenCode: 'E-10', entityType: 'gpz', tabId: 'gpz' };
+    case 'BaySN':
+    case 'Switch':
+    case 'Measurement':
+    case 'ProtectionAssignment':
+    case 'Relay':
+      return { screenCode: 'E-11', entityType: 'sn_bay', tabId: 'identyfikacja' };
+    case 'ZKSN':
+      return { screenCode: 'E-14', entityType: 'zksn', tabId: 'identyfikacja' };
+    case 'BranchPole':
+      return { screenCode: 'E-15', entityType: 'branch_pole', tabId: 'identyfikacja' };
+    default:
+      return null;
+  }
+}
+
+function openTechnicalSurfaceForSelection(
+  selection: SelectedElement | null,
+  openRouteSurface: NetworkBuildState['openRouteSurface'],
+): void {
+  if (!selection) return;
+  const target = surfaceTargetForSelection(selection);
+  if (!target) return;
+
+  openRouteSurface(target.screenCode, {
+    entityRef: selection.id,
+    entityType: target.entityType,
+    subjectKind: 'entity',
+    subjectRef: selection.id,
+    tabId: target.tabId,
+    titlePl: selection.name,
+    route: 'sld',
+    openMode: 'replace_right_panel',
+    supportsMiniSld: true,
+    payload: {
+      source: 'url_selection',
+      selectedName: selection.name,
+      selectedType: selection.type,
+    },
+  });
 }
 
 /**
@@ -51,6 +109,9 @@ export function useUrlSelectionSync(): void {
   const selectedElement = useSelectionStore((state) => state.selectedElement);
   const selectElement = useSelectionStore((state) => state.selectElement);
   const snapshot = useSnapshotStore((state) => state.snapshot);
+  const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
+  const clearRouteManagedSurface = useNetworkBuildStore((state) => state.clearRouteManagedSurface);
+  const collapseSurfaceStackTo = useNetworkBuildStore((state) => state.collapseSurfaceStackTo);
 
   // Track if we're in the middle of restoring from URL
   // Prevents sync loop: URL → Store → URL
@@ -58,6 +119,7 @@ export function useUrlSelectionSync(): void {
 
   // Track if initial restore has happened
   const initialRestoreDoneRef = useRef(false);
+  const skipInitialNullSyncRef = useRef(false);
 
   // 1. On mount: restore selection from URL
   useEffect(() => {
@@ -70,7 +132,9 @@ export function useUrlSelectionSync(): void {
 
     const urlSelection = readSelectionFromUrl();
     if (urlSelection) {
+      skipInitialNullSyncRef.current = true;
       selectElement(urlSelection);
+      openTechnicalSurfaceForSelection(urlSelection, openRouteSurface);
     }
 
     // Allow URL updates after restore completes
@@ -78,7 +142,7 @@ export function useUrlSelectionSync(): void {
     requestAnimationFrame(() => {
       isRestoringRef.current = false;
     });
-  }, [selectElement]);
+  }, [openRouteSurface, selectElement]);
 
   // 2. On selection change: update URL
   useEffect(() => {
@@ -92,6 +156,12 @@ export function useUrlSelectionSync(): void {
       return;
     }
 
+    if (!selectedElement && skipInitialNullSyncRef.current && readSelectionFromUrl()) {
+      skipInitialNullSyncRef.current = false;
+      return;
+    }
+
+    skipInitialNullSyncRef.current = false;
     updateUrlWithSelection(selectedElement);
   }, [selectedElement]);
 
@@ -103,13 +173,28 @@ export function useUrlSelectionSync(): void {
     }
 
     const canonicalSelection = canonicalizeSelectedElement(snapshot, selectedElement);
+    if (!canonicalSelection) {
+      selectElement(null);
+      updateUrlWithSelection(null);
+      clearRouteManagedSurface();
+      collapseSurfaceStackTo(null);
+      return;
+    }
     if (sameSelection(canonicalSelection, selectedElement)) {
       return;
     }
 
     selectElement(canonicalSelection);
     updateUrlWithSelection(canonicalSelection);
-  }, [selectedElement, selectElement, snapshot]);
+    openTechnicalSurfaceForSelection(canonicalSelection, openRouteSurface);
+  }, [
+    clearRouteManagedSurface,
+    collapseSurfaceStackTo,
+    openRouteSurface,
+    selectedElement,
+    selectElement,
+    snapshot,
+  ]);
 
   // 3. Handle browser back/forward navigation
   useEffect(() => {
@@ -119,6 +204,7 @@ export function useUrlSelectionSync(): void {
       const urlSelection = readSelectionFromUrl();
       if (urlSelection) {
         selectElement(urlSelection);
+        openTechnicalSurfaceForSelection(urlSelection, openRouteSurface);
       } else {
         selectElement(null);
       }
@@ -130,7 +216,7 @@ export function useUrlSelectionSync(): void {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [selectElement]);
+  }, [openRouteSurface, selectElement]);
 }
 
 /**

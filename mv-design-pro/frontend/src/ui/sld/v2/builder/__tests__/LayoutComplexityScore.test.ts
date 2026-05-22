@@ -85,6 +85,7 @@ describe('computeComplexityScore — basic metrics', () => {
   it('Empty ENM → wszystkie metryki = 0', () => {
     const score = computeComplexityScore(emptyEnm());
     expect(score.stationCount).toBe(0);
+    expect(score.fieldStationCount).toBe(0);
     expect(score.feederCount).toBe(0);
     expect(score.branchCount).toBe(0);
     expect(score.ringCount).toBe(0);
@@ -155,9 +156,9 @@ describe('chooseLayoutStrategy', () => {
     expect(chooseLayoutStrategy(score)).toBe('corridor_with_locked');
   });
 
-  it('Few stations radial (≤5, brak branch/ring) → simple_radial', () => {
+  it('Kilka stacji terenowych bez odgałęzień → corridor, bo SLD ma zachować ciąg terenowy', () => {
     const score = computeComplexityScore(fewStationsRadial());
-    expect(chooseLayoutStrategy(score)).toBe('simple_radial');
+    expect(chooseLayoutStrategy(score)).toBe('corridor');
   });
 
   it('25 stations + branches → corridor', () => {
@@ -170,7 +171,7 @@ describe('chooseLayoutStrategy', () => {
     expect(chooseLayoutStrategy(score)).toBe('corridor');
   });
 
-  it('Średnia sieć (10 stacji, 1 trunk, brak branches/ringów) → hierarchical', () => {
+  it('Średnia sieć terenowa (10 stacji, 1 trunk, brak branches/ringów) → corridor', () => {
     const enm: EnmInput = {
       substations: Array.from({ length: 10 }, (_, i) => ({
         ref_id: `st${i}`,
@@ -188,7 +189,7 @@ describe('chooseLayoutStrategy', () => {
       ],
     };
     const score = computeComplexityScore(enm);
-    expect(chooseLayoutStrategy(score)).toBe('hierarchical');
+    expect(chooseLayoutStrategy(score)).toBe('corridor');
   });
 
   it('5 odgałęzień (próg) → corridor', () => {
@@ -223,7 +224,7 @@ describe('STRATEGY_THRESHOLDS — exposed constants', () => {
 
 describe('explainStrategy — human-readable reasons po Polsku', () => {
   it('simple_radial → "prosty radialny layout"', () => {
-    const score = computeComplexityScore(fewStationsRadial());
+    const score = computeComplexityScore(emptyEnm());
     const reason = explainStrategy(score, 'simple_radial');
     expect(reason).toMatch(/prosty radialny/);
   });

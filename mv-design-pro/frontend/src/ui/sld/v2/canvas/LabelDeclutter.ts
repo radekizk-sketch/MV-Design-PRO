@@ -158,9 +158,10 @@ export function declutterLabels(
   const reserved: { x: number; y: number; width: number; height: number }[] = [];
 
   let iterations = 0;
+  const effectiveMaxIterations = Math.max(maxIterations, sorted.length);
   for (const label of sorted) {
     iterations += 1;
-    if (iterations > maxIterations) break;
+    if (iterations > effectiveMaxIterations) break;
 
     // Locked labels: użyj manualnej pozycji niezależnie od kolizji.
     if (label.lockedAnchor) {

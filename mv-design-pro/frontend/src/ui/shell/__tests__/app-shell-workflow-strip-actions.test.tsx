@@ -281,6 +281,69 @@ describe('AppShellV12 workflow strip actions', () => {
     expect(screen.getByTestId('wcs-model-readiness')).not.toHaveTextContent('Obliczenia:do uruchomienia');
   });
 
+  it('liczy w pasku tylko terenowe odcinki SN, bez wewnetrznej aparatury GPZ', () => {
+    mockSnapshot.value = {
+      sources: [{ ref_id: 'gpz/1/source/main' }],
+      buses: [{ ref_id: 'gpz/1/bus/s1' }, { ref_id: 'bus/seg-1/downstream' }],
+      bays: [{ ref_id: 'gpz/1/bay/001' }],
+      branches: [
+        { ref_id: 'gpz/1/bay/001/q1', type: 'breaker', name: 'Wylacznik pola SN' },
+        { ref_id: 'gpz/1/bay/001/internal', type: 'cable', length_km: 0, name: 'Polaczenie wewnetrzne pola' },
+        {
+          ref_id: 'seg/1/segment',
+          type: 'cable',
+          length_km: 0.5,
+          catalog_namespace: 'KABEL_SN',
+          name: 'Odcinek 01',
+        },
+      ],
+      substations: [{ ref_id: 'gpz/1/substation', station_type: 'gpz' }],
+      transformers: [],
+      generators: [],
+      loads: [],
+    };
+
+    render(
+      <AppShellV12>
+        <div>SLD</div>
+      </AppShellV12>,
+    );
+
+    expect(screen.getByTestId('workflow-context-strip')).toHaveTextContent('Odcinki SN:1');
+    expect(screen.getByTestId('workflow-context-strip')).toHaveTextContent('0,50 km');
+  });
+
+  it('nie pokazuje fazy analizy po samym odcinku bez stacji', () => {
+    mockSnapshot.value = {
+      sources: [{ ref_id: 'gpz/1/source/main' }],
+      buses: [{ ref_id: 'gpz/1/bus/s1' }, { ref_id: 'bus/seg-1/downstream' }],
+      bays: [{ ref_id: 'gpz/1/bay/001' }],
+      branches: [
+        {
+          ref_id: 'seg/1/segment',
+          type: 'cable',
+          length_km: 0.5,
+          catalog_namespace: 'KABEL_SN',
+          name: 'Odcinek 01',
+        },
+      ],
+      substations: [{ ref_id: 'gpz/1/substation', station_type: 'gpz' }],
+      transformers: [{ ref_id: 'gpz/1/tr/1' }],
+      generators: [],
+      loads: [],
+    };
+
+    render(
+      <AppShellV12>
+        <div>SLD</div>
+      </AppShellV12>,
+    );
+
+    expect(screen.getByTestId('workflow-build-phase')).toHaveTextContent('BUDOWA');
+    expect(screen.getByTestId('wcs-model-readiness')).toHaveTextContent('Następny krok:osadź stację');
+    expect(screen.getByTestId('wcs-model-readiness')).not.toHaveTextContent('Obliczenia:do uruchomienia');
+  });
+
   it('ukrywa i pokazuje lewy oraz prawy pasek boczny', () => {
     render(
       <AppShellV12>

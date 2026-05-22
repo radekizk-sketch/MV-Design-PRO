@@ -26,7 +26,7 @@ export type DerConfiguratorSectionId =
   | 'frt'          // 6.  FRT (LVRT/HVRT z krzywą + iniekcja Iq)
   | 'protection'   // 7.  Zabezpieczenia (ANSI 27/59/59N/81U/81O/...)
   | 'dynamic'      // 8.  Model dynamiczny (IEC 61400-27)
-  | 'readiness'    // 9.  Gotowość obliczeniowa (22-osiowa macierz)
+  | 'readiness'    // 9.  Konfiguracja obliczeń (22-osiowa macierz)
   | 'gaps';        // 10. Gap analysis (braki w aplikacji do rozbudowy)
 
 /** Typ DER — determinuje pola Parametry elektryczne. */
@@ -49,7 +49,7 @@ export const DER_CONFIGURATOR_SECTIONS: readonly DerConfiguratorSectionDefinitio
   { id: 'frt',        n: 6,  label: 'FRT (LVRT/HVRT)',        icon: '📉' },
   { id: 'protection', n: 7,  label: 'Zabezpieczenia',         icon: '🛡' },
   { id: 'dynamic',    n: 8,  label: 'Model dynamiczny',       icon: '🔬' },
-  { id: 'readiness',  n: 9,  label: 'Gotowość obliczeniowa',  icon: '✓' },
+  { id: 'readiness',  n: 9,  label: 'Konfiguracja obliczeń',  icon: '✓' },
   { id: 'gaps',       n: 10, label: 'Gap analysis',           icon: '⚠' },
 ];
 

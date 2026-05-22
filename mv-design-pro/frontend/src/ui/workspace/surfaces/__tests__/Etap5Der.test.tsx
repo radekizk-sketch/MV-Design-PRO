@@ -193,6 +193,92 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(screen.getByTestId('der-breadcrumb')).not.toHaveTextContent('70a99b32');
   });
 
+  it('PvSourceSurface pokazuje transformator blokowy dla przyłączenia dedykowanego ze snapshotu', () => {
+    useSnapshotStore.setState({
+      snapshot: {
+        header: {
+          enm_version: '1.0',
+          name: 'Model testowy',
+          created_at: FROZEN_NOW,
+          updated_at: FROZEN_NOW,
+          revision: 1,
+          hash_sha256: 'hash',
+          defaults: { frequency_hz: 50, unit_system: 'SI' },
+        },
+        buses: [],
+        branches: [],
+        transformers: [
+          {
+            id: 'tr_block_pv',
+            ref_id: 'tr_block_pv',
+            name: 'TR blokowy PV',
+            tags: [],
+            meta: {},
+            hv_bus_ref: 'bus_sn_pcc',
+            lv_bus_ref: 'bus_pv_069',
+            sn_mva: 1.25,
+            uhv_kv: 15,
+            ulv_kv: 0.69,
+            uk_percent: 6,
+            pk_kw: 12,
+            vector_group: 'Dyn5',
+          },
+        ],
+        sources: [],
+        loads: [],
+        generators: [
+          {
+            id: 'gen_pv_block',
+            ref_id: 'gen_pv_block',
+            name: 'PV S02',
+            tags: [],
+            meta: {},
+            bus_ref: 'bus_pv_069',
+            p_mw: 1,
+            gen_type: 'pv_inverter',
+            catalog_ref: 'pv_inv_system_1000',
+            station_ref: 'station_snapshot',
+            connection_variant: 'block_transformer',
+            blocking_transformer_ref: 'tr_block_pv',
+            materialized_params: {
+              profiles: {
+                nc_rfg_profile_ref: 'ncrfg_pse',
+                lvrt_curve_ref: 'lvrt_pse_b',
+                hvrt_curve_ref: 'hvrt_pse_b',
+                pf_curve_ref: 'pf_pse_2024',
+              },
+            },
+          },
+        ],
+        substations: [
+          {
+            id: 'station_snapshot',
+            ref_id: 'station_snapshot',
+            name: 'Stacja SN/nN 2',
+            tags: [],
+            meta: {},
+            station_type: 'inline',
+            bus_refs: ['bus_sn_pcc'],
+            transformer_refs: [],
+          },
+        ],
+        bays: [],
+        junctions: [],
+        corridors: [],
+        measurements: [],
+        protection_assignments: [],
+      },
+    } as never);
+
+    render(<PvSourceSurface surface={makeSurface('gen_pv_block')} />);
+
+    const text = screen.getByTestId('pv-source-surface').textContent ?? '';
+    expect(text).toContain('PV S02');
+    expect(text).toContain('Pakiet katalogowy PV 1000');
+    expect(text).toContain('TR blokowy 15/0,69 kV 1250 kVA Dyn5');
+    expect(text).not.toMatch(/\b250 kVA[\s\S]{0,140}1000 kW|1000 kW[\s\S]{0,140}\b250 kVA/);
+  });
+
   it('PvSourceSurface migruje legacy generator bez catalog_ref do pakietu katalogowego', () => {
     useSnapshotStore.setState({
       snapshot: {

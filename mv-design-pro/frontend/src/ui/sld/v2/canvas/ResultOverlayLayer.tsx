@@ -86,6 +86,7 @@ interface ResultOverlayLayerProps {
   readonly cableRuns?: readonly CableRunForOverlay[];
 }
 
+
 export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element | null {
   const { stations, cableRuns } = props;
   const payload = useRawResultOverlayStore((state) => state.payload);
@@ -103,8 +104,17 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
 
   // K30-60 RADICAL: legend HIDDEN by default (cleaner dispatcher view).
   // Pokaż only with explicit ?overlay=1 (was: hide with overlay=0/legend=0).
-  const showLegend = typeof window !== 'undefined'
-    && (window.location.search.includes('overlay=1') || window.location.search.includes('legend=1'));
+  const showLegend = typeof window !== 'undefined' && (() => {
+    const pageParams = new URLSearchParams(window.location.search);
+    if (pageParams.get('overlay') === '1' || pageParams.get('legend') === '1') {
+      return true;
+    }
+    const hash = window.location.hash || '';
+    const queryIndex = hash.indexOf('?');
+    if (queryIndex < 0) return false;
+    const hashParams = new URLSearchParams(hash.slice(queryIndex + 1));
+    return hashParams.get('overlay') === '1' || hashParams.get('legend') === '1';
+  })();
 
   return (
     <g data-testid="sld-v2-result-overlay-layer" data-analysis-type={analysisType} pointerEvents="none">

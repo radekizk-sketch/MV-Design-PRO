@@ -106,6 +106,16 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
         corridors: [],
         measurements: [],
         protection_assignments: [],
+        line_runs: [
+          {
+            id: 'run-test-station',
+            run_kind: 'main_trunk',
+            starting_bay_ref: 'bay-test-out',
+            starting_port_ref: 'port-test-out',
+            segments: [],
+            stations: [{ substation_ref: 'station_1', order: 1 }],
+          },
+        ],
       } as never,
       logicalViews: null,
       readiness: null,
@@ -467,6 +477,16 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
         corridors: [],
         measurements: [],
         protection_assignments: [],
+        line_runs: [
+          {
+            id: 'run-station-internal',
+            run_kind: 'main_trunk',
+            starting_bay_ref: 'bay-test-out',
+            starting_port_ref: 'port-test-out',
+            segments: [],
+            stations: [{ substation_ref: 'station_1', order: 1 }],
+          },
+        ],
       } as never,
       logicalViews: null,
       readiness: null,
@@ -486,6 +506,7 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
 
     fireEvent.doubleClick(screen.getByTestId('sld-v2-mini-rmu-station_1'));
 
+    expect(screen.getByTestId('station-internal-view')).toHaveAttribute('data-view-mode', 'side-drawer');
     const internal = screen.getByTestId('sld-v2-station-internal-station_1');
     expect(internal.textContent).not.toContain('Stacja inline');
     expect(internal.textContent).toContain('S01 · Stacja przelotowa');
@@ -593,6 +614,16 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
         corridors: [],
         measurements: [],
         protection_assignments: [],
+        line_runs: [
+          {
+            id: 'run-station-pv',
+            run_kind: 'main_trunk',
+            starting_bay_ref: 'bay-test-out',
+            starting_port_ref: 'port-test-out',
+            segments: [],
+            stations: [{ substation_ref: 'station_1', order: 1 }],
+          },
+        ],
       } as never,
       logicalViews: null,
       readiness: null,
@@ -833,5 +864,209 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
     expect(screen.getByTestId('sld-v2-der-palette-hint')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('sld-v2-der-palette-cancel'));
     expect(screen.queryByTestId('sld-v2-der-palette-hint')).toBeNull();
+  });
+
+  it('wybor odcinka SN otwiera jedna karte E-12 bez szuflady szczegolow', () => {
+    useSnapshotStore.setState({
+      snapshot: {
+        header: {
+          enm_version: '1.0',
+          name: 'Siec odcinka',
+          created_at: '2026-05-20T00:00:00Z',
+          updated_at: '2026-05-20T00:00:00Z',
+          revision: 1,
+          hash_sha256: 'e'.repeat(64),
+          defaults: { frequency_hz: 50, unit_system: 'SI' },
+        },
+        buses: [
+          { id: 'bus-a', ref_id: 'bus-a', name: 'Zacisk pola', tags: [], meta: {}, voltage_kv: 15, phase_system: '3ph' },
+          { id: 'bus-b', ref_id: 'bus-b', name: 'Zacisk stacji', tags: [], meta: {}, voltage_kv: 15, phase_system: '3ph' },
+        ],
+        branches: [
+          {
+            id: 'seg-1',
+            ref_id: 'seg-1',
+            name: 'segment_L_zksn',
+            tags: [],
+            meta: {},
+            type: 'cable',
+            from_bus_ref: 'bus-a',
+            to_bus_ref: 'bus-b',
+            status: 'closed',
+            length_km: 0.5,
+            r_ohm_per_km: 0.12,
+            x_ohm_per_km: 0.08,
+            catalog_ref: 'NA2XS2Y 1x150/25 mm2',
+            cross_section_mm2: 150,
+            return_conductor_cross_section_mm2: 25,
+            number_of_cores: 3,
+          } as never,
+        ],
+        transformers: [],
+        sources: [],
+        loads: [],
+        generators: [],
+        substations: [
+          {
+            id: 'station-1',
+            ref_id: 'station-1',
+            name: 'Stacja przelotowa',
+            tags: [],
+            meta: {},
+            station_type: 'inline',
+            bus_refs: ['bus-b'],
+            transformer_refs: [],
+          } as never,
+        ],
+        bays: [],
+        junctions: [],
+        branch_points: [],
+        corridors: [],
+        measurements: [],
+        protection_assignments: [],
+        line_runs: [
+          {
+            id: 'run-1',
+            run_kind: 'main_trunk',
+            starting_bay_ref: 'bay-out',
+            starting_port_ref: 'port-out',
+            segments: [{ segment_ref: 'seg-1', order: 1 }],
+            stations: [{ substation_ref: 'station-1', order: 1 }],
+          },
+        ],
+      } as never,
+      logicalViews: null,
+      readiness: null,
+      fixActions: [],
+      materializedParams: null,
+      layout: null,
+      selectionHint: null,
+      lastChanges: null,
+      lastEvents: [],
+      operationHistory: [],
+      loading: false,
+      error: null,
+      errorCode: null,
+    });
+
+    render(<SldWorkspaceContainer width={900} height={520} />);
+
+    const segmentHitbox = screen.getByTestId('sld-v2-run-run-1-segment-hitbox-seg-1');
+    const clickablePath = segmentHitbox.querySelector('polyline');
+    expect(clickablePath).not.toBeNull();
+    fireEvent.click(clickablePath as Element);
+
+    expect(screen.queryByTestId('sld-v2-detail-drawer')).not.toBeInTheDocument();
+    expect(useSelectionStore.getState().selectedElement).toMatchObject({
+      id: 'seg-1',
+      type: 'LineBranch',
+      name: 'Odcinek SN',
+    });
+    expect(useNetworkBuildStore.getState().activeSurface).toMatchObject({
+      screenCode: 'E-12',
+      entityRef: 'seg-1',
+      titlePl: 'Odcinek SN',
+    });
+  });
+
+  it('marker zakonczenia odgalezienia wybiera odcinek, nie stacje zrodlowa', () => {
+    useSnapshotStore.setState({
+      snapshot: {
+        header: {
+          enm_version: '1.0',
+          name: 'Siec z odgalezieniem',
+          created_at: '2026-05-20T00:00:00Z',
+          updated_at: '2026-05-20T00:00:00Z',
+          revision: 1,
+          hash_sha256: 'f'.repeat(64),
+          defaults: { frequency_hz: 50, unit_system: 'SI' },
+        },
+        buses: [
+          { id: 'bus-a', ref_id: 'bus-a', name: 'Zacisk pola', tags: [], meta: {}, voltage_kv: 15, phase_system: '3ph' },
+          { id: 'bus-b', ref_id: 'bus-b', name: 'Wolny koniec odgalezienia', tags: [], meta: {}, voltage_kv: 15, phase_system: '3ph' },
+        ],
+        branches: [
+          {
+            id: 'seg-pending',
+            ref_id: 'seg-pending',
+            name: 'segment_R_branch',
+            tags: [],
+            meta: {},
+            type: 'cable',
+            from_bus_ref: 'bus-a',
+            to_bus_ref: 'bus-b',
+            status: 'closed',
+            length_km: 0.5,
+            r_ohm_per_km: 0.12,
+            x_ohm_per_km: 0.08,
+            catalog_ref: 'NA2XS2Y 1x150/25 mm2',
+            cross_section_mm2: 150,
+            return_conductor_cross_section_mm2: 25,
+            number_of_cores: 3,
+          } as never,
+        ],
+        transformers: [],
+        sources: [],
+        loads: [],
+        generators: [],
+        substations: [
+          {
+            id: 'station-source',
+            ref_id: 'station-source',
+            name: 'Stacja zrodlowa',
+            tags: [],
+            meta: {},
+            station_type: 'inline',
+            bus_refs: ['bus-a'],
+            transformer_refs: [],
+          } as never,
+        ],
+        bays: [],
+        junctions: [],
+        branch_points: [],
+        corridors: [],
+        measurements: [],
+        protection_assignments: [],
+        line_runs: [
+          {
+            id: 'run-pending',
+            run_kind: 'branch',
+            parent_run_ref: 'run-main',
+            starting_bay_ref: 'bay-out',
+            starting_port_ref: 'port-out',
+            segments: [{ segment_ref: 'seg-pending', order: 1 }],
+            stations: [],
+          },
+        ],
+      } as never,
+      logicalViews: null,
+      readiness: null,
+      fixActions: [],
+      materializedParams: null,
+      layout: null,
+      selectionHint: null,
+      lastChanges: null,
+      lastEvents: [],
+      operationHistory: [],
+      loading: false,
+      error: null,
+      errorCode: null,
+    });
+
+    render(<SldWorkspaceContainer width={900} height={520} />);
+
+    const pending = screen.getByTestId('sld-v2-run-run-pending-pending-end');
+    expect(pending).toHaveAttribute('data-pending-target-ref', 'seg-pending');
+    fireEvent.click(pending);
+
+    expect(useSelectionStore.getState().selectedElement).toMatchObject({
+      id: 'seg-pending',
+      type: 'LineBranch',
+    });
+    expect(useSelectionStore.getState().selectedElement?.id).not.toBe('station-source');
+    expect(useNetworkBuildStore.getState().activeSurface).toMatchObject({
+      screenCode: 'E-12',
+      entityRef: 'seg-pending',
+    });
   });
 });

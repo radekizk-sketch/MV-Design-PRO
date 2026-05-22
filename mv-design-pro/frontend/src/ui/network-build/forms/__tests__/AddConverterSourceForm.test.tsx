@@ -29,7 +29,7 @@ const snapshotWithExistingField = {
       ref_id: 'st-1',
       name: 'ST-1',
       bus_refs: ['bus-sn-1', 'bus-nn-1'],
-      transformer_refs: ['tr-1'],
+      transformer_refs: ['tr-1', 'tr-pv-15'],
     },
   ],
   buses: [
@@ -53,6 +53,16 @@ const snapshotWithExistingField = {
       name: 'TR-1',
       lv_bus_ref: 'bus-nn-1',
       sn_mva: 1,
+      uhv_kv: 15,
+      ulv_kv: 0.4,
+    },
+    {
+      ref_id: 'tr-pv-15',
+      name: 'TR-PV-15',
+      lv_bus_ref: 'bus-pv-15',
+      sn_mva: 1.25,
+      uhv_kv: 15,
+      ulv_kv: 15,
     },
   ],
 } as const;
@@ -204,9 +214,14 @@ vi.mock('../../../topology/modals/CatalogPicker', () => ({
     <div data-testid={`catalog-${label}`}>
       <span>{label}</span>
       {entries.length > 0 ? (
-        <button type="button" onClick={() => onChange(entries[0]?.id ?? '')}>
-          {selectedId || `wybierz:${label}`}
-        </button>
+        <div>
+          <span>{selectedId ? `wybrano:${selectedId}` : `wybierz:${label}`}</span>
+          {entries.map((entry) => (
+            <button key={entry.id} type="button" onClick={() => onChange(entry.id)}>
+              {entry.id}
+            </button>
+          ))}
+        </div>
       ) : (
         <span>ladowanie:{label}</span>
       )}
@@ -333,6 +348,24 @@ describe('AddConverterSourceForm', () => {
           bess_mode: 'DWUKIERUNKOWY',
         }),
       );
+    });
+  });
+
+  it('pokazuje pełny katalog falowników i przełącza niezgodne napięcie na wariant blokowy', async () => {
+    render(<AddConverterSourceForm />);
+
+    await waitFor(() => {
+      expect(screen.getByText('conv-pv-1')).toBeInTheDocument();
+      expect(screen.getByText('conv-pv-15')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'conv-pv-15' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('add-converter-auto-block-transformer')).toHaveTextContent(
+        'przełącza układ na wariant blokowy',
+      );
+      expect(screen.getAllByText(/TR-PV-15/).length).toBeGreaterThan(0);
     });
   });
 

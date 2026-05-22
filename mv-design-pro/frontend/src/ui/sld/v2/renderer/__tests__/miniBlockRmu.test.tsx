@@ -396,6 +396,43 @@ describe('MiniBlockRmuRenderer — DER badges', () => {
     expect(container.querySelector('[data-testid="sld-v2-mini-rmu-der-badge-PV"]')).not.toBeNull();
   });
 
+  it('PV przez transformator blokowy pokazuje symbol TR przy znaczniku OZE', () => {
+    const { container } = r('compact', {
+      derBadges: [{ kind: 'PV', count: 1, connectionSide: 'dedicated', hasBlockTransformer: true, totalPMw: 1 }],
+    });
+
+    const blockTransformer = container.querySelector('[data-testid="sld-v2-mini-rmu-der-badge-block-transformer-PV"]');
+    const connection = container.querySelector('[data-testid="sld-v2-mini-rmu-der-conn-PV-0"]');
+
+    expect(blockTransformer).not.toBeNull();
+    expect(blockTransformer?.querySelector('title')?.textContent).toBe('Transformator blokowy OZE');
+    expect(connection?.getAttribute('data-connection-side')).toBe('dedicated');
+  });
+
+  it('overview oznacza PV z transformatorem blokowym bez rozwijania detali stacji', () => {
+    const { container } = r('overview', {
+      derBadges: [{ kind: 'PV', count: 1, connectionSide: 'dedicated', hasBlockTransformer: true, totalPMw: 1 }],
+    });
+
+    const marker = container.querySelector('[data-testid="sld-v2-mini-rmu-overview-st-1-der"]');
+    const transformer = container.querySelector('[data-testid="sld-v2-mini-rmu-overview-st-1-der-block-transformer"]');
+
+    expect(marker?.getAttribute('data-block-transformer')).toBe('true');
+    expect(transformer).not.toBeNull();
+  });
+
+  it('detail pokazuje dedykowany PV z TR blokowym nawet gdy stacja ma tez PV po nN', () => {
+    const { container } = r('detail', {
+      derBadges: [
+        { kind: 'PV', count: 1, connectionSide: 'nn', totalPMw: 0.185 },
+        { kind: 'PV', count: 1, connectionSide: 'dedicated', hasBlockTransformer: true, totalPMw: 1 },
+      ],
+    });
+
+    expect(container.querySelector('[data-testid="sld-v2-mini-rmu-pv-nn-st-1"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-mini-rmu-der-badge-block-transformer-PV"]')).not.toBeNull();
+  });
+
   it('BESS i FW badges renderowane razem', () => {
     const { container } = r('compact', {
       derBadges: [

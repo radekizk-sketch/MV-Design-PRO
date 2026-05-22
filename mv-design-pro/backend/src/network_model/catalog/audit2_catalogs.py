@@ -719,6 +719,78 @@ class BlockTransformerItem:
 
 BLOCK_TRANSFORMER_CATALOG: tuple[BlockTransformerItem, ...] = (
     BlockTransformerItem(
+        id="btr_pv_15_069_800",
+        catalog_namespace="block_transformer",
+        catalog_version="2024.1",
+        label_pl="PV transformator dedykowany 15/0,69 kV * 800 kVA * Dyn5",
+        manufacturer="ABB",
+        sn_kva=800,
+        hv_kv=15,
+        lv_kv=0.69,
+        uk_percent=6.0,
+        pk_kw=8.8,
+        p0_kw=1.5,
+        i0_percent=0.5,
+        vector_group="Dyn5",
+        is_mv_to_mv=False,
+        applicable_der_kinds=("PV", "BESS"),
+        galvanic_isolation=True,
+    ),
+    BlockTransformerItem(
+        id="btr_pv_15_069_1000",
+        catalog_namespace="block_transformer",
+        catalog_version="2024.1",
+        label_pl="PV transformator dedykowany 15/0,69 kV * 1000 kVA * Dyn5",
+        manufacturer="ABB",
+        sn_kva=1000,
+        hv_kv=15,
+        lv_kv=0.69,
+        uk_percent=6.0,
+        pk_kw=10.6,
+        p0_kw=1.8,
+        i0_percent=0.45,
+        vector_group="Dyn5",
+        is_mv_to_mv=False,
+        applicable_der_kinds=("PV", "BESS"),
+        galvanic_isolation=True,
+    ),
+    BlockTransformerItem(
+        id="btr_pv_15_069_1250",
+        catalog_namespace="block_transformer",
+        catalog_version="2024.1",
+        label_pl="PV transformator dedykowany 15/0,69 kV * 1250 kVA * Dyn5",
+        manufacturer="ABB",
+        sn_kva=1250,
+        hv_kv=15,
+        lv_kv=0.69,
+        uk_percent=6.0,
+        pk_kw=13.2,
+        p0_kw=2.1,
+        i0_percent=0.45,
+        vector_group="Dyn5",
+        is_mv_to_mv=False,
+        applicable_der_kinds=("PV", "BESS"),
+        galvanic_isolation=True,
+    ),
+    BlockTransformerItem(
+        id="btr_pv_15_069_1600",
+        catalog_namespace="block_transformer",
+        catalog_version="2024.1",
+        label_pl="PV transformator dedykowany 15/0,69 kV * 1600 kVA * Dyn5",
+        manufacturer="ABB",
+        sn_kva=1600,
+        hv_kv=15,
+        lv_kv=0.69,
+        uk_percent=6.0,
+        pk_kw=16.8,
+        p0_kw=2.6,
+        i0_percent=0.4,
+        vector_group="Dyn5",
+        is_mv_to_mv=False,
+        applicable_der_kinds=("PV", "BESS"),
+        galvanic_isolation=True,
+    ),
+    BlockTransformerItem(
         id="btr_pv_15_069_2500",
         catalog_namespace="block_transformer",
         catalog_version="2024.1",
@@ -988,7 +1060,10 @@ def is_vt_voltage_factor_valid_for_grounding(
         return True, ""
     if grounding_type == "resistor_grounded":
         if voltage_factor < 1.5:
-            return False, f"Siec R-grounded wymaga VT z U_th >= 1.5 (30s). Wybrany VT ma U_th = {voltage_factor}."
+            return (
+                False,
+                f"Siec R-grounded wymaga VT z U_th >= 1.5 (30s). Wybrany VT ma U_th = {voltage_factor}.",
+            )
         return True, ""
     if voltage_factor < 1.2:
         return False, "Siec directly-grounded wymaga VT z U_th >= 1.2 (continuous)."
@@ -1058,14 +1133,16 @@ def validate_device_withstand(
 # wystarczy lookup voltage_factor — wartosc 1.2/1.5/1.9 wg klasy.
 
 VT_CATALOG_FOR_FACTOR: dict[str, float] = {
-    "vt_15kv_100v_3p": 1.9,   # 3P klasa zabezpieczeniowa, 8h
-    "vt_20kv_100v_3p": 1.9,   # 3P klasa zabezpieczeniowa, 8h
-    "vt_15kv_100v_05": 1.2,   # 0.5 klasa pomiarowa, continuous
-    "vt_20kv_dual": 1.9,      # 3P + 0.5 dual, U_th wg 3P
+    "vt_15kv_100v_3p": 1.9,  # 3P klasa zabezpieczeniowa, 8h
+    "vt_20kv_100v_3p": 1.9,  # 3P klasa zabezpieczeniowa, 8h
+    "vt_15kv_100v_05": 1.2,  # 0.5 klasa pomiarowa, continuous
+    "vt_20kv_dual": 1.9,  # 3P + 0.5 dual, U_th wg 3P
 }
 
 
-def estimate_der_power_kw(*, der_kind: str, block_transformer_catalog_ref: str | None = None) -> float:
+def estimate_der_power_kw(
+    *, der_kind: str, block_transformer_catalog_ref: str | None = None
+) -> float:
     """
     Estymuje moc DER na podstawie block-trafo (gdy dedicated_transformer)
     lub typowych wartosci dla der_kind.

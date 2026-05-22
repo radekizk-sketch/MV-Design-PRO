@@ -103,7 +103,8 @@ def _legacy_zksn_without_switch_state() -> EnergyNetworkModel:
 
 
 @pytest.fixture(autouse=True)
-def _reset_store() -> None:
+def _reset_store(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    monkeypatch.setenv("ENM_STORE_DIR", str(tmp_path / "enm_store"))
     reset_enm_store()
     yield
     reset_enm_store()
@@ -124,6 +125,18 @@ def test_set_enm_noops_for_equivalent_snapshot_content() -> None:
 
     assert saved.header.revision == first.header.revision
     assert saved.header.hash_sha256 == first.header.hash_sha256
+
+
+def test_store_reloads_persisted_snapshot_after_process_memory_reset() -> None:
+    saved = set_enm("case-store-restart", _minimal_enm())
+
+    reset_enm_store(remove_persisted=False)
+    reread = get_enm("case-store-restart")
+
+    assert reread.header.revision == saved.header.revision
+    assert reread.header.hash_sha256 == saved.header.hash_sha256
+    assert reread.buses[0].ref_id == "bus-main"
+    assert reread.sources[0].ref_id == "src-grid"
 
 
 def test_store_materializes_catalog_loads_for_legacy_station_feeders() -> None:

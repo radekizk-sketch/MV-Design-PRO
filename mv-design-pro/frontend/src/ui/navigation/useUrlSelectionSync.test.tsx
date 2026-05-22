@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { act, render, waitFor } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../types/enm';
+import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import { useSelectionStore } from '../selection/store';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { useUrlSelectionSync } from './useUrlSelectionSync';
@@ -78,6 +79,7 @@ describe('useUrlSelectionSync', () => {
     act(() => {
       useSelectionStore.getState().clearSelection();
       useSnapshotStore.getState().reset();
+      useNetworkBuildStore.getState().reset();
       window.history.replaceState(null, '', '/');
     });
   });
@@ -122,6 +124,11 @@ describe('useUrlSelectionSync', () => {
 
     expect(new URLSearchParams(window.location.hash.split('?')[1]).get('name'))
       .toBe('S01 · Stacja przelotowa');
+    expect(useNetworkBuildStore.getState().activeSurface).toMatchObject({
+      screenCode: 'E-13',
+      entityRef: 'stn/abc/station',
+      entityType: 'station',
+    });
   });
   it('replaces raw station-scoped apparatus route names with public technical labels', async () => {
     act(() => {
@@ -151,5 +158,29 @@ describe('useUrlSelectionSync', () => {
     expect(name).toContain('Stacja przelotowa');
     expect(name).toContain('PV Q2');
     expect(name).not.toContain('stn/');
+  });
+
+  it('clears a stale route selection when the object is not present in ENM', async () => {
+    act(() => {
+      window.history.replaceState(
+        null,
+        '',
+        '/#sld?sel=stn%2Fmissing%2Fstation&type=Station&name=Stacja+SN%2FnN+6',
+      );
+      useSelectionStore.getState().clearSelection();
+    });
+
+    act(() => {
+      render(<UrlSelectionSyncProbe />);
+    });
+
+    await waitFor(() => {
+      expect(useSelectionStore.getState().selectedElement).toBeNull();
+    });
+
+    const params = new URLSearchParams(window.location.hash.split('?')[1]);
+    expect(params.get('sel')).toBeNull();
+    expect(params.get('type')).toBeNull();
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
 });

@@ -241,8 +241,8 @@ describe('workspace shell V12.5 surfaces', () => {
 
     expect(screen.getByRole('heading', { level: 2, name: SURFACE_REGISTRY['E-37'].titlePl })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { level: 3, name: /Kontrakt raportu i eksportu/i })).toBeInTheDocument();
-    expect(screen.getAllByText('json').length).toBeGreaterThan(0);
-    expect(screen.getByText('status_field')).toBeInTheDocument();
+    expect(screen.getAllByText('JSON').length).toBeGreaterThan(0);
+    expect(screen.getByText('pole statusu')).toBeInTheDocument();
     expect(screen.queryByText('proof-pack-1')).not.toBeInTheDocument();
     expect(screen.getAllByText('Zapisane w śladzie audytu').length).toBeGreaterThan(0);
   });
@@ -361,6 +361,20 @@ describe('workspace shell V12.5 surfaces', () => {
     expect(
       screen.getByRole('heading', { level: 2, name: SURFACE_REGISTRY['E-28'].titlePl }),
     ).toBeInTheDocument();
+  });
+
+  it('nie pokazuje wewnetrznego typu analysis_run w kontekscie analitycznym', () => {
+    useNetworkBuildStore.getState().openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
+      titlePl: 'Analizy techniczne',
+      entityType: 'analysis_run',
+      subjectKind: 'analysis_run',
+      subjectRef: 'run-1',
+    });
+
+    render(<WorkspaceSurfaceRouter region="main" />);
+
+    expect(screen.getAllByText('Aktywne obliczenie').length).toBeGreaterThan(0);
+    expect(document.body.textContent ?? '').not.toContain('analysis_run');
   });
 
   it.each([
@@ -484,5 +498,17 @@ describe('WorkspaceOperationalBar', () => {
     expect(
       screen.getByText(/Rama aplikacji pozostaje wspolna dla edycji, analityki i raportu/i),
     ).toBeInTheDocument();
+  });
+
+  it('ukrywa techniczny sufiks wariantu w pasku operacyjnym', () => {
+    useAppStateStore
+      .getState()
+      .setActiveCase('case-1', 'Przypadek 50 szablonow mp9g6fu5', 'ShortCircuitCase', 'OUTDATED');
+
+    render(<WorkspaceOperationalBar validationStatus="valid" />);
+
+    const text = screen.getByTestId('workspace-operational-variant').textContent ?? '';
+    expect(text).toContain('Zakres 50 szablonow');
+    expect(text).not.toMatch(/mp9g6fu5|Przypadek/);
   });
 });

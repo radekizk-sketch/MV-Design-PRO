@@ -9,6 +9,7 @@
 
 import { clsx } from 'clsx';
 import type { ReactNode } from 'react';
+import { publicTechnicalLabel } from '../../shared/publicTechnicalLabels';
 
 // =============================================================================
 // Types
@@ -64,6 +65,8 @@ export function ObjectCard({
   footer,
   className,
 }: ObjectCardProps) {
+  const visibleElementId = publicTechnicalLabel(elementId, '');
+
   return (
     <div className={clsx('flex flex-col h-full bg-white', className)} data-testid="object-card">
       {/* Header */}
@@ -82,7 +85,7 @@ export function ObjectCard({
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-gray-800 truncate">{elementName}</h3>
             <p className="text-[10px] text-gray-500 mt-0.5">
-              {elementType} &middot; {elementId}
+              {visibleElementId ? `${elementType} · ${visibleElementId}` : elementType}
             </p>
           </div>
         </div>
@@ -119,7 +122,7 @@ export function ObjectCard({
                         field.severity === 'warning' && 'text-amber-600',
                         !field.source && !field.severity && 'text-gray-800',
                       )}
-                      title={String(field.value ?? '—')}
+                      title={formatCardValue(field.value)}
                     >
                       {formatCardValue(field.value)}
                       {field.unit && <span className="text-gray-400 ml-0.5">{field.unit}</span>}
@@ -169,5 +172,5 @@ function formatCardValue(value: string | number | boolean | null): string {
   if (typeof value === 'number') {
     return value.toLocaleString('pl-PL', { maximumFractionDigits: 4 });
   }
-  return String(value);
+  return publicTechnicalLabel(String(value), 'oznaczenie techniczne');
 }

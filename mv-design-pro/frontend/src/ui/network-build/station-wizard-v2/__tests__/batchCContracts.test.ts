@@ -48,10 +48,11 @@ describe('METER_REFERENCE_CATALOG — LZQJ-XC / ZMD405 / MT880', () => {
     expect(m?.fourQuadrant).toBe(true);
   });
 
-  it('MT880: Iskra, POWER_QUALITY type', () => {
+  it('MT880: Iskraemeco, licznik rozliczeniowy', () => {
     const m = METER_REFERENCE_CATALOG.find((x) => x.modelRef === 'MT880');
-    expect(m?.manufacturerRef).toBe('Iskra');
-    expect(m?.type).toBe('POWER_QUALITY');
+    expect(m?.manufacturerRef).toBe('Iskraemeco');
+    expect(m?.type).toBe('BILLING');
+    expect(m?.typeLabelPl).toBe('licznik rozliczeniowy');
   });
 
   it('Wszystkie liczniki mają napięcie wtórne 57.74V (0.1/√3 kV)', () => {
@@ -80,7 +81,7 @@ describe('METER_REFERENCE_CATALOG — LZQJ-XC / ZMD405 / MT880', () => {
 });
 
 describe('Channel assignment validation — konflikty rdzeni CT', () => {
-  it('Standard mapping: 2 liczniki, rdzeń I + II (bez konfliktu)', () => {
+  it('Standard mapping: licznik rozliczeniowy na rdzeniu I (bez konfliktu)', () => {
     const result = validateChannelAssignment(STANDARD_METER_CHANNEL_ASSIGNMENT);
     expect(result.valid).toBe(true);
     expect(result.conflicts.length).toBe(0);

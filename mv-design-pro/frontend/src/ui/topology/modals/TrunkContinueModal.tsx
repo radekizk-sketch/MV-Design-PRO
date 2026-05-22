@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { CatalogPicker, type CatalogEntry } from './CatalogPicker';
 
 export type SegmentKind = 'KABEL_SN' | 'LINIA_NAPOWIETRZNA';
@@ -59,17 +59,17 @@ const NEXT_STEP_OPTIONS: Array<{
   {
     id: 'station',
     label: 'Wstaw stację SN/nN',
-    submitLabel: 'Utwórz odcinek i wstaw stację SN/nN',
+    submitLabel: 'Utwórz odcinek i przejdź do wstawienia stacji SN/nN',
   },
   {
     id: 'zksn',
     label: 'Wstaw ZK SN',
-    submitLabel: 'Utwórz odcinek i wstaw ZK SN',
+    submitLabel: 'Utwórz odcinek i przejdź do wstawienia ZK SN',
   },
   {
     id: 'branch_pole',
     label: 'Wstaw słup rozgałęźny',
-    submitLabel: 'Utwórz odcinek i wstaw słup rozgałęźny',
+    submitLabel: 'Utwórz odcinek i przejdź do słupa rozgałęźnego',
   },
   {
     id: 'continue',
@@ -93,7 +93,22 @@ function validateForm(data: TrunkContinueFormData): FieldError[] {
     errors.push({ field: 'catalog_ref', message: 'Wybierz typ z katalogu SN.' });
   }
 
+  if (data.next_step === 'branch_pole' && data.segment_kind !== 'LINIA_NAPOWIETRZNA') {
+    errors.push({
+      field: 'next_step',
+      message:
+        'Słup rozgałęźny wymaga odcinka napowietrznego SN. Dla kabla wybierz ZK SN albo zmień rodzaj odcinka.',
+    });
+  }
+
   return errors;
+}
+
+function nextStepCompatibilityReason(data: TrunkContinueFormData, nextStep: TrunkNextStep): string | null {
+  if (nextStep === 'branch_pole' && data.segment_kind !== 'LINIA_NAPOWIETRZNA') {
+    return 'Słup rozgałęźny można wstawić tylko na odcinku napowietrznym SN. Dla kabla wybierz ZK SN.';
+  }
+  return null;
 }
 
 function engineeringTrunkLabel(trunkId: string): string {
@@ -182,6 +197,26 @@ function saveBlockerLabel(reason: string | null, hasCatalog: boolean, lengthM: n
   return null;
 }
 
+function openEndpointIntro(segmentKind: SegmentKind): string {
+  if (segmentKind === 'LINIA_NAPOWIETRZNA') {
+    return 'Nowy odcinek napowietrzny zostanie dołączony do wolnego portu wyjściowego SN. Dalej wybierzesz słup rozgałęźny, stację albo kolejny odcinek napowietrzny.';
+  }
+  return 'Nowy odcinek kablowy zostanie dołączony do wolnego portu wyjściowego SN. Dalej wybierzesz stację, ZK SN albo kolejny odcinek kablowy.';
+}
+
+function nextEndpointHint(segmentKind: SegmentKind): string {
+  if (segmentKind === 'LINIA_NAPOWIETRZNA') {
+    return 'Dalej: utwórz odcinek napowietrzny, a w następnym kroku zakończ go słupem rozgałęźnym, stacją albo kontynuuj linią napowietrzną.';
+  }
+  return 'Dalej: utwórz odcinek kablowy, a w następnym kroku zakończ go stacją, ZK SN albo kontynuuj kablem z następnego pola liniowego.';
+}
+
+function availableNextStepOptions(segmentKind: SegmentKind) {
+  return NEXT_STEP_OPTIONS.filter((option) => (
+    segmentKind === 'LINIA_NAPOWIETRZNA' || option.id !== 'branch_pole'
+  ));
+}
+
 export function TrunkContinueModal({
   isOpen,
   mode,
@@ -207,7 +242,7 @@ export function TrunkContinueModal({
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [touched, setTouched] = useState<Set<string>>(new Set());
   const [catalogEdited, setCatalogEdited] = useState(false);
-  const lockSegmentKind = Boolean(initialData?.segment_kind);
+  const lockSegmentKind = mode === 'edit' && Boolean(initialData?.segment_kind);
 
   useEffect(() => {
     if (isOpen) {
@@ -258,11 +293,21 @@ export function TrunkContinueModal({
         && !(field === 'segment_kind' && error.field === 'catalog_ref')
       )),
     );
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-      ...(field === 'segment_kind' ? { catalog_ref: null } : {}),
-    }));
+    setFormData((prev) => {
+      const nextData = {
+        ...prev,
+        [field]: value,
+        ...(field === 'segment_kind' ? { catalog_ref: null } : {}),
+      } as TrunkContinueFormData;
+      if (
+        field === 'segment_kind'
+        && value !== 'LINIA_NAPOWIETRZNA'
+        && nextData.next_step === 'branch_pole'
+      ) {
+        nextData.next_step = 'station';
+      }
+      return nextData;
+    });
     setTouched((prev) => new Set(prev).add(field));
   }, []);
 
@@ -278,7 +323,21 @@ export function TrunkContinueModal({
     submitData(formData);
   }, [formData, submitData]);
 
+  const handleFormSubmit = useCallback((event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    handleSubmit();
+  }, [handleSubmit]);
+
   const handleNextStepClick = useCallback((nextStep: TrunkNextStep) => {
+    const incompatibilityReason = nextStepCompatibilityReason(formData, nextStep);
+    if (incompatibilityReason) {
+      setErrors((prev) => [
+        ...prev.filter((error) => error.field !== 'next_step'),
+        { field: 'next_step', message: incompatibilityReason },
+      ]);
+      setTouched((prev) => new Set(prev).add('next_step'));
+      return;
+    }
     const nextData = { ...formData, next_step: nextStep };
     setFormData(nextData);
     setTouched((prev) => {
@@ -317,6 +376,7 @@ export function TrunkContinueModal({
     : 'Odcinek zaczyna się dokładnie w głowicy odpływowej pola SN. Sekcja i szyna są tylko kontekstem rozdzielni.';
   const selectedNextStep =
     NEXT_STEP_OPTIONS.find((option) => option.id === formData.next_step) ?? NEXT_STEP_OPTIONS[0];
+  const visibleNextStepOptions = availableNextStepOptions(formData.segment_kind);
   const formBlockedReason = saveBlockerLabel(
     submitDisabledReason,
     Boolean(formData.catalog_ref),
@@ -334,7 +394,8 @@ export function TrunkContinueModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#010711]/75 backdrop-blur-sm">
-      <div
+      <form
+        onSubmit={handleFormSubmit}
         className="mx-4 max-h-[92vh] w-full max-w-4xl overflow-y-auto border border-[#24405d] bg-[#07111c] shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
         data-testid="trunk-continue-modal"
         data-terminal-id={terminalId || undefined}
@@ -352,7 +413,7 @@ export function TrunkContinueModal({
           </h2>
           <p className="mt-2 text-sm text-[#a8c7e2]">
             {startsFromOpenEndpoint
-              ? 'Nowy odcinek zostanie dołączony do wolnego portu wyjściowego SN. Dalej wybierzesz stację, ZK SN, słup albo kolejny odcinek.'
+              ? openEndpointIntro(formData.segment_kind)
               : 'Odcinek zostanie przypięty do konkretnej głowicy odpływowej pola SN. Sekcja i szyna są tylko kontekstem rozdzielni.'}
           </p>
         </div>
@@ -383,8 +444,7 @@ export function TrunkContinueModal({
                   </span>
                   <strong className="mt-1 block text-sm text-white">{trunkDisplayName}</strong>
                   <span className="mt-1 block text-[11px] text-[#8fb3d1]">
-                    Dalej: utwórz odcinek, a w następnym kroku zakończ go stacją, ZK SN albo punktem
-                    rozgałęźnym.
+                    {nextEndpointHint(formData.segment_kind)}
                   </span>
                 </div>
               </div>
@@ -535,26 +595,42 @@ export function TrunkContinueModal({
                 </div>
               </dl>
               <div className="mt-4 grid grid-cols-2 gap-2">
-                {NEXT_STEP_OPTIONS.map((option) => {
+                {visibleNextStepOptions.map((option) => {
                   const isSelected = formData.next_step === option.id;
+                  const incompatibilityReason = nextStepCompatibilityReason(formData, option.id);
                   return (
                     <button
                       key={option.id}
                       type="button"
                       onClick={() => handleNextStepClick(option.id)}
+                      disabled={Boolean(incompatibilityReason)}
+                      title={incompatibilityReason ?? undefined}
                       className={`border px-2 py-2 text-left text-xs font-semibold ${
-                        isSelected
+                        incompatibilityReason
+                          ? 'cursor-not-allowed border-[#22364e] bg-[#06101a] text-[#607d99]'
+                          : isSelected
                           ? 'border-[#26f0b1] bg-[#073024] text-[#26f0b1]'
                           : 'border-[#28425f] bg-[#06101a] text-[#d7ecff] hover:border-[#04d6ff] hover:text-white'
                       }`}
                       data-testid={`trunk-next-step-${option.id}`}
                       aria-pressed={isSelected}
+                      aria-describedby={incompatibilityReason ? 'trunk-next-step-compatibility' : undefined}
                     >
                       {option.label}
                     </button>
                   );
                 })}
               </div>
+              {getFieldError('next_step') && (
+                <p id="trunk-next-step-compatibility" className="mt-2 text-xs text-[#ffc46b]">
+                  {getFieldError('next_step')}
+                </p>
+              )}
+              {!getFieldError('next_step') && formData.segment_kind !== 'LINIA_NAPOWIETRZNA' && (
+                <p id="trunk-next-step-compatibility" className="mt-2 text-xs text-[#8fb3d1]">
+                  Słup rozgałęźny pojawi się po wyborze linii napowietrznej SN. Dla kabla wybierz stację, ZK SN albo kontynuację kablową.
+                </p>
+              )}
             </section>
 
             <section
@@ -605,15 +681,15 @@ export function TrunkContinueModal({
             Anuluj
           </button>
           <button
-            type="button"
-            onClick={handleSubmit}
+            type="submit"
+            data-testid="trunk-submit"
             disabled={buttonDisabled}
             className="border border-[#1e6bff] bg-[#2864e8] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3474ff] disabled:cursor-not-allowed disabled:border-[#22364e] disabled:bg-[#0b1623] disabled:text-[#607d99]"
           >
             {mode === 'create' ? selectedNextStep.submitLabel : 'Zapisz zmiany'}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

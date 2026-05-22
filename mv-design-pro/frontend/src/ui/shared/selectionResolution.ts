@@ -1,7 +1,7 @@
-import type { EnergyNetworkModel, Generator } from '../../types/enm';
+import type { Branch, EnergyNetworkModel, Generator } from '../../types/enm';
 import type { ElementType, SelectedElement } from '../types';
-import { findOperationalBus, isOperationalBus } from './enmVisibility';
-import { stationPublicIdentity } from './publicTechnicalLabels';
+import { findOperationalBus, isOperationalBus, isTerrainSnSegment } from './enmVisibility';
+import { segmentPublicIdentity, stationPublicIdentity } from './publicTechnicalLabels';
 
 function matchByRef<T extends { ref_id: string; id: string; name: string }>(
   items: T[] | undefined,
@@ -222,6 +222,9 @@ export function resolveSelectedElementFromSnapshot(
 
   const elementType = resolveElementTypeFromSnapshot(snapshot, normalizedRef);
   if (!elementType) {
+    if (snapshot) {
+      return null;
+    }
     return {
       id: normalizedRef,
       type: fallbackType,
@@ -250,6 +253,17 @@ export function resolveSelectedElementFromSnapshot(
       id: normalizedRef,
       type: elementType,
       name: stationPublicIdentity(snapshot as EnergyNetworkModel, substation).displayName,
+    };
+  }
+
+  const branch = matchByRef(snapshot?.branches ?? [], normalizedRef) as Branch | null;
+  if (branch) {
+    return {
+      id: normalizedRef,
+      type: elementType,
+      name: isTerrainSnSegment(branch)
+        ? segmentPublicIdentity(snapshot as EnergyNetworkModel, branch).displayName
+        : branch.name?.trim() || fallbackName?.trim() || normalizedRef,
     };
   }
 

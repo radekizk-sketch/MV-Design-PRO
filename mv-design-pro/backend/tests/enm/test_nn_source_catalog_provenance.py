@@ -33,6 +33,37 @@ def _base_enm() -> dict:
     return enm
 
 
+def _base_enm_with_transformer(sn_mva: float = 0.63) -> dict:
+    enm = _base_enm()
+    enm["transformers"] = [
+        {
+            "ref_id": "tr/1",
+            "name": f"Transformator SN/nN {sn_mva * 1000:.0f} kVA",
+            "hv_bus_ref": "bus/sn/1",
+            "lv_bus_ref": "bus/nn/1",
+            "sn_mva": sn_mva,
+            "uhv_kv": 15.0,
+            "ulv_kv": 0.4,
+            "uk_percent": 6.0,
+            "pk_kw": 1.0,
+            "tags": [],
+            "meta": {},
+        }
+    ]
+    enm["buses"].insert(
+        0,
+        {
+            "ref_id": "bus/sn/1",
+            "name": "Szyna SN",
+            "voltage_kv": 15.0,
+            "tags": [],
+            "meta": {},
+        },
+    )
+    enm["substations"][0]["bus_refs"] = ["bus/sn/1", "bus/nn/1"]
+    return enm
+
+
 def _converter_payload(technology: str, overrides: dict | None = None) -> dict:
     payload = {
         "source_technology": technology,
@@ -89,7 +120,7 @@ def test_failed_materialization_leaves_snapshot_unchanged(
     technology: str,
     catalog_item_id: str,
 ) -> None:
-    enm_before = _base_enm()
+    enm_before = _base_enm_with_transformer()
     baseline = copy.deepcopy(enm_before)
 
     result = execute_domain_operation(
@@ -153,7 +184,7 @@ def test_successful_create_includes_provenance_fields(
     catalog_key: str,
 ) -> None:
     result = execute_domain_operation(
-        _base_enm(),
+        _base_enm_with_transformer(),
         "add_converter_source",
         _converter_payload(
             technology,
@@ -185,7 +216,7 @@ def test_successful_create_includes_provenance_fields(
 
 def test_pv_uses_catalog_materialization_when_payload_does_not_supply_it() -> None:
     result = execute_domain_operation(
-        _base_enm(),
+        _base_enm_with_transformer(),
         "add_converter_source",
         _converter_payload(
             "PV",
@@ -210,9 +241,83 @@ def test_pv_uses_catalog_materialization_when_payload_does_not_supply_it() -> No
     assert created.get("materialized_params", {}).get("control_mode") == "Q_U_DROOP"
 
 
+def test_pv_uses_selected_frontend_device_catalog_ref() -> None:
+    result = execute_domain_operation(
+        _base_enm_with_transformer(0.4),
+        "add_converter_source",
+        _converter_payload(
+            "PV",
+            {
+                "catalog_binding": {
+                    "catalog_namespace": "ZRODLO_NN_PV",
+                    "catalog_item_id": "pv_inv_huawei_185",
+                    "catalog_item_version": "2024.1",
+                },
+                "power_setpoint_mw": 0.185,
+            },
+        ),
+    )
+
+    assert not result.get("error")
+    snapshot = result.get("snapshot")
+    assert snapshot is not None
+    created = snapshot["generators"][0]
+
+    assert created.get("catalog_ref") == "pv_inv_huawei_185"
+    assert created.get("p_mw") == 0.185
+    assert created.get("materialized_params", {}).get("catalog_item_id") == "pv_inv_huawei_185"
+    assert created.get("materialized_params", {}).get("max_power_kw") == 185.0
+
+
+def test_pv_rejects_source_power_above_station_transformer_capacity() -> None:
+    result = execute_domain_operation(
+        _base_enm_with_transformer(0.063),
+        "add_converter_source",
+        _converter_payload(
+            "PV",
+            {
+                "catalog_binding": {
+                    "catalog_namespace": "ZRODLO_NN_PV",
+                    "catalog_item_id": "pv_inv_huawei_185",
+                    "catalog_item_version": "2024.1",
+                },
+                "power_setpoint_mw": 0.185,
+            },
+        ),
+    )
+
+    assert result.get("snapshot") is None
+    assert result.get("error_code") == "converter.transformer_capacity_exceeded"
+
+
+def test_pv_50_kw_catalog_fits_63_kva_station_transformer() -> None:
+    result = execute_domain_operation(
+        _base_enm_with_transformer(0.063),
+        "add_converter_source",
+        _converter_payload(
+            "PV",
+            {
+                "catalog_binding": {
+                    "catalog_namespace": "ZRODLO_NN_PV",
+                    "catalog_item_id": "pv_inv_catalog_50",
+                    "catalog_item_version": "2024.1",
+                },
+                "power_setpoint_mw": 0.05,
+            },
+        ),
+    )
+
+    assert not result.get("error")
+    snapshot = result.get("snapshot")
+    assert snapshot is not None
+    created = snapshot["generators"][0]
+    assert created.get("catalog_ref") == "pv_inv_catalog_50"
+    assert created.get("p_mw") == 0.05
+
+
 def test_bess_uses_catalog_materialization_when_payload_supplies_only_operation_mode() -> None:
     result = execute_domain_operation(
-        _base_enm(),
+        _base_enm_with_transformer(),
         "add_converter_source",
         _converter_payload(
             "BESS",

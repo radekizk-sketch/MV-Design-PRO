@@ -46,6 +46,10 @@ import {
   publicTechnicalLabel,
   stationOrdinalCode,
 } from '../shared/publicTechnicalLabels';
+import {
+  stationReadModelSnFields,
+  stationSnFieldCount,
+} from './stationSnFields';
 import type { ReadinessIssue, SelectedElement } from '../types';
 import type {
   EnergyNetworkModel,
@@ -71,6 +75,7 @@ import {
   PV_INVERTER_CATALOG,
 } from './station-der/catalogs';
 import type { WorkspaceSurfaceCode } from '../workspace/types';
+import { TechCard, buildTechCardSubject } from '../tech-card';
 
 // =============================================================================
 // Types
@@ -100,7 +105,9 @@ interface QuickAction {
 
 function joinValues(values: string[] | undefined | null): string | null {
   if (!values || values.length === 0) return null;
-  return values.join(', ');
+  return values
+    .map((value, index) => publicTechnicalLabel(value, `pozycja ${index + 1}`))
+    .join(', ');
 }
 
 function buildBaySections(
@@ -236,9 +243,9 @@ function buildBaySections(
         id: 'devices',
         label: 'Aparaty pierwotne',
         fields: baseModel.primary_devices.length > 0
-          ? baseModel.primary_devices.map((device) => ({
-              key: `device_${device.device_ref}`,
-              label: device.device_ref,
+          ? baseModel.primary_devices.map((device, index) => ({
+              key: `device_${index}`,
+              label: `${deviceKindLabel(device.kind)} ${index + 1}`,
               value: `${deviceKindLabel(device.kind)} - ${switchStateLabel(device.switch_state?.actual_state ?? null)}`,
             }))
           : [
@@ -1904,24 +1911,12 @@ function findParentStation(
   return null;
 }
 
-function matchesStationRef(
-  item: FieldReadModelItem,
-  stationId: string | null | undefined,
-  stationRef: string | null | undefined,
-): boolean {
-  const itemStationRef = item.canonical_model.base_model.substation_ref;
-  return Boolean(
-    itemStationRef
-      && (itemStationRef === stationId || itemStationRef === stationRef),
-  );
-}
-
 function findFieldsForStation(
   items: readonly FieldReadModelItem[],
   stationId: string | null | undefined,
   stationRef: string | null | undefined,
 ): FieldReadModelItem[] {
-  return items.filter((item) => matchesStationRef(item, stationId, stationRef));
+  return stationReadModelSnFields(items, stationId, stationRef);
 }
 
 function findFieldForGpzSection(
@@ -2244,12 +2239,10 @@ function buildSectionsForElement(
     elementType = 'substation';
     const stationIdentity = stationPublicName(snapshot, station);
     elementName = stationIdentity.displayName;
-    const stationBays = (snapshot.bays ?? []).filter(
-      (bay) => bay.substation_ref === station.id || bay.substation_ref === station.ref_id,
-    );
     const stationFieldItems = findFieldsForStation(fieldItems, station.id, station.ref_id);
-    const snSwitchgearLabel = stationBays.length > 0
-      ? `${stationBays.length} pól SN`
+    const snFieldCount = stationSnFieldCount(station, snapshot.bays, stationFieldItems);
+    const snSwitchgearLabel = snFieldCount > 0
+      ? `${snFieldCount} pól SN`
       : stationFieldItems.length > 0
         ? `${stationFieldItems.length} pól SN`
         : formatStationSwitchgearLayoutLabelPl(station.station_type);
@@ -2421,6 +2414,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   const [segmentCatalogPickerOpen, setSegmentCatalogPickerOpen] = useState(false);
   const selectedElements = useSelectionStore((s) => s.selectedElements);
   const selectedElement = useSelectionStore((s) => s.selectedElements[0] ?? null);
+  const clearSelection = useSelectionStore((s) => s.clearSelection);
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
   const logicalViews = useSnapshotStore((s) => s.logicalViews);
@@ -2574,6 +2568,33 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
     [activeCaseId, elementId, executeDomainOperation, selectedSegmentCatalogNamespace],
   );
 
+  const techCardSubject = useMemo(
+    () => buildTechCardSubject(snapshot, selectedElement, { readinessBlocker: null }),
+    [snapshot, selectedElement],
+  );
+  const techCardSubjectWithActions = useMemo(() => {
+    if (!techCardSubject) return null;
+    const wiredActions = (techCardSubject.actions ?? []).map((action) => {
+      const commandMatch = /^open_operation:(.+)$/.exec(action.id);
+      if (!commandMatch) return action;
+      const opName = commandMatch[1] as NetworkBuildOperationName;
+      return {
+        ...action,
+        onClick: () => {
+          if (!selectedElement) return;
+          openOperationForm(opName, buildOperationContext({
+            canonicalOp: opName,
+            elementId: selectedElement.id,
+            elementType: selectedElement.type,
+            snapshot,
+            logicalViews,
+          }));
+        },
+      };
+    });
+    return { ...techCardSubject, actions: wiredActions };
+  }, [logicalViews, openOperationForm, selectedElement, snapshot, techCardSubject]);
+
   if (!elementId || sections.length === 0) {
     return (
       <div className={clsx('flex flex-col h-full', className)} data-testid="inspector-engineering">
@@ -2612,6 +2633,19 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
           {headerSubtitle}
         </p>
       </div>
+
+      {techCardSubjectWithActions && (
+        <div
+          data-testid="tech-card-host"
+          data-tech-card-subject-kind={techCardSubjectWithActions.kind}
+          className="flex max-h-[60vh] min-h-[14rem] flex-col border-b border-gray-200 bg-white"
+        >
+          <TechCard
+            subject={techCardSubjectWithActions}
+            onClose={clearSelection}
+          />
+        </div>
+      )}
 
       {isSelectedSegment && (
         <div

@@ -37,6 +37,29 @@ describe('NavigationRail - pasek obszarów roboczych', () => {
       fireEvent.click(screen.getByTestId('nav-area-WYNIKI_ANALIZY'));
     });
     expect(useAppStateStore.getState().activeArea).toBe('WYNIKI_ANALIZY');
+    expect(window.location.hash).toBe('#analysis');
+  });
+
+  it('klik w Raporty przechodzi na powierzchnie raportu i zachowuje kontekst przebiegu', () => {
+    act(() => {
+      window.history.replaceState(
+        null,
+        '',
+        '/#sld?case=case-1&run=run-1&sel=source-1&type=Source&name=GPZ',
+      );
+      useAppStateStore.getState().setActiveArea('SCHEMAT_TOPOLOGIA');
+    });
+
+    render(<NavigationRail />);
+    act(() => {
+      fireEvent.click(screen.getByTestId('nav-area-RAPORTY_UZASADNIENIA'));
+    });
+
+    expect(useAppStateStore.getState().activeArea).toBe('RAPORTY_UZASADNIENIA');
+    expect(window.location.hash).toContain('#report');
+    expect(window.location.hash).toContain('case=case-1');
+    expect(window.location.hash).toContain('run=run-1');
+    expect(window.location.hash).toContain('sel=source-1');
   });
 
   it('Ctrl+5 aktywuje obszar Zabezpieczenia i automatyka', () => {

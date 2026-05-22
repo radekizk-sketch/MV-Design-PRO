@@ -23,17 +23,17 @@ interface ExportEndpointSpec {
 const REPORT_ENDPOINTS: Readonly<Record<ReportExportFormat, ExportEndpointSpec>> = {
   pdf: {
     url: (runId) => `${REPORT_BASE}/${runId}/export/report/pdf`,
-    defaultFilename: (runId) => `raport-${runId}.pdf`,
+    defaultFilename: () => 'raport-techniczny-mv-design-pro.pdf',
     mimeType: 'application/pdf',
   },
   docx: {
     url: (runId) => `${REPORT_BASE}/${runId}/export/report/docx`,
-    defaultFilename: (runId) => `raport-${runId}.docx`,
+    defaultFilename: () => 'raport-techniczny-mv-design-pro.docx',
     mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   },
   json: {
     url: (runId) => `${REPORT_BASE}/${runId}/export/report/json`,
-    defaultFilename: (runId) => `raport-${runId}.json`,
+    defaultFilename: () => 'raport-techniczny-mv-design-pro.json',
     mimeType: 'application/json',
   },
 };
@@ -41,17 +41,17 @@ const REPORT_ENDPOINTS: Readonly<Record<ReportExportFormat, ExportEndpointSpec>>
 const PROOF_ENDPOINTS: Readonly<Record<ProofExportFormat, ExportEndpointSpec>> = {
   pdf: {
     url: (runId) => `${REPORT_BASE}/${runId}/export/proof/pdf`,
-    defaultFilename: (runId) => `uzasadnienie-${runId}.pdf`,
+    defaultFilename: () => 'uzasadnienie-inzynierskie-mv-design-pro.pdf',
     mimeType: 'application/pdf',
   },
   latex: {
     url: (runId) => `${REPORT_BASE}/${runId}/export/proof/latex`,
-    defaultFilename: (runId) => `uzasadnienie-${runId}.tex`,
+    defaultFilename: () => 'uzasadnienie-inzynierskie-mv-design-pro.tex',
     mimeType: 'application/x-tex',
   },
   json: {
     url: (runId) => `${REPORT_BASE}/${runId}/export/proof/json`,
-    defaultFilename: (runId) => `uzasadnienie-${runId}.json`,
+    defaultFilename: () => 'uzasadnienie-inzynierskie-mv-design-pro.json',
     mimeType: 'application/json',
   },
 };

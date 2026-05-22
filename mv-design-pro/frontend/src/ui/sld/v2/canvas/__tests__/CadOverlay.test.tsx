@@ -173,7 +173,7 @@ describe('CadOverlay — corridors', () => {
   it('Render 3 korytarzy z kolorami per kind', () => {
     const corridors: CadCorridorBand[] = [
       { id: 'c-gpz', yMin: 0, yMax: 100, kind: 'gpz' },
-      { id: 'c-feeder', yMin: 100, yMax: 200, kind: 'feeder' },
+      { id: 'c-feeder', yMin: 100, yMax: 200, kind: 'main-trunk' },
       { id: 'c-branch', yMin: 200, yMax: 280, kind: 'branch' },
     ];
     const { container } = renderOverlay({ corridors });

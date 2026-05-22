@@ -1,4 +1,5 @@
-import type { EnergyNetworkModel, Substation } from '../../types/enm';
+import type { Branch, EnergyNetworkModel, Substation } from '../../types/enm';
+import { isTerrainSnSegment } from './enmVisibility';
 import { formatStationTypeLabelPl } from './stationTypeLabels';
 
 export function isRawTechnicalIdentifier(value: string | null | undefined): boolean {
@@ -39,4 +40,37 @@ export function stationPublicIdentity(
     ? fallback
     : publicTechnicalLabel(station.name, fallback);
   return { code, typeLabel, displayName };
+}
+
+export function isGenericSegmentName(value: string | null | undefined): boolean {
+  if (!value) return true;
+  const normalized = value.trim();
+  return /^odcinek\s+(?:\/?segment|sn)?$/i.test(normalized)
+    || /^odcinek\s+\/?segment(?:\b|[\s-])/i.test(normalized)
+    || /\b(?:do\s+punktu|za\s+punktem)\s+rozga/i.test(normalized)
+    || /^segment(?:_[a-z0-9]+)*$/i.test(normalized)
+    || /\/segment(?:_[lr])?$/i.test(normalized)
+    || isRawTechnicalIdentifier(normalized);
+}
+
+export function segmentOrdinalCode(snapshot: EnergyNetworkModel, segment: Branch): string {
+  const terrainSegments = (snapshot.branches ?? []).filter(isTerrainSnSegment);
+  const index = terrainSegments.findIndex((item) =>
+    item.id === segment.id || item.ref_id === segment.ref_id,
+  );
+  if (index >= 0) {
+    return `Odcinek ${String(index + 1).padStart(2, '0')}`;
+  }
+  return 'Odcinek SN';
+}
+
+export function segmentPublicIdentity(
+  snapshot: EnergyNetworkModel,
+  segment: Branch,
+): { code: string; displayName: string } {
+  const code = segmentOrdinalCode(snapshot, segment);
+  const displayName = isGenericSegmentName(segment.name)
+    ? code
+    : publicTechnicalLabel(segment.name, code);
+  return { code, displayName };
 }

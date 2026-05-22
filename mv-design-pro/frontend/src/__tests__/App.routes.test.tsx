@@ -51,6 +51,9 @@ vi.mock('../ui/layout', () => ({
       <button type="button" data-testid="layout-menu-readiness" onClick={() => onMenuAction?.('readiness')}>
         Kontrola
       </button>
+      <button type="button" data-testid="layout-menu-overlay" onClick={() => onMenuAction?.('overlay')}>
+        Nakladka
+      </button>
       {(() => {
         const hash = window.location.hash;
         const queryIndex = hash.indexOf('?');
@@ -634,7 +637,7 @@ describe('App hash routes', () => {
     });
   });
 
-  it('otwiera E-04 po akcji kontroli konfiguracji z glownego paska', async () => {
+  it('przechodzi do widoku analitycznego po akcji kontroli konfiguracji z glownego paska', async () => {
     useAppStateStore
       .getState()
       .setActiveCase('case-readiness', 'Zakres kontroli', 'ShortCircuitCase', 'OUTDATED');
@@ -652,9 +655,9 @@ describe('App hash routes', () => {
     });
 
     const activeSurface = useNetworkBuildStore.getState().activeSurface;
-    expect(activeSurface?.screenCode).toBe('E-04');
-    expect(activeSurface?.tabId).toBe('kontrola');
-    expect(activeSurface?.subjectRef).toBe('case-readiness');
+    expect(activeSurface?.screenCode).toBe('E-35');
+    expect(window.location.hash).toContain('#analysis');
+    expect(window.location.hash).toContain('case=case-readiness');
   });
 
   it('odtwarza nazwę projektu po wejściu w SLD z adresem przypadku', async () => {
@@ -703,6 +706,66 @@ describe('App hash routes', () => {
     await waitFor(() => {
       expect(useAppStateStore.getState().activeProjectName).toBe('Sieć przemysłowa K30');
       expect(useAppStateStore.getState().activeCaseName).toBe('Wariant K30');
+    });
+
+    fetchMock.mockRestore();
+  });
+
+  it('odtwarza projekt na raporcie, gdy zakres jest już aktywny, ale projekt nie jest otwarty', async () => {
+    useAppStateStore
+      .getState()
+      .setActiveCase('case-z-adresu', 'Zakres z adresu', 'ShortCircuitCase', 'FRESH');
+    window.location.hash = '#report?case=case-z-adresu&run=run-raport';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith('/api/study-cases/case-z-adresu')) {
+        return new Response(
+          JSON.stringify({
+            id: 'case-z-adresu',
+            project_id: 'project-z-adresu',
+            name: 'Wariant K30',
+            description: '',
+            config: {},
+            result_status: 'FRESH',
+            results_valid: true,
+            is_active: true,
+            result_refs: [],
+            revision: 1,
+            created_at: '2026-05-18T00:00:00Z',
+            updated_at: '2026-05-18T00:00:00Z',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      if (url.endsWith('/api/projects/project-z-adresu')) {
+        return new Response(
+          JSON.stringify({
+            id: 'project-z-adresu',
+            name: 'Sieć przemysłowa K30',
+            description: 'Wariant referencyjny',
+            created_at: '2026-05-18T00:00:00Z',
+            updated_at: '2026-05-18T00:00:00Z',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      if (url.endsWith('/api/analysis-runs/run-raport')) {
+        return new Response(JSON.stringify({ detail: 'not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(useAppStateStore.getState().activeProjectName).toBe('Sieć przemysłowa K30');
+      expect(screen.getByTestId('canonical-layout')).toBeInTheDocument();
     });
 
     fetchMock.mockRestore();
@@ -844,6 +907,38 @@ describe('App hash routes', () => {
     await waitFor(() => {
       expect(useAppStateStore.getState().activeArea).toBe('WYNIKI_ANALIZY');
     });
+  });
+
+  it('dla #sld z aktywnym wynikiem utrzymuje kontekst schematu i nakładkę bez panelu wyników', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({}), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    useAppStateStore.getState().setActiveArea('WYNIKI_ANALIZY');
+    window.location.hash = '#sld?run=run-route';
+
+    render(<App />);
+
+    expect(await screen.findByTestId('sld-workspace-container')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(useAppStateStore.getState().activeArea).toBe('SCHEMAT_TOPOLOGIA');
+      expect(useAppStateStore.getState().activeMode).toBe('MODEL_EDIT');
+      expect(useAppStateStore.getState().activeRunId).toBe('run-route');
+    });
+
+    act(() => {
+      useAppStateStore.getState().setActiveArea('WYNIKI_ANALIZY');
+    });
+
+    await waitFor(() => {
+      expect(useAppStateStore.getState().activeArea).toBe('SCHEMAT_TOPOLOGIA');
+    });
+    expect(screen.queryByTestId('results-inspector-page')).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith('/api/analysis-runs/run-route');
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/execution/runs/run-route/results/v1');
   });
 
   it('otwiera powierzchnie raportu z aktywnym runem, gdy #report nie ma parametru run', async () => {
@@ -1030,5 +1125,27 @@ describe('App hash routes', () => {
       expect(activeSurface?.routeState.route).toBe('switchgear');
       expect(activeSurface?.openMode).toBe('expand_workspace');
     });
+  });
+
+  it('otwiera nakladke wynikowa na schemacie bez utraty kontekstu projektu', async () => {
+    useAppStateStore
+      .getState()
+      .setActiveCase('case-overlay', 'Zakres nakladki', 'ShortCircuitCase', 'FRESH');
+    window.location.hash = '#analysis?case=case-overlay&run=run-overlay&sel=sub%2F1%2Fsubstation&type=Station&name=Stacja+S01';
+
+    render(<App />);
+
+    await screen.findByTestId('results-inspector-page');
+    await act(async () => {
+      screen.getByTestId('layout-menu-overlay').click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    expect(window.location.hash).toContain('#sld');
+    expect(window.location.hash).toContain('case=case-overlay');
+    expect(window.location.hash).toContain('run=run-overlay');
+    expect(window.location.hash).toContain('sel=sub%2F1%2Fsubstation');
+    expect(window.location.hash).toContain('overlay=1');
+    expect(window.location.hash).toContain('legend=1');
   });
 });

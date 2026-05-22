@@ -48,7 +48,13 @@ import { InspectorEngineeringView } from '../network-build/InspectorEngineeringV
 import { ProjectMetadataModal } from '../network-build/ProjectMetadataModal';
 import { SnapshotHistoryModal } from '../network-build/SnapshotHistoryModal';
 import { useNetworkBuildStore, useNetworkBuildDerived } from '../network-build/networkBuildStore';
-import { navigateToVariants, navigateToSld } from '../navigation/routes';
+import {
+  navigateToAnalysis,
+  navigateToCatalog,
+  navigateToReport,
+  navigateToSld,
+  navigateToVariants,
+} from '../navigation/routes';
 import { useSelectionStore } from '../selection';
 import { WorkspaceSurfaceRouter } from '../workspace';
 import { UndoRedoButtons } from '../history/UndoRedoButtons';
@@ -322,9 +328,26 @@ function NavigationRailV3() {
   const navigateToArea = useCallback(
     (areaId: AreaId) => {
       setActiveArea(areaId);
-      if (areaId === 'SCHEMAT_TOPOLOGIA') {
-        collapseSurfaceStackTo(null);
-        navigateToSld();
+
+      switch (areaId) {
+        case 'SCHEMAT_TOPOLOGIA':
+          collapseSurfaceStackTo(null);
+          navigateToSld();
+          break;
+        case 'STUDIA_OBLICZENIOWE':
+          navigateToVariants();
+          break;
+        case 'WYNIKI_ANALIZY':
+          navigateToAnalysis();
+          break;
+        case 'KATALOGI_TECHNICZNE':
+          navigateToCatalog();
+          break;
+        case 'RAPORTY_UZASADNIENIA':
+          navigateToReport();
+          break;
+        default:
+          break;
       }
     },
     [collapseSurfaceStackTo, setActiveArea],
@@ -595,13 +618,15 @@ export function CanonicalLayoutV3({
   const isReadOnly = activeMode === 'RESULT_VIEW';
   const mainSurfaceExpanded = activeSurface?.openMode === 'expand_workspace';
 
-  // Inspector width: 10px collapsed, 340px default, sizeClass A/B/C for surfaces
+  // Inspector width: panel techniczny nie może zabierać kanwie SLD pola pracy.
+  // Pełnoekranowe konfiguratory używają `expand_workspace`; panel boczny zostaje
+  // kartą techniczną, więc nawet sizeClass C musi zostawić czytelny schemat.
   const inspectorWidthClass = useMemo(() => {
     if (inspectorCollapsed) return 'w-10';
     switch (activeSurface?.sizeClass) {
       case 'A': return 'w-[420px]';
       case 'B': return 'w-[620px]';
-      case 'C': return 'w-[min(70vw,1100px)]';
+      case 'C': return 'w-[min(44vw,720px)]';
       default:  return 'w-[340px]';
     }
   }, [activeSurface, inspectorCollapsed]);

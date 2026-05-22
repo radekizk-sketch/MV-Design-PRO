@@ -241,10 +241,11 @@ describe('useAppStateStore', () => {
         expect(useAppStateStore.getState().canCalculate()).toBe(false);
       });
 
-      it('should return false when in RESULT_VIEW mode', () => {
+      it('should allow solver execution from RESULT_VIEW when the network is ready', () => {
         useAppStateStore.getState().setActiveCase('case-1', 'Case', 'ShortCircuitCase', 'NONE');
         useAppStateStore.getState().setActiveMode('RESULT_VIEW');
-        expect(useAppStateStore.getState().canCalculate()).toBe(false);
+        useSnapshotStore.setState({ snapshot: makeCalculationReadySnapshot() });
+        expect(useAppStateStore.getState().canCalculate()).toBe(true);
       });
 
       it('should return false when results are FRESH', () => {

@@ -45,11 +45,19 @@ def test_insert_branch_pole_on_overhead_line() -> None:
     resp = execute_domain_operation(
         snapshot,
         "insert_branch_pole_on_segment_sn",
-        {"segment_id": seg_id, "catalog_ref": "SŁUP-ODG-12"},
+        {"segment_id": seg_id, "catalog_ref": "SLUP-ODG-12"},
     )
     assert resp.get("error") in (None, "")
     branch_points = resp["snapshot"].get("branch_points", [])
     assert any(bp.get("branch_point_type") == "branch_pole" for bp in branch_points)
+    line_run = resp["snapshot"]["line_runs"][0]
+    line_run_segments = [item["segment_ref"] for item in line_run["segments"]]
+    assert seg_id not in line_run_segments
+    assert f"{seg_id}_L_branch_pole" in line_run_segments
+    assert f"{seg_id}_R_branch_pole" in line_run_segments
+    assert [item["order"] for item in line_run["segments"]] == list(
+        range(1, len(line_run_segments) + 1)
+    )
 
 
 def test_continue_trunk_segment_accepts_explicit_zero_sequence_data() -> None:

@@ -19,7 +19,8 @@ import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
-import type { BranchPointSN } from '../../../types/enm';
+import { publicTechnicalLabel, segmentPublicIdentity } from '../../shared/publicTechnicalLabels';
+import type { Branch, BranchPointSN } from '../../../types/enm';
 
 // =============================================================================
 // Helpers
@@ -41,13 +42,13 @@ function sourceModeLabel(mode: string | null | undefined): string {
 function completenessLabel(status: string | null | undefined): string {
   switch (status) {
     case 'KOMPLETNY':
-      return 'Kompletny';
+      return 'Wariant katalogowy zastosowany';
     case 'NIEKOMPLETNY':
-      return 'Niekompletny';
+      return 'Wariant do konfiguracji';
     case 'BRAK_KATALOGU':
-      return 'Powiązanie katalogowe do konfiguracji';
+      return 'Dobierz wariant katalogowy słupa';
     default:
-      return '—';
+      return 'Do konfiguracji';
   }
 }
 
@@ -55,6 +56,27 @@ function completenessStatus(status: string | null | undefined): 'ok' | 'warning'
   if (status === 'KOMPLETNY') return 'ok';
   if (status === 'NIEKOMPLETNY') return 'warning';
   return 'error';
+}
+
+function connectedLabel(value: string | null | undefined): string {
+  return value ? 'połączony' : 'nieprzypisany';
+}
+
+function branchPortLabel(branchPoint: BranchPointSN): string {
+  const branchPort = branchPoint.ports?.BRANCH?.[0];
+  if (!branchPort) return 'nieprzypisany';
+  return branchPoint.branch_occupied?.BRANCH ? 'zajęty przez odgałęzienie' : 'wolny';
+}
+
+function parentSegmentLabel(snapshotBranches: readonly Branch[] | undefined, branchPoint: BranchPointSN): string {
+  const parentRef = branchPoint.parent_segment_id;
+  const branch = snapshotBranches?.find((candidate) =>
+    candidate.ref_id === parentRef || candidate.id === parentRef,
+  );
+  if (branch && snapshotBranches) {
+    return segmentPublicIdentity({ branches: snapshotBranches } as never, branch).displayName;
+  }
+  return publicTechnicalLabel(parentRef, 'Odcinek linii napowietrznej SN');
 }
 
 // =============================================================================
@@ -84,60 +106,55 @@ export function BranchPoleCard({ elementId, onClose }: BranchPoleCardProps) {
 
   const sections: CardSection[] = useMemo(() => {
     if (!branchPoint) return [];
+    const parentSegment = parentSegmentLabel(snapshot?.branches, branchPoint);
+    const displayName = publicTechnicalLabel(branchPoint.name, 'Słup rozgałęźny SN');
 
     const result: CardSection[] = [
       {
         id: 'ident',
         label: 'Identyfikacja',
         fields: [
-          { key: 'ref_id', label: 'Identyfikator', value: branchPoint.ref_id },
-          { key: 'name', label: 'Nazwa', value: branchPoint.name },
+          { key: 'name', label: 'Oznaczenie', value: displayName },
           { key: 'type', label: 'Typ obiektu', value: 'Słup rozgałęźny SN' },
-          { key: 'parent_segment', label: 'Odcinek nadrzędny', value: branchPoint.parent_segment_id },
+          { key: 'role', label: 'Rola w sieci', value: 'węzeł linii napowietrznej z portem odgałęzienia' },
+          { key: 'parent_segment', label: 'Ciąg główny', value: parentSegment },
         ],
       },
       {
         id: 'topology',
         label: 'Topologia',
         fields: [
-          { key: 'main_in', label: 'Port MAIN_IN', value: branchPoint.ports?.MAIN_IN ?? '—' },
-          { key: 'main_out', label: 'Port MAIN_OUT', value: branchPoint.ports?.MAIN_OUT ?? '—' },
+          { key: 'main_in', label: 'Tor główny WE', value: connectedLabel(branchPoint.ports?.MAIN_IN) },
+          { key: 'main_out', label: 'Tor główny WY', value: connectedLabel(branchPoint.ports?.MAIN_OUT) },
           {
             key: 'branch_port',
-            label: 'Port odgalezienia',
-            value: branchPoint.ports?.BRANCH?.[0] ?? '—',
+            label: 'Tor odgałęźny',
+            value: branchPortLabel(branchPoint),
           },
           {
-            key: 'branch_occupied',
-            label: 'Port odgalezienia zajety',
-            value: branchPoint.branch_occupied?.['BRANCH']
-              ? `Tak (${branchPoint.branch_occupied['BRANCH']})`
-              : 'Wolny',
+            key: 'medium',
+            label: 'Medium',
+            value: 'linia napowietrzna SN',
           },
         ],
       },
       {
         id: 'catalog',
-        label: 'Katalog',
+        label: 'Wariant katalogowy',
         fields: [
           {
             key: 'catalog_ref',
-            label: 'Pozycja katalogowa',
-            value: branchPoint.catalog_ref ?? '—',
-          },
-          {
-            key: 'catalog_namespace',
-            label: 'Przestrzeń nazw',
-            value: branchPoint.catalog_namespace ?? '—',
+            label: 'Pakiet słupa',
+            value: publicTechnicalLabel(branchPoint.catalog_ref, 'Słup rozgałęźny SN'),
           },
           {
             key: 'source_mode',
-            label: 'Tryb źródła',
+            label: 'Źródło danych',
             value: sourceModeLabel(branchPoint.source_mode),
           },
           {
             key: 'completeness',
-            label: 'Kompletność',
+            label: 'Konfiguracja techniczna',
             value: completenessLabel(branchPoint.completeness_status),
           },
         ],
@@ -145,7 +162,7 @@ export function BranchPoleCard({ elementId, onClose }: BranchPoleCardProps) {
     ];
 
     return result;
-  }, [branchPoint]);
+  }, [branchPoint, snapshot?.branches]);
 
   const handleAddBranch = useCallback(() => {
     if (!branchPoint) return;
@@ -172,6 +189,7 @@ export function BranchPoleCard({ elementId, onClose }: BranchPoleCardProps) {
 
   const actions: CardAction[] = useMemo(() => {
     if (!branchPoint) return [];
+    const branchPortOccupied = Boolean(branchPoint.branch_occupied?.BRANCH);
 
     const acts: CardAction[] = [
       {
@@ -181,13 +199,6 @@ export function BranchPoleCard({ elementId, onClose }: BranchPoleCardProps) {
         onClick: handleEditBranchPole,
       },
       {
-        id: 'start_branch_segment_sn',
-        label: 'Dodaj odgałęzienie',
-        variant: 'primary',
-        onClick: handleAddBranch,
-        disabled: !!(branchPoint.branch_occupied?.['BRANCH']),
-      },
-      {
         id: 'assign_catalog',
         label: 'Dobierz z katalogu',
         variant: 'secondary',
@@ -195,20 +206,29 @@ export function BranchPoleCard({ elementId, onClose }: BranchPoleCardProps) {
       },
     ];
 
+    if (!branchPortOccupied) {
+      acts.splice(1, 0, {
+        id: 'start_branch_segment_sn',
+        label: 'Dodaj odgałęzienie napowietrzne',
+        variant: 'primary',
+        onClick: handleAddBranch,
+      });
+    }
+
     return acts;
   }, [branchPoint, handleAddBranch, handleAssignCatalog, handleEditBranchPole]);
 
   if (!branchPoint) {
     return (
       <div className="p-4 text-xs text-gray-500">
-        Słup rozgałęźny nie znaleziony: {elementId}
+        Nie znaleziono słupa rozgałęźnego.
       </div>
     );
   }
 
   return (
     <ObjectCard
-      elementName={branchPoint.name}
+      elementName={publicTechnicalLabel(branchPoint.name, 'Słup rozgałęźny SN')}
       elementType="Słup rozgałęźny SN"
       elementId={elementId}
       statusDot={statusDot}

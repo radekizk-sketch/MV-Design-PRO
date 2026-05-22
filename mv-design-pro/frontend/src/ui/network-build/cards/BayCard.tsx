@@ -324,9 +324,9 @@ export function BayCard({ elementId }: { elementId: string }) {
       label: 'Aparaty pierwotne',
       fields:
         baseModel.primary_devices.length > 0
-          ? baseModel.primary_devices.map((device) => ({
-              key: `device_${device.device_ref}`,
-              label: device.device_ref,
+          ? baseModel.primary_devices.map((device, index) => ({
+              key: `device_${index}`,
+              label: `${deviceKindLabel(device.kind)} ${index + 1}`,
               value: `${deviceKindLabel(device.kind)} - ${switchStateLabel(device.switch_state?.actual_state ?? null)}`,
               severity:
                 device.switch_state?.actual_state === 'awaria'

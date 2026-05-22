@@ -34,6 +34,9 @@ const snapshot = {
       bus_ref: 'bus-sn-1',
       bay_role: 'OUT',
       equipment_refs: [],
+      meta: {
+        terminal_bus_ref: 'bus-st-field-out',
+      },
     },
     {
       id: 'bay-feeder-1',
@@ -53,6 +56,7 @@ const snapshot = {
     { id: 'bus-ring-a', ref_id: 'bus-ring-a', name: 'Ring A', voltage_kv: 15 },
     { id: 'bus-ring-b', ref_id: 'bus-ring-b', name: 'Ring B', voltage_kv: 15 },
     { id: 'bus-gpz-1', ref_id: 'bus-gpz-1', name: 'Szyna GPZ 1', voltage_kv: 15 },
+    { id: 'bus-st-field-out', ref_id: 'bus-st-field-out', name: 'Zacisk pola OUT ST-1', voltage_kv: 15 },
     { id: 'bus-trunk-start', ref_id: 'bus-trunk-start', name: 'Zacisk pola GPZ', voltage_kv: 15 },
     { id: 'bus-trunk-mid', ref_id: 'bus-trunk-mid', name: 'Węzeł pośredni ciągu', voltage_kv: 15 },
     { id: 'bus-trunk-end', ref_id: 'bus-trunk-end', name: 'Koniec ciągu M1', voltage_kv: 15 },
@@ -184,8 +188,8 @@ describe('buildOperationContext', () => {
     expect(context.terminalId).toBe('bay-out-1');
     expect(context.terminal_port_id).toBe('bay-out-1:OUT');
     expect(context.port_id).toBe('bay-out-1:OUT');
-    expect(context.from_bus_ref).toBe('bus-sn-1');
-    expect(context.terminal_name).toBe('Szyna SN 1');
+    expect(context.from_bus_ref).toBe('bus-st-field-out');
+    expect(context.terminal_name).toBe('Zacisk pola OUT ST-1');
     expect(context.terminal_voltage_label).toBe('15 kV');
     expect(context.is_first_trunk_segment).toBe(false);
     expect(context.existing_segment_count).toBe(2);
@@ -208,7 +212,7 @@ describe('buildOperationContext', () => {
     expect(context.terminalId).toBe('bay-out-1');
     expect(context.terminal_port_id).toBe('station_out');
     expect(context.port_id).toBe('station_out');
-    expect(context.from_bus_ref).toBe('bus-sn-1');
+    expect(context.from_bus_ref).toBe('bus-st-field-out');
     expect(context.terminal_name).toBe('ST-1 - port wyjściowy SN');
     expect(context.terminal_voltage_label).toBe('15 kV');
     expect(context.is_first_trunk_segment).toBe(false);
@@ -252,16 +256,48 @@ describe('buildOperationContext', () => {
     expect(context.station_ref).toBe('st-1');
     expect(context.trunk_id).toBe('corr-st');
     expect(context.trunkId).toBe('corr-st');
-    expect(context.from_terminal_id).toBe('bus-st-open');
-    expect(context.terminal_id).toBe('bus-st-open');
-    expect(context.terminalId).toBe('bus-st-open');
+    expect(context.from_terminal_id).toBe('bay-out-1');
+    expect(context.terminal_id).toBe('bay-out-1');
+    expect(context.terminalId).toBe('bay-out-1');
     expect(context.terminal_port_id).toBe('station_out');
     expect(context.port_id).toBe('station_out');
-    expect(context.from_bus_ref).toBe('bus-st-open');
+    expect(context.from_bus_ref).toBe('bus-st-field-out');
     expect(context.terminal_name).toBe('ST-1 - port wyjściowy SN');
     expect(context.terminal_voltage_label).toBe('15 kV');
     expect(context.is_first_trunk_segment).toBe(false);
     expect(context.existing_segment_count).toBe(1);
+  });
+
+  it('nie kontynuuje ciagu ze stacji przez szyne, gdy pole wyjsciowe jest zajete', () => {
+    const occupiedOutFieldSnapshot = {
+      ...snapshot,
+      branches: [
+        ...snapshot.branches,
+        {
+          ref_id: 'seg-from-station-out',
+          name: 'Odcinek za ST-1',
+          type: 'cable',
+          from_bus_ref: 'bus-st-field-out',
+          to_bus_ref: 'bus-trunk-end',
+        },
+      ],
+    } as any;
+
+    const context = buildOperationContext({
+      canonicalOp: 'continue_trunk_segment_sn',
+      elementId: 'st-1',
+      elementType: 'Station',
+      snapshot: occupiedOutFieldSnapshot,
+      logicalViews,
+    });
+
+    expect(context.station_ref).toBe('st-1');
+    expect(context.from_terminal_id).toBeUndefined();
+    expect(context.terminal_id).toBeUndefined();
+    expect(context.terminalId).toBeUndefined();
+    expect(context.field_ref).toBeUndefined();
+    expect(context.from_bus_ref).toBeUndefined();
+    expect(context.terminal_name).toBe('ST-1 - port wyjściowy SN');
   });
 
   it('blokuje kontynuacje z szyny, gdy terminal pola nie jest jednoznaczny w logicalViews', () => {
@@ -364,7 +400,7 @@ describe('buildOperationContext', () => {
     expect(context.is_first_trunk_segment).toBe(true);
   });
 
-  it('buduje from_ref dla odgalezienia ze stacji przez port BRANCH', () => {
+  it('buduje from_ref dla odgałęzienia ze stacji przez konkretne pole liniowe', () => {
     const context = buildOperationContext({
       canonicalOp: 'start_branch_segment_sn',
       elementId: 'st-1',
@@ -374,23 +410,360 @@ describe('buildOperationContext', () => {
     });
 
     expect(context.station_ref).toBe('st-1');
-    expect(context.from_ref).toBe('st-1.BRANCH');
-    expect(context.source_type_label).toBe('Stacja SN/nN');
+    expect(context.from_ref).toBe('bay-feeder-1.BRANCH');
+    expect(context.source_type_label).toBe('Pole liniowe SN');
     expect(context.source_name).toBe('ST-1');
     expect(context.source_bus_ref).toBe('bus-sn-1');
+    expect(context.from_bus_ref).toBe('bus-sn-1');
     expect(context.source_port_label).toBe('BRANCH');
   });
 
-  it('nie tworzy odgalezienia z pola OUT bez jawnego pola FEEDER', () => {
-    const outOnlySnapshot = {
+  it('buduje from_ref dla odgałęzienia ze stacji przez pole SN zapisane w meta.field_specs', () => {
+    const stationFieldSnapshot = {
+      ...snapshot,
+      bays: [],
+      substations: [
+        {
+          id: 'st-field-1',
+          ref_id: 'st-field-1',
+          name: 'ST-FIELD-1',
+          station_type: 'mv_lv',
+          bus_refs: ['bus-sn-1', 'bus-nn-1'],
+          transformer_refs: [],
+          meta: {
+            field_specs: [
+              {
+                field_ref: 'field-in-1',
+                bay_role: 'IN',
+                bus_ref: 'bus-sn-1',
+                meta: { terminal_bus_ref: 'bus-field-in-terminal' },
+              },
+              {
+                field_ref: 'field-branch-1',
+                bay_role: 'FEEDER',
+                bus_ref: 'bus-sn-1',
+                meta: { terminal_bus_ref: 'bus-field-branch-terminal' },
+              },
+            ],
+          },
+        },
+      ],
+      buses: [
+        ...snapshot.buses,
+        { id: 'bus-field-in-terminal', ref_id: 'bus-field-in-terminal', name: 'Zacisk IN', voltage_kv: 15 },
+        {
+          id: 'bus-field-branch-terminal',
+          ref_id: 'bus-field-branch-terminal',
+          name: 'Zacisk pola odgałęźnego',
+          voltage_kv: 15,
+        },
+      ],
+    } as any;
+
+    const context = buildOperationContext({
+      canonicalOp: 'start_branch_segment_sn',
+      elementId: 'st-field-1',
+      elementType: 'Station',
+      snapshot: stationFieldSnapshot,
+      logicalViews,
+    });
+
+    expect(context.station_ref).toBe('st-field-1');
+    expect(context.from_ref).toBe('field-branch-1.BRANCH');
+    expect(context.source_type_label).toBe('Pole liniowe SN');
+    expect(context.source_name).toBe('ST-FIELD-1');
+    expect(context.source_bus_ref).toBe('bus-field-branch-terminal');
+    expect(context.from_bus_ref).toBe('bus-field-branch-terminal');
+  });
+
+  it('nie traktuje pola OUT jako pola odgałęźnego stacji', () => {
+    const stationOutOnlySnapshot = {
+      ...snapshot,
+      bays: [],
+      substations: [
+        {
+          id: 'st-out-only',
+          ref_id: 'st-out-only',
+          name: 'ST-OUT-ONLY',
+          station_type: 'mv_lv',
+          bus_refs: ['bus-station-main'],
+          transformer_refs: [],
+          meta: {
+            field_specs: [
+              {
+                field_ref: 'field-in-real-terminal',
+                bay_role: 'IN',
+                bus_ref: 'bus-station-main',
+                meta: {
+                  field_terminal_bus_ref: 'bus-field-in-terminal',
+                },
+              },
+              {
+                field_ref: 'field-out-real-terminal',
+                bay_role: 'OUT',
+                bus_ref: 'bus-station-main',
+                meta: {
+                  field_terminal_bus_ref: 'bus-field-out-terminal',
+                },
+              },
+            ],
+          },
+        },
+      ],
+      buses: [
+        ...snapshot.buses,
+        { id: 'bus-station-main', ref_id: 'bus-station-main', name: 'Szyna SN stacji', voltage_kv: 15 },
+        { id: 'bus-field-in-terminal', ref_id: 'bus-field-in-terminal', name: 'Zacisk pola IN', voltage_kv: 15 },
+        { id: 'bus-field-out-terminal', ref_id: 'bus-field-out-terminal', name: 'Zacisk pola OUT', voltage_kv: 15 },
+      ],
+    } as any;
+
+    const context = buildOperationContext({
+      canonicalOp: 'start_branch_segment_sn',
+      elementId: 'st-out-only',
+      elementType: 'Station',
+      snapshot: stationOutOnlySnapshot,
+      logicalViews,
+    });
+
+    expect(context.station_ref).toBe('st-out-only');
+    expect(context.from_ref).toBeUndefined();
+    expect(context.from_bus_ref).toBeUndefined();
+  });
+
+  it('nie pozwala rozpocząć odgałęzienia z zajętego pola ODG stacji', () => {
+    const occupiedBranchFieldSnapshot = {
+      ...snapshot,
+      bays: [],
+      substations: [
+        {
+          id: 'st-branch-used',
+          ref_id: 'st-branch-used',
+          name: 'ST-BRANCH-USED',
+          station_type: 'mv_lv',
+          bus_refs: ['bus-station-main'],
+          transformer_refs: [],
+          meta: {
+            field_specs: [
+              {
+                field_ref: 'field-branch-used',
+                bay_role: 'FEEDER',
+                bus_ref: 'bus-station-main',
+                meta: {
+                  field_terminal_bus_ref: 'bus-field-branch-used-terminal',
+                },
+              },
+            ],
+          },
+        },
+      ],
+      buses: [
+        ...snapshot.buses,
+        { id: 'bus-station-main', ref_id: 'bus-station-main', name: 'Szyna SN stacji', voltage_kv: 15 },
+        {
+          id: 'bus-field-branch-used-terminal',
+          ref_id: 'bus-field-branch-used-terminal',
+          name: 'Zacisk pola ODG',
+          voltage_kv: 15,
+        },
+        { id: 'bus-branch-end', ref_id: 'bus-branch-end', name: 'Koniec odgałęzienia', voltage_kv: 15 },
+      ],
+      branches: [
+        ...snapshot.branches,
+        {
+          ref_id: 'seg-used-branch',
+          name: 'Odcinek odgałęzienia',
+          type: 'cable',
+          from_bus_ref: 'bus-field-branch-used-terminal',
+          to_bus_ref: 'bus-branch-end',
+        },
+      ],
+    } as any;
+
+    const stationContext = buildOperationContext({
+      canonicalOp: 'start_branch_segment_sn',
+      elementId: 'st-branch-used',
+      elementType: 'Station',
+      snapshot: occupiedBranchFieldSnapshot,
+      logicalViews,
+    });
+    const fieldContext = buildOperationContext({
+      canonicalOp: 'start_branch_segment_sn',
+      elementId: 'field-branch-used',
+      elementType: 'BaySN',
+      snapshot: occupiedBranchFieldSnapshot,
+      logicalViews,
+    });
+
+    expect(stationContext.from_ref).toBeUndefined();
+    expect(stationContext.from_bus_ref).toBeUndefined();
+    expect(fieldContext.from_ref).toBeUndefined();
+    expect(fieldContext.from_bus_ref).toBeUndefined();
+  });
+
+  it('kontynuuje ciag z zacisku pola OUT, nie z szyny rozdzielnicy stacji', () => {
+    const stationFieldSnapshot = {
+      ...snapshot,
+      bays: [],
+      substations: [
+        {
+          id: 'st-field-out',
+          ref_id: 'st-field-out',
+          name: 'ST-FIELD-OUT',
+          station_type: 'mv_lv',
+          bus_refs: ['bus-station-main'],
+          transformer_refs: [],
+          meta: {
+            field_specs: [
+              {
+                field_ref: 'field-out-real-terminal',
+                bay_role: 'OUT',
+                bus_ref: 'bus-station-main',
+                meta: {
+                  terminal_bus_ref: 'bus-station-main',
+                  field_terminal_bus_ref: 'bus-field-out-terminal',
+                },
+              },
+            ],
+          },
+        },
+      ],
+      buses: [
+        ...snapshot.buses,
+        { id: 'bus-station-main', ref_id: 'bus-station-main', name: 'Szyna SN stacji', voltage_kv: 15 },
+        {
+          id: 'bus-field-out-terminal',
+          ref_id: 'bus-field-out-terminal',
+          name: 'Zacisk pola wyjsciowego',
+          voltage_kv: 15,
+        },
+      ],
+      branches: [
+        ...snapshot.branches,
+        {
+          ref_id: 'seg-station-incoming',
+          name: 'Odcinek do stacji',
+          type: 'cable',
+          from_bus_ref: 'bus-trunk-end',
+          to_bus_ref: 'bus-station-main',
+        },
+      ],
+    } as any;
+
+    const context = buildOperationContext({
+      canonicalOp: 'continue_trunk_segment_sn',
+      elementId: 'st-field-out',
+      elementType: 'Station',
+      snapshot: stationFieldSnapshot,
+      logicalViews: {
+        terminals: [
+          {
+            element_id: 'field-out-real-terminal',
+            port_id: 'field-out-real-terminal:OUT',
+            trunk_id: 'trunk-field-out',
+            status: 'OTWARTY',
+          },
+        ],
+      } as any,
+    });
+
+    expect(context.station_ref).toBe('st-field-out');
+    expect(context.from_terminal_id).toBe('field-out-real-terminal');
+    expect(context.from_bus_ref).toBe('bus-field-out-terminal');
+    expect(context.field_ref).toBe('field-out-real-terminal');
+    expect(context.trunk_id).toBe('trunk-field-out');
+  });
+
+  it('kontynuuje ciag z kanonicznego zacisku pola w pakiecie sn_field_template', () => {
+    const stationFieldSnapshot = {
+      ...snapshot,
+      substations: [
+        {
+          id: 'st-template-out',
+          ref_id: 'st-template-out',
+          name: 'ST-TEMPLATE-OUT',
+          station_type: 'mv_lv',
+          bus_refs: ['bus-station-main'],
+          transformer_refs: [],
+          meta: {},
+        },
+      ],
+      bays: [
+        {
+          id: 'bay-template-out',
+          ref_id: 'bay-template-out',
+          name: 'Pole OUT',
+          substation_ref: 'st-template-out',
+          bay_role: 'OUT',
+          bus_ref: 'bus-station-main',
+          meta: {
+            sn_field_template: {
+              field_ref: 'field-template-out',
+              bay_role: 'OUT',
+              meta: {
+                terminal_bus_ref: 'bus-station-main',
+                field_terminal_bus_ref: 'bus-template-field-terminal',
+              },
+            },
+          },
+        },
+      ],
+      buses: [
+        ...snapshot.buses,
+        { id: 'bus-station-main', ref_id: 'bus-station-main', name: 'Szyna SN stacji', voltage_kv: 15 },
+        {
+          id: 'bus-template-field-terminal',
+          ref_id: 'bus-template-field-terminal',
+          name: 'Zacisk pola wyjsciowego',
+          voltage_kv: 15,
+        },
+      ],
+      branches: [
+        ...snapshot.branches,
+        {
+          ref_id: 'seg-template-incoming',
+          name: 'Odcinek do stacji',
+          type: 'cable',
+          from_bus_ref: 'bus-trunk-end',
+          to_bus_ref: 'bus-station-main',
+        },
+      ],
+    } as any;
+
+    const context = buildOperationContext({
+      canonicalOp: 'continue_trunk_segment_sn',
+      elementId: 'st-template-out',
+      elementType: 'Station',
+      snapshot: stationFieldSnapshot,
+      logicalViews: {
+        terminals: [
+          {
+            element_id: 'field-template-out',
+            port_id: 'field-template-out:OUT',
+            trunk_id: 'trunk-template-out',
+            status: 'OTWARTY',
+          },
+        ],
+      } as any,
+    });
+
+    expect(context.station_ref).toBe('st-template-out');
+    expect(context.from_terminal_id).toBe('field-template-out');
+    expect(context.from_bus_ref).toBe('bus-template-field-terminal');
+    expect(context.field_ref).toBe('field-template-out');
+    expect(context.trunk_id).toBe('trunk-template-out');
+  });
+
+  it('nie tworzy odgałęzienia z pola transformatorowego', () => {
+    const transformerOnlySnapshot = {
       ...snapshot,
       bays: [
         {
-          id: 'bay-out-only',
-          ref_id: 'bay-out-only',
+          id: 'bay-tr-only',
+          ref_id: 'bay-tr-only',
           substation_ref: 'st-1',
           bus_ref: 'bus-sn-1',
-          bay_role: 'OUT',
+          bay_role: 'TR',
           equipment_refs: [],
         },
       ],
@@ -398,9 +771,9 @@ describe('buildOperationContext', () => {
 
     const context = buildOperationContext({
       canonicalOp: 'start_branch_segment_sn',
-      elementId: 'bay-out-only',
+      elementId: 'bay-tr-only',
       elementType: 'BaySN',
-      snapshot: outOnlySnapshot,
+      snapshot: transformerOnlySnapshot,
       logicalViews,
     });
 
@@ -431,7 +804,7 @@ describe('buildOperationContext', () => {
     });
 
     expect(context.from_ref).toBe('zksn-1.BRANCH_2');
-    expect(context.from_bus_ref).toBe('bus-zksn-main');
+    expect(context.from_bus_ref).toBe('bus-zksn-branch-2');
     expect(context.source_type_label).toBe('ZKSN');
     expect(context.source_bus_ref).toBe('bus-zksn-branch-2');
     expect(context.source_port_label).toBe('BRANCH_2');

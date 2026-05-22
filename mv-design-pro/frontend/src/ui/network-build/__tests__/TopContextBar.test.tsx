@@ -18,6 +18,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../networkBuildStore', () => ({
+  selectFieldStationCount: (snapshot: { substations?: Array<{ station_type?: string }> } | null) =>
+    (snapshot?.substations ?? []).filter(
+      (station) => String(station.station_type ?? '').toLowerCase() !== 'gpz',
+    ).length,
   useNetworkBuildDerived: () => mocks.derived,
 }));
 

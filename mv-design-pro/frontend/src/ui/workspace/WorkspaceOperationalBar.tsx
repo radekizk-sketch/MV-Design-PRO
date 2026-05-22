@@ -3,13 +3,13 @@ import { clsx } from 'clsx';
 import { useActiveMode, useAppStateStore, useResultStatusLabel } from '../app-state';
 import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
 import { useNetworkBuildDerived, useNetworkBuildStore } from '../network-build';
-import { navigateToVariants } from '../navigation/routes';
+import { navigateToReport, navigateToVariants } from '../navigation/routes';
 import { useExecutionRunsStore } from '../study-cases/runStore';
 import {
   ANALYSIS_ROUTE_DEFAULT_TAB,
   ANALYSIS_SURFACE_SCREEN_CODE,
-  REPORT_SURFACE_SCREEN_CODE,
 } from './types';
+import { calculationScopeDisplayName } from '../shell/publicNames';
 
 interface WorkspaceOperationalBarProps {
   validationStatus?: 'valid' | 'warnings' | 'errors' | null;
@@ -28,9 +28,8 @@ const RUN_STATUS_LABELS: Record<string, string> = {
   FAILED: 'Obliczenie nieudane',
 };
 
-function shortId(value: string | null): string {
-  if (!value) return 'Nie wybrano';
-  return value.length > 12 ? `${value.slice(0, 12)}...` : value;
+function formatPublicSnapshotLabel(value: string | null): string {
+  return value ? 'aktualna wersja układu' : 'nie wybrano wersji';
 }
 
 function SegmentButton({
@@ -144,10 +143,10 @@ export function WorkspaceOperationalBar({
         value={reportReady ? 'Raport może być generowany' : 'Najpierw uruchom obliczenia'}
         tone={reportReady ? 'ok' : 'warn'}
         onClick={() =>
-          openRouteSurface(REPORT_SURFACE_SCREEN_CODE, {
-            titlePl: 'Raporty OSD i audytowe',
-            subjectKind: 'report',
-            subjectRef: activeRunId,
+          navigateToReport({
+            caseId: activeCaseId,
+            runId: activeRunId,
+            snapshotId: activeSnapshotId,
           })
         }
         testId="workspace-operational-report"
@@ -174,8 +173,8 @@ export function WorkspaceOperationalBar({
         testId="workspace-operational-run"
       />
       <SegmentButton
-        label="Wersja modelu"
-        value={shortId(activeSnapshotId)}
+        label="Wersja układu"
+        value={formatPublicSnapshotLabel(activeSnapshotId)}
         tone={activeSnapshotId ? 'accent' : 'default'}
         onClick={() =>
           openRouteSurface('E-39', {
@@ -192,7 +191,7 @@ export function WorkspaceOperationalBar({
       />
       <SegmentButton
         label="Układ pracy"
-        value={activeCaseName ?? 'Nie wybrano wariantu'}
+        value={calculationScopeDisplayName(activeCaseName, activeCaseId)}
         tone={activeCaseName ? 'accent' : 'default'}
         onClick={() => navigateToVariants({ caseId: activeCaseId, snapshotId: activeSnapshotId })}
         testId="workspace-operational-variant"

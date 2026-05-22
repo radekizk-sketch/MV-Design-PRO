@@ -122,6 +122,24 @@ describe('TopBar - compact V12 chrome', () => {
     expect(onCalculate).toHaveBeenCalledOnce();
   });
 
+  it('Oblicz działa także z powierzchni analiz, gdy układ jest przygotowany', () => {
+    const onCalculate = vi.fn();
+    act(() => {
+      useAppStateStore.getState().setActiveCase('case-1', 'Rozpływ mocy', 'PowerFlowCase', 'OUTDATED');
+      useAppStateStore.getState().setActiveMode('RESULT_VIEW');
+      useSnapshotStore.setState({ snapshot: makeCalculationReadySnapshot() });
+    });
+    render(<TopBar projectName="Test" onCalculate={onCalculate} />);
+
+    const calculateButton = screen.getByTestId('top-bar-calculate');
+    expect(calculateButton).toHaveTextContent('Oblicz');
+    act(() => {
+      fireEvent.click(calculateButton);
+    });
+
+    expect(onCalculate).toHaveBeenCalledOnce();
+  });
+
   it('Sprawdź konfigurację pozostaje klikalne i otwiera kontrolę układu', () => {
     const onMenuAction = vi.fn();
     render(<TopBar projectName="Test" onMenuAction={onMenuAction} />);

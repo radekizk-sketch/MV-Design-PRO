@@ -44,6 +44,15 @@ describe('StationWizardStepContent — szczegóły per krok', () => {
     expect(screen.getAllByText(/Kabel referencyjny|XRUHAKXS/i)[0]).toBeInTheDocument();
   });
 
+  it('Krok cable: pokazuje pakiet obliczeń projektowych dla doboru kabla i dowodów backendowych', () => {
+    render(<StationWizardStepContent activeStep="cable" />);
+    const panel = screen.getByTestId('calculation-template-panel');
+    expect(panel).toHaveTextContent('Pakiet obliczeń projektowych');
+    expect(panel).toHaveTextContent('Dobór kabla SN');
+    expect(panel).toHaveTextContent('żyły powrotnej');
+    expect(panel).toHaveTextContent('oblicza backend');
+  });
+
   it('Krok switchgear: pokazuje 5 vendor cards (ABB/Schneider/Siemens/Eaton/ZPUE)', () => {
     render(<StationWizardStepContent activeStep="switchgear" />);
     expect(screen.getByTestId('vendor-card-abb_safe_plus')).toBeInTheDocument();
@@ -62,6 +71,18 @@ describe('StationWizardStepContent — szczegóły per krok', () => {
 
   it('Krok readiness: ReadinessMatrixGrid widoczny + 29 osi', () => {
     render(<StationWizardStepContent activeStep="readiness" />);
+    expect(screen.getByTestId('calculation-template-summary')).toHaveTextContent(
+      'Pełny pakiet danych i dowodów projektowych',
+    );
+    expect(screen.getByTestId('calculation-template-summary')).toHaveTextContent(
+      'Dobór kabla SN',
+    );
+    expect(screen.getByTestId('calculation-template-summary')).toHaveTextContent(
+      'Przekładniki CT/VT',
+    );
+    expect(screen.getByTestId('calculation-template-summary')).toHaveTextContent(
+      'Uziemienie stacji',
+    );
     expect(screen.getByTestId('readiness-matrix-grid')).toBeInTheDocument();
   });
 
@@ -71,6 +92,9 @@ describe('StationWizardStepContent — szczegóły per krok', () => {
     // Rdzenie I/II/III oznaczone.
     expect(content.textContent).toContain('LZQJ');
     expect(content.textContent).toMatch(/0\.2s|5P10/);
+    expect(screen.getByTestId('calculation-template-panel')).toHaveTextContent(
+      'Przekładniki CT/VT',
+    );
   });
 
   it('Krok vt: 4 uzwojenia VT widoczne', () => {
@@ -102,12 +126,20 @@ describe('StationWizardStepContent — szczegóły per krok', () => {
     render(<StationWizardStepContent activeStep="sources" />);
     const content = screen.getByTestId('station-wizard-step-content');
     expect(content.textContent).toMatch(/PV|BESS|FW|OZE/i);
+    expect(screen.getByTestId('calculation-template-panel')).toHaveTextContent(
+      'PV/BESS/FW',
+    );
   });
 
-  it('Krok pq: harmoniczne + flicker PST/PLT', () => {
+  it('Krok pq: analizatory klasy A + harmoniczne + flicker PST/PLT', () => {
     render(<StationWizardStepContent activeStep="pq" />);
     const content = screen.getByTestId('station-wizard-step-content');
+    expect(content.textContent).toMatch(/ND45|PQI-DA|PQM-750|Sonel|klasa A/i);
+    expect(content.textContent).toMatch(/IEC 61000-4-30|EN 50160/i);
     expect(content.textContent).toMatch(/harmoniczn|flicker|THD|PST|PLT/i);
+    expect(screen.getByTestId('calculation-template-panel')).toHaveTextContent(
+      'Analizator jakości energii klasy A',
+    );
   });
 
   it('Krok protection: funkcje ANSI (50/51/27/59)', () => {
@@ -138,6 +170,8 @@ describe('StationWizardStepContent — szczegóły per krok', () => {
     render(<StationWizardStepContent activeStep="meters" />);
     const content = screen.getByTestId('station-wizard-step-content');
     expect(content.textContent).toMatch(/LZQJ|ZMD|MT880|licznik/i);
+    expect(content.textContent).toMatch(/Typ licznika|Obwody U|Obwody I|Wariant/i);
+    expect(content.textContent).not.toContain('analizator jakości energii');
   });
 
   it('Krok apparatus: aparatura Q1/Q2/Q3 z katalogu', () => {

@@ -17,17 +17,17 @@ describe('EngineeringProjectExplorer — zunifikowana lewa karta', () => {
     });
   });
 
-  it('Renderuje header z "Projekt" + "Gotowość"', () => {
+  it('Renderuje header z "Projekt" + "Stan układu"', () => {
     render(<EngineeringProjectExplorer />);
     expect(screen.getByTestId('engineering-project-explorer')).toBeInTheDocument();
     expect(screen.getByText(/Projekt/)).toBeInTheDocument();
-    expect(screen.getByText(/Gotowość/)).toBeInTheDocument();
+    expect(screen.getByText(/Stan układu/)).toBeInTheDocument();
   });
 
   it('Pusty snapshot → renderuje empty hint', () => {
     render(<EngineeringProjectExplorer />);
     expect(screen.getByTestId('explorer-empty')).toBeInTheDocument();
-    expect(screen.getByText(/Pusty model sieci/)).toBeInTheDocument();
+    expect(screen.getByText(/Rozpocznij układ sieci/)).toBeInTheDocument();
   });
 
   it('Footer pokazuje licznik elementów + "Dodaj element"', () => {
@@ -57,7 +57,7 @@ describe('EngineeringProjectExplorer — zunifikowana lewa karta', () => {
           { ref_id: 'st-01', name: 'ST-01 Wschodnia' },
           { ref_id: 'st-02', name: 'ST-02 Zachodnia' },
         ],
-        branches: [{ ref_id: 'br-01', name: 'L01 Kabel' }],
+        branches: [{ ref_id: 'seg/br-01', type: 'cable', name: 'Odcinek L01 Kabel', length_km: 0.42 }],
         generators: [],
       },
     } as unknown as Parameters<typeof useSnapshotStore.setState>[0]);
@@ -87,7 +87,7 @@ describe('EngineeringProjectExplorer — zunifikowana lewa karta', () => {
     expect(selected?.name).toBe('GPZ Centralny');
   });
 
-  it('Blokady gotowości — pokazuje gdy istnieją', () => {
+  it('Zagadnienia konfiguracji — pokazuje gdy istnieją', () => {
     useSnapshotStore.setState({
       snapshot: {
         sources: [],
@@ -105,6 +105,7 @@ describe('EngineeringProjectExplorer — zunifikowana lewa karta', () => {
 
     render(<EngineeringProjectExplorer />);
     expect(screen.getByTestId('explorer-blockers')).toBeInTheDocument();
+    expect(screen.getByText(/Zagadnienia konfiguracji/)).toBeInTheDocument();
     expect(screen.getByText(/Brak parametrów TR/)).toBeInTheDocument();
   });
 

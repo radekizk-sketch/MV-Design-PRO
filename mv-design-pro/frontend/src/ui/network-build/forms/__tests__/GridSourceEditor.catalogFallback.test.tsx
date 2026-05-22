@@ -143,7 +143,7 @@ describe('GridSourceEditor E-03B', () => {
     expect(screen.queryByText(/Pozycja katalogowa jest wymagana/)).not.toBeInTheDocument();
   });
 
-  it('K3: domyślnie tryb Uproszczony — sekcje GPZ i R0/X0 ukryte', () => {
+  it('K3: domyślnie zakres Źródło SN ukrywa sekcje GPZ i R0/X0', () => {
     render(
       <GridSourceEditor
         isOpen
@@ -160,7 +160,7 @@ describe('GridSourceEditor E-03B', () => {
     expect(screen.getByText('Parametry zwarciowe na szynach SN')).toBeInTheDocument();
   });
 
-  it('K3: przełączenie na Zaawansowany pokazuje sekcje GPZ i R0/X0', () => {
+  it('K3: przełączenie na GPZ WN/SN pokazuje sekcje GPZ i R0/X0', () => {
     render(
       <GridSourceEditor
         isOpen
@@ -179,7 +179,7 @@ describe('GridSourceEditor E-03B', () => {
     expect(screen.getByText('Liczba pól liniowych na sekcję')).toBeInTheDocument();
   });
 
-  it('K3: powrót z Zaawansowany do Uproszczony chowa sekcje GPZ', () => {
+  it('K3: powrót z GPZ WN/SN do Źródło SN chowa sekcje GPZ', () => {
     render(
       <GridSourceEditor
         isOpen

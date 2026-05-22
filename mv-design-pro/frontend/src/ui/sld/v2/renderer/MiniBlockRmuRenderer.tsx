@@ -81,6 +81,7 @@ export interface MiniBlockDerBadge {
   readonly kind: 'PV' | 'BESS' | 'FW';
   readonly count: number;
   readonly connectionSide?: 'nn' | 'sn' | 'dedicated';
+  readonly hasBlockTransformer?: boolean;
   /** K30-55 Phase E: aggregated P_mw z generatorów (realna moc, nie atrapa).
    *  Gdy null → badge ukryty (zamiast atrapy). */
   readonly totalPMw?: number | null;
@@ -219,7 +220,12 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
   const hasSnBayTopology = props.snBays.length > 0;
   const stationCodeLabel = props.stationCode
     ?? ((props.name || '').match(/\b(S\d{2,3})\b/)?.[1] ?? null);
-  const stationNameLabel = isGenericStationDisplayName(props.name) && stationCodeLabel
+  const normalizedName = normalizeLabelToken(props.name);
+  const normalizedCode = stationCodeLabel ? normalizeLabelToken(stationCodeLabel) : null;
+  const stationNameLabel = stationCodeLabel && (
+    isGenericStationDisplayName(props.name)
+    || (normalizedCode != null && normalizedName.startsWith(`${normalizedCode} `))
+  )
     ? null
     : (props.name || '').length > 22 ? (props.name || '').slice(0, 20) + '…' : props.name;
   const stroke = props.selected ? COLOR_SELECTION : 'transparent';
@@ -304,6 +310,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         const codeLabelWidth = Math.max(30, (code?.length ?? 3) * 8 + 12);
         const derSummary = overviewDerSummary(props.derBadges);
         const derMarkerShape = derSummary ? overviewDerMarkerShape(props.derBadges.find((badge) => badge.count > 0)?.kind ?? 'PV') : null;
+        const hasDerBlockTransformer = props.derBadges.some((badge) => badge.hasBlockTransformer);
         return (
           <g data-testid={`sld-v2-mini-rmu-overview-${props.id}`}>
             {/* Drop-line do trunk (top edge connection point) */}
@@ -387,6 +394,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                 data-testid={`sld-v2-mini-rmu-overview-${props.id}-der`}
                 data-overview-label-mode="marker"
                 data-der-kind={props.derBadges.find((badge) => badge.count > 0)?.kind ?? ''}
+                data-block-transformer={hasDerBlockTransformer ? 'true' : 'false'}
                 transform={`translate(${CARD_W / 2 - 8}, ${CARD_H / 2 - 8})`}
               >
                 {derMarkerShape === 'hexagon' && (
@@ -415,6 +423,15 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                     stroke="#07111C"
                     strokeWidth={1}
                   />
+                )}
+                {hasDerBlockTransformer && (
+                  <g
+                    data-testid={`sld-v2-mini-rmu-overview-${props.id}-der-block-transformer`}
+                    transform="translate(8, -5)"
+                  >
+                    <circle cx={0} cy={-2} r={2.2} fill="#0A1018" stroke="#13C45A" strokeWidth={0.8} />
+                    <circle cx={0} cy={2} r={2.2} fill="#0A1018" stroke="#13C45A" strokeWidth={0.8} />
+                  </g>
                 )}
                 <title>{derSummary.label}</title>
               </g>
@@ -526,6 +543,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                 cbState={col.bay.cbState}
                 dsState={col.bay.dsState}
                 esState={col.bay.esState}
+                showRoleBadge={props.footprintType !== 'switching_station'}
               />
             ))}
 
@@ -830,7 +848,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
       {/* K30-57: full DerBadges tylko w compact/detail; overview ma small
           indicator dot wewnątrz station circle (już renderowany powyżej). */}
       {variant !== 'overview' && props.derBadges.length > 0 && (
-        showPvCircuit ? (
+        showPvCircuit && props.derBadges.every((badge) => (badge.connectionSide ?? 'nn') === 'nn') ? (
           <g aria-hidden="true" data-parity-key="station.mini.der_badges">
             <g data-parity-key="station.mini.der_badge" />
           </g>
@@ -838,7 +856,9 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
           <DerBadges
             offsetX={offsetX}
             offsetY={offsetY}
-            badges={props.derBadges}
+            badges={showPvCircuit
+              ? props.derBadges.filter((badge) => (badge.connectionSide ?? 'nn') !== 'nn')
+              : props.derBadges}
             showLabels={variant !== 'detail' || Boolean(props.selected)}
           />
         )
@@ -1247,6 +1267,16 @@ function DerBadges(props: DerBadgesProps): JSX.Element {
                   stroke="#0A0E14"
                   strokeWidth={0.6}
                 />
+              </g>
+            )}
+            {badge.hasBlockTransformer && (
+              <g
+                data-testid={`sld-v2-mini-rmu-der-badge-block-transformer-${badge.kind}`}
+                transform={`translate(${cx + 18}, ${cy + 7})`}
+              >
+                <circle cx={0} cy={-3} r={3.2} fill="#0A1018" stroke="#13C45A" strokeWidth={1} />
+                <circle cx={0} cy={3} r={3.2} fill="#0A1018" stroke="#13C45A" strokeWidth={1} />
+                <title>Transformator blokowy OZE</title>
               </g>
             )}
           </g>

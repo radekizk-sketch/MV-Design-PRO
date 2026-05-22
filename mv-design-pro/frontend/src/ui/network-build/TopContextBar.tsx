@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { clsx } from 'clsx';
 
-import { useNetworkBuildDerived } from './networkBuildStore';
+import { selectFieldStationCount, useNetworkBuildDerived } from './networkBuildStore';
 import { useSnapshotStore } from '../topology/snapshotStore';
 
 export interface TopContextBarProps {
@@ -98,7 +98,7 @@ export function TopContextBar({
       branches: snapshot.branches?.length ?? 0,
       transformers: snapshot.transformers?.length ?? 0,
       generators: snapshot.generators?.length ?? 0,
-      stations: snapshot.substations?.length ?? 0,
+      stations: selectFieldStationCount(snapshot),
     };
   }, [snapshot]);
 

@@ -46,12 +46,12 @@ describe('CT 3-rdzeniowy 200/5/5/5A — Excel MT880 reference', () => {
     expect(I.destinationPl).toContain('LZQJ-XC');
   });
 
-  it('Rdzeń II: 0.2s · FS5 · 7.5 VA · analizator MT880', () => {
+  it('Rdzeń II: 0.2s · FS5 · 7.5 VA · analizator jakości energii klasy A', () => {
     const II = CT_REFERENCE_200_3CORE[1];
     expect(II.accuracyClass).toBe('0.2s');
     expect(II.fsOrAlf).toBe(5);
     expect(II.ratedBurdenVa).toBe(7.5);
-    expect(II.destinationPl).toContain('MT880');
+    expect(II.destinationPl).toContain('klasy A');
   });
 
   it('Rdzeń III: 5P10 · ALF10 · 5 VA · zabezpieczenie e2Tango', () => {

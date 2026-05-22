@@ -86,6 +86,7 @@ export interface StationConfiguratorProps {
   readonly measurements: StationConfigMeasurementsCardProps;
   readonly readiness: StationConfigReadinessCardProps;
   readonly defaultCard?: StationConfigCardId;
+  readonly onOpenCalculations?: () => void;
 }
 
 type StepGroup = 'SN' | 'Pomiary' | 'Stacja' | 'OZE' | 'Ochrona' | 'Infrastruktura' | 'Raport';
@@ -102,7 +103,7 @@ interface StepDefinition {
 const STEPS: readonly StepDefinition[] = [
   { id: 'basic', n: 1, label: 'Przyłączenie SN', sub: 'Miejsce w ciągu, porty i dane stacji', group: 'SN', code: 'SN-1' },
   { id: 'sn-switchgear', n: 2, label: 'Rozdzielnia SN', sub: 'Układ szyn, sekcje, prądy znamionowe', group: 'SN', code: 'SN-2' },
-  { id: 'bays', n: 3, label: 'Pola SN i blokady', sub: 'Mini-SLD, role pól i uzależnienia', group: 'SN', code: 'SN-3' },
+  { id: 'bays', n: 3, label: 'Pola SN i uzależnienia', sub: 'Role pól i sekwencje łączeń', group: 'SN', code: 'SN-3' },
   { id: 'apparatus', n: 4, label: 'Aparatura SN', sub: 'Łączniki, przekładniki i pakiety pól', group: 'SN', code: 'SN-4' },
   { id: 'ct', n: 5, label: 'Przekładniki CT', sub: 'Rdzenie, klasy i obciążenia wtórne', group: 'Pomiary', code: 'PM-1' },
   { id: 'vt', n: 6, label: 'Przekładniki VT', sub: 'Układ napięciowy i współczynnik napięciowy', group: 'Pomiary', code: 'PM-2' },
@@ -187,6 +188,7 @@ export function StationConfigurator(props: StationConfiguratorProps): JSX.Elemen
     measurements,
     readiness,
     defaultCard = 'basic',
+    onOpenCalculations,
   } = props;
   const [activeCard, setActiveCard] = useState<StationConfigVisibleCardId>(
     normalizeCardId(defaultCard),
@@ -315,8 +317,8 @@ export function StationConfigurator(props: StationConfiguratorProps): JSX.Elemen
         </div>
         <button
           type="button"
-          disabled={!nextStep}
-          onClick={() => nextStep && setActiveCard(nextStep.id)}
+          disabled={!nextStep && !onOpenCalculations}
+          onClick={() => (nextStep ? setActiveCard(nextStep.id) : onOpenCalculations?.())}
           className={`rounded px-4 py-1.5 text-xs font-bold transition disabled:cursor-default disabled:opacity-40 ${groupStyle.button}`}
         >
           {nextStep ? `Dalej: ${nextStep.label}` : 'Obliczenia'}

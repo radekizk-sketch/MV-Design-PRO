@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fireEvent, screen } from '@testing-library/react';
 
 import { useSnapshotStore } from '../../../topology/snapshotStore';
+import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
+import { useStationDerStore } from '../../../network-build/station-der/store';
 import { GpzConfiguratorSurface } from '../GpzConfiguratorSurface';
 import { BayConfiguratorSurface } from '../BayConfiguratorSurface';
 import { StationConfiguratorSurface } from '../StationConfiguratorSurface';
@@ -27,6 +29,8 @@ const minimalSurface = {
 describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
   beforeEach(() => {
     useSnapshotStore.getState().reset();
+    useNetworkBuildStore.getState().reset();
+    useStationDerStore.getState().reset();
     vi.clearAllMocks();
   });
 
@@ -118,7 +122,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       const cards = [
         'Przyłączenie SN',
         'Rozdzielnia SN',
-        'Pola SN i blokady',
+        'Pola SN i uzależnienia',
         'Aparatura SN',
         'Przekładniki CT',
         'Przekładniki VT',
@@ -142,6 +146,660 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
     it('prowadzi projektanta do wyboru stacji gdy entityRef=null', () => {
       render(<StationConfiguratorSurface surface={minimalSurface} />);
       expect(screen.getByText(/Wybierz stację z drzewa układów/)).toBeInTheDocument();
+    });
+
+    it('po wyborze stacji startuje od wpięcia SN i pozwala kontynuować ciąg', () => {
+      useSnapshotStore.setState({
+        snapshot: {
+          header: {
+            enm_version: '1.0',
+            name: 'Siec testowa',
+            created_at: '2026-05-18T00:00:00Z',
+            updated_at: '2026-05-18T00:00:00Z',
+            revision: 1,
+            hash_sha256: 'snapshot-test',
+            defaults: { frequency_hz: 50, unit_system: 'SI' },
+          },
+          buses: [
+            {
+              id: 'station-sn-bus',
+              ref_id: 'stn/station-01/sn_bus',
+              name: 'Szyna SN stacji',
+              voltage_kv: 15,
+              tags: [],
+              meta: {},
+            },
+            {
+              id: 'station-field-out',
+              ref_id: 'stn/station-01/field-out-terminal',
+              name: 'Zacisk pola wyjściowego',
+              voltage_kv: 15,
+              tags: ['field_terminal'],
+              meta: {
+                field_ref: 'field/station-01/out',
+                station_ref: 'stn/station-01/station',
+              },
+            },
+          ],
+          branches: [],
+          transformers: [],
+          sources: [],
+          loads: [],
+          substations: [
+            {
+              id: 'station-01',
+              ref_id: 'stn/station-01/station',
+              name: 'Stacja S01 przelotowa',
+              tags: [],
+              meta: {
+                field_specs: [
+                  {
+                    field_ref: 'field/station-01/out',
+                    bay_role: 'OUT',
+                    bus_ref: 'stn/station-01/sn_bus',
+                    meta: {
+                      field_terminal_bus_ref: 'stn/station-01/field-out-terminal',
+                      terminal_bus_ref: 'stn/station-01/sn_bus',
+                    },
+                  },
+                ],
+              },
+              station_type: 'mv_lv',
+              bus_refs: ['stn/station-01/sn_bus'],
+              transformer_refs: [],
+            },
+          ],
+          generators: [],
+          bays: [],
+          junctions: [],
+          corridors: [],
+          measurements: [],
+          protection_assignments: [],
+          branch_points: [],
+          line_runs: [],
+          connection_nodes: [],
+        } as never,
+        logicalViews: {
+          trunks: [],
+          branches: [],
+          terminals: [
+            {
+              element_id: 'field/station-01/out',
+              port_id: 'field/station-01/out:OUT',
+              trunk_id: 'trunk/main-01',
+              status: 'OTWARTY',
+            },
+          ],
+        } as never,
+      });
+
+      render(
+        <StationConfiguratorSurface
+          surface={{
+            ...minimalSurface,
+            entityRef: 'stn/station-01/station',
+          }}
+        />,
+      );
+
+      expect(screen.getByTestId('station-config-content-basic')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('station-continue-trunk'));
+
+      const activeSurface = useNetworkBuildStore.getState().activeSurface;
+      expect(activeSurface?.routeState.payload?.operation).toBe('continue_trunk_segment_sn');
+      expect(activeSurface?.routeState.payload?.context).toEqual(
+        expect.objectContaining({
+          station_ref: 'stn/station-01/station',
+          from_terminal_id: 'field/station-01/out',
+          from_bus_ref: 'stn/station-01/field-out-terminal',
+          field_ref: 'field/station-01/out',
+          terminal_port_id: 'station_out',
+        }),
+      );
+    });
+
+    it('dla stacji odgałęźnej pokazuje jedną akcję wyprowadzenia odgałęzienia z pola ODG', () => {
+      useSnapshotStore.setState({
+        snapshot: {
+          header: {
+            enm_version: '1.0',
+            name: 'Siec testowa',
+            created_at: '2026-05-22T00:00:00Z',
+            updated_at: '2026-05-22T00:00:00Z',
+            revision: 1,
+            hash_sha256: 'snapshot-test',
+            defaults: { frequency_hz: 50, unit_system: 'SI' },
+          },
+          buses: [
+            {
+              id: 'station-sn-bus',
+              ref_id: 'stn/station-branch/sn_bus',
+              name: 'Szyna SN stacji',
+              voltage_kv: 15,
+              tags: [],
+              meta: {},
+            },
+            {
+              id: 'station-branch-terminal',
+              ref_id: 'stn/station-branch/field-odg-terminal',
+              name: 'Zacisk pola ODG',
+              voltage_kv: 15,
+              tags: [],
+              meta: {},
+            },
+          ],
+          branches: [],
+          transformers: [],
+          sources: [],
+          loads: [],
+          substations: [
+            {
+              id: 'station-branch',
+              ref_id: 'stn/station-branch/station',
+              name: 'Stacja S31 odgałęźna',
+              tags: [],
+              meta: {
+                field_specs: [
+                  { field_ref: 'field-in', name: 'Pole WE', bay_role: 'IN' },
+                  { field_ref: 'field-out', name: 'Pole WY', bay_role: 'OUT' },
+                  {
+                    field_ref: 'field-odg',
+                    name: 'Pole ODG',
+                    bay_role: 'FEEDER',
+                    meta: {
+                      field_terminal_bus_ref: 'stn/station-branch/field-odg-terminal',
+                    },
+                  },
+                  { field_ref: 'field-tr', name: 'Pole TR', bay_role: 'TR' },
+                ],
+              },
+              station_type: 'branch',
+              bus_refs: ['stn/station-branch/sn_bus', 'stn/station-branch/field-odg-terminal'],
+              transformer_refs: [],
+            },
+          ],
+          generators: [],
+          bays: [
+            {
+              id: 'bay-station-01-out',
+              ref_id: 'bay/station-01/out',
+              name: 'Pole OUT - Stacja S01',
+              tags: [],
+              meta: {
+                sn_field_template: {
+                  field_ref: 'field/station-01/out',
+                  bay_role: 'OUT',
+                  bus_ref: 'stn/station-01/sn_bus',
+                  meta: {
+                    field_terminal_bus_ref: 'stn/station-01/field-out-terminal',
+                    terminal_bus_ref: 'stn/station-01/sn_bus',
+                  },
+                },
+              },
+              bay_role: 'OUT',
+              substation_ref: 'stn/station-01/station',
+              bus_ref: 'stn/station-01/sn_bus',
+              equipment_refs: [],
+            },
+          ],
+          junctions: [],
+          corridors: [],
+          measurements: [],
+          protection_assignments: [],
+          branch_points: [],
+          line_runs: [],
+          connection_nodes: [],
+        } as never,
+        logicalViews: { trunks: [], branches: [], terminals: [] } as never,
+      });
+
+      render(
+        <StationConfiguratorSurface
+          surface={{
+            ...minimalSurface,
+            entityRef: 'stn/station-branch/station',
+          }}
+        />,
+      );
+
+      expect(screen.getByTestId('station-start-branch')).toHaveTextContent('Wyprowadź odgałęzienie SN');
+      fireEvent.click(screen.getByTestId('station-start-branch'));
+
+      const activeSurface = useNetworkBuildStore.getState().activeSurface;
+      expect(activeSurface?.routeState.payload?.operation).toBe('start_branch_segment_sn');
+      expect(activeSurface?.routeState.payload?.context).toEqual(
+        expect.objectContaining({
+          station_ref: 'stn/station-branch/station',
+          from_ref: 'field-odg.BRANCH',
+          source_type_label: 'Pole liniowe SN',
+          source_bus_ref: 'stn/station-branch/field-odg-terminal',
+          from_bus_ref: 'stn/station-branch/field-odg-terminal',
+          segment_type: 'cable',
+          segment: expect.objectContaining({
+            rodzaj: 'KABEL',
+            catalog_label: '3 × NA2XS2Y 1×150/25 mm²',
+            catalog_binding: expect.objectContaining({
+              catalog_namespace: 'KABEL_SN',
+              catalog_item_id: 'cable-enea-operator-na2xs2y-1x150',
+            }),
+          }),
+        }),
+      );
+    });
+
+    it('wyprowadza publiczne porty WE/WY/TR z katalogowych pól stacji', () => {
+      useSnapshotStore.setState({
+        snapshot: {
+          header: {
+            enm_version: '1.0',
+            name: 'Siec testowa',
+            created_at: '2026-05-18T00:00:00Z',
+            updated_at: '2026-05-18T00:00:00Z',
+            revision: 1,
+            hash_sha256: 'snapshot-test',
+            defaults: { frequency_hz: 50, unit_system: 'SI' },
+          },
+          buses: [
+            {
+              id: 'station-sn-bus',
+              ref_id: 'stn/station-02/sn_bus',
+              name: 'Szyna SN stacji',
+              voltage_kv: 15,
+              tags: [],
+              meta: {},
+            },
+          ],
+          branches: [],
+          transformers: [],
+          sources: [],
+          loads: [],
+          substations: [
+            {
+              id: 'station-02',
+              ref_id: 'stn/station-02/station',
+              name: 'Stacja S02 przelotowa',
+              tags: [],
+              meta: {
+                field_specs: [
+                  { field_ref: 'internal-field-in', name: 'Pole wejściowe', bay_role: 'IN' },
+                  { field_ref: 'internal-field-out', name: 'Pole wyjściowe', bay_role: 'OUT' },
+                  { field_ref: 'internal-field-tr', name: 'Pole transformatora', bay_role: 'TR' },
+                ],
+              },
+              station_type: 'inline',
+              bus_refs: ['stn/station-02/sn_bus'],
+              transformer_refs: [],
+            },
+          ],
+          generators: [],
+          bays: [],
+          junctions: [],
+          corridors: [],
+          measurements: [],
+          protection_assignments: [],
+          branch_points: [],
+          line_runs: [],
+          connection_nodes: [],
+        } as never,
+      });
+
+      render(
+        <StationConfiguratorSurface
+          surface={{
+            ...minimalSurface,
+            entityRef: 'stn/station-02/station',
+          }}
+        />,
+      );
+
+      expect(screen.getByTestId('station-port-WE-1')).toHaveTextContent('Pole wej');
+      expect(screen.getByTestId('station-port-WY-1')).toHaveTextContent('Pole wyj');
+      expect(screen.getByTestId('station-port-WY-1')).toHaveTextContent('wolny do kontynuacji');
+      expect(screen.getByTestId('station-port-TR-1')).toHaveTextContent('Pole transformatora');
+      expect(screen.getByText('tor zasilający SN')).toBeInTheDocument();
+      expect(screen.getByText('transformator stacji')).toBeInTheDocument();
+      expect(screen.getByText('Wolne wyjścia SN')).toBeInTheDocument();
+      expect(screen.queryByText(/automigracj/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/brief/)).not.toBeInTheDocument();
+    });
+
+    it('pokazuje port OZE dla PV przyĹ‚Ä…czonego przez transformator blokowy', () => {
+      useSnapshotStore.setState({
+        snapshot: {
+          header: {
+            enm_version: '1.0',
+            name: 'Siec testowa',
+            created_at: '2026-05-18T00:00:00Z',
+            updated_at: '2026-05-18T00:00:00Z',
+            revision: 1,
+            hash_sha256: 'snapshot-test',
+            defaults: { frequency_hz: 50, unit_system: 'SI' },
+          },
+          buses: [
+            { id: 'bus-sn', ref_id: 'stn/station-pv/sn_bus', name: 'Szyna SN', voltage_kv: 15, tags: [], meta: {} },
+            { id: 'bus-pv', ref_id: 'stn/station-pv/der/pv/bus-0.69kv', name: 'Szyna DER 0,69 kV', voltage_kv: 0.69, tags: [], meta: {} },
+          ],
+          branches: [],
+          transformers: [
+            {
+              id: 'tr-pv-block',
+              ref_id: 'stn/station-pv/der/pv/tr-block',
+              name: 'PV transformator dedykowany 15/0,69 kV · 1250 kVA · Dyn5',
+              hv_bus_ref: 'stn/station-pv/sn_bus',
+              lv_bus_ref: 'stn/station-pv/der/pv/bus-0.69kv',
+              sn_mva: 1.25,
+              uhv_kv: 15,
+              ulv_kv: 0.69,
+              uk_percent: 6,
+              pk_kw: 13.2,
+              p0_kw: 2.1,
+              vector_group: 'Dyn5',
+              catalog_ref: 'btr_pv_15_069_1250',
+            },
+          ],
+          sources: [],
+          loads: [],
+          substations: [
+            {
+              id: 'station-pv',
+              ref_id: 'stn/station-pv/station',
+              name: 'Stacja PV',
+              tags: [],
+              meta: {
+                field_specs: [
+                  { field_ref: 'field-in', name: 'Pole wejĹ›ciowe', bay_role: 'IN' },
+                  { field_ref: 'field-tr', name: 'Pole transformatora', bay_role: 'TR' },
+                ],
+              },
+              station_type: 'mv_lv',
+              bus_refs: ['stn/station-pv/sn_bus', 'stn/station-pv/der/pv/bus-0.69kv'],
+              transformer_refs: ['stn/station-pv/der/pv/tr-block'],
+            },
+          ],
+          generators: [
+            {
+              id: 'pv-1000',
+              ref_id: 'pv/station-pv/converter',
+              name: 'PV 1 MW',
+              tags: [],
+              meta: {},
+              bus_ref: 'stn/station-pv/der/pv/bus-0.69kv',
+              p_mw: 1,
+              q_mvar: 0,
+              gen_type: 'pv_inverter',
+              catalog_ref: 'pv_inv_system_1000',
+              catalog_namespace: 'PV',
+              connection_variant: 'block_transformer',
+              blocking_transformer_ref: 'stn/station-pv/der/pv/tr-block',
+              station_ref: 'stn/station-pv/station',
+            },
+          ],
+          bays: [],
+          junctions: [],
+          corridors: [],
+          measurements: [],
+          protection_assignments: [],
+          branch_points: [],
+          line_runs: [],
+          connection_nodes: [],
+        } as never,
+      });
+
+      render(
+        <StationConfiguratorSurface
+          surface={{
+            ...minimalSurface,
+            entityRef: 'stn/station-pv/station',
+          }}
+        />,
+      );
+
+      expect(screen.getByTestId('station-port-OZE-1')).toHaveTextContent('PV 1 MW');
+      expect(screen.getByTestId('station-port-OZE-1')).toHaveTextContent('15/0,69 kV 1250 kVA Dyn5');
+      expect(screen.queryByText(/tr-block|station-pv\/der/)).not.toBeInTheDocument();
+    });
+
+    it('nie liczy transformatora blokowego PV jako transformatora stacji SN/nN', () => {
+      useSnapshotStore.setState({
+        snapshot: {
+          header: {
+            enm_version: '1.0',
+            name: 'Siec testowa',
+            created_at: '2026-05-18T00:00:00Z',
+            updated_at: '2026-05-18T00:00:00Z',
+            revision: 1,
+            hash_sha256: 'snapshot-test',
+            defaults: { frequency_hz: 50, unit_system: 'SI' },
+          },
+          buses: [
+            { id: 'bus-sn', ref_id: 'stn/station-pv/sn_bus', name: 'Szyna SN', voltage_kv: 15, tags: [], meta: {} },
+            { id: 'bus-nn', ref_id: 'stn/station-pv/nn_bus', name: 'Szyna nN', voltage_kv: 0.4, tags: [], meta: {} },
+            { id: 'bus-pv', ref_id: 'stn/station-pv/der/pv/bus-0.69kv', name: 'Szyna DER 0,69 kV', voltage_kv: 0.69, tags: [], meta: {} },
+          ],
+          branches: [],
+          transformers: [
+            {
+              id: 'tr-station-250',
+              ref_id: 'stn/station-pv/tr-250',
+              name: 'Transformator SN/nN 250 kVA Dyn5',
+              hv_bus_ref: 'stn/station-pv/sn_bus',
+              lv_bus_ref: 'stn/station-pv/nn_bus',
+              sn_mva: 0.25,
+              uhv_kv: 15,
+              ulv_kv: 0.4,
+              uk_percent: 4,
+              pk_kw: 3.2,
+              p0_kw: 0.7,
+              vector_group: 'Dyn5',
+              catalog_ref: 'tr_15_04_250',
+            },
+            {
+              id: 'tr-pv-block',
+              ref_id: 'stn/station-pv/der/pv/tr-block',
+              name: 'PV transformator blokowy 15/0,69 kV 1250 kVA Dyn5',
+              hv_bus_ref: 'stn/station-pv/sn_bus',
+              lv_bus_ref: 'stn/station-pv/der/pv/bus-0.69kv',
+              sn_mva: 1.25,
+              uhv_kv: 15,
+              ulv_kv: 0.69,
+              uk_percent: 6,
+              pk_kw: 13.2,
+              p0_kw: 2.1,
+              vector_group: 'Dyn5',
+              catalog_ref: 'btr_pv_15_069_1250',
+            },
+          ],
+          sources: [],
+          loads: [],
+          substations: [
+            {
+              id: 'station-pv',
+              ref_id: 'stn/station-pv/station',
+              name: 'Stacja PV',
+              tags: [],
+              meta: {
+                field_specs: [
+                  { field_ref: 'field-in', name: 'Pole wejściowe', bay_role: 'IN' },
+                  { field_ref: 'field-tr', name: 'Pole transformatora', bay_role: 'TR' },
+                ],
+              },
+              station_type: 'mv_lv',
+              bus_refs: [
+                'stn/station-pv/sn_bus',
+                'stn/station-pv/nn_bus',
+                'stn/station-pv/der/pv/bus-0.69kv',
+              ],
+              transformer_refs: [
+                'stn/station-pv/tr-250',
+                'stn/station-pv/der/pv/tr-block',
+              ],
+            },
+          ],
+          generators: [
+            {
+              id: 'pv-1000',
+              ref_id: 'pv/station-pv/converter',
+              name: 'PV 1 MW',
+              tags: [],
+              meta: {},
+              bus_ref: 'stn/station-pv/der/pv/bus-0.69kv',
+              p_mw: 1,
+              q_mvar: 0,
+              gen_type: 'pv_inverter',
+              catalog_ref: 'pv_inv_system_1000',
+              catalog_namespace: 'PV',
+              connection_variant: 'block_transformer',
+              blocking_transformer_ref: 'stn/station-pv/der/pv/tr-block',
+              station_ref: 'stn/station-pv/station',
+            },
+          ],
+          bays: [],
+          junctions: [],
+          corridors: [],
+          measurements: [],
+          protection_assignments: [],
+          branch_points: [],
+          line_runs: [],
+          connection_nodes: [],
+        } as never,
+      });
+
+      render(
+        <StationConfiguratorSurface
+          surface={{
+            ...minimalSurface,
+            entityRef: 'stn/station-pv/station',
+          }}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole('tab', { name: /Transformator/ }));
+
+      expect(screen.getByText('Transformatory SN/nN (1)')).toBeInTheDocument();
+      expect(screen.getByTestId('transformer-row-stn/station-pv/tr-250')).toBeInTheDocument();
+      expect(screen.queryByTestId('transformer-row-stn/station-pv/der/pv/tr-block')).not.toBeInTheDocument();
+      expect(screen.queryByText('Transformatory SN/nN (2)')).not.toBeInTheDocument();
+    });
+
+    it('nie dubluje portu PV po zapisie DER z kreatora i odswiezeniu ENM', () => {
+      useSnapshotStore.setState({
+        snapshot: {
+          header: {
+            enm_version: '1.0',
+            name: 'Siec testowa',
+            created_at: '2026-05-22T00:00:00Z',
+            updated_at: '2026-05-22T00:00:00Z',
+            revision: 1,
+            hash_sha256: 'snapshot-test',
+            defaults: { frequency_hz: 50, unit_system: 'SI' },
+          },
+          buses: [
+            { id: 'bus-sn', ref_id: 'stn/station-15/sn_bus', name: 'Szyna SN', voltage_kv: 15, tags: [], meta: {} },
+            { id: 'bus-nn', ref_id: 'stn/station-15/nn_bus', name: 'Szyna nN', voltage_kv: 0.4, tags: [], meta: {} },
+          ],
+          branches: [],
+          transformers: [
+            {
+              id: 'tr-station-250',
+              ref_id: 'stn/station-15/tr-250',
+              name: 'Transformator SN/nN 250 kVA Dyn11',
+              hv_bus_ref: 'stn/station-15/sn_bus',
+              lv_bus_ref: 'stn/station-15/nn_bus',
+              sn_mva: 0.25,
+              uhv_kv: 15,
+              ulv_kv: 0.4,
+              uk_percent: 4,
+              pk_kw: 3.2,
+              p0_kw: 0.7,
+              vector_group: 'Dyn11',
+              catalog_ref: 'tr_15_04_250',
+            },
+          ],
+          sources: [],
+          loads: [],
+          substations: [
+            {
+              id: 'station-15',
+              ref_id: 'stn/station-15/station',
+              name: 'Stacja SN/nN 15',
+              tags: [],
+              meta: {
+                field_specs: [
+                  { field_ref: 'field-in', name: 'Pole IN', bay_role: 'IN' },
+                  { field_ref: 'field-out', name: 'Pole OUT', bay_role: 'OUT' },
+                  { field_ref: 'field-tr', name: 'Pole TR', bay_role: 'TR' },
+                ],
+              },
+              station_type: 'inline',
+              bus_refs: ['stn/station-15/sn_bus', 'stn/station-15/nn_bus'],
+              transformer_refs: ['stn/station-15/tr-250'],
+            },
+          ],
+          generators: [
+            {
+              id: 'pv-s15-enm',
+              ref_id: 'pv/station-15/converter',
+              name: 'PV S15',
+              tags: [],
+              meta: { voltage_level_ref: 'lv_0_4kV' },
+              bus_ref: 'stn/station-15/nn_bus',
+              p_mw: 0.185,
+              q_mvar: 0,
+              gen_type: 'pv_inverter',
+              catalog_ref: 'pv_inv_huawei_185',
+              catalog_namespace: 'PV',
+              connection_variant: 'nn_side',
+              blocking_transformer_ref: null,
+              station_ref: 'stn/station-15/station',
+            },
+          ],
+          bays: [],
+          junctions: [],
+          corridors: [],
+          measurements: [],
+          protection_assignments: [],
+          branch_points: [],
+          line_runs: [],
+          connection_nodes: [],
+        } as never,
+      });
+      useStationDerStore.getState().attachDer({
+        id: 'local-pv-s15',
+        project_id: 'project-from-enm',
+        station_id: 'stn/station-15/station',
+        der_kind: 'PV',
+        name: 'PV S15',
+        connection_side: 'nN',
+        pcc_ref: 'stn/station-15/nn_bus',
+        lv_busbar_ref: 'stn/station-15/nn_bus',
+        voltage_level_ref: 'lv_0_4kV',
+        catalogs: { device_catalog_ref: 'pv_inv_huawei_185' },
+        profiles: {},
+        nominal_power_kw: 185,
+        completeness: {
+          pcc: true,
+          catalogs: true,
+          profiles: true,
+          protections: true,
+          voltage_level: true,
+        },
+        readiness: { status: 'ready', blockers: [], warnings: [] },
+        created_at: '2026-05-22T00:00:00Z',
+        updated_at: '2026-05-22T00:00:00Z',
+      });
+
+      render(
+        <StationConfiguratorSurface
+          surface={{
+            ...minimalSurface,
+            entityRef: 'stn/station-15/station',
+          }}
+        />,
+      );
+
+      expect(screen.getByTestId('station-port-nN-PV-1')).toHaveTextContent('PV S15');
+      expect(screen.getByTestId('station-port-nN-PV-1')).toHaveTextContent('0,185 MW');
+      expect(screen.queryByTestId('station-port-nN-PV-2')).not.toBeInTheDocument();
     });
 
     it('pokazuje zrodla OZE zapisane w ENM dla wybranej stacji', () => {
@@ -206,6 +864,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
           surface={{
             ...minimalSurface,
             entityRef: 'stn/station-01/station',
+            routeState: { payload: { defaultCard: 'der-sources' } },
           }}
         />,
       );

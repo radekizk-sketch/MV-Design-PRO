@@ -16,6 +16,7 @@ import {
   selectSnFieldCount,
   selectOzeSourceSummaries,
   selectStationSummaries,
+  selectFieldStationCount,
   selectBlockersByCategory,
   selectActiveOperationForm,
   buildPhaseLabel,
@@ -74,6 +75,19 @@ describe('computeBuildPhase', () => {
   it('returns HAS_TRUNKS when trunks exist but no substations', () => {
     const lv = { trunks: [{ id: 't1', segments: ['seg-1'] }], terminals: [], branches: [] } as unknown as LogicalViewsV1;
     expect(computeBuildPhase(enmWithSource(), lv, null)).toBe('HAS_TRUNKS');
+  });
+
+  it('nie liczy GPZ jako stacji terenowej po wyprowadzeniu magistrali', () => {
+    const enm = {
+      ...enmWithSource(),
+      substations: [
+        { id: 'gpz-1', name: 'GPZ 15 kV', station_type: 'gpz', transformer_refs: [], bus_refs: [] },
+      ],
+    } as unknown as EnergyNetworkModel;
+    const lv = { trunks: [{ id: 't1', segments: ['seg-1'] }], terminals: [], branches: [] } as unknown as LogicalViewsV1;
+
+    expect(selectFieldStationCount(enm)).toBe(0);
+    expect(computeBuildPhase(enm, lv, null)).toBe('HAS_TRUNKS');
   });
 
   it('returns READY when readiness.ready is true', () => {
@@ -230,6 +244,42 @@ describe('selectSnFieldCount', () => {
     } as unknown as EnergyNetworkModel;
 
     expect(selectSnFieldCount(enm)).toBe(2);
+  });
+
+  it('liczy pola SN zapisane w meta.field_specs GPZ i stacji', () => {
+    const enm = {
+      ...emptyENM(),
+      bays: [],
+      substations: [
+        {
+          id: 'gpz-1',
+          ref_id: 'gpz-1',
+          name: 'GPZ 1',
+          station_type: 'gpz',
+          meta: {
+            field_specs: [
+              { field_ref: 'gpz-1/bay/out-1', name: 'Pole odpływowe 1' },
+              { field_ref: 'gpz-1/bay/out-2', name: 'Pole odpływowe 2' },
+            ],
+          },
+        },
+        {
+          id: 'st-1',
+          ref_id: 'st-1',
+          name: 'Stacja 1',
+          station_type: 'inline',
+          meta: {
+            field_specs: [
+              { field_ref: 'st-1/bay/in', name: 'Pole wejściowe' },
+              { field_ref: 'st-1/bay/out', name: 'Pole wyjściowe' },
+              { field_ref: 'st-1/bay/tr', name: 'Pole transformatorowe' },
+            ],
+          },
+        },
+      ],
+    } as unknown as EnergyNetworkModel;
+
+    expect(selectSnFieldCount(enm)).toBe(5);
   });
 });
 

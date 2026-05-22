@@ -2,7 +2,7 @@
  * K30-105: CableRunRenderer — power flow direction arrows (▷) per IEC 60617.
  *
  * Operator OSD musi widzieć kierunek przepływu mocy w pętli kabel SN.
- * Strzałki na midpoincie segmentów, tylko gdy energized=true i LOD>=2.
+ * Strzałki na midpoincie segmentów przy energized=true; LOD 0/1 nadal pokazuje kierunek topologii.
  */
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
@@ -51,7 +51,7 @@ describe('CableRunRenderer — K30-105 direction arrows IEC 60617', () => {
     expect(container.querySelector('[data-testid="sld-v2-run-run-de-direction-arrows"]')).toBeFalsy();
   });
 
-  it('lod<2 → BRAK direction arrows (declutter at zoom-out)', () => {
+  it('lod<2 pokazuje direction arrows jako warstwę kierunku topologii', () => {
     const { container } = render(
       <svg>
         <CableRunRenderer
@@ -64,7 +64,9 @@ describe('CableRunRenderer — K30-105 direction arrows IEC 60617', () => {
         />
       </svg>,
     );
-    expect(container.querySelector('[data-testid="sld-v2-run-run-lod-direction-arrows"]')).toBeFalsy();
+    const arrows = container.querySelector('[data-testid="sld-v2-run-run-lod-direction-arrows"]');
+    expect(arrows).toBeTruthy();
+    expect(arrows?.querySelectorAll('polygon').length).toBe(2);
   });
 
   it('missingEndpointPort=true → BRAK direction arrows (incomplete connection)', () => {

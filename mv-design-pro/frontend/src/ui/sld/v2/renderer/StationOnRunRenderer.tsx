@@ -178,19 +178,9 @@ export function StationOnRunRenderer(props: StationOnRunRendererProps): JSX.Elem
 
 function miniBlockVariantForStation(props: StationOnRunRendererProps): 'overview' | 'compact' | 'detail' {
   const lod = props.lod ?? 0;
-  const hasPvNnConnection = props.derBadges?.some(
-    (badge) => badge.kind === 'PV' && (badge.connectionSide ?? 'nn') === 'nn',
-  ) ?? false;
-  if (lod === 2 && props.footprintType === 'der_station' && hasPvNnConnection) {
-    return 'detail';
-  }
-  return miniBlockVariantForLod(lod);
-}
-
-function miniBlockVariantForLod(lod: LodLevel): 'overview' | 'compact' | 'detail' {
+  if (props.selected) return lod <= 1 ? 'overview' : 'compact';
   if (lod <= 1) return 'overview';
-  if (lod === 2) return 'compact';
-  return 'detail';
+  return 'compact';
 }
 
 function normalizeLabelToken(value: string): string {
@@ -226,7 +216,12 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
     : 'SN/nN';
   const stationCodeLabel = stationCode
     ?? (name.match(/\b(S\d{2,3})\b/)?.[1] ?? null);
-  const stationNameLabel = isGenericStationDisplayName(name) && stationCodeLabel
+  const normalizedName = normalizeLabelToken(name);
+  const normalizedCode = stationCodeLabel ? normalizeLabelToken(stationCodeLabel) : null;
+  const stationNameLabel = stationCodeLabel && (
+    isGenericStationDisplayName(name)
+    || (normalizedCode != null && normalizedName.startsWith(`${normalizedCode} `))
+  )
     ? null
     : name.length > 24 ? name.slice(0, 22) + 'â€¦' : name;
   const hasMultiVoltageLv = (nnVoltageLevelsCount ?? 0) > 1;

@@ -39,7 +39,7 @@ from enm.canonical_analysis import (
 from enm.canonical_analysis import (
     list_runs_for_project as list_canonical_runs_for_project,
 )
-from enm.catalog_completion import complete_station_loads_from_nn_feeders
+from enm.catalog_completion import complete_catalog_defaults
 from enm.models import EnergyNetworkModel
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
@@ -66,7 +66,7 @@ def _catalog_completed_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
     except ValidationError:
         return snapshot
 
-    completed, changed = complete_station_loads_from_nn_feeders(enm)
+    completed, changed = complete_catalog_defaults(enm)
     if not changed:
         return snapshot
     return completed.model_dump(mode="json")

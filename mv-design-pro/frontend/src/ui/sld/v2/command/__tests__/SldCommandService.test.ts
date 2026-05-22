@@ -16,7 +16,7 @@ describe('SldCommandService — SLD_MENU_REGISTRY', () => {
   it('rejestruje typy menu dla elementów SLD', () => {
     const kinds: SldElementKindForMenu[] = [
       'background', 'gpz', 'section', 'bay', 'apparatus', 'cable_segment_sn',
-      'overhead_line_sn', 'station', 'der_pv', 'der_bess', 'der_fw',
+      'overhead_line_sn', 'station', 'zksn', 'branch_pole', 'der_pv', 'der_bess', 'der_fw',
     ];
     for (const kind of kinds) {
       expect(SLD_MENU_REGISTRY[kind]).toBeDefined();
@@ -59,12 +59,12 @@ describe('SldCommandService — SLD_MENU_REGISTRY', () => {
     expect(cableHeadExtend?.disabled).toBeUndefined();
   });
 
-  it('menu kabla SN przewiduje dalszy projekt: kontynuacja, stacja, ZK SN i słup', () => {
+  it('menu kabla SN przewiduje dalszy projekt bez słupa rozgałęźnego', () => {
     const actions = SLD_MENU_REGISTRY.cable_segment_sn;
     expect(actions.some((a) => a.id === 'continue-trunk-from-endpoint')).toBe(true);
     expect(actions.some((a) => a.id === 'insert-station')).toBe(true);
     expect(actions.some((a) => a.id === 'insert-zksn')).toBe(true);
-    expect(actions.some((a) => a.id === 'insert-pole')).toBe(true);
+    expect(actions.some((a) => a.id === 'insert-pole')).toBe(false);
     expect(actions.some((a) => a.id === 'change-family-to-overhead')).toBe(true);
     expect(actions.some((a) => a.id === 'insert-joint' && a.labelPl === 'Wstaw mufę kablową')).toBe(true);
   });
@@ -80,6 +80,13 @@ describe('SldCommandService — SLD_MENU_REGISTRY', () => {
     expect(actions.some((a) => a.id === 'open-station-config')).toBe(true);
     expect(actions.some((a) => a.id === 'continue-trunk')).toBe(true);
     expect(actions.some((a) => a.id === 'start-branch')).toBe(true);
+  });
+
+  it('menu ZK SN i słupa prowadzi do kart oraz odgałęzień w poprawnym medium', () => {
+    expect(SLD_MENU_REGISTRY.zksn.some((a) => a.id === 'open-zksn-card')).toBe(true);
+    expect(SLD_MENU_REGISTRY.zksn.some((a) => a.labelPl.includes('kablowe'))).toBe(true);
+    expect(SLD_MENU_REGISTRY.branch_pole.some((a) => a.id === 'open-branch-pole-card')).toBe(true);
+    expect(SLD_MENU_REGISTRY.branch_pole.some((a) => a.labelPl.includes('napowietrzne'))).toBe(true);
   });
 
   it('etykiety polskie bez zakazanych tokenów', () => {

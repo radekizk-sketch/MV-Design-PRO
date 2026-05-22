@@ -26,6 +26,7 @@ from .domain_operations import (
     _find_legacy_field_element_collection,
     _make_id,
     _response,
+    _station_has_transformer,
 )
 from .topology_ops import attach_protection, create_branch, create_measurement, create_node
 
@@ -1161,7 +1162,143 @@ def _find_station_for_bus(enm: dict[str, Any], bus_ref: str) -> dict[str, Any] |
 
 def _has_transformer_in_path(enm: dict[str, Any], station: dict[str, Any]) -> bool:
     """Sprawdź, czy stacja ma transformator w ścieżce zasilania."""
-    return bool(station.get("transformer_refs"))
+    station_ref = station.get("ref_id") or station.get("id")
+    if _station_has_transformer(enm, station_ref):
+        return True
+
+    transformer_refs = {
+        ref
+        for ref in station.get("transformer_refs", [])
+        if isinstance(ref, str) and ref.strip()
+    }
+    station_bus_refs = {
+        ref for ref in station.get("bus_refs", []) if isinstance(ref, str) and ref.strip()
+    }
+    if not transformer_refs and not station_bus_refs:
+        return False
+
+    for transformer in enm.get("transformers", []):
+        if not isinstance(transformer, dict):
+            continue
+        transformer_ref = transformer.get("ref_id") or transformer.get("id")
+        if isinstance(transformer_ref, str) and transformer_ref in transformer_refs:
+            return True
+        if station_bus_refs and (
+            transformer.get("hv_bus_ref") in station_bus_refs
+            or transformer.get("lv_bus_ref") in station_bus_refs
+        ):
+            return True
+    return False
+
+
+def _station_transformers_for_bus(
+    enm: dict[str, Any],
+    station: dict[str, Any],
+    *,
+    bus_ref: str | None = None,
+    transformer_ref: str | None = None,
+) -> list[dict[str, Any]]:
+    station_transformer_refs = {
+        ref
+        for ref in station.get("transformer_refs", [])
+        if isinstance(ref, str) and ref.strip()
+    }
+    station_bus_refs = {
+        ref for ref in station.get("bus_refs", []) if isinstance(ref, str) and ref.strip()
+    }
+    candidates: list[dict[str, Any]] = []
+    for transformer in enm.get("transformers", []):
+        if not isinstance(transformer, dict):
+            continue
+        ref = transformer.get("ref_id") or transformer.get("id")
+        if isinstance(transformer_ref, str) and transformer_ref.strip():
+            if ref == transformer_ref:
+                candidates.append(transformer)
+            continue
+        if isinstance(bus_ref, str) and bus_ref.strip():
+            if transformer.get("hv_bus_ref") == bus_ref or transformer.get("lv_bus_ref") == bus_ref:
+                candidates.append(transformer)
+            continue
+        if isinstance(ref, str) and ref in station_transformer_refs:
+            candidates.append(transformer)
+        elif station_bus_refs and (
+            transformer.get("hv_bus_ref") in station_bus_refs
+            or transformer.get("lv_bus_ref") in station_bus_refs
+        ):
+            candidates.append(transformer)
+    return candidates
+
+
+def _converter_required_apparent_power_mva(
+    payload: dict[str, Any],
+    materialized_params: dict[str, Any],
+) -> float | None:
+    quantity_raw = payload.get("quantity")
+    quantity = int(quantity_raw) if isinstance(quantity_raw, int | float) else 1
+    quantity = max(quantity, 1)
+    candidates: list[float] = []
+    for value in (
+        materialized_params.get("sn_mva"),
+        materialized_params.get("pmax_mw"),
+        _kw_to_mw(materialized_params.get("max_power_kw")),
+        _kw_to_mw(materialized_params.get("rated_power_ac_kw")),
+        _kw_to_mw(materialized_params.get("discharge_power_kw")),
+        _as_float(payload.get("power_setpoint_mw")),
+    ):
+        if isinstance(value, int | float) and value > 0:
+            candidates.append(float(value))
+    if not candidates:
+        return None
+    return max(candidates) * quantity
+
+
+def _validate_converter_transformer_capacity(
+    enm: dict[str, Any],
+    *,
+    station: dict[str, Any],
+    bus_ref: str,
+    blocking_transformer_ref: str | None,
+    connection_variant: str,
+    technology: str,
+    payload: dict[str, Any],
+    materialized_params: dict[str, Any],
+) -> dict[str, Any] | None:
+    transformer_ref = (
+        blocking_transformer_ref
+        if connection_variant == "block_transformer"
+        and isinstance(blocking_transformer_ref, str)
+        and blocking_transformer_ref.strip()
+        else None
+    )
+    transformers = _station_transformers_for_bus(
+        enm,
+        station,
+        bus_ref=bus_ref if connection_variant == "nn_side" else None,
+        transformer_ref=transformer_ref,
+    )
+    if not transformers:
+        return None
+
+    capacity_mva = 0.0
+    for transformer in transformers:
+        sn_mva = _as_float(transformer.get("sn_mva"))
+        if sn_mva is not None and sn_mva > 0:
+            capacity_mva += sn_mva
+    if capacity_mva <= 0:
+        return None
+
+    required_mva = _converter_required_apparent_power_mva(payload, materialized_params)
+    if required_mva is None or required_mva <= capacity_mva + 1e-9:
+        return None
+
+    return _error_response(
+        (
+            f"Moc katalogowa źródła {technology} ({required_mva * 1000:.0f} kVA) "
+            f"przekracza moc transformatora stacji ({capacity_mva * 1000:.0f} kVA). "
+            "Wybierz mniejszy wariant źródła albo zastosuj transformator dedykowany."
+        ),
+        "converter.transformer_capacity_exceeded",
+    )
 
 
 def _resolve_catalog_ref(
@@ -2283,6 +2420,19 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             ),
             "converter.voltage_mismatch",
         )
+
+    capacity_error = _validate_converter_transformer_capacity(
+        enm,
+        station=station,
+        bus_ref=bus_nn_ref,
+        blocking_transformer_ref=blocking_transformer_ref,
+        connection_variant=connection_variant,
+        technology=technology,
+        payload=payload,
+        materialized_params=materialized_params,
+    )
+    if capacity_error is not None:
+        return capacity_error
 
     name, gen_type, event_type, meta, p_mw = _resolve_converter_defaults(
         technology,

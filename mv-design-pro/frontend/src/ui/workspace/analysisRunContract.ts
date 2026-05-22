@@ -74,50 +74,116 @@ const KEY_LABELS: Record<string, string> = {
   case_kind: 'Rodzaj zakresu',
   catalog_schema_version: 'Schema katalogu',
   catalog_snapshot_ref: 'Wersja katalogu',
-  completeness: 'Kompletnosc',
-  converged: 'Zbieznosc',
-  count: 'Liczba krokow',
+  completeness: 'Kompletność',
+  converged: 'Zbieżność',
+  count: 'Liczba kroków',
   created_at: 'Utworzono',
   domain_model_version: 'Model domenowy',
   duration_ms: 'Czas trwania [ms]',
   first_step: 'Pierwszy krok',
-  formula_set_version: 'Zestaw wzorow',
-  input_hash: 'Slad wejscia',
+  formula_set_version: 'Zestaw wzorów',
+  input_hash: 'Ślad wejścia',
   iterations: 'Iteracje',
-  load_assumptions_ref: 'Zalozenia obciazen',
+  load_assumptions_ref: 'Założenia obciążeń',
   max_ikss_ka: 'Maks. Ikss [kA]',
   method_version: 'Wersja metody',
   proof_pack_ref: 'Pakiet uzasadnienia',
   proof_renderer_version: 'Generator uzasadnienia',
   project_ref: 'Projekt',
-  quality_gate: 'Bramka jakosci',
+  quality_gate: 'Bramka jakości',
   quality_gate_policy_version: 'Polityka bramki',
-  result_hash: 'Slad wyniku',
-  results_contract_version: 'Kontrakt wynikow',
-  rounding_policy_ref: 'Polityka zaokraglen',
-  row_count: 'Liczba rekordow',
+  result_hash: 'Ślad wyniku',
+  results_contract_version: 'Kontrakt wyników',
+  rounding_policy_ref: 'Polityka zaokrągleń',
+  row_count: 'Liczba rekordów',
   run_ref: 'Ostatnie obliczenie',
-  snapshot_ref: 'Wersja ukladu',
+  snapshot_ref: 'Wersja układu',
   solver_family: 'Rodzina solvera',
   solver_version: 'Wersja solvera',
-  source_assumptions_ref: 'Zalozenia zrodel',
+  source_assumptions_ref: 'Założenia źródeł',
   standard_basis_ref: 'Podstawa normatywna',
-  switching_state_ref: 'Stan lacznikow',
-  temperature_assumptions_ref: 'Zalozenia temperaturowe',
+  switching_state_ref: 'Stan łączników',
+  temperature_assumptions_ref: 'Założenia temperaturowe',
   tolerance_policy_ref: 'Polityka tolerancji',
   total_losses_p_mw: 'Straty P [MW]',
   total_losses_q_mvar: 'Straty Q [MVAr]',
-  transformer_tap_assumptions_ref: 'Zalozenia OLTC',
+  transformer_tap_assumptions_ref: 'Założenia OLTC',
   variant_ref: 'Wariant',
   summary: 'Podsumowanie',
-  grounding_assumptions_ref: 'Zalozenia uziemienia',
-  ibg_assumptions_ref: 'Zalozenia IBG / OZE',
+  grounding_assumptions_ref: 'Założenia uziemienia',
+  ibg_assumptions_ref: 'Założenia IBG / OZE',
   max_v_pu: 'Max U [p.u.]',
   min_v_pu: 'Min U [p.u.]',
   slack_p_mw: 'Slack P [MW]',
   slack_q_mvar: 'Slack Q [MVAr]',
-  warnings: 'Ostrzezenia',
+  warnings: 'Ostrzeżenia',
 };
+
+const TECHNICAL_TOKEN_LABELS: Record<string, string> = {
+  auto: 'automatyczny',
+  manual: 'roboczy',
+  transactional: 'transakcyjny',
+  read_only: 'tylko odczyt',
+  finished: 'zakończone',
+  done: 'zakończone',
+  failed: 'nieudane',
+  running: 'w toku',
+  pending: 'oczekuje',
+  valid: 'aktualne',
+  fresh: 'aktualne',
+  outdated: 'nieaktualne',
+  none: 'brak wyniku',
+  ok: 'poprawne',
+  passed: 'spełnione',
+  sc_3f: 'zwarcie trójfazowe',
+  sc3f: 'zwarcie trójfazowe',
+  sc: 'zwarcie SN',
+  short_circuit_sn: 'zwarcie SN',
+  short_circuit: 'zwarcie',
+  load_flow: 'rozpływ mocy',
+  power_flow: 'rozpływ mocy',
+  pf: 'rozpływ mocy',
+  report: 'raport',
+  results: 'wyniki',
+  screport: 'raport zwarciowy SN',
+  pdf: 'PDF',
+  docx: 'DOCX',
+  csv: 'CSV',
+  xlsx: 'XLSX',
+  json: 'JSON',
+  latex: 'LaTeX',
+  whitebox_package: 'pakiet śladu obliczeń',
+  dash: 'kreska',
+  empty_cell: 'pusta komórka',
+  null: 'pusta wartość',
+  label: 'etykieta',
+  warning_block: 'blok ostrzeżenia',
+  blocked: 'zablokowane',
+  worksheet_warning: 'ostrzeżenie w arkuszu',
+  status_field: 'pole statusu',
+  siec: 'cała sieć',
+  ciag: 'wybrany ciąg',
+  stacja: 'wybrana stacja',
+  pole: 'wybrane pole',
+  zrodlo: 'wybrane źródło',
+  standard: 'standardowa',
+  pelny: 'pełna techniczna',
+  sc_source_max: 'maksymalny wkład źródeł do zwarcia',
+  temperature_short_circuit: 'temperatura dla obliczeń zwarciowych',
+  tap_frozen: 'zaczepy transformatorów ustalone',
+  iec60909_short_circuit: 'IEC 60909 - zwarcie',
+  iec60909_v1: 'IEC 60909, wersja 1',
+  canonical_run_v1: 'kanoniczny przebieg, wersja 1',
+  white_box_trace_v1: 'ślad obliczeń white-box, wersja 1',
+  solver_tolerance_default: 'domyślna tolerancja solvera',
+  rounding_default: 'domyślne zaokrąglenia',
+  v12_5_quality_gate: 'polityka jakości V12.5',
+  v12_5_export_artifact_1_0: 'generator eksportu V12.5',
+};
+
+function technicalTokenKey(value: string): string {
+  return value.trim().toLowerCase().replace(/[\s/.-]+/g, '_');
+}
 
 function normalizeString(value: unknown): string | null {
   if (typeof value !== 'string') {
@@ -141,6 +207,18 @@ function isInternalReferenceValue(value: string): boolean {
 }
 
 function formatTechnicalToken(value: string): string {
+  const normalized = value.trim();
+  if (normalized.toUpperCase().includes('SCREPORT')) {
+    return 'raport zwarciowy SN';
+  }
+  const mapped = TECHNICAL_TOKEN_LABELS[technicalTokenKey(value)];
+  if (mapped) {
+    return mapped;
+  }
+  const versionMatch = /^v(\d+(?:\.\d+)*)$/i.exec(normalized);
+  if (versionMatch) {
+    return `wersja ${versionMatch[1]}`;
+  }
   if (isInternalReferenceValue(value)) {
     return 'Zapisane w śladzie audytu';
   }
@@ -236,7 +314,7 @@ function normalizeAnalysisCaseContext(value: unknown): AnalysisCaseContextContra
     runRef: normalizeString(raw.run_ref),
     proofPackRef: normalizeString(raw.proof_pack_ref),
     qualityGate: normalizeString(raw.quality_gate),
-    applicabilityScope: normalizeStringArray(raw.applicability_scope),
+    applicabilityScope: normalizeStringArray(raw.applicability_scope).map(formatTechnicalToken),
     completeness: normalizeCompleteness(raw.completeness),
     completenessLegacy: normalizeString(raw.completeness_legacy),
     missingPrerequisites: normalizeStringArray(raw.missing_prerequisites),
@@ -580,13 +658,20 @@ export function buildTraceSummaryRows(traceSummary: AnalysisRunTraceSummary | nu
     return [];
   }
 
+  const durationValue = traceSummary.durationMs == null
+    ? 'Nie rejestrowano czasu wykonania'
+    : formatContractValue(traceSummary.durationMs);
+  const warningsValue = traceSummary.warnings.length === 0
+    ? 'Brak ostrzeżeń'
+    : formatContractValue(traceSummary.warnings);
+
   return [
-    { label: 'Liczba krokow', value: formatContractValue(traceSummary.count) },
+    { label: 'Liczba kroków', value: formatContractValue(traceSummary.count) },
     { label: 'Pierwszy krok', value: formatContractValue(traceSummary.firstStep) },
     { label: 'Ostatni krok', value: formatContractValue(traceSummary.lastStep) },
     { label: 'Fazy', value: formatContractValue(traceSummary.phases) },
-    { label: 'Czas trwania [ms]', value: formatContractValue(traceSummary.durationMs) },
-    { label: 'Ostrzezenia', value: formatContractValue(traceSummary.warnings) },
+    { label: 'Czas trwania [ms]', value: durationValue },
+    { label: 'Ostrzeżenia', value: warningsValue },
   ];
 }
 
@@ -605,7 +690,7 @@ export function formatCompletenessStatus(status: ResultCompletenessStatus | null
     case 'complete':
       return 'Kompletny';
     case 'partial':
-      return 'Czesciowy';
+      return 'Częściowy';
     case 'failed':
       return 'Nieudany';
     case 'not_applicable':

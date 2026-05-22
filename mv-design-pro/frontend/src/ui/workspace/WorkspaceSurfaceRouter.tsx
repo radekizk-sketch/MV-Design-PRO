@@ -24,6 +24,7 @@ import { StartBranchForm } from '../network-build/forms/StartBranchForm';
 import { UpdateElementParametersForm } from '../network-build/forms/UpdateElementParametersForm';
 import { useSelectionStore } from '../selection';
 import { useSnapshotStore } from '../topology/snapshotStore';
+import { navigateToNetworkBuild, navigateToReport } from '../navigation/routes';
 import {
   useStationDerStore,
   selectAllDers,
@@ -35,6 +36,7 @@ import {
   useRunAudit2PowerFlow,
   useStationAudit2ConfigList,
   validateHostingCapacityExport,
+  type Audit2ProofPackResponse,
 } from '../network-build/station-der';
 import { SldWorkspaceContainer } from '../sld/v2/canvas/SldWorkspaceContainer';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
@@ -50,6 +52,10 @@ import { notify } from '../notifications/store';
 import {
   isInternalElementIdentifier,
 } from '../shared/publicReadinessMessage';
+import {
+  isGenericSegmentName,
+  segmentPublicIdentity,
+} from '../shared/publicTechnicalLabels';
 import { GpzConfiguratorSurface } from './surfaces/GpzConfiguratorSurface';
 import { BayConfiguratorSurface } from './surfaces/BayConfiguratorSurface';
 import { StationConfiguratorSurface } from './surfaces/StationConfiguratorSurface';
@@ -78,19 +84,27 @@ import {
   ANALYSIS_ROUTE_DEFAULT_TAB,
   ANALYSIS_SURFACE_SCREEN_CODE,
   REPORT_SURFACE_SCREEN_CODE,
+  resolveSaveModeLabel,
   type WorkspaceSurfaceCode,
   type WorkspaceSurfaceDescriptor,
 } from './types';
+import { calculationScopeDisplayName, stripTechnicalSuffix } from '../shell/publicNames';
 import { isCanonicalOpName, type CanonicalOpName } from '../../types/domainOps';
 import { resolveFixActionSurface } from '../../types/fixActionSurface';
-import type { EnergyNetworkModel, FixAction } from '../../types/enm';
+import type { Branch, EnergyNetworkModel, FixAction } from '../../types/enm';
 import type { ElementType, SelectedElement } from '../types';
 
 interface WorkspaceSurfaceRouterProps {
   region: 'panel' | 'main';
 }
 
-function SurfaceBreadcrumbs({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
+function SurfaceBreadcrumbs({
+  surface,
+  currentTitlePl,
+}: {
+  surface: WorkspaceSurfaceDescriptor;
+  currentTitlePl: string;
+}) {
   const collapseSurfaceStackTo = useNetworkBuildStore((state) => state.collapseSurfaceStackTo);
 
   return (
@@ -102,7 +116,7 @@ function SurfaceBreadcrumbs({ surface }: { surface: WorkspaceSurfaceDescriptor }
             onClick={() => collapseSurfaceStackTo(crumb.surfaceId)}
             className="rounded px-1.5 py-0.5 hover:bg-slate-100 hover:text-slate-800"
           >
-            {crumb.labelPl}
+            {index === surface.breadcrumbs.length - 1 ? currentTitlePl : crumb.labelPl}
           </button>
           {index < surface.breadcrumbs.length - 1 && <span>/</span>}
         </div>
@@ -125,19 +139,33 @@ function isInternalIdentifier(value: string): boolean {
 function displayValueOrAuditTrace(value: string | null | undefined, fallback: string): string {
   if (!value?.trim()) return fallback;
   const normalized = value.trim();
-  return isInternalIdentifier(normalized) ? fallback : normalized;
+  return isInternalIdentifier(normalized) || isGenericSegmentName(normalized) ? fallback : normalized;
 }
 
 function displayProjectLabel(value: string | null | undefined): string {
-  return displayValueOrAuditTrace(value, 'Aktywny projekt');
+  if (!value?.trim()) return 'Aktywny projekt';
+  if (isInternalIdentifier(value.trim())) return 'Aktywny projekt';
+  return stripTechnicalSuffix(value) || 'Aktywny projekt';
+}
+
+function displayScopeLabel(
+  value: string | null | undefined,
+  id: string | null | undefined = null,
+): string {
+  return calculationScopeDisplayName(value, id);
 }
 
 function findElementName(snapshot: EnergyNetworkModel | null, elementRef: string | null | undefined): string | null {
   if (!snapshot || !elementRef) return null;
+  const branch = (snapshot.branches ?? []).find(
+    (item) => item.ref_id === elementRef || item.id === elementRef,
+  );
+  if (branch) {
+    return segmentPublicIdentity(snapshot, branch as Branch).displayName;
+  }
   const candidates = [
     ...(snapshot.substations ?? []),
     ...(snapshot.bays ?? []),
-    ...(snapshot.branches ?? []),
     ...(snapshot.transformers ?? []),
     ...(snapshot.sources ?? []),
     ...(snapshot.loads ?? []),
@@ -155,6 +183,84 @@ function payloadString(surface: WorkspaceSurfaceDescriptor, key: string): string
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function publicEntityTypeLabel(value: string | null | undefined): string {
+  if (!value?.trim()) return 'Aktywny kontekst układu';
+  const normalized = value.trim();
+  const labels: Record<string, string> = {
+    project: 'Projekt',
+    gpz: 'GPZ',
+    gpz_section: 'Sekcja szyn GPZ',
+    sn_bay: 'Pole SN',
+    BaySN: 'Pole SN',
+    Source: 'Źródło GPZ',
+    station: 'Stacja SN/nN',
+    Station: 'Stacja SN/nN',
+    station_lv_side: 'Strona nN stacji',
+    segment: 'Odcinek SN',
+    LineBranch: 'Odcinek SN',
+    zksn: 'ZKSN',
+    ZKSN: 'ZKSN',
+    branch_pole: 'Słup rozgałęźny SN',
+    BranchPole: 'Słup rozgałęźny SN',
+    branch: 'Odgałęzienie SN',
+    ring: 'Pierścień SN',
+    nop: 'NOP',
+    pv_source: 'Źródło PV',
+    bess_source: 'Magazyn BESS',
+    fw_source: 'Źródło wiatrowe',
+    analysis_case: 'Zakres obliczeń',
+    analysis_run: 'Aktywne obliczenie',
+    proof_pack: 'Dowody inżynierskie',
+    report: 'Raport techniczny',
+    export_artifact: 'Eksport techniczny',
+  };
+  return labels[normalized] ?? normalized.replace(/_/g, ' ');
+}
+
+function publicAuditExtensionLabel(value: string): string {
+  const labels: Record<string, string> = {
+    power_flow_extensions: 'rozszerzony rozpływ mocy',
+    tap_position_changes: 'regulacja zaczepów transformatorów',
+    grounding_z0_z1_ratio: 'konfiguracja uziemienia punktu neutralnego',
+    bess_reserved_capacity: 'rezerwa mocy magazynu BESS',
+    pf_droop: 'charakterystyka P(f)',
+  };
+  return labels[value] ?? value.replace(/_/g, ' ');
+}
+
+function publicProofTypeTag(value: string): string {
+  const labels: Record<string, string> = {
+    SC3F_IEC60909: 'SC3F · IEC 60909',
+    SC1F_IEC60909: 'SC1F · IEC 60909',
+    SC2F_IEC60909: 'SC2F · IEC 60909',
+    SC2FG_IEC60909: 'SC2F+Z · IEC 60909',
+    VDROP: 'Spadek U',
+    LOAD_FLOW_VOLTAGE: 'Rozpływ mocy',
+    Q_U_REGULATION: 'Q(U) · NC RfG',
+    EQUIPMENT_PROOF: 'Aparatura',
+    LOAD_CURRENTS_OVERLOAD: 'Obciążalność',
+    LOSSES_ENERGY: 'Straty',
+    PROTECTION_OVERCURRENT: 'Zabezpieczenia',
+    EARTHING_GROUND_FAULT_SN: 'Ziemnozwarciowe SN',
+  };
+  return labels[value] ?? value.replace(/_/g, ' ');
+}
+
+function auditProofPackStatus(data: Audit2ProofPackResponse): {
+  readonly label: string;
+  readonly className: string;
+} {
+  if (data.proof_count <= 0) {
+    return {
+      label: 'Brak dowodów do oceny',
+      className: 'text-amber-700',
+    };
+  }
+  return data.all_pass
+    ? { label: 'Weryfikacja pozytywna', className: 'text-emerald-700' }
+    : { label: 'Wymaga sprawdzenia', className: 'text-rose-700' };
+}
+
 function resolveSurfaceObjectLabel(
   surface: WorkspaceSurfaceDescriptor,
   snapshot: EnergyNetworkModel | null,
@@ -164,12 +270,35 @@ function resolveSurfaceObjectLabel(
   const routeName = payloadString(surface, 'selectedName');
   const snapshotName = findElementName(snapshot, surface.entityRef);
   const routeType = payloadString(surface, 'selectedType');
+  const isSegmentSurface = surface.entityType === 'segment'
+    || (typeof surface.entityRef === 'string' && /^seg\//i.test(surface.entityRef));
   const fallbackByType = routeType
     ? `Wybrany obiekt: ${routeType}`
     : surface.entityType
       ? `Wybrany układ: ${surface.entityType}`
       : 'Aktywny kontekst układu';
-  return displayValueOrAuditTrace(selectedName ?? routeName ?? snapshotName ?? surface.entityRef, fallbackByType);
+  const preferredName = isSegmentSurface
+    ? snapshotName ?? selectedName ?? routeName ?? surface.entityRef
+    : selectedName ?? routeName ?? snapshotName ?? surface.entityRef;
+  const publicFallbackByType = routeType
+    ? `Wybrany obiekt: ${publicEntityTypeLabel(routeType)}`
+    : surface.entityType
+      ? publicEntityTypeLabel(surface.entityType)
+      : fallbackByType;
+  return displayValueOrAuditTrace(preferredName, publicFallbackByType);
+}
+
+function resolveSurfaceTitle(
+  surface: WorkspaceSurfaceDescriptor,
+  snapshot: EnergyNetworkModel | null,
+  selectedElement: SelectedElement | null,
+): string {
+  const isSegmentSurface = surface.entityType === 'segment'
+    || (typeof surface.entityRef === 'string' && /^seg\//i.test(surface.entityRef));
+  if (isSegmentSurface && isGenericSegmentName(surface.titlePl)) {
+    return resolveSurfaceObjectLabel(surface, snapshot, selectedElement);
+  }
+  return surface.titlePl;
 }
 
 function resolveRunLabel(runId: string | null | undefined, runs: ExecutionRun[]): string {
@@ -208,13 +337,16 @@ function MiniSldCard({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
 
 function SurfaceHeader({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const session = useNetworkBuildStore((state) => state.surfaceSessions[surface.surfaceId] ?? null);
+  const snapshot = useSnapshotStore((state) => state.snapshot);
+  const selectedElement = useSelectionStore((state) => state.selectedElement);
+  const titlePl = resolveSurfaceTitle(surface, snapshot, selectedElement);
 
   return (
     <div className="border-b border-slate-200 bg-white px-4 py-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <SurfaceBreadcrumbs surface={surface} />
-          <h2 className="text-sm font-semibold text-slate-900">{surface.titlePl}</h2>
+          <SurfaceBreadcrumbs surface={surface} currentTitlePl={titlePl} />
+          <h2 className="text-sm font-semibold text-slate-900">{titlePl}</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
           {session?.hasUnsavedChanges && (
@@ -270,7 +402,7 @@ function KeyValueGrid({
 const ASSUMPTION_LABELS: Record<string, string> = {
   source_assumptions_ref: 'Założenia źródeł',
   load_assumptions_ref: 'Założenia obciążeń',
-  switching_state_ref: 'Stan lacznikow',
+  switching_state_ref: 'Stan łączników',
   grounding_assumptions_ref: 'Uziemienie',
   temperature_assumptions_ref: 'Temperatura',
   transformer_tap_assumptions_ref: 'Założenia regulacji zaczepowej',
@@ -316,9 +448,9 @@ function buildRunOverviewRows(contract: AnalysisRunContract): LabeledValueRow[] 
     { label: 'Obliczenie', value: formatContractValue(context?.runRef ?? contract.id) },
     { label: 'Typ analizy', value: formatContractValue(contract.analysisType) },
     { label: 'Status uruchomienia', value: formatContractValue(contract.status) },
-    { label: 'Stan wynikow', value: formatContractValue(contract.resultStatus) },
-    { label: 'Brama jakosci', value: formatContractValue(context?.qualityGate) },
-    { label: 'Kompletnosc', value: formatCompletenessStatus(context?.completeness ?? null) },
+    { label: 'Stan wyników', value: formatContractValue(contract.resultStatus) },
+    { label: 'Brama jakości', value: formatContractValue(context?.qualityGate) },
+    { label: 'Kompletność', value: formatCompletenessStatus(context?.completeness ?? null) },
     { label: 'Pakiet uzasadnień', value: formatContractValue(contract.proofPackRef ?? context?.proofPackRef) },
     { label: 'Ślad wejścia', value: formatContractValue(contract.inputHash) },
     { label: 'Utworzono', value: formatDateTime(contract.createdAt) },
@@ -332,9 +464,9 @@ function buildExportArtifactRows(contract: AnalysisRunContract): LabeledValueRow
   }
 
   return [
-    { label: 'Typ eksportu', value: exportArtifact.exportKind },
+    { label: 'Typ eksportu', value: formatContractValue(exportArtifact.exportKind) },
     { label: 'Artefakt eksportu', value: formatContractValue(exportArtifact.exportRef) },
-    { label: 'Kompletnosc eksportu', value: formatCompletenessStatus(exportArtifact.completenessStatus) },
+    { label: 'Kompletność eksportu', value: formatCompletenessStatus(exportArtifact.completenessStatus) },
     { label: 'Pakiet uzasadnień', value: formatContractValue(exportArtifact.proofPackRef ?? contract.proofPackRef) },
     { label: 'Ślad wejścia', value: formatContractValue(exportArtifact.inputHash) },
     { label: 'Ślad wyniku', value: formatContractValue(exportArtifact.resultHash) },
@@ -350,16 +482,16 @@ function buildExportPolicyRows(contract: AnalysisRunContract): LabeledValueRow[]
   }
 
   return [
-    { label: 'Polityka eksportu', value: exportPolicy.exportKind },
-    { label: 'Dopuszcza wynik czesciowy', value: formatContractValue(exportPolicy.allowsPartial) },
-    { label: 'Wymaga potwierdzenia wyniku czesciowego', value: formatContractValue(exportPolicy.requiresPartialConfirmation) },
+    { label: 'Polityka eksportu', value: formatContractValue(exportPolicy.exportKind) },
+    { label: 'Dopuszcza wynik częściowy', value: formatContractValue(exportPolicy.allowsPartial) },
+    { label: 'Wymaga potwierdzenia wyniku częściowego', value: formatContractValue(exportPolicy.requiresPartialConfirmation) },
     { label: 'Niesie kontekst obliczeniowy', value: formatContractValue(exportPolicy.carriesAnalysisCaseContext) },
     { label: 'Zawiera pakiet uzasadnień', value: formatContractValue(exportPolicy.carriesProofPackRef) },
     { label: 'Zawiera ślad wyniku', value: formatContractValue(exportPolicy.carriesResultHash) },
     { label: 'Zawiera ślad wejścia', value: formatContractValue(exportPolicy.carriesInputHash) },
-    { label: 'Prezentacja pustej wartosci', value: exportPolicy.nullRendering },
-    { label: 'Prezentacja stanu nie dotyczy', value: exportPolicy.notApplicableRendering },
-    { label: 'Prezentacja wyniku czesciowego', value: exportPolicy.partialRendering },
+    { label: 'Prezentacja pustej wartości', value: formatContractValue(exportPolicy.nullRendering) },
+    { label: 'Prezentacja stanu nie dotyczy', value: formatContractValue(exportPolicy.notApplicableRendering) },
+    { label: 'Prezentacja wyniku częściowego', value: formatContractValue(exportPolicy.partialRendering) },
   ];
 }
 
@@ -373,15 +505,15 @@ function buildReproducibilityRows(contract: AnalysisRunContract): LabeledValueRo
     { label: 'Rodzina solvera', value: formatContractValue(reproducibility.solverFamily) },
     { label: 'Wersja solvera', value: formatContractValue(reproducibility.solverVersion) },
     { label: 'Wersja metody', value: formatContractValue(reproducibility.methodVersion) },
-    { label: 'Wersja zestawu wzorow', value: formatContractValue(reproducibility.formulaSetVersion) },
-    { label: 'Kontrakt wynikow', value: formatContractValue(reproducibility.resultsContractVersion) },
+    { label: 'Wersja zestawu wzorów', value: formatContractValue(reproducibility.formulaSetVersion) },
+    { label: 'Kontrakt wyników', value: formatContractValue(reproducibility.resultsContractVersion) },
     { label: 'Kontrakt pola', value: formatContractValue(reproducibility.bayContractVersion) },
     { label: 'Renderer uzasadnienia', value: formatContractValue(reproducibility.proofRendererVersion) },
     { label: 'Wersja katalogu', value: formatContractValue(reproducibility.catalogSnapshotRef) },
     { label: 'Wersja schematu katalogu', value: formatContractValue(reproducibility.catalogSchemaVersion) },
     { label: 'Tolerancje', value: formatContractValue(reproducibility.tolerancePolicyRef) },
-    { label: 'Zaokraglenia', value: formatContractValue(reproducibility.roundingPolicyRef) },
-    { label: 'Polityka jakosci', value: formatContractValue(reproducibility.qualityGatePolicyVersion) },
+    { label: 'Zaokrąglenia', value: formatContractValue(reproducibility.roundingPolicyRef) },
+    { label: 'Polityka jakości', value: formatContractValue(reproducibility.qualityGatePolicyVersion) },
     { label: 'Ślad wyniku', value: formatContractValue(reproducibility.resultHash) },
     { label: 'Podstawa normatywna', value: formatContractValue(reproducibility.standardBasisRef) },
   ];
@@ -423,7 +555,7 @@ function ScopePills({ scopes }: { scopes: string[] }) {
           key={scope}
           className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700"
         >
-          {scope}
+          {formatContractValue(scope)}
         </span>
       ))}
     </div>
@@ -541,14 +673,14 @@ function AnalysisContractPanel({
 
           {summaryRows.length > 0 && (
             <div className="space-y-3">
-              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Podsumowanie wynikow</div>
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Podsumowanie wyników</div>
               <KeyValueGrid rows={summaryRows} columns={3} />
             </div>
           )}
 
           {traceRows.length > 0 && (
             <div className="space-y-3">
-              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Slad obliczen</div>
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Ślad obliczeń</div>
               <KeyValueGrid rows={traceRows} columns={3} />
             </div>
           )}
@@ -569,7 +701,7 @@ function AnalysisContractPanel({
 
           {assumptionRows.length > 0 && (
             <div className="space-y-3">
-              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Jawne zalozenia</div>
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Jawne założenia</div>
               <KeyValueGrid rows={assumptionRows} columns={3} />
             </div>
           )}
@@ -583,7 +715,7 @@ function AnalysisContractPanel({
 
           {reproducibilityRows.length > 0 && (
             <div className="space-y-3">
-              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Reprodukowalnosc</div>
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Reprodukowalność</div>
               <KeyValueGrid rows={reproducibilityRows} columns={3} />
             </div>
           )}
@@ -649,6 +781,7 @@ function useChildSurfaceLauncher(surface: WorkspaceSurfaceDescriptor) {
 
 function AnalysisContextSummary({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeProjectName = useAppStateStore((state) => state.activeProjectName);
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeCaseName = useAppStateStore((state) => state.activeCaseName);
   const activeSnapshotId = useAppStateStore((state) => state.activeSnapshotId);
   const activeRunId = useAppStateStore((state) => state.activeRunId);
@@ -660,7 +793,7 @@ function AnalysisContextSummary({ surface }: { surface: WorkspaceSurfaceDescript
     <KeyValueGrid
       rows={[
         { label: 'Projekt', value: displayProjectLabel(activeProjectName) },
-        { label: 'Wariant', value: activeCaseName ?? 'Nie wybrano wariantu' },
+        { label: 'Wariant', value: displayScopeLabel(activeCaseName, activeCaseId) },
         { label: 'Wersja układu', value: activeSnapshotId ? 'Aktualna wersja układu' : 'Nie wybrano wersji układu' },
         { label: 'Obliczenie', value: resolveRunLabel(activeRunId, executionRuns) },
         { label: 'Obiekt', value: resolveSurfaceObjectLabel(surface, snapshot, selectedElement) },
@@ -673,9 +806,13 @@ function AnalysisContextSummary({ surface }: { surface: WorkspaceSurfaceDescript
 
 function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const projectName = useAppStateStore((state) => state.activeProjectName);
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
+  const activeRunId = useAppStateStore((state) => state.activeRunId);
   const executionRuns = useExecutionRunsStore((state) => state.runs);
+  const executionActiveRunId = useExecutionRunsStore((state) => state.activeRunId);
   const openChildSurface = useChildSurfaceLauncher(surface);
   const activeAnalysisTab = surface.tabId ?? ANALYSIS_ROUTE_DEFAULT_TAB;
+  const effectiveRunId = activeRunId ?? executionActiveRunId;
 
   const comparisonRunHistory = useMemo(
     () =>
@@ -760,14 +897,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           />
           <SurfaceActionButton
             label="Raporty OSD i audytowe"
-            onClick={() =>
-              openChildSurface('report', {
-                screenCode: REPORT_SURFACE_SCREEN_CODE,
-                titlePl: 'Raporty OSD i audytowe',
-                sizeClass: 'C',
-                supportsMiniSld: true,
-              })
-            }
+            onClick={() => navigateToReport({ caseId: activeCaseId, runId: effectiveRunId })}
           />
         </div>
       </SectionCard>
@@ -786,6 +916,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
 function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeProjectName = useAppStateStore((state) => state.activeProjectName);
   const activeProjectId = useAppStateStore((state) => state.activeProjectId);
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeCaseName = useAppStateStore((state) => state.activeCaseName);
   const appActiveRunId = useAppStateStore((state) => state.activeRunId);
   const executionActiveRunId = useExecutionRunsStore((state) => state.activeRunId);
@@ -795,6 +926,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const patchSurfaceSession = useNetworkBuildStore((state) => state.patchSurfaceSession);
   const session = useNetworkBuildStore((state) => state.surfaceSessions[surface.surfaceId] ?? null);
   const openChildSurface = useChildSurfaceLauncher(surface);
+  const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const [scope, setScope] = useState<'siec' | 'ciag' | 'stacja' | 'pole' | 'zrodlo'>('siec');
   const [detailLevel, setDetailLevel] = useState<'standard' | 'pelny'>('standard');
   // Phase 11: integracja audit2 report.
@@ -815,6 +947,21 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       hasUnsavedChanges: false,
       canNavigateAway: true,
     });
+
+  const openConfigurationOverview = () => {
+    navigateToNetworkBuild();
+    openRouteSurface('E-04', {
+      titlePl: 'Przegląd techniczny układu',
+      tabId: 'kontrola',
+      subjectKind: 'analysis_case',
+      subjectRef: activeCaseId,
+      sizeClass: 'C',
+      stackLevel: 1,
+      openMode: 'expand_workspace',
+      supportsMiniSld: false,
+      route: 'sld',
+    });
+  };
 
   // Etap 9 + Faza F + audit fix sys.4: status raportu uwzględnia DerReadinessMatrix
   // per-axis. Jeśli jakikolwiek DER ma krytyczne zagadnienie na osi raportu
@@ -896,17 +1043,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           <button
             type="button"
             className="mt-3 rounded border border-current px-3 py-1.5 text-xs font-semibold hover:bg-white/40"
-            onClick={() =>
-              openChildSurface('E-04', {
-                titlePl: 'Przegląd techniczny układu',
-                tabId: 'kontrola',
-                subjectKind: 'analysis_case',
-                subjectRef: activeCaseName,
-                sizeClass: 'C',
-                openMode: 'expand_workspace',
-                supportsMiniSld: false,
-              })
-            }
+            onClick={openConfigurationOverview}
           >
             Przejdź do konfiguracji układu
           </button>
@@ -978,11 +1115,11 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             <KeyValueGrid
               rows={[
                 { label: 'Projekt', value: displayProjectLabel(activeProjectName) },
-                { label: 'Zakres i warunki', value: activeCaseName ?? 'Nie wybrano zakresu obliczeń' },
+                { label: 'Zakres i warunki', value: displayScopeLabel(activeCaseName, activeCaseId) },
                 { label: 'Ostatnie obliczenie', value: resolveRunLabel(activeRunId, executionRuns) },
-                { label: 'Tryb zapisu', value: session?.saveMode ?? 'transakcyjny' },
-                { label: 'Zakres raportu', value: scope },
-                { label: 'Szczegółowość', value: detailLevel },
+                { label: 'Tryb zapisu', value: session?.saveMode ? resolveSaveModeLabel(session.saveMode) : 'transakcyjny' },
+                { label: 'Zakres raportu', value: formatContractValue(scope) },
+                { label: 'Szczegółowość', value: formatContractValue(detailLevel) },
               ]}
               columns={2}
             />
@@ -1026,8 +1163,8 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         focusTitle="Bieżąca konfiguracja"
         focusRowsBuilder={(contract) => [
           { label: 'Obliczenie', value: formatContractValue(contract.analysisCaseContext?.runRef ?? contract.id) },
-          { label: 'Zakres raportu', value: scope },
-          { label: 'Szczegółowość', value: detailLevel },
+          { label: 'Zakres raportu', value: formatContractValue(scope) },
+          { label: 'Szczegółowość', value: formatContractValue(detailLevel) },
           { label: 'Tryb zapisu', value: formatContractValue(session?.saveMode ?? 'transactional') },
           { label: 'Pakiet uzasadnień', value: formatContractValue(contract.proofPackRef) },
         ]}
@@ -1035,14 +1172,14 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         showLineage
         showReproducibility
       />
-      {/* Raport rozszerzeń audytu 2: JSON, tekst PL i LaTeX. */}
+      {/* Raport rozszerzonej walidacji: JSON, tekst PL i LaTeX. */}
       <SectionCard
-        title="Raport audytu 2 (rozszerzenia)"
+        title="Raport rozszerzonej walidacji technicznej"
         eyebrow="JSON · tekst PL · LaTeX"
       >
         <p className="mb-2 text-xs text-slate-700">
-          Generuje raport walidacji rozszerzeń audytu 2: tryby pracy BESS, przełączniki
-          zaczepów, zdolność przyłączeniową, wytrzymałość aparatury i uziemienie
+          Generuje raport walidacji układów źródłowych i stacyjnych: tryby pracy BESS,
+          regulację zaczepów, zdolność przyłączeniową, wytrzymałość aparatury i uziemienie
           przekładników napięciowych. Format: JSON dla integracji, tekst PL dla audytu
           i LaTeX do dołączenia do uzasadnienia inżynierskiego.
         </p>
@@ -1053,22 +1190,39 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             disabled={!activeProjectId || audit2ProofPack.isPending}
             onClick={() => {
               const configs = audit2ConfigList.data ?? [];
-              // Phase 23: real nominal_power_kw z spec (priorytet); median fallback.
-              const estimatePowerKw = (kind: string): number => {
-                if (kind === 'PV') return 500;
-                if (kind === 'BESS') return 1000;
-                if (kind === 'FW') return 2300;
-                return 0;
-              };
-              const realPower = (spec: { der_kind: string; nominal_power_kw?: number | null }): number =>
-                spec.nominal_power_kw ?? estimatePowerKw(spec.der_kind);
+              const derSpecs = configs.flatMap((config) =>
+                config.der_specs.map((spec) => ({ stationId: config.station_id, spec })),
+              );
+              const missingNominalPower = derSpecs.find(({ spec }) =>
+                typeof spec.nominal_power_kw !== 'number' || spec.nominal_power_kw <= 0,
+              );
+              if (missingNominalPower) {
+                notify(
+                  'Nie można wygenerować pakietu uzasadnienia: układ źródłowy nie ma mocy znamionowej z katalogu.',
+                  'error',
+                );
+                return;
+              }
+              const hostingCapacitySpecs = configs
+                .map((c) => ({
+                  station_id: c.station_id,
+                  p_export_kw: c.der_specs.reduce(
+                    (sum: number, spec) => sum + (spec.nominal_power_kw ?? 0),
+                    0,
+                  ),
+                  p_import_kw: 0,
+                }))
+                .filter((spec) => spec.p_export_kw > 0);
+              if (hostingCapacitySpecs.length === 0) {
+                notify(
+                  'Brak układów źródłowych z katalogową mocą znamionową do wygenerowania pakietu uzasadnienia.',
+                  'warning',
+                );
+                return;
+              }
               audit2ProofPack.mutate({
                 station_id: configs[0]?.station_id ?? 'aggregate',
-                hosting_capacity_specs: configs.map((c) => ({
-                  station_id: c.station_id,
-                  p_export_kw: c.der_specs.reduce((sum: number, s) => sum + realPower(s), 0),
-                  p_import_kw: 0,
-                })),
+                hosting_capacity_specs: hostingCapacitySpecs,
                 generated_at_iso: '1970-01-01T00:00:00Z',
               });
             }}
@@ -1128,6 +1282,7 @@ function resolveLatestCompletedRun(runs: ExecutionRun[]): ExecutionRun | null {
 
 function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeProjectName = useAppStateStore((state) => state.activeProjectName);
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeCaseName = useAppStateStore((state) => state.activeCaseName);
   const executionRuns = useExecutionRunsStore((state) => state.runs);
   const openChildSurface = useChildSurfaceLauncher(surface);
@@ -1160,8 +1315,8 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       <SectionCard title="Stan obliczeń wariantu">
         <KeyValueGrid
           rows={[
-            { label: 'Projekt', value: activeProjectName ?? 'Nie wybrano projektu' },
-            { label: 'Wariant pracy sieci', value: activeCaseName ?? 'Nie wybrano wariantu' },
+            { label: 'Projekt', value: displayProjectLabel(activeProjectName) },
+            { label: 'Wariant pracy sieci', value: displayScopeLabel(activeCaseName, activeCaseId) },
             { label: 'Stan obliczeń', value: stateLabel },
             { label: 'Liczba wykonanych obliczeń', value: String(completedCount) },
             { label: 'Ostatnie obliczenie', value: lastCalculationLabel },
@@ -1186,7 +1341,7 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
                 titlePl: 'Przegląd techniczny układu',
                 tabId: 'kontrola',
                 subjectKind: 'analysis_case',
-                subjectRef: activeCaseName ?? surface.subjectRef ?? 'variants-context',
+                subjectRef: activeCaseId ?? surface.subjectRef ?? 'variants-context',
                 sizeClass: 'C',
                 openMode: 'expand_workspace',
                 supportsMiniSld: false,
@@ -1305,8 +1460,8 @@ function PhaseStateSurface({ surface }: { surface: WorkspaceSurfaceDescriptor })
           { label: 'Identyfikator przypadku', value: formatContractValue(contract.analysisCaseContext?.caseRef) },
           { label: 'Rodzaj przypadku', value: formatContractValue(contract.analysisCaseContext?.caseKind) },
           { label: 'Wersja układu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-          { label: 'Brama jakosci', value: formatContractValue(contract.analysisCaseContext?.qualityGate) },
-          { label: 'Kompletnosc zgodnosci przejsciowej', value: formatContractValue(contract.analysisCaseContext?.completenessLegacy) },
+          { label: 'Brama jakości', value: formatContractValue(contract.analysisCaseContext?.qualityGate) },
+          { label: 'Kompletność zgodności przejściowej', value: formatContractValue(contract.analysisCaseContext?.completenessLegacy) },
         ]}
         showAssumptions
         showLineage
@@ -1909,7 +2064,7 @@ function SymmetricalComponentsSurface({ surface }: { surface: WorkspaceSurfaceDe
           { label: 'Obiekt', value: resolveSurfaceObjectLabel(surface, snapshot, selectedElement) },
           { label: 'Wersja układu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
           { label: 'Uziemienie', value: formatContractValue(contract.analysisCaseContext?.assumptions['grounding_assumptions_ref']) },
-          { label: 'Stan lacznikow', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
+          { label: 'Stan łączników', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
           { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
         ]}
       />
@@ -1934,7 +2089,7 @@ function CatalogHelperSurface({ surface }: { surface: WorkspaceSurfaceDescriptor
                 ? 'Ekran sluzy do przegladu i wyboru pozycji katalogowych dla obiektow technicznych.'
                 : 'Panel pomocniczy sluzy do wyboru i przegladu pozycji katalogowych.',
             },
-            { label: 'Wyniki', value: 'Widok katalogowy nie ma wlasnych wynikow, uzasadnienia ani raportu.' },
+            { label: 'Wyniki', value: 'Widok katalogowy nie ma własnych wyników, uzasadnienia ani raportu.' },
             { label: 'Zapis', value: 'Widok katalogowy nie zapisuje samodzielnie układu sieci.' },
             { label: 'Kontekst', value: surface.subjectRef ?? 'Nie wskazano kontekstu katalogowego' },
           ]}
@@ -1950,6 +2105,7 @@ function CatalogHelperSurface({ surface }: { surface: WorkspaceSurfaceDescriptor
 }
 
 function CaseContextSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeCaseName = useAppStateStore((state) => state.activeCaseName);
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const openChildSurface = useChildSurfaceLauncher(surface);
@@ -1960,7 +2116,7 @@ function CaseContextSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
       <SectionCard title="Parametry analizy" eyebrow="Kontekst roboczy">
         <KeyValueGrid
           rows={[
-            { label: 'Wariant', value: activeCaseName ?? 'Nie wybrano wariantu' },
+            { label: 'Wariant', value: displayScopeLabel(activeCaseName, activeCaseId) },
             { label: 'Stan obliczeń', value: activeRunId ? 'Wybrane obliczenie jest dostępne' : 'Nie wybrano obliczenia' },
             { label: 'Następny krok', value: 'Skontroluj konfigurację układu, wyniki albo raport techniczny dla aktywnego wariantu.' },
           ]}
@@ -1976,7 +2132,7 @@ function CaseContextSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
                 sizeClass: 'C',
                 supportsMiniSld: false,
                 subjectKind: 'helper_context',
-                subjectRef: activeCaseName ?? surface.subjectRef ?? 'variants-context',
+                subjectRef: activeCaseId ?? surface.subjectRef ?? 'variants-context',
               })
             }
           />
@@ -2044,7 +2200,7 @@ function ThermalDynamicSurface({ surface }: { surface: WorkspaceSurfaceDescripto
           { label: 'Założenia obciążeń', value: formatContractValue(contract.analysisCaseContext?.assumptions['load_assumptions_ref']) },
           { label: 'Założenia źródeł', value: formatContractValue(contract.analysisCaseContext?.assumptions['source_assumptions_ref']) },
           { label: 'Wersja układu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-          { label: 'Kompletnosc', value: formatCompletenessStatus(contract.analysisCaseContext?.completeness ?? null) },
+          { label: 'Kompletność', value: formatCompletenessStatus(contract.analysisCaseContext?.completeness ?? null) },
         ]}
       />
     </div>
@@ -2086,19 +2242,19 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   // Phase 10: integracja audit2 ProofPack.
   const generateProofPack = useGenerateAudit2ProofPack();
   const stationConfigList = useStationAudit2ConfigList(projectId);
-  // Phase 37: audit2 power flow.
+  // Integracja rozszerzonego rozpływu mocy.
   const runPowerFlow = useRunAudit2PowerFlow();
   return (
     <div data-testid="proof-surface" className="space-y-4">
       <MiniSldCard surface={surface} />
       <SectionCard
         title="Uzasadnienie inżynierskie obliczeń"
-        eyebrow="E-36 · Proof Pack"
+        eyebrow="Pakiet uzasadnień"
       >
         <p className="text-sm text-slate-700">
-          Pakiet uzasadnień inżynierskich (Proof Pack) zawiera matematyczny ślad
-          obliczeń: wzory IEC/PN-EN, dane wejściowe, podstawienia, wyniki kroków
-          i jednostki. Każdy krok ma postać:{' '}
+          Pakiet uzasadnień inżynierskich zawiera matematyczny ślad obliczeń:
+          wzory IEC/PN-EN, dane wejściowe, podstawienia, wyniki kroków i jednostki.
+          Każdy krok ma postać:{' '}
           <strong>Wzór → Dane → Podstawienie → Wynik → Sprawdzenie jednostek</strong>.
         </p>
         <div className="mt-3 grid grid-cols-1 gap-2 text-xs md:grid-cols-2 xl:grid-cols-3">
@@ -2106,13 +2262,13 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           <KeyValue label="Zakres" value={resolveSurfaceObjectLabel(surface, snapshot, selectedElement)} />
           <KeyValue label="Format eksportu" value="JSON · LaTeX · PDF · DOCX" />
           <KeyValue label="Stacje w zakresie" value={String(stationCount)} />
-          <KeyValue label="Układy PV/BESS/FW (DER)" value={String(allDers.length)} />
+          <KeyValue label="Układy PV/BESS/FW" value={String(allDers.length)} />
           <KeyValue
             label="Powiązania katalogowe"
             value={
               allDers.length > 0
                 ? `${allDers.length} obiektów z pakietami katalogowymi`
-                : 'Nie wybrano DER w zakresie'
+                : 'Nie wybrano źródeł w zakresie'
             }
           />
         </div>
@@ -2143,15 +2299,15 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           </div>
         </SectionCard>
       )}
-      {/* Pakiet uzasadnienia dla rozszerzeń audytu 2. */}
+      {/* Pakiet uzasadnienia dla rozszerzonej walidacji technicznej. */}
       <SectionCard
-        title="Uzasadnienia audytu 2"
+        title="Uzasadnienia rozszerzonej walidacji"
         eyebrow="Pakiet walidacji rozszerzeń"
       >
         <p className="mb-2 text-xs text-slate-700">
-          Generuje pakiet pięciu uzasadnień dla rozszerzeń audytu 2:
-          BESS_OPERATION_MODES, TAP_CHANGER_PLAN, HOSTING_CAPACITY_EXPORT,
-          DEVICE_WITHSTAND, VT_GROUNDING_VALIDATION.
+          Generuje pakiet pięciu uzasadnień: tryby pracy BESS, plan regulacji zaczepów,
+          zdolność przyłączeniową źródeł, wytrzymałość aparatury oraz uziemienie
+          przekładników napięciowych.
         </p>
         <button
           type="button"
@@ -2160,26 +2316,34 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           onClick={() => {
             if (!projectId) return;
             const configs = stationConfigList.data ?? [];
-            // Phase 23: priorytetowo real nominal_power_kw z DER spec (jak ustawione przez wizard).
-            // Fallback: median per kind (gdy spec nie ma power).
-            const estimatePowerKw = (kind: string): number => {
-              if (kind === 'PV') return 500;
-              if (kind === 'BESS') return 1000;
-              if (kind === 'FW') return 2300;
-              return 0;
-            };
-            const realPower = (spec: { der_kind: string; nominal_power_kw?: number | null }): number =>
-              spec.nominal_power_kw ?? estimatePowerKw(spec.der_kind);
+            const derSpecs = configs.flatMap((config) =>
+              config.der_specs.map((spec) => ({ stationId: config.station_id, spec })),
+            );
+            const missingNominalPower = derSpecs.find(({ spec }) =>
+              typeof spec.nominal_power_kw !== 'number' || spec.nominal_power_kw <= 0,
+            );
+            if (missingNominalPower) {
+              notify(
+                'Nie można wygenerować dowodów: układ źródłowy nie ma mocy znamionowej z katalogu.',
+                'error',
+              );
+              return;
+            }
             const hostingSpecs = configs
               .filter((c) => c.der_specs.length > 0)
               .map((c) => ({
                 station_id: c.station_id,
                 p_export_kw: c.der_specs.reduce(
-                  (sum: number, spec) => sum + realPower(spec),
+                  (sum: number, spec) => sum + (spec.nominal_power_kw ?? 0),
                   0,
                 ),
                 p_import_kw: 0,
-              }));
+              }))
+              .filter((spec) => spec.p_export_kw > 0);
+            if (hostingSpecs.length === 0) {
+              notify('Brak układów źródłowych z katalogową mocą znamionową do wygenerowania dowodów.', 'warning');
+              return;
+            }
             generateProofPack.mutate({
               station_id: configs[0]?.station_id ?? 'aggregate',
               hosting_capacity_specs: hostingSpecs,
@@ -2187,16 +2351,16 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           }}
           className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {generateProofPack.isPending ? 'Generowanie...' : 'Generuj dowody audytu 2'}
+          {generateProofPack.isPending ? 'Generowanie...' : 'Generuj dowody walidacji'}
         </button>
         {generateProofPack.data && (
           <div data-testid="audit2-proof-result" className="mt-3 space-y-2">
             <div className="text-xs">
               <strong>Wynik:</strong>{' '}
-              <span className={generateProofPack.data.all_pass ? 'text-emerald-700' : 'text-rose-700'}>
-                {generateProofPack.data.all_pass ? 'WSZYSTKIE OK' : 'BLOKERY OBECNE'}
+              <span className={auditProofPackStatus(generateProofPack.data).className}>
+                {auditProofPackStatus(generateProofPack.data).label}
               </span>{' '}
-              · {generateProofPack.data.proof_count} dowodow,{' '}
+              · {generateProofPack.data.proof_count} dowodów,{' '}
               {generateProofPack.data.fail_count} pozycji kontroli.
             </div>
             <div className="space-y-1">
@@ -2211,7 +2375,7 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
                       : 'border-rose-300 bg-rose-50 text-rose-800')
                   }
                 >
-                  <span className="font-mono">{p.proof_type}</span>: {p.summary_pl}
+                  <span className="font-medium">{publicAuditExtensionLabel(p.proof_type)}</span>: {p.summary_pl}
                 </div>
               ))}
             </div>
@@ -2219,28 +2383,21 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         )}
         {generateProofPack.isError && (
           <div className="mt-2 text-xs text-rose-700">
-            Blad generowania: {generateProofPack.error.message}
+            Błąd generowania: {generateProofPack.error.message}
           </div>
         )}
       </SectionCard>
 
-      {/* Phase 37+46: audit2 Power Flow run — pełna pętla DB → wrapper → audit trail.
-          Kanał 1 (direct): ten przycisk → POST /api/cases/audit2-power-flow.
-          Kanał 2 (indirect): ustaw run.options.audit2_project_id +
-          audit2_station_id w istniejącym Calculate flow (opt-in dla canonical_run
-          pipeline obejmujących PF, SC, phase_state_sn). */}
+      {/* Rozszerzony rozpływ mocy — pełna pętla danych katalogowych, solvera i śladu obliczeń. */}
       <SectionCard
-        title="Audit2 Power Flow (rozszerzona analiza z aplikacja zaczepow)"
-        eyebrow="POST /api/cases/audit2-power-flow"
+        title="Rozpływ mocy rozszerzony (z regulacją zaczepów)"
+        eyebrow="Obliczenia serwerowe"
       >
         <p className="mb-2 text-xs text-slate-700">
-          Uruchamia pełną pętlę: pobiera audit2 station config z DB, aplikuje
-          adjustments do network model (tap-changer + block-trafo Z + grounding +
-          BESS reserved + P(f) droop), wywołuje Power Flow solver z zaadaptowanej
-          sieci. Zwraca audit trail. Solvery PF/SC/phase_state_sn rozszerzone o
-          opt-in audit2 (Phase 41+43+46) — przekaż <code>audit2_project_id</code> +{' '}
-          <code>audit2_station_id</code> w opcjach obliczenia, aby aktywowac
-          drugi kanał integracji.
+          Uruchamia obliczenie rozpływu mocy na aktywnej wersji układu z uwzględnieniem
+          katalogowej konfiguracji stacji: regulacji zaczepów transformatora, wariantów
+          BESS, charakterystyk P(f), uziemienia i danych aparatury. Wynik pochodzi
+          z backendowego solvera i zachowuje ślad obliczeń.
         </p>
         <div data-testid="audit2-pf-snapshot-status" className="mb-2 rounded bg-slate-100 p-2 text-[11px]">
           {snapshotId ? (
@@ -2277,38 +2434,39 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           }}
           className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {runPowerFlow.isPending ? 'Uruchamianie...' : 'Uruchom audit2 Power Flow'}
+          {runPowerFlow.isPending ? 'Uruchamianie...' : 'Uruchom rozpływ mocy rozszerzony'}
         </button>
         {runPowerFlow.data && (
           <div data-testid="audit2-power-flow-result" className="mt-3 space-y-2 rounded border border-blue-300 bg-blue-50 p-3 text-xs text-blue-900">
             <div className="font-semibold">
-              Wynik dla stacji <code>{runPowerFlow.data.station_id}</code>
+              Wynik dla wybranej stacji
             </div>
             <div>
-              Solver wywolany: {runPowerFlow.data.solver_attempted ? 'TAK' : 'NIE'}
+              Obliczenie serwerowe: {runPowerFlow.data.solver_attempted ? 'uruchomione' : 'nieuruchomione'}
               {runPowerFlow.data.solver_error && (
-                <span className="ml-2 text-rose-700">(blad: {runPowerFlow.data.solver_error.slice(0, 80)})</span>
+                <span className="ml-2 text-rose-700">(błąd: {runPowerFlow.data.solver_error.slice(0, 80)})</span>
               )}
             </div>
             <div>
-              Graph: {runPowerFlow.data.graph_node_count} wezlow,{' '}
-              {runPowerFlow.data.graph_branch_count} galezi,{' '}
-              {runPowerFlow.data.graph_inverter_source_count} zrodel.
+              Model obliczeniowy: {runPowerFlow.data.graph_node_count} węzłów,{' '}
+              {runPowerFlow.data.graph_branch_count} gałęzi,{' '}
+              {runPowerFlow.data.graph_inverter_source_count} źródeł.
             </div>
-            <div className="text-[11px] font-mono">
-              audit2 ext keys: [{runPowerFlow.data.audit2_extensions_keys.join(', ')}]
+            <div className="text-[11px]">
+              Zastosowane moduły walidacji:{' '}
+              {runPowerFlow.data.audit2_extensions_keys.map(publicAuditExtensionLabel).join(', ')}
             </div>
             <details>
-              <summary className="cursor-pointer">Audit trail (apply changes)</summary>
-              <pre className="mt-1 overflow-auto bg-white p-1 text-[10px]">
-                {JSON.stringify(runPowerFlow.data.audit2_applied, null, 2)}
-              </pre>
+              <summary className="cursor-pointer">Ślad zastosowanych danych katalogowych</summary>
+              <div className="mt-1 rounded bg-white p-2 text-[11px]">
+                Szczegółowy ślad zastosowanych nastaw i danych katalogowych jest zapisany w wyniku backendowym.
+              </div>
             </details>
           </div>
         )}
         {runPowerFlow.isError && (
           <div className="mt-2 text-xs text-rose-700">
-            Blad uruchomienia: {runPowerFlow.error.message}
+            Błąd uruchomienia: {runPowerFlow.error.message}
           </div>
         )}
       </SectionCard>
@@ -2322,7 +2480,7 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
               className="rounded border border-slate-200 bg-white p-3"
             >
               <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-                {pt.id}
+                {publicProofTypeTag(pt.id)}
               </div>
               <div className="mt-1 text-sm font-medium text-slate-800">
                 {pt.labelPl}
@@ -2381,7 +2539,7 @@ const PROOF_PACK_TYPES = [
   {
     id: 'LOAD_FLOW_VOLTAGE',
     labelPl: 'Napięcia rozpływowe',
-    descriptionPl: 'Profile U(s) z Newton-Raphson power flow.',
+    descriptionPl: 'Profile U(s) z rozpływu mocy Newtona-Raphsona.',
   },
   {
     id: 'Q_U_REGULATION',
@@ -2396,12 +2554,12 @@ const PROOF_PACK_TYPES = [
   {
     id: 'LOAD_CURRENTS_OVERLOAD',
     labelPl: 'Prądy obciążenia',
-    descriptionPl: 'Idd vs. obciążenie obliczone — przekroczenia.',
+    descriptionPl: 'Idd względem obciążenia obliczonego — przekroczenia.',
   },
   {
     id: 'LOSSES_ENERGY',
     labelPl: 'Straty i bilans energii',
-    descriptionPl: 'P_loss/Q_loss + bilans energii roczny.',
+    descriptionPl: 'Straty czynne i bierne oraz roczny bilans energii.',
   },
   {
     id: 'PROTECTION_OVERCURRENT',
@@ -2460,7 +2618,10 @@ function ExportButton({
         outcome = await exportReport(runId, fmt as ReportExportFormat);
       }
       if (outcome.ok) {
-        notify(`Pobrano: ${outcome.filename}`, 'success');
+        notify(
+          `Pobrano ${kind === 'proof' ? 'uzasadnienie inżynierskie' : 'raport techniczny'} (${format.toUpperCase()}).`,
+          'success',
+        );
       } else {
         notify(outcome.error, 'error');
       }

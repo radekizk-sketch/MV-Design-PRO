@@ -38,12 +38,18 @@ import {
   PF_CURVE_CATALOG,
   PV_INVERTER_CATALOG,
   WIND_TURBINE_CATALOG,
+  getBlockTransformer,
   selectBessModesForPcs,
   selectBlockTransformersForDer,
   selectConnectionVariantsForKind,
   selectHvrtCurvesForProfile,
   selectLvrtCurvesForProfile,
 } from './catalogs';
+import {
+  PTPIREE_CERTIFIED_INVERTERS,
+  loadPtpireeCertifiedInverters,
+  type PtpireeCertifiedInverterItem,
+} from './ptpireeCertifiedInverters';
 import { useStationDerStore } from './store';
 import type { ConnectionSide, DerKindUnified } from './types';
 
@@ -59,6 +65,29 @@ export interface AddDerWizardProps {
 }
 
 type StepId = 'variant' | 'point' | 'device' | 'profile' | 'review';
+
+type DerDeviceCatalogItem = {
+  readonly id: string;
+  readonly label_pl: string;
+  readonly nominal_power_kw: number;
+  readonly nominal_voltage_kv?: number;
+};
+
+type StationTransformerInfo = {
+  readonly ref: string;
+  readonly name: string;
+  readonly snMva: number;
+  readonly hvKv: number | null;
+  readonly lvKv: number | null;
+};
+
+type StationTransformerCatalogItem = {
+  readonly id: string;
+  readonly label_pl: string;
+  readonly sn_mva: number;
+  readonly hv_kv: number;
+  readonly lv_kv: number;
+};
 
 const STEP_LABELS: Record<StepId, string> = {
   variant: '1 · Wariant przyłączenia',
@@ -83,7 +112,9 @@ function toBackendConnectionVariant(connectionSide: ConnectionSide): DerConnecti
 function resolveBackendCatalogRef(
   derKind: DerKindUnified,
   connectionSide: ConnectionSide,
+  deviceCatalogRef: string | null,
 ): string {
+  if (deviceCatalogRef) return deviceCatalogRef;
   if (derKind === 'PV') {
     return connectionSide === 'nN' ? 'conv-pv-nn-0p5mw-0p4kv' : 'conv-pv-0.5mw-15kv';
   }
@@ -143,18 +174,313 @@ const EMPTY_SELECTIONS: WizardSelections = {
   pfCurveRef: null,
 };
 
+const DEFAULT_LV_VOLTAGE_LEVEL_REF = 'lv_0_4kV';
+const DEFAULT_NC_RFG_PROFILE_REF = 'ncrfg_enea';
+
+const STATION_TRANSFORMER_CATALOG: readonly StationTransformerCatalogItem[] = [
+  { id: 'tr-sn-nn-15-04-63kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 63 kVA Dyn11', sn_mva: 0.063, hv_kv: 15, lv_kv: 0.4 },
+  { id: 'tr-sn-nn-15-04-100kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 100 kVA Dyn11', sn_mva: 0.1, hv_kv: 15, lv_kv: 0.4 },
+  { id: 'tr-sn-nn-15-04-160kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 160 kVA Dyn11', sn_mva: 0.16, hv_kv: 15, lv_kv: 0.4 },
+  { id: 'tr-sn-nn-15-04-250kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 250 kVA Dyn11', sn_mva: 0.25, hv_kv: 15, lv_kv: 0.4 },
+  { id: 'tr-sn-nn-15-04-400kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 400 kVA Dyn11', sn_mva: 0.4, hv_kv: 15, lv_kv: 0.4 },
+  { id: 'tr-sn-nn-15-04-630kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 630 kVA Dyn11', sn_mva: 0.63, hv_kv: 15, lv_kv: 0.4 },
+  { id: 'tr-sn-nn-15-04-1000kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 1000 kVA Dyn11', sn_mva: 1, hv_kv: 15, lv_kv: 0.4 },
+  { id: 'tr-sn-nn-15-04-1250kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 1250 kVA Dyn11', sn_mva: 1.25, hv_kv: 15, lv_kv: 0.4 },
+  { id: 'tr-sn-nn-15-04-1600kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 1600 kVA Dyn11', sn_mva: 1.6, hv_kv: 15, lv_kv: 0.4 },
+  { id: 'tr-sn-nn-15-04-2000kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 2000 kVA Dyn11', sn_mva: 2, hv_kv: 15, lv_kv: 0.4 },
+  { id: 'tr-sn-nn-15-04-2500kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 2500 kVA Dyn11', sn_mva: 2.5, hv_kv: 15, lv_kv: 0.4 },
+];
+
+function stationToken(stationName: string): string {
+  const numeric = stationName.match(/(\d+)(?!.*\d)/)?.[1];
+  if (numeric) return `S${numeric.padStart(2, '0')}`;
+  const normalized = stationName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toUpperCase()
+    .slice(0, 12);
+  return normalized || 'S01';
+}
+
+function defaultDerName(derKind: DerKindUnified, stationName: string): string {
+  return `${derKind} ${stationToken(stationName)}`;
+}
+
+function defaultPccLabel(derKind: DerKindUnified, stationName: string): string {
+  return `PCC-${derKind}-${stationToken(stationName)}`;
+}
+
+function defaultConnectionPointLabel(
+  connectionSide: ConnectionSide,
+  derKind: DerKindUnified,
+  stationName: string,
+): string {
+  const token = stationToken(stationName);
+  if (connectionSide === 'at_zksn') return `ZK-SN-${token}`;
+  if (connectionSide === 'at_branch_pole') return `SLUP-${token}-${derKind}`;
+  if (connectionSide === 'at_cable_joint') return `MUFA-T-${token}-${derKind}`;
+  return `Pole-${derKind}-${token}`;
+}
+
+function applyPointDefaults(
+  selections: WizardSelections,
+  connectionSide: ConnectionSide,
+  derKind: DerKindUnified,
+  stationName: string,
+): WizardSelections {
+  const next: WizardSelections = {
+    ...selections,
+    connectionSide,
+    derName: selections.derName.trim() || defaultDerName(derKind, stationName),
+    pccLabel: selections.pccLabel.trim() || defaultPccLabel(derKind, stationName),
+  };
+  if (connectionSide === 'nN') {
+    next.voltageLevelRef = selections.voltageLevelRef ?? DEFAULT_LV_VOLTAGE_LEVEL_REF;
+  }
+  if (connectionSide === 'SN' || connectionSide === 'at_zksn'
+      || connectionSide === 'at_branch_pole' || connectionSide === 'at_cable_joint') {
+    next.bayName = selections.bayName.trim()
+      || defaultConnectionPointLabel(connectionSide, derKind, stationName);
+  }
+  if (connectionSide === 'dedicated_transformer' && !selections.blockTransformerCatalogRef) {
+    next.blockTransformerCatalogRef = selectBlockTransformersForDer({ derKind })[0]?.id ?? null;
+  }
+  return next;
+}
+
+function applyProfileDefaults(selections: WizardSelections): WizardSelections {
+  if (selections.ncRfgProfileRef && selections.lvrtCurveRef && selections.hvrtCurveRef) {
+    return selections;
+  }
+  const profile = NC_RFG_PROFILE_CATALOG.find((entry) => entry.id === DEFAULT_NC_RFG_PROFILE_REF)
+    ?? NC_RFG_PROFILE_CATALOG[0];
+  if (!profile) return selections;
+  const lvrtCurveRef = selectLvrtCurvesForProfile(profile.id)[0]?.id ?? null;
+  const hvrtCurveRef = selectHvrtCurvesForProfile(profile.id)[0]?.id ?? null;
+  const pfCurveRef = PF_CURVE_CATALOG.find(
+    (curve) => curve.operator_code === profile.operator_code,
+  )?.id ?? null;
+  return {
+    ...selections,
+    ncRfgProfileRef: profile.id,
+    lvrtCurveRef,
+    hvrtCurveRef,
+    pfCurveRef,
+  };
+}
+
+function readRefList(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    : [];
+}
+
+function readStationTransformers(snapshot: unknown, stationId: string | null): StationTransformerInfo[] {
+  if (!snapshot || typeof snapshot !== 'object' || !stationId) return [];
+  const model = snapshot as {
+    readonly substations?: readonly Record<string, unknown>[];
+    readonly transformers?: readonly Record<string, unknown>[];
+    readonly generators?: readonly Record<string, unknown>[];
+  };
+  const station = model.substations?.find((candidate) =>
+    candidate.ref_id === stationId || candidate.id === stationId);
+  if (!station) return [];
+
+  const transformerRefs = new Set(readRefList(station.transformer_refs));
+  const busRefs = new Set(readRefList(station.bus_refs));
+  const blockTransformerRefs = new Set(
+    (model.generators ?? [])
+      .map((generator) => generator.blocking_transformer_ref)
+      .filter((ref): ref is string => typeof ref === 'string' && ref.trim().length > 0),
+  );
+
+  const isStationDistributionTransformer = (transformer: Record<string, unknown>): boolean => {
+    const ref = transformer.ref_id ?? transformer.id;
+    if (typeof ref === 'string' && blockTransformerRefs.has(ref)) return false;
+
+    const catalogBinding = transformer.catalog_binding as Record<string, unknown> | undefined;
+    const meta = transformer.meta as Record<string, unknown> | undefined;
+    const tokens = [
+      transformer.name,
+      transformer.role,
+      transformer.transformer_role,
+      transformer.connection_variant,
+      catalogBinding?.catalog_namespace,
+      catalogBinding?.catalog_item_id,
+      meta?.role,
+      meta?.transformer_role,
+      meta?.connection_variant,
+      meta?.solution_kind,
+    ]
+      .filter((value): value is string => typeof value === 'string')
+      .join(' ')
+      .toLowerCase();
+
+    return !/(^|[\s_-])(block|blokowy|blok|dedicated|dedykowany|der|pv|bess|fw)([\s_-]|$)/u.test(tokens);
+  };
+
+  const related = model.transformers?.filter((transformer) => {
+    const ref = transformer.ref_id ?? transformer.id;
+    if (!isStationDistributionTransformer(transformer)) return false;
+    if (typeof ref === 'string' && transformerRefs.has(ref)) return true;
+    if (transformerRefs.size > 0) return false;
+    return (
+      (typeof transformer.hv_bus_ref === 'string' && busRefs.has(transformer.hv_bus_ref))
+      || (typeof transformer.lv_bus_ref === 'string' && busRefs.has(transformer.lv_bus_ref))
+    );
+  }) ?? [];
+
+  return related.flatMap((transformer) => {
+    const ref = transformer.ref_id ?? transformer.id;
+    const snMva = transformer.sn_mva;
+    if (typeof ref !== 'string' || typeof snMva !== 'number' || !Number.isFinite(snMva)) {
+      return [];
+    }
+    return [{
+      ref,
+      name: typeof transformer.name === 'string' ? transformer.name : 'Transformator SN/nN',
+      snMva,
+      hvKv: typeof transformer.uhv_kv === 'number' ? transformer.uhv_kv : null,
+      lvKv: typeof transformer.ulv_kv === 'number' ? transformer.ulv_kv : null,
+    }];
+  });
+}
+
+function readStationTransformerCapacityKw(transformers: readonly StationTransformerInfo[]): number | null {
+  const totalMva = transformers.reduce((sum, transformer) => sum + transformer.snMva, 0);
+  return totalMva > 0 ? totalMva * 1000 : null;
+}
+
+function formatKw(value: number): string {
+  return value >= 1000 ? `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 2)} MW` : `${Math.round(value)} kW`;
+}
+
+function formatKva(value: number): string {
+  return value >= 1000 ? `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 2)} MVA` : `${Math.round(value)} kVA`;
+}
+
+function requiredTransformerKvaForDerPowerKw(powerKw: number): number {
+  return powerKw / 0.9;
+}
+
+function compactCatalogText(value: string | null | undefined): string {
+  return (value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function findPtpireeCertificateForDevice(
+  device: DerDeviceCatalogItem,
+  registry: readonly PtpireeCertifiedInverterItem[],
+): PtpireeCertifiedInverterItem | null {
+  const label = compactCatalogText(device.label_pl);
+  if (!label) return null;
+  return registry.find((item) => {
+    const manufacturer = compactCatalogText(item.manufacturer);
+    const model = compactCatalogText(item.model);
+    return (
+      (manufacturer.length > 2 && label.includes(manufacturer)) ||
+      (model.length > 2 && label.includes(model))
+    );
+  }) ?? null;
+}
+
+function getDeviceNominalVoltageKv(device: unknown): number | null {
+  if (!device || typeof device !== 'object') return null;
+  const value = (device as { nominal_voltage_kv?: unknown }).nominal_voltage_kv;
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function fitsStationTransformerCapacity(
+  device: DerDeviceCatalogItem,
+  connectionSide: ConnectionSide | null,
+  transformerCapacityKw: number | null,
+): boolean {
+  if (connectionSide !== 'nN' || transformerCapacityKw === null) return true;
+  return requiredTransformerKvaForDerPowerKw(device.nominal_power_kw) <= transformerCapacityKw + 1e-6;
+}
+
+function fitsSelectedLvVoltage(
+  device: DerDeviceCatalogItem,
+  connectionSide: ConnectionSide | null,
+  voltageLevelRef: string | null,
+): boolean {
+  if (connectionSide !== 'nN' || !voltageLevelRef) return true;
+  const deviceKv = getDeviceNominalVoltageKv(device);
+  if (deviceKv === null) return true;
+  const lvLevel = LV_VOLTAGE_LEVEL_CATALOG.find((l) => l.id === voltageLevelRef);
+  return !lvLevel || Math.abs(deviceKv - lvLevel.nominal_kv) <= 0.01;
+}
+
+function selectTransformerUpgradeOptions(
+  requiredTransformerKva: number | null,
+  currentTransformer: StationTransformerInfo | null,
+): StationTransformerCatalogItem[] {
+  if (!currentTransformer || requiredTransformerKva === null) return [];
+  const currentMva = currentTransformer.snMva;
+  const hvKv = currentTransformer.hvKv ?? 15;
+  const lvKv = currentTransformer.lvKv ?? 0.4;
+  return STATION_TRANSFORMER_CATALOG.filter((item) =>
+    item.sn_mva > currentMva + 1e-9
+    && item.sn_mva * 1000 >= requiredTransformerKva - 1e-6
+    && Math.abs(item.hv_kv - hvKv) <= 0.5
+    && Math.abs(item.lv_kv - lvKv) <= 0.05);
+}
+
+function selectAutoBlockTransformerForDevice(
+  derKind: DerKindUnified,
+  device: DerDeviceCatalogItem | null,
+  stationTransformer: StationTransformerInfo | null,
+) {
+  const deviceKv = getDeviceNominalVoltageKv(device);
+  if (!device || deviceKv === null) return null;
+  const hvKv = stationTransformer?.hvKv ?? 15;
+  // DER musi zachować możliwość pracy z mocą bierną zgodnie z profilem NC RfG.
+  // Dla automatycznego doboru przyjmujemy minimalny cosφ=0,90, więc PV 1000 kW
+  // wymaga co najmniej 1111 kVA i dobiera 1250 kVA z typoszeregu, nie 2500 kVA.
+  const requiredTransformerKva = requiredTransformerKvaForDerPowerKw(device.nominal_power_kw);
+  const candidates = selectBlockTransformersForDer({
+    derKind,
+    hvKv,
+    lvKv: deviceKv,
+  })
+    .filter((transformer) => transformer.sn_kva >= requiredTransformerKva - 1e-6)
+    .sort((a, b) => a.sn_kva - b.sn_kva);
+  return candidates[0] ?? null;
+}
+
 export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const { isOpen, stationId, stationName, derKind, projectId, onClose, nowIso } = props;
   const attachDer = useStationDerStore((state) => state.attachDer);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
+  const snapshotCaseId = useSnapshotStore((state) => state.caseId);
+  const snapshot = useSnapshotStore((state) => state.snapshot);
   const setSnapshot = useSnapshotStore((state) => state.setSnapshot);
+  const executeDomainOperation = useSnapshotStore((state) => state.executeDomainOperation);
   const [step, setStep] = useState<StepId>('variant');
   const [selections, setSelections] = useState<WizardSelections>(EMPTY_SELECTIONS);
   const [isCreating, setIsCreating] = useState(false);
+  const [selectedTransformerUpgradeRef, setSelectedTransformerUpgradeRef] = useState('');
+  const [isUpdatingTransformer, setIsUpdatingTransformer] = useState(false);
+  const [ptpireeRegistry, setPtpireeRegistry] = useState(PTPIREE_CERTIFIED_INVERTERS);
   // Phase 9: pre-fetch backend catalog snapshot — lokalne staticki sluzą jako
   // fallback, ale snapshot z backendu warm-cache'uje React Query dla stations
   // pobierajacych je dalej. Hook sam zarzadza cache'em i refetch'em.
   useAudit2CatalogSnapshot();
+
+  useEffect(() => {
+    let active = true;
+    void loadPtpireeCertifiedInverters()
+      .then((registry) => {
+        if (active) setPtpireeRegistry(registry);
+      })
+      .catch(() => {
+        if (active) setPtpireeRegistry(PTPIREE_CERTIFIED_INVERTERS);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Reset stanu kreatora przy każdym otwarciu.
   useEffect(() => {
@@ -174,6 +500,17 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
 
   const variants = useMemo(() => selectConnectionVariantsForKind(derKind), [derKind]);
 
+  const stationBelongsToSnapshot = useMemo(() => {
+    if (!snapshot || !stationId) return false;
+    return (snapshot.substations ?? []).some(
+      (station) => station.ref_id === stationId || station.id === stationId,
+    );
+  }, [snapshot, stationId]);
+
+  const effectiveCaseId = stationBelongsToSnapshot && snapshotCaseId
+    ? snapshotCaseId
+    : activeCaseId;
+
   const lvrtCurves = useMemo(() =>
     selections.ncRfgProfileRef ? selectLvrtCurvesForProfile(selections.ncRfgProfileRef) : [],
   [selections.ncRfgProfileRef]);
@@ -187,6 +524,139 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     if (derKind === 'BESS') return BESS_PCS_CATALOG;
     return WIND_TURBINE_CATALOG;
   }, [derKind]);
+
+  const stationTransformers = useMemo(
+    () => readStationTransformers(snapshot, stationId),
+    [snapshot, stationId],
+  );
+
+  const stationTransformerCapacityKw = useMemo(
+    () => readStationTransformerCapacityKw(stationTransformers),
+    [stationTransformers],
+  );
+
+  const primaryStationTransformer = stationTransformers[0] ?? null;
+
+  const compatibleDeviceCatalog = useMemo(
+    () => deviceCatalog.filter((device) =>
+      fitsSelectedLvVoltage(device, selections.connectionSide, selections.voltageLevelRef)
+      && fitsStationTransformerCapacity(device, selections.connectionSide, stationTransformerCapacityKw)),
+    [
+      derKind,
+      deviceCatalog,
+      ptpireeRegistry,
+      selections.connectionSide,
+      selections.voltageLevelRef,
+      stationTransformerCapacityKw,
+    ],
+  );
+
+  const incompatibleDeviceCount = deviceCatalog.length - compatibleDeviceCatalog.length;
+
+  const deviceSelectOptions = useMemo(
+    () => deviceCatalog.map((device) => {
+      const voltageOk = fitsSelectedLvVoltage(
+        device,
+        selections.connectionSide,
+        selections.voltageLevelRef,
+      );
+      const transformerOk = fitsStationTransformerCapacity(
+        device,
+        selections.connectionSide,
+        stationTransformerCapacityKw,
+      );
+      const ptpireeCertificate = derKind === 'PV'
+        ? findPtpireeCertificateForDevice(device, ptpireeRegistry)
+        : null;
+      const ptpireeSuffix = ptpireeCertificate
+        ? ` · PTPiREE ${ptpireeCertificate.documentNumber}`
+        : '';
+      if (voltageOk && transformerOk) {
+        return { id: device.id, label: `${device.label_pl}${ptpireeSuffix}` };
+      }
+      const reason = !voltageOk
+        ? 'wymaga innego poziomu napięcia'
+        : 'wymaga większego transformatora stacji';
+      return { id: device.id, label: `${device.label_pl}${ptpireeSuffix} — ${reason}` };
+    }),
+    [
+      derKind,
+      deviceCatalog,
+      ptpireeRegistry,
+      selections.connectionSide,
+      selections.voltageLevelRef,
+      stationTransformerCapacityKw,
+    ],
+  );
+
+  const selectedDevice = useMemo(
+    () => deviceCatalog.find((d) => d.id === selections.deviceCatalogRef) ?? null,
+    [deviceCatalog, selections.deviceCatalogRef],
+  );
+
+  const autoBlockTransformer = useMemo(
+    () => selectAutoBlockTransformerForDevice(derKind, selectedDevice, primaryStationTransformer),
+    [derKind, primaryStationTransformer, selectedDevice],
+  );
+
+  const effectiveBlockTransformerCatalogRef = useMemo(() => {
+    if (selections.connectionSide !== 'dedicated_transformer') {
+      return null;
+    }
+    return (
+      autoBlockTransformer?.id
+      ?? selections.blockTransformerCatalogRef
+      ?? selectBlockTransformersForDer({ derKind })[0]?.id
+      ?? null
+    );
+  }, [
+    autoBlockTransformer,
+    derKind,
+    selections.blockTransformerCatalogRef,
+    selections.connectionSide,
+  ]);
+
+  const transformerUpgradeOptions = useMemo(
+    () => selectTransformerUpgradeOptions(
+      selectedDevice ? requiredTransformerKvaForDerPowerKw(selectedDevice.nominal_power_kw) : null,
+      primaryStationTransformer,
+    ),
+    [primaryStationTransformer, selectedDevice],
+  );
+
+  const voltageMismatchWarning = useMemo(() => {
+    if (selections.connectionSide !== 'nN' || !selections.voltageLevelRef || !selectedDevice) {
+      return null;
+    }
+    const lvLevel = LV_VOLTAGE_LEVEL_CATALOG.find((l) => l.id === selections.voltageLevelRef);
+    if (!lvLevel || !('nominal_voltage_kv' in selectedDevice)) return null;
+    const deviceKv = selectedDevice.nominal_voltage_kv as number;
+    if (Math.abs(deviceKv - lvLevel.nominal_kv) > 0.01) {
+      return (
+        `Niezgodność napięcia: urządzenie ${deviceKv.toFixed(2)} kV vs `
+        + `szyna nN ${lvLevel.nominal_kv.toFixed(2)} kV. `
+        + 'Wymagany transformator dedykowany albo zmiana wariantu przyłączenia.'
+      );
+    }
+    return null;
+  }, [selections.connectionSide, selections.voltageLevelRef, selectedDevice]);
+
+  const transformerPowerWarning = useMemo(() => {
+    if (selections.connectionSide !== 'nN' || !selectedDevice || stationTransformerCapacityKw === null) {
+      return null;
+    }
+    const requiredTransformerKva = requiredTransformerKvaForDerPowerKw(selectedDevice.nominal_power_kw);
+    if (requiredTransformerKva <= stationTransformerCapacityKw + 1e-6) {
+      return null;
+    }
+    return (
+      `Moc katalogowa ${selectedDevice.label_pl} wynosi ${formatKw(selectedDevice.nominal_power_kw)}, `
+      + `wymaga co najmniej ${formatKva(requiredTransformerKva)}, `
+      + `a transformator stacji ma ${formatKva(stationTransformerCapacityKw)}. `
+      + 'Dobierz większy transformator z katalogu, wybierz mniejszy wariant '
+      + 'albo przejdź na przyłączenie po stronie SN.'
+    );
+  }, [selectedDevice, selections.connectionSide, stationTransformerCapacityKw]);
 
   const canGoNext = useMemo(() => {
     switch (step) {
@@ -208,6 +678,12 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
         );
       case 'device':
         return selections.deviceCatalogRef !== null
+          && voltageMismatchWarning === null
+          && transformerPowerWarning === null
+          && (
+            selections.connectionSide !== 'dedicated_transformer'
+            || effectiveBlockTransformerCatalogRef !== null
+          )
           && (derKind !== 'BESS' || selections.batteryCatalogRef !== null);
       case 'profile':
         return (
@@ -220,12 +696,23 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       default:
         return false;
     }
-  }, [step, selections, derKind]);
+  }, [
+    derKind,
+    effectiveBlockTransformerCatalogRef,
+    selections,
+    step,
+    transformerPowerWarning,
+    voltageMismatchWarning,
+  ]);
 
   const goNext = useCallback(() => {
     const idx = STEPS.indexOf(step);
     if (idx < STEPS.length - 1) {
-      setStep(STEPS[idx + 1]);
+      const nextStep = STEPS[idx + 1];
+      if (nextStep === 'profile') {
+        setSelections((current) => applyProfileDefaults(current));
+      }
+      setStep(nextStep);
     }
   }, [step]);
 
@@ -236,9 +723,110 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     }
   }, [step]);
 
+  const selectConnectionSide = useCallback(
+    (connectionSide: ConnectionSide) => {
+      setSelections((current) =>
+        applyPointDefaults(current, connectionSide, derKind, stationName));
+    },
+    [derKind, stationName],
+  );
+
+  useEffect(() => {
+    if (!transformerPowerWarning || transformerUpgradeOptions.length === 0) {
+      setSelectedTransformerUpgradeRef('');
+      return;
+    }
+    setSelectedTransformerUpgradeRef((current) =>
+      transformerUpgradeOptions.some((option) => option.id === current)
+        ? current
+        : transformerUpgradeOptions[0].id);
+  }, [transformerPowerWarning, transformerUpgradeOptions]);
+
+  useEffect(() => {
+    if (
+      selections.connectionSide !== 'dedicated_transformer'
+      || !autoBlockTransformer
+      || selections.blockTransformerCatalogRef === autoBlockTransformer.id
+    ) {
+      return;
+    }
+    setSelections((current) => ({
+      ...current,
+      blockTransformerCatalogRef: autoBlockTransformer.id,
+    }));
+  }, [
+    autoBlockTransformer,
+    selections.blockTransformerCatalogRef,
+    selections.connectionSide,
+  ]);
+
+  useEffect(() => {
+    if (
+      selections.connectionSide !== 'nN'
+      || !voltageMismatchWarning
+      || !autoBlockTransformer
+    ) {
+      return;
+    }
+    setSelections((current) => ({
+      ...current,
+      connectionSide: 'dedicated_transformer',
+      blockTransformerCatalogRef: autoBlockTransformer.id,
+    }));
+  }, [
+    autoBlockTransformer,
+    selections.connectionSide,
+    voltageMismatchWarning,
+  ]);
+
+  const handleUpgradeStationTransformer = useCallback(async () => {
+    if (!effectiveCaseId || !primaryStationTransformer || !selectedTransformerUpgradeRef) {
+      notify('Wybierz transformator stacji i wariant katalogowy większej mocy.', 'error');
+      return;
+    }
+    const selectedUpgrade = transformerUpgradeOptions.find(
+      (option) => option.id === selectedTransformerUpgradeRef,
+    );
+    if (!selectedUpgrade) {
+      notify('Wybrany wariant transformatora nie jest dostępny w katalogu.', 'error');
+      return;
+    }
+    setIsUpdatingTransformer(true);
+    try {
+      const response = await executeDomainOperation(effectiveCaseId, 'assign_catalog_to_element', {
+        element_ref: primaryStationTransformer.ref,
+        catalog_binding: {
+          catalog_namespace: 'TRAFO_SN_NN',
+          catalog_item_id: selectedUpgrade.id,
+          catalog_item_version: '2024.1',
+        },
+      });
+      if (response?.error) {
+        notify(response.error, 'error');
+        return;
+      }
+      notify(`Zmieniono transformator stacji na ${selectedUpgrade.label_pl}.`, 'success');
+    } catch (error) {
+      notify(
+        error instanceof Error
+          ? error.message
+          : 'Nie udało się zmienić transformatora stacji.',
+        'error',
+      );
+    } finally {
+      setIsUpdatingTransformer(false);
+    }
+  }, [
+    effectiveCaseId,
+    executeDomainOperation,
+    primaryStationTransformer,
+    selectedTransformerUpgradeRef,
+    transformerUpgradeOptions,
+  ]);
+
   const handleCreate = useCallback(async () => {
     if (!stationId || !selections.connectionSide) return;
-    if (!activeCaseId || !projectId || projectId === 'no-project') {
+    if (!effectiveCaseId || !projectId || projectId === 'no-project') {
       notify('Wybierz aktywny projekt i zakres obliczeń przed utworzeniem układu przyłączeniowego.', 'error');
       return;
     }
@@ -262,9 +850,22 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       pccLabel: selections.pccLabel,
     });
     const pccRef = `pcc_${stationId}_${selections.pccLabel.trim()}`;
+    if (voltageMismatchWarning || transformerPowerWarning) {
+      notify(voltageMismatchWarning ?? transformerPowerWarning ?? 'Konfiguracja DER wymaga korekty.', 'error');
+      return;
+    }
+    if (selections.connectionSide === 'dedicated_transformer' && !effectiveBlockTransformerCatalogRef) {
+      notify('Wybierz transformator dedykowany z katalogu.', 'error');
+      return;
+    }
+
     const device = deviceCatalog.find((d) => d.id === selections.deviceCatalogRef);
     const nominalPowerKw = device && 'nominal_power_kw' in device ? device.nominal_power_kw : null;
-    const backendCatalogRef = resolveBackendCatalogRef(derKind, selections.connectionSide);
+    const backendCatalogRef = resolveBackendCatalogRef(
+      derKind,
+      selections.connectionSide,
+      selections.deviceCatalogRef,
+    );
 
     // Naprawa B.2: connection_node_ref dla pozastacjonarnych wariantów.
     let connectionNodeRef: string | null = null;
@@ -278,12 +879,16 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
 
     setIsCreating(true);
     try {
-      const response = await postDerGeneratorConfig(projectId, activeCaseId, {
+      const response = await postDerGeneratorConfig(projectId, effectiveCaseId, {
         station_ref: stationId,
         der_kind: derKind,
-        power_mw: Math.max((nominalPowerKw ?? 500) / 1000, 0.1),
+        power_mw: (nominalPowerKw ?? 500) / 1000,
         connection_variant: toBackendConnectionVariant(selections.connectionSide),
         catalog_ref: backendCatalogRef,
+        block_transformer_catalog_ref:
+          selections.connectionSide === 'dedicated_transformer'
+            ? effectiveBlockTransformerCatalogRef
+            : null,
         source_name: selections.derName,
         quantity: 1,
         nc_rfg_module: resolveNcRfgModule(selections),
@@ -315,7 +920,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
         catalogs: {
           device_catalog_ref: selections.deviceCatalogRef,
           battery_catalog_ref: selections.batteryCatalogRef,
-          block_transformer_catalog_ref: selections.blockTransformerCatalogRef,
+          block_transformer_catalog_ref: effectiveBlockTransformerCatalogRef,
         },
         profiles: {
           nc_rfg_profile_ref: selections.ncRfgProfileRef,
@@ -348,10 +953,11 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       setIsCreating(false);
     }
   }, [
-    activeCaseId,
     attachDer,
     deviceCatalog,
     derKind,
+    effectiveBlockTransformerCatalogRef,
+    effectiveCaseId,
     nowIso,
     handleClose,
     projectId,
@@ -359,28 +965,9 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     setSnapshot,
     stationId,
     stationName,
+    transformerPowerWarning,
+    voltageMismatchWarning,
   ]);
-
-  // Naprawa hmi.5: real-time voltage mismatch warning przy wyborze urządzenia.
-  // Porównujemy napięcie urządzenia (z katalogu) z napięciem nN (jeśli wybrane).
-  const voltageMismatchWarning = useMemo(() => {
-    if (selections.connectionSide !== 'nN' || !selections.voltageLevelRef
-        || !selections.deviceCatalogRef) {
-      return null;
-    }
-    const lvLevel = LV_VOLTAGE_LEVEL_CATALOG.find((l) => l.id === selections.voltageLevelRef);
-    const device = deviceCatalog.find((d) => d.id === selections.deviceCatalogRef);
-    if (!lvLevel || !device || !('nominal_voltage_kv' in device)) return null;
-    const deviceKv = device.nominal_voltage_kv as number;
-    if (Math.abs(deviceKv - lvLevel.nominal_kv) > 0.01) {
-      return (
-        `Niezgodność napięcia: urządzenie ${deviceKv.toFixed(2)} kV vs `
-        + `szyna nN ${lvLevel.nominal_kv.toFixed(2)} kV. `
-        + 'Wymagany transformator dedykowany albo zmiana wariantu przyłączenia.'
-      );
-    }
-    return null;
-  }, [selections.connectionSide, selections.voltageLevelRef, selections.deviceCatalogRef, deviceCatalog]);
 
   if (!isOpen) return null;
 
@@ -451,7 +1038,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   type="button"
                   data-testid={`variant-${v.side}`}
                   data-active={selections.connectionSide === v.side}
-                  onClick={() => setSelections((s) => ({ ...s, connectionSide: v.side }))}
+                  onClick={() => selectConnectionSide(v.side)}
                   className={
                     'w-full rounded border p-3 text-left text-xs '
                     + (selections.connectionSide === v.side
@@ -573,6 +1160,32 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
 
           {step === 'device' && (
             <div data-testid="add-der-step-content-device" className="space-y-3">
+              <div
+                data-testid="add-der-catalog-source"
+                className="rounded border border-scada-border bg-scada-bg p-2 text-[11px] text-scada-muted"
+              >
+                Lista urządzeń łączy katalog techniczny falowników z wykazem PTPiREE/NC RfG
+                ({ptpireeRegistry.length} pozycji). Wybór falownika steruje napięciem układu
+                i doborem transformatora.
+              </div>
+              {selections.connectionSide === 'dedicated_transformer'
+                && selectedDevice
+                && getDeviceNominalVoltageKv(selectedDevice) !== null
+                && autoBlockTransformer && (
+                <div
+                  data-testid="add-der-auto-block-transformer"
+                  className="rounded border border-emerald-700 bg-emerald-950/30 p-2 text-[11px] text-scada-text"
+                >
+                  Automatycznie dobrano transformator dedykowany:
+                  {' '}
+                  <span className="font-medium text-emerald-200">
+                    {autoBlockTransformer.label_pl}
+                  </span>
+                  {' '}
+                  dla urządzenia {getDeviceNominalVoltageKv(selectedDevice)?.toFixed(2)} kV
+                  i mocy {formatKw(selectedDevice.nominal_power_kw)}.
+                </div>
+              )}
               <p className="text-scada-muted">
                 Wybierz urządzenie z katalogu producenta. Wszystkie wartości
                 techniczne (moc, napięcie, charakterystyki) pochodzą z katalogu.
@@ -585,6 +1198,75 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   ⚠ {voltageMismatchWarning}
                 </div>
               )}
+              {transformerPowerWarning && (
+                <div
+                  data-testid="add-der-transformer-power-warning"
+                  className="rounded border border-red-700 bg-red-950/30 p-2 text-[11px] text-red-200"
+                >
+                  {transformerPowerWarning}
+                </div>
+              )}
+              {transformerPowerWarning && transformerUpgradeOptions.length > 0 && (
+                <div
+                  data-testid="add-der-transformer-upgrade-panel"
+                  className="space-y-2 rounded border border-scada-sn/70 bg-scada-sn/10 p-2 text-[11px] text-scada-text"
+                >
+                  <div>
+                    <div className="font-medium text-scada-sn">
+                      Dobierz większy transformator stacji z katalogu
+                    </div>
+                    <div className="text-scada-muted">
+                      Aktualizowany jest istniejący transformator SN/nN stacji,
+                      bez tworzenia źródła poza dopuszczalną mocą układu.
+                    </div>
+                  </div>
+                  <Select
+                    label="Nowy transformator SN/nN"
+                    value={selectedTransformerUpgradeRef}
+                    onChange={setSelectedTransformerUpgradeRef}
+                    options={transformerUpgradeOptions.map((option) => ({
+                      id: option.id,
+                      label: `${option.label_pl} · ${formatKva(option.sn_mva * 1000)}`,
+                    }))}
+                    testId="add-der-transformer-upgrade"
+                  />
+                  <button
+                    type="button"
+                    data-testid="add-der-upgrade-transformer"
+                    onClick={handleUpgradeStationTransformer}
+                    disabled={isUpdatingTransformer || !selectedTransformerUpgradeRef}
+                    className="rounded border border-scada-sn px-3 py-1.5 text-[11px] font-medium text-scada-sn hover:bg-scada-sn/10 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {isUpdatingTransformer ? 'Zmieniam transformator...' : 'Zmień TR stacji'}
+                  </button>
+                </div>
+              )}
+              {transformerPowerWarning && transformerUpgradeOptions.length === 0 && (
+                <div
+                  data-testid="add-der-transformer-upgrade-empty"
+                  className="rounded border border-amber-700 bg-amber-950/30 p-2 text-[11px] text-amber-200"
+                >
+                  Dla napięć tej stacji katalog nie wskazał większego transformatora.
+                  Wybierz mniejszy wariant źródła albo przyłączenie po stronie SN.
+                </div>
+              )}
+              {selections.connectionSide === 'nN' && stationTransformerCapacityKw !== null && (
+                <div
+                  data-testid="add-der-compatible-device-summary"
+                  className="rounded border border-scada-border bg-scada-bg p-2 text-[11px] text-scada-muted"
+                >
+                  Wariant nN: pokazuję urządzenia zgodne z szyną nN i transformatorem stacji
+                  {' '}
+                  {formatKva(stationTransformerCapacityKw)}.
+                  {incompatibleDeviceCount > 0 && (
+                    <>
+                      {' '}
+                      {incompatibleDeviceCount} większych wariantów wymaga transformatora dedykowanego
+                      albo przyłączenia po stronie SN.
+                    </>
+                  )}
+                </div>
+              )}
               <Select
                 label={derKind === 'PV' ? 'Falownik PV' : derKind === 'BESS' ? 'PCS BESS' : 'Turbina wiatrowa'}
                 required
@@ -592,7 +1274,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 onChange={(v) => setSelections((s) => ({ ...s, deviceCatalogRef: v }))}
                 options={[
                   { id: '', label: '— wybierz —' },
-                  ...deviceCatalog.map((d) => ({ id: d.id, label: d.label_pl })),
+                  ...deviceSelectOptions,
                 ]}
                 testId="add-der-device"
               />
@@ -760,6 +1442,12 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                     deviceCatalog.find((d) => d.id === selections.deviceCatalogRef)?.label_pl ?? ''
                   }
                 />
+                {selections.connectionSide === 'dedicated_transformer' && (
+                  <ReviewRow
+                    label="Transformator blokowy"
+                    value={getBlockTransformer(effectiveBlockTransformerCatalogRef ?? '')?.label_pl ?? ''}
+                  />
+                )}
                 {derKind === 'BESS' && (
                   <ReviewRow
                     label="Bateria (katalog)"

@@ -69,6 +69,12 @@ def _station_enm_without_nn_field_specs() -> dict:
     return enm
 
 
+def _station_enm_with_bus_bound_transformer_only() -> dict:
+    enm = _station_enm()
+    enm["substations"][0].pop("transformer_refs", None)
+    return enm
+
+
 def test_add_converter_source_creates_generator_and_field_for_new_nn_field() -> None:
     result = execute_domain_operation(
         _station_enm(),
@@ -91,9 +97,9 @@ def test_add_converter_source_creates_generator_and_field_for_new_nn_field() -> 
                 },
             },
             "source_name": "Blok PV",
-            "quantity": 2,
+            "quantity": 1,
             "control_mode": "STALY_COS_PHI",
-            "power_setpoint_mw": 1.5,
+            "power_setpoint_mw": 0.5,
             "q_min_mvar": -0.2,
             "q_max_mvar": 0.2,
             "catalog_binding": {
@@ -107,8 +113,8 @@ def test_add_converter_source_creates_generator_and_field_for_new_nn_field() -> 
                 "catalog_item_id": "conv-pv-1mw",
                 "catalog_item_version": "2024.1",
                 "un_kv": 0.4,
-                "pmax_mw": 0.75,
-                "sn_mva": 0.8,
+                "pmax_mw": 0.5,
+                "sn_mva": 0.5,
             },
         },
     )
@@ -121,12 +127,58 @@ def test_add_converter_source_creates_generator_and_field_for_new_nn_field() -> 
     assert generator["gen_type"] == "pv_inverter"
     assert generator["catalog_namespace"] == "CONVERTER"
     assert generator["connection_variant"] == "nn_side"
-    assert generator["p_mw"] == 1.5
+    assert generator["p_mw"] == 0.5
     assert generator["meta"]["field_ref"] == field_specs[0]["field_ref"]
     assert field_specs[0]["meta"]["source_field_kind"] == "PV"
     assert field_specs[0]["meta"]["apparatus_catalog_ref"] == "ap-nn-630"
 
     EnergyNetworkModel.model_validate(snapshot)
+
+
+def test_add_converter_source_accepts_station_transformer_bound_by_buses() -> None:
+    result = execute_domain_operation(
+        _station_enm_with_bus_bound_transformer_only(),
+        "add_converter_source",
+        {
+            "source_technology": "PV",
+            "connection_variant": "nn_side",
+            "station_ref": "st_1",
+            "bus_nn_ref": "bus_nn_1",
+            "placement": "NEW_FIELD",
+            "source_name": "PV za transformatorem stacji",
+            "source_field": {
+                "source_field_kind": "PV",
+                "field_name": "Pole PV nN",
+                "catalog_binding": {
+                    "catalog_namespace": "APARAT_NN",
+                    "catalog_item_id": "ap-nn-630",
+                    "catalog_item_version": "2024.1",
+                    "materialize": True,
+                    "snapshot_mapping_version": "1.0",
+                },
+            },
+            "catalog_binding": {
+                "catalog_namespace": "CONVERTER",
+                "catalog_item_id": "conv-pv-bus-bound-transformer",
+                "catalog_item_version": "2024.1",
+                "materialize": True,
+                "snapshot_mapping_version": "1.0",
+            },
+            "materialized_params": {
+                "catalog_item_id": "conv-pv-bus-bound-transformer",
+                "catalog_item_version": "2024.1",
+                "un_kv": 0.4,
+                "rated_power_ac_kw": 500.0,
+                "max_power_kw": 500.0,
+                "control_mode": "STALY_COS_PHI",
+                "pmax_mw": 0.5,
+                "sn_mva": 0.5,
+            },
+        },
+    )
+
+    assert not result.get("error"), result.get("error")
+    assert result["snapshot"]["generators"][0]["connection_variant"] == "nn_side"
 
 
 def test_add_converter_source_returns_field_not_found_for_missing_existing_field() -> None:

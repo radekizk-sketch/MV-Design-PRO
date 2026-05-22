@@ -178,6 +178,14 @@ class Cable(BranchBase):
     r0_ohm_per_km: float | None = None
     x0_ohm_per_km: float | None = None
     b0_siemens_per_km: float | None = None
+    conductor_material: str | None = None
+    cross_section_mm2: float | None = None
+    number_of_cores: int | None = None
+    return_conductor_cross_section_mm2: float | None = None
+    return_conductor_material: str | None = None
+    return_conductor_r_ohm_per_km_20c: float | None = None
+    return_conductor_jth_1s_a_per_mm2: float | None = None
+    return_conductor_ith_1s_a: float | None = None
     rating: BranchRating | None = None
     insulation: Literal["XLPE", "PVC", "PAPER"] | None = None
     # PR-3 rebuild SLD: jawne porty endpointów (opcjonalne, automigracja w PR-3)

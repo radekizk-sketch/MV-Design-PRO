@@ -45,10 +45,10 @@ import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
 import { notify } from '../../../notifications/store';
 import { useSelectionStore } from '../../../selection';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
-import type { Bay, EnergyNetworkModel, LogicalViewsV1, Substation, Transformer } from '../../../../types/enm';
+import type { Bay, Branch, EnergyNetworkModel, LogicalViewsV1, Substation } from '../../../../types/enm';
 import type { ElementType, SelectedElement } from '../../../types';
 import { formatStationSwitchgearDescriptionPl } from '../../../shared/stationTypeLabels';
-import { stationPublicIdentity } from '../../../shared/publicTechnicalLabels';
+import { publicTechnicalLabel, segmentPublicIdentity, stationPublicIdentity } from '../../../shared/publicTechnicalLabels';
 import { buildOperationContext } from '../../../network-build/operationContext';
 import type { NetworkBuildOperationName } from '../../../network-build/internal/legacySurfaceTypes';
 import {
@@ -76,6 +76,7 @@ import {
   type PaletteDragPayload,
 } from '../../../network-build/dragDropController';
 import { useStationDerStore as useStationDerStoreImport } from '../../../network-build/station-der';
+import { selectStationDistributionTransformers } from '../../../network-build/stationTransformerSelection';
 
 const MIN_CANVAS_WIDTH_PX = 360;
 const MIN_CANVAS_HEIGHT_PX = 240;
@@ -392,6 +393,10 @@ function elementTypeForSldKind(kind: SldElementKindForMenu): ElementType | null 
       return 'LineBranch';
     case 'station':
       return 'Station';
+    case 'zksn':
+      return 'ZKSN';
+    case 'branch_pole':
+      return 'BranchPole';
     case 'der_pv':
       return 'PVInverter';
     case 'der_bess':
@@ -528,22 +533,6 @@ function inferStationTopologicalType(
   }
 }
 
-function selectStationTransformers(
-  snapshot: EnergyNetworkModel | null,
-  station: Substation | null,
-): Transformer[] {
-  if (!snapshot || !station) return [];
-  const transformerRefs = new Set(station.transformer_refs ?? []);
-  const busRefs = new Set(station.bus_refs ?? []);
-  return (snapshot.transformers ?? []).filter(
-    (transformer) =>
-      transformerRefs.has(transformer.ref_id)
-      || transformerRefs.has(transformer.id)
-      || busRefs.has(transformer.hv_bus_ref)
-      || busRefs.has(transformer.lv_bus_ref),
-  );
-}
-
 function selectStationBays(
   snapshot: EnergyNetworkModel | null,
   station: Substation | null,
@@ -585,6 +574,21 @@ function readHashParam(name: string): string | null {
   return new URLSearchParams(window.location.hash.slice(queryIndex + 1)).get(name)?.trim() || null;
 }
 
+function readUrlSearchParam(name: string): string | null {
+  if (typeof window === 'undefined') return null;
+  return new URLSearchParams(window.location.search).get(name)?.trim() || null;
+}
+
+function readRouteRefreshToken(): string {
+  const parts = [
+    readUrlSearchParam('boot'),
+    readHashParam('nocache'),
+    readHashParam('case') ?? readHashParam('caseId'),
+    readHashParam('run'),
+  ].filter((value): value is string => Boolean(value));
+  return parts.join(':');
+}
+
 function hasTopologicalContent(snapshot: EnergyNetworkModel | null): boolean {
   if (!snapshot) return false;
   return [
@@ -608,7 +612,6 @@ function mapKindToDrawerKind(kind: string): SldDetailDrawerData['kind'] | null {
   if (kind === 'bay') return 'bay';
   if (kind === 'apparatus' || kind === 'lv_breaker' || kind === 'protection' || kind === 'pcc') return 'apparatus';
   if (kind === 'der' || kind === 'pv_inverter') return 'der';
-  if (kind === 'cable_run') return 'cable_run';
   return null;
 }
 
@@ -676,6 +679,8 @@ const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   'edit-line': 'E-12',
   'change-catalog': 'E-12',
   'show-thermal': 'E-12',
+  'open-zksn-card': 'E-14',
+  'open-branch-pole-card': 'E-15',
   // Etap 5: układy PV/BESS/FW:
   'open-pv-config': 'E-21',
   'open-bess-config': 'E-22',
@@ -694,6 +699,10 @@ function routeSurfaceLabelPl(screenCode: string): string {
       return 'konfigurację odcinka SN';
     case 'E-13':
       return 'konfigurację stacji SN/nN';
+    case 'E-14':
+      return 'kartę ZK SN';
+    case 'E-15':
+      return 'kartę słupa rozgałęźnego';
     case 'E-21':
       return 'konfigurację PV';
     case 'E-22':
@@ -831,10 +840,20 @@ export function SldWorkspaceContainer(
   const collapseSurfaceStackTo = useNetworkBuildStore((state) => state.collapseSurfaceStackTo);
   const activeRouteSurface = useNetworkBuildStore((state) => state.activeSurface);
   const selectElement = useSelectionStore((state) => state.selectElement);
+  const selectedElement = useSelectionStore((state) => state.selectedElement);
+  const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
+  const centerOnElementId = useSelectionStore((state) => state.sldCenterOnElement);
 
   const [contextRequest, setContextRequest] = useState<SldContextMenuRequest | null>(null);
   const [internalStationId, setInternalStationId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useEffect(() => {
+    const nextSelectedId = selectedElement?.id ?? null;
+    setSelectedId((current) => (current === nextSelectedId ? current : nextSelectedId));
+    if (nextSelectedId) {
+      centerSldOnElement(nextSelectedId);
+    }
+  }, [centerSldOnElement, selectedElement?.id]);
   // K30-72: detail drawer state (SldDetailDrawer K30-71)
   const [detailDrawerData, setDetailDrawerData] = useState<SldDetailDrawerData | null>(null);
   // K30-78: DER drag-drop palette → station → drawer DER tab pre-filled.
@@ -843,6 +862,7 @@ export function SldWorkspaceContainer(
   const overlayPayload = useRawResultOverlayStore((s) => s.payload);
   const [viewportTransform, setViewportTransform] = useState<ViewportTransform>(IDENTITY_TRANSFORM);
   const refreshAttemptedCaseRef = useRef<string | null>(null);
+  const routeRefreshHydratedRef = useRef<string | null>(null);
   const routeCaseRef = useRef<string | null>(null);
   const routeRunRef = useRef<string | null>(null);
   // Iteracja 12: lasso multi-select state.
@@ -1034,23 +1054,33 @@ export function SldWorkspaceContainer(
 
   useEffect(() => {
     if (!activeCaseId || snapshotLoading) return;
-    if (routeRunRef.current && snapshot) return;
+    const routeRefreshToken = readRouteRefreshToken();
+    const routeRefreshKey = routeRefreshToken ? `${activeCaseId}:${routeRefreshToken}` : '';
+    const routeRefreshRequiresHydration =
+      routeCaseRef.current === activeCaseId
+      && routeRefreshKey.length > 0
+      && routeRefreshHydratedRef.current !== routeRefreshKey;
+    if (routeRunRef.current && snapshot && !routeRefreshRequiresHydration) return;
 
     const routeCaseRequiresHydration =
       routeCaseRef.current === activeCaseId
       && snapshotCaseId === activeCaseId
       && snapshot !== null
       && !hasTopologicalContent(snapshot);
-    if (snapshot && snapshotCaseId === activeCaseId && !routeCaseRequiresHydration) return;
+    if (snapshot && snapshotCaseId === activeCaseId && !routeCaseRequiresHydration && !routeRefreshRequiresHydration) return;
 
     const refreshKey = [
       activeCaseId,
       snapshotCaseId ?? 'bez-zakresu',
       snapshot?.header?.hash_sha256 ?? 'bez-migawki',
       routeCaseRequiresHydration ? 'adres-pusty' : 'standard',
+      routeRefreshRequiresHydration ? routeRefreshToken : 'bez-tokena',
     ].join(':');
     if (refreshAttemptedCaseRef.current === refreshKey) return;
     refreshAttemptedCaseRef.current = refreshKey;
+    if (routeRefreshRequiresHydration) {
+      routeRefreshHydratedRef.current = routeRefreshKey;
+    }
     void refreshFromBackend(activeCaseId);
   }, [activeCaseId, refreshFromBackend, snapshot, snapshotCaseId, snapshotLoading]);
 
@@ -1075,7 +1105,87 @@ export function SldWorkspaceContainer(
     setSelectedId(id);
     if (!id) {
       selectElement(null);
+      centerSldOnElement(null);
       setDetailDrawerData(null);
+      return;
+    }
+
+    centerSldOnElement(id);
+
+    if (kind === 'cable_run' || kind === 'cable_segment_sn' || kind === 'overhead_line_sn') {
+      const run = sldData.cableRuns.find((item) =>
+        item.id === id || item.segmentRefs?.includes(id),
+      );
+      const clickedBranch = (snapshot?.branches ?? []).find(
+        (item) => item.ref_id === id || item.id === id,
+      ) as Branch | undefined;
+      const fallbackSegmentRef = run?.segmentRefs?.[0] ?? id;
+      const branch = clickedBranch
+        ?? ((snapshot?.branches ?? []).find(
+          (item) => item.ref_id === fallbackSegmentRef || item.id === fallbackSegmentRef,
+        ) as Branch | undefined);
+      const elementRef = branch?.ref_id ?? branch?.id ?? fallbackSegmentRef;
+      const elementName = branch && snapshot
+        ? segmentPublicIdentity(snapshot, branch).displayName
+        : run?.label?.trim() || 'Odcinek SN';
+
+      setDetailDrawerData(null);
+      selectElement({
+        id: elementRef,
+        type: 'LineBranch',
+        name: elementName,
+      });
+      openRouteSurface('E-12', {
+        entityRef: elementRef,
+        entityType: 'segment',
+        subjectKind: 'entity',
+        subjectRef: elementRef,
+        tabId: 'identification',
+        titlePl: elementName,
+        route: 'sld',
+        openMode: 'replace_right_panel',
+        supportsMiniSld: true,
+        payload: {
+          source: 'sld_segment_selection',
+          runRef: run?.id ?? null,
+        },
+      });
+      return;
+    }
+
+    if (kind === 'zksn' || kind === 'branch_pole') {
+      const branchPoint = (snapshot?.branch_points ?? []).find(
+        (item) => item.ref_id === id || item.id === id,
+      );
+      const elementRef = branchPoint?.ref_id ?? branchPoint?.id ?? id;
+      const isZksn = kind === 'zksn';
+      const elementName = publicTechnicalLabel(
+        branchPoint?.name ?? null,
+        isZksn ? 'ZK SN' : 'Słup rozgałęźny SN',
+      );
+      const elementType: ElementType = isZksn ? 'ZKSN' : 'BranchPole';
+
+      setDetailDrawerData(null);
+      selectElement({
+        id: elementRef,
+        type: elementType,
+        name: elementName,
+      });
+      openRouteSurface(isZksn ? 'E-14' : 'E-15', {
+        entityRef: elementRef,
+        entityType: isZksn ? 'zksn' : 'branch_pole',
+        subjectKind: 'entity',
+        subjectRef: elementRef,
+        tabId: 'identyfikacja',
+        titlePl: elementName,
+        route: 'sld',
+        openMode: 'replace_right_panel',
+        supportsMiniSld: true,
+        payload: {
+          source: 'sld_branch_point_selection',
+          branchPointType: kind,
+        },
+      });
       return;
     }
 
@@ -1127,7 +1237,7 @@ export function SldWorkspaceContainer(
       if (drawerKind === 'station' && snapshot) {
         const substation = findSubstationByRef(snapshot, id);
         switchgearDescription = formatStationSwitchgearDescriptionPl(substation?.station_type);
-        const transformers = selectStationTransformers(snapshot, substation ?? null);
+        const transformers = selectStationDistributionTransformers(snapshot, substation ?? null);
         const tr = transformers[0];
         if (tr) {
           transformerSpec = {
@@ -1449,7 +1559,16 @@ export function SldWorkspaceContainer(
 
     collapseSurfaceStackTo(null);
     selectElement(selected ?? { id, type: 'DescriptiveElement', name: id });
-  }, [collapseSurfaceStackTo, selectElement, snapshot, sldData, derDrag, overlayPayload]);
+  }, [
+    centerSldOnElement,
+    collapseSurfaceStackTo,
+    openRouteSurface,
+    selectElement,
+    snapshot,
+    sldData,
+    derDrag,
+    overlayPayload,
+  ]);
 
   useEffect(() => {
     const root = containerRef.current;
@@ -1616,6 +1735,7 @@ export function SldWorkspaceContainer(
         openRouteSurface('E-13', {
           entityRef: elementId,
           subjectKind: 'helper_context',
+          payload: { defaultCard: 'der-sources' },
         });
         // Wystawiamy intent — controller w E-13 (StationConfiguratorSurface)
         // pokaże menu wyboru kindu (PV/BESS/FW) lub bezpośrednio uruchomi
@@ -1656,7 +1776,7 @@ export function SldWorkspaceContainer(
     if (!internalStationId) return null;
     const station = findSubstationByRef(snapshot, internalStationId);
     const stationVisual = sldData.stations.find((item) => item.id === internalStationId);
-    const stationTransformers = selectStationTransformers(snapshot, station);
+    const stationTransformers = selectStationDistributionTransformers(snapshot, station);
     const stationBays = selectStationBays(snapshot, station);
     const stationBusRefs = new Set(station?.bus_refs ?? []);
 
@@ -1778,6 +1898,56 @@ export function SldWorkspaceContainer(
     ? undefined
     : 'Najpierw wstaw stację SN/nN w ciągu SN.';
 
+  const selectedStationRefForDer = useMemo(() => {
+    const stationRefs = new Set(sldData.stations.map((station) => station.id));
+    if (
+      activeRouteSurface?.screenCode === 'E-13'
+      && activeRouteSurface.entityRef
+      && stationRefs.has(activeRouteSurface.entityRef)
+    ) {
+      return activeRouteSurface.entityRef;
+    }
+    if (selectedId && stationRefs.has(selectedId)) return selectedId;
+    const internalStationRef = selectedId ? stationRefFromInternalElement(selectedId) : null;
+    if (selectedElement?.type === 'Station' && stationRefs.has(selectedElement.id)) {
+      return selectedElement.id;
+    }
+    return internalStationRef && stationRefs.has(internalStationRef) ? internalStationRef : null;
+  }, [
+    activeRouteSurface?.entityRef,
+    activeRouteSurface?.screenCode,
+    selectedElement?.id,
+    selectedElement?.type,
+    selectedId,
+    sldData.stations,
+  ]);
+
+  const startDerConfiguration = useCallback(
+    (kind: DerDragKind) => {
+      if (readOnly) {
+        notify('Tryb podglÄ…du schematu â€” przeĹ‚Ä…cz na edycjÄ™, aby dodaÄ‡ ukĹ‚ad PV/BESS/FW.', 'warning');
+        return;
+      }
+      if (!selectedStationRefForDer) {
+        derDrag.startDrag(kind);
+        return;
+      }
+      derDrag.cancel();
+      openRouteSurface('E-13', {
+        entityRef: selectedStationRefForDer,
+        entityType: 'station',
+        subjectKind: 'helper_context',
+        payload: {
+          defaultCard: 'der-sources',
+          addDerKind: kind,
+          addDerRequestId: `${kind}:${Date.now()}`,
+        },
+      });
+      notify(`Otwieram kreator ${kind} dla wybranej stacji.`, 'info');
+    },
+    [derDrag, openRouteSurface, readOnly, selectedStationRefForDer],
+  );
+
   const closeDetailDrawer = useCallback(() => {
     setDetailDrawerData(null);
     setSelectedId(null);
@@ -1793,7 +1963,8 @@ export function SldWorkspaceContainer(
       return;
     }
 
-    if (!activeProjectId || !activeCaseId) {
+    const effectiveDerCaseId = snapshot && snapshotCaseId ? snapshotCaseId : activeCaseId;
+    if (!activeProjectId || !effectiveDerCaseId) {
       notify('Nie można zapisać DER: wybierz aktywny projekt i przypadek.', 'error');
       return;
     }
@@ -1803,7 +1974,7 @@ export function SldWorkspaceContainer(
     }
 
     try {
-      const response = await postDerGeneratorConfig(activeProjectId, activeCaseId, {
+      const response = await postDerGeneratorConfig(activeProjectId, effectiveDerCaseId, {
         station_ref: payload.elementId,
         der_kind: payload.derConfig.derKind,
         power_mw: payload.derConfig.powerMw,
@@ -1824,7 +1995,15 @@ export function SldWorkspaceContainer(
           : 'Nie udało się zapisać konfiguracji DER.';
       notify(message, 'error');
     }
-  }, [activeCaseId, activeProjectId, closeDetailDrawer, detailDrawerData, setSnapshot]);
+  }, [
+    activeCaseId,
+    activeProjectId,
+    closeDetailDrawer,
+    detailDrawerData,
+    setSnapshot,
+    snapshot,
+    snapshotCaseId,
+  ]);
 
   return (
     <SldThemeProvider mode={themeMode}>
@@ -1860,9 +2039,16 @@ export function SldWorkspaceContainer(
         sections={sldData.sections}
         cableRuns={sldData.cableRuns}
         stations={sldData.stations}
+        branchPoints={sldData.branchPoints}
         ders={sldData.ders}
         connections={sldData.derConnections}
+        topologyCorridors={sldData.topologyCorridors}
+        topologyRuns={sldData.topologyRuns}
+        terminalBindings={sldData.terminalBindings}
+        labelSpecs={sldData.labelSpecs}
+        readabilityReport={sldData.readabilityReport}
         selectedId={selectedId}
+        centerOnElementId={centerOnElementId}
         onSelectElement={handleSelectElement}
         onDoubleClickStation={handleDoubleClickStation}
         onDoubleClickDer={handleDoubleClickDer}
@@ -1904,7 +2090,7 @@ export function SldWorkspaceContainer(
           <DerPaletteButton
             key={kind}
             kind={kind}
-            onStart={(k) => derDrag.startDrag(k)}
+            onStart={startDerConfiguration}
             disabled={derDrag.state !== null && derDrag.state.kind !== kind}
             disabledReason={
               derPaletteBlockedReason
@@ -2216,11 +2402,11 @@ export function SldWorkspaceContainer(
       {internalStationProps && (
         <div
           data-testid="station-internal-view"
-          className="absolute inset-0 z-30 flex items-center justify-center bg-black/60"
-          onClick={closeInternalStation}
+          data-view-mode="side-drawer"
+          className="pointer-events-none absolute bottom-3 right-3 top-3 z-30 flex max-w-[min(760px,calc(100%-1.5rem))] items-start justify-end"
         >
           <div
-            className="rounded border border-scada-border bg-scada-panel shadow-2xl"
+            className="pointer-events-auto max-h-full overflow-auto rounded border border-scada-border bg-scada-panel shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <StationInternalView {...internalStationProps} />
