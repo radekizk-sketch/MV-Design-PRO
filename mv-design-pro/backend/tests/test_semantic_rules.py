@@ -17,6 +17,8 @@ from network_model.validation.semantic_rules import (
     rule_overhead_cannot_start_from_zksn,
     rule_source_voltage_match_bus,
     rule_transformer_voltage_polarity,
+    rule_zero_length_segment,
+    rule_zero_power_load,
 )
 from network_model.validation.semantic_validator import (
     validate_semantic,
@@ -286,6 +288,76 @@ class TestNoOrphanBranchPoints:
         assert issues[0].element_id == "BP-1"
 
 
+class TestZeroLengthSegment:
+    def test_positive_length_passes(self):
+        enm = {
+            "branches": [
+                {"ref_id": "SEG-1", "type": "cable", "length_km": 1.5},
+                {"ref_id": "SEG-2", "type": "line_overhead", "length_km": 2.0},
+            ]
+        }
+        assert rule_zero_length_segment(enm) == []
+
+    def test_zero_length_warns(self):
+        enm = {"branches": [{"ref_id": "SEG-1", "type": "cable", "length_km": 0}]}
+        issues = rule_zero_length_segment(enm)
+        assert len(issues) == 1
+        assert issues[0].code == "semantic.zero_length_segment"
+        assert issues[0].severity.value == "WARNING"
+        assert issues[0].element_id == "SEG-1"
+
+    def test_negative_length_warns(self):
+        enm = {"branches": [{"ref_id": "SEG-1", "type": "line_overhead", "length_km": -0.5}]}
+        issues = rule_zero_length_segment(enm)
+        assert len(issues) == 1
+
+    def test_missing_length_skipped(self):
+        enm = {"branches": [{"ref_id": "SEG-1", "type": "cable"}]}
+        assert rule_zero_length_segment(enm) == []
+
+    def test_non_segment_branches_skipped(self):
+        # switch, breaker - nie segmenty SN, length_km nie ma sensu
+        enm = {"branches": [{"ref_id": "BR-1", "type": "switch", "length_km": 0}]}
+        assert rule_zero_length_segment(enm) == []
+
+
+class TestZeroPowerLoad:
+    def test_nonzero_load_passes(self):
+        enm = {"loads": [{"ref_id": "L-1", "p_kw": 100.0, "q_kvar": 50.0}]}
+        assert rule_zero_power_load(enm) == []
+
+    def test_zero_p_and_q_warns(self):
+        enm = {"loads": [{"ref_id": "L-1", "p_kw": 0, "q_kvar": 0}]}
+        issues = rule_zero_power_load(enm)
+        assert len(issues) == 1
+        assert issues[0].code == "semantic.zero_power_load"
+        assert issues[0].severity.value == "WARNING"
+
+    def test_only_reactive_passes(self):
+        # Same Q = kondensator/cewka — to legitime element
+        enm = {"loads": [{"ref_id": "L-1", "p_kw": 0, "q_kvar": -50.0}]}
+        assert rule_zero_power_load(enm) == []
+
+    def test_missing_fields_treated_as_zero(self):
+        # Brak p_kw i q_kvar = zero domyślne = warning
+        enm = {"loads": [{"ref_id": "L-1"}]}
+        issues = rule_zero_power_load(enm)
+        assert len(issues) == 1
+
+
 class TestSemanticRulesRegistry:
-    def test_all_six_rules_registered(self):
-        assert len(SEMANTIC_RULES) == 6
+    def test_all_eight_rules_registered(self):
+        assert len(SEMANTIC_RULES) == 8
+
+    def test_warning_rules_are_warning_severity(self):
+        # 2 ostatnie reguły powinny być WARNING
+        enm = {
+            "branches": [{"ref_id": "S-1", "type": "cable", "length_km": 0}],
+            "loads": [{"ref_id": "L-1", "p_kw": 0, "q_kvar": 0}],
+        }
+        from network_model.validation.semantic_validator import validate_semantic
+
+        issues = validate_semantic(enm)
+        warning_codes = {i.code for i in issues if i.severity.value == "WARNING"}
+        assert "semantic.zero_length_segment" in warning_codes
+        assert "semantic.zero_power_load" in warning_codes

@@ -324,11 +324,88 @@ def rule_no_orphan_branch_points(enm: dict) -> list[ValidationIssue]:
     return issues
 
 
+def _loads(enm: dict) -> list[dict]:
+    return enm.get("loads") or []
+
+
+def rule_zero_length_segment(enm: dict) -> list[ValidationIssue]:
+    """
+    Segment SN (kabel / linia napowietrzna) z długością 0 km jest podejrzany —
+    najprawdopodobniej brak materializacji parametrów z katalogu lub pomyłka edytora.
+
+    Severity: WARNING (nie blokuje obliczeń, ale ostrzega operatora).
+    """
+    issues: list[ValidationIssue] = []
+    for br in _branches(enm):
+        br_type = br.get("type")
+        if br_type not in ("cable", "line_overhead"):
+            continue
+        length = br.get("length_km")
+        if length is None:
+            continue
+        try:
+            length_v = float(length)
+        except (TypeError, ValueError):
+            continue
+        if length_v <= 0.0:
+            issues.append(
+                ValidationIssue(
+                    code="semantic.zero_length_segment",
+                    message=(
+                        f"Segment '{br.get('ref_id') or br.get('id')}' typu '{br_type}' "
+                        f"ma długość {length_v} km. Wymagana dodatnia długość."
+                    ),
+                    severity=Severity.WARNING,
+                    element_id=br.get("ref_id") or br.get("id"),
+                    field="length_km",
+                    suggested_fix="Uzupełnij długość segmentu lub usuń segment.",
+                )
+            )
+    return issues
+
+
+def rule_zero_power_load(enm: dict) -> list[ValidationIssue]:
+    """
+    Odbiór z mocą czynną i bierną równą 0 nie wpływa na obliczenia rozpływowe —
+    najprawdopodobniej placeholder lub brak materializacji katalogu.
+
+    Severity: WARNING (operator może świadomie mieć "rezerwowe" odbiory).
+    """
+    issues: list[ValidationIssue] = []
+    for load in _loads(enm):
+        p_kw = load.get("p_kw")
+        q_kvar = load.get("q_kvar")
+        try:
+            p = float(p_kw) if p_kw is not None else 0.0
+            q = float(q_kvar) if q_kvar is not None else 0.0
+        except (TypeError, ValueError):
+            continue
+        if abs(p) < 1e-9 and abs(q) < 1e-9:
+            issues.append(
+                ValidationIssue(
+                    code="semantic.zero_power_load",
+                    message=(
+                        f"Odbiór '{load.get('ref_id')}' ma P=0 kW i Q=0 kvar — "
+                        f"nie wpływa na obliczenia rozpływowe."
+                    ),
+                    severity=Severity.WARNING,
+                    element_id=load.get("ref_id"),
+                    field="p_kw",
+                    suggested_fix="Uzupełnij moce obciążenia lub usuń odbiór.",
+                )
+            )
+    return issues
+
+
 SEMANTIC_RULES: list[SemanticRule] = [
+    # ERROR (blokujące):
     rule_cable_cannot_start_from_pole,
     rule_overhead_cannot_start_from_zksn,
     rule_der_must_match_bay_type,
     rule_source_voltage_match_bus,
     rule_transformer_voltage_polarity,
     rule_no_orphan_branch_points,
+    # WARNING (informacyjne, nie blokują):
+    rule_zero_length_segment,
+    rule_zero_power_load,
 ]
