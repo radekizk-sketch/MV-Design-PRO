@@ -25,11 +25,21 @@ jobs:
       - name: Lint
         working-directory: mv-design-pro/frontend
         run: npm run lint
-      - name: Run tests
+      - name: Run tests shard 1/3
         working-directory: mv-design-pro/frontend
         env:
           NODE_OPTIONS: --max-old-space-size=6144
-        run: npm test
+        run: npx vitest run --no-file-parallelism --shard=1/3
+      - name: Run tests shard 2/3
+        working-directory: mv-design-pro/frontend
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: npx vitest run --no-file-parallelism --shard=2/3
+      - name: Run tests shard 3/3
+        working-directory: mv-design-pro/frontend
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: npx vitest run --no-file-parallelism --shard=3/3
       - name: Run audit2 frontend integration tests (Phase 8-30)
         working-directory: mv-design-pro/frontend
         env:
