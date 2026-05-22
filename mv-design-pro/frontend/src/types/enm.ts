@@ -1264,9 +1264,24 @@ export interface DomainOpResponseV1 {
   domain_events: DomainEvent[];
   materialized_params: MaterializedParams;
   layout: LayoutInfo;
+  /**
+   * Naruszenia semantyki sieci po operacji (PR-C konsolidacji UI).
+   * Wypełnione przez backend post-hook walidatora semantic_rules.
+   * Pusta lista gdy brak naruszeń.
+   */
+  semantic_issues?: SemanticIssueV1[];
   /** Present only on error responses. */
   error?: string;
   error_code?: string;
+}
+
+export interface SemanticIssueV1 {
+  code: string;
+  message: string;
+  severity: 'ERROR' | 'WARNING';
+  element_id: string | null;
+  field: string | null;
+  suggested_fix: string | null;
 }
 
 // ---------------------------------------------------------------------------

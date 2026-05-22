@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <!-- Load / Odbiór - IEC 60617 -->
-  <!-- Downward triangle (arrowhead) -->
-  <!-- Connection stub top -->
-  <line x1="50" y1="0" x2="50" y2="30" stroke="#000000" stroke-width="3"/>
-  <!-- Triangle pointing down -->
-  <polygon points="30,30 70,30 50,70" fill="none" stroke="#000000" stroke-width="3"/>
-  <!-- Port markers: top: (50, 0) -->
-</svg>

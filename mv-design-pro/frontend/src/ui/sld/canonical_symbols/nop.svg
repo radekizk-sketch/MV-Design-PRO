@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" data-symbol="nop">
-  <!-- Punkt normalnie otwarty: wyraźne dwie pionowe kreski "||" + badge NO -->
-  <line x1="13" y1="6" x2="13" y2="26" stroke="currentColor" stroke-width="3"/>
-  <line x1="19" y1="6" x2="19" y2="26" stroke="currentColor" stroke-width="3"/>
-  <text x="16" y="32" font-family="sans-serif" font-size="6" font-weight="700" text-anchor="middle" fill="currentColor">NO</text>
-  <circle cx="16" cy="0" r="0.5" fill="currentColor" data-anchor="top"/>
-  <circle cx="16" cy="26" r="0.5" fill="currentColor" data-anchor="bottom"/>
-</svg>

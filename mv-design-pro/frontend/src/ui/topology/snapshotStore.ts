@@ -29,6 +29,7 @@ import type {
   SelectionHint,
   ChangesInfo,
   DomainEvent,
+  SemanticIssueV1,
   TerminalRef,
 } from '../../types/enm';
 import { executeDomainOp } from './domainApi';
@@ -56,6 +57,12 @@ export interface SnapshotState {
   lastChanges: ChangesInfo | null;
   /** Last domain events. */
   lastEvents: DomainEvent[];
+  /**
+   * Naruszenia semantyki z ostatniej operacji domenowej (PR-C konsolidacji UI).
+   * Pusta lista gdy brak. Konsumenci (TechCard, IssuePanel) wyświetlają je
+   * dla zaznaczonego elementu lub globalnie.
+   */
+  semanticIssues: SemanticIssueV1[];
   /** History of domain operations for the snapshot timeline. */
   operationHistory: SnapshotOperationHistoryEntry[];
   /** Loading state. */
@@ -211,6 +218,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
   selectionHint: null,
   lastChanges: null,
   lastEvents: [],
+  semanticIssues: [],
   operationHistory: [],
   loading: false,
   error: null,
@@ -253,6 +261,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
         selectionHint: response.selection_hint,
         lastChanges: response.changes,
         lastEvents: response.domain_events,
+        semanticIssues: response.semantic_issues ?? [],
         operationHistory: [
           createHistoryEntry(opName, payload, response, 'success'),
           ...get().operationHistory,
@@ -307,6 +316,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
         selectionHint: null,
         lastChanges: null,
         lastEvents: [],
+        semanticIssues: response.semantic_issues ?? [],
         loading: false,
         error: null,
         errorCode: null,
@@ -335,6 +345,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
       selectionHint: response.selection_hint,
       lastChanges: response.changes,
       lastEvents: response.domain_events,
+      semanticIssues: response.semantic_issues ?? [],
       operationHistory: [],
     });
   },
@@ -352,6 +363,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
       selectionHint: null,
       lastChanges: null,
       lastEvents: [],
+      semanticIssues: [],
       operationHistory: [],
       loading: false,
       error: null,

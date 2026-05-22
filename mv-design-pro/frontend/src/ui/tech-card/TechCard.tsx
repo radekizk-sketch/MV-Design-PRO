@@ -9,8 +9,10 @@
  * transformator, switch, NN) używają TechCard zamiast ObjectCard.
  */
 
+import { useSnapshotStore } from '../topology/snapshotStore';
 import { ObjectCard, type ObjectCardProps, type CardSection } from '../network-build/cards/ObjectCard';
 import { DevDiagnosticsBlock } from './DevDiagnosticsBlock';
+import { SemanticIssuesBanner } from './SemanticIssuesBanner';
 import { redactRawIds } from './redactor';
 
 export interface TechCardProps extends Omit<ObjectCardProps, 'sections' | 'footer'> {
@@ -18,7 +20,8 @@ export interface TechCardProps extends Omit<ObjectCardProps, 'sections' | 'foote
   footer?: ObjectCardProps['footer'];
 }
 
-export function TechCard({ sections, footer, ...rest }: TechCardProps) {
+export function TechCard({ sections, footer, elementId, ...rest }: TechCardProps) {
+  const semanticIssues = useSnapshotStore((s) => s.semanticIssues);
   const redactedSections: CardSection[] = [];
   const allDiagnosticsFields = [];
 
@@ -35,9 +38,11 @@ export function TechCard({ sections, footer, ...rest }: TechCardProps) {
   return (
     <ObjectCard
       {...rest}
+      elementId={elementId}
       sections={redactedSections}
       footer={
         <>
+          <SemanticIssuesBanner issues={semanticIssues} elementId={elementId} />
           <DevDiagnosticsBlock fields={allDiagnosticsFields} />
           {footer}
         </>
