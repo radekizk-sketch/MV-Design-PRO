@@ -14,6 +14,15 @@ import { clsx } from 'clsx';
 // Types
 // =============================================================================
 
+export type ProjectPhase = '' | 'PB' | 'PW' | 'PR' | 'PK';
+
+export const PROJECT_PHASE_LABELS_PL: Readonly<Record<Exclude<ProjectPhase, ''>, string>> = {
+  PB: 'Projekt budowlany (PB)',
+  PW: 'Projekt wykonawczy (PW)',
+  PR: 'Projekt rozbudowy (PR)',
+  PK: 'Projekt koncepcyjny (PK)',
+};
+
 export interface ProjectMetadata {
   projectName: string;
   description: string;
@@ -26,6 +35,10 @@ export interface ProjectMetadata {
   notes: string;
   voltageLevel: string;
   networkType: string;
+  /** Inwestor / podmiot zlecający - wymagane dla wniosku OSD. */
+  investor: string;
+  /** Faza projektu wg ustawy o prawie budowlanym (PB/PW/PR/PK). */
+  phase: ProjectPhase;
 }
 
 export interface ProjectMetadataModalProps {
@@ -51,6 +64,8 @@ const DEFAULT_METADATA: ProjectMetadata = {
   notes: '',
   voltageLevel: '15 kV',
   networkType: 'Promieniowa z rezerwą',
+  investor: '',
+  phase: '',
 };
 
 // =============================================================================
@@ -169,6 +184,29 @@ export function ProjectMetadataModal({
             />
             <div className="grid grid-cols-2 gap-3">
               <Field
+                label="Inwestor"
+                value={form.investor}
+                onChange={(v) => handleChange('investor', v)}
+                placeholder="Podmiot zlecający (wymagane dla OSD)"
+                dataTestId="project-metadata-investor"
+              />
+              <SelectField
+                label="Faza projektu"
+                value={form.phase}
+                onChange={(v) => handleChange('phase', v as ProjectPhase)}
+                options={[
+                  { value: '', label: '— wybierz —' },
+                  ...Object.entries(PROJECT_PHASE_LABELS_PL).map(([value, label]) => ({
+                    value,
+                    label,
+                  })),
+                ]}
+                tooltip="PB - Projekt budowlany, PW - Wykonawczy, PR - Rozbudowy, PK - Koncepcyjny"
+                dataTestId="project-metadata-phase"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field
                 label="Numer umowy / zlecenia"
                 value={form.contractNumber}
                 onChange={(v) => handleChange('contractNumber', v)}
@@ -178,7 +216,7 @@ export function ProjectMetadataModal({
                 label="Projektant"
                 value={form.designer}
                 onChange={(v) => handleChange('designer', v)}
-                placeholder="Imię i nazwisko"
+                placeholder="Imię i nazwisko + nr SEP D"
               />
             </div>
           </fieldset>
@@ -289,6 +327,46 @@ export function ProjectMetadataModal({
 // =============================================================================
 // Field helper
 // =============================================================================
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  tooltip,
+  dataTestId,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: ReadonlyArray<{ value: string; label: string }>;
+  tooltip?: string;
+  dataTestId?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-[11px] text-gray-500 mb-0.5" title={tooltip}>
+        {label}
+        {tooltip && <span className="ml-1 text-gray-400 cursor-help">ⓘ</span>}
+      </label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        data-testid={dataTestId}
+        className={clsx(
+          'w-full px-2.5 py-1.5 text-[11px] border border-gray-200 rounded bg-white',
+          'focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100',
+        )}
+      >
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
 function Field({
   label,
