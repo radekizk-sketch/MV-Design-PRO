@@ -18,21 +18,65 @@ import {
 type SnBayRole = 'IN' | 'OUT' | 'FEEDER' | 'TR' | 'COUPLER' | 'MEASUREMENT' | 'OZE';
 type ApparatusKind = 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH' | 'MEASUREMENT';
 
-const BAY_ROLE_OPTIONS: Array<{ value: SnBayRole; label: string }> = [
-  { value: 'OUT', label: 'Pole liniowe odpływowe' },
-  { value: 'IN', label: 'Pole liniowe dopływowe' },
-  { value: 'FEEDER', label: 'Pole liniowe / odgałęźne' },
-  { value: 'TR', label: 'Pole transformatorowe' },
-  { value: 'COUPLER', label: 'Pole sprzęgła sekcji' },
-  { value: 'MEASUREMENT', label: 'Pole pomiarowe' },
-  { value: 'OZE', label: 'Pole źródłowe' },
+const BAY_ROLE_OPTIONS: Array<{ value: SnBayRole; label: string; description: string }> = [
+  {
+    value: 'OUT',
+    label: 'Pole liniowe odpływowe',
+    description: 'Standardowe pole z wyprowadzeniem ciągu SN (linii/kabla). Zwykle z wyłącznikiem, CT 5P, zabezpieczeniem 50/51/67.',
+  },
+  {
+    value: 'IN',
+    label: 'Pole liniowe dopływowe',
+    description: 'Pole zasilające szyny GPZ od strony WN (po transformatorze WN/SN). CT pomiarowe + zabezpieczenia 87T/50/51.',
+  },
+  {
+    value: 'FEEDER',
+    label: 'Pole liniowe / odgałęźne',
+    description: 'Pole rozdzielcze pośrednie - wyprowadza odgałęzienie z ciągu głównego. Stosowane w sieciach pętlowych/promienistych.',
+  },
+  {
+    value: 'TR',
+    label: 'Pole transformatorowe',
+    description: 'Pole z transformatorem SN/nN dla stacji. Zabezpieczenia: 50/51 strony SN + relay 87T różnicowy + temperatura.',
+  },
+  {
+    value: 'COUPLER',
+    label: 'Pole sprzęgła sekcji',
+    description: 'Łącznik między sekcjami szyn (CB lub DS). Tryb pracy normal-open (NOP) lub normal-closed (NC). Kluczowy dla N-1.',
+  },
+  {
+    value: 'MEASUREMENT',
+    label: 'Pole pomiarowe',
+    description: 'Pole tylko z VT (przekładniki napięciowe) + bezpiecznik. Bez wyłącznika - do pomiarów napięcia U na szynach.',
+  },
+  {
+    value: 'OZE',
+    label: 'Pole źródłowe (OZE/DER)',
+    description: 'Pole dla źródła rozproszonego (PV/BESS/FW). Wymaga zabezpieczeń 27/59/81U/81O + anti-islanding ROCOF.',
+  },
 ];
 
-const APPARATUS_OPTIONS: Array<{ value: ApparatusKind; label: string }> = [
-  { value: 'BREAKER', label: 'Wyłącznik' },
-  { value: 'DISCONNECTOR', label: 'Odłącznik' },
-  { value: 'LOAD_SWITCH', label: 'Rozłącznik' },
-  { value: 'MEASUREMENT', label: 'Tor pomiarowy' },
+const APPARATUS_OPTIONS: Array<{ value: ApparatusKind; label: string; description: string }> = [
+  {
+    value: 'BREAKER',
+    label: 'Wyłącznik (CB)',
+    description: 'Wyłącznik mocy SN - łączy/rozłącza przy obciążeniu i zwarciu. Wymagany dla pól z zabezpieczeniami 50/51/67.',
+  },
+  {
+    value: 'DISCONNECTOR',
+    label: 'Odłącznik (DS)',
+    description: 'Tylko bezpieczna sekcja - łączy/rozłącza BEZ obciążenia. Dla widzialnej separacji galwanicznej.',
+  },
+  {
+    value: 'LOAD_SWITCH',
+    label: 'Rozłącznik (LBS)',
+    description: 'Łączy/rozłącza przy normalnej pracy ale NIE wyłącza zwarcia. Tańsza alternatywa CB dla mniej krytycznych pól.',
+  },
+  {
+    value: 'MEASUREMENT',
+    label: 'Tor pomiarowy (VT/CT)',
+    description: 'Pole bez przełączania - tylko przekładniki pomiarowe. Wykorzystywane dla pomiarów napięcia/prądu/mocy.',
+  },
 ];
 
 function mapLegacyApparatusKind(value: unknown): ApparatusKind {
@@ -333,6 +377,9 @@ export function AddSnBayForm() {
               </option>
             ))}
           </select>
+          <span className="mt-1 block text-[10px] leading-snug text-[#7691b3]">
+            {BAY_ROLE_OPTIONS.find((o) => o.value === bayRole)?.description ?? ''}
+          </span>
         </label>
 
         <label className="block">
@@ -350,6 +397,9 @@ export function AddSnBayForm() {
               </option>
             ))}
           </select>
+          <span className="mt-1 block text-[10px] leading-snug text-[#7691b3]">
+            {APPARATUS_OPTIONS.find((o) => o.value === apparatusKind)?.description ?? ''}
+          </span>
         </label>
 
         <label className="block">
