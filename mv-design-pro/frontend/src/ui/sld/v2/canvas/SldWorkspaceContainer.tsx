@@ -44,6 +44,8 @@ import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
 import { notify } from '../../../notifications/store';
 import { useSelectionStore } from '../../../selection';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
+import { computeCorridorLayout } from '../builder/CorridorLayout';
+import { computeSpineModel, type SpineModel } from '../builder/SpinePolicy';
 import type { Bay, EnergyNetworkModel, LogicalViewsV1, Substation, Transformer } from '../../../../types/enm';
 import type { ElementType, SelectedElement } from '../../../types';
 import { buildOperationContext } from '../../../network-build/operationContext';
@@ -781,6 +783,31 @@ export function SldWorkspaceContainer(
     }
     return out;
   }, [snapshot, sldData.gpzs]);
+
+  /**
+   * Spine preview overlay — opt-in przez VITE_SLD_SPINE_PREVIEW=1.
+   * Buduje SpineModel ze snapshot ENM przez computeCorridorLayout +
+   * computeSpineModel (z PR-B). Gdy flag wyłączona, pozostaje undefined
+   * i overlay nie jest renderowany. Mechanizm jest neutralny dla
+   * domyślnej ścieżki renderowania (cableRuns nadal aktywne).
+   */
+  const spineModel = useMemo<SpineModel | undefined>(() => {
+    if (import.meta.env?.VITE_SLD_SPINE_PREVIEW !== '1') return undefined;
+    if (!snapshot) return undefined;
+    if (!snapshot.line_runs?.length) return undefined;
+    const corridorLayout = computeCorridorLayout({
+      substations: snapshot.substations,
+      line_runs: snapshot.line_runs,
+    });
+    return computeSpineModel(
+      {
+        substations: snapshot.substations,
+        line_runs: snapshot.line_runs,
+        branch_points: snapshot.branch_points,
+      },
+      corridorLayout,
+    );
+  }, [snapshot]);
 
   const isEmpty = useMemo(() => {
     return (
@@ -1526,6 +1553,7 @@ export function SldWorkspaceContainer(
         ders={sldData.ders}
         connections={sldData.derConnections}
         selectedId={selectedId}
+        spineModel={spineModel}
         onSelectElement={handleSelectElement}
         onDoubleClickStation={handleDoubleClickStation}
         onDoubleClickDer={handleDoubleClickDer}
