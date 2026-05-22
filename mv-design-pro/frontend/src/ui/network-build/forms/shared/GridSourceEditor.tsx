@@ -573,6 +573,25 @@ function getReadinessText(state: ReadinessState, fallback: string): string {
   return 'Do konfiguracji';
 }
 
+/**
+ * Opis inżynierski typu uziemienia punktu neutralnego (PN-EN 50522 § 4.5).
+ * Renderowany jako helperText pod selectem - zawsze widoczny dla wybranego typu.
+ */
+function describeGroundingType(type: GpzGroundingType): string {
+  switch (type) {
+    case 'resistor_grounded':
+      return 'Najczęściej stosowane w SN. Rezystor ogranicza prąd zwarcia 1-faz do bezpiecznej wartości (zwykle 100-1000 A). Wymaga zabezpieczeń 51G/67N na bayach.';
+    case 'isolated':
+      return 'Sieć IT - punkt neutralny niezuziemiony. Bardzo mały prąd zwarcia 1-faz (pojemnościowy). Wymaga ciągłej kontroli izolacji i RCD klasy B w sieciach z falownikami.';
+    case 'petersen_coil':
+      return 'Cewka rezonansowa (Petersena) kompensuje prąd pojemnościowy. Niemal zerowy prąd zwarcia doziemnego. Zalecane dla rozległych sieci SN z dużą długością kabli.';
+    case 'solid_grounded':
+      return 'TN-S/TN-C lub sztywne uziemienie. Bardzo duże prądy zwarcia 1-faz. Wymaga aparatury o wysokim Ik" i pełnej koordynacji zabezpieczeń ziemnozwarciowych.';
+    default:
+      return 'Wybierz typ uziemienia.';
+  }
+}
+
 export function GridSourceEditor({
   isOpen,
   mode,
@@ -1022,7 +1041,12 @@ export function GridSourceEditor({
             </div>
 
             <div className="grid gap-3 lg:grid-cols-2">
-              <FieldShell label="Uziemienie punktu neutralnego" error={getFieldError('grounding_type')}>
+              <FieldShell
+                label="Uziemienie punktu neutralnego"
+                error={getFieldError('grounding_type')}
+                tooltip="Typ układu uziemienia punktu neutralnego sieci SN wg PN-EN 50522 § 4.5. Wpływa na prąd zwarcia jednofazowego, koordynację zabezpieczeń ziemnozwarciowych (51G/50GN/67N) i parametry urządzeń ochronnych."
+                helperText={describeGroundingType(formData.grounding_type)}
+              >
                 <select
                   value={formData.grounding_type}
                   onChange={(event) =>
@@ -1030,10 +1054,10 @@ export function GridSourceEditor({
                   }
                   className={selectClass(getFieldError('grounding_type'))}
                 >
-                  <option value="resistor_grounded">rezystancja</option>
-                  <option value="isolated">izolowany</option>
-                  <option value="petersen_coil">cewka Petersena</option>
-                  <option value="solid_grounded">bezpośrednio uziemiony</option>
+                  <option value="resistor_grounded">Rezystorowe (R w punkcie 0)</option>
+                  <option value="isolated">Izolowane (IT)</option>
+                  <option value="petersen_coil">Cewka Petersena (kompensacja)</option>
+                  <option value="solid_grounded">Bezpośrednie (TN)</option>
                 </select>
               </FieldShell>
 
@@ -1635,11 +1659,17 @@ function FieldShell({
   label,
   unit,
   error,
+  helperText,
+  tooltip,
   children,
 }: {
   label: string;
   unit?: string;
   error?: string;
+  /** Tekst pomocniczy pod polem (inline, zawsze widoczny). Użyj dla opisów inżynierskich krótkich. */
+  helperText?: string;
+  /** Tooltip ⓘ obok labela (hover/focus). Użyj dla dłuższych opisów lub odniesień do norm. */
+  tooltip?: string;
   children: ReactNode;
 }) {
   return (
@@ -1647,8 +1677,16 @@ function FieldShell({
       <span className={FIELD_LABEL_CLASS}>
         {label}
         {unit && <span className="ml-1 text-[#6d8fb3]">{unit}</span>}
+        {tooltip && (
+          <span className="ml-1 cursor-help text-[#5b91d5]" title={tooltip}>
+            ⓘ
+          </span>
+        )}
       </span>
       {children}
+      {helperText && (
+        <span className="block text-[10px] leading-snug text-[#7691b3]">{helperText}</span>
+      )}
       {error && <span className={ERROR_CLASS}>{error}</span>}
     </label>
   );
