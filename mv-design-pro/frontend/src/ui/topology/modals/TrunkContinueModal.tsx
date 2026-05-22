@@ -49,6 +49,11 @@ const SEGMENT_KIND_LABELS: Record<SegmentKind, string> = {
   LINIA_NAPOWIETRZNA: 'Linia napowietrzna SN',
 };
 
+const SEGMENT_KIND_DESCRIPTIONS: Record<SegmentKind, string> = {
+  KABEL_SN: 'Kabel ziemny SN (XLPE/EPR/PILC). Tylko ZKSN (mufy kablowe) na trasie. Niemożliwe odgałęzienia ze słupów - reguła semantic.rule_overhead_cannot_host_zksn.',
+  LINIA_NAPOWIETRZNA: 'Linia napowietrzna SN (AFL, gołe lub w izolacji). Tylko słupy rozgałęźne na trasie. Niemożliwe ZKSN bez przejścia kabel-linia - reguła semantic.rule_cable_cannot_start_from_pole.',
+};
+
 const LENGTH_PRESETS = [100, 250, 500, 700, 1000];
 
 const NEXT_STEP_OPTIONS: Array<{
@@ -460,7 +465,9 @@ export function TrunkContinueModal({
               <h3 className={sectionTitleClass}>Odcinek do utworzenia</h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={labelClass}>Rodzaj odcinka</label>
+                  <label className={labelClass} title="Wybór typu fizycznego segmentu SN. Zmiana wpływa na dostępne katalogi i reguły semantyczne (kabel vs słup)." >
+                    Rodzaj odcinka <span className="text-[#5b91d5] cursor-help">ⓘ</span>
+                  </label>
                   <select
                     value={formData.segment_kind}
                     onChange={(event) => handleChange('segment_kind', event.target.value)}
@@ -475,13 +482,18 @@ export function TrunkContinueModal({
                       </option>
                     ))}
                   </select>
+                  <p className="mt-1 text-[10px] leading-snug text-[#7691b3]">
+                    {SEGMENT_KIND_DESCRIPTIONS[formData.segment_kind as SegmentKind]}
+                  </p>
                   {getFieldError('segment_kind') && (
                     <p className="mt-1 text-xs text-[#ff6b6b]">{getFieldError('segment_kind')}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className={labelClass}>Długość [m]</label>
+                  <label className={labelClass} title="Długość fizyczna odcinka SN w metrach. Wpływa na: impedancję (Z = R*l + jX*l), spadek napięcia ΔU, prąd zwarcia jednofazowy I1ph, czas wyłączania zabezpieczeń.">
+                    Długość [m] <span className="text-[#5b91d5] cursor-help">ⓘ</span>
+                  </label>
                   <input
                     type="number"
                     value={formData.length_m || ''}
