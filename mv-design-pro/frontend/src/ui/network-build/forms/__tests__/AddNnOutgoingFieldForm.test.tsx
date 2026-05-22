@@ -113,7 +113,7 @@ describe('AddNnOutgoingFieldForm', () => {
     };
   });
 
-  it('zapisuje pole zrodlowe przez kanoniczne add_nn_outgoing_field z jawna rola SOURCE', async () => {
+  it('zapisuje pole przyłączeniowe przez kanoniczne add_nn_outgoing_field z jawną rolą SOURCE', async () => {
     executeDomainOperationMock.mockResolvedValue({});
 
     render(<AddNnOutgoingFieldForm />);
@@ -123,7 +123,7 @@ describe('AddNnOutgoingFieldForm', () => {
     });
 
     fireEvent.click(screen.getByText('wybierz:Aparat nN z katalogu'));
-    fireEvent.click(screen.getByRole('button', { name: /Dodaj pole źródłowe/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Dodaj pole przyłączeniowe/i }));
 
     await waitFor(() => {
       expect(executeDomainOperationMock).toHaveBeenCalledWith(
@@ -177,7 +177,7 @@ describe('AddNnOutgoingFieldForm', () => {
     });
   });
 
-  it('zapisuje pole zrodlowe AGREGAT przez kanoniczne add_nn_outgoing_field z jawna rola SOURCE', async () => {
+  it('zapisuje pole przyłączeniowe AGREGAT przez kanoniczne add_nn_outgoing_field z jawną rolą SOURCE', async () => {
     executeDomainOperationMock.mockResolvedValue({});
     networkBuildState.activeOperationForm = {
       op: 'add_nn_outgoing_field',
@@ -196,7 +196,7 @@ describe('AddNnOutgoingFieldForm', () => {
     });
 
     fireEvent.click(screen.getByText('wybierz:Aparat nN z katalogu'));
-    fireEvent.click(screen.getByRole('button', { name: /Dodaj pole źródłowe/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Dodaj pole przyłączeniowe/i }));
 
     await waitFor(() => {
       expect(executeDomainOperationMock).toHaveBeenCalledWith(

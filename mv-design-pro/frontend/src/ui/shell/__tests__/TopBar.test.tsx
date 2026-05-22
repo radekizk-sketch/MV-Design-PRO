@@ -45,7 +45,7 @@ describe('TopBar - compact V12 chrome', () => {
     expect(screen.getByTestId('ctx-wariant')).toBeInTheDocument();
     expect(screen.getByTestId('ctx-przypadek')).toBeInTheDocument();
     expect(screen.queryByTestId('ctx-migawka')).not.toBeInTheDocument();
-    expect(screen.getByTestId('top-bar-calculate')).toHaveTextContent('Sprawdź braki');
+    expect(screen.getByTestId('top-bar-calculate')).toHaveTextContent('Sprawdź konfigurację');
     expect(screen.getByTestId('top-bar-overlay')).toHaveTextContent('Nakładka');
     expect(screen.getByTestId('top-bar-results')).toHaveTextContent('Analizy');
     expect(screen.getByTestId('top-bar-export')).toHaveTextContent('Eksport');
@@ -68,6 +68,23 @@ describe('TopBar - compact V12 chrome', () => {
     expect(screen.getByTestId('ctx-project')).toHaveTextContent('Projekt bez nazwy');
     expect(screen.getByTestId('top-bar-v12').textContent).not.toContain(technicalProjectId);
     expect(screen.getByTestId('top-bar-v12').textContent).not.toContain(generatedProjectName);
+  });
+
+  it('pokazuje zakres obliczeń bez technicznego sufiksu przypadku', () => {
+    act(() => {
+      const store = useAppStateStore.getState();
+      store.setActiveProject('project-1', 'Projekt przemysłowy mp9g6fu5');
+      store.setActiveCase('case-1', 'Przypadek 50 szablonów mp9g6fu5', 'ShortCircuitCase', 'FRESH');
+      store.setActiveVariant('variant-1', 'Wariant terenowy ab12cd34');
+    });
+
+    render(<TopBar />);
+
+    const headerText = screen.getByTestId('top-bar-v12').textContent ?? '';
+    expect(screen.getByTestId('ctx-project')).toHaveTextContent('Projekt przemysłowy');
+    expect(screen.getByTestId('ctx-wariant')).toHaveTextContent('Zakres 50 szablonów');
+    expect(screen.getByTestId('ctx-wariant')).toHaveTextContent('Wariant terenowy');
+    expect(headerText).not.toMatch(/mp9g6fu5|ab12cd34|Przypadek/);
   });
 
   it.each(WORK_MODES.map((mode, idx) => [F_KEYS[idx], mode]))(
@@ -105,7 +122,25 @@ describe('TopBar - compact V12 chrome', () => {
     expect(onCalculate).toHaveBeenCalledOnce();
   });
 
-  it('Sprawdź braki pozostaje klikalne i otwiera gotowość obliczeń', () => {
+  it('Oblicz działa także z powierzchni analiz, gdy układ jest przygotowany', () => {
+    const onCalculate = vi.fn();
+    act(() => {
+      useAppStateStore.getState().setActiveCase('case-1', 'Rozpływ mocy', 'PowerFlowCase', 'OUTDATED');
+      useAppStateStore.getState().setActiveMode('RESULT_VIEW');
+      useSnapshotStore.setState({ snapshot: makeCalculationReadySnapshot() });
+    });
+    render(<TopBar projectName="Test" onCalculate={onCalculate} />);
+
+    const calculateButton = screen.getByTestId('top-bar-calculate');
+    expect(calculateButton).toHaveTextContent('Oblicz');
+    act(() => {
+      fireEvent.click(calculateButton);
+    });
+
+    expect(onCalculate).toHaveBeenCalledOnce();
+  });
+
+  it('Sprawdź konfigurację pozostaje klikalne i otwiera kontrolę układu', () => {
     const onMenuAction = vi.fn();
     render(<TopBar projectName="Test" onMenuAction={onMenuAction} />);
 
@@ -119,21 +154,21 @@ describe('TopBar - compact V12 chrome', () => {
     expect(onMenuAction).toHaveBeenCalledWith('readiness');
   });
 
-  it('Nakładka switches to result overlay mode and opens results', () => {
+  it('Nakładka switches to result overlay mode and opens the SLD overlay', () => {
     // Iter 8 (per Whitebox audit): topbar disabled przy pustym ENM.
     // Snapshot z buses[] wymagany przed klikiem Nakładka/Analizy/Eksport.
     act(() => {
       useSnapshotStore.setState({ snapshot: makeCalculationReadySnapshot() });
     });
-    const onViewResults = vi.fn();
-    render(<TopBar projectName="Test" onViewResults={onViewResults} />);
+    const onMenuAction = vi.fn();
+    render(<TopBar projectName="Test" onMenuAction={onMenuAction} />);
 
     act(() => {
       fireEvent.click(screen.getByTestId('top-bar-overlay'));
     });
 
     expect(useAppStateStore.getState().activeWorkMode).toBe('TW');
-    expect(onViewResults).toHaveBeenCalledOnce();
+    expect(onMenuAction).toHaveBeenCalledWith('overlay');
   });
 
   it('Analizy opens the results/analysis surface', () => {
@@ -164,7 +199,7 @@ describe('TopBar - compact V12 chrome', () => {
     expect(screen.getByTestId('top-bar-export')).toBeDisabled();
     expect(screen.getByTestId('top-bar-overlay')).toHaveAttribute(
       'title',
-      'Wymaga modelu sieci (dodaj GPZ)',
+      'Dodaj GPZ i układ sieci',
     );
   });
 });

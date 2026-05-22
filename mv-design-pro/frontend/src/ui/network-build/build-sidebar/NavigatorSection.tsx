@@ -2,7 +2,7 @@
  * NavigatorSection — drzewo modelu z badge statusu (PR-13).
  *
  * Brief 2 §4 sekcja 1: Projekt > GPZ > Rozdzielnia SN > Sekcja > Pola SN > Ciągi >
- * Odgałęzienia > Stacje > PV/FV > BESS > FW > Odbiory > Braki danych.
+ * Odgałęzienia > Stacje > PV/FV > BESS > FW > Odbiory > Konfiguracja.
  */
 
 import { POLISH_STATUS_LABEL } from '../../shared/formatPolishValue';
@@ -25,8 +25,8 @@ export interface NavigatorSectionProps {
 
 const BADGE_LABEL: Record<NavBadgeStatus, string> = {
   kompletne: 'kompletne',
-  'brak-danych': 'brak danych',
-  'wynik-czesciowy': 'wynik częściowy',
+  'brak-danych': 'do konfiguracji',
+  'wynik-czesciowy': 'do sprawdzenia',
   blad: 'błąd',
   'nie-dotyczy': 'nie dotyczy',
 };

@@ -223,11 +223,11 @@ describe('DataGapPanel — §9 UX 10/10', () => {
   // ---------------------------------------------------------------------------
 
   describe('Quick fix label resolution', () => {
-    it('catalog issues get "Zmien typ z katalogu"', () => {
-      expect(resolveQuickFixLabel(makeIssue('CAT_MISSING'))).toBe('Zmien typ z katalogu');
-      expect(resolveQuickFixLabel(makeIssue('BIND_STALE'))).toBe('Zmien typ z katalogu');
-      expect(resolveQuickFixLabel(makeIssue('TYPE_NOT_FOUND'))).toBe('Zmien typ z katalogu');
-      expect(resolveQuickFixLabel(makeIssue('CATALOG.NO_MATCH'))).toBe('Zmien typ z katalogu');
+    it('catalog issues get "Wybierz wariant katalogowy"', () => {
+      expect(resolveQuickFixLabel(makeIssue('CAT_MISSING'))).toBe('Wybierz wariant katalogowy');
+      expect(resolveQuickFixLabel(makeIssue('BIND_STALE'))).toBe('Wybierz wariant katalogowy');
+      expect(resolveQuickFixLabel(makeIssue('TYPE_NOT_FOUND'))).toBe('Wybierz wariant katalogowy');
+      expect(resolveQuickFixLabel(makeIssue('CATALOG.NO_MATCH'))).toBe('Wybierz wariant katalogowy');
     });
 
     it('protection MISSING issues get "Dodaj zabezpieczenie"', () => {
@@ -253,33 +253,33 @@ describe('DataGapPanel — §9 UX 10/10', () => {
       expect(resolveQuickFixLabel(makeIssue('TRANSFORMER.INCOMPLETE'))).toBe('Konfiguruj transformator');
     });
 
-    it('source PARAM issues get "Uzupelnij parametry"', () => {
-      expect(resolveQuickFixLabel(makeIssue('SRC_PARAM_MISSING'))).toBe('Uzupelnij parametry');
+    it('source PARAM issues get "Skonfiguruj parametry"', () => {
+      expect(resolveQuickFixLabel(makeIssue('SRC_PARAM_MISSING'))).toBe('Skonfiguruj parametry');
     });
 
-    it('source DATA issues get "Uzupelnij parametry"', () => {
-      expect(resolveQuickFixLabel(makeIssue('SRC_DATA_INCOMPLETE'))).toBe('Uzupelnij parametry');
+    it('source DATA issues get "Skonfiguruj parametry"', () => {
+      expect(resolveQuickFixLabel(makeIssue('SRC_DATA_INCOMPLETE'))).toBe('Skonfiguruj parametry');
     });
 
-    it('source general issues get "Konfiguruj zrodlo"', () => {
-      expect(resolveQuickFixLabel(makeIssue('SRC_NO_VOLTAGE'))).toBe('Konfiguruj zrodlo');
+    it('source general issues get "Konfiguruj układ"', () => {
+      expect(resolveQuickFixLabel(makeIssue('SRC_NO_VOLTAGE'))).toBe('Konfiguruj układ');
     });
 
-    it('generic issues get "Napraw"', () => {
-      expect(resolveQuickFixLabel(makeIssue('BUS_ISOLATED'))).toBe('Napraw');
-      expect(resolveQuickFixLabel(makeIssue('UNKNOWN_ISSUE'))).toBe('Napraw');
+    it('generic issues get "Skonfiguruj"', () => {
+      expect(resolveQuickFixLabel(makeIssue('BUS_ISOLATED'))).toBe('Skonfiguruj');
+      expect(resolveQuickFixLabel(makeIssue('UNKNOWN_ISSUE'))).toBe('Skonfiguruj');
     });
 
-    it('PARAM keyword in any group triggers "Uzupelnij parametry"', () => {
-      expect(resolveQuickFixLabel(makeIssue('BUS_PARAM_MISSING'))).toBe('Uzupelnij parametry');
+    it('PARAM keyword in any group triggers "Skonfiguruj parametry"', () => {
+      expect(resolveQuickFixLabel(makeIssue('BUS_PARAM_MISSING'))).toBe('Skonfiguruj parametry');
     });
 
-    it('MISSING_DATA keyword triggers "Uzupelnij parametry"', () => {
-      expect(resolveQuickFixLabel(makeIssue('BUS_MISSING_DATA_VOLTAGE'))).toBe('Uzupelnij parametry');
+    it('MISSING_DATA keyword triggers "Skonfiguruj parametry"', () => {
+      expect(resolveQuickFixLabel(makeIssue('BUS_MISSING_DATA_VOLTAGE'))).toBe('Skonfiguruj parametry');
     });
 
-    it('INCOMPLETE keyword triggers "Uzupelnij parametry"', () => {
-      expect(resolveQuickFixLabel(makeIssue('STATION_INCOMPLETE_CONFIG'))).toBe('Uzupelnij parametry');
+    it('INCOMPLETE keyword triggers "Skonfiguruj parametry"', () => {
+      expect(resolveQuickFixLabel(makeIssue('STATION_INCOMPLETE_CONFIG'))).toBe('Skonfiguruj parametry');
     });
 
     it('REFRESH keyword triggers "Odswiez parametry z katalogu"', () => {

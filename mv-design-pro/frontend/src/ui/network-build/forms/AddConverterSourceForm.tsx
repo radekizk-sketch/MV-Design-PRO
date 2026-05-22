@@ -82,6 +82,13 @@ function sameNominalVoltageKv(left: number, right: number): boolean {
   return Math.abs(left - right) <= 1e-6;
 }
 
+function converterVoltageMatchesBus(
+  converter: ConverterType,
+  requiredVoltageKv: number | null,
+): boolean {
+  return requiredVoltageKv === null || sameNominalVoltageKv(converter.un_kv, requiredVoltageKv);
+}
+
 function formatVoltageKv(value: number | null | undefined): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
   return `${value.toLocaleString('pl-PL', { maximumFractionDigits: 3 })} kV`;
@@ -93,14 +100,37 @@ function converterCatalogNamespace(technology: SourceTechnology): ConverterCatal
   return 'CONVERTER';
 }
 
-function toCatalogEntries(types: ConverterType[] | LVApparatusType[]): CatalogEntry[] {
+function formatTransformerLabel(transformer: {
+  name: string;
+  sn_mva: number;
+  uhv_kv?: number | null;
+  ulv_kv?: number | null;
+}): string {
+  const voltage =
+    typeof transformer.uhv_kv === 'number' && typeof transformer.ulv_kv === 'number'
+      ? `${formatVoltageKv(transformer.uhv_kv)}/${formatVoltageKv(transformer.ulv_kv)}`
+      : 'napięcie z katalogu';
+  return `${transformer.name} · ${voltage} · ${transformer.sn_mva.toFixed(3)} MVA`;
+}
+
+function toCatalogEntries(
+  types: ConverterType[] | LVApparatusType[],
+  requiredVoltageKv: number | null = null,
+): CatalogEntry[] {
   return types.map((item) => ({
     id: item.id,
     name: item.name,
     manufacturer: item.manufacturer,
     summary:
       'sn_mva' in item
-        ? `Un ${formatVoltageKv(item.un_kv)}, S ${item.sn_mva.toFixed(3)} MVA, Pmax ${item.pmax_mw.toFixed(3)} MW`
+        ? [
+            `Un ${formatVoltageKv(item.un_kv)}, S ${item.sn_mva.toFixed(3)} MVA, Pmax ${item.pmax_mw.toFixed(3)} MW`,
+            converterVoltageMatchesBus(item, requiredVoltageKv)
+              ? null
+              : `wymaga wariantu blokowego i transformatora ${formatVoltageKv(item.un_kv)}`,
+          ]
+            .filter(Boolean)
+            .join(' · ')
         : `Un ${formatVoltageKv(item.u_n_kv)}, In ${item.i_n_a} A`,
   }));
 }
@@ -211,13 +241,13 @@ export function AddConverterSourceForm() {
   const contextIssues = useMemo(() => {
     const issues: string[] = [];
     if (context?.source_technology !== undefined && requestedTechnology === null) {
-      issues.push('Nie rozpoznano typu źródła w kontekście operacji.');
+      issues.push('Nie rozpoznano typu układu przyłączeniowego w kontekście operacji.');
     }
     if (context?.connection_variant !== undefined && requestedVariant === null) {
       issues.push('Nie rozpoznano wariantu przyłączenia w kontekście operacji.');
     }
     if (initialVariant === 'nn_side' && !busDefaultRef && busOptions.length !== 1) {
-      issues.push('Wybierz jednoznaczną szynę nN dla źródła przekształtnikowego.');
+      issues.push('Wybierz jednoznaczną szynę nN dla układu PV/BESS/FW.');
     }
     return issues;
   }, [
@@ -235,7 +265,7 @@ export function AddConverterSourceForm() {
   const [placement, setPlacement] = useState<FieldPlacement>('NEW_FIELD');
   const [busNnRef, setBusNnRef] = useState(busDefaultRef);
   const [existingFieldRef, setExistingFieldRef] = useState('');
-  const [newFieldName, setNewFieldName] = useState('Pole źródłowe nN');
+  const [newFieldName, setNewFieldName] = useState('Pole przyłączeniowe nN');
   const [apparatusCatalogId, setApparatusCatalogId] = useState('');
   const [converterCatalogId, setConverterCatalogId] = useState(initialCatalogRef);
   const [ptpireeRegistry, setPtpireeRegistry] = useState(PTPIREE_CERTIFIED_INVERTERS);
@@ -256,6 +286,7 @@ export function AddConverterSourceForm() {
   const [transformerRef, setTransformerRef] = useState('');
   const [converterTypes, setConverterTypes] = useState<ConverterType[]>([]);
   const [lvApparatusTypes, setLvApparatusTypes] = useState<LVApparatusType[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -306,6 +337,7 @@ export function AddConverterSourceForm() {
   useEffect(() => {
     let active = true;
 
+    setCatalogLoading(true);
     void Promise.all([fetchConverterTypes(), fetchLvApparatusTypes()])
       .then(([converterResponse, apparatusResponse]) => {
         if (!active) {
@@ -314,15 +346,17 @@ export function AddConverterSourceForm() {
         setConverterTypes(converterResponse);
         setLvApparatusTypes(apparatusResponse);
         setCatalogError(null);
+        setCatalogLoading(false);
       })
       .catch((error) => {
         if (!active) {
           return;
         }
+        setCatalogLoading(false);
         setCatalogError(
           error instanceof Error
             ? error.message
-            : 'Nie udało się pobrać katalogów źródeł przekształtnikowych.',
+            : 'Nie udało się pobrać katalogów układów PV/BESS/FW.',
         );
       });
 
@@ -340,18 +374,20 @@ export function AddConverterSourceForm() {
     connectionVariant === 'nn_side' ? (selectedNnBus?.voltage_kv ?? null) : null;
   const filteredConverters = useMemo(
     () =>
-      converterTypes.filter((entry) => {
-        if (entry.kind !== tech.catalogKind) {
-          return false;
-        }
-        if (requiredConverterVoltageKv === null) {
-          return true;
-        }
-        return sameNominalVoltageKv(entry.un_kv, requiredConverterVoltageKv);
-      }),
+      converterTypes
+        .filter((entry) => entry.kind === tech.catalogKind)
+        .sort((left, right) => {
+          const leftMatches = converterVoltageMatchesBus(left, requiredConverterVoltageKv);
+          const rightMatches = converterVoltageMatchesBus(right, requiredConverterVoltageKv);
+          if (leftMatches !== rightMatches) return leftMatches ? -1 : 1;
+          return left.name.localeCompare(right.name, 'pl');
+        }),
     [converterTypes, requiredConverterVoltageKv, tech.catalogKind],
   );
-  const converterEntries = useMemo(() => toCatalogEntries(filteredConverters), [filteredConverters]);
+  const converterEntries = useMemo(
+    () => toCatalogEntries(filteredConverters, requiredConverterVoltageKv),
+    [filteredConverters, requiredConverterVoltageKv],
+  );
   const apparatusEntries = useMemo(() => toCatalogEntries(lvApparatusTypes), [lvApparatusTypes]);
   const selectedConverter = useMemo(
     () => filteredConverters.find((entry) => entry.id === converterCatalogId) ?? null,
@@ -389,12 +425,45 @@ export function AddConverterSourceForm() {
         name: transformer.name,
         lv_bus_ref: transformer.lv_bus_ref,
         sn_mva: transformer.sn_mva,
+        uhv_kv: transformer.uhv_kv,
+        ulv_kv: transformer.ulv_kv,
       }))
       .sort((left, right) => left.name.localeCompare(right.name));
   }, [snapshot, stationRef]);
   const selectedTransformer = useMemo(
     () => transformerOptions.find((item) => item.ref_id === transformerRef) ?? null,
     [transformerOptions, transformerRef],
+  );
+  const selectedConverterVoltageMismatch = Boolean(
+    selectedConverter &&
+      selectedNnBus &&
+      !sameNominalVoltageKv(selectedConverter.un_kv, selectedNnBus.voltage_kv),
+  );
+  const selectedConverterRequiresBlockTransformer = Boolean(
+    selectedConverter &&
+      selectedNnBus &&
+      connectionVariant === 'nn_side' &&
+      !sameNominalVoltageKv(selectedConverter.un_kv, selectedNnBus.voltage_kv),
+  );
+  const matchingBlockTransformer = useMemo(() => {
+    if (!selectedConverter) return null;
+    return (
+      transformerOptions.find((transformer) => {
+        const capacityMatches = transformer.sn_mva + 1e-9 >= selectedConverter.sn_mva;
+        const voltageMatches =
+          typeof transformer.ulv_kv !== 'number' ||
+          sameNominalVoltageKv(transformer.ulv_kv, selectedConverter.un_kv);
+        return capacityMatches && voltageMatches;
+      }) ?? null
+    );
+  }, [selectedConverter, transformerOptions]);
+  const selectedTransformerMismatch = Boolean(
+    connectionVariant === 'block_transformer' &&
+      selectedConverter &&
+      selectedTransformer &&
+      (selectedTransformer.sn_mva + 1e-9 < selectedConverter.sn_mva ||
+        (typeof selectedTransformer.ulv_kv === 'number' &&
+          !sameNominalVoltageKv(selectedTransformer.ulv_kv, selectedConverter.un_kv))),
   );
   const nominalPowerMw = useMemo(() => {
     if (!selectedConverter) {
@@ -411,10 +480,20 @@ export function AddConverterSourceForm() {
   }, [converterCatalogId, filteredConverters]);
 
   useEffect(() => {
-    if (!converterCatalogId && filteredConverters.length === 1) {
+    if (!converterCatalogId && filteredConverters.length > 0) {
       setConverterCatalogId(filteredConverters[0].id);
     }
   }, [converterCatalogId, filteredConverters]);
+
+  useEffect(() => {
+    if (apparatusCatalogId && !lvApparatusTypes.some((entry) => entry.id === apparatusCatalogId)) {
+      setApparatusCatalogId('');
+      return;
+    }
+    if (!apparatusCatalogId && lvApparatusTypes.length > 0) {
+      setApparatusCatalogId(lvApparatusTypes[0].id);
+    }
+  }, [apparatusCatalogId, lvApparatusTypes]);
 
   useEffect(() => {
     if (!selectedConverter || !autoFillFromCatalog) return;
@@ -470,6 +549,33 @@ export function AddConverterSourceForm() {
     );
   }, [transformerOptions]);
 
+  useEffect(() => {
+    if (!selectedConverterRequiresBlockTransformer) {
+      return;
+    }
+    setConnectionVariant('block_transformer');
+    if (matchingBlockTransformer) {
+      setTransformerRef(matchingBlockTransformer.ref_id);
+    }
+  }, [matchingBlockTransformer, selectedConverterRequiresBlockTransformer]);
+
+  useEffect(() => {
+    if (connectionVariant !== 'block_transformer' || !matchingBlockTransformer) {
+      return;
+    }
+    const currentMatches = transformerOptions.some(
+      (transformer) =>
+        transformer.ref_id === transformerRef &&
+        transformer.sn_mva + 1e-9 >= matchingBlockTransformer.sn_mva &&
+        (typeof transformer.ulv_kv !== 'number' ||
+          typeof matchingBlockTransformer.ulv_kv !== 'number' ||
+          sameNominalVoltageKv(transformer.ulv_kv, matchingBlockTransformer.ulv_kv)),
+    );
+    if (!currentMatches) {
+      setTransformerRef(matchingBlockTransformer.ref_id);
+    }
+  }, [connectionVariant, matchingBlockTransformer, transformerOptions, transformerRef]);
+
   const calcReady = Boolean(
     stationRef &&
       selectedConverter &&
@@ -506,7 +612,7 @@ export function AddConverterSourceForm() {
 
   const handleSubmit = useCallback(async () => {
     if (!activeCaseId) {
-      setSubmitError('Brak aktywnego przypadku obliczeniowego.');
+      setSubmitError('Wybierz zakres obliczeń przed zapisem układu PV/BESS/FW.');
       return;
     }
     if (contextIssues.length > 0) {
@@ -514,11 +620,11 @@ export function AddConverterSourceForm() {
       return;
     }
     if (!stationRef) {
-      setSubmitError('Nie udało się ustalić stacji dla nowego źródła.');
+      setSubmitError('Nie udało się ustalić stacji dla nowego układu.');
       return;
     }
     if (!selectedConverter) {
-      setSubmitError(`Wybierz katalog dla źródła ${tech.shortLabel}.`);
+      setSubmitError(`Wybierz katalog dla układu ${tech.shortLabel}.`);
       return;
     }
     if (connectionVariant === 'nn_side' && !busNnRef) {
@@ -526,7 +632,7 @@ export function AddConverterSourceForm() {
       return;
     }
     if (connectionVariant === 'nn_side' && placement === 'EXISTING_FIELD' && !existingFieldRef) {
-      setSubmitError('Wybierz istniejące pole źródłowe nN albo utwórz nowe.');
+      setSubmitError('Wybierz istniejące pole przyłączeniowe nN albo utwórz nowe.');
       return;
     }
     if (
@@ -534,11 +640,18 @@ export function AddConverterSourceForm() {
       placement === 'NEW_FIELD' &&
       !apparatusCatalogId.trim()
     ) {
-      setSubmitError('Wskaż aparat nN dla nowego pola źródłowego.');
+      setSubmitError('Wskaż aparat nN dla nowego pola przyłączeniowego.');
       return;
     }
     if (connectionVariant === 'block_transformer' && !selectedTransformer?.lv_bus_ref) {
       setSubmitError('Wybierz transformator blokowy z poprawnie zdefiniowaną stroną nN.');
+      return;
+    }
+
+    if (selectedTransformerMismatch) {
+      setSubmitError(
+        'Wybrany transformator blokowy nie pasuje do napięcia albo mocy katalogowej falownika.',
+      );
       return;
     }
 
@@ -622,13 +735,13 @@ export function AddConverterSourceForm() {
         throw new Error(
           result?.error ||
             storeError ||
-            'Nie udało się utworzyć źródła przekształtnikowego.',
+            'Nie udało się utworzyć układu PV/BESS/FW.',
         );
       }
 
       closeForm();
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Nie udało się dodać źródła.');
+      setSubmitError(error instanceof Error ? error.message : 'Nie udało się dodać układu.');
     } finally {
       setIsSubmitting(false);
     }
@@ -654,6 +767,7 @@ export function AddConverterSourceForm() {
     selectedConverter,
     selectedPtpireeCertificate,
     selectedTransformer,
+    selectedTransformerMismatch,
     socMaxPercent,
     socMinPercent,
     sourceName,
@@ -666,7 +780,7 @@ export function AddConverterSourceForm() {
     <div className="h-full overflow-y-auto bg-white" data-testid="add-converter-source-form">
       <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
         <h3 className="text-sm font-semibold text-slate-900">
-          Nowe źródło przekształtnikowe
+          Nowy układ PV/BESS/FW z katalogu
         </h3>
         <p className="mt-1 text-[11px] text-slate-500">
           Stacja:{' '}
@@ -689,7 +803,7 @@ export function AddConverterSourceForm() {
 
         <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            Typ źródła
+            Typ układu przyłączeniowego
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {(Object.keys(TECHNOLOGY) as SourceTechnology[]).map((technology) => (
@@ -725,7 +839,7 @@ export function AddConverterSourceForm() {
             >
               <div className="font-semibold">Po stronie nN</div>
               <div className="mt-1 text-[11px] text-slate-500">
-                Źródło korzysta z rozdzielni nN istniejącej stacji.
+                Układ korzysta z rozdzielni nN istniejącej stacji.
               </div>
             </button>
             <button
@@ -739,7 +853,7 @@ export function AddConverterSourceForm() {
             >
               <div className="font-semibold">Blokowe do SN</div>
               <div className="mt-1 text-[11px] text-slate-500">
-                Źródło wykorzystuje transformator blokowy i tor SN stacji.
+                Układ wykorzystuje transformator blokowy i tor SN stacji.
               </div>
             </button>
           </div>
@@ -747,7 +861,7 @@ export function AddConverterSourceForm() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block">
-            <span className="text-[11px] font-medium text-slate-700">Nazwa źródła</span>
+            <span className="text-[11px] font-medium text-slate-700">Nazwa układu</span>
             <input
               value={sourceName}
               onChange={(event) => setSourceName(event.target.value)}
@@ -799,7 +913,7 @@ export function AddConverterSourceForm() {
                     : 'border-slate-300 bg-white text-slate-700'
                 }`}
               >
-                Użyj istniejącego pola źródłowego
+                Użyj istniejącego pola przyłączeniowego
               </button>
               <button
                 type="button"
@@ -810,7 +924,7 @@ export function AddConverterSourceForm() {
                     : 'border-slate-300 bg-white text-slate-700'
                 }`}
               >
-                Utwórz nowe pole źródłowe
+                Utwórz nowe pole przyłączeniowe
               </button>
             </div>
 
@@ -818,7 +932,7 @@ export function AddConverterSourceForm() {
               sourceFieldOptions.length > 0 ? (
                 <label className="block">
                   <span className="text-[11px] font-medium text-slate-700">
-                    Istniejące pole źródłowe
+                    Istniejące pole przyłączeniowe
                   </span>
                   <select
                     value={existingFieldRef}
@@ -834,13 +948,13 @@ export function AddConverterSourceForm() {
                 </label>
               ) : (
                 <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                  Na tej stacji nie ma jeszcze pola źródłowego nN dla źródła {tech.shortLabel}.
+                  Wariant nN wymaga pola przyłączeniowego nN dla układu {tech.shortLabel}.
                   <button
                     type="button"
                     onClick={handleOpenSourceFieldForm}
                     className="ml-3 rounded-md border border-amber-300 bg-white px-2 py-1 font-medium text-amber-900"
                   >
-                    Dodaj pole źródłowe
+                    Dodaj pole przyłączeniowe
                   </button>
                 </div>
               )
@@ -883,14 +997,14 @@ export function AddConverterSourceForm() {
                 >
                   {transformerOptions.map((transformer) => (
                     <option key={transformer.ref_id} value={transformer.ref_id}>
-                      {transformer.name} ({transformer.sn_mva.toFixed(3)} MVA)
+                      {formatTransformerLabel(transformer)}
                     </option>
                   ))}
                 </select>
               </label>
             ) : (
               <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                Ta stacja nie ma jeszcze transformatora, więc wariant blokowy nie jest gotowy.
+                Wariant blokowy wymaga transformatora blokowego w stacji.
                 <button
                   type="button"
                   onClick={handleOpenTransformerForm}
@@ -898,6 +1012,32 @@ export function AddConverterSourceForm() {
                 >
                   Dodaj transformator
                 </button>
+              </div>
+            )}
+            {selectedConverterVoltageMismatch && (
+              <div
+                className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+                data-testid="add-converter-auto-block-transformer"
+              >
+                Falownik z katalogu ma napięcie {formatVoltageKv(selectedConverter?.un_kv)}, a
+                wybrana szyna nN ma {formatVoltageKv(selectedNnBus?.voltage_kv)}. Formularz
+                przełącza układ na wariant blokowy i dobiera transformator z katalogu stacji.
+                {selectedTransformer && !selectedTransformerMismatch ? (
+                  <span className="ml-1 font-semibold">
+                    Dobrano: {formatTransformerLabel(selectedTransformer)}.
+                  </span>
+                ) : (
+                  <span className="ml-1 font-semibold">
+                    Dodaj transformator blokowy o właściwym napięciu i mocy.
+                  </span>
+                )}
+              </div>
+            )}
+            {selectedTransformerMismatch && (
+              <div className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                Wybrany transformator nie spełnia napięcia albo mocy katalogowej przekształtnika.
+                Wybierz transformator o stronie DN {formatVoltageKv(selectedConverter?.un_kv)} i
+                mocy co najmniej {selectedConverter?.sn_mva.toFixed(3) ?? '—'} MVA.
               </div>
             )}
 
@@ -957,18 +1097,25 @@ export function AddConverterSourceForm() {
             </label>
             {requiredConverterVoltageKv !== null && (
               <div className="rounded-md border border-cyan-500/40 bg-cyan-950/30 px-3 py-2 text-[11px] text-cyan-100">
-                Katalog ograniczony do napięcia zacisku nN:{' '}
+                Lista pokazuje falowniki z katalogu PTPiREE/NC RfG dla technologii{' '}
+                {tech.shortLabel}. Pozycje zgodne z napięciem zacisku nN{' '}
                 <span className="font-semibold">
                   {formatVoltageKv(requiredConverterVoltageKv)}
                 </span>
-                . Falownik o innym napięciu nie jest prawidłową pozycją katalogową dla tej
-                szyny.
+                {' '}są na górze. Wybór innego napięcia automatycznie przełącza układ na
+                transformator blokowy.
               </div>
             )}
-            {requiredConverterVoltageKv !== null && filteredConverters.length === 0 && (
+            {catalogLoading && (
+              <div className="rounded-md border border-sky-500/40 bg-sky-950/30 px-3 py-2 text-[11px] text-sky-100">
+                Pobieranie katalogu przekształtników i aparatury nN.
+              </div>
+            )}
+            {!catalogLoading
+              && filteredConverters.length === 0 && (
               <div className="rounded-md border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-[11px] text-amber-100">
-                Brak falownika katalogowego zgodnego z napięciem tej szyny nN. Wybierz inną
-                konfigurację strony nN albo dobierz transformator blokowy do napięcia źródła.
+                Katalog nie zwrócił urządzeń dla technologii {tech.shortLabel}. Ten wariant nie
+                może zostać zapisany bez pozycji katalogowej.
               </div>
             )}
             <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
@@ -1012,7 +1159,7 @@ export function AddConverterSourceForm() {
                     onChange={(event) => setPtpireeCertificateId(event.target.value)}
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                   >
-                    <option value="">brak przypisanego certyfikatu</option>
+                    <option value="">wybierz certyfikat z wykazu</option>
                     {ptpireeMatches.map((item) => (
                       <option key={item.id} value={item.id}>
                         {formatPtpireeCertificateLabel(item)}
@@ -1175,7 +1322,7 @@ export function AddConverterSourceForm() {
         </div>
 
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-xs text-emerald-900">
-          <div className="font-semibold">Lokalna gotowość źródła</div>
+          <div className="font-semibold">Konfiguracja lokalna układu</div>
           <div className="mt-2 grid gap-2 md:grid-cols-3">
             {readinessItems.map((item) => (
               <div
@@ -1187,7 +1334,7 @@ export function AddConverterSourceForm() {
                 }`}
               >
                 <div className="text-[10px] uppercase tracking-wide">{item.label}</div>
-                <div className="mt-1 font-medium">{item.ready ? 'Gotowe' : 'Braki'}</div>
+                <div className="mt-1 font-medium">{item.ready ? 'Skonfigurowane' : 'Do konfiguracji'}</div>
               </div>
             ))}
           </div>
@@ -1200,7 +1347,7 @@ export function AddConverterSourceForm() {
             disabled={isSubmitting}
             className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {isSubmitting ? 'Zapisywanie…' : 'Dodaj źródło'}
+            {isSubmitting ? 'Zapisywanie…' : 'Zapisz układ z katalogu'}
           </button>
           <button
             type="button"

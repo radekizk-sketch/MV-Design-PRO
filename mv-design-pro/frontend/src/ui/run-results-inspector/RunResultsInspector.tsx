@@ -113,7 +113,7 @@ export function RunResultsInspector({ resultset }: RunResultsInspectorProps) {
   if (!resultset) {
     return (
       <div className="p-4 text-gray-500" data-testid="inspector-empty">
-        Brak wyników do wyświetlenia
+        Wyniki nie są dostępne do wyświetlenia
       </div>
     );
   }

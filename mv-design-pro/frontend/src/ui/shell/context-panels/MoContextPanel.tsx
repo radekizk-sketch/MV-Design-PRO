@@ -278,7 +278,17 @@ export function MoContextPanel() {
     ? derived.buildPhaseLabel ?? 'Faza budowy'
     : 'Wymagany projekt SN';
   const blockerCount = derived.blockersByCategory?.total ?? 0;
-  const snSectionCount = derived.trunkSegmentCount + derived.branchCount;
+  const controlLabel = derived.isReady
+    ? 'do analiz'
+    : blockerCount > 0
+      ? String(blockerCount)
+      : 'w konfiguracji';
+  const snSectionCount = derived.snSectionCount ?? (derived.trunkSegmentCount + derived.branchCount);
+  const trunkDetail = derived.trunkCount > 0
+    ? formatCount(derived.trunkCount, 'ciąg', 'ciągów', 'Wyprowadź ciąg główny')
+    : snSectionCount > 0
+      ? `${snSectionCount} odcinków SN w układzie`
+      : 'Wyprowadź ciąg główny';
   const snSectionDetail = snSectionCount > 0
     ? [
         derived.trunkSegmentCount > 0
@@ -288,7 +298,7 @@ export function MoContextPanel() {
           ? formatCount(derived.branchCount, 'odgałęzienie', 'odgałęzień', '')
           : null,
       ].filter(Boolean).join(' / ')
-    : 'brak odcinków SN';
+    : 'Zacznij od wyprowadzenia magistrali SN';
 
   const openNavigatorSurface = (
     screenCode: WorkspaceSurfaceCode,
@@ -323,8 +333,8 @@ export function MoContextPanel() {
     },
     {
       label: 'Magistrale SN',
-      detail: formatCount(derived.trunkCount, 'ciąg', 'ciągów', 'brak ciągu głównego'),
-      tone: derived.trunkCount > 0 ? 'ok' : 'warn',
+      detail: trunkDetail,
+      tone: derived.trunkCount > 0 || snSectionCount > 0 ? 'ok' : 'warn',
       onClick: () => openNavigatorSurface('E-12', 'Odcinki magistrali SN', 'segment', 'kabel-sn'),
     },
     {
@@ -335,23 +345,23 @@ export function MoContextPanel() {
     },
     {
       label: 'Stacje SN/nN',
-      detail: formatCount(derived.stationCount, 'stacja', 'stacji', 'brak stacji'),
+      detail: formatCount(derived.stationCount, 'stacja', 'stacji', 'Wstaw pierwszą stację'),
       tone: derived.stationCount > 0 ? 'ok' : 'muted',
       onClick: () => openNavigatorSurface('E-13', 'Stacje SN/nN', 'station', 'topologia'),
     },
     {
       label: 'Transformatory',
-      detail: formatCount(derived.transformerCount, 'transformator', 'transformatorów', 'brak transformatorów'),
+      detail: formatCount(derived.transformerCount, 'transformator', 'transformatorów', 'Dobierz transformatory z katalogu'),
       tone: derived.transformerCount > 0 ? 'ok' : 'muted',
       onClick: () => openNavigatorSurface('E-18', 'Transformatory SN/nN', 'station', 'transformator'),
     },
     {
-      label: 'Źródła OZE',
+      label: 'Układy PV/BESS/FW',
       detail: derived.generatorCount > 0
-        ? formatCount(derived.generatorCount, 'źródło', 'źródeł', 'brak źródeł')
+        ? formatCount(derived.generatorCount, 'układ', 'układów', 'Dodaj układ PV/BESS/FW')
         : 'PV / FW / BESS po zdefiniowaniu stacji',
       tone: derived.generatorCount > 0 ? 'ok' : 'muted',
-      onClick: () => openNavigatorSurface('E-21', 'Konfiguracja źródeł OZE', 'pv_source', 'identyfikacja'),
+      onClick: () => openNavigatorSurface('E-21', 'Konfiguracja układów PV/BESS/FW', 'pv_source', 'identyfikacja'),
     },
   ] satisfies Array<NavigatorRowProps>, [
     derived.branchCount,
@@ -364,18 +374,19 @@ export function MoContextPanel() {
     openRouteSurface,
     snSectionCount,
     snSectionDetail,
+    trunkDetail,
   ]);
 
   return (
     <div data-testid="mo-context-panel" className="flex h-full flex-col overflow-hidden bg-[#050810]">
       <div className="flex h-[44px] shrink-0 items-center justify-between border-b border-[#10263d] px-3">
-        <div className="font-mono-eng text-[12px] font-bold text-scada-text">Nawigator modelu</div>
+        <div className="font-mono-eng text-[12px] font-bold text-scada-text">Nawigator układu sieci</div>
         <span className="font-mono-eng text-[13px] text-[#6f8aa7]" aria-hidden="true">←</span>
       </div>
 
       <div className="border-b border-[#10263d] px-3 py-2">
         <div className="font-mono-eng text-[9px] font-semibold uppercase tracking-[0.2em] text-[#6d8fb3]">
-          Model sieci
+          Budowa sieci
         </div>
         <div
           className={clsx(
@@ -402,15 +413,15 @@ export function MoContextPanel() {
           <div className="mt-2 border-t border-[#10263d] py-1">
             <div className="flex items-center justify-between px-3 py-2">
               <div className="font-mono-eng text-[10px] font-bold uppercase tracking-[0.16em] text-[#6d8fb3]">
-                Blokady gotowości
+                Kontrola konfiguracji
               </div>
               <div
                 className={clsx(
                   'rounded px-2 py-0.5 font-mono-eng text-[10px] font-bold',
-                  blockerCount > 0 ? 'bg-[#2b1600] text-[#ff9900]' : 'bg-[#06231a] text-[#00ffaa]',
+                  derived.isReady ? 'bg-[#06231a] text-[#00ffaa]' : 'bg-[#2b1600] text-[#ff9900]',
                 )}
               >
-                {blockerCount > 0 ? blockerCount : 'OK'}
+                {controlLabel}
               </div>
             </div>
           </div>
@@ -439,7 +450,7 @@ export function MoContextPanel() {
             />
             <NavigatorRow
               label="Wyniki rozpływu mocy"
-              detail="węzły, gałęzie, bilans, profil"
+              detail="szyny, odcinki, bilans, profil"
               tone="ok"
               onClick={() => openNavigatorSurface('E-35', 'Rozpływ mocy', 'analysis_run', 'power-flow')}
             />

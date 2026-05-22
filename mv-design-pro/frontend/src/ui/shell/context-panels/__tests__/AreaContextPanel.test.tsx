@@ -145,8 +145,8 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
 
     render(<AreaContextPanel areaCode="SCHEMAT_TOPOLOGIA" />);
 
-    expect(screen.getByText('XRUHAKXS 120/25 · 0.21 km')).toBeInTheDocument();
-    expect(screen.queryByText('cable · 0.21 km')).not.toBeInTheDocument();
+    expect(screen.getByText('XRUHAKXS 120/25 · 0,21 km')).toBeInTheDocument();
+    expect(screen.queryByText('cable · 0,21 km')).not.toBeInTheDocument();
     act(() => {
       useSnapshotStore.getState().reset();
     });
@@ -156,7 +156,7 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const snapshot = {
       sources: [],
-      buses: [],
+      buses: [{ id: 'bus-sn-1', ref_id: 'bus-sn-1', name: 'Szyna SN 1' }],
       bays: [],
       branches: [],
       substations: [],
@@ -200,7 +200,7 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
     });
   });
 
-  it('Schemat: wyłącznik pola SN jest aparatem, a nie odcinkiem liniowym', () => {
+  it('Schemat: aparat pola SN nie trafia do głównego drzewa układów', () => {
     openRouteSurface.mockClear();
     act(() => {
       useSelectionStore.getState().clearSelection();
@@ -224,24 +224,10 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
 
     render(<AreaContextPanel areaCode="SCHEMAT_TOPOLOGIA" />);
 
-    expect(screen.getByText('Aparatura SN')).toBeInTheDocument();
+    expect(screen.queryByText('Aparatura SN')).not.toBeInTheDocument();
     expect(screen.queryByText('Odcinki SN')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('model-tree-row-stn/1/sn_field_breaker/000'));
-
-    expect(useSelectionStore.getState().selectedElement).toMatchObject({
-      id: 'stn/1/sn_field_breaker/000',
-      type: 'Switch',
-      name: 'Wyłącznik pola SN 1',
-    });
-    expect(openRouteSurface).toHaveBeenCalledWith(
-      'E-11',
-      expect.objectContaining({
-        entityRef: 'stn/1/sn_field_breaker/000',
-        entityType: 'sn_bay',
-        tabId: 'aparatura',
-      }),
-    );
+    expect(screen.queryByTestId('model-tree-row-stn/1/sn_field_breaker/000')).not.toBeInTheDocument();
+    expect(openRouteSurface).not.toHaveBeenCalled();
 
     act(() => {
       useSelectionStore.getState().clearSelection();
@@ -267,7 +253,7 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
     expect(screen.getByTestId('mock-protection-library')).toBeInTheDocument();
   });
 
-  it('renderuje panel Źródła i przyłączenia', () => {
+  it('renderuje panel Układy PV/BESS/FW', () => {
     render(<AreaContextPanel areaCode="ZRODLA_PRZYLACZENIA" />);
     expect(screen.getByTestId('oz-context-panel')).toBeInTheDocument();
     expect(screen.getByTestId('oz-empty-go-model')).toBeInTheDocument();
@@ -283,6 +269,7 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
     render(<AreaContextPanel areaCode="RAPORTY_UZASADNIENIA" />);
     expect(screen.getByTestId('ra-context-panel')).toBeInTheDocument();
     expect(screen.getByTestId('ra-template-list')).toBeInTheDocument();
+    expect(document.body.textContent ?? '').not.toMatch(/\[(POWER_FLOW|EQUIPMENT|EARTHING|VDROP|LOSSES|PROTECTION)\]/);
   });
 
   it('renderuje panel Historia i audyt', () => {

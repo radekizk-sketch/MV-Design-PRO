@@ -201,6 +201,70 @@ class TestAddGridSourceSNDuplicate:
             has_error or has_no_snapshot or has_blockers
         ), "Second add_grid_source_sn should fail (duplicate source)"
 
+    def test_add_grid_source_sn_allows_distinct_gpz_source_identity(self):
+        """Dwa niezależne GPZ wymagają jawnej, różnej tożsamości źródła."""
+        enm = _empty_enm()
+        result1 = execute_domain_operation(
+            enm_dict=enm,
+            op_name="add_grid_source_sn",
+            payload={
+                "voltage_kv": 15.0,
+                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "source_id": "gpz-a",
+                "source_name": "GPZ A 110/15 kV",
+            },
+        )
+        assert not result1.get("error")
+
+        result2 = execute_domain_operation(
+            enm_dict=result1["snapshot"],
+            op_name="add_grid_source_sn",
+            payload={
+                "voltage_kv": 15.0,
+                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "source_id": "gpz-b",
+                "source_name": "GPZ B 110/15 kV",
+            },
+        )
+
+        assert not result2.get("error"), result2.get("error")
+        snapshot2 = result2["snapshot"]
+        assert _count(snapshot2, "sources") == 2
+        assert len([s for s in snapshot2.get("substations", []) if s.get("station_type") == "gpz"]) == 2
+        source_ids = {
+            (source.get("meta") or {}).get("source_id")
+            for source in snapshot2.get("sources", [])
+        }
+        assert source_ids == {"gpz-a", "gpz-b"}
+
+    def test_add_grid_source_sn_rejects_duplicate_gpz_source_identity(self):
+        """Ten sam source_id nie może materializować dwóch GPZ."""
+        enm = _empty_enm()
+        result1 = execute_domain_operation(
+            enm_dict=enm,
+            op_name="add_grid_source_sn",
+            payload={
+                "voltage_kv": 15.0,
+                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "source_id": "gpz-a",
+                "source_name": "GPZ A 110/15 kV",
+            },
+        )
+        assert not result1.get("error")
+
+        result2 = execute_domain_operation(
+            enm_dict=result1["snapshot"],
+            op_name="add_grid_source_sn",
+            payload={
+                "voltage_kv": 15.0,
+                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "source_id": "gpz-a",
+                "source_name": "GPZ A powtórzony",
+            },
+        )
+
+        assert result2.get("error_code") == "source.already_exists"
+
 
 # ===========================================================================
 # TEST 3: test_continue_trunk_segment_sn
@@ -281,7 +345,7 @@ class TestSnBayLogicalViews:
         segment_ref = result_segment["snapshot"]["corridors"][0]["ordered_segment_refs"][0]
         segment = _find_by_ref(result_segment["snapshot"], "branches", segment_ref)
         assert segment is not None
-        assert segment["from_bus_ref"] == bus_ref
+        assert segment["from_bus_ref"] != bus_ref
         assert segment.get("meta", {}).get("origin_bay_ref") == field_ref
         assert segment.get("meta", {}).get("origin_apparatus_kind") == "cable_head"
         assert segment.get("meta", {}).get("origin_port_role") == "OUTGOING_HEAD"
@@ -437,6 +501,36 @@ class TestInsertStationCreatesStructure:
             spec.get("bay_role") for spec in inserted_station.get("meta", {}).get("field_specs", [])
         ]
         assert field_roles == ["IN", "OUT"]
+
+    def test_insert_station_preserves_catalog_display_name_pl(self):
+        _, snapshot = _build_gpz_plus_segments(1)
+        first_seg = _get_first_segment_ref(snapshot)
+
+        result = execute_domain_operation(
+            enm_dict=snapshot,
+            op_name="insert_station_on_segment_sn",
+            payload={
+                "segment_ref": first_seg,
+                "station_type": "B",
+                "insert_at": {"value": 0.5},
+                "station": {
+                    "name_pl": "Stacja S17 K PV+cos phi reg",
+                    "sn_voltage_kv": 15.0,
+                    "nn_voltage_kv": 0.4,
+                },
+                "sn_fields": ["IN", "OUT", "TR"],
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
+            },
+        )
+
+        assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+        inserted_station = next(
+            sub for sub in result["snapshot"].get("substations", []) if sub.get("ref_id", "").startswith("stn/")
+        )
+        assert inserted_station["name"] == "Stacja S17 K PV+cos phi reg"
 
 
 class TestNnFieldAdapters:
@@ -1125,6 +1219,75 @@ class TestPVBESSTransformerGate:
         assert (
             has_pv_blocker
         ), f"Expected pv_bess.transformer_required blocker, got codes: {blocker_codes}"
+
+    def test_pv_nn_side_uses_station_transformer_refs(self):
+        """PV po stronie nN korzysta z transformatora stacyjnego, bez fałszywego blokera."""
+        _, snapshot = _build_gpz_plus_segments(2)
+        first_seg = _get_first_segment_ref(snapshot)
+
+        result_station = execute_domain_operation(
+            enm_dict=snapshot,
+            op_name="insert_station_on_segment_sn",
+            payload={
+                "segment_ref": first_seg,
+                "station_type": "B",
+                "insert_at": {"value": 0.5},
+                "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
+                "sn_fields": ["IN", "OUT"],
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
+            },
+        )
+        assert result_station.get("snapshot") is not None, f"Error: {result_station.get('error')}"
+        s = result_station["snapshot"]
+        voltage_by_bus = {
+            bus["ref_id"]: bus.get("voltage_kv", 999)
+            for bus in s.get("buses", [])
+        }
+        station = next(
+            candidate
+            for candidate in s["substations"]
+            if candidate.get("transformer_refs")
+            and any(voltage_by_bus.get(ref, 999) < 1 for ref in candidate.get("bus_refs", []))
+        )
+        assert station.get("transformer_refs"), "Fixture musi mieć transformator stacyjny"
+
+        nn_bus_refs = [
+            ref
+            for ref in station.get("bus_refs", [])
+            if voltage_by_bus.get(ref, 999) < 1
+        ]
+        assert nn_bus_refs, "Fixture musi mieć szynę nN stacji"
+
+        s_copy = copy.deepcopy(s)
+        s_copy.setdefault("generators", []).append(
+            {
+                "ref_id": "gen_pv_nn_test",
+                "name": "PV nN test",
+                "bus_ref": nn_bus_refs[0],
+                "p_mw": 0.185,
+                "q_mvar": 0.0,
+                "gen_type": "pv_inverter",
+                "station_ref": station["ref_id"],
+                "connection_variant": "nn_side",
+            }
+        )
+
+        any_bus = s_copy["buses"][0]
+        result = execute_domain_operation(
+            enm_dict=s_copy,
+            op_name="update_element_parameters",
+            payload={
+                "element_ref": any_bus["ref_id"],
+                "parameters": {"name": any_bus.get("name", "test")},
+            },
+        )
+
+        blockers = result.get("readiness", {}).get("blockers", [])
+        blocker_codes = {b.get("code") for b in blockers}
+        assert "pv_bess.transformer_required" not in blocker_codes
 
 
 # ===========================================================================

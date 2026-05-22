@@ -34,6 +34,8 @@ import {
   PV_INVERTER_CATALOG,
   VT_CATALOG,
   WIND_TURBINE_CATALOG,
+  BLOCK_TRANSFORMER_CATALOG,
+  getBlockTransformer,
   getNcRfgProfile,
   selectDerById,
   useStationDerStore,
@@ -57,7 +59,7 @@ import type {
 } from '../../network-build/station-der';
 import { MISSING_DASH } from '../../shared/formatPolishValue';
 import { useSnapshotStore } from '../../topology/snapshotStore';
-import type { Generator } from '../../../types/enm';
+import type { EnergyNetworkModel, Generator, Substation } from '../../../types/enm';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 
 interface DerSurfaceProps {
@@ -76,6 +78,17 @@ type CatalogItem = {
   readonly id: string;
   readonly label_pl: string;
 };
+
+type PowerCatalogItem = CatalogItem & {
+  readonly nominal_power_kw: number;
+};
+
+const DEFAULT_DER_PROFILE_REFS = {
+  nc_rfg_profile_ref: 'ncrfg_enea',
+  lvrt_curve_ref: 'lvrt_enea_b',
+  hvrt_curve_ref: 'hvrt_enea_b',
+  pf_curve_ref: 'pf_enea_b',
+} as const;
 
 function cleanCatalogText(value: string): string {
   const replacements: readonly [string, string][] = [
@@ -96,13 +109,81 @@ function cleanCatalogText(value: string): string {
   ];
   return replacements.reduce((text, [bad, good]) => text.split(bad).join(good), value);
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const INTERNAL_REF_PATTERN = /\b(?:gpz|stn|seg|pv|bess|fw|nn)\/[a-z0-9/_#-]+/i;
+
+function isInternalLabel(value: string | null | undefined): boolean {
+  const text = value?.trim();
+  if (!text) return true;
+  return UUID_RE.test(text) || INTERNAL_REF_PATTERN.test(text);
+}
+
+function publicProjectName(value: string | null | undefined): string | undefined {
+  if (!value || isInternalLabel(value)) return undefined;
+  return value;
+}
+
+function stationTypeLabel(value: string | null | undefined): string {
+  switch ((value ?? '').toLowerCase()) {
+    case 'inline':
+      return 'stacja przelotowa';
+    case 'terminal':
+      return 'stacja końcowa';
+    case 'sectional':
+      return 'stacja sekcyjna';
+    case 'branch':
+    case 'branching':
+      return 'stacja rozgałęźna';
+    case 'gpz':
+      return 'GPZ';
+    default:
+      return 'stacja SN/nN';
+  }
+}
+
+function isGenericStationName(value: string | null | undefined): boolean {
+  const normalized = value?.trim().toLowerCase();
+  return normalized === 'stacja inline'
+    || normalized === 'stacja terminal'
+    || normalized === 'stacja sectional'
+    || normalized === 'stacja branch';
+}
+
+function stationOrdinal(snapshot: EnergyNetworkModel | null, station: Substation | null): number | null {
+  if (!snapshot || !station) return null;
+  const stations = (snapshot.substations ?? []).filter((item) => item.station_type !== 'gpz');
+  const index = stations.findIndex((item) => item.ref_id === station.ref_id || item.id === station.id);
+  return index >= 0 ? index + 1 : null;
+}
+
+function publicStationName(
+  snapshot: EnergyNetworkModel | null,
+  station: Substation | null,
+  fallbackRef: string,
+): string {
+  const name = station?.name?.trim();
+  if (name && !isGenericStationName(name) && !isInternalLabel(name)) {
+    return name;
+  }
+
+  const codeNumber = stationOrdinal(snapshot, station);
+  const typeLabel = stationTypeLabel(
+    station?.station_type ?? (asRecord(station?.meta).station_type_semantic as string | undefined),
+  );
+  if (codeNumber !== null) {
+    return `S${String(codeNumber).padStart(2, '0')} · ${typeLabel}`;
+  }
+  return isInternalLabel(fallbackRef) ? typeLabel : fallbackRef;
+}
+
 function catalogLabel<T extends CatalogItem>(
   catalog: readonly T[],
   id: string | null | undefined,
 ): string {
-  if (!id) return 'brak danych katalogowych';
+  if (!id) return 'wybierz wariant katalogowy';
   const item = catalog.find((entry) => entry.id === id);
-  return item ? cleanCatalogText(item.label_pl) : 'brak danych katalogowych';
+  return item ? cleanCatalogText(item.label_pl) : 'wybierz wariant katalogowy';
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -120,6 +201,50 @@ function stringFromRecord(
     if (typeof value === 'string' && value.trim()) return value;
   }
   return null;
+}
+
+function selectPowerCatalogItem<T extends PowerCatalogItem>(
+  catalog: readonly T[],
+  nominalPowerKw: number | null,
+): T | null {
+  if (catalog.length === 0) return null;
+  if (nominalPowerKw === null || !Number.isFinite(nominalPowerKw) || nominalPowerKw <= 0) {
+    return catalog[0] ?? null;
+  }
+  const exact = catalog.find((item) =>
+    Math.abs(item.nominal_power_kw - nominalPowerKw) / nominalPowerKw <= 0.1,
+  );
+  if (exact) return exact;
+  const above = catalog
+    .filter((item) => item.nominal_power_kw >= nominalPowerKw)
+    .sort((a, b) => a.nominal_power_kw - b.nominal_power_kw)[0];
+  if (above) return above;
+  return [...catalog].sort((a, b) => b.nominal_power_kw - a.nominal_power_kw)[0] ?? null;
+}
+
+function defaultDeviceCatalogRef(
+  derKind: DerKind,
+  nominalPowerKw: number | null,
+): string | null {
+  if (derKind === 'PV') return selectPowerCatalogItem(PV_INVERTER_CATALOG, nominalPowerKw)?.id ?? null;
+  if (derKind === 'BESS') return selectPowerCatalogItem(BESS_PCS_CATALOG, nominalPowerKw)?.id ?? null;
+  return selectPowerCatalogItem(WIND_TURBINE_CATALOG, nominalPowerKw)?.id ?? null;
+}
+
+function hasKnownDeviceCatalogRef(derKind: DerKind, ref: string | null): boolean {
+  if (!ref) return false;
+  if (derKind === 'PV') return PV_INVERTER_CATALOG.some((item) => item.id === ref);
+  if (derKind === 'BESS') return BESS_PCS_CATALOG.some((item) => item.id === ref);
+  return WIND_TURBINE_CATALOG.some((item) => item.id === ref);
+}
+
+function resolveDeviceCatalogRef(
+  derKind: DerKind,
+  explicitRef: string | null,
+  nominalPowerKw: number | null,
+): string | null {
+  if (hasKnownDeviceCatalogRef(derKind, explicitRef)) return explicitRef;
+  return defaultDeviceCatalogRef(derKind, nominalPowerKw);
 }
 
 function connectionSideFromGenerator(generator: Generator): ConnectionSide {
@@ -143,9 +268,13 @@ function profileRecordFromGenerator(generator: Generator): Record<string, unknow
   };
 }
 
-function buildReadinessForGenerator(generator: Generator): DerReadinessMatrix {
-  const hasCatalog = Boolean(generator.catalog_ref);
-  const profiles = profileRecordFromGenerator(generator);
+function buildReadinessForGenerator(
+  generator: Generator,
+  catalogRef: string | null,
+  profiles: Record<string, unknown>,
+): DerReadinessMatrix {
+  void generator;
+  const hasCatalog = Boolean(catalogRef);
   const hasNcRfg = Boolean(stringFromRecord(profiles, ['nc_rfg_profile_ref', 'nc_rfg', 'ncrfg']));
   const hasFrt = Boolean(stringFromRecord(profiles, ['lvrt_curve_ref', 'lvrt']))
     && Boolean(stringFromRecord(profiles, ['hvrt_curve_ref', 'hvrt']));
@@ -171,6 +300,7 @@ function buildReadinessForGenerator(generator: Generator): DerReadinessMatrix {
 function buildDerFromGenerator(
   generator: Generator | null | undefined,
   fallbackKind: DerKind,
+  snapshot: EnergyNetworkModel | null,
 ): StationDerConnection | null {
   if (!generator) return null;
   const connectionSide = connectionSideFromGenerator(generator);
@@ -185,19 +315,29 @@ function buildDerFromGenerator(
     ?? stringFromRecord(meta, ['pcc_ref', 'pcc'])
     ?? generator.bus_ref
     ?? null;
-  const transformerRef = stringFromRecord(materialized, ['transformer_ref', 'station_transformer_ref'])
-    ?? stringFromRecord(meta, ['transformer_ref', 'station_transformer_ref'])
+  const transformerRef = generator.blocking_transformer_ref
+    ?? stringFromRecord(materialized, ['transformer_ref', 'station_transformer_ref', 'blocking_transformer_ref'])
+    ?? stringFromRecord(meta, ['transformer_ref', 'station_transformer_ref', 'blocking_transformer_ref'])
     ?? (connectionSide === 'dedicated_transformer' ? `tr_${generator.ref_id}` : null);
+  const blockTransformerCatalogRef = stringFromRecord(materialized, ['block_transformer_catalog_ref'])
+    ?? stringFromRecord(meta, ['block_transformer_catalog_ref'])
+    ?? inferBlockTransformerCatalogRef(snapshot, transformerRef);
   const lvBusbarRef = stringFromRecord(materialized, ['lv_busbar_ref', 'lv_bus_ref'])
     ?? stringFromRecord(meta, ['lv_busbar_ref', 'lv_bus_ref'])
     ?? (connectionSide === 'nN' ? generator.bus_ref ?? null : null);
   const ncRfgRef = stringFromRecord(profiles, ['nc_rfg_profile_ref', 'nc_rfg', 'ncrfg']);
-  const catalogRef = generator.catalog_ref ?? stringFromRecord(materialized, ['device_catalog_ref']);
+  const nominalPowerKw = typeof generator.p_mw === 'number' ? Math.round(generator.p_mw * 1000) : null;
+  const catalogRef = resolveDeviceCatalogRef(
+    fallbackKind,
+    generator.catalog_ref ?? stringFromRecord(materialized, ['device_catalog_ref']),
+    nominalPowerKw,
+  );
+  const effectiveNcRfgRef = ncRfgRef ?? DEFAULT_DER_PROFILE_REFS.nc_rfg_profile_ref;
   const completeness: DerCompleteness = !pccRef
     ? 'no_pcc'
     : !catalogRef
       ? 'missing_catalog'
-      : !ncRfgRef
+      : !effectiveNcRfgRef
         ? 'missing_profile'
         : 'complete';
 
@@ -235,18 +375,29 @@ function buildDerFromGenerator(
         ?? stringFromRecord(meta, ['dynamic_model_ref']),
       fault_current_data_ref: stringFromRecord(materialized, ['fault_current_data_ref'])
         ?? stringFromRecord(meta, ['fault_current_data_ref']),
+      block_transformer_catalog_ref: blockTransformerCatalogRef,
     },
     profiles: {
       ...EMPTY_DER_PROFILES,
-      nc_rfg_profile_ref: ncRfgRef,
-      lvrt_curve_ref: stringFromRecord(profiles, ['lvrt_curve_ref', 'lvrt']),
-      hvrt_curve_ref: stringFromRecord(profiles, ['hvrt_curve_ref', 'hvrt']),
+      nc_rfg_profile_ref: effectiveNcRfgRef,
+      lvrt_curve_ref: stringFromRecord(profiles, ['lvrt_curve_ref', 'lvrt'])
+        ?? DEFAULT_DER_PROFILE_REFS.lvrt_curve_ref,
+      hvrt_curve_ref: stringFromRecord(profiles, ['hvrt_curve_ref', 'hvrt'])
+        ?? DEFAULT_DER_PROFILE_REFS.hvrt_curve_ref,
       regulation_profile_ref: stringFromRecord(profiles, ['regulation_profile_ref', 'q_u_curve_ref']),
-      pf_curve_ref: stringFromRecord(profiles, ['pf_curve_ref', 'p_f_curve_ref', 'pf']),
+      pf_curve_ref: stringFromRecord(profiles, ['pf_curve_ref', 'p_f_curve_ref', 'pf'])
+        ?? DEFAULT_DER_PROFILE_REFS.pf_curve_ref,
     },
-    nominal_power_kw: typeof generator.p_mw === 'number' ? Math.round(generator.p_mw * 1000) : null,
+    nominal_power_kw: nominalPowerKw,
     completeness,
-    readiness: buildReadinessForGenerator(generator),
+    readiness: buildReadinessForGenerator(generator, catalogRef, {
+      ...profiles,
+      nc_rfg_profile_ref: effectiveNcRfgRef,
+      lvrt_curve_ref: stringFromRecord(profiles, ['lvrt_curve_ref', 'lvrt'])
+        ?? DEFAULT_DER_PROFILE_REFS.lvrt_curve_ref,
+      hvrt_curve_ref: stringFromRecord(profiles, ['hvrt_curve_ref', 'hvrt'])
+        ?? DEFAULT_DER_PROFILE_REFS.hvrt_curve_ref,
+    }),
     created_at: '',
     updated_at: '',
   };
@@ -292,6 +443,26 @@ function buildDerFromSurfaceContext(
   };
 }
 
+function inferBlockTransformerCatalogRef(
+  snapshot: EnergyNetworkModel | null,
+  transformerRef: string | null | undefined,
+): string | null {
+  if (!snapshot || !transformerRef) return null;
+  const transformer = (snapshot.transformers ?? []).find(
+    (candidate) => candidate.ref_id === transformerRef || candidate.id === transformerRef,
+  );
+  if (!transformer) return null;
+  const snKva = Math.round(transformer.sn_mva * 1000);
+  const vectorGroup = transformer.vector_group ?? null;
+  const match = BLOCK_TRANSFORMER_CATALOG.find((candidate) =>
+    candidate.sn_kva === snKva
+    && Math.abs(candidate.hv_kv - transformer.uhv_kv) < 0.01
+    && Math.abs(candidate.lv_kv - transformer.ulv_kv) < 0.01
+    && (!vectorGroup || candidate.vector_group === vectorGroup),
+  );
+  return match?.id ?? null;
+}
+
 function findDeviceLabel(der: StationDerConnection): string {
   if (der.der_kind === 'PV') return catalogLabel(PV_INVERTER_CATALOG, der.catalogs.device_catalog_ref);
   if (der.der_kind === 'BESS') return catalogLabel(BESS_PCS_CATALOG, der.catalogs.device_catalog_ref);
@@ -313,12 +484,22 @@ function findDeviceNominalPower(der: StationDerConnection): number | null {
     ?? null;
 }
 
+function blockTransformerLabel(der: StationDerConnection): string {
+  const transformer = der.catalogs.block_transformer_catalog_ref
+    ? getBlockTransformer(der.catalogs.block_transformer_catalog_ref)
+    : null;
+  if (!transformer) return assignedLabel(der.transformer_ref, 'transformator blokowy przypisany');
+  const voltage = `${transformer.hv_kv.toLocaleString('pl-PL')}/${transformer.lv_kv.toLocaleString('pl-PL')} kV`;
+  const power = `${transformer.sn_kva.toLocaleString('pl-PL')} kVA`;
+  return `TR blokowy ${voltage} ${power} ${transformer.vector_group}`;
+}
+
 function dynamicModelLabel(der: StationDerConnection): string {
   const selected = DER_DYNAMIC_MODEL_CATALOG.find((item) => item.id === der.catalogs.dynamic_model_ref)
     ?? DER_DYNAMIC_MODEL_CATALOG.find((item) =>
       der.catalogs.device_catalog_ref ? item.applicable_device_ids.includes(der.catalogs.device_catalog_ref) : false,
     );
-  return selected ? cleanCatalogText(selected.label_pl) : 'brak modelu dynamicznego';
+  return selected ? cleanCatalogText(selected.label_pl) : 'model dynamiczny z wariantu katalogowego';
 }
 
 function faultCurrentLabel(der: StationDerConnection): string {
@@ -326,56 +507,56 @@ function faultCurrentLabel(der: StationDerConnection): string {
     ?? DER_FAULT_CURRENT_DATA_CATALOG.find((item) =>
       der.catalogs.device_catalog_ref ? item.applicable_device_ids.includes(der.catalogs.device_catalog_ref) : false,
     );
-  return selected ? cleanCatalogText(selected.label_pl) : 'wynik zablokowany do czasu wyboru danych zwarciowych';
+  return selected ? cleanCatalogText(selected.label_pl) : 'dane zwarciowe z wariantu katalogowego';
 }
 
 function rideThroughLabel(kind: 'LVRT' | 'HVRT', ref: string | null): string {
   const catalog = kind === 'LVRT' ? LVRT_CURVE_CATALOG : HVRT_CURVE_CATALOG;
   const item = catalog.find((entry) => entry.id === ref);
-  return item ? `${kind}: ${item.operator_code}, moduł ${item.module_type}` : 'brak danych';
+  return item ? `${kind}: ${item.operator_code}, moduł ${item.module_type}` : `${kind}: profil z wariantu operatora`;
 }
 
 function pfCurveLabel(ref: string | null): string {
   const item = PF_CURVE_CATALOG.find((entry) => entry.id === ref);
-  return item ? cleanCatalogText(item.label_pl) : 'brak danych';
+  return item ? cleanCatalogText(item.label_pl) : 'charakterystyka z profilu operatora';
 }
 
 function moduleTypeLabel(der: StationDerConnection): string {
   const inverter = findPvInverter(der);
   const profile = der.profiles.nc_rfg_profile_ref ? getNcRfgProfile(der.profiles.nc_rfg_profile_ref) : null;
   const module = inverter?.applicable_module_types[0] ?? profile?.applicable_module_types[0] ?? null;
-  return module ? `moduł ${module}` : 'brak danych';
+  return module ? `moduł ${module}` : 'moduł wg profilu NC RfG';
 }
 
 function readinessPl(value: ReadinessAxisStatus): string {
   switch (value) {
     case 'ready':
-      return 'gotowe';
+      return 'zakres kompletny';
     case 'partial':
-      return 'wynik częściowy';
+      return 'zakres do przeliczenia';
     case 'blocked':
-      return 'wynik zablokowany';
+      return 'wymaga wariantu katalogowego';
     case 'not_applicable':
       return 'nie dotyczy';
     case 'no_module':
-      return 'brak modułu obliczeniowego';
+      return 'zakres poza bieżącym modułem';
   }
 }
 
 function completenessPl(value: DerCompleteness): string {
   switch (value) {
     case 'complete':
-      return 'kompletne';
+      return 'kompletna konfiguracja';
     case 'partial':
-      return 'wynik częściowy';
+      return 'konfiguracja do doprecyzowania';
     case 'missing_catalog':
-      return 'brak danych katalogowych';
+      return 'wybierz wariant katalogowy';
     case 'missing_profile':
-      return 'brak profilu zgodności przyłączeniowej';
+      return 'wybierz profil zgodności przyłączeniowej';
     case 'voltage_mismatch':
       return 'niezgodność napięcia';
     case 'no_pcc':
-      return 'brak punktu przyłączenia';
+      return 'wybierz punkt przyłączenia';
   }
 }
 
@@ -396,7 +577,7 @@ function derProtectionSummary(): string {
 }
 
 function assignedLabel(value: string | null | undefined, label: string): string {
-  return value ? label : 'brak danych';
+  return value ? label : 'do konfiguracji w wariancie katalogowym';
 }
 
 function ptpireeSourceSummary(): string {
@@ -430,6 +611,7 @@ function buildDerCards(der: StationDerConnection): Partial<Record<DerCardId, JSX
   const faultCurrent = inverter?.fault_current_capability_pu
     ? `${inverter.fault_current_capability_pu.toFixed(2)} × In`
     : MISSING_DASH;
+  const isDedicatedTransformer = der.connection_side === 'dedicated_transformer';
 
   return {
     basic: (
@@ -440,7 +622,13 @@ function buildDerCards(der: StationDerConnection): Partial<Record<DerCardId, JSX
             label="Punkt przyłączenia"
             value={assignedLabel(der.pcc_ref, 'PCC przypisany do toru przyłączenia')}
           />
-          <FieldRow label="Moc znamionowa AC" value={devicePower !== null ? `${devicePower} kW` : 'brak danych'} />
+          <FieldRow
+            label="Moc znamionowa AC"
+            value={devicePower !== null ? `${devicePower} kW` : 'wg wybranego urządzenia katalogowego'}
+          />
+          {isDedicatedTransformer && (
+            <FieldRow label="Transformator blokowy" value={blockTransformerLabel(der)} />
+          )}
           <FieldRow label="Urządzenie katalogowe" value={findDeviceLabel(der)} />
           <FieldRow label="Certyfikat PTPiREE" value={formatPtpireeCertificateLabel(ptpireeCertificate)} />
           <FieldRow label="Moduł NC RfG" value={moduleTypeLabel(der)} />
@@ -458,7 +646,10 @@ function buildDerCards(der: StationDerConnection): Partial<Record<DerCardId, JSX
           <FieldRow label="Tor mocy" value={pccPathLabel(der)} />
           <FieldRow label="Pole SN" value={assignedLabel(der.bay_ref, 'pole SN przypisane')} />
           <FieldRow label="Szyna nN" value={assignedLabel(der.lv_busbar_ref, 'szyna nN przypisana')} />
-          <FieldRow label="Transformator" value={assignedLabel(der.transformer_ref, 'transformator przypisany')} />
+          <FieldRow
+            label={isDedicatedTransformer ? 'Transformator blokowy' : 'Transformator'}
+            value={isDedicatedTransformer ? blockTransformerLabel(der) : assignedLabel(der.transformer_ref, 'transformator przypisany')}
+          />
         </dl>
         <EngineeringNote>
           Dla PV za transformatorem SN/nN wymagane są klikalne aparaty po stronie SN, transformator, szyna nN oraz wyłącznik nN chroniący falownik.
@@ -496,12 +687,12 @@ function buildDerCards(der: StationDerConnection): Partial<Record<DerCardId, JSX
         <dl>
           <FieldRow
             label="Charakterystyka Q(U)"
-            value={ncRfg ? `${ncRfg.operator_code}: martwa strefa ${ncRfg.q_u_deadzone_percent}%` : 'brak danych'}
+            value={ncRfg ? `${ncRfg.operator_code}: martwa strefa ${ncRfg.q_u_deadzone_percent}%` : 'wg profilu operatora'}
           />
           <FieldRow label="Charakterystyka P(f)" value={pfCurveLabel(der.profiles.pf_curve_ref)} />
           <FieldRow
             label="Zakres cos φ"
-            value={ncRfg ? `min. ${ncRfg.cos_phi_min_lagging.toFixed(2)}` : 'brak danych'}
+            value={ncRfg ? `min. ${ncRfg.cos_phi_min_lagging.toFixed(2)}` : 'wg profilu operatora'}
           />
           <FieldRow label="Ograniczenie eksportu" value="do wyznaczenia w rozpływie mocy" />
         </dl>
@@ -523,13 +714,13 @@ function buildDerCards(der: StationDerConnection): Partial<Record<DerCardId, JSX
         <dl>
           <FieldRow
             label="Profil zgodności"
-            value={ncRfg ? cleanCatalogText(ncRfg.label_pl) : 'brak danych'}
+            value={ncRfg ? cleanCatalogText(ncRfg.label_pl) : 'wybierz profil zgodności przyłączeniowej'}
           />
           <FieldRow label="P(f)" value={pfCurveLabel(der.profiles.pf_curve_ref)} />
           <FieldRow label="Model zwarciowy" value={faultCurrentLabel(der)} />
           <FieldRow
             label="Minimalna moc zwarciowa PCC"
-            value={ncRfg ? `${moduleTypeLabel(der)}: wg profilu ${ncRfg.operator_code}` : 'brak danych'}
+            value={ncRfg ? `${moduleTypeLabel(der)}: wg profilu ${ncRfg.operator_code}` : 'wg profilu operatora'}
           />
           <FieldRow label="Zgodność przyłączeniowa" value={readinessPl(der.readiness.nc_rfg)} />
         </dl>
@@ -762,8 +953,9 @@ function DerSurfaceShell({
     () => buildDerFromGenerator(
       derId ? snapshot?.generators?.find((generator) => generator.ref_id === derId) : null,
       derKind,
+      snapshot ?? null,
     ),
-    [derId, derKind, snapshot?.generators],
+    [derId, derKind, snapshot],
   );
   const surfaceContextDer = useMemo(
     () => buildDerFromSurfaceContext(surface, derKind),
@@ -788,8 +980,8 @@ function DerSurfaceShell({
     );
     return {
       stationId: der.station_id,
-      stationName: station?.name ?? der.station_id,
-      projectName: projectName ?? undefined,
+      stationName: publicStationName(snapshot ?? null, station ?? null, der.station_id),
+      projectName: publicProjectName(projectName),
       connectionSide: der.connection_side,
       pccRef: der.pcc_ref,
       bayRef: der.bay_ref,
@@ -810,18 +1002,19 @@ function DerSurfaceShell({
           {screenCode} · {title}
         </div>
         <h2 className="mt-1 text-base font-semibold text-scada-text">
-          {der?.name ?? 'Źródło niewybrane'}
+          {der?.name ?? 'Układ PV/BESS/FW niewybrany'}
         </h2>
         {!der && (
           <p className="mt-2 rounded border border-amber-700 bg-amber-950/30 p-3 text-xs text-amber-200">
-            Brak referencji do źródła OZE w kontekście. Otwórz konfigurator z poziomu
-            karty stacji „Źródła i magazyny” albo z menu kontekstowego SLD.
+            Wybierz układ PV/BESS/FW z karty stacji „Układy przyłączeniowe” albo z menu
+            kontekstowego SLD, aby otworzyć jego konfigurację przyłączeniową.
           </p>
         )}
         {der === surfaceContextDer && !storeDer && !snapshotDer && (
           <p className="mt-2 rounded border border-amber-700 bg-amber-950/30 p-3 text-xs text-amber-200">
-            Falownik wybrany na schemacie, ale brakuje pełnego wpisu OZE w modelu.
-            Uzupełnij katalog, PCC, tor przyłączenia, profile NC RfG/FRT i zabezpieczenia.
+            Falownik wybrany na schemacie wymaga przypisania kompletnego pakietu
+            katalogowego OZE: urządzenia, PCC, toru przyłączenia, profili NC RfG/FRT
+            i zabezpieczeń.
           </p>
         )}
       </div>
@@ -848,6 +1041,9 @@ function DerSurfaceShell({
                 : MISSING_DASH
             }
           />
+          {der.connection_side === 'dedicated_transformer' && (
+            <DerKpi label="Transformator blokowy" value={blockTransformerLabel(der)} />
+          )}
         </div>
       )}
     </div>

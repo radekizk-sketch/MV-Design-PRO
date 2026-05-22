@@ -13,6 +13,7 @@ from .canonical_fallback import (
     get_canonical_fallback_for_bay_kind,
     list_canonical_fallback_for_manufacturer,
     list_canonical_fallback_templates,
+    list_switchgear_solution_templates_for_manufacturer,
 )
 from .complete_mv_bay_template import (
     BayKind,
@@ -98,6 +99,7 @@ __all__ = [
     "list_canonical_fallback_templates",
     "list_families_for_manufacturer",
     "list_manufacturers",
+    "list_switchgear_solution_templates_for_manufacturer",
     "list_switchgear_families",
     "manufacturers_requiring_catalog",
     "verified_manufacturers",

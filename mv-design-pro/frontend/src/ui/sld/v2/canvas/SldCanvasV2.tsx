@@ -1,13 +1,14 @@
-/**
- * SldCanvasV2 — composition root nowego SLD.
+﻿/**
+ * SldCanvasV2 â€” composition root nowego SLD.
  *
  * Pure functional viewport + SVG canvas. Renderowane przez SldWorkspaceContainer
- * w kanonicznym shellu (ekran E-01 "Główne środowisko pracy SLD").
+ * w kanonicznym shellu (ekran E-01 "GĹ‚Ăłwne Ĺ›rodowisko pracy SLD").
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
+  centerOnPoint,
   computeBoundingBox,
   fitToView,
   IDENTITY_TRANSFORM,
@@ -17,6 +18,7 @@ import {
 } from '../viewport/ViewportController';
 import {
   DEFAULT_LAYER_VISIBILITY,
+  LOD_LEVEL_LABELS_PL,
   createLodController,
   inferLodFromScale,
   type LodController,
@@ -27,17 +29,15 @@ import { SldLodProvider } from '../lod/SldLodContext';
 import { COLOR_BG, COLOR_PANEL } from '../theme/tokens';
 import {
   CableRunRenderer,
+  type CableRunRendererProps,
   type CableRunSegmentLabel,
   type CableRunSegmentPath,
   type CableRunStationPortGap,
 } from '../renderer/CableRunRenderer';
 import { CadOverlay } from './CadOverlay';
-import { SldTitleBlock, type SldTitleBlockData } from './SldTitleBlock';
-import { SldRevisionTable, type SldRevisionEntry } from './SldRevisionTable';
-import { SldPowerBalancePanel, type PowerBalanceData } from './SldPowerBalancePanel';
-import { SldLegendOverlay } from './SldLegendOverlay';
-import { SldScaleRuler } from './SldScaleRuler';
-import { SldNorthArrow } from './SldNorthArrow';
+import type { SldTitleBlockData } from './SldTitleBlock';
+import type { SldRevisionEntry } from './SldRevisionTable';
+import type { PowerBalanceData } from './SldPowerBalancePanel';
 import {
   SldShortCircuitOverlay,
   type SldShortCircuitProjection,
@@ -62,12 +62,33 @@ import {
   STATION_RUN_TRUNK_OFFSET_Y,
   type StationOnRunRendererProps,
 } from '../renderer/StationOnRunRenderer';
-import { miniBlockStationPortOffsets } from '../renderer/MiniBlockRmuRenderer';
+import {
+  MiniBlockRmuRenderer,
+  miniBlockStationPortOffsets,
+  type MiniBlockBayDescriptor,
+} from '../renderer/MiniBlockRmuRenderer';
+import { FIELD_ROLE } from '../domain/apparatusContracts';
 import { ResultOverlayLayer } from './ResultOverlayLayer';
 import { useRawResultOverlayStore, type RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import type { SldElementKindForMenu } from '../command/SldCommandService';
+import type {
+  SldBranchPointMarker,
+  SldLabelSpec,
+  SldReadabilityReport,
+  SldRunCorridor,
+  SldTerminalBinding,
+  SldTopologyRun,
+} from './SldTopologyContracts';
 
 export type SldElementContextKind = SldElementKindForMenu;
+
+const SELECTED_NODE_FOCUS_SCALE = 0.75;
+
+interface CenterTarget {
+  readonly x: number;
+  readonly y: number;
+  readonly minScale?: number;
+}
 
 export interface SldCanvasContextMenuRequest {
   readonly kind: SldElementContextKind;
@@ -81,13 +102,13 @@ export interface SldCanvasV2Props {
   readonly width: number;
   readonly height: number;
 
-  /** Lista obiektów do renderowania. */
+  /** Lista obiektĂłw do renderowania. */
   readonly gpzs: readonly GpzRendererProps[];
   /**
    * Operator-grade canonical GPZ props (Phase R4 rebuild).
    * Gdy podane dla `id` z `gpzs[]`, kanwa renderuje `GpzCanonicalRenderer`
-   * (pełna rozdzielnia SCADA OSD) zamiast legacy `GpzRenderer` (placeholder).
-   * Caller (SldWorkspaceContainer) wywołuje `buildCanonicalGpzProps` z ENM.
+   * (peĹ‚na rozdzielnia SCADA OSD) zamiast legacy `GpzRenderer` (placeholder).
+   * Caller (SldWorkspaceContainer) wywoĹ‚uje `buildCanonicalGpzProps` z ENM.
    */
   readonly canonicalGpzs?: readonly GpzCanonicalRendererProps[];
   readonly sections: readonly SectionRendererProps[];
@@ -101,26 +122,37 @@ export interface SldCanvasV2Props {
     label?: string;
     segmentLabels?: readonly CableRunSegmentLabel[];
     pendingEndpoint?: boolean;
-    /** K30-41: napięcie ciągu [kV] — voltage chip + tint stroke fallback. */
+    /** K30-41: napiÄ™cie ciÄ…gu [kV] â€” voltage chip + tint stroke fallback. */
     voltageKv?: number | null;
   }>;
   readonly stations: readonly StationOnRunRendererProps[];
+  readonly branchPoints?: readonly SldBranchPointMarker[];
   readonly ders: readonly DerRendererProps[];
-  readonly connections?: ReadonlyArray<{ id: string; pathPoints: ReadonlyArray<{ x: number; y: number }> }>;
+  readonly connections?: ReadonlyArray<{
+    id: string;
+    pathPoints: ReadonlyArray<{ x: number; y: number }>;
+    transformerLabel?: string | null;
+    connectionKind?: 'der_block_transformer' | 'der_nn' | 'generic';
+  }>;
+  readonly topologyCorridors?: readonly SldRunCorridor[];
+  readonly topologyRuns?: readonly SldTopologyRun[];
+  readonly terminalBindings?: readonly SldTerminalBinding[];
+  readonly labelSpecs?: readonly SldLabelSpec[];
+  readonly readabilityReport?: SldReadabilityReport;
 
   /** Selected element ID (jeden z {gpz/section/run/station/der}). */
   readonly selectedId?: string | null;
 
-  /** Override LOD globalny (jeśli undefined → wnioskuj z scale). */
+  /** Override LOD globalny (jeĹ›li undefined â†’ wnioskuj z scale). */
   readonly lodOverride?: LodLevel;
 
-  /** Stan warstw widoczności. */
+  /** Stan warstw widocznoĹ›ci. */
   readonly layerVisibility?: Partial<Record<SldLayerId, boolean>>;
 
   /** Phase 2 polish (operator-grade SLD plan v2): CadOverlay props.
    *  Snap state (mode/grid/port tolerance), ghost previews dla
    *  append/split workflow, korytarze dla CorridorLayout strategy,
-   *  zaznaczone routes dla bend handles. Wszystkie opcjonalne — gdy
+   *  zaznaczone routes dla bend handles. Wszystkie opcjonalne â€” gdy
    *  brak, CadOverlay nie jest renderowany. */
   readonly cadOverlay?: {
     readonly snapState?: import('../viewport/Snap').SnapState;
@@ -136,27 +168,29 @@ export interface SldCanvasV2Props {
   readonly onSelectElement?: (id: string | null, kind: string) => void;
   readonly onDoubleClickStation?: (id: string) => void;
   readonly onDoubleClickDer?: (id: string) => void;
+  /** Element, który ma zostać doprowadzony do czytelnego środka roboczej kanwy. */
+  readonly centerOnElementId?: string | null;
   /**
-   * Right-click handler. Wywoływany dla elementu lub tła kanwy.
+   * Right-click handler. WywoĹ‚ywany dla elementu lub tĹ‚a kanwy.
    * Container otwiera menu kontekstowe na (clientX, clientY).
    */
   readonly onContextMenu?: (request: SldCanvasContextMenuRequest) => void;
   readonly onViewportTransformChange?: (transform: ViewportTransform) => void;
-  /** K30-38: metadata bloku tytułowego per PN-EN ISO 7200. Brak → defaults. */
+  /** K30-38: metadata bloku tytuĹ‚owego per PN-EN ISO 7200. Brak â†’ defaults. */
   readonly titleBlockData?: SldTitleBlockData | null;
   /** K30-100: revision history entries dla SldRevisionTable (OSD wniosek). */
   readonly revisionEntries?: readonly SldRevisionEntry[];
   /** K30-101: bilans mocy panel data (LF analiza). */
   readonly powerBalance?: PowerBalanceData | null;
-  /** K30-39: pokaż legendę palet (voltage / cable variants / apparatus / DER).
+  /** K30-39: pokaĹĽ legendÄ™ palet (voltage / cable variants / apparatus / DER).
    *  Default true. Set false dla cleanu w przypadkach print-only. */
   readonly showLegend?: boolean;
-  /** K30-43: pokaż skalę rysunku per PN-EN ISO 5455. Default true. */
+  /** K30-43: pokaĹĽ skalÄ™ rysunku per PN-EN ISO 5455. Default true. */
   readonly showScaleRuler?: boolean;
-  /** K30-47: pokaż strzałkę N (north arrow) per PN-EN ISO 5456. Default false
-   *  (SLD są topologiczne, geographic orientation rzadko relevant). */
+  /** K30-47: pokaĹĽ strzaĹ‚kÄ™ N (north arrow) per PN-EN ISO 5456. Default false
+   *  (SLD sÄ… topologiczne, geographic orientation rzadko relevant). */
   readonly showNorthArrow?: boolean;
-  /** K30-48: projekcja wyników zwarciowych per IEC 60909. Brak → overlay off.
+  /** K30-48: projekcja wynikĂłw zwarciowych per IEC 60909. Brak â†’ overlay off.
    *  K30-50: gdy null + payload SC available, derived auto-from-payload. */
   readonly shortCircuitProjection?: SldShortCircuitProjection | null;
   /** K30-46: projekcja stref ochrony Z1/Z2/Z3 per IEC 60255-127. */
@@ -173,7 +207,10 @@ function estimateCanonicalGpzFootprint(gpz: GpzCanonicalRendererProps): { width:
   };
 }
 
-const OPERATOR_READABLE_MIN_SCALE = 0.72;
+const OPERATOR_READABLE_MIN_SCALE = 0.64;
+const OPERATOR_LARGE_TOPOLOGY_MIN_SCALE = 0.22;
+const VIEWPORT_ZOOM_IN_FACTOR = 1.35;
+const VIEWPORT_ZOOM_OUT_FACTOR = 0.75;
 
 function sameViewportTransform(a: ViewportTransform, b: ViewportTransform): boolean {
   return (
@@ -197,6 +234,13 @@ function applyOperatorReadableInitialTransform(
     args.stationCount <= 8 &&
     args.runCount <= 12 &&
     args.derCount <= 6;
+  if (fit.scale < OPERATOR_LARGE_TOPOLOGY_MIN_SCALE) {
+    return {
+      scale: OPERATOR_LARGE_TOPOLOGY_MIN_SCALE,
+      translateX: 48 - bbox.minX * OPERATOR_LARGE_TOPOLOGY_MIN_SCALE,
+      translateY: 48 - bbox.minY * OPERATOR_LARGE_TOPOLOGY_MIN_SCALE,
+    };
+  }
   if (!args.hasCanonicalGpz || !smallOperatorTopology || fit.scale >= OPERATOR_READABLE_MIN_SCALE) {
     return fit;
   }
@@ -240,29 +284,229 @@ function readSldInteractiveTarget(target: EventTarget | null): {
   return { kind, elementId };
 }
 
+function buildVisibleTopologyLabels(
+  labelSpecs: readonly SldLabelSpec[],
+  readabilityReport: SldReadabilityReport | undefined,
+  lod: LodLevel,
+  selectedId: string | null | undefined,
+): Array<{ spec: SldLabelSpec; placement: NonNullable<SldReadabilityReport['labelPlacements']>[number] }> {
+  if (!readabilityReport || labelSpecs.length === 0) return [];
+  const specById = new Map(labelSpecs.map((spec) => [spec.id, spec]));
+  return readabilityReport.labelPlacements
+    .filter((placement) => !placement.hidden)
+    .map((placement) => {
+      const spec = specById.get(placement.id);
+      return spec ? { spec, placement } : null;
+    })
+    .filter((item): item is { spec: SldLabelSpec; placement: NonNullable<SldReadabilityReport['labelPlacements']>[number] } =>
+      item !== null && topologyLabelVisibleAtLod(item.spec, lod, selectedId),
+    )
+    .sort((a, b) =>
+      b.spec.priority - a.spec.priority
+      || a.spec.id.localeCompare(b.spec.id),
+    );
+}
+
+function topologyLabelVisibleAtLod(
+  spec: SldLabelSpec,
+  lod: LodLevel,
+  selectedId: string | null | undefined,
+): boolean {
+  if (selectedId && (selectedId === spec.ownerRef || selectedId === spec.id)) {
+    if (spec.ownerKind === 'station') return false;
+    if (spec.ownerKind === 'der') return false;
+    if (spec.ownerKind === 'branch_point' && spec.text.trim().toUpperCase() === 'ZKSN') {
+      return false;
+    }
+    return true;
+  }
+  switch (spec.ownerKind) {
+    case 'gpz':
+    case 'nop':
+      return lod >= 0;
+    case 'branch_point':
+      // ZKSN jest renderowany jako station-like rozdzielnica SN w BranchPointMarker.
+      // Dodatkowa pływająca etykieta "ZKSN" dubluje kod węzła i koliduje z
+      // sąsiednimi stacjami w widoku dużej topologii.
+      return spec.text.trim().toUpperCase() !== 'ZKSN' && lod === 0;
+    case 'station':
+      // StationOnRunRenderer/MiniBlockRmuRenderer są właścicielami kodu stacji
+      // na kanwie. Globalny label pipeline nadal liczy raport czytelności, ale
+      // nie renderuje drugiej etykiety typu "S01 przelotowa" nad kodem "S01".
+      return false;
+    case 'run':
+      return lod >= 1;
+    case 'segment':
+      // LOD 2: etykiety odcinków i długości. LOD 3/4 przejmują pola,
+      // aparatura, nastawy i elementy stacji, więc globalny opis odcinka
+      // nie może nachodzić na oznaczenia WE/WY/TR/Q/T.
+      // Gdy zaznaczony jest inny układ, karta techniczna i renderer tego
+      // układu mają pierwszeństwo; etykieta segmentu zostaje tylko dla
+      // aktywnego odcinka (obsłużone w gałęzi selectedId powyżej).
+      if (selectedId) return false;
+      return lod === 2;
+    case 'der':
+      // DerRenderer odpowiada za nazwę, moc i oznaczenie układu PV/BESS/FW.
+      // Druga etykieta z globalnego pipeline nakładała się na opis
+      // transformatora blokowego i tworzyła sprzeczny obraz toru przyłączenia.
+      return false;
+    case 'device':
+    case 'result':
+      return lod >= 3;
+  }
+}
+
+function selectedSegmentRefsForRun(
+  run: CableRunRendererProps,
+  selectedId: string | null | undefined,
+): readonly string[] {
+  if (!selectedId) return [];
+  const segmentRefs = new Set<string>();
+  for (const segmentRef of run.segmentRefs ?? []) {
+    segmentRefs.add(segmentRef);
+  }
+  for (const segmentPath of run.segmentPaths ?? []) {
+    segmentRefs.add(segmentPath.segmentRef);
+  }
+  return segmentRefs.has(selectedId) ? [selectedId] : [];
+}
+
+function topologyLabelFill(spec: SldLabelSpec): string {
+  switch (spec.ownerKind) {
+    case 'gpz':
+    case 'nop':
+      return '#13C45A';
+    case 'branch_point':
+      return '#FFD166';
+    case 'station':
+      return '#DDF7FF';
+    case 'run':
+    case 'segment':
+      return '#CFEFFF';
+    case 'der':
+      return '#7DFFD5';
+    case 'device':
+    case 'result':
+      return '#FFD166';
+  }
+}
+
+function topologyLabelStroke(spec: SldLabelSpec): string {
+  switch (spec.ownerKind) {
+    case 'gpz':
+    case 'nop':
+      return '#13C45A';
+    case 'branch_point':
+      return '#FFD166';
+    case 'station':
+      return '#63B3ED';
+    case 'der':
+      return '#18D26B';
+    case 'result':
+      return '#FFD166';
+    default:
+      return '#2C7DA0';
+  }
+}
+
+function topologyLabelFontSize(spec: SldLabelSpec): number {
+  if (
+    spec.ownerKind === 'gpz'
+    || spec.ownerKind === 'nop'
+    || spec.ownerKind === 'station'
+    || spec.ownerKind === 'branch_point'
+  ) return 11;
+  return 10;
+}
+
+function topologyLabelFontWeight(spec: SldLabelSpec): number {
+  if (
+    spec.ownerKind === 'gpz'
+    || spec.ownerKind === 'nop'
+    || spec.ownerKind === 'station'
+    || spec.ownerKind === 'branch_point'
+  ) return 900;
+  return 700;
+}
+
+function buildViewportContentSignature(
+  gpzs: readonly GpzRendererProps[],
+  canonicalGpzs: readonly GpzCanonicalRendererProps[],
+  sections: readonly SectionRendererProps[],
+  cableRuns: readonly CableRunRendererProps[],
+  stations: readonly StationOnRunRendererProps[],
+  branchPoints: readonly SldBranchPointMarker[],
+  ders: readonly DerRendererProps[],
+): string {
+  return [
+    gpzs.map((item) => `${item.id}:${item.x}:${item.y}`).join('|'),
+    canonicalGpzs.map((item) => `${item.id}:${item.x}:${item.y}:${item.sections.length}`).join('|'),
+    sections.map((item) => `${item.id}:${item.x}:${item.y}`).join('|'),
+    cableRuns.map((item) => `${item.id}:${item.pathPoints.map((point) => `${point.x},${point.y}`).join(';')}`).join('|'),
+    stations.map((item) => `${item.id}:${item.x}:${item.y}`).join('|'),
+    branchPoints.map((item) => `${item.id}:${item.x}:${item.y}:${item.branchPointType}`).join('|'),
+    ders.map((item) => `${item.id}:${item.x}:${item.y}`).join('|'),
+  ].join('::');
+}
+
+function centerPointForRun(run: CableRunRendererProps): CenterTarget | null {
+  if (run.pathPoints.length === 0) return null;
+  const bbox = computeBoundingBox(run.pathPoints);
+  return {
+    x: (bbox.minX + bbox.maxX) / 2,
+    y: (bbox.minY + bbox.maxY) / 2,
+  };
+}
+
+function centerTargetForElement(
+  elementId: string | null | undefined,
+  props: Pick<
+    SldCanvasV2Props,
+    'gpzs' | 'canonicalGpzs' | 'sections' | 'cableRuns' | 'stations' | 'branchPoints' | 'ders'
+  >,
+): CenterTarget | null {
+  if (!elementId) return null;
+  const gpz = props.gpzs.find((item) => item.id === elementId);
+  if (gpz) return { x: gpz.x, y: gpz.y };
+  const canonicalGpz = props.canonicalGpzs?.find((item) => item.id === elementId);
+  if (canonicalGpz) return { x: canonicalGpz.x, y: canonicalGpz.y };
+  const section = props.sections.find((item) => item.id === elementId);
+  if (section) return { x: section.x, y: section.y };
+  const station = props.stations.find((item) => item.id === elementId);
+  if (station) return { x: station.x, y: station.y, minScale: SELECTED_NODE_FOCUS_SCALE };
+  const branchPoint = props.branchPoints?.find((item) => item.id === elementId);
+  if (branchPoint) return { x: branchPoint.x, y: branchPoint.y, minScale: SELECTED_NODE_FOCUS_SCALE };
+  const der = props.ders.find((item) => item.id === elementId);
+  if (der) return { x: der.x, y: der.y, minScale: SELECTED_NODE_FOCUS_SCALE };
+  const run = props.cableRuns.find((item) => item.id === elementId);
+  return run ? centerPointForRun(run) : null;
+}
+
 export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const {
-    width, height, gpzs, canonicalGpzs, sections, cableRuns, stations, ders, connections = [],
-    selectedId, lodOverride, layerVisibility, titleBlockData, revisionEntries, powerBalance, showLegend = true, showScaleRuler = true,
-    showNorthArrow = false, shortCircuitProjection, protectionZoneProjection,
+    width, height, gpzs, canonicalGpzs, sections, cableRuns, stations, branchPoints = [], ders, connections = [],
+    topologyCorridors = [], topologyRuns = [], terminalBindings = [], labelSpecs = [], readabilityReport,
+    selectedId, centerOnElementId, lodOverride, layerVisibility,
+    shortCircuitProjection, protectionZoneProjection,
     onSelectElement, onDoubleClickStation, onDoubleClickDer, onContextMenu, onViewportTransformChange,
   } = props;
 
   // K30-8: subskrybuj raw overlay payload by compute per-station alarm severity.
   const overlayPayload = useRawResultOverlayStore((state) => state.payload);
 
-  // K30-49: derive LF metrics — voltage deviation per station + cable loading.
+  // K30-49: derive LF metrics â€” voltage deviation per station + cable loading.
   // Wynik feedowany do StationOnRunRenderer (voltageDeviationPct) i
   // CableRunRenderer (loadingPct) jako data-driven projekcje K30-44/K30-45.
   const lfDerived = computeLfDerivedMetrics(overlayPayload, props.stations, props.cableRuns);
 
-  // K30-76: PathHighlighter — gdy selectedId jest stacją, znajdź run zawierający
-  // tę stację i highlight całego toru mocy (cable run = path z GPZ).
-  // Zbioru runIds zostają renderowane jak selected (visual highlight).
+  // K30-76: PathHighlighter â€” gdy selectedId jest stacjÄ…, znajdĹş run zawierajÄ…cy
+  // tÄ™ stacjÄ™ i highlight caĹ‚ego toru mocy (cable run = path z GPZ).
+  // Zbioru runIds zostajÄ… renderowane jak selected (visual highlight).
   const pathHighlightRunIds = useMemo(() => {
     const ids = new Set<string>();
     if (!selectedId) return ids;
-    // Selected element może być stationId lub cableRunId
+    if (selectedId.startsWith('seg/')) return ids;
+    // Selected element moĹĽe byÄ‡ stationId lub cableRunId
     for (const run of props.cableRuns) {
       const containsStation = run.segmentRefs?.some((segRef) => {
         // Segment ref pattern: seg/{hash}/branch_segment lub similar
@@ -286,9 +530,9 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     return ids;
   }, [selectedId, props.cableRuns, props.stations]);
 
-  // K30-50: derive SC projection — jeśli explicit shortCircuitProjection nie
-  // podano, auto-build z payload SC results. Bus pozycje pochodzą z station
-  // layout (SN bus = stn/{hash}/sn_bus, posażenie = station.x/y).
+  // K30-50: derive SC projection â€” jeĹ›li explicit shortCircuitProjection nie
+  // podano, auto-build z payload SC results. Bus pozycje pochodzÄ… z station
+  // layout (SN bus = stn/{hash}/sn_bus, posaĹĽenie = station.x/y).
   const derivedScProjection = (() => {
     if (shortCircuitProjection !== undefined && shortCircuitProjection !== null) {
       return shortCircuitProjection;
@@ -320,16 +564,23 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const isDraggingRef = useRef(false);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
-  /* INVARIANT 5/6 + Phase 0A audit fix 11: LOD histereza FSM eliminuje
-   * migotanie przy bouncing zoom (deadband 15%, debounce 250ms — konfig
-   * w `LodPolicy.createLodController`). Bez tego operator widzi przeskakujące
-   * elementy LOD przy płynnym zoom-in/out. */
+  const viewportContentSignature = useMemo(
+    () => buildViewportContentSignature(gpzs, canonicalGpzs ?? [], sections, cableRuns, stations, branchPoints, ders),
+    [gpzs, canonicalGpzs, sections, cableRuns, stations, branchPoints, ders],
+  );
+  /* LOD kanwy ma byÄ‡ natychmiastowy i monotoniczny dla klikniÄ™Ä‡ zoom.
+   * Histereza zostaje w LodPolicy jako opcjonalny tryb testowy, ale gĹ‚Ăłwny
+   * widok projektanta nie moĹĽe opĂłĹşniaÄ‡ pojawiania siÄ™ szczegĂłĹ‚Ăłw. */
   const lodControllerRef = useRef<LodController | null>(null);
   if (lodControllerRef.current === null) {
-    lodControllerRef.current = createLodController({ initialScale: transform.scale });
+    lodControllerRef.current = createLodController({
+      initialScale: transform.scale,
+      hysteresisMargin: 0,
+      debounceMs: 0,
+    });
   }
 
-  // Auto-fit przy pierwszym renderze (jeśli mamy obiekty)
+  // Auto-fit przy pierwszym renderze (jeĹ›li mamy obiekty)
   useEffect(() => {
     const allPoints: { x: number; y: number }[] = [];
     for (const g of gpzs) allPoints.push({ x: g.x, y: g.y });
@@ -340,10 +591,11 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     }
     for (const s of sections) allPoints.push({ x: s.x, y: s.y });
     for (const st of stations) allPoints.push({ x: st.x, y: st.y });
+    for (const bp of branchPoints) allPoints.push({ x: bp.x, y: bp.y });
     for (const d of ders) allPoints.push({ x: d.x, y: d.y });
     if (allPoints.length === 0) return;
     const bbox = computeBoundingBox(allPoints);
-    // Powiększamy bbox aby uwzględnić rozmiar bloków
+    // PowiÄ™kszamy bbox aby uwzglÄ™dniÄ‡ rozmiar blokĂłw
     const expanded = {
       minX: bbox.minX - 100,
       minY: bbox.minY - 100,
@@ -361,16 +613,90 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
       },
     );
     setTransform((current) => sameViewportTransform(current, nextTransform) ? current : nextTransform);
-  }, [gpzs, canonicalGpzs, sections, cableRuns, stations, ders, width, height]);
+  }, [viewportContentSignature, width, height]);
 
-  /* LOD obliczany przez LodController — histereza FSM zapobiega flicker.
-   * `update()` zwraca aktualne LOD po zastosowaniu deadband + debounce. */
+  useEffect(() => {
+    const target = centerTargetForElement(centerOnElementId, {
+      gpzs,
+      canonicalGpzs,
+      sections,
+      cableRuns,
+      stations,
+      branchPoints,
+      ders,
+    });
+    if (!target) return;
+    setTransform((current) => {
+      const nextScale = Math.max(current.scale, target.minScale ?? current.scale);
+      const nextTransform = centerOnPoint(target, { width, height }, nextScale);
+      return sameViewportTransform(current, nextTransform) ? current : nextTransform;
+    });
+  }, [
+    branchPoints,
+    cableRuns,
+    canonicalGpzs,
+    centerOnElementId,
+    ders,
+    gpzs,
+    height,
+    sections,
+    stations,
+    viewportContentSignature,
+    width,
+  ]);
+
+  const computeFitTransformForCurrentNetwork = useCallback((): ViewportTransform | null => {
+    const allPoints: { x: number; y: number }[] = [];
+    for (const g of gpzs) allPoints.push({ x: g.x, y: g.y });
+    for (const gpz of canonicalGpzs ?? []) {
+      const footprint = estimateCanonicalGpzFootprint(gpz);
+      allPoints.push({ x: gpz.x, y: gpz.y });
+      allPoints.push({ x: gpz.x + footprint.width, y: gpz.y + footprint.height });
+    }
+    for (const s of sections) allPoints.push({ x: s.x, y: s.y });
+    for (const st of stations) allPoints.push({ x: st.x, y: st.y });
+    for (const bp of branchPoints) allPoints.push({ x: bp.x, y: bp.y });
+    for (const d of ders) allPoints.push({ x: d.x, y: d.y });
+    if (allPoints.length === 0) return null;
+    const bbox = computeBoundingBox(allPoints);
+    const expanded = {
+      minX: bbox.minX - 100,
+      minY: bbox.minY - 100,
+      maxX: bbox.maxX + 200,
+      maxY: bbox.maxY + 200,
+    };
+    return applyOperatorReadableInitialTransform(
+      fitToView(expanded, { width, height }),
+      expanded,
+      {
+        hasCanonicalGpz: (canonicalGpzs?.length ?? 0) > 0,
+        stationCount: stations.length,
+        runCount: cableRuns.length,
+        derCount: ders.length,
+      },
+    );
+  }, [gpzs, canonicalGpzs, sections, stations, branchPoints, ders, width, height, cableRuns.length]);
+
+  const zoomViewportAtCenter = useCallback((zoomFactor: number) => {
+    setTransform((current) => zoomToCursor(current, { x: width / 2, y: height / 2 }, zoomFactor));
+  }, [width, height]);
+
+  const fitViewportToNetwork = useCallback(() => {
+    const nextTransform = computeFitTransformForCurrentNetwork();
+    if (!nextTransform) return;
+    setTransform((current) => sameViewportTransform(current, nextTransform) ? current : nextTransform);
+  }, [computeFitTransformForCurrentNetwork]);
+
+  /* LOD obliczany przez LodController bez opĂłĹşnienia w gĹ‚Ăłwnej kanwie. */
   const lod: LodLevel = lodOverride !== undefined
     ? lodOverride
     : lodControllerRef.current.update(transform.scale);
-  /* Fallback dla testów bez LodControllera (powinien być zawsze inicjalizowany). */
-  void inferLodFromScale; // referencja zachowana dla back-compat innych callerów
+  /* Fallback dla testĂłw bez LodControllera (powinien byÄ‡ zawsze inicjalizowany). */
+  void inferLodFromScale; // referencja zachowana dla back-compat innych callerĂłw
   const layers = { ...DEFAULT_LAYER_VISIBILITY, ...(layerVisibility ?? {}) };
+  const topologyLabels = buildVisibleTopologyLabels(labelSpecs, readabilityReport, lod, selectedId);
+  const usesGlobalLabelPipeline =
+    labelSpecs.length > 0 || Boolean(readabilityReport?.labelPlacements?.length);
 
   useEffect(() => {
     onViewportTransformChange?.(transform);
@@ -466,6 +792,15 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
       data-testid="sld-canvas-v2"
       data-lod={lod}
       data-scale={transform.scale.toFixed(3)}
+      data-topology-runs={topologyRuns.length}
+      data-topology-corridors={topologyCorridors.length}
+      data-terminal-bindings={terminalBindings.length}
+      data-label-specs={labelSpecs.length}
+      data-readability-score={String(readabilityReport?.score ?? 100)}
+      data-topology-continuity={readabilityReport?.topologyContinuity ?? 'continuous'}
+      data-orphan-stations={String(readabilityReport?.orphanStationRefs.length ?? 0)}
+      data-missing-terminals={String(readabilityReport?.missingTerminalRefs.length ?? 0)}
+      data-critical-label-collisions={String(readabilityReport?.criticalCollisions ?? 0)}
       width={width}
       height={height}
       style={{ background: COLOR_BG, userSelect: 'none' }}
@@ -477,13 +812,26 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
       onMouseLeave={handleMouseUp}
       onContextMenu={handleSvgContextMenu}
     >
-      {/* Tło */}
+      {/* TĹ‚o */}
       <rect width={width} height={height} fill={COLOR_BG} />
+      {readabilityReport && (
+        <metadata
+          data-testid="sld-readability-report"
+          aria-hidden="true"
+          data-score={String(readabilityReport.score)}
+          data-topology-continuity={readabilityReport.topologyContinuity}
+          data-orphan-stations={String(readabilityReport.orphanStationRefs.length)}
+          data-orphan-segments={String(readabilityReport.orphanSegmentRefs.length)}
+          data-missing-terminals={String(readabilityReport.missingTerminalRefs.length)}
+          data-hidden-labels={String(readabilityReport.hiddenLabels)}
+          data-critical-label-collisions={String(readabilityReport.criticalCollisions)}
+        />
+      )}
 
       {/* World transform */}
       <g transform={`translate(${transform.translateX}, ${transform.translateY}) scale(${transform.scale})`}>
         {/* Phase 2 polish: CadOverlay (grid + magnesy + bend handles + ghosts +
-            korytarze). Renderowany pod content żeby nie zasłaniał obiektów
+            korytarze). Renderowany pod content ĹĽeby nie zasĹ‚aniaĹ‚ obiektĂłw
             domenowych. NIE pokazujemy gdy brak `cadOverlay` props (default off). */}
         {props.cadOverlay && (
           <CadOverlay
@@ -503,16 +851,19 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
           />
         )}
 
-        {/* Warstwa połączeń i odcinków SN. Stabilny znacznik jest używany
-            przez E2E oraz diagnostykę widoku, nie zmienia semantyki SLD. */}
+        {/* Warstwa poĹ‚Ä…czeĹ„ i odcinkĂłw SN. Stabilny znacznik jest uĹĽywany
+            przez E2E oraz diagnostykÄ™ widoku, nie zmienia semantyki SLD. */}
         <g data-testid="sld-connections-layer">
-          {layers.topology && connections.map((c) => (
+          {layers.topology && connections
+            .filter((c) => connectionVisibleAtLod(c, lod))
+            .map((c) => (
             <ConnectionRenderer key={c.id} {...c} selected={selectedId === c.id} />
           ))}
         </g>
 
-        {/* Sections (szyny SN GPZ) */}
-        {sections.map((s) => (
+        {/* Sections (szyny SN GPZ). LOD 0 pokazuje tylko blok GPZ i topologie
+            sieci, bez etykiet sekcji nachodzacych na opis zrodla. */}
+        {lod >= 1 && sections.map((s) => (
           <g
             key={s.id}
             data-testid={`sld-v2-section-hit-${s.id}`}
@@ -538,10 +889,12 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         {/* GPZ blocks */}
         {gpzs.map((g) => {
           /* Phase R4: prefer canonical SCADA-OSD renderer gdy adapter
-           * dostarczył canonical props dla tego id. Fallback do legacy
+           * dostarczyĹ‚ canonical props dla tego id. Fallback do legacy
            * `GpzRenderer` gdy brak (np. snapshot bez gpz_sections + bez bays). */
           const canonical = canonicalGpzs?.find((c) => c.id === g.id);
           if (canonical) {
+            const showCanonicalGpzDetail = lod >= 1;
+            const overviewName = compactGpzOverviewName(canonical.name || g.name || 'GPZ 15 kV');
             return (
               <g
                 key={g.id}
@@ -568,7 +921,8 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                     : undefined
                 }
               >
-                <GpzCanonicalRenderer
+                {showCanonicalGpzDetail && (
+                  <GpzCanonicalRenderer
                   {...canonical}
                   onClickBay={
                     onSelectElement
@@ -625,9 +979,58 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                             clientY: evt.clientY,
                           });
                         }
-                      : canonical.onContextMenuApparatus
+                    : canonical.onContextMenuApparatus
                   }
-                />
+                  />
+                )}
+                {lod <= 1 && (
+                  <g
+                    data-testid={`sld-v2-gpz-overview-label-${g.id}`}
+                    data-overview-label-scale={overviewTopologyLabelScale(transform.scale).toFixed(2)}
+                    data-overview-name={overviewName}
+                    transform={`translate(${canonical.x + 170}, ${canonical.y + 96}) scale(${overviewTopologyLabelScale(transform.scale)})`}
+                    pointerEvents="none"
+                  >
+                    <rect
+                      x={-58}
+                      y={-18}
+                      width={116}
+                      height={36}
+                      rx={3}
+                      ry={3}
+                      fill="#07111C"
+                      stroke="#13C45A"
+                      strokeWidth={0.5}
+                      opacity={0.94}
+                    />
+                    <text
+                      x={0}
+                      y={-3}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fill="#13C45A"
+                      fontFamily="sans-serif"
+                      fontSize={12}
+                      fontWeight={900}
+                      letterSpacing={0}
+                    >
+                      {overviewName}
+                    </text>
+                    <text
+                      x={0}
+                      y={11}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fill="#DDF7FF"
+                      fontFamily="sans-serif"
+                      fontSize={8}
+                      fontWeight={700}
+                      letterSpacing={0}
+                    >
+                      Źródło zasilania
+                    </text>
+                  </g>
+                )}
                 <rect
                   x={canonical.x + 18}
                   y={canonical.y + 18}
@@ -689,7 +1092,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
           );
         })}
 
-        {/* Stacje na ciągu */}
+        {/* Stacje na ciÄ…gu */}
         {layers.equipment && (
           <g data-testid="sld-cable-runs-layer">
             {cableRuns.map((run) => (
@@ -709,128 +1112,135 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
               >
                 <CableRunRenderer
                   {...run}
-                  stationPortGaps={buildStationPortGapsForRun(run, stations, lod)}
+                  label={usesGlobalLabelPipeline ? undefined : run.label}
+                  segmentLabels={usesGlobalLabelPipeline ? [] : run.segmentLabels}
+                  lod={lod}
+                  viewportScale={transform.scale}
+                  stationPortGaps={buildConnectionNodePortGapsForRun(run, stations, branchPoints, lod)}
                   selected={selectedId === run.id || pathHighlightRunIds.has(run.id)}
+                  selectedSegmentRefs={selectedSegmentRefsForRun(run, selectedId)}
                   loadingPct={lfDerived.cableLoadingPctByRunId.get(run.id) ?? null}
-                  onClick={onSelectElement ? (id) => onSelectElement(id, 'cable_run') : undefined}
+                  onClick={onSelectElement ? (id) => onSelectElement(
+                    id,
+                    run.segmentRefs?.includes(id)
+                      ? run.segmentKind === 'cable_sn' ? 'cable_segment_sn' : 'overhead_line_sn'
+                      : 'cable_run',
+                  ) : undefined}
                 />
               </g>
             ))}
           </g>
         )}
 
-        {stations.map((st) => {
-          const stationLod = st.lod ?? lod;
-          const stationUsesMiniBlock = stationUsesMiniBlockRenderer(st, stationLod);
-          return (
-            <g
-              key={st.id}
-              data-testid={`sld-v2-station-hit-${st.id}`}
-              data-element-kind="station"
-              data-element-id={st.id}
-              onContextMenu={
-                onContextMenu ? buildElementContextMenuHandler('station', st.id) : undefined
-              }
-              onClick={
-                onSelectElement
-                  ? (e) => {
-                      e.stopPropagation();
-                      onSelectElement(st.id, 'station');
-                    }
-                  : undefined
-              }
-              onDoubleClick={
-                onDoubleClickStation
-                  ? (e) => {
-                      e.stopPropagation();
-                      onDoubleClickStation(st.id);
-                    }
-                  : undefined
-              }
-              style={{ cursor: onSelectElement ? 'pointer' : 'default' }}
-            >
-              <StationOnRunRenderer
-                {...st}
-                alarmSeverity={st.alarmSeverity ?? computeStationAlarmSeverity(st, overlayPayload)}
-                voltageDeviationPct={
-                  st.voltageDeviationPct
-                    ?? lfDerived.voltageDeviationPctByStationId.get(st.id)
-                    ?? null
+        <g data-testid="sld-v2-stations-layer">
+          {stations.map((st) => {
+            const stationLod = st.lod ?? lod;
+            const stationUsesMiniBlock = stationUsesMiniBlockRenderer(st, stationLod);
+            return (
+              <g
+                key={st.id}
+                data-testid={`sld-v2-station-hit-${st.id}`}
+                data-element-kind="station"
+                data-element-id={st.id}
+                onContextMenu={
+                  onContextMenu ? buildElementContextMenuHandler('station', st.id) : undefined
                 }
-                lod={stationLod}
-                selected={selectedId === st.id}
-                onClick={onSelectElement ? (id) => onSelectElement(id, 'station') : undefined}
-                onDoubleClick={onDoubleClickStation}
+                onClick={
+                  onSelectElement
+                    ? (e) => {
+                        e.stopPropagation();
+                        onSelectElement(st.id, 'station');
+                      }
+                    : undefined
+                }
+                onDoubleClick={
+                  onDoubleClickStation
+                    ? (e) => {
+                        e.stopPropagation();
+                        onDoubleClickStation(st.id);
+                      }
+                    : undefined
+                }
+                style={{ cursor: onSelectElement ? 'pointer' : 'default' }}
+              >
+                <StationOnRunRenderer
+                  {...st}
+                  alarmSeverity={st.alarmSeverity ?? computeStationAlarmSeverity(st, overlayPayload)}
+                  voltageDeviationPct={
+                    st.voltageDeviationPct
+                      ?? lfDerived.voltageDeviationPctByStationId.get(st.id)
+                      ?? null
+                  }
+                  lod={stationLod}
+                  viewportScale={transform.scale}
+                  selected={selectedId === st.id}
+                  onClick={onSelectElement ? (id) => onSelectElement(id, 'station') : undefined}
+                  onDoubleClick={onDoubleClickStation}
+                />
+                {!stationUsesMiniBlock && st.transformerRefs?.map((transformerRef, index) => (
+                  <g
+                    key={`station-transformer-symbol-${transformerRef}`}
+                    data-testid={`sld-symbol-transformer-${transformerRef}`}
+                    data-element-kind="transformer_sn_nn"
+                    data-element-id={transformerRef}
+                    transform={`translate(${st.x + 46 + index * 18}, ${st.y + 16})`}
+                    onClick={onSelectElement ? (event) => {
+                      event.stopPropagation();
+                      onSelectElement(transformerRef, 'transformer');
+                    } : undefined}
+                    style={{ cursor: onSelectElement ? 'pointer' : 'default' }}
+                  >
+                    <rect x={-16} y={-16} width={32} height={36} fill="transparent" />
+                    <circle cx={0} cy={-4} r={7} fill="none" stroke="#18D26B" strokeWidth={1.4} />
+                    <circle cx={0} cy={8} r={7} fill="none" stroke="#18D26B" strokeWidth={1.4} />
+                    <title>{`Transformator SN/nN ${index + 1}`}</title>
+                  </g>
+                ))}
+              </g>
+            );
+          })}
+        </g>
+
+        {layers.equipment && (
+          <g data-testid="sld-v2-branch-points-layer">
+            {branchPoints.map((branchPoint) => (
+              <BranchPointMarker
+                key={branchPoint.id}
+                branchPoint={branchPoint}
+                lod={lod}
+                selected={selectedId === branchPoint.id}
+                viewportScale={transform.scale}
+                onClick={
+                  onSelectElement
+                    ? (id, kind) => onSelectElement(id, kind)
+                    : undefined
+                }
+                onContextMenu={
+                  onContextMenu
+                    ? buildElementContextMenuHandler(
+                        branchPoint.branchPointType === 'zksn' ? 'zksn' : 'branch_pole',
+                        branchPoint.id,
+                      )
+                    : undefined
+                }
               />
-              {!stationUsesMiniBlock && st.transformerRefs?.map((transformerRef, index) => (
-                <g
-                  key={`station-transformer-symbol-${transformerRef}`}
-                  data-testid={`sld-symbol-transformer-${transformerRef}`}
-                  data-element-kind="transformer_sn_nn"
-                  data-element-id={transformerRef}
-                  transform={`translate(${st.x + 46 + index * 18}, ${st.y + 16})`}
-                  onClick={onSelectElement ? (event) => {
-                    event.stopPropagation();
-                    onSelectElement(transformerRef, 'transformer');
-                  } : undefined}
-                  style={{ cursor: onSelectElement ? 'pointer' : 'default' }}
-                >
-                  <rect x={-16} y={-16} width={32} height={36} fill="transparent" />
-                  <circle cx={0} cy={-4} r={7} fill="none" stroke="#18D26B" strokeWidth={1.4} />
-                  <circle cx={0} cy={8} r={7} fill="none" stroke="#18D26B" strokeWidth={1.4} />
-                  <title>Transformator SN/nN {transformerRef}</title>
-                </g>
-              ))}
-            </g>
-          );
-        })}
+            ))}
+          </g>
+        )}
 
         {/* K30-3 NO-GO #9: result overlay metrics z LOAD_FLOW/SC_3F payload */}
         <ResultOverlayLayer stations={stations} cableRuns={cableRuns} />
 
-        {/* K30-11: aggregate alarm summary panel — count of station severities */}
-        {/* K30-38: industrial title block per PN-EN ISO 7200.
-         *  Wyodrębniony z inline (K30-12) do dedykowanego komponentu — pozwala
-         *  customize project info / designer / approver / drawing number via
-         *  titleBlockData prop. Backward-compat: defaults zachowują K30-12. */}
-        <g transform={`translate(${width - 380}, ${height - 194})`}>
-          <SldTitleBlock data={titleBlockData ?? undefined} />
-        </g>
+        {/* K30-11: aggregate alarm summary panel â€” count of station severities */}
+        {/* Tabele dokumentacyjne (metryka rysunku, tabela rewizji, bilans mocy)
+         *  nie sa renderowane na interaktywnej kanwie SLD. Zostaja w dedykowanych
+         *  komponentach raportowych/eksportowych, aby nie zaslaniac topologii SN. */}
 
-        {/* K30-100: Tabela rewizji (OSD-required dla wniosku akceptacji).
-         *  Pozycja: lewa strona title block — bottom-right canvas. */}
-        <g transform={`translate(${width - 700}, ${height - 100})`}>
-          <SldRevisionTable entries={revisionEntries} />
-        </g>
+        {/* Legenda i panele statusowe nie sa renderowane na roboczej kanwie SLD,
+         *  bo przy duzych modelach zaslaniaja topologie i etykiety odcinkow. */}
 
-        {/* K30-101: Bilans mocy panel (OSD wniosek przyłączeniowy bilans).
-         *  Pozycja: bottom-left canvas (poniżej scale ruler). */}
-        <g transform={`translate(20, ${height - 130})`}>
-          <SldPowerBalancePanel data={powerBalance ?? null} />
-        </g>
-
-        {/* K30-39: SLD legend overlay — klucz palet (voltage / cable variants /
-         *  apparatus state / DER). Pozycja: top-right canvas (poniżej grid
-         *  stability + alarm summary). Toggle via showLegend prop. */}
-        <SldLegendOverlay
-          visible={showLegend}
-          x={width - 240}
-          y={20}
-        />
-
-        {/* K30-43: skala rysunku per PN-EN ISO 5455 — bottom-left canvas. */}
-        <SldScaleRuler
-          visible={showScaleRuler}
-          x={20}
-          y={height - 60}
-        />
-
-        {/* K30-47: north arrow per PN-EN ISO 5456 (opcjonalny). */}
-        <SldNorthArrow
-          visible={showNorthArrow}
-          x={width - 80}
-          y={height - 200}
-        />
+        {/* Elementy dokumentacyjne rysunku (skala, strzalka polnocy)
+         *  sa pomijane w roboczej kanwie SLD, aby nie przykrywac topologii. */}
 
         {/* K30-48 + K30-50: short-circuit results projection per IEC 60909.
             Priority: explicit prop > derived z SC payload. */}
@@ -838,29 +1248,6 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
 
         {/* K30-46: protection zones Z1/Z2/Z3 per IEC 60255-127. */}
         <SldProtectionZoneOverlay projection={protectionZoneProjection ?? null} />
-
-        {/* K30-13: grid frequency + voltage status panel (ENEA Operator NC RfG).
-         *  Static placeholder dla frequency stability + slack bus voltage.
-         *  Real data po backend doda P(f) feed; póki co mock 50.00 Hz.
-         */}
-        <g data-testid="sld-v2-grid-stability-panel" transform="translate(20, 88)" pointerEvents="none">
-          <rect x={0} y={0} width={260} height={62} rx={4} ry={4} fill="#0A0E14" stroke="#7EE0B5" strokeWidth={1.5} opacity={0.95} />
-          <text x={10} y={18} fill="#7EE0B5" fontFamily="sans-serif" fontSize={12} fontWeight={900}>
-            STAN SIECI · NC RfG
-          </text>
-          <text x={10} y={36} fill="#DDF7FF" fontFamily="monospace" fontSize={14} fontWeight={700}>
-            f = 50.00 Hz
-          </text>
-          <text x={10} y={52} fill="#88BBDD" fontFamily="sans-serif" fontSize={9}>
-            ±0.20 Hz (PN-EN 50160)
-          </text>
-          <text x={130} y={36} fill="#DDF7FF" fontFamily="monospace" fontSize={14} fontWeight={700}>
-            U = 110 kV
-          </text>
-          <text x={130} y={52} fill="#88BBDD" fontFamily="sans-serif" fontSize={9}>
-            Slack: GPZ HV
-          </text>
-        </g>
 
         {alarmSummary && (
           <g data-testid="sld-v2-alarm-summary-panel" transform="translate(20, 20)" pointerEvents="none">
@@ -884,12 +1271,14 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         )}
 
         {/* DER (PV/BESS/FW) */}
-        {layers.der && ders.map((d) => {
+        {layers.der && ders.map((d, index) => {
+          const derLod = derLodForCanvas(lod, selectedId === d.id);
+          if (derLod === null) return null;
           const menuKind: SldElementContextKind =
             d.kind === 'PV' ? 'der_pv' : d.kind === 'BESS' ? 'der_bess' : 'der_fw';
           return (
             <g
-              key={d.id}
+              key={`${d.id}:${index}`}
               data-testid={`sld-v2-der-hit-${d.id}`}
               data-element-kind={menuKind}
               data-element-id={d.id}
@@ -916,6 +1305,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
             >
               <DerRenderer
                 {...d}
+                lod={derLod}
                 selected={selectedId === d.id}
                 onClick={onSelectElement ? (id) => onSelectElement(id, 'der') : undefined}
                 onDoubleClick={onDoubleClickDer}
@@ -923,21 +1313,498 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
             </g>
           );
         })}
+        <g data-testid="sld-v2-topology-label-layer" pointerEvents="none">
+          {topologyLabels.map(({ spec, placement }) => (
+            <g
+              key={spec.id}
+              data-testid={`sld-v2-topology-label-${spec.id}`}
+              data-owner-kind={spec.ownerKind}
+              data-owner-ref={spec.ownerRef}
+              data-label-priority={spec.priority}
+              transform={`translate(${placement.bbox.x}, ${placement.bbox.y})`}
+            >
+              <rect
+                x={0}
+                y={0}
+                width={placement.bbox.width}
+                height={placement.bbox.height}
+                rx={3}
+                ry={3}
+                fill="#050A12"
+                stroke={topologyLabelStroke(spec)}
+                strokeWidth={0.8}
+                fillOpacity={0.86}
+                strokeOpacity={0.68}
+              />
+              <text
+                x={placement.bbox.width / 2}
+                y={placement.bbox.height / 2 + 0.5}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={topologyLabelFill(spec)}
+                stroke="#050810"
+                strokeWidth={2}
+                paintOrder="stroke"
+                fontFamily="sans-serif"
+                fontSize={topologyLabelFontSize(spec)}
+                fontWeight={topologyLabelFontWeight(spec)}
+                letterSpacing={0}
+              >
+                {spec.text}
+              </text>
+            </g>
+          ))}
+        </g>
       </g>
 
-      {/* Status bar (LOD + scale) — read-only, dla developera/diagnostyki */}
+      {/* WskaĹşnik szczegĂłĹ‚owoĹ›ci widoku dla projektanta. */}
       <g transform={`translate(8, ${height - 24})`}>
-        <rect x={-4} y={-12} width={120} height={20} fill={COLOR_PANEL} fillOpacity={0.85} rx={2} />
+        <rect x={-4} y={-12} width={168} height={20} fill={COLOR_PANEL} fillOpacity={0.85} rx={2} />
         <text fill="#B9C0C7" fontSize={11} fontFamily="monospace" y={2}>
-          LOD {lod} · {(transform.scale * 100).toFixed(0)}%
+          {sldDetailLabel(lod)}
         </text>
+      </g>
+      <g
+        data-testid="sld-v2-viewport-controls"
+        transform={`translate(${Math.max(8, width - 110)}, 8)`}
+      >
+        <SldViewportControlButton
+          x={0}
+          label="+"
+          title="Przybliż widok"
+          onActivate={() => zoomViewportAtCenter(VIEWPORT_ZOOM_IN_FACTOR)}
+          testId="sld-v2-zoom-in"
+        />
+        <SldViewportControlButton
+          x={34}
+          label="-"
+          title="Oddal widok"
+          onActivate={() => zoomViewportAtCenter(VIEWPORT_ZOOM_OUT_FACTOR)}
+          testId="sld-v2-zoom-out"
+        />
+        <SldViewportControlButton
+          x={68}
+          label="[]"
+          title="Dopasuj widok sieci"
+          onActivate={fitViewportToNetwork}
+          testId="sld-v2-fit-view"
+        />
       </g>
     </svg>
     </SldLodProvider>
   );
 }
 
+function SldViewportControlButton(props: {
+  readonly x: number;
+  readonly label: string;
+  readonly title: string;
+  readonly testId: string;
+  readonly onActivate: () => void;
+}): JSX.Element {
+  const activate = (event: React.MouseEvent<HTMLButtonElement> | React.KeyboardEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    props.onActivate();
+  };
+  return (
+    <foreignObject x={props.x} y={0} width={28} height={28}>
+      <button
+        type="button"
+        data-testid={props.testId}
+        aria-label={props.title}
+        title={props.title}
+        onClick={activate}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') activate(event);
+        }}
+        onMouseDown={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+        style={{
+          width: '28px',
+          height: '28px',
+          border: '1px solid #63B3ED',
+          borderRadius: '3px',
+          background: '#07111C',
+          color: '#DDF7FF',
+          cursor: 'pointer',
+          fontFamily: 'monospace',
+          fontSize: '12px',
+          fontWeight: 900,
+          lineHeight: '26px',
+          padding: 0,
+          textAlign: 'center',
+        }}
+      >
+        {props.label}
+      </button>
+    </foreignObject>
+  );
+}
+
+function sldDetailLabel(lod: LodLevel): string {
+  return LOD_LEVEL_LABELS_PL[lod];
+}
+
+function ZksnSwitchgearNode(props: {
+  readonly branchPoint: SldBranchPointMarker;
+  readonly fieldCount: number;
+  readonly branchPortCount: number;
+  readonly lod: LodLevel;
+  readonly viewportScale: number;
+  readonly selected?: boolean;
+  readonly onSelect?: (id: string) => void;
+}): JSX.Element {
+  const { branchPoint, fieldCount, branchPortCount, lod, viewportScale, selected = false, onSelect } = props;
+  const variant = lod <= 1 ? 'overview' : 'compact';
+  const snBays = zksnBayDescriptors(branchPoint.id, fieldCount, branchPortCount);
+  const selectZksn = onSelect ? () => onSelect(branchPoint.id) : undefined;
+  const hitboxWidth = variant === 'overview' ? 150 : 220;
+  const hitboxHeight = variant === 'overview' ? 108 : 166;
+
+  return (
+    <g
+      data-testid={`sld-v2-zksn-switchgear-${branchPoint.id}`}
+      data-zksn-renderer="station-like-switchgear"
+      data-switchgear-visual="station-node"
+      data-has-transformer="false"
+      data-field-count={snBays.length}
+      data-element-kind="zksn"
+      data-element-id={branchPoint.id}
+      pointerEvents="all"
+      onClick={
+        selectZksn
+          ? (event) => {
+              event.stopPropagation();
+              selectZksn();
+            }
+          : undefined
+      }
+      style={{ cursor: selectZksn ? 'pointer' : 'default' }}
+    >
+      <rect
+        data-testid={`sld-v2-zksn-switchgear-hitbox-${branchPoint.id}`}
+        data-element-kind="zksn"
+        data-element-id={branchPoint.id}
+        x={-hitboxWidth / 2}
+        y={-hitboxHeight / 2}
+        width={hitboxWidth}
+        height={hitboxHeight}
+        fill="#050A12"
+        fillOpacity={0.001}
+        pointerEvents="all"
+      />
+      <MiniBlockRmuRenderer
+        id={`zksn-${branchPoint.id}`}
+        x={0}
+        y={0}
+        variant={variant}
+        footprintType="switching_station"
+        name={branchPoint.name || 'ZKSN'}
+        stationCode="ZKSN"
+        alarmSeverity={null}
+        totalLoadKw={null}
+        totalGenerationKw={null}
+        snBays={snBays}
+        hasTransformer={false}
+        transformerRatedKva={null}
+        nnFeedersCount={0}
+        derBadges={[]}
+        missingData={false}
+        selected={selected}
+        busVoltageKv={15}
+        isNop={false}
+        transformerVectorGroup={null}
+        viewportScale={viewportScale}
+        onClick={selectZksn ? () => selectZksn() : undefined}
+      />
+    </g>
+  );
+}
+
+function zksnBayDescriptors(
+  branchPointId: string,
+  fieldCount: number,
+  branchPortCount: number,
+): readonly MiniBlockBayDescriptor[] {
+  const count = zksnVisibleFieldCount(fieldCount, branchPortCount);
+  return Array.from({ length: count }).map((_, index): MiniBlockBayDescriptor => {
+    const role = zksnFieldRole(index, branchPortCount);
+    return {
+      bayRef: `${branchPointId}/field/${index + 1}`,
+      fieldRole: role,
+      designation: zksnFieldDesignation(index, role),
+      hasMissingRequiredDevice: false,
+      cbState: 'closed',
+      dsState: 'closed',
+      esState: 'open',
+    };
+  });
+}
+
+function zksnFieldRole(index: number, branchPortCount: number): MiniBlockBayDescriptor['fieldRole'] {
+  if (index === 0) return FIELD_ROLE.LINE_IN;
+  if (index === 1) return FIELD_ROLE.LINE_OUT;
+  if (index < 2 + Math.max(1, branchPortCount)) return FIELD_ROLE.LINE_BRANCH;
+  return FIELD_ROLE.RMU_LINE;
+}
+
+function zksnVisibleFieldCount(fieldCount: number, branchPortCount: number): number {
+  return Math.max(3, Math.min(Math.max(3, fieldCount), 2 + Math.max(1, branchPortCount)));
+}
+
+function zksnFieldDesignation(
+  index: number,
+  role: MiniBlockBayDescriptor['fieldRole'],
+): string {
+  if (role === FIELD_ROLE.LINE_IN) return 'WE';
+  if (role === FIELD_ROLE.LINE_OUT) return 'WY';
+  if (role === FIELD_ROLE.LINE_BRANCH) return `ODG ${Math.max(1, index - 1)}`;
+  return `Pole ${index + 1}`;
+}
+
+function BranchPoleOverheadNode(props: {
+  readonly branchPoint: SldBranchPointMarker;
+  readonly lod: LodLevel;
+  readonly selected: boolean;
+  readonly branchPortCount: number;
+  readonly markerStroke: string;
+}): JSX.Element {
+  const { branchPoint, lod, selected, branchPortCount, markerStroke } = props;
+  const nodeStroke = selected ? '#FDE047' : markerStroke;
+  const poleHeight = lod >= 3 || selected ? 72 : 54;
+  const crossarmWidth = lod >= 3 || selected ? 84 : 66;
+  const branchArmY = -18;
+  const branchArmLength = Math.min(54, 26 + branchPortCount * 12);
+
+  return (
+    <g
+      data-testid={`sld-v2-branch-pole-node-${branchPoint.id}`}
+      data-branch-pole-renderer="overhead-line-node"
+      data-switchgear-visual="overhead-line-node"
+      data-has-switchgear="false"
+      data-has-transformer="false"
+      data-has-field-labels="false"
+      data-branch-port-count={branchPortCount}
+      data-run-ref={branchPoint.runRef ?? ''}
+      data-parent-segment-ref={branchPoint.parentSegmentRef ?? ''}
+    >
+      <title>Słup rozgałęźny SN</title>
+      <line
+        x1={-crossarmWidth / 2}
+        y1={branchArmY}
+        x2={crossarmWidth / 2}
+        y2={branchArmY}
+        stroke={nodeStroke}
+        strokeWidth={3.2}
+        strokeLinecap="round"
+      />
+      <line
+        x1={0}
+        y1={branchArmY - 14}
+        x2={0}
+        y2={branchArmY + poleHeight}
+        stroke="#DDF7FF"
+        strokeWidth={2.4}
+        strokeLinecap="round"
+      />
+      <circle cx={0} cy={branchArmY} r={7} fill="#050A12" stroke={nodeStroke} strokeWidth={2.4} />
+      <circle cx={-crossarmWidth / 2} cy={branchArmY} r={4} fill="#050A12" stroke="#18D26B" strokeWidth={1.8} />
+      <circle cx={crossarmWidth / 2} cy={branchArmY} r={4} fill="#050A12" stroke="#18D26B" strokeWidth={1.8} />
+      <line
+        x1={0}
+        y1={branchArmY}
+        x2={branchArmLength}
+        y2={branchArmY - 34}
+        stroke={nodeStroke}
+        strokeWidth={2.2}
+        strokeDasharray="6 4"
+        strokeLinecap="round"
+      />
+      <circle cx={branchArmLength} cy={branchArmY - 34} r={5} fill="#050A12" stroke={nodeStroke} strokeWidth={2} />
+    </g>
+  );
+}
+
+function BranchPointMarker(props: {
+  readonly branchPoint: SldBranchPointMarker;
+  readonly lod: LodLevel;
+  readonly selected?: boolean;
+  readonly viewportScale: number;
+  readonly onClick?: (id: string, kind: 'zksn' | 'branch_pole') => void;
+  readonly onContextMenu?: (event: React.MouseEvent<SVGGElement>) => void;
+}): JSX.Element {
+  const { branchPoint, lod, selected = false, onClick, onContextMenu } = props;
+  const isZksn = branchPoint.branchPointType === 'zksn';
+  const elementKind: 'zksn' | 'branch_pole' = isZksn ? 'zksn' : 'branch_pole';
+  const markerStroke = isZksn ? '#63B3ED' : '#FFD166';
+  const shortLabel = isZksn ? 'ZKSN' : 'Słup';
+  const longLabel = isZksn ? 'ZKSN' : 'Słup rozg.';
+  const label = lod <= 2 ? shortLabel : longLabel;
+  const anchorX = branchPoint.anchorX ?? branchPoint.x;
+  const anchorY = branchPoint.anchorY ?? branchPoint.y;
+  const markerX = branchPoint.x;
+  const markerY = branchPoint.y;
+  const offsetX = anchorX - markerX;
+  const offsetY = anchorY - markerY;
+  const hasRouteOffset = Math.abs(offsetX) > 2 || Math.abs(offsetY) > 2;
+  const branchPortCount = Math.max(1, branchPoint.branchPortCount ?? 1);
+  const zksnFieldCount = zksnVisibleFieldCount(branchPoint.switchgearFieldCount ?? branchPortCount + 2, branchPortCount);
+  const routeTargetY = isZksn ? -40 : 0;
+  const hitboxX = isZksn ? -112 : -56;
+  const hitboxY = isZksn ? -92 : -88;
+  const hitboxWidth = isZksn ? 224 : 142;
+  const hitboxHeight = isZksn ? 178 : 170;
+
+  return (
+    <g
+      data-testid={`sld-v2-branch-point-${branchPoint.id}`}
+      data-sld-kind={branchPoint.branchPointType}
+      data-branch-point-kind={branchPoint.branchPointType}
+      data-branch-pole-renderer={isZksn ? undefined : 'overhead-line-node'}
+      data-element-kind={elementKind}
+      data-element-id={branchPoint.id}
+      data-run-ref={branchPoint.runRef ?? ''}
+      data-parent-segment-ref={branchPoint.parentSegmentRef ?? ''}
+      data-anchor-x={anchorX}
+      data-anchor-y={anchorY}
+      data-marker-x={markerX}
+      data-marker-y={markerY}
+      data-callout-mode={hasRouteOffset ? 'route-offset' : 'route-node'}
+      data-branch-port-count={branchPortCount}
+      data-switchgear-field-count={isZksn ? zksnFieldCount : 0}
+      data-has-transformer={String(branchPoint.hasTransformer ?? false)}
+      transform={`translate(${markerX}, ${markerY})`}
+      pointerEvents="auto"
+      onClick={onClick ? (event) => {
+        event.stopPropagation();
+        onClick(branchPoint.id, elementKind);
+      } : undefined}
+      onContextMenu={onContextMenu}
+      style={{ cursor: onClick ? 'pointer' : 'default' }}
+    >
+      <rect
+        data-testid={`sld-v2-branch-point-hitbox-${branchPoint.id}`}
+        data-element-kind={elementKind}
+        data-element-id={branchPoint.id}
+        x={hitboxX}
+        y={hitboxY}
+        width={hitboxWidth}
+        height={hitboxHeight}
+        fill="#050A12"
+        fillOpacity={0.001}
+        pointerEvents="all"
+        onClick={onClick ? (event) => {
+          event.stopPropagation();
+          onClick(branchPoint.id, elementKind);
+        } : undefined}
+        onContextMenu={onContextMenu}
+        style={{ cursor: onClick ? 'pointer' : 'default' }}
+      />
+      {hasRouteOffset && !isZksn && (
+        <g data-testid={`sld-v2-branch-point-route-anchor-${branchPoint.id}`}>
+          <line
+            x1={offsetX}
+            y1={offsetY}
+            x2={0}
+            y2={routeTargetY}
+            stroke={markerStroke}
+            strokeWidth={1.4}
+            strokeDasharray="5 4"
+            opacity={0.78}
+          />
+          <circle cx={offsetX} cy={offsetY} r={3.5} fill="#050A12" stroke={markerStroke} strokeWidth={1.4} />
+        </g>
+      )}
+      {isZksn ? (
+        <ZksnSwitchgearNode
+          branchPoint={branchPoint}
+          fieldCount={zksnFieldCount}
+          branchPortCount={branchPortCount}
+          lod={lod}
+          viewportScale={props.viewportScale}
+          selected={selected}
+          onSelect={onClick ? (id) => onClick(id, 'zksn') : undefined}
+        />
+      ) : (
+        <BranchPoleOverheadNode
+          branchPoint={branchPoint}
+          lod={lod}
+          selected={selected}
+          branchPortCount={branchPortCount}
+          markerStroke={markerStroke}
+        />
+      )}
+      {lod >= 1 && !isZksn && (
+        <text
+          data-testid={`sld-v2-branch-point-inline-label-${branchPoint.id}`}
+          x={42}
+          y={-74}
+          textAnchor="start"
+          dominantBaseline="middle"
+          fill={markerStroke}
+          stroke="#050810"
+          strokeWidth={2}
+          paintOrder="stroke"
+          fontFamily="sans-serif"
+          fontSize={9}
+          fontWeight={900}
+          letterSpacing={0}
+        >
+          {label}
+        </text>
+      )}
+      <title>{branchPoint.name}</title>
+    </g>
+  );
+}
+
+function overviewTopologyLabelScale(viewportScale: number): number {
+  if (!Number.isFinite(viewportScale) || viewportScale <= 0) return 1;
+  return Math.min(4, Math.max(1, 0.9 / viewportScale));
+}
+
+function compactGpzOverviewName(name: string): string {
+  const trimmed = name.trim();
+  const code = trimmed.match(/\bGPZ-[A-Z0-9]{1,4}\b/i)?.[0];
+  if (code && trimmed.length > 16) return code.toUpperCase();
+  return trimmed;
+}
+
+function derLodForCanvas(
+  lod: LodLevel,
+  selected: boolean,
+): DerRendererProps['lod'] | null {
+  if (lod <= 1) {
+    return selected ? 'marker' : null;
+  }
+  if (lod === 2) return selected ? 'compact' : null;
+  if (lod === 3) return selected ? 'compact' : 'marker';
+  return selected ? 'full' : 'compact';
+}
+
+function connectionVisibleAtLod(
+  connection: NonNullable<SldCanvasV2Props['connections']>[number],
+  lod: LodLevel,
+): boolean {
+  if (connection.connectionKind === 'der_block_transformer') return lod >= 1;
+  if (!connection.id.startsWith('der-wire-')) return true;
+  return lod >= 3;
+}
+
 type CableRunForPortGaps = SldCanvasV2Props['cableRuns'][number];
+
+function buildConnectionNodePortGapsForRun(
+  run: CableRunForPortGaps,
+  stations: readonly StationOnRunRendererProps[],
+  branchPoints: readonly SldBranchPointMarker[],
+  currentLod: LodLevel,
+): CableRunStationPortGap[] {
+  return [
+    ...buildStationPortGapsForRun(run, stations, currentLod),
+    ...buildZksnPortGapsForRun(run, branchPoints, currentLod),
+  ];
+}
 
 function buildStationPortGapsForRun(
   run: CableRunForPortGaps,
@@ -957,6 +1824,40 @@ function buildStationPortGapsForRun(
     });
   }
   return gaps;
+}
+
+function buildZksnPortGapsForRun(
+  run: CableRunForPortGaps,
+  branchPoints: readonly SldBranchPointMarker[],
+  currentLod: LodLevel,
+): CableRunStationPortGap[] {
+  const gaps: CableRunStationPortGap[] = [];
+  for (const branchPoint of branchPoints) {
+    if (branchPoint.branchPointType !== 'zksn') continue;
+    const connectionY = branchPoint.anchorY ?? branchPoint.y - STATION_RUN_TRUNK_OFFSET_Y;
+    const connectionX = branchPoint.anchorX ?? branchPoint.x;
+    if (!runHasHorizontalSegmentAtY(run, connectionY, connectionX)) continue;
+    const branchPortCount = Math.max(1, branchPoint.branchPortCount ?? 1);
+    const fieldCount = zksnVisibleFieldCount(branchPoint.switchgearFieldCount ?? branchPortCount + 2, branchPortCount);
+    const offsets = zksnMainPortOffsets(fieldCount, branchPortCount, currentLod);
+    if (!offsets) continue;
+    gaps.push({
+      stationId: branchPoint.id,
+      y: connectionY,
+      inputX: branchPoint.x + offsets[0],
+      outputX: offsets[1] === null ? null : branchPoint.x + offsets[1],
+    });
+  }
+  return gaps;
+}
+
+function zksnMainPortOffsets(
+  fieldCount: number,
+  branchPortCount: number,
+  currentLod: LodLevel,
+): readonly [number, number | null] | null {
+  const snBays = zksnBayDescriptors('__zksn_port_probe__', fieldCount, branchPortCount);
+  return miniBlockStationPortOffsets(miniBlockVariantForCanvasPort(currentLod), snBays, []);
 }
 
 function runHasHorizontalSegmentAtY(
@@ -980,44 +1881,51 @@ function stationPortOffsets(
   station: StationOnRunRendererProps,
   currentLod: LodLevel,
 ): readonly [number, number | null] {
-  if (station.snBays) {
+  if (stationUsesMiniBlockRenderer(station, currentLod)) {
     const miniBlockOffsets = miniBlockStationPortOffsets(
-      miniBlockVariantForLod(station.lod ?? currentLod),
-      station.snBays,
+      miniBlockVariantForCanvasPort(currentLod),
+      station.snBays ?? [],
       station.derBadges ?? [],
     );
     if (miniBlockOffsets) return miniBlockOffsets;
   }
+  return stationTopologyPortOffsets(station);
+}
+
+function miniBlockVariantForCanvasPort(
+  currentLod: LodLevel,
+): 'overview' | 'compact' | 'detail' {
+  if (currentLod <= 1) return 'overview';
+  return 'compact';
+}
+
+function stationTopologyPortOffsets(
+  station: Pick<StationOnRunRendererProps, 'topologicalType'>,
+): readonly [number, number | null] {
   switch (station.topologicalType) {
     case 'przelotowa':
     case 'sekcyjna':
-      return [-28, 28];
+      return [-18, 18];
     case 'odgałęźna':
-      return [-36, 36];
+      return [-24, 24];
     case 'końcowa':
     default:
       return [0, null];
   }
 }
 
-function miniBlockVariantForLod(lod: LodLevel): 'overview' | 'compact' | 'detail' {
-  if (lod <= 0) return 'overview';
-  if (lod === 1) return 'compact';
-  return 'detail';
-}
-
 function stationUsesMiniBlockRenderer(
   station: StationOnRunRendererProps,
-  currentLod: LodLevel,
+  _currentLod: LodLevel,
 ): boolean {
-  return currentLod < 3 && station.snBays !== undefined;
+  return station.snBays !== undefined;
 }
 
 
 /**
  * K30-8: compute alarm severity per station z overlay payload.
- * Patrzy na bus SN ref (mapping station_id → sn_bus_ref) + sprawdza
- * thresholds (Ik > 25 kA → critical, > 20 → important, > 15 → warning).
+ * Patrzy na bus SN ref (mapping station_id â†’ sn_bus_ref) + sprawdza
+ * thresholds (Ik > 25 kA â†’ critical, > 20 â†’ important, > 15 â†’ warning).
  * Returns null gdy brak alarm.
  */
 function computeStationAlarmSeverity(

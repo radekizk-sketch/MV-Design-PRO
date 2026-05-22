@@ -2,7 +2,7 @@
  * CorridorLayout — Phase 6 expansion (operator-grade SLD plan v2).
  *
  * Pierwsze działające corridor positioning: identyfikuje korytarze runów
- * (GPZ + feedery + odgałęzienia + ring-return + label zones), pakuje stacje
+ * (GPZ + ciągi główne + odgałęzienia + ring-return + rezerwa etykiet), pakuje stacje
  * pionowo per korytarz, orthogonal Manhattan między korytarzami.
  *
  * Pure function. Deterministic — same ENM → same layout positions.
@@ -14,6 +14,7 @@
  */
 
 import type { EnergyNetworkModel, Substation } from '../../../../types/enm';
+import type { SldPoint, SldRunCorridorKind } from '../canvas/SldTopologyContracts';
 
 export interface CorridorPosition {
   readonly ref: string;
@@ -21,22 +22,37 @@ export interface CorridorPosition {
   readonly y: number;
   /** Indeks korytarza w którym leży obiekt. */
   readonly corridorIdx: number;
+  readonly laneIndex: number;
+  readonly orderInRun?: number | null;
+  readonly runRef?: string | null;
+  readonly distanceFromSourceM?: number | null;
+  readonly tapPoint?: SldPoint | null;
+  readonly routePoints?: readonly SldPoint[];
 }
 
 export interface CorridorBand {
   readonly id: string;
   readonly idx: number;
-  readonly kind: 'gpz' | 'feeder' | 'branch' | 'ring-return' | 'label-zone';
+  readonly kind: SldRunCorridorKind;
   readonly yMin: number;
   readonly yMax: number;
+  readonly laneIndex: number;
   readonly label?: string;
   /** Liczba stacji w tym korytarzu (do label density). */
   readonly stationCount: number;
+  readonly runRef?: string | null;
+  readonly parentRunRef?: string | null;
+  readonly sourceRunRef?: string | null;
+  readonly nopStationRef?: string | null;
+  readonly tapPoint?: SldPoint | null;
+  readonly routePoints?: readonly SldPoint[];
 }
 
 export interface CorridorLayout {
   readonly bands: readonly CorridorBand[];
   readonly positions: readonly CorridorPosition[];
+  /** Stacje terenowe bez przypisania do line_run/corridor. Nie są renderowane jako osobna siatka. */
+  readonly orphanStationRefs: readonly string[];
   /** Zalecana szerokość viewport dla danego layoutu. */
   readonly recommendedWidth: number;
   /** Zalecana wysokość viewport. */
@@ -49,7 +65,7 @@ export interface CorridorLayout {
 export const CORRIDOR_DEFAULTS = {
   /** Szerokość zarezerwowana na GPZ band (pierwszy korytarz). */
   GPZ_BAND_HEIGHT: 200,
-  /** Wysokość każdego feeder/branch/ring band. */
+  /** Wysokość każdego pasa ciągu głównego / odgałęzienia / ring. */
   FEEDER_BAND_HEIGHT: 140,
   /** Wysokość label zone (top + bottom). */
   LABEL_ZONE_HEIGHT: 60,
@@ -70,7 +86,7 @@ export const CORRIDOR_DEFAULTS = {
  * 1. Identyfikuj korytarze:
  *    - Top label zone (60px, NMO labels + global navigation).
  *    - GPZ band (200px, pierwszy korytarz).
- *    - 1 feeder band per LineRun(run_kind === 'main_trunk') (140px).
+ *    - 1 main-trunk band per LineRun(run_kind === 'main_trunk') (140px).
  *    - 1 branch band per LineRun(run_kind === 'branch') (140px).
  *    - 1 ring-return band per LineRun(run_kind === 'ring') (140px).
  *    - Bottom label zone (60px, status bar).
@@ -78,7 +94,7 @@ export const CORRIDOR_DEFAULTS = {
  * 2. Pakuj stacje per korytarz:
  *    - GPZ → centered w GPZ band (x = LEFT_MARGIN, y = band center).
  *    - Substations w line_runs[].stations[] → x sortowany po order, y = band center.
- *    - Stacje NIE w żadnym line_run → label-zone bottom.
+ *    - Stacje NIE w żadnym line_run → raport orphanStationRefs, bez pozycji na kanwie.
  *
  * 3. Compute recommended viewport:
  *    - width = LEFT_MARGIN + max(stationCount per corridor) × STATION_X_STEP + RIGHT_PADDING.
@@ -105,7 +121,8 @@ export function computeCorridorLayout(
 
   // Top label zone
   bands.push({
-    id: 'lz-top', idx: bands.length, kind: 'label-zone',
+    id: 'lz-top', idx: bands.length, kind: 'label-reserve',
+    laneIndex: bands.length,
     yMin: cursorY, yMax: cursorY + D.LABEL_ZONE_HEIGHT,
     label: 'Górny pasek nawigacji', stationCount: 0,
   });
@@ -115,6 +132,7 @@ export function computeCorridorLayout(
   const gpzStations = substations.filter((s) => s.station_type === 'gpz');
   bands.push({
     id: 'band-gpz', idx: bands.length, kind: 'gpz',
+    laneIndex: bands.length,
     yMin: cursorY, yMax: cursorY + D.GPZ_BAND_HEIGHT,
     label: 'GPZ', stationCount: gpzStations.length,
   });
@@ -125,13 +143,24 @@ export function computeCorridorLayout(
   // Per-LineRun bands
   const runToBandIdx = new Map<string, number>();
   for (const run of lineRuns) {
-    const kind = run.run_kind === 'main_trunk' || run.run_kind === 'branch'
-      ? (run.run_kind === 'main_trunk' ? 'feeder' : 'branch')
-      : run.run_kind === 'ring' || run.run_kind === 'loop' ? 'ring-return' : 'feeder';
+    const kind: SldRunCorridorKind =
+      run.run_kind === 'main_trunk'
+        ? 'main-trunk'
+        : run.run_kind === 'branch'
+          ? 'branch'
+          : run.run_kind === 'ring' || run.run_kind === 'loop'
+            ? 'ring-return'
+            : 'main-trunk';
     bands.push({
       id: `band-${run.id}`, idx: bands.length, kind,
+      laneIndex: bands.length,
       yMin: cursorY, yMax: cursorY + D.FEEDER_BAND_HEIGHT,
-      label: run.name ?? run.id, stationCount: run.stations.length,
+      label: run.name ?? run.id,
+      stationCount: run.stations.length,
+      runRef: run.id,
+      parentRunRef: run.parent_run_ref ?? null,
+      sourceRunRef: run.parent_run_ref ?? null,
+      nopStationRef: run.nop_station_ref ?? null,
     });
     runToBandIdx.set(run.id, bands.length - 1);
     cursorY += D.FEEDER_BAND_HEIGHT;
@@ -139,7 +168,8 @@ export function computeCorridorLayout(
 
   // Bottom label zone
   bands.push({
-    id: 'lz-bottom', idx: bands.length, kind: 'label-zone',
+    id: 'lz-bottom', idx: bands.length, kind: 'label-reserve',
+    laneIndex: bands.length,
     yMin: cursorY, yMax: cursorY + D.LABEL_ZONE_HEIGHT,
     label: 'Dolny pasek statusu', stationCount: 0,
   });
@@ -159,6 +189,10 @@ export function computeCorridorLayout(
         x: D.LEFT_MARGIN + idx * D.STATION_X_STEP,
         y: gpzBandY,
         corridorIdx: gpzBandIdx,
+        laneIndex: gpzBandIdx,
+        orderInRun: idx,
+        runRef: null,
+        distanceFromSourceM: null,
       });
       placed.add(g.ref_id);
     });
@@ -184,30 +218,24 @@ export function computeCorridorLayout(
         x: D.LEFT_MARGIN + posInRun * D.STATION_X_STEP,
         y: bandY,
         corridorIdx: bandIdx,
+        laneIndex: bandIdx,
+        orderInRun: posInRun,
+        runRef: run.id,
+        distanceFromSourceM: null,
       });
     });
   }
 
-  // Orphan field stations (NIE w żadnym line_run) → bottom label zone
-  const bottomBandIdx = bands.length - 1;
-  const bottomBandY = (bands[bottomBandIdx].yMin + bands[bottomBandIdx].yMax) / 2;
-  const orphans = substations
+  // Orphan field stations (NIE w żadnym line_run) → raport kontraktu, bez pozycji na kanwie.
+  const orphanStationRefs = substations
     .filter((s) => fieldKinds.has(s.station_type) && !placed.has(s.ref_id))
-    .sort((a, b) => a.ref_id.localeCompare(b.ref_id));
-  orphans.forEach((s, idx) => {
-    positions.push({
-      ref: s.ref_id,
-      x: D.LEFT_MARGIN + idx * D.STATION_X_STEP,
-      y: bottomBandY,
-      corridorIdx: bottomBandIdx,
-    });
-  });
+    .map((s) => s.ref_id)
+    .sort((a, b) => a.localeCompare(b));
 
   // Recommended viewport
   const maxStationsInCorridor = Math.max(
     gpzStations.length,
     ...lineRuns.map((r) => r.stations.length),
-    orphans.length,
     1,
   );
   const recommendedWidth = Math.max(
@@ -215,8 +243,26 @@ export function computeCorridorLayout(
     D.LEFT_MARGIN + maxStationsInCorridor * D.STATION_X_STEP + D.RIGHT_PADDING,
   );
   const recommendedHeight = cursorY;
+  const lineRunById = new Map(lineRuns.map((run) => [run.id, run]));
+  const positionByRef = new Map(positions.map((position) => [position.ref, position]));
+  const enrichedBands = bands.map((band) => {
+    const run = band.runRef ? lineRunById.get(band.runRef) : null;
+    const originRef = run?.branch_origin_station_ref ?? null;
+    const origin = originRef ? positionByRef.get(originRef) : null;
+    const bandY = (band.yMin + band.yMax) / 2;
+    const tapPoint = origin ? { x: origin.x, y: origin.y } : null;
+    const routePoints = tapPoint
+      ? [{ x: tapPoint.x, y: tapPoint.y }, { x: tapPoint.x, y: bandY }]
+      : [];
 
-  return { bands, positions, recommendedWidth, recommendedHeight };
+    return {
+      ...band,
+      tapPoint,
+      routePoints,
+    };
+  });
+
+  return { bands: enrichedBands, positions, orphanStationRefs, recommendedWidth, recommendedHeight };
 }
 
 /**
@@ -228,7 +274,7 @@ export function toCadCorridorBands(layout: CorridorLayout): {
   id: string;
   yMin: number;
   yMax: number;
-  kind: 'gpz' | 'feeder' | 'branch' | 'ring-return' | 'label-zone';
+  kind: SldRunCorridorKind;
   label?: string;
 }[] {
   return layout.bands.map((b) => ({

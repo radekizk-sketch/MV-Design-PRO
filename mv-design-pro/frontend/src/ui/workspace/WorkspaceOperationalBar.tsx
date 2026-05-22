@@ -3,13 +3,13 @@ import { clsx } from 'clsx';
 import { useActiveMode, useAppStateStore, useResultStatusLabel } from '../app-state';
 import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
 import { useNetworkBuildDerived, useNetworkBuildStore } from '../network-build';
-import { navigateToVariants } from '../navigation/routes';
+import { navigateToReport, navigateToVariants } from '../navigation/routes';
 import { useExecutionRunsStore } from '../study-cases/runStore';
 import {
   ANALYSIS_ROUTE_DEFAULT_TAB,
   ANALYSIS_SURFACE_SCREEN_CODE,
-  REPORT_SURFACE_SCREEN_CODE,
 } from './types';
+import { calculationScopeDisplayName } from '../shell/publicNames';
 
 interface WorkspaceOperationalBarProps {
   validationStatus?: 'valid' | 'warnings' | 'errors' | null;
@@ -28,9 +28,8 @@ const RUN_STATUS_LABELS: Record<string, string> = {
   FAILED: 'Obliczenie nieudane',
 };
 
-function shortId(value: string | null): string {
-  if (!value) return 'Brak';
-  return value.length > 12 ? `${value.slice(0, 12)}...` : value;
+function formatPublicSnapshotLabel(value: string | null): string {
+  return value ? 'aktualna wersja układu' : 'nie wybrano wersji';
 }
 
 function SegmentButton({
@@ -107,16 +106,16 @@ export function WorkspaceOperationalBar({
       className="grid gap-2 border-t border-slate-200 bg-slate-100 px-3 py-2 md:grid-cols-3 xl:grid-cols-9"
     >
       <SegmentButton
-        label="Gotowość obliczeń"
-        value={isReady ? 'Gotowy do analizy' : `${blockersCount} blokad aktywnych`}
+        label="Obliczenia"
+        value={isReady ? 'układ do analizy' : `${blockersCount} do konfiguracji`}
         tone={isReady ? 'ok' : blockersCount > 0 ? 'error' : 'warn'}
         onClick={() =>
           openRouteSurface('E-04', {
-            titlePl: 'Gotowość modelu i lista braków',
+            titlePl: 'Przegląd techniczny układu',
             sizeClass: 'B',
             openMode: 'replace_right_panel',
             supportsMiniSld: false,
-            tabId: 'braki',
+            tabId: 'kontrola',
             subjectKind: 'analysis_case',
             subjectRef: activeSnapshotId,
           })
@@ -124,8 +123,8 @@ export function WorkspaceOperationalBar({
         testId="workspace-operational-computation"
       />
       <SegmentButton
-        label="Gotowość zabezpieczeń"
-        value={protectionReady ? 'Brak blokad ochrony' : 'Wymaga uzupełnienia danych'}
+        label="Zabezpieczenia"
+        value={protectionReady ? 'Układ ochrony skonfigurowany' : 'Skonfiguruj dane ochrony'}
         tone={protectionReady ? 'ok' : 'warn'}
         onClick={() =>
           openRouteSurface('E-27', {
@@ -140,14 +139,14 @@ export function WorkspaceOperationalBar({
         testId="workspace-operational-protection"
       />
       <SegmentButton
-        label="Gotowość raportu"
-        value={reportReady ? 'Raport może być generowany' : 'Brak pełnego kontekstu raportu'}
+        label="Raport"
+        value={reportReady ? 'Raport może być generowany' : 'Najpierw uruchom obliczenia'}
         tone={reportReady ? 'ok' : 'warn'}
         onClick={() =>
-          openRouteSurface(REPORT_SURFACE_SCREEN_CODE, {
-            titlePl: 'Raporty OSD i audytowe',
-            subjectKind: 'report',
-            subjectRef: activeRunId,
+          navigateToReport({
+            caseId: activeCaseId,
+            runId: activeRunId,
+            snapshotId: activeSnapshotId,
           })
         }
         testId="workspace-operational-report"
@@ -168,14 +167,14 @@ export function WorkspaceOperationalBar({
       />
       <SegmentButton
         label="Stan obliczenia"
-        value={activeRun ? RUN_STATUS_LABELS[activeRun.status] ?? activeRun.status : 'Brak aktywnego uruchomienia'}
+        value={activeRun ? RUN_STATUS_LABELS[activeRun.status] ?? activeRun.status : 'Nie uruchomiono obliczenia'}
         tone={activeRun?.status === 'DONE' ? 'ok' : activeRun?.status === 'FAILED' ? 'error' : 'accent'}
         onClick={() => navigateToVariants({ caseId: activeCaseId, snapshotId: activeSnapshotId })}
         testId="workspace-operational-run"
       />
       <SegmentButton
-        label="Wersja modelu"
-        value={shortId(activeSnapshotId)}
+        label="Wersja układu"
+        value={formatPublicSnapshotLabel(activeSnapshotId)}
         tone={activeSnapshotId ? 'accent' : 'default'}
         onClick={() =>
           openRouteSurface('E-39', {
@@ -192,18 +191,18 @@ export function WorkspaceOperationalBar({
       />
       <SegmentButton
         label="Układ pracy"
-        value={activeCaseName ?? 'Brak aktywnego wariantu'}
+        value={calculationScopeDisplayName(activeCaseName, activeCaseId)}
         tone={activeCaseName ? 'accent' : 'default'}
         onClick={() => navigateToVariants({ caseId: activeCaseId, snapshotId: activeSnapshotId })}
         testId="workspace-operational-variant"
       />
       <SegmentButton
-        label="Liczba braków"
-        value={`${blockersCount} braków modelu`}
+        label="Konfiguracja"
+        value={blockersCount > 0 ? `${blockersCount} do konfiguracji` : 'układ do analizy'}
         tone={blockersCount > 0 ? 'error' : 'ok'}
         onClick={() =>
           openRouteSurface('E-04', {
-            titlePl: 'Gotowość modelu i lista braków',
+            titlePl: 'Przegląd techniczny układu',
             sizeClass: 'B',
             openMode: 'replace_right_panel',
             supportsMiniSld: false,
@@ -215,20 +214,20 @@ export function WorkspaceOperationalBar({
         testId="workspace-operational-blockers"
       />
       <SegmentButton
-        label="Liczba błędów"
+        label="Przegląd techniczny"
         value={
           errorCount > 0
-            ? `${errorCount} błędów i blokad`
+            ? `${errorCount} błędów technicznych`
             : validationStatus === 'warnings'
               ? `${validationWarnings} ostrzezen`
               : readinessStatus === 'WARN'
                 ? 'Wynik czesciowy lub ostrzezenia'
-                : 'Brak krytycznych błędów'
+                : 'bez błędów krytycznych'
         }
         tone={errorCount > 0 ? 'error' : validationStatus === 'warnings' || readinessStatus === 'WARN' ? 'warn' : 'ok'}
         onClick={() =>
           openRouteSurface('E-04', {
-            titlePl: 'Gotowość modelu i lista braków',
+            titlePl: 'Przegląd techniczny układu',
             sizeClass: 'B',
             openMode: 'replace_right_panel',
             supportsMiniSld: false,
@@ -246,7 +245,7 @@ export function WorkspaceOperationalBar({
       )}
       {networkStats && (
         <div className="col-span-full px-1 text-[11px] text-slate-500">
-          Statystyka modelu: wezly {networkStats.nodeCount ?? 0}, galezie {networkStats.branchCount ?? 0}.
+          Statystyka układu: szyny {networkStats.nodeCount ?? 0}, tory i TR {networkStats.branchCount ?? 0}.
         </div>
       )}
       {activeMode !== 'RESULT_VIEW' && (

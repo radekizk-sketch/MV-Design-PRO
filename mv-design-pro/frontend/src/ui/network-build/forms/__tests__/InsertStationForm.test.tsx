@@ -2,8 +2,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InsertStationForm } from '../InsertStationForm';
+import { useSelectionStore } from '../../../selection/store';
 
 const closeFormMock = vi.fn();
+const openRouteSurfaceMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
 const fetchTransformerTypesMock = vi.fn();
 const fetchConverterTypesMock = vi.fn();
@@ -23,6 +25,7 @@ const networkBuildState = {
     context: { ...baseOperationContext },
   },
   closeOperationForm: closeFormMock,
+  openRouteSurface: openRouteSurfaceMock,
 };
 
 const baseSnapshot = {
@@ -137,8 +140,8 @@ const switchgearManufacturers = [
     name: 'ZPUE Włoszczowa',
     normalized_code: 'ZPUE',
     country: 'PL',
-    status: 'requires_catalog' as const,
-    source_refs: [],
+    status: 'verified' as const,
+    source_refs: ['test-catalog'],
     notes_pl: null,
   },
   {
@@ -146,8 +149,8 @@ const switchgearManufacturers = [
     name: 'Elektrometal',
     normalized_code: 'ELEKTROMETAL',
     country: 'PL',
-    status: 'requires_catalog' as const,
-    source_refs: [],
+    status: 'verified' as const,
+    source_refs: ['test-catalog'],
     notes_pl: null,
   },
   {
@@ -155,8 +158,8 @@ const switchgearManufacturers = [
     name: 'Siemens',
     normalized_code: 'SIEMENS',
     country: 'DE',
-    status: 'requires_catalog' as const,
-    source_refs: [],
+    status: 'verified' as const,
+    source_refs: ['test-catalog'],
     notes_pl: null,
   },
   {
@@ -164,8 +167,8 @@ const switchgearManufacturers = [
     name: 'ABB',
     normalized_code: 'ABB',
     country: 'CH',
-    status: 'requires_catalog' as const,
-    source_refs: [],
+    status: 'verified' as const,
+    source_refs: ['test-catalog'],
     notes_pl: null,
   },
 ];
@@ -174,13 +177,13 @@ const switchgearFamilies = [
   {
     switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
     manufacturer_ref: 'ZPUE_WLOSZCZOWA',
-    family_name: 'RMU do uzupełnienia katalogiem',
+    family_name: 'RMU katalogowe',
     series_name: null,
     voltage_levels: [15, 20],
     insulation_type: 'unknown' as const,
     construction_type: 'RMU' as const,
-    status: 'requires_catalog' as const,
-    source_refs: [],
+    status: 'verified' as const,
+    source_refs: ['test-catalog'],
     notes_pl: null,
   },
 ];
@@ -192,8 +195,8 @@ const bayTemplates = [
     switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
     bay_kind: 'liniowe_doplywowe' as const,
     bay_role: 'IN' as const,
-    source_status: 'canonical_fallback' as const,
-    source_refs: [],
+    source_status: 'repo_verified' as const,
+    source_refs: ['test-catalog'],
     version: 'test',
     hash: 'h1',
     notes_pl: null,
@@ -204,8 +207,8 @@ const bayTemplates = [
     switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
     bay_kind: 'liniowe_odplywowe' as const,
     bay_role: 'OUT' as const,
-    source_status: 'canonical_fallback' as const,
-    source_refs: [],
+    source_status: 'repo_verified' as const,
+    source_refs: ['test-catalog'],
     version: 'test',
     hash: 'h2',
     notes_pl: null,
@@ -216,8 +219,8 @@ const bayTemplates = [
     switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
     bay_kind: 'transformatorowe' as const,
     bay_role: 'TR' as const,
-    source_status: 'canonical_fallback' as const,
-    source_refs: [],
+    source_status: 'repo_verified' as const,
+    source_refs: ['test-catalog'],
     version: 'test',
     hash: 'h3',
     notes_pl: null,
@@ -228,8 +231,8 @@ const bayTemplates = [
     switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
     bay_kind: 'sprzeglowe_poprzeczne' as const,
     bay_role: 'COUPLER' as const,
-    source_status: 'canonical_fallback' as const,
-    source_refs: [],
+    source_status: 'repo_verified' as const,
+    source_refs: ['test-catalog'],
     version: 'test',
     hash: 'h4',
     notes_pl: null,
@@ -315,6 +318,7 @@ vi.mock('../../networkBuildStore', () => ({
     selector: (state: {
       activeOperationForm: { context: Record<string, unknown> };
       closeOperationForm: typeof closeFormMock;
+      openRouteSurface: typeof openRouteSurfaceMock;
     }) => unknown,
   ) => selector(networkBuildState),
   useActiveOperationForm: () => networkBuildState.activeOperationForm,
@@ -370,6 +374,7 @@ vi.mock('../shared/TransformerStationEditor', () => ({
 describe('InsertStationForm', () => {
   beforeEach(() => {
     closeFormMock.mockReset();
+    openRouteSurfaceMock.mockReset();
     executeDomainOperationMock.mockReset();
     fetchTransformerTypesMock.mockReset();
     fetchConverterTypesMock.mockReset();
@@ -383,10 +388,22 @@ describe('InsertStationForm', () => {
     fetchCompleteBayTemplatesMock.mockResolvedValue(bayTemplates);
     networkBuildState.activeOperationForm.context = { ...baseOperationContext };
     snapshotState.snapshot = { ...baseSnapshot };
+    useSelectionStore.getState().selectElement(null);
+    useSelectionStore.getState().centerSldOnElement(null);
   });
 
   it('dla klasycznej stacji odbiorczej proponuje 0,4 kV i filtruje transformator SN/0,4 kV', async () => {
-    executeDomainOperationMock.mockResolvedValue({ snapshot: { header: { name: 'case-1' } } });
+    executeDomainOperationMock.mockResolvedValue({
+      snapshot: {
+        header: { name: 'case-1' },
+        substations: [{ ref_id: 'sub-created', name: 'Stacja Konarzewo' }],
+      },
+      selection_hint: {
+        element_id: 'sub-created',
+        element_type: 'substation',
+        zoom_to: true,
+      },
+    });
 
     render(<InsertStationForm />);
 
@@ -424,6 +441,28 @@ describe('InsertStationForm', () => {
     expect(closeFormMock).toHaveBeenCalledTimes(1);
   });
 
+  it('pokazuje zakres układu zamiast diagnostycznej kontroli formularza', async () => {
+    render(<InsertStationForm />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Zakres układu:/)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Kontrola formularza/)).not.toBeInTheDocument();
+    expect(screen.getByText(/WE \+ WY \+ ODG \+ TR \+ nN/)).toBeInTheDocument();
+  });
+
+  it('dla kompletnego pakietu standardowego producenta nie pokazuje stanu ładowania rodziny rozdzielnicy', async () => {
+    fetchSwitchgearFamiliesMock.mockResolvedValue([]);
+
+    render(<InsertStationForm />);
+
+    await waitFor(() => {
+      expect(screen.getByText('pakiet standardowy producenta')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('ładowanie pakietów rozdzielnicy')).not.toBeInTheDocument();
+    expect(screen.getByText(/Wybrany producent udostępnia kompletny pakiet standardowy/)).toBeInTheDocument();
+  });
+
   it('dla terminala końca odcinka dopina stację przez append_station_on_endpoint, bez pozycji 0,5', async () => {
     networkBuildState.activeOperationForm.context = {
       segment_id: 'seg-1',
@@ -435,7 +474,17 @@ describe('InsertStationForm', () => {
       station_type: 'inline',
       name: 'ST-END',
     };
-    executeDomainOperationMock.mockResolvedValue({ snapshot: { header: { name: 'case-1' } } });
+    executeDomainOperationMock.mockResolvedValue({
+      snapshot: {
+        header: { name: 'case-1' },
+        substations: [{ ref_id: 'sub-created', name: 'Stacja Konarzewo' }],
+      },
+      selection_hint: {
+        element_id: 'sub-created',
+        element_type: 'substation',
+        zoom_to: true,
+      },
+    });
 
     render(<InsertStationForm />);
 
@@ -445,8 +494,9 @@ describe('InsertStationForm', () => {
     expect(screen.getByText(/koniec poprzedniego odcinka/i)).toBeInTheDocument();
     expect(screen.getByTestId('station-switchgear-catalog-preview')).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getAllByText('tpl-line-in').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Pole liniowe wej/i).length).toBeGreaterThan(0);
     });
+    expect(screen.queryByText('tpl-line-in')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('station-submit'));
 
@@ -483,7 +533,95 @@ describe('InsertStationForm', () => {
     });
     const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
     expect(payload).not.toHaveProperty('insert_at');
+    await waitFor(() => {
+      expect(useSelectionStore.getState().selectedElement).toMatchObject({
+        id: 'sub-created',
+        type: 'Station',
+        name: 'Stacja Konarzewo',
+      });
+      expect(useSelectionStore.getState().sldCenterOnElement).toBe('sub-created');
+    });
     expect(closeFormMock).toHaveBeenCalledTimes(1);
+    expect(openRouteSurfaceMock).toHaveBeenCalledWith(
+      'E-13',
+      expect.objectContaining({
+        entityRef: 'sub-created',
+        entityType: 'station',
+        subjectRef: 'sub-created',
+        titlePl: 'Stacja Konarzewo',
+        route: 'sld',
+        openMode: 'replace_right_panel',
+      }),
+    );
+  });
+
+  it('nie zamyka formularza, gdy operacja nie potwierdzi utworzenia stacji', async () => {
+    networkBuildState.activeOperationForm.context = {
+      segment_id: 'seg-1',
+      endpoint_bus_ref: 'bus-created-end',
+      terminal_id: 'bus-created-end',
+      corridor_ref: 'trunk-created',
+      placement_mode: 'ENDPOINT_APPEND',
+      position_on_segment: 1,
+      station_type: 'inline',
+      name: 'ST-END',
+    };
+    executeDomainOperationMock.mockResolvedValue({
+      snapshot: {
+        ...baseSnapshot,
+        substations: [],
+      },
+      selection_hint: {
+        element_id: 'seg-1',
+        element_type: 'segment',
+        zoom_to: true,
+      },
+      error: null,
+    });
+
+    render(<InsertStationForm />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('transformer-options')).toHaveTextContent('TR-15-04');
+    });
+
+    fireEvent.click(screen.getByTestId('station-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Operacja nie potwierdziła utworzenia stacji SN\/nN/)).toBeInTheDocument();
+    });
+    expect(closeFormMock).not.toHaveBeenCalled();
+    expect(openRouteSurfaceMock).not.toHaveBeenCalled();
+  });
+
+  it('pokazuje publiczna nazwe odcinka ze snapshotu zamiast wyprowadzac numer z identyfikatora', async () => {
+    networkBuildState.activeOperationForm.context = {
+      segment_id: 'seg/c3993d927f438f17ac4147e9ab5e0e6e/segment',
+      endpoint_bus_ref: 'bus-created-end',
+      placement_mode: 'ENDPOINT_APPEND',
+      position_on_segment: 1,
+      station_type: 'inline',
+    };
+    snapshotState.snapshot = {
+      ...baseSnapshot,
+      branches: [
+        {
+          ref_id: 'seg/c3993d927f438f17ac4147e9ab5e0e6e/segment',
+          name: 'Odcinek 05',
+          from_bus_ref: 'bus-sn',
+          to_bus_ref: 'bus-created-end',
+        },
+      ],
+    };
+
+    render(<InsertStationForm />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('transformer-options')).toHaveTextContent('TR-15-04');
+    });
+
+    expect(screen.getByText('Odcinek 05')).toBeInTheDocument();
+    expect(screen.queryByText(/odcinek 1/i)).not.toBeInTheDocument();
   });
 
   it('po wyborze schematu sekcyjnego wysyla pole sprzegla i zgodny typ stacji', async () => {
@@ -662,6 +800,48 @@ describe('InsertStationForm', () => {
     expect(screen.getByTestId('station-side-low')).toHaveTextContent('0,4 kV');
   });
 
+  it('nie pokazuje niekompletnych szablonów pól SN jako wariantów katalogowych', async () => {
+    fetchCompleteBayTemplatesMock.mockResolvedValue([
+      ...bayTemplates,
+      {
+        template_ref: 'tpl-line-in-incomplete',
+        manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+        switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
+        bay_kind: 'liniowe_doplywowe' as const,
+        bay_role: 'IN' as const,
+        source_status: 'requires_catalog' as const,
+        source_refs: [],
+        version: 'test',
+        hash: 'bad',
+        notes_pl: null,
+      },
+      {
+        template_ref: 'tpl-line-out-fallback',
+        manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+        switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
+        bay_kind: 'liniowe_odplywowe' as const,
+        bay_role: 'OUT' as const,
+        source_status: 'canonical_fallback' as const,
+        source_refs: [],
+        version: 'test',
+        hash: 'fallback',
+        notes_pl: null,
+      },
+    ]);
+
+    render(<InsertStationForm />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/Pole liniowe wej/i).length).toBeGreaterThan(0);
+    });
+
+    expect(screen.queryByText('tpl-line-in')).not.toBeInTheDocument();
+    expect(screen.queryByText('tpl-line-in-incomplete')).not.toBeInTheDocument();
+    expect(screen.queryByText('tpl-line-out-fallback')).not.toBeInTheDocument();
+    expect(screen.queryByText(/wymaga katalogu/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/fallback kanoniczny/i)).not.toBeInTheDocument();
+  });
+
   it('blokuje zapis, gdy falownik wymaga napięcia bez zgodnego transformatora katalogowego', async () => {
     fetchTransformerTypesMock.mockResolvedValue([transformerTypes[0]]);
 
@@ -673,7 +853,8 @@ describe('InsertStationForm', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Brak transformatora katalogowego zgodnego/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Wybierz wariant stacji z transformatorem zgodnym/i).length)
+        .toBeGreaterThan(0);
     });
 
     fireEvent.click(screen.getByTestId('station-submit'));

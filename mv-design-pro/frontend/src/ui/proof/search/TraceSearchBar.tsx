@@ -139,7 +139,7 @@ export function TraceSearchBar({
             >
               {hasResults
                 ? `${activeResultIndex + 1} z ${results.length}`
-                : 'Brak wyników'}
+                : 'Nie znaleziono wyników'}
             </span>
 
             <button

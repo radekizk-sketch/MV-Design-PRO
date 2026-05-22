@@ -16,6 +16,15 @@ export const LOD_ZOOM_THRESHOLDS = {
   // > 3.0: LOD 4 (diagnostyka)
 } as const;
 
+/** Etykiety poziomow szczegolowosci widoczne dla projektanta. */
+export const LOD_LEVEL_LABELS_PL: Readonly<Record<LodLevel, string>> = {
+  0: 'Topologia sieci',
+  1: 'Odcinki i kierunki zasilania',
+  2: 'Stacje, długości i moce',
+  3: 'Pola, aparatura i zabezpieczenia',
+  4: 'Pomiary, nastawy i dowody',
+};
+
 /** Wnioskuje LOD z scale viewport-a. */
 export function inferLodFromScale(scale: number): LodLevel {
   if (scale < LOD_ZOOM_THRESHOLDS.LOD_0_MAX) return 0;
@@ -30,8 +39,8 @@ export function inferLodFromScale(scale: number): LodLevel {
  *
  * Phase 0A dodaje 4 nowe kindy:
  * - `mini_block_overview` (LOD 0+): mini-RMU w widoku systemowym.
- * - `mini_block_compact` (LOD 1+): mini-RMU w wariancie kompaktowym.
- * - `mini_block_detail` (LOD 2+): mini-RMU w wariancie szczegółowym.
+ * - `mini_block_compact` (LOD 2+): mini-RMU w wariancie kompaktowym.
+ * - `mini_block_detail` (LOD 3+): mini-RMU w wariancie szczegółowym.
  * - `gpz_switchgear` (LOD 1+): GPZ z sekcjami i polami (delegacja).
  * - `der_sub_tree` (LOD 3+): pełne drzewo połączeniowe DER.
  */
@@ -79,8 +88,8 @@ export function isVisibleAtLod(
     case 'alarm_marker': return lod >= 0;
     case 'nop_marker': return lod >= 1;
     case 'mini_block_overview': return lod >= 0;
-    case 'mini_block_compact': return lod >= 1;
-    case 'mini_block_detail': return lod >= 2;
+    case 'mini_block_compact': return lod >= 2;
+    case 'mini_block_detail': return lod >= 3;
     case 'gpz_switchgear': return lod >= 1;
     case 'der_sub_tree': return lod >= 3;
   }
@@ -138,11 +147,11 @@ export const LAYER_LABELS_PL: Readonly<Record<SldLayerId, string>> = {
   'results-voltage': 'Wyniki napięciowe',
   'results-sc': 'Wyniki zwarciowe',
   stability: 'Stabilność / FRT',
-  'missing-data': 'Braki danych',
+  'missing-data': 'Konfiguracja',
   protection: 'Zabezpieczenia',
   der: 'OZE / BESS / FW',
   topology: 'Topologia pracy',
-  alarms: 'Alarmy / blokady',
+  alarms: 'Alarmy / uzależnienia',
 };
 
 // =============================================================================
@@ -236,6 +245,12 @@ export function createLodController(opts: LodControllerOptions): LodController {
 
       if (candidate === currentLod) {
         // Zmiana scale nie wymusza zmiany LOD — anuluj oczekujące przejście.
+        pending = null;
+        return currentLod;
+      }
+
+      if (candidate < currentLod && currentLod - candidate > 1) {
+        currentLod = candidate;
         pending = null;
         return currentLod;
       }

@@ -14,7 +14,10 @@ def test_default_catalog_derives_pv_and_bess_namespaces_from_converter_catalog()
     assert pv_types, "Domyślny katalog musi wystawiać typoszeregi PV dla ZRODLO_NN_PV"
     assert bess_types, "Domyślny katalog musi wystawiać typoszeregi BESS dla ZRODLO_NN_BESS"
     assert any(item.id == "conv-pv-0.5mw-15kv" for item in pv_types)
+    assert any(item.id == "pv_inv_catalog_50" for item in pv_types)
+    assert any(item.id == "pv_inv_huawei_185" for item in pv_types)
     assert any(item.id == "conv-bess-0.5mw-1mwh-15kv" for item in bess_types)
+    assert any(item.id == "bess_pcs_abb_500" for item in bess_types)
     assert all(item.un_kv > 0 for item in pv_types)
     assert all(item.un_kv > 0 for item in bess_types)
 
@@ -58,11 +61,37 @@ def test_materialization_works_for_derived_pv_bess_and_mv_apparatus_namespaces()
         ),
         catalog,
     )
+    huawei_result = materialize_catalog_binding(
+        CatalogBinding(
+            catalog_namespace="ZRODLO_NN_PV",
+            catalog_item_id="pv_inv_huawei_185",
+            catalog_item_version="2024.1",
+            materialize=True,
+        ),
+        catalog,
+    )
+    pv_50_result = materialize_catalog_binding(
+        CatalogBinding(
+            catalog_namespace="ZRODLO_NN_PV",
+            catalog_item_id="pv_inv_catalog_50",
+            catalog_item_version="2024.1",
+            materialize=True,
+        ),
+        catalog,
+    )
 
     assert pv_result.success
     assert pv_result.solver_fields["un_kv"] == 15.0
     assert pv_result.solver_fields["s_n_kva"] == 550.0
     assert pv_result.solver_fields["p_max_kw"] == 500.0
+
+    assert huawei_result.success
+    assert huawei_result.solver_fields["un_kv"] == 0.4
+    assert huawei_result.solver_fields["p_max_kw"] == 185.0
+
+    assert pv_50_result.success
+    assert pv_50_result.solver_fields["un_kv"] == 0.4
+    assert pv_50_result.solver_fields["p_max_kw"] == 50.0
 
     assert bess_result.success
     assert bess_result.solver_fields["un_kv"] == 15.0

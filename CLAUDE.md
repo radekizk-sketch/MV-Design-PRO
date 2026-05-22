@@ -50,14 +50,13 @@ MV-Design-PRO/
 │   ├── INDEX.md                  # UI documentation index
 │   ├── ui/                       # UI contracts (root-level)
 │   ├── sld/                      # SLD layout contracts
-│   ├── system/                   # System-level docs
-│   ├── audyt/                    # Audit reports (e.g. AUDYT_10_10_GLOBAL_SN.md)
-│   └── plan/                     # Execution plans (e.g. PLAN_10_10_GLOBAL_SN.md)
+│   └── system/                   # System-level docs
+│   # Detailed audit reports + execution plans live under mv-design-pro/docs/audit/ and mv-design-pro/docs/plan/
 ├── mv-design-pro/                # Main application
 │   ├── SYSTEM_SPEC.md            # Executive overview + navigation hub (BINDING, v4.0)
 │   ├── AGENTS.md                 # Agent governance rules (BINDING, v4.0)
 │   ├── ARCHITECTURE.md           # Technical architecture reference (BINDING, v4.0)
-│   ├── PLANS.md                  # Operational status & next steps (LIVING, v5.0)
+│   ├── PLANS.md                  # Operational status & next steps (LIVING, v5.1)
 │   ├── POWERFACTORY_COMPLIANCE.md# PowerFactory alignment checklist (BINDING, v3.0)
 │   ├── docker-compose.yml        # 6 services: backend, frontend, postgres, mongodb, redis, celery
 │   ├── backend/
@@ -641,7 +640,7 @@ The Proof Engine generates mathematical proofs from solver results:
 - PDF (`proof.pdf`)
 - DOCX
 
-## Project Status (as of 2026-04)
+## Project Status (as of 2026-05)
 
 The system is fully functional with:
 - 4 solvers (IEC 60909 SC, NR/GS/FD Power Flow)
@@ -653,10 +652,12 @@ The system is fully functional with:
 - CAD geometry editing in SLD
 - PDF/DOCX report generation
 - ENM v1.0 (EnergyNetworkModel)
-- Active work: Phase 3.0 post-10/10 audit with completed execution steps I-VII (see `PLANS.md` and `docs/plan/PLAN_10_10_GLOBAL_SN.md`)
-  - SLD industrial aesthetics: golden render manifest, deterministic layout, ABB-inspired visual tokens
-  - E2E critical path: domain operations → snapshot → SLD → readiness gates → analysis → results
-  - CI guard hardening: 64+ validation guards, connection node detection, API lifecycle enforcement
+- Active work: K30 SLD industrial-quality session (see `PLANS.md` § 3 and `mv-design-pro/docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md`). Current branch: `codex/k30-der-persistence`.
+  - SLD detail drawer (K30-71..98): right-side click-driven panel, real bay/apparatus/DER wiring, tab navigation, ARIA, breadcrumbs
+  - OSD acceptance items (K30-99..101): title block signature + SEP qualifications, revision table, SldPowerBalancePanel (bilans mocy do wniosku przyłączeniowego)
+  - Schematic quality fixes (K30-102..107): open-point marker, transformer earthing ⏚, vector group + tap-changer, power-flow arrows, cable head ▲, mufa kablowa
+  - RMU symbol audit (K30-108..127): IEC 60617-7-13 compliant DS/CB/ES, CT/SA/VT, earthing scheme badge (TN/IT/TT), LOD apparatus stack, label truncation, cellular visual
+  - K30 handoff snapshot: `mv-design-pro/docs/audit/K30_SESSION_HANDOFF_2026-05-16.md`
 
 ## Common Tasks
 

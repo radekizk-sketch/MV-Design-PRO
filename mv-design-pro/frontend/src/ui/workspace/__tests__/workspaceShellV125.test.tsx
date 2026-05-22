@@ -219,8 +219,9 @@ describe('workspace shell V12.5 surfaces', () => {
     render(<WorkspaceSurfaceRouter region="panel" />);
 
     expect(screen.getByRole('heading', { level: 2, name: SURFACE_REGISTRY['E-31'].titlePl })).toBeInTheDocument();
-    expect(await screen.findByText('pf_source_nominal')).toBeInTheDocument();
-    expect(screen.getAllByText('proof-pack-1').length).toBeGreaterThan(0);
+    expect(await screen.findByText('pf source nominal')).toBeInTheDocument();
+    expect(screen.queryByText('proof-pack-1')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Zapisane w śladzie audytu').length).toBeGreaterThan(0);
     expect(
       screen.queryByText(/Kontrakt przypadku musi wskazywac aktywne zalozenia zrodlowe/i),
     ).not.toBeInTheDocument();
@@ -240,9 +241,10 @@ describe('workspace shell V12.5 surfaces', () => {
 
     expect(screen.getByRole('heading', { level: 2, name: SURFACE_REGISTRY['E-37'].titlePl })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { level: 3, name: /Kontrakt raportu i eksportu/i })).toBeInTheDocument();
-    expect(screen.getAllByText('json').length).toBeGreaterThan(0);
-    expect(screen.getByText('status_field')).toBeInTheDocument();
-    expect(screen.getAllByText('proof-pack-1').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('JSON').length).toBeGreaterThan(0);
+    expect(screen.getByText('pole statusu')).toBeInTheDocument();
+    expect(screen.queryByText('proof-pack-1')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Zapisane w śladzie audytu').length).toBeGreaterThan(0);
   });
 
   it('karta Stan obliczeń wariantu pokazuje stan inżynierski bez żargonu i akcje przejść', () => {
@@ -267,19 +269,19 @@ describe('workspace shell V12.5 surfaces', () => {
     expect(screen.getByText('Następny krok')).toBeInTheDocument();
     expect(screen.getByText('GPZ Wschód')).toBeInTheDocument();
     expect(screen.getByText('Lato — szczyt obciążenia')).toBeInTheDocument();
-    expect(screen.getByText('Brak wyników do prezentacji')).toBeInTheDocument();
-    expect(screen.getByText('Brak wykonanych obliczeń')).toBeInTheDocument();
+    expect(screen.getByText('Nie wykonano obliczeń do prezentacji')).toBeInTheDocument();
+    expect(screen.getByText('Nie wykonano obliczeń')).toBeInTheDocument();
     expect(
       screen.getByText(/Nie wykonano jeszcze obliczeń dla tego wariantu/i),
     ).toBeInTheDocument();
 
-    expect(screen.getByRole('button', { name: 'Sprawdź gotowość' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Przegląd techniczny' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Pokaż wyniki' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Porównaj wyniki' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Raport techniczny' })).toBeInTheDocument();
 
     const visibleText = document.body.textContent ?? '';
-    expect(visibleText).not.toMatch(/MINI-SLD|VARIANTS_RUNS|variants_runs|Status migracji|Wersja modelu|Brak aktywnego uruchomienia/i);
+    expect(visibleText).not.toMatch(/MINI-SLD|VARIANTS_RUNS|variants_runs|Status migracji|Wersja modelu|Brak aktywnego uruchomienia|proof-pack|snapshot-/i);
   });
 
   it('karta Stan obliczeń wariantu liczy wykonane obliczenia i pokazuje ostatnie bez identyfikatorów', () => {
@@ -339,14 +341,14 @@ describe('workspace shell V12.5 surfaces', () => {
 
     render(<WorkspaceSurfaceRouter region="main" />);
 
-    await user.click(screen.getByRole('button', { name: 'Sprawdź gotowość' }));
+    await user.click(screen.getByRole('button', { name: 'Przegląd techniczny' }));
     expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-04');
   });
 
   it('otwiera dedykowany surface E-28 z launchera koordynacji', async () => {
     const user = userEvent.setup();
     useNetworkBuildStore.getState().openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
-      titlePl: 'Poziom analityczny',
+      titlePl: 'Analizy techniczne',
       subjectKind: 'analysis_run',
       subjectRef: 'run-1',
     });
@@ -359,6 +361,20 @@ describe('workspace shell V12.5 surfaces', () => {
     expect(
       screen.getByRole('heading', { level: 2, name: SURFACE_REGISTRY['E-28'].titlePl }),
     ).toBeInTheDocument();
+  });
+
+  it('nie pokazuje wewnetrznego typu analysis_run w kontekscie analitycznym', () => {
+    useNetworkBuildStore.getState().openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
+      titlePl: 'Analizy techniczne',
+      entityType: 'analysis_run',
+      subjectKind: 'analysis_run',
+      subjectRef: 'run-1',
+    });
+
+    render(<WorkspaceSurfaceRouter region="main" />);
+
+    expect(screen.getAllByText('Aktywne obliczenie').length).toBeGreaterThan(0);
+    expect(document.body.textContent ?? '').not.toContain('analysis_run');
   });
 
   it.each([
@@ -482,5 +498,17 @@ describe('WorkspaceOperationalBar', () => {
     expect(
       screen.getByText(/Rama aplikacji pozostaje wspolna dla edycji, analityki i raportu/i),
     ).toBeInTheDocument();
+  });
+
+  it('ukrywa techniczny sufiks wariantu w pasku operacyjnym', () => {
+    useAppStateStore
+      .getState()
+      .setActiveCase('case-1', 'Przypadek 50 szablonow mp9g6fu5', 'ShortCircuitCase', 'OUTDATED');
+
+    render(<WorkspaceOperationalBar validationStatus="valid" />);
+
+    const text = screen.getByTestId('workspace-operational-variant').textContent ?? '';
+    expect(text).toContain('Zakres 50 szablonow');
+    expect(text).not.toMatch(/mp9g6fu5|Przypadek/);
   });
 });

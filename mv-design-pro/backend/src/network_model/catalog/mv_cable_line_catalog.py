@@ -22,6 +22,7 @@ IZOLACJE:
 - EPR — kauczuk etylenowo-propylenowy (θmax = 90°C, θkz = 250°C)
 """
 
+import re
 from collections import Counter
 from typing import Any
 
@@ -57,6 +58,95 @@ ENEA_OPERATOR_CABLE_SOURCE_REFERENCE = (
 CATALOG_TEST_SOURCE_REFERENCE = (
     "Rekord testowy MV-DESIGN-PRO - nie stosowac w katalogu produkcyjnym"
 )
+RETURN_CONDUCTOR_RHO_OHM_MM2_PER_KM_20C = {
+    "CU": 17.241,
+    "AL": 28.264,
+}
+RETURN_CONDUCTOR_JTH_1S_A_PER_MM2 = {
+    "CU": JTH_CU_XLPE,
+    "AL": JTH_AL_XLPE,
+}
+RETURN_CONDUCTOR_SECTION_PATTERN = re.compile(
+    r"(?:[13]\s*[x×]\s*)?(\d{2,4})\s*/\s*(\d{1,3})(?!\s*kV)",
+    re.IGNORECASE,
+)
+
+
+def _with_cable_return_conductor(record: dict[str, Any]) -> dict[str, Any]:
+    """Uzupełnia jawne dane żyły powrotnej z oznaczenia katalogowego kabla."""
+
+    params = dict(record.get("params") or {})
+    text = f"{params.get('trade_name', '')} {record.get('name', '')}"
+    section = params.get("return_conductor_cross_section_mm2")
+    if section is None:
+        for phase_raw, return_raw in RETURN_CONDUCTOR_SECTION_PATTERN.findall(text):
+            phase_section = int(phase_raw)
+            return_section = int(return_raw)
+            if phase_section >= 16 and 1 <= return_section <= 95:
+                section = return_section
+                break
+    if section is not None:
+        section_float = float(section)
+        params["return_conductor_cross_section_mm2"] = section_float
+        material = str(params.get("return_conductor_material") or "CU").upper()
+        params["return_conductor_material"] = material
+        rho = RETURN_CONDUCTOR_RHO_OHM_MM2_PER_KM_20C.get(material)
+        if rho is not None and params.get("return_conductor_r_ohm_per_km_20c") is None:
+            params["return_conductor_r_ohm_per_km_20c"] = round(rho / section_float, 6)
+        jth = RETURN_CONDUCTOR_JTH_1S_A_PER_MM2.get(material)
+        if jth is not None:
+            params.setdefault("return_conductor_jth_1s_a_per_mm2", jth)
+            params.setdefault("return_conductor_ith_1s_a", round(jth * section_float, 6))
+    return {
+        "id": record["id"],
+        "name": record["name"],
+        "params": params,
+    }
+
+
+def _float_param(params: dict[str, Any], key: str) -> float | None:
+    value = params.get(key)
+    if isinstance(value, int | float):
+        return float(value)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _with_zero_sequence_parameters(record: dict[str, Any], *, kind: str) -> dict[str, Any]:
+    """Dopisuje jawne katalogowe parametry składowej zerowej R0/X0."""
+
+    params = dict(record.get("params") or {})
+    r1 = _float_param(params, "r_ohm_per_km")
+    x1 = _float_param(params, "x_ohm_per_km")
+    if r1 is None or x1 is None or r1 <= 0 or x1 <= 0:
+        return {
+            "id": record["id"],
+            "name": record["name"],
+            "params": params,
+        }
+
+    if kind == "cable":
+        return_r = _float_param(params, "return_conductor_r_ohm_per_km_20c")
+        if params.get("r0_ohm_per_km") is None:
+            if return_r is not None and return_r > 0:
+                params["r0_ohm_per_km"] = round(r1 + return_r, 6)
+            else:
+                params["r0_ohm_per_km"] = round(3.0 * r1, 6)
+        if params.get("x0_ohm_per_km") is None:
+            params["x0_ohm_per_km"] = round(3.0 * x1, 6)
+    elif kind == "line":
+        if params.get("r0_ohm_per_km") is None:
+            params["r0_ohm_per_km"] = round(3.0 * r1, 6)
+        if params.get("x0_ohm_per_km") is None:
+            params["x0_ohm_per_km"] = round(3.0 * x1, 6)
+
+    return {
+        "id": record["id"],
+        "name": record["name"],
+        "params": params,
+    }
 
 
 def _with_catalog_quality(
@@ -127,7 +217,7 @@ def _cable_family(record_id: str) -> str:
 def _line_records_with_quality() -> list[dict[str, Any]]:
     production = [
         _with_catalog_quality(
-            record,
+            _with_zero_sequence_parameters(record, kind="line"),
             source_reference=LINE_SOURCE_REFERENCE,
             verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value,
             catalog_status=CatalogStatus.PRODUKCYJNY_V1.value,
@@ -150,7 +240,7 @@ def _line_records_with_quality() -> list[dict[str, Any]]:
 def _cable_records_with_quality() -> list[dict[str, Any]]:
     operator_records = [
         _with_catalog_quality(
-            record,
+            _with_zero_sequence_parameters(_with_cable_return_conductor(record), kind="cable"),
             source_reference=ENEA_OPERATOR_CABLE_SOURCE_REFERENCE,
             verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value,
             catalog_status=CatalogStatus.PRODUKCYJNY_V1.value,
@@ -163,7 +253,7 @@ def _cable_records_with_quality() -> list[dict[str, Any]]:
     ]
     base_records = [
         _with_catalog_quality(
-            record,
+            _with_zero_sequence_parameters(_with_cable_return_conductor(record), kind="cable"),
             source_reference=CABLE_BASE_SOURCE_REFERENCE,
             verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value,
             catalog_status=CatalogStatus.PRODUKCYJNY_V1.value,
@@ -181,7 +271,7 @@ def _cable_records_with_quality() -> list[dict[str, Any]]:
     ]
     manufacturer_records = [
         _with_catalog_quality(
-            record,
+            _with_zero_sequence_parameters(_with_cable_return_conductor(record), kind="cable"),
             source_reference=CABLE_MANUFACTURER_SOURCE_REFERENCE,
             verification_status=CatalogVerificationStatus.ZWERYFIKOWANY.value,
             catalog_status=CatalogStatus.PRODUKCYJNY_V1.value,
@@ -191,7 +281,7 @@ def _cable_records_with_quality() -> list[dict[str, Any]]:
     # K30-22: Polish PN-HD 620 S2 standard cables (YHAKXS Al + YHKXS Cu)
     polish_pn_hd_records = [
         _with_catalog_quality(
-            record,
+            _with_zero_sequence_parameters(_with_cable_return_conductor(record), kind="cable"),
             source_reference="PN-HD 620 S2 / TF Kable Telefonika / Bitner Kable / PTPiREE WiPWC",
             verification_status=CatalogVerificationStatus.ZWERYFIKOWANY.value,
             catalog_status=CatalogStatus.PRODUKCYJNY_V1.value,
@@ -200,7 +290,7 @@ def _cable_records_with_quality() -> list[dict[str, Any]]:
     ]
     tests = [
         _with_catalog_quality(
-            record,
+            _with_cable_return_conductor(record),
             source_reference=CATALOG_TEST_SOURCE_REFERENCE,
             verification_status=CatalogVerificationStatus.REFERENCYJNY.value,
             catalog_status=CatalogStatus.TESTOWY.value,

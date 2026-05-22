@@ -40,13 +40,14 @@ interface GpzData {
 }
 
 const TRAFO_110_CATALOG_OPTIONS = [
-  { id: '__missing__', label: '-- wybierz --' },
   { id: 'tr-wn-sn-110-15-25mva', label: '110/15 kV · 25 MVA · Yyn0' },
   { id: 'tr-wn-sn-110-15-40mva', label: '110/15 kV · 40 MVA · YNyn0' },
   { id: 'tr-wn-sn-110-15-63mva', label: '110/15 kV · 63 MVA · YNyn0' },
   { id: 'tr-wn-sn-110-20-25mva', label: '110/20 kV · 25 MVA · Yyn0' },
   { id: 'tr-wn-sn-110-20-40mva', label: '110/20 kV · 40 MVA · YNyn0' },
 ];
+
+const DEFAULT_TRAFO_110_CATALOG_ID = TRAFO_110_CATALOG_OPTIONS[0].id;
 
 function emptyGpzData(): GpzData {
   return {
@@ -59,7 +60,7 @@ function emptyGpzData(): GpzData {
     hvVoltageKv: 110,
     hvShortCircuitMva: null,
     hvRX: null,
-    transformerCatalogId: '__missing__',
+    transformerCatalogId: DEFAULT_TRAFO_110_CATALOG_ID,
     transformerNominalMva: null,
     transformerUkPercent: null,
     transformerVectorGroup: 'YNyn0',
@@ -93,7 +94,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
     const checks = [
       data.name.trim().length > 0,
       hasShortCircuitInput,
-      data.transformerCatalogId !== '__missing__',
+      TRAFO_110_CATALOG_OPTIONS.some((option) => option.id === data.transformerCatalogId),
       data.sectionsCount > 0,
     ];
     const done = checks.filter(Boolean).length;
@@ -104,13 +105,13 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
     <div data-testid="gpz-configurator-surface" className="flex h-full w-full flex-col p-4">
       <div className="mb-4">
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
-          E-10 · Główny Punkt Zasilający
+          Główny Punkt Zasilający 110/SN
         </div>
         <h2 className="mt-1 text-base font-semibold text-scada-text">
-          {data.name || gpzNameFromSnapshot || (gpzRef ?? 'GPZ niewybrany')}
+          {data.name || gpzNameFromSnapshot || 'GPZ 110/SN'}
         </h2>
         <div className="mt-1 text-xs text-scada-muted">
-          Kompletność: {completeness.done}/{completeness.total} pól wymaganych
+          Zakres konfiguracji: {completeness.done}/{completeness.total} kart technicznych
         </div>
       </div>
 
@@ -235,8 +236,8 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
               />
             )}
             <p className="rounded border border-scada-border bg-scada-surface p-2 text-[11px] text-scada-muted">
-              Dane wejściowe są używane przez moduł obliczeń IEC 60909. Brak danych
-              zwarciowych blokuje odpowiednie pozycje gotowości obliczeń.
+              Parametry zwarciowe zasilają obliczenia IEC 60909 po stronie serwerowej.
+              Po dobraniu wariantu GPZ karta prowadzi dalej do transformatora i sekcji SN.
             </p>
           </div>
         )}
@@ -341,8 +342,8 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
       </div>
 
       <div className="border-t border-scada-border p-3 text-xs text-scada-muted">
-        Edytor GPZ pokazuje dane katalogowe, sekcje SN i braki wejściowe. Dodawanie
-        nowego GPZ wykonuje formularz "Dodaj źródło zasilania GPZ" z panelu budowy modelu.
+        Karta GPZ pokazuje dane katalogowe, sekcje SN, transformatory i bilans pól.
+        Nowy układ GPZ dodaje akcja "Dodaj źródło zasilania GPZ" z panelu budowy sieci.
       </div>
     </div>
   );
@@ -398,7 +399,7 @@ function NumberField({ label, unit, value, onChange, placeholder, required }: Nu
           const next = e.target.value === '' ? null : Number(e.target.value);
           onChange(next === null || Number.isNaN(next) ? null : next);
         }}
-        placeholder={placeholder ?? '-- brak danych --'}
+        placeholder={placeholder ?? 'Wprowadź wartość'}
         className="w-full rounded border border-scada-border bg-scada-surface px-2 py-1.5 text-sm text-scada-text placeholder:text-scada-muted focus:border-scada-sn focus:outline-none"
       />
     </div>

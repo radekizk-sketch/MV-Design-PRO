@@ -1,5 +1,5 @@
 /**
- * Testy Karty 6 "Strona nN i poziomy napięć" — w tym sekcji "Odbiory nN".
+ * Testy widoku "Strona nN" — w tym sekcji "Odbiory nN".
  *
  * Odbiory nN są wymagane dla:
  *   - Power Flow (rozpływ mocy) — P/Q per węzeł
@@ -39,7 +39,7 @@ const SAMPLE_LOAD_2: LoadRow = {
   statusForVoltage: 'gotowe',
 };
 
-describe('StationConfigNnSwitchgearCard — Karta 6 "Strona nN i poziomy napięć"', () => {
+describe('StationConfigNnSwitchgearCard — Strona nN', () => {
   it('renderuje obie sekcje: rozdzielnice + odbiory nN', () => {
     render(<StationConfigNnSwitchgearCard switchgears={[]} loads={[]} />);
     expect(screen.getByTestId('station-config-nn-switchgear')).toBeInTheDocument();
@@ -62,11 +62,10 @@ describe('StationConfigNnSwitchgearCard — Karta 6 "Strona nN i poziomy napię�
     expect(screen.getByText('Oświetlenie + administracja')).toBeInTheDocument();
   });
 
-  it('pokazuje "Brak odbiorów" gdy lista pusta — nie pokazuje 0,00', () => {
+  it('prowadzi do dodania odbiorów gdy lista pusta — nie pokazuje 0,00', () => {
     render(<StationConfigNnSwitchgearCard switchgears={[]} loads={[]} />);
     const loadsSection = screen.getByTestId('station-config-nn-loads-section');
-    // Empty state: "Brak odbiorów." (z LoadsCard)
-    expect(loadsSection.textContent).toContain('Brak odbiorów');
+    expect(loadsSection.textContent).toContain('Odbiory nN dodaje się z wariantu stacji');
     // Brak fałszywych zer
     expect(loadsSection.textContent).not.toContain('0,00');
   });

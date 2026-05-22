@@ -89,6 +89,19 @@ describe('Electrical Graph Consistency — domain_ref propagation', () => {
       { id: 's1', ref_id: 'ST-1', name: 'St1', tags: [], meta: {}, station_type: 'mv_lv', bus_refs: [], transformer_refs: [] } as never,
       { id: 's2', ref_id: 'ST-2', name: 'St2', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
     ];
+    snap.line_runs = [
+      {
+        id: 'run-test',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'GPZ-1/bay/001',
+        starting_port_ref: 'GPZ-1/bay/001.OUT',
+        segments: [],
+        stations: [
+          { substation_ref: 'ST-1', order: 1 },
+          { substation_ref: 'ST-2', order: 2 },
+        ],
+      },
+    ] as never;
     const sld = buildSldDataFromSnapshot(snap, null);
     const stationIds = sld.stations.map((s) => s.id);
     expect(stationIds).toContain('ST-1');

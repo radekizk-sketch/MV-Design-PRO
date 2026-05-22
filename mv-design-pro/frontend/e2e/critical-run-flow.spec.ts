@@ -152,7 +152,7 @@ async function createCaseFromUi(page: Page, request: APIRequestContext): Promise
 
   await page.goto('/', { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
-  await expect(page.getByTestId('active-case-bar')).toContainText('Przypadek');
+  await expect(page.getByTestId('active-case-bar')).toContainText(/Zakres|Bieżący zestaw/);
   return caseId;
 }
 
@@ -188,19 +188,23 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
     station_type: 'B',
     insert_at: { value: 0.5 },
     station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
-    sn_fields: ['IN', 'OUT'],
+    sn_fields: ['IN', 'OUT', 'FEEDER'],
     transformer: {
       create: true,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),
     },
   });
 
-  const snBus = (op.snapshot?.buses ?? []).find((bus) => bus.ref_id.includes('sn_bus'));
-  expect(snBus).toBeDefined();
+  const station = (op.snapshot?.substations ?? []).find((item) => item.ref_id.includes('/station'));
+  const branchField = station?.meta?.field_specs?.find((field) => (
+    String(field.field_role ?? field.bay_role ?? '').toUpperCase().includes('ODG')
+    || String(field.bay_role ?? '').toUpperCase() === 'FEEDER'
+  ));
+  expect(branchField?.field_ref).toBeTruthy();
 
   // Krok 4: Odgałęzienie
   op = await executeDomainOp(request, caseId, 'start_branch_segment_sn', {
-    from_ref: `${snBus!.ref_id}.BRANCH`,
+    from_ref: `${branchField!.field_ref}.BRANCH`,
     segment: {
       rodzaj: 'KABEL',
       dlugosc_m: 180,

@@ -102,7 +102,7 @@ export function StationConfigSnSwitchgearCard(
           <div className="font-mono text-scada-text">{reservesCount}</div>
         </div>
         <div>
-          <div className="text-scada-muted">Status gotowości</div>
+          <div className="text-scada-muted">Zakres konfiguracji</div>
           <div className="text-scada-text">{readinessLabelPl}</div>
         </div>
       </div>

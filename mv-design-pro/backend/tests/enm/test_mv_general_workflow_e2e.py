@@ -318,7 +318,7 @@ class TestE2E1MultiObjectFeeder:
 
 class TestE2E2BranchFromStation:
     def test_branch_from_station_branch_port(self) -> None:
-        """Legacy from_bus_ref-only path is accepted iff it maps to branch-capable source."""
+        """from_bus_ref-only nie moze tworzyc odgalezienia bez jawnego portu pola."""
         s = _empty_enm()
         s = op(s, "add_grid_source_sn", {"voltage_kv": 15.0, "sk3_mva": 250.0})
         s = op(
@@ -344,6 +344,7 @@ class TestE2E2BranchFromStation:
         branch_bus = sub.get("bus_refs", [None])[0] if sub.get("bus_refs") else None
 
         assert branch_bus is not None
+        baseline = copy.deepcopy(s)
         result = execute_domain_operation(
             s,
             "start_branch_segment_sn",
@@ -352,11 +353,15 @@ class TestE2E2BranchFromStation:
                 "segment": {"rodzaj": "KABEL", "dlugosc_m": 200, "catalog_ref": CATALOG_CABLE_70},
             },
         )
-        assert not result.get("error"), f"Błąd: {result.get('error')}"
-        assert result.get("snapshot") is not None
+        assert result.get("snapshot") is None
+        assert result.get("error_code") == "branch_connection.source_not_branch_capable"
+        assert s == baseline
+        return
+        assert result.get("snapshot") is None
+        assert result.get("error_code") == "branch_connection.source_not_branch_capable"
 
-    def test_branch_from_station_via_from_ref(self) -> None:
-        """start_branch_segment_sn przez from_ref=<station_ref>.BRANCH."""
+    def test_branch_from_station_ref_is_rejected(self) -> None:
+        """Odgałęzienie nie może startować z abstrakcyjnej stacji."""
         s = _empty_enm()
         s = op(s, "add_grid_source_sn", {"voltage_kv": 15.0, "sk3_mva": 250.0})
         s = op(
@@ -381,8 +386,47 @@ class TestE2E2BranchFromStation:
                 "segment": {"rodzaj": "KABEL", "dlugosc_m": 150, "catalog_ref": CATALOG_CABLE_70},
             },
         )
+        assert result.get("snapshot") is None
+        assert result.get("error_code") == "branch_connection.source_not_branch_capable"
+        return
         assert not result.get("error"), f"Błąd: {result.get('error')}"
-        assert result.get("snapshot") is not None
+        assert result.get("snapshot") is None
+        assert result.get("error_code") == "branch_connection.source_not_branch_capable"
+
+    def test_branch_from_station_line_field_ref(self) -> None:
+        """Odgałęzienie kablowe startuje z konkretnego pola liniowego stacji."""
+        s = _empty_enm()
+        s = op(s, "add_grid_source_sn", {"voltage_kv": 15.0, "sk3_mva": 250.0})
+        s = op(
+            s,
+            "continue_trunk_segment_sn",
+            {
+                "segment": {"rodzaj": "KABEL", "dlugosc_m": 400, "catalog_ref": CATALOG_CABLE_120},
+            },
+        )
+        seg_id = _find_segment(s, "cable")
+        s = _insert_station(s, seg_id, "Stacja B", "branch")
+
+        sub = s.get("substations", [])[-1]
+        field_specs = sub.get("meta", {}).get("field_specs", [])
+        feeder = next(spec for spec in field_specs if spec.get("bay_role") == "FEEDER")
+        field_ref = feeder["field_ref"]
+        terminal_bus_ref = feeder["meta"]["terminal_bus_ref"]
+
+        result = execute_domain_operation(
+            s,
+            "start_branch_segment_sn",
+            {
+                "from_ref": f"{field_ref}.BRANCH",
+                "from_bus_ref": terminal_bus_ref,
+                "segment": {"rodzaj": "KABEL", "dlugosc_m": 150, "catalog_ref": CATALOG_CABLE_70},
+            },
+        )
+        assert not result.get("error"), f"Błąd: {result.get('error')}"
+        snap = result["snapshot"]
+        branch_ref = result["selection_hint"]["element_id"]
+        branch = next(item for item in snap["branches"] if item["ref_id"] == branch_ref)
+        assert branch["from_bus_ref"] == terminal_bus_ref
 
     def test_non_branch_capable_source_fails_and_snapshot_unchanged(self) -> None:
         s = _empty_enm()
@@ -407,7 +451,7 @@ class TestE2E2BranchFromStation:
             },
         )
         assert result.get("snapshot") is None
-        assert result.get("error_code") == "branch.from_bus_not_found"
+        assert result.get("error_code") == "branch_connection.source_not_branch_capable"
         assert s == baseline
 
     def test_direct_from_bus_ref_without_from_ref_fails_for_non_branch_capable_source(self) -> None:
@@ -824,7 +868,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
                 "station_ref": station.get("ref_id", "sub-none"),
                 "bus_nn_ref": nn_bus_ref,
                 "source_name": "PV-Farm-1",
-                "power_setpoint_mw": 1.0,
+                "power_setpoint_mw": 0.5,
                 "catalog_binding": {
                     "catalog_namespace": "CONVERTER",
                     "catalog_item_id": "conv-pv-e2e-1",
@@ -834,11 +878,11 @@ class TestE2E5ReceivingStationsAndOzeBess:
                     "catalog_item_id": "conv-pv-e2e-1",
                     "catalog_item_version": "2024.1",
                     "un_kv": 0.4,
-                    "rated_power_ac_kw": 1000.0,
-                    "max_power_kw": 1000.0,
+                    "rated_power_ac_kw": 500.0,
+                    "max_power_kw": 500.0,
                     "control_mode": "STALY_COS_PHI",
-                    "pmax_mw": 1.0,
-                    "sn_mva": 1.0,
+                    "pmax_mw": 0.5,
+                    "sn_mva": 0.5,
                 },
             },
         )

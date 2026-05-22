@@ -176,6 +176,17 @@ describe('declutterLabels — max iterations limit', () => {
     // (bo break in-loop przerywa pętlę zanim dojdą).
     expect(result.length).toBeLessThanOrEqual(100);
   });
+
+  it('Duza topologia nie gubi etykiet tylko dlatego, ze przekracza 50 pozycji', () => {
+    const labels: LabelInput[] = Array.from({ length: 75 }, (_, i) =>
+      label(`station-${String(i).padStart(2, '0')}`, LABEL_PRIORITY.STATION, { x: i * 80, y: 0 }, 48, 14),
+    );
+
+    const result = declutterLabels(labels, 50);
+
+    expect(result).toHaveLength(75);
+    expect(result.filter((placement) => !placement.hidden).length).toBeGreaterThan(50);
+  });
 });
 
 describe('computeDeclutterMetrics', () => {

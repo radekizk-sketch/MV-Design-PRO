@@ -51,7 +51,7 @@ describe('reportExportApi - eksport raportu', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(fetchSpy.mock.calls[0]![0]).toBe(`/api/analysis-runs/${RUN_ID}/export/report/pdf`);
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.filename).toBe(`raport-${RUN_ID}.pdf`);
+    if (r.ok) expect(r.filename).toBe('raport-techniczny-mv-design-pro.pdf');
     expect(anchorClickSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -103,7 +103,7 @@ describe('reportExportApi - eksport uzasadnienia inżynierskiego', () => {
     const r = await exportProofPack(RUN_ID, 'latex');
     expect(fetchSpy.mock.calls[0]![0]).toBe(`/api/analysis-runs/${RUN_ID}/export/proof/latex`);
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.filename).toBe(`uzasadnienie-${RUN_ID}.tex`);
+    if (r.ok) expect(r.filename).toBe('uzasadnienie-inzynierskie-mv-design-pro.tex');
   });
 
   it('exportProofPack(pdf) wywołuje endpoint /export/proof/pdf', async () => {
@@ -115,7 +115,7 @@ describe('reportExportApi - eksport uzasadnienia inżynierskiego', () => {
     const r = await exportProofPack(RUN_ID, 'pdf');
     expect(fetchSpy.mock.calls[0]![0]).toBe(`/api/analysis-runs/${RUN_ID}/export/proof/pdf`);
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.filename).toBe(`uzasadnienie-${RUN_ID}.pdf`);
+    if (r.ok) expect(r.filename).toBe('uzasadnienie-inzynierskie-mv-design-pro.pdf');
   });
 
   it('exportProofPack(json) wywołuje endpoint /export/proof/json', async () => {
@@ -135,7 +135,7 @@ describe('format labels', () => {
     expect(REPORT_FORMAT_LABELS_PL.pdf).toContain('reportlab');
     expect(REPORT_FORMAT_LABELS_PL.docx).toContain('python-docx');
     expect(REPORT_FORMAT_LABELS_PL.json).toContain('JSON');
-    expect(REPORT_FORMAT_LABELS_PL.xlsx).toContain('XLSX');
+    expect(Object.keys(REPORT_FORMAT_LABELS_PL)).toEqual(['pdf', 'docx', 'json']);
   });
 
   it('Polskie etykiety formatów uzasadnienia inżynierskiego', () => {

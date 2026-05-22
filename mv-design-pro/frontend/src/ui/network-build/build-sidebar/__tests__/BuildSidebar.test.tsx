@@ -30,7 +30,7 @@ describe('BuildSidebar — 4 sekcje', () => {
     expect(screen.getByTestId('build-sidebar-tab-nawigator')).toHaveTextContent('Nawigator');
     expect(screen.getByTestId('build-sidebar-tab-budowa')).toHaveTextContent('Budowa');
     expect(screen.getByTestId('build-sidebar-tab-warstwy')).toHaveTextContent('Warstwy');
-    expect(screen.getByTestId('build-sidebar-tab-gotowosc')).toHaveTextContent('Gotowość');
+    expect(screen.getByTestId('build-sidebar-tab-gotowosc')).toHaveTextContent('Kontrola');
   });
 
   it('klik zakładki przełącza content', () => {
@@ -85,7 +85,7 @@ describe('NavigatorSection', () => {
     );
     expect(screen.getByTestId('nav-node-gpz_1')).toBeInTheDocument();
     expect(screen.getByTestId('nav-node-sec_1')).toBeInTheDocument();
-    expect(screen.getByTestId('nav-badge-der_pv_1')).toHaveAttribute('title', 'brak danych');
+    expect(screen.getByTestId('nav-badge-der_pv_1')).toHaveAttribute('title', 'do konfiguracji');
     expect(screen.getByText(/PV-01/)).toBeInTheDocument();
   });
 
@@ -208,7 +208,7 @@ describe('ReadinessSection — 9 typów obliczeń + raporty', () => {
     expect(screen.getByTestId('readiness-item-pf')).toHaveAttribute('data-status', 'gotowe');
     expect(screen.getByTestId('readiness-item-stab')).toHaveTextContent('brak modułu obliczeniowego');
     expect(screen.getByTestId('readiness-item-sc')).toHaveTextContent('częściowe');
-    expect(screen.getByText(/Brakuje: Sk"/)).toBeInTheDocument();
+    expect(screen.getByText(/Parametry do konfiguracji: Sk"/)).toBeInTheDocument();
   });
 
   it('klik "Pokaż na SLD" wywołuje callback', () => {

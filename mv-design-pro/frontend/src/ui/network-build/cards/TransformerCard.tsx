@@ -232,7 +232,7 @@ export function TransformerCard({ elementId }: { elementId: string }) {
             ? 'Katalog (zablokowane)'
             : transformer.parameter_source === 'OVERRIDE'
               ? 'Nadpisanie ręczne'
-              : 'Brak katalogu — wymagane',
+              : 'Wariant katalogowy wymagany',
           severity: transformer.catalog_ref == null ? 'warning' : 'ok',
         },
       ],
@@ -252,7 +252,7 @@ export function TransformerCard({ elementId }: { elementId: string }) {
           { key: 'loading', label: 'Obciążenie Sn', value: null, unit: '%', source: 'calculated' },
           { key: 'losses', label: 'Straty ΔP', value: null, unit: 'kW', source: 'calculated' },
           { key: 'tap_actual', label: 'Zaczep aktualny', value: null, source: 'calculated' },
-          { key: 'no_results', label: 'Status', value: 'Brak wyników — uruchom analizę', severity: 'warning' },
+          { key: 'no_results', label: 'Status', value: 'Uruchom analizę, aby pokazać wyniki', severity: 'warning' },
         ],
       });
     }

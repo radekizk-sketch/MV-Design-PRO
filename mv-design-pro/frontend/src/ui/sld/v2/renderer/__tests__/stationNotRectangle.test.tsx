@@ -15,6 +15,7 @@ import { render } from '@testing-library/react';
 
 import { MiniBlockRmuRenderer } from '../MiniBlockRmuRenderer';
 import type { MiniBlockBayDescriptor } from '../MiniBlockRmuRenderer';
+import { StationOnRunRenderer } from '../StationOnRunRenderer';
 
 const BAYS: MiniBlockBayDescriptor[] = [
   { bayRef: 'bay_in', fieldRole: 'LINE_IN', designation: 'BAY-IN', hasMissingRequiredDevice: false },
@@ -119,5 +120,83 @@ describe('Mini-RMU: station NOT rectangle (PR 3 minimal guard)', () => {
     // gołym <rect>.
     const allDataParity = rmu?.querySelectorAll('[data-parity-key]');
     expect(allDataParity?.length ?? 0, 'overview bez data-parity-key — generic rectangle').toBeGreaterThan(0);
+  });
+});
+
+describe('StationOnRunRenderer: stany aparatury bez znaków zastępczych', () => {
+  it('LOD 4 na widoku trasy utrzymuje zwarty blok stacyjny dla niewybranej stacji', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="station-lod4"
+          x={0}
+          y={0}
+          name="Stacja przelotowa"
+          topologicalType="przelotowa"
+          stationCode="S01"
+          lod={4}
+          snBays={BAYS}
+          hasTransformer
+          transformerRatedKva={630}
+          nnFeedersCount={4}
+        />
+      </svg>,
+    );
+
+    const root = container.querySelector('[data-testid="sld-v2-mini-rmu-station-lod4"]');
+    expect(root?.getAttribute('data-lod-variant')).toBe('compact');
+    expect(root?.getAttribute('data-element-kind')).toBe('mini_block_compact');
+    expect(root?.querySelector('[data-parity-key="station.mini.bus.sn"]')).not.toBeNull();
+    expect(root?.querySelectorAll('[data-testid^="sld-v2-bay-column-sn-"]').length)
+      .toBeGreaterThanOrEqual(2);
+    expect(root?.querySelector('[data-parity-key="station.mini.bus.lv"]')).toBeNull();
+    expect(root?.querySelectorAll('[data-testid^="sld-v2-mini-rmu-tr-bay-"]').length).toBe(0);
+    expect(container.querySelector('[data-testid="sld-v2-station-bus-station-lod4"]')).toBeNull();
+  });
+
+  it('LOD 4 utrzymuje kompaktowy blok stacji takze po zaznaczeniu na glownej kanwie', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="station-lod4-selected"
+          x={0}
+          y={0}
+          name="Stacja przelotowa"
+          topologicalType="przelotowa"
+          stationCode="S01"
+          lod={4}
+          selected
+          snBays={BAYS}
+          hasTransformer
+          transformerRatedKva={630}
+          nnFeedersCount={2}
+        />
+      </svg>,
+    );
+
+    const root = container.querySelector('[data-testid="sld-v2-mini-rmu-station-lod4-selected"]');
+    expect(root?.getAttribute('data-lod-variant')).toBe('compact');
+    expect(root?.getAttribute('data-element-kind')).toBe('mini_block_compact');
+    expect(root?.querySelector('[data-parity-key="station.mini.bus.lv"]')).toBeNull();
+    expect(root?.querySelectorAll('[data-testid^="sld-v2-mini-rmu-tr-bay-"]').length).toBe(0);
+  });
+
+  it('unknown switching state pokazuje neutralny marker graficzny bez tekstu "?"', () => {
+    const { container } = render(
+      <svg>
+        <StationOnRunRenderer
+          id="station-dispatcher"
+          x={0}
+          y={0}
+          name="Stacja przelotowa"
+          topologicalType="przelotowa"
+          stationCode="S01"
+          switchStateByColumn={['unknown', 'closed']}
+        />
+      </svg>,
+    );
+
+    expect(container.querySelector('[data-state-marker="neutral-hatch"]')).not.toBeNull();
+    expect(container.textContent).not.toContain('?');
   });
 });

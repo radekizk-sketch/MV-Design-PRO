@@ -223,7 +223,7 @@ export interface GpzBayDescriptor {
 /**
  * Kierunek przepływu mocy przez transformator (kanon SCADA — strzałka pod TR).
  *   - `down` → moc płynie z 110 kV w dół do SN (nominalny tryb GPZ)
- *   - `up`   → moc płynie z SN do 110 kV (eksport, np. duże źródło OZE)
+ *   - `up`   → moc płynie z SN do 110 kV (eksport, np. duży układ OZE)
  *   - `none` → brak strzałki (brak danych lub TR wyłączony)
  */
 export type TransformerPowerFlow = 'down' | 'up' | 'none';

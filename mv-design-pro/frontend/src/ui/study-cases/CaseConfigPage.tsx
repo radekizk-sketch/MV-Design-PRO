@@ -112,7 +112,7 @@ export function CaseConfigPage() {
         <div className="text-center max-w-sm">
           <div className="text-4xl mb-4">[CFG]</div>
           <h2 className="text-xl font-semibold text-gray-700 mb-2">
-            Brak aktywnego zakresu obliczeń
+            Wybierz zakres obliczeń
           </h2>
           <p className="text-sm text-gray-500">
             Wybierz lub utwórz zakres obliczeń, aby skonfigurować warunki analizy.

@@ -76,7 +76,7 @@ describe('Etap 10 — Testy akceptacyjne workflow inżyniera E2E', () => {
   });
 
   // === Test E: Stacja (E-13) ===
-  it('E. Stacja ma 10 kart (PR-8a brief 2 §8)', () => {
+  it('E. Stacja ma pełny przepływ konfiguracji układu', () => {
     render(<StationConfiguratorSurface surface={sampleSurface} />);
     expect(screen.getByTestId('station-configurator-surface')).toBeInTheDocument();
   });

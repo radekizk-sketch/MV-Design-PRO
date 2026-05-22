@@ -16,20 +16,20 @@ const CATEGORY_LABELS: Partial<Record<TypeCategory, string>> = {
   LINE: 'Linie napowietrzne SN',
   CABLE: 'Kable SN',
   TRANSFORMER: 'Transformatory SN/nN',
-  SWITCH_EQUIPMENT: 'Aparatura laczeniowa SN',
-  MV_APPARATUS: 'Aparatura laczeniowa SN',
-  LV_APPARATUS: 'Aparatura laczeniowa nN',
+  SWITCH_EQUIPMENT: 'Aparatura łączeniowa SN',
+  MV_APPARATUS: 'Aparatura łączeniowa SN',
+  LV_APPARATUS: 'Aparatura łączeniowa nN',
   LV_CABLE: 'Kable nN',
-  LOAD: 'Obciazenia',
-  CT: 'Przekladniki pradowe',
-  VT: 'Przekladniki napieciowe',
-  MEASUREMENT_TRANSFORMER: 'Przekladniki pomiarowe',
+  LOAD: 'Obciążenia',
+  CT: 'Przekładniki prądowe',
+  VT: 'Przekładniki napięciowe',
+  MEASUREMENT_TRANSFORMER: 'Przekładniki pomiarowe',
   PV_INVERTER: 'Falowniki PV',
   BESS_INVERTER: 'Falowniki BESS',
   PROTECTION_DEVICE: 'Zabezpieczenia',
   SYSTEM_SOURCE: 'Zasilanie systemowe SN',
   CONVERTER: 'Konwertery',
-  BRANCH_POLE: 'Slupy rozgalezne SN',
+  BRANCH_POLE: 'Słupy rozgałęźne SN',
   ZKSN: 'ZKSN',
 };
 
@@ -188,7 +188,7 @@ export function TypePicker({
 
           {!loading && !error && filteredTypes.length === 0 ? (
             <div className="py-8 text-center text-gray-500">
-              {searchQuery ? 'Brak wynik?w dla zapytania.' : 'Brak typ?w w katalogu.'}
+              {searchQuery ? 'Nie znaleziono typu dla zapytania.' : 'Katalog typów wymaga konfiguracji.'}
             </div>
           ) : null}
 

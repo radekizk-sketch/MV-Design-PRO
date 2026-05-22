@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { clsx } from 'clsx';
 
-import { useNetworkBuildDerived } from './networkBuildStore';
+import { selectFieldStationCount, useNetworkBuildDerived } from './networkBuildStore';
 import { useSnapshotStore } from '../topology/snapshotStore';
 
 export interface TopContextBarProps {
@@ -98,7 +98,7 @@ export function TopContextBar({
       branches: snapshot.branches?.length ?? 0,
       transformers: snapshot.transformers?.length ?? 0,
       generators: snapshot.generators?.length ?? 0,
-      stations: snapshot.substations?.length ?? 0,
+      stations: selectFieldStationCount(snapshot),
     };
   }, [snapshot]);
 
@@ -155,23 +155,23 @@ export function TopContextBar({
 
           {blockersByCategory.total > 0 ? (
             <div className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[10px] font-medium text-rose-100">
-              {blockersByCategory.total} blokad
+              {blockersByCategory.total} zagadnień konfiguracji
               <span className="ml-2 text-rose-200/70">
                 T:{blockersByCategory.topologia} K:{blockersByCategory.katalogi} E:{blockersByCategory.eksploatacja}
               </span>
             </div>
           ) : (
             <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[10px] font-medium text-emerald-100">
-              Brak aktywnych blokad procesu
+              Układ bez zagadnień konfiguracji
             </div>
           )}
 
           {stats ? (
             <div className="hidden items-center gap-2 xl:flex">
               <StatPill label="szyny" value={stats.buses} />
-              <StatPill label="galezie" value={stats.branches} />
+              <StatPill label="odcinki SN" value={stats.branches} />
               <StatPill label="stacje" value={stats.stations} />
-              <StatPill label="trafo" value={stats.transformers} />
+              <StatPill label="TR" value={stats.transformers} />
               {stats.generators > 0 ? <StatPill label="OZE" value={stats.generators} /> : null}
             </div>
           ) : null}
@@ -192,7 +192,7 @@ export function TopContextBar({
         />
         <QuickActionButton
           label="Katalog"
-          title="Przegladarka katalogow"
+          title="Przeglądarka katalogów"
           onClick={onOpenCatalogBrowser}
           icon={
             <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
@@ -201,8 +201,8 @@ export function TopContextBar({
           }
         />
         <QuickActionButton
-          label="Przeglady"
-          title="Przeglady masowe"
+          label="Kontrola"
+          title="Kontrola techniczna układu"
           onClick={onOpenMassReview}
           icon={
             <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
@@ -223,7 +223,7 @@ export function TopContextBar({
 
         <div className={isReady ? 'scada-chip-ok' : 'scada-chip-warn'}>
           <span className={clsx('h-2 w-2 rounded-full', isReady ? 'bg-emerald-400' : 'bg-amber-400')} />
-          <span>{isReady ? 'Model gotowy' : 'Model w toku'}</span>
+          <span>{isReady ? 'Układ do analizy' : 'Układ w konfiguracji'}</span>
         </div>
       </div>
     </div>

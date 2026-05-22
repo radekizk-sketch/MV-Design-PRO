@@ -14,7 +14,7 @@ describe('area-migration - normalizacja starych kodów', () => {
     expect(normalizeAreaId('HI')).toBe('HISTORIA_AUDYT');
   });
 
-  it('akceptuje identyfikatory kanoniczne i bezpiecznie wraca do Model sieci', () => {
+  it('akceptuje identyfikatory kanoniczne i bezpiecznie wraca do budowy sieci', () => {
     expect(normalizeAreaId('WYNIKI_ANALIZY')).toBe('WYNIKI_ANALIZY');
     expect(normalizeAreaId('nieznany')).toBe('MODEL_SIECI');
     expect(normalizeAreaId(null)).toBe('MODEL_SIECI');

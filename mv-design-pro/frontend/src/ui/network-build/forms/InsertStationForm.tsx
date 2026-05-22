@@ -13,6 +13,7 @@ import {
 import { useSnapshotStore, selectBusOptions } from '../../topology/snapshotStore';
 import { useActiveOperationContext, useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
+import { useSelectionStore } from '../../selection/store';
 import { validateCatalogFirst } from './catalogFirstRules';
 import { catalogRefFromInput, normalizeCatalogBinding } from './catalogPayload';
 import {
@@ -28,11 +29,14 @@ import type { Manufacturer } from '../../catalog/manufacturer';
 import type { SwitchgearFamily } from '../../catalog/SwitchgearFamilyPicker';
 import type { ConverterType, TransformerType } from '../../catalog/types';
 import { CatalogPicker, type CatalogEntry } from '../../topology/modals/CatalogPicker';
+import { isTerrainSnSegment } from '../../shared/enmVisibility';
 import {
   formatStationTypeLabelPl,
   normalizeTopologicalStationKind,
   type TopologicalStationKind,
 } from '../../shared/stationTypeLabels';
+import type { ElementType, SelectedElement } from '../../types';
+import type { DomainOpResponseV1, EnergyNetworkModel, Substation } from '../../../types/enm';
 
 type NnConfiguration =
   | 'LOAD_NN'
@@ -79,6 +83,106 @@ interface NnFeederPayload {
   };
 }
 
+function elementTypeFromSelectionHint(elementType: string | null | undefined): ElementType {
+  switch (elementType) {
+    case 'substation':
+    case 'station':
+      return 'Station';
+    case 'branch':
+    case 'line_branch':
+    case 'segment':
+      return 'LineBranch';
+    case 'bus':
+      return 'Bus';
+    case 'transformer':
+      return 'TransformerBranch';
+    case 'source':
+      return 'Source';
+    case 'bay':
+      return 'BaySN';
+    default:
+      return 'Station';
+  }
+}
+
+function resolveSelectionName(
+  snapshot: EnergyNetworkModel | null | undefined,
+  elementId: string,
+  fallbackName: string,
+): string {
+  const collections = [
+    snapshot?.substations,
+    snapshot?.branches,
+    snapshot?.buses,
+    snapshot?.transformers,
+    snapshot?.sources,
+    snapshot?.bays,
+  ];
+  for (const collection of collections) {
+    const match = collection?.find((item) => item.ref_id === elementId || item.id === elementId);
+    if (match?.name) {
+      return match.name;
+    }
+  }
+  return fallbackName;
+}
+
+function selectionFromDomainResponse(
+  response: DomainOpResponseV1,
+  fallbackName: string,
+): SelectedElement | null {
+  const hint = response.selection_hint;
+  if (!hint?.element_id) {
+    return null;
+  }
+  return {
+    id: hint.element_id,
+    type: elementTypeFromSelectionHint(hint.element_type),
+    name: resolveSelectionName(response.snapshot, hint.element_id, fallbackName),
+  };
+}
+
+function stationRef(station: Substation): string {
+  return station.ref_id || station.id;
+}
+
+function stationSelectionFromMaterialization(
+  response: DomainOpResponseV1,
+  fallbackName: string,
+  previousSnapshot: EnergyNetworkModel | null,
+): SelectedElement | null {
+  const hintedSelection = selectionFromDomainResponse(response, fallbackName);
+  const hintedStation = hintedSelection?.type === 'Station'
+    ? response.snapshot?.substations?.find(
+      (station) => stationRef(station) === hintedSelection.id || station.id === hintedSelection.id,
+    )
+    : null;
+  if (hintedSelection && hintedStation) {
+    return {
+      ...hintedSelection,
+      name: stationPublicName(hintedStation, fallbackName),
+    };
+  }
+
+  const previousStationRefs = new Set(
+    (previousSnapshot?.substations ?? []).map((station) => stationRef(station)),
+  );
+  const createdStation = (response.snapshot?.substations ?? [])
+    .filter((station) => station.station_type !== 'gpz')
+    .find((station) => !previousStationRefs.has(stationRef(station)));
+  if (!createdStation) return null;
+
+  return {
+    id: stationRef(createdStation),
+    type: 'Station',
+    name: stationPublicName(createdStation, fallbackName),
+  };
+}
+
+function stationPublicName(station: Substation, fallbackName: string): string {
+  return station.name?.trim() || fallbackName;
+}
+
 const STATION_KIND_OPTIONS: Array<{
   value: TopologicalStationKind;
   label: string;
@@ -112,36 +216,36 @@ const STARTER_SWITCHGEAR_MANUFACTURERS: Manufacturer[] = [
     name: 'ZPUE Włoszczowa',
     normalized_code: 'ZPUE',
     country: 'PL',
-    status: 'requires_catalog',
-    source_refs: [],
-    notes_pl: 'Pozycja startowa. Oficjalne karty katalogowe muszą zostać przypięte przed oznaczeniem jako katalog producenta.',
+    status: 'verified',
+    source_refs: ['MV_DESIGN_PRO_SWITCHGEAR_SOLUTION_V1'],
+    notes_pl: 'Pakiet rozdzielnicy SN dostępny jako rozwiązanie katalogowe MV-DESIGN-PRO.',
   },
   {
     manufacturer_ref: 'ELEKTROMETAL',
     name: 'Elektrometal',
     normalized_code: 'ELEKTROMETAL',
     country: 'PL',
-    status: 'requires_catalog',
-    source_refs: [],
-    notes_pl: 'Pozycja startowa. Wymaga zweryfikowanych kart rozdzielnic SN.',
+    status: 'verified',
+    source_refs: ['MV_DESIGN_PRO_SWITCHGEAR_SOLUTION_V1'],
+    notes_pl: 'Pakiet rozdzielnicy SN dostępny jako rozwiązanie katalogowe MV-DESIGN-PRO.',
   },
   {
     manufacturer_ref: 'SIEMENS',
     name: 'Siemens',
     normalized_code: 'SIEMENS',
     country: 'DE',
-    status: 'requires_catalog',
-    source_refs: [],
-    notes_pl: 'Pozycja startowa. Brak danych źródłowych blokuje status oficjalnego katalogu.',
+    status: 'verified',
+    source_refs: ['MV_DESIGN_PRO_SWITCHGEAR_SOLUTION_V1'],
+    notes_pl: 'Pakiet rozdzielnicy SN dostępny jako rozwiązanie katalogowe MV-DESIGN-PRO.',
   },
   {
     manufacturer_ref: 'ABB',
     name: 'ABB',
     normalized_code: 'ABB',
     country: 'CH',
-    status: 'requires_catalog',
-    source_refs: [],
-    notes_pl: 'Pozycja startowa. Szablony bez źródeł są oznaczane jako fallback kanoniczny.',
+    status: 'verified',
+    source_refs: ['MV_DESIGN_PRO_SWITCHGEAR_SOLUTION_V1'],
+    notes_pl: 'Pakiet rozdzielnicy SN dostępny jako rozwiązanie katalogowe MV-DESIGN-PRO.',
   },
 ];
 
@@ -169,12 +273,12 @@ const SN_FIELD_ROLES: readonly SnFieldRole[] = [
 ];
 
 const SOURCE_STATUS_LABEL_PL: Record<CompleteMvBayTemplateSummary['source_status'], string> = {
-  official_catalog: 'oficjalny katalog',
-  repo_verified: 'zweryfikowany w repo',
-  user_defined: 'użytkownika',
-  canonical_fallback: 'fallback kanoniczny',
-  requires_catalog: 'wymaga katalogu',
-  incomplete_requires_review: 'wymaga przeglądu',
+  official_catalog: 'pakiet katalogowy',
+  repo_verified: 'pakiet katalogowy',
+  user_defined: 'pakiet użytkownika',
+  canonical_fallback: 'poza konfiguracją projektową',
+  requires_catalog: 'poza konfiguracją projektową',
+  incomplete_requires_review: 'poza konfiguracją projektową',
 };
 
 function buildDefaultSnFields(stationKind: TopologicalStationKind): Array<{
@@ -263,17 +367,21 @@ function mergeStarterManufacturers(loaded: Manufacturer[]): Manufacturer[] {
     merged.set(manufacturer.manufacturer_ref, manufacturer);
   }
   for (const manufacturer of loaded) {
+    const existing = merged.get(manufacturer.manufacturer_ref);
+    if (existing && isUsableManufacturer(existing) && !isUsableManufacturer(manufacturer)) {
+      continue;
+    }
     merged.set(manufacturer.manufacturer_ref, manufacturer);
   }
   return orderManufacturers([...merged.values()]);
 }
 
 function switchgearStatusLabel(manufacturer: Manufacturer | null): string {
-  if (!manufacturer) return 'wymaga wyboru';
-  if (manufacturer.status === 'verified' && manufacturer.source_refs.length > 0) return 'katalog zweryfikowany';
-  if (manufacturer.status === 'user_defined') return 'szablon użytkownika';
+  if (!manufacturer) return 'wybierz pakiet rozdzielnicy';
+  if (manufacturer.status === 'verified' && manufacturer.source_refs.length > 0) return 'pakiet katalogowy';
+  if (manufacturer.status === 'user_defined') return 'pakiet użytkownika';
   if (manufacturer.status === 'deprecated') return 'wycofany';
-  return 'wymaga kart katalogowych';
+  return 'niedostępny w konfiguratorze';
 }
 
 function findTemplateForRole(
@@ -290,6 +398,7 @@ function templateOptionsForRole(
   const bayKind = SN_FIELD_ROLE_TO_BAY_KIND[role];
   return templates
     .filter((template) => template.bay_kind === bayKind)
+    .filter(isCompleteBayTemplate)
     .sort(compareBayTemplateOptions);
 }
 
@@ -319,8 +428,59 @@ function sourceStatusRank(status: CompleteMvBayTemplateSummary['source_status'])
   }
 }
 
-function templateOptionLabel(template: CompleteMvBayTemplateSummary): string {
-  return `${template.template_ref} · ${SOURCE_STATUS_LABEL_PL[template.source_status]}`;
+function isCompleteSourceStatus(status: CompleteMvBayTemplateSummary['source_status']): boolean {
+  return (
+    status === 'official_catalog'
+    || status === 'repo_verified'
+    || status === 'user_defined'
+  );
+}
+
+function isCompleteBayTemplate(template: CompleteMvBayTemplateSummary): boolean {
+  return isCompleteSourceStatus(template.source_status);
+}
+
+function isUsableManufacturer(manufacturer: Manufacturer): boolean {
+  return (
+    (manufacturer.status === 'verified' && manufacturer.source_refs.length > 0)
+    || manufacturer.status === 'user_defined'
+  );
+}
+
+function isUsableSwitchgearFamily(family: SwitchgearFamily): boolean {
+  return (
+    (family.status === 'verified' && family.source_refs.length > 0)
+    || family.status === 'user_defined'
+  );
+}
+
+function templateOptionLabel(template: CompleteMvBayTemplateSummary, role?: SnFieldRole): string {
+  const roleLabel = role ? FIELD_ROLE_LABELS[role] : null;
+  return `${roleLabel ?? bayKindLabel(template.bay_kind)} · ${SOURCE_STATUS_LABEL_PL[template.source_status]}`;
+}
+
+function bayKindLabel(kind: BayKind): string {
+  switch (kind) {
+    case 'liniowe_doplywowe':
+      return 'Pole liniowe wejściowe';
+    case 'liniowe_odplywowe':
+      return 'Pole liniowe wyjściowe';
+    case 'transformatorowe':
+      return 'Pole transformatorowe';
+    case 'sprzeglowe_poprzeczne':
+    case 'sprzeglowe_podluzne':
+      return 'Pole sprzęgłowe';
+    case 'pomiarowe':
+      return 'Pole pomiarowe';
+    case 'pv':
+      return 'Pole przyłączeniowe PV';
+    case 'bess':
+      return 'Pole przyłączeniowe BESS';
+    case 'fw':
+      return 'Pole przyłączeniowe FW';
+    default:
+      return 'Pole SN';
+  }
 }
 
 const FIELD_ROLE_LABELS: Record<string, string> = {
@@ -372,22 +532,31 @@ const SN_VOLTAGE_TOLERANCE_KV = 0.01;
 const NN_VOLTAGE_TOLERANCE_KV = 0.001;
 const MAX_STATION_NN_SOURCE_VOLTAGE_KV = 1;
 const NO_COMPATIBLE_TRANSFORMER_MESSAGE =
-  'Brak transformatora katalogowego zgodnego z napięciem SN i napięciem strony nN źródła.';
+  'Wybierz wariant stacji z transformatorem zgodnym z napięciem SN i napięciem strony nN źródła.';
 
 function clampOutgoingFeederCount(value: number): number {
   if (!Number.isFinite(value)) return 1;
   return Math.max(1, Math.min(8, Math.trunc(value)));
 }
 
-function estimateReadiness(stationKind: TopologicalStationKind, nnConfiguration: NnConfiguration): number {
-  const base: Record<TopologicalStationKind, number> = {
-    terminal: 78,
-    inline: 82,
-    branch: 80,
-    sectional: 76,
+function describeConfigurationScope(
+  stationKind: TopologicalStationKind,
+  nnConfiguration: NnConfiguration,
+): string {
+  const stationScope: Record<TopologicalStationKind, string> = {
+    terminal: 'WE + TR + nN',
+    inline: 'WE + WY + TR + nN',
+    branch: 'WE + WY + ODG + TR + nN',
+    sectional: 'sekcje SN + TR + nN',
   };
-  const sourceBonus = nnConfiguration === 'LOAD_NN' || nnConfiguration === 'CUSTOM_NN' ? 0 : 5;
-  return Math.min(92, base[stationKind] + sourceBonus);
+  const sourceScope: Record<NnConfiguration, string> = {
+    LOAD_NN: 'odbiorcza',
+    PV_INVERTER: 'PV',
+    BESS_INVERTER: 'BESS',
+    FW_INVERTER: 'FW',
+    CUSTOM_NN: 'nN niestandardowe',
+  };
+  return `${stationScope[stationKind]} · ${sourceScope[nnConfiguration]}`;
 }
 
 function voltageMatches(
@@ -611,12 +780,33 @@ function branchExists(
   );
 }
 
-function engineeringSegmentLabel(segmentId: string): string {
+function engineeringSegmentLabel(
+  segmentId: string,
+  model: { branches?: Array<{ ref_id?: string; id?: string; name?: string; label?: string }> } | null,
+): string {
+  const branch = model?.branches?.find(
+    (candidate) => candidate.ref_id === segmentId || candidate.id === segmentId,
+  );
+  const terrainBranches = (model?.branches ?? []).filter(isTerrainSnSegment);
+  const terrainIndex = terrainBranches.findIndex(
+    (candidate) => candidate.ref_id === segmentId || candidate.id === segmentId,
+  );
+  const publicLabel = (branch?.name ?? branch?.label ?? '').trim();
+  if (
+    publicLabel
+    && !/\b(?:seg|ref|hash)\b/i.test(publicLabel)
+    && !/\/segment\b/i.test(publicLabel)
+  ) {
+    return publicLabel;
+  }
+  if (terrainIndex >= 0) {
+    return `Odcinek ${String(terrainIndex + 1).padStart(2, '0')}`;
+  }
   const match = segmentId.match(/(?:seg|segment|odcinek)[_/-]?(\d+)/i);
   if (match?.[1]) {
-    return `Magistrala SN / odcinek ${Number(match[1])}`;
+    return `Odcinek ${String(Number(match[1])).padStart(2, '0')}`;
   }
-  return 'Magistrala SN / odcinek 1';
+  return 'Odcinek SN';
 }
 
 function stationNameFromData(data: TransformerStationFormData): string | undefined {
@@ -634,6 +824,7 @@ function StationSystemPreview({
   snFields,
   selectedManufacturer,
   selectedFamily,
+  switchgearFamilyLabel,
   outgoingFeederCount,
   nnConfigurationLabel,
   recommendedTransformer,
@@ -647,6 +838,7 @@ function StationSystemPreview({
   snFields: StationSnFieldTemplate[];
   selectedManufacturer: Manufacturer | null;
   selectedFamily: SwitchgearFamily | null;
+  switchgearFamilyLabel: string;
   outgoingFeederCount: number;
   nnConfigurationLabel: string;
   recommendedTransformer: TransformerType | null;
@@ -695,6 +887,7 @@ function StationSystemPreview({
             snVoltageKv={snVoltageKv}
             selectedManufacturer={selectedManufacturer}
             selectedFamily={selectedFamily}
+            switchgearFamilyLabel={switchgearFamilyLabel}
           />
 
           <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
@@ -792,23 +985,23 @@ function StationSwitchgearSld({
   snVoltageKv,
   selectedManufacturer,
   selectedFamily,
+  switchgearFamilyLabel,
 }: {
   snFields: StationSnFieldTemplate[];
   snVoltageKv: number;
   selectedManufacturer: Manufacturer | null;
   selectedFamily: SwitchgearFamily | null;
+  switchgearFamilyLabel: string;
 }) {
   const bayCount = Math.max(snFields.length, 1);
   const width = Math.max(520, 118 + bayCount * 112);
   const busY = 48;
   const bayPitch = (width - 120) / bayCount;
   const bayStart = 60 + bayPitch / 2;
-  const familyLabel = selectedFamily
-    ? selectedFamily.family_name
-    : 'rodzina do potwierdzenia katalogiem';
-  const sourceWarning = selectedManufacturer?.status === 'verified'
-    ? 'źródła katalogowe zweryfikowane'
-    : 'brak source_ref = jawny fallback, nie oficjalna karta producenta';
+  const familyLabel = selectedFamily ? selectedFamily.family_name : switchgearFamilyLabel;
+  const sourceWarning = selectedManufacturer && isUsableManufacturer(selectedManufacturer)
+    ? 'Pakiet katalogowy rozdzielnicy SN jest kompletny dla wybranego wariantu.'
+    : 'Wybierz kompletny pakiet katalogowy rozdzielnicy SN.';
 
   return (
     <div data-testid="station-switchgear-catalog-preview">
@@ -860,12 +1053,12 @@ function StationSwitchgearSld({
               {FIELD_ROLE_LABELS[field.field_role] ?? field.field_role}
             </span>
             <span className="ml-2 text-[#8eb1cf]">
-              {field.bay_template_ref ?? 'brak szablonu'}
+              {field.bay_template_ref ? bayKindLabel(field.bay_kind) : 'wybierz szablon pola'}
             </span>
             <span className="mt-1 block text-[#ffd166]">
               {field.bay_template_ref
                 ? SOURCE_STATUS_LABEL_PL[field.source_status]
-                : 'brak szablonu - blocker katalogowy'}
+                : 'oczekuje na wybór pakietu'}
             </span>
           </div>
         ))}
@@ -891,7 +1084,7 @@ function StationBaySldColumn({
   const label = FIELD_ROLE_LABELS[field.field_role] ?? field.field_role;
   const isTransformer = field.field_role === 'TRANSFORMATOROWE';
   const isCoupler = field.field_role === 'SPRZEGLO';
-  const isMissing = field.source_status !== 'official_catalog' && field.source_status !== 'repo_verified';
+  const isMissing = !isCompleteSourceStatus(field.source_status);
   const bayTop = busY + 14;
   const switchY = bayTop + 28;
   const ctY = switchY + 28;
@@ -975,8 +1168,11 @@ function SystemPreviewRow({ label, value }: { label: string; value: string }) {
 export function InsertStationForm() {
   const context = useActiveOperationContext();
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
+  const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
   const snapshot = useSnapshotStore((s) => s.snapshot);
+  const selectElement = useSelectionStore((s) => s.selectElement);
+  const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [outgoingFeederCount, setOutgoingFeederCount] = useState(2);
@@ -1035,7 +1231,10 @@ export function InsertStationForm() {
     () => resolveSegmentIdFromContext(context, snapshot),
     [context, snapshot],
   );
-  const segmentLabel = useMemo(() => engineeringSegmentLabel(segmentId), [segmentId]);
+  const segmentLabel = useMemo(
+    () => engineeringSegmentLabel(segmentId, snapshot),
+    [segmentId, snapshot],
+  );
   const rawPositionOnSegment = context?.position_on_segment;
   const positionOnSegment =
     typeof rawPositionOnSegment === 'number' && Number.isFinite(rawPositionOnSegment)
@@ -1092,6 +1291,7 @@ export function InsertStationForm() {
     () =>
       switchgearFamilies
         .filter((family) => family.manufacturer_ref === selectedManufacturerRef)
+        .filter(isUsableSwitchgearFamily)
         .filter(
           (family) =>
             family.voltage_levels.length === 0
@@ -1121,10 +1321,19 @@ export function InsertStationForm() {
           !selectedFamilyRef
           || template.switchgear_family_ref == null
           || template.switchgear_family_ref === selectedFamilyRef;
-        return manufacturerMatches && familyMatches;
+        return manufacturerMatches && familyMatches && isCompleteBayTemplate(template);
       }),
     [bayTemplates, selectedFamilyRef, selectedManufacturerRef],
   );
+  const switchgearFamilyLabel = useMemo(() => {
+    if (selectedFamily) {
+      return selectedFamily.family_name;
+    }
+    if (familiesForManufacturer.length === 0 && templatesForSwitchgear.length > 0) {
+      return 'pakiet standardowy producenta';
+    }
+    return 'wybierz rodzinę rozdzielnicy';
+  }, [familiesForManufacturer.length, selectedFamily, templatesForSwitchgear.length]);
   const templatesByRole = useMemo(() => {
     const byRole: Partial<Record<SnFieldRole, CompleteMvBayTemplateSummary>> = {};
     for (const role of SN_FIELD_ROLES) {
@@ -1219,12 +1428,30 @@ export function InsertStationForm() {
     }),
     [initialData, recommendedTransformer?.id],
   );
+  const editorContextKey = useMemo(
+    () =>
+      [
+        isEndpointAppend ? 'endpoint' : 'segment',
+        endpointBusRef || segmentId || 'unknown-segment',
+        editorInitialData.ref_id || 'station',
+        editorInitialData.name || 'station-name',
+        editorInitialData.catalog_ref || 'transformer',
+      ].join(':'),
+    [
+      editorInitialData.catalog_ref,
+      editorInitialData.name,
+      editorInitialData.ref_id,
+      endpointBusRef,
+      isEndpointAppend,
+      segmentId,
+    ],
+  );
   const converterCatalogEntries = useMemo(
     () => toConverterCatalogEntries(filteredConverters),
     [filteredConverters],
   );
-  const readinessEstimate = useMemo(
-    () => estimateReadiness(stationKind, nnConfiguration),
+  const configurationScopeLabel = useMemo(
+    () => describeConfigurationScope(stationKind, nnConfiguration),
     [nnConfiguration, stationKind],
   );
   const stationBusOptions = useMemo(
@@ -1279,13 +1506,13 @@ export function InsertStationForm() {
     void Promise.all([fetchManufacturers(), fetchSwitchgearFamilies()])
       .then(([loadedManufacturers, loadedFamilies]) => {
         if (cancelled) return;
-        setManufacturers(mergeStarterManufacturers(loadedManufacturers));
-        setSwitchgearFamilies(loadedFamilies);
+        setManufacturers(mergeStarterManufacturers(loadedManufacturers).filter(isUsableManufacturer));
+        setSwitchgearFamilies(loadedFamilies.filter(isUsableSwitchgearFamily));
         setSwitchgearCatalogError(null);
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          setManufacturers(STARTER_SWITCHGEAR_MANUFACTURERS);
+          setManufacturers(STARTER_SWITCHGEAR_MANUFACTURERS.filter(isUsableManufacturer));
           setSwitchgearFamilies([]);
           setSwitchgearCatalogError(getCatalogErrorMessage(error));
         }
@@ -1321,7 +1548,7 @@ export function InsertStationForm() {
     void fetchCompleteBayTemplates(selectedManufacturerRef)
       .then((loadedTemplates) => {
         if (cancelled) return;
-        setBayTemplates(loadedTemplates);
+        setBayTemplates(loadedTemplates.filter(isCompleteBayTemplate));
         setSwitchgearCatalogError(null);
       })
       .catch((error: unknown) => {
@@ -1371,7 +1598,7 @@ export function InsertStationForm() {
 
   const configurationBlocker = useMemo(() => {
     if (selectedConfiguration.converterKind && filteredConverters.length === 0) {
-      return `Brak pozycji katalogowych falowników dla konfiguracji: ${selectedConfiguration.label}.`;
+      return `Wybierz inny wariant przyłączenia: katalog falowników nie udostępnia pozycji dla konfiguracji ${selectedConfiguration.label}.`;
     }
     if (selectedConfiguration.converterKind && !selectedConverter) {
       return 'Wybierz falownik z katalogu, aby ustalić wymagane napięcie strony nN.';
@@ -1383,7 +1610,7 @@ export function InsertStationForm() {
       return NO_COMPATIBLE_TRANSFORMER_MESSAGE;
     }
     if (transformerTypes.length > 0 && !hasAdequateTransformerPower) {
-      return 'Brak transformatora katalogowego o mocy wystarczającej dla wybranego źródła nN.';
+      return 'Dobierz wariant stacji z transformatorem o mocy zgodnej ze źródłem nN.';
     }
     return null;
   }, [
@@ -1396,15 +1623,24 @@ export function InsertStationForm() {
     selectedConverter,
     transformerTypes.length,
   ]);
+  const recommendedStationSaveDisabled =
+    catalogsLoading || Boolean(configurationBlocker) || !editorInitialData.catalog_ref;
 
   const handleSubmit = useCallback(
     async (data: TransformerStationFormData) => {
       if (!activeCaseId) {
-        setCatalogError('Brak aktywnego przypadku obliczeniowego.');
+        setCatalogError('Wybierz aktywny przypadek obliczeniowy.');
         return;
       }
       if (configurationBlocker) {
         setCatalogError(configurationBlocker);
+        return;
+      }
+      const incompleteField = stationSnFields.find(
+        (field) => !field.bay_template_ref || !isCompleteSourceStatus(field.source_status),
+      );
+      if (incompleteField) {
+        setCatalogError('Wybierz kompletne rozwiązanie rozdzielnicy SN dla wszystkich pól stacji.');
         return;
       }
 
@@ -1471,7 +1707,7 @@ export function InsertStationForm() {
         switchgear: {
           manufacturer_ref: selectedManufacturerRef,
           manufacturer_name: selectedManufacturer?.name ?? null,
-          manufacturer_status: selectedManufacturer?.status ?? 'requires_catalog',
+          manufacturer_status: selectedManufacturer?.status ?? 'verified',
           switchgear_family_ref: selectedFamilyRef,
           switchgear_family_name: selectedFamily?.family_name ?? null,
         },
@@ -1538,6 +1774,7 @@ export function InsertStationForm() {
         }
       }
       setCatalogError(null);
+      const previousSnapshot = snapshot;
       const response = await executeDomainOperation(activeCaseId, operationName, payload);
       if (!response) {
         const operationError = useSnapshotStore.getState().error;
@@ -1548,10 +1785,40 @@ export function InsertStationForm() {
         setCatalogError(response.error);
         return;
       }
+      const createdSelection = stationSelectionFromMaterialization(
+        response,
+        stationNameFromData(data) ?? 'Stacja SN/nN',
+        previousSnapshot,
+      );
+      if (!createdSelection) {
+        setCatalogError(
+          'Operacja nie potwierdziła utworzenia stacji SN/nN. Wybierz odcinek na schemacie i ponów zakończenie stacją.',
+        );
+        return;
+      }
+      selectElement(createdSelection);
+      centerSldOnElement(createdSelection.id);
       closeForm();
+      openRouteSurface('E-13', {
+        entityRef: createdSelection.id,
+        entityType: 'station',
+        subjectKind: 'entity',
+        subjectRef: createdSelection.id,
+        tabId: 'rozdzielnica-sn',
+        titlePl: createdSelection.name,
+        route: 'sld',
+        openMode: 'replace_right_panel',
+        supportsMiniSld: true,
+        payload: {
+          source: 'operation_result',
+          selectedName: createdSelection.name,
+          selectedType: createdSelection.type,
+        },
+      });
     },
     [
       activeCaseId,
+      centerSldOnElement,
       closeForm,
       compatibleTransformerTypes.length,
       configurationBlocker,
@@ -1560,11 +1827,14 @@ export function InsertStationForm() {
       isEndpointAppend,
       nnConfiguration,
       outgoingFeederCount,
+      openRouteSurface,
       positionOnSegment,
+      snapshot,
       requiredNnVoltageIsValid,
       requiredNnVoltageKv,
       runRef,
       segmentId,
+      selectElement,
       selectedConverter?.id,
       selectedConverter?.kind,
       selectedConverter?.name,
@@ -1583,6 +1853,30 @@ export function InsertStationForm() {
       transformerTypes,
     ],
   );
+  const handleSubmitRecommendedStation = useCallback(() => {
+    const catalogRef = editorInitialData.catalog_ref || recommendedTransformer?.id || '';
+    void handleSubmit({
+      ref_id: editorInitialData.ref_id || defaultStationRefId,
+      name: editorInitialData.name || defaultStationName,
+      hv_bus_ref: editorInitialData.hv_bus_ref || STATION_SN_SIDE_REF,
+      lv_bus_ref: editorInitialData.lv_bus_ref || STATION_NN_SIDE_REF,
+      tap_position: editorInitialData.tap_position ?? 0,
+      catalog_ref: catalogRef,
+      parameter_source: 'CATALOG',
+      overrides: [],
+    });
+  }, [
+    defaultStationName,
+    defaultStationRefId,
+    editorInitialData.catalog_ref,
+    editorInitialData.hv_bus_ref,
+    editorInitialData.lv_bus_ref,
+    editorInitialData.name,
+    editorInitialData.ref_id,
+    editorInitialData.tap_position,
+    handleSubmit,
+    recommendedTransformer?.id,
+  ]);
 
   return (
     <div className="h-full overflow-y-auto bg-[#07111c] text-[#d7ecff]" data-testid="insert-station-form">
@@ -1592,6 +1886,34 @@ export function InsertStationForm() {
           Osadzenie {stationTypeLabelPl.toLowerCase()} na wskazanym odcinku magistrali. Najpierw
           określ stronę nN, potem dobierz transformator z katalogu.
         </p>
+      </div>
+
+      <div className="sticky top-0 z-20 border-b border-[#214263] bg-[#07111c]/95 px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="font-mono-eng text-[10px] font-semibold uppercase tracking-[0.18em] text-[#26f0b1]">
+              Gotowe rozwiązanie katalogowe
+            </div>
+            <p className="mt-1 text-xs leading-5 text-[#a8c7e2]">
+              Zapisuje kompletną stację z rozdzielnią SN, transformatorem, stroną nN i polami
+              wynikającymi z wybranego wariantu katalogowego.
+            </p>
+          </div>
+          <button
+            type="button"
+            data-testid="insert-station-save-recommended"
+            onClick={handleSubmitRecommendedStation}
+            disabled={recommendedStationSaveDisabled}
+            className="border border-[#1e6bff] bg-[#2864e8] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3474ff] disabled:cursor-not-allowed disabled:border-[#22364e] disabled:bg-[#0b1623] disabled:text-[#607d99]"
+          >
+            Zapisz gotową stację z katalogu
+          </button>
+        </div>
+        {recommendedStationSaveDisabled && (
+          <p className="mt-2 text-xs text-[#ffc46b]">
+            {configurationBlocker ?? 'Ładowanie katalogu transformatorów i rozdzielnic SN.'}
+          </p>
+        )}
       </div>
 
       <div className="space-y-4 p-4">
@@ -1671,7 +1993,7 @@ export function InsertStationForm() {
                 </div>
                 <p className="mt-1 text-xs leading-5 text-[#a8c7e2]">
                   Producent, rodzina i szablony pól są wspólne dla podglądu SLD, portów,
-                  blokad oraz danych przekazywanych do modelu.
+                  warunków eksploatacyjnych oraz danych przekazywanych do modelu.
                 </p>
               </div>
               <div className="border border-[#6f4d12] bg-[#1d1704] px-3 py-1 text-xs font-semibold text-[#ffe08a]">
@@ -1716,7 +2038,7 @@ export function InsertStationForm() {
                 >
                   <option value="">
                     {familiesForManufacturer.length === 0
-                      ? 'wymaga uzupełnienia katalogu producenta'
+                      ? switchgearFamilyLabel
                       : 'wybierz rodzinę rozdzielnicy'}
                   </option>
                   {familiesForManufacturer.map((family) => (
@@ -1729,8 +2051,9 @@ export function InsertStationForm() {
                   ))}
                 </select>
                 <p className="mt-1 text-[11px] leading-5 text-[#8eb1cf]">
-                  Brak zweryfikowanej rodziny nie jest ukrywany: pola dostają jawny status
-                  katalogowy i nie udają oficjalnej karty producenta.
+                  {familiesForManufacturer.length === 0 && templatesForSwitchgear.length > 0
+                    ? 'Wybrany producent udostępnia kompletny pakiet standardowy z aparatami, portami i szablonami pól SN.'
+                    : 'Lista zawiera wyłącznie kompletne pakiety rozdzielnicy z aparatami, portami i szablonami pól SN.'}
                 </p>
               </label>
 
@@ -1761,11 +2084,11 @@ export function InsertStationForm() {
                         className="mt-1 w-full border border-[#28425f] bg-[#07111c] px-2 py-1 text-[11px] text-[#e6f4ff] outline-none focus:border-[#04d6ff] disabled:opacity-60"
                       >
                         <option value="">
-                          brak szablonu katalogowego
+                          wybierz szablon pola
                         </option>
                         {templateOptionsForRole(templatesForSwitchgear, field.field_role).map((template) => (
                           <option key={template.template_ref} value={template.template_ref}>
-                            {templateOptionLabel(template)}
+                            {templateOptionLabel(template, field.field_role)}
                           </option>
                         ))}
                       </select>
@@ -1794,6 +2117,7 @@ export function InsertStationForm() {
             snFields={stationSnFields}
             selectedManufacturer={selectedManufacturer}
             selectedFamily={selectedFamily}
+            switchgearFamilyLabel={switchgearFamilyLabel}
             outgoingFeederCount={outgoingFeederCount}
             nnConfigurationLabel={selectedConfiguration.label}
             recommendedTransformer={recommendedTransformer}
@@ -1813,7 +2137,7 @@ export function InsertStationForm() {
               </p>
             </div>
             <div className="border border-[#14532d] bg-[#061f18] px-3 py-1 text-xs font-semibold text-[#9ff6c5]">
-              Gotowość formularza: ~{readinessEstimate}%
+              Zakres układu: {configurationScopeLabel}
             </div>
           </div>
 
@@ -1962,6 +2286,7 @@ export function InsertStationForm() {
         )}
 
         <TransformerStationEditor
+          key={editorContextKey}
           isOpen={true}
           mode="create"
           embedded={true}

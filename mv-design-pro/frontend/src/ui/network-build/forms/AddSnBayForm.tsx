@@ -207,7 +207,7 @@ export function AddSnBayForm() {
 
   const handleSubmit = useCallback(async () => {
     if (!activeCaseId) {
-      setSubmitError('Brak aktywnego przypadku obliczeniowego.');
+      setSubmitError('Wybierz zakres obliczeń przed zapisem pola SN.');
       return;
     }
     if (!stationRef) {

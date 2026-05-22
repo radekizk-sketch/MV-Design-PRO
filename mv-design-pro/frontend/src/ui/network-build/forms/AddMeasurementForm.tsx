@@ -132,7 +132,7 @@ export function AddMeasurementForm() {
 
   const handleSubmit = useCallback(async () => {
     if (!activeCaseId) {
-      setSubmitError('Brak aktywnego przypadku obliczeniowego.');
+      setSubmitError('Wybierz zakres obliczeń przed zapisem toru pomiarowego.');
       return;
     }
     if (!bayRef) {
@@ -365,7 +365,7 @@ export function AddMeasurementForm() {
 
         {bayOptions.length === 0 && (
           <div className="rounded-lg border border-amber-500/40 bg-amber-950/40 px-3 py-2 text-xs text-amber-200">
-            Brak pól SN w aktywnym modelu. Dodanie przekładnika wymaga istniejącego pola.
+            Najpierw dodaj pole SN, aby skonfigurować przekładnik.
           </div>
         )}
 

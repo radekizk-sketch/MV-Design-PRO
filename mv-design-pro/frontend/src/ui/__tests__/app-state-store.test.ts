@@ -183,7 +183,7 @@ describe('App State Store', () => {
         expect(store.canCalculate()).toBe(false);
       });
 
-      it('should return false when not in MODEL_EDIT mode', () => {
+      it('should allow calculation from case configuration and result surfaces when model is ready', () => {
         const store = useAppStateStore.getState();
         store.setActiveCase('case-1', 'SC-001', 'ShortCircuitCase', 'NONE');
         useSnapshotStore.setState({ snapshot: makeCalculationReadySnapshot() });
@@ -191,7 +191,7 @@ describe('App State Store', () => {
         expect(store.canCalculate()).toBe(true);
 
         store.setActiveMode('RESULT_VIEW');
-        expect(store.canCalculate()).toBe(false);
+        expect(store.canCalculate()).toBe(true);
       });
 
       it('should return false when results are FRESH', () => {

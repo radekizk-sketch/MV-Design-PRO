@@ -4,7 +4,13 @@ import { useAppStateStore } from '../../app-state/store';
 function resultLabel(status: string): string {
   if (status === 'FRESH') return 'Wyniki aktualne';
   if (status === 'OUTDATED') return 'Wymaga ponownego obliczenia';
-  return 'Brak wyników';
+  return 'Wyniki nieuruchomione';
+}
+
+function resultScopeLabel(activeRunId: string | null, status: string): string {
+  if (activeRunId && status === 'FRESH') return 'Aktywne wyniki obliczeń';
+  if (activeRunId) return 'Wynik wybrany do analizy';
+  return 'Nie wybrano wyniku';
 }
 
 export function WynikiContextPanel() {
@@ -36,8 +42,10 @@ export function WynikiContextPanel() {
 
       <div className="border-b border-scada-border bg-scada-bg px-3 py-2 text-[11px] text-scada-text">
         <div data-testid="wyniki-active-run">
-          <span className="text-scada-muted">Obliczenie: </span>
-          <span className="font-mono">{activeRunId ?? 'nie wybrano'}</span>
+          <span className="text-scada-muted">Zakres wyników: </span>
+          <span data-testid="wyniki-active-run-label" className="font-semibold">
+            {resultScopeLabel(activeRunId, resultStatus)}
+          </span>
         </div>
       </div>
 

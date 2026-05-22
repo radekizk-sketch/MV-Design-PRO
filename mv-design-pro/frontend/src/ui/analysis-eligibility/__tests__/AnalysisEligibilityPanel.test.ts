@@ -11,6 +11,7 @@ import {
   ELIGIBILITY_ANALYSIS_LABELS,
   ELIGIBILITY_STATUS_LABELS,
 } from '../../types';
+import { publicElementRefLabel } from '../AnalysisEligibilityPanel';
 
 function makeEligibilityIssue(
   code: string,
@@ -66,7 +67,7 @@ const ineligibleSc2f = makeEligibilityResult(
     makeEligibilityIssue(
       'ELIG_SC2_MISSING_Z2',
       'BLOCKER',
-      'Źródła nie posiadają danych składowej ujemnej (Z2).',
+      'Układy wytwórcze nie posiadają danych składowej ujemnej (Z2).',
     ),
   ],
 );
@@ -259,7 +260,15 @@ describe('AnalysisEligibilityPanel Polish labels and determinism', () => {
 
   it('uses Polish labels for eligibility statuses', () => {
     expect(ELIGIBILITY_STATUS_LABELS.ELIGIBLE).toBe('Możliwe');
-    expect(ELIGIBILITY_STATUS_LABELS.INELIGIBLE).toBe('Zablokowane');
+    expect(ELIGIBILITY_STATUS_LABELS.INELIGIBLE).toBe('Do konfiguracji');
+  });
+
+  it('maps internal element references to public engineering labels', () => {
+    expect(publicElementRefLabel('gpz/abc/source/main')).toBe('Źródło GPZ');
+    expect(publicElementRefLabel('gpz/abc/bay/001/001')).toBe('Pole SN w GPZ');
+    expect(publicElementRefLabel('stn/abc/station')).toBe('Stacja SN/nN');
+    expect(publicElementRefLabel('seg/abc/segment_R')).toBe('Odcinek SN');
+    expect(publicElementRefLabel('src_grid')).toBe('Źródło zasilania');
   });
 
   it('does not leak project codenames to labels', () => {

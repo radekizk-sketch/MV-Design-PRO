@@ -2,7 +2,8 @@ import { create } from 'zustand';
 
 import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
 import { resolveReadinessVisualState } from '../engineering-readiness/readinessVisualState';
-import { isOperationalBus } from '../shared/enmVisibility';
+import { isOperationalBus, isTerrainSnSegment } from '../shared/enmVisibility';
+import { stationPublicIdentity } from '../shared/publicTechnicalLabels';
 import { getOperationSurfaceByOp } from '../topology/modals/operationSurfaceRegistry';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import type { ElementType } from '../types';
@@ -410,7 +411,7 @@ function mapInspectorPanelMeta(
     case 'report':
       return { screenCode: REPORT_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Generator raportu', route: 'report', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
     case 'readiness':
-      return { screenCode: 'E-04', sizeClass: 'B', titlePl: 'Gotowosc modelu i lista brakow', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: false, stackLevel: 1 };
+      return { screenCode: 'E-04', sizeClass: 'B', titlePl: 'Przegląd techniczny układu', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: false, stackLevel: 1 };
     case 'history':
       return { screenCode: 'variants_runs', sizeClass: 'C', titlePl: 'Stan obliczeń wariantu', route: 'variants', openMode: 'expand_workspace', supportsMiniSld: false, stackLevel: 1 };
     case 'topology':
@@ -418,7 +419,7 @@ function mapInspectorPanelMeta(
       return { screenCode: 'E-29', sizeClass: 'B', titlePl: 'Skladowe symetryczne i siec zerowa', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 1 };
     case 'results':
     case 'trace':
-      return { screenCode: ANALYSIS_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Poziom analityczny', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
+      return { screenCode: ANALYSIS_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Analizy techniczne', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
     case 'coordination':
       return { screenCode: 'E-28', sizeClass: 'C', titlePl: 'Koordynacja zabezpieczeń', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
   }
@@ -499,7 +500,9 @@ function buildRouteSurfaceDescriptor(
     ?? (sizeClass === 'C' ? 'expand_workspace' : 'replace_right_panel');
   const entityRef = options.entityRef ?? null;
   const subjectKind = options.subjectKind ?? (isHelper ? 'helper_context' : screenDefinition!.subjectKind);
-  const subjectRef = options.subjectRef ?? entityRef;
+  const subjectRef = Object.prototype.hasOwnProperty.call(options, 'subjectRef')
+    ? options.subjectRef ?? null
+    : entityRef;
   const route = options.route ?? helperDefaults?.route ?? inferRouteKey(screenCode);
   const resolvedTabId = options.tabId ?? (isHelper ? null : screenMatrixEntry!.defaultTabId);
   const surfaceId = createSurfaceId(kind, entityRef ?? options.subjectRef ?? resolvedTabId);
@@ -895,12 +898,19 @@ export function computeBuildPhase(
   const hasTrunks = (logicalViews?.trunks ?? []).some((trunk) => (trunk.segments?.length ?? 0) > 0);
   if (!hasTrunks) return 'HAS_SOURCE';
 
-  const hasStations = (snapshot.substations?.length ?? 0) > 0;
+  const hasStations = selectFieldStationCount(snapshot) > 0;
   if (!hasStations) return 'HAS_TRUNKS';
 
   if (readiness?.ready) return 'READY';
 
   return 'HAS_STATIONS';
+}
+
+export function selectFieldStationCount(snapshot: EnergyNetworkModel | null): number {
+  if (!snapshot) return 0;
+  return (snapshot.substations ?? []).filter(
+    (station) => String(station.station_type ?? '').toLowerCase() !== 'gpz',
+  ).length;
 }
 
 export function selectOpenTerminals(logicalViews: LogicalViewsV1 | null): TerminalRef[] {
@@ -988,6 +998,7 @@ export function selectStationSummaries(
   if (!snapshot) return [];
 
   return (snapshot.substations ?? [])
+    .filter((s) => String(s.station_type ?? '').toLowerCase() !== 'gpz')
     .map((s) => {
       const stationBays = (snapshot.bays ?? []).filter((b) => b.substation_ref === s.id);
       const branchBays = stationBays.filter(
@@ -998,9 +1009,11 @@ export function selectStationSummaries(
         (bus) => isOperationalBus(bus) && bus.voltage_kv < 1 && s.bus_refs.includes(bus.ref_id),
       );
 
+      const identity = stationPublicIdentity(snapshot, s);
+
       return {
         id: s.id,
-        name: s.name,
+        name: identity.displayName,
         stationType: s.station_type,
         trunkRef: null,
         hasTransformer,
@@ -1008,8 +1021,7 @@ export function selectStationSummaries(
         freeBranchPorts: branchBays.length,
         readinessOk: !blockerCountsByElement?.has(s.id),
       };
-    })
-    .sort((a, b) => a.id.localeCompare(b.id));
+    });
 }
 
 export function selectTransformerSummaries(
@@ -1092,6 +1104,46 @@ export function selectGridSourceStationRef(snapshot: EnergyNetworkModel | null):
 
   const gpzStation = snapshot.substations.find((station) => station.station_type === 'gpz');
   return gpzStation?.ref_id ?? snapshot.substations[0]?.ref_id ?? null;
+}
+
+export function selectSnFieldCount(snapshot: EnergyNetworkModel | null): number {
+  if (!snapshot) return 0;
+
+  const knownRefs = new Set(
+    (snapshot.bays ?? [])
+      .map((bay) => bay.ref_id || bay.id)
+      .filter((ref): ref is string => typeof ref === 'string' && ref.length > 0),
+  );
+  let anonymousFieldSpecs = 0;
+
+  for (const substation of snapshot.substations ?? []) {
+    const meta = substation.meta as { field_specs?: unknown } | undefined;
+    const rawSpecs = meta?.field_specs;
+    if (!Array.isArray(rawSpecs)) {
+      continue;
+    }
+    for (const rawSpec of rawSpecs) {
+      if (!rawSpec || typeof rawSpec !== 'object') {
+        continue;
+      }
+      const spec = rawSpec as { field_ref?: unknown; ref_id?: unknown };
+      const ref = typeof spec.field_ref === 'string'
+        ? spec.field_ref
+        : typeof spec.ref_id === 'string'
+          ? spec.ref_id
+          : null;
+      if (ref && knownRefs.has(ref)) {
+        continue;
+      }
+      if (ref) {
+        knownRefs.add(ref);
+      } else {
+        anonymousFieldSpecs += 1;
+      }
+    }
+  }
+
+  return knownRefs.size + anonymousFieldSpecs;
 }
 
 export interface ConfiguredGridSourceSnField {
@@ -1319,15 +1371,15 @@ export function selectBlockersByCategory(
 export function buildPhaseLabel(phase: BuildPhase): string {
   switch (phase) {
     case 'NO_SOURCE':
-      return 'Brak źródła zasilania';
+      return 'Rozpocznij od GPZ';
     case 'HAS_SOURCE':
-      return 'GPZ zdefiniowany - dodaj pole SN GPZ i pierwszy odcinek';
+      return 'GPZ zdefiniowany - skonfiguruj pole SN i pierwszy odcinek';
     case 'HAS_TRUNKS':
-      return 'Magistrala wyprowadzona z pola GPZ - osadź stacje i ZKSN';
+      return 'Magistrala SN wyprowadzona - osadź stacje i ZKSN';
     case 'HAS_STATIONS':
-      return 'Stacje osadzone - uzupełnij dane';
+      return 'Stacje osadzone - skonfiguruj dane katalogowe';
     case 'READY':
-      return 'Gotowy do analizy';
+      return 'Do analizy';
   }
 }
 
@@ -1343,12 +1395,17 @@ export function useNetworkBuildDerived() {
 
   const sourceCount = snapshot?.sources?.length ?? 0;
   const trunkCount = logicalViews?.trunks?.length ?? 0;
+  const snapshotSnBranchCount = (snapshot?.branches ?? []).filter(
+    isTerrainSnSegment,
+  ).length;
+  const snFieldCount = selectSnFieldCount(snapshot);
   const trunkSegmentCount = (logicalViews?.trunks ?? []).reduce(
     (count, trunk) => count + (trunk.segments?.length ?? 0),
     0,
   );
   const branchCount = logicalViews?.branches?.length ?? 0;
-  const stationCount = snapshot?.substations?.length ?? 0;
+  const snSectionCount = Math.max(trunkSegmentCount + branchCount, snapshotSnBranchCount);
+  const stationCount = selectFieldStationCount(snapshot);
   const transformerCount = snapshot?.transformers?.length ?? 0;
   const loadCount = snapshot?.loads?.length ?? 0;
   const generatorCount = snapshot?.generators?.length ?? 0;
@@ -1361,8 +1418,9 @@ export function useNetworkBuildDerived() {
     loading: readinessLoading,
     workspaceBlockState,
   });
+  const hasMinimumDesignFlow = sourceCount > 0 && (trunkSegmentCount + branchCount) > 0 && stationCount > 0;
 
-  const buildPhase = readinessVisualState === 'ready' && sourceCount > 0
+  const buildPhase = readinessVisualState === 'ready' && hasMinimumDesignFlow
     ? 'READY'
     : computeBuildPhase(snapshot, logicalViews, null);
   const openTerminals = selectOpenTerminals(logicalViews);
@@ -1378,7 +1436,7 @@ export function useNetworkBuildDerived() {
   const unconfiguredGpzSnFields = gpzSnFieldCandidates.filter((field) => !field.configured);
   const gridSourceStationRef = selectGridSourceStationRef(snapshot);
   const blockersByCategory = selectBlockersByCategory(readinessBlockers);
-  const isReady = readinessVisualState === 'ready' && sourceCount > 0;
+  const isReady = readinessVisualState === 'ready' && hasMinimumDesignFlow;
   const readiness = {
     ready: readinessReady,
     blockers: readinessIssues.filter((issue) => issue.severity === 'BLOCKER'),
@@ -1409,6 +1467,8 @@ export function useNetworkBuildDerived() {
     trunkCount,
     trunkSegmentCount,
     branchCount,
+    snSectionCount,
+    snFieldCount,
     stationCount,
     transformerCount,
     loadCount,

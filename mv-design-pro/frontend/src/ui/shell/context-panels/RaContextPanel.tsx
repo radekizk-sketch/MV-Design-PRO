@@ -2,7 +2,7 @@
  * RaContextPanel — Panel kontekstu obszaru RA (Raporty).
  *
  * Wyświetla:
- *  - Listę szablonów raportów (Proof Pack types)
+ *  - Listę szablonów raportów i uzasadnień
  *  - Status aktywnego przypadku (czy są wyniki)
  *  - Eksport (PDF / DOCX / JSON)
  *
@@ -14,20 +14,21 @@ import { useAppStateStore } from '../../app-state/store';
 
 interface ReportTemplate {
   id: string;
+  codeLabel: string;
   label: string;
   description: string;
   requires: 'SC' | 'LF' | 'PROT' | 'ANY';
 }
 
 const TEMPLATES: ReportTemplate[] = [
-  { id: 'SC3F', label: 'Zwarcie 3-fazowe', description: 'IEC 60909, krok-po-kroku', requires: 'SC' },
-  { id: 'SC1F', label: 'Zwarcie 1-fazowe doziemne', description: 'IEC 60909, składowe symetryczne', requires: 'SC' },
-  { id: 'VDROP', label: 'Spadek napięcia', description: 'Profil napięcia, IEC 60038', requires: 'LF' },
-  { id: 'EQUIPMENT', label: 'Wytrzymałość aparatów', description: 'Termiczna i dynamiczna', requires: 'SC' },
-  { id: 'POWER_FLOW', label: 'Rozpływ mocy', description: 'Newton-Raphson, profil U/P/Q', requires: 'LF' },
-  { id: 'LOSSES', label: 'Bilans strat', description: 'Straty czynne i bierne', requires: 'LF' },
-  { id: 'PROTECTION', label: 'Koordynacja zabezpieczeń', description: 'Krzywe TCC, selektywność', requires: 'PROT' },
-  { id: 'EARTHING', label: 'Uziemienia', description: 'Napięcie dotykowe i rażenia', requires: 'SC' },
+  { id: 'SC3F', codeLabel: 'SC3F', label: 'Zwarcie 3-fazowe', description: 'IEC 60909, krok-po-kroku', requires: 'SC' },
+  { id: 'SC1F', codeLabel: 'SC1F', label: 'Zwarcie 1-fazowe doziemne', description: 'IEC 60909, składowe symetryczne', requires: 'SC' },
+  { id: 'VDROP', codeLabel: 'Spadek U', label: 'Spadek napięcia', description: 'Profil napięcia, IEC 60038', requires: 'LF' },
+  { id: 'EQUIPMENT', codeLabel: 'Aparatura', label: 'Wytrzymałość aparatów', description: 'Termiczna i dynamiczna', requires: 'SC' },
+  { id: 'POWER_FLOW', codeLabel: 'Rozpływ', label: 'Rozpływ mocy', description: 'Newton-Raphson, profil U/P/Q', requires: 'LF' },
+  { id: 'LOSSES', codeLabel: 'Straty', label: 'Bilans strat', description: 'Straty czynne i bierne', requires: 'LF' },
+  { id: 'PROTECTION', codeLabel: 'Zabezpieczenia', label: 'Koordynacja zabezpieczeń', description: 'Krzywe TCC, selektywność', requires: 'PROT' },
+  { id: 'EARTHING', codeLabel: 'Uziemienia', label: 'Uziemienia', description: 'Napięcie dotykowe i rażenia', requires: 'SC' },
 ];
 
 function getRequiresLabel(requires: ReportTemplate['requires']): string {
@@ -73,7 +74,7 @@ export function RaContextPanel() {
             ? 'Wyniki aktualne'
             : isOutdated
               ? 'Wymaga ponownego obliczenia'
-              : 'Brak wyników'}
+              : 'Wyniki nieuruchomione'}
         </div>
       </div>
 
@@ -86,7 +87,9 @@ export function RaContextPanel() {
               className="flex flex-col gap-0.5 px-3 py-2 hover:bg-scada-hover-nav"
             >
               <div className="flex items-center gap-2">
-                <span className="font-mono text-[9px] text-scada-muted">[{tpl.id}]</span>
+                <span className="rounded border border-scada-border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-scada-muted">
+                  {tpl.codeLabel}
+                </span>
                 <span className="flex-1 text-[12px] font-semibold text-scada-text">{tpl.label}</span>
               </div>
               <div className="text-[10px] text-scada-muted">{tpl.description}</div>

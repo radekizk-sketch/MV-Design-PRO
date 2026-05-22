@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import pytest
 from domain.readiness_fix_actions import KNOWN_BLOCKER_CODES, resolve_fix_action
+from enm.catalog_completion import complete_catalog_defaults
 from enm.domain_operations import execute_domain_operation
 from enm.models import (
     BranchPointSN,
@@ -261,6 +262,11 @@ class TestDomainOperationsBranchPointSchemaValid:
         assert bp.completeness_status == "KOMPLETNY"
         assert bp.ports is not None
         assert bp.runtime_inputs is not None
+        assert bp.materialized_params is not None
+        assert bp.materialized_params["object_role"] == "OVERHEAD_BRANCH_POLE"
+        assert bp.materialized_params["has_transformer"] is False
+        assert bp.materialized_params["route_ports"][2]["port_id"] == "BRANCH"
+        assert bp.materialized_params["apparatus_specs"][0]["apparatus_role"] == "BRANCH_SWITCH"
 
     def test_insert_zksn_snapshot_schema_validates(self) -> None:
         snapshot, seg_id = _seed_with_cable_segment()
@@ -285,6 +291,76 @@ class TestDomainOperationsBranchPointSchemaValid:
         assert bp.completeness_status == "KOMPLETNY"
         assert bp.ports is not None
         assert len(bp.ports.BRANCH) == 2
+        assert bp.materialized_params is not None
+        assert bp.materialized_params["object_role"] == "MV_SWITCHGEAR_BRANCH_NODE"
+        assert bp.materialized_params["has_transformer"] is False
+        assert bp.materialized_params["switchgear_kind"] == "ROZDZIELNIA_SN_BEZ_TRANSFORMATORA"
+        field_specs = bp.materialized_params["switchgear_field_specs"]
+        assert [field["bay_role"] for field in field_specs] == ["IN", "OUT", "BRANCH", "BRANCH"]
+        assert "TR" not in {field.get("bay_role") for field in field_specs}
+
+    def test_insert_zksn_on_endpoint_terminates_cable_without_zero_length_split(self) -> None:
+        snapshot, seg_id = _seed_with_cable_segment()
+        original = next(branch for branch in snapshot["branches"] if branch["ref_id"] == seg_id)
+        result = execute_domain_operation(
+            snapshot,
+            "insert_zksn_on_segment_sn",
+            {
+                "segment_id": seg_id,
+                "catalog_ref": "ZKSN-2P",
+                "branch_ports_count": 1,
+                "switch_state": "closed",
+                "insert_at": {"mode": "RATIO", "value": 1},
+            },
+        )
+
+        assert result.get("error") in (None, "")
+        snap = result["snapshot"]
+        bp = snap["branch_points"][0]
+        updated = next(branch for branch in snap["branches"] if branch["ref_id"] == seg_id)
+        assert updated["from_bus_ref"] == original["from_bus_ref"]
+        assert updated["to_bus_ref"] == bp["bus_ref"]
+        assert updated["length_km"] == original["length_km"]
+        assert all(
+            branch.get("length_km", 1) > 0
+            for branch in snap["branches"]
+            if branch["type"] == "cable"
+        )
+        assert bp["runtime_inputs"]["endpoint_mode"] == "end"
+        assert bp["runtime_inputs"]["main_segment_refs"] == [seg_id]
+        assert bp["ports"]["MAIN_OUT"] == bp["bus_ref"]
+        assert all(bus["ref_id"] != original["to_bus_ref"] for bus in snap["buses"])
+
+    def test_refresh_snapshot_prunes_legacy_unreferenced_helper_terminal(self) -> None:
+        snapshot, seg_id = _seed_with_cable_segment()
+        result = execute_domain_operation(
+            snapshot,
+            "insert_zksn_on_segment_sn",
+            {
+                "segment_id": seg_id,
+                "catalog_ref": "ZKSN-2P",
+                "branch_ports_count": 1,
+                "switch_state": "closed",
+                "insert_at": {"mode": "RATIO", "value": 1},
+            },
+        )
+
+        snap = result["snapshot"]
+        snap.setdefault("buses", []).append(
+            {
+                "ref_id": "bus/legacy-orphan/branch_end",
+                "name": "Szyna odgałęzienia",
+                "voltage_kv": 15.0,
+                "tags": ["helper_bus", "topology_terminal"],
+            }
+        )
+
+        refreshed = execute_domain_operation(snap, "refresh_snapshot", {})
+
+        assert refreshed.get("error") in (None, "")
+        assert all(bus["ref_id"] != "bus/legacy-orphan/branch_end" for bus in refreshed["snapshot"]["buses"])
+        blocker_codes = {b.get("code") for b in refreshed.get("readiness", {}).get("blockers", [])}
+        assert "E003" not in blocker_codes
 
     def test_missing_catalog_is_rejected(self) -> None:
         """Brak catalog_ref zwraca blad — obiekt NIE jest tworzony (catalog-first enforcement)."""
@@ -321,6 +397,222 @@ class TestDomainOperationsBranchPointSchemaValid:
         assert bp.branch_point_type == "branch_pole"
         assert bp.ref_id == enm1.branch_points[0].ref_id
 
+    def test_catalog_completion_materializes_legacy_zksn_as_switchgear_without_transformer(self) -> None:
+        enm = EnergyNetworkModel(
+            header=ENMHeader(name="legacy_zksn", defaults=ENMDefaults(sn_nominal_kv=15.0)),
+            branch_points=[
+                BranchPointSN(
+                    ref_id="bp-zksn",
+                    name="ZKSN SN",
+                    branch_point_type="zksn",
+                    parent_segment_id="seg-cable",
+                    bus_ref="bp-zksn/bus",
+                    catalog_ref="ZKSN-2P-630A",
+                    catalog_namespace="mv_branch_points",
+                    ports=BranchPointSNPorts(
+                        MAIN_IN="bus-in",
+                        MAIN_OUT="bus-out",
+                        BRANCH=["bus-branch-1", "bus-branch-2"],
+                    ),
+                    switch_state="closed",
+                    materialized_params=None,
+                    completeness_status="KOMPLETNY",
+                )
+            ],
+        )
+
+        completed, changed = complete_catalog_defaults(enm)
+
+        assert changed is True
+        bp = completed.branch_points[0]
+        assert bp.materialized_params is not None
+        assert bp.materialized_params["object_role"] == "MV_SWITCHGEAR_BRANCH_NODE"
+        assert bp.materialized_params["has_transformer"] is False
+        assert bp.materialized_params["switchgear_kind"] == "ROZDZIELNIA_SN_BEZ_TRANSFORMATORA"
+        field_specs = bp.materialized_params["switchgear_field_specs"]
+        assert [field["bay_role"] for field in field_specs] == ["IN", "OUT", "BRANCH", "BRANCH"]
+        assert "TR" not in {field.get("bay_role") for field in field_specs}
+
+    def test_repeated_branch_pole_split_keeps_segment_names_readable(self) -> None:
+        snapshot, seg_id = _seed_with_overhead_segment()
+        first = execute_domain_operation(
+            snapshot,
+            "insert_branch_pole_on_segment_sn",
+            {"segment_id": seg_id, "catalog_ref": "AFL-SLUP"},
+        )
+        assert first.get("error") in (None, "")
+        right_segment = next(
+            branch
+            for branch in first["snapshot"]["branches"]
+            if branch["type"] == "line_overhead" and "za punktem rozgałęzienia" in branch["name"]
+        )
+
+        second = execute_domain_operation(
+            first["snapshot"],
+            "insert_branch_pole_on_segment_sn",
+            {"segment_id": right_segment["ref_id"], "catalog_ref": "AFL-SLUP"},
+        )
+        assert second.get("error") in (None, "")
+
+        overhead_names = [
+            branch["name"]
+            for branch in second["snapshot"]["branches"]
+            if branch["type"] == "line_overhead"
+        ]
+        assert not any(
+            "za punktem rozgałęzienia - do punktu rozgałęzienia" in name
+            or "za punktem rozgałęzienia - za punktem rozgałęzienia" in name
+            for name in overhead_names
+        )
+
+    def test_branch_pole_insert_records_split_segments_as_main_run(self) -> None:
+        snapshot, seg_id = _seed_with_overhead_segment()
+        result = execute_domain_operation(
+            snapshot,
+            "insert_branch_pole_on_segment_sn",
+            {"segment_id": seg_id, "catalog_ref": "AFL-SLUP"},
+        )
+        assert result.get("error") in (None, "")
+        snap = result["snapshot"]
+        bp = snap["branch_points"][0]
+
+        runtime = bp["runtime_inputs"]
+        main_segment_refs = runtime["main_segment_refs"]
+        assert runtime["operation_semantics"] == "insert_point_in_run"
+        assert runtime["source_segment_id"] == seg_id
+        assert len(main_segment_refs) == 2
+        assert seg_id not in {branch["ref_id"] for branch in snap["branches"]}
+
+        split_segments = [
+            branch
+            for branch in snap["branches"]
+            if branch["ref_id"] in main_segment_refs
+        ]
+        assert len(split_segments) == 2
+        assert {branch["type"] for branch in split_segments} == {"line_overhead"}
+
+    def test_start_branch_from_branch_pole_creates_separate_branch_run(self) -> None:
+        snapshot, seg_id = _seed_with_overhead_segment()
+        inserted = execute_domain_operation(
+            snapshot,
+            "insert_branch_pole_on_segment_sn",
+            {"segment_id": seg_id, "catalog_ref": "AFL-SLUP"},
+        )
+        assert inserted.get("error") in (None, "")
+        bp = inserted["snapshot"]["branch_points"][0]
+        from_ref = f"{bp['ref_id']}.BRANCH"
+
+        result = execute_domain_operation(
+            inserted["snapshot"],
+            "start_branch_segment_sn",
+            {
+                "from_ref": from_ref,
+                "segment": {
+                    "rodzaj": "LINIA_NAPOWIETRZNA",
+                    "dlugosc_m": 300,
+                    "catalog_ref": "line-base-al-st-70",
+                },
+            },
+        )
+        assert result.get("error") in (None, "")
+        snap = result["snapshot"]
+        branch_ref = result["selection_hint"]["element_id"]
+        assert result["selection_hint"]["element_type"] == "branch"
+
+        branch_segment = next(branch for branch in snap["branches"] if branch["ref_id"] == branch_ref)
+        assert branch_segment["type"] == "line_overhead"
+        assert branch_segment["from_bus_ref"] == bp["ports"]["BRANCH"][0]
+
+        updated_bp = next(point for point in snap["branch_points"] if point["ref_id"] == bp["ref_id"])
+        assert updated_bp["branch_occupied"]["BRANCH"] == branch_ref
+
+        branch_runs = [
+            run
+            for run in snap["line_runs"]
+            if run["run_kind"] == "branch"
+            and any(item["segment_ref"] == branch_ref for item in run["segments"])
+        ]
+        assert len(branch_runs) == 1
+        branch_run = branch_runs[0]
+        assert branch_run["starting_port_ref"] == from_ref
+        assert branch_run["branch_origin_station_ref"] == bp["ref_id"]
+
+        parent_run_ref = branch_run["parent_run_ref"]
+        if parent_run_ref:
+            parent_run = next(run for run in snap["line_runs"] if run["id"] == parent_run_ref)
+            assert not any(item["segment_ref"] == branch_ref for item in parent_run["segments"])
+
+        repeated = execute_domain_operation(
+            snap,
+            "start_branch_segment_sn",
+            {
+                "from_ref": from_ref,
+                "segment": {
+                    "rodzaj": "LINIA_NAPOWIETRZNA",
+                    "dlugosc_m": 100,
+                    "catalog_ref": "line-base-al-st-70",
+                },
+            },
+        )
+        assert repeated.get("error_code") == "branch_point.branch_port_occupied"
+
+    def test_start_branch_from_branch_pole_rejects_cable_segment(self) -> None:
+        snapshot, seg_id = _seed_with_overhead_segment()
+        inserted = execute_domain_operation(
+            snapshot,
+            "insert_branch_pole_on_segment_sn",
+            {"segment_id": seg_id, "catalog_ref": "AFL-SLUP"},
+        )
+        assert inserted.get("error") in (None, "")
+        bp = inserted["snapshot"]["branch_points"][0]
+
+        result = execute_domain_operation(
+            inserted["snapshot"],
+            "start_branch_segment_sn",
+            {
+                "from_ref": f"{bp['ref_id']}.BRANCH",
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 120,
+                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                },
+            },
+        )
+
+        assert result.get("snapshot") is None
+        assert result.get("error_code") == "branch_connection.invalid_segment_family"
+
+    def test_start_branch_from_zksn_rejects_overhead_segment(self) -> None:
+        snapshot, seg_id = _seed_with_cable_segment()
+        inserted = execute_domain_operation(
+            snapshot,
+            "insert_zksn_on_segment_sn",
+            {
+                "segment_id": seg_id,
+                "catalog_ref": "ZKSN-2P",
+                "branch_ports_count": 2,
+                "switch_state": "closed",
+            },
+        )
+        assert inserted.get("error") in (None, "")
+        bp = inserted["snapshot"]["branch_points"][0]
+
+        result = execute_domain_operation(
+            inserted["snapshot"],
+            "start_branch_segment_sn",
+            {
+                "from_ref": f"{bp['ref_id']}.BRANCH_1",
+                "segment": {
+                    "rodzaj": "LINIA_NAPOWIETRZNA",
+                    "dlugosc_m": 120,
+                    "catalog_ref": "line-base-al-st-70",
+                },
+            },
+        )
+
+        assert result.get("snapshot") is None
+        assert result.get("error_code") == "branch_connection.invalid_segment_family"
+
 
 # ---------------------------------------------------------------------------
 # 4. Fix actions for branch_point codes
@@ -338,6 +630,7 @@ class TestBranchPointFixActions:
             "branch_point.required_port_missing",
             "zksn.branch_count_invalid",
             "branch_connection.invalid_source_port",
+            "branch_connection.invalid_segment_family",
             "branch_connection.source_not_branch_capable",
             "oze.transformer_required",
             "bess.transformer_required",
@@ -368,6 +661,7 @@ class TestBranchPointFixActions:
             "branch_point.required_port_missing",
             "zksn.branch_count_invalid",
             "branch_connection.invalid_source_port",
+            "branch_connection.invalid_segment_family",
             "branch_connection.source_not_branch_capable",
             "oze.transformer_required",
             "bess.transformer_required",

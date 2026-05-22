@@ -45,11 +45,19 @@ def test_insert_branch_pole_on_overhead_line() -> None:
     resp = execute_domain_operation(
         snapshot,
         "insert_branch_pole_on_segment_sn",
-        {"segment_id": seg_id, "catalog_ref": "SŁUP-ODG-12"},
+        {"segment_id": seg_id, "catalog_ref": "SLUP-ODG-12"},
     )
     assert resp.get("error") in (None, "")
     branch_points = resp["snapshot"].get("branch_points", [])
     assert any(bp.get("branch_point_type") == "branch_pole" for bp in branch_points)
+    line_run = resp["snapshot"]["line_runs"][0]
+    line_run_segments = [item["segment_ref"] for item in line_run["segments"]]
+    assert seg_id not in line_run_segments
+    assert f"{seg_id}_L_branch_pole" in line_run_segments
+    assert f"{seg_id}_R_branch_pole" in line_run_segments
+    assert [item["order"] for item in line_run["segments"]] == list(
+        range(1, len(line_run_segments) + 1)
+    )
 
 
 def test_continue_trunk_segment_accepts_explicit_zero_sequence_data() -> None:
@@ -96,9 +104,10 @@ def test_insert_zksn_on_cable() -> None:
     )
     assert resp.get("error") in (None, "")
     branch_points = resp["snapshot"].get("branch_points", [])
-    assert any(bp.get("branch_point_type") == "zksn" for bp in branch_points)
+    zksn = next(bp for bp in branch_points if bp.get("branch_point_type") == "zksn")
+    assert zksn["switch_state"] == "closed"
     blocker_codes = {b.get("code") for b in resp.get("readiness", {}).get("blockers", [])}
-    assert "branch_point.switch_state_missing" in blocker_codes
+    assert "branch_point.switch_state_missing" not in blocker_codes
 
 
 def test_reject_insert_zksn_on_overhead_line() -> None:
@@ -109,6 +118,23 @@ def test_reject_insert_zksn_on_overhead_line() -> None:
         {"segment_id": seg_id, "catalog_ref": "ZKSN-2P"},
     )
     assert resp.get("error_code") == "branch_point.invalid_parent_medium"
+
+
+def test_refresh_snapshot_completes_legacy_zksn_switch_state() -> None:
+    snapshot, seg_id = _seed_with_segment("KABEL")
+    legacy = execute_domain_operation(
+        snapshot,
+        "insert_zksn_on_segment_sn",
+        {"segment_id": seg_id, "catalog_ref": "ZKSN-2P", "branch_ports_count": 2},
+    )["snapshot"]
+    legacy["branch_points"][0].pop("switch_state", None)
+
+    refreshed = execute_domain_operation(legacy, "refresh_snapshot", {})
+    zksn = next(bp for bp in refreshed["snapshot"]["branch_points"] if bp["branch_point_type"] == "zksn")
+    blocker_codes = {b.get("code") for b in refreshed.get("readiness", {}).get("blockers", [])}
+
+    assert zksn["switch_state"] == "closed"
+    assert "branch_point.switch_state_missing" not in blocker_codes
 
 
 def test_branch_from_branch_pole_branch_port() -> None:

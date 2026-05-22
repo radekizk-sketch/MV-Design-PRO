@@ -89,7 +89,7 @@ export function InspectorTabs(props: InspectorTabsProps): JSX.Element {
       >
         {tabContent[activeTab] ?? (
           <div className="text-sm text-scada-muted italic">
-            Brak danych do wyświetlenia w tej zakładce.
+            Zakres tej karty zostanie pokazany po skonfigurowaniu właściwego układu.
           </div>
         )}
       </div>

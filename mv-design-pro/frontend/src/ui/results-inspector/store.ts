@@ -500,7 +500,7 @@ export function useFilteredBranchResults(): BranchResults['rows'] {
 export function useRunResultStatusLabel(): string {
   return useResultsInspectorStore((state) => {
     const resultState = state.resultsIndex?.run_header.result_state;
-    if (!resultState) return 'Brak wyników';
+    if (!resultState) return 'Wyniki nieuruchomione';
     switch (resultState) {
       case 'VALID':
       case 'FRESH':
@@ -508,7 +508,7 @@ export function useRunResultStatusLabel(): string {
       case 'OUTDATED':
         return 'Wyniki nieaktualne';
       default:
-        return 'Brak wyników';
+        return 'Wyniki nieuruchomione';
     }
   });
 }

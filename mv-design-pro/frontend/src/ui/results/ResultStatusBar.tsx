@@ -224,7 +224,7 @@ export function ResultStatusBar({
               <span className="text-gray-300">|</span>
               <span>Transformatory: <span className="font-medium text-gray-700">{elementCounts.transformers}</span></span>
               <span className="text-gray-300">|</span>
-              <span>Źródła: <span className="font-medium text-gray-700">{elementCounts.sources}</span></span>
+              <span>Zasilanie: <span className="font-medium text-gray-700">{elementCounts.sources}</span></span>
               <span className="text-gray-300">|</span>
               <span>Odbiory: <span className="font-medium text-gray-700">{elementCounts.loads}</span></span>
               {elementCounts.generators > 0 && (

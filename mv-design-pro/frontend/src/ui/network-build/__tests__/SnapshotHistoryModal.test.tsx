@@ -35,7 +35,7 @@ describe('SnapshotHistoryModal', () => {
     expect(screen.getByText('+1 / ~0 / -0')).toBeInTheDocument();
   });
 
-  it('pokazuje kanoniczną etykietę dla źródła przekształtnikowego', () => {
+  it('pokazuje kanoniczną etykietę dla układu PV/BESS/FW', () => {
     useSnapshotStore.setState({
       operationHistory: [
         {
@@ -54,6 +54,6 @@ describe('SnapshotHistoryModal', () => {
 
     render(<SnapshotHistoryModal isOpen onClose={() => undefined} />);
 
-    expect(screen.getByText('Dodanie źródła przekształtnikowego')).toBeInTheDocument();
+    expect(screen.getByText('Dodanie układu PV/BESS/FW')).toBeInTheDocument();
   });
 });

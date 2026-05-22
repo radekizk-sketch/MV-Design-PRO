@@ -7,14 +7,14 @@
  * 3. station kind → 4 tabs (rozdzielnica/transformator/nn/der)
  * 4. bay kind → 2 tabs (apparatus/protection)
  * 5. apparatus kind → 2 tabs (state/settings)
- * 6. der kind → 6 tabs (typ/moc/punkt/inverter/rfg/protection)
+ * 6. der kind → 6 tabs (typ/moc/punkt/falownik/rfg/zabezpieczenia)
  * 7. tab click changes active tab
  * 8. onClose triggered by × button
  * 9. data-testid coverage dla DOM audit
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { render, fireEvent, cleanup } from '@testing-library/react';
+import { render, fireEvent, cleanup, waitFor } from '@testing-library/react';
 
 import { SldDetailDrawer, type SldDetailDrawerData } from '../SldDetailDrawer';
 
@@ -48,7 +48,19 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     expect(getByText('Rozdzielnica SN')).toBeInTheDocument();
     expect(getByText('Transformator')).toBeInTheDocument();
     expect(getByText('Strona nN')).toBeInTheDocument();
-    expect(getByText('DER (PV/BESS/FW)')).toBeInTheDocument();
+    expect(getByText('Układy PV/BESS/FW')).toBeInTheDocument();
+    cleanup();
+  });
+
+  it('nie pokazuje surowego identyfikatora modelu w karcie stacji', () => {
+    const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
+    const drawerText = container.textContent ?? '';
+    const root = container.querySelector('[data-testid="sld-v2-detail-drawer"]');
+
+    expect(root?.getAttribute('aria-label')).toBe('Detal: S08');
+    expect(drawerText).not.toContain('stn/abc/station');
+    expect(drawerText).not.toContain('Element:');
+    expect(drawerText).toContain('Układ: Stacja S08');
     cleanup();
   });
 
@@ -72,7 +84,7 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     cleanup();
   });
 
-  it('der kind → 6 tabs (Typ, Moc, Punkt, Inverter, NC RfG, Protection)', () => {
+  it('der kind → 6 tabs (Typ, Moc, Punkt, Falownik, NC RfG, Zabezpieczenia)', () => {
     const data: SldDetailDrawerData = { kind: 'der', elementId: 'pv-1', label: 'PV-15' };
     const { container, getByText } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     const tabsWrapper = container.querySelector('[data-testid="sld-v2-detail-drawer-tabs"]');
@@ -80,9 +92,9 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     expect(getByText('Typ')).toBeInTheDocument();
     expect(getByText('Moc znamionowa')).toBeInTheDocument();
     expect(getByText('Punkt podłączenia')).toBeInTheDocument();
-    expect(getByText('Inverter')).toBeInTheDocument();
+    expect(getByText('Falownik')).toBeInTheDocument();
     expect(getByText('NC RfG')).toBeInTheDocument();
-    expect(getByText('Zabezpieczenia DER')).toBeInTheDocument();
+    expect(getByText('Zabezpieczenia źródła')).toBeInTheDocument();
     cleanup();
   });
 
@@ -165,8 +177,8 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     expect(container.querySelector('[data-testid="drawer-der-connection-variant"]')).toBeTruthy();
     const nnRadio = container.querySelector('[data-testid="drawer-der-connection-nn_side"]') as HTMLInputElement;
     const snRadio = container.querySelector('[data-testid="drawer-der-connection-sn_side"]') as HTMLInputElement;
-    expect(nnRadio.defaultChecked).toBe(true);
-    expect(snRadio.defaultChecked).toBe(false);
+    expect(nnRadio.checked).toBe(true);
+    expect(snRadio.checked).toBe(false);
     cleanup();
   });
 
@@ -178,7 +190,7 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-punkt"]') as Element);
     const snRadio = container.querySelector('[data-testid="drawer-der-connection-sn_side"]') as HTMLInputElement;
-    expect(snRadio.defaultChecked).toBe(true);
+    expect(snRadio.checked).toBe(true);
     cleanup();
   });
 
@@ -206,7 +218,7 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-transformator"]') as Element);
     expect(container.querySelector('[data-testid="drawer-tr-vector-group"]')?.textContent).toBe('Dyn11');
     expect(container.querySelector('[data-testid="drawer-tr-rated-kva"]')?.textContent).toBe('630 kVA');
-    expect(container.querySelector('[data-testid="drawer-tr-voltages"]')?.textContent).toBe('15 / 0.4 kV');
+    expect(container.querySelector('[data-testid="drawer-tr-voltages"]')?.textContent).toBe('15 kV / 0,4 kV');
     cleanup();
   });
 
@@ -236,9 +248,18 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
   });
 
   it('K30-80: rozdzielnica empty state gdy baysSpec puste', () => {
-    const data: SldDetailDrawerData = { ...STATION_DATA, baysSpec: [] };
+    const data: SldDetailDrawerData = {
+      ...STATION_DATA,
+      baysSpec: [],
+      switchgearDescription: 'Rozdzielnica SN: układ przelotowy z polem wejściowym, wyjściowym i transformatorowym.',
+    };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     expect(container.querySelector('[data-testid="drawer-rozdzielnica-empty"]')).toBeTruthy();
+    const text = container.textContent ?? '';
+    expect(text).toContain('Rozdzielnica SN: układ przelotowy z polem wejściowym, wyjściowym i transformatorowym.');
+    expect(text).not.toContain('wariant katalogowy');
+    expect(text).not.toContain('Brak pól SN');
+    expect(text).not.toContain('via E-11');
     cleanup();
   });
 
@@ -256,9 +277,10 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-nn"]') as Element);
     expect(container.querySelector('[data-testid="drawer-nn-side"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="drawer-nn-bus-voltage"]')?.textContent).toBe('0.4 kV');
+    expect(container.querySelector('[data-testid="drawer-nn-bus-voltage"]')?.textContent).toBe('0,4 kV');
     expect(container.querySelector('[data-testid="drawer-nn-loads-count"]')?.textContent).toBe('2');
-    expect(container.querySelector('[data-testid="drawer-nn-load-load-1"]')?.textContent).toContain('25.5 kW');
+    expect(container.querySelector('[data-testid="drawer-nn-load-load-1"]')?.textContent).toContain('25,5 kW');
+    expect(container.querySelector('[data-testid="drawer-nn-load-load-1"]')?.textContent).toContain('8,2 kvar');
     cleanup();
   });
 
@@ -287,7 +309,28 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     expect(container.querySelector('[data-testid="drawer-station-der"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="drawer-station-der-pv-1"]')?.textContent).toContain('PV');
     expect(container.querySelector('[data-testid="drawer-station-der-bess-1"]')?.textContent).toContain('BESS');
-    expect(container.querySelector('[data-testid="drawer-station-der-total"]')?.textContent).toContain('0.70 MW');
+    expect(container.querySelector('[data-testid="drawer-station-der-total"]')?.textContent).toContain('0,70 MW');
+    cleanup();
+  });
+
+  it('station DER tab nie pokazuje wewnetrznych nazw Blok PV/BESS', () => {
+    const data: SldDetailDrawerData = {
+      ...STATION_DATA,
+      existingDers: [
+        { id: 'pv-1', kind: 'PV', name: 'Blok PV', pMw: 1 },
+        { id: 'bess-1', kind: 'BESS', name: 'Blok BESS', pMw: 0.5 },
+      ],
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-der"]') as Element);
+    const text = container.textContent ?? '';
+
+    expect(text).not.toContain('Blok PV');
+    expect(text).not.toContain('Blok BESS');
+    expect(text).toContain('Układ fotowoltaiczny 01');
+    expect(text).toContain('Magazyn energii 02');
+    expect(text).toContain('1,00 MW');
+    expect(text).toContain('0,50 MW');
     cleanup();
   });
 
@@ -354,7 +397,7 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-moc"]') as Element);
     expect(container.querySelector('[data-testid="drawer-der-power"]')).toBeTruthy();
     const input = container.querySelector('[data-testid="drawer-der-power-input"]') as HTMLInputElement;
-    expect(input.defaultValue).toBe('100');
+    expect(input.value).toBe('0.5');
     expect(container.querySelector('[data-testid="drawer-der-power-preset-500"]')).toBeTruthy();
     cleanup();
   });
@@ -409,22 +452,22 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     cleanup();
   });
 
-  it('K30-86: DER "Inverter" tab renders catalog dropdown per kind', () => {
+  it('K30-86: zakładka DER "Falownik" renderuje katalog per technologia', () => {
     const data: SldDetailDrawerData = { kind: 'der', elementId: 'pv-1', label: 'PV-1', derKind: 'PV' };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-inverter"]') as Element);
     expect(container.querySelector('[data-testid="drawer-der-inverter"]')).toBeTruthy();
     const select = container.querySelector('[data-testid="drawer-der-inverter-select"]') as HTMLSelectElement;
-    expect(select.value).toBe('PV-INV-50KW-04KV');
+    expect(select.value).toBe('conv-pv-nn-0p5mw-0p4kv');
     cleanup();
   });
 
-  it('K30-86: DER "Inverter" tab BESS catalog options różnią się od PV', () => {
+  it('K30-86: zakładka DER "Falownik" dla BESS ma inne typy niż PV', () => {
     const data: SldDetailDrawerData = { kind: 'der', elementId: 'b-1', label: 'BESS-1', derKind: 'BESS' };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-inverter"]') as Element);
     const select = container.querySelector('[data-testid="drawer-der-inverter-select"]') as HTMLSelectElement;
-    expect(select.value).toBe('BESS-INV-50KW');
+    expect(select.value).toBe('conv-bess-nn-0p5mw-0p4kv');
     cleanup();
   });
 
@@ -434,17 +477,80 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     cleanup();
   });
 
-  it('K30-87: footer "Zapisz" + "Anuluj" buttons gdy onSave podany', () => {
+  it('K30-87: karta techniczna stacji nie pokazuje pustego zapisu nawet gdy onSave podany', () => {
+    const onSave = vi.fn();
+    const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} onSave={onSave} />);
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-footer"]')).toBeFalsy();
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-save"]')).toBeFalsy();
+    expect(onSave).not.toHaveBeenCalled();
+    cleanup();
+  });
+
+  it('K30-87: konfiguracja DER pokazuje realny zapis i anulowanie', () => {
     const onSave = vi.fn();
     const onClose = vi.fn();
-    const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={onClose} onSave={onSave} />);
+    const data: SldDetailDrawerData = { kind: 'der', elementId: 'pv-1', label: 'PV-1', derKind: 'PV' };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={onClose} onSave={onSave} />);
     expect(container.querySelector('[data-testid="sld-v2-detail-drawer-footer"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="sld-v2-detail-drawer-save"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="sld-v2-detail-drawer-cancel"]')).toBeTruthy();
-    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-save"]') as Element);
-    expect(onSave).toHaveBeenCalledTimes(1);
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-cancel"]') as Element);
     expect(onClose).toHaveBeenCalledTimes(1);
+    cleanup();
+  });
+
+  it('K30-99: DER save returns validated payload in MW and catalog ref', async () => {
+    const onSave = vi.fn();
+    const data: SldDetailDrawerData = {
+      kind: 'der',
+      elementId: 'station/1',
+      label: 'Stacja 1',
+      voltageKv: 15,
+      derKind: 'PV',
+      derConnectionVariant: 'nn_side',
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} onSave={onSave} />);
+
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-moc"]') as Element);
+    const powerInput = container.querySelector('[data-testid="drawer-der-power-input"]') as HTMLInputElement;
+    fireEvent.change(powerInput, { target: { value: '1.2' } });
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-save"]') as Element);
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0]).toMatchObject({
+      kind: 'der',
+      elementId: 'station/1',
+      derConfig: {
+        derKind: 'PV',
+        powerMw: 1.2,
+        connectionVariant: 'nn_side',
+        pointVoltageKv: 0.4,
+        inverterCatalogRef: 'conv-pv-nn-0p5mw-0p4kv',
+        ncRfgModule: 'A',
+      },
+    });
+    cleanup();
+  });
+
+  it('K30-99: DER save blocks power outside 0.1-10 MW', async () => {
+    const onSave = vi.fn();
+    const data: SldDetailDrawerData = {
+      kind: 'der',
+      elementId: 'station/1',
+      label: 'Stacja 1',
+      derKind: 'PV',
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} onSave={onSave} />);
+
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-moc"]') as Element);
+    const powerInput = container.querySelector('[data-testid="drawer-der-power-input"]') as HTMLInputElement;
+    fireEvent.change(powerInput, { target: { value: '0.05' } });
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-save"]') as Element);
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="drawer-der-power-error"]')).toBeTruthy();
+    });
+    expect(onSave).not.toHaveBeenCalled();
     cleanup();
   });
 
@@ -473,7 +579,7 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     expect(container.querySelector('[data-testid="drawer-cable-run-kind"]')?.textContent).toBe('ciąg główny');
-    expect(container.querySelector('[data-testid="drawer-cable-length"]')?.textContent).toBe('12.35 km');
+    expect(container.querySelector('[data-testid="drawer-cable-length"]')?.textContent).toBe('12,35 km');
     expect(container.querySelector('[data-testid="drawer-cable-segment-count"]')?.textContent).toBe('5');
     expect(container.querySelector('[data-testid="drawer-cable-station-count"]')?.textContent).toBe('8');
     cleanup();
@@ -600,7 +706,7 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     cleanup();
   });
 
-  it('K30-97: apparatus state tab pokazuje BŁĄD komunikacji + ZAŁOŻONA blokada', () => {
+  it('K30-97: apparatus state tab pokazuje BŁĄD komunikacji + aktywne uzależnienie', () => {
     const data: SldDetailDrawerData = {
       kind: 'apparatus', elementId: 'cb-1', label: 'CB-1',
       apparatusState: {
@@ -614,7 +720,8 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     const dl = container.querySelector('[data-testid="drawer-apparatus-state"]');
     expect(dl?.textContent).toContain('BŁĄD');
-    expect(dl?.textContent).toContain('ZAŁOŻONA');
+    expect(dl?.textContent).toContain('Uzależnienie operacyjne');
+    expect(dl?.textContent).toContain('aktywne');
     cleanup();
   });
 

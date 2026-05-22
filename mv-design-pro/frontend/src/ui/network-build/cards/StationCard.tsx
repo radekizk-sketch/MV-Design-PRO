@@ -14,6 +14,8 @@ import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
 import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
 import { GpzSectionsEditor } from './GpzSectionsEditor';
+import { stationSnapshotBays, stationSnFieldCount } from '../stationSnFields';
+import { selectStationDistributionTransformers } from '../stationTransformerSelection';
 
 // =============================================================================
 // Helpers
@@ -79,15 +81,17 @@ export function StationCard({ elementId }: { elementId: string }) {
   );
 
   const stationBays = useMemo(
-    () => (snapshot?.bays ?? []).filter((b) => b.substation_ref === elementId),
-    [snapshot, elementId],
+    () => stationSnapshotBays(snapshot?.bays, station),
+    [snapshot, station],
+  );
+
+  const stationBayCount = useMemo(
+    () => stationSnFieldCount(station, snapshot?.bays, []),
+    [snapshot, station],
   );
 
   const stationTransformers = useMemo(
-    () =>
-      (snapshot?.transformers ?? []).filter((t) =>
-        station?.transformer_refs?.includes(t.ref_id),
-      ),
+    () => selectStationDistributionTransformers(snapshot, station),
     [snapshot, station],
   );
 
@@ -136,9 +140,9 @@ export function StationCard({ elementId }: { elementId: string }) {
         {
           key: 'bays_count',
           label: 'Pola SN',
-          value: stationBays.length,
+          value: stationBayCount,
           unit: 'szt.',
-          severity: stationBays.length === 0 ? 'warning' : 'ok',
+          severity: stationBayCount === 0 ? 'warning' : 'ok',
         },
         {
           key: 'transformers_count',
@@ -194,7 +198,7 @@ export function StationCard({ elementId }: { elementId: string }) {
       fields:
         bayFields.length > 0
           ? bayFields
-          : [{ key: 'no_bays', label: 'Brak pól', value: 'Nie zdefiniowano pól SN', severity: 'warning' as const }],
+          : [{ key: 'no_bays', label: 'Pola SN do konfiguracji', value: 'Wybierz układ rozdzielnicy SN z katalogu', severity: 'warning' as const }],
     };
 
     // Transformer-to-bay assignment enrichment (via equipment_refs)
@@ -217,7 +221,7 @@ export function StationCard({ elementId }: { elementId: string }) {
       fields:
         enrichedTrFields.length > 0
           ? enrichedTrFields
-          : [{ key: 'no_tr', label: 'Brak transformatora', value: 'Brak przypisanego transformatora', severity: 'warning' as const }],
+          : [{ key: 'no_tr', label: 'Transformator do konfiguracji', value: 'Wybierz transformator SN/nN z katalogu', severity: 'warning' as const }],
     };
 
     const result: CardSection[] = [identSection, strukturaSection, baysSection, transformersSection];
@@ -231,13 +235,13 @@ export function StationCard({ elementId }: { elementId: string }) {
           { key: 'ik3', label: 'Pr?d zwarciowy Ik3', value: null, unit: 'kA', source: 'calculated' },
           { key: 'ik1', label: 'Pr?d zwarciowy Ik1', value: null, unit: 'kA', source: 'calculated' },
           { key: 'max_tr_loading', label: 'Maks. obciążenie trafo', value: null, unit: '%', source: 'calculated' },
-          { key: 'no_results', label: 'Status', value: 'Brak wyników — uruchom analizę', severity: 'warning' },
+          { key: 'no_results', label: 'Status', value: 'Uruchom analizę, aby pokazać wyniki', severity: 'warning' },
         ],
       });
     }
 
     return result;
-  }, [station, stationBays, stationTransformers, snBuses, nnBuses, activeMode]);
+  }, [station, stationBays, stationBayCount, stationTransformers, snBuses, nnBuses, activeMode]);
 
   const handleAddTransformer = useCallback(() => {
     openOperationForm('add_transformer_sn_nn', { station_ref: elementId });

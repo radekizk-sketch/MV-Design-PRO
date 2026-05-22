@@ -172,9 +172,17 @@ export function GpzRenderer(props: GpzRendererProps): JSX.Element {
 // GpzCompactBlock — kanoniczny minimalny tor 110 kV → TR → SN → odpływy
 // =============================================================================
 
+function compactGpzOverviewName(name: string): string {
+  const trimmed = name.trim();
+  const code = trimmed.match(/\bGPZ-[A-Z0-9]{1,4}\b/i)?.[0];
+  if (code && trimmed.length > 16) return code.toUpperCase();
+  return trimmed;
+}
+
 function GpzCompactBlock(props: GpzRendererProps): JSX.Element {
   const transformerCount = Math.max(1, props.transformerCount ?? 1);
   const mvSectionCount = Math.max(1, props.mvSectionCount ?? 1);
+  const displayName = compactGpzOverviewName(props.name);
   // Jeśli liczba odpływów nie podana wprost, ustaw 4 (typowe minimum) lub
   // skorzystaj z `feedersCount` (z ENM) jeśli dostarczone.
   const outgoingBayCount = Math.max(
@@ -210,6 +218,8 @@ function GpzCompactBlock(props: GpzRendererProps): JSX.Element {
       data-transformer-count={String(transformerCount)}
       data-mv-section-count={String(mvSectionCount)}
       data-outgoing-bay-count={String(outgoingBayCount)}
+      data-gpz-name={props.name}
+      data-gpz-overview-label={displayName}
       transform={`translate(${props.x}, ${props.y})`}
       onClick={
         props.onClick
@@ -243,7 +253,7 @@ function GpzCompactBlock(props: GpzRendererProps): JSX.Element {
         fontSize={FONT_SIZES.bayLabel}
         fontWeight={700}
       >
-        {props.name}
+        {displayName}
       </text>
       <text
         x={totalWidth - HORIZONTAL_PADDING}

@@ -69,6 +69,7 @@ describe('CommandPalette — paleta komend (Ctrl+Shift+P)', () => {
     fireEvent.change(input, { target: { value: 'pulpit' } });
     const results = screen.getByTestId('command-palette-results');
     expect(results.textContent).toContain('Pulpit projektu');
+    expect(results.textContent).not.toMatch(/E-\d{2}\s*[·-]/);
   });
 
   it('zawiera komendy menu SLD_MENU_REGISTRY (poza tłem)', () => {
@@ -78,6 +79,8 @@ describe('CommandPalette — paleta komend (Ctrl+Shift+P)', () => {
     const results = screen.getByTestId('command-palette-results');
     // Menu odcinka kabla SN udostępnia warianty zakończenia odcinka.
     expect(results.textContent).toContain('Zakończ odcinek w ZK SN');
+    expect(results.textContent).toContain('KONTEKST');
+    expect(results.textContent).not.toContain('MENU');
   });
 
   it('wyświetla pusty stan gdy brak komend pasujących', () => {

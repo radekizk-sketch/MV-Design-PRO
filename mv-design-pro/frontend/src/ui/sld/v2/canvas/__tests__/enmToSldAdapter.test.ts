@@ -14,6 +14,7 @@
 import { describe, it, expect } from 'vitest';
 
 import { buildSldDataFromSnapshot, projectBayTelemetry } from '../enmToSldAdapter';
+import { FIELD_ROLE } from '../../domain/apparatusContracts';
 import type {
   BayRuntimeState,
   BaySwitchState,
@@ -81,6 +82,23 @@ function buildEmptySnapshot(): EnergyNetworkModel {
   } as never;
 }
 
+function attachMainRun(
+  snapshot: EnergyNetworkModel,
+  stationRefs: readonly string[],
+  runId = 'run-test',
+): void {
+  snapshot.line_runs = [
+    {
+      id: runId,
+      run_kind: 'main_trunk',
+      starting_bay_ref: `${runId}/bay`,
+      starting_port_ref: `${runId}/port`,
+      segments: [],
+      stations: stationRefs.map((substation_ref, index) => ({ substation_ref, order: index + 1 })),
+    },
+  ];
+}
+
 describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
   it('zwraca puste tablice gdy snapshot jest null', () => {
     const r = buildSldDataFromSnapshot(null, null);
@@ -89,6 +107,28 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(r.cableRuns).toEqual([]);
     expect(r.stations).toEqual([]);
     expect(r.ders).toEqual([]);
+  });
+
+  it('zachowuje oznaczenie stacji z workflow UI zamiast numeru pozycji w ciagu', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 's1', ref_id: 'sub/1/substation', name: 'Stacja SN/nN 1', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'sub/2/substation', name: 'Stacja SN/nN 2', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's3', ref_id: 'sub/3/substation', name: 'Stacja SN/nN 3', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's10', ref_id: 'sub/10/substation', name: 'Stacja SN/nN 10', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    attachMainRun(snap, [
+      'sub/1/substation',
+      'sub/2/substation',
+      'sub/3/substation',
+      'sub/10/substation',
+    ]);
+
+    const result = buildSldDataFromSnapshot(snap, null);
+    const station = result.stations.find((item) => item.id === 'sub/10/substation');
+
+    expect(station?.stationCode).toBe('S10');
+    expect(station?.stationCode).not.toBe('S04');
   });
 
   it('zwraca puste tablice gdy snapshot pusty', () => {
@@ -172,6 +212,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
       {
         id: 'k1', ref_id: 'k1', name: 'K-1', tags: [], meta: {},
         type: 'cable', from_bus_ref: 'a', to_bus_ref: 'b', status: 'closed',
+        catalog_ref: 'cable-base-epr-al-1c-150',
         length_km: 1, r_ohm_per_km: 0.5, x_ohm_per_km: 0.1,
       } as never,
     ];
@@ -186,6 +227,60 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(r.cableRuns[0].id).toBe('TRUNK-1');
     expect(r.cableRuns[0].runKind).toBe('main_trunk');
     expect(r.cableRuns[0].segmentKind).toBe('cable_sn');
+    expect(r.cableRuns[0].label).toBe('Kabel SN EPR Al 3×1×150 mm² · 1 km');
+  });
+
+  it('SLD opisuje kabel jednożyłowy jako komplet trzech faz toru SN', () => {
+    const snap = buildEmptySnapshot();
+    snap.branches = [
+      {
+        id: 'k1', ref_id: 'k1', name: 'K-1', tags: [], meta: {},
+        type: 'cable', from_bus_ref: 'a', to_bus_ref: 'b', status: 'closed',
+        catalog_ref: 'cable-enea-operator-na2xs2y-1x150',
+        materialized_params: {
+          catalog_label: 'ENEA Operator NA2XS2Y 1X150',
+          return_conductor_cross_section_mm2: 25,
+        },
+        length_km: 0.5, r_ohm_per_km: 0.206, x_ohm_per_km: 0.107,
+      } as never,
+    ];
+    const lv: LogicalViewsV1 = {
+      trunks: [{ corridor_ref: 'TRUNK-1', corridor_type: 'main', segments: ['k1'], no_point_ref: null, terminals: [] }],
+      branches: [],
+      secondary_connectors: [],
+      terminals: [],
+    };
+
+    const r = buildSldDataFromSnapshot(snap, lv);
+
+    expect(r.cableRuns[0].label).toBe('3 × NA2XS2Y 1×150/25 mm² · 500 m');
+  });
+
+  it('SLD usuwa nazwe operatora takze z etykiety z prefiksem 3 faz i bierze zyle powrotna z katalogu', () => {
+    const snap = buildEmptySnapshot();
+    snap.branches = [
+      {
+        id: 'k1', ref_id: 'k1', name: 'K-1', tags: [], meta: {},
+        type: 'cable', from_bus_ref: 'a', to_bus_ref: 'b', status: 'closed',
+        catalog_ref: 'cable-operator-na2xs2y-1x150-35',
+        materialized_params: {
+          catalog_label: '3 x ENEA OPERATOR NA2XS2Y 1x150',
+        },
+        return_conductor_cross_section_mm2: 35,
+        length_km: 0.72, r_ohm_per_km: 0.206, x_ohm_per_km: 0.107,
+      } as never,
+    ];
+    const lv: LogicalViewsV1 = {
+      trunks: [{ corridor_ref: 'TRUNK-1', corridor_type: 'main', segments: ['k1'], no_point_ref: null, terminals: [] }],
+      branches: [],
+      secondary_connectors: [],
+      terminals: [],
+    };
+
+    const r = buildSldDataFromSnapshot(snap, lv);
+
+    expect(r.cableRuns[0].label).toBe('3 × NA2XS2Y 1×150/35 mm² · 720 m');
+    expect(r.cableRuns[0].label).not.toMatch(/operator/i);
   });
 
   it('Linia napowietrzna SN → segmentKind=overhead_line_sn', () => {
@@ -263,6 +358,50 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(der?.operatingQMvar).toBe(0.8);
   });
 
+  it('DER z transformatorem blokowym dostaje czytelny opis katalogowego TR na SLD', () => {
+    const snap = buildEmptySnapshot();
+    snap.transformers = [
+      {
+        id: 'tr-block',
+        ref_id: 'stn/pv/der/pv/tr-block',
+        name: 'Transformator blokowy PV',
+        tags: [],
+        meta: {},
+        hv_bus_ref: 'stn/pv/sn_bus',
+        lv_bus_ref: 'stn/pv/der/pv/bus-0.69kv',
+        sn_mva: 1.25,
+        uhv_kv: 15,
+        ulv_kv: 0.69,
+        uk_percent: 6,
+        pk_kw: 13.2,
+        p0_kw: 2.1,
+        i0_percent: 0.45,
+        vector_group: 'Dyn5',
+      } as never,
+    ];
+    snap.generators = [
+      {
+        id: 'g1',
+        ref_id: 'stn/pv/der/pv/gen',
+        name: 'PV 1 MW',
+        tags: [],
+        meta: { station_ref: 'stn/pv/station' },
+        bus_ref: 'stn/pv/der/pv/bus-0.69kv',
+        p_mw: 1,
+        gen_type: 'pv_inverter',
+        connection_variant: 'block_transformer',
+        blocking_transformer_ref: 'stn/pv/der/pv/tr-block',
+      } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const der = r.ders.find((item) => item.id === 'stn/pv/der/pv/gen');
+
+    expect(der?.hasBlockTransformer).toBe(true);
+    expect(der?.blockTransformerLabel).toBe('TR 15/0,69 kV 1250 kVA Dyn5');
+    expect(der?.blockTransformerLabel).not.toMatch(/stn\/|tr-block|ref|hash/i);
+  });
+
   it('operatingQMvar jest null gdy brak q_mvar w generatorze', () => {
     const snap = buildEmptySnapshot();
     snap.generators = [
@@ -299,6 +438,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
         station_type: 'mv_lv', bus_refs: [], transformer_refs: [],
       } as never,
     ];
+    attachMainRun(snap, ['STA-DER-01'], 'run-der');
     snap.generators = [
       { id: 'g1', ref_id: 'PV-W1', name: 'PV W1', tags: [], meta: { station_ref: 'STA-DER-01' }, bus_ref: 'b', p_mw: 0.5, gen_type: 'pv_inverter' } as never,
     ];
@@ -314,6 +454,46 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(wire.pathPoints[2].y).toBe(wire.pathPoints[1].y);
     // The path has non-zero length: DER Y is below bus Y
     expect(wire.pathPoints[1].y).toBeGreaterThan(wire.pathPoints[0].y);
+  });
+
+  it('DER z transformatorem blokowym opisuje osobny tor przyłączenia, nie TR stacji', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      {
+        id: 's1', ref_id: 'STA-DER-BLOCK', name: 'Stacja DER', tags: [], meta: {},
+        station_type: 'mv_lv', bus_refs: [], transformer_refs: ['TR-STATION-250'],
+      } as never,
+    ];
+    snap.transformers = [
+      {
+        id: 'tr-station', ref_id: 'TR-STATION-250', name: 'TR stacji 250 kVA',
+        tags: [], meta: {}, sn_mva: 0.25, uhv_kv: 15, ulv_kv: 0.4,
+        hv_bus_ref: 'b15', lv_bus_ref: 'b04', vector_group: 'Dyn5',
+      } as never,
+      {
+        id: 'tr-block', ref_id: 'TR-BLOCK-PV-1250', name: 'TR blokowy PV 1250 kVA',
+        tags: [], meta: {}, sn_mva: 1.25, uhv_kv: 15, ulv_kv: 0.69,
+        hv_bus_ref: 'b15', lv_bus_ref: 'bpv', vector_group: 'Dyn5',
+      } as never,
+    ];
+    attachMainRun(snap, ['STA-DER-BLOCK'], 'run-der-block');
+    snap.generators = [
+      {
+        id: 'g1', ref_id: 'PV-BLOCK-1MW', name: 'PV 1 MW', tags: [],
+        meta: { station_ref: 'STA-DER-BLOCK' }, station_ref: 'STA-DER-BLOCK',
+        bus_ref: 'bpv', p_mw: 1, gen_type: 'pv_inverter',
+        connection_variant: 'block_transformer', blocking_transformer_ref: 'TR-BLOCK-PV-1250',
+      } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+
+    expect(r.derConnections).toHaveLength(1);
+    expect(r.derConnections[0]).toMatchObject({
+      id: 'der-wire-PV-BLOCK-1MW',
+      connectionKind: 'der_block_transformer',
+      transformerLabel: 'TR 15/0,69 kV 1250 kVA Dyn5',
+    });
   });
 
   it('DER bez stacji nie generuje derConnections', () => {
@@ -739,6 +919,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
       { id: 's4', ref_id: 'ST-4', name: 'Stacja-4', tags: [], meta: {}, station_type: 'sectional', bus_refs: [], transformer_refs: [] } as never,
       { id: 's5', ref_id: 'ST-5', name: 'Stacja-5', tags: [], meta: {}, station_type: 'terminal', bus_refs: [], transformer_refs: [] } as never,
     ];
+    attachMainRun(snap, ['ST-1', 'ST-2', 'ST-3', 'ST-4', 'ST-5'], 'run-station-types');
     const r = buildSldDataFromSnapshot(snap, null);
     expect(r.stations).toHaveLength(5);
     const types = r.stations.map((s) => s.topologicalType);
@@ -754,6 +935,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
       { id: 'gpz', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: [], transformer_refs: [] } as never,
       { id: 'st', ref_id: 'ST-1', name: 'Stacja SN/nN 1', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
     ];
+    attachMainRun(snap, ['ST-1'], 'run-field-zone');
 
     const r = buildSldDataFromSnapshot(snap, null);
 
@@ -762,20 +944,90 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(r.stations[0].x).toBeGreaterThan(r.gpzs[0].x + 700);
   });
 
-  it('stacja terenowa dostaje mini-RMU z polami SN zamiast pojedynczej ikony', () => {
+  it('stacja terenowa bez jawnych pól SN nie dostaje atrap Q01/Q02/TR', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [
       { id: 'st', ref_id: 'ST-1', name: 'Stacja SN/nN 1', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
     ];
+    attachMainRun(snap, ['ST-1'], 'run-no-bays');
 
     const r = buildSldDataFromSnapshot(snap, null);
     const station = r.stations[0];
 
     expect(station.snBays).toBeDefined();
-    // K30-56: OSD-compliant Q-numeracja (Q01, Q02 for line bays, TR semantic kept)
-    expect(station.snBays?.map((bay) => bay.designation)).toEqual(['Q01', 'Q02', 'TR']);
-    expect(station.snBays?.every((bay) => bay.hasMissingRequiredDevice)).toBe(true);
+    expect(station.snBays).toEqual([]);
+    expect(station.hasTransformer).toBe(false);
     expect(station.footprintType).toBe('mv_lv_inline');
+  });
+
+  it('czyta pola SN stacji z meta.field_specs bez legacy bays', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'bus-sn', ref_id: 'bus-sn', name: 'Szyna SN', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {}, substation_ref: 'ST-FS' } as never,
+      { id: 'bus-nn', ref_id: 'bus-nn', name: 'Szyna nN', voltage_kv: 0.4, phase_system: '3ph', tags: [], meta: {}, substation_ref: 'ST-FS' } as never,
+    ];
+    snap.branches = [
+      { id: 'sw-in', ref_id: 'sw-in', name: 'Aparat WE', type: 'breaker', from_bus_ref: 'bus-sn', to_bus_ref: 't-in', status: 'closed', tags: [], meta: {} } as never,
+      { id: 'sw-out', ref_id: 'sw-out', name: 'Aparat WY', type: 'breaker', from_bus_ref: 'bus-sn', to_bus_ref: 't-out', status: 'closed', tags: [], meta: {} } as never,
+      { id: 'sw-tr', ref_id: 'sw-tr', name: 'Aparat TR', type: 'breaker', from_bus_ref: 'bus-sn', to_bus_ref: 't-tr', status: 'closed', tags: [], meta: {} } as never,
+    ];
+    snap.transformers = [
+      {
+        id: 'tr-1',
+        ref_id: 'tr-1',
+        name: 'TR 1',
+        tags: [],
+        meta: {},
+        hv_bus_ref: 'bus-sn',
+        lv_bus_ref: 'bus-nn',
+        sn_mva: 1,
+        uhv_kv: 15,
+        ulv_kv: 0.4,
+        uk_percent: 6,
+        pk_kw: 8,
+        vector_group: 'Dyn11',
+      } as never,
+    ];
+    snap.bays = [
+      { id: 'legacy-in', ref_id: 'legacy-in', name: 'Pole IN legacy', bay_number: 'Pole IN', bay_role: 'LINE_IN', substation_ref: 'ST-FS', feeder_short_name: null, equipment_refs: ['sw-in'], tags: [], meta: {} } as never,
+      { id: 'legacy-out', ref_id: 'legacy-out', name: 'Pole OUT legacy', bay_number: 'Pole OUT', bay_role: 'LINE_OUT', substation_ref: 'ST-FS', feeder_short_name: null, equipment_refs: ['sw-out'], tags: [], meta: {} } as never,
+      { id: 'legacy-tr', ref_id: 'legacy-tr', name: 'Pole TR legacy', bay_number: 'Pole TR', bay_role: 'TRANSFORMER', substation_ref: 'ST-FS', feeder_short_name: null, equipment_refs: ['sw-tr'], tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 'st',
+        ref_id: 'ST-FS',
+        name: 'Stacja katalogowa',
+        tags: [],
+        meta: {
+          field_specs: [
+            { field_ref: 'field-in', name: 'Pole LINIA_IN 1', bay_role: 'IN', bus_ref: 'bus-sn', equipment_refs: ['sw-in'], meta: { field_role: 'LINIA_IN' } },
+            { field_ref: 'field-out', name: 'Pole LINIA_OUT 1', bay_role: 'OUT', bus_ref: 'bus-sn', equipment_refs: ['sw-out'], meta: { field_role: 'LINIA_OUT' } },
+            { field_ref: 'field-tr', name: 'Pole TRANSFORMATOROWE 1', bay_role: 'TR', bus_ref: 'bus-sn', equipment_refs: ['sw-tr'], meta: { field_role: 'TRANSFORMATOROWE' } },
+          ],
+        },
+        station_type: 'inline',
+        bus_refs: ['bus-sn', 'bus-nn'],
+        transformer_refs: ['tr-1'],
+      } as never,
+    ];
+    attachMainRun(snap, ['ST-FS'], 'run-field-specs');
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const station = r.stations[0];
+
+    expect(station.snBays).toHaveLength(3);
+    expect(station.snBays.map((bay) => bay.designation)).toEqual(['WE', 'WY', 'TR']);
+    expect(station.snBays.map((bay) => bay.fieldRole)).toEqual([
+      FIELD_ROLE.RMU_LINE,
+      FIELD_ROLE.RMU_LINE,
+      FIELD_ROLE.RMU_TRANSFORMER,
+    ]);
+    expect(station.snBays.every((bay) => bay.hasMissingRequiredDevice === false)).toBe(true);
+    expect(station.snBays.every((bay) => bay.cbState === 'closed')).toBe(true);
+    expect(station.hasTransformer).toBe(true);
+    expect(station.transformerVectorGroup).toBe('Dyn11');
+    expect(station.snBays.map((bay) => bay.bayRef)).toEqual(['field-in', 'field-out', 'field-tr']);
   });
 
   it('K30-37: adapter propaguje busVoltageKv z snapshot.buses (najwyższe > 0.5 kV)', () => {
@@ -783,6 +1035,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     snap.substations = [
       { id: 'st', ref_id: 'ST-V', name: 'Stacja SN', tags: [], meta: {}, station_type: 'inline', bus_refs: ['b-sn', 'b-nn'], transformer_refs: [] } as never,
     ];
+    attachMainRun(snap, ['ST-V'], 'run-voltage');
     snap.buses = [
       { id: 'b-sn', ref_id: 'b-sn', name: 'BUS-SN-15', voltage_kv: 15, phase_system: '3ph', tags: [], meta: { substation_ref: 'ST-V' }, substation_ref: 'ST-V' } as never,
       { id: 'b-nn', ref_id: 'b-nn', name: 'BUS-NN-04', voltage_kv: 0.4, phase_system: '3ph', tags: [], meta: { substation_ref: 'ST-V' }, substation_ref: 'ST-V' } as never,
@@ -797,6 +1050,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     snap.substations = [
       { id: 'st', ref_id: 'ST-LV', name: 'Stacja LV-only', tags: [], meta: {}, station_type: 'inline', bus_refs: ['b-nn'], transformer_refs: [] } as never,
     ];
+    attachMainRun(snap, ['ST-LV'], 'run-lv-only');
     snap.buses = [
       { id: 'b-nn', ref_id: 'b-nn', name: 'BUS-NN', voltage_kv: 0.4, phase_system: '3ph', tags: [], meta: { substation_ref: 'ST-LV' }, substation_ref: 'ST-LV' } as never,
     ];
@@ -863,6 +1117,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     snap.substations = [
       { id: 'st', ref_id: 'ST-PV', name: 'Stacja PV', tags: [], meta: {}, station_type: 'inline', bus_refs: ['bus-nn'], transformer_refs: ['tr-1'] } as never,
     ];
+    attachMainRun(snap, ['ST-PV'], 'run-pv-nn');
     snap.generators = [
       {
         id: 'pv1',
@@ -883,8 +1138,52 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     const station = r.stations[0];
 
     expect(station.footprintType).toBe('mv_lv_inline');
-    expect(station.derBadges).toEqual([{ kind: 'PV', connectionSide: 'nn', count: 1, totalPMw: expect.any(Number) }]);
+    expect(station.derBadges).toEqual([{ kind: 'PV', connectionSide: 'nn', hasBlockTransformer: false, count: 1, totalPMw: expect.any(Number) }]);
     expect(station.nnFeedersCount).toBe(2);
+    expect(station.totalGenerationKw).toBe(500);
+  });
+
+  it('DER z transformatorem blokowym nie powieksza badge mocy transformatora stacji', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 'st', ref_id: 'ST-PV', name: 'Stacja PV', tags: [], meta: {}, station_type: 'inline', bus_refs: ['bus-sn', 'bus-nn'], transformer_refs: ['tr-1'] } as never,
+    ];
+    snap.transformers = [
+      { id: 'tr-1', ref_id: 'tr-1', name: 'TR stacji', hv_bus_ref: 'bus-sn', lv_bus_ref: 'bus-nn', sn_mva: 0.25, uhv_kv: 15, ulv_kv: 0.4, tags: [], meta: {} } as never,
+      { id: 'tr-pv', ref_id: 'tr-pv', name: 'TR blokowy PV', hv_bus_ref: 'bus-sn', lv_bus_ref: 'bus-pv', sn_mva: 1.25, uhv_kv: 15, ulv_kv: 0.69, tags: [], meta: {} } as never,
+    ];
+    attachMainRun(snap, ['ST-PV'], 'run-pv-block');
+    snap.generators = [
+      { id: 'pv-nn', ref_id: 'PV-NN', name: 'PV nN', tags: [], meta: {}, bus_ref: 'bus-nn', p_mw: 0.185, q_mvar: 0, gen_type: 'pv_inverter', station_ref: 'ST-PV', connection_variant: 'nn_side' } as never,
+      { id: 'pv-block', ref_id: 'PV-BLOCK', name: 'PV blokowy', tags: [], meta: {}, bus_ref: 'bus-pv', p_mw: 1.0, q_mvar: 0, gen_type: 'pv_inverter', station_ref: 'ST-PV', connection_variant: 'block_transformer', blocking_transformer_ref: 'tr-pv' } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+
+    expect(r.stations[0].totalGenerationKw).toBe(185);
+    expect(r.stations[0].alarmSeverity).toBeNull();
+    expect(r.stations[0].transformerRatedKva).toBe(250);
+    expect(r.stations[0].transformerRefs).toEqual(['tr-1']);
+    expect(r.ders.find((der) => der.id === 'PV-BLOCK')?.nominalPowerKw).toBe(1000);
+  });
+
+  it('alarmuje stacje, gdy DER nN przekracza moc pozorna transformatora stacji', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 'st', ref_id: 'ST-PV', name: 'Stacja PV', tags: [], meta: {}, station_type: 'inline', bus_refs: ['bus-nn'], transformer_refs: ['tr-1'] } as never,
+    ];
+    snap.transformers = [
+      { id: 'tr-1', ref_id: 'tr-1', name: 'TR stacji', hv_bus_ref: 'bus-sn', lv_bus_ref: 'bus-nn', sn_mva: 0.25, uhv_kv: 15, ulv_kv: 0.4, tags: [], meta: {} } as never,
+    ];
+    attachMainRun(snap, ['ST-PV'], 'run-pv-overload');
+    snap.generators = [
+      { id: 'pv-nn', ref_id: 'PV-NN', name: 'PV nN', tags: [], meta: {}, bus_ref: 'bus-nn', p_mw: 0.5, q_mvar: 0, gen_type: 'pv_inverter', station_ref: 'ST-PV', connection_variant: 'nn_side' } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+
+    expect(r.stations[0].totalGenerationKw).toBe(500);
+    expect(r.stations[0].alarmSeverity).toBe('critical');
   });
 
   it('PV po stronie nN rozpoznaje stację z generator.meta.station_ref', () => {
@@ -892,6 +1191,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     snap.substations = [
       { id: 'st', ref_id: 'ST-PV', name: 'Stacja PV', tags: [], meta: {}, station_type: 'inline', bus_refs: ['bus-nn'], transformer_refs: ['tr-1'] } as never,
     ];
+    attachMainRun(snap, ['ST-PV'], 'run-pv-meta');
     snap.generators = [
       {
         id: 'pv1',
@@ -909,10 +1209,8 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
 
     const r = buildSldDataFromSnapshot(snap, null);
 
-    expect(r.stations[0].derBadges).toEqual([{ kind: 'PV', connectionSide: 'nn', count: 1, totalPMw: expect.any(Number) }]);
-    expect(r.ders.find((der) => der.id === 'PV-1')).toEqual(
-      expect.objectContaining({ kind: 'PV', connectionVariant: 'nn_side' }),
-    );
+    expect(r.stations[0].derBadges).toEqual([{ kind: 'PV', connectionSide: 'nn', hasBlockTransformer: false, count: 1, totalPMw: expect.any(Number) }]);
+    expect(r.ders.find((der) => der.id === 'PV-1')).toBeUndefined();
   });
 
   it('stacja terenowa jest pod kablem: kabel trafia w pole WE/WY, nie w środek stacji', () => {
@@ -1284,6 +1582,141 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(end?.x).toBe(start.x + 140);
   });
 
+  it('odcinek zakonczony ZKSN nie jest oznaczany jako oczekujacy mimo braku stacji w line_run', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'zksn-bus', ref_id: 'zksn/bus', name: 'Szyna ZKSN', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 'gpz', ref_id: 'GPZ-1', name: 'GPZ 1', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'S1', order: 1, name: 'Sekcja 1', bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      {
+        id: 'bay-1', ref_id: 'bay-1', name: 'Pole odplywowe 1', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'S1',
+        equipment_refs: ['cb-1'],
+      } as never,
+    ];
+    snap.branch_points = [
+      {
+        id: 'zksn-1',
+        ref_id: 'bp/zksn-1/zksn',
+        name: 'ZKSN 1',
+        tags: [],
+        meta: {},
+        branch_point_type: 'zksn',
+        parent_segment_id: 'SEG-ZKSN',
+        bus_ref: 'zksn/bus',
+        ports: { MAIN_IN: 'MAIN_IN', MAIN_OUT: 'MAIN_OUT', BRANCH: ['ODG_1'] },
+        branch_occupied: {},
+        materialized_params: {
+          switchgear_field_specs: [
+            { role: 'IN', name: 'Pole IN' },
+            { role: 'OUT', name: 'Pole OUT' },
+            { role: 'BRANCH', name: 'Pole ODG 1' },
+          ],
+        },
+      } as never,
+    ];
+    snap.branches = [
+      {
+        id: 'seg-zksn',
+        ref_id: 'SEG-ZKSN',
+        name: 'Kabel do ZKSN',
+        type: 'cable',
+        from_bus_ref: 'b15',
+        to_bus_ref: 'zksn/bus',
+        catalog_ref: 'NA2XS2Y 1x150/25',
+        length_km: 0.5,
+        tags: [],
+        meta: {},
+      } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-zksn',
+        run_kind: 'branch',
+        starting_bay_ref: 'bay-1',
+        starting_port_ref: 'bay-1#cable_head',
+        segments: [{ segment_ref: 'SEG-ZKSN', order: 1 }],
+        stations: [],
+      },
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+
+    expect(r.cableRuns[0].pendingEndpoint).toBe(false);
+    expect(r.terminalBindings.find((binding) => binding.id === 'SEG-ZKSN:B')?.elementType).toBe('zksn');
+  });
+
+  it('odcinek zakonczony wezlem przelotowym nie pokazuje markera zakonczenia odgalezienia', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'junction', ref_id: 'JUNCTION', name: 'Wezel przelotowy SN', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'tail', ref_id: 'TAIL', name: 'Dalszy odcinek', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 'gpz', ref_id: 'GPZ-1', name: 'GPZ 1', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'S1', order: 1, name: 'Sekcja 1', bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      {
+        id: 'bay-1', ref_id: 'bay-1', name: 'Pole odplywowe 1', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'S1',
+        equipment_refs: ['cb-1'],
+      } as never,
+    ];
+    snap.branches = [
+      {
+        id: 'seg-1',
+        ref_id: 'SEG-1',
+        name: 'Kabel do wezla',
+        type: 'cable',
+        from_bus_ref: 'b15',
+        to_bus_ref: 'JUNCTION',
+        catalog_ref: 'NA2XS2Y 1x150/25',
+        length_km: 0.5,
+        tags: [],
+        meta: {},
+      } as never,
+      {
+        id: 'seg-2',
+        ref_id: 'SEG-2',
+        name: 'Dalszy kabel',
+        type: 'cable',
+        from_bus_ref: 'JUNCTION',
+        to_bus_ref: 'TAIL',
+        catalog_ref: 'NA2XS2Y 1x150/25',
+        length_km: 0.5,
+        tags: [],
+        meta: {},
+      } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-junction',
+        run_kind: 'branch',
+        starting_bay_ref: 'bay-1',
+        starting_port_ref: 'bay-1#cable_head',
+        segments: [{ segment_ref: 'SEG-1', order: 1 }],
+        stations: [],
+      },
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+
+    expect(r.cableRuns[0].pendingEndpoint).toBe(false);
+  });
+
   it('kilka odcinków bez stacji ma osobne etykiety i klikalne przedziały', () => {
     const snap = buildEmptySnapshot();
     snap.buses = [
@@ -1365,7 +1798,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     ]);
   });
 
-  it('ciąg kablowy kończy się na ostatnim porcie stacji i pokazuje trasę do kolejnej stacji', () => {
+  it('ciąg kablowy kończy się na ostatniej stacji i pokazuje trasę do kolejnej stacji', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [
       { id: 's1', ref_id: 'ST-1', name: 'Stacja 1', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
@@ -1419,7 +1852,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(r.cableRuns).toHaveLength(1);
     expect(r.stations.map((station) => station.id)).toEqual(['ST-1', 'ST-2']);
     const lastCablePoint = r.cableRuns[0].pathPoints.at(-1);
-    expect(lastCablePoint?.x).toBeLessThan(r.stations[1].x);
+    expect(lastCablePoint?.x).toBeLessThanOrEqual(r.stations[1].x);
     expect(lastCablePoint?.y).toBe(r.stations[1].y - 80);
     expect(r.stations[0].x).toBeLessThan(r.stations[1].x);
     expect(r.cableRuns[0].label).toBe('różne typy katalogowe · 1,2 km');
@@ -1437,6 +1870,148 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(firstStationInputX).toBeLessThan(r.stations[0].x);
     expect(firstStationOutputX).toBeGreaterThanOrEqual(r.stations[0].x);
     expect(r.cableRuns[0].segmentPaths?.[1]?.pathPoints.at(-1)?.x).toBe(lastCablePoint?.x);
+  });
+
+  it('syntetyczny ciąg SN przechodzi przez kolejną szynę SN stacji, gdy from/to używa aliasów', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'g-bus', ref_id: 'gpz/1/section/001/bus_sn', name: 'Szyna GPZ', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 's1-in', ref_id: 'stn/a/sn_in', name: 'S1 in', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 's1-out', ref_id: 'stn/a/sn_out', name: 'S1 out', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 's2-in', ref_id: 'stn/b/sn_in', name: 'S2 in', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 'gpz', ref_id: 'gpz/1/station', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['gpz/1/section/001/bus_sn'], transformer_refs: [],
+      } as never,
+      {
+        id: 's1', ref_id: 'stn/a/station', name: 'Stacja 1', tags: [], meta: {},
+        station_type: 'inline', bus_refs: ['stn/a/sn_in', 'stn/a/sn_out'], transformer_refs: [],
+      } as never,
+      {
+        id: 's2', ref_id: 'stn/b/station', name: 'Stacja 2', tags: [], meta: {},
+        station_type: 'terminal', bus_refs: ['stn/b/sn_in'], transformer_refs: [],
+      } as never,
+    ];
+    snap.branches = [
+      {
+        id: 'seg-1',
+        ref_id: 'SEG-ALIAS-1',
+        name: 'Kabel GPZ-S1',
+        type: 'cable',
+        from_bus_ref: 'gpz/1/section/001/bus_sn',
+        to_bus_ref: 'stn/a/sn_in',
+        catalog_ref: 'YAKXS 3X120',
+        length_km: 0.1,
+        tags: [],
+        meta: {},
+      } as never,
+      {
+        id: 'seg-2',
+        ref_id: 'SEG-ALIAS-2',
+        name: 'Kabel S1-S2',
+        type: 'cable',
+        from_bus_ref: 'stn/a/sn_out',
+        to_bus_ref: 'stn/b/sn_in',
+        catalog_ref: 'YAKXS 3X120',
+        length_km: 0.2,
+        tags: [],
+        meta: {},
+      } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+
+    expect(r.stations.map((station) => station.id)).toEqual(['stn/a/station', 'stn/b/station']);
+    expect(r.cableRuns).toHaveLength(1);
+    expect(r.cableRuns[0].segmentRefs).toEqual(['SEG-ALIAS-1', 'SEG-ALIAS-2']);
+    expect(r.cableRuns[0].segmentPaths).toHaveLength(2);
+    expect(r.cableRuns[0].pathPoints.at(-1)?.x).toBeLessThanOrEqual(r.stations[1].x);
+  });
+});
+
+describe('enmToSldAdapter line run merge', () => {
+  it('jawny line_run rozszerza sie o dalszy realny odcinek SN z ENM', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'gpz-bus', ref_id: 'gpz/a/section/001/bus_sn', name: 'SN GPZ', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'st-a-bus', ref_id: 'stn/a/sn_bus', name: 'SN A', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'st-b-bus', ref_id: 'stn/b/sn_bus', name: 'SN B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      { id: 'gpz', ref_id: 'gpz/a/substation', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['gpz/a/section/001/bus_sn'], transformer_refs: [], gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'gpz/a/section/001/bus_sn' }] } as never,
+      { id: 'st-a', ref_id: 'stn/a/station', name: 'Stacja A', tags: [], meta: {}, station_type: 'inline', bus_refs: ['stn/a/sn_bus'], transformer_refs: [] } as never,
+      { id: 'st-b', ref_id: 'stn/b/station', name: 'Stacja B', tags: [], meta: {}, station_type: 'terminal', bus_refs: ['stn/b/sn_bus'], transformer_refs: [] } as never,
+    ];
+    snap.branches = [
+      { id: 'seg-1', ref_id: 'seg/1', name: 'Odcinek 1', type: 'cable', from_bus_ref: 'gpz/a/section/001/bus_sn', to_bus_ref: 'stn/a/sn_bus', catalog_ref: 'cable-base-epr-al-1c-150', length_km: 0.8, tags: [], meta: {} } as never,
+      { id: 'seg-2', ref_id: 'seg/2', name: 'Odcinek 2', type: 'cable', from_bus_ref: 'stn/a/sn_bus', to_bus_ref: 'stn/b/sn_bus', catalog_ref: 'cable-base-epr-al-1c-150', length_km: 0.6, tags: [], meta: {} } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-1',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1',
+        starting_port_ref: 'port-1',
+        segments: [{ segment_ref: 'seg/1', order: 1 }],
+        stations: [{ substation_ref: 'stn/a/station', order: 1 }],
+      },
+    ];
+
+    const result = buildSldDataFromSnapshot(snap, null);
+    const stationA = result.stations.find((station) => station.id === 'stn/a/station');
+    const stationB = result.stations.find((station) => station.id === 'stn/b/station');
+
+    expect(result.cableRuns).toHaveLength(1);
+    expect(result.cableRuns[0].segmentRefs).toEqual(['seg/1', 'seg/2']);
+    expect(stationA).toBeDefined();
+    expect(stationB).toBeDefined();
+    expect(stationB!.y).toBe(stationA!.y);
+    expect(stationB!.x).toBeGreaterThan(stationA!.x);
+  });
+
+  it('korytarz z samymi segmentami wyprowadza stacje z terminali odcinkow SN', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'gpz-bus', ref_id: 'gpz/c/section/001/bus_sn', name: 'SN GPZ', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'st-1-bus', ref_id: 'stn/c1/sn_bus', name: 'SN 1', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'st-2-bus', ref_id: 'stn/c2/sn_bus', name: 'SN 2', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'st-3-bus', ref_id: 'stn/c3/sn_bus', name: 'SN 3', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      { id: 'gpz', ref_id: 'gpz/c/substation', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['gpz/c/section/001/bus_sn'], transformer_refs: [], gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'gpz/c/section/001/bus_sn' }] } as never,
+      { id: 'st-1', ref_id: 'stn/c1/station', name: 'Stacja 1', tags: [], meta: {}, station_type: 'inline', bus_refs: ['stn/c1/sn_bus'], transformer_refs: [] } as never,
+      { id: 'st-2', ref_id: 'stn/c2/station', name: 'Stacja 2', tags: [], meta: {}, station_type: 'inline', bus_refs: ['stn/c2/sn_bus'], transformer_refs: [] } as never,
+      { id: 'st-3', ref_id: 'stn/c3/station', name: 'Stacja 3', tags: [], meta: {}, station_type: 'terminal', bus_refs: ['stn/c3/sn_bus'], transformer_refs: [] } as never,
+    ];
+    snap.branches = [
+      { id: 'seg-1', ref_id: 'seg/c1', name: 'Odcinek 1', type: 'cable', from_bus_ref: 'gpz/c/section/001/bus_sn', to_bus_ref: 'stn/c1/sn_bus', catalog_ref: 'YAKXS 3X120', length_km: 0.1, tags: [], meta: {} } as never,
+      { id: 'seg-2', ref_id: 'seg/c2', name: 'Odcinek 2', type: 'cable', from_bus_ref: 'stn/c1/sn_bus', to_bus_ref: 'stn/c2/sn_bus', catalog_ref: 'YAKXS 3X120', length_km: 0.1, tags: [], meta: {} } as never,
+      { id: 'seg-3', ref_id: 'seg/c3', name: 'Odcinek 3', type: 'cable', from_bus_ref: 'stn/c2/sn_bus', to_bus_ref: 'stn/c3/sn_bus', catalog_ref: 'YAKXS 3X120', length_km: 0.1, tags: [], meta: {} } as never,
+    ];
+    snap.corridors = [
+      {
+        id: 'corridor-1',
+        ref_id: 'corridor-1',
+        name: 'Magistrala SN',
+        tags: [],
+        meta: {},
+        corridor_type: 'radial',
+        ordered_segment_refs: ['seg/c1', 'seg/c2', 'seg/c3'],
+      } as never,
+    ];
+
+    const result = buildSldDataFromSnapshot(snap, null);
+
+    expect(result.cableRuns).toHaveLength(1);
+    expect(result.cableRuns[0].segmentRefs).toEqual(['seg/c1', 'seg/c2', 'seg/c3']);
+    expect(result.stations.map((station) => station.id)).toEqual([
+      'stn/c1/station',
+      'stn/c2/station',
+      'stn/c3/station',
+    ]);
+    expect(new Set(result.stations.map((station) => station.y)).size).toBe(1);
   });
 });
 
@@ -1631,7 +2206,7 @@ describe('buildStations — konsumuje line_runs.stations[] z explicit order', ()
     expect(stationA!.y).toBeLessThan(stationB!.y);
   });
 
-  it('Stacje NIE wymienione w line_runs (orphans) → osobny kanał Y po lineRun-bazowanych', () => {
+  it('Stacje NIE wymienione w line_runs → nie są renderowane jako orphan grid', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [
       { id: 's1', ref_id: 'ST-IN-RUN', name: 'In', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
@@ -1645,28 +2220,42 @@ describe('buildStations — konsumuje line_runs.stations[] z explicit order', ()
       },
     ];
     const r = buildSldDataFromSnapshot(snap, null);
-    expect(r.stations).toHaveLength(2);
+    expect(r.stations).toHaveLength(1);
     const inRun = r.stations.find((s) => s.id === 'ST-IN-RUN');
     const orphan = r.stations.find((s) => s.id === 'ST-ORPHAN');
     expect(inRun).toBeDefined();
-    expect(orphan).toBeDefined();
-    /* Orphan na osobnym (wyższym) kanale Y. */
-    expect(orphan!.y).toBeGreaterThan(inRun!.y);
+    expect(orphan).toBeUndefined();
+    expect(r.readabilityReport.orphanStationRefs).toEqual(['ST-ORPHAN']);
+    expect(r.readabilityReport.topologyContinuity).toBe('broken');
   });
 
-  it('Brak line_runs (legacy ENM) → wszystkie stacje jako orphans (back-compat)', () => {
+  it('Brak line_runs (legacy ENM) → stacje trafiają do raportu, nie na kanwę', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [
       { id: 's1', ref_id: 'ST-1', name: 'A', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
       { id: 's2', ref_id: 'ST-2', name: 'B', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
     ];
-    /* Brak snap.line_runs → fallback do orphan placement (legacy behavior). */
     const r = buildSldDataFromSnapshot(snap, null);
-    expect(r.stations).toHaveLength(2);
-    /* Sortowanie alfabetyczne po ref_id: ST-1 → ST-2. Oba w kanale 0 (orphanRunBase=0). */
-    expect(r.stations[0].id).toBe('ST-1');
-    expect(r.stations[1].id).toBe('ST-2');
-    expect(r.stations[0].y).toBe(r.stations[1].y);
+    expect(r.stations).toHaveLength(0);
+    expect(r.readabilityReport.orphanStationRefs).toEqual(['ST-1', 'ST-2']);
+    expect(r.readabilityReport.topologyContinuity).toBe('broken');
+  });
+
+  it('nie generuje sztucznych odcinkow SN dla stacji bez jawnych segmentow', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 's1', ref_id: 'ST-1', name: 'Stacja 1', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'ST-2', name: 'Stacja 2', tags: [], meta: {}, station_type: 'branch', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's3', ref_id: 'ST-3', name: 'Stacja 3', tags: [], meta: {}, station_type: 'terminal', bus_refs: [], transformer_refs: [] } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+
+    expect(r.stations).toHaveLength(0);
+    expect(r.readabilityReport.orphanStationRefs).toEqual(['ST-1', 'ST-2', 'ST-3']);
+    expect(r.cableRuns).toEqual([]);
+    expect(JSON.stringify(r)).not.toContain('Brak odcinka SN');
+    expect(JSON.stringify(r)).not.toContain('topology-guide');
   });
 
   it('Stacja typu GPZ NIE wpada do field stations nawet gdy w line_runs', () => {
@@ -1880,9 +2469,14 @@ describe('buildStations — konsumuje line_runs.stations[] z explicit order', ()
     // 2 GPZ widoczne w gpzs[]
     expect(r.gpzs.length).toBe(2);
     expect(r.gpzs.map((g) => g.id).sort()).toEqual(['GPZ-A', 'GPZ-B']);
+    expect(r.gpzs[1].x - r.gpzs[0].x).toBeGreaterThanOrEqual(500);
     // 2 line_runs widoczne w cableRuns[]
     expect(r.cableRuns.length).toBe(2);
     expect(r.cableRuns.map((c) => c.id).sort()).toEqual(['run-a', 'run-b']);
+    const runA = r.cableRuns.find((run) => run.id === 'run-a');
+    const runB = r.cableRuns.find((run) => run.id === 'run-b');
+    expect(runB?.pathPoints[0]?.x).toBeGreaterThan((runA?.pathPoints[0]?.x ?? 0) + 300);
+    expect(r.stations.find((s) => s.id === 'S17')?.stationCode).toBe('S17');
     // S28 sectional rozpoznany
     const s28 = r.stations.find((s) => s.id === 'S28');
     expect(s28?.topologicalType).toBe('sekcyjna');
@@ -1960,6 +2554,77 @@ describe('buildStations — konsumuje line_runs.stations[] z explicit order', ()
     expect(r1.stations.map((s) => s.id)).toEqual(r2.stations.map((s) => s.id));
     expect(r2.stations.map((s) => s.id)).toEqual(r3.stations.map((s) => s.id));
     expect(r1.stations.length).toBe(30);
+  });
+
+  it('duży ciąg SN zawija stacje w kanały terenowe i zachowuje ciągłość odcinków', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 'gpz-a', ref_id: 'GPZ-A', name: 'GPZ-A', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['busA'], transformer_refs: [], gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'busA' }] } as never,
+    ];
+    snap.buses = [
+      { id: 'busA', ref_id: 'busA', name: 'SN A', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    for (let i = 1; i <= 30; i += 1) {
+      const id = `S${i.toString().padStart(2, '0')}`;
+      snap.substations.push({
+        id,
+        ref_id: id,
+        name: `Stacja ${id}`,
+        tags: [],
+        meta: {},
+        station_type: 'inline',
+        bus_refs: [],
+        transformer_refs: [],
+      } as never);
+    }
+    snap.branches = Array.from({ length: 30 }, (_, index) => ({
+      id: `seg-${index + 1}`,
+      ref_id: `seg-${index + 1}`,
+      name: `Odcinek ${index + 1}`,
+      type: 'cable',
+      from_bus_ref: index === 0 ? 'busA' : `S${index.toString().padStart(2, '0')}/sn`,
+      to_bus_ref: `S${(index + 1).toString().padStart(2, '0')}/sn`,
+      status: 'closed',
+      catalog_ref: 'cable-base-epr-al-1c-150',
+      length_km: 0.18,
+      tags: [],
+      meta: {},
+    })) as never;
+    snap.line_runs = [
+      {
+        id: 'run-large',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1',
+        starting_port_ref: 'port-1',
+        segments: Array.from({ length: 30 }, (_, index) => ({
+          segment_ref: `seg-${index + 1}`,
+          order: index + 1,
+        })),
+        stations: Array.from({ length: 30 }, (_, index) => ({
+          substation_ref: `S${(index + 1).toString().padStart(2, '0')}`,
+          order: index + 1,
+        })),
+      },
+    ] as never;
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const rowYs = [...new Set(r.stations.map((station) => station.y))].sort((a, b) => a - b);
+    const row1 = r.stations.filter((station) => station.y === rowYs[0]);
+    const row2 = r.stations.filter((station) => station.y === rowYs[1]);
+    const transition = r.cableRuns[0].segmentPaths?.find((segmentPath) => (
+      new Set(segmentPath.pathPoints.map((point) => point.y)).size > 1
+    ));
+
+    expect(r.stations).toHaveLength(30);
+    expect(rowYs).toHaveLength(1);
+    expect(row1.map((station) => station.id)).toEqual(Array.from({ length: 30 }, (_, index) => `S${(index + 1).toString().padStart(2, '0')}`));
+    for (let i = 1; i < row1.length; i += 1) {
+      expect(row1[i].x).toBeGreaterThan(row1[i - 1].x);
+    }
+    expect(Math.max(...r.stations.map((station) => station.x)) - Math.min(...r.stations.map((station) => station.x))).toBeGreaterThan(11 * 380);
+    expect(row2).toEqual([]);
+    expect(r.cableRuns[0].pathPoints).toHaveLength(3);
+    expect(transition).toBeDefined();
   });
 });
 
@@ -2105,21 +2770,21 @@ describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (
     });
   });
 
-  describe('endpoint port detection (E030)', () => {
-    it('kabel bez endpoint_a_port / endpoint_b_port → missingEndpointPort=true', () => {
+  describe('terminal continuity detection (E030)', () => {
+    it('kabel z terminalami ENM nie jest oznaczany jako przerwany mimo braku geometrii portów', () => {
       const snap = buildEmptySnapshot();
       snap.branches = [
         {
           id: 'k_miss', ref_id: 'k_miss', name: 'K-MISS', tags: [], meta: {},
           type: 'cable', from_bus_ref: 'a', to_bus_ref: 'b', status: 'closed',
           length_km: 1, r_ohm_per_km: 0.5, x_ohm_per_km: 0.1,
-          // endpoint_a_port / endpoint_b_port pominięte celowo
+          // endpoint_a_port / endpoint_b_port pominięte celowo: to geometria, nie brak topologii.
         } as never,
       ];
       const r = buildSldDataFromSnapshot(snap, null);
       expect(r.cableRuns).toHaveLength(1);
-      expect(r.cableRuns[0].missingEndpointPort).toBe(true);
-      expect(r.cableRuns[0].missingPortSegmentRefs).toEqual(['k_miss']);
+      expect(r.cableRuns[0].missingEndpointPort).toBe(false);
+      expect(r.cableRuns[0].missingPortSegmentRefs).toEqual([]);
     });
 
     it('kabel z oba endpointami → missingEndpointPort=false', () => {
@@ -2138,15 +2803,14 @@ describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (
       expect(r.cableRuns[0].missingPortSegmentRefs).toEqual([]);
     });
 
-    it('kabel z jednym brakującym portem → missingEndpointPort=true', () => {
+    it('kabel bez jednego terminala ENM → missingEndpointPort=true', () => {
       const snap = buildEmptySnapshot();
       snap.branches = [
         {
           id: 'k_one', ref_id: 'k_one', name: 'K-ONE', tags: [], meta: {},
-          type: 'cable', from_bus_ref: 'a', to_bus_ref: 'b', status: 'closed',
+          type: 'cable', from_bus_ref: 'a', to_bus_ref: '', status: 'closed',
           length_km: 1, r_ohm_per_km: 0.5, x_ohm_per_km: 0.1,
           endpoint_a_port: { port_id: 'p_a' },
-          // endpoint_b_port pominięty
         } as never,
       ];
       const r = buildSldDataFromSnapshot(snap, null);
@@ -2154,7 +2818,7 @@ describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (
       expect(r.cableRuns[0].missingPortSegmentRefs).toEqual(['k_one']);
     });
 
-    it('linia napowietrzna bez portów → missingEndpointPort=true', () => {
+    it('linia napowietrzna z terminalami ENM → missingEndpointPort=false', () => {
       const snap = buildEmptySnapshot();
       snap.branches = [
         {
@@ -2164,7 +2828,7 @@ describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (
         } as never,
       ];
       const r = buildSldDataFromSnapshot(snap, null);
-      expect(r.cableRuns[0].missingEndpointPort).toBe(true);
+      expect(r.cableRuns[0].missingEndpointPort).toBe(false);
     });
   });
 
@@ -2193,9 +2857,395 @@ describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (
       const orphan = r.stations.find((s) => s.id === 'ST-ORPHAN');
 
       expect(appended).toBeDefined();
-      expect(orphan).toBeDefined();
-      expect(orphan!.y).toBeGreaterThan(appended!.y);
+      expect(orphan).toBeUndefined();
+      expect(r.readabilityReport.orphanStationRefs).toEqual(['ST-ORPHAN']);
     });
+
+    it('station_refs bez realnych odcinków w korytarzu raportuje stację jako przerwaną topologię', () => {
+      const snap = buildEmptySnapshot();
+      snap.substations = [
+        { id: 's1', ref_id: 'ST-ORPHAN', name: 'Stacja bez odcinka', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      ];
+      snap.corridors = [
+        {
+          id: 'corr-empty',
+          ref_id: 'corr-empty',
+          name: 'Korytarz bez odcinków',
+          tags: [],
+          meta: {},
+          corridor_type: 'radial',
+          ordered_segment_refs: [],
+          station_refs: ['ST-ORPHAN'],
+        } as never,
+      ];
+
+      const r = buildSldDataFromSnapshot(snap, null);
+      const orphan = r.stations.find((s) => s.id === 'ST-ORPHAN');
+      const binding = r.terminalBindings.find((b) => b.id === 'ST-ORPHAN:station-node');
+
+      expect(orphan).toBeDefined();
+      expect(binding?.runRef).toBeNull();
+      expect(r.readabilityReport.orphanStationRefs).toEqual(['ST-ORPHAN']);
+      expect(r.readabilityReport.topologyContinuity).toBe('broken');
+    });
+  });
+});
+
+describe('enmToSldAdapter — kontrakt topologii terenowej SLD', () => {
+  it('wiąże terminale odcinka do realnego zacisku pola GPZ i terminala topologicznego', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      {
+        id: 'b-gpz',
+        ref_id: 'gpz/1/section/001/bus_sn',
+        name: 'Szyna GPZ',
+        voltage_kv: 15,
+        phase_system: '3ph',
+        tags: [],
+        meta: {},
+      } as never,
+      {
+        id: 'b-bay-terminal',
+        ref_id: 'gpz/1/bay/001/terminal',
+        name: 'Zacisk pola 1',
+        voltage_kv: 15,
+        phase_system: '3ph',
+        tags: [],
+        meta: {},
+      } as never,
+      {
+        id: 'b-line-terminal',
+        ref_id: 'bus/line-1/downstream',
+        name: 'Terminal ciągu',
+        voltage_kv: 15,
+        phase_system: '3ph',
+        tags: ['helper_bus', 'topology_terminal'],
+        meta: { visual_role: 'INLINE_TERMINAL' },
+      } as never,
+    ];
+    snap.branches = [
+      {
+        id: 'br-bay-apparatus',
+        ref_id: 'gpz/1/bay/001/apparatus',
+        name: 'Aparat pola 1',
+        tags: [],
+        meta: {},
+        type: 'breaker',
+        status: 'closed',
+        from_bus_ref: 'gpz/1/section/001/bus_sn',
+        to_bus_ref: 'gpz/1/bay/001/terminal',
+      } as never,
+      {
+        id: 'br-line',
+        ref_id: 'seg/line-1/segment',
+        name: 'Odcinek 1',
+        tags: [],
+        meta: {
+          origin_bay_ref: 'gpz/1/bay/001',
+          origin_port_role: 'OUTGOING_HEAD',
+        },
+        type: 'cable',
+        status: 'closed',
+        from_bus_ref: 'gpz/1/section/001/bus_sn',
+        to_bus_ref: 'bus/line-1/downstream',
+        length_km: 0.5,
+        r_ohm_per_km: 0.206,
+        x_ohm_per_km: 0.107,
+        endpoint_a_port: null,
+        endpoint_b_port: null,
+      } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-line-1',
+        name: 'Magistrala 1',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'gpz/1/bay/001',
+        starting_port_ref: null,
+        segments: [{ segment_ref: 'seg/line-1/segment', order: 1 }],
+        stations: [],
+      },
+    ];
+
+    const result = buildSldDataFromSnapshot(snap, null);
+    const terminalA = result.terminalBindings.find((binding) => binding.id === 'seg/line-1/segment:A');
+    const terminalB = result.terminalBindings.find((binding) => binding.id === 'seg/line-1/segment:B');
+    const segmentPath = result.cableRuns[0]?.segmentPaths?.[0]?.pathPoints ?? [];
+
+    expect(terminalA).toMatchObject({
+      elementType: 'bay',
+      busRef: 'gpz/1/bay/001/terminal',
+      portRef: 'gpz/1/bay/001/terminal:terminal',
+    });
+    expect(terminalB).toMatchObject({
+      elementType: 'bus',
+      busRef: 'bus/line-1/downstream',
+      portRef: 'bus/line-1/downstream:terminal',
+    });
+    expect(segmentPath).toHaveLength(3);
+    expect(segmentPath[0].x).toBe(segmentPath[1].x);
+    expect(segmentPath[0].y).not.toBe(segmentPath[1].y);
+    expect(result.readabilityReport.missingTerminalRefs).toEqual([]);
+    expect(result.readabilityReport.topologyContinuity).toBe('continuous');
+  });
+
+  it('raportuje przerwany terminal tylko gdy ENM nie ma szyny końcowej', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      {
+        id: 'b-gpz',
+        ref_id: 'gpz/1/section/001/bus_sn',
+        name: 'Szyna GPZ',
+        voltage_kv: 15,
+        phase_system: '3ph',
+        tags: [],
+        meta: {},
+      } as never,
+    ];
+    snap.branches = [
+      {
+        id: 'br-line',
+        ref_id: 'seg/line-open/segment',
+        name: 'Odcinek bez końca',
+        tags: [],
+        meta: {},
+        type: 'cable',
+        status: 'closed',
+        from_bus_ref: 'gpz/1/section/001/bus_sn',
+        to_bus_ref: '',
+        length_km: 0.5,
+        r_ohm_per_km: 0.206,
+        x_ohm_per_km: 0.107,
+      } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-open',
+        run_kind: 'main_trunk',
+        starting_bay_ref: null,
+        starting_port_ref: null,
+        segments: [{ segment_ref: 'seg/line-open/segment', order: 1 }],
+        stations: [],
+      },
+    ];
+
+    const result = buildSldDataFromSnapshot(snap, null);
+
+    expect(result.readabilityReport.missingTerminalRefs).toEqual(['seg/line-open/segment:B']);
+    expect(result.readabilityReport.topologyContinuity).toBe('warnings');
+  });
+
+  it('wystawia topologyRuns, terminalBindings, labelSpecs i readabilityReport', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b-gpz', ref_id: 'gpz/sn_bus', name: 'Szyna GPZ', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b-st', ref_id: 'stn/a/sn_bus', name: 'Szyna stacji', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      { id: 'g', ref_id: 'gpz/1/station', name: 'GPZ testowy', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['gpz/sn_bus'], transformer_refs: [] } as never,
+      { id: 's', ref_id: 'stn/a/station', name: 'Stacja S01', tags: [], meta: {}, station_type: 'inline', bus_refs: ['stn/a/sn_bus'], transformer_refs: [] } as never,
+    ];
+    snap.branches = [
+      {
+        id: 'br-1',
+        ref_id: 'seg/a/segment_L',
+        name: 'Kabel GPZ-S01',
+        tags: [],
+        meta: {},
+        type: 'cable',
+        status: 'closed',
+        from_bus_ref: 'gpz/sn_bus',
+        to_bus_ref: 'stn/a/sn_bus',
+        length_km: 0.12,
+        r_ohm_per_km: 0.2,
+        x_ohm_per_km: 0.08,
+        endpoint_a_port: { port_id: 'gpz/bay/001/out' },
+        endpoint_b_port: { port_id: 'stn/a/q01/in' },
+      } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-a',
+        name: 'Magistrala testowa',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'gpz/bay/001',
+        starting_port_ref: 'gpz/bay/001/out',
+        segments: [{ segment_ref: 'seg/a/segment_L', order: 1 }],
+        stations: [{ substation_ref: 'stn/a/station', order: 1 }],
+      },
+    ];
+
+    const result = buildSldDataFromSnapshot(snap, null);
+
+    expect(result.topologyRuns).toHaveLength(1);
+    expect(result.topologyRuns[0].label).toBe('Magistrala testowa');
+    expect(result.topologyRuns[0]).toMatchObject({
+      laneIndex: 1,
+      orderInRun: 0,
+      sourceRunRef: null,
+      distanceFromSourceM: 120,
+    });
+    expect(result.topologyRuns[0].routePoints.length).toBeGreaterThan(0);
+    expect(result.topologyCorridors.find((corridor) => corridor.kind === 'gpz')).toBeDefined();
+    expect(result.topologyCorridors.find((corridor) => corridor.runRef === 'run-a')).toMatchObject({
+      kind: 'main-trunk',
+      laneIndex: 1,
+    });
+    const segmentBindings = result.terminalBindings.filter((binding) => binding.elementRef === 'seg/a/segment_L');
+    expect(segmentBindings).toHaveLength(2);
+    expect(segmentBindings[0]).toMatchObject({
+      laneIndex: 1,
+      orderInRun: 0,
+      distanceFromSourceM: 120,
+    });
+    expect(result.labelSpecs.map((label) => label.text).join(' ')).not.toMatch(/seg\/|ref\/|hash/i);
+    expect(result.readabilityReport.orphanStationRefs).toEqual([]);
+    expect(result.readabilityReport.missingTerminalRefs).toEqual([]);
+  });
+
+  it('wiąże odgałęzienie z realnym tap pointem na stacji ciągu głównego', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b-gpz', ref_id: 'gpz/sn_bus', name: 'Szyna GPZ', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b-main', ref_id: 'stn/main/sn_bus', name: 'Szyna S01', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b-branch', ref_id: 'stn/branch/sn_bus', name: 'Szyna O01', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      { id: 'g', ref_id: 'gpz/1/station', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['gpz/sn_bus'], transformer_refs: [] } as never,
+      { id: 's1', ref_id: 'stn/main/station', name: 'Stacja S01', tags: [], meta: {}, station_type: 'inline', bus_refs: ['stn/main/sn_bus'], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'stn/branch/station', name: 'Odgałęzienie O01', tags: [], meta: {}, station_type: 'terminal', bus_refs: ['stn/branch/sn_bus'], transformer_refs: [] } as never,
+    ];
+    snap.branches = [
+      { id: 'br-main', ref_id: 'seg/main/segment', name: 'Kabel GPZ-S01', tags: [], meta: {}, type: 'cable', status: 'closed', from_bus_ref: 'gpz/sn_bus', to_bus_ref: 'stn/main/sn_bus', length_km: 0.2, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+      { id: 'br-branch', ref_id: 'seg/branch/segment', name: 'Kabel S01-O01', tags: [], meta: {}, type: 'cable', status: 'closed', from_bus_ref: 'stn/main/sn_bus', to_bus_ref: 'stn/branch/sn_bus', length_km: 0.35, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-main',
+        name: 'Magistrala',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'gpz/bay/001',
+        starting_port_ref: 'gpz/bay/001/out',
+        segments: [{ segment_ref: 'seg/main/segment', order: 1 }],
+        stations: [{ substation_ref: 'stn/main/station', order: 1 }],
+      },
+      {
+        id: 'run-branch',
+        name: 'Odgałęzienie S01',
+        run_kind: 'branch',
+        starting_bay_ref: 'stn/main/q02',
+        starting_port_ref: 'stn/main/q02/out',
+        parent_run_ref: 'run-main',
+        branch_origin_station_ref: 'stn/main/station',
+        segments: [{ segment_ref: 'seg/branch/segment', order: 1 }],
+        stations: [{ substation_ref: 'stn/branch/station', order: 1 }],
+      },
+    ];
+
+    const result = buildSldDataFromSnapshot(snap, null);
+    const mainStation = result.stations.find((station) => station.id === 'stn/main/station');
+    const branchRun = result.topologyRuns.find((run) => run.id === 'run-branch');
+    const branchCorridor = result.topologyCorridors.find((corridor) => corridor.runRef === 'run-branch');
+
+    expect(branchRun).toMatchObject({
+      sourceRunRef: 'run-main',
+      branchOriginStationRef: 'stn/main/station',
+      distanceFromSourceM: 350,
+    });
+    expect(branchRun?.tapPoint).toEqual({ x: mainStation?.x, y: mainStation?.y });
+    expect(branchRun?.routePoints.length).toBeGreaterThan(0);
+    expect(branchCorridor).toMatchObject({
+      kind: 'branch',
+      sourceRunRef: 'run-main',
+      tapPoint: { x: mainStation?.x, y: mainStation?.y },
+    });
+
+    const branchCableRun = result.cableRuns.find((run) => run.id === 'run-branch');
+    expect(branchCableRun?.pathPoints[0]).toEqual({ x: mainStation?.x, y: mainStation?.y });
+    expect(branchCableRun?.segmentPaths?.[0]?.pathPoints[0]).toEqual({
+      x: mainStation?.x,
+      y: mainStation?.y,
+    });
+  });
+
+  it('prowadzi odgałęzienie ze słupa jako punktu trasy, bez fallbacku do GPZ', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b-gpz', ref_id: 'gpz/sn_bus', name: 'Szyna GPZ', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b-bp', ref_id: 'bp/bus', name: 'Punkt rozgałęzienia', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b-end', ref_id: 'end/sn_bus', name: 'Koniec ciągu', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b-branch', ref_id: 'stn/branch/sn_bus', name: 'Szyna odgałęzienia', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      { id: 'g', ref_id: 'gpz/1/station', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['gpz/sn_bus'], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'stn/branch/station', name: 'Stacja odgałęzienia', tags: [], meta: {}, station_type: 'terminal', bus_refs: ['stn/branch/sn_bus'], transformer_refs: [] } as never,
+    ];
+    snap.branches = [
+      { id: 'seg-left', ref_id: 'seg-left', name: 'Linia do słupa', tags: [], meta: {}, type: 'line_overhead', status: 'closed', from_bus_ref: 'gpz/sn_bus', to_bus_ref: 'bp/bus', length_km: 0.35, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+      { id: 'seg-right', ref_id: 'seg-right', name: 'Linia za słupem', tags: [], meta: {}, type: 'line_overhead', status: 'closed', from_bus_ref: 'bp/bus', to_bus_ref: 'end/sn_bus', length_km: 0.35, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+      { id: 'seg-branch', ref_id: 'seg-branch', name: 'Odgałęzienie do stacji', tags: [], meta: {}, type: 'line_overhead', status: 'closed', from_bus_ref: 'bp/bus', to_bus_ref: 'stn/branch/sn_bus', length_km: 0.2, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+    ];
+    snap.branch_points = [
+      {
+        id: 'bp-1',
+        ref_id: 'bp-1',
+        name: 'Słup rozgałęźny SN',
+        tags: [],
+        meta: {},
+        branch_point_type: 'branch_pole',
+        parent_segment_id: 'seg-original',
+        bus_ref: 'bp/bus',
+        catalog_ref: 'SLUP-ODG-12',
+        catalog_namespace: 'mv_branch_points',
+        ports: { MAIN_IN: 'gpz/sn_bus', MAIN_OUT: 'end/sn_bus', BRANCH: ['bp/branch_bus'] },
+        branch_occupied: { BRANCH: 'seg-branch' },
+        switch_state: 'closed',
+        runtime_inputs: {
+          operation_semantics: 'insert_point_in_run',
+          main_segment_refs: ['seg-left', 'seg-right'],
+          source_run_ref: 'run-main',
+        },
+      } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-main',
+        name: 'Magistrala',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'gpz/bay/001',
+        starting_port_ref: 'gpz/bay/001/out',
+        segments: [
+          { segment_ref: 'seg-left', order: 1 },
+          { segment_ref: 'seg-right', order: 2 },
+        ],
+        stations: [],
+      },
+      {
+        id: 'run-branch',
+        name: 'Odgałęzienie ze słupa',
+        run_kind: 'branch',
+        starting_bay_ref: 'bp-1',
+        starting_port_ref: 'bp-1.BRANCH',
+        parent_run_ref: 'run-main',
+        branch_origin_station_ref: 'bp-1',
+        segments: [{ segment_ref: 'seg-branch', order: 1 }],
+        stations: [{ substation_ref: 'stn/branch/station', order: 1 }],
+      },
+    ];
+
+    const result = buildSldDataFromSnapshot(snap, null);
+    const marker = result.branchPoints.find((point) => point.id === 'bp-1');
+    const branchRun = result.topologyRuns.find((run) => run.id === 'run-branch');
+    const branchCableRun = result.cableRuns.find((run) => run.id === 'run-branch');
+
+    expect(marker?.anchorX).toBeGreaterThan(0);
+    expect(marker?.x).toBeGreaterThan(marker?.anchorX ?? 0);
+    expect(marker?.y).toBeLessThan(marker?.anchorY ?? 0);
+    expect(marker?.branchPortCount).toBe(1);
+    expect(branchRun?.tapPoint).toEqual({ x: marker?.anchorX, y: marker?.anchorY });
+    expect(branchCableRun?.pathPoints[0]).toEqual({ x: marker?.anchorX, y: marker?.anchorY });
+    expect(branchCableRun?.segmentPaths?.[0]?.pathPoints[0]).toEqual({ x: marker?.anchorX, y: marker?.anchorY });
+    expect(branchCableRun?.pathPoints[0].x).not.toBe(result.cableRuns.find((run) => run.id === 'run-main')?.pathPoints[0].x);
   });
 });
 
@@ -2222,6 +3272,16 @@ describe('K30-19 countNnFeedersFromMeta — adapter respects station.meta.nn_fie
         tags: [],
         meta: { substation_ref: 'stn/abc/station' },
         voltage_kv: 15,
+      },
+    ];
+    (snapshot as { line_runs: unknown[] }).line_runs = [
+      {
+        id: 'run-station-fixture',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-fixture',
+        starting_port_ref: 'port-fixture',
+        segments: [],
+        stations: [{ substation_ref: 'stn/abc/station', order: 1 }],
       },
     ];
     return snapshot;
@@ -2262,5 +3322,369 @@ describe('K30-19 countNnFeedersFromMeta — adapter respects station.meta.nn_fie
       const station = result.stations.find((s) => s.id === 'stn/abc/station');
       expect(station!.nnFeedersCount).toBe(count);
     }
+  });
+});
+
+describe('SLD branch point projection', () => {
+  it('punkt rozgalezienia z ENM jest wezlem SLD, nie znikajacym elementem domenowym', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'Szyna GPZ S1 15 kV', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'bp-bus', ref_id: 'bp-bus', name: 'Slup rozgalezienia', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'end-bus', ref_id: 'end-bus', name: 'Koniec ciagu', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 'gpz', ref_id: 'GPZ-1', name: 'GPZ 1', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'S1', order: 1, name: 'Sekcja 1', bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      {
+        id: 'bay-1', ref_id: 'bay-1', name: 'Pole odplywowe 1', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'S1',
+        equipment_refs: ['cb-1'],
+      } as never,
+    ];
+    snap.branches = [
+      {
+        id: 'seg-left',
+        ref_id: 'SEG-L',
+        name: 'Odcinek SN - do punktu rozgalezienia',
+        type: 'line_overhead',
+        from_bus_ref: 'b15',
+        to_bus_ref: 'bp-bus',
+        catalog_ref: 'AFL-6 70 mm2',
+        length_km: 0.3,
+        tags: [],
+        meta: {},
+      } as never,
+      {
+        id: 'seg-right',
+        ref_id: 'SEG-R',
+        name: 'Odcinek SN - za punktem rozgalezienia',
+        type: 'line_overhead',
+        from_bus_ref: 'bp-bus',
+        to_bus_ref: 'end-bus',
+        catalog_ref: 'AFL-6 70 mm2',
+        length_km: 0.2,
+        tags: [],
+        meta: {},
+      } as never,
+    ];
+    snap.branch_points = [
+      {
+        id: 'bp-1',
+        ref_id: 'bp-1',
+        name: 'Slup rozgalezienia SN',
+        tags: [],
+        meta: {},
+        branch_point_type: 'branch_pole',
+        parent_segment_id: 'SEG-ORIGINAL',
+        bus_ref: 'bp-bus',
+        catalog_ref: 'SLUP-ODG-12',
+        catalog_namespace: 'mv_branch_points',
+        ports: { MAIN_IN: 'b15', MAIN_OUT: 'end-bus', BRANCH: ['branch-port-1'] },
+        switch_state: 'closed',
+      } as never,
+      {
+        id: 'bp-2',
+        ref_id: 'bp-2',
+        name: 'Slup rozgalezienia SN 2',
+        tags: [],
+        meta: {},
+        branch_point_type: 'branch_pole',
+        parent_segment_id: 'SEG-ORIGINAL',
+        bus_ref: 'bp-bus',
+        catalog_ref: 'SLUP-ODG-12',
+        catalog_namespace: 'mv_branch_points',
+        ports: { MAIN_IN: 'b15', MAIN_OUT: 'end-bus', BRANCH: ['branch-port-2'] },
+        switch_state: 'closed',
+      } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-1',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1',
+        starting_port_ref: 'bay-1#cable_head',
+        segments: [
+          { segment_ref: 'SEG-L', order: 1 },
+          { segment_ref: 'SEG-R', order: 2 },
+        ],
+        stations: [],
+      },
+    ];
+
+    const result = buildSldDataFromSnapshot(snap, null);
+
+    expect(result.branchPoints).toHaveLength(2);
+    const firstBranchPoint = result.branchPoints.find((point) => point.id === 'bp-1');
+    expect(firstBranchPoint).toMatchObject({
+      id: 'bp-1',
+      branchPointType: 'branch_pole',
+      runRef: 'run-1',
+      parentSegmentRef: 'SEG-ORIGINAL',
+    });
+    expect(firstBranchPoint?.x).toBeGreaterThan(0);
+    for (const branchPoint of result.branchPoints) {
+      expect(branchPoint.x).not.toBe(branchPoint.anchorX);
+      expect(branchPoint.y).toBeLessThan(branchPoint.anchorY ?? 0);
+      expect(branchPoint.branchPortCount).toBe(1);
+    }
+    expect(result.terminalBindings.find((binding) => binding.id === 'SEG-L:B')?.elementType).toBe('branch_pole');
+    expect(result.terminalBindings.find((binding) => binding.id === 'SEG-R:A')?.elementType).toBe('branch_pole');
+    expect(result.labelSpecs.find((label) => label.ownerRef === 'bp-1')?.ownerKind).toBe('branch_point');
+    expect(JSON.stringify(result)).not.toContain('seg/');
+    expect(JSON.stringify(result)).not.toContain('hash/');
+  });
+
+  it('odtwarza ciag po podziale segmentu, gdy line_run wskazuje stary parent_segment_id', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'Szyna GPZ S1 15 kV', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'zksn-bus', ref_id: 'zksn-bus', name: 'ZKSN', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'end-bus', ref_id: 'end-bus', name: 'Koniec ciagu', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.branches = [
+      { id: 'seg-l', ref_id: 'SEG-L', name: 'Kabel do ZKSN', tags: [], meta: {}, type: 'cable', from_bus_ref: 'b15', to_bus_ref: 'zksn-bus', status: 'closed', length_km: 0.5, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+      { id: 'seg-r', ref_id: 'SEG-R', name: 'Kabel za ZKSN', tags: [], meta: {}, type: 'cable', from_bus_ref: 'zksn-bus', to_bus_ref: 'end-bus', status: 'closed', length_km: 0.5, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+    ];
+    snap.branch_points = [
+      {
+        id: 'zksn-1',
+        ref_id: 'zksn-1',
+        name: 'ZKSN SN',
+        tags: [],
+        meta: {},
+        branch_point_type: 'zksn',
+        parent_segment_id: 'SEG-OLD',
+        bus_ref: 'zksn-bus',
+        catalog_ref: 'ZKSN-3P',
+        catalog_namespace: 'mv_branch_points',
+        ports: { MAIN_IN: 'b15', MAIN_OUT: 'end-bus', BRANCH: ['branch-port-1'] },
+        switch_state: 'closed',
+      } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-zksn',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1',
+        starting_port_ref: 'bay-1#cable_head',
+        segments: [{ segment_ref: 'SEG-OLD', order: 1 }],
+        stations: [],
+      },
+    ];
+
+    const result = buildSldDataFromSnapshot(snap, null);
+    const run = result.cableRuns.find((candidate) => candidate.id === 'run-zksn');
+    const marker = result.branchPoints.find((candidate) => candidate.id === 'zksn-1');
+
+    expect(run?.segmentRefs).toEqual(['SEG-L', 'SEG-R']);
+    expect(marker?.runRef).toBe('run-zksn');
+    expect(marker?.x).toBeGreaterThan(0);
+    expect(marker?.y).toBeGreaterThan(marker?.anchorY ?? 0);
+    expect((marker?.y ?? 0) - (marker?.anchorY ?? 0)).toBeGreaterThanOrEqual(80);
+    expect((marker?.y ?? 0) - (marker?.anchorY ?? 0)).toBeLessThan(110);
+    expect(marker?.hasTransformer).toBe(false);
+    expect(marker?.switchgearFieldCount).toBeGreaterThanOrEqual(3);
+    expect(result.terminalBindings.find((binding) => binding.id === 'SEG-L:B')?.elementType).toBe('zksn');
+    expect(result.terminalBindings.find((binding) => binding.id === 'SEG-R:A')?.elementType).toBe('zksn');
+  });
+
+  it('nie naklada ZKSN na stacje, gdy punkt rozdzielczy wypada przy tym samym odcinku toru', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'Szyna GPZ S1 15 kV', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'zksn-bus', ref_id: 'zksn-bus', name: 'ZKSN', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'end-bus', ref_id: 'end-bus', name: 'Koniec ciagu', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.branches = [
+      { id: 'seg-l', ref_id: 'SEG-L', name: 'Kabel do ZKSN', tags: [], meta: {}, type: 'cable', from_bus_ref: 'b15', to_bus_ref: 'zksn-bus', status: 'closed', length_km: 0.5, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+      { id: 'seg-r', ref_id: 'SEG-R', name: 'Kabel za ZKSN', tags: [], meta: {}, type: 'cable', from_bus_ref: 'zksn-bus', to_bus_ref: 'end-bus', status: 'closed', length_km: 0.5, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+    ];
+    snap.substations = [
+      { id: 'st-1', ref_id: 'ST-1', name: 'Stacja SN/nN 1', tags: [], meta: {}, station_type: 'inline', bus_refs: ['zksn-bus'], transformer_refs: [] } as never,
+    ];
+    snap.branch_points = [
+      {
+        id: 'zksn-1',
+        ref_id: 'zksn-1',
+        name: 'ZKSN SN',
+        tags: [],
+        meta: {},
+        branch_point_type: 'zksn',
+        parent_segment_id: 'SEG-OLD',
+        bus_ref: 'zksn-bus',
+        catalog_ref: 'ZKSN-3P',
+        catalog_namespace: 'mv_branch_points',
+        ports: { MAIN_IN: 'b15', MAIN_OUT: 'end-bus', BRANCH: ['branch-port-1'] },
+        switch_state: 'closed',
+      } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-zksn',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1',
+        starting_port_ref: 'bay-1#cable_head',
+        segments: [{ segment_ref: 'SEG-OLD', order: 1 }],
+        stations: [{ substation_ref: 'ST-1', order: 1 }],
+      },
+    ];
+
+    const result = buildSldDataFromSnapshot(snap, null);
+    const marker = result.branchPoints.find((candidate) => candidate.id === 'zksn-1');
+    const station = result.stations.find((candidate) => candidate.id === 'ST-1');
+    expect(marker).toBeTruthy();
+    expect(station).toBeTruthy();
+    expect(Math.abs((marker?.x ?? 0) - (station?.x ?? 0))).toBeGreaterThanOrEqual(300);
+    expect(Math.abs((marker?.y ?? 0) - (station?.y ?? 0))).toBeLessThan(20);
+    expect(marker?.anchorX).toBe(marker?.x);
+    expect(marker?.switchgearFieldCount).toBeGreaterThanOrEqual(3);
+  });
+
+  it('rozsuwa nakładające się ZKSN, zachowując kotwicę topologiczną na trasie', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'Szyna GPZ S1 15 kV', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'zksn-bus', ref_id: 'zksn-bus', name: 'Węzeł ZKSN', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'end-bus', ref_id: 'end-bus', name: 'Koniec ciągu', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.branches = [
+      { id: 'seg-l', ref_id: 'SEG-L', name: 'Kabel do ZKSN', tags: [], meta: {}, type: 'cable', from_bus_ref: 'b15', to_bus_ref: 'zksn-bus', status: 'closed', length_km: 0.5, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+      { id: 'seg-r', ref_id: 'SEG-R', name: 'Kabel za ZKSN', tags: [], meta: {}, type: 'cable', from_bus_ref: 'zksn-bus', to_bus_ref: 'end-bus', status: 'closed', length_km: 0.5, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+    ];
+    snap.branch_points = [
+      {
+        id: 'zksn-a',
+        ref_id: 'zksn-a',
+        name: 'ZKSN A',
+        tags: [],
+        meta: {},
+        branch_point_type: 'zksn',
+        parent_segment_id: 'SEG-OLD',
+        bus_ref: 'zksn-bus',
+        catalog_ref: 'ZKSN-3P',
+        catalog_namespace: 'mv_branch_points',
+        ports: { MAIN_IN: 'b15', MAIN_OUT: 'end-bus', BRANCH: ['branch-port-a'] },
+        switch_state: 'closed',
+      } as never,
+      {
+        id: 'zksn-b',
+        ref_id: 'zksn-b',
+        name: 'ZKSN B',
+        tags: [],
+        meta: {},
+        branch_point_type: 'zksn',
+        parent_segment_id: 'SEG-OLD',
+        bus_ref: 'zksn-bus',
+        catalog_ref: 'ZKSN-3P',
+        catalog_namespace: 'mv_branch_points',
+        ports: { MAIN_IN: 'b15', MAIN_OUT: 'end-bus', BRANCH: ['branch-port-b'] },
+        switch_state: 'closed',
+      } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-zksn',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1',
+        starting_port_ref: 'bay-1#cable_head',
+        segments: [{ segment_ref: 'SEG-OLD', order: 1 }],
+        stations: [],
+      },
+    ];
+
+    const result = buildSldDataFromSnapshot(snap, null);
+    const zksnA = result.branchPoints.find((candidate) => candidate.id === 'zksn-a');
+    const zksnB = result.branchPoints.find((candidate) => candidate.id === 'zksn-b');
+    expect(zksnA).toBeTruthy();
+    expect(zksnB).toBeTruthy();
+    expect(zksnA?.anchorX).toBe(zksnB?.anchorX);
+    expect(zksnA?.anchorY).toBe(zksnB?.anchorY);
+
+    const bounds = (point: NonNullable<typeof zksnA>) => ({
+      left: point.x - 78,
+      right: point.x + 78,
+      top: point.y - 72,
+      bottom: point.y + 76,
+    });
+    const a = bounds(zksnA!);
+    const b = bounds(zksnB!);
+    const overlap = !(
+      a.right + 18 <= b.left
+      || b.right + 18 <= a.left
+      || a.bottom + 18 <= b.top
+      || b.bottom + 18 <= a.top
+    );
+    expect(overlap).toBe(false);
+  });
+
+  it('rozsuwa kolejne slupy za ostatnia stacja zamiast nakladac je na jednym punkcie', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b-gpz', ref_id: 'gpz/sn_bus', name: 'Szyna GPZ', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b-s1', ref_id: 'stn/s01/sn_bus', name: 'S01', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b-s2', ref_id: 'stn/s02/sn_bus', name: 'S02', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b-s3', ref_id: 'stn/s03/sn_bus', name: 'S03', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b-bp1', ref_id: 'bp/1/bus', name: 'Slup 1', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b-bp2', ref_id: 'bp/2/bus', name: 'Slup 2', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b-bp3', ref_id: 'bp/3/bus', name: 'Slup 3', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b-end', ref_id: 'end/sn_bus', name: 'Koniec', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      { id: 's1', ref_id: 'stn/s01/station', name: 'Stacja S01', tags: [], meta: {}, station_type: 'inline', bus_refs: ['stn/s01/sn_bus'], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'stn/s02/station', name: 'Stacja S02', tags: [], meta: {}, station_type: 'inline', bus_refs: ['stn/s02/sn_bus'], transformer_refs: [] } as never,
+      { id: 's3', ref_id: 'stn/s03/station', name: 'Stacja S03', tags: [], meta: {}, station_type: 'inline', bus_refs: ['stn/s03/sn_bus'], transformer_refs: [] } as never,
+    ];
+    snap.branches = [
+      { id: 'seg-1', ref_id: 'SEG-1', name: 'Linia 1', tags: [], meta: {}, type: 'line_overhead', from_bus_ref: 'gpz/sn_bus', to_bus_ref: 'stn/s01/sn_bus', status: 'closed', length_km: 0.2, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+      { id: 'seg-2', ref_id: 'SEG-2', name: 'Linia 2', tags: [], meta: {}, type: 'line_overhead', from_bus_ref: 'stn/s01/sn_bus', to_bus_ref: 'stn/s02/sn_bus', status: 'closed', length_km: 0.2, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+      { id: 'seg-3', ref_id: 'SEG-3', name: 'Linia 3', tags: [], meta: {}, type: 'line_overhead', from_bus_ref: 'stn/s02/sn_bus', to_bus_ref: 'stn/s03/sn_bus', status: 'closed', length_km: 0.2, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+      { id: 'seg-4', ref_id: 'SEG-4', name: 'Linia do slupa 1', tags: [], meta: {}, type: 'line_overhead', from_bus_ref: 'stn/s03/sn_bus', to_bus_ref: 'bp/1/bus', status: 'closed', length_km: 0.12, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+      { id: 'seg-5', ref_id: 'SEG-5', name: 'Linia do slupa 2', tags: [], meta: {}, type: 'line_overhead', from_bus_ref: 'bp/1/bus', to_bus_ref: 'bp/2/bus', status: 'closed', length_km: 0.12, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+      { id: 'seg-6', ref_id: 'SEG-6', name: 'Linia do slupa 3', tags: [], meta: {}, type: 'line_overhead', from_bus_ref: 'bp/2/bus', to_bus_ref: 'bp/3/bus', status: 'closed', length_km: 0.12, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+      { id: 'seg-7', ref_id: 'SEG-7', name: 'Linia za slupem 3', tags: [], meta: {}, type: 'line_overhead', from_bus_ref: 'bp/3/bus', to_bus_ref: 'end/sn_bus', status: 'closed', length_km: 0.12, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+    ];
+    snap.branch_points = [
+      { id: 'bp-1', ref_id: 'bp-1', name: 'Slup rozgalezieniowy 1', tags: [], meta: {}, branch_point_type: 'branch_pole', parent_segment_id: 'SEG-OLD-1', bus_ref: 'bp/1/bus', catalog_ref: 'SLUP', catalog_namespace: 'mv_branch_points', ports: { MAIN_IN: 'stn/s03/sn_bus', MAIN_OUT: 'bp/2/bus', BRANCH: [] }, switch_state: 'closed', runtime_inputs: { main_segment_refs: ['SEG-4', 'SEG-5'] } } as never,
+      { id: 'bp-2', ref_id: 'bp-2', name: 'Slup rozgalezieniowy 2', tags: [], meta: {}, branch_point_type: 'branch_pole', parent_segment_id: 'SEG-OLD-2', bus_ref: 'bp/2/bus', catalog_ref: 'SLUP', catalog_namespace: 'mv_branch_points', ports: { MAIN_IN: 'bp/1/bus', MAIN_OUT: 'bp/3/bus', BRANCH: [] }, switch_state: 'closed', runtime_inputs: { main_segment_refs: ['SEG-5', 'SEG-6'] } } as never,
+      { id: 'bp-3', ref_id: 'bp-3', name: 'Slup rozgalezieniowy 3', tags: [], meta: {}, branch_point_type: 'branch_pole', parent_segment_id: 'SEG-OLD-3', bus_ref: 'bp/3/bus', catalog_ref: 'SLUP', catalog_namespace: 'mv_branch_points', ports: { MAIN_IN: 'bp/2/bus', MAIN_OUT: 'end/sn_bus', BRANCH: [] }, switch_state: 'closed', runtime_inputs: { main_segment_refs: ['SEG-6', 'SEG-7'] } } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-main',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1',
+        starting_port_ref: 'bay-1#cable_head',
+        segments: [
+          { segment_ref: 'SEG-1', order: 1 },
+          { segment_ref: 'SEG-2', order: 2 },
+          { segment_ref: 'SEG-3', order: 3 },
+          { segment_ref: 'SEG-4', order: 4 },
+          { segment_ref: 'SEG-5', order: 5 },
+          { segment_ref: 'SEG-6', order: 6 },
+          { segment_ref: 'SEG-7', order: 7 },
+        ],
+        stations: [
+          { substation_ref: 'stn/s01/station', order: 1 },
+          { substation_ref: 'stn/s02/station', order: 2 },
+          { substation_ref: 'stn/s03/station', order: 3 },
+        ],
+      },
+    ];
+
+    const result = buildSldDataFromSnapshot(snap, null);
+    const branchPoints = ['bp-1', 'bp-2', 'bp-3']
+      .map((id) => result.branchPoints.find((point) => point.id === id));
+    const xValues = branchPoints.map((point) => point?.x);
+
+    expect(new Set(xValues).size).toBe(3);
+    expect(xValues[1]).toBeGreaterThan(xValues[0] ?? 0);
+    expect(xValues[2]).toBeGreaterThan(xValues[1] ?? 0);
+    expect(result.readabilityReport.orphanStationRefs).toEqual([]);
   });
 });

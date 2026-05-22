@@ -35,7 +35,7 @@ export interface SupplyPathHighlight {
   readonly energizedSubstationRefs: readonly string[];
   /** DER przyłączone do energized buses. */
   readonly energizedGeneratorRefs: readonly string[];
-  /** Źródła użyte jako startowe (Source.ref_id). */
+  /** Elementy zasilające użyte jako startowe (Source.ref_id). */
   readonly sourceRefs: readonly string[];
 }
 

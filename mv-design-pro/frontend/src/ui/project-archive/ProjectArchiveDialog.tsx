@@ -797,7 +797,7 @@ function PreviewDisplay({ preview }: PreviewDisplayProps) {
               <dd className="text-gray-900">{summary.branches_count}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-500">Źródła:</dt>
+              <dt className="text-gray-500">Zasilanie:</dt>
               <dd className="text-gray-900">{summary.sources_count}</dd>
             </div>
             <div className="flex justify-between">

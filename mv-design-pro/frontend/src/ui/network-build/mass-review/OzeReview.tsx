@@ -1,5 +1,5 @@
 /**
- * OzeReview — Przegląd masowy źródeł OZE i BESS.
+ * OzeReview — Przegląd masowy układów PV/BESS/FW.
  *
  * Tabela generatorów: typ (PV/BESS/wiatr/sync), moc, wariant przyłączenia,
  * transformator blokowy, katalog.
@@ -103,7 +103,7 @@ export function OzeReview({ className }: OzeReviewProps) {
       <div className="px-4 py-2 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center justify-between">
           <div>
-            <h4 className="text-[11px] font-semibold text-gray-800">Źródła OZE / BESS</h4>
+            <h4 className="text-[11px] font-semibold text-gray-800">Układy PV/BESS/FW</h4>
             <p className="text-[10px] text-gray-500">
               {rows.length} generatorów ({pvCount} PV, {bessCount} BESS) — sumaryczna moc: {(totalPower * 1000).toFixed(0)} kW
             </p>
@@ -115,7 +115,7 @@ export function OzeReview({ className }: OzeReviewProps) {
       <div className="flex-1 overflow-y-auto">
         {rows.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-[11px] text-gray-400">Brak źródeł OZE/BESS w modelu</p>
+            <p className="text-[11px] text-gray-400">Nie dodano układów PV/BESS/FW w modelu</p>
           </div>
         ) : (
           <table className="w-full text-[11px]">

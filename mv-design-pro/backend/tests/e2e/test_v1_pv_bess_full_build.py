@@ -59,6 +59,15 @@ def _empty_enm() -> dict[str, Any]:
     return enm.model_dump(mode="json")
 
 
+def _branch_field_ref(enm: dict[str, Any], station_name: str) -> str:
+    station = next(s for s in enm.get("substations", []) if s.get("name") == station_name)
+    for spec in station.get("meta", {}).get("field_specs", []):
+        role = str(spec.get("field_role") or spec.get("bay_role") or "").upper()
+        if role in {"LINIA_ODG", "FEEDER"}:
+            return f"{spec['field_ref']}.BRANCH"
+    raise AssertionError(f"Brak pola odgałęźnego w stacji {station_name}")
+
+
 def _materialize_cable_impedances(enm: dict[str, Any]) -> dict[str, Any]:
     """YAKXS 3×120 mm² z katalogu (r=0.253, x=0.073, b=0.26 µS/km, In=270 A)."""
     enm = copy.deepcopy(enm)
@@ -147,10 +156,10 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "station_type": "B",
             "insert_at": {"value": 0.4},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4, "name": "Stacja-1"},
-            "sn_fields": ["IN", "OUT"],
+            "sn_fields": ["IN", "OUT", "FEEDER"],
             "transformer": {
                 "create": True,
-                "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                "transformer_catalog_ref": "tr-sn-nn-15-04-1250kva-dyn11",
             },
         },
     )
@@ -172,25 +181,23 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "station_type": "B",
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4, "name": "Stacja-2"},
-            "sn_fields": ["IN", "OUT"],
+            "sn_fields": ["IN", "OUT", "FEEDER"],
             "transformer": {
                 "create": True,
-                "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                "transformer_catalog_ref": "tr-sn-nn-15-04-1250kva-dyn11",
             },
         },
     )
     assert r.get("error") is None, f"KROK 4 (stacja #2): {r.get('error')}"
     enm = r["snapshot"]
 
-    # KROK 5: Pierwsze odgałęzienie — od szyny SN stacji #1
-    sn_buses = [b for b in enm.get("buses", []) if "sn_bus" in b.get("ref_id", "")]
-    assert len(sn_buses) >= 2, f"Oczekiwano ≥2 szyn SN stacji, jest {len(sn_buses)}"
-    branch_from_1 = sn_buses[0]["ref_id"]
+    # KROK 5: Pierwsze odgałęzienie — od dedykowanego pola odgałęźnego stacji #1
+    branch_from_1 = _branch_field_ref(enm, "Stacja-1")
     r = execute_domain_operation(
         enm,
         "start_branch_segment_sn",
         {
-            "from_bus_ref": branch_from_1,
+            "from_ref": branch_from_1,
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 180,
@@ -202,14 +209,13 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
     assert r.get("error") is None, f"KROK 5 (odgałęzienie #1): {r.get('error')}"
     enm = r["snapshot"]
 
-    # KROK 6: Drugie odgałęzienie — od szyny SN stacji #2
-    sn_buses = [b for b in enm.get("buses", []) if "sn_bus" in b.get("ref_id", "")]
-    branch_from_2 = sn_buses[1]["ref_id"]
+    # KROK 6: Drugie odgałęzienie — od dedykowanego pola odgałęźnego stacji #2
+    branch_from_2 = _branch_field_ref(enm, "Stacja-2")
     r = execute_domain_operation(
         enm,
         "start_branch_segment_sn",
         {
-            "from_bus_ref": branch_from_2,
+            "from_ref": branch_from_2,
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 220,

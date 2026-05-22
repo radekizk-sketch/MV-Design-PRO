@@ -86,6 +86,17 @@ describe('ProofSurface — audit2 Power Flow button (Phase 40)', () => {
     expect(screen.getByTestId('audit2-power-flow-run')).toBeDefined();
   });
 
+  it('publiczny widok dowodów nie pokazuje wewnętrznej nazwy audit2 ani endpointu API', () => {
+    useAppStateStore.setState({ activeProjectId: 'proj-1', activeRunId: 'run-1' });
+    renderWithFetchStub(<WorkspaceSurfaceRouter region="main" />, basicFetchStub);
+
+    expect(screen.getByText('Uzasadnienia rozszerzonej walidacji')).toBeInTheDocument();
+    expect(screen.getByText('Rozpływ mocy rozszerzony (z regulacją zaczepów)')).toBeInTheDocument();
+    expect(document.body.textContent ?? '').not.toMatch(
+      /Audit2|audit2|audytu 2|\/api\/cases\/audit2-power-flow|Proof Pack|E-36|SC3F_IEC60909|POWER_FLOW|EQUIPMENT_PROOF|EARTHING_GROUND_FAULT_SN|\bDER\b/i,
+    );
+  });
+
   it('button disabled gdy brak activeRunId', () => {
     useAppStateStore.setState({ activeProjectId: 'proj-1', activeRunId: null });
     renderWithFetchStub(<WorkspaceSurfaceRouter region="main" />, basicFetchStub);
@@ -93,15 +104,16 @@ describe('ProofSurface — audit2 Power Flow button (Phase 40)', () => {
     expect(btn.disabled).toBe(true);
   });
 
-  it('snapshot status pokazuje "Brak aktywnego snapshotu" gdy snapshot null', () => {
+  it('status wersji układu nie pokazuje surowego snapshotu gdy snapshot null', () => {
     useAppStateStore.setState({ activeProjectId: 'proj-1', activeRunId: 'run-1' });
     useSnapshotStore.setState({ snapshot: null });
     renderWithFetchStub(<WorkspaceSurfaceRouter region="main" />, basicFetchStub);
     const status = screen.getByTestId('audit2-pf-snapshot-status');
-    expect(status.textContent).toContain('Brak aktywnego snapshotu');
+    expect(status.textContent).toContain('Nie wybrano aktywnej wersji układu');
+    expect(status.textContent).not.toMatch(/snapshot/i);
   });
 
-  it('snapshot status pokazuje aktywny hash gdy snapshot loaded', () => {
+  it('status wersji układu ukrywa aktywny hash gdy snapshot loaded', () => {
     useAppStateStore.setState({ activeProjectId: 'proj-1', activeRunId: 'run-1' });
     useSnapshotStore.setState({
       snapshot: {
@@ -110,8 +122,8 @@ describe('ProofSurface — audit2 Power Flow button (Phase 40)', () => {
     });
     renderWithFetchStub(<WorkspaceSurfaceRouter region="main" />, basicFetchStub);
     const status = screen.getByTestId('audit2-pf-snapshot-status');
-    expect(status.textContent).toContain('Aktywny snapshot');
-    expect(status.textContent).toContain('abc123def456abc1');
+    expect(status.textContent).toContain('Aktywna wersja układu');
+    expect(status.textContent).not.toMatch(/snapshot|abc123def456abc1/i);
   });
 
   it('po kliknieciu wywoluje POST z prawidlowymi danymi + snapshot_id', async () => {
@@ -190,8 +202,10 @@ describe('ProofSurface — audit2 Power Flow button (Phase 40)', () => {
       expect(screen.getByTestId('audit2-power-flow-result')).toBeDefined();
     });
     const result = screen.getByTestId('audit2-power-flow-result');
-    expect(result.textContent).toContain('TAK');
-    expect(result.textContent).toContain('5 wezlow');
-    expect(result.textContent).toContain('3 galezi');
+    expect(result.textContent).toContain('uruchomione');
+    expect(result.textContent).toContain('5 węzłów');
+    expect(result.textContent).toContain('3 gałęzi');
+    expect(result.textContent).toContain('rozszerzony rozpływ mocy');
+    expect(result.textContent).not.toMatch(/Audit2|audit2|station-A|power_flow_extensions/i);
   });
 });

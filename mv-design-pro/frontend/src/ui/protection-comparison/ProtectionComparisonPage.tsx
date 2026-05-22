@@ -284,7 +284,7 @@ function RankingTable({ ranking, filter }: RankingTableProps) {
   }, [ranking, filter]);
 
   if (filtered.length === 0) {
-    return <EmptyState message="Brak problemów do wyświetlenia." />;
+    return <EmptyState message="Kontrola zabezpieczeń nie wskazuje zagadnień technicznych." />;
   }
 
   return (

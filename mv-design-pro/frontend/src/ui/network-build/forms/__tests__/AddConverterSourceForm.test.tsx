@@ -29,7 +29,7 @@ const snapshotWithExistingField = {
       ref_id: 'st-1',
       name: 'ST-1',
       bus_refs: ['bus-sn-1', 'bus-nn-1'],
-      transformer_refs: ['tr-1'],
+      transformer_refs: ['tr-1', 'tr-pv-15'],
     },
   ],
   buses: [
@@ -53,6 +53,16 @@ const snapshotWithExistingField = {
       name: 'TR-1',
       lv_bus_ref: 'bus-nn-1',
       sn_mva: 1,
+      uhv_kv: 15,
+      ulv_kv: 0.4,
+    },
+    {
+      ref_id: 'tr-pv-15',
+      name: 'TR-PV-15',
+      lv_bus_ref: 'bus-pv-15',
+      sn_mva: 1.25,
+      uhv_kv: 15,
+      ulv_kv: 15,
     },
   ],
 } as const;
@@ -204,9 +214,14 @@ vi.mock('../../../topology/modals/CatalogPicker', () => ({
     <div data-testid={`catalog-${label}`}>
       <span>{label}</span>
       {entries.length > 0 ? (
-        <button type="button" onClick={() => onChange(entries[0]?.id ?? '')}>
-          {selectedId || `wybierz:${label}`}
-        </button>
+        <div>
+          <span>{selectedId ? `wybrano:${selectedId}` : `wybierz:${label}`}</span>
+          {entries.map((entry) => (
+            <button key={entry.id} type="button" onClick={() => onChange(entry.id)}>
+              {entry.id}
+            </button>
+          ))}
+        </div>
       ) : (
         <span>ladowanie:{label}</span>
       )}
@@ -228,6 +243,22 @@ describe('AddConverterSourceForm', () => {
     };
   });
 
+  it('nie pokazuje fałszywego braku katalogu podczas pobierania falowników', async () => {
+    render(<AddConverterSourceForm />);
+
+    expect(
+      screen.getByText('Pobieranie katalogu przekształtników i aparatury nN.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Wariant wymaga falownika katalogowego/i)).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('Pobieranie katalogu przekształtników i aparatury nN.'),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/Wariant wymaga falownika katalogowego/i)).not.toBeInTheDocument();
+    });
+  });
+
   it('wysyla kanoniczny payload add_converter_source dla nowego pola nN', async () => {
     executeDomainOperationMock.mockResolvedValue({ snapshot: { header: { name: 'case-1' } } });
 
@@ -239,11 +270,11 @@ describe('AddConverterSourceForm', () => {
       expect(screen.getByLabelText('Qmin [Mvar]')).toHaveValue('-0.200');
       expect(screen.getByLabelText('Qmax [Mvar]')).toHaveValue('0.200');
       expect(screen.getByLabelText('Certyfikat PTPiREE')).toHaveValue('ptpiree-pvco-pv-1-mw');
+      expect(screen.getByText('ap-nn-1')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('wybierz:Aparat nN'));
     fireEvent.change(screen.getByLabelText('Moc robocza P [MW]'), { target: { value: '0.75' } });
-    fireEvent.click(screen.getByRole('button', { name: /Dodaj/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Zapisz układ z katalogu/i }));
 
     await waitFor(() => {
       expect(executeDomainOperationMock).toHaveBeenCalledWith(
@@ -300,7 +331,7 @@ describe('AddConverterSourceForm', () => {
     await waitFor(() => {
       expect(screen.getByText('conv-bess-1')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole('button', { name: /Dodaj/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Zapisz układ z katalogu/i }));
 
     await waitFor(() => {
       expect(executeDomainOperationMock).toHaveBeenCalledWith(
@@ -320,6 +351,24 @@ describe('AddConverterSourceForm', () => {
     });
   });
 
+  it('pokazuje pełny katalog falowników i przełącza niezgodne napięcie na wariant blokowy', async () => {
+    render(<AddConverterSourceForm />);
+
+    await waitFor(() => {
+      expect(screen.getByText('conv-pv-1')).toBeInTheDocument();
+      expect(screen.getByText('conv-pv-15')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'conv-pv-15' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('add-converter-auto-block-transformer')).toHaveTextContent(
+        'przełącza układ na wariant blokowy',
+      );
+      expect(screen.getAllByText(/TR-PV-15/).length).toBeGreaterThan(0);
+    });
+  });
+
   it('otwiera kanoniczne add_nn_outgoing_field z jawna intencja SOURCE, gdy brak istniejacego pola', async () => {
     snapshotState = snapshotWithoutExistingField;
 
@@ -327,19 +376,19 @@ describe('AddConverterSourceForm', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('button', { name: /Użyj istniejącego pola źródłowego/i }),
+        screen.getByRole('button', { name: /Użyj istniejącego pola przyłączeniowego/i }),
       ).toBeInTheDocument();
     });
 
     fireEvent.click(
-      screen.getByRole('button', { name: /Użyj istniejącego pola źródłowego/i }),
+      screen.getByRole('button', { name: /Użyj istniejącego pola przyłączeniowego/i }),
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Dodaj pole źródłowe/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Dodaj pole przyłączeniowe/i })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Dodaj pole źródłowe/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Dodaj pole przyłączeniowe/i }));
 
     expect(openOperationFormMock).toHaveBeenCalledWith('add_nn_outgoing_field', {
       station_ref: 'st-1',

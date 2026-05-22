@@ -57,6 +57,8 @@ export interface BayColumnSnProps {
   readonly dsState?: 'closed' | 'open' | 'unknown';
   /** K30-63: stan ES w bay (closed/open/unknown). Default 'open' (rest). */
   readonly esState?: 'closed' | 'open' | 'unknown';
+  /** Ukrywa zdublowane skróty roli, gdy nazwa pola już niesie rolę techniczną. */
+  readonly showRoleBadge?: boolean;
 }
 
 export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
@@ -71,6 +73,7 @@ export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
     stationId,
     hasMissing,
     onSymbolClick,
+    showRoleBadge = true,
   } = props;
 
   const apparatusHeight = getVariantApparatusHeight(variant);
@@ -301,12 +304,12 @@ export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
           strokeWidth={0.5}
           data-testid={`sld-v2-bay-${bayRef}-missing-indicator`}
         >
-          <title>Brakuje wymaganego apparatusu</title>
+          <title>Aparatura pola SN nie ma kompletnego pakietu katalogowego</title>
         </circle>
       )}
 
       {/* Bay role badge (overview/compact) — light text under outgoing */}
-      {variant !== 'overview' && bayRole && (
+      {showRoleBadge && variant !== 'overview' && bayRole && (
         <text
           x={x}
           y={outgoingY + 12}

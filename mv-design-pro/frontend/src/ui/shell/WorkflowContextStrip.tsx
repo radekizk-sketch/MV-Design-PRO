@@ -2,9 +2,9 @@
  * WorkflowContextStrip - compact SCADA workflow ribbon from the accepted ui.png shell.
  *
  * Pokazuje:
- *  - Fazę budowy sieci (buildPhase) jako kolorowy chip
- *  - Liczbę braków (blockersByCategory.total) jako chip alarmowy
- *  - Statystyki sieci (szyny, gałęzie, stacje) jako mini-filary
+ *  - Etap budowy sieci (buildPhase) jako kolorowy chip
+ *  - Wynik kontroli technicznej jako chip alarmowy
+ *  - Statystyki układu (szyny, odcinki SN, pola, stacje) jako mini-filary
  *  - Szybkie akcje (Szukaj Ctrl+K, Katalog, Historia) - tylko ikony z tooltip
  *
  * Cel: jeden gęsty pasek metryk i szybkich akcji bez osobnych kart.
@@ -15,6 +15,8 @@ import { clsx } from 'clsx';
 
 import { useAppStateStore } from '../app-state/store';
 import { useNetworkBuildDerived } from '../network-build/networkBuildStore';
+import { formatLengthKm } from '../shared/formatPolishValue';
+import { isTerrainSnSegment } from '../shared/enmVisibility';
 import { useSnapshotStore } from '../topology/snapshotStore';
 
 const PHASE_CHIP: Record<string, string> = {
@@ -90,8 +92,17 @@ export function WorkflowContextStrip({
   onOpenSnapshotHistory,
 }: WorkflowContextStripProps) {
   const setActiveArea = useAppStateStore((state) => state.setActiveArea);
-  const { buildPhase, buildPhaseLabel, blockersByCategory, isReady } = useNetworkBuildDerived();
+  const activeProjectId = useAppStateStore((state) => state.activeProjectId);
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
+  const {
+    buildPhase,
+    buildPhaseLabel,
+    blockersByCategory,
+    isReady,
+    snFieldCount = 0,
+  } = useNetworkBuildDerived();
   const snapshot = useSnapshotStore((state) => state.snapshot);
+  const hasCaseInRoute = typeof window !== 'undefined' && /(?:^|[?#&])case=/.test(window.location.hash);
 
   const stats = useMemo(() => {
     const model = snapshot as Record<string, unknown> | null;
@@ -102,8 +113,15 @@ export function WorkflowContextStrip({
     const branches = Array.isArray(model?.branches)
       ? model.branches as Array<Record<string, unknown>>
       : [];
+    const terrainSegments = branches.filter(isTerrainSnSegment);
+    const substations = Array.isArray(model?.substations)
+      ? model.substations as Array<Record<string, unknown>>
+      : [];
+    const mvLvStationCount = substations.filter((station) =>
+      String(station.station_type ?? '').toLowerCase() !== 'gpz',
+    ).length;
     let lengthBranchCount = 0;
-    const lengthKm = branches.reduce((sum, branch) => {
+    const lengthKm = terrainSegments.reduce((sum, branch) => {
       const raw = branch.length_km ?? branch.lengthKm ?? branch.length;
       const value = typeof raw === 'number' ? raw : Number(raw);
       if (!Number.isFinite(value) || value <= 0) {
@@ -114,8 +132,8 @@ export function WorkflowContextStrip({
     }, 0);
     return {
       buses: count('buses'),
-      branches: count('branches'),
-      stations: count('substations'),
+      branches: terrainSegments.length,
+      stations: mvLvStationCount,
       sources: count('sources'),
       transformers: count('transformers'),
       loads: count('loads'),
@@ -127,91 +145,124 @@ export function WorkflowContextStrip({
   }, [snapshot]);
 
   const hasModel = Boolean(snapshot);
+  const hasTopologyElements = stats.sources + stats.buses + stats.branches + stats.bays + stats.stations + stats.transformers + stats.generators + stats.loads > 0;
   const hasElectricalRoot = stats.sources > 0 || stats.stations > 0;
-  const structuralBlockers = hasModel
+  const hasMinimumDesignFlow = stats.sources > 0 && stats.lengthBranchCount > 0 && stats.stations > 0;
+  const structuralBlockers = hasModel && hasTopologyElements
     ? [
       stats.sources === 0 && stats.stations === 0,
       stats.buses === 0,
       hasElectricalRoot && stats.buses > 0 && stats.lengthBranchCount === 0,
       hasElectricalRoot && stats.buses > 0 && stats.transformers === 0,
-      hasElectricalRoot && stats.buses > 0 && stats.loads === 0,
+      stats.lengthBranchCount > 0 && stats.stations === 0,
     ].filter(Boolean).length
     : 0;
   const rawBlockerCounts = blockersByCategory ?? { topologia: 0, katalogi: 0, eksploatacja: 0, analiza: 0, total: 0 };
-  const blockerCounts = {
-    ...rawBlockerCounts,
-    topologia: rawBlockerCounts.topologia + structuralBlockers,
-    total: rawBlockerCounts.total + structuralBlockers,
-  };
-  const isModelReady = isReady && structuralBlockers === 0;
-  const visualBuildPhase = isModelReady ? buildPhase : hasElectricalRoot ? 'HAS_SOURCE' : buildPhase;
+  const blockerCounts = hasTopologyElements
+    ? {
+      ...rawBlockerCounts,
+      topologia: rawBlockerCounts.topologia + structuralBlockers,
+      total: rawBlockerCounts.total + structuralBlockers,
+    }
+    : { topologia: 0, katalogi: 0, eksploatacja: 0, analiza: 0, total: 0 };
+  const isModelReady = hasTopologyElements && isReady && structuralBlockers === 0 && hasMinimumDesignFlow;
+  const needsSnRun = hasTopologyElements && hasElectricalRoot && stats.lengthBranchCount === 0;
+  const needsFirstStation = hasTopologyElements && stats.lengthBranchCount > 0 && stats.stations === 0;
+  const visualBuildPhase = isModelReady ? buildPhase : hasElectricalRoot ? 'HAS_SOURCE' : 'NO_SOURCE';
   const chipClass = hasModel
     ? PHASE_CHIP[visualBuildPhase] ?? 'border-scada-border bg-scada-bg text-scada-text'
     : 'border-scada-border bg-scada-bg text-scada-muted';
   const dotClass = hasModel ? PHASE_DOT[visualBuildPhase] ?? 'bg-scada-muted' : 'bg-scada-muted';
-  const readinessPercent = !hasModel
-    ? 0
-    : isModelReady
-      ? 100
-      : Math.max(0, Math.min(99, 100 - blockerCounts.total * 12));
-  const readinessLabel = hasModel ? `${readinessPercent}%` : '—';
+  const calculationControlLabel = hasModel
+    ? !hasTopologyElements
+      ? 'wybór GPZ'
+      : needsSnRun
+      ? 'wyprowadź ciąg SN'
+      : needsFirstStation
+      ? 'osadź stację'
+      : isModelReady
+      ? 'do uruchomienia'
+      : 'konfiguracja układu'
+    : '—';
+  const calculationControlCaption = hasModel && (!hasTopologyElements || needsSnRun || needsFirstStation) ? 'Następny krok:' : 'Obliczenia:';
   const phaseTitle = hasModel
-    ? isModelReady
-      ? `Faza budowy modelu: ${buildPhaseLabel}`
-      : 'Faza budowy modelu: uzupełnij brakujące elementy sieci przed analizą'
-    : 'Brak aktywnego modelu';
-  const phaseLabel = hasModel ? (isModelReady ? 'GOTOWE' : 'BUDOWA') : 'BRAK MODELU';
-  const blockerLabel = hasModel ? String(blockerCounts.total) : '—';
-  const elementCount = stats.buses
-    + stats.branches
-    + stats.stations
-    + stats.transformers
-    + stats.loads
-    + stats.generators;
+    ? !hasTopologyElements
+      ? 'Pierwszy krok: wybierz wariant GPZ z katalogu i wyprowadź pola SN'
+      : needsSnRun
+      ? 'Następny krok: wyprowadź magistralę SN z pola GPZ'
+      : needsFirstStation
+      ? 'Następny krok: osadź stację SN/nN na odcinku'
+      : isModelReady
+      ? `Faza budowy sieci: ${buildPhaseLabel}`
+      : 'Faza budowy sieci: skonfiguruj układ przed analizą'
+    : 'Rozpocznij projekt';
+  const phaseLabel = hasModel ? (!hasTopologyElements ? 'GPZ' : isModelReady ? 'ANALIZA' : 'BUDOWA') : 'START';
+  const blockerLabel = hasModel ? (hasTopologyElements ? String(blockerCounts.total) : 'GPZ') : '—';
   const display = {
-    blockers: blockerCounts.total,
-    elementCount: hasModel ? elementCount : '—',
-    bays: hasModel ? stats.bays || stats.branches : '—',
+    blockers: hasTopologyElements ? blockerCounts.total : 0,
+    buses: hasModel ? stats.buses : '—',
+    segments: hasModel ? stats.branches : '—',
+    bays: hasModel ? stats.bays || snFieldCount : '—',
     stations: hasModel ? stats.stations : '—',
     lengthKm: hasModel
       ? stats.lengthBranchCount > 0
-        ? `${stats.lengthKm.toFixed(2)} km`
-        : 'brak długości'
+        ? formatLengthKm(stats.lengthKm, { decimals: 2 })
+        : 'nie wyznaczono'
       : '—',
     transformers: hasModel ? stats.transformers : '—',
     loads: hasModel ? stats.loads : '—',
   };
 
   if (!hasModel) {
+    const pendingKnownModel = Boolean(activeProjectId || activeCaseId || hasCaseInRoute);
     return (
       <div
         data-testid="workflow-context-strip"
         className="flex h-[48px] shrink-0 items-center border-b border-scada-border bg-[#0c1822] px-3"
       >
-        <div
-          data-testid="wcs-empty-model-start"
-          className="flex min-w-0 flex-1 items-center gap-3"
-        >
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-sm border border-cyan-500/45 bg-cyan-500/12 font-mono text-[12px] font-bold text-cyan-200">
-            1
-          </span>
-          <div className="min-w-0">
-            <div className="truncate text-[12px] font-semibold text-scada-text">
-              Start projektu: zakres obliczeń i GPZ
-            </div>
-            <div className="truncate text-[10px] text-scada-muted">
-              Kolejność pracy: zakres obliczeń, GPZ, magistrala SN, stacje, PV/FW/BESS, obliczenia i uzasadnienie.
+        {pendingKnownModel ? (
+          <div
+            data-testid="wcs-model-loading"
+            className="flex min-w-0 flex-1 items-center gap-3"
+          >
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-sm border border-emerald-500/35 bg-emerald-500/10 font-mono text-[12px] font-bold text-emerald-200">
+              SN
+            </span>
+            <div className="min-w-0">
+              <div className="truncate text-[12px] font-semibold text-scada-text">
+                Ładowanie układu sieci
+              </div>
+              <div className="truncate text-[10px] text-scada-muted">
+                Pobieram GPZ, odcinki, stacje, układy PV/BESS/FW i wyniki dla aktywnego zakresu.
+              </div>
             </div>
           </div>
-          <button
-            type="button"
-            data-testid="wcs-start-model"
-            onClick={() => setActiveArea('MODEL_SIECI')}
-            className="ml-2 h-8 shrink-0 rounded-sm border border-cyan-500/60 bg-cyan-500/15 px-3 text-[11px] font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/25"
+        ) : (
+          <div
+            data-testid="wcs-empty-model-start"
+            className="flex min-w-0 flex-1 items-center gap-3"
           >
-            Przejdź do budowy GPZ
-          </button>
-        </div>
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-sm border border-cyan-500/45 bg-cyan-500/12 font-mono text-[12px] font-bold text-cyan-200">
+              1
+            </span>
+            <div className="min-w-0">
+              <div className="truncate text-[12px] font-semibold text-scada-text">
+                Start projektu: zakres obliczeń i GPZ
+              </div>
+              <div className="truncate text-[10px] text-scada-muted">
+                Kolejność pracy: zakres obliczeń, GPZ, magistrala SN, stacje, PV/FW/BESS, obliczenia i dowody.
+              </div>
+            </div>
+            <button
+              type="button"
+              data-testid="wcs-start-model"
+              onClick={() => setActiveArea('MODEL_SIECI')}
+              className="ml-2 h-8 shrink-0 rounded-sm border border-cyan-500/60 bg-cyan-500/15 px-3 text-[11px] font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/25"
+            >
+              Przejdź do budowy GPZ
+            </button>
+          </div>
+        )}
 
         <WorkflowActions
           onOpenGlobalSearch={onOpenGlobalSearch}
@@ -246,38 +297,39 @@ export function WorkflowContextStrip({
           className="flex h-8 items-center gap-2 border-r border-scada-border px-4"
           data-testid={display.blockers > 0 ? 'workflow-blockers' : 'workflow-no-blockers'}
           title={hasModel
-            ? `Braki: topologia=${blockerCounts.topologia} katalogi=${blockerCounts.katalogi} eksploatacja=${blockerCounts.eksploatacja}`
-            : 'Brak aktywnego modelu'}
+            ? hasTopologyElements
+              ? `Kontrola techniczna układu: topologia=${blockerCounts.topologia} katalogi=${blockerCounts.katalogi} eksploatacja=${blockerCounts.eksploatacja}`
+              : 'Pierwszy układ sieci: wybór wariantu GPZ'
+            : 'Rozpocznij projekt'}
         >
-          <span className="text-[11px] text-scada-muted">Braki:</span>
+          <span className="text-[11px] text-scada-muted">{hasTopologyElements ? 'Kontrola:' : 'Układ:'}</span>
           <span className={clsx(
             'grid h-6 min-w-6 place-items-center rounded-full px-1.5 text-[11px] font-bold',
             !hasModel
               ? 'bg-scada-bg text-scada-muted ring-1 ring-scada-border'
-              : display.blockers > 0
-              ? 'bg-rose-600 text-white'
-              : 'bg-emerald-500/15 text-emerald-300',
+              : !hasTopologyElements
+                ? 'bg-cyan-500/15 text-cyan-200 ring-1 ring-cyan-500/35'
+                : display.blockers > 0
+                  ? 'bg-amber-500/20 text-amber-200 ring-1 ring-amber-500/45'
+                  : 'bg-emerald-500/15 text-emerald-300',
           )}>
             {blockerLabel}
           </span>
         </div>
 
         <div className="flex h-8 items-center gap-2 border-r border-scada-border px-4" data-testid="wcs-model-readiness">
-          <span className="text-[11px] text-scada-muted">Gotowość:</span>
-          <span className="font-mono text-[11px] font-semibold text-scada-text">{readinessLabel}</span>
-          <span className="h-1.5 w-9 overflow-hidden rounded-full bg-scada-bg">
-            <span
-              className={clsx('block h-full', isModelReady ? 'bg-emerald-400' : 'bg-amber-400')}
-              style={{ width: `${readinessPercent}%` }}
-            />
+          <span className="text-[11px] text-scada-muted">{calculationControlCaption}</span>
+          <span className={clsx('font-mono text-[11px] font-semibold', isModelReady ? 'text-emerald-300' : 'text-amber-300')}>
+            {calculationControlLabel}
           </span>
         </div>
 
-        <Metric label="Elementy" value={display.elementCount} />
+        <Metric label="Szyny" value={display.buses} />
+        <Metric label="Odcinki SN" value={display.segments} />
         <Metric label="Pola SN" value={display.bays} />
-        <Metric label="Stacje SN/nN" value={display.stations} />
-        <Metric label="Długość SN" value={display.lengthKm} />
-        <Metric label="Transformatory" value={display.transformers} />
+        <Metric label="Stacje" value={display.stations} />
+        <Metric label="Długość" value={display.lengthKm} />
+        <Metric label="TR" value={display.transformers} />
         <Metric label="Odbiory nN" value={display.loads} />
       </div>
 
@@ -287,7 +339,7 @@ export function WorkflowContextStrip({
         onOpenMassReview={onOpenMassReview}
         onOpenProjectMetadata={onOpenProjectMetadata}
         onOpenSnapshotHistory={onOpenSnapshotHistory}
-        blockerBadge={display.blockers > 0 ? display.blockers : undefined}
+        blockerBadge={hasTopologyElements && display.blockers > 0 ? display.blockers : undefined}
       />
     </div>
   );
@@ -314,9 +366,9 @@ function WorkflowActions({
     <div className="flex h-full shrink-0 items-center gap-7 border-l border-scada-border pl-5 pr-1">
       <WorkflowAction testId="wcs-search" label="Szukaj" title="Szukaj elementu (Ctrl+K)" onClick={onOpenGlobalSearch} icon={<IconSearch />} />
       <WorkflowAction testId="wcs-catalog" label="Katalog" title="Katalog techniczny" onClick={onOpenCatalogBrowser} icon={<IconCatalog />} />
-      <WorkflowAction testId="wcs-mass-review" label="Przeglądy" title="Przeglądy masowe" onClick={onOpenMassReview} icon={<IconReview />} badge={blockerBadge} />
+      <WorkflowAction testId="wcs-mass-review" label="Kontrola" title="Kontrola techniczna układu" onClick={onOpenMassReview} icon={<IconReview />} badge={blockerBadge} />
       <WorkflowAction testId="wcs-project-metadata" label="Metadane" title="Metadane projektu" onClick={onOpenProjectMetadata} icon={<IconMetadata />} />
-      <WorkflowAction testId="wcs-history" label="Historia" title="Historia wersji modelu" onClick={onOpenSnapshotHistory} icon={<IconHistory />} />
+    <WorkflowAction testId="wcs-history" label="Historia" title="Historia wersji układu" onClick={onOpenSnapshotHistory} icon={<IconHistory />} />
     </div>
   );
 }

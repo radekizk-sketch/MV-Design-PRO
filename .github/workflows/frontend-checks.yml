@@ -27,9 +27,17 @@ jobs:
         run: npm run lint
       - name: Run tests
         working-directory: mv-design-pro/frontend
-        run: npm test
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: |
+          for shard in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            echo "Running Vitest shard ${shard}/12"
+            npx vitest run --no-file-parallelism --shard=${shard}/12
+          done
       - name: Run audit2 frontend integration tests (Phase 8-30)
         working-directory: mv-design-pro/frontend
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: |
           npx vitest run --no-file-parallelism \
             src/ui/network-build/station-der/__tests__/audit2-api.test.ts \

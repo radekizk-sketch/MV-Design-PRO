@@ -150,7 +150,7 @@ export function TrunkCard({ corridorRef }: { corridorRef: string }) {
       fields:
         segmentFields.length > 0
           ? segmentFields
-          : [{ key: 'no_seg', label: 'Brak segmentów', value: 'Magistrala bez odcinków', severity: 'warning' as const }],
+          : [{ key: 'no_seg', label: 'Odcinki do konfiguracji', value: 'Dodaj odcinek magistrali z katalogu', severity: 'warning' as const }],
     };
 
     const terminalFields = trunkTerminals.map((t, idx) => ({
@@ -166,7 +166,7 @@ export function TrunkCard({ corridorRef }: { corridorRef: string }) {
       fields:
         terminalFields.length > 0
           ? terminalFields
-          : [{ key: 'no_terminals', label: 'Brak zacisków', value: '—' }],
+          : [{ key: 'no_terminals', label: 'Zaciski do konfiguracji', value: '—' }],
     };
 
     const summarySection: CardSection = {

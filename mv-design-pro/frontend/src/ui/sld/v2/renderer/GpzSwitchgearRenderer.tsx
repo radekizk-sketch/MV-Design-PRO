@@ -109,11 +109,11 @@ function truncateWithEllipsis(text: string, maxLen: number): string {
 }
 
 /**
- * Formatuje napięcie HV bus dla wyświetlenia. Zwraca "?" gdy nieznane
- * (Invariant 9: brak danych ENM ≠ display fallback 110).
+ * Formatuje napięcie HV bus dla wyświetlenia. Gdy ENM nie niesie wartości
+ * liczbowej, pokazuje klasę WN zamiast znaku zastępczego.
  */
 function formatHvVoltage(value: number, known: boolean | undefined): string {
-  return known === false ? '?' : String(value);
+  return known === false ? 'WN' : String(value);
 }
 
 const OUTGOING_FEEDER_DROP_PX = GPZ_GEOMETRY.outgoingFeederDropPx;

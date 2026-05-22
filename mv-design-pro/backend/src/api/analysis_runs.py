@@ -1,12 +1,17 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from infrastructure.persistence.unit_of_work import UnitOfWork
-
 import json
+from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
+from api.analysis_run_exports import (
+    build_analysis_run_trace_export_payload,
+    export_run_report_docx_response,
+    export_run_report_json_response,
+    export_run_report_pdf_response,
+    export_run_trace_pdf_response,
+)
 from api.canonical_run_views import (
     build_analysis_run_detail,
     build_analysis_run_summary,
@@ -23,13 +28,6 @@ from api.canonical_run_views import (
     build_sld_overlay,
     build_source_compliance_results_response,
 )
-from api.analysis_run_exports import (
-    build_analysis_run_trace_export_payload,
-    export_run_report_docx_response,
-    export_run_report_json_response,
-    export_run_report_pdf_response,
-    export_run_trace_pdf_response,
-)
 from api.dependencies import get_uow_factory
 from application.analysis_run.read_model import build_trace_summary, canonicalize_json
 from enm.canonical_analysis import (
@@ -41,8 +39,12 @@ from enm.canonical_analysis import (
 from enm.canonical_analysis import (
     list_runs_for_project as list_canonical_runs_for_project,
 )
+from enm.catalog_completion import complete_catalog_defaults
+from enm.models import EnergyNetworkModel
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
+from infrastructure.persistence.unit_of_work import UnitOfWork
+from pydantic import ValidationError
 
 router = APIRouter()
 
@@ -55,6 +57,19 @@ def _require_canonical_run(run_id: UUID) -> CanonicalRun:
             detail=f"Nie znaleziono obliczenia {run_id}",
         )
     return run
+
+
+def _catalog_completed_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Return a catalog-complete ENM snapshot for legacy analysis runs."""
+    try:
+        enm = EnergyNetworkModel.model_validate(snapshot)
+    except ValidationError:
+        return snapshot
+
+    completed, changed = complete_catalog_defaults(enm)
+    if not changed:
+        return snapshot
+    return completed.model_dump(mode="json")
 
 
 @router.get("/projects/{project_id}/analysis-runs")
@@ -92,11 +107,12 @@ def get_analysis_run(run_id: str) -> dict[str, Any]:
 @router.get("/analysis-runs/{run_id}/snapshot")
 def get_analysis_run_snapshot(run_id: UUID) -> dict[str, Any]:
     canonical_run = _require_canonical_run(run_id)
+    snapshot = _catalog_completed_snapshot(canonical_run.snapshot)
     return canonicalize_json(
         {
             "run_id": str(canonical_run.id),
             "snapshot_id": canonical_run.snapshot_hash,
-            "snapshot": canonical_run.snapshot,
+            "snapshot": snapshot,
         }
     )
 
@@ -222,6 +238,37 @@ def _proof_latex_response(run: CanonicalRun) -> Response:
         rf"\textbf{{Skrót danych wejściowych:}} {_latex_escape(payload.get('input_hash') or 'brak danych')}\\",
         r"\section*{Kroki obliczeniowe}",
     ]
+    proof_currents = payload.get("short_circuit_proof_currents") or {}
+    if proof_currents:
+        lines.extend(
+            [
+                r"\section*{Prady charakterystyczne SC3F}",
+                r"\begin{longtable}{llll}",
+                r"Obiekt & \verb|I_dyn| [kA] & \verb|I_th| [kA] & Norma \\",
+                r"\hline",
+            ]
+        )
+        for row in (proof_currents.get("rows") or [])[:100]:
+            i_dyn = (row.get("I_dyn") or {}).get("value_ka")
+            i_th = (row.get("I_th") or {}).get("value_ka")
+            lines.append(
+                " & ".join(
+                    [
+                        _latex_escape(
+                            row.get("target_name") or row.get("target_id") or "brak danych"
+                        ),
+                        _latex_escape(
+                            f"{i_dyn:.4g}" if isinstance(i_dyn, int | float) else "brak danych"
+                        ),
+                        _latex_escape(
+                            f"{i_th:.4g}" if isinstance(i_th, int | float) else "brak danych"
+                        ),
+                        "IEC 60909",
+                    ]
+                )
+                + r" \\"
+            )
+        lines.append(r"\end{longtable}")
     if not trace:
         lines.append("Brak danych śladu obliczeń.")
     for index, step in enumerate(trace, start=1):

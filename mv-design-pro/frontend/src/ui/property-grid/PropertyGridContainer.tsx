@@ -124,7 +124,7 @@ export function PropertyGridContainer({
   const handleSelectType = useCallback(
     async (typeId: string, typeName: string) => {
       if (!elementId || !activeCaseId) {
-        if (!activeCaseId) notify('Brak aktywnego Study Case', 'error');
+        if (!activeCaseId) notify('Wybierz zakres obliczeń przed zapisem.', 'error');
         return;
       }
 

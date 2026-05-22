@@ -96,7 +96,8 @@ describe('GridSourceEditor E-03B', () => {
     expect(screen.queryByText('Sekcje szyn GPZ')).not.toBeInTheDocument();
     expect(screen.queryByText('Liczba pól liniowych na sekcję')).not.toBeInTheDocument();
     expect(screen.getByText('Podsumowanie obliczone')).toBeInTheDocument();
-    expect(screen.getByText('Gotowość GPZ')).toBeInTheDocument();
+    expect(screen.getByText('Kontrola GPZ')).toBeInTheDocument();
+    expect(screen.getByText('Pakiet katalogowy GPZ')).toBeInTheDocument();
     expect(screen.getByText('Ik\'\' (1-faz. maks.)')).toBeInTheDocument();
     expect(screen.getByText('ip (3-faz. maks.)')).toBeInTheDocument();
     expect(screen.getByText('Ith (3-faz., tk)')).toBeInTheDocument();
@@ -109,6 +110,7 @@ describe('GridSourceEditor E-03B', () => {
     expect(screen.queryByText(/Pozycja katalogowa jest wymagana/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Nazwa GPZ jest wymagana/)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Katalog' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Ręczny równoważnik ekspercki')).not.toBeInTheDocument();
   });
 
   it('domyślnie wybiera katalog GPZ i aparaturę pola, aby zapis nie był martwym kliknięciem', async () => {
@@ -141,7 +143,7 @@ describe('GridSourceEditor E-03B', () => {
     expect(screen.queryByText(/Pozycja katalogowa jest wymagana/)).not.toBeInTheDocument();
   });
 
-  it('K3: domyślnie tryb Uproszczony — sekcje GPZ i R0/X0 ukryte', () => {
+  it('K3: domyślnie zakres Źródło SN ukrywa sekcje GPZ i R0/X0', () => {
     render(
       <GridSourceEditor
         isOpen
@@ -158,7 +160,7 @@ describe('GridSourceEditor E-03B', () => {
     expect(screen.getByText('Parametry zwarciowe na szynach SN')).toBeInTheDocument();
   });
 
-  it('K3: przełączenie na Zaawansowany pokazuje sekcje GPZ i R0/X0', () => {
+  it('K3: przełączenie na GPZ WN/SN pokazuje sekcje GPZ i R0/X0', () => {
     render(
       <GridSourceEditor
         isOpen
@@ -177,7 +179,7 @@ describe('GridSourceEditor E-03B', () => {
     expect(screen.getByText('Liczba pól liniowych na sekcję')).toBeInTheDocument();
   });
 
-  it('K3: powrót z Zaawansowany do Uproszczony chowa sekcje GPZ', () => {
+  it('K3: powrót z GPZ WN/SN do Źródło SN chowa sekcje GPZ', () => {
     render(
       <GridSourceEditor
         isOpen
@@ -225,33 +227,36 @@ describe('GridSourceEditor E-03B', () => {
     });
   });
 
-  it('w trybie WN/SN wysyĹ‚a moc zwarciowÄ… na szynie 110 kV zamiast udawaÄ‡ dane SN', async () => {
+  it('nie pokazuje ręcznego równoważnika i normalizuje stare dane GPZ do katalogu', async () => {
     const onSubmit = vi.fn();
 
     render(
       <GridSourceEditor
         isOpen
         mode="create"
+        initialData={{
+          manual_mode: true,
+          short_circuit_input_side: 'HV_110',
+          sk3_hv_mva: 3000,
+          catalog_ref: null,
+        }}
         onCancel={vi.fn()}
         onSubmit={onSubmit}
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /R.*czny/ }));
-    fireEvent.click(screen.getByRole('button', { name: /110 kV/ }));
-
-    expect(screen.getByText('Parametry zwarciowe na szynie 110 kV')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByLabelText(/Moc zwarciowa.*110 kV/), {
-      target: { value: '3000' },
-    });
+    expect(screen.queryByText('Ręczny równoważnik ekspercki')).not.toBeInTheDocument();
+    expect(screen.queryByText('Parametry zwarciowe na szynie 110 kV')).not.toBeInTheDocument();
+    expect(screen.getByText('Parametry zwarciowe na szynach SN')).toBeInTheDocument();
+    expect(screen.getByText('Pakiet katalogowy GPZ')).toBeInTheDocument();
+    expect(await screen.findByText('Obliczenie IEC 60909 po stronie serwera')).toBeInTheDocument();
 
     await waitFor(() => {
       const lastCall = solverFetchMock.mock.calls.at(-1);
       const lastRequest = JSON.parse(String((lastCall?.[1] as RequestInit | undefined)?.body));
       expect(lastRequest).toMatchObject({
-        voltage_kv: 110,
-        sk3_mva: 3000,
+        voltage_kv: 15,
+        sk3_mva: 310,
         rx_ratio: 0.12,
       });
     });
@@ -260,11 +265,11 @@ describe('GridSourceEditor E-03B', () => {
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
-      manual_mode: true,
-      short_circuit_input_side: 'HV_110',
-      hv_voltage_kv: 110,
-      sk3_hv_mva: 3000,
+      catalog_ref: 'source-system-15kv-310mva',
+      manual_mode: false,
+      short_circuit_input_side: 'SN',
       sn_voltage_kv: 15,
+      sk3_mva: 310,
     }));
   });
 });

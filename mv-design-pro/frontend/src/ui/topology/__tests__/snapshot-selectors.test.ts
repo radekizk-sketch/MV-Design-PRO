@@ -34,7 +34,15 @@ import type {
 // Helpers: minimal typed mocks
 // ---------------------------------------------------------------------------
 
-function makeMockENM(buses: Array<{ ref_id: string; name: string; voltage_kv: number }>): EnergyNetworkModel {
+function makeMockENM(
+  buses: Array<{
+    ref_id: string;
+    name: string;
+    voltage_kv: number;
+    tags?: string[];
+    meta?: Record<string, unknown>;
+  }>,
+): EnergyNetworkModel {
   return { buses } as unknown as EnergyNetworkModel;
 }
 
@@ -117,6 +125,24 @@ describe('selectBusOptions', () => {
     ]);
     const options = selectBusOptions(enm);
     expect(options[0].voltage_kv).toBe(110);
+  });
+
+  it('shows topology helper buses as engineering terminals instead of raw downstream names', () => {
+    const enm = makeMockENM([
+      {
+        ref_id: 'bus/abc123/downstream',
+        name: 'Szyna wnstream',
+        voltage_kv: 15,
+        tags: ['helper_bus', 'topology_terminal'],
+        meta: { visual_role: 'INLINE_TERMINAL' },
+      },
+    ]);
+
+    expect(selectBusOptions(enm)[0]).toEqual({
+      ref_id: 'bus/abc123/downstream',
+      name: 'Zacisk końcowy odcinka SN',
+      voltage_kv: 15,
+    });
   });
 });
 

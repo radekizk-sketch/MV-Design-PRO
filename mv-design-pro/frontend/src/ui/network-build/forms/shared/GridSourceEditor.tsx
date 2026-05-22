@@ -45,8 +45,8 @@ export interface GridSourceFormData {
   thermal_time_s: number;
   /**
    * K3 toggle: tryb edycji formularza GPZ.
-   * 'simplified' — tylko Sk''SN + R/X (szybka definicja źródła zewnętrznego).
-   * 'advanced'   — pełna topologia: sekcje 110kV + TR + pola odpływowe GPZ.
+   * 'simplified' — wariant źródła SN z pakietu katalogowego GPZ.
+   * 'advanced'   — pełny zakres WN/SN: sekcje 110 kV + TR + pola odpływowe GPZ.
    * UI-only: nie jest wysyłany do backendu.
    */
   complexity_mode: 'simplified' | 'advanced';
@@ -138,6 +138,9 @@ function mergeInitialData(initialData?: Partial<GridSourceFormData>): GridSource
 
   return {
     ...merged,
+    manual_mode: false,
+    short_circuit_input_side: 'SN',
+    short_circuit_mode: 'SHORT_CIRCUIT_POWER',
     sections_count: Math.max(1, Math.min(4, Math.trunc(merged.sections_count || 1))),
     transformer_count: Math.max(1, Math.min(4, Math.trunc(merged.transformer_count || 1))),
     line_fields_per_section: Math.max(
@@ -186,9 +189,7 @@ function isPositive(value: number | null): value is number {
 
 function validateForm(data: GridSourceFormData): FieldError[] {
   const errors: FieldError[] = [];
-  const sourceDescriptor = data.manual_mode
-    ? 'ręcznej umowy równoważnej GPZ'
-    : 'wybranego katalogu systemowego';
+  const sourceDescriptor = 'wybranego katalogu systemowego';
 
   if (!data.source_name.trim()) {
     errors.push({ field: 'source_name', message: 'Nazwa GPZ jest wymagana.' });
@@ -267,13 +268,13 @@ function validateForm(data: GridSourceFormData): FieldError[] {
       if (!isPositive(data.hv_voltage_kv)) {
         errors.push({
           field: 'hv_voltage_kv',
-          message: 'Tryb WN/SN wymaga dodatniego napiÄ™cia strony WN.',
+          message: 'Tryb WN/SN wymaga dodatniego napięcia strony WN.',
         });
       }
       if (!isPositive(data.sk3_hv_mva)) {
         errors.push({
           field: 'sk3_hv_mva',
-          message: 'Podaj moc zwarciowÄ… Sk3 na szynie 110 kV.',
+          message: 'Podaj moc zwarciową Sk3 na szynie 110 kV.',
         });
       }
       if (data.rx_ratio === null || data.rx_ratio < 0) {
@@ -569,7 +570,7 @@ function getReadinessText(state: ReadinessState, fallback: string): string {
   if (state === 'warning') {
     return fallback;
   }
-  return 'Brak danych';
+  return 'Do konfiguracji';
 }
 
 export function GridSourceEditor({
@@ -636,13 +637,13 @@ export function GridSourceEditor({
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || formData.manual_mode || formData.catalog_ref || catalogItems.length === 0) {
+    if (!isOpen || formData.catalog_ref || catalogItems.length === 0) {
       return;
     }
 
     const firstCatalogItem = catalogItems[0];
     setFormData((previous) => {
-      if (previous.manual_mode || previous.catalog_ref) {
+      if (previous.catalog_ref) {
         return previous;
       }
 
@@ -661,7 +662,7 @@ export function GridSourceEditor({
           : previous.rx_ratio,
       };
     });
-  }, [catalogItems, formData.catalog_ref, formData.manual_mode, isOpen]);
+  }, [catalogItems, formData.catalog_ref, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -786,16 +787,13 @@ export function GridSourceEditor({
   ]);
   const gpzBuildSections = useMemo(() => buildEditorGpzSections(formData), [formData]);
   const gpzCouplerCount = Math.max(0, gpzBuildSections.length - 1);
-  const dataSourceLabel = formData.manual_mode
-    ? 'Ręczny równoważnik ekspercki'
-    : selectedCatalogItem?.name ?? formData.catalog_ref ?? 'Katalog źródła systemowego';
-  const catalogBindingLabel = formData.manual_mode
-    ? 'nie dotyczy'
-    : selectedCatalogItem
-      ? sourceCatalogLabel(selectedCatalogItem)
-      : formData.catalog_ref
-        ? 'wybrano pozycję katalogową'
-        : 'brak';
+  const dataSourceLabel =
+    selectedCatalogItem?.name ?? formData.catalog_ref ?? 'Katalog źródła systemowego';
+  const catalogBindingLabel = selectedCatalogItem
+    ? sourceCatalogLabel(selectedCatalogItem)
+    : formData.catalog_ref
+      ? 'wybrano pozycję katalogową'
+      : 'wybierz wariant katalogowy';
   const previewPayload = useMemo(() => buildPreviewPayload(formData), [formData]);
   const readinessRows = useMemo(() => getReadinessRows(formData), [formData]);
   const pendingMetricLabel = previewStatus === 'loading' ? 'obliczanie...' : '—';
@@ -894,12 +892,12 @@ export function GridSourceEditor({
             previewStatus={previewStatus}
           />
 
-          {/* K3 toggle: Uproszczony / Zaawansowany */}
+          {/* K3: zakres wariantu GPZ. */}
           <div
             className="flex items-center gap-0 overflow-hidden rounded-[3px] border border-[#15324f]"
             data-testid="k3-complexity-toggle"
             role="group"
-            aria-label="Tryb edycji GPZ"
+            aria-label="Zakres wariantu GPZ"
           >
             <button
               type="button"
@@ -912,7 +910,7 @@ export function GridSourceEditor({
                   : 'bg-[#020812] text-[#6d8fb3] hover:bg-[#071828] hover:text-[#a8bed6]',
               )}
             >
-              Uproszczony
+              Źródło SN
             </button>
             <div className="w-px self-stretch bg-[#15324f]" aria-hidden="true" />
             <button
@@ -926,39 +924,33 @@ export function GridSourceEditor({
                   : 'bg-[#020812] text-[#6d8fb3] hover:bg-[#071828] hover:text-[#a8bed6]',
               )}
             >
-              Zaawansowany
+              GPZ WN/SN
             </button>
           </div>
           {formData.complexity_mode === 'simplified' && (
             <div className="rounded-[3px] border border-[#15324f] bg-[#050c17] px-3 py-2 font-mono-eng text-[10px] text-[#6d8fb3]">
-              Tryb uproszczony: definiuj S&#x2033;<sub>k</sub> SN + R/X. Sekcje GPZ i topologia 110kV/TR pomijane (domyślne).
+              Wariant źródła SN: parametry zwarciowe, uziemienie i pola odpływowe pochodzą z pakietu katalogowego GPZ.
+              Pełny układ WN/SN skonfigurujesz w zakresie GPZ WN/SN.
             </div>
           )}
 
           <ScadaSection title="Źródło danych i katalog">
             <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleChange('manual_mode', false)}
-                  className={modeButtonClass(!formData.manual_mode)}
-                >
-                  Katalog źródła systemowego
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleChange('manual_mode', true)}
-                  className={modeButtonClass(formData.manual_mode)}
-                >
-                  Ręczny równoważnik ekspercki
-                </button>
+              <div className="rounded-[3px] border border-[#15324f] bg-[#050c17] px-3 py-2">
+                <div className="font-mono-eng text-[11px] font-bold uppercase tracking-[0.12em] text-[#66f6ff]">
+                  Pakiet katalogowy GPZ
+                </div>
+                <p className="mt-1 font-mono-eng text-[10px] leading-snug text-[#8fb4d8]">
+                  Źródło systemowe, parametry zwarciowe, uziemienie i pola SN pochodzą
+                  z kompletnego wariantu katalogowego.
+                </p>
               </div>
 
               <FieldShell label="Typ źródła z katalogu" error={getFieldError('catalog_ref')}>
                 <select
                   value={formData.catalog_ref ?? ''}
                   onChange={(event) => handleCatalogSelect(event.target.value)}
-                  disabled={formData.manual_mode || catalogStatus === 'loading'}
+                  disabled={catalogStatus === 'loading'}
                   className={clsx(selectClass(getFieldError('catalog_ref')), INPUT_DISABLED_CLASS)}
                 >
                   <option value="">
@@ -986,7 +978,7 @@ export function GridSourceEditor({
               <AdvancedDataRow
                 label="Powiązanie katalogowe"
                 value={catalogBindingLabel}
-                tone={!formData.manual_mode && !formData.catalog_ref ? 'warning' : 'normal'}
+                tone={!formData.catalog_ref ? 'warning' : 'normal'}
               />
               <AdvancedDataRow
                 label="Zasada obliczeń"
@@ -1089,7 +1081,7 @@ export function GridSourceEditor({
                   onClick={() => handleChange('short_circuit_input_side', 'SN')}
                   className={modeButtonClass(formData.short_circuit_input_side === 'SN')}
                 >
-                  Tryb uproszczony: Sk3 po stronie SN
+                  Parametry zwarciowe po stronie SN
                 </button>
                 <button
                   type="button"
@@ -1445,7 +1437,7 @@ export function GridSourceEditor({
             </div>
           </ScadaSection>
 
-          <ScadaSection title="Gotowość GPZ">
+          <ScadaSection title="Kontrola GPZ">
             <div className="divide-y divide-[#193451] border border-[#193451]">
               {readinessRows.map(([label, state, fallback]) => (
                 <ReadinessRow

@@ -480,7 +480,7 @@ export function buildValidationSection(
     return {
       id: 'element_validation',
       label: 'Walidacje',
-      fields: [{ key: 'no_validation', label: 'Stan', value: 'Brak wyników walidacji — uruchom walidację' }],
+    fields: [{ key: 'no_validation', label: 'Stan', value: 'Uruchom walidację, aby pokazać wynik kontroli' }],
     };
   }
 
@@ -547,7 +547,7 @@ export function buildResultsSection(
   }
 
   if (fields.length === 0) {
-    fields.push({ key: 'no_results', label: 'Wyniki', value: 'Brak wyników dla tego elementu' });
+    fields.push({ key: 'no_results', label: 'Wyniki', value: 'Wyniki dla tego elementu nie są jeszcze dostępne' });
   }
 
   return {

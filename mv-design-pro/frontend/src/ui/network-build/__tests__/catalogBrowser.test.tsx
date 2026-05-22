@@ -59,6 +59,41 @@ describe('CatalogBrowser', () => {
     expect(screen.getByText('ABB')).toBeInTheDocument();
   });
 
+  it('nie pokazuje kategorii aktywnych zastrzeżonych dla konfiguratorów układów', async () => {
+    fetchTypesByCategoryMock.mockResolvedValue([]);
+
+    render(<CatalogBrowser />);
+
+    await waitFor(() => {
+      expect(fetchTypesByCategoryMock).toHaveBeenCalledWith('CABLE');
+    });
+
+    expect(screen.queryByText('GPZ')).not.toBeInTheDocument();
+    expect(screen.queryByText('LD')).not.toBeInTheDocument();
+    expect(screen.queryByText('PV')).not.toBeInTheDocument();
+    expect(screen.queryByText('BESS')).not.toBeInTheDocument();
+    expect(screen.queryByText('ZAB')).not.toBeInTheDocument();
+  });
+
+  it('po wyborze typu nie pokazuje surowego ID w stopce', async () => {
+    fetchTypesByCategoryMock.mockResolvedValue([
+      {
+        id: 'cable-raw-technical-id',
+        name: 'Kabel SN 3x150/25',
+        manufacturer: 'Tele-Fonika',
+      },
+    ]);
+
+    render(<CatalogBrowser />);
+
+    const typeRow = await screen.findByText('Kabel SN 3x150/25');
+    fireEvent.click(typeRow);
+
+    expect(screen.getAllByText('Kabel SN 3x150/25')).toHaveLength(2);
+    expect(screen.queryByText(/ID:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/cable-raw-technical-id/i)).not.toBeInTheDocument();
+  });
+
   it('pokazuje komunikat z klienta API przy braku polaczenia', async () => {
     fetchTypesByCategoryMock.mockRejectedValue(
       new Error('Nie mozna polaczyc sie z API katalogow. Uruchom backend i odswiez widok.'),

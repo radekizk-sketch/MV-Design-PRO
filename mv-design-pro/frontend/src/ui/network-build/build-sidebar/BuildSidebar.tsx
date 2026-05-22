@@ -2,7 +2,7 @@
  * BuildSidebar — lewy panel z 4 sekcjami (PR-13).
  *
  * Brief 2 §4 + brief 1 §13 (Dock projektanta).
- * Sekcje: Nawigator modelu / Budowa sieci / Warstwy / Gotowość obliczeń.
+ * Sekcje: Nawigator układów / Budowa sieci / Warstwy / Zakres obliczeń.
  */
 
 import { useState } from 'react';
@@ -26,7 +26,7 @@ const TAB_LABELS: Record<BuildSidebarTabId, string> = {
   nawigator: 'Nawigator',
   budowa: 'Budowa',
   warstwy: 'Warstwy',
-  gotowosc: 'Gotowość',
+  gotowosc: 'Kontrola',
 };
 
 export function BuildSidebar(props: BuildSidebarProps): JSX.Element {

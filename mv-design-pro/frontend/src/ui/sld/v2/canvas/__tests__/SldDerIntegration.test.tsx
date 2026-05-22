@@ -34,11 +34,12 @@ describe('SLD ↔ DER integracja (Faza G)', () => {
             nominalPowerKw: 2500,
           },
         ]}
+        lodOverride={4}
         onDoubleClickDer={onDoubleClickDer}
       />,
     );
 
-    const derEl = container.querySelector('[data-element-kind="der_full"]');
+    const derEl = container.querySelector('[data-element-kind="der_pv"]');
     expect(derEl).toBeTruthy();
     fireEvent.doubleClick(derEl!);
     expect(onDoubleClickDer).toHaveBeenCalledWith('der_pv_test');
@@ -59,11 +60,12 @@ describe('SLD ↔ DER integracja (Faza G)', () => {
           { id: 'bess1', x: 200, y: 100, kind: 'BESS', name: 'BESS', nominalPowerKw: null },
           { id: 'fw1', x: 300, y: 100, kind: 'FW', name: 'FW', nominalPowerKw: null },
         ]}
+        lodOverride={4}
         onContextMenu={onContextMenu}
       />,
     );
 
-    const ders = container.querySelectorAll('[data-element-kind="der_full"]');
+    const ders = container.querySelectorAll('[data-testid^="sld-v2-der-hit-"]');
     expect(ders.length).toBe(3);
 
     fireEvent.contextMenu(ders[0]);

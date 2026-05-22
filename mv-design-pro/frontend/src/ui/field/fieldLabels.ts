@@ -19,7 +19,7 @@ export function canonicalRoleLabel(role: string | null | undefined): string {
     case 'FW_SN':
       return 'Pole źródłowe FW';
     default:
-      return 'Brak danych';
+      return 'Rola pola do wyboru';
   }
 }
 
@@ -32,7 +32,7 @@ export function integrityStatusLabel(status: string | null | undefined): string 
     case 'wymaga_uzupelnienia':
       return 'Wymaga uzupełnienia';
     default:
-      return 'Brak danych';
+      return 'Zakres do konfiguracji';
   }
 }
 
@@ -67,7 +67,7 @@ export function deviceKindLabel(kind: string | null | undefined): string {
     case 'BATTERY':
       return 'Bateria';
     default:
-      return kind ?? 'Brak danych';
+      return kind ?? 'Aparat do wyboru';
   }
 }
 
@@ -99,7 +99,7 @@ export function communicationStatusLabel(status: string | null | undefined): str
     case 'offline':
       return 'Brak łączności';
     default:
-      return 'Brak danych';
+      return 'Łączność do sprawdzenia';
   }
 }
 
@@ -114,7 +114,7 @@ export function availabilityLabel(status: string | null | undefined): string {
     case 'niedostepne':
       return 'Niedostępne';
     default:
-      return 'Brak danych';
+      return 'Dostępność do sprawdzenia';
   }
 }
 
@@ -127,7 +127,7 @@ export function sourceKindLabel(kind: string | null | undefined): string {
     case 'FW':
       return 'Źródło FW';
     default:
-      return 'Brak danych';
+      return 'Typ źródła do wyboru';
   }
 }
 
@@ -144,7 +144,7 @@ export function commandExecutionStateLabel(state: string | null | undefined): st
     case 'przeterminowane':
       return 'Przeterminowane';
     default:
-      return 'Brak danych';
+      return 'Stan polecenia do sprawdzenia';
   }
 }
 
@@ -157,6 +157,6 @@ export function resultStateLabel(state: string | null | undefined): string {
     case 'bledny':
       return 'Błędny';
     default:
-      return 'Brak danych';
+      return 'Wynik do wyliczenia';
   }
 }

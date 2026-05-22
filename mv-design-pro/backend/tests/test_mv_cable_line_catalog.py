@@ -25,6 +25,7 @@ from network_model.catalog import (
 from network_model.catalog.mv_cable_line_catalog import (
     JTH_AL_ST_OHL,
     JTH_AL_XLPE,
+    JTH_CU_XLPE,
     get_all_cable_types,
     get_all_line_types,
     get_base_cable_type_ids,
@@ -80,6 +81,31 @@ class TestCatalogCompleteness:
                 "AL",
                 "AL_ST",
             ), f"Linia {line.id}: nieznany materiał {line.conductor_material}"
+
+
+    def test_production_cables_have_zero_sequence_parameters(self) -> None:
+        """Produkcyjne typy kabli SN mają katalogowe R0/X0 do zwarć doziemnych."""
+        catalog = get_default_mv_catalog()
+
+        for cable in catalog.list_cable_types():
+            if "incomplete" in cable.id:
+                continue
+            assert cable.r0_ohm_per_km is not None, f"Kabel {cable.id}: brak R0"
+            assert cable.x0_ohm_per_km is not None, f"Kabel {cable.id}: brak X0"
+            assert cable.r0_ohm_per_km > 0, f"Kabel {cable.id}: R0 <= 0"
+            assert cable.x0_ohm_per_km > 0, f"Kabel {cable.id}: X0 <= 0"
+
+    def test_production_lines_have_zero_sequence_parameters(self) -> None:
+        """Produkcyjne typy linii napowietrznych SN mają katalogowe R0/X0."""
+        catalog = get_default_mv_catalog()
+
+        for line in catalog.list_line_types():
+            if "incomplete" in line.id:
+                continue
+            assert line.r0_ohm_per_km is not None, f"Linia {line.id}: brak R0"
+            assert line.x0_ohm_per_km is not None, f"Linia {line.id}: brak X0"
+            assert line.r0_ohm_per_km > 0, f"Linia {line.id}: R0 <= 0"
+            assert line.x0_ohm_per_km > 0, f"Linia {line.id}: X0 <= 0"
 
 
 class TestThermalDataCompleteness:
@@ -465,6 +491,38 @@ class TestCableTypeProperties:
         assert d["dane_cieplne_kompletne"] is True
         assert d["base_type_id"] == "cable-base-xlpe-al-1c-150"
         assert d["trade_name"] == "N2XS2Y 1x150/25"
+        assert d["return_conductor_cross_section_mm2"] == 25
+        assert d["return_conductor_material"] == "CU"
+        assert d["return_conductor_r_ohm_per_km_20c"] == pytest.approx(17.241 / 25)
+        assert d["return_conductor_jth_1s_a_per_mm2"] == pytest.approx(JTH_CU_XLPE)
+        assert d["return_conductor_ith_1s_a"] == pytest.approx(JTH_CU_XLPE * 25)
+
+    def test_catalog_designation_selects_return_conductor_section(self) -> None:
+        """Przekroj zyly powrotnej pochodzi z oznaczenia typu katalogowego."""
+        catalog = get_default_mv_catalog()
+
+        cable_150_25 = catalog.get_cable_type("cable-enea-operator-na2xs2y-1x150")
+        cable_120_16 = catalog.get_cable_type("cable-tfk-yakxs-3x120")
+
+        assert cable_150_25 is not None
+        assert cable_120_16 is not None
+        assert cable_150_25.return_conductor_cross_section_mm2 == 25
+        assert cable_120_16.return_conductor_cross_section_mm2 == 16
+        assert cable_150_25.get_return_conductor_ith_1s() == pytest.approx(JTH_CU_XLPE * 25)
+        assert cable_120_16.get_return_conductor_ith_1s() == pytest.approx(JTH_CU_XLPE * 16)
+
+    def test_catalog_designation_feeds_zero_sequence_model(self) -> None:
+        """R0 kabla katalogowego uwzględnia przekrój żyły powrotnej z oznaczenia."""
+        catalog = get_default_mv_catalog()
+        cable = catalog.get_cable_type("cable-enea-operator-na2xs2y-1x150")
+
+        assert cable is not None
+        assert cable.return_conductor_r_ohm_per_km_20c == pytest.approx(17.241 / 25)
+        assert cable.r0_ohm_per_km == pytest.approx(
+            cable.r_ohm_per_km + cable.return_conductor_r_ohm_per_km_20c,
+            rel=1e-6,
+        )
+        assert cable.x0_ohm_per_km == pytest.approx(3.0 * cable.x_ohm_per_km, rel=1e-6)
 
     def test_line_type_to_dict(self) -> None:
         """LineType.to_dict() zawiera wszystkie pola."""
@@ -479,6 +537,8 @@ class TestCableTypeProperties:
         assert d["cross_section_mm2"] == 120
         assert d["jth_1s_a_per_mm2"] == JTH_AL_ST_OHL
         assert d["dane_cieplne_kompletne"] is True
+        assert d["r0_ohm_per_km"] == pytest.approx(3.0 * line.r_ohm_per_km)
+        assert d["x0_ohm_per_km"] == pytest.approx(3.0 * line.x_ohm_per_km)
 
 
 class TestCatalogCoverage:

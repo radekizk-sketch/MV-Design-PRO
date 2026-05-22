@@ -13,7 +13,10 @@ import {
   computeBuildPhase,
   selectOpenTerminals,
   selectConfiguredGridSourceSnFields,
+  selectSnFieldCount,
   selectOzeSourceSummaries,
+  selectStationSummaries,
+  selectFieldStationCount,
   selectBlockersByCategory,
   selectActiveOperationForm,
   buildPhaseLabel,
@@ -72,6 +75,19 @@ describe('computeBuildPhase', () => {
   it('returns HAS_TRUNKS when trunks exist but no substations', () => {
     const lv = { trunks: [{ id: 't1', segments: ['seg-1'] }], terminals: [], branches: [] } as unknown as LogicalViewsV1;
     expect(computeBuildPhase(enmWithSource(), lv, null)).toBe('HAS_TRUNKS');
+  });
+
+  it('nie liczy GPZ jako stacji terenowej po wyprowadzeniu magistrali', () => {
+    const enm = {
+      ...enmWithSource(),
+      substations: [
+        { id: 'gpz-1', name: 'GPZ 15 kV', station_type: 'gpz', transformer_refs: [], bus_refs: [] },
+      ],
+    } as unknown as EnergyNetworkModel;
+    const lv = { trunks: [{ id: 't1', segments: ['seg-1'] }], terminals: [], branches: [] } as unknown as LogicalViewsV1;
+
+    expect(selectFieldStationCount(enm)).toBe(0);
+    expect(computeBuildPhase(enm, lv, null)).toBe('HAS_TRUNKS');
   });
 
   it('returns READY when readiness.ready is true', () => {
@@ -197,6 +213,76 @@ describe('selectConfiguredGridSourceSnFields', () => {
   });
 });
 
+describe('selectSnFieldCount', () => {
+  it('liczy kanoniczne pola SN z ENM, a nie rozszerzony read-model aparatów', () => {
+    const enm = {
+      ...emptyENM(),
+      bays: [
+        {
+          id: 'bay-1',
+          ref_id: 'bay-1',
+          name: 'Pole liniowe 1',
+          tags: [],
+          meta: {},
+          bay_role: 'OUT',
+          substation_ref: 'gpz-1',
+          bus_ref: 'bus-1',
+          equipment_refs: [],
+        },
+        {
+          id: 'bay-2',
+          ref_id: 'bay-2',
+          name: 'Pole transformatorowe',
+          tags: [],
+          meta: {},
+          bay_role: 'TR',
+          substation_ref: 'st-1',
+          bus_ref: 'bus-2',
+          equipment_refs: [],
+        },
+      ],
+    } as unknown as EnergyNetworkModel;
+
+    expect(selectSnFieldCount(enm)).toBe(2);
+  });
+
+  it('liczy pola SN zapisane w meta.field_specs GPZ i stacji', () => {
+    const enm = {
+      ...emptyENM(),
+      bays: [],
+      substations: [
+        {
+          id: 'gpz-1',
+          ref_id: 'gpz-1',
+          name: 'GPZ 1',
+          station_type: 'gpz',
+          meta: {
+            field_specs: [
+              { field_ref: 'gpz-1/bay/out-1', name: 'Pole odpływowe 1' },
+              { field_ref: 'gpz-1/bay/out-2', name: 'Pole odpływowe 2' },
+            ],
+          },
+        },
+        {
+          id: 'st-1',
+          ref_id: 'st-1',
+          name: 'Stacja 1',
+          station_type: 'inline',
+          meta: {
+            field_specs: [
+              { field_ref: 'st-1/bay/in', name: 'Pole wejściowe' },
+              { field_ref: 'st-1/bay/out', name: 'Pole wyjściowe' },
+              { field_ref: 'st-1/bay/tr', name: 'Pole transformatorowe' },
+            ],
+          },
+        },
+      ],
+    } as unknown as EnergyNetworkModel;
+
+    expect(selectSnFieldCount(enm)).toBe(5);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Tests: selectOpenTerminals
 // ---------------------------------------------------------------------------
@@ -258,11 +344,52 @@ describe('selectBlockersByCategory', () => {
 
 describe('buildPhaseLabel', () => {
   it('returns Polish labels for all phases', () => {
-    expect(buildPhaseLabel('NO_SOURCE')).toContain('Brak');
+    expect(buildPhaseLabel('NO_SOURCE')).toContain('GPZ');
     expect(buildPhaseLabel('HAS_SOURCE')).toContain('GPZ');
     expect(buildPhaseLabel('HAS_TRUNKS')).toContain('Magistrala');
     expect(buildPhaseLabel('HAS_STATIONS')).toContain('Stacje');
-    expect(buildPhaseLabel('READY')).toMatch(/gotowy/i);
+    expect(buildPhaseLabel('READY')).toBe('Do analizy');
+  });
+});
+
+describe('selectStationSummaries', () => {
+  it('zastępuje wewnętrzne nazwy typu stacji publicznym oznaczeniem', () => {
+    const snapshot = {
+      ...emptyENM(),
+      substations: [
+        {
+          id: 'gpz-1',
+          ref_id: 'gpz/abc/substation',
+          name: 'GPZ 15 kV',
+          station_type: 'gpz',
+          bus_refs: [],
+          transformer_refs: [],
+        },
+        {
+          id: 'station-z',
+          ref_id: 'stn/abc/station',
+          name: 'Stacja inline',
+          station_type: 'inline',
+          bus_refs: [],
+          transformer_refs: [],
+        },
+        {
+          id: 'station-a',
+          ref_id: 'stn/def/station',
+          name: 'Stacja terminal',
+          station_type: 'terminal',
+          bus_refs: [],
+          transformer_refs: [],
+        },
+      ],
+    } as unknown as EnergyNetworkModel;
+
+    const summaries = selectStationSummaries(snapshot, new Map());
+
+    expect(summaries).toHaveLength(2);
+    expect(summaries[0]?.name).toBe('S01 · Stacja przelotowa');
+    expect(summaries[0]?.name).not.toContain('inline');
+    expect(summaries[1]?.name).toBe('S02 · Stacja końcowa');
   });
 });
 

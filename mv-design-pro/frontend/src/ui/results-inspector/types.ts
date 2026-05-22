@@ -438,7 +438,7 @@ export const RESULTS_TAB_LABELS: Record<ResultsInspectorTab, string> = {
  * Result status labels (Polish).
  */
 export const RESULT_STATUS_LABELS: Record<string, string> = {
-  NONE: 'Brak wyników',
+  NONE: 'Wyniki nieuruchomione',
   FRESH: 'Wyniki aktualne',
   VALID: 'Wyniki aktualne',
   OUTDATED: 'Wyniki nieaktualne',

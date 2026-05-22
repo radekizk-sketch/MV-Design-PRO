@@ -44,7 +44,7 @@ export function SupplyPathLegend({
         )}
         data-testid="supply-path-legend-no-source"
       >
-        Brak źródła zasilania w modelu — tor mocy nie może być wyznaczony.
+        Wybierz wariant GPZ i źródło zasilania, aby wyznaczyć tor mocy.
       </div>
     );
   }
@@ -100,7 +100,7 @@ export function SupplyPathLegend({
         >
           <span className="flex items-center gap-1">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Gałęzie czynne
+            Odcinki zasilone
           </span>
           <span className="font-mono text-gray-700">
             {energizedBranchCount}
@@ -123,7 +123,7 @@ export function SupplyPathLegend({
                 openPointCount > 0 ? 'bg-red-500' : 'bg-gray-400',
               )}
             />
-            Punkty otwarte (NMO / open)
+            Punkty normalnie otwarte (NOP)
           </span>
           <span className="font-mono">{openPointCount}</span>
         </li>
@@ -135,7 +135,7 @@ export function SupplyPathLegend({
           >
             <span className="flex items-center gap-1">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
-              DER pod napięciem
+              Układy przyłączone do toru mocy
             </span>
             <span className="font-mono">{highlight.energizedGeneratorRefs.length}</span>
           </li>
@@ -143,8 +143,7 @@ export function SupplyPathLegend({
       </ul>
 
       <span className="text-[10px] text-gray-500">
-        Bez fizyki — interpretacja topologii operatorskiej (BFS przez zamknięte łączniki i
-        transformatory).
+        Interpretacja topologii operatorskiej przez zamknięte łączniki i transformatory.
       </span>
     </div>
   );

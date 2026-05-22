@@ -43,7 +43,7 @@ describe('InspectorPanel', () => {
     expect(proofButton).toBeDefined();
     expect(proofButton).toBeDisabled();
     expect(screen.getByTestId('open-proof-trace-blocked-proof')).toHaveTextContent(
-      'Brak aktywnego uruchomienia.',
+      'Nie wybrano przebiegu obliczeń.',
     );
     fireEvent.click(proofButton!);
     expect(window.location.hash).toBe('');
@@ -51,7 +51,7 @@ describe('InspectorPanel', () => {
 
     fireEvent.click(screen.getByTestId('tab-limits'));
     expect(screen.queryByText('31,500')).not.toBeInTheDocument();
-    expect(screen.getByText('Brak danych')).toBeInTheDocument();
+    expect(screen.getByText('Limity do wyliczenia')).toBeInTheDocument();
   });
 
   it('renders Polish status labels in limits tab', () => {

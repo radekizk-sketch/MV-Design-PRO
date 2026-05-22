@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
-import { listNnFeederOptions, resolveStationRef } from '../enmResolvers';
+import { listNnFeederOptions, resolveStationRef, stationLabel } from '../enmResolvers';
 
 function snapshotWithCanonicalNnField(): EnergyNetworkModel {
   return {
@@ -78,5 +78,13 @@ describe('enmResolvers', () => {
         bus_ref: 'bus-nn-ref',
       },
     ]);
+  });
+
+  it('zastępuje roboczą nazwę stacji publicznym oznaczeniem technicznym', () => {
+    const snapshot = snapshotWithCanonicalNnField();
+    snapshot.substations[0].name = 'Stacja inline';
+    snapshot.substations[0].station_type = 'inline';
+
+    expect(stationLabel(snapshot, 'station-id')).toBe('S01 · Stacja przelotowa');
   });
 });

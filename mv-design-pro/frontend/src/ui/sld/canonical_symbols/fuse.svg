@@ -2,12 +2,12 @@
   <!-- Fuse / Bezpiecznik - IEC 60617 -->
   <!-- Rectangle with thin center fuse element -->
   <!-- Connection stub top -->
-  <line x1="50" y1="0" x2="50" y2="30" stroke="#000000" stroke-width="3"/>
+  <line x1="50" y1="0" x2="50" y2="30" stroke="currentColor" stroke-width="3"/>
   <!-- Fuse body rectangle -->
-  <rect x="30" y="30" width="40" height="40" fill="none" stroke="#000000" stroke-width="3"/>
+  <rect x="30" y="30" width="40" height="40" fill="none" stroke="currentColor" stroke-width="3"/>
   <!-- Thin fuse element inside -->
-  <line x1="50" y1="30" x2="50" y2="70" stroke="#000000" stroke-width="1.5"/>
+  <line x1="50" y1="30" x2="50" y2="70" stroke="currentColor" stroke-width="1.5"/>
   <!-- Connection stub bottom -->
-  <line x1="50" y1="70" x2="50" y2="100" stroke="#000000" stroke-width="3"/>
+  <line x1="50" y1="70" x2="50" y2="100" stroke="currentColor" stroke-width="3"/>
   <!-- Port markers: top: (50, 0), bottom: (50, 100) -->
 </svg>

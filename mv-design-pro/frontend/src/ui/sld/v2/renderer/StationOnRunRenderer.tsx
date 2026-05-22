@@ -35,6 +35,12 @@ const TRUNK_Y = -STATION_RUN_TRUNK_OFFSET_Y;
 const LABEL_Y = 36;
 const CODE_Y = 58;
 
+function formatTransformerRatedPower(kva: number): string {
+  return kva >= 1000
+    ? `${(kva / 1000).toFixed(1).replace('.', ',')} MVA`
+    : `${kva} kVA`;
+}
+
 export interface StationOnRunRendererProps {
   readonly id: string;
   readonly x: number;
@@ -67,7 +73,7 @@ export interface StationOnRunRendererProps {
    *  Indeks per connectionColumns(): 0 = WE, 1 = WY, 2 = ODG (per topologicalType).
    *  - 'closed' (default): polygon filled green = pole pod napięciem
    *  - 'open': polygon stroke-only = wyłączone, brak napięcia
-   *  - 'unknown': polygon filled grey z '?' overlay = brak telemetrii
+   *  - 'unknown': polygon filled grey with neutral hatch = stan do weryfikacji
    *  Domyślnie wszystko 'closed' (back-compat z testami).
    */
   readonly switchStateByColumn?: ReadonlyArray<'closed' | 'open' | 'unknown'>;
@@ -108,6 +114,8 @@ export interface StationOnRunRendererProps {
    *   - |ΔU| > 10% → red (poza granicą PN-EN 50160)
    *  Brak → ring color domyślny (cyan #7EC8FF). */
   readonly voltageDeviationPct?: number | null;
+  /** Aktualna skala viewportu SLD, uzywana do czytelnosci etykiet overview. */
+  readonly viewportScale?: number;
 }
 
 const TYPE_TO_LABEL_PL: Record<StationOnRunRendererProps['topologicalType'], string> = {
@@ -129,13 +137,12 @@ const TOPOLOGY_TO_FOOTPRINT: Record<
 
 function shouldDelegateToMiniBlock(props: StationOnRunRendererProps): boolean {
   if (props.lod === undefined) return false;
-  if (props.lod >= 3) return false;
   return props.snBays !== undefined;
 }
 
 export function StationOnRunRenderer(props: StationOnRunRendererProps): JSX.Element {
   if (shouldDelegateToMiniBlock(props)) {
-    const variant = miniBlockVariantForLod(props.lod ?? 0);
+    const variant = miniBlockVariantForStation(props);
     const footprintType = props.footprintType ?? TOPOLOGY_TO_FOOTPRINT[props.topologicalType];
     return (
       <MiniBlockRmuRenderer
@@ -161,6 +168,7 @@ export function StationOnRunRenderer(props: StationOnRunRendererProps): JSX.Elem
         busVoltageKv={props.busVoltageKv ?? null}
         isNop={props.isNop ?? false}
         transformerVectorGroup={props.transformerVectorGroup ?? null}
+        viewportScale={props.viewportScale}
       />
     );
   }
@@ -168,10 +176,25 @@ export function StationOnRunRenderer(props: StationOnRunRendererProps): JSX.Elem
   return <DispatcherStationSymbol {...props} />;
 }
 
-function miniBlockVariantForLod(lod: LodLevel): 'overview' | 'compact' | 'detail' {
-  if (lod <= 0) return 'overview';
-  if (lod === 1) return 'compact';
-  return 'detail';
+function miniBlockVariantForStation(props: StationOnRunRendererProps): 'overview' | 'compact' | 'detail' {
+  const lod = props.lod ?? 0;
+  if (props.selected) return lod <= 1 ? 'overview' : 'compact';
+  if (lod <= 1) return 'overview';
+  return 'compact';
+}
+
+function normalizeLabelToken(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function isGenericStationDisplayName(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const normalized = normalizeLabelToken(value);
+  return /^stacja\s+(przelotowa|koncowa|odgalezna|sekcyjna)(\s+sn\/nn)?$/.test(normalized);
 }
 
 function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element {
@@ -191,8 +214,23 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
   const voltageLabel = nnVoltageLevelsCount && nnVoltageLevelsCount > 1
     ? `${nnVoltageLevelsCount}× nN`
     : 'SN/nN';
-  // Z mocą znamionową transformatora przesuwamy NOP/distance niżej (extraSlotY).
-  const extraSlotY = transformerRatedKva != null ? 14 : 0;
+  const stationCodeLabel = stationCode
+    ?? (name.match(/\b(S\d{2,3})\b/)?.[1] ?? null);
+  const normalizedName = normalizeLabelToken(name);
+  const normalizedCode = stationCodeLabel ? normalizeLabelToken(stationCodeLabel) : null;
+  const stationNameLabel = stationCodeLabel && (
+    isGenericStationDisplayName(name)
+    || (normalizedCode != null && normalizedName.startsWith(`${normalizedCode} `))
+  )
+    ? null
+    : name.length > 24 ? name.slice(0, 22) + 'â€¦' : name;
+  const hasMultiVoltageLv = (nnVoltageLevelsCount ?? 0) > 1;
+  const showVoltageLabel = effectiveFeeders <= 0 || hasMultiVoltageLv;
+  const voltageLabelY = CODE_Y + (effectiveFeeders > 0 ? 68 : 48);
+  const transformerPowerY = CODE_Y + (effectiveFeeders > 0 ? (showVoltageLabel ? 100 : 82) : 66);
+  const auxiliaryInfoY = transformerRatedKva != null
+    ? transformerPowerY + 24
+    : CODE_Y + (effectiveFeeders > 0 ? 82 : 70);
 
   return (
     <g
@@ -257,8 +295,8 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
         // K30-7: per-column switching state (CB open/closed/unknown)
         const swState = switchStateByColumn?.[index] ?? 'closed';
         const swFill = swState === 'closed' ? '#0A8D43' : swState === 'unknown' ? '#5A6878' : 'none';
-        const swStroke = swState === 'open' ? COLOR_DEVICE_OPEN : COLOR_FIELD_TRUNK_ENERGIZED;
-        const connectorStroke = swState === 'closed' ? COLOR_FIELD_TRUNK_ENERGIZED : COLOR_DEVICE_OPEN;
+        const swStroke = swState === 'open' ? COLOR_DEVICE_OPEN : swState === 'unknown' ? COLOR_TEXT_SECONDARY : COLOR_FIELD_TRUNK_ENERGIZED;
+        const connectorStroke = swState === 'closed' ? COLOR_FIELD_TRUNK_ENERGIZED : swState === 'unknown' ? COLOR_TEXT_SECONDARY : COLOR_DEVICE_OPEN;
         const connectorDash = swState === 'open' ? '4 3' : undefined;
         // K30-36: bay-role label below switch diamond — pomaga operatorowi
         // odróżnić WE/WY/TR/ODG przy zoom-out (LOD3+).
@@ -285,15 +323,13 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
             data-symbol-canon="switch_disconnector_rotated_square"
           />
           {swState === 'unknown' && (
-            <text
-              x={cx}
-              y={STATION_BUS_Y - 19}
-              textAnchor="middle"
-              fill="#FFFFFF"
-              fontFamily={FONT_SANS}
-              fontSize={10}
-              fontWeight={900}
-            >?</text>
+            <g
+              data-testid={`sld-v2-station-diamond-state-marker-${id}-${index}`}
+              data-state-marker="neutral-hatch"
+            >
+              <line x1={cx - 5} y1={STATION_BUS_Y - 27} x2={cx + 5} y2={STATION_BUS_Y - 17} stroke="#FFFFFF" strokeWidth={1.2} />
+              <line x1={cx - 5} y1={STATION_BUS_Y - 19} x2={cx + 1} y2={STATION_BUS_Y - 13} stroke="#FFFFFF" strokeWidth={1.2} />
+            </g>
           )}
           <g
             data-apparatus-kind="earthing_switch"
@@ -367,7 +403,7 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
       {missingData && (
         <g data-testid={`sld-v2-station-missing-${id}`} transform={`translate(${STATION_BUS_WIDTH / 2 + 14}, ${STATION_BUS_Y - 36})`}>
           <circle r={6} fill={COLOR_WARN} stroke="#FFB020" strokeWidth={1}>
-            <title>Brakuje danych do obliczeń</title>
+            <title>Konfiguracja stacji wymaga decyzji projektowej</title>
           </circle>
           <text x={0} y={4} textAnchor="middle" fill="#0B0E11" fontFamily={FONT_SANS} fontSize={10} fontWeight={800}>!</text>
         </g>
@@ -377,8 +413,7 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
        *  (z adaptera — adresuje backend gubi name_pl), fallback z regex z name.
        *  K30-44: ring color klasyfikuje voltage deviation per PN-EN 50160. */}
       {(() => {
-        const code = stationCode
-          ?? (name.match(/\b(S\d{2,3})\b/)?.[1] ?? null);
+        const code = stationCodeLabel;
         const dev = voltageDeviationPct ?? null;
         const ringColor = classifyVoltageDeviation(dev);
         const ringText = classifyVoltageDeviationText(dev);
@@ -439,7 +474,7 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
         stroke="#05070A"
         strokeWidth={3}
       >
-        {name.length > 24 ? name.slice(0, 22) + '…' : name}
+        {stationNameLabel ?? ''}
       </text>
       <text
         x={0}
@@ -455,20 +490,22 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
       >
         {TYPE_TO_LABEL_PL[topologicalType]}
       </text>
-      <text
-        x={0}
-        y={CODE_Y + 48}
-        textAnchor="middle"
-        fill={COLOR_TEXT_SECONDARY}
-        fontFamily={FONT_SANS}
-        fontSize={FONT_SIZES.technicalPanel}
-        fontWeight={700}
-        paintOrder="stroke"
-        stroke="#05070A"
-        strokeWidth={2}
-      >
-        {voltageLabel}
-      </text>
+      {showVoltageLabel && (
+        <text
+          x={0}
+          y={voltageLabelY}
+          textAnchor="middle"
+          fill={COLOR_TEXT_SECONDARY}
+          fontFamily={FONT_SANS}
+          fontSize={FONT_SIZES.technicalPanel}
+          fontWeight={700}
+          paintOrder="stroke"
+          stroke="#05070A"
+          strokeWidth={2}
+        >
+          {voltageLabel}
+        </text>
+      )}
 
       {/* K30-29: per-feeder visualization — N short droplines + CB symbol */}
       {effectiveFeeders > 0 && (
@@ -514,7 +551,7 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
         <text
           data-testid={`sld-v2-station-rated-kva-${id}`}
           x={0}
-          y={CODE_Y + 66}
+          y={transformerPowerY}
           textAnchor="middle"
           fill="#FFD166"
           fontFamily={FONT_SANS}
@@ -525,16 +562,14 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
           strokeWidth={2}
           opacity={0.95}
         >
-          {transformerRatedKva >= 1000
-            ? `${(transformerRatedKva / 1000).toFixed(1)} MVA`
-            : `${transformerRatedKva} kVA`}
+          {formatTransformerRatedPower(transformerRatedKva)}
         </text>
       )}
 
       {isNop && (
         <g
           data-testid={`sld-v2-station-nop-badge-${id}`}
-          transform={`translate(0, ${CODE_Y + 70 + extraSlotY})`}
+          transform={`translate(0, ${auxiliaryInfoY})`}
         >
           <rect x={-24} y={-12} width={48} height={20} rx={3} ry={3} fill="#C00000" opacity={0.95} />
           <text x={0} y={4} textAnchor="middle" fill="#FFFFFF" fontFamily={FONT_SANS} fontSize={13} fontWeight={800} letterSpacing={1}>
@@ -547,7 +582,7 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
         <text
           data-testid={`sld-v2-station-distance-${id}`}
           x={0}
-          y={CODE_Y + (isNop ? 96 : 70) + extraSlotY}
+          y={auxiliaryInfoY + (isNop ? 26 : 0)}
           textAnchor="middle"
           fill={COLOR_TEXT_SECONDARY}
           fontFamily={FONT_SANS}

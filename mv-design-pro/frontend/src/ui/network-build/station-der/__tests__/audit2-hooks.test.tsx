@@ -3,7 +3,7 @@
  *
  * Pokrywaja:
  *  - useAudit2CatalogSnapshot: pobiera snapshot, infinite cache.
- *  - useStationAudit2Config: pobiera config / null gdy 404.
+ *  - useStationAudit2Config: pobiera listę konfiguracji i wybiera wpis stacji bez 404.
  *  - useUpdateStationAudit2Config: optimistic update + rollback przy bledzie.
  *  - useDeleteStationAudit2Config: usuwa cache po sukcesie.
  */
@@ -62,11 +62,10 @@ describe('audit2 React Query hooks', () => {
     expect(global.fetch).toHaveBeenCalledWith('/api/v1/catalog/audit2/snapshot');
   });
 
-  it('useStationAudit2Config zwraca null gdy 404', async () => {
+  it('useStationAudit2Config zwraca null gdy lista nie zawiera stacji', async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-      statusText: 'Not Found',
+      ok: true,
+      json: async () => [],
     });
 
     const { wrapper } = makeWrapper();
@@ -77,6 +76,7 @@ describe('audit2 React Query hooks', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toBeNull();
+    expect(global.fetch).toHaveBeenCalledWith('/api/v1/projects/proj-1/audit2-station-config');
   });
 
   it('useStationAudit2Config nie wywoluje fetch gdy projectId jest null', async () => {
@@ -89,19 +89,21 @@ describe('audit2 React Query hooks', () => {
   });
 
   it('useUpdateStationAudit2Config optimistic update natychmiast aktualizuje cache', async () => {
-    // Initial GET returns existing config.
+    // Initial list returns existing config.
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({
-        id: 'cfg-1',
-        project_id: 'proj-1',
-        station_id: 'station-1',
-        mv_neutral_grounding_ref: 'mng_isolated',
-        tap_changer_refs: [],
-        der_specs: [],
-        created_at: '2026-04-01T00:00:00Z',
-        updated_at: '2026-04-01T00:00:00Z',
-      }),
+      json: async () => [
+        {
+          id: 'cfg-1',
+          project_id: 'proj-1',
+          station_id: 'station-1',
+          mv_neutral_grounding_ref: 'mng_isolated',
+          tap_changer_refs: [],
+          der_specs: [],
+          created_at: '2026-04-01T00:00:00Z',
+          updated_at: '2026-04-01T00:00:00Z',
+        },
+      ],
     });
     // PUT response.
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
@@ -144,19 +146,21 @@ describe('audit2 React Query hooks', () => {
   });
 
   it('useUpdateStationAudit2Config rollback przy bledzie backendu', async () => {
-    // Initial GET success.
+    // Initial list success.
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({
-        id: 'cfg-1',
-        project_id: 'proj-1',
-        station_id: 'station-1',
-        mv_neutral_grounding_ref: 'mng_isolated',
-        tap_changer_refs: [],
-        der_specs: [],
-        created_at: null,
-        updated_at: null,
-      }),
+      json: async () => [
+        {
+          id: 'cfg-1',
+          project_id: 'proj-1',
+          station_id: 'station-1',
+          mv_neutral_grounding_ref: 'mng_isolated',
+          tap_changer_refs: [],
+          der_specs: [],
+          created_at: null,
+          updated_at: null,
+        },
+      ],
     });
     // PUT failure.
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
@@ -190,19 +194,21 @@ describe('audit2 React Query hooks', () => {
   });
 
   it('useDeleteStationAudit2Config usuwa cache po sukcesie', async () => {
-    // GET success.
+    // Initial list success.
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({
-        id: 'cfg-1',
-        project_id: 'proj-1',
-        station_id: 'station-1',
-        mv_neutral_grounding_ref: 'mng_isolated',
-        tap_changer_refs: [],
-        der_specs: [],
-        created_at: null,
-        updated_at: null,
-      }),
+      json: async () => [
+        {
+          id: 'cfg-1',
+          project_id: 'proj-1',
+          station_id: 'station-1',
+          mv_neutral_grounding_ref: 'mng_isolated',
+          tap_changer_refs: [],
+          der_specs: [],
+          created_at: null,
+          updated_at: null,
+        },
+      ],
     });
     // DELETE success (204).
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({

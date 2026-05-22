@@ -16,7 +16,7 @@ const handlers = new Proxy({}, { get: () => () => undefined }) as Record<string,
 describe('context-menu-segment-station - kanon menu odcinka SN i stacji SN/nN', () => {
   it('menu odcinka SN ma formalne akcje modelowania magistrali i obiektow posrednich', () => {
     expect(SEGMENT_SN_MENU_ACTIONS.map((action) => action.label)).toEqual([
-      'Otwórz w inspektorze',
+      'Otwórz kartę techniczną',
       'Edytuj odcinek',
       'Zmień typ katalogowy',
       'Wstaw stację',
@@ -32,14 +32,14 @@ describe('context-menu-segment-station - kanon menu odcinka SN i stacji SN/nN', 
 
   it('menu stacji SN/nN ma osobne akcje dla strony SN, transformatora i strony nN', () => {
     expect(STATION_SN_NN_MENU_ACTIONS.map((action) => action.label)).toEqual([
-      'Otwórz w inspektorze',
+      'Otwórz kartę techniczną',
       'Edytuj kreatorem prostym',
       'Edytuj kreatorem zaawansowanym',
       'Edytuj pola SN',
       'Edytuj transformator',
       'Edytuj stronę nN',
       'Dodaj obciążenie',
-      'Dodaj źródło',
+      'Dodaj źródło PV/BESS/FW z katalogu',
       'Pokaż wyniki stacji',
       'Pokaż uzasadnienie',
       'Dodaj do raportu',

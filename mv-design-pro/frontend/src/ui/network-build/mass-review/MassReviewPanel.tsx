@@ -1,7 +1,7 @@
 /**
- * MassReviewPanel — Panel przeglądów masowych.
+ * MassReviewPanel — Panel kontroli technicznej układu.
  *
- * Zawiera zakładki: Brakujące katalogi / Transformatory / Łączniki / OZE.
+ * Zawiera zakładki: Katalogi do przypisania / Transformatory / Łączniki / OZE.
  * Każda zakładka renderuje specjalizowaną tabelę z możliwością nawigacji i edycji.
  *
  * BINDING: 100% PL etykiety.
@@ -30,12 +30,12 @@ interface TabDef {
 }
 
 const TABS: readonly TabDef[] = [
-  { id: 'catalog', label: 'Brakujące katalogi', description: 'Elementy bez przypisanego typu katalogowego' },
-  { id: 'transformers', label: 'Transformatory', description: 'Przegląd parametrów transformatorów SN/nN' },
+  { id: 'catalog', label: 'Katalogi', description: 'Powiązanie aparatury i odcinków z katalogami technicznymi' },
+  { id: 'transformers', label: 'Transformatory', description: 'Parametry transformatorów SN/nN' },
   { id: 'switches', label: 'Łączniki', description: 'Stany łączników, NOP, konfiguracja' },
-  { id: 'oze', label: 'OZE / BESS', description: 'Źródła odnawialne i magazyny energii' },
-  { id: 'readiness', label: 'Blokery', description: 'Wszystkie blokery gotowości do analizy' },
-  { id: 'stations', label: 'Stacje', description: 'Kompletność stacji SN/nN' },
+  { id: 'oze', label: 'PV/BESS/FW', description: 'Układy przyłączeniowe i magazyny energii' },
+  { id: 'readiness', label: 'Kontrola', description: 'Zagadnienia konfiguracji przed analizą' },
+  { id: 'stations', label: 'Stacje', description: 'Zakres konfiguracji stacji SN/nN' },
 ] as const;
 
 // =============================================================================
@@ -66,6 +66,10 @@ export function MassReviewPanel({ isOpen, onClose, initialTab = 'catalog', class
     for (const l of snapshot.loads ?? []) { if (!l.catalog_ref) missingCatalog++; }
 
     const switchTypes = ['switch', 'breaker', 'bus_coupler', 'disconnector', 'fuse'];
+    const mvLvStationCount = (snapshot.substations ?? []).filter((station) =>
+      String(station.station_type ?? '').toLowerCase() !== 'gpz',
+    ).length;
+
     return {
       catalog: missingCatalog,
       transformers: snapshot.transformers?.length ?? 0,
@@ -74,7 +78,7 @@ export function MassReviewPanel({ isOpen, onClose, initialTab = 'catalog', class
       ).length,
       oze: snapshot.generators?.length ?? 0,
       readiness: readiness?.blockers?.length ?? 0,
-      stations: snapshot.substations?.length ?? 0,
+      stations: mvLvStationCount,
     };
   }, [snapshot, readiness]);
 
@@ -104,14 +108,14 @@ export function MassReviewPanel({ isOpen, onClose, initialTab = 'catalog', class
         )}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
-        aria-label="Przeglądy masowe"
+        aria-label="Kontrola techniczna układu"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
           <div>
-            <h3 className="text-sm font-semibold text-gray-800">Przeglądy masowe</h3>
+            <h3 className="text-sm font-semibold text-gray-800">Kontrola techniczna układu</h3>
             <p className="text-[10px] text-gray-500">
-              Przegląd i korekta parametrów elementów sieci
+              Sprawdzenie katalogów, transformatorów, łączników, OZE i zakresu stacji.
             </p>
           </div>
           <button

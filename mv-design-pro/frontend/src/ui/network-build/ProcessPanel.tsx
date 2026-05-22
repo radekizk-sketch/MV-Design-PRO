@@ -22,6 +22,11 @@ import {
   measurementCountsForField,
 } from '../field/fieldControlSelectors';
 import { useFieldReadModel } from '../field/useFieldReadModel';
+import { useSnapshotStore } from '../topology/snapshotStore';
+import {
+  resolveBranchSourceContext,
+  resolveBranchSourceRef,
+} from './operationContextResolvers';
 
 type StatusLevel = 'done' | 'partial' | 'empty' | 'error';
 
@@ -161,7 +166,7 @@ function SourceSection({ sourceCount, testIdScope }: { sourceCount: number; test
     return (
       <div className="px-3 py-2">
         <p className={clsx('mb-2 text-[11px]', mutedTextClass)}>
-          Brak GPZ. Najpierw utwórz GPZ z sekcjami i polami liniowymi, dopiero potem wyprowadź ciąg główny.
+          Rozpocznij od GPZ z sekcjami i polami liniowymi, dopiero potem wyprowadź ciąg główny.
         </p>
         <ActionButton
           label="+ Dodaj GPZ"
@@ -178,7 +183,7 @@ function SourceSection({ sourceCount, testIdScope }: { sourceCount: number; test
     <div className="px-3 py-2">
       <div className={clsx('flex items-center gap-2 text-[11px]', primaryTextClass)}>
         <StatusDot level="done" />
-        <span>GPZ gotowy ({sourceCount})</span>
+        <span>GPZ skonfigurowany ({sourceCount})</span>
       </div>
       <ActionButton
         label="Edytuj GPZ"
@@ -193,18 +198,21 @@ function SourceSection({ sourceCount, testIdScope }: { sourceCount: number; test
 function SnFieldSection({
   sourceCount,
   configuredFieldCount,
+  hasMaterializedNetwork,
   gridSourceStationRef,
   unconfiguredFields,
   testIdScope,
 }: {
   sourceCount: number;
   configuredFieldCount: number;
+  hasMaterializedNetwork: boolean;
   gridSourceStationRef: string | null;
   unconfiguredFields: GridSourceSnFieldCandidate[];
   testIdScope?: string;
 }) {
   const openForm = useNetworkBuildStore((state) => state.openOperationForm);
   const firstUnconfiguredField = unconfiguredFields[0] ?? null;
+  const hasConfiguredFields = configuredFieldCount > 0 || hasMaterializedNetwork;
 
   const handleConfigureField = useCallback(() => {
     openForm('add_sn_bay', {
@@ -227,10 +235,14 @@ function SnFieldSection({
 
   return (
     <div className="px-3 py-2 space-y-2">
-      {configuredFieldCount > 0 ? (
+      {hasConfiguredFields ? (
         <div className={clsx('flex items-center gap-2 text-[11px]', primaryTextClass)}>
           <StatusDot level="done" />
-          <span>Pole odpływowe SN gotowe ({configuredFieldCount})</span>
+          <span>
+            {configuredFieldCount > 0
+              ? `${configuredFieldCount === 1 ? 'Pole SN skonfigurowane' : 'Pola SN skonfigurowane'} (${configuredFieldCount})`
+              : 'Pola SN obecne w układzie'}
+          </span>
         </div>
       ) : (
         <p className={clsx('text-[11px]', mutedTextClass)}>
@@ -239,13 +251,13 @@ function SnFieldSection({
       )}
       {firstUnconfiguredField && (
         <p className={clsx('text-[11px]', primaryTextClass)}>
-          Następne pole z GPZ: {firstUnconfiguredField.name}
+          Wolne pole GPZ do rozbudowy: {firstUnconfiguredField.name}
         </p>
       )}
       <ActionButton
-        label={configuredFieldCount > 0 ? '+ Dodaj kolejne pole SN' : 'Skonfiguruj pole SN'}
+        label={hasConfiguredFields ? '+ Dodaj pole SN z katalogu' : 'Skonfiguruj pole SN'}
         onClick={handleConfigureField}
-        variant={configuredFieldCount > 0 ? 'secondary' : 'primary'}
+        variant={hasConfiguredFields ? 'secondary' : 'primary'}
         testId="btn-configure-sn-field"
         testIdScope={testIdScope}
       />
@@ -259,6 +271,7 @@ function TrunksSection({
   sourceCount,
   configuredFieldCount,
   configuredFields,
+  fallbackSegmentCount,
   testIdScope,
 }: {
   trunks: TrunkViewV1[];
@@ -266,6 +279,7 @@ function TrunksSection({
   sourceCount: number;
   configuredFieldCount: number;
   configuredFields: ConfiguredGridSourceSnField[];
+  fallbackSegmentCount: number;
   testIdScope?: string;
 }) {
   const openForm = useNetworkBuildStore((state) => state.openOperationForm);
@@ -324,16 +338,22 @@ function TrunksSection({
     <div className="px-3 py-2 space-y-2">
       {trunks.length === 0 ? (
         <div className="space-y-2">
+          {fallbackSegmentCount > 0 ? (
+            <p className={clsx('text-[11px]', mutedTextClass)}>
+              W układzie jest {fallbackSegmentCount} odcinków SN. Szczegóły ciągów i terminali otwórz z drzewa schematu albo karty odcinka.
+            </p>
+          ) : (
           <p className={clsx('text-[11px]', mutedTextClass)}>
             {sourceCount === 0
               ? 'Magistralę SN można wyprowadzić dopiero po utworzeniu GPZ.'
               : configuredFieldCount === 0
                 ? 'Najpierw skonfiguruj pole SN GPZ. Dopiero z jego zacisku wyjściowego wyprowadzisz magistralę.'
-                : 'Pole SN jest gotowe. Połącz jego zacisk wyjściowy z zaciskiem wejściowym pierwszego obiektu sieciowego.'}
+                : 'Pole SN jest skonfigurowane. Połącz jego zacisk wyjściowy z zaciskiem wejściowym pierwszego obiektu sieciowego.'}
           </p>
-          {sourceCount > 0 && configuredFieldCount > 0 && (
+          )}
+          {fallbackSegmentCount === 0 && sourceCount > 0 && configuredFieldCount > 0 && (
             <ActionButton
-              label={firstOpenTerminal || firstConfiguredField ? 'Połącz zacisk pola SN' : 'Brak wolnego pola liniowego GPZ'}
+              label={firstOpenTerminal || firstConfiguredField ? 'Połącz zacisk pola SN' : 'Wybierz wolne pole liniowe GPZ'}
               onClick={() => {
                 if (firstOpenTerminal || firstConfiguredField) {
                   handleContinueTrunk(firstOpenTerminal);
@@ -371,7 +391,7 @@ function TrunksSection({
 
       {openTerminals.length > 0 && (
         <div className="space-y-1 border-t border-[#15324f] pt-2">
-          <p className={clsx('text-[10px] font-medium uppercase', mutedTextClass)}>Wolne zaciski modelu</p>
+          <p className={clsx('text-[10px] font-medium uppercase', mutedTextClass)}>Wolne zaciski układu sieci</p>
           {openTerminals.map((terminal) => (
             <button
               key={`${terminal.element_id}-${terminal.port_id}`}
@@ -403,48 +423,79 @@ function TrunksSection({
 
 function StationsSection({ stations }: { stations: StationSummary[] }) {
   const openForm = useNetworkBuildStore((state) => state.openOperationForm);
+  const snapshot = useSnapshotStore((state) => state.snapshot);
+
+  const branchContextForStation = useCallback(
+    (stationId: string): Record<string, unknown> | null => {
+      const fromRef = resolveBranchSourceRef(snapshot, stationId, stationId, null);
+      if (!fromRef) return null;
+
+      const sourceContext = resolveBranchSourceContext(snapshot, fromRef);
+      if (!sourceContext.sourceBusRef) return null;
+
+      return {
+        from_ref: fromRef,
+        station_ref: stationId,
+        source_bus_ref: sourceContext.sourceBusRef,
+        source_type_label: sourceContext.sourceType,
+        source_name: sourceContext.sourceName,
+        source_voltage_label: sourceContext.voltageLabel,
+        source_port_label: sourceContext.portLabel,
+      };
+    },
+    [snapshot],
+  );
 
   const handleStartBranch = useCallback(
     (stationId: string) => {
-      openForm('start_branch_segment_sn', { from_station_id: stationId });
+      const context = branchContextForStation(stationId);
+      if (!context) return;
+      openForm('start_branch_segment_sn', context);
     },
-    [openForm],
+    [branchContextForStation, openForm],
   );
 
   return (
     <div className="px-3 py-2 space-y-2">
       {stations.length === 0 ? (
         <p className={clsx('text-[11px]', mutedTextClass)}>
-          Brak stacji. Najpierw połącz głowicę odpływową pola GPZ z odcinkiem SN, potem zakończ odcinek stacją z portem wejściowym.
+          Nie wstawiono jeszcze stacji. Połącz głowicę odpływową pola GPZ z odcinkiem SN, potem zakończ odcinek stacją z portem wejściowym.
         </p>
       ) : (
         <div className="space-y-1">
-          {stations.map((station) => (
-            <div
-              key={station.id}
-              className={clsx('flex items-center gap-2 text-[11px] py-1 px-2 rounded', primaryTextClass, rowHoverClass)}
-            >
-              <span
-                className={clsx(
-                  'text-[10px] font-bold px-1 rounded',
-                  station.readinessOk ? 'bg-eng-green/20 text-eng-green' : 'bg-eng-amber/20 text-eng-amber',
-                )}
+          {stations.map((station) => {
+            const branchContext = station.freeBranchPorts > 0
+              ? branchContextForStation(station.id)
+              : null;
+            return (
+              <div
+                key={station.id}
+                className={clsx('flex items-center gap-2 text-[11px] py-1 px-2 rounded', primaryTextClass, rowHoverClass)}
               >
-                {formatStationTypeShortLabelPl(station.stationType)}
-              </span>
-              <span className="flex-1 truncate">{station.name}</span>
-              {station.hasTransformer && <span className="text-[10px] text-chrome-400">TR</span>}
-              {station.freeBranchPorts > 0 && (
-                <button
-                  type="button"
-                  onClick={() => handleStartBranch(station.id)}
-                  className="text-[10px] text-[#67d9ff] hover:text-scada-text"
+                <span
+                  className={clsx(
+                    'text-[10px] font-bold px-1 rounded',
+                    station.readinessOk ? 'bg-eng-green/20 text-eng-green' : 'bg-eng-amber/20 text-eng-amber',
+                  )}
                 >
-                  [Zacisk odg.]
-                </button>
-              )}
-            </div>
-          ))}
+                  {formatStationTypeShortLabelPl(station.stationType)}
+                </span>
+                <span className="flex-1 truncate">{station.name}</span>
+                {station.hasTransformer && <span className="text-[10px] text-chrome-400">TR</span>}
+                {station.freeBranchPorts > 0 && (
+                  <button
+                    type="button"
+                    disabled={!branchContext}
+                    onClick={() => handleStartBranch(station.id)}
+                    className="text-[10px] text-[#67d9ff] hover:text-scada-text disabled:cursor-not-allowed disabled:text-[#536b86]"
+                    title={branchContext ? 'Rozpocznij odgałęzienie z pola liniowego stacji' : 'Najpierw wybierz wolne pole liniowe stacji'}
+                  >
+                    [Pole liniowe]
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -455,7 +506,7 @@ function BranchesSection({ branches }: { branches: BranchViewV1[] }) {
   return (
     <div className="px-3 py-2 space-y-2">
       {branches.length === 0 ? (
-        <p className={clsx('text-[11px]', mutedTextClass)}>Brak odgałęzień.</p>
+        <p className={clsx('text-[11px]', mutedTextClass)}>Nie wstawiono jeszcze odgałęzień.</p>
       ) : (
         <div className="space-y-1">
           {branches.map((branch, index) => (
@@ -558,7 +609,7 @@ function TransformersSection({
   return (
     <div className="px-3 py-2 space-y-2">
       {transformers.length === 0 ? (
-        <p className={clsx('text-[11px]', mutedTextClass)}>Brak transformatorów SN/nN.</p>
+        <p className={clsx('text-[11px]', mutedTextClass)}>Nie wstawiono jeszcze transformatorów SN/nN.</p>
       ) : (
         <div className="space-y-1">
           {transformers.map((transformer) => (
@@ -583,7 +634,7 @@ function TransformersSection({
           Odbiory nN
         </div>
         {loads.length === 0 ? (
-          <p className={clsx('text-[11px]', mutedTextClass)}>Brak odbiorów nN.</p>
+          <p className={clsx('text-[11px]', mutedTextClass)}>Nie dodano jeszcze odbiorów nN.</p>
         ) : (
           <div className="space-y-1">
             {loads.map((load) => (
@@ -665,12 +716,12 @@ function OzeSection({
   return (
     <div className="px-3 py-2 space-y-2">
       {sources.length === 0 ? (
-        <p className={clsx('text-[11px]', mutedTextClass)}>Brak źródeł OZE/BESS.</p>
+        <p className={clsx('text-[11px]', mutedTextClass)}>Nie dodano jeszcze układów PV/BESS/FW.</p>
       ) : (
         <div className="space-y-1">
-          {sources.map((source) => (
+          {sources.map((source, index) => (
             <div
-              key={source.id}
+              key={`${source.id}:${index}`}
               className={clsx('flex items-center gap-2 text-[11px] py-1 px-2 rounded', primaryTextClass, rowHoverClass)}
             >
               <span
@@ -736,7 +787,7 @@ function ProtectionSection({ testIdScope }: { testIdScope?: string }) {
   };
 
   const missingReason = !fieldRef
-    ? 'Brak pola SN w modelu.'
+    ? 'Najpierw utwórz pole SN z aparatem wykonawczym.'
     : !breakerRef
       ? 'Pole SN nie ma aparatu wykonawczego.'
       : measurements.ct === 0
@@ -754,7 +805,7 @@ function ProtectionSection({ testIdScope }: { testIdScope?: string }) {
           <div className={clsx('grid grid-cols-3 gap-1 text-[10px]', mutedTextClass)}>
             <span>CT: {measurements.ct}</span>
             <span>VT: {measurements.vt}</span>
-            <span>{hasRelay ? 'Zabezp.: 1' : 'Zabezp.: brak'}</span>
+            <span>{hasRelay ? 'Zabezp.: 1' : 'Zabezp.: nie dobrano'}</span>
           </div>
         </div>
       ) : (
@@ -792,7 +843,7 @@ function ProtectionSection({ testIdScope }: { testIdScope?: string }) {
   );
 }
 
-function ReadinessSection({
+function CalculationControlSection({
   isReady,
   blockersByCategory,
 }: {
@@ -804,7 +855,7 @@ function ReadinessSection({
       <div className="flex items-center gap-2">
         <StatusDot level={isReady ? 'done' : blockersByCategory.total > 0 ? 'error' : 'partial'} />
         <span className={clsx('text-xs font-semibold', isReady ? 'text-eng-green' : primaryTextClass)}>
-          {isReady ? 'Gotowy do analizy' : `${blockersByCategory.total} blokad`}
+          {isReady ? 'Układ dopuszczony do analizy' : `${blockersByCategory.total} zagadnień technicznych`}
         </span>
       </div>
 
@@ -837,6 +888,7 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
   const collapsedSections = useNetworkBuildStore((state) => state.collapsedSections);
   const toggleSection = useNetworkBuildStore((state) => state.toggleSection);
   const fieldReadModel = useFieldReadModel();
+  const snapshot = useSnapshotStore((state) => state.snapshot);
 
   const {
     blockersByCategory,
@@ -856,6 +908,8 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
     sourceCount,
     stationCount,
     stationSummaries,
+    snFieldCount,
+    snSectionCount,
     transformerCount,
     transformerSummaries,
     trunkSegmentCount,
@@ -882,6 +936,13 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
       withRelay,
     };
   }, [fieldReadModel.data.fields]);
+  const snapshotSnFieldCount = snapshot?.bays?.length ?? 0;
+  const effectiveConfiguredSnFieldCount = Math.max(
+    configuredGpzSnFieldCount ?? 0,
+    snFieldCount ?? 0,
+    snapshotSnFieldCount,
+  );
+  const hasSnFieldInventory = effectiveConfiguredSnFieldCount > 0 || snSectionCount > 0 || stationCount > 0;
 
   const isSectionCollapsed = useCallback(
     (id: string) => collapsedSections.has(id),
@@ -889,8 +950,8 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
   );
 
   const sourceStatus: StatusLevel = sourceCount > 0 ? 'done' : 'empty';
-  const snFieldStatus: StatusLevel = configuredGpzSnFieldCount > 0 ? 'done' : sourceCount > 0 ? 'partial' : 'empty';
-  const trunkStatus: StatusLevel = trunkSegmentCount > 0 ? 'done' : configuredGpzSnFieldCount > 0 ? 'partial' : 'empty';
+  const snFieldStatus: StatusLevel = hasSnFieldInventory ? 'done' : sourceCount > 0 ? 'partial' : 'empty';
+  const trunkStatus: StatusLevel = snSectionCount > 0 ? 'done' : (configuredGpzSnFieldCount ?? 0) > 0 ? 'partial' : 'empty';
   const stationStatus: StatusLevel = stationCount > 0 ? 'done' : trunkSegmentCount > 0 ? 'partial' : 'empty';
   const branchStatus: StatusLevel = branchCount > 0 ? 'done' : 'empty';
   const sectioningStatus: StatusLevel = logicalViews?.secondary_connectors?.length ? 'done' : 'empty';
@@ -932,9 +993,9 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
 
         <SectionHeader
           id="sn-fields"
-          label="Pola SN GPZ"
+          label="Pola SN"
           status={snFieldStatus}
-          badge={configuredGpzSnFieldCount > 0 ? `${configuredGpzSnFieldCount}` : undefined}
+          badge={effectiveConfiguredSnFieldCount > 0 ? `${effectiveConfiguredSnFieldCount}` : undefined}
           collapsed={isSectionCollapsed('sn-fields')}
           onToggle={() => toggleSection('sn-fields')}
           testIdScope={testIdScope}
@@ -942,7 +1003,8 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
         {!isSectionCollapsed('sn-fields') && (
           <SnFieldSection
             sourceCount={sourceCount}
-            configuredFieldCount={configuredGpzSnFieldCount}
+            configuredFieldCount={effectiveConfiguredSnFieldCount}
+            hasMaterializedNetwork={hasSnFieldInventory}
             gridSourceStationRef={gridSourceStationRef}
             unconfiguredFields={unconfiguredGpzSnFields}
             testIdScope={testIdScope}
@@ -953,7 +1015,7 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
           id="trunks"
           label="Magistrala SN"
           status={trunkStatus}
-          badge={trunkSegmentCount > 0 ? `${trunkSegmentCount}` : undefined}
+          badge={snSectionCount > 0 ? `${snSectionCount}` : undefined}
           collapsed={isSectionCollapsed('trunks')}
           onToggle={() => toggleSection('trunks')}
           testIdScope={testIdScope}
@@ -965,6 +1027,7 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
             sourceCount={sourceCount}
             configuredFieldCount={configuredGpzSnFieldCount}
             configuredFields={configuredGpzSnFields}
+            fallbackSegmentCount={snSectionCount}
             testIdScope={testIdScope}
           />
         )}
@@ -1057,14 +1120,14 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
 
         <SectionHeader
           id="readiness"
-          label="Gotowość obliczeń"
+          label="Zakres obliczeń"
           status={readinessStatus}
           collapsed={isSectionCollapsed('readiness')}
           onToggle={() => toggleSection('readiness')}
           testIdScope={testIdScope}
         />
         {!isSectionCollapsed('readiness') && (
-          <ReadinessSection isReady={isReady} blockersByCategory={blockersByCategory} />
+          <CalculationControlSection isReady={isReady} blockersByCategory={blockersByCategory} />
         )}
       </div>
     </div>

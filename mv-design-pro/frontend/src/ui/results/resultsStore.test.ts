@@ -294,7 +294,7 @@ describe('Result Status Message Hook', () => {
   it('should show info message for NONE', () => {
     const { result } = renderHook(() => useResultStatusMessage());
 
-    expect(result.current.message).toBe('Brak wyników — uruchom obliczenia');
+    expect(result.current.message).toBe('Uruchom obliczenia, aby przeglądać wyniki');
     expect(result.current.severity).toBe('info');
   });
 

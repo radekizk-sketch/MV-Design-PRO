@@ -61,9 +61,10 @@ describe('Iteracja 14 — TCC chart w E-28 ProtectionCoordinationSurface', () =>
     expect(screen.getByText(/Krzywe referencyjne \(IEC 60255 SI\)/)).toBeInTheDocument();
   });
 
-  it('podaje active runId z surface.routeState', () => {
+  it('opisuje aktywne obliczenie bez surowego runId z surface.routeState', () => {
     render(<WorkspaceSurfaceRouter region="main" />);
-    expect(screen.getByText(/run-XYZ/)).toBeInTheDocument();
+    expect(screen.getByText(/wybrane obliczenie aktywne/i)).toBeInTheDocument();
+    expect(screen.queryByText(/run-XYZ/)).not.toBeInTheDocument();
   });
 
   it('zachowuje regułę PROTECTION_CANONICAL_ARCHITECTURE — brak werdyktów OK/FAIL', () => {

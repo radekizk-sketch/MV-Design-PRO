@@ -246,7 +246,7 @@ export function SwitchCard({ elementId }: { elementId: string }) {
             ? 'Katalog (zablokowane)'
             : branch.parameter_source === 'OVERRIDE'
               ? 'Nadpisanie ręczne'
-              : 'Brak katalogu — wymagane',
+              : 'Wariant katalogowy wymagany',
           severity: branch.catalog_ref == null ? 'warning' : 'ok',
         },
       ],
@@ -262,7 +262,7 @@ export function SwitchCard({ elementId }: { elementId: string }) {
           { key: 'i_through', label: 'Prąd przepływający I', value: null, unit: 'A', source: 'calculated' },
           { key: 'ik3_through', label: 'Prąd zwarciowy Ik₃', value: null, unit: 'kA', source: 'calculated' },
           { key: 'breaking_capacity', label: 'Zdolność wyłączalna', value: null, unit: '%', source: 'calculated' },
-          { key: 'no_results', label: 'Status', value: 'Brak wyników — uruchom analizę', severity: 'warning' },
+          { key: 'no_results', label: 'Status', value: 'Uruchom analizę, aby pokazać wyniki', severity: 'warning' },
         ],
       });
     }

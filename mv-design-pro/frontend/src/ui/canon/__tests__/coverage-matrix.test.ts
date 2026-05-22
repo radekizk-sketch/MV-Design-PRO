@@ -13,7 +13,7 @@ const REQUIRED_SCOPES = [
   'stacje SN/nN',
   'strona nN',
   'obciążenia',
-  'źródła PV',
+  'Układy PV',
   'magazyny energii',
   'farmy wiatrowe PMSG/DFIG/SCIG',
   'profile operatora',

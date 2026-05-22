@@ -121,6 +121,24 @@ describe('Etap 9 — ProofSurface + ReportSurface', () => {
       expect(status.textContent).toContain('Raport gotowy');
     });
 
+    it('ukrywa techniczny sufiks zakresu w kontekście raportu', () => {
+      useAppStateStore.getState().setActiveProject('project-1', 'Projekt przemyslowy mp9g6fu5');
+      useAppStateStore
+        .getState()
+        .setActiveCase('case-1', 'Przypadek 50 szablonow mp9g6fu5', 'ShortCircuitCase', 'FRESH');
+      useAppStateStore.getState().setActiveRun('run-123');
+      useSnapshotStore.setState({
+        readiness: { ready: true, blockers: [], warnings: [] },
+      });
+
+      render(<WorkspaceSurfaceRouter region="main" />);
+
+      const text = screen.getByTestId('report-surface').textContent ?? '';
+      expect(text).toContain('Projekt przemyslowy');
+      expect(text).toContain('Zakres 50 szablonow');
+      expect(text).not.toMatch(/mp9g6fu5|Przypadek/);
+    });
+
     it('eksport PDF/DOCX jest zablokowany gdy raport nie gotowy', () => {
       useAppStateStore.getState().setActiveRun(null);
       render(<WorkspaceSurfaceRouter region="main" />);

@@ -19,7 +19,6 @@ import {
   COLOR_TEXT_PRIMARY,
   COLOR_TEXT_SECONDARY,
   FONT_MONO,
-  FONT_SANS,
   FONT_SIZES,
   GPZ_GEOMETRY,
 } from '../theme/tokens';
@@ -93,7 +92,7 @@ export function ApparatusCbSquare(props: ApparatusVisualProps): JSX.Element {
    * Per norm: prostokąt z widocznym kontaktem styku wewnątrz.
    *  - closed: kropka w środku reprezentująca zamknięty kontakt
    *  - open: kreska pozioma (kontakt rozwarty)
-   *  - unknown: szary tło + "?" znak
+   *  - unknown: neutralny szary symbol bez znaku zastępczego
    * Operator natychmiast odróżnia CB od DS bo CB ma KWADRAT, nie okrąg. */
   const { cx, cy, state = 'unknown', energized } = props;
   const open = state === 'open';
@@ -158,19 +157,6 @@ export function ApparatusCbSquare(props: ApparatusVisualProps): JSX.Element {
           <circle cx={cx} cy={cy - CB_SIZE / 2 + 1.5} r={1.1} fill={contactColor} stroke={contactOutline} strokeWidth={contactOutline ? 0.4 : undefined} />
           <circle cx={cx} cy={cy + CB_SIZE / 2 - 1.5} r={1.1} fill={contactColor} stroke={contactOutline} strokeWidth={contactOutline ? 0.4 : undefined} />
         </>
-      )}
-      {unknown && (
-        <text
-          x={cx}
-          y={cy + 2.5}
-          textAnchor="middle"
-          fill={COLOR_TEXT_PRIMARY}
-          fontFamily={FONT_SANS}
-          fontSize={FONT_SIZES.badge}
-          fontWeight={700}
-        >
-          ?
-        </text>
       )}
     </g>
   );
@@ -238,19 +224,6 @@ export function ApparatusDsCircle(props: ApparatusVisualProps): JSX.Element {
           strokeLinecap="round"
         />
       ))}
-      {unknown && (
-        <text
-          x={cx}
-          y={cy + 2}
-          textAnchor="middle"
-          fill={COLOR_TEXT_PRIMARY}
-          fontFamily={FONT_SANS}
-          fontSize={FONT_SIZES.badge}
-          fontWeight={700}
-        >
-          ?
-        </text>
-      )}
     </g>
   );
 }
@@ -305,7 +278,7 @@ interface ApparatusEarthingSwitchProps {
  *                pole UZIEMIONE (bezpieczne do prac, ale BLOKADA pracy
  *                pod napięciem)
  *  - 'open'    → szary muted — pole NIE uziemione (normalne)
- *  - 'unknown' → szary muted ze znakiem '?'
+ *  - 'unknown' → szary muted bez znaku zastępczego
  *  - 'absent'  → renderer pomija (zwraca pusty `<g/>`)
  */
 export function ApparatusEarthingSwitch(props: ApparatusEarthingSwitchProps): JSX.Element {
@@ -314,7 +287,6 @@ export function ApparatusEarthingSwitch(props: ApparatusEarthingSwitchProps): JS
     return <g data-testid="sld-v2-gpz-bay-earthing-switch" data-state="absent" />;
   }
   const closed = state === 'closed';
-  const unknown = state === 'unknown';
   const stroke = closed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED;
   const sw = closed ? 1.6 : 1.2;
   /* Boczna gałąź wychodzi z osi pola — strona z `slot.side` polityki.
@@ -343,7 +315,7 @@ export function ApparatusEarthingSwitch(props: ApparatusEarthingSwitchProps): JS
           - closed: pionowa linia solid z arrowhead (▼) wskazującym ziemię
           - open: ANGLED LINE z górnego punktu styku do dolnego punktu —
             wyraźna przerwa (NIE dashed line) per IEC 60617 "open switch"
-          - unknown: jak open ale szary z ? znacznikiem */}
+          - unknown: jak open, ale szary */}
       {closed ? (
         <>
           <line
@@ -388,19 +360,6 @@ export function ApparatusEarthingSwitch(props: ApparatusEarthingSwitchProps): JS
       <line x1={branchEndX - 3.5} y1={groundTopY + ES_BRANCH_LEN * 0.6} x2={branchEndX + 3.5} y2={groundTopY + ES_BRANCH_LEN * 0.6} stroke={stroke} strokeWidth={sw} />
       <line x1={branchEndX - 2.5} y1={groundTopY + ES_BRANCH_LEN * 0.85} x2={branchEndX + 2.5} y2={groundTopY + ES_BRANCH_LEN * 0.85} stroke={stroke} strokeWidth={sw} />
       <line x1={branchEndX - 1.5} y1={groundTopY + ES_BRANCH_LEN * 1.1} x2={branchEndX + 1.5} y2={groundTopY + ES_BRANCH_LEN * 1.1} stroke={stroke} strokeWidth={sw} />
-      {/* Znak '?' dla unknown */}
-      {unknown && (
-        <text
-          x={branchEndX + 4}
-          y={cy + 3}
-          fill={COLOR_TEXT_MUTED}
-          fontFamily={FONT_SANS}
-          fontSize={FONT_SIZES.badge}
-          fontWeight={700}
-        >
-          ?
-        </text>
-      )}
     </g>
   );
 }
@@ -561,9 +520,6 @@ export function ApparatusSwitchDisconnector(props: ApparatusSwitchDisconnectorPr
       ) : !unknown && (
         // Closed: pionowa linia łącząca styki
         <line x1={cx} y1={cy - sdSize / 2 + 1.5} x2={cx} y2={cy + sdSize / 2 - 1.5} stroke={contactColor} strokeWidth={1.2} />
-      )}
-      {unknown && (
-        <text x={cx} y={cy + 3} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={FONT_SIZES.badge} fontWeight={700}>?</text>
       )}
     </g>
   );

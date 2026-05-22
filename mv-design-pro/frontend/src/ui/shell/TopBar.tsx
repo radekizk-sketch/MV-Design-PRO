@@ -14,6 +14,7 @@ import type { WorkMode } from '../app-state/store';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import type { ResultStatus } from '../types';
 import { navigateToCaseConfig, navigateToVariants } from '../navigation/routes';
+import { calculationScopeDisplayName, stripTechnicalSuffix } from './publicNames';
 
 interface WorkModeDef {
   code: WorkMode;
@@ -31,7 +32,7 @@ const WORK_MODES: WorkModeDef[] = [
 
 const RESULT_STATUS_CONFIG: Record<ResultStatus, { label: string; tone: string }> = {
   NONE: {
-    label: 'Brak wyników',
+    label: 'Wyniki nieuruchomione',
     tone: 'text-scada-muted',
   },
   FRESH: {
@@ -55,7 +56,7 @@ function looksLikeTechnicalId(value: string | null | undefined): boolean {
 }
 
 function projectDisplayName(name: string | null | undefined, id: string | null | undefined): string {
-  if (name && !looksLikeTechnicalId(name)) return name;
+  if (name && !looksLikeTechnicalId(name)) return stripTechnicalSuffix(name);
   if (id) return 'Projekt bez nazwy';
   return '— nie otwarto —';
 }
@@ -183,9 +184,11 @@ export function TopBar({
   );
 
   const displayProjectName = projectDisplayName(activeProjectName || projectName, activeProjectId);
-  const scopeDisplay = activeCaseName || activeVariantName
-    ? [activeCaseName, activeVariantName].filter(Boolean).join(' · ')
-    : '— skonfiguruj projekt —';
+  const caseScopeDisplay = calculationScopeDisplayName(activeCaseName, activeCaseId);
+  const variantDisplayName = activeVariantName ? stripTechnicalSuffix(activeVariantName) : null;
+  const scopeDisplay = variantDisplayName
+    ? `${caseScopeDisplay} · ${variantDisplayName}`
+    : caseScopeDisplay;
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -209,8 +212,8 @@ export function TopBar({
 
   const handleOverlay = useCallback(() => {
     setActiveWorkMode('TW');
-    onViewResults?.();
-  }, [onViewResults, setActiveWorkMode]);
+    onMenuAction?.('overlay');
+  }, [onMenuAction, setActiveWorkMode]);
 
   const handleAnalysis = useCallback(() => {
     setActiveWorkMode('TA');
@@ -248,7 +251,7 @@ export function TopBar({
         <ContextBlock testId="ctx-project" label="Projekt" value={displayProjectName} />
         <ContextBlock
           testId="ctx-wariant"
-          label="Cel / stan"
+          label="Zakres / wariant"
           value={scopeDisplay}
           onClick={() => navigateToVariants({ caseId: activeCaseId })}
           wide
@@ -275,9 +278,9 @@ export function TopBar({
         <button
           type="button"
           data-testid="top-bar-calculate"
-          title={canCalculate ? 'Wykonaj analizę' : calculateBlockedReason ?? 'Analiza jest zablokowana'}
+          title={canCalculate ? 'Wykonaj analizę' : calculateBlockedReason ?? 'Otwórz kontrolę konfiguracji układu'}
           onClick={handleCalculate}
-          aria-label={canCalculate ? 'Wykonaj analizę' : 'Sprawdź braki danych'}
+          aria-label={canCalculate ? 'Wykonaj analizę' : 'Sprawdź konfigurację układu'}
           className={clsx(
             'flex h-10 items-center gap-2 rounded-[4px] px-4 font-mono-eng text-[13px] font-bold transition-colors',
             canCalculate
@@ -286,7 +289,7 @@ export function TopBar({
           )}
         >
           <IconPlay />
-          <span>{canCalculate ? 'Oblicz' : 'Sprawdź braki'}</span>
+          <span>{canCalculate ? 'Oblicz' : 'Sprawdź konfigurację'}</span>
           <ChevronDown className={canCalculate ? 'text-[#00110b]' : 'text-[#7c91a3]'} />
         </button>
 
@@ -295,7 +298,7 @@ export function TopBar({
           data-testid="top-bar-overlay"
           onClick={handleOverlay}
           disabled={!hasNetworkModel}
-          title={hasNetworkModel ? 'Nakładka wyników' : 'Wymaga modelu sieci (dodaj GPZ)'}
+          title={hasNetworkModel ? 'Nakładka wyników' : 'Dodaj GPZ i układ sieci'}
           className={clsx(
             'flex h-10 items-center gap-2 rounded-[4px] px-3 font-mono-eng text-[12px] font-semibold transition-colors',
             hasNetworkModel
@@ -312,7 +315,7 @@ export function TopBar({
           data-testid="top-bar-results"
           onClick={handleAnalysis}
           disabled={!hasNetworkModel}
-          title={hasNetworkModel ? 'Analizy obliczeniowe' : 'Wymaga modelu sieci (dodaj GPZ)'}
+          title={hasNetworkModel ? 'Analizy obliczeniowe' : 'Dodaj GPZ i układ sieci'}
           className={clsx(
             'flex h-10 items-center gap-2 rounded-[4px] px-3 font-mono-eng text-[12px] font-semibold transition-colors',
             hasNetworkModel
@@ -329,7 +332,7 @@ export function TopBar({
           data-testid="top-bar-export"
           onClick={handleExport}
           disabled={!hasNetworkModel}
-          title={hasNetworkModel ? 'Eksport raportów' : 'Wymaga modelu sieci (dodaj GPZ)'}
+          title={hasNetworkModel ? 'Eksport raportów' : 'Dodaj GPZ i układ sieci'}
           className={clsx(
             'flex h-10 items-center gap-2 rounded-[4px] px-3 font-mono-eng text-[12px] font-semibold transition-colors',
             hasNetworkModel

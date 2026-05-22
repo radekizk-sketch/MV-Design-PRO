@@ -67,7 +67,18 @@ const snapshot = {
   ],
   loads: [],
   generators: [],
-  substations: [],
+  substations: [
+    {
+      id: 'stn/abc/station',
+      ref_id: 'stn/abc/station',
+      name: 'Stacja inline',
+      tags: [],
+      meta: {},
+      station_type: 'inline',
+      bus_refs: [],
+      transformer_refs: [],
+    },
+  ],
   bays: [],
   junctions: [],
   branch_points: [],
@@ -129,5 +140,21 @@ describe('selectionResolution', () => {
       type: 'Switch',
       name: 'Wyłącznik pola SN 1',
     });
+  });
+  it('hides raw station-scoped apparatus paths behind public technical labels', () => {
+    const resolved = resolveSelectedElementFromSnapshot(
+      snapshot,
+      'stn/abc/station/pv/nn-breaker/Q2',
+      'stn/abc/station/pv/nn-breaker/Q2',
+      'Station',
+    );
+
+    expect(resolved).toMatchObject({
+      id: 'stn/abc/station/pv/nn-breaker/Q2',
+      type: 'Station',
+    });
+    expect(resolved?.name).toContain('Stacja przelotowa');
+    expect(resolved?.name).toContain('PV Q2');
+    expect(resolved?.name).not.toContain('stn/');
   });
 });

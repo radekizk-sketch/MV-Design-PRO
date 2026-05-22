@@ -23,6 +23,7 @@ export interface DerRendererProps {
   readonly name: string;
   readonly nominalPowerKw?: number | null;
   readonly hasBlockTransformer?: boolean;
+  readonly blockTransformerLabel?: string | null;
   readonly selected?: boolean;
   readonly missingData?: boolean;
   /**
@@ -105,9 +106,23 @@ const NC_RFG_MODULE_LABEL_PL: Record<'A' | 'B' | 'C' | 'D', string> = {
   D: 'Moduł D',
 };
 
+function visibleBlockTransformerLabel(label: string): string {
+  const trimmed = label.trim();
+  if (/blok/i.test(trimmed)) return trimmed;
+  if (/^TR\b/i.test(trimmed)) return trimmed.replace(/^TR\b/i, 'TR blokowy');
+  return `TR blokowy ${trimmed}`;
+}
+
+function compactBlockTransformerLabel(label: string): string {
+  const trimmed = label.trim();
+  const power = trimmed.match(/\b\d+(?:[,.]\d+)?\s*kVA\b/i)?.[0];
+  if (power) return `TR blokowy ${power}`;
+  return visibleBlockTransformerLabel(trimmed);
+}
+
 export function DerRenderer(props: DerRendererProps): JSX.Element {
   const {
-    id, x, y, kind, name, nominalPowerKw, hasBlockTransformer,
+    id, x, y, kind, name, nominalPowerKw, hasBlockTransformer, blockTransformerLabel,
     selected, missingData, missingPcc, ncRfgModule, lod = 'full',
     operatingPMw, operatingQMvar,
     onClick, onDoubleClick,
@@ -145,6 +160,21 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
 
   // LOD = 'compact' — uproszczony romb + etykieta typu.
   const half = (lod === 'compact' ? DER_COMPACT_SIZE : DER_BLOCK_SIZE) / 2;
+  const showCompactEngineeringDetails = lod === 'compact' && Boolean(selected);
+  const blockTransformerVisibleLabel = blockTransformerLabel
+    ? visibleBlockTransformerLabel(blockTransformerLabel)
+    : null;
+  const compactBlockTransformerVisibleLabel = blockTransformerLabel
+    ? compactBlockTransformerLabel(blockTransformerLabel)
+    : null;
+  const showCompactBlockTransformerLabel = lod === 'compact'
+    && Boolean(hasBlockTransformer)
+    && Boolean(compactBlockTransformerVisibleLabel);
+  const compactBlockTransformerLabelY = showCompactEngineeringDetails
+    && operatingPMw !== null
+    && operatingPMw !== undefined
+    ? half + (operatingQMvar !== null && operatingQMvar !== undefined ? 50 : 40)
+    : half + (nominalPowerKw !== null && nominalPowerKw !== undefined ? 30 : 20);
 
   return (
     <g
@@ -153,6 +183,8 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
       data-element-id={id}
       data-der-kind={kind}
       data-lod={lod}
+      data-block-transformer={hasBlockTransformer ? 'true' : 'false'}
+      data-block-transformer-label={blockTransformerLabel ?? undefined}
       transform={`translate(${x}, ${y})`}
       onClick={onClick ? (e) => { e.stopPropagation(); onClick(id); } : undefined}
       onDoubleClick={onDoubleClick ? (e) => { e.stopPropagation(); onDoubleClick(id); } : undefined}
@@ -192,7 +224,34 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
           {nominalPowerKw.toFixed(0)} kW
         </text>
       )}
-      {lod === 'compact' && operatingPMw !== null && operatingPMw !== undefined && (() => {
+      {showCompactBlockTransformerLabel && compactBlockTransformerVisibleLabel && (
+        <g data-testid={`sld-v2-der-${id}-compact-block-transformer`}>
+          <rect
+            x={-58}
+            y={compactBlockTransformerLabelY - 10}
+            width={116}
+            height={13}
+            rx={3}
+            ry={3}
+            fill="#06110D"
+            stroke="#7EE0B5"
+            strokeWidth={0.9}
+            opacity={0.92}
+          />
+          <text
+            x={0}
+            y={compactBlockTransformerLabelY}
+            textAnchor="middle"
+            fill="#7EE0B5"
+            fontFamily={FONT_MONO}
+            fontSize={8}
+            fontWeight={800}
+          >
+            {compactBlockTransformerVisibleLabel}
+          </text>
+        </g>
+      )}
+      {showCompactEngineeringDetails && operatingPMw !== null && operatingPMw !== undefined && (() => {
         const pKw = operatingPMw * 1000;
         const hasQ = operatingQMvar !== null && operatingQMvar !== undefined;
         const qKvar = hasQ ? (operatingQMvar as number) * 1000 : 0;
@@ -277,7 +336,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
        *  - Q output -100% .. +100% na osi Y (16px)
        *  - 5-segment piecewise: deadband ±2%, ramp ±5%, sat ±8%
        */}
-      {lod === 'compact' && ncRfgModule && ncRfgModule !== 'A' && (
+      {showCompactEngineeringDetails && ncRfgModule && ncRfgModule !== 'A' && (
         <g data-testid={`sld-v2-der-${id}-qu-curve`} transform={`translate(${half + 6}, ${-half - 4})`}>
           <rect width={40} height={20} rx={2} ry={2} fill="#0A1018" stroke="#5A6878" strokeWidth={0.8} opacity={0.85} />
           {/* axes */}
@@ -361,16 +420,42 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
       })()}
       {/* Badge: transformator blokowy */}
       {hasBlockTransformer && (
-        <circle
-          cx={half - 4}
-          cy={-half + 8}
-          r={4}
-          fill={COLOR_PANEL_RAISED}
-          stroke="#13C45A"
-          strokeWidth={1.5}
+        <g
+          data-testid={`sld-v2-der-${id}-block-transformer`}
+          transform={`translate(${half - 7}, ${-half + 9})`}
         >
-          <title>Transformator blokowy obecny</title>
-        </circle>
+          <circle
+            cx={0}
+            cy={-3}
+            r={4.5}
+            fill={COLOR_PANEL_RAISED}
+            stroke="#13C45A"
+            strokeWidth={1.4}
+          />
+          <circle
+            cx={0}
+            cy={4}
+            r={4.5}
+            fill={COLOR_PANEL_RAISED}
+            stroke="#13C45A"
+            strokeWidth={1.4}
+          />
+          <title>{blockTransformerLabel ? `Transformator blokowy ${blockTransformerLabel}` : 'Transformator blokowy'}</title>
+        </g>
+      )}
+      {lod === 'full' && hasBlockTransformer && blockTransformerVisibleLabel && (
+        <text
+          x={0}
+          y={nominalPowerKw !== null && nominalPowerKw !== undefined ? half + 58 : half + 44}
+          textAnchor="middle"
+          fill="#7EE0B5"
+          fontFamily={FONT_MONO}
+          fontSize={Math.max(getFontSize('fieldMeasurement') - 1, 8)}
+          fontWeight={700}
+          data-testid={`sld-v2-der-${id}-block-transformer-label`}
+        >
+          {blockTransformerVisibleLabel}
+        </text>
       )}
       {/* Badge: NC RFG Module A/B/C/D per ENEA profile (enea.yaml); marker lod returned early */}
       {ncRfgModule && (
@@ -427,7 +512,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
             strokeWidth={1.5}
             opacity={0.95}
           >
-            <title>BLOKADA: Brak punktu przyłączenia (PCC) lub connection_variant</title>
+            <title>Konfiguracja PCC i wariantu przyłączenia wymaga decyzji projektowej</title>
           </circle>
           {/* Czerwony X jako symbol blocker */}
           <line

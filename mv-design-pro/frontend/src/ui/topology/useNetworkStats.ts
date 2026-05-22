@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { isOperationalBus } from '../shared/enmVisibility';
+import { isOperationalBus, isTerrainSnSegment } from '../shared/enmVisibility';
 import { useSnapshotStore } from './snapshotStore';
 
 /**
@@ -17,7 +17,7 @@ export function useNetworkStats(): { nodeCount: number; branchCount: number } {
 
     return {
       nodeCount: (snapshot.buses ?? []).filter((bus) => isOperationalBus(bus)).length,
-      branchCount: (snapshot.branches ?? []).length + (snapshot.transformers ?? []).length,
+      branchCount: (snapshot.branches ?? []).filter(isTerrainSnSegment).length + (snapshot.transformers ?? []).length,
     };
   }, [snapshot]);
 }

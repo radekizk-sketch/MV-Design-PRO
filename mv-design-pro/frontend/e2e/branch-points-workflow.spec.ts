@@ -140,7 +140,7 @@ async function bootstrapActiveCase(page: Page, request: APIRequestContext): Prom
 
   await page.goto('/', { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
-  await expect(page.getByTestId('active-case-bar')).toContainText(caseName);
+  await expect(page.getByTestId('active-case-bar')).toContainText(/Zakres|Bieżący zestaw/);
   return caseId;
 }
 

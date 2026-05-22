@@ -23,6 +23,7 @@ import {
   type SldMenuAction,
 } from '../sld/v2/command/SldCommandService';
 import type { ContextMenuAction, ElementType, OperatingMode } from '../types';
+import { publicTechnicalLabel } from '../shared/publicTechnicalLabels';
 import { ContextMenu } from './ContextMenu';
 
 /** Zapytanie o pokazanie menu kontekstowego SLD. */
@@ -64,6 +65,8 @@ const KIND_HEADER_PL: Readonly<Record<SldElementKindForMenu, string>> = {
   cable_segment_sn: 'Odcinek kabla SN',
   overhead_line_sn: 'Odcinek linii napowietrznej SN',
   station: 'Stacja transformatorowa SN/nN',
+  zksn: 'Złącze kablowe SN',
+  branch_pole: 'Słup rozgałęźny SN',
   der_pv: 'Źródło PV',
   der_bess: 'Magazyn energii BESS',
   der_fw: 'Farma wiatrowa',
@@ -79,6 +82,8 @@ const KIND_TO_ELEMENT_TYPE: Readonly<Record<SldElementKindForMenu, ElementType>>
   cable_segment_sn: 'LineBranch',
   overhead_line_sn: 'LineBranch',
   station: 'Station',
+  zksn: 'ZKSN',
+  branch_pole: 'BranchPole',
   der_pv: 'PVInverter',
   der_bess: 'BESSInverter',
   der_fw: 'Generator',
@@ -139,8 +144,11 @@ export function SldContextMenuController(
   }
 
   const elementType = KIND_TO_ELEMENT_TYPE[request.kind];
-  const headerText = elementName
-    ? `${KIND_HEADER_PL[request.kind]} — ${elementName}`
+  const publicElementName = elementName
+    ? publicTechnicalLabel(elementName, KIND_HEADER_PL[request.kind])
+    : null;
+  const headerText = publicElementName && publicElementName !== KIND_HEADER_PL[request.kind]
+    ? `${KIND_HEADER_PL[request.kind]} — ${publicElementName}`
     : KIND_HEADER_PL[request.kind];
 
   return (
@@ -149,7 +157,7 @@ export function SldContextMenuController(
       x={request.clientX}
       y={request.clientY}
       elementType={elementType}
-      elementName={elementName ?? KIND_HEADER_PL[request.kind]}
+      elementName={publicElementName ?? KIND_HEADER_PL[request.kind]}
       headerText={headerText}
       mode={mode}
       actions={actions}

@@ -25,8 +25,12 @@ const ANALYSIS_TYPES: AnalysisRow[] = [
   { code: 'LOAD_FLOW', label: 'Rozpływ mocy (Newton-Raphson)' },
   { code: 'PHASE_STATE_SN', label: 'Stan ustalony SN' },
   { code: 'PROTECTION', label: 'Koordynacja zabezpieczeń' },
-  { code: 'SOURCE_COMPLIANCE', label: 'Zgodność źródeł OZE' },
+  { code: 'SOURCE_COMPLIANCE', label: 'Zgodność układów PV/BESS/FW' },
 ];
+
+function formatPublicSnapshotLabel(snapshotId: string | null): string {
+  return snapshotId ? 'aktualna wersja układu' : 'nie wybrano wersji układu';
+}
 
 export function AnContextPanel() {
   const activeProjectId = useAppStateStore((s) => s.activeProjectId);
@@ -90,8 +94,8 @@ export function AnContextPanel() {
             <span className="font-mono">{activeVariantName ?? '—'}</span>
           </div>
           <div data-testid="an-active-snapshot">
-            <span className="text-scada-muted">Wersja modelu: </span>
-            <span className="font-mono">{activeSnapshotId ?? '—'}</span>
+            <span className="text-scada-muted">Wersja układu: </span>
+            <span className="font-mono">{formatPublicSnapshotLabel(activeSnapshotId)}</span>
           </div>
         </div>
       </div>

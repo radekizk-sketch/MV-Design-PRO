@@ -21,6 +21,7 @@
 import type { Point } from '../geometry/routing';
 import type { RouteSegment } from '../geometry/RouteEditor';
 import type { PortSnapTarget, SnapState } from '../viewport/Snap';
+import type { SldRunCorridorKind } from './SldTopologyContracts';
 
 export type CadGhostKind = 'append-station' | 'split-station' | 'split-zksn' | 'split-pole';
 
@@ -37,7 +38,7 @@ export interface CadCorridorBand {
   /** Y-band corridor (np. dla feedera lub odgałęzienia). */
   readonly yMin: number;
   readonly yMax: number;
-  readonly kind: 'gpz' | 'feeder' | 'branch' | 'ring-return' | 'label-zone';
+  readonly kind: SldRunCorridorKind;
   readonly label?: string;
 }
 
@@ -74,10 +75,11 @@ const BEND_HANDLE_COLOR = '#FFB020';
 const GHOST_COLOR = '#3FA9F5';
 const CORRIDOR_KIND_COLORS: Record<CadCorridorBand['kind'], string> = {
   'gpz': '#1A2438',
-  'feeder': '#1A2A20',
+  'main-trunk': '#1A2A20',
   'branch': '#2A2616',
   'ring-return': '#2A1A2A',
-  'label-zone': '#171B20',
+  'der-connection': '#162A2A',
+  'label-reserve': '#171B20',
 };
 
 /**

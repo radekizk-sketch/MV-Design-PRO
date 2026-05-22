@@ -80,4 +80,47 @@ describe('ReadinessBar - aparatura SN w blokerach', () => {
       name: 'Wyłącznik pola SN 1',
     });
   });
+
+  it('nie pokazuje surowych referencji bp ani switch_state w komunikacie kontroli', () => {
+    useSnapshotStore.setState({
+      snapshot: {
+        sources: [{ ref_id: 'src-1' }],
+        substations: [],
+        transformers: [],
+        generators: [],
+        buses: [{ ref_id: 'bus-1' }],
+        branches: [],
+        branch_points: [{ ref_id: 'bp/abc123/zksn', name: 'bp/abc123/zksn' }],
+      } as never,
+      logicalViews: {
+        trunks: [],
+        terminals: [],
+        branches: [],
+      } as never,
+    });
+    useReadinessLiveStore.setState({
+      issues: [
+        {
+          code: 'branch_point.switch_state_missing',
+          severity: 'BLOCKER',
+          message_pl: "ZKSN 'bp/abc123/zksn' nie ma stanu łącznika (switch_state).",
+          element_ref: 'bp/abc123/zksn',
+          element_refs: [],
+          fix_action: null,
+        },
+      ] as never,
+      status: 'FAIL',
+      ready: false,
+      bySeverity: { BLOCKER: 1, IMPORTANT: 0, INFO: 0 },
+      loading: false,
+      error: null,
+      lastRevision: 1,
+    });
+
+    render(<ReadinessBar />);
+
+    expect(screen.getByText('ZKSN wymaga wskazania stanu normalnego łącznika.')).toBeInTheDocument();
+    expect(screen.queryByText(/bp\//)).not.toBeInTheDocument();
+    expect(screen.queryByText(/switch_state/)).not.toBeInTheDocument();
+  });
 });

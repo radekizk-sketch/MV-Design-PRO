@@ -29,7 +29,16 @@ const snapshot = {
   transformers: [],
   sources: [],
   substation: [],
-  substations: [],
+  substations: [
+    {
+      id: 'stn/teststation/station',
+      ref_id: 'stn/teststation/station',
+      name: 'Stacja inline',
+      station_type: 'inline',
+      bus_refs: ['bus-sn-1'],
+      transformer_refs: [],
+    },
+  ],
   bays: [
     {
       id: 'bay-1',
@@ -132,5 +141,22 @@ describe('InspectorEngineeringView - aparaty pola SN', () => {
         terminal_name: expect.stringContaining('Głowica kablowa'),
       }),
     );
+  });
+
+  it('pokazuje kartę techniczną aparatu z wewnętrznego SLD stacji bez surowych referencji', () => {
+    mockSelectedElements = [{
+      id: 'stn/teststation/station/internal-bay/tr-3/fuse',
+      type: 'Switch',
+      name: 'Bezpiecznik - Pole transformatorowe SN, S01 · Stacja przelotowa',
+    }];
+
+    render(<InspectorEngineeringView />);
+
+    expect(screen.queryByText('Zaznacz element na SLD')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Bezpiecznik - Pole transformatorowe SN, S01 · Stacja przelotowa').length).toBeGreaterThan(0);
+    expect(screen.getByText('Miejsce w układzie')).toBeInTheDocument();
+    expect(screen.getByText('Rozdzielnia SN')).toBeInTheDocument();
+    expect(screen.getByText('Pole transformatorowe SN')).toBeInTheDocument();
+    expect(screen.queryByText(/internal-bay/)).not.toBeInTheDocument();
   });
 });

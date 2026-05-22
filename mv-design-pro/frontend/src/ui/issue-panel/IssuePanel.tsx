@@ -247,8 +247,8 @@ export const IssuePanel: React.FC<IssuePanelProps> = ({
         {filteredIssues.length === 0 ? (
           <div className="text-center text-gray-500 text-sm py-8">
             {issues.length === 0
-              ? 'Brak problemów \u2013 wszystko w porządku.'
-              : 'Brak problemów spełniających kryteria filtrowania.'}
+              ? 'Kontrola nie wskazuje zagadnień technicznych.'
+              : 'Filtr nie wskazuje zagadnień technicznych.'}
           </div>
         ) : (
           <div>

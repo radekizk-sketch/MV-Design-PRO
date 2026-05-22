@@ -82,6 +82,18 @@ describe('useNotificationStore', () => {
       expect(uniqueIds.size).toBe(3);
     });
 
+    it('should suppress duplicate notifications from the same click burst', () => {
+      useNotificationStore.getState().notify('Pobrano raport techniczny (JSON).', 'success');
+      useNotificationStore.getState().notify('Pobrano raport techniczny (JSON).', 'success');
+
+      expect(useNotificationStore.getState().notifications).toHaveLength(1);
+
+      vi.advanceTimersByTime(1501);
+      useNotificationStore.getState().notify('Pobrano raport techniczny (JSON).', 'success');
+
+      expect(useNotificationStore.getState().notifications).toHaveLength(2);
+    });
+
     it('should include timestamp on each notification', () => {
       const before = Date.now();
       useNotificationStore.getState().notify('Test');

@@ -3,7 +3,7 @@
  *
  * Brief 2 §5: Tabs:
  *   Podstawowe / SLD / Topologia / Aparatura / Dane elektryczne /
- *   Zabezpieczenia / Pomiary / Obliczenia / Braki danych / Raport / Techniczne
+ *   Zabezpieczenia / Pomiary / Obliczenia / Konfiguracja / Raport / Techniczne
  *
  * Każda zakładka jest dostępna dla różnych typów obiektów (per applicableTo).
  */
@@ -34,7 +34,7 @@ export type InspectorTabId =
   | 'zabezpieczenia'
   | 'pomiary'
   | 'obliczenia'
-  | 'braki-danych'
+  | 'konfiguracja'
   | 'raport'
   | 'techniczne';
 
@@ -94,8 +94,8 @@ export const INSPECTOR_TABS: readonly InspectorTabDef[] = [
     priority: 8,
   },
   {
-    id: 'braki-danych',
-    labelPl: 'Braki danych',
+    id: 'konfiguracja',
+    labelPl: 'Konfiguracja',
     applicableTo: 'ANY',
     priority: 9,
   },

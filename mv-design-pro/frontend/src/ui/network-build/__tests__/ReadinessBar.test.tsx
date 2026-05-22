@@ -30,7 +30,7 @@ describe('ReadinessBar', () => {
       .setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'FRESH');
   });
 
-  it('pokazuje zwinięty stan gotowy dla modelu gotowego do analizy', () => {
+  it('pokazuje zwinięty stan dopuszczony do analizy', () => {
     useSnapshotStore.setState({
       snapshot: {
         sources: [{ ref_id: 'src-1' }],
@@ -47,10 +47,10 @@ describe('ReadinessBar', () => {
         transformers: [],
         generators: [],
         buses: [{ ref_id: 'bus-1' }],
-        branches: [{ ref_id: 'seg-1', type: 'cable' }],
+        branches: [{ ref_id: 'seg-1', type: 'cable', length_km: 0.5 }],
       } as never,
       logicalViews: {
-        trunks: [{ id: 'trunk-1' }],
+        trunks: [{ id: 'trunk-1', segments: [{ segment_ref: 'seg-1' }] }],
         terminals: [],
         branches: [],
       } as never,
@@ -68,11 +68,11 @@ describe('ReadinessBar', () => {
     render(<ReadinessBar />);
 
     expect(screen.getByTestId('readiness-bar')).toHaveAttribute('data-ready', 'true');
-    expect(screen.getByText('Gotowy do analizy')).toBeInTheDocument();
-    expect(screen.getByText('Brak zastrzeżeń')).toBeInTheDocument();
+    expect(screen.getByText('Układ dopuszczony do analizy')).toBeInTheDocument();
+    expect(screen.getByText('Bez uwag projektowych')).toBeInTheDocument();
   });
 
-  it('pokazuje blokady i filtry kategorii dla modelu niegotowego', () => {
+  it('pokazuje pozycje kontroli i filtry kategorii', () => {
     useSnapshotStore.setState({
       snapshot: {
         sources: [{ ref_id: 'src-1' }],
@@ -126,14 +126,14 @@ describe('ReadinessBar', () => {
     render(<ReadinessBar />);
 
     expect(screen.getByTestId('readiness-bar')).toHaveAttribute('data-ready', 'false');
-    expect(screen.getByText('2 blokad')).toBeInTheDocument();
-    expect(screen.getByText('1 ostrzeżeń')).toBeInTheDocument();
+    expect(screen.getByText('2 pozycji kontroli')).toBeInTheDocument();
+    expect(screen.getByText('1 uwag technicznych')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Wszystkie (2)' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Topologia (1)' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Katalogi (1)' })).toBeInTheDocument();
   });
 
-  it('kliknięcie komunikatu blokady nawiguje do elementu', () => {
+  it('kliknięcie komunikatu kontroli nawiguje do elementu', () => {
     useSnapshotStore.setState({
       snapshot: {
         sources: [{ ref_id: 'src-1' }],
@@ -229,9 +229,9 @@ describe('ReadinessBar', () => {
     render(<ReadinessBar />);
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Rozwiń pasek gotowości' }),
+      screen.getByRole('button', { name: 'Rozwiń kontrolę układu' }),
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Napraw' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Konfiguruj' }));
 
     expect(selectActiveOperationForm(useNetworkBuildStore.getState())).toEqual({
       op: 'add_converter_source',
@@ -240,7 +240,7 @@ describe('ReadinessBar', () => {
     expect(useNotificationStore.getState().notifications).toHaveLength(0);
   });
 
-  it('pokazuje ostrzeżenie, gdy brak kanonicznej operacji naprawczej', () => {
+  it('pokazuje ostrzeżenie, gdy nie ma kanonicznej operacji konfiguracyjnej', () => {
     useSnapshotStore.setState({
       snapshot: {
         sources: [{ ref_id: 'src-1' }],
@@ -264,7 +264,7 @@ describe('ReadinessBar', () => {
           panel: null,
           step: null,
           focus: null,
-          message_pl: 'Napraw brak bez mapowania.',
+          message_pl: 'Skonfiguruj pozycję kontroli bez mapowania.',
         },
       ],
     } as never);
@@ -290,14 +290,14 @@ describe('ReadinessBar', () => {
     render(<ReadinessBar />);
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Rozwiń pasek gotowości' }),
+      screen.getByRole('button', { name: 'Rozwiń kontrolę układu' }),
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Napraw' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Konfiguruj' }));
 
     expect(selectActiveOperationForm(useNetworkBuildStore.getState())).toBeNull();
     expect(useNotificationStore.getState().notifications).toHaveLength(1);
     expect(useNotificationStore.getState().notifications[0]?.message).toContain(
-      'Brak kanonicznej operacji naprawczej dla kodu UNKNOWN_READINESS_CODE.',
+      'Nie przypisano karty konfiguracyjnej do pozycji kontroli UNKNOWN_READINESS_CODE.',
     );
   });
 });

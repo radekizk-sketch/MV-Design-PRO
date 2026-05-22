@@ -27,7 +27,7 @@ function makeIssue(): ReadinessIssue {
 }
 
 describe('ReadinessLivePanel — integracja działań naprawczych', () => {
-  it('Przejdź + Napraw: nawiguje do elementu, uruchamia fix action, a po naprawie znika bloker', () => {
+  it('Przejdź + Skonfiguruj: nawiguje do elementu, uruchamia fix action, a po konfiguracji znika zagadnienie', () => {
     const onNavigateToElement = vi.fn();
     const onFixAction = vi.fn();
 
@@ -47,14 +47,14 @@ describe('ReadinessLivePanel — integracja działań naprawczych', () => {
     fireEvent.click(screen.getByText('Przejdź'));
     expect(onNavigateToElement).toHaveBeenCalledWith('line_sn_1');
 
-    fireEvent.click(screen.getByText('Napraw'));
+    fireEvent.click(screen.getByText('Skonfiguruj'));
     expect(onFixAction).toHaveBeenCalledTimes(1);
     expect(onFixAction).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'OPEN_MODAL', modal_type: 'catalog_select' }),
       'line_sn_1',
     );
 
-    // Symulacja usunięcia blockera po wykonaniu naprawy i odświeżeniu readiness
+    // Symulacja usunięcia zagadnienia po konfiguracji i odświeżeniu kontroli
     rerender(
       <ReadinessLivePanel
         issues={[]}
@@ -66,6 +66,6 @@ describe('ReadinessLivePanel — integracja działań naprawczych', () => {
     );
 
     expect(screen.getByTestId('readiness-live-panel-empty')).toBeInTheDocument();
-    expect(screen.getByText('Model kompletny')).toBeInTheDocument();
+    expect(screen.getByText('Układ skonfigurowany do analiz')).toBeInTheDocument();
   });
 });

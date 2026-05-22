@@ -16,7 +16,7 @@ describe('DerConfigurator - PV', () => {
     expect(screen.getByText('Regulacja PV')).toBeInTheDocument();
     expect(screen.getByText('FRT / LVRT / HVRT')).toBeInTheDocument();
     expect(screen.getByText('Zgodność przyłączeniowa')).toBeInTheDocument();
-    expect(screen.getByText('Gotowość obliczeń')).toBeInTheDocument();
+    expect(screen.getByText('Zakres obliczeń')).toBeInTheDocument();
   });
 
   it('domyślnie aktywna karta basic pokazuje wymagane decyzje inżynierskie', () => {

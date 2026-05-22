@@ -25,12 +25,23 @@ interface NotificationState {
 
 let _counter = 0;
 
-export const useNotificationStore = create<NotificationState>((set) => ({
+export const useNotificationStore = create<NotificationState>((set, get) => ({
   notifications: [],
 
   notify: (message: string, type: NotificationType = 'error') => {
+    const now = Date.now();
+    const notifications = get().notifications;
+    const latest = notifications[notifications.length - 1];
+    if (
+      latest?.message === message
+      && latest.type === type
+      && now - latest.timestamp < 1500
+    ) {
+      return;
+    }
+
     const id = `notif-${++_counter}-${Date.now()}`;
-    const notification: Notification = { id, type, message, timestamp: Date.now() };
+    const notification: Notification = { id, type, message, timestamp: now };
     set((state) => ({
       notifications: [...state.notifications.slice(-4), notification],
     }));

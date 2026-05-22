@@ -24,13 +24,15 @@ import sys
 # Forbidden terms in UI-visible strings (JSX text, aria-label, title, placeholder, etc.)
 # These are checked in .tsx and .ts files for string literals
 FORBIDDEN_TERMS_IN_UI: dict[str, str] = {
-    r'"[^"]*\bnamespace\b[^"]*"': "namespace (użyj 'kategoria katalogu')",
-    r"'[^']*\bnamespace\b[^']*'": "namespace (użyj 'kategoria katalogu')",
-    r'"[^"]*\bdrift\b[^"]*"': "drift (użyj 'rozbieżność katalogu')",
-    r"'[^']*\bdrift\b[^']*'": "drift (użyj 'rozbieżność katalogu')",
-    r'"[^"]*\bfix\s+actions?\b[^"]*"': "fix action(s) (użyj 'szybkie naprawy')",
-    r"'[^']*\bfix\s+actions?\b[^']*'": "fix action(s) (użyj 'szybkie naprawy')",
+    r"\bnamespace\b": "namespace (użyj 'kategoria katalogu')",
+    r"\bdrift\b": "drift (użyj 'rozbieżność katalogu')",
+    r"\bfix\s+actions?\b": "fix action(s) (użyj 'szybkie naprawy')",
 }
+
+STRING_LITERAL_RE = re.compile(
+    r"""(?P<quote>['"])(?P<value>(?:\\.|(?! (?P=quote)).)*)(?P=quote)""",
+    re.VERBOSE,
+)
 
 # Exempted file patterns (test files, type definitions, internal code)
 EXEMPT_PATTERNS: list[str] = [
@@ -80,9 +82,11 @@ def scan_file(filepath: str) -> list[tuple[int, str, str]]:
         if stripped.startswith("*") or stripped.startswith("/*"):
             continue
 
-        for pattern, reason in FORBIDDEN_TERMS_IN_UI.items():
-            if re.search(pattern, line, re.IGNORECASE):
-                violations.append((line_no, stripped[:120], reason))
+        for literal in STRING_LITERAL_RE.finditer(line):
+            value = literal.group("value")
+            for pattern, reason in FORBIDDEN_TERMS_IN_UI.items():
+                if re.search(pattern, value, re.IGNORECASE):
+                    violations.append((line_no, stripped[:120], reason))
 
     return violations
 
@@ -122,7 +126,7 @@ def main() -> int:
         for filepath, line_no, line, reason in all_violations:
             print(f"  {filepath}:{line_no}")
             print(f"    {line}")
-            print(f"    → {reason}\n")
+            print(f"    -> {reason}\n")
         print(f"{'=' * 60}")
         print(f"FAILED: {len(all_violations)} violation(s)")
         return 1

@@ -343,7 +343,7 @@ function BalanceBlock(props: BalanceBlockProps): JSX.Element {
             fontSize={FONT_SIZES.bayLabel}
             fontWeight={600}
           >
-            Brak wyników rozpływu
+            Wyniki rozpływu nieuruchomione
           </text>
         </g>
       ) : (
@@ -360,7 +360,7 @@ function BalanceBlock(props: BalanceBlockProps): JSX.Element {
             fontSize={FONT_SIZES.numericValue}
             data-testid="gpz-header-balance-p-value"
           >
-            {pPresent ? `${(balance.pMw as number).toFixed(1)} MW` : '— MW (brak danych)'}
+            {pPresent ? `${(balance.pMw as number).toFixed(1)} MW` : '— MW (do wyliczenia)'}
           </text>
           {/* Q row */}
           <rect x={0} y={13 + ROW_HEIGHT} width={width} height={ROW_HEIGHT} fill={COLOR_PANEL_RAISED} stroke={COLOR_TEXT_MUTED} strokeOpacity={0.3} />
@@ -374,7 +374,7 @@ function BalanceBlock(props: BalanceBlockProps): JSX.Element {
             fontSize={FONT_SIZES.numericValue}
             data-testid="gpz-header-balance-q-value"
           >
-            {qPresent ? `${(balance.qMvar as number).toFixed(1)} MVAr` : '— MVAr (brak danych)'}
+            {qPresent ? `${(balance.qMvar as number).toFixed(1)} MVAr` : '— MVAr (do wyliczenia)'}
           </text>
         </>
       )}

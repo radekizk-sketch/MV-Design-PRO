@@ -373,10 +373,10 @@ describe('TraceSearchBar', () => {
     expect(screen.getByTestId('trace-search-count')).toHaveTextContent('1 z 2');
   });
 
-  it('shows "Brak wyników" when no results', () => {
+  it('shows "Nie znaleziono wyników" when no results', () => {
     render(<TraceSearchBar {...defaultProps} query="test" results={[]} />);
 
-    expect(screen.getByTestId('trace-search-count')).toHaveTextContent('Brak wyników');
+    expect(screen.getByTestId('trace-search-count')).toHaveTextContent('Nie znaleziono wyników');
   });
 
   it('calls onNavigateToResult with next index when clicking next', () => {

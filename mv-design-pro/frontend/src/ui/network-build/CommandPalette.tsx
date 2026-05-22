@@ -51,6 +51,8 @@ const SLD_KIND_LABEL_PL: Readonly<Record<SldElementKindForMenu, string>> = {
   cable_segment_sn: 'Kabel SN',
   overhead_line_sn: 'Linia napowietrzna SN',
   station: 'Stacja',
+  zksn: 'ZK SN',
+  branch_pole: 'Słup rozgałęźny SN',
   der_pv: 'PV',
   der_bess: 'BESS',
   der_fw: 'Farma wiatrowa',
@@ -109,8 +111,8 @@ export function CommandPalette({
       entries.push({
         id: `screen:${screen.id}`,
         category: 'screen',
-        label: `${screen.id} · ${screen.labelFull}`,
-        description: `Otwórz ekran ${screen.labelFull}`,
+        label: screen.labelFull,
+        description: `Otwórz widok: ${screen.labelFull}`,
         keywords: `${screen.id} ${screen.labelFull} ${screen.labelShort}`,
         run: () => {
           openRouteSurface(screen.id, {
@@ -130,7 +132,7 @@ export function CommandPalette({
           id: `menu:${kind}:${action.id}`,
           category: 'menu',
           label: `${SLD_KIND_LABEL_PL[kind]} → ${action.labelPl}`,
-          description: `Akcja menu kontekstowego SLD (${SLD_KIND_LABEL_PL[kind]})`,
+          description: `Dostępne po zaznaczeniu elementu: ${SLD_KIND_LABEL_PL[kind]}`,
           keywords: `${SLD_KIND_LABEL_PL[kind]} ${action.labelPl} ${action.id}`,
           run: () => {
             // Akcje SLD wymagają kontekstu (elementu na kanwie). Z palety
@@ -227,7 +229,7 @@ export function CommandPalette({
               data-testid="command-palette-empty"
               className="p-4 text-sm text-scada-muted"
             >
-              Brak komend pasujących do zapytania "{query}".
+              Nie znaleziono komend pasujących do zapytania "{query}".
             </div>
           )}
           {results.map((entry, index) => (
@@ -258,7 +260,7 @@ export function CommandPalette({
                 {entry.cmd.category === 'screen'
                   ? 'EKRAN'
                   : entry.cmd.category === 'menu'
-                    ? 'MENU'
+                    ? 'KONTEKST'
                     : 'AKCJA'}
               </span>
               <span className="flex-1">

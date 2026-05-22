@@ -1,7 +1,7 @@
 /**
  * GlobalSearch — Wyszukiwarka globalna (Ctrl+K).
  *
- * Command palette wyszukująca elementy ENM po nazwie/ref_id/typie.
+ * Command palette wyszukująca elementy ENM po nazwie, oznaczeniu i typie.
  * Wynik → nawigacja do elementu na SLD + zaznaczenie w drzewie.
  * Max 20 wyników, grouping po kategoriach.
  *
@@ -13,6 +13,7 @@ import { clsx } from 'clsx';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { formatGeneratorTypeShortLabelPl } from '../shared/generatorTypeLabels';
 import { formatStationTypeLabelPl } from '../shared/stationTypeLabels';
+import { stationPublicIdentity } from '../shared/publicTechnicalLabels';
 import { useSelectionStore } from '../selection';
 
 // =============================================================================
@@ -31,13 +32,13 @@ interface SearchResult {
 type SearchCategory = 'sources' | 'buses' | 'branches' | 'transformers' | 'stations' | 'generators' | 'loads';
 
 const CATEGORY_LABELS: Record<SearchCategory, string> = {
-  sources: 'Źródła zasilania',
+  sources: 'Zasilanie GPZ',
   buses: 'Szyny',
-  branches: 'Gałęzie / Odcinki',
+  branches: 'Odcinki SN',
   transformers: 'Transformatory',
   stations: 'Stacje',
-  generators: 'Źródła OZE / Generatory',
-  loads: 'Obciążenia',
+  generators: 'Układy PV/BESS/FW',
+  loads: 'Odbiory',
 };
 
 const CATEGORY_ORDER: SearchCategory[] = [
@@ -74,6 +75,21 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
     if (!snapshot || !query.trim()) return [];
     const q = query.toLowerCase();
     const all: SearchResult[] = [];
+    const stationByRef = new Map<string, NonNullable<typeof snapshot.substations>[number]>();
+    for (const station of snapshot.substations ?? []) {
+      stationByRef.set(station.id, station);
+      stationByRef.set(station.ref_id, station);
+    }
+    const generatorGroupKey = (generator: NonNullable<typeof snapshot.generators>[number]) => {
+      const sourceKind = formatGeneratorTypeShortLabelPl(generator.gen_type);
+      return `${sourceKind}|${generator.station_ref ?? generator.bus_ref ?? generator.ref_id}`;
+    };
+    const generatorGroupTotals = new Map<string, number>();
+    for (const generator of snapshot.generators ?? []) {
+      const key = generatorGroupKey(generator);
+      generatorGroupTotals.set(key, (generatorGroupTotals.get(key) ?? 0) + 1);
+    }
+    const generatorGroupSeen = new Map<string, number>();
 
     // Sources
     for (const s of snapshot.sources ?? []) {
@@ -148,13 +164,25 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
     // Generators
     for (const g of snapshot.generators ?? []) {
       if (g.name.toLowerCase().includes(q) || g.ref_id.toLowerCase().includes(q)) {
+        const sourceKind = formatGeneratorTypeShortLabelPl(g.gen_type);
+        const station = g.station_ref ? stationByRef.get(g.station_ref) : null;
+        const stationIdentity = station ? stationPublicIdentity(snapshot, station) : null;
+        const groupKey = generatorGroupKey(g);
+        const groupIndex = (generatorGroupSeen.get(groupKey) ?? 0) + 1;
+        generatorGroupSeen.set(groupKey, groupIndex);
+        const groupTotal = generatorGroupTotals.get(groupKey) ?? 1;
+        const sourceName = stationIdentity
+          ? `${sourceKind} · ${stationIdentity.code}${groupTotal > 1 ? ` · układ ${groupIndex}` : ''}`
+          : g.name;
         all.push({
           id: g.ref_id,
-          name: g.name,
+          name: sourceName,
           category: 'generators',
           categoryLabel: CATEGORY_LABELS.generators,
           elementType: 'Generator',
-          detail: `${g.p_mw} MW, ${formatGeneratorTypeShortLabelPl(g.gen_type)}`,
+          detail: stationIdentity
+            ? `${stationIdentity.displayName}, ${g.p_mw} MW`
+            : `${g.p_mw} MW, ${sourceKind}`,
         });
       }
     }
@@ -248,7 +276,12 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+      <div
+        className="relative bg-white rounded-lg shadow-2xl w-full max-w-lg mx-4 overflow-hidden"
+        role="dialog"
+        aria-label="Wyszukiwarka układu"
+        data-testid="global-search-modal"
+      >
         {/* Search input */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200">
           <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -260,28 +293,38 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
             value={query}
             onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
             onKeyDown={handleKeyDown}
-            placeholder="Szukaj elementu sieci... (nazwa, ID, typ)"
+            placeholder="Szukaj układu sieci... (oznaczenie, nazwa, typ)"
             className="flex-1 text-sm outline-none placeholder:text-gray-400"
           />
           <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-gray-100 text-gray-500 rounded border border-gray-200">
             Esc
           </kbd>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            aria-label="Zamknij"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         {/* Results */}
         <div className="max-h-[50vh] overflow-y-auto">
           {query.trim() && results.length === 0 && (
             <div className="px-4 py-8 text-center">
-              <p className="text-sm text-gray-500">Nie znaleziono elementów</p>
+              <p className="text-sm text-gray-500">Nie znaleziono układów</p>
               <p className="text-[10px] text-gray-400 mt-1">Spróbuj innej frazy</p>
             </div>
           )}
 
           {!query.trim() && (
             <div className="px-4 py-8 text-center">
-              <p className="text-sm text-gray-500">Wpisz nazwę lub identyfikator elementu</p>
+              <p className="text-sm text-gray-500">Wpisz nazwę, oznaczenie albo typ układu</p>
               <p className="text-[10px] text-gray-400 mt-1">
-                Szukaj szyn, odcinków, stacji, transformatorów, źródeł OZE
+                Szukaj szyn, odcinków, stacji, transformatorów i układów PV/BESS/FW
               </p>
             </div>
           )}
@@ -311,7 +354,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-800 truncate">{item.name}</p>
                       <p className="text-[10px] text-gray-400 truncate">
-                        {item.id} &middot; {item.detail}
+                        {item.detail}
                       </p>
                     </div>
                     <span className="text-[10px] text-gray-400 flex-shrink-0">

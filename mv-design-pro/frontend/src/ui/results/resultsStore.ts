@@ -190,7 +190,7 @@ export function useResultStatusMessage(): {
   switch (status) {
     case 'NONE':
       return {
-        message: 'Brak wyników — uruchom obliczenia',
+        message: 'Uruchom obliczenia, aby przeglądać wyniki',
         severity: 'info',
       };
     case 'FRESH':

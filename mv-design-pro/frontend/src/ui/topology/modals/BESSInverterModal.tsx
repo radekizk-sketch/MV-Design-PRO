@@ -2,7 +2,7 @@
  * BESSInverterModal — modal dodawania/edycji falownika BESS w rozdzielni nN.
  *
  * BINDING: 100% PL etykiety, brak domyślnych wartości liczbowych.
- * FAZA 2 — Standard modali „Źródła nN / Falowniki".
+ * FAZA 2 — Standard modali „Układy nN / Falowniki".
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -22,7 +22,7 @@ export interface BESSInverterFormData {
   // Osadzenie
   placement: SourcePlacement;
   existing_field_ref: string | null;
-  // Nowe pole źródłowe (gdy NEW_FIELD)
+  // Nowe pole przyłączeniowe (gdy NEW_FIELD)
   new_field_switch_kind: NNSwitchKind | null;
   new_field_switch_state: NNSwitchState | null;
   new_field_switch_catalog_ref: string | null;
@@ -86,7 +86,7 @@ const SWITCH_STATE_LABELS: Record<NNSwitchState, string> = {
 };
 
 const PLACEMENT_LABELS: Record<SourcePlacement, string> = {
-  NEW_FIELD: 'Utwórz nowe pole źródłowe',
+  NEW_FIELD: 'Utwórz nowe pole przyłączeniowe',
   EXISTING_FIELD: 'Użyj istniejącego pola',
 };
 
@@ -187,7 +187,7 @@ export function BESSInverterModal({
               ))}
               {!isNewField && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Istniejące pole źródłowe</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Istniejące pole przyłączeniowe</label>
                   <select value={form.existing_field_ref ?? ''} onChange={(e) => set('existing_field_ref', e.target.value || null)}
                     className={`w-full px-3 py-2 border rounded-md text-sm ${getError('existing_field_ref') ? 'border-red-500' : 'border-gray-300'}`}>
                     <option value="">— wybierz —</option>

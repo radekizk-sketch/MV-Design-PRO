@@ -19,6 +19,8 @@ import type { EnergyNetworkModel, Substation, Bay } from '../../../../types/enm'
 export interface LayoutComplexityScore {
   /** Liczba stacji (substations) wszystkich typów. */
   readonly stationCount: number;
+  /** Liczba stacji terenowych SN/nN/OZE w ciągach sieciowych, bez GPZ. */
+  readonly fieldStationCount: number;
   /** Liczba feederów (LineRun.run_kind === 'main_trunk' | 'branch'). */
   readonly feederCount: number;
   /** Liczba odgałęzień (run_kind === 'branch'). */
@@ -108,6 +110,9 @@ export function computeComplexityScore(
   const lineRuns = enm.line_runs ?? [];
 
   const stationCount = substations.length;
+  const fieldStationCount = substations.filter((station) =>
+    station.station_type !== 'gpz',
+  ).length;
 
   // Feeders + branches + rings
   let feederCount = 0;
@@ -157,6 +162,7 @@ export function computeComplexityScore(
 
   return {
     stationCount,
+    fieldStationCount,
     feederCount,
     branchCount,
     maxBranchDepth,
@@ -213,6 +219,14 @@ export function chooseLayoutStrategy(score: LayoutComplexityScore): LayoutStrate
     return 'corridor_with_locked';
   }
   if (
+    score.fieldStationCount > 1
+    || score.branchCount > 0
+    || score.ringCount > 0
+    || score.nopCount > 0
+  ) {
+    return 'corridor';
+  }
+  if (
     score.stationCount <= STRATEGY_THRESHOLDS.SIMPLE_RADIAL_THRESHOLD
     && score.branchCount === 0
     && score.ringCount === 0
@@ -240,9 +254,15 @@ export function explainStrategy(score: LayoutComplexityScore, strategy: LayoutSt
         STRATEGY_THRESHOLDS.MANUAL_LOCKED_THRESHOLD * 100
       }% — operator zablokował ≥1/3 tras, layout respektuje locks.`;
     case 'simple_radial':
-      return `${score.stationCount} stacji ≤ ${STRATEGY_THRESHOLDS.SIMPLE_RADIAL_THRESHOLD}, brak odgałęzień ani ringów — prosty radialny layout.`;
+      return `${score.stationCount} stacji, ${score.fieldStationCount} stacji terenowych, brak odgałęzień ani ringów — prosty radialny layout.`;
     case 'corridor': {
       const reasons: string[] = [];
+      if (score.fieldStationCount > 1) {
+        reasons.push(`${score.fieldStationCount} stacji terenowych wymaga korytarzy`);
+      }
+      if (score.branchCount > 0 && score.branchCount < STRATEGY_THRESHOLDS.BRANCH_CORRIDOR_THRESHOLD) {
+        reasons.push(`${score.branchCount} odgałęzień`);
+      }
       if (score.stationCount >= STRATEGY_THRESHOLDS.STATION_CORRIDOR_THRESHOLD) {
         reasons.push(`${score.stationCount} stacji ≥ ${STRATEGY_THRESHOLDS.STATION_CORRIDOR_THRESHOLD}`);
       }

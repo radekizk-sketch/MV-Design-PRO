@@ -117,7 +117,7 @@ describe('RunResultsInspector', () => {
     render(<RunResultsInspector resultset={null} />);
 
     expect(screen.getByTestId('inspector-empty')).toHaveTextContent(
-      'Brak wyników do wyświetlenia',
+      'Wyniki nie są dostępne do wyświetlenia',
     );
   });
 

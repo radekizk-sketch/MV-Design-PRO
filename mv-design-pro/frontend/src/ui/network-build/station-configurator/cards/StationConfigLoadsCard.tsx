@@ -33,7 +33,9 @@ export function StationConfigLoadsCard(props: StationConfigLoadsCardProps): JSX.
         Odbiory ({loads.length})
       </div>
       {loads.length === 0 ? (
-        <div className="italic text-scada-muted">Brak odbiorów.</div>
+        <div className="italic text-scada-muted">
+          Odbiory nN dodaje się z wariantu stacji albo z karty rozdzielnicy nN.
+        </div>
       ) : (
         <table className="w-full text-[11px]">
           <thead>

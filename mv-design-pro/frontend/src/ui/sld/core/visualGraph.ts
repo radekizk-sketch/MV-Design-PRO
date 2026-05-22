@@ -39,7 +39,7 @@ export const NodeTypeV1 = {
   // Szyny
   BUS_SN: 'BUS_SN',
   BUS_NN: 'BUS_NN',
-  // Źródła i generatory
+  // Zasilanie GPZ i układy wytwórcze
   GRID_SOURCE: 'GRID_SOURCE',
   GENERATOR_PV: 'GENERATOR_PV',
   GENERATOR_BESS: 'GENERATOR_BESS',

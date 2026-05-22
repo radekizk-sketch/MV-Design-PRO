@@ -55,6 +55,54 @@ describe('DerConnectionTreeRenderer — render i strukturalne data-testid', () =
     const { container } = tree();
     expect(container.querySelector('[data-testid="sld-v2-der-tree-der-1-inverter"]')).toBeTruthy();
   });
+
+  it('compact DER bez wyboru pokazuje transformator blokowy, zeby nie mylic go z TR stacji', () => {
+    const { container } = render(
+      <svg>
+        <DerRenderer
+          id="der-terrain"
+          x={100}
+          y={100}
+          kind="PV"
+          name="PV 1 MW"
+          nominalPowerKw={1000}
+          hasBlockTransformer
+          blockTransformerLabel="TR 15/0,69 kV 1250 kVA Dyn5"
+          operatingPMw={1}
+          lod="compact"
+        />
+      </svg>,
+    );
+
+    expect(container.querySelector('[data-testid="sld-v2-der-der-terrain-compact-power"]')).not.toBeNull();
+    const blockTransformer = container.querySelector('[data-testid="sld-v2-der-der-terrain-compact-block-transformer"]');
+    expect(blockTransformer).not.toBeNull();
+    expect(blockTransformer?.textContent).toContain('TR blokowy 1250 kVA');
+    expect(container.querySelector('[data-testid="sld-v2-der-der-terrain-compact-cos-phi"]')).toBeNull();
+  });
+
+  it('compact DER po wyborze pokazuje detale techniczne ukladu przylaczeniowego', () => {
+    const { container } = render(
+      <svg>
+        <DerRenderer
+          id="der-selected"
+          x={100}
+          y={100}
+          kind="PV"
+          name="PV 1 MW"
+          nominalPowerKw={1000}
+          hasBlockTransformer
+          blockTransformerLabel="TR 15/0,69 kV 1250 kVA Dyn5"
+          operatingPMw={1}
+          lod="compact"
+          selected
+        />
+      </svg>,
+    );
+
+    expect(container.querySelector('[data-testid="sld-v2-der-der-selected-compact-block-transformer"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-der-der-selected-compact-cos-phi"]')).not.toBeNull();
+  });
 });
 
 describe('DerConnectionTreeRenderer — variant decyduje czy renderować trafo blokowy', () => {

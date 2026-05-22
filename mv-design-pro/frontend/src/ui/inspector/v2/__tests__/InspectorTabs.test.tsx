@@ -31,8 +31,8 @@ describe('InspectorTabs — 11 zakładek (brief 2 §5)', () => {
     const ids = INSPECTOR_TABS.map((t) => t.id).sort();
     expect(ids).toEqual([
       'aparatura',
-      'braki-danych',
       'dane-elektryczne',
+      'konfiguracja',
       'obliczenia',
       'podstawowe',
       'pomiary',
@@ -58,13 +58,13 @@ describe('InspectorTabs — 11 zakładek (brief 2 §5)', () => {
 });
 
 describe('InspectorTabs — visibleTabsFor (per element type)', () => {
-  it('GPZ widzi: Podstawowe, SLD, Topologia, Obliczenia, Braki, Raport, Techniczne (7)', () => {
+  it('GPZ widzi: Podstawowe, SLD, Topologia, Obliczenia, Konfiguracja, Raport, Techniczne (7)', () => {
     const tabs = visibleTabsFor('gpz').map((t) => t.id);
     expect(tabs).toContain('podstawowe');
     expect(tabs).toContain('sld');
     expect(tabs).toContain('topologia');
     expect(tabs).toContain('obliczenia');
-    expect(tabs).toContain('braki-danych');
+    expect(tabs).toContain('konfiguracja');
     expect(tabs).toContain('raport');
     expect(tabs).toContain('techniczne');
     expect(tabs).not.toContain('aparatura');
@@ -108,7 +108,7 @@ describe('InspectorStickyHeader', () => {
     expect(getByTestId('status-completeness')).toHaveTextContent('kompletne');
   });
 
-  it('completeness=missing → status czerwony "brak danych"', () => {
+  it('completeness=missing pokazuje stan "do konfiguracji"', () => {
     const { getByTestId } = render(
       <InspectorStickyHeader
         elementName="ST-01"
@@ -117,7 +117,7 @@ describe('InspectorStickyHeader', () => {
       />,
     );
     const status = getByTestId('status-completeness');
-    expect(status).toHaveTextContent('brak danych');
+    expect(status).toHaveTextContent('do konfiguracji');
     expect(status.className).toContain('text-status-error');
   });
 
@@ -279,7 +279,7 @@ describe('InspectorTabs — composition', () => {
   it('GPZ inspektor pokazuje 7 zakładek (bez Aparatura/Zabezpieczenia/Pomiary/Dane elektr.)', () => {
     const { container } = make('gpz');
     const tabs = container.querySelectorAll('button[data-testid^="inspector-tab-"]');
-    // 7 ANY (Podstawowe, Obliczenia, Braki danych, Raport, Techniczne) + SLD + Topologia
+    // 7 ANY (Podstawowe, Obliczenia, Konfiguracja, Raport, Techniczne) + SLD + Topologia
     expect(tabs.length).toBe(7);
   });
 
@@ -291,10 +291,10 @@ describe('InspectorTabs — composition', () => {
     expect(tabs.length).toBeGreaterThanOrEqual(9);
   });
 
-  it('Empty tab content: pokazuje "Brak danych" italic', () => {
+  it('Empty tab content pokazuje następny zakres konfiguracji', () => {
     const { getByText, getByTestId } = make();
     fireEvent.click(getByTestId('inspector-tab-techniczne'));
-    expect(getByText(/Brak danych/)).toBeInTheDocument();
+    expect(getByText(/Zakres tej karty/)).toBeInTheDocument();
   });
 
   it('onTabChange callback wywoływany przy zmianie zakładki', () => {

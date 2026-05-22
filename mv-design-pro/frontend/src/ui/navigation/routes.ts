@@ -49,7 +49,7 @@ export const ROUTES = {
   VARIANTS: {
     hash: '#variants',
     label: 'Stan obliczeń',
-    description: 'Wariant pracy sieci, gotowość obliczeń, wyniki i raport techniczny',
+    description: 'Wariant pracy sieci, obliczenia, wyniki i raport techniczny',
     icon: 'VAR',
     requiredMode: 'MODEL_EDIT',
   },

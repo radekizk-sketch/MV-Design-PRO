@@ -97,7 +97,7 @@ export function BayConfigurator(props: BayConfiguratorProps): JSX.Element {
       {/* Content */}
       <div data-testid={`bay-section-content-${activeSection}`} className="flex-1 overflow-y-auto p-3 text-xs">
         {children[activeSection] ?? (
-          <div className="italic text-scada-muted">Brak danych w sekcji "{SECTION_LABELS[activeSection]}".</div>
+          <div className="italic text-scada-muted">Zakres sekcji "{SECTION_LABELS[activeSection]}" zostanie pokazany po wyborze wariantu pola.</div>
         )}
       </div>
 

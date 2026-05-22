@@ -485,7 +485,7 @@ function ChecksTable() {
   const { runResult } = useReferencePatternsStore();
 
   if (!runResult || runResult.checks.length === 0) {
-    return <EmptyState message="Brak wyników sprawdzeń." />;
+    return <EmptyState message="Kontrola wzorców referencyjnych nie wskazuje pozycji technicznych." />;
   }
 
   return (

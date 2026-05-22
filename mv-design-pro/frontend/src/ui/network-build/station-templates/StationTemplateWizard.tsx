@@ -841,7 +841,7 @@ function ApplyStep(props: {
           )}
         </div>
       ) : (
-        <div className="text-sm text-amber-300">Brak wybranego szablonu.</div>
+        <div className="text-sm text-amber-300">Wybierz szablon katalogowy.</div>
       )}
     </div>
   );

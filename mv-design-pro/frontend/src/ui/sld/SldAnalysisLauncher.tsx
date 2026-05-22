@@ -80,13 +80,13 @@ export function resolveAnalysisLauncherBlockMessage(
 
   switch (workspaceBlockState.reason) {
     case 'NO_CASE':
-      return 'Brak aktywnego przypadku obliczeniowego.';
+      return 'Wybierz zakres obliczeń przed uruchomieniem analiz.';
     case 'NO_SNAPSHOT':
-      return 'Model sieci nie jest jeszcze gotowy do uruchomienia analiz. Poczekaj na synchronizację danych.';
+      return 'Trwa synchronizacja układu sieci z serwerem. Uruchom analizy po odświeżeniu schematu.';
     case 'NO_SOURCE':
-      return 'Brak źródła zasilania. Najpierw dodaj GPZ, a potem wyprowadź pierwszy odcinek magistrali.';
+      return 'Skonfiguruj zasilanie GPZ, a następnie wyprowadź pierwszy odcinek magistrali.';
     case 'NO_MODEL':
-      return 'Brak modelu na schemacie. Najpierw zbuduj sieć.';
+      return 'Zbuduj układ sieci na schemacie przed uruchomieniem analiz.';
     default:
       return workspaceBlockState.description;
   }
@@ -389,13 +389,13 @@ export function SldAnalysisLauncher({
 
   const executeBundle = useCallback(async (mode: 'QUICK' | 'FULL') => {
     if (!caseId) {
-      setLauncherError('Brak aktywnego przypadku obliczeniowego.');
+      setLauncherError('Wybierz zakres obliczeń przed uruchomieniem analiz.');
       return;
     }
 
     if (workspaceBlockState) {
       const message = resolveAnalysisLauncherBlockMessage(workspaceBlockState)
-        ?? 'Model nie spełnia jeszcze warunków do uruchomienia analiz.';
+        ?? 'Konfiguracja układu nie spełnia jeszcze warunków do uruchomienia analiz.';
       setLauncherError(message);
       notify(message, 'warning');
       return;
@@ -478,7 +478,7 @@ export function SldAnalysisLauncher({
 
   const handleRunFull = useCallback(async () => {
     if (!caseId) {
-      setLauncherError('Brak aktywnego przypadku obliczeniowego.');
+      setLauncherError('Wybierz zakres obliczeń przed uruchomieniem analiz.');
       return;
     }
 
@@ -492,7 +492,7 @@ export function SldAnalysisLauncher({
     ));
 
     if (!essentialEligible) {
-      const message = 'Model nie spełnia minimalnych warunków do pełnej analizy SC 3F + PF.';
+      const message = 'Konfiguracja układu nie spełnia minimalnych warunków do pełnej analizy SC 3F + PF.';
       setLauncherError(message);
       notify(message, 'warning');
       return;
@@ -621,7 +621,7 @@ export function SldAnalysisLauncher({
               data-testid="analysis-launcher-blocked"
             >
               <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">
-                Blokada warsztatowa
+                Kontrola konfiguracji
               </div>
               <div className="mt-1 font-semibold">{workspaceBlockState.title}</div>
               <div className="mt-1 text-amber-900/80">{workspaceBlockState.description}</div>
@@ -674,7 +674,7 @@ export function SldAnalysisLauncher({
           {activeTab === 'FULL' && (
             <div className="space-y-4">
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                Pełna analiza korzysta z pakietu zwarcie trójfazowe + rozpływ mocy oraz z macierzy gotowości analizy. Panel pozostaje powiązany ze schematem i uruchamia szybkie naprawy bez wychodzenia z SLD.
+                Pełna analiza korzysta z pakietu zwarcie trójfazowe + rozpływ mocy oraz z kontroli konfiguracji układu. Panel pozostaje powiązany ze schematem i prowadzi do właściwej karty technicznej bez wychodzenia z SLD.
               </div>
               <button
                 type="button"
@@ -703,7 +703,7 @@ export function SldAnalysisLauncher({
                 />
               ) : (
                 <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600">
-                  {eligibilityLoading ? 'Ładowanie macierzy gotowości analizy...' : 'Brak danych gotowości analizy dla aktywnego przypadku.'}
+                  {eligibilityLoading ? 'Ładowanie kontroli konfiguracji analizy...' : 'Wybierz aktywny zakres obliczeń, aby uruchomić kontrolę konfiguracji analizy.'}
                 </div>
               )}
             </div>

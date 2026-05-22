@@ -48,7 +48,15 @@ export interface CableType extends CatalogType {
   standard?: string;
   conductor_material?: string;
   cross_section_mm2: number;
+  return_conductor_cross_section_mm2?: number | null;
+  return_conductor_material?: string | null;
+  return_conductor_r_ohm_per_km_20c?: number | null;
+  return_conductor_jth_1s_a_per_mm2?: number | null;
+  return_conductor_ith_1s_a?: number | null;
   max_temperature_c: number;
+  number_of_cores?: number;
+  base_type_id?: string | null;
+  trade_name?: string | null;
 }
 
 /**

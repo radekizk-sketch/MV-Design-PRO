@@ -2,7 +2,7 @@
  * BuilderSection — Dock projektanta z next-step prowadzeniem (PR-13).
  *
  * Brief 2 §4 sekcja 2 + brief 1 §13 (Dock projektanta).
- * Sekcja: kontekst pracy + następny krok + blokady i naprawy + akcje + stan modelu.
+ * Sekcja: kontekst pracy + następny krok + kontrola konfiguracji + akcje + stan układu.
  */
 
 import type { BuildPhase } from '../../sld/v2/builder/BuildSequence';
@@ -54,7 +54,7 @@ const BUILD_PHASE_LABEL: Record<BuildPhase, string> = {
   HAS_SOURCE: 'GPZ wstawiony',
   HAS_TRUNKS: 'Ciągi wyprowadzone',
   HAS_STATIONS: 'Stacje rozmieszczone',
-  READY: 'Model kompletny',
+  READY: 'Układ skonfigurowany',
 };
 
 const SEVERITY_CLASS: Record<BuilderBlocker['severityPl'], string> = {
@@ -118,7 +118,9 @@ export function BuilderSection(props: BuilderSectionProps): JSX.Element {
         </div>
         <div className="mt-1 flex flex-col gap-1">
           {nextSteps.length === 0 ? (
-            <span className="text-xs italic text-scada-muted">Brak rekomendowanych akcji.</span>
+            <span className="text-xs italic text-scada-muted">
+              Aktualny etap nie wymaga dodatkowej akcji.
+            </span>
           ) : (
             nextSteps.map((s) => (
               <button
@@ -144,14 +146,16 @@ export function BuilderSection(props: BuilderSectionProps): JSX.Element {
         </div>
       </div>
 
-      {/* Blokady i naprawy */}
+      {/* Kontrola konfiguracji */}
       <div data-testid="builder-blockers" className="px-3">
         <div className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
-          Blokady i naprawy
+          Kontrola konfiguracji
         </div>
         <div className="mt-1 flex flex-col gap-1">
           {blockers.length === 0 ? (
-            <span className="text-xs italic text-scada-muted">Brak blokad.</span>
+            <span className="text-xs italic text-scada-muted">
+              Kontrola nie wskazuje zagadnień technicznych.
+            </span>
           ) : (
             blockers.map((b) => (
               <div
@@ -183,7 +187,7 @@ export function BuilderSection(props: BuilderSectionProps): JSX.Element {
                       onClick={b.onFix}
                       className="rounded border border-scada-border px-1.5 py-0.5 text-[10px] text-scada-text hover:bg-scada-active"
                     >
-                      Uzupełnij dane
+                      Skonfiguruj
                     </button>
                   )}
                 </div>
@@ -193,20 +197,20 @@ export function BuilderSection(props: BuilderSectionProps): JSX.Element {
         </div>
       </div>
 
-      {/* Stan modelu */}
+      {/* Stan układu */}
       <div data-testid="builder-model-stats" className="border-t border-scada-border px-3 pt-2">
         <div className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
-          Stan modelu
+          Stan układu
         </div>
         <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[11px] text-scada-text">
           <div><span className="text-scada-muted">GPZ:</span> {modelStats.gpzCount}</div>
           <div><span className="text-scada-muted">Pola SN:</span> {modelStats.bayCount}</div>
           <div><span className="text-scada-muted">Odcinki:</span> {modelStats.cableSegmentCount}</div>
           <div><span className="text-scada-muted">Stacje:</span> {modelStats.stationCount}</div>
-          <div><span className="text-scada-muted">Źródła:</span> {modelStats.derSourceCount}</div>
+          <div><span className="text-scada-muted">Układy:</span> {modelStats.derSourceCount}</div>
           <div><span className="text-scada-muted">BESS:</span> {modelStats.bessCount}</div>
           <div className="col-span-2">
-            <span className="text-scada-muted">Braki danych: </span>
+            <span className="text-scada-muted">Zagadnienia techniczne: </span>
             <span className={modelStats.missingDataCount > 0 ? 'text-status-warn' : 'text-status-ok'}>
               {modelStats.missingDataCount}
             </span>

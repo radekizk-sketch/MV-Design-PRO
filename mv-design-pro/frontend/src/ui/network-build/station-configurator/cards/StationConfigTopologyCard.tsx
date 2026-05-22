@@ -44,12 +44,12 @@ export function StationConfigTopologyCard(
 
       <div className="grid grid-cols-2 gap-2 rounded border border-scada-border bg-scada-bg px-2 py-1">
         <div>
-          <div className="text-[10px] text-scada-muted">Połączenia end-to-end</div>
+          <div className="text-[10px] text-scada-muted">Porty podłączone</div>
           <div className="text-base font-semibold text-status-ok">{endToEndConnectionsCount}</div>
         </div>
         <div>
-          <div className="text-[10px] text-scada-muted">Brak endpointu</div>
-          <div className={`text-base font-semibold ${missingEndpointsCount > 0 ? 'text-status-error' : 'text-status-ok'}`}>
+          <div className="text-[10px] text-scada-muted">Wolne wyjścia SN</div>
+          <div className="text-base font-semibold text-status-ok">
             {missingEndpointsCount}
           </div>
         </div>
@@ -58,7 +58,9 @@ export function StationConfigTopologyCard(
       <div data-testid="station-config-ports-list">
         <div className="text-[10px] font-medium text-scada-muted">Porty zewnętrzne stacji</div>
         {externalPorts.length === 0 ? (
-          <div className="italic text-scada-muted">Brak portów (uruchom automigrację PR-3).</div>
+          <div className="italic text-scada-muted">
+            Porty WE/WY/TR wynikają z wariantu rozdzielni SN i pól katalogowych stacji.
+          </div>
         ) : (
           <table className="mt-1 w-full text-[11px]">
             <thead>
@@ -67,7 +69,7 @@ export function StationConfigTopologyCard(
                 <th className="text-left">Typ</th>
                 <th className="text-right">U_n [kV]</th>
                 <th className="text-left">Pole</th>
-                <th className="text-left">Zajęty przez</th>
+                <th className="text-left">Stan portu</th>
               </tr>
             </thead>
             <tbody>
@@ -82,7 +84,9 @@ export function StationConfigTopologyCard(
                   <td className="text-right font-mono">{p.nominalVoltageKv}</td>
                   <td>{p.bayDesignation ?? '—'}</td>
                   <td>
-                    {p.occupiedByLabelPl ?? <span className="italic text-scada-muted">wolny</span>}
+                    {p.occupiedByLabelPl ?? (
+                      <span className="italic text-status-ok">wolny do kontynuacji ciągu SN</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -93,7 +97,7 @@ export function StationConfigTopologyCard(
 
       {errors.length > 0 && (
         <div data-testid="station-config-topology-errors" className="flex flex-col gap-1">
-          <div className="text-[10px] font-medium text-scada-muted">Błędy walidacji</div>
+          <div className="text-[10px] font-medium text-scada-muted">Uwagi techniczne</div>
           {errors.map((e) => (
             <div
               key={e.id}

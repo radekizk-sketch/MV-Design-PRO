@@ -26,6 +26,7 @@ from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 CATALOG_LINE_70 = "line-base-al-st-70"
 CATALOG_TRAFO_630 = "tr-sn-nn-15-04-630kva-dyn11"
 CATALOG_ZRODLO_250 = "src-gpz-15kv-250mva-rx010"
+CATALOG_APARAT_SN = "sw-cb-abb-vd4-24kv-630a"
 
 
 def _empty_enm() -> dict[str, Any]:
@@ -36,8 +37,18 @@ def _empty_enm() -> dict[str, Any]:
 
 
 def op(snap: dict[str, Any], name: str, payload: dict[str, Any]) -> dict[str, Any]:
-    if name == "add_grid_source_sn" and "catalog_ref" not in payload:
-        payload = {**payload, "catalog_ref": CATALOG_ZRODLO_250}
+    if name == "add_grid_source_sn":
+        payload = {
+            **({"catalog_ref": CATALOG_ZRODLO_250} if "catalog_ref" not in payload else {}),
+            "gpz_line_field_apparatus": {
+                "apparatus_kind": "BREAKER",
+                "catalog_binding": {
+                    "catalog_namespace": "APARAT_SN",
+                    "catalog_item_id": CATALOG_APARAT_SN,
+                },
+            },
+            **payload,
+        }
     result = execute_domain_operation(snap, name, payload)
     err = result.get("error")
     assert not err, f"Operacja '{name}' zwróciła błąd: {err} (code={result.get('error_code')})"
@@ -58,6 +69,20 @@ def _build_gpz_with_endpoint() -> tuple[dict[str, Any], str]:
     # Endpoint bus = to_bus_ref ostatniego branchu
     last_branch = snap["branches"][-1]
     return snap, last_branch["to_bus_ref"]
+
+
+def _first_gpz_line_field(snap: dict[str, Any]) -> dict[str, Any]:
+    gpz = next(s for s in snap["substations"] if s.get("station_type") == "gpz")
+    fallback = None
+    for spec in gpz.get("meta", {}).get("field_specs", []):
+        if str(spec.get("bay_role") or "").upper() in {"OUT", "FEEDER"}:
+            fallback = spec
+            meta = spec.get("meta")
+            if isinstance(meta, dict) and meta.get("terminal_bus_ref"):
+                return spec
+    if fallback is not None:
+        return fallback
+    raise AssertionError("GPZ nie ma pola liniowego SN")
 
 
 # ---------------------------------------------------------------------------
@@ -292,7 +317,14 @@ def test_endpoint_append_materializes_requested_station_sn_fields_without_splitt
 
     assert response.get("error") is None
     new_snap = response["snapshot"]
-    assert {branch["ref_id"] for branch in new_snap.get("branches", [])} == original_branch_refs
+    branch_refs_after = {branch["ref_id"] for branch in new_snap.get("branches", [])}
+    assert original_branch_refs.issubset(branch_refs_after)
+    field_apparatus_refs = {
+        branch["ref_id"]
+        for branch in new_snap.get("branches", [])
+        if "station_field_device" in (branch.get("tags") or [])
+    }
+    assert field_apparatus_refs
     sub = next(s for s in new_snap["substations"] if s["name"] == "Stacja Przelotowa")
     field_specs = sub.get("meta", {}).get("field_specs") or []
     assert {spec["field_role"] for spec in field_specs} == {
@@ -300,10 +332,160 @@ def test_endpoint_append_materializes_requested_station_sn_fields_without_splitt
         "LINIA_OUT",
         "TRANSFORMATOROWE",
     }
+    assert all(spec.get("bus_ref") == endpoint for spec in field_specs)
+    assert all(spec.get("equipment_refs") for spec in field_specs)
     station_bays = [bay for bay in new_snap.get("bays", []) if bay.get("substation_ref") == sub["ref_id"]]
     assert {bay["bay_role"] for bay in station_bays} >= {"IN", "OUT", "TR"}
+    assert all(bay.get("equipment_refs") for bay in station_bays)
     out_bay = next(bay for bay in station_bays if bay["bay_role"] == "OUT")
     assert out_bay["meta"]["sn_field_template"]["bay_template_ref"] == "tpl-line-out"
+
+
+def test_continue_trunk_from_gpz_field_uses_terminal_bus_and_updates_line_run() -> None:
+    """Pierwszy odcinek wychodzi z terminala pola SN, nie z szyny sekcji GPZ."""
+    snap = _empty_enm()
+    snap = op(snap, "add_grid_source_sn", {"voltage_kv": 15.0, "sk3_mva": 250.0})
+    field = _first_gpz_line_field(snap)
+    field_ref = field["field_ref"]
+    terminal_bus_ref = field["meta"]["terminal_bus_ref"]
+
+    response = execute_domain_operation(
+        snap,
+        "continue_trunk_segment_sn",
+        {
+            "field_ref": field_ref,
+            "segment": {
+                "rodzaj": "LINIA_NAPOWIETRZNA",
+                "dlugosc_m": 500.0,
+                "catalog_ref": CATALOG_LINE_70,
+            },
+        },
+    )
+
+    assert response.get("error") is None
+    new_snap = response["snapshot"]
+    branch_ref = next(
+        ref for ref in response["changes"]["created_element_ids"] if str(ref).startswith("seg/")
+    )
+    branch = next(branch for branch in new_snap["branches"] if branch["ref_id"] == branch_ref)
+    assert branch["from_bus_ref"] == terminal_bus_ref
+    assert branch["meta"]["origin_bay_ref"] == field_ref
+
+    corridor_ref = new_snap["corridors"][0]["ref_id"]
+    line_run = next(run for run in new_snap["line_runs"] if run["id"] == corridor_ref)
+    assert line_run["starting_bay_ref"] == field_ref
+    assert line_run["starting_port_ref"] == terminal_bus_ref
+    assert any(item["segment_ref"] == branch_ref for item in line_run["segments"])
+
+
+def test_continue_trunk_from_appended_station_uses_line_field_terminal_not_station_bus() -> None:
+    """Kolejny odcinek po stacji wychodzi z zacisku pola OUT, nie z szyny rozdzielnicy."""
+    snap, endpoint = _build_gpz_with_endpoint()
+    response = append_station_on_endpoint(snap, {
+        "endpoint_bus_ref": endpoint,
+        "run_ref": snap.get("corridors", [{}])[-1].get("ref_id"),
+        "station": {
+            "name": "Stacja Przelotowa 2",
+            "station_type": "inline",
+            "switchgear": {
+                "manufacturer_ref": "ZPUE_WLOSZCZOWA",
+                "switchgear_family_ref": "ZPUE_CANONICAL_RMU",
+            },
+        },
+        "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+        "nn_voltage_kv": 0.4,
+        "sn_fields": [
+            {
+                "field_role": "LINIA_IN",
+                "bay_kind": "liniowe_doplywowe",
+                "manufacturer_ref": "ZPUE_WLOSZCZOWA",
+                "switchgear_family_ref": "ZPUE_CANONICAL_RMU",
+                "bay_template_ref": "tpl-line-in",
+                "source_status": "canonical_fallback",
+                "source_refs": [],
+            },
+            {
+                "field_role": "LINIA_OUT",
+                "bay_kind": "liniowe_odplywowe",
+                "manufacturer_ref": "ZPUE_WLOSZCZOWA",
+                "switchgear_family_ref": "ZPUE_CANONICAL_RMU",
+                "bay_template_ref": "tpl-line-out",
+                "source_status": "canonical_fallback",
+                "source_refs": [],
+            },
+            {
+                "field_role": "TRANSFORMATOROWE",
+                "bay_kind": "transformatorowe",
+                "manufacturer_ref": "ZPUE_WLOSZCZOWA",
+                "switchgear_family_ref": "ZPUE_CANONICAL_RMU",
+                "bay_template_ref": "tpl-tr",
+                "source_status": "canonical_fallback",
+                "source_refs": [],
+            },
+        ],
+    })
+
+    assert response.get("error") is None
+    appended = response["snapshot"]
+    sub = next(s for s in appended["substations"] if s["name"] == "Stacja Przelotowa 2")
+    out_field = next(
+        spec
+        for spec in sub.get("meta", {}).get("field_specs", [])
+        if spec.get("field_role") == "LINIA_OUT"
+    )
+    main_bus_ref = out_field["meta"]["terminal_bus_ref"]
+    field_terminal_ref = out_field["meta"]["field_terminal_bus_ref"]
+    assert main_bus_ref == endpoint
+    assert field_terminal_ref != main_bus_ref
+
+    response_continue = execute_domain_operation(
+        appended,
+        "continue_trunk_segment_sn",
+        {
+            "field_ref": out_field["field_ref"],
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 250.0,
+                "catalog_ref": "cable-tfk-yakxs-3x120",
+            },
+        },
+    )
+
+    assert response_continue.get("error") is None
+    continued = response_continue["snapshot"]
+    branch_ref = next(
+        ref
+        for ref in response_continue["changes"]["created_element_ids"]
+        if str(ref).startswith("seg/")
+    )
+    branch = next(branch for branch in continued["branches"] if branch["ref_id"] == branch_ref)
+    assert branch["from_bus_ref"] == field_terminal_ref
+    assert branch["from_bus_ref"] != endpoint
+    assert branch["meta"]["origin_bay_ref"] == out_field["field_ref"]
+
+
+def test_endpoint_append_updates_existing_line_run_with_station() -> None:
+    """Stacja dodana z UI staje się węzłem ciągu SN w line_runs."""
+    snap, endpoint = _build_gpz_with_endpoint()
+    run_ref = snap["corridors"][-1]["ref_id"]
+
+    response = append_station_on_endpoint(
+        snap,
+        {
+            "endpoint_bus_ref": endpoint,
+            "run_ref": run_ref,
+            "station": {"name": "Stacja W Ciągu", "station_type": "inline"},
+            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "nn_voltage_kv": 0.4,
+        },
+    )
+
+    assert response.get("error") is None
+    new_snap = response["snapshot"]
+    sub = next(s for s in new_snap["substations"] if s["name"] == "Stacja W Ciągu")
+    line_run = next(run for run in new_snap["line_runs"] if run["id"] == run_ref)
+    assert line_run["segments"]
+    assert any(item["substation_ref"] == sub["ref_id"] for item in line_run["stations"])
 
 
 # ---------------------------------------------------------------------------

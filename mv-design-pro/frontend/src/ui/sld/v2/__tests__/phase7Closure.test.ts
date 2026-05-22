@@ -176,7 +176,7 @@ describe('Phase 7 closure — LayoutStrategyDispatch + CadOverlay integration', 
     expect(result.strategy).toBe('corridor');
     // cadCorridorBands valid dla CadOverlay
     for (const band of result.cadCorridorBands) {
-      expect(['gpz', 'feeder', 'branch', 'ring-return', 'label-zone']).toContain(band.kind);
+      expect(['gpz', 'main-trunk', 'branch', 'ring-return', 'der-connection', 'label-reserve']).toContain(band.kind);
       expect(band.yMax).toBeGreaterThan(band.yMin);
     }
   });

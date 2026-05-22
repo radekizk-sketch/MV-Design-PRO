@@ -140,6 +140,37 @@ class TestProjectsCRUD:
         assert resp.status_code == 200
         assert resp.json()["name"] == "Get Me"
 
+    def test_update_project_metadata(self, app_client):
+        """PATCH /api/projects/{id} — zapis metadanych projektu"""
+        create_resp = app_client.post(
+            "/api/projects",
+            json={"name": "Projekt pierwotny", "description": "Opis A"},
+        )
+        project_id = create_resp.json()["id"]
+
+        resp = app_client.patch(
+            f"/api/projects/{project_id}",
+            json={"name": "Projekt po audycie", "description": "Opis B"},
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["name"] == "Projekt po audycie"
+        assert data["description"] == "Opis B"
+
+        get_resp = app_client.get(f"/api/projects/{project_id}")
+        assert get_resp.status_code == 200
+        assert get_resp.json()["name"] == "Projekt po audycie"
+
+    def test_update_project_rejects_blank_name(self, app_client):
+        """PATCH /api/projects/{id} — pusta nazwa jest odrzucana"""
+        create_resp = app_client.post("/api/projects", json={"name": "Projekt"})
+        project_id = create_resp.json()["id"]
+
+        resp = app_client.patch(f"/api/projects/{project_id}", json={"name": "   "})
+
+        assert resp.status_code == 422
+
     def test_get_project_not_found(self, app_client):
         """GET /api/projects/{id} — nieistniejący projekt"""
         fake_id = str(uuid4())

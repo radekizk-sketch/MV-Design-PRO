@@ -41,6 +41,12 @@ const STATUS_CLASS: Record<'gotowe' | 'częściowe' | 'brak danych', string> = {
   'brak danych': 'text-status-error',
 };
 
+const STATUS_LABEL: Record<'gotowe' | 'częściowe' | 'brak danych', string> = {
+  gotowe: 'gotowe',
+  'częściowe': 'do konfiguracji',
+  'brak danych': 'do konfiguracji',
+};
+
 /**
  * Helper: filtruje TAP_CHANGER_CATALOG po napięciach pierwotnym/wtórnym
  * transformatora. 110/SN → transformer_110_15 lub transformer_110_20.
@@ -78,7 +84,9 @@ export function StationConfigTransformerCard(
       )}
 
       {transformers.length === 0 ? (
-        <div className="italic text-scada-muted">Brak transformatorów w stacji.</div>
+        <div className="italic text-scada-muted">
+          Transformator SN/nN dobiera się z wariantu stacji albo z katalogu transformatorów.
+        </div>
       ) : (
         transformers.map((tr) => (
           <div
@@ -198,15 +206,17 @@ export function StationConfigTransformerCard(
               <div className="col-span-2 mt-1 grid grid-cols-3 gap-1 text-[10px]">
                 <div>
                   <span className="text-scada-muted">Zwarcia: </span>
-                  <span className={STATUS_CLASS[tr.statusForSc]}>{tr.statusForSc}</span>
+                  <span className={STATUS_CLASS[tr.statusForSc]}>{STATUS_LABEL[tr.statusForSc]}</span>
                 </div>
                 <div>
                   <span className="text-scada-muted">Rozpływ: </span>
-                  <span className={STATUS_CLASS[tr.statusForPf]}>{tr.statusForPf}</span>
+                  <span className={STATUS_CLASS[tr.statusForPf]}>{STATUS_LABEL[tr.statusForPf]}</span>
                 </div>
                 <div>
                   <span className="text-scada-muted">Asymetria: </span>
-                  <span className={STATUS_CLASS[tr.statusForAsymmetry]}>{tr.statusForAsymmetry}</span>
+                  <span className={STATUS_CLASS[tr.statusForAsymmetry]}>
+                    {STATUS_LABEL[tr.statusForAsymmetry]}
+                  </span>
                 </div>
               </div>
             </div>

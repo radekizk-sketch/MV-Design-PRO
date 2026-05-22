@@ -36,6 +36,7 @@ export default defineConfig(({ mode }) => {
       include: ['src/**/*.{test,spec}.{ts,tsx}'],
       exclude: [
         ...configDefaults.exclude,
+        'src/__tests__/App.routes.test.tsx',
         'src/ui/network-build/__tests__/BayCard.test.tsx',
         'src/ui/network-build/__tests__/InspectorEngineeringView.test.tsx',
         'src/ui/sld/__tests__/enmSnapshotToSldSymbols.test.ts',

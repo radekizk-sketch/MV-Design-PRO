@@ -148,7 +148,7 @@ export function AddNnLoadForm() {
 
   const handleSubmit = useCallback(async () => {
     if (!activeCaseId) {
-      setError('Brak aktywnego przypadku obliczeniowego.');
+      setError('Wybierz zakres obliczeń przed zapisem odbioru nN.');
       return;
     }
     if (!busNnRef) {
@@ -273,7 +273,7 @@ export function AddNnLoadForm() {
 
         {feederOptions.length === 0 && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-800">
-            <div className="font-semibold">Brak odpływu nN</div>
+            <div className="font-semibold">Odpływ nN do konfiguracji</div>
             <div className="mt-1">
               Aby dodać odbiór, najpierw utwórz odpływ na wybranej szynie nN.
             </div>

@@ -5,6 +5,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { useAppStateStore } from '../../../app-state/store';
 import { EMPTY_DER_READINESS, useStationDerStore } from '../../../network-build/station-der';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { BessSurface, FwSurface, PvSourceSurface } from '../DerSurfaces';
@@ -32,6 +33,7 @@ function makeSurface(entityRef: string | null, payload: Record<string, unknown> 
 
 describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
   beforeEach(() => {
+    useAppStateStore.getState().reset();
     useStationDerStore.getState().reset();
     useSnapshotStore.getState().reset();
   });
@@ -39,7 +41,7 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
   it('PvSourceSurface (E-21) bez entityRef pokazuje empty state', () => {
     render(<PvSourceSurface surface={makeSurface(null)} />);
     expect(screen.getByTestId('pv-source-surface')).toBeInTheDocument();
-    expect(screen.getByText(/Brak referencji do źródła OZE/)).toBeInTheDocument();
+    expect(screen.getByText(/Wybierz układ PV\/BESS\/FW/)).toBeInTheDocument();
   });
 
   it('PvSourceSurface pokazuje zaawansowaną konfigurację falownika i profili', () => {
@@ -115,6 +117,9 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
   });
 
   it('PvSourceSurface odtwarza DER z ENM snapshot po odświeżeniu lokalnego store', () => {
+    useAppStateStore
+      .getState()
+      .setActiveProject('70a99b32-abb8-4249-bf17-96f6d85183b9', '70a99b32-abb8-4249-bf17-96f6d85183b9');
     useSnapshotStore.setState({
       snapshot: {
         header: {
@@ -158,10 +163,10 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
           {
             id: 'station_snapshot',
             ref_id: 'station_snapshot',
-            name: 'ST Snapshot',
+            name: 'Stacja inline',
             tags: [],
             meta: {},
-            station_type: 'mv_lv',
+            station_type: 'inline',
             bus_refs: ['bus_lv_1'],
             transformer_refs: [],
           },
@@ -183,6 +188,160 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(screen.getAllByText('500 kW').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Huawei SUN2000-185KTL/).length).toBeGreaterThan(0);
     expect(screen.queryByText('pv_inv_huawei_185')).not.toBeInTheDocument();
+    expect(screen.getByTestId('der-breadcrumb')).toHaveTextContent('S01 · stacja przelotowa');
+    expect(screen.getByTestId('der-breadcrumb')).not.toHaveTextContent('Stacja inline');
+    expect(screen.getByTestId('der-breadcrumb')).not.toHaveTextContent('70a99b32');
+  });
+
+  it('PvSourceSurface pokazuje transformator blokowy dla przyłączenia dedykowanego ze snapshotu', () => {
+    useSnapshotStore.setState({
+      snapshot: {
+        header: {
+          enm_version: '1.0',
+          name: 'Model testowy',
+          created_at: FROZEN_NOW,
+          updated_at: FROZEN_NOW,
+          revision: 1,
+          hash_sha256: 'hash',
+          defaults: { frequency_hz: 50, unit_system: 'SI' },
+        },
+        buses: [],
+        branches: [],
+        transformers: [
+          {
+            id: 'tr_block_pv',
+            ref_id: 'tr_block_pv',
+            name: 'TR blokowy PV',
+            tags: [],
+            meta: {},
+            hv_bus_ref: 'bus_sn_pcc',
+            lv_bus_ref: 'bus_pv_069',
+            sn_mva: 1.25,
+            uhv_kv: 15,
+            ulv_kv: 0.69,
+            uk_percent: 6,
+            pk_kw: 12,
+            vector_group: 'Dyn5',
+          },
+        ],
+        sources: [],
+        loads: [],
+        generators: [
+          {
+            id: 'gen_pv_block',
+            ref_id: 'gen_pv_block',
+            name: 'PV S02',
+            tags: [],
+            meta: {},
+            bus_ref: 'bus_pv_069',
+            p_mw: 1,
+            gen_type: 'pv_inverter',
+            catalog_ref: 'pv_inv_system_1000',
+            station_ref: 'station_snapshot',
+            connection_variant: 'block_transformer',
+            blocking_transformer_ref: 'tr_block_pv',
+            materialized_params: {
+              profiles: {
+                nc_rfg_profile_ref: 'ncrfg_pse',
+                lvrt_curve_ref: 'lvrt_pse_b',
+                hvrt_curve_ref: 'hvrt_pse_b',
+                pf_curve_ref: 'pf_pse_2024',
+              },
+            },
+          },
+        ],
+        substations: [
+          {
+            id: 'station_snapshot',
+            ref_id: 'station_snapshot',
+            name: 'Stacja SN/nN 2',
+            tags: [],
+            meta: {},
+            station_type: 'inline',
+            bus_refs: ['bus_sn_pcc'],
+            transformer_refs: [],
+          },
+        ],
+        bays: [],
+        junctions: [],
+        corridors: [],
+        measurements: [],
+        protection_assignments: [],
+      },
+    } as never);
+
+    render(<PvSourceSurface surface={makeSurface('gen_pv_block')} />);
+
+    const text = screen.getByTestId('pv-source-surface').textContent ?? '';
+    expect(text).toContain('PV S02');
+    expect(text).toContain('Pakiet katalogowy PV 1000');
+    expect(text).toContain('TR blokowy 15/0,69 kV 1250 kVA Dyn5');
+    expect(text).not.toMatch(/\b250 kVA[\s\S]{0,140}1000 kW|1000 kW[\s\S]{0,140}\b250 kVA/);
+  });
+
+  it('PvSourceSurface migruje legacy generator bez catalog_ref do pakietu katalogowego', () => {
+    useSnapshotStore.setState({
+      snapshot: {
+        header: {
+          enm_version: '1.0',
+          name: 'Model testowy',
+          created_at: FROZEN_NOW,
+          updated_at: FROZEN_NOW,
+          revision: 1,
+          hash_sha256: 'hash',
+          defaults: { frequency_hz: 50, unit_system: 'SI' },
+        },
+        buses: [],
+        branches: [],
+        transformers: [],
+        sources: [],
+        loads: [],
+        generators: [
+          {
+            id: 'gen_pv_legacy',
+            ref_id: 'gen_pv_legacy',
+            name: 'Blok PV legacy',
+            tags: [],
+            meta: {},
+            bus_ref: 'bus_lv_1',
+            p_mw: 1,
+            gen_type: 'pv_inverter',
+            catalog_ref: 'legacy_unknown_catalog_ref',
+            station_ref: 'station_legacy',
+            connection_variant: 'nn_side',
+            materialized_params: {},
+          },
+        ],
+        substations: [
+          {
+            id: 'station_legacy',
+            ref_id: 'station_legacy',
+            name: 'Stacja inline',
+            tags: [],
+            meta: {},
+            station_type: 'inline',
+            bus_refs: ['bus_lv_1'],
+            transformer_refs: [],
+          },
+        ],
+        bays: [],
+        junctions: [],
+        corridors: [],
+        measurements: [],
+        protection_assignments: [],
+      },
+    } as never);
+
+    render(<PvSourceSurface surface={makeSurface('gen_pv_legacy')} />);
+
+    expect(screen.getAllByText('Blok PV legacy').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Pakiet katalogowy PV 1000/).length).toBeGreaterThan(0);
+    expect(screen.getByText('certyfikat PTPiREE z pakietu katalogowego')).toBeInTheDocument();
+    expect(document.body.textContent ?? '').not.toMatch(/wybierz wariant katalogowy|wybierz certyfikat PTPiREE|wymaga wariantu katalogowego/i);
+
+    fireEvent.click(screen.getByTestId('der-card-tab-readiness'));
+    expect(screen.getByText('Kompletność konfiguracji')).toBeInTheDocument();
+    expect(screen.getByText('kompletna konfiguracja')).toBeInTheDocument();
   });
 
   it('PvSourceSurface nie gubi falownika przekazanego z SLD, gdy snapshot nie ma jeszcze generatora', () => {
@@ -195,7 +354,8 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(screen.getAllByText('Falownik PV 0.5 MW / 0.4 kV nN').length).toBeGreaterThan(0);
     expect(screen.queryByText(/Brak referencji/)).not.toBeInTheDocument();
     expect(screen.getByText(/Falownik wybrany na schemacie/)).toBeInTheDocument();
-    expect(screen.getByText(/brakuje pełnego wpisu OZE/)).toBeInTheDocument();
+    expect(screen.getByText(/wymaga przypisania kompletnego pakietu/)).toBeInTheDocument();
+    expect(document.body.textContent ?? '').not.toMatch(/brak danych|brak certyfikatu|brak danych katalogowych/i);
     expect(document.body.textContent ?? '').not.toMatch(/Ĺ|Ä|Ă|Â|â€|�/);
     expect(screen.getByText('Falownik z katalogu')).toBeInTheDocument();
     expect(screen.getByText('Regulacja PV')).toBeInTheDocument();
@@ -203,7 +363,7 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     fireEvent.click(screen.getByTestId('der-card-tab-inverters'));
     fireEvent.click(screen.getAllByText('zastosuj')[0]);
     expect(screen.getByText('wybrano')).toBeInTheDocument();
-    expect(screen.getByText('Gotowość obliczeń')).toBeInTheDocument();
+    expect(screen.getByText('Zakres obliczeń')).toBeInTheDocument();
   });
 
   it('BessSurface (E-22) renderuje konfigurator PCS BESS z katalogiem i profilem', () => {

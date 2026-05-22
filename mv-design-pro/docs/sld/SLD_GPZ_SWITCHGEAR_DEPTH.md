@@ -115,7 +115,7 @@ Wszystkie kolory zaznaczenia używają tokenu `COLOR_SELECTION` z `theme/tokens.
 
 ## 9. Testy (Phase 0A)
 
-- `renderer/__tests__/gpzCompactBlock.test.tsx` — 21 cases:
+- `renderer/__tests__/gpzCompactBlock.test.tsx` — 22 cases:
   - Back-compat data attrs.
   - Tor 110 kV + TR + szyny SN + odpływy.
   - Countery sterują geometrią (transformerCount × mvSectionCount × outgoingBayCount).
@@ -636,7 +636,7 @@ Phase 0B sprint dokończył **wszystkie 6 punktów end-to-end bez placeholderów
 
 ### Commit 18 (Phase 0B-6) — LOD histereza runtime test integration
 
-- Test `SldCanvasV2.lodIntegration.test.tsx` — 10 cases z `vi.useFakeTimers`:
+- Test `SldCanvasV2.lodIntegration.test.tsx` — 12 cases z `vi.useFakeTimers`:
   - Inicjalny render data-lod=2 dla scale=1.0.
   - lodOverride prop omija LodController.
   - 5× zoom in (scale ~1.61) w deadband 1.5*1.15=1.725 → LOD STABILNY 2.

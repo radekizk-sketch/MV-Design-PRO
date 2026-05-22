@@ -1,4 +1,5 @@
 import type { EnergyNetworkModel } from '../../../types/enm';
+import { stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 
 type Context = Record<string, unknown> | undefined;
 type LegacyBay = EnergyNetworkModel['bays'][number];
@@ -508,7 +509,11 @@ export function stationLabel(
   snapshot: EnergyNetworkModel | null,
   stationRef: string | null | undefined,
 ): string {
-  return findStation(snapshot, stationRef)?.name ?? stationRef ?? '-';
+  const station = findStation(snapshot, stationRef);
+  if (!snapshot || !station) {
+    return stationRef ?? '-';
+  }
+  return stationPublicIdentity(snapshot, station).displayName;
 }
 
 export function listNnBusOptions(

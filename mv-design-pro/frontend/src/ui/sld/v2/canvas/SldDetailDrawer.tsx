@@ -20,11 +20,13 @@
  *   - Settings + state telemetry
  *
  * DER:
- *   - 6 tabs (Typ / Moc / Punkt / Inverter / NC RfG / Protection)
+ *   - 6 tabs (Typ / Moc / Punkt / Falownik / NC RfG / Zabezpieczenia)
  */
 
 import type { JSX } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useForm, type FieldError, type FieldErrors, type Resolver, type UseFormReturn } from 'react-hook-form';
+import { z } from 'zod';
 
 export type SldDetailKind = 'station' | 'bay' | 'apparatus' | 'der' | 'cable_run' | null;
 
@@ -61,6 +63,8 @@ export interface SldDetailDrawerData {
     readonly bayNumber: string | null;
     readonly feederShortName: string | null;
   }>;
+  /** Opis układu rozdzielnicy SN dla stacji, gdy snapshot nie zawiera listy pól. */
+  readonly switchgearDescription?: string | null;
   /** K30-81: nN side spec dla "Strona nN" tab. */
   readonly nnSpec?: {
     readonly busVoltageKv: number | null;
@@ -123,6 +127,25 @@ export interface SldDetailDrawerData {
   } | null;
 }
 
+export type SldDerKind = 'PV' | 'BESS' | 'FW';
+export type SldDerConnectionVariant = 'nn_side' | 'sn_side' | 'dedicated';
+export type SldNcRfgModule = 'A' | 'B' | 'C' | 'D';
+
+export interface SldDerConfigFormValues {
+  derKind: SldDerKind;
+  powerMw: number;
+  connectionVariant: SldDerConnectionVariant;
+  pointVoltageKv: number;
+  inverterCatalogRef: string;
+  ncRfgModule: SldNcRfgModule;
+}
+
+export interface SldDetailDrawerSavePayload {
+  readonly kind: SldDetailKind;
+  readonly elementId: string | null;
+  readonly derConfig?: SldDerConfigFormValues;
+}
+
 export interface SldDetailDrawerProps {
   readonly open: boolean;
   readonly data: SldDetailDrawerData | null;
@@ -131,7 +154,7 @@ export interface SldDetailDrawerProps {
   readonly width?: number;
   /** K30-87: optional save handler — gdy podany, renderuje "Zapisz" CTA w
    *  footer. Brak handler → footer ukryty. */
-  readonly onSave?: () => void;
+  readonly onSave?: (payload: SldDetailDrawerSavePayload) => void | Promise<void>;
   /** K30-91: optional "Otwórz pełny widok" handler — gdy podany, renderuje
    *  CTA w drawer toolbar (sub-header pod tabs). Typowo dla station/bay
    *  otwiera drill-down (StationInternalView / pole edit). */
@@ -142,7 +165,7 @@ const STATION_TABS = [
   { id: 'rozdzielnica', label: 'Rozdzielnica SN' },
   { id: 'transformator', label: 'Transformator' },
   { id: 'nn', label: 'Strona nN' },
-  { id: 'der', label: 'DER (PV/BESS/FW)' },
+  { id: 'der', label: 'Układy PV/BESS/FW' },
 ] as const;
 
 const BAY_TABS = [
@@ -159,9 +182,9 @@ const DER_TABS = [
   { id: 'typ', label: 'Typ' },
   { id: 'moc', label: 'Moc znamionowa' },
   { id: 'punkt', label: 'Punkt podłączenia' },
-  { id: 'inverter', label: 'Inverter' },
+  { id: 'inverter', label: 'Falownik' },
   { id: 'rfg', label: 'NC RfG' },
-  { id: 'protection', label: 'Zabezpieczenia DER' },
+  { id: 'protection', label: 'Zabezpieczenia źródła' },
 ] as const;
 
 const CABLE_RUN_TABS = [
@@ -169,6 +192,142 @@ const CABLE_RUN_TABS = [
   { id: 'parametry', label: 'Parametry' },
   { id: 'spadek', label: 'Spadek napięcia' },
 ] as const;
+
+type ExistingDer = NonNullable<SldDetailDrawerData['existingDers']>[number];
+
+function derKindPublicName(kind: ExistingDer['kind']): string {
+  if (kind === 'PV') return 'Układ fotowoltaiczny';
+  if (kind === 'BESS') return 'Magazyn energii';
+  if (kind === 'FW') return 'Źródło wiatrowe';
+  return 'Źródło DER';
+}
+
+function isInternalDerName(value: string | null | undefined): boolean {
+  if (!value) return true;
+  const trimmed = value.trim();
+  return /^(?:blok\s*)?(?:PV|BESS|FW)$/i.test(trimmed)
+    || /\b(?:seg|gpz|stn|bay|bus|src)\/[a-z0-9/_#-]{12,}/i.test(trimmed)
+    || /\b[0-9a-f]{24,}\b/i.test(trimmed);
+}
+
+function formatExistingDerName(der: ExistingDer, index: number): string {
+  if (!isInternalDerName(der.name)) return der.name!.trim();
+  return `${derKindPublicName(der.kind)} ${String(index + 1).padStart(2, '0')}`;
+}
+
+function formatMwPl(value: number): string {
+  return `${value.toFixed(2).replace('.', ',')} MW`;
+}
+
+function formatTechnicalNumberPl(value: number, maximumFractionDigits = 2): string {
+  return new Intl.NumberFormat('pl-PL', { maximumFractionDigits }).format(value);
+}
+
+function formatKvPl(value: number): string {
+  return `${formatTechnicalNumberPl(value)} kV`;
+}
+
+function formatKwPl(value: number): string {
+  return `${formatTechnicalNumberPl(value, 1)} kW`;
+}
+
+function formatKvarPl(value: number): string {
+  return `${formatTechnicalNumberPl(value, 1)} kvar`;
+}
+
+const DER_CATALOG_OPTIONS: Readonly<
+  Record<SldDerKind, Record<'nn' | 'sn', ReadonlyArray<{ value: string; label: string }>>>
+> = {
+  PV: {
+    nn: [
+      { value: 'conv-pv-nn-0p5mw-0p4kv', label: 'Falownik PV 0,5 MW / 0,4 kV nN' },
+      { value: 'conv-pv-nn-1mw-0p4kv', label: 'Falownik PV 1 MW / 0,4 kV nN' },
+      { value: 'conv-pv-nn-2mw-0p4kv', label: 'Falownik PV 2 MW / 0,4 kV nN' },
+    ],
+    sn: [
+      { value: 'conv-pv-0.5mw-15kv', label: 'Farma PV 0,5 MW / 15 kV' },
+      { value: 'conv-pv-1mw-15kv', label: 'Farma PV 1 MW / 15 kV' },
+      { value: 'conv-pv-2mw-15kv', label: 'Farma PV 2 MW / 15 kV' },
+    ],
+  },
+  BESS: {
+    nn: [
+      { value: 'conv-bess-nn-0p5mw-0p4kv', label: 'PCS BESS 0,5 MW / 0,4 kV nN' },
+      { value: 'conv-bess-nn-1mw-0p4kv', label: 'PCS BESS 1 MW / 0,4 kV nN' },
+      { value: 'conv-bess-nn-2mw-0p4kv', label: 'PCS BESS 2 MW / 0,4 kV nN' },
+    ],
+    sn: [
+      { value: 'conv-bess-0.5mw-1mwh-15kv', label: 'BESS 0,5 MW / 1 MWh / 15 kV' },
+      { value: 'conv-bess-1mw-2mwh-15kv', label: 'BESS 1 MW / 2 MWh / 15 kV' },
+      { value: 'conv-bess-2mw-4mwh-15kv', label: 'BESS 2 MW / 4 MWh / 15 kV' },
+    ],
+  },
+  FW: {
+    nn: [
+      { value: 'conv-wind-nn-2mw-0p4kv', label: 'Falownik FW 2 MW / 0,4 kV nN' },
+      { value: 'conv-wind-nn-3mw-0p4kv', label: 'Falownik FW 3 MW / 0,4 kV nN' },
+      { value: 'conv-wind-nn-5mw-0p4kv', label: 'Falownik FW 5 MW / 0,4 kV nN' },
+    ],
+    sn: [
+      { value: 'conv-wind-2mw-15kv', label: 'Turbina wiatrowa 2 MW / 15 kV' },
+      { value: 'conv-wind-3mw-15kv', label: 'Turbina wiatrowa 3 MW / 15 kV' },
+      { value: 'conv-wind-4mw-20kv', label: 'Turbina wiatrowa 4 MW / 20 kV' },
+    ],
+  },
+};
+
+const sldDerConfigSchema = z.object({
+  derKind: z.enum(['PV', 'BESS', 'FW']),
+  powerMw: z.coerce
+    .number({ invalid_type_error: 'Podaj moc czynną DER w MW.' })
+    .min(0.1, 'Moc czynna DER musi być nie mniejsza niż 0,1 MW.')
+    .max(10, 'Moc czynna DER musi być nie większa niż 10 MW.'),
+  connectionVariant: z.enum(['nn_side', 'sn_side', 'dedicated']),
+  pointVoltageKv: z.coerce.number().positive('Napięcie punktu przyłączenia musi być dodatnie.'),
+  inverterCatalogRef: z.string().min(1, 'Wybierz typ przekształtnika z katalogu.'),
+  ncRfgModule: z.enum(['A', 'B', 'C', 'D']),
+}).superRefine((value, ctx) => {
+  if (value.connectionVariant === 'nn_side' && value.pointVoltageKv >= 1) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['connectionVariant'],
+      message: 'Wariant nN wymaga punktu przyłączenia poniżej 1 kV.',
+    });
+  }
+  if (value.connectionVariant !== 'nn_side' && value.pointVoltageKv < 1) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['connectionVariant'],
+      message: 'Wariant SN wymaga punktu przyłączenia co najmniej 1 kV.',
+    });
+  }
+});
+
+function zodIssuesToFormErrors(
+  error: z.ZodError<SldDerConfigFormValues>,
+): FieldErrors<SldDerConfigFormValues> {
+  const errors: FieldErrors<SldDerConfigFormValues> = {};
+  for (const issue of error.issues) {
+    const fieldName = issue.path[0] as keyof SldDerConfigFormValues | undefined;
+    if (!fieldName || errors[fieldName]) continue;
+    errors[fieldName] = {
+      type: issue.code,
+      message: issue.message,
+    } as FieldError;
+  }
+  return errors;
+}
+
+const sldDerConfigResolver: Resolver<SldDerConfigFormValues> = async (values) => {
+  const parsed = sldDerConfigSchema.safeParse(values);
+  if (parsed.success) {
+    return { values: parsed.data, errors: {} };
+  }
+  return {
+    values: {},
+    errors: zodIssuesToFormErrors(parsed.error),
+  };
+};
 
 function tabsForKind(kind: SldDetailKind): readonly { id: string; label: string }[] {
   if (kind === 'station') return STATION_TABS;
@@ -179,10 +338,66 @@ function tabsForKind(kind: SldDetailKind): readonly { id: string; label: string 
   return [];
 }
 
+function pointVoltageForVariant(
+  variant: SldDerConnectionVariant,
+  stationVoltageKv: number | null | undefined,
+): number {
+  if (variant === 'nn_side') return 0.4;
+  return stationVoltageKv != null && stationVoltageKv >= 1 ? stationVoltageKv : 15;
+}
+
+function catalogSideForVariant(variant: SldDerConnectionVariant): 'nn' | 'sn' {
+  return variant === 'nn_side' ? 'nn' : 'sn';
+}
+
+function getDerCatalogOptions(
+  kind: SldDerKind,
+  variant: SldDerConnectionVariant,
+): ReadonlyArray<{ value: string; label: string }> {
+  return DER_CATALOG_OPTIONS[kind][catalogSideForVariant(variant)];
+}
+
+function defaultDerPowerMw(kind: SldDerKind): number {
+  if (kind === 'BESS') return 0.5;
+  if (kind === 'FW') return 2.0;
+  return 0.5;
+}
+
+function makeDefaultDerFormValues(data: SldDetailDrawerData | null): SldDerConfigFormValues {
+  const derKind = data?.derKind ?? 'PV';
+  const connectionVariant = data?.derConnectionVariant ?? 'nn_side';
+  return {
+    derKind,
+    powerMw: defaultDerPowerMw(derKind),
+    connectionVariant,
+    pointVoltageKv: pointVoltageForVariant(connectionVariant, data?.voltageKv),
+    inverterCatalogRef: getDerCatalogOptions(derKind, connectionVariant)[0]?.value ?? '',
+    ncRfgModule: 'A',
+  };
+}
+
+function firstDerFormError(errors: FieldErrors<SldDerConfigFormValues>): string | null {
+  return errors.powerMw?.message?.toString()
+    ?? errors.connectionVariant?.message?.toString()
+    ?? errors.pointVoltageKv?.message?.toString()
+    ?? errors.inverterCatalogRef?.message?.toString()
+    ?? errors.derKind?.message?.toString()
+    ?? errors.ncRfgModule?.message?.toString()
+    ?? null;
+}
+
 export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null {
   const { open, data, onClose, width = 360, onSave, onOpenFullView } = props;
   const tabs = tabsForKind(data?.kind ?? null);
   const [activeTab, setActiveTab] = useState<string>(tabs[0]?.id ?? '');
+  const derForm = useForm<SldDerConfigFormValues>({
+    resolver: sldDerConfigResolver,
+    mode: 'onChange',
+    defaultValues: makeDefaultDerFormValues(data),
+  });
+  const watchedDerKind = derForm.watch('derKind');
+  const watchedConnectionVariant = derForm.watch('connectionVariant');
+  const saveError = data?.kind === 'der' ? firstDerFormError(derForm.formState.errors) : null;
   // K30-96: auto-focus close button when drawer opens (ARIA dialog pattern)
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
@@ -194,6 +409,41 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
       lastFocusedRef.current?.focus?.();
     };
   }, [open, data?.elementId]);
+
+  useEffect(() => {
+    if (!open || data?.kind !== 'der') return;
+    derForm.reset(makeDefaultDerFormValues(data));
+  }, [open, data?.elementId, data?.kind, data?.derKind, data?.derConnectionVariant, data?.voltageKv, derForm]);
+
+  useEffect(() => {
+    if (!open || data?.kind !== 'der') return;
+    const nextPointVoltage = pointVoltageForVariant(watchedConnectionVariant, data.voltageKv);
+    if (derForm.getValues('pointVoltageKv') !== nextPointVoltage) {
+      derForm.setValue('pointVoltageKv', nextPointVoltage, { shouldValidate: true });
+    }
+
+    const options = getDerCatalogOptions(watchedDerKind, watchedConnectionVariant);
+    const currentCatalogRef = derForm.getValues('inverterCatalogRef');
+    if (!options.some((option) => option.value === currentCatalogRef)) {
+      derForm.setValue('inverterCatalogRef', options[0]?.value ?? '', { shouldValidate: true });
+    }
+  }, [open, data?.kind, data?.voltageKv, watchedDerKind, watchedConnectionVariant, derForm]);
+
+  const handleSaveClick = useCallback(() => {
+    if (!onSave || !data) return;
+    if (data.kind === 'der') {
+      void derForm.handleSubmit(async (values) => {
+        await onSave({
+          kind: data.kind,
+          elementId: data.elementId,
+          derConfig: values,
+        });
+      })();
+      return;
+    }
+
+    void Promise.resolve(onSave({ kind: data.kind, elementId: data.elementId }));
+  }, [data, derForm, onSave]);
 
   // K30-88: Escape key closes drawer
   // K30-90: ArrowLeft/ArrowRight navigate tabs
@@ -228,13 +478,15 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
 
   // Reset active tab when data.kind changes
   const currentTab = tabs.find((t) => t.id === activeTab) ? activeTab : tabs[0].id;
+  const showFooter = Boolean(onSave && data.kind === 'der');
 
   const accent = data.accentColor ?? '#7EC8FF';
+  const visibleLabel = detailDisplayLabel(data);
 
   return (
     <div
       role="dialog"
-      aria-label={`Detal: ${data.label ?? data.elementId ?? 'element'}`}
+      aria-label={`Detal: ${visibleLabel}`}
       data-testid="sld-v2-detail-drawer"
       data-element-kind={data.kind}
       data-element-id={data.elementId ?? ''}
@@ -278,7 +530,7 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
             </div>
           )}
           <div data-testid="sld-v2-detail-drawer-label" style={{ fontSize: 16, fontWeight: 800, color: accent, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>{data.label ?? data.elementId ?? 'Element'}</span>
+            <span>{visibleLabel}</span>
             {data.alarmSeverity && (
               <span
                 data-testid="sld-v2-detail-drawer-alarm-badge"
@@ -445,11 +697,11 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           fontSize: 11,
         }}
       >
-        <TabContent kind={data.kind} tab={currentTab} data={data} />
+        <TabContent kind={data.kind} tab={currentTab} data={data} derForm={derForm} />
       </div>
 
       {/* K30-87: footer with Save/Cancel CTA (gdy onSave podany) */}
-      {onSave && (
+      {showFooter && (
         <div
           data-testid="sld-v2-detail-drawer-footer"
           style={{
@@ -481,7 +733,8 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           <button
             type="button"
             data-testid="sld-v2-detail-drawer-save"
-            onClick={onSave}
+            onClick={handleSaveClick}
+            disabled={derForm.formState.isSubmitting}
             style={{
               background: accent,
               border: `1px solid ${accent}`,
@@ -490,11 +743,25 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
               borderRadius: 3,
               fontSize: 11,
               fontWeight: 800,
-              cursor: 'pointer',
+              cursor: derForm.formState.isSubmitting ? 'wait' : 'pointer',
+              opacity: derForm.formState.isSubmitting ? 0.75 : 1,
             }}
           >
             Zapisz
           </button>
+          {saveError && (
+            <span
+              data-testid="sld-v2-detail-drawer-save-error"
+              style={{
+                alignSelf: 'center',
+                color: '#F25F5F',
+                fontSize: 10,
+                marginRight: 'auto',
+              }}
+            >
+              {saveError}
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -512,31 +779,55 @@ function kindLabel(kind: SldDetailKind): string {
   }
 }
 
+const INTERNAL_REF_PATTERN = /\b(?:stn|seg|gpz|bus|bay|pv|bess|fw|source)\/[^\s]+/i;
+
+function isPublicEngineeringLabel(value: string | null | undefined): value is string {
+  return Boolean(value && !INTERNAL_REF_PATTERN.test(value));
+}
+
+function detailDisplayLabel(data: SldDetailDrawerData): string {
+  if (data.kind === 'station' && data.stationCode) return data.stationCode;
+  if (isPublicEngineeringLabel(data.label)) return data.label;
+  return kindLabel(data.kind);
+}
+
+function detailObjectContext(data: SldDetailDrawerData): string {
+  if (data.kind === 'station') {
+    return data.stationCode ? `Stacja ${data.stationCode}` : 'Stacja SN/nN';
+  }
+  if (data.kind === 'bay') return isPublicEngineeringLabel(data.label) ? data.label : 'Pole SN';
+  if (data.kind === 'apparatus') return isPublicEngineeringLabel(data.label) ? data.label : 'Aparat pola';
+  if (data.kind === 'der') return isPublicEngineeringLabel(data.label) ? data.label : 'Źródło przyłączone';
+  if (data.kind === 'cable_run') return isPublicEngineeringLabel(data.label) ? data.label : 'Ciąg SN';
+  return 'Układ elektroenergetyczny';
+}
+
 interface TabContentProps {
   readonly kind: SldDetailKind;
   readonly tab: string;
   readonly data: SldDetailDrawerData;
+  readonly derForm: UseFormReturn<SldDerConfigFormValues>;
 }
 
-function TabContent({ kind, tab, data }: TabContentProps): JSX.Element {
+function TabContent({ kind, tab, data, derForm }: TabContentProps): JSX.Element {
   return (
     <div data-testid={`sld-v2-detail-drawer-tab-content-${tab}`}>
       <div style={{ color: '#7E8790', fontStyle: 'italic', marginBottom: 12 }}>
-        Element: {data.elementId ?? '—'}
+        Układ: {detailObjectContext(data)}
       </div>
       <PlaceholderTabBody
         kind={kind}
         tab={tab}
         voltageKv={data.voltageKv ?? null}
-        derKind={data.derKind}
-        derConnectionVariant={data.derConnectionVariant}
         transformerSpec={data.transformerSpec ?? null}
         baysSpec={data.baysSpec}
+        switchgearDescription={data.switchgearDescription ?? null}
         nnSpec={data.nnSpec ?? null}
         existingDers={data.existingDers}
         apparatusSpec={data.apparatusSpec}
         cableRunSpec={data.cableRunSpec ?? null}
         apparatusState={data.apparatusState ?? null}
+        derForm={derForm}
       />
     </div>
   );
@@ -546,21 +837,19 @@ function PlaceholderTabBody({
   kind,
   tab,
   voltageKv,
-  derKind,
-  derConnectionVariant,
   transformerSpec,
   baysSpec,
+  switchgearDescription,
   nnSpec,
   existingDers,
   apparatusSpec,
   cableRunSpec,
   apparatusState,
+  derForm,
 }: {
   kind: SldDetailKind;
   tab: string;
   voltageKv: number | null;
-  derKind?: 'PV' | 'BESS' | 'FW';
-  derConnectionVariant?: 'nn_side' | 'sn_side' | 'dedicated';
   transformerSpec?: {
     readonly vectorGroup: string | null;
     readonly snMva: number | null;
@@ -575,6 +864,7 @@ function PlaceholderTabBody({
     readonly bayNumber: string | null;
     readonly feederShortName: string | null;
   }>;
+  switchgearDescription?: string | null;
   nnSpec?: {
     readonly busVoltageKv: number | null;
     readonly loads: ReadonlyArray<{
@@ -612,6 +902,7 @@ function PlaceholderTabBody({
     readonly interlockBlocked: boolean | null;
     readonly lastChangeAt: string | null;
   } | null;
+  derForm: UseFormReturn<SldDerConfigFormValues>;
 }): JSX.Element {
   // Tab-specific scaffolding — actual editor forms wired w K30-72+
   if (kind === 'station' && tab === 'transformator') {
@@ -621,19 +912,19 @@ function PlaceholderTabBody({
       mva != null ? `${(mva * 1000).toFixed(0)} kVA` : '—';
     return (
       <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
-        <dt style={{ color: '#7E8790' }}>Vector group</dt>
+        <dt style={{ color: '#7E8790' }}>Grupa połączeń</dt>
         <dd data-testid="drawer-tr-vector-group" style={{ color: '#FFD166', fontFamily: 'monospace' }}>
           {transformerSpec?.vectorGroup ?? '—'}
         </dd>
-        <dt style={{ color: '#7E8790' }}>Rated power</dt>
+        <dt style={{ color: '#7E8790' }}>Moc znamionowa</dt>
         <dd data-testid="drawer-tr-rated-kva" style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
           {fmtKva(transformerSpec?.snMva)}
         </dd>
-        <dt style={{ color: '#7E8790' }}>U_HV / U_LV</dt>
+        <dt style={{ color: '#7E8790' }}>Napięcie SN / nN</dt>
         <dd data-testid="drawer-tr-voltages" style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
           {transformerSpec?.uhvKv != null && transformerSpec?.ulvKv != null
-            ? `${transformerSpec.uhvKv} / ${transformerSpec.ulvKv} kV`
-            : voltageKv != null ? `${voltageKv} / 0.4 kV` : '—'}
+            ? `${formatKvPl(transformerSpec.uhvKv)} / ${formatKvPl(transformerSpec.ulvKv)}`
+            : voltageKv != null ? `${formatKvPl(voltageKv)} / ${formatKvPl(0.4)}` : '—'}
         </dd>
         <dt style={{ color: '#7E8790' }}>u_k%</dt>
         <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
@@ -648,7 +939,7 @@ function PlaceholderTabBody({
         <label style={{ display: 'block', marginBottom: 6, color: '#7E8790' }}>Typ DER</label>
         <select
           data-testid="drawer-der-type-select"
-          defaultValue={derKind ?? 'PV'}
+          {...derForm.register('derKind')}
           style={{
             background: '#171B20',
             color: '#DDF7FF',
@@ -663,23 +954,26 @@ function PlaceholderTabBody({
           <option value="BESS">BESS (magazyn energii)</option>
           <option value="FW">FW (farma wiatrowa)</option>
         </select>
+        {derForm.formState.errors.derKind?.message && (
+          <div data-testid="drawer-der-type-error" style={{ marginTop: 6, color: '#F25F5F', fontSize: 10 }}>
+            {derForm.formState.errors.derKind.message}
+          </div>
+        )}
       </div>
     );
   }
   if (kind === 'der' && tab === 'inverter') {
-    const options = derKind === 'BESS'
-      ? ['BESS-INV-50KW', 'BESS-INV-100KW', 'BESS-INV-250KW']
-      : derKind === 'FW'
-      ? ['FW-CONV-2MW-PMSG', 'FW-CONV-3MW-DFIG', 'FW-CONV-5MW-PMSG']
-      : ['PV-INV-50KW-04KV', 'PV-INV-100KW-04KV', 'PV-INV-250KW-04KV'];
+    const currentDerKind = derForm.watch('derKind');
+    const currentConnectionVariant = derForm.watch('connectionVariant');
+    const options = getDerCatalogOptions(currentDerKind, currentConnectionVariant);
     return (
       <div data-testid="drawer-der-inverter">
         <label style={{ display: 'block', marginBottom: 6, color: '#7E8790', fontSize: 10, fontWeight: 700 }}>
-          Falownik z katalogu
+          Przekształtnik z katalogu
         </label>
         <select
           data-testid="drawer-der-inverter-select"
-          defaultValue={options[0]}
+          {...derForm.register('inverterCatalogRef')}
           style={{
             background: '#171B20',
             color: '#DDF7FF',
@@ -692,32 +986,39 @@ function PlaceholderTabBody({
           }}
         >
           {options.map((opt) => (
-            <option key={opt} value={opt}>{opt}</option>
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
+        {derForm.formState.errors.inverterCatalogRef?.message && (
+          <div data-testid="drawer-der-inverter-error" style={{ marginTop: 6, color: '#F25F5F', fontSize: 10 }}>
+            {derForm.formState.errors.inverterCatalogRef.message}
+          </div>
+        )}
         <div style={{ marginTop: 8, fontSize: 9, color: '#7E8790' }}>
-          Katalog typu inverter dla {derKind ?? 'DER'} (immutable per Catalog Binding Rule).
+          Powiązanie katalogowe dla {currentDerKind}; lista jest dopasowana do wariantu {currentConnectionVariant === 'nn_side' ? 'nN' : 'SN'}.
         </div>
       </div>
     );
   }
   if (kind === 'der' && tab === 'moc') {
-    const presets = derKind === 'BESS'
-      ? [50, 100, 250, 500, 1000]
-      : derKind === 'FW'
-      ? [2000, 3000, 5000, 8000, 10000]
-      : [10, 50, 100, 250, 500];
+    const currentDerKind = derForm.watch('derKind');
+    const presets = currentDerKind === 'BESS'
+      ? [0.05, 0.1, 0.25, 0.5, 1]
+      : currentDerKind === 'FW'
+      ? [2, 3, 5, 8, 10]
+      : [0.1, 0.25, 0.5, 1, 2];
     return (
       <div data-testid="drawer-der-power">
         <label style={{ display: 'block', marginBottom: 6, color: '#7E8790', fontSize: 10, fontWeight: 700 }}>
-          Moc znamionowa [kW]
+          Moc czynna zadana [MW]
         </label>
         <input
           type="number"
-          min={0}
-          step={10}
-          defaultValue={derKind === 'BESS' ? 200 : derKind === 'FW' ? 3000 : 100}
+          min={0.1}
+          max={10}
+          step={0.1}
           data-testid="drawer-der-power-input"
+          {...derForm.register('powerMw', { valueAsNumber: true })}
           style={{
             background: '#171B20',
             color: '#FFD166',
@@ -730,12 +1031,19 @@ function PlaceholderTabBody({
             fontWeight: 700,
           }}
         />
-        <div style={{ marginTop: 8, fontSize: 9, color: '#7E8790' }}>Typowe rozmiary {derKind ?? 'DER'}:</div>
+        {derForm.formState.errors.powerMw?.message && (
+          <div data-testid="drawer-der-power-error" style={{ marginTop: 6, color: '#F25F5F', fontSize: 10 }}>
+            {derForm.formState.errors.powerMw.message}
+          </div>
+        )}
+        <div style={{ marginTop: 8, fontSize: 9, color: '#7E8790' }}>Typowe rozmiary {currentDerKind}:</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-          {presets.map((kw) => (
-            <span
-              key={kw}
-              data-testid={`drawer-der-power-preset-${kw}`}
+          {presets.map((mw) => (
+            <button
+              type="button"
+              key={mw}
+              data-testid={`drawer-der-power-preset-${Math.round(mw * 1000)}`}
+              onClick={() => derForm.setValue('powerMw', mw, { shouldDirty: true, shouldValidate: true })}
               style={{
                 background: '#171B20',
                 color: '#88BBDD',
@@ -744,17 +1052,20 @@ function PlaceholderTabBody({
                 borderRadius: 2,
                 fontSize: 10,
                 fontFamily: 'monospace',
+                cursor: 'pointer',
               }}
             >
-              {kw} kW
-            </span>
+              {mw < 1 ? `${Math.round(mw * 1000)} kW` : `${mw} MW`}
+            </button>
           ))}
         </div>
       </div>
     );
   }
   if (kind === 'der' && tab === 'punkt') {
-    const variantDefault = derConnectionVariant ?? 'nn_side';
+    const selectedVariant = derForm.watch('connectionVariant');
+    const pointVoltage = Number(derForm.watch('pointVoltageKv') ?? 0);
+    const connectionRegister = derForm.register('connectionVariant');
     return (
       <div data-testid="drawer-der-connection-variant">
         <label style={{ display: 'block', marginBottom: 6, color: '#7E8790' }}>Punkt podłączenia</label>
@@ -767,15 +1078,37 @@ function PlaceholderTabBody({
             <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#DDF7FF' }}>
               <input
                 type="radio"
-                name="der-connection-variant"
+                name={connectionRegister.name}
+                ref={connectionRegister.ref}
+                onBlur={connectionRegister.onBlur}
                 value={opt.value}
                 data-testid={`drawer-der-connection-${opt.value}`}
-                defaultChecked={opt.value === variantDefault}
+                checked={selectedVariant === opt.value}
+                onChange={() => {
+                  const nextVariant = opt.value as SldDerConnectionVariant;
+                  derForm.setValue('connectionVariant', nextVariant, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                  derForm.setValue(
+                    'pointVoltageKv',
+                    pointVoltageForVariant(nextVariant, voltageKv),
+                    { shouldDirty: true, shouldValidate: true },
+                  );
+                }}
               />
               {opt.label}
             </label>
           ))}
         </div>
+        <div data-testid="drawer-der-point-voltage" style={{ marginTop: 10, color: '#88BBDD', fontSize: 10, fontFamily: 'monospace' }}>
+          Punkt przyłączenia: {pointVoltage.toFixed(3)} kV
+        </div>
+        {(derForm.formState.errors.connectionVariant?.message || derForm.formState.errors.pointVoltageKv?.message) && (
+          <div data-testid="drawer-der-connection-error" style={{ marginTop: 6, color: '#F25F5F', fontSize: 10 }}>
+            {derForm.formState.errors.connectionVariant?.message ?? derForm.formState.errors.pointVoltageKv?.message}
+          </div>
+        )}
       </div>
     );
   }
@@ -821,13 +1154,26 @@ function PlaceholderTabBody({
     );
   }
   if (kind === 'der' && tab === 'rfg') {
+    const selectedModule = derForm.watch('ncRfgModule');
+    const rfgRegister = derForm.register('ncRfgModule');
     return (
       <div data-testid="drawer-der-rfg">
         <label style={{ display: 'block', marginBottom: 6, color: '#7E8790' }}>NC RfG typ</label>
         <div data-testid="drawer-der-rfg-types" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {['A', 'B', 'C', 'D'].map((t) => (
             <label key={t} style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#DDF7FF' }}>
-              <input type="radio" name="rfg-type" value={t} defaultChecked={t === 'A'} />
+              <input
+                type="radio"
+                name={rfgRegister.name}
+                ref={rfgRegister.ref}
+                onBlur={rfgRegister.onBlur}
+                value={t}
+                checked={selectedModule === t}
+                onChange={() => derForm.setValue('ncRfgModule', t as SldNcRfgModule, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })}
+              />
               {`Typ ${t}`}
             </label>
           ))}
@@ -901,7 +1247,7 @@ function PlaceholderTabBody({
           </dd>
           <dt style={{ color: '#7E8790' }}>Długość</dt>
           <dd data-testid="drawer-cable-length" style={{ color: '#FFD166', fontFamily: 'monospace' }}>
-            {cableRunSpec?.lengthKm != null ? `${cableRunSpec.lengthKm.toFixed(2)} km` : '—'}
+            {cableRunSpec?.lengthKm != null ? `${formatTechnicalNumberPl(cableRunSpec.lengthKm)} km` : '—'}
           </dd>
           <dt style={{ color: '#7E8790' }}>Liczba segmentów</dt>
           <dd data-testid="drawer-cable-segment-count" style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
@@ -990,9 +1336,9 @@ function PlaceholderTabBody({
           <dd style={{ color: aps?.communicationOk === false ? '#F25F5F' : '#13C45A', fontFamily: 'monospace' }}>
             {aps?.communicationOk === false ? 'BŁĄD' : 'OK'}
           </dd>
-          <dt style={{ color: '#7E8790' }}>Blokada operacyjna</dt>
+          <dt style={{ color: '#7E8790' }}>Uzależnienie operacyjne</dt>
           <dd style={{ color: aps?.interlockBlocked ? '#F25F5F' : '#DDF7FF', fontFamily: 'monospace' }}>
-            {aps?.interlockBlocked ? 'ZAŁOŻONA' : 'brak'}
+            {aps?.interlockBlocked ? 'aktywne' : 'nieaktywne'}
           </dd>
           <dt style={{ color: '#7E8790' }}>Ostatnia zmiana</dt>
           <dd style={{ color: '#88BBDD', fontFamily: 'monospace', fontSize: 10 }}>
@@ -1051,7 +1397,7 @@ function PlaceholderTabBody({
     if (!apparatusSpec || apparatusSpec.length === 0) {
       return (
         <div data-testid="drawer-bay-apparatus-empty" style={{ color: '#7E8790', fontStyle: 'italic', fontSize: 10 }}>
-          Brak zdefiniowanych aparatów w polu. Skonfiguruj wyposażenie via E-11.
+          Aparatura pola wynika z wariantu katalogowego rozdzielnicy.
         </div>
       );
     }
@@ -1104,16 +1450,16 @@ function PlaceholderTabBody({
     return (
       <div data-testid="drawer-station-der">
         <div style={{ fontSize: 10, color: '#7E8790', marginBottom: 6, fontWeight: 700 }}>
-          DER na stacji ({(existingDers ?? []).length})
+          Układy PV/BESS/FW ({(existingDers ?? []).length})
           {totalMw > 0 && (
             <span data-testid="drawer-station-der-total" style={{ marginLeft: 8, color: '#FFD166' }}>
-              Σ {totalMw.toFixed(2)} MW
+              Σ {formatMwPl(totalMw)}
             </span>
           )}
         </div>
         {existingDers && existingDers.length > 0 ? (
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {existingDers.map((der) => (
+            {existingDers.map((der, derIndex) => (
               <li
                 key={der.id}
                 data-testid={`drawer-station-der-${der.id}`}
@@ -1130,17 +1476,17 @@ function PlaceholderTabBody({
               >
                 <div>
                   <span style={{ color: colorFor(der.kind), fontWeight: 700 }}>{der.kind ?? 'DER'}</span>
-                  <span style={{ color: '#DDF7FF', marginLeft: 6 }}>{der.name ?? der.id}</span>
+                  <span style={{ color: '#DDF7FF', marginLeft: 6 }}>{formatExistingDerName(der, derIndex)}</span>
                 </div>
                 <span style={{ color: '#88BBDD', fontFamily: 'monospace', fontSize: 10 }}>
-                  {der.pMw != null ? `${der.pMw.toFixed(2)} MW` : '—'}
+                  {der.pMw != null ? formatMwPl(der.pMw) : '—'}
                 </span>
               </li>
             ))}
           </ul>
         ) : (
           <div data-testid="drawer-station-der-empty" style={{ color: '#7E8790', fontStyle: 'italic', fontSize: 10 }}>
-            Brak DERs. Użyj palety u góry (▸ DODAJ DER), by dodać PV/BESS/FW.
+            Układy PV/BESS/FW dodaje się z palety jako gotowy wariant przyłączenia.
           </div>
         )}
       </div>
@@ -1152,7 +1498,7 @@ function PlaceholderTabBody({
         <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px', marginBottom: 12 }}>
           <dt style={{ color: '#7E8790' }}>Szyna nN U</dt>
           <dd data-testid="drawer-nn-bus-voltage" style={{ color: '#FFD166', fontFamily: 'monospace' }}>
-            {nnSpec?.busVoltageKv != null ? `${nnSpec.busVoltageKv} kV` : '0.4 kV (default)'}
+            {nnSpec?.busVoltageKv != null ? formatKvPl(nnSpec.busVoltageKv) : `${formatKvPl(0.4)} (wariant katalogowy)`}
           </dd>
           <dt style={{ color: '#7E8790' }}>Liczba odpływów</dt>
           <dd data-testid="drawer-nn-loads-count" style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
@@ -1181,8 +1527,8 @@ function PlaceholderTabBody({
                 >
                   <span style={{ color: '#DDF7FF' }}>{load.name ?? load.id}</span>
                   <span style={{ color: '#88BBDD', fontFamily: 'monospace' }}>
-                    {load.pKw != null ? `${load.pKw.toFixed(1)} kW` : '—'}
-                    {load.qKvar != null ? ` / ${load.qKvar.toFixed(1)} kvar` : ''}
+                    {load.pKw != null ? formatKwPl(load.pKw) : '—'}
+                    {load.qKvar != null ? ` / ${formatKvarPl(load.qKvar)}` : ''}
                   </span>
                 </li>
               ))}
@@ -1190,7 +1536,7 @@ function PlaceholderTabBody({
           </>
         ) : (
           <div data-testid="drawer-nn-no-loads" style={{ color: '#7E8790', fontStyle: 'italic', fontSize: 10 }}>
-            Brak zdefiniowanych odpływów nN.
+            Odpływy nN konfigurowane z wariantu stacji.
           </div>
         )}
       </div>
@@ -1200,7 +1546,7 @@ function PlaceholderTabBody({
     if (!baysSpec || baysSpec.length === 0) {
       return (
         <div data-testid="drawer-rozdzielnica-empty" style={{ color: '#7E8790', fontStyle: 'italic' }}>
-          Brak pól SN — dodaj pole via E-11 lub menu kontekstowe stacji.
+          {switchgearDescription ?? 'Rozdzielnica SN: układ pól zgodny z typem stacji.'}
         </div>
       );
     }
@@ -1250,8 +1596,8 @@ function PlaceholderTabBody({
     );
   }
   return (
-    <div style={{ color: '#7E8790' }} data-testid={`drawer-placeholder-${kind}-${tab}`}>
-      [{tab}] — Form scaffolding (K30-72+ wire to backend POST).
+    <div style={{ color: '#7E8790' }} data-testid={`drawer-technical-note-${kind}-${tab}`}>
+      Karta techniczna obiektu. Zmiany układu wykonaj akcją kontekstową albo w pełnym widoku.
     </div>
   );
 }

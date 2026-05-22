@@ -31,6 +31,7 @@ import type {
   DomainEvent,
   TerminalRef,
 } from '../../types/enm';
+import { publicBusName } from '../shared/enmVisibility';
 import { executeDomainOp } from './domainApi';
 
 // ---------------------------------------------------------------------------
@@ -38,6 +39,8 @@ import { executeDomainOp } from './domainApi';
 // ---------------------------------------------------------------------------
 
 export interface SnapshotState {
+  /** Case currently owning the in-memory ENM snapshot. */
+  caseId: string | null;
   /** ENM snapshot — single source of truth. */
   snapshot: EnergyNetworkModel | null;
   /** Deterministic logical views (trunks, branches, terminals). */
@@ -96,7 +99,7 @@ export function selectBusOptions(
 ): Array<{ ref_id: string; name: string; voltage_kv: number }> {
   if (!snapshot) return [];
   return (snapshot.buses ?? [])
-    .map((b) => ({ ref_id: b.ref_id, name: b.name, voltage_kv: b.voltage_kv }))
+    .map((b) => ({ ref_id: b.ref_id, name: publicBusName(b), voltage_kv: b.voltage_kv }))
     .sort((a, b) => a.ref_id.localeCompare(b.ref_id));
 }
 
@@ -197,11 +200,49 @@ function createHistoryEntry(
   };
 }
 
+function snapshotResponseState(response: DomainOpResponseV1) {
+  return {
+    snapshot: response.snapshot,
+    logicalViews: response.logical_views,
+    readiness: response.readiness,
+    fixActions: response.fix_actions,
+    materializedParams: response.materialized_params,
+    layout: response.layout,
+  };
+}
+
+function snapshotHashFromResponse(response: DomainOpResponseV1 | null | undefined): string {
+  const hash = (response?.snapshot?.header as { hash_sha256?: unknown } | undefined)?.hash_sha256;
+  return typeof hash === 'string' ? hash : '';
+}
+
+function errorStatus(err: unknown): number | null {
+  if (typeof err !== 'object' || err === null) return null;
+  const status = (err as { status?: unknown }).status;
+  return typeof status === 'number' ? status : null;
+}
+
+function errorCode(err: unknown): string {
+  if (typeof err !== 'object' || err === null) return 'NETWORK_ERROR';
+  const code = (err as { code?: unknown }).code;
+  return typeof code === 'string' ? code : 'NETWORK_ERROR';
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+function isSnapshotVersionConflict(err: unknown): boolean {
+  if (errorStatus(err) === 409) return true;
+  return /konflikt wersji|snapshot.*conflict|409 conflict/i.test(errorMessage(err));
+}
+
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
 
 export const useSnapshotStore = create<SnapshotState>((set, get) => ({
+  caseId: null,
   snapshot: null,
   logicalViews: null,
   readiness: null,
@@ -221,7 +262,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
     opName: string,
       payload: Record<string, unknown>,
   ) => {
-    set({ loading: true, error: null, errorCode: null });
+    set({ caseId, loading: true, error: null, errorCode: null });
     try {
       const response = await executeDomainOp(
         caseId,
@@ -229,6 +270,10 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
         payload,
         get().snapshot?.header.hash_sha256 ?? '',
       );
+
+      if (get().caseId !== caseId) {
+        return response;
+      }
 
       if (response.error) {
         set({
@@ -244,12 +289,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
       }
 
       set({
-        snapshot: response.snapshot,
-        logicalViews: response.logical_views,
-        readiness: response.readiness,
-        fixActions: response.fix_actions,
-        materializedParams: response.materialized_params,
-        layout: response.layout,
+        ...snapshotResponseState(response),
         selectionHint: response.selection_hint,
         lastChanges: response.changes,
         lastEvents: response.domain_events,
@@ -264,11 +304,90 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
 
       return response;
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      const errorCode =
-        typeof (err as { code?: unknown }).code === 'string'
-          ? (err as { code: string }).code
-          : 'NETWORK_ERROR';
+      if (get().caseId !== caseId) {
+        return null;
+      }
+      if (opName !== 'refresh_snapshot' && isSnapshotVersionConflict(err)) {
+        try {
+          const refreshResponse = await executeDomainOp(caseId, 'refresh_snapshot', {}, '');
+          if (get().caseId !== caseId) {
+            return null;
+          }
+          if (refreshResponse.error) {
+            set({
+              loading: false,
+              error: refreshResponse.error,
+              errorCode: refreshResponse.error_code ?? null,
+            });
+            return null;
+          }
+
+          set({
+            ...snapshotResponseState(refreshResponse),
+            selectionHint: null,
+            lastChanges: null,
+            lastEvents: [],
+            error: null,
+            errorCode: null,
+          });
+
+          const retryResponse = await executeDomainOp(
+            caseId,
+            opName,
+            payload,
+            snapshotHashFromResponse(refreshResponse),
+          );
+
+          if (get().caseId !== caseId) {
+            return retryResponse;
+          }
+
+          if (retryResponse.error) {
+            set({
+              operationHistory: [
+                createHistoryEntry(opName, payload, retryResponse, 'error'),
+                ...get().operationHistory,
+              ],
+              loading: false,
+              error: retryResponse.error,
+              errorCode: retryResponse.error_code ?? null,
+            });
+            return retryResponse;
+          }
+
+          set({
+            ...snapshotResponseState(retryResponse),
+            selectionHint: retryResponse.selection_hint,
+            lastChanges: retryResponse.changes,
+            lastEvents: retryResponse.domain_events,
+            operationHistory: [
+              createHistoryEntry(opName, payload, retryResponse, 'success'),
+              ...get().operationHistory,
+            ],
+            loading: false,
+            error: null,
+            errorCode: null,
+          });
+
+          return retryResponse;
+        } catch (retryErr) {
+          if (get().caseId !== caseId) {
+            return null;
+          }
+          const retryMsg = errorMessage(retryErr);
+          set({
+            operationHistory: [
+              createHistoryEntry(opName, payload, null, 'error'),
+              ...get().operationHistory,
+            ],
+            loading: false,
+            error: retryMsg,
+            errorCode: errorCode(retryErr),
+          });
+          return null;
+        }
+      }
+      const errorMsg = errorMessage(err);
       set({
         operationHistory: [
           createHistoryEntry(opName, payload, null, 'error'),
@@ -276,14 +395,14 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
         ],
         loading: false,
         error: errorMsg,
-        errorCode,
+        errorCode: errorCode(err),
       });
       return null;
     }
   },
 
   refreshFromBackend: async (caseId: string) => {
-    set({ loading: true, error: null, errorCode: null });
+    set({ caseId, loading: true, error: null, errorCode: null });
     try {
       const response = await executeDomainOp(
         caseId,
@@ -292,18 +411,17 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
         get().snapshot?.header.hash_sha256 ?? '',
       );
 
+      if (get().caseId !== caseId) {
+        return response;
+      }
+
       if (response.error) {
         set({ loading: false, error: response.error, errorCode: response.error_code ?? null });
         return response;
       }
 
       set({
-        snapshot: response.snapshot,
-        logicalViews: response.logical_views,
-        readiness: response.readiness,
-        fixActions: response.fix_actions,
-        materializedParams: response.materialized_params,
-        layout: response.layout,
+        ...snapshotResponseState(response),
         selectionHint: null,
         lastChanges: null,
         lastEvents: [],
@@ -314,18 +432,17 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
 
       return response;
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      const errorCode =
-        typeof (err as { code?: unknown }).code === 'string'
-          ? (err as { code: string }).code
-          : 'NETWORK_ERROR';
-      set({ loading: false, error: errorMsg, errorCode });
+      if (get().caseId !== caseId) {
+        return null;
+      }
+      set({ loading: false, error: errorMessage(err), errorCode: errorCode(err) });
       return null;
     }
   },
 
   setSnapshot: (response: DomainOpResponseV1) => {
     set({
+      caseId: get().caseId,
       snapshot: response.snapshot,
       logicalViews: response.logical_views,
       readiness: response.readiness,
@@ -343,6 +460,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
 
   reset: () =>
     set({
+      caseId: null,
       snapshot: null,
       logicalViews: null,
       readiness: null,

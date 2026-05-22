@@ -67,6 +67,40 @@ export interface FeatureFlags {
    * Env override: VITE_FF_SLD_CAD_EDITING_ENABLED
    */
   sldCadEditingEnabled: boolean;
+
+  /**
+   * ENM_INSPECTOR_VISIBLE
+   *
+   * Pokazuje moduł ENM Inspector (dev tool — raw ENM model dumps).
+   * Domyślnie wyłączony — to narzędzie diagnostyczne dewelopera,
+   * nie engineering UI dla operatora.
+   *
+   * Domyślnie: false (OFF)
+   * Env override: VITE_FF_ENM_INSPECTOR_VISIBLE
+   */
+  ENM_INSPECTOR_VISIBLE: boolean;
+
+  /**
+   * SLD_OVERLAY_DEMO_VISIBLE
+   *
+   * Pokazuje showcase SldOverlayDemo (demo różnych overlay-ów SLD).
+   * Domyślnie wyłączony — to showcase storybook-style, nie engineering UI.
+   *
+   * Domyślnie: false (OFF)
+   * Env override: VITE_FF_SLD_OVERLAY_DEMO_VISIBLE
+   */
+  SLD_OVERLAY_DEMO_VISIBLE: boolean;
+
+  /**
+   * USE_LAYOUT_V3
+   *
+   * Włącza shell V3 (chrome 146→76px, NavRail collapsible,
+   * 3-poziomowa hierarchia akcji). Domyślnie V12.
+   *
+   * Domyślnie: false (V12 default)
+   * Env override: VITE_USE_LAYOUT_V3
+   */
+  USE_LAYOUT_V3: boolean;
 }
 
 /**
@@ -80,6 +114,18 @@ export const featureFlags: Readonly<FeatureFlags> = Object.freeze({
   ),
   sldCadEditingEnabled: parseEnvBoolean(
     getViteEnv('VITE_FF_SLD_CAD_EDITING_ENABLED'),
+    false
+  ),
+  ENM_INSPECTOR_VISIBLE: parseEnvBoolean(
+    getViteEnv('VITE_FF_ENM_INSPECTOR_VISIBLE'),
+    false // dev tool — domyślnie ukryty
+  ),
+  SLD_OVERLAY_DEMO_VISIBLE: parseEnvBoolean(
+    getViteEnv('VITE_FF_SLD_OVERLAY_DEMO_VISIBLE'),
+    false // storybook showcase — domyślnie ukryty
+  ),
+  USE_LAYOUT_V3: parseEnvBoolean(
+    getViteEnv('VITE_USE_LAYOUT_V3'),
     false
   ),
 });

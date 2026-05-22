@@ -247,7 +247,7 @@ describe('ProtectionLibraryBrowser', () => {
     render(<ProtectionLibraryBrowser />);
 
     await waitFor(() => {
-      expect(screen.getByText('Brak typów zabezpieczeń')).toBeInTheDocument();
+      expect(screen.getByText('Katalog zabezpieczeń wymaga konfiguracji')).toBeInTheDocument();
     });
   });
 

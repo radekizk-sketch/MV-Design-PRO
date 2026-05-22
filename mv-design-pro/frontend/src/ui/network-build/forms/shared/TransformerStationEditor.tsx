@@ -314,6 +314,7 @@ export function TransformerStationEditor({
         </button>
         <button
           onClick={handleSubmit}
+          data-testid="transformer-station-submit"
           className="rounded-md bg-[#2563eb] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8]"
         >
           {submitLabel ?? (mode === 'create' ? 'Dodaj' : 'Zapisz')}

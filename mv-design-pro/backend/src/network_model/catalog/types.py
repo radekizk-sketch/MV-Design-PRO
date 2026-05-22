@@ -267,6 +267,9 @@ class LineType:
     voltage_rating_kv: float = 0.0
     conductor_material: str | None = None
     cross_section_mm2: float = 0.0
+    r0_ohm_per_km: float | None = None
+    x0_ohm_per_km: float | None = None
+    b0_siemens_per_km: float | None = None
     # Thermal data for short-circuit analysis
     ith_1s_a: float | None = None
     jth_1s_a_per_mm2: float | None = None
@@ -331,6 +334,9 @@ class LineType:
             "voltage_rating_kv": self.voltage_rating_kv,
             "conductor_material": self.conductor_material,
             "cross_section_mm2": self.cross_section_mm2,
+            "r0_ohm_per_km": self.r0_ohm_per_km,
+            "x0_ohm_per_km": self.x0_ohm_per_km,
+            "b0_siemens_per_km": self.b0_siemens_per_km,
             "ith_1s_a": self.ith_1s_a,
             "jth_1s_a_per_mm2": self.jth_1s_a_per_mm2,
             "base_type_id": self.base_type_id,
@@ -361,6 +367,17 @@ class LineType:
             voltage_rating_kv=float(data.get("voltage_rating_kv", 0.0)),
             conductor_material=data.get("conductor_material"),
             cross_section_mm2=float(data.get("cross_section_mm2", 0.0)),
+            r0_ohm_per_km=(
+                float(data["r0_ohm_per_km"]) if data.get("r0_ohm_per_km") is not None else None
+            ),
+            x0_ohm_per_km=(
+                float(data["x0_ohm_per_km"]) if data.get("x0_ohm_per_km") is not None else None
+            ),
+            b0_siemens_per_km=(
+                float(data["b0_siemens_per_km"])
+                if data.get("b0_siemens_per_km") is not None
+                else None
+            ),
             ith_1s_a=(float(data["ith_1s_a"]) if data.get("ith_1s_a") is not None else None),
             jth_1s_a_per_mm2=(
                 float(data["jth_1s_a_per_mm2"])
@@ -418,6 +435,14 @@ class CableType:
     standard: str | None = None
     conductor_material: str | None = None
     cross_section_mm2: float = 0.0
+    return_conductor_cross_section_mm2: float | None = None
+    return_conductor_material: str | None = None
+    return_conductor_r_ohm_per_km_20c: float | None = None
+    return_conductor_jth_1s_a_per_mm2: float | None = None
+    return_conductor_ith_1s_a: float | None = None
+    r0_ohm_per_km: float | None = None
+    x0_ohm_per_km: float | None = None
+    b0_siemens_per_km: float | None = None
     max_temperature_c: float = 90.0
     number_of_cores: int = 1
     # Thermal data for short-circuit analysis
@@ -479,6 +504,27 @@ class CableType:
             return self.jth_1s_a_per_mm2 * self.cross_section_mm2
         return None
 
+    def get_return_conductor_ith_1s(self) -> float | None:
+        """
+        Zwraca prąd cieplny krótkotrwały Ith(1s) żyły powrotnej/ekranu [A].
+
+        Wartość jest niezależna od żyły roboczej, bo przekrój żyły powrotnej
+        jest częścią oznaczenia katalogowego kabla, np. ``1x150/25``.
+        """
+        if self.return_conductor_ith_1s_a is not None and self.return_conductor_ith_1s_a > 0:
+            return self.return_conductor_ith_1s_a
+        if (
+            self.return_conductor_jth_1s_a_per_mm2 is not None
+            and self.return_conductor_jth_1s_a_per_mm2 > 0
+            and self.return_conductor_cross_section_mm2 is not None
+            and self.return_conductor_cross_section_mm2 > 0
+        ):
+            return (
+                self.return_conductor_jth_1s_a_per_mm2
+                * self.return_conductor_cross_section_mm2
+            )
+        return None
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -495,6 +541,14 @@ class CableType:
             "standard": self.standard,
             "conductor_material": self.conductor_material,
             "cross_section_mm2": self.cross_section_mm2,
+            "return_conductor_cross_section_mm2": self.return_conductor_cross_section_mm2,
+            "return_conductor_material": self.return_conductor_material,
+            "return_conductor_r_ohm_per_km_20c": self.return_conductor_r_ohm_per_km_20c,
+            "return_conductor_jth_1s_a_per_mm2": self.return_conductor_jth_1s_a_per_mm2,
+            "return_conductor_ith_1s_a": self.get_return_conductor_ith_1s(),
+            "r0_ohm_per_km": self.r0_ohm_per_km,
+            "x0_ohm_per_km": self.x0_ohm_per_km,
+            "b0_siemens_per_km": self.b0_siemens_per_km,
             "max_temperature_c": self.max_temperature_c,
             "number_of_cores": self.number_of_cores,
             "ith_1s_a": self.ith_1s_a,
@@ -527,6 +581,38 @@ class CableType:
             standard=data.get("standard"),
             conductor_material=data.get("conductor_material"),
             cross_section_mm2=float(data.get("cross_section_mm2", 0.0)),
+            return_conductor_cross_section_mm2=(
+                float(data["return_conductor_cross_section_mm2"])
+                if data.get("return_conductor_cross_section_mm2") is not None
+                else None
+            ),
+            return_conductor_material=data.get("return_conductor_material"),
+            return_conductor_r_ohm_per_km_20c=(
+                float(data["return_conductor_r_ohm_per_km_20c"])
+                if data.get("return_conductor_r_ohm_per_km_20c") is not None
+                else None
+            ),
+            return_conductor_jth_1s_a_per_mm2=(
+                float(data["return_conductor_jth_1s_a_per_mm2"])
+                if data.get("return_conductor_jth_1s_a_per_mm2") is not None
+                else None
+            ),
+            return_conductor_ith_1s_a=(
+                float(data["return_conductor_ith_1s_a"])
+                if data.get("return_conductor_ith_1s_a") is not None
+                else None
+            ),
+            r0_ohm_per_km=(
+                float(data["r0_ohm_per_km"]) if data.get("r0_ohm_per_km") is not None else None
+            ),
+            x0_ohm_per_km=(
+                float(data["x0_ohm_per_km"]) if data.get("x0_ohm_per_km") is not None else None
+            ),
+            b0_siemens_per_km=(
+                float(data["b0_siemens_per_km"])
+                if data.get("b0_siemens_per_km") is not None
+                else None
+            ),
             max_temperature_c=float(data.get("max_temperature_c", 90.0)),
             number_of_cores=int(data.get("number_of_cores", 1)),
             ith_1s_a=(float(data["ith_1s_a"]) if data.get("ith_1s_a") is not None else None),
@@ -1855,6 +1941,18 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "rated_current_a",
             "c_nf_per_km",
             "voltage_rating_kv",
+            "conductor_material",
+            "cross_section_mm2",
+            "number_of_cores",
+            "trade_name",
+            "return_conductor_cross_section_mm2",
+            "return_conductor_material",
+            "return_conductor_r_ohm_per_km_20c",
+            "return_conductor_jth_1s_a_per_mm2",
+            "return_conductor_ith_1s_a",
+            "r0_ohm_per_km",
+            "x0_ohm_per_km",
+            "b0_siemens_per_km",
         ),
         ui_fields=(
             ("r_ohm_per_km", "R [Ω/km] @20°C", "Ω/km"),
@@ -1862,6 +1960,8 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("rated_current_a", "Imax [A]", "A"),
             ("voltage_rating_kv", "U [kV]", "kV"),
             ("cross_section_mm2", "Przekrój", "mm²"),
+            ("return_conductor_cross_section_mm2", "Żyła powrotna", "mm²"),
+            ("return_conductor_ith_1s_a", "Ith żyły powrotnej", "A"),
         ),
     ),
     CatalogNamespace.LINIA_SN.value: MaterializationContract(
@@ -1871,6 +1971,9 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "x_ohm_per_km",
             "b_us_per_km",
             "rated_current_a",
+            "r0_ohm_per_km",
+            "x0_ohm_per_km",
+            "b0_siemens_per_km",
         ),
         ui_fields=(
             ("r_ohm_per_km", "R [Ω/km] @20°C", "Ω/km"),

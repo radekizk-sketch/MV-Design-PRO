@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from application.station_templates._choices import (
+    CT_OPTIONS,
     DER_PV_NN,
     NN_CB_OPTIONS,
     PROT_FEEDER_OPTIONS,
     TR_OPTIONS_SMALL,
+    VT_OPTIONS,
 )
 from application.station_templates.schema import (
     BayRoleSpec,
@@ -46,6 +48,8 @@ def _prosument(
             der_total_count=TemplateParamInt(
                 default=pv_count, min_value=1, max_value=10, label_pl="Liczba falowników PV"
             ),
+            ct_options=CT_OPTIONS,
+            vt_options=VT_OPTIONS,
             protection_settings_default="tpl_der_pv_nc_rfg_a" if nc_rfg_type == "A" else "tpl_der_pv_nc_rfg_b",
         ),
     )

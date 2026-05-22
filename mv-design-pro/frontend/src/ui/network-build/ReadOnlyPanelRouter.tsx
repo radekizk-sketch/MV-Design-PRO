@@ -49,7 +49,7 @@ type ReportTab = Exclude<ResultsInspectorTab, 'TRACE'>;
 const TAB_LABELS: Record<InspectorTab, string> = {
   results: 'Wyniki',
   trace: 'Wywód',
-  readiness: 'Gotowość',
+  readiness: 'Kontrola',
   report: 'Raport',
   history: 'Historia',
   topology: 'Topologia',
@@ -71,15 +71,15 @@ const REPORT_TAB_LABELS: Record<ReportTab, string> = {
 };
 
 const SEVERITY_LABELS: Record<string, string> = {
-  BLOCKER: 'Blokujący',
-  IMPORTANT: 'Istotny',
+  BLOCKER: 'Wymaga konfiguracji',
+  IMPORTANT: 'Do sprawdzenia',
   INFO: 'Informacyjny',
 };
 
 const READINESS_STATUS_LABELS: Record<'OK' | 'WARN' | 'FAIL', string> = {
-  OK: 'Gotowy',
-  WARN: 'Gotowy warunkowo',
-  FAIL: 'Niegotowy',
+  OK: 'Do analiz',
+  WARN: 'Do sprawdzenia',
+  FAIL: 'Do konfiguracji',
 };
 
 const TYPE_LABELS: Partial<Record<ElementType, string>> = {
@@ -132,7 +132,7 @@ function TabButton({ active, children, onClick }: { active: boolean; children: s
 
 function KeyValueList({ rows }: { rows: Array<{ label: string; value: string }> }) {
   if (rows.length === 0) {
-    return <Empty title="Brak danych" text="Nie znaleziono danych odczytowych dla tej sekcji." />;
+    return <Empty title="Dane techniczne do wyboru" text="Ta sekcja zostanie uzupełniona po konfiguracji właściwego układu." />;
   }
 
   return (
@@ -509,7 +509,7 @@ export function ReadOnlyPanelRouter() {
             label: `Pomiar ${index + 1}`,
             value,
           }))
-        : [{ label: 'Pomiar bieżący', value: 'Brak zestawów pomiarowych w read-modelu pola' }]),
+        : [{ label: 'Pomiar bieżący', value: 'Zestawy pomiarowe pola nie są skonfigurowane' }]),
     ];
   }, [selectedFieldRecord]);
   const fieldControlRows = useMemo(() => {
@@ -534,17 +534,17 @@ export function ReadOnlyPanelRouter() {
         label: 'Ostatnie polecenie',
         value: runtimeState?.pending_command
           ? `${runtimeState.pending_command.command} -> ${runtimeState.pending_command.state}`
-          : 'Brak aktywnego polecenia',
+          : 'Polecenie nieaktywne',
       },
       {
         label: 'Powod odrzucenia',
         value: runtimeState?.pending_command?.rejected_reason ?? '-',
       },
-      { label: 'Aktywne blokady', value: formatList(activeInterlocks.map((entry) => `${entry.code}: ${entry.reason}`)) },
+      { label: 'Aktywne uzależnienia', value: formatList(activeInterlocks.map((entry) => `${entry.code}: ${entry.reason}`)) },
       {
         label: 'Stany aparatow',
         value: formatList(
-          controllableDevices.map((device) => `${device.device_ref}: ${device.switch_state?.actual_state ?? 'brak stanu'}`),
+          controllableDevices.map((device) => `${device.device_ref}: ${device.switch_state?.actual_state ?? 'stan nieprzekazany'}`),
         ),
       },
     ];
@@ -560,7 +560,7 @@ export function ReadOnlyPanelRouter() {
     }
 
     const functionLabels = protectionConfig.functions.map((item) => (
-      `${item.code}: ${item.enabled ? 'wlaczona' : 'wylaczona'}${item.blocked ? ', blokada' : ''}${item.tripped ? ', wyzwolona' : ''}`
+      `${item.code}: ${item.enabled ? 'wlaczona' : 'wylaczona'}${item.blocked ? ', uzaleznienie' : ''}${item.tripped ? ', wyzwolona' : ''}`
     ));
 
     return [
@@ -573,11 +573,11 @@ export function ReadOnlyPanelRouter() {
       { label: 'Wejscia przekladnika napieciowego', value: protectionConfig.measurement_inputs.uses_vt ? 'Tak' : 'Nie' },
       { label: 'Wejscia 3I0', value: protectionConfig.measurement_inputs.uses_3i0 ? 'Tak' : 'Nie' },
       { label: 'Wejscia 3U0', value: protectionConfig.measurement_inputs.uses_3u0 ? 'Tak' : 'Nie' },
-      { label: 'SPZ', value: protectionConfig.spz?.state ?? 'Brak SPZ' },
+      { label: 'SPZ', value: protectionConfig.spz?.state ?? 'SPZ nie skonfigurowany' },
       { label: 'Alarmy aktywne', value: String(protectionConfig.alarms.filter((alarm) => alarm.active).length) },
       { label: 'Zdarzenia', value: String(protectionConfig.events.length) },
-      { label: 'Rejestrator zaklocen', value: protectionConfig.disturbance_recorder.available ? 'Dostepny' : 'Brak' },
-      { label: 'Trendy', value: protectionConfig.trends.available ? formatList(protectionConfig.trends.channels) : 'Brak' },
+      { label: 'Rejestrator zaklocen', value: protectionConfig.disturbance_recorder.available ? 'Dostepny' : 'Nie skonfigurowano' },
+      { label: 'Trendy', value: protectionConfig.trends.available ? formatList(protectionConfig.trends.channels) : 'Nie skonfigurowano' },
     ];
   }, [selectedFieldRecord]);
   const fieldSourceContributionRows = useMemo(() => {
@@ -665,7 +665,7 @@ export function ReadOnlyPanelRouter() {
     return siblings.map((record) => {
       const baseModel = record.fieldItem.canonical_model.base_model;
       const runtimeState = record.fieldItem.canonical_model.runtime_state;
-      const resultState = record.fieldItem.project_results?.result_state ?? 'brak';
+      const resultState = record.fieldItem.project_results?.result_state ?? 'nieuruchomione';
       return {
         label: record.name,
         value: [
@@ -680,9 +680,9 @@ export function ReadOnlyPanelRouter() {
     });
   }, [fieldRecords, selectedFieldRecord]);
   const runHeader = resultsIndex?.run_header ?? {
-    run_id: activeRunId ?? 'brak',
-    project_id: activeProjectId ?? 'brak',
-    case_id: activeCaseId ?? 'brak',
+    run_id: activeRunId ?? 'nie wybrano',
+    project_id: activeProjectId ?? 'nie wybrano',
+    case_id: activeCaseId ?? 'nie wybrano',
     snapshot_id: null,
     created_at: new Date().toISOString(),
     status: 'UNKNOWN',
@@ -709,7 +709,7 @@ export function ReadOnlyPanelRouter() {
   }, [selectedRunId]);
   const exportJsonl = useCallback(async () => {
     if (!selectedRunId) {
-      notify('Brak aktywnego uruchomienia do eksportu wywodu.', 'warning');
+      notify('Uruchom obliczenia dla aktywnego zakresu przed eksportem wywodu.', 'warning');
       return;
     }
     try {
@@ -721,7 +721,7 @@ export function ReadOnlyPanelRouter() {
   }, [activeProjectId, selectedRunId]);
   const exportPdf = useCallback(async () => {
     if (!selectedRunId) {
-      notify('Brak aktywnego uruchomienia do eksportu wywodu.', 'warning');
+      notify('Uruchom obliczenia dla aktywnego zakresu przed eksportem wywodu.', 'warning');
       return;
     }
     try {
@@ -732,7 +732,7 @@ export function ReadOnlyPanelRouter() {
     }
   }, [activeProjectId, selectedRunId]);
   const canOpenRunArtifacts = Boolean(selectedRunId);
-  const blockedRunArtifactsTitle = canOpenRunArtifacts ? undefined : 'Brak aktywnego obliczenia do otwarcia.';
+  const blockedRunArtifactsTitle = canOpenRunArtifacts ? undefined : 'Najpierw uruchom obliczenia dla aktywnego zakresu.';
   const handleSelectHistoryRun = useCallback((runId: string) => {
     setActiveRun(runId);
     void selectRun(runId);
@@ -766,10 +766,10 @@ export function ReadOnlyPanelRouter() {
           <div className="space-y-4">
             <div>
               <div className="text-sm font-semibold text-slate-900">Wyniki powiązane z elementem</div>
-              <div className="text-xs text-slate-500">Obliczenia: {activeCaseName ?? activeCaseId ?? 'brak'} • Projekt: {activeProjectName ?? activeProjectId ?? 'brak'}</div>
+              <div className="text-xs text-slate-500">Obliczenia: {activeCaseName ?? activeCaseId ?? 'nie wybrano'} • Projekt: {activeProjectName ?? activeProjectId ?? 'nie wybrano'}</div>
             </div>
             {matchedBusRows.length === 0 && matchedBranchRows.length === 0 && matchedShortCircuitRows.length === 0 ? (
-              <Empty title="Brak dopasowanych wyników" text="W aktywnym uruchomieniu nie znaleziono wyników dla tego elementu." />
+              <Empty title="Wyniki elementu do wyliczenia" text="Uruchom obliczenia dla aktualnego zakresu, aby zobaczyć parametry tego elementu." />
             ) : (
               <div className="space-y-3">
                 {matchedBusRows.map((row) => <div key={row.bus_id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><div className="text-sm font-semibold text-slate-900">{row.name}</div><div className="text-[11px] font-mono text-slate-500">{row.bus_id}</div></div><span className={clsx('rounded-full border px-2 py-0.5 text-[11px] font-medium', row.u_pu && row.u_pu >= 0.95 && row.u_pu <= 1.05 ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700')}>Węzeł</span></div><div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-700"><div>Un: {formatNumber(row.un_kv, 1)} kV</div><div>U: {formatNumber(row.u_kv, 3)} kV</div><div>U: {formatNumber(row.u_pu, 4)} pu</div><div>Kąt: {formatNumber(row.angle_deg, 2)}°</div></div></div>)}
@@ -790,7 +790,7 @@ export function ReadOnlyPanelRouter() {
               <div className="text-sm font-semibold text-slate-900">Wywód szczegółowy</div>
               <div className="text-xs text-slate-500">Pokazane są tylko kroki powiązane z elementem.</div>
             </div>
-            {filteredTrace.length === 0 ? <Empty title="Brak wywodu dla elementu" text="Aktywny ślad nie zawiera kroków powiązanych z tym elementem." /> : <div className="space-y-3">{filteredTrace.map((step, index) => <TraceCard key={step.key ?? `${step.step ?? index}-${index}`} step={step} index={index} />)}</div>}
+            {filteredTrace.length === 0 ? <Empty title="Wywód elementu do wygenerowania" text="Po uruchomieniu obliczeń panel pokaże kroki powiązane z tym elementem." /> : <div className="space-y-3">{filteredTrace.map((step, index) => <TraceCard key={step.key ?? `${step.step ?? index}-${index}`} step={step} index={index} />)}</div>}
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaż na schemacie</button>
               <button type="button" onClick={openTrace} disabled={!canOpenRunArtifacts} title={blockedRunArtifactsTitle} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:bg-slate-300">Otwórz pełny wywód</button>
@@ -803,15 +803,15 @@ export function ReadOnlyPanelRouter() {
         {activeTab === 'readiness' && (
           <div className="space-y-4">
             <div>
-              <div className="text-sm font-semibold text-slate-900">Gotowość elementu</div>
+              <div className="text-sm font-semibold text-slate-900">Kontrola elementu</div>
               <div className="text-xs text-slate-500">
                 {readinessReady || filteredIssues.length > 0 || readinessError || readinessLoading
-                  ? `Status: ${READINESS_STATUS_LABELS[readinessStatus] ?? readinessStatus} • Braki: ${filteredIssues.length}`
-                  : 'Brak danych gotowości'}
+                  ? `Stan konfiguracji: ${READINESS_STATUS_LABELS[readinessStatus] ?? readinessStatus} • Zagadnienia: ${filteredIssues.length}`
+                  : 'Konfiguracja elementu do sprawdzenia'}
               </div>
             </div>
             {readinessError && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{readinessError}</div>}
-            {filteredIssues.length === 0 ? <Empty title="Brak blokad dla tego elementu" text="W raporcie gotowości nie znaleziono problemów powiązanych z aktywnym elementem." /> : <div className="space-y-3">{filteredIssues.map((issue) => <div key={issue.code} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><div className="text-sm font-semibold text-slate-900">{issue.message_pl}</div><div className="text-xs text-slate-500">Kod: {issue.code} • Krok: {issue.wizard_step_hint}</div></div><span className={clsx('rounded-full border px-2 py-0.5 text-[11px] font-medium', issue.severity === 'BLOCKER' ? 'border-rose-200 bg-rose-50 text-rose-700' : issue.severity === 'IMPORTANT' ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-blue-200 bg-blue-50 text-blue-700')}>{SEVERITY_LABELS[issue.severity] ?? issue.severity}</span></div>{issue.suggested_fix && <div className="mt-2 text-sm text-slate-700">{issue.suggested_fix}</div>}<div className="mt-3"><button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaż na schemacie</button></div></div>)}</div>}
+            {filteredIssues.length === 0 ? <Empty title="Układ elementu przygotowany" text="Kontrola techniczna nie wskazuje zagadnień powiązanych z aktywnym elementem." /> : <div className="space-y-3">{filteredIssues.map((issue) => <div key={issue.code} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><div className="text-sm font-semibold text-slate-900">{issue.message_pl}</div><div className="text-xs text-slate-500">Kod: {issue.code} • Krok: {issue.wizard_step_hint}</div></div><span className={clsx('rounded-full border px-2 py-0.5 text-[11px] font-medium', issue.severity === 'BLOCKER' ? 'border-rose-200 bg-rose-50 text-rose-700' : issue.severity === 'IMPORTANT' ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-blue-200 bg-blue-50 text-blue-700')}>{SEVERITY_LABELS[issue.severity] ?? issue.severity}</span></div>{issue.suggested_fix && <div className="mt-2 text-sm text-slate-700">{issue.suggested_fix}</div>}<div className="mt-3"><button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaż na schemacie</button></div></div>)}</div>}
           </div>
         )}
 
@@ -875,7 +875,7 @@ export function ReadOnlyPanelRouter() {
               </div>
             )}
             {coordinationRows.length === 0 && protectionDiagnostics.length === 0 && (
-              <Empty title="Brak danych koordynacyjnych" text="Dla wybranego elementu nie znaleziono przypisan ochrony ani diagnostyki read-model." />
+              <Empty title="Koordynacja do skonfigurowania" text="Dobierz pakiet zabezpieczeniowy albo przypisania ochrony dla wybranego elementu." />
             )}
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaz na schemacie</button>
@@ -891,7 +891,7 @@ export function ReadOnlyPanelRouter() {
               <div className="text-xs text-slate-500">Kanoniczny widok toru pomiarowego pola z jawnymi zrodlami 3I0 i 3U0.</div>
             </div>
             {fieldMeasurementRows.length === 0 ? (
-              <Empty title="Brak toru pomiarowego" text="Wybrane pole nie ma kompletnego kontraktu pomiarowego w read-modelu." />
+              <Empty title="Tor pomiarowy do konfiguracji" text="Skonfiguruj przekładniki i tor pomiarowy dla wybranego pola." />
             ) : (
               <KeyValueList rows={fieldMeasurementRows} />
             )}
@@ -906,10 +906,10 @@ export function ReadOnlyPanelRouter() {
           <div className="space-y-4">
             <div>
               <div className="text-sm font-semibold text-slate-900">Sterowanie lacznikami</div>
-              <div className="text-xs text-slate-500">Widok pokazuje gotowosc sterowania, blokady i cykl zycia ostatniego polecenia pola.</div>
+              <div className="text-xs text-slate-500">Widok pokazuje sterowanie, uzależnienia i cykl zycia ostatniego polecenia pola.</div>
             </div>
             {fieldControlRows.length === 0 ? (
-              <Empty title="Brak danych sterowania" text="Wybrane pole nie ma kompletnego runtime sterowania w kanonicznym modelu." />
+              <Empty title="Sterowanie do skonfigurowania" text="Dobierz aparaturę i uzależnienia sterowania dla wybranego pola." />
             ) : (
               <KeyValueList rows={fieldControlRows} />
             )}
@@ -927,7 +927,7 @@ export function ReadOnlyPanelRouter() {
               <div className="text-xs text-slate-500">Pelny surface ochrony pola oparty o wspolny protection read-model i kontrakt pola.</div>
             </div>
             {fieldProtectionRows.length === 0 ? (
-              <Empty title="Brak danych zabezpieczeniowych" text="Dla wybranego pola nie znaleziono konfiguracji ochrony w kanonicznym modelu." />
+              <Empty title="Zabezpieczenia do skonfigurowania" text="Dobierz przekaźnik, przekładniki i nastawy bazowe dla wybranego pola." />
             ) : (
               <KeyValueList rows={fieldProtectionRows} />
             )}
@@ -955,7 +955,7 @@ export function ReadOnlyPanelRouter() {
               <div className="text-xs text-slate-500">Jedyny kanoniczny widok wkładow zrodel w zwarciu i rozplywie dla pola.</div>
             </div>
             {fieldSourceContributionRows.length === 0 ? (
-              <Empty title="Brak wynikow pola" text="Wybrane pole nie ma jeszcze przypietych wynikow projektowych lub wkładow zrodel." />
+              <Empty title="Wyniki pola nie są jeszcze dostępne" text="Uruchom obliczenia dla aktywnego zakresu, aby pokazać wyniki projektowe i wkłady źródeł." />
             ) : (
               <KeyValueList rows={fieldSourceContributionRows} />
             )}
@@ -973,7 +973,7 @@ export function ReadOnlyPanelRouter() {
               <div className="text-xs text-slate-500">Jawny kontrakt toru ziemnozwarciowego zrodel 3I0 i 3U0 dla pola.</div>
             </div>
             {fieldEarthFaultRows.length === 0 ? (
-              <Empty title="Brak toru ziemnozwarciowego" text="Wybrane pole nie ma przypietego toru ziemnozwarciowego w wynikach projektowych." />
+              <Empty title="Tor ziemnozwarciowy do konfiguracji" text="Powiąż tor ziemnozwarciowy z wynikami projektowymi wybranego pola." />
             ) : (
               <KeyValueList rows={fieldEarthFaultRows} />
             )}
@@ -991,7 +991,7 @@ export function ReadOnlyPanelRouter() {
               <div className="text-xs text-slate-500">Widok energizacji, uziemienia i bezpieczenstwa do pracy bez mieszania runtime z geometria.</div>
             </div>
             {fieldSafetyRows.length === 0 ? (
-              <Empty title="Brak danych bezpieczenstwa" text="Wybrane pole nie ma kompletnego runtime energizacji i bezpieczenstwa do pracy." />
+              <Empty title="Bezpieczeństwo pracy do skonfigurowania" text="Dobierz stany łączeniowe, uziemienie i uzależnienia pracy dla wybranego pola." />
             ) : (
               <KeyValueList rows={fieldSafetyRows} />
             )}
@@ -1009,7 +1009,7 @@ export function ReadOnlyPanelRouter() {
               <div className="text-xs text-slate-500">Zestawienie bieżącego pola z innymi polami tej samej stacji bez lokalnej przebudowy modelu.</div>
             </div>
             {fieldCompareRows.length === 0 ? (
-              <Empty title="Brak pol do porownania" text="Dla wybranego pola nie znaleziono innych pol tej samej stacji w kanonicznym read-modelu." />
+              <Empty title="Porównanie pól niedostępne" text="Dla wybranego pola nie znaleziono innych pól tej samej stacji w kanonicznym read-modelu." />
             ) : (
               <KeyValueList rows={fieldCompareRows} />
             )}
@@ -1051,7 +1051,7 @@ export function ReadOnlyPanelRouter() {
             </div>
             {runs.length === 0 ? (
               <Empty
-                title="Brak historii obliczeń"
+                title="Historia obliczeń nie jest jeszcze dostępna"
                 text="Nie znaleziono przebiegów dla aktywnego zakresu obliczeń. Wykonaj analizę, aby zobaczyć historię."
               />
             ) : (

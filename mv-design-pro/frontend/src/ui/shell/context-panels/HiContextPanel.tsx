@@ -12,6 +12,10 @@
 import { RunHistoryPanel } from '../../study-cases/RunHistoryPanel';
 import { useAppStateStore } from '../../app-state/store';
 
+function formatPublicContextLabel(value: string | null, activeLabel: string, emptyLabel: string): string {
+  return value ? activeLabel : emptyLabel;
+}
+
 export function HiContextPanel() {
   const activeRunId = useAppStateStore((s) => s.activeRunId);
   const activeSnapshotId = useAppStateStore((s) => s.activeSnapshotId);
@@ -28,11 +32,13 @@ export function HiContextPanel() {
         <div className="mt-1 grid grid-cols-1 gap-0.5 text-[11px] text-scada-text">
           <div data-testid="hi-active-run">
             <span className="text-scada-muted">Aktywne obliczenie: </span>
-            <span className="font-mono">{activeRunId ?? '—'}</span>
+            <span className="font-mono">{formatPublicContextLabel(activeRunId, 'wybrane w historii', 'nie wybrano')}</span>
           </div>
           <div data-testid="hi-active-snapshot">
-            <span className="text-scada-muted">Wersja modelu: </span>
-            <span className="font-mono">{activeSnapshotId ?? '—'}</span>
+            <span className="text-scada-muted">Wersja układu: </span>
+            <span className="font-mono">
+              {formatPublicContextLabel(activeSnapshotId, 'aktualna wersja układu', 'nie wybrano wersji')}
+            </span>
           </div>
         </div>
       </div>
@@ -42,7 +48,7 @@ export function HiContextPanel() {
       </div>
 
       <div className="shrink-0 border-t border-scada-border bg-scada-bg p-2 text-[10px] text-scada-muted">
-        Każde uruchomienie ma deterministyczny hash wejścia (SHA-256). Audyt obejmuje
+        Każde uruchomienie ma deterministyczny odcisk wejściowy SHA-256. Audyt obejmuje
         wszystkie operacje na modelu i umożliwia odtworzenie ścieżki obliczeń.
       </div>
     </div>

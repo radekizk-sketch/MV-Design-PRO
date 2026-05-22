@@ -7,7 +7,7 @@
  * - Każde pole wymagane jest jawnie oznaczone.
  * - Walidacja blokuje „Zastosuj" bez wymaganych pól.
  *
- * FAZA 2 — Standard modali „Źródła nN / Falowniki".
+ * FAZA 2 — Standard modali „Układy nN / Falowniki".
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -27,7 +27,7 @@ export interface PVInverterFormData {
   // Osadzenie
   placement: SourcePlacement;
   existing_field_ref: string | null;
-  // Nowe pole źródłowe (gdy NEW_FIELD)
+  // Nowe pole przyłączeniowe (gdy NEW_FIELD)
   new_field_switch_kind: NNSwitchKind | null;
   new_field_switch_state: NNSwitchState | null;
   new_field_switch_catalog_ref: string | null;
@@ -70,7 +70,7 @@ interface FieldError {
 // ---------------------------------------------------------------------------
 
 const PLACEMENT_LABELS: Record<SourcePlacement, string> = {
-  NEW_FIELD: 'Utwórz nowe pole źródłowe',
+  NEW_FIELD: 'Utwórz nowe pole przyłączeniowe',
   EXISTING_FIELD: 'Użyj istniejącego pola',
 };
 
@@ -240,7 +240,7 @@ export function PVInverterModal({
 
               {!isNewField && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Istniejące pole źródłowe</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Istniejące pole przyłączeniowe</label>
                   <select
                     value={form.existing_field_ref ?? ''}
                     onChange={(e) => set('existing_field_ref', e.target.value || null)}

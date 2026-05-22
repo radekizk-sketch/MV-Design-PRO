@@ -32,7 +32,7 @@ from network_model.catalog.governance import ImportMode
 from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.switchgear import (
-    list_canonical_fallback_for_manufacturer,
+    list_switchgear_solution_templates_for_manufacturer,
 )
 from network_model.catalog.switchgear import (
     list_families_for_manufacturer,
@@ -363,19 +363,12 @@ def list_complete_bay_templates_endpoint(
     manufacturer_ref: str | None = None,
     bay_kind: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Pełne szablony pól SN — kanoniczne fallbacki + producenci (goal §11A.4).
+    """Pełne szablony pól SN powiązane z rodziną rozdzielnicy.
 
-    Bez `manufacturer_ref` zwraca 10 kanonicznych fallbacków (LINE_IN/OUT/TR/
-    MEASUREMENT/COUPLER/PV/BESS/FW/RESERVE/AUX) z `source_status='canonical_fallback'`.
-
-    Z `manufacturer_ref` ustawionym (np. ZPUE_WLOSZCZOWA / ABB / SIEMENS /
-    ELEKTROMETAL — wszyscy `requires_catalog`) zwraca fallbacki z dopisanym
-    `manufacturer_ref` — UI BayTemplatePicker ma wtedy badge „Wymaga
-    uzupełnienia katalogu" + canonical fallback.
-
+    UI projektanta widzi wyłącznie kompletne pakiety rozwiązań katalogowych.
     Filtrowanie `bay_kind` zwęża listę do pól danego typu (np. transformatorowe).
     """
-    templates = list_canonical_fallback_for_manufacturer(manufacturer_ref)
+    templates = list_switchgear_solution_templates_for_manufacturer(manufacturer_ref)
     if bay_kind is not None:
         templates = [t for t in templates if t.bay_kind == bay_kind]
     return [t.model_dump(mode="json") for t in templates]

@@ -17,6 +17,8 @@ export type SldElementKindForMenu =
   | 'cable_segment_sn'
   | 'overhead_line_sn'
   | 'station'
+  | 'zksn'
+  | 'branch_pole'
   | 'der_pv'
   | 'der_bess'
   | 'der_fw';
@@ -33,7 +35,7 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
   background: [
     { id: 'insert-gpz', labelPl: 'Wstaw główny punkt zasilania', group: 'budowa' },
     { id: 'open-catalogs', labelPl: 'Otwórz katalogi techniczne', group: 'widok' },
-    { id: 'show-readiness', labelPl: 'Pokaż gotowość modelu', group: 'widok' },
+    { id: 'show-readiness', labelPl: 'Pokaż kontrolę konfiguracji', group: 'widok' },
   ],
   gpz: [
     { id: 'open-source', labelPl: 'Edytuj główny punkt zasilania', group: 'edycja' },
@@ -43,7 +45,7 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
   section: [
     { id: 'add-bay', labelPl: 'Dodaj pole SN', group: 'budowa' },
     { id: 'show-sc-data', labelPl: 'Pokaż dane zwarciowe źródła', group: 'widok' },
-    { id: 'show-readiness', labelPl: 'Pokaż gotowość modelu', group: 'widok' },
+    { id: 'show-readiness', labelPl: 'Pokaż kontrolę konfiguracji', group: 'widok' },
   ],
   bay: [
     { id: 'open-bay', labelPl: 'Otwórz okno pola', group: 'edycja' },
@@ -72,7 +74,6 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'continue-trunk-from-endpoint', labelPl: 'Kontynuuj ciąg główny', group: 'budowa' },
     { id: 'insert-station', labelPl: 'Zakończ odcinek stacją SN/nN', group: 'budowa' },
     { id: 'insert-zksn', labelPl: 'Zakończ odcinek w ZK SN', group: 'budowa' },
-    { id: 'insert-pole', labelPl: 'Zakończ odcinek słupem rozgałęźnym', group: 'budowa' },
     /* Phase 0C (operator-grade SLD plan v2): świadomy split z preview */
     { id: 'conscious-split-on-segment', labelPl: 'Podziel odcinek (świadomy)', group: 'budowa' },
     { id: 'insert-sectional', labelPl: 'Wstaw łącznik sekcyjny', group: 'budowa' },
@@ -101,11 +102,23 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'open-station-config', labelPl: 'Otwórz konfigurator stacji', group: 'edycja' },
     { id: 'continue-trunk', labelPl: 'Kontynuuj ciąg główny', group: 'budowa' },
     { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', group: 'budowa' },
-    { id: 'add-source', labelPl: 'Dodaj źródło', group: 'budowa' },
+    { id: 'add-source', labelPl: 'Dodaj źródło PV/BESS/FW z katalogu', group: 'budowa' },
     { id: 'add-load', labelPl: 'Dodaj obciążenie nN', group: 'budowa' },
-    { id: 'show-readiness', labelPl: 'Pokaż gotowość stacji', group: 'widok' },
+    { id: 'show-readiness', labelPl: 'Pokaż konfigurację stacji', group: 'widok' },
     { id: 'show-results', labelPl: 'Pokaż wyniki stacji', group: 'widok' },
     { id: 'delete-station', labelPl: 'Usuń stację', group: 'usun' },
+  ],
+  zksn: [
+    { id: 'open-zksn-card', labelPl: 'Otwórz kartę ZK SN', group: 'widok' },
+    { id: 'start-branch', labelPl: 'Wyprowadź odgałęzienie kablowe', group: 'budowa' },
+    { id: 'show-results', labelPl: 'Pokaż wyniki ZK SN', group: 'widok' },
+    { id: 'delete-zksn', labelPl: 'Usuń ZK SN', group: 'usun' },
+  ],
+  branch_pole: [
+    { id: 'open-branch-pole-card', labelPl: 'Otwórz kartę słupa', group: 'widok' },
+    { id: 'start-branch', labelPl: 'Wyprowadź odgałęzienie napowietrzne', group: 'budowa' },
+    { id: 'show-results', labelPl: 'Pokaż wyniki słupa', group: 'widok' },
+    { id: 'delete-branch-pole', labelPl: 'Usuń słup', group: 'usun' },
   ],
   der_pv: [
     { id: 'open-pv-config', labelPl: 'Otwórz kartę PV', group: 'edycja' },

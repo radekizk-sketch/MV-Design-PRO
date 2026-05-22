@@ -367,7 +367,7 @@ const TypeRefField: React.FC<TypeRefFieldProps> = ({
   if (!value) {
     return (
       <div className="flex items-center gap-1 flex-1">
-        <span className="text-xs text-gray-400 italic">Brak typu</span>
+        <span className="text-xs text-gray-400 italic">Typ nieprzypisany</span>
         {editable && onAssign && (
           <button
             onClick={onAssign}

@@ -95,12 +95,12 @@ describe('GpzCanonicalRenderer — zakaz placeholderów (Acceptance Inv R1)', ()
 
   it('Brak transformatorów → explicit "Brak transformatora WN/SN" (NIE TR1 placeholder)', () => {
     const { getByText } = renderGpz({ transformers: [] });
-    expect(getByText(/Brak transformatora WN\/SN/)).toBeTruthy();
+    expect(getByText(/Transformator WN\/SN do konfiguracji/)).toBeTruthy();
   });
 
   it('Brak HV sections + brak transformatorów → explicit "Brak danych 110 kV"', () => {
     const { getByText } = renderGpz({ hvSections: [], transformers: [] });
-    expect(getByText(/Brak danych 110 kV/)).toBeTruthy();
+    expect(getByText(/Strona 110 kV do konfiguracji/)).toBeTruthy();
   });
 });
 
@@ -185,7 +185,17 @@ describe('GpzCanonicalRenderer — 13 elementów strukturalnych SCADA OSD', () =
     expect(getByText('TR1')).toBeTruthy();
     expect(getByText('TR2')).toBeTruthy();
     // Moc widoczna (2 transformatory × 25 MVA = 2 wystąpienia)
-    expect(getAllByText('25.0 MVA').length).toBe(2);
+    expect(getAllByText('25 MVA').length).toBe(2);
+  });
+
+  it('3a. Etykiety transformatora WN/SN mają czytelny odstęp pionowy', () => {
+    const { container } = renderGpz({ transformers: [TR1] });
+    const designation = container.querySelector('[data-testid="gpz-canonical-tr-label-tr-1-designation"]');
+    const power = container.querySelector('[data-testid="gpz-canonical-tr-label-tr-1-power"]');
+    const voltage = container.querySelector('[data-testid="gpz-canonical-tr-label-tr-1-voltage"]');
+
+    expect(Number(power?.getAttribute('y')) - Number(designation?.getAttribute('y'))).toBeGreaterThanOrEqual(18);
+    expect(Number(voltage?.getAttribute('y')) - Number(power?.getAttribute('y'))).toBeGreaterThanOrEqual(14);
   });
 
   it('4. ≥2 sekcje LV (S1, S2) z etykietami + napięciem', () => {
@@ -395,11 +405,12 @@ describe('GpzCanonicalRenderer — apparatus state matrix', () => {
     expect(cb?.getAttribute('data-state')).toBe('open');
   });
 
-  it('CB unknown → "?" badge', () => {
+  it('CB unknown → stan techniczny bez znaku zastępczego', () => {
     const unknownBay = bay('cb-unk', 'LINE_OUT', { cbState: 'unknown' });
     const { container } = renderGpz({ sections: [{ sectionId: 's', order: 1, label: 'S1', busVoltageKv: 15, bays: [unknownBay] }] });
     const cb = container.querySelector('[data-testid="gpz-canonical-bay-cb-unk"] [data-testid="gpz-canonical-cb"]');
     expect(cb?.getAttribute('data-state')).toBe('unknown');
+    expect(cb?.textContent).not.toContain('?');
   });
 });
 

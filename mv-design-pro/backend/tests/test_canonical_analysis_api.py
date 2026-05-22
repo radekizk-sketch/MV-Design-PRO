@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import zipfile
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -248,6 +249,100 @@ def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestC
     assert client.get(f"/analysis-runs/{run_id}/results/trace").status_code == 404
     assert client.get(f"/analysis-runs/{run_id}/trace").status_code == 404
     assert client.get(f"/analysis-runs/{run_id}/snapshot").status_code == 404
+
+
+def test_analysis_run_snapshot_completes_legacy_station_catalog_loads(
+    client: TestClient,
+) -> None:
+    from enm.canonical_analysis import CanonicalRun
+    from infrastructure.persistence.repositories.canonical_run_repository import (
+        canonical_run_repository_scope,
+    )
+
+    run_id = uuid4()
+    station_ref = "stn/test/station"
+    nn_bus_ref = "stn/test/nn_bus"
+    snapshot = {
+        "header": {
+            "name": "Legacy station snapshot",
+            "enm_version": "1.0",
+            "defaults": {"frequency_hz": 50, "unit_system": "SI"},
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "revision": 1,
+            "hash_sha256": "legacy-hash",
+        },
+        "buses": [
+            {
+                "ref_id": "stn/test/sn_bus",
+                "name": "Szyna SN stacji",
+                "tags": [],
+                "meta": {},
+                "voltage_kv": 15.0,
+                "phase_system": "3ph",
+            },
+            {
+                "ref_id": nn_bus_ref,
+                "name": "Szyna nN stacji",
+                "tags": [],
+                "meta": {},
+                "voltage_kv": 0.4,
+                "phase_system": "3ph",
+            },
+        ],
+        "loads": [],
+        "substations": [
+            {
+                "ref_id": station_ref,
+                "name": "Stacja katalogowa",
+                "tags": [],
+                "station_type": "inline",
+                "bus_refs": ["stn/test/sn_bus", nn_bus_ref],
+                "transformer_refs": [],
+                "meta": {
+                    "nn_field_specs": [
+                        {
+                            "field_ref": "stn/test/nn_feeder/001",
+                            "bus_ref": nn_bus_ref,
+                            "bay_role": "FEEDER",
+                        },
+                        {
+                            "field_ref": "stn/test/nn_feeder/002",
+                            "bus_ref": nn_bus_ref,
+                            "bay_role": "FEEDER",
+                        },
+                    ]
+                },
+            }
+        ],
+    }
+    with canonical_run_repository_scope() as repository:
+        repository.create(
+            CanonicalRun(
+                id=run_id,
+                case_id="case-legacy-station",
+                project_id="project-legacy-station",
+                analysis_type="short_circuit_sn",
+                status="FINISHED",
+                created_at=datetime.now(UTC),
+                snapshot_hash="legacy-hash",
+                input_hash="input-hash",
+                snapshot=snapshot,
+                validation={},
+                readiness={},
+            )
+        )
+
+    response = client.get(f"/api/analysis-runs/{run_id}/snapshot")
+
+    assert response.status_code == 200
+    payload = response.json()
+    loads = payload["snapshot"]["loads"]
+    assert payload["snapshot_id"] == "legacy-hash"
+    assert len(loads) == 2
+    assert {load["bus_ref"] for load in loads} == {nn_bus_ref}
+    assert {load["catalog_namespace"] for load in loads} == {"OBCIAZENIE"}
+    assert {load["parameter_source"] for load in loads} == {"CATALOG"}
 
 
 def test_analysis_creation_requires_canonical_enm_snapshot(client: TestClient) -> None:

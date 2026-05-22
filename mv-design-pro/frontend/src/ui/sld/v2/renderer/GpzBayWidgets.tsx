@@ -338,7 +338,7 @@ export function sterowanieText(mode: BayControlMode): string {
     case 'local':
       return 'STEROWANIE LOKALNE';
     case 'unknown':
-      return 'STEROWANIE ?';
+      return 'STEROWANIE';
   }
 }
 

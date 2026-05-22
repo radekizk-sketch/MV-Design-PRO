@@ -3,7 +3,7 @@
  *
  * Inżynierski panel gotowości modelu (CANONICAL-grade UX).
  * Prezentuje BLOCKER/IMPORTANT/INFO z walidacji + readiness.
- * Każdy wpis: kod, opis, element, [Przejdź] [Napraw]
+ * Każdy wpis: kod, opis, element, [Przejdź] [Skonfiguruj]
  *
  * INVARIANTS:
  * - No auto-mutations
@@ -23,7 +23,7 @@ import type { ReadinessWorkspaceBlockState } from './ReadinessLivePanel';
 // =============================================================================
 
 const SEVERITY_LABELS: Record<ReadinessSeverity, string> = {
-  BLOCKER: 'Blokada',
+  BLOCKER: 'Do konfiguracji',
   IMPORTANT: 'Ostrzeżenie',
   INFO: 'Informacja',
 };
@@ -41,9 +41,9 @@ const SEVERITY_BADGE: Record<ReadinessSeverity, string> = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  OK: 'Gotowy',
+  OK: 'Do analiz',
   WARN: 'Ostrzeżenia',
-  FAIL: 'Blokady',
+  FAIL: 'Wymaga decyzji',
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -130,7 +130,7 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, onNavigate, onFix }) => {
             className="px-3 py-1 text-xs font-medium rounded border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
             data-testid={`fix-${issue.code}`}
           >
-            Napraw
+            Skonfiguruj
           </button>
         ) : (
           elementRef && (
@@ -202,10 +202,10 @@ export const EngineeringReadinessPanel: React.FC<EngineeringReadinessPanelProps>
       >
         <div className="p-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-800">
-            Gotowość inżynieryjna
+            Kontrola inżynierska
           </h2>
           <p className="text-xs text-gray-500 mt-1">
-            Walidacja modelu sieci i gotowość do obliczeń
+            Kontrola konfiguracji sieci i przygotowanie do obliczeń
           </p>
         </div>
 
@@ -215,7 +215,7 @@ export const EngineeringReadinessPanel: React.FC<EngineeringReadinessPanelProps>
             data-testid="engineering-readiness-blocked"
           >
             <div className="text-xs font-semibold uppercase tracking-wide text-amber-800">
-              Blokada warsztatowa
+              Kontrola konfiguracji
             </div>
             <div className="mt-2 text-sm font-semibold text-amber-950">
               {workspaceBlockState.title}
@@ -237,10 +237,10 @@ export const EngineeringReadinessPanel: React.FC<EngineeringReadinessPanelProps>
       {/* Header */}
       <div className="p-4 border-b border-gray-200">
         <h2 className="text-lg font-semibold text-gray-800">
-          Gotowość inżynieryjna
+          Kontrola inżynierska
         </h2>
         <p className="text-xs text-gray-500 mt-1">
-          Walidacja modelu sieci i gotowość do obliczeń
+          Kontrola konfiguracji sieci i przygotowanie do obliczeń
         </p>
       </div>
 
@@ -256,7 +256,7 @@ export const EngineeringReadinessPanel: React.FC<EngineeringReadinessPanelProps>
             </span>
           </div>
           <span className="text-xs">
-            {ready ? 'Model gotowy do obliczeń' : 'Model wymaga uzupełnienia'}
+            {ready ? 'Układ przygotowany do obliczeń' : 'Układ wymaga decyzji projektowej'}
           </span>
         </div>
       </div>
@@ -298,8 +298,8 @@ export const EngineeringReadinessPanel: React.FC<EngineeringReadinessPanelProps>
         {filteredIssues.length === 0 ? (
           <div className="text-center text-gray-500 text-sm py-8">
             {issues.length === 0
-              ? 'Brak problemów \u2014 model gotowy do obliczeń.'
-              : 'Brak problemów spełniających filtr.'}
+              ? 'Kontrola nie wskazuje zagadnień technicznych — można uruchomić obliczenia.'
+              : 'Filtr nie wskazuje zagadnień technicznych.'}
           </div>
         ) : (
           <>
@@ -308,7 +308,7 @@ export const EngineeringReadinessPanel: React.FC<EngineeringReadinessPanelProps>
               blockers.length > 0 && (
                 <div className="mb-4">
                   <h3 className="text-xs font-bold text-red-700 uppercase tracking-wide mb-2">
-                    Blokady ({blockers.length})
+                    Decyzje projektowe ({blockers.length})
                   </h3>
                   {blockers.map((issue) => (
                     <IssueItem
