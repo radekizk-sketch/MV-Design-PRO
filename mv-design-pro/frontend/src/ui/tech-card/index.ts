@@ -3,3 +3,4 @@ export type { TechCardKind, TechCardSubject } from './types';
 export { isSwitchgearSubject } from './types';
 export { buildTechCardSubject } from './buildTechCardSubject';
 export type { BuildTechCardOptions } from './buildTechCardSubject';
+export { SemanticIssuesBanner } from './SemanticIssuesBanner';
