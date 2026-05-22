@@ -47,6 +47,7 @@ import { useSelectionStore } from '../../../selection';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { computeCorridorLayout } from '../builder/CorridorLayout';
 import { computeSpineModel, type SpineModel } from '../builder/SpinePolicy';
+import { SemanticIssuesBanner } from '../../../tech-card';
 import type { Bay, EnergyNetworkModel, LogicalViewsV1, Substation, Transformer } from '../../../../types/enm';
 import type { ElementType, SelectedElement } from '../../../types';
 import { buildOperationContext } from '../../../network-build/operationContext';
@@ -638,6 +639,7 @@ export function SldWorkspaceContainer(
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const readiness = useSnapshotStore((state) => state.readiness);
   const logicalViews = useSnapshotStore((state) => state.logicalViews);
+  const semanticIssues = useSnapshotStore((state) => state.semanticIssues);
   const activeMode = useAppStateStore((state) => state.activeMode);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
@@ -1734,6 +1736,23 @@ export function SldWorkspaceContainer(
           <span>Ostrzeżenia: {readinessWarningCount}</span>
         </div>
       </section>
+
+      {/* PR-N: Globalny banner naruszeń semantyki sieci.
+          Renderowany pod "Gotowość obliczeń" gdy są jakieś semantic_issues
+          z ostatniej operacji domenowej. Klik "Pokaż element" wybiera
+          element na SLD przez handleSelectElement. */}
+      {semanticIssues.length > 0 && (
+        <section
+          data-testid="sld-semantic-issues-stack"
+          className="pointer-events-auto absolute right-3 top-[148px] z-20 w-[min(360px,calc(100%-1.5rem))] rounded border border-scada-border bg-scada-panel/92 shadow-xl"
+          aria-label="Naruszenia semantyki sieci"
+        >
+          <SemanticIssuesBanner
+            issues={semanticIssues}
+            onSelectElement={(ref) => handleSelectElement(ref, 'semantic')}
+          />
+        </section>
+      )}
 
       {apparatusOverlayTargets.map((target) => (
         <button
