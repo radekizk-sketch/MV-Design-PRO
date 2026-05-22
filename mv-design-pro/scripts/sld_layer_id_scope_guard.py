@@ -36,26 +36,44 @@ FILE_EXTENSIONS = {".ts", ".tsx"}
 ALLOWED_DIR_PREFIXES = (
     "frontend/src/ui/sld/v2/lod/",
     "frontend/src/ui/sld/v2/canvas/",
+    # Renderery używają LodLevel (typ podstawowy) z LodPolicy
+    "frontend/src/ui/sld/v2/renderer/",
     # Testy v2 - asercje wewnętrzne contract testów
     "frontend/src/ui/sld/v2/__tests__/",
 )
 
-# Pliki indywidualnie wyłączone (legacy do migracji w future PR-ach):
-LEGACY_FILES = {
-    # LayersSection - panel warstw w build-sidebar, używa SldLayerId.
-    # Nieaktywny w produkcyjnym UI (tylko w testach jednostkowych
-    # BuildSidebar). Do migracji na LayerId + mapowanie w osobnym PR.
-    "frontend/src/ui/network-build/build-sidebar/LayersSection.tsx",
-    "frontend/src/ui/network-build/build-sidebar/BuildSidebar.tsx",
-    "frontend/src/ui/network-build/build-sidebar/__tests__/BuildSidebar.test.tsx",
-}
+# Pliki indywidualnie wyłączone (legacy do migracji w future PR-ach).
+# Po PR-Q konsolidacji warstw - lista jest pusta. Wszystkie komponenty UX
+# używają LayerId + mapowanie.
+LEGACY_FILES: set[str] = set()
 
-# Wzorce wykrywające użycie typu/wartości SldLayerId
-LAYER_ID_PATTERN = re.compile(
-    r"\bSldLayerId\b|\bDEFAULT_LAYER_VISIBILITY\b|\bLAYER_LABELS_PL\b(?=\s*\[)",
+# Wzorce wykrywające użycie SldLayerId i sąsiednich symboli z LodPolicy
+# (DEFAULT_LAYER_VISIBILITY). Symbole jednakowe w obu modułach (np.
+# LAYER_LABELS_PL — istnieje też w layerToggle.ts) wykrywamy poprzez
+# IMPORT z LodPolicy zamiast samego literału użycia.
+LAYER_ID_PATTERN = re.compile(r"\bSldLayerId\b|\bDEFAULT_LAYER_VISIBILITY\b")
+
+# Wykrywa: `import { ... } from '.../lod/LodPolicy'` lub podobne.
+# Każdy import z LodPolicy poza whitelisted location to naruszenie.
+LOD_POLICY_IMPORT_PATTERN = re.compile(
+    r"""from\s+['"][^'"]*\blod/LodPolicy['"]""",
 )
 
 IGNORE_PATTERN = re.compile(r"//\s*sld-layer-id-ignore")
+
+# Linie będące komentarzami (do skipowania)
+COMMENT_LINE_PATTERNS = [
+    re.compile(r"^\s*//"),    # // single-line
+    re.compile(r"^\s*\*"),    # JSDoc/block * continuation
+    re.compile(r"^\s*/\*"),   # /* block start
+    re.compile(r"^\s*\*/"),   # */ block end
+]
+
+
+def is_comment_line(line: str) -> bool:
+    """Czy linia jest komentarzem (do skipowania w analizie)."""
+    stripped = line.strip()
+    return any(pattern.match(stripped) for pattern in COMMENT_LINE_PATTERNS)
 
 
 class Violation(NamedTuple):
@@ -83,6 +101,8 @@ def scan_file(file_path: Path) -> list[Violation]:
     for i, line in enumerate(content.splitlines(), start=1):
         if IGNORE_PATTERN.search(line):
             continue
+        if is_comment_line(line):
+            continue
         m = LAYER_ID_PATTERN.search(line)
         if m:
             violations.append(
@@ -91,6 +111,19 @@ def scan_file(file_path: Path) -> list[Violation]:
                     line_number=i,
                     line_content=line.strip(),
                     match=m.group(),
+                )
+            )
+            continue
+        # Każdy import z LodPolicy poza whitelisted location jest naruszeniem -
+        # ujawnia że plik sięga do warstwy renderera.
+        m2 = LOD_POLICY_IMPORT_PATTERN.search(line)
+        if m2:
+            violations.append(
+                Violation(
+                    file_path=rel_path,
+                    line_number=i,
+                    line_content=line.strip(),
+                    match="import z LodPolicy",
                 )
             )
     return violations

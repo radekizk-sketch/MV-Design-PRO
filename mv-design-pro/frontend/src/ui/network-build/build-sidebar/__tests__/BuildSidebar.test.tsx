@@ -157,29 +157,43 @@ describe('BuilderSection — Dock projektanta', () => {
   });
 });
 
-describe('LayersSection — 13 warstw widoczności', () => {
-  it('renderuje 13 toggleable warstw', () => {
+describe('LayersSection — 14 warstw UX (LayerId po PR-Q konsolidacji)', () => {
+  it('renderuje 14 toggleable warstw (13 UX z briefa + spine preview)', () => {
     const onToggle = vi.fn();
     const { container } = render(
       <LayersSection visibility={{}} onToggle={onToggle} />,
     );
     const toggles = container.querySelectorAll('[data-testid^="layer-toggle-"]');
-    expect(toggles.length).toBe(13);
+    expect(toggles.length).toBe(14);
   });
 
-  it('default visibility: equipment ON, measurements OFF, der ON', () => {
+  it('domyślnie wszystkie OFF gdy visibility={} (rodzic kontroluje)', () => {
     const { getByTestId } = render(<LayersSection visibility={{}} onToggle={vi.fn()} />);
-    expect(getByTestId('layer-toggle-equipment').getAttribute('data-visible')).toBe('true');
-    expect(getByTestId('layer-toggle-measurements').getAttribute('data-visible')).toBe('false');
-    expect(getByTestId('layer-toggle-der').getAttribute('data-visible')).toBe('true');
+    expect(getByTestId('layer-toggle-power').getAttribute('data-visible')).toBe('false');
+    expect(getByTestId('layer-toggle-metering').getAttribute('data-visible')).toBe('false');
+    expect(getByTestId('layer-toggle-spine').getAttribute('data-visible')).toBe('false');
   });
 
-  it('toggle wywołuje callback z layer ID i nowym stanem', () => {
+  it('visibility prop wymusza explicit state per warstwa', () => {
+    const { getByTestId } = render(
+      <LayersSection visibility={{ power: true, spine: false }} onToggle={vi.fn()} />,
+    );
+    expect(getByTestId('layer-toggle-power').getAttribute('data-visible')).toBe('true');
+    expect(getByTestId('layer-toggle-spine').getAttribute('data-visible')).toBe('false');
+  });
+
+  it('toggle wywołuje callback z LayerId i nowym stanem', () => {
     const onToggle = vi.fn();
-    const { container } = render(<LayersSection visibility={{ measurements: false }} onToggle={onToggle} />);
-    const measurementsToggle = container.querySelector('[data-testid="layer-toggle-measurements"] input') as HTMLInputElement;
-    fireEvent.click(measurementsToggle);
-    expect(onToggle).toHaveBeenCalledWith('measurements', true);
+    const { container } = render(<LayersSection visibility={{ metering: false }} onToggle={onToggle} />);
+    const meteringToggle = container.querySelector('[data-testid="layer-toggle-metering"] input') as HTMLInputElement;
+    fireEvent.click(meteringToggle);
+    expect(onToggle).toHaveBeenCalledWith('metering', true);
+  });
+
+  it('spine layer jest w panelu z polską etykietą "Ciąg SN (preview)"', () => {
+    const { getByTestId, getByText } = render(<LayersSection visibility={{}} onToggle={vi.fn()} />);
+    expect(getByTestId('layer-toggle-spine')).toBeInTheDocument();
+    expect(getByText('Ciąg SN (preview)')).toBeInTheDocument();
   });
 });
 

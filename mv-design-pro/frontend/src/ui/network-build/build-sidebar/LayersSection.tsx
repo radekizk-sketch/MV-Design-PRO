@@ -1,39 +1,31 @@
 /**
- * LayersSection — toggleable warstwy widoczności (PR-13).
+ * LayersSection — toggleable warstwy widoczności.
  *
- * Brief 2 §4 sekcja 3 + brief 1 §10 — 13 warstw z DEFAULT_LAYER_VISIBILITY.
+ * Brief 2 §4 sekcja 3 + brief 1 §10 — warstwy UX z layerToggle.ts.
+ *
+ * UWAGA (PR-Q konsolidacji warstw): używa LayerId (UX warstwy z briefa
+ * SLD_INDUSTRIAL_SPEC § 5.2) zamiast SldLayerId (warstwy renderera).
+ * Mapowanie LayerId → SldLayerId odbywa się w mapLayerStateToRenderVisibility
+ * (frontend/src/ui/sld/v2/lod/layerMapping.ts) — wywoływane przez
+ * SldWorkspaceContainer przed przekazaniem layerVisibility do SldCanvasV2.
  */
 
-import {
-  DEFAULT_LAYER_VISIBILITY,
-  LAYER_LABELS_PL,
-  type SldLayerId,
-} from '../../sld/v2/lod/LodPolicy';
+import { LAYER_IDS, LAYER_LABELS_PL, type LayerId } from '../../sld/v2/lod/layerToggle';
 
 export interface LayersSectionProps {
-  readonly visibility: Partial<Record<SldLayerId, boolean>>;
-  readonly onToggle: (layer: SldLayerId, visible: boolean) => void;
+  readonly visibility: Partial<Record<LayerId, boolean>>;
+  readonly onToggle: (layer: LayerId, visible: boolean) => void;
 }
 
-const LAYER_ORDER: readonly SldLayerId[] = [
-  'equipment',
-  'labels',
-  'ports',
-  'measurements',
-  'results-pf',
-  'results-voltage',
-  'results-sc',
-  'stability',
-  'missing-data',
-  'protection',
-  'der',
-  'topology',
-  'alarms',
-];
+/**
+ * Domyślny stan widoczności dla brakujących wartości w visibility prop.
+ * Convention: każda warstwa OFF dopóki rodzic nie poda explicit value.
+ */
+const DEFAULT_OFF: Partial<Record<LayerId, boolean>> = {};
 
 export function LayersSection(props: LayersSectionProps): JSX.Element {
   const { visibility, onToggle } = props;
-  const merged = { ...DEFAULT_LAYER_VISIBILITY, ...visibility };
+  const merged = { ...DEFAULT_OFF, ...visibility };
 
   return (
     <div data-testid="layers-section" className="flex flex-col py-1">
@@ -41,7 +33,7 @@ export function LayersSection(props: LayersSectionProps): JSX.Element {
         Warstwy widoczności
       </div>
       <div className="flex flex-col px-2 py-1">
-        {LAYER_ORDER.map((id) => {
+        {LAYER_IDS.map((id) => {
           const visible = merged[id] ?? false;
           return (
             <label
