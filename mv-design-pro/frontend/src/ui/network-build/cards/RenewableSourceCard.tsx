@@ -106,7 +106,6 @@ export function RenewableSourceCard({ elementId }: { elementId: string }) {
       label: 'Identyfikacja',
       fields: [
         { key: 'name', label: 'Nazwa', value: generator.name },
-        { key: 'ref_id', label: 'ID elementu', value: generator.ref_id },
         {
           key: 'gen_type',
           label: 'Typ źródła',

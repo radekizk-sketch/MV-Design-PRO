@@ -84,7 +84,6 @@ export function TransformerCard({ elementId }: { elementId: string }) {
       label: 'Identyfikacja',
       fields: [
         { key: 'name', label: 'Nazwa', value: transformer.name },
-        { key: 'ref_id', label: 'ID elementu', value: transformer.ref_id },
         {
           key: 'station',
           label: 'Stacja',

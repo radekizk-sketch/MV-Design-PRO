@@ -134,7 +134,6 @@ export function SwitchCard({ elementId }: { elementId: string }) {
       label: 'Identyfikacja',
       fields: [
         { key: 'name', label: 'Nazwa', value: branch.name },
-        { key: 'ref_id', label: 'ID elementu', value: branch.ref_id },
         {
           key: 'type',
           label: 'Typ aparatu',
