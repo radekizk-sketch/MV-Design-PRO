@@ -30,11 +30,11 @@ import { useRawResultOverlayStore, getMetric, formatMetric } from '../../../sld-
 import { computeLfDerivedMetrics } from './lfDerivedMetrics';
 import {
   createInitialLayerState,
-  isLayerVisible,
   toggleLayer,
   type LayerId,
   type LayerState,
 } from '../lod/layerToggle';
+import { mapLayerStateToRenderVisibility } from '../lod/layerMapping';
 import type { LodLevel } from '../lod/LodPolicy';
 import { ProofPacksPanel } from '../proof/ProofPacksPanel';
 import { NetworkHierarchyTree } from '../domain/NetworkHierarchyTree';
@@ -1557,7 +1557,7 @@ export function SldWorkspaceContainer(
         connections={sldData.derConnections}
         selectedId={selectedId}
         spineModel={spineModel}
-        layerVisibility={{ spine: isLayerVisible(layerState, 'spine', currentLod) }}
+        layerVisibility={mapLayerStateToRenderVisibility(layerState, currentLod)}
         onSelectElement={handleSelectElement}
         onDoubleClickStation={handleDoubleClickStation}
         onDoubleClickDer={handleDoubleClickDer}
