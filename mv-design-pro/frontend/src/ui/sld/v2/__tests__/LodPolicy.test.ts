@@ -115,7 +115,7 @@ describe('LOD — effectiveLodForElement (selected override)', () => {
   });
 });
 
-describe('Layer visibility — 13 warstw z briefa', () => {
+describe('Layer visibility — 14 warstw (13 z briefa + spine preview)', () => {
   it('Domyślne stany — krytyczne warstwy ON', () => {
     expect(DEFAULT_LAYER_VISIBILITY.equipment).toBe(true);
     expect(DEFAULT_LAYER_VISIBILITY.labels).toBe(true);
@@ -134,9 +134,13 @@ describe('Layer visibility — 13 warstw z briefa', () => {
     expect(DEFAULT_LAYER_VISIBILITY.stability).toBe(false);
   });
 
-  it('13 warstw zdefiniowanych', () => {
+  it('14 warstw zdefiniowanych (13 z briefa + spine preview)', () => {
     const ids = Object.keys(DEFAULT_LAYER_VISIBILITY) as SldLayerId[];
-    expect(ids.length).toBe(13);
+    expect(ids.length).toBe(14);
+  });
+
+  it('Spine preview domyślnie OFF (opt-in overlay)', () => {
+    expect(DEFAULT_LAYER_VISIBILITY.spine).toBe(false);
   });
 
   it('Każda warstwa ma polską etykietę', () => {

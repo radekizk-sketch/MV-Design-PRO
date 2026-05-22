@@ -1554,6 +1554,7 @@ export function SldWorkspaceContainer(
         connections={sldData.derConnections}
         selectedId={selectedId}
         spineModel={spineModel}
+        layerVisibility={spineModel ? { spine: true } : undefined}
         onSelectElement={handleSelectElement}
         onDoubleClickStation={handleDoubleClickStation}
         onDoubleClickDer={handleDoubleClickDer}

@@ -730,8 +730,10 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         )}
 
         {/* Spine overlay — diagnostyczna wizualizacja ciągów SN jako korytarzy.
-            Renderowany tylko gdy spineModel jest podany przez container. */}
-        {spineModel && layers.equipment && (
+            Renderowany tylko gdy spineModel jest podany przez container
+            ORAZ warstwa `spine` jest widoczna (LayerTogglePanel lub
+            VITE_SLD_SPINE_PREVIEW=1 → layerVisibility.spine=true). */}
+        {spineModel && layers.spine && (
           <g data-testid="sld-spine-layer">
             <SpineRenderer
               model={spineModel}

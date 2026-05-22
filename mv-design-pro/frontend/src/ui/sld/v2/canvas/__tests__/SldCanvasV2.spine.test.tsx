@@ -47,29 +47,46 @@ describe('SldCanvasV2 spine overlay', () => {
     expect(container.querySelector('[data-testid="sld-spine-layer"]')).toBeNull();
   });
 
-  it('Z spineModel: rendered sld-spine-layer + SpineRenderer', () => {
+  it('Z spineModel ale domyślną widocznością warstw (spine=false): warstwa ukryta', () => {
     const { container } = render(
       <SldCanvasV2 {...emptyCanvasProps()} spineModel={makeSpineModel()} />,
+    );
+    expect(container.querySelector('[data-testid="sld-spine-layer"]')).toBeNull();
+  });
+
+  it('Z spineModel + layerVisibility.spine=true: rendered sld-spine-layer + SpineRenderer', () => {
+    const { container } = render(
+      <SldCanvasV2
+        {...emptyCanvasProps()}
+        spineModel={makeSpineModel()}
+        layerVisibility={{ spine: true }}
+      />,
     );
     expect(container.querySelector('[data-testid="sld-spine-layer"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="spine-renderer"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="spine-axis-RUN-1"]')).toBeTruthy();
   });
 
-  it('Z spineModel + layer equipment=false: warstwa ukryta', () => {
+  it('Z spineModel + layerVisibility.spine=false: warstwa ukryta', () => {
     const { container } = render(
       <SldCanvasV2
         {...emptyCanvasProps()}
         spineModel={makeSpineModel()}
-        layerVisibility={{ equipment: false }}
+        layerVisibility={{ spine: false }}
       />,
     );
     expect(container.querySelector('[data-testid="sld-spine-layer"]')).toBeNull();
   });
 
-  it('Z spineModel pustym: layer obecna ale bez corridor', () => {
+  it('Z spineModel pustym + spine=true: layer obecna ale bez corridor', () => {
     const empty: SpineModel = { corridors: [], totalNodes: 0 };
-    const { container } = render(<SldCanvasV2 {...emptyCanvasProps()} spineModel={empty} />);
+    const { container } = render(
+      <SldCanvasV2
+        {...emptyCanvasProps()}
+        spineModel={empty}
+        layerVisibility={{ spine: true }}
+      />,
+    );
     expect(container.querySelector('[data-testid="sld-spine-layer"]')).toBeTruthy();
     expect(container.querySelector('[data-spine-id]')).toBeNull();
   });

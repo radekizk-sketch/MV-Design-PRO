@@ -133,7 +133,8 @@ export type SldLayerId =
   | 'protection'
   | 'der'
   | 'topology'
-  | 'alarms';
+  | 'alarms'
+  | 'spine';
 
 /** Domyślne stany warstw widoczności (start aplikacji). */
 export const DEFAULT_LAYER_VISIBILITY: Readonly<Record<SldLayerId, boolean>> = {
@@ -150,6 +151,9 @@ export const DEFAULT_LAYER_VISIBILITY: Readonly<Record<SldLayerId, boolean>> = {
   der: true,
   topology: true,
   alarms: true,
+  // Spine = opt-in overlay (PR-B/H/I). Domyślnie ukryty - włączany przez
+  // LayerTogglePanel lub VITE_SLD_SPINE_PREVIEW=1 w trybie dev.
+  spine: false,
 };
 
 /** Polskie etykiety warstw (UI). */
@@ -167,6 +171,7 @@ export const LAYER_LABELS_PL: Readonly<Record<SldLayerId, string>> = {
   der: 'OZE / BESS / FW',
   topology: 'Topologia pracy',
   alarms: 'Alarmy / blokady',
+  spine: 'Ciąg SN (preview)',
 };
 
 // =============================================================================
