@@ -17,7 +17,7 @@ describe('EmptyInspectorPanel — brak placeholder "—"', () => {
   it('Empty state (brak selekcji) pokazuje CTA "Wybierz element ze schematu"', () => {
     render(<EmptyInspectorPanel selectedElement={null} />);
     expect(screen.getByTestId('inspector-panel-empty')).toBeInTheDocument();
-    expect(screen.getByText(/Wybierz element ze schematu/i)).toBeInTheDocument();
+    expect(screen.getByText(/Wybór układu/i)).toBeInTheDocument();
   });
 
   it('Empty state ma 0 wystąpień placeholder "—" w pola fields', () => {
@@ -29,13 +29,13 @@ describe('EmptyInspectorPanel — brak placeholder "—"', () => {
 
   it('Empty state w trybie budowy pokazuje opis flow', () => {
     render(<EmptyInspectorPanel selectedElement={null} isReadOnly={false} />);
-    expect(screen.getByText(/Tryb budowy modelu/i)).toBeInTheDocument();
-    expect(screen.getByText(/wstaw GPZ z menu/i)).toBeInTheDocument();
+    expect(screen.getByText(/Budowa sieci/i)).toBeInTheDocument();
+    expect(screen.getByText(/Rozpocznij od wariantu GPZ/i)).toBeInTheDocument();
   });
 
   it('Empty state w trybie read-only (audyt) NIE pokazuje opisu trybu budowy', () => {
     render(<EmptyInspectorPanel selectedElement={null} isReadOnly={true} />);
-    expect(screen.queryByText(/Tryb budowy modelu/i)).toBeNull();
+    expect(screen.queryByText(/Budowa sieci/i)).toBeNull();
   });
 
   it('Wybrany element z UUID jako name → format "Element #ABCD1234"', () => {

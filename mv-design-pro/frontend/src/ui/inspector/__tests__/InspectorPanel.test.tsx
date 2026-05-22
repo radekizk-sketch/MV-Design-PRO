@@ -43,7 +43,7 @@ describe('InspectorPanel', () => {
     expect(proofButton).toBeDefined();
     expect(proofButton).toBeDisabled();
     expect(screen.getByTestId('open-proof-trace-blocked-proof')).toHaveTextContent(
-      'Brak aktywnego uruchomienia.',
+      'Nie wybrano przebiegu obliczeń.',
     );
     fireEvent.click(proofButton!);
     expect(window.location.hash).toBe('');

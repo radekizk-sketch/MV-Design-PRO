@@ -47,10 +47,10 @@ describe('ReadinessBar', () => {
         transformers: [],
         generators: [],
         buses: [{ ref_id: 'bus-1' }],
-        branches: [{ ref_id: 'seg-1', type: 'cable' }],
+        branches: [{ ref_id: 'seg-1', type: 'cable', length_km: 0.5 }],
       } as never,
       logicalViews: {
-        trunks: [{ id: 'trunk-1' }],
+        trunks: [{ id: 'trunk-1', segments: [{ segment_ref: 'seg-1' }] }],
         terminals: [],
         branches: [],
       } as never,

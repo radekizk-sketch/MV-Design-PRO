@@ -45,7 +45,7 @@ function sanitizeDerApiMessage(message: string, status: number): string {
     .trim();
 
   if (/przypadek obliczeniowy nie nale[żz]y do wskazanego projektu/i.test(withoutEndpoint)) {
-    return 'Aktywny przypadek obliczeniowy nie jest powiązany z wybranym projektem. Wybierz właściwy projekt albo aktywny przypadek.';
+    return 'Aktywny zakres obliczeń nie jest powiązany z wybranym projektem. Wybierz właściwy projekt albo zakres obliczeń.';
   }
 
   return withoutEndpoint || `Nie udało się zapisać konfiguracji DER. Kod odpowiedzi: ${status}.`;

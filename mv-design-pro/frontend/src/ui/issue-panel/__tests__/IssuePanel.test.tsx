@@ -97,7 +97,7 @@ describe('IssuePanel', () => {
         />
       );
 
-      expect(screen.getByText(/Brak problemów .* wszystko w porządku/)).toBeInTheDocument();
+      expect(screen.getByText(/Kontrola nie wskazuje zagadnień technicznych/)).toBeInTheDocument();
     });
   });
 

@@ -119,7 +119,7 @@ describe('SldContextMenuController — most SLD_MENU_REGISTRY ↔ ContextMenu', 
 
     expect(screen.getByText('Stacja transformatorowa SN/nN')).toBeInTheDocument();
     expect(document.body.textContent ?? '').not.toContain('stn/773474baab70d0771fbaaca1aeb891e3/station');
-    expect(screen.getByText('Dodaj układ PV/BESS/FW z katalogu')).toBeInTheDocument();
+    expect(screen.getByText('Dodaj źródło PV/BESS/FW z katalogu')).toBeInTheDocument();
     expect(screen.getByText('Pokaż konfigurację stacji')).toBeInTheDocument();
   });
 

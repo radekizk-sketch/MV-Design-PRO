@@ -27,9 +27,13 @@ jobs:
         run: npm run lint
       - name: Run tests
         working-directory: mv-design-pro/frontend
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
         run: npm test
       - name: Run audit2 frontend integration tests (Phase 8-30)
         working-directory: mv-design-pro/frontend
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
         run: |
           npx vitest run --no-file-parallelism \
             src/ui/network-build/station-der/__tests__/audit2-api.test.ts \

@@ -69,7 +69,7 @@ describe('ReadinessBlockersReview', () => {
   it('nie komunikuje pełnej gotowości, gdy zostały tylko ostrzeżenia', () => {
     render(<ReadinessBlockersReview />);
 
-    expect(screen.getByText('Brak blokerów gotowości')).toBeInTheDocument();
+    expect(screen.getByText('Kontrola konfiguracji bez zagadnień krytycznych')).toBeInTheDocument();
     expect(screen.getByText('Pozostało 1 ostrzeżenie.')).toBeInTheDocument();
     expect(screen.queryByText(/gotowa do analizy/i)).toBeNull();
   });

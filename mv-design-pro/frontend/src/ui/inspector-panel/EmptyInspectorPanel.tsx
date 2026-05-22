@@ -75,6 +75,7 @@ const APPARATUS_KIND_LABELS_PL: Record<string, string> = {
 };
 
 const INTERNAL_REF_PATTERN = /\b(?:stn|seg|gpz)\/[a-z0-9][^\s,;)]+/gi;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function parseApparatusSelectionId(id: string): { bayRef: string; apparatusKind: string } | null {
   const marker = id.lastIndexOf('#');
@@ -88,6 +89,9 @@ function publicSelectionName(name: string | undefined, fallback: string): string
     .replace(/\s+[—-]\s*$/u, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
+  if (UUID_PATTERN.test(cleaned)) {
+    return `Element #${cleaned.slice(0, 8).toUpperCase()}`;
+  }
   return cleaned.length > 0 ? cleaned : fallback;
 }
 

@@ -110,7 +110,7 @@ describe('StationWizardSidebar — skeleton komponentu nawigacji', () => {
     render(
       <StationWizardSidebar activeStep="cable" onSelectStep={() => {}} />,
     );
-    const nav = screen.getByRole('navigation', { name: 'Kreator Stacji — nawigacja kroków' });
+    const nav = screen.getByRole('navigation', { name: 'Konfiguracja stacji — nawigacja kroków' });
     expect(nav).toBeInTheDocument();
   });
 });

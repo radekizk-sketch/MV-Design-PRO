@@ -166,9 +166,9 @@ function evaluateSegmentEndpoint(
   };
 }
 
-function formatLengthM(branch: Branch | null, draftLengthM: number | null): string {
-  if (branch && 'length_km' in branch && typeof branch.length_km === 'number') {
-    return `${SEGMENT_NUMBER_FORMAT_PL.format(branch.length_km * 1000)} m`;
+function formatLengthM(segment: Branch | null, draftLengthM: number | null): string {
+  if (segment && 'length_km' in segment && typeof segment.length_km === 'number') {
+    return `${SEGMENT_NUMBER_FORMAT_PL.format(segment.length_km * 1000)} m`;
   }
   return draftLengthM === null ? MISSING_DASH : `${SEGMENT_NUMBER_FORMAT_PL.format(draftLengthM)} m`;
 }

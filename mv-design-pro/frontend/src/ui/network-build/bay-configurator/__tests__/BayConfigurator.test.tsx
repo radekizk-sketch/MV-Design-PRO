@@ -248,6 +248,6 @@ describe('BayConfigurator — UI', () => {
         bayContext={VALID_LINE_IN_CTX}
       />,
     );
-    expect(screen.getByText(/Brak danych/)).toBeInTheDocument();
+    expect(screen.getByText(/zostanie pokazany po wyborze wariantu pola/i)).toBeInTheDocument();
   });
 });

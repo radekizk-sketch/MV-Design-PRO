@@ -27,7 +27,22 @@ type SnapshotLike = Partial<
   corridors?: readonly NamedEnmElement[];
 };
 
-const INTERNAL_REF_PREFIX = '(?:gpz|stn|seg|bus|bay|branch|source|load|pv|bess|fw|tr|trafo|bp)';
+const INTERNAL_REF_PREFIX = `(?:${[
+  'gpz',
+  'stn',
+  'seg',
+  'bus',
+  'bay',
+  'branch',
+  'source',
+  'load',
+  'pv',
+  'bess',
+  'fw',
+  'tr',
+  'trafo',
+  'bp',
+].join('|')})`;
 const INTERNAL_REF_PATTERN = new RegExp(`\\b${INTERNAL_REF_PREFIX}\\/[\\w./:#-]+`, 'gi');
 const QUOTED_INTERNAL_REF_PATTERN = new RegExp(`['"](${INTERNAL_REF_PREFIX}\\/[^'"]+)['"]`, 'gi');
 

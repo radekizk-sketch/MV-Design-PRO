@@ -256,7 +256,7 @@ export function StationConfigurator(props: StationConfiguratorProps): JSX.Elemen
               <div className="rounded border border-scada-border bg-scada-panel-raised px-3 py-2 text-[11px] text-scada-muted">
                 Następny krok:{' '}
                 <span className="font-semibold text-scada-text">
-                  {nextStep ? nextStep.label : 'uruchomienie obliczeń'}
+                  {nextStep ? nextStep.label : 'Obliczenie'}
                 </span>
               </div>
             </div>

@@ -102,7 +102,7 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'open-station-config', labelPl: 'Otwórz konfigurator stacji', group: 'edycja' },
     { id: 'continue-trunk', labelPl: 'Kontynuuj ciąg główny', group: 'budowa' },
     { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', group: 'budowa' },
-    { id: 'add-source', labelPl: 'Dodaj układ PV/BESS/FW z katalogu', group: 'budowa' },
+    { id: 'add-source', labelPl: 'Dodaj źródło PV/BESS/FW z katalogu', group: 'budowa' },
     { id: 'add-load', labelPl: 'Dodaj obciążenie nN', group: 'budowa' },
     { id: 'show-readiness', labelPl: 'Pokaż konfigurację stacji', group: 'widok' },
     { id: 'show-results', labelPl: 'Pokaż wyniki stacji', group: 'widok' },

@@ -887,9 +887,9 @@ def _ensure_line_run_for_corridor(
             return line_run
 
     corridor = _find_corridor_by_ref(enm, corridor_ref) or {}
-    fallback_bay_ref, fallback_port_ref = _first_gpz_line_field_for_run(enm)
-    start_bay = starting_bay_ref or corridor.get("starting_bay_ref") or fallback_bay_ref
-    start_port = starting_port_ref or corridor.get("starting_port_ref") or fallback_port_ref or start_bay
+    gpz_line_bay_ref, gpz_line_port_ref = _first_gpz_line_field_for_run(enm)
+    start_bay = starting_bay_ref or corridor.get("starting_bay_ref") or gpz_line_bay_ref
+    start_port = starting_port_ref or corridor.get("starting_port_ref") or gpz_line_port_ref or start_bay
     if not isinstance(start_bay, str) or not start_bay or not isinstance(start_port, str) or not start_port:
         return None
 
@@ -1121,7 +1121,9 @@ def _auto_detect_trunk_end(enm: dict[str, Any], trunk_id: str | None) -> str | N
     return None
 
 
-def _auto_detect_trunk_start_field(enm: dict[str, Any], trunk_id: str | None) -> dict[str, Any] | None:
+def _resolve_initial_trunk_start_field(
+    enm: dict[str, Any], trunk_id: str | None
+) -> dict[str, Any] | None:
     """Find the catalog line field that starts an empty trunk."""
     corridors = enm.get("corridors", [])
     target_corridor = None
@@ -3162,7 +3164,7 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
 
     # Auto-detect from_terminal_id: prefer a catalog line field for an empty trunk.
     if not from_terminal_id:
-        start_field = _auto_detect_trunk_start_field(enm, trunk_id)
+        start_field = _resolve_initial_trunk_start_field(enm, trunk_id)
         if start_field:
             start_field_ref = start_field.get("field_ref")
             if isinstance(start_field_ref, str) and start_field_ref.strip():

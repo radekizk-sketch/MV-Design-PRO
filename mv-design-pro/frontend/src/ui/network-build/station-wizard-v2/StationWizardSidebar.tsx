@@ -56,7 +56,7 @@ export function StationWizardSidebar({
     <nav
       data-testid="station-wizard-sidebar"
       data-density={density}
-      aria-label="Kreator Stacji — nawigacja kroków"
+      aria-label="Konfiguracja stacji — nawigacja kroków"
       className={clsx(
         'flex h-full shrink-0 flex-col overflow-y-auto border-r border-[#1a2a3a] bg-[#080e18]',
         isCompact ? 'w-[240px]' : 'w-[320px]',
@@ -64,7 +64,7 @@ export function StationWizardSidebar({
     >
       <div className="border-b border-[#1a2a3a] px-3 py-2">
         <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#4a6a8a]">
-          Kreator Stacji
+          Konfiguracja stacji
         </div>
         <div className="text-[11px] font-semibold text-scada-text">
           17 kroków · 7 grup

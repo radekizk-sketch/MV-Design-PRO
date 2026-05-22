@@ -212,7 +212,7 @@ describe('Power Flow Results Polish Labels', () => {
   });
 
   it('should have Polish result status labels', () => {
-    expect(RESULT_STATUS_LABELS.NONE).toBe('Brak wyników');
+    expect(RESULT_STATUS_LABELS.NONE).toBe('Wyniki nieuruchomione');
     expect(RESULT_STATUS_LABELS.FRESH).toBe('Wyniki aktualne');
     expect(RESULT_STATUS_LABELS.VALID).toBe('Wyniki aktualne');
     expect(RESULT_STATUS_LABELS.OUTDATED).toBe('Wyniki nieaktualne');

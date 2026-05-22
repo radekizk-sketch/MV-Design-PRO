@@ -971,7 +971,9 @@ function stationDisplayNameForInternalRef(
     item.ref_id === stationRef || item.id === stationRef,
   );
   if (!station) return 'Stacja SN/nN';
-  const fallback = `${stationOrdinalCode(snapshot, station)} · ${formatStationTypeLabelPl(station.station_type)}`;
+  const stationCode = stationOrdinalCode(snapshot, station);
+  const stationTypeLabel = formatStationTypeLabelPl(station.station_type);
+  const fallback = [stationCode, stationTypeLabel].join(' · ');
   return isGenericStationName(station.name)
     ? fallback
     : publicTechnicalLabel(station.name, fallback);

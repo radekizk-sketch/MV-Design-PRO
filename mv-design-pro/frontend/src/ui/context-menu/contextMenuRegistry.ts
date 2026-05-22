@@ -100,7 +100,7 @@ export const STATION_SN_NN_MENU_ACTIONS: readonly CanonicalContextMenuActionDefi
   station('station_edit_transformer', 'Edytuj transformator', 'Edytuj', 'ikona-obiekt-transformator', 'onEditTransformer'),
   station('station_edit_nn_side', 'Edytuj stronę nN', 'Edytuj', 'ikona-obiekt-strona-nn', 'onEditNnSide'),
   station('add_nn_load', 'Dodaj obciążenie', 'Dodaj', 'ikona-obiekt-obciazenie', 'onAddLoad'),
-  station('add_converter_source', 'Dodaj układ PV/BESS/FW z katalogu', 'Dodaj', 'ikona-obszar-zrodla-przylaczenia', 'onAddSource'),
+  station('add_converter_source', 'Dodaj źródło PV/BESS/FW z katalogu', 'Dodaj', 'ikona-obszar-zrodla-przylaczenia', 'onAddSource'),
   station('show_results', 'Pokaż wyniki stacji', 'Wyniki', 'ikona-obszar-wyniki-analizy', 'onShowResults', 'result'),
   station('show_engineering_justification', 'Pokaż uzasadnienie', 'Uzasadnienie', 'ikona-wynik-uzasadnienie', 'onShowEngineeringJustification', 'result'),
   station('add_to_report', 'Dodaj do raportu', 'Raport', 'ikona-wynik-raport', 'onAddToReport', 'always'),
