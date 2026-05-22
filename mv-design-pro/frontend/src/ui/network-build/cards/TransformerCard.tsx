@@ -8,7 +8,8 @@
  */
 
 import { useMemo, useCallback } from 'react';
-import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
+import { type CardSection, type CardAction } from './ObjectCard';
+import { TechCard } from '../../tech-card';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
@@ -84,7 +85,6 @@ export function TransformerCard({ elementId }: { elementId: string }) {
       label: 'Identyfikacja',
       fields: [
         { key: 'name', label: 'Nazwa', value: transformer.name },
-        { key: 'ref_id', label: 'ID elementu', value: transformer.ref_id },
         {
           key: 'station',
           label: 'Stacja',
@@ -294,7 +294,7 @@ export function TransformerCard({ elementId }: { elementId: string }) {
   const dot = statusDotFromReadiness(elementId, readiness);
 
   return (
-    <ObjectCard
+    <TechCard
       elementName={transformer.name}
       elementType="Transformator SN/nN"
       elementId={elementId}

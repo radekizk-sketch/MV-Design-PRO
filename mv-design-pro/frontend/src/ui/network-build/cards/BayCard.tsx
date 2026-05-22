@@ -3,7 +3,8 @@
  */
 
 import { useCallback, useMemo } from 'react';
-import { ObjectCard, type CardAction, type CardSection } from './ObjectCard';
+import { type CardAction, type CardSection } from './ObjectCard';
+import { TechCard } from '../../tech-card';
 import { useFieldReadModel, type FieldReadModelItem } from '../../field/useFieldReadModel';
 import { BayWindowSchematic } from '../../field/BayWindowSchematic';
 import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
@@ -804,7 +805,7 @@ export function BayCard({ elementId }: { elementId: string }) {
     : effectiveLegacyRole ? bayRoleLabel(effectiveLegacyRole) : 'Pole SN';
 
   return (
-    <ObjectCard
+    <TechCard
       elementName={fieldItem?.bay_name ?? bay?.name ?? elementId}
       elementType={`Pole SN - ${displayRole}`}
       elementId={fieldItem?.bay_ref ?? bay?.ref_id ?? elementId}

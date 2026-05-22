@@ -1,4 +1,8 @@
 /**
+ * @deprecated Użyj `TechCard` z `frontend/src/ui/tech-card/`.
+ * Engineering Inspector jest zastępowany przez ujednoliconą rodzinę TechCard.
+ * Plik pozostaje tymczasowo na potrzeby istniejących konsumentów. Usunięcie w PR-4.
+ *
  * Engineering Inspector -- Section 10 Enhanced Element Inspector
  *
  * CANONICAL ALIGNMENT:

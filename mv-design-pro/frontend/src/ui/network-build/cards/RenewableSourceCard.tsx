@@ -9,7 +9,8 @@
  */
 
 import { useMemo, useCallback } from 'react';
-import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
+import { type CardSection, type CardAction } from './ObjectCard';
+import { TechCard } from '../../tech-card';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import {
@@ -106,7 +107,6 @@ export function RenewableSourceCard({ elementId }: { elementId: string }) {
       label: 'Identyfikacja',
       fields: [
         { key: 'name', label: 'Nazwa', value: generator.name },
-        { key: 'ref_id', label: 'ID elementu', value: generator.ref_id },
         {
           key: 'gen_type',
           label: 'Typ źródła',
@@ -329,7 +329,7 @@ export function RenewableSourceCard({ elementId }: { elementId: string }) {
   const dot = statusDotFromReadiness(elementId, readiness);
 
   return (
-    <ObjectCard
+    <TechCard
       elementName={generator.name}
       elementType={`Źródło OZE — ${genTypeShort(generator.gen_type)}`}
       elementId={elementId}

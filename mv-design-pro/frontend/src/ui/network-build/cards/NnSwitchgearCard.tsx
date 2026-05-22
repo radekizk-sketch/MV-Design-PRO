@@ -10,7 +10,8 @@
  */
 
 import { useMemo, useCallback } from 'react';
-import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
+import { type CardSection, type CardAction } from './ObjectCard';
+import { TechCard } from '../../tech-card';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
@@ -393,7 +394,7 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
   const dot = statusDotFromReadiness(elementId, readiness);
 
   return (
-    <ObjectCard
+    <TechCard
       elementName={station.name}
       elementType="Rozdzielnica nN stacji"
       elementId={elementId}

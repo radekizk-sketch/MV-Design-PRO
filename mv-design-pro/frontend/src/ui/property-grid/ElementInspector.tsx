@@ -1,4 +1,9 @@
 /**
+ * @deprecated Użyj `TechCard` z `frontend/src/ui/tech-card/`.
+ * Ta karta inspektora jest zastępowana przez ujednoliconą rodzinę TechCard
+ * (specjalizacje per typ elementu w `ui/network-build/cards/`). Plik pozostaje
+ * tymczasowo na potrzeby istniejących konsumentów. Usunięcie w PR-4.
+ *
  * Element Inspector — §6 UX 10/10
  *
  * Schema-driven element inspector with ZERO empty fields.

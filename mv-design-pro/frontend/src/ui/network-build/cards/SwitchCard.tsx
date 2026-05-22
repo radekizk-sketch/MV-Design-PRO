@@ -9,7 +9,8 @@
  */
 
 import { useMemo, useCallback } from 'react';
-import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
+import { type CardSection, type CardAction } from './ObjectCard';
+import { TechCard } from '../../tech-card';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
@@ -134,7 +135,6 @@ export function SwitchCard({ elementId }: { elementId: string }) {
       label: 'Identyfikacja',
       fields: [
         { key: 'name', label: 'Nazwa', value: branch.name },
-        { key: 'ref_id', label: 'ID elementu', value: branch.ref_id },
         {
           key: 'type',
           label: 'Typ aparatu',
@@ -327,7 +327,7 @@ export function SwitchCard({ elementId }: { elementId: string }) {
   const dot = statusDotFromReadiness(elementId, readiness);
 
   return (
-    <ObjectCard
+    <TechCard
       elementName={branch.name}
       elementType={switchTypeLabel(branch.type)}
       elementId={elementId}

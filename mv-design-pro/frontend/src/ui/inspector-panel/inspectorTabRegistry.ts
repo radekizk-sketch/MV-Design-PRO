@@ -1,3 +1,8 @@
+/**
+ * @deprecated Edycja elementu odbywa się teraz przez `TechCard` z `ui/tech-card/`.
+ * Ten rejestr tabów pozostaje na potrzeby read-only widoku wyników w `ui/inspector/`.
+ * Pełna konsolidacja w PR-4.
+ */
 import type { ElementType } from '../types';
 
 export type InspectorTabId =

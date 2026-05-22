@@ -8,7 +8,8 @@
  */
 
 import { useMemo, useCallback } from 'react';
-import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
+import { type CardSection, type CardAction } from './ObjectCard';
+import { TechCard } from '../../tech-card';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import type { OverheadLine, Cable } from '../../../types/enm';
@@ -247,7 +248,7 @@ export function TrunkCard({ corridorRef }: { corridorRef: string }) {
   if (!corridor) return null;
 
   return (
-    <ObjectCard
+    <TechCard
       elementName={corridor.name}
       elementType={`Magistrala SN — ${corridorTypeLabel(corridor.corridor_type)}`}
       elementId={corridorRef}

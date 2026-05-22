@@ -15,7 +15,8 @@
  */
 
 import { useMemo, useCallback } from 'react';
-import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
+import { type CardSection, type CardAction } from './ObjectCard';
+import { TechCard } from '../../tech-card';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
@@ -207,7 +208,7 @@ export function BranchPoleCard({ elementId, onClose }: BranchPoleCardProps) {
   }
 
   return (
-    <ObjectCard
+    <TechCard
       elementName={branchPoint.name}
       elementType="Słup rozgałęźny SN"
       elementId={elementId}
