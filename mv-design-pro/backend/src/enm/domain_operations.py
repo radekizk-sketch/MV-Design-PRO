@@ -1667,6 +1667,7 @@ def _error_response(message: str, code: str = "UNKNOWN") -> dict[str, Any]:
         "domain_events": [],
         "materialized_params": {"lines_sn": {}, "transformers_sn_nn": {}, "sources_sn": {}},
         "layout": {"layout_hash": "", "layout_version": "1.0"},
+        "semantic_issues": [],
     }
 
 
@@ -5715,12 +5716,27 @@ def execute_domain_operation(
         )
 
     try:
-        return handler(enm_dict, payload)
+        result = handler(enm_dict, payload)
     except Exception as exc:
         return _error_response(
             f"Nieobsłużony wyjątek w operacji '{canonical_name}': {exc}",
             "dispatcher.unhandled_exception",
         )
+
+    # Post-hook: walidacja semantyczna ENM po operacji (PR-C konsolidacji UI).
+    # Reguły z network_model/validation/semantic_rules.py sprawdzają spójność
+    # semantyki (kabel/słup, ZKSN/overhead, DER/pole). Wyniki trafiają do
+    # response jako `semantic_issues: list[dict]` — frontend pokazuje je w
+    # SemanticIssuesBanner. Nie blokujemy response w razie wyjątku walidatora —
+    # ewentualne błędy idą do logu, ale operacja przechodzi.
+    if isinstance(result, dict) and not result.get("error"):
+        try:
+            from network_model.validation import validate_semantic_as_dicts
+
+            result["semantic_issues"] = validate_semantic_as_dicts(enm_dict)
+        except Exception:
+            result.setdefault("semantic_issues", [])
+    return result
 
 
 # ---------------------------------------------------------------------------
