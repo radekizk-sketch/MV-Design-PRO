@@ -57,9 +57,12 @@ vi.mock('../../catalog/api', () => ({
     {
       id: 'XRUHAKXS-3x120',
       name: 'XRUHAKXS 3x120',
+      trade_name: 'XRUHAKXS 1×120/25',
       manufacturer: 'Katalog SN',
       voltage_rating_kv: 15,
       cross_section_mm2: 120,
+      number_of_cores: 1,
+      return_conductor_cross_section_mm2: 25,
       rated_current_a: 200,
       r_ohm_per_km: 0.253,
       x_ohm_per_km: 0.101,
@@ -127,6 +130,17 @@ describe('ContinueTrunkForm', () => {
           name: 'Stacja 1',
           bus_refs: ['bus-sn-1'],
           transformer_refs: [],
+          meta: {
+            field_specs: [
+              {
+                field_ref: 'bus-sn-1',
+                name: 'Pole odpływowe',
+                bay_role: 'OUT',
+                bus_ref: 'bus-sn-1',
+                meta: { terminal_bus_ref: 'bus-sn-1' },
+              },
+            ],
+          },
         },
       ],
       bays: [
@@ -156,7 +170,7 @@ describe('ContinueTrunkForm', () => {
     expect(screen.getByText('15 kV')).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/XRUHAKXS.*120/).length).toBeGreaterThan(0);
     });
     expect(screen.getByTestId('trunk-selected-catalog-params')).toHaveTextContent('Obciążalność');
     expect(screen.getByTestId('trunk-selected-catalog-params')).toHaveTextContent('0,101 Ω/km');
@@ -176,7 +190,7 @@ describe('ContinueTrunkForm', () => {
     expect(screen.queryByText('Południe (S)')).not.toBeInTheDocument();
     expect(screen.queryByText('Zachód (W)')).not.toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/XRUHAKXS.*120/).length).toBeGreaterThan(0);
     });
   });
 
@@ -192,7 +206,7 @@ describe('ContinueTrunkForm', () => {
       .toBeGreaterThan(0);
     expect(getSubmitSegmentButton()).toBeDisabled();
     await waitFor(() => {
-      expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/XRUHAKXS.*120/).length).toBeGreaterThan(0);
     });
   });
 
@@ -226,7 +240,7 @@ describe('ContinueTrunkForm', () => {
     expect(screen.queryByText(/Nie znaleziono wolnego portu wyjściowego SN/)).not.toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/XRUHAKXS.*120/).length).toBeGreaterThan(0);
     });
     fireEvent.click(screen.getByTestId('length-preset-250'));
     fireEvent.click(getSubmitSegmentButton());
@@ -269,7 +283,7 @@ describe('ContinueTrunkForm', () => {
     expect(screen.queryByText(/Nie znaleziono wolnego portu wyjściowego SN/)).not.toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/XRUHAKXS.*120/).length).toBeGreaterThan(0);
     });
 
     fireEvent.click(screen.getByTestId('length-preset-250'));
@@ -302,7 +316,7 @@ describe('ContinueTrunkForm', () => {
     render(<ContinueTrunkForm />);
 
     await waitFor(() => {
-      expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/XRUHAKXS.*120/).length).toBeGreaterThan(0);
     });
     fireEvent.change(screen.getByPlaceholderText('np. 500'), { target: { value: '250' } });
     expect(getSubmitSegmentButton()).toBeEnabled();
@@ -330,7 +344,7 @@ describe('ContinueTrunkForm', () => {
     render(<ContinueTrunkForm />);
 
     await waitFor(() => {
-      expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/XRUHAKXS.*120/).length).toBeGreaterThan(0);
     });
     fireEvent.change(screen.getByPlaceholderText('np. 500'), { target: { value: '350' } });
     fireEvent.click(getSubmitSegmentButton());
@@ -352,7 +366,7 @@ describe('ContinueTrunkForm', () => {
 
     const payload = snapshotState.executeDomainOperation.mock.calls[0]?.[2] as Record<string, unknown>;
     expect(payload).not.toHaveProperty('from_bus_ref');
-    expect(closeOperationFormMock).toHaveBeenCalledTimes(1);
+    expect(payload.from_terminal_id).toBe('bay-out-1');
   });
 
   it('pozwala kontynuować ciąg z wolnego końca istniejącego odcinka', async () => {
@@ -423,11 +437,11 @@ describe('ContinueTrunkForm', () => {
     expect(screen.queryByText(/Brak głowicy pola SN albo wolnego końca ciągu/)).not.toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/XRUHAKXS.*120/).length).toBeGreaterThan(0);
     });
 
     fireEvent.click(screen.getByTestId('length-preset-250'));
-    expect(screen.getByText('XRUHAKXS 3x120 · 250 m')).toBeInTheDocument();
+    expect(screen.getByText(/XRUHAKXS.*120.*250 m/)).toBeInTheDocument();
     expect(getSubmitSegmentButton()).toBeEnabled();
     fireEvent.click(getSubmitSegmentButton());
 

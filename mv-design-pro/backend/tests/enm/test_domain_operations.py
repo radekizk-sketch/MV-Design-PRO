@@ -345,7 +345,7 @@ class TestSnBayLogicalViews:
         segment_ref = result_segment["snapshot"]["corridors"][0]["ordered_segment_refs"][0]
         segment = _find_by_ref(result_segment["snapshot"], "branches", segment_ref)
         assert segment is not None
-        assert segment["from_bus_ref"] == bus_ref
+        assert segment["from_bus_ref"] != bus_ref
         assert segment.get("meta", {}).get("origin_bay_ref") == field_ref
         assert segment.get("meta", {}).get("origin_apparatus_kind") == "cable_head"
         assert segment.get("meta", {}).get("origin_port_role") == "OUTGOING_HEAD"

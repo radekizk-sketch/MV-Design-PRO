@@ -138,7 +138,7 @@ async function createCaseFromUi(page: Page, request: APIRequestContext): Promise
 
   await page.goto('/', { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
-  await expect(page.getByTestId('active-case-bar')).toContainText('Przypadek');
+  await expect(page.getByTestId('active-case-bar')).toContainText(/Zakres|Bieżący zestaw/);
   return caseId;
 }
 
@@ -155,7 +155,7 @@ async function reloadEditorPage(page: Page): Promise<void> {
 
   await page.reload({ waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
-  await expect(page.getByTestId('active-case-bar')).toContainText('Przypadek');
+  await expect(page.getByTestId('active-case-bar')).toContainText(/Zakres|Bieżący zestaw/);
   await refreshResponsePromise;
   await expect(page.getByTestId('sld-connections-layer')).toBeAttached();
 }

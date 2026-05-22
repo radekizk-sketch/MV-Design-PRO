@@ -126,8 +126,8 @@ describe('StationInternalView — transformator', () => {
     );
     expect(container.querySelector('[data-testid="sld-v2-transformer-tr1"]')).toBeTruthy();
     expect(getByText('TR1')).toBeInTheDocument();
-    expect(getByText('0.4 MVA')).toBeInTheDocument();
-    expect(getByText('15/0.4 kV')).toBeInTheDocument();
+    expect(getByText('0,4 MVA')).toBeInTheDocument();
+    expect(getByText('15/0,4 kV')).toBeInTheDocument();
   });
 });
 
@@ -156,7 +156,7 @@ describe('StationInternalView — multi-voltage nN (brief §13)', () => {
     expect(getByText('RnN-0.69kV-2')).toBeInTheDocument();
     expect(getByText('RnN-0.4kV-3')).toBeInTheDocument();
     expect(getByText(/Konstrukcja: wnętrzowa/)).toBeInTheDocument();
-    expect(getByText(/Poziomy nN: 6\s*\/\s*0\.69\s*\/\s*0\.4 kV/)).toBeInTheDocument();
+    expect(getByText(/Poziomy nN: 6 kV\s*\/\s*0,69 kV\s*\/\s*0,4 kV/)).toBeInTheDocument();
   });
 
   it('pokazuje PV przylaczone po nN z klikalnymi wylacznikami Q1/Q2', () => {

@@ -170,7 +170,7 @@ async function openCaseInUi(
 
   await page.goto('/', { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
-  await expect(page.getByTestId('active-case-bar')).toContainText('Przypadek');
+  await expect(page.getByTestId('active-case-bar')).toContainText(/Zakres|Bieżący zestaw/);
   await expect(page.getByTestId('canonical-layout')).toBeVisible();
 }
 

@@ -422,7 +422,7 @@ function lineFieldRoleRank(role: unknown): number {
 
 function terrainSegmentCountOnBus(snapshot: EnergyNetworkModel | null, busRef: string | null): number {
   if (!snapshot || !busRef) return 0;
-  return snapshot.branches.filter((branch) => (
+  return (snapshot.branches ?? []).filter((branch) => (
     isTerrainSegmentType(branch.type)
     && (branch.from_bus_ref === busRef || branch.to_bus_ref === busRef)
   )).length;

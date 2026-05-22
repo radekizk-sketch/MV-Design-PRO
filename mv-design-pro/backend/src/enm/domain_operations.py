@@ -1627,9 +1627,24 @@ def _resolve_branch_from_ref(enm: dict[str, Any], from_ref: str) -> tuple[str | 
         return bus_ref, None
 
     if element_ref.startswith("stn/"):
+        if port_id != "BRANCH":
+            return None, "branch_connection.invalid_source_port"
         return None, "branch_connection.source_not_branch_capable"
 
     if element_ref.startswith("bus/"):
+        if port_id != "BRANCH":
+            return None, "branch_connection.invalid_source_port"
+        bus = next(
+            (
+                candidate
+                for candidate in enm.get("buses", [])
+                if isinstance(candidate, dict) and candidate.get("ref_id") == element_ref
+            ),
+            None,
+        )
+        tags = bus.get("tags", []) if isinstance(bus, dict) else []
+        if isinstance(tags, list) and "topology_terminal" in tags:
+            return element_ref, None
         return None, "branch_connection.source_not_branch_capable"
 
     bp = next((b for b in enm.get("branch_points", []) if b.get("ref_id") == element_ref), None)
@@ -1698,6 +1713,39 @@ def _lookup_branch_from_ref_for_bus(
         return unique_structured[0], None
     if len(unique_structured) > 1:
         return None, "branch_connection.source_not_branch_capable"
+
+    for bay in enm.get("bays", []):
+        if not isinstance(bay, dict) or bay.get("bus_ref") != from_bus_ref:
+            continue
+        bay_ref = bay.get("ref_id") or bay.get("id")
+        if isinstance(bay_ref, str) and _is_branch_start_bay_role(bay.get("bay_role")):
+            structured_candidates.append(f"{bay_ref}.BRANCH")
+
+    for specs in _field_specs_by_bus(enm).values():
+        for spec in specs:
+            if spec.get("bus_ref") != from_bus_ref:
+                continue
+            field_ref = spec.get("field_ref")
+            if isinstance(field_ref, str) and _is_line_continuation_field(enm, field_ref):
+                structured_candidates.append(f"{field_ref}.BRANCH")
+
+    unique_structured = sorted(set(structured_candidates))
+    if len(unique_structured) == 1:
+        return unique_structured[0], None
+    if len(unique_structured) > 1:
+        return None, "branch_connection.source_not_branch_capable"
+
+    bus = next(
+        (
+            candidate
+            for candidate in enm.get("buses", [])
+            if isinstance(candidate, dict) and candidate.get("ref_id") == from_bus_ref
+        ),
+        None,
+    )
+    tags = bus.get("tags", []) if isinstance(bus, dict) else []
+    if isinstance(tags, list) and "topology_terminal" in tags:
+        return f"{from_bus_ref}.BRANCH", None
 
     return None, "branch_connection.source_not_branch_capable"
 
@@ -2206,7 +2254,7 @@ def _require_catalog_ref(
 ) -> str | dict[str, Any]:
     """Zwróć kanoniczny catalog_ref albo odpowiedź błędu catalog.ref_required."""
     error_message = (
-        f"{context_code}: wymagane powiÄ…zanie z katalogiem "
+        f"{context_code}: wymagane powiązanie z katalogiem "
         "(catalog_ref lub poprawne catalog_binding.catalog_item_id)."
     )
     if isinstance(payload_ref, str):
@@ -4565,7 +4613,25 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     from_bus_ref = payload.get("from_bus_ref")
     segment = payload.get("segment", {})
 
-    if not from_ref and from_bus_ref:
+    rodzaj = segment.get("rodzaj", "KABEL")
+    dlugosc_m = segment.get("dlugosc_m") or payload.get("dlugosc_m") or 0
+    if dlugosc_m <= 0:
+        return _error_response(
+            "Brak długości odcinka odgałęzienia (dlugosc_m). Podaj jawną wartość > 0.",
+            "branch.dlugosc_missing",
+        )
+
+    branch_catalog_binding = segment.get("catalog_binding") or payload.get("catalog_binding")
+    branch_catalog_ref = _require_catalog_ref(
+        payload_ref=segment.get("catalog_ref"),
+        payload_binding=branch_catalog_binding,
+        context_code="start_branch_segment_sn",
+    )
+    if isinstance(branch_catalog_ref, dict):
+        return branch_catalog_ref
+
+    inferred_from_bus_ref = bool(not from_ref and from_bus_ref)
+    if inferred_from_bus_ref:
         inferred_from_ref, lookup_err = _lookup_branch_from_ref_for_bus(enm, from_bus_ref)
         if lookup_err:
             return _error_response(
@@ -4586,7 +4652,11 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         return _error_response("Nieprawidłowe źródło odgałęzienia.", err_code)
     from_bus_ref = resolved_bus_ref
 
-    if payload.get("from_bus_ref") and payload.get("from_bus_ref") != from_bus_ref:
+    if (
+        payload.get("from_bus_ref")
+        and not inferred_from_bus_ref
+        and payload.get("from_bus_ref") != from_bus_ref
+    ):
         return _error_response(
             "Pole from_bus_ref nie zgadza siÄ™ z bus_ref wynikajÄ…cym z from_ref.",
             "branch_connection.source_not_branch_capable",
