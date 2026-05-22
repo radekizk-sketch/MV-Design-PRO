@@ -20,6 +20,15 @@ def _snapshot_hash(enm: dict[str, Any]) -> str:
     return hashlib.sha256(_canonical_json(enm).encode("utf-8")).hexdigest()
 
 
+def _branch_field_ref(enm: dict[str, Any], station_ref: str) -> str:
+    station = next(s for s in enm.get("substations", []) if s.get("ref_id") == station_ref)
+    for spec in station.get("meta", {}).get("field_specs", []):
+        role = str(spec.get("field_role") or spec.get("bay_role") or "").upper()
+        if role in {"LINIA_ODG", "FEEDER"}:
+            return f"{spec['field_ref']}.BRANCH"
+    raise AssertionError(f"Brak pola odgałęźnego w stacji {station_ref}")
+
+
 def _empty_enm() -> dict[str, Any]:
     """Create a minimal empty ENM structure for testing."""
     return {
@@ -201,14 +210,16 @@ def build_gn02_sn_odgalezienie() -> dict[str, Any]:
         assert result.get("error") is None, f"insert_station failed: {result.get('error')}"
         enm = result["snapshot"]
 
-    # Step 5: Start branch from station SN bus
-    sn_buses = [b for b in enm.get("buses", []) if b.get("voltage_kv", 0) > 1.0]
-    if len(sn_buses) >= 3:
+    # Step 5: Start branch from station branch field
+    station_refs = [
+        s.get("ref_id") for s in enm.get("substations", []) if s.get("ref_id", "").startswith("stn/")
+    ]
+    if station_refs:
         result = execute_domain_operation(
             enm,
             "start_branch_segment_sn",
             {
-                "from_bus_ref": sn_buses[-1]["ref_id"],
+                "from_ref": _branch_field_ref(enm, station_refs[-1]),
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 150,

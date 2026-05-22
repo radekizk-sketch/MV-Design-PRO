@@ -105,7 +105,7 @@ describe('RESULT_STATUS_LABELS', () => {
 
   it('should contain Polish text (non-ASCII or recognized Polish words)', () => {
     // Check for Polish words commonly used
-    expect(RESULT_STATUS_LABELS.NONE).toContain('Brak');
+    expect(RESULT_STATUS_LABELS.NONE).toContain('Wyniki');
     expect(RESULT_STATUS_LABELS.FRESH).toContain('aktualne');
     expect(RESULT_STATUS_LABELS.OUTDATED).toContain('nieaktualne');
   });

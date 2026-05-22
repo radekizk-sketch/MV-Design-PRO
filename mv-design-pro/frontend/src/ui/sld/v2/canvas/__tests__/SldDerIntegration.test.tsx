@@ -39,7 +39,7 @@ describe('SLD ↔ DER integracja (Faza G)', () => {
       />,
     );
 
-    const derEl = container.querySelector('[data-element-kind="der_full"]');
+    const derEl = container.querySelector('[data-element-kind="der_pv"]');
     expect(derEl).toBeTruthy();
     fireEvent.doubleClick(derEl!);
     expect(onDoubleClickDer).toHaveBeenCalledWith('der_pv_test');
@@ -65,7 +65,7 @@ describe('SLD ↔ DER integracja (Faza G)', () => {
       />,
     );
 
-    const ders = container.querySelectorAll('[data-element-kind="der_full"]');
+    const ders = container.querySelectorAll('[data-testid^="sld-v2-der-hit-"]');
     expect(ders.length).toBe(3);
 
     fireEvent.contextMenu(ders[0]);

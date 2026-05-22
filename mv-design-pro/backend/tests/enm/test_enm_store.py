@@ -160,7 +160,7 @@ def test_store_materializes_catalog_switch_state_for_legacy_zksn() -> None:
     assert saved.branch_points[0].switch_state == "closed"
     assert saved.branch_points[0].runtime_inputs["switch_state"] == "closed"
     assert saved.branch_points[0].runtime_inputs["completion_source"] == (
-        "branch_point_catalog_migration"
+        "branch_point_catalog_materialization"
     )
 
     reread = get_enm("case-store-zksn-migration")

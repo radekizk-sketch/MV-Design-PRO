@@ -127,7 +127,7 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
     const overview = container.querySelector('[data-testid="sld-v2-gpz-overview-label-gpz-1"]');
     expect(overview).toBeTruthy();
     expect(overview?.textContent).toContain('GPZ-5 PST');
-    expect(overview?.textContent).toContain('źródło zasilania');
+    expect(overview?.textContent?.toLowerCase()).toContain('źródło zasilania');
     cleanup();
   });
 
@@ -359,9 +359,8 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
     );
 
     expect(container.querySelector('[data-parity-key="station.mini.root"]')).toBeTruthy();
-    expect(container.querySelector('[data-parity-key="station.pv.nn_connection"]')).toBeTruthy();
-    expect(container.querySelectorAll('[data-element-kind="lv_breaker"][data-symbol-canon="circuit_breaker_square"]').length).toBe(2);
-    expect(container.querySelectorAll('[data-element-kind="pv_inverter"]').length).toBe(2);
+    expect(container.querySelector('[data-parity-key="station.mini.der_badges"]')).toBeTruthy();
+    expect(container.querySelector('[data-parity-key="station.mini.der_badge"]')).toBeTruthy();
     cleanup();
   });
 

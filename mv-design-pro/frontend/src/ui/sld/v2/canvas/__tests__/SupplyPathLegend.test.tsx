@@ -97,6 +97,6 @@ describe('SupplyPathLegend', () => {
       energizedBusRefs: ['b1'],
     };
     const { container } = render(<SupplyPathLegend highlight={highlight} />);
-    expect(container.textContent).toContain('Bez fizyki');
+    expect(container.textContent).toContain('Interpretacja topologii operatorskiej');
   });
 });

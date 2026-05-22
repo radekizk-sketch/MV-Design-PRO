@@ -378,7 +378,7 @@ describe('TypeLibraryBrowser', () => {
     render(<TypeLibraryBrowser />);
 
     await waitFor(() => {
-      expect(screen.getByText('Brak typów w katalogu.')).toBeInTheDocument();
+      expect(screen.getByText('Katalog typów wymaga konfiguracji.')).toBeInTheDocument();
     });
   });
 });

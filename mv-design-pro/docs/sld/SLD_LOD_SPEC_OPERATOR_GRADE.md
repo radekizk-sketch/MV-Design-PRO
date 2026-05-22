@@ -32,7 +32,7 @@ Aby zapobiec migotaniu na granicy progów (np. 0.68 ↔ 0.72 dla LOD 1↔2), kon
 
 API: `createLodController({ initialScale, hysteresisMargin?, debounceMs?, nowProvider? })` zwraca `{ update, getLod, getScale, reset }`. Nie używa real timerów — wywołujący przekazuje `now`.
 
-Test inwariantu: `lod/__tests__/lodHysteresis.test.ts` — 10 cases, w tym bouncing zoom 10×.
+Test inwariantu: `lod/__tests__/lodHysteresis.test.ts` — 15 cases, w tym bouncing zoom 10×.
 
 ## 4. Override dla zaznaczenia
 

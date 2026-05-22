@@ -97,14 +97,14 @@ describe('GpzOperatorHeader — balance P/Q', () => {
     expect(getByText('-0.4 MVAr')).toBeTruthy();
   });
 
-  it('Brak balance.pMw i balance.qMvar → komunikat "Brak wyników rozpływu" (goal §7)', () => {
+  it('Brak balance.pMw i balance.qMvar → komunikat "Wyniki rozpływu nieuruchomione" (goal §7)', () => {
     const { container, getByText, queryByText } = renderHeader({
       balance: { pMw: null, qMvar: null },
     });
     expect(
       container.querySelector('[data-testid="gpz-header-balance-no-results"]'),
     ).toBeTruthy();
-    expect(getByText('Brak wyników rozpływu')).toBeTruthy();
+    expect(getByText('Wyniki rozpływu nieuruchomione')).toBeTruthy();
     // NIE 0.0 i NIE jednostek
     expect(queryByText('0.0 MW')).toBeNull();
     expect(queryByText('0.0 MVAr')).toBeNull();
@@ -116,20 +116,20 @@ describe('GpzOperatorHeader — balance P/Q', () => {
     ).toBe('true');
   });
 
-  it('P present, Q absent → P z jednostką, Q komunikat „brak danych"', () => {
+  it('P present, Q absent → P z jednostką, Q do wyliczenia', () => {
     const { getByTestId } = renderHeader({
       balance: { pMw: 5.7, qMvar: null },
     });
     expect(getByTestId('gpz-header-balance-p-value').textContent).toContain('5.7 MW');
-    expect(getByTestId('gpz-header-balance-q-value').textContent).toContain('brak danych');
+    expect(getByTestId('gpz-header-balance-q-value').textContent).toContain('do wyliczenia');
   });
 
-  it('Balance null → renderuje komunikat „Brak wyników rozpływu"', () => {
+  it('Balance null → renderuje komunikat „Wyniki rozpływu nieuruchomione"', () => {
     const { container, getByText } = renderHeader({
       balance: { pMw: null, qMvar: null },
     });
     expect(container.querySelector('[data-testid="gpz-header-balance"]')).toBeTruthy();
-    expect(getByText('Brak wyników rozpływu')).toBeTruthy();
+    expect(getByText('Wyniki rozpływu nieuruchomione')).toBeTruthy();
   });
 
   it('Brak balance → block hidden', () => {

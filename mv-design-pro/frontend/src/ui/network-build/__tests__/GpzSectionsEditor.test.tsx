@@ -80,10 +80,10 @@ describe('GpzSectionsEditor — render i listy sekcji', () => {
     expect(queryByTestId('gpz-sections-editor')).toBeNull();
   });
 
-  it('Pusta gpz_sections → renderuje "Brak sekcji." dla LV i HV', () => {
+  it('Pusta gpz_sections → renderuje komunikat konfiguracji dla LV i HV', () => {
     const station = { ...buildGpz(), gpz_sections: [], gpz_hv_sections: [] };
     const { getAllByText } = render(<GpzSectionsEditor station={station} />);
-    expect(getAllByText(/Brak sekcji/)).toHaveLength(2);
+    expect(getAllByText(/Sekcje do konfiguracji/)).toHaveLength(2);
   });
 });
 
