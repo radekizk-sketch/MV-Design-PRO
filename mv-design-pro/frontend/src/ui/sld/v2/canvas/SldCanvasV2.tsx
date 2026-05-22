@@ -31,6 +31,8 @@ import {
   type CableRunSegmentPath,
   type CableRunStationPortGap,
 } from '../renderer/CableRunRenderer';
+import { SpineRenderer } from '../renderer/SpineRenderer';
+import type { SpineModel } from '../builder/SpinePolicy';
 import { CadOverlay } from './CadOverlay';
 import { SldTitleBlock, type SldTitleBlockData } from './SldTitleBlock';
 import { SldRevisionTable, type SldRevisionEntry } from './SldRevisionTable';
@@ -161,6 +163,14 @@ export interface SldCanvasV2Props {
   readonly shortCircuitProjection?: SldShortCircuitProjection | null;
   /** K30-46: projekcja stref ochrony Z1/Z2/Z3 per IEC 60255-127. */
   readonly protectionZoneProjection?: SldProtectionZoneProjection | null;
+  /**
+   * SpineModel — diagnostyczna warstwa wizualizacji ciągów SN jako
+   * poziomych korytarzy (PR-B konsolidacji UI). Gdy podany, renderowany
+   * jest dodatkowy overlay SpineRenderer nad warstwą cable_runs.
+   * Nie zastępuje cable_runs - jest komplementarny (preview spine layout).
+   * Sterowane z LayerTogglePanel albo flagą trybu.
+   */
+  readonly spineModel?: SpineModel;
 }
 
 function estimateCanonicalGpzFootprint(gpz: GpzCanonicalRendererProps): { width: number; height: number } {
@@ -244,7 +254,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const {
     width, height, gpzs, canonicalGpzs, sections, cableRuns, stations, ders, connections = [],
     selectedId, lodOverride, layerVisibility, titleBlockData, revisionEntries, powerBalance, showLegend = true, showScaleRuler = true,
-    showNorthArrow = false, shortCircuitProjection, protectionZoneProjection,
+    showNorthArrow = false, shortCircuitProjection, protectionZoneProjection, spineModel,
     onSelectElement, onDoubleClickStation, onDoubleClickDer, onContextMenu, onViewportTransformChange,
   } = props;
 
@@ -716,6 +726,18 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                 />
               </g>
             ))}
+          </g>
+        )}
+
+        {/* Spine overlay — diagnostyczna wizualizacja ciągów SN jako korytarzy.
+            Renderowany tylko gdy spineModel jest podany przez container. */}
+        {spineModel && layers.equipment && (
+          <g data-testid="sld-spine-layer">
+            <SpineRenderer
+              model={spineModel}
+              lod={lod}
+              onSelect={onSelectElement ? (ref) => onSelectElement(ref, 'spine_node') : undefined}
+            />
           </g>
         )}
 
