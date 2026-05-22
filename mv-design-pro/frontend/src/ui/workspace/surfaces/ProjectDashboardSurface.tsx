@@ -257,13 +257,20 @@ export function ProjectDashboardSurface(): JSX.Element {
         </div>
       )}
 
-      {/* Lista projektów */}
+      {/* Lista projektów - posortowana wg ostatniej modyfikacji DESC,
+          najnowsze pierwsze (de facto recents na górze) */}
       {state.status === 'ready' && state.projects.length > 0 && (
         <div
           data-testid="dashboard-project-list"
           className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
         >
-          {state.projects.map((project) => (
+          {[...state.projects]
+            .sort((a, b) => {
+              const aTime = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+              const bTime = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+              return bTime - aTime;
+            })
+            .map((project) => (
             <div
               key={project.id}
               data-testid={`dashboard-project-card-${project.id}`}
