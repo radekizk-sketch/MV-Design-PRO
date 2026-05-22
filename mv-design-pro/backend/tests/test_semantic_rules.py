@@ -13,7 +13,10 @@ from network_model.validation.semantic_rules import (
     SEMANTIC_RULES,
     rule_cable_cannot_start_from_pole,
     rule_der_must_match_bay_type,
+    rule_no_orphan_branch_points,
     rule_overhead_cannot_start_from_zksn,
+    rule_source_voltage_match_bus,
+    rule_transformer_voltage_polarity,
 )
 from network_model.validation.semantic_validator import (
     validate_semantic,
@@ -174,6 +177,115 @@ class TestValidateSemantic:
         assert "element_id" in dicts[0]
 
 
+class TestSourceVoltageMatchBus:
+    def test_matching_voltage_passes(self):
+        enm = {
+            "sources": [{"ref_id": "SRC-1", "bus_ref": "B-1", "voltage_kv": 15.0}],
+            "buses": [{"ref_id": "B-1", "voltage_kv": 15.0}],
+        }
+        issues = rule_source_voltage_match_bus(enm)
+        assert issues == []
+
+    def test_within_tolerance_passes(self):
+        enm = {
+            "sources": [{"ref_id": "SRC-1", "bus_ref": "B-1", "voltage_kv": 15.05}],
+            "buses": [{"ref_id": "B-1", "voltage_kv": 15.0}],
+        }
+        issues = rule_source_voltage_match_bus(enm)
+        assert issues == []
+
+    def test_voltage_mismatch_blocks(self):
+        enm = {
+            "sources": [{"ref_id": "SRC-1", "bus_ref": "B-1", "voltage_kv": 20.0}],
+            "buses": [{"ref_id": "B-1", "voltage_kv": 15.0}],
+        }
+        issues = rule_source_voltage_match_bus(enm)
+        assert len(issues) == 1
+        assert issues[0].code == "semantic.source_voltage_mismatch"
+        assert issues[0].element_id == "SRC-1"
+
+    def test_missing_bus_skipped(self):
+        enm = {
+            "sources": [{"ref_id": "SRC-1", "bus_ref": "MISSING", "voltage_kv": 15.0}],
+            "buses": [],
+        }
+        issues = rule_source_voltage_match_bus(enm)
+        assert issues == []
+
+
+class TestTransformerVoltagePolarity:
+    def test_correct_polarity_passes(self):
+        enm = {
+            "transformers": [{"ref_id": "TR-1", "hv_bus_ref": "B-HV", "lv_bus_ref": "B-LV"}],
+            "buses": [
+                {"ref_id": "B-HV", "voltage_kv": 110.0},
+                {"ref_id": "B-LV", "voltage_kv": 15.0},
+            ],
+        }
+        issues = rule_transformer_voltage_polarity(enm)
+        assert issues == []
+
+    def test_reversed_polarity_blocks(self):
+        enm = {
+            "transformers": [{"ref_id": "TR-1", "hv_bus_ref": "B-HV", "lv_bus_ref": "B-LV"}],
+            "buses": [
+                {"ref_id": "B-HV", "voltage_kv": 15.0},  # niższy niż LV
+                {"ref_id": "B-LV", "voltage_kv": 110.0},
+            ],
+        }
+        issues = rule_transformer_voltage_polarity(enm)
+        assert len(issues) == 1
+        assert issues[0].code == "semantic.transformer_polarity_reversed"
+        assert issues[0].element_id == "TR-1"
+
+    def test_equal_voltage_passes(self):
+        # 1:1 transformator (np. autotransformator) - dozwolone
+        enm = {
+            "transformers": [{"ref_id": "TR-1", "hv_bus_ref": "B-1", "lv_bus_ref": "B-2"}],
+            "buses": [
+                {"ref_id": "B-1", "voltage_kv": 15.0},
+                {"ref_id": "B-2", "voltage_kv": 15.0},
+            ],
+        }
+        issues = rule_transformer_voltage_polarity(enm)
+        assert issues == []
+
+
+class TestNoOrphanBranchPoints:
+    def test_branch_point_with_valid_parent_passes(self):
+        enm = {
+            "branch_points": [
+                {"ref_id": "BP-1", "branch_point_type": "zksn", "parent_segment_id": "SEG-1"}
+            ],
+            "branches": [{"id": "SEG-1", "ref_id": "SEG-1", "type": "cable"}],
+        }
+        issues = rule_no_orphan_branch_points(enm)
+        assert issues == []
+
+    def test_branch_point_without_parent_blocks(self):
+        enm = {
+            "branch_points": [
+                {"ref_id": "BP-1", "branch_point_type": "zksn", "parent_segment_id": ""}
+            ],
+            "branches": [],
+        }
+        issues = rule_no_orphan_branch_points(enm)
+        assert len(issues) == 1
+        assert issues[0].code == "semantic.branch_point_missing_parent"
+
+    def test_branch_point_with_missing_parent_blocks(self):
+        enm = {
+            "branch_points": [
+                {"ref_id": "BP-1", "branch_point_type": "zksn", "parent_segment_id": "MISSING-SEG"}
+            ],
+            "branches": [{"id": "SEG-1", "ref_id": "SEG-1", "type": "cable"}],
+        }
+        issues = rule_no_orphan_branch_points(enm)
+        assert len(issues) == 1
+        assert issues[0].code == "semantic.branch_point_orphan"
+        assert issues[0].element_id == "BP-1"
+
+
 class TestSemanticRulesRegistry:
-    def test_all_three_rules_registered(self):
-        assert len(SEMANTIC_RULES) == 3
+    def test_all_six_rules_registered(self):
+        assert len(SEMANTIC_RULES) == 6

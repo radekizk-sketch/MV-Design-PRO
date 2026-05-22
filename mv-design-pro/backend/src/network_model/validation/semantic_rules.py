@@ -44,6 +44,18 @@ def _bays(enm: dict) -> list[dict]:
     return enm.get("bays") or []
 
 
+def _buses(enm: dict) -> list[dict]:
+    return enm.get("buses") or []
+
+
+def _transformers(enm: dict) -> list[dict]:
+    return enm.get("transformers") or []
+
+
+def _sources(enm: dict) -> list[dict]:
+    return enm.get("sources") or []
+
+
 def _segment_type_by_id(enm: dict) -> dict[str, str]:
     """Mapuje segment_id → segment type (cable / line_overhead / ...)."""
     out: dict[str, str] = {}
@@ -177,8 +189,146 @@ def rule_der_must_match_bay_type(enm: dict) -> list[ValidationIssue]:
     return issues
 
 
+def rule_source_voltage_match_bus(enm: dict) -> list[ValidationIssue]:
+    """
+    Źródło (Source) musi być przyłączone do szyny o zgodnym napięciu.
+    Jeśli source.voltage_kv != bus.voltage_kv ± 1% — naruszenie.
+
+    Nowa reguła — sprawdza spójność napięcia źródła z szyną zasilającą.
+    """
+    issues: list[ValidationIssue] = []
+    buses_by_ref = {b.get("ref_id"): b for b in _buses(enm)}
+    for src in _sources(enm):
+        bus_ref = src.get("bus_ref")
+        src_voltage = src.get("voltage_kv")
+        if not bus_ref or src_voltage is None:
+            continue
+        bus = buses_by_ref.get(bus_ref)
+        if not bus:
+            continue
+        bus_voltage = bus.get("voltage_kv")
+        if bus_voltage is None:
+            continue
+        try:
+            src_v = float(src_voltage)
+            bus_v = float(bus_voltage)
+        except (TypeError, ValueError):
+            continue
+        # Tolerancja 1% (różnice nominalne vs aktualne)
+        if bus_v == 0:
+            continue
+        diff_pct = abs(src_v - bus_v) / bus_v * 100.0
+        if diff_pct > 1.0:
+            issues.append(
+                ValidationIssue(
+                    code="semantic.source_voltage_mismatch",
+                    message=(
+                        f"Źródło '{src.get('ref_id')}' ma napięcie {src_v} kV, a "
+                        f"szyna '{bus_ref}' {bus_v} kV (różnica {diff_pct:.1f}%)."
+                    ),
+                    severity=Severity.ERROR,
+                    element_id=src.get("ref_id"),
+                    field="voltage_kv",
+                    suggested_fix=(
+                        f"Wyrównaj napięcie źródła do {bus_v} kV lub przyłącz do innej szyny."
+                    ),
+                )
+            )
+    return issues
+
+
+def rule_transformer_voltage_polarity(enm: dict) -> list[ValidationIssue]:
+    """
+    Transformator musi mieć poprawną polarność: napięcie HV >= napięcie LV.
+    Jeśli hv_bus.voltage_kv < lv_bus.voltage_kv — odwrócona polaryzacja.
+
+    Nowa reguła — łapie błąd przy zamianie stron transformatora.
+    """
+    issues: list[ValidationIssue] = []
+    buses_by_ref = {b.get("ref_id"): b for b in _buses(enm)}
+    for tr in _transformers(enm):
+        hv_ref = tr.get("hv_bus_ref")
+        lv_ref = tr.get("lv_bus_ref")
+        if not hv_ref or not lv_ref:
+            continue
+        hv_bus = buses_by_ref.get(hv_ref)
+        lv_bus = buses_by_ref.get(lv_ref)
+        if not hv_bus or not lv_bus:
+            continue
+        try:
+            hv_v = float(hv_bus.get("voltage_kv", 0))
+            lv_v = float(lv_bus.get("voltage_kv", 0))
+        except (TypeError, ValueError):
+            continue
+        if hv_v > 0 and lv_v > 0 and hv_v < lv_v:
+            issues.append(
+                ValidationIssue(
+                    code="semantic.transformer_polarity_reversed",
+                    message=(
+                        f"Transformator '{tr.get('ref_id')}' ma odwróconą polarność: "
+                        f"strona HV ({hv_ref}, {hv_v} kV) niższa niż LV ({lv_ref}, {lv_v} kV)."
+                    ),
+                    severity=Severity.ERROR,
+                    element_id=tr.get("ref_id"),
+                    field="hv_bus_ref",
+                    suggested_fix="Zamień przypisanie hv_bus_ref ↔ lv_bus_ref.",
+                )
+            )
+    return issues
+
+
+def rule_no_orphan_branch_points(enm: dict) -> list[ValidationIssue]:
+    """
+    Każdy branch_point (słup rozgałęźny / ZKSN) musi mieć poprawny
+    parent_segment_id wskazujący na istniejący segment w branches.
+
+    Nowa reguła — łapie sieroty (orphan branch_points) powstałe przy
+    usuwaniu segmentów bez kaskadowego usuwania ich rozgałęźników.
+    """
+    issues: list[ValidationIssue] = []
+    branch_ids = {b.get("id") for b in _branches(enm)} | {
+        b.get("ref_id") for b in _branches(enm)
+    }
+    branch_ids.discard(None)
+    for bp in _branch_points(enm):
+        parent_seg = bp.get("parent_segment_id")
+        if not parent_seg:
+            issues.append(
+                ValidationIssue(
+                    code="semantic.branch_point_missing_parent",
+                    message=(
+                        f"Punkt rozgałęzienia '{bp.get('ref_id')}' nie ma określonego "
+                        f"segmentu nadrzędnego (parent_segment_id)."
+                    ),
+                    severity=Severity.ERROR,
+                    element_id=bp.get("ref_id"),
+                    field="parent_segment_id",
+                    suggested_fix="Przypisz prawidłowy segment nadrzędny.",
+                )
+            )
+            continue
+        if parent_seg not in branch_ids:
+            issues.append(
+                ValidationIssue(
+                    code="semantic.branch_point_orphan",
+                    message=(
+                        f"Punkt rozgałęzienia '{bp.get('ref_id')}' wskazuje na segment "
+                        f"'{parent_seg}', który nie istnieje w sieci."
+                    ),
+                    severity=Severity.ERROR,
+                    element_id=bp.get("ref_id"),
+                    field="parent_segment_id",
+                    suggested_fix="Przypisz istniejący segment lub usuń punkt rozgałęzienia.",
+                )
+            )
+    return issues
+
+
 SEMANTIC_RULES: list[SemanticRule] = [
     rule_cable_cannot_start_from_pole,
     rule_overhead_cannot_start_from_zksn,
     rule_der_must_match_bay_type,
+    rule_source_voltage_match_bus,
+    rule_transformer_voltage_polarity,
+    rule_no_orphan_branch_points,
 ]
