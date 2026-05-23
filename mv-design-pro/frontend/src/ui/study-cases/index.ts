@@ -56,3 +56,30 @@ export { ProtectionCaseConfigPanel } from './ProtectionCaseConfigPanel';
 export { RunButton } from './RunButton';
 export { RunHistoryPanel } from './RunHistoryPanel';
 export { StudyCaseEditor } from './StudyCaseEditor';
+
+// Phase 1 Etap 9 helpers
+export {
+  cloneCase,
+  validateCloneOptions,
+} from './caseCloneHelper';
+export type {
+  CaseConfig as CaseConfigSnapshot,
+  CaseResults,
+  CloneOptions,
+  CloneInput,
+  CloneResult,
+} from './caseCloneHelper';
+export {
+  createQuickSwitcher,
+  activateCase as activateQuickSwitcherCase,
+  nextCase,
+  prevCase,
+  caseAtIndex,
+  closeCase as closeQuickSwitcherCase,
+  matchKeyboard as matchQuickSwitcherKeyboard,
+} from './quickCaseSwitcher';
+export type {
+  CaseTab,
+  QuickSwitcherState,
+  SwitcherAction,
+} from './quickCaseSwitcher';
