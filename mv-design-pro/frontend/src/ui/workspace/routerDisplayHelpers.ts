@@ -71,9 +71,7 @@ const AUDIT_EXTENSION_LABELS: Record<string, string> = {
   tap_position_changes: 'regulacja zaczepów transformatorów',
   grounding_z0_z1_ratio: 'konfiguracja uziemienia punktu neutralnego',
   bess_reserved_capacity: 'rezerwa mocy magazynu BESS',
-  cable_thermal_aging: 'starzenie termiczne kabla',
-  protection_settings_freeze: 'zamrożenie nastaw zabezpieczeń',
-  load_profile_demand: 'profil zapotrzebowania mocy',
+  pf_droop: 'charakterystyka P(f)',
 };
 
 export function publicAuditExtensionLabel(value: string): string {
@@ -81,13 +79,18 @@ export function publicAuditExtensionLabel(value: string): string {
 }
 
 const PROOF_TYPE_TAGS: Record<string, string> = {
-  short_circuit: 'SC',
-  power_flow: 'PF',
-  voltage_drop: 'ΔU',
-  protection: 'Zab.',
-  voltage_profile: 'U-prof.',
-  losses: 'Straty',
-  equipment_proof: 'Aparat.',
+  SC3F_IEC60909: 'SC3F · IEC 60909',
+  SC1F_IEC60909: 'SC1F · IEC 60909',
+  SC2F_IEC60909: 'SC2F · IEC 60909',
+  SC2FG_IEC60909: 'SC2F+Z · IEC 60909',
+  VDROP: 'Spadek U',
+  LOAD_FLOW_VOLTAGE: 'Rozpływ mocy',
+  Q_U_REGULATION: 'Q(U) · NC RfG',
+  EQUIPMENT_PROOF: 'Aparatura',
+  LOAD_CURRENTS_OVERLOAD: 'Obciążalność',
+  LOSSES_ENERGY: 'Straty',
+  PROTECTION_OVERCURRENT: 'Zabezpieczenia',
+  EARTHING_GROUND_FAULT_SN: 'Ziemnozwarciowe SN',
 };
 
 export function publicProofTypeTag(value: string): string {
@@ -95,15 +98,14 @@ export function publicProofTypeTag(value: string): string {
 }
 
 export function formatDateTime(value: string | null | undefined): string {
-  if (!value?.trim()) return '—';
-  try {
-    return new Date(value).toLocaleString('pl-PL', {
-      dateStyle: 'short',
-      timeStyle: 'short',
-    });
-  } catch {
+  if (!value) {
+    return 'Nie podano';
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
     return value;
   }
+  return parsed.toLocaleString('pl-PL');
 }
 
 export function payloadString(payload: Record<string, unknown> | undefined, key: string): string | null {

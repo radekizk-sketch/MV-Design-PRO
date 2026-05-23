@@ -66,9 +66,9 @@ describe('publicAuditExtensionLabel', () => {
 
 describe('publicProofTypeTag', () => {
   it('mapuje typy na krótkie tagi', () => {
-    expect(publicProofTypeTag('short_circuit')).toBe('SC');
-    expect(publicProofTypeTag('power_flow')).toBe('PF');
-    expect(publicProofTypeTag('voltage_drop')).toBe('ΔU');
+    expect(publicProofTypeTag('SC3F_IEC60909')).toContain('SC3F');
+    expect(publicProofTypeTag('VDROP')).toBe('Spadek U');
+    expect(publicProofTypeTag('Q_U_REGULATION')).toContain('NC RfG');
   });
 
   it('fallback dla nieznanego', () => {
@@ -83,8 +83,8 @@ describe('formatDateTime', () => {
   });
 
   it('fallback dla pustych', () => {
-    expect(formatDateTime(null)).toBe('—');
-    expect(formatDateTime('')).toBe('—');
+    expect(formatDateTime(null)).toBe('Nie podano');
+    expect(formatDateTime('')).toBe('Nie podano');
   });
 });
 

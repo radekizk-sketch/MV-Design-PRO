@@ -34,9 +34,6 @@ import {
 } from '../results/reportExportApi';
 import { notify } from '../notifications/store';
 import {
-  isInternalElementIdentifier,
-} from '../shared/publicReadinessMessage';
-import {
   isGenericSegmentName,
   segmentPublicIdentity,
 } from '../shared/publicTechnicalLabels';
@@ -72,7 +69,16 @@ import {
   type WorkspaceSurfaceCode,
   type WorkspaceSurfaceDescriptor,
 } from './types';
-import { calculationScopeDisplayName, stripTechnicalSuffix } from '../shell/publicNames';
+import { calculationScopeDisplayName } from '../shell/publicNames';
+import {
+  isInternalIdentifier,
+  displayValueOrAuditTrace,
+  displayProjectLabel,
+  publicEntityTypeLabel,
+  publicAuditExtensionLabel,
+  publicProofTypeTag,
+  formatDateTime,
+} from './routerDisplayHelpers';
 import { isCanonicalOpName, type CanonicalOpName } from '../../types/domainOps';
 import { resolveFixActionSurface } from '../../types/fixActionSurface';
 import type { Branch, EnergyNetworkModel, FixAction } from '../../types/enm';
@@ -116,21 +122,8 @@ type NamedEnmElement = {
   label?: string | null;
 };
 
-function isInternalIdentifier(value: string): boolean {
-  return isInternalElementIdentifier(value);
-}
-
-function displayValueOrAuditTrace(value: string | null | undefined, fallback: string): string {
-  if (!value?.trim()) return fallback;
-  const normalized = value.trim();
-  return isInternalIdentifier(normalized) || isGenericSegmentName(normalized) ? fallback : normalized;
-}
-
-function displayProjectLabel(value: string | null | undefined): string {
-  if (!value?.trim()) return 'Aktywny projekt';
-  if (isInternalIdentifier(value.trim())) return 'Aktywny projekt';
-  return stripTechnicalSuffix(value) || 'Aktywny projekt';
-}
+// isInternalIdentifier, displayValueOrAuditTrace, displayProjectLabel
+// moved to routerDisplayHelpers.ts
 
 function displayScopeLabel(
   value: string | null | undefined,
@@ -167,68 +160,9 @@ function payloadString(surface: WorkspaceSurfaceDescriptor, key: string): string
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-function publicEntityTypeLabel(value: string | null | undefined): string {
-  if (!value?.trim()) return 'Aktywny kontekst układu';
-  const normalized = value.trim();
-  const labels: Record<string, string> = {
-    project: 'Projekt',
-    gpz: 'GPZ',
-    gpz_section: 'Sekcja szyn GPZ',
-    sn_bay: 'Pole SN',
-    BaySN: 'Pole SN',
-    Source: 'Źródło GPZ',
-    station: 'Stacja SN/nN',
-    Station: 'Stacja SN/nN',
-    station_lv_side: 'Strona nN stacji',
-    segment: 'Odcinek SN',
-    LineBranch: 'Odcinek SN',
-    zksn: 'ZKSN',
-    ZKSN: 'ZKSN',
-    branch_pole: 'Słup rozgałęźny SN',
-    BranchPole: 'Słup rozgałęźny SN',
-    branch: 'Odgałęzienie SN',
-    ring: 'Pierścień SN',
-    nop: 'NOP',
-    pv_source: 'Źródło PV',
-    bess_source: 'Magazyn BESS',
-    fw_source: 'Źródło wiatrowe',
-    analysis_case: 'Zakres obliczeń',
-    analysis_run: 'Aktywne obliczenie',
-    proof_pack: 'Dowody inżynierskie',
-    report: 'Raport techniczny',
-    export_artifact: 'Eksport techniczny',
-  };
-  return labels[normalized] ?? normalized.replace(/_/g, ' ');
-}
+// publicEntityTypeLabel, publicAuditExtensionLabel moved to routerDisplayHelpers.ts
 
-function publicAuditExtensionLabel(value: string): string {
-  const labels: Record<string, string> = {
-    power_flow_extensions: 'rozszerzony rozpływ mocy',
-    tap_position_changes: 'regulacja zaczepów transformatorów',
-    grounding_z0_z1_ratio: 'konfiguracja uziemienia punktu neutralnego',
-    bess_reserved_capacity: 'rezerwa mocy magazynu BESS',
-    pf_droop: 'charakterystyka P(f)',
-  };
-  return labels[value] ?? value.replace(/_/g, ' ');
-}
-
-function publicProofTypeTag(value: string): string {
-  const labels: Record<string, string> = {
-    SC3F_IEC60909: 'SC3F · IEC 60909',
-    SC1F_IEC60909: 'SC1F · IEC 60909',
-    SC2F_IEC60909: 'SC2F · IEC 60909',
-    SC2FG_IEC60909: 'SC2F+Z · IEC 60909',
-    VDROP: 'Spadek U',
-    LOAD_FLOW_VOLTAGE: 'Rozpływ mocy',
-    Q_U_REGULATION: 'Q(U) · NC RfG',
-    EQUIPMENT_PROOF: 'Aparatura',
-    LOAD_CURRENTS_OVERLOAD: 'Obciążalność',
-    LOSSES_ENERGY: 'Straty',
-    PROTECTION_OVERCURRENT: 'Zabezpieczenia',
-    EARTHING_GROUND_FAULT_SN: 'Ziemnozwarciowe SN',
-  };
-  return labels[value] ?? value.replace(/_/g, ' ');
-}
+// publicProofTypeTag moved to routerDisplayHelpers.ts
 
 function auditProofPackStatus(data: Audit2ProofPackResponse): {
   readonly label: string;
@@ -400,18 +334,7 @@ const LINEAGE_LABELS: Record<string, string> = {
   snapshot_ref: 'Wersja układu',
 };
 
-function formatDateTime(value: string | null | undefined): string {
-  if (!value) {
-    return 'Nie podano';
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-
-  return parsed.toLocaleString('pl-PL');
-}
+// formatDateTime moved to routerDisplayHelpers.ts
 
 function limitRows(rows: LabeledValueRow[], maxRows = rows.length): LabeledValueRow[] {
   const seen = new Set<string>();
