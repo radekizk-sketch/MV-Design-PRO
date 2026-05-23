@@ -32,10 +32,7 @@ import {
   type ReportExportFormat,
 } from '../results/reportExportApi';
 import { notify } from '../notifications/store';
-import {
-  isGenericSegmentName,
-  segmentPublicIdentity,
-} from '../shared/publicTechnicalLabels';
+// isGenericSegmentName, segmentPublicIdentity used in routerLabelHelpers.ts
 import { GpzConfiguratorSurface } from './surfaces/GpzConfiguratorSurface';
 import { BayConfiguratorSurface } from './surfaces/BayConfiguratorSurface';
 import { StationConfiguratorSurface } from './surfaces/StationConfiguratorSurface';
@@ -70,9 +67,7 @@ import {
 } from './types';
 // calculationScopeDisplayName: używane przez displayScopeLabel w routerPureHelpers
 import {
-  displayValueOrAuditTrace,
   displayProjectLabel,
-  publicEntityTypeLabel,
   publicAuditExtensionLabel,
   publicProofTypeTag,
   formatDateTime,
@@ -102,10 +97,13 @@ import {
 import { SurfaceBreadcrumbs } from './SurfaceBreadcrumbs';
 import { ContractStatusCard, ScopePills } from './routerStatusComponents';
 import { SectionCard, KeyValueGrid } from './routerCardComponents';
+import {
+  resolveSurfaceObjectLabel,
+  resolveSurfaceTitle,
+} from './routerLabelHelpers';
 import { isCanonicalOpName, type CanonicalOpName } from '../../types/domainOps';
 import { resolveFixActionSurface } from '../../types/fixActionSurface';
-import type { Branch, EnergyNetworkModel, FixAction } from '../../types/enm';
-import type { SelectedElement } from '../types';
+import type { FixAction } from '../../types/enm';
 
 interface WorkspaceSurfaceRouterProps {
   region: 'panel' | 'main';
@@ -113,45 +111,14 @@ interface WorkspaceSurfaceRouterProps {
 
 // SurfaceBreadcrumbs moved to SurfaceBreadcrumbs.tsx
 
-type NamedEnmElement = {
-  id?: string | null;
-  ref_id?: string | null;
-  name?: string | null;
-  label?: string | null;
-};
+// NamedEnmElement type moved to routerLabelHelpers.ts
 
 // isInternalIdentifier, displayValueOrAuditTrace, displayProjectLabel
 // moved to routerDisplayHelpers.ts
 
 // displayScopeLabel moved to routerPureHelpers.ts
 
-function findElementName(snapshot: EnergyNetworkModel | null, elementRef: string | null | undefined): string | null {
-  if (!snapshot || !elementRef) return null;
-  const branch = (snapshot.branches ?? []).find(
-    (item) => item.ref_id === elementRef || item.id === elementRef,
-  );
-  if (branch) {
-    return segmentPublicIdentity(snapshot, branch as Branch).displayName;
-  }
-  const candidates = [
-    ...(snapshot.substations ?? []),
-    ...(snapshot.bays ?? []),
-    ...(snapshot.transformers ?? []),
-    ...(snapshot.sources ?? []),
-    ...(snapshot.loads ?? []),
-    ...(snapshot.generators ?? []),
-    ...(snapshot.measurements ?? []),
-    ...(snapshot.protection_assignments ?? []),
-    ...(snapshot.buses ?? []),
-  ] as NamedEnmElement[];
-  const found = candidates.find((item) => item.ref_id === elementRef || item.id === elementRef);
-  return found?.name?.trim() || found?.label?.trim() || null;
-}
-
-function payloadString(surface: WorkspaceSurfaceDescriptor, key: string): string | null {
-  const value = surface.routeState.payload?.[key];
-  return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
+// findElementName, payloadString moved to routerLabelHelpers.ts
 
 // publicEntityTypeLabel, publicAuditExtensionLabel moved to routerDisplayHelpers.ts
 
@@ -159,45 +126,7 @@ function payloadString(surface: WorkspaceSurfaceDescriptor, key: string): string
 
 // auditProofPackStatus moved to routerPureHelpers.ts
 
-function resolveSurfaceObjectLabel(
-  surface: WorkspaceSurfaceDescriptor,
-  snapshot: EnergyNetworkModel | null,
-  selectedElement: SelectedElement | null,
-): string {
-  const selectedName = selectedElement?.id === surface.entityRef ? selectedElement.name : null;
-  const routeName = payloadString(surface, 'selectedName');
-  const snapshotName = findElementName(snapshot, surface.entityRef);
-  const routeType = payloadString(surface, 'selectedType');
-  const isSegmentSurface = surface.entityType === 'segment'
-    || (typeof surface.entityRef === 'string' && /^seg\//i.test(surface.entityRef));
-  const fallbackByType = routeType
-    ? `Wybrany obiekt: ${routeType}`
-    : surface.entityType
-      ? `Wybrany układ: ${surface.entityType}`
-      : 'Aktywny kontekst układu';
-  const preferredName = isSegmentSurface
-    ? snapshotName ?? selectedName ?? routeName ?? surface.entityRef
-    : selectedName ?? routeName ?? snapshotName ?? surface.entityRef;
-  const publicFallbackByType = routeType
-    ? `Wybrany obiekt: ${publicEntityTypeLabel(routeType)}`
-    : surface.entityType
-      ? publicEntityTypeLabel(surface.entityType)
-      : fallbackByType;
-  return displayValueOrAuditTrace(preferredName, publicFallbackByType);
-}
-
-function resolveSurfaceTitle(
-  surface: WorkspaceSurfaceDescriptor,
-  snapshot: EnergyNetworkModel | null,
-  selectedElement: SelectedElement | null,
-): string {
-  const isSegmentSurface = surface.entityType === 'segment'
-    || (typeof surface.entityRef === 'string' && /^seg\//i.test(surface.entityRef));
-  if (isSegmentSurface && isGenericSegmentName(surface.titlePl)) {
-    return resolveSurfaceObjectLabel(surface, snapshot, selectedElement);
-  }
-  return surface.titlePl;
-}
+// resolveSurfaceObjectLabel, resolveSurfaceTitle moved to routerLabelHelpers.ts
 
 // resolveRunLabel moved to routerPureHelpers.ts
 
