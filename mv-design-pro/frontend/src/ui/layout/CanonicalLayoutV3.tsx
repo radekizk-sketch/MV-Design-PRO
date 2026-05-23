@@ -40,7 +40,7 @@ import { clsx } from 'clsx';
 
 import { useActiveMode } from '../app-state';
 import { useAppStateStore, useCanCalculate } from '../app-state/store';
-import { EmptyInspectorPanel } from '../inspector-panel/EmptyInspectorPanel';
+import { EmptyInspectorPanel } from '../inspector/EmptyInspectorPanel';
 import { GuidedBuildActionPanel } from '../network-build/GuidedBuildActionPanel';
 import { GlobalSearch } from '../network-build/GlobalSearch';
 import { CommandPalette } from '../network-build/CommandPalette';

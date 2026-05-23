@@ -21,7 +21,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react
 import { clsx } from 'clsx';
 
 import { useActiveMode } from '../app-state';
-import { EmptyInspectorPanel } from '../inspector-panel/EmptyInspectorPanel';
+import { EmptyInspectorPanel } from '../inspector/EmptyInspectorPanel';
 import { GlobalSearch } from '../network-build/GlobalSearch';
 import { CommandPalette } from '../network-build/CommandPalette';
 import { GuidedBuildActionPanel } from '../network-build/GuidedBuildActionPanel';
