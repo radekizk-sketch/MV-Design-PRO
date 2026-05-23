@@ -45,6 +45,7 @@ import {
 } from './surfaces/InfrastructureSurfaces';
 import { PvSourceSurface, BessSurface, FwSurface } from './surfaces/DerSurfaces';
 import {
+  AnalysisSurfaceSensitivityTab,
   AuditTrailSurface,
   ReportSurfaceOsdAndProfileActions,
 } from './routerExtensionSurfaces';
@@ -502,6 +503,8 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       <SectionCard title="Bieżący widok analityki" eyebrow="Wyniki">
         {activeAnalysisTab === 'compare' ? (
           <ResultsComparisonPage runHistory={comparisonRunHistory} />
+        ) : activeAnalysisTab === 'sensitivity' ? (
+          <AnalysisSurfaceSensitivityTab />
         ) : (
           <p className="text-xs text-slate-400">Wybierz zakładkę analityki albo otwórz kontrolę konfiguracji układu przed uruchomieniem analiz.</p>
         )}

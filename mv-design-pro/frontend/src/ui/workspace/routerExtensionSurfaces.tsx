@@ -10,12 +10,13 @@
  * Pure UI delegate components; brak fizyki / mutacji modelu.
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { WorkspaceSurfaceDescriptor } from './types';
 import { AuditTrailPanel } from '../audit/AuditTrailPanel';
 import { OsdDataForm } from '../reports/OsdDataForm';
 import { ReportProfileSelector } from '../reports/ReportProfileSelector';
 import type { ReportProfileConfig } from '../reports/ReportProfileSelector';
+import { SensitivityPanel, type SensitivityEntry } from '../sensitivity/SensitivityPanel';
 import { useSelectionStore } from '../selection';
 
 function selectElementByRef(
@@ -31,6 +32,24 @@ export function AuditTrailSurface({ surface: _surface }: { surface: WorkspaceSur
     <div className="space-y-4 p-4">
       <AuditTrailPanel onSelectElement={(ref) => selectElementByRef(selectElement, ref)} />
     </div>
+  );
+}
+
+/**
+ * AnalysisSurfaceSensitivityTab — tab "sensitivity" w E-35 AnalysisSurface.
+ * Renderuje SensitivityPanel (Etap 10 dostawy).
+ */
+export function AnalysisSurfaceSensitivityTab(): JSX.Element {
+  const selectElement = useSelectionStore((state) => state.selectElement);
+  const [status, setStatus] = useState<'idle' | 'computing' | 'ready' | 'error'>('idle');
+  const entries = useMemo<readonly SensitivityEntry[]>(() => [], []);
+  return (
+    <SensitivityPanel
+      entries={entries}
+      status={status}
+      onCompute={() => setStatus('computing')}
+      onSelectElement={(ref) => selectElementByRef(selectElement, ref)}
+    />
   );
 }
 
