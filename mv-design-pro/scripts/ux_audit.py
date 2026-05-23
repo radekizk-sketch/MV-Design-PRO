@@ -70,7 +70,9 @@ STAGES: list[Stage] = [
         "Segmenty (kabel/napowietrzne)",
         "continue_trunk_segment_sn",
         [
+            # ContinueTrunkForm deleguje render do TrunkContinueModal (tam żyje katalog+search).
             FE / "ui/network-build/forms/ContinueTrunkForm.tsx",
+            FE / "ui/topology/modals/TrunkContinueModal.tsx",
             FE / "ui/network-build/forms/StartBranchForm.tsx",
         ],
         uses_catalog=True,
@@ -189,9 +191,11 @@ def audit_stage(stage: Stage) -> StageResult:
         "OK (guardy ui_terminology)" if not forbidden else f"ang. terminy: {set(forbidden)}",
     ))
 
-    # C6 — catalog-first z wyszukiwarką (tylko etapy z dużym katalogiem)
+    # C6 — catalog-first z wyszukiwarką (tylko etapy z dużym katalogiem).
+    # CatalogPicker ma wbudowaną wyszukiwarkę + filtry (searchTerm/filteredEntries),
+    # więc jego użycie spełnia kryterium katalog-first z wyszukiwaniem.
     if stage.uses_catalog:
-        c6 = bool(re.search(r"SearchBox|search|filtr|Filter|CatalogSearch", text_all))
+        c6 = bool(re.search(r"SearchBox|search|filtr|Filter|CatalogSearch|CatalogPicker", text_all))
         res.criteria.append(CriterionResult(
             6, "catalog search+filtry", c6,
             "obecne" if c6 else "brak wyszukiwarki katalogu",

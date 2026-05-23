@@ -141,18 +141,15 @@
     {
       "key": "segments",
       "name_pl": "Segmenty (kabel/napowietrzne)",
-      "score": 8,
+      "score": 10,
       "max": 10,
-      "failing": [
-        "C4 tooltipy inżynierskie: brak tooltipów/helperText",
-        "C6 catalog search+filtry: brak wyszukiwarki katalogu"
-      ],
+      "failing": [],
       "criteria": [
         {
           "id": 1,
           "name": "brak duplikatu wejść",
           "passed": true,
-          "detail": "['ContinueTrunkForm.tsx', 'StartBranchForm.tsx']"
+          "detail": "['ContinueTrunkForm.tsx', 'TrunkContinueModal.tsx', 'StartBranchForm.tsx']"
         },
         {
           "id": 2,
@@ -169,8 +166,8 @@
         {
           "id": 4,
           "name": "tooltipy inżynierskie",
-          "passed": false,
-          "detail": "brak tooltipów/helperText"
+          "passed": true,
+          "detail": "obecne"
         },
         {
           "id": 5,
@@ -181,8 +178,8 @@
         {
           "id": 6,
           "name": "catalog search+filtry",
-          "passed": false,
-          "detail": "brak wyszukiwarki katalogu"
+          "passed": true,
+          "detail": "obecne"
         },
         {
           "id": 7,
@@ -282,11 +279,9 @@
     {
       "key": "der",
       "name_pl": "OZE / DER",
-      "score": 9,
+      "score": 10,
       "max": 10,
-      "failing": [
-        "C4 tooltipy inżynierskie: brak tooltipów/helperText"
-      ],
+      "failing": [],
       "criteria": [
         {
           "id": 1,
@@ -309,8 +304,8 @@
         {
           "id": 4,
           "name": "tooltipy inżynierskie",
-          "passed": false,
-          "detail": "brak tooltipów/helperText"
+          "passed": true,
+          "detail": "obecne"
         },
         {
           "id": 5,
@@ -351,5 +346,5 @@
       ]
     }
   ],
-  "mean_score": 9.4
+  "mean_score": 10.0
 }

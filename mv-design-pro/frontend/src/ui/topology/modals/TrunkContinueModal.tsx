@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { CatalogPicker, type CatalogEntry } from './CatalogPicker';
+import { HelpTooltip } from '../../shared/HelpTooltip';
+import { getTooltip } from '../../shared/engineerTooltips';
 
 export type SegmentKind = 'KABEL_SN' | 'LINIA_NAPOWIETRZNA';
 export type TrunkNextStep = 'station' | 'zksn' | 'branch_pole' | 'continue';
@@ -491,8 +493,12 @@ export function TrunkContinueModal({
                 </div>
 
                 <div>
-                  <label className={labelClass} title="Długość fizyczna odcinka SN w metrach. Wpływa na: impedancję (Z = R*l + jX*l), spadek napięcia ΔU, prąd zwarcia jednofazowy I1ph, czas wyłączania zabezpieczeń.">
-                    Długość [m] <span className="text-[#5b91d5] cursor-help">ⓘ</span>
+                  <label className={`${labelClass} flex items-center gap-1`}>
+                    Długość [m]
+                    {(() => {
+                      const tip = getTooltip('cable_length');
+                      return tip ? <HelpTooltip text={tip.text} norm={tip.norm} inline /> : null;
+                    })()}
                   </label>
                   <input
                     type="number"
