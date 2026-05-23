@@ -27,6 +27,7 @@ import { LayerTogglePanel } from '../lod/LayerTogglePanel';
 import { SldDetailDrawer, type SldDetailDrawerData, type SldDetailDrawerSavePayload } from './SldDetailDrawer';
 import { DerPersistenceApiError, postDerGeneratorConfig } from './derPersistenceApi';
 import { useDerDragDrop, DerPaletteButton, type DerDragKind } from './useDerDragDrop';
+import { SldExportFormatMenu } from '../export/SldExportFormatMenu';
 import { useRawResultOverlayStore, getMetric, formatMetric } from '../../../sld-overlay/rawResultOverlayStore';
 import { computeLfDerivedMetrics } from './lfDerivedMetrics';
 import {
@@ -2154,6 +2155,11 @@ export function SldWorkspaceContainer(
           >
             ↓ SVG
           </button>
+          <SldExportFormatMenu
+            svgSelector='svg[data-testid="sld-canvas-v2"]'
+            projectName={undefined}
+            caseLabel={undefined}
+          />
         </div>
         <button
           type="button"
