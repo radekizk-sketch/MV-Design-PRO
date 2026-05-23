@@ -73,24 +73,24 @@ export function buildFaultLocationOptions(input: {
     });
   }
 
-  for (const branch of input.branches) {
+  for (const line of input.branches) {
     options.push({
-      ref: branch.ref,
-      label: `${KIND_LABELS.branch_far}: ${branch.name}`,
+      ref: line.ref,
+      label: `${KIND_LABELS.branch_far}: ${line.name}`,
       kind: 'branch_far',
-      systemVoltageKv: branch.voltageKv,
+      systemVoltageKv: line.voltageKv,
     });
     options.push({
-      ref: branch.ref,
-      label: `${KIND_LABELS.branch_middle}: ${branch.name}`,
+      ref: line.ref,
+      label: `${KIND_LABELS.branch_middle}: ${line.name}`,
       kind: 'branch_middle',
-      systemVoltageKv: branch.voltageKv,
+      systemVoltageKv: line.voltageKv,
     });
     options.push({
-      ref: branch.ref,
-      label: `${KIND_LABELS.branch_near}: ${branch.name}`,
+      ref: line.ref,
+      label: `${KIND_LABELS.branch_near}: ${line.name}`,
       kind: 'branch_near',
-      systemVoltageKv: branch.voltageKv,
+      systemVoltageKv: line.voltageKv,
     });
   }
 
