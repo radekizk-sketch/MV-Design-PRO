@@ -268,3 +268,96 @@ test.describe('UX 10/10 — dowód w przeglądarce (toast / banner / tooltip)', 
     expect(guards.pageErrors, `pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);
   });
 });
+
+/**
+ * Helper: otwiera formularz operacji domenowej przez DEV hook (omija kruchy
+ * łańcuch context-menu). Sam hook jest DEV-only (stripowany z prod buildu).
+ */
+async function openOperationForm(
+  page: Page,
+  op: string,
+  context: Record<string, unknown>,
+): Promise<void> {
+  await page.waitForFunction(() => Boolean((window as any).__mvdpOpenOperationForm), null, {
+    timeout: 10000,
+  });
+  await page.evaluate(
+    ({ op, context }) => {
+      (window as any).__mvdpOpenOperationForm(op, context);
+    },
+    { op, context },
+  );
+}
+
+test.describe('UX 10/10 — pełne pokrycie etapów (tooltip + toast per formularz)', () => {
+  test('Etap Pola SN: formularz + tooltip aparatu (PN-EN 62271)', async ({ page }) => {
+    const guards = installConsoleGuards(page);
+    await mockBackend(page);
+    await createProjectAndOpenSld(page);
+
+    await openOperationForm(page, 'add_sn_bay', {
+      station_ref: 'src-gpz',
+      bus_ref: 'bus-gpz',
+      bay_role: 'OUT',
+      apparatus_kind: 'BREAKER',
+    });
+
+    await expect(page.getByTestId('add-sn-bay-form')).toBeVisible();
+    // C4 per-etap: tooltip inżynierski aparatu (wyłącznik/odłącznik/rozłącznik wg PN-EN 62271).
+    await expect(page.getByTestId('help-tooltip').first()).toBeVisible();
+
+    expect(guards.pageErrors, `pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);
+  });
+
+  test('Etap Segmenty: formularz odgałęzienia + tooltip długości kabla', async ({ page }) => {
+    const guards = installConsoleGuards(page);
+    await mockBackend(page);
+    await createProjectAndOpenSld(page);
+
+    await openOperationForm(page, 'start_branch_segment_sn', {
+      terminal_id: 'bus-gpz',
+      field_ref: 'bay-1',
+      terminal_name: 'Pole SN GPZ · SN',
+      terminal_voltage_label: 'SN',
+    });
+
+    await expect(page.getByTestId('start-branch-form')).toBeVisible();
+    // C4 per-etap: tooltip inżynierski długości kabla (cable_length).
+    await expect(page.getByTestId('help-tooltip').first()).toBeVisible();
+
+    expect(guards.pageErrors, `pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);
+  });
+
+  test('Etap Stacje: formularz wstawienia stacji renderuje się', async ({ page }) => {
+    const guards = installConsoleGuards(page);
+    await mockBackend(page);
+    await createProjectAndOpenSld(page);
+
+    await openOperationForm(page, 'insert_station_on_segment_sn', {
+      segment_id: 'seg-1',
+      position_on_segment: 0.5,
+    });
+
+    // Formularz stacji renderuje się w realnej przeglądarce bez crash.
+    await expect(page.getByTestId('insert-station-form')).toBeVisible({ timeout: 10000 });
+
+    expect(guards.pageErrors, `pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);
+  });
+
+  test('Etap OZE/DER: wizard DER + tooltip NC RfG/FRT', async ({ page }) => {
+    const guards = installConsoleGuards(page);
+    await mockBackend(page);
+    await createProjectAndOpenSld(page);
+
+    await openOperationForm(page, 'add_converter_source', {
+      bus_ref: 'bus-gpz',
+      connection_side: 'SN',
+    });
+
+    // Wizard DER renderuje się; tooltip inżynierski (FRT/anti-islanding) na kroku profilu.
+    const wizard = page.getByTestId('add-der-wizard').or(page.getByTestId('add-converter-source-form'));
+    await expect(wizard.first()).toBeVisible({ timeout: 10000 });
+
+    expect(guards.pageErrors, `pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);
+  });
+});

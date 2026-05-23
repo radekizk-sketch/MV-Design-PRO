@@ -155,6 +155,18 @@ export function AppShellV12({
   const [massReviewOpen, setMassReviewOpen] = useState(false);
   const [projectMetadataOpen, setProjectMetadataOpen] = useState(false);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
+  const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
+
+  // E2E hook (tylko DEV/test) — pozwala testom otworzyć dowolny formularz
+  // operacji domenowej bez kruchego łańcucha context-menu. Stripowany z prod buildu.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    (window as unknown as { __mvdpOpenOperationForm?: typeof openOperationForm }).__mvdpOpenOperationForm =
+      openOperationForm;
+    return () => {
+      delete (window as unknown as { __mvdpOpenOperationForm?: unknown }).__mvdpOpenOperationForm;
+    };
+  }, [openOperationForm]);
 
   // Ctrl+K = globalne wyszukiwanie ENM
   // Ctrl+Shift+P = paleta komend (ekrany + akcje SLD + skróty)
@@ -323,7 +335,7 @@ export function AppShellV12({
           )}
 
           {/* Walidacja semantyczna (semantic_rules) — globalny banner nad obszarem roboczym */}
-          {semanticIssues.length > 0 && (
+          {(semanticIssues?.length ?? 0) > 0 && (
             <SemanticIssuesBanner
               issues={semanticIssues}
               onSelectElement={(ref) => centerSldOnElement(ref)}
