@@ -1032,21 +1032,24 @@ function App() {
       return;
     }
     if (route === ROUTES.VARIANTS.hash) {
-      openRouteSurface('variants_runs', {
+      // Phase 0 #2: canonical code zamiast legacy alias 'variants_runs'
+      openRouteSurface('E-08', {
         subjectKind: 'helper_context',
         subjectRef: params.get('case') ?? params.get('snapshot') ?? 'variants-context',
       });
       return;
     }
     if (route === ROUTES.CATALOG.hash) {
-      openRouteSurface('catalog_admin', {
+      // Phase 0 #2: canonical code zamiast legacy alias 'catalog_admin'
+      openRouteSurface('E-38', {
         subjectKind: 'helper_context',
         subjectRef: params.get('sel') ?? 'catalog-root',
       });
       return;
     }
     if (route === ROUTES.CASE_CONFIG.hash) {
-      openRouteSurface('case_context', {
+      // Phase 0 #2: canonical code zamiast legacy alias 'case_context'
+      openRouteSurface('E-07', {
         subjectKind: 'helper_context',
         subjectRef: params.get('case') ?? params.get('snapshot') ?? 'case-context',
       });
