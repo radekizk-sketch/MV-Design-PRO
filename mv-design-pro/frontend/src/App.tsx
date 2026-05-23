@@ -72,6 +72,7 @@ import {
 import { NotificationToast } from './ui/notifications/NotificationToast';
 import { HelpPanel } from './ui/help';
 import { SettingsPanel } from './ui/settings';
+import { installDialogKeyboardHandler } from './ui/shared/DialogManager';
 import { OnboardingTour, isOnboardingCompleted } from './ui/onboarding/OnboardingTour';
 import { notify } from './ui/notifications/store';
 import { sanitizePublicReadinessMessage } from './ui/shared/publicReadinessMessage';
@@ -545,6 +546,10 @@ function App() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
+
+  // G3 dostawy: globalny dialog stack keyboard handler (ESC zamyka top dialog,
+  // Cmd/Ctrl+ESC zamyka wszystkie dialogi z DialogManager).
+  useEffect(() => installDialogKeyboardHandler(), []);
   const setActiveMode = useAppStateStore((state) => state.setActiveMode);
   const setActiveArea = useAppStateStore((state) => state.setActiveArea);
   const activeArea = useAppStateStore((state) => state.activeArea);
