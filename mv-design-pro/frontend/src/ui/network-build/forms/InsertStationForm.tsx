@@ -38,7 +38,6 @@ import {
   stationNameFromData,
   SN_FIELD_ROLE_TO_BAY_KIND,
   SN_FIELD_ROLES,
-  buildDefaultSnFields,
   contextString,
   resolveSegmentIdFromContext,
   elementTypeFromSelectionHint,
@@ -49,6 +48,7 @@ import {
   templateOptionsForRole as templateOptionsForRoleHelper,
   toTransformerCatalogEntries,
   toConverterCatalogEntries,
+  buildStationSnFields as buildStationSnFieldsHelper,
 } from './InsertStationFormHelpers';
 
 function engineeringSegmentLabel(
@@ -282,35 +282,13 @@ const STARTER_SWITCHGEAR_MANUFACTURERS: Manufacturer[] = [
 
 // buildDefaultSnFields moved to InsertStationFormHelpers.ts
 
+// buildStationSnFields moved to InsertStationFormHelpers.ts (with DI dla bayKindMap)
 function buildStationSnFields(
   stationKind: TopologicalStationKind,
   templatesByRole: Partial<Record<SnFieldRole, CompleteMvBayTemplateSummary>>,
   switchgearChoice: StationSwitchgearChoice,
 ): StationSnFieldTemplate[] {
-  return buildDefaultSnFields(stationKind).map((field) => {
-    const role = field.field_role as SnFieldRole;
-    const template = templatesByRole[role] ?? null;
-    return {
-      ...field,
-      manufacturer_ref: switchgearChoice.manufacturerRef,
-      switchgear_family_ref: switchgearChoice.switchgearFamilyRef,
-      bay_kind: SN_FIELD_ROLE_TO_BAY_KIND[role],
-      bay_template_ref: template?.template_ref ?? null,
-      source_status: template?.source_status ?? 'requires_catalog',
-      source_refs: template?.source_refs ?? [],
-      catalog_bindings: template
-        ? {
-            switchgear_template: {
-              catalog_namespace: 'ROZDZIELNICA_SN',
-              catalog_item_id: template.template_ref,
-              manufacturer_ref: switchgearChoice.manufacturerRef,
-              switchgear_family_ref: switchgearChoice.switchgearFamilyRef,
-              source_status: template.source_status,
-            },
-          }
-        : null,
-    };
-  });
+  return buildStationSnFieldsHelper(stationKind, templatesByRole, switchgearChoice, SN_FIELD_ROLE_TO_BAY_KIND);
 }
 
 // orderManufacturers moved to InsertStationFormHelpers.ts

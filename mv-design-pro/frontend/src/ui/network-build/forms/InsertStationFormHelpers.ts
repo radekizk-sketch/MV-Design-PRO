@@ -567,6 +567,55 @@ export function toConverterCatalogEntries(types: ConverterType[]): CatalogEntry[
   }));
 }
 
+// StationSnFieldTemplate / StationSwitchgearChoice types
+export interface StationSwitchgearChoice {
+  manufacturerRef: string;
+  switchgearFamilyRef: string | null;
+}
+
+export interface StationSnFieldTemplate {
+  field_role: SnFieldRole;
+  catalog_bindings: Record<string, unknown> | null;
+  manufacturer_ref: string;
+  switchgear_family_ref: string | null;
+  bay_kind: BayKind;
+  bay_template_ref: string | null;
+  source_status: CompleteMvBayTemplateSummary['source_status'];
+  source_refs: readonly string[];
+}
+
+export function buildStationSnFields(
+  stationKind: TopologicalStationKind,
+  templatesByRole: Partial<Record<SnFieldRole, CompleteMvBayTemplateSummary>>,
+  switchgearChoice: StationSwitchgearChoice,
+  bayKindMap: Record<SnFieldRole, BayKind>,
+): StationSnFieldTemplate[] {
+  return buildDefaultSnFields(stationKind).map((field) => {
+    const role = field.field_role as SnFieldRole;
+    const template = templatesByRole[role] ?? null;
+    return {
+      ...field,
+      manufacturer_ref: switchgearChoice.manufacturerRef,
+      switchgear_family_ref: switchgearChoice.switchgearFamilyRef,
+      bay_kind: bayKindMap[role],
+      bay_template_ref: template?.template_ref ?? null,
+      source_status: template?.source_status ?? 'requires_catalog',
+      source_refs: template?.source_refs ?? [],
+      catalog_bindings: template
+        ? {
+            switchgear_template: {
+              catalog_namespace: 'ROZDZIELNICA_SN',
+              catalog_item_id: template.template_ref,
+              manufacturer_ref: switchgearChoice.manufacturerRef,
+              switchgear_family_ref: switchgearChoice.switchgearFamilyRef,
+              source_status: template.source_status,
+            },
+          }
+        : null,
+    };
+  });
+}
+
 export function buildDefaultSnFields(stationKind: TopologicalStationKind): Array<{
   field_role: SnFieldRole;
   catalog_bindings: null;
