@@ -87,7 +87,7 @@ export function validateCloneOptions(options: CloneOptions): {
   message?: string;
 } {
   if (!options.newName.trim()) {
-    return { isValid: false, message: 'Nowa nazwa case jest wymagana.' };
+    return { isValid: false, message: 'Nowa nazwa zakresu obliczeniowego jest wymagana.' };
   }
   if (options.newName.trim().length < 3) {
     return { isValid: false, message: 'Nowa nazwa zbyt krótka (min 3 znaki).' };
