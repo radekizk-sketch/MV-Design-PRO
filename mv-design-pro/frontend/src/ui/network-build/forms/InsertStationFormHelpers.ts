@@ -318,3 +318,56 @@ export function stationNameFromData(data: { name: string; ref_id: string }): str
   const refId = data.ref_id.trim();
   return name || refId || undefined;
 }
+
+// SN field role → bay kind mapping (Sprint Etap 4 - czwarta fala)
+export const SN_FIELD_ROLE_TO_BAY_KIND: Record<SnFieldRole, BayKind> = {
+  LINIA_IN: 'liniowe_doplywowe',
+  LINIA_OUT: 'liniowe_odplywowe',
+  LINIA_ODG: 'liniowe_odplywowe',
+  TRANSFORMATOROWE: 'transformatorowe',
+  SPRZEGLO: 'sprzeglowe_poprzeczne',
+};
+
+export const SN_FIELD_ROLES: readonly SnFieldRole[] = [
+  'LINIA_IN',
+  'LINIA_OUT',
+  'LINIA_ODG',
+  'TRANSFORMATOROWE',
+  'SPRZEGLO',
+];
+
+export function buildDefaultSnFields(stationKind: TopologicalStationKind): Array<{
+  field_role: SnFieldRole;
+  catalog_bindings: null;
+}> {
+  const createField = (fieldRole: SnFieldRole) => ({
+    field_role: fieldRole,
+    catalog_bindings: null,
+  });
+
+  switch (stationKind) {
+    case 'terminal':
+      return [createField('LINIA_IN'), createField('TRANSFORMATOROWE')];
+    case 'branch':
+      return [
+        createField('LINIA_IN'),
+        createField('LINIA_OUT'),
+        createField('LINIA_ODG'),
+        createField('TRANSFORMATOROWE'),
+      ];
+    case 'sectional':
+      return [
+        createField('LINIA_IN'),
+        createField('LINIA_OUT'),
+        createField('SPRZEGLO'),
+        createField('TRANSFORMATOROWE'),
+      ];
+    case 'inline':
+    default:
+      return [
+        createField('LINIA_IN'),
+        createField('LINIA_OUT'),
+        createField('TRANSFORMATOROWE'),
+      ];
+  }
+}

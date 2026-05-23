@@ -38,6 +38,9 @@ import {
   sourceProtectionIntent,
   switchgearStatusLabel,
   stationNameFromData,
+  SN_FIELD_ROLE_TO_BAY_KIND,
+  SN_FIELD_ROLES,
+  buildDefaultSnFields,
 } from './InsertStationFormHelpers';
 import { useSnapshotStore, selectBusOptions } from '../../topology/snapshotStore';
 import { useActiveOperationContext, useNetworkBuildStore } from '../networkBuildStore';
@@ -276,61 +279,13 @@ const STARTER_SWITCHGEAR_MANUFACTURERS: Manufacturer[] = [
 
 // SWITCHGEAR_MANUFACTURER_ORDER moved to InsertStationFormHelpers.ts
 
-const SN_FIELD_ROLE_TO_BAY_KIND: Record<SnFieldRole, BayKind> = {
-  LINIA_IN: 'liniowe_doplywowe',
-  LINIA_OUT: 'liniowe_odplywowe',
-  LINIA_ODG: 'liniowe_odplywowe',
-  TRANSFORMATOROWE: 'transformatorowe',
-  SPRZEGLO: 'sprzeglowe_poprzeczne',
-};
+// SN_FIELD_ROLE_TO_BAY_KIND moved to InsertStationFormHelpers.ts
 
-const SN_FIELD_ROLES: readonly SnFieldRole[] = [
-  'LINIA_IN',
-  'LINIA_OUT',
-  'LINIA_ODG',
-  'TRANSFORMATOROWE',
-  'SPRZEGLO',
-];
+// SN_FIELD_ROLES moved to InsertStationFormHelpers.ts
 
 // SOURCE_STATUS_LABEL_PL moved to InsertStationFormHelpers.ts
 
-function buildDefaultSnFields(stationKind: TopologicalStationKind): Array<{
-  field_role: SnFieldRole;
-  catalog_bindings: null;
-}> {
-  const createField = (
-    fieldRole: SnFieldRole,
-  ) => ({
-    field_role: fieldRole,
-    catalog_bindings: null,
-  });
-
-  switch (stationKind) {
-    case 'terminal':
-      return [createField('LINIA_IN'), createField('TRANSFORMATOROWE')];
-    case 'branch':
-      return [
-        createField('LINIA_IN'),
-        createField('LINIA_OUT'),
-        createField('LINIA_ODG'),
-        createField('TRANSFORMATOROWE'),
-      ];
-    case 'sectional':
-      return [
-        createField('LINIA_IN'),
-        createField('LINIA_OUT'),
-        createField('SPRZEGLO'),
-        createField('TRANSFORMATOROWE'),
-      ];
-    case 'inline':
-    default:
-      return [
-        createField('LINIA_IN'),
-        createField('LINIA_OUT'),
-        createField('TRANSFORMATOROWE'),
-      ];
-  }
-}
+// buildDefaultSnFields moved to InsertStationFormHelpers.ts
 
 function buildStationSnFields(
   stationKind: TopologicalStationKind,
