@@ -20,13 +20,12 @@ import {
   useRunAudit2PowerFlow,
   useStationAudit2ConfigList,
   validateHostingCapacityExport,
-  type Audit2ProofPackResponse,
 } from '../network-build/station-der';
 import { SldWorkspaceContainer } from '../sld/v2/canvas/SldWorkspaceContainer';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
 import { FrtHvrtCurves, type NcRfgProfileId } from '../protection-curves/FrtHvrtCurves';
 import { TimeCurrentChart } from '../protection-curves/TimeCurrentChart';
-import type { ProtectionCurve, FaultMarker, CurvePoint } from '../protection-curves/types';
+import type { ProtectionCurve, FaultMarker } from '../protection-curves/types';
 import {
   exportReport,
   exportProofPack,
@@ -93,6 +92,11 @@ import {
   fallbackFixActionFromBlocker,
   derAxisStatusLabel,
 } from './routerFixActionHelpers';
+import {
+  auditProofPackStatus,
+  resolveLatestCompletedRun,
+  generateIec60255SiCurvePoints,
+} from './routerPureHelpers';
 import { isCanonicalOpName, type CanonicalOpName } from '../../types/domainOps';
 import { resolveFixActionSurface } from '../../types/fixActionSurface';
 import type { Branch, EnergyNetworkModel, FixAction } from '../../types/enm';
@@ -178,20 +182,7 @@ function payloadString(surface: WorkspaceSurfaceDescriptor, key: string): string
 
 // publicProofTypeTag moved to routerDisplayHelpers.ts
 
-function auditProofPackStatus(data: Audit2ProofPackResponse): {
-  readonly label: string;
-  readonly className: string;
-} {
-  if (data.proof_count <= 0) {
-    return {
-      label: 'Brak dowodów do oceny',
-      className: 'text-amber-700',
-    };
-  }
-  return data.all_pass
-    ? { label: 'Weryfikacja pozytywna', className: 'text-emerald-700' }
-    : { label: 'Wymaga sprawdzenia', className: 'text-rose-700' };
-}
+// auditProofPackStatus moved to routerPureHelpers.ts
 
 function resolveSurfaceObjectLabel(
   surface: WorkspaceSurfaceDescriptor,
@@ -1102,16 +1093,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   );
 }
 
-function resolveLatestCompletedRun(runs: ExecutionRun[]): ExecutionRun | null {
-  return runs
-    .filter((run) => run.status === 'DONE')
-    .slice()
-    .sort((left, right) => {
-      const leftTime = new Date(left.finished_at ?? left.started_at ?? 0).getTime();
-      const rightTime = new Date(right.finished_at ?? right.started_at ?? 0).getTime();
-      return rightTime - leftTime;
-    })[0] ?? null;
-}
+// resolveLatestCompletedRun moved to routerPureHelpers.ts
 
 function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeProjectName = useAppStateStore((state) => state.activeProjectName);
@@ -1661,21 +1643,7 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
 // Funkcja jest pure (deterministyczna) — używana wyłącznie do podglądu UI;
 // rzeczywiste punkty krzywej z solvera protection_iec60255 (backend) zastępują
 // tę tablicę gdy są dostępne.
-function generateIec60255SiCurvePoints(
-  pickupCurrentA: number,
-  tms: number,
-): CurvePoint[] {
-  const ratios = [1.05, 1.5, 2, 3, 5, 10, 20, 50, 100];
-  return ratios.map((m) => {
-    const denom = Math.pow(m, 0.02) - 1;
-    const time = denom > 0 ? (tms * 0.14) / denom : 60;
-    return {
-      current_a: pickupCurrentA * m,
-      current_multiple: m,
-      time_s: Math.min(time, 60),
-    };
-  });
-}
+// generateIec60255SiCurvePoints moved to routerPureHelpers.ts
 
 function ProtectionCoordinationSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   // Iteracja 14: TCC chart preview z 2 demonstracyjnymi krzywymi
