@@ -260,3 +260,61 @@ export function compareTransformersForSourcePower(sourcePowerMva: number | null)
       || left.id.localeCompare(right.id);
   };
 }
+
+// Pure helpers - station kind + scope descriptions (Sprint Etap 4 - trzecia fala)
+export type TopologicalStationKind = 'terminal' | 'inline' | 'branch' | 'sectional';
+
+export function describeConfigurationScope(
+  stationKind: TopologicalStationKind,
+  nnConfiguration: NnConfiguration,
+): string {
+  const stationScope: Record<TopologicalStationKind, string> = {
+    terminal: 'WE + TR + nN',
+    inline: 'WE + WY + TR + nN',
+    branch: 'WE + WY + ODG + TR + nN',
+    sectional: 'sekcje SN + TR + nN',
+  };
+  const sourceScope: Record<NnConfiguration, string> = {
+    LOAD_NN: 'odbiorcza',
+    PV_INVERTER: 'PV',
+    BESS_INVERTER: 'BESS',
+    FW_INVERTER: 'FW',
+    CUSTOM_NN: 'nN niestandardowe',
+  };
+  return `${stationScope[stationKind]} · ${sourceScope[nnConfiguration]}`;
+}
+
+export interface SourceProtectionIntent {
+  breaker_role: string;
+  device_catalog_ref: string;
+  device_label: string;
+  protected_object: string;
+  analysis_scope: string;
+}
+
+export function sourceProtectionIntent(
+  configuration: NnConfiguration,
+): SourceProtectionIntent | undefined {
+  if (configuration !== 'PV_INVERTER') return undefined;
+  return {
+    breaker_role: 'wyłącznik nN źródła PV',
+    device_catalog_ref: 'EM_ETANGO_400_V0',
+    device_label: 'Elektrometal e2TANGO-400',
+    protected_object: 'falownik PV i kabel nN do PCC',
+    analysis_scope: 'nadprądowe, ziemnozwarciowe i koordynacja z wyłącznikiem głównym nN',
+  };
+}
+
+export function switchgearStatusLabel(manufacturer: Manufacturer | null): string {
+  if (!manufacturer) return 'wybierz pakiet rozdzielnicy';
+  if (manufacturer.status === 'verified' && manufacturer.source_refs.length > 0) return 'pakiet katalogowy';
+  if (manufacturer.status === 'user_defined') return 'pakiet użytkownika';
+  if (manufacturer.status === 'deprecated') return 'wycofany';
+  return 'niedostępny w konfiguratorze';
+}
+
+export function stationNameFromData(data: { name: string; ref_id: string }): string | undefined {
+  const name = data.name.trim();
+  const refId = data.ref_id.trim();
+  return name || refId || undefined;
+}

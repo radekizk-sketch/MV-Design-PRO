@@ -34,6 +34,10 @@ import {
   compareStationNnSourceConverters,
   compareTransformersForSourcePower,
   DEFAULT_RECEIVER_NN_VOLTAGE_KV,
+  describeConfigurationScope,
+  sourceProtectionIntent,
+  switchgearStatusLabel,
+  stationNameFromData,
 } from './InsertStationFormHelpers';
 import { useSnapshotStore, selectBusOptions } from '../../topology/snapshotStore';
 import { useActiveOperationContext, useNetworkBuildStore } from '../networkBuildStore';
@@ -376,13 +380,7 @@ function mergeStarterManufacturers(loaded: Manufacturer[]): Manufacturer[] {
   return orderManufacturers([...merged.values()]);
 }
 
-function switchgearStatusLabel(manufacturer: Manufacturer | null): string {
-  if (!manufacturer) return 'wybierz pakiet rozdzielnicy';
-  if (manufacturer.status === 'verified' && manufacturer.source_refs.length > 0) return 'pakiet katalogowy';
-  if (manufacturer.status === 'user_defined') return 'pakiet użytkownika';
-  if (manufacturer.status === 'deprecated') return 'wycofany';
-  return 'niedostępny w konfiguratorze';
-}
+// switchgearStatusLabel moved to InsertStationFormHelpers.ts
 
 function findTemplateForRole(
   templates: CompleteMvBayTemplateSummary[],
@@ -453,41 +451,14 @@ const NO_COMPATIBLE_TRANSFORMER_MESSAGE =
 
 // clampOutgoingFeederCount moved to InsertStationFormHelpers.ts
 
-function describeConfigurationScope(
-  stationKind: TopologicalStationKind,
-  nnConfiguration: NnConfiguration,
-): string {
-  const stationScope: Record<TopologicalStationKind, string> = {
-    terminal: 'WE + TR + nN',
-    inline: 'WE + WY + TR + nN',
-    branch: 'WE + WY + ODG + TR + nN',
-    sectional: 'sekcje SN + TR + nN',
-  };
-  const sourceScope: Record<NnConfiguration, string> = {
-    LOAD_NN: 'odbiorcza',
-    PV_INVERTER: 'PV',
-    BESS_INVERTER: 'BESS',
-    FW_INVERTER: 'FW',
-    CUSTOM_NN: 'nN niestandardowe',
-  };
-  return `${stationScope[stationKind]} · ${sourceScope[nnConfiguration]}`;
-}
+// describeConfigurationScope moved to InsertStationFormHelpers.ts
 
 // voltageMatches moved to InsertStationFormHelpers.ts
 // compareStationNnSourceConverters, compareTransformersForSourcePower,
 // catalogItemIdFromRef, findTransformerByCatalogRef, sourceFeederRole
 // moved to InsertStationFormHelpers.ts (Sprint Etap 4 decompose - druga fala)
 
-function sourceProtectionIntent(configuration: NnConfiguration): NnFeederPayload['protection'] | undefined {
-  if (configuration !== 'PV_INVERTER') return undefined;
-  return {
-    breaker_role: 'wyłącznik nN źródła PV',
-    device_catalog_ref: 'EM_ETANGO_400_V0',
-    device_label: 'Elektrometal e2TANGO-400',
-    protected_object: 'falownik PV i kabel nN do PCC',
-    analysis_scope: 'nadprądowe, ziemnozwarciowe i koordynacja z wyłącznikiem głównym nN',
-  };
-}
+// sourceProtectionIntent moved to InsertStationFormHelpers.ts
 
 function toTransformerCatalogEntries(
   types: TransformerType[],
@@ -642,11 +613,7 @@ function engineeringSegmentLabel(
   return 'Odcinek SN';
 }
 
-function stationNameFromData(data: TransformerStationFormData): string | undefined {
-  const name = data.name.trim();
-  const refId = data.ref_id.trim();
-  return name || refId || undefined;
-}
+// stationNameFromData moved to InsertStationFormHelpers.ts
 
 function StationSystemPreview({
   stationTypeLabel,
