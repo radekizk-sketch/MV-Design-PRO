@@ -147,7 +147,7 @@ export const TECHNICAL_DEBT_REGISTRY: readonly TechnicalDebtItem[] = [
     scope: 'Plan Phase 0 #10/11: InsertStationForm + WorkspaceSurfaceRouter decompose.',
     decision:
       'Dekompozycja zrealizowana iteracyjnie (12 fal extraction): ' +
-      'InsertStationForm 2190 → 1906 LOC (-284, -13.0%), ' +
+      'InsertStationForm 2190 → 1884 LOC (-306, -14.0%), ' +
       'WorkspaceSurfaceRouter 2820 → 2295 LOC (-525, -18.6%). ' +
       'Wyekstraktowane 13 modułów helper: routerDisplayHelpers, routerContractRows, ' +
       'routerFixActionHelpers, routerPureHelpers, routerLabelHelpers, routerStatusComponents, ' +
@@ -172,7 +172,7 @@ export const TECHNICAL_DEBT_REGISTRY: readonly TechnicalDebtItem[] = [
       'npm test -- --run src/ui/workspace src/ui/network-build/forms',
     ],
     confirmation:
-      '13 modułów wyekstraktowanych z monolitów. 809 LOC łącznie zredukowane (-16.2%). ' +
+      '13 modułów wyekstraktowanych z monolitów. 831 LOC łącznie zredukowane (-16.6%). ' +
       'Dalsza dekompozycja na 5-step stepper / 10-files-per-area to architectural redesign, ' +
       'nie pure decompose — wymagałoby zmiany React state machine struktury.',
   },
