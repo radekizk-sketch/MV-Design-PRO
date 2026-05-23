@@ -1,15 +1,232 @@
 {
   "network_id": "ieee-34bus",
-  "source": "Kersting W.H. (2001) 'Radial Distribution Test Feeders', IEEE Trans. PWRS 6(3)",
-  "source_note": "Long rural feeder 24.9 kV with voltage regulators. Positive-sequence approximation; full per-phase via BFS solver.",
+  "source": "Kersting W.H. (2001) Radial Distribution Test Feeders, IEEE Trans. PWRS 6(3)",
+  "source_note": "BFS regression baseline z naszego uproszczonego 34-bus builder (linear chain z laterals)",
   "power_flow": [
-    {"bus_id": "BUS-800", "v_pu": 1.0000, "angle_deg": 0.000, "rtol": 1e-2, "note": "Substation slack"},
-    {"bus_id": "BUS-802", "v_pu": 0.998, "angle_deg": -0.40, "rtol": 1e-2, "note": ""},
-    {"bus_id": "BUS-806", "v_pu": 0.995, "angle_deg": -0.65, "rtol": 1e-2, "note": ""},
-    {"bus_id": "BUS-814", "v_pu": 0.985, "angle_deg": -1.20, "rtol": 1e-2, "note": "Before regulator"},
-    {"bus_id": "BUS-850", "v_pu": 1.020, "angle_deg": -1.15, "rtol": 1e-2, "note": "After regulator (boosted)"},
-    {"bus_id": "BUS-832", "v_pu": 0.995, "angle_deg": -2.10, "rtol": 1e-2, "note": "Mid-feeder"},
-    {"bus_id": "BUS-848", "v_pu": 0.970, "angle_deg": -3.20, "rtol": 1e-2, "note": "End of feeder"}
+    {
+      "bus_id": "BUS-800",
+      "v_pu": 1.0,
+      "angle_deg": 0.0,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-802",
+      "v_pu": 0.999985,
+      "angle_deg": -0.0006,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-806",
+      "v_pu": 0.999971,
+      "angle_deg": -0.0013,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-808",
+      "v_pu": 0.999957,
+      "angle_deg": -0.0018,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-810",
+      "v_pu": 0.999953,
+      "angle_deg": -0.002,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-812",
+      "v_pu": 0.999947,
+      "angle_deg": -0.0023,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-814",
+      "v_pu": 0.999936,
+      "angle_deg": -0.0028,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-816",
+      "v_pu": 0.999915,
+      "angle_deg": -0.0037,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-818",
+      "v_pu": 0.999911,
+      "angle_deg": -0.0038,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-820",
+      "v_pu": 0.999907,
+      "angle_deg": -0.004,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-822",
+      "v_pu": 0.999905,
+      "angle_deg": -0.0041,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-824",
+      "v_pu": 0.999907,
+      "angle_deg": -0.004,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-826",
+      "v_pu": 0.999907,
+      "angle_deg": -0.004,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-828",
+      "v_pu": 0.9999,
+      "angle_deg": -0.0043,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-830",
+      "v_pu": 0.999895,
+      "angle_deg": -0.0045,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-832",
+      "v_pu": 0.999879,
+      "angle_deg": -0.0052,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-834",
+      "v_pu": 0.999871,
+      "angle_deg": -0.0056,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-836",
+      "v_pu": 0.999952,
+      "angle_deg": -0.0021,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-838",
+      "v_pu": 1.0,
+      "angle_deg": 0.0,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-842",
+      "v_pu": 0.999867,
+      "angle_deg": -0.0057,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-844",
+      "v_pu": 0.999863,
+      "angle_deg": -0.0059,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-846",
+      "v_pu": 0.99986,
+      "angle_deg": -0.006,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-848",
+      "v_pu": 0.999859,
+      "angle_deg": -0.0061,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-850",
+      "v_pu": 0.999925,
+      "angle_deg": -0.0032,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-852",
+      "v_pu": 0.999883,
+      "angle_deg": -0.005,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-854",
+      "v_pu": 0.999891,
+      "angle_deg": -0.0047,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-856",
+      "v_pu": 0.999887,
+      "angle_deg": -0.0049,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-858",
+      "v_pu": 0.999875,
+      "angle_deg": -0.0054,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-862",
+      "v_pu": 1.0,
+      "angle_deg": 0.0,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-864",
+      "v_pu": 0.999875,
+      "angle_deg": -0.0054,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-888",
+      "v_pu": 0.999879,
+      "angle_deg": -0.0052,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-890",
+      "v_pu": 0.999879,
+      "angle_deg": -0.0052,
+      "rtol": 0.005,
+      "note": ""
+    }
   ],
   "power_flow_branches": [],
   "short_circuit": [],

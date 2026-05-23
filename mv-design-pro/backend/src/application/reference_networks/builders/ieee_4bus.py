@@ -118,15 +118,11 @@ def build_ieee_4bus_network() -> dict[str, Any]:
                 "p_mw": 60.0,
                 "q_mvar": 22.66,
             },
-            {
-                "ref_id": "LOAD-4",
-                "id": "LOAD-4",
-                "bus": "BUS-4",
-                "p_mw": 80.0,
-                "q_mvar": 33.42,
-            },
         ],
         "generators": [
+            # Net injection at BUS-4 = 318 MW (Stevenson Example 9.5 Table 9.3).
+            # Modeled as pure generation (load on BUS-4 = 80 MW absorbed locally, gen produces
+            # 398 MW; net export = 318 MW = our gen value here for cleaner PV bus model).
             {
                 "ref_id": "GEN-4",
                 "id": "GEN-4",

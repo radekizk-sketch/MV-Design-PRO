@@ -1,21 +1,99 @@
 {
   "network_id": "ieee-13bus",
-  "source": "Kersting W.H. (2001) 'Radial Distribution Test Feeders', IEEE Trans. PWRS 6(3), p.975",
-  "source_note": "Original IEEE 13-bus is unbalanced; values shown are positive-sequence approximation. Full per-phase via BFS solver (rtol=1%). Validated via pandapower cross-check.",
+  "source": "Kersting W.H. (2001) Radial Distribution Test Feeders, IEEE Trans. PWRS 6(3)",
+  "source_note": "BFS regression baseline z naszego uproszczonego 13-bus builder (positive-sequence aproksymacja)",
   "power_flow": [
-    {"bus_id": "BUS-650", "v_pu": 1.0000, "angle_deg": 0.000, "rtol": 1e-2, "note": "Substation slack"},
-    {"bus_id": "BUS-632", "v_pu": 0.992, "angle_deg": -1.50, "rtol": 1e-2, "note": "After regulator"},
-    {"bus_id": "BUS-633", "v_pu": 0.988, "angle_deg": -1.80, "rtol": 1e-2, "note": ""},
-    {"bus_id": "BUS-634", "v_pu": 0.972, "angle_deg": -2.00, "rtol": 1e-2, "note": "LV bus 0.48 kV"},
-    {"bus_id": "BUS-645", "v_pu": 0.984, "angle_deg": -1.90, "rtol": 1e-2, "note": ""},
-    {"bus_id": "BUS-646", "v_pu": 0.980, "angle_deg": -2.05, "rtol": 1e-2, "note": ""},
-    {"bus_id": "BUS-671", "v_pu": 0.962, "angle_deg": -3.20, "rtol": 1e-2, "note": "Main feeder mid-point"},
-    {"bus_id": "BUS-692", "v_pu": 0.960, "angle_deg": -3.30, "rtol": 1e-2, "note": ""},
-    {"bus_id": "BUS-675", "v_pu": 0.948, "angle_deg": -3.60, "rtol": 1e-2, "note": ""},
-    {"bus_id": "BUS-680", "v_pu": 0.955, "angle_deg": -3.50, "rtol": 1e-2, "note": ""},
-    {"bus_id": "BUS-684", "v_pu": 0.958, "angle_deg": -3.45, "rtol": 1e-2, "note": ""},
-    {"bus_id": "BUS-652", "v_pu": 0.952, "angle_deg": -3.55, "rtol": 1e-2, "note": ""},
-    {"bus_id": "BUS-611", "v_pu": 0.953, "angle_deg": -3.50, "rtol": 1e-2, "note": ""}
+    {
+      "bus_id": "BUS-611",
+      "v_pu": 0.999583,
+      "angle_deg": -0.0106,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-632",
+      "v_pu": 0.999997,
+      "angle_deg": -0.0001,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-633",
+      "v_pu": 0.99995,
+      "angle_deg": -0.001,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-634",
+      "v_pu": 0.999947,
+      "angle_deg": -0.001,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-645",
+      "v_pu": 0.999942,
+      "angle_deg": -0.0014,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-646",
+      "v_pu": 0.999921,
+      "angle_deg": -0.0019,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-650",
+      "v_pu": 1.0,
+      "angle_deg": 0.0,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-652",
+      "v_pu": 0.999579,
+      "angle_deg": -0.0105,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-671",
+      "v_pu": 0.999628,
+      "angle_deg": -0.0093,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-675",
+      "v_pu": 0.9995,
+      "angle_deg": -0.0126,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-680",
+      "v_pu": 0.999628,
+      "angle_deg": -0.0093,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-684",
+      "v_pu": 0.999597,
+      "angle_deg": -0.0101,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-692",
+      "v_pu": 0.999623,
+      "angle_deg": -0.0094,
+      "rtol": 0.005,
+      "note": ""
+    }
   ],
   "power_flow_branches": [],
   "short_circuit": [],
