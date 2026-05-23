@@ -48,7 +48,7 @@ import {
 } from './surfaces/InfrastructureSurfaces';
 import { PvSourceSurface, BessSurface, FwSurface } from './surfaces/DerSurfaces';
 import { useExecutionRunsStore } from '../study-cases/runStore';
-import { ANALYSIS_TYPE_LABELS, type ExecutionRun } from '../study-cases/types';
+import { ANALYSIS_TYPE_LABELS } from '../study-cases/types';
 import {
   buildRecordRows,
   buildSummaryRows,
@@ -68,7 +68,7 @@ import {
   type WorkspaceSurfaceCode,
   type WorkspaceSurfaceDescriptor,
 } from './types';
-import { calculationScopeDisplayName } from '../shell/publicNames';
+// calculationScopeDisplayName: używane przez displayScopeLabel w routerPureHelpers
 import {
   displayValueOrAuditTrace,
   displayProjectLabel,
@@ -96,6 +96,8 @@ import {
   auditProofPackStatus,
   resolveLatestCompletedRun,
   generateIec60255SiCurvePoints,
+  displayScopeLabel,
+  resolveRunLabel,
 } from './routerPureHelpers';
 import { isCanonicalOpName, type CanonicalOpName } from '../../types/domainOps';
 import { resolveFixActionSurface } from '../../types/fixActionSurface';
@@ -143,12 +145,7 @@ type NamedEnmElement = {
 // isInternalIdentifier, displayValueOrAuditTrace, displayProjectLabel
 // moved to routerDisplayHelpers.ts
 
-function displayScopeLabel(
-  value: string | null | undefined,
-  id: string | null | undefined = null,
-): string {
-  return calculationScopeDisplayName(value, id);
-}
+// displayScopeLabel moved to routerPureHelpers.ts
 
 function findElementName(snapshot: EnergyNetworkModel | null, elementRef: string | null | undefined): string | null {
   if (!snapshot || !elementRef) return null;
@@ -224,14 +221,7 @@ function resolveSurfaceTitle(
   return surface.titlePl;
 }
 
-function resolveRunLabel(runId: string | null | undefined, runs: ExecutionRun[]): string {
-  if (!runId) return 'Nie wybrano obliczenia';
-  const run = runs.find((item) => item.id === runId);
-  if (!run) return 'Aktywne obliczenie';
-  const typeLabel = ANALYSIS_TYPE_LABELS[run.analysis_type] ?? run.analysis_type;
-  const dateLabel = formatDateTime(run.finished_at ?? run.started_at);
-  return `${typeLabel} · ${dateLabel}`;
-}
+// resolveRunLabel moved to routerPureHelpers.ts
 
 function MiniSldCard({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const snapshot = useSnapshotStore((state) => state.snapshot);

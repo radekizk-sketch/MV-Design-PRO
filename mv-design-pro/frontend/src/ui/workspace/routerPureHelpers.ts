@@ -6,7 +6,29 @@
  */
 
 import type { ExecutionRun } from '../study-cases/types';
+import { ANALYSIS_TYPE_LABELS } from '../study-cases/types';
 import type { Audit2ProofPackResponse } from '../network-build/station-der';
+import { calculationScopeDisplayName } from '../shell/publicNames';
+import { formatDateTime } from './routerDisplayHelpers';
+
+export function displayScopeLabel(
+  value: string | null | undefined,
+  id: string | null | undefined = null,
+): string {
+  return calculationScopeDisplayName(value, id);
+}
+
+export function resolveRunLabel(
+  runId: string | null | undefined,
+  runs: ExecutionRun[],
+): string {
+  if (!runId) return 'Nie wybrano obliczenia';
+  const run = runs.find((item) => item.id === runId);
+  if (!run) return 'Aktywne obliczenie';
+  const typeLabel = ANALYSIS_TYPE_LABELS[run.analysis_type] ?? run.analysis_type;
+  const dateLabel = formatDateTime(run.finished_at ?? run.started_at);
+  return `${typeLabel} · ${dateLabel}`;
+}
 
 export interface AuditProofPackStatus {
   readonly label: string;
