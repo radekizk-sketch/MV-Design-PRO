@@ -311,6 +311,127 @@ def similarity_match(entity: SimilarityMatchRequestEntity) -> SimilarityMatchRes
     )
 
 
+@router.get("/{network_id}/export/json")
+def export_validation_json(network_id: str) -> Any:
+    """Eksportuje ValidationReport jako JSON file."""
+    from fastapi.responses import Response
+
+    if network_id not in REFERENCE_NETWORK_REGISTRY:
+        raise HTTPException(status_code=404, detail=f"Unknown reference network: {network_id}")
+    net = get_reference_network(network_id)
+    try:
+        expected = load_expected_values_from_json(net.expected_path)
+    except FileNotFoundError:
+        raise HTTPException(status_code=503, detail="Expected values not yet defined")
+
+    actual = _run_solver_for_network(network_id, net.supported_solvers[0])
+    pf_comps = compare_power_flow(actual["buses"], expected)
+    pf_b_comps = compare_power_flow_branches(actual["branches"], expected)
+    sc_comps = compare_short_circuit(actual["short_circuit"], expected)
+    report = build_validation_report(
+        network_id=network_id,
+        network_name_pl=net.name_pl,
+        source=net.source,
+        solver_version="composite-v1",
+        pf_comparisons=pf_comps,
+        pf_branch_comparisons=pf_b_comps,
+        sc_comparisons=sc_comps,
+        trace=tuple(actual.get("trace", [])),
+    )
+    from application.reference_networks.report_export import to_json
+
+    json_str = to_json(report)
+    return Response(
+        content=json_str,
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="validation-{network_id}.json"'},
+    )
+
+
+@router.get("/{network_id}/export/pdf")
+def export_validation_pdf(network_id: str) -> Any:
+    """Eksportuje ValidationReport jako PDF."""
+    from fastapi.responses import Response
+
+    if network_id not in REFERENCE_NETWORK_REGISTRY:
+        raise HTTPException(status_code=404, detail=f"Unknown reference network: {network_id}")
+    net = get_reference_network(network_id)
+    try:
+        expected = load_expected_values_from_json(net.expected_path)
+    except FileNotFoundError:
+        raise HTTPException(status_code=503, detail="Expected values not yet defined")
+
+    actual = _run_solver_for_network(network_id, net.supported_solvers[0])
+    pf_comps = compare_power_flow(actual["buses"], expected)
+    pf_b_comps = compare_power_flow_branches(actual["branches"], expected)
+    sc_comps = compare_short_circuit(actual["short_circuit"], expected)
+    report = build_validation_report(
+        network_id=network_id,
+        network_name_pl=net.name_pl,
+        source=net.source,
+        solver_version="composite-v1",
+        pf_comparisons=pf_comps,
+        pf_branch_comparisons=pf_b_comps,
+        sc_comparisons=sc_comps,
+    )
+    from application.reference_networks.report_export import to_pdf_bytes
+
+    pdf_bytes = to_pdf_bytes(report)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="validation-{network_id}.pdf"'},
+    )
+
+
+class DynamicValidationResponse(BaseModel):
+    network_id: str
+    overall_status: str
+    sample_count: int
+    in_envelope_count: int
+    out_of_envelope_count: int
+    samples: list[dict[str, Any]]
+
+
+@router.post("/{network_id}/validate-dynamic", response_model=DynamicValidationResponse)
+def validate_dynamic(network_id: str) -> DynamicValidationResponse:
+    """Dynamiczna walidacja FRT — porównanie U(t) trajectory vs NC RfG envelope."""
+    if network_id not in REFERENCE_NETWORK_REGISTRY:
+        raise HTTPException(status_code=404, detail=f"Unknown reference network: {network_id}")
+    net = get_reference_network(network_id)
+    if "dynamic_stability" not in net.supported_solvers:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Network {network_id} does not support dynamic stability validation",
+        )
+
+    from application.stability.voltage_trajectory import (
+        TrajectoryGenerationParams,
+        check_trajectory_against_envelope,
+        generate_voltage_trajectory,
+    )
+
+    # Generate baseline FRT trajectory for the network
+    params = TrajectoryGenerationParams(
+        clearing_time_ms=150.0,
+        recovery_duration_s=2.5,
+        sample_dt_s=0.02,
+        recovery_time_constant_s=0.25,
+    )
+    trajectory = generate_voltage_trajectory(params)
+    per_sample, all_pass = check_trajectory_against_envelope(trajectory)
+    in_env = sum(1 for s in per_sample if s.get("in_envelope") is True)
+    out_env = len(per_sample) - in_env
+    return DynamicValidationResponse(
+        network_id=network_id,
+        overall_status="PASS" if all_pass else "FAIL",
+        sample_count=len(per_sample),
+        in_envelope_count=in_env,
+        out_of_envelope_count=out_env,
+        samples=list(per_sample),
+    )
+
+
 @router.get("/{network_id}/nc-rfg-compliance", response_model=NcRfgComplianceResponse)
 def nc_rfg_compliance(network_id: str) -> NcRfgComplianceResponse:
     """Check NC RfG compliance dla sieci OZE."""

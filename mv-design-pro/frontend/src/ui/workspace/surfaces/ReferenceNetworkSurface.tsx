@@ -15,6 +15,7 @@ import {
   ValidationReportPanel,
   useReferenceNetworkDetail,
 } from '../../reference-networks';
+import { DynamicValidationPanel } from '../../reference-networks/DynamicValidationPanel';
 import type { ValidationReport } from '../../reference-networks/types';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 
@@ -47,6 +48,9 @@ export function ReferenceNetworkSurface(_props: ReferenceNetworkSurfaceProps = {
               onValidationComplete={setValidationReport}
             />
             <ValidationReportPanel report={validationReport} isDerNetwork={isDerNetwork} />
+            {detail.data?.has_dynamic_expected && (
+              <DynamicValidationPanel networkId={selectedId} />
+            )}
           </div>
         ) : (
           <div
