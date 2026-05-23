@@ -74,4 +74,40 @@ describe('SpineRenderer', () => {
     const { container } = render(svgWrapper(<SpineRenderer model={empty} lod={2} />));
     expect(container.querySelector('[data-spine-id]')).toBeNull();
   });
+
+  it('C9: węzeł z ERROR dostaje czerwoną obwódkę + data-has-issue', () => {
+    const { container } = render(
+      svgWrapper(
+        <SpineRenderer model={makeModel()} lod={2} issuesByRef={{ 'ST-A': 'ERROR' }} />,
+      ),
+    );
+    const node = container.querySelector('[data-spine-node="ST-A"]');
+    expect(node?.getAttribute('data-has-issue')).toBe('ERROR');
+    const circle = node?.querySelector('circle');
+    expect(circle?.getAttribute('stroke')).toBe('#ef4444');
+    expect(circle?.getAttribute('stroke-width')).toBe('3');
+  });
+
+  it('C9: węzeł z WARNING dostaje bursztynową obwódkę', () => {
+    const { container } = render(
+      svgWrapper(
+        <SpineRenderer model={makeModel()} lod={2} issuesByRef={{ 'ST-B': 'WARNING' }} />,
+      ),
+    );
+    const circle = container
+      .querySelector('[data-spine-node="ST-B"]')
+      ?.querySelector('circle');
+    expect(circle?.getAttribute('stroke')).toBe('#f59e0b');
+  });
+
+  it('C9: węzeł bez problemu zachowuje białą obwódkę', () => {
+    const { container } = render(
+      svgWrapper(<SpineRenderer model={makeModel()} lod={2} issuesByRef={{ 'ST-A': 'ERROR' }} />),
+    );
+    const circle = container
+      .querySelector('[data-spine-node="GPZ-1"]')
+      ?.querySelector('circle');
+    expect(circle?.getAttribute('stroke')).toBe('#ffffff');
+    expect(container.querySelector('[data-spine-node="GPZ-1"]')?.getAttribute('data-has-issue')).toBeNull();
+  });
 });

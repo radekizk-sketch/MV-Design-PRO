@@ -363,6 +363,7 @@ import type {
   FixActionSurfaceDescriptor,
   WizardSurfaceStepId,
 } from './fixActionSurface';
+import type { SemanticIssue } from './domainOps';
 
 // ---------------------------------------------------------------------------
 // Bay canonical model V10 (read-model contract)
@@ -1272,6 +1273,8 @@ export interface DomainOpResponseV1 {
   domain_events: DomainEvent[];
   materialized_params: MaterializedParams;
   layout: LayoutInfo;
+  /** Wynik post-hooka validate_semantic (semantic_rules). Puste = brak problemów. */
+  semantic_issues?: SemanticIssue[];
   /** Present only on error responses. */
   error?: string;
   error_code?: string;

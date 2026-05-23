@@ -37,14 +37,26 @@ function nodeFill(kind: SpineCorridor['nodes'][number]['kind']): string {
   }
 }
 
+/** Severity → kolor obwódki węzła (real-time error na SLD, kryt. #9). */
+const ISSUE_STROKE: Record<'ERROR' | 'WARNING', string> = {
+  ERROR: '#ef4444',
+  WARNING: '#f59e0b',
+};
+
 export interface SpineRendererProps {
   readonly model: SpineModel;
   readonly lod: LodLevel;
   /** Opcjonalny callback selekcji. */
   readonly onSelect?: (ref: string) => void;
+  /**
+   * Mapa ref elementu → najwyższa severity problemu semantycznego.
+   * Węzły z problemem dostają czerwoną (ERROR) / bursztynową (WARNING) obwódkę.
+   * Czysto prezentacyjne — dane pochodzą z validate_semantic (store.lastSemanticIssues).
+   */
+  readonly issuesByRef?: Readonly<Record<string, 'ERROR' | 'WARNING'>>;
 }
 
-export function SpineRenderer({ model, lod, onSelect }: SpineRendererProps) {
+export function SpineRenderer({ model, lod, onSelect, issuesByRef }: SpineRendererProps) {
   const axisVisible = isVisibleAtLod('spine_axis', lod);
   const nodesVisible = isVisibleAtLod('spine_node', lod);
   const branchesVisible = isVisibleAtLod('spine_branch', lod);
@@ -83,21 +95,25 @@ export function SpineRenderer({ model, lod, onSelect }: SpineRendererProps) {
               />
             ))}
           {nodesVisible &&
-            corridor.nodes.map((node) => (
+            corridor.nodes.map((node) => {
+              const severity = issuesByRef?.[node.ref];
+              const hasIssue = Boolean(severity);
+              return (
               <g
                 key={node.ref}
                 onClick={onSelect ? () => onSelect(node.ref) : undefined}
                 style={onSelect ? { cursor: 'pointer' } : undefined}
                 data-spine-node={node.ref}
                 data-node-kind={node.kind}
+                data-has-issue={hasIssue ? severity : undefined}
               >
                 <circle
                   cx={node.x}
                   cy={corridor.axisY}
-                  r={nodeRadius}
+                  r={hasIssue ? nodeRadius + 1.5 : nodeRadius}
                   fill={nodeFill(node.kind)}
-                  stroke="#ffffff"
-                  strokeWidth={1.5}
+                  stroke={severity ? ISSUE_STROKE[severity] : '#ffffff'}
+                  strokeWidth={hasIssue ? 3 : 1.5}
                 />
                 {lod >= 1 && (
                   <text
@@ -112,7 +128,8 @@ export function SpineRenderer({ model, lod, onSelect }: SpineRendererProps) {
                   </text>
                 )}
               </g>
-            ))}
+              );
+            })}
         </g>
       ))}
     </g>

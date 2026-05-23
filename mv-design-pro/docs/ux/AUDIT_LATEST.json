@@ -3,12 +3,10 @@
     {
       "key": "gpz",
       "name_pl": "GPZ — źródło zasilające",
-      "score": 7,
+      "score": 9,
       "max": 10,
       "failing": [
-        "C3 walidacja real-time (banner): banner NIE podpięty globalnie",
-        "C7 auto-fill parametryczny: brak auto-fill",
-        "C9 error na SLD: SLD nie pokazuje issue"
+        "C7 auto-fill parametryczny: brak auto-fill"
       ],
       "criteria": [
         {
@@ -26,8 +24,8 @@
         {
           "id": 3,
           "name": "walidacja real-time (banner)",
-          "passed": false,
-          "detail": "banner NIE podpięty globalnie"
+          "passed": true,
+          "detail": "SemanticIssuesBanner wired"
         },
         {
           "id": 4,
@@ -62,8 +60,8 @@
         {
           "id": 9,
           "name": "error na SLD",
-          "passed": false,
-          "detail": "SLD nie pokazuje issue"
+          "passed": true,
+          "detail": "SpineRenderer issue-aware"
         },
         {
           "id": 10,
@@ -76,13 +74,11 @@
     {
       "key": "bays",
       "name_pl": "Pola SN",
-      "score": 5,
+      "score": 7,
       "max": 10,
       "failing": [
-        "C3 walidacja real-time (banner): banner NIE podpięty globalnie",
         "C4 tooltipy inżynierskie: brak tooltipów/helperText",
         "C7 auto-fill parametryczny: brak auto-fill",
-        "C9 error na SLD: SLD nie pokazuje issue",
         "C10 brak raw ID/hash: podejrzane: 2"
       ],
       "criteria": [
@@ -101,8 +97,8 @@
         {
           "id": 3,
           "name": "walidacja real-time (banner)",
-          "passed": false,
-          "detail": "banner NIE podpięty globalnie"
+          "passed": true,
+          "detail": "SemanticIssuesBanner wired"
         },
         {
           "id": 4,
@@ -137,8 +133,8 @@
         {
           "id": 9,
           "name": "error na SLD",
-          "passed": false,
-          "detail": "SLD nie pokazuje issue"
+          "passed": true,
+          "detail": "SpineRenderer issue-aware"
         },
         {
           "id": 10,
@@ -151,13 +147,11 @@
     {
       "key": "segments",
       "name_pl": "Segmenty (kabel/napowietrzne)",
-      "score": 6,
+      "score": 8,
       "max": 10,
       "failing": [
-        "C3 walidacja real-time (banner): banner NIE podpięty globalnie",
         "C4 tooltipy inżynierskie: brak tooltipów/helperText",
-        "C6 catalog search+filtry: brak wyszukiwarki katalogu",
-        "C9 error na SLD: SLD nie pokazuje issue"
+        "C6 catalog search+filtry: brak wyszukiwarki katalogu"
       ],
       "criteria": [
         {
@@ -175,8 +169,8 @@
         {
           "id": 3,
           "name": "walidacja real-time (banner)",
-          "passed": false,
-          "detail": "banner NIE podpięty globalnie"
+          "passed": true,
+          "detail": "SemanticIssuesBanner wired"
         },
         {
           "id": 4,
@@ -211,8 +205,8 @@
         {
           "id": 9,
           "name": "error na SLD",
-          "passed": false,
-          "detail": "SLD nie pokazuje issue"
+          "passed": true,
+          "detail": "SpineRenderer issue-aware"
         },
         {
           "id": 10,
@@ -225,12 +219,9 @@
     {
       "key": "stations",
       "name_pl": "Stacje",
-      "score": 8,
+      "score": 10,
       "max": 10,
-      "failing": [
-        "C3 walidacja real-time (banner): banner NIE podpięty globalnie",
-        "C9 error na SLD: SLD nie pokazuje issue"
-      ],
+      "failing": [],
       "criteria": [
         {
           "id": 1,
@@ -247,8 +238,8 @@
         {
           "id": 3,
           "name": "walidacja real-time (banner)",
-          "passed": false,
-          "detail": "banner NIE podpięty globalnie"
+          "passed": true,
+          "detail": "SemanticIssuesBanner wired"
         },
         {
           "id": 4,
@@ -283,8 +274,8 @@
         {
           "id": 9,
           "name": "error na SLD",
-          "passed": false,
-          "detail": "SLD nie pokazuje issue"
+          "passed": true,
+          "detail": "SpineRenderer issue-aware"
         },
         {
           "id": 10,
@@ -297,13 +288,11 @@
     {
       "key": "der",
       "name_pl": "OZE / DER",
-      "score": 6,
+      "score": 8,
       "max": 10,
       "failing": [
-        "C3 walidacja real-time (banner): banner NIE podpięty globalnie",
         "C4 tooltipy inżynierskie: brak tooltipów/helperText",
-        "C7 auto-fill parametryczny: brak auto-fill",
-        "C9 error na SLD: SLD nie pokazuje issue"
+        "C7 auto-fill parametryczny: brak auto-fill"
       ],
       "criteria": [
         {
@@ -321,8 +310,8 @@
         {
           "id": 3,
           "name": "walidacja real-time (banner)",
-          "passed": false,
-          "detail": "banner NIE podpięty globalnie"
+          "passed": true,
+          "detail": "SemanticIssuesBanner wired"
         },
         {
           "id": 4,
@@ -357,8 +346,8 @@
         {
           "id": 9,
           "name": "error na SLD",
-          "passed": false,
-          "detail": "SLD nie pokazuje issue"
+          "passed": true,
+          "detail": "SpineRenderer issue-aware"
         },
         {
           "id": 10,
@@ -369,5 +358,5 @@
       ]
     }
   ],
-  "mean_score": 6.4
+  "mean_score": 8.4
 }

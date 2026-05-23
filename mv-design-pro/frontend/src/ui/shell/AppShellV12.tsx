@@ -36,6 +36,8 @@ import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import { navigateToCatalog } from '../navigation/routes';
 import { useSelectionStore } from '../selection';
 import { WorkspaceSurfaceRouter } from '../workspace';
+import { SemanticIssuesBanner } from '../tech-card/SemanticIssuesBanner';
+import { useSnapshotStore } from '../topology/snapshotStore';
 import { useAppStateStore } from '../app-state/store';
 import type { AreaId } from '../navigation/areaRegistry';
 import { IconChevronLeft, IconChevronRight, IconClipboard } from '../icons/shellIcons';
@@ -138,6 +140,8 @@ export function AppShellV12({
 }: AppShellV12Props) {
   const activeMode = useActiveMode();
   const selectedElement = useSelectionStore((state) => state.selectedElements[0] ?? null);
+  const semanticIssues = useSnapshotStore((state) => state.lastSemanticIssues);
+  const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
   const activeArea = useAppStateStore((s) => s.activeArea);
   const activeProjectId = useAppStateStore((s) => s.activeProjectId);
@@ -316,6 +320,14 @@ export function AppShellV12({
           {activeMode === 'MODEL_EDIT' && !mainSurfaceExpanded && (
             <div className="flex h-[40px] shrink-0 items-center border-b border-scada-border bg-[#0a151e] px-2">
             </div>
+          )}
+
+          {/* Walidacja semantyczna (semantic_rules) — globalny banner nad obszarem roboczym */}
+          {semanticIssues.length > 0 && (
+            <SemanticIssuesBanner
+              issues={semanticIssues}
+              onSelectElement={(ref) => centerSldOnElement(ref)}
+            />
           )}
 
           {/* Obszar roboczy */}
