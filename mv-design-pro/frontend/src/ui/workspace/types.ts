@@ -538,6 +538,7 @@ const ROUTE_MANAGED_SCREEN_CODES = new Set<WorkspaceSurfaceCode>([
   'E-34',
   'E-36',
   'E-38',
+  'E-39',
   ...HELPER_SURFACE_CODES,
 ]);
 
@@ -628,6 +629,7 @@ const READ_ONLY_SCREENS = new Set<WorkspaceScreenCode>([
   'E-36',
   'E-37',
   'E-38',
+  'E-39',
 ]);
 
 const TRANSACTIONAL_SCREENS = new Set<WorkspaceScreenCode>([
@@ -795,7 +797,7 @@ export const SCREEN_MATRIX: Record<WorkspaceScreenCode, WorkspaceScreenMatrixEnt
   'E-36': screen('E-36', 'proof_pack', ['wejscie', 'procedura', 'wynik', 'ograniczenia'], 'wejscie', ['analysis_case_context'], 'E-35'),
   'E-37': screen('E-37', 'report', ['zakres', 'podglad', 'eksport', 'uzasadnienia'], 'zakres', ['analysis_case_context'], 'E-35'),
   'E-38': screen('E-38', null, ['katalogi', 'wyszukiwarka', 'powiazania'], 'katalogi', [], 'catalog_admin'),
-  // E-39 removed (Phase 0 #1) - historia migawek przez E-09
+  'E-39': screen('E-39', null, ['lista', 'uruchomienie', 'raport', 'dynamika', 'nc_rfg'], 'lista', [], 'E-35'),
 };
 
 const transition = (
@@ -854,7 +856,7 @@ export const SCREEN_TRANSITIONS: Record<WorkspaceScreenCode, ScreenTransitionPol
   'E-36': transition('E-36', ['E-26', 'E-27', 'E-28', 'E-29', 'E-30', 'E-31', 'E-32', 'E-33', 'E-34', 'E-35', 'E-37'], ['E-37'], 'parent', 'E-35'),
   'E-37': transition('E-37', ['E-01', 'E-35', 'E-36', 'variants_runs', 'case_context'], ['E-35', 'E-36'], 'parent', 'E-35'),
   'E-38': transition('E-38', ['E-01', 'E-02', 'catalog_admin', 'catalog_picker'], ['catalog_picker', 'E-24', 'E-25', 'E-26'], 'parent', 'E-01'),
-  // E-39 transition removed (Phase 0 #1)
+  'E-39': transition('E-39', ['E-01', 'E-06', 'E-35'], ['E-35', 'E-36', 'E-37'], 'parent', 'E-35'),
 };
 
 export const SURFACE_COMMIT_POLICY_MATRIX: Partial<Record<WorkspaceScreenCode, SurfaceCommitPolicy>> = {
@@ -888,7 +890,7 @@ export const DEFAULT_LOCK_SCOPE_BY_SCREEN: Partial<Record<WorkspaceScreenCode, E
   'E-20': 'subtree',
   'E-22': 'subtree',
   'E-25': 'subtree',
-  // E-39 removed (Phase 0 #1)
+  'E-39': 'entity',
 };
 
 export const ISSUE_MATRIX: Record<string, CanonicalIssuePolicy> = {

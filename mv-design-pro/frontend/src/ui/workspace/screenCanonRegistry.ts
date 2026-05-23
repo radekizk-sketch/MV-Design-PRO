@@ -10,7 +10,7 @@ export type CanonScreenId =
   | 'E-00' | 'E-01' | 'E-02' | 'E-03' | 'E-04' | 'E-05' | 'E-06' | 'E-07' | 'E-08' | 'E-09'
   | 'E-10' | 'E-11' | 'E-12' | 'E-13' | 'E-14' | 'E-15' | 'E-16' | 'E-17' | 'E-18' | 'E-19'
   | 'E-20' | 'E-21' | 'E-22' | 'E-23' | 'E-24' | 'E-25' | 'E-26' | 'E-27' | 'E-28' | 'E-29'
-  | 'E-30' | 'E-31' | 'E-32' | 'E-33' | 'E-34' | 'E-35' | 'E-36' | 'E-37' | 'E-38';
+  | 'E-30' | 'E-31' | 'E-32' | 'E-33' | 'E-34' | 'E-35' | 'E-36' | 'E-37' | 'E-38' | 'E-39';
 
 export type CanonicalScreenCode = CanonScreenId;
 
@@ -952,8 +952,32 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     supportsChildren: false,
     requiresSession: true,
   }),
-  // E-39 removed (Phase 0 #1) - historia migawek dostępna przez E-09 'Historia i audyt' surface
-  // Legacy aliases 'history', 'audit', 'run_history' przeniesione do E-09 jeśli wymagane.
+  // E-39 reaktywowane (po Phase 0 #1) jako Walidacja sieci referencyjnych
+  // Stary scope "Historia migawek" przeniesiony do E-09. Nowy scope:
+  // walidacja solverów vs publikowane benchmarki IEEE/IEC/CIGRE/pandapower.
+  'E-39': screen({
+    id: 'E-39',
+    labelFull: 'Walidacja sieci referencyjnych',
+    labelShort: 'Sieci ref.',
+    areaId: 'WYNIKI_ANALIZY',
+    icon: 'ikona-ekran-wyniki-porownania',
+    canonicalRoute: '/workspace/reference-networks',
+    legacyAliases: [],
+    componentKey: 'ReferenceNetworkSurface',
+    testId: 'screen-E-39-reference-networks',
+    implemented: true,
+    requiresProject: false,
+    requiresSelection: false,
+    requiresStudyCase: false,
+    requiresOperatingVariant: false,
+    visibleInNavigation: true,
+    surfaceKind: 'analityczny',
+    subjectKind: 'helper_context',
+    sizeClass: 'C',
+    supportsMiniSld: false,
+    supportsChildren: false,
+    requiresSession: true,
+  }),
 };
 
 export const CANONICAL_SCREEN_REGISTRY = SCREEN_CANON_REGISTRY;

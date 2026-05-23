@@ -44,6 +44,7 @@ import {
   NopSurface,
 } from './surfaces/InfrastructureSurfaces';
 import { PvSourceSurface, BessSurface, FwSurface } from './surfaces/DerSurfaces';
+import { ReferenceNetworkSurface } from './surfaces/ReferenceNetworkSurface';
 import {
   AnalysisSurfaceComparisonWizard,
   AnalysisSurfaceSensitivityTab,
@@ -2303,6 +2304,9 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'E-09':
       // Etap 17 dostawy: Historia i audyt operacji.
       return <AuditTrailSurface surface={surface} />;
+    case 'E-39':
+      // Sprint 2 dostawy: Walidacja sieci referencyjnych (Reference Network Validation).
+      return <ReferenceNetworkSurface surface={surface} />;
     default:
       break;
   }
