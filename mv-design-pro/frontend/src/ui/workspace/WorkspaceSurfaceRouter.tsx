@@ -4,24 +4,8 @@ import { useAppStateStore } from '../app-state';
 import { ResultsComparisonPage } from '../comparison/ResultsComparisonPage';
 import { CatalogBrowser } from '../network-build/CatalogBrowser';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
-import { AddConverterSourceForm } from '../network-build/forms/AddConverterSourceForm';
-import { AddDispatchableSourceForm } from '../network-build/forms/AddDispatchableSourceForm';
-import { AddGridSourceForm } from '../network-build/forms/AddGridSourceForm';
-import { AddMeasurementForm } from '../network-build/forms/AddMeasurementForm';
-import { AddNnLoadForm } from '../network-build/forms/AddNnLoadForm';
-import { AddNnOutgoingFieldForm } from '../network-build/forms/AddNnOutgoingFieldForm';
-import { AddRelayForm } from '../network-build/forms/AddRelayForm';
-import { AddSnBayForm } from '../network-build/forms/AddSnBayForm';
-import { AddTransformerForm } from '../network-build/forms/AddTransformerForm';
-import { AssignCatalogForm } from '../network-build/forms/AssignCatalogForm';
-import { ConnectRingForm } from '../network-build/forms/ConnectRingForm';
-import { ContinueTrunkForm } from '../network-build/forms/ContinueTrunkForm';
-import { InsertBranchPoleForm } from '../network-build/forms/InsertBranchPoleForm';
-import { InsertSectionSwitchForm } from '../network-build/forms/InsertSectionSwitchForm';
-import { InsertStationForm } from '../network-build/forms/InsertStationForm';
-import { InsertZksnForm } from '../network-build/forms/InsertZksnForm';
-import { StartBranchForm } from '../network-build/forms/StartBranchForm';
-import { UpdateElementParametersForm } from '../network-build/forms/UpdateElementParametersForm';
+// 18 form components zaimportowane przez OPERATION_FORM_REGISTRY (decompose Etap 11)
+import { OPERATION_FORM_REGISTRY } from './operationFormRegistry';
 import { useSelectionStore } from '../selection';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { navigateToNetworkBuild, navigateToReport } from '../navigation/routes';
@@ -2707,50 +2691,16 @@ function OperationFormSurface({ surface }: { surface: WorkspaceSurfaceDescriptor
     return <OperationBindingError value={operation} />;
   }
 
-  switch (operation) {
-    case 'add_grid_source_sn':
-      return <AddGridSourceForm />;
-    case 'add_sn_bay':
-      return <AddSnBayForm />;
-    case 'continue_trunk_segment_sn':
-      return <ContinueTrunkForm />;
-    case 'insert_station_on_segment_sn':
-      return <InsertStationForm />;
-    case 'insert_branch_pole_on_segment_sn':
-      return <InsertBranchPoleForm />;
-    case 'insert_zksn_on_segment_sn':
-      return <InsertZksnForm />;
-    case 'start_branch_segment_sn':
-      return <StartBranchForm />;
-    case 'insert_section_switch_sn':
-      return <InsertSectionSwitchForm />;
-    case 'connect_secondary_ring_sn':
-    case 'set_normal_open_point':
-      return <ConnectRingForm />;
-    case 'add_transformer_sn_nn':
-      return <AddTransformerForm />;
-    case 'assign_catalog_to_element':
-      return <AssignCatalogForm />;
-    case 'update_element_parameters':
-      return <UpdateElementParametersForm />;
-    case 'add_nn_outgoing_field':
-      return <AddNnOutgoingFieldForm />;
-    case 'add_converter_source':
-      return <AddConverterSourceForm />;
-    case 'add_genset_nn':
-    case 'add_ups_nn':
-      return <AddDispatchableSourceForm />;
-    case 'add_nn_load':
-      return <AddNnLoadForm />;
-    case 'add_ct':
-    case 'add_vt':
-      return <AddMeasurementForm />;
-    case 'add_relay':
-      return <AddRelayForm />;
-    case 'delete_element':
-    case 'refresh_snapshot':
-      return <OperationWithoutFormNotice operation={operation} />;
+  // OPERATION_FORM_REGISTRY (PR-Etap 11 decompose) - declarative table zamiast switch:22.
+  // Mapowanie CanonicalOpName → React.ComponentType | null (instant ops).
+  const FormComponent = OPERATION_FORM_REGISTRY[operation];
+  if (FormComponent === null) {
+    return <OperationWithoutFormNotice operation={operation} />;
   }
+  if (!FormComponent) {
+    return <OperationBindingError value={operation} />;
+  }
+  return <FormComponent />;
 }
 
 const delegatedSurfaceBodies: Record<string, (surface: WorkspaceSurfaceDescriptor) => ReactNode> = {

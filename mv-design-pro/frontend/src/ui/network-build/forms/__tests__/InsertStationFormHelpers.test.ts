@@ -161,27 +161,33 @@ describe('voltageMatches', () => {
   it('null → false', () => {
     expect(voltageMatches(null, 15)).toBe(false);
   });
+  it('explicit tolerance', () => {
+    expect(voltageMatches(15, 16, 1)).toBe(true);
+    expect(voltageMatches(15, 16, 0.5)).toBe(false);
+  });
 });
 
 describe('clampOutgoingFeederCount', () => {
-  it('clamp 0-20', () => {
-    expect(clampOutgoingFeederCount(-5)).toBe(0);
-    expect(clampOutgoingFeederCount(25)).toBe(20);
+  it('clamp 1-8 per InsertStationForm constraint', () => {
+    expect(clampOutgoingFeederCount(-5)).toBe(1);
+    expect(clampOutgoingFeederCount(0)).toBe(1);
+    expect(clampOutgoingFeederCount(25)).toBe(8);
     expect(clampOutgoingFeederCount(7.7)).toBe(7);
   });
-  it('NaN → 0', () => {
-    expect(clampOutgoingFeederCount(NaN)).toBe(0);
+  it('NaN → 1', () => {
+    expect(clampOutgoingFeederCount(NaN)).toBe(1);
   });
 });
 
-describe('formatters', () => {
+describe('formatters (pl-PL locale)', () => {
   it('formatKv', () => {
-    expect(formatKv(15.75)).toBe('15.75 kV');
-    expect(formatKv(null)).toBe('—');
+    // pl-PL uses ',' jako separator dziesiętny
+    expect(formatKv(15.75)).toMatch(/15[,.]75/);
+    expect(formatKv(null)).toBe('-');
   });
   it('formatMva', () => {
-    expect(formatMva(16)).toBe('16.000 MVA');
-    expect(formatMva(undefined)).toBe('—');
+    expect(formatMva(16)).toBe('16');
+    expect(formatMva(undefined)).toBe('-');
   });
 });
 

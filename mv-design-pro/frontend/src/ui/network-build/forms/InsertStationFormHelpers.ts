@@ -128,10 +128,10 @@ export function orderManufacturers(manufacturers: Manufacturer[]): Manufacturer[
   const ordered = SWITCHGEAR_MANUFACTURER_ORDER
     .map((ref) => byRef.get(ref))
     .filter((manufacturer): manufacturer is Manufacturer => Boolean(manufacturer));
-  const remaining = manufacturers.filter(
-    (manufacturer) => !SWITCHGEAR_MANUFACTURER_ORDER.includes(manufacturer.manufacturer_ref),
-  );
-  return [...ordered, ...remaining];
+  const rest = manufacturers
+    .filter((manufacturer) => !SWITCHGEAR_MANUFACTURER_ORDER.includes(manufacturer.manufacturer_ref))
+    .sort((a, b) => a.name.localeCompare(b.name, 'pl-PL'));
+  return [...ordered, ...rest];
 }
 
 export function isUsableManufacturer(manufacturer: Manufacturer): boolean {
@@ -170,27 +170,32 @@ export function hasEnoughTransformerPower(
 
 // Pure helpers - voltage
 export function voltageMatches(
-  voltageA: number | null | undefined,
-  voltageB: number | null | undefined,
+  left: number | null | undefined,
+  right: number | null | undefined,
   toleranceKv = 0.5,
 ): boolean {
-  if (voltageA == null || voltageB == null) return false;
-  return Math.abs(voltageA - voltageB) <= toleranceKv;
+  return (
+    typeof left === 'number'
+    && Number.isFinite(left)
+    && typeof right === 'number'
+    && Number.isFinite(right)
+    && Math.abs(left - right) <= toleranceKv
+  );
 }
 
-// Pure helpers - feeder count
+// Pure helpers - feeder count (clamp 1..8 per InsertStationForm constraint)
 export function clampOutgoingFeederCount(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.min(20, Math.trunc(value)));
+  if (!Number.isFinite(value)) return 1;
+  return Math.max(1, Math.min(8, Math.trunc(value)));
 }
 
-// Pure helpers - formatters
+// Pure helpers - formatters (pl-PL locale per UX standard)
 export function formatKv(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) return '—';
-  return `${value.toFixed(2)} kV`;
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '-';
+  return value.toLocaleString('pl-PL', { maximumFractionDigits: 3 });
 }
 
 export function formatMva(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) return '—';
-  return `${value.toFixed(3)} MVA`;
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '-';
+  return value.toLocaleString('pl-PL', { maximumFractionDigits: 3 });
 }
