@@ -50,7 +50,3 @@ export {
 
 // Re-export types from validation
 export type { ValidationResult, ValidatorFn } from './validation';
-
-// UX 10/10: Engineering Inspector (schema-driven, zero empty fields)
-export { EngineeringInspector } from './EngineeringInspector';
-export type { EngineeringInspectorProps } from './EngineeringInspector';

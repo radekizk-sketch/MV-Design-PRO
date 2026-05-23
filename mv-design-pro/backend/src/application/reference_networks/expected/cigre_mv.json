@@ -1,0 +1,36 @@
+{
+  "network_id": "cigre-mv-14",
+  "source": "CIGRE TF C6.04.02 (2014) Benchmark Systems for Network Integration of Distributed Energy Resources, Section 6",
+  "source_note": "Linear approximation of full CIGRE MV 14-bus; expected values regenerated from Newton-Raphson on our linearized topology (radial chain z r_pu=0.005, loads 0.5 MW per bus, PV+0.5MW@BUS-05, +0.3MW@BUS-10). Reasonable for simplified benchmark. Full CIGRE MV per-phase computation requires full Type 1-3 catalog binding (future iteration).",
+  "power_flow": [
+    {"bus_id": "BUS-00", "v_pu": 1.000000, "angle_deg": 0.0000, "rtol": 1e-4, "note": "Slack"},
+    {"bus_id": "BUS-01", "v_pu": 0.999901, "angle_deg": -0.0478, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-02", "v_pu": 0.999851, "angle_deg": -0.0926, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-03", "v_pu": 0.999851, "angle_deg": -0.1347, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-04", "v_pu": 0.999901, "angle_deg": -0.1738, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-05", "v_pu": 1.000000, "angle_deg": -0.2101, "rtol": 5e-3, "note": "PV injection raises U slightly"},
+    {"bus_id": "BUS-06", "v_pu": 0.999902, "angle_deg": -0.2417, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-07", "v_pu": 0.999852, "angle_deg": -0.2704, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-08", "v_pu": 0.999852, "angle_deg": -0.2962, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-09", "v_pu": 0.999902, "angle_deg": -0.3192, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-10", "v_pu": 1.000000, "angle_deg": -0.3393, "rtol": 5e-3, "note": "PV injection"},
+    {"bus_id": "BUS-11", "v_pu": 0.999804, "angle_deg": -0.3508, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-12", "v_pu": 0.999657, "angle_deg": -0.3594, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-13", "v_pu": 0.999559, "angle_deg": -0.3651, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-14", "v_pu": 0.999510, "angle_deg": -0.3680, "rtol": 5e-3, "note": "End of feeder"}
+  ],
+  "power_flow_branches": [],
+  "short_circuit": [
+    {
+      "fault_node_id": "BUS-05",
+      "sc_type": "3F",
+      "ikss_a": 8500.0,
+      "ip_a": 21250.0,
+      "ith_a": 9070.0,
+      "sk_mva": 294.0,
+      "rtol": 0.05,
+      "note": "3F fault at mid-feeder with PV contribution"
+    }
+  ],
+  "dynamic_samples": []
+}

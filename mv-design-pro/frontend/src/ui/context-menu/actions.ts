@@ -39,6 +39,8 @@ export function buildContextMenuActions(
     onShowOnDiagram?: () => void;
     onShowResultsDetail?: () => void;
     onExportResults?: () => void;
+    /** Etap 17 dostawy: per-element history (right-click → "Pokaż historię"). */
+    onShowHistory?: () => void;
   } = {}
 ): ContextMenuAction[] {
   const {
@@ -55,6 +57,7 @@ export function buildContextMenuActions(
     onShowOnDiagram,
     onShowResultsDetail,
     onExportResults,
+    onShowHistory,
   } = options;
 
   const isModelEdit = mode === 'MODEL_EDIT';
@@ -145,6 +148,15 @@ export function buildContextMenuActions(
     enabled: true,
     visible: true,
     handler: onShowOnDiagram,
+  });
+
+  // Etap 17 dostawy: per-element history (audit trail filtered by element).
+  actions.push({
+    id: 'show_history',
+    label: 'Pokaż historię tego elementu',
+    enabled: onShowHistory !== undefined,
+    visible: true,
+    handler: onShowHistory,
   });
 
   // Result-specific actions

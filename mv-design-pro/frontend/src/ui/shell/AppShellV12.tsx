@@ -21,7 +21,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react
 import { clsx } from 'clsx';
 
 import { useActiveMode } from '../app-state';
-import { EmptyInspectorPanel } from '../inspector-panel/EmptyInspectorPanel';
+import { EmptyInspectorPanel } from '../inspector/EmptyInspectorPanel';
 import { GlobalSearch } from '../network-build/GlobalSearch';
 import { CommandPalette } from '../network-build/CommandPalette';
 import { GuidedBuildActionPanel } from '../network-build/GuidedBuildActionPanel';
@@ -29,13 +29,15 @@ import { InspectorEngineeringView } from '../network-build/InspectorEngineeringV
 import { notify } from '../notifications/store';
 import { ProjectMetadataModal } from '../network-build/ProjectMetadataModal';
 import type { ProjectMetadata } from '../network-build/ProjectMetadataModal';
-import { SnapshotHistoryModal } from '../network-build/SnapshotHistoryModal';
+// SnapshotHistoryModal removed (Phase 0 #3); historia migawek dostępna przez E-09.
 import { MassReviewPanel } from '../network-build/mass-review';
 import { updateProject } from '../projects/api';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import { navigateToCatalog } from '../navigation/routes';
 import { useSelectionStore } from '../selection';
 import { WorkspaceSurfaceRouter } from '../workspace';
+import { SemanticIssuesBanner } from '../tech-card/SemanticIssuesBanner';
+import { useSnapshotStore } from '../topology/snapshotStore';
 import { useAppStateStore } from '../app-state/store';
 import type { AreaId } from '../navigation/areaRegistry';
 import { IconChevronLeft, IconChevronRight, IconClipboard } from '../icons/shellIcons';
@@ -138,6 +140,8 @@ export function AppShellV12({
 }: AppShellV12Props) {
   const activeMode = useActiveMode();
   const selectedElement = useSelectionStore((state) => state.selectedElements[0] ?? null);
+  const semanticIssues = useSnapshotStore((state) => state.lastSemanticIssues);
+  const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
   const activeArea = useAppStateStore((s) => s.activeArea);
   const activeProjectId = useAppStateStore((s) => s.activeProjectId);
@@ -150,7 +154,19 @@ export function AppShellV12({
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [massReviewOpen, setMassReviewOpen] = useState(false);
   const [projectMetadataOpen, setProjectMetadataOpen] = useState(false);
-  const [snapshotHistoryOpen, setSnapshotHistoryOpen] = useState(false);
+  const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
+  const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
+
+  // E2E hook (tylko DEV/test) — pozwala testom otworzyć dowolny formularz
+  // operacji domenowej bez kruchego łańcucha context-menu. Stripowany z prod buildu.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    (window as unknown as { __mvdpOpenOperationForm?: typeof openOperationForm }).__mvdpOpenOperationForm =
+      openOperationForm;
+    return () => {
+      delete (window as unknown as { __mvdpOpenOperationForm?: unknown }).__mvdpOpenOperationForm;
+    };
+  }, [openOperationForm]);
 
   // Ctrl+K = globalne wyszukiwanie ENM
   // Ctrl+Shift+P = paleta komend (ekrany + akcje SLD + skróty)
@@ -284,7 +300,12 @@ export function AppShellV12({
           onOpenCatalogBrowser={navigateToCatalog}
           onOpenMassReview={() => setMassReviewOpen(true)}
           onOpenProjectMetadata={() => setProjectMetadataOpen(true)}
-          onOpenSnapshotHistory={() => setSnapshotHistoryOpen(true)}
+          onOpenSnapshotHistory={() => openRouteSurface('E-09', {
+            titlePl: 'Historia i audyt',
+            entityRef: null,
+            subjectKind: 'analysis_run',
+            subjectRef: null,
+          })}
         />
       )}
 
@@ -311,6 +332,14 @@ export function AppShellV12({
           {activeMode === 'MODEL_EDIT' && !mainSurfaceExpanded && (
             <div className="flex h-[40px] shrink-0 items-center border-b border-scada-border bg-[#0a151e] px-2">
             </div>
+          )}
+
+          {/* Walidacja semantyczna (semantic_rules) — globalny banner nad obszarem roboczym */}
+          {(semanticIssues?.length ?? 0) > 0 && (
+            <SemanticIssuesBanner
+              issues={semanticIssues}
+              onSelectElement={(ref) => centerSldOnElement(ref)}
+            />
           )}
 
           {/* Obszar roboczy */}
@@ -430,7 +459,7 @@ export function AppShellV12({
         metadata={{ projectName: metadataProjectName }}
         onSave={handleProjectMetadataSave}
       />
-      <SnapshotHistoryModal isOpen={snapshotHistoryOpen} onClose={() => setSnapshotHistoryOpen(false)} />
+      {/* SnapshotHistoryModal usunięte (Phase 0 #3) - historia migawek przez E-09 */}
     </div>
   );
 }

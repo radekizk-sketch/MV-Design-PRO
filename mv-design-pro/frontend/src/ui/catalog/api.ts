@@ -2,6 +2,7 @@ import { buildCatalogBinding } from './catalogBinding';
 import type { BayKind, CompleteMvBayTemplateSummary } from './BayTemplatePicker';
 import type { Manufacturer } from './manufacturer';
 import type { SwitchgearFamily } from './SwitchgearFamilyPicker';
+import { executeDomainOp } from '../topology/domainApi';
 import type {
   BranchPointCatalogType,
   BESSInverterCatalogType,
@@ -468,14 +469,10 @@ export async function assignTypeToBranch(
   typeId: string,
   catalogNamespace: CatalogNamespace = 'KABEL_SN',
 ): Promise<void> {
-  const endpoint = `/api/cases/${projectId}/enm/domain-ops`;
-  await postCatalogJson<void>(endpoint, {
-    operation: 'assign_catalog_to_element',
-    payload: {
-      element_ref: branchId,
-      catalog_binding: buildCatalogBinding(catalogNamespace, typeId),
-      source_mode: 'KATALOG',
-    },
+  await executeDomainOp(projectId, 'assign_catalog_to_element', {
+    element_ref: branchId,
+    catalog_binding: buildCatalogBinding(catalogNamespace, typeId),
+    source_mode: 'KATALOG',
   });
 }
 
@@ -484,14 +481,10 @@ export async function assignTypeToTransformer(
   transformerId: string,
   typeId: string,
 ): Promise<void> {
-  const endpoint = `/api/cases/${projectId}/enm/domain-ops`;
-  await postCatalogJson<void>(endpoint, {
-    operation: 'assign_catalog_to_element',
-    payload: {
-      element_ref: transformerId,
-      catalog_binding: buildCatalogBinding('TRAFO_SN_NN', typeId),
-      source_mode: 'KATALOG',
-    },
+  await executeDomainOp(projectId, 'assign_catalog_to_element', {
+    element_ref: transformerId,
+    catalog_binding: buildCatalogBinding('TRAFO_SN_NN', typeId),
+    source_mode: 'KATALOG',
   });
 }
 
@@ -501,14 +494,10 @@ export async function assignEquipmentTypeToSwitch(
   typeId: string,
   catalogNamespace: CatalogNamespace = 'APARAT_SN',
 ): Promise<void> {
-  const endpoint = `/api/cases/${projectId}/enm/domain-ops`;
-  await postCatalogJson<void>(endpoint, {
-    operation: 'assign_catalog_to_element',
-    payload: {
-      element_ref: switchId,
-      catalog_binding: buildCatalogBinding(catalogNamespace, typeId),
-      source_mode: 'KATALOG',
-    },
+  await executeDomainOp(projectId, 'assign_catalog_to_element', {
+    element_ref: switchId,
+    catalog_binding: buildCatalogBinding(catalogNamespace, typeId),
+    source_mode: 'KATALOG',
   });
 }
 

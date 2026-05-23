@@ -8,6 +8,8 @@ import { useSnapshotStore } from '../../topology/snapshotStore';
 import { navigateToSld } from '../../navigation/routes';
 import { useActiveOperationForm, useNetworkBuildStore } from '../networkBuildStore';
 import { catalogRefFromInput, normalizeCatalogBinding } from './catalogPayload';
+import { HelpTooltip } from '../../shared/HelpTooltip';
+import { getTooltip } from '../../shared/engineerTooltips';
 import {
   listSnBusOptions,
   resolveBusSnRef,
@@ -18,21 +20,65 @@ import {
 type SnBayRole = 'IN' | 'OUT' | 'FEEDER' | 'TR' | 'COUPLER' | 'MEASUREMENT' | 'OZE';
 type ApparatusKind = 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH' | 'MEASUREMENT';
 
-const BAY_ROLE_OPTIONS: Array<{ value: SnBayRole; label: string }> = [
-  { value: 'OUT', label: 'Pole liniowe odpływowe' },
-  { value: 'IN', label: 'Pole liniowe dopływowe' },
-  { value: 'FEEDER', label: 'Pole liniowe / odgałęźne' },
-  { value: 'TR', label: 'Pole transformatorowe' },
-  { value: 'COUPLER', label: 'Pole sprzęgła sekcji' },
-  { value: 'MEASUREMENT', label: 'Pole pomiarowe' },
-  { value: 'OZE', label: 'Pole źródłowe' },
+const BAY_ROLE_OPTIONS: Array<{ value: SnBayRole; label: string; description: string }> = [
+  {
+    value: 'OUT',
+    label: 'Pole liniowe odpływowe',
+    description: 'Standardowe pole z wyprowadzeniem ciągu SN (linii/kabla). Zwykle z wyłącznikiem, przekładnikiem prądowym klasy 5P, zabezpieczeniem 50/51/67.',
+  },
+  {
+    value: 'IN',
+    label: 'Pole liniowe dopływowe',
+    description: 'Pole zasilające szyny GPZ od strony WN (po transformatorze WN/SN). Przekładnik prądowy pomiarowy + zabezpieczenia 87T/50/51.',
+  },
+  {
+    value: 'FEEDER',
+    label: 'Pole liniowe / odgałęźne',
+    description: 'Pole rozdzielcze pośrednie - wyprowadza odgałęzienie z ciągu głównego. Stosowane w sieciach pętlowych/promienistych.',
+  },
+  {
+    value: 'TR',
+    label: 'Pole transformatorowe',
+    description: 'Pole z transformatorem SN/nN dla stacji. Zabezpieczenia: 50/51 strony SN + relay 87T różnicowy + temperatura.',
+  },
+  {
+    value: 'COUPLER',
+    label: 'Pole sprzęgła sekcji',
+    description: 'Łącznik między sekcjami szyn (wyłącznik lub odłącznik). Tryb pracy normal-open (NOP) lub normal-closed (NC). Kluczowy dla N-1.',
+  },
+  {
+    value: 'MEASUREMENT',
+    label: 'Pole pomiarowe',
+    description: 'Pole tylko z przekładnikami napięciowymi + bezpiecznik. Bez wyłącznika - do pomiarów napięcia U na szynach.',
+  },
+  {
+    value: 'OZE',
+    label: 'Pole źródłowe (OZE/DER)',
+    description: 'Pole dla źródła rozproszonego (PV/BESS/FW). Wymaga zabezpieczeń 27/59/81U/81O + anti-islanding ROCOF.',
+  },
 ];
 
-const APPARATUS_OPTIONS: Array<{ value: ApparatusKind; label: string }> = [
-  { value: 'BREAKER', label: 'Wyłącznik' },
-  { value: 'DISCONNECTOR', label: 'Odłącznik' },
-  { value: 'LOAD_SWITCH', label: 'Rozłącznik' },
-  { value: 'MEASUREMENT', label: 'Tor pomiarowy' },
+const APPARATUS_OPTIONS: Array<{ value: ApparatusKind; label: string; description: string }> = [
+  {
+    value: 'BREAKER',
+    label: 'Wyłącznik mocy',
+    description: 'Wyłącznik mocy SN - łączy/rozłącza przy obciążeniu i zwarciu. Wymagany dla pól z zabezpieczeniami 50/51/67.',
+  },
+  {
+    value: 'DISCONNECTOR',
+    label: 'Odłącznik bezpiecznikowy',
+    description: 'Tylko bezpieczna sekcja - łączy/rozłącza BEZ obciążenia. Dla widzialnej separacji galwanicznej.',
+  },
+  {
+    value: 'LOAD_SWITCH',
+    label: 'Rozłącznik (LBS)',
+    description: 'Łączy/rozłącza przy normalnej pracy ale NIE wyłącza zwarcia. Tańsza alternatywa wyłącznika dla mniej krytycznych pól.',
+  },
+  {
+    value: 'MEASUREMENT',
+    label: 'Tor pomiarowy (przekładniki napięciowe/prądowe)',
+    description: 'Pole bez przełączania - tylko przekładniki pomiarowe. Wykorzystywane dla pomiarów napięcia/prądu/mocy.',
+  },
 ];
 
 function mapLegacyApparatusKind(value: unknown): ApparatusKind {
@@ -185,8 +231,18 @@ export function AddSnBayForm() {
           return;
         }
         const filtered = types.filter((item) => catalogItemMatchesApparatusKind(item, apparatusKind));
-        setCatalogEntries(toCatalogEntries(filtered.length > 0 ? filtered : types));
+        const usable = filtered.length > 0 ? filtered : types;
+        setCatalogEntries(toCatalogEntries(usable));
         setCatalogError(null);
+        // Auto-fill (C7): jeśli bieżący wybór nie pasuje do rodzaju aparatu,
+        // automatycznie wybierz pierwszą pozycję katalogową zgodną z aparatem.
+        setCatalogItemId((current) => {
+          const stillValid = usable.some((item) => item.id === current);
+          if (stillValid && current) {
+            return current;
+          }
+          return usable[0]?.id ?? current;
+        });
       })
       .catch((error) => {
         if (!active) {
@@ -304,7 +360,7 @@ export function AddSnBayForm() {
           <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
             Szyna SN
           </span>
-          <select
+          <select title="Szyna SN"
             value={busRef}
             onChange={(event) => setBusRef(event.target.value)}
             className="mt-1 w-full border border-[#2a4562] bg-[#08111d] px-3 py-2 text-sm text-white outline-none focus:border-[#04d6ff]"
@@ -322,7 +378,7 @@ export function AddSnBayForm() {
           <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
             Rola pola
           </span>
-          <select
+          <select title="Rola pola"
             value={bayRole}
             onChange={(event) => setBayRole(event.target.value as SnBayRole)}
             className="mt-1 w-full border border-[#2a4562] bg-[#08111d] px-3 py-2 text-sm text-white outline-none focus:border-[#04d6ff]"
@@ -333,13 +389,26 @@ export function AddSnBayForm() {
               </option>
             ))}
           </select>
+          <span className="mt-1 block text-[10px] leading-snug text-[#7691b3]">
+            {BAY_ROLE_OPTIONS.find((o) => o.value === bayRole)?.description ?? ''}
+          </span>
         </label>
 
         <label className="block">
-          <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
+          <span className="flex items-center gap-1 font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
             Rodzaj aparatu głównego
+            {(() => {
+              const key =
+                apparatusKind === 'BREAKER'
+                  ? 'apparatus_breaker'
+                  : apparatusKind === 'DISCONNECTOR'
+                    ? 'apparatus_disconnector'
+                    : 'apparatus_load_switch';
+              const tip = getTooltip(key);
+              return tip ? <HelpTooltip text={tip.text} norm={tip.norm} inline /> : null;
+            })()}
           </span>
-          <select
+          <select title="Rodzaj aparatu głównego"
             value={apparatusKind}
             onChange={(event) => setApparatusKind(event.target.value as ApparatusKind)}
             className="mt-1 w-full border border-[#2a4562] bg-[#08111d] px-3 py-2 text-sm text-white outline-none focus:border-[#04d6ff]"
@@ -350,13 +419,16 @@ export function AddSnBayForm() {
               </option>
             ))}
           </select>
+          <span className="mt-1 block text-[10px] leading-snug text-[#7691b3]">
+            {APPARATUS_OPTIONS.find((o) => o.value === apparatusKind)?.description ?? ''}
+          </span>
         </label>
 
         <label className="block">
           <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
             Nazwa pola
           </span>
-          <input
+          <input title="Nazwa pola"
             value={fieldName}
             onChange={(event) => setFieldName(event.target.value)}
             className="mt-1 w-full border border-[#2a4562] bg-[#08111d] px-3 py-2 text-sm text-white outline-none focus:border-[#04d6ff]"
@@ -376,7 +448,7 @@ export function AddSnBayForm() {
             <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
               Identyfikator aparatu z katalogu
             </span>
-            <input
+            <input title="Identyfikator aparatu z katalogu"
               value={catalogItemId}
               onChange={(event) => setCatalogItemId(event.target.value)}
               className="mt-1 w-full border border-[#2a4562] bg-[#08111d] px-3 py-2 font-mono-eng text-sm text-white outline-none focus:border-[#04d6ff]"

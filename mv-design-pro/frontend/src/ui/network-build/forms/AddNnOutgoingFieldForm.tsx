@@ -226,7 +226,7 @@ export function AddNnOutgoingFieldForm() {
 
         <label className="block">
           <span className="text-[11px] font-medium text-slate-700">Szyna nN</span>
-          <select
+          <select title="Szyna nN"
             value={busNnRef}
             onChange={(event) => setBusNnRef(event.target.value)}
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -242,7 +242,7 @@ export function AddNnOutgoingFieldForm() {
 
         <label className="block">
           <span className="text-[11px] font-medium text-slate-700">Nazwa pola</span>
-          <input
+          <input title="Nazwa pola"
             value={fieldName}
             onChange={(event) => setFieldName(event.target.value)}
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -253,7 +253,7 @@ export function AddNnOutgoingFieldForm() {
         {intent === 'SOURCE' && (
           <label className="block">
             <span className="text-[11px] font-medium text-slate-700">Rodzina pola przyłączeniowego</span>
-            <select
+            <select title="Rodzina pola przyłączeniowego"
               value={sourceFieldKind}
               disabled
               className="mt-1 w-full rounded-md border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-600"
@@ -274,7 +274,7 @@ export function AddNnOutgoingFieldForm() {
         ) : (
           <label className="block">
             <span className="text-[11px] font-medium text-slate-700">Identyfikator aparatu z katalogu</span>
-            <input
+            <input title="Identyfikator aparatu z katalogu"
               value={catalogItemId}
               onChange={(event) => setCatalogItemId(event.target.value)}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-mono"

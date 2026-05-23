@@ -64,7 +64,14 @@ export type LodElementKind =
   | 'mini_block_compact'
   | 'mini_block_detail'
   | 'gpz_switchgear'
-  | 'der_sub_tree';
+  | 'der_sub_tree'
+  // Spine: ciąg SN jako poziomy korytarz (PR-B konsolidacji UI).
+  // Widoczny od LOD 0 (overview) — zawsze rysujemy szkielet topologii.
+  | 'spine_axis'
+  // Węzły na osi spine (stacja, ZKSN, słup, NOP).
+  | 'spine_node'
+  // Odgałęzienia do branch run-ów.
+  | 'spine_branch';
 
 /** Czy element typu X jest widoczny na danym LOD. */
 export function isVisibleAtLod(
@@ -92,7 +99,24 @@ export function isVisibleAtLod(
     case 'mini_block_detail': return lod >= 3;
     case 'gpz_switchgear': return lod >= 1;
     case 'der_sub_tree': return lod >= 3;
+    case 'spine_axis': return lod >= 0;
+    case 'spine_node': return lod >= 0;
+    case 'spine_branch': return lod >= 1;
   }
+}
+
+/**
+ * Mapping 5 poziomów LOD na 4 etykiety produktowe.
+ * Pozwala UI używać czytelnych nazw (overview/medium/detail/zoom-in)
+ * bez zmiany istniejącej semantyki numerycznej.
+ */
+export type LodLabel = 'overview' | 'medium' | 'detail' | 'zoom-in';
+
+export function lodLabel(lod: LodLevel): LodLabel {
+  if (lod === 0) return 'overview';
+  if (lod === 1 || lod === 2) return 'medium';
+  if (lod === 3) return 'detail';
+  return 'zoom-in';
 }
 
 /** Czy obiekt zaznaczony "wybija" widoczność na wyższy LOD niż globalny. */
@@ -118,7 +142,8 @@ export type SldLayerId =
   | 'protection'
   | 'der'
   | 'topology'
-  | 'alarms';
+  | 'alarms'
+  | 'spine';
 
 /** Domyślne stany warstw widoczności (start aplikacji). */
 export const DEFAULT_LAYER_VISIBILITY: Readonly<Record<SldLayerId, boolean>> = {
@@ -135,6 +160,7 @@ export const DEFAULT_LAYER_VISIBILITY: Readonly<Record<SldLayerId, boolean>> = {
   der: true,
   topology: true,
   alarms: true,
+  spine: false,
 };
 
 /** Polskie etykiety warstw (UI). */
@@ -152,6 +178,7 @@ export const LAYER_LABELS_PL: Readonly<Record<SldLayerId, string>> = {
   der: 'OZE / BESS / FW',
   topology: 'Topologia pracy',
   alarms: 'Alarmy / uzależnienia',
+  spine: 'Ciąg SN (preview)',
 };
 
 // =============================================================================

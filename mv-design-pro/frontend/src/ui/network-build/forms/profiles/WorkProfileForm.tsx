@@ -147,7 +147,7 @@ export function WorkProfileForm({ initial, onSubmit, onCancel }: WorkProfileForm
       <div className="flex gap-3 items-center">
         <label className="text-xs flex items-center gap-2">
           Rozdzielczość:
-          <select
+          <select title="Rozdzielczość:"
             value={resolution}
             onChange={(e) => handleResolutionChange(e.target.value as WorkProfileResolution)}
             className="bg-scada-bg border border-scada-border px-1"
@@ -160,7 +160,7 @@ export function WorkProfileForm({ initial, onSubmit, onCancel }: WorkProfileForm
         </label>
         <label className="text-xs flex items-center gap-2 ml-auto">
           Etykieta sezonowa:
-          <input
+          <input title="Etykieta sezonowa:"
             type="text"
             value={seasonLabel}
             onChange={(e) => setSeasonLabel(e.target.value)}
@@ -174,7 +174,7 @@ export function WorkProfileForm({ initial, onSubmit, onCancel }: WorkProfileForm
         <div className="flex flex-col gap-2 border border-scada-border p-2">
           <div className="flex gap-2 items-center text-xs">
             <span className="font-semibold">Import CSV:</span>
-            <input
+            <input title="Import CSV:"
               type="file"
               accept=".csv,text/csv"
               onChange={onCsvInput}
@@ -291,7 +291,7 @@ export function WorkProfileForm({ initial, onSubmit, onCancel }: WorkProfileForm
                   <tr key={realIdx} data-testid={`work-row-${realIdx}`}>
                     <td>{realIdx}</td>
                     <td>
-                      <input
+                      <input title="h"
                         type="number"
                         step="0.01"
                         value={v}

@@ -1,0 +1,52 @@
+{
+  "network_id": "cigre-lv-benchmark",
+  "source": "CIGRE TF C6.04.02 (2014) Section 7 European LV residential 0.4 kV",
+  "source_note": "NR regression baseline z LV-only builder (BUS-LV-MAIN jako slack; MV-LV transformer absorbed into slack impedance dla numerical stability).",
+  "power_flow": [
+    {
+      "bus_id": "BUS-LV-01",
+      "v_pu": 0.99987,
+      "angle_deg": -0.0,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-LV-02",
+      "v_pu": 1.0,
+      "angle_deg": -0.0212,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-LV-03",
+      "v_pu": 0.99982,
+      "angle_deg": 0.0006,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-LV-04",
+      "v_pu": 1.0,
+      "angle_deg": -0.0373,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-LV-05",
+      "v_pu": 0.99977,
+      "angle_deg": 0.0011,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-LV-MAIN",
+      "v_pu": 1.0,
+      "angle_deg": 0.0,
+      "rtol": 0.005,
+      "note": ""
+    }
+  ],
+  "power_flow_branches": [],
+  "short_circuit": [],
+  "dynamic_samples": []
+}

@@ -38,8 +38,7 @@ export { TopContextBar } from './TopContextBar';
 export type { TopContextBarProps } from './TopContextBar';
 export { ProjectMetadataModal } from './ProjectMetadataModal';
 export type { ProjectMetadataModalProps, ProjectMetadata } from './ProjectMetadataModal';
-export { SnapshotHistoryModal, OP_LABELS } from './SnapshotHistoryModal';
-export type { SnapshotHistoryModalProps, SnapshotHistoryEntry } from './SnapshotHistoryModal';
+// SnapshotHistoryModal removed (Phase 0 #3) - historia migawek dostępna przez E-09 audit screen
 
 // Cards
 export * from './cards';

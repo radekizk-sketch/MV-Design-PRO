@@ -14,7 +14,7 @@ import {
 } from '../types';
 
 describe('workspace contracts V12.5', () => {
-  it('covers every E-00..E-39 screen in registry, matrix and transitions', () => {
+  it('covers every E-00..E-39 screen in registry, matrix and transitions (E-39 reactivated as Reference Network Validation)', () => {
     expect(Object.keys(SURFACE_REGISTRY).sort()).toEqual([...SCREEN_CODES].sort());
     expect(Object.keys(SCREEN_MATRIX).sort()).toEqual([...SCREEN_CODES].sort());
     expect(Object.keys(SCREEN_TRANSITIONS).sort()).toEqual([...SCREEN_CODES].sort());

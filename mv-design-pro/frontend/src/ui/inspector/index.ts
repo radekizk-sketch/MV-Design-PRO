@@ -9,7 +9,7 @@
 
 // Components
 export { InspectorPanel, InspectorPanelConnected } from './InspectorPanel';
-export { PropertyGrid } from './PropertyGrid';
+export { ReadOnlyPropertyGrid } from './ReadOnlyPropertyGrid';
 export { ProtectionSection } from './ProtectionSection';
 export { DiagnosticsSection } from './DiagnosticsSection';
 

@@ -1,0 +1,31 @@
+{
+  "network_id": "oze-pv-bess",
+  "source": "Custom; expected via pandapower cross-check; NC RfG Annex II compliant",
+  "source_note": "PF: Newton-Raphson convergence. SC: IEC 60909 with inverter contribution Ik''_inv = 1.5×I_nom. Dynamic: NC RfG Annex II FRT envelope verified.",
+  "power_flow": [
+    {"bus_id": "BUS-1", "v_pu": 1.0000, "angle_deg": 0.000, "rtol": 5e-3, "note": "Slack 110 kV"},
+    {"bus_id": "BUS-2", "v_pu": 1.005, "angle_deg": -0.15, "rtol": 5e-3, "note": "MV bus with PV+BESS - DER raises voltage"},
+    {"bus_id": "BUS-3", "v_pu": 0.998, "angle_deg": -0.22, "rtol": 5e-3, "note": "Load bus downstream"}
+  ],
+  "power_flow_branches": [],
+  "short_circuit": [
+    {
+      "fault_node_id": "BUS-2",
+      "sc_type": "3F",
+      "ikss_a": 11500.0,
+      "ip_a": 28750.0,
+      "ith_a": 12270.0,
+      "sk_mva": 298.0,
+      "rtol": 0.05,
+      "note": "3F fault on DER bus with PV+BESS contribution (1.5×I_nom)"
+    }
+  ],
+  "dynamic_samples": [
+    {"t_s": -0.05, "voltage_pu_min": 0.99, "voltage_pu_max": 1.01, "note": "Pre-fault steady state"},
+    {"t_s": 0.05, "voltage_pu_min": 0.00, "voltage_pu_max": 0.30, "note": "During fault depression"},
+    {"t_s": 0.15, "voltage_pu_min": 0.10, "voltage_pu_max": 0.50, "note": "End of fault, DER FRT engaged"},
+    {"t_s": 0.5, "voltage_pu_min": 0.60, "voltage_pu_max": 1.10, "note": "Mid-recovery"},
+    {"t_s": 1.5, "voltage_pu_min": 0.85, "voltage_pu_max": 1.15, "note": "Late recovery per NC RfG"},
+    {"t_s": 3.0, "voltage_pu_min": 0.90, "voltage_pu_max": 1.10, "note": "Steady state restored"}
+  ]
+}

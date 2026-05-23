@@ -79,7 +79,7 @@ export const LV_SWITCHGEAR_STANDARD_630: LvSwitchgearSpec = {
       ratedCurrentA: 250,
       breakerType: 'MCCB',
       icc_ka: 36,
-      labelPl: 'Odpływ feeder 1',
+      labelPl: 'Odpływ liniowy 1',
     },
     {
       kind: 'feeder',
@@ -87,7 +87,7 @@ export const LV_SWITCHGEAR_STANDARD_630: LvSwitchgearSpec = {
       ratedCurrentA: 250,
       breakerType: 'MCCB',
       icc_ka: 36,
-      labelPl: 'Odpływ feeder 2',
+      labelPl: 'Odpływ liniowy 2',
     },
     {
       kind: 'der_source',

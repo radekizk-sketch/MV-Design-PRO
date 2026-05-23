@@ -78,7 +78,7 @@ describe('StationWizardStepContent — szczegóły per krok', () => {
       'Dobór kabla SN',
     );
     expect(screen.getByTestId('calculation-template-summary')).toHaveTextContent(
-      'Przekładniki CT/VT',
+      'Przekładniki prądowe i napięciowe',
     );
     expect(screen.getByTestId('calculation-template-summary')).toHaveTextContent(
       'Uziemienie stacji',
@@ -93,7 +93,7 @@ describe('StationWizardStepContent — szczegóły per krok', () => {
     expect(content.textContent).toContain('LZQJ');
     expect(content.textContent).toMatch(/0\.2s|5P10/);
     expect(screen.getByTestId('calculation-template-panel')).toHaveTextContent(
-      'Przekładniki CT/VT',
+      'Przekładniki prądowe i napięciowe',
     );
   });
 

@@ -14,6 +14,8 @@ import { resolveBranchSourceContextFromOperation } from '../operationContextReso
 import { resolveTrunkOriginKind } from '../trunkOriginResolver';
 import { validateTrunkSegmentOrigin, type TrunkBranchKind } from '../semanticValidator';
 import type { Branch, DomainOpResponseV1 } from '../../../types/enm';
+import { HelpTooltip } from '../../shared/HelpTooltip';
+import { getTooltip } from '../../shared/engineerTooltips';
 
 type SegmentType = 'cable' | 'line_overhead';
 
@@ -405,7 +407,7 @@ export function StartBranchForm() {
         <div className="grid gap-4 md:grid-cols-3">
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-slate-700">Punkt startu odgałęzienia</span>
-            <input
+            <input title="Punkt startu odgałęzienia"
               type="text"
               value={publicSourceLabel}
               readOnly
@@ -414,7 +416,7 @@ export function StartBranchForm() {
           </label>
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-slate-700">Typ źródła</span>
-            <input
+            <input title="Typ źródła"
               type="text"
               value={sourceContext.sourceType}
               readOnly
@@ -423,7 +425,7 @@ export function StartBranchForm() {
           </label>
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-slate-700">Nazwa źródła</span>
-            <input
+            <input title="Nazwa źródła"
               type="text"
               value={sourceContext.sourceName}
               readOnly
@@ -435,7 +437,7 @@ export function StartBranchForm() {
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-slate-700">Rodzina odcinka</span>
-            <select
+            <select title="Rodzina odcinka"
               aria-label="Rodzina odcinka"
               value={effectiveSegmentType}
               onChange={(event) => setSegmentType(event.target.value as SegmentType)}
@@ -453,8 +455,14 @@ export function StartBranchForm() {
             )}
           </label>
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-slate-700">Długość [km]</span>
-            <input
+            <span className="mb-1 flex items-center gap-1 font-medium text-slate-700">
+              Długość [km]
+              {(() => {
+                const tip = getTooltip('cable_length');
+                return tip ? <HelpTooltip text={tip.text} norm={tip.norm} inline /> : null;
+              })()}
+            </span>
+            <input title="Długość [km]"
               type="number"
               min="0"
               step="0.01"
@@ -470,7 +478,7 @@ export function StartBranchForm() {
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-slate-700">Typ katalogowy</span>
             {catalogProvidedByContext ? (
-              <input
+              <input title="Typ katalogowy"
                 type="text"
                 data-testid="branch-catalog-display"
                 value={catalogDisplayLabel}
@@ -478,7 +486,7 @@ export function StartBranchForm() {
                 className="w-full rounded border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700"
               />
             ) : (
-              <input
+              <input title="Typ katalogowy"
                 type="text"
                 placeholder="np. XRUHAKXS-3x95"
                 value={catalogRef}
@@ -489,7 +497,7 @@ export function StartBranchForm() {
           </label>
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-slate-700">Zakończenie odgałęzienia</span>
-            <input
+            <input title="Zakończenie odgałęzienia"
               type="text"
               value="Wolny zacisk trasy SN - zakończ stacją, ZK SN albo słupem w następnym kroku"
               readOnly

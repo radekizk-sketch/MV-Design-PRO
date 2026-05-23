@@ -273,7 +273,7 @@ export function InsertZksnForm() {
 
       <label className="block text-xs text-gray-600">
         Nazwa
-        <input
+        <input title="Nazwa"
           className="mt-1 w-full rounded border px-2 py-1 text-xs"
           value={name}
           onChange={(event) => setName(event.target.value)}
@@ -282,7 +282,7 @@ export function InsertZksnForm() {
 
       <label className="block text-xs text-gray-600">
         Wariant ZKSN
-        <input
+        <input title="Wariant ZKSN"
           className="mt-1 w-full rounded border px-2 py-1 text-xs"
           value={describeZksnVariant(branchPortsCount)}
           readOnly
@@ -291,7 +291,7 @@ export function InsertZksnForm() {
 
       <label className="block text-xs text-gray-600">
         Pozycja (0-1)
-        <input
+        <input title="Pozycja (0-1)"
           type="number"
           min={0}
           max={1}

@@ -1,0 +1,101 @@
+{
+  "network_id": "ieee-13bus",
+  "source": "Kersting W.H. (2001) Radial Distribution Test Feeders, IEEE Trans. PWRS 6(3)",
+  "source_note": "BFS regression baseline z naszego uproszczonego 13-bus builder (positive-sequence aproksymacja)",
+  "power_flow": [
+    {
+      "bus_id": "BUS-611",
+      "v_pu": 0.999583,
+      "angle_deg": -0.0106,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-632",
+      "v_pu": 0.999997,
+      "angle_deg": -0.0001,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-633",
+      "v_pu": 0.99995,
+      "angle_deg": -0.001,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-634",
+      "v_pu": 0.999947,
+      "angle_deg": -0.001,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-645",
+      "v_pu": 0.999942,
+      "angle_deg": -0.0014,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-646",
+      "v_pu": 0.999921,
+      "angle_deg": -0.0019,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-650",
+      "v_pu": 1.0,
+      "angle_deg": 0.0,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-652",
+      "v_pu": 0.999579,
+      "angle_deg": -0.0105,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-671",
+      "v_pu": 0.999628,
+      "angle_deg": -0.0093,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-675",
+      "v_pu": 0.9995,
+      "angle_deg": -0.0126,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-680",
+      "v_pu": 0.999628,
+      "angle_deg": -0.0093,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-684",
+      "v_pu": 0.999597,
+      "angle_deg": -0.0101,
+      "rtol": 0.005,
+      "note": ""
+    },
+    {
+      "bus_id": "BUS-692",
+      "v_pu": 0.999623,
+      "angle_deg": -0.0094,
+      "rtol": 0.005,
+      "note": ""
+    }
+  ],
+  "power_flow_branches": [],
+  "short_circuit": [],
+  "dynamic_samples": []
+}

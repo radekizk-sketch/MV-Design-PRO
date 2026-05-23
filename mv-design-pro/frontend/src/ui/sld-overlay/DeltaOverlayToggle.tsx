@@ -10,7 +10,7 @@
 
 import React, { useCallback } from 'react';
 import { useSldDeltaOverlayStore } from './sldDeltaOverlayStore';
-import type { SCComparison } from '../comparisons/types';
+import type { SCComparison } from '../comparison/sldDeltaOverlay.types';
 
 // ---------------------------------------------------------------------------
 // Toggle component

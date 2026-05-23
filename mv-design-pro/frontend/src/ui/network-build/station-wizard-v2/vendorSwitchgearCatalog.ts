@@ -154,7 +154,7 @@ export const VENDOR_SWITCHGEAR_CATALOG: readonly VendorSwitchgearTemplate[] = [
       { layout: 'cable_in',    designation: 'K',   labelPl: 'Pole kablowe' },
       { layout: 'breaker',     designation: 'L',   labelPl: 'Pole liniowe z wyłącznikiem' },
       { layout: 'transformer', designation: 'T',   labelPl: 'Pole transformatorowe' },
-      { layout: 'measurement', designation: 'M',   labelPl: 'Pole pomiarowe (VT)' },
+      { layout: 'measurement', designation: 'M',   labelPl: 'Pole pomiarowe (napięciowe)' },
       { layout: 'cable_out',   designation: 'K',   labelPl: 'Pole kablowe odpływowe' },
     ],
     notes: 'Air-insulated z pełnym dostępem — projekty premium',

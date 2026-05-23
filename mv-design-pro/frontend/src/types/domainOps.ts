@@ -116,6 +116,24 @@ export interface DomainOpResponse {
     layout_hash: string;
     layout_version: string;
   };
+  /**
+   * Naruszenia semantyki sieci po operacji (PR-C konsolidacji UI).
+   * Walidator semantyczny w backendzie sprawdza po każdej operacji:
+   * - kabel/słup (branch_pole musi być na linii napowietrznej)
+   * - ZKSN/overhead (zksn musi być na kablu)
+   * - DER/typ pola (generator OZE w polu o roli zgodnej)
+   * Lista może być pusta. Frontend wyświetla je w SemanticIssuesBanner.
+   */
+  semantic_issues?: SemanticIssue[];
+}
+
+export interface SemanticIssue {
+  code: string;
+  message: string;
+  severity: 'ERROR' | 'WARNING';
+  element_id: string | null;
+  field: string | null;
+  suggested_fix: string | null;
 }
 
 export interface MaterializedCatalogParams {

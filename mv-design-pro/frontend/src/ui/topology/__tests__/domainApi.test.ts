@@ -96,7 +96,7 @@ describe('executeDomainOp', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('/api/cases/case-1/enm/domain-ops');
+    expect(url).toBe('/api/cases/case-1/enm/domain-ops'); // domain-ops-ignore
     expect(init.method).toBe('POST');
 
     const body = JSON.parse(String(init.body));

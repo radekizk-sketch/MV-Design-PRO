@@ -9,14 +9,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useSldDeltaOverlayStore } from '../sldDeltaOverlayStore';
 import { useOverlayStore } from '../overlayStore';
-import type { DeltaOverlayPayload } from '../../comparisons/types';
+import type { DeltaOverlayPayload } from '../../comparison/sldDeltaOverlay.types';
 
 // Mock the API
-vi.mock('../../comparisons/api', () => ({
+vi.mock('../../comparison/sldDeltaOverlay.api', () => ({
   fetchDeltaOverlay: vi.fn(),
 }));
 
-import { fetchDeltaOverlay } from '../../comparisons/api';
+import { fetchDeltaOverlay } from '../../comparison/sldDeltaOverlay.api';
 
 // ---------------------------------------------------------------------------
 // Fixtures

@@ -1,0 +1,350 @@
+{
+  "stages": [
+    {
+      "key": "gpz",
+      "name_pl": "GPZ — źródło zasilające",
+      "score": 10,
+      "max": 10,
+      "failing": [],
+      "criteria": [
+        {
+          "id": 1,
+          "name": "brak duplikatu wejść",
+          "passed": true,
+          "detail": "['AddGridSourceForm.tsx']"
+        },
+        {
+          "id": 2,
+          "name": "feedback sukcesu",
+          "passed": true,
+          "detail": "centralny notify+message"
+        },
+        {
+          "id": 3,
+          "name": "walidacja real-time (banner)",
+          "passed": true,
+          "detail": "SemanticIssuesBanner wired"
+        },
+        {
+          "id": 4,
+          "name": "tooltipy inżynierskie",
+          "passed": true,
+          "detail": "obecne"
+        },
+        {
+          "id": 5,
+          "name": "PL terminologia",
+          "passed": true,
+          "detail": "OK (guardy ui_terminology)"
+        },
+        {
+          "id": 6,
+          "name": "catalog search (n/d)",
+          "passed": true,
+          "detail": "nie dotyczy etapu"
+        },
+        {
+          "id": 7,
+          "name": "auto-fill parametryczny",
+          "passed": true,
+          "detail": "obecne (catalog-driven)"
+        },
+        {
+          "id": 8,
+          "name": "undo/redo (historia)",
+          "passed": true,
+          "detail": "operationHistory"
+        },
+        {
+          "id": 9,
+          "name": "error na SLD",
+          "passed": true,
+          "detail": "SpineRenderer issue-aware"
+        },
+        {
+          "id": 10,
+          "name": "brak raw ID/hash",
+          "passed": true,
+          "detail": "OK (guard no_raw_ids)"
+        }
+      ]
+    },
+    {
+      "key": "bays",
+      "name_pl": "Pola SN",
+      "score": 10,
+      "max": 10,
+      "failing": [],
+      "criteria": [
+        {
+          "id": 1,
+          "name": "brak duplikatu wejść",
+          "passed": true,
+          "detail": "['AddSnBayForm.tsx']"
+        },
+        {
+          "id": 2,
+          "name": "feedback sukcesu",
+          "passed": true,
+          "detail": "centralny notify+message"
+        },
+        {
+          "id": 3,
+          "name": "walidacja real-time (banner)",
+          "passed": true,
+          "detail": "SemanticIssuesBanner wired"
+        },
+        {
+          "id": 4,
+          "name": "tooltipy inżynierskie",
+          "passed": true,
+          "detail": "obecne"
+        },
+        {
+          "id": 5,
+          "name": "PL terminologia",
+          "passed": true,
+          "detail": "OK (guardy ui_terminology)"
+        },
+        {
+          "id": 6,
+          "name": "catalog search (n/d)",
+          "passed": true,
+          "detail": "nie dotyczy etapu"
+        },
+        {
+          "id": 7,
+          "name": "auto-fill parametryczny",
+          "passed": true,
+          "detail": "obecne (catalog-driven)"
+        },
+        {
+          "id": 8,
+          "name": "undo/redo (historia)",
+          "passed": true,
+          "detail": "operationHistory"
+        },
+        {
+          "id": 9,
+          "name": "error na SLD",
+          "passed": true,
+          "detail": "SpineRenderer issue-aware"
+        },
+        {
+          "id": 10,
+          "name": "brak raw ID/hash",
+          "passed": true,
+          "detail": "OK (guard no_raw_ids)"
+        }
+      ]
+    },
+    {
+      "key": "segments",
+      "name_pl": "Segmenty (kabel/napowietrzne)",
+      "score": 10,
+      "max": 10,
+      "failing": [],
+      "criteria": [
+        {
+          "id": 1,
+          "name": "brak duplikatu wejść",
+          "passed": true,
+          "detail": "['ContinueTrunkForm.tsx', 'TrunkContinueModal.tsx', 'StartBranchForm.tsx']"
+        },
+        {
+          "id": 2,
+          "name": "feedback sukcesu",
+          "passed": true,
+          "detail": "centralny notify+message"
+        },
+        {
+          "id": 3,
+          "name": "walidacja real-time (banner)",
+          "passed": true,
+          "detail": "SemanticIssuesBanner wired"
+        },
+        {
+          "id": 4,
+          "name": "tooltipy inżynierskie",
+          "passed": true,
+          "detail": "obecne"
+        },
+        {
+          "id": 5,
+          "name": "PL terminologia",
+          "passed": true,
+          "detail": "OK (guardy ui_terminology)"
+        },
+        {
+          "id": 6,
+          "name": "catalog search+filtry",
+          "passed": true,
+          "detail": "obecne"
+        },
+        {
+          "id": 7,
+          "name": "auto-fill parametryczny",
+          "passed": true,
+          "detail": "obecne (catalog-driven)"
+        },
+        {
+          "id": 8,
+          "name": "undo/redo (historia)",
+          "passed": true,
+          "detail": "operationHistory"
+        },
+        {
+          "id": 9,
+          "name": "error na SLD",
+          "passed": true,
+          "detail": "SpineRenderer issue-aware"
+        },
+        {
+          "id": 10,
+          "name": "brak raw ID/hash",
+          "passed": true,
+          "detail": "OK (guard no_raw_ids)"
+        }
+      ]
+    },
+    {
+      "key": "stations",
+      "name_pl": "Stacje",
+      "score": 10,
+      "max": 10,
+      "failing": [],
+      "criteria": [
+        {
+          "id": 1,
+          "name": "brak duplikatu wejść",
+          "passed": true,
+          "detail": "['InsertStationForm.tsx']"
+        },
+        {
+          "id": 2,
+          "name": "feedback sukcesu",
+          "passed": true,
+          "detail": "centralny notify+message"
+        },
+        {
+          "id": 3,
+          "name": "walidacja real-time (banner)",
+          "passed": true,
+          "detail": "SemanticIssuesBanner wired"
+        },
+        {
+          "id": 4,
+          "name": "tooltipy inżynierskie",
+          "passed": true,
+          "detail": "obecne"
+        },
+        {
+          "id": 5,
+          "name": "PL terminologia",
+          "passed": true,
+          "detail": "OK (guardy ui_terminology)"
+        },
+        {
+          "id": 6,
+          "name": "catalog search (n/d)",
+          "passed": true,
+          "detail": "nie dotyczy etapu"
+        },
+        {
+          "id": 7,
+          "name": "auto-fill parametryczny",
+          "passed": true,
+          "detail": "obecne (catalog-driven)"
+        },
+        {
+          "id": 8,
+          "name": "undo/redo (historia)",
+          "passed": true,
+          "detail": "operationHistory"
+        },
+        {
+          "id": 9,
+          "name": "error na SLD",
+          "passed": true,
+          "detail": "SpineRenderer issue-aware"
+        },
+        {
+          "id": 10,
+          "name": "brak raw ID/hash",
+          "passed": true,
+          "detail": "OK (guard no_raw_ids)"
+        }
+      ]
+    },
+    {
+      "key": "der",
+      "name_pl": "OZE / DER",
+      "score": 10,
+      "max": 10,
+      "failing": [],
+      "criteria": [
+        {
+          "id": 1,
+          "name": "brak duplikatu wejść",
+          "passed": true,
+          "detail": "['AddDerWizard.tsx']"
+        },
+        {
+          "id": 2,
+          "name": "feedback sukcesu",
+          "passed": true,
+          "detail": "centralny notify+message"
+        },
+        {
+          "id": 3,
+          "name": "walidacja real-time (banner)",
+          "passed": true,
+          "detail": "SemanticIssuesBanner wired"
+        },
+        {
+          "id": 4,
+          "name": "tooltipy inżynierskie",
+          "passed": true,
+          "detail": "obecne"
+        },
+        {
+          "id": 5,
+          "name": "PL terminologia",
+          "passed": true,
+          "detail": "OK (guardy ui_terminology)"
+        },
+        {
+          "id": 6,
+          "name": "catalog search+filtry",
+          "passed": true,
+          "detail": "obecne"
+        },
+        {
+          "id": 7,
+          "name": "auto-fill parametryczny",
+          "passed": true,
+          "detail": "obecne (catalog-driven)"
+        },
+        {
+          "id": 8,
+          "name": "undo/redo (historia)",
+          "passed": true,
+          "detail": "operationHistory"
+        },
+        {
+          "id": 9,
+          "name": "error na SLD",
+          "passed": true,
+          "detail": "SpineRenderer issue-aware"
+        },
+        {
+          "id": 10,
+          "name": "brak raw ID/hash",
+          "passed": true,
+          "detail": "OK (guard no_raw_ids)"
+        }
+      ]
+    }
+  ],
+  "mean_score": 10.0
+}

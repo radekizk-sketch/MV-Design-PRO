@@ -132,11 +132,11 @@ describe('AddSnBayForm', () => {
 
     render(<AddSnBayForm />);
 
+    // Auto-fill (C7): pozycja katalogowa jest automatycznie wybierana po załadowaniu.
     await waitFor(() => {
-      expect(screen.getByText('wybierz:Aparat SN z katalogu')).toBeInTheDocument();
+      expect(screen.getByText('ap-sn-1')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('wybierz:Aparat SN z katalogu'));
     fireEvent.click(screen.getByRole('button', { name: 'Dodaj pole SN' }));
 
     await waitFor(() => {
@@ -183,11 +183,11 @@ describe('AddSnBayForm', () => {
 
     render(<AddSnBayForm />);
 
+    // Auto-fill (C7): pozycja katalogowa jest automatycznie wybierana po załadowaniu.
     await waitFor(() => {
-      expect(screen.getByText('wybierz:Aparat SN z katalogu')).toBeInTheDocument();
+      expect(screen.getByText('ap-sn-1')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('wybierz:Aparat SN z katalogu'));
     fireEvent.click(screen.getByRole('button', { name: 'Dodaj pole SN' }));
 
     await waitFor(() => {

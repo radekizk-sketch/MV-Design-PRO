@@ -40,13 +40,13 @@ import { clsx } from 'clsx';
 
 import { useActiveMode } from '../app-state';
 import { useAppStateStore, useCanCalculate } from '../app-state/store';
-import { EmptyInspectorPanel } from '../inspector-panel/EmptyInspectorPanel';
+import { EmptyInspectorPanel } from '../inspector/EmptyInspectorPanel';
 import { GuidedBuildActionPanel } from '../network-build/GuidedBuildActionPanel';
 import { GlobalSearch } from '../network-build/GlobalSearch';
 import { CommandPalette } from '../network-build/CommandPalette';
 import { InspectorEngineeringView } from '../network-build/InspectorEngineeringView';
 import { ProjectMetadataModal } from '../network-build/ProjectMetadataModal';
-import { SnapshotHistoryModal } from '../network-build/SnapshotHistoryModal';
+// SnapshotHistoryModal removed (Phase 0 #3) - historia migawek przez E-09
 import { useNetworkBuildStore, useNetworkBuildDerived } from '../network-build/networkBuildStore';
 import {
   navigateToAnalysis,
@@ -572,7 +572,7 @@ export function CanonicalLayoutV3({
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [projectMetadataOpen, setProjectMetadataOpen] = useState(false);
-  const [snapshotHistoryOpen, setSnapshotHistoryOpen] = useState(false);
+  // snapshotHistoryOpen state usunięte (Phase 0 #3) - historia migawek przez E-09
 
   // Keyboard shortcuts:
   //   Ctrl+K       → Global search
@@ -790,7 +790,7 @@ export function CanonicalLayoutV3({
         ]}
       />
       <ProjectMetadataModal isOpen={projectMetadataOpen} onClose={() => setProjectMetadataOpen(false)} />
-      <SnapshotHistoryModal isOpen={snapshotHistoryOpen} onClose={() => setSnapshotHistoryOpen(false)} />
+      {/* SnapshotHistoryModal usunięte (Phase 0 #3) */}
     </div>
   );
 }

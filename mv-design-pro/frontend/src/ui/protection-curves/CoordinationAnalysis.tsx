@@ -164,12 +164,16 @@ function EmptyState() {
   const labels = PROTECTION_CURVES_LABELS.coordination;
 
   return (
-    <div className="flex flex-col items-center justify-center p-8 text-slate-500">
+    <div
+      className="flex flex-col items-center justify-center p-8 text-slate-500"
+      data-testid="empty-state-coordination"
+    >
       <svg
         className="mb-4 h-12 w-12 text-slate-300"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
+        aria-hidden="true"
       >
         <path
           strokeLinecap="round"
@@ -182,6 +186,13 @@ function EmptyState() {
       <p className="mt-1 text-xs text-slate-400">
         Dodaj co najmniej dwie krzywe, aby przeprowadzic analize koordynacji
       </p>
+      <a
+        href="#protection-library"
+        data-testid="empty-state-coordination-cta"
+        className="mt-3 text-sm font-semibold text-amber-500 underline hover:text-amber-400"
+      >
+        Dodaj krzywą zabezpieczenia →
+      </a>
     </div>
   );
 }

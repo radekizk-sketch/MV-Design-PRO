@@ -170,7 +170,7 @@ export function TransformerStationEditor({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-[#a8c7e2]">Identyfikator</label>
-            <input
+            <input title="Identyfikator"
               type="text"
               value={formData.ref_id}
               onChange={(event) => handleChange('ref_id', event.target.value)}
@@ -185,7 +185,7 @@ export function TransformerStationEditor({
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-[#a8c7e2]">Nazwa</label>
-            <input
+            <input title="Nazwa"
               type="text"
               value={formData.name}
               onChange={(event) => handleChange('name', event.target.value)}
@@ -223,7 +223,7 @@ export function TransformerStationEditor({
             <label className="mb-1 block text-sm font-medium text-[#a8c7e2]">
               Szyna strony górnej (GN)
             </label>
-            <select
+            <select title="Szyna strony górnej (GN)"
               value={formData.hv_bus_ref}
               onChange={(event) => handleChange('hv_bus_ref', event.target.value)}
               className={`w-full rounded-md border bg-[#07111c] px-3 py-2 text-sm text-[#e6f4ff] outline-none ${
@@ -245,7 +245,7 @@ export function TransformerStationEditor({
             <label className="mb-1 block text-sm font-medium text-[#a8c7e2]">
               Szyna strony dolnej (DN)
             </label>
-            <select
+            <select title="Szyna strony dolnej (DN)"
               value={formData.lv_bus_ref}
               onChange={(event) => handleChange('lv_bus_ref', event.target.value)}
               className={`w-full rounded-md border bg-[#07111c] px-3 py-2 text-sm text-[#e6f4ff] outline-none ${
@@ -267,7 +267,7 @@ export function TransformerStationEditor({
 
         <div>
           <label className="mb-1 block text-sm font-medium text-[#a8c7e2]">Pozycja zaczepu</label>
-          <input
+          <input title="Pozycja zaczepu"
             type="number"
             value={formData.tap_position}
             onChange={(event) => handleChange('tap_position', parseInt(event.target.value, 10) || 0)}

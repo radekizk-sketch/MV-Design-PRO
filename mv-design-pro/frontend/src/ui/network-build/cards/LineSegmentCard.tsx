@@ -100,7 +100,6 @@ export function LineSegmentCard({ elementId }: { elementId: string }) {
       label: 'Identyfikacja',
       fields: [
         { key: 'name', label: 'Nazwa', value: branch.name },
-        { key: 'ref_id', label: 'ID elementu', value: branch.ref_id },
         { key: 'type', label: 'Rodzaj', value: branchTypeLabel(branch.type) },
         {
           key: 'status',

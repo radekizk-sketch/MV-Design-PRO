@@ -40,6 +40,7 @@ export const LAYER_IDS = [
   'ports',
   'boundaries',
   'legend',
+  'spine',
 ] as const;
 
 export type LayerId = (typeof LAYER_IDS)[number];
@@ -61,6 +62,7 @@ export const LAYER_LABELS_PL: Readonly<Record<LayerId, string>> = {
   ports: 'Porty (debug)',
   boundaries: 'Granice stref',
   legend: 'Legenda',
+  spine: 'Ciąg SN (preview)',
 };
 
 /**
@@ -89,6 +91,8 @@ const DEFAULT_LAYER_LOD: Readonly<Record<LayerId, LodLevel>> = {
   ports: 4,
   boundaries: 3,
   legend: 0,
+  // Spine = opt-in preview overlay, domyślnie OFF
+  spine: 0,
 };
 
 // ---------------------------------------------------------------------------
@@ -115,7 +119,8 @@ export interface LayerState {
 export function createInitialLayerState(): LayerState {
   const overrides = {} as Record<LayerId, LayerOverride>;
   for (const id of LAYER_IDS) {
-    overrides[id] = null;
+    // Spine = opt-in overlay - explicit false niezależnie od LOD.
+    overrides[id] = id === 'spine' ? false : null;
   }
   return { overrides };
 }

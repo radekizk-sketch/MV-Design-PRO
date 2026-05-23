@@ -10,6 +10,7 @@ import { clsx } from 'clsx';
 
 import { validateMonotonic } from './profileSerializers';
 import type { FrtPhase, FrtPoint, FrtProfile } from './profileTypes';
+import { ProfileCurveEditor, type CurvePoint } from './ProfileCurveEditor';
 
 export interface FrtProfileFormProps {
   initial?: FrtProfile;
@@ -70,6 +71,18 @@ function PhaseEditor({ phase, points, catalogReadOnly, onChange }: PhaseEditorPr
       data-testid={`frt-phase-${phase}`}
     >
       <legend className="text-xs font-semibold px-1">{phaseLabel}</legend>
+      <ProfileCurveEditor
+        title={`Krzywa FRT ${phaseLabel} - przeciągnij punkty aby edytować`}
+        xLabel="t [s]"
+        yLabel="U [pu]"
+        xRange={phase === 'undervoltage' ? [0, 3] : [0, 60]}
+        yRange={phase === 'undervoltage' ? [0, 1] : [1, 1.4]}
+        points={points.map<CurvePoint>((p) => ({ x: p.t_s, y: p.u_pu }))}
+        editable={!catalogReadOnly}
+        onChange={(newPoints) =>
+          onChange(newPoints.map((p) => ({ t_s: p.x, u_pu: p.y })))
+        }
+      />
       <table className="w-full text-xs">
         <thead>
           <tr className="text-scada-muted">
@@ -82,7 +95,7 @@ function PhaseEditor({ phase, points, catalogReadOnly, onChange }: PhaseEditorPr
           {points.map((p, idx) => (
             <tr key={idx} data-testid={`frt-${phase}-row-${idx}`}>
               <td>
-                <input
+                <input title="U [pu]"
                   type="number"
                   step="0.01"
                   value={p.t_s}
@@ -93,7 +106,7 @@ function PhaseEditor({ phase, points, catalogReadOnly, onChange }: PhaseEditorPr
                 />
               </td>
               <td>
-                <input
+                <input title="U [pu]"
                   type="number"
                   step="0.01"
                   value={p.u_pu}
@@ -187,7 +200,7 @@ export function FrtProfileForm({ initial, onSubmit, onCancel }: FrtProfileFormPr
 
       <label className="text-xs flex items-center gap-2">
         Standard:
-        <select
+        <select title="Standard:"
           value={standard ?? 'EN_50549'}
           disabled={catalogRef !== undefined}
           onChange={(e) => setStandard(e.target.value as FrtProfile['standard'])}

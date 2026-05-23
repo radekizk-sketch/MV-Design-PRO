@@ -7,3 +7,5 @@
 export * from './types';
 export * from './api';
 export { ResultsComparisonPage } from './ResultsComparisonPage';
+export { ComparisonWizard } from './ComparisonWizard';
+export type { ComparisonRun, ComparisonRunType } from './ComparisonWizard';

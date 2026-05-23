@@ -17,6 +17,7 @@ import {
   validateRange,
 } from './profileSerializers';
 import type { QofUPoint, QofUProfile } from './profileTypes';
+import { ProfileCurveEditor, type CurvePoint } from './ProfileCurveEditor';
 
 export interface QofUProfileFormProps {
   /** Initial profile (edycja) lub undefined (nowy) */
@@ -96,6 +97,19 @@ export function QofUProfileForm({ initial, onSubmit, onCancel }: QofUProfileForm
         </p>
       )}
 
+      <ProfileCurveEditor
+        title="Charakterystyka Q(U) - przeciągnij punkty aby edytować"
+        xLabel="U [pu]"
+        yLabel="Q [Mvar]"
+        xRange={[0.85, 1.15]}
+        yRange={[-1.5, 1.5]}
+        points={points.map<CurvePoint>((p) => ({ x: p.u_pu, y: p.q_mvar }))}
+        editable={catalogRef === undefined}
+        onChange={(newPoints) =>
+          setPoints(newPoints.map((p) => ({ u_pu: p.x, q_mvar: p.y })))
+        }
+      />
+
       <table className="w-full text-xs" data-testid="qu-points-table">
         <thead>
           <tr className="text-scada-muted">
@@ -108,7 +122,7 @@ export function QofUProfileForm({ initial, onSubmit, onCancel }: QofUProfileForm
           {points.map((p, idx) => (
             <tr key={idx} data-testid={`qu-row-${idx}`}>
               <td>
-                <input
+                <input title="Q [Mvar]"
                   type="number"
                   step="0.01"
                   value={p.u_pu}
@@ -119,7 +133,7 @@ export function QofUProfileForm({ initial, onSubmit, onCancel }: QofUProfileForm
                 />
               </td>
               <td>
-                <input
+                <input title="Q [Mvar]"
                   type="number"
                   step="0.01"
                   value={p.q_mvar}
@@ -159,7 +173,7 @@ export function QofUProfileForm({ initial, onSubmit, onCancel }: QofUProfileForm
 
         <label className="text-xs flex items-center gap-1 ml-auto">
           Histereza [pu]:
-          <input
+          <input title="Histereza [pu]:"
             type="number"
             step="0.001"
             value={hysteresis}

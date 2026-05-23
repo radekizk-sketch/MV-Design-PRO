@@ -177,7 +177,7 @@ export function WorkspaceOperationalBar({
         value={formatPublicSnapshotLabel(activeSnapshotId)}
         tone={activeSnapshotId ? 'accent' : 'default'}
         onClick={() =>
-          openRouteSurface('E-39', {
+          openRouteSurface('E-09', {
             titlePl: 'Historia i audyt',
             sizeClass: 'B',
             openMode: 'replace_right_panel',

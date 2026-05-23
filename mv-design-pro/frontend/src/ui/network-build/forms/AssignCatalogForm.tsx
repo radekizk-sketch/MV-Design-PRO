@@ -53,7 +53,7 @@ export function AssignCatalogForm() {
 
       <label className="block">
         <span className="text-[11px] font-medium text-gray-700">Identyfikator pozycji katalogowej</span>
-        <input
+        <input title="Identyfikator pozycji katalogowej"
           value={catalogItemId}
           onChange={(e) => setCatalogItemId(e.target.value)}
           placeholder="np. kabel_sn_3x120_al"

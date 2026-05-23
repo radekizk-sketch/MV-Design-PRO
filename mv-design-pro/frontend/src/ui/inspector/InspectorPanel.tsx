@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { PropertyGrid } from './PropertyGrid';
+import { ReadOnlyPropertyGrid as PropertyGrid } from './ReadOnlyPropertyGrid';
 import type {
   BranchResultData,
   BusResultData,

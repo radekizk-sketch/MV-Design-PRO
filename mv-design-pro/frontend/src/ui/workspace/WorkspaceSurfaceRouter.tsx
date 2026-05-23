@@ -4,24 +4,8 @@ import { useAppStateStore } from '../app-state';
 import { ResultsComparisonPage } from '../comparison/ResultsComparisonPage';
 import { CatalogBrowser } from '../network-build/CatalogBrowser';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
-import { AddConverterSourceForm } from '../network-build/forms/AddConverterSourceForm';
-import { AddDispatchableSourceForm } from '../network-build/forms/AddDispatchableSourceForm';
-import { AddGridSourceForm } from '../network-build/forms/AddGridSourceForm';
-import { AddMeasurementForm } from '../network-build/forms/AddMeasurementForm';
-import { AddNnLoadForm } from '../network-build/forms/AddNnLoadForm';
-import { AddNnOutgoingFieldForm } from '../network-build/forms/AddNnOutgoingFieldForm';
-import { AddRelayForm } from '../network-build/forms/AddRelayForm';
-import { AddSnBayForm } from '../network-build/forms/AddSnBayForm';
-import { AddTransformerForm } from '../network-build/forms/AddTransformerForm';
-import { AssignCatalogForm } from '../network-build/forms/AssignCatalogForm';
-import { ConnectRingForm } from '../network-build/forms/ConnectRingForm';
-import { ContinueTrunkForm } from '../network-build/forms/ContinueTrunkForm';
-import { InsertBranchPoleForm } from '../network-build/forms/InsertBranchPoleForm';
-import { InsertSectionSwitchForm } from '../network-build/forms/InsertSectionSwitchForm';
-import { InsertStationForm } from '../network-build/forms/InsertStationForm';
-import { InsertZksnForm } from '../network-build/forms/InsertZksnForm';
-import { StartBranchForm } from '../network-build/forms/StartBranchForm';
-import { UpdateElementParametersForm } from '../network-build/forms/UpdateElementParametersForm';
+// 18 form components zaimportowane przez OPERATION_FORM_REGISTRY (decompose Etap 11)
+import { OPERATION_FORM_REGISTRY } from './operationFormRegistry';
 import { useSelectionStore } from '../selection';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { navigateToNetworkBuild, navigateToReport } from '../navigation/routes';
@@ -36,26 +20,19 @@ import {
   useRunAudit2PowerFlow,
   useStationAudit2ConfigList,
   validateHostingCapacityExport,
-  type Audit2ProofPackResponse,
 } from '../network-build/station-der';
 import { SldWorkspaceContainer } from '../sld/v2/canvas/SldWorkspaceContainer';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
 import { FrtHvrtCurves, type NcRfgProfileId } from '../protection-curves/FrtHvrtCurves';
 import { TimeCurrentChart } from '../protection-curves/TimeCurrentChart';
-import type { ProtectionCurve, FaultMarker, CurvePoint } from '../protection-curves/types';
+import type { ProtectionCurve, FaultMarker } from '../protection-curves/types';
 import {
   exportReport,
   exportProofPack,
   type ReportExportFormat,
 } from '../results/reportExportApi';
 import { notify } from '../notifications/store';
-import {
-  isInternalElementIdentifier,
-} from '../shared/publicReadinessMessage';
-import {
-  isGenericSegmentName,
-  segmentPublicIdentity,
-} from '../shared/publicTechnicalLabels';
+// isGenericSegmentName, segmentPublicIdentity used in routerLabelHelpers.ts
 import { GpzConfiguratorSurface } from './surfaces/GpzConfiguratorSurface';
 import { BayConfiguratorSurface } from './surfaces/BayConfiguratorSurface';
 import { StationConfiguratorSurface } from './surfaces/StationConfiguratorSurface';
@@ -67,8 +44,15 @@ import {
   NopSurface,
 } from './surfaces/InfrastructureSurfaces';
 import { PvSourceSurface, BessSurface, FwSurface } from './surfaces/DerSurfaces';
+import { ReferenceNetworkSurface } from './surfaces/ReferenceNetworkSurface';
+import {
+  AnalysisSurfaceComparisonWizard,
+  AnalysisSurfaceSensitivityTab,
+  AuditTrailSurface,
+  ReportSurfaceOsdAndProfileActions,
+} from './routerExtensionSurfaces';
 import { useExecutionRunsStore } from '../study-cases/runStore';
-import { ANALYSIS_TYPE_LABELS, type ExecutionRun } from '../study-cases/types';
+import { ANALYSIS_TYPE_LABELS } from '../study-cases/types';
 import {
   buildRecordRows,
   buildSummaryRows,
@@ -88,316 +72,72 @@ import {
   type WorkspaceSurfaceCode,
   type WorkspaceSurfaceDescriptor,
 } from './types';
-import { calculationScopeDisplayName, stripTechnicalSuffix } from '../shell/publicNames';
+// calculationScopeDisplayName: używane przez displayScopeLabel w routerPureHelpers
+import {
+  displayProjectLabel,
+  publicAuditExtensionLabel,
+  publicProofTypeTag,
+  formatDateTime,
+} from './routerDisplayHelpers';
+import {
+  limitRows,
+  buildRunOverviewRows,
+  buildExportArtifactRows,
+  buildExportPolicyRows,
+  buildReproducibilityRows,
+} from './routerContractRows';
+import {
+  inferElementTypeForFixAction,
+  resolveElementNameForFixAction,
+  publicElementLabel,
+  sanitizeReadinessMessage,
+  fallbackFixActionFromBlocker,
+  derAxisStatusLabel,
+} from './routerFixActionHelpers';
+import {
+  auditProofPackStatus,
+  resolveLatestCompletedRun,
+  generateIec60255SiCurvePoints,
+  displayScopeLabel,
+  resolveRunLabel,
+} from './routerPureHelpers';
+// SurfaceBreadcrumbs używane wewnątrz routerSurfaceHeader
+import { ContractStatusCard, ScopePills } from './routerStatusComponents';
+import { SectionCard, KeyValueGrid } from './routerCardComponents';
+import { resolveSurfaceObjectLabel } from './routerLabelHelpers';
+import { MiniSldCard, SurfaceHeader } from './routerSurfaceHeader';
 import { isCanonicalOpName, type CanonicalOpName } from '../../types/domainOps';
 import { resolveFixActionSurface } from '../../types/fixActionSurface';
-import type { Branch, EnergyNetworkModel, FixAction } from '../../types/enm';
-import type { ElementType, SelectedElement } from '../types';
+import type { FixAction } from '../../types/enm';
 
 interface WorkspaceSurfaceRouterProps {
   region: 'panel' | 'main';
 }
 
-function SurfaceBreadcrumbs({
-  surface,
-  currentTitlePl,
-}: {
-  surface: WorkspaceSurfaceDescriptor;
-  currentTitlePl: string;
-}) {
-  const collapseSurfaceStackTo = useNetworkBuildStore((state) => state.collapseSurfaceStackTo);
+// SurfaceBreadcrumbs moved to SurfaceBreadcrumbs.tsx
 
-  return (
-    <div className="flex flex-wrap items-center gap-1 text-[11px] text-slate-500">
-      {surface.breadcrumbs.map((crumb, index) => (
-        <div key={`${crumb.labelPl}-${index}`} className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => collapseSurfaceStackTo(crumb.surfaceId)}
-            className="rounded px-1.5 py-0.5 hover:bg-slate-100 hover:text-slate-800"
-          >
-            {index === surface.breadcrumbs.length - 1 ? currentTitlePl : crumb.labelPl}
-          </button>
-          {index < surface.breadcrumbs.length - 1 && <span>/</span>}
-        </div>
-      ))}
-    </div>
-  );
-}
+// NamedEnmElement type moved to routerLabelHelpers.ts
 
-type NamedEnmElement = {
-  id?: string | null;
-  ref_id?: string | null;
-  name?: string | null;
-  label?: string | null;
-};
+// isInternalIdentifier, displayValueOrAuditTrace, displayProjectLabel
+// moved to routerDisplayHelpers.ts
 
-function isInternalIdentifier(value: string): boolean {
-  return isInternalElementIdentifier(value);
-}
+// displayScopeLabel moved to routerPureHelpers.ts
 
-function displayValueOrAuditTrace(value: string | null | undefined, fallback: string): string {
-  if (!value?.trim()) return fallback;
-  const normalized = value.trim();
-  return isInternalIdentifier(normalized) || isGenericSegmentName(normalized) ? fallback : normalized;
-}
+// findElementName, payloadString moved to routerLabelHelpers.ts
 
-function displayProjectLabel(value: string | null | undefined): string {
-  if (!value?.trim()) return 'Aktywny projekt';
-  if (isInternalIdentifier(value.trim())) return 'Aktywny projekt';
-  return stripTechnicalSuffix(value) || 'Aktywny projekt';
-}
+// publicEntityTypeLabel, publicAuditExtensionLabel moved to routerDisplayHelpers.ts
 
-function displayScopeLabel(
-  value: string | null | undefined,
-  id: string | null | undefined = null,
-): string {
-  return calculationScopeDisplayName(value, id);
-}
+// publicProofTypeTag moved to routerDisplayHelpers.ts
 
-function findElementName(snapshot: EnergyNetworkModel | null, elementRef: string | null | undefined): string | null {
-  if (!snapshot || !elementRef) return null;
-  const branch = (snapshot.branches ?? []).find(
-    (item) => item.ref_id === elementRef || item.id === elementRef,
-  );
-  if (branch) {
-    return segmentPublicIdentity(snapshot, branch as Branch).displayName;
-  }
-  const candidates = [
-    ...(snapshot.substations ?? []),
-    ...(snapshot.bays ?? []),
-    ...(snapshot.transformers ?? []),
-    ...(snapshot.sources ?? []),
-    ...(snapshot.loads ?? []),
-    ...(snapshot.generators ?? []),
-    ...(snapshot.measurements ?? []),
-    ...(snapshot.protection_assignments ?? []),
-    ...(snapshot.buses ?? []),
-  ] as NamedEnmElement[];
-  const found = candidates.find((item) => item.ref_id === elementRef || item.id === elementRef);
-  return found?.name?.trim() || found?.label?.trim() || null;
-}
+// auditProofPackStatus moved to routerPureHelpers.ts
 
-function payloadString(surface: WorkspaceSurfaceDescriptor, key: string): string | null {
-  const value = surface.routeState.payload?.[key];
-  return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
+// resolveSurfaceObjectLabel, resolveSurfaceTitle moved to routerLabelHelpers.ts
 
-function publicEntityTypeLabel(value: string | null | undefined): string {
-  if (!value?.trim()) return 'Aktywny kontekst układu';
-  const normalized = value.trim();
-  const labels: Record<string, string> = {
-    project: 'Projekt',
-    gpz: 'GPZ',
-    gpz_section: 'Sekcja szyn GPZ',
-    sn_bay: 'Pole SN',
-    BaySN: 'Pole SN',
-    Source: 'Źródło GPZ',
-    station: 'Stacja SN/nN',
-    Station: 'Stacja SN/nN',
-    station_lv_side: 'Strona nN stacji',
-    segment: 'Odcinek SN',
-    LineBranch: 'Odcinek SN',
-    zksn: 'ZKSN',
-    ZKSN: 'ZKSN',
-    branch_pole: 'Słup rozgałęźny SN',
-    BranchPole: 'Słup rozgałęźny SN',
-    branch: 'Odgałęzienie SN',
-    ring: 'Pierścień SN',
-    nop: 'NOP',
-    pv_source: 'Źródło PV',
-    bess_source: 'Magazyn BESS',
-    fw_source: 'Źródło wiatrowe',
-    analysis_case: 'Zakres obliczeń',
-    analysis_run: 'Aktywne obliczenie',
-    proof_pack: 'Dowody inżynierskie',
-    report: 'Raport techniczny',
-    export_artifact: 'Eksport techniczny',
-  };
-  return labels[normalized] ?? normalized.replace(/_/g, ' ');
-}
+// resolveRunLabel moved to routerPureHelpers.ts
 
-function publicAuditExtensionLabel(value: string): string {
-  const labels: Record<string, string> = {
-    power_flow_extensions: 'rozszerzony rozpływ mocy',
-    tap_position_changes: 'regulacja zaczepów transformatorów',
-    grounding_z0_z1_ratio: 'konfiguracja uziemienia punktu neutralnego',
-    bess_reserved_capacity: 'rezerwa mocy magazynu BESS',
-    pf_droop: 'charakterystyka P(f)',
-  };
-  return labels[value] ?? value.replace(/_/g, ' ');
-}
+// MiniSldCard, SurfaceHeader moved to routerSurfaceHeader.tsx
 
-function publicProofTypeTag(value: string): string {
-  const labels: Record<string, string> = {
-    SC3F_IEC60909: 'SC3F · IEC 60909',
-    SC1F_IEC60909: 'SC1F · IEC 60909',
-    SC2F_IEC60909: 'SC2F · IEC 60909',
-    SC2FG_IEC60909: 'SC2F+Z · IEC 60909',
-    VDROP: 'Spadek U',
-    LOAD_FLOW_VOLTAGE: 'Rozpływ mocy',
-    Q_U_REGULATION: 'Q(U) · NC RfG',
-    EQUIPMENT_PROOF: 'Aparatura',
-    LOAD_CURRENTS_OVERLOAD: 'Obciążalność',
-    LOSSES_ENERGY: 'Straty',
-    PROTECTION_OVERCURRENT: 'Zabezpieczenia',
-    EARTHING_GROUND_FAULT_SN: 'Ziemnozwarciowe SN',
-  };
-  return labels[value] ?? value.replace(/_/g, ' ');
-}
-
-function auditProofPackStatus(data: Audit2ProofPackResponse): {
-  readonly label: string;
-  readonly className: string;
-} {
-  if (data.proof_count <= 0) {
-    return {
-      label: 'Brak dowodów do oceny',
-      className: 'text-amber-700',
-    };
-  }
-  return data.all_pass
-    ? { label: 'Weryfikacja pozytywna', className: 'text-emerald-700' }
-    : { label: 'Wymaga sprawdzenia', className: 'text-rose-700' };
-}
-
-function resolveSurfaceObjectLabel(
-  surface: WorkspaceSurfaceDescriptor,
-  snapshot: EnergyNetworkModel | null,
-  selectedElement: SelectedElement | null,
-): string {
-  const selectedName = selectedElement?.id === surface.entityRef ? selectedElement.name : null;
-  const routeName = payloadString(surface, 'selectedName');
-  const snapshotName = findElementName(snapshot, surface.entityRef);
-  const routeType = payloadString(surface, 'selectedType');
-  const isSegmentSurface = surface.entityType === 'segment'
-    || (typeof surface.entityRef === 'string' && /^seg\//i.test(surface.entityRef));
-  const fallbackByType = routeType
-    ? `Wybrany obiekt: ${routeType}`
-    : surface.entityType
-      ? `Wybrany układ: ${surface.entityType}`
-      : 'Aktywny kontekst układu';
-  const preferredName = isSegmentSurface
-    ? snapshotName ?? selectedName ?? routeName ?? surface.entityRef
-    : selectedName ?? routeName ?? snapshotName ?? surface.entityRef;
-  const publicFallbackByType = routeType
-    ? `Wybrany obiekt: ${publicEntityTypeLabel(routeType)}`
-    : surface.entityType
-      ? publicEntityTypeLabel(surface.entityType)
-      : fallbackByType;
-  return displayValueOrAuditTrace(preferredName, publicFallbackByType);
-}
-
-function resolveSurfaceTitle(
-  surface: WorkspaceSurfaceDescriptor,
-  snapshot: EnergyNetworkModel | null,
-  selectedElement: SelectedElement | null,
-): string {
-  const isSegmentSurface = surface.entityType === 'segment'
-    || (typeof surface.entityRef === 'string' && /^seg\//i.test(surface.entityRef));
-  if (isSegmentSurface && isGenericSegmentName(surface.titlePl)) {
-    return resolveSurfaceObjectLabel(surface, snapshot, selectedElement);
-  }
-  return surface.titlePl;
-}
-
-function resolveRunLabel(runId: string | null | undefined, runs: ExecutionRun[]): string {
-  if (!runId) return 'Nie wybrano obliczenia';
-  const run = runs.find((item) => item.id === runId);
-  if (!run) return 'Aktywne obliczenie';
-  const typeLabel = ANALYSIS_TYPE_LABELS[run.analysis_type] ?? run.analysis_type;
-  const dateLabel = formatDateTime(run.finished_at ?? run.started_at);
-  return `${typeLabel} · ${dateLabel}`;
-}
-
-function MiniSldCard({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
-  const snapshot = useSnapshotStore((state) => state.snapshot);
-  const selectedElement = useSelectionStore((state) => state.selectedElement);
-
-  if (!surface.supportsMiniSld) {
-    return null;
-  }
-
-  const objectLabel = resolveSurfaceObjectLabel(surface, snapshot, selectedElement);
-  return (
-    <div
-      data-testid="workspace-mini-sld"
-      className="rounded-xl border border-slate-200 bg-slate-950 px-4 py-3 text-slate-100 shadow-sm"
-    >
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Podgląd schematu</div>
-      <div className="mt-2 text-sm font-medium">
-        Kontekst układu jest zsynchronizowany z głównym schematem.
-      </div>
-      <div className="mt-1 text-xs text-slate-300">
-        Powiązany obiekt: {objectLabel}.
-      </div>
-    </div>
-  );
-}
-
-function SurfaceHeader({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
-  const session = useNetworkBuildStore((state) => state.surfaceSessions[surface.surfaceId] ?? null);
-  const snapshot = useSnapshotStore((state) => state.snapshot);
-  const selectedElement = useSelectionStore((state) => state.selectedElement);
-  const titlePl = resolveSurfaceTitle(surface, snapshot, selectedElement);
-
-  return (
-    <div className="border-b border-slate-200 bg-white px-4 py-3">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <SurfaceBreadcrumbs surface={surface} currentTitlePl={titlePl} />
-          <h2 className="text-sm font-semibold text-slate-900">{titlePl}</h2>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-          {session?.hasUnsavedChanges && (
-            <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">
-              Zmiany robocze
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SectionCard({
-  title,
-  eyebrow,
-  children,
-}: {
-  title: string;
-  eyebrow?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      {eyebrow && (
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{eyebrow}</div>
-      )}
-      <h3 className="mt-1 text-sm font-semibold text-slate-900">{title}</h3>
-      <div className="mt-3">{children}</div>
-    </section>
-  );
-}
-
-function KeyValueGrid({
-  rows,
-  columns = 2,
-}: {
-  rows: Array<{ label: string; value: string }>;
-  columns?: 2 | 3;
-}) {
-  return (
-    <div className={`grid gap-3 ${columns === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
-      {rows.map((row) => (
-        <div key={row.label} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-          <div className="text-[11px] font-semibold uppercase tracking-normal text-slate-500">{row.label}</div>
-          <div className="mt-1 text-sm text-slate-800">{row.value}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
+// SectionCard, KeyValueGrid moved to routerCardComponents.tsx
 
 const ASSUMPTION_LABELS: Record<string, string> = {
   source_assumptions_ref: 'Założenia źródeł',
@@ -416,151 +156,11 @@ const LINEAGE_LABELS: Record<string, string> = {
   snapshot_ref: 'Wersja układu',
 };
 
-function formatDateTime(value: string | null | undefined): string {
-  if (!value) {
-    return 'Nie podano';
-  }
+// formatDateTime moved to routerDisplayHelpers.ts
+// limitRows, buildRunOverviewRows, buildExportArtifactRows,
+// buildExportPolicyRows, buildReproducibilityRows moved to routerContractRows.ts
 
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-
-  return parsed.toLocaleString('pl-PL');
-}
-
-function limitRows(rows: LabeledValueRow[], maxRows = rows.length): LabeledValueRow[] {
-  const seen = new Set<string>();
-  return rows.filter((row) => {
-    const key = `${row.label}::${row.value}`;
-    if (seen.has(key)) {
-      return false;
-    }
-    seen.add(key);
-    return true;
-  }).slice(0, maxRows);
-}
-
-function buildRunOverviewRows(contract: AnalysisRunContract): LabeledValueRow[] {
-  const context = contract.analysisCaseContext;
-
-  return [
-    { label: 'Obliczenie', value: formatContractValue(context?.runRef ?? contract.id) },
-    { label: 'Typ analizy', value: formatContractValue(contract.analysisType) },
-    { label: 'Status uruchomienia', value: formatContractValue(contract.status) },
-    { label: 'Stan wyników', value: formatContractValue(contract.resultStatus) },
-    { label: 'Brama jakości', value: formatContractValue(context?.qualityGate) },
-    { label: 'Kompletność', value: formatCompletenessStatus(context?.completeness ?? null) },
-    { label: 'Pakiet uzasadnień', value: formatContractValue(contract.proofPackRef ?? context?.proofPackRef) },
-    { label: 'Ślad wejścia', value: formatContractValue(contract.inputHash) },
-    { label: 'Utworzono', value: formatDateTime(contract.createdAt) },
-  ];
-}
-
-function buildExportArtifactRows(contract: AnalysisRunContract): LabeledValueRow[] {
-  const exportArtifact = contract.exportArtifact;
-  if (!exportArtifact) {
-    return [];
-  }
-
-  return [
-    { label: 'Typ eksportu', value: formatContractValue(exportArtifact.exportKind) },
-    { label: 'Artefakt eksportu', value: formatContractValue(exportArtifact.exportRef) },
-    { label: 'Kompletność eksportu', value: formatCompletenessStatus(exportArtifact.completenessStatus) },
-    { label: 'Pakiet uzasadnień', value: formatContractValue(exportArtifact.proofPackRef ?? contract.proofPackRef) },
-    { label: 'Ślad wejścia', value: formatContractValue(exportArtifact.inputHash) },
-    { label: 'Ślad wyniku', value: formatContractValue(exportArtifact.resultHash) },
-    { label: 'Wygenerowano', value: formatDateTime(exportArtifact.generatedAt) },
-    { label: 'Wersja generatora', value: formatContractValue(exportArtifact.generatedByVersion) },
-  ];
-}
-
-function buildExportPolicyRows(contract: AnalysisRunContract): LabeledValueRow[] {
-  const exportPolicy = contract.exportPolicy;
-  if (!exportPolicy) {
-    return [];
-  }
-
-  return [
-    { label: 'Polityka eksportu', value: formatContractValue(exportPolicy.exportKind) },
-    { label: 'Dopuszcza wynik częściowy', value: formatContractValue(exportPolicy.allowsPartial) },
-    { label: 'Wymaga potwierdzenia wyniku częściowego', value: formatContractValue(exportPolicy.requiresPartialConfirmation) },
-    { label: 'Niesie kontekst obliczeniowy', value: formatContractValue(exportPolicy.carriesAnalysisCaseContext) },
-    { label: 'Zawiera pakiet uzasadnień', value: formatContractValue(exportPolicy.carriesProofPackRef) },
-    { label: 'Zawiera ślad wyniku', value: formatContractValue(exportPolicy.carriesResultHash) },
-    { label: 'Zawiera ślad wejścia', value: formatContractValue(exportPolicy.carriesInputHash) },
-    { label: 'Prezentacja pustej wartości', value: formatContractValue(exportPolicy.nullRendering) },
-    { label: 'Prezentacja stanu nie dotyczy', value: formatContractValue(exportPolicy.notApplicableRendering) },
-    { label: 'Prezentacja wyniku częściowego', value: formatContractValue(exportPolicy.partialRendering) },
-  ];
-}
-
-function buildReproducibilityRows(contract: AnalysisRunContract): LabeledValueRow[] {
-  const reproducibility = contract.analysisCaseContext?.reproducibility;
-  if (!reproducibility) {
-    return [];
-  }
-
-  return [
-    { label: 'Rodzina solvera', value: formatContractValue(reproducibility.solverFamily) },
-    { label: 'Wersja solvera', value: formatContractValue(reproducibility.solverVersion) },
-    { label: 'Wersja metody', value: formatContractValue(reproducibility.methodVersion) },
-    { label: 'Wersja zestawu wzorów', value: formatContractValue(reproducibility.formulaSetVersion) },
-    { label: 'Kontrakt wyników', value: formatContractValue(reproducibility.resultsContractVersion) },
-    { label: 'Kontrakt pola', value: formatContractValue(reproducibility.bayContractVersion) },
-    { label: 'Renderer uzasadnienia', value: formatContractValue(reproducibility.proofRendererVersion) },
-    { label: 'Wersja katalogu', value: formatContractValue(reproducibility.catalogSnapshotRef) },
-    { label: 'Wersja schematu katalogu', value: formatContractValue(reproducibility.catalogSchemaVersion) },
-    { label: 'Tolerancje', value: formatContractValue(reproducibility.tolerancePolicyRef) },
-    { label: 'Zaokrąglenia', value: formatContractValue(reproducibility.roundingPolicyRef) },
-    { label: 'Polityka jakości', value: formatContractValue(reproducibility.qualityGatePolicyVersion) },
-    { label: 'Ślad wyniku', value: formatContractValue(reproducibility.resultHash) },
-    { label: 'Podstawa normatywna', value: formatContractValue(reproducibility.standardBasisRef) },
-  ];
-}
-
-function ContractStatusCard({
-  tone,
-  title,
-  message,
-}: {
-  tone: 'loading' | 'error' | 'idle';
-  title: string;
-  message: string;
-}) {
-  const toneClass =
-    tone === 'error'
-      ? 'border-rose-200 bg-rose-50 text-rose-700'
-      : tone === 'loading'
-        ? 'border-slate-200 bg-slate-50 text-slate-600'
-        : 'border-slate-200 bg-slate-50 text-slate-700';
-
-  return (
-    <div className={`rounded-lg border px-4 py-4 text-sm ${toneClass}`}>
-      <div className="font-semibold">{title}</div>
-      <div className="mt-1">{message}</div>
-    </div>
-  );
-}
-
-function ScopePills({ scopes }: { scopes: string[] }) {
-  if (scopes.length === 0) {
-    return <div className="text-sm text-slate-600">Nie zadano zakresu stosowalności.</div>;
-  }
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {scopes.map((scope) => (
-        <span
-          key={scope}
-          className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700"
-        >
-          {formatContractValue(scope)}
-        </span>
-      ))}
-    </div>
-  );
-}
+// ContractStatusCard, ScopePills moved to routerStatusComponents.tsx
 
 interface AnalysisContractPanelProps {
   surface: WorkspaceSurfaceDescriptor;
@@ -896,6 +496,24 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             }
           />
           <SurfaceActionButton
+            label="Analiza wrażliwości"
+            onClick={() =>
+              openChildSurface('analysis', {
+                screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
+                tabId: 'sensitivity',
+              })
+            }
+          />
+          <SurfaceActionButton
+            label="Porównaj przebiegi (A/B)"
+            onClick={() =>
+              openChildSurface('analysis', {
+                screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
+                tabId: 'comparison_wizard',
+              })
+            }
+          />
+          <SurfaceActionButton
             label="Raporty OSD i audytowe"
             onClick={() => navigateToReport({ caseId: activeCaseId, runId: effectiveRunId })}
           />
@@ -905,6 +523,10 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       <SectionCard title="Bieżący widok analityki" eyebrow="Wyniki">
         {activeAnalysisTab === 'compare' ? (
           <ResultsComparisonPage runHistory={comparisonRunHistory} />
+        ) : activeAnalysisTab === 'sensitivity' ? (
+          <AnalysisSurfaceSensitivityTab />
+        ) : activeAnalysisTab === 'comparison_wizard' ? (
+          <AnalysisSurfaceComparisonWizard />
         ) : (
           <p className="text-xs text-slate-400">Wybierz zakładkę analityki albo otwórz kontrolę konfiguracji układu przed uruchomieniem analiz.</p>
         )}
@@ -1172,6 +794,11 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         showLineage
         showReproducibility
       />
+      {/* Etap 13/14 dostawy: Dane OSD + Profil raportu (modals). */}
+      <ReportSurfaceOsdAndProfileActions
+        projectName={activeProjectName ?? 'Projekt MV-DESIGN-PRO'}
+        caseName={activeCaseName ?? 'Wariant bazowy'}
+      />
       {/* Raport rozszerzonej walidacji: JSON, tekst PL i LaTeX. */}
       <SectionCard
         title="Raport rozszerzonej walidacji technicznej"
@@ -1269,16 +896,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   );
 }
 
-function resolveLatestCompletedRun(runs: ExecutionRun[]): ExecutionRun | null {
-  return runs
-    .filter((run) => run.status === 'DONE')
-    .slice()
-    .sort((left, right) => {
-      const leftTime = new Date(left.finished_at ?? left.started_at ?? 0).getTime();
-      const rightTime = new Date(right.finished_at ?? right.started_at ?? 0).getTime();
-      return rightTime - leftTime;
-    })[0] ?? null;
-}
+// resolveLatestCompletedRun moved to routerPureHelpers.ts
 
 function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeProjectName = useAppStateStore((state) => state.activeProjectName);
@@ -1494,117 +1112,6 @@ function DynamicStabilitySurface({ surface }: { surface: WorkspaceSurfaceDescrip
   );
 }
 
-function inferElementTypeForFixAction(
-  snapshot: EnergyNetworkModel | null,
-  elementRef: string,
-): ElementType {
-  if ((snapshot?.generators ?? []).some((item) => item.ref_id === elementRef || item.id === elementRef)) {
-    const generator = snapshot?.generators.find((item) => item.ref_id === elementRef || item.id === elementRef);
-    if (generator?.gen_type === 'pv_inverter') return 'PVInverter';
-    if (generator?.gen_type === 'bess') return 'BESSInverter';
-    return 'Generator';
-  }
-  if ((snapshot?.substations ?? []).some((item) => item.ref_id === elementRef || item.id === elementRef)) return 'Station';
-  if ((snapshot?.bays ?? []).some((item) => item.ref_id === elementRef || item.id === elementRef)) return 'BaySN';
-  if ((snapshot?.branches ?? []).some((item) => item.ref_id === elementRef || item.id === elementRef)) return 'LineBranch';
-  if ((snapshot?.transformers ?? []).some((item) => item.ref_id === elementRef || item.id === elementRef)) return 'TransformerBranch';
-  if ((snapshot?.sources ?? []).some((item) => item.ref_id === elementRef || item.id === elementRef)) return 'Source';
-  if ((snapshot?.loads ?? []).some((item) => item.ref_id === elementRef || item.id === elementRef)) return 'Load';
-  if ((snapshot?.measurements ?? []).some((item) => item.ref_id === elementRef || item.id === elementRef)) return 'Measurement';
-  if ((snapshot?.protection_assignments ?? []).some((item) => item.ref_id === elementRef || item.id === elementRef)) return 'ProtectionAssignment';
-  return 'Bus';
-}
-
-function resolveElementNameForFixAction(
-  snapshot: EnergyNetworkModel | null,
-  elementRef: string,
-): string {
-  const candidates = [
-    ...(snapshot?.generators ?? []),
-    ...(snapshot?.substations ?? []),
-    ...(snapshot?.bays ?? []),
-    ...(snapshot?.branches ?? []),
-    ...(snapshot?.transformers ?? []),
-    ...(snapshot?.sources ?? []),
-    ...(snapshot?.loads ?? []),
-    ...(snapshot?.measurements ?? []),
-    ...(snapshot?.protection_assignments ?? []),
-    ...(snapshot?.buses ?? []),
-  ];
-  return candidates.find((item) => item.ref_id === elementRef || item.id === elementRef)?.name ?? elementRef;
-}
-
-function fallbackElementLabelFromRef(elementRef: string): string {
-  if (/^bp\/.+\/zksn\b/i.test(elementRef)) return 'ZKSN';
-  if (/^bp\//i.test(elementRef)) return 'słup rozgałęźny SN';
-  if (/^seg\//i.test(elementRef)) return 'odcinek SN';
-  if (/^gpz\/.+\/source\//i.test(elementRef)) return 'źródło zasilania GPZ';
-  if (/^gpz\/.+\/bay\//i.test(elementRef)) return 'pole SN GPZ';
-  if (/^gpz\//i.test(elementRef)) return 'układ GPZ';
-  if (/^stn\//i.test(elementRef)) return 'stacja SN/nN';
-  if (/^pv\//i.test(elementRef)) return 'źródło PV';
-  if (/^bess\//i.test(elementRef)) return 'magazyn energii';
-  if (/^fw\//i.test(elementRef)) return 'źródło wiatrowe';
-  if (/^bus\//i.test(elementRef)) return 'szyna SN';
-  if (/^tr|^trafo\//i.test(elementRef)) return 'transformator';
-  return 'obiekt układu sieci';
-}
-
-function publicElementLabel(
-  snapshot: EnergyNetworkModel | null,
-  elementRef: string,
-): string {
-  const resolvedName = resolveElementNameForFixAction(snapshot, elementRef);
-  return isInternalIdentifier(resolvedName) ? fallbackElementLabelFromRef(elementRef) : resolvedName;
-}
-
-function sanitizeReadinessMessage(
-  message: string,
-  snapshot: EnergyNetworkModel | null,
-): string {
-  return message
-    .replace(
-      /ZKSN\s+['"]?bp\/[^\s'"]+['"]?\s+nie\s+ma\s+stanu\s+łącznika\s+\(switch_state\)\.?/gi,
-      'ZKSN wymaga wskazania stanu normalnego łącznika.',
-    )
-    .replace(/\bOdcinek\s+\/segment\b/gi, 'odcinek SN')
-    .replace(/\bodcinek\s+SN\s+SN\b/gi, 'odcinek SN')
-    .replace(/Gałąź\s+'([^']+)'/g, (_match, ref: string) => publicElementLabel(snapshot, ref))
-    .replace(/Źródło\s+'([^']+)'/g, (_match, ref: string) => publicElementLabel(snapshot, ref))
-    .replace(/Obiekt\s+'([^']+)'/g, (_match, ref: string) => publicElementLabel(snapshot, ref))
-    .replace(/'(gpz|seg|stn|bus|bay|branch|source|load|pv|bess|fw|tr|trafo|bp)\/[^']+'/gi, (match) =>
-      publicElementLabel(snapshot, match.slice(1, -1)),
-    )
-    .replace(/\b(gpz|seg|stn|bus|bay|branch|source|load|pv|bess|fw|tr|trafo|bp)\/[^\s,;.]+/gi, (ref: string) =>
-      publicElementLabel(snapshot, ref),
-    )
-    .replace(/\bswitch_state\b/gi, 'stan normalny łącznika');
-}
-
-function fallbackFixActionFromBlocker(blocker: {
-  code: string;
-  element_ref: string | null;
-}): FixAction {
-  return {
-    code: blocker.code,
-    action_type: 'ADD_MISSING_DEVICE',
-    element_ref: blocker.element_ref,
-    modal_type: null,
-    panel: null,
-    step: null,
-    focus: null,
-    payload_hint: null,
-    surface_descriptor: null,
-    message_pl: blocker.element_ref ? 'Przejdź do elementu i skonfiguruj układ' : 'Pokaż szczegóły techniczne',
-  };
-}
-
-function derAxisStatusLabel(status: string): string {
-  if (status === 'ready') return 'do analizy';
-  if (status === 'partial') return 'w konfiguracji';
-  if (status === 'blocked') return 'do konfiguracji';
-  return 'kontrola';
-}
 
 function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const readiness = useSnapshotStore((state) => state.readiness);
@@ -1939,21 +1446,7 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
 // Funkcja jest pure (deterministyczna) — używana wyłącznie do podglądu UI;
 // rzeczywiste punkty krzywej z solvera protection_iec60255 (backend) zastępują
 // tę tablicę gdy są dostępne.
-function generateIec60255SiCurvePoints(
-  pickupCurrentA: number,
-  tms: number,
-): CurvePoint[] {
-  const ratios = [1.05, 1.5, 2, 3, 5, 10, 20, 50, 100];
-  return ratios.map((m) => {
-    const denom = Math.pow(m, 0.02) - 1;
-    const time = denom > 0 ? (tms * 0.14) / denom : 60;
-    return {
-      current_a: pickupCurrentA * m,
-      current_multiple: m,
-      time_s: Math.min(time, 60),
-    };
-  });
-}
+// generateIec60255SiCurvePoints moved to routerPureHelpers.ts
 
 function ProtectionCoordinationSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   // Iteracja 14: TCC chart preview z 2 demonstracyjnymi krzywymi
@@ -2707,50 +2200,16 @@ function OperationFormSurface({ surface }: { surface: WorkspaceSurfaceDescriptor
     return <OperationBindingError value={operation} />;
   }
 
-  switch (operation) {
-    case 'add_grid_source_sn':
-      return <AddGridSourceForm />;
-    case 'add_sn_bay':
-      return <AddSnBayForm />;
-    case 'continue_trunk_segment_sn':
-      return <ContinueTrunkForm />;
-    case 'insert_station_on_segment_sn':
-      return <InsertStationForm />;
-    case 'insert_branch_pole_on_segment_sn':
-      return <InsertBranchPoleForm />;
-    case 'insert_zksn_on_segment_sn':
-      return <InsertZksnForm />;
-    case 'start_branch_segment_sn':
-      return <StartBranchForm />;
-    case 'insert_section_switch_sn':
-      return <InsertSectionSwitchForm />;
-    case 'connect_secondary_ring_sn':
-    case 'set_normal_open_point':
-      return <ConnectRingForm />;
-    case 'add_transformer_sn_nn':
-      return <AddTransformerForm />;
-    case 'assign_catalog_to_element':
-      return <AssignCatalogForm />;
-    case 'update_element_parameters':
-      return <UpdateElementParametersForm />;
-    case 'add_nn_outgoing_field':
-      return <AddNnOutgoingFieldForm />;
-    case 'add_converter_source':
-      return <AddConverterSourceForm />;
-    case 'add_genset_nn':
-    case 'add_ups_nn':
-      return <AddDispatchableSourceForm />;
-    case 'add_nn_load':
-      return <AddNnLoadForm />;
-    case 'add_ct':
-    case 'add_vt':
-      return <AddMeasurementForm />;
-    case 'add_relay':
-      return <AddRelayForm />;
-    case 'delete_element':
-    case 'refresh_snapshot':
-      return <OperationWithoutFormNotice operation={operation} />;
+  // OPERATION_FORM_REGISTRY (PR-Etap 11 decompose) - declarative table zamiast switch:22.
+  // Mapowanie CanonicalOpName → React.ComponentType | null (instant ops).
+  const FormComponent = OPERATION_FORM_REGISTRY[operation];
+  if (FormComponent === null) {
+    return <OperationWithoutFormNotice operation={operation} />;
   }
+  if (!FormComponent) {
+    return <OperationBindingError value={operation} />;
+  }
+  return <FormComponent />;
 }
 
 const delegatedSurfaceBodies: Record<string, (surface: WorkspaceSurfaceDescriptor) => ReactNode> = {
@@ -2842,6 +2301,12 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'E-23':
       // Etap 5 dostawy: Farma wiatrowa.
       return <FwSurface surface={surface} />;
+    case 'E-09':
+      // Etap 17 dostawy: Historia i audyt operacji.
+      return <AuditTrailSurface surface={surface} />;
+    case 'E-39':
+      // Sprint 2 dostawy: Walidacja sieci referencyjnych (Reference Network Validation).
+      return <ReferenceNetworkSurface surface={surface} />;
     default:
       break;
   }

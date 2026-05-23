@@ -86,4 +86,23 @@ describe('ProofPacksPanel — Polish labels', () => {
       expect(pack.description).toBeTruthy();
     }
   });
+
+  it('renderuje "Wygeneruj" CTA dla packs requires_calculation', () => {
+    const onGenerate = vi.fn();
+    render(<ProofPacksPanel hasNetworkModel onGeneratePack={onGenerate} />);
+    const generateBtn = screen.getByTestId('sld-proof-pack-generate-sc_3f');
+    expect(generateBtn).toBeInTheDocument();
+    fireEvent.click(generateBtn);
+    expect(onGenerate).toHaveBeenCalledWith('sc_3f');
+  });
+
+  it('blocked packs (brak modelu) - brak CTA Wygeneruj', () => {
+    render(<ProofPacksPanel hasNetworkModel={false} onGeneratePack={vi.fn()} />);
+    expect(screen.queryByTestId('sld-proof-pack-generate-sc_3f')).toBeNull();
+  });
+
+  it('brak onGenerate callback - brak buttona Wygeneruj', () => {
+    render(<ProofPacksPanel hasNetworkModel />);
+    expect(screen.queryByTestId('sld-proof-pack-generate-sc_3f')).toBeNull();
+  });
 });

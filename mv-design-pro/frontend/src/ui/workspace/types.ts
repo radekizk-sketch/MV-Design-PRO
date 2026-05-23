@@ -797,7 +797,7 @@ export const SCREEN_MATRIX: Record<WorkspaceScreenCode, WorkspaceScreenMatrixEnt
   'E-36': screen('E-36', 'proof_pack', ['wejscie', 'procedura', 'wynik', 'ograniczenia'], 'wejscie', ['analysis_case_context'], 'E-35'),
   'E-37': screen('E-37', 'report', ['zakres', 'podglad', 'eksport', 'uzasadnienia'], 'zakres', ['analysis_case_context'], 'E-35'),
   'E-38': screen('E-38', null, ['katalogi', 'wyszukiwarka', 'powiazania'], 'katalogi', [], 'catalog_admin'),
-  'E-39': screen('E-39', 'analysis_run', ['migawki', 'uruchomienia', 'audyt'], 'audyt', [], 'E-09'),
+  'E-39': screen('E-39', null, ['lista', 'uruchomienie', 'raport', 'dynamika', 'nc_rfg'], 'lista', [], 'E-35'),
 };
 
 const transition = (
@@ -826,7 +826,7 @@ export const SCREEN_TRANSITIONS: Record<WorkspaceScreenCode, ScreenTransitionPol
   'E-06': transition('E-06', ['E-01', 'E-35', 'E-37'], ['E-28', 'E-29', 'E-30', 'E-31', 'E-32', 'E-33', 'E-34', 'E-36', 'E-37'], 'parent', 'E-01'),
   'E-07': transition('E-07', ['E-00', 'E-01', 'case_context'], ['E-08', 'E-09', 'E-35', 'E-37'], 'parent', 'E-01'),
   'E-08': transition('E-08', ['E-01', 'E-07', 'variants_runs'], ['E-09', 'E-17', 'E-35', 'E-37'], 'parent', 'E-07'),
-  'E-09': transition('E-09', ['E-01', 'E-07', 'E-08', 'E-39', 'variants_runs'], ['E-35', 'E-37', 'E-39'], 'parent', 'E-07'),
+  'E-09': transition('E-09', ['E-01', 'E-07', 'E-08', 'variants_runs'], ['E-35', 'E-37'], 'parent', 'E-07'),
   'E-10': transition('E-10', ['E-01', 'E-02', 'E-04'], ['E-11'], 'parent', 'E-01'),
   'E-11': transition('E-11', ['E-03', 'E-05', 'E-10'], ['E-12', 'E-18', 'E-24', 'E-27', 'E-28', 'E-29', 'E-33', 'E-36'], 'parent', 'E-10'),
   'E-12': transition('E-12', ['E-02', 'E-11'], ['E-13', 'E-14', 'E-15', 'E-16', 'E-20'], 'parent', 'E-11'),
@@ -856,7 +856,7 @@ export const SCREEN_TRANSITIONS: Record<WorkspaceScreenCode, ScreenTransitionPol
   'E-36': transition('E-36', ['E-26', 'E-27', 'E-28', 'E-29', 'E-30', 'E-31', 'E-32', 'E-33', 'E-34', 'E-35', 'E-37'], ['E-37'], 'parent', 'E-35'),
   'E-37': transition('E-37', ['E-01', 'E-35', 'E-36', 'variants_runs', 'case_context'], ['E-35', 'E-36'], 'parent', 'E-35'),
   'E-38': transition('E-38', ['E-01', 'E-02', 'catalog_admin', 'catalog_picker'], ['catalog_picker', 'E-24', 'E-25', 'E-26'], 'parent', 'E-01'),
-  'E-39': transition('E-39', ['E-00', 'E-01', 'E-07', 'E-08', 'E-09', 'E-37'], ['E-09', 'E-35', 'E-36', 'E-37'], 'parent', 'E-01'),
+  'E-39': transition('E-39', ['E-01', 'E-06', 'E-35'], ['E-35', 'E-36', 'E-37'], 'parent', 'E-35'),
 };
 
 export const SURFACE_COMMIT_POLICY_MATRIX: Partial<Record<WorkspaceScreenCode, SurfaceCommitPolicy>> = {
@@ -890,7 +890,7 @@ export const DEFAULT_LOCK_SCOPE_BY_SCREEN: Partial<Record<WorkspaceScreenCode, E
   'E-20': 'subtree',
   'E-22': 'subtree',
   'E-25': 'subtree',
-  'E-39': 'snapshot',
+  'E-39': 'entity',
 };
 
 export const ISSUE_MATRIX: Record<string, CanonicalIssuePolicy> = {
@@ -898,7 +898,7 @@ export const ISSUE_MATRIX: Record<string, CanonicalIssuePolicy> = {
     severity: 'critical',
     scope: 'surface',
     defaultMessagePl: 'Wykryto konflikt rewizji powierzchni.',
-    repairTarget: { screenCode: 'E-39', entityType: 'analysis_run', entityRef: null, tabId: 'audyt', subtabId: null, fieldAnchor: null },
+    repairTarget: { screenCode: 'E-09', entityType: 'analysis_run', entityRef: null, tabId: 'audyt', subtabId: null, fieldAnchor: null },
     blocksSave: true,
     blocksAnalysis: false,
     blocksReport: false,

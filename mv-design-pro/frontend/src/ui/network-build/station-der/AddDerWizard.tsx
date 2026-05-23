@@ -52,6 +52,8 @@ import {
 } from './ptpireeCertifiedInverters';
 import { useStationDerStore } from './store';
 import type { ConnectionSide, DerKindUnified } from './types';
+import { HelpTooltip } from '../../shared/HelpTooltip';
+import { getTooltip } from '../../shared/engineerTooltips';
 
 export interface AddDerWizardProps {
   readonly isOpen: boolean;
@@ -1342,9 +1344,17 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
 
           {step === 'profile' && (
             <div data-testid="add-der-step-content-profile" className="space-y-3">
-              <p className="text-scada-muted">
+              <p className="flex flex-wrap items-center gap-1 text-scada-muted">
                 Wybierz profil zgodności przyłączeniowej (NC RfG) operatora oraz
                 krzywe LVRT i HVRT zgodnie z modułem typu A/B/C/D.
+                {(() => {
+                  const frt = getTooltip('oze_frt');
+                  return frt ? <HelpTooltip text={frt.text} norm={frt.norm} inline /> : null;
+                })()}
+                {(() => {
+                  const ai = getTooltip('oze_anti_islanding');
+                  return ai ? <HelpTooltip text={ai.text} norm={ai.norm} inline /> : null;
+                })()}
               </p>
               <Select
                 label="Profil NC RfG (operator)"

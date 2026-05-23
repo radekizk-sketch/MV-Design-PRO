@@ -37,6 +37,8 @@ interface ActiveCaseBarProps {
   onConfigureClick?: () => void;
   onCalculateClick?: () => void;
   onResultsClick?: () => void;
+  /** Etap 18 dostawy: otwiera comparison view (E-35 tab compare). */
+  onCompareClick?: () => void;
   className?: string;
 }
 
@@ -45,6 +47,7 @@ export function ActiveCaseBar({
   onConfigureClick,
   onCalculateClick,
   onResultsClick,
+  onCompareClick,
   className,
 }: ActiveCaseBarProps) {
   const [secondaryMenuOpen, setSecondaryMenuOpen] = useState(false);
@@ -93,6 +96,11 @@ export function ActiveCaseBar({
     onResultsClick?.();
     setSecondaryMenuOpen(false);
   }, [onResultsClick]);
+
+  const handleCompareClick = useCallback(() => {
+    onCompareClick?.();
+    setSecondaryMenuOpen(false);
+  }, [onCompareClick]);
 
   const handleSecondaryActionsToggle = useCallback(() => {
     setSecondaryMenuOpen((current) => !current);
@@ -244,6 +252,25 @@ export function ActiveCaseBar({
                 }
               >
                 Podgląd wyników
+              </button>
+              <button
+                type="button"
+                data-testid="btn-compare"
+                onClick={handleCompareClick}
+                disabled={resultStatus === 'NONE'}
+                className={clsx(
+                  'flex w-full items-center rounded-ind px-3 py-2 text-left text-sm',
+                  resultStatus === 'NONE'
+                    ? 'cursor-not-allowed text-chrome-300'
+                    : 'text-chrome-700 hover:bg-chrome-50',
+                )}
+                title={
+                  resultStatus === 'NONE'
+                    ? 'Uruchom obliczenia w co najmniej dwóch wariantach, aby porównać'
+                    : 'Porównaj wyniki z innym wariantem (A/B)'
+                }
+              >
+                Porównaj z...
               </button>
             </div>
           ) : null}
