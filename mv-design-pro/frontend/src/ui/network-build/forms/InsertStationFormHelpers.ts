@@ -422,6 +422,70 @@ export function resolveSegmentIdFromContext(
   return resolveFromCorridor(corridorRef);
 }
 
+// SN voltage derivation
+export const DEFAULT_SN_VOLTAGE_KV = 15;
+
+export function deriveSnVoltageKv(
+  snapshot: unknown,
+  busOptions: Array<{ ref_id: string; name: string; voltage_kv: number }>,
+  segmentId: string,
+): number {
+  const model = snapshot as {
+    branches?: Array<{
+      id?: string;
+      ref_id?: string;
+      from_bus_ref?: string | null;
+      to_bus_ref?: string | null;
+    }>;
+  } | null;
+  const segment = model?.branches?.find(
+    (branch) => branch.ref_id === segmentId || branch.id === segmentId,
+  );
+  const segmentBusRef = segment?.from_bus_ref ?? segment?.to_bus_ref ?? null;
+  const segmentBusVoltage = busOptions.find((bus) => bus.ref_id === segmentBusRef)?.voltage_kv;
+  if (
+    typeof segmentBusVoltage === 'number'
+    && Number.isFinite(segmentBusVoltage)
+    && segmentBusVoltage > 0
+  ) {
+    return segmentBusVoltage;
+  }
+
+  const firstMvBus = busOptions.find((bus) => bus.voltage_kv >= 1 && bus.voltage_kv < 60);
+  return firstMvBus?.voltage_kv ?? DEFAULT_SN_VOLTAGE_KV;
+}
+
+// Engineering segment label resolution
+export function engineeringSegmentLabel(
+  segmentId: string,
+  model: { branches?: Array<{ ref_id?: string; id?: string; name?: string; label?: string }> } | null,
+  isTerrainSnSegment: (branch: { ref_id?: string; id?: string }) => boolean,
+): string {
+  const branch = model?.branches?.find(
+    (candidate) => candidate.ref_id === segmentId || candidate.id === segmentId,
+  );
+  const terrainBranches = (model?.branches ?? []).filter(isTerrainSnSegment);
+  const terrainIndex = terrainBranches.findIndex(
+    (candidate) => candidate.ref_id === segmentId || candidate.id === segmentId,
+  );
+  const publicLabel = (branch?.name ?? branch?.label ?? '').trim();
+  if (
+    publicLabel
+    && !/\b(?:seg|ref|hash)\b/i.test(publicLabel)
+    && !/\/segment\b/i.test(publicLabel)
+  ) {
+    return publicLabel;
+  }
+  if (terrainIndex >= 0) {
+    return `Odcinek ${String(terrainIndex + 1).padStart(2, '0')}`;
+  }
+  const match = segmentId.match(/(?:seg|segment|odcinek)[_/-]?(\d+)/i);
+  if (match?.[1]) {
+    return `Odcinek ${String(Number(match[1])).padStart(2, '0')}`;
+  }
+  return 'Odcinek SN';
+}
+
 export function buildDefaultSnFields(stationKind: TopologicalStationKind): Array<{
   field_role: SnFieldRole;
   catalog_bindings: null;

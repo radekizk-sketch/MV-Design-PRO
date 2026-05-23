@@ -44,7 +44,16 @@ import {
   contextString,
   resolveSegmentIdFromContext,
   elementTypeFromSelectionHint,
+  deriveSnVoltageKv,
+  engineeringSegmentLabel as engineeringSegmentLabelHelper,
 } from './InsertStationFormHelpers';
+
+function engineeringSegmentLabel(
+  segmentId: string,
+  model: { branches?: Array<{ ref_id?: string; id?: string; name?: string; label?: string }> } | null,
+): string {
+  return engineeringSegmentLabelHelper(segmentId, model, isTerrainSnSegment);
+}
 import { useSnapshotStore, selectBusOptions } from '../../topology/snapshotStore';
 import { useActiveOperationContext, useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
@@ -378,7 +387,7 @@ const NN_CONFIGURATION_OPTIONS: NnConfigurationOption[] = [
 const NN_VOLTAGE_OPTIONS_KV = [0.4, 0.5, 0.69, 0.8, 1, 3.15, 6, 6.3];
 const STATION_SN_SIDE_REF = '__station_sn_side__';
 const STATION_NN_SIDE_REF = '__station_nn_side__';
-const DEFAULT_SN_VOLTAGE_KV = 15;
+// DEFAULT_SN_VOLTAGE_KV moved to InsertStationFormHelpers.ts
 // DEFAULT_RECEIVER_NN_VOLTAGE_KV moved to InsertStationFormHelpers.ts
 const DEFAULT_CUSTOM_NN_VOLTAGE_KV = 0.69;
 const SN_VOLTAGE_TOLERANCE_KV = 0.01;
@@ -431,35 +440,7 @@ function toConverterCatalogEntries(types: ConverterType[]): CatalogEntry[] {
   }));
 }
 
-function deriveSnVoltageKv(
-  snapshot: unknown,
-  busOptions: Array<{ ref_id: string; name: string; voltage_kv: number }>,
-  segmentId: string,
-): number {
-  const model = snapshot as {
-    branches?: Array<{
-      id?: string;
-      ref_id?: string;
-      from_bus_ref?: string | null;
-      to_bus_ref?: string | null;
-    }>;
-  } | null;
-  const segment = model?.branches?.find(
-    (branch) => branch.ref_id === segmentId || branch.id === segmentId,
-  );
-  const segmentBusRef = segment?.from_bus_ref ?? segment?.to_bus_ref ?? null;
-  const segmentBusVoltage = busOptions.find((bus) => bus.ref_id === segmentBusRef)?.voltage_kv;
-  if (
-    typeof segmentBusVoltage === 'number'
-    && Number.isFinite(segmentBusVoltage)
-    && segmentBusVoltage > 0
-  ) {
-    return segmentBusVoltage;
-  }
-
-  const firstMvBus = busOptions.find((bus) => bus.voltage_kv >= 1 && bus.voltage_kv < 60);
-  return firstMvBus?.voltage_kv ?? DEFAULT_SN_VOLTAGE_KV;
-}
+// deriveSnVoltageKv moved to InsertStationFormHelpers.ts
 
 // contextString moved to InsertStationFormHelpers.ts
 
@@ -467,34 +448,7 @@ function deriveSnVoltageKv(
 
 // branchExists moved to InsertStationFormHelpers.ts
 
-function engineeringSegmentLabel(
-  segmentId: string,
-  model: { branches?: Array<{ ref_id?: string; id?: string; name?: string; label?: string }> } | null,
-): string {
-  const branch = model?.branches?.find(
-    (candidate) => candidate.ref_id === segmentId || candidate.id === segmentId,
-  );
-  const terrainBranches = (model?.branches ?? []).filter(isTerrainSnSegment);
-  const terrainIndex = terrainBranches.findIndex(
-    (candidate) => candidate.ref_id === segmentId || candidate.id === segmentId,
-  );
-  const publicLabel = (branch?.name ?? branch?.label ?? '').trim();
-  if (
-    publicLabel
-    && !/\b(?:seg|ref|hash)\b/i.test(publicLabel)
-    && !/\/segment\b/i.test(publicLabel)
-  ) {
-    return publicLabel;
-  }
-  if (terrainIndex >= 0) {
-    return `Odcinek ${String(terrainIndex + 1).padStart(2, '0')}`;
-  }
-  const match = segmentId.match(/(?:seg|segment|odcinek)[_/-]?(\d+)/i);
-  if (match?.[1]) {
-    return `Odcinek ${String(Number(match[1])).padStart(2, '0')}`;
-  }
-  return 'Odcinek SN';
-}
+// engineeringSegmentLabel moved to InsertStationFormHelpers.ts (z DI dla isTerrainSnSegment)
 
 // stationNameFromData moved to InsertStationFormHelpers.ts
 
