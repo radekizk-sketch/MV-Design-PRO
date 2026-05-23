@@ -44,6 +44,11 @@ import {
   NopSurface,
 } from './surfaces/InfrastructureSurfaces';
 import { PvSourceSurface, BessSurface, FwSurface } from './surfaces/DerSurfaces';
+import {
+  AuditTrailSurface,
+  SensitivityResultsSurface,
+  ReportsSurface,
+} from './routerExtensionSurfaces';
 import { useExecutionRunsStore } from '../study-cases/runStore';
 import { ANALYSIS_TYPE_LABELS } from '../study-cases/types';
 import {
@@ -2267,6 +2272,15 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'E-23':
       // Etap 5 dostawy: Farma wiatrowa.
       return <FwSurface surface={surface} />;
+    case 'E-09':
+      // Etap 17 dostawy: Historia i audyt operacji.
+      return <AuditTrailSurface surface={surface} />;
+    case 'E-35':
+      // Etap 10/11 dostawy: Wyniki i porównania (Sensitivity analysis).
+      return <SensitivityResultsSurface surface={surface} />;
+    case 'E-37':
+      // Etap 13/14 dostawy: Raporty OSD i audytowe.
+      return <ReportsSurface surface={surface} />;
     default:
       break;
   }
