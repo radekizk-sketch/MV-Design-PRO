@@ -170,7 +170,7 @@ export function UpdateElementParametersForm() {
       </div>
 
       <label className="flex items-center gap-2 text-[11px] font-medium text-gray-700">
-        <input
+        <input title="manual equivalent toggle"
           checked={manualEquivalent}
           data-testid="manual-equivalent-toggle"
           onChange={(event) => setManualEquivalent(event.target.checked)}
@@ -187,21 +187,21 @@ export function UpdateElementParametersForm() {
 
           {entries.map((entry, index) => (
             <div key={`override-${index}`} className="grid gap-2 md:grid-cols-3">
-              <input
+              <input title="Pole edytowalne (zob. opis kolumny / wiersza)"
                 className="rounded border border-gray-300 px-2.5 py-1.5 text-xs"
                 data-testid={`manual-equivalent-key-${index}`}
                 placeholder="Klucz"
                 value={entry.key}
                 onChange={(event) => updateEntry(index, 'key', event.target.value)}
               />
-              <input
+              <input title="Pole edytowalne (zob. opis kolumny / wiersza)"
                 className="rounded border border-gray-300 px-2.5 py-1.5 text-xs"
                 data-testid={`manual-equivalent-value-${index}`}
                 placeholder="Wartość"
                 value={entry.value}
                 onChange={(event) => updateEntry(index, 'value', event.target.value)}
               />
-              <input
+              <input title="Pole edytowalne (zob. opis kolumny / wiersza)"
                 className="rounded border border-gray-300 px-2.5 py-1.5 text-xs"
                 data-testid={`manual-equivalent-reason-${index}`}
                 placeholder="Uzasadnienie"
@@ -224,7 +224,7 @@ export function UpdateElementParametersForm() {
         <>
           <label className="block">
             <span className="text-[11px] font-medium text-gray-700">Parametr</span>
-            <input
+            <input title="Parametr"
               value={parameterName}
               onChange={(event) => setParameterName(event.target.value)}
               placeholder="np. tap_position"
@@ -234,7 +234,7 @@ export function UpdateElementParametersForm() {
 
           <label className="block">
             <span className="text-[11px] font-medium text-gray-700">Wartość</span>
-            <input
+            <input title="Wartość"
               value={parameterValue}
               onChange={(event) => setParameterValue(event.target.value)}
               placeholder="np. 2, true, null"

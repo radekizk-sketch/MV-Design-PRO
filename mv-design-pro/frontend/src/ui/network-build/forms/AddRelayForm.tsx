@@ -212,7 +212,7 @@ export function AddRelayForm() {
           <div className="mt-3 grid gap-3 md:grid-cols-3">
             <label className="block">
               <span className="text-[11px] font-medium text-[#b8d6ef]">Pole SN</span>
-              <select
+              <select title="Pole SN"
                 value={bayRef}
                 onChange={(event) => setBayRef(event.target.value)}
                 className="mt-1 w-full rounded-md border border-[#2d4a63] bg-[#050c14] px-3 py-2 text-sm text-white"
@@ -228,7 +228,7 @@ export function AddRelayForm() {
 
             <label className="block">
               <span className="text-[11px] font-medium text-[#b8d6ef]">Aparat powiązany</span>
-              <select
+              <select title="Aparat powiązany"
                 value={breakerRef}
                 onChange={(event) => setBreakerRef(event.target.value)}
                 className="mt-1 w-full rounded-md border border-[#2d4a63] bg-[#050c14] px-3 py-2 text-sm text-white"
@@ -244,7 +244,7 @@ export function AddRelayForm() {
 
             <label className="block">
               <span className="text-[11px] font-medium text-[#b8d6ef]">Rodzina ochrony</span>
-              <select
+              <select title="Rodzina ochrony"
                 value={relayType}
                 onChange={(event) => setRelayType(event.target.value as RelayType)}
                 className="mt-1 w-full rounded-md border border-[#2d4a63] bg-[#050c14] px-3 py-2 text-sm text-white"
@@ -280,7 +280,7 @@ export function AddRelayForm() {
           <div className="text-[11px] font-semibold uppercase tracking-wide text-cyan-300">Typ katalogowy</div>
           <label className="mt-3 block">
             <span className="text-[11px] font-medium text-[#b8d6ef]">Zabezpieczenie z katalogu</span>
-            <select
+            <select title="Zabezpieczenie z katalogu"
               value={catalogItemId}
               onChange={(event) => setCatalogItemId(event.target.value)}
               className="mt-1 w-full rounded-md border border-[#2d4a63] bg-[#050c14] px-3 py-2 text-sm text-white"

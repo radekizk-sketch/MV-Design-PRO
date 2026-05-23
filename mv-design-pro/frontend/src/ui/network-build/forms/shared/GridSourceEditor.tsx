@@ -966,7 +966,7 @@ export function GridSourceEditor({
               </div>
 
               <FieldShell label="Typ źródła z katalogu" error={getFieldError('catalog_ref')}>
-                <select
+                <select title="Pole edytowalne (zob. opis kolumny / wiersza)"
                   value={formData.catalog_ref ?? ''}
                   onChange={(event) => handleCatalogSelect(event.target.value)}
                   disabled={catalogStatus === 'loading'}
@@ -1019,7 +1019,7 @@ export function GridSourceEditor({
               </FieldShell>
 
               <FieldShell label="Oznaczenie">
-                <input
+                <input title="Pole edytowalne (zob. opis kolumny / wiersza)"
                   type="text"
                   value={sourceIdentifier}
                   readOnly
@@ -1031,7 +1031,7 @@ export function GridSourceEditor({
                 label="Napięcie SN"
                 tooltip="Napięcie nominalne sieci SN na szynach GPZ. Standardowe polskie poziomy: 15 kV (najczęściej, kable XLPE 12/20 kV), 20 kV (15.75 kV → 21 kV - rozbudowa), 30 kV (sieci napowietrzne długie). Wpływa na dobór katalogu transformatorów WN/SN i kabli."
               >
-                <select
+                <select title="Pole edytowalne (zob. opis kolumny / wiersza)"
                   value={formData.sn_voltage_kv ?? ''}
                   onChange={(event) => handleChange('sn_voltage_kv', Number(event.target.value))}
                   className={selectClass(getFieldError('sn_voltage_kv'))}
@@ -1050,7 +1050,7 @@ export function GridSourceEditor({
                 tooltip="Typ układu uziemienia punktu neutralnego sieci SN wg PN-EN 50522 § 4.5. Wpływa na prąd zwarcia jednofazowego, koordynację zabezpieczeń ziemnozwarciowych (51G/50GN/67N) i parametry urządzeń ochronnych."
                 helperText={describeGroundingType(formData.grounding_type)}
               >
-                <select
+                <select title="Pole edytowalne (zob. opis kolumny / wiersza)"
                   value={formData.grounding_type}
                   onChange={(event) =>
                     handleChange('grounding_type', event.target.value as GpzGroundingType)
@@ -1072,7 +1072,7 @@ export function GridSourceEditor({
                     : 'grounding_r_ohm',
                 )}
               >
-                <input
+                <input title="Pole edytowalne (zob. opis kolumny / wiersza)"
                   type="number"
                   value={
                     formData.grounding_type === 'petersen_coil'
@@ -1123,7 +1123,7 @@ export function GridSourceEditor({
             <div className="grid gap-3 xl:grid-cols-2 2xl:grid-cols-3">
               {isHvShortCircuitInput && (
                 <FieldShell label="Napiecie szyny WN" unit="kV" error={getFieldError('hv_voltage_kv')}>
-                  <input
+                  <input title="Pole edytowalne (zob. opis kolumny / wiersza)"
                     type="number"
                     value={formData.hv_voltage_kv ?? ''}
                     onChange={handleNumericChange('hv_voltage_kv')}
@@ -1138,7 +1138,7 @@ export function GridSourceEditor({
                 error={getFieldError(shortCircuitPowerField)}
                 tooltip="Sk'' - początkowa symetryczna moc zwarciowa 3-faz (IEC 60909). Maksymalna wartość z dokumentacji PSE/OSD dla danego węzła sieciowego. Wpływa na dobór wyłączników (icc), kabli (Ith) i zabezpieczeń (Iset)."
               >
-                <input
+                <input title="Pole edytowalne (zob. opis kolumny / wiersza)"
                   type="number"
                   value={isHvShortCircuitInput ? formData.sk3_hv_mva ?? '' : formData.sk3_mva ?? ''}
                   onChange={handleNumericChange(shortCircuitPowerField)}
@@ -1152,7 +1152,7 @@ export function GridSourceEditor({
                   error={getFieldError('rx_ratio')}
                   tooltip="Stosunek rezystancji do reaktancji impedancji zastępczej źródła (IEC 60909). Wpływa na fazor prądu zwarciowego i prąd udarowy ip. Typowo R/X = 0.05-0.2 dla sieci 110 kV, 0.1-0.3 dla SN."
                 >
-                  <input
+                  <input title="Pole edytowalne (zob. opis kolumny / wiersza)"
                     type="number"
                     step="0.01"
                     value={formData.rx_ratio ?? ''}
@@ -1171,7 +1171,7 @@ export function GridSourceEditor({
               </FieldShell>
 
               <FieldShell label="Czas cieplny tk" unit="s" error={getFieldError('thermal_time_s')}>
-                <input
+                <input title="Pole edytowalne (zob. opis kolumny / wiersza)"
                   type="number"
                   min={0.1}
                   step={0.1}
@@ -1249,7 +1249,7 @@ export function GridSourceEditor({
               </FieldShell>
 
               <FieldShell label="Transformatory 110/SN" error={getFieldError('transformer_count')}>
-                <select
+                <select title="Pole edytowalne (zob. opis kolumny / wiersza)"
                   value={formData.transformer_count}
                   onChange={(event) => handleChange('transformer_count', Number(event.target.value))}
                   className={selectClass(getFieldError('transformer_count'))}
@@ -1262,7 +1262,7 @@ export function GridSourceEditor({
               </FieldShell>
 
               <FieldShell label="Bazowa nazwa sekcji GPZ" error={getFieldError('gpz_section_name')}>
-                <input
+                <input title="Pole edytowalne (zob. opis kolumny / wiersza)"
                   type="text"
                   value={formData.gpz_section_name}
                   onChange={(event) => handleChange('gpz_section_name', event.target.value)}
@@ -1271,7 +1271,7 @@ export function GridSourceEditor({
               </FieldShell>
 
               <FieldShell label="Bazowa nazwa pola liniowego" error={getFieldError('gpz_line_field_name')}>
-                <input
+                <input title="Pole edytowalne (zob. opis kolumny / wiersza)"
                   type="text"
                   value={formData.gpz_line_field_name}
                   onChange={(event) => handleChange('gpz_line_field_name', event.target.value)}
@@ -1283,7 +1283,7 @@ export function GridSourceEditor({
                 label="Liczba pól liniowych na sekcję"
                 error={getFieldError('line_fields_per_section')}
               >
-                <select
+                <select title="Pole edytowalne (zob. opis kolumny / wiersza)"
                   value={formData.line_fields_per_section}
                   onChange={(event) =>
                     handleChange('line_fields_per_section', Number(event.target.value))
@@ -1301,7 +1301,7 @@ export function GridSourceEditor({
 
             <div className="grid gap-3 xl:grid-cols-[180px_minmax(0,1fr)]">
               <FieldShell label="Aparat pól liniowych">
-                <select
+                <select title="Pole edytowalne (zob. opis kolumny / wiersza)"
                   value={formData.gpz_line_field_apparatus_kind}
                   onChange={(event) => {
                     handleChange(
@@ -1322,7 +1322,7 @@ export function GridSourceEditor({
                 label="Typ katalogowy aparatu GPZ"
                 error={getFieldError('gpz_line_field_apparatus_catalog_ref')}
               >
-                <select
+                <select title="Pole edytowalne (zob. opis kolumny / wiersza)"
                   value={formData.gpz_line_field_apparatus_catalog_ref ?? ''}
                   onChange={(event) =>
                     handleChange('gpz_line_field_apparatus_catalog_ref', event.target.value || null)
@@ -1404,7 +1404,7 @@ export function GridSourceEditor({
 
             <div className="grid gap-3 xl:grid-cols-2 2xl:grid-cols-3">
               <FieldShell label="R0 [ohm]" error={getFieldError('r0_ohm')}>
-                <input
+                <input title="Pole edytowalne (zob. opis kolumny / wiersza)"
                   type="number"
                   value={formData.r0_ohm ?? ''}
                   onChange={handleNumericChange('r0_ohm')}
@@ -1413,7 +1413,7 @@ export function GridSourceEditor({
                 />
               </FieldShell>
               <FieldShell label="X0 [ohm]" error={getFieldError('x0_ohm')}>
-                <input
+                <input title="Pole edytowalne (zob. opis kolumny / wiersza)"
                   type="number"
                   value={formData.x0_ohm ?? ''}
                   onChange={handleNumericChange('x0_ohm')}
@@ -1422,7 +1422,7 @@ export function GridSourceEditor({
                 />
               </FieldShell>
               <FieldShell label="Z0/Z1" error={getFieldError('z0_z1_ratio')}>
-                <input
+                <input title="Pole edytowalne (zob. opis kolumny / wiersza)"
                   type="number"
                   value={formData.z0_z1_ratio ?? ''}
                   onChange={handleNumericChange('z0_z1_ratio')}

@@ -82,7 +82,7 @@ function PhaseEditor({ phase, points, catalogReadOnly, onChange }: PhaseEditorPr
           {points.map((p, idx) => (
             <tr key={idx} data-testid={`frt-${phase}-row-${idx}`}>
               <td>
-                <input
+                <input title="U [pu]"
                   type="number"
                   step="0.01"
                   value={p.t_s}
@@ -93,7 +93,7 @@ function PhaseEditor({ phase, points, catalogReadOnly, onChange }: PhaseEditorPr
                 />
               </td>
               <td>
-                <input
+                <input title="U [pu]"
                   type="number"
                   step="0.01"
                   value={p.u_pu}
@@ -187,7 +187,7 @@ export function FrtProfileForm({ initial, onSubmit, onCancel }: FrtProfileFormPr
 
       <label className="text-xs flex items-center gap-2">
         Standard:
-        <select
+        <select title="Standard:"
           value={standard ?? 'EN_50549'}
           disabled={catalogRef !== undefined}
           onChange={(e) => setStandard(e.target.value as FrtProfile['standard'])}

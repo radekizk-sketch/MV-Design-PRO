@@ -862,7 +862,7 @@ export function AddConverterSourceForm() {
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block">
             <span className="text-[11px] font-medium text-slate-700">Nazwa układu</span>
-            <input
+            <input title="Nazwa układu"
               value={sourceName}
               onChange={(event) => setSourceName(event.target.value)}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -871,7 +871,7 @@ export function AddConverterSourceForm() {
           </label>
           <label className="block">
             <span className="text-[11px] font-medium text-slate-700">Liczba jednostek</span>
-            <input
+            <input title="Liczba jednostek"
               value={quantity}
               onChange={(event) => setQuantity(event.target.value)}
               type="number"
@@ -889,7 +889,7 @@ export function AddConverterSourceForm() {
             </div>
             <label className="block">
               <span className="text-[11px] font-medium text-slate-700">Szyna nN</span>
-              <select
+              <select title="Szyna nN"
                 value={busNnRef}
                 onChange={(event) => setBusNnRef(event.target.value)}
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -934,7 +934,7 @@ export function AddConverterSourceForm() {
                   <span className="text-[11px] font-medium text-slate-700">
                     Istniejące pole przyłączeniowe
                   </span>
-                  <select
+                  <select title="Istniejące pole przyłączeniowe"
                     value={existingFieldRef}
                     onChange={(event) => setExistingFieldRef(event.target.value)}
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -964,7 +964,7 @@ export function AddConverterSourceForm() {
                   <span className="text-[11px] font-medium text-slate-700">
                     Nazwa nowego pola
                   </span>
-                  <input
+                  <input title="Nazwa nowego pola"
                     value={newFieldName}
                     onChange={(event) => setNewFieldName(event.target.value)}
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -990,7 +990,7 @@ export function AddConverterSourceForm() {
                 <span className="text-[11px] font-medium text-slate-700">
                   Transformator blokowy
                 </span>
-                <select
+                <select title="Transformator blokowy"
                   value={transformerRef}
                   onChange={(event) => setTransformerRef(event.target.value)}
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -1088,7 +1088,7 @@ export function AddConverterSourceForm() {
               required
             />
             <label className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-              <input
+              <input title="Pole edytowalne (zob. opis kolumny / wiersza)"
                 type="checkbox"
                 checked={autoFillFromCatalog}
                 onChange={(event) => setAutoFillFromCatalog(event.target.checked)}
@@ -1138,7 +1138,7 @@ export function AddConverterSourceForm() {
                   <span className="text-[11px] font-medium text-slate-700">
                     Szukaj producent/model/dokument
                   </span>
-                  <input
+                  <input title="Szukaj producent/model/dokument"
                     value={ptpireeQuery}
                     onChange={(event) => setPtpireeQuery(event.target.value)}
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -1153,7 +1153,7 @@ export function AddConverterSourceForm() {
                   <span className="text-[11px] font-medium text-slate-700">
                     Pozycja z wykazu
                   </span>
-                  <select
+                  <select title="Pozycja z wykazu"
                     aria-label="Certyfikat PTPiREE"
                     value={ptpireeCertificateId}
                     onChange={(event) => setPtpireeCertificateId(event.target.value)}
@@ -1235,7 +1235,7 @@ export function AddConverterSourceForm() {
           <div className="mt-3 grid gap-4 md:grid-cols-2">
             <label className="block">
               <span className="text-[11px] font-medium text-slate-700">Tryb sterowania</span>
-              <select
+              <select title="Tryb sterowania"
                 value={controlMode}
                 onChange={(event) => setControlMode(event.target.value)}
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -1250,7 +1250,7 @@ export function AddConverterSourceForm() {
               <span className="text-[11px] font-medium text-slate-700">
                 Moc robocza P [MW]
               </span>
-              <input
+              <input title="Moc robocza P [MW]"
                 value={powerSetpointMw}
                 onChange={(event) => {
                   setPowerSetpointMw(event.target.value);
@@ -1262,7 +1262,7 @@ export function AddConverterSourceForm() {
             </label>
             <label className="block">
               <span className="text-[11px] font-medium text-slate-700">Qmin [Mvar]</span>
-              <input
+              <input title="Qmin [Mvar]"
                 value={qMinMvar}
                 onChange={(event) => {
                   setQMinMvar(event.target.value);
@@ -1274,7 +1274,7 @@ export function AddConverterSourceForm() {
             </label>
             <label className="block">
               <span className="text-[11px] font-medium text-slate-700">Qmax [Mvar]</span>
-              <input
+              <input title="Qmax [Mvar]"
                 value={qMaxMvar}
                 onChange={(event) => {
                   setQMaxMvar(event.target.value);
@@ -1290,7 +1290,7 @@ export function AddConverterSourceForm() {
             <div className="mt-4 grid gap-4 md:grid-cols-3">
               <label className="block">
                 <span className="text-[11px] font-medium text-slate-700">Tryb pracy BESS</span>
-                <select
+                <select title="Tryb pracy BESS"
                   value={bessMode}
                   onChange={(event) => setBessMode(event.target.value)}
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -1303,7 +1303,7 @@ export function AddConverterSourceForm() {
               </label>
               <label className="block">
                 <span className="text-[11px] font-medium text-slate-700">SoC min [%]</span>
-                <input
+                <input title="SoC min [%]"
                   value={socMinPercent}
                   onChange={(event) => setSocMinPercent(event.target.value)}
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -1311,7 +1311,7 @@ export function AddConverterSourceForm() {
               </label>
               <label className="block">
                 <span className="text-[11px] font-medium text-slate-700">SoC max [%]</span>
-                <input
+                <input title="SoC max [%]"
                   value={socMaxPercent}
                   onChange={(event) => setSocMaxPercent(event.target.value)}
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"

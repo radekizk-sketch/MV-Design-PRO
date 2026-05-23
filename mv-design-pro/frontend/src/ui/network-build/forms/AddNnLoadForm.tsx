@@ -240,7 +240,7 @@ export function AddNnLoadForm() {
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="text-[11px] font-medium text-slate-700">Szyna nN</span>
-            <select
+            <select title="Szyna nN"
               value={busNnRef}
               onChange={(event) => setBusNnRef(event.target.value)}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -256,7 +256,7 @@ export function AddNnLoadForm() {
 
           <label className="block">
             <span className="text-[11px] font-medium text-slate-700">Odpływ nN</span>
-            <select
+            <select title="Odpływ nN"
               value={feederRef}
               onChange={(event) => setFeederRef(event.target.value)}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -289,7 +289,7 @@ export function AddNnLoadForm() {
 
         <label className="block">
           <span className="text-[11px] font-medium text-slate-700">Nazwa odbioru</span>
-          <input
+          <input title="Nazwa odbioru"
             value={loadName}
             onChange={(event) => setLoadName(event.target.value)}
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -303,7 +303,7 @@ export function AddNnLoadForm() {
           </div>
           <label className="mt-2 block">
             <span className="text-[11px] font-medium text-slate-700">Typ obciążenia z katalogu</span>
-            <select
+            <select title="Typ obciążenia z katalogu"
               value={selectedCatalogId}
               onChange={(event) => setSelectedCatalogId(event.target.value)}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -331,7 +331,7 @@ export function AddNnLoadForm() {
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="text-[11px] font-medium text-slate-700">Rodzaj obciążenia</span>
-            <select
+            <select title="Rodzaj obciążenia"
               value={loadKind}
               onChange={(event) => setLoadKind(event.target.value as LoadKind)}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -343,7 +343,7 @@ export function AddNnLoadForm() {
 
           <label className="block">
             <span className="text-[11px] font-medium text-slate-700">Przyłączenie</span>
-            <select
+            <select title="Przyłączenie"
               value={connectionType}
               onChange={(event) => setConnectionType(event.target.value as ConnectionType)}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -357,7 +357,7 @@ export function AddNnLoadForm() {
         <div className="grid grid-cols-3 gap-3">
           <label className="block">
             <span className="text-[11px] font-medium text-slate-700">Moc czynna [kW]</span>
-            <input
+            <input title="Moc czynna [kW]"
               type="number"
               min="0"
               step="0.1"
@@ -369,7 +369,7 @@ export function AddNnLoadForm() {
 
           <label className="block">
             <span className="text-[11px] font-medium text-slate-700">cos φ</span>
-            <input
+            <input title="cos φ"
               type="number"
               min="0"
               max="1"
@@ -382,7 +382,7 @@ export function AddNnLoadForm() {
 
           <label className="block">
             <span className="text-[11px] font-medium text-slate-700">Moc bierna [kvar]</span>
-            <input
+            <input title="Moc bierna [kvar]"
               type="number"
               step="0.1"
               value={reactivePowerKvar}
@@ -395,7 +395,7 @@ export function AddNnLoadForm() {
 
         <label className="block">
           <span className="text-[11px] font-medium text-slate-700">Profil obciążenia</span>
-          <input
+          <input title="Profil obciążenia"
             value={loadProfileRef}
             onChange={(event) => setLoadProfileRef(event.target.value)}
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"

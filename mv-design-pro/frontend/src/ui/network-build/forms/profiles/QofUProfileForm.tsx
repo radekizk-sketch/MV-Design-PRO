@@ -108,7 +108,7 @@ export function QofUProfileForm({ initial, onSubmit, onCancel }: QofUProfileForm
           {points.map((p, idx) => (
             <tr key={idx} data-testid={`qu-row-${idx}`}>
               <td>
-                <input
+                <input title="Q [Mvar]"
                   type="number"
                   step="0.01"
                   value={p.u_pu}
@@ -119,7 +119,7 @@ export function QofUProfileForm({ initial, onSubmit, onCancel }: QofUProfileForm
                 />
               </td>
               <td>
-                <input
+                <input title="Q [Mvar]"
                   type="number"
                   step="0.01"
                   value={p.q_mvar}
@@ -159,7 +159,7 @@ export function QofUProfileForm({ initial, onSubmit, onCancel }: QofUProfileForm
 
         <label className="text-xs flex items-center gap-1 ml-auto">
           Histereza [pu]:
-          <input
+          <input title="Histereza [pu]:"
             type="number"
             step="0.001"
             value={hysteresis}

@@ -348,7 +348,7 @@ export function AddSnBayForm() {
           <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
             Szyna SN
           </span>
-          <select
+          <select title="Szyna SN"
             value={busRef}
             onChange={(event) => setBusRef(event.target.value)}
             className="mt-1 w-full border border-[#2a4562] bg-[#08111d] px-3 py-2 text-sm text-white outline-none focus:border-[#04d6ff]"
@@ -366,7 +366,7 @@ export function AddSnBayForm() {
           <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
             Rola pola
           </span>
-          <select
+          <select title="Rola pola"
             value={bayRole}
             onChange={(event) => setBayRole(event.target.value as SnBayRole)}
             className="mt-1 w-full border border-[#2a4562] bg-[#08111d] px-3 py-2 text-sm text-white outline-none focus:border-[#04d6ff]"
@@ -386,7 +386,7 @@ export function AddSnBayForm() {
           <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
             Rodzaj aparatu głównego
           </span>
-          <select
+          <select title="Rodzaj aparatu głównego"
             value={apparatusKind}
             onChange={(event) => setApparatusKind(event.target.value as ApparatusKind)}
             className="mt-1 w-full border border-[#2a4562] bg-[#08111d] px-3 py-2 text-sm text-white outline-none focus:border-[#04d6ff]"
@@ -406,7 +406,7 @@ export function AddSnBayForm() {
           <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
             Nazwa pola
           </span>
-          <input
+          <input title="Nazwa pola"
             value={fieldName}
             onChange={(event) => setFieldName(event.target.value)}
             className="mt-1 w-full border border-[#2a4562] bg-[#08111d] px-3 py-2 text-sm text-white outline-none focus:border-[#04d6ff]"
@@ -426,7 +426,7 @@ export function AddSnBayForm() {
             <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
               Identyfikator aparatu z katalogu
             </span>
-            <input
+            <input title="Identyfikator aparatu z katalogu"
               value={catalogItemId}
               onChange={(event) => setCatalogItemId(event.target.value)}
               className="mt-1 w-full border border-[#2a4562] bg-[#08111d] px-3 py-2 font-mono-eng text-sm text-white outline-none focus:border-[#04d6ff]"

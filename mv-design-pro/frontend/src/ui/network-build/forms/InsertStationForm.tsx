@@ -1602,7 +1602,7 @@ export function InsertStationForm() {
                 <span className="font-mono-eng text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
                   Rodzina / typ rozdzielnicy
                 </span>
-                <select
+                <select title="Rodzina / typ rozdzielnicy"
                   id="insert-station-switchgear-family"
                   value={selectedFamilyRef ?? ''}
                   onChange={(event) => setSelectedFamilyRef(event.target.value || null)}
@@ -1643,7 +1643,7 @@ export function InsertStationForm() {
                       <div className="font-semibold text-white">
                         {FIELD_ROLE_LABELS[field.field_role] ?? field.field_role}
                       </div>
-                      <select
+                      <select title="Pole edytowalne (zob. opis kolumny / wiersza)"
                         aria-label={`Szablon pola ${FIELD_ROLE_LABELS[field.field_role] ?? field.field_role}`}
                         value={field.bay_template_ref ?? ''}
                         onChange={(event) => {
@@ -1741,7 +1741,7 @@ export function InsertStationForm() {
                 <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
                   Domyślne napięcie rozdzielni nN
                 </span>
-                <select
+                <select title="Domyślne napięcie rozdzielni nN"
                   id="insert-station-receiver-voltage"
                   value={receiverNnVoltageKv}
                   onChange={(event) => setReceiverNnVoltageKv(Number(event.target.value))}
@@ -1761,7 +1761,7 @@ export function InsertStationForm() {
                 <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
                   Własne napięcie strony nN
                 </span>
-                <select
+                <select title="Własne napięcie strony nN"
                   id="insert-station-custom-voltage"
                   value={customNnVoltageKv}
                   onChange={(event) => setCustomNnVoltageKv(Number(event.target.value))}
@@ -1828,7 +1828,7 @@ export function InsertStationForm() {
               <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
                 Liczba odpływów nN odbiorczych
               </span>
-              <input
+              <input title="Liczba odpływów nN odbiorczych"
                 id="insert-station-outgoing-feeders"
                 type="number"
                 min={1}

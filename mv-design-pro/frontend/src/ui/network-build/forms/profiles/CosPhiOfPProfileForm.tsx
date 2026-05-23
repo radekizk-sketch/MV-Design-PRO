@@ -91,7 +91,7 @@ export function CosPhiOfPProfileForm({ initial, onSubmit, onCancel }: CosPhiOfPP
           {points.map((p, idx) => (
             <tr key={idx} data-testid={`cosphi-row-${idx}`}>
               <td>
-                <input
+                <input title="cos φ"
                   type="number"
                   step="0.01"
                   value={p.p_pu}
@@ -102,7 +102,7 @@ export function CosPhiOfPProfileForm({ initial, onSubmit, onCancel }: CosPhiOfPP
                 />
               </td>
               <td>
-                <input
+                <input title="cos φ"
                   type="number"
                   step="0.01"
                   value={p.cos_phi}

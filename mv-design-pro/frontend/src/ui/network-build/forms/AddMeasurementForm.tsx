@@ -240,7 +240,7 @@ export function AddMeasurementForm() {
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             <label className="block">
               <span className="text-[11px] font-medium text-[#b8d6ef]">Pole SN</span>
-              <select
+              <select title="Pole SN"
                 value={bayRef}
                 onChange={(event) => setBayRef(event.target.value)}
                 className="mt-1 w-full rounded-md border border-[#2d4a63] bg-[#050c14] px-3 py-2 text-sm text-white"
@@ -258,7 +258,7 @@ export function AddMeasurementForm() {
               <span className="text-[11px] font-medium text-[#b8d6ef]">
                 {isCt ? 'Przekładnik prądowy z katalogu' : 'Przekładnik napięciowy z katalogu'}
               </span>
-              <select
+              <select title="Pole edytowalne (zob. opis kolumny / wiersza)"
                 value={catalogRef}
                 onChange={(event) => setCatalogRef(event.target.value)}
                 className="mt-1 w-full rounded-md border border-[#2d4a63] bg-[#050c14] px-3 py-2 text-sm text-white"
@@ -296,7 +296,7 @@ export function AddMeasurementForm() {
               <span className="text-[11px] font-medium text-[#b8d6ef]">
                 {isCt ? 'Przekładnia pierwotna [A]' : 'Przekładnia pierwotna [V]'}
               </span>
-              <input
+              <input title="Pole edytowalne (zob. opis kolumny / wiersza)"
                 type="number"
                 min="0"
                 step="any"
@@ -310,7 +310,7 @@ export function AddMeasurementForm() {
               <span className="text-[11px] font-medium text-[#b8d6ef]">
                 {isCt ? 'Przekładnia wtórna [A]' : 'Przekładnia wtórna [V]'}
               </span>
-              <input
+              <input title="Pole edytowalne (zob. opis kolumny / wiersza)"
                 type="number"
                 min="0"
                 step="any"
@@ -322,7 +322,7 @@ export function AddMeasurementForm() {
 
             <label className="block">
               <span className="text-[11px] font-medium text-[#b8d6ef]">Klasa dokładności</span>
-              <input
+              <input title="Klasa dokładności"
                 type="text"
                 value={accuracyClass}
                 onChange={(event) => setAccuracyClass(event.target.value)}
@@ -332,7 +332,7 @@ export function AddMeasurementForm() {
 
             <label className="block">
               <span className="text-[11px] font-medium text-[#b8d6ef]">Moc obciążeniowa [VA]</span>
-              <input
+              <input title="Moc obciążeniowa [VA]"
                 type="number"
                 min="0"
                 step="any"
