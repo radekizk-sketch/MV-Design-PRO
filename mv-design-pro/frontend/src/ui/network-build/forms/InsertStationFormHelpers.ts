@@ -358,6 +358,46 @@ export function branchExists(
   );
 }
 
+export function resolveSegmentIdFromContext(
+  context: Record<string, unknown> | undefined,
+  snapshot: unknown,
+): string {
+  const model = snapshot as {
+    branches?: Array<{
+      ref_id?: string;
+      id?: string;
+    }>;
+    corridors?: Array<{
+      ref_id?: string;
+      id?: string;
+      ordered_segment_refs?: string[];
+    }>;
+  } | null;
+  const resolveFromCorridor = (corridorRef: string): string => {
+    const corridor = model?.corridors?.find(
+      (candidate) => candidate.ref_id === corridorRef || candidate.id === corridorRef,
+    );
+    return corridor?.ordered_segment_refs?.find((ref) => branchExists(model, ref))?.trim()
+      ?? corridor?.ordered_segment_refs?.[0]?.trim()
+      ?? '';
+  };
+
+  const directSegmentId = contextString(context, ['segment_id', 'segment_ref']);
+  if (directSegmentId) {
+    if (branchExists(model, directSegmentId)) return directSegmentId;
+    const segmentFromCorridor = resolveFromCorridor(directSegmentId);
+    if (segmentFromCorridor) return segmentFromCorridor;
+
+    const firstAvailableBranch = model?.branches?.[0]?.ref_id ?? model?.branches?.[0]?.id ?? '';
+    if (firstAvailableBranch && directSegmentId.includes('corridor')) return firstAvailableBranch;
+    return directSegmentId;
+  }
+
+  const corridorRef = contextString(context, ['corridor_ref', 'trunk_id']);
+  if (!corridorRef) return '';
+  return resolveFromCorridor(corridorRef);
+}
+
 export function buildDefaultSnFields(stationKind: TopologicalStationKind): Array<{
   field_role: SnFieldRole;
   catalog_bindings: null;
