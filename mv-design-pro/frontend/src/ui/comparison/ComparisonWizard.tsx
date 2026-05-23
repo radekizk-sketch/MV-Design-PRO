@@ -1,8 +1,8 @@
 /**
  * ComparisonWizard — kreator porównania A/B dwóch przebiegów obliczeniowych (Etap 18 z planu).
  *
- * Krok 1: wybór Run A (z dropdown z dostępnych przebiegów)
- * Krok 2: wybór Run B (musi być różny od A, ten sam typ)
+ * Krok 1: wybór przebiegu A (z dropdown z dostępnych przebiegów)
+ * Krok 2: wybór przebiegu B (musi być różny od A, ten sam typ)
  * Krok 3: wybór typu porównania (PF / SC / Voltage Profile / Protection)
  * Krok 4: view results — delta visualization na SLD + side-by-side tables
  *
@@ -32,8 +32,8 @@ interface ComparisonWizardProps {
 type Step = 'run_a' | 'run_b' | 'type' | 'review';
 
 const STEP_LABELS: Record<Step, string> = {
-  run_a: 'Wybierz Run A',
-  run_b: 'Wybierz Run B',
+  run_a: 'Wybierz przebieg A',
+  run_b: 'Wybierz przebieg B',
   type: 'Typ porównania',
   review: 'Podsumowanie',
 };
@@ -124,7 +124,7 @@ export function ComparisonWizard({
       {step === 'run_a' && (
         <div>
           <label className="block text-sm font-medium text-slate-700">
-            Run A (przebieg referencyjny)
+            Przebieg referencyjny (A)
             <select
               value={runAId ?? ''}
               onChange={(e) => setRunAId(e.target.value || null)}
@@ -146,13 +146,13 @@ export function ComparisonWizard({
       {step === 'run_b' && (
         <div>
           <label className="block text-sm font-medium text-slate-700">
-            Run B (przebieg porównywany)
+            Przebieg porównywany (B)
             <select
               value={runBId ?? ''}
               onChange={(e) => setRunBId(e.target.value || null)}
               className="mt-1 block w-full rounded border border-slate-300 px-3 py-2 text-sm"
               data-testid="run-b-select"
-              title="Przebieg do porównania z Run A"
+              title="Przebieg do porównania z przebiegiem referencyjnym"
             >
               <option value="">— wybierz —</option>
               {runsAvailableForB.map((run) => (
@@ -190,12 +190,12 @@ export function ComparisonWizard({
       {step === 'review' && runA && runB && comparisonType && (
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="rounded border border-slate-200 p-3" data-testid="review-run-a">
-            <div className="font-semibold text-slate-700">Run A</div>
+            <div className="font-semibold text-slate-700">Przebieg A</div>
             <div>{runA.label}</div>
             <div className="text-xs text-slate-500">{formatRunDate(runA.timestamp)}</div>
           </div>
           <div className="rounded border border-slate-200 p-3" data-testid="review-run-b">
-            <div className="font-semibold text-slate-700">Run B</div>
+            <div className="font-semibold text-slate-700">Przebieg B</div>
             <div>{runB.label}</div>
             <div className="text-xs text-slate-500">{formatRunDate(runB.timestamp)}</div>
           </div>
