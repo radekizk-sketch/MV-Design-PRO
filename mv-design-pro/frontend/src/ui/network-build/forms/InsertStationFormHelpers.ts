@@ -486,6 +486,46 @@ export function engineeringSegmentLabel(
   return 'Odcinek SN';
 }
 
+// Template / role helpers
+export function findTemplateForRole(
+  templates: CompleteMvBayTemplateSummary[],
+  role: SnFieldRole,
+  bayKindMap: Record<SnFieldRole, BayKind>,
+): CompleteMvBayTemplateSummary | null {
+  return templateOptionsForRole(templates, role, bayKindMap)[0] ?? null;
+}
+
+export function templateOptionsForRole(
+  templates: CompleteMvBayTemplateSummary[],
+  role: SnFieldRole,
+  bayKindMap: Record<SnFieldRole, BayKind>,
+): CompleteMvBayTemplateSummary[] {
+  const bayKind = bayKindMap[role];
+  return templates
+    .filter((template) => template.bay_kind === bayKind)
+    .filter(isCompleteBayTemplate)
+    .sort(compareBayTemplateOptions);
+}
+
+// mergeStarterManufacturers (z DI dla STARTER list - pure)
+export function mergeStarterManufacturers(
+  loaded: Manufacturer[],
+  starters: Manufacturer[],
+): Manufacturer[] {
+  const merged = new Map<string, Manufacturer>();
+  for (const manufacturer of starters) {
+    merged.set(manufacturer.manufacturer_ref, manufacturer);
+  }
+  for (const manufacturer of loaded) {
+    const existing = merged.get(manufacturer.manufacturer_ref);
+    if (existing && isUsableManufacturer(existing) && !isUsableManufacturer(manufacturer)) {
+      continue;
+    }
+    merged.set(manufacturer.manufacturer_ref, manufacturer);
+  }
+  return orderManufacturers([...merged.values()]);
+}
+
 export function buildDefaultSnFields(stationKind: TopologicalStationKind): Array<{
   field_role: SnFieldRole;
   catalog_bindings: null;

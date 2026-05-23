@@ -17,10 +17,8 @@ import {
   stationPublicName,
   isCompleteSourceStatus,
   isCompleteBayTemplate,
-  compareBayTemplateOptions,
   bayKindLabel,
   templateOptionLabel,
-  orderManufacturers,
   isUsableManufacturer,
   isUsableSwitchgearFamily,
   isStationNnSourceConverter,
@@ -46,6 +44,9 @@ import {
   elementTypeFromSelectionHint,
   deriveSnVoltageKv,
   engineeringSegmentLabel as engineeringSegmentLabelHelper,
+  mergeStarterManufacturers as mergeStarterManufacturersHelper,
+  findTemplateForRole as findTemplateForRoleHelper,
+  templateOptionsForRole as templateOptionsForRoleHelper,
 } from './InsertStationFormHelpers';
 
 function engineeringSegmentLabel(
@@ -312,39 +313,25 @@ function buildStationSnFields(
 
 // orderManufacturers moved to InsertStationFormHelpers.ts
 
-function mergeStarterManufacturers(loaded: Manufacturer[]): Manufacturer[] {
-  const merged = new Map<string, Manufacturer>();
-  for (const manufacturer of STARTER_SWITCHGEAR_MANUFACTURERS) {
-    merged.set(manufacturer.manufacturer_ref, manufacturer);
-  }
-  for (const manufacturer of loaded) {
-    const existing = merged.get(manufacturer.manufacturer_ref);
-    if (existing && isUsableManufacturer(existing) && !isUsableManufacturer(manufacturer)) {
-      continue;
-    }
-    merged.set(manufacturer.manufacturer_ref, manufacturer);
-  }
-  return orderManufacturers([...merged.values()]);
-}
+// mergeStarterManufacturers, findTemplateForRole, templateOptionsForRole moved to helpers
+// Local wrappers injecting SN_FIELD_ROLE_TO_BAY_KIND + STARTER_SWITCHGEAR_MANUFACTURERS:
 
-// switchgearStatusLabel moved to InsertStationFormHelpers.ts
+function mergeStarterManufacturers(loaded: Manufacturer[]): Manufacturer[] {
+  return mergeStarterManufacturersHelper(loaded, STARTER_SWITCHGEAR_MANUFACTURERS);
+}
 
 function findTemplateForRole(
   templates: CompleteMvBayTemplateSummary[],
   role: SnFieldRole,
 ): CompleteMvBayTemplateSummary | null {
-  return templateOptionsForRole(templates, role)[0] ?? null;
+  return findTemplateForRoleHelper(templates, role, SN_FIELD_ROLE_TO_BAY_KIND);
 }
 
 function templateOptionsForRole(
   templates: CompleteMvBayTemplateSummary[],
   role: SnFieldRole,
 ): CompleteMvBayTemplateSummary[] {
-  const bayKind = SN_FIELD_ROLE_TO_BAY_KIND[role];
-  return templates
-    .filter((template) => template.bay_kind === bayKind)
-    .filter(isCompleteBayTemplate)
-    .sort(compareBayTemplateOptions);
+  return templateOptionsForRoleHelper(templates, role, SN_FIELD_ROLE_TO_BAY_KIND);
 }
 
 // 7 helpers (compareBayTemplateOptions, sourceStatusRank, isCompleteSourceStatus,
