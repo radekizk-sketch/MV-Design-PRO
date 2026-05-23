@@ -83,9 +83,13 @@ vi.mock('../../selection', () => ({
     }),
 }));
 
+const openRouteSurfaceSpy = vi.fn();
 vi.mock('../../network-build/networkBuildStore', () => ({
   useNetworkBuildStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({ activeSurface: mockNetworkBuildState.activeSurface }),
+    selector({
+      activeSurface: mockNetworkBuildState.activeSurface,
+      openRouteSurface: openRouteSurfaceSpy,
+    }),
   useNetworkBuildDerived: () => ({
     buildPhase: 'READY',
     buildPhaseLabel: 'Gotowy',
@@ -131,10 +135,7 @@ vi.mock('../../network-build/ProjectMetadataModal', () => ({
     isOpen ? <div data-testid="project-metadata-modal">{metadata?.projectName}</div> : null,
 }));
 
-vi.mock('../../network-build/SnapshotHistoryModal', () => ({
-  SnapshotHistoryModal: ({ isOpen }: { isOpen: boolean }) =>
-    isOpen ? <div data-testid="snapshot-history-modal" /> : null,
-}));
+// SnapshotHistoryModal mock removed (Phase 0 #3) - modal usunięty z kodu
 
 vi.mock('../../network-build/InspectorEngineeringView', () => ({
   InspectorEngineeringView: () => <div data-testid="inspector-engineering-view" />,
@@ -223,8 +224,12 @@ describe('AppShellV12 workflow strip actions', () => {
     expect(screen.getByTestId('project-metadata-modal')).toBeInTheDocument();
     expect(screen.getByTestId('project-metadata-modal')).toHaveTextContent('Projekt testowy');
 
+    // Phase 0 #3: SnapshotHistoryModal usunięte; przycisk historii nawiguje do E-09 przez openRouteSurface
     fireEvent.click(screen.getByTestId('wcs-history'));
-    expect(screen.getByTestId('snapshot-history-modal')).toBeInTheDocument();
+    expect(openRouteSurfaceSpy).toHaveBeenCalledWith(
+      'E-09',
+      expect.objectContaining({ subjectKind: 'analysis_run' }),
+    );
   });
 
   it('wypeĹ‚nia metadane nazwÄ… widocznÄ… w nagĹ‚Ăłwku, gdy store nie ma nazwy projektu', () => {
