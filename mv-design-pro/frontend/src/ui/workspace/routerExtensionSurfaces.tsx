@@ -17,6 +17,13 @@ import { OsdDataForm } from '../reports/OsdDataForm';
 import { ReportProfileSelector } from '../reports/ReportProfileSelector';
 import type { ReportProfileConfig } from '../reports/ReportProfileSelector';
 import { SensitivityPanel, type SensitivityEntry } from '../sensitivity/SensitivityPanel';
+import {
+  ComparisonWizard,
+  type ComparisonRun,
+  type ComparisonRunType,
+} from '../comparison';
+import { useExecutionRunsStore } from '../study-cases/runStore';
+import { useAppStateStore } from '../app-state';
 import { useSelectionStore } from '../selection';
 
 function selectElementByRef(
@@ -32,6 +39,65 @@ export function AuditTrailSurface({ surface: _surface }: { surface: WorkspaceSur
     <div className="space-y-4 p-4">
       <AuditTrailPanel onSelectElement={(ref) => selectElementByRef(selectElement, ref)} />
     </div>
+  );
+}
+
+/**
+ * AnalysisSurfaceComparisonWizard — tab "comparison_wizard" w E-35 AnalysisSurface.
+ * Renderuje ComparisonWizard A/B (Etap 18 dostawy).
+ */
+export function AnalysisSurfaceComparisonWizard({
+  onCompleted,
+  onCancel,
+}: {
+  onCompleted?: (runA: ComparisonRun, runB: ComparisonRun, comparisonType: ComparisonRunType) => void;
+  onCancel?: () => void;
+}): JSX.Element {
+  const executionRuns = useExecutionRunsStore((state) => state.runs);
+  const projectName = useAppStateStore((state) => state.activeProjectName);
+  const availableRuns: ComparisonRun[] = useMemo(
+    () =>
+      executionRuns
+        .filter((r) => r.status === 'DONE')
+        .map((r) => {
+          const isSc = r.analysis_type.startsWith('SC_');
+          const isLf = r.analysis_type === 'LOAD_FLOW';
+          const isPhase = r.analysis_type === 'PHASE_STATE_SN';
+          const runType: ComparisonRunType = isSc
+            ? 'short_circuit'
+            : isLf
+              ? 'power_flow'
+              : isPhase
+                ? 'voltage_profile'
+                : 'protection';
+          return {
+            id: r.id,
+            label: `${projectName ?? 'Wariant'} — ${r.analysis_type} (${r.finished_at?.slice(0, 16) ?? ''})`,
+            runType,
+            timestamp: r.finished_at ?? r.started_at ?? '',
+            caseRef: r.study_case_id,
+          };
+        }),
+    [executionRuns, projectName],
+  );
+
+  if (availableRuns.length < 2) {
+    return (
+      <div className="rounded border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-200">
+        <div className="font-semibold">Brak dostępnych przebiegów do porównania</div>
+        <p className="mt-1 text-xs">
+          Wymagane min. 2 ukończone przebiegi obliczeniowe. Uruchom obliczenia w co najmniej 2 wariantach.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <ComparisonWizard
+      availableRuns={availableRuns}
+      onConfirm={(runA, runB, comparisonType) => onCompleted?.(runA, runB, comparisonType)}
+      onCancel={() => onCancel?.()}
+    />
   );
 }
 

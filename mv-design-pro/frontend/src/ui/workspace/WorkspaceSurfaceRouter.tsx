@@ -45,6 +45,7 @@ import {
 } from './surfaces/InfrastructureSurfaces';
 import { PvSourceSurface, BessSurface, FwSurface } from './surfaces/DerSurfaces';
 import {
+  AnalysisSurfaceComparisonWizard,
   AnalysisSurfaceSensitivityTab,
   AuditTrailSurface,
   ReportSurfaceOsdAndProfileActions,
@@ -503,6 +504,15 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             }
           />
           <SurfaceActionButton
+            label="Porównaj przebiegi (A/B)"
+            onClick={() =>
+              openChildSurface('analysis', {
+                screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
+                tabId: 'comparison_wizard',
+              })
+            }
+          />
+          <SurfaceActionButton
             label="Raporty OSD i audytowe"
             onClick={() => navigateToReport({ caseId: activeCaseId, runId: effectiveRunId })}
           />
@@ -514,6 +524,8 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           <ResultsComparisonPage runHistory={comparisonRunHistory} />
         ) : activeAnalysisTab === 'sensitivity' ? (
           <AnalysisSurfaceSensitivityTab />
+        ) : activeAnalysisTab === 'comparison_wizard' ? (
+          <AnalysisSurfaceComparisonWizard />
         ) : (
           <p className="text-xs text-slate-400">Wybierz zakładkę analityki albo otwórz kontrolę konfiguracji układu przed uruchomieniem analiz.</p>
         )}
