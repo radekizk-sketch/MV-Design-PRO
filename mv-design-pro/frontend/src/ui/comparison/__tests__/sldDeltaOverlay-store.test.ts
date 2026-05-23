@@ -6,18 +6,18 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { useComparisonStore } from '../store';
-import type { SCComparison, ComparisonListResponse } from '../types';
+import { useComparisonStore } from '../sldDeltaOverlay.store';
+import type { SCComparison, ComparisonListResponse } from '../sldDeltaOverlay.types';
 
 // Mock the API module
-vi.mock('../api', () => ({
+vi.mock('../sldDeltaOverlay.api', () => ({
   listComparisons: vi.fn(),
   createComparison: vi.fn(),
   getComparison: vi.fn(),
   fetchDeltaOverlay: vi.fn(),
 }));
 
-import * as api from '../api';
+import * as api from '../sldDeltaOverlay.api';
 
 // ---------------------------------------------------------------------------
 // Test fixtures

@@ -10,8 +10,8 @@ import { create } from 'zustand';
 import type {
   SCComparison,
   CreateComparisonRequest,
-} from './types';
-import * as api from './api';
+} from './sldDeltaOverlay.types';
+import * as api from './sldDeltaOverlay.api';
 
 interface ComparisonState {
   // Data

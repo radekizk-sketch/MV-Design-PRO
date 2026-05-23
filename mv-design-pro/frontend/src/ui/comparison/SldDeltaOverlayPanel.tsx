@@ -10,15 +10,15 @@
  */
 
 import React, { useEffect, useCallback, useMemo } from 'react';
-import { useComparisonStore } from './store';
+import { useComparisonStore } from './sldDeltaOverlay.store';
 import { useSldDeltaOverlayStore } from '../sld-overlay/sldDeltaOverlayStore';
-import type { SCComparison, NumericDelta, ElementDelta } from './types';
+import type { SCComparison, NumericDelta, ElementDelta } from './sldDeltaOverlay.types';
 import {
   GLOBAL_DELTA_KEY_LABELS,
   getDeltaDirection,
   DELTA_DIRECTION_ARROWS,
   DELTA_DIRECTION_STYLES,
-} from './types';
+} from './sldDeltaOverlay.types';
 
 // ---------------------------------------------------------------------------
 // Sub-components

@@ -10,7 +10,7 @@ import type {
   ComparisonListResponse,
   CreateComparisonRequest,
   DeltaOverlayPayload,
-} from './types';
+} from './sldDeltaOverlay.types';
 
 const API_BASE = '/api/execution';
 

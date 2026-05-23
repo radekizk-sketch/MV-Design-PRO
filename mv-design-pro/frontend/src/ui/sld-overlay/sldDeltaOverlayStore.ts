@@ -14,9 +14,9 @@
  */
 
 import { create } from 'zustand';
-import type { DeltaOverlayPayload } from '../comparisons/types';
+import type { DeltaOverlayPayload } from '../comparison/sldDeltaOverlay.types';
 import type { OverlayPayloadV1 } from './overlayTypes';
-import { fetchDeltaOverlay } from '../comparisons/api';
+import { fetchDeltaOverlay } from '../comparison/sldDeltaOverlay.api';
 import { useOverlayStore } from './overlayStore';
 
 interface SldDeltaOverlayState {

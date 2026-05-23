@@ -18,8 +18,8 @@ import {
   DELTA_DIRECTION_LABELS,
   DELTA_DIRECTION_ARROWS,
   DELTA_DIRECTION_STYLES,
-} from '../types';
-import type { NumericDelta } from '../types';
+} from '../sldDeltaOverlay.types';
+import type { NumericDelta } from '../sldDeltaOverlay.types';
 
 // =============================================================================
 // Tests: LF Delta Key Labels
