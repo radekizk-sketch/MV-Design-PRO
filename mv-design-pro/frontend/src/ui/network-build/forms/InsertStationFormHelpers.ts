@@ -199,3 +199,64 @@ export function formatMva(value: number | null | undefined): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '-';
   return value.toLocaleString('pl-PL', { maximumFractionDigits: 3 });
 }
+
+// Pure helpers - catalog refs (Sprint Etap 4 decompose - druga fala)
+export function catalogItemIdFromRef(ref: string): string {
+  const trimmed = ref.trim();
+  if (!trimmed.includes('/')) return trimmed;
+  const parts = trimmed.split('/').filter(Boolean);
+  return parts.length > 0 ? parts[parts.length - 1] : trimmed;
+}
+
+export function findTransformerByCatalogRef(
+  types: TransformerType[],
+  catalogRef: string,
+): TransformerType | null {
+  const itemId = catalogItemIdFromRef(catalogRef);
+  return types.find((type) => type.id === itemId || type.id === catalogRef) ?? null;
+}
+
+// Pure helpers - NN configuration
+export type NnConfiguration = 'LOAD_NN' | 'CUSTOM_NN' | 'PV_INVERTER' | 'BESS_INVERTER' | 'FW_INVERTER';
+export type NnFeederRole = 'ZRODLO_NN_PV' | 'ZRODLO_NN_BESS' | 'ZRODLO_NN_FW';
+
+export function sourceFeederRole(configuration: NnConfiguration): NnFeederRole | null {
+  switch (configuration) {
+    case 'PV_INVERTER':
+      return 'ZRODLO_NN_PV';
+    case 'BESS_INVERTER':
+      return 'ZRODLO_NN_BESS';
+    case 'FW_INVERTER':
+      return 'ZRODLO_NN_FW';
+    case 'LOAD_NN':
+    case 'CUSTOM_NN':
+    default:
+      return null;
+  }
+}
+
+// Pure helpers - comparators
+export const DEFAULT_RECEIVER_NN_VOLTAGE_KV = 0.4;
+
+export function compareStationNnSourceConverters(
+  left: ConverterType,
+  right: ConverterType,
+): number {
+  const leftDistance = Math.abs(left.un_kv - DEFAULT_RECEIVER_NN_VOLTAGE_KV);
+  const rightDistance = Math.abs(right.un_kv - DEFAULT_RECEIVER_NN_VOLTAGE_KV);
+  if (leftDistance !== rightDistance) return leftDistance - rightDistance;
+  return left.name.localeCompare(right.name, 'pl-PL') || left.id.localeCompare(right.id);
+}
+
+export function compareTransformersForSourcePower(sourcePowerMva: number | null) {
+  return (left: TransformerType, right: TransformerType): number => {
+    if (sourcePowerMva != null) {
+      const leftEnough = hasEnoughTransformerPower(left, sourcePowerMva);
+      const rightEnough = hasEnoughTransformerPower(right, sourcePowerMva);
+      if (leftEnough !== rightEnough) return leftEnough ? -1 : 1;
+    }
+    return left.rated_power_mva - right.rated_power_mva
+      || left.name.localeCompare(right.name, 'pl-PL')
+      || left.id.localeCompare(right.id);
+  };
+}

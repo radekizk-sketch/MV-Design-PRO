@@ -29,6 +29,11 @@ import {
   clampOutgoingFeederCount,
   formatKv,
   formatMva,
+  findTransformerByCatalogRef,
+  sourceFeederRole,
+  compareStationNnSourceConverters,
+  compareTransformersForSourcePower,
+  DEFAULT_RECEIVER_NN_VOLTAGE_KV,
 } from './InsertStationFormHelpers';
 import { useSnapshotStore, selectBusOptions } from '../../topology/snapshotStore';
 import { useActiveOperationContext, useNetworkBuildStore } from '../networkBuildStore';
@@ -438,7 +443,7 @@ const NN_VOLTAGE_OPTIONS_KV = [0.4, 0.5, 0.69, 0.8, 1, 3.15, 6, 6.3];
 const STATION_SN_SIDE_REF = '__station_sn_side__';
 const STATION_NN_SIDE_REF = '__station_nn_side__';
 const DEFAULT_SN_VOLTAGE_KV = 15;
-const DEFAULT_RECEIVER_NN_VOLTAGE_KV = 0.4;
+// DEFAULT_RECEIVER_NN_VOLTAGE_KV moved to InsertStationFormHelpers.ts
 const DEFAULT_CUSTOM_NN_VOLTAGE_KV = 0.69;
 const SN_VOLTAGE_TOLERANCE_KV = 0.01;
 const NN_VOLTAGE_TOLERANCE_KV = 0.001;
@@ -469,60 +474,9 @@ function describeConfigurationScope(
 }
 
 // voltageMatches moved to InsertStationFormHelpers.ts
-// isStationNnSourceConverter moved to InsertStationFormHelpers.ts
-
-function compareStationNnSourceConverters(left: ConverterType, right: ConverterType): number {
-  const leftDistance = Math.abs(left.un_kv - DEFAULT_RECEIVER_NN_VOLTAGE_KV);
-  const rightDistance = Math.abs(right.un_kv - DEFAULT_RECEIVER_NN_VOLTAGE_KV);
-  if (leftDistance !== rightDistance) return leftDistance - rightDistance;
-  return left.name.localeCompare(right.name, 'pl-PL') || left.id.localeCompare(right.id);
-}
-
-// hasEnoughTransformerPower moved to InsertStationFormHelpers.ts
-
-function compareTransformersForSourcePower(
-  sourcePowerMva: number | null,
-): (left: TransformerType, right: TransformerType) => number {
-  return (left, right) => {
-    if (sourcePowerMva != null) {
-      const leftEnough = hasEnoughTransformerPower(left, sourcePowerMva);
-      const rightEnough = hasEnoughTransformerPower(right, sourcePowerMva);
-      if (leftEnough !== rightEnough) return leftEnough ? -1 : 1;
-    }
-    return left.rated_power_mva - right.rated_power_mva
-      || left.name.localeCompare(right.name, 'pl-PL')
-      || left.id.localeCompare(right.id);
-  };
-}
-
-// formatKv, formatMva moved to InsertStationFormHelpers.ts
-
-function catalogItemIdFromRef(ref: string): string {
-  const trimmed = ref.trim();
-  if (!trimmed.includes('/')) return trimmed;
-  const parts = trimmed.split('/').filter(Boolean);
-  return parts.length > 0 ? parts[parts.length - 1] : trimmed;
-}
-
-function findTransformerByCatalogRef(types: TransformerType[], catalogRef: string): TransformerType | null {
-  const itemId = catalogItemIdFromRef(catalogRef);
-  return types.find((type) => type.id === itemId || type.id === catalogRef) ?? null;
-}
-
-function sourceFeederRole(configuration: NnConfiguration): NnFeederRole | null {
-  switch (configuration) {
-    case 'PV_INVERTER':
-      return 'ZRODLO_NN_PV';
-    case 'BESS_INVERTER':
-      return 'ZRODLO_NN_BESS';
-    case 'FW_INVERTER':
-      return 'ZRODLO_NN_FW';
-    case 'LOAD_NN':
-    case 'CUSTOM_NN':
-    default:
-      return null;
-  }
-}
+// compareStationNnSourceConverters, compareTransformersForSourcePower,
+// catalogItemIdFromRef, findTransformerByCatalogRef, sourceFeederRole
+// moved to InsertStationFormHelpers.ts (Sprint Etap 4 decompose - druga fala)
 
 function sourceProtectionIntent(configuration: NnConfiguration): NnFeederPayload['protection'] | undefined {
   if (configuration !== 'PV_INVERTER') return undefined;

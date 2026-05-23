@@ -201,3 +201,94 @@ describe('constants', () => {
     expect(FIELD_ROLE_LABELS.LINIA_IN).toBe('Pole liniowe wejściowe');
   });
 });
+
+import {
+  catalogItemIdFromRef,
+  findTransformerByCatalogRef,
+  sourceFeederRole,
+  compareStationNnSourceConverters,
+  compareTransformersForSourcePower,
+  DEFAULT_RECEIVER_NN_VOLTAGE_KV,
+} from '../InsertStationFormHelpers';
+
+describe('catalogItemIdFromRef', () => {
+  it('zwraca ostatni segment z ref z ukośnikami', () => {
+    expect(catalogItemIdFromRef('gpz/main/tr/T_400_15_04')).toBe('T_400_15_04');
+  });
+  it('zwraca cały ref jeśli brak ukośnika', () => {
+    expect(catalogItemIdFromRef('T_400_15_04')).toBe('T_400_15_04');
+  });
+  it('trim whitespace', () => {
+    expect(catalogItemIdFromRef('  test  ')).toBe('test');
+  });
+});
+
+describe('findTransformerByCatalogRef', () => {
+  const types = [
+    { id: 'T1', name: 'TR1' } as never,
+    { id: 'T2', name: 'TR2' } as never,
+  ];
+  it('znajduje po itemId', () => {
+    expect(findTransformerByCatalogRef(types, 'foo/T1')?.id).toBe('T1');
+  });
+  it('znajduje po pełnym ref', () => {
+    expect(findTransformerByCatalogRef(types, 'T2')?.id).toBe('T2');
+  });
+  it('null gdy brak', () => {
+    expect(findTransformerByCatalogRef(types, 'X')).toBe(null);
+  });
+});
+
+describe('sourceFeederRole', () => {
+  it('PV_INVERTER → ZRODLO_NN_PV', () => {
+    expect(sourceFeederRole('PV_INVERTER')).toBe('ZRODLO_NN_PV');
+  });
+  it('BESS_INVERTER → ZRODLO_NN_BESS', () => {
+    expect(sourceFeederRole('BESS_INVERTER')).toBe('ZRODLO_NN_BESS');
+  });
+  it('FW_INVERTER → ZRODLO_NN_FW', () => {
+    expect(sourceFeederRole('FW_INVERTER')).toBe('ZRODLO_NN_FW');
+  });
+  it('LOAD_NN → null', () => {
+    expect(sourceFeederRole('LOAD_NN')).toBe(null);
+  });
+  it('CUSTOM_NN → null', () => {
+    expect(sourceFeederRole('CUSTOM_NN')).toBe(null);
+  });
+});
+
+describe('DEFAULT_RECEIVER_NN_VOLTAGE_KV', () => {
+  it('= 0.4 kV', () => {
+    expect(DEFAULT_RECEIVER_NN_VOLTAGE_KV).toBe(0.4);
+  });
+});
+
+describe('compareStationNnSourceConverters', () => {
+  it('sortuje po dystansie do 0.4 kV', () => {
+    const a = { un_kv: 0.5, name: 'A', id: 'a' } as never;
+    const b = { un_kv: 0.4, name: 'B', id: 'b' } as never;
+    expect(compareStationNnSourceConverters(a, b)).toBeGreaterThan(0);
+  });
+
+  it('przy tym samym dystansie sortuje po nazwie', () => {
+    const a = { un_kv: 0.4, name: 'B', id: 'b' } as never;
+    const b = { un_kv: 0.4, name: 'A', id: 'a' } as never;
+    expect(compareStationNnSourceConverters(a, b)).toBeGreaterThan(0);
+  });
+});
+
+describe('compareTransformersForSourcePower', () => {
+  it('z null sourcePower sortuje po rated power', () => {
+    const cmp = compareTransformersForSourcePower(null);
+    const a = { rated_power_mva: 1.6, name: 'A', id: 'a' } as never;
+    const b = { rated_power_mva: 0.63, name: 'B', id: 'b' } as never;
+    expect(cmp(a, b)).toBeGreaterThan(0);
+  });
+
+  it('z source power: dostateczne pierwsze', () => {
+    const cmp = compareTransformersForSourcePower(0.5);
+    const enough = { rated_power_mva: 1.0, name: 'A', id: 'a' } as never;
+    const tooSmall = { rated_power_mva: 0.3, name: 'B', id: 'b' } as never;
+    expect(cmp(enough, tooSmall)).toBeLessThan(0);
+  });
+});
