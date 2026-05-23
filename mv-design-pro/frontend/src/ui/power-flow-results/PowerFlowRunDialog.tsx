@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useState } from 'react';
+import { LoadingOverlay } from '../shared/LoadingOverlay';
 
 export type PowerFlowAlgorithm = 'NEWTON_RAPHSON' | 'GAUSS_SEIDEL' | 'FAST_DECOUPLED';
 
@@ -230,6 +231,12 @@ export function PowerFlowRunDialog({
           </button>
         </footer>
       </div>
+      {/* G4 dostawy: LoadingOverlay podczas iteracji solver. */}
+      <LoadingOverlay
+        isOpen={running}
+        title="Trwa rozpływ mocy..."
+        subtitle={`Algorytm ${ALGORITHM_LABELS[options.algorithm].label}, max ${options.maxIterations} iteracji, tolerancja ${options.tolerance.toExponential(0)}.`}
+      />
     </div>
   );
 }
