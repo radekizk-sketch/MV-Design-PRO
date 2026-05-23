@@ -70,6 +70,9 @@ import {
   useUrlSelectionSync,
 } from './ui/navigation';
 import { NotificationToast } from './ui/notifications/NotificationToast';
+import { HelpPanel } from './ui/help';
+import { SettingsPanel } from './ui/settings';
+import { OnboardingTour, isOnboardingCompleted } from './ui/onboarding/OnboardingTour';
 import { notify } from './ui/notifications/store';
 import { sanitizePublicReadinessMessage } from './ui/shared/publicReadinessMessage';
 import { useNetworkStats } from './ui/topology/useNetworkStats';
@@ -516,6 +519,32 @@ function App() {
   const initialSearchParamsRef = useRef(getCurrentSearchParams());
   const [route, setRoute] = useState(() => getCurrentHashRoute());
   const [hashVersion, setHashVersion] = useState(0);
+  // Globalne panele UX (G7 Help, G8 Settings, G5 Onboarding)
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+
+  // Auto-show onboarding przy pierwszym uruchomieniu
+  useEffect(() => {
+    if (!isOnboardingCompleted()) {
+      setOnboardingOpen(true);
+    }
+  }, []);
+
+  // Globalny F1 → Help, Ctrl+, → Settings
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'F1') {
+        e.preventDefault();
+        setHelpOpen(true);
+      } else if (e.key === ',' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        setSettingsOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
   const setActiveMode = useAppStateStore((state) => state.setActiveMode);
   const setActiveArea = useAppStateStore((state) => state.setActiveArea);
   const activeArea = useAppStateStore((state) => state.activeArea);
@@ -1193,6 +1222,10 @@ function App() {
       {appReady && <div data-testid="app-ready" style={{ display: 'none' }} />}
       <NotificationToast />
       {content}
+      {/* Globalne panele UX dostępne z każdego ekranu */}
+      <HelpPanel isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
+      <SettingsPanel isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <OnboardingTour isOpen={onboardingOpen} onClose={() => setOnboardingOpen(false)} />
     </div>
   );
 
