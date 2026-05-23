@@ -442,7 +442,7 @@ describe('WorkspaceOperationalBar', () => {
     useReadinessLiveStore.getState().clear();
   });
 
-  it('otwiera surface E-39 po kliknieciu segmentu aktywnej migawki', async () => {
+  it('otwiera surface E-09 po kliknieciu segmentu aktywnej migawki', async () => {
     const user = userEvent.setup();
     useAppStateStore.getState().setActiveCase('case-1', 'Wariant A', 'PowerFlowCase', 'OUTDATED');
     useAppStateStore.getState().setActiveSnapshot('snapshot-001');
@@ -478,12 +478,12 @@ describe('WorkspaceOperationalBar', () => {
     await user.click(screen.getByTestId('workspace-operational-snapshot'));
 
     const activeSurface = useNetworkBuildStore.getState().activeSurface;
-    expect(activeSurface?.screenCode).toBe('E-39');
+    expect(activeSurface?.screenCode).toBe('E-09');
     expect(activeSurface?.titlePl).toBe('Historia i audyt');
   });
 
   it('nie pokazuje technicznego jezyka runtime w pasku operacyjnym', () => {
-    useNetworkBuildStore.getState().openRouteSurface('E-39', {
+    useNetworkBuildStore.getState().openRouteSurface('E-09', {
       titlePl: 'Historia i audyt',
       sizeClass: 'B',
       subjectKind: 'analysis_run',

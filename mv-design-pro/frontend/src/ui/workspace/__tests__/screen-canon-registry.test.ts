@@ -7,10 +7,10 @@ import {
 } from '../screenCanonRegistry';
 
 describe('screenCanonRegistry', () => {
-  it('defines the full E-00..E-39 canon in one registry', () => {
-    expect(CANONICAL_SCREEN_CODES).toHaveLength(40);
+  it('defines the full E-00..E-38 canon in one registry (E-39 removed Phase 0 #1)', () => {
+    expect(CANONICAL_SCREEN_CODES).toHaveLength(39);
     expect(CANONICAL_SCREEN_CODES).toEqual(
-      Array.from({ length: 40 }, (_, index) => `E-${String(index).padStart(2, '0')}`),
+      Array.from({ length: 39 }, (_, index) => `E-${String(index).padStart(2, '0')}`),
     );
   });
 
