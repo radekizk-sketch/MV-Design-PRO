@@ -189,16 +189,24 @@ function CustomTooltip({ active, payload, label, curves }: CustomTooltipProps) {
 // Empty State Component
 // =============================================================================
 
-function EmptyState() {
+interface EmptyStateProps {
+  onAddCurve?: () => void;
+}
+
+function EmptyState({ onAddCurve }: EmptyStateProps = {}) {
   const labels = PROTECTION_CURVES_LABELS.chart;
 
   return (
-    <div className="flex h-full flex-col items-center justify-center p-12 text-slate-500">
+    <div
+      className="flex h-full flex-col items-center justify-center p-12 text-slate-500"
+      data-testid="empty-state-tcc"
+    >
       <svg
         className="mb-4 h-12 w-12 text-slate-300"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
+        aria-hidden="true"
       >
         <path
           strokeLinecap="round"
@@ -207,7 +215,25 @@ function EmptyState() {
           d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
         />
       </svg>
-      <p>{labels.noData}</p>
+      <p className="mb-3">{labels.noData}</p>
+      {onAddCurve ? (
+        <button
+          type="button"
+          onClick={onAddCurve}
+          data-testid="empty-state-tcc-cta"
+          className="rounded bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400"
+        >
+          Dodaj krzywą zabezpieczenia
+        </button>
+      ) : (
+        <a
+          href="#protection-library"
+          data-testid="empty-state-tcc-cta"
+          className="text-sm font-semibold text-amber-500 underline hover:text-amber-400"
+        >
+          Przejdź do biblioteki zabezpieczeń →
+        </a>
+      )}
     </div>
   );
 }

@@ -41,19 +41,19 @@ export interface ScadaSignalSpec {
 
 /** Typowe sygnały dla pola SN. */
 export const STANDARD_BAY_SCADA_SIGNALS: readonly ScadaSignalSpec[] = [
-  // CB (Q1) — XCBR
+  // Wyłącznik (Q1) — XCBR
   { nodeId: 'Q1-XCBR1.Pos', signalType: 'DI', logicalNode: 'XCBR',
-    description: 'Pozycja CB (open/closed)', mandatory: true, scanRateMs: 100 },
+    description: 'Pozycja wyłącznika (otwarty/zamknięty)', mandatory: true, scanRateMs: 100 },
   { nodeId: 'Q1-XCBR1.OpOpn', signalType: 'DO', logicalNode: 'XCBR',
-    description: 'Otwórz CB', mandatory: true },
+    description: 'Otwórz wyłącznik', mandatory: true },
   { nodeId: 'Q1-XCBR1.OpCls', signalType: 'DO', logicalNode: 'XCBR',
-    description: 'Zamknij CB', mandatory: true },
-  // DS (Q2) — XSWI
+    description: 'Zamknij wyłącznik', mandatory: true },
+  // Odłącznik (Q2) — XSWI
   { nodeId: 'Q2-XSWI1.Pos', signalType: 'DI', logicalNode: 'XSWI',
-    description: 'Pozycja DS', mandatory: true, scanRateMs: 100 },
-  // ES (Q3) — XSWI
+    description: 'Pozycja odłącznika', mandatory: true, scanRateMs: 100 },
+  // Uziemnik (Q3) — XSWI
   { nodeId: 'Q3-XSWI1.Pos', signalType: 'DI', logicalNode: 'XSWI',
-    description: 'Pozycja ES', mandatory: true, scanRateMs: 100 },
+    description: 'Pozycja uziemnika', mandatory: true, scanRateMs: 100 },
   // Measurements — MMXU
   { nodeId: 'MMXU1.PhV.phsA', signalType: 'AI', logicalNode: 'MMXU',
     description: 'Napięcie fazy A', unit: 'V', mandatory: true, scanRateMs: 500 },

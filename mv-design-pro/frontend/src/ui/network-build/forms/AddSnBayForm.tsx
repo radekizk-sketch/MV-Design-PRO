@@ -22,12 +22,12 @@ const BAY_ROLE_OPTIONS: Array<{ value: SnBayRole; label: string; description: st
   {
     value: 'OUT',
     label: 'Pole liniowe odpływowe',
-    description: 'Standardowe pole z wyprowadzeniem ciągu SN (linii/kabla). Zwykle z wyłącznikiem, CT 5P, zabezpieczeniem 50/51/67.',
+    description: 'Standardowe pole z wyprowadzeniem ciągu SN (linii/kabla). Zwykle z wyłącznikiem, przekładnikiem prądowym klasy 5P, zabezpieczeniem 50/51/67.',
   },
   {
     value: 'IN',
     label: 'Pole liniowe dopływowe',
-    description: 'Pole zasilające szyny GPZ od strony WN (po transformatorze WN/SN). CT pomiarowe + zabezpieczenia 87T/50/51.',
+    description: 'Pole zasilające szyny GPZ od strony WN (po transformatorze WN/SN). Przekładnik prądowy pomiarowy + zabezpieczenia 87T/50/51.',
   },
   {
     value: 'FEEDER',
@@ -42,12 +42,12 @@ const BAY_ROLE_OPTIONS: Array<{ value: SnBayRole; label: string; description: st
   {
     value: 'COUPLER',
     label: 'Pole sprzęgła sekcji',
-    description: 'Łącznik między sekcjami szyn (CB lub DS). Tryb pracy normal-open (NOP) lub normal-closed (NC). Kluczowy dla N-1.',
+    description: 'Łącznik między sekcjami szyn (wyłącznik lub odłącznik). Tryb pracy normal-open (NOP) lub normal-closed (NC). Kluczowy dla N-1.',
   },
   {
     value: 'MEASUREMENT',
     label: 'Pole pomiarowe',
-    description: 'Pole tylko z VT (przekładniki napięciowe) + bezpiecznik. Bez wyłącznika - do pomiarów napięcia U na szynach.',
+    description: 'Pole tylko z przekładnikami napięciowymi + bezpiecznik. Bez wyłącznika - do pomiarów napięcia U na szynach.',
   },
   {
     value: 'OZE',
@@ -59,22 +59,22 @@ const BAY_ROLE_OPTIONS: Array<{ value: SnBayRole; label: string; description: st
 const APPARATUS_OPTIONS: Array<{ value: ApparatusKind; label: string; description: string }> = [
   {
     value: 'BREAKER',
-    label: 'Wyłącznik (CB)',
+    label: 'Wyłącznik mocy',
     description: 'Wyłącznik mocy SN - łączy/rozłącza przy obciążeniu i zwarciu. Wymagany dla pól z zabezpieczeniami 50/51/67.',
   },
   {
     value: 'DISCONNECTOR',
-    label: 'Odłącznik (DS)',
+    label: 'Odłącznik bezpiecznikowy',
     description: 'Tylko bezpieczna sekcja - łączy/rozłącza BEZ obciążenia. Dla widzialnej separacji galwanicznej.',
   },
   {
     value: 'LOAD_SWITCH',
     label: 'Rozłącznik (LBS)',
-    description: 'Łączy/rozłącza przy normalnej pracy ale NIE wyłącza zwarcia. Tańsza alternatywa CB dla mniej krytycznych pól.',
+    description: 'Łączy/rozłącza przy normalnej pracy ale NIE wyłącza zwarcia. Tańsza alternatywa wyłącznika dla mniej krytycznych pól.',
   },
   {
     value: 'MEASUREMENT',
-    label: 'Tor pomiarowy (VT/CT)',
+    label: 'Tor pomiarowy (przekładniki napięciowe/prądowe)',
     description: 'Pole bez przełączania - tylko przekładniki pomiarowe. Wykorzystywane dla pomiarów napięcia/prądu/mocy.',
   },
 ];

@@ -117,7 +117,7 @@ export const PROJECT_CALCULATION_TEMPLATE_BLOCKS: readonly CalculationTemplateBl
   },
   {
     id: 'ct_vt_metering',
-    title: 'Przekładniki CT/VT, licznik i obwody wtórne',
+    title: 'Przekładniki prądowe i napięciowe, licznik i obwody wtórne',
     sourceSheets: ['obliczenia ', 'Przekładniki zabezpieczenia'],
     sourceRangeHint: 'obliczenia: wiersze 109-252; arkusz przekładników: wiersze 1-62',
     stepIds: ['ct', 'vt', 'meters'],

@@ -1010,7 +1010,7 @@ function StationBaySldColumn({
       {!isTransformer && (
         <>
           <circle cx={x} cy={ctY} r={7} fill="none" stroke="#ffcf5a" strokeWidth={1.8}>
-            <title>Przekładnik prądowy CT</title>
+            <title>Przekładnik prądowy</title>
           </circle>
           <g>
             <line x1={x + 14} y1={ctY + 20} x2={x + 28} y2={ctY + 20} stroke="#dce9f5" strokeWidth={1.2} />
