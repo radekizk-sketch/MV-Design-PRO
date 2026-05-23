@@ -50,9 +50,9 @@ export const TOUR_STEPS: readonly TourStep[] = [
   },
   {
     id: 'power-flow',
-    title: 'Obliczenia: Power Flow + Proof',
+    title: 'Obliczenia: Power Flow + uzasadnienie inżynierskie',
     description: 'Po zbudowaniu sieci uruchom Power Flow (Newton-Raphson). Wyniki: napięcia szyn, obciążenia kabli, straty.',
-    tipPl: 'Po PF wygeneruj Proof Pack (Dowód obliczeń) - dla SC3F (zwarcia), VDROP (spadki napięcia), Equipment (wytrzymałość aparatury). Eksport PDF/LaTeX/JSON.',
+    tipPl: 'Po PF wygeneruj pakiet uzasadnień - dla SC3F (zwarcia), VDROP (spadki napięcia), Equipment (wytrzymałość aparatury). Eksport PDF/LaTeX/JSON.',
   },
   {
     id: 'osd-report',

@@ -144,11 +144,11 @@ export function ProtectionWizard({
         className="bg-white rounded-lg shadow-2xl w-[640px] max-w-[95vw] max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
-        aria-label="Kreator zabezpieczeń"
+        aria-label="Konfiguracja zabezpieczeń"
       >
         <header className="border-b border-gray-200 px-5 py-3">
           <h3 className="text-sm font-semibold text-gray-800">
-            Kreator zabezpieczeń — krok {step}/4: {STEP_LABELS[step]}
+            Konfiguracja zabezpieczeń — krok {step}/4: {STEP_LABELS[step]}
           </h3>
           <div className="mt-2 flex gap-1">
             {([1, 2, 3, 4] as WizardStep[]).map((s) => (
@@ -216,11 +216,11 @@ export function ProtectionWizard({
                     className="w-full px-2.5 py-1.5 text-[11px] border border-gray-200 rounded"
                     data-testid="protection-ct-ratio"
                   >
-                    <option value="100/5">100/5 (mały feeder)</option>
+                    <option value="100/5">100/5 (małe pole liniowe)</option>
                     <option value="200/5">200/5</option>
                     <option value="300/5">300/5 (standard pole liniowe)</option>
                     <option value="500/5">500/5</option>
-                    <option value="800/5">800/5 (duży feeder)</option>
+                    <option value="800/5">800/5 (duże pole liniowe)</option>
                     <option value="1000/5">1000/5 (pole transformatora)</option>
                     <option value="2000/5">2000/5 (GPZ tor głównego dopływu)</option>
                   </select>
