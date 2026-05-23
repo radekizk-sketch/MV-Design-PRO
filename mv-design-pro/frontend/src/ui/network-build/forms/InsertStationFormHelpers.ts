@@ -1,0 +1,196 @@
+/**
+ * InsertStationFormHelpers — pure utility functions wyekstraktowane z
+ * InsertStationForm.tsx (Sprint Etap 4 decompose).
+ *
+ * Eliminacja monolitu: 47 funkcji w 2311 LOC pliku zmniejszone o 13 pure
+ * funkcji + 2 stałe = ~150 LOC. Następne ekstrakcje (UI sub-components,
+ * effects, state) wymagają osobnych sprintów.
+ *
+ * Wszystkie funkcje pure (bez side-effects, deterministyczne).
+ */
+
+import type {
+  BayKind,
+  CompleteMvBayTemplateSummary,
+} from '../../catalog/BayTemplatePicker';
+import type { Manufacturer } from '../../catalog/manufacturer';
+import type { SwitchgearFamily } from '../../catalog/SwitchgearFamilyPicker';
+import type { ConverterType, TransformerType } from '../../catalog/types';
+import type { Substation } from '../../../types/enm';
+
+export type SnFieldRole = 'LINIA_IN' | 'LINIA_OUT' | 'LINIA_ODG' | 'TRANSFORMATOROWE' | 'SPRZEGLO';
+
+// Constants
+export const SWITCHGEAR_MANUFACTURER_ORDER = [
+  'ZPUE_WLOSZCZOWA',
+  'ELEKTROMETAL',
+  'SIEMENS',
+  'ABB',
+];
+
+export const FIELD_ROLE_LABELS: Readonly<Record<string, string>> = {
+  LINIA_IN: 'Pole liniowe wejściowe',
+  LINIA_OUT: 'Pole liniowe wyjściowe',
+  LINIA_ODG: 'Pole odgałęźne',
+  TRANSFORMATOROWE: 'Pole transformatorowe',
+  SPRZEGLO: 'Pole sprzęgłowe',
+};
+
+export const SOURCE_STATUS_LABEL_PL: Readonly<Record<CompleteMvBayTemplateSummary['source_status'], string>> = {
+  official_catalog: 'pakiet katalogowy',
+  repo_verified: 'pakiet katalogowy',
+  user_defined: 'pakiet użytkownika',
+  canonical_fallback: 'poza konfiguracją projektową',
+  requires_catalog: 'poza konfiguracją projektową',
+  incomplete_requires_review: 'poza konfiguracją projektową',
+};
+
+// Pure helpers - station
+export function stationRef(station: Substation): string {
+  return station.ref_id || station.id;
+}
+
+export function stationPublicName(station: Substation, fallbackName: string): string {
+  return station.name?.trim() || fallbackName;
+}
+
+// Pure helpers - bay templates
+export function sourceStatusRank(status: CompleteMvBayTemplateSummary['source_status']): number {
+  switch (status) {
+    case 'official_catalog':
+      return 0;
+    case 'repo_verified':
+      return 1;
+    case 'user_defined':
+      return 2;
+    case 'canonical_fallback':
+      return 3;
+    case 'incomplete_requires_review':
+      return 4;
+    case 'requires_catalog':
+    default:
+      return 5;
+  }
+}
+
+export function isCompleteSourceStatus(status: CompleteMvBayTemplateSummary['source_status']): boolean {
+  return (
+    status === 'official_catalog'
+    || status === 'repo_verified'
+    || status === 'user_defined'
+  );
+}
+
+export function isCompleteBayTemplate(template: CompleteMvBayTemplateSummary): boolean {
+  return isCompleteSourceStatus(template.source_status);
+}
+
+export function compareBayTemplateOptions(
+  left: CompleteMvBayTemplateSummary,
+  right: CompleteMvBayTemplateSummary,
+): number {
+  return sourceStatusRank(left.source_status) - sourceStatusRank(right.source_status)
+    || left.template_ref.localeCompare(right.template_ref, 'pl-PL');
+}
+
+export function bayKindLabel(kind: BayKind): string {
+  switch (kind) {
+    case 'liniowe_doplywowe':
+      return 'Pole liniowe wejściowe';
+    case 'liniowe_odplywowe':
+      return 'Pole liniowe wyjściowe';
+    case 'transformatorowe':
+      return 'Pole transformatorowe';
+    case 'sprzeglowe_poprzeczne':
+    case 'sprzeglowe_podluzne':
+      return 'Pole sprzęgłowe';
+    case 'pomiarowe':
+      return 'Pole pomiarowe';
+    case 'pv':
+      return 'Pole przyłączeniowe PV';
+    case 'bess':
+      return 'Pole przyłączeniowe BESS';
+    case 'fw':
+      return 'Pole przyłączeniowe FW';
+    default:
+      return 'Pole SN';
+  }
+}
+
+export function templateOptionLabel(template: CompleteMvBayTemplateSummary, role?: SnFieldRole): string {
+  const roleLabel = role ? FIELD_ROLE_LABELS[role] : null;
+  return `${roleLabel ?? bayKindLabel(template.bay_kind)} · ${SOURCE_STATUS_LABEL_PL[template.source_status]}`;
+}
+
+// Pure helpers - manufacturers
+export function orderManufacturers(manufacturers: Manufacturer[]): Manufacturer[] {
+  const byRef = new Map(manufacturers.map((manufacturer) => [manufacturer.manufacturer_ref, manufacturer]));
+  const ordered = SWITCHGEAR_MANUFACTURER_ORDER
+    .map((ref) => byRef.get(ref))
+    .filter((manufacturer): manufacturer is Manufacturer => Boolean(manufacturer));
+  const remaining = manufacturers.filter(
+    (manufacturer) => !SWITCHGEAR_MANUFACTURER_ORDER.includes(manufacturer.manufacturer_ref),
+  );
+  return [...ordered, ...remaining];
+}
+
+export function isUsableManufacturer(manufacturer: Manufacturer): boolean {
+  return (
+    (manufacturer.status === 'verified' && manufacturer.source_refs.length > 0)
+    || manufacturer.status === 'user_defined'
+  );
+}
+
+export function isUsableSwitchgearFamily(family: SwitchgearFamily): boolean {
+  return (
+    (family.status === 'verified' && family.source_refs.length > 0)
+    || family.status === 'user_defined'
+  );
+}
+
+// Pure helpers - transformers
+const MAX_STATION_NN_SOURCE_VOLTAGE_KV = 1.0;
+
+export function isStationNnSourceConverter(type: ConverterType): boolean {
+  return (
+    typeof type.un_kv === 'number'
+    && Number.isFinite(type.un_kv)
+    && type.un_kv > 0
+    && type.un_kv <= MAX_STATION_NN_SOURCE_VOLTAGE_KV
+  );
+}
+
+export function hasEnoughTransformerPower(
+  type: TransformerType,
+  sourcePowerMva: number | null,
+): boolean {
+  if (sourcePowerMva === null || sourcePowerMva <= 0) return true;
+  return (type.rated_power_mva ?? 0) >= sourcePowerMva;
+}
+
+// Pure helpers - voltage
+export function voltageMatches(
+  voltageA: number | null | undefined,
+  voltageB: number | null | undefined,
+  toleranceKv = 0.5,
+): boolean {
+  if (voltageA == null || voltageB == null) return false;
+  return Math.abs(voltageA - voltageB) <= toleranceKv;
+}
+
+// Pure helpers - feeder count
+export function clampOutgoingFeederCount(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(20, Math.trunc(value)));
+}
+
+// Pure helpers - formatters
+export function formatKv(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return '—';
+  return `${value.toFixed(2)} kV`;
+}
+
+export function formatMva(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return '—';
+  return `${value.toFixed(3)} MVA`;
+}
