@@ -41,6 +41,8 @@ import {
   SN_FIELD_ROLE_TO_BAY_KIND,
   SN_FIELD_ROLES,
   buildDefaultSnFields,
+  contextString,
+  branchExists,
 } from './InsertStationFormHelpers';
 import { useSnapshotStore, selectBusOptions } from '../../topology/snapshotStore';
 import { useActiveOperationContext, useNetworkBuildStore } from '../networkBuildStore';
@@ -478,16 +480,7 @@ function deriveSnVoltageKv(
   return firstMvBus?.voltage_kv ?? DEFAULT_SN_VOLTAGE_KV;
 }
 
-function contextString(
-  context: Record<string, unknown> | undefined,
-  keys: string[],
-): string {
-  for (const key of keys) {
-    const value = context?.[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return '';
-}
+// contextString moved to InsertStationFormHelpers.ts
 
 function resolveSegmentIdFromContext(
   context: Record<string, unknown> | undefined,
@@ -529,15 +522,7 @@ function resolveSegmentIdFromContext(
   return resolveFromCorridor(corridorRef);
 }
 
-function branchExists(
-  model: { branches?: Array<{ ref_id?: string; id?: string }> } | null,
-  segmentId: string,
-): boolean {
-  return Boolean(
-    segmentId
-    && model?.branches?.some((branch) => branch.ref_id === segmentId || branch.id === segmentId),
-  );
-}
+// branchExists moved to InsertStationFormHelpers.ts
 
 function engineeringSegmentLabel(
   segmentId: string,

@@ -336,6 +336,28 @@ export const SN_FIELD_ROLES: readonly SnFieldRole[] = [
   'SPRZEGLO',
 ];
 
+// Pure helpers — context / branch resolution
+export function contextString(
+  context: Record<string, unknown> | undefined,
+  keys: string[],
+): string {
+  for (const key of keys) {
+    const value = context?.[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return '';
+}
+
+export function branchExists(
+  model: { branches?: Array<{ ref_id?: string; id?: string }> } | null,
+  segmentId: string,
+): boolean {
+  return Boolean(
+    segmentId
+    && model?.branches?.some((branch) => branch.ref_id === segmentId || branch.id === segmentId),
+  );
+}
+
 export function buildDefaultSnFields(stationKind: TopologicalStationKind): Array<{
   field_role: SnFieldRole;
   catalog_bindings: null;
