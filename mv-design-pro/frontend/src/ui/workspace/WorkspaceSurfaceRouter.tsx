@@ -45,6 +45,7 @@ import {
 } from './surfaces/InfrastructureSurfaces';
 import { PvSourceSurface, BessSurface, FwSurface } from './surfaces/DerSurfaces';
 import { ReferenceNetworkSurface } from './surfaces/ReferenceNetworkSurface';
+import { V126AcademicSurface } from './surfaces/V126AcademicSurface';
 import {
   AnalysisSurfaceComparisonWizard,
   AnalysisSurfaceSensitivityTab,
@@ -2307,6 +2308,18 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'E-39':
       // Sprint 2 dostawy: Walidacja sieci referencyjnych (Reference Network Validation).
       return <ReferenceNetworkSurface surface={surface} />;
+    case 'E-40':
+    case 'E-41':
+    case 'E-42':
+    case 'E-43':
+    case 'E-44':
+    case 'E-45':
+    case 'E-46':
+    case 'E-47':
+    case 'E-48':
+    case 'E-49':
+    case 'E-50':
+      return <V126AcademicSurface surface={surface} />;
     default:
       break;
   }

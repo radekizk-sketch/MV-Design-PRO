@@ -22,6 +22,7 @@
     "type-check": "tsc --noEmit",
     "verify:v12.5": "node ./scripts/run-python.mjs ../scripts/verify_v12_5.py",
     "verify:v12.5.1": "node ./scripts/run-python.mjs ../scripts/verify_v12_5_1.py",
+    "verify:v12.6": "node ./scripts/run-python.mjs ../scripts/verify_v12_6.py",
     "verify:v12.5:quick": "node ./scripts/run-python.mjs ../scripts/verify_v12_5.py --quick",
     "verify:v12.5.1:quick": "node ./scripts/run-python.mjs ../scripts/verify_v12_5_1.py --quick",
     "verify:v12.5:backend": "node ./scripts/run-python.mjs ../scripts/verify_v12_5.py --backend-only",

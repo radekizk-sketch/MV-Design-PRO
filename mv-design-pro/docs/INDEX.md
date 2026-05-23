@@ -67,6 +67,7 @@
 
 ## Active Canon
 - [v12xx/KANON_V12_XX.md](./v12xx/KANON_V12_XX.md) - aktywne prawo produktu V12.xx
+- [v12xx/KANON_V12_6_PROFESORSKI.md](./v12xx/KANON_V12_6_PROFESORSKI.md) - rozszerzenie akademicko-przemyslowe V12.6 E-40..E-50
 - [v12xx/RAPORT_M0_INWENTARYZACJA.md](./v12xx/RAPORT_M0_INWENTARYZACJA.md) - inwentaryzacja startowa M0 V12.xx
 - [v12xx/BACKLOG_WDROZENIOWY_V12_XX.md](./v12xx/BACKLOG_WDROZENIOWY_V12_XX.md) - backlog wdrozeniowy M0-M4
 - [INDEX_KANONICZNY.md](./INDEX_KANONICZNY.md) - indeks wiążących dokumentów V12.5

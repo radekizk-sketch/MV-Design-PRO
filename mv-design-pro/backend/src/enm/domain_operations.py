@@ -1,7 +1,7 @@
 """
 Operacje domenowe V1 — budowa sieci SN od GPZ z SLD na żywo.
 
-Kanoniczny zestaw operacji semantycznych kompozytujÄ…cych niskopoziomowe CRUD
+Kanoniczny zestaw operacji semantycznych kompozytuj?cych niskopoziomowe CRUD
 z topology_ops.py w spójne przepływy domenowe.
 
 DETERMINISTYCZNE: identyczne wejście → identyczny wynik.
@@ -346,7 +346,7 @@ def _extract_catalog_binding_namespace(catalog_binding: object) -> str | None:
 
 
 def _extract_catalog_binding_version(catalog_binding: object) -> str | None:
-    """Odczytaj wersjÄ™ katalogu z payloadu binding."""
+    """Odczytaj wersj? katalogu z payloadu binding."""
     if not isinstance(catalog_binding, dict):
         return None
 
@@ -574,7 +574,7 @@ def _resolve_gpz_wn_sn_transformer_catalog_ref(
         (
             "Transformator WN/SN GPZ wymaga pozycji katalogowej. "
             f"Brak domyślnego rekordu dla 110/{voltage_key} kV {power_key} MVA. "
-            f"DostÄ™pne rekordy: {supported}."
+            f"Dost?pne rekordy: {supported}."
         ),
         "source.transformer_catalog_ref_missing",
     )
@@ -899,7 +899,7 @@ def _ensure_line_run_for_corridor(
         normalized_kind = "main_trunk"
     line_run = {
         "id": corridor_ref,
-        "name": corridor.get("name") if isinstance(corridor.get("name"), str) else "CiÄ…g SN",
+        "name": corridor.get("name") if isinstance(corridor.get("name"), str) else "Ci?g SN",
         "run_kind": normalized_kind,
         "starting_bay_ref": start_bay,
         "starting_port_ref": start_port,
@@ -1254,7 +1254,7 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
                 blockers.append(
                     {
                         "code": "branch_point.invalid_parent_medium",
-                        "message_pl": f"{bp_label} wymaga poprawnego odcinka nadrzÄ™dnego.",
+                        "message_pl": f"{bp_label} wymaga poprawnego odcinka nadrz?dnego.",
                         "element_ref": bp_ref,
                         "severity": "BLOKUJACE",
                     }
@@ -2017,7 +2017,7 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
 
     Każdy segment z catalog_ref ma skopiowane parametry.
     Jeśli dostępny jest katalog (CatalogRepository), parametry są
-    rozwiÄ…zywane z katalogu (precedence: catalog > instance).
+    rozwi?zywane z katalogu (precedence: catalog > instance).
     """
     lines_sn: dict[str, Any] = {}
     transformers_sn_nn: dict[str, Any] = {}
@@ -2362,7 +2362,7 @@ def _resolve_manual_source_equivalent(
         z_abs = math.hypot(r_ohm, x_ohm)
         if z_abs <= 0:
             return _error_response(
-                "Impedancja zastÄ™pcza GPZ musi byÄ‡ dodatnia.",
+                "Impedancja zast?pcza GPZ musi by? dodatnia.",
                 "source.manual_equivalent_incomplete",
             )
 
@@ -2450,7 +2450,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         ]
     if sections_count < 1 or sections_count > 4:
         return _error_response(
-            "GPZ musi mieÄ‡ od 1 do 4 sekcji szyn SN.",
+            "GPZ musi mie? od 1 do 4 sekcji szyn SN.",
             "source.invalid_sections_count",
         )
     transformer_count = _read_gpz_transformer_count(payload, sections_count)
@@ -2469,7 +2469,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             return _error_response(
                 (
                     "Sekcja GPZ "
-                    f"{index + 1} musi mieÄ‡ od 1 do {MAX_GPZ_LINE_FIELDS_PER_SECTION} "
+                    f"{index + 1} musi mie? od 1 do {MAX_GPZ_LINE_FIELDS_PER_SECTION} "
                     "pól liniowych odpływowych."
                 ),
                 "source.invalid_line_fields_count",
@@ -2481,7 +2481,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         voltage_kv = enm.get("header", {}).get("defaults", {}).get("sn_nominal_kv")
     if voltage_kv is None or voltage_kv <= 0:
         return _error_response(
-            "Brak napiÄ™cia znamionowego SN: podaj voltage_kv w payloadzie lub ustaw "
+            "Brak napi?cia znamionowego SN: podaj voltage_kv w payloadzie lub ustaw "
             "defaults.sn_nominal_kv w nagłówku ENM.",
             "source.missing_voltage",
         )
@@ -3527,14 +3527,14 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 break
         if not sn_voltage_kv or sn_voltage_kv <= 0:
             return _error_response(
-                "Brak napiÄ™cia SN stacji. Podaj sn_voltage_kv lub upewnij siÄ™, "
+                "Brak napi?cia SN stacji. Podaj sn_voltage_kv lub upewnij si?, "
                 "że szyna źródłowa segmentu ma zdefiniowane napięcie.",
                 "station.insert.sn_voltage_missing",
             )
 
     if not nn_voltage_kv or nn_voltage_kv <= 0:
         return _error_response(
-            "Brak napiÄ™cia nN stacji. Podaj nn_voltage_kv.",
+            "Brak napi?cia nN stacji. Podaj nn_voltage_kv.",
             "station.insert.nn_voltage_missing",
         )
 
@@ -4079,7 +4079,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     )
 
     audit.append(
-        {"step": ev_seq, "action": f"Wstawiono stacjÄ™ typ {station_type}", "element_id": stn_id}
+        {"step": ev_seq, "action": f"Wstawiono stacj? typ {station_type}", "element_id": stn_id}
     )
 
     response = _response(
@@ -4204,7 +4204,7 @@ def _build_split_preview_metadata(
     }
 
     # Invalidated results — wyniki run/proof które staną się stale po split
-    # Heurystyka: znajdujemy results powiÄ…zane z source_segment albo z connected buses.
+    # Heurystyka: znajdujemy results powi?zane z source_segment albo z connected buses.
     invalidated_results: list[dict[str, Any]] = []
     affected_proof_packs: list[dict[str, Any]] = []
 
@@ -4610,7 +4610,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
 
     Wymaga jawnego from_ref (port BRANCH na stacji lub branch-poincie).
     from_bus_ref jest obsługiwane wyłącznie jako pole kompatybilności
-    i musi mapowaÄ‡ siÄ™ 1:1 do bus_ref rozwiÄ…zanego z from_ref.
+    i musi mapowa? si? 1:1 do bus_ref rozwi?zanego z from_ref.
     """
     from_ref = payload.get("from_ref")
     from_bus_ref = payload.get("from_bus_ref")
@@ -4661,7 +4661,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         and payload.get("from_bus_ref") != from_bus_ref
     ):
         return _error_response(
-            "Pole from_bus_ref nie zgadza siÄ™ z bus_ref wynikajÄ…cym z from_ref.",
+            "Pole from_bus_ref nie zgadza si? z bus_ref wynikaj?cym z from_ref.",
             "branch_connection.source_not_branch_capable",
         )
 
@@ -4921,7 +4921,7 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
             break
     if not voltage_kv or voltage_kv <= 0:
         return _error_response(
-            f"Szyna '{from_bus_ref}' nie ma napiÄ™cia znamionowego.",
+            f"Szyna '{from_bus_ref}' nie ma napi?cia znamionowego.",
             "switch.from_bus_voltage_missing",
         )
 
@@ -5483,7 +5483,7 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
             catalog_ref = parameters.get("catalog_ref")
             if catalog_ref is None or (isinstance(catalog_ref, str) and not catalog_ref.strip()):
                 return _error_response(
-                    "Element fizyczny wymaga przypiÄ™tego katalogu.", "catalog.ref_required"
+                    "Element fizyczny wymaga przypi?tego katalogu.", "catalog.ref_required"
                 )
 
         effective_source_mode = parameters.get("source_mode", current_element.get("source_mode"))
@@ -5507,7 +5507,7 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
             if effective_source_mode == "KATALOG":
                 if not isinstance(materialized, dict) or not materialized:
                     return _error_response(
-                        "materialized_params musi byÄ‡ kompletne dla source_mode=KATALOG.",
+                        "materialized_params musi by? kompletne dla source_mode=KATALOG.",
                         "catalog.ref_required",
                     )
                 required_keys = {"branch_point_type", "parent_segment_id", "ports"}
@@ -5830,7 +5830,7 @@ def _find_substation(enm: dict[str, Any], substation_ref: str) -> dict[str, Any]
 
 
 def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Dodaje GPZ sekcjÄ™ (LV lub HV) do istniejÄ…cej stacji typu 'gpz'.
+    """Dodaje GPZ sekcj? (LV lub HV) do istniej?cej stacji typu 'gpz'.
 
     Payload:
       substation_ref: str        — ID stacji GPZ
@@ -5911,7 +5911,7 @@ def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
 
     audit = [{
         "step": 1,
-        "action": f"Dodano sekcjÄ™ {side.upper()} '{section_id}' do stacji {substation_ref}",
+        "action": f"Dodano sekcj? {side.upper()} '{section_id}' do stacji {substation_ref}",
         "element_id": section_id,
     }]
     events = [{"event_seq": 1, "event_type": "GPZ_SECTION_ADDED", "element_id": section_id}]
@@ -5926,7 +5926,7 @@ def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
 
 
 def update_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Aktualizuje istniejÄ…cÄ… sekcjÄ™ GPZ (jej name, order, bus_ref, *_coupler_ref).
+    """Aktualizuje istniej?c? sekcj? GPZ (jej name, order, bus_ref, *_coupler_ref).
 
     Payload:
       substation_ref: str
@@ -5997,7 +5997,7 @@ def update_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
 
     audit = [{
         "step": 1,
-        "action": f"Zaktualizowano sekcjÄ™ {side.upper()} '{section_id}'",
+        "action": f"Zaktualizowano sekcj? {side.upper()} '{section_id}'",
         "element_id": section_id,
     }]
     events = [{"event_seq": 1, "event_type": "GPZ_SECTION_UPDATED", "element_id": section_id}]
@@ -6012,12 +6012,12 @@ def update_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
 
 
 def delete_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Usuwa sekcjÄ™ GPZ ze stacji.
+    """Usuwa sekcj? GPZ ze stacji.
 
     Walidacja:
-      - sekcja musi istnieÄ‡
+      - sekcja musi istnie?
       - żadne `bay.gpz_section_id` w ENM nie może wskazywać na usuwaną sekcję
-        (operator musi najpierw przepiÄ…Ä‡/usunÄ…Ä‡ pola)
+        (operator musi najpierw przepi??/usun?? pola)
 
     Payload:
       substation_ref: str
@@ -6060,7 +6060,7 @@ def delete_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     if bays_using_section:
         return _error_response(
             f"Nie można usunąć sekcji '{section_id}': używana przez pola {bays_using_section}. "
-            "Najpierw przepiÄ…Ä‡/usunÄ…Ä‡ pola.",
+            "Najpierw przepi??/usun?? pola.",
             "gpz_section.delete.in_use",
         )
 
@@ -6072,7 +6072,7 @@ def delete_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
 
     audit = [{
         "step": 1,
-        "action": f"UsuniÄ™to sekcjÄ™ {side.upper()} '{section_id}'",
+        "action": f"Usuni?to sekcj? {side.upper()} '{section_id}'",
         "element_id": section_id,
     }]
     events = [{"event_seq": 1, "event_type": "GPZ_SECTION_DELETED", "element_id": section_id}]
@@ -6113,7 +6113,7 @@ def _bus_is_free_terminal(enm: dict[str, Any], bus_ref: str) -> bool:
     """Czy szyna jest wolnym terminalem (helper_bus + topology_terminal)?
 
     Wolny terminal = nie jest przypisany do żadnej Substation (poza GPZ),
-    nie ma innych branch wychodzÄ…cych, ma tag 'topology_terminal'.
+    nie ma innych branch wychodz?cych, ma tag 'topology_terminal'.
     """
     bus = None
     for b in enm.get("buses", []):
@@ -6157,7 +6157,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
 
     Determinizm: stacja generuje stabilny ID z seed = endpoint_bus_ref + station.name.
     Operacja addytywna — nie modyfikuje istniejących Bus, Branch ani innych
-    Substation. Endpoint_bus staje siÄ™ pierwszÄ… szynÄ… SN nowej stacji.
+    Substation. Endpoint_bus staje si? pierwsz? szyn? SN nowej stacji.
     """
     dry_run = bool(payload.get("dry_run", False))
     endpoint_bus_ref = payload.get("endpoint_bus_ref")
@@ -6177,7 +6177,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     if not endpoint_bus_ref:
         return _error_response(
             "Brak identyfikatora terminala. Podaj `endpoint_bus_ref` lub `run_ref` "
-            "z istniejÄ…cym corridor.",
+            "z istniej?cym corridor.",
             "station.append.endpoint_missing",
         )
 
@@ -6205,13 +6205,13 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     sn_voltage_kv = endpoint_bus.get("voltage_kv")
     if not sn_voltage_kv or sn_voltage_kv <= 0:
         return _error_response(
-            f"Szyna '{endpoint_bus_ref}' nie ma napiÄ™cia znamionowego.",
+            f"Szyna '{endpoint_bus_ref}' nie ma napi?cia znamionowego.",
             "station.append.voltage_missing",
         )
 
     if nn_voltage_kv <= 0:
         return _error_response(
-            "Brak napiÄ™cia nN stacji. Podaj `nn_voltage_kv` > 0.",
+            "Brak napi?cia nN stacji. Podaj `nn_voltage_kv` > 0.",
             "station.append.nn_voltage_missing",
         )
 
@@ -6500,7 +6500,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         "element_id": substation_ref,
     })
 
-    # Step 3: Bay(IN) wskazujÄ…cy na endpoint_bus
+    # Step 3: Bay(IN) wskazuj?cy na endpoint_bus
     bay_in_spec = _field_spec_for_bay_ref(bay_in_ref) or _field_spec_for_role("LINIA_IN")
     bay_in_materialization, bay_in_equipment_refs = _materialize_sn_field_apparatus(
         spec=bay_in_spec,
@@ -6801,7 +6801,7 @@ def execute_domain_operation(
 
     if handler is None:
         return _error_response(
-            f"Nieznana operacja: '{op_name}'. DostÄ™pne: {', '.join(sorted(CANONICAL_OPS))}",
+            f"Nieznana operacja: '{op_name}'. Dost?pne: {', '.join(sorted(CANONICAL_OPS))}",
             "dispatcher.unknown_operation",
         )
 

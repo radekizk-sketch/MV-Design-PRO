@@ -19,8 +19,8 @@ from typing import Any
 from uuid import UUID
 
 from api.dependencies import get_uow_factory
-from application.analysis_dispatch import AnalysisDispatchService
 from application.analysis_dispatch.summary import AnalysisRunSummary
+from application.unified_run_dispatch import UnifiedRunDispatchService
 from application.analysis_run.read_model import canonicalize_json
 from domain.analysis_kind import AnalysisKind
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -116,7 +116,7 @@ def dispatch_short_circuit(
 
     Returns AnalysisRunSummary with consistent shape.
     """
-    service = AnalysisDispatchService(uow_factory)
+    service = UnifiedRunDispatchService(uow_factory)
     opts = dict(request.options or {})
     opts["fault_spec"] = request.fault_spec
     try:
@@ -143,7 +143,7 @@ def dispatch_power_flow(
 
     Returns AnalysisRunSummary with consistent shape.
     """
-    service = AnalysisDispatchService(uow_factory)
+    service = UnifiedRunDispatchService(uow_factory)
     try:
         summary = service.dispatch(
             analysis_kind=AnalysisKind.POWER_FLOW,
@@ -168,7 +168,7 @@ def dispatch_protection(
 
     Returns AnalysisRunSummary with consistent shape.
     """
-    service = AnalysisDispatchService(uow_factory)
+    service = UnifiedRunDispatchService(uow_factory)
     opts = dict(request.options or {})
     opts["sc_run_id"] = request.sc_run_id
     opts["protection_case_id"] = str(request.protection_case_id)

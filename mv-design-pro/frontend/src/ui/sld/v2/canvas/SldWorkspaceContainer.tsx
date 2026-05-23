@@ -1927,7 +1927,7 @@ export function SldWorkspaceContainer(
   const startDerConfiguration = useCallback(
     (kind: DerDragKind) => {
       if (readOnly) {
-        notify('Tryb podglÄ…du schematu â€” przeĹ‚Ä…cz na edycjÄ™, aby dodaÄ‡ ukĹ‚ad PV/BESS/FW.', 'warning');
+        notify('Tryb podgl?du schematu - prze??cz na edycj?, aby doda? uk?ad PV/BESS/FW.', 'warning');
         return;
       }
       if (!selectedStationRefForDer) {

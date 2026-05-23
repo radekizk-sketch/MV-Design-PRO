@@ -35,4 +35,11 @@ describe('screen registry coverage', () => {
     expect(getScreenDefinition('E-36').areaId).toBe('RAPORTY_UZASADNIENIA');
     expect(getScreenDefinition('E-37').areaId).toBe('RAPORTY_UZASADNIENIA');
   });
+
+  it('registers V12.6 academic screens without reusing E-35..E-39', () => {
+    expect(getScreenDefinition('E-40').labelFull).toContain('harmoniczne');
+    expect(getScreenDefinition('E-41').labelFull).toContain('Stabilnosc');
+    expect(getScreenDefinition('E-47').areaId).toBe('ZRODLA_PRZYLACZENIA');
+    expect(getScreenDefinition('E-50').areaId).toBe('RAPORTY_UZASADNIENIA');
+  });
 });

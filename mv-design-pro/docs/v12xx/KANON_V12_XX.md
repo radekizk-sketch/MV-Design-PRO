@@ -211,3 +211,7 @@ MVP przemyslowe obejmuje kanon, ENM v2.0, migracje M0/M1/M2, SLD jako os, katalo
 ## 14. Pelna wersja V12.xx
 
 Pelna V12.xx domyka M3/M4, stan fazowy, stabilnosc dynamiczna, automatyke, pelne OZE/FRT/FW/BESS, pelne macierze interakcji, audyt uprawnien i red-team bez otwartych blokad.
+
+## 15. Rozszerzenie V12.6 akademicko-przemyslowe
+
+Rozszerzenie V12.6 jest aktywnym kontraktem addytywnym opisanym w `KANON_V12_6_PROFESORSKI.md`. Dodaje ekrany E-40..E-50 oraz kontrakt `AcademicAnalysisResultV1` dla analiz specjalistycznych. V12.6 nie zmienia zamrozonych API `ShortCircuitResult` ani `PowerFlowResult`; dziala jako osobny tor analityczny z committed ENM, white-box trace, proof refs, deterministycznym hashem i wpisami lifecycle API.

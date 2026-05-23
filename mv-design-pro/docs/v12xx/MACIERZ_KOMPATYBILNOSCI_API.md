@@ -48,6 +48,8 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/analysis-runs/{run_id}/results/short-circuit` | v12xx | aktywny | 2026-04-24 | - | Wyniki zwarciowe dla raportu i SLD, razem z `proof_ref`, `proof_status` i `reporting_status` dla 1F/2F+Z. | short circuit result tests, report export tests | Architekt solverow |
 | `GET /api/analysis-runs/{run_id}/results/source-compliance` | v12xx | aktywny | 2026-04-25 | - | Wyniki zgodnosci zrodla z profilem operatora wraz z proof i raportowalnoscia. | canonical analysis API tests, report export tests | Architekt OZE |
 | `GET /api/analysis-runs/{run_id}/results/trace` | v12xx | aktywny | 2026-04-24 | - | Slad danych wynikow. | trace tests | Architekt wynikow |
+| `GET /api/analysis-runs/{run_id}/results/v126/{analysis_type}` | v12.6 | aktywny | 2026-05-24 | - | Odczyt wyniku akademickiego V12.6 bez zmiany frozen SC/PF API. | v126 academic API tests | Architekt solverow |
+| `GET /api/analysis-runs/{run_id}/results/v126/{analysis_type}/trace` | v12.6 | aktywny | 2026-05-24 | - | WHITE BOX trace wyniku akademickiego V12.6. | v126 academic API tests | Architekt proof |
 | `GET /api/analysis-runs/{run_id}/snapshot` | v12xx | aktywny | 2026-04-24 | - | Migawka modelu uzyta do wyniku. | snapshot tests | Architekt ENM |
 | `GET /api/analysis-runs/{run_id}/trace` | v12xx | aktywny | 2026-04-24 | - | Slad wykonania uruchomienia. | trace tests | Architekt wynikow |
 | `GET /api/analysis-runs/{run_id}/trace/summary` | v12xx | aktywny | 2026-04-24 | - | Skrot sladu wykonania. | trace summary tests | Architekt wynikow |
@@ -88,6 +90,7 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/catalog/switch-equipment-types` | v12xx | aktywny | 2026-04-24 | - | Katalog lacznikow. | catalog tests | Administrator katalogow |
 | `GET /api/catalog/transformer-types` | v12xx | aktywny | 2026-04-24 | - | Katalog transformatorow. | catalog tests | Administrator katalogow |
 | `GET /api/catalog/vt-types` | v12xx | aktywny | 2026-04-24 | - | Katalog przekladnikow napieciowych. | catalog tests | Administrator katalogow |
+| `GET /api/catalog/v126/{namespace}` | v12.6 | aktywny | 2026-05-24 | - | Katalogi pomocnicze analiz akademickich V12.6. | v126 academic API tests | Administrator katalogow |
 | `GET /api/execution/fault-scenarios/{scenario_id}` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Odczyt scenariusza zakloceniowego. | execution tests | Architekt ruchowy |
 | `GET /api/execution/fault-scenarios/{scenario_id}/eligibility` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Zdolnosc uruchomienia scenariusza zakloceniowego. | execution eligibility tests | Architekt ruchowy |
 | `GET /api/execution/fault-scenarios/{scenario_id}/sld-overlay` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Nakladka SLD scenariusza zakloceniowego. | execution overlay tests | Architekt SLD |
@@ -125,6 +128,7 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `POST /api/cases/{case_id}/enm/domain-ops` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Walidowane operacje domenowe ENM v1, docelowo single-write ENM v2. | domain ops tests | Architekt ENM |
 | `POST /api/cases/{case_id}/runs/power-flow` | v12xx | aktywny | 2026-04-24 | - | Uruchomienie rozplywu mocy. | power flow run tests | Architekt solverow |
 | `POST /api/cases/{case_id}/runs/short-circuit` | v12xx | aktywny | 2026-04-24 | - | Uruchomienie obliczen zwarciowych; whitelistuje `fault_type`, `short_circuit_type`, `c_factor`, `thermal_time_seconds`, ignoruje draft ENM i zwraca status dowodowy oraz raportowy dla 1F/2F+Z. | short circuit run tests, draft isolation tests | Architekt solverow |
+| `POST /api/cases/{case_id}/runs/v126/{analysis_type}` | v12.6 | aktywny | 2026-05-24 | - | Uruchomienie analizy akademickiej V12.6 z committed ENM i parametrami przypadku. | v126 academic API tests | Architekt solverow |
 | `POST /api/catalog/import` | v12xx | aktywny | 2026-04-24 | - | Import katalogow. | catalog import tests | Administrator katalogow |
 | `POST /api/catalog/protection/import` | v12xx | aktywny | 2026-04-24 | - | Import katalogu zabezpieczen. | protection import tests | Projektant zabezpieczen |
 | `POST /api/comparison/runs` | v12xx | aktywny | 2026-04-24 | - | Porownanie uruchomien. | comparison tests | Architekt wynikow |
@@ -157,3 +161,60 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 ## Blokada wdrozeniowa
 
 Nowy endpoint bez wpisu w tej macierzy blokuje zamkniecie PR.
+
+## Uzupelnienie lifecycle po scaleniu PR 462
+
+Data wejscia statusow: 2026-05-24.
+
+| Endpoint | Wersja | Status | Data wejscia | Data wylaczenia | Zakres kompatybilnosci | Testy | Wlasciciel |
+|---|---|---|---|---|---|---|---|
+| `DELETE /api/v1/projects/{project_id}/audit2-station-config/{station_id:path}` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Usuniecie konfiguracji stacji audit2 w przejsciowym API konfiguratora. | audit2 station config tests | Architekt API |
+| `GET /api/analysis-runs/{run_id}/export/proof/json` | v12xx | aktywny | 2026-05-24 | - | Eksport uzasadnienia w JSON z frozen proof. | analysis run export tests | Architekt proof |
+| `GET /api/analysis-runs/{run_id}/export/proof/latex` | v12xx | aktywny | 2026-05-24 | - | Eksport uzasadnienia w LaTeX z frozen proof. | analysis run export tests | Architekt proof |
+| `GET /api/analysis-runs/{run_id}/export/proof/pdf` | v12xx | aktywny | 2026-05-24 | - | Eksport uzasadnienia PDF z frozen proof. | analysis run export tests | Architekt proof |
+| `GET /api/analysis-runs/{run_id}/export/report/docx` | v12xx | aktywny | 2026-05-24 | - | Eksport raportu DOCX z wyniku i uzasadnienia. | analysis run export tests | Architekt raportow |
+| `GET /api/analysis-runs/{run_id}/export/report/json` | v12xx | aktywny | 2026-05-24 | - | Eksport raportu JSON z wyniku i uzasadnienia. | analysis run export tests | Architekt raportow |
+| `GET /api/analysis-runs/{run_id}/export/report/pdf` | v12xx | aktywny | 2026-05-24 | - | Eksport raportu PDF z wyniku i uzasadnienia. | analysis run export tests | Architekt raportow |
+| `GET /api/cases/{case_id}/analysis/eligibility` | v12xx | aktywny | 2026-05-24 | - | Zdolnosc uruchomienia analiz w widoku solver input. | solver input tests | Architekt walidacji |
+| `GET /api/cases/{case_id}/analysis/solver-input/{analysis_type}` | v12xx | aktywny | 2026-05-24 | - | Audytowalny podglad wejscia solvera dla typu analizy. | solver input tests | Architekt solverow |
+| `GET /api/station-templates` | v12xx | aktywny | 2026-05-24 | - | Lista szablonow stacji. | station template tests | Architekt stacji |
+| `GET /api/station-templates/categories` | v12xx | aktywny | 2026-05-24 | - | Kategorie szablonow stacji. | station template tests | Architekt stacji |
+| `GET /api/station-templates/{template_id}` | v12xx | aktywny | 2026-05-24 | - | Szczegol szablonu stacji. | station template tests | Architekt stacji |
+| `GET /api/v1/catalog/audit2/bess-operation-modes` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Katalog trybow pracy BESS dla audit2. | audit2 catalog tests | Administrator katalogow |
+| `GET /api/v1/catalog/audit2/block-transformers` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Katalog transformatorow blokowych audit2. | audit2 catalog tests | Administrator katalogow |
+| `GET /api/v1/catalog/audit2/device-withstand` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Katalog wytrzymalosci aparatury audit2. | audit2 catalog tests | Administrator katalogow |
+| `GET /api/v1/catalog/audit2/hv-fuses` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Katalog bezpiecznikow WN audit2. | audit2 catalog tests | Administrator katalogow |
+| `GET /api/v1/catalog/audit2/mv-neutral-groundings` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Katalog uziemien punktu neutralnego SN audit2. | audit2 catalog tests | Administrator katalogow |
+| `GET /api/v1/catalog/audit2/pf-curves` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Katalog krzywych cos phi/P audit2. | audit2 catalog tests | Administrator katalogow |
+| `GET /api/v1/catalog/audit2/snapshot` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Snapshot katalogow audit2. | audit2 catalog tests | Administrator katalogow |
+| `GET /api/v1/catalog/audit2/tap-changers` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Katalog przelacznikow zaczepow audit2. | audit2 catalog tests | Administrator katalogow |
+| `GET /api/v1/projects/{project_id}/audit2-station-config` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Lista konfiguracji stacji audit2. | audit2 station config tests | Architekt stacji |
+| `GET /api/v1/projects/{project_id}/audit2-station-config/{station_id:path}` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Odczyt konfiguracji stacji audit2. | audit2 station config tests | Architekt stacji |
+| `GET /api/v1/reference-networks` | v12xx | aktywny | 2026-05-24 | - | Lista sieci referencyjnych i benchmarkow. | reference network tests | Architekt testow |
+| `GET /api/v1/reference-networks/{network_id}` | v12xx | aktywny | 2026-05-24 | - | Szczegol sieci referencyjnej. | reference network tests | Architekt testow |
+| `GET /api/v1/reference-networks/{network_id}/export/json` | v12xx | aktywny | 2026-05-24 | - | Eksport sieci referencyjnej JSON. | reference network tests | Architekt testow |
+| `GET /api/v1/reference-networks/{network_id}/export/pdf` | v12xx | aktywny | 2026-05-24 | - | Eksport sieci referencyjnej PDF. | reference network tests | Architekt raportow |
+| `GET /api/v1/reference-networks/{network_id}/nc-rfg-compliance` | v12xx | aktywny | 2026-05-24 | - | Ocena zgodnosci NC RfG dla sieci referencyjnej. | reference network tests | Architekt OZE |
+| `PATCH /api/projects/{project_id}` | v12xx | aktywny | 2026-05-24 | - | Aktualizacja metadanych projektu. | project API tests | Architekt API |
+| `POST /api/cases/audit2-power-flow` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Przejsciowy tor rozplywu audit2. | solver input tests | Architekt solverow |
+| `POST /api/fault-loop/compute` | v12xx | aktywny | 2026-05-24 | - | Obliczenie petli zwarcia IEC 60364. | fault loop tests | Architekt solverow |
+| `POST /api/projects/{project_id}/cases/{case_id}/generators` | v12xx | aktywny | 2026-05-24 | - | Zapis zrodla/generatora do przypadku przez API projektowe. | generator API tests | Architekt OZE |
+| `POST /api/runs/power-flow` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Przejsciowe uruchomienie rozplywu przez unified runs. | unified run tests | Architekt API |
+| `POST /api/runs/protection` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Przejsciowe uruchomienie zabezpieczen przez unified runs. | unified run tests | Projektant zabezpieczen |
+| `POST /api/runs/short-circuit` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Przejsciowe uruchomienie zwarc przez unified runs. | unified run tests | Architekt API |
+| `POST /api/solver/grid-source-preview` | v12xx | aktywny | 2026-05-24 | - | Podglad parametrow zrodla GPZ bez mutacji modelu. | grid source preview tests | Architekt solverow |
+| `POST /api/station-templates/{template_id}/apply` | v12xx | aktywny | 2026-05-24 | - | Zastosowanie szablonu stacji przez operacje domenowe. | station template tests | Architekt stacji |
+| `POST /api/station-templates/{template_id}/preview` | v12xx | aktywny | 2026-05-24 | - | Podglad skutkow szablonu stacji bez zapisu. | station template tests | Architekt stacji |
+| `POST /api/v1/catalog/audit2/build-station-payload` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Budowa payloadu konfiguracji stacji audit2. | audit2 catalog tests | Architekt stacji |
+| `POST /api/v1/catalog/audit2/generate-proof-pack` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Generacja pakietu dowodowego audit2. | audit2 proof tests | Architekt proof |
+| `POST /api/v1/catalog/audit2/generate-report` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Generacja raportu audit2 z danych kanonicznych. | audit2 report tests | Architekt raportow |
+| `POST /api/v1/catalog/audit2/validate-device-withstand` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Walidacja wytrzymalosci aparatury audit2. | audit2 catalog tests | Architekt solverow |
+| `POST /api/v1/catalog/audit2/validate-hosting-capacity-export` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Walidacja eksportu hosting capacity audit2. | audit2 catalog tests | Architekt OZE |
+| `POST /api/v1/catalog/audit2/validate-vt-grounding` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Walidacja uziemienia przekladnikow napieciowych audit2. | audit2 catalog tests | Architekt uziemien |
+| `POST /api/v1/projects/{project_id}/audit2-station-config/_validate-all` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Walidacja wszystkich konfiguracji stacji audit2. | audit2 station config tests | Architekt stacji |
+| `POST /api/v1/projects/{project_id}/audit2-station-config/{station_id:path}/_apply-to-network-model` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Zastosowanie konfiguracji audit2 do modelu domenowego. | audit2 station config tests | Architekt ENM |
+| `POST /api/v1/reference-networks/similarity-match` | v12xx | aktywny | 2026-05-24 | - | Dopasowanie podobienstwa sieci do benchmarku. | reference network tests | Architekt testow |
+| `POST /api/v1/reference-networks/{network_id}/run` | v12xx | aktywny | 2026-05-24 | - | Uruchomienie analiz dla sieci referencyjnej. | reference network tests | Architekt testow |
+| `POST /api/v1/reference-networks/{network_id}/validate` | v12xx | aktywny | 2026-05-24 | - | Walidacja sieci referencyjnej. | reference network tests | Architekt testow |
+| `POST /api/v1/reference-networks/{network_id}/validate-dynamic` | v12xx | aktywny | 2026-05-24 | - | Walidacja dynamiczna sieci referencyjnej. | reference network tests | Architekt testow |
+| `PUT /api/v1/projects/{project_id}/audit2-station-config/{station_id:path}` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Zapis konfiguracji stacji audit2. | audit2 station config tests | Architekt stacji |
