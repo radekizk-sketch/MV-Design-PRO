@@ -494,6 +494,15 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             }
           />
           <SurfaceActionButton
+            label="Analiza wrażliwości"
+            onClick={() =>
+              openChildSurface('analysis', {
+                screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
+                tabId: 'sensitivity',
+              })
+            }
+          />
+          <SurfaceActionButton
             label="Raporty OSD i audytowe"
             onClick={() => navigateToReport({ caseId: activeCaseId, runId: effectiveRunId })}
           />
