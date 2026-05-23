@@ -526,6 +526,47 @@ export function mergeStarterManufacturers(
   return orderManufacturers([...merged.values()]);
 }
 
+// Catalog entries
+export interface CatalogEntry {
+  id: string;
+  name: string;
+  manufacturer: string | undefined;
+  summary: string;
+}
+
+export function toTransformerCatalogEntries(
+  types: TransformerType[],
+  sourcePowerMva: number | null,
+): CatalogEntry[] {
+  return types.map((type) => {
+    const powerStatus =
+      sourcePowerMva == null
+        ? 'moc: do bilansu odbiorów'
+        : type.rated_power_mva >= sourcePowerMva
+          ? `moc zgodna dla ${formatMva(sourcePowerMva)} MVA`
+          : `moc za mała dla ${formatMva(sourcePowerMva)} MVA`;
+    return {
+      id: type.id,
+      name: type.name,
+      manufacturer: type.manufacturer,
+      summary:
+        `SN zgodne · nN zgodne · ${powerStatus} · uk ${formatMva(type.uk_percent)}% · `
+        + `${type.vector_group}`,
+    };
+  });
+}
+
+export function toConverterCatalogEntries(types: ConverterType[]): CatalogEntry[] {
+  return types.map((type) => ({
+    id: type.id,
+    name: type.name,
+    manufacturer: type.manufacturer,
+    summary:
+      `Un ${formatKv(type.un_kv)} kV · Sn ${formatMva(type.sn_mva)} MVA · `
+      + `Pmax ${formatMva(type.pmax_mw)} MW`,
+  }));
+}
+
 export function buildDefaultSnFields(stationKind: TopologicalStationKind): Array<{
   field_role: SnFieldRole;
   catalog_bindings: null;

@@ -47,6 +47,8 @@ import {
   mergeStarterManufacturers as mergeStarterManufacturersHelper,
   findTemplateForRole as findTemplateForRoleHelper,
   templateOptionsForRole as templateOptionsForRoleHelper,
+  toTransformerCatalogEntries,
+  toConverterCatalogEntries,
 } from './InsertStationFormHelpers';
 
 function engineeringSegmentLabel(
@@ -73,7 +75,7 @@ import type { BayKind, CompleteMvBayTemplateSummary } from '../../catalog/BayTem
 import type { Manufacturer } from '../../catalog/manufacturer';
 import type { SwitchgearFamily } from '../../catalog/SwitchgearFamilyPicker';
 import type { ConverterType, TransformerType } from '../../catalog/types';
-import { CatalogPicker, type CatalogEntry } from '../../topology/modals/CatalogPicker';
+import { CatalogPicker } from '../../topology/modals/CatalogPicker';
 import { isTerrainSnSegment } from '../../shared/enmVisibility';
 import {
   formatStationTypeLabelPl,
@@ -394,38 +396,7 @@ const NO_COMPATIBLE_TRANSFORMER_MESSAGE =
 
 // sourceProtectionIntent moved to InsertStationFormHelpers.ts
 
-function toTransformerCatalogEntries(
-  types: TransformerType[],
-  sourcePowerMva: number | null,
-): CatalogEntry[] {
-  return types.map((type) => {
-    const powerStatus =
-      sourcePowerMva == null
-        ? 'moc: do bilansu odbiorów'
-        : type.rated_power_mva >= sourcePowerMva
-          ? `moc zgodna dla ${formatMva(sourcePowerMva)} MVA`
-          : `moc za mała dla ${formatMva(sourcePowerMva)} MVA`;
-    return {
-      id: type.id,
-      name: type.name,
-      manufacturer: type.manufacturer,
-      summary:
-        `SN zgodne · nN zgodne · ${powerStatus} · uk ${formatMva(type.uk_percent)}% · `
-        + `${type.vector_group}`,
-    };
-  });
-}
-
-function toConverterCatalogEntries(types: ConverterType[]): CatalogEntry[] {
-  return types.map((type) => ({
-    id: type.id,
-    name: type.name,
-    manufacturer: type.manufacturer,
-    summary:
-      `Un ${formatKv(type.un_kv)} kV · Sn ${formatMva(type.sn_mva)} MVA · `
-      + `Pmax ${formatMva(type.pmax_mw)} MW`,
-  }));
-}
+// toTransformerCatalogEntries, toConverterCatalogEntries moved to InsertStationFormHelpers.ts
 
 // deriveSnVoltageKv moved to InsertStationFormHelpers.ts
 
