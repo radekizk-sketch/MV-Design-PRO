@@ -4,7 +4,7 @@ import {
   classifyVoltage,
   buildVoltageHeatmap,
   VoltageHeatmapLegend,
-} from '../VoltageHeatmapOverlay';
+} from '../VoltageHeatmap';
 
 describe('classifyVoltage', () => {
   it('≥ 1.10 p.u. → over', () => {
