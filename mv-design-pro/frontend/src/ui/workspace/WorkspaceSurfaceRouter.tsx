@@ -99,6 +99,7 @@ import {
   displayScopeLabel,
   resolveRunLabel,
 } from './routerPureHelpers';
+import { SurfaceBreadcrumbs } from './SurfaceBreadcrumbs';
 import { isCanonicalOpName, type CanonicalOpName } from '../../types/domainOps';
 import { resolveFixActionSurface } from '../../types/fixActionSurface';
 import type { Branch, EnergyNetworkModel, FixAction } from '../../types/enm';
@@ -108,32 +109,7 @@ interface WorkspaceSurfaceRouterProps {
   region: 'panel' | 'main';
 }
 
-function SurfaceBreadcrumbs({
-  surface,
-  currentTitlePl,
-}: {
-  surface: WorkspaceSurfaceDescriptor;
-  currentTitlePl: string;
-}) {
-  const collapseSurfaceStackTo = useNetworkBuildStore((state) => state.collapseSurfaceStackTo);
-
-  return (
-    <div className="flex flex-wrap items-center gap-1 text-[11px] text-slate-500">
-      {surface.breadcrumbs.map((crumb, index) => (
-        <div key={`${crumb.labelPl}-${index}`} className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => collapseSurfaceStackTo(crumb.surfaceId)}
-            className="rounded px-1.5 py-0.5 hover:bg-slate-100 hover:text-slate-800"
-          >
-            {index === surface.breadcrumbs.length - 1 ? currentTitlePl : crumb.labelPl}
-          </button>
-          {index < surface.breadcrumbs.length - 1 && <span>/</span>}
-        </div>
-      ))}
-    </div>
-  );
-}
+// SurfaceBreadcrumbs moved to SurfaceBreadcrumbs.tsx
 
 type NamedEnmElement = {
   id?: string | null;
