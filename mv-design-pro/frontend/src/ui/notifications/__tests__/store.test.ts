@@ -116,8 +116,8 @@ describe('useNotificationStore', () => {
       expect(notifs[notifs.length - 1].message).toBe('Message 5');
     });
 
-    it('should auto-dismiss after 5 seconds', () => {
-      useNotificationStore.getState().notify('Temp message');
+    it('should auto-dismiss after 5 seconds (non-sticky)', () => {
+      useNotificationStore.getState().notify('Temp message', 'success');
 
       expect(useNotificationStore.getState().notifications).toHaveLength(1);
 
@@ -128,10 +128,33 @@ describe('useNotificationStore', () => {
     });
 
     it('should NOT auto-dismiss before 5 seconds', () => {
-      useNotificationStore.getState().notify('Temp message');
+      useNotificationStore.getState().notify('Temp message', 'success');
 
       vi.advanceTimersByTime(4999);
       expect(useNotificationStore.getState().notifications).toHaveLength(1);
+    });
+
+    it('error type jest sticky (NIE auto-dismiss)', () => {
+      useNotificationStore.getState().notify('Krytyczny błąd', 'error');
+      vi.advanceTimersByTime(10000);
+      expect(useNotificationStore.getState().notifications).toHaveLength(1);
+    });
+
+    it('explicit sticky=true blokuje auto-dismiss', () => {
+      useNotificationStore.getState().notify('Trzymaj mnie', { type: 'success', sticky: true });
+      vi.advanceTimersByTime(10000);
+      expect(useNotificationStore.getState().notifications).toHaveLength(1);
+    });
+
+    it('actions przekazane do notification', () => {
+      const onClick = vi.fn();
+      useNotificationStore.getState().notify('Z akcją', {
+        type: 'success',
+        actions: [{ label: 'Cofnij', onClick }],
+      });
+      const notifs = useNotificationStore.getState().notifications;
+      expect(notifs[0].actions).toHaveLength(1);
+      expect(notifs[0].actions?.[0].label).toBe('Cofnij');
     });
   });
 

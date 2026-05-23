@@ -37,23 +37,48 @@ export function NotificationToast() {
         <div
           key={n.id}
           className={clsx(
-            'flex items-start gap-2 px-3 py-2 rounded border shadow-md text-sm',
+            'flex flex-col gap-1 px-3 py-2 rounded border shadow-md text-sm',
             'animate-[fadeIn_0.2s_ease-in]',
             TYPE_STYLES[n.type]
           )}
           role="alert"
           data-testid="notification-toast"
         >
-          <span className="flex-shrink-0 mt-0.5">{TYPE_ICONS[n.type]}</span>
-          <span className="flex-1 break-words">{n.message}</span>
-          <button
-            type="button"
-            onClick={() => dismiss(n.id)}
-            className="flex-shrink-0 ml-1 opacity-60 hover:opacity-100"
-            aria-label="Zamknij"
-          >
-            {"\u00D7"}
-          </button>
+          <div className="flex items-start gap-2">
+            <span className="flex-shrink-0 mt-0.5">{TYPE_ICONS[n.type]}</span>
+            <span className="flex-1 break-words">{n.message}</span>
+            <button
+              type="button"
+              onClick={() => dismiss(n.id)}
+              className="flex-shrink-0 ml-1 opacity-60 hover:opacity-100"
+              aria-label="Zamknij"
+            >
+              {"\u00D7"}
+            </button>
+          </div>
+          {n.actions && n.actions.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pl-5 pt-1" data-testid={`notification-actions-${n.id}`}>
+              {n.actions.map((action, idx) => (
+                <button
+                  key={`${action.label}-${idx}`}
+                  type="button"
+                  onClick={() => {
+                    action.onClick();
+                    dismiss(n.id);
+                  }}
+                  className={clsx(
+                    'rounded border px-2 py-0.5 text-[11px] font-medium',
+                    action.variant === 'danger'
+                      ? 'border-red-400 text-red-700 hover:bg-red-100'
+                      : 'border-current text-current hover:opacity-80',
+                  )}
+                  data-testid={`notification-action-${n.id}-${idx}`}
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       ))}
     </div>

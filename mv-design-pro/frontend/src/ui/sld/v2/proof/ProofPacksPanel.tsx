@@ -78,6 +78,12 @@ export interface ProofPacksPanelProps {
   readonly hasNetworkModel: boolean;
   /** Optional callback gdy użytkownik kliknie pack ID. */
   readonly onSelectPack?: (packId: string) => void;
+  /** Wygenerowanie pack (requires_calculation → available). */
+  readonly onGeneratePack?: (packId: string) => void;
+  /** Pokaż szczegóły pack (otwarcie TraceViewer). */
+  readonly onShowPack?: (packId: string) => void;
+  /** Eksport pack (PDF/LaTeX/JSON/DOCX). */
+  readonly onExportPack?: (packId: string, format: 'pdf' | 'latex' | 'json' | 'docx') => void;
   /** Opcjonalny className zewnętrzny. */
   readonly className?: string;
 }
@@ -91,6 +97,9 @@ export interface ProofPacksPanelProps {
 export function ProofPacksPanel({
   hasNetworkModel,
   onSelectPack,
+  onGeneratePack,
+  onShowPack,
+  onExportPack,
   className,
 }: ProofPacksPanelProps) {
   const packs = useMemo<ProofPackInfo[]>(
@@ -125,8 +134,10 @@ export function ProofPacksPanel({
       <ul className="flex flex-col gap-px">
         {packs.map((pack) => {
           const isBlocked = pack.status === 'blocked';
+          const needsCalc = pack.status === 'requires_calculation';
+          const isReady = pack.status === 'available';
           return (
-            <li key={pack.id}>
+            <li key={pack.id} className="rounded border border-transparent py-0.5 hover:border-scada-border">
               <button
                 type="button"
                 onClick={() => {
@@ -157,6 +168,64 @@ export function ProofPacksPanel({
                       : '—'}
                 </span>
               </button>
+              {/* CTA row - Generate / Show / Export */}
+              {!isBlocked && (
+                <div className="mt-0.5 flex flex-wrap gap-1 pl-1" data-testid={`sld-proof-pack-cta-${pack.id}`}>
+                  {needsCalc && onGeneratePack && (
+                    <button
+                      type="button"
+                      onClick={() => onGeneratePack(pack.id)}
+                      className="rounded border border-amber-500/40 px-1.5 py-0.5 text-[9px] text-amber-300 hover:bg-amber-500/10"
+                      data-testid={`sld-proof-pack-generate-${pack.id}`}
+                      title={`Wygeneruj dowód: ${pack.labelPl}`}
+                    >
+                      Wygeneruj
+                    </button>
+                  )}
+                  {isReady && onShowPack && (
+                    <button
+                      type="button"
+                      onClick={() => onShowPack(pack.id)}
+                      className="rounded border border-emerald-500/40 px-1.5 py-0.5 text-[9px] text-emerald-300 hover:bg-emerald-500/10"
+                      data-testid={`sld-proof-pack-show-${pack.id}`}
+                      title={`Pokaż ślad obliczeń: ${pack.labelPl}`}
+                    >
+                      Pokaż
+                    </button>
+                  )}
+                  {isReady && onExportPack && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => onExportPack(pack.id, 'pdf')}
+                        className="rounded border border-blue-500/40 px-1.5 py-0.5 text-[9px] text-blue-300 hover:bg-blue-500/10"
+                        data-testid={`sld-proof-pack-export-pdf-${pack.id}`}
+                        title="Eksport jako PDF (KaTeX rendered)"
+                      >
+                        PDF
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onExportPack(pack.id, 'latex')}
+                        className="rounded border border-blue-500/40 px-1.5 py-0.5 text-[9px] text-blue-300 hover:bg-blue-500/10"
+                        data-testid={`sld-proof-pack-export-latex-${pack.id}`}
+                        title="Eksport jako LaTeX (.tex source)"
+                      >
+                        TeX
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onExportPack(pack.id, 'json')}
+                        className="rounded border border-blue-500/40 px-1.5 py-0.5 text-[9px] text-blue-300 hover:bg-blue-500/10"
+                        data-testid={`sld-proof-pack-export-json-${pack.id}`}
+                        title="Eksport jako JSON (strukturalny)"
+                      >
+                        JSON
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </li>
           );
         })}
