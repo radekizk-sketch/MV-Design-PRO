@@ -10,6 +10,7 @@ import { clsx } from 'clsx';
 
 import { validateMonotonic } from './profileSerializers';
 import type { FrtPhase, FrtPoint, FrtProfile } from './profileTypes';
+import { ProfileCurveEditor, type CurvePoint } from './ProfileCurveEditor';
 
 export interface FrtProfileFormProps {
   initial?: FrtProfile;
@@ -70,6 +71,18 @@ function PhaseEditor({ phase, points, catalogReadOnly, onChange }: PhaseEditorPr
       data-testid={`frt-phase-${phase}`}
     >
       <legend className="text-xs font-semibold px-1">{phaseLabel}</legend>
+      <ProfileCurveEditor
+        title={`Krzywa FRT ${phaseLabel} - przeciągnij punkty aby edytować`}
+        xLabel="t [s]"
+        yLabel="U [pu]"
+        xRange={phase === 'undervoltage' ? [0, 3] : [0, 60]}
+        yRange={phase === 'undervoltage' ? [0, 1] : [1, 1.4]}
+        points={points.map<CurvePoint>((p) => ({ x: p.t_s, y: p.u_pu }))}
+        editable={!catalogReadOnly}
+        onChange={(newPoints) =>
+          onChange(newPoints.map((p) => ({ t_s: p.x, u_pu: p.y })))
+        }
+      />
       <table className="w-full text-xs">
         <thead>
           <tr className="text-scada-muted">

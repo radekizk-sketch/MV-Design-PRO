@@ -9,6 +9,7 @@ import { clsx } from 'clsx';
 
 import { validateMonotonic, validateRange } from './profileSerializers';
 import type { CosPhiOfPPoint, CosPhiOfPProfile } from './profileTypes';
+import { ProfileCurveEditor, type CurvePoint } from './ProfileCurveEditor';
 
 export interface CosPhiOfPProfileFormProps {
   initial?: CosPhiOfPProfile;
@@ -78,6 +79,19 @@ export function CosPhiOfPProfileForm({ initial, onSubmit, onCancel }: CosPhiOfPP
           Profil z katalogu: <code>{catalogRef}</code> (read-only)
         </p>
       )}
+
+      <ProfileCurveEditor
+        title="Charakterystyka cos φ(P) - przeciągnij punkty aby edytować"
+        xLabel="P [pu]"
+        yLabel="cos φ"
+        xRange={[0, 1]}
+        yRange={[-1, 1]}
+        points={points.map<CurvePoint>((p) => ({ x: p.p_pu, y: p.cos_phi }))}
+        editable={catalogRef === undefined}
+        onChange={(newPoints) =>
+          setPoints(newPoints.map((p) => ({ p_pu: p.x, cos_phi: p.y })))
+        }
+      />
 
       <table className="w-full text-xs" data-testid="cosphi-points-table">
         <thead>

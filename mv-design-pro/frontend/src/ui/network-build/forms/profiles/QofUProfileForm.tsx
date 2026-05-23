@@ -17,6 +17,7 @@ import {
   validateRange,
 } from './profileSerializers';
 import type { QofUPoint, QofUProfile } from './profileTypes';
+import { ProfileCurveEditor, type CurvePoint } from './ProfileCurveEditor';
 
 export interface QofUProfileFormProps {
   /** Initial profile (edycja) lub undefined (nowy) */
@@ -95,6 +96,19 @@ export function QofUProfileForm({ initial, onSubmit, onCancel }: QofUProfileForm
           Profil z katalogu: <code>{catalogRef}</code> (read-only)
         </p>
       )}
+
+      <ProfileCurveEditor
+        title="Charakterystyka Q(U) - przeciągnij punkty aby edytować"
+        xLabel="U [pu]"
+        yLabel="Q [Mvar]"
+        xRange={[0.85, 1.15]}
+        yRange={[-1.5, 1.5]}
+        points={points.map<CurvePoint>((p) => ({ x: p.u_pu, y: p.q_mvar }))}
+        editable={catalogRef === undefined}
+        onChange={(newPoints) =>
+          setPoints(newPoints.map((p) => ({ u_pu: p.x, q_mvar: p.y })))
+        }
+      />
 
       <table className="w-full text-xs" data-testid="qu-points-table">
         <thead>
