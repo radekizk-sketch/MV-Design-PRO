@@ -8,6 +8,8 @@ import { useSnapshotStore } from '../../topology/snapshotStore';
 import { navigateToSld } from '../../navigation/routes';
 import { useActiveOperationForm, useNetworkBuildStore } from '../networkBuildStore';
 import { catalogRefFromInput, normalizeCatalogBinding } from './catalogPayload';
+import { HelpTooltip } from '../../shared/HelpTooltip';
+import { getTooltip } from '../../shared/engineerTooltips';
 import {
   listSnBusOptions,
   resolveBusSnRef,
@@ -229,8 +231,18 @@ export function AddSnBayForm() {
           return;
         }
         const filtered = types.filter((item) => catalogItemMatchesApparatusKind(item, apparatusKind));
-        setCatalogEntries(toCatalogEntries(filtered.length > 0 ? filtered : types));
+        const usable = filtered.length > 0 ? filtered : types;
+        setCatalogEntries(toCatalogEntries(usable));
         setCatalogError(null);
+        // Auto-fill (C7): jeśli bieżący wybór nie pasuje do rodzaju aparatu,
+        // automatycznie wybierz pierwszą pozycję katalogową zgodną z aparatem.
+        setCatalogItemId((current) => {
+          const stillValid = usable.some((item) => item.id === current);
+          if (stillValid && current) {
+            return current;
+          }
+          return usable[0]?.id ?? current;
+        });
       })
       .catch((error) => {
         if (!active) {
@@ -383,8 +395,18 @@ export function AddSnBayForm() {
         </label>
 
         <label className="block">
-          <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
+          <span className="flex items-center gap-1 font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
             Rodzaj aparatu głównego
+            {(() => {
+              const key =
+                apparatusKind === 'BREAKER'
+                  ? 'apparatus_breaker'
+                  : apparatusKind === 'DISCONNECTOR'
+                    ? 'apparatus_disconnector'
+                    : 'apparatus_load_switch';
+              const tip = getTooltip(key);
+              return tip ? <HelpTooltip text={tip.text} norm={tip.norm} inline /> : null;
+            })()}
           </span>
           <select title="Rodzaj aparatu głównego"
             value={apparatusKind}

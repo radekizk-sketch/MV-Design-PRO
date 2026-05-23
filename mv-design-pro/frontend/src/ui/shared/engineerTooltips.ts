@@ -133,6 +133,20 @@ export const ENGINEER_TOOLTIPS: Record<string, EngineerTooltip> = {
     text: 'Spadek napięcia ΔU = √3 × I × L × (R·cosφ + X·sinφ). Limit zwykle ≤5% U_n.',
     norm: 'PN-IEC 60364-5-52',
   },
+
+  // Aparatura pola SN — rozróżnienie funkcjonalne
+  apparatus_breaker: {
+    text: 'Wyłącznik — łączy i przerywa prądy robocze ORAZ zwarciowe (pełna zdolność łączeniowa Icu/Ics). Wymagany w polach z funkcją zabezpieczeniową.',
+    norm: 'PN-EN 62271-100',
+  },
+  apparatus_disconnector: {
+    text: 'Odłącznik — zapewnia widoczną przerwę izolacyjną, łączy TYLKO przy zaniku prądu (bez zdolności wyłączania prądu obciążenia). Funkcja bezpieczeństwa/separacji.',
+    norm: 'PN-EN 62271-102',
+  },
+  apparatus_load_switch: {
+    text: 'Rozłącznik — łączy i przerywa prądy robocze (obciążenia), ale NIE prądy zwarciowe. Często łączony z bezpiecznikami (rozłącznik bezpiecznikowy).',
+    norm: 'PN-EN 62271-103',
+  },
 };
 
 export function getTooltip(key: string): EngineerTooltip | null {

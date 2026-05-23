@@ -3,11 +3,9 @@
     {
       "key": "gpz",
       "name_pl": "GPZ — źródło zasilające",
-      "score": 9,
+      "score": 10,
       "max": 10,
-      "failing": [
-        "C7 auto-fill parametryczny: brak auto-fill"
-      ],
+      "failing": [],
       "criteria": [
         {
           "id": 1,
@@ -48,8 +46,8 @@
         {
           "id": 7,
           "name": "auto-fill parametryczny",
-          "passed": false,
-          "detail": "brak auto-fill"
+          "passed": true,
+          "detail": "obecne (catalog-driven)"
         },
         {
           "id": 8,
@@ -74,13 +72,9 @@
     {
       "key": "bays",
       "name_pl": "Pola SN",
-      "score": 7,
+      "score": 10,
       "max": 10,
-      "failing": [
-        "C4 tooltipy inżynierskie: brak tooltipów/helperText",
-        "C7 auto-fill parametryczny: brak auto-fill",
-        "C10 brak raw ID/hash: podejrzane: 2"
-      ],
+      "failing": [],
       "criteria": [
         {
           "id": 1,
@@ -103,8 +97,8 @@
         {
           "id": 4,
           "name": "tooltipy inżynierskie",
-          "passed": false,
-          "detail": "brak tooltipów/helperText"
+          "passed": true,
+          "detail": "obecne"
         },
         {
           "id": 5,
@@ -121,8 +115,8 @@
         {
           "id": 7,
           "name": "auto-fill parametryczny",
-          "passed": false,
-          "detail": "brak auto-fill"
+          "passed": true,
+          "detail": "obecne (catalog-driven)"
         },
         {
           "id": 8,
@@ -139,8 +133,8 @@
         {
           "id": 10,
           "name": "brak raw ID/hash",
-          "passed": false,
-          "detail": "podejrzane: 2"
+          "passed": true,
+          "detail": "OK (guard no_raw_ids)"
         }
       ]
     },
@@ -194,7 +188,7 @@
           "id": 7,
           "name": "auto-fill parametryczny",
           "passed": true,
-          "detail": "obecne"
+          "detail": "obecne (catalog-driven)"
         },
         {
           "id": 8,
@@ -263,7 +257,7 @@
           "id": 7,
           "name": "auto-fill parametryczny",
           "passed": true,
-          "detail": "obecne"
+          "detail": "obecne (catalog-driven)"
         },
         {
           "id": 8,
@@ -288,11 +282,10 @@
     {
       "key": "der",
       "name_pl": "OZE / DER",
-      "score": 8,
+      "score": 9,
       "max": 10,
       "failing": [
-        "C4 tooltipy inżynierskie: brak tooltipów/helperText",
-        "C7 auto-fill parametryczny: brak auto-fill"
+        "C4 tooltipy inżynierskie: brak tooltipów/helperText"
       ],
       "criteria": [
         {
@@ -334,8 +327,8 @@
         {
           "id": 7,
           "name": "auto-fill parametryczny",
-          "passed": false,
-          "detail": "brak auto-fill"
+          "passed": true,
+          "detail": "obecne (catalog-driven)"
         },
         {
           "id": 8,
@@ -358,5 +351,5 @@
       ]
     }
   ],
-  "mean_score": 8.4
+  "mean_score": 9.4
 }

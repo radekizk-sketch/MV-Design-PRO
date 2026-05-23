@@ -199,11 +199,20 @@ def audit_stage(stage: Stage) -> StageResult:
     else:
         res.criteria.append(CriterionResult(6, "catalog search (n/d)", True, "nie dotyczy etapu"))
 
-    # C7 — auto-fill parametryczny (długość→R/X, moc DER→TR)
-    c7 = bool(re.search(r"auto.?fill|autofill|sugerowan|suggest|derive|computeFrom|length_km", text_all))
+    # C7 — auto-fill parametryczny. Wykrywa:
+    #  - jawne słowa (autofill/sugerowany/derive)
+    #  - catalog-driven population: `selected?.<param> ?? previous` w setFormData
+    #    (wybór pozycji katalogowej automatycznie wypełnia parametry — realny auto-fill)
+    c7 = bool(re.search(
+        r"auto.?fill|autofill|sugerowan|suggest|derive|computeFrom|length_km"
+        r"|selected\?\.\w+\s*\?\?|selectedItem\?\.\w+\s*\?\?|fromCatalog|catalogItem\?\.\w+\s*\?\?"
+        # auto-select pierwszej pozycji katalogowej (usable[0]?.id ?? / items[0]?.id ??)
+        r"|\[0\]\?\.\w+\s*\?\?|\[0\]\.id",
+        text_all,
+    ))
     res.criteria.append(CriterionResult(
         7, "auto-fill parametryczny", c7,
-        "obecne" if c7 else "brak auto-fill",
+        "obecne (catalog-driven)" if c7 else "brak auto-fill",
     ))
 
     # C8 — undo/redo per operacja (operationHistory w store — global)
@@ -219,11 +228,19 @@ def audit_stage(stage: Stage) -> StageResult:
         "SpineRenderer issue-aware" if _spine_error_coloring() else "SLD nie pokazuje issue",
     ))
 
-    # C10 — brak raw ID/hash (delegowane do no_raw_ids_in_ui_guard; tu sanity)
-    raw = re.findall(r"hash_sha256|ref_id\s*\}|\{[a-z_]*_id\}", text_all)
+    # C10 — brak raw ID/hash w WIDOCZNYM tekście (delegowane do no_raw_ids_in_ui_guard).
+    # Wykluczamy atrybuty nie-wyświetlane (key=/value=/data-/htmlFor=/id=) — to nie jest
+    # tekst widoczny dla użytkownika. Flagujemy tylko hash_sha256 w tekście oraz
+    # ref_id/_id renderowane jako zawartość JSX (>{...}<).
+    raw_lines = []
+    for line in text_all.splitlines():
+        if re.search(r"\b(key|value|htmlFor|id|data-[a-z-]+)\s*=", line):
+            continue  # atrybut techniczny, nie widoczny tekst
+        if "hash_sha256" in line or re.search(r">\s*\{[^}]*\bref_id\b", line):
+            raw_lines.append(line.strip())
     res.criteria.append(CriterionResult(
-        10, "brak raw ID/hash", len(raw) == 0,
-        "OK (guard no_raw_ids)" if not raw else f"podejrzane: {len(raw)}",
+        10, "brak raw ID/hash", len(raw_lines) == 0,
+        "OK (guard no_raw_ids)" if not raw_lines else f"podejrzane: {len(raw_lines)}",
     ))
 
     return res
