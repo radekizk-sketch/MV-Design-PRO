@@ -168,10 +168,10 @@ function PropertySection({ section, defaultCollapsed = false }: PropertySectionP
 }
 
 // =============================================================================
-// PropertyGrid Component (Main Export)
+// ReadOnlyPropertyGrid Component (Main Export)
 // =============================================================================
 
-interface PropertyGridProps {
+interface ReadOnlyPropertyGridProps {
   sections: InspectorSection[];
   className?: string;
 }
@@ -184,7 +184,7 @@ interface PropertyGridProps {
  * - Pola: label | value | unit
  * - Brak edycji, brak akcji
  */
-export function PropertyGrid({ sections, className = '' }: PropertyGridProps) {
+export function ReadOnlyPropertyGrid({ sections, className = '' }: ReadOnlyPropertyGridProps) {
   if (sections.length === 0) {
     return (
       <div
@@ -210,4 +210,4 @@ export function PropertyGrid({ sections, className = '' }: PropertyGridProps) {
   );
 }
 
-export default PropertyGrid;
+export default ReadOnlyPropertyGrid;

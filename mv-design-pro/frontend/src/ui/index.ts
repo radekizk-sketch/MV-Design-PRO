@@ -73,11 +73,11 @@ export type {
 export { IssuePanel } from './issue-panel';
 export type { IssuePanelProps } from './issue-panel';
 
-// Inspector (READ-ONLY Property Grid - Canonical parity)
+// Inspector (READ-ONLY ReadOnlyPropertyGrid - Canonical parity)
 export {
   InspectorPanel,
   InspectorPanelConnected,
-  PropertyGrid as InspectorPropertyGrid,
+  ReadOnlyPropertyGrid,
   INSPECTOR_SECTION_LABELS,
   FLAG_LABELS as INSPECTOR_FLAG_LABELS,
 } from './inspector';
