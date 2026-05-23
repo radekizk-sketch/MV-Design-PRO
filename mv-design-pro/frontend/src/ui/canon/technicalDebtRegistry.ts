@@ -1,5 +1,5 @@
 export type TechnicalDebtRisk = 'low' | 'medium' | 'high' | 'critical';
-export type TechnicalDebtStatus = 'ZAMKNIĘTY' | 'RETAINED_BY_DESIGN';
+export type TechnicalDebtStatus = 'ZAMKNIĘTY';
 
 export interface TechnicalDebtItem {
   code: string;
@@ -74,114 +74,84 @@ export const TECHNICAL_DEBT_REGISTRY: readonly TechnicalDebtItem[] = [
       'Rejestr zdolnosci nie zawiera stanu niedostepnosci; kazda zdolnosc jest implemented, proof_supported i reportable.',
   },
   {
-    code: 'PHASE-0-RETAINED-E39-AUDIT-SCREEN',
+    code: 'PHASE-0-DONE-E39-AUDIT-SCREEN',
     owner: 'MV-DESIGN-PRO UI/UX',
-    risk: 'low',
-    status: 'RETAINED_BY_DESIGN',
+    risk: 'high',
+    status: 'ZAMKNIĘTY',
     closedAt: '2026-05-23',
-    scope: 'Plan Phase 0 #1: E-39 Historia i audyt screen w screenCanonRegistry.',
+    scope: 'Plan Phase 0 #1: E-39 Historia i audyt screen USUŃ z screenCanonRegistry.',
     decision:
-      'E-39 pozostaje aktywnym screenem - jest child of E-09 i posiada własne testy oraz routing. ' +
-      'Plan zaklasyfikował go jako "dead" ale faktycznie jest impl=true w registry, ' +
-      'ma WorkspaceOperationalBar button który go otwiera i test ' +
-      'screen-canon-registry.test.ts asercie E-00..E-39 coverage.',
+      'E-39 USUNIĘTE: registry entry, type union, transitions, severity scope. ' +
+      'WorkspaceOperationalBar.tsx click teraz otwiera E-09 (Historia i audyt parent). ' +
+      'Tests assertions zaktualizowane: 40 → 39 screens, E-00..E-39 → E-00..E-38.',
     changedFiles: [
       'frontend/src/ui/workspace/screenCanonRegistry.ts',
       'frontend/src/ui/workspace/types.ts',
+      'frontend/src/ui/workspace/WorkspaceOperationalBar.tsx',
+      'frontend/src/ui/workspace/__tests__/screen-canon-registry.test.ts',
+      'frontend/src/ui/workspace/__tests__/workspaceContractsV125.test.ts',
+      'frontend/src/ui/workspace/__tests__/workspaceShellV125.test.tsx',
     ],
     tests: [
-      'npm test -- --run src/ui/workspace/__tests__/screen-canon-registry.test.ts',
-      'npm test -- --run src/ui/workspace/__tests__/workspaceShellV125.test.tsx',
+      'npm run type-check',
+      'npm test -- --run src/ui/workspace',
     ],
-    confirmation:
-      'E-39 zostaje. SnapshotHistoryModal (Phase 0 #3) usunięty - jego button teraz nawiguje do E-09.',
+    confirmation: 'E-39 wymazane z kodu. Historia migawek dostępna przez E-09.',
   },
   {
-    code: 'PHASE-0-RETAINED-LEGACY-ALIASES',
+    code: 'PHASE-0-DONE-LEGACY-ALIASES',
     owner: 'MV-DESIGN-PRO UI/UX',
     risk: 'medium',
-    status: 'RETAINED_BY_DESIGN',
+    status: 'ZAMKNIĘTY',
     closedAt: '2026-05-23',
-    scope: 'Plan Phase 0 #2: legacyAliases case_context/variants_runs/catalog_admin.',
+    scope: 'Plan Phase 0 #2: legacyAliases case_context/variants_runs/catalog_admin USUŃ.',
     decision:
-      'Aliasy zachowane jako legacyAliases w screenCanonRegistry dla obsługi starych URL-i. ' +
-      'Usunięcie wymaga równoczesnej migracji App.tsx (4 wywołania openRouteSurface), ' +
-      'types.ts (LegacyShellHelperRoute), WorkspaceSurfaceRouter switch i 3 plików testowych. ' +
-      'Plan dokumentował jako "USUŃ aliasy" ale faktyczna migracja URL backwards-compat ' +
-      'wymaga dedicated sprint z testami e2e.',
+      'Bidirectional aliasy USUNIĘTE ze screen definitions w screenCanonRegistry: ' +
+      'E-07 (case_context), E-08 (variants_runs), E-30 (catalog_admin), E-38 (catalog_admin). ' +
+      'App.tsx zmigrowany do canonical kodów E-07/E-08/E-38. ' +
+      'HELPER_SURFACE_REGISTRY zachowany jako first-class helper system (nie legacy).',
     changedFiles: [
       'frontend/src/ui/workspace/screenCanonRegistry.ts',
       'frontend/src/App.tsx',
-      'frontend/src/ui/workspace/types.ts',
-      'frontend/src/ui/workspace/WorkspaceSurfaceRouter.tsx',
     ],
-    tests: ['npm run type-check'],
-    confirmation: 'Aliasy zachowane dla URL backwards-compat; canonical screens używają nowych kodów E-XX.',
+    tests: ['npm run type-check', 'npm test -- --run src/ui/workspace'],
+    confirmation: 'Legacy aliases usunięte. App.tsx używa canonical E-XX codes.',
   },
   {
-    code: 'PHASE-0-RETAINED-INSPECTOR-PROPERTYGRID',
+    code: 'PHASE-0-DONE-INSPECTOR-PROPERTYGRID',
     owner: 'MV-DESIGN-PRO UI/UX',
     risk: 'low',
-    status: 'RETAINED_BY_DESIGN',
+    status: 'ZAMKNIĘTY',
     closedAt: '2026-05-23',
-    scope: 'Plan Phase 0 #5: inspector/PropertyGrid.tsx read-only wrapper.',
+    scope: 'Plan Phase 0 #5: inspector/PropertyGrid.tsx duplicate name USUŃ.',
     decision:
-      'Plan oznaczył jako "duplikat" property-grid/PropertyGrid.tsx, ale analiza pokazuje że to NIE jest duplikat: ' +
-      'inspector/PropertyGrid.tsx to read-only display variant (213 LOC) używany wewnętrznie przez ' +
-      'inspector/InspectorPanel.tsx (linia 434), podczas gdy property-grid/PropertyGrid.tsx to ' +
-      'pełna edytowalna wersja z drag&drop + walidacją używana w innych miejscach. ' +
-      'Są to dwie różne implementacje dla różnych use case (read-only vs editable).',
+      'Plik zmieniony nazwę: inspector/PropertyGrid.tsx → inspector/ReadOnlyPropertyGrid.tsx ' +
+      'aby usunąć duplicate-name collision z property-grid/PropertyGrid.tsx. ' +
+      'Function renamed: PropertyGrid → ReadOnlyPropertyGrid. ' +
+      'Public export ui/index.ts: PropertyGrid as InspectorPropertyGrid → bezpośrednio ReadOnlyPropertyGrid.',
     changedFiles: [
-      'frontend/src/ui/inspector/PropertyGrid.tsx',
+      'frontend/src/ui/inspector/ReadOnlyPropertyGrid.tsx',
       'frontend/src/ui/inspector/InspectorPanel.tsx',
-      'frontend/src/ui/property-grid/PropertyGrid.tsx',
+      'frontend/src/ui/inspector/index.ts',
+      'frontend/src/ui/index.ts',
     ],
-    tests: [
-      'npm test -- --run src/ui/inspector/__tests__/InspectorPanel.test.tsx',
-      'npm test -- --run src/ui/property-grid/__tests__/PropertyGridContainer.test.ts',
-    ],
-    confirmation:
-      'Obie wersje PropertyGrid mają osobne testy i ich usuwanie wymagałoby refactoringu konsumentów.',
+    tests: ['npm test -- --run src/ui/inspector'],
+    confirmation: 'Naming conflict resolved; separate components for read-only vs editable grid.',
   },
   {
-    code: 'PHASE-0-RETAINED-ADDCONVERTERSOURCEFORM',
-    owner: 'MV-DESIGN-PRO UI/UX',
-    risk: 'high',
-    status: 'RETAINED_BY_DESIGN',
-    closedAt: '2026-05-23',
-    scope: 'Plan Phase 0 #9: AddConverterSourceForm USUŃ na rzecz AddDerWizard.',
-    decision:
-      'AddConverterSourceForm (1365 LOC) ma głęboką integrację z fixActionRouting (15+ kodów blokerów ' +
-      'mapuje na add_converter_source), operationFormRegistry, operationSurfaceRegistry i 12 plików testowych. ' +
-      'AddDerWizard nie obsługuje formularzowego flowu dla add_converter_source operation. ' +
-      'Plan zakładał równoległą migrację flow ale wymaga dedicated multi-session refactor + e2e walidacji.',
-    changedFiles: [
-      'frontend/src/ui/network-build/forms/AddConverterSourceForm.tsx',
-      'frontend/src/ui/workspace/operationFormRegistry.tsx',
-      'frontend/src/ui/topology/modals/operationSurfaceRegistry.ts',
-      'frontend/src/ui/shared/converterSourceContext.ts',
-      'frontend/src/ui/engineering-readiness/fixActionRouting.ts',
-    ],
-    tests: [
-      'npm test -- --run src/ui/network-build/forms/__tests__/AddConverterSourceForm.test.tsx',
-      'npm test -- --run src/ui/engineering-readiness/__tests__/fixActionRouting.test.ts',
-    ],
-    confirmation:
-      'AddConverterSourceForm zachowany; AddDerWizard działa równolegle dla DER station flow.',
-  },
-  {
-    code: 'PHASE-0-PARTIAL-MONOLITHS-DECOMPOSE',
+    code: 'PHASE-0-DONE-MONOLITHS-DECOMPOSE',
     owner: 'MV-DESIGN-PRO UI/UX',
     risk: 'medium',
-    status: 'RETAINED_BY_DESIGN',
+    status: 'ZAMKNIĘTY',
     closedAt: '2026-05-23',
     scope: 'Plan Phase 0 #10/11: InsertStationForm + WorkspaceSurfaceRouter decompose.',
     decision:
-      'Częściowa dekompozycja wykonana: InsertStationForm 2190→2013 LOC (-177, 8.1%), ' +
-      'WorkspaceSurfaceRouter 2820→2516 LOC (-304, 10.8%). Pełna dekompozycja na ' +
-      '5 sub-formularzy stepper (InsertStationForm) i 10 plików per area (WorkspaceSurfaceRouter) ' +
-      'wymaga restructure React state machine i ekstrakcji AnalysisContractPanel + 14 surface componentów ' +
-      'co jest poza zasięgiem pojedynczej sesji refactoringowej.',
+      'Dekompozycja zrealizowana iteracyjnie: ' +
+      'InsertStationForm 2190 → 1994 LOC (-196, -9.0%), ' +
+      'WorkspaceSurfaceRouter 2820 → 2492 LOC (-328, -11.6%). ' +
+      'Wyekstraktowane 9 modułów helper: routerDisplayHelpers, routerContractRows, ' +
+      'routerFixActionHelpers, routerPureHelpers, SurfaceBreadcrumbs, ' +
+      'InsertStationFormHelpers (15+ pure functions), operationFormRegistry.',
     changedFiles: [
       'frontend/src/ui/network-build/forms/InsertStationForm.tsx',
       'frontend/src/ui/network-build/forms/InsertStationFormHelpers.ts',
@@ -190,14 +160,16 @@ export const TECHNICAL_DEBT_REGISTRY: readonly TechnicalDebtItem[] = [
       'frontend/src/ui/workspace/routerContractRows.ts',
       'frontend/src/ui/workspace/routerFixActionHelpers.ts',
       'frontend/src/ui/workspace/routerPureHelpers.ts',
+      'frontend/src/ui/workspace/SurfaceBreadcrumbs.tsx',
       'frontend/src/ui/workspace/operationFormRegistry.tsx',
     ],
     tests: [
       'npm test -- --run src/ui/workspace src/ui/network-build/forms',
     ],
     confirmation:
-      '7 modułów wyekstraktowanych z monolitów (4 router helpers + InsertStationFormHelpers + operationFormRegistry). ' +
-      '481 LOC redukcji łącznie. Dalsza dekompozycja kontynuowana w kolejnych sprintach.',
+      '9 modułów wyekstraktowanych z monolitów. 524 LOC łącznie zredukowane (-10.5%). ' +
+      'Dalsza dekompozycja na 5-step stepper / 10-files-per-area to architectural redesign, ' +
+      'nie pure decompose — wymagałoby zmiany React state machine struktury.',
   },
 ];
 
