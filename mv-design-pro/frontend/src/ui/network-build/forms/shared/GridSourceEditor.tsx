@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
 import { clsx } from 'clsx';
 
+import { HelpTooltip } from '../../../shared/HelpTooltip';
 import { fetchMvApparatusTypes, fetchSourceSystemTypes, getCatalogErrorMessage } from '../../../catalog/api';
 import type { MVApparatusType, SourceSystemCatalogType } from '../../../catalog/types';
 import type {
@@ -1685,11 +1686,7 @@ function FieldShell({
       <span className={FIELD_LABEL_CLASS}>
         {label}
         {unit && <span className="ml-1 text-[#6d8fb3]">{unit}</span>}
-        {tooltip && (
-          <span className="ml-1 cursor-help text-[#5b91d5]" title={tooltip}>
-            ⓘ
-          </span>
-        )}
+        {tooltip && <HelpTooltip text={tooltip} inline />}
       </span>
       {children}
       {helperText && (
