@@ -44,7 +44,10 @@ import {
   NopSurface,
 } from './surfaces/InfrastructureSurfaces';
 import { PvSourceSurface, BessSurface, FwSurface } from './surfaces/DerSurfaces';
-import { AuditTrailSurface } from './routerExtensionSurfaces';
+import {
+  AuditTrailSurface,
+  ReportSurfaceOsdAndProfileActions,
+} from './routerExtensionSurfaces';
 import { useExecutionRunsStore } from '../study-cases/runStore';
 import { ANALYSIS_TYPE_LABELS } from '../study-cases/types';
 import {
@@ -765,6 +768,11 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         showAssumptions
         showLineage
         showReproducibility
+      />
+      {/* Etap 13/14 dostawy: Dane OSD + Profil raportu (modals). */}
+      <ReportSurfaceOsdAndProfileActions
+        projectName={activeProjectName ?? 'Projekt MV-DESIGN-PRO'}
+        caseName={activeCaseName ?? 'Wariant bazowy'}
       />
       {/* Raport rozszerzonej walidacji: JSON, tekst PL i LaTeX. */}
       <SectionCard
