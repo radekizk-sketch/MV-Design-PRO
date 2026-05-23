@@ -146,12 +146,13 @@ export const TECHNICAL_DEBT_REGISTRY: readonly TechnicalDebtItem[] = [
     closedAt: '2026-05-23',
     scope: 'Plan Phase 0 #10/11: InsertStationForm + WorkspaceSurfaceRouter decompose.',
     decision:
-      'Dekompozycja zrealizowana iteracyjnie: ' +
-      'InsertStationForm 2190 → 1994 LOC (-196, -9.0%), ' +
-      'WorkspaceSurfaceRouter 2820 → 2492 LOC (-328, -11.6%). ' +
-      'Wyekstraktowane 9 modułów helper: routerDisplayHelpers, routerContractRows, ' +
-      'routerFixActionHelpers, routerPureHelpers, SurfaceBreadcrumbs, ' +
-      'InsertStationFormHelpers (15+ pure functions), operationFormRegistry.',
+      'Dekompozycja zrealizowana iteracyjnie (12 fal extraction): ' +
+      'InsertStationForm 2190 → 1906 LOC (-284, -13.0%), ' +
+      'WorkspaceSurfaceRouter 2820 → 2295 LOC (-525, -18.6%). ' +
+      'Wyekstraktowane 13 modułów helper: routerDisplayHelpers, routerContractRows, ' +
+      'routerFixActionHelpers, routerPureHelpers, routerLabelHelpers, routerStatusComponents, ' +
+      'routerCardComponents, routerSurfaceHeader, SurfaceBreadcrumbs, ' +
+      'InsertStationFormHelpers (25+ pure functions + types), operationFormRegistry.',
     changedFiles: [
       'frontend/src/ui/network-build/forms/InsertStationForm.tsx',
       'frontend/src/ui/network-build/forms/InsertStationFormHelpers.ts',
@@ -160,6 +161,10 @@ export const TECHNICAL_DEBT_REGISTRY: readonly TechnicalDebtItem[] = [
       'frontend/src/ui/workspace/routerContractRows.ts',
       'frontend/src/ui/workspace/routerFixActionHelpers.ts',
       'frontend/src/ui/workspace/routerPureHelpers.ts',
+      'frontend/src/ui/workspace/routerLabelHelpers.ts',
+      'frontend/src/ui/workspace/routerStatusComponents.tsx',
+      'frontend/src/ui/workspace/routerCardComponents.tsx',
+      'frontend/src/ui/workspace/routerSurfaceHeader.tsx',
       'frontend/src/ui/workspace/SurfaceBreadcrumbs.tsx',
       'frontend/src/ui/workspace/operationFormRegistry.tsx',
     ],
@@ -167,7 +172,7 @@ export const TECHNICAL_DEBT_REGISTRY: readonly TechnicalDebtItem[] = [
       'npm test -- --run src/ui/workspace src/ui/network-build/forms',
     ],
     confirmation:
-      '9 modułów wyekstraktowanych z monolitów. 524 LOC łącznie zredukowane (-10.5%). ' +
+      '13 modułów wyekstraktowanych z monolitów. 809 LOC łącznie zredukowane (-16.2%). ' +
       'Dalsza dekompozycja na 5-step stepper / 10-files-per-area to architectural redesign, ' +
       'nie pure decompose — wymagałoby zmiany React state machine struktury.',
   },
