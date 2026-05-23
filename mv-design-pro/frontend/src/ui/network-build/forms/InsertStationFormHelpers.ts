@@ -358,6 +358,30 @@ export function branchExists(
   );
 }
 
+export function elementTypeFromSelectionHint(
+  elementType: string | null | undefined,
+): 'Station' | 'LineBranch' | 'Bus' | 'TransformerBranch' | 'Source' | 'BaySN' {
+  switch (elementType) {
+    case 'substation':
+    case 'station':
+      return 'Station';
+    case 'branch':
+    case 'line_branch':
+    case 'segment':
+      return 'LineBranch';
+    case 'bus':
+      return 'Bus';
+    case 'transformer':
+      return 'TransformerBranch';
+    case 'source':
+      return 'Source';
+    case 'bay':
+      return 'BaySN';
+    default:
+      return 'Station';
+  }
+}
+
 export function resolveSegmentIdFromContext(
   context: Record<string, unknown> | undefined,
   snapshot: unknown,

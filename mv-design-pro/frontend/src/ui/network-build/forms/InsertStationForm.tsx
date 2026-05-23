@@ -43,6 +43,7 @@ import {
   buildDefaultSnFields,
   contextString,
   resolveSegmentIdFromContext,
+  elementTypeFromSelectionHint,
 } from './InsertStationFormHelpers';
 import { useSnapshotStore, selectBusOptions } from '../../topology/snapshotStore';
 import { useActiveOperationContext, useNetworkBuildStore } from '../networkBuildStore';
@@ -69,7 +70,7 @@ import {
   normalizeTopologicalStationKind,
   type TopologicalStationKind,
 } from '../../shared/stationTypeLabels';
-import type { ElementType, SelectedElement } from '../../types';
+import type { SelectedElement } from '../../types';
 import type { DomainOpResponseV1, EnergyNetworkModel } from '../../../types/enm';
 
 type NnConfiguration =
@@ -117,27 +118,7 @@ interface NnFeederPayload {
   };
 }
 
-function elementTypeFromSelectionHint(elementType: string | null | undefined): ElementType {
-  switch (elementType) {
-    case 'substation':
-    case 'station':
-      return 'Station';
-    case 'branch':
-    case 'line_branch':
-    case 'segment':
-      return 'LineBranch';
-    case 'bus':
-      return 'Bus';
-    case 'transformer':
-      return 'TransformerBranch';
-    case 'source':
-      return 'Source';
-    case 'bay':
-      return 'BaySN';
-    default:
-      return 'Station';
-  }
-}
+// elementTypeFromSelectionHint moved to InsertStationFormHelpers.ts
 
 function resolveSelectionName(
   snapshot: EnergyNetworkModel | null | undefined,
