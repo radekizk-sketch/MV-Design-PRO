@@ -33,6 +33,8 @@ import type {
 } from '../../types/enm';
 import { publicBusName } from '../shared/enmVisibility';
 import { executeDomainOp } from './domainApi';
+import { notify } from '../notifications/store';
+import { getOperationSuccessMessage } from './operationSuccessMessages';
 
 // ---------------------------------------------------------------------------
 // State
@@ -301,6 +303,14 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
         error: null,
         errorCode: null,
       });
+
+      // Centralny toast sukcesu — jeden punkt dla WSZYSTKICH operacji domenowych
+      // (kryt. #2: każda akcja ma feedback sukcesu). Operacje ciche (refresh/undo)
+      // pomijane przez getOperationSuccessMessage.
+      const successMessage = getOperationSuccessMessage(opName);
+      if (successMessage) {
+        notify(successMessage, 'success');
+      }
 
       return response;
     } catch (err) {

@@ -1,0 +1,373 @@
+{
+  "stages": [
+    {
+      "key": "gpz",
+      "name_pl": "GPZ — źródło zasilające",
+      "score": 7,
+      "max": 10,
+      "failing": [
+        "C3 walidacja real-time (banner): banner NIE podpięty globalnie",
+        "C7 auto-fill parametryczny: brak auto-fill",
+        "C9 error na SLD: SLD nie pokazuje issue"
+      ],
+      "criteria": [
+        {
+          "id": 1,
+          "name": "brak duplikatu wejść",
+          "passed": true,
+          "detail": "['AddGridSourceForm.tsx']"
+        },
+        {
+          "id": 2,
+          "name": "feedback sukcesu",
+          "passed": true,
+          "detail": "centralny notify+message"
+        },
+        {
+          "id": 3,
+          "name": "walidacja real-time (banner)",
+          "passed": false,
+          "detail": "banner NIE podpięty globalnie"
+        },
+        {
+          "id": 4,
+          "name": "tooltipy inżynierskie",
+          "passed": true,
+          "detail": "obecne"
+        },
+        {
+          "id": 5,
+          "name": "PL terminologia",
+          "passed": true,
+          "detail": "OK (guardy ui_terminology)"
+        },
+        {
+          "id": 6,
+          "name": "catalog search (n/d)",
+          "passed": true,
+          "detail": "nie dotyczy etapu"
+        },
+        {
+          "id": 7,
+          "name": "auto-fill parametryczny",
+          "passed": false,
+          "detail": "brak auto-fill"
+        },
+        {
+          "id": 8,
+          "name": "undo/redo (historia)",
+          "passed": true,
+          "detail": "operationHistory"
+        },
+        {
+          "id": 9,
+          "name": "error na SLD",
+          "passed": false,
+          "detail": "SLD nie pokazuje issue"
+        },
+        {
+          "id": 10,
+          "name": "brak raw ID/hash",
+          "passed": true,
+          "detail": "OK (guard no_raw_ids)"
+        }
+      ]
+    },
+    {
+      "key": "bays",
+      "name_pl": "Pola SN",
+      "score": 5,
+      "max": 10,
+      "failing": [
+        "C3 walidacja real-time (banner): banner NIE podpięty globalnie",
+        "C4 tooltipy inżynierskie: brak tooltipów/helperText",
+        "C7 auto-fill parametryczny: brak auto-fill",
+        "C9 error na SLD: SLD nie pokazuje issue",
+        "C10 brak raw ID/hash: podejrzane: 2"
+      ],
+      "criteria": [
+        {
+          "id": 1,
+          "name": "brak duplikatu wejść",
+          "passed": true,
+          "detail": "['AddSnBayForm.tsx']"
+        },
+        {
+          "id": 2,
+          "name": "feedback sukcesu",
+          "passed": true,
+          "detail": "centralny notify+message"
+        },
+        {
+          "id": 3,
+          "name": "walidacja real-time (banner)",
+          "passed": false,
+          "detail": "banner NIE podpięty globalnie"
+        },
+        {
+          "id": 4,
+          "name": "tooltipy inżynierskie",
+          "passed": false,
+          "detail": "brak tooltipów/helperText"
+        },
+        {
+          "id": 5,
+          "name": "PL terminologia",
+          "passed": true,
+          "detail": "OK (guardy ui_terminology)"
+        },
+        {
+          "id": 6,
+          "name": "catalog search (n/d)",
+          "passed": true,
+          "detail": "nie dotyczy etapu"
+        },
+        {
+          "id": 7,
+          "name": "auto-fill parametryczny",
+          "passed": false,
+          "detail": "brak auto-fill"
+        },
+        {
+          "id": 8,
+          "name": "undo/redo (historia)",
+          "passed": true,
+          "detail": "operationHistory"
+        },
+        {
+          "id": 9,
+          "name": "error na SLD",
+          "passed": false,
+          "detail": "SLD nie pokazuje issue"
+        },
+        {
+          "id": 10,
+          "name": "brak raw ID/hash",
+          "passed": false,
+          "detail": "podejrzane: 2"
+        }
+      ]
+    },
+    {
+      "key": "segments",
+      "name_pl": "Segmenty (kabel/napowietrzne)",
+      "score": 6,
+      "max": 10,
+      "failing": [
+        "C3 walidacja real-time (banner): banner NIE podpięty globalnie",
+        "C4 tooltipy inżynierskie: brak tooltipów/helperText",
+        "C6 catalog search+filtry: brak wyszukiwarki katalogu",
+        "C9 error na SLD: SLD nie pokazuje issue"
+      ],
+      "criteria": [
+        {
+          "id": 1,
+          "name": "brak duplikatu wejść",
+          "passed": true,
+          "detail": "['ContinueTrunkForm.tsx', 'StartBranchForm.tsx']"
+        },
+        {
+          "id": 2,
+          "name": "feedback sukcesu",
+          "passed": true,
+          "detail": "centralny notify+message"
+        },
+        {
+          "id": 3,
+          "name": "walidacja real-time (banner)",
+          "passed": false,
+          "detail": "banner NIE podpięty globalnie"
+        },
+        {
+          "id": 4,
+          "name": "tooltipy inżynierskie",
+          "passed": false,
+          "detail": "brak tooltipów/helperText"
+        },
+        {
+          "id": 5,
+          "name": "PL terminologia",
+          "passed": true,
+          "detail": "OK (guardy ui_terminology)"
+        },
+        {
+          "id": 6,
+          "name": "catalog search+filtry",
+          "passed": false,
+          "detail": "brak wyszukiwarki katalogu"
+        },
+        {
+          "id": 7,
+          "name": "auto-fill parametryczny",
+          "passed": true,
+          "detail": "obecne"
+        },
+        {
+          "id": 8,
+          "name": "undo/redo (historia)",
+          "passed": true,
+          "detail": "operationHistory"
+        },
+        {
+          "id": 9,
+          "name": "error na SLD",
+          "passed": false,
+          "detail": "SLD nie pokazuje issue"
+        },
+        {
+          "id": 10,
+          "name": "brak raw ID/hash",
+          "passed": true,
+          "detail": "OK (guard no_raw_ids)"
+        }
+      ]
+    },
+    {
+      "key": "stations",
+      "name_pl": "Stacje",
+      "score": 8,
+      "max": 10,
+      "failing": [
+        "C3 walidacja real-time (banner): banner NIE podpięty globalnie",
+        "C9 error na SLD: SLD nie pokazuje issue"
+      ],
+      "criteria": [
+        {
+          "id": 1,
+          "name": "brak duplikatu wejść",
+          "passed": true,
+          "detail": "['InsertStationForm.tsx']"
+        },
+        {
+          "id": 2,
+          "name": "feedback sukcesu",
+          "passed": true,
+          "detail": "centralny notify+message"
+        },
+        {
+          "id": 3,
+          "name": "walidacja real-time (banner)",
+          "passed": false,
+          "detail": "banner NIE podpięty globalnie"
+        },
+        {
+          "id": 4,
+          "name": "tooltipy inżynierskie",
+          "passed": true,
+          "detail": "obecne"
+        },
+        {
+          "id": 5,
+          "name": "PL terminologia",
+          "passed": true,
+          "detail": "OK (guardy ui_terminology)"
+        },
+        {
+          "id": 6,
+          "name": "catalog search (n/d)",
+          "passed": true,
+          "detail": "nie dotyczy etapu"
+        },
+        {
+          "id": 7,
+          "name": "auto-fill parametryczny",
+          "passed": true,
+          "detail": "obecne"
+        },
+        {
+          "id": 8,
+          "name": "undo/redo (historia)",
+          "passed": true,
+          "detail": "operationHistory"
+        },
+        {
+          "id": 9,
+          "name": "error na SLD",
+          "passed": false,
+          "detail": "SLD nie pokazuje issue"
+        },
+        {
+          "id": 10,
+          "name": "brak raw ID/hash",
+          "passed": true,
+          "detail": "OK (guard no_raw_ids)"
+        }
+      ]
+    },
+    {
+      "key": "der",
+      "name_pl": "OZE / DER",
+      "score": 6,
+      "max": 10,
+      "failing": [
+        "C3 walidacja real-time (banner): banner NIE podpięty globalnie",
+        "C4 tooltipy inżynierskie: brak tooltipów/helperText",
+        "C7 auto-fill parametryczny: brak auto-fill",
+        "C9 error na SLD: SLD nie pokazuje issue"
+      ],
+      "criteria": [
+        {
+          "id": 1,
+          "name": "brak duplikatu wejść",
+          "passed": true,
+          "detail": "['AddDerWizard.tsx']"
+        },
+        {
+          "id": 2,
+          "name": "feedback sukcesu",
+          "passed": true,
+          "detail": "centralny notify+message"
+        },
+        {
+          "id": 3,
+          "name": "walidacja real-time (banner)",
+          "passed": false,
+          "detail": "banner NIE podpięty globalnie"
+        },
+        {
+          "id": 4,
+          "name": "tooltipy inżynierskie",
+          "passed": false,
+          "detail": "brak tooltipów/helperText"
+        },
+        {
+          "id": 5,
+          "name": "PL terminologia",
+          "passed": true,
+          "detail": "OK (guardy ui_terminology)"
+        },
+        {
+          "id": 6,
+          "name": "catalog search+filtry",
+          "passed": true,
+          "detail": "obecne"
+        },
+        {
+          "id": 7,
+          "name": "auto-fill parametryczny",
+          "passed": false,
+          "detail": "brak auto-fill"
+        },
+        {
+          "id": 8,
+          "name": "undo/redo (historia)",
+          "passed": true,
+          "detail": "operationHistory"
+        },
+        {
+          "id": 9,
+          "name": "error na SLD",
+          "passed": false,
+          "detail": "SLD nie pokazuje issue"
+        },
+        {
+          "id": 10,
+          "name": "brak raw ID/hash",
+          "passed": true,
+          "detail": "OK (guard no_raw_ids)"
+        }
+      ]
+    }
+  ],
+  "mean_score": 6.4
+}
