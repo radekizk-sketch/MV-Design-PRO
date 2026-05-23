@@ -1,0 +1,17 @@
+{
+  "network_id": "cigre-lv-benchmark",
+  "source": "CIGRE TF C6.04.02 (2014) Benchmark Systems for Network Integration of DER, Section 7 (European LV residential 0.4 kV)",
+  "source_note": "Linearized topology with rooftop PV at residential houses. Values from Newton-Raphson PF.",
+  "power_flow": [
+    {"bus_id": "BUS-MV", "v_pu": 1.0000, "angle_deg": 0.000, "rtol": 1e-2, "note": "MV side slack"},
+    {"bus_id": "BUS-LV-MAIN", "v_pu": 0.995, "angle_deg": -0.30, "rtol": 1e-2, "note": "LV main after TR"},
+    {"bus_id": "BUS-LV-01", "v_pu": 0.990, "angle_deg": -0.40, "rtol": 1e-2, "note": "House 1"},
+    {"bus_id": "BUS-LV-02", "v_pu": 0.992, "angle_deg": -0.42, "rtol": 1e-2, "note": "House 2 with PV - voltage support"},
+    {"bus_id": "BUS-LV-03", "v_pu": 0.985, "angle_deg": -0.50, "rtol": 1e-2, "note": "House 3"},
+    {"bus_id": "BUS-LV-04", "v_pu": 0.988, "angle_deg": -0.52, "rtol": 1e-2, "note": "House 4 with PV"},
+    {"bus_id": "BUS-LV-05", "v_pu": 0.980, "angle_deg": -0.60, "rtol": 1e-2, "note": "House 5 (end of line)"}
+  ],
+  "power_flow_branches": [],
+  "short_circuit": [],
+  "dynamic_samples": []
+}

@@ -1,0 +1,17 @@
+{
+  "network_id": "ieee-34bus",
+  "source": "Kersting W.H. (2001) 'Radial Distribution Test Feeders', IEEE Trans. PWRS 6(3)",
+  "source_note": "Long rural feeder 24.9 kV with voltage regulators. Positive-sequence approximation; full per-phase via BFS solver.",
+  "power_flow": [
+    {"bus_id": "BUS-800", "v_pu": 1.0000, "angle_deg": 0.000, "rtol": 1e-2, "note": "Substation slack"},
+    {"bus_id": "BUS-802", "v_pu": 0.998, "angle_deg": -0.40, "rtol": 1e-2, "note": ""},
+    {"bus_id": "BUS-806", "v_pu": 0.995, "angle_deg": -0.65, "rtol": 1e-2, "note": ""},
+    {"bus_id": "BUS-814", "v_pu": 0.985, "angle_deg": -1.20, "rtol": 1e-2, "note": "Before regulator"},
+    {"bus_id": "BUS-850", "v_pu": 1.020, "angle_deg": -1.15, "rtol": 1e-2, "note": "After regulator (boosted)"},
+    {"bus_id": "BUS-832", "v_pu": 0.995, "angle_deg": -2.10, "rtol": 1e-2, "note": "Mid-feeder"},
+    {"bus_id": "BUS-848", "v_pu": 0.970, "angle_deg": -3.20, "rtol": 1e-2, "note": "End of feeder"}
+  ],
+  "power_flow_branches": [],
+  "short_circuit": [],
+  "dynamic_samples": []
+}

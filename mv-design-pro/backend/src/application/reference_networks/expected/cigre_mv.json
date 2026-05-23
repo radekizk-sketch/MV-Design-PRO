@@ -1,0 +1,36 @@
+{
+  "network_id": "cigre-mv-14",
+  "source": "CIGRE TF C6.04.02 (2014) Benchmark Systems for Network Integration of Distributed Energy Resources, Section 6",
+  "source_note": "Linear approximation of full CIGRE MV 14-bus; full PF values recomputed via Newton-Raphson for our linearized topology",
+  "power_flow": [
+    {"bus_id": "BUS-00", "v_pu": 1.0000, "angle_deg": 0.000, "rtol": 5e-3, "note": "Slack"},
+    {"bus_id": "BUS-01", "v_pu": 0.997, "angle_deg": -0.04, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-02", "v_pu": 0.992, "angle_deg": -0.10, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-03", "v_pu": 0.985, "angle_deg": -0.18, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-04", "v_pu": 0.977, "angle_deg": -0.27, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-05", "v_pu": 0.974, "angle_deg": -0.30, "rtol": 5e-3, "note": "PV injection raises U slightly"},
+    {"bus_id": "BUS-06", "v_pu": 0.968, "angle_deg": -0.38, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-07", "v_pu": 0.962, "angle_deg": -0.46, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-08", "v_pu": 0.956, "angle_deg": -0.54, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-09", "v_pu": 0.951, "angle_deg": -0.62, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-10", "v_pu": 0.948, "angle_deg": -0.66, "rtol": 5e-3, "note": "PV injection"},
+    {"bus_id": "BUS-11", "v_pu": 0.943, "angle_deg": -0.74, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-12", "v_pu": 0.939, "angle_deg": -0.81, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-13", "v_pu": 0.935, "angle_deg": -0.88, "rtol": 5e-3, "note": ""},
+    {"bus_id": "BUS-14", "v_pu": 0.933, "angle_deg": -0.92, "rtol": 5e-3, "note": "End of feeder"}
+  ],
+  "power_flow_branches": [],
+  "short_circuit": [
+    {
+      "fault_node_id": "BUS-05",
+      "sc_type": "3F",
+      "ikss_a": 8500.0,
+      "ip_a": 21250.0,
+      "ith_a": 9070.0,
+      "sk_mva": 294.0,
+      "rtol": 0.05,
+      "note": "3F fault at mid-feeder with PV contribution"
+    }
+  ],
+  "dynamic_samples": []
+}

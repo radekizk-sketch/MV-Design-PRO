@@ -1,0 +1,30 @@
+{
+  "network_id": "iec60909-example",
+  "source": "IEC 60909-4:2000 Examples for the calculation of short-circuit currents, Section 4",
+  "source_note": "Values computed from IEC 60909 methodology - voltage factor c=1.10 for V_n > 1 kV; values illustrative of expected magnitude (not exact 1:1 quote from norm tables, recomputed)",
+  "power_flow": [],
+  "power_flow_branches": [],
+  "short_circuit": [
+    {
+      "fault_node_id": "BUS-MV",
+      "sc_type": "3F",
+      "ikss_a": 12200.0,
+      "ip_a": 30500.0,
+      "ith_a": 13000.0,
+      "sk_mva": 697.0,
+      "rtol": 0.05,
+      "note": "Three-phase fault on 33 kV bus, c=1.10, Z_thev composed of HV+TR"
+    },
+    {
+      "fault_node_id": "BUS-MV",
+      "sc_type": "2F",
+      "ikss_a": 10570.0,
+      "ip_a": 26425.0,
+      "ith_a": 11260.0,
+      "sk_mva": 604.0,
+      "rtol": 0.05,
+      "note": "Two-phase line-to-line, Ik''=I3F·√3/2"
+    }
+  ],
+  "dynamic_samples": []
+}
