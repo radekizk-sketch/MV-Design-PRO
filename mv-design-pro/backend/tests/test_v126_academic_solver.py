@@ -3,6 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from api.main import app
+from application.v126_artifacts import build_v126_proof_artifact, build_v126_report_artifact
 from enm.models import EnergyNetworkModel, ENMHeader
 from enm.store import reset_enm_store, set_enm
 from fastapi.testclient import TestClient
@@ -104,6 +105,28 @@ def test_power_quality_trace_and_hash_are_deterministic() -> None:
     assert first["white_box_trace"][0]["proof_status"] == "complete"
 
 
+def test_each_v126_analysis_has_deterministic_proof_and_report_artifacts() -> None:
+    solver = V126AcademicSolver()
+    model = _academic_input()
+    for analysis_type in V126AnalysisType:
+        result = solver.run(analysis_type, model)
+        run_record = {
+            "run_id": "run-test",
+            "case_id": "case-test",
+            "analysis_type": analysis_type.value,
+            "result": result,
+        }
+        proof = build_v126_proof_artifact(run_record)
+        report = build_v126_report_artifact(run_record, proof)
+        proof_again = build_v126_proof_artifact(run_record)
+        report_again = build_v126_report_artifact(run_record, proof_again)
+
+        assert proof["proof_hash"] == proof_again["proof_hash"]
+        assert report["report_hash"] == report_again["report_hash"]
+        assert proof["trace_step_count"] >= 1
+        assert report["export_policy"] == "frozen_result_and_proof_only"
+
+
 def test_voltage_stability_returns_modal_contract() -> None:
     result = V126AcademicSolver().run(V126AnalysisType.VOLTAGE_STABILITY, _academic_input())
     modal = result["result"]["modal_analysis"]
@@ -171,7 +194,14 @@ def test_v126_api_run_result_and_trace() -> None:
 
     result = client.get(f"/api/analysis-runs/{run_id}/results/v126/voltage_stability")
     trace = client.get(f"/api/analysis-runs/{run_id}/results/v126/voltage_stability/trace")
+    proof = client.get(f"/api/analysis-runs/{run_id}/results/v126/voltage_stability/proof")
+    report = client.get(f"/api/analysis-runs/{run_id}/results/v126/voltage_stability/report")
 
     assert result.status_code == 200
     assert trace.status_code == 200
+    assert proof.status_code == 200
+    assert report.status_code == 200
     assert trace.json()["steps"][0]["proof_status"] == "complete"
+    assert result.json()["proof_ref"] == proof.json()["proof_id"]
+    assert result.json()["report_ref"] == report.json()["report_id"]
+    assert report.json()["source_proof_hash"] == proof.json()["proof_hash"]

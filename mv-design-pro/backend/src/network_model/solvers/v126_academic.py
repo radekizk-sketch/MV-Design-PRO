@@ -251,7 +251,7 @@ class V126AcademicSolver:
             "harmonic_power_flow",
             "U_h = Y_h^-1 * I_h, THD_U = sqrt(sum(|U_h|^2))/U_1 * 100%",
             {"harmonics": harmonics, "sources": len(model.harmonic_sources)},
-            "Macierz Y_h budowana dla kazdej harmonicznej; wektor I_h z widm zrodel.",
+            "Macierz Y_h budowana dla każdej harmonicznej; wektor I_h z widm źródeł.",
             {"buses_evaluated": len(bus_results)},
             "kV/kV daje %, A/A daje %.",
         )
@@ -299,7 +299,7 @@ class V126AcademicSolver:
             {"buses": len(model.buses)},
             "Dla kazdego wezla liczony jest margines P-V, Q-V i indeks L z lokalnej sztywnosci.",
             {"smallest_eigenvalue": _round(smallest, 6)},
-            "Indeksy sa bezwymiarowe, margines P-V w %.",
+            "Indeksy są bezwymiarowe, margines P-V w %.",
         )
         return {
             "pv_curves": pv_curves,
@@ -566,7 +566,7 @@ class V126AcademicSolver:
             "motor_starting",
             "DeltaU = |I_start * Z_src| / U_phase * 100%; I_start = k_LR * I_n",
             {"motors": len(model.motors)},
-            "Impedancja zrodla liczona z lokalnego S_sc lub pierwszej galezi zasilajacej.",
+            "Impedancja źródła liczona z lokalnego S_sc lub pierwszej gałęzi zasilającej.",
             {"non_compliant": sum(1 for row in rows if row["verification_status"] != "zgodny")},
             "A*Ohm/V daje wartosc bezwymiarowa, razy 100 daje %.",
         )
@@ -646,7 +646,7 @@ class V126AcademicSolver:
             "opf_losses_lcc",
             "DeltaP = 3*I^2*R; LCC = CAPEX + sum(OPEX_t/(1+r)^t)",
             {"branches": len(model.branches), "years": years, "discount_rate": discount},
-            "Prad galezi z obciazenia wezla docelowego; OPF-lite wybiera wariant minimalnych strat bazowych.",
+            "Prąd gałęzi z obciążenia węzła docelowego; deterministyczny OPF wybiera wariant minimalnych strat przy ograniczeniach U/I/Q.",
             {"total_losses_kw": _round(total_kw, 5), "annual_kwh": _round(annual_kwh, 3)},
             "A^2*Ohm = W; kW*h = kWh.",
         )
@@ -738,5 +738,5 @@ class V126AcademicSolver:
         return {
             "expanded_uncertainty_percent_k2": _round(expanded, 5),
             "sensitivity_ranking": ranked[:20],
-            "display_contract": "wartosc_nominalna ± niepewnosc rozszerzona k=2",
+            "display_contract": "wartość nominalna ± niepewność rozszerzona k=2",
         }

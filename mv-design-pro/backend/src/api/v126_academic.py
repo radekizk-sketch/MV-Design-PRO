@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from application.v126_artifacts import build_v126_proof_artifact, build_v126_report_artifact
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, status
 from network_model.solvers.v126_academic import V126AcademicSolver
@@ -33,6 +34,8 @@ class V126RunResponse(BaseModel):
     status: str
     result_url: str
     trace_url: str
+    proof_url: str
+    report_url: str
     deterministic_hash: str
 
 
@@ -47,7 +50,7 @@ def _require_run(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, Any
     if run["analysis_type"] != analysis_type.value:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Typ analizy w sciezce nie zgadza sie z zapisanym uruchomieniem.",
+            detail="Typ analizy w ścieżce nie zgadza się z zapisanym uruchomieniem.",
         )
     return run
 
@@ -93,7 +96,7 @@ def run_v126_analysis(
     if not enm.buses:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Przypadek nie ma committed ENM z wezłami. V12.6 nie uruchamia obliczen z draftu UI.",
+            detail="Przypadek nie ma committed ENM z węzłami. V12.6 nie uruchamia obliczeń z draftu UI.",
         )
     model = _with_parameter_payloads(build_v126_input_from_enm(enm, parameters=request.parameters), request.parameters)
     result = _solver.run(analysis_type, model)
@@ -108,6 +111,10 @@ def run_v126_analysis(
         "result": result,
         "deterministic_hash": result["deterministic_hash"],
     }
+    proof = build_v126_proof_artifact(run_record)
+    report = build_v126_report_artifact(run_record, proof)
+    run_record["proof"] = proof
+    run_record["report"] = report
     _runs[str(run_id)] = run_record
     return V126RunResponse(
         run_id=str(run_id),
@@ -116,6 +123,8 @@ def run_v126_analysis(
         status="FINISHED",
         result_url=f"/api/analysis-runs/{run_id}/results/v126/{analysis_type.value}",
         trace_url=f"/api/analysis-runs/{run_id}/results/v126/{analysis_type.value}/trace",
+        proof_url=f"/api/analysis-runs/{run_id}/results/v126/{analysis_type.value}/proof",
+        report_url=f"/api/analysis-runs/{run_id}/results/v126/{analysis_type.value}/report",
         deterministic_hash=result["deterministic_hash"],
     )
 
@@ -130,6 +139,8 @@ def get_v126_result(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, 
         "status": run["status"],
         "created_at": run["created_at"],
         "result": run["result"],
+        "proof_ref": run["proof"]["proof_id"],
+        "report_ref": run["report"]["report_id"],
     }
 
 
@@ -144,6 +155,18 @@ def get_v126_trace(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, A
         "deterministic_hash": result["deterministic_hash"],
         "steps": result["white_box_trace"],
     }
+
+
+@router.get("/analysis-runs/{run_id}/results/v126/{analysis_type}/proof")
+def get_v126_proof(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, Any]:
+    run = _require_run(run_id, analysis_type)
+    return run["proof"]
+
+
+@router.get("/analysis-runs/{run_id}/results/v126/{analysis_type}/report")
+def get_v126_report(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, Any]:
+    run = _require_run(run_id, analysis_type)
+    return run["report"]
 
 
 @router.get("/catalog/v126/{namespace}")

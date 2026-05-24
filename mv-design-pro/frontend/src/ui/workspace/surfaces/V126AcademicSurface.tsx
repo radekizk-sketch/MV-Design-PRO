@@ -21,6 +21,8 @@ interface V126RunEnvelope {
   status: string;
   result_url: string;
   trace_url: string;
+  proof_url: string;
+  report_url: string;
   deterministic_hash: string;
 }
 
@@ -30,6 +32,24 @@ interface V126ResultEnvelope {
     white_box_trace: Array<Record<string, unknown>>;
     deterministic_hash: string;
   };
+}
+
+interface V126ProofEnvelope {
+  proof_id: string;
+  proof_hash: string;
+  trace_step_count: number;
+  steps: Array<Record<string, unknown>>;
+}
+
+interface V126ReportEnvelope {
+  report_id: string;
+  report_hash: string;
+  export_policy: string;
+  sections: Array<{
+    section_id: string;
+    title: string;
+    metrics: Array<{ label: string; value: unknown }>;
+  }>;
 }
 
 const SCREEN_TO_ANALYSIS: Partial<Record<string, V126AnalysisType>> = {
@@ -47,18 +67,18 @@ const SCREEN_TO_ANALYSIS: Partial<Record<string, V126AnalysisType>> = {
 };
 
 const ANALYSIS_LABELS: Record<V126AnalysisType, string> = {
-  power_quality_harmonics: 'Jakosc energii i harmoniczne',
-  voltage_stability: 'Stabilnosc napieciowa',
-  reliability_contingency: 'Niezawodnosc i kontyngencja',
-  earthing_safety: 'Uziemienia i bezpieczenstwo',
+  power_quality_harmonics: 'Jakość energii i harmoniczne',
+  voltage_stability: 'Stabilność napięciowa',
+  reliability_contingency: 'Niezawodność i kontyngencja',
+  earthing_safety: 'Uziemienia i bezpieczeństwo',
   insulation_coordination: 'Koordynacja izolacji',
   earth_fault_detection: 'Detekcja ziemnozwarciowa',
-  transient_trv: 'Stany przejsciowe i TRV',
-  motor_starting: 'Rozruch silnikow',
+  transient_trv: 'Stany przejściowe i TRV',
+  motor_starting: 'Rozruch silników',
   hosting_capacity: 'Hosting capacity OZE',
   opf_loss_lcc: 'OPF i straty',
   benchmark_validation: 'Walidacja benchmarkowa',
-  uncertainty_sensitivity: 'Niepewnosc i wrazliwosc',
+  uncertainty_sensitivity: 'Niepewność i wrażliwość',
 };
 
 function defaultParameters(analysis: V126AnalysisType): Record<string, unknown> {
@@ -154,6 +174,8 @@ export function V126AcademicSurface({ surface }: { surface: WorkspaceSurfaceDesc
   const analysis = SCREEN_TO_ANALYSIS[surface.screenCode] ?? 'earth_fault_detection';
   const [run, setRun] = useState<V126RunEnvelope | null>(null);
   const [result, setResult] = useState<V126ResultEnvelope | null>(null);
+  const [proof, setProof] = useState<V126ProofEnvelope | null>(null);
+  const [report, setReport] = useState<V126ReportEnvelope | null>(null);
   const [status, setStatus] = useState<'idle' | 'running' | 'ready' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -179,11 +201,15 @@ export function V126AcademicSurface({ surface }: { surface: WorkspaceSurfaceDesc
         },
       );
       const loaded = await fetchJson<V126ResultEnvelope>(created.result_url);
+      const loadedProof = await fetchJson<V126ProofEnvelope>(created.proof_url);
+      const loadedReport = await fetchJson<V126ReportEnvelope>(created.report_url);
       setRun(created);
       setResult(loaded);
+      setProof(loadedProof);
+      setReport(loadedReport);
       setStatus('ready');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Nieznany blad uruchomienia V12.6.');
+      setError(err instanceof Error ? err.message : 'Nieznany błąd uruchomienia V12.6.');
       setStatus('error');
     }
   };
@@ -196,7 +222,7 @@ export function V126AcademicSurface({ surface }: { surface: WorkspaceSurfaceDesc
           <div>
             <h2 className="text-base font-semibold">{ANALYSIS_LABELS[analysis]}</h2>
             <div className="mt-1 text-xs text-slate-300">
-              Wejscie: committed ENM aktywnego przypadku. Wynik: AcademicAnalysisResultV1 z trace i hash.
+              Wejście: committed ENM aktywnego przypadku. Wynik: AcademicAnalysisResultV1 z trace, proof, raportem i hashem.
             </div>
           </div>
           <button
@@ -205,7 +231,7 @@ export function V126AcademicSurface({ surface }: { surface: WorkspaceSurfaceDesc
             onClick={() => void runAnalysis()}
             disabled={status === 'running'}
           >
-            {status === 'running' ? 'Uruchamianie' : 'Uruchom analize'}
+            {status === 'running' ? 'Uruchamianie' : 'Uruchom analizę'}
           </button>
         </div>
         {!activeCaseId ? (
@@ -261,6 +287,48 @@ export function V126AcademicSurface({ surface }: { surface: WorkspaceSurfaceDesc
                   <div className="text-xs font-semibold text-cyan-200">{String(step.key ?? '-')}</div>
                   <div className="mt-1 text-[11px] text-slate-300">{String(step.formula ?? '-')}</div>
                   <div className="mt-1 text-[11px] text-slate-400">{String(step.unit_check ?? '-')}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {proof && report ? (
+        <div className="grid gap-4 xl:grid-cols-2">
+          <section className="rounded border border-slate-700 bg-slate-950 p-4 text-slate-100">
+            <h3 className="text-sm font-semibold">Dowód</h3>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <div className="rounded border border-slate-800 bg-slate-900 p-2">
+                <div className="text-[11px] uppercase text-slate-400">Proof</div>
+                <div className="mt-1 break-all text-xs">{proof.proof_id}</div>
+              </div>
+              <div className="rounded border border-slate-800 bg-slate-900 p-2">
+                <div className="text-[11px] uppercase text-slate-400">Hash dowodu</div>
+                <div className="mt-1 break-all text-xs">{proof.proof_hash}</div>
+              </div>
+              <div className="rounded border border-slate-800 bg-slate-900 p-2">
+                <div className="text-[11px] uppercase text-slate-400">Kroki</div>
+                <div className="mt-1 text-xs">{proof.trace_step_count}</div>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded border border-slate-700 bg-slate-950 p-4 text-slate-100">
+            <h3 className="text-sm font-semibold">Raport</h3>
+            <div className="mt-3 space-y-2">
+              <div className="rounded border border-slate-800 bg-slate-900 p-2">
+                <div className="text-[11px] uppercase text-slate-400">Raport</div>
+                <div className="mt-1 break-all text-xs">{report.report_id}</div>
+              </div>
+              <div className="rounded border border-slate-800 bg-slate-900 p-2">
+                <div className="text-[11px] uppercase text-slate-400">Polityka eksportu</div>
+                <div className="mt-1 text-xs">{report.export_policy}</div>
+              </div>
+              {report.sections.slice(0, 3).map((section) => (
+                <div key={section.section_id} className="rounded border border-slate-800 bg-slate-900 p-2">
+                  <div className="text-xs font-semibold text-cyan-200">{section.title}</div>
+                  <div className="mt-1 text-[11px] text-slate-300">{section.metrics.length} metryk</div>
                 </div>
               ))}
             </div>

@@ -2,7 +2,7 @@
 
 **Version:** 5.1
 **Status:** LIVING DOCUMENT
-**Last updated:** 2026-05-13 (V12K-001 conflict resolution + docs cleanup)
+**Last updated:** 2026-05-24 (V12.6 academic end-to-end closure)
 **Reference (canon):** [`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md) (binding), [`docs/system/`](docs/system/) (binding specs), [`SYSTEM_SPEC.md`](SYSTEM_SPEC.md) (executive overview).
 **Reference (archive):** [`docs/spec/`](docs/spec/) — historical V11 reference; not source of truth.
 **Active work:** see § 3 and [`docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md`](docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md).
@@ -77,6 +77,16 @@ MV-DESIGN-PRO is a functional Medium Voltage network design and analysis system 
 ---
 
 ## 3. Active Work
+
+### 3.0.0 V12.6 academic end-to-end closure (completed)
+
+Status:
+- [x] Gałąź integracyjna `codex/v12-6-professorski` zawiera backend, frontend, dokumentację, testy i guard `verify:v12.6`.
+- [x] Ekrany E-40..E-50 są zarejestrowane w kanonie workspace i korzystają ze wspólnej powierzchni bez obliczeń po stronie UI.
+- [x] `AcademicAnalysisResultV1` ma `white_box_trace`, deterministyczny hash oraz referencje proof/report.
+- [x] Proof-pack i raport V12.6 są budowane w warstwie application z frozen result i trace, bez ponownego liczenia fizyki.
+- [x] Endpointy result/trace/proof/report V12.6 mają wpisy w `docs/v12xx/MACIERZ_KOMPATYBILNOSCI_API.md`.
+- [x] `npm run verify:v12.6`, pełne testy lokalne i GitHub CI dla PR #463 przechodzą.
 
 ### 3.0 Execution after 10/10 Audit (current)
 

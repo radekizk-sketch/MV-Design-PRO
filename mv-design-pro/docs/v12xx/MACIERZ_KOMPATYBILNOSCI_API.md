@@ -49,6 +49,8 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/analysis-runs/{run_id}/results/source-compliance` | v12xx | aktywny | 2026-04-25 | - | Wyniki zgodnosci zrodla z profilem operatora wraz z proof i raportowalnoscia. | canonical analysis API tests, report export tests | Architekt OZE |
 | `GET /api/analysis-runs/{run_id}/results/trace` | v12xx | aktywny | 2026-04-24 | - | Slad danych wynikow. | trace tests | Architekt wynikow |
 | `GET /api/analysis-runs/{run_id}/results/v126/{analysis_type}` | v12.6 | aktywny | 2026-05-24 | - | Odczyt wyniku akademickiego V12.6 bez zmiany frozen SC/PF API. | v126 academic API tests | Architekt solverow |
+| `GET /api/analysis-runs/{run_id}/results/v126/{analysis_type}/proof` | v12.6 | aktywny | 2026-05-24 | - | Deterministyczny proof-pack V12.6 budowany w warstwie application z frozen result i trace. | v126 academic API tests | Architekt proof |
+| `GET /api/analysis-runs/{run_id}/results/v126/{analysis_type}/report` | v12.6 | aktywny | 2026-05-24 | - | Deterministyczny raport V12.6 budowany w warstwie application z frozen result i proof. | v126 academic API tests | Architekt raportow |
 | `GET /api/analysis-runs/{run_id}/results/v126/{analysis_type}/trace` | v12.6 | aktywny | 2026-05-24 | - | WHITE BOX trace wyniku akademickiego V12.6. | v126 academic API tests | Architekt proof |
 | `GET /api/analysis-runs/{run_id}/snapshot` | v12xx | aktywny | 2026-04-24 | - | Migawka modelu uzyta do wyniku. | snapshot tests | Architekt ENM |
 | `GET /api/analysis-runs/{run_id}/trace` | v12xx | aktywny | 2026-04-24 | - | Slad wykonania uruchomienia. | trace tests | Architekt wynikow |
