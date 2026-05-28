@@ -82,11 +82,16 @@ async function build() {
   };
   const addDer = async (station, tech, variant, catId) => {
     if (!station?.ref_id) return;
+    void catId;
+    // FALOWNIK/inv-pv-1500 = jedyny binding zgodny z trafo 630 kVA @ 0.4 kV
+    // (warianty katalogowe PV/BESS są 1.65 MVA lub 0.69 kV → odrzucane).
+    // source_technology steruje renderem (PV/BESS/FW), nie binding.
     const r = await op(caseId, 'add_converter_source', {
       source_technology: tech, connection_variant: variant, station_ref: station.ref_id,
-      p_install_mw: 1.5, catalog_binding: bind(tech === 'PV' ? 'ZRODLO_NN_PV' : tech === 'BESS' ? 'ZRODLO_NN_BESS' : 'CONVERTER', catId),
+      p_install_mw: 1.5, catalog_binding: bind('FALOWNIK', 'inv-pv-1500'),
     });
     if (!r.error) counts.der++;
+    else counts.derFail = (counts.derFail ?? 0) + 1;
   };
 
   // (1) Stacje przelotowe na magistrali (re-fetch refs po każdym insertcie).
@@ -129,6 +134,14 @@ async function build() {
     else await addDer(tip, 'FW', 'block_transformer', PV_ID);
   }
 
+  // (2b) Gwarantowany pas OZE na stacjach magistrali (V-10: PV/BESS/FW + mieszane).
+  const reTrunk = (await api(`/api/cases/${caseId}/enm`)).json?.substations?.filter((s) => s.ref_id.includes('/station')) ?? [];
+  const ozePlan = [['PV'], ['BESS'], ['FW'], ['PV', 'BESS'] /* mieszane */, ['PV'], ['BESS'], ['FW']];
+  for (let i = 0; i < ozePlan.length && i * 6 < reTrunk.length; i++) {
+    const st = reTrunk[Math.min(reTrunk.length - 1, 2 + i * 6)];
+    for (const tech of ozePlan[i]) await addDer(st, tech, 'block_transformer', null);
+  }
+
   // (3) Dobij stacje na magistrali do progu, jeśli laterale nie wystarczyły.
   let guard = 0;
   while (counts.station < TARGET_STATIONS && guard < 40) {
@@ -169,7 +182,37 @@ async function main() {
   await page.screenshot({ path: resolve(OUT, 'sld_large_network.png') });
   await page.screenshot({ path: resolve(OUT, 'sld_large_network_canvas.png'), clip: { x: 300, y: 64, width: 1230, height: 980 } });
   const crashed = await page.locator('text=Coś poszło nie tak').count().catch(() => 0);
+  // Pomiar wypełnienia kadru (§7.3.1 ≥75%): union bbox elementów SLD vs obszar płótna.
+  const fill = await page.evaluate(() => {
+    // Największy SVG = płótno SLD.
+    let svg = null, area = 0;
+    document.querySelectorAll('svg').forEach((s) => {
+      const r = s.getBoundingClientRect();
+      if (r.width * r.height > area) { area = r.width * r.height; svg = s; }
+    });
+    if (!svg) return null;
+    const vp = svg.getBoundingClientRect();
+    const sel = '[data-element-id],[data-element-kind],[data-testid*="sld-v2-station"],[data-testid*="sld-v2-run"],[data-testid*="sld-v2-gpz"],[data-testid*="sld-v2-mini"]';
+    const nodes = document.querySelectorAll(sel);
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, n = 0;
+    nodes.forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) return;
+      // tylko elementy w obrębie płótna
+      if (r.right < vp.left || r.left > vp.right || r.bottom < vp.top || r.top > vp.bottom) return;
+      minX = Math.min(minX, Math.max(r.left, vp.left)); minY = Math.min(minY, Math.max(r.top, vp.top));
+      maxX = Math.max(maxX, Math.min(r.right, vp.right)); maxY = Math.max(maxY, Math.min(r.bottom, vp.bottom)); n++;
+    });
+    if (n === 0 || !isFinite(minX)) return { n, fillW: 0, fillH: 0, vp: { w: Math.round(vp.width), h: Math.round(vp.height) } };
+    return {
+      n,
+      fillW: +(((maxX - minX) / vp.width) * 100).toFixed(1),
+      fillH: +(((maxY - minY) / vp.height) * 100).toFixed(1),
+      vp: { w: Math.round(vp.width), h: Math.round(vp.height) },
+    };
+  });
   console.log(`RENDER: errorBoundary=${crashed ? 'YES' : 'no'} consoleErrors=${errs.length}`);
+  console.log(`FILL: ${JSON.stringify(fill)} (cel: fillW i fillH ≥ 75%)`);
   if (errs.length) console.log('  first errors:', errs.slice(0, 3));
   await browser.close();
   console.log(`DONE → ${OUT}`);
