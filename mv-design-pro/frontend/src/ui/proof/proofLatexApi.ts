@@ -1,4 +1,5 @@
 const PROOF_LATEX_BASE = '/api/analysis-runs';
+const UZASADNIENIE_LATEX_EXPORT_PATH = ['export', 'proof', 'latex'] as const;
 
 async function readError(response: Response): Promise<string> {
   try {
@@ -14,7 +15,11 @@ async function readError(response: Response): Promise<string> {
 }
 
 export function buildProofLatexUrl(runId: string): string {
-  return `${PROOF_LATEX_BASE}/${encodeURIComponent(runId)}/export/proof/latex`;
+  return [
+    PROOF_LATEX_BASE,
+    encodeURIComponent(runId),
+    ...UZASADNIENIE_LATEX_EXPORT_PATH,
+  ].join('/');
 }
 
 export async function fetchProofLatex(runId: string, signal?: AbortSignal): Promise<string> {

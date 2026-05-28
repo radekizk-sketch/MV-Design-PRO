@@ -118,7 +118,7 @@ function visibleBlockTransformerLabel(label: string): string {
 function compactBlockTransformerLabel(label: string): string {
   const trimmed = label.trim();
   const power = trimmed.match(/\b\d+(?:[,.]\d+)?\s*kVA\b/i)?.[0];
-  if (power) return `TR blok. ${power}`;
+  if (power) return `TR blokowy ${power}`;
   return visibleBlockTransformerLabel(trimmed);
 }
 
