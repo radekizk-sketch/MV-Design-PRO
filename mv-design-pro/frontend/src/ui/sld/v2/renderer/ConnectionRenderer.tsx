@@ -31,7 +31,7 @@ function visibleBlockTransformerLabel(label: string): string {
 function compactBlockTransformerLabel(label: string): string {
   const visible = visibleBlockTransformerLabel(label);
   const power = visible.match(/\b\d+(?:[,.]\d+)?\s*kVA\b/i)?.[0];
-  if (power) return `TR blok. ${power}`;
+  if (power) return `TR blokowy ${power}`;
   return visible.length > 22 ? `${visible.slice(0, 19).trimEnd()}...` : visible;
 }
 

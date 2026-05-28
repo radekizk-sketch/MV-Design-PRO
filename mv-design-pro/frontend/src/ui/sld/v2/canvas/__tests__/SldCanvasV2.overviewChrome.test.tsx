@@ -468,7 +468,7 @@ describe('SldCanvasV2 - tabele dokumentacyjne w widoku roboczym', () => {
     const root = lod4.container.querySelector('[data-testid="sld-v2-der-der-pv-block"]');
 
     expect(symbol).not.toBeNull();
-    expect(label?.textContent).toContain('TR blok. 1250 kVA');
+    expect(label?.textContent).toContain('TR blokowy 1250 kVA');
     expect(root?.getAttribute('data-block-transformer-label')).toBe('TR 15/0,69 kV 1250 kVA Dyn5');
     expect(label?.textContent).not.toMatch(/der\/|tr-block|ref|hash/i);
   });
@@ -491,7 +491,7 @@ describe('SldCanvasV2 - tabele dokumentacyjne w widoku roboczym', () => {
     );
 
     expect(lod4.container.querySelector('[data-element-kind="der_compact"]')).not.toBeNull();
-    expect(compactLabel?.textContent).toContain('TR blok. 1250 kVA');
+    expect(compactLabel?.textContent).toContain('TR blokowy 1250 kVA');
     expect(compactLabel?.textContent).not.toMatch(/der\/|tr-block|ref|hash/i);
   });
 
@@ -525,7 +525,7 @@ describe('SldCanvasV2 - tabele dokumentacyjne w widoku roboczym', () => {
     const transformer = container.querySelector('[data-testid="sld-v2-connection-transformer-der-wire-pv-block"]');
     const pccBay = container.querySelector('[data-testid="sld-v2-connection-pcc-bay-der-wire-pv-block"]');
 
-    expect(transformer?.textContent).toContain('TR blok. 1250 kVA');
+    expect(transformer?.textContent).toContain('TR blokowy 1250 kVA');
     expect(transformer?.textContent).not.toMatch(/der\/|tr-block|ref|hash/i);
     expect(pccBay?.textContent).toContain('PCC');
     fireEvent.click(transformer as Element);
