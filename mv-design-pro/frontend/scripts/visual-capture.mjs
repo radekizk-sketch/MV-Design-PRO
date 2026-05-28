@@ -197,6 +197,15 @@ async function main() {
     for (const [hash, name] of routes) {
       await page.goto(`${FRONTEND}/${hash}`, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => {});
       await shoot(page, name);
+      // Detal kadru SLD w natywnej rozdzielczości (ocena kompozycji §7.3).
+      if (name === 'sld_environment_results') {
+        await page.waitForTimeout(800);
+        await page.screenshot({
+          path: resolve(OUT, 'sld_canvas_detail.png'),
+          clip: { x: 300, y: 64, width: 1230, height: 980 },
+        });
+        console.log('  📸 sld_canvas_detail.png (clip)');
+      }
     }
     // SLD z zaznaczonym obiektem (klik w środek płótna)
     await page.goto(`${FRONTEND}/`, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => {});

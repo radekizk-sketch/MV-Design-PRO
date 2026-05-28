@@ -318,7 +318,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             d={visiblePath}
             fill="none"
             stroke={runKind === 'branch' ? '#5BB8FF' : '#13C45A'}
-            strokeWidth={strokeWidth + 7}
+            strokeWidth={strokeWidth + 3}
             strokeLinecap="round"
             strokeLinejoin="round"
             opacity={0.18}
@@ -336,7 +336,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             d={vp}
             fill="none"
             stroke={runKind === 'branch' ? '#5BB8FF' : '#13C45A'}
-            strokeWidth={strokeWidth + 7}
+            strokeWidth={strokeWidth + 3}
             strokeLinecap="round"
             strokeLinejoin="round"
             opacity={0.18}

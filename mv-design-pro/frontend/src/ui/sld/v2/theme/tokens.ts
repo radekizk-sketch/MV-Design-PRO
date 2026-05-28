@@ -137,7 +137,10 @@ export const STROKE_BUSBAR_PX = 3 as const; // szyna główna
 export const STROKE_FIELD_TRACK_PX = 2 as const; // tor pola
 export const STROKE_GROUND_BRANCH_PX = 2 as const; // gałąź uziemnika
 export const STROKE_BRANCH_LINE_PX = 2.5 as const; // linia odgałęzienia (cieńsza niż trunk)
-export const STROKE_TRUNK_LINE_PX = 8 as const; // K30-53: trunk dominantny tor mocy (3.2× branch)
+// V-05: magistrala = CIENKA precyzyjna linia szyny, nie gruby marker. Subtelna
+// dominacja toru mocy (delikatnie grubsza od szyny 3 / odgałęzienia 2.5) wg AC-01,
+// bez „krzyczącej" grubości 8 px, która łamała jeden język wizualny (V-02).
+export const STROKE_TRUNK_LINE_PX = 3.5 as const;
 export const STROKE_DASHED_RING_DASH_PX = '6 4' as const; // dash array dla pierścieni
 
 /**

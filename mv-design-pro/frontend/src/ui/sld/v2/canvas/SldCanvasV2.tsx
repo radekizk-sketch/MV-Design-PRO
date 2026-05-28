@@ -227,6 +227,22 @@ function sameViewportTransform(a: ViewportTransform, b: ViewportTransform): bool
   );
 }
 
+// V-01: zawsze CENTRUJ przy wymuszonej skali czytelności (nigdy nie kotwicz do
+// lewego-górnego rogu — to było źródłem „schemat w 30% kadru, reszta pusta").
+function centeredTransformAtScale(
+  scale: number,
+  bbox: { minX: number; minY: number; maxX: number; maxY: number },
+  viewportSize: { readonly width: number; readonly height: number },
+): ViewportTransform {
+  const bboxCenterX = (bbox.minX + bbox.maxX) / 2;
+  const bboxCenterY = (bbox.minY + bbox.maxY) / 2;
+  return {
+    scale,
+    translateX: viewportSize.width / 2 - bboxCenterX * scale,
+    translateY: viewportSize.height / 2 - bboxCenterY * scale,
+  };
+}
+
 function applyOperatorReadableInitialTransform(
   fit: ViewportTransform,
   bbox: { minX: number; minY: number; maxX: number; maxY: number },
@@ -236,27 +252,19 @@ function applyOperatorReadableInitialTransform(
     readonly runCount: number;
     readonly derCount: number;
   },
+  viewportSize: { readonly width: number; readonly height: number },
 ): ViewportTransform {
   const smallOperatorTopology =
     args.stationCount <= 8 &&
     args.runCount <= 12 &&
     args.derCount <= 6;
   if (fit.scale < OPERATOR_LARGE_TOPOLOGY_MIN_SCALE) {
-    return {
-      scale: OPERATOR_LARGE_TOPOLOGY_MIN_SCALE,
-      translateX: 48 - bbox.minX * OPERATOR_LARGE_TOPOLOGY_MIN_SCALE,
-      translateY: 48 - bbox.minY * OPERATOR_LARGE_TOPOLOGY_MIN_SCALE,
-    };
+    return centeredTransformAtScale(OPERATOR_LARGE_TOPOLOGY_MIN_SCALE, bbox, viewportSize);
   }
   if (!args.hasCanonicalGpz || !smallOperatorTopology || fit.scale >= OPERATOR_READABLE_MIN_SCALE) {
     return fit;
   }
-
-  return {
-    scale: OPERATOR_READABLE_MIN_SCALE,
-    translateX: 48 - bbox.minX * OPERATOR_READABLE_MIN_SCALE,
-    translateY: 48 - bbox.minY * OPERATOR_READABLE_MIN_SCALE,
-  };
+  return centeredTransformAtScale(OPERATOR_READABLE_MIN_SCALE, bbox, viewportSize);
 }
 
 function isCanonicalGpzInteractiveDescendant(target: EventTarget | null): boolean {
@@ -807,12 +815,13 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     for (const d of ders) allPoints.push({ x: d.x, y: d.y });
     if (allPoints.length === 0) return;
     const bbox = computeBoundingBox(allPoints);
-    // Powi?kszamy bbox aby uwzgl?dni? rozmiar blok?w
+    // V-01: symetryczny margines wokół treści (bbox zawiera już footprint GPZ),
+    // żeby fitToView wypełnił kadr i wycentrował, bez phantom-pustki po prawej.
     const expanded = {
-      minX: bbox.minX - 100,
-      minY: bbox.minY - 100,
-      maxX: bbox.maxX + 200,
-      maxY: bbox.maxY + 200,
+      minX: bbox.minX - 120,
+      minY: bbox.minY - 120,
+      maxX: bbox.maxX + 120,
+      maxY: bbox.maxY + 120,
     };
     const nextTransform = applyOperatorReadableInitialTransform(
       fitToView(expanded, { width, height }),
@@ -823,6 +832,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         runCount: cableRuns.length,
         derCount: ders.length,
       },
+      { width, height },
     );
     setTransform((current) => sameViewportTransform(current, nextTransform) ? current : nextTransform);
   }, [viewportContentSignature, width, height]);
@@ -872,10 +882,10 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     if (allPoints.length === 0) return null;
     const bbox = computeBoundingBox(allPoints);
     const expanded = {
-      minX: bbox.minX - 100,
-      minY: bbox.minY - 100,
-      maxX: bbox.maxX + 200,
-      maxY: bbox.maxY + 200,
+      minX: bbox.minX - 120,
+      minY: bbox.minY - 120,
+      maxX: bbox.maxX + 120,
+      maxY: bbox.maxY + 120,
     };
     return applyOperatorReadableInitialTransform(
       fitToView(expanded, { width, height }),
@@ -886,6 +896,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         runCount: cableRuns.length,
         derCount: ders.length,
       },
+      { width, height },
     );
   }, [gpzs, canonicalGpzs, sections, stations, branchPoints, ders, width, height, cableRuns.length]);
 
@@ -1211,7 +1222,10 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                   }
                   />
                 )}
-                {lod <= 1 && (
+                {/* V-04: znacznik poglądowy TYLKO przy braku detalu (lod < 1).
+                   Przy lod === 1 detal kanoniczny już pokazuje nazwę GPZ —
+                   nakładanie obu dawało zdublowane „GPZ 15 kV" (druga prawda). */}
+                {lod < 1 && (
                   <g
                     data-testid={`sld-v2-gpz-overview-label-${g.id}`}
                     data-overview-label-scale={overviewTopologyLabelScale(transform.scale).toFixed(2)}
