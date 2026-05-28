@@ -59,67 +59,87 @@ async function build() {
     counts.segment++;
   }
 
-  const insertStation = async (segmentId) => {
+  const PV_ID = 'conv-pv-sma-1p5mw-15kv';
+  const BESS_ID = 'bess_pcs_sma_2200';
+  const newestStation = (o) => {
+    const subs = (o.snapshot?.substations ?? []).filter((s) => s.ref_id.includes('/station'));
+    return subs[subs.length - 1];
+  };
+  const feederRef = (station) => {
+    const f = (station?.meta?.field_specs ?? []).find(
+      (x) => String(x.bay_role ?? '').toUpperCase() === 'FEEDER' || String(x.field_role ?? '').toUpperCase().includes('ODG'),
+    );
+    return f?.field_ref ? `${f.field_ref}.BRANCH` : null;
+  };
+  const insertStation = async (segmentId, pos = 0.5) => {
     const o = await op(caseId, 'insert_station_on_segment_sn', {
-      segment_id: segmentId, station_type: 'B', insert_at: { value: 0.5 },
+      segment_id: segmentId, station_type: 'B', insert_at: { value: pos },
       station: { sn_voltage_kv: 15, nn_voltage_kv: 0.4 }, sn_fields: ['IN', 'OUT', 'FEEDER'],
       transformer: { create: true, catalog_binding: bind('TRAFO_SN_NN', TRAFO_ID) },
     });
     if (!o.error) counts.station++;
     return o;
   };
+  const addDer = async (station, tech, variant, catId) => {
+    if (!station?.ref_id) return;
+    const r = await op(caseId, 'add_converter_source', {
+      source_technology: tech, connection_variant: variant, station_ref: station.ref_id,
+      p_install_mw: 1.5, catalog_binding: bind(tech === 'PV' ? 'ZRODLO_NN_PV' : tech === 'BESS' ? 'ZRODLO_NN_BESS' : 'CONVERTER', catId),
+    });
+    if (!r.error) counts.der++;
+  };
 
-  // Stacje: wstawiaj na ŚWIEŻO odczytanym ostatnim segmencie korytarza (insert
-  // dzieli segment → ref się zmienia, więc re-fetch po każdym wstawieniu).
+  // (1) Stacje przelotowe na magistrali (re-fetch refs po każdym insertcie).
+  const trunkStations = [];
+  while (trunkStations.length < 12) {
+    const enm = await api(`/api/cases/${caseId}/enm`);
+    const corridor = enm.json?.corridors?.[0]?.ordered_segment_refs ?? [];
+    if (!corridor.length) break;
+    const pick = corridor[Math.min(corridor.length - 1, Math.floor(corridor.length * (0.3 + 0.5 * (trunkStations.length / 12))))];
+    const o = await insertStation(pick);
+    if (o.error) { const o2 = await insertStation(corridor[corridor.length - 1]); if (o2.error) break; trunkStations.push(newestStation(o2)); }
+    else trunkStations.push(newestStation(o));
+  }
+
+  // (2) Laterale: z pola FEEDER każdej stacji magistrali → odgałęzienie + 2-3 stacje (DRZEWO).
+  for (const ts of trunkStations) {
+    if (counts.station >= TARGET_STATIONS) break;
+    const fr = feederRef(ts);
+    if (!fr) continue;
+    const br = await op(caseId, 'start_branch_segment_sn', { from_ref: fr, segment: { rodzaj: 'KABEL', dlugosc_m: 180, catalog_binding: bind('KABEL_SN', CABLE_ID) } });
+    if (br.error) continue;
+    counts.branch++;
+    // 2-3 stacje wzdłuż lateralu (re-fetch ref lateralu po każdym insertcie)
+    const lateralStations = [];
+    const want = 2 + (counts.branch % 2);
+    for (let k = 0; k < want && counts.station < TARGET_STATIONS; k++) {
+      const enm = await api(`/api/cases/${caseId}/enm`);
+      // znajdź korytarz lateralu zawierający segment z brancha
+      const corridors = enm.json?.corridors ?? [];
+      const lateral = corridors[corridors.length - 1]?.ordered_segment_refs ?? [];
+      if (!lateral.length) break;
+      const o = await insertStation(lateral[lateral.length - 1], 0.5);
+      if (o.error) break;
+      lateralStations.push(newestStation(o));
+    }
+    // OZE na końcu niektórych lateralów: PV / BESS / FW naprzemiennie + mieszane
+    const tip = lateralStations[lateralStations.length - 1];
+    if (counts.branch % 3 === 1) await addDer(tip, 'PV', 'block_transformer', PV_ID);
+    else if (counts.branch % 3 === 2) { await addDer(tip, 'BESS', 'block_transformer', BESS_ID); await addDer(tip, 'PV', 'block_transformer', PV_ID); } // mieszane
+    else await addDer(tip, 'FW', 'block_transformer', PV_ID);
+  }
+
+  // (3) Dobij stacje na magistrali do progu, jeśli laterale nie wystarczyły.
   let guard = 0;
-  while (counts.station < TARGET_STATIONS && guard < TARGET_STATIONS + 20) {
+  while (counts.station < TARGET_STATIONS && guard < 40) {
     guard++;
     const enm = await api(`/api/cases/${caseId}/enm`);
     const corridor = enm.json?.corridors?.[0]?.ordered_segment_refs ?? [];
-    if (corridor.length === 0) break;
-    // wybierz segment ~co drugi, by rozłożyć stacje wzdłuż magistrali
-    const pick = corridor[Math.min(corridor.length - 1, Math.floor(corridor.length * 0.6))];
-    const o = await insertStation(pick);
-    if (o.error) {
-      // fallback: spróbuj ostatni segment
-      const o2 = await insertStation(corridor[corridor.length - 1]);
-      if (o2.error) break;
-    }
-    // co 5 stacji — odgałęzienie z pola FEEDER + stacja na nim
-    if (counts.station % 5 === 0) {
-      const sub = (o.snapshot?.substations ?? []).find((s) => s.ref_id.includes('/station'));
-      const bf = sub?.meta?.field_specs?.find((f) => String(f.bay_role ?? '').toUpperCase() === 'FEEDER');
-      if (bf?.field_ref) {
-        const br = await op(caseId, 'start_branch_segment_sn', { from_ref: `${bf.field_ref}.BRANCH`, segment: { rodzaj: 'KABEL', dlugosc_m: 160, catalog_binding: bind('KABEL_SN', CABLE_ID) } });
-        if (!br.error) {
-          counts.branch++;
-          const bs = segRefs(br);
-          if (bs.length) await insertStation(bs[bs.length - 1]);
-        }
-      }
-    }
+    if (!corridor.length) break;
+    const o = await insertStation(corridor[corridor.length - 1]);
+    if (o.error) break;
   }
 
-  // OZE: PV przez trafo, BESS, FW, mieszane (add_converter_source na wybranych polach).
-  // Próba na kilku polach wytwórczych — różne tryby.
-  const enm = await api(`/api/cases/${caseId}/enm`);
-  const subs = enm.json?.substations ?? [];
-  let derModes = [['PV', 'pv'], ['BESS', 'bess'], ['FW', 'wind'], ['PV', 'pv'], ['BESS', 'bess']];
-  let di = 0;
-  for (const s of subs.slice(0, 8)) {
-    const fields = s.meta?.field_specs ?? [];
-    const feeder = fields.find((f) => String(f.bay_role ?? '').toUpperCase() === 'FEEDER');
-    if (!feeder?.field_ref) continue;
-    const [kind] = derModes[di % derModes.length]; di++;
-    const r = await op(caseId, 'add_converter_source', {
-      attach_to_ref: `${feeder.field_ref}.BRANCH`,
-      source_kind: kind, p_install_mw: 1.5, voltage_kv: 0.4,
-      via_transformer: kind !== 'FW',
-      catalog_binding: bind('ZRODLO_SN', SOURCE_ID),
-    });
-    if (!r.error) counts.der++;
-    if (counts.der >= 5) break;
-  }
 
   // Run SC (best-effort).
   let runId = null;

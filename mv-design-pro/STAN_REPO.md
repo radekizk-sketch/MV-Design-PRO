@@ -47,6 +47,7 @@
 | D-06 | Dobór uziemienia (Petersen/rezystor), kompensacja Q, CVC/Volt-VAR, IEC 60853 (cykliczna) | §8C.7 | ZWERYFIKOWAĆ zakres | 5 |
 | D-10 | `ncrfg_compliance/checker.py` `DYNAMIC_TEST_IDS` zwracają `no_module` (legacy, niepodpięte do API) | — | DO WYGASZENIA (zastąpione przez `ncrfg_ptpiree`) | niski |
 | D-11 | API 501: `power_flow_comparisons`, `power_flow_runs`, `fault_loop` TT/IT | — | DECYZJA ZAKRESOWA | niski |
+| D-12 | **Tryb geo-schematyczny SLD** — odłożony (ENM bez współrzędnych geo); podłączyć do CGMES `DiagramLayout`/`PositionPoint` po D-02 | 7.6.C | ODŁOŻONY (zależny od D-02) | po D-02 |
 
 **Domknięte porządkowo 2026-05-28:** D-07 (`eligibility_service` — usunięta fraza „Funkcja w przygotowaniu"), D-08 (`frt_hvrt` — usunięte etykiety-wymówki), D-09 (`ncrfg_compliance/checker` docstring).
 
@@ -78,12 +79,12 @@
    - **V-07 = defekt RENDERU, nie modelu.** ENM ma pełny model terminali (`Port/PortRef/PortKind`, `endpoint_a_port/endpoint_b_port`, `starting_port_ref`, `external_ports`); `enmToSldAdapter.ts` go ignoruje, licząc geometrię ze sztywnych slotów (`Y_RUN_BASE`, `X_START + j×pitch`). Naprawa w adapterze, nie w modelu. Rozpływ/zwarcia wzdłuż połączeń mają na czym liczyć (model jest).
    - **Sieć 52 stacji (substrate `generate-large-network.mjs`) ujawniła „grzebień":** auto-layout = jeden płaski rząd, ~70% pustki, brak drzewa. To inadekwatność silnika layoutu przy skali — przebudowa, nie tweak.
    - **DECYZJA (właściciel):** layout + zakotwiczenie portów **równolegle**, przez wspólny kontrakt geometrii (silnik layoutu zwraca pozycje obiektów ORAZ portów; adapter rysuje krawędzie port→port, nie ze slotów).
-   - **DECYZJA (właściciel):** SLD **przełączalny topologiczny ↔ geo-schematyczny** — jedna prawda topologiczna ENM, dwie warstwy geometrii (zakaz drugiej prawdy). Tryb topologiczny: laterale w rankach (koniec grzebienia). Tryb geo: najpierw diagnoza, czy ENM ma współrzędne geo (jeśli nie → dług, nie zmyślać).
-   - **DIAGNOZA GEO (7.6.C — ustalona): ENM NIE MA współrzędnych geograficznych.** Zero `latitude/longitude/wgs/epsg/puwg/crs/srid` w `backend/src`; `Substation` ma tylko pola logiczne + `position_km` (odległość wzdłuż kabla). **Tryb geo = DŁUG** (źródło współrzędnych do ustalenia: import GIS / ręczne / CGMES `DiagramLayout` — wiąże z D-02). Nie udajemy geo na atrapach.
-   - **USTALENIE: brak dedykowanego silnika layoutu** — pozycje liczy `enmToSldAdapter.ts` ze slotów. Kontrakt geometrii (7.6.A) to nowa warstwa.
-   - **KONTRAKT zaprojektowany:** `docs/sld/SLD_GEOMETRY_CONTRACT_V1.md` — interfejs `LayoutEngine/LayoutResult/PortAnchor`, algorytm drzewa radialnego (magistrala + laterale w rankach), migracja adaptera (koniec slotów), oba tryby. Implementacja iteruje na substracie 52 stacji do ≥8/10.
-   - Próg §7.3 (11 warunków, ≥8/10) obowiązuje w OBU trybach na sieci ≥50 stacji.
-   - Do poprawy w generatorze: laterale (branch≈1) + `add_converter_source` payload (der=0) — by pokazać drzewo i wszystkie łańcuchy OZE (V-10).
+   - **DECYZJA (właściciel):** SLD **przełączalny topologiczny ↔ geo-schematyczny** — jedna prawda topologiczna ENM, dwie warstwy geometrii (zakaz drugiej prawdy). Tryb topologiczny: laterale w rankach (koniec grzebienia). Tryb geo: **diagnoza wykonana 2026-05-28 → ENM NIE MA współrzędnych geo** (tylko `position_km` topologiczne). **Tryb geo ODŁOŻONY jako dług D-12** — wartość naprawcza jest w topologicznym; geo podłączy się do CGMES `DiagramLayout`/`PositionPoint` (D-02) w swoim czasie. Robimy najpierw tryb topologiczny do ≥8/10.
+   - **Kontrakt geometrii dostarczony:** `docs/sld/SLD_GEOMETRY_CONTRACT_V1.md` — `LayoutEngine.layout(snapshot, mode) → LayoutResult` (pozycje obiektów + portów); adapter czyta kotwice, rysuje port→port. **Nie ma dedykowanego silnika layoutu** — to nowa warstwa, nie refaktor.
+   - Próg §7.3 (11 warunków, ≥8/10) obowiązuje dla trybu topologicznego na sieci ≥50 stacji.
+   - **POSTĘP (impl, iteracja 1, 2026-05-28):** generator naprawiony → substrate **52 stacje + 12 LATERALÓW** (drzewo; `sld_large_network*.png`). Payloady ops ustalone empirycznie (branch: `from_ref=<feederFieldRef>.BRANCH`; converter: `source_technology`+`connection_variant=block_transformer`+`station_ref`).
+   - **USTALENIE LAYOUTU (ze zrzutu 52-stacji z lateralami):** adapter „kanały Y per run" FAKTYCZNIE tworzy laterale (poziome rzędy stacji) — drzewo istnieje. ALE: **(a)** auto-fit zostawia drzewo malutkie w lewym-dolnym rogu (~25%, ~70% pusto) — bbox zawyżony względem skupionej treści; **(b)** laterale **lewo-wyrównane do tego samego X** (stos), zamiast startować od X stacji-rodzica → stos, nie rozłożone drzewo. **Następny krok impl: X lateralu względem rodzica + fit po realnym zasięgu treści.**
+   - OZE (V-10): generatorowy `add_converter_source` nadal der=0 (binding namespace/id do poprawy — probe działał z `FALOWNIK`/`inv-pv-1500`).
 1. **Reszta weryfikacji wizualnej** — harness interakcyjny (A-07, §7B.9-3/5/6), pozostałe surface'y.
 2. **K-04 + K-08** — walidacja progów V12.6 i sanity-bounds (wiarygodność wartości przed nowymi modułami).
 3. **D-04 ZIP** → **D-03 stabilność impedancyjna/SSCI** → **D-01 Arc Flash** → **D-02 CIM/CGMES** → **D-05/D-06**.
