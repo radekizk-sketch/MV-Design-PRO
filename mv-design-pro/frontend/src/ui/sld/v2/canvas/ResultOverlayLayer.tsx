@@ -19,6 +19,8 @@ import {
   useRawResultOverlayStore,
   getMetric,
   formatMetric,
+  type RawMetricValue,
+  type RawOverlayPayload,
 } from '../../../sld-overlay/rawResultOverlayStore';
 import type { StationOnRunRendererProps } from '../renderer/StationOnRunRenderer';
 
@@ -32,6 +34,55 @@ function severityColor(severity: string | undefined): string {
   if (severity === 'IMPORTANT') return BADGE_COLOR_IMPORTANT;
   if (severity === 'WARNING') return BADGE_COLOR_WARNING;
   return BADGE_COLOR_INFO;
+}
+
+const SC_SYSTEM_CONTRIBUTION_CODES = [
+  'IK_3F_SYSTEM_A',
+  'IK_SYSTEM_A',
+  'IK_3F_GRID_A',
+  'IK_GRID_A',
+  'IK_3F_FROM_SYSTEM_A',
+  'IK_3F_SOURCE_SYSTEM_A',
+] as const;
+
+const SC_DER_CONTRIBUTION_CODES = [
+  'IK_3F_DER_A',
+  'IK_DER_A',
+  'IK_3F_SOURCE_A',
+  'IK_SOURCE_A',
+  'IK_3F_PV_A',
+  'IK_PV_A',
+  'IK_3F_BESS_A',
+  'IK_BESS_A',
+  'IK_3F_FW_A',
+  'IK_FW_A',
+] as const;
+
+function getFirstMetric(
+  payload: RawOverlayPayload | null,
+  elementRef: string,
+  metricCodes: readonly string[],
+): RawMetricValue | null {
+  for (const code of metricCodes) {
+    const metric = getMetric(payload, elementRef, code);
+    if (metric && metric.value !== null && metric.value !== undefined) return metric;
+  }
+  return null;
+}
+
+function formatMetricPl(metric: RawMetricValue | null): string {
+  return formatMetric(metric).replace(/(\d+)\.(\d+)/g, '$1,$2');
+}
+
+function formatShortCircuitCurrentOrMissing(
+  metric: RawMetricValue | null,
+  missingLabel: string,
+): string {
+  if (!metric || metric.value === null || metric.value === undefined) return missingLabel;
+  if (metric.unit.toLowerCase() === 'a') {
+    return `${(metric.value / 1000).toFixed(2).replace('.', ',')} kA`;
+  }
+  return formatMetricPl(metric);
 }
 
 /**
@@ -188,61 +239,68 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
           rich compact card K30-59 już zawiera voltage label. Eliminate
           duplicate "U=14,95 kV" floating overlay clutter. Show only with
           ?overlay=1 (verbose mode dla zaawansowanej audytu). */}
-      {showLegend && stations.map((st) => {
+      {stations.map((st) => {
         const snBusRef = st.id.endsWith('/station')
           ? `${st.id.slice(0, -'/station'.length)}/sn_bus`
           : `${st.id}/sn_bus`;
-        const el = payload.elements[snBusRef];
-        if (!el) return null;
+        const hasElement = Boolean(payload.elements[snBusRef]);
         // K30-32: anchor voltage badge closer to station body (was st.y-130 floating).
         // Position 60px above station origin — visually adjacent z explicit leader line
         // connecting badge → station bus, eliminating "floating" per user K30-29.
-        const badgeY = st.y - 60;
+        const badgeX = isSc3F ? st.x + 168 : st.x;
+        const badgeY = isSc3F ? st.y + 86 : st.y - 60;
 
         // SC_3F: IK_3F_A (initial sc current) + IP_A (peak sc current) + SK_MVA
         const ik3f = isSc3F ? getMetric(payload, snBusRef, 'IK_3F_A') : null;
         const ip = isSc3F ? getMetric(payload, snBusRef, 'IP_A') : null;
+        const ik3fSystem = isSc3F ? getFirstMetric(payload, snBusRef, SC_SYSTEM_CONTRIBUTION_CODES) : null;
+        const ik3fSources = isSc3F ? getFirstMetric(payload, snBusRef, SC_DER_CONTRIBUTION_CODES) : null;
         void getMetric; void snBusRef;  // skMva removed K30-52 (overlay shrunk)
         // LOAD_FLOW: U_kV + ANGLE_DEG
         const uKv = !isSc3F ? getMetric(payload, snBusRef, 'U_kV') : null;
         const angleDeg = !isSc3F ? getMetric(payload, snBusRef, 'ANGLE_DEG') : null;
 
         // K30-6: operational severity z thresholds (override backend INFO).
-        const derivedSeverity = isSc3F
+        const derivedSeverity = hasElement && isSc3F
           ? deriveOperationalSeverity(true, ik3f?.value ?? null)
-          : deriveOperationalSeverity(false, uKv?.value ?? null);
-        const color = severityColor(derivedSeverity);
+          : hasElement
+            ? deriveOperationalSeverity(false, uKv?.value ?? null)
+            : 'INFO';
+        const color = hasElement ? severityColor(derivedSeverity) : '#7A8A99';
 
         // K30-52: shrink overlay 180×big → 84×compact (sticker-style),
         // eliminuje dominację stacji visualnie. Single line, monospace.
-        const lineCount = isSc3F ? 2 : 1;
-        const boxHeight = 8 + lineCount * 11;
+        const lineCount = isSc3F ? 4 : 1;
+        const boxWidth = isSc3F ? 126 : 84;
+        const boxHeight = 8 + lineCount * (isSc3F ? 9 : 11);
 
         // K30-32: explicit leader line from badge bottom → station bus
         // (eliminates "floating overlay" appearance per user K30-29 feedback).
-        const leaderLineDy = Math.max(0, st.y - badgeY - boxHeight + 4);
+        const leaderLineDy = isSc3F ? 0 : Math.max(0, st.y - badgeY - boxHeight + 4);
         return (
           <g
             key={`result-overlay-${st.id}`}
             data-testid={`sld-v2-result-overlay-${st.id}`}
-            transform={`translate(${st.x}, ${badgeY})`}
+            transform={`translate(${badgeX}, ${badgeY})`}
           >
             {/* Leader line: badge bottom → station bus */}
-            <line
-              x1={0}
-              y1={-4 + boxHeight}
-              x2={0}
-              y2={-4 + boxHeight + leaderLineDy}
-              stroke={color}
-              strokeWidth={1}
-              strokeDasharray="2 2"
-              opacity={0.6}
-              data-testid={`sld-v2-result-overlay-leader-${st.id}`}
-            />
+            {!isSc3F && (
+              <line
+                x1={0}
+                y1={-4 + boxHeight}
+                x2={0}
+                y2={-4 + boxHeight + leaderLineDy}
+                stroke={color}
+                strokeWidth={1}
+                strokeDasharray="2 2"
+                opacity={0.6}
+                data-testid={`sld-v2-result-overlay-leader-${st.id}`}
+              />
+            )}
             <rect
-              x={-42}
+              x={-boxWidth / 2}
               y={-4}
-              width={84}
+              width={boxWidth}
               height={boxHeight}
               rx={2}
               ry={2}
@@ -253,16 +311,21 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
             />
             {isSc3F ? (
               <>
-                {ik3f && (
-                  <text x={0} y={5} textAnchor="middle" fill={color} fontFamily="monospace" fontSize={9} fontWeight={800}>
-                    {`Ik″ ${formatMetric(ik3f)}`}
-                  </text>
-                )}
-                {ip && (
-                  <text x={0} y={16} textAnchor="middle" fill="#FFD166" fontFamily="monospace" fontSize={8} fontWeight={700}>
-                    {`Ip ${formatMetric(ip)}`}
-                  </text>
-                )}
+                <title>
+                  Wynik zwarciowy w węźle stacji: prąd całkowity, wkład sieci zasilającej, wkład źródeł DER oraz prąd udarowy. Kreska oznacza brak tej metryki w śladzie solvera.
+                </title>
+                <text x={-boxWidth / 2 + 6} y={4} textAnchor="start" fill={color} fontFamily="monospace" fontSize={7.2} fontWeight={900}>
+                  {`Ik'' razem ${formatShortCircuitCurrentOrMissing(ik3f, '--')}`}
+                </text>
+                <text x={-boxWidth / 2 + 6} y={13} textAnchor="start" fill="#DDF7FF" fontFamily="monospace" fontSize={6.9} fontWeight={700}>
+                  {`sieć ${formatShortCircuitCurrentOrMissing(ik3fSystem, '--')}`}
+                </text>
+                <text x={-boxWidth / 2 + 6} y={22} textAnchor="start" fill="#7EE0B5" fontFamily="monospace" fontSize={6.9} fontWeight={700}>
+                  {`DER ${formatShortCircuitCurrentOrMissing(ik3fSources, '--')}`}
+                </text>
+                <text x={-boxWidth / 2 + 6} y={31} textAnchor="start" fill="#FFD166" fontFamily="monospace" fontSize={6.9} fontWeight={700}>
+                  {`ip razem ${formatShortCircuitCurrentOrMissing(ip, '--')}`}
+                </text>
               </>
             ) : (
               <>
@@ -270,6 +333,11 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
                   <text x={0} y={6} textAnchor="middle" fill={color} fontFamily="monospace" fontSize={10} fontWeight={800}>
                     {/* K30-55 Phase F: IEC format "U=14,95 kV ∠ -0,1°" (Polish comma decimal + angle symbol). */}
                     {`U=${uKv.value?.toFixed(2).replace('.', ',') ?? '—'} kV${angleDeg?.value != null ? ` ∠ ${angleDeg.value >= 0 ? '+' : ''}${angleDeg.value.toFixed(1).replace('.', ',')}°` : ''}`}
+                  </text>
+                )}
+                {!uKv && (
+                  <text x={0} y={6} textAnchor="middle" fill="#B8C7D4" fontFamily="monospace" fontSize={9} fontWeight={800}>
+                    brak wyniku
                   </text>
                 )}
               </>
@@ -288,6 +356,8 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
           const qMvar = !isSc3F ? getMetric(payload, sp.segmentRef, 'Q_MVAR') : null;
           const iA = !isSc3F ? getMetric(payload, sp.segmentRef, 'I_A') : null;
           const ik3fBranch = isSc3F ? getMetric(payload, sp.segmentRef, 'IK_3F_A') : null;
+          const ik3fBranchSystem = isSc3F ? getFirstMetric(payload, sp.segmentRef, SC_SYSTEM_CONTRIBUTION_CODES) : null;
+          const ik3fBranchSources = isSc3F ? getFirstMetric(payload, sp.segmentRef, SC_DER_CONTRIBUTION_CODES) : null;
           // Wybierz punkt środkowy segmentu dla label position
           const points = sp.pathPoints;
           if (points.length < 2) return null;
@@ -328,13 +398,23 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
             <g
               key={`branch-overlay-${sp.segmentRef}`}
               data-testid={`sld-v2-branch-overlay-${sp.segmentRef}`}
-              transform={`translate(${midX}, ${midY + 26})`}
+              transform={`translate(${midX}, ${midY - 38})`}
             >
               {isSc3F && ik3fBranch ? (
                 <>
-                  <rect x={-44} y={-9} width={88} height={18} rx={3} ry={3} fill="#0A0E14" stroke={branchColor} strokeWidth={1.2} opacity={0.92} />
-                  <text x={0} y={4} textAnchor="middle" fill={branchColor} fontFamily="monospace" fontSize={10} fontWeight={700}>
-                    {`Ik″ ${formatMetric(ik3fBranch)}`}
+                  <line x1={0} y1={17} x2={0} y2={38} stroke={branchColor} strokeWidth={1} strokeDasharray="2 2" opacity={0.55} />
+                  <rect x={-62} y={-17} width={124} height={34} rx={3} ry={3} fill="#0A0E14" stroke={branchColor} strokeWidth={1.2} opacity={0.90} />
+                  <title>
+                    Wynik zwarciowy na odcinku: prąd całkowity, wkład sieci zasilającej i wkład źródeł DER. Kreska oznacza brak tej metryki w śladzie solvera.
+                  </title>
+                  <text x={-56} y={-6} textAnchor="start" fill={branchColor} fontFamily="monospace" fontSize={7.6} fontWeight={800}>
+                    {`Ik'' ${formatShortCircuitCurrentOrMissing(ik3fBranch, '--')}`}
+                  </text>
+                  <text x={-56} y={5} textAnchor="start" fill="#DDF7FF" fontFamily="monospace" fontSize={6.7} fontWeight={700}>
+                    {`sieć ${formatShortCircuitCurrentOrMissing(ik3fBranchSystem, '--')}`}
+                  </text>
+                  <text x={-56} y={15} textAnchor="start" fill="#7EE0B5" fontFamily="monospace" fontSize={6.7} fontWeight={700}>
+                    {`DER ${formatShortCircuitCurrentOrMissing(ik3fBranchSources, '--')}`}
                   </text>
                 </>
               ) : (typeof pVal === 'number' || typeof iVal === 'number') ? (

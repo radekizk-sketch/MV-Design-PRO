@@ -93,6 +93,7 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/catalog/transformer-types` | v12xx | aktywny | 2026-04-24 | - | Katalog transformatorow. | catalog tests | Administrator katalogow |
 | `GET /api/catalog/vt-types` | v12xx | aktywny | 2026-04-24 | - | Katalog przekladnikow napieciowych. | catalog tests | Administrator katalogow |
 | `GET /api/catalog/v126/{namespace}` | v12.6 | aktywny | 2026-05-24 | - | Katalogi pomocnicze analiz akademickich V12.6. | v126 academic API tests | Administrator katalogow |
+| `GET /api/ncrfg-tests/catalog` | v12.6 | aktywny | 2026-05-24 | - | Katalog testow procedury PTPiREE NC RfG oraz profile operatorow dla zakladki E-35/ncrfg-tests. | ncrfg ptpiree API tests | Architekt OZE |
 | `GET /api/execution/fault-scenarios/{scenario_id}` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Odczyt scenariusza zakloceniowego. | execution tests | Architekt ruchowy |
 | `GET /api/execution/fault-scenarios/{scenario_id}/eligibility` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Zdolnosc uruchomienia scenariusza zakloceniowego. | execution eligibility tests | Architekt ruchowy |
 | `GET /api/execution/fault-scenarios/{scenario_id}/sld-overlay` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Nakladka SLD scenariusza zakloceniowego. | execution overlay tests | Architekt SLD |
@@ -135,6 +136,7 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `POST /api/catalog/protection/import` | v12xx | aktywny | 2026-04-24 | - | Import katalogu zabezpieczen. | protection import tests | Projektant zabezpieczen |
 | `POST /api/comparison/runs` | v12xx | aktywny | 2026-04-24 | - | Porownanie uruchomien. | comparison tests | Architekt wynikow |
 | `POST /api/equipment-proof/pack` | v12xx | aktywny | 2026-04-24 | - | Pakiet uzasadnienia dla aparatury. | equipment proof tests | Architekt proof |
+| `POST /api/ncrfg-tests/run` | v12.6 | aktywny | 2026-05-24 | - | Deterministyczne uruchomienie pakietu symulacji zgodnosci PTPiREE NC RfG dla DER z trace, proof i raportem PL. | ncrfg ptpiree solver/API tests | Architekt solverow |
 | `POST /api/execution/fault-scenarios/{scenario_id}/runs` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Uruchomienie scenariusza zakloceniowego. | execution tests | Architekt ruchowy |
 | `POST /api/execution/runs/{run_id}/execute` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Wykonanie runu execution. | execution tests | Architekt ruchowy |
 | `POST /api/execution/study-cases/{case_id}/fault-scenarios` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Utworzenie scenariusza zakloceniowego. | fault scenario tests | Architekt ruchowy |

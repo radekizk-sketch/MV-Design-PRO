@@ -158,6 +158,7 @@ export function StationOnRunRenderer(props: StationOnRunRendererProps): JSX.Elem
         totalGenerationKw={props.totalGenerationKw ?? null}
         snBays={props.snBays ?? []}
         hasTransformer={props.hasTransformer ?? true}
+        transformerRefs={props.transformerRefs ?? []}
         transformerRatedKva={props.transformerRatedKva ?? null}
         nnFeedersCount={props.nnFeedersCount ?? props.nnVoltageLevelsCount ?? 0}
         derBadges={props.derBadges ?? []}

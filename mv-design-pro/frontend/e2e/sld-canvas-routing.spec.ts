@@ -30,8 +30,8 @@ test.describe('Etap 1 — wiring kanwy SLD', () => {
     await expect(page.getByTestId('sld-canvas-v2')).toBeVisible();
     const emptyState = page.getByTestId('sld-empty-state');
     await expect(emptyState).toBeVisible();
-    await expect(emptyState).toContainText('Schemat oczekuje na dane modelu sieci');
-    await expect(emptyState).toContainText('Głównego Punktu Zasilającego');
+    await expect(emptyState).toContainText('Wybierz wariant GPZ i rozpocznij ciąg SN');
+    await expect(emptyState).toContainText('Główny Punkt Zasilający');
   });
 
   test('right-click na kanwie otwiera menu kontekstowe tła', async ({ page }) => {
@@ -53,7 +53,7 @@ test.describe('Etap 1 — wiring kanwy SLD', () => {
     // Menu kontekstowe z trzema akcjami `background`.
     await expect(page.getByText('Wstaw główny punkt zasilania')).toBeVisible();
     await expect(page.getByText('Otwórz katalogi techniczne')).toBeVisible();
-    await expect(page.getByText('Pokaż gotowość modelu')).toBeVisible();
+    await expect(page.getByText('Pokaż kontrolę konfiguracji')).toBeVisible();
   });
 
   test('trasa #sld-view renderuje kanwę w trybie tylko-do-odczytu', async ({ page }) => {

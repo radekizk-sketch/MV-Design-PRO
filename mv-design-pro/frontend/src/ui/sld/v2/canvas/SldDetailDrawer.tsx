@@ -23,16 +23,40 @@
  *   - 6 tabs (Typ / Moc / Punkt / Falownik / NC RfG / Zabezpieczenia)
  */
 
-import type { JSX } from 'react';
+import type { CSSProperties, JSX } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm, type FieldError, type FieldErrors, type Resolver, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
-export type SldDetailKind = 'station' | 'bay' | 'apparatus' | 'der' | 'cable_run' | null;
+export type SldDetailKind =
+  | 'station'
+  | 'bay'
+  | 'apparatus'
+  | 'transformer'
+  | 'der'
+  | 'cable_run'
+  | 'node'
+  | null;
+
+export interface SldTransformerDrawerSpec {
+  readonly ref: string | null;
+  readonly name: string | null;
+  readonly vectorGroup: string | null;
+  readonly snMva: number | null;
+  readonly uhvKv: number | null;
+  readonly ulvKv: number | null;
+  readonly ukPercent: number | null;
+  readonly pkKw: number | null;
+  readonly catalogRef: string | null;
+  readonly dataQuality: 'model' | 'sld_fallback' | 'missing';
+  readonly blockers: readonly string[];
+}
 
 export interface SldDetailDrawerData {
   /** Element kind — determines which tab set to show. */
   readonly kind: SldDetailKind;
+  /** Kanoniczny typ menu SLD uzywany przez kontener do akcji domenowych. */
+  readonly menuKind?: string | null;
   /** Element id (ref_id). */
   readonly elementId: string | null;
   /** Display label (np. "S08 SN" / "Q01" / "PV-1"). */
@@ -48,13 +72,7 @@ export interface SldDetailDrawerData {
   /** K30-78: pre-filled connection variant when drawer opened via drag-drop. */
   readonly derConnectionVariant?: 'nn_side' | 'sn_side' | 'dedicated';
   /** K30-79: real transformer spec from ENM snapshot (gdy kind='station'). */
-  readonly transformerSpec?: {
-    readonly vectorGroup: string | null;
-    readonly snMva: number | null;
-    readonly uhvKv: number | null;
-    readonly ulvKv: number | null;
-    readonly ukPercent: number | null;
-  } | null;
+  readonly transformerSpec?: SldTransformerDrawerSpec | null;
   /** K30-80: bay list dla rozdzielnica tab (kind='station'). */
   readonly baysSpec?: ReadonlyArray<{
     readonly id: string;
@@ -125,6 +143,15 @@ export interface SldDetailDrawerData {
     /** K30-93: max voltage drop ΔU % (deviation pomiędzy stacjami końcowymi). */
     readonly maxVoltageDropPct?: number | null;
   } | null;
+  /** Obiekt wezlowy magistrali SN: ZKSN, slup rozgalezny, NMO. */
+  readonly nodeSpec?: {
+    readonly nodeKind: 'zksn' | 'branch_pole' | 'nmo' | 'other';
+    readonly rolePl: string;
+    readonly voltageKv: number | null;
+    readonly connectedSegmentsCount: number | null;
+    readonly catalogRef: string | null;
+    readonly blockers: readonly string[];
+  } | null;
 }
 
 export type SldDerKind = 'PV' | 'BESS' | 'FW';
@@ -146,6 +173,14 @@ export interface SldDetailDrawerSavePayload {
   readonly derConfig?: SldDerConfigFormValues;
 }
 
+export interface SldDetailDrawerAction {
+  readonly id: string;
+  readonly labelPl: string;
+  readonly group?: 'budowa' | 'edycja' | 'widok' | 'usun';
+  readonly disabledReasonPl?: string;
+  readonly onClick: () => void;
+}
+
 export interface SldDetailDrawerProps {
   readonly open: boolean;
   readonly data: SldDetailDrawerData | null;
@@ -159,6 +194,10 @@ export interface SldDetailDrawerProps {
    *  CTA w drawer toolbar (sub-header pod tabs). Typowo dla station/bay
    *  otwiera drill-down (StationInternalView / pole edit). */
   readonly onOpenFullView?: () => void;
+  /** Otwiera kanoniczny konfigurator stacji/obiektu w prawym panelu roboczym. */
+  readonly onOpenConfiguration?: () => void;
+  /** Jawne akcje domenowe dla wybranego obiektu. */
+  readonly actions?: readonly SldDetailDrawerAction[];
 }
 
 const STATION_TABS = [
@@ -178,6 +217,10 @@ const APPARATUS_TABS = [
   { id: 'settings', label: 'Nastawy' },
 ] as const;
 
+const TRANSFORMER_TABS = [
+  { id: 'karta', label: 'Karta techniczna' },
+] as const;
+
 const DER_TABS = [
   { id: 'typ', label: 'Typ' },
   { id: 'moc', label: 'Moc znamionowa' },
@@ -191,6 +234,11 @@ const CABLE_RUN_TABS = [
   { id: 'trasa', label: 'Trasa' },
   { id: 'parametry', label: 'Parametry' },
   { id: 'spadek', label: 'Spadek napięcia' },
+] as const;
+
+const NODE_TABS = [
+  { id: 'karta', label: 'Karta techniczna' },
+  { id: 'operacje', label: 'Operacje' },
 ] as const;
 
 type ExistingDer = NonNullable<SldDetailDrawerData['existingDers']>[number];
@@ -333,8 +381,10 @@ function tabsForKind(kind: SldDetailKind): readonly { id: string; label: string 
   if (kind === 'station') return STATION_TABS;
   if (kind === 'bay') return BAY_TABS;
   if (kind === 'apparatus') return APPARATUS_TABS;
+  if (kind === 'transformer') return TRANSFORMER_TABS;
   if (kind === 'der') return DER_TABS;
   if (kind === 'cable_run') return CABLE_RUN_TABS;
+  if (kind === 'node') return NODE_TABS;
   return [];
 }
 
@@ -386,8 +436,37 @@ function firstDerFormError(errors: FieldErrors<SldDerConfigFormValues>): string 
     ?? null;
 }
 
+function drawerActionButtonStyle(
+  accent: string,
+  group: SldDetailDrawerAction['group'],
+  disabled = false,
+): CSSProperties {
+  const danger = group === 'usun';
+  const border = disabled ? '#344252' : danger ? '#F25F5F' : group === 'budowa' ? '#13C45A' : accent;
+  const color = disabled ? '#7E8790' : danger ? '#FFD1D1' : group === 'budowa' ? '#C8F8DD' : '#DDF7FF';
+  return {
+    background: disabled ? '#111821' : danger ? '#2A1114' : 'transparent',
+    border: `1px solid ${border}`,
+    color,
+    padding: '4px 10px',
+    borderRadius: 3,
+    fontSize: 10,
+    fontWeight: 700,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+  };
+}
+
 export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null {
-  const { open, data, onClose, width = 360, onSave, onOpenFullView } = props;
+  const {
+    open,
+    data,
+    onClose,
+    width = 392,
+    onSave,
+    onOpenFullView,
+    onOpenConfiguration,
+    actions = [],
+  } = props;
   const tabs = tabsForKind(data?.kind ?? null);
   const [activeTab, setActiveTab] = useState<string>(tabs[0]?.id ?? '');
   const derForm = useForm<SldDerConfigFormValues>({
@@ -479,6 +558,7 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
   // Reset active tab when data.kind changes
   const currentTab = tabs.find((t) => t.id === activeTab) ? activeTab : tabs[0].id;
   const showFooter = Boolean(onSave && data.kind === 'der');
+  const showActionToolbar = Boolean(onOpenFullView || onOpenConfiguration || actions.length > 0);
 
   const accent = data.accentColor ?? '#7EC8FF';
   const visibleLabel = detailDisplayLabel(data);
@@ -653,17 +733,19 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
       </div>
 
       {/* K30-91: action toolbar pod tabs (gdy onOpenFullView podany) */}
-      {onOpenFullView && (
+      {showActionToolbar && (
         <div
           data-testid="sld-v2-detail-drawer-actions"
           style={{
             padding: '6px 12px',
             borderBottom: '1px solid #2A3441',
             display: 'flex',
+            flexWrap: 'wrap',
             gap: 6,
             background: '#0E1218',
           }}
         >
+          {onOpenFullView && (
           <button
             type="button"
             data-testid="sld-v2-detail-drawer-open-full-view"
@@ -681,6 +763,34 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           >
             ⇱ Otwórz pełny widok
           </button>
+          )}
+          {onOpenConfiguration && (
+            <button
+              type="button"
+              data-testid="sld-v2-detail-drawer-open-configuration"
+              onClick={onOpenConfiguration}
+              style={drawerActionButtonStyle(accent, 'edycja')}
+            >
+              Konfiguruj obiekt
+            </button>
+          )}
+          {actions.map((action) => {
+            const disabled = Boolean(action.disabledReasonPl);
+            return (
+              <button
+                type="button"
+                key={action.id}
+                data-testid={`sld-v2-detail-drawer-action-${action.id}`}
+                data-disabled={disabled ? 'true' : 'false'}
+                onClick={disabled ? undefined : action.onClick}
+                disabled={disabled}
+                title={action.disabledReasonPl ?? action.labelPl}
+                style={drawerActionButtonStyle(accent, action.group, disabled)}
+              >
+                {action.labelPl}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -697,7 +807,13 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           fontSize: 11,
         }}
       >
-        <TabContent kind={data.kind} tab={currentTab} data={data} derForm={derForm} />
+        <TabContent
+          kind={data.kind}
+          tab={currentTab}
+          data={data}
+          derForm={derForm}
+          onOpenConfiguration={onOpenConfiguration}
+        />
       </div>
 
       {/* K30-87: footer with Save/Cancel CTA (gdy onSave podany) */}
@@ -773,8 +889,10 @@ function kindLabel(kind: SldDetailKind): string {
     case 'station': return 'Stacja SN/nN';
     case 'bay': return 'Pole';
     case 'apparatus': return 'Aparat';
+    case 'transformer': return 'Transformator';
     case 'der': return 'Źródło rozproszone (DER)';
     case 'cable_run': return 'Ciąg kablowy';
+    case 'node': return 'Węzeł sieci SN';
     default: return '—';
   }
 }
@@ -786,6 +904,7 @@ function isPublicEngineeringLabel(value: string | null | undefined): value is st
 }
 
 function detailDisplayLabel(data: SldDetailDrawerData): string {
+  if (data.kind === 'station' && isPublicEngineeringLabel(data.label)) return data.label;
   if (data.kind === 'station' && data.stationCode) return data.stationCode;
   if (isPublicEngineeringLabel(data.label)) return data.label;
   return kindLabel(data.kind);
@@ -797,19 +916,24 @@ function detailObjectContext(data: SldDetailDrawerData): string {
   }
   if (data.kind === 'bay') return isPublicEngineeringLabel(data.label) ? data.label : 'Pole SN';
   if (data.kind === 'apparatus') return isPublicEngineeringLabel(data.label) ? data.label : 'Aparat pola';
+  if (data.kind === 'transformer') return isPublicEngineeringLabel(data.label) ? data.label : 'Transformator SN/nN';
   if (data.kind === 'der') return isPublicEngineeringLabel(data.label) ? data.label : 'Źródło przyłączone';
   if (data.kind === 'cable_run') return isPublicEngineeringLabel(data.label) ? data.label : 'Ciąg SN';
+  if (data.kind === 'node') return data.nodeSpec?.rolePl ?? (isPublicEngineeringLabel(data.label) ? data.label : 'Węzeł sieci SN');
   return 'Układ elektroenergetyczny';
 }
 
 interface TabContentProps {
   readonly kind: SldDetailKind;
+  /** Kind menu SLD uzywany przez kontener do routingu akcji. */
+  readonly menuKind?: string | null;
   readonly tab: string;
   readonly data: SldDetailDrawerData;
   readonly derForm: UseFormReturn<SldDerConfigFormValues>;
+  readonly onOpenConfiguration?: () => void;
 }
 
-function TabContent({ kind, tab, data, derForm }: TabContentProps): JSX.Element {
+function TabContent({ kind, tab, data, derForm, onOpenConfiguration }: TabContentProps): JSX.Element {
   return (
     <div data-testid={`sld-v2-detail-drawer-tab-content-${tab}`}>
       <div style={{ color: '#7E8790', fontStyle: 'italic', marginBottom: 12 }}>
@@ -826,9 +950,355 @@ function TabContent({ kind, tab, data, derForm }: TabContentProps): JSX.Element 
         existingDers={data.existingDers}
         apparatusSpec={data.apparatusSpec}
         cableRunSpec={data.cableRunSpec ?? null}
+        nodeSpec={data.nodeSpec ?? null}
         apparatusState={data.apparatusState ?? null}
         derForm={derForm}
+        onOpenConfiguration={onOpenConfiguration}
       />
+    </div>
+  );
+}
+
+function transformerMissingValue(label = 'Brak danych'): JSX.Element {
+  return <span style={{ color: '#F4A261', fontStyle: 'normal' }}>{label}</span>;
+}
+
+function formatTransformerKva(mva: number | null | undefined): string | null {
+  if (mva == null || !Number.isFinite(mva)) return null;
+  return `${formatTechnicalNumberPl(mva * 1000, 0)} kVA`;
+}
+
+function transformerVoltageLabel(
+  spec: SldTransformerDrawerSpec | null,
+  fallbackVoltageKv: number | null,
+): string | null {
+  const uhv = spec?.uhvKv ?? fallbackVoltageKv;
+  const ulv = spec?.ulvKv ?? 0.4;
+  if (uhv == null || ulv == null) return null;
+  return `${formatKvPl(uhv)} / ${formatKvPl(ulv)}`;
+}
+
+function transformerRequiredBlockers(spec: SldTransformerDrawerSpec | null): string[] {
+  if (!spec || spec.dataQuality === 'missing') {
+    return ['Brak transformatora SN/nN przypisanego do stacji.'];
+  }
+  const blockers = [...spec.blockers];
+  if (spec.snMva == null) blockers.push('Brak mocy znamionowej Sn.');
+  if (spec.uhvKv == null) blockers.push('Brak napięcia strony SN.');
+  if (spec.ulvKv == null) blockers.push('Brak napięcia strony nN.');
+  if (spec.ukPercent == null) blockers.push('Brak napięcia zwarcia u_k%.');
+  if (spec.vectorGroup == null) blockers.push('Brak grupy połączeń.');
+  if (spec.catalogRef == null) blockers.push('Brak pozycji katalogowej transformatora.');
+  return Array.from(new Set(blockers));
+}
+
+function TransformerStationPanel({
+  transformerSpec,
+  voltageKv,
+  onOpenConfiguration,
+}: {
+  readonly transformerSpec: SldTransformerDrawerSpec | null;
+  readonly voltageKv: number | null;
+  readonly onOpenConfiguration?: () => void;
+}): JSX.Element {
+  const blockers = transformerRequiredBlockers(transformerSpec);
+  const isComplete = blockers.length === 0;
+  const fromSldFallback = transformerSpec?.dataQuality === 'sld_fallback';
+  const panelBorder = isComplete ? '#13C45A' : '#F4A261';
+  const ratedKva = formatTransformerKva(transformerSpec?.snMva);
+  const voltageLabel = transformerVoltageLabel(transformerSpec, voltageKv);
+
+  return (
+    <div data-testid="drawer-tr-engineering-panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <section
+        style={{
+          border: `1px solid ${panelBorder}`,
+          background: '#101720',
+          borderRadius: 6,
+          padding: 10,
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
+          <div>
+            <div style={{ color: '#7E8790', fontSize: 9, fontWeight: 800, letterSpacing: 1.2 }}>
+              TRANSFORMATOR SN/nN
+            </div>
+            <div data-testid="drawer-tr-name" style={{ marginTop: 3, color: '#DDF7FF', fontSize: 13, fontWeight: 800 }}>
+              {transformerSpec?.name ?? 'Transformator stacji'}
+            </div>
+            {transformerSpec?.ref && (
+              <div data-testid="drawer-tr-ref" style={{ marginTop: 2, color: '#88BBDD', fontSize: 9, fontFamily: 'monospace' }}>
+                {transformerSpec.ref}
+              </div>
+            )}
+          </div>
+          <span
+            data-testid="drawer-tr-status"
+            style={{
+              border: `1px solid ${panelBorder}`,
+              color: panelBorder,
+              borderRadius: 999,
+              padding: '2px 7px',
+              fontSize: 9,
+              fontWeight: 800,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {isComplete ? 'DANE KOMPLETNE' : 'DO UZUPEŁNIENIA'}
+          </span>
+        </div>
+
+        {fromSldFallback && (
+          <div data-testid="drawer-tr-sld-fallback-warning" style={{ marginTop: 8, color: '#F4A261', fontSize: 10, lineHeight: 1.35 }}>
+            Parametry odczytano z widoku SLD. Powiąż transformator z rekordem ENM/katalogiem,
+            aby obliczenia i raport miały pełny ślad danych.
+          </div>
+        )}
+
+        <div
+          data-testid="drawer-tr-kpi-grid"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 8,
+            marginTop: 10,
+          }}
+        >
+          <TransformerKpi label="Moc znamionowa" testId="drawer-tr-rated-kva" value={ratedKva} strong />
+          <TransformerKpi label="Napięcie SN / nN" testId="drawer-tr-voltages" value={voltageLabel} />
+          <TransformerKpi label="Grupa połączeń" testId="drawer-tr-vector-group" value={transformerSpec?.vectorGroup ?? null} strong />
+          <TransformerKpi
+            label="Napięcie zwarcia"
+            testId="drawer-tr-uk-percent"
+            value={transformerSpec?.ukPercent != null ? `${formatTechnicalNumberPl(transformerSpec.ukPercent, 2)} %` : null}
+          />
+          <TransformerKpi
+            label="Straty obciążeniowe Pk"
+            testId="drawer-tr-pk-kw"
+            value={transformerSpec?.pkKw != null ? `${formatTechnicalNumberPl(transformerSpec.pkKw, 2)} kW` : null}
+          />
+          <TransformerKpi label="Pozycja katalogowa" testId="drawer-tr-catalog-ref" value={transformerSpec?.catalogRef ?? null} />
+        </div>
+      </section>
+
+      <section
+        data-testid="drawer-tr-calculation-impact"
+        style={{
+          border: '1px solid #2A3441',
+          borderRadius: 6,
+          background: '#0E1218',
+          padding: 10,
+        }}
+      >
+        <div style={{ color: '#7E8790', fontSize: 9, fontWeight: 800, letterSpacing: 1.1, marginBottom: 7 }}>
+          WPŁYW NA OBLICZENIA
+        </div>
+        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 5, color: '#CFEFFF', fontSize: 10, lineHeight: 1.35 }}>
+          <li><b>Zwarcia:</b> wymagane są Sn, u_k%, grupa połączeń i poziomy napięć.</li>
+          <li><b>Rozpływ mocy:</b> wymagane są Sn, przekładnia i straty Pk/P0 z katalogu.</li>
+          <li><b>Dobór zabezpieczeń:</b> wymagane są prądy znamionowe strony SN/nN i katalog transformatora.</li>
+        </ul>
+      </section>
+
+      <section
+        data-testid="drawer-tr-blockers"
+        style={{
+          border: `1px solid ${blockers.length > 0 ? '#F4A261' : '#2A3441'}`,
+          borderRadius: 6,
+          background: blockers.length > 0 ? '#1B1510' : '#0E1218',
+          padding: 10,
+        }}
+      >
+        <div style={{ color: blockers.length > 0 ? '#F4A261' : '#13C45A', fontSize: 10, fontWeight: 800 }}>
+          {blockers.length > 0 ? `Braki danych (${blockers.length})` : 'Transformator gotowy do obliczeń'}
+        </div>
+        {blockers.length > 0 ? (
+          <ul style={{ margin: '7px 0 0', paddingLeft: 16, color: '#F8D8B0', fontSize: 10, lineHeight: 1.45 }}>
+            {blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}
+          </ul>
+        ) : (
+          <div style={{ marginTop: 6, color: '#8BE8B4', fontSize: 10 }}>
+            Dane mogą być użyte przez solvery i dowód obliczeń.
+          </div>
+        )}
+      </section>
+
+      <div style={{ display: 'grid', gap: 6 }}>
+        <button
+          type="button"
+          data-testid="drawer-tr-open-config"
+          onClick={onOpenConfiguration}
+          disabled={!onOpenConfiguration}
+          title={onOpenConfiguration ? 'Otwórz kartę Transformator w konfiguratorze stacji' : 'Brak aktywnego konfiguratora stacji'}
+          style={{
+            border: '1px solid #7EC8FF',
+            background: onOpenConfiguration ? '#123047' : '#171B20',
+            color: onOpenConfiguration ? '#DDF7FF' : '#7E8790',
+            borderRadius: 4,
+            padding: '8px 10px',
+            fontSize: 11,
+            fontWeight: 800,
+            cursor: onOpenConfiguration ? 'pointer' : 'not-allowed',
+            textAlign: 'left',
+          }}
+        >
+          Skonfiguruj transformator w stacji
+        </button>
+        <div style={{ color: '#7E8790', fontSize: 9, lineHeight: 1.35 }}>
+          Ta karta nie zgaduje parametrów. Braki prowadzą do konfiguratora stacji i katalogu transformatorów.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TransformerKpi({
+  label,
+  value,
+  testId,
+  strong = false,
+}: {
+  readonly label: string;
+  readonly value: string | null;
+  readonly testId: string;
+  readonly strong?: boolean;
+}): JSX.Element {
+  return (
+    <div style={{ border: '1px solid #2A3441', background: '#0A0E14', borderRadius: 4, padding: '7px 8px', minHeight: 48 }}>
+      <div style={{ color: '#7E8790', fontSize: 9, marginBottom: 4 }}>{label}</div>
+      <div
+        data-testid={testId}
+        style={{
+          color: value ? (strong ? '#FFD166' : '#DDF7FF') : '#F4A261',
+          fontFamily: 'monospace',
+          fontSize: 11,
+          fontWeight: strong ? 800 : 600,
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {value ?? transformerMissingValue()}
+      </div>
+    </div>
+  );
+}
+
+function NodeEngineeringPanel({
+  nodeSpec,
+  tab,
+}: {
+  readonly nodeSpec: NonNullable<SldDetailDrawerData['nodeSpec']> | null;
+  readonly tab: string;
+}): JSX.Element {
+  const blockers = nodeSpec?.blockers ?? ['Brak danych węzła sieci SN.'];
+  const isComplete = blockers.length === 0;
+  const border = isComplete ? '#13C45A' : '#F4A261';
+  return (
+    <div data-testid="drawer-node-engineering-panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <section
+        style={{
+          border: `1px solid ${border}`,
+          background: '#101720',
+          borderRadius: 6,
+          padding: 10,
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+          <div>
+            <div style={{ color: '#7E8790', fontSize: 9, fontWeight: 800, letterSpacing: 1.2 }}>
+              WĘZEŁ MAGISTRALI SN
+            </div>
+            <div data-testid="drawer-node-role" style={{ color: '#DDF7FF', fontSize: 13, fontWeight: 800, marginTop: 3 }}>
+              {nodeSpec?.rolePl ?? 'Węzeł sieci SN'}
+            </div>
+          </div>
+          <span
+            data-testid="drawer-node-status"
+            style={{
+              border: `1px solid ${border}`,
+              color: border,
+              borderRadius: 999,
+              padding: '2px 7px',
+              fontSize: 9,
+              fontWeight: 800,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {isComplete ? 'DANE KOMPLETNE' : 'DO UZUPEŁNIENIA'}
+          </span>
+        </div>
+        <div
+          data-testid="drawer-node-kpi-grid"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 8,
+            marginTop: 10,
+          }}
+        >
+          <TransformerKpi
+            label="Napięcie znamionowe"
+            testId="drawer-node-voltage"
+            value={nodeSpec?.voltageKv != null ? formatKvPl(nodeSpec.voltageKv) : null}
+          />
+          <TransformerKpi
+            label="Połączone odcinki"
+            testId="drawer-node-segments"
+            value={nodeSpec?.connectedSegmentsCount != null ? String(nodeSpec.connectedSegmentsCount) : null}
+          />
+          <TransformerKpi
+            label="Pozycja katalogowa"
+            testId="drawer-node-catalog"
+            value={nodeSpec?.catalogRef ?? null}
+          />
+          <TransformerKpi
+            label="Typ wezla"
+            testId="drawer-node-kind"
+            value={nodeSpec?.nodeKind === 'zksn' ? 'ZK SN'
+              : nodeSpec?.nodeKind === 'branch_pole' ? 'Słup rozgałęźny SN'
+                : nodeSpec?.nodeKind === 'nmo' ? 'Punkt NMO'
+                  : 'Węzeł SN'}
+          />
+        </div>
+      </section>
+
+      {tab === 'operacje' && (
+        <section
+          data-testid="drawer-node-operation-rules"
+          style={{ border: '1px solid #2A3441', borderRadius: 6, background: '#0E1218', padding: 10 }}
+        >
+          <div style={{ color: '#7E8790', fontSize: 9, fontWeight: 800, letterSpacing: 1.1, marginBottom: 7 }}>
+            ZASADY OPERACJI
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 16, color: '#CFEFFF', fontSize: 10, lineHeight: 1.45 }}>
+            <li>Konfiguracja pełna otwiera kartę techniczną węzła.</li>
+            <li>Usunięcie lub rozdzielenie wymaga potwierdzenia i zapisu w historii zmian.</li>
+            <li>Brak katalogu blokuje obliczenia wymagające danych aparatury.</li>
+          </ul>
+        </section>
+      )}
+
+      <section
+        data-testid="drawer-node-blockers"
+        style={{
+          border: `1px solid ${blockers.length > 0 ? '#F4A261' : '#2A3441'}`,
+          borderRadius: 6,
+          background: blockers.length > 0 ? '#1B1510' : '#0E1218',
+          padding: 10,
+        }}
+      >
+        <div style={{ color: blockers.length > 0 ? '#F4A261' : '#13C45A', fontSize: 10, fontWeight: 800 }}>
+          {blockers.length > 0 ? `Braki danych (${blockers.length})` : 'Węzeł gotowy do konfiguracji'}
+        </div>
+        {blockers.length > 0 ? (
+          <ul style={{ margin: '7px 0 0', paddingLeft: 16, color: '#F8D8B0', fontSize: 10, lineHeight: 1.45 }}>
+            {blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}
+          </ul>
+        ) : (
+          <div style={{ marginTop: 6, color: '#8BE8B4', fontSize: 10 }}>
+            Dane węzła są spójne z widokiem SLD i kartą techniczną.
+          </div>
+        )}
+      </section>
     </div>
   );
 }
@@ -844,19 +1314,15 @@ function PlaceholderTabBody({
   existingDers,
   apparatusSpec,
   cableRunSpec,
+  nodeSpec,
   apparatusState,
   derForm,
+  onOpenConfiguration,
 }: {
   kind: SldDetailKind;
   tab: string;
   voltageKv: number | null;
-  transformerSpec?: {
-    readonly vectorGroup: string | null;
-    readonly snMva: number | null;
-    readonly uhvKv: number | null;
-    readonly ulvKv: number | null;
-    readonly ukPercent: number | null;
-  } | null;
+  transformerSpec?: SldTransformerDrawerSpec | null;
   baysSpec?: ReadonlyArray<{
     readonly id: string;
     readonly name: string | null;
@@ -895,6 +1361,7 @@ function PlaceholderTabBody({
     readonly maxLoadingPct?: number | null;
     readonly maxVoltageDropPct?: number | null;
   } | null;
+  nodeSpec?: NonNullable<SldDetailDrawerData['nodeSpec']> | null;
   apparatusState?: {
     readonly actualState: 'closed' | 'open' | 'unknown' | null;
     readonly controlMode: 'LOKALNY' | 'ZDALNY' | 'AUTO' | 'BLOKADA' | null;
@@ -903,34 +1370,28 @@ function PlaceholderTabBody({
     readonly lastChangeAt: string | null;
   } | null;
   derForm: UseFormReturn<SldDerConfigFormValues>;
+  onOpenConfiguration?: () => void;
 }): JSX.Element {
   // Tab-specific scaffolding — actual editor forms wired w K30-72+
-  if (kind === 'station' && tab === 'transformator') {
-    const fmt = (v: number | null | undefined, unit: string) =>
-      v != null ? `${v} ${unit}` : '—';
-    const fmtKva = (mva: number | null | undefined) =>
-      mva != null ? `${(mva * 1000).toFixed(0)} kVA` : '—';
+  if (kind === 'transformer') {
     return (
-      <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
-        <dt style={{ color: '#7E8790' }}>Grupa połączeń</dt>
-        <dd data-testid="drawer-tr-vector-group" style={{ color: '#FFD166', fontFamily: 'monospace' }}>
-          {transformerSpec?.vectorGroup ?? '—'}
-        </dd>
-        <dt style={{ color: '#7E8790' }}>Moc znamionowa</dt>
-        <dd data-testid="drawer-tr-rated-kva" style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
-          {fmtKva(transformerSpec?.snMva)}
-        </dd>
-        <dt style={{ color: '#7E8790' }}>Napięcie SN / nN</dt>
-        <dd data-testid="drawer-tr-voltages" style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
-          {transformerSpec?.uhvKv != null && transformerSpec?.ulvKv != null
-            ? `${formatKvPl(transformerSpec.uhvKv)} / ${formatKvPl(transformerSpec.ulvKv)}`
-            : voltageKv != null ? `${formatKvPl(voltageKv)} / ${formatKvPl(0.4)}` : '—'}
-        </dd>
-        <dt style={{ color: '#7E8790' }}>u_k%</dt>
-        <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
-          {fmt(transformerSpec?.ukPercent, '%')}
-        </dd>
-      </dl>
+      <TransformerStationPanel
+        transformerSpec={transformerSpec ?? null}
+        voltageKv={voltageKv}
+        onOpenConfiguration={onOpenConfiguration}
+      />
+    );
+  }
+  if (kind === 'node') {
+    return <NodeEngineeringPanel nodeSpec={nodeSpec ?? null} tab={tab} />;
+  }
+  if (kind === 'station' && tab === 'transformator') {
+    return (
+      <TransformerStationPanel
+        transformerSpec={transformerSpec ?? null}
+        voltageKv={voltageKv}
+        onOpenConfiguration={onOpenConfiguration}
+      />
     );
   }
   if (kind === 'der' && tab === 'typ') {

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from application.reference_networks import (
     REFERENCE_NETWORK_REGISTRY,
     get_reference_network,
@@ -12,15 +11,16 @@ from application.reference_networks import (
 
 
 class TestRegistryCompleteness:
-    """All 8 reference networks must be registered (per plan acceptance criteria)."""
+    """All reference networks must be registered (per validation acceptance criteria)."""
 
-    def test_eight_networks_registered(self) -> None:
-        assert len(REFERENCE_NETWORK_REGISTRY) == 8
+    def test_nine_networks_registered(self) -> None:
+        assert len(REFERENCE_NETWORK_REGISTRY) == 9
 
     def test_all_required_ids_present(self) -> None:
         required = {
             "ieee-4bus",
             "iec60909-example",
+            "pandapower-iec60909-radial",
             "cigre-mv-14",
             "pp-simple-4bus",
             "oze-pv-bess",

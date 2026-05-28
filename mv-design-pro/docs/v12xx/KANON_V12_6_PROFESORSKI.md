@@ -8,6 +8,8 @@ Tryb: addytywny, bez zmiany zamrożonych kontraktów `ShortCircuitResult` i `Pow
 
 V12.6 podnosi system z poziomu projektowego V12.5 do warstwy akademicko-przemysłowej. Zakres obejmuje jakość energii, stabilność napięciową, niezawodność, uziemienia, koordynację izolacji, detekcję ziemnozwarciową, stany przejściowe, rozruch silników, hosting capacity, OPF/LCC, walidację benchmarkową oraz niepewność.
 
+Dodatkowym torem wykonawczym V12.6 jest zakładka `E-35 / ncrfg-tests`, która realizuje pakiet symulacji zgodności NC RfG według procedury testowania PTPiREE dla katalogowych układów PV/BESS/FW.
+
 ## 2. Zasady architektoniczne
 
 - Źródłem danych jest committed ENM aktywnego przypadku.
@@ -45,6 +47,8 @@ Aktywny tor V12.6:
 - `GET /api/analysis-runs/{run_id}/results/v126/{analysis_type}/proof`
 - `GET /api/analysis-runs/{run_id}/results/v126/{analysis_type}/report`
 - `GET /api/catalog/v126/{namespace}`
+- `GET /api/ncrfg-tests/catalog`
+- `POST /api/ncrfg-tests/run`
 
 Każdy endpoint ma wpis w `MACIERZ_KOMPATYBILNOSCI_API.md`.
 

@@ -79,6 +79,8 @@
 - [04-Application.md](./04-Application.md) - aktywna architektura aplikacji
 - [domain/ENM_OP_CONTRACTS_CANONICAL_FULL.md](./domain/ENM_OP_CONTRACTS_CANONICAL_FULL.md) - kontrakty operacji domenowych
 - [analysis/URUCHAMIANIE_ANALIZ_I_GOTOWOSC.md](./analysis/URUCHAMIANIE_ANALIZ_I_GOTOWOSC.md) - kontekst analityczny i gotowość
+- [analysis/NC_RFG_PTPiREE_TESTY_KANON.md](./analysis/NC_RFG_PTPiREE_TESTY_KANON.md) - testy NC RfG / PTPiREE dla DER
+- [analysis/NC_RFG_FLOW_TESTING_PROMPT.md](./analysis/NC_RFG_FLOW_TESTING_PROMPT.md) - prompt pętli testowania flow NC RfG
 - [analysis/SENSITIVITY_ANALYSIS_CANONICAL_PLUS.md](./analysis/SENSITIVITY_ANALYSIS_CANONICAL_PLUS.md) - analiza wrażliwości P25
 - [analysis/P26_AUTO_RECOMMENDATIONS_CANONICAL_PLUS.md](./analysis/P26_AUTO_RECOMMENDATIONS_CANONICAL_PLUS.md) - rekomendacje P26
 - [analysis/P27_SCENARIO_COMPARISON_CANONICAL_PLUS.md](./analysis/P27_SCENARIO_COMPARISON_CANONICAL_PLUS.md) - porównanie scenariuszy P27

@@ -1,0 +1,54 @@
+{
+  "derMissingPccRoots": 0,
+  "hasCableHeads": 2,
+  "hasPortMagnets": 5,
+  "hasSupplyPath": 0,
+  "labelCount": 55,
+  "overlapCount": 3,
+  "sectionStacks": [
+    {
+      "id": "gpz-canonical-section-label-Sekcja 1",
+      "nameY": "-5",
+      "voltageY": "13"
+    },
+    {
+      "id": "gpz-canonical-section-label-Sekcja 2",
+      "nameY": "-5",
+      "voltageY": "13"
+    }
+  ],
+  "stationPortAnchors": [
+    {
+      "hit": "true",
+      "role": "WE",
+      "section": "SN"
+    },
+    {
+      "hit": "true",
+      "role": "TR",
+      "section": "SN"
+    }
+  ],
+  "svgPresent": true,
+  "title": "MV-DESIGN PRO",
+  "topOverlaps": [
+    {
+      "a": "Sekcja 0",
+      "area": 57,
+      "b": "15 kV"
+    },
+    {
+      "a": "Sekcja I",
+      "area": 57,
+      "b": "15 kV"
+    },
+    {
+      "a": "System",
+      "area": 25,
+      "b": "110 kV"
+    }
+  ],
+  "url": "http://127.0.0.1:5173/#sld",
+  "visibleFalseZero": false,
+  "visibleForbidden": []
+}

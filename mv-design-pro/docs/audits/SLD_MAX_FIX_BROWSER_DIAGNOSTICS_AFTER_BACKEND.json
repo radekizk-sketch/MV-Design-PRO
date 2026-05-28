@@ -1,0 +1,833 @@
+{
+  "url": "http://127.0.0.1:5173/#sld?project=e7387f58-db5c-451d-951a-72973386aa4c&case=c2808404-4014-43f0-b1ae-729911609684",
+  "title": "MV-DESIGN PRO",
+  "shellLoaded": true,
+  "svgCount": 30,
+  "gpzLabels": 8,
+  "stationLabels": 0,
+  "segmentLabels": 11,
+  "miniRmuOverview": 0,
+  "stationNotRectangle": 0,
+  "miniRmuSnRows": 0,
+  "miniRmuBayMarkers": 0,
+  "miniRmuLvRows": 0,
+  "stationTerrainNetwork": 0,
+  "upstreamFields": 0,
+  "downstreamFields": 0,
+  "terrainPorts": 0,
+  "energizedRuns": 2,
+  "supplyPathRoles": [
+    "main_run",
+    "branch"
+  ],
+  "nmoMarkers": 0,
+  "loadingTexts": 0,
+  "headings": [
+    "Do analizy",
+    "Skonfiguruj dane techniczne układu",
+    "Pulpit projektu (E-00)"
+  ],
+  "sample": [
+    {
+      "tag": "DIV",
+      "testid": "app-root",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "↶Cofnij↷PonówMV-DESIGN-PRO12.2ProjektGN01 — Single line GPZ → 1 RMUZakres / wari"
+    },
+    {
+      "tag": "DIV",
+      "testid": "app-ready",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "DIV",
+      "testid": "canonical-layout",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "↶Cofnij↷PonówMV-DESIGN-PRO12.2ProjektGN01 — Single line GPZ → 1 RMUZakres / wari"
+    },
+    {
+      "tag": "HEADER",
+      "testid": "top-bar-v12",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "MV-DESIGN-PRO12.2ProjektGN01 — Single line GPZ → 1 RMUZakres / wariantZakres obl"
+    },
+    {
+      "tag": "DIV",
+      "testid": "context-triple",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "ProjektGN01 — Single line GPZ → 1 RMUZakres / wariantZakres obliczeń z adresuKon"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "ctx-project",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "ProjektGN01 — Single line GPZ → 1 RMU"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "ctx-wariant",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Zakres / wariantZakres obliczeń z adresu"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "ctx-przypadek",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Konfiguruj zakres"
+    },
+    {
+      "tag": "DIV",
+      "testid": "top-bar-result-status",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Wyniki nieuruchomione"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "top-bar-calculate",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Oblicz"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "top-bar-overlay",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Nakładka"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "top-bar-results",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Analizy"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "top-bar-export",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Eksport"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "top-bar-settings",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "DIV",
+      "testid": "workflow-context-strip",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Faza projektu:ANALIZAKontrola:0Obliczenia:do uruchomieniaSzyny:11Odcinki SN:3Pol"
+    },
+    {
+      "tag": "DIV",
+      "testid": "workflow-build-phase",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Faza projektu:ANALIZA"
+    },
+    {
+      "tag": "DIV",
+      "testid": "workflow-no-blockers",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Kontrola:0"
+    },
+    {
+      "tag": "DIV",
+      "testid": "wcs-model-readiness",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Obliczenia:do uruchomienia"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "wcs-search",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Szukaj"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "wcs-catalog",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Katalog"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "wcs-mass-review",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Kontrola"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "wcs-project-metadata",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Metadane"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "wcs-history",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Historia"
+    },
+    {
+      "tag": "NAV",
+      "testid": "navigation-rail",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "SiećSchematStudiaWynikiWZabezpieczeniaUkładyKatalogiRaportyHistoria"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "nav-area-MODEL_SIECI",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Sieć"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "nav-area-SCHEMAT_TOPOLOGIA",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Schemat"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "nav-area-STUDIA_OBLICZENIOWE",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Studia"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "nav-area-WYNIKI_ANALIZY",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "WynikiW"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "nav-area-ZABEZPIECZENIA_AUTOMATYKA",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Zabezpieczenia"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "nav-area-ZRODLA_PRZYLACZENIA",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Układy"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "nav-area-KATALOGI_TECHNICZNE",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Katalogi"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "nav-area-RAPORTY_UZASADNIENIA",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Raporty"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "nav-area-HISTORIA_AUDYT",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Historia"
+    },
+    {
+      "tag": "ASIDE",
+      "testid": "context-panel",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Schemat i topologiaNastępna akcjai●Układ dopuszczony do analizyAnalizaEtap układ"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "context-panel-toggle",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "svg",
+      "testid": "icon-chevron-left",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "DIV",
+      "testid": "schemat-context-panel",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Schemat i topologiaNastępna akcjai●Układ dopuszczony do analizyAnalizaEtap układ"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "schemat-action-show-topology",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Schemat i topologia"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "schemat-action-show-normal-open-points",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "●Układ dopuszczony do analizyAnaliza"
+    },
+    {
+      "tag": "INPUT",
+      "testid": "project-tree-search-input",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "DIV",
+      "testid": "project-tree",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "GPZ i zasilanie●1⊙GPZ Główny 110/15 kV●Stacje SN/nN●1⊙Nowa stacja · stacja przel"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "model-tree-row-gpz/0074e5acb3d7e1a77e4ead8461cad169/source/main",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "⊙GPZ Główny 110/15 kV●"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "model-tree-row-sub/93205120a8e4202b9222b2aa47a94a55/substation",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "⊙Nowa stacja · stacja przelotowa●"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "model-tree-row-seg/0c9f18c78a9c2995d5a8e1c71f7259b1/segment_L_zksn",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "⊙Odcinek 01 · Kabel SN EPR Al 3×1×150 mm² · 0,45 km●"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "model-tree-row-seg/0c9f18c78a9c2995d5a8e1c71f7259b1/segment_R_zksn",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "⊙Odcinek 02 · Kabel SN EPR Al 3×1×150 mm² · 1,05 km●"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "model-tree-row-seg/2de67173753179fd74036a81bec94a87/branch_segment",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "⊙Odgałęzienie · Kabel SN EPR Al 3×1×120 mm² · 0,80 km●"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "model-tree-row-pv/ec33cbd3e7d2437d240e55c19eea938b/converter",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "⊙PV 01 · falownik PV · Nowa stacja · 0,4 MW●"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "schemat-action-go-model",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "+Dodaj układ"
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "left-panel-mode-readiness",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Konfiguracja"
+    },
+    {
+      "tag": "DIV",
+      "testid": "main-content",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Sekcja 015 kVSekcja I15 kVGPZ Główny 110/15 kVSystem110 kVSzyna WN 110 kVPole WN"
+    },
+    {
+      "tag": "DIV",
+      "testid": "sld-workspace-container",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Sekcja 015 kVSekcja I15 kVGPZ Główny 110/15 kVSystem110 kVSzyna WN 110 kVPole WN"
+    },
+    {
+      "tag": "svg",
+      "testid": "sld-canvas-v2",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Sekcja 015 kVSekcja I15 kVGPZ Główny 110/15 kVSystem110 kVSzyna WN 110 kVPole WN"
+    },
+    {
+      "tag": "metadata",
+      "testid": "sld-readability-report",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "g",
+      "testid": "sld-connections-layer",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "g",
+      "testid": "sld-v2-section-hit-gpz/0074e5acb3d7e1a77e4ead8461cad169/substation__gpz/0074e5acb3d7e1a77e4ead8461cad169/section/001",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Sekcja 015 kV"
+    },
+    {
+      "tag": "g",
+      "testid": "sld-v2-section-gpz/0074e5acb3d7e1a77e4ead8461cad169/substation__gpz/0074e5acb3d7e1a77e4ead8461cad169/section/001",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Sekcja 015 kV"
+    },
+    {
+      "tag": "text",
+      "testid": null,
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Sekcja 0"
+    },
+    {
+      "tag": "text",
+      "testid": null,
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "15 kV"
+    },
+    {
+      "tag": "g",
+      "testid": "sld-v2-section-hit-gpz/0074e5acb3d7e1a77e4ead8461cad169/substation__gpz/0074e5acb3d7e1a77e4ead8461cad169/substation/section/002",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Sekcja I15 kV"
+    },
+    {
+      "tag": "g",
+      "testid": "sld-v2-section-gpz/0074e5acb3d7e1a77e4ead8461cad169/substation__gpz/0074e5acb3d7e1a77e4ead8461cad169/substation/section/002",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Sekcja I15 kV"
+    },
+    {
+      "tag": "text",
+      "testid": null,
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Sekcja I"
+    },
+    {
+      "tag": "text",
+      "testid": null,
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "15 kV"
+    },
+    {
+      "tag": "g",
+      "testid": "sld-v2-gpz-hit-gpz/0074e5acb3d7e1a77e4ead8461cad169/substation",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "GPZ Główny 110/15 kVSystem110 kVSzyna WN 110 kVPole WN TR1YTR125 MVA110/15 kVPol"
+    },
+    {
+      "tag": "g",
+      "testid": "sld-v2-gpz-canonical-gpz/0074e5acb3d7e1a77e4ead8461cad169/substation",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "GPZ Główny 110/15 kVSystem110 kVSzyna WN 110 kVPole WN TR1YTR125 MVA110/15 kVPol"
+    },
+    {
+      "tag": "rect",
+      "testid": "gpz-canonical-gpz/0074e5acb3d7e1a77e4ead8461cad169/substation-frame",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "g",
+      "testid": "sld-v2-gpz-operator-header",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "GPZ Główny 110/15 kV"
+    },
+    {
+      "tag": "text",
+      "testid": "gpz-header-name",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "GPZ Główny 110/15 kV"
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-hv",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "System110 kVSzyna WN 110 kV"
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-hv-source-indicator",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "System110 kV"
+    },
+    {
+      "tag": "text",
+      "testid": null,
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "System"
+    },
+    {
+      "tag": "text",
+      "testid": null,
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "110 kV"
+    },
+    {
+      "tag": "line",
+      "testid": "gpz-canonical-hv-bus",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "text",
+      "testid": null,
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Szyna WN 110 kV"
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-transformers",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Pole WN TR1YTR125 MVA110/15 kV"
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-transformer-gpz/0074e5acb3d7e1a77e4ead8461cad169/transformer/001/wn_sn",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Pole WN TR1YTR125 MVA110/15 kV"
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-hv-tr-bay-gpz/0074e5acb3d7e1a77e4ead8461cad169/transformer/001/wn_sn",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Pole WN TR1"
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-hv-tr-bay-gpz/0074e5acb3d7e1a77e4ead8461cad169/transformer/001/wn_sn-ds",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-ds",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-hv-tr-bay-gpz/0074e5acb3d7e1a77e4ead8461cad169/transformer/001/wn_sn-cb",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-cb",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-hv-tr-bay-gpz/0074e5acb3d7e1a77e4ead8461cad169/transformer/001/wn_sn-ct",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "text",
+      "testid": null,
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Pole WN TR1"
+    },
+    {
+      "tag": "text",
+      "testid": null,
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Y"
+    },
+    {
+      "tag": "text",
+      "testid": "gpz-canonical-tr-label-gpz/0074e5acb3d7e1a77e4ead8461cad169/transformer/001/wn_sn-designation",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "TR1"
+    },
+    {
+      "tag": "text",
+      "testid": "gpz-canonical-tr-label-gpz/0074e5acb3d7e1a77e4ead8461cad169/transformer/001/wn_sn-power",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "25 MVA"
+    },
+    {
+      "tag": "text",
+      "testid": "gpz-canonical-tr-label-gpz/0074e5acb3d7e1a77e4ead8461cad169/transformer/001/wn_sn-voltage",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "110/15 kV"
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-tr-field-columns",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Pole TR1"
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-tr-field-gpz/0074e5acb3d7e1a77e4ead8461cad169/transformer/001/wn_sn",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Pole TR1"
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-tr-field-gpz/0074e5acb3d7e1a77e4ead8461cad169/transformer/001/wn_sn-ds",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-tr-field-gpz/0074e5acb3d7e1a77e4ead8461cad169/transformer/001/wn_sn-cb",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-tr-field-gpz/0074e5acb3d7e1a77e4ead8461cad169/transformer/001/wn_sn-ct",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-tr-field-gpz/0074e5acb3d7e1a77e4ead8461cad169/transformer/001/wn_sn-es",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "text",
+      "testid": null,
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Pole TR1"
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-section-gpz/0074e5acb3d7e1a77e4ead8461cad169/section/001",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Pole liniow…Q1Q0T1Q9Q8Pole liniow…Q1Q0T1Q9Q8"
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-bay-gpz/0074e5acb3d7e1a77e4ead8461cad169/bay/001/001",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Pole liniow…Q1Q0T1Q9Q8"
+    },
+    {
+      "tag": "text",
+      "testid": "gpz-bay-feeder-label",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Pole liniow…"
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-apparatus-gpz/0074e5acb3d7e1a77e4ead8461cad169/bay/001/001#disconnect_bus",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": "Q1"
+    },
+    {
+      "tag": "foreignObject",
+      "testid": "gpz-canonical-apparatus-gpz/0074e5acb3d7e1a77e4ead8461cad169/bay/001/001#disconnect_bus-hitbox",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "BUTTON",
+      "testid": "gpz-canonical-apparatus-gpz/0074e5acb3d7e1a77e4ead8461cad169/bay/001/001#disconnect_bus-button",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    },
+    {
+      "tag": "g",
+      "testid": "gpz-canonical-ds",
+      "renderer": null,
+      "fieldDirection": null,
+      "portSide": null,
+      "text": ""
+    }
+  ],
+  "consoleMessages": []
+}

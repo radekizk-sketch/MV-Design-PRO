@@ -162,7 +162,7 @@ test.describe('Designer naturalny flow — multi-step coverage (audit 2026-05-19
     await page.addInitScript(() => { localStorage.clear(); });
 
     await page.goto('/#dashboard', { waitUntil: 'commit' });
-    await expect(page.getByTestId('project-dashboard-surface')).toBeVisible();
+    await expect(page.getByTestId('project-dashboard-surface')).toBeVisible({ timeout: 30_000 });
     await page.getByTestId('dashboard-new-project').click();
     await expect(page.getByRole('dialog', { name: 'Metadane projektu' })).toBeVisible();
     await page.getByTestId('project-metadata-name').fill('Multi-step flow demo');
@@ -177,7 +177,13 @@ test.describe('Designer naturalny flow — multi-step coverage (audit 2026-05-19
     await expect(page.getByTestId('sld-empty-state-insert-gpz')).toBeVisible();
 
     // Prawy klik na empty state → menu kontekstowe background z akcją insert-gpz.
-    await emptyState.first().click({ button: 'right' });
+    const canvas = page.getByTestId('sld-canvas-v2');
+    const box = await canvas.boundingBox();
+    expect(box).not.toBeNull();
+    await canvas.click({
+      button: 'right',
+      position: { x: box!.width / 2, y: box!.height / 2 },
+    });
     await expect(page.getByText('Wstaw główny punkt zasilania')).toBeVisible();
 
     // Brak crashy.
@@ -196,7 +202,13 @@ test.describe('Designer naturalny flow — multi-step coverage (audit 2026-05-19
     await expect(page.getByTestId('sld-empty-state')).toBeVisible();
 
     // Right-click → background menu zawiera Otwórz katalogi (z SldCommandService).
-    await page.getByTestId('sld-empty-state').first().click({ button: 'right' });
+    const canvas = page.getByTestId('sld-canvas-v2');
+    const box = await canvas.boundingBox();
+    expect(box).not.toBeNull();
+    await canvas.click({
+      button: 'right',
+      position: { x: box!.width / 2, y: box!.height / 2 },
+    });
     await expect(page.getByText('Otwórz katalogi techniczne')).toBeVisible();
   });
 

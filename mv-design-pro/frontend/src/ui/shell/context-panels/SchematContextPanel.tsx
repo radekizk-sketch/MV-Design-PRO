@@ -83,6 +83,7 @@ export function SchematContextPanel() {
   const selectElement = useSelectionStore((s) => s.selectElement);
   const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
+  const clearRouteManagedSurface = useNetworkBuildStore((s) => s.clearRouteManagedSurface);
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const readiness = useSnapshotStore((s) => s.readiness);
@@ -261,6 +262,10 @@ export function SchematContextPanel() {
   const handleTreeSelect = (row: TreeRowSpec) => {
     selectElement({ id: row.id, type: row.target.elementType, name: row.label });
     centerSldOnElement(row.id);
+    if (row.target.elementType === 'LineBranch') {
+      clearRouteManagedSurface();
+      return;
+    }
     openRouteSurface(row.target.surfaceCode, {
       entityRef: row.id,
       entityType: row.target.entityType,
@@ -535,7 +540,10 @@ export function SchematContextPanel() {
         <button
           type="button"
           data-testid="left-panel-mode-readiness"
-          onClick={openTechnicalReview}
+          onClick={() => {
+            clearRouteManagedSurface();
+            setActiveArea('MODEL_SIECI');
+          }}
           className="h-9 rounded-sm border border-scada-border bg-[#0a141d] px-2 text-[10px] text-cyan-300 hover:border-cyan-500/55 hover:text-scada-text"
         >
           Konfiguracja

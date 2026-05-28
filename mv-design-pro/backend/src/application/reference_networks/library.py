@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 EXPECTED_DIR = Path(__file__).parent / "expected"
 
@@ -106,6 +107,14 @@ def _cigre_lv_builder() -> dict[str, Any]:
     return build_cigre_lv_benchmark_network()
 
 
+def _pandapower_iec60909_radial_builder() -> dict[str, Any]:
+    from application.reference_networks.builders.pandapower_iec60909_radial import (
+        build_pandapower_iec60909_radial_network,
+    )
+
+    return build_pandapower_iec60909_radial_network()
+
+
 # Central registry. Order matters for UI display (priority).
 REFERENCE_NETWORK_REGISTRY: dict[str, ReferenceNetwork] = {
     "ieee-4bus": ReferenceNetwork(
@@ -131,6 +140,24 @@ REFERENCE_NETWORK_REGISTRY: dict[str, ReferenceNetwork] = {
         supported_solvers=("short_circuit_iec60909",),
         builder_fn=_iec60909_example_builder,
         expected_filename="iec60909_example.json",
+    ),
+    "pandapower-iec60909-radial": ReferenceNetwork(
+        id="pandapower-iec60909-radial",
+        name_pl="pandapower IEC 60909 radial",
+        description_pl=(
+            "Minimalna siec 20 kV do walidacji zwarcia 3-fazowego: "
+            "zrodlo sztywne + odcinek 1 km R=0,2 ohm/km, X=0,4 ohm/km."
+        ),
+        source=(
+            "pandapower.shortcircuit.calc_sc, IEC 60909 equivalent voltage source method; "
+            "fixture LINE-20KV-01"
+        ),
+        voltage_kv=20.0,
+        has_der=False,
+        is_unbalanced=False,
+        supported_solvers=("short_circuit_iec60909",),
+        builder_fn=_pandapower_iec60909_radial_builder,
+        expected_filename="pandapower_iec60909_radial.json",
     ),
     "cigre-mv-14": ReferenceNetwork(
         id="cigre-mv-14",

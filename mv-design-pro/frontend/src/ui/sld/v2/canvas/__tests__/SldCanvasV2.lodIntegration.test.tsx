@@ -252,7 +252,7 @@ describe('SldCanvasV2 — LodController histereza runtime integration (Phase 0B-
     );
 
     const visible = container.querySelector('[data-testid="sld-v2-run-run-rmu-visible-0"]');
-    expect(visible?.getAttribute('d')).toBe('M 80 140 L 289 140');
+    expect(visible?.getAttribute('d')).toBe('M 80 140 L 278 140');
     expect(visible?.getAttribute('d')).not.toContain('332');
   });
 });

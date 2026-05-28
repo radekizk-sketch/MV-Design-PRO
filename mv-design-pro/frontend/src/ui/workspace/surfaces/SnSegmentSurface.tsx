@@ -13,6 +13,9 @@
 import { useMemo, useState } from 'react';
 
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { useActiveCaseId } from '../../app-state/store';
+import { buildCatalogBinding } from '../../catalog/catalogBinding';
+import type { CatalogNamespace } from '../../catalog/types';
 import { MISSING_DASH } from '../../shared/formatPolishValue';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
@@ -52,6 +55,7 @@ interface SegmentEndpointStatus {
 const CABLE_SN_CATALOG = [
   { id: 'cable-tfk-yakxs-3x70', label: 'YAKXS 3×70 mm² · 12/20 kV' },
   { id: 'cable-tfk-yakxs-3x120', label: 'YAKXS 3×120 mm² · 12/20 kV' },
+  { id: 'cable-nkt-na2xs2y-3x150', label: 'NA2XS2Y 3×150 mm² · 12/20 kV' },
   { id: 'cable-tfk-yakxs-3x240', label: 'YAKXS 3×240 mm² · 12/20 kV' },
   { id: 'cable-tfk-xrukpz-3x95', label: 'XRUKPZ 3×95 mm² · 12/20 kV' },
 ];
@@ -363,6 +367,8 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
   const { surface } = props;
   const segmentRef = surface.entityRef ?? null;
   const snapshot = useSnapshotStore((state) => state.snapshot);
+  const activeCaseId = useActiveCaseId();
+  const executeDomainOperation = useSnapshotStore((state) => state.executeDomainOperation);
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const selectElement = useSelectionStore((state) => state.selectElement);
@@ -422,9 +428,30 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
     : data.family === 'kabel_sn';
   const canAppendZksn = endpointStatus.isFree && isCableSegment;
   const canAppendBranchPole = endpointStatus.isFree && isOverheadSegment;
+  const selectedCatalogNamespace: CatalogNamespace | null = segmentBranch?.catalog_namespace
+    ? segmentBranch.catalog_namespace as CatalogNamespace
+    : isOverheadSegment
+      ? 'LINIA_SN'
+      : isCableSegment
+        ? 'KABEL_SN'
+        : null;
+  const selectedCatalogRef = segmentBranch?.catalog_ref ?? data.catalogItemId;
   const terminationStandardHint = isOverheadSegment
     ? 'Linia napowietrzna: kontynuuj przez stację albo słup rozgałęźny. ZK SN stosuj na odcinku kablowym.'
     : 'Kabel SN: kontynuuj przez stację albo ZK SN. Słup rozgałęźny stosuj na linii napowietrznej.';
+  const handleCatalogItemChange = (catalogItemId: string) => {
+    setData((d) => ({ ...d, catalogItemId }));
+    if (!activeCaseId || !segmentRef || !selectedCatalogNamespace) {
+      setActionNotice('Zmiana typu katalogowego wymaga aktywnego zakresu obliczeń i odcinka SN.');
+      return;
+    }
+    setActionNotice(null);
+    void executeDomainOperation(activeCaseId, 'assign_catalog_to_element', {
+      element_ref: segmentRef,
+      catalog_binding: buildCatalogBinding(selectedCatalogNamespace, catalogItemId),
+      source_mode: 'KATALOG',
+    });
+  };
   const openEndpointOperation = (operation: 'insert_station_on_segment_sn' | 'insert_zksn_on_segment_sn' | 'insert_branch_pole_on_segment_sn') => {
     if (!segmentRef) return;
     if (!endpointStatus.isFree) {
@@ -478,7 +505,11 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
   };
 
   return (
-    <div data-testid="sn-segment-surface" className="flex h-full w-full flex-col p-4">
+    <div
+      data-testid="sn-segment-surface"
+      data-segment-ref={segmentRef ?? ''}
+      className="flex h-full w-full flex-col p-4"
+    >
       <div
         data-testid="segment-unified-card"
         className="mb-4 border border-scada-border bg-[#0d1726] p-4"
@@ -504,6 +535,36 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
           <SummaryItem label="Długość" value={segmentSummary.length} />
           <SummaryItem label="Idd" value={segmentSummary.ampacity} />
           <SummaryItem label="Stan końca trasy" value={segmentSummary.endpoint} />
+        </div>
+
+        <div
+          data-testid="sld-segment-inspector"
+          data-segment-ref={segmentRef ?? ''}
+          className="mt-3 grid gap-2 border border-scada-border/70 bg-[#07111c] p-3 text-[11px] text-scada-muted sm:grid-cols-3"
+        >
+          <div>
+            <div className="font-semibold uppercase tracking-[0.14em]">Odcinek SN</div>
+            <div className="mt-1 font-mono text-scada-text">{segmentRef ?? MISSING_DASH}</div>
+          </div>
+          <div data-testid="sld-segment-inspector-catalog">
+            <div className="font-semibold uppercase tracking-[0.14em]">Katalog</div>
+            <div className="mt-1 font-mono text-scada-text">{selectedCatalogRef ?? MISSING_DASH}</div>
+          </div>
+          <div data-testid="sld-segment-inspector-catalog-family">
+            <div className="font-semibold uppercase tracking-[0.14em]">Przestrzeń katalogu</div>
+            <div className="mt-1 font-mono text-scada-text">{selectedCatalogNamespace ?? MISSING_DASH}</div>
+          </div>
+          <div data-testid="sld-segment-catalog-status" className="sm:col-span-2">
+            Aktualny typ: <span className="font-mono text-scada-text">{selectedCatalogRef ?? MISSING_DASH}</span>
+          </div>
+          <button
+            type="button"
+            data-testid="sld-segment-open-catalog-picker"
+            onClick={() => setActiveCard('catalog')}
+            className="border border-scada-border bg-scada-surface px-3 py-2 text-left font-semibold text-scada-text hover:border-scada-sn"
+          >
+            Zmień typ katalogowy
+          </button>
         </div>
 
       {segmentRef && (
@@ -653,8 +714,9 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
               label="Typ katalogowy"
               required
               value={data.catalogItemId}
-              onChange={(v) => setData((d) => ({ ...d, catalogItemId: v }))}
+              onChange={handleCatalogItemChange}
               options={catalogOptions}
+              testId="segment-catalog-item-select"
             />
             <NumberField
               label="Przekrój żył roboczych"
@@ -805,9 +867,10 @@ interface SelectFieldProps {
   onChange: (value: string) => void;
   options: { id: string; label: string }[];
   required?: boolean;
+  testId?: string;
 }
 
-function SelectField({ label, value, onChange, options, required }: SelectFieldProps) {
+function SelectField({ label, value, onChange, options, required, testId }: SelectFieldProps) {
   return (
     <div>
       <label className="mb-1 block text-xs text-scada-muted">
@@ -815,6 +878,7 @@ function SelectField({ label, value, onChange, options, required }: SelectFieldP
         {required && <span className="text-red-400"> *</span>}
       </label>
       <select
+        data-testid={testId}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded border border-scada-border bg-scada-surface px-2 py-1.5 text-sm text-scada-text focus:border-scada-sn focus:outline-none"

@@ -19,12 +19,16 @@ import {
   useRef,
   useState,
   type DragEvent,
-  type MouseEvent as ReactMouseEvent,
 } from 'react';
 
 import { useAppStateStore } from '../../../app-state';
 import { LayerTogglePanel } from '../lod/LayerTogglePanel';
-import { SldDetailDrawer, type SldDetailDrawerData, type SldDetailDrawerSavePayload } from './SldDetailDrawer';
+import {
+  SldDetailDrawer,
+  type SldDetailDrawerAction,
+  type SldDetailDrawerData,
+  type SldDetailDrawerSavePayload,
+} from './SldDetailDrawer';
 import { DerPersistenceApiError, postDerGeneratorConfig } from './derPersistenceApi';
 import { useDerDragDrop, DerPaletteButton, type DerDragKind } from './useDerDragDrop';
 import { SldExportFormatMenu } from '../export/SldExportFormatMenu';
@@ -55,6 +59,7 @@ import { buildOperationContext } from '../../../network-build/operationContext';
 import type { NetworkBuildOperationName } from '../../../network-build/internal/legacySurfaceTypes';
 import {
   COMMAND_FEEDBACK_PL,
+  getMenuActions,
   toastBus,
   type SldElementKindForMenu,
 } from '../command/SldCommandService';
@@ -295,6 +300,26 @@ function stationDisplayNameForRef(snapshot: EnergyNetworkModel | null, stationRe
   return station && snapshot
     ? stationPublicIdentity(snapshot, station).displayName
     : 'stacja SN/nN';
+}
+
+function stationRefForTransformerSelection(
+  snapshot: EnergyNetworkModel | null,
+  transformerRef: string,
+): string | null {
+  const internalStationRef = stationRefFromInternalElement(transformerRef);
+  if (internalStationRef) return internalStationRef;
+  if (!snapshot) return null;
+  const transformer = (snapshot.transformers ?? []).find(
+    (item) => item.ref_id === transformerRef || item.id === transformerRef,
+  );
+  if (!transformer) return null;
+  const transformerBusRefs = new Set([transformer.hv_bus_ref, transformer.lv_bus_ref].filter(Boolean));
+  const station = (snapshot.substations ?? []).find((item) =>
+    item.transformer_refs?.includes(transformer.ref_id)
+    || item.transformer_refs?.includes(transformer.id)
+    || item.bus_refs?.some((busRef) => transformerBusRefs.has(busRef)),
+  );
+  return station?.ref_id ?? station?.id ?? null;
 }
 
 function describeStationInternalElement(
@@ -612,10 +637,69 @@ function hasTopologicalContent(snapshot: EnergyNetworkModel | null): boolean {
 function mapKindToDrawerKind(kind: string): SldDetailDrawerData['kind'] | null {
   if (kind === 'station' || kind === 'gpz') return 'station';
   if (kind === 'bay') return 'bay';
-  if (kind === 'apparatus' || kind === 'lv_breaker' || kind === 'protection' || kind === 'pcc') return 'apparatus';
+  if (kind === 'apparatus' || kind === 'lv_breaker' || kind === 'protection' || kind === 'pcc' || kind === 'der_pcc_bay') return 'apparatus';
+  if (kind === 'transformer' || kind === 'der_block_transformer') return 'transformer';
   if (kind === 'der' || kind === 'pv_inverter') return 'der';
+  if (kind === 'cable_run' || kind === 'cable_segment_sn' || kind === 'overhead_line_sn') return 'cable_run';
+  if (kind === 'zksn' || kind === 'branch_pole') return 'node';
   return null;
 }
+
+function mapKindToMenuKind(kind: string): SldElementKindForMenu | null {
+  if (kind === 'cable_run' || kind === 'cable_segment_sn') return 'cable_segment_sn';
+  if (kind === 'overhead_line_sn') return 'overhead_line_sn';
+  if (kind === 'der' || kind === 'pv_inverter') return 'der_pv';
+  if (kind === 'der_block_transformer' || kind === 'der_pcc_bay' || kind === 'transformer') return 'apparatus';
+  if (
+    kind === 'background'
+    || kind === 'gpz'
+    || kind === 'section'
+    || kind === 'bay'
+    || kind === 'apparatus'
+    || kind === 'station'
+    || kind === 'zksn'
+    || kind === 'branch_pole'
+    || kind === 'der_pv'
+    || kind === 'der_bess'
+    || kind === 'der_fw'
+  ) {
+    return kind;
+  }
+  return null;
+}
+
+const DRAWER_ACTION_LABEL_PL: Readonly<Record<string, string>> = {
+  'open-source': 'Konfiguruj źródło GPZ',
+  'open-bay': 'Otwórz kartę pola',
+  'open-station-config': 'Konfiguruj stację',
+  'open-zksn-card': 'Otwórz kartę ZK SN',
+  'open-branch-pole-card': 'Otwórz kartę słupa',
+  'continue-trunk': 'Kontynuuj ciąg główny',
+  'continue-trunk-from-endpoint': 'Kontynuuj ciąg główny',
+  'start-branch': 'Rozpocznij odgałęzienie',
+  'add-source': 'Dodaj PV/BESS/FW',
+  'add-load': 'Dodaj odbiór nN',
+  'insert-station': 'Zakończ odcinek stacją',
+  'insert-zksn': 'Zakończ odcinek w ZK SN',
+  'insert-pole': 'Zakończ odcinek słupem',
+  'conscious-split-on-segment': 'Podziel odcinek z podglądem',
+  'change-catalog': 'Zmień typ katalogowy',
+  'extend-trunk': 'Wyprowadź ciąg z portu',
+  'configure-equipment': 'Skonfiguruj aparaturę',
+  'configure-cts-vts': 'Skonfiguruj przekładniki',
+  'configure-protection': 'Skonfiguruj zabezpieczenia',
+  'show-results': 'Pokaż wyniki',
+  'show-readiness': 'Pokaż gotowość',
+  'show-rationale': 'Pokaż uzasadnienie',
+  'delete-bay': 'Usuń pole',
+  'delete-segment': 'Usuń odcinek',
+  'delete-station': 'Usuń stację',
+  'delete-zksn': 'Usuń ZK SN',
+  'delete-branch-pole': 'Usuń słup',
+  'delete-pv': 'Usuń PV',
+  'delete-bess': 'Usuń BESS',
+  'delete-fw': 'Usuń FW',
+};
 
 /**
  * K30-84: Build live metrics chips (V/U_pu/P/Q/I) for selected element z
@@ -753,6 +837,21 @@ const ACTION_ROADMAP_HINT_PL: Readonly<Record<string, string>> = {
   'delete-fw': 'Usuwanie farmy wiatrowej: Etap 5 roadmapy.',
 };
 
+const DELETE_ACTION_OBJECT_LABEL_PL: Readonly<Record<string, string>> = {
+  'delete-bay': 'pole SN',
+  'delete-segment': 'odcinek SN',
+  'delete-station': 'stację SN/nN',
+  'delete-zksn': 'złącze kablowe SN',
+  'delete-branch-pole': 'słup rozgałęźny SN',
+  'delete-pv': 'źródło PV',
+  'delete-bess': 'magazyn BESS',
+  'delete-fw': 'farmę wiatrową',
+};
+
+function isSldDeleteAction(actionId: string): boolean {
+  return Object.prototype.hasOwnProperty.call(DELETE_ACTION_OBJECT_LABEL_PL, actionId);
+}
+
 export interface SldWorkspaceContainerProps {
   /** Tryb tylko-do-odczytu (np. ekran #sld-view). */
   readonly readOnly?: boolean;
@@ -783,7 +882,10 @@ function useMeasuredSize(
 
   useEffect(() => {
     if (override?.width !== undefined && override?.height !== undefined) {
-      setSize({ width: override.width, height: override.height });
+      const next = { width: override.width, height: override.height };
+      setSize((current) =>
+        current.width === next.width && current.height === next.height ? current : next,
+      );
       return;
     }
     const el = ref.current;
@@ -831,6 +933,7 @@ export function SldWorkspaceContainer(
   const snapshotCaseId = useSnapshotStore((state) => state.caseId);
   const setSnapshot = useSnapshotStore((state) => state.setSnapshot);
   const refreshFromBackend = useSnapshotStore((state) => state.refreshFromBackend);
+  const executeDomainOperation = useSnapshotStore((state) => state.executeDomainOperation);
   const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeCaseName = useAppStateStore((state) => state.activeCaseName);
@@ -1023,17 +1126,6 @@ export function SldWorkspaceContainer(
     [],
   );
 
-  const handleEmptyStateContextMenu = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setContextRequest({
-      kind: 'background',
-      elementId: null,
-      clientX: event.clientX,
-      clientY: event.clientY,
-    });
-  }, []);
-
   const closeContextMenu = useCallback(() => setContextRequest(null), []);
 
   useEffect(() => {
@@ -1131,27 +1223,48 @@ export function SldWorkspaceContainer(
         ? segmentPublicIdentity(snapshot, branch).displayName
         : run?.label?.trim() || 'Odcinek SN';
 
-      setDetailDrawerData(null);
+      const segmentRefs = run?.segmentRefs?.length ? run.segmentRefs : [elementRef];
+      const lengthKm = (() => {
+        if (!snapshot) return typeof (branch as { length_km?: number } | undefined)?.length_km === 'number'
+          ? (branch as { length_km: number }).length_km
+          : null;
+        let total = 0;
+        let count = 0;
+        for (const segmentRef of segmentRefs) {
+          const segment = (snapshot.branches ?? []).find(
+            (item) => item.ref_id === segmentRef || item.id === segmentRef,
+          ) as ({ length_km?: number } & Branch) | undefined;
+          if (typeof segment?.length_km === 'number') {
+            total += segment.length_km;
+            count += 1;
+          }
+        }
+        return count > 0 ? total : null;
+      })();
+      setDetailDrawerData({
+        kind: 'cable_run',
+        menuKind: kind === 'overhead_line_sn' ? 'overhead_line_sn' : 'cable_segment_sn',
+        elementId: elementRef,
+        label: elementName,
+        voltageKv: run?.voltageKv ?? null,
+        accentColor: kind === 'overhead_line_sn' ? '#7EE0B5' : '#7EC8FF',
+        cableRunSpec: {
+          runKind: run?.runKind ?? null,
+          segmentCount: segmentRefs.length,
+          stationCount: null,
+          lengthKm,
+          segmentKind: kind === 'overhead_line_sn' ? 'overhead_line_sn' : 'cable_sn',
+          maxLoadingPct: null,
+          maxVoltageDropPct: null,
+        },
+        liveMetrics: buildLiveMetrics(overlayPayload, 'cable_run', elementRef, run?.voltageKv ?? null),
+      });
       selectElement({
         id: elementRef,
         type: 'LineBranch',
         name: elementName,
       });
-      openRouteSurface('E-12', {
-        entityRef: elementRef,
-        entityType: 'segment',
-        subjectKind: 'entity',
-        subjectRef: elementRef,
-        tabId: 'identification',
-        titlePl: elementName,
-        route: 'sld',
-        openMode: 'replace_right_panel',
-        supportsMiniSld: true,
-        payload: {
-          source: 'sld_segment_selection',
-          runRef: run?.id ?? null,
-        },
-      });
+      collapseSurfaceStackTo(null);
       return;
     }
 
@@ -1167,27 +1280,41 @@ export function SldWorkspaceContainer(
       );
       const elementType: ElementType = isZksn ? 'ZKSN' : 'BranchPole';
 
-      setDetailDrawerData(null);
+      const branchPointAny = branchPoint as {
+        bus_ref?: string | null;
+        catalog_ref?: string | null;
+      } | undefined;
+      const nodeVoltage = branchPointAny?.bus_ref
+        ? findBusVoltage(snapshot, branchPointAny.bus_ref)
+        : null;
+      const connectedSegments = branchPointAny?.bus_ref
+        ? (snapshot?.branches ?? []).filter((branchItem) =>
+          branchItem.from_bus_ref === branchPointAny.bus_ref || branchItem.to_bus_ref === branchPointAny.bus_ref,
+        ).length
+        : null;
+      setDetailDrawerData({
+        kind: 'node',
+        menuKind: kind,
+        elementId: elementRef,
+        label: elementName,
+        voltageKv: nodeVoltage,
+        accentColor: isZksn ? '#7EC8FF' : '#7EE0B5',
+        nodeSpec: {
+          nodeKind: isZksn ? 'zksn' : 'branch_pole',
+          rolePl: isZksn ? 'Złącze kablowe SN' : 'Słup rozgałęźny SN',
+          voltageKv: nodeVoltage,
+          connectedSegmentsCount: connectedSegments,
+          catalogRef: branchPointAny?.catalog_ref ?? null,
+          blockers: branchPointAny?.catalog_ref ? [] : ['Brak pozycji katalogowej węzła SN.'],
+        },
+        liveMetrics: buildLiveMetrics(overlayPayload, 'apparatus', elementRef, nodeVoltage),
+      });
       selectElement({
         id: elementRef,
         type: elementType,
         name: elementName,
       });
-      openRouteSurface(isZksn ? 'E-14' : 'E-15', {
-        entityRef: elementRef,
-        entityType: isZksn ? 'zksn' : 'branch_pole',
-        subjectKind: 'entity',
-        subjectRef: elementRef,
-        tabId: 'identyfikacja',
-        titlePl: elementName,
-        route: 'sld',
-        openMode: 'replace_right_panel',
-        supportsMiniSld: true,
-        payload: {
-          source: 'sld_branch_point_selection',
-          branchPointType: kind,
-        },
-      });
+      collapseSurfaceStackTo(null);
       return;
     }
 
@@ -1221,12 +1348,20 @@ export function SldWorkspaceContainer(
       const stationForInternalElement = internalStationRef
         ? sldData.stations.find((s) => s.id === internalStationRef)
         : undefined;
+      const transformerStationRef = drawerKind === 'transformer'
+        ? stationRefForTransformerSelection(snapshot, id)
+        : null;
+      const stationForTransformer = transformerStationRef
+        ? sldData.stations.find((s) => s.id === transformerStationRef)
+        : undefined;
       const stationContext = kind === 'station'
         ? stationForDrawer
-        : stationForInternalElement ?? sldData.stations[0];
+        : stationForInternalElement ?? stationForTransformer ?? sldData.stations[0];
       const internalElementDescription = describeStationInternalElement(snapshot, id);
       // K30-79: real transformer spec from snapshot (gdy station kind)
       let transformerSpec: SldDetailDrawerData['transformerSpec'] = null;
+      let transformerLabelOverride: string | null = null;
+      let stationLabelOverride: string | null = null;
       // K30-80: bay list dla rozdzielnica tab
       let baysSpec: SldDetailDrawerData['baysSpec'] = undefined;
       let switchgearDescription: SldDetailDrawerData['switchgearDescription'] = null;
@@ -1238,16 +1373,49 @@ export function SldWorkspaceContainer(
       let apparatusSpec: SldDetailDrawerData['apparatusSpec'] = undefined;
       if (drawerKind === 'station' && snapshot) {
         const substation = findSubstationByRef(snapshot, id);
+        if (substation) {
+          stationLabelOverride = stationPublicIdentity(snapshot, substation).displayName;
+        }
         switchgearDescription = formatStationSwitchgearDescriptionPl(substation?.station_type);
         const transformers = selectStationDistributionTransformers(snapshot, substation ?? null);
         const tr = transformers[0];
         if (tr) {
+          const transformerBlockers: string[] = [];
+          if (!tr.catalog_ref) transformerBlockers.push('Brak pozycji katalogowej transformatora.');
+          if (typeof tr.uk_percent !== 'number') transformerBlockers.push('Brak napięcia zwarcia u_k%.');
+          if (!tr.vector_group) transformerBlockers.push('Brak grupy połączeń.');
+          if (typeof tr.pk_kw !== 'number') transformerBlockers.push('Brak strat obciążeniowych Pk.');
           transformerSpec = {
+            ref: tr.ref_id ?? tr.id ?? null,
+            name: tr.name ?? null,
             vectorGroup: tr.vector_group ?? null,
             snMva: typeof tr.sn_mva === 'number' ? tr.sn_mva : null,
             uhvKv: typeof tr.uhv_kv === 'number' ? tr.uhv_kv : null,
             ulvKv: typeof tr.ulv_kv === 'number' ? tr.ulv_kv : null,
             ukPercent: typeof tr.uk_percent === 'number' ? tr.uk_percent : null,
+            pkKw: typeof tr.pk_kw === 'number' ? tr.pk_kw : null,
+            catalogRef: tr.catalog_ref ?? null,
+            dataQuality: 'model',
+            blockers: transformerBlockers,
+          };
+        } else if (stationForDrawer?.transformerRatedKva != null || stationForDrawer?.transformerRefs?.length) {
+          const fallbackSnMva = stationForDrawer.transformerRatedKva != null
+            ? stationForDrawer.transformerRatedKva / 1000
+            : null;
+          transformerSpec = {
+            ref: stationForDrawer.transformerRefs?.[0] ?? null,
+            name: stationForDrawer.transformerRefs?.[0] ? 'Transformator SN/nN stacji' : null,
+            vectorGroup: stationForDrawer.transformerVectorGroup ?? null,
+            snMva: fallbackSnMva,
+            uhvKv: stationForDrawer.busVoltageKv ?? null,
+            ulvKv: 0.4,
+            ukPercent: null,
+            pkKw: null,
+            catalogRef: null,
+            dataQuality: 'sld_fallback',
+            blockers: [
+              'Widok SLD ma dane transformatora, ale rekord ENM/katalog nie został znaleziony dla tej stacji.',
+            ],
           };
         }
         const bays = selectStationBays(snapshot, substation ?? null);
@@ -1293,6 +1461,71 @@ export function SldWorkspaceContainer(
           name: g.name ?? null,
           pMw: typeof g.p_mw === 'number' ? g.p_mw : null,
         }));
+      }
+      if (drawerKind === 'transformer' && snapshot) {
+        const directTransformer = (snapshot.transformers ?? []).find(
+          (item) => item.ref_id === id || item.id === id,
+        );
+        const stationRef = transformerStationRef ?? internalStationRef;
+        const transformerStation = stationRef ? findSubstationByRef(snapshot, stationRef) : null;
+        const stationTransformers = selectStationDistributionTransformers(snapshot, transformerStation);
+        const tr = directTransformer ?? stationTransformers[0] ?? null;
+
+        if (tr) {
+          const transformerBlockers: string[] = [];
+          if (!tr.catalog_ref) transformerBlockers.push('Brak pozycji katalogowej transformatora.');
+          if (typeof tr.uk_percent !== 'number') transformerBlockers.push('Brak napięcia zwarcia u_k%.');
+          if (!tr.vector_group) transformerBlockers.push('Brak grupy połączeń.');
+          if (typeof tr.pk_kw !== 'number') transformerBlockers.push('Brak strat obciążeniowych Pk.');
+          transformerSpec = {
+            ref: tr.ref_id ?? tr.id ?? null,
+            name: tr.name ?? internalElementDescription?.name ?? null,
+            vectorGroup: tr.vector_group ?? null,
+            snMva: typeof tr.sn_mva === 'number' ? tr.sn_mva : null,
+            uhvKv: typeof tr.uhv_kv === 'number' ? tr.uhv_kv : null,
+            ulvKv: typeof tr.ulv_kv === 'number' ? tr.ulv_kv : null,
+            ukPercent: typeof tr.uk_percent === 'number' ? tr.uk_percent : null,
+            pkKw: typeof tr.pk_kw === 'number' ? tr.pk_kw : null,
+            catalogRef: tr.catalog_ref ?? null,
+            dataQuality: 'model',
+            blockers: transformerBlockers,
+          };
+          transformerLabelOverride = tr.name ?? internalElementDescription?.name ?? 'Transformator SN/nN';
+        } else if (stationForInternalElement?.transformerRatedKva != null || stationForInternalElement?.transformerRefs?.length) {
+          transformerSpec = {
+            ref: stationForInternalElement.transformerRefs?.[0] ?? id,
+            name: internalElementDescription?.name ?? 'Transformator SN/nN stacji',
+            vectorGroup: stationForInternalElement.transformerVectorGroup ?? null,
+            snMva: stationForInternalElement.transformerRatedKva != null
+              ? stationForInternalElement.transformerRatedKva / 1000
+              : null,
+            uhvKv: stationForInternalElement.busVoltageKv ?? null,
+            ulvKv: 0.4,
+            ukPercent: null,
+            pkKw: null,
+            catalogRef: null,
+            dataQuality: 'sld_fallback',
+            blockers: [
+              'Widok SLD ma dane transformatora, ale rekord ENM/katalog nie został znaleziony.',
+            ],
+          };
+          transformerLabelOverride = internalElementDescription?.name ?? 'Transformator SN/nN';
+        } else {
+          transformerSpec = {
+            ref: id,
+            name: internalElementDescription?.name ?? 'Transformator SN/nN',
+            vectorGroup: null,
+            snMva: null,
+            uhvKv: null,
+            ulvKv: null,
+            ukPercent: null,
+            pkKw: null,
+            catalogRef: null,
+            dataQuality: 'missing',
+            blockers: ['Brak rekordu transformatora w ENM/katalogu.'],
+          };
+          transformerLabelOverride = internalElementDescription?.name ?? 'Transformator SN/nN';
+        }
       }
       // K30-89: cable run spec (gdy drawer kind='cable_run')
       // K30-93: + maxLoadingPct + maxVoltageDropPct z lfDerivedMetrics
@@ -1444,13 +1677,21 @@ export function SldWorkspaceContainer(
       }
       setDetailDrawerData({
         kind: drawerKind,
+        menuKind: mapKindToMenuKind(kind),
         elementId: id,
-        label: stationForDrawer?.stationCode
-          ?? stationForDrawer?.name
+        label: transformerLabelOverride
+          ?? stationLabelOverride
+          ?? (drawerKind === 'station'
+            ? stationForDrawer?.name ?? stationForDrawer?.stationCode
+            : stationForDrawer?.stationCode ?? stationForDrawer?.name)
           ?? internalElementDescription?.name
           ?? id.split('/').pop()
           ?? id,
-        voltageKv: stationForDrawer?.busVoltageKv ?? stationForInternalElement?.busVoltageKv ?? null,
+        voltageKv: transformerSpec?.uhvKv
+          ?? stationForDrawer?.busVoltageKv
+          ?? stationForInternalElement?.busVoltageKv
+          ?? stationForTransformer?.busVoltageKv
+          ?? null,
         stationCode: stationContext?.stationCode ?? null,
         accentColor: '#7EC8FF',
         transformerSpec,
@@ -1550,6 +1791,21 @@ export function SldWorkspaceContainer(
         id,
         type: 'TransformerBranch',
         name: transformer?.name ?? internalElement?.name ?? 'Transformator SN/nN',
+      };
+    } else if (kind === 'der_block_transformer') {
+      const transformer = (snapshot?.transformers ?? []).find((item) => item.ref_id === id || item.id === id);
+      selected = {
+        id,
+        type: 'TransformerBranch',
+        name: transformer?.name ?? 'Transformator blokowy DER',
+      };
+    } else if (kind === 'der_pcc_bay') {
+      const derRef = id.endsWith('/pcc') ? id.slice(0, -'/pcc'.length) : id;
+      const generator = (snapshot?.generators ?? []).find((item) => item.ref_id === derRef || item.id === derRef);
+      selected = {
+        id,
+        type: 'ConnectionPoint',
+        name: generator?.name ? `Pole/PCC źródła ${generator.name}` : 'Pole/PCC źródła DER',
       };
     } else if (kind === 'section') {
       selected = {
@@ -1703,6 +1959,43 @@ export function SldWorkspaceContainer(
         return;
       }
 
+      if (isSldDeleteAction(actionId)) {
+        if (!activeCaseId) {
+          notify('Nie wybrano aktywnego zakresu obliczeń. Wybierz zakres przed zmianą modelu.', 'warning');
+          return;
+        }
+        if (!elementId) {
+          notify('Nie wskazano obiektu do usunięcia. Zaznacz element na schemacie i ponów akcję.', 'warning');
+          return;
+        }
+
+        const objectLabel = DELETE_ACTION_OBJECT_LABEL_PL[actionId] ?? 'element';
+        const executeDelete = () => {
+          void executeDomainOperation(activeCaseId, 'delete_element', {
+            element_ref: elementId,
+            action_id: actionId,
+            source: 'sld_context_menu',
+          }).then((response: unknown) => {
+            const result = response as { error?: unknown } | null;
+            if (result?.error) {
+              notify(`Nie usunięto elementu: ${String(result.error)}`, 'error');
+              return;
+            }
+            selectElement(null);
+            notify(`Usunięto ${objectLabel} z modelu sieci.`, 'success');
+          });
+        };
+        notify(`Potwierdź usunięcie: ${objectLabel}. Operacja zostanie zapisana w historii zmian.`, {
+          type: 'warning',
+          sticky: true,
+          actions: [
+            { label: 'Usuń', variant: 'danger', onClick: executeDelete },
+            { label: 'Anuluj', onClick: () => undefined },
+          ],
+        });
+        return;
+      }
+
       // 1) Akcje nawigacyjne — otwórz istniejącą powierzchnię.
       const screenCode = ACTION_TO_SCREEN[actionId];
       if (screenCode) {
@@ -1743,7 +2036,7 @@ export function SldWorkspaceContainer(
         // pokaże menu wyboru kindu (PV/BESS/FW) lub bezpośrednio uruchomi
         // kreator. Domyślnie sugerujemy PV; user wybiera w E-13.
         notify(
-          'Otwarto kartę "Układy PV/BESS/FW" stacji. Użyj przycisków "Dodaj PV/BESS/FW" aby uruchomić kreator.',
+          'Otwarto kartę "Układy PV/BESS/FW" stacji. Użyj osobnych przycisków "Dodaj PV", "Dodaj BESS" albo "Dodaj FW", aby uruchomić właściwy kreator.',
           'info',
         );
         return;
@@ -1756,13 +2049,154 @@ export function SldWorkspaceContainer(
         return;
       }
 
-      // 5) Fallback — komunikat ogólny (nie powinien wystąpić, ale gwarantuje brak dead click).
-      notify(`Akcja "${actionId}" nie jest jeszcze dostępna w tej wersji.`, 'info');
+      // 5) Fallback techniczny: akcja ma handler informacyjny, ale nie ma pełnego
+      // kontekstu ENM/katalogu do wykonania operacji.
+      notify(
+        `Akcja "${actionId}" wymaga kompletnego kontekstu obiektu albo danych katalogowych. Otwórz kartę techniczną zaznaczonego elementu i uzupełnij wskazane pola.`,
+        'warning',
+      );
       // Konsumujemy parametr kind, żeby spełnić noUnusedParameters w trybie strict.
       void kind;
     },
-    [logicalViews, openOperationForm, openRouteSurface, readOnly, snapshot],
+    [activeCaseId, executeDomainOperation, logicalViews, openOperationForm, openRouteSurface, readOnly, selectElement, snapshot],
   );
+
+  const detailDrawerActions = useMemo<SldDetailDrawerAction[]>(() => {
+    if (!detailDrawerData?.elementId) return [];
+    const menuKind = mapKindToMenuKind(detailDrawerData.menuKind ?? detailDrawerData.kind ?? '');
+    if (!menuKind) return [];
+    const apparatusKind = parseGpzApparatusSelectionId(detailDrawerData.elementId)?.apparatusKind;
+    return getMenuActions(menuKind, {
+      hasResults: activeCaseResultStatus === 'FRESH',
+      apparatusKind,
+    }).map((action) => ({
+      id: action.id,
+      labelPl: DRAWER_ACTION_LABEL_PL[action.id] ?? action.labelPl,
+      group: action.group,
+      disabledReasonPl: action.disabled ? action.disabledReasonPl ?? 'Akcja niedostępna dla bieżącego obiektu.' : undefined,
+      onClick: () => handleAction(action.id, menuKind, detailDrawerData.elementId),
+    }));
+  }, [activeCaseResultStatus, detailDrawerData, handleAction]);
+
+  const canOpenDetailFullView = Boolean(
+    detailDrawerData?.elementId
+    && (
+      detailDrawerData.kind === 'station'
+      || detailDrawerData.kind === 'transformer'
+      || detailDrawerData.kind === 'cable_run'
+      || detailDrawerData.kind === 'node'
+    ),
+  );
+
+  const openDetailFullView = useCallback(() => {
+    if (!detailDrawerData?.elementId) return;
+    if (detailDrawerData.kind === 'station') {
+      setInternalStationId(detailDrawerData.elementId);
+      setDetailDrawerData(null);
+      return;
+    }
+    if (detailDrawerData.kind === 'transformer') {
+      const stationRef = stationRefForTransformerSelection(snapshot, detailDrawerData.elementId);
+      if (!stationRef) {
+        notify('Nie znaleziono stacji powiązanej z transformatorem.', 'warning');
+        return;
+      }
+      setInternalStationId(stationRef);
+      setDetailDrawerData(null);
+      return;
+    }
+    if (detailDrawerData.kind === 'cable_run') {
+      openRouteSurface('E-12', {
+        entityRef: detailDrawerData.elementId,
+        entityType: 'segment',
+        subjectKind: 'helper_context',
+        payload: { defaultCard: 'trasa' },
+      });
+      setDetailDrawerData(null);
+      return;
+    }
+    if (detailDrawerData.kind === 'node') {
+      const screenCode = detailDrawerData.nodeSpec?.nodeKind === 'branch_pole' ? 'E-15' : 'E-14';
+      openRouteSurface(screenCode, {
+        entityRef: detailDrawerData.elementId,
+        entityType: detailDrawerData.nodeSpec?.nodeKind === 'branch_pole' ? 'branch_pole' : 'zksn',
+        subjectKind: 'helper_context',
+      });
+      setDetailDrawerData(null);
+    }
+  }, [detailDrawerData, openRouteSurface, snapshot]);
+
+  const canOpenDetailConfiguration = Boolean(detailDrawerData?.elementId && detailDrawerData.kind);
+
+  const openDetailConfiguration = useCallback(() => {
+    if (!detailDrawerData?.elementId || !detailDrawerData.kind) return;
+    if (detailDrawerData.kind === 'station') {
+      openRouteSurface('E-13', {
+        entityRef: detailDrawerData.elementId,
+        entityType: 'station',
+        subjectKind: 'helper_context',
+        payload: { defaultCard: 'overview' },
+      });
+      setDetailDrawerData(null);
+      toastBus.publish('info', 'Otwarto konfigurator stacji.');
+      return;
+    }
+    if (detailDrawerData.kind === 'transformer') {
+      const stationRef = stationRefForTransformerSelection(snapshot, detailDrawerData.elementId);
+      if (!stationRef) {
+        notify('Nie znaleziono stacji powiązanej z transformatorem.', 'warning');
+        return;
+      }
+      openRouteSurface('E-13', {
+        entityRef: stationRef,
+        entityType: 'station',
+        subjectKind: 'helper_context',
+        payload: { defaultCard: 'transformer' },
+      });
+      setDetailDrawerData(null);
+      toastBus.publish('info', 'Otwarto kartę transformatora stacji.');
+      return;
+    }
+    if (detailDrawerData.kind === 'cable_run') {
+      openRouteSurface('E-12', {
+        entityRef: detailDrawerData.elementId,
+        entityType: 'segment',
+        subjectKind: 'helper_context',
+        payload: { defaultCard: 'parametry' },
+      });
+      setDetailDrawerData(null);
+      toastBus.publish('info', 'Otwarto konfigurację odcinka SN.');
+      return;
+    }
+    if (detailDrawerData.kind === 'node') {
+      const screenCode = detailDrawerData.nodeSpec?.nodeKind === 'branch_pole' ? 'E-15' : 'E-14';
+      openRouteSurface(screenCode, {
+        entityRef: detailDrawerData.elementId,
+        entityType: detailDrawerData.nodeSpec?.nodeKind === 'branch_pole' ? 'branch_pole' : 'zksn',
+        subjectKind: 'helper_context',
+      });
+      setDetailDrawerData(null);
+      toastBus.publish('info', 'Otwarto kartę węzła sieci SN.');
+      return;
+    }
+    const menuKind = mapKindToMenuKind(detailDrawerData.menuKind ?? detailDrawerData.kind);
+    if (menuKind) {
+      const primaryAction = menuKind === 'bay'
+        ? 'open-bay'
+        : menuKind === 'apparatus'
+          ? 'configure-equipment'
+          : menuKind === 'der_pv'
+            ? 'open-pv-config'
+            : menuKind === 'der_bess'
+              ? 'open-bess-config'
+              : menuKind === 'der_fw'
+                ? 'open-fw-config'
+                : null;
+      if (primaryAction) {
+        handleAction(primaryAction, menuKind, detailDrawerData.elementId);
+      }
+    }
+  }, [detailDrawerData, handleAction, openRouteSurface, snapshot]);
 
   // Toast feedback z bus'a (informacja zwrotna z poziomu menu).
   useEffect(() => {
@@ -2066,16 +2500,9 @@ export function SldWorkspaceContainer(
         data={detailDrawerData}
         onClose={closeDetailDrawer}
         onSave={handleDetailDrawerSave}
-        onOpenFullView={
-          detailDrawerData?.kind === 'station' && detailDrawerData.elementId
-            ? () => {
-                if (detailDrawerData.elementId) {
-                  setInternalStationId(detailDrawerData.elementId);
-                  setDetailDrawerData(null);
-                }
-              }
-            : undefined
-        }
+        onOpenFullView={canOpenDetailFullView ? openDetailFullView : undefined}
+        onOpenConfiguration={canOpenDetailConfiguration ? openDetailConfiguration : undefined}
+        actions={detailDrawerActions}
       />
 
       {/* K30-78: DER palette toolbar — kliknij ikonę DER (PV/BESS/FW)
@@ -2319,10 +2746,9 @@ export function SldWorkspaceContainer(
       {isEmpty && !snapshotLoading && (
         <div
           data-testid="sld-empty-state"
-          className="absolute inset-0 flex items-center justify-center"
-          onContextMenu={handleEmptyStateContextMenu}
+          className="pointer-events-none absolute inset-0 flex items-center justify-center"
         >
-          <div className="pointer-events-auto max-w-md rounded border border-scada-border bg-scada-panel/95 p-6 text-center text-scada-text shadow-xl">
+          <div className="pointer-events-none max-w-md rounded border border-scada-border bg-scada-panel/95 p-6 text-center text-scada-text shadow-xl">
             <div className="mb-2 text-sm font-bold uppercase tracking-widest text-scada-muted">
               Schemat jednokreskowy
             </div>
@@ -2338,7 +2764,7 @@ export function SldWorkspaceContainer(
               <button
                 type="button"
                 data-testid="sld-empty-state-insert-gpz"
-                className="rounded border border-blue-500 bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="pointer-events-auto rounded border border-blue-500 bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
@@ -2350,7 +2776,7 @@ export function SldWorkspaceContainer(
               <button
                 type="button"
                 data-testid="sld-empty-state-open-catalogs"
-                className="rounded border border-scada-border bg-scada-surface px-4 py-2 text-sm text-scada-text hover:bg-scada-hover-nav focus:outline-none focus:ring-2 focus:ring-scada-border"
+                className="pointer-events-auto rounded border border-scada-border bg-scada-surface px-4 py-2 text-sm text-scada-text hover:bg-scada-hover-nav focus:outline-none focus:ring-2 focus:ring-scada-border"
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
@@ -2363,7 +2789,7 @@ export function SldWorkspaceContainer(
               <a
                 href="#kreator-stacji-v2"
                 data-testid="sld-empty-state-open-station-wizard"
-                className="rounded border border-emerald-500/50 bg-emerald-500/10 px-4 py-2 text-center text-sm font-medium text-emerald-300 hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="pointer-events-auto rounded border border-emerald-500/50 bg-emerald-500/10 px-4 py-2 text-center text-sm font-medium text-emerald-300 hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 Otwórz konfigurację stacji (17 kroków)
               </a>

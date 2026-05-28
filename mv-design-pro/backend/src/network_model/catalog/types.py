@@ -26,6 +26,7 @@ Usage:
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
+import unicodedata
 from uuid import uuid4
 
 # =============================================================================
@@ -48,12 +49,14 @@ class CatalogNamespace(Enum):
     KABEL_NN = "KABEL_NN"
     CT = "CT"
     VT = "VT"
+    OGRANICZNIK_SN = "OGRANICZNIK_SN"
     OBCIAZENIE = "OBCIAZENIE"
     ZRODLO_SN = "ZRODLO_SN"
     ZRODLO_NN_PV = "ZRODLO_NN_PV"
     ZRODLO_NN_BESS = "ZRODLO_NN_BESS"
     ZABEZPIECZENIE = "ZABEZPIECZENIE"
     NASTAWY_ZABEZPIECZEN = "NASTAWY_ZABEZPIECZEN"
+    PTPIREE_CERTYFIKAT_GENERATORA = "PTPIREE_CERTYFIKAT_GENERATORA"
     CONVERTER = "CONVERTER"
     INVERTER = "INVERTER"
 
@@ -836,6 +839,9 @@ class ConverterType:
         e_kwh: Nameplate energy [kWh] (optional, BESS only).
         manufacturer: Manufacturer name (optional).
         model: Model designation (optional).
+        control_mode: Default converter control mode (optional).
+        grid_code: Grid-code / NC RfG profile marker (optional).
+        dynamic_profile_id: Dynamic model profile reference (optional).
     """
 
     id: str
@@ -851,6 +857,18 @@ class ConverterType:
     e_kwh: float | None = None
     manufacturer: str | None = None
     model: str | None = None
+    control_mode: str | None = None
+    grid_code: str | None = None
+    dynamic_profile_id: str | None = None
+    ptpiree_status: str | None = None
+    ptpiree_certificate_ref: str | None = None
+    ptpiree_document_number: str | None = None
+    ptpiree_document_acceptance_date: str | None = None
+    ptpiree_wos_version: str | None = None
+    ptpiree_wipwc_version: str | None = None
+    ptpiree_ppm_scope: str | None = None
+    ptpiree_source_url: str | None = None
+    ptpiree_publication_date: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog przeksztaltnikow MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -873,6 +891,18 @@ class ConverterType:
             "e_kwh": self.e_kwh,
             "manufacturer": self.manufacturer,
             "model": self.model,
+            "control_mode": self.control_mode,
+            "grid_code": self.grid_code,
+            "dynamic_profile_id": self.dynamic_profile_id,
+            "ptpiree_status": self.ptpiree_status,
+            "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
+            "ptpiree_document_number": self.ptpiree_document_number,
+            "ptpiree_document_acceptance_date": self.ptpiree_document_acceptance_date,
+            "ptpiree_wos_version": self.ptpiree_wos_version,
+            "ptpiree_wipwc_version": self.ptpiree_wipwc_version,
+            "ptpiree_ppm_scope": self.ptpiree_ppm_scope,
+            "ptpiree_source_url": self.ptpiree_source_url,
+            "ptpiree_publication_date": self.ptpiree_publication_date,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -908,6 +938,18 @@ class ConverterType:
             e_kwh=(float(data.get("e_kwh")) if data.get("e_kwh") is not None else None),
             manufacturer=data.get("manufacturer"),
             model=data.get("model"),
+            control_mode=data.get("control_mode"),
+            grid_code=data.get("grid_code"),
+            dynamic_profile_id=data.get("dynamic_profile_id"),
+            ptpiree_status=data.get("ptpiree_status"),
+            ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
+            ptpiree_document_number=data.get("ptpiree_document_number"),
+            ptpiree_document_acceptance_date=data.get("ptpiree_document_acceptance_date"),
+            ptpiree_wos_version=data.get("ptpiree_wos_version"),
+            ptpiree_wipwc_version=data.get("ptpiree_wipwc_version"),
+            ptpiree_ppm_scope=data.get("ptpiree_ppm_scope"),
+            ptpiree_source_url=data.get("ptpiree_source_url"),
+            ptpiree_publication_date=data.get("ptpiree_publication_date"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog przeksztaltnikow MV-DESIGN-PRO / profile typowe OZE i BESS",
@@ -949,6 +991,15 @@ class InverterType:
     kind: str = "INVERTER"
     manufacturer: str | None = None
     model: str | None = None
+    ptpiree_status: str | None = None
+    ptpiree_certificate_ref: str | None = None
+    ptpiree_document_number: str | None = None
+    ptpiree_document_acceptance_date: str | None = None
+    ptpiree_wos_version: str | None = None
+    ptpiree_wipwc_version: str | None = None
+    ptpiree_ppm_scope: str | None = None
+    ptpiree_source_url: str | None = None
+    ptpiree_publication_date: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog falownikow MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -970,6 +1021,15 @@ class InverterType:
             "kind": self.kind,
             "manufacturer": self.manufacturer,
             "model": self.model,
+            "ptpiree_status": self.ptpiree_status,
+            "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
+            "ptpiree_document_number": self.ptpiree_document_number,
+            "ptpiree_document_acceptance_date": self.ptpiree_document_acceptance_date,
+            "ptpiree_wos_version": self.ptpiree_wos_version,
+            "ptpiree_wipwc_version": self.ptpiree_wipwc_version,
+            "ptpiree_ppm_scope": self.ptpiree_ppm_scope,
+            "ptpiree_source_url": self.ptpiree_source_url,
+            "ptpiree_publication_date": self.ptpiree_publication_date,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -999,11 +1059,241 @@ class InverterType:
             kind=str(data.get("kind") or data.get("inverter_kind") or "INVERTER"),
             manufacturer=data.get("manufacturer"),
             model=data.get("model"),
+            ptpiree_status=data.get("ptpiree_status"),
+            ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
+            ptpiree_document_number=data.get("ptpiree_document_number"),
+            ptpiree_document_acceptance_date=data.get("ptpiree_document_acceptance_date"),
+            ptpiree_wos_version=data.get("ptpiree_wos_version"),
+            ptpiree_wipwc_version=data.get("ptpiree_wipwc_version"),
+            ptpiree_ppm_scope=data.get("ptpiree_ppm_scope"),
+            ptpiree_source_url=data.get("ptpiree_source_url"),
+            ptpiree_publication_date=data.get("ptpiree_publication_date"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog falownikow MV-DESIGN-PRO / dane referencyjne",
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
+            ),
+        )
+
+
+@dataclass(frozen=True)
+class SurgeArresterType:
+    """Immutable MV surge arrester catalog entry."""
+
+    id: str
+    name: str
+    u_m_kv: float
+    mcov_kv: float
+    u_rated_kv: float
+    u_residual_at_10ka_kv: float
+    tov_10s_kv: float
+    energy_class: int
+    energy_absorption_kj_per_kv: float
+    bil_protected_kv: float
+    application: str = "MV_FEEDER"
+    neutral_system: str | None = None
+    manufacturer: str | None = None
+    model: str | None = None
+    standard: str = "PN-EN 60099-4"
+    verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
+    source_reference: str = "Katalog ogranicznikow przepiec MV-DESIGN-PRO"
+    catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
+    contract_version: str = CATALOG_CONTRACT_VERSION
+    verification_note: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "u_m_kv": self.u_m_kv,
+            "mcov_kv": self.mcov_kv,
+            "u_rated_kv": self.u_rated_kv,
+            "u_residual_at_10ka_kv": self.u_residual_at_10ka_kv,
+            "tov_10s_kv": self.tov_10s_kv,
+            "energy_class": self.energy_class,
+            "energy_absorption_kj_per_kv": self.energy_absorption_kj_per_kv,
+            "bil_protected_kv": self.bil_protected_kv,
+            "application": self.application,
+            "neutral_system": self.neutral_system,
+            "manufacturer": self.manufacturer,
+            "model": self.model,
+            "standard": self.standard,
+            **_catalog_metadata_to_dict(
+                verification_status=self.verification_status,
+                source_reference=self.source_reference,
+                catalog_status=self.catalog_status,
+                contract_version=self.contract_version,
+                verification_note=self.verification_note,
+            ),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "SurgeArresterType":
+        return cls(
+            id=str(data.get("id", str(uuid4()))),
+            name=str(data.get("name", "")),
+            u_m_kv=float(data.get("u_m_kv", data.get("um_kv", 0.0))),
+            mcov_kv=float(data.get("mcov_kv", 0.0)),
+            u_rated_kv=float(data.get("u_rated_kv", data.get("ur_kv", 0.0))),
+            u_residual_at_10ka_kv=float(
+                data.get("u_residual_at_10ka_kv", data.get("u_residual_10ka_kv", 0.0))
+            ),
+            tov_10s_kv=float(data.get("tov_10s_kv", 0.0)),
+            energy_class=int(data.get("energy_class", 1)),
+            energy_absorption_kj_per_kv=float(data.get("energy_absorption_kj_per_kv", 0.0)),
+            bil_protected_kv=float(data.get("bil_protected_kv", 0.0)),
+            application=str(data.get("application") or "MV_FEEDER"),
+            neutral_system=data.get("neutral_system"),
+            manufacturer=data.get("manufacturer"),
+            model=data.get("model"),
+            standard=str(data.get("standard") or "PN-EN 60099-4"),
+            **_catalog_metadata_kwargs(
+                data,
+                default_source_reference="PN-EN 60099-4 / katalog ogranicznikow MV-DESIGN-PRO",
+                default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
+                default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
+            ),
+        )
+
+
+def normalize_ptpiree_key(value: Any) -> str:
+    """Stable normalization for PTPiREE manufacturer/model matching."""
+
+    text = str(value or "").strip()
+    text = text.translate(
+        str.maketrans(
+            {
+                "\u0104": "A",
+                "\u0106": "C",
+                "\u0118": "E",
+                "\u0141": "L",
+                "\u0143": "N",
+                "\u00d3": "O",
+                "\u015a": "S",
+                "\u0179": "Z",
+                "\u017b": "Z",
+                "\u0105": "A",
+                "\u0107": "C",
+                "\u0119": "E",
+                "\u0142": "L",
+                "\u0144": "N",
+                "\u00f3": "O",
+                "\u015b": "S",
+                "\u017a": "Z",
+                "\u017c": "Z",
+            }
+        )
+    )
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    for separator in ("-", "_", "/", "\\", "(", ")", ",", ";", ":"):
+        text = text.replace(separator, " ")
+    return " ".join(text.upper().split())
+
+    text = str(value or "").strip().upper()
+    replacements = {
+        "Ą": "A",
+        "Ć": "C",
+        "Ę": "E",
+        "Ł": "L",
+        "Ń": "N",
+        "Ó": "O",
+        "Ś": "S",
+        "Ź": "Z",
+        "Ż": "Z",
+    }
+    for src, dst in replacements.items():
+        text = text.replace(src, dst)
+    return " ".join(text.replace("-", " ").replace("_", " ").split())
+
+
+@dataclass(frozen=True)
+class PtpireeGeneratorCertificate:
+    """Immutable PTPiREE certificate-list entry for generating units and converters."""
+
+    id: str
+    manufacturer: str
+    model: str
+    device_type: str
+    document_number: str
+    document_acceptance_date: str
+    wos_version: str
+    wipwc_version: str
+    ppm_scope: str
+    firmware_version: str | None = None
+    source_url: str = "https://ptpiree.pl/kodeksy-sieci/wykaz-certyfikatow/"
+    publication_date: str | None = None
+    accepted_from: str | None = None
+    verification_status: str = CatalogVerificationStatus.ZWERYFIKOWANY.value
+    source_reference: str = "PTPiREE Wykaz certyfikowanych urzadzen"
+    catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
+    contract_version: str = CATALOG_CONTRACT_VERSION
+    verification_note: str | None = None
+
+    @property
+    def manufacturer_key(self) -> str:
+        return normalize_ptpiree_key(self.manufacturer)
+
+    @property
+    def model_key(self) -> str:
+        return normalize_ptpiree_key(self.model)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": f"{self.manufacturer} {self.model}".strip(),
+            "manufacturer": self.manufacturer,
+            "model": self.model,
+            "device_type": self.device_type,
+            "document_number": self.document_number,
+            "document_acceptance_date": self.document_acceptance_date,
+            "wos_version": self.wos_version,
+            "wipwc_version": self.wipwc_version,
+            "ppm_scope": self.ppm_scope,
+            "firmware_version": self.firmware_version,
+            "source_url": self.source_url,
+            "publication_date": self.publication_date,
+            "accepted_from": self.accepted_from,
+            "manufacturer_key": self.manufacturer_key,
+            "model_key": self.model_key,
+            **_catalog_metadata_to_dict(
+                verification_status=self.verification_status,
+                source_reference=self.source_reference,
+                catalog_status=self.catalog_status,
+                contract_version=self.contract_version,
+                verification_note=self.verification_note,
+            ),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "PtpireeGeneratorCertificate":
+        return cls(
+            id=str(data.get("id", str(uuid4()))),
+            manufacturer=str(data.get("manufacturer", "")),
+            model=str(data.get("model", "")),
+            device_type=str(data.get("device_type", "")),
+            document_number=str(data.get("document_number", "")),
+            document_acceptance_date=str(data.get("document_acceptance_date", "")),
+            wos_version=str(data.get("wos_version", "")),
+            wipwc_version=str(data.get("wipwc_version", "")),
+            ppm_scope=str(data.get("ppm_scope", "")),
+            firmware_version=(
+                str(data.get("firmware_version")) if data.get("firmware_version") is not None else None
+            ),
+            source_url=str(
+                data.get("source_url") or "https://ptpiree.pl/kodeksy-sieci/wykaz-certyfikatow/"
+            ),
+            publication_date=(
+                str(data.get("publication_date")) if data.get("publication_date") is not None else None
+            ),
+            accepted_from=(
+                str(data.get("accepted_from")) if data.get("accepted_from") is not None else None
+            ),
+            **_catalog_metadata_kwargs(
+                data,
+                default_source_reference="PTPiREE Wykaz certyfikowanych urzadzen",
+                default_verification_status=CatalogVerificationStatus.ZWERYFIKOWANY,
+                default_catalog_status=CatalogStatus.PRODUKCYJNY_V1,
             ),
         )
 
@@ -1786,6 +2076,15 @@ class PVInverterType:
     grid_code: str | None = None
     manufacturer: str | None = None
     dynamic_profile_id: str | None = None
+    ptpiree_status: str | None = None
+    ptpiree_certificate_ref: str | None = None
+    ptpiree_document_number: str | None = None
+    ptpiree_document_acceptance_date: str | None = None
+    ptpiree_wos_version: str | None = None
+    ptpiree_wipwc_version: str | None = None
+    ptpiree_ppm_scope: str | None = None
+    ptpiree_source_url: str | None = None
+    ptpiree_publication_date: str | None = None
     """Referencja do profilu dynamicznego w `der_dynamic` (PR-15/16).
 
     Brak wartości oznacza fallback do default per kind w resolverze
@@ -1810,6 +2109,15 @@ class PVInverterType:
             "grid_code": self.grid_code,
             "manufacturer": self.manufacturer,
             "dynamic_profile_id": self.dynamic_profile_id,
+            "ptpiree_status": self.ptpiree_status,
+            "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
+            "ptpiree_document_number": self.ptpiree_document_number,
+            "ptpiree_document_acceptance_date": self.ptpiree_document_acceptance_date,
+            "ptpiree_wos_version": self.ptpiree_wos_version,
+            "ptpiree_wipwc_version": self.ptpiree_wipwc_version,
+            "ptpiree_ppm_scope": self.ptpiree_ppm_scope,
+            "ptpiree_source_url": self.ptpiree_source_url,
+            "ptpiree_publication_date": self.ptpiree_publication_date,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1837,6 +2145,15 @@ class PVInverterType:
             grid_code=data.get("grid_code"),
             manufacturer=data.get("manufacturer"),
             dynamic_profile_id=data.get("dynamic_profile_id"),
+            ptpiree_status=data.get("ptpiree_status"),
+            ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
+            ptpiree_document_number=data.get("ptpiree_document_number"),
+            ptpiree_document_acceptance_date=data.get("ptpiree_document_acceptance_date"),
+            ptpiree_wos_version=data.get("ptpiree_wos_version"),
+            ptpiree_wipwc_version=data.get("ptpiree_wipwc_version"),
+            ptpiree_ppm_scope=data.get("ptpiree_ppm_scope"),
+            ptpiree_source_url=data.get("ptpiree_source_url"),
+            ptpiree_publication_date=data.get("ptpiree_publication_date"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog falownikow PV MV-DESIGN-PRO / dane referencyjne",
@@ -1875,6 +2192,15 @@ class BESSInverterType:
     s_n_kva: float | None = None
     manufacturer: str | None = None
     dynamic_profile_id: str | None = None
+    ptpiree_status: str | None = None
+    ptpiree_certificate_ref: str | None = None
+    ptpiree_document_number: str | None = None
+    ptpiree_document_acceptance_date: str | None = None
+    ptpiree_wos_version: str | None = None
+    ptpiree_wipwc_version: str | None = None
+    ptpiree_ppm_scope: str | None = None
+    ptpiree_source_url: str | None = None
+    ptpiree_publication_date: str | None = None
     """Referencja do profilu dynamicznego w `der_dynamic` (PR-15/16).
 
     Brak wartości oznacza fallback do default per kind w resolverze
@@ -1897,6 +2223,15 @@ class BESSInverterType:
             "s_n_kva": self.s_n_kva,
             "manufacturer": self.manufacturer,
             "dynamic_profile_id": self.dynamic_profile_id,
+            "ptpiree_status": self.ptpiree_status,
+            "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
+            "ptpiree_document_number": self.ptpiree_document_number,
+            "ptpiree_document_acceptance_date": self.ptpiree_document_acceptance_date,
+            "ptpiree_wos_version": self.ptpiree_wos_version,
+            "ptpiree_wipwc_version": self.ptpiree_wipwc_version,
+            "ptpiree_ppm_scope": self.ptpiree_ppm_scope,
+            "ptpiree_source_url": self.ptpiree_source_url,
+            "ptpiree_publication_date": self.ptpiree_publication_date,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1918,6 +2253,15 @@ class BESSInverterType:
             s_n_kva=(float(data["s_n_kva"]) if data.get("s_n_kva") is not None else None),
             manufacturer=data.get("manufacturer"),
             dynamic_profile_id=data.get("dynamic_profile_id"),
+            ptpiree_status=data.get("ptpiree_status"),
+            ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
+            ptpiree_document_number=data.get("ptpiree_document_number"),
+            ptpiree_document_acceptance_date=data.get("ptpiree_document_acceptance_date"),
+            ptpiree_wos_version=data.get("ptpiree_wos_version"),
+            ptpiree_wipwc_version=data.get("ptpiree_wipwc_version"),
+            ptpiree_ppm_scope=data.get("ptpiree_ppm_scope"),
+            ptpiree_source_url=data.get("ptpiree_source_url"),
+            ptpiree_publication_date=data.get("ptpiree_publication_date"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog przeksztaltnikow BESS MV-DESIGN-PRO / dane referencyjne",
@@ -2046,6 +2390,27 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("accuracy_class", "Klasa", ""),
         ),
     ),
+    CatalogNamespace.OGRANICZNIK_SN.value: MaterializationContract(
+        namespace=CatalogNamespace.OGRANICZNIK_SN.value,
+        solver_fields=(
+            "u_m_kv",
+            "mcov_kv",
+            "u_rated_kv",
+            "u_residual_at_10ka_kv",
+            "tov_10s_kv",
+            "energy_class",
+            "energy_absorption_kj_per_kv",
+            "bil_protected_kv",
+        ),
+        ui_fields=(
+            ("u_m_kv", "Um [kV]", "kV"),
+            ("mcov_kv", "MCOV [kV]", "kV"),
+            ("u_rated_kv", "Ur [kV]", "kV"),
+            ("u_residual_at_10ka_kv", "Ures 10 kA [kV]", "kV"),
+            ("tov_10s_kv", "TOV 10 s [kV]", "kV"),
+            ("bil_protected_kv", "BIL chronione [kV]", "kV"),
+        ),
+    ),
     CatalogNamespace.OBCIAZENIE.value: MaterializationContract(
         namespace=CatalogNamespace.OBCIAZENIE.value,
         solver_fields=("p_kw", "q_kvar", "model"),
@@ -2103,6 +2468,27 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("name_pl", "Szablon", ""),
             ("device_type_ref", "Typ urządzenia", ""),
             ("curve_ref", "Krzywa", ""),
+        ),
+    ),
+    CatalogNamespace.PTPIREE_CERTYFIKAT_GENERATORA.value: MaterializationContract(
+        namespace=CatalogNamespace.PTPIREE_CERTYFIKAT_GENERATORA.value,
+        solver_fields=(
+            "manufacturer",
+            "model",
+            "device_type",
+            "document_number",
+            "document_acceptance_date",
+            "wos_version",
+            "wipwc_version",
+            "ppm_scope",
+        ),
+        ui_fields=(
+            ("manufacturer", "Producent", ""),
+            ("model", "Typ model", ""),
+            ("device_type", "Rodzaj urzadzenia", ""),
+            ("document_number", "Nr dokumentu", ""),
+            ("document_acceptance_date", "Data akceptacji dokumentu", ""),
+            ("ppm_scope", "Zakres PPM", ""),
         ),
     ),
     CatalogNamespace.CONVERTER.value: MaterializationContract(

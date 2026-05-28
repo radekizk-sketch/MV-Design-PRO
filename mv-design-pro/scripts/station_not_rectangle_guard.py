@@ -31,6 +31,14 @@ REQUIRED_MARKERS: tuple[str, ...] = (
     "sld-v2-mini-rmu-lv-row",
     "sld-v2-mini-rmu-bay-marker-",
     "sld-v2-mini-rmu-tr-triangle",
+    "sld-v2-mini-rmu-port-anchor-",
+    "data-port-magnet",
+    "data-readable-label-stack",
+    "line_from_bus_up_to_terrain",
+    "transformer_from_bus_down_to_lv",
+    "sld-v2-mini-rmu-compact-field-cell-",
+    "cad_corner_handles",
+    "sld-v2-mini-rmu-compact-transformer-symbol",
 )
 
 

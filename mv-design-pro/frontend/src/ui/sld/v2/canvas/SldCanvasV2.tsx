@@ -30,6 +30,7 @@ import { COLOR_BG, COLOR_PANEL } from '../theme/tokens';
 import {
   CableRunRenderer,
   type CableRunRendererProps,
+  type CableRunSegmentEndpointResult,
   type CableRunSegmentLabel,
   type CableRunSegmentPath,
   type CableRunStationPortGap,
@@ -69,7 +70,13 @@ import {
 } from '../renderer/MiniBlockRmuRenderer';
 import { FIELD_ROLE } from '../domain/apparatusContracts';
 import { ResultOverlayLayer } from './ResultOverlayLayer';
-import { useRawResultOverlayStore, type RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
+import {
+  formatMetric,
+  useRawResultOverlayStore,
+  type RawMetricValue,
+  type RawOverlayElement,
+  type RawOverlayPayload,
+} from '../../../sld-overlay/rawResultOverlayStore';
 import type { SldElementKindForMenu } from '../command/SldCommandService';
 import type {
   SldBranchPointMarker,
@@ -369,6 +376,211 @@ function selectedSegmentRefsForRun(
     segmentRefs.add(segmentPath.segmentRef);
   }
   return segmentRefs.has(selectedId) ? [selectedId] : [];
+}
+
+const SEGMENT_RESULT_METRIC_CODES_SC = [
+  'IK_3F_A',
+  'IK_1F_A',
+  'IK_2F_A',
+  'IK_2FG_A',
+  'IKSS_A',
+  'IK_A',
+  'IP_A',
+] as const;
+
+const SEGMENT_RESULT_METRIC_CODES_LF = [
+  'I_A',
+  'P_MW',
+  'Q_MVAR',
+  'U_kV',
+  'U_pu',
+  'P_kW',
+  'Q_kvar',
+] as const;
+
+function isShortCircuitPayload(payload: RawOverlayPayload): boolean {
+  const type = payload.analysis_type.toLowerCase();
+  return type.includes('short_circuit') || type.includes('sc_');
+}
+
+function overlayElementByRef(
+  payload: RawOverlayPayload | null,
+  refId: string,
+): RawOverlayElement | null {
+  if (!payload) return null;
+  const direct = payload.elements[refId];
+  if (direct) return direct;
+  const withoutSuffix = refId.replace(/\/segment_[A-Z]$/, '/segment');
+  if (withoutSuffix !== refId && payload.elements[withoutSuffix]) {
+    return payload.elements[withoutSuffix];
+  }
+  const withLegacySuffix = refId.endsWith('/segment')
+    ? `${refId}_L`
+    : refId;
+  if (withLegacySuffix !== refId && payload.elements[withLegacySuffix]) {
+    return payload.elements[withLegacySuffix];
+  }
+  return null;
+}
+
+function firstMetricByCodes(
+  element: RawOverlayElement | null,
+  codes: readonly string[],
+): RawMetricValue | null {
+  if (!element) return null;
+  for (const code of codes) {
+    const metric = element.metrics?.[code];
+    if (metric && metric.value !== null && metric.value !== undefined) return metric;
+  }
+  return null;
+}
+
+function formatSegmentEndpointResult(
+  payload: RawOverlayPayload | null,
+  segmentRef: string,
+  endpointElement: RawOverlayElement | null = null,
+): { text: string; severity: string | null } {
+  const element = endpointElement ?? overlayElementByRef(payload, segmentRef);
+  if (!payload || !element) return { text: 'brak wyniku', severity: null };
+  const metric = firstMetricByCodes(
+    element,
+    isShortCircuitPayload(payload)
+      ? SEGMENT_RESULT_METRIC_CODES_SC
+      : SEGMENT_RESULT_METRIC_CODES_LF,
+  );
+  if (!metric) return { text: 'brak wyniku', severity: element.severity ?? null };
+  const prefix = metric.code
+    .replace('IK_3F_A', 'Ik"')
+    .replace('IK_1F_A', 'Ik1"')
+    .replace('IK_2F_A', 'Ik2"')
+    .replace('IK_2FG_A', 'Ik2Z"')
+    .replace('IKSS_A', 'Ik"')
+    .replace('IK_A', 'Ik')
+    .replace('IP_A', 'ip')
+    .replace('I_A', 'I')
+    .replace('P_MW', 'P')
+    .replace('Q_MVAR', 'Q')
+    .replace('U_kV', 'U')
+    .replace('U_pu', 'U')
+    .replace('P_kW', 'P')
+    .replace('Q_kvar', 'Q');
+  return {
+    text: `${prefix} ${formatMetric(metric)}`,
+    severity: element.severity ?? null,
+  };
+}
+
+function buildSegmentEndpointResultsForRun(
+  run: CableRunRendererProps,
+  payload: RawOverlayPayload | null,
+  stations: readonly StationOnRunRendererProps[],
+  branchPoints: readonly SldBranchPointMarker[],
+  gpzs: readonly GpzRendererProps[],
+  canonicalGpzs: readonly GpzCanonicalRendererProps[],
+): readonly CableRunSegmentEndpointResult[] {
+  if (!payload) return [];
+  const segmentPaths = run.segmentPaths && run.segmentPaths.length > 0
+    ? run.segmentPaths
+    : (run.segmentRefs ?? []).map((segmentRef) => ({
+      segmentRef,
+      pathPoints: run.pathPoints,
+    }));
+  return segmentPaths.flatMap((segmentPath) => {
+    const endPoint = segmentPath.pathPoints[segmentPath.pathPoints.length - 1];
+    if (!endPoint) return [];
+    const endpointElement = overlayElementForSegmentEndpoint(
+      payload,
+      endPoint,
+      stations,
+      branchPoints,
+      gpzs,
+      canonicalGpzs,
+    );
+    const result = formatSegmentEndpointResult(payload, segmentPath.segmentRef, endpointElement);
+    return [{
+      segmentRef: segmentPath.segmentRef,
+      x: endPoint.x,
+      y: endPoint.y,
+      text: result.text,
+      severity: result.severity,
+    }];
+  });
+}
+
+function overlayElementForSegmentEndpoint(
+  payload: RawOverlayPayload,
+  point: { x: number; y: number },
+  stations: readonly StationOnRunRendererProps[],
+  branchPoints: readonly SldBranchPointMarker[],
+  gpzs: readonly GpzRendererProps[],
+  canonicalGpzs: readonly GpzCanonicalRendererProps[],
+): RawOverlayElement | null {
+  const station = stations
+    .map((candidate) => ({
+      station: candidate,
+      dx: Math.abs(candidate.x - point.x),
+      dy: Math.abs((candidate.y - STATION_RUN_TRUNK_OFFSET_Y) - point.y),
+    }))
+    .filter((candidate) => candidate.dx <= 240 && candidate.dy <= 90)
+    .sort((left, right) => (left.dx + left.dy) - (right.dx + right.dy))[0]?.station;
+  if (station) {
+    const base = station.id.endsWith('/station')
+      ? station.id.slice(0, -'/station'.length)
+      : station.id;
+    const element = overlayElementByAnyRef(payload, [
+      `${base}/sn_bus`,
+      `${base}/bus`,
+      station.id,
+    ]);
+    if (element) return element;
+  }
+
+  const branchPoint = branchPoints
+    .map((candidate) => ({
+      branchPoint: candidate,
+      dx: Math.abs(candidate.x - point.x),
+      dy: Math.abs(candidate.y - point.y),
+    }))
+    .filter((candidate) => candidate.dx <= 220 && candidate.dy <= 120)
+    .sort((left, right) => (left.dx + left.dy) - (right.dx + right.dy))[0]?.branchPoint;
+  if (branchPoint) {
+    const base = branchPoint.id.replace(/\/(zksn|branch_pole|branch_point|pole)$/, '');
+    const element = overlayElementByAnyRef(payload, [
+      `${base}/bus`,
+      `${base}/branch_bus_1`,
+      branchPoint.id,
+    ]);
+    if (element) return element;
+  }
+
+  const gpz = [...gpzs, ...canonicalGpzs]
+    .map((candidate) => ({
+      gpz: candidate,
+      dx: Math.abs(candidate.x - point.x),
+      dy: Math.abs(candidate.y - point.y),
+    }))
+    .filter((candidate) => candidate.dx <= 260 && candidate.dy <= 260)
+    .sort((left, right) => (left.dx + left.dy) - (right.dx + right.dy))[0]?.gpz;
+  if (gpz) {
+    return overlayElementByAnyRef(payload, [
+      `${gpz.id}/source/main`,
+      `${gpz.id}/bus`,
+      gpz.id,
+    ]);
+  }
+
+  return null;
+}
+
+function overlayElementByAnyRef(
+  payload: RawOverlayPayload,
+  refs: readonly string[],
+): RawOverlayElement | null {
+  for (const ref of refs) {
+    const element = overlayElementByRef(payload, ref);
+    if (element) return element;
+  }
+  return null;
 }
 
 function topologyLabelFill(spec: SldLabelSpec): string {
@@ -812,6 +1024,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
       onMouseLeave={handleMouseUp}
       onContextMenu={handleSvgContextMenu}
     >
+      <g data-testid="sld-canvas-root">
       {/* T?o */}
       <rect width={width} height={height} fill={COLOR_BG} />
       {readabilityReport && (
@@ -857,7 +1070,22 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
           {layers.topology && connections
             .filter((c) => connectionVisibleAtLod(c, lod))
             .map((c) => (
-            <ConnectionRenderer key={c.id} {...c} selected={selectedId === c.id} />
+            <ConnectionRenderer
+              key={c.id}
+              {...c}
+              selected={selectedId === c.id}
+              viewportScale={transform.scale}
+              onClick={
+                onSelectElement
+                  ? (id, kind) => onSelectElement(id, kind)
+                  : undefined
+              }
+              onDoubleClick={
+                onSelectElement
+                  ? (id, kind) => onSelectElement(id, kind)
+                  : undefined
+              }
+            />
           ))}
         </g>
 
@@ -1120,6 +1348,14 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                   selected={selectedId === run.id || pathHighlightRunIds.has(run.id)}
                   selectedSegmentRefs={selectedSegmentRefsForRun(run, selectedId)}
                   loadingPct={lfDerived.cableLoadingPctByRunId.get(run.id) ?? null}
+                  segmentEndpointResults={buildSegmentEndpointResultsForRun(
+                    run,
+                    overlayPayload,
+                    stations,
+                    branchPoints,
+                    gpzs,
+                    canonicalGpzs ?? [],
+                  )}
                   onClick={onSelectElement ? (id) => onSelectElement(
                     id,
                     run.segmentRefs?.includes(id)
@@ -1174,7 +1410,14 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                   lod={stationLod}
                   viewportScale={transform.scale}
                   selected={selectedId === st.id}
-                  onClick={onSelectElement ? (id) => onSelectElement(id, 'station') : undefined}
+                  onClick={
+                    onSelectElement
+                      ? (id) => {
+                          const selection = resolveStationRendererSelection(id, st);
+                          onSelectElement(selection.id, selection.kind);
+                        }
+                      : undefined
+                  }
                   onDoubleClick={onDoubleClickStation}
                 />
                 {!stationUsesMiniBlock && st.transformerRefs?.map((transformerRef, index) => (
@@ -1306,6 +1549,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
               <DerRenderer
                 {...d}
                 lod={derLod}
+                viewportScale={transform.scale}
                 selected={selectedId === d.id}
                 onClick={onSelectElement ? (id) => onSelectElement(id, 'der') : undefined}
                 onDoubleClick={onDoubleClickDer}
@@ -1389,6 +1633,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
           onActivate={fitViewportToNetwork}
           testId="sld-v2-fit-view"
         />
+      </g>
       </g>
     </svg>
     </SldLodProvider>
@@ -1561,6 +1806,36 @@ function zksnFieldDesignation(
   if (role === FIELD_ROLE.LINE_OUT) return 'WY';
   if (role === FIELD_ROLE.LINE_BRANCH) return `ODG ${Math.max(1, index - 1)}`;
   return `Pole ${index + 1}`;
+}
+
+function resolveStationRendererSelection(
+  id: string,
+  station: StationOnRunRendererProps,
+): { id: string; kind: string } {
+  if (id === station.id) return { id, kind: 'station' };
+  if (station.transformerRefs?.includes(id)) return { id, kind: 'transformer' };
+
+  const stationBayPrefix = `${station.id}/bay/`;
+  if (id.startsWith(stationBayPrefix)) {
+    if (id.includes('/apparatus/')) return { id, kind: 'apparatus' };
+    const bayRef = id.slice(stationBayPrefix.length);
+    return {
+      id: bayRef,
+      kind: bayRef.includes('/der-bay/') ? 'der_pcc_bay' : 'bay',
+    };
+  }
+
+  const matchedBay = station.snBays?.find((bay) => bay.bayRef === id);
+  if (matchedBay) {
+    return {
+      id,
+      kind: id.includes('/der-bay/') ? 'der_pcc_bay' : 'bay',
+    };
+  }
+
+  if (id.includes('/apparatus/')) return { id, kind: 'apparatus' };
+  if (id.includes('/pv/') || id.endsWith('/pcc')) return { id, kind: 'der_pcc_bay' };
+  return { id, kind: 'station' };
 }
 
 function BranchPoleOverheadNode(props: {
@@ -1780,7 +2055,7 @@ function derLodForCanvas(
   }
   if (lod === 2) return selected ? 'compact' : null;
   if (lod === 3) return selected ? 'compact' : 'marker';
-  return selected ? 'full' : 'compact';
+  return 'compact';
 }
 
 function connectionVisibleAtLod(

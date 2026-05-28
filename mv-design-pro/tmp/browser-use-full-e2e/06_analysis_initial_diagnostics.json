@@ -1,0 +1,99 @@
+{
+  "bodyStart": "↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nProjekt bez nazwy\nZAKRES / WARIANT\nZakres 50 szablonów\nKonfiguruj zakres\nWyniki do obliczenia\n01:03:42\n27.05.2026\nOblicz\nNakładka\nAnalizy\nEksport\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nSchemat\n/\nAnalizy techniczne\nAnalizy techniczne\nPODGLĄD SCHEMATU\nKontekst układu jest zsynchronizowany z głównym schematem.\nPowiązany obiekt: Stacja SN/nN 1.\nANALIZA\nKontekst analityczny\nPROJEKT\nProjekt bez nazwy\nWARIANT\nZakres 50 szablonów\nWERSJA UKŁADU\nAktualna wersja układu\nOBLICZENIE\nNie wybrano obliczenia\nOBIEKT\nStacja SN/nN 1\nZAKŁADKA\nresults\nPRZEJŚCIA ANALITYCZNE\nNawigacja analityczna\nKoordynacja zabezpieczeń\nCharakterystyki FRT/LVRT/HVRT\nRozpływ mocy NR/GS/FD\nStan fazowy SN\nStabilność dynamiczna\nWkłady źródeł rozszerzone\nWeryfikacja cieplna i dynamiczna\nTesty NC RfG\nAnaliza wrażliwości\nPorównaj przebiegi (A/B)\nRaporty OSD i audytowe\nWYNIKI\nBieżący widok analityki\n\nWybierz zakładkę analityki albo otwórz kontrolę konfiguracji układu przed uruchomieniem analiz.\n\nKARTA TECHNICZNA\nStacja SN/nN 1\n\nStacja - Oznaczenie: Stacja SN/nN 1\n\nStacja SN/nN 1\n\nStacja SN/nN\n\nROLA W SIECI\nTyp stacji\nStacja SN/nN\nUkład rozdzielni SN\nUkład przelotowy SN\nLiczba transformatorów SN/nN\n1\nPOLA ROZDZIELNI SN\nPola dopływowe (WE)\n1\nPola odpływowe (WY)\n0\nPola transformatorowe (TR)\n1\nPola sprzęgłowe / sekcyjne\n0\nPola pomiarowe\n0\nPola przyłączeniowe OZE\n0\nKontynuuj ciąg SN ze stacji\nRozpocznij odgałęzienie SN\nPOKAŻ DIAGNOSTYKĘ TECHNICZNĄ\nIDENTYFIKACJA\nOznaczenie stacji\nS01\nNazwa\nStacja SN/nN 1\nTyp stacji\nStacja SN/nN\nSTRUKTURA\nRozdzielnica SN\n2 pól SN\nTransformatory\n1\nSzyny\n2\nRozdzielnica nN\nbez odpływów nN\nOdbiory nN\nbez odbiorów nN\nUkłady PV/BESS/FW\nbez źródeł przyłączonych\nBieżący zestaw: Zakres 50 szablonów. Zakres obliczeń: Zakres 50 szablonów. Wariant: Zakres 50 szablonów.\nWyniki / Układ\n|\nProjekt:\nProjekt bez nazwy\n|\nZakres obliczeń:\nZakres 50 szablonów\n|\nWariant:\nnie wybrano\n|\nWersja układu:\naktualna\n|\nOdczyt\nWyniki do obliczenia\n|\n▲ 1 ostrzeżenie\n|\nSzyny: 3\nTory i TR: 5",
+  "resultSections": [
+    {
+      "tag": "DIV",
+      "testId": "app-root",
+      "text": "↶Cofnij↷PonówMV-DESIGN-PRO12.2ProjektProjekt bez nazwyZakres / wariantZakres 50 szablonówKonfiguruj zakresWyniki do obliczenia01:03:4227.05.2026ObliczNakładkaAnalizyEksportSiećSchematStudiaWynikiWZabezpieczeniaUkładyKatalogiRaportyHistoriaSchemat/Analizy techniczneAnalizy technicznePodgląd schematuKontekst układu jest zsynchronizowany z głównym schematem.Powiązany obiekt: Stacja SN/nN 1.AnalizaKontekst analitycznyProjektProjekt bez nazwyWariantZakres 50 szablonówWersja układuAktualna wersja układuObliczenieNie wybrano obliczeniaObiektStacja SN/nN 1ZakładkaresultsPrzejścia analityczneNawigacja "
+    },
+    {
+      "tag": "DIV",
+      "testId": "canonical-layout",
+      "text": "↶Cofnij↷PonówMV-DESIGN-PRO12.2ProjektProjekt bez nazwyZakres / wariantZakres 50 szablonówKonfiguruj zakresWyniki do obliczenia01:03:4227.05.2026ObliczNakładkaAnalizyEksportSiećSchematStudiaWynikiWZabezpieczeniaUkładyKatalogiRaportyHistoriaSchemat/Analizy techniczneAnalizy technicznePodgląd schematuKontekst układu jest zsynchronizowany z głównym schematem.Powiązany obiekt: Stacja SN/nN 1.AnalizaKontekst analitycznyProjektProjekt bez nazwyWariantZakres 50 szablonówWersja układuAktualna wersja układuObliczenieNie wybrano obliczeniaObiektStacja SN/nN 1ZakładkaresultsPrzejścia analityczneNawigacja "
+    },
+    {
+      "tag": "HEADER",
+      "testId": "top-bar-v12",
+      "text": "MV-DESIGN-PRO12.2ProjektProjekt bez nazwyZakres / wariantZakres 50 szablonówKonfiguruj zakresWyniki do obliczenia01:03:4227.05.2026ObliczNakładkaAnalizyEksport"
+    },
+    {
+      "tag": "DIV",
+      "testId": "context-triple",
+      "text": "ProjektProjekt bez nazwyZakres / wariantZakres 50 szablonówKonfiguruj zakresWyniki do obliczenia"
+    },
+    {
+      "tag": "DIV",
+      "testId": "top-bar-result-status",
+      "text": "Wyniki do obliczenia"
+    },
+    {
+      "tag": "BUTTON",
+      "testId": "top-bar-results",
+      "text": "Analizy"
+    },
+    {
+      "tag": "NAV",
+      "testId": "navigation-rail",
+      "text": "SiećSchematStudiaWynikiWZabezpieczeniaUkładyKatalogiRaportyHistoria"
+    },
+    {
+      "tag": "BUTTON",
+      "testId": "nav-area-WYNIKI_ANALIZY",
+      "text": "WynikiW"
+    },
+    {
+      "tag": "SECTION",
+      "testId": null,
+      "text": "Schemat/Analizy techniczneAnalizy technicznePodgląd schematuKontekst układu jest zsynchronizowany z głównym schematem.Powiązany obiekt: Stacja SN/nN 1.AnalizaKontekst analitycznyProjektProjekt bez nazwyWariantZakres 50 szablonówWersja układuAktualna wersja układuObliczenieNie wybrano obliczeniaObiektStacja SN/nN 1ZakładkaresultsPrzejścia analityczneNawigacja analitycznaKoordynacja zabezpieczeńCharakterystyki FRT/LVRT/HVRTRozpływ mocy NR/GS/FDStan fazowy SNStabilność dynamicznaWkłady źródeł rozszerzoneWeryfikacja cieplna i dynamicznaTesty NC RfGAnaliza wrażliwościPorównaj przebiegi (A/B)Raporty"
+    },
+    {
+      "tag": "DIV",
+      "testId": "main-content",
+      "text": "Schemat/Analizy techniczneAnalizy technicznePodgląd schematuKontekst układu jest zsynchronizowany z głównym schematem.Powiązany obiekt: Stacja SN/nN 1.AnalizaKontekst analitycznyProjektProjekt bez nazwyWariantZakres 50 szablonówWersja układuAktualna wersja układuObliczenieNie wybrano obliczeniaObiektStacja SN/nN 1ZakładkaresultsPrzejścia analityczneNawigacja analitycznaKoordynacja zabezpieczeńCharakterystyki FRT/LVRT/HVRTRozpływ mocy NR/GS/FDStan fazowy SNStabilność dynamicznaWkłady źródeł rozszerzoneWeryfikacja cieplna i dynamicznaTesty NC RfGAnaliza wrażliwościPorównaj przebiegi (A/B)Raporty"
+    },
+    {
+      "tag": "DIV",
+      "testId": "workspace-surface-main",
+      "text": "Schemat/Analizy techniczneAnalizy technicznePodgląd schematuKontekst układu jest zsynchronizowany z głównym schematem.Powiązany obiekt: Stacja SN/nN 1.AnalizaKontekst analitycznyProjektProjekt bez nazwyWariantZakres 50 szablonówWersja układuAktualna wersja układuObliczenieNie wybrano obliczeniaObiektStacja SN/nN 1ZakładkaresultsPrzejścia analityczneNawigacja analitycznaKoordynacja zabezpieczeńCharakterystyki FRT/LVRT/HVRTRozpływ mocy NR/GS/FDStan fazowy SNStabilność dynamicznaWkłady źródeł rozszerzoneWeryfikacja cieplna i dynamicznaTesty NC RfGAnaliza wrażliwościPorównaj przebiegi (A/B)Raporty"
+    },
+    {
+      "tag": "SECTION",
+      "testId": null,
+      "text": "AnalizaKontekst analitycznyProjektProjekt bez nazwyWariantZakres 50 szablonówWersja układuAktualna wersja układuObliczenieNie wybrano obliczeniaObiektStacja SN/nN 1Zakładkaresults"
+    },
+    {
+      "tag": "SECTION",
+      "testId": null,
+      "text": "Przejścia analityczneNawigacja analitycznaKoordynacja zabezpieczeńCharakterystyki FRT/LVRT/HVRTRozpływ mocy NR/GS/FDStan fazowy SNStabilność dynamicznaWkłady źródeł rozszerzoneWeryfikacja cieplna i dynamicznaTesty NC RfGAnaliza wrażliwościPorównaj przebiegi (A/B)Raporty OSD i audytowe"
+    },
+    {
+      "tag": "SECTION",
+      "testId": null,
+      "text": "WynikiBieżący widok analitykiWybierz zakładkę analityki albo otwórz kontrolę konfiguracji układu przed uruchomieniem analiz."
+    },
+    {
+      "tag": "DIV",
+      "testId": "status-bar-v12",
+      "text": "Bieżący zestaw: Zakres 50 szablonów. Zakres obliczeń: Zakres 50 szablonów. Wariant: Zakres 50 szablonów.Wyniki / Układ|Projekt:Projekt bez nazwy|Zakres obliczeń:Zakres 50 szablonów|Wariant:nie wybrano|Wersja układu:aktualna|OdczytWyniki do obliczenia|▲ 1 ostrzeżenie|Szyny: 3Tory i TR: 5"
+    },
+    {
+      "tag": "DIV",
+      "testId": "active-case-bar",
+      "text": "Bieżący zestaw: Zakres 50 szablonów. Zakres obliczeń: Zakres 50 szablonów. Wariant: Zakres 50 szablonów.Wyniki / Układ|Projekt:Projekt bez nazwy|Zakres obliczeń:Zakres 50 szablonów|Wariant:nie wybrano|Wersja układu:aktualna|Odczyt"
+    },
+    {
+      "tag": "SPAN",
+      "testId": "status-area-mode",
+      "text": "Wyniki / Układ"
+    },
+    {
+      "tag": "SPAN",
+      "testId": "status-result",
+      "text": "Wyniki do obliczenia"
+    }
+  ],
+  "tableCount": 0,
+  "tables": [],
+  "url": "http://127.0.0.1:5173/#analysis?sel=sub%2Fbb66d55295e2defe1fdbf0cf3fa06f40%2Fsubstation&type=Station&name=Stacja+SN%2FnN+1",
+  "visibleForbidden": []
+}

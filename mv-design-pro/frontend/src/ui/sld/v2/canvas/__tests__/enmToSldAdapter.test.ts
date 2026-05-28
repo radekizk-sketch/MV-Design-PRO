@@ -493,7 +493,17 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
       id: 'der-wire-PV-BLOCK-1MW',
       connectionKind: 'der_block_transformer',
       transformerLabel: 'TR 15/0,69 kV 1250 kVA Dyn5',
+      derRef: 'PV-BLOCK-1MW',
+      transformerRef: 'TR-BLOCK-PV-1250',
+      pccRef: 'PV-BLOCK-1MW/pcc',
     });
+    expect(r.derConnections[0].pathPoints).toHaveLength(4);
+    const station = r.stations.find((item) => item.id === 'STA-DER-BLOCK');
+    expect(station).toBeDefined();
+    const stationMvBusY = (station?.y ?? 0) - 80;
+    expect(r.derConnections[0].pathPoints[0].y).toBe(stationMvBusY);
+    expect(r.derConnections[0].pathPoints[2].y).toBeLessThan(stationMvBusY);
+    expect(r.ders[0].y).toBeLessThan(stationMvBusY);
   });
 
   it('DER bez stacji nie generuje derConnections', () => {
@@ -1028,6 +1038,61 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(station.hasTransformer).toBe(true);
     expect(station.transformerVectorGroup).toBe('Dyn11');
     expect(station.snBays.map((bay) => bay.bayRef)).toEqual(['field-in', 'field-out', 'field-tr']);
+  });
+
+  it('dodaje dedykowane pole PV do mini-rozdzielni stacji dla przyłączenia SN', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      {
+        id: 'st',
+        ref_id: 'ST-PV',
+        name: 'Stacja PV',
+        tags: [],
+        meta: {
+          field_specs: [
+            { field_ref: 'field-in', name: 'Pole WE', bay_role: 'IN', bus_ref: 'bus-sn', equipment_refs: ['sw-in'], meta: { field_role: 'LINIA_IN' } },
+            { field_ref: 'field-out', name: 'Pole WY', bay_role: 'OUT', bus_ref: 'bus-sn', equipment_refs: ['sw-out'], meta: { field_role: 'LINIA_OUT' } },
+            { field_ref: 'field-tr', name: 'Pole TR', bay_role: 'TR', bus_ref: 'bus-sn', equipment_refs: ['sw-tr'], meta: { field_role: 'TRANSFORMATOROWE' } },
+          ],
+        },
+        station_type: 'inline',
+        bus_refs: ['bus-sn'],
+        transformer_refs: [],
+      } as never,
+    ];
+    snap.buses = [
+      { id: 'bus-sn', ref_id: 'bus-sn', name: 'Szyna SN', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {}, substation_ref: 'ST-PV' } as never,
+    ];
+    snap.branches = [
+      { id: 'sw-in', ref_id: 'sw-in', name: 'Aparat WE', type: 'breaker', from_bus_ref: 'bus-sn', to_bus_ref: 't-in', status: 'closed', tags: [], meta: {} } as never,
+      { id: 'sw-out', ref_id: 'sw-out', name: 'Aparat WY', type: 'breaker', from_bus_ref: 'bus-sn', to_bus_ref: 't-out', status: 'closed', tags: [], meta: {} } as never,
+      { id: 'sw-tr', ref_id: 'sw-tr', name: 'Aparat TR', type: 'breaker', from_bus_ref: 'bus-sn', to_bus_ref: 't-tr', status: 'closed', tags: [], meta: {} } as never,
+    ];
+    snap.generators = [
+      {
+        id: 'pv-1',
+        ref_id: 'gen/pv-1',
+        name: 'PV 1',
+        bus_ref: 'bus-sn',
+        p_mw: 0.5,
+        q_mvar: 0,
+        gen_type: 'pv_inverter',
+        station_ref: 'ST-PV',
+        connection_variant: 'block_transformer',
+        blocking_transformer_ref: 'tr-pv',
+        catalog_ref: 'pv-cat',
+        tags: [],
+        meta: {},
+      } as never,
+    ];
+    attachMainRun(snap, ['ST-PV'], 'run-pv-bay');
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const station = r.stations[0];
+
+    expect(station.snBays.map((bay) => bay.fieldRole)).toContain(FIELD_ROLE.DER_PV);
+    expect(station.snBays.find((bay) => bay.fieldRole === FIELD_ROLE.DER_PV)?.designation).toBe('PV');
+    expect(station.footprintType).toBe('der_station');
   });
 
   it('K30-37: adapter propaguje busVoltageKv z snapshot.buses (najwyższe > 0.5 kV)', () => {

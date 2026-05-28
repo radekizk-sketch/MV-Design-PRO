@@ -8,7 +8,7 @@
  * 4. Brief 2 §6 pkt 7: typ topologiczny wnioskowany z portów (nie z station_type).
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { StationInternalView } from '../canvas/StationInternalView';
@@ -92,6 +92,10 @@ describe('StationInternalView — minimal terminal station', () => {
     expect(getByText('WY')).toBeInTheDocument();
     expect(screen.getAllByText('TR').length).toBeGreaterThanOrEqual(1);
     expect(container.querySelectorAll('[data-parity-key^="station.internal.bay.panel."]').length).toBeGreaterThanOrEqual(3);
+    expect(container.querySelector('[data-testid^="station-internal-terrain-network-"]')).toBeTruthy();
+    expect(container.querySelectorAll('[data-field-direction="upstream-network"]').length).toBeGreaterThanOrEqual(2);
+    expect(container.querySelectorAll('[data-field-direction="downstream-station"]').length).toBeGreaterThanOrEqual(1);
+    expect(container.querySelectorAll('[data-port-side="terrain_network"]').length).toBeGreaterThanOrEqual(2);
     expect(container.querySelectorAll('[data-symbol-canon="switch_disconnector_rotated_square"]').length).toBeGreaterThanOrEqual(2);
     expect(container.querySelectorAll('[data-symbol-canon="earthing_switch_lateral_branch"]').length).toBeGreaterThanOrEqual(2);
     expect(container.querySelector('[data-element-kind="transformer_sn_nn"]')).toBeTruthy();
@@ -101,7 +105,8 @@ describe('StationInternalView — minimal terminal station', () => {
 });
 
 describe('StationInternalView — transformator', () => {
-  it('renderuje transformator SN/nN z 2 okręgami i parametrami', () => {
+  it('renderuje transformator SN/nN z przecinającymi się okręgami, hit-area i parametrami', () => {
+    const selected: string[] = [];
     const { container, getByText } = render(
       <StationInternalView
         substationId="st1"
@@ -122,12 +127,54 @@ describe('StationInternalView — transformator', () => {
         nnSwitchgears={[]}
         width={1000}
         height={700}
+        onSelectTransformer={(id) => selected.push(id)}
       />,
     );
-    expect(container.querySelector('[data-testid="sld-v2-transformer-tr1"]')).toBeTruthy();
+    const transformer = container.querySelector('[data-testid="sld-v2-transformer-tr1"]');
+    expect(transformer).toBeTruthy();
+    expect(transformer).toHaveAttribute('data-symbol-canon', 'transformer_intersecting_circles');
+    expect(transformer).toHaveAttribute('data-transformer-circles-intersect', 'true');
+    expect(transformer).toHaveAttribute('data-transformer-circle-overlap-px', '18');
+    expect(transformer?.querySelector('[data-hit-area="transformer"]')).toBeTruthy();
+    expect(container.querySelector('[data-parity-key="station.internal.busbar.sn.to.transformer"][data-transformer-ref="tr1"]')).toBeTruthy();
+    expect(container.querySelector('[data-parity-key="station.internal.transformer.to.nn"][data-transformer-ref="tr1"]')).toBeTruthy();
+    const circles = Array.from(transformer?.querySelectorAll('[data-transformer-winding]') ?? []);
+    expect(circles).toHaveLength(2);
+    const [snCircle, nnCircle] = circles;
+    const cySn = Number(snCircle.getAttribute('cy'));
+    const cyNn = Number(nnCircle.getAttribute('cy'));
+    const rSn = Number(snCircle.getAttribute('r'));
+    const rNn = Number(nnCircle.getAttribute('r'));
+    expect(Math.abs(cyNn - cySn)).toBeLessThan(rSn + rNn);
+    expect(Math.abs(cyNn - cySn)).toBe(18);
     expect(getByText('TR1')).toBeInTheDocument();
     expect(getByText('0,4 MVA')).toBeInTheDocument();
     expect(getByText('15/0,4 kV')).toBeInTheDocument();
+    transformer?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(selected).toContain('tr1');
+  });
+
+  it('prowadzi osobne przewody SN-TR-nN dla wielu transformatorow', () => {
+    const { container } = render(
+      <StationInternalView
+        substationId="st2"
+        name="ST-02"
+        topologicalType="przelotowa"
+        snVoltageKv={15}
+        nnVoltageLevels={[0.4]}
+        bays={[]}
+        transformers={[
+          { transformerId: 'tr1', designation: 'TR1', snMva: 0.4, uhvKv: 15, ulvKv: 0.4 },
+          { transformerId: 'tr2', designation: 'TR2', snMva: 0.63, uhvKv: 15, ulvKv: 0.4 },
+        ]}
+        nnSwitchgears={[]}
+        width={1000}
+        height={700}
+      />,
+    );
+
+    expect(container.querySelectorAll('[data-parity-key="station.internal.busbar.sn.to.transformer"]').length).toBe(2);
+    expect(container.querySelectorAll('[data-parity-key="station.internal.transformer.to.nn"]').length).toBe(2);
   });
 });
 
@@ -196,6 +243,39 @@ describe('StationInternalView — multi-voltage nN (brief §13)', () => {
 });
 
 describe('StationInternalView — interakcje', () => {
+  it('pozwala wybrać pole i port stacji bez celowania w cienkie linie', () => {
+    const selected: string[] = [];
+    const { container } = render(
+      <StationInternalView
+        substationId="st-click"
+        name="ST"
+        topologicalType="przelotowa"
+        snVoltageKv={15}
+        nnVoltageLevels={[0.4]}
+        bays={[]}
+        transformers={[]}
+        nnSwitchgears={[]}
+        width={900}
+        height={620}
+        onSelectBay={(id) => selected.push(id)}
+      />,
+    );
+
+    const field = container.querySelector('[data-testid^="station-internal-field-"][data-field-role="IN"]');
+    expect(field).toBeTruthy();
+    expect(field?.querySelector('[data-hit-area="station_internal_field"]')).toBeTruthy();
+    field?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(selected.some((id) => id.includes('/internal-bay/in-1'))).toBe(true);
+
+    const port = container.querySelector('[data-testid^="station-internal-port-"][data-port-role="WE"]');
+    expect(port).toBeTruthy();
+    expect(port).toHaveAttribute('data-configurable', 'true');
+    if (port) {
+      fireEvent.contextMenu(port);
+    }
+    expect(selected.filter((id) => id.includes('/internal-bay/in-1')).length).toBeGreaterThanOrEqual(2);
+  });
+
   it('onClose handler wywoływany po kliknięciu x', () => {
     let closed = false;
     const { container } = render(

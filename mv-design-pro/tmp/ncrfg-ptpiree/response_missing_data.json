@@ -1,0 +1,610 @@
+﻿{
+    "contract":  "NcRfgPtpireeTestResultV1",
+    "procedure_version":  "PTPiREE Procedura testowania v3.0",
+    "solver_version":  "ncrfg-ptpiree-whitebox-1.0",
+    "input_hash":  "69cd06e5e1130f1e7275e7e0c1549de006e14344ee37eb8739737e37486c8847",
+    "deterministic_hash":  "cf0614b791c7af61449d96d6961df8240f6648a61876258fee8b2c2fb5ff6aa3",
+    "modules":  [
+                    {
+                        "der_ref":  "PV-PTPIREE-BRAKI",
+                        "der_name":  "UkÅad PV z brakujÄ\u0085cymi danymi",
+                        "operator_id":  "enea",
+                        "operator_name_pl":  "Enea Operator",
+                        "module_type":  "B",
+                        "module_family":  "PPM",
+                        "p_max_kw":  2500.0,
+                        "voltage_kv":  15.0,
+                        "required_count":  10,
+                        "pass_count":  1,
+                        "fail_count":  0,
+                        "no_data_count":  9,
+                        "not_required_count":  9,
+                        "overall_status":  "brak_danych",
+                        "tests":  [
+                                      {
+                                          "test_id":  "T01",
+                                          "ability_pl":  "LFSM-O - ograniczanie mocy przy nadczÄstotliwoÅci",
+                                          "required":  false,
+                                          "required_reason_pl":  "Nie jest wymagany dla tej klasy moduÅu bez dodatkowego Å¼Ä\u0085dania OS.",
+                                          "verdict":  "not_required",
+                                          "summary_pl":  "Brak droop P(f) albo martwej strefy czÄstotliwoÅci. Test nie jest obowiÄ\u0085zkowy w tej klasie.",
+                                          "metrics":  {
+
+                                                      },
+                                          "trace_refs":  [
+
+                                                         ],
+                                          "fix_actions":  [
+
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T02",
+                                          "ability_pl":  "LFSM-U - zwiÄkszanie mocy przy podczÄstotliwoÅci",
+                                          "required":  false,
+                                          "required_reason_pl":  "Nie jest wymagany dla tej klasy moduÅu bez dodatkowego Å¼Ä\u0085dania OS.",
+                                          "verdict":  "not_required",
+                                          "summary_pl":  "Brak droop P(f) albo martwej strefy czÄstotliwoÅci. Test nie jest obowiÄ\u0085zkowy w tej klasie.",
+                                          "metrics":  {
+
+                                                      },
+                                          "trace_refs":  [
+
+                                                         ],
+                                          "fix_actions":  [
+
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T03",
+                                          "ability_pl":  "FSM - regulacja czÄstotliwoÅci w paÅmie normalnym",
+                                          "required":  false,
+                                          "required_reason_pl":  "Nie jest wymagany dla tej klasy moduÅu bez dodatkowego Å¼Ä\u0085dania OS.",
+                                          "verdict":  "not_required",
+                                          "summary_pl":  "Brak droop P(f) albo martwej strefy czÄstotliwoÅci. Test nie jest obowiÄ\u0085zkowy w tej klasie.",
+                                          "metrics":  {
+
+                                                      },
+                                          "trace_refs":  [
+
+                                                         ],
+                                          "fix_actions":  [
+
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T04",
+                                          "ability_pl":  "Regulacja odbudowy czÄstotliwoÅci",
+                                          "required":  false,
+                                          "required_reason_pl":  "Nie jest wymagany dla tej klasy moduÅu bez dodatkowego Å¼Ä\u0085dania OS.",
+                                          "verdict":  "not_required",
+                                          "summary_pl":  "Brak droop P(f) albo martwej strefy czÄstotliwoÅci. Test nie jest obowiÄ\u0085zkowy w tej klasie.",
+                                          "metrics":  {
+
+                                                      },
+                                          "trace_refs":  [
+
+                                                         ],
+                                          "fix_actions":  [
+
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T05",
+                                          "ability_pl":  "MoÅ¼liwoÅÄ regulacji mocy czynnej",
+                                          "required":  true,
+                                          "required_reason_pl":  "Wymagany dla moduÅu typu B.",
+                                          "verdict":  "no_data",
+                                          "summary_pl":  "Brak aktywnej regulacji mocy czynnej lub rampy.",
+                                          "metrics":  {
+
+                                                      },
+                                          "trace_refs":  [
+
+                                                         ],
+                                          "fix_actions":  [
+                                                              "Brak aktywnej regulacji mocy czynnej lub rampy."
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T06",
+                                          "ability_pl":  "Tryb regulacji napiÄcia",
+                                          "required":  false,
+                                          "required_reason_pl":  "Nie jest wymagany dla tej klasy moduÅu bez dodatkowego Å¼Ä\u0085dania OS.",
+                                          "verdict":  "not_required",
+                                          "summary_pl":  "Brak krzywej Q(U) albo trybu regulacji Q. Test nie jest obowiÄ\u0085zkowy w tej klasie.",
+                                          "metrics":  {
+
+                                                      },
+                                          "trace_refs":  [
+
+                                                         ],
+                                          "fix_actions":  [
+
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T07",
+                                          "ability_pl":  "Tryb regulacji mocy biernej Q",
+                                          "required":  false,
+                                          "required_reason_pl":  "Nie jest wymagany dla tej klasy moduÅu bez dodatkowego Å¼Ä\u0085dania OS.",
+                                          "verdict":  "not_required",
+                                          "summary_pl":  "Brak krzywej Q(U) albo trybu regulacji Q. Test nie jest obowiÄ\u0085zkowy w tej klasie.",
+                                          "metrics":  {
+
+                                                      },
+                                          "trace_refs":  [
+
+                                                         ],
+                                          "fix_actions":  [
+
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T08",
+                                          "ability_pl":  "Tryb regulacji wspÃ³Åczynnika mocy cosÏ",
+                                          "required":  false,
+                                          "required_reason_pl":  "Nie jest wymagany dla tej klasy moduÅu bez dodatkowego Å¼Ä\u0085dania OS.",
+                                          "verdict":  "not_required",
+                                          "summary_pl":  "Brak minimalnego cosÏ. Test nie jest obowiÄ\u0085zkowy w tej klasie.",
+                                          "metrics":  {
+
+                                                      },
+                                          "trace_refs":  [
+
+                                                         ],
+                                          "fix_actions":  [
+
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T09",
+                                          "ability_pl":  "ZdolnoÅÄ do generacji mocy biernej",
+                                          "required":  true,
+                                          "required_reason_pl":  "Wymagany dla moduÅu typu B.",
+                                          "verdict":  "no_data",
+                                          "summary_pl":  "Brak zakresu Q/Pn moduÅu.",
+                                          "metrics":  {
+
+                                                      },
+                                          "trace_refs":  [
+
+                                                         ],
+                                          "fix_actions":  [
+                                                              "Brak zakresu Q/Pn moduÅu."
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T10",
+                                          "ability_pl":  "Potwierdzenie mocy maksymalnej PMAX",
+                                          "required":  true,
+                                          "required_reason_pl":  "Wymagany dla moduÅu typu B.",
+                                          "verdict":  "pass",
+                                          "summary_pl":  "PMAX potwierdzone z danych katalogowych/deklaracji: 2500.0 kW.",
+                                          "metrics":  {
+                                                          "pmax_kw":  2500.0
+                                                      },
+                                          "trace_refs":  [
+                                                             "proof:ncrfg-ptpiree:T10:pmax:1"
+                                                         ],
+                                          "fix_actions":  [
+
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T11",
+                                          "ability_pl":  "Potwierdzenie mocy minimalnej PMIN",
+                                          "required":  true,
+                                          "required_reason_pl":  "Wymagany dla moduÅu typu B.",
+                                          "verdict":  "no_data",
+                                          "summary_pl":  "Brak deklarowanej wartoÅci PMIN.",
+                                          "metrics":  {
+
+                                                      },
+                                          "trace_refs":  [
+
+                                                         ],
+                                          "fix_actions":  [
+                                                              "Brak deklarowanej wartoÅci PMIN."
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T12",
+                                          "ability_pl":  "Zaprzestanie generacji mocy czynnej",
+                                          "required":  true,
+                                          "required_reason_pl":  "Wymagany dla zaprzestania generacji przy braku certyfikatu.",
+                                          "verdict":  "no_data",
+                                          "summary_pl":  "Brak funkcji zdalnej komendy P albo rampy wykonania.",
+                                          "metrics":  {
+
+                                                      },
+                                          "trace_refs":  [
+
+                                                         ],
+                                          "fix_actions":  [
+                                                              "Brak funkcji zdalnej komendy P albo rampy wykonania."
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T13",
+                                          "ability_pl":  "Zmniejszenie generacji mocy czynnej",
+                                          "required":  true,
+                                          "required_reason_pl":  "Wymagany dla zmniejszenia generacji przy braku certyfikatu typu B.",
+                                          "verdict":  "no_data",
+                                          "summary_pl":  "Brak funkcji zdalnej komendy P albo rampy wykonania.",
+                                          "metrics":  {
+
+                                                      },
+                                          "trace_refs":  [
+
+                                                         ],
+                                          "fix_actions":  [
+                                                              "Brak funkcji zdalnej komendy P albo rampy wykonania."
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T14",
+                                          "ability_pl":  "LVRT - pozostanie w pracy przy zapadzie napiÄcia",
+                                          "required":  true,
+                                          "required_reason_pl":  "Wymagany dla moduÅu typu B.",
+                                          "verdict":  "no_data",
+                                          "summary_pl":  "Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.",
+                                          "metrics":  {
+
+                                                      },
+                                          "trace_refs":  [
+
+                                                         ],
+                                          "fix_actions":  [
+                                                              "Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego."
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T15",
+                                          "ability_pl":  "HVRT - pozostanie w pracy przy wzroÅcie napiÄcia",
+                                          "required":  true,
+                                          "required_reason_pl":  "Wymagany dla moduÅu typu B.",
+                                          "verdict":  "no_data",
+                                          "summary_pl":  "Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.",
+                                          "metrics":  {
+
+                                                      },
+                                          "trace_refs":  [
+
+                                                         ],
+                                          "fix_actions":  [
+                                                              "Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego."
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T16",
+                                          "ability_pl":  "Odbudowa mocy czynnej po zakÅÃ³ceniu",
+                                          "required":  true,
+                                          "required_reason_pl":  "Wymagany dla moduÅu typu B.",
+                                          "verdict":  "no_data",
+                                          "summary_pl":  "Brak czasu odbudowy mocy czynnej po FRT.",
+                                          "metrics":  {
+
+                                                      },
+                                          "trace_refs":  [
+
+                                                         ],
+                                          "fix_actions":  [
+                                                              "Brak czasu odbudowy mocy czynnej po FRT."
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T17",
+                                          "ability_pl":  "PrÄ\u0085d bierny podczas FRT",
+                                          "required":  true,
+                                          "required_reason_pl":  "Wymagany dla moduÅu typu B.",
+                                          "verdict":  "no_data",
+                                          "summary_pl":  "Brak wzmocnienia prÄ\u0085du biernego K_FRT.",
+                                          "metrics":  {
+
+                                                      },
+                                          "trace_refs":  [
+
+                                                         ],
+                                          "fix_actions":  [
+                                                              "Brak wzmocnienia prÄ\u0085du biernego K_FRT."
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T18",
+                                          "ability_pl":  "Praca wyspowa, rozruch autonomiczny i tÅumienie oscylacji",
+                                          "required":  false,
+                                          "required_reason_pl":  "Nie jest wymagany dla tej klasy moduÅu bez dodatkowego Å¼Ä\u0085dania OS.",
+                                          "verdict":  "not_required",
+                                          "summary_pl":  "Nie wskazano wymaganej zdolnoÅci dodatkowej.",
+                                          "metrics":  {
+
+                                                      },
+                                          "trace_refs":  [
+
+                                                         ],
+                                          "fix_actions":  [
+
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T19",
+                                          "ability_pl":  "Rejestracja zakÅÃ³ceÅ i komunikacja z operatorem",
+                                          "required":  false,
+                                          "required_reason_pl":  "Nie jest wymagany dla tej klasy moduÅu bez dodatkowego Å¼Ä\u0085dania OS.",
+                                          "verdict":  "fail",
+                                          "summary_pl":  "Zweryfikowano obserwowalnoÅÄ i rejestracjÄ zakÅÃ³ceÅ.",
+                                          "metrics":  {
+                                                          "has_scada":  false,
+                                                          "has_recorder":  false
+                                                      },
+                                          "trace_refs":  [
+                                                             "proof:ncrfg-ptpiree:T19:observability:2"
+                                                         ],
+                                          "fix_actions":  [
+                                                              "Dodaj komunikacjÄ SCADA i rejestrator zakÅÃ³ceÅ do konfiguracji DER."
+                                                          ]
+                                      },
+                                      {
+                                          "test_id":  "T20",
+                                          "ability_pl":  "JakoÅÄ energii - THD_U ÅºrÃ³dÅa",
+                                          "required":  false,
+                                          "required_reason_pl":  "Nie jest wymagany dla tej klasy moduÅu bez dodatkowego Å¼Ä\u0085dania OS.",
+                                          "verdict":  "not_required",
+                                          "summary_pl":  "Brak katalogowej wartoÅci THD_U. Test nie jest obowiÄ\u0085zkowy w tej klasie.",
+                                          "metrics":  {
+
+                                                      },
+                                          "trace_refs":  [
+
+                                                         ],
+                                          "fix_actions":  [
+
+                                                          ]
+                                      }
+                                  ]
+                    }
+                ],
+    "test_catalog":  [
+                         {
+                             "test_id":  "T01",
+                             "ability_pl":  "LFSM-O - ograniczanie mocy przy nadczÄstotliwoÅci",
+                             "procedure_basis_pl":  "Zakres testÃ³w zgodnoÅci NC RfG dla PPM/SyPGM typu C i D; dla czÄÅci A/B gdy brak certyfikatu.",
+                             "default_for_modules":  [
+                                                         "C",
+                                                         "D"
+                                                     ],
+                             "conditional_pl":  "Dla typu A/B wymaganie zaleÅ¼y od certyfikatu i decyzji wÅaÅciwego OS."
+                         },
+                         {
+                             "test_id":  "T02",
+                             "ability_pl":  "LFSM-U - zwiÄkszanie mocy przy podczÄstotliwoÅci",
+                             "procedure_basis_pl":  "Zakres testÃ³w zgodnoÅci NC RfG dla moduÅÃ³w typu C i D.",
+                             "default_for_modules":  [
+                                                         "C",
+                                                         "D"
+                                                     ],
+                             "conditional_pl":  null
+                         },
+                         {
+                             "test_id":  "T03",
+                             "ability_pl":  "FSM - regulacja czÄstotliwoÅci w paÅmie normalnym",
+                             "procedure_basis_pl":  "Zakres testÃ³w zgodnoÅci NC RfG dla moduÅÃ³w typu C i D.",
+                             "default_for_modules":  [
+                                                         "C",
+                                                         "D"
+                                                     ],
+                             "conditional_pl":  null
+                         },
+                         {
+                             "test_id":  "T04",
+                             "ability_pl":  "Regulacja odbudowy czÄstotliwoÅci",
+                             "procedure_basis_pl":  "Zakres testÃ³w zgodnoÅci NC RfG dla moduÅÃ³w typu C i D.",
+                             "default_for_modules":  [
+                                                         "C",
+                                                         "D"
+                                                     ],
+                             "conditional_pl":  null
+                         },
+                         {
+                             "test_id":  "T05",
+                             "ability_pl":  "MoÅ¼liwoÅÄ regulacji mocy czynnej",
+                             "procedure_basis_pl":  "Program ramowy testÃ³w PPM oraz sprawdzenia dodatkowe dla regulacji P.",
+                             "default_for_modules":  [
+                                                         "B",
+                                                         "C",
+                                                         "D"
+                                                     ],
+                             "conditional_pl":  null
+                         },
+                         {
+                             "test_id":  "T06",
+                             "ability_pl":  "Tryb regulacji napiÄcia",
+                             "procedure_basis_pl":  "Zakres testÃ³w zgodnoÅci PPM typu C i D.",
+                             "default_for_modules":  [
+                                                         "C",
+                                                         "D"
+                                                     ],
+                             "conditional_pl":  null
+                         },
+                         {
+                             "test_id":  "T07",
+                             "ability_pl":  "Tryb regulacji mocy biernej Q",
+                             "procedure_basis_pl":  "Zakres testÃ³w zgodnoÅci PPM typu C i D.",
+                             "default_for_modules":  [
+                                                         "C",
+                                                         "D"
+                                                     ],
+                             "conditional_pl":  null
+                         },
+                         {
+                             "test_id":  "T08",
+                             "ability_pl":  "Tryb regulacji wspÃ³Åczynnika mocy cosÏ",
+                             "procedure_basis_pl":  "Zakres testÃ³w zgodnoÅci PPM typu C i D.",
+                             "default_for_modules":  [
+                                                         "C",
+                                                         "D"
+                                                     ],
+                             "conditional_pl":  null
+                         },
+                         {
+                             "test_id":  "T09",
+                             "ability_pl":  "ZdolnoÅÄ do generacji mocy biernej",
+                             "procedure_basis_pl":  "Zakres testÃ³w zgodnoÅci PPM typu B, C i D.",
+                             "default_for_modules":  [
+                                                         "B",
+                                                         "C",
+                                                         "D"
+                                                     ],
+                             "conditional_pl":  null
+                         },
+                         {
+                             "test_id":  "T10",
+                             "ability_pl":  "Potwierdzenie mocy maksymalnej PMAX",
+                             "procedure_basis_pl":  "Sprawdzenia dodatkowe procedury PTPiREE dla typu B, C i D.",
+                             "default_for_modules":  [
+                                                         "B",
+                                                         "C",
+                                                         "D"
+                                                     ],
+                             "conditional_pl":  null
+                         },
+                         {
+                             "test_id":  "T11",
+                             "ability_pl":  "Potwierdzenie mocy minimalnej PMIN",
+                             "procedure_basis_pl":  "Sprawdzenia dodatkowe procedury PTPiREE dla typu B, C i D.",
+                             "default_for_modules":  [
+                                                         "B",
+                                                         "C",
+                                                         "D"
+                                                     ],
+                             "conditional_pl":  null
+                         },
+                         {
+                             "test_id":  "T12",
+                             "ability_pl":  "Zaprzestanie generacji mocy czynnej",
+                             "procedure_basis_pl":  "Dodatkowy test zgodnoÅci, wymagany dla typu A/B przy braku certyfikatu.",
+                             "default_for_modules":  [
+
+                                                     ],
+                             "conditional_pl":  "Wymagany, gdy certyfikat nie pokrywa funkcji zdalnego zaprzestania generacji."
+                         },
+                         {
+                             "test_id":  "T13",
+                             "ability_pl":  "Zmniejszenie generacji mocy czynnej",
+                             "procedure_basis_pl":  "Dodatkowy test zgodnoÅci, wymagany dla typu B przy braku certyfikatu.",
+                             "default_for_modules":  [
+
+                                                     ],
+                             "conditional_pl":  "Wymagany, gdy certyfikat nie pokrywa funkcji zdalnego ograniczenia generacji."
+                         },
+                         {
+                             "test_id":  "T14",
+                             "ability_pl":  "LVRT - pozostanie w pracy przy zapadzie napiÄcia",
+                             "procedure_basis_pl":  "Test FRT dla moduÅÃ³w B/C/D oraz profili operatora.",
+                             "default_for_modules":  [
+                                                         "B",
+                                                         "C",
+                                                         "D"
+                                                     ],
+                             "conditional_pl":  null
+                         },
+                         {
+                             "test_id":  "T15",
+                             "ability_pl":  "HVRT - pozostanie w pracy przy wzroÅcie napiÄcia",
+                             "procedure_basis_pl":  "Test HVRT dla moduÅÃ³w B/C/D oraz profili operatora.",
+                             "default_for_modules":  [
+                                                         "B",
+                                                         "C",
+                                                         "D"
+                                                     ],
+                             "conditional_pl":  null
+                         },
+                         {
+                             "test_id":  "T16",
+                             "ability_pl":  "Odbudowa mocy czynnej po zakÅÃ³ceniu",
+                             "procedure_basis_pl":  "Wymaganie profilu operatora dla moduÅÃ³w B/C/D.",
+                             "default_for_modules":  [
+                                                         "B",
+                                                         "C",
+                                                         "D"
+                                                     ],
+                             "conditional_pl":  null
+                         },
+                         {
+                             "test_id":  "T17",
+                             "ability_pl":  "PrÄ\u0085d bierny podczas FRT",
+                             "procedure_basis_pl":  "Sprawdzenie wsparcia napiÄcia w czasie FRT.",
+                             "default_for_modules":  [
+                                                         "B",
+                                                         "C",
+                                                         "D"
+                                                     ],
+                             "conditional_pl":  null
+                         },
+                         {
+                             "test_id":  "T18",
+                             "ability_pl":  "Praca wyspowa, rozruch autonomiczny i tÅumienie oscylacji",
+                             "procedure_basis_pl":  "Sprawdzenia dodatkowe wykonywane, gdy zdolnoÅÄ jest wymagana przez wÅaÅciwego OS/OSP.",
+                             "default_for_modules":  [
+
+                                                     ],
+                             "conditional_pl":  "Uruchamiane jako wymagane tylko po zaznaczeniu obowiÄ\u0085zku w danych wejÅciowych."
+                         },
+                         {
+                             "test_id":  "T19",
+                             "ability_pl":  "Rejestracja zakÅÃ³ceÅ i komunikacja z operatorem",
+                             "procedure_basis_pl":  "Dane pomocnicze wymagane do wiarygodnego programu szczegÃ³Åowego testÃ³w.",
+                             "default_for_modules":  [
+                                                         "C",
+                                                         "D"
+                                                     ],
+                             "conditional_pl":  null
+                         },
+                         {
+                             "test_id":  "T20",
+                             "ability_pl":  "JakoÅÄ energii - THD_U ÅºrÃ³dÅa",
+                             "procedure_basis_pl":  "Kontrola uzupeÅniajÄ\u0085ca dla przyÅÄ\u0085czenia PPM z falownikami.",
+                             "default_for_modules":  [
+
+                                                     ],
+                             "conditional_pl":  "Nie zastÄpuje peÅnego moduÅu harmonicznych; raportuje, jeÅli dane katalogowe sÄ\u0085 dostÄpne."
+                         }
+                     ],
+    "white_box_trace":  [
+                            {
+                                "step":  1,
+                                "test_id":  "T10",
+                                "key":  "pmax",
+                                "formula":  "PMAX = P deklarowane w programie szczegÃ³Åowym",
+                                "data":  {
+                                             "p_max_kw":  2500.0,
+                                             "p_min_kw":  null
+                                         },
+                                "substitution":  "PMAX = 2500.000 kW",
+                                "result":  {
+                                               "value_kw":  2500.0,
+                                               "ok":  true
+                                           },
+                                "unit_check":  "Moc czynna w kW.",
+                                "proof_ref":  "proof:ncrfg-ptpiree:T10:pmax:1"
+                            },
+                            {
+                                "step":  2,
+                                "test_id":  "T19",
+                                "key":  "observability",
+                                "formula":  "status = SCADA \u0026\u0026 rejestrator zakÅÃ³ceÅ",
+                                "data":  {
+                                             "has_scada":  false,
+                                             "has_recorder":  false
+                                         },
+                                "substitution":  "False \u0026\u0026 False",
+                                "result":  {
+                                               "ok":  false
+                                           },
+                                "unit_check":  "WartoÅci logiczne bez jednostek.",
+                                "proof_ref":  "proof:ncrfg-ptpiree:T19:observability:2"
+                            }
+                        ],
+    "report_pl":  "Raport symulacyjny NC RfG / PTPiREE\nProcedura: PTPiREE Procedura testowania v3.0\nSolver: ncrfg-ptpiree-whitebox-1.0\n\nModuÅ: UkÅad PV z brakujÄ\u0085cymi danymi\nOperator: Enea Operator; typ PGM: B; Pmax: 2500.0 kW\nStatus: brak_danych; wymagane: 10; PASS: 1; FAIL: 0; brak danych: 9\n- T05 MoÅ¼liwoÅÄ regulacji mocy czynnej: no_data - Brak aktywnej regulacji mocy czynnej lub rampy.\n- T09 ZdolnoÅÄ do generacji mocy biernej: no_data - Brak zakresu Q/Pn moduÅu.\n- T10 Potwierdzenie mocy maksymalnej PMAX: pass - PMAX potwierdzone z danych katalogowych/deklaracji: 2500.0 kW.\n- T11 Potwierdzenie mocy minimalnej PMIN: no_data - Brak deklarowanej wartoÅci PMIN.\n- T12 Zaprzestanie generacji mocy czynnej: no_data - Brak funkcji zdalnej komendy P albo rampy wykonania.\n- T13 Zmniejszenie generacji mocy czynnej: no_data - Brak funkcji zdalnej komendy P albo rampy wykonania.\n- T14 LVRT - pozostanie w pracy przy zapadzie napiÄcia: no_data - Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.\n- T15 HVRT - pozostanie w pracy przy wzroÅcie napiÄcia: no_data - Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.\n- T16 Odbudowa mocy czynnej po zakÅÃ³ceniu: no_data - Brak czasu odbudowy mocy czynnej po FRT.\n- T17 PrÄ\u0085d bierny podczas FRT: no_data - Brak wzmocnienia prÄ\u0085du biernego K_FRT.\n- T19 Rejestracja zakÅÃ³ceÅ i komunikacja z operatorem: fail - Zweryfikowano obserwowalnoÅÄ i rejestracjÄ zakÅÃ³ceÅ."
+}

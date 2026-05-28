@@ -467,7 +467,7 @@ export function useCaseKindLabel(): string | null {
     case 'ShortCircuitCase':
       return 'Zakres zwarciowy';
     case 'PowerFlowCase':
-      return 'Zakres obliczeń rozplywu mocy';
+      return 'Zakres obliczeń rozpływu mocy';
     default:
       return kind;
   }
@@ -480,7 +480,7 @@ export function useResultStatusLabel(): string {
   const status = useAppStateStore((state) => state.activeCaseResultStatus);
   switch (status) {
     case 'NONE':
-      return 'Wyniki nieuruchomione';
+      return 'Wyniki do obliczenia';
     case 'FRESH':
       return 'Wyniki aktualne';
     case 'OUTDATED':
@@ -540,7 +540,7 @@ export function useCanCalculate(): { allowed: boolean; reason: string | null } {
   if (resultStatus === 'FRESH') {
     return {
       allowed: false,
-      reason: 'Wyniki są aktualne. Zmień konfigurację układu, aby uruchomić analizę ponownie.',
+      reason: 'Wyniki są aktualne. Zmień konfigurację układu, aby wykonać analizę ponownie.',
     };
   }
 

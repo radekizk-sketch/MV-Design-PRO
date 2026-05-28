@@ -30,8 +30,10 @@ export type {
   PreviewTemplateResult,
 } from './api';
 export { StationTemplateWizard } from './StationTemplateWizard';
+export { StationBatchPlanner, buildStationBatchPlan } from './StationBatchPlanner';
 export type {
   StationTemplateWizardProps,
   WizardStep,
   WizardState,
 } from './StationTemplateWizard';
+export type { StationBatchPlanRow, StationBatchPlannerProps } from './StationBatchPlanner';

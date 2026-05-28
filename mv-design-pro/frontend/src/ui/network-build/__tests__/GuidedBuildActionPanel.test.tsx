@@ -54,7 +54,7 @@ describe('GuidedBuildActionPanel', () => {
     expect(screen.getByText('Konfiguracja układu')).toBeInTheDocument();
     expect(screen.getByText('Następny krok projektowy')).toBeInTheDocument();
     expect(screen.getByText('Struktura układu')).toBeInTheDocument();
-    expect(screen.getByText('Można uruchomić obliczenia.')).toBeInTheDocument();
+    expect(screen.getByText('Można wykonać obliczenia.')).toBeInTheDocument();
     expect(container.textContent ?? '').not.toMatch(/Budowa modelu|Stan topologii/);
   });
 

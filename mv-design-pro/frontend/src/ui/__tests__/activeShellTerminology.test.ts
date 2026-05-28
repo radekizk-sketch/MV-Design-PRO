@@ -28,6 +28,8 @@ const FORBIDDEN_ACTIVE_LABELS = [
   'Przebiegi obliczeń',
   'Historia uruchomień',
   'Stan uruchomienia',
+  'Wyniki nieuruchomione',
+  'do uruchomienia',
   'Id migawki',
   'Porównanie wariantów',
 ];

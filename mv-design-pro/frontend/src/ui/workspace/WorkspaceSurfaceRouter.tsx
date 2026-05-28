@@ -1,8 +1,20 @@
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../app-state';
 import { ResultsComparisonPage } from '../comparison/ResultsComparisonPage';
+import {
+  fetchBranchResults,
+  fetchBusResults,
+  fetchResultsIndex,
+  fetchShortCircuitResults,
+} from '../results-inspector/api';
+import type {
+  BranchResultRow,
+  BusResultRow,
+  ShortCircuitRow,
+} from '../results-inspector/types';
 import { CatalogBrowser } from '../network-build/CatalogBrowser';
+import { StationBatchPlanner } from '../network-build/station-templates';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 // 18 form components zaimportowane przez OPERATION_FORM_REGISTRY (decompose Etap 11)
 import { OPERATION_FORM_REGISTRY } from './operationFormRegistry';
@@ -46,6 +58,7 @@ import {
 import { PvSourceSurface, BessSurface, FwSurface } from './surfaces/DerSurfaces';
 import { ReferenceNetworkSurface } from './surfaces/ReferenceNetworkSurface';
 import { V126AcademicSurface } from './surfaces/V126AcademicSurface';
+import { NcRfgTestsTab } from './surfaces/NcRfgTestsTab';
 import {
   AnalysisSurfaceComparisonWizard,
   AnalysisSurfaceSensitivityTab,
@@ -54,6 +67,7 @@ import {
 } from './routerExtensionSurfaces';
 import { useExecutionRunsStore } from '../study-cases/runStore';
 import { ANALYSIS_TYPE_LABELS } from '../study-cases/types';
+import { ElementCalculationProofPanel, ProofLatexPanel } from '../proof';
 import {
   buildRecordRows,
   buildSummaryRows,
@@ -69,7 +83,6 @@ import {
   ANALYSIS_ROUTE_DEFAULT_TAB,
   ANALYSIS_SURFACE_SCREEN_CODE,
   REPORT_SURFACE_SCREEN_CODE,
-  resolveSaveModeLabel,
   type WorkspaceSurfaceCode,
   type WorkspaceSurfaceDescriptor,
 } from './types';
@@ -104,12 +117,21 @@ import {
 } from './routerPureHelpers';
 // SurfaceBreadcrumbs używane wewnątrz routerSurfaceHeader
 import { ContractStatusCard, ScopePills } from './routerStatusComponents';
-import { SectionCard, KeyValueGrid } from './routerCardComponents';
+import {
+  ActionableEngineeringTable,
+  EmptyEngineeringState,
+  ReportChapterChecklist,
+  SectionCard,
+  KeyValueGrid,
+  type EngineeringStageRow,
+  type EngineeringStageStatus,
+  type ReportChapterStatus,
+} from './routerCardComponents';
 import { resolveSurfaceObjectLabel } from './routerLabelHelpers';
 import { MiniSldCard, SurfaceHeader } from './routerSurfaceHeader';
 import { isCanonicalOpName, type CanonicalOpName } from '../../types/domainOps';
 import { resolveFixActionSurface } from '../../types/fixActionSurface';
-import type { FixAction } from '../../types/enm';
+import type { EnergyNetworkModel, FixAction } from '../../types/enm';
 
 interface WorkspaceSurfaceRouterProps {
   region: 'panel' | 'main';
@@ -380,6 +402,465 @@ function useChildSurfaceLauncher(surface: WorkspaceSurfaceDescriptor) {
   };
 }
 
+function displayAnalysisTabLabel(tabId: string | null | undefined): string {
+  switch (tabId) {
+    case 'results':
+      return 'Tabele wyników';
+    case 'trace':
+      return 'Ślad obliczeń';
+    case 'protection':
+      return 'Zabezpieczenia';
+    case 'power-flow':
+      return 'Rozpływ mocy';
+    case 'compare':
+      return 'Porównanie przebiegów';
+    case 'ncrfg-tests':
+      return 'Testy NC RfG';
+    case 'sensitivity':
+      return 'Analiza wrażliwości';
+    case 'comparison_wizard':
+      return 'Porównanie A/B';
+    default:
+      return 'Podsumowanie';
+  }
+}
+
+interface AnalysisTableRow {
+  readonly key: string;
+  readonly type: string;
+  readonly name: string;
+  readonly voltage: string;
+  readonly input: string;
+  readonly resultA: string;
+  readonly resultB: string;
+  readonly status: string;
+}
+
+function formatTechnicalNumber(value: number | null | undefined, unit: string, fractionDigits = 3): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 'brak danych';
+  return `${value.toLocaleString('pl-PL', { maximumFractionDigits: fractionDigits })} ${unit}`;
+}
+
+function formatCatalogRef(ref: string | null | undefined): string {
+  if (!ref) return 'brak katalogu';
+  const parts = ref.split('/').filter(Boolean);
+  return parts[parts.length - 1] ?? ref;
+}
+
+function formatResultObjectLabel(ref: string | null | undefined): string {
+  if (!ref) return 'obiekt układu';
+  const parts = ref.split('/').filter(Boolean);
+  return parts[parts.length - 1] ?? ref;
+}
+
+function appendUniqueProofRef(target: string[], value: unknown): void {
+  if (typeof value !== 'string') return;
+  const trimmed = value.trim();
+  if (!trimmed || target.includes(trimmed)) return;
+  target.push(trimmed);
+}
+
+function appendObjectProofRefs(target: string[], value: unknown, keys: readonly string[]): void {
+  if (!value || typeof value !== 'object') return;
+  const record = value as Record<string, unknown>;
+  for (const key of keys) appendUniqueProofRef(target, record[key]);
+}
+
+function proofElementMatches(value: unknown, elementId: string | null): boolean {
+  if (!elementId || !value || typeof value !== 'object') return false;
+  const record = value as Record<string, unknown>;
+  return [record.id, record.ref_id, record.name].some((candidate) => candidate === elementId);
+}
+
+function buildWorkspaceProofCandidateRefs(
+  selectedElement: { id: string; name?: string | null } | null,
+  snapshot: EnergyNetworkModel | null,
+): string[] {
+  const refs: string[] = [];
+  const elementId = selectedElement?.id ?? null;
+
+  appendUniqueProofRef(refs, selectedElement?.id);
+  appendUniqueProofRef(refs, selectedElement?.name);
+
+  if (!snapshot || !elementId) return refs;
+
+  const bus = snapshot.buses?.find((item) => proofElementMatches(item, elementId));
+  appendObjectProofRefs(refs, bus, ['id', 'ref_id', 'name']);
+
+  const branch = snapshot.branches?.find((item) => proofElementMatches(item, elementId));
+  appendObjectProofRefs(refs, branch, ['id', 'ref_id', 'name', 'from_bus_ref', 'to_bus_ref']);
+
+  const transformer = snapshot.transformers?.find((item) => proofElementMatches(item, elementId));
+  appendObjectProofRefs(refs, transformer, ['id', 'ref_id', 'name', 'hv_bus_ref', 'lv_bus_ref']);
+
+  const station = snapshot.substations?.find((item) => proofElementMatches(item, elementId));
+  appendObjectProofRefs(refs, station, ['id', 'ref_id', 'name']);
+  for (const busRef of station?.bus_refs ?? []) appendUniqueProofRef(refs, busRef);
+  for (const transformerRef of station?.transformer_refs ?? []) appendUniqueProofRef(refs, transformerRef);
+
+  const generator = snapshot.generators?.find((item) => proofElementMatches(item, elementId));
+  appendObjectProofRefs(refs, generator, ['id', 'ref_id', 'name', 'bus_ref', 'station_ref']);
+
+  const load = snapshot.loads?.find((item) => proofElementMatches(item, elementId));
+  appendObjectProofRefs(refs, load, ['id', 'ref_id', 'name', 'bus_ref']);
+
+  const source = snapshot.sources?.find((item) => proofElementMatches(item, elementId));
+  appendObjectProofRefs(refs, source, ['id', 'ref_id', 'name', 'bus_ref', 'substation_ref']);
+
+  if (bus) {
+    for (const item of snapshot.branches ?? []) {
+      if (item.from_bus_ref === bus.ref_id || item.to_bus_ref === bus.ref_id) {
+        appendObjectProofRefs(refs, item, ['id', 'ref_id', 'name']);
+      }
+    }
+  }
+
+  return refs;
+}
+
+function formatFlags(flags: readonly string[] | null | undefined): string {
+  const normalized = (flags ?? []).map((flag) => flag.trim()).filter(Boolean);
+  return normalized.length > 0 ? `uwagi: ${normalized.join(', ')}` : 'wynik obliczony';
+}
+
+function formatNullableResult(
+  label: string,
+  value: number | null | undefined,
+  unit: string,
+  fractionDigits = 3,
+): string {
+  return `${label} ${formatTechnicalNumber(value, unit, fractionDigits)}`;
+}
+
+function hasNumericResult(...values: Array<number | null | undefined>): boolean {
+  return values.some((value) => typeof value === 'number' && Number.isFinite(value));
+}
+
+function buildShortCircuitAnalysisRows(rows: readonly ShortCircuitRow[]): AnalysisTableRow[] {
+  return rows.map((row, index) => {
+    const faultType = row.fault_type?.trim() || 'zwarcie';
+    const targetLabel =
+      row.target_name?.trim()
+      || formatResultObjectLabel(row.element_id ?? row.target_id)
+      || row.target_id;
+    const complete = hasNumericResult(row.ikss_ka, row.ip_ka, row.ith_ka, row.sk_mva);
+
+    return {
+      key: `short-circuit:${row.target_id}:${index}`,
+      type: 'Zwarcie',
+      name: targetLabel,
+      voltage: faultType,
+      input: 'IEC 60909; dane z wyniku serwerowego',
+      resultA: `${formatNullableResult("Ik''", row.ikss_ka, 'kA', 2)}; ${formatNullableResult('ip', row.ip_ka, 'kA', 2)}`,
+      resultB: `${formatNullableResult('Ith', row.ith_ka, 'kA', 2)}; ${formatNullableResult("Sk''", row.sk_mva, 'MVA', 3)}`,
+      status: complete ? `${formatFlags(row.flags)}; uzasadnienie dostępne` : 'wynik częściowy: brak kompletu wartości',
+    };
+  });
+}
+
+function buildBusResultAnalysisRows(rows: readonly BusResultRow[]): AnalysisTableRow[] {
+  return rows.map((row, index) => ({
+    key: `bus-result:${row.bus_id}:${index}`,
+    type: 'Węzeł',
+    name: row.name || formatResultObjectLabel(row.element_id ?? row.bus_id) || row.bus_id,
+    voltage: formatTechnicalNumber(row.un_kv, 'kV', 3),
+    input: 'Rozpływ mocy; dane z wyniku serwerowego',
+    resultA: `${formatNullableResult('U', row.u_kv, 'kV', 3)}; ${formatNullableResult('u', row.u_pu, 'pu', 4)}`,
+    resultB: formatNullableResult('kąt', row.angle_deg, '°', 2),
+    status: formatFlags(row.flags),
+  }));
+}
+
+function buildBranchResultAnalysisRows(rows: readonly BranchResultRow[]): AnalysisTableRow[] {
+  return rows.map((row, index) => ({
+    key: `branch-result:${row.branch_id}:${index}`,
+    type: 'Gałąź',
+    name: row.name || formatResultObjectLabel(row.element_id ?? row.branch_id) || row.branch_id,
+    voltage: `${formatResultObjectLabel(row.from_bus)} → ${formatResultObjectLabel(row.to_bus)}`,
+    input: 'Rozpływ mocy; dane z wyniku serwerowego',
+    resultA: `${formatNullableResult('I', row.i_a, 'A', 1)}; ${formatNullableResult('obc.', row.loading_pct, '%', 1)}`,
+    resultB: `${formatNullableResult('P', row.p_mw, 'MW', 3)}; ${formatNullableResult('Q', row.q_mvar, 'MVAr', 3)}; ${formatNullableResult('S', row.s_mva, 'MVA', 3)}`,
+    status: formatFlags(row.flags),
+  }));
+}
+
+interface ServerAnalysisRowsState {
+  readonly status: 'idle' | 'loading' | 'ready' | 'error';
+  readonly rows: AnalysisTableRow[];
+  readonly title: string;
+  readonly description: string;
+  readonly error?: string;
+}
+
+const EMPTY_SERVER_ANALYSIS_ROWS: ServerAnalysisRowsState = {
+  status: 'idle',
+  rows: [],
+  title: 'Tabele wyników per obiekt',
+  description:
+    'Widok pokazuje obiekty z aktywnej wersji układu oraz status wyniku. Brak obliczenia jest oznaczony jako nie wyznaczono albo wynik zablokowany, bez podstawiania wartości zerowych.',
+};
+
+function buildLoadingAnalysisRows(): AnalysisTableRow[] {
+  return [
+    {
+      key: 'server-results-loading',
+      type: 'Obliczenie',
+      name: 'Ładowanie wyników',
+      voltage: 'brak danych',
+      input: 'Pobieranie tabel wyników z serwera',
+      resultA: 'brak danych',
+      resultB: 'brak danych',
+      status: 'oczekiwanie na wynik serwera',
+    },
+  ];
+}
+
+function buildErrorAnalysisRows(message: string): AnalysisTableRow[] {
+  return [
+    {
+      key: 'server-results-error',
+      type: 'Obliczenie',
+      name: 'Nie pobrano wyników',
+      voltage: 'brak danych',
+      input: 'Aktywne obliczenie istnieje, ale tabela wyników nie została pobrana',
+      resultA: 'brak danych',
+      resultB: 'brak danych',
+      status: message,
+    },
+  ];
+}
+
+function hasResultTable(tableId: string, tables: readonly { table_id: string; row_count: number }[]): boolean {
+  return tables.some((table) => table.table_id === tableId && table.row_count > 0);
+}
+
+function resolveServerRowsTitle(rows: readonly AnalysisTableRow[]): string {
+  const types = new Set(rows.map((row) => row.type));
+  if (types.size === 1 && types.has('Zwarcie')) return 'Wyniki zwarciowe per obiekt';
+  if (types.has('Węzeł') || types.has('Gałąź')) return 'Wyniki rozpływu mocy per obiekt';
+  return 'Wyniki obliczeń per obiekt';
+}
+
+function useServerAnalysisRows(runId: string | null): ServerAnalysisRowsState {
+  const [state, setState] = useState<ServerAnalysisRowsState>(EMPTY_SERVER_ANALYSIS_ROWS);
+
+  useEffect(() => {
+    if (!runId) {
+      setState(EMPTY_SERVER_ANALYSIS_ROWS);
+      return;
+    }
+
+    let cancelled = false;
+    const selectedRunId = runId;
+    setState({
+      status: 'loading',
+      rows: buildLoadingAnalysisRows(),
+      title: 'Ładowanie wyników obliczenia',
+      description: 'Widok pobiera gotowe tabele wyników z backendu. Frontend nie wykonuje obliczeń.',
+    });
+
+    async function loadRows() {
+      try {
+        const index = await fetchResultsIndex(selectedRunId);
+        const tables = index.tables ?? [];
+        const batches: Array<Promise<AnalysisTableRow[]>> = [];
+
+        if (hasResultTable('short_circuit', tables)) {
+          batches.push(
+            fetchShortCircuitResults(selectedRunId).then((payload) =>
+              buildShortCircuitAnalysisRows(Array.isArray(payload.rows) ? payload.rows : []),
+            ),
+          );
+        }
+
+        if (hasResultTable('buses', tables)) {
+          batches.push(
+            fetchBusResults(selectedRunId).then((payload) =>
+              buildBusResultAnalysisRows(Array.isArray(payload.rows) ? payload.rows : []),
+            ),
+          );
+        }
+
+        if (hasResultTable('branches', tables)) {
+          batches.push(
+            fetchBranchResults(selectedRunId).then((payload) =>
+              buildBranchResultAnalysisRows(Array.isArray(payload.rows) ? payload.rows : []),
+            ),
+          );
+        }
+
+        const rows = (await Promise.all(batches)).flat().slice(0, 200);
+        if (cancelled) return;
+
+        setState({
+          status: 'ready',
+          rows,
+          title: rows.length > 0 ? resolveServerRowsTitle(rows) : EMPTY_SERVER_ANALYSIS_ROWS.title,
+          description:
+            rows.length > 0
+              ? 'Dane pochodzą z zamrożonego wyniku backendowego i śladu obliczeń. Wartości nie są liczone ani zgadywane w UI.'
+              : EMPTY_SERVER_ANALYSIS_ROWS.description,
+        });
+      } catch (error) {
+        if (cancelled) return;
+        const message = error instanceof Error ? error.message : 'Nieznany błąd pobierania wyników';
+        setState({
+          status: 'error',
+          rows: buildErrorAnalysisRows(message),
+          title: 'Nie pobrano wyników obliczenia',
+          description:
+            'Aktywne obliczenie zostało wskazane, ale frontend nie może pobrać tabel wynikowych z API. Brak danych nie jest zastępowany zerami.',
+          error: message,
+        });
+      }
+    }
+
+    void loadRows();
+    return () => {
+      cancelled = true;
+    };
+  }, [runId]);
+
+  return state;
+}
+
+function buildAnalysisTableRows(
+  snapshot: EnergyNetworkModel | null,
+  hasSelectedCalculation: boolean,
+): AnalysisTableRow[] {
+  const resultStatus = hasSelectedCalculation
+    ? 'nie wyznaczono w bieżącym widoku'
+    : 'wynik zablokowany: wybierz albo wykonaj obliczenie';
+
+  if (!snapshot) {
+    return [
+      {
+        key: 'no-snapshot',
+        type: 'Model',
+        name: 'Brak aktywnej wersji układu',
+        voltage: 'brak danych',
+        input: 'Wybierz projekt i zakres obliczeń',
+        resultA: 'nie wyznaczono',
+        resultB: 'nie wyznaczono',
+        status: resultStatus,
+      },
+    ];
+  }
+
+  const rows: AnalysisTableRow[] = [];
+
+  for (const bus of snapshot.buses ?? []) {
+    rows.push({
+      key: `bus:${bus.ref_id}`,
+      type: 'Węzeł',
+      name: bus.name || bus.ref_id,
+      voltage: formatTechnicalNumber(bus.voltage_kv, 'kV'),
+      input: bus.zone ? `Strefa: ${bus.zone}` : 'topologia ENM',
+      resultA: 'U: nie wyznaczono',
+      resultB: 'kąt/P/Q: nie wyznaczono',
+      status: resultStatus,
+    });
+  }
+
+  for (const branch of snapshot.branches ?? []) {
+    const length = 'length_km' in branch ? formatTechnicalNumber(branch.length_km, 'km') : 'brak danych';
+    const rx =
+      'r_ohm_per_km' in branch && 'x_ohm_per_km' in branch
+        ? `R' ${formatTechnicalNumber(branch.r_ohm_per_km, 'Ω/km')}; X' ${formatTechnicalNumber(branch.x_ohm_per_km, 'Ω/km')}`
+        : 'R/X wg typu łącznika';
+    rows.push({
+      key: `branch:${branch.ref_id}`,
+      type: branch.type === 'cable' ? 'Odcinek kablowy SN' : 'Gałąź SN',
+      name: branch.name || branch.ref_id,
+      voltage: 'SN',
+      input: `${length}; ${rx}; katalog: ${formatCatalogRef(branch.catalog_ref)}`,
+      resultA: 'I: nie wyznaczono',
+      resultB: 'ΔU/P/Q/straty: nie wyznaczono',
+      status: branch.status === 'open' ? 'łącznik otwarty' : resultStatus,
+    });
+  }
+
+  for (const transformer of snapshot.transformers ?? []) {
+    rows.push({
+      key: `transformer:${transformer.ref_id}`,
+      type: 'Transformator',
+      name: transformer.name || transformer.ref_id,
+      voltage: `${formatTechnicalNumber(transformer.uhv_kv, 'kV')} / ${formatTechnicalNumber(transformer.ulv_kv, 'kV')}`,
+      input: `Sn ${formatTechnicalNumber(transformer.sn_mva, 'MVA')}; uk ${formatTechnicalNumber(transformer.uk_percent, '%')}; katalog: ${formatCatalogRef(transformer.catalog_ref)}`,
+      resultA: 'obciążenie: nie wyznaczono',
+      resultB: 'straty/P/Q: nie wyznaczono',
+      status: resultStatus,
+    });
+  }
+
+  for (const generator of snapshot.generators ?? []) {
+    const sourceType =
+      generator.gen_type === 'bess'
+        ? 'BESS'
+        : generator.gen_type?.includes('wind') || generator.gen_type?.startsWith('fw')
+          ? 'FW'
+          : 'PV/DER';
+    rows.push({
+      key: `generator:${generator.ref_id}`,
+      type: sourceType,
+      name: generator.name || generator.ref_id,
+      voltage: generator.connection_variant ?? 'brak danych',
+      input: `P ${formatTechnicalNumber(generator.p_mw, 'MW')}; Q ${formatTechnicalNumber(generator.q_mvar, 'MVAr')}; katalog: ${formatCatalogRef(generator.catalog_ref)}`,
+      resultA: 'wpływ U/I: nie wyznaczono',
+      resultB: 'NC RfG/FRT: nie wyznaczono',
+      status: generator.bus_ref ? resultStatus : 'wynik zablokowany: brak PCC',
+    });
+  }
+
+  return rows.slice(0, 80);
+}
+
+function AnalysisDataTable({
+  rows,
+  title,
+  description,
+}: {
+  readonly rows: AnalysisTableRow[];
+  readonly title: string;
+  readonly description: string;
+}) {
+  return (
+    <div className="space-y-3" data-testid="analysis-results-table-view">
+      <div>
+        <h4 className="text-sm font-semibold text-slate-100">{title}</h4>
+        <p className="mt-1 text-xs text-slate-400">{description}</p>
+      </div>
+      <div className="overflow-x-auto rounded-lg border border-slate-700/80">
+        <table className="min-w-full border-collapse text-left text-xs" data-testid="analysis-results-table">
+          <thead className="bg-slate-900/80 text-[11px] uppercase tracking-[0.12em] text-slate-300">
+            <tr>
+              <th className="whitespace-nowrap border-b border-slate-700 px-3 py-2">Typ</th>
+              <th className="whitespace-nowrap border-b border-slate-700 px-3 py-2">Obiekt</th>
+              <th className="whitespace-nowrap border-b border-slate-700 px-3 py-2">U_n / wariant</th>
+              <th className="min-w-[260px] border-b border-slate-700 px-3 py-2">Dane wejściowe</th>
+              <th className="whitespace-nowrap border-b border-slate-700 px-3 py-2">Wynik 1</th>
+              <th className="whitespace-nowrap border-b border-slate-700 px-3 py-2">Wynik 2</th>
+              <th className="min-w-[210px] border-b border-slate-700 px-3 py-2">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800 text-slate-200">
+            {rows.map((row) => (
+              <tr key={row.key} className="hover:bg-slate-900/60">
+                <td className="whitespace-nowrap px-3 py-2 font-semibold text-slate-100">{row.type}</td>
+                <td className="px-3 py-2">{row.name}</td>
+                <td className="whitespace-nowrap px-3 py-2">{row.voltage}</td>
+                <td className="px-3 py-2 text-slate-300">{row.input}</td>
+                <td className="whitespace-nowrap px-3 py-2">{row.resultA}</td>
+                <td className="whitespace-nowrap px-3 py-2">{row.resultB}</td>
+                <td className="px-3 py-2 text-amber-100">{row.status}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 function AnalysisContextSummary({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeProjectName = useAppStateStore((state) => state.activeProjectName);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
@@ -390,18 +871,30 @@ function AnalysisContextSummary({ surface }: { surface: WorkspaceSurfaceDescript
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const selectedElement = useSelectionStore((state) => state.selectedElement);
 
+  const rows = [
+    { label: 'Projekt', value: displayProjectLabel(activeProjectName) },
+    { label: 'Wariant', value: displayScopeLabel(activeCaseName, activeCaseId) },
+    { label: 'Wersja układu', value: activeSnapshotId ? 'Aktualna wersja układu' : 'Nie wybrano wersji układu' },
+    { label: 'Obliczenie', value: resolveRunLabel(activeRunId, executionRuns) },
+    { label: 'Obiekt', value: resolveSurfaceObjectLabel(surface, snapshot, selectedElement) },
+    { label: 'Zakładka', value: displayAnalysisTabLabel(surface.tabId) },
+  ];
+
   return (
-    <KeyValueGrid
-      rows={[
-        { label: 'Projekt', value: displayProjectLabel(activeProjectName) },
-        { label: 'Wariant', value: displayScopeLabel(activeCaseName, activeCaseId) },
-        { label: 'Wersja układu', value: activeSnapshotId ? 'Aktualna wersja układu' : 'Nie wybrano wersji układu' },
-        { label: 'Obliczenie', value: resolveRunLabel(activeRunId, executionRuns) },
-        { label: 'Obiekt', value: resolveSurfaceObjectLabel(surface, snapshot, selectedElement) },
-        { label: 'Zakładka', value: surface.tabId ?? 'Podsumowanie' },
-      ]}
-      columns={3}
-    />
+    <div className="overflow-x-auto rounded-lg border border-slate-700/80" data-testid="analysis-context-table">
+      <table className="min-w-full border-collapse text-left text-xs">
+        <tbody className="divide-y divide-slate-800">
+          {rows.map((row) => (
+            <tr key={row.label}>
+              <th className="w-52 bg-slate-900/70 px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                {row.label}
+              </th>
+              <td className="px-3 py-2 text-slate-100">{row.value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -411,9 +904,37 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const executionRuns = useExecutionRunsStore((state) => state.runs);
   const executionActiveRunId = useExecutionRunsStore((state) => state.activeRunId);
+  const snapshot = useSnapshotStore((state) => state.snapshot);
+  const selectedElement = useSelectionStore((state) => state.selectedElement);
   const openChildSurface = useChildSurfaceLauncher(surface);
   const activeAnalysisTab = surface.tabId ?? ANALYSIS_ROUTE_DEFAULT_TAB;
   const effectiveRunId = activeRunId ?? executionActiveRunId;
+  const serverAnalysisRows = useServerAnalysisRows(effectiveRunId);
+  const analysisRows = useMemo(
+    () =>
+      serverAnalysisRows.status === 'loading'
+      || serverAnalysisRows.status === 'error'
+      || serverAnalysisRows.rows.length > 0
+        ? serverAnalysisRows.rows
+        : buildAnalysisTableRows(snapshot, Boolean(effectiveRunId)),
+    [effectiveRunId, serverAnalysisRows.rows, serverAnalysisRows.status, snapshot],
+  );
+  const analysisTableTitle =
+    serverAnalysisRows.status === 'loading'
+    || serverAnalysisRows.status === 'error'
+    || serverAnalysisRows.rows.length > 0
+      ? serverAnalysisRows.title
+      : EMPTY_SERVER_ANALYSIS_ROWS.title;
+  const analysisTableDescription =
+    serverAnalysisRows.status === 'loading'
+    || serverAnalysisRows.status === 'error'
+    || serverAnalysisRows.rows.length > 0
+      ? serverAnalysisRows.description
+      : EMPTY_SERVER_ANALYSIS_ROWS.description;
+  const proofCandidateRefs = useMemo(
+    () => selectedElement ? [selectedElement.id, selectedElement.name ?? ''] : [],
+    [selectedElement],
+  );
 
   const comparisonRunHistory = useMemo(
     () =>
@@ -497,6 +1018,18 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             }
           />
           <SurfaceActionButton
+            label="Testy NC RfG"
+            onClick={() =>
+              openChildSurface('analysis', {
+                screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
+                tabId: 'ncrfg-tests',
+                titlePl: 'Testy NC RfG',
+                sizeClass: 'C',
+                supportsMiniSld: true,
+              })
+            }
+          />
+          <SurfaceActionButton
             label="Analiza wrażliwości"
             onClick={() =>
               openChildSurface('analysis', {
@@ -528,12 +1061,33 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           <AnalysisSurfaceSensitivityTab />
         ) : activeAnalysisTab === 'comparison_wizard' ? (
           <AnalysisSurfaceComparisonWizard />
+        ) : activeAnalysisTab === 'ncrfg-tests' ? (
+          <NcRfgTestsTab />
+        ) : activeAnalysisTab === 'trace' ? (
+          <div className="space-y-4">
+            <ElementCalculationProofPanel
+              runId={effectiveRunId}
+              selectedElement={selectedElement}
+              candidateRefs={proofCandidateRefs}
+              className="rounded-lg border border-slate-700/80 bg-white p-4"
+            />
+            <ProofLatexPanel runId={effectiveRunId} />
+          </div>
         ) : (
-          <p className="text-xs text-slate-400">Wybierz zakładkę analityki albo otwórz kontrolę konfiguracji układu przed uruchomieniem analiz.</p>
+          <AnalysisDataTable
+            rows={analysisRows}
+            title={analysisTableTitle}
+            description={analysisTableDescription}
+          />
         )}
       </SectionCard>
     </div>
   );
+}
+
+function isCompletedAnalysisRunStatus(status: string | null | undefined): boolean {
+  const normalized = typeof status === 'string' ? status.trim().toUpperCase() : '';
+  return normalized === 'DONE' || normalized === 'FINISHED' || normalized === 'COMPLETED';
 }
 
 function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
@@ -590,6 +1144,8 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   // per-axis. Jeśli jakikolwiek DER ma krytyczne zagadnienie na osi raportu
   // (SC3F/SC1F/VDROP/EQUIPMENT/PROTECTION/NC_RFG), raport jest zablokowany.
   const readiness = useSnapshotStore((state) => state.readiness);
+  const snapshot = useSnapshotStore((state) => state.snapshot);
+  const refreshSnapshotFromBackend = useSnapshotStore((state) => state.refreshFromBackend);
   const allDers = useStationDerStore((state) => selectAllDers(state));
   const incompleteDers = allDers.filter(
     (d) => d.completeness !== 'complete',
@@ -645,6 +1201,289 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       ? 'Dalej: przejdź do konfiguracji technicznej i dokończ dane wymagane przez raport.'
       : 'Dalej: skonfiguruj układ, potem uruchom obliczenia.';
 
+  const snapshotCounts = {
+    buses: snapshot?.buses?.length ?? 0,
+    branches: snapshot?.branches?.length ?? 0,
+    transformers: snapshot?.transformers?.length ?? 0,
+    sources: snapshot?.sources?.length ?? 0,
+    loads: snapshot?.loads?.length ?? 0,
+    generators: snapshot?.generators?.length ?? 0,
+    substations: snapshot?.substations?.length ?? 0,
+    bays: snapshot?.bays?.length ?? 0,
+  };
+  const batchTargetSegmentRefs = (snapshot?.branches ?? [])
+    .filter((branch) => branch.type === 'cable' || branch.type === 'line_overhead')
+    .map((branch) => branch.ref_id || branch.id)
+    .filter((ref): ref is string => Boolean(ref));
+  const readinessBlockers = readiness?.blockers ?? [];
+  const hasCompletedRun = Boolean(activeRunId && isCompletedAnalysisRunStatus(runContract?.status));
+  const hasSolverTrace = Boolean(runContract?.traceSummary);
+  const openProofSurface = () =>
+    openChildSurface('report', {
+      screenCode: 'E-36',
+      titlePl: 'Uzasadnienie obliczeń',
+      sizeClass: 'C',
+      openMode: 'replace_right_panel',
+    });
+  const openAnalysisSurface = () =>
+    openChildSurface('analysis', {
+      screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
+      tabId: 'results',
+      titlePl: 'Wyniki obliczeń sieci',
+      sizeClass: 'C',
+      supportsMiniSld: true,
+    });
+  const openProtectionSurface = () =>
+    openChildSurface('analysis', {
+      screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
+      tabId: 'protection',
+      titlePl: 'Zabezpieczenia i selektywność',
+      sizeClass: 'C',
+      supportsMiniSld: true,
+    });
+  const openNcRfgSurface = () =>
+    openChildSurface('analysis', {
+      screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
+      tabId: 'ncrfg-tests',
+      titlePl: 'Testy NC RfG / PTPiREE',
+      sizeClass: 'C',
+      supportsMiniSld: true,
+    });
+  const catalogStatus: EngineeringStageStatus =
+    snapshotCounts.branches > 0 || snapshotCounts.transformers > 0 ? 'do_sprawdzenia' : 'brak_danych';
+  const workflowRows: EngineeringStageRow[] = [
+    {
+      id: 'project',
+      stage: 'project',
+      label: 'Etap 1 Projekt',
+      status: activeProjectId && activeCaseId ? 'gotowe' : 'brak_danych',
+      dataSummary: `${displayProjectLabel(activeProjectName)} / ${displayScopeLabel(activeCaseName, activeCaseId)}`,
+      missingFields: activeProjectId && activeCaseId ? [] : ['projekt', 'zakres obliczeń'],
+      sourceRef: 'metadane projektu',
+      fixAction: { label: 'Edytuj metadane', onClick: openConfigurationOverview },
+    },
+    {
+      id: 'gpz',
+      stage: 'gpz',
+      label: 'Etap 2 GPZ i źródło',
+      status: snapshotCounts.sources > 0 && snapshotCounts.bays > 0 ? 'gotowe' : 'brak_danych',
+      dataSummary: `${snapshotCounts.sources} źródeł, ${snapshotCounts.bays} pól SN, ${snapshotCounts.transformers} transformatorów`,
+      missingFields: snapshotCounts.sources > 0 && snapshotCounts.bays > 0 ? [] : ['źródło GPZ', 'pola odpływowe', 'dane zwarciowe'],
+      sourceRef: 'ENM / katalog GPZ',
+      fixAction: { label: 'Otwórz GPZ', onClick: openConfigurationOverview },
+    },
+    {
+      id: 'trunk-50',
+      stage: 'trunk',
+      label: 'Etap 3 Ciąg SN 50+',
+      status: snapshotCounts.substations >= 50 ? 'gotowe' : snapshotCounts.substations > 0 ? 'czesciowy' : 'brak_danych',
+      dataSummary: `${snapshotCounts.substations} stacji, ${snapshotCounts.branches} odcinków, ${snapshotCounts.loads} odbiorów`,
+      missingFields: snapshotCounts.substations >= 50 ? [] : [`brakuje ${Math.max(0, 50 - snapshotCounts.substations)} stacji do testu 50+`],
+      sourceRef: 'ENM / szablony stacji',
+      fixAction: { label: 'Buduj ciąg', onClick: openConfigurationOverview },
+    },
+    {
+      id: 'stations',
+      stage: 'stations',
+      label: 'Etap 4 Stacje',
+      status: snapshotCounts.substations > 0 && snapshotCounts.transformers > 0 ? 'gotowe' : 'brak_danych',
+      dataSummary: `${snapshotCounts.substations} stacji, ${snapshotCounts.transformers} transformatorów SN/nN`,
+      missingFields: snapshotCounts.substations > 0 && snapshotCounts.transformers > 0 ? [] : ['typ stacji', 'transformator z katalogu', 'strona nN'],
+      sourceRef: 'ENM / katalog stacji',
+      fixAction: { label: 'Konfiguruj stacje', onClick: openConfigurationOverview },
+    },
+    {
+      id: 'branches',
+      stage: 'branches',
+      label: 'Etap 5 Odgałęzienia',
+      status: snapshotCounts.branches > 0 ? 'do_sprawdzenia' : 'brak_danych',
+      dataSummary: `${snapshotCounts.branches} odcinków i odgałęzień w modelu`,
+      missingFields: snapshotCounts.branches > 0 ? [] : ['port startowy', 'port końcowy', 'kabel lub linia z katalogu'],
+      sourceRef: 'ENM / porty',
+      fixAction: { label: 'Sprawdź odgałęzienia', onClick: openConfigurationOverview },
+    },
+    {
+      id: 'catalogs',
+      stage: 'catalogs',
+      label: 'Etap 6 Katalogi',
+      status: catalogStatus,
+      dataSummary: catalogStatus === 'brak_danych' ? 'brak elementów wymagających katalogu' : 'elementy modelu wymagają kontroli source_ref',
+      missingFields: catalogStatus === 'brak_danych' ? ['kable', 'transformatory', 'aparatura'] : [],
+      sourceRef: 'catalog_binding',
+      fixAction: { label: 'Otwórz katalogi', onClick: openConfigurationOverview },
+    },
+    {
+      id: 'calculations',
+      stage: 'calculations',
+      label: 'Etap 7 Obliczenia',
+      status: hasCompletedRun ? 'gotowe' : activeRunId ? 'czesciowy' : 'wynik_zablokowany',
+      dataSummary: resolveRunLabel(activeRunId, executionRuns),
+      missingFields: hasCompletedRun ? [] : ['zakończone obliczenie', 'wyniki per węzeł i odcinek'],
+      sourceRef: 'run / resultset',
+      fixAction: { label: 'Otwórz wyniki', onClick: openAnalysisSurface },
+    },
+    {
+      id: 'protection',
+      stage: 'protection',
+      label: 'Etap 8 Zabezpieczenia',
+      status: 'do_sprawdzenia',
+      dataSummary: 'CT/VT, przekaźniki, nastawy i selektywność wymagają kontroli przed raportem',
+      missingFields: [],
+      sourceRef: 'katalog zabezpieczeń',
+      fixAction: { label: 'Otwórz zabezpieczenia', onClick: openProtectionSurface },
+    },
+    {
+      id: 'ncrfg',
+      stage: 'ncrfg',
+      label: 'Etap 9 NC RfG / PTPiREE',
+      status: allDers.length === 0 ? 'brak_danych' : incompleteDers.length > 0 || derAxesAggregate.anyPartial ? 'czesciowy' : 'gotowe',
+      dataSummary: `${allDers.length} układów PV/BESS/FW, ${incompleteDers.length} do uzupełnienia`,
+      missingFields: allDers.length === 0 ? ['PCC źródła', 'profil NC RfG', 'LVRT/HVRT'] : incompleteDers.map((der) => der.name ?? der.id),
+      sourceRef: 'DER / NC RfG',
+      fixAction: { label: 'Testy NC RfG', onClick: openNcRfgSurface },
+    },
+    {
+      id: 'proof',
+      stage: 'proof',
+      label: 'Etap 10 Uzasadnienie obliczeń',
+      status: hasSolverTrace ? 'gotowe' : 'wynik_zablokowany',
+      dataSummary: hasSolverTrace ? 'dostępny ślad solvera i eksport LaTeX' : 'brak śladu solvera dla pełnego wywodu',
+      missingFields: hasSolverTrace ? [] : ['ślad solvera', 'wywód LaTeX', 'podstawienia'],
+      sourceRef: 'trace / proof pack',
+      fixAction: { label: 'Pokaż wywód', onClick: openProofSurface },
+    },
+    {
+      id: 'report',
+      stage: 'report',
+      label: 'Etap 11 Raport',
+      status: reportStatus === 'gotowy' ? 'gotowe' : reportStatus === 'czesciowy' ? 'czesciowy' : 'wynik_zablokowany',
+      dataSummary: `zakres: ${formatContractValue(scope)}, szczegółowość: ${formatContractValue(detailLevel)}`,
+      missingFields: reportStatus === 'gotowy' ? [] : ['kompletność danych', 'aktywne obliczenie', 'eksporty'],
+      sourceRef: 'raport / eksport',
+      fixAction: {
+        label: reportStatus === 'gotowy' ? 'Sprawdź raport' : 'Przejdź do konfiguracji',
+        onClick: reportStatus === 'gotowy'
+          ? () => navigateToReport({ caseId: activeCaseId, runId: activeRunId })
+          : openConfigurationOverview,
+      },
+    },
+  ];
+  const reportChapterRows: ReportChapterStatus[] = [
+    {
+      chapterId: 'identification',
+      titlePl: '1. Identyfikacja projektu',
+      status: activeProjectId ? 'gotowe' : 'brak_danych',
+      objectCount: activeProjectId ? 1 : 0,
+      sourceKind: 'metadane projektu',
+      missingCount: activeProjectId ? 0 : 1,
+      exportIncluded: Boolean(activeProjectId),
+      fixAction: { label: 'Edytuj projekt', onClick: openConfigurationOverview },
+    },
+    {
+      chapterId: 'topology',
+      titlePl: '2. Topologia i SLD',
+      status: snapshotCounts.buses > 0 ? 'gotowe' : 'brak_danych',
+      objectCount: snapshotCounts.buses + snapshotCounts.branches + snapshotCounts.substations,
+      sourceKind: 'ENM / SLD',
+      missingCount: snapshotCounts.buses > 0 ? 0 : 1,
+      exportIncluded: snapshotCounts.buses > 0,
+      fixAction: { label: 'Otwórz SLD', onClick: openConfigurationOverview },
+    },
+    {
+      chapterId: 'catalogs',
+      titlePl: '3. Katalogi techniczne',
+      status: catalogStatus,
+      objectCount: snapshotCounts.branches + snapshotCounts.transformers + snapshotCounts.bays,
+      sourceKind: 'source_ref katalogów',
+      missingCount: catalogStatus === 'brak_danych' ? 1 : 0,
+      exportIncluded: catalogStatus !== 'brak_danych',
+      fixAction: { label: 'Sprawdź katalogi', onClick: openConfigurationOverview },
+    },
+    {
+      chapterId: 'calculations',
+      titlePl: '4. Wyniki obliczeń',
+      status: hasCompletedRun ? 'gotowe' : activeRunId ? 'czesciowy' : 'wynik_zablokowany',
+      objectCount: hasCompletedRun ? snapshotCounts.buses + snapshotCounts.branches : 0,
+      sourceKind: 'resultset / run',
+      missingCount: hasCompletedRun ? 0 : 1,
+      exportIncluded: hasCompletedRun,
+      fixAction: { label: 'Pokaż wyniki', onClick: openAnalysisSurface },
+    },
+    {
+      chapterId: 'protection',
+      titlePl: '5. Zabezpieczenia',
+      status: 'do_sprawdzenia',
+      objectCount: snapshot?.protection_assignments?.length ?? 0,
+      sourceKind: 'katalog przekaźników',
+      missingCount: 0,
+      exportIncluded: true,
+      fixAction: { label: 'Otwórz zabezpieczenia', onClick: openProtectionSurface },
+    },
+    {
+      chapterId: 'ncrfg',
+      titlePl: '6. NC RfG / PTPiREE',
+      status: allDers.length === 0 ? 'brak_danych' : incompleteDers.length > 0 ? 'czesciowy' : 'gotowe',
+      objectCount: allDers.length,
+      sourceKind: 'DER / profil operatora',
+      missingCount: incompleteDers.length,
+      exportIncluded: allDers.length > 0 && incompleteDers.length === 0,
+      fixAction: { label: 'Otwórz testy', onClick: openNcRfgSurface },
+    },
+    {
+      chapterId: 'proof',
+      titlePl: '7. Uzasadnienie i ślad',
+      status: hasSolverTrace ? 'gotowe' : 'wynik_zablokowany',
+      objectCount: hasSolverTrace ? 1 : 0,
+      sourceKind: 'trace / LaTeX',
+      missingCount: hasSolverTrace ? 0 : 1,
+      exportIncluded: hasSolverTrace,
+      fixAction: { label: 'Pokaż wywód', onClick: openProofSurface },
+    },
+    {
+      chapterId: 'export',
+      titlePl: '8. Eksport PDF/DOCX/JSON/LaTeX',
+      status: activeRunId ? 'do_sprawdzenia' : 'wynik_zablokowany',
+      objectCount: activeRunId ? 4 : 0,
+      sourceKind: 'report export API',
+      missingCount: activeRunId ? 0 : 1,
+      exportIncluded: Boolean(activeRunId),
+      fixAction: { label: 'Zapisz konfigurację', onClick: saveDraft },
+    },
+  ];
+  const blockingRows: EngineeringStageRow[] = [
+    ...readinessBlockers.map((blocker, index): EngineeringStageRow => {
+      const record = blocker as { code?: unknown; message_pl?: unknown; element_ref?: unknown; severity?: unknown };
+      const message = sanitizeReadinessMessage(
+        typeof record.message_pl === 'string' ? record.message_pl : 'Brak danych blokujący raport.',
+        snapshot,
+      );
+      return {
+        id: `readiness-${index}`,
+        stage: 'report',
+        objectRef: typeof record.element_ref === 'string' ? record.element_ref : null,
+        label: typeof record.code === 'string' ? record.code : `Brak ${index + 1}`,
+        status: 'wynik_zablokowany',
+        dataSummary: message,
+        missingFields: [message],
+        sourceRef: typeof record.severity === 'string' ? record.severity : 'readiness',
+        fixAction: { label: 'Pokaż miejsce naprawy', onClick: openConfigurationOverview },
+      };
+    }),
+    ...incompleteDers.map((der, index): EngineeringStageRow => ({
+      id: `der-${index}`,
+      stage: 'ncrfg',
+      objectRef: der.id,
+      label: der.name ?? `Układ OZE ${index + 1}`,
+      status: 'czesciowy',
+      dataSummary: (() => {
+        const summary = summarizeReadiness(computeDerReadinessMatrix(der));
+        return `${summary.blocked} blokad, ${summary.partial} osi częściowych, ${summary.ready}/${summary.total} osi gotowych`;
+      })(),
+      missingFields: ['moc katalogowa', 'PCC', 'profil NC RfG lub krzywe FRT/HVRT'],
+      sourceRef: 'DER',
+      fixAction: { label: 'Uzupełnij DER', onClick: openNcRfgSurface },
+    })),
+  ];
   return (
     <div data-testid="report-surface" className="mx-auto max-w-[1280px] space-y-4">
       <MiniSldCard surface={surface} />
@@ -726,7 +1565,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
               <ExportButton format="JSON" enabled={Boolean(activeRunId)} runId={activeRunId} kind="report" />
               <ExportButton
                 format="LaTeX"
-                enabled={Boolean(activeRunId && runContract?.status === 'DONE' && runContract.traceSummary)}
+                enabled={Boolean(activeRunId && isCompletedAnalysisRunStatus(runContract?.status) && runContract?.traceSummary)}
                 runId={activeRunId}
                 kind="proof"
                 disabledReason="Eksport uzasadnienia wymaga śladu solvera dla zakończonego obliczenia."
@@ -735,45 +1574,46 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           </div>
 
           <div className="space-y-4">
-            <KeyValueGrid
-              rows={[
-                { label: 'Projekt', value: displayProjectLabel(activeProjectName) },
-                { label: 'Zakres i warunki', value: displayScopeLabel(activeCaseName, activeCaseId) },
-                { label: 'Ostatnie obliczenie', value: resolveRunLabel(activeRunId, executionRuns) },
-                { label: 'Tryb zapisu', value: session?.saveMode ? resolveSaveModeLabel(session.saveMode) : 'transakcyjny' },
-                { label: 'Zakres raportu', value: formatContractValue(scope) },
-                { label: 'Szczegółowość', value: formatContractValue(detailLevel) },
-              ]}
-              columns={2}
+            <ActionableEngineeringTable
+              title="Etapy przepływu inżynierskiego"
+              description="Każdy etap ma stan, dane, braki i akcję naprawczą. To zastępuje pasywne kafle informacyjne."
+              rows={workflowRows}
+              testId="report-workflow-stage-table"
             />
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Drzewo raportu</div>
-              <ul className="mt-3 space-y-2 text-sm text-slate-700">
-                <li>1. Strona tytułowa i identyfikacja projektu</li>
-                <li>2. Zakres układu oraz źródło zasilania</li>
-                <li>3. Schemat i kontekst topologiczny</li>
-                <li>4. Wyniki zwarciowe i rozpływowe</li>
-                <li>5. Wkłady źródeł, tor ziemnozwarciowy i uzasadnienie inżynierskie</li>
-              </ul>
-            </div>
+            <StationBatchPlanner
+              caseId={activeCaseId}
+              segmentRefs={batchTargetSegmentRefs}
+              onApplied={() => {
+                if (activeCaseId) {
+                  void refreshSnapshotFromBackend(activeCaseId);
+                }
+              }}
+            />
+            <ReportChapterChecklist rows={reportChapterRows} />
+            {blockingRows.length > 0 ? (
+              <ActionableEngineeringTable
+                title="Braki blokujące raport"
+                description="Kliknij akcję, żeby przejść do właściwej konfiguracji zamiast szukać problemu ręcznie."
+                rows={blockingRows}
+                testId="report-blockers-table"
+              />
+            ) : (
+              <EmptyEngineeringState
+                title="Brak aktywnych blokad raportu"
+                reason="Nie wykryto blockerów readiness ani niekompletnych układów PV/BESS/FW."
+                requiredData="Utrzymuj aktualne obliczenie, ślad solvera i source_ref katalogów."
+                actionLabel="Sprawdź konfigurację"
+                onAction={openConfigurationOverview}
+              />
+            )}
             <div className="flex flex-wrap gap-2">
               <SurfaceActionButton
                 label="Uzasadnienie inżynierskie"
-                onClick={() =>
-                  openChildSurface('report', {
-                    screenCode: 'E-36',
-                    sizeClass: 'C',
-                    openMode: 'replace_right_panel',
-                  })
-                }
+                onClick={openProofSurface}
               />
               <SurfaceActionButton
                 label="Wkłady źródeł"
-                onClick={() =>
-                  openChildSurface('analysis', {
-                    screenCode: 'E-33',
-                  })
-                }
+                onClick={openAnalysisSurface}
               />
             </div>
           </div>
@@ -1738,6 +2578,10 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const stationConfigList = useStationAudit2ConfigList(projectId);
   // Integracja rozszerzonego rozpływu mocy.
   const runPowerFlow = useRunAudit2PowerFlow();
+  const proofCandidateRefs = useMemo(
+    () => selectedElement ? [selectedElement.id, selectedElement.name ?? ''] : [],
+    [selectedElement],
+  );
   return (
     <div data-testid="proof-surface" className="space-y-4">
       <MiniSldCard surface={surface} />
@@ -1767,6 +2611,13 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           />
         </div>
       </SectionCard>
+      <ElementCalculationProofPanel
+        runId={activeRunId}
+        selectedElement={selectedElement}
+        candidateRefs={proofCandidateRefs}
+        className="rounded-lg border border-slate-700/80 bg-white p-4"
+      />
+      <ProofLatexPanel runId={activeRunId} />
       {allDers.length > 0 && (
         <SectionCard
           title="Kontekst uzasadnienia — DER"
@@ -2225,6 +3076,7 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
   }
 
   switch (surface.screenCode) {
+    case 'E-08':
     case 'variants_runs':
       return <VariantsSurface surface={surface} />;
     case 'catalog_admin':
@@ -2329,6 +3181,15 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
 
 export function WorkspaceSurfaceRouter({ region }: WorkspaceSurfaceRouterProps) {
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
+  const appActiveRunId = useAppStateStore((state) => state.activeRunId);
+  const executionActiveRunId = useExecutionRunsStore((state) => state.activeRunId);
+  const selectedElement = useSelectionStore((state) => state.selectedElement);
+  const snapshot = useSnapshotStore((state) => state.snapshot);
+  const contextualProofRefs = useMemo(
+    () => buildWorkspaceProofCandidateRefs(selectedElement, snapshot),
+    [selectedElement, snapshot],
+  );
+  const contextualRunId = appActiveRunId ?? executionActiveRunId;
 
   if (!activeSurface) {
     return null;
@@ -2339,10 +3200,29 @@ export function WorkspaceSurfaceRouter({ region }: WorkspaceSurfaceRouterProps) 
     return null;
   }
 
+  const isDedicatedProofView =
+    activeSurface.screenCode === 'E-36'
+    || (activeSurface.screenCode === ANALYSIS_SURFACE_SCREEN_CODE && activeSurface.tabId === 'trace');
+  const showContextualProof =
+    region === 'panel'
+    && !isDedicatedProofView
+    && Boolean(contextualRunId)
+    && Boolean(selectedElement);
+
   return (
     <div data-testid={`workspace-surface-${region}`} className="flex h-full min-h-0 flex-col bg-slate-50">
       <SurfaceHeader surface={activeSurface} />
+      {showContextualProof && (
+        <ElementCalculationProofPanel
+          runId={contextualRunId}
+          selectedElement={selectedElement}
+          candidateRefs={contextualProofRefs}
+          className="border-b border-slate-200 bg-white px-4 py-3"
+        />
+      )}
       <div className="min-h-0 flex-1 overflow-auto p-4">{renderSurfaceBody(activeSurface)}</div>
     </div>
   );
 }
+
+

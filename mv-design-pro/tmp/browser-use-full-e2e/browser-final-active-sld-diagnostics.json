@@ -1,0 +1,38 @@
+{
+  "timestamp": "2026-05-27T07:44:41.323Z",
+  "seed": {
+    "projectId": "de296d9b-94fe-4ff5-9cde-d06088113fc8",
+    "caseId": "2c58ed79-fdd1-4213-bf98-cd32c8de51e8"
+  },
+  "activeDiag": {
+    "activeCaseBar": "Bieżący zestaw: Zakres obliczeń z adresu. Zakres obliczeń: Zakres obliczeń z adresu. Wariant: Zakres obliczeń z adresu.Schemat / Układ|Projekt:E2E SLD 0002|Zakres obliczeń:Zakres obliczeń z adresu|Wariant:nie wybrano|Wersja układu:aktualna|Edycja",
+    "cableRuns": 7,
+    "canvas": true,
+    "continuity": "continuous",
+    "emptyState": false,
+    "gpzBlocks": 93,
+    "labelCollisions": "0",
+    "lod": "1",
+    "miniTransformers": 1,
+    "missingTerminals": "0",
+    "readabilityScore": "100",
+    "standaloneTransformers": 0,
+    "stationHits": 1,
+    "stations": 14,
+    "terminalBindings": "7",
+    "textSample": "Sekcja 015 kVGPZ 15 kVSystem110 kVSzyna WN 110 kVPole WN TR1YTR125 MVA110/15 kVPole TR1Pole liniow…Q1Q0T1Q9Q8Sekcja 115 kVGPZ 15 kVŹródło zasilaniaWE - WEWY - WYTR - TRS01GPZ 15 kVYAKXS 3×120/16 · 210 mYAKXS 3×120/16 · 205 mOdcinki i kierunki zasilania+-[]",
+    "topologyCorridors": "3",
+    "topologyRuns": "2",
+    "url": "http://127.0.0.1:5173/#sld?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8"
+  },
+  "activeMenu": {
+    "hasCatalogs": false,
+    "hasDomainAction": false,
+    "hasInsertGpz": false
+  },
+  "consoleErrors": [],
+  "screenshots": [
+    "C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\mv-design-pro\\tmp\\browser-use-full-e2e\\browser-final-04-active-sld.png",
+    "C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\mv-design-pro\\tmp\\browser-use-full-e2e\\browser-final-05-active-sld-context.png"
+  ]
+}

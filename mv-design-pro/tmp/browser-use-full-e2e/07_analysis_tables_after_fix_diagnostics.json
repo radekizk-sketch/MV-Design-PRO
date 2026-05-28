@@ -1,0 +1,64 @@
+{
+  "hasAnalysisResultsTable": true,
+  "keyLines": [
+    "ZAKŁADKA\tTabele wyników",
+    "Tabele wyników per obiekt",
+    "Widok pokazuje obiekty z aktywnej wersji układu oraz status wyniku. Brak obliczenia jest oznaczony jako nie wyznaczono albo wynik zablokowany, bez podstawiania wartości zerowych.",
+    "Węzeł\tSzyna GPZ S1 15 kV\t15 kV\tStrefa: GPZ\tU: nie wyznaczono\tkąt/P/Q: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Węzeł\tSzyna GPZ S2 15 kV\t15 kV\tStrefa: GPZ\tU: nie wyznaczono\tkąt/P/Q: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Węzeł\tSzyna 110 kV TR1\t110 kV\ttopologia ENM\tU: nie wyznaczono\tkąt/P/Q: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Węzeł\tSzyna 110 kV TR2\t110 kV\ttopologia ENM\tU: nie wyznaczono\tkąt/P/Q: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Węzeł\tZacisk odpływowy Pole odpływowe 1\t15 kV\ttopologia ENM\tU: nie wyznaczono\tkąt/P/Q: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Węzeł\tZacisk odpływowy Pole odpływowe 2\t15 kV\ttopologia ENM\tU: nie wyznaczono\tkąt/P/Q: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Węzeł\tZacisk odpływowy Pole odpływowe 1\t15 kV\ttopologia ENM\tU: nie wyznaczono\tkąt/P/Q: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Węzeł\tZacisk odpływowy Pole odpływowe 2\t15 kV\ttopologia ENM\tU: nie wyznaczono\tkąt/P/Q: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Węzeł\tZacisk końcowy odcinka SN\t15 kV\ttopologia ENM\tU: nie wyznaczono\tkąt/P/Q: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Węzeł\tZacisk końcowy odcinka SN\t15 kV\ttopologia ENM\tU: nie wyznaczono\tkąt/P/Q: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Węzeł\tZacisk pola SN 1\t15 kV\ttopologia ENM\tU: nie wyznaczono\tkąt/P/Q: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Węzeł\tSzyna nN Stacja SN/nN 1\t0,4 kV\ttopologia ENM\tU: nie wyznaczono\tkąt/P/Q: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Gałąź SN\tSprzęgło sekcji GPZ 1-2\tSN\tbrak danych; R/X wg typu łącznika; katalog: brak katalogu\tI: nie wyznaczono\tΔU/P/Q/straty: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Gałąź SN\tAparat Pole odpływowe 1\tSN\tbrak danych; R/X wg typu łącznika; katalog: sw-rec-abb-rec615-17kv-630a\tI: nie wyznaczono\tΔU/P/Q/straty: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Gałąź SN\tAparat Pole odpływowe 2\tSN\tbrak danych; R/X wg typu łącznika; katalog: sw-rec-abb-rec615-17kv-630a\tI: nie wyznaczono\tΔU/P/Q/straty: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Gałąź SN\tAparat Pole odpływowe 1\tSN\tbrak danych; R/X wg typu łącznika; katalog: sw-rec-abb-rec615-17kv-630a\tI: nie wyznaczono\tΔU/P/Q/straty: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Gałąź SN\tAparat Pole odpływowe 2\tSN\tbrak danych; R/X wg typu łącznika; katalog: sw-rec-abb-rec615-17kv-630a\tI: nie wyznaczono\tΔU/P/Q/straty: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Odcinek kablowy SN\tOdcinek /segment\tSN\t1 km; R' 0,206 Ω/km; X' 0,107 Ω/km; katalog: cable-enea-operator-na2xs2y-1x150\tI: nie wyznaczono\tΔU/P/Q/straty: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Odcinek kablowy SN\tOdcinek /segment\tSN\t1 km; R' 0,206 Ω/km; X' 0,107 Ω/km; katalog: cable-enea-operator-na2xs2y-1x150\tI: nie wyznaczono\tΔU/P/Q/straty: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Gałąź SN\tAparat pola SN 1\tSN\tbrak danych; R/X wg typu łącznika; katalog: sw-cb-abb-vd4-17kv-630a\tI: nie wyznaczono\tΔU/P/Q/straty: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Transformator\tTR1 110/15 kV\t110 kV / 15 kV\tSn 25 MVA; uk 11 %; katalog: tr-wn-sn-110-15-25mva-yd11\tobciążenie: nie wyznaczono\tstraty/P/Q: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Transformator\tTR2 110/15 kV\t110 kV / 15 kV\tSn 25 MVA; uk 11 %; katalog: tr-wn-sn-110-15-25mva-yd11\tobciążenie: nie wyznaczono\tstraty/P/Q: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Transformator\tTR Stacja SN/nN 1\t15 kV / 0,4 kV\tSn 0,063 MVA; uk 4 %; katalog: tr-sn-nn-15-04-63kva-dyn11\tobciążenie: nie wyznaczono\tstraty/P/Q: nie wyznaczono\twynik zablokowany: wybierz albo wykonaj obliczenie",
+    "Transformatory"
+  ],
+  "tableCount": 2,
+  "tables": [
+    {
+      "headers": [
+        "Projekt",
+        "Wariant",
+        "Wersja układu",
+        "Obliczenie",
+        "Obiekt",
+        "Zakładka"
+      ],
+      "rowCount": 6,
+      "testId": null,
+      "text": "ProjektProjekt bez nazwyWariantZakres 50 szablonówWersja układuAktualna wersja układuObliczenieNie wybrano obliczeniaObiektStacja SN/nN 1ZakładkaTabele wyników"
+    },
+    {
+      "headers": [
+        "Typ",
+        "Obiekt",
+        "U_n / wariant",
+        "Dane wejściowe",
+        "Wynik 1",
+        "Wynik 2",
+        "Status"
+      ],
+      "rowCount": 23,
+      "testId": "analysis-results-table",
+      "text": "TypObiektU_n / wariantDane wejścioweWynik 1Wynik 2StatusWęzełSzyna GPZ S1 15 kV15 kVStrefa: GPZU: nie wyznaczonokąt/P/Q: nie wyznaczonowynik zablokowany: wybierz albo wykonaj obliczenieWęzełSzyna GPZ S2 15 kV15 kVStrefa: GPZU: nie wyznaczonokąt/P/Q: nie wyznaczonowynik zablokowany: wybierz albo wykonaj obliczenieWęzełSzyna 110 kV TR1110 kVtopologia ENMU: nie wyznaczonokąt/P/Q: nie wyznaczonowynik zablokowany: wybierz albo wykonaj obliczenieWęzełSzyna 110 kV TR2110 kVtopologia ENMU: nie wyznaczonokąt/P/Q: nie wyznaczonowynik zablokowany: wybierz albo wykonaj obliczenieWęzełZacisk odpływowy Pole odpływowe 115 kVtopologia ENMU: nie wyznaczonokąt/P/Q: nie wyznaczonowynik zablokowany: wybierz albo wykonaj obliczenieWęzełZacisk odpływowy Pole odpływowe 215 kVtopologia ENMU: nie wyznaczonokąt/P/Q: nie wyznaczonowynik zablokowany: wybierz albo wykonaj obliczenieWęzełZacisk odpływowy Pole odpływo"
+    }
+  ],
+  "url": "http://127.0.0.1:5173/#analysis?sel=sub%2Fbb66d55295e2defe1fdbf0cf3fa06f40%2Fsubstation&type=Station&name=Stacja+SN%2FnN+1",
+  "visibleForbidden": []
+}

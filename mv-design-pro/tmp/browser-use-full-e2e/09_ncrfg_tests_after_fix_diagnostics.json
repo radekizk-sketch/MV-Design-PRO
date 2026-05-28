@@ -1,0 +1,30 @@
+{
+  "url": "http://127.0.0.1:5173/#analysis?tab=ncrfg-tests",
+  "visibleForbidden": [],
+  "hasNcrfgTab": true,
+  "hasBlockerTable": true,
+  "hasEmptyState": true,
+  "tables": [
+    {
+      "testid": null,
+      "rows": 6,
+      "headers": [
+        "Projekt",
+        "Wariant",
+        "Wersja układu",
+        "Obliczenie",
+        "Obiekt",
+        "Zakładka"
+      ]
+    },
+    {
+      "testid": "ncrfg-blocker-table",
+      "rows": 5,
+      "headers": [
+        "Obszar",
+        "Status braków",
+        "Działanie naprawcze"
+      ]
+    }
+  ]
+}

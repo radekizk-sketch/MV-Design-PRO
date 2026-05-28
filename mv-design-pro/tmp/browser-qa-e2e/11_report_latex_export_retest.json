@@ -1,0 +1,19 @@
+{
+  "test": "report_latex_export_enabled",
+  "pass": true,
+  "clicked": true,
+  "before": {
+    "latexDisabled": false,
+    "latexText": "Eksport LaTeX↓",
+    "latexTitle": "Eksportuj uzasadnienie do formatu LaTeX",
+    "reportStatus": "Raport gotowyDalej: wyeksportuj raport techniczny.",
+    "url": "http://127.0.0.1:5173/#report?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8&run=da3122d2-299a-4443-9e25-416cd6da4905"
+  },
+  "after": {
+    "bodySample": "✔Pobrano uzasadnienie inżynierskie (LATEX).×↶Cofnij↷PonówMV-DESIGN-PRO12.2ProjektE2E SLD 0002Zakres / wariantZakres obliczeń z adresuKonfiguruj zakresWyniki aktualne03:00:3828.05.2026Sprawdź konfiguracjęNakładkaAnalizyEksportSiećSchematStudiaWynikiWZabezpieczeniaUkładyKatalogiRaportyHistoriaSchemat/Raporty OSD i audytoweRaporty OSD i audytowePodgląd schematuKontekst układu jest zsynchronizowany z głównym schematem.Powiązany obiekt: Raport techniczny.Raport gotowyDalej: wyeksportuj raport techniczny.RaportKonfiguracja raportuZakres obiektowyCała siećWybrany ciągWybrana stacjaWybrane poleWybrane źródłoSzczegółowośćStandardowaPełna technicznaZapisz konfigurację raportuEksportEksport PDF↓Eksport DOCX↓Eksport JSON↓Eksport LaTeX↓ProjektE2E SLD 0002Zakres i warunkiZakres obliczeń z adresuOstatnie obliczenieAktywne obliczenieTryb zapisutylko odczytZakres raportucała siećSzczegółowośćstandardowaDrzewo raportu1. Strona tytułowa i identyfikacja projektu2. Zakres układu oraz źródło zasilania3. Schemat i kontekst topologiczny4. Wyniki zwarciowe i rozpływowe5. Wkłady źródeł, tor ziemnozwarciowy i uzasadnienie inżynierskieUzasadnienie inżynierskieWkłady źródełEksportKontrakt raportu i eksportuObliczenieZapisane w śladzie audytuTyp analizyzwarcie SNStatus uruchomieniazakończoneStan wynikówaktualneBrama jakościG4KompletnośćKompletnyPakiet uzasadnieńZapisane w śladzie audytuŚlad wejściaZapisane w śladzie audytuUtworzono28.05.2026, 02:54:18Zakres stosowalnościzwarcie SNraportWarunki wejściowe do skonfigurowaniaWarunki wejściowe dla aktywnego uruchomienia są skonfigurowane.Bieżąca konfiguracja",
+    "toasts": [
+      "✔Pobrano uzasadnienie inżynierskie (LATEX).×"
+    ]
+  },
+  "screenshotPath": "C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\mv-design-pro\\tmp\\browser-qa-e2e\\11_report_latex_export_retest.png"
+}

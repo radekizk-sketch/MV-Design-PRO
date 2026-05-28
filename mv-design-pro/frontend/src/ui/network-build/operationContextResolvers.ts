@@ -88,8 +88,8 @@ const LINE_BAY_SOURCE_TYPE_LABEL = 'Pole liniowe SN';
 const ZKSN_SOURCE_TYPE_LABEL = 'ZKSN';
 const BRANCH_POLE_SOURCE_TYPE_LABEL = 'Słup rozgałęźny';
 
-const TRANSFORMER_INVALID_CONTEXT_LABEL = 'Transformator SN/nN mozna dodac tylko w kontekscie stacji SN/nN.';
-const TRANSFORMER_GPS_BLOCK_LABEL = 'Transformator SN/nN nie nalezy do ukladu GPZ lub zrodla systemowego.';
+const TRANSFORMER_INVALID_CONTEXT_LABEL = 'Transformator SN/nN można dodać tylko w kontekście stacji SN/nN.';
+const TRANSFORMER_GPS_BLOCK_LABEL = 'Transformator SN/nN nie należy do układu GPZ ani źródła systemowego.';
 const TRANSFORMER_BUSES_MISSING_LABEL = 'Stacja nie ma kompletnej pary szyn SN i nN dla transformatora.';
 
 export function resolveBranchPointBranchPortId(portCount: number, index: number): string {

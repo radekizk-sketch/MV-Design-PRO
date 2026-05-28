@@ -81,6 +81,7 @@ PV_NN_OPTIONS = (
 )
 
 PV_SN_OPTIONS = (
+    CatalogChoice("conv-pv-0.5mw-15kv", "PV 0.5 MW 15 kV", "ZRODLO_NN_PV", default=True),
     CatalogChoice("conv-pv-1mw-15kv", "PV 1 MW 15 kV", "ZRODLO_NN_PV"),
     CatalogChoice("conv-pv-2mw-15kv", "PV 2 MW 15 kV", "ZRODLO_NN_PV"),
     CatalogChoice("conv-pv-5mw-15kv", "PV 5 MW 15 kV", "ZRODLO_NN_PV"),

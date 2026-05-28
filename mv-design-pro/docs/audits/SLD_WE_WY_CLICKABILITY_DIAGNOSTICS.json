@@ -1,0 +1,50 @@
+{
+  "targetCount": 5,
+  "targets": [
+    {
+      "aria": "Port WE pola WE",
+      "elementId": "stn/ac3f845407ac60c5df26c7e641dacec2/station/port/stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/000",
+      "kind": "station_port",
+      "portRole": "WE",
+      "role": "button",
+      "tabIndex": "0",
+      "testid": "sld-v2-mini-rmu-port-anchor-stn/ac3f845407ac60c5df26c7e641dacec2/station-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/000"
+    },
+    {
+      "aria": "Port WY pola WY",
+      "elementId": "stn/ac3f845407ac60c5df26c7e641dacec2/station/port/stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/001",
+      "kind": "station_port",
+      "portRole": "WY",
+      "role": "button",
+      "tabIndex": "0",
+      "testid": "sld-v2-mini-rmu-port-anchor-stn/ac3f845407ac60c5df26c7e641dacec2/station-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/001"
+    },
+    {
+      "aria": "Port TR pola TR",
+      "elementId": "stn/ac3f845407ac60c5df26c7e641dacec2/station/port/stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/002",
+      "kind": "station_port",
+      "portRole": "TR",
+      "role": "button",
+      "tabIndex": "0",
+      "testid": "sld-v2-mini-rmu-port-anchor-stn/ac3f845407ac60c5df26c7e641dacec2/station-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/002"
+    },
+    {
+      "aria": "Transformator SN/nN stacji",
+      "elementId": "stn/ac3f845407ac60c5df26c7e641dacec2/transformer",
+      "kind": null,
+      "portRole": null,
+      "role": "button",
+      "tabIndex": "0",
+      "testid": "sld-symbol-mini-transformer-stn/ac3f845407ac60c5df26c7e641dacec2/transformer"
+    },
+    {
+      "aria": null,
+      "elementId": null,
+      "kind": null,
+      "portRole": null,
+      "role": null,
+      "tabIndex": null,
+      "testid": "sld-symbol-mini-transformer-stn/ac3f845407ac60c5df26c7e641dacec2/transformer-hitbox"
+    }
+  ]
+}

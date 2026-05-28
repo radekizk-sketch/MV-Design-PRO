@@ -1,0 +1,11 @@
+{
+  "firstText": "↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nProjekt bez nazwy\nZAKRES / WARIANT\nZakres 50 szablonów\nKonfiguruj zakres\nWyniki do obliczenia\n00:52:29\n27.05.2026\nOblicz\nNakładka\nAnalizy\nEksport\nFaza projektu:\nANALIZA\nKontrola:\n0\nObliczenia:\ndo obliczenia\nSzyny:\n12\nOdcinki SN:\n2\nPola SN:\n2\nStacje:\n1\nDługość:\n2,00 km\nTR:\n3\nOdbiory nN:\n0\nSzukaj\nKatalog\nKontrola\nMetadane\nHistoria\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nSchemat i topologia\nNastępna akcja\ni\n●\nUkład dopuszczony do analizy\nAnaliza\nEtap układu\ndo analizy\nPrzegląd techniczny\nUkład skonfigurowany do obliczeń.\nGPZ i zasilanie\n●\n1\n⊙\nGPZ 1\n●\nStacje SN/nN\n●\n1\n⊙\nStacja SN/nN 1\n·\nstacja SN/nN\n●\nMagistrale i odcinki SN\n●\n2\n⊙\nOdcinek 01\n·\n3 × NA2XS2Y 1×150/25 mm² · 1,00 km\n●\n⊙\nOdcinek 02\n·\n3 × NA2XS2Y 1×150/25 mm² · 1,00 km\n●\n+\nDodaj układ\nKonfiguracja\n28\nSekcja 0\n15 kV\nSekcja I\n15 kV\nGPZ 1\nSystem\n110 kV\nTR1 / 110 kV\nTR2 / 110 kV\nPole WN TR1\nY\nTR1\n25 MVA\n110/15 kV\nPole WN TR2\nY\nTR2\n25 MVA\n110/15 kV\nPole TR1\nPole TR2\nOdpływ 1\nQ1\nQ0\nT1\nQ9\nQ8\nOdpływ 2\nQ1\nQ0\nT1\nQ9\nQ8\nOdpływ 1\nQ1\nQ0\nT1\nQ9\nQ8\nOdpływ 2\nQ1\nQ0\nT1\nQ9\nQ8\nSekcja 1\n15 kV\nSekcja 2\n15 kV\nGPZ 1\nŹródło zasilania\nS01\nGPZ 1\n3 × NA2XS2Y 1×150/25 mm² · 2 ",
+  "foundForbidden": [],
+  "hasSvg": true,
+  "resultStatusText": [
+    "Wyniki do obliczenia",
+    "Obliczenia:do obliczenia"
+  ],
+  "title": "MV-DESIGN PRO",
+  "url": "http://127.0.0.1:5173/#sld"
+}

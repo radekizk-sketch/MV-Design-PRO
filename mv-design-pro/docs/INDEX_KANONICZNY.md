@@ -55,6 +55,7 @@ Data aktualizacji: **2026-04-24**
 - [analysis/P33_LF_SENSITIVITY_CANONICAL_KILLER.md](./analysis/P33_LF_SENSITIVITY_CANONICAL_KILLER.md)
 - [architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md](./architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md)
 - [analysis/URUCHAMIANIE_ANALIZ_I_GOTOWOSC.md](./analysis/URUCHAMIANIE_ANALIZ_I_GOTOWOSC.md)
+- [analysis/NC_RFG_PTPiREE_TESTY_KANON.md](./analysis/NC_RFG_PTPiREE_TESTY_KANON.md)
 
 ## 5. Fundament jakości i audytu
 

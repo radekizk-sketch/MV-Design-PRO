@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { useAppStateStore } from '../../../../app-state';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
@@ -202,7 +202,9 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
     useAppStateStore.setState({ setActiveCase } as never);
 
     try {
-      render(<SldWorkspaceContainer width={800} height={600} />);
+      await act(async () => {
+        render(<SldWorkspaceContainer width={800} height={600} />);
+      });
 
       await waitFor(() => {
         expect(setActiveCase).toHaveBeenCalledWith(
@@ -213,7 +215,9 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
         );
       });
     } finally {
-      useAppStateStore.setState({ setActiveCase: originalSetActiveCase } as never);
+      await act(async () => {
+        useAppStateStore.setState({ setActiveCase: originalSetActiveCase } as never);
+      });
     }
   });
 
@@ -224,13 +228,17 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
     useSnapshotStore.setState({ refreshFromBackend } as never);
 
     try {
-      render(<SldWorkspaceContainer width={800} height={600} />);
+      await act(async () => {
+        render(<SldWorkspaceContainer width={800} height={600} />);
+      });
 
       await waitFor(() => {
         expect(refreshFromBackend).toHaveBeenCalledWith('case-url-1');
       });
     } finally {
-      useSnapshotStore.setState({ refreshFromBackend: originalRefresh } as never);
+      await act(async () => {
+        useSnapshotStore.setState({ refreshFromBackend: originalRefresh } as never);
+      });
     }
   });
 
@@ -260,13 +268,17 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
     } as never);
 
     try {
-      render(<SldWorkspaceContainer width={800} height={600} />);
+      await act(async () => {
+        render(<SldWorkspaceContainer width={800} height={600} />);
+      });
 
       await waitFor(() => {
         expect(refreshFromBackend).toHaveBeenCalledWith('case-url-1');
       });
     } finally {
-      useSnapshotStore.setState({ refreshFromBackend: originalRefresh } as never);
+      await act(async () => {
+        useSnapshotStore.setState({ refreshFromBackend: originalRefresh } as never);
+      });
     }
   });
 
@@ -300,7 +312,7 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
   it('pusty komunikat SLD nie blokuje menu prawego kliknięcia tła', () => {
     render(<SldWorkspaceContainer width={800} height={600} />);
 
-    fireEvent.contextMenu(screen.getByTestId('sld-empty-state').firstElementChild!, {
+    fireEvent.contextMenu(screen.getByTestId('sld-canvas-v2'), {
       clientX: 340,
       clientY: 260,
     });
@@ -652,6 +664,7 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
       type: 'Station',
       name: 'Stacja z PV',
     });
+    expect(screen.getByTestId('sld-v2-detail-drawer-label')).toHaveTextContent('Stacja z PV');
     expect(useSelectionStore.getState().propertyGridOpen).toBe(true);
     expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
@@ -956,17 +969,15 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
     expect(clickablePath).not.toBeNull();
     fireEvent.click(clickablePath as Element);
 
-    expect(screen.queryByTestId('sld-v2-detail-drawer')).not.toBeInTheDocument();
+    expect(screen.getByTestId('sld-v2-detail-drawer')).toBeInTheDocument();
+    expect(screen.getByTestId('sld-v2-detail-drawer')).toHaveAttribute('data-element-kind', 'cable_run');
+    expect(screen.getByTestId('sld-v2-detail-drawer-action-insert-station')).toBeInTheDocument();
     expect(useSelectionStore.getState().selectedElement).toMatchObject({
       id: 'seg-1',
       type: 'LineBranch',
       name: 'Odcinek SN',
     });
-    expect(useNetworkBuildStore.getState().activeSurface).toMatchObject({
-      screenCode: 'E-12',
-      entityRef: 'seg-1',
-      titlePl: 'Odcinek SN',
-    });
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
 
   it('marker zakonczenia odgalezienia wybiera odcinek, nie stacje zrodlowa', () => {
@@ -1064,9 +1075,7 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
       type: 'LineBranch',
     });
     expect(useSelectionStore.getState().selectedElement?.id).not.toBe('station-source');
-    expect(useNetworkBuildStore.getState().activeSurface).toMatchObject({
-      screenCode: 'E-12',
-      entityRef: 'seg-pending',
-    });
+    expect(screen.getByTestId('sld-v2-detail-drawer')).toHaveAttribute('data-element-kind', 'cable_run');
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
 });

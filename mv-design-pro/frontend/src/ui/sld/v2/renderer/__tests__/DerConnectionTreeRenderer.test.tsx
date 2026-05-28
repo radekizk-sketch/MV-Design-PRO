@@ -103,6 +103,58 @@ describe('DerConnectionTreeRenderer — render i strukturalne data-testid', () =
     expect(container.querySelector('[data-testid="sld-v2-der-der-selected-compact-block-transformer"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="sld-v2-der-der-selected-compact-cos-phi"]')).not.toBeNull();
   });
+
+  it('compact DER ogranicza rozmiar etykiet przy duzym zoomie', () => {
+    const { container } = render(
+      <svg>
+        <DerRenderer
+          id="der-zoom"
+          x={100}
+          y={100}
+          kind="PV"
+          name="Punkt blokowy 15/0,4 kV"
+          nominalPowerKw={500}
+          hasBlockTransformer
+          blockTransformerLabel="TR 15/0,4 kV 630 kVA Dyn5"
+          operatingPMw={0.5}
+          lod="compact"
+          viewportScale={4}
+        />
+      </svg>,
+    );
+
+    const power = container.querySelector('[data-testid="sld-v2-der-der-zoom-compact-power"]');
+    const blockTransformer = container.querySelector('[data-testid="sld-v2-der-der-zoom-compact-block-transformer"] text');
+
+    expect(Number(power?.getAttribute('font-size'))).toBeLessThanOrEqual(5);
+    expect(Number(blockTransformer?.getAttribute('font-size'))).toBeLessThanOrEqual(5);
+    expect(blockTransformer?.textContent).toBe('TR blokowy 630 kVA');
+  });
+
+  it('full DER przy duzym zoomie skraca dluga etykiete na canvasie', () => {
+    const { container, queryByText } = render(
+      <svg>
+        <DerRenderer
+          id="der-full-zoom"
+          x={100}
+          y={100}
+          kind="PV"
+          name="Punkt blokowy 15/0,4 kV"
+          nominalPowerKw={500}
+          hasBlockTransformer
+          blockTransformerLabel="TR 15/0,4 kV 630 kVA Dyn5"
+          lod="full"
+          viewportScale={4}
+        />
+      </svg>,
+    );
+
+    const label = container.querySelector('[data-testid="sld-v2-der-der-full-zoom-block-transformer-label"]');
+
+    expect(queryByText('Punkt blokowy 15/0,4 kV')).toBeNull();
+    expect(container.textContent).toContain('Punkt blokowy 1...');
+    expect(label?.textContent).toBe('TR blokowy 630 kVA');
+  });
 });
 
 describe('DerConnectionTreeRenderer — variant decyduje czy renderować trafo blokowy', () => {

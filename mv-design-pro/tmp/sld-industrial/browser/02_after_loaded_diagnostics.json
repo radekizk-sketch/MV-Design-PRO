@@ -1,0 +1,42 @@
+{
+  "hasPrzerwaText": false,
+  "stations": [
+    {
+      "guard": null,
+      "lod": "overview",
+      "testid": "sld-v2-mini-rmu-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+      "visibleLabel": null
+    },
+    {
+      "guard": null,
+      "lod": null,
+      "testid": "sld-v2-mini-rmu-overview-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+      "visibleLabel": null
+    },
+    {
+      "guard": null,
+      "lod": null,
+      "testid": "sld-v2-mini-rmu-overview-enclosure-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+      "visibleLabel": null
+    },
+    {
+      "guard": null,
+      "lod": null,
+      "testid": "sld-v2-mini-rmu-sn-row-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+      "visibleLabel": null
+    },
+    {
+      "guard": null,
+      "lod": null,
+      "testid": "sld-v2-mini-rmu-bay-marker-stn/ac3f845407ac60c5df26c7e641dacec2/station-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/000",
+      "visibleLabel": null
+    }
+  ],
+  "transformerSymbols": [
+    {
+      "overlap": "7.2",
+      "role": "button",
+      "testid": "sld-symbol-mini-transformer-stn/ac3f845407ac60c5df26c7e641dacec2/transformer"
+    }
+  ]
+}

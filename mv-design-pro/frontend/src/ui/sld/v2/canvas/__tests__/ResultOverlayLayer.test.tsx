@@ -136,7 +136,33 @@ describe('ResultOverlayLayer — K30-6 result overlay', () => {
     expect(container.querySelector('[data-testid="sld-v2-result-overlay-stn/def/station"]')).toBeTruthy();
     // K30-52: Sprawdzaj text content (Ik"). Sk usunięty (shrunk overlay).
     const html = container.innerHTML;
-    expect(html).toContain('16.22');
+    expect(html).toContain('16,22');
+  });
+
+  it('SC_3F: pokazuje rozdział wkładu systemu i źródeł, gdy jest w śladzie', () => {
+    const payload = makeSc3FPayload();
+    payload.elements['stn/abc/sn_bus'].metrics.IK_3F_SYSTEM_A = {
+      code: 'IK_3F_SYSTEM_A',
+      value: 15_500,
+      unit: 'A',
+      format_hint: 'fixed0',
+    };
+    payload.elements['stn/abc/sn_bus'].metrics.IK_3F_DER_A = {
+      code: 'IK_3F_DER_A',
+      value: 720,
+      unit: 'A',
+      format_hint: 'fixed0',
+    };
+    useRawResultOverlayStore.getState().setPayload(payload);
+
+    const { container } = render(
+      <svg><ResultOverlayLayer stations={STATIONS} /></svg>,
+    );
+
+    expect(container.innerHTML).toContain('sieć');
+    expect(container.innerHTML).toContain('DER');
+    expect(container.innerHTML).toContain('15,50');
+    expect(container.innerHTML).toContain('0,72');
   });
 
   it('LOAD_FLOW: renderuje U_kV + ANGLE_DEG badges per stacja', () => {
@@ -151,6 +177,20 @@ describe('ResultOverlayLayer — K30-6 result overlay', () => {
     expect(html).toContain('14,50');
     expect(html).toContain('-1,2');
     expect(html).toContain('13,00');
+  });
+
+  it('pokazuje wezlowy status "brak wyniku" zamiast ukrywac stacje bez metryki', () => {
+    useRawResultOverlayStore.getState().setPayload({
+      run_id: 'run-empty',
+      analysis_type: 'LOAD_FLOW',
+      elements: {},
+    });
+    const { container } = render(
+      <svg><ResultOverlayLayer stations={STATIONS} /></svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-result-overlay-stn/abc/station"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="sld-v2-result-overlay-stn/def/station"]')).toBeTruthy();
+    expect(container.innerHTML).toContain('brak wyniku');
   });
 
   it('renderuje legendę z tytułem analysis_type', () => {
@@ -238,6 +278,6 @@ describe('ResultOverlayLayer — K30-6 result overlay', () => {
       </svg>,
     );
     expect(container.querySelector('[data-testid="sld-v2-branch-overlay-seg-A"]')).toBeTruthy();
-    expect(container.innerHTML).toContain('12.50');
+    expect(container.innerHTML).toContain('12,50');
   });
 });

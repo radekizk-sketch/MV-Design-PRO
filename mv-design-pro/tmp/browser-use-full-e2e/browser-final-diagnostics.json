@@ -1,0 +1,44 @@
+{
+  "timestamp": "2026-05-27T07:41:55.017Z",
+  "dashboardState": {
+    "appReady": true,
+    "dashboard": true,
+    "errors": [],
+    "title": "MV-DESIGN PRO",
+    "url": "http://127.0.0.1:5173/#dashboard"
+  },
+  "canvasMetrics": {
+    "canvas": true,
+    "canvasHeight": "790.453125",
+    "canvasText": "Stacje, długości i moce+-[]",
+    "canvasWidth": "866.296875",
+    "continuity": "continuous",
+    "emptyState": true,
+    "hasGpzMarker": true,
+    "labelCollisions": "0",
+    "lod": "2",
+    "miniTransformerClickable": false,
+    "readabilityScore": "100",
+    "standaloneTransformerSymbols": 0,
+    "stations": 0,
+    "url": "http://127.0.0.1:5173/#sld"
+  },
+  "contextMenuState": {
+    "hasCatalogs": true,
+    "hasInsertGpz": true,
+    "menuText": [
+      "ProjektProjekt bez nazwyZakres / wariantZakres 50 szablonówKonfiguruj zakresWyniki do obliczenia",
+      "Faza projektu:GPZUkład:GPZNastępny krok:wybór GPZSzyny:0Odcinki SN:0Pola SN:0Stacje:0Długość:nie wyznaczonoTR:0Odbiory nN:0SzukajKatalogKontrolaMetadaneHistoria",
+      "Schemat i topologiaNastępna akcjai1Wybierz wariant GPZ z kataloguRozpocznijEtap układuwybór GPZPierwszy układ sieciRozpocznij od kompletnego wariantu GPZ z rozdzielnią SN, sekcjami szyn i polami liniowymi.Rozpocznij konfigurację od kompletnego wariantu GPZ z rozdzielnią SN i wyprowadzeniami.+Przejdź do budowy GPZKonfiguracja0",
+      "Schemat i topologiaNastępna akcjai1Wybierz wariant GPZ z kataloguRozpocznijEtap układuwybór GPZPierwszy układ sieciRozpocznij od kompletnego wariantu GPZ z rozdzielnią SN, sekcjami szyn i polami liniowymi.Rozpocznij konfigurację od kompletnego wariantu GPZ z rozdzielnią SN i wyprowadzeniami.+Przejdź do budowy GPZKonfiguracja0",
+      "Eksportuj schemat ▾",
+      "Eksportuj schemat ▾"
+    ]
+  },
+  "consoleErrors": [],
+  "screenshots": [
+    "C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\mv-design-pro\\tmp\\browser-use-full-e2e\\browser-final-01-dashboard.png",
+    "C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\mv-design-pro\\tmp\\browser-use-full-e2e\\browser-final-02-sld.png",
+    "C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\mv-design-pro\\tmp\\browser-use-full-e2e\\browser-final-03-context-menu.png"
+  ]
+}

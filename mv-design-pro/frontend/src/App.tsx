@@ -525,11 +525,17 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
 
-  // Auto-show onboarding przy pierwszym uruchomieniu
+  // Onboarding nie otwiera się automatycznie jako modal na kanwie projektowej,
+  // bo blokował kliknięcia w SLD/CAD i testy przepływu inżyniera. Można go
+  // uruchomić jawnie przez parametr #...?tour=1.
   useEffect(() => {
-    if (!isOnboardingCompleted()) {
-      setOnboardingOpen(true);
-    }
+    const syncTourState = () => {
+      const shouldOpen = getCurrentSearchParams().get('tour') === '1' && !isOnboardingCompleted();
+      setOnboardingOpen(shouldOpen);
+    };
+    syncTourState();
+    window.addEventListener('hashchange', syncTourState);
+    return () => window.removeEventListener('hashchange', syncTourState);
   }, []);
 
   // Globalny F1 → Help, Ctrl+, → Settings

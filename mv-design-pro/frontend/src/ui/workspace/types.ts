@@ -75,6 +75,7 @@ export const ANALYSIS_ROUTE_TAB_IDS = [
   'protection',
   'power-flow',
   'compare',
+  'ncrfg-tests',
 ] as const;
 
 export type AnalysisRouteTabId = (typeof ANALYSIS_ROUTE_TAB_IDS)[number];

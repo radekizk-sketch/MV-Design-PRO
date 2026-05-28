@@ -250,7 +250,12 @@ export function InsertBranchPoleForm() {
   );
 
   return (
-    <form className="space-y-4 p-4" data-testid="insert-branch-pole-form" onSubmit={onSubmit}>
+    <form
+      className="space-y-4 p-4"
+      data-testid="insert-branch-pole-form"
+      data-segment-ref={segmentId}
+      onSubmit={onSubmit}
+    >
       <div>
         <h3 className="text-sm font-semibold text-gray-800">Wstaw słup rozgałęźny</h3>
         <p className="mt-1 text-xs text-gray-500">Słup jest węzłem linii napowietrznej SN, nie polem stacji ani ZKSN.</p>

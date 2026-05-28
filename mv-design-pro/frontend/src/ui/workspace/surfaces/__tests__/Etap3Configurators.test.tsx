@@ -243,6 +243,10 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       );
 
       expect(screen.getByTestId('station-config-content-basic')).toBeInTheDocument();
+      expect(screen.getByTestId('station-add-pv-shortcut')).toHaveTextContent('Dodaj PV');
+      expect(screen.getByTestId('station-add-bess-shortcut')).toHaveTextContent('Dodaj BESS');
+      expect(screen.getByTestId('station-add-fw-shortcut')).toHaveTextContent('Dodaj FW');
+      expect(screen.queryByText('Dodaj PV/BESS/FW')).not.toBeInTheDocument();
       fireEvent.click(screen.getByTestId('station-continue-trunk'));
 
       const activeSurface = useNetworkBuildStore.getState().activeSurface;
@@ -256,6 +260,162 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
           terminal_port_id: 'station_out',
         }),
       );
+    });
+
+    it('karta Transformator otwiera formularz dodania TR SN/nN z katalogu dla stacji bez transformatora', () => {
+      useSnapshotStore.setState({
+        snapshot: {
+          header: {
+            enm_version: '1.0',
+            name: 'Siec testowa',
+            created_at: '2026-05-28T00:00:00Z',
+            updated_at: '2026-05-28T00:00:00Z',
+            revision: 1,
+            hash_sha256: 'snapshot-station-missing-transformer',
+            defaults: { frequency_hz: 50, unit_system: 'SI' },
+          },
+          buses: [
+            {
+              id: 'station-sn-bus',
+              ref_id: 'stn/station-missing-tr/sn_bus',
+              name: 'Szyna SN stacji',
+              voltage_kv: 15,
+              tags: [],
+              meta: {},
+            },
+          ],
+          branches: [],
+          transformers: [],
+          sources: [],
+          loads: [],
+          substations: [
+            {
+              id: 'station-missing-tr',
+              ref_id: 'stn/station-missing-tr/station',
+              name: 'Stacja bez TR',
+              tags: [],
+              meta: {
+                field_specs: [
+                  { field_ref: 'field-in', name: 'Pole WE', bay_role: 'IN' },
+                  { field_ref: 'field-tr', name: 'Pole TR', bay_role: 'TR' },
+                ],
+              },
+              station_type: 'mv_lv',
+              bus_refs: ['stn/station-missing-tr/sn_bus'],
+              transformer_refs: [],
+            },
+          ],
+          generators: [],
+          bays: [],
+          junctions: [],
+          corridors: [],
+          measurements: [],
+          protection_assignments: [],
+          branch_points: [],
+          line_runs: [],
+          connection_nodes: [],
+        } as never,
+        logicalViews: { trunks: [], branches: [], terminals: [] } as never,
+      });
+
+      render(
+        <StationConfiguratorSurface
+          surface={{
+            ...minimalSurface,
+            entityRef: 'stn/station-missing-tr/station',
+          }}
+        />,
+      );
+
+      fireEvent.click(screen.getByTestId('station-config-tab-transformer'));
+      expect(screen.getByTestId('station-transformer-empty-state')).toHaveTextContent(
+        'Brak transformatora SN/nN w modelu stacji.',
+      );
+
+      fireEvent.click(screen.getByTestId('station-add-transformer-from-catalog'));
+
+      const activeSurface = useNetworkBuildStore.getState().activeSurface;
+      expect(activeSurface?.routeState.payload?.operation).toBe('add_transformer_sn_nn');
+      expect(activeSurface?.routeState.payload?.context).toEqual(
+        expect.objectContaining({
+          station_ref: 'stn/station-missing-tr/station',
+          station_name: 'Stacja bez TR',
+        }),
+      );
+    });
+
+    it('pokazuje zablokowane akcje sieciowe i powody przy stacji bez wolnych portów', () => {
+      useSnapshotStore.setState({
+        snapshot: {
+          header: {
+            enm_version: '1.0',
+            name: 'Siec testowa',
+            created_at: '2026-05-27T00:00:00Z',
+            updated_at: '2026-05-27T00:00:00Z',
+            revision: 1,
+            hash_sha256: 'snapshot-station-no-free-port',
+            defaults: { frequency_hz: 50, unit_system: 'SI' },
+          },
+          buses: [
+            {
+              id: 'station-no-free-sn-bus',
+              ref_id: 'stn/station-no-free/sn_bus',
+              name: 'Szyna SN stacji',
+              voltage_kv: 15,
+              tags: [],
+              meta: {},
+            },
+          ],
+          branches: [],
+          transformers: [],
+          sources: [],
+          loads: [],
+          substations: [
+            {
+              id: 'station-no-free',
+              ref_id: 'stn/station-no-free/station',
+              name: 'Stacja S02 końcowa',
+              tags: [],
+              meta: {
+                field_specs: [
+                  { field_ref: 'field-in', name: 'Pole WE', bay_role: 'IN' },
+                  { field_ref: 'field-tr', name: 'Pole TR', bay_role: 'TR' },
+                ],
+              },
+              station_type: 'mv_lv',
+              bus_refs: ['stn/station-no-free/sn_bus'],
+              transformer_refs: [],
+            },
+          ],
+          generators: [],
+          bays: [],
+          junctions: [],
+          corridors: [],
+          measurements: [],
+          protection_assignments: [],
+          branch_points: [],
+          line_runs: [],
+          connection_nodes: [],
+        } as never,
+        logicalViews: { trunks: [], branches: [], terminals: [] } as never,
+      });
+
+      render(
+        <StationConfiguratorSurface
+          surface={{
+            ...minimalSurface,
+            entityRef: 'stn/station-no-free/station',
+          }}
+        />,
+      );
+
+      expect(screen.getByTestId('station-network-actions')).toBeInTheDocument();
+      expect(screen.getByTestId('station-continue-trunk')).toHaveTextContent('Kontynuuj ciąg SN ze stacji');
+      expect(screen.getByTestId('station-continue-trunk')).toBeDisabled();
+      expect(screen.getByTestId('station-start-branch')).toHaveTextContent('Rozpocznij odgałęzienie');
+      expect(screen.getByTestId('station-start-branch')).toBeDisabled();
+      expect(screen.getByTestId('station-continue-trunk-reason')).toHaveTextContent(/Brak wolnego portu wyjściowego SN/);
+      expect(screen.getByTestId('station-start-branch-reason')).toHaveTextContent(/Brak wolnego pola odgałęźnego SN/);
     });
 
     it('dla stacji odgałęźnej pokazuje jedną akcję wyprowadzenia odgałęzienia z pola ODG', () => {
@@ -362,7 +522,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
         />,
       );
 
-      expect(screen.getByTestId('station-start-branch')).toHaveTextContent('Wyprowadź odgałęzienie SN');
+      expect(screen.getByTestId('station-start-branch')).toHaveTextContent('Rozpocznij odgałęzienie');
       fireEvent.click(screen.getByTestId('station-start-branch'));
 
       const activeSurface = useNetworkBuildStore.getState().activeSurface;

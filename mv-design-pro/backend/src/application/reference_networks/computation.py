@@ -14,18 +14,21 @@ DOWÓD POPRAWNOŚCI:
 
 from __future__ import annotations
 
-import cmath
 import math
 from typing import Any
 
 import numpy as np
-
+from application.reference_networks.expected_values import ExpectedShortCircuit
+from network_model.core.branch import BranchType, LineBranch, TransformerBranch
+from network_model.core.graph import NetworkGraph
+from network_model.core.node import Node, NodeType
 from network_model.solvers.power_flow_unbalanced import (
     UnbalancedBranchSpec,
     UnbalancedLoadSpec,
     UnbalancedNetworkInput,
     solve_unbalanced_backward_forward_sweep,
 )
+from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
 
 def _ohm_per_unit_from_pu(r_pu: float, x_pu: float) -> complex:
@@ -219,37 +222,37 @@ def _power_flow_newton_raphson(
         jac = np.zeros((size, size))
 
         for k, i in enumerate(non_slack):
-            for l, j in enumerate(non_slack):
+            for col, j in enumerate(non_slack):
                 if i == j:
-                    jac[k, l] = -q_calc[i] - v_mag[i] ** 2 * ybus[i, i].imag
+                    jac[k, col] = -q_calc[i] - v_mag[i] ** 2 * ybus[i, i].imag
                 else:
-                    jac[k, l] = v_mag[i] * v_mag[j] * (
+                    jac[k, col] = v_mag[i] * v_mag[j] * (
                         ybus[i, j].real * math.sin(v_ang[i] - v_ang[j])
                         - ybus[i, j].imag * math.cos(v_ang[i] - v_ang[j])
                     )
-            for l, j in enumerate(pq_indices):
+            for col, j in enumerate(pq_indices):
                 if i == j:
-                    jac[k, n_non_slack + l] = p_calc[i] / v_mag[i] + v_mag[i] * ybus[i, i].real
+                    jac[k, n_non_slack + col] = p_calc[i] / v_mag[i] + v_mag[i] * ybus[i, i].real
                 else:
-                    jac[k, n_non_slack + l] = v_mag[i] * (
+                    jac[k, n_non_slack + col] = v_mag[i] * (
                         ybus[i, j].real * math.cos(v_ang[i] - v_ang[j])
                         + ybus[i, j].imag * math.sin(v_ang[i] - v_ang[j])
                     )
 
         for k, i in enumerate(pq_indices):
-            for l, j in enumerate(non_slack):
+            for col, j in enumerate(non_slack):
                 if i == j:
-                    jac[n_non_slack + k, l] = p_calc[i] - v_mag[i] ** 2 * ybus[i, i].real
+                    jac[n_non_slack + k, col] = p_calc[i] - v_mag[i] ** 2 * ybus[i, i].real
                 else:
-                    jac[n_non_slack + k, l] = -v_mag[i] * v_mag[j] * (
+                    jac[n_non_slack + k, col] = -v_mag[i] * v_mag[j] * (
                         ybus[i, j].real * math.cos(v_ang[i] - v_ang[j])
                         + ybus[i, j].imag * math.sin(v_ang[i] - v_ang[j])
                     )
-            for l, j in enumerate(pq_indices):
+            for col, j in enumerate(pq_indices):
                 if i == j:
-                    jac[n_non_slack + k, n_non_slack + l] = q_calc[i] / v_mag[i] - v_mag[i] * ybus[i, i].imag
+                    jac[n_non_slack + k, n_non_slack + col] = q_calc[i] / v_mag[i] - v_mag[i] * ybus[i, i].imag
                 else:
-                    jac[n_non_slack + k, n_non_slack + l] = v_mag[i] * (
+                    jac[n_non_slack + k, n_non_slack + col] = v_mag[i] * (
                         ybus[i, j].real * math.sin(v_ang[i] - v_ang[j])
                         - ybus[i, j].imag * math.cos(v_ang[i] - v_ang[j])
                     )
@@ -359,6 +362,181 @@ def _power_flow_unbalanced_bfs(enm: dict[str, Any]) -> dict[str, Any]:
         "iterations": result.iterations,
         "trace": list(result.white_box_trace),
     }
+
+
+def _bus_voltage_lookup(enm: dict[str, Any]) -> dict[str, float]:
+    return {
+        str(bus["ref_id"]): float(bus.get("u_n_kv", bus.get("voltage_kv", enm.get("header", {}).get("base_kv", 15.0))))
+        for bus in enm.get("buses", [])
+    }
+
+
+def _branch_type_from_enm(raw_type: str) -> BranchType:
+    lowered = raw_type.lower()
+    if "cable" in lowered or "kabel" in lowered:
+        return BranchType.CABLE
+    return BranchType.LINE
+
+
+def _line_params_from_enm_branch(
+    branch: dict[str, Any],
+    *,
+    voltage_lookup: dict[str, float],
+    base_mva: float,
+    default_base_kv: float,
+) -> tuple[float, float, float]:
+    length_km = float(branch.get("length_km", 1.0))
+    if length_km <= 0:
+        raise ValueError(f"Reference branch {branch.get('ref_id')} has non-positive length")
+
+    if "r_ohm_per_km" in branch or "x_ohm_per_km" in branch:
+        return (
+            float(branch.get("r_ohm_per_km", 0.0)),
+            float(branch.get("x_ohm_per_km", 0.0)),
+            float(branch.get("b_us_per_km", 0.0)),
+        )
+
+    from_bus = str(branch.get("from_bus"))
+    base_kv = voltage_lookup.get(from_bus, default_base_kv)
+    z_base_ohm = (base_kv**2) / base_mva
+    return (
+        float(branch.get("r_pu", 0.0)) * z_base_ohm / length_km,
+        float(branch.get("x_pu", 0.0)) * z_base_ohm / length_km,
+        0.0,
+    )
+
+
+def build_short_circuit_graph_from_enm(enm: dict[str, Any]) -> NetworkGraph:
+    """Build solver-layer NetworkGraph for IEC 60909 reference validation."""
+
+    header = enm.get("header", {})
+    base_mva = float(header.get("base_mva", 100.0))
+    default_base_kv = float(header.get("base_kv", 15.0))
+    voltage_lookup = _bus_voltage_lookup(enm)
+    graph = NetworkGraph(network_model_id=str(header.get("name", "reference-network")))
+
+    for bus in enm.get("buses", []):
+        bus_id = str(bus["ref_id"])
+        bus_kind = str(bus.get("bus_kind", "pq")).lower()
+        if bus_kind == "slack":
+            node = Node(
+                id=bus_id,
+                name=str(bus.get("name", bus_id)),
+                node_type=NodeType.SLACK,
+                voltage_level=voltage_lookup[bus_id],
+                voltage_magnitude=float(bus.get("v_pu", 1.0)),
+                voltage_angle=0.0,
+            )
+        else:
+            node = Node(
+                id=bus_id,
+                name=str(bus.get("name", bus_id)),
+                node_type=NodeType.PQ,
+                voltage_level=voltage_lookup[bus_id],
+                active_power=0.0,
+                reactive_power=0.0,
+            )
+        graph.add_node(node)
+
+    for branch in enm.get("branches", []):
+        from_bus = str(branch["from_bus"])
+        to_bus = str(branch["to_bus"])
+        r_ohm_per_km, x_ohm_per_km, b_us_per_km = _line_params_from_enm_branch(
+            branch,
+            voltage_lookup=voltage_lookup,
+            base_mva=base_mva,
+            default_base_kv=default_base_kv,
+        )
+        graph.add_branch(
+            LineBranch(
+                id=str(branch["ref_id"]),
+                name=str(branch.get("name", branch["ref_id"])),
+                branch_type=_branch_type_from_enm(str(branch.get("branch_type", "LineBranch"))),
+                from_node_id=from_bus,
+                to_node_id=to_bus,
+                in_service=bool(branch.get("in_service", True)),
+                r_ohm_per_km=r_ohm_per_km,
+                x_ohm_per_km=x_ohm_per_km,
+                b_us_per_km=b_us_per_km,
+                length_km=float(branch.get("length_km", 1.0)),
+                rated_current_a=float(branch.get("rated_current_a", 1.0)),
+                type_ref=branch.get("type_ref"),
+            )
+        )
+
+    for transformer in enm.get("transformers", []):
+        graph.add_branch(
+            TransformerBranch(
+                id=str(transformer["ref_id"]),
+                name=str(transformer.get("name", transformer["ref_id"])),
+                branch_type=BranchType.TRANSFORMER,
+                from_node_id=str(transformer["from_bus"]),
+                to_node_id=str(transformer["to_bus"]),
+                in_service=bool(transformer.get("in_service", True)),
+                rated_power_mva=float(transformer.get("rated_power_mva", transformer.get("sn_mva", 0.0))),
+                voltage_hv_kv=float(transformer.get("voltage_hv_kv", transformer.get("primary_kv", 0.0))),
+                voltage_lv_kv=float(transformer.get("voltage_lv_kv", transformer.get("secondary_kv", 0.0))),
+                uk_percent=float(transformer.get("uk_percent", transformer.get("ukr_pct", 0.0))),
+                pk_kw=float(transformer.get("pk_kw", transformer.get("p_k_kw", 0.0))),
+                i0_percent=float(transformer.get("i0_percent", 0.0)),
+                p0_kw=float(transformer.get("p0_kw", 0.0)),
+                vector_group=str(transformer.get("vector_group", "Dyn11")),
+                tap_position=int(transformer.get("tap_position", 0)),
+                tap_step_percent=float(transformer.get("tap_step_percent", 2.5)),
+                type_ref=transformer.get("type_ref"),
+            )
+        )
+
+    return graph
+
+
+def _solve_short_circuit_scenario(graph: NetworkGraph, scenario: ExpectedShortCircuit):
+    if scenario.sc_type == "3F":
+        return ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+            graph=graph,
+            fault_node_id=scenario.fault_node_id,
+            c_factor=1.10,
+            tk_s=1.0,
+            include_branch_contributions=True,
+        )
+    if scenario.sc_type == "2F":
+        return ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
+            graph=graph,
+            fault_node_id=scenario.fault_node_id,
+            c_factor=1.10,
+            tk_s=1.0,
+            include_branch_contributions=True,
+        )
+    raise ValueError(
+        "Reference short-circuit validation currently requires explicit Z0 matrices "
+        f"for scenario {scenario.fault_node_id}/{scenario.sc_type}"
+    )
+
+
+def solve_reference_short_circuit(
+    enm: dict[str, Any],
+    scenarios: tuple[ExpectedShortCircuit, ...],
+) -> dict[str, dict[str, Any]]:
+    """Run our IEC 60909 solver for reference short-circuit scenarios."""
+
+    if not scenarios:
+        return {}
+
+    graph = build_short_circuit_graph_from_enm(enm)
+    actual: dict[str, dict[str, Any]] = {}
+    for scenario in scenarios:
+        result = _solve_short_circuit_scenario(graph, scenario)
+        result_dict = result.to_dict()
+        key = f"{scenario.fault_node_id}__{scenario.sc_type}"
+        actual[key] = {
+            "ikss_a": result.ikss_a,
+            "ip_a": result.ip_a,
+            "ith_a": result.ith_a,
+            "sk_mva": result.sk_mva,
+            "zkk_ohm": result_dict["zkk_ohm"],
+            "white_box_trace": result_dict["white_box_trace"],
+        }
+    return actual
 
 
 def solve_reference_network(network_id: str, enm: dict[str, Any]) -> dict[str, Any]:

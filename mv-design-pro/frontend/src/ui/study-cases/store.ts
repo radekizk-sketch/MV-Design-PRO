@@ -344,7 +344,7 @@ export function useActiveCaseStatusLabel(): string {
 
   switch (status) {
     case 'NONE':
-      return 'Wyniki nieuruchomione';
+      return 'Wyniki do obliczenia';
     case 'FRESH':
       return 'Wyniki aktualne';
     case 'OUTDATED':

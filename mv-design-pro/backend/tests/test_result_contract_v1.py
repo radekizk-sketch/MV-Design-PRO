@@ -455,6 +455,36 @@ class TestResultSetOverlayPayloadMinimal:
         assert bus1.metrics["IK_3F_A"].value == 8.3
         assert bus1.metrics["IK_3F_A"].unit == "kA"
 
+    def test_overlay_short_circuit_contribution_metrics_from_solver(
+        self,
+        sample_run_id,
+        sample_solver_input_hash,
+    ):
+        """Overlay exposes IEC 60909 split between grid system and DER sources."""
+        rs = build_resultset_v1(
+            run_id=sample_run_id,
+            analysis_type="SC_3F",
+            solver_input_hash=sample_solver_input_hash,
+            element_results_raw=[
+                {
+                    "element_ref": "bus-1",
+                    "element_type": "Bus",
+                    "values": {
+                        "ikss_a": 116_910.0,
+                        "ik_total_a": 116_910.0,
+                        "ik_thevenin_a": 115_700.0,
+                        "ik_inverters_a": 1_210.0,
+                    },
+                },
+            ],
+        )
+
+        bus1 = rs.overlay_payload.elements["bus-1"]
+        assert bus1.metrics["IK_3F_A"].value == 116_910.0
+        assert bus1.metrics["IK_3F_SYSTEM_A"].value == 115_700.0
+        assert bus1.metrics["IK_3F_DER_A"].value == 1_210.0
+        assert bus1.metrics["IK_3F_TOTAL_A"].value == 116_910.0
+
     def test_overlay_warnings_from_global_issues(
         self,
         sample_run_id,

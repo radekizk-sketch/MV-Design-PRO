@@ -1,0 +1,305 @@
+﻿\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage{longtable}
+\usepackage{geometry}
+\geometry{margin=20mm}
+\begin{document}
+\section*{Uzasadnienie inżynierskie obliczeń}
+\textbf{Obliczenie:} e8557c11-3f24-47ec-8559-4cf8b9184e5c\\
+\textbf{Typ analizy:} short\_circuit\_sn\\
+\textbf{Wersja modelu użyta do obliczeń:} e837436349e774bacb7d26536110080a7b3b370653f51776d0c9e30e6994b68d\\
+\textbf{Skrót danych wejściowych:} 0bca47148d4e35f6e3790788b0fa23ff27148f627ee494b9b9b9ff1d34228b28\\
+\section*{Kroki obliczeniowe}
+\section*{Prady charakterystyczne SC3F}
+\begin{longtable}{llll}
+Obiekt & \verb|I_dyn| [kA] & \verb|I_th| [kA] & Norma \\
+\hline
+Port odgałęźny 1 & 121.8 & 84.38 & IEC 60909 \\
+ZKSN SN & 121.8 & 84.38 & IEC 60909 \\
+Stacja B & 168.7 & 116.9 & IEC 60909 \\
+GND (Źródło GPZ 15 kV) & 26.14 & 10.58 & IEC 60909 \\
+Szyna nN stacji & 41.21 & 19.95 & IEC 60909 \\
+\end{longtable}
+\subsection*{1. Impedancja zastępcza w punkcie zwarcia}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} bp/ed7a37193a833ebc29e3dd7305152d17/branch\_bus\_1\\
+\[
+Z_k = Z_1
+\]
+\textbf{Podstawienie:} \textbackslash\{\}left(0.104998 + j 0.0414988\textbackslash\{\}right)\\
+\textbf{Wynik:} \{'z\_equiv\_ohm': \{'im': 0.04149881890883517, 're': 0.10499835646475054\}\}\\
+\subsection*{2. Prąd zwarciowy początkowy symetryczny}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} bp/ed7a37193a833ebc29e3dd7305152d17/branch\_bus\_1\\
+\[
+I_{k}'' = \frac{c \cdot U_n \cdot k_U}{\left|Z_k\right|}
+\]
+\textbf{Podstawienie:} \textbackslash\{\}frac\{1.1 \textbackslash\{\}cdot 15000 \textbackslash\{\}cdot 0.57735\}\{0.112902\}\\
+\textbf{Wynik:} \{'ikss\_a': 84376.71528192505\}\\
+\subsection*{3. Współczynnik udaru}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} bp/ed7a37193a833ebc29e3dd7305152d17/branch\_bus\_1\\
+\[
+\kappa = 1.02 + 0.98 \cdot e^{-3 R/X}
+\]
+\textbf{Podstawienie:} 1.02 + 0.98 \textbackslash\{\}cdot e\textasciicircum{}\{-3 \textbackslash\{\}cdot 2.53015\}\\
+\textbf{Wynik:} \{'kappa': 1.020495144277588\}\\
+\subsection*{4. Prąd udarowy}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} bp/ed7a37193a833ebc29e3dd7305152d17/branch\_bus\_1\\
+\[
+I_p = \kappa \cdot \sqrt{2} \cdot I_{k}''
+\]
+\textbf{Podstawienie:} 1.0205 \textbackslash\{\}cdot \textbackslash\{\}sqrt\{2\} \textbackslash\{\}cdot 84376.7\\
+\textbf{Wynik:} \{'ip\_a': 121772.31293243778\}\\
+\subsection*{5. Prąd zwarciowy do obliczeń cieplnych}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} bp/ed7a37193a833ebc29e3dd7305152d17/branch\_bus\_1\\
+\[
+I_b = I_{k}'' \cdot \sqrt{1 + ((\kappa - 1) \cdot e^{-t_b/t_a})^2}
+\]
+\textbf{Podstawienie:} 84376.7 \textbackslash\{\}cdot \textbackslash\{\}sqrt\{1 + \textbackslash\{\}left((1.0205 - 1) \textbackslash\{\}cdot 3.01434e-35\textbackslash\{\}right)\textasciicircum{}2\}\\
+\textbf{Wynik:} \{'ib\_a': 84376.71528192505\}\\
+\subsection*{6. Prąd zastępczy cieplny}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} bp/ed7a37193a833ebc29e3dd7305152d17/branch\_bus\_1\\
+\[
+I_{th} = I_{k}'' \cdot \sqrt{t_k}
+\]
+\textbf{Podstawienie:} 84376.7 \textbackslash\{\}cdot \textbackslash\{\}sqrt\{1\}\\
+\textbf{Wynik:} \{'ith\_a': 84376.71528192505\}\\
+\subsection*{7. Moc zwarciowa}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} bp/ed7a37193a833ebc29e3dd7305152d17/branch\_bus\_1\\
+\[
+S_k = \sqrt{3} \cdot U_n \cdot I_{k}'' / 10^6
+\]
+\textbf{Podstawienie:} \textbackslash\{\}sqrt\{3\} \textbackslash\{\}cdot 15000 \textbackslash\{\}cdot 84376.7 / 10\textasciicircum{}6\\
+\textbf{Wynik:} \{'sk\_mva': 2192.1713676610125\}\\
+\subsection*{8. Impedancja zastępcza w punkcie zwarcia}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} bp/ed7a37193a833ebc29e3dd7305152d17/bus\\
+\[
+Z_k = Z_1
+\]
+\textbf{Podstawienie:} \textbackslash\{\}left(0.104998 + j 0.0414988\textbackslash\{\}right)\\
+\textbf{Wynik:} \{'z\_equiv\_ohm': \{'im': 0.04149881890883517, 're': 0.10499835646475054\}\}\\
+\subsection*{9. Prąd zwarciowy początkowy symetryczny}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} bp/ed7a37193a833ebc29e3dd7305152d17/bus\\
+\[
+I_{k}'' = \frac{c \cdot U_n \cdot k_U}{\left|Z_k\right|}
+\]
+\textbf{Podstawienie:} \textbackslash\{\}frac\{1.1 \textbackslash\{\}cdot 15000 \textbackslash\{\}cdot 0.57735\}\{0.112902\}\\
+\textbf{Wynik:} \{'ikss\_a': 84376.71528192505\}\\
+\subsection*{10. Współczynnik udaru}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} bp/ed7a37193a833ebc29e3dd7305152d17/bus\\
+\[
+\kappa = 1.02 + 0.98 \cdot e^{-3 R/X}
+\]
+\textbf{Podstawienie:} 1.02 + 0.98 \textbackslash\{\}cdot e\textasciicircum{}\{-3 \textbackslash\{\}cdot 2.53015\}\\
+\textbf{Wynik:} \{'kappa': 1.020495144277588\}\\
+\subsection*{11. Prąd udarowy}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} bp/ed7a37193a833ebc29e3dd7305152d17/bus\\
+\[
+I_p = \kappa \cdot \sqrt{2} \cdot I_{k}''
+\]
+\textbf{Podstawienie:} 1.0205 \textbackslash\{\}cdot \textbackslash\{\}sqrt\{2\} \textbackslash\{\}cdot 84376.7\\
+\textbf{Wynik:} \{'ip\_a': 121772.31293243778\}\\
+\subsection*{12. Prąd zwarciowy do obliczeń cieplnych}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} bp/ed7a37193a833ebc29e3dd7305152d17/bus\\
+\[
+I_b = I_{k}'' \cdot \sqrt{1 + ((\kappa - 1) \cdot e^{-t_b/t_a})^2}
+\]
+\textbf{Podstawienie:} 84376.7 \textbackslash\{\}cdot \textbackslash\{\}sqrt\{1 + \textbackslash\{\}left((1.0205 - 1) \textbackslash\{\}cdot 3.01434e-35\textbackslash\{\}right)\textasciicircum{}2\}\\
+\textbf{Wynik:} \{'ib\_a': 84376.71528192505\}\\
+\subsection*{13. Prąd zastępczy cieplny}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} bp/ed7a37193a833ebc29e3dd7305152d17/bus\\
+\[
+I_{th} = I_{k}'' \cdot \sqrt{t_k}
+\]
+\textbf{Podstawienie:} 84376.7 \textbackslash\{\}cdot \textbackslash\{\}sqrt\{1\}\\
+\textbf{Wynik:} \{'ith\_a': 84376.71528192505\}\\
+\subsection*{14. Moc zwarciowa}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} bp/ed7a37193a833ebc29e3dd7305152d17/bus\\
+\[
+S_k = \sqrt{3} \cdot U_n \cdot I_{k}'' / 10^6
+\]
+\textbf{Podstawienie:} \textbackslash\{\}sqrt\{3\} \textbackslash\{\}cdot 15000 \textbackslash\{\}cdot 84376.7 / 10\textasciicircum{}6\\
+\textbf{Wynik:} \{'sk\_mva': 2192.1713676610125\}\\
+\subsection*{15. Impedancja zastępcza w punkcie zwarcia}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} stn/ac3f845407ac60c5df26c7e641dacec2/sn\_bus\\
+\[
+Z_k = Z_1
+\]
+\textbf{Podstawienie:} \textbackslash\{\}left(0.0757766 + j 0.0299491\textbackslash\{\}right)\\
+\textbf{Wynik:} \{'z\_equiv\_ohm': \{'im': 0.029949123506463678, 're': 0.07577657110710738\}\}\\
+\subsection*{16. Prąd zwarciowy początkowy symetryczny}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} stn/ac3f845407ac60c5df26c7e641dacec2/sn\_bus\\
+\[
+I_{k}'' = \frac{c \cdot U_n \cdot k_U}{\left|Z_k\right|}
+\]
+\textbf{Podstawienie:} \textbackslash\{\}frac\{1.1 \textbackslash\{\}cdot 15000 \textbackslash\{\}cdot 0.57735\}\{0.0814803\}\\
+\textbf{Wynik:} \{'ikss\_a': 116915.12971578083\}\\
+\subsection*{17. Współczynnik udaru}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} stn/ac3f845407ac60c5df26c7e641dacec2/sn\_bus\\
+\[
+\kappa = 1.02 + 0.98 \cdot e^{-3 R/X}
+\]
+\textbf{Podstawienie:} 1.02 + 0.98 \textbackslash\{\}cdot e\textasciicircum{}\{-3 \textbackslash\{\}cdot 2.53018\}\\
+\textbf{Wynik:} \{'kappa': 1.020495109073429\}\\
+\subsection*{18. Prąd udarowy}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} stn/ac3f845407ac60c5df26c7e641dacec2/sn\_bus\\
+\[
+I_p = \kappa \cdot \sqrt{2} \cdot I_{k}''
+\]
+\textbf{Podstawienie:} 1.0205 \textbackslash\{\}cdot \textbackslash\{\}sqrt\{2\} \textbackslash\{\}cdot 116915\\
+\textbf{Wynik:} \{'ip\_a': 168731.684133239\}\\
+\subsection*{19. Prąd zwarciowy do obliczeń cieplnych}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} stn/ac3f845407ac60c5df26c7e641dacec2/sn\_bus\\
+\[
+I_b = I_{k}'' \cdot \sqrt{1 + ((\kappa - 1) \cdot e^{-t_b/t_a})^2}
+\]
+\textbf{Podstawienie:} 116915 \textbackslash\{\}cdot \textbackslash\{\}sqrt\{1 + \textbackslash\{\}left((1.0205 - 1) \textbackslash\{\}cdot 3.0121e-35\textbackslash\{\}right)\textasciicircum{}2\}\\
+\textbf{Wynik:} \{'ib\_a': 116915.12971578083\}\\
+\subsection*{20. Prąd zastępczy cieplny}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} stn/ac3f845407ac60c5df26c7e641dacec2/sn\_bus\\
+\[
+I_{th} = I_{k}'' \cdot \sqrt{t_k}
+\]
+\textbf{Podstawienie:} 116915 \textbackslash\{\}cdot \textbackslash\{\}sqrt\{1\}\\
+\textbf{Wynik:} \{'ith\_a': 116915.12971578083\}\\
+\subsection*{21. Moc zwarciowa}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} stn/ac3f845407ac60c5df26c7e641dacec2/sn\_bus\\
+\[
+S_k = \sqrt{3} \cdot U_n \cdot I_{k}'' / 10^6
+\]
+\textbf{Podstawienie:} \textbackslash\{\}sqrt\{3\} \textbackslash\{\}cdot 15000 \textbackslash\{\}cdot 116915 / 10\textasciicircum{}6\\
+\textbf{Wynik:} \{'sk\_mva': 3037.544172618573\}\\
+\subsection*{22. Impedancja zastępcza w punkcie zwarcia}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} gpz/860003b4514aa388b39561d5005ce584/source/main\\
+\[
+Z_k = Z_1
+\]
+\textbf{Podstawienie:} \textbackslash\{\}left(0.0895556 + j 0.895533\textbackslash\{\}right)\\
+\textbf{Wynik:} \{'z\_equiv\_ohm': \{'im': 0.8955334711889894, 're': 0.08955559711889903\}\}\\
+\subsection*{23. Prąd zwarciowy początkowy symetryczny}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} gpz/860003b4514aa388b39561d5005ce584/source/main\\
+\[
+I_{k}'' = \frac{c \cdot U_n \cdot k_U}{\left|Z_k\right|}
+\]
+\textbf{Podstawienie:} \textbackslash\{\}frac\{1.1 \textbackslash\{\}cdot 15000 \textbackslash\{\}cdot 0.57735\}\{0.9\}\\
+\textbf{Wynik:} \{'ikss\_a': 10584.752302054854\}\\
+\subsection*{24. Współczynnik udaru}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} gpz/860003b4514aa388b39561d5005ce584/source/main\\
+\[
+\kappa = 1.02 + 0.98 \cdot e^{-3 R/X}
+\]
+\textbf{Podstawienie:} 1.02 + 0.98 \textbackslash\{\}cdot e\textasciicircum{}\{-3 \textbackslash\{\}cdot 0.100003\}\\
+\textbf{Wynik:} \{'kappa': 1.745996384117439\}\\
+\subsection*{25. Prąd udarowy}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} gpz/860003b4514aa388b39561d5005ce584/source/main\\
+\[
+I_p = \kappa \cdot \sqrt{2} \cdot I_{k}''
+\]
+\textbf{Podstawienie:} 1.746 \textbackslash\{\}cdot \textbackslash\{\}sqrt\{2\} \textbackslash\{\}cdot 10584.8\\
+\textbf{Wynik:} \{'ip\_a': 26135.99492732189\}\\
+\subsection*{26. Prąd zwarciowy do obliczeń cieplnych}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} gpz/860003b4514aa388b39561d5005ce584/source/main\\
+\[
+I_b = I_{k}'' \cdot \sqrt{1 + ((\kappa - 1) \cdot e^{-t_b/t_a})^2}
+\]
+\textbf{Podstawienie:} 10584.8 \textbackslash\{\}cdot \textbackslash\{\}sqrt\{1 + \textbackslash\{\}left((1.746 - 1) \textbackslash\{\}cdot 0.0432105\textbackslash\{\}right)\textasciicircum{}2\}\\
+\textbf{Wynik:} \{'ib\_a': 10590.250116882635\}\\
+\subsection*{27. Prąd zastępczy cieplny}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} gpz/860003b4514aa388b39561d5005ce584/source/main\\
+\[
+I_{th} = I_{k}'' \cdot \sqrt{t_k}
+\]
+\textbf{Podstawienie:} 10584.8 \textbackslash\{\}cdot \textbackslash\{\}sqrt\{1\}\\
+\textbf{Wynik:} \{'ith\_a': 10584.752302054854\}\\
+\subsection*{28. Moc zwarciowa}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} gpz/860003b4514aa388b39561d5005ce584/source/main\\
+\[
+S_k = \sqrt{3} \cdot U_n \cdot I_{k}'' / 10^6
+\]
+\textbf{Podstawienie:} \textbackslash\{\}sqrt\{3\} \textbackslash\{\}cdot 15000 \textbackslash\{\}cdot 10584.8 / 10\textasciicircum{}6\\
+\textbf{Wynik:} \{'sk\_mva': 274.9999315903596\}\\
+\subsection*{29. Impedancja zastępcza w punkcie zwarcia}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} stn/ac3f845407ac60c5df26c7e641dacec2/nn\_bus\\
+\[
+Z_k = Z_1
+\]
+\textbf{Podstawienie:} \textbackslash\{\}left(0.00327888 + j 0.0123034\textbackslash\{\}right)\\
+\textbf{Wynik:} \{'z\_equiv\_ohm': \{'im': 0.01230336134120621, 're': 0.003278879262860342\}\}\\
+\subsection*{30. Prąd zwarciowy początkowy symetryczny}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} stn/ac3f845407ac60c5df26c7e641dacec2/nn\_bus\\
+\[
+I_{k}'' = \frac{c \cdot U_n \cdot k_U}{\left|Z_k\right|}
+\]
+\textbf{Podstawienie:} \textbackslash\{\}frac\{1.1 \textbackslash\{\}cdot 400 \textbackslash\{\}cdot 0.57735\}\{0.0127328\}\\
+\textbf{Wynik:} \{'ikss\_a': 19951.186551397983\}\\
+\subsection*{31. Współczynnik udaru}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} stn/ac3f845407ac60c5df26c7e641dacec2/nn\_bus\\
+\[
+\kappa = 1.02 + 0.98 \cdot e^{-3 R/X}
+\]
+\textbf{Podstawienie:} 1.02 + 0.98 \textbackslash\{\}cdot e\textasciicircum{}\{-3 \textbackslash\{\}cdot 0.266503\}\\
+\textbf{Wynik:} \{'kappa': 1.4605590160723012\}\\
+\subsection*{32. Prąd udarowy}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} stn/ac3f845407ac60c5df26c7e641dacec2/nn\_bus\\
+\[
+I_p = \kappa \cdot \sqrt{2} \cdot I_{k}''
+\]
+\textbf{Podstawienie:} 1.46056 \textbackslash\{\}cdot \textbackslash\{\}sqrt\{2\} \textbackslash\{\}cdot 19951.2\\
+\textbf{Wynik:} \{'ip\_a': 41210.02113724199\}\\
+\subsection*{33. Prąd zwarciowy do obliczeń cieplnych}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} stn/ac3f845407ac60c5df26c7e641dacec2/nn\_bus\\
+\[
+I_b = I_{k}'' \cdot \sqrt{1 + ((\kappa - 1) \cdot e^{-t_b/t_a})^2}
+\]
+\textbf{Podstawienie:} 19951.2 \textbackslash\{\}cdot \textbackslash\{\}sqrt\{1 + \textbackslash\{\}left((1.46056 - 1) \textbackslash\{\}cdot 0.000231153\textbackslash\{\}right)\textasciicircum{}2\}\\
+\textbf{Wynik:} \{'ib\_a': 19951.186664458015\}\\
+\subsection*{34. Prąd zastępczy cieplny}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} stn/ac3f845407ac60c5df26c7e641dacec2/nn\_bus\\
+\[
+I_{th} = I_{k}'' \cdot \sqrt{t_k}
+\]
+\textbf{Podstawienie:} 19951.2 \textbackslash\{\}cdot \textbackslash\{\}sqrt\{1\}\\
+\textbf{Wynik:} \{'ith\_a': 19951.186551397983\}\\
+\subsection*{35. Moc zwarciowa}
+\textbf{Faza:} brak danych\\
+\textbf{Obiekt:} stn/ac3f845407ac60c5df26c7e641dacec2/nn\_bus\\
+\[
+S_k = \sqrt{3} \cdot U_n \cdot I_{k}'' / 10^6
+\]
+\textbf{Podstawienie:} \textbackslash\{\}sqrt\{3\} \textbackslash\{\}cdot 400 \textbackslash\{\}cdot 19951.2 / 10\textasciicircum{}6\\
+\textbf{Wynik:} \{'sk\_mva': 13.82258751132248\}\\
+\end{document}

@@ -14,7 +14,7 @@ describe('useCanCalculate — bramka gotowości z backendu', () => {
   });
 
   it('blokuje obliczenia, gdy readiness.ready = false', () => {
-    useAppStateStore.getState().setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'OUTDATED');
+    useAppStateStore.getState().setActiveCase('case-1', 'Zakres 1', 'ShortCircuitCase', 'OUTDATED');
     useSnapshotStore.setState({
       snapshot: makeCalculationReadySnapshot(),
       readiness: {
@@ -38,7 +38,7 @@ describe('useCanCalculate — bramka gotowości z backendu', () => {
   });
 
   it('odblokowuje obliczenia, gdy readiness.ready = true i case aktywny', () => {
-    useAppStateStore.getState().setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'OUTDATED');
+    useAppStateStore.getState().setActiveCase('case-1', 'Zakres 1', 'ShortCircuitCase', 'OUTDATED');
     useSnapshotStore.setState({
       snapshot: makeCalculationReadySnapshot(),
       readiness: {
@@ -55,7 +55,7 @@ describe('useCanCalculate — bramka gotowości z backendu', () => {
   });
 
   it('pozwala uruchomić solver z widoku analiz, gdy układ jest przygotowany', () => {
-    useAppStateStore.getState().setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'OUTDATED');
+    useAppStateStore.getState().setActiveCase('case-1', 'Zakres 1', 'ShortCircuitCase', 'OUTDATED');
     useAppStateStore.getState().setActiveMode('RESULT_VIEW');
     useSnapshotStore.setState({
       snapshot: makeCalculationReadySnapshot(),
@@ -73,7 +73,7 @@ describe('useCanCalculate — bramka gotowości z backendu', () => {
   });
 
   it('traktuje readiness ze snapshotu jako nadrzędne wobec przestarzałego live-store', () => {
-    useAppStateStore.getState().setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'OUTDATED');
+    useAppStateStore.getState().setActiveCase('case-1', 'Zakres 1', 'ShortCircuitCase', 'OUTDATED');
     useSnapshotStore.setState({
       snapshot: makeCalculationReadySnapshot(),
       readiness: {

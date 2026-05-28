@@ -210,7 +210,8 @@ test.describe('Branch points workflow', () => {
 
     const form = page.getByTestId('insert-branch-pole-form');
     await expect(form).toBeVisible();
-    await expect(form.getByRole('textbox', { name: 'Odcinek SN' })).toHaveValue(segmentRef!);
+    await expect(form).toHaveAttribute('data-segment-ref', segmentRef!);
+    await expect(form.getByRole('textbox', { name: 'Odcinek SN' })).toHaveValue(OVERHEAD_SEGMENT_NAME);
   });
 
   test('opens ZKSN form from canonical cable surface', async ({ page, request }) => {
@@ -247,6 +248,7 @@ test.describe('Branch points workflow', () => {
 
     const form = page.getByTestId('insert-zksn-form');
     await expect(form).toBeVisible();
-    await expect(form.getByRole('textbox', { name: 'Odcinek SN' })).toHaveValue(segmentRef!);
+    await expect(form).toHaveAttribute('data-segment-ref', segmentRef!);
+    await expect(form.getByRole('textbox', { name: 'Odcinek SN' })).toHaveValue(CABLE_SEGMENT_NAME);
   });
 });

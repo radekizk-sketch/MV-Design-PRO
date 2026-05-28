@@ -66,6 +66,10 @@ export interface ValidationResult {
   readonly errors: readonly string[];
 }
 
+export interface WizardValidationContext {
+  readonly allowedDeviceCatalogIds?: readonly string[];
+}
+
 /**
  * Waliduje selekcje wizardu — sprawdza obecność catalog_refs w katalogach.
  * Chroni przed manipulacją selections w devtools.
@@ -73,6 +77,7 @@ export interface ValidationResult {
 export function validateWizardSelections(
   selections: WizardSelections,
   derKind: DerKindUnified,
+  context: WizardValidationContext = {},
 ): ValidationResult {
   const errors: string[] = [];
 
@@ -101,7 +106,11 @@ export function validateWizardSelections(
       derKind === 'PV' ? PV_INVERTER_CATALOG
       : derKind === 'BESS' ? BESS_PCS_CATALOG
       : WIND_TURBINE_CATALOG;
-    if (!deviceCatalog.find((d) => d.id === selections.deviceCatalogRef)) {
+    const allowedDeviceCatalogIds = new Set([
+      ...deviceCatalog.map((device) => device.id),
+      ...(context.allowedDeviceCatalogIds ?? []),
+    ]);
+    if (!allowedDeviceCatalogIds.has(selections.deviceCatalogRef)) {
       errors.push(
         `Urządzenie "${selections.deviceCatalogRef}" nie istnieje w katalogu dla DER ${derKind}.`,
       );

@@ -172,7 +172,7 @@ export const DEFAULT_STUDY_CASE_CONFIG: StudyCaseConfig = {
  * Polish labels for result status.
  */
 export const RESULT_STATUS_LABELS: Record<StudyCaseResultStatus, string> = {
-  NONE: 'Wyniki nieuruchomione',
+  NONE: 'Wyniki do obliczenia',
   FRESH: 'Wyniki aktualne',
   OUTDATED: 'Wyniki nieaktualne',
 };
@@ -182,7 +182,7 @@ export const RESULT_STATUS_LABELS: Record<StudyCaseResultStatus, string> = {
  * UI-09: Rozbudowane tooltips statusów przypadków.
  */
 export const RESULT_STATUS_TOOLTIPS: Record<StudyCaseResultStatus, string> = {
-  NONE: 'Wyniki nieuruchomione — obliczenia nie zostały jeszcze wykonane',
+  NONE: 'Wyniki do obliczenia — obliczenia nie zostały jeszcze wykonane',
   FRESH: 'Wyniki aktualne — obliczenia wykonane po ostatniej zmianie modelu',
   OUTDATED:
     'Wyniki nieaktualne — model został zmieniony po ostatnim obliczeniu. Zalecenie: wykonaj obliczenia ponownie.',

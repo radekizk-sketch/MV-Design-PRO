@@ -1,0 +1,10 @@
+{
+  "feature": "sld_station_der_label_scaling_readability_fast",
+  "timestamp": "20260527_213448",
+  "command": "claude -p <prompt>",
+  "prompt_path": "docs/audits/CLAUDE_DESIGN_REVIEW_sld_station_der_label_scaling_readability_fast_20260527_213448.prompt.md",
+  "review_path": "docs/audits/CLAUDE_DESIGN_REVIEW_sld_station_der_label_scaling_readability_fast_20260527_213448.md",
+  "cwd": "C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\mv-design-pro",
+  "exit_code": 124,
+  "status": "timeout"
+}

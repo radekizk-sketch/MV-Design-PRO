@@ -1,0 +1,365 @@
+{
+  "diagnostics": {
+    "href": "http://127.0.0.1:5173/#sld?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8",
+    "hasCanvas": true,
+    "hasVisiblePrzerwaText": false,
+    "noExternalBridge": null,
+    "stationRoots": [
+      {
+        "testid": "sld-v2-mini-rmu-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+        "kind": "mini_block_overview",
+        "lod": "overview",
+        "box": {
+          "x": 912,
+          "y": 930,
+          "w": 83,
+          "h": 68
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-overview-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+        "kind": null,
+        "lod": null,
+        "box": {
+          "x": 912,
+          "y": 930,
+          "w": 83,
+          "h": 68
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-overview-enclosure-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+        "kind": "rmu_enclosure",
+        "lod": null,
+        "box": {
+          "x": 912,
+          "y": 939,
+          "w": 82,
+          "h": 49
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-sn-row-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+        "kind": null,
+        "lod": null,
+        "box": {
+          "x": 915,
+          "y": 959,
+          "w": 76,
+          "h": 0
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-bay-marker-stn/ac3f845407ac60c5df26c7e641dacec2/station-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/000",
+        "kind": "station_overview_bay",
+        "lod": null,
+        "box": {
+          "x": 916,
+          "y": 930,
+          "w": 19,
+          "h": 28
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-port-anchor-stn/ac3f845407ac60c5df26c7e641dacec2/station-WE",
+        "kind": null,
+        "lod": null,
+        "box": {
+          "x": 916,
+          "y": 930,
+          "w": 17,
+          "h": 17
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-port-stn/ac3f845407ac60c5df26c7e641dacec2/station-WE",
+        "kind": null,
+        "lod": null,
+        "box": {
+          "x": 922,
+          "y": 936,
+          "w": 5,
+          "h": 5
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-bay-marker-stn/ac3f845407ac60c5df26c7e641dacec2/station-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/001",
+        "kind": "station_overview_bay",
+        "lod": null,
+        "box": {
+          "x": 945,
+          "y": 930,
+          "w": 19,
+          "h": 28
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-port-anchor-stn/ac3f845407ac60c5df26c7e641dacec2/station-WY",
+        "kind": null,
+        "lod": null,
+        "box": {
+          "x": 945,
+          "y": 930,
+          "w": 17,
+          "h": 17
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-port-stn/ac3f845407ac60c5df26c7e641dacec2/station-WY",
+        "kind": null,
+        "lod": null,
+        "box": {
+          "x": 950,
+          "y": 936,
+          "w": 5,
+          "h": 5
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-bay-marker-stn/ac3f845407ac60c5df26c7e641dacec2/station-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/002",
+        "kind": "station_overview_bay",
+        "lod": null,
+        "box": {
+          "x": 969,
+          "y": 959,
+          "w": 26,
+          "h": 40
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-port-anchor-stn/ac3f845407ac60c5df26c7e641dacec2/station-TR",
+        "kind": null,
+        "lod": null,
+        "box": {
+          "x": 973,
+          "y": 982,
+          "w": 17,
+          "h": 17
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-lv-row-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+        "kind": null,
+        "lod": null,
+        "box": {
+          "x": 969,
+          "y": 991,
+          "w": 26,
+          "h": 0
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-overview-code-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+        "kind": null,
+        "lod": null,
+        "box": {
+          "x": 937,
+          "y": 973,
+          "w": 32,
+          "h": 16
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-zksn-bp/ed7a37193a833ebc29e3dd7305152d17/zksn",
+        "kind": "mini_block_overview",
+        "lod": "overview",
+        "box": {
+          "x": 661,
+          "y": 790,
+          "w": 82,
+          "h": 67
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-overview-zksn-bp/ed7a37193a833ebc29e3dd7305152d17/zksn",
+        "kind": null,
+        "lod": null,
+        "box": {
+          "x": 661,
+          "y": 790,
+          "w": 82,
+          "h": 67
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-overview-enclosure-zksn-bp/ed7a37193a833ebc29e3dd7305152d17/zksn",
+        "kind": "rmu_enclosure",
+        "lod": null,
+        "box": {
+          "x": 661,
+          "y": 798,
+          "w": 82,
+          "h": 49
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-sn-row-zksn-bp/ed7a37193a833ebc29e3dd7305152d17/zksn",
+        "kind": null,
+        "lod": null,
+        "box": {
+          "x": 664,
+          "y": 818,
+          "w": 76,
+          "h": 0
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-bay-marker-zksn-bp/ed7a37193a833ebc29e3dd7305152d17/zksn-bp/ed7a37193a833ebc29e3dd7305152d17/zksn/field/1",
+        "kind": "station_overview_bay",
+        "lod": null,
+        "box": {
+          "x": 665,
+          "y": 790,
+          "w": 19,
+          "h": 28
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-port-anchor-zksn-bp/ed7a37193a833ebc29e3dd7305152d17/zksn-WE",
+        "kind": null,
+        "lod": null,
+        "box": {
+          "x": 665,
+          "y": 790,
+          "w": 17,
+          "h": 17
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-port-zksn-bp/ed7a37193a833ebc29e3dd7305152d17/zksn-WE",
+        "kind": null,
+        "lod": null,
+        "box": {
+          "x": 671,
+          "y": 795,
+          "w": 5,
+          "h": 5
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-bay-marker-zksn-bp/ed7a37193a833ebc29e3dd7305152d17/zksn-bp/ed7a37193a833ebc29e3dd7305152d17/zksn/field/2",
+        "kind": "station_overview_bay",
+        "lod": null,
+        "box": {
+          "x": 694,
+          "y": 790,
+          "w": 19,
+          "h": 28
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-port-anchor-zksn-bp/ed7a37193a833ebc29e3dd7305152d17/zksn-WY",
+        "kind": null,
+        "lod": null,
+        "box": {
+          "x": 694,
+          "y": 790,
+          "w": 17,
+          "h": 17
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-port-zksn-bp/ed7a37193a833ebc29e3dd7305152d17/zksn-WY",
+        "kind": null,
+        "lod": null,
+        "box": {
+          "x": 699,
+          "y": 795,
+          "w": 5,
+          "h": 5
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-bay-marker-zksn-bp/ed7a37193a833ebc29e3dd7305152d17/zksn-bp/ed7a37193a833ebc29e3dd7305152d17/zksn/field/3",
+        "kind": "station_overview_bay",
+        "lod": null,
+        "box": {
+          "x": 723,
+          "y": 790,
+          "w": 19,
+          "h": 28
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-port-anchor-zksn-bp/ed7a37193a833ebc29e3dd7305152d17/zksn-ODG",
+        "kind": null,
+        "lod": null,
+        "box": {
+          "x": 723,
+          "y": 790,
+          "w": 17,
+          "h": 17
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-port-zksn-bp/ed7a37193a833ebc29e3dd7305152d17/zksn-ODG",
+        "kind": null,
+        "lod": null,
+        "box": {
+          "x": 728,
+          "y": 795,
+          "w": 5,
+          "h": 5
+        },
+        "guard": null
+      },
+      {
+        "testid": "sld-v2-mini-rmu-overview-code-zksn-bp/ed7a37193a833ebc29e3dd7305152d17/zksn",
+        "kind": null,
+        "lod": null,
+        "box": {
+          "x": 682,
+          "y": 833,
+          "w": 40,
+          "h": 16
+        },
+        "guard": null
+      }
+    ],
+    "transformerSymbols": [
+      {
+        "testid": "sld-symbol-mini-transformer-stn/ac3f845407ac60c5df26c7e641dacec2/transformer",
+        "canon": "transformer_intersecting_circles",
+        "intersect": "true",
+        "overlap": "7.2",
+        "role": "button",
+        "box": {
+          "x": 973,
+          "y": 972,
+          "w": 18,
+          "h": 19
+        }
+      }
+    ],
+    "clickableTargetCount": 93,
+    "visibleForbidden": [],
+    "excerpt": "↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nE2E SLD 0002\nZAKRES / WARIANT\nZakres obliczeń z adresu\nKonfiguruj zakres\nWyniki do obliczenia\n20:17:34\n27.05.2026\nOblicz\nNakładka\nAnalizy\nEksport\nFaza projektu:\nANALIZA\nKontrola:\n0\nObliczenia:\ndo obliczenia\nSzyny:\n13\nOdcinki SN:\n5\nPola SN:\n4\nStacje:\n1\nDługość:\n1,92 km\nTR:\n2\nOdbiory nN:\n1\nSzukaj\nKatalog\nKontrola\nMetadane\nHistoria\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nSchemat i topologia\nNastępna akcja\ni\n●\nUkład dopuszczony do analizy\nAnaliza\nEtap układu\ndo analizy\nPrzegląd techniczny\nUkład skonfigurowany do obliczeń.\nGPZ i zasilanie\n●\n1\n⊙\nŹródło GPZ 15 kV\n●\nStacje SN/nN\n●\n1\n⊙\nStacja B\n·\nstacja przelotowa\n●\nMagistrale i odcinki SN\n●\n5\n⊙\nF2\n·\nYAKXS 3×120/16 · 0,21 km\n●\n⊙\nOdcinek 02\n·\nYAKXS 3×120/16 · 0,09 km\n●\n⊙\nOdcinek 03\n·\nYAKXS 3×120/16 · 0,12 km\n●\n⊙\nOdcinek 04\n·\n3 × NA2XS2Y 1×150/25 mm² · 1,00 km\n●\n⊙\nOdcinek 05\n·\nYAKXS 3×120/16 · 0,50 km\n●\nOdbiory nN\n●\n1\n⊙\nOdbiór nN 1 - Stacja B\n·\n0,03 MW\n●\n+\nDodaj układ\nKonfiguracja\n29\nSekcja 0\n15 kV\nGPZ 15 kV\nSystem\n110 kV\nSzyna WN 110 kV\nPole WN TR1\nY\nTR1\n25 MVA\n110/15 kV\nPole TR1\nPole liniow…\nQ1\nQ0\nT1\nQ9\nQ8\nSekcja 1\n15 kV\nGPZ 15 kV\nŹródło zasilania\nS01\nZKSN\n15,0"
+  },
+  "logs": []
+}

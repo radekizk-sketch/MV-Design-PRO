@@ -1,0 +1,23 @@
+{
+  "bodyExcerpt": "↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nE2E SLD 0002\nZAKRES / WARIANT\nZakres obliczeń z adresu\nKonfiguruj zakres\nWyniki do obliczenia\n18:31:16\n27.05.2026\nOblicz\nNakładka\nAnalizy\nEksport\nFaza projektu:\nANALIZA\nKontrola:\n0\nObliczenia:\ndo obliczenia\nSzyny:\n13\nOdcinki SN:\n5\nPola SN:\n4\nStacje:\n1\nDługość:\n1,92 km\nTR:\n2\nOdbiory nN:\n1\nSzukaj\nKatalog\nKontrola\nMetadane\nHistoria\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nSchemat i topologia\nNastępna akcja\ni\n●\nUkład dop",
+  "gapContract": "mask_only_not_electrical_element",
+  "gapVisibleLabel": "false",
+  "hasPrzerwaText": false,
+  "noExternalBridgeGuard": true,
+  "stationFound": true,
+  "stationLod": "compact",
+  "stationRole": "button",
+  "transformerSymbols": [
+    {
+      "overlap": "7",
+      "role": "button",
+      "testid": "sld-symbol-mini-transformer-stn/ac3f845407ac60c5df26c7e641dacec2/transformer"
+    },
+    {
+      "overlap": "7",
+      "role": null,
+      "testid": "sld-v2-mini-rmu-compact-transformer-symbol"
+    }
+  ],
+  "url": "http://127.0.0.1:5173/#sld?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8&sel=stn%2Fac3f845407ac60c5df26c7e641dacec2%2Fstation&type=Station&name=Stacja+B"
+}

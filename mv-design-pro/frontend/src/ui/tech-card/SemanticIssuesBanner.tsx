@@ -17,6 +17,11 @@ interface SemanticIssuesBannerProps {
   onSelectElement?: (ref: string) => void;
 }
 
+function issueActionLabel(issue: SemanticIssue): string {
+  if (issue.code === 'semantic.zero_power_load') return 'Uzupełnij moc odbioru';
+  return 'Pokaż element';
+}
+
 export function SemanticIssuesBanner({ issues, elementId, onSelectElement }: SemanticIssuesBannerProps) {
   const filtered = elementId
     ? issues.filter((i) => i.element_id === elementId)
@@ -49,8 +54,9 @@ export function SemanticIssuesBanner({ issues, elementId, onSelectElement }: Sem
                 type="button"
                 onClick={() => onSelectElement(issue.element_id!)}
                 className="text-blue-600 hover:underline mt-0.5"
+                data-testid={`semantic-issue-action-${issue.code}`}
               >
-                Pokaż element
+                {issueActionLabel(issue)}
               </button>
             )}
           </li>

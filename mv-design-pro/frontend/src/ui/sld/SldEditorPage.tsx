@@ -617,7 +617,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     () => projectEnmToSldCadV12(
       (enmSnapshot ?? null) as Record<string, unknown> | null,
       logicalViews ?? null,
-      { zoom: 1, hasActiveResults: resultStatusLabel !== 'Wyniki nieuruchomione' },
+      { zoom: 1, hasActiveResults: resultStatusLabel !== 'Wyniki do obliczenia' },
     ),
     [enmSnapshot, logicalViews, resultStatusLabel],
   );
@@ -1039,7 +1039,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
 
   const openExecutionSurface = useCallback(() => {
     openCaseContextSurface();
-    notify('Otwarto menedzer przypadkow — wybierz przypadek i uruchom obliczenia.', 'info');
+    notify('Otwarto menedżer zakresów obliczeń — wybierz zakres i wykonaj obliczenia.', 'info');
   }, [openCaseContextSurface]);
 
   const dockContextItems = useMemo(
@@ -1071,7 +1071,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         tone:
           resultStatusLabel === 'Wyniki aktualne'
             ? ('ok' as const)
-            : resultStatusLabel === 'Wyniki nieuruchomione'
+            : resultStatusLabel === 'Wyniki do obliczenia'
               ? ('warn' as const)
               : ('danger' as const),
       },
@@ -1219,7 +1219,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         title: 'Uruchom analize dla aktywnego przypadku',
         description:
           'Model ma juz wymagany kontekst obliczeniowy. Przejdz do wariantow i uruchomien.',
-        actionLabel: 'Otworz warianty i uruchomienia',
+        actionLabel: 'Otwórz zakresy i obliczenia',
         onAction: openExecutionSurface,
       };
     }

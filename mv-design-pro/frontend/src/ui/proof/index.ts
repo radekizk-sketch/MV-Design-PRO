@@ -26,6 +26,18 @@ export { TraceStepView, TraceStepViewEmpty } from './TraceStepView';
 export { TraceMetadataPanel, TraceMetadataPanelEmpty } from './TraceMetadataPanel';
 export { MathRenderer, MathBlock, MathInline } from './MathRenderer';
 export type { MathRendererProps, MathRenderResult } from './MathRenderer';
+export { ProofLatexPanel } from './ProofLatexPanel';
+export {
+  ElementCalculationProofPanel,
+  resolveShortCircuitRowsForElement,
+  resolveTraceStepsForElement,
+} from './ElementCalculationProofPanel';
+export {
+  buildProofLatexUrl,
+  fetchProofLatex,
+  proofLatexFilename,
+  downloadProofLatex,
+} from './proofLatexApi';
 
 // URL State (Deep Linking)
 export {

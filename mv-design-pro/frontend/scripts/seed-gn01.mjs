@@ -42,6 +42,19 @@ function log(step, msg, data) {
   }
 }
 
+function collectFieldSpecs(enm) {
+  const specs = [];
+  for (const substation of enm?.substations ?? []) {
+    const fieldSpecs = substation?.meta?.field_specs;
+    if (!Array.isArray(fieldSpecs)) continue;
+    for (const spec of fieldSpecs) {
+      if (!spec || typeof spec !== 'object') continue;
+      specs.push({ ...spec, station_ref: substation.ref_id });
+    }
+  }
+  return specs;
+}
+
 async function main() {
   log('K0', 'Sprawdzam backend...');
   const ready = await api('GET', '/ready');
@@ -201,12 +214,12 @@ async function main() {
   if (k4Status === 'PASS') {
     // K4 utworzyło bay — wyciągnij field_ref z snapshot
     const enmAfterK4 = await api('GET', `/api/cases/${caseId}/enm`);
-    const fields = enmAfterK4.json?.line_fields ?? [];
-    const lineOutField = fields.find((f) => f.bay_role === 'LINE_OUT');
-    const snBus2 = (enmAfterK4.json?.buses ?? []).find(
-      (b) => b.voltage_kv === 15,
+    const fields = collectFieldSpecs(enmAfterK4.json);
+    const lineOutField = fields.find(
+      (f) => ['OUT', 'FEEDER'].includes(String(f.bay_role ?? '').toUpperCase())
+        && typeof f.field_ref === 'string',
     );
-    if (lineOutField || snBus2) {
+    if (lineOutField) {
       log('K5', 'Wyprowadzenie kabla SN (continue_trunk_segment_sn)...');
       const trunkRes = await api('POST', `/api/cases/${caseId}/enm/domain-ops`, {
         project_id: projectId,
@@ -214,8 +227,7 @@ async function main() {
           name: 'continue_trunk_segment_sn',
           idempotency_key: 'gn01_trunk_seg_001',
           payload: {
-            field_ref: lineOutField?.ref_id,
-            from_terminal_id: snBus2?.ref_id,
+            field_ref: lineOutField.field_ref,
             segment: {
               rodzaj: 'KABEL',
               dlugosc_m: 1500,
@@ -242,42 +254,55 @@ async function main() {
         k5Status = `FAIL: ${trunkRes.status} ${trunkRes.json?.error_code ?? trunkRes.json?.error ?? ''}`;
         log('K5', k5Status);
       }
+    } else {
+      k5Status = 'FAIL: no line continuation field in substation.meta.field_specs';
+      log('K5', k5Status);
     }
   }
 
   // K6: Wstaw stację MV/LV na ciągu (insert_station_on_segment_sn)
   let k6Status = 'NOT_REACHED';
   let segmentId = null;
+  let endpointBusRef = null;
   if (k5Status === 'PASS') {
     // Użyj segment_id zapisanego z K5 createdElementIds (full ENM endpoint nie
     // zwraca cable_segments_sn collection — branch_count=2 widoczne tylko w
     // topology/summary; segment_id pochodzi z create operation response).
     segmentId = globalThis._k5_segment_id;
-    if (segmentId) {
-      log('K6', `Wstaw stację MV/LV (insert_station_on_segment_sn)...`);
+    const enmAfterK5 = await api('GET', `/api/cases/${caseId}/enm`);
+    const segment = (enmAfterK5.json?.branches ?? []).find((b) => b.ref_id === segmentId);
+    endpointBusRef = segment?.to_bus_ref ?? null;
+    if (segmentId && endpointBusRef) {
+      log('K6', `Dopnij stację MV/LV do końca odcinka (append_station_on_endpoint)...`);
       const stationRes = await api(
         'POST',
         `/api/cases/${caseId}/enm/domain-ops`,
         {
           project_id: projectId,
           operation: {
-            name: 'insert_station_on_segment_sn',
+            name: 'append_station_on_endpoint',
             idempotency_key: 'gn01_station_001',
             payload: {
-              segment_id: segmentId,
-              insert_at: { mode: 'RATIO', value: 0.5 },
+              endpoint_bus_ref: endpointBusRef,
               station: {
                 name_pl: 'Stacja S01 (15/0.4 kV)',
                 // Backend wymaga: inline, branch, terminal, sectional lub A-D
                 station_type: 'inline',
                 // Napięcia — topologiczne dziedziczenie z segmentu, jawne dla pewności
-                sn_voltage_kv: 15,
                 nn_voltage_kv: 0.4,
+                switchgear: {
+                  manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+                  switchgear_family_ref: 'ZPUE_CANONICAL_RMU',
+                },
               },
               transformer: {
                 transformer_catalog_ref: 'tr-sn-nn-15-04-1000kva-dyn11',
               },
-              sn_fields: ['IN', 'OUT', 'TR'],
+              sn_fields: [
+                { field_role: 'LINIA_IN', bay_template_ref: 'tpl-line-in' },
+                { field_role: 'LINIA_OUT', bay_template_ref: 'tpl-line-out' },
+                { field_role: 'TRANSFORMATOROWE', bay_template_ref: 'tpl-tr' },
+              ],
             },
           },
         },
@@ -292,7 +317,7 @@ async function main() {
         log('K6', k6Status);
       }
     } else {
-      k6Status = 'FAIL: no segment_id from K5';
+      k6Status = 'FAIL: no segment_id/endpoint_bus_ref from K5';
       log('K6', k6Status);
     }
   }

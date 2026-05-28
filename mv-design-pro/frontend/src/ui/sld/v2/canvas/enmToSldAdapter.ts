@@ -62,7 +62,7 @@ import type {
   GpzCouplerDescriptor,
   GpzSectionDescriptor,
 } from '../renderer/GpzSwitchgearRenderer';
-import { ENM_BAY_ROLE_TO_FIELD_ROLE, FIELD_ROLE } from '../domain/apparatusContracts';
+import { ENM_BAY_ROLE_TO_FIELD_ROLE, FIELD_ROLE, type FieldRole } from '../domain/apparatusContracts';
 import { buildSupplyPathHighlight, type SupplyPathHighlight } from './SupplyPathHighlighter';
 import { LABEL_PRIORITY, computeDeclutterMetrics, declutterLabels } from './LabelDeclutter';
 import type {
@@ -295,7 +295,6 @@ const Y_RUN_BASE = CANONICAL_GPZ_FRAME_BOTTOM_Y + GPZ_FIELD_CABLE_HEAD_CLEARANCE
 const GPZ_FIELD_CABLE_HEAD_Y = CANONICAL_CABLE_HEAD_TIP_Y;
 const PENDING_RUN_LENGTH = 140;
 
-const DER_OFFSET_RIGHT = 80;
 const DER_COMPACT_STEP_Y = 40;
 
 // =============================================================================
@@ -2951,10 +2950,13 @@ function buildStationMiniBlockDetails(
 ): StationMiniBlockDetails {
   const derBadges = buildStationDerBadges(snapshot, station.ref_id);
   const explicitBays = buildExplicitStationMiniBays(snapshot, station);
-  const explicitRoles = explicitBays.map((bay) => bay.fieldRole);
-  const hasMvSideDer = derBadges.some((badge) => badge.connectionSide !== 'nn');
+  const derSourceBays = buildDedicatedDerStationMiniBays(snapshot, station, explicitBays);
+  const snBays = [...explicitBays, ...derSourceBays];
+  const explicitRoles = snBays.map((bay) => bay.fieldRole);
+  const hasMvSideDer =
+    derSourceBays.length > 0 ||
+    derBadges.some((badge) => badge.connectionSide !== 'nn');
   const footprintType = deriveFootprintType(station.station_type, explicitRoles, hasMvSideDer);
-  const snBays = explicitBays;
   const transformerRefs = collectStationTransformerRefs(snapshot, station);
   const transformerRatedKva = inferTransformerRatedKva(snapshot, transformerRefs);
 
@@ -3094,6 +3096,68 @@ function buildExplicitStationMiniBays(
   return legacyBays;
 }
 
+function buildDedicatedDerStationMiniBays(
+  snapshot: EnergyNetworkModel,
+  station: Substation,
+  existingBays: readonly MiniBlockBayDescriptor[],
+): MiniBlockBayDescriptor[] {
+  const existingDerRoles = new Set<FieldRole>(
+    existingBays
+      .map((bay) => bay.fieldRole)
+      .filter((role) => role === FIELD_ROLE.DER_PV || role === FIELD_ROLE.DER_BESS || role === FIELD_ROLE.DER_FW),
+  );
+  const roleCounters = new Map<FieldRole, number>();
+  const stationRefs = new Set([station.ref_id, station.id].filter(Boolean));
+  return [...(snapshot.generators ?? [])]
+    .filter((gen) => stationRefs.has(generatorStationRef(gen) ?? ''))
+    .filter((gen) => isDedicatedMvDerConnection(gen.connection_variant))
+    .sort((a, b) => a.ref_id.localeCompare(b.ref_id, 'pl'))
+    .flatMap((gen): MiniBlockBayDescriptor[] => {
+      const kind = mapGenTypeToDerKind(gen);
+      const fieldRole = derFieldRoleForGenerator(kind);
+      if (!fieldRole || existingDerRoles.has(fieldRole)) return [];
+      const index = (roleCounters.get(fieldRole) ?? 0) + 1;
+      roleCounters.set(fieldRole, index);
+      return [{
+        bayRef: `${station.ref_id}/der-bay/${sanitizeRefToken(gen.ref_id)}`,
+        fieldRole,
+        designation: index === 1 ? derFieldDesignation(fieldRole) : `${derFieldDesignation(fieldRole)} ${index}`,
+        hasMissingRequiredDevice:
+          !gen.catalog_ref ||
+          (gen.connection_variant === 'block_transformer' && !gen.blocking_transformer_ref),
+        cbState: 'closed',
+        dsState: 'closed',
+        esState: 'open',
+      }];
+    });
+}
+
+function isDedicatedMvDerConnection(
+  connectionVariant: string | null | undefined,
+): boolean {
+  return connectionVariant === 'block_transformer'
+    || connectionVariant === 'DEDICATED_MV_CONNECTION'
+    || connectionVariant === 'SOURCE_CONNECTION_STATION';
+}
+
+function derFieldRoleForGenerator(kind: DerRendererProps['kind'] | null): FieldRole | null {
+  if (kind === 'PV') return FIELD_ROLE.DER_PV;
+  if (kind === 'BESS') return FIELD_ROLE.DER_BESS;
+  if (kind === 'FW') return FIELD_ROLE.DER_FW;
+  return null;
+}
+
+function derFieldDesignation(role: FieldRole): string {
+  if (role === FIELD_ROLE.DER_PV) return 'PV';
+  if (role === FIELD_ROLE.DER_BESS) return 'BESS';
+  if (role === FIELD_ROLE.DER_FW) return 'FW';
+  return 'OZE';
+}
+
+function sanitizeRefToken(ref: string): string {
+  return ref.replace(/[^a-zA-Z0-9_.-]+/g, '_');
+}
+
 interface StationFieldSpec {
   readonly field_ref?: string;
   readonly name?: string;
@@ -3165,6 +3229,10 @@ function stationFieldRoleRank(spec: StationFieldSpec): number {
       return 4;
     case FIELD_ROLE.MEASUREMENT:
       return 5;
+    case FIELD_ROLE.DER_PV:
+    case FIELD_ROLE.DER_BESS:
+    case FIELD_ROLE.DER_FW:
+      return 6;
     default:
       return 99;
   }
@@ -3206,6 +3274,17 @@ function fieldRoleFromCatalogRole(raw: string | undefined): MiniBlockBayDescript
     case 'POMIAROWE':
     case 'MEASUREMENT':
       return FIELD_ROLE.MEASUREMENT;
+    case 'PV_SN':
+    case 'PV':
+    case 'OZE_PV':
+      return FIELD_ROLE.DER_PV;
+    case 'BESS_SN':
+    case 'BESS':
+      return FIELD_ROLE.DER_BESS;
+    case 'FW_SN':
+    case 'FW':
+    case 'FARMA_WIATROWA':
+      return FIELD_ROLE.DER_FW;
     default:
       return null;
   }
@@ -3227,7 +3306,13 @@ function fieldRoleFromBayRole(raw: string | undefined): MiniBlockBayDescriptor['
     case 'MEASUREMENT':
       return FIELD_ROLE.MEASUREMENT;
     case 'OZE':
-      return FIELD_ROLE.LINE_OUT;
+      return FIELD_ROLE.DER_PV;
+    case 'PV_SN':
+      return FIELD_ROLE.DER_PV;
+    case 'BESS_SN':
+      return FIELD_ROLE.DER_BESS;
+    case 'FW_SN':
+      return FIELD_ROLE.DER_FW;
     default:
       return null;
   }
@@ -3248,6 +3333,12 @@ function stationFieldDesignation(spec: StationFieldSpec, index: number): string 
       return 'SPR';
     case FIELD_ROLE.MEASUREMENT:
       return 'POM';
+    case FIELD_ROLE.DER_PV:
+      return 'PV';
+    case FIELD_ROLE.DER_BESS:
+      return 'BESS';
+    case FIELD_ROLE.DER_FW:
+      return 'FW';
     default:
       return spec.name ?? `Pole SN ${index + 1}`;
   }
@@ -4582,6 +4673,11 @@ function stationMiniBlockPortOffsets(
 
 // X offset of station bus right end from station center (STATION_BUS_WIDTH / 2).
 const DER_BUS_EXIT_DX = 60;
+const DER_GENERIC_OFFSET_RIGHT = 80;
+const DER_BLOCK_OFFSET_RIGHT = 260;
+const DER_BLOCK_OFFSET_UP = 115;
+const DER_BLOCK_STACK_Y = 72;
+const DER_BLOCK_PCC_BAY_DX = 118;
 
 function buildDers(
   snapshot: EnergyNetworkModel,
@@ -4609,14 +4705,22 @@ function buildDers(
     if (station && isStationOwnedDerConnection(gen.connection_variant)) {
       continue;
     }
-    const baseX = station ? station.x + DER_OFFSET_RIGHT : 800;
-    const baseY = (station ? station.y + 60 : Y_RUN_BASE + 60) + indexAtStation * DER_COMPACT_STEP_Y;
     const renderKey = (generatorRefCounts.get(gen.ref_id) ?? 0) > 1
       ? `${gen.ref_id}:${gen.id || indexAtStation}`
       : gen.ref_id;
     const blockTransformer = gen.blocking_transformer_ref
       ? (snapshot.transformers ?? []).find((transformer) => transformer.ref_id === gen.blocking_transformer_ref)
       : null;
+    const isBlockTransformerConnection = gen.connection_variant === 'block_transformer';
+    const stationMvBusY = station ? station.y - STATION_RUN_TRUNK_OFFSET_Y : Y_RUN_BASE;
+    const baseX = station
+      ? station.x + (isBlockTransformerConnection ? DER_BLOCK_OFFSET_RIGHT : DER_GENERIC_OFFSET_RIGHT)
+      : 800;
+    const baseY = station
+      ? (isBlockTransformerConnection
+          ? stationMvBusY - DER_BLOCK_OFFSET_UP - indexAtStation * DER_BLOCK_STACK_Y
+          : station.y + 60 + indexAtStation * DER_COMPACT_STEP_Y)
+      : Y_RUN_BASE + 60 + indexAtStation * DER_COMPACT_STEP_Y;
 
     ders.push({
       id: gen.ref_id,
@@ -4625,7 +4729,7 @@ function buildDers(
       kind,
       name: gen.name || gen.ref_id,
       nominalPowerKw: gen.p_mw !== null && gen.p_mw !== undefined ? gen.p_mw * 1000 : null,
-      hasBlockTransformer: gen.connection_variant === 'block_transformer',
+      hasBlockTransformer: isBlockTransformerConnection,
       blockTransformerLabel: formatDerBlockTransformerLabel(blockTransformer),
       connectionVariant: gen.connection_variant ?? undefined,
       ncRfgModule: gen.nc_rfg_module ?? deriveNcRfgModule(gen.p_mw),
@@ -4637,19 +4741,29 @@ function buildDers(
     // Orthogonal L-path from station bus right port down to DER (AC-07).
     if (station) {
       const busExitX = station.x + DER_BUS_EXIT_DX;
-      const busExitY = station.y;
-      const isBlockTransformerConnection = gen.connection_variant === 'block_transformer';
+      const busExitY = isBlockTransformerConnection ? stationMvBusY : station.y;
+      const pccBayX = station.x + DER_BLOCK_PCC_BAY_DX;
       derConnections.push({
         id: `der-wire-${renderKey}`,
-        pathPoints: [
-          { x: busExitX, y: busExitY },
-          { x: busExitX, y: baseY },
-          { x: baseX, y: baseY },
-        ],
+        pathPoints: isBlockTransformerConnection
+          ? [
+              { x: busExitX, y: busExitY },
+              { x: pccBayX, y: busExitY },
+              { x: pccBayX, y: baseY },
+              { x: baseX, y: baseY },
+            ]
+          : [
+              { x: busExitX, y: busExitY },
+              { x: busExitX, y: baseY },
+              { x: baseX, y: baseY },
+            ],
         transformerLabel: isBlockTransformerConnection
           ? formatDerBlockTransformerLabel(blockTransformer)
           : null,
         connectionKind: isBlockTransformerConnection ? 'der_block_transformer' : 'generic',
+        derRef: gen.ref_id,
+        transformerRef: blockTransformer?.ref_id ?? blockTransformer?.id ?? null,
+        pccRef: `${gen.ref_id}/pcc`,
       });
     }
   }

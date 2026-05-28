@@ -71,6 +71,8 @@ export interface DerRendererProps {
    * null = nieprzypisany / brak profilu operatora.
    */
   readonly ncRfgModule?: 'A' | 'B' | 'C' | 'D' | null;
+  /** Aktualna skala viewportu SLD. Uzywana tylko do czytelnosci etykiet. */
+  readonly viewportScale?: number;
   readonly onClick?: (id: string) => void;
   readonly onDoubleClick?: (id: string) => void;
 }
@@ -116,8 +118,48 @@ function visibleBlockTransformerLabel(label: string): string {
 function compactBlockTransformerLabel(label: string): string {
   const trimmed = label.trim();
   const power = trimmed.match(/\b\d+(?:[,.]\d+)?\s*kVA\b/i)?.[0];
-  if (power) return `TR blokowy ${power}`;
+  if (power) return `TR blok. ${power}`;
   return visibleBlockTransformerLabel(trimmed);
+}
+
+function capWorldFontSize(
+  worldFontSize: number,
+  viewportScale: number | null | undefined,
+  maxScreenPx: number,
+  minWorldFontSize = 5,
+): number {
+  if (
+    viewportScale === null
+    || viewportScale === undefined
+    || !Number.isFinite(viewportScale)
+    || viewportScale <= 1
+  ) {
+    return worldFontSize;
+  }
+  return Math.max(minWorldFontSize, Math.min(worldFontSize, maxScreenPx / viewportScale));
+}
+
+function capWorldDimension(
+  worldSize: number,
+  viewportScale: number | null | undefined,
+  maxScreenPx: number,
+  minWorldSize = 48,
+): number {
+  if (
+    viewportScale === null
+    || viewportScale === undefined
+    || !Number.isFinite(viewportScale)
+    || viewportScale <= 1
+  ) {
+    return worldSize;
+  }
+  return Math.max(minWorldSize, Math.min(worldSize, maxScreenPx / viewportScale));
+}
+
+function shortenCanvasLabel(label: string, maxChars: number): string {
+  const trimmed = label.trim();
+  if (trimmed.length <= maxChars) return trimmed;
+  return `${trimmed.slice(0, Math.max(1, maxChars - 3)).trimEnd()}...`;
 }
 
 export function DerRenderer(props: DerRendererProps): JSX.Element {
@@ -125,9 +167,14 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
     id, x, y, kind, name, nominalPowerKw, hasBlockTransformer, blockTransformerLabel,
     selected, missingData, missingPcc, ncRfgModule, lod = 'full',
     operatingPMw, operatingQMvar,
+    viewportScale,
     onClick, onDoubleClick,
   } = props;
   const { getFontSize } = useSldLod();
+  const zoomedCanvasLabels = viewportScale !== null
+    && viewportScale !== undefined
+    && Number.isFinite(viewportScale)
+    && viewportScale > 1.2;
 
   // Naprawa hmi.3: LOD = 'marker' renderuje minimalną kropkę (overview zoom).
   if (lod === 'marker') {
@@ -138,6 +185,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
         data-element-id={id}
         data-der-kind={kind}
         data-lod="marker"
+        data-missing-pcc={missingPcc ? 'true' : undefined}
         transform={`translate(${x}, ${y})`}
         onClick={onClick ? (e) => { e.stopPropagation(); onClick(id); } : undefined}
         onDoubleClick={onDoubleClick ? (e) => { e.stopPropagation(); onDoubleClick(id); } : undefined}
@@ -167,6 +215,17 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
   const compactBlockTransformerVisibleLabel = blockTransformerLabel
     ? compactBlockTransformerLabel(blockTransformerLabel)
     : null;
+  const fullBlockTransformerCanvasLabel = zoomedCanvasLabels
+    ? compactBlockTransformerVisibleLabel
+    : blockTransformerVisibleLabel;
+  const canvasNameLabel = zoomedCanvasLabels ? shortenCanvasLabel(name, 18) : name;
+  const compactPowerFontSize = capWorldFontSize(8, viewportScale, 14);
+  const compactTransformerFontSize = capWorldFontSize(8, viewportScale, 14);
+  const compactTransformerLabelWidth = capWorldDimension(104, viewportScale, 145, 54);
+  const compactPqFontSize = capWorldFontSize(11, viewportScale, 15);
+  const compactPqSecondaryFontSize = capWorldFontSize(10, viewportScale, 14);
+  const fullNameFontSize = capWorldFontSize(getFontSize('parameter'), viewportScale, 16);
+  const fullMeasurementFontSize = capWorldFontSize(getFontSize('fieldMeasurement'), viewportScale, 14);
   const showCompactBlockTransformerLabel = lod === 'compact'
     && Boolean(hasBlockTransformer)
     && Boolean(compactBlockTransformerVisibleLabel);
@@ -183,6 +242,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
       data-element-id={id}
       data-der-kind={kind}
       data-lod={lod}
+      data-missing-pcc={missingPcc ? 'true' : undefined}
       data-block-transformer={hasBlockTransformer ? 'true' : 'false'}
       data-block-transformer-label={blockTransformerLabel ?? undefined}
       transform={`translate(${x}, ${y})`}
@@ -190,6 +250,11 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
       onDoubleClick={onDoubleClick ? (e) => { e.stopPropagation(); onDoubleClick(id); } : undefined}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
+      <title>
+        {`${KIND_LABEL_PL[kind]} · ${name}${
+          nominalPowerKw !== null && nominalPowerKw !== undefined ? ` · ${nominalPowerKw.toFixed(0)} kW` : ''
+        }${blockTransformerVisibleLabel ? ` · ${blockTransformerVisibleLabel}` : ''}`}
+      </title>
       {/* Romb (DER) */}
       <polygon
         points={`0,${-half} ${half},0 0,${half} ${-half},0`}
@@ -218,7 +283,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
           textAnchor="middle"
           fill={COLOR_TEXT_SECONDARY}
           fontFamily={FONT_MONO}
-          fontSize={8}
+          fontSize={compactPowerFontSize}
           data-testid={`sld-v2-der-${id}-compact-power`}
         >
           {nominalPowerKw.toFixed(0)} kW
@@ -227,9 +292,9 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
       {showCompactBlockTransformerLabel && compactBlockTransformerVisibleLabel && (
         <g data-testid={`sld-v2-der-${id}-compact-block-transformer`}>
           <rect
-            x={-58}
+            x={-compactTransformerLabelWidth / 2}
             y={compactBlockTransformerLabelY - 10}
-            width={116}
+            width={compactTransformerLabelWidth}
             height={13}
             rx={3}
             ry={3}
@@ -244,7 +309,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
             textAnchor="middle"
             fill="#7EE0B5"
             fontFamily={FONT_MONO}
-            fontSize={8}
+            fontSize={compactTransformerFontSize}
             fontWeight={800}
           >
             {compactBlockTransformerVisibleLabel}
@@ -282,7 +347,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
               textAnchor="middle"
               fill="#88BBDD"
               fontFamily={FONT_MONO}
-              fontSize={11}
+              fontSize={compactPqFontSize}
               fontWeight={700}
             >
               {`${pKw.toFixed(0)}kW`}
@@ -294,7 +359,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
                 textAnchor="middle"
                 fill="#88BBDD"
                 fontFamily={FONT_MONO}
-                fontSize={10}
+                fontSize={compactPqSecondaryFontSize}
                 fontWeight={600}
                 opacity={0.85}
               >
@@ -359,9 +424,9 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
           textAnchor="middle"
           fill={COLOR_TEXT_PRIMARY}
           fontFamily={FONT_SANS}
-          fontSize={getFontSize('parameter')}
+          fontSize={fullNameFontSize}
         >
-          {name}
+          {canvasNameLabel}
         </text>
       )}
       {/* Moc znamionowa (LOD=full only, jeśli dostępna) */}
@@ -372,7 +437,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
           textAnchor="middle"
           fill={COLOR_TEXT_SECONDARY}
           fontFamily={FONT_MONO}
-          fontSize={getFontSize('fieldMeasurement')}
+          fontSize={fullMeasurementFontSize}
         >
           {nominalPowerKw.toFixed(0)} kW
         </text>
@@ -395,7 +460,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
               textAnchor="middle"
               fill={COLOR_TEXT_SECONDARY}
               fontFamily={FONT_MONO}
-              fontSize={getFontSize('fieldMeasurement')}
+              fontSize={fullMeasurementFontSize}
             >
               P {pKw.toFixed(0)} kW
               {hasQ && ` Q ${qKvar.toFixed(0)} kVAr`}
@@ -409,7 +474,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
                 textAnchor="middle"
                 fill="#88BBDD"
                 fontFamily={FONT_MONO}
-                fontSize={Math.max(getFontSize('fieldMeasurement') - 1, 8)}
+                fontSize={capWorldFontSize(Math.max(getFontSize('fieldMeasurement') - 1, 8), viewportScale, 13)}
                 data-testid={`sld-v2-der-${id}-cos-phi`}
               >
                 {`cosφ ${cosPhi.toFixed(2)}`}
@@ -443,18 +508,18 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
           <title>{blockTransformerLabel ? `Transformator blokowy ${blockTransformerLabel}` : 'Transformator blokowy'}</title>
         </g>
       )}
-      {lod === 'full' && hasBlockTransformer && blockTransformerVisibleLabel && (
+      {lod === 'full' && hasBlockTransformer && fullBlockTransformerCanvasLabel && (
         <text
           x={0}
           y={nominalPowerKw !== null && nominalPowerKw !== undefined ? half + 58 : half + 44}
           textAnchor="middle"
           fill="#7EE0B5"
           fontFamily={FONT_MONO}
-          fontSize={Math.max(getFontSize('fieldMeasurement') - 1, 8)}
+          fontSize={capWorldFontSize(Math.max(getFontSize('fieldMeasurement') - 1, 8), viewportScale, 13)}
           fontWeight={700}
           data-testid={`sld-v2-der-${id}-block-transformer-label`}
         >
-          {blockTransformerVisibleLabel}
+          {fullBlockTransformerCanvasLabel}
         </text>
       )}
       {/* Badge: NC RFG Module A/B/C/D per ENEA profile (enea.yaml); marker lod returned early */}

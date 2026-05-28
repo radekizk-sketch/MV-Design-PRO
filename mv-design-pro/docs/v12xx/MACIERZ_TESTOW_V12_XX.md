@@ -47,6 +47,7 @@ Cel: dowod akceptacji kanonu, migracji i zakresu domenowego
 | V12-TST-027 | API / EAZ legacy | Publiczny `protection-engine/v1` jest odciety | `test_production_canonical_only_api.py` potwierdza 404 dla `/api/protection-engine/v1/*`, a `v12xx_canon_guard.py` blokuje aktywna trase albo status inny niz `usuniety` w macierzy API. |
 | V12-TST-028 | pokrycie end-to-end | Kazdy wymog macierzy pokrycia ma status `WDROZONE` | `check_end_to_end_coverage_matrix()` w `v12xx_canon_guard.py` blokuje brak dokumentu, puste komorki albo status inny niz `WDROZONE`. |
 | V12-TST-029 | dark SCADA | Kazdy ekran dziedziczy ekranowy motyw dark SCADA, a jasny motyw jest ograniczony do eksportu | `App.routes.test.tsx` potwierdza root `mv-dark-scada`, a `check_dark_scada_screen_theme()` blokuje brak globalnej warstwy dark SCADA, jasny domyslny renderer pola/SLD albo utrate `light_technical` dla eksportu. |
+| V12-TST-030 | NC RfG / PTPiREE | Zakladka E-35/ncrfg-tests uruchamia pakiet testow procedury PTPiREE dla DER | `test_ncrfg_ptpiree_solver.py`, `test_ncrfg_ptpiree_api.py` i `workspaceShellV125.test.tsx` potwierdzaja katalog testow, deterministyczny hash, trace/proof oraz wejscie UI do zakladki. |
 
 ## Sieci wzorcowe
 

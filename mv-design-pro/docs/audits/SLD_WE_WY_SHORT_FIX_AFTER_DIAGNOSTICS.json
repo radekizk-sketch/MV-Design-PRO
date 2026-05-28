@@ -1,0 +1,126 @@
+{
+  "bus": {
+    "rect": {
+      "height": 0,
+      "width": 122.9999771118164,
+      "x": 538.2232666015625,
+      "y": 522.4728393554688
+    },
+    "role": "internal_station_busbar",
+    "x1": "-82",
+    "x2": "82",
+    "y1": "-41"
+  },
+  "drops": [
+    {
+      "rect": {
+        "height": 28.5000057220459,
+        "width": 0,
+        "x": 538.2232666015625,
+        "y": 493.9728698730469
+      },
+      "testid": "sld-v2-mini-rmu-compact-line-drop-stn/ac3f845407ac60c5df26c7e641dacec2/station-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/000",
+      "y1": "-79",
+      "y2": "-41"
+    },
+    {
+      "rect": {
+        "height": 28.5000057220459,
+        "width": 0,
+        "x": 599.7232666015625,
+        "y": 493.9728698730469
+      },
+      "testid": "sld-v2-mini-rmu-compact-line-drop-stn/ac3f845407ac60c5df26c7e641dacec2/station-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/001",
+      "y1": "-79",
+      "y2": "-41"
+    }
+  ],
+  "foundRoot": true,
+  "gap": {
+    "busbarY": "-41",
+    "externalY": "-96",
+    "left": "-64",
+    "rect": {
+      "height": 19.50001335144043,
+      "width": 34.499977111816406,
+      "x": 551.7232666015625,
+      "y": 471.4728698730469
+    },
+    "right": "-18"
+  },
+  "runGreen": [
+    {
+      "d": "M 182 1088 L 818 1088",
+      "rect": {
+        "height": 0,
+        "width": 477,
+        "x": 61.22333908081055,
+        "y": 493.2228698730469
+      },
+      "stroke": "#13C45A",
+      "testid": "sld-v2-run-corridor_sld_gpz/860003b4514aa388b39561d5005ce584/corridor_01-supply-path-seg/fffe06fde7d5aca09fa6e904e942ad63/segment_L-1",
+      "width": "15"
+    },
+    {
+      "d": "M 900 1088 L 1080 1088",
+      "rect": {
+        "height": 0,
+        "width": 135.00006103515625,
+        "x": 599.7232666015625,
+        "y": 493.2228698730469
+      },
+      "stroke": "#13C45A",
+      "testid": "sld-v2-run-corridor_sld_gpz/860003b4514aa388b39561d5005ce584/corridor_01-supply-path-seg/fffe06fde7d5aca09fa6e904e942ad63/segment_R-0",
+      "width": "15"
+    },
+    {
+      "d": "M 182 1088 L 818 1088",
+      "rect": {
+        "height": 0,
+        "width": 477,
+        "x": 61.22333908081055,
+        "y": 493.2228698730469
+      },
+      "stroke": "#13C45A",
+      "testid": "sld-v2-run-corridor_sld_gpz/860003b4514aa388b39561d5005ce584/corridor_01-variant-seg/fffe06fde7d5aca09fa6e904e942ad63/segment_L-1",
+      "width": "8"
+    },
+    {
+      "d": "M 900 1088 L 1080 1088",
+      "rect": {
+        "height": 0,
+        "width": 135.00006103515625,
+        "x": 599.7232666015625,
+        "y": 493.2228698730469
+      },
+      "stroke": "#13C45A",
+      "testid": "sld-v2-run-corridor_sld_gpz/860003b4514aa388b39561d5005ce584/corridor_01-variant-seg/fffe06fde7d5aca09fa6e904e942ad63/segment_R-0",
+      "width": "8"
+    }
+  ],
+  "stubs": [
+    {
+      "rect": {
+        "height": 4.500014305114746,
+        "width": 0,
+        "x": 538.2232666015625,
+        "y": 481.2228698730469
+      },
+      "testid": "sld-v2-mini-rmu-compact-external-stub-stn/ac3f845407ac60c5df26c7e641dacec2/station-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/000",
+      "y1": "-96",
+      "y2": "-90"
+    },
+    {
+      "rect": {
+        "height": 4.500014305114746,
+        "width": 0,
+        "x": 599.7232666015625,
+        "y": 481.2228698730469
+      },
+      "testid": "sld-v2-mini-rmu-compact-external-stub-stn/ac3f845407ac60c5df26c7e641dacec2/station-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/001",
+      "y1": "-96",
+      "y2": "-90"
+    }
+  ],
+  "url": "http://127.0.0.1:5173/#sld?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8&sel=stn%2Fac3f845407ac60c5df26c7e641dacec2%2Fstation&type=Station&name=Stacja+B"
+}

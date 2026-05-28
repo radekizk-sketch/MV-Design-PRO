@@ -1,0 +1,12 @@
+{
+  "feature": "browser_full_e2e_engineering_flow",
+  "timestamp": "20260527_012224",
+  "command": "claude -p <prompt>",
+  "prompt_path": "mv-design-pro/docs/audits/CLAUDE_DESIGN_REVIEW_browser_full_e2e_engineering_flow_20260527_012224.prompt.md",
+  "review_path": "mv-design-pro/docs/audits/CLAUDE_DESIGN_REVIEW_browser_full_e2e_engineering_flow_20260527_012224.md",
+  "cwd": "C:/Users/radek/Documents/GitHub/MV-Design-PRO",
+  "claude_available": true,
+  "exit_code": 124,
+  "status": "timeout",
+  "timeout_ms": 180000
+}

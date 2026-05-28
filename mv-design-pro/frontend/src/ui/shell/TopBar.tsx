@@ -32,7 +32,7 @@ const WORK_MODES: WorkModeDef[] = [
 
 const RESULT_STATUS_CONFIG: Record<ResultStatus, { label: string; tone: string }> = {
   NONE: {
-    label: 'Wyniki nieuruchomione',
+    label: 'Wyniki do obliczenia',
     tone: 'text-scada-muted',
   },
   FRESH: {

@@ -20,7 +20,10 @@ import {
 import type { StationConfigBayRow } from '../../network-build/station-configurator/cards/StationConfigBaysCard';
 import type { StationConfigPortRow } from '../../network-build/station-configurator/cards/StationConfigTopologyCard';
 import type { ProtectionRow } from '../../network-build/station-configurator/cards/StationConfigProtectionCard';
-import type { StationConfigTransformerRow } from '../../network-build/station-configurator/cards/StationConfigTransformerCard';
+import type {
+  StationConfigTransformerRow,
+  StationTransformerCatalogOption,
+} from '../../network-build/station-configurator/cards/StationConfigTransformerCard';
 import {
   AddDerWizard,
   BLOCK_TRANSFORMER_CATALOG,
@@ -43,7 +46,9 @@ import { useSnapshotStore } from '../../topology/snapshotStore';
 import { notify } from '../../notifications/store';
 import { navigateToAnalysis } from '../../navigation/routes';
 import { stationPublicIdentity } from '../../shared/publicTechnicalLabels';
-import { CANONICAL_CATALOG_VERSION } from '../../catalog/catalogBinding';
+import { buildCatalogBinding, CANONICAL_CATALOG_VERSION } from '../../catalog/catalogBinding';
+import { fetchTransformerTypes, getCatalogErrorMessage } from '../../catalog/api';
+import type { TransformerType } from '../../catalog/types';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 import { selectStationDistributionTransformers } from '../../network-build/stationTransformerSelection';
 import type {
@@ -165,6 +170,133 @@ function readString(value: unknown): string | null {
 
 function readNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+const TRANSFORMER_SN_VOLTAGE_TOLERANCE_KV = 0.5;
+const TRANSFORMER_NN_VOLTAGE_TOLERANCE_KV = 0.05;
+
+function catalogItemIdFromRef(ref: string | null | undefined): string | null {
+  if (!ref) return null;
+  const trimmed = ref.trim();
+  if (!trimmed) return null;
+  const parts = trimmed.split('/').filter(Boolean);
+  return parts[parts.length - 1] ?? trimmed;
+}
+
+function voltageMatchesCatalog(
+  left: number,
+  right: number,
+  toleranceKv: number,
+): boolean {
+  return Number.isFinite(left) && Number.isFinite(right) && Math.abs(left - right) <= toleranceKv;
+}
+
+function transformerCatalogMatchesRef(type: TransformerType, ref: string | null | undefined): boolean {
+  const itemId = catalogItemIdFromRef(ref);
+  return Boolean(itemId && (type.id === itemId || type.id === ref));
+}
+
+function isTransformerCatalogVoltageCompatible(
+  type: TransformerType,
+  transformer: Pick<StationConfigTransformerRow, 'uhvKv' | 'ulvKv'>,
+): boolean {
+  return (
+    voltageMatchesCatalog(type.voltage_hv_kv, transformer.uhvKv, TRANSFORMER_SN_VOLTAGE_TOLERANCE_KV)
+    && voltageMatchesCatalog(type.voltage_lv_kv, transformer.ulvKv, TRANSFORMER_NN_VOLTAGE_TOLERANCE_KV)
+  );
+}
+
+function formatMva(value: number): string {
+  return value.toLocaleString('pl-PL', { maximumFractionDigits: 3 });
+}
+
+function buildTransformerCatalogSummary(
+  type: TransformerType,
+  transformer: StationConfigTransformerRow,
+): string {
+  const target = transformer.snMva;
+  const powerStatus =
+    target == null || target <= 0
+      ? 'moc wg bilansu'
+      : type.rated_power_mva >= target
+        ? `zapas ${formatMva(type.rated_power_mva - target)} MVA`
+        : `za mały o ${formatMva(target - type.rated_power_mva)} MVA`;
+  return [
+    `${formatMva(type.rated_power_mva)} MVA`,
+    `${type.voltage_hv_kv}/${type.voltage_lv_kv} kV`,
+    type.vector_group,
+    `uk ${type.uk_percent}%`,
+    `Pk ${type.pk_kw} kW`,
+    powerStatus,
+  ].join(' · ');
+}
+
+function compareTransformerCatalogTypes(
+  transformer: StationConfigTransformerRow,
+): (left: TransformerType, right: TransformerType) => number {
+  const target = transformer.snMva;
+  const expectedVector = transformer.vectorGroup?.trim().toUpperCase() ?? '';
+  return (left, right) => {
+    if (target != null && target > 0) {
+      const leftAdequate = left.rated_power_mva >= target;
+      const rightAdequate = right.rated_power_mva >= target;
+      if (leftAdequate !== rightAdequate) return leftAdequate ? -1 : 1;
+      const leftGap = Math.abs(left.rated_power_mva - target);
+      const rightGap = Math.abs(right.rated_power_mva - target);
+      if (leftGap !== rightGap) return leftGap - rightGap;
+    }
+
+    const leftVectorMatch = expectedVector && left.vector_group.toUpperCase() === expectedVector;
+    const rightVectorMatch = expectedVector && right.vector_group.toUpperCase() === expectedVector;
+    if (leftVectorMatch !== rightVectorMatch) return leftVectorMatch ? -1 : 1;
+
+    const leftLosses = (left.pk_kw ?? 0) + (left.p0_kw ?? 0);
+    const rightLosses = (right.pk_kw ?? 0) + (right.p0_kw ?? 0);
+    if (leftLosses !== rightLosses) return leftLosses - rightLosses;
+
+    return left.rated_power_mva - right.rated_power_mva
+      || left.name.localeCompare(right.name, 'pl-PL')
+      || left.id.localeCompare(right.id);
+  };
+}
+
+function buildTransformerCatalogOptionsById(
+  transformerTypes: readonly TransformerType[],
+  transformers: readonly StationConfigTransformerRow[],
+): Record<string, StationTransformerCatalogOption[]> {
+  const optionsById: Record<string, StationTransformerCatalogOption[]> = {};
+  for (const transformer of transformers) {
+    const compatible = transformerTypes
+      .filter((type) => isTransformerCatalogVoltageCompatible(type, transformer))
+      .sort(compareTransformerCatalogTypes(transformer));
+    const selected = transformerTypes.find((type) =>
+      transformerCatalogMatchesRef(type, transformer.catalogRef),
+    );
+    const selectedOutsideCompatible =
+      selected && !compatible.some((type) => type.id === selected.id) ? [selected] : [];
+    const recommendedId = compatible[0]?.id ?? selected?.id ?? null;
+    optionsById[transformer.transformerId] = [...compatible, ...selectedOutsideCompatible].map(
+      (type) => ({
+        id: type.id,
+        name: type.name,
+        manufacturer: type.manufacturer,
+        summary: buildTransformerCatalogSummary(type, transformer),
+        ratedPowerMva: type.rated_power_mva,
+        voltageHvKv: type.voltage_hv_kv,
+        voltageLvKv: type.voltage_lv_kv,
+        ukPercent: type.uk_percent,
+        pkKw: type.pk_kw,
+        p0Kw: type.p0_kw,
+        vectorGroup: type.vector_group,
+        adequatePower:
+          transformer.snMva == null
+          || transformer.snMva <= 0
+          || type.rated_power_mva >= transformer.snMva,
+        recommended: type.id === recommendedId,
+      }),
+    );
+  }
+  return optionsById;
 }
 
 function derKindFromGenerator(generator: EnmGenerator): DerKindUnified | null {
@@ -588,6 +720,7 @@ function deriveStationTransformerRows(
   return selectStationDistributionTransformers(snapshot, station).map((transformer, index) => ({
     transformerId: transformer.ref_id ?? transformer.id ?? `tr-${index}`,
     designation: transformer.name ?? `TR ${index + 1}`,
+    catalogRef: transformer.catalog_ref ?? null,
     snMva: transformer.sn_mva ?? null,
     uhvKv: transformer.uhv_kv,
     ulvKv: transformer.ulv_kv,
@@ -612,13 +745,37 @@ function uniqueLvVoltages(transformers: readonly StationConfigTransformerRow[]):
   return values.length > 0 ? Array.from(new Set(values)).sort((a, b) => a - b) : [0.4];
 }
 
+const SUPPORTED_STATION_DEFAULT_CARDS = new Set<StationConfigCardId>([
+  'basic',
+  'sn-switchgear',
+  'bays',
+  'apparatus',
+  'ct',
+  'vt',
+  'measurements',
+  'transformer',
+  'earthing',
+  'nn-switchgear',
+  'der-sources',
+  'power-quality',
+  'protection',
+  'nc-rfg',
+  'infrastructure',
+  'network-analysis',
+  'readiness',
+  'topology',
+]);
+
 function stationDefaultCard(surface: WorkspaceSurfaceDescriptor): StationConfigCardId {
   const payload = surface.routeState?.payload;
   const defaultCard = payload && typeof payload === 'object'
     ? (payload as Record<string, unknown>).defaultCard
     : null;
-  if (defaultCard === 'der-sources') {
-    return 'der-sources';
+  if (
+    typeof defaultCard === 'string'
+    && SUPPORTED_STATION_DEFAULT_CARDS.has(defaultCard as StationConfigCardId)
+  ) {
+    return defaultCard as StationConfigCardId;
   }
   return 'basic';
 }
@@ -646,6 +803,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   const { surface } = props;
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const logicalViews = useSnapshotStore((state) => state.logicalViews);
+  const executeDomainOperation = useSnapshotStore((state) => state.executeDomainOperation);
   const stationRef = surface.entityRef ?? null;
   const localDers = useStationDerStore((state) =>
     stationRef ? selectDersOfStation(state, stationRef) : [],
@@ -669,12 +827,40 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   const [pendingDetach, setPendingDetach] = useState<{ derId: string; name: string } | null>(null);
   const [wizardKind, setWizardKind] = useState<AddDerKindRequest | null>(null);
   const [wizardResetKey, setWizardResetKey] = useState(0);
+  const [transformerTypes, setTransformerTypes] = useState<TransformerType[]>([]);
+  const [transformerCatalogLoading, setTransformerCatalogLoading] = useState(false);
+  const [transformerCatalogError, setTransformerCatalogError] = useState<string | null>(null);
   const requestedAddDerKind = readAddDerKindRequest(surface.routeState.payload?.addDerKind);
   const requestedAddDerToken = readString(surface.routeState.payload?.addDerRequestId);
 
   const openDerWizard = useCallback((kind: AddDerKindRequest) => {
     setWizardKind(kind);
     setWizardResetKey((current) => current + 1);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setTransformerCatalogLoading(true);
+    void fetchTransformerTypes()
+      .then((types) => {
+        if (cancelled) return;
+        setTransformerTypes(types);
+        setTransformerCatalogError(null);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setTransformerTypes([]);
+          setTransformerCatalogError(getCatalogErrorMessage(error));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setTransformerCatalogLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Punkt 3 Phase 4: pull konfiguracji audytu 2 z backendu (React Query).
@@ -757,6 +943,10 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     () => uniqueLvVoltages(stationTransformers),
     [stationTransformers],
   );
+  const stationTransformerCatalogOptions = useMemo(
+    () => buildTransformerCatalogOptionsById(transformerTypes, stationTransformers),
+    [stationTransformers, transformerTypes],
+  );
   const stationSnVoltageKv = useMemo(() => {
     const busRefs = new Set(station?.bus_refs ?? []);
     const bus = (snapshot?.buses ?? []).find(
@@ -814,6 +1004,25 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     [openDerWizard, stationRef],
   );
 
+  const handleAddTransformer = useCallback(() => {
+    if (!stationRef) {
+      notify('Wybierz stację SN/nN, aby dodać transformator z katalogu.', 'warning');
+      return;
+    }
+    const context = buildOperationContext({
+      canonicalOp: 'add_transformer_sn_nn',
+      elementId: stationRef,
+      elementType: 'Station',
+      snapshot,
+      logicalViews,
+      extraContext: {
+        station_ref: stationRef,
+        station_name: stationName,
+      },
+    });
+    openOperationForm('add_transformer_sn_nn', context);
+  }, [logicalViews, openOperationForm, snapshot, stationName, stationRef]);
+
   const handleContinueTrunk = useCallback(() => {
     if (!stationRef) {
       notify('Wybierz stację SN/nN osadzoną w ciągu, aby kontynuować magistralę.', 'warning');
@@ -848,6 +1057,13 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     return hasBranchStart(context) ? context : null;
   }, [logicalViews, snapshot, stationName, stationRef]);
 
+  const continuationBlockReason = continuationContext
+    ? null
+    : 'Brak wolnego portu wyjściowego SN. Dodaj pole WY/ODG albo wybierz stację przelotową z wolnym terminalem.';
+  const branchBlockReason = branchStartContext
+    ? null
+    : 'Brak wolnego pola odgałęźnego SN. Dodaj pole ODG albo wybierz stację/ZKSN z takim portem.';
+
   const handleStartBranch = useCallback(() => {
     if (!stationRef) {
       notify('Wybierz stację z wolnym polem odgałęźnym SN.', 'warning');
@@ -862,6 +1078,47 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     }
     openOperationForm('start_branch_segment_sn', branchStartContext);
   }, [branchStartContext, openOperationForm, stationRef]);
+
+  const handleAssignTransformerCatalog = useCallback(
+    async (transformerId: string, catalogRef: string | null | undefined) => {
+      if (!catalogRef) return;
+      if (!activeCaseId) {
+        notify('Wybierz aktywny przypadek obliczeniowy.', 'warning');
+        return;
+      }
+      const selectedType = transformerTypes.find((type) =>
+        transformerCatalogMatchesRef(type, catalogRef),
+      );
+      if (!selectedType) {
+        notify('Wybrana pozycja katalogowa transformatora nie jest dostępna.', 'error');
+        return;
+      }
+      const transformer = stationTransformers.find((item) => item.transformerId === transformerId);
+      if (transformer && !isTransformerCatalogVoltageCompatible(selectedType, transformer)) {
+        notify('Transformator katalogowy nie pasuje do napięcia SN/nN tej stacji.', 'warning');
+        return;
+      }
+
+      try {
+        const response = await executeDomainOperation(activeCaseId, 'assign_catalog_to_element', {
+          element_ref: transformerId,
+          catalog_binding: buildCatalogBinding('TRAFO_SN_NN', selectedType.id),
+          source_mode: 'KATALOG',
+        });
+        if (response?.error) {
+          notify(response.error, 'error');
+        }
+      } catch (error) {
+        notify(
+          error instanceof Error
+            ? error.message
+            : 'Nie udało się przypisać katalogu transformatora.',
+          'error',
+        );
+      }
+    },
+    [activeCaseId, executeDomainOperation, stationTransformers, transformerTypes],
+  );
 
   const handleShowOnSld = useCallback(
     (derId: string) => {
@@ -996,7 +1253,14 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
           tapChangerCatalogRef: transformerTapChangers[tr.transformerId] ?? null,
         })),
         availableLvVoltages: stationLvVoltages,
-        onChange: (transformerId: string, changes: { tapChangerCatalogRef?: string | null }) => {
+        transformerCatalogOptions: stationTransformerCatalogOptions,
+        transformerCatalogLoading,
+        transformerCatalogError,
+        onAddTransformer: handleAddTransformer,
+        onChange: (transformerId: string, changes: Partial<StationConfigTransformerRow>) => {
+          if ('catalogRef' in changes) {
+            void handleAssignTransformerCatalog(transformerId, changes.catalogRef);
+          }
           if ('tapChangerCatalogRef' in changes) {
             mutateAudit2({
               transformer_tap_changers: {
@@ -1057,6 +1321,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   }, [
     station?.station_type,
     stationBays,
+    stationTransformerCatalogOptions,
     stationLvVoltages,
     stationName,
     stationRef,
@@ -1068,10 +1333,14 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     handleOpenDer,
     handleShowOnSld,
     handleAddDer,
+    handleAddTransformer,
+    handleAssignTransformerCatalog,
     requestDetach,
     localConfig,
     audit2Config.data,
     mutateAudit2,
+    transformerCatalogError,
+    transformerCatalogLoading,
   ]);
 
   return (
@@ -1084,35 +1353,69 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
           <h2 className="mt-1 text-base font-semibold text-scada-text">{stationName}</h2>
         </div>
         {stationRef && (
-          <div className="flex flex-wrap items-center gap-2">
-            {continuationContext && (
+          <div
+            className="flex flex-col items-stretch gap-2 sm:items-end"
+            data-testid="station-network-actions"
+          >
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={handleContinueTrunk}
-                className="rounded border border-scada-sn bg-scada-sn px-3 py-1.5 text-xs font-bold text-slate-950 transition hover:brightness-110"
+                disabled={!continuationContext}
+                title={continuationBlockReason ?? 'Kontynuuj ciąg główny z wolnego portu SN stacji.'}
+                className="rounded border border-scada-sn bg-scada-sn px-3 py-1.5 text-xs font-bold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:brightness-100"
                 data-testid="station-continue-trunk"
               >
-                Kontynuuj ciąg SN
+                Kontynuuj ciąg SN ze stacji
               </button>
-            )}
-            {branchStartContext && (
               <button
                 type="button"
                 onClick={handleStartBranch}
-                className="rounded border border-emerald-400 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-950/40"
+                disabled={!branchStartContext}
+                title={branchBlockReason ?? 'Rozpocznij odgałęzienie z wolnego pola SN stacji.'}
+                className="rounded border border-emerald-400 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-950/40 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:bg-transparent"
                 data-testid="station-start-branch"
               >
-                Wyprowadź odgałęzienie SN
+                Rozpocznij odgałęzienie
               </button>
+              <button
+                type="button"
+                onClick={() => handleAddDer('PV')}
+                className="rounded border border-amber-400 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:bg-amber-950/40"
+                data-testid="station-add-pv-shortcut"
+              >
+                Dodaj PV
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAddDer('BESS')}
+                className="rounded border border-cyan-400 px-3 py-1.5 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-950/40"
+                data-testid="station-add-bess-shortcut"
+              >
+                Dodaj BESS
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAddDer('FW')}
+                className="rounded border border-emerald-400 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-950/40"
+                data-testid="station-add-fw-shortcut"
+              >
+                Dodaj FW
+              </button>
+            </div>
+            {(continuationBlockReason || branchBlockReason) && (
+              <div
+                className="max-w-xl rounded border border-amber-700/60 bg-amber-950/25 px-3 py-2 text-[11px] leading-relaxed text-amber-100"
+                data-testid="station-network-action-blockers"
+              >
+                {continuationBlockReason && (
+                  <div data-testid="station-continue-trunk-reason">{continuationBlockReason}</div>
+                )}
+                {branchBlockReason && (
+                  <div data-testid="station-start-branch-reason">{branchBlockReason}</div>
+                )}
+              </div>
             )}
-            <button
-              type="button"
-              onClick={() => handleAddDer('PV')}
-              className="rounded border border-amber-400 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:bg-amber-950/40"
-              data-testid="station-add-pv-shortcut"
-            >
-              Dodaj PV/BESS/FW
-            </button>
           </div>
         )}
         {!stationRef && (

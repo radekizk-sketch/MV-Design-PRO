@@ -16,9 +16,11 @@ import type {
   LVCableType,
   MVApparatusCatalogType,
   PVInverterCatalogType,
+  PtpireeGeneratorCertificateCatalogType,
   ProtectionDeviceType,
   SourceSystemCatalogType,
   SwitchEquipmentType,
+  SurgeArresterCatalogType,
   TransformerType,
   TypeCategory,
   VTCatalogType,
@@ -73,7 +75,9 @@ export type CatalogListItem =
   | BESSInverterCatalogType
   | ProtectionDeviceType
   | SourceSystemCatalogType
-  | BranchPointCatalogType;
+  | BranchPointCatalogType
+  | SurgeArresterCatalogType
+  | PtpireeGeneratorCertificateCatalogType;
 
 const DECATALOGING_BLOCKED_MESSAGE =
   'Odkatalogowanie elementów technicznych jest niedostępne w trybie katalog-first.';
@@ -209,6 +213,16 @@ export async function fetchVtTypes(): Promise<VTCatalogType[]> {
   return fetchCatalogJson<VTCatalogType[]>('/api/catalog/vt-types');
 }
 
+export async function fetchSurgeArresterTypes(): Promise<SurgeArresterCatalogType[]> {
+  return fetchCatalogJson<SurgeArresterCatalogType[]>('/api/catalog/surge-arrester-types');
+}
+
+export async function fetchPtpireeGeneratorCertificates(): Promise<PtpireeGeneratorCertificateCatalogType[]> {
+  return fetchCatalogJson<PtpireeGeneratorCertificateCatalogType[]>(
+    '/api/catalog/ptpiree/generator-certificates',
+  );
+}
+
 export async function fetchPvInverterTypes(): Promise<PVInverterCatalogType[]> {
   return fetchCatalogJson<PVInverterCatalogType[]>('/api/catalog/pv-inverter-types');
 }
@@ -219,6 +233,13 @@ export async function fetchBessInverterTypes(): Promise<BESSInverterCatalogType[
 
 export async function fetchWindInverterTypes(): Promise<ConverterType[]> {
   return fetchCatalogJson<ConverterType[]>('/api/catalog/wind-inverter-types');
+}
+
+export async function fetchDerConverterTypes(
+  kind?: ConverterType['kind'],
+): Promise<ConverterType[]> {
+  const query = kind ? `?kind=${encodeURIComponent(kind)}` : '';
+  return fetchCatalogJson<ConverterType[]>(`/api/catalog/converter-types${query}`);
 }
 
 function resolveConverterVoltageKv(
@@ -431,6 +452,12 @@ export async function fetchTypesByCategory(category: TypeCategory): Promise<Cata
       break;
     case 'VT':
       types = await fetchVtTypes();
+      break;
+    case 'SURGE_ARRESTER':
+      types = await fetchSurgeArresterTypes();
+      break;
+    case 'PTPIREE_CERTIFICATE':
+      types = await fetchPtpireeGeneratorCertificates();
       break;
     case 'MEASUREMENT_TRANSFORMER':
       types = [...(await fetchCtTypes()), ...(await fetchVtTypes())];

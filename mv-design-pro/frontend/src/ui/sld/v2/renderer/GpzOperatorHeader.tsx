@@ -321,8 +321,7 @@ function BalanceBlock(props: BalanceBlockProps): JSX.Element {
         Bilans stacji
       </text>
       {noResults ? (
-        // Goal §7: brak wyniku ≠ 0.00. Pokazujemy explicit komunikat "Brak
-        // wyników rozpływu" zamiast formatowanego zera.
+        // Brak wyniku nie może być renderowany jako 0.00.
         <g data-testid="gpz-header-balance-no-results">
           <rect
             x={0}
@@ -343,7 +342,7 @@ function BalanceBlock(props: BalanceBlockProps): JSX.Element {
             fontSize={FONT_SIZES.bayLabel}
             fontWeight={600}
           >
-            Wyniki rozpływu nieuruchomione
+            Wyniki rozpływu: brak danych
           </text>
         </g>
       ) : (

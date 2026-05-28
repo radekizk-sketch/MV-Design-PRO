@@ -685,7 +685,8 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
 
   return (
     <svg
-      data-testid="sld-view-canvas"
+      data-testid="sld-canvas-root"
+      data-legacy-testid="sld-view-canvas"
       width={width}
       height={height}
       style={{ display: 'block' }}

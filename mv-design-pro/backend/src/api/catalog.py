@@ -30,6 +30,7 @@ from application.network_wizard.service import NotFound
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from network_model.catalog.governance import ImportMode
 from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
+from network_model.catalog.mv_ptpiree_catalog import get_ptpiree_catalog_manifest
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.switchgear import (
     list_switchgear_solution_templates_for_manufacturer,
@@ -281,6 +282,12 @@ def list_vt_types() -> list[dict[str, Any]]:
     return [item.to_dict() for item in get_default_mv_catalog().list_vt_types()]
 
 
+@router.get("/surge-arrester-types")
+def list_surge_arrester_types() -> list[dict[str, Any]]:
+    """List all MV surge arrester types from the canonical MV catalog."""
+    return [item.to_dict() for item in get_default_mv_catalog().list_surge_arrester_types()]
+
+
 @router.get("/pv-inverter-types")
 def list_pv_inverter_types() -> list[dict[str, Any]]:
     """List all PV inverter types from the canonical MV catalog."""
@@ -291,6 +298,12 @@ def list_pv_inverter_types() -> list[dict[str, Any]]:
 def list_bess_inverter_types() -> list[dict[str, Any]]:
     """List all BESS inverter types from the canonical MV catalog."""
     return [item.to_dict() for item in get_default_mv_catalog().list_bess_inverter_types()]
+
+
+@router.get("/inverter-types")
+def list_inverter_types() -> list[dict[str, Any]]:
+    """List all generic inverter/converter catalog entries from the canonical MV catalog."""
+    return [item.to_dict() for item in get_default_mv_catalog().list_inverter_types()]
 
 
 @router.get("/converter-types")
@@ -317,6 +330,21 @@ def list_wind_inverter_types() -> list[dict[str, Any]]:
 def list_source_system_types() -> list[dict[str, Any]]:
     """List all MV system source types for GPZ / zasilanie systemowe."""
     return [item.to_dict() for item in get_default_mv_catalog().list_source_system_types()]
+
+
+@router.get("/ptpiree/manifest")
+def get_ptpiree_manifest() -> dict[str, Any]:
+    """Return PTPiREE snapshot source metadata used by the local catalog."""
+    return get_ptpiree_catalog_manifest()
+
+
+@router.get("/ptpiree/generator-certificates")
+def list_ptpiree_generator_certificates() -> list[dict[str, Any]]:
+    """List local PTPiREE generator/converter certificate snapshot records."""
+    return [
+        item.to_dict()
+        for item in get_default_mv_catalog().list_ptpiree_generator_certificates()
+    ]
 
 
 @router.get("/branch-point-types")
@@ -771,10 +799,17 @@ def auto_populate_catalog_suggestions(
         return _auto_populate_switches(request, normalized)
     if normalized in ("protection", "relay"):
         return _auto_populate_protection(request)
+    if normalized in ("surge_arrester", "arrester", "ogranicznik", "ogranicznik_sn"):
+        return _auto_populate_surge_arresters(request)
+    if normalized in ("der", "pv", "bess", "inverter", "converter", "generator"):
+        return _auto_populate_inverters(request, normalized)
 
     raise HTTPException(
         status_code=400,
-        detail=f"Unknown element_type '{element_type}'. Supported: transformer, cable, switch, protection.",
+        detail=(
+            f"Unknown element_type '{element_type}'. Supported: transformer, cable, "
+            "switch, protection, surge_arrester, inverter."
+        ),
     )
 
 
@@ -976,6 +1011,101 @@ def _auto_populate_protection(req: AutoPopulateRequest) -> AutoPopulateResponse:
     suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
     return AutoPopulateResponse(
         element_type="protection",
+        suggestions=suggestions[:20],
+        total_candidates=len(suggestions),
+    )
+
+
+def _auto_populate_surge_arresters(req: AutoPopulateRequest) -> AutoPopulateResponse:
+    catalog = get_default_mv_catalog()
+    suggestions: list[AutoPopulateSuggestion] = []
+
+    for item in catalog.list_surge_arrester_types():
+        v_kv = item.u_m_kv
+        manufacturer = item.manufacturer or ""
+        if req.voltage_kv is not None:
+            if abs(v_kv - req.voltage_kv) / max(req.voltage_kv, 0.001) > 0.3:
+                continue
+
+        confidence = 0.6
+        if item.bil_protected_kv >= 125.0:
+            confidence += 0.05
+        if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
+            confidence = 0.9
+
+        suggestions.append(
+            AutoPopulateSuggestion(
+                catalog_ref=item.id,
+                label_pl=item.name,
+                manufacturer=manufacturer or None,
+                confidence=min(1.0, confidence),
+                badge_pl=f"IEC 60099-4, klasa {item.energy_class}",
+                rationale_pl=(
+                    f"Um={item.u_m_kv:g} kV, MCOV={item.mcov_kv:g} kV, "
+                    f"Ures10kA={item.u_residual_at_10ka_kv:g} kV, "
+                    f"BIL={item.bil_protected_kv:g} kV"
+                ),
+            )
+        )
+
+    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    return AutoPopulateResponse(
+        element_type="surge_arrester",
+        suggestions=suggestions[:20],
+        total_candidates=len(suggestions),
+    )
+
+
+def _auto_populate_inverters(
+    req: AutoPopulateRequest,
+    normalized_element_type: str,
+) -> AutoPopulateResponse:
+    catalog = get_default_mv_catalog()
+    suggestions: list[AutoPopulateSuggestion] = []
+    target_kind = None
+    if normalized_element_type == "pv":
+        target_kind = "PV"
+    elif normalized_element_type == "bess":
+        target_kind = "BESS"
+
+    for item in catalog.list_inverter_types():
+        kind = str(item.kind).upper()
+        if target_kind is not None and kind != target_kind:
+            continue
+        if req.voltage_kv is not None:
+            if abs(item.un_kv - req.voltage_kv) / max(req.voltage_kv, 0.001) > 0.3:
+                continue
+        if req.expected_power_mva is not None:
+            if item.sn_mva < req.expected_power_mva * 0.5 or item.sn_mva > req.expected_power_mva * 2.0:
+                continue
+
+        manufacturer = item.manufacturer or ""
+        is_ptpiree = item.ptpiree_status == "POWIAZANY"
+        confidence = 0.55
+        if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
+            confidence = 0.85
+        confidence = _confidence_with_ptpire(confidence, is_ptpiree, req.prefer_ptpire_certified)
+        badge = None
+        if is_ptpiree:
+            badge = f"PTPiREE {item.ptpiree_wipwc_version or ''}".strip()
+
+        suggestions.append(
+            AutoPopulateSuggestion(
+                catalog_ref=item.id,
+                label_pl=item.name,
+                manufacturer=manufacturer or None,
+                confidence=confidence,
+                badge_pl=badge,
+                rationale_pl=(
+                    f"{kind}, Un={item.un_kv:g} kV, Sn={item.sn_mva:g} MVA, "
+                    f"Pmax={item.pmax_mw:g} MW"
+                ),
+            )
+        )
+
+    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    return AutoPopulateResponse(
+        element_type="inverter",
         suggestions=suggestions[:20],
         total_candidates=len(suggestions),
     )

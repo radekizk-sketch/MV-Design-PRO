@@ -1,0 +1,14 @@
+{
+  "compactStationFound": false,
+  "gapContract": null,
+  "gapVisibleLabel": null,
+  "hasPrzerwaText": false,
+  "noExternalBridgeGuard": false,
+  "transformerSymbols": [
+    {
+      "overlap": "7.2",
+      "role": "button",
+      "testid": "sld-symbol-mini-transformer-stn/ac3f845407ac60c5df26c7e641dacec2/transformer"
+    }
+  ]
+}

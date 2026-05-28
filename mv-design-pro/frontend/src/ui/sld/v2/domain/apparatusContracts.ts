@@ -109,6 +109,9 @@ export const FIELD_ROLE = {
   GPZ_LINE_BAY: 'GPZ_LINE_BAY',
   RMU_LINE: 'RMU_LINE',
   RMU_TRANSFORMER: 'RMU_TRANSFORMER',
+  DER_PV: 'DER_PV',
+  DER_BESS: 'DER_BESS',
+  DER_FW: 'DER_FW',
 } as const;
 
 export type FieldRole = (typeof FIELD_ROLE)[keyof typeof FIELD_ROLE];
@@ -126,7 +129,10 @@ export function isSnFieldRole(role: FieldRole): boolean {
     role === FIELD_ROLE.MEASUREMENT ||
     role === FIELD_ROLE.GPZ_LINE_BAY ||
     role === FIELD_ROLE.RMU_LINE ||
-    role === FIELD_ROLE.RMU_TRANSFORMER
+    role === FIELD_ROLE.RMU_TRANSFORMER ||
+    role === FIELD_ROLE.DER_PV ||
+    role === FIELD_ROLE.DER_BESS ||
+    role === FIELD_ROLE.DER_FW
   );
 }
 
@@ -143,7 +149,7 @@ export const ENM_BAY_ROLE_TO_FIELD_ROLE: Readonly<
   // OZE jest renderowane przez DerRenderer; tutaj fallback na LINE_OUT
   // dla pola łącznikowego między DER a stacją (gdy używamy klasycznego
   // pola SN do przyłączenia DER w wariancie DEDICATED_MV_CONNECTION).
-  OZE: FIELD_ROLE.LINE_OUT,
+  OZE: FIELD_ROLE.DER_PV,
 };
 
 // =============================================================================

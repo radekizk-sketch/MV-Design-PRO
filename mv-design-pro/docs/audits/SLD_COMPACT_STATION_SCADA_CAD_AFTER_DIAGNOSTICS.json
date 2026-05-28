@@ -1,0 +1,73 @@
+{
+  "anchors": [
+    {
+      "box": {
+        "h": 13.5,
+        "text": "WE - WE",
+        "w": 21,
+        "x": 527.7,
+        "y": 486.5
+      },
+      "dir": "upstream-network",
+      "role": "WE",
+      "side": "terrain_network",
+      "transform": "translate(-82, -80)"
+    },
+    {
+      "box": {
+        "h": 13.5,
+        "text": "TR - TR",
+        "w": 21,
+        "x": 650.7,
+        "y": 580.2
+      },
+      "dir": "downstream-station",
+      "role": "TR",
+      "side": "transformer",
+      "transform": "translate(82, 45)"
+    }
+  ],
+  "bodyStroke": "transparent",
+  "bodyStrokeWidth": "0",
+  "bus": {
+    "h": 0,
+    "text": "",
+    "w": 123,
+    "x": 538.2,
+    "y": 522.5
+  },
+  "compactRoot": true,
+  "lineBay": {
+    "h": 75,
+    "text": "WEWE - WE",
+    "w": 24,
+    "x": 526.2,
+    "y": 479.7
+  },
+  "logs": [],
+  "lv": {
+    "h": 0,
+    "text": "",
+    "w": 39,
+    "x": 641.7,
+    "y": 587
+  },
+  "rootBox": {
+    "h": 182.4,
+    "text": "WE - WEWEWE - WETR - TRDyn11nNTRTR - TRS011 nN0RMU·K63 kVA",
+    "w": 168.1,
+    "x": 517.2,
+    "y": 463.2
+  },
+  "selectionLines": 8,
+  "selectionStyle": "cad_corner_handles",
+  "trBay": {
+    "h": 72,
+    "text": "Dyn11nNTRTR - TR",
+    "w": 56.1,
+    "x": 629.2,
+    "y": 518.7
+  },
+  "transformerSymbol": true,
+  "url": "http://127.0.0.1:5173/#sld?sel=sub%2Fbb66d55295e2defe1fdbf0cf3fa06f40%2Fsubstation&type=Station&name=Stacja+SN%2FnN+1"
+}

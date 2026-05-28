@@ -229,6 +229,13 @@ def apply_template_to_case(
                 "catalog_ref": der_catalog,
                 "connection_variant": connection_variant,
                 "station_ref": station_ref,
+                "power_setpoint_mw": float(
+                    overrides.get(
+                        f"der_{der_spec.kind}_p_mw_each",
+                        der_spec.default_p_mw_each,
+                    )
+                ),
+                "quantity": 1,
             }
             if connection_variant == "nn_side" and nn_bus_ref:
                 der_payload["bus_nn_ref"] = nn_bus_ref

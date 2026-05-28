@@ -84,7 +84,12 @@ vi.mock('../../networkBuildStore', () => ({
 vi.mock('../shared/TransformerStationEditor', () => ({
   TransformerStationEditor: ({
     onSubmit,
+    initialData,
   }: {
+    initialData: {
+      hv_bus_ref?: string;
+      lv_bus_ref?: string;
+    };
     onSubmit: (data: {
       ref_id: string;
       name: string;
@@ -96,24 +101,28 @@ vi.mock('../shared/TransformerStationEditor', () => ({
       overrides: unknown[];
     }) => void;
   }) => (
-    <button
-      type="button"
-      data-testid="transformer-submit"
-      onClick={() =>
-        onSubmit({
-          ref_id: 'tr-1',
-          name: 'Trafo ST-1',
-          hv_bus_ref: 'bus-sn',
-          lv_bus_ref: 'bus-nn',
-          tap_position: 0,
-          catalog_ref: 'TRAFO_SN_NN/TMG-400',
-          parameter_source: 'CATALOG',
-          overrides: [],
-        })
-      }
-    >
-      Dodaj transformator
-    </button>
+    <div>
+      <span data-testid="initial-hv-bus">{initialData.hv_bus_ref ?? ''}</span>
+      <span data-testid="initial-lv-bus">{initialData.lv_bus_ref ?? ''}</span>
+      <button
+        type="button"
+        data-testid="transformer-submit"
+        onClick={() =>
+          onSubmit({
+            ref_id: 'tr-1',
+            name: 'Trafo ST-1',
+            hv_bus_ref: 'bus-sn',
+            lv_bus_ref: 'bus-nn',
+            tap_position: 0,
+            catalog_ref: 'TRAFO_SN_NN/TMG-400',
+            parameter_source: 'CATALOG',
+            overrides: [],
+          })
+        }
+      >
+        Dodaj transformator
+      </button>
+    </div>
   ),
 }));
 
@@ -155,6 +164,18 @@ describe('AddTransformerForm', () => {
     expect(closeFormMock).toHaveBeenCalledTimes(1);
   });
 
+  it('uzupełnia szyny SN/nN na podstawie station_ref, gdy caller nie przekazał hv_bus_ref i lv_bus_ref', () => {
+    networkBuildState.activeOperationForm.context = {
+      station_ref: 'st-1',
+    };
+
+    render(<AddTransformerForm />);
+
+    expect(screen.getByTestId('initial-hv-bus')).toHaveTextContent('bus-sn');
+    expect(screen.getByTestId('initial-lv-bus')).toHaveTextContent('bus-nn');
+    expect(screen.queryByTestId('add-transformer-block')).not.toBeInTheDocument();
+  });
+
   it('pokazuje jawna blokade dla kontekstu GPZ bez pary szyn SN/nN', () => {
     networkBuildState.activeOperationForm.context = {
       station_ref: 'gpz-1',
@@ -166,7 +187,7 @@ describe('AddTransformerForm', () => {
     expect(screen.getByTestId('add-transformer-block')).toBeInTheDocument();
     expect(screen.getByText('Blokada operacji')).toBeInTheDocument();
     expect(
-      screen.getByText('Transformator SN/nN nie nalezy do ukladu GPZ lub zrodla systemowego.'),
+      screen.getByText('Transformator SN/nN nie należy do układu GPZ ani źródła systemowego.'),
     ).toBeInTheDocument();
     expect(screen.queryByTestId('transformer-submit')).not.toBeInTheDocument();
   });

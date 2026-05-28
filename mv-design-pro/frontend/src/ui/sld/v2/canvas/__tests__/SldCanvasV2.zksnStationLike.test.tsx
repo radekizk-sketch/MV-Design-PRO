@@ -103,8 +103,8 @@ describe('SLD v2 — ZKSN renderuje się jako rozdzielnia SN bez transformatora'
     const roleBadges = rmuRoot?.querySelectorAll('[data-testid$="-role"]');
     expect(roleBadges?.length ?? 0, 'ZKSN nie powinien dublować roli pola pod aparaturą').toBe(0);
     const designationTexts = Array.from(
-      rmuRoot?.querySelectorAll('[data-testid$="-designation"]') ?? [],
-    ).map((node) => node.textContent ?? '');
+      rmuRoot?.querySelectorAll('[data-testid^="sld-v2-mini-rmu-compact-port-caption-"]') ?? [],
+    ).map((node) => node.textContent?.trim() ?? '');
     expect(designationTexts).toEqual(expect.arrayContaining(['WE', 'WY', 'ODG 1']));
   });
 
@@ -200,8 +200,8 @@ describe('SLD v2 — ZKSN renderuje się jako rozdzielnia SN bez transformatora'
     );
 
     const designations = Array.from(
-      container.querySelectorAll('[data-testid$="-designation"]'),
-    ).map((node) => node.textContent ?? '');
+      container.querySelectorAll('[data-testid^="sld-v2-mini-rmu-compact-port-caption-"]'),
+    ).map((node) => node.textContent?.trim() ?? '');
     expect(designations).toEqual(['WE', 'WY', 'ODG 1']);
     expect(designations).not.toContain('Pole 4');
   });

@@ -250,7 +250,12 @@ export function InsertZksnForm() {
   );
 
   return (
-    <form className="space-y-4 p-4" data-testid="insert-zksn-form" onSubmit={onSubmit}>
+    <form
+      className="space-y-4 p-4"
+      data-testid="insert-zksn-form"
+      data-segment-ref={segmentId}
+      onSubmit={onSubmit}
+    >
       <div>
         <h3 className="text-sm font-semibold text-gray-800">Wstaw ZKSN</h3>
         <p className="mt-1 text-xs text-gray-500">ZKSN jest rozdzielnicą SN z polami kablowymi, bez transformatora SN/nN.</p>

@@ -1,0 +1,35 @@
+{
+  "alerts": [],
+  "configurableDevices": 0,
+  "deviceHitAreas": 0,
+  "snToTrLines": 0,
+  "trToNnLines": 0,
+  "transformerHitAreas": 0,
+  "transformerSymbols": [
+    {
+      "circles": [
+        {
+          "cy": "22",
+          "r": "6.6",
+          "winding": "SN"
+        },
+        {
+          "cy": "28",
+          "r": "6.6",
+          "winding": "nN"
+        }
+      ],
+      "elementId": "stn/ac3f845407ac60c5df26c7e641dacec2/transformer",
+      "overlap": "7.2",
+      "rect": {
+        "height": 19,
+        "width": 18,
+        "x": 973,
+        "y": 972
+      },
+      "testid": "sld-symbol-mini-transformer-stn/ac3f845407ac60c5df26c7e641dacec2/transformer",
+      "visible": true
+    }
+  ],
+  "url": "http://127.0.0.1:5173/#sld?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8&sel=stn%2Fac3f845407ac60c5df26c7e641dacec2%2Ftransformer&type=TransformerBranch&name=Transformator+SN%2FnN"
+}

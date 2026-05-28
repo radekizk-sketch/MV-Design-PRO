@@ -27,6 +27,9 @@ describe('apparatusStackForRole — IEC 60617 mapping', () => {
     expect(apparatusStackForRole(FIELD_ROLE.LINE_IN)).toEqual(['DS', 'CB', 'ES']);
     expect(apparatusStackForRole(FIELD_ROLE.LINE_OUT)).toEqual(['DS', 'CB', 'ES']);
     expect(apparatusStackForRole(FIELD_ROLE.RMU_LINE)).toEqual(['DS', 'CB', 'ES']);
+    expect(apparatusStackForRole(FIELD_ROLE.DER_PV)).toEqual(['DS', 'CB', 'ES']);
+    expect(apparatusStackForRole(FIELD_ROLE.DER_BESS)).toEqual(['DS', 'CB', 'ES']);
+    expect(apparatusStackForRole(FIELD_ROLE.DER_FW)).toEqual(['DS', 'CB', 'ES']);
   });
 
   it('TRANSFORMER → DS + CB (TR rendered separately as dedicated bay)', () => {

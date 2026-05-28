@@ -247,6 +247,9 @@ def _extract_element_metrics(
         # key → (code, unit, format_hint)
         "ikss_ka": ("IK_3F_A", "kA", "fixed2"),
         "ikss_a": ("IK_3F_A", "A", "fixed0"),
+        "ik_total_a": ("IK_3F_TOTAL_A", "A", "fixed0"),
+        "ik_thevenin_a": ("IK_3F_SYSTEM_A", "A", "fixed0"),
+        "ik_inverters_a": ("IK_3F_DER_A", "A", "fixed0"),
         "ip_ka": ("IP_A", "kA", "fixed2"),
         "ip_a": ("IP_A", "A", "fixed0"),
         "ith_ka": ("ITH_A", "kA", "fixed2"),

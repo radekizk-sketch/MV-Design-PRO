@@ -1,0 +1,35 @@
+{
+  "cableHeads": [
+    {
+      "binding": "trunk-start-head",
+      "testid": "sld-v2-run-gpz/118b4bef9c856d92973b8f2515da45e5/corridor_01-cable-head"
+    },
+    {
+      "binding": null,
+      "testid": null
+    }
+  ],
+  "hasCableHeads": 2,
+  "hasPortMagnets": 5,
+  "hasSupplyPath": 1,
+  "labelCount": 55,
+  "overlapCount": 0,
+  "stationPortAnchors": [
+    {
+      "hit": "true",
+      "role": "WE",
+      "section": "SN",
+      "testid": "sld-v2-mini-rmu-port-anchor-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation-WE"
+    },
+    {
+      "hit": "true",
+      "role": "TR",
+      "section": "SN",
+      "testid": "sld-v2-mini-rmu-port-anchor-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation-TR"
+    }
+  ],
+  "svgPresent": true,
+  "topOverlaps": [],
+  "url": "http://127.0.0.1:5173/#sld",
+  "visibleForbidden": []
+}

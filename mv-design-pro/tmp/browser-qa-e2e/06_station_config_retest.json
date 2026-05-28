@@ -1,0 +1,241 @@
+{
+  "steps": [
+    {
+      "name": "station_configuration_open",
+      "pass": true,
+      "stationConfig": {
+        "actions": [
+          {
+            "disabled": true,
+            "testid": "station-continue-trunk",
+            "text": "Kontynuuj ciąg SN ze stacji",
+            "title": "Brak wolnego portu wyjściowego SN. Dodaj pole WY/ODG albo wybierz stację przelotową z wolnym terminalem."
+          },
+          {
+            "disabled": true,
+            "testid": "station-start-branch",
+            "text": "Rozpocznij odgałęzienie",
+            "title": "Brak wolnego pola odgałęźnego SN. Dodaj pole ODG albo wybierz stację/ZKSN z takim portem."
+          },
+          {
+            "disabled": false,
+            "testid": "station-add-pv-shortcut",
+            "text": "Dodaj PV",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-add-bess-shortcut",
+            "text": "Dodaj BESS",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-add-fw-shortcut",
+            "text": "Dodaj FW",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-config-tab-basic",
+            "text": "1Przyłączenie SNMiejsce w ciągu, porty i dane stacji",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-config-tab-sn-switchgear",
+            "text": "2Rozdzielnia SNUkład szyn, sekcje, prądy znamionowe",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-config-tab-bays",
+            "text": "3Pola SN i uzależnieniaRole pól i sekwencje łączeń",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-config-tab-apparatus",
+            "text": "4Aparatura SNŁączniki, przekładniki i pakiety pól",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-config-tab-ct",
+            "text": "5Przekładniki prądoweRdzenie, klasy i obciążenia wtórne",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-config-tab-vt",
+            "text": "6Przekładniki napięcioweUkład napięciowy i współczynnik napięciowy",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-config-tab-measurements",
+            "text": "7Liczniki i telemechanikaPomiary rozliczeniowe i sygnały",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-config-tab-transformer",
+            "text": "8TransformatorMoc, grupa, zaczepy i poziomy nN",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-config-tab-earthing",
+            "text": "9UziemienieNeutralny SN, siatka i wymagania 67N",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-config-tab-nn-switchgear",
+            "text": "10Strona nNRozdzielnice, odpływy i odbiory",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-config-tab-der-sources",
+            "text": "11PV, BESS i FWWarianty przyłączenia i PCC",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-config-tab-power-quality",
+            "text": "12Jakość energiiRegulacja, bilans i wpływ źródeł",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-config-tab-protection",
+            "text": "13ZabezpieczeniaPrzekaźniki, nastawy i selektywność",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-config-tab-nc-rfg",
+            "text": "14NC RfG i PTPiREEProfile źródeł i wymagania przyłączeniowe",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-config-tab-infrastructure",
+            "text": "15SCADA i infrastrukturaSterowanie, telepomiary i automatyka",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-config-tab-network-analysis",
+            "text": "16Analiza sieciowaCiąg SN, moce, napięcia i straty",
+            "title": null
+          },
+          {
+            "disabled": false,
+            "testid": "station-config-tab-readiness",
+            "text": "17Obliczenia i raportZakres obliczeń, dowody i eksport",
+            "title": null
+          }
+        ],
+        "exists": true,
+        "tabs": [
+          {
+            "testid": "station-config-tab-basic",
+            "text": "1Przyłączenie SNMiejsce w ciągu, porty i dane stacji"
+          },
+          {
+            "testid": "station-config-tab-sn-switchgear",
+            "text": "2Rozdzielnia SNUkład szyn, sekcje, prądy znamionowe"
+          },
+          {
+            "testid": "station-config-tab-bays",
+            "text": "3Pola SN i uzależnieniaRole pól i sekwencje łączeń"
+          },
+          {
+            "testid": "station-config-tab-apparatus",
+            "text": "4Aparatura SNŁączniki, przekładniki i pakiety pól"
+          },
+          {
+            "testid": "station-config-tab-ct",
+            "text": "5Przekładniki prądoweRdzenie, klasy i obciążenia wtórne"
+          },
+          {
+            "testid": "station-config-tab-vt",
+            "text": "6Przekładniki napięcioweUkład napięciowy i współczynnik napięciowy"
+          },
+          {
+            "testid": "station-config-tab-measurements",
+            "text": "7Liczniki i telemechanikaPomiary rozliczeniowe i sygnały"
+          },
+          {
+            "testid": "station-config-tab-transformer",
+            "text": "8TransformatorMoc, grupa, zaczepy i poziomy nN"
+          },
+          {
+            "testid": "station-config-tab-earthing",
+            "text": "9UziemienieNeutralny SN, siatka i wymagania 67N"
+          },
+          {
+            "testid": "station-config-tab-nn-switchgear",
+            "text": "10Strona nNRozdzielnice, odpływy i odbiory"
+          },
+          {
+            "testid": "station-config-tab-der-sources",
+            "text": "11PV, BESS i FWWarianty przyłączenia i PCC"
+          },
+          {
+            "testid": "station-config-tab-power-quality",
+            "text": "12Jakość energiiRegulacja, bilans i wpływ źródeł"
+          },
+          {
+            "testid": "station-config-tab-protection",
+            "text": "13ZabezpieczeniaPrzekaźniki, nastawy i selektywność"
+          },
+          {
+            "testid": "station-config-tab-nc-rfg",
+            "text": "14NC RfG i PTPiREEProfile źródeł i wymagania przyłączeniowe"
+          },
+          {
+            "testid": "station-config-tab-infrastructure",
+            "text": "15SCADA i infrastrukturaSterowanie, telepomiary i automatyka"
+          },
+          {
+            "testid": "station-config-tab-network-analysis",
+            "text": "16Analiza sieciowaCiąg SN, moce, napięcia i straty"
+          },
+          {
+            "testid": "station-config-tab-readiness",
+            "text": "17Obliczenia i raportZakres obliczeń, dowody i eksport"
+          }
+        ],
+        "text": "SNKonfigurator stacji1 / 17SNStacja B · Przyłączenie SN3Pola SN0TR1DERSN1Przyłączenie SNMiejsce w ciągu, porty i dane stacji2Rozdzielnia SNUkład szyn, sekcje, prądy znamionowe3Pola SN i uzależnieniaRole pól i sekwencje łączeń4Aparatura SNŁączniki, przekładniki i pakiety pólPomiary5Przekładniki prądoweRdzenie, klasy i obciążenia wtórne6Przekładniki napięcioweUkład napięciowy i współczynnik napięciowy7Liczniki i telemechanikaPomiary rozliczeniowe i sygnałyStacja8TransformatorMoc, grupa, zaczepy i poziomy nN9UziemienieNeutralny SN, siatka i wymagania 67N10Strona nNRozdzielnice, odpływy i odbioryOZE11PV, BESS i FWWarianty przyłączenia i PCC12Jakość energiiRegulacja, bilans i wpływ źródełOchrona13ZabezpieczeniaPrzekaźniki, nastawy i selektywność14NC RfG i PTPiREEProfile źródeł i wymagania przyłączenioweInfrastruktura15SCADA i infrastrukturaSterowanie, telepomiary i automatyka16Analiza sieciowaCiąg SN, moce, napięcia i stratyRaport17Obliczenia i raportZakres obliczeń, dowody i eksportSN-1 · SNPrzyłączenie SNMiejsce w ciągu, porty i dane stacjiNastępny krok: Rozdzielnia SNIdentyfikacja i wariant stacjiDane ruchowe i wariant katalogowy stacji SN/nN.Dane podstawoweNazwa stacjiOznaczenie ruc"
+      }
+    },
+    {
+      "name": "station_transformer_tab_accessible",
+      "pass": true,
+      "transformer": {
+        "dashes": [
+          {
+            "testid": "station-config-tab-transformer",
+            "text": "8TransformatorMoc, grupa, zaczepy i poziomy nN"
+          },
+          {
+            "testid": "station-config-content-transformer",
+            "text": "Transformatory SN/nN (0)Transformator SN/nN dobiera się z wariantu stacji albo z katalogu transforma"
+          },
+          {
+            "testid": "station-config-transformer",
+            "text": "Transformatory SN/nN (0)Transformator SN/nN dobiera się z wariantu stacji albo z katalogu transforma"
+          },
+          {
+            "testid": "engineering-field-transformer_count",
+            "text": "Transformatory1"
+          }
+        ],
+        "text": "Transformator\n3\nPOLA SN\n0\nTR\n1\nDER\nSN\n1\nPrzyłączenie SN\nMiejsce w ciągu, porty i dane stacji\n2\nRozdzielnia SN\nUkład szyn, sekcje, prądy znamionowe\n3\nPola SN i uzależnienia\nRole pól i sekwencje łączeń\n4\nAparatura SN\nŁączniki, przekładniki i pakiety pól\nPOMIARY\n5\nPrzekładniki prądowe\nRdzenie, klasy i obciążenia wtórne\n6\nPrzekładniki napięciowe\nUkład napięciowy i współczynnik napięciowy\n7\nLiczniki i telemechanika\nPomiary rozliczeniowe i sygnały\nSTACJA\n8\nTransformator\nMoc, grupa, zaczepy i poziomy nN\n9\nUziemienie\nNeutralny SN, siatka i wymagania 67N\n10\nStrona nN\nRozdzielnice, odpływy i odbiory\nOZE\n11\nPV, BESS i FW\nWarianty przyłączenia i PCC\n12\nJakość energii\nRegulacja, bilans i wpływ źródeł\nOCHRONA\n13\nZabezpieczenia\nPrzekaźniki, nastawy i selektywność\n14\nNC RfG i PTPiREE\nProfile źródeł i wymagania przyłączeniowe\nINFRASTRUKTURA\n15\nSCADA i infrastruktura\nSterowanie, telepomiary i automatyka\n16\nAnaliza sieciowa\nCiąg SN, moce, napięcia i straty\nRAPORT\n17\nObliczenia i raport\nZakres obliczeń, dowody i eksport\nST-1 · STACJA\nTransformator\n\nMoc, grupa, zaczepy i poziomy nN\n\nNastępny krok: Uziemienie\nTRANSFORMATORY SN/NN (0)\nTransformator SN/nN dobiera się z wariantu stacji albo z katalogu transformatorów.\n"
+      }
+    }
+  ]
+}

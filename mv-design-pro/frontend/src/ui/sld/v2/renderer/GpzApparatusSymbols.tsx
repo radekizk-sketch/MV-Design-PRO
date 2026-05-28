@@ -653,13 +653,36 @@ interface ApparatusTransformerSymbolProps {
 export function ApparatusTransformerSymbol(props: ApparatusTransformerSymbolProps): JSX.Element {
   const { cx, cy, neutralEarthed = true, vectorGroup, hasTapChanger = false } = props;
   const r = 5;
-  const gap = 4;
+  const gap = r;
   return (
-    <g data-testid="sld-v2-gpz-bay-transformer-symbol">
+    <g
+      data-testid="sld-v2-gpz-bay-transformer-symbol"
+      data-symbol-canon="transformer_intersecting_circles"
+      data-transformer-circles-intersect="true"
+      data-transformer-circle-overlap-px={2 * r - gap}
+    >
       {/* Okrąg górny (strona SN). */}
-      <circle cx={cx} cy={cy - gap / 2} r={r} fill={COLOR_PANEL_RAISED} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+      <circle
+        cx={cx}
+        cy={cy - gap / 2}
+        r={r}
+        fill={COLOR_PANEL_RAISED}
+        stroke={COLOR_LINE_PRIMARY}
+        strokeWidth={1.2}
+        data-transformer-winding="SN"
+        data-symbol-canon="transformer_winding_circle"
+      />
       {/* Okrąg dolny (strona nN). */}
-      <circle cx={cx} cy={cy + gap / 2} r={r} fill={COLOR_PANEL_RAISED} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+      <circle
+        cx={cx}
+        cy={cy + gap / 2}
+        r={r}
+        fill={COLOR_PANEL_RAISED}
+        stroke={COLOR_LINE_PRIMARY}
+        strokeWidth={1.2}
+        data-transformer-winding="nN"
+        data-symbol-canon="transformer_winding_circle"
+      />
       {/* K30-104: IEC 60617-2 tap-changer arrow (diagonalna strzałka przez
           górne uzwojenie HV/SN) — per PN-EN 62271-102 wymóg dla OLTC. */}
       {hasTapChanger && (

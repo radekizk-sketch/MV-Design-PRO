@@ -7,7 +7,7 @@
  * 3. SldCanvasV2 renderuje się bez błędów dla minimal i full sample sieci.
  */
 
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SldCanvasV2 } from '../canvas/SldCanvasV2';
@@ -44,13 +44,24 @@ describe('GpzRenderer', () => {
 
 describe('SectionRenderer', () => {
   it('renderuje cyfrę rzymską sekcji', () => {
-    const { getByText } = render(
+    const { container, getByText } = render(
       <svg>
         <SectionRenderer id="s1" x={0} y={200} number={1} busVoltageKv={15} bayCount={6} />
       </svg>,
     );
     expect(getByText('Sekcja I')).toBeInTheDocument();
     expect(getByText('15 kV')).toBeInTheDocument();
+    expect(
+      container
+        .querySelector('[data-testid="sld-v2-section-label-stack-s1"]')
+        ?.getAttribute('data-readable-label-stack'),
+    ).toBe('true');
+    expect(
+      container.querySelector('[data-testid="sld-v2-section-label-s1-name"]')?.getAttribute('y'),
+    ).toBe('-26');
+    expect(
+      container.querySelector('[data-testid="sld-v2-section-label-s1-voltage"]')?.getAttribute('y'),
+    ).toBe('-8');
   });
 
   it('section number 4 → IV (rzymskie)', () => {
@@ -169,12 +180,35 @@ describe('DeviceRenderer — state→style invariant', () => {
   });
 
   it('TRANSFORMER_DEVICE ma 2 okręgi (kanon briefa §5 pkt 20)', () => {
+    const clicked: string[] = [];
     const { container } = render(
       <svg>
-        <DeviceRenderer id="tr1" kind="TRANSFORMER_DEVICE" designationQ="TR" state="closed" x={0} y={0} />
+        <DeviceRenderer
+          id="tr1"
+          kind="TRANSFORMER_DEVICE"
+          designationQ="TR"
+          state="closed"
+          x={0}
+          y={0}
+          onClick={(id) => clicked.push(id)}
+        />
       </svg>,
     );
-    expect(container.querySelectorAll('circle').length).toBe(2);
+    const symbol = container.querySelector('[data-symbol-canon="transformer_intersecting_circles"]');
+    expect(symbol).toBeTruthy();
+    expect(symbol).toHaveAttribute('data-transformer-circles-intersect', 'true');
+    expect(symbol).toHaveAttribute('data-transformer-circle-overlap-px', '15');
+    const circles = Array.from(container.querySelectorAll('[data-transformer-winding]'));
+    expect(circles).toHaveLength(2);
+    expect(Number(circles[0].getAttribute('cy'))).toBe(-7.5);
+    expect(Number(circles[1].getAttribute('cy'))).toBe(7.5);
+    expect(Number(circles[0].getAttribute('r'))).toBe(15);
+    const device = container.querySelector('[data-testid="sld-v2-device-tr1"]');
+    expect(device).toHaveAttribute('role', 'button');
+    expect(device).toHaveAttribute('tabindex', '0');
+    expect(container.querySelector('[data-testid="sld-v2-device-hit-tr1"][data-hit-area="device"]')).toBeTruthy();
+    fireEvent.keyDown(device as Element, { key: 'Enter' });
+    expect(clicked).toContain('tr1');
   });
 
   it('Q label widoczny tylko gdy showQLabel=true', () => {
@@ -234,6 +268,33 @@ describe('CableRunRenderer', () => {
     );
     const paths = container.querySelectorAll('path');
     expect(paths.length).toBe(2); // hit area + visible
+  });
+
+  it('oznacza tor zasilania i NMO z danych SupplyPath/ENM', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="run_nmo"
+          runKind="main_trunk"
+          segmentKind="cable_sn"
+          segmentRefs={['seg-a']}
+          pathPoints={[{ x: 0, y: 0 }, { x: 160, y: 0 }]}
+          energized
+          containsOpenPoint
+        />
+      </svg>,
+    );
+
+    const run = container.querySelector('[data-testid="sld-v2-run-run_nmo"]');
+    const supplyPath = container.querySelector('[data-testid="sld-v2-run-run_nmo-supply-path-0"]');
+    expect(run?.getAttribute('data-energized')).toBe('true');
+    expect(run?.getAttribute('data-supply-path-role')).toBe('main_run');
+    expect(run?.getAttribute('data-flow-role')).toBe('supply-path');
+    expect(run?.getAttribute('data-open-point')).toBe('true');
+    expect(supplyPath?.getAttribute('data-flow-role')).toBe('supply-path');
+    expect(supplyPath?.getAttribute('data-supply-path')).toBe('true');
+    expect(supplyPath).toBeTruthy();
+    expect(container.querySelector('[data-testid="sld-v2-run-run_nmo-nmo-open-point"]')).toBeTruthy();
   });
 
   it('linia napowietrzna ma dasharray odróżniający od kabla', () => {
