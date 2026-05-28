@@ -1,0 +1,20 @@
+{
+  "network_id": "pandapower-iec60909-radial",
+  "source": "pandapower.shortcircuit.calc_sc, IEC 60909 equivalent voltage source method",
+  "source_note": "Reference fixture: ideal 20 kV external grid, one 1 km line section R=0.2 ohm/km, X=0.4 ohm/km, fault='3ph', case='max', c=1.10, tk_s=1.0. Values match the closed-form IEC 60909 equivalent-voltage-source calculation: Z_k=(0.2+j0.4) ohm, |Z_k|=0.4472135955 ohm, Ik''=c*U_n/(sqrt(3)*|Z_k|)=28.401877872 kA. The fixture is intentionally minimal so that the proof can show every step and can be regenerated with pandapower when the optional dependency is installed.",
+  "power_flow": [],
+  "power_flow_branches": [],
+  "short_circuit": [
+    {
+      "fault_node_id": "BUS-01",
+      "sc_type": "3F",
+      "ikss_a": 28401.878,
+      "ip_a": 49752.719,
+      "ith_a": 28401.878,
+      "sk_mva": 983.87,
+      "rtol": 0.001,
+      "note": "3-phase fault at BUS-01, direct IEC 60909 / pandapower calc_sc fixture"
+    }
+  ],
+  "dynamic_samples": []
+}

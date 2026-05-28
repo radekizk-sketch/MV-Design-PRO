@@ -148,4 +148,24 @@ describe('SldContextMenuController — most SLD_MENU_REGISTRY ↔ ContextMenu', 
     );
     expect(screen.getByText(/Farma wiatrowa/)).toBeInTheDocument();
   });
+
+  it('menu ZK SN przekazuje akcjÄ™ usuniÄ™cia do aktywnego routingu SLD', () => {
+    const onAction = vi.fn();
+    const onClose = vi.fn();
+
+    render(
+      <SldContextMenuController
+        {...baseProps}
+        elementName="ZK SN 01"
+        onAction={onAction}
+        onClose={onClose}
+        request={{ kind: 'zksn', elementId: 'zksn-01', clientX: 0, clientY: 0 }}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Usuń ZK SN'));
+
+    expect(onAction).toHaveBeenCalledWith('delete-zksn', 'zksn', 'zksn-01');
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

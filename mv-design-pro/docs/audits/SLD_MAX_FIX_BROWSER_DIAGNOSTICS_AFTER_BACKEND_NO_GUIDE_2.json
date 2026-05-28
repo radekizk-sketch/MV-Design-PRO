@@ -1,0 +1,20 @@
+{
+  "url": "http://127.0.0.1:5173/#sld?project=e7387f58-db5c-451d-951a-72973386aa4c&case=c2808404-4014-43f0-b1ae-729911609684",
+  "bodyHasGuide": false,
+  "gpzLabels": 8,
+  "stationLabelsLower": 4,
+  "stationLayerText": "WELWYLTRTRS012 nNNowa stacja0G 400kWRMU·P1,0 MVAPV: 1 szt.PV400 kW",
+  "miniRmuGroups": 9,
+  "stationNotRectangle": 2,
+  "energizedRuns": 2,
+  "supplyPathRoles": [
+    "main_run",
+    "branch"
+  ],
+  "gpzCanonical": 74,
+  "hvBus": 1,
+  "trFields": 6,
+  "bayFeeders": 2,
+  "loadingTexts": 0,
+  "consoleMessages": []
+}

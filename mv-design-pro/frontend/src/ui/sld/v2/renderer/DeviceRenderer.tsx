@@ -56,6 +56,12 @@ export function DeviceRenderer(props: DeviceRendererProps): JSX.Element {
   const { id, kind, designationQ, state, x, y, selected, showQLabel, onClick } = props;
   const effectiveState: DeviceState = selected ? 'selected' : state;
   const style = getDeviceStyle(effectiveState);
+  const hitArea = getDeviceHitArea(kind);
+  const label = getDeviceAccessibleLabel(kind, designationQ);
+  const activate = (event: { stopPropagation: () => void; preventDefault?: () => void }) => {
+    event.stopPropagation();
+    onClick?.(id);
+  };
 
   return (
     <g
@@ -65,17 +71,30 @@ export function DeviceRenderer(props: DeviceRendererProps): JSX.Element {
       data-device-kind={kind}
       data-device-state={state}
       transform={`translate(${x}, ${y})`}
-      onClick={onClick ? (e) => { e.stopPropagation(); onClick(id); } : undefined}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={onClick ? label : undefined}
+      onClick={onClick ? activate : undefined}
+      onDoubleClick={onClick ? activate : undefined}
+      onContextMenu={onClick ? (event) => { event.preventDefault(); activate(event); } : undefined}
+      onKeyDown={onClick ? (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onClick(id);
+        }
+      } : undefined}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
+      <title>{label}</title>
       {onClick && (
         <rect
-          x={-18}
-          y={-18}
-          width={58}
-          height={36}
+          x={hitArea.x}
+          y={hitArea.y}
+          width={hitArea.width}
+          height={hitArea.height}
           fill="transparent"
           pointerEvents="all"
+          data-hit-area="device"
           data-testid={`sld-v2-device-hit-${id}`}
         />
       )}
@@ -94,6 +113,49 @@ export function DeviceRenderer(props: DeviceRendererProps): JSX.Element {
       )}
     </g>
   );
+}
+
+function getDeviceAccessibleLabel(kind: DeviceKindV2, designationQ: string): string {
+  switch (kind) {
+    case 'CB':
+      return `Wyłącznik ${designationQ}`;
+    case 'DS_BUS':
+    case 'DS_LINE':
+      return `Odłącznik ${designationQ}`;
+    case 'SWITCH_DISCONNECTOR':
+      return `Rozłącznik ${designationQ}`;
+    case 'ES':
+      return `Uziemnik ${designationQ}`;
+    case 'CT':
+      return `Przekładnik prądowy ${designationQ}`;
+    case 'VT':
+      return `Przekładnik napięciowy ${designationQ}`;
+    case 'FUSE':
+      return `Bezpiecznik ${designationQ}`;
+    case 'SURGE_ARRESTER':
+      return `Ogranicznik przepięć ${designationQ}`;
+    case 'CABLE_HEAD':
+      return `Głowica kablowa ${designationQ}`;
+    case 'TRANSFORMER_DEVICE':
+      return `Transformator ${designationQ}`;
+    default:
+      return `Aparat ${designationQ}`;
+  }
+}
+
+function getDeviceHitArea(kind: DeviceKindV2): { x: number; y: number; width: number; height: number } {
+  switch (kind) {
+    case 'ES':
+      return { x: -12, y: -12, width: 56, height: 56 };
+    case 'VT':
+      return { x: -14, y: -24, width: 64, height: 48 };
+    case 'TRANSFORMER_DEVICE':
+      return { x: -24, y: -30, width: 72, height: 60 };
+    case 'SURGE_ARRESTER':
+      return { x: -18, y: -22, width: 54, height: 44 };
+    default:
+      return { x: -22, y: -22, width: 62, height: 44 };
+  }
 }
 
 function renderDeviceShape(
@@ -312,24 +374,32 @@ function renderDeviceShape(
     case 'TRANSFORMER_DEVICE': {
       // Transformator: dwa okręgi (kanon briefa §5 pkt 20)
       return (
-        <g>
+        <g
+          data-symbol-canon="transformer_intersecting_circles"
+          data-transformer-circles-intersect="true"
+          data-transformer-circle-overlap-px={15}
+        >
           <circle
             cx={0}
-            cy={-12}
-            r={14}
+            cy={-7.5}
+            r={15}
             fill="none"
             stroke={style.stroke}
             strokeWidth={2}
             className={style.className}
+            data-transformer-winding="SN"
+            data-symbol-canon="transformer_winding_circle"
           />
           <circle
             cx={0}
-            cy={12}
-            r={14}
+            cy={7.5}
+            r={15}
             fill="none"
             stroke={style.stroke}
             strokeWidth={2}
             className={style.className}
+            data-transformer-winding="nN"
+            data-symbol-canon="transformer_winding_circle"
           />
         </g>
       );

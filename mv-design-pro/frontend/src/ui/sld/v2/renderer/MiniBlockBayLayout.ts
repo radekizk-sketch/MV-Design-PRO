@@ -63,6 +63,9 @@ export function apparatusStackForRole(role: FieldRole): readonly ApparatusKind[]
     case FIELD_ROLE.LINE_BRANCH:
     case FIELD_ROLE.RMU_LINE:
     case FIELD_ROLE.GPZ_LINE_BAY:
+    case FIELD_ROLE.DER_PV:
+    case FIELD_ROLE.DER_BESS:
+    case FIELD_ROLE.DER_FW:
       return ['DS', 'CB', 'ES'];
     case FIELD_ROLE.TRANSFORMER:
     case FIELD_ROLE.RMU_TRANSFORMER:
@@ -119,16 +122,16 @@ function variantDims(
   }
   if (variant === 'compact') {
     return {
-      width: 190,
-      height: 136,
-      busYOffset: 4,
+      width: 220,
+      height: 240,
+      busYOffset: 79,
       apparatusHeight: 13,
       apparatusGap: 4,
       trGap: 6,
       trRadius: 8,
       trToLvGap: 6,
       lvFeederLength: 24,
-      margin: 18,
+      margin: 28,
     };
   }
   // detail (with optional PV expansion handled w outer wrap)

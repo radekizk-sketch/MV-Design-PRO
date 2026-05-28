@@ -17,6 +17,18 @@ def test_advanced_solver_capability_registry_is_complete_and_real() -> None:
         "SOURCE_FRT_LVRT_HVRT",
         "DYNAMIC_STABILITY",
         "SOURCE_COMPLIANCE",
+        "POWER_QUALITY_HARMONICS",
+        "VOLTAGE_STABILITY",
+        "RELIABILITY_CONTINGENCY",
+        "EARTHING_SAFETY",
+        "INSULATION_COORDINATION",
+        "EARTH_FAULT_DETECTION",
+        "TRANSIENT_TRV",
+        "MOTOR_STARTING",
+        "HOSTING_CAPACITY",
+        "OPF_LOSS_LCC",
+        "BENCHMARK_VALIDATION",
+        "UNCERTAINTY_SENSITIVITY",
     }
 
     assert set(SOLVER_CAPABILITY_REGISTRY) == expected
@@ -26,7 +38,7 @@ def test_advanced_solver_capability_registry_is_complete_and_real() -> None:
         assert capability.proof_support is True
         assert capability.reportable is True
         assert capability.output_contract
-        assert capability.reference_test.endswith(".py") or ".test.py::" in capability.reference_test
+        assert capability.reference_test.endswith(".py") or ".py::" in capability.reference_test
 
 
 def test_advanced_solver_capability_contract_reports_full_support() -> None:
@@ -37,4 +49,4 @@ def test_advanced_solver_capability_contract_reports_full_support() -> None:
     assert contract["all_implemented"] is True
     assert contract["all_proof_supported"] is True
     assert contract["all_reportable"] is True
-    assert len(contract["capabilities"]) == 11
+    assert len(contract["capabilities"]) == 23

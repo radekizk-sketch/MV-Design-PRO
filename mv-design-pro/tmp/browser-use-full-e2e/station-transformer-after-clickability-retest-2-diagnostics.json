@@ -1,0 +1,41 @@
+{
+  "miniBayButtons": 6,
+  "miniStationRootButtons": 2,
+  "stationPortButtons": 6,
+  "transformerButtons": 1,
+  "transformerSymbols": [
+    {
+      "aria": "Transformator SN/nN stacji",
+      "circleCount": 2,
+      "elementId": "stn/ac3f845407ac60c5df26c7e641dacec2/transformer",
+      "overlap": "7",
+      "rect": {
+        "height": 31,
+        "width": 36,
+        "x": 649,
+        "y": 555
+      },
+      "role": "button",
+      "tabindex": "0",
+      "testid": "sld-symbol-mini-transformer-stn/ac3f845407ac60c5df26c7e641dacec2/transformer",
+      "visible": true
+    },
+    {
+      "aria": null,
+      "circleCount": 2,
+      "elementId": null,
+      "overlap": "7",
+      "rect": {
+        "height": 20,
+        "width": 29,
+        "x": 656,
+        "y": 560
+      },
+      "role": null,
+      "tabindex": null,
+      "testid": "sld-v2-mini-rmu-compact-transformer-symbol",
+      "visible": true
+    }
+  ],
+  "url": "http://127.0.0.1:5173/#sld?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8&sel=stn%2Fac3f845407ac60c5df26c7e641dacec2%2Fstation&type=Station&name=Stacja+B"
+}

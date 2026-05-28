@@ -1176,10 +1176,8 @@ export function GridSourceEditor({
                   type="number"
                   min={0.1}
                   step={0.1}
-                  value={formData.thermal_time_s}
-                  onChange={(event) =>
-                    handleChange('thermal_time_s', Number(event.target.value || 0))
-                  }
+                  value={formData.thermal_time_s ?? ''}
+                  onChange={handleNumericChange('thermal_time_s')}
                   className={fieldClass(getFieldError('thermal_time_s'))}
                 />
               </FieldShell>

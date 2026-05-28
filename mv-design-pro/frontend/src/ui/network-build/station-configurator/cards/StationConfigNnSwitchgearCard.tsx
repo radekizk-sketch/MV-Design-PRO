@@ -47,6 +47,10 @@ const STATUS_LABEL: Record<NnSwitchgearRow['statusPl'], string> = {
   'brak danych': 'do konfiguracji',
 };
 
+function formatPowerBalance(value: number | null | undefined, unit: 'MW' | 'Mvar'): string {
+  return value === null || value === undefined ? `brak ${unit}` : `${value.toFixed(3)} ${unit}`;
+}
+
 export function StationConfigNnSwitchgearCard(
   props: StationConfigNnSwitchgearCardProps,
 ): JSX.Element {
@@ -88,7 +92,7 @@ export function StationConfigNnSwitchgearCard(
                   <div className="col-span-2">
                     <span className="text-scada-muted">Bilans P/Q: </span>
                     <span className="font-mono">
-                      {sw.pBalanceMw.toFixed(3)} MW / {(sw.qBalanceMvar ?? 0).toFixed(3)} Mvar
+                      {formatPowerBalance(sw.pBalanceMw, 'MW')} / {formatPowerBalance(sw.qBalanceMvar, 'Mvar')}
                     </span>
                   </div>
                 )}

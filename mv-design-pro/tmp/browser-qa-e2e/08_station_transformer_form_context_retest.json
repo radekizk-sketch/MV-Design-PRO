@@ -1,0 +1,556 @@
+{
+  "test": "station_transformer_add_form_context",
+  "pass": true,
+  "before": {
+    "addButton": "Dodaj transformator z katalogu",
+    "emptyState": "Brak transformatora SN/nN w modelu stacji.Transformator musi zostać dodany jako element ENM z pozycji katalogowej. Bez tego obliczenia zwarciowe, rozpływ mocy, dobór zabezpieczeń i raport pozostają zablokowane dla toru nN.Dodaj transformator z katalogu"
+  },
+  "after": {
+    "blockText": null,
+    "fields": [
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": null,
+        "text": "×",
+        "value": ""
+      },
+      {
+        "disabled": true,
+        "tag": "BUTTON",
+        "testid": null,
+        "text": "↶Cofnij",
+        "value": ""
+      },
+      {
+        "disabled": true,
+        "tag": "BUTTON",
+        "testid": null,
+        "text": "↷Ponów",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "ctx-project",
+        "text": "ProjektE2E SLD 0002",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "ctx-wariant",
+        "text": "Zakres / wariantZakres obliczeń z adresu",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "ctx-przypadek",
+        "text": "Konfiguruj zakres",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "top-bar-calculate",
+        "text": "Oblicz",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "top-bar-overlay",
+        "text": "Nakładka",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "top-bar-results",
+        "text": "Analizy",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "top-bar-export",
+        "text": "Eksport",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "top-bar-settings",
+        "text": "",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "wcs-search",
+        "text": "Szukaj",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "wcs-catalog",
+        "text": "Katalog",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "wcs-mass-review",
+        "text": "Kontrola",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "wcs-project-metadata",
+        "text": "Metadane",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "wcs-history",
+        "text": "Historia",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "nav-area-MODEL_SIECI",
+        "text": "Sieć",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "nav-area-SCHEMAT_TOPOLOGIA",
+        "text": "Schemat",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "nav-area-STUDIA_OBLICZENIOWE",
+        "text": "Studia",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "nav-area-WYNIKI_ANALIZY",
+        "text": "WynikiW",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "nav-area-ZABEZPIECZENIA_AUTOMATYKA",
+        "text": "Zabezpieczenia",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "nav-area-ZRODLA_PRZYLACZENIA",
+        "text": "Układy",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "nav-area-KATALOGI_TECHNICZNE",
+        "text": "Katalogi",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "nav-area-RAPORTY_UZASADNIENIA",
+        "text": "Raporty",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "nav-area-HISTORIA_AUDYT",
+        "text": "Historia",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "context-panel-toggle",
+        "text": "",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "schemat-action-show-topology",
+        "text": "Schemat i topologia",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "schemat-action-show-normal-open-points",
+        "text": "●Układ dopuszczony do analizyAnaliza",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "INPUT",
+        "testid": "project-tree-search-input",
+        "text": "",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "model-tree-row-gpz/860003b4514aa388b39561d5005ce584/source/main",
+        "text": "⊙Źródło GPZ 15 kV●",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "model-tree-row-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+        "text": "⊙Stacja B · stacja przelotowa●⋮",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "model-tree-row-seg/2eb903289ceccfe33d015b843cc0a839/segment",
+        "text": "⊙F2 · YAKXS 3×120/16 · 0,21 km●",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "model-tree-row-seg/fffe06fde7d5aca09fa6e904e942ad63/segment_L",
+        "text": "⊙Odcinek 02 · YAKXS 3×120/16 · 0,09 km●",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "model-tree-row-seg/fffe06fde7d5aca09fa6e904e942ad63/segment_R",
+        "text": "⊙Odcinek 03 · YAKXS 3×120/16 · 0,12 km●",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "model-tree-row-seg/a3acec33be3f808937ccd4887cf57c76/segment",
+        "text": "⊙Odcinek 04 · 3 × NA2XS2Y 1×150/25 mm² · 1,00 km●",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "model-tree-row-seg/23875a76b3f665d0dc0e5da4f25e00c4/segment",
+        "text": "⊙Odcinek 05 · YAKXS 3×120/16 · 0,50 km●",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "model-tree-row-seg/20a007590f2c151243e3c62812ad1622/segment",
+        "text": "⊙Odcinek 06 · YAKXS 3×120/16 · 1,00 km●",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "model-tree-row-seg/5a0832828e97bfacab29a3f6518c7f00/segment",
+        "text": "⊙Odcinek 07 · 3 × NA2XS2Y 1×240/25 mm² · 1,00 km●",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "model-tree-row-pv/e8bed5e02e97a5241c38714f8b64cd7d/converter",
+        "text": "⊙PV 01 · falownik PV · Stacja B · 0,5 MW●",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "model-tree-row-load/e057d623f2f45db8887c1a9c3bcf4489/nn",
+        "text": "⊙Odbiór nN 1 - Stacja B · 0,03 MW●",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "schemat-action-go-model",
+        "text": "+Dodaj układ",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "left-panel-mode-readiness",
+        "text": "Konfiguracja",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#disconnect_bus-button",
+        "text": "",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#breaker-button",
+        "text": "",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#ct-button",
+        "text": "",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#switch_disconnector-button",
+        "text": "",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#earthing_switch-button",
+        "text": "",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#cable_head-button",
+        "text": "",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "sld-v2-zoom-in",
+        "text": "+",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "sld-v2-zoom-out",
+        "text": "-",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "sld-v2-fit-view",
+        "text": "[]",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "der-palette-btn-PV",
+        "text": "＋ PV (fotowoltaika)",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "der-palette-btn-BESS",
+        "text": "＋ BESS (magazyn)",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "der-palette-btn-FW",
+        "text": "＋ FW (wiatr)",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "sld-theme-toggle",
+        "text": "☀ Jasny",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "sld-export-svg",
+        "text": "↓ SVG",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "sld-export-menu-toggle",
+        "text": "Eksportuj schemat ▾",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "sld-layer-panel-toggle",
+        "text": "▴ Warstwy (13)",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "sld-proof-packs-toggle",
+        "text": "▸ Dowody (8)",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "sld-hierarchy-tree-toggle",
+        "text": "▸ Drzewo układu",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "sld-apparatus-overlay-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#disconnect_bus",
+        "text": "",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "sld-apparatus-overlay-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#breaker",
+        "text": "",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "sld-apparatus-overlay-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#ct",
+        "text": "",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "sld-apparatus-overlay-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#switch_disconnector",
+        "text": "",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "sld-apparatus-overlay-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#earthing_switch",
+        "text": "",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "sld-apparatus-overlay-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#cable_head",
+        "text": "",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "inspector-panel-toggle",
+        "text": "",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": null,
+        "text": "Schemat",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": null,
+        "text": "Stacja transformatorowa SN/nN",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": null,
+        "text": "Dodaj transformator SN/nN",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "INPUT",
+        "testid": null,
+        "text": "",
+        "value": "Transformator Stacja B"
+      },
+      {
+        "disabled": false,
+        "tag": "SELECT",
+        "testid": null,
+        "text": "— wybierz —Port odgałęźny 1 (15 kV)ZKSN SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Szyna GPZ S1 15 kV (15 kV)Szyna 110 kV TR1 (110 kV)Zacisk odpływowy Pole liniowe GPZ (15 kV)Szyna nN stacji (0.4 kV)Stacja B (15 kV)Zacisk techniczny pola SN 1 (15 kV)Zacisk techniczny pola SN 2 (15 kV)Zacisk techniczny pola SN 3 (15 kV)",
+        "value": "stn/ac3f845407ac60c5df26c7e641dacec2/sn_bus"
+      },
+      {
+        "disabled": false,
+        "tag": "SELECT",
+        "testid": null,
+        "text": "— wybierz —Port odgałęźny 1 (15 kV)ZKSN SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Szyna GPZ S1 15 kV (15 kV)Szyna 110 kV TR1 (110 kV)Zacisk odpływowy Pole liniowe GPZ (15 kV)Szyna nN stacji (0.4 kV)Stacja B (15 kV)Zacisk techniczny pola SN 1 (15 kV)Zacisk techniczny pola SN 2 (15 kV)Zacisk techniczny pola SN 3 (15 kV)",
+        "value": "stn/ac3f845407ac60c5df26c7e641dacec2/nn_bus"
+      },
+      {
+        "disabled": false,
+        "tag": "INPUT",
+        "testid": null,
+        "text": "",
+        "value": "0"
+      },
+      {
+        "disabled": false,
+        "tag": "INPUT",
+        "testid": "catalog-picker-search",
+        "text": "",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": null,
+        "text": "Anuluj",
+        "value": ""
+      },
+      {
+        "disabled": false,
+        "tag": "BUTTON",
+        "testid": "transformer-station-submit",
+        "text": "Dodaj",
+        "value": ""
+      }
+    ],
+    "formText": "IdentyfikatorNazwaSzyna strony górnej (GN)— wybierz —Port odgałęźny 1 (15 kV)ZKSN SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Szyna GPZ S1 15 kV (15 kV)Szyna 110 kV TR1 (110 kV)Zacisk odpływowy Pole liniowe GPZ (15 kV)Szyna nN stacji (0.4 kV)Stacja B (15 kV)Zacisk techniczny pola SN 1 (15 kV)Zacisk techniczny pola SN 2 (15 kV)Zacisk techniczny pola SN 3 (15 kV)Szyna strony dolnej (DN)— wybierz —Port odgałęźny 1 (15 kV)ZKSN SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Zacisk końcowy odcinka SN (15 kV)Szyna GPZ S1 15 kV (15 kV)Szyna 110 kV TR1 (110 kV)Zacisk odpływowy Pole liniowe GPZ (15 kV)Szyna nN stacji (0.4 kV)Stacja B (15 kV)Zacisk techniczny pola SN 1 (15 kV)Zacisk techniczny pola SN 2 (15 kV)Zacisk techniczny pola SN 3 (15 kV)Pozycja zaczepuTyp transformatora z katalogu*AnulujDodaj",
+    "textSample": "ℹOtwarto konfigurator stacji.×↶Cofnij↷PonówMV-DESIGN-PRO12.2ProjektE2E SLD 0002Zakres / wariantZakres obliczeń z adresuKonfiguruj zakresWyniki do obliczenia02:53:3628.05.2026ObliczNakładkaAnalizyEksportFaza projektu:ANALIZAKontrola:0Obliczenia:do obliczeniaSzyny:15Odcinki SN:7Pola SN:4Stacje:1Długość:3,92 kmTR:2Odbiory nN:1SzukajKatalogKontrolaMetadaneHistoriaSiećSchematStudiaWynikiWZabezpieczeniaUkładyKatalogiRaportyHistoriaSchemat i topologiaNastępna akcjai●Układ dopuszczony do analizyAnalizaEtap układudo analizyPrzegląd technicznyUkład skonfigurowany do obliczeń.GPZ i zasilanie●1⊙Źródło GPZ 15 kV●Stacje SN/nN●1⊙Stacja B · stacja przelotowa●⋮Magistrale i odcinki SN●7⊙F2 · YAKXS 3×120/16 · 0,21 km●⊙Odcinek 02 · YAKXS 3×120/16 · 0,09 km●⊙Odcinek 03 · YAKXS 3×120/16 · 0,12 km●⊙Odcinek 04 · 3 × NA2XS2Y 1×150/25 mm² · 1,00 km●⊙Odcinek 05 · YAKXS 3×120/16 · 0,50 km●⊙Odcinek 06 · YAKXS 3×120/16 · 1,00 km●⊙Odcinek 07 · 3 × NA2XS2Y 1×240/25 mm² · 1,00 km●Układy PV/BESS/FW●1⊙PV 01 · falownik PV · Stacja B · 0,5 MW●Odbiory nN●1⊙Odbiór nN 1 - Stacja B · 0,03 MW●+Dodaj układKonfiguracja34Sekcja 015 kVGPZ 15 kVSystem110 kVSzyna WN 110 kVPole WN TR1YTR125 MVA110/15 kVPole TR1Pole liniow…Q1Q0T1Q9Q8Sekcja 115 kV15 kVKabel SN · AlKabel SN · AlKabel SN · AlKabel SN · AlKabel SN · Al15 kVKabel SN · AlKabel SN · AlWE - WEWE - WEPole WE WEWEWE - WEWY - WYWY - WYPole WY WYWYWY - WYTR - TRTR - TRPole TR TRTR - transformator stacjinNTRTR - TRS011 nNStacja B0RMU·PWE - WEWE - WEPole WE WEWEWE - WEWY - WYWY - WYPole WY WYWYWY - WYODG - ODG 1ODG - ODG 1Pole ODG ODG 1ODG 1ODG - ODG 1ZKSNŁCZZKSN SNGPZ 15 kVYAKXS 3×120/16 · 210 mróżne typy katalogowe · 3,71 kmStacje, długości i moce+-[]UKŁADY PV/BESS/FW:＋ PV (fotowoltaika)＋ BESS (magazyn)＋ FW (wiatr)☀ Jasny↓ SVGEksportuj schemat ▾▴ Warstwy (13)▸ Dowody (8)▸ Drzewo układuKarta technicznaSchemat/Stacja transformatorowa SN/nN/Dodaj transformator SN/nNDodaj transformator SN/nNIdentyfikatorNazwaSzyna strony górnej (GN)— wybierz —Port odgałęźny 1 (15 ",
+    "url": "http://127.0.0.1:5173/#sld?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8&overlay=1&legend=1&sel=stn%2Fac3f845407ac60c5df26c7e641dacec2%2Fstation&type=Station&name=Stacja+B"
+  },
+  "screenshotPath": "C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\mv-design-pro\\tmp\\browser-qa-e2e\\08_station_transformer_form_context_retest.png"
+}

@@ -20,6 +20,16 @@ type DomainOpResponse = {
     branches?: Array<{ ref_id: string; from_bus_ref?: string; to_bus_ref?: string }>;
     buses?: Array<{ ref_id: string }>;
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
+    substations?: Array<{
+      ref_id: string;
+      meta?: {
+        field_specs?: Array<{
+          field_ref?: string;
+          bay_role?: string;
+          bus_ref?: string;
+        }>;
+      };
+    }>;
     transformers?: Array<{ ref_id: string; name?: string }>;
   };
   readiness?: { ready: boolean; status?: string; blockers?: Array<{ code: string; element_ref?: string | null }> };
@@ -181,7 +191,23 @@ async function openSegmentInspector(page: Page, segmentRef: string): Promise<voi
   });
 
   await expect(page.getByTestId('sld-segment-inspector')).toBeVisible();
-  await expect(page.getByTestId('sld-segment-inspector')).toContainText(segmentRef);
+  await expect(page.getByTestId('sld-segment-inspector')).toHaveAttribute(
+    'data-segment-ref',
+    segmentRef,
+  );
+}
+
+function findBranchCapableFieldPort(snapshot: DomainOpResponse['snapshot']): string | null {
+  const branchRoles = new Set(['OUT', 'FEEDER', 'LINE_OUT']);
+  for (const substation of snapshot?.substations ?? []) {
+    for (const spec of substation.meta?.field_specs ?? []) {
+      const bayRole = String(spec.bay_role ?? '').toUpperCase();
+      if (spec.field_ref && branchRoles.has(bayRole)) {
+        return `${spec.field_ref}.BRANCH`;
+      }
+    }
+  }
+  return null;
 }
 
 async function openElementInspector(page: Page, elementRef: string): Promise<void> {
@@ -257,8 +283,7 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
   await capture(page, testInfo, '02a-segment-inspector-with-catalog');
 
   await page.getByTestId('sld-segment-open-catalog-picker').click();
-  await page.getByPlaceholder('Szukaj po nazwie lub ID...').fill(ALT_CABLE_ID);
-  await page.getByText(ALT_CABLE_ID, { exact: true }).click();
+  await page.getByTestId('segment-catalog-item-select').selectOption(ALT_CABLE_ID);
   await expect(page.getByTestId('sld-segment-inspector-catalog')).toContainText(ALT_CABLE_ID);
   await expect(page.getByTestId('sld-segment-catalog-status')).toContainText(ALT_CABLE_ID);
   await capture(page, testInfo, '02b-segment-catalog-reassigned');
@@ -275,7 +300,7 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
   });
   const stationBus = (op.snapshot?.buses ?? []).find((bus) => bus.ref_id.includes('sn_bus'));
   expect(stationBus).toBeDefined();
-  const transformerRef = op.snapshot?.transformers?.[0]?.ref_id;
+  const transformerRef = op.snapshot?.transformers?.at(-1)?.ref_id;
   expect(transformerRef).toBeTruthy();
   await reloadEditorPage(page);
   await capture(page, testInfo, '03-after-station');
@@ -290,8 +315,10 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
   await nameEditor.press('Tab');
   await expect(page.getByTestId('engineering-field-name')).toContainText(UPDATED_TRANSFORMER_NAME);
 
+  const branchFromRef = findBranchCapableFieldPort(op.snapshot);
+  expect(branchFromRef).toBeTruthy();
   op = await executeDomainOp(request, caseId, 'start_branch_segment_sn', {
-    from_ref: `${stationBus!.ref_id}.BRANCH`,
+    from_ref: branchFromRef!,
     segment: {
       rodzaj: 'KABEL',
       dlugosc_m: 140,

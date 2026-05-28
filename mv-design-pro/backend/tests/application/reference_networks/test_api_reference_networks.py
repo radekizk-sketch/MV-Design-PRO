@@ -5,14 +5,14 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 
-def test_list_endpoint_returns_8_networks() -> None:
+def test_list_endpoint_returns_9_networks() -> None:
     from api.main import app
 
     client = TestClient(app)
     response = client.get("/api/v1/reference-networks")
     assert response.status_code == 200
     networks = response.json()
-    assert len(networks) == 8
+    assert len(networks) == 9
 
 
 def test_list_endpoint_includes_required_fields() -> None:
@@ -77,14 +77,15 @@ def test_validate_endpoint_ieee_4bus_passes() -> None:
     assert report["pf_pass_count"] >= 4  # 4 buses
 
 
-def test_validate_endpoint_all_8_networks_pass() -> None:
-    """All 8 networks must return PASS after Sprint 1 expected JSON files."""
+def test_validate_endpoint_all_9_networks_pass() -> None:
+    """All registered networks must return PASS with real solver outputs."""
     from api.main import app
 
     client = TestClient(app)
     for net_id in [
         "ieee-4bus",
         "iec60909-example",
+        "pandapower-iec60909-radial",
         "cigre-mv-14",
         "pp-simple-4bus",
         "oze-pv-bess",
@@ -96,6 +97,22 @@ def test_validate_endpoint_all_8_networks_pass() -> None:
         assert response.status_code == 200, f"{net_id} validate failed: {response.text}"
         report = response.json()["report"]
         assert report["overall_status"] == "PASS", f"{net_id} validation FAIL: {report}"
+
+
+def test_pandapower_iec60909_radial_uses_solver_trace_not_expected_copy() -> None:
+    from api.main import app
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/reference-networks/pandapower-iec60909-radial/run"
+        "?solver_kind=short_circuit_iec60909"
+    )
+    assert response.status_code == 200
+    body = response.json()
+    sc = body["result"]["short_circuit"]["BUS-01__3F"]
+    assert sc["ikss_a"] > 28_000.0
+    assert sc["white_box_trace"]
+    assert any(step.get("key") == "Zk" for step in sc["white_box_trace"])
 
 
 def test_similarity_match_endpoint() -> None:

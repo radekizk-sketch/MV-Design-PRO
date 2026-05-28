@@ -1,0 +1,32 @@
+{
+  "metrics": {
+    "busBox": {
+      "h": 0,
+      "w": 122.9999771118164,
+      "x": 538.2232666015625,
+      "y": 522.4728393554688
+    },
+    "captions": [
+      "WE"
+    ],
+    "compactRoot": true,
+    "enclosureStroke": "transparent",
+    "fieldCells": 2,
+    "lineBox": {
+      "h": 74.99999237060547,
+      "w": 24.00002670288086,
+      "x": 526.2232666015625,
+      "y": 479.7228698730469
+    },
+    "lineFlow": "line_from_bus_up_to_terrain",
+    "trBox": {
+      "h": 72.00000762939453,
+      "w": 41.52314758300781,
+      "x": 641.7233276367188,
+      "y": 518.7228393554688
+    },
+    "trFlow": "transformer_from_bus_down_to_lv",
+    "url": "http://127.0.0.1:5173/#sld?sel=sub%2Fbb66d55295e2defe1fdbf0cf3fa06f40%2Fsubstation&type=Station&name=Stacja+SN%2FnN+1"
+  },
+  "logs": []
+}

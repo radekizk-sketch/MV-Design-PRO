@@ -1,0 +1,48 @@
+{
+  "derMissingPccRoots": 0,
+  "hasCableHeads": 2,
+  "hasPortMagnets": 5,
+  "hasSupplyPath": 4,
+  "labelCount": 55,
+  "overlapCount": 0,
+  "sectionStacks": [
+    {
+      "id": "sld-v2-section-label-stack-gpz/118b4bef9c856d92973b8f2515da45e5/substation__gpz/118b4bef9c856d92973b8f2515da45e5/section/001",
+      "text": "Sekcja 015 kV"
+    },
+    {
+      "id": "sld-v2-section-label-stack-gpz/118b4bef9c856d92973b8f2515da45e5/substation__gpz/118b4bef9c856d92973b8f2515da45e5/section/002",
+      "text": "Sekcja I15 kV"
+    },
+    {
+      "id": "gpz-canonical-hv-source-indicator",
+      "text": "System110 kV"
+    },
+    {
+      "id": "gpz-canonical-section-label-Sekcja 1",
+      "text": "Sekcja 115 kV"
+    },
+    {
+      "id": "gpz-canonical-section-label-Sekcja 2",
+      "text": "Sekcja 215 kV"
+    }
+  ],
+  "stationPortAnchors": [
+    {
+      "hit": "true",
+      "role": "WE",
+      "section": "SN"
+    },
+    {
+      "hit": "true",
+      "role": "TR",
+      "section": "SN"
+    }
+  ],
+  "svgPresent": true,
+  "title": "MV-DESIGN PRO",
+  "topOverlaps": [],
+  "url": "http://127.0.0.1:5173/#sld",
+  "visibleFalseZero": false,
+  "visibleForbidden": []
+}

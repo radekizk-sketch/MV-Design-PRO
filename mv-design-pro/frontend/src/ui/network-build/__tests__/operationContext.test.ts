@@ -897,6 +897,6 @@ describe('buildOperationContext', () => {
     expect(context.hv_bus_ref).toBeUndefined();
     expect(context.lv_bus_ref).toBeUndefined();
     expect(context.transformer_context_valid).toBe(false);
-    expect(context.transformer_block_reason).toBe('Transformator SN/nN nie nalezy do ukladu GPZ lub zrodla systemowego.');
+    expect(context.transformer_block_reason).toBe('Transformator SN/nN nie należy do układu GPZ ani źródła systemowego.');
   });
 });

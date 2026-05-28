@@ -16,6 +16,7 @@ KONWENCJE:
 
 from typing import Any
 
+from .mv_ptpiree_catalog import annotate_with_ptpiree_status
 from .types import CATALOG_CONTRACT_VERSION, CatalogStatus, CatalogVerificationStatus
 
 _DEFAULT_SOURCE_REFERENCE = "Katalog przeksztaltnikow MV-DESIGN-PRO / profil przemyslowy V1"
@@ -1002,16 +1003,7 @@ for _converter_type in (
 
 def get_all_converter_types() -> list[dict[str, Any]]:
     """Zwraca wszystkie typy zrodel konwerterowych i magazynow energii."""
-    for record in (
-        CONVERTER_PV
-        + CONVERTER_PV_NN
-        + CONVERTER_WIND
-        + CONVERTER_WIND_NN
-        + CONVERTER_BESS
-        + CONVERTER_BESS_NN
-    ):
-        _apply_quality_defaults(record)
-    return (
+    records = (
         CONVERTER_PV
         + CONVERTER_PV_NN
         + CONVERTER_WIND
@@ -1019,21 +1011,33 @@ def get_all_converter_types() -> list[dict[str, Any]]:
         + CONVERTER_BESS
         + CONVERTER_BESS_NN
     )
+    for record in records:
+        _apply_quality_defaults(record)
+    return [annotate_with_ptpiree_status(record) for record in records]
 
 
 def get_pv_types() -> list[dict[str, Any]]:
     """Zwraca typy farm PV."""
-    return CONVERTER_PV + CONVERTER_PV_NN
+    records = CONVERTER_PV + CONVERTER_PV_NN
+    for record in records:
+        _apply_quality_defaults(record)
+    return [annotate_with_ptpiree_status(record) for record in records]
 
 
 def get_wind_types() -> list[dict[str, Any]]:
     """Zwraca typy turbin wiatrowych."""
-    return CONVERTER_WIND + CONVERTER_WIND_NN
+    records = CONVERTER_WIND + CONVERTER_WIND_NN
+    for record in records:
+        _apply_quality_defaults(record)
+    return [annotate_with_ptpiree_status(record) for record in records]
 
 
 def get_bess_types() -> list[dict[str, Any]]:
     """Zwraca typy magazynow energii."""
-    return CONVERTER_BESS + CONVERTER_BESS_NN
+    records = CONVERTER_BESS + CONVERTER_BESS_NN
+    for record in records:
+        _apply_quality_defaults(record)
+    return [annotate_with_ptpiree_status(record) for record in records]
 
 
 def get_converter_catalog_statistics() -> dict[str, Any]:

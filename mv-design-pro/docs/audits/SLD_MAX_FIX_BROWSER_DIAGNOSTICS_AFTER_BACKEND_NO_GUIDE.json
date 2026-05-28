@@ -1,0 +1,49 @@
+{
+  "url": "http://127.0.0.1:5173/#sld?project=e7387f58-db5c-451d-951a-72973386aa4c&case=c2808404-4014-43f0-b1ae-729911609684",
+  "bodyHasGuide": false,
+  "gpzLabels": 8,
+  "stationLabelsLower": 4,
+  "stationLabelsUpper": 0,
+  "segmentLabels": 11,
+  "treeStationRows": [
+    {
+      "testid": "model-tree-row-sub/93205120a8e4202b9222b2aa47a94a55/substation",
+      "text": "⊙Nowa stacja · stacja przelotowa●"
+    },
+    {
+      "testid": "model-tree-row-pv/ec33cbd3e7d2437d240e55c19eea938b/converter",
+      "text": "⊙PV 01 · falownik PV · Nowa stacja · 0,4 MW●"
+    },
+    {
+      "testid": "sld-v2-stations-layer",
+      "text": "WELWYLTRTRS012 nNNowa stacja0G 400kWRMU·P1,0 MVAPV: 1 szt.PV"
+    },
+    {
+      "testid": "sld-v2-station-hit-sub/93205120a8e4202b9222b2aa47a94a55/substation",
+      "text": "WELWYLTRTRS012 nNNowa stacja0G 400kWRMU·P1,0 MVAPV: 1 szt.PV"
+    },
+    {
+      "testid": "sld-v2-mini-rmu-sub/93205120a8e4202b9222b2aa47a94a55/substation",
+      "text": "WELWYLTRTRS012 nNNowa stacja0G 400kWRMU·P1,0 MVAPV: 1 szt.PV"
+    }
+  ],
+  "miniRmuOverview": 0,
+  "miniRmuStationGroups": 9,
+  "stationNotRectangle": 0,
+  "stationInternalTerrainNetwork": 0,
+  "upstreamFields": 0,
+  "downstreamFields": 0,
+  "terrainPorts": 0,
+  "energizedRuns": 2,
+  "supplyPathRoles": [
+    "main_run",
+    "branch"
+  ],
+  "gpzCanonical": 74,
+  "hvBus": 1,
+  "trFields": 6,
+  "bayFeeders": 2,
+  "nmoMarkers": 0,
+  "loadingTexts": 0,
+  "consoleMessages": []
+}

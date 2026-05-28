@@ -1,0 +1,61 @@
+Timeout (0:00:05)!
+Thread 0x00007a08 (most recent call first):
+  File "C:\Users\radek\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\platform.py", line 327 in _wmi_query
+  File "C:\Users\radek\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\platform.py", line 388 in _win32_ver
+  File "C:\Users\radek\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\platform.py", line 450 in win32_ver
+  File "C:\Users\radek\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\platform.py", line 922 in uname
+  File "C:\Users\radek\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\platform.py", line 1024 in machine
+  File "C:\Users\radek\Documents\GitHub\MV-Design-PRO\mv-design-pro\backend\.venv\Lib\site-packages\sqlalchemy\util\compat.py", line 50 in <module>
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 999 in exec_module
+  File "<frozen importlib._bootstrap>", line 935 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1415 in _handle_fromlist
+  File "C:\Users\radek\Documents\GitHub\MV-Design-PRO\mv-design-pro\backend\.venv\Lib\site-packages\sqlalchemy\exc.py", line 26 in <module>
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 999 in exec_module
+  File "<frozen importlib._bootstrap>", line 935 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1415 in _handle_fromlist
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 1301 in exec_module
+  File "<frozen importlib._bootstrap>", line 935 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1415 in _handle_fromlist
+  File "C:\Users\radek\Documents\GitHub\MV-Design-PRO\mv-design-pro\backend\.venv\Lib\site-packages\sqlalchemy\util\_has_cy.py", line 20 in _import_cy_extensions
+  File "C:\Users\radek\Documents\GitHub\MV-Design-PRO\mv-design-pro\backend\.venv\Lib\site-packages\sqlalchemy\util\_has_cy.py", line 32 in <module>
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 999 in exec_module
+  File "<frozen importlib._bootstrap>", line 935 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "C:\Users\radek\Documents\GitHub\MV-Design-PRO\mv-design-pro\backend\.venv\Lib\site-packages\sqlalchemy\util\_collections.py", line 38 in <module>
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 999 in exec_module
+  File "<frozen importlib._bootstrap>", line 935 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "C:\Users\radek\Documents\GitHub\MV-Design-PRO\mv-design-pro\backend\.venv\Lib\site-packages\sqlalchemy\util\__init__.py", line 14 in <module>
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 999 in exec_module
+  File "<frozen importlib._bootstrap>", line 935 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1415 in _handle_fromlist
+  File "C:\Users\radek\Documents\GitHub\MV-Design-PRO\mv-design-pro\backend\.venv\Lib\site-packages\sqlalchemy\__init__.py", line 12 in <module>
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 999 in exec_module
+  File "<frozen importlib._bootstrap>", line 935 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1310 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "C:\Users\radek\Documents\GitHub\MV-Design-PRO\.codex-backups\schema_hang_probe.py", line 4 in <module>

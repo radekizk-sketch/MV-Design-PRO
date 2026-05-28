@@ -363,6 +363,25 @@ describe('workspace shell V12.5 surfaces', () => {
     ).toBeInTheDocument();
   });
 
+  it('otwiera zakladke Testy NC RfG w kontenerze analitycznym E-35', async () => {
+    const user = userEvent.setup();
+    useNetworkBuildStore.getState().openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
+      titlePl: 'Analizy techniczne',
+      subjectKind: 'analysis_run',
+      subjectRef: 'run-1',
+    });
+
+    render(<WorkspaceSurfaceRouter region="main" />);
+
+    await user.click(screen.getByRole('button', { name: 'Testy NC RfG' }));
+
+    const activeSurface = useNetworkBuildStore.getState().activeSurface;
+    expect(activeSurface?.screenCode).toBe(ANALYSIS_SURFACE_SCREEN_CODE);
+    expect(activeSurface?.tabId).toBe('ncrfg-tests');
+    expect(screen.getByTestId('ncrfg-tests-tab')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: /Pakiet symulacji/i })).toBeInTheDocument();
+  });
+
   it('nie pokazuje wewnetrznego typu analysis_run w kontekscie analitycznym', () => {
     useNetworkBuildStore.getState().openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
       titlePl: 'Analizy techniczne',
@@ -375,6 +394,138 @@ describe('workspace shell V12.5 surfaces', () => {
 
     expect(screen.getAllByText('Aktywne obliczenie').length).toBeGreaterThan(0);
     expect(document.body.textContent ?? '').not.toContain('analysis_run');
+  });
+
+  it('domyślny widok analiz pokazuje tabele inżynierskie zamiast pustych kafli', () => {
+    useNetworkBuildStore.getState().openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
+      titlePl: 'Analizy techniczne',
+      subjectKind: 'analysis_run',
+      subjectRef: 'run-1',
+    });
+
+    render(<WorkspaceSurfaceRouter region="main" />);
+
+    expect(screen.getByTestId('analysis-context-table')).toBeInTheDocument();
+    expect(screen.getByTestId('analysis-results-table')).toBeInTheDocument();
+    expect(screen.getByText('Tabele wyników per obiekt')).toBeInTheDocument();
+    expect(screen.getAllByText(/wynik zablokowany/).length).toBeGreaterThan(0);
+    expect(document.body.textContent ?? '').not.toContain('0.00');
+  });
+
+  it('zakładka śladu pokazuje pełny wywód LaTeX z backendowego artefaktu', async () => {
+    const latex = String.raw`\documentclass[11pt]{article}
+\begin{document}
+\[
+I_{k}'' = \frac{c \cdot U_n}{\left|Z_k\right|}
+\]
+\end{document}`;
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/api/analysis-runs/run-1/export/proof/latex')) {
+        return Promise.resolve(new Response(latex, { status: 200 }));
+      }
+      return mockJsonResponse(mockAnalysisRunDetail);
+    });
+    useAppStateStore.getState().setActiveRun('run-1');
+    useNetworkBuildStore.getState().openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
+      titlePl: 'Ślad obliczeń',
+      tabId: 'trace',
+      sizeClass: 'C',
+      supportsMiniSld: true,
+      subjectKind: 'analysis_run',
+      subjectRef: 'run-1',
+    });
+
+    render(<WorkspaceSurfaceRouter region="main" />);
+
+    expect(await screen.findByTestId('proof-latex-panel')).toBeInTheDocument();
+    expect(await screen.findByTestId('proof-latex-source')).toHaveTextContent("I_{k}'' = \\frac");
+    expect(fetchMock).toHaveBeenCalledWith('/api/analysis-runs/run-1/export/proof/latex', {
+      method: 'GET',
+      headers: { Accept: 'application/x-tex,text/plain,*/*' },
+      signal: expect.any(AbortSignal),
+    });
+  });
+
+  it('po wykonanym zwarciu pokazuje backendowe wyniki IEC 60909 zamiast pustych pól ENM', async () => {
+    fetchMock.mockReset();
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/api/analysis-runs/run-sc/results/index')) {
+        return mockJsonResponse({
+          run_header: {
+            run_id: 'run-sc',
+            project_id: 'project-1',
+            case_id: 'case-1',
+            snapshot_id: 'snapshot-001',
+            created_at: '2026-05-27T12:00:00Z',
+            status: 'DONE',
+            result_state: 'VALID',
+            solver_kind: 'SC_3F',
+            input_hash: 'hash-sc',
+          },
+          tables: [
+            {
+              table_id: 'short_circuit',
+              label_pl: 'Zwarcia',
+              row_count: 1,
+              columns: [],
+            },
+          ],
+        });
+      }
+      if (url.endsWith('/api/analysis-runs/run-sc/results/short-circuit')) {
+        return mockJsonResponse({
+          run_id: 'run-sc',
+          rows: [
+            {
+              target_id: 'bp/ed7/zksn',
+              element_id: 'bp/ed7/zksn',
+              target_name: 'ZKSN SN',
+              ikss_ka: 84.3767,
+              ip_ka: 121.7723,
+              ith_ka: 84.3767,
+              sk_mva: 2192.171,
+              fault_type: '3F',
+              flags: [],
+            },
+          ],
+        });
+      }
+      return mockJsonResponse({ ...mockAnalysisRunDetail, id: 'run-sc', analysis_type: 'SC_3F' });
+    });
+
+    useAppStateStore.getState().setActiveRun('run-sc');
+    useExecutionRunsStore.setState({
+      activeRunId: 'run-sc',
+      runs: [
+        {
+          id: 'run-sc',
+          study_case_id: 'case-1',
+          analysis_type: 'SC_3F',
+          solver_input_hash: 'hash-sc',
+          status: 'DONE',
+          started_at: '2026-05-27T12:00:00Z',
+          finished_at: '2026-05-27T12:00:05Z',
+          error_message: null,
+        },
+      ],
+    });
+    useNetworkBuildStore.getState().openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
+      titlePl: 'Analizy techniczne',
+      subjectKind: 'analysis_run',
+      subjectRef: 'run-sc',
+    });
+
+    render(<WorkspaceSurfaceRouter region="main" />);
+
+    expect(await screen.findByText('Wyniki zwarciowe per obiekt')).toBeInTheDocument();
+    expect(screen.getByText('ZKSN SN')).toBeInTheDocument();
+    expect(screen.getByText(/Ik'' 84,38 kA/)).toBeInTheDocument();
+    expect(screen.getByText(/ip 121,77 kA/)).toBeInTheDocument();
+    expect(document.body.textContent ?? '').toMatch(/Sk'' (2\s?192|2192),171 MVA/);
+    expect(document.body.textContent ?? '').not.toContain('U: nie wyznaczono');
+    expect(document.body.textContent ?? '').not.toContain('0.00');
   });
 
   it.each([

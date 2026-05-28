@@ -76,6 +76,7 @@ import {
 } from './station-der/catalogs';
 import type { WorkspaceSurfaceCode } from '../workspace/types';
 import { TechCard, buildTechCardSubject } from '../tech-card';
+import { ElementCalculationProofPanel } from '../proof';
 
 // =============================================================================
 // Types
@@ -2425,6 +2426,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
   const activeMode = useAppStateStore((s) => s.activeMode);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
+  const activeRunId = useAppStateStore((s) => s.activeRunId);
   const {
     itemsByBayId,
     itemsByBayRef,
@@ -2474,6 +2476,10 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
     : null;
   const selectedConverterRef = selectedConverterGenerator?.ref_id ?? (
     selectedConverterRole ? elementId : null
+  );
+  const calculationProofRefs = useMemo(
+    () => buildCalculationProofCandidateRefs(elementId, selectedElement, snapshot),
+    [elementId, selectedElement, snapshot],
   );
 
   const { sections, elementType, elementName, actions } = useMemo(
@@ -2636,6 +2642,12 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
         </p>
       </div>
 
+      <ElementCalculationProofPanel
+        runId={activeRunId ?? null}
+        selectedElement={selectedElement}
+        candidateRefs={calculationProofRefs}
+      />
+
       {techCardSubjectWithActions && (
         <div
           data-testid="tech-card-host"
@@ -2730,7 +2742,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
         {selectedBayField && <BayWindowSchematic item={selectedBayField} />}
 
         {/* Quick actions */}
-        {actions.length > 0 && activeMode === 'MODEL_EDIT' && (
+        {actions.length > 0 && activeMode === 'MODEL_EDIT' && !techCardSubjectWithActions && (
           <div className="px-4 py-3 border-t border-gray-200">
             <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
               Operacje
@@ -2783,6 +2795,113 @@ function inferSegmentPickerCategory(branch: Branch | null | undefined): TypeCate
   if (branch?.type === 'line_overhead') return 'LINE';
   if (branch?.type === 'cable') return 'CABLE';
   return null;
+}
+
+function pushUniqueRef(target: string[], value: unknown): void {
+  if (typeof value !== 'string') return;
+  const trimmed = value.trim();
+  if (!trimmed || target.includes(trimmed)) return;
+  target.push(trimmed);
+}
+
+function pushElementRefs(target: string[], element: unknown, keys: string[]): void {
+  if (!element || typeof element !== 'object') return;
+  const record = element as Record<string, unknown>;
+  for (const key of keys) {
+    pushUniqueRef(target, record[key]);
+  }
+}
+
+function elementMatchesSelection(element: unknown, elementId: string | null): boolean {
+  if (!elementId || !element || typeof element !== 'object') return false;
+  const record = element as Record<string, unknown>;
+  return [record.id, record.ref_id, record.name].some((value) => value === elementId);
+}
+
+function buildCalculationProofCandidateRefs(
+  elementId: string | null,
+  selectedElement: SelectedElement | null,
+  snapshot: EnergyNetworkModel | null,
+): string[] {
+  const refs: string[] = [];
+  pushUniqueRef(refs, elementId);
+  pushUniqueRef(refs, selectedElement?.id);
+  pushUniqueRef(refs, selectedElement?.name);
+
+  if (!snapshot || !elementId) {
+    return refs;
+  }
+
+  const bus = snapshot.buses?.find((item) => elementMatchesSelection(item, elementId));
+  pushElementRefs(refs, bus, ['id', 'ref_id', 'name']);
+
+  const branch = snapshot.branches?.find((item) => elementMatchesSelection(item, elementId));
+  pushElementRefs(refs, branch, [
+    'id',
+    'ref_id',
+    'name',
+    'from_bus_ref',
+    'to_bus_ref',
+  ]);
+
+  const transformer = snapshot.transformers?.find((item) => elementMatchesSelection(item, elementId));
+  pushElementRefs(refs, transformer, [
+    'id',
+    'ref_id',
+    'name',
+    'hv_bus_ref',
+    'lv_bus_ref',
+  ]);
+
+  const bay = snapshot.bays?.find((item) => elementMatchesSelection(item, elementId));
+  pushElementRefs(refs, bay, [
+    'id',
+    'ref_id',
+    'name',
+    'bus_ref',
+    'substation_ref',
+  ]);
+
+  const generator = snapshot.generators?.find((item) => elementMatchesSelection(item, elementId));
+  pushElementRefs(refs, generator, [
+    'id',
+    'ref_id',
+    'name',
+    'bus_ref',
+    'station_ref',
+  ]);
+
+  const load = snapshot.loads?.find((item) => elementMatchesSelection(item, elementId));
+  pushElementRefs(refs, load, [
+    'id',
+    'ref_id',
+    'name',
+    'bus_ref',
+  ]);
+
+  const source = snapshot.sources?.find((item) => elementMatchesSelection(item, elementId));
+  pushElementRefs(refs, source, [
+    'id',
+    'ref_id',
+    'name',
+    'bus_ref',
+    'substation_ref',
+  ]);
+
+  const station = snapshot.substations?.find((item) => elementMatchesSelection(item, elementId));
+  pushElementRefs(refs, station, ['id', 'ref_id', 'name']);
+  for (const busRef of station?.bus_refs ?? []) pushUniqueRef(refs, busRef);
+  for (const transformerRef of station?.transformer_refs ?? []) pushUniqueRef(refs, transformerRef);
+
+  if (bus) {
+    for (const item of snapshot.branches ?? []) {
+      if (item.from_bus_ref === bus.ref_id || item.to_bus_ref === bus.ref_id) {
+        pushElementRefs(refs, item, ['id', 'ref_id', 'name']);
+      }
+    }
+  }
+
+  return refs;
 }
 
 // =============================================================================

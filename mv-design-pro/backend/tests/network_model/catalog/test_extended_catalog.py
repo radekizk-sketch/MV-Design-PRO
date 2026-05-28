@@ -46,6 +46,8 @@ class TestCatalogNamespace:
             "NASTAWY_ZABEZPIECZEN",
             "CONVERTER",
             "INVERTER",
+            "OGRANICZNIK_SN",
+            "PTPIREE_CERTYFIKAT_GENERATORA",
         }
         actual = {ns.value for ns in CatalogNamespace}
         assert actual == expected

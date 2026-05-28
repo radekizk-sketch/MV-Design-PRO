@@ -1,0 +1,14 @@
+{
+  "url": "http://127.0.0.1:5173/#analysis?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8&sel=seg%2Fa3acec33be3f808937ccd4887cf57c76%2Fsegment&type=LineBranch&name=Odcinek+03&run=4df98382-ca32-4659-906d-dd203a377c51",
+  "title": "MV-DESIGN PRO",
+  "diag": {
+    "bayFields": 0,
+    "clickableElements": 0,
+    "ports": 0,
+    "stationInternal": 0,
+    "title": "MV-DESIGN PRO",
+    "transformerGroups": [],
+    "url": "http://127.0.0.1:5173/#analysis?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8&sel=seg%2Fa3acec33be3f808937ccd4887cf57c76%2Fsegment&type=LineBranch&name=Odcinek+03&run=4df98382-ca32-4659-906d-dd203a377c51",
+    "visibleSample": "↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nE2E SLD 0002\nZAKRES / WARIANT\nZakres obliczeń z adresu\nKonfiguruj zakres\nWyniki aktualne\n16:27:05\n27.05.2026\nSprawdź konfigurację\nNakładka\nAnalizy\nEksport\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nNARUSZENIA SEMANTYKI (1)\nOdbiór 'load/e057d623f2f45db8887c1a9c3bcf4489/nn' ma P=0 kW i Q=0 kvar — nie wpływa na obliczenia rozpływowe.\nSugestia: Uzupełnij moce obciążenia lub usuń odbiór.\nPokaż element\nSchemat\n/\nAnalizy techniczne\nAnalizy techniczne\nPODGLĄD SCHEMATU\nKontekst układu jest zsynchronizowany z głównym schematem.\nPowiązany obiekt: Odcinek 03.\nANALIZA\nKontekst analityczny\nPROJEKT\tE2E SLD 0002\nWARIANT\tZakres obliczeń z adresu\nWERSJA UKŁADU\tAktualna wersja układu\nOBLICZENIE\tZwarcie trójfazowe (3F) · 27.05.2026,"
+  }
+}

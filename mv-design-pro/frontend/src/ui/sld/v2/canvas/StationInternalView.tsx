@@ -72,13 +72,16 @@ export interface StationInternalViewProps {
   readonly onSelectTransformer?: (transformerId: string) => void;
 }
 
-const SN_BUSBAR_Y = 100;
+const SN_BUSBAR_Y = 150;
 const BAY_PITCH = 140;
 const BAY_START_X = 80;
-const TRANSFORMER_Y = 315;
-const NN_BUSBAR_Y = 405;
+const TRANSFORMER_Y = 375;
+const NN_BUSBAR_Y = 470;
 const BAY_PANEL_WIDTH = 54;
 const BAY_PANEL_HEIGHT = 214;
+const BAY_UP_PANEL_HEIGHT = 128;
+const TRANSFORMER_SYMBOL_RADIUS = 18;
+const TRANSFORMER_SYMBOL_CENTER_GAP = 18;
 const COLOR_DER_PV = '#FFC857';
 const TECHNICAL_NUMBER_FORMAT_PL = new Intl.NumberFormat('pl-PL', {
   maximumFractionDigits: 2,
@@ -104,6 +107,10 @@ function formatNnFeedersPl(count: number): string {
     return `${count} odpływy nN`;
   }
   return `${count} odpływów nN`;
+}
+
+function isTerrainNetworkBay(bay: InternalBayDescriptor): boolean {
+  return bay.bayRole === 'IN' || bay.bayRole === 'OUT' || bay.bayRole === 'FEEDER';
 }
 
 const CONSTRUCTION_TYPE_LABELS: Record<NonNullable<StationInternalViewProps['constructionType']>, string> = {
@@ -133,7 +140,7 @@ export function StationInternalView(props: StationInternalViewProps): JSX.Elemen
   const snBusbarWidth = Math.max(BAY_PITCH * Math.max(effectiveBays.length, 1), 520);
   const transformerBay = effectiveBays.findIndex((b) => b.bayRole === 'TR');
   const transformerX = transformerBay >= 0 ? BAY_START_X + transformerBay * BAY_PITCH : BAY_START_X + 2 * BAY_PITCH;
-  const contentHeight = Math.max(height, 620);
+  const contentHeight = Math.max(height, 720);
 
   return (
     <svg
@@ -169,6 +176,30 @@ export function StationInternalView(props: StationInternalViewProps): JSX.Elemen
 
       {/* Sekcja SN: szyna + pola */}
       <g transform={`translate(0, 60)`}>
+        <g
+          data-testid={`station-internal-terrain-network-${substationId}`}
+          data-element-kind="terrain_mv_network"
+          pointerEvents="none"
+        >
+          <line
+            x1={BAY_START_X}
+            y1={SN_BUSBAR_Y - 118}
+            x2={BAY_START_X + snBusbarWidth}
+            y2={SN_BUSBAR_Y - 118}
+            stroke="#13C45A"
+            strokeWidth={2.4}
+            strokeDasharray="10 5"
+          />
+          <text
+            x={16}
+            y={SN_BUSBAR_Y - 124}
+            fill={COLOR_TEXT_SECONDARY}
+            fontFamily={FONT_SANS}
+            fontSize={FONT_SIZES.technicalPanel}
+          >
+            Sieć terenowa SN - porty WE/WY
+          </text>
+        </g>
         {/* Szyna SN */}
         <line
           x1={BAY_START_X}
@@ -186,25 +217,98 @@ export function StationInternalView(props: StationInternalViewProps): JSX.Elemen
         {/* Pola SN */}
         {effectiveBays.map((b, i) => {
           const bayX = BAY_START_X + i * BAY_PITCH;
+          const isUpstreamBay = isTerrainNetworkBay(b);
           const isTransformerBay = b.bayRole === 'TR' || b.bayRole === 'OZE';
+          const fieldDirection = isUpstreamBay ? 'up' : 'down';
+          const fieldLabel = `Pole ${b.designation} — ${fieldRoleLabelPl(b.bayRole)}`;
           return (
-            <g key={b.bayId}>
+            <g
+              key={b.bayId}
+              data-testid={`station-internal-field-${b.bayId}`}
+              data-element-kind="station_internal_field"
+              data-element-id={b.bayId}
+              data-configurable={onSelectBay ? 'true' : undefined}
+              data-field-role={b.bayRole}
+              data-field-direction={isUpstreamBay ? 'upstream-network' : 'downstream-station'}
+              role={onSelectBay ? 'button' : undefined}
+              aria-label={fieldLabel}
+              tabIndex={onSelectBay ? 0 : undefined}
+              onClick={onSelectBay ? (event) => { event.stopPropagation(); onSelectBay(b.bayId); } : undefined}
+              onDoubleClick={onSelectBay ? (event) => { event.stopPropagation(); onSelectBay(b.bayId); } : undefined}
+              onContextMenu={onSelectBay ? (event) => { event.preventDefault(); event.stopPropagation(); onSelectBay(b.bayId); } : undefined}
+              onKeyDown={onSelectBay ? (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onSelectBay(b.bayId);
+                }
+              } : undefined}
+              style={{ cursor: onSelectBay ? 'pointer' : 'default' }}
+            >
+              <title>{fieldLabel}</title>
               <rect
                 x={bayX - BAY_PANEL_WIDTH / 2}
-                y={SN_BUSBAR_Y - 30}
+                y={isUpstreamBay ? SN_BUSBAR_Y - BAY_UP_PANEL_HEIGHT : SN_BUSBAR_Y - 30}
                 width={BAY_PANEL_WIDTH}
-                height={BAY_PANEL_HEIGHT}
+                height={isUpstreamBay ? BAY_UP_PANEL_HEIGHT : BAY_PANEL_HEIGHT}
                 rx={2}
                 fill={isTransformerBay ? '#253036' : '#24282c'}
                 opacity={0.88}
+                pointerEvents="all"
+                data-hit-area="station_internal_field"
                 data-parity-key={`station.internal.bay.panel.${b.bayRole.toLowerCase()}`}
               />
+              {isUpstreamBay && (
+                <g
+                  data-testid={`station-internal-port-${b.bayId}`}
+                  data-element-kind="station_internal_port"
+                  data-element-id={`${b.bayId}/port/${b.bayRole === 'IN' ? 'we' : b.bayRole === 'OUT' ? 'wy' : 'odg'}`}
+                  data-configurable={onSelectBay ? 'true' : undefined}
+                  data-port-role={b.bayRole === 'IN' ? 'WE' : b.bayRole === 'OUT' ? 'WY' : 'ODG'}
+                  data-port-side="terrain_network"
+                  role={onSelectBay ? 'button' : undefined}
+                  aria-label={`Port ${b.bayRole === 'IN' ? 'WE' : b.bayRole === 'OUT' ? 'WY' : 'ODG'} pola ${b.designation}`}
+                  tabIndex={onSelectBay ? 0 : undefined}
+                  onClick={onSelectBay ? (event) => { event.stopPropagation(); onSelectBay(b.bayId); } : undefined}
+                  onDoubleClick={onSelectBay ? (event) => { event.stopPropagation(); onSelectBay(b.bayId); } : undefined}
+                  onContextMenu={onSelectBay ? (event) => { event.preventDefault(); event.stopPropagation(); onSelectBay(b.bayId); } : undefined}
+                  style={{ cursor: onSelectBay ? 'pointer' : 'default' }}
+                >
+                  <title>{`Port ${b.bayRole === 'IN' ? 'WE' : b.bayRole === 'OUT' ? 'WY' : 'ODG'} pola ${b.designation}`}</title>
+                  <rect
+                    x={bayX - 14}
+                    y={SN_BUSBAR_Y - 132}
+                    width={28}
+                    height={32}
+                    fill="transparent"
+                    pointerEvents="all"
+                    data-hit-area="station_internal_port"
+                  />
+                  <circle
+                    cx={bayX}
+                    cy={SN_BUSBAR_Y - 118}
+                    r={5}
+                    fill="#0A1018"
+                    stroke="#13C45A"
+                    strokeWidth={2}
+                  />
+                  <line
+                    x1={bayX}
+                    y1={SN_BUSBAR_Y - 113}
+                    x2={bayX}
+                    y2={SN_BUSBAR_Y - 4}
+                    stroke="#13C45A"
+                    strokeWidth={1.3}
+                    strokeDasharray="4 4"
+                  />
+                </g>
+              )}
               <BayRenderer
                 id={b.bayId}
                 x={bayX}
                 y={SN_BUSBAR_Y}
                 designation={b.designation}
                 devices={b.devices}
+                direction={fieldDirection}
                 showQLabels={true}
                 onClick={onSelectBay}
               />
@@ -223,50 +327,75 @@ export function StationInternalView(props: StationInternalViewProps): JSX.Elemen
           Pola: WE / WY / TR
         </text>
 
-        <line
-          x1={transformerX}
-          y1={TRANSFORMER_Y + 28}
-          x2={transformerX}
-          y2={NN_BUSBAR_Y}
-          stroke={COLOR_LINE_PRIMARY}
-          strokeWidth={1.8}
-          data-parity-key="station.internal.transformer.to.nn"
-        />
-
         {/* Transformator(y) — pod polem TR */}
         {transformers.length > 0 ? transformers.map((t, i) => {
           const tX = transformerBay >= 0
             ? transformerX + (transformers.length > 1 ? (i - 0.5) * 60 : 0)
             : BAY_START_X + 100 + i * 100;
           return (
-            <g
-              key={t.transformerId}
-              data-testid={`sld-v2-transformer-${t.transformerId}`}
-              transform={`translate(${tX}, ${TRANSFORMER_Y})`}
-              onClick={onSelectTransformer ? (e) => { e.stopPropagation(); onSelectTransformer(t.transformerId); } : undefined}
-              style={{ cursor: onSelectTransformer ? 'pointer' : 'default' }}
-            >
-              {/* 2 okręgi (kanon §5 pkt 20) */}
-              <circle cx={0} cy={-12} r={14} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={2} />
-              <circle cx={0} cy={12} r={14} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={2} />
-              <text x={20} y={-5} fontSize={FONT_SIZES.deviceQ} fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontWeight={600}>
-                {t.designation}
-              </text>
-              <text x={20} y={10} fontSize={FONT_SIZES.technicalPanel} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_SANS}>
-                {formatMvaPl(t.snMva)}
-              </text>
-              <text x={20} y={24} fontSize={FONT_SIZES.technicalPanel} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_SANS}>
-                {formatTechnicalNumberPl(t.uhvKv)}/{formatTechnicalNumberPl(t.ulvKv)} kV
-              </text>
+            <g key={t.transformerId}>
+              <line
+                x1={tX}
+                y1={SN_BUSBAR_Y}
+                x2={tX}
+                y2={TRANSFORMER_Y - 48}
+                stroke={COLOR_LINE_PRIMARY}
+                strokeWidth={1.8}
+                data-parity-key="station.internal.busbar.sn.to.transformer"
+                data-transformer-ref={t.transformerId}
+              />
+              <StationTransformerSymbol
+                transformerId={t.transformerId}
+                x={tX}
+                y={TRANSFORMER_Y}
+                designation={t.designation}
+                details={[
+                  formatMvaPl(t.snMva),
+                  `${formatTechnicalNumberPl(t.uhvKv)}/${formatTechnicalNumberPl(t.ulvKv)} kV`,
+                ]}
+                onSelect={onSelectTransformer}
+              />
+              <line
+                x1={tX}
+                y1={TRANSFORMER_Y + 48}
+                x2={tX}
+                y2={NN_BUSBAR_Y}
+                stroke={COLOR_LINE_PRIMARY}
+                strokeWidth={1.8}
+                data-parity-key="station.internal.transformer.to.nn"
+                data-transformer-ref={t.transformerId}
+              />
             </g>
           );
         }) : (
-          <FallbackTransformer
-            x={transformerX}
-            y={TRANSFORMER_Y}
-            substationId={substationId}
-            onSelectTransformer={onSelectTransformer}
-          />
+          <g>
+            <line
+              x1={transformerX}
+              y1={SN_BUSBAR_Y}
+              x2={transformerX}
+              y2={TRANSFORMER_Y - 48}
+              stroke={COLOR_LINE_PRIMARY}
+              strokeWidth={1.8}
+              data-parity-key="station.internal.busbar.sn.to.transformer"
+              data-transformer-ref={`${substationId}/transformer/sn-nn`}
+            />
+            <FallbackTransformer
+              x={transformerX}
+              y={TRANSFORMER_Y}
+              substationId={substationId}
+              onSelectTransformer={onSelectTransformer}
+            />
+            <line
+              x1={transformerX}
+              y1={TRANSFORMER_Y + 48}
+              x2={transformerX}
+              y2={NN_BUSBAR_Y}
+              stroke={COLOR_LINE_PRIMARY}
+              strokeWidth={1.8}
+              data-parity-key="station.internal.transformer.to.nn"
+              data-transformer-ref={`${substationId}/transformer/sn-nn`}
+            />
+          </g>
         )}
 
         {/* Rozdzielnice nN */}
@@ -298,9 +427,22 @@ export function StationInternalView(props: StationInternalViewProps): JSX.Elemen
                   data-element-kind="lv_breaker"
                   data-element-id={breakerId}
                   data-symbol-canon="circuit_breaker_square"
+                  data-configurable={onSelectBay ? 'true' : undefined}
+                  role={onSelectBay ? 'button' : undefined}
+                  aria-label={`Wyłącznik nN ${fi + 1} ${sw.designation}`}
+                  tabIndex={onSelectBay ? 0 : undefined}
                   onClick={onSelectBay ? (event) => { event.stopPropagation(); onSelectBay(breakerId); } : undefined}
+                  onDoubleClick={onSelectBay ? (event) => { event.stopPropagation(); onSelectBay(breakerId); } : undefined}
+                  onContextMenu={onSelectBay ? (event) => { event.preventDefault(); event.stopPropagation(); onSelectBay(breakerId); } : undefined}
+                  onKeyDown={onSelectBay ? (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      onSelectBay(breakerId);
+                    }
+                  } : undefined}
                   style={{ cursor: onSelectBay ? 'pointer' : 'default' }}
                 >
+                  <title>{`Wyłącznik nN ${fi + 1} ${sw.designation}`}</title>
                   <line x1={fx} y1={0} x2={fx} y2={46} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.5} />
                   <rect
                     x={fx - 7}
@@ -363,6 +505,16 @@ function buildFallbackBays(
     bayRole: role,
     devices: [],
   }));
+}
+
+function fieldRoleLabelPl(role: InternalBayDescriptor['bayRole']): string {
+  if (role === 'IN') return 'wejściowe SN';
+  if (role === 'OUT') return 'wyjściowe SN';
+  if (role === 'TR') return 'transformatorowe';
+  if (role === 'COUPLER') return 'sprzęgłowe';
+  if (role === 'FEEDER') return 'odpływowe';
+  if (role === 'MEASUREMENT') return 'pomiarowe';
+  return 'OZE';
 }
 
 function withDeviceClicks(
@@ -428,23 +580,132 @@ interface FallbackTransformerProps {
   readonly onSelectTransformer?: (transformerId: string) => void;
 }
 
+interface StationTransformerSymbolProps {
+  readonly transformerId: string;
+  readonly x: number;
+  readonly y: number;
+  readonly designation: string;
+  readonly details: readonly string[];
+  readonly onSelect?: (transformerId: string) => void;
+}
+
+function StationTransformerSymbol(props: StationTransformerSymbolProps): JSX.Element {
+  const circleOffset = TRANSFORMER_SYMBOL_CENTER_GAP / 2;
+  const overlapPx = (TRANSFORMER_SYMBOL_RADIUS * 2) - TRANSFORMER_SYMBOL_CENTER_GAP;
+  const selectable = Boolean(props.onSelect);
+  const label = `Transformator SN/nN ${props.designation}`;
+
+  const select = (event: { stopPropagation: () => void; preventDefault?: () => void }) => {
+    event.stopPropagation();
+    props.onSelect?.(props.transformerId);
+  };
+
+  return (
+    <g
+      data-testid={`sld-v2-transformer-${props.transformerId}`}
+      data-element-kind="transformer_sn_nn"
+      data-element-id={props.transformerId}
+      data-configurable={selectable ? 'true' : undefined}
+      data-symbol-canon="transformer_intersecting_circles"
+      data-transformer-circles-intersect="true"
+      data-transformer-circle-overlap-px={overlapPx}
+      transform={`translate(${props.x}, ${props.y})`}
+      role={selectable ? 'button' : undefined}
+      aria-label={label}
+      tabIndex={selectable ? 0 : undefined}
+      onClick={selectable ? select : undefined}
+      onDoubleClick={selectable ? select : undefined}
+      onContextMenu={selectable ? (event) => { event.preventDefault(); select(event); } : undefined}
+      onKeyDown={selectable ? (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          props.onSelect?.(props.transformerId);
+        }
+      } : undefined}
+      style={{ cursor: selectable ? 'pointer' : 'default' }}
+    >
+      <title>{`${label} — kliknij, aby otworzyć kartę konfiguracji`}</title>
+      {selectable && (
+        <rect
+          x={-34}
+          y={-44}
+          width={172}
+          height={92}
+          rx={3}
+          fill="transparent"
+          pointerEvents="all"
+          data-hit-area="transformer"
+        />
+      )}
+      <line
+        x1={0}
+        y1={-48}
+        x2={0}
+        y2={-circleOffset - TRANSFORMER_SYMBOL_RADIUS}
+        stroke={COLOR_LINE_PRIMARY}
+        strokeWidth={1.8}
+        data-transformer-terminal="SN"
+      />
+      <circle
+        cx={0}
+        cy={-circleOffset}
+        r={TRANSFORMER_SYMBOL_RADIUS}
+        fill="none"
+        stroke={COLOR_LINE_PRIMARY}
+        strokeWidth={2.2}
+        data-transformer-winding="SN"
+        data-symbol-canon="transformer_winding_circle"
+      />
+      <circle
+        cx={0}
+        cy={circleOffset}
+        r={TRANSFORMER_SYMBOL_RADIUS}
+        fill="none"
+        stroke={COLOR_LINE_PRIMARY}
+        strokeWidth={2.2}
+        data-transformer-winding="nN"
+        data-symbol-canon="transformer_winding_circle"
+      />
+      <line
+        x1={0}
+        y1={circleOffset + TRANSFORMER_SYMBOL_RADIUS}
+        x2={0}
+        y2={48}
+        stroke={COLOR_LINE_PRIMARY}
+        strokeWidth={1.8}
+        data-transformer-terminal="nN"
+      />
+      <text x={30} y={-13} fontSize={FONT_SIZES.deviceQ} fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontWeight={700}>
+        {props.designation}
+      </text>
+      {props.details.map((line, index) => (
+        <text
+          key={`${props.transformerId}-detail-${index}`}
+          x={30}
+          y={4 + index * 14}
+          fontSize={FONT_SIZES.technicalPanel}
+          fill={index === 0 ? COLOR_TEXT_PRIMARY : COLOR_TEXT_SECONDARY}
+          fontFamily={FONT_SANS}
+          fontWeight={index === 0 ? 600 : 400}
+        >
+          {line}
+        </text>
+      ))}
+    </g>
+  );
+}
+
 function FallbackTransformer(props: FallbackTransformerProps): JSX.Element {
   const transformerId = `${props.substationId}/transformer/sn-nn`;
   return (
-    <g
-      data-testid={`sld-v2-transformer-${transformerId}`}
-      data-element-kind="transformer_sn_nn"
-      data-element-id={transformerId}
-      transform={`translate(${props.x}, ${props.y})`}
-      onClick={props.onSelectTransformer ? (event) => { event.stopPropagation(); props.onSelectTransformer?.(transformerId); } : undefined}
-      style={{ cursor: props.onSelectTransformer ? 'pointer' : 'default' }}
-    >
-      <circle cx={-10} cy={0} r={16} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={2} />
-      <circle cx={10} cy={0} r={16} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={2} />
-      <text x={0} y={32} textAnchor="middle" fontSize={FONT_SIZES.technicalPanel} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_SANS}>
-        Transformator SN/nN do doboru z katalogu
-      </text>
-    </g>
+    <StationTransformerSymbol
+      transformerId={transformerId}
+      x={props.x}
+      y={props.y}
+      designation="TR"
+      details={['Transformator SN/nN', 'do doboru z katalogu']}
+      onSelect={props.onSelectTransformer}
+    />
   );
 }
 

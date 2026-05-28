@@ -32,7 +32,7 @@ test.describe('UI Integration E2E Happy Path', () => {
   test('renders canonical active case bar and mode indicator', async ({ page }) => {
     await expect(page.locator('[data-testid="top-bar-v12"]')).toBeVisible();
     await expect(page.locator('[data-testid="ctx-project"]')).toContainText('Projekt Testowy');
-    await expect(page.locator('[data-testid="ctx-wariant"]')).toContainText('Przypadek Testowy 3F');
+    await expect(page.locator('[data-testid="ctx-wariant"]')).toContainText('Zakres Testowy 3F');
     await expect(page.locator('[data-testid="top-bar-calculate"]')).toBeVisible();
   });
 
@@ -40,7 +40,7 @@ test.describe('UI Integration E2E Happy Path', () => {
     await page.locator('[data-testid="ctx-wariant"]').click();
 
     await expect(page).toHaveURL(/#variants(\?|$)/);
-    const surface = page.locator('[data-testid="workspace-surface-main"]');
+    const surface = page.locator('[data-testid="workspace-surface-panel"]');
     await expect(surface).toBeVisible();
     await expect(surface.getByTestId('variants-engineering-surface')).toBeVisible();
     await expect(surface.getByTestId('variants-engineering-surface').getByRole('heading', { name: 'Stan obliczeń wariantu' })).toBeVisible();

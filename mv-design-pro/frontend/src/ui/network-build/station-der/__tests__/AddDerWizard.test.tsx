@@ -195,7 +195,7 @@ describe('AddDerWizard â€” 5-krokowy guided flow', () => {
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it('BESS wymaga dodatkowo baterii (Krok 3)', () => {
+  it('BESS wymaga baterii oraz jawnego trybu pracy (Krok 3)', () => {
     render(
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="BESS" projectId="p" onClose={vi.fn()} />,
     );
@@ -207,13 +207,16 @@ describe('AddDerWizard â€” 5-krokowy guided flow', () => {
     fireEvent.change(screen.getByTestId('add-der-voltage-level'), { target: { value: 'lv_0_4kV' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
-    // Krok 3: musi pokazaÄ‡ wybĂłr baterii
+    // Krok 3: musi pokazac wybor baterii i trybow pracy.
     expect(screen.getByTestId('add-der-battery')).toBeInTheDocument();
 
     fireEvent.change(screen.getByTestId('add-der-device'), { target: { value: 'bess_pcs_abb_500' } });
-    // Bez baterii â€” Dalej zablokowany
+    // Bez baterii i trybu pracy: Dalej zablokowany.
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(screen.getByTestId('add-der-battery'), { target: { value: 'bess_bat_byd_2880' } });
+    // Sama bateria nie wystarcza, bo tryb BESS zasila pozniejsze analizy NC RfG/PTPiREE.
+    expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByTestId('add-der-bess-mode-fcr_n'));
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
   });
 
@@ -387,7 +390,7 @@ describe('AddDerWizard â€” 5-krokowy guided flow', () => {
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it('automatycznie dobiera transformator dedykowany dla falownika o innym napiÄ™ciu', async () => {
+  it('jawnie przełącza na transformator dedykowany dla falownika o innym napięciu', async () => {
     useSnapshotStore.setState({
       caseId: 'case_test',
       snapshot: {
@@ -429,6 +432,14 @@ describe('AddDerWizard â€” 5-krokowy guided flow', () => {
     fireEvent.change(screen.getByTestId('add-der-device'), {
       target: { value: 'pv_inv_system_1000' },
     });
+
+    expect(screen.getByTestId('add-der-voltage-mismatch-warning')).toHaveTextContent(
+      'Niezgodność napięciowa',
+    );
+    expect(screen.queryByTestId('add-der-block-transformer')).toBeNull();
+    expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(screen.getByTestId('add-der-switch-dedicated-transformer'));
 
     await waitFor(() =>
       expect(screen.getByTestId('add-der-auto-block-transformer')).toHaveTextContent(

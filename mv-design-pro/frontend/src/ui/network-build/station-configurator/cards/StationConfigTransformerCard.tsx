@@ -7,9 +7,26 @@
 
 import { TAP_CHANGER_CATALOG, getTapChanger, type TapChangerItem } from '../../station-der/catalogs';
 
+export interface StationTransformerCatalogOption {
+  readonly id: string;
+  readonly name: string;
+  readonly manufacturer?: string;
+  readonly summary: string;
+  readonly ratedPowerMva: number;
+  readonly voltageHvKv: number;
+  readonly voltageLvKv: number;
+  readonly ukPercent: number;
+  readonly pkKw: number;
+  readonly p0Kw: number;
+  readonly vectorGroup: string;
+  readonly adequatePower: boolean;
+  readonly recommended: boolean;
+}
+
 export interface StationConfigTransformerRow {
   readonly transformerId: string;
   readonly designation: string;
+  readonly catalogRef?: string | null;
   readonly snMva: number | null;
   readonly uhvKv: number;
   readonly ulvKv: number;
@@ -32,7 +49,11 @@ export interface StationConfigTransformerRow {
 export interface StationConfigTransformerCardProps {
   readonly transformers: readonly StationConfigTransformerRow[];
   readonly availableLvVoltages: readonly number[];  // Multi-voltage briefa §13
+  readonly transformerCatalogOptions?: Readonly<Record<string, readonly StationTransformerCatalogOption[]>>;
+  readonly transformerCatalogLoading?: boolean;
+  readonly transformerCatalogError?: string | null;
   readonly onChange?: (transformerId: string, changes: Partial<StationConfigTransformerRow>) => void;
+  readonly onAddTransformer?: () => void;
 }
 
 const STATUS_CLASS: Record<'gotowe' | 'częściowe' | 'brak danych', string> = {
@@ -65,10 +86,23 @@ function selectTapChangersForTransformerByVoltage(
   return TAP_CHANGER_CATALOG.filter((tc) => tc.applicable_to.includes(transformerType));
 }
 
+function optionLabel(option: StationTransformerCatalogOption): string {
+  const kva = Math.round(option.ratedPowerMva * 1000).toLocaleString('pl-PL');
+  return `${option.name} - ${kva} kVA, ${option.voltageHvKv}/${option.voltageLvKv} kV, ${option.vectorGroup}, uk ${option.ukPercent}%`;
+}
+
 export function StationConfigTransformerCard(
   props: StationConfigTransformerCardProps,
 ): JSX.Element {
-  const { transformers, availableLvVoltages, onChange } = props;
+  const {
+    transformers,
+    availableLvVoltages,
+    transformerCatalogOptions = {},
+    transformerCatalogLoading = false,
+    transformerCatalogError = null,
+    onChange,
+    onAddTransformer,
+  } = props;
 
   return (
     <div data-testid="station-config-transformer" className="flex flex-col gap-3 text-xs">
@@ -84,8 +118,25 @@ export function StationConfigTransformerCard(
       )}
 
       {transformers.length === 0 ? (
-        <div className="italic text-scada-muted">
-          Transformator SN/nN dobiera się z wariantu stacji albo z katalogu transformatorów.
+        <div
+          data-testid="station-transformer-empty-state"
+          className="rounded border border-amber-500/40 bg-amber-500/10 p-3 text-amber-100"
+        >
+          <div className="font-semibold text-amber-50">Brak transformatora SN/nN w modelu stacji.</div>
+          <p className="mt-1 leading-5">
+            Transformator musi zostać dodany jako element ENM z pozycji katalogowej. Bez tego obliczenia zwarciowe,
+            rozpływ mocy, dobór zabezpieczeń i raport pozostają zablokowane dla toru nN.
+          </p>
+          {onAddTransformer ? (
+            <button
+              type="button"
+              data-testid="station-add-transformer-from-catalog"
+              onClick={onAddTransformer}
+              className="mt-3 rounded border border-amber-300 bg-amber-300 px-3 py-1.5 font-semibold text-slate-950 transition hover:bg-amber-200"
+            >
+              Dodaj transformator z katalogu
+            </button>
+          ) : null}
         </div>
       ) : (
         transformers.map((tr) => (
@@ -95,6 +146,70 @@ export function StationConfigTransformerCard(
             className="rounded border border-scada-border bg-scada-bg p-2"
           >
             <div className="font-medium text-scada-text">{tr.designation}</div>
+            {(() => {
+              const catalogOptions = transformerCatalogOptions[tr.transformerId] ?? [];
+              const selectedCatalog = catalogOptions.find((option) => option.id === tr.catalogRef) ?? null;
+              const recommendedCatalog =
+                catalogOptions.find((option) => option.recommended) ?? catalogOptions[0] ?? null;
+              return (
+                <div className="mt-2 rounded border border-scada-border bg-scada-panel-raised p-2">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
+                      Pozycja katalogowa transformatora
+                    </span>
+                    <select
+                      data-testid={`tr-catalog-${tr.transformerId}`}
+                      value={tr.catalogRef ?? ''}
+                      disabled={transformerCatalogLoading || catalogOptions.length === 0}
+                      onChange={(event) => {
+                        if (event.target.value) {
+                          onChange?.(tr.transformerId, { catalogRef: event.target.value });
+                        }
+                      }}
+                      className="rounded border border-scada-border bg-scada-bg px-1 py-1 text-scada-text"
+                    >
+                      <option value="">
+                        {transformerCatalogLoading
+                          ? 'ładowanie katalogu...'
+                          : 'wybierz transformator z katalogu'}
+                      </option>
+                      {catalogOptions.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.recommended ? 'Rekomendowany: ' : ''}
+                          {optionLabel(option)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px]">
+                    {tr.catalogRef ? (
+                      <span className="rounded border border-status-ok/40 bg-emerald-950/30 px-2 py-1 text-status-ok">
+                        katalog: {selectedCatalog?.name ?? tr.catalogRef}
+                      </span>
+                    ) : recommendedCatalog ? (
+                      <button
+                        type="button"
+                        data-testid={`tr-catalog-apply-${tr.transformerId}`}
+                        onClick={() => onChange?.(tr.transformerId, { catalogRef: recommendedCatalog.id })}
+                        className="rounded border border-emerald-400 px-2 py-1 font-semibold text-emerald-200 transition hover:bg-emerald-950/40"
+                      >
+                        Zastosuj rekomendację: {recommendedCatalog.name}
+                      </button>
+                    ) : null}
+                    {selectedCatalog && !selectedCatalog.adequatePower && (
+                      <span className="rounded border border-amber-500/50 bg-amber-950/30 px-2 py-1 text-amber-200">
+                        moc poniżej aktualnego zapotrzebowania
+                      </span>
+                    )}
+                    {transformerCatalogError && (
+                      <span className="rounded border border-red-500/50 bg-red-950/30 px-2 py-1 text-red-200">
+                        {transformerCatalogError}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
             <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1">
               <label className="flex flex-col">
                 <span className="text-scada-muted">Sn [MVA]</span>

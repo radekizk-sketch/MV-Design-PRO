@@ -75,6 +75,43 @@ describe('MiniBlockRmuRenderer — kompozycja z bays', () => {
     ).toBe('1');
   });
 
+  it('compact wystawia porty WE/WY/TR jako magnesy CAD z rolami ENM', () => {
+    const { container } = r('compact', { onClick: () => undefined });
+    const root = container.querySelector('[data-testid="sld-v2-mini-rmu-st-1"]');
+    const anchors = root?.querySelectorAll('[data-testid^="sld-v2-mini-rmu-port-anchor-"]') ?? [];
+    const bayColumns = root?.querySelectorAll('[data-testid^="sld-v2-bay-column-sn-"]') ?? [];
+    const roles = Array.from(anchors).map((anchor) => anchor.getAttribute('data-port-role'));
+
+    expect(root?.getAttribute('data-port-anchor-count')).toBe(String(baseBays.length));
+    expect(root?.getAttribute('data-readable-label-stack')).toBe('true');
+    expect(anchors.length).toBe(baseBays.length);
+    expect(bayColumns.length).toBe(baseBays.length);
+    expect(roles).toEqual(['WE', 'WY', 'TR']);
+    anchors.forEach((anchor) => {
+      expect(anchor.getAttribute('data-port-magnet')).toBe('true');
+      expect(anchor.getAttribute('data-busbar-section')).toBe('SN');
+      expect(anchor.querySelector('[data-hit-area="true"]')).not.toBeNull();
+      expect(anchor.querySelector('title')?.textContent).toMatch(/^(WE|WY|TR) - /);
+    });
+    bayColumns.forEach((bay) => {
+      expect(bay.getAttribute('role')).toBe('button');
+      expect(bay.getAttribute('data-hit-area')).toBe('true');
+      expect(bay.querySelector('[data-hit-area="true"]')).not.toBeNull();
+    });
+  });
+
+  it('ukrywa nazwe robocza, gdy kod stacji jest wystarczajacym identyfikatorem', () => {
+    const { container } = r('compact', {
+      stationCode: 'S01',
+      name: 'Nowa stacja',
+    });
+    const root = container.querySelector('[data-testid="sld-v2-mini-rmu-st-1"]');
+
+    expect(root?.querySelector('[data-parity-key="station.mini.name"]')).toBeNull();
+    expect(root?.textContent).toContain('S01');
+    expect(root?.textContent).not.toContain('Nowa stacja');
+  });
+
   it('pusta tablica bays nie pokazuje programistycznego komunikatu na SLD', () => {
     const { container } = r('compact', { snBays: [] });
     expect(container.querySelector('[data-testid="sld-v2-mini-rmu-blocker-st-1"]')).toBeNull();
@@ -89,7 +126,7 @@ describe('MiniBlockRmuRenderer — kompozycja z bays', () => {
 describe('MiniBlockRmuRenderer — viewBox invariant', () => {
   it('compact ma stały rozmiar czytelny dla mini-RMU', () => {
     const vb = miniBlockViewBox('compact');
-    expect(vb).toEqual({ width: 190, height: 136 });
+    expect(vb).toEqual({ width: 220, height: 240 });
   });
 
   it('detail ma stały rozmiar czytelny dla rozdzielnicy stacji', () => {
@@ -108,6 +145,8 @@ describe('MiniBlockRmuRenderer - kanon operatorski', () => {
     expect(root?.querySelectorAll('[data-bay-role="RMU_LINE"]').length).toBeGreaterThanOrEqual(1);
     // TR bay (RMU_TRANSFORMER) z TR symbol (rendered jako dedicated bay column)
     expect(root?.querySelector('[data-bay-role="RMU_TRANSFORMER"]')).not.toBeNull();
+    expect(root?.querySelector('[data-flow-direction="line_from_bus_up_to_terrain"]')).not.toBeNull();
+    expect(root?.querySelector('[data-flow-direction="transformer_from_bus_down_to_lv"]')).not.toBeNull();
   });
 
   it('umieszcza nazwę stacji pod szyną jak w ekranach operatorskich', () => {
@@ -240,6 +279,34 @@ describe('MiniBlockRmuRenderer - semantyczne roznice LOD', () => {
     expect(der?.getAttribute('data-der-kind')).toBe('PV');
     expect(der?.querySelector('text')).toBeNull();
     expect(der?.querySelector('title')?.textContent).toBe('PV2');
+  });
+
+  it('overview nie przykleja etykiet WE/TR do szyny SN', () => {
+    const { container } = r('overview');
+    const root = container.querySelector('[data-testid="sld-v2-mini-rmu-st-1"]');
+    const bayMarkers = root?.querySelectorAll('[data-testid^="sld-v2-mini-rmu-bay-marker-"]') ?? [];
+
+    expect(root?.querySelector('[data-testid^="sld-v2-mini-rmu-overview-enclosure-"]')).not.toBeNull();
+    bayMarkers.forEach((marker) => {
+      expect(marker.querySelector('text')).toBeNull();
+      expect(marker.querySelector('title')?.textContent).toMatch(/^(WE|WY|TR) - /);
+    });
+  });
+
+  it('overview wystawia port magnets i hit area dla CAD snap bez widocznych etykiet', () => {
+    const { container } = r('overview');
+    const root = container.querySelector('[data-testid="sld-v2-mini-rmu-st-1"]');
+    const anchors = Array.from(root?.querySelectorAll('[data-testid^="sld-v2-mini-rmu-port-anchor-"]') ?? []);
+    const roles = anchors.map((anchor) => anchor.getAttribute('data-port-role'));
+
+    expect(root?.getAttribute('data-port-anchor-count')).toBe(String(baseBays.length));
+    expect(anchors.length).toBe(baseBays.length);
+    expect(roles).toEqual(['WE', 'WY', 'TR']);
+    anchors.forEach((anchor) => {
+      expect(anchor.getAttribute('data-port-magnet')).toBe('true');
+      expect(anchor.getAttribute('data-busbar-section')).toBe('SN');
+      expect(anchor.getAttribute('data-hit-area')).toBe('true');
+    });
   });
 
   it('overview nie doklada zewnetrznych badge L/G/nN nad karta stacji', () => {
@@ -613,5 +680,115 @@ describe('MiniBlockRmuRenderer — K30-40 voltage-aware bus', () => {
     const bus = querySnBus(container);
     expect(bus?.getAttribute('stroke')).toBe('#13C45A');
     expect(bus?.getAttribute('data-bus-voltage-kv')).toBe('');
+  });
+});
+
+describe('MiniBlockRmuRenderer - compact SCADA CAD poprawki', () => {
+  it('selected compact uzywa naroznikow CAD zamiast pelnej ramki-kafla', () => {
+    const { container } = r('compact', { selected: true });
+    const root = container.querySelector('[data-testid="sld-v2-mini-rmu-st-1"]');
+    const body = root?.querySelector('[data-parity-key="station.mini.body"]');
+    const selection = root?.querySelector('[data-selection-style="cad_corner_handles"]');
+
+    expect(body?.getAttribute('stroke')).toBe('transparent');
+    expect(body?.getAttribute('stroke-width')).toBe('0');
+    expect(selection).not.toBeNull();
+    expect(selection?.querySelectorAll('line').length).toBe(8);
+  });
+
+  it('compact separuje port terenowy WE od portu transformatora TR', () => {
+    const { container } = r('compact', {
+      snBays: [
+        { bayRef: 'line-in', fieldRole: FIELD_ROLE.LINE_IN, designation: 'WE', hasMissingRequiredDevice: false },
+        { bayRef: 'tr', fieldRole: FIELD_ROLE.RMU_TRANSFORMER, designation: 'TR', hasMissingRequiredDevice: false },
+      ],
+    });
+    const anchors = Array.from(container.querySelectorAll('[data-testid^="sld-v2-mini-rmu-port-anchor-"]'));
+    const byRole = new Map(anchors.map((anchor) => [anchor.getAttribute('data-port-role'), anchor]));
+    const weY = Number(byRole.get('WE')?.getAttribute('transform')?.match(/,\s*([-0-9.]+)\)/)?.[1] ?? '0');
+    const trY = Number(byRole.get('TR')?.getAttribute('transform')?.match(/,\s*([-0-9.]+)\)/)?.[1] ?? '0');
+    const busY = Number(container.querySelector('[data-parity-key="station.mini.bus.sn"]')?.getAttribute('y1') ?? '0');
+
+    expect(byRole.get('WE')?.getAttribute('data-port-side')).toBe('terrain_network');
+    expect(byRole.get('TR')?.getAttribute('data-port-side')).toBe('transformer');
+    expect(weY).toBeLessThan(busY);
+    expect(trY).toBeGreaterThan(busY);
+    expect(container.querySelector('[data-testid="sld-v2-mini-rmu-compact-transformer-symbol"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid^="sld-v2-mini-rmu-compact-lv-row-"]')).not.toBeNull();
+  });
+
+  it('compact renderuje dedykowane pole PV jako normalne pole SN rozdzielni', () => {
+    const { container } = r('compact', {
+      snBays: [
+        { bayRef: 'line-in', fieldRole: FIELD_ROLE.LINE_IN, designation: 'WE', hasMissingRequiredDevice: false },
+        { bayRef: 'line-out', fieldRole: FIELD_ROLE.LINE_OUT, designation: 'WY', hasMissingRequiredDevice: false },
+        { bayRef: 'tr', fieldRole: FIELD_ROLE.RMU_TRANSFORMER, designation: 'TR', hasMissingRequiredDevice: false },
+        { bayRef: 'pv-field', fieldRole: FIELD_ROLE.DER_PV, designation: 'PV', hasMissingRequiredDevice: false },
+      ],
+      onClick: () => undefined,
+    });
+
+    const pvField = container.querySelector('[data-bay-role="DER_PV"]');
+    const pvPort = container.querySelector('[data-port-role="PV"]');
+
+    expect(pvField).not.toBeNull();
+    expect(pvPort).not.toBeNull();
+    expect(pvPort?.getAttribute('data-port-side')).toBe('source_connection');
+    expect(pvPort?.getAttribute('data-field-direction')).toBe('source-connection');
+    expect(pvField?.getAttribute('data-hit-area')).toBe('true');
+    expect(pvField?.getAttribute('role')).toBe('button');
+    expect(pvField?.getAttribute('aria-label')).toContain('Pole PV');
+  });
+
+  it('compact nie renderuje zewnętrznego mostka WE-WY na poziomie kabla terenowego', () => {
+    const { container } = r('compact', {
+      snBays: [
+        { bayRef: 'line-in', fieldRole: FIELD_ROLE.LINE_IN, designation: 'WE', hasMissingRequiredDevice: false },
+        { bayRef: 'line-out', fieldRole: FIELD_ROLE.LINE_OUT, designation: 'WY', hasMissingRequiredDevice: false },
+        { bayRef: 'tr', fieldRole: FIELD_ROLE.RMU_TRANSFORMER, designation: 'TR', hasMissingRequiredDevice: false },
+      ],
+    });
+
+    const gap = container.querySelector('[data-guard="no_external_we_wy_bridge"]');
+    const bus = container.querySelector('[data-parity-key="station.mini.bus.sn"]');
+    const externalStubs = container.querySelectorAll('[data-parity-key="station.mini.external_stub.compact"]');
+    const bayDrops = container.querySelectorAll('[data-parity-key="station.mini.bay_drop_to_bus.compact"]');
+
+    expect(gap).not.toBeNull();
+    expect(gap?.getAttribute('data-render-contract')).toBe('mask_only_not_electrical_element');
+    expect(gap?.getAttribute('data-visible-label')).toBe('false');
+    expect(gap?.querySelector('[data-role="external_trunk_visual_cut_label"]')).toBeNull();
+    expect(container.textContent).not.toContain('przerwa');
+    expect(Number(gap?.getAttribute('data-busbar-y')) - Number(gap?.getAttribute('data-external-y'))).toBeGreaterThanOrEqual(48);
+    expect(Number(gap?.getAttribute('data-gap-right'))).toBeGreaterThan(Number(gap?.getAttribute('data-gap-left')));
+    expect(bus?.getAttribute('data-cad-role')).toBe('internal_station_busbar');
+    expect(externalStubs).toHaveLength(2);
+    expect(bayDrops).toHaveLength(2);
+
+    externalStubs.forEach((stub) => {
+      expect(Number(stub.getAttribute('y2'))).toBeLessThan(Number(bus?.getAttribute('y1')));
+    });
+    bayDrops.forEach((drop) => {
+      expect(Number(drop.getAttribute('y1'))).toBeLessThan(Number(drop.getAttribute('y2')));
+      expect(Number(drop.getAttribute('y2'))).toBe(Number(bus?.getAttribute('y1')));
+    });
+  });
+
+  it('compact ogranicza etykiety stacji i DER przy duzym zoomie', () => {
+    const { container } = r('compact', {
+      viewportScale: 4,
+      selected: true,
+      stationCode: 'S01',
+      nnFeedersCount: 1,
+      derBadges: [{ kind: 'PV', count: 1, connectionSide: 'dedicated', hasBlockTransformer: true, totalPMw: 0.5 }],
+    });
+
+    const code = container.querySelector('[data-testid="sld-v2-mini-station-code-st-1"] text');
+    const nnCount = container.querySelector('[data-testid="sld-v2-mini-station-nn-count-st-1"] text');
+    const derPower = container.querySelector('[data-testid="sld-v2-mini-rmu-der-badge-power-PV"]');
+
+    expect(Number(code?.getAttribute('font-size'))).toBeLessThanOrEqual(6);
+    expect(Number(nnCount?.getAttribute('font-size'))).toBeLessThanOrEqual(5);
+    expect(Number(derPower?.getAttribute('font-size'))).toBeLessThanOrEqual(5);
   });
 });

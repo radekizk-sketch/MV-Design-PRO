@@ -1,0 +1,12 @@
+﻿{
+    "feature":  "sld_v2_operator_grade_flow",
+    "timestamp":  "20260527_063335",
+    "command":  "claude --tools \"\" --no-session-persistence --effort low -p \u003cprompt\u003e",
+    "prompt_path":  "C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\mv-design-pro\\docs\\audits\\CLAUDE_DESIGN_REVIEW_sld_v2_operator_grade_flow_20260527_063335.prompt.md",
+    "review_path":  "C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\mv-design-pro\\docs\\audits\\CLAUDE_DESIGN_REVIEW_sld_v2_operator_grade_flow_20260527_063335.md",
+    "decision_path":  "C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\mv-design-pro\\docs\\audits\\CLAUDE_DESIGN_REVIEW_sld_v2_operator_grade_flow_20260527_063335.decisions.md",
+    "cwd":  "C:\\Users\\radek",
+    "claude_found":  true,
+    "claude_source":  "C:\\Users\\radek\\AppData\\Roaming\\npm\\claude.ps1",
+    "exit_code":  0
+}

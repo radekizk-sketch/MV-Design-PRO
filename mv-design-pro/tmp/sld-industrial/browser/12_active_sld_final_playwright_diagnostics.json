@@ -1,0 +1,230 @@
+{
+  "diagnostics": {
+    "href": "http://127.0.0.1:5173/#sld?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8&sel=seg%2Fa3acec33be3f808937ccd4887cf57c76%2Fsegment&type=LineBranch&name=Odcinek+04",
+    "title": "MV-DESIGN PRO",
+    "hasCanvas": true,
+    "hasStation": true,
+    "stationBox": {
+      "x": 64,
+      "y": 420,
+      "w": 257,
+      "h": 21
+    },
+    "hasVisiblePrzerwaText": false,
+    "noExternalBridge": null,
+    "transformerSymbols": [
+      {
+        "testid": "gpz-canonical-transformers",
+        "canon": null,
+        "intersect": null,
+        "overlap": null,
+        "role": null,
+        "box": {
+          "x": 645,
+          "y": 385,
+          "w": 63,
+          "h": 120
+        }
+      },
+      {
+        "testid": "gpz-canonical-transformer-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn",
+        "canon": null,
+        "intersect": null,
+        "overlap": null,
+        "role": null,
+        "box": {
+          "x": 645,
+          "y": 385,
+          "w": 63,
+          "h": 120
+        }
+      },
+      {
+        "testid": "gpz-canonical-hv-tr-bay-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn",
+        "canon": null,
+        "intersect": null,
+        "overlap": null,
+        "role": null,
+        "box": {
+          "x": 648,
+          "y": 385,
+          "w": 49,
+          "h": 68
+        }
+      },
+      {
+        "testid": "gpz-canonical-hv-tr-bay-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-ds",
+        "canon": null,
+        "intersect": null,
+        "overlap": null,
+        "role": null,
+        "box": {
+          "x": 650,
+          "y": 400,
+          "w": 6,
+          "h": 6
+        }
+      },
+      {
+        "testid": "gpz-canonical-hv-tr-bay-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-cb",
+        "canon": null,
+        "intersect": null,
+        "overlap": null,
+        "role": null,
+        "box": {
+          "x": 650,
+          "y": 417,
+          "w": 8,
+          "h": 8
+        }
+      },
+      {
+        "testid": "gpz-canonical-hv-tr-bay-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-ct",
+        "canon": null,
+        "intersect": null,
+        "overlap": null,
+        "role": null,
+        "box": {
+          "x": 648,
+          "y": 435,
+          "w": 10,
+          "h": 5
+        }
+      },
+      {
+        "testid": "gpz-canonical-tr-label-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-designation",
+        "canon": null,
+        "intersect": null,
+        "overlap": null,
+        "role": null,
+        "box": {
+          "x": 668,
+          "y": 454,
+          "w": 20,
+          "h": 14
+        }
+      },
+      {
+        "testid": "gpz-canonical-tr-label-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-power",
+        "canon": null,
+        "intersect": null,
+        "overlap": null,
+        "role": null,
+        "box": {
+          "x": 669,
+          "y": 470,
+          "w": 26,
+          "h": 9
+        }
+      },
+      {
+        "testid": "gpz-canonical-tr-label-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-voltage",
+        "canon": null,
+        "intersect": null,
+        "overlap": null,
+        "role": null,
+        "box": {
+          "x": 669,
+          "y": 481,
+          "w": 39,
+          "h": 9
+        }
+      },
+      {
+        "testid": "gpz-canonical-tr-field-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn",
+        "canon": null,
+        "intersect": null,
+        "overlap": null,
+        "role": null,
+        "box": {
+          "x": 644,
+          "y": 500,
+          "w": 67,
+          "h": 71
+        }
+      },
+      {
+        "testid": "gpz-canonical-tr-field-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-ds",
+        "canon": null,
+        "intersect": null,
+        "overlap": null,
+        "role": null,
+        "box": {
+          "x": 650,
+          "y": 513,
+          "w": 8,
+          "h": 8
+        }
+      },
+      {
+        "testid": "gpz-canonical-tr-field-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-cb",
+        "canon": null,
+        "intersect": null,
+        "overlap": null,
+        "role": null,
+        "box": {
+          "x": 649,
+          "y": 526,
+          "w": 9,
+          "h": 9
+        }
+      },
+      {
+        "testid": "gpz-canonical-tr-field-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-ct",
+        "canon": null,
+        "intersect": null,
+        "overlap": null,
+        "role": null,
+        "box": {
+          "x": 648,
+          "y": 541,
+          "w": 10,
+          "h": 5
+        }
+      },
+      {
+        "testid": "gpz-canonical-tr-field-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-es",
+        "canon": null,
+        "intersect": null,
+        "overlap": null,
+        "role": null,
+        "box": {
+          "x": 644,
+          "y": 556,
+          "w": 10,
+          "h": 5
+        }
+      },
+      {
+        "testid": "sld-symbol-mini-transformer-stn/ac3f845407ac60c5df26c7e641dacec2/transformer",
+        "canon": "transformer_intersecting_circles",
+        "intersect": "true",
+        "overlap": null,
+        "role": "button",
+        "box": {
+          "x": 973,
+          "y": 972,
+          "w": 18,
+          "h": 19
+        }
+      },
+      {
+        "testid": "sld-symbol-mini-transformer-stn/ac3f845407ac60c5df26c7e641dacec2/transformer-hitbox",
+        "canon": null,
+        "intersect": null,
+        "overlap": null,
+        "role": null,
+        "box": {
+          "x": 973,
+          "y": 972,
+          "w": 18,
+          "h": 19
+        }
+      }
+    ],
+    "clickableTargetCount": 115,
+    "visibleForbidden": [],
+    "excerpt": "↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nE2E SLD 0002\nZAKRES / WARIANT\nZakres obliczeń z adresu\nKonfiguruj zakres\nWyniki do obliczenia\n20:16:12\n27.05.2026\nOblicz\nNakładka\nAnalizy\nEksport\nFaza projektu:\nANALIZA\nKontrola:\n0\nObliczenia:\ndo obliczenia\nSzyny:\n13\nOdcinki SN:\n5\nPola SN:\n4\nStacje:\n1\nDługość:\n1,92 km\nTR:\n2\nOdbiory nN:\n1\nSzukaj\nKatalog\nKontrola\nMetadane\nHistoria\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nSchemat i topologia\nNastępna akcja\ni\n●\nUkład dopuszczony do analizy\nAnaliza\nEtap układu\ndo analizy\nPrzegląd techniczny\nUkład skonfigurowany do obliczeń.\nGPZ i zasilanie\n●\n1\n⊙\nŹródło GPZ 15 kV\n●\nStacje SN/nN\n●\n1\n⊙\nStacja B\n·\nstacja przelotowa\n●\nMagistrale i odcinki SN\n●\n5\n⊙\nF2\n·\nYAKXS 3×120/16 · 0,21 km\n●\n⊙\nOdcinek 02\n·\nYAKXS 3×120/16 · 0,09 km\n●\n⊙\nOdcinek 03\n·\nYAKXS 3×120/16 · 0,12 km\n●\n⊙\nOdcinek 04\n·\n3 × NA2XS2Y 1×150/25 mm² · 1,00 km\n●\n⋮\n⊙\nOdcinek 05\n·\nYAKXS 3×120/16 · 0,50 km\n●\nOdbiory nN\n●\n1\n⊙\nOdbiór nN 1 - Stacja B\n·\n0,03 MW\n●\n+\nDodaj uk"
+  },
+  "logs": []
+}

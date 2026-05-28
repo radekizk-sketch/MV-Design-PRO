@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+﻿import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -21,7 +21,18 @@ type DomainOpResponse = {
     branches?: Array<{ ref_id: string }>;
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
     generators?: Array<{ ref_id: string; gen_type?: string | null; station_ref?: string | null }>;
-    substations?: Array<{ ref_id: string; station_type?: string | null }>;
+    substations?: Array<{
+      ref_id: string;
+      station_type?: string | null;
+      meta?: {
+        field_specs?: Array<{
+          field_ref?: string;
+          bay_role?: string;
+          field_role?: string;
+          bus_ref?: string;
+        }>;
+      };
+    }>;
     transformers?: Array<{ ref_id: string }>;
   };
 };
@@ -38,13 +49,13 @@ async function createProjectAndCase(
   request: APIRequestContext,
 ): Promise<{ projectId: string; projectName: string; caseId: string; caseName: string }> {
   const suffix = Date.now().toString(36);
-  const projectName = `E2E przemysłowy ${suffix}`;
-  const caseName = `Przypadek 50 szablonów ${suffix}`;
+  const projectName = `E2E przemysĹ‚owy ${suffix}`;
+  const caseName = `Przypadek 50 szablonĂłw ${suffix}`;
 
   const projectResponse = await request.post(`${BACKEND_BASE}/api/projects`, {
     data: {
       name: projectName,
-      description: 'Pełna ścieżka E2E: 50 szablonów, analizy, dowody, raporty',
+      description: 'PeĹ‚na Ĺ›cieĹĽka E2E: 50 szablonĂłw, analizy, dowody, raporty',
       mode: 'TO-BE',
       voltage_level_kv: 15.0,
       frequency_hz: 50.0,
@@ -142,6 +153,21 @@ function selectTemplatesForIndustrialRun(templates: TemplateSummary[]): Template
   return [...selected.values()];
 }
 
+function findBranchCapableFieldPort(
+  enm: NonNullable<DomainOpResponse['snapshot']>,
+): string | null {
+  const branchRoles = new Set(['OUT', 'FEEDER', 'LINE_OUT']);
+  for (const substation of enm.substations ?? []) {
+    for (const spec of substation.meta?.field_specs ?? []) {
+      const bayRole = String(spec.bay_role ?? '').toUpperCase();
+      if (spec.field_ref && branchRoles.has(bayRole)) {
+        return `${spec.field_ref}.BRANCH`;
+      }
+    }
+  }
+  return null;
+}
+
 async function openCaseInUi(
   page: Page,
   seed: { projectId: string; projectName: string; caseId: string; caseName: string },
@@ -170,7 +196,7 @@ async function openCaseInUi(
 
   await page.goto('/', { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
-  await expect(page.getByTestId('active-case-bar')).toContainText(/Zakres|Bieżący zestaw/);
+  await expect(page.getByTestId('active-case-bar')).toContainText(/Zakres|BieĹĽÄ…cy zestaw/);
   await expect(page.getByTestId('canonical-layout')).toBeVisible();
 }
 
@@ -191,10 +217,10 @@ async function waitForAnalysisRunIndex(
     lastBody = await response.text();
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
-  throw new Error(`results/index niedostępny dla runu ${runId}: ${lastStatus} ${lastBody}`);
+  throw new Error(`results/index niedostÄ™pny dla runu ${runId}: ${lastStatus} ${lastBody}`);
 }
 
-test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody i eksporty', async ({
+test('peĹ‚ny przepĹ‚yw przemysĹ‚owy: 50 szablonĂłw stacji, OZE, analizy, dowody i eksporty', async ({
   page,
   request,
 }) => {
@@ -259,16 +285,14 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
   const generatorRefs = (enm.generators ?? []).map((generator) => generator.ref_id);
   expect(new Set(generatorRefs).size).toBe(generatorRefs.length);
 
-  const branchBus = (enm.buses ?? []).find(
-    (bus) => bus.ref_id.includes('/sn_bus') && !bus.ref_id.includes('/section/001/bus_sn'),
-  );
-  expect(branchBus?.ref_id).toBeTruthy();
+  const branchFromRef = findBranchCapableFieldPort(enm);
+  expect(branchFromRef).toBeTruthy();
   await executeDomainOp(request, seed.caseId, 'start_branch_segment_sn', {
-    from_ref: `${branchBus!.ref_id}.BRANCH`,
+    from_ref: branchFromRef!,
     segment: {
       rodzaj: 'KABEL',
       dlugosc_m: 180,
-      name: 'Odgałęzienie kontrolne 50 szablonów',
+      name: 'OdgaĹ‚Ä™zienie kontrolne 50 szablonĂłw',
       catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
     },
   });
@@ -347,7 +371,7 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
 
   await openCaseInUi(page, seed);
   await expect(page.getByRole('button', { name: /Wykonaj analizę|Oblicz/ })).toBeVisible();
-  await expect(page.locator('body')).toContainText('Stacje SN/nN:');
-  await expect(page.locator('body')).toContainText('51');
-  await expect(page.locator('body')).toContainText('Dowody inżynierskie (8)');
+  await expect(page.locator('body')).toContainText('Stacje SN/nN');
+  await expect(page.locator('body')).toContainText('50 stacji');
+  await expect(page.locator('body')).toContainText('Dowody (8)');
 });

@@ -59,6 +59,8 @@ export interface BayColumnSnProps {
   readonly esState?: 'closed' | 'open' | 'unknown';
   /** Ukrywa zdublowane skróty roli, gdy nazwa pola już niesie rolę techniczną. */
   readonly showRoleBadge?: boolean;
+  readonly showDesignationLabel?: boolean;
+  readonly roleBadgeLabel?: string;
 }
 
 export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
@@ -74,6 +76,8 @@ export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
     hasMissing,
     onSymbolClick,
     showRoleBadge = true,
+    showDesignationLabel = true,
+    roleBadgeLabel,
   } = props;
 
   const apparatusHeight = getVariantApparatusHeight(variant);
@@ -109,13 +113,43 @@ export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
       : stackTopY + visibleApparatusStack.length * apparatusHeight + (visibleApparatusStack.length - 1) * apparatusGap;
 
   const elementId = `${stationId}/bay/${bayRef}`;
+  const bayClickHandler = onSymbolClick?.(elementId);
+  const bayHitAreaHeight = Math.max(42, outgoingY - busY + 18);
+  const bayAccessibleLabel = `Pole ${designation} ${bayRoleShortLabel(bayRole)}`;
 
   return (
     <g
       data-testid={`sld-v2-bay-column-sn-${bayRef}`}
       data-bay-role={bayRole}
       data-station-id={stationId}
+      data-hit-area={onSymbolClick ? 'true' : undefined}
+      role={onSymbolClick ? 'button' : undefined}
+      tabIndex={onSymbolClick ? 0 : undefined}
+      aria-label={onSymbolClick ? bayAccessibleLabel : undefined}
+      onClick={bayClickHandler}
+      onKeyDown={
+        onSymbolClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                bayClickHandler?.(e as unknown as React.MouseEvent<SVGGElement>);
+              }
+            }
+          : undefined
+      }
+      style={onSymbolClick ? { cursor: 'pointer' } : undefined}
     >
+      <title>{bayAccessibleLabel}</title>
+      <rect
+        x={x - 14}
+        y={busY - 8}
+        width={28}
+        height={bayHitAreaHeight}
+        fill="transparent"
+        pointerEvents="all"
+        data-testid={`sld-v2-bay-${bayRef}-hit-area`}
+        data-hit-area="true"
+      />
       {/* Connection point to SN bus */}
       <circle
         cx={x}
@@ -218,7 +252,13 @@ export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
                       </text>
                     </g>
                     {/* ANSI 67 — directional overcurrent (bottom, GPZ feeders) */}
-                    {(bayRole === FIELD_ROLE.GPZ_LINE_BAY || bayRole === FIELD_ROLE.LINE_OUT) && (
+                    {(
+                      bayRole === FIELD_ROLE.GPZ_LINE_BAY ||
+                      bayRole === FIELD_ROLE.LINE_OUT ||
+                      bayRole === FIELD_ROLE.DER_PV ||
+                      bayRole === FIELD_ROLE.DER_BESS ||
+                      bayRole === FIELD_ROLE.DER_FW
+                    ) && (
                       <g
                         data-testid={`sld-v2-bay-${bayRef}-protection-67`}
                         data-ansi-code="67"
@@ -266,7 +306,7 @@ export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
        *  kolidować z text gdy dsState='open' — diagonal sięga cx+DS_RADIUS×0.85).
        *  K30-125 audyt fix: label truncation gdy designation > 6 znaków
        *  (anti-overflow przy bay-column near edge). */}
-      {designation && (() => {
+      {showDesignationLabel && designation && (() => {
         const hasDs = visibleApparatusStack.includes('DS' as typeof visibleApparatusStack[number]);
         const labelX = hasDs ? x + 8 : x;
         const labelAnchor = hasDs ? 'start' : 'middle';
@@ -320,7 +360,7 @@ export function BayColumnSn(props: BayColumnSnProps): JSX.Element {
           opacity={0.7}
           data-testid={`sld-v2-bay-${bayRef}-role`}
         >
-          {bayRoleShortLabel(bayRole)}
+          {roleBadgeLabel ?? bayRoleShortLabel(bayRole)}
         </text>
       )}
     </g>
@@ -346,6 +386,12 @@ function bayRoleShortLabel(role: FieldRole): string {
       return 'L';
     case FIELD_ROLE.RMU_LINE:
       return 'L';
+    case FIELD_ROLE.DER_PV:
+      return 'PV';
+    case FIELD_ROLE.DER_BESS:
+      return 'BESS';
+    case FIELD_ROLE.DER_FW:
+      return 'FW';
     default:
       return '';
   }

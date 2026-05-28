@@ -1,0 +1,23 @@
+{
+  "test": "station_transformer_empty_state_action",
+  "pass": true,
+  "beforeClick": {
+    "addButton": "Dodaj transformator z katalogu",
+    "emptyState": "Brak transformatora SN/nN w modelu stacji.Transformator musi zostać dodany jako element ENM z pozycji katalogowej. Bez tego obliczenia zwarciowe, rozpływ mocy, dobór zabezpieczeń i raport pozostają zablokowane dla toru nN.Dodaj transformator z katalogu",
+    "transformerContent": "Transformatory SN/nN (0)Brak transformatora SN/nN w modelu stacji.Transformator musi zostać dodany jako element ENM z pozycji katalogowej. Bez tego obliczenia zwarciowe, rozpływ mocy, dobór zabezpieczeń i raport pozostają zablokowane dla toru nN.Dodaj transformator z katalogu",
+    "url": "http://127.0.0.1:5173/#sld?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8&overlay=1&legend=1&sel=stn%2Fac3f845407ac60c5df26c7e641dacec2%2Fstation%2Fbay%2Fstn%2Fac3f845407ac60c5df26c7e641dacec2%2Fsn_field%2F001&type=Station&name=Stacja+B+-+Element+stacji",
+    "visibleErrors": [
+      "ℹOtwarto konfigurator stacji.×"
+    ]
+  },
+  "afterClick": {
+    "bodySample": "ℹOtwarto konfigurator stacji.×↶Cofnij↷PonówMV-DESIGN-PRO12.2ProjektE2E SLD 0002Zakres / wariantZakres obliczeń z adresuKonfiguruj zakresWyniki do obliczenia02:48:3428.05.2026ObliczNakładkaAnalizyEksportFaza projektu:ANALIZAKontrola:0Obliczenia:do obliczeniaSzyny:15Odcinki SN:7Pola SN:4Stacje:1Długość:3,92 kmTR:2Odbiory nN:1SzukajKatalogKontrolaMetadaneHistoriaSiećSchematStudiaWynikiWZabezpieczeniaUkładyKatalogiRaportyHistoriaSchemat i topologiaNastępna akcjai●Układ dopuszczony do analizyAnalizaEtap układudo analizyPrzegląd technicznyUkład skonfigurowany do obliczeń.GPZ i zasilanie●1⊙Źródło GPZ 15 kV●Stacje SN/nN●1⊙Stacja B · stacja przelotowa●Magistrale i odcinki SN●7⊙F2 · YAKXS 3×120/16 · 0,21 km●⊙Odcinek 02 · YAKXS 3×120/16 · 0,09 km●⊙Odcinek 03 · YAKXS 3×120/16 · 0,12 km●⊙Odcinek 04 · 3 × NA2XS2Y 1×150/25 mm² · 1,00 km●⊙Odcinek 05 · YAKXS 3×120/16 · 0,50 km●⊙Odcinek 06 · YAKXS 3×120/16 · 1,00 km●⊙Odcinek 07 · 3 × NA2XS2Y 1×240/25 mm² · 1,00 km●Układy PV/BESS/FW●1⊙PV 01 · falownik PV · Stacja B · 0,5 MW●Odbiory nN●1⊙Odbiór nN 1 - Stacja B · 0,03 MW●+Dodaj układKonfiguracja34GPZ 15 kVŹródło zasilaniaWE - WEWY - WYTR - transformator stacjiTR - TRS01WE - WEWY - WYODG - ODG 1ZKSN15,0 kVZKSN SNGPZ 15 kVTopologia sieci+-[]UKŁADY PV/BESS/FW:＋ PV (fotowoltaika)＋ BESS (magazyn)＋ FW (wiatr)☀ Jasny↓ SVGEksportuj schemat ▾▴ Warstwy (13)▸ Dowody (8)▸ Drzewo układuKarta technicznaSchemat/Stacja transformatorowa SN/nN/Dodaj transformator SN/nNDodaj transformator SN/nNBlokada operacjiTransformator SN/nN nie nalezy do ukladu GPZ lub zrodla systemowego.Bieżący zestaw: Zakres obliczeń z adresu. Zakres obliczeń: Zakres obliczeń z adresu. Wariant: Zakres obliczeń z adresu.Schemat / Układ|Projekt:E2E SLD 0002|Zakres obliczeń:Zakres obliczeń z adresu|Wariant:nie wybrano|Wersja układu:aktual",
+    "hasAddTransformerSurface": true,
+    "operationModalText": [
+      "Blokada operacjiTransformator SN/nN nie nalezy do ukladu GPZ lub zrodla systemowego.",
+      "Blokada operacjiTransformator SN/nN nie nalezy do ukladu GPZ lub zrodla systemowego."
+    ],
+    "url": "http://127.0.0.1:5173/#sld?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8&overlay=1&legend=1&sel=stn%2Fac3f845407ac60c5df26c7e641dacec2%2Fstation%2Fbay%2Fstn%2Fac3f845407ac60c5df26c7e641dacec2%2Fsn_field%2F001&type=Station&name=Stacja+B+-+Element+stacji"
+  },
+  "screenshotPath": "C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\mv-design-pro\\tmp\\browser-qa-e2e\\07_station_transformer_empty_action_retest.png"
+}

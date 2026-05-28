@@ -1,0 +1,170 @@
+{
+  "panelText": "Karta technicznaSchemat/Stacja SN/nN 1Stacja SN/nN 1Konfigurator stacji SN/nNStacja SN/nN 1Dodaj PVDodaj BESSDodaj FWSNKonfigurator stacji1 / 17SNStacja SN/nN 1 · Przyłączenie SN2Pola SN1TR0DERSN1Przyłączenie SNMiejsce w ciągu, porty i dane stacji2Rozdzielnia SNUkład szyn, sekcje, prądy znamionowe3Pola SN i uzależnieniaRole pól i sekwencje łączeń4Aparatura SNŁączniki, przekładniki i pakiety pólPomiary5Przekładniki prądoweRdzenie, klasy i obciążenia wtórne6Przekładniki napięcioweUkład napięciowy i współczynnik napięciowy7Liczniki i telemechanikaPomiary rozliczeniowe i sygnałyStacja8TransformatorMoc, grupa, zaczepy i poziomy nN9UziemienieNeutralny SN, siatka i wymagania 67N10Strona nNRozdzielnice, odpływy i odbioryOZE11PV, BESS i FWWarianty przyłączenia i PCC12Jakość energiiRegulacja, bilans i wpływ źródełOchrona13ZabezpieczeniaPrzekaźniki, nastawy i selektywność14NC RfG i PTPiREEProfile źródeł i wymagania przyłączenioweInfrastruktura15SCADA i infrastrukturaSterowanie, telepomiary i automatyka16Analiza sieciowaCiąg SN, moce, napięcia i stratyRaport17Obliczenia i raportZakres obliczeń, dowody i eksportSN-1 · SNPrzyłączenie SNMiejsce w ciągu, porty i dane stacjiNastępny krok: Rozdzielnia SNIdentyfikacja i wariant stacjiDane ruchowe i wariant katalogowy stacji SN/nN.Dane podstawoweNazwa stacjiOznaczenie ruchoweTyp topologiczny: przelotowa(określany z układu pól SN)Typ konstrukcyjny—",
+  "selectionText": [
+    "Stacja SN/nN 1",
+    "UKŁADY PV/BESS/FW:",
+    "Stacja SN/nN 1",
+    "Stacja SN/nN 1",
+    "Stacja SN/nN 1",
+    "Stacja SN/nN 1 · Przyłączenie SN",
+    "Transformator",
+    "WE-1\tWejście SN\t15\tPole IN — Stacja SN/nN 1\ttor zasilający SN",
+    "TR-1\tTransformator SN\t15\tPole TR — Stacja SN/nN 1\ttransformator stacji"
+  ],
+  "stationActions": [
+    {
+      "href": null,
+      "testId": "der-palette-btn-PV",
+      "text": "＋ PV (fotowoltaika)"
+    },
+    {
+      "href": null,
+      "testId": "der-palette-btn-BESS",
+      "text": "＋ BESS (magazyn)"
+    },
+    {
+      "href": null,
+      "testId": "der-palette-btn-FW",
+      "text": "＋ FW (wiatr)"
+    },
+    {
+      "href": null,
+      "testId": "station-add-pv-shortcut",
+      "text": "Dodaj PV"
+    },
+    {
+      "href": null,
+      "testId": "station-add-bess-shortcut",
+      "text": "Dodaj BESS"
+    },
+    {
+      "href": null,
+      "testId": "station-add-fw-shortcut",
+      "text": "Dodaj FW"
+    },
+    {
+      "href": null,
+      "testId": "station-config-tab-sn-switchgear",
+      "text": "2Rozdzielnia SNUkład szyn, sekcje, prądy znamionowe"
+    },
+    {
+      "href": null,
+      "testId": "station-config-tab-transformer",
+      "text": "8TransformatorMoc, grupa, zaczepy i poziomy nN"
+    },
+    {
+      "href": null,
+      "testId": "station-config-tab-earthing",
+      "text": "9UziemienieNeutralny SN, siatka i wymagania 67N"
+    },
+    {
+      "href": null,
+      "testId": "station-config-tab-nn-switchgear",
+      "text": "10Strona nNRozdzielnice, odpływy i odbiory"
+    },
+    {
+      "href": null,
+      "testId": "station-config-tab-der-sources",
+      "text": "11PV, BESS i FWWarianty przyłączenia i PCC"
+    },
+    {
+      "href": null,
+      "testId": null,
+      "text": "Dalej: Rozdzielnia SN"
+    }
+  ],
+  "technicalCards": [
+    {
+      "tag": "DIV",
+      "testId": "app-root",
+      "text": "↶Cofnij↷PonówMV-DESIGN-PRO12.2ProjektProjekt bez nazwyZakres / wariantZakres 50 szablonówKonfiguruj zakresWyniki do obliczenia00:56:3027.05.2026ObliczNakładkaAnalizyEksportFaza projektu:ANALIZAKontrola:0Obliczenia:do obliczeniaSzyny:12Odcinki SN:2Pola SN:2Stacje:1Długość:2,00 kmTR:3Odbiory nN:0SzukajKatalogKontrolaMetadaneHistoriaSiećSchematStudiaWynikiWZabezpieczeniaUkładyKatalogiRaportyHistoriaSchemat i topologiaNastępna akcjai●Układ dopuszczony do analizyAnalizaEtap układudo analizyPrzegląd t"
+    },
+    {
+      "tag": "DIV",
+      "testId": "canonical-layout",
+      "text": "↶Cofnij↷PonówMV-DESIGN-PRO12.2ProjektProjekt bez nazwyZakres / wariantZakres 50 szablonówKonfiguruj zakresWyniki do obliczenia00:56:3027.05.2026ObliczNakładkaAnalizyEksportFaza projektu:ANALIZAKontrola:0Obliczenia:do obliczeniaSzyny:12Odcinki SN:2Pola SN:2Stacje:1Długość:2,00 kmTR:3Odbiory nN:0SzukajKatalogKontrolaMetadaneHistoriaSiećSchematStudiaWynikiWZabezpieczeniaUkładyKatalogiRaportyHistoriaSchemat i topologiaNastępna akcjai●Układ dopuszczony do analizyAnalizaEtap układudo analizyPrzegląd t"
+    },
+    {
+      "tag": "ASIDE",
+      "testId": "context-panel",
+      "text": "Schemat i topologiaNastępna akcjai●Układ dopuszczony do analizyAnalizaEtap układudo analizyPrzegląd technicznyUkład skonfigurowany do obliczeń.GPZ i zasilanie●1⊙GPZ 1●Stacje SN/nN●1⊙Stacja SN/nN 1 · stacja SN/nN●⋮Magistrale i odcinki SN●2⊙Odcinek 01 · 3 × NA2XS2Y 1×150/25 mm² · 1,00 km●⊙Odcinek 02 · 3 × NA2XS2Y 1×150/25 mm² · 1,00 km●+Dodaj układKonfiguracja28"
+    },
+    {
+      "tag": "DIV",
+      "testId": "schemat-context-panel",
+      "text": "Schemat i topologiaNastępna akcjai●Układ dopuszczony do analizyAnalizaEtap układudo analizyPrzegląd technicznyUkład skonfigurowany do obliczeń.GPZ i zasilanie●1⊙GPZ 1●Stacje SN/nN●1⊙Stacja SN/nN 1 · stacja SN/nN●⋮Magistrale i odcinki SN●2⊙Odcinek 01 · 3 × NA2XS2Y 1×150/25 mm² · 1,00 km●⊙Odcinek 02 · 3 × NA2XS2Y 1×150/25 mm² · 1,00 km●+Dodaj układKonfiguracja28"
+    },
+    {
+      "tag": "DIV",
+      "testId": "project-tree",
+      "text": "GPZ i zasilanie●1⊙GPZ 1●Stacje SN/nN●1⊙Stacja SN/nN 1 · stacja SN/nN●⋮Magistrale i odcinki SN●2⊙Odcinek 01 · 3 × NA2XS2Y 1×150/25 mm² · 1,00 km●⊙Odcinek 02 · 3 × NA2XS2Y 1×150/25 mm² · 1,00 km●"
+    },
+    {
+      "tag": "BUTTON",
+      "testId": "model-tree-row-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation",
+      "text": "⊙Stacja SN/nN 1 · stacja SN/nN●⋮"
+    },
+    {
+      "tag": "ASIDE",
+      "testId": "inspector-panel-sidebar",
+      "text": "Karta technicznaSchemat/Stacja SN/nN 1Stacja SN/nN 1Konfigurator stacji SN/nNStacja SN/nN 1Dodaj PVDodaj BESSDodaj FWSNKonfigurator stacji1 / 17SNStacja SN/nN 1 · Przyłączenie SN2Pola SN1TR0DERSN1Przyłączenie SNMiejsce w ciągu, porty i dane stacji2Rozdzielnia SNUkład szyn, sekcje, prądy znamionowe3Pola SN i uzależnieniaRole pól i sekwencje łączeń4Aparatura SNŁączniki, przekładniki i pakiety pólPomiary5Przekładniki prądoweRdzenie, klasy i obciążenia wtórne6Przekładniki napięcioweUkład napięciowy "
+    },
+    {
+      "tag": "DIV",
+      "testId": "workspace-surface-panel",
+      "text": "Schemat/Stacja SN/nN 1Stacja SN/nN 1Konfigurator stacji SN/nNStacja SN/nN 1Dodaj PVDodaj BESSDodaj FWSNKonfigurator stacji1 / 17SNStacja SN/nN 1 · Przyłączenie SN2Pola SN1TR0DERSN1Przyłączenie SNMiejsce w ciągu, porty i dane stacji2Rozdzielnia SNUkład szyn, sekcje, prądy znamionowe3Pola SN i uzależnieniaRole pól i sekwencje łączeń4Aparatura SNŁączniki, przekładniki i pakiety pólPomiary5Przekładniki prądoweRdzenie, klasy i obciążenia wtórne6Przekładniki napięcioweUkład napięciowy i współczynnik n"
+    },
+    {
+      "tag": "DIV",
+      "testId": "station-configurator-surface",
+      "text": "Konfigurator stacji SN/nNStacja SN/nN 1Dodaj PVDodaj BESSDodaj FWSNKonfigurator stacji1 / 17SNStacja SN/nN 1 · Przyłączenie SN2Pola SN1TR0DERSN1Przyłączenie SNMiejsce w ciągu, porty i dane stacji2Rozdzielnia SNUkład szyn, sekcje, prądy znamionowe3Pola SN i uzależnieniaRole pól i sekwencje łączeń4Aparatura SNŁączniki, przekładniki i pakiety pólPomiary5Przekładniki prądoweRdzenie, klasy i obciążenia wtórne6Przekładniki napięcioweUkład napięciowy i współczynnik napięciowy7Liczniki i telemechanikaPo"
+    },
+    {
+      "tag": "DIV",
+      "testId": "station-configurator",
+      "text": "SNKonfigurator stacji1 / 17SNStacja SN/nN 1 · Przyłączenie SN2Pola SN1TR0DERSN1Przyłączenie SNMiejsce w ciągu, porty i dane stacji2Rozdzielnia SNUkład szyn, sekcje, prądy znamionowe3Pola SN i uzależnieniaRole pól i sekwencje łączeń4Aparatura SNŁączniki, przekładniki i pakiety pólPomiary5Przekładniki prądoweRdzenie, klasy i obciążenia wtórne6Przekładniki napięcioweUkład napięciowy i współczynnik napięciowy7Liczniki i telemechanikaPomiary rozliczeniowe i sygnałyStacja8TransformatorMoc, grupa, zacz"
+    },
+    {
+      "tag": "NAV",
+      "testId": "station-config-nav",
+      "text": "SN1Przyłączenie SNMiejsce w ciągu, porty i dane stacji2Rozdzielnia SNUkład szyn, sekcje, prądy znamionowe3Pola SN i uzależnieniaRole pól i sekwencje łączeń4Aparatura SNŁączniki, przekładniki i pakiety pólPomiary5Przekładniki prądoweRdzenie, klasy i obciążenia wtórne6Przekładniki napięcioweUkład napięciowy i współczynnik napięciowy7Liczniki i telemechanikaPomiary rozliczeniowe i sygnałyStacja8TransformatorMoc, grupa, zaczepy i poziomy nN9UziemienieNeutralny SN, siatka i wymagania 67N10Strona nNRo"
+    },
+    {
+      "tag": "BUTTON",
+      "testId": "station-config-tab-transformer",
+      "text": "8TransformatorMoc, grupa, zaczepy i poziomy nN"
+    },
+    {
+      "tag": "DIV",
+      "testId": "station-config-content-basic",
+      "text": "Identyfikacja i wariant stacjiDane ruchowe i wariant katalogowy stacji SN/nN.Dane podstawoweNazwa stacjiOznaczenie ruchoweTyp topologiczny: przelotowa(określany z układu pól SN)Typ konstrukcyjny— wybierz —wnętrzowakontenerowasłupowaprefabrykowanainnaNapięcie SN: 15 kVUziemienie neutralne SN (z katalogu)— wybierz —Sieć izolowana (bez uziemienia neutralnego)Sieć skompensowana (cewka Petersena PCK)Sieć uziemiona przez rezystor — niski (R≈7 Ω, Ik1≈300 A)Sieć uziemiona przez rezystor — średni (R≈40 Ω"
+    },
+    {
+      "tag": "SECTION",
+      "testId": null,
+      "text": "Wpięcie w ciąg SNPorty, pola wejściowe i wyjściowe oraz ciągłość terminali.Topologia i portyPorty podłączone2Wolne wyjścia SN0Porty zewnętrzne stacjiPortTypU_n [kV]PoleStan portuWE-1Wejście SN15Pole IN — Stacja SN/nN 1tor zasilający SNTR-1Transformator SN15Pole TR — Stacja SN/nN 1transformator stacji"
+    },
+    {
+      "tag": "DIV",
+      "testId": "station-config-topology",
+      "text": "Topologia i portyPorty podłączone2Wolne wyjścia SN0Porty zewnętrzne stacjiPortTypU_n [kV]PoleStan portuWE-1Wejście SN15Pole IN — Stacja SN/nN 1tor zasilający SNTR-1Transformator SN15Pole TR — Stacja SN/nN 1transformator stacji"
+    },
+    {
+      "tag": "DIV",
+      "testId": "station-config-ports-list",
+      "text": "Porty zewnętrzne stacjiPortTypU_n [kV]PoleStan portuWE-1Wejście SN15Pole IN — Stacja SN/nN 1tor zasilający SNTR-1Transformator SN15Pole TR — Stacja SN/nN 1transformator stacji"
+    },
+    {
+      "tag": "TR",
+      "testId": "station-port-WE-1",
+      "text": "WE-1Wejście SN15Pole IN — Stacja SN/nN 1tor zasilający SN"
+    },
+    {
+      "tag": "TR",
+      "testId": "station-port-TR-1",
+      "text": "TR-1Transformator SN15Pole TR — Stacja SN/nN 1transformator stacji"
+    }
+  ],
+  "url": "http://127.0.0.1:5173/#sld?sel=sub%2Fbb66d55295e2defe1fdbf0cf3fa06f40%2Fsubstation&type=Station&name=Stacja+SN%2FnN+1",
+  "visibleForbidden": []
+}

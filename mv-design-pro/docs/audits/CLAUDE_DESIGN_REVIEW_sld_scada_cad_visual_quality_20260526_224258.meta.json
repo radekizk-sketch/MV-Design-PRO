@@ -1,0 +1,16 @@
+﻿{
+    "feature":  "sld_scada_cad_visual_quality",
+    "timestamp":  "20260526_224258",
+    "command":  "claude -p \u003cprompt\u003e",
+    "timeout_seconds":  300,
+    "prompt_path":  "docs\\audits\\CLAUDE_DESIGN_REVIEW_sld_scada_cad_visual_quality_20260526_224258.prompt.md",
+    "review_path":  "docs\\audits\\CLAUDE_DESIGN_REVIEW_sld_scada_cad_visual_quality_20260526_224258.md",
+    "decision_path":  "docs\\audits\\CLAUDE_DESIGN_REVIEW_sld_scada_cad_visual_quality_20260526_224258.decision.md",
+    "cwd":  "C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\mv-design-pro",
+    "claude_path":  "C:\\Users\\radek\\AppData\\Roaming\\npm\\claude.ps1",
+    "exit_code":  0,
+    "status":  "completed",
+    "started_at":  "2026-05-26T22:42:58.2589052+02:00",
+    "completed_at":  "2026-05-26T22:44:43.3728106+02:00",
+    "output_bytes":  12817
+}

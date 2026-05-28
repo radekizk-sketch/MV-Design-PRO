@@ -1,0 +1,48 @@
+{
+  "logs": [],
+  "diagnostics": {
+    "stationFieldHits": [
+      {
+        "aria": "Pole WE WE",
+        "dataHitArea": "true",
+        "hasHitArea": true,
+        "role": "button",
+        "testid": "sld-v2-bay-column-sn-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/000"
+      },
+      {
+        "aria": "Pole WY WY",
+        "dataHitArea": "true",
+        "hasHitArea": true,
+        "role": "button",
+        "testid": "sld-v2-bay-column-sn-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/001"
+      },
+      {
+        "aria": "Pole TR TR",
+        "dataHitArea": "true",
+        "hasHitArea": true,
+        "role": "button",
+        "testid": "sld-v2-bay-column-sn-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/002"
+      }
+    ],
+    "stationTexts": [
+      {
+        "fontSize": 14,
+        "testid": "sld-v2-mini-station-code-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+        "text": "S01"
+      },
+      {
+        "fontSize": 10,
+        "testid": "sld-v2-mini-station-nn-count-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+        "text": "1 nN"
+      },
+      {
+        "fontSize": 10,
+        "testid": "sld-v2-mini-rmu-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+        "text": "Stacja B"
+      }
+    ],
+    "tooLarge": [],
+    "transformerHit": [],
+    "url": "http://127.0.0.1:5173/#sld?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8&sel=stn%2Fac3f845407ac60c5df26c7e641dacec2%2Fstation&type=Station&name=Stacja+B"
+  }
+}

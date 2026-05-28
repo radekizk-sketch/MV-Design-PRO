@@ -28,7 +28,7 @@ describe('apparatusContracts — kanon', () => {
   });
 
   it('9 kanonicznych ról pól', () => {
-    expect(ALL_FIELD_ROLES.length).toBe(9);
+    expect(ALL_FIELD_ROLES.length).toBe(12);
   });
 
   it('wszystkie role pól są SN-side', () => {
@@ -64,6 +64,6 @@ describe('apparatusContracts — kanon', () => {
     expect(ENM_BAY_ROLE_TO_FIELD_ROLE.COUPLER).toBe(FIELD_ROLE.COUPLER);
     expect(ENM_BAY_ROLE_TO_FIELD_ROLE.MEASUREMENT).toBe(FIELD_ROLE.MEASUREMENT);
     expect(ENM_BAY_ROLE_TO_FIELD_ROLE.FEEDER).toBe(FIELD_ROLE.LINE_OUT);
-    expect(ENM_BAY_ROLE_TO_FIELD_ROLE.OZE).toBe(FIELD_ROLE.LINE_OUT);
+    expect(ENM_BAY_ROLE_TO_FIELD_ROLE.OZE).toBe(FIELD_ROLE.DER_PV);
   });
 });

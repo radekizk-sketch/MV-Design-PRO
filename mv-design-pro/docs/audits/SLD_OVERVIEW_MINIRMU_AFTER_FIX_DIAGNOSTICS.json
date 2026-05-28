@@ -1,0 +1,28 @@
+{
+  "metrics": {
+    "bayMarkerTextCount": 0,
+    "bayMarkerTexts": [],
+    "consoleText": false,
+    "frameworkOverlay": false,
+    "miniRoots": 1,
+    "overviewBays": 2,
+    "overviewEnclosure": 1,
+    "title": "MV-DESIGN PRO",
+    "url": "http://127.0.0.1:5173/#variants?case=a889f26d-7f3b-425e-a5ec-94b2d45569c8"
+  },
+  "logs": [],
+  "root": {
+    "anchors": 2,
+    "designations": [],
+    "html": "<g data-testid=\"sld-v2-mini-rmu-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation\" data-parity-key=\"station.mini.root\" data-element-kind=\"mini_block_compact\" data-lod-variant=\"compact\" data-element-id=\"sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation\" data-footprint-type=\"mv_lv_terminal\" data-bay-count=\"2\" data-station-not-rectangle=\"true\" transform=\"translate(900, 948)\" style=\"cursor: pointer;\" data-readable-label-stack=\"true\" data-port-anchor-count=\"2\"><rect x=\"-95\" y=\"-68\" width=\"190\" height=\"136\" fill=\"#1E242A\" opacity=\"0\" stroke=\"transparent\" stroke-width=\"1.5\" rx=\"4\" ry=\"4\" data-parity-key=\"station.mini.body\"></rect><g data-testid=\"sld-v2-mini-rmu-bay-layout-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation\"><g data-testid=\"sld-v2-mini-rmu-enclosure-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation\" data-element-kind=\"rmu_enclosure\" data-layout-role=\"station_switchgear_frame\"><rect x=\"-91\" y=\"-66\" width=\"182\" height=\"92\" rx=\"3\" ry=\"3\" fill=\"#07111C\" fill-opacity=\"0.18\" stroke=\"#13435A\" stroke-width=\"1.1\"></rect><text x=\"-87\" y=\"-71\" text-anchor=\"start\" fill=\"#B9C0C7\" font-family=\"&quot;Inter&quot;, system-ui, sans-serif\" font-size=\"7\" font-weight=\"800\" data-testid=\"sld-v2-mini-rmu-e",
+    "kind": "mini_block_compact",
+    "lod": "compact",
+    "markerTexts": [],
+    "readable": "true",
+    "roles": [
+      "WE",
+      "TR"
+    ]
+  },
+  "generatedAt": "2026-05-26T22:01:07.685Z"
+}

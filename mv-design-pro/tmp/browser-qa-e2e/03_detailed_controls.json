@@ -1,0 +1,453 @@
+[
+  {
+    "name": "sld_station_drawer_click",
+    "status": "PASS",
+    "ms": 0,
+    "value": {
+      "clicked": "[data-element-kind=\"station\"]",
+      "dialogs": [
+        {
+          "aria": "Detal: ZKSN SN",
+          "testId": "sld-v2-detail-drawer",
+          "text": "Węzeł sieci SNZKSN SN×Karta technicznaOperacje⇱ Otwórz pełny widokKonfiguruj obiektOtwórz kartę ZK SNRozpocznij odgałęzieniePokaż wynikiUsuń ZK SNUkład: Złącze kablowe SNWĘZEŁ MAGISTRALI SNZłącze kablowe SNDANE KOMPLETNENapięcie znamionowe15 kVPołączone odcinki4Pozycja katalogowaRSN-6Typ wezlaZK SNWęzeł gotowy do konfiguracjiDane węzła są spójne z widokiem SLD i kartą techniczną."
+        }
+      ]
+    }
+  },
+  {
+    "name": "station_config_action_opens_configurator",
+    "status": "FAIL",
+    "ms": 1089,
+    "error": "Error: Station configurator not opened\n    at C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\.node_repl_cell_25.mjs:99:145\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async step3 (C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\.node_repl_cell_25.mjs:58:88)\n    at async C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\.node_repl_cell_25.mjs:95:1"
+  },
+  {
+    "name": "station_transformer_tab_has_no_empty_dashes",
+    "status": "FAIL",
+    "ms": 43,
+    "error": "ReferenceError: Cannot access 'tab' before initialization\n    at C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\.node_repl_cell_25.mjs:105:15\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async step3 (C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\.node_repl_cell_25.mjs:58:88)\n    at async C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\.node_repl_cell_25.mjs:102:1"
+  },
+  {
+    "name": "ncrfg_tab_controls_visible",
+    "status": "PASS",
+    "ms": 0,
+    "value": {
+      "hasRunButton": true,
+      "buttons": [
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "×",
+          "title": null
+        },
+        {
+          "disabled": true,
+          "testId": null,
+          "text": "↶Cofnij",
+          "title": "Cofnij ostatnią operację"
+        },
+        {
+          "disabled": true,
+          "testId": null,
+          "text": "↷Ponów",
+          "title": "Ponów ostatnią cofniętą operację"
+        },
+        {
+          "disabled": false,
+          "testId": "ctx-project",
+          "text": "ProjektE2E SLD 0002",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": "ctx-wariant",
+          "text": "Zakres / wariantZakres obliczeń z adresu",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": "ctx-przypadek",
+          "text": "Konfiguruj zakres",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": "top-bar-calculate",
+          "text": "Sprawdź konfigurację",
+          "title": "Wyniki są aktualne. Zmień konfigurację układu, aby wykonać analizę ponownie."
+        },
+        {
+          "disabled": false,
+          "testId": "top-bar-overlay",
+          "text": "Nakładka",
+          "title": "Nakładka wyników"
+        },
+        {
+          "disabled": false,
+          "testId": "top-bar-results",
+          "text": "Analizy",
+          "title": "Analizy obliczeniowe"
+        },
+        {
+          "disabled": false,
+          "testId": "top-bar-export",
+          "text": "Eksport",
+          "title": "Eksport raportów"
+        },
+        {
+          "disabled": false,
+          "testId": "nav-area-MODEL_SIECI",
+          "text": "Sieć",
+          "title": "Budowa sieci - topologia, elementy i parametry. Skrót: Ctrl+1."
+        },
+        {
+          "disabled": false,
+          "testId": "nav-area-SCHEMAT_TOPOLOGIA",
+          "text": "Schemat",
+          "title": "Schemat i topologia - SLD, topologia i przełączenia. Skrót: Ctrl+2."
+        },
+        {
+          "disabled": false,
+          "testId": "nav-area-STUDIA_OBLICZENIOWE",
+          "text": "Studia",
+          "title": "Studia obliczeniowe - warianty pracy sieci, obliczenia, wyniki i raporty. Skrót: Ctrl+3."
+        },
+        {
+          "disabled": false,
+          "testId": "nav-area-WYNIKI_ANALIZY",
+          "text": "WynikiW",
+          "title": "Wyniki i analizy - wyniki, porównania i nakładki SLD. Skrót: Ctrl+4."
+        },
+        {
+          "disabled": false,
+          "testId": "nav-area-ZABEZPIECZENIA_AUTOMATYKA",
+          "text": "Zabezpieczenia",
+          "title": "Zabezpieczenia i automatyka - nastawy, selektywność i automatyka. Skrót: Ctrl+5."
+        },
+        {
+          "disabled": false,
+          "testId": "nav-area-ZRODLA_PRZYLACZENIA",
+          "text": "Układy",
+          "title": "Układy PV/BESS/FW - OZE, BESS, FW i profile operatora. Skrót: Ctrl+6."
+        },
+        {
+          "disabled": false,
+          "testId": "nav-area-KATALOGI_TECHNICZNE",
+          "text": "Katalogi",
+          "title": "Katalogi techniczne - typy, aparatura, przewody i profile. Skrót: Ctrl+7."
+        },
+        {
+          "disabled": false,
+          "testId": "nav-area-RAPORTY_UZASADNIENIA",
+          "text": "Raporty",
+          "title": "Raporty i uzasadnienia - raporty OSD, audyt i pakiet uzasadnienia. Skrót: Ctrl+8."
+        },
+        {
+          "disabled": false,
+          "testId": "nav-area-HISTORIA_AUDYT",
+          "text": "Historia",
+          "title": "Historia i audyt - wersje układu użyte do obliczeń, ostatnie obliczenia, zmiany i ślad audytu. Skrót: Ctrl+9."
+        },
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "Schemat",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "Analizy techniczne",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "Koordynacja zabezpieczeń",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "Charakterystyki FRT/LVRT/HVRT",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "Rozpływ mocy NR/GS/FD",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "Stan fazowy SN",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "Stabilność dynamiczna",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "Wkłady źródeł rozszerzone",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "Weryfikacja cieplna i dynamiczna",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "Testy NC RfG",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "Analiza wrażliwości",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "Porównaj przebiegi (A/B)",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "Raporty OSD i audytowe",
+          "title": null
+        },
+        {
+          "disabled": true,
+          "testId": "ncrfg-run-tests",
+          "text": "Wykonaj testy NC RfG",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": "ncrfg-open-sld",
+          "text": "Przejdź do schematu",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": "ncrfg-open-catalog",
+          "text": "Otwórz katalog falowników",
+          "title": null
+        }
+      ],
+      "sample": "ℹ\nOtwarto kartę węzła sieci SN.\n×\n↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nE2E SLD 0002\nZAKRES / WARIANT\nZakres obliczeń z adresu\nKonfiguruj zakres\nWyniki aktualne\n02:17:30\n28.05.2026\nSprawdź konfigurację\nNakładka\nAnalizy\nEksport\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nSchemat\n/\nAnalizy techniczne\nAnalizy techniczne\nPODGLĄD SCHEMATU\nKontekst układu jest zsynchronizowany z głównym schematem.\nPowiązany obiekt: Aktywne obliczenie.\nANALIZA\nKontekst analityczny\nPROJEKT\tE2E SLD 0002\nWARIANT\tZakres obliczeń z adresu\nWERSJA UKŁADU\tAktualna wersja układu\nOBLICZENIE\tZwarcie trójfazowe (3F) · 28.05.2026, 02:15:13\nOBIEKT\tAktywne obliczenie\nZAKŁADKA\tTesty NC RfG\nPRZEJŚCIA ANALITYCZNE\nNawigacja analityczna\nKoordynacja zabezpieczeń\nCharakterystyki FRT/LVRT/HVRT\nRozpływ mocy NR/GS/FD\nStan fazowy SN\nStabilność dynamiczna\nWkłady źródeł rozszerzone\nWeryfikacja cieplna i dynamiczna\nTesty NC RfG\nAnaliza wrażliwości\nPorównaj przebiegi (A/B)\nRaporty OSD i audytowe\nWYNIKI\nBieżący widok analityki\nTESTY NC RFG\nPakiet symulacji zgodności PTPiREE\n\nZakładka wykonuje pełny pakiet testów wymaganych procedurą PTPiREE v3.0 dla modułu PV/BESS/FW: częstotliwość, regulacje P/Q/cosφ/U, PMAX/PMIN, FRT/HVRT, odbudowę P, prąd bierny, komendy redukcji generacji i zdolności dodatkowe.\n\nWykonaj testy NC RfG\nMATRYCA AUDYTU SPECJALISTYCZNEGO\nKontrola każdego kroku flow\n6 ról / zero ukrytych wyjątków\nProfesor sieci SN\nTopologia, PCC, poziom napięcia i brak symboli pozornych.\nProjektant OSD\nCzy użytkownik przechodzi od katalogu do raportu bez ręcznego zgadywania danych.\nSpecjalista DER/NC RfG\nFalownik, certyfikat PTPiREE, FRT, P(f), Q(U), SCADA i rejestrator zakłóceń.\nZabezpieczeniowiec\nCzy dane DER wystarczają do późniejszej selektywności i raportu.\nUX lead\nCzytelność kroków,"
+    }
+  },
+  {
+    "name": "report_route_visible",
+    "status": "PASS",
+    "ms": 0,
+    "value": {
+      "url": "http://127.0.0.1:5173/#report?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8",
+      "buttons": [
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "×",
+          "title": null
+        },
+        {
+          "disabled": true,
+          "testId": null,
+          "text": "↶Cofnij",
+          "title": "Cofnij ostatnią operację"
+        },
+        {
+          "disabled": true,
+          "testId": null,
+          "text": "↷Ponów",
+          "title": "Ponów ostatnią cofniętą operację"
+        },
+        {
+          "disabled": false,
+          "testId": "ctx-project",
+          "text": "ProjektE2E SLD 0002",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": "ctx-wariant",
+          "text": "Zakres / wariantZakres obliczeń z adresu",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": "ctx-przypadek",
+          "text": "Konfiguruj zakres",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": "top-bar-calculate",
+          "text": "Sprawdź konfigurację",
+          "title": "Wyniki są aktualne. Zmień konfigurację układu, aby wykonać analizę ponownie."
+        },
+        {
+          "disabled": false,
+          "testId": "top-bar-overlay",
+          "text": "Nakładka",
+          "title": "Nakładka wyników"
+        },
+        {
+          "disabled": false,
+          "testId": "top-bar-results",
+          "text": "Analizy",
+          "title": "Analizy obliczeniowe"
+        },
+        {
+          "disabled": false,
+          "testId": "top-bar-export",
+          "text": "Eksport",
+          "title": "Eksport raportów"
+        },
+        {
+          "disabled": false,
+          "testId": "nav-area-MODEL_SIECI",
+          "text": "Sieć",
+          "title": "Budowa sieci - topologia, elementy i parametry. Skrót: Ctrl+1."
+        },
+        {
+          "disabled": false,
+          "testId": "nav-area-SCHEMAT_TOPOLOGIA",
+          "text": "Schemat",
+          "title": "Schemat i topologia - SLD, topologia i przełączenia. Skrót: Ctrl+2."
+        },
+        {
+          "disabled": false,
+          "testId": "nav-area-STUDIA_OBLICZENIOWE",
+          "text": "Studia",
+          "title": "Studia obliczeniowe - warianty pracy sieci, obliczenia, wyniki i raporty. Skrót: Ctrl+3."
+        },
+        {
+          "disabled": false,
+          "testId": "nav-area-WYNIKI_ANALIZY",
+          "text": "WynikiW",
+          "title": "Wyniki i analizy - wyniki, porównania i nakładki SLD. Skrót: Ctrl+4."
+        },
+        {
+          "disabled": false,
+          "testId": "nav-area-ZABEZPIECZENIA_AUTOMATYKA",
+          "text": "Zabezpieczenia",
+          "title": "Zabezpieczenia i automatyka - nastawy, selektywność i automatyka. Skrót: Ctrl+5."
+        },
+        {
+          "disabled": false,
+          "testId": "nav-area-ZRODLA_PRZYLACZENIA",
+          "text": "Układy",
+          "title": "Układy PV/BESS/FW - OZE, BESS, FW i profile operatora. Skrót: Ctrl+6."
+        },
+        {
+          "disabled": false,
+          "testId": "nav-area-KATALOGI_TECHNICZNE",
+          "text": "Katalogi",
+          "title": "Katalogi techniczne - typy, aparatura, przewody i profile. Skrót: Ctrl+7."
+        },
+        {
+          "disabled": false,
+          "testId": "nav-area-RAPORTY_UZASADNIENIA",
+          "text": "Raporty",
+          "title": "Raporty i uzasadnienia - raporty OSD, audyt i pakiet uzasadnienia. Skrót: Ctrl+8."
+        },
+        {
+          "disabled": false,
+          "testId": "nav-area-HISTORIA_AUDYT",
+          "text": "Historia",
+          "title": "Historia i audyt - wersje układu użyte do obliczeń, ostatnie obliczenia, zmiany i ślad audytu. Skrót: Ctrl+9."
+        },
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "Schemat",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "Raporty OSD i audytowe",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "Zapisz konfigurację raportu",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": "report-export-pdf",
+          "text": "Eksport PDF↓",
+          "title": "Eksportuj raport do formatu PDF"
+        },
+        {
+          "disabled": false,
+          "testId": "report-export-docx",
+          "text": "Eksport DOCX↓",
+          "title": "Eksportuj raport do formatu DOCX"
+        },
+        {
+          "disabled": false,
+          "testId": "report-export-json",
+          "text": "Eksport JSON↓",
+          "title": "Eksportuj raport do formatu JSON"
+        },
+        {
+          "disabled": true,
+          "testId": "proof-export-latex",
+          "text": "Eksport LaTeX🔒",
+          "title": "Eksport uzasadnienia wymaga śladu solvera dla zakończonego obliczenia."
+        },
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "Uzasadnienie inżynierskie",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": null,
+          "text": "Wkłady źródeł",
+          "title": null
+        },
+        {
+          "disabled": false,
+          "testId": "report-osd-open",
+          "text": "Dane OSD",
+          "title": "Otwórz formularz danych OSD (operator, inwestor, projektant, faza, SEP)"
+        },
+        {
+          "disabled": false,
+          "testId": "report-profile-open",
+          "text": "Wybierz profil raportu",
+          "title": "Wybierz profil raportu (OSD / PW / PR / Pełny techniczny)"
+        },
+        {
+          "disabled": false,
+          "testId": "audit2-report-generate-pack",
+          "text": "1. Generuj pakiet uzasadnienia",
+          "title": null
+        },
+        {
+          "disabled": true,
+          "testId": "audit2-report-render",
+          "text": "2. Renderuj raport",
+          "title": null
+        }
+      ],
+      "sample": "ℹ\nOtwarto kartę węzła sieci SN.\n×\n↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nE2E SLD 0002\nZAKRES / WARIANT\nZakres obliczeń z adresu\nKonfiguruj zakres\nWyniki aktualne\n02:17:31\n28.05.2026\nSprawdź konfigurację\nNakładka\nAnalizy\nEksport\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nSchemat\n/\nRaporty OSD i audytowe\nRaporty OSD i audytowe\nPODGLĄD SCHEMATU\nKontekst układu jest zsynchronizowany z głównym schematem.\nPowiązany obiekt: Raport techniczny.\nRaport gotowy\nDalej: wyeksportuj raport techniczny.\nRAPORT\nKonfiguracja raportu\nZAKRES OBIEKTOWY\nCała sieć\nWybrany ciąg\nWybrana stacja\nWybrane pole\nWybrane źródło\nSZCZEGÓŁOWOŚĆ\nStandardowa\nPełna techniczna\nZapisz konfigurację raportu\nEKSPORT\nEksport PDF\n↓\nEksport DOCX\n↓\nEksport JSON\n↓\nEksport LaTeX\n🔒\nPROJEKT\nE2E SLD 0002\nZAKRES I WARUNKI\nZakres obliczeń z adresu\nOSTATNIE OBLICZENIE\nZwarcie trójfazowe (3F) · 28.05.2026, 02:15:13\nTRYB ZAPISU\ntylko odczyt\nZAKRES RAPORTU\ncała sieć\nSZCZEGÓŁOWOŚĆ\nstandardowa\nDRZEWO RAPORTU\n1. Strona tytułowa i identyfikacja projektu\n2. Zakres układu oraz źródło zasilania\n3. Schemat i kontekst topologiczny\n4. Wyniki zwarciowe i rozpływowe\n5. Wkłady źródeł, tor ziemnozwarciowy i uzasadnienie inżynierskie\nUzasadnienie inżynierskie\nWkłady źródeł\nEKSPORT\nKontrakt raportu i eksportu\nOBLICZENIE\nZapisane w śladzie audytu\nTYP ANALIZY\nzwarcie SN\nSTATUS URUCHOMIENIA\nzakończone\nSTAN WYNIKÓW\naktualne\nBRAMA JAKOŚCI\nG4\nKOMPLETNOŚĆ\nKompletny\nPAKIET UZASADNIEŃ\nZapisane w śladzie audytu\nŚLAD WEJŚCIA\nZapisane w śladzie audytu\nUTWORZONO\n28.05.2026, 02:15:13\nZAKRES STOSOWALNOŚCI\nZWARCIE SN\nRAPORT\nWARUNKI WEJŚCIOWE DO SKONFIGUROWANIA\nWarunki wejściowe dla aktywnego uruchomienia są skonfigurowane.\nBIEŻĄCA KONFIGURACJA\nOBLICZENIE\nZapisane w śladzie audytu\nZAKRES RAPORTU\ncała sieć\nSZCZEGÓŁOWOŚĆ\ns"
+    }
+  }
+]

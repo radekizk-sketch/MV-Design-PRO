@@ -34,20 +34,28 @@ import {
   getVariantApparatusGap,
   getVariantApparatusHeight,
 } from './MiniBlockBayLayout';
-import { ApparatusTransformerSymbol } from './GpzApparatusSymbols';
+import {
+  ApparatusCbSquare,
+  ApparatusEarthingSwitch,
+  ApparatusFuse,
+  ApparatusSwitchDisconnector,
+  ApparatusTransformerSymbol,
+} from './GpzApparatusSymbols';
 
 // =============================================================================
 // Constants
 // =============================================================================
 
 const OVERVIEW_WIDTH = 118;
-const OVERVIEW_HEIGHT = 72;
-const COMPACT_WIDTH = 190;
-const COMPACT_HEIGHT = 136;
+const OVERVIEW_HEIGHT = 96;
+const COMPACT_WIDTH = 220;
+const COMPACT_HEIGHT = 240;
 const DETAIL_WIDTH = 220;
 const DETAIL_HEIGHT = 164;
 const DETAIL_DER_WIDTH = 340;
 const DETAIL_DER_HEIGHT = 280;
+const COMPACT_TERRAIN_PORT_Y = -96;
+const COMPACT_EXTERNAL_BRIDGE_CLEARANCE = 18;
 
 // K30-19/31: variant-aware device sizing now via getVariantApparatusHeight()
 // w MiniBlockBayLayout. Kolory DER trzymamy lokalnie przy rendererze stacji.
@@ -104,6 +112,7 @@ export interface MiniBlockRmuRendererProps {
   readonly totalGenerationKw?: number | null;
   readonly snBays: readonly MiniBlockBayDescriptor[];
   readonly hasTransformer: boolean;
+  readonly transformerRefs?: readonly string[];
   readonly transformerRatedKva: number | null;
   readonly nnFeedersCount: number;
   readonly derBadges: readonly MiniBlockDerBadge[];
@@ -145,7 +154,7 @@ function normalizeLabelToken(value: string): string {
 function isGenericStationDisplayName(value: string | null | undefined): boolean {
   if (!value) return false;
   const normalized = normalizeLabelToken(value);
-  return /^stacja\s+(przelotowa|koncowa|odgalezna|sekcyjna)(\s+sn\/nn)?$/.test(normalized);
+  return /^(nowa\s+stacja|stacja\s+sn\/nn(\s+\d+)?|stacja\s+(przelotowa|koncowa|odgalezna|sekcyjna)(\s+sn\/nn)?)(\s+\d+)?$/.test(normalized);
 }
 
 function formatTransformerRatedPower(kva: number): string {
@@ -159,6 +168,23 @@ function overviewStationCodeScale(viewportScale: number | null | undefined): num
     return 1;
   }
   return Math.min(4, Math.max(1, 0.9 / viewportScale));
+}
+
+function capWorldFontSize(
+  worldFontSize: number,
+  viewportScale: number | null | undefined,
+  maxScreenPx: number,
+  minWorldFontSize = 5,
+): number {
+  if (
+    viewportScale === null
+    || viewportScale === undefined
+    || !Number.isFinite(viewportScale)
+    || viewportScale <= 1
+  ) {
+    return worldFontSize;
+  }
+  return Math.max(minWorldFontSize, Math.min(worldFontSize, maxScreenPx / viewportScale));
 }
 
 function overviewDerSummary(
@@ -196,28 +222,42 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
   const labelNameY = variant === 'overview'
     ? 18
     : variant === 'compact'
-      ? 40
+      ? 62
       : showPvCircuit
         ? offsetY + height - 28
         : 72;
   const labelTypeY = variant === 'overview'
     ? labelNameY + 13
     : variant === 'compact'
-      ? labelNameY + 14
+      ? 82
       : showPvCircuit
         ? labelNameY + 12
         : labelNameY + 13;
   const stationNameTextY = labelTypeY + 16;
-  const labelPowerY = stationNameTextY
-    + (variant === 'compact' ? 24 : variant === 'detail' && !showPvCircuit ? 22 : 14);
+  const labelPowerY = variant === 'compact'
+    ? 120
+    : stationNameTextY + (variant === 'detail' && !showPvCircuit ? 22 : 14);
   const auxBadgeY = labelPowerY + 16;
   const showDetailedBadges = variant !== 'overview' && (variant !== 'detail' || Boolean(props.selected));
-  const headerBadgeY = labelNameY - 4;
+  const headerBadgeY = variant === 'compact' ? 66 : labelNameY - 4;
   const nnCountBadgeX = variant === 'detail' ? 56 : 48;
   const alarmBadgeX = showDetailedBadges && props.nnFeedersCount > 0 ? -34 : 26;
-  const labelFontSize = variant === 'overview' ? 10 : variant === 'compact' ? 10 : showPvCircuit ? 9 : 10;
-  const typeFontSize = variant === 'overview' ? 9 : variant === 'compact' ? 8 : showPvCircuit ? 8 : 9;
+  const labelFontSize = capWorldFontSize(
+    variant === 'overview' ? 10 : variant === 'compact' ? 10 : showPvCircuit ? 9 : 10,
+    props.viewportScale,
+    16,
+  );
+  const typeFontSize = capWorldFontSize(
+    variant === 'overview' ? 9 : variant === 'compact' ? 8 : showPvCircuit ? 8 : 9,
+    props.viewportScale,
+    14,
+  );
+  const stationCodeFontSize = capWorldFontSize(14, props.viewportScale, 24, 6);
+  const nnCountFontSize = capWorldFontSize(10, props.viewportScale, 16);
+  const auxBadgeFontSize = capWorldFontSize(9, props.viewportScale, 14);
+  const transformerPowerFontSize = capWorldFontSize(FONT_SIZES.technicalPanel, props.viewportScale, 15);
   const hasSnBayTopology = props.snBays.length > 0;
+  const primaryTransformerRef = props.transformerRefs?.[0] ?? null;
   const stationCodeLabel = props.stationCode
     ?? ((props.name || '').match(/\b(S\d{2,3})\b/)?.[1] ?? null);
   const normalizedName = normalizeLabelToken(props.name);
@@ -228,8 +268,6 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
   )
     ? null
     : (props.name || '').length > 22 ? (props.name || '').slice(0, 20) + '…' : props.name;
-  const stroke = props.selected ? COLOR_SELECTION : 'transparent';
-  const strokeWidth = props.selected ? 2.5 : 1.5;
   const handleSymbolClick = props.onClick
     ? (elementId: string) => (e: MouseEvent<SVGGElement>) => {
         e.stopPropagation();
@@ -251,7 +289,13 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
       data-element-id={props.id}
       data-footprint-type={props.footprintType}
       data-bay-count={String(props.snBays.length)}
+      data-station-not-rectangle="true"
+      data-readable-label-stack={variant !== 'overview' ? 'true' : undefined}
+      data-port-anchor-count={String(props.snBays.length)}
       transform={`translate(${props.x}, ${props.y})`}
+      role={props.onClick ? 'button' : undefined}
+      tabIndex={props.onClick ? 0 : undefined}
+      aria-label={props.onClick ? `Stacja SN/nN ${props.name || props.id}` : undefined}
       onClick={
         props.onClick
           ? (e) => {
@@ -268,6 +312,25 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
             }
           : undefined
       }
+      onContextMenu={
+        props.onClick
+          ? (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              props.onClick?.(props.id);
+            }
+          : undefined
+      }
+      onKeyDown={
+        props.onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                props.onClick?.(props.id);
+              }
+            }
+          : undefined
+      }
       style={{ cursor: props.onClick ? 'pointer' : 'default' }}
     >
       {/* K30-30: usunięty dim "klocki" background — zamiast tła robimy
@@ -278,13 +341,21 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         width={width}
         height={height}
         fill={COLOR_PANEL_RAISED}
-        opacity={props.selected ? 0.18 : 0}
-        stroke={stroke}
-        strokeWidth={strokeWidth}
+        opacity={0}
+        stroke="transparent"
+        strokeWidth={0}
         rx={4}
         ry={4}
         data-parity-key="station.mini.body"
       />
+      {props.selected && variant !== 'overview' && (
+        <MiniBlockSelectionCorners
+          id={props.id}
+          width={width}
+          height={height}
+          variant={variant}
+        />
+      )}
 
       {/* K30-59 BIG REFACTOR: rich compact station card w overview variant.
        *  K30-57 dał simple circle ale to było zbyt sparse — user feedback.
@@ -304,44 +375,269 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         const code = stationCodeLabel;
         const hasDer = props.derBadges.length > 0;
         const hasLoad = (props.totalLoadKw ?? 0) > 0;
-        const CARD_W = 76;
-        const CARD_H = 46;
+        const overviewBays: readonly MiniBlockBayDescriptor[] = props.snBays.length > 0
+          ? props.snBays.slice(0, 4)
+          : [
+              {
+                bayRef: `${props.id}/overview/we`,
+                fieldRole: FIELD_ROLE.LINE_IN,
+                designation: 'WE',
+                hasMissingRequiredDevice: false,
+              },
+              {
+                bayRef: `${props.id}/overview/wy`,
+                fieldRole: FIELD_ROLE.LINE_OUT,
+                designation: 'WY',
+                hasMissingRequiredDevice: false,
+              },
+              {
+                bayRef: `${props.id}/overview/tr`,
+                fieldRole: FIELD_ROLE.TRANSFORMER,
+                designation: 'TR',
+                hasMissingRequiredDevice: false,
+              },
+            ];
+        const RMU_W = OVERVIEW_WIDTH;
+        const busY = -12;
+        const left = -RMU_W / 2 + 14;
+        const right = RMU_W / 2 - 14;
+        const span = Math.max(1, overviewBays.length - 1);
         const codeScale = overviewStationCodeScale(props.viewportScale);
         const codeLabelWidth = Math.max(30, (code?.length ?? 3) * 8 + 12);
         const derSummary = overviewDerSummary(props.derBadges);
         const derMarkerShape = derSummary ? overviewDerMarkerShape(props.derBadges.find((badge) => badge.count > 0)?.kind ?? 'PV') : null;
         const hasDerBlockTransformer = props.derBadges.some((badge) => badge.hasBlockTransformer);
         return (
-          <g data-testid={`sld-v2-mini-rmu-overview-${props.id}`}>
-            {/* Drop-line do trunk (top edge connection point) */}
-            <line
-              x1={0}
-              y1={-CARD_H / 2}
-              x2={0}
-              y2={-CARD_H / 2 - 16}
-              stroke={snBusColor}
-              strokeWidth={2.5}
-            />
-            {/* Station card box */}
+          <g
+            data-testid={`sld-v2-mini-rmu-overview-${props.id}`}
+            data-renderer="mini-rmu-overview"
+            data-station-not-rectangle="true"
+          >
             <rect
-              x={-CARD_W / 2}
-              y={-CARD_H / 2}
-              width={CARD_W}
-              height={CARD_H}
+              x={-OVERVIEW_WIDTH / 2}
+              y={-OVERVIEW_HEIGHT / 2}
+              width={OVERVIEW_WIDTH}
+              height={OVERVIEW_HEIGHT}
               rx={3}
               ry={3}
-              fill="#0A1018"
-              stroke={snBusColor}
-              strokeWidth={2}
+              fill="#07111C"
+              opacity={props.selected ? 0.26 : 0.08}
+              stroke={props.selected ? COLOR_SELECTION : 'transparent'}
+              strokeWidth={props.selected ? 1.4 : 0}
+              data-parity-key="station.mini.body.hitarea"
+            />
+            <rect
+              x={-RMU_W / 2 - 5}
+              y={busY - 31}
+              width={RMU_W + 10}
+              height={77}
+              rx={3}
+              ry={3}
+              fill="#07111C"
+              fillOpacity={0.12}
+              stroke="#13435A"
+              strokeWidth={1}
+              data-testid={`sld-v2-mini-rmu-overview-enclosure-${props.id}`}
+              data-element-kind="rmu_enclosure"
+            />
+            <line
+              data-testid={`sld-v2-mini-rmu-sn-row-${props.id}`}
               data-parity-key="station.mini.bus.sn"
               data-bus-voltage-kv={props.busVoltageKv ?? ''}
+              x1={-RMU_W / 2}
+              y1={busY}
+              x2={RMU_W / 2}
+              y2={busY}
+              stroke={snBusColor}
+              strokeWidth={3.4}
+              strokeLinecap="butt"
             />
-            {/* Station code (top center) */}
+            {overviewBays.map((bay, index) => {
+              const x = overviewBays.length === 1 ? 0 : left + ((right - left) * index) / span;
+              const isLine = isLineLikeFieldRole(bay.fieldRole);
+              const isTransformer =
+                bay.fieldRole === FIELD_ROLE.TRANSFORMER
+                || bay.fieldRole === FIELD_ROLE.RMU_TRANSFORMER;
+              const roleLabel = overviewFieldRoleLabel(bay.fieldRole, index);
+              return (
+                <g
+                  key={bay.bayRef}
+                  data-testid={`sld-v2-mini-rmu-bay-marker-${props.id}-${bay.bayRef}`}
+                  data-bay-role={bay.fieldRole}
+                  data-port-role={roleLabel}
+                  data-port-magnet="true"
+                  data-busbar-section="SN"
+                  data-field-direction={isLine ? 'upstream-network' : 'downstream-station'}
+                  data-element-kind="station_overview_bay"
+                  data-element-id={bay.bayRef}
+                  data-hit-area={handleSymbolClick ? 'true' : undefined}
+                  role={handleSymbolClick ? 'button' : undefined}
+                  tabIndex={handleSymbolClick ? 0 : undefined}
+                  aria-label={handleSymbolClick ? `Pole ${roleLabel} ${bay.designation}` : undefined}
+                  onClick={handleSymbolClick?.(bay.bayRef)}
+                  onDoubleClick={handleSymbolClick?.(bay.bayRef)}
+                  onContextMenu={handleSymbolClick ? (event) => {
+                    event.preventDefault();
+                    handleSymbolClick(bay.bayRef)(event);
+                  } : undefined}
+                  onKeyDown={handleSymbolClick ? (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      props.onClick?.(bay.bayRef);
+                    }
+                  } : undefined}
+                  style={handleSymbolClick ? { cursor: 'pointer' } : undefined}
+                >
+                  <rect
+                    x={x - 22}
+                    y={isLine ? busY - 54 : isTransformer ? busY + 18 : busY - 42}
+                    width={44}
+                    height={isTransformer ? 92 : 86}
+                    fill="transparent"
+                    pointerEvents={handleSymbolClick ? 'all' : 'none'}
+                    data-hit-area="true"
+                    data-testid={`sld-v2-mini-rmu-overview-bay-hit-area-${props.id}-${bay.bayRef}`}
+                  />
+                  <circle
+                    cx={x}
+                    cy={isLine ? busY - 31 : isTransformer ? busY + 50 : busY - 20}
+                    r={13}
+                    fill="transparent"
+                    data-hit-area="true"
+                    data-testid={`sld-v2-mini-rmu-port-anchor-${props.id}-${roleLabel}`}
+                    data-port-magnet="true"
+                    data-port-role={roleLabel}
+                    data-busbar-section="SN"
+                    pointerEvents="all"
+                  />
+                  {isLine ? (
+                    <>
+                      <line x1={x} y1={busY} x2={x} y2={busY - 26} stroke={snBusColor} strokeWidth={2.1} />
+                      <circle
+                        cx={x}
+                        cy={busY - 31}
+                        r={4.2}
+                        fill="#07111C"
+                        stroke={snBusColor}
+                        strokeWidth={1.5}
+                        data-testid={`sld-v2-mini-rmu-port-${props.id}-${roleLabel}`}
+                        data-port-magnet="true"
+                        data-port-role={roleLabel}
+                        data-busbar-section="SN"
+                      />
+                      <polygon
+                        points={`${x},${busY - 20} ${x + 7},${busY - 13} ${x},${busY - 6} ${x - 7},${busY - 13}`}
+                        fill="#0A8D43"
+                        stroke={snBusColor}
+                        strokeWidth={1.1}
+                        data-apparatus-kind="switch_disconnector"
+                        data-symbol-canon="switch_disconnector_rotated_square"
+                      />
+                      <line x1={x + 8} y1={busY - 13} x2={x + 17} y2={busY - 13} stroke="#A8B5BD" strokeWidth={1} />
+                      <line x1={x + 17} y1={busY - 13} x2={x + 17} y2={busY - 4} stroke="#A8B5BD" strokeWidth={1} />
+                    </>
+                  ) : isTransformer ? (
+                    <>
+                      <line x1={x} y1={busY} x2={x} y2={busY + 27} stroke={snBusColor} strokeWidth={2.1} />
+                      <rect
+                        x={x - 4}
+                        y={busY + 11}
+                        width={8}
+                        height={15}
+                        fill="#0D2818"
+                        stroke={snBusColor}
+                        strokeWidth={1}
+                        data-apparatus-kind="fuse"
+                        data-symbol-canon="fuse_vertical_rectangle"
+                      />
+                      <g
+                        data-testid={
+                          primaryTransformerRef
+                            ? `sld-symbol-mini-transformer-${primaryTransformerRef}`
+                            : `sld-v2-mini-rmu-tr-triangle-${props.id}`
+                        }
+                        data-element-id={primaryTransformerRef ?? undefined}
+                        data-symbol-canon="transformer_intersecting_circles"
+                        data-transformer-circles-intersect="true"
+                        data-transformer-circle-overlap-px={7.2}
+                        role={primaryTransformerRef && handleSymbolClick ? 'button' : undefined}
+                        tabIndex={primaryTransformerRef && handleSymbolClick ? 0 : undefined}
+                        aria-label={primaryTransformerRef && handleSymbolClick ? 'Transformator SN/nN stacji' : undefined}
+                        onClick={primaryTransformerRef ? handleSymbolClick?.(primaryTransformerRef) : undefined}
+                        onDoubleClick={primaryTransformerRef ? handleSymbolClick?.(primaryTransformerRef) : undefined}
+                        onContextMenu={primaryTransformerRef && handleSymbolClick ? (event) => {
+                          event.preventDefault();
+                          handleSymbolClick(primaryTransformerRef)(event);
+                        } : undefined}
+                        onKeyDown={primaryTransformerRef && handleSymbolClick ? (event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            handleSymbolClick(primaryTransformerRef)(event as unknown as MouseEvent<SVGGElement>);
+                          }
+                        } : undefined}
+                        style={primaryTransformerRef && handleSymbolClick ? { cursor: 'pointer' } : undefined}
+                      >
+                        <title>TR - transformator stacji</title>
+                        <rect
+                          x={x - 14}
+                          y={busY + 21}
+                          width={28}
+                          height={30}
+                          fill="transparent"
+                          pointerEvents="all"
+                          data-testid={
+                            primaryTransformerRef
+                              ? `sld-symbol-mini-transformer-${primaryTransformerRef}-hitbox`
+                              : undefined
+                          }
+                        />
+                        <circle
+                          cx={x}
+                          cy={busY + 34}
+                          r={6.6}
+                          fill="#07111C"
+                          stroke="#DDF7FF"
+                          strokeWidth={1.4}
+                          data-transformer-winding="SN"
+                          data-symbol-canon="transformer_winding_circle"
+                        />
+                        <circle
+                          cx={x}
+                          cy={busY + 40}
+                          r={6.6}
+                          fill="#07111C"
+                          stroke="#DDF7FF"
+                          strokeWidth={1.4}
+                          data-transformer-winding="nN"
+                          data-symbol-canon="transformer_winding_circle"
+                        />
+                      </g>
+                      <line
+                        data-testid={`sld-v2-mini-rmu-lv-row-${props.id}`}
+                        data-parity-key="station.mini.bus.lv"
+                        x1={x - 20}
+                        y1={busY + 50}
+                        x2={x + 20}
+                        y2={busY + 50}
+                        stroke="#3FA9F5"
+                        strokeWidth={2.4}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <line x1={x} y1={busY} x2={x} y2={busY - 20} stroke={snBusColor} strokeWidth={1.8} />
+                      <rect x={x - 4} y={busY - 17} width={8} height={8} fill="#07111C" stroke={snBusColor} strokeWidth={1.2} />
+                    </>
+                  )}
+                  <title>{`${roleLabel} - ${bay.designation}`}</title>
+                </g>
+              );
+            })}
             {code && (
               <g
                 data-testid={`sld-v2-mini-rmu-overview-code-${props.id}`}
                 data-overview-label-scale={codeScale.toFixed(2)}
-                transform={`translate(0, ${-CARD_H / 2 + 13}) scale(${codeScale})`}
+                transform={`translate(0, 24) scale(${codeScale})`}
               >
                 <rect
                   x={-codeLabelWidth / 2}
@@ -370,11 +666,10 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                 </text>
               </g>
             )}
-            {/* Voltage (mid) */}
             {props.busVoltageKv != null && (
               <text
                 x={0}
-                y={-CARD_H / 2 + 28}
+                y={41}
                 textAnchor="middle"
                 fill="#DDF7FF"
                 fontFamily="monospace"
@@ -386,16 +681,13 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                   : `${Math.round(props.busVoltageKv * 1000)} V`}
               </text>
             )}
-            {/* DER marker (small, bottom-right corner).
-                LOD overview ma pokazywac topologie bez kolizji etykiet; tekst
-                PV/BESS/FW pojawia sie dopiero w compact/detail. */}
             {hasDer && derSummary && (
               <g
                 data-testid={`sld-v2-mini-rmu-overview-${props.id}-der`}
                 data-overview-label-mode="marker"
                 data-der-kind={props.derBadges.find((badge) => badge.count > 0)?.kind ?? ''}
                 data-block-transformer={hasDerBlockTransformer ? 'true' : 'false'}
-                transform={`translate(${CARD_W / 2 - 8}, ${CARD_H / 2 - 8})`}
+                transform={`translate(${OVERVIEW_WIDTH / 2 - 11}, ${OVERVIEW_HEIGHT / 2 - 12})`}
               >
                 {derMarkerShape === 'hexagon' && (
                   <polygon
@@ -436,17 +728,15 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                 <title>{derSummary.label}</title>
               </g>
             )}
-            {/* Load indicator dot (bottom-left corner) */}
             {hasLoad && (
-              <circle cx={-CARD_W / 2 + 6} cy={-CARD_H / 2 + 8} r={2.5} fill="#7DD3FC" stroke="#0A0E14" strokeWidth={0.5} />
+              <circle cx={-OVERVIEW_WIDTH / 2 + 8} cy={OVERVIEW_HEIGHT / 2 - 10} r={2.5} fill="#7DD3FC" stroke="#0A0E14" strokeWidth={0.5} />
             )}
-            {/* NMO marker (top-right corner) gdy isNop */}
             {props.isNop && (
               <g data-testid={`sld-v2-mini-rmu-overview-${props.id}-nop`}>
-                <circle cx={CARD_W / 2 - 8} cy={-CARD_H / 2 + 8} r={5} fill="#7A1414" stroke="#FF333D" strokeWidth={1.2} />
+                <circle cx={OVERVIEW_WIDTH / 2 - 9} cy={-OVERVIEW_HEIGHT / 2 + 9} r={5} fill="#7A1414" stroke="#FF333D" strokeWidth={1.2} />
                 <text
-                  x={CARD_W / 2 - 8}
-                  y={-CARD_H / 2 + 10}
+                  x={OVERVIEW_WIDTH / 2 - 9}
+                  y={-OVERVIEW_HEIGHT / 2 + 11}
                   textAnchor="middle"
                   fill="#FFFFFF"
                   fontFamily="sans-serif"
@@ -483,8 +773,61 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
           showPvCircuit,
         );
         const trBayX = layout.trColumn?.x ?? 0;
+        const terrainColumns = layout.snColumns.filter(({ bay }) => isLineLikeFieldRole(bay.fieldRole));
+        const externalBridgeGap = variant === 'compact' && terrainColumns.length >= 2
+          ? {
+              left: Math.min(...terrainColumns.map((col) => col.x)) + COMPACT_EXTERNAL_BRIDGE_CLEARANCE,
+              right: Math.max(...terrainColumns.map((col) => col.x)) - COMPACT_EXTERNAL_BRIDGE_CLEARANCE,
+              y: COMPACT_TERRAIN_PORT_Y,
+            }
+          : null;
         return (
           <g data-testid={`sld-v2-mini-rmu-bay-layout-${props.id}`}>
+            {variant === 'compact' && (
+              <g
+                data-testid={`sld-v2-mini-rmu-enclosure-${props.id}`}
+                data-element-kind="rmu_enclosure"
+                data-layout-role="station_switchgear_frame"
+              >
+                <rect
+                  x={layout.busLeft - 20}
+                  y={COMPACT_TERRAIN_PORT_Y + 10}
+                  width={(layout.busRight - layout.busLeft) + 40}
+                  height={layout.busY - COMPACT_TERRAIN_PORT_Y + 104}
+                  rx={2}
+                  ry={2}
+                  fill="transparent"
+                  stroke="transparent"
+                  strokeWidth={0}
+                  pointerEvents="none"
+                />
+              </g>
+            )}
+            {externalBridgeGap && externalBridgeGap.right > externalBridgeGap.left && (
+              <g
+                data-testid={`sld-v2-mini-rmu-compact-no-external-bridge-${props.id}`}
+                data-guard="no_external_we_wy_bridge"
+                data-render-contract="mask_only_not_electrical_element"
+                data-visible-label="false"
+                data-external-y={externalBridgeGap.y}
+                data-busbar-y={layout.busY}
+                data-gap-left={externalBridgeGap.left}
+                data-gap-right={externalBridgeGap.right}
+                pointerEvents="none"
+              >
+                <rect
+                  x={externalBridgeGap.left}
+                  y={externalBridgeGap.y - 13}
+                  width={externalBridgeGap.right - externalBridgeGap.left}
+                  height={26}
+                  fill="#0A0E14"
+                  fillOpacity={0.98}
+                  stroke="none"
+                  strokeWidth={0}
+                  data-role="external_trunk_visual_cut"
+                />
+              </g>
+            )}
             {/* SN busbar — horizontal line connecting tops of all bay columns.
                 K30-40: stroke per voltage class (busVoltageKv).
                 K30-118: data-busbar-topology indicator (ABB SafeRing=single,
@@ -503,11 +846,12 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                     x2={layout.busRight}
                     y2={layout.busY}
                     stroke={snBusColor}
-                    strokeWidth={STROKE_BUSBAR_PX + 1}
+                    strokeWidth={variant === 'compact' ? STROKE_BUSBAR_PX : STROKE_BUSBAR_PX + 1}
                     strokeLinecap="butt"
                     data-parity-key="station.mini.bus.sn"
                     data-bus-voltage-kv={props.busVoltageKv ?? ''}
                     data-busbar-topology={isCellular ? 'cellular' : 'single'}
+                    data-cad-role={variant === 'compact' ? 'internal_station_busbar' : undefined}
                   />
                   {isCellular && (
                     <line
@@ -527,25 +871,166 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
             })()}
 
             {/* SN bay columns — vertical stacks z apparatus per IEC 60617 */}
-            {layout.snColumns.map((col) => (
-              <BayColumnSn
-                key={col.bay.bayRef}
-                x={col.x}
-                busY={layout.busY}
-                bayRole={col.bay.fieldRole}
-                bayRef={col.bay.bayRef}
-                designation={col.bay.designation}
-                apparatusStack={col.apparatusStack}
-                variant={variant}
-                stationId={props.id}
-                hasMissing={col.bay.hasMissingRequiredDevice}
-                onSymbolClick={handleSymbolClick}
-                cbState={col.bay.cbState}
-                dsState={col.bay.dsState}
-                esState={col.bay.esState}
-                showRoleBadge={props.footprintType !== 'switching_station'}
-              />
-            ))}
+            {layout.snColumns.map((col, index) => {
+              const portRole = miniBlockPortRoleLabel(col.bay.fieldRole, index);
+              const portSide = miniBlockPortSide(col.bay.fieldRole);
+              const fieldDirection = miniBlockFieldDirection(col.bay.fieldRole);
+              const portAnchorY = miniBlockPortAnchorY(col.bay.fieldRole, layout.busY, variant);
+              const showPortLabel = miniBlockPortLabelVisible(col.bay.fieldRole, variant);
+              const portAnchorId = `${props.id}/port/${col.bay.bayRef}`;
+              const fieldHitTop = Math.min(portAnchorY, layout.busY) - 24;
+              const fieldHitHeight = Math.max(72, Math.abs(layout.busY - portAnchorY) + 112);
+              return (
+                <g
+                  key={col.bay.bayRef}
+                  data-testid={`sld-v2-mini-rmu-field-${props.id}-${col.bay.bayRef}`}
+                  data-bay-role={col.bay.fieldRole}
+                  data-port-role={portRole}
+                  data-port-side={portSide}
+                  data-field-direction={fieldDirection}
+                  data-hit-area={handleSymbolClick ? 'true' : undefined}
+                  role={handleSymbolClick ? 'button' : undefined}
+                  tabIndex={handleSymbolClick ? 0 : undefined}
+                  aria-label={handleSymbolClick ? `Pole ${portRole} ${col.bay.designation}` : undefined}
+                  onClick={handleSymbolClick?.(col.bay.bayRef)}
+                  onDoubleClick={handleSymbolClick?.(col.bay.bayRef)}
+                  onContextMenu={handleSymbolClick ? (event) => {
+                    event.preventDefault();
+                    handleSymbolClick(col.bay.bayRef)(event);
+                  } : undefined}
+                  onKeyDown={handleSymbolClick ? (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      props.onClick?.(col.bay.bayRef);
+                    }
+                  } : undefined}
+                  style={handleSymbolClick ? { cursor: 'pointer' } : undefined}
+                >
+                  <rect
+                    x={col.x - 22}
+                    y={fieldHitTop}
+                    width={44}
+                    height={fieldHitHeight}
+                    fill="transparent"
+                    pointerEvents={handleSymbolClick ? 'all' : 'none'}
+                    data-hit-area="true"
+                    data-testid={`sld-v2-mini-rmu-field-hit-area-${props.id}-${col.bay.bayRef}`}
+                  />
+                  <g
+                    data-testid={`sld-v2-mini-rmu-port-anchor-${props.id}-${col.bay.bayRef}`}
+                    data-element-kind="station_port"
+                    data-element-id={portAnchorId}
+                    data-domain-ref={col.bay.bayRef}
+                    data-port-role={portRole}
+                    data-port-side={portSide}
+                    data-field-direction={fieldDirection}
+                    data-port-magnet="true"
+                    data-busbar-section="SN"
+                    transform={`translate(${col.x}, ${portAnchorY})`}
+                    role={handleSymbolClick ? 'button' : undefined}
+                    tabIndex={handleSymbolClick ? 0 : undefined}
+                    aria-label={handleSymbolClick ? `Port ${portRole} pola ${col.bay.designation}` : undefined}
+                    onClick={handleSymbolClick?.(col.bay.bayRef)}
+                    onDoubleClick={handleSymbolClick?.(col.bay.bayRef)}
+                    onContextMenu={handleSymbolClick ? (event) => {
+                      event.preventDefault();
+                      handleSymbolClick(col.bay.bayRef)(event);
+                    } : undefined}
+                    onKeyDown={handleSymbolClick ? (event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        handleSymbolClick(col.bay.bayRef)(event as unknown as MouseEvent<SVGGElement>);
+                      }
+                    } : undefined}
+                    style={handleSymbolClick ? { cursor: 'pointer' } : undefined}
+                  >
+                    <title>{`${portRole} - ${col.bay.designation}`}</title>
+                    {(portSide === 'terrain_network' || portSide === 'source_connection') && portAnchorY < layout.busY && variant !== 'compact' && (
+                      <line
+                        x1={0}
+                        y1={0}
+                        x2={0}
+                        y2={layout.busY - portAnchorY}
+                        stroke={snBusColor}
+                        strokeWidth={1.7}
+                        strokeLinecap="round"
+                        opacity={0.86}
+                        data-testid={`sld-v2-mini-rmu-port-drop-${props.id}-${col.bay.bayRef}`}
+                      />
+                    )}
+                    <rect
+                      x={-14}
+                      y={-9}
+                      width={28}
+                      height={18}
+                      rx={2}
+                      ry={2}
+                      fill="transparent"
+                      stroke="transparent"
+                      data-hit-area="true"
+                    />
+                    <circle
+                      cx={0}
+                      cy={0}
+                      r={3.4}
+                      fill="#07111C"
+                      stroke={snBusColor}
+                      strokeWidth={1.2}
+                    />
+                    {showPortLabel && (
+                      <text
+                        x={0}
+                        y={-5.5}
+                        textAnchor="middle"
+                        fill="#DDF7FF"
+                        fontFamily={FONT_SANS}
+                        fontSize={variant === 'detail' ? 8 : 7}
+                        fontWeight={900}
+                        paintOrder="stroke"
+                        stroke={COLOR_SCADA_SHADOW}
+                        strokeWidth={2}
+                      >
+                        {portRole}
+                      </text>
+                    )}
+                    <title>{`${portRole} - ${col.bay.designation}`}</title>
+                  </g>
+                  {variant === 'compact' ? (
+                    <CompactDirectionalBayColumn
+                      x={col.x}
+                      busY={layout.busY}
+                      bay={col.bay}
+                      bayIndex={index}
+                      stationId={props.id}
+                      roleLabel={portRole}
+                      busColor={snBusColor}
+                      transformerVectorGroup={props.transformerVectorGroup ?? null}
+                      transformerRef={primaryTransformerRef}
+                      onSymbolClick={handleSymbolClick}
+                    />
+                  ) : (
+                    <BayColumnSn
+                      x={col.x}
+                      busY={layout.busY}
+                      bayRole={col.bay.fieldRole}
+                      bayRef={col.bay.bayRef}
+                      designation={col.bay.designation}
+                      apparatusStack={col.apparatusStack}
+                      variant={variant}
+                      stationId={props.id}
+                      hasMissing={col.bay.hasMissingRequiredDevice}
+                      onSymbolClick={handleSymbolClick}
+                      cbState={col.bay.cbState}
+                      dsState={col.bay.dsState}
+                      esState={col.bay.esState}
+                      showRoleBadge={props.footprintType !== 'switching_station'}
+                      showDesignationLabel
+                      roleBadgeLabel={portRole}
+                    />
+                  )}
+                </g>
+              );
+            })}
 
             {/* TR symbol (dedicated rendering z bay column above + explicit
              *  vertical leads bus → TR primary, TR secondary → LV bus). */}
@@ -563,7 +1048,10 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                     (getVariantApparatusHeight(variant) + getVariantApparatusGap(variant)) -
                     getVariantApparatusGap(variant);
               return (
-                <g data-testid={`sld-v2-mini-rmu-tr-bay-${props.id}`}>
+                <g
+                  data-testid={`sld-v2-mini-rmu-tr-bay-${props.id}`}
+                  data-element-id={primaryTransformerRef ?? undefined}
+                >
                   {/* Lead from TR bay stack bottom → TR primary terminal */}
                   <line
                     x1={trBayX}
@@ -575,7 +1063,49 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                     data-parity-key="station.mini.tr.primary_lead"
                   />
                   {/* TR symbol (2 circles) */}
-                  <ApparatusTransformerSymbol cx={trBayX} cy={trCy} />
+                  <g
+                    data-testid={
+                      primaryTransformerRef
+                        ? `sld-symbol-mini-transformer-${primaryTransformerRef}`
+                        : `sld-v2-mini-rmu-transformer-symbol-${props.id}`
+                    }
+                    data-element-id={primaryTransformerRef ?? undefined}
+                    data-symbol-canon="transformer_intersecting_circles"
+                    data-transformer-circles-intersect="true"
+                    data-transformer-circle-overlap-px={2 * 5 - 5}
+                    role={primaryTransformerRef && handleSymbolClick ? 'button' : undefined}
+                    tabIndex={primaryTransformerRef && handleSymbolClick ? 0 : undefined}
+                    aria-label={primaryTransformerRef && handleSymbolClick ? 'Transformator SN/nN stacji' : undefined}
+                    onClick={primaryTransformerRef ? handleSymbolClick?.(primaryTransformerRef) : undefined}
+                    onDoubleClick={primaryTransformerRef ? handleSymbolClick?.(primaryTransformerRef) : undefined}
+                    onContextMenu={primaryTransformerRef && handleSymbolClick ? (event) => {
+                      event.preventDefault();
+                      handleSymbolClick(primaryTransformerRef)(event);
+                    } : undefined}
+                    onKeyDown={primaryTransformerRef && handleSymbolClick ? (event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        handleSymbolClick(primaryTransformerRef)(event as unknown as MouseEvent<SVGGElement>);
+                      }
+                    } : undefined}
+                    style={primaryTransformerRef && handleSymbolClick ? { cursor: 'pointer' } : undefined}
+                  >
+                    <title>TR - transformator stacji</title>
+                    <ApparatusTransformerSymbol cx={trBayX} cy={trCy} />
+                    <rect
+                      x={trBayX - 14}
+                      y={trTop - 4}
+                      width={28}
+                      height={trBottom - trTop + 8}
+                      fill="transparent"
+                      pointerEvents="all"
+                      data-testid={
+                        primaryTransformerRef
+                          ? `sld-symbol-mini-transformer-${primaryTransformerRef}-hitbox`
+                          : undefined
+                      }
+                    />
+                  </g>
                   {/* Lead from TR secondary → LV bus */}
                   <line
                     x1={trBayX}
@@ -657,7 +1187,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         return (
           <g data-testid={`sld-v2-mini-station-code-${props.id}`} data-is-nop={props.isNop ? 'true' : 'false'} transform={`translate(0, ${headerBadgeY})`}>
             <rect x={-22} y={-13} width={44} height={18} rx={2} ry={2} fill="#0A1018" stroke={nopRing} strokeWidth={props.isNop ? 1.8 : 1.2} opacity={0.95} />
-            <text x={0} y={1} textAnchor="middle" fill={nopText} fontFamily={FONT_SANS} fontSize={14} fontWeight={900} letterSpacing={0.8}>
+            <text x={0} y={1} textAnchor="middle" fill={nopText} fontFamily={FONT_SANS} fontSize={stationCodeFontSize} fontWeight={900} letterSpacing={0.8}>
               {code}
             </text>
             {props.isNop && (
@@ -698,7 +1228,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
             textAnchor="middle"
             fill="#4EC9B0"
             fontFamily={FONT_SANS}
-            fontSize={10}
+            fontSize={nnCountFontSize}
             fontWeight={900}
           >
             {`${props.nnFeedersCount} nN`}
@@ -743,7 +1273,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
       {showDetailedBadges && props.totalLoadKw && props.totalLoadKw > 0 && (
         <g data-testid={`sld-v2-mini-station-load-${props.id}`} transform={`translate(-28, ${auxBadgeY})`}>
           <rect x={-22} y={-9} width={44} height={16} rx={2} ry={2} fill="#5A2A1E" stroke="#FF8B5C" strokeWidth={1} />
-          <text x={0} y={2} textAnchor="middle" fill="#FF8B5C" fontFamily={FONT_SANS} fontSize={9} fontWeight={900}>
+          <text x={0} y={2} textAnchor="middle" fill="#FF8B5C" fontFamily={FONT_SANS} fontSize={auxBadgeFontSize} fontWeight={900}>
             L {props.totalLoadKw >= 1000 ? `${(props.totalLoadKw / 1000).toFixed(1)}MW` : `${props.totalLoadKw}kW`}
           </text>
         </g>
@@ -751,7 +1281,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
       {showDetailedBadges && props.totalGenerationKw != null && props.totalGenerationKw > 0 && (
         <g data-testid={`sld-v2-mini-station-gen-${props.id}`} transform={`translate(28, ${auxBadgeY})`}>
           <rect x={-22} y={-9} width={44} height={16} rx={2} ry={2} fill="#1E4A2A" stroke="#7EE0B5" strokeWidth={1} />
-          <text x={0} y={2} textAnchor="middle" fill="#7EE0B5" fontFamily={FONT_SANS} fontSize={9} fontWeight={900}>
+          <text x={0} y={2} textAnchor="middle" fill="#7EE0B5" fontFamily={FONT_SANS} fontSize={auxBadgeFontSize} fontWeight={900}>
             G {props.totalGenerationKw >= 1000 ? `${(props.totalGenerationKw / 1000).toFixed(1)}MW` : `${props.totalGenerationKw}kW`}
           </text>
         </g>
@@ -785,7 +1315,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
           textAnchor="middle"
           fill={COLOR_TEXT_SECONDARY}
           fontFamily={FONT_SANS}
-          fontSize={FONT_SIZES.technicalPanel}
+          fontSize={transformerPowerFontSize}
           fontWeight={700}
           paintOrder="stroke"
           stroke={COLOR_SCADA_SHADOW}
@@ -859,6 +1389,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
             badges={showPvCircuit
               ? props.derBadges.filter((badge) => (badge.connectionSide ?? 'nn') !== 'nn')
               : props.derBadges}
+            viewportScale={props.viewportScale}
             showLabels={variant !== 'detail' || Boolean(props.selected)}
           />
         )
@@ -899,16 +1430,8 @@ export function miniBlockStationPortOffsets(
 ): readonly [number, number | null] | null {
   if (snBays.length === 0) return null;
   const hasPvCircuit = hasPvNnCircuit(variant, derBadges);
-  const { width } = miniBlockDimensions(variant, hasPvCircuit);
-  const visibleSnBays = variant === 'overview' ? snBays.slice(0, 4) : snBays;
-  const left = -width / 2 + 24;
-  const right = width / 2 - 24;
-  const span = right - left;
-  const positioned = visibleSnBays.map((bay, idx) => ({
-    bay,
-    x: visibleSnBays.length === 1 ? 0 : left + (span * idx) / (visibleSnBays.length - 1),
-  }));
-  const linePorts = positioned.filter(({ bay }) => isLineLikeFieldRole(bay.fieldRole));
+  const layout = computeMiniBlockLayout(variant, snBays, true, 0, hasPvCircuit);
+  const linePorts = layout.snColumns.filter(({ bay }) => isLineLikeFieldRole(bay.fieldRole));
   if (linePorts.length === 0) return null;
   return [linePorts[0].x, linePorts[1]?.x ?? null];
 }
@@ -925,13 +1448,573 @@ function isLineLikeFieldRole(role: FieldRole): boolean {
   return role === FIELD_ROLE.LINE_IN
     || role === FIELD_ROLE.LINE_OUT
     || role === FIELD_ROLE.LINE_BRANCH
-    || role === FIELD_ROLE.RMU_LINE;
+    || role === FIELD_ROLE.RMU_LINE
+    || isDerFieldRole(role);
+}
+
+function isDerFieldRole(role: FieldRole): boolean {
+  return role === FIELD_ROLE.DER_PV
+    || role === FIELD_ROLE.DER_BESS
+    || role === FIELD_ROLE.DER_FW;
+}
+
+function overviewFieldRoleLabel(
+  role: FieldRole,
+  index: number,
+): 'WE' | 'WY' | 'ODG' | 'TR' | 'SPR' | 'POM' | 'PV' | 'BESS' | 'FW' {
+  if (role === FIELD_ROLE.LINE_IN) return 'WE';
+  if (role === FIELD_ROLE.LINE_OUT) return 'WY';
+  if (role === FIELD_ROLE.LINE_BRANCH) return 'ODG';
+  if (role === FIELD_ROLE.TRANSFORMER || role === FIELD_ROLE.RMU_TRANSFORMER) return 'TR';
+  if (role === FIELD_ROLE.COUPLER) return 'SPR';
+  if (role === FIELD_ROLE.MEASUREMENT) return 'POM';
+  if (role === FIELD_ROLE.DER_PV) return 'PV';
+  if (role === FIELD_ROLE.DER_BESS) return 'BESS';
+  if (role === FIELD_ROLE.DER_FW) return 'FW';
+  if (role === FIELD_ROLE.RMU_LINE) return index === 0 ? 'WE' : 'WY';
+  return 'WY';
+}
+
+function miniBlockPortRoleLabel(
+  role: FieldRole,
+  index: number,
+): 'WE' | 'WY' | 'ODG' | 'TR' | 'SPR' | 'POM' | 'L' | 'PV' | 'BESS' | 'FW' {
+  if (role === FIELD_ROLE.GPZ_LINE_BAY) return 'L';
+  if (role === FIELD_ROLE.RMU_LINE) return index === 0 ? 'WE' : index === 1 ? 'WY' : 'ODG';
+  return overviewFieldRoleLabel(role, index);
+}
+
+function miniBlockPortSide(
+  role: FieldRole,
+): 'terrain_network' | 'source_connection' | 'transformer' | 'coupler' | 'measurement' {
+  if (isDerFieldRole(role)) return 'source_connection';
+  if (role === FIELD_ROLE.TRANSFORMER || role === FIELD_ROLE.RMU_TRANSFORMER) return 'transformer';
+  if (role === FIELD_ROLE.COUPLER) return 'coupler';
+  if (role === FIELD_ROLE.MEASUREMENT) return 'measurement';
+  return 'terrain_network';
+}
+
+function miniBlockFieldDirection(
+  role: FieldRole,
+): 'upstream-network' | 'source-connection' | 'downstream-station' | 'internal-coupler' | 'measurement' {
+  if (isDerFieldRole(role)) return 'source-connection';
+  if (role === FIELD_ROLE.TRANSFORMER || role === FIELD_ROLE.RMU_TRANSFORMER) return 'downstream-station';
+  if (role === FIELD_ROLE.COUPLER) return 'internal-coupler';
+  if (role === FIELD_ROLE.MEASUREMENT) return 'measurement';
+  return 'upstream-network';
+}
+
+function miniBlockPortAnchorY(
+  role: FieldRole,
+  busY: number,
+  variant: 'overview' | 'compact' | 'detail',
+): number {
+  if (variant === 'compact' && isLineLikeFieldRole(role)) return COMPACT_TERRAIN_PORT_Y;
+  if (role === FIELD_ROLE.TRANSFORMER || role === FIELD_ROLE.RMU_TRANSFORMER) {
+    if (variant === 'compact') return busY + 86;
+    return busY + (variant === 'detail' ? 58 : 48);
+  }
+  return busY - (variant === 'detail' ? 15 : 12);
+}
+
+function miniBlockPortLabelVisible(
+  role: FieldRole,
+  variant: 'overview' | 'compact' | 'detail',
+): boolean {
+  if (variant === 'detail') return true;
+  if (isDerFieldRole(role)) return true;
+  return !(isLineLikeFieldRole(role) || role === FIELD_ROLE.TRANSFORMER || role === FIELD_ROLE.RMU_TRANSFORMER);
 }
 
 // =============================================================================
 // Sub-renderers
 // =============================================================================
 
+function MiniBlockSelectionCorners(props: {
+  readonly id: string;
+  readonly width: number;
+  readonly height: number;
+  readonly variant: 'compact' | 'detail';
+}): JSX.Element {
+  const corner = props.variant === 'compact' ? 14 : 12;
+  const inset = props.variant === 'compact' ? 12 : 8;
+  const effectiveWidth = props.variant === 'compact' ? Math.min(props.width, 184) : props.width;
+  const effectiveHeight = props.variant === 'compact' ? Math.min(props.height, 176) : props.height;
+  const left = -effectiveWidth / 2 + inset;
+  const right = effectiveWidth / 2 - inset;
+  const top = -effectiveHeight / 2 + inset;
+  const bottom = effectiveHeight / 2 - inset;
+  const corners = [
+    { x: left, y: top, hx: corner, hy: corner },
+    { x: right, y: top, hx: -corner, hy: corner },
+    { x: left, y: bottom, hx: corner, hy: -corner },
+    { x: right, y: bottom, hx: -corner, hy: -corner },
+  ] as const;
+  return (
+    <g
+      data-testid={`sld-v2-mini-rmu-selection-corners-${props.id}`}
+      data-selection-style="cad_corner_handles"
+      pointerEvents="none"
+    >
+      {corners.map((cornerSpec, index) => (
+        <g key={`${props.id}-selection-corner-${index}`}>
+          <line
+            x1={cornerSpec.x}
+            y1={cornerSpec.y}
+            x2={cornerSpec.x + cornerSpec.hx}
+            y2={cornerSpec.y}
+            stroke={COLOR_SELECTION}
+            strokeWidth={1.4}
+            strokeLinecap="square"
+          />
+          <line
+            x1={cornerSpec.x}
+            y1={cornerSpec.y}
+            x2={cornerSpec.x}
+            y2={cornerSpec.y + cornerSpec.hy}
+            stroke={COLOR_SELECTION}
+            strokeWidth={1.4}
+            strokeLinecap="square"
+          />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+function CompactTransformerSymbol(props: {
+  readonly cx: number;
+  readonly cy: number;
+  readonly vectorGroup?: string | null;
+}): JSX.Element {
+  const r = 7;
+  const gap = 7;
+  return (
+    <g
+      data-testid="sld-v2-mini-rmu-compact-transformer-symbol"
+      data-symbol-canon="transformer_intersecting_circles"
+      data-transformer-circles-intersect="true"
+      data-transformer-circle-overlap-px={2 * r - gap}
+    >
+      <circle
+        cx={props.cx}
+        cy={props.cy - gap / 2}
+        r={r}
+        fill="#07111C"
+        stroke="#DDF7FF"
+        strokeWidth={1.5}
+        data-transformer-winding="SN"
+        data-symbol-canon="transformer_winding_circle"
+      />
+      <circle
+        cx={props.cx}
+        cy={props.cy + gap / 2}
+        r={r}
+        fill="#07111C"
+        stroke="#DDF7FF"
+        strokeWidth={1.5}
+        data-transformer-winding="nN"
+        data-symbol-canon="transformer_winding_circle"
+      />
+      <line
+        x1={props.cx}
+        y1={props.cy + gap / 2 + r}
+        x2={props.cx}
+        y2={props.cy + gap / 2 + r + 4}
+        stroke="#DDF7FF"
+        strokeWidth={1.2}
+      />
+      <line
+        x1={props.cx - 5}
+        y1={props.cy + gap / 2 + r + 4}
+        x2={props.cx + 5}
+        y2={props.cy + gap / 2 + r + 4}
+        stroke="#DDF7FF"
+        strokeWidth={1.2}
+      />
+      <line
+        x1={props.cx - 3.2}
+        y1={props.cy + gap / 2 + r + 6}
+        x2={props.cx + 3.2}
+        y2={props.cy + gap / 2 + r + 6}
+        stroke="#DDF7FF"
+        strokeWidth={1}
+      />
+      {props.vectorGroup && (
+        <text
+          x={props.cx + 12}
+          y={props.cy + 3}
+          fill="#FFD166"
+          fontFamily="monospace"
+          fontSize={7}
+          fontWeight={800}
+          paintOrder="stroke"
+          stroke={COLOR_SCADA_SHADOW}
+          strokeWidth={1.2}
+        >
+          {props.vectorGroup}
+        </text>
+      )}
+    </g>
+  );
+}
+
+interface CompactDirectionalBayColumnProps {
+  readonly x: number;
+  readonly busY: number;
+  readonly bay: MiniBlockBayDescriptor;
+  readonly bayIndex: number;
+  readonly stationId: string;
+  readonly roleLabel: string;
+  readonly busColor: string;
+  readonly transformerVectorGroup?: string | null;
+  readonly transformerRef?: string | null;
+  readonly onSymbolClick?: SymbolClickHandler;
+}
+
+function CompactDirectionalBayColumn(props: CompactDirectionalBayColumnProps): JSX.Element {
+  const {
+    x,
+    busY,
+    bay,
+    bayIndex,
+    stationId,
+    roleLabel,
+    busColor,
+    transformerVectorGroup,
+    transformerRef,
+    onSymbolClick,
+  } = props;
+  const isLineBay = isLineLikeFieldRole(bay.fieldRole);
+  const isTransformerBay =
+    bay.fieldRole === FIELD_ROLE.TRANSFORMER || bay.fieldRole === FIELD_ROLE.RMU_TRANSFORMER;
+  const elementId = `${stationId}/bay/${bay.bayRef}`;
+  const clickHandler = onSymbolClick?.(elementId);
+  const transformerClickHandler = transformerRef ? onSymbolClick?.(transformerRef) : undefined;
+
+  if (isLineBay) {
+    const portY = COMPACT_TERRAIN_PORT_Y;
+    const cableHeadY = portY + 13;
+    const breakerY = busY - 36;
+    const switchY = busY - 20;
+    const earthY = busY - 10;
+    const labelY = portY - 9;
+    const portCaption = roleLabel === 'ODG' && bay.designation.trim() !== ''
+      ? bay.designation.trim()
+      : roleLabel;
+    const portCaptionWidth = Math.max(26, portCaption.length * 6 + 10);
+    return (
+      <g
+        data-testid={`sld-v2-bay-column-sn-${bay.bayRef}`}
+        data-compact-testid={`sld-v2-mini-rmu-compact-line-bay-${stationId}-${bay.bayRef}`}
+        data-flow-direction="line_from_bus_up_to_terrain"
+        data-bay-role={bay.fieldRole}
+        data-port-role={roleLabel}
+        data-hit-area={clickHandler ? 'true' : undefined}
+        role={clickHandler ? 'button' : undefined}
+        tabIndex={clickHandler ? 0 : undefined}
+        aria-label={clickHandler ? `Pole ${roleLabel} ${bay.designation}` : undefined}
+        onClick={clickHandler}
+        onDoubleClick={clickHandler}
+        onContextMenu={clickHandler ? (event) => {
+          event.preventDefault();
+          clickHandler(event);
+        } : undefined}
+        onKeyDown={clickHandler ? (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            clickHandler(event as unknown as MouseEvent<SVGGElement>);
+          }
+        } : undefined}
+        style={clickHandler ? { cursor: 'pointer' } : undefined}
+      >
+        <title>{`Pole ${roleLabel} ${bay.designation}`}</title>
+        <rect
+          x={x - 16}
+          y={portY + 9}
+          width={32}
+          height={busY - portY + 34}
+          rx={2}
+          ry={2}
+          fill="#07111C"
+          fillOpacity={0.22}
+          stroke="#1B5068"
+          strokeWidth={0.7}
+          pointerEvents="all"
+          data-hit-area="true"
+          data-testid={`sld-v2-mini-rmu-compact-field-cell-${stationId}-${bay.bayRef}`}
+        />
+        <line
+          x1={x}
+          y1={portY}
+          x2={x}
+          y2={cableHeadY - 7}
+          stroke={busColor}
+          strokeWidth={2}
+          strokeLinecap="round"
+          data-testid={`sld-v2-mini-rmu-compact-external-stub-${stationId}-${bay.bayRef}`}
+          data-parity-key="station.mini.external_stub.compact"
+        />
+        <line
+          x1={x}
+          y1={cableHeadY + 4}
+          x2={x}
+          y2={busY}
+          stroke={busColor}
+          strokeWidth={1.55}
+          strokeLinecap="round"
+          data-testid={`sld-v2-mini-rmu-compact-line-drop-${stationId}-${bay.bayRef}`}
+          data-parity-key="station.mini.bay_drop_to_bus.compact"
+        />
+        <polygon
+          points={`${x},${cableHeadY - 7} ${x - 6},${cableHeadY + 4} ${x + 6},${cableHeadY + 4}`}
+          fill="#07111C"
+          stroke={busColor}
+          strokeWidth={1.2}
+          data-testid={`sld-v2-mini-rmu-compact-cable-head-${stationId}-${bay.bayRef}`}
+          data-symbol-canon="cable_head_triangle"
+        />
+        <ApparatusCbSquare
+          cx={x}
+          cy={breakerY}
+          state={bay.cbState ?? 'closed'}
+          energized={(bay.cbState ?? 'closed') === 'closed'}
+        />
+        <ApparatusSwitchDisconnector
+          cx={x}
+          cy={switchY}
+          state={bay.dsState ?? 'closed'}
+          energized={(bay.dsState ?? 'closed') === 'closed'}
+        />
+        <ApparatusEarthingSwitch
+          cxAxis={x}
+          cy={earthY}
+          state={bay.esState ?? 'open'}
+          side={bayIndex % 2 === 0 ? 'RIGHT' : 'LEFT'}
+        />
+        <g
+          data-testid={`sld-v2-mini-rmu-compact-port-caption-${stationId}-${bay.bayRef}`}
+          data-label-placement="above_terrain_port"
+        >
+          <rect
+            x={x - portCaptionWidth / 2}
+            y={labelY - 9}
+            width={portCaptionWidth}
+            height={12}
+            rx={2}
+            ry={2}
+            fill="#07111C"
+            fillOpacity={0.88}
+            stroke="#1B5068"
+            strokeWidth={0.7}
+          />
+          <text
+            x={x}
+            y={labelY}
+            textAnchor="middle"
+            fill="#DDF7FF"
+            fontFamily={FONT_SANS}
+            fontSize={8}
+            fontWeight={900}
+            paintOrder="stroke"
+            stroke={COLOR_SCADA_SHADOW}
+            strokeWidth={1.4}
+          >
+            {portCaption}
+          </text>
+        </g>
+        {bay.hasMissingRequiredDevice && (
+          <circle cx={x + 13} cy={switchY} r={3} fill="#FF7B00" stroke={COLOR_SELECTION} strokeWidth={0.5}>
+            <title>Aparatura pola SN nie ma kompletnego pakietu katalogowego</title>
+          </circle>
+        )}
+        <title>{`${roleLabel} - ${bay.designation}`}</title>
+      </g>
+    );
+  }
+
+  if (isTransformerBay) {
+    const switchY = busY + 18;
+    const fuseY = busY + 35;
+    const trCy = busY + 61;
+    const trTop = trCy - 10;
+    const trBottom = trCy + 18;
+    const lvY = busY + 86;
+    return (
+      <g
+        data-testid={`sld-v2-bay-column-sn-${bay.bayRef}`}
+        data-compact-testid={`sld-v2-mini-rmu-compact-tr-bay-${stationId}-${bay.bayRef}`}
+        data-flow-direction="transformer_from_bus_down_to_lv"
+        data-bay-role={bay.fieldRole}
+        data-port-role={roleLabel}
+        data-hit-area={clickHandler ? 'true' : undefined}
+        role={clickHandler ? 'button' : undefined}
+        tabIndex={clickHandler ? 0 : undefined}
+        aria-label={clickHandler ? `Pole ${roleLabel} ${bay.designation}` : undefined}
+        onClick={clickHandler}
+        onDoubleClick={clickHandler}
+        onContextMenu={clickHandler ? (event) => {
+          event.preventDefault();
+          clickHandler(event);
+        } : undefined}
+        onKeyDown={clickHandler ? (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            clickHandler(event as unknown as MouseEvent<SVGGElement>);
+          }
+        } : undefined}
+        style={clickHandler ? { cursor: 'pointer' } : undefined}
+      >
+        <title>{`Pole ${roleLabel} ${bay.designation}`}</title>
+        <rect
+          x={x - 18}
+          y={busY - 5}
+          width={36}
+          height={96}
+          rx={2}
+          ry={2}
+          fill="#07111C"
+          fillOpacity={0.22}
+          stroke="#1B5068"
+          strokeWidth={0.7}
+          pointerEvents="all"
+          data-hit-area="true"
+          data-testid={`sld-v2-mini-rmu-compact-field-cell-${stationId}-${bay.bayRef}`}
+        />
+        <line x1={x} y1={busY} x2={x} y2={lvY} stroke={busColor} strokeWidth={1.8} strokeLinecap="round" />
+        <ApparatusSwitchDisconnector
+          cx={x}
+          cy={switchY}
+          state={bay.dsState ?? 'closed'}
+          energized={(bay.dsState ?? 'closed') === 'closed'}
+        />
+        <ApparatusFuse cx={x} cy={fuseY} state="healthy" />
+        <ApparatusEarthingSwitch
+          cxAxis={x}
+          cy={switchY + 8}
+          state={bay.esState ?? 'open'}
+          side="LEFT"
+        />
+        <line x1={x} y1={fuseY + 7} x2={x} y2={trTop} stroke={busColor} strokeWidth={1.6} />
+        <g
+          data-testid={
+            transformerRef
+              ? `sld-symbol-mini-transformer-${transformerRef}`
+              : `sld-v2-mini-rmu-compact-transformer-host-${stationId}-${bay.bayRef}`
+          }
+          data-element-id={transformerRef ?? undefined}
+          data-symbol-canon="transformer_intersecting_circles"
+          data-transformer-circles-intersect="true"
+          data-transformer-circle-overlap-px={7}
+          data-hit-area={transformerClickHandler ? 'true' : undefined}
+          role={transformerClickHandler ? 'button' : undefined}
+          tabIndex={transformerClickHandler ? 0 : undefined}
+          aria-label={transformerClickHandler ? 'Transformator SN/nN stacji' : undefined}
+          onClick={transformerClickHandler}
+          onDoubleClick={transformerClickHandler}
+          onContextMenu={transformerClickHandler ? (event) => {
+            event.preventDefault();
+            transformerClickHandler(event);
+          } : undefined}
+          onKeyDown={transformerClickHandler ? (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              transformerClickHandler(event as unknown as MouseEvent<SVGGElement>);
+            }
+          } : undefined}
+          style={transformerClickHandler ? { cursor: 'pointer' } : undefined}
+        >
+          <title>TR - transformator stacji</title>
+          <CompactTransformerSymbol cx={x} cy={trCy} vectorGroup={transformerVectorGroup} />
+          <rect
+            x={x - 16}
+            y={trCy - 18}
+            width={32}
+            height={42}
+            fill="transparent"
+            pointerEvents="all"
+            data-hit-area="true"
+            data-testid={transformerRef ? `sld-symbol-mini-transformer-${transformerRef}-hitbox` : undefined}
+          />
+        </g>
+        <line
+          x1={x}
+          y1={trBottom}
+          x2={x}
+          y2={lvY}
+          stroke="#7DD3FC"
+          strokeWidth={1.8}
+          data-parity-key="station.mini.tr.secondary_lead.compact"
+        />
+        <line
+          x1={x - 26}
+          y1={lvY}
+          x2={x + 26}
+          y2={lvY}
+          stroke="#7DD3FC"
+          strokeWidth={2.3}
+          data-parity-key="station.mini.bus.lv.compact"
+          data-testid={`sld-v2-mini-rmu-compact-lv-row-${stationId}-${bay.bayRef}`}
+        />
+        <text
+          x={x - 31}
+          y={lvY + 3}
+          textAnchor="end"
+          fill="#7DD3FC"
+          fontFamily={FONT_SANS}
+          fontSize={7}
+          fontWeight={800}
+          paintOrder="stroke"
+          stroke={COLOR_SCADA_SHADOW}
+          strokeWidth={1.2}
+        >
+          nN
+        </text>
+        <text
+          x={x + 18}
+          y={trCy + 3}
+          textAnchor="start"
+          fill={COLOR_TEXT_SECONDARY}
+          fontFamily={FONT_SANS}
+          fontSize={8}
+          fontWeight={800}
+          paintOrder="stroke"
+          stroke={COLOR_SCADA_SHADOW}
+          strokeWidth={1.6}
+        >
+          TR
+        </text>
+        {bay.hasMissingRequiredDevice && (
+          <circle cx={x + 13} cy={switchY} r={3} fill="#FF7B00" stroke={COLOR_SELECTION} strokeWidth={0.5}>
+            <title>Aparatura pola transformatorowego nie ma kompletnego pakietu katalogowego</title>
+          </circle>
+        )}
+        <title>{`${roleLabel} - ${bay.designation}`}</title>
+      </g>
+    );
+  }
+
+  return (
+    <BayColumnSn
+      x={x}
+      busY={busY}
+      bayRole={bay.fieldRole}
+      bayRef={bay.bayRef}
+      designation={bay.designation}
+      apparatusStack={['DS', 'CB', 'ES']}
+      variant="compact"
+      stationId={stationId}
+      hasMissing={bay.hasMissingRequiredDevice}
+      onSymbolClick={onSymbolClick}
+      cbState={bay.cbState}
+      dsState={bay.dsState}
+      esState={bay.esState}
+      showRoleBadge={false}
+      showDesignationLabel={false}
+      roleBadgeLabel={roleLabel}
+    />
+  );
+}
 
 interface PvConnectionTreeProps {
   stationId: string;
@@ -1100,15 +2183,19 @@ interface DerBadgesProps {
   offsetX: number;
   offsetY: number;
   badges: readonly MiniBlockDerBadge[];
+  viewportScale?: number;
   showLabels?: boolean;
 }
 
 function DerBadges(props: DerBadgesProps): JSX.Element {
-  const { offsetY, badges, showLabels = true } = props;
+  const { offsetY, badges, showLabels = true, viewportScale } = props;
   const labelYOffset = 19;
   const powerYOffset = 31;
   const badgePitch = 52;
   const badgeStartX = -((badges.length - 1) * badgePitch) / 2;
+  const derLabelFontSize = capWorldFontSize(8, viewportScale, 14);
+  const derCountFontSize = capWorldFontSize(9, viewportScale, 14);
+  const derPowerFontSize = capWorldFontSize(7.5, viewportScale, 13);
   // K30-15.2: distinct geometric shape per DER type per IEC 60617-5 convention
   // (PV=hexagon, BESS=square z napisem 'B', FW=triangle z napisem 'W').
   // Etykiety mocy rozstawiamy od srodka, zeby uklady hybrydowe PV+BESS+FW
@@ -1195,7 +2282,7 @@ function DerBadges(props: DerBadgesProps): JSX.Element {
                 textAnchor="middle"
                 fill={fill}
                 fontFamily={FONT_SANS}
-                fontSize={8}
+                fontSize={derLabelFontSize}
                 fontWeight={900}
                 letterSpacing={0}
                 paintOrder="stroke"
@@ -1212,7 +2299,7 @@ function DerBadges(props: DerBadgesProps): JSX.Element {
                 textAnchor="start"
                 fill={fill}
                 fontFamily={FONT_SANS}
-                fontSize={9}
+                fontSize={derCountFontSize}
                 fontWeight={900}
               >
                 ×{badge.count}
@@ -1227,7 +2314,7 @@ function DerBadges(props: DerBadgesProps): JSX.Element {
                 textAnchor="middle"
                 fill={fill}
                 fontFamily="monospace"
-                fontSize={7.5}
+                fontSize={derPowerFontSize}
                 fontWeight={800}
                 paintOrder="stroke"
                 stroke="#05070A"

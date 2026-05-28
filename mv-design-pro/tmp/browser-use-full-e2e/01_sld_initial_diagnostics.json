@@ -1,0 +1,91 @@
+{
+  "bodyLength": 2172,
+  "firstText": "↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nProjekt bez nazwy\nZAKRES / WARIANT\nZakres 50 szablonów\nKonfiguruj zakres\nWyniki nieuruchomione\n00:47:39\n27.05.2026\nOblicz\nNakładka\nAnalizy\nEksport\nFaza projektu:\nANALIZA\nKontrola:\n0\nObliczenia:\ndo uruchomienia\nSzyny:\n12\nOdcinki SN:\n2\nPola SN:\n2\nStacje:\n1\nDługość:\n2,00 km\nTR:\n3\nOdbiory nN:\n0\nSzukaj\nKatalog\nKontrola\nMetadane\nHistoria\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nSchemat i topologia\nNastępna akcja\ni\n●\nUkład dopuszczony do analizy\nAnaliza\nEtap układu\ndo analizy\nPrzegląd techniczny\nUkład skonfigurowany do obliczeń.\nGPZ i zasilanie\n●\n1\n⊙\nGPZ 1\n●\nStacje SN/nN\n●\n1\n⊙\nStacja SN/nN 1\n·\nstacja SN/nN\n●\nMagistrale i odcinki SN\n●\n2\n⊙\nOdcinek 01\n·\n3 × NA2XS2Y 1×150/25 mm² · 1,00 km\n●\n⊙\nOdcinek 02\n·\n3 × NA2XS2Y 1×150/25 mm² · 1,00 km\n●\n+\nDodaj układ\nKonfiguracja\n28\nSekcja 0\n15 kV\nSekcja I\n15 kV\nGPZ 1\nSystem\n110 kV\nTR1 / 110 kV\nTR2 / 110 kV\nPole WN TR1\nY\nTR1\n25 MVA\n110/15 kV\nPole WN TR2\nY\nTR2\n25 MVA\n110/15 kV\nPole TR1\nPole TR2\nOdpływ 1\nQ1\nQ0\nT1\nQ9\nQ8\nOdpływ 2\nQ1\nQ0\nT1\nQ9\nQ8\nOdpływ 1\nQ1\nQ0\nT1\nQ9\nQ8\nOdpływ 2\nQ1\nQ0\nT1\nQ9\nQ8\nSekcja 1\n15 kV\nSekcja 2\n15 kV\nGPZ 1\nŹródło zasilania\nS01\nGPZ 1\n3 × NA2XS2Y 1×150/25 mm² · 2 km\nOdcinki i kierunki zasilania\n+\n-\n[]\nUKŁADY PV/BESS/FW:\n＋ PV (fotowoltaika)\n＋ BESS (magazyn)\n＋ FW (wiatr)\n☀ Jasny\n↓ SVG\nEksportuj schemat ▾\n▴ Warstwy (13)\n▸ Dowody (8)\n▸ Drzewo układu\nKARTA TECHNICZNA\n\nKONFIGURACJA UKŁADU\n\nDo analizy\n\nNASTĘPNY KROK PROJEKTOWY\n\nSkonfiguruj dane techniczne układu\n\nPo skonfigurowaniu układu uruchomisz obliczenia i nakładki wynikowe.\n\nWybierz element na schemacie",
+  "foundForbidden": [
+    "Wyniki nieuruchomione",
+    "nieuruchomione"
+  ],
+  "hasSvg": true,
+  "portMarkers": [
+    {
+      "kind": null,
+      "role": null,
+      "side": null,
+      "tag": "BUTTON",
+      "testId": "top-bar-export",
+      "text": "Eksport"
+    },
+    {
+      "kind": null,
+      "role": null,
+      "side": null,
+      "tag": "metadata",
+      "testId": "sld-readability-report",
+      "text": ""
+    },
+    {
+      "kind": null,
+      "role": "WE",
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-mini-rmu-bay-marker-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation-field/bb66d55295e2defe1fdbf0cf3fa06f40/1",
+      "text": "WE - WE"
+    },
+    {
+      "kind": null,
+      "role": null,
+      "side": null,
+      "tag": "circle",
+      "testId": "sld-v2-mini-rmu-port-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation-WE",
+      "text": ""
+    },
+    {
+      "kind": null,
+      "role": "TR",
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-mini-rmu-bay-marker-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation-field/bb66d55295e2defe1fdbf0cf3fa06f40/2",
+      "text": "TR - TR"
+    },
+    {
+      "kind": null,
+      "role": null,
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-viewport-controls",
+      "text": "+-[]"
+    },
+    {
+      "kind": null,
+      "role": null,
+      "side": null,
+      "tag": "BUTTON",
+      "testId": "sld-export-svg",
+      "text": "↓ SVG"
+    },
+    {
+      "kind": null,
+      "role": null,
+      "side": null,
+      "tag": "DIV",
+      "testId": "sld-export-format-menu",
+      "text": "Eksportuj schemat ▾"
+    },
+    {
+      "kind": null,
+      "role": null,
+      "side": null,
+      "tag": "BUTTON",
+      "testId": "sld-export-menu-toggle",
+      "text": "Eksportuj schemat ▾"
+    }
+  ],
+  "stationFound": true,
+  "svgText": null,
+  "title": "MV-DESIGN PRO",
+  "url": "http://127.0.0.1:5173/#sld",
+  "viewport": {
+    "height": 972,
+    "width": 1556
+  }
+}

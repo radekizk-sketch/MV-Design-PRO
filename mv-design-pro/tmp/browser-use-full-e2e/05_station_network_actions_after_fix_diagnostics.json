@@ -1,0 +1,43 @@
+{
+  "branchButton": {
+    "disabled": true,
+    "text": "Rozpocznij odgałęzienie",
+    "title": "Brak wolnego pola odgałęźnego SN. Dodaj pole ODG albo wybierz stację/ZKSN z takim portem."
+  },
+  "branchReason": "Brak wolnego pola odgałęźnego SN. Dodaj pole ODG albo wybierz stację/ZKSN z takim portem.",
+  "continueButton": {
+    "disabled": true,
+    "text": "Kontynuuj ciąg SN ze stacji",
+    "title": "Brak wolnego portu wyjściowego SN. Dodaj pole WY/ODG albo wybierz stację przelotową z wolnym terminalem."
+  },
+  "continueReason": "Brak wolnego portu wyjściowego SN. Dodaj pole WY/ODG albo wybierz stację przelotową z wolnym terminalem.",
+  "derButtons": [
+    {
+      "disabled": false,
+      "text": "Dodaj PV",
+      "title": null
+    },
+    {
+      "disabled": false,
+      "text": "Dodaj BESS",
+      "title": null
+    },
+    {
+      "disabled": false,
+      "text": "Dodaj FW",
+      "title": null
+    }
+  ],
+  "hasNetworkActions": true,
+  "keyLines": [
+    "Kontynuuj ciąg SN ze stacji",
+    "Rozpocznij odgałęzienie",
+    "Dodaj PV",
+    "Dodaj BESS",
+    "Dodaj FW",
+    "Brak wolnego portu wyjściowego SN. Dodaj pole WY/ODG albo wybierz stację przelotową z wolnym terminalem.",
+    "Brak wolnego pola odgałęźnego SN. Dodaj pole ODG albo wybierz stację/ZKSN z takim portem."
+  ],
+  "url": "http://127.0.0.1:5173/#sld?sel=sub%2Fbb66d55295e2defe1fdbf0cf3fa06f40%2Fsubstation&type=Station&name=Stacja+SN%2FnN+1",
+  "visibleForbidden": []
+}

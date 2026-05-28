@@ -18,8 +18,10 @@ from .types import (
     ProtectionCurve,
     ProtectionDeviceType,
     ProtectionSettingTemplate,
+    PtpireeGeneratorCertificate,
     PVInverterType,
     SourceSystemType,
+    SurgeArresterType,
     SwitchEquipmentType,
     TransformerType,
     VTType,
@@ -44,6 +46,9 @@ def _copy_catalog_quality(record: dict) -> dict:
     ):
         value = params.get(field_name)
         if value is not None:
+            quality[field_name] = value
+    for field_name, value in params.items():
+        if str(field_name).startswith("ptpiree_") and value is not None:
             quality[field_name] = value
     return quality
 
@@ -136,6 +141,33 @@ def _derive_bess_records(converter_records: Iterable[dict]) -> list[dict]:
     return derived
 
 
+def _derive_inverter_records(converter_records: Iterable[dict]) -> list[dict]:
+    derived: list[dict] = []
+    for record in converter_records:
+        params = dict(record.get("params") or {})
+        kind = _converter_kind_value(record) or "INVERTER"
+        derived.append(
+            {
+                "id": record.get("id"),
+                "name": record.get("name"),
+                "params": {
+                    "un_kv": params.get("un_kv"),
+                    "sn_mva": params.get("sn_mva"),
+                    "pmax_mw": params.get("pmax_mw"),
+                    "qmin_mvar": params.get("qmin_mvar"),
+                    "qmax_mvar": params.get("qmax_mvar"),
+                    "cosphi_min": params.get("cosphi_min"),
+                    "cosphi_max": params.get("cosphi_max"),
+                    "kind": kind,
+                    "manufacturer": params.get("manufacturer"),
+                    "model": params.get("model"),
+                    **_copy_catalog_quality(record),
+                },
+            }
+        )
+    return derived
+
+
 @dataclass(frozen=True)
 class CatalogRepository:
     """
@@ -163,6 +195,10 @@ class CatalogRepository:
     source_system_types: dict[str, SourceSystemType] = field(default_factory=dict)
     pv_inverter_types: dict[str, PVInverterType] = field(default_factory=dict)
     bess_inverter_types: dict[str, BESSInverterType] = field(default_factory=dict)
+    surge_arrester_types: dict[str, SurgeArresterType] = field(default_factory=dict)
+    ptpiree_generator_certificates: dict[str, PtpireeGeneratorCertificate] = field(
+        default_factory=dict
+    )
 
     @classmethod
     def from_records(
@@ -186,6 +222,8 @@ class CatalogRepository:
         source_system_types: Iterable[dict] | None = None,
         pv_inverter_types: Iterable[dict] | None = None,
         bess_inverter_types: Iterable[dict] | None = None,
+        surge_arrester_types: Iterable[dict] | None = None,
+        ptpiree_generator_certificates: Iterable[dict] | None = None,
     ) -> CatalogRepository:
         def _build_line_type(record: dict) -> LineType:
             data = {"id": record.get("id"), "name": record.get("name")}
@@ -277,6 +315,18 @@ class CatalogRepository:
             data.update(record.get("params") or {})
             return BESSInverterType.from_dict(data)
 
+        def _build_surge_arrester_type(record: dict) -> SurgeArresterType:
+            data = {"id": record.get("id"), "name": record.get("name")}
+            data.update(record.get("params") or {})
+            return SurgeArresterType.from_dict(data)
+
+        def _build_ptpiree_generator_certificate(
+            record: dict,
+        ) -> PtpireeGeneratorCertificate:
+            data = {"id": record.get("id"), "name": record.get("name")}
+            data.update(record.get("params") or {})
+            return PtpireeGeneratorCertificate.from_dict(data)
+
         switch_records = list(switch_equipment_types or [])
         converter_records = list(converter_types or [])
         inverter_records = list(inverter_types or [])
@@ -285,6 +335,8 @@ class CatalogRepository:
         protection_setting_template_records = list(protection_setting_templates or [])
         if not converter_records and inverter_records:
             converter_records = inverter_records
+        if not inverter_records and converter_records:
+            inverter_records = _derive_inverter_records(converter_records)
         mv_apparatus_records = list(mv_apparatus_types or [])
         if not mv_apparatus_records and switch_records:
             mv_apparatus_records = _derive_mv_apparatus_records(switch_records)
@@ -347,6 +399,17 @@ class CatalogRepository:
             },
             bess_inverter_types={
                 str(item.id): item for item in map(_build_bess_inverter_type, bess_records)
+            },
+            surge_arrester_types={
+                str(item.id): item
+                for item in map(_build_surge_arrester_type, list(surge_arrester_types or []))
+            },
+            ptpiree_generator_certificates={
+                str(item.id): item
+                for item in map(
+                    _build_ptpiree_generator_certificate,
+                    list(ptpiree_generator_certificates or []),
+                )
             },
         )
 
@@ -463,6 +526,24 @@ class CatalogRepository:
     def get_bess_inverter_type(self, type_id: str) -> BESSInverterType | None:
         return self.bess_inverter_types.get(str(type_id))
 
+    def list_surge_arrester_types(self) -> list[SurgeArresterType]:
+        return self._sorted(self.surge_arrester_types.values())
+
+    def get_surge_arrester_type(self, type_id: str) -> SurgeArresterType | None:
+        return self.surge_arrester_types.get(str(type_id))
+
+    def list_ptpiree_generator_certificates(self) -> list[PtpireeGeneratorCertificate]:
+        return sorted(
+            self.ptpiree_generator_certificates.values(),
+            key=lambda item: (str(item.manufacturer), str(item.model), str(item.id)),
+        )
+
+    def get_ptpiree_generator_certificate(
+        self,
+        type_id: str,
+    ) -> PtpireeGeneratorCertificate | None:
+        return self.ptpiree_generator_certificates.get(str(type_id))
+
     @staticmethod
     def _sorted(values: Iterable) -> list:
         return sorted(values, key=lambda item: (str(item.name), str(item.id)))
@@ -500,7 +581,9 @@ def get_default_mv_catalog() -> CatalogRepository:
     )
     from .mv_cable_line_catalog import get_all_cable_types, get_all_line_types
     from .mv_converter_catalog import get_all_converter_types
+    from .mv_ptpiree_catalog import get_all_ptpiree_generator_certificates
     from .mv_source_catalog import get_all_source_system_types
+    from .mv_surge_arrester_catalog import get_all_surge_arrester_types
     from .mv_switch_catalog import get_all_switch_equipment_types
     from .mv_transformer_catalog import get_all_transformer_types
 
@@ -520,4 +603,6 @@ def get_default_mv_catalog() -> CatalogRepository:
         ct_types=get_all_ct_types(),
         vt_types=get_all_vt_types(),
         source_system_types=get_all_source_system_types(),
+        surge_arrester_types=get_all_surge_arrester_types(),
+        ptpiree_generator_certificates=get_all_ptpiree_generator_certificates(),
     )

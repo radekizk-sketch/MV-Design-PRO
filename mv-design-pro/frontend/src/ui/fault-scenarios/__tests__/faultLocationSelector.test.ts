@@ -5,7 +5,7 @@ import {
   getFaultLocationContext,
   buildFaultLocationOptions,
   calculatePositionAlongBranchPct,
-} from '../faultLocationSelector';
+} from '../faultLocationHelpers';
 
 describe('describeFaultLocationKind', () => {
   it('zwraca PL label per kind', () => {

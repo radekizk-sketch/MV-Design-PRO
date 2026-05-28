@@ -117,6 +117,30 @@ describe('GpzCanonicalRenderer — zakaz nakładających tekstów (Inv R2)', () 
     expect(s2Labels).toHaveLength(1);
   });
 
+  it('Etykieta sekcji ma rozdzielone linie nazwy i napięcia', () => {
+    const { container } = renderGpz();
+    const label = container.querySelector('[data-testid="gpz-canonical-section-label-S1"]');
+    const name = container.querySelector('[data-testid="gpz-canonical-section-label-S1-name"]');
+    const voltage = container.querySelector('[data-testid="gpz-canonical-section-label-S1-voltage"]');
+    const bg = container.querySelector('[data-testid="gpz-canonical-section-label-S1-bg"]');
+
+    expect(label?.getAttribute('data-readable-label-stack')).toBe('true');
+    expect(name?.getAttribute('y')).toBe('-5');
+    expect(voltage?.getAttribute('y')).toBe('13');
+    expect(bg?.getAttribute('height')).toBe('36');
+  });
+
+  it('Etykieta źródła 110 kV nie nakłada tekstu System i napięcia', () => {
+    const { container } = renderGpz();
+    const indicator = container.querySelector('[data-testid="gpz-canonical-hv-source-indicator"]');
+    const name = container.querySelector('[data-testid="gpz-canonical-hv-source-label-name"]');
+    const voltage = container.querySelector('[data-testid="gpz-canonical-hv-source-label-voltage"]');
+
+    expect(indicator?.getAttribute('data-readable-label-stack')).toBe('true');
+    expect(name?.getAttribute('y')).toBe('-10');
+    expect(voltage?.getAttribute('y')).toBe('10');
+  });
+
   it('Każda nazwa GPZ renderowana 1×', () => {
     const { container } = renderGpz({ name: 'GPZ-5 PST' });
     const root = container.querySelector('[data-testid="sld-v2-gpz-canonical-gpz-test"]')!;

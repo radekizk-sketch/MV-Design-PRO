@@ -1,0 +1,35 @@
+{
+  "location": "http://127.0.0.1:5173/#sld?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8&sel=stn%2Fac3f845407ac60c5df26c7e641dacec2%2Fstation&type=Station&name=Stacja+B",
+  "hasSldCanvas": true,
+  "hasVisiblePrzerwaText": false,
+  "noExternalBridgeGuard": true,
+  "noExternalBridgeAttrs": {
+    "data-guard": "no_external_we_wy_bridge",
+    "data-render-contract": "mask_only_not_electrical_element",
+    "data-visible-label": "false"
+  },
+  "transformerAttrs": null,
+  "visibleErrors": [
+    "D",
+    "d",
+    "d",
+    "d",
+    "d",
+    "d",
+    "D",
+    "d",
+    "d",
+    "d",
+    "d",
+    "d",
+    "d",
+    "d",
+    "d",
+    "d",
+    "d",
+    "d",
+    "d",
+    "d"
+  ],
+  "textSample": "↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nProjekt bez nazwy\nZAKRES / WARIANT\nZakres obliczeń z adresu\nKonfiguruj zakres\nWyniki do obliczenia\n19:23:45\n27.05.2026\nOblicz\nNakładka\nAnalizy\nEksport\nFaza projektu:\nANALIZA\nKontrola:\n0\nObliczenia:\ndo obliczenia\nSzyny:\n13\nOdcinki SN:\n5\nPola SN:\n4\nStacje:\n1\nDługość:\n1,92 km\nTR:\n2\nOdbiory nN:\n1\nSzukaj\nKatalog\nKontrola\nMetadane\nHistoria\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nSchemat i topologia\nNastępna akcja\ni\n●\nUkład dopuszczony do analizy\nAnaliza\nEtap układu\ndo analizy\nPrzegląd techniczny\nUkład skonfigurowany do obliczeń.\nGPZ i zasilanie\n●\n1\n⊙\nŹródło GPZ 15 kV\n●\nStacje SN/nN\n●\n1\n⊙\nStacja B\n·\nstacja przelotowa\n●\n⋮\nMagistrale i odcinki SN\n●\n5\n⊙\nF2\n·\nYAKXS 3×120/16 · 0,21 km\n●\n⊙\nOdcinek 02\n·\nYAKXS 3×120/16 · 0,09 km\n●\n⊙\nOdcinek 03\n·\nYAKXS 3×120/16 · 0,12 km\n●\n⊙\nOdcinek 04\n·\n3 × NA2XS2Y 1×150/25 mm² · 1,00 km\n●\n⊙\nOdcinek 05\n·\nYAKXS 3×120/16 · 0,50 km\n●\nOdbiory nN\n●\n1\n⊙\nOdbiór nN 1 - Stacja B\n·\n0,03 MW\n●\n+\nDodaj układ\nKonfiguracja\n29\nSekcja 0\n15 kV\nGPZ 15 kV\nSystem\n110 kV\nSzyna WN 110 kV\nPole WN TR1\nY\nTR1\n25 MVA\n110/15 kV\nPole TR1\nPole liniow…\nQ1\nQ0\nT1\nQ9\nQ8\nSekcja 1\n15 kV\n15 kV\n15 kV\nWE\nWY\nDyn11\nnN\nTR\nS01"
+}

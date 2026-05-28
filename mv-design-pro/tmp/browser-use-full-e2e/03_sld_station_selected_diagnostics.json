@@ -1,0 +1,285 @@
+{
+  "bodyStart": "↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nProjekt bez nazwy\nZAKRES / WARIANT\nZakres 50 szablonów\nKonfiguruj zakres\nWyniki do obliczenia\n00:56:00\n27.05.2026\nOblicz\nNakładka\nAnalizy\nEksport\nFaza projektu:\nANALIZA\nKontrola:\n0\nObliczenia:\ndo obliczenia\nSzyny:\n12\nOdcinki SN:\n2\nPola SN:\n2\nStacje:\n1\nDługość:\n2,00 km\nTR:\n3\nOdbiory nN:\n0\nSzukaj\nKatalog\nKontrola\nMetadane\nHistoria\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nSchemat i topologia\nNastępna akcja\ni\n●\nUkład dopuszczony do analizy\nAnaliza\nEtap układu\ndo analizy\nPrzegląd techniczny\nUkład skonfigurowany do obliczeń.\nGPZ i zasilanie\n●\n1\n⊙\nGPZ 1\n●\nStacje SN/nN\n●\n1\n⊙\nStacja SN/nN 1\n·\nstacja SN/nN\n●\nMagistrale i odcinki SN\n●\n2\n⊙\nOdcinek 01\n·\n3 × NA2XS2Y 1×150/25 mm² · 1,00 km\n●\n⊙\nOdcinek 02\n·\n3 × NA2XS2Y 1×150/25 mm² · 1,00 km\n●\n+\nDodaj układ\nKonfiguracja\n28\nSekcja 0\n15 kV\nSekcja I\n15 kV\nGPZ 1\nSystem\n110 kV\nTR1 / 110 kV\nTR2 / 110 kV\nPole WN TR1\nY\nTR1\n25 MVA\n110/15 kV\nPole WN TR2\nY\nTR2\n25 MVA\n110/15 kV\nPole TR1\nPole TR2\nOdpływ 1\nQ1\nQ0\nT1\nQ9\nQ8\nOdpływ 2\nQ1\nQ0\nT1\nQ9\nQ8\nOdpływ 1\nQ1\nQ0\nT1\nQ9\nQ8\nOdpływ 2\nQ1\nQ0\nT1\nQ9\nQ8\nSekcja 1\n15 kV\nSekcja 2\n15 kV\nGPZ 1\nŹródło zasilania\nS01\nGPZ 1\n3 × NA2XS2Y 1×150/25 mm² · 2 km\nOdcinki i kierunki zasilania\n+\n-\n[]\nUKŁADY PV/BESS/FW:\n＋ PV (fotowoltaika)\n＋ BESS (magazyn)\n＋ FW (wiatr)\n☀ Jasny\n↓ SVG\nEksportuj schemat ▾\n▴ Warstwy (13)\n▸ Dowody (8)\n▸ Drzewo układu\nKARTA TECHNICZNA\n\nKONFIGURACJA UKŁADU\n\nDo analizy\n\nNASTĘPNY KROK PROJEKTOWY\n\nSkonfiguruj dane techniczne układu\n\nPo skonfigurowaniu układu wykonasz obliczenia i sprawdzisz nakładki wynikowe.\n\nWybierz element na schemacie\n\nWskaż obiekt na SLD, aby otworzyć jego kartę techniczną.\n\nSTRUKTURA UKŁADU\n\nŹródło zasilania GPZ\n\nGotowe\n\nPole SN GPZ\n\n4 pole odpływowe\n\nMagistrala SN\n\n2 odc. SN\n\nStacje SN/nN\n\n1 stacji\n\nTransformatory i odbiory\n\n3 transformatorów\n\nMożna wykonać obliczenia.\nBieżący zestaw: Zakres 50 szablonów. Zakres obliczeń: Zakres 50 szablonów. Wariant: Zakres 50 szablonów.\nSchemat / Układ\n|\nProjekt:\nProjekt bez nazwy\n|\nZakres obliczeń:\nZakres 50 szablonów\n|\nWariant:\nnie wybrano\n|\nWersja układu:\naktualna\n|\nEdycja\nWyniki do obliczenia\n|\n▲ 1 ostrzeżenie\n|\nSzyny: 3\nTory i TR: 5",
+  "cards": [
+    {
+      "tag": "DIV",
+      "testId": "app-root",
+      "text": "↶Cofnij↷PonówMV-DESIGN-PRO12.2ProjektProjekt bez nazwyZakres / wariantZakres 50 szablonówKonfiguruj zakresWyniki do obliczenia00:56:0027.05.2026ObliczNakładkaAnalizyEksportFaza projektu:ANALIZAKontrola:0Obliczenia:do obliczeniaSzyny:12Odcinki SN:2Pola SN:2Stacje:1Długość:2,00 kmTR:3Odbiory nN:0Szuka"
+    },
+    {
+      "tag": "DIV",
+      "testId": "canonical-layout",
+      "text": "↶Cofnij↷PonówMV-DESIGN-PRO12.2ProjektProjekt bez nazwyZakres / wariantZakres 50 szablonówKonfiguruj zakresWyniki do obliczenia00:56:0027.05.2026ObliczNakładkaAnalizyEksportFaza projektu:ANALIZAKontrola:0Obliczenia:do obliczeniaSzyny:12Odcinki SN:2Pola SN:2Stacje:1Długość:2,00 kmTR:3Odbiory nN:0Szuka"
+    },
+    {
+      "tag": "ASIDE",
+      "testId": "context-panel",
+      "text": "Schemat i topologiaNastępna akcjai●Układ dopuszczony do analizyAnalizaEtap układudo analizyPrzegląd technicznyUkład skonfigurowany do obliczeń.GPZ i zasilanie●1⊙GPZ 1●Stacje SN/nN●1⊙Stacja SN/nN 1 · stacja SN/nN●Magistrale i odcinki SN●2⊙Odcinek 01 · 3 × NA2XS2Y 1×150/25 mm² · 1,00 km●⊙Odcinek 02 · "
+    },
+    {
+      "tag": "DIV",
+      "testId": "schemat-context-panel",
+      "text": "Schemat i topologiaNastępna akcjai●Układ dopuszczony do analizyAnalizaEtap układudo analizyPrzegląd technicznyUkład skonfigurowany do obliczeń.GPZ i zasilanie●1⊙GPZ 1●Stacje SN/nN●1⊙Stacja SN/nN 1 · stacja SN/nN●Magistrale i odcinki SN●2⊙Odcinek 01 · 3 × NA2XS2Y 1×150/25 mm² · 1,00 km●⊙Odcinek 02 · "
+    },
+    {
+      "tag": "DIV",
+      "testId": "project-tree",
+      "text": "GPZ i zasilanie●1⊙GPZ 1●Stacje SN/nN●1⊙Stacja SN/nN 1 · stacja SN/nN●Magistrale i odcinki SN●2⊙Odcinek 01 · 3 × NA2XS2Y 1×150/25 mm² · 1,00 km●⊙Odcinek 02 · 3 × NA2XS2Y 1×150/25 mm² · 1,00 km●"
+    },
+    {
+      "tag": "BUTTON",
+      "testId": "model-tree-row-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation",
+      "text": "⊙Stacja SN/nN 1 · stacja SN/nN●"
+    }
+  ],
+  "consoleForbidden": [],
+  "hasSvg": true,
+  "panelActions": [
+    "↶Cofnij",
+    "↷Ponów",
+    "ProjektProjekt bez nazwy",
+    "Zakres / wariantZakres 50 szablonów",
+    "Konfiguruj zakres",
+    "Oblicz",
+    "Nakładka",
+    "Analizy",
+    "Eksport",
+    "Szukaj",
+    "Katalog",
+    "Kontrola",
+    "Metadane",
+    "Historia",
+    "Sieć",
+    "Schemat",
+    "Studia",
+    "WynikiW",
+    "Zabezpieczenia",
+    "Układy",
+    "Katalogi",
+    "Raporty",
+    "Historia",
+    "Schemat i topologia",
+    "●Układ dopuszczony do analizyAnaliza",
+    "⊙GPZ 1●",
+    "⊙Stacja SN/nN 1 · stacja SN/nN●",
+    "⊙Odcinek 01 · 3 × NA2XS2Y 1×150/25 mm² · 1,00 km●",
+    "⊙Odcinek 02 · 3 × NA2XS2Y 1×150/25 mm² · 1,00 km●",
+    "+Dodaj układ",
+    "Konfiguracja",
+    "+",
+    "-",
+    "[]",
+    "＋ PV (fotowoltaika)",
+    "＋ BESS (magazyn)",
+    "＋ FW (wiatr)",
+    "☀ Jasny",
+    "↓ SVG",
+    "Eksportuj schemat ▾",
+    "▴ Warstwy (13)",
+    "▸ Dowody (8)",
+    "▸ Drzewo układu",
+    "Wybierz element na schemacie"
+  ],
+  "resultStatusText": [
+    "Wyniki do obliczenia",
+    "Obliczenia:",
+    "Wyniki",
+    "Wyniki do obliczenia"
+  ],
+  "stationGroups": [
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "BUTTON",
+      "testId": "model-tree-row-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation",
+      "text": "⊙Stacja SN/nN 1 · stacja SN/nN●"
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-section-hit-gpz/118b4bef9c856d92973b8f2515da45e5/substation__gpz/118b4bef9c856d92973b8f2515da45e5/section/001",
+      "text": "Sekcja 015 kV"
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-section-gpz/118b4bef9c856d92973b8f2515da45e5/substation__gpz/118b4bef9c856d92973b8f2515da45e5/section/001",
+      "text": "Sekcja 015 kV"
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-section-hit-gpz/118b4bef9c856d92973b8f2515da45e5/substation__gpz/118b4bef9c856d92973b8f2515da45e5/section/002",
+      "text": "Sekcja I15 kV"
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-section-gpz/118b4bef9c856d92973b8f2515da45e5/substation__gpz/118b4bef9c856d92973b8f2515da45e5/section/002",
+      "text": "Sekcja I15 kV"
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-gpz-hit-gpz/118b4bef9c856d92973b8f2515da45e5/substation",
+      "text": "GPZ 1System110 kVTR1 / 110 kVTR2 / 110 kVPole WN TR1YTR125 MVA110/15 kVPole WN TR2YTR225 MVA110/15 kVPole TR1Pole TR2Odp"
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-gpz-canonical-gpz/118b4bef9c856d92973b8f2515da45e5/substation",
+      "text": "GPZ 1System110 kVTR1 / 110 kVTR2 / 110 kVPole WN TR1YTR125 MVA110/15 kVPole WN TR2YTR225 MVA110/15 kVPole TR1Pole TR2Odp"
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "rect",
+      "testId": "gpz-canonical-gpz/118b4bef9c856d92973b8f2515da45e5/substation-frame",
+      "text": ""
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-gpz-overview-label-gpz/118b4bef9c856d92973b8f2515da45e5/substation",
+      "text": "GPZ 1Źródło zasilania"
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "rect",
+      "testId": "sld-v2-gpz-header-hit-gpz/118b4bef9c856d92973b8f2515da45e5/substation",
+      "text": ""
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-run-gpz/118b4bef9c856d92973b8f2515da45e5/corridor_01-junction-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation",
+      "text": ""
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-stations-layer",
+      "text": "WE - WETR - TRS01"
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-station-hit-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation",
+      "text": "WE - WETR - TRS01"
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-mini-rmu-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation",
+      "text": "WE - WETR - TRS01"
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-mini-rmu-overview-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation",
+      "text": "WE - WETR - TRS01"
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "rect",
+      "testId": "sld-v2-mini-rmu-overview-enclosure-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation",
+      "text": ""
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "line",
+      "testId": "sld-v2-mini-rmu-sn-row-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation",
+      "text": ""
+    },
+    {
+      "role": "RMU_LINE",
+      "selectionStyle": null,
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-mini-rmu-bay-marker-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation-field/bb66d55295e2defe1fdbf0cf3fa06f40/1",
+      "text": "WE - WE"
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "circle",
+      "testId": "sld-v2-mini-rmu-port-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation-WE",
+      "text": ""
+    },
+    {
+      "role": "RMU_TRANSFORMER",
+      "selectionStyle": null,
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-mini-rmu-bay-marker-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation-field/bb66d55295e2defe1fdbf0cf3fa06f40/2",
+      "text": "TR - TR"
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-mini-rmu-tr-triangle-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation",
+      "text": ""
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "line",
+      "testId": "sld-v2-mini-rmu-lv-row-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation",
+      "text": ""
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-mini-rmu-overview-code-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation",
+      "text": "S01"
+    },
+    {
+      "role": null,
+      "selectionStyle": null,
+      "side": null,
+      "tag": "g",
+      "testId": "sld-v2-topology-label-label:gpz:gpz/118b4bef9c856d92973b8f2515da45e5/substation",
+      "text": "GPZ 1"
+    }
+  ],
+  "title": "MV-DESIGN PRO",
+  "url": "http://127.0.0.1:5173/#sld"
+}

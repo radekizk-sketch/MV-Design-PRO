@@ -1,0 +1,34 @@
+{
+  "appHeight": 972,
+  "appWidth": 1556,
+  "hasCableHeads": 0,
+  "hasPortMagnets": 0,
+  "hasSupplyPath": 1,
+  "labelCount": 55,
+  "overlapCount": 0,
+  "stationRoots": [
+    {
+      "h": 61,
+      "lod": "overview",
+      "testid": "sld-v2-mini-rmu-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation",
+      "text": "WE - WETR - TRS01",
+      "w": 76,
+      "x": 915,
+      "y": 795
+    },
+    {
+      "h": 61,
+      "lod": null,
+      "testid": "sld-v2-mini-rmu-overview-sub/bb66d55295e2defe1fdbf0cf3fa06f40/substation",
+      "text": "WE - WETR - TRS01",
+      "w": 76,
+      "x": 915,
+      "y": 795
+    }
+  ],
+  "svgPresent": true,
+  "title": "MV-DESIGN PRO",
+  "topOverlaps": [],
+  "url": "http://127.0.0.1:5173/#sld",
+  "visibleForbidden": []
+}

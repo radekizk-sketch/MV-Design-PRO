@@ -1,0 +1,76 @@
+[
+  {
+    "name": "page_identity",
+    "status": "PASS",
+    "ms": 11,
+    "value": {
+      "url": "http://127.0.0.1:5173/#sld?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&overlay=1&legend=1&sel=bp%2Fed7a37193a833ebc29e3dd7305152d17%2Fzksn&type=ZKSN&name=ZKSN+SN",
+      "title": "MV-DESIGN PRO"
+    }
+  },
+  {
+    "name": "zksn_drawer_click",
+    "status": "FAIL",
+    "ms": 961,
+    "error": "Error: Drawer ZKSN not visible\n    at C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\.node_repl_cell_23.mjs:75:69\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async recordStepE2e (C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\.node_repl_cell_23.mjs:52:19)\n    at async C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\.node_repl_cell_23.mjs:71:1"
+  },
+  {
+    "name": "zksn_drawer_configuration_action",
+    "status": "PASS",
+    "ms": 993,
+    "value": {
+      "url": "http://127.0.0.1:5173/#sld?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&overlay=1&legend=1&sel=bp%2Fed7a37193a833ebc29e3dd7305152d17%2Fzksn&type=ZKSN&name=ZKSN+SN",
+      "sample": "ℹ\nOtwarto kartę węzła sieci SN.\n×\n↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nE2E SLD 0002\nZAKRES / WARIANT\nZakres obliczeń z adresu\nKonfiguruj zakres\nWyniki do obliczenia\n02:15:08\n28.05.2026\nOblicz\nNakładka\nAnalizy\nEksport\nFaza projektu:\nANALIZA\nKontrola:\n0\nObliczenia:\ndo obliczenia\nSzyny:\n15\nOdcinki SN:\n7\nPola SN:\n4\nStacje:\n1\nDługość:\n3,92 km\nTR:\n2\nOdbiory nN:\n1\nSzukaj\nKatalog\nKontrola\nMetadane\nHistoria\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nSchemat i topologia\nNastępna akcja\ni\n●\nUkład dopuszczony do analizy\nAnaliza\nEtap układu\ndo analizy\nPrzegląd techniczny\nUkład skonfigurowany do obliczeń.\nGPZ i zasilanie\n●\n1\n⊙\nŹródło GPZ 15 kV\n●\nStacje SN/nN\n●\n1\n⊙\nStacja B\n·\nstacja przelotowa\n●\nMagistrale i odcinki SN\n●\n7\n⊙\nF2\n·\nYAKXS 3×120/16 · 0,21 km\n●\n⊙\nOdcine"
+    }
+  },
+  {
+    "name": "open_search_panel",
+    "status": "PASS",
+    "ms": 736,
+    "value": {
+      "sample": "ℹ\nOtwarto kartę węzła sieci SN.\n×\n↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nE2E SLD 0002\nZAKRES / WARIANT\nZakres obliczeń z adresu\nKonfiguruj zakres\nWyniki do obliczenia\n02:15:09\n28.05.2026\nOblicz\nNakładka\nAnalizy\nEksport\nFaza projektu:\nANALIZA\nKontrola:\n0\nObliczenia:\ndo obliczenia\nSzyny:\n15\nOdcinki SN:\n7\nPola SN:\n4\nStacje:\n1\nDługość:\n3,92 km\nTR:\n2\nOdbiory nN:\n1\nSzukaj\nKatalog\nKontrola\nMetadane\nHistoria\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nSchemat i topologia\nNastępna akcja\ni\n●\nUkład dopuszczony do analizy\nAnaliza\nEtap układu\ndo analizy\nPrzegląd techniczny\nUkład skonfigurowany do obliczeń.\nGPZ i zasilanie\n●\n1\n⊙\nŹródło GPZ 15 kV\n●\nStacje SN/nN\n●\n1\n⊙\nStacja B\n·\nstacja przelotowa\n●\nMagistrale i odcinki SN\n●\n7\n⊙\nF2\n·\nYAKXS 3×120/16 · 0,21 km\n●\n⊙\nOdcine"
+    }
+  },
+  {
+    "name": "open_catalog_panel",
+    "status": "PASS",
+    "ms": 1085,
+    "value": {
+      "sample": "ℹ\nOtwarto kartę węzła sieci SN.\n×\n↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nE2E SLD 0002\nZAKRES / WARIANT\nZakres obliczeń z adresu\nKonfiguruj zakres\nWyniki do obliczenia\n02:15:10\n28.05.2026\nOblicz\nNakładka\nAnalizy\nEksport\nFaza projektu:\nANALIZA\nKontrola:\n0\nObliczenia:\ndo obliczenia\nSzyny:\n15\nOdcinki SN:\n7\nPola SN:\n4\nStacje:\n1\nDługość:\n3,92 km\nTR:\n2\nOdbiory nN:\n1\nSzukaj\nKatalog\nKontrola\nMetadane\nHistoria\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nSchemat i topologia\nNastępna akcja\ni\n●\nUkład dopuszczony do analizy\nAnaliza\nEtap układu\ndo analizy\nPrzegląd techniczny\nUkład skonfigurowany do obliczeń.\nGPZ i zasilanie\n●\n1\n⊙\nŹródło GPZ 15 kV\n●\nStacje SN/nN\n●\n1\n⊙\nStacja B\n·\nstacja przelotowa\n●\nMagistrale i odcinki SN\n●\n7\n⊙\nF2\n·\nYAKXS 3×120/16 · 0,21 km\n●\n⊙\nOdcine"
+    }
+  },
+  {
+    "name": "open_results_analysis",
+    "status": "PASS",
+    "ms": 1125,
+    "value": {
+      "url": "http://127.0.0.1:5173/#sld?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&overlay=1&legend=1&sel=bp%2Fed7a37193a833ebc29e3dd7305152d17%2Fzksn&type=ZKSN&name=ZKSN+SN",
+      "sample": "ℹ\nOtwarto kartę węzła sieci SN.\n×\n↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nE2E SLD 0002\nZAKRES / WARIANT\nZakres obliczeń z adresu\nKonfiguruj zakres\nWyniki do obliczenia\n02:15:11\n28.05.2026\nOblicz\nNakładka\nAnalizy\nEksport\nFaza projektu:\nANALIZA\nKontrola:\n0\nObliczenia:\ndo obliczenia\nSzyny:\n15\nOdcinki SN:\n7\nPola SN:\n4\nStacje:\n1\nDługość:\n3,92 km\nTR:\n2\nOdbiory nN:\n1\nSzukaj\nKatalog\nKontrola\nMetadane\nHistoria\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nSchemat i topologia\nNastępna akcja\ni\n●\nUkład dopuszczony do analizy\nAnaliza\nEtap układu\ndo analizy\nPrzegląd techniczny\nUkład skonfigurowany do obliczeń.\nGPZ i zasilanie\n●\n1\n⊙\nŹródło GPZ 15 kV\n●\nStacje SN/nN\n●\n1\n⊙\nStacja B\n·\nstacja przelotowa\n●\nMagistrale i odcinki SN\n●\n7\n⊙\nF2\n·\nYAKXS 3×120/16 · 0,21 km\n●\n⊙\nOdcinek 02\n·\nYAKXS 3×120/16 · 0,09 km\n●\n⊙\nOdcinek 03\n·\nYAKXS 3×120/16 · 0,12 km\n●\n⊙\nOdcinek 04\n·\n3 × NA2XS2Y 1×150/25 mm² · 1,00 km\n●\n⊙\nOdcinek 05\n·\nYAKXS 3×120/16 · 0,50 km\n●\n⊙\nOdcinek 06\n·\nYAKXS 3×120/16 "
+    }
+  },
+  {
+    "name": "open_export_menu",
+    "status": "PASS",
+    "ms": 762,
+    "value": {
+      "sample": "ℹ\nOtwarto kartę węzła sieci SN.\n×\n↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nE2E SLD 0002\nZAKRES / WARIANT\nZakres obliczeń z adresu\nKonfiguruj zakres\nWyniki do obliczenia\n02:15:12\n28.05.2026\nOblicz\nNakładka\nAnalizy\nEksport\nFaza projektu:\nANALIZA\nKontrola:\n0\nObliczenia:\ndo obliczenia\nSzyny:\n15\nOdcinki SN:\n7\nPola SN:\n4\nStacje:\n1\nDługość:\n3,92 km\nTR:\n2\nOdbiory nN:\n1\nSzukaj\nKatalog\nKontrola\nMetadane\nHistoria\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nSchemat i topologia\nNastępna akcja\ni\n●\nUkład dopuszczony do analizy\nAnaliza\nEtap układu\ndo analizy\nPrzegląd techniczny\nUkład skonfigurowany do obliczeń.\nGPZ i zasilanie\n●\n1\n⊙\nŹródło GPZ 15 kV\n●\nStacje SN/nN\n●\n1\n⊙\nStacja B\n·\nstacja przelotowa\n●\nMagistrale i odcinki SN\n●\n7\n⊙\nF2\n·\nYAKXS 3×120/16 · 0,21 km\n●\n⊙\nOdcinek 02\n·\nYAKXS 3×120/16 · 0,09 km\n●\n⊙\nOdcinek 03\n·\nYAKXS 3×120/16 · 0,12 km\n●\n⊙\nOdcinek 04\n·\n3 × NA2XS2Y 1×150/25 mm² · 1,00 km\n●\n⊙\nOdcinek 05\n·\nYAKXS 3×120/16 · 0,50 km\n●\n⊙\nOdcinek 06\n·\nYAKXS 3×120/16 "
+    }
+  },
+  {
+    "name": "open_calculate_menu",
+    "status": "PASS",
+    "ms": 1129,
+    "value": {
+      "sample": "↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nE2E SLD 0002\nZAKRES / WARIANT\nZakres obliczeń z adresu\nKonfiguruj zakres\nWyniki aktualne\n02:15:13\n28.05.2026\nSprawdź konfigurację\nNakładka\nAnalizy\nEksport\nFaza projektu:\nBUDOWA\nKontrola:\n0\nObliczenia:\nkonfiguracja układu\nSzyny:\n15\nOdcinki SN:\n7\nPola SN:\n4\nStacje:\n1\nDługość:\n3,92 km\nTR:\n2\nOdbiory nN:\n1\nSzukaj\nKatalog\nKontrola\nMetadane\nHistoria\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nSchemat i topologia\nNastępna akcja\ni\n●\nUkład dopuszczony do analizy\nAnaliza\nEtap układu\ndo analizy\nPrzegląd techniczny\nUkład skonfigurowany do obliczeń.\nGPZ i zasilanie\n●\n1\n⊙\nŹródło GPZ 15 kV\n●\nStacje SN/nN\n●\n1\n⊙\nStacja B\n·\nstacja przelotowa\n●\nMagistrale i odcinki SN\n●\n7\n⊙\nOdcinek 01\n·\nYAKXS 3×120/16 · 1,00 km\n●\n⊙\nOdcinek 02\n·\nYAKXS 3×120/16 · 0,50 km\n●\n⊙\nOdcinek 03\n·\nYAKXS 3×120/16 · 0,09 km\n●\n⊙\nOdcinek 04\n·\nYAKXS 3×120/16 · 0,12 km\n●\n⊙\nOdcinek 05\n·\n3 × NA2XS2Y 1×240/25 mm² · 1,00 km\n●\n⊙\nOdcinek 06\n·\n3 × NA2XS2Y 1×150/25 mm² · "
+    }
+  },
+  {
+    "name": "open_ncrfg_analysis_tab",
+    "status": "PASS",
+    "ms": 1662,
+    "value": {
+      "url": "http://127.0.0.1:5173/#analysis?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&tab=ncrfg-tests",
+      "sample": "✔\nObliczenie zakończone. Otwieram wyniki.\n×\n↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nE2E SLD 0002\nZAKRES / WARIANT\nZakres obliczeń z adresu\nKonfiguruj zakres\nWyniki aktualne\n02:15:15\n28.05.2026\nSprawdź konfigurację\nNakładka\nAnalizy\nEksport\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nSchemat\n/\nAnalizy techniczne\nAnalizy techniczne\nPODGLĄD SCHEMATU\nKontekst układu jest zsynchronizowany z głównym schematem.\nPowiązany obiekt: Aktywne obliczenie.\nANALIZA\nKontekst analityczny\nPROJEKT\tE2E SLD 0002\nWARIANT\tZakres obliczeń z adresu\nWERSJA UKŁADU\tAktualna wersja układu\nOBLICZENIE\tZwarcie trójfazowe (3F) · 28.05.2026, 02:15:13\nOBIEKT\tAktywne obliczenie\nZAKŁADKA\tTesty NC RfG\nPRZEJŚCIA ANALITYCZNE\nNawigacja analityczna\nKoordynacja zabezpieczeń\nCharakterystyki FRT/LVRT/HVRT\nRozpływ mocy NR/GS/FD\nStan fazowy SN\nStabilność dynamiczna\nWkłady źródeł rozszerzone\nWeryfikacja cieplna i dynamiczna\nTesty NC RfG\nAnaliza wrażliwości\nPorównaj przebiegi (A/B)\nRaporty OSD i audytowe\nWYNIKI\nBieżący widok analityki\nTESTY NC RFG\nPakiet symulacji zgodności PTPiREE\n\nZakładka wykonuje pełny pakiet testów wymaganych procedurą PTPiREE v3.0 dla modułu PV/BESS/FW: częstotliwość, regu"
+    }
+  }
+]

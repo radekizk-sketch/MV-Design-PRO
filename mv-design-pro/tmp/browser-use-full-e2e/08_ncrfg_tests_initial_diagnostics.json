@@ -1,0 +1,61 @@
+{
+  "buttons": [
+    {
+      "disabled": false,
+      "testId": "nav-area-RAPORTY_UZASADNIENIA",
+      "text": "Raporty"
+    },
+    {
+      "disabled": false,
+      "testId": null,
+      "text": "Testy NC RfG"
+    },
+    {
+      "disabled": false,
+      "testId": null,
+      "text": "Raporty OSD i audytowe"
+    },
+    {
+      "disabled": true,
+      "testId": "ncrfg-run-tests",
+      "text": "Uruchom testy NC RfG"
+    }
+  ],
+  "hasTab": true,
+  "keyLines": [
+    "ZAKŁADKA\tTesty NC RfG",
+    "Charakterystyki FRT/LVRT/HVRT",
+    "Testy NC RfG",
+    "Pakiet symulacji zgodności PTPiREE",
+    "Zakładka uruchamia pełny pakiet testów wymaganych procedurą PTPiREE v3.0 dla modułu PV/BESS/FW: częstotliwość, regulacje P/Q/cosφ/U, PMAX/PMIN, FRT/HVRT, odbudowę P, prąd bierny, komendy redukcji generacji i zdolności dodatkowe.",
+    "Uruchom testy NC RfG",
+    "Topologia, PCC, poziom napięcia i brak symboli pozornych.",
+    "Specjalista DER/NC RfG",
+    "Falownik, certyfikat PTPiREE, FRT, P(f), Q(U), SCADA i rejestrator zakłóceń.",
+    "Czytelność kroków, tabel wyników, CTA i brak niejawnych blokad.",
+    "Najpierw dodaj źródło z katalogu i przypisz profil NC RfG",
+    "Pakiet PTPiREE nie uruchamia się bez katalogowej mocy, falownika, PCC i profilu operatora. To nie jest błąd solvera, tylko brak danych wejściowych wymaganych do audytu zgodności.",
+    "Dodaj PV, BESS albo farmę wiatrową z katalogu urządzeń.",
+    "Przypisz falownik, moc znamionową, PCC i wariant przyłączenia.",
+    "Wybierz profil operatora, krzywe LVRT/HVRT i regulację Q(U)/P(f).",
+    "Wróć do tej zakładki i uruchom pakiet testów NC RfG/PTPiREE."
+  ],
+  "tableCount": 1,
+  "tables": [
+    {
+      "headers": [
+        "Projekt",
+        "Wariant",
+        "Wersja układu",
+        "Obliczenie",
+        "Obiekt",
+        "Zakładka"
+      ],
+      "rowCount": 6,
+      "testId": null,
+      "text": "ProjektProjekt bez nazwyWariantZakres 50 szablonówWersja układuAktualna wersja układuObliczenieNie wybrano obliczeniaObiektAktywne obliczenieZakładkaTesty NC RfG"
+    }
+  ],
+  "url": "http://127.0.0.1:5173/#analysis?tab=ncrfg-tests",
+  "visibleForbidden": []
+}

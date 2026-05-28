@@ -194,12 +194,17 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     cleanup();
   });
 
-  it('station tab "transformator" pokazuje vector group + rated kVA placeholders', () => {
+  it('station tab "transformator" pokazuje panel inżynierski i braki danych', () => {
     const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-transformator"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-tr-engineering-panel"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="drawer-tr-vector-group"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="drawer-tr-rated-kva"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="drawer-tr-voltages"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="drawer-tr-status"]')?.textContent).toBe('DO UZUPEŁNIENIA');
+    expect(container.querySelector('[data-testid="drawer-tr-blockers"]')?.textContent).toContain(
+      'Brak transformatora SN/nN przypisanego do stacji.',
+    );
     cleanup();
   });
 
@@ -207,26 +212,56 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     const data: SldDetailDrawerData = {
       ...STATION_DATA,
       transformerSpec: {
+        ref: 'tr-1',
+        name: 'Transformator T1',
         vectorGroup: 'Dyn11',
         snMva: 0.63,
         uhvKv: 15,
         ulvKv: 0.4,
         ukPercent: 6.0,
+        pkKw: 6.4,
+        catalogRef: 'tr-630-dyn11',
+        dataQuality: 'model',
+        blockers: [],
       },
     };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-transformator"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-tr-status"]')?.textContent).toBe('DANE KOMPLETNE');
+    expect(container.querySelector('[data-testid="drawer-tr-name"]')?.textContent).toBe('Transformator T1');
     expect(container.querySelector('[data-testid="drawer-tr-vector-group"]')?.textContent).toBe('Dyn11');
     expect(container.querySelector('[data-testid="drawer-tr-rated-kva"]')?.textContent).toBe('630 kVA');
     expect(container.querySelector('[data-testid="drawer-tr-voltages"]')?.textContent).toBe('15 kV / 0,4 kV');
+    expect(container.querySelector('[data-testid="drawer-tr-uk-percent"]')?.textContent).toBe('6 %');
+    expect(container.querySelector('[data-testid="drawer-tr-catalog-ref"]')?.textContent).toBe('tr-630-dyn11');
     cleanup();
   });
 
-  it('K30-79: brak transformerSpec → wszystkie pola "—"', () => {
+  it('K30-79: brak transformerSpec nie udaje danych zerowych ani myślników', () => {
     const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-transformator"]') as Element);
-    expect(container.querySelector('[data-testid="drawer-tr-vector-group"]')?.textContent).toBe('—');
-    expect(container.querySelector('[data-testid="drawer-tr-rated-kva"]')?.textContent).toBe('—');
+    const panelText = container.querySelector('[data-testid="drawer-tr-engineering-panel"]')?.textContent ?? '';
+    expect(container.querySelector('[data-testid="drawer-tr-vector-group"]')?.textContent).toBe('Brak danych');
+    expect(container.querySelector('[data-testid="drawer-tr-rated-kva"]')?.textContent).toBe('Brak danych');
+    expect(panelText).toContain('Braki danych');
+    expect(panelText).not.toContain('—');
+    expect(panelText).not.toContain('0 kVA');
+    cleanup();
+  });
+
+  it('K30-79: przycisk konfiguracji transformatora wywołuje callback', () => {
+    const onOpenConfiguration = vi.fn();
+    const { container } = render(
+      <SldDetailDrawer
+        open
+        data={STATION_DATA}
+        onClose={vi.fn()}
+        onOpenConfiguration={onOpenConfiguration}
+      />,
+    );
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-transformator"]') as Element);
+    fireEvent.click(container.querySelector('[data-testid="drawer-tr-open-config"]') as Element);
+    expect(onOpenConfiguration).toHaveBeenCalledTimes(1);
     cleanup();
   });
 
@@ -790,6 +825,91 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
   it('K30-91: action toolbar ukryty bez onOpenFullView', () => {
     const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
     expect(container.querySelector('[data-testid="sld-v2-detail-drawer-actions"]')).toBeFalsy();
+    cleanup();
+  });
+
+  it('drawer akcji: pokazuje akcje domenowe, wykonuje aktywne i blokuje niedostępne z powodem', () => {
+    const onActive = vi.fn();
+    const onDisabled = vi.fn();
+    const { container } = render(
+      <SldDetailDrawer
+        open
+        data={STATION_DATA}
+        onClose={vi.fn()}
+        actions={[
+          { id: 'show-results', labelPl: 'Pokaż wyniki', group: 'widok', onClick: onActive },
+          {
+            id: 'delete-station',
+            labelPl: 'Usuń stację',
+            group: 'usun',
+            disabledReasonPl: 'Brak aktywnego zakresu obliczeń.',
+            onClick: onDisabled,
+          },
+        ]}
+      />,
+    );
+    const showResults = container.querySelector('[data-testid="sld-v2-detail-drawer-action-show-results"]') as HTMLButtonElement;
+    const deleteStation = container.querySelector('[data-testid="sld-v2-detail-drawer-action-delete-station"]') as HTMLButtonElement;
+    expect(showResults).toBeTruthy();
+    expect(deleteStation).toBeTruthy();
+    expect(deleteStation.getAttribute('data-disabled')).toBe('true');
+    expect(deleteStation.title).toBe('Brak aktywnego zakresu obliczeń.');
+    fireEvent.click(showResults);
+    fireEvent.click(deleteStation);
+    expect(onActive).toHaveBeenCalledTimes(1);
+    expect(onDisabled).not.toHaveBeenCalled();
+    cleanup();
+  });
+
+  it('drawer węzła terenowego pokazuje kartę techniczną i operacje bez przeskoku ekranu', () => {
+    const data: SldDetailDrawerData = {
+      kind: 'node',
+      elementId: 'bp-1',
+      label: 'ZK SN 1',
+      nodeSpec: {
+        nodeKind: 'zksn',
+        rolePl: 'Złącze kablowe SN',
+        voltageKv: 15,
+        connectedSegmentsCount: 3,
+        catalogRef: 'zksn-standard-15kv',
+        blockers: [],
+      },
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-karta"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-operacje"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="drawer-node-role"]')?.textContent).toBe('Złącze kablowe SN');
+    expect(container.querySelector('[data-testid="drawer-node-voltage"]')?.textContent).toBe('15 kV');
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-operacje"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-node-operation-rules"]')).toBeTruthy();
+    cleanup();
+  });
+
+  it('drawer transformatora pokazuje pełną kartę inżynierską zamiast pustych kresek', () => {
+    const data: SldDetailDrawerData = {
+      kind: 'transformer',
+      elementId: 'tr-1',
+      label: 'Transformator SN/nN T1',
+      voltageKv: 15,
+      transformerSpec: {
+        ref: 'tr-1',
+        name: 'Transformator SN/nN T1',
+        vectorGroup: 'Dyn11',
+        snMva: 0.63,
+        uhvKv: 15,
+        ulvKv: 0.4,
+        ukPercent: 4,
+        pkKw: 5.2,
+        catalogRef: 'tr-630-15-04',
+        dataQuality: 'model',
+        blockers: [],
+      },
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    expect(container.querySelector('[data-testid="drawer-tr-engineering-panel"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="drawer-tr-rated-kva"]')?.textContent).toBe('630 kVA');
+    expect(container.querySelector('[data-testid="drawer-tr-vector-group"]')?.textContent).toBe('Dyn11');
+    expect(container.querySelector('[data-testid="drawer-tr-status"]')?.textContent).toBe('DANE KOMPLETNE');
     cleanup();
   });
 

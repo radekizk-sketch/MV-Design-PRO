@@ -88,7 +88,7 @@ function buildNextAction(
 
   return {
     title: 'Skonfiguruj dane techniczne układu',
-    detail: 'Po skonfigurowaniu układu uruchomisz obliczenia i nakładki wynikowe.',
+    detail: 'Po skonfigurowaniu układu wykonasz obliczenia i sprawdzisz nakładki wynikowe.',
     buttonLabel: 'Wybierz element na schemacie',
     enabled: false,
     blockedReason: 'Wskaż obiekt na SLD, aby otworzyć jego kartę techniczną.',
@@ -246,7 +246,11 @@ export function GuidedBuildActionPanel() {
           </div>
         </section>
 
-        <section className="space-y-3 border border-[#1f3d5c] bg-[#081522] px-4 py-4">
+        <section
+          className="space-y-3 border border-[#1f3d5c] bg-[#081522] px-4 py-4"
+          data-testid="sld-readiness-stack"
+          aria-label="Gotowość obliczeń i struktura układu"
+        >
           <p className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7db6e8]">
             Struktura układu
           </p>
@@ -293,7 +297,7 @@ export function GuidedBuildActionPanel() {
       </div>
 
       <div className="border-t border-[#17314c] px-5 py-3 text-[11px] text-[#88a9c9]">
-        {isReady ? 'Można uruchomić obliczenia.' : 'Skonfiguruj układ techniczny przed uruchomieniem obliczeń.'}
+        {isReady ? 'Można wykonać obliczenia.' : 'Skonfiguruj układ techniczny przed wykonaniem obliczeń.'}
       </div>
     </div>
   );

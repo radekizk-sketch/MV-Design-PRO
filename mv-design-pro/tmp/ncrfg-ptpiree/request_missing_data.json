@@ -1,0 +1,15 @@
+﻿{
+    "modules":  [
+                    {
+                        "der_kind":  "PV",
+                        "voltage_kv":  15,
+                        "certificate_status":  "none",
+                        "der_ref":  "PV-PTPIREE-BRAKI",
+                        "der_name":  "Układ PV z brakującymi danymi",
+                        "p_max_kw":  2500,
+                        "module_family":  "PPM",
+                        "operator_id":  "enea"
+                    }
+                ],
+    "procedure_version":  "PTPiREE Procedura testowania v3.0"
+}

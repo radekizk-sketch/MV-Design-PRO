@@ -308,7 +308,7 @@ export const COMMON_UI_LABELS = {
 
   // Puste stany
   emptyStates: {
-    noResults: 'Wyniki nieuruchomione',
+    noResults: 'Wyniki do obliczenia',
     noBusResults: 'Wyniki węzłowe nie są dostępne dla tego obliczenia.',
     noBranchResults: 'Wyniki gałęziowe nie są dostępne dla tego obliczenia.',
     noTrace: 'Brak śladu obliczeń dla tego obliczenia.',
@@ -435,7 +435,7 @@ export const COMMON_UI_LABELS = {
 
   // Status labels
   statusLabels: {
-    NONE: 'Wyniki nieuruchomione',
+    NONE: 'Wyniki do obliczenia',
     FRESH: 'Wyniki aktualne',
     VALID: 'Wyniki aktualne',
     OUTDATED: 'Wyniki nieaktualne',

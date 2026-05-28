@@ -1,0 +1,14 @@
+{
+  "steps": [
+    {
+      "name": "station_drawer_click",
+      "pass": true,
+      "drawer": {
+        "aria": "Detal: Stacja B",
+        "exists": true,
+        "label": "Stacja B",
+        "text": "Stacja SN/nNStacja B×Rozdzielnica SNTransformatorStrona nNUkłady PV/BESS/FW⇱ Otwórz pełny widokKonfiguruj obiektKonfiguruj stacjęKontynuuj ciąg głównyRozpocznij odgałęzienieDodaj PV/BESS/FWDodaj odbiór nNPokaż gotowośćPokaż wynikiUsuń stacjęUkład: Stacja S01Rozdzielnica SN: układ przelotowy z polem wejściowym, wyjściowym i transformatorowym."
+      }
+    }
+  ]
+}

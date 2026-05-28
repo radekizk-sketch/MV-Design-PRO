@@ -1,0 +1,532 @@
+﻿{
+    "procedure_version":  "PTPiREE Procedura testowania v3.0",
+    "source_ref":  "https://ptpiree.pl/kodeksy-sieci/procedura-testowania/",
+    "operators":  [
+                      {
+                          "operator_id":  "enea",
+                          "operator_name_pl":  "Enea Operator",
+                          "last_revision":  "2024-Q4",
+                          "module_types":  [
+                                               {
+                                                   "id":  "A",
+                                                   "threshold_kw_min":  0.8,
+                                                   "threshold_kw_max":  1000.0,
+                                                   "voltage_kv_max":  110.0,
+                                                   "description_pl":  "Mikro"
+                                               },
+                                               {
+                                                   "id":  "B",
+                                                   "threshold_kw_min":  1000.0,
+                                                   "threshold_kw_max":  50000.0,
+                                                   "voltage_kv_max":  110.0,
+                                                   "description_pl":  "MaÅe"
+                                               },
+                                               {
+                                                   "id":  "C",
+                                                   "threshold_kw_min":  50000.0,
+                                                   "threshold_kw_max":  75000.0,
+                                                   "voltage_kv_max":  110.0,
+                                                   "description_pl":  "DuÅ¼e"
+                                               },
+                                               {
+                                                   "id":  "D",
+                                                   "threshold_kw_min":  75000.0,
+                                                   "threshold_kw_max":  null,
+                                                   "voltage_kv_max":  null,
+                                                   "description_pl":  "B. duÅ¼e"
+                                               }
+                                           ],
+                          "frequency_response":  {
+                                                     "steady_state_hz_min":  49.5,
+                                                     "steady_state_hz_max":  50.5,
+                                                     "transient_hz_min":  47.5,
+                                                     "transient_hz_max":  51.5,
+                                                     "pf_droop_percent":  5.0,
+                                                     "dead_band_hz":  0.2,
+                                                     "ramp_rate_pct_per_min":  10.0
+                                                 },
+                          "reactive_power":  {
+                                                 "q_range_pct_pn_min":  -0.33,
+                                                 "q_range_pct_pn_max":  0.33,
+                                                 "cos_phi_min":  0.95,
+                                                 "voltage_control_modes":  [
+                                                                               "cos_phi_constant",
+                                                                               "q_constant",
+                                                                               "q_of_u",
+                                                                               "voltage_control"
+                                                                           ]
+                                             },
+                          "p_recovery_after_fault":  {
+                                                         "required_for_modules":  [
+                                                                                      "B",
+                                                                                      "C",
+                                                                                      "D"
+                                                                                  ],
+                                                         "p_recovery_time_s":  1.0,
+                                                         "p_recovery_rate_pct_per_s":  80.0
+                                                     }
+                      },
+                      {
+                          "operator_id":  "energa",
+                          "operator_name_pl":  "Energa Operator",
+                          "last_revision":  "2024-Q4",
+                          "module_types":  [
+                                               {
+                                                   "id":  "A",
+                                                   "threshold_kw_min":  0.8,
+                                                   "threshold_kw_max":  1000.0,
+                                                   "voltage_kv_max":  110.0,
+                                                   "description_pl":  "Mikro"
+                                               },
+                                               {
+                                                   "id":  "B",
+                                                   "threshold_kw_min":  1000.0,
+                                                   "threshold_kw_max":  50000.0,
+                                                   "voltage_kv_max":  110.0,
+                                                   "description_pl":  "MaÅe"
+                                               },
+                                               {
+                                                   "id":  "C",
+                                                   "threshold_kw_min":  50000.0,
+                                                   "threshold_kw_max":  75000.0,
+                                                   "voltage_kv_max":  110.0,
+                                                   "description_pl":  "DuÅ¼e"
+                                               },
+                                               {
+                                                   "id":  "D",
+                                                   "threshold_kw_min":  75000.0,
+                                                   "threshold_kw_max":  null,
+                                                   "voltage_kv_max":  null,
+                                                   "description_pl":  "B. duÅ¼e"
+                                               }
+                                           ],
+                          "frequency_response":  {
+                                                     "steady_state_hz_min":  49.5,
+                                                     "steady_state_hz_max":  50.5,
+                                                     "transient_hz_min":  47.5,
+                                                     "transient_hz_max":  51.5,
+                                                     "pf_droop_percent":  5.0,
+                                                     "dead_band_hz":  0.2,
+                                                     "ramp_rate_pct_per_min":  10.0
+                                                 },
+                          "reactive_power":  {
+                                                 "q_range_pct_pn_min":  -0.33,
+                                                 "q_range_pct_pn_max":  0.33,
+                                                 "cos_phi_min":  0.95,
+                                                 "voltage_control_modes":  [
+                                                                               "cos_phi_constant",
+                                                                               "q_constant",
+                                                                               "q_of_u",
+                                                                               "voltage_control"
+                                                                           ]
+                                             },
+                          "p_recovery_after_fault":  {
+                                                         "required_for_modules":  [
+                                                                                      "B",
+                                                                                      "C",
+                                                                                      "D"
+                                                                                  ],
+                                                         "p_recovery_time_s":  1.0,
+                                                         "p_recovery_rate_pct_per_s":  80.0
+                                                     }
+                      },
+                      {
+                          "operator_id":  "pge",
+                          "operator_name_pl":  "PGE Dystrybucja",
+                          "last_revision":  "2024-Q4",
+                          "module_types":  [
+                                               {
+                                                   "id":  "A",
+                                                   "threshold_kw_min":  0.8,
+                                                   "threshold_kw_max":  1000.0,
+                                                   "voltage_kv_max":  110.0,
+                                                   "description_pl":  "Mikro"
+                                               },
+                                               {
+                                                   "id":  "B",
+                                                   "threshold_kw_min":  1000.0,
+                                                   "threshold_kw_max":  50000.0,
+                                                   "voltage_kv_max":  110.0,
+                                                   "description_pl":  "MaÅe"
+                                               },
+                                               {
+                                                   "id":  "C",
+                                                   "threshold_kw_min":  50000.0,
+                                                   "threshold_kw_max":  75000.0,
+                                                   "voltage_kv_max":  110.0,
+                                                   "description_pl":  "DuÅ¼e"
+                                               },
+                                               {
+                                                   "id":  "D",
+                                                   "threshold_kw_min":  75000.0,
+                                                   "threshold_kw_max":  null,
+                                                   "voltage_kv_max":  null,
+                                                   "description_pl":  "B. duÅ¼e"
+                                               }
+                                           ],
+                          "frequency_response":  {
+                                                     "steady_state_hz_min":  49.5,
+                                                     "steady_state_hz_max":  50.5,
+                                                     "transient_hz_min":  47.5,
+                                                     "transient_hz_max":  51.5,
+                                                     "pf_droop_percent":  5.0,
+                                                     "dead_band_hz":  0.2,
+                                                     "ramp_rate_pct_per_min":  10.0
+                                                 },
+                          "reactive_power":  {
+                                                 "q_range_pct_pn_min":  -0.33,
+                                                 "q_range_pct_pn_max":  0.33,
+                                                 "cos_phi_min":  0.95,
+                                                 "voltage_control_modes":  [
+                                                                               "cos_phi_constant",
+                                                                               "q_constant",
+                                                                               "q_of_u",
+                                                                               "voltage_control"
+                                                                           ]
+                                             },
+                          "p_recovery_after_fault":  {
+                                                         "required_for_modules":  [
+                                                                                      "B",
+                                                                                      "C",
+                                                                                      "D"
+                                                                                  ],
+                                                         "p_recovery_time_s":  1.0,
+                                                         "p_recovery_rate_pct_per_s":  80.0
+                                                     }
+                      },
+                      {
+                          "operator_id":  "pse",
+                          "operator_name_pl":  "PSE â Polskie Sieci Elektroenergetyczne",
+                          "last_revision":  "2024-Q4",
+                          "module_types":  [
+                                               {
+                                                   "id":  "A",
+                                                   "threshold_kw_min":  0.8,
+                                                   "threshold_kw_max":  1000.0,
+                                                   "voltage_kv_max":  110.0,
+                                                   "description_pl":  "ModuÅy mikro/mini (mikroinstalacje, maÅe PV/BESS po nN)"
+                                               },
+                                               {
+                                                   "id":  "B",
+                                                   "threshold_kw_min":  1000.0,
+                                                   "threshold_kw_max":  50000.0,
+                                                   "voltage_kv_max":  110.0,
+                                                   "description_pl":  "ModuÅy maÅe i Årednie (instalacje â¥1 MW po SN/WN)"
+                                               },
+                                               {
+                                                   "id":  "C",
+                                                   "threshold_kw_min":  50000.0,
+                                                   "threshold_kw_max":  75000.0,
+                                                   "voltage_kv_max":  110.0,
+                                                   "description_pl":  "ModuÅy duÅ¼e (â¥50 MW)"
+                                               },
+                                               {
+                                                   "id":  "D",
+                                                   "threshold_kw_min":  75000.0,
+                                                   "threshold_kw_max":  null,
+                                                   "voltage_kv_max":  null,
+                                                   "description_pl":  "ModuÅy bardzo duÅ¼e (â¥75 MW lub przyÅÄ\u0085czenie â¥110 kV)"
+                                               }
+                                           ],
+                          "frequency_response":  {
+                                                     "steady_state_hz_min":  49.5,
+                                                     "steady_state_hz_max":  50.5,
+                                                     "transient_hz_min":  47.5,
+                                                     "transient_hz_max":  51.5,
+                                                     "pf_droop_percent":  5.0,
+                                                     "dead_band_hz":  0.2,
+                                                     "ramp_rate_pct_per_min":  10.0
+                                                 },
+                          "reactive_power":  {
+                                                 "q_range_pct_pn_min":  -0.33,
+                                                 "q_range_pct_pn_max":  0.33,
+                                                 "cos_phi_min":  0.95,
+                                                 "voltage_control_modes":  [
+                                                                               "cos_phi_constant",
+                                                                               "q_constant",
+                                                                               "q_of_u",
+                                                                               "voltage_control"
+                                                                           ]
+                                             },
+                          "p_recovery_after_fault":  {
+                                                         "required_for_modules":  [
+                                                                                      "B",
+                                                                                      "C",
+                                                                                      "D"
+                                                                                  ],
+                                                         "p_recovery_time_s":  1.0,
+                                                         "p_recovery_rate_pct_per_s":  80.0
+                                                     }
+                      },
+                      {
+                          "operator_id":  "tauron",
+                          "operator_name_pl":  "Tauron Dystrybucja",
+                          "last_revision":  "2024-Q4",
+                          "module_types":  [
+                                               {
+                                                   "id":  "A",
+                                                   "threshold_kw_min":  0.8,
+                                                   "threshold_kw_max":  1000.0,
+                                                   "voltage_kv_max":  110.0,
+                                                   "description_pl":  "Mikro"
+                                               },
+                                               {
+                                                   "id":  "B",
+                                                   "threshold_kw_min":  1000.0,
+                                                   "threshold_kw_max":  50000.0,
+                                                   "voltage_kv_max":  110.0,
+                                                   "description_pl":  "MaÅe"
+                                               },
+                                               {
+                                                   "id":  "C",
+                                                   "threshold_kw_min":  50000.0,
+                                                   "threshold_kw_max":  75000.0,
+                                                   "voltage_kv_max":  110.0,
+                                                   "description_pl":  "DuÅ¼e"
+                                               },
+                                               {
+                                                   "id":  "D",
+                                                   "threshold_kw_min":  75000.0,
+                                                   "threshold_kw_max":  null,
+                                                   "voltage_kv_max":  null,
+                                                   "description_pl":  "B. duÅ¼e"
+                                               }
+                                           ],
+                          "frequency_response":  {
+                                                     "steady_state_hz_min":  49.5,
+                                                     "steady_state_hz_max":  50.5,
+                                                     "transient_hz_min":  47.5,
+                                                     "transient_hz_max":  51.5,
+                                                     "pf_droop_percent":  5.0,
+                                                     "dead_band_hz":  0.2,
+                                                     "ramp_rate_pct_per_min":  10.0
+                                                 },
+                          "reactive_power":  {
+                                                 "q_range_pct_pn_min":  -0.33,
+                                                 "q_range_pct_pn_max":  0.33,
+                                                 "cos_phi_min":  0.95,
+                                                 "voltage_control_modes":  [
+                                                                               "cos_phi_constant",
+                                                                               "q_constant",
+                                                                               "q_of_u",
+                                                                               "voltage_control"
+                                                                           ]
+                                             },
+                          "p_recovery_after_fault":  {
+                                                         "required_for_modules":  [
+                                                                                      "B",
+                                                                                      "C",
+                                                                                      "D"
+                                                                                  ],
+                                                         "p_recovery_time_s":  1.0,
+                                                         "p_recovery_rate_pct_per_s":  80.0
+                                                     }
+                      }
+                  ],
+    "tests":  [
+                  {
+                      "test_id":  "T01",
+                      "ability_pl":  "LFSM-O - ograniczanie mocy przy nadczÄstotliwoÅci",
+                      "procedure_basis_pl":  "Zakres testÃ³w zgodnoÅci NC RfG dla PPM/SyPGM typu C i D; dla czÄÅci A/B gdy brak certyfikatu.",
+                      "default_for_modules":  [
+                                                  "C",
+                                                  "D"
+                                              ],
+                      "conditional_pl":  "Dla typu A/B wymaganie zaleÅ¼y od certyfikatu i decyzji wÅaÅciwego OS."
+                  },
+                  {
+                      "test_id":  "T02",
+                      "ability_pl":  "LFSM-U - zwiÄkszanie mocy przy podczÄstotliwoÅci",
+                      "procedure_basis_pl":  "Zakres testÃ³w zgodnoÅci NC RfG dla moduÅÃ³w typu C i D.",
+                      "default_for_modules":  [
+                                                  "C",
+                                                  "D"
+                                              ],
+                      "conditional_pl":  null
+                  },
+                  {
+                      "test_id":  "T03",
+                      "ability_pl":  "FSM - regulacja czÄstotliwoÅci w paÅmie normalnym",
+                      "procedure_basis_pl":  "Zakres testÃ³w zgodnoÅci NC RfG dla moduÅÃ³w typu C i D.",
+                      "default_for_modules":  [
+                                                  "C",
+                                                  "D"
+                                              ],
+                      "conditional_pl":  null
+                  },
+                  {
+                      "test_id":  "T04",
+                      "ability_pl":  "Regulacja odbudowy czÄstotliwoÅci",
+                      "procedure_basis_pl":  "Zakres testÃ³w zgodnoÅci NC RfG dla moduÅÃ³w typu C i D.",
+                      "default_for_modules":  [
+                                                  "C",
+                                                  "D"
+                                              ],
+                      "conditional_pl":  null
+                  },
+                  {
+                      "test_id":  "T05",
+                      "ability_pl":  "MoÅ¼liwoÅÄ regulacji mocy czynnej",
+                      "procedure_basis_pl":  "Program ramowy testÃ³w PPM oraz sprawdzenia dodatkowe dla regulacji P.",
+                      "default_for_modules":  [
+                                                  "B",
+                                                  "C",
+                                                  "D"
+                                              ],
+                      "conditional_pl":  null
+                  },
+                  {
+                      "test_id":  "T06",
+                      "ability_pl":  "Tryb regulacji napiÄcia",
+                      "procedure_basis_pl":  "Zakres testÃ³w zgodnoÅci PPM typu C i D.",
+                      "default_for_modules":  [
+                                                  "C",
+                                                  "D"
+                                              ],
+                      "conditional_pl":  null
+                  },
+                  {
+                      "test_id":  "T07",
+                      "ability_pl":  "Tryb regulacji mocy biernej Q",
+                      "procedure_basis_pl":  "Zakres testÃ³w zgodnoÅci PPM typu C i D.",
+                      "default_for_modules":  [
+                                                  "C",
+                                                  "D"
+                                              ],
+                      "conditional_pl":  null
+                  },
+                  {
+                      "test_id":  "T08",
+                      "ability_pl":  "Tryb regulacji wspÃ³Åczynnika mocy cosÏ",
+                      "procedure_basis_pl":  "Zakres testÃ³w zgodnoÅci PPM typu C i D.",
+                      "default_for_modules":  [
+                                                  "C",
+                                                  "D"
+                                              ],
+                      "conditional_pl":  null
+                  },
+                  {
+                      "test_id":  "T09",
+                      "ability_pl":  "ZdolnoÅÄ do generacji mocy biernej",
+                      "procedure_basis_pl":  "Zakres testÃ³w zgodnoÅci PPM typu B, C i D.",
+                      "default_for_modules":  [
+                                                  "B",
+                                                  "C",
+                                                  "D"
+                                              ],
+                      "conditional_pl":  null
+                  },
+                  {
+                      "test_id":  "T10",
+                      "ability_pl":  "Potwierdzenie mocy maksymalnej PMAX",
+                      "procedure_basis_pl":  "Sprawdzenia dodatkowe procedury PTPiREE dla typu B, C i D.",
+                      "default_for_modules":  [
+                                                  "B",
+                                                  "C",
+                                                  "D"
+                                              ],
+                      "conditional_pl":  null
+                  },
+                  {
+                      "test_id":  "T11",
+                      "ability_pl":  "Potwierdzenie mocy minimalnej PMIN",
+                      "procedure_basis_pl":  "Sprawdzenia dodatkowe procedury PTPiREE dla typu B, C i D.",
+                      "default_for_modules":  [
+                                                  "B",
+                                                  "C",
+                                                  "D"
+                                              ],
+                      "conditional_pl":  null
+                  },
+                  {
+                      "test_id":  "T12",
+                      "ability_pl":  "Zaprzestanie generacji mocy czynnej",
+                      "procedure_basis_pl":  "Dodatkowy test zgodnoÅci, wymagany dla typu A/B przy braku certyfikatu.",
+                      "default_for_modules":  [
+
+                                              ],
+                      "conditional_pl":  "Wymagany, gdy certyfikat nie pokrywa funkcji zdalnego zaprzestania generacji."
+                  },
+                  {
+                      "test_id":  "T13",
+                      "ability_pl":  "Zmniejszenie generacji mocy czynnej",
+                      "procedure_basis_pl":  "Dodatkowy test zgodnoÅci, wymagany dla typu B przy braku certyfikatu.",
+                      "default_for_modules":  [
+
+                                              ],
+                      "conditional_pl":  "Wymagany, gdy certyfikat nie pokrywa funkcji zdalnego ograniczenia generacji."
+                  },
+                  {
+                      "test_id":  "T14",
+                      "ability_pl":  "LVRT - pozostanie w pracy przy zapadzie napiÄcia",
+                      "procedure_basis_pl":  "Test FRT dla moduÅÃ³w B/C/D oraz profili operatora.",
+                      "default_for_modules":  [
+                                                  "B",
+                                                  "C",
+                                                  "D"
+                                              ],
+                      "conditional_pl":  null
+                  },
+                  {
+                      "test_id":  "T15",
+                      "ability_pl":  "HVRT - pozostanie w pracy przy wzroÅcie napiÄcia",
+                      "procedure_basis_pl":  "Test HVRT dla moduÅÃ³w B/C/D oraz profili operatora.",
+                      "default_for_modules":  [
+                                                  "B",
+                                                  "C",
+                                                  "D"
+                                              ],
+                      "conditional_pl":  null
+                  },
+                  {
+                      "test_id":  "T16",
+                      "ability_pl":  "Odbudowa mocy czynnej po zakÅÃ³ceniu",
+                      "procedure_basis_pl":  "Wymaganie profilu operatora dla moduÅÃ³w B/C/D.",
+                      "default_for_modules":  [
+                                                  "B",
+                                                  "C",
+                                                  "D"
+                                              ],
+                      "conditional_pl":  null
+                  },
+                  {
+                      "test_id":  "T17",
+                      "ability_pl":  "PrÄ\u0085d bierny podczas FRT",
+                      "procedure_basis_pl":  "Sprawdzenie wsparcia napiÄcia w czasie FRT.",
+                      "default_for_modules":  [
+                                                  "B",
+                                                  "C",
+                                                  "D"
+                                              ],
+                      "conditional_pl":  null
+                  },
+                  {
+                      "test_id":  "T18",
+                      "ability_pl":  "Praca wyspowa, rozruch autonomiczny i tÅumienie oscylacji",
+                      "procedure_basis_pl":  "Sprawdzenia dodatkowe wykonywane, gdy zdolnoÅÄ jest wymagana przez wÅaÅciwego OS/OSP.",
+                      "default_for_modules":  [
+
+                                              ],
+                      "conditional_pl":  "Uruchamiane jako wymagane tylko po zaznaczeniu obowiÄ\u0085zku w danych wejÅciowych."
+                  },
+                  {
+                      "test_id":  "T19",
+                      "ability_pl":  "Rejestracja zakÅÃ³ceÅ i komunikacja z operatorem",
+                      "procedure_basis_pl":  "Dane pomocnicze wymagane do wiarygodnego programu szczegÃ³Åowego testÃ³w.",
+                      "default_for_modules":  [
+                                                  "C",
+                                                  "D"
+                                              ],
+                      "conditional_pl":  null
+                  },
+                  {
+                      "test_id":  "T20",
+                      "ability_pl":  "JakoÅÄ energii - THD_U ÅºrÃ³dÅa",
+                      "procedure_basis_pl":  "Kontrola uzupeÅniajÄ\u0085ca dla przyÅÄ\u0085czenia PPM z falownikami.",
+                      "default_for_modules":  [
+
+                                              ],
+                      "conditional_pl":  "Nie zastÄpuje peÅnego moduÅu harmonicznych; raportuje, jeÅli dane katalogowe sÄ\u0085 dostÄpne."
+                  }
+              ]
+}

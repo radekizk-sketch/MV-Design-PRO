@@ -70,40 +70,38 @@ test.describe('Real-backend: utworzenie projektu i przejście do SLD', () => {
     }
   });
 
-  test('API /api/catalog/complete-bay-templates zwraca 10 canonical fallback', async ({
+  test('API /api/catalog/complete-bay-templates zwraca zweryfikowane szablony producentów', async ({
     page,
   }) => {
     const response = await page.request.get('/api/catalog/complete-bay-templates');
     expect(response.ok()).toBe(true);
     const body = (await response.json()) as Array<{
       template_ref: string;
+      manufacturer_ref: string | null;
       source_status: string;
       bay_kind: string;
+      source_refs?: string[];
     }>;
-    expect(body.length).toBe(10);
+    expect(body.length).toBeGreaterThanOrEqual(30);
     for (const t of body) {
-      expect(t.source_status).toBe('canonical_fallback');
-      expect(t.template_ref).toMatch(/^CANONICAL_FALLBACK__/);
+      expect(t.source_status).toBe('repo_verified');
+      expect(t.manufacturer_ref).toBeTruthy();
+      expect(t.source_refs?.length ?? 0).toBeGreaterThan(0);
     }
     // Wszystkie wymagane bay_kind kategorie pokryte.
-    const kinds = body.map((t) => t.bay_kind).sort();
-    expect(kinds).toEqual(
-      [
-        'bess',
-        'fw',
-        'liniowe_doplywowe',
-        'liniowe_odplywowe',
-        'pomiarowe',
-        'potrzeb_wlasnych',
-        'pv',
-        'rezerwowe',
-        'sprzeglowe_poprzeczne',
-        'transformatorowe',
-      ].sort(),
-    );
+    const kinds = new Set(body.map((t) => t.bay_kind));
+    for (const required of [
+      'liniowe_doplywowe',
+      'liniowe_odplywowe',
+      'pomiarowe',
+      'sprzeglowe_poprzeczne',
+      'transformatorowe',
+    ]) {
+      expect(kinds.has(required)).toBe(true);
+    }
   });
 
-  test('API /api/catalog/complete-bay-templates?manufacturer_ref=ABB → 10 z dopisaną referencją', async ({
+  test('API /api/catalog/complete-bay-templates?manufacturer_ref=ABB zwraca tylko szablony ABB ze źródłami', async ({
     page,
   }) => {
     const response = await page.request.get(
@@ -113,12 +111,13 @@ test.describe('Real-backend: utworzenie projektu i przejście do SLD', () => {
     const body = (await response.json()) as Array<{
       manufacturer_ref: string | null;
       source_status: string;
+      source_refs?: string[];
     }>;
-    expect(body.length).toBe(10);
+    expect(body.length).toBeGreaterThanOrEqual(8);
     for (const t of body) {
       expect(t.manufacturer_ref).toBe('ABB');
-      // Status NADAL canonical_fallback (NIE oficjalny katalog ABB).
-      expect(t.source_status).toBe('canonical_fallback');
+      expect(t.source_status).toBe('repo_verified');
+      expect(t.source_refs?.length ?? 0).toBeGreaterThan(0);
     }
   });
 

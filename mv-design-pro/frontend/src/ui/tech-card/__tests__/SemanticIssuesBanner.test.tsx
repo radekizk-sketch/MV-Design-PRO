@@ -56,6 +56,18 @@ describe('SemanticIssuesBanner', () => {
     expect(onSelect).toHaveBeenCalledWith('EL-99');
   });
 
+  it('Dla odbioru bez P/Q pokazuje akcję uzupełnienia mocy', () => {
+    const onSelect = vi.fn();
+    const { getByText } = render(
+      <SemanticIssuesBanner
+        issues={[makeIssue({ code: 'semantic.zero_power_load', element_id: 'LOAD-1' })]}
+        onSelectElement={onSelect}
+      />,
+    );
+    fireEvent.click(getByText('Uzupełnij moc odbioru'));
+    expect(onSelect).toHaveBeenCalledWith('LOAD-1');
+  });
+
   it('Nie pokazuje "Pokaż element" gdy filtrujemy po elementId', () => {
     const { queryByText } = render(
       <SemanticIssuesBanner

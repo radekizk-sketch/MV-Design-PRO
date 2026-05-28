@@ -1,0 +1,35 @@
+﻿{
+    "modules":  [
+                    {
+                        "p_min_kw":  50,
+                        "operator_id":  "enea",
+                        "der_name":  "Układ PV testowy 0,5 MW",
+                        "q_range_pct_pn_max":  0.33,
+                        "p_max_kw":  500,
+                        "cos_phi_min":  0.95,
+                        "droop_percent":  5,
+                        "has_scada_communication":  true,
+                        "certificate_status":  "ptpiree_verified",
+                        "stop_generation_enabled":  true,
+                        "module_family":  "PPM",
+                        "has_qu_curve":  true,
+                        "reduction_generation_enabled":  true,
+                        "der_ref":  "PV-PTPIREE-E2E",
+                        "voltage_kv":  0.4,
+                        "dead_band_hz":  0.2,
+                        "der_kind":  "PV",
+                        "harmonic_thdu_percent":  3,
+                        "ramp_rate_pct_per_min":  10,
+                        "reactive_current_gain":  2,
+                        "has_dynamic_model":  true,
+                        "has_hvrt_curve":  true,
+                        "q_range_pct_pn_min":  -0.33,
+                        "active_power_control_enabled":  true,
+                        "has_lvrt_curve":  true,
+                        "has_disturbance_recorder":  true,
+                        "has_pf_droop":  true,
+                        "p_recovery_time_s":  0.8
+                    }
+                ],
+    "procedure_version":  "PTPiREE Procedura testowania v3.0"
+}

@@ -63,6 +63,16 @@ describe('Mini-RMU: station NOT rectangle (PR 3 minimal guard)', () => {
       bayMarkers.length,
       `${footprintType}: tylko ${bayMarkers.length} mini-pole — stacja redukuje się do prostokąta`,
     ).toBeGreaterThanOrEqual(2);
+
+    const portAnchors = container.querySelectorAll('[data-testid^="sld-v2-mini-rmu-port-anchor-"]');
+    expect(
+      portAnchors.length,
+      `${footprintType}: brak jawnych portow WE/WY/TR do snap-to-port`,
+    ).toBeGreaterThanOrEqual(2);
+    portAnchors.forEach((anchor) => {
+      expect(anchor.getAttribute('data-port-magnet')).toBe('true');
+      expect(anchor.querySelector('[data-hit-area="true"]')).not.toBeNull();
+    });
   });
 
   it('variant detail (LOD 2+) pokazuje wszystkie pola + rzędy SN i nN', () => {
@@ -119,6 +129,12 @@ describe('Mini-RMU: station NOT rectangle (PR 3 minimal guard)', () => {
     // identyfikowalną strukturę footprintu (data-parity-key) — nie być
     // gołym <rect>.
     const allDataParity = rmu?.querySelectorAll('[data-parity-key]');
+    const overviewBayMarkers = rmu?.querySelectorAll('[data-testid^="sld-v2-mini-rmu-bay-marker-"]');
+    expect(rmu?.getAttribute('data-station-not-rectangle')).toBe('true');
+    expect(rmu?.querySelector('[data-testid^="sld-v2-mini-rmu-sn-row-"]')).not.toBeNull();
+    expect(rmu?.querySelector('[data-testid^="sld-v2-mini-rmu-lv-row-"]')).not.toBeNull();
+    expect(rmu?.querySelector('[data-testid^="sld-v2-mini-rmu-tr-triangle-"]')).not.toBeNull();
+    expect(overviewBayMarkers?.length ?? 0).toBeGreaterThanOrEqual(3);
     expect(allDataParity?.length ?? 0, 'overview bez data-parity-key — generic rectangle').toBeGreaterThan(0);
   });
 });

@@ -44,6 +44,14 @@ export interface CableRunSegmentPath {
   readonly variant?: CableSegmentVariantHint;
 }
 
+export interface CableRunSegmentEndpointResult {
+  readonly segmentRef: string;
+  readonly x: number;
+  readonly y: number;
+  readonly text: string;
+  readonly severity?: 'INFO' | 'WARNING' | 'IMPORTANT' | 'CRITICAL' | string | null;
+}
+
 export interface CableRunRendererProps {
   readonly id: string;
   readonly runKind: 'main_trunk' | 'branch' | 'ring' | 'loop';
@@ -78,12 +86,17 @@ export interface CableRunRendererProps {
    *   - > 100% → red chip + red dashed overlay (THERMAL OVERLOAD)
    *  Brak → chip pomijany. */
   readonly loadingPct?: number | null;
+  /** Wynik obliczen przy koncu kazdego odcinka. Dane sa przekazywane z
+   *  warstwy wynikow/backendu; renderer nie wyznacza fizyki. */
+  readonly segmentEndpointResults?: readonly CableRunSegmentEndpointResult[];
   /** Aktualna skala viewportu SLD. Uzywana do czytelnosci symboli topologii. */
   readonly viewportScale?: number;
   /** K30-105: ciąg pod napięciem per SupplyPath (z source). Renderer
    *  rysuje strzałkę kierunku przepływu mocy (▷) na midpoincie segmentów
    *  per IEC 60617. Default false → brak strzałek (neutral / unknown). */
   readonly energized?: boolean;
+  /** True gdy ciag zawiera NMO / otwarty punkt z SupplyPathHighlighter. */
+  readonly containsOpenPoint?: boolean;
   /** Presentation-only guide for stations that are placed but not bound to a real SN segment. */
   readonly topologyGuide?: boolean;
 }
@@ -107,8 +120,10 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     lod,
     voltageKv,
     loadingPct,
+    segmentEndpointResults = [],
     viewportScale,
     energized = false,
+    containsOpenPoint = false,
     topologyGuide = false,
   } = props;
   // LOD 0-1 pokazuje przebieg sieci bez natloku opisow. Parametry
@@ -192,6 +207,35 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           : segmentLabel
       )),
   );
+  const showDetailedSegmentBadges =
+    lod === undefined
+    || lod >= 2
+    || Boolean(selected)
+    || selectedSegmentRefs.length > 0
+    || segmentEndpointResults.length > 0;
+  const segmentBadgePaths = renderSegmentPaths.length > 0
+    ? renderSegmentPaths
+    : segmentRefs.map((segmentRef) => ({
+      segmentRef,
+      pathPoints,
+      variant: undefined,
+    }));
+  const readableSegmentTypeBadges = showDetailedSegmentBadges
+    ? declutterSegmentTypeBadges(
+      segmentBadgePaths.map((segmentPath, index) => {
+        const point = segmentTypeBadgePoint(segmentPath.pathPoints, index);
+        return {
+          segmentRef: segmentPath.segmentRef,
+          text: segmentTypeBadgeText(segmentKind, segmentPath.variant),
+          x: point.x,
+          y: point.y,
+        };
+      }),
+    )
+    : [];
+  const readableEndpointResults = showDetailedSegmentBadges
+    ? declutterSegmentEndpointResults(segmentEndpointResults)
+    : [];
 
   return (
     <g
@@ -201,6 +245,10 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
       data-element-id={id}
       data-run-kind={runKind}
       data-segment-kind={segmentKind}
+      data-energized={energized ? 'true' : 'false'}
+      data-flow-role={energized ? 'supply-path' : undefined}
+      data-supply-path-role={energized ? (runKind === 'branch' ? 'branch' : 'main_run') : 'not_energized'}
+      data-open-point={containsOpenPoint ? 'true' : undefined}
       data-topology-guide={topologyGuide ? 'true' : undefined}
     >
       <path
@@ -260,6 +308,42 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           </g>
         );
       })}
+      {visiblePaths.map((visiblePath, index) => (
+        energized && !topologyGuide && !missingEndpointPort ? (
+          <path
+            key={`${id}-supply-underlay-${index}`}
+            data-testid={`sld-v2-run-${id}-supply-path-${index}`}
+            data-flow-role="supply-path"
+            data-supply-path="true"
+            d={visiblePath}
+            fill="none"
+            stroke={runKind === 'branch' ? '#5BB8FF' : '#13C45A'}
+            strokeWidth={strokeWidth + 7}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity={0.18}
+            pointerEvents="none"
+          />
+        ) : null
+      ))}
+      {useSegmentPathRendering && energized && !topologyGuide && !missingEndpointPort && renderSegmentPaths.flatMap((segmentPath) => (
+        buildVisibleCablePaths(segmentPath.pathPoints, stationPortGaps).map((vp, vpIdx) => (
+          <path
+            key={`${id}-supply-underlay-${segmentPath.segmentRef}-${vpIdx}`}
+            data-testid={`sld-v2-run-${id}-supply-path-${segmentPath.segmentRef}-${vpIdx}`}
+            data-flow-role="supply-path"
+            data-supply-path="true"
+            d={vp}
+            fill="none"
+            stroke={runKind === 'branch' ? '#5BB8FF' : '#13C45A'}
+            strokeWidth={strokeWidth + 7}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity={0.18}
+            pointerEvents="none"
+          />
+        ))
+      ))}
       {visiblePaths.map((visiblePath, index) => (
         <path
           key={`${id}-visible-${index}`}
@@ -448,6 +532,32 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           </text>
         </g>
       )}
+      {containsOpenPoint && !topologyGuide && !missingEndpointPort && terminalPoint && (
+        <g
+          data-testid={`sld-v2-run-${id}-nmo-open-point`}
+          data-element-kind="open_point_marker"
+          data-open-point="true"
+          transform={`translate(${terminalPoint.x}, ${terminalPoint.y - 24})`}
+          pointerEvents="none"
+        >
+          <circle r={11} fill="#3A0C0C" stroke="#FF333D" strokeWidth={1.7} />
+          <line x1={-6} y1={0} x2={6} y2={0} stroke="#FF333D" strokeWidth={2.4} transform="rotate(-35)" />
+          <text
+            x={0}
+            y={18}
+            textAnchor="middle"
+            fill="#FFB3B3"
+            fontFamily="sans-serif"
+            fontSize={8}
+            fontWeight={900}
+            paintOrder="stroke"
+            stroke="#05070A"
+            strokeWidth={2}
+          >
+            NMO
+          </text>
+        </g>
+      )}
       {missingEndpointPort && (
         <g
           data-testid={`sld-v2-run-${id}-missing-port-marker`}
@@ -498,6 +608,8 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
         <g
           data-testid={`sld-v2-run-${id}-cable-head`}
           data-anchor="trunk-start"
+          data-symbol-canon="cable_head_triangle"
+          data-port-binding="trunk-start-head"
           pointerEvents="none"
           transform={`translate(${pathPoints[0].x}, ${pathPoints[0].y})`}
         >
@@ -508,6 +620,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             stroke="#0A0E14"
             strokeWidth={0.8}
             opacity={0.95}
+            data-symbol-canon="cable_head_triangle"
           />
         </g>
       )}
@@ -645,6 +758,78 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           {segmentLabel.text}
         </text>
       ))}
+      {readableSegmentTypeBadges.map((segmentLabel) => (
+        <g
+          key={`${id}-segment-type-${segmentLabel.segmentRef}`}
+          data-testid={`sld-v2-run-${id}-segment-type-${segmentLabel.segmentRef}`}
+          data-segment-ref={segmentLabel.segmentRef}
+          data-segment-kind={segmentKind}
+          transform={`translate(${segmentLabel.x}, ${segmentLabel.y})`}
+          pointerEvents="none"
+        >
+          <rect
+            x={-estimateLabelWidth(segmentLabel.text) / 2 - 7}
+            y={-10}
+            width={estimateLabelWidth(segmentLabel.text) + 14}
+            height={18}
+            rx={3}
+            fill="#071018"
+            stroke={segmentKind === 'overhead_line_sn' ? '#7DD3FC' : '#13C45A'}
+            strokeWidth={1.1}
+            opacity={0.94}
+          />
+          <text
+            x={0}
+            y={3}
+            textAnchor="middle"
+            fill="#DDF7FF"
+            fontFamily="sans-serif"
+            fontSize={9}
+            fontWeight={800}
+            letterSpacing={0.2}
+          >
+            {segmentLabel.text}
+          </text>
+        </g>
+      ))}
+      {readableEndpointResults.map((result) => {
+        const color = resultSeverityColor(result.severity);
+        const width = Math.max(92, Math.min(180, result.text.length * 6.6 + 18));
+        return (
+          <g
+            key={`${id}-segment-end-result-${result.segmentRef}`}
+            data-testid={`sld-v2-run-${id}-segment-end-result-${result.segmentRef}`}
+            data-segment-ref={result.segmentRef}
+            data-result-anchor="segment-end"
+            transform={`translate(${result.x}, ${result.y})`}
+            pointerEvents="none"
+          >
+            <line x1={0} y1={0} x2={0} y2={14} stroke={color} strokeWidth={1} opacity={0.75} />
+            <rect
+              x={-width / 2}
+              y={14}
+              width={width}
+              height={20}
+              rx={3}
+              fill="#071018"
+              stroke={color}
+              strokeWidth={1.2}
+              opacity={0.96}
+            />
+            <text
+              x={0}
+              y={28}
+              textAnchor="middle"
+              fill="#F4FBFF"
+              fontFamily="monospace"
+              fontSize={9}
+              fontWeight={800}
+            >
+              {result.text}
+            </text>
+          </g>
+        );
+      })}
       {pendingEndpoint && terminalPoint && (
         <g
           data-testid={`sld-v2-run-${id}-pending-end`}
@@ -922,6 +1107,78 @@ function segmentLabelsOverlap(
 
 function estimateLabelWidth(text: string): number {
   return Math.max(52, Math.min(220, text.length * 7.2));
+}
+
+function segmentTypeBadgeText(
+  segmentKind: CableRunRendererProps['segmentKind'],
+  variant: CableSegmentVariantHint | undefined,
+): string {
+  const medium = segmentKind === 'overhead_line_sn' ? 'Linia nap. SN' : 'Kabel SN';
+  if (!variant) return medium;
+  const parts: string[] = [];
+  if (variant.insulation !== 'UNKNOWN') parts.push(variant.insulation);
+  if (variant.conductor !== 'UNKNOWN') parts.push(variant.conductor);
+  return parts.length > 0 ? `${medium} · ${parts.join(' ')}` : medium;
+}
+
+function segmentTypeBadgePoint(
+  points: readonly Point[],
+  index: number,
+): CableRunSegmentLabel {
+  const midpoint = findLongestHorizontalSegmentMidpoint(points)
+    ?? (points.length >= 2
+      ? { x: (points[0].x + points[points.length - 1].x) / 2, y: (points[0].y + points[points.length - 1].y) / 2 }
+      : { x: 0, y: 0 });
+  const laneOffset = index % 2 === 0 ? -26 : 48;
+  return {
+    segmentRef: '',
+    text: '',
+    x: midpoint.x,
+    y: midpoint.y + laneOffset,
+  };
+}
+
+function declutterSegmentTypeBadges(
+  labels: readonly CableRunSegmentLabel[],
+): CableRunSegmentLabel[] {
+  const placed: CableRunSegmentLabel[] = [];
+  return labels.map((label) => {
+    let candidate = label;
+    for (const offset of [0, -20, 20, -40, 40, -60, 60]) {
+      candidate = { ...label, y: label.y + offset };
+      if (!placed.some((other) => segmentLabelsOverlap(candidate, other))) break;
+    }
+    placed.push(candidate);
+    return candidate;
+  });
+}
+
+function declutterSegmentEndpointResults(
+  results: readonly CableRunSegmentEndpointResult[],
+): CableRunSegmentEndpointResult[] {
+  const placed: CableRunSegmentEndpointResult[] = [];
+  return results.map((result, index) => {
+    let candidate = { ...result, y: result.y + (index % 2 === 0 ? 0 : 26) };
+    for (const offset of [0, 26, -26, 52, -52, 78]) {
+      candidate = { ...result, y: result.y + offset };
+      const overlaps = placed.some((other) => (
+        Math.abs(candidate.y - other.y) < 26
+        && Math.abs(candidate.x - other.x) < 118
+      ));
+      if (!overlaps) break;
+    }
+    placed.push(candidate);
+    return candidate;
+  });
+}
+
+function resultSeverityColor(
+  severity: CableRunSegmentEndpointResult['severity'],
+): string {
+  if (severity === 'CRITICAL') return '#FF6B6B';
+  if (severity === 'IMPORTANT') return '#FF8B5C';
+  if (severity === 'WARNING') return '#FFD166';
+  return '#7EE0B5';
 }
 
 /**

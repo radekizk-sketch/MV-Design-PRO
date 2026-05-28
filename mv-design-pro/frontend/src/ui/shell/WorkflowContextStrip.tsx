@@ -181,7 +181,7 @@ export function WorkflowContextStrip({
       : needsFirstStation
       ? 'osadź stację'
       : isModelReady
-      ? 'do uruchomienia'
+      ? 'do obliczenia'
       : 'konfiguracja układu'
     : '—';
   const calculationControlCaption = hasModel && (!hasTopologyElements || needsSnRun || needsFirstStation) ? 'Następny krok:' : 'Obliczenia:';

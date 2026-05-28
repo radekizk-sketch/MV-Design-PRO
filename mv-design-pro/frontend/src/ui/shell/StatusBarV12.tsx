@@ -31,7 +31,7 @@ function getResultDot(status: ResultStatus) {
 function getResultLabel(status: ResultStatus) {
   if (status === 'FRESH') return 'Wyniki aktualne ◉';
   if (status === 'OUTDATED') return 'Wyniki nieaktualne ◯';
-  return 'Wyniki nieuruchomione';
+  return 'Wyniki do obliczenia';
 }
 
 function looksLikeTechnicalId(value: string | null | undefined): boolean {

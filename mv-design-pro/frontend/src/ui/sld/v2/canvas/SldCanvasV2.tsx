@@ -1,8 +1,8 @@
 ﻿/**
- * SldCanvasV2 â€” composition root nowego SLD.
+ * SldCanvasV2 - composition root nowego SLD.
  *
  * Pure functional viewport + SVG canvas. Renderowane przez SldWorkspaceContainer
- * w kanonicznym shellu (ekran E-01 "GĹ‚Ăłwne Ĺ›rodowisko pracy SLD").
+ * w kanonicznym shellu (ekran E-01 "G??wne ?rodowisko pracy SLD").
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -30,6 +30,7 @@ import { COLOR_BG, COLOR_PANEL } from '../theme/tokens';
 import {
   CableRunRenderer,
   type CableRunRendererProps,
+  type CableRunSegmentEndpointResult,
   type CableRunSegmentLabel,
   type CableRunSegmentPath,
   type CableRunStationPortGap,
@@ -69,7 +70,13 @@ import {
 } from '../renderer/MiniBlockRmuRenderer';
 import { FIELD_ROLE } from '../domain/apparatusContracts';
 import { ResultOverlayLayer } from './ResultOverlayLayer';
-import { useRawResultOverlayStore, type RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
+import {
+  formatMetric,
+  useRawResultOverlayStore,
+  type RawMetricValue,
+  type RawOverlayElement,
+  type RawOverlayPayload,
+} from '../../../sld-overlay/rawResultOverlayStore';
 import type { SldElementKindForMenu } from '../command/SldCommandService';
 import type {
   SldBranchPointMarker,
@@ -102,13 +109,13 @@ export interface SldCanvasV2Props {
   readonly width: number;
   readonly height: number;
 
-  /** Lista obiektĂłw do renderowania. */
+  /** Lista obiekt?w do renderowania. */
   readonly gpzs: readonly GpzRendererProps[];
   /**
    * Operator-grade canonical GPZ props (Phase R4 rebuild).
    * Gdy podane dla `id` z `gpzs[]`, kanwa renderuje `GpzCanonicalRenderer`
-   * (peĹ‚na rozdzielnia SCADA OSD) zamiast legacy `GpzRenderer` (placeholder).
-   * Caller (SldWorkspaceContainer) wywoĹ‚uje `buildCanonicalGpzProps` z ENM.
+   * (pe?na rozdzielnia SCADA OSD) zamiast legacy `GpzRenderer` (placeholder).
+   * Caller (SldWorkspaceContainer) wywo?uje `buildCanonicalGpzProps` z ENM.
    */
   readonly canonicalGpzs?: readonly GpzCanonicalRendererProps[];
   readonly sections: readonly SectionRendererProps[];
@@ -122,7 +129,7 @@ export interface SldCanvasV2Props {
     label?: string;
     segmentLabels?: readonly CableRunSegmentLabel[];
     pendingEndpoint?: boolean;
-    /** K30-41: napiÄ™cie ciÄ…gu [kV] â€” voltage chip + tint stroke fallback. */
+    /** K30-41: napi?cie ci?gu [kV] - voltage chip + tint stroke fallback. */
     voltageKv?: number | null;
   }>;
   readonly stations: readonly StationOnRunRendererProps[];
@@ -143,16 +150,16 @@ export interface SldCanvasV2Props {
   /** Selected element ID (jeden z {gpz/section/run/station/der}). */
   readonly selectedId?: string | null;
 
-  /** Override LOD globalny (jeĹ›li undefined â†’ wnioskuj z scale). */
+  /** Override LOD globalny (je?li undefined -> wnioskuj z scale). */
   readonly lodOverride?: LodLevel;
 
-  /** Stan warstw widocznoĹ›ci. */
+  /** Stan warstw widoczno?ci. */
   readonly layerVisibility?: Partial<Record<SldLayerId, boolean>>;
 
   /** Phase 2 polish (operator-grade SLD plan v2): CadOverlay props.
    *  Snap state (mode/grid/port tolerance), ghost previews dla
    *  append/split workflow, korytarze dla CorridorLayout strategy,
-   *  zaznaczone routes dla bend handles. Wszystkie opcjonalne â€” gdy
+   *  zaznaczone routes dla bend handles. Wszystkie opcjonalne - gdy
    *  brak, CadOverlay nie jest renderowany. */
   readonly cadOverlay?: {
     readonly snapState?: import('../viewport/Snap').SnapState;
@@ -171,26 +178,26 @@ export interface SldCanvasV2Props {
   /** Element, który ma zostać doprowadzony do czytelnego środka roboczej kanwy. */
   readonly centerOnElementId?: string | null;
   /**
-   * Right-click handler. WywoĹ‚ywany dla elementu lub tĹ‚a kanwy.
+   * Right-click handler. Wywo?ywany dla elementu lub t?a kanwy.
    * Container otwiera menu kontekstowe na (clientX, clientY).
    */
   readonly onContextMenu?: (request: SldCanvasContextMenuRequest) => void;
   readonly onViewportTransformChange?: (transform: ViewportTransform) => void;
-  /** K30-38: metadata bloku tytuĹ‚owego per PN-EN ISO 7200. Brak â†’ defaults. */
+  /** K30-38: metadata bloku tytu?owego per PN-EN ISO 7200. Brak -> defaults. */
   readonly titleBlockData?: SldTitleBlockData | null;
   /** K30-100: revision history entries dla SldRevisionTable (OSD wniosek). */
   readonly revisionEntries?: readonly SldRevisionEntry[];
   /** K30-101: bilans mocy panel data (LF analiza). */
   readonly powerBalance?: PowerBalanceData | null;
-  /** K30-39: pokaĹĽ legendÄ™ palet (voltage / cable variants / apparatus / DER).
+  /** K30-39: poka? legend? palet (voltage / cable variants / apparatus / DER).
    *  Default true. Set false dla cleanu w przypadkach print-only. */
   readonly showLegend?: boolean;
-  /** K30-43: pokaĹĽ skalÄ™ rysunku per PN-EN ISO 5455. Default true. */
+  /** K30-43: poka? skal? rysunku per PN-EN ISO 5455. Default true. */
   readonly showScaleRuler?: boolean;
-  /** K30-47: pokaĹĽ strzaĹ‚kÄ™ N (north arrow) per PN-EN ISO 5456. Default false
-   *  (SLD sÄ… topologiczne, geographic orientation rzadko relevant). */
+  /** K30-47: poka? strza?k? N (north arrow) per PN-EN ISO 5456. Default false
+   *  (SLD s? topologiczne, geographic orientation rzadko relevant). */
   readonly showNorthArrow?: boolean;
-  /** K30-48: projekcja wynikĂłw zwarciowych per IEC 60909. Brak â†’ overlay off.
+  /** K30-48: projekcja wynik?w zwarciowych per IEC 60909. Brak -> overlay off.
    *  K30-50: gdy null + payload SC available, derived auto-from-payload. */
   readonly shortCircuitProjection?: SldShortCircuitProjection | null;
   /** K30-46: projekcja stref ochrony Z1/Z2/Z3 per IEC 60255-127. */
@@ -371,6 +378,211 @@ function selectedSegmentRefsForRun(
   return segmentRefs.has(selectedId) ? [selectedId] : [];
 }
 
+const SEGMENT_RESULT_METRIC_CODES_SC = [
+  'IK_3F_A',
+  'IK_1F_A',
+  'IK_2F_A',
+  'IK_2FG_A',
+  'IKSS_A',
+  'IK_A',
+  'IP_A',
+] as const;
+
+const SEGMENT_RESULT_METRIC_CODES_LF = [
+  'I_A',
+  'P_MW',
+  'Q_MVAR',
+  'U_kV',
+  'U_pu',
+  'P_kW',
+  'Q_kvar',
+] as const;
+
+function isShortCircuitPayload(payload: RawOverlayPayload): boolean {
+  const type = payload.analysis_type.toLowerCase();
+  return type.includes('short_circuit') || type.includes('sc_');
+}
+
+function overlayElementByRef(
+  payload: RawOverlayPayload | null,
+  refId: string,
+): RawOverlayElement | null {
+  if (!payload) return null;
+  const direct = payload.elements[refId];
+  if (direct) return direct;
+  const withoutSuffix = refId.replace(/\/segment_[A-Z]$/, '/segment');
+  if (withoutSuffix !== refId && payload.elements[withoutSuffix]) {
+    return payload.elements[withoutSuffix];
+  }
+  const withLegacySuffix = refId.endsWith('/segment')
+    ? `${refId}_L`
+    : refId;
+  if (withLegacySuffix !== refId && payload.elements[withLegacySuffix]) {
+    return payload.elements[withLegacySuffix];
+  }
+  return null;
+}
+
+function firstMetricByCodes(
+  element: RawOverlayElement | null,
+  codes: readonly string[],
+): RawMetricValue | null {
+  if (!element) return null;
+  for (const code of codes) {
+    const metric = element.metrics?.[code];
+    if (metric && metric.value !== null && metric.value !== undefined) return metric;
+  }
+  return null;
+}
+
+function formatSegmentEndpointResult(
+  payload: RawOverlayPayload | null,
+  segmentRef: string,
+  endpointElement: RawOverlayElement | null = null,
+): { text: string; severity: string | null } {
+  const element = endpointElement ?? overlayElementByRef(payload, segmentRef);
+  if (!payload || !element) return { text: 'brak wyniku', severity: null };
+  const metric = firstMetricByCodes(
+    element,
+    isShortCircuitPayload(payload)
+      ? SEGMENT_RESULT_METRIC_CODES_SC
+      : SEGMENT_RESULT_METRIC_CODES_LF,
+  );
+  if (!metric) return { text: 'brak wyniku', severity: element.severity ?? null };
+  const prefix = metric.code
+    .replace('IK_3F_A', 'Ik"')
+    .replace('IK_1F_A', 'Ik1"')
+    .replace('IK_2F_A', 'Ik2"')
+    .replace('IK_2FG_A', 'Ik2Z"')
+    .replace('IKSS_A', 'Ik"')
+    .replace('IK_A', 'Ik')
+    .replace('IP_A', 'ip')
+    .replace('I_A', 'I')
+    .replace('P_MW', 'P')
+    .replace('Q_MVAR', 'Q')
+    .replace('U_kV', 'U')
+    .replace('U_pu', 'U')
+    .replace('P_kW', 'P')
+    .replace('Q_kvar', 'Q');
+  return {
+    text: `${prefix} ${formatMetric(metric)}`,
+    severity: element.severity ?? null,
+  };
+}
+
+function buildSegmentEndpointResultsForRun(
+  run: CableRunRendererProps,
+  payload: RawOverlayPayload | null,
+  stations: readonly StationOnRunRendererProps[],
+  branchPoints: readonly SldBranchPointMarker[],
+  gpzs: readonly GpzRendererProps[],
+  canonicalGpzs: readonly GpzCanonicalRendererProps[],
+): readonly CableRunSegmentEndpointResult[] {
+  if (!payload) return [];
+  const segmentPaths = run.segmentPaths && run.segmentPaths.length > 0
+    ? run.segmentPaths
+    : (run.segmentRefs ?? []).map((segmentRef) => ({
+      segmentRef,
+      pathPoints: run.pathPoints,
+    }));
+  return segmentPaths.flatMap((segmentPath) => {
+    const endPoint = segmentPath.pathPoints[segmentPath.pathPoints.length - 1];
+    if (!endPoint) return [];
+    const endpointElement = overlayElementForSegmentEndpoint(
+      payload,
+      endPoint,
+      stations,
+      branchPoints,
+      gpzs,
+      canonicalGpzs,
+    );
+    const result = formatSegmentEndpointResult(payload, segmentPath.segmentRef, endpointElement);
+    return [{
+      segmentRef: segmentPath.segmentRef,
+      x: endPoint.x,
+      y: endPoint.y,
+      text: result.text,
+      severity: result.severity,
+    }];
+  });
+}
+
+function overlayElementForSegmentEndpoint(
+  payload: RawOverlayPayload,
+  point: { x: number; y: number },
+  stations: readonly StationOnRunRendererProps[],
+  branchPoints: readonly SldBranchPointMarker[],
+  gpzs: readonly GpzRendererProps[],
+  canonicalGpzs: readonly GpzCanonicalRendererProps[],
+): RawOverlayElement | null {
+  const station = stations
+    .map((candidate) => ({
+      station: candidate,
+      dx: Math.abs(candidate.x - point.x),
+      dy: Math.abs((candidate.y - STATION_RUN_TRUNK_OFFSET_Y) - point.y),
+    }))
+    .filter((candidate) => candidate.dx <= 240 && candidate.dy <= 90)
+    .sort((left, right) => (left.dx + left.dy) - (right.dx + right.dy))[0]?.station;
+  if (station) {
+    const base = station.id.endsWith('/station')
+      ? station.id.slice(0, -'/station'.length)
+      : station.id;
+    const element = overlayElementByAnyRef(payload, [
+      `${base}/sn_bus`,
+      `${base}/bus`,
+      station.id,
+    ]);
+    if (element) return element;
+  }
+
+  const branchPoint = branchPoints
+    .map((candidate) => ({
+      branchPoint: candidate,
+      dx: Math.abs(candidate.x - point.x),
+      dy: Math.abs(candidate.y - point.y),
+    }))
+    .filter((candidate) => candidate.dx <= 220 && candidate.dy <= 120)
+    .sort((left, right) => (left.dx + left.dy) - (right.dx + right.dy))[0]?.branchPoint;
+  if (branchPoint) {
+    const base = branchPoint.id.replace(/\/(zksn|branch_pole|branch_point|pole)$/, '');
+    const element = overlayElementByAnyRef(payload, [
+      `${base}/bus`,
+      `${base}/branch_bus_1`,
+      branchPoint.id,
+    ]);
+    if (element) return element;
+  }
+
+  const gpz = [...gpzs, ...canonicalGpzs]
+    .map((candidate) => ({
+      gpz: candidate,
+      dx: Math.abs(candidate.x - point.x),
+      dy: Math.abs(candidate.y - point.y),
+    }))
+    .filter((candidate) => candidate.dx <= 260 && candidate.dy <= 260)
+    .sort((left, right) => (left.dx + left.dy) - (right.dx + right.dy))[0]?.gpz;
+  if (gpz) {
+    return overlayElementByAnyRef(payload, [
+      `${gpz.id}/source/main`,
+      `${gpz.id}/bus`,
+      gpz.id,
+    ]);
+  }
+
+  return null;
+}
+
+function overlayElementByAnyRef(
+  payload: RawOverlayPayload,
+  refs: readonly string[],
+): RawOverlayElement | null {
+  for (const ref of refs) {
+    const element = overlayElementByRef(payload, ref);
+    if (element) return element;
+  }
+  return null;
+}
+
 function topologyLabelFill(spec: SldLabelSpec): string {
   switch (spec.ownerKind) {
     case 'gpz':
@@ -494,19 +706,19 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   // K30-8: subskrybuj raw overlay payload by compute per-station alarm severity.
   const overlayPayload = useRawResultOverlayStore((state) => state.payload);
 
-  // K30-49: derive LF metrics â€” voltage deviation per station + cable loading.
+  // K30-49: derive LF metrics - voltage deviation per station + cable loading.
   // Wynik feedowany do StationOnRunRenderer (voltageDeviationPct) i
   // CableRunRenderer (loadingPct) jako data-driven projekcje K30-44/K30-45.
   const lfDerived = computeLfDerivedMetrics(overlayPayload, props.stations, props.cableRuns);
 
-  // K30-76: PathHighlighter â€” gdy selectedId jest stacjÄ…, znajdĹş run zawierajÄ…cy
-  // tÄ™ stacjÄ™ i highlight caĹ‚ego toru mocy (cable run = path z GPZ).
-  // Zbioru runIds zostajÄ… renderowane jak selected (visual highlight).
+  // K30-76: PathHighlighter - gdy selectedId jest stacj?, znajd? run zawieraj?cy
+  // t? stacj? i highlight ca?ego toru mocy (cable run = path z GPZ).
+  // Zbioru runIds zostaj? renderowane jak selected (visual highlight).
   const pathHighlightRunIds = useMemo(() => {
     const ids = new Set<string>();
     if (!selectedId) return ids;
     if (selectedId.startsWith('seg/')) return ids;
-    // Selected element moĹĽe byÄ‡ stationId lub cableRunId
+    // Selected element mo?e by? stationId lub cableRunId
     for (const run of props.cableRuns) {
       const containsStation = run.segmentRefs?.some((segRef) => {
         // Segment ref pattern: seg/{hash}/branch_segment lub similar
@@ -530,9 +742,9 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     return ids;
   }, [selectedId, props.cableRuns, props.stations]);
 
-  // K30-50: derive SC projection â€” jeĹ›li explicit shortCircuitProjection nie
-  // podano, auto-build z payload SC results. Bus pozycje pochodzÄ… z station
-  // layout (SN bus = stn/{hash}/sn_bus, posaĹĽenie = station.x/y).
+  // K30-50: derive SC projection - je?li explicit shortCircuitProjection nie
+  // podano, auto-build z payload SC results. Bus pozycje pochodz? z station
+  // layout (SN bus = stn/{hash}/sn_bus, posa?enie = station.x/y).
   const derivedScProjection = (() => {
     if (shortCircuitProjection !== undefined && shortCircuitProjection !== null) {
       return shortCircuitProjection;
@@ -568,9 +780,9 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     () => buildViewportContentSignature(gpzs, canonicalGpzs ?? [], sections, cableRuns, stations, branchPoints, ders),
     [gpzs, canonicalGpzs, sections, cableRuns, stations, branchPoints, ders],
   );
-  /* LOD kanwy ma byÄ‡ natychmiastowy i monotoniczny dla klikniÄ™Ä‡ zoom.
-   * Histereza zostaje w LodPolicy jako opcjonalny tryb testowy, ale gĹ‚Ăłwny
-   * widok projektanta nie moĹĽe opĂłĹşniaÄ‡ pojawiania siÄ™ szczegĂłĹ‚Ăłw. */
+  /* LOD kanwy ma by? natychmiastowy i monotoniczny dla klikni?? zoom.
+   * Histereza zostaje w LodPolicy jako opcjonalny tryb testowy, ale g??wny
+   * widok projektanta nie mo?e op??nia? pojawiania si? szczeg???w. */
   const lodControllerRef = useRef<LodController | null>(null);
   if (lodControllerRef.current === null) {
     lodControllerRef.current = createLodController({
@@ -580,7 +792,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     });
   }
 
-  // Auto-fit przy pierwszym renderze (jeĹ›li mamy obiekty)
+  // Auto-fit przy pierwszym renderze (je?li mamy obiekty)
   useEffect(() => {
     const allPoints: { x: number; y: number }[] = [];
     for (const g of gpzs) allPoints.push({ x: g.x, y: g.y });
@@ -595,7 +807,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     for (const d of ders) allPoints.push({ x: d.x, y: d.y });
     if (allPoints.length === 0) return;
     const bbox = computeBoundingBox(allPoints);
-    // PowiÄ™kszamy bbox aby uwzglÄ™dniÄ‡ rozmiar blokĂłw
+    // Powi?kszamy bbox aby uwzgl?dni? rozmiar blok?w
     const expanded = {
       minX: bbox.minX - 100,
       minY: bbox.minY - 100,
@@ -687,12 +899,12 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     setTransform((current) => sameViewportTransform(current, nextTransform) ? current : nextTransform);
   }, [computeFitTransformForCurrentNetwork]);
 
-  /* LOD obliczany przez LodController bez opĂłĹşnienia w gĹ‚Ăłwnej kanwie. */
+  /* LOD obliczany przez LodController bez op??nienia w g??wnej kanwie. */
   const lod: LodLevel = lodOverride !== undefined
     ? lodOverride
     : lodControllerRef.current.update(transform.scale);
-  /* Fallback dla testĂłw bez LodControllera (powinien byÄ‡ zawsze inicjalizowany). */
-  void inferLodFromScale; // referencja zachowana dla back-compat innych callerĂłw
+  /* Fallback dla test?w bez LodControllera (powinien by? zawsze inicjalizowany). */
+  void inferLodFromScale; // referencja zachowana dla back-compat innych caller?w
   const layers = { ...DEFAULT_LAYER_VISIBILITY, ...(layerVisibility ?? {}) };
   const topologyLabels = buildVisibleTopologyLabels(labelSpecs, readabilityReport, lod, selectedId);
   const usesGlobalLabelPipeline =
@@ -812,7 +1024,8 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
       onMouseLeave={handleMouseUp}
       onContextMenu={handleSvgContextMenu}
     >
-      {/* TĹ‚o */}
+      <g data-testid="sld-canvas-root">
+      {/* T?o */}
       <rect width={width} height={height} fill={COLOR_BG} />
       {readabilityReport && (
         <metadata
@@ -831,7 +1044,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
       {/* World transform */}
       <g transform={`translate(${transform.translateX}, ${transform.translateY}) scale(${transform.scale})`}>
         {/* Phase 2 polish: CadOverlay (grid + magnesy + bend handles + ghosts +
-            korytarze). Renderowany pod content ĹĽeby nie zasĹ‚aniaĹ‚ obiektĂłw
+            korytarze). Renderowany pod content ?eby nie zas?ania? obiekt?w
             domenowych. NIE pokazujemy gdy brak `cadOverlay` props (default off). */}
         {props.cadOverlay && (
           <CadOverlay
@@ -851,13 +1064,28 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
           />
         )}
 
-        {/* Warstwa poĹ‚Ä…czeĹ„ i odcinkĂłw SN. Stabilny znacznik jest uĹĽywany
-            przez E2E oraz diagnostykÄ™ widoku, nie zmienia semantyki SLD. */}
+        {/* Warstwa po??cze? i odcink?w SN. Stabilny znacznik jest u?ywany
+            przez E2E oraz diagnostyk? widoku, nie zmienia semantyki SLD. */}
         <g data-testid="sld-connections-layer">
           {layers.topology && connections
             .filter((c) => connectionVisibleAtLod(c, lod))
             .map((c) => (
-            <ConnectionRenderer key={c.id} {...c} selected={selectedId === c.id} />
+            <ConnectionRenderer
+              key={c.id}
+              {...c}
+              selected={selectedId === c.id}
+              viewportScale={transform.scale}
+              onClick={
+                onSelectElement
+                  ? (id, kind) => onSelectElement(id, kind)
+                  : undefined
+              }
+              onDoubleClick={
+                onSelectElement
+                  ? (id, kind) => onSelectElement(id, kind)
+                  : undefined
+              }
+            />
           ))}
         </g>
 
@@ -889,7 +1117,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         {/* GPZ blocks */}
         {gpzs.map((g) => {
           /* Phase R4: prefer canonical SCADA-OSD renderer gdy adapter
-           * dostarczyĹ‚ canonical props dla tego id. Fallback do legacy
+           * dostarczy? canonical props dla tego id. Fallback do legacy
            * `GpzRenderer` gdy brak (np. snapshot bez gpz_sections + bez bays). */
           const canonical = canonicalGpzs?.find((c) => c.id === g.id);
           if (canonical) {
@@ -1092,7 +1320,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
           );
         })}
 
-        {/* Stacje na ciÄ…gu */}
+        {/* Stacje na ci?gu */}
         {layers.equipment && (
           <g data-testid="sld-cable-runs-layer">
             {cableRuns.map((run) => (
@@ -1120,6 +1348,14 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                   selected={selectedId === run.id || pathHighlightRunIds.has(run.id)}
                   selectedSegmentRefs={selectedSegmentRefsForRun(run, selectedId)}
                   loadingPct={lfDerived.cableLoadingPctByRunId.get(run.id) ?? null}
+                  segmentEndpointResults={buildSegmentEndpointResultsForRun(
+                    run,
+                    overlayPayload,
+                    stations,
+                    branchPoints,
+                    gpzs,
+                    canonicalGpzs ?? [],
+                  )}
                   onClick={onSelectElement ? (id) => onSelectElement(
                     id,
                     run.segmentRefs?.includes(id)
@@ -1174,7 +1410,14 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                   lod={stationLod}
                   viewportScale={transform.scale}
                   selected={selectedId === st.id}
-                  onClick={onSelectElement ? (id) => onSelectElement(id, 'station') : undefined}
+                  onClick={
+                    onSelectElement
+                      ? (id) => {
+                          const selection = resolveStationRendererSelection(id, st);
+                          onSelectElement(selection.id, selection.kind);
+                        }
+                      : undefined
+                  }
                   onDoubleClick={onDoubleClickStation}
                 />
                 {!stationUsesMiniBlock && st.transformerRefs?.map((transformerRef, index) => (
@@ -1231,7 +1474,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         {/* K30-3 NO-GO #9: result overlay metrics z LOAD_FLOW/SC_3F payload */}
         <ResultOverlayLayer stations={stations} cableRuns={cableRuns} />
 
-        {/* K30-11: aggregate alarm summary panel â€” count of station severities */}
+        {/* K30-11: aggregate alarm summary panel - count of station severities */}
         {/* Tabele dokumentacyjne (metryka rysunku, tabela rewizji, bilans mocy)
          *  nie sa renderowane na interaktywnej kanwie SLD. Zostaja w dedykowanych
          *  komponentach raportowych/eksportowych, aby nie zaslaniac topologii SN. */}
@@ -1306,6 +1549,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
               <DerRenderer
                 {...d}
                 lod={derLod}
+                viewportScale={transform.scale}
                 selected={selectedId === d.id}
                 onClick={onSelectElement ? (id) => onSelectElement(id, 'der') : undefined}
                 onDoubleClick={onDoubleClickDer}
@@ -1357,7 +1601,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         </g>
       </g>
 
-      {/* WskaĹşnik szczegĂłĹ‚owoĹ›ci widoku dla projektanta. */}
+      {/* Wska?nik szczeg??owo?ci widoku dla projektanta. */}
       <g transform={`translate(8, ${height - 24})`}>
         <rect x={-4} y={-12} width={168} height={20} fill={COLOR_PANEL} fillOpacity={0.85} rx={2} />
         <text fill="#B9C0C7" fontSize={11} fontFamily="monospace" y={2}>
@@ -1389,6 +1633,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
           onActivate={fitViewportToNetwork}
           testId="sld-v2-fit-view"
         />
+      </g>
       </g>
     </svg>
     </SldLodProvider>
@@ -1561,6 +1806,36 @@ function zksnFieldDesignation(
   if (role === FIELD_ROLE.LINE_OUT) return 'WY';
   if (role === FIELD_ROLE.LINE_BRANCH) return `ODG ${Math.max(1, index - 1)}`;
   return `Pole ${index + 1}`;
+}
+
+function resolveStationRendererSelection(
+  id: string,
+  station: StationOnRunRendererProps,
+): { id: string; kind: string } {
+  if (id === station.id) return { id, kind: 'station' };
+  if (station.transformerRefs?.includes(id)) return { id, kind: 'transformer' };
+
+  const stationBayPrefix = `${station.id}/bay/`;
+  if (id.startsWith(stationBayPrefix)) {
+    if (id.includes('/apparatus/')) return { id, kind: 'apparatus' };
+    const bayRef = id.slice(stationBayPrefix.length);
+    return {
+      id: bayRef,
+      kind: bayRef.includes('/der-bay/') ? 'der_pcc_bay' : 'bay',
+    };
+  }
+
+  const matchedBay = station.snBays?.find((bay) => bay.bayRef === id);
+  if (matchedBay) {
+    return {
+      id,
+      kind: id.includes('/der-bay/') ? 'der_pcc_bay' : 'bay',
+    };
+  }
+
+  if (id.includes('/apparatus/')) return { id, kind: 'apparatus' };
+  if (id.includes('/pv/') || id.endsWith('/pcc')) return { id, kind: 'der_pcc_bay' };
+  return { id, kind: 'station' };
 }
 
 function BranchPoleOverheadNode(props: {
@@ -1780,7 +2055,7 @@ function derLodForCanvas(
   }
   if (lod === 2) return selected ? 'compact' : null;
   if (lod === 3) return selected ? 'compact' : 'marker';
-  return selected ? 'full' : 'compact';
+  return 'compact';
 }
 
 function connectionVisibleAtLod(
@@ -1924,8 +2199,8 @@ function stationUsesMiniBlockRenderer(
 
 /**
  * K30-8: compute alarm severity per station z overlay payload.
- * Patrzy na bus SN ref (mapping station_id â†’ sn_bus_ref) + sprawdza
- * thresholds (Ik > 25 kA â†’ critical, > 20 â†’ important, > 15 â†’ warning).
+ * Patrzy na bus SN ref (mapping station_id -> sn_bus_ref) + sprawdza
+ * thresholds (Ik > 25 kA -> critical, > 20 -> important, > 15 -> warning).
  * Returns null gdy brak alarm.
  */
 function computeStationAlarmSeverity(

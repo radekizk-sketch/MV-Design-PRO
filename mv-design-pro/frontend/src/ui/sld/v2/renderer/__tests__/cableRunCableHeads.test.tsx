@@ -62,6 +62,24 @@ describe('CableRunRenderer — K30-106 cable head termination IEC 60617-4', () =
     expect(container.querySelector('[data-testid="sld-v2-run-run-lod-cable-heads"]')).toBeFalsy();
   });
 
+  it('main_trunk ma kanoniczna glowice startowa takze w oddalonym LOD', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="run-head"
+          runKind="main_trunk"
+          pathPoints={PATH}
+          segmentKind="cable_sn"
+          lod={1}
+        />
+      </svg>,
+    );
+    const head = container.querySelector('[data-testid="sld-v2-run-run-head-cable-head"]');
+    expect(head).toBeTruthy();
+    expect(head?.getAttribute('data-symbol-canon')).toBe('cable_head_triangle');
+    expect(head?.getAttribute('data-port-binding')).toBe('trunk-start-head');
+  });
+
   it('missingEndpointPort=true → BRAK cable heads (incomplete connection)', () => {
     const { container } = render(
       <svg>

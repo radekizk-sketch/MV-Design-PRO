@@ -18,6 +18,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../app-state';
+import { fetchDerConverterTypes } from '../../catalog/api';
+import type { ConverterType } from '../../catalog/types';
 import { notify } from '../../notifications/store';
 import {
   DerPersistenceApiError,
@@ -73,6 +75,33 @@ type DerDeviceCatalogItem = {
   readonly label_pl: string;
   readonly nominal_power_kw: number;
   readonly nominal_voltage_kv?: number;
+  readonly catalog_source?: 'backend' | 'local';
+  readonly catalog_kind?: 'PV' | 'BESS' | 'WIND';
+  readonly manufacturer?: string | null;
+  readonly model?: string | null;
+  readonly s_n_kva?: number | null;
+  readonly qmin_mvar?: number | null;
+  readonly qmax_mvar?: number | null;
+  readonly cosphi_min?: number | null;
+  readonly cosphi_max?: number | null;
+  readonly e_kwh?: number | null;
+  readonly control_mode?: string | null;
+  readonly grid_code?: string | null;
+  readonly dynamic_profile_id?: string | null;
+  readonly ptpiree_status?: string | null;
+  readonly ptpiree_certificate_ref?: string | null;
+  readonly ptpiree_document_number?: string | null;
+  readonly ptpiree_document_acceptance_date?: string | null;
+  readonly ptpiree_wos_version?: string | null;
+  readonly ptpiree_wipwc_version?: string | null;
+  readonly ptpiree_ppm_scope?: string | null;
+  readonly source_reference?: string | null;
+  readonly verification_status?: string | null;
+  readonly catalog_status?: string | null;
+  readonly fault_current_capability_pu?: number;
+  readonly applicable_module_types?: readonly ('A' | 'B' | 'C' | 'D')[];
+  readonly four_quadrant?: boolean;
+  readonly grid_forming_capable?: boolean;
 };
 
 type StationTransformerInfo = {
@@ -363,6 +392,116 @@ function formatKva(value: number): string {
   return value >= 1000 ? `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 2)} MVA` : `${Math.round(value)} kVA`;
 }
 
+function formatMvar(value: number | null | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value) ? `${value.toFixed(2)} MVAr` : '-';
+}
+
+function formatKv(value: number | null | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value) ? `${value.toFixed(2)} kV` : '-';
+}
+
+function toConverterKind(derKind: DerKindUnified): ConverterType['kind'] {
+  return derKind === 'FW' ? 'WIND' : derKind;
+}
+
+function deriveModuleTypesForPowerKw(powerKw: number): readonly ('A' | 'B' | 'C' | 'D')[] {
+  if (powerKw <= 200) return ['A'];
+  if (powerKw < 10_000) return ['B'];
+  if (powerKw < 50_000) return ['C'];
+  return ['D'];
+}
+
+function mapBackendConverterToDerDevice(item: ConverterType): DerDeviceCatalogItem {
+  const pmaxMw = Number.isFinite(item.pmax_mw) ? item.pmax_mw : 0;
+  const snMva = Number.isFinite(item.sn_mva) ? item.sn_mva : pmaxMw;
+  const nominalPowerKw = Math.max(0, pmaxMw * 1000);
+  const manufacturer = item.manufacturer ?? null;
+  const model = item.model ?? null;
+  return {
+    id: item.id,
+    label_pl: item.name || [manufacturer, model].filter(Boolean).join(' ') || item.id,
+    nominal_power_kw: nominalPowerKw,
+    nominal_voltage_kv: item.un_kv,
+    catalog_source: 'backend',
+    catalog_kind: item.kind === 'WIND' ? 'WIND' : item.kind === 'BESS' ? 'BESS' : 'PV',
+    manufacturer,
+    model,
+    s_n_kva: snMva * 1000,
+    qmin_mvar: item.qmin_mvar ?? null,
+    qmax_mvar: item.qmax_mvar ?? null,
+    cosphi_min: item.cosphi_min ?? null,
+    cosphi_max: item.cosphi_max ?? null,
+    e_kwh: item.e_kwh ?? null,
+    control_mode: item.control_mode ?? null,
+    grid_code: item.grid_code ?? null,
+    dynamic_profile_id: item.dynamic_profile_id ?? null,
+    ptpiree_status: item.ptpiree_status ?? null,
+    ptpiree_certificate_ref: item.ptpiree_certificate_ref ?? null,
+    ptpiree_document_number: item.ptpiree_document_number ?? null,
+    ptpiree_document_acceptance_date: item.ptpiree_document_acceptance_date ?? null,
+    ptpiree_wos_version: item.ptpiree_wos_version ?? null,
+    ptpiree_wipwc_version: item.ptpiree_wipwc_version ?? null,
+    ptpiree_ppm_scope: item.ptpiree_ppm_scope ?? null,
+    source_reference: item.source_reference ?? null,
+    verification_status: item.verification_status ?? null,
+    catalog_status: item.catalog_status ?? null,
+    fault_current_capability_pu: item.kind === 'BESS' ? 1.2 : item.kind === 'WIND' ? 1.1 : 1.1,
+    applicable_module_types: deriveModuleTypesForPowerKw(nominalPowerKw),
+    four_quadrant: item.kind === 'BESS',
+    grid_forming_capable: item.control_mode === 'GRID_FORMING',
+  };
+}
+
+function normalizeLocalDerDevice(
+  item: DerDeviceCatalogItem,
+  derKind: DerKindUnified,
+): DerDeviceCatalogItem {
+  return {
+    ...item,
+    catalog_source: 'local',
+    catalog_kind: toConverterKind(derKind) === 'WIND' ? 'WIND' : toConverterKind(derKind),
+    applicable_module_types: item.applicable_module_types
+      ?? deriveModuleTypesForPowerKw(item.nominal_power_kw),
+  };
+}
+
+function deviceSearchHaystack(device: DerDeviceCatalogItem): string {
+  return [
+    device.id,
+    device.label_pl,
+    device.manufacturer,
+    device.model,
+    device.control_mode,
+    device.grid_code,
+    device.dynamic_profile_id,
+    device.ptpiree_document_number,
+    device.ptpiree_certificate_ref,
+    device.ptpiree_wipwc_version,
+    device.ptpiree_ppm_scope,
+  ]
+    .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    .join(' ')
+    .toLowerCase();
+}
+
+function deviceFourQuadrantCapable(device: DerDeviceCatalogItem | null): boolean {
+  return device?.four_quadrant ?? device?.catalog_kind === 'BESS';
+}
+
+function deviceGridFormingCapable(device: DerDeviceCatalogItem | null): boolean {
+  return device?.grid_forming_capable ?? device?.control_mode === 'GRID_FORMING';
+}
+
+function resolvePtpireeDocument(
+  device: DerDeviceCatalogItem | null,
+  fallback: PtpireeCertifiedInverterItem | null,
+): string {
+  return device?.ptpiree_document_number
+    ?? device?.ptpiree_certificate_ref
+    ?? fallback?.documentNumber
+    ?? '-';
+}
+
 function requiredTransformerKvaForDerPowerKw(powerKw: number): number {
   return powerKw / 0.9;
 }
@@ -465,6 +604,14 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const [selectedTransformerUpgradeRef, setSelectedTransformerUpgradeRef] = useState('');
   const [isUpdatingTransformer, setIsUpdatingTransformer] = useState(false);
   const [ptpireeRegistry, setPtpireeRegistry] = useState(PTPIREE_CERTIFIED_INVERTERS);
+  const [backendDeviceCatalog, setBackendDeviceCatalog] =
+    useState<DerDeviceCatalogItem[] | null>(null);
+  const [deviceCatalogStatus, setDeviceCatalogStatus] =
+    useState<'fallback' | 'loading' | 'backend' | 'error'>('fallback');
+  const [deviceCatalogError, setDeviceCatalogError] = useState<string | null>(null);
+  const [deviceSearch, setDeviceSearch] = useState('');
+  const [deviceVoltageFilter, setDeviceVoltageFilter] = useState('all');
+  const [deviceModeFilter, setDeviceModeFilter] = useState('all');
   // Phase 9: pre-fetch backend catalog snapshot — lokalne staticki sluzą jako
   // fallback, ale snapshot z backendu warm-cache'uje React Query dla stations
   // pobierajacych je dalej. Hook sam zarzadza cache'em i refetch'em.
@@ -484,11 +631,49 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    let active = true;
+    setDeviceCatalogStatus('loading');
+    setDeviceCatalogError(null);
+    void fetchDerConverterTypes(toConverterKind(derKind))
+      .then((records) => {
+        if (!active) return;
+        if (!Array.isArray(records)) {
+          throw new Error('Backend nie zwrócił listy konwerterów DER.');
+        }
+        const mapped = records
+          .map(mapBackendConverterToDerDevice)
+          .filter((device) => device.nominal_power_kw > 0);
+        if (mapped.length === 0) {
+          throw new Error('Katalog konwerterów nie zawiera pozycji dla wybranego typu DER.');
+        }
+        setBackendDeviceCatalog(mapped);
+        setDeviceCatalogStatus('backend');
+      })
+      .catch((error) => {
+        if (!active) return;
+        setBackendDeviceCatalog(null);
+        setDeviceCatalogStatus('error');
+        setDeviceCatalogError(
+          error instanceof Error
+            ? error.message
+            : 'Nie udało się pobrać katalogu konwerterów DER.',
+        );
+      });
+    return () => {
+      active = false;
+    };
+  }, [derKind, isOpen]);
+
   // Reset stanu kreatora przy każdym otwarciu.
   useEffect(() => {
     if (isOpen) {
       setStep('variant');
       setSelections({ ...EMPTY_SELECTIONS });
+      setDeviceSearch('');
+      setDeviceVoltageFilter('all');
+      setDeviceModeFilter('all');
     }
   }, [isOpen, derKind]);
 
@@ -497,6 +682,9 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const handleClose = useCallback(() => {
     setStep('variant');
     setSelections({ ...EMPTY_SELECTIONS });
+    setDeviceSearch('');
+    setDeviceVoltageFilter('all');
+    setDeviceModeFilter('all');
     onClose();
   }, [onClose]);
 
@@ -521,11 +709,18 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     selections.ncRfgProfileRef ? selectHvrtCurvesForProfile(selections.ncRfgProfileRef) : [],
   [selections.ncRfgProfileRef]);
 
-  const deviceCatalog = useMemo(() => {
-    if (derKind === 'PV') return PV_INVERTER_CATALOG;
-    if (derKind === 'BESS') return BESS_PCS_CATALOG;
-    return WIND_TURBINE_CATALOG;
+  const fallbackDeviceCatalog = useMemo<readonly DerDeviceCatalogItem[]>(() => {
+    const localCatalog =
+      derKind === 'PV' ? PV_INVERTER_CATALOG
+      : derKind === 'BESS' ? BESS_PCS_CATALOG
+      : WIND_TURBINE_CATALOG;
+    return localCatalog.map((device) => normalizeLocalDerDevice(device, derKind));
   }, [derKind]);
+
+  const deviceCatalog = useMemo<readonly DerDeviceCatalogItem[]>(
+    () => backendDeviceCatalog?.length ? backendDeviceCatalog : fallbackDeviceCatalog,
+    [backendDeviceCatalog, fallbackDeviceCatalog],
+  );
 
   const stationTransformers = useMemo(
     () => readStationTransformers(snapshot, stationId),
@@ -544,9 +739,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       fitsSelectedLvVoltage(device, selections.connectionSide, selections.voltageLevelRef)
       && fitsStationTransformerCapacity(device, selections.connectionSide, stationTransformerCapacityKw)),
     [
-      derKind,
       deviceCatalog,
-      ptpireeRegistry,
       selections.connectionSide,
       selections.voltageLevelRef,
       stationTransformerCapacityKw,
@@ -555,8 +748,55 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
 
   const incompatibleDeviceCount = deviceCatalog.length - compatibleDeviceCatalog.length;
 
+  const deviceVoltageOptions = useMemo(
+    () => Array.from(new Set(
+      deviceCatalog
+        .map((device) => getDeviceNominalVoltageKv(device))
+        .filter((value): value is number => value !== null),
+    )).sort((a, b) => a - b),
+    [deviceCatalog],
+  );
+
+  const filteredDeviceCatalog = useMemo(() => {
+    const normalizedSearch = deviceSearch.trim().toLowerCase();
+    return deviceCatalog.filter((device) => {
+      if (normalizedSearch && !deviceSearchHaystack(device).includes(normalizedSearch)) {
+        return false;
+      }
+      if (
+        deviceVoltageFilter !== 'all'
+        && getDeviceNominalVoltageKv(device)?.toFixed(2) !== deviceVoltageFilter
+      ) {
+        return false;
+      }
+      if (deviceModeFilter === 'ptpiree' && resolvePtpireeDocument(device, null) === '-') {
+        return false;
+      }
+      if (deviceModeFilter === 'gfm' && !deviceGridFormingCapable(device)) {
+        return false;
+      }
+      if (
+        deviceModeFilter === 'q-control'
+        && !device.control_mode
+        && (device.qmin_mvar === null || device.qmin_mvar === undefined)
+        && (device.qmax_mvar === null || device.qmax_mvar === undefined)
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [deviceCatalog, deviceModeFilter, deviceSearch, deviceVoltageFilter]);
+
+  const deviceCatalogCounters = useMemo(() => ({
+    total: deviceCatalog.length,
+    filtered: filteredDeviceCatalog.length,
+    ptpiree: deviceCatalog.filter((device) => resolvePtpireeDocument(device, null) !== '-').length,
+    gfm: deviceCatalog.filter(deviceGridFormingCapable).length,
+    backend: deviceCatalog.filter((device) => device.catalog_source === 'backend').length,
+  }), [deviceCatalog, filteredDeviceCatalog.length]);
+
   const deviceSelectOptions = useMemo(
-    () => deviceCatalog.map((device) => {
+    () => filteredDeviceCatalog.map((device) => {
       const voltageOk = fitsSelectedLvVoltage(
         device,
         selections.connectionSide,
@@ -583,7 +823,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     }),
     [
       derKind,
-      deviceCatalog,
+      filteredDeviceCatalog,
       ptpireeRegistry,
       selections.connectionSide,
       selections.voltageLevelRef,
@@ -594,6 +834,26 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const selectedDevice = useMemo(
     () => deviceCatalog.find((d) => d.id === selections.deviceCatalogRef) ?? null,
     [deviceCatalog, selections.deviceCatalogRef],
+  );
+
+  const selectedDevicePtpireeCertificate = useMemo(
+    () => selectedDevice ? findPtpireeCertificateForDevice(selectedDevice, ptpireeRegistry) : null,
+    [ptpireeRegistry, selectedDevice],
+  );
+
+  const availableBessModes = useMemo(
+    () => derKind === 'BESS' && selectedDevice
+      ? selectBessModesForPcs({
+        fourQuadrant: deviceFourQuadrantCapable(selectedDevice),
+        gridFormingCapable: deviceGridFormingCapable(selectedDevice),
+      })
+      : [],
+    [derKind, selectedDevice],
+  );
+
+  const availableBessModeIds = useMemo(
+    () => availableBessModes.map((mode) => mode.id).join('|'),
+    [availableBessModes],
   );
 
   const autoBlockTransformer = useMemo(
@@ -686,7 +946,10 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
             selections.connectionSide !== 'dedicated_transformer'
             || effectiveBlockTransformerCatalogRef !== null
           )
-          && (derKind !== 'BESS' || selections.batteryCatalogRef !== null);
+          && (
+            derKind !== 'BESS'
+            || (selections.batteryCatalogRef !== null && selections.bessOperationModeRefs.length > 0)
+          );
       case 'profile':
         return (
           selections.ncRfgProfileRef !== null &&
@@ -762,24 +1025,34 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     selections.connectionSide,
   ]);
 
-  useEffect(() => {
-    if (
-      selections.connectionSide !== 'nN'
-      || !voltageMismatchWarning
-      || !autoBlockTransformer
-    ) {
+  const handleSwitchToDedicatedTransformer = useCallback(() => {
+    if (!autoBlockTransformer) {
+      notify('Brak dopasowanego transformatora blokowego w katalogu dla wybranego urządzenia.', 'error');
       return;
     }
     setSelections((current) => ({
-      ...current,
-      connectionSide: 'dedicated_transformer',
+      ...applyPointDefaults(current, 'dedicated_transformer', derKind, stationName),
       blockTransformerCatalogRef: autoBlockTransformer.id,
     }));
-  }, [
-    autoBlockTransformer,
-    selections.connectionSide,
-    voltageMismatchWarning,
-  ]);
+    notify('Przełączono wariant przyłączenia na transformator dedykowany.', 'success');
+  }, [autoBlockTransformer, derKind, notify, stationName]);
+
+  const handleChooseOtherDevice = useCallback(() => {
+    setSelections((current) => ({ ...current, deviceCatalogRef: null }));
+  }, []);
+
+  useEffect(() => {
+    if (derKind !== 'BESS' || !selectedDevice || availableBessModes.length === 0) {
+      return;
+    }
+    const validModeIds = new Set(availableBessModes.map((mode) => mode.id));
+    setSelections((current) => {
+      const stillValid = current.bessOperationModeRefs.filter((ref) => validModeIds.has(ref));
+      return stillValid.length === current.bessOperationModeRefs.length
+        ? current
+        : { ...current, bessOperationModeRefs: stillValid };
+    });
+  }, [availableBessModeIds, availableBessModes, derKind, selectedDevice]);
 
   const handleUpgradeStationTransformer = useCallback(async () => {
     if (!effectiveCaseId || !primaryStationTransformer || !selectedTransformerUpgradeRef) {
@@ -834,7 +1107,9 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     }
     // Walidacja runtime: catalog_refs muszą istnieć w katalogach
     // (chroni przed manipulacją selections w devtools).
-    const validation = validateWizardSelections(selections, derKind);
+    const validation = validateWizardSelections(selections, derKind, {
+      allowedDeviceCatalogIds: deviceCatalog.map((device) => device.id),
+    });
     if (!validation.ok) {
       notify(
         `Walidacja kreatora DER nie powiodła się: ${validation.errors.join('; ')}`,
@@ -983,7 +1258,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       aria-label={`Dodaj ${DER_KIND_LABELS[derKind]}`}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
     >
-      <div className="w-[760px] max-w-[95vw] rounded-lg border border-scada-border bg-scada-panel shadow-2xl">
+      <div className="w-[980px] max-w-[95vw] rounded-lg border border-scada-border bg-scada-panel shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-scada-border bg-scada-surface px-5 py-3">
           <div>
@@ -1192,12 +1467,99 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 Wybierz urządzenie z katalogu producenta. Wszystkie wartości
                 techniczne (moc, napięcie, charakterystyki) pochodzą z katalogu.
               </p>
+              <div
+                data-testid="add-der-device-catalog-summary"
+                className="grid grid-cols-2 gap-2 rounded border border-scada-border bg-scada-surface p-2 text-[11px] text-scada-muted md:grid-cols-5"
+              >
+                <CatalogMetric label="Katalog" value={deviceCatalogStatus === 'backend' ? 'backend' : deviceCatalogStatus} />
+                <CatalogMetric label="Pozycje" value={`${deviceCatalogCounters.filtered}/${deviceCatalogCounters.total}`} />
+                <CatalogMetric label="Backend" value={`${deviceCatalogCounters.backend}`} />
+                <CatalogMetric label="PTPiREE" value={`${deviceCatalogCounters.ptpiree}`} />
+                <CatalogMetric label="GFM" value={`${deviceCatalogCounters.gfm}`} />
+              </div>
+              {deviceCatalogStatus === 'error' && (
+                <div
+                  data-testid="add-der-device-catalog-error"
+                  className="space-y-2 rounded border border-red-700 bg-red-950/30 p-3 text-[11px] text-red-100"
+                >
+                  Katalog backendowy jest niedostępny, używam awaryjnych pozycji lokalnych.
+                  {deviceCatalogError ? ` Przyczyna: ${deviceCatalogError}` : ''}
+                </div>
+              )}
+              <div
+                data-testid="add-der-device-filters"
+                className="grid grid-cols-1 gap-2 rounded border border-scada-border bg-scada-bg p-2 md:grid-cols-[1fr_160px_180px]"
+              >
+                <Field
+                  label="Szukaj w katalogu DER"
+                  value={deviceSearch}
+                  onChange={setDeviceSearch}
+                  placeholder="producent, model, certyfikat, napięcie, PTPiREE"
+                  testId="add-der-device-search"
+                />
+                <Select
+                  label="Napięcie"
+                  value={deviceVoltageFilter}
+                  onChange={setDeviceVoltageFilter}
+                  options={[
+                    { id: 'all', label: 'wszystkie' },
+                    ...deviceVoltageOptions.map((voltageKv) => ({
+                      id: voltageKv.toFixed(2),
+                      label: `${voltageKv.toFixed(2)} kV`,
+                    })),
+                  ]}
+                  testId="add-der-device-voltage-filter"
+                />
+                <Select
+                  label="Cechy"
+                  value={deviceModeFilter}
+                  onChange={setDeviceModeFilter}
+                  options={[
+                    { id: 'all', label: 'wszystkie' },
+                    { id: 'ptpiree', label: 'PTPiREE' },
+                    { id: 'q-control', label: 'regulacja Q/U' },
+                    { id: 'gfm', label: 'grid-forming' },
+                  ]}
+                  testId="add-der-device-mode-filter"
+                />
+              </div>
               {voltageMismatchWarning && (
                 <div
                   data-testid="add-der-voltage-mismatch-warning"
                   className="rounded border border-amber-700 bg-amber-950/30 p-2 text-[11px] text-amber-200"
                 >
-                  ⚠ {voltageMismatchWarning}
+                  <div className="font-semibold text-red-200">
+                    Niezgodność napięciowa blokuje zapis wariantu nN.
+                  </div>
+                  <div>{voltageMismatchWarning}</div>
+                  {autoBlockTransformer ? (
+                    <div className="text-red-100/80">
+                      Sugestia katalogowa: {autoBlockTransformer.label_pl}.
+                    </div>
+                  ) : (
+                    <div className="text-red-100/80">
+                      Katalog nie wskazał transformatora dedykowanego dla tego urządzenia.
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      data-testid="add-der-switch-dedicated-transformer"
+                      onClick={handleSwitchToDedicatedTransformer}
+                      disabled={!autoBlockTransformer}
+                      className="rounded border border-red-300 px-3 py-1 text-[11px] font-semibold text-red-50 transition hover:bg-red-900/40 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Przełącz na TR dedykowany
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="add-der-clear-device-selection"
+                      onClick={handleChooseOtherDevice}
+                      className="rounded border border-scada-border px-3 py-1 text-[11px] font-semibold text-scada-text transition hover:bg-scada-hover-nav"
+                    >
+                      Wybierz inne urządzenie
+                    </button>
+                  </div>
                 </div>
               )}
               {transformerPowerWarning && (
@@ -1280,6 +1642,122 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 ]}
                 testId="add-der-device"
               />
+              <div
+                data-testid="add-der-device-results"
+                className="max-h-72 overflow-y-auto rounded border border-scada-border bg-scada-bg text-[11px]"
+              >
+                <div className="grid min-w-[760px] grid-cols-[minmax(220px,1.7fr)_120px_90px_90px_110px_minmax(170px,1fr)] gap-2 border-b border-scada-border bg-scada-surface px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-scada-muted">
+                  <span>Urządzenie</span>
+                  <span>Producent</span>
+                  <span>Pmax</span>
+                  <span>Un</span>
+                  <span>NC RfG</span>
+                  <span>Ocena doboru</span>
+                </div>
+                {filteredDeviceCatalog.slice(0, 80).map((device) => {
+                  const isSelected = selections.deviceCatalogRef === device.id;
+                  const ptpireeDocument = resolvePtpireeDocument(
+                    device,
+                    derKind === 'PV' ? findPtpireeCertificateForDevice(device, ptpireeRegistry) : null,
+                  );
+                  const voltageOk = fitsSelectedLvVoltage(
+                    device,
+                    selections.connectionSide,
+                    selections.voltageLevelRef,
+                  );
+                  const transformerOk = fitsStationTransformerCapacity(
+                    device,
+                    selections.connectionSide,
+                    stationTransformerCapacityKw,
+                  );
+                  const eligibilityText = voltageOk && transformerOk
+                    ? 'zgodne z wariantem'
+                    : !voltageOk
+                      ? 'wymaga innego napięcia/TR'
+                      : 'wymaga większego TR stacji';
+                  const eligibilityClass = voltageOk && transformerOk
+                    ? 'border-emerald-600 bg-emerald-950/40 text-emerald-200'
+                    : 'border-amber-700 bg-amber-950/30 text-amber-200';
+                  return (
+                    <button
+                      key={device.id}
+                      type="button"
+                      data-testid={`add-der-device-card-${device.id}`}
+                      data-active={isSelected}
+                      onClick={() => setSelections((s) => ({ ...s, deviceCatalogRef: device.id }))}
+                      className={
+                        'grid min-w-[760px] grid-cols-[minmax(220px,1.7fr)_120px_90px_90px_110px_minmax(170px,1fr)] items-center gap-2 border-b px-3 py-2 text-left transition last:border-b-0 '
+                        + (isSelected
+                          ? 'border-scada-sn bg-scada-sn/10 text-scada-text'
+                          : 'border-scada-border text-scada-muted hover:bg-scada-hover-nav')
+                      }
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-scada-text">{device.label_pl}</div>
+                        <div className="truncate text-[10px] text-scada-muted">{device.model || device.id}</div>
+                      </div>
+                      <span className="truncate">{device.manufacturer || '-'}</span>
+                      <span className="text-scada-text">{formatKw(device.nominal_power_kw)}</span>
+                      <span>{formatKv(getDeviceNominalVoltageKv(device))}</span>
+                      <span>{device.grid_code ?? device.applicable_module_types?.join('/') ?? 'NC RfG'}</span>
+                      <span className="flex flex-wrap gap-1">
+                        <span className={`rounded border px-1.5 py-0.5 text-[10px] ${eligibilityClass}`}>
+                          {eligibilityText}
+                        </span>
+                        {ptpireeDocument !== '-' && (
+                          <span className="rounded bg-emerald-950/50 px-1.5 py-0.5 text-emerald-200">
+                            PTPiREE {ptpireeDocument}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+                {filteredDeviceCatalog.length === 0 && (
+                  <div
+                    data-testid="add-der-device-results-empty"
+                    className="rounded border border-amber-700 bg-amber-950/20 p-3 text-[11px] text-amber-200"
+                  >
+                    Brak pozycji dla aktualnych filtrów. Zmień tekst wyszukiwania, napięcie
+                    albo cechy katalogowe.
+                  </div>
+                )}
+              </div>
+              {selectedDevice && (
+                <div
+                  data-testid="add-der-device-details"
+                  className="rounded border border-scada-border bg-scada-surface p-3 text-[11px]"
+                >
+                  <div className="mb-2 flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
+                        Wybrane urządzenie DER
+                      </div>
+                      <div className="text-sm font-semibold text-scada-text">{selectedDevice.label_pl}</div>
+                    </div>
+                    <span className="rounded border border-scada-border bg-scada-bg px-2 py-1 text-[10px] text-scada-muted">
+                      {selectedDevice.catalog_source === 'backend' ? 'katalog backendowy' : 'fallback lokalny'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                    <CatalogMetric label="Pmax" value={formatKw(selectedDevice.nominal_power_kw)} />
+                    <CatalogMetric label="Un" value={formatKv(getDeviceNominalVoltageKv(selectedDevice))} />
+                    <CatalogMetric label="Sn" value={selectedDevice.s_n_kva ? formatKva(selectedDevice.s_n_kva) : '-'} />
+                    <CatalogMetric label="Q min/max" value={`${formatMvar(selectedDevice.qmin_mvar)} / ${formatMvar(selectedDevice.qmax_mvar)}`} />
+                    <CatalogMetric label="cos phi" value={`${selectedDevice.cosphi_min ?? '-'} / ${selectedDevice.cosphi_max ?? '-'}`} />
+                    <CatalogMetric label="Sterowanie" value={selectedDevice.control_mode ?? '-'} />
+                    <CatalogMetric label="NC RfG" value={selectedDevice.grid_code ?? selectedDevice.applicable_module_types?.join('/') ?? '-'} />
+                    <CatalogMetric
+                      label="PTPiREE"
+                      value={resolvePtpireeDocument(selectedDevice, selectedDevicePtpireeCertificate)}
+                    />
+                    <CatalogMetric label="Model EMT/RMS" value={selectedDevice.dynamic_profile_id ?? '-'} />
+                    <CatalogMetric label="Ik pu" value={selectedDevice.fault_current_capability_pu?.toFixed(2) ?? '-'} />
+                    <CatalogMetric label="WOS/WiPWC" value={[selectedDevice.ptpiree_wos_version, selectedDevice.ptpiree_wipwc_version].filter(Boolean).join(' / ') || '-'} />
+                    <CatalogMetric label="Źródło" value={selectedDevice.source_reference ?? selectedDevice.verification_status ?? '-'} />
+                  </div>
+                </div>
+              )}
               {derKind === 'BESS' && (
                 <Select
                   label="Bateria BESS"
@@ -1295,20 +1773,15 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               )}
 
               {/* Naprawa eng.10: tryby pracy BESS — multi-select z katalogu. */}
-              {derKind === 'BESS' && selections.deviceCatalogRef && (() => {
-                const pcs = BESS_PCS_CATALOG.find((p) => p.id === selections.deviceCatalogRef);
-                if (!pcs) return null;
-                const availableModes = selectBessModesForPcs({
-                  fourQuadrant: pcs.four_quadrant,
-                  gridFormingCapable: pcs.grid_forming_capable,
-                });
+              {derKind === 'BESS' && selections.deviceCatalogRef && selectedDevice && (() => {
+                if (availableBessModes.length === 0) return null;
                 return (
                   <div data-testid="add-der-bess-modes" className="space-y-1">
                     <label className="block text-[11px] text-scada-muted">
                       Tryby pracy BESS (NC RfG Art. 13/15) — wybierz min. 1
                     </label>
                     <div className="grid grid-cols-1 gap-1 rounded border border-scada-border bg-scada-bg p-2 text-[11px]">
-                      {availableModes.map((m) => (
+                      {availableBessModes.map((m) => (
                         <label
                           key={m.id}
                           data-testid={`add-der-bess-mode-${m.mode_code}`}
@@ -1599,6 +2072,15 @@ function Select({
           </option>
         ))}
       </select>
+    </div>
+  );
+}
+
+function CatalogMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded border border-scada-border bg-scada-bg px-2 py-1">
+      <div className="truncate text-[10px] uppercase tracking-wide text-scada-muted">{label}</div>
+      <div className="truncate text-[11px] font-medium text-scada-text">{value || '-'}</div>
     </div>
   );
 }

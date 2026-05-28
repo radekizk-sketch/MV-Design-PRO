@@ -1,0 +1,139 @@
+{
+  "test": "calculate_analysis_catalog_report_sweep",
+  "beforeCalc": {
+    "statusText": [
+      "Wyniki do obliczenia02:54:1728.05.2026ObliczNak",
+      "Obliczenia:do obliczeniaSzyny:15Odcinki SN:7Pola SN",
+      "Wyniki do obliczenia|▲ 1 ostrzeżenie|Szyny: 5To"
+    ],
+    "topBar": "Konfiguruj zakres",
+    "url": "http://127.0.0.1:5173/#sld?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8&overlay=1&legend=1"
+  },
+  "afterCalc": {
+    "bodySample": "✔Obliczenie zakończone. Otwieram wyniki.×↶Cofnij↷PonówMV-DESIGN-PRO12.2ProjektE2E SLD 0002Zakres / wariantZakres obliczeń z adresuKonfiguruj zakresWyniki aktualne02:54:2328.05.2026Sprawdź konfiguracjęNakładkaAnalizyEksportSiećSchematStudiaWynikiWZabezpieczeniaUkładyKatalogiRaportyHistoriaSchemat/Analizy techniczneAnalizy technicznePodgląd schematuKontekst układu jest zsynchronizowany z głównym schematem.Powiązany obiekt: Aktywne obliczenie.AnalizaKontekst analitycznyProjektE2E SLD 0002WariantZakres obliczeń z adresuWersja układuAktualna wersja układuObliczenieZwarcie trójfazowe (3F) · 28.05.2026, 02:54:19ObiektAktywne obliczenieZakładkaTabele wynikówPrzejścia analityczneNawigacja analitycznaKoordynacja zabezpieczeńCharakterystyki FRT/LVRT/HVRTRozpływ mocy NR/GS/FDStan fazowy SNStabilność dynamicznaWkłady źródeł rozszerzoneWeryfikacja cieplna i dynamicznaTesty NC RfGAnaliza wrażliwościPorównaj przebiegi (A/B)Raporty OSD i audytoweWynikiBieżący widok analitykiWyniki zwarciowe per obiektDane pochodzą z zamrożonego wyniku backendowego i śladu obliczeń. Wartości nie są liczone ani zgadywane w UI.TypObiektU_n / wariantDane wejścioweWynik 1Wynik 2StatusZwarciePort odgałęźny 13FIEC 60909; dane z wyniku serwerowegoIk'' 84,38 kA; ip 121,77 kAIth 84,38 kA; Sk'' 2192,16 MVAwynik obliczony; uzasadnienie dostępneZwarcieZKSN SN3FIEC 60909; dane z wyniku serwerowegoIk'' 84,38 kA; ip 121,77 kAIth 84,38 kA; Sk'' 2192,16 MVAwynik obliczony; uzasadnienie dostępneZwarcieStacja B3FIEC 60909; dane z wyniku serwerowegoIk'' 116,91 kA; ip 168,73 kAIth 116,91 kA; Sk'' 3037,533 MVAwynik obliczony; uzasadnienie dostępneZwarcieGND (Źródło GPZ 15 kV)3FIEC 60909; dane z wyniku serwerowegoIk'' 10,58 kA; ip 26,14 kAIth 10,58 kA; Sk'' 275 MVAwynik obliczony; uzasadnienie dostępneZwarcieSzyna nN stacji3FIEC 60909; dane z wyniku serwerowegoIk'' 19,95 kA; ip 41,21 kAIth 19,95 kA; Sk'' 13,823 MVAwynik obliczony; uzasadnienie dostępneKarta technicznaKarta technicznaWybór układuZaznacz GPZ, pole SN, aparat, odcinek, stację, układ PV/BESS/FW albo wynik na schemacie, aby otworzyć kartę techniczną, konfigurację i dostępne działania projektowe.Bieżący zestaw: Zakres obliczeń z adresu. Zakres obliczeń: Zakr",
+    "calculateButton": "Sprawdź konfigurację",
+    "hasCurrentResults": true,
+    "hasToCalculate": false,
+    "toastTexts": [
+      "✔Obliczenie zakończone. Otwieram wyniki.×"
+    ],
+    "url": "http://127.0.0.1:5173/#analysis?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8&overlay=1&legend=1&run=da3122d2-299a-4443-9e25-416cd6da4905",
+    "validationTexts": []
+  },
+  "calcScreenshotPath": "C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\mv-design-pro\\tmp\\browser-qa-e2e\\09_calculate_attempt.png",
+  "navResults": [
+    {
+      "name": "analysis_ncrfg",
+      "screenshotPath": "C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\mv-design-pro\\tmp\\browser-qa-e2e\\10_analysis_ncrfg.png",
+      "snapshot": {
+        "bodySample": "↶Cofnij↷PonówMV-DESIGN-PRO12.2ProjektE2E SLD 0002Zakres / wariantZakres obliczeń z adresuKonfiguruj zakresWyniki aktualne02:54:2428.05.2026Sprawdź konfiguracjęNakładkaAnalizyEksportSiećSchematStudiaWynikiWZabezpieczeniaUkładyKatalogiRaportyHistoriaSchemat/Analizy techniczneAnalizy technicznePodgląd schematuKontekst układu jest zsynchronizowany z głównym schematem.Powiązany obiekt: Aktywne obliczenie.AnalizaKontekst analitycznyProjektE2E SLD 0002WariantZakres obliczeń z adresuWersja układuAktualna wersja układuObliczenieZwarcie trójfazowe (3F) · 28.05.2026, 02:54:19ObiektAktywne obliczenieZakładkaTesty NC RfGPrzejścia analityczneNawigacja analitycznaKoordynacja zabezpieczeńCharakterystyki FRT/LVRT/HVRTRozpływ mocy NR/GS/FDStan fazowy SNStabilność dynamicznaWkłady źródeł rozszerzoneWeryfikacja cieplna i dynamicznaTesty NC RfGAnaliza wrażliwościPorównaj przebiegi (A/B)Raporty OSD i audytoweWynikiBieżący widok analitykiTesty NC RfGPakiet symulacji zgodności PTPiREEZakładka wykonuje pełny pakiet testów wymaganych procedurą PTPiREE v3.0 dla modułu PV/BESS/FW: częstotliwość, regulacje P/Q/cosφ/U, PMAX/PMIN, FRT/HVRT, odbudowę P, prąd bierny, komendy redukcji generacji i zdolności dodatkowe.Wykonaj testy NC RfGDodaj układ PV/BESS/FW z katalogu, a następnie przypisz moc, PCC, falownik i profil NC RfG.Matryca audytu specjalistycznegoKontrola każdego kroku flow6 ról / zero ukrytych wyjątkówProfesor sieci SNTopologia, PCC, poziom napięcia i brak symboli pozornych.Projektant OSDCzy użytkownik przechodzi od katalogu do raportu bez ręcznego zgadywania danych.Specjalista DER/NC RfGFalownik, certyfikat PTPiREE, FRT, P(f), Q(U), SCADA i rejestrator zakłóceń.ZabezpieczeniowiecCzy dane DER wystarczają do późniejszej selektywności i raportu.UX leadCzytelność kroków, tabel wyników, CTA i bra",
+        "disabled": [
+          {
+            "aria": null,
+            "testid": null,
+            "text": "↶Cofnij",
+            "title": "Cofnij ostatnią operację"
+          },
+          {
+            "aria": null,
+            "testid": null,
+            "text": "↷Ponów",
+            "title": "Ponów ostatnią cofniętą operację"
+          },
+          {
+            "aria": "Dodaj układ PV/BESS/FW z katalogu, a następnie przypisz moc, PCC, falownik i profil NC RfG.",
+            "testid": "ncrfg-run-tests",
+            "text": "Wykonaj testy NC RfG",
+            "title": "Dodaj układ PV/BESS/FW z katalogu, a następnie przypisz moc, PCC, falownik i profil NC RfG."
+          }
+        ],
+        "h1": [
+          "Analizy techniczne",
+          "Kontekst analityczny",
+          "Nawigacja analityczna",
+          "Bieżący widok analityki",
+          "Pakiet symulacji zgodności PTPiREE",
+          "Wybór układu"
+        ],
+        "hasCrash": false,
+        "hasPolishLabels": true,
+        "url": "http://127.0.0.1:5173/#analysis?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8&tab=ncrfg-tests"
+      }
+    },
+    {
+      "name": "catalog",
+      "screenshotPath": "C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\mv-design-pro\\tmp\\browser-qa-e2e\\10_catalog.png",
+      "snapshot": {
+        "bodySample": "↶Cofnij↷PonówMV-DESIGN-PRO12.2ProjektE2E SLD 0002Zakres / wariantZakres obliczeń z adresuKonfiguruj zakresWyniki aktualne02:54:2628.05.2026Sprawdź konfiguracjęNakładkaAnalizyEksportFaza projektu:ANALIZAKontrola:0Obliczenia:do obliczeniaSzyny:15Odcinki SN:7Pola SN:4Stacje:1Długość:3,92 kmTR:2Odbiory nN:1SzukajKatalogKontrolaMetadaneHistoriaSiećSchematStudiaWynikiWZabezpieczeniaUkładyKatalogiRaportyHistoriaKatalogi techniczneKażdy element sieci powinien mieć przypisany typ katalogowy aparatury, przewodu, transformatora albo profilu technicznego.Biblioteka typówPrzeglądanie aktywnych katalogów technicznych elementów sieci.Eksportuj bibliotekę typówImportuj bibliotekę typów≋Typy linii napowietrznych⟂Typy kabli SN⚡Typy zasilania systemowego SN⬍Typy transformatorów SN/nN⎆Typy aparatury łączeniowej SN◫Typy aparatury SN▥Typy aparatury nN⟃Typy kabli nN◔Typy obciążeń◎Typy przekładników prądowych◌Typy przekładników napięciowych◍Typy przekładników pomiarowych☀Typy falowników źródeł fotowoltaicznych▣Typy falowników magazynów energii⟲Typy konwerterów🛡Typy zabezpieczeńNazwaProducentParametry kluczoweLinia AAL 150 mm²line-base-al-150—R=0.192 Ohm/km · X=0.325 Ohm/km · In=365 ALinia AAL 16 mm²line-base-al-16—R=1.8 Ohm/km · X=0.405 Ohm/km · In=85 ALinia AAL 185 mm²line-base-al-185—R=0.154 Ohm/km · X=0.318 Ohm/km · In=420 ALinia AAL 240 mm²line-base-al-240—R=0.119 Ohm/km · X=0.309 Ohm/km · In=490 ALinia AAL 25 mm²line-base-al-25—R=1.15 Ohm/km · X=0.39 Ohm/km · In=110 ALinia AFL 2 120/20,0 mm²line-base-afl2-120—R=0.238 Ohm/km · X=0.337 Ohm/km · In=332 ALinia AFL 2 35/6,2 mm²line-base-afl2-35—R=0.822 Ohm/km · X=0.381 Ohm/km · In=148 ALinia AFL 2 50/8,0 mm²line-base-afl2-50—R=0.574 Ohm/km · X=0.369 Ohm/km · In=185 ALinia AFL 2 70/11,0 mm²line-base-afl2-70—R=0.41 Ohm/km · X=0.357 Ohm/km · In=",
+        "disabled": [
+          {
+            "aria": null,
+            "testid": null,
+            "text": "↶Cofnij",
+            "title": "Cofnij ostatnią operację"
+          },
+          {
+            "aria": null,
+            "testid": null,
+            "text": "↷Ponów",
+            "title": "Ponów ostatnią cofniętą operację"
+          }
+        ],
+        "h1": [
+          "Biblioteka typów",
+          "Katalogi techniczne",
+          "Katalogi techniczne",
+          "Przegladarka katalogowa",
+          "Przeglądarka katalogów"
+        ],
+        "hasCrash": false,
+        "hasPolishLabels": true,
+        "url": "http://127.0.0.1:5173/#catalog?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8"
+      }
+    },
+    {
+      "name": "report",
+      "screenshotPath": "C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO\\mv-design-pro\\tmp\\browser-qa-e2e\\10_report.png",
+      "snapshot": {
+        "bodySample": "↶Cofnij↷PonówMV-DESIGN-PRO12.2ProjektE2E SLD 0002Zakres / wariantZakres obliczeń z adresuKonfiguruj zakresWyniki aktualne02:54:2828.05.2026Sprawdź konfiguracjęNakładkaAnalizyEksportSiećSchematStudiaWynikiWZabezpieczeniaUkładyKatalogiRaportyHistoriaSchemat/Raporty OSD i audytoweRaporty OSD i audytowePodgląd schematuKontekst układu jest zsynchronizowany z głównym schematem.Powiązany obiekt: Raport techniczny.Raport gotowyDalej: wyeksportuj raport techniczny.RaportKonfiguracja raportuZakres obiektowyCała siećWybrany ciągWybrana stacjaWybrane poleWybrane źródłoSzczegółowośćStandardowaPełna technicznaZapisz konfigurację raportuEksportEksport PDF↓Eksport DOCX↓Eksport JSON↓Eksport LaTeX🔒ProjektE2E SLD 0002Zakres i warunkiZakres obliczeń z adresuOstatnie obliczenieZwarcie trójfazowe (3F) · 28.05.2026, 02:54:19Tryb zapisutylko odczytZakres raportucała siećSzczegółowośćstandardowaDrzewo raportu1. Strona tytułowa i identyfikacja projektu2. Zakres układu oraz źródło zasilania3. Schemat i kontekst topologiczny4. Wyniki zwarciowe i rozpływowe5. Wkłady źródeł, tor ziemnozwarciowy i uzasadnienie inżynierskieUzasadnienie inżynierskieWkłady źródełEksportKontrakt raportu i eksportuObliczenieZapisane w śladzie audytuTyp analizyzwarcie SNStatus uruchomieniazakończoneStan wynikówaktualneBrama jakościG4KompletnośćKompletnyPakiet uzasadnieńZapisane w śladzie audytuŚlad wejściaZapisane w śladzie audytuUtworzono28.05.2026, 02:54:18Zakres stosowalnościzwarcie SNraportWarunki wejściowe do skonfigurowaniaWarunki wejściowe dla aktywnego uruchomienia są skonfigurowane.Bieżąca konfiguracjaObliczenieZapisane w śladzie audytuZakres raportucała siećSzczegółowośćstandardowaTryb zapisutylko odczytPakiet uzasadnieńZapisane w śladzie audytuPodsumowanie wynikówMaks. Ikss [kA]116,915Liczba rekordów5Ślad oblic",
+        "disabled": [
+          {
+            "aria": null,
+            "testid": null,
+            "text": "↶Cofnij",
+            "title": "Cofnij ostatnią operację"
+          },
+          {
+            "aria": null,
+            "testid": null,
+            "text": "↷Ponów",
+            "title": "Ponów ostatnią cofniętą operację"
+          },
+          {
+            "aria": null,
+            "testid": "proof-export-latex",
+            "text": "Eksport LaTeX🔒",
+            "title": "Eksport uzasadnienia wymaga śladu solvera dla zakończonego obliczenia."
+          },
+          {
+            "aria": null,
+            "testid": "audit2-report-render",
+            "text": "2. Renderuj raport",
+            "title": null
+          }
+        ],
+        "h1": [
+          "Raporty OSD i audytowe",
+          "Konfiguracja raportu",
+          "Kontrakt raportu i eksportu",
+          "Wypełnij dane operatora + wybierz profil",
+          "Raport rozszerzonej walidacji technicznej",
+          "Wybór układu"
+        ],
+        "hasCrash": false,
+        "hasPolishLabels": true,
+        "url": "http://127.0.0.1:5173/#report?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&case=2c58ed79-fdd1-4213-bf98-cd32c8de51e8"
+      }
+    }
+  ]
+}

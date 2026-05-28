@@ -1,0 +1,480 @@
+{
+  "baseInfo": {
+    "bodyLength": 2606,
+    "buttons": [
+      {
+        "disabled": true,
+        "testId": null,
+        "text": "↶Cofnij"
+      },
+      {
+        "disabled": true,
+        "testId": null,
+        "text": "↷Ponów"
+      },
+      {
+        "disabled": false,
+        "testId": "ctx-project",
+        "text": "ProjektE2E SLD 0002"
+      },
+      {
+        "disabled": false,
+        "testId": "ctx-wariant",
+        "text": "Zakres / wariantZakres obliczeń z adresu"
+      },
+      {
+        "disabled": false,
+        "testId": "ctx-przypadek",
+        "text": "Konfiguruj zakres"
+      },
+      {
+        "disabled": false,
+        "testId": "top-bar-calculate",
+        "text": "Oblicz"
+      },
+      {
+        "disabled": false,
+        "testId": "top-bar-overlay",
+        "text": "Nakładka"
+      },
+      {
+        "disabled": false,
+        "testId": "top-bar-results",
+        "text": "Analizy"
+      },
+      {
+        "disabled": false,
+        "testId": "top-bar-export",
+        "text": "Eksport"
+      },
+      {
+        "disabled": false,
+        "testId": "top-bar-settings",
+        "text": ""
+      },
+      {
+        "disabled": false,
+        "testId": "wcs-search",
+        "text": "Szukaj"
+      },
+      {
+        "disabled": false,
+        "testId": "wcs-catalog",
+        "text": "Katalog"
+      },
+      {
+        "disabled": false,
+        "testId": "wcs-mass-review",
+        "text": "Kontrola"
+      },
+      {
+        "disabled": false,
+        "testId": "wcs-project-metadata",
+        "text": "Metadane"
+      },
+      {
+        "disabled": false,
+        "testId": "wcs-history",
+        "text": "Historia"
+      },
+      {
+        "disabled": false,
+        "testId": "nav-area-MODEL_SIECI",
+        "text": "Sieć"
+      },
+      {
+        "disabled": false,
+        "testId": "nav-area-SCHEMAT_TOPOLOGIA",
+        "text": "Schemat"
+      },
+      {
+        "disabled": false,
+        "testId": "nav-area-STUDIA_OBLICZENIOWE",
+        "text": "Studia"
+      },
+      {
+        "disabled": false,
+        "testId": "nav-area-WYNIKI_ANALIZY",
+        "text": "WynikiW"
+      },
+      {
+        "disabled": false,
+        "testId": "nav-area-ZABEZPIECZENIA_AUTOMATYKA",
+        "text": "Zabezpieczenia"
+      },
+      {
+        "disabled": false,
+        "testId": "nav-area-ZRODLA_PRZYLACZENIA",
+        "text": "Układy"
+      },
+      {
+        "disabled": false,
+        "testId": "nav-area-KATALOGI_TECHNICZNE",
+        "text": "Katalogi"
+      },
+      {
+        "disabled": false,
+        "testId": "nav-area-RAPORTY_UZASADNIENIA",
+        "text": "Raporty"
+      },
+      {
+        "disabled": false,
+        "testId": "nav-area-HISTORIA_AUDYT",
+        "text": "Historia"
+      },
+      {
+        "disabled": false,
+        "testId": "context-panel-toggle",
+        "text": ""
+      },
+      {
+        "disabled": false,
+        "testId": "schemat-action-show-topology",
+        "text": "Schemat i topologia"
+      },
+      {
+        "disabled": false,
+        "testId": "schemat-action-show-normal-open-points",
+        "text": "●Układ dopuszczony do analizyAnaliza"
+      },
+      {
+        "disabled": false,
+        "testId": "model-tree-row-gpz/860003b4514aa388b39561d5005ce584/source/main",
+        "text": "⊙Źródło GPZ 15 kV●"
+      },
+      {
+        "disabled": false,
+        "testId": "model-tree-row-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+        "text": "⊙Stacja B · stacja przelotowa●"
+      },
+      {
+        "disabled": false,
+        "testId": "model-tree-row-seg/2eb903289ceccfe33d015b843cc0a839/segment",
+        "text": "⊙F2 · YAKXS 3×120/16 · 0,21 km●"
+      },
+      {
+        "disabled": false,
+        "testId": "model-tree-row-seg/fffe06fde7d5aca09fa6e904e942ad63/segment_L",
+        "text": "⊙Odcinek 02 · YAKXS 3×120/16 · 0,09 km●"
+      },
+      {
+        "disabled": false,
+        "testId": "model-tree-row-seg/fffe06fde7d5aca09fa6e904e942ad63/segment_R",
+        "text": "⊙Odcinek 03 · YAKXS 3×120/16 · 0,12 km●"
+      },
+      {
+        "disabled": false,
+        "testId": "model-tree-row-seg/a3acec33be3f808937ccd4887cf57c76/segment",
+        "text": "⊙Odcinek 04 · 3 × NA2XS2Y 1×150/25 mm² · 1,00 km●"
+      },
+      {
+        "disabled": false,
+        "testId": "model-tree-row-seg/23875a76b3f665d0dc0e5da4f25e00c4/segment",
+        "text": "⊙Odcinek 05 · YAKXS 3×120/16 · 0,50 km●"
+      },
+      {
+        "disabled": false,
+        "testId": "model-tree-row-seg/20a007590f2c151243e3c62812ad1622/segment",
+        "text": "⊙Odcinek 06 · YAKXS 3×120/16 · 1,00 km●"
+      },
+      {
+        "disabled": false,
+        "testId": "model-tree-row-seg/5a0832828e97bfacab29a3f6518c7f00/segment",
+        "text": "⊙Odcinek 07 · 3 × NA2XS2Y 1×240/25 mm² · 1,00 km●"
+      },
+      {
+        "disabled": false,
+        "testId": "model-tree-row-pv/e8bed5e02e97a5241c38714f8b64cd7d/converter",
+        "text": "⊙PV 01 · falownik PV · Stacja B · 0,5 MW●"
+      },
+      {
+        "disabled": false,
+        "testId": "model-tree-row-load/e057d623f2f45db8887c1a9c3bcf4489/nn",
+        "text": "⊙Odbiór nN 1 - Stacja B · 0,03 MW●"
+      },
+      {
+        "disabled": false,
+        "testId": "schemat-action-go-model",
+        "text": "+Dodaj układ"
+      },
+      {
+        "disabled": false,
+        "testId": "left-panel-mode-readiness",
+        "text": "Konfiguracja"
+      },
+      {
+        "disabled": false,
+        "testId": "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#disconnect_bus-button",
+        "text": ""
+      },
+      {
+        "disabled": false,
+        "testId": "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#breaker-button",
+        "text": ""
+      },
+      {
+        "disabled": false,
+        "testId": "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#ct-button",
+        "text": ""
+      },
+      {
+        "disabled": false,
+        "testId": "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#switch_disconnector-button",
+        "text": ""
+      },
+      {
+        "disabled": false,
+        "testId": "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#earthing_switch-button",
+        "text": ""
+      },
+      {
+        "disabled": false,
+        "testId": "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#cable_head-button",
+        "text": ""
+      },
+      {
+        "disabled": false,
+        "testId": "sld-v2-zoom-in",
+        "text": "+"
+      },
+      {
+        "disabled": false,
+        "testId": "sld-v2-zoom-out",
+        "text": "-"
+      },
+      {
+        "disabled": false,
+        "testId": "sld-v2-fit-view",
+        "text": "[]"
+      },
+      {
+        "disabled": false,
+        "testId": "der-palette-btn-PV",
+        "text": "＋ PV (fotowoltaika)"
+      },
+      {
+        "disabled": false,
+        "testId": "der-palette-btn-BESS",
+        "text": "＋ BESS (magazyn)"
+      },
+      {
+        "disabled": false,
+        "testId": "der-palette-btn-FW",
+        "text": "＋ FW (wiatr)"
+      },
+      {
+        "disabled": false,
+        "testId": "sld-theme-toggle",
+        "text": "☀ Jasny"
+      },
+      {
+        "disabled": false,
+        "testId": "sld-export-svg",
+        "text": "↓ SVG"
+      },
+      {
+        "disabled": false,
+        "testId": "sld-export-menu-toggle",
+        "text": "Eksportuj schemat ▾"
+      },
+      {
+        "disabled": false,
+        "testId": "sld-layer-panel-toggle",
+        "text": "▴ Warstwy (13)"
+      },
+      {
+        "disabled": false,
+        "testId": "sld-proof-packs-toggle",
+        "text": "▸ Dowody (8)"
+      },
+      {
+        "disabled": false,
+        "testId": "sld-hierarchy-tree-toggle",
+        "text": "▸ Drzewo układu"
+      },
+      {
+        "disabled": false,
+        "testId": "sld-apparatus-overlay-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#disconnect_bus",
+        "text": ""
+      },
+      {
+        "disabled": false,
+        "testId": "sld-apparatus-overlay-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#breaker",
+        "text": ""
+      },
+      {
+        "disabled": false,
+        "testId": "sld-apparatus-overlay-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#ct",
+        "text": ""
+      },
+      {
+        "disabled": false,
+        "testId": "sld-apparatus-overlay-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#switch_disconnector",
+        "text": ""
+      },
+      {
+        "disabled": false,
+        "testId": "sld-apparatus-overlay-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#earthing_switch",
+        "text": ""
+      },
+      {
+        "disabled": false,
+        "testId": "sld-apparatus-overlay-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#cable_head",
+        "text": ""
+      },
+      {
+        "disabled": false,
+        "testId": "inspector-panel-toggle",
+        "text": ""
+      },
+      {
+        "disabled": false,
+        "testId": null,
+        "text": "Schemat"
+      },
+      {
+        "disabled": false,
+        "testId": null,
+        "text": "ZKSN SN"
+      },
+      {
+        "disabled": false,
+        "testId": "zksn-action-continue-main",
+        "text": "Kontynuuj tor kablowy z pola WY"
+      },
+      {
+        "disabled": true,
+        "testId": "zksn-action-start-branch-BRANCH",
+        "text": "ODG 1: odgałęzienie kablowe już wyprowadzone"
+      }
+    ],
+    "hasSvg": true,
+    "links": [],
+    "testIds": [
+      "app-root",
+      "app-ready",
+      "canonical-layout",
+      "top-bar-v12",
+      "context-triple",
+      "ctx-project",
+      "ctx-wariant",
+      "ctx-przypadek",
+      "top-bar-result-status",
+      "top-bar-calculate",
+      "top-bar-overlay",
+      "top-bar-results",
+      "top-bar-export",
+      "top-bar-settings",
+      "workflow-context-strip",
+      "workflow-build-phase",
+      "workflow-no-blockers",
+      "wcs-model-readiness",
+      "wcs-search",
+      "wcs-catalog",
+      "wcs-mass-review",
+      "wcs-project-metadata",
+      "wcs-history",
+      "navigation-rail",
+      "nav-area-MODEL_SIECI",
+      "nav-area-SCHEMAT_TOPOLOGIA",
+      "nav-area-STUDIA_OBLICZENIOWE",
+      "nav-area-WYNIKI_ANALIZY",
+      "nav-area-ZABEZPIECZENIA_AUTOMATYKA",
+      "nav-area-ZRODLA_PRZYLACZENIA",
+      "nav-area-KATALOGI_TECHNICZNE",
+      "nav-area-RAPORTY_UZASADNIENIA",
+      "nav-area-HISTORIA_AUDYT",
+      "context-panel",
+      "context-panel-toggle",
+      "icon-chevron-left",
+      "schemat-context-panel",
+      "schemat-action-show-topology",
+      "schemat-action-show-normal-open-points",
+      "project-tree-search-input",
+      "project-tree",
+      "model-tree-row-gpz/860003b4514aa388b39561d5005ce584/source/main",
+      "model-tree-row-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+      "model-tree-row-seg/2eb903289ceccfe33d015b843cc0a839/segment",
+      "model-tree-row-seg/fffe06fde7d5aca09fa6e904e942ad63/segment_L",
+      "model-tree-row-seg/fffe06fde7d5aca09fa6e904e942ad63/segment_R",
+      "model-tree-row-seg/a3acec33be3f808937ccd4887cf57c76/segment",
+      "model-tree-row-seg/23875a76b3f665d0dc0e5da4f25e00c4/segment",
+      "model-tree-row-seg/20a007590f2c151243e3c62812ad1622/segment",
+      "model-tree-row-seg/5a0832828e97bfacab29a3f6518c7f00/segment",
+      "model-tree-row-pv/e8bed5e02e97a5241c38714f8b64cd7d/converter",
+      "model-tree-row-load/e057d623f2f45db8887c1a9c3bcf4489/nn",
+      "schemat-action-go-model",
+      "left-panel-mode-readiness",
+      "main-content",
+      "sld-workspace-container",
+      "sld-canvas-v2",
+      "sld-canvas-root",
+      "sld-readability-report",
+      "sld-connections-layer",
+      "sld-v2-section-hit-gpz/860003b4514aa388b39561d5005ce584/substation__gpz/860003b4514aa388b39561d5005ce584/section/001",
+      "sld-v2-section-gpz/860003b4514aa388b39561d5005ce584/substation__gpz/860003b4514aa388b39561d5005ce584/section/001",
+      "sld-v2-section-label-stack-gpz/860003b4514aa388b39561d5005ce584/substation__gpz/860003b4514aa388b39561d5005ce584/section/001",
+      "sld-v2-section-label-gpz/860003b4514aa388b39561d5005ce584/substation__gpz/860003b4514aa388b39561d5005ce584/section/001-name",
+      "sld-v2-section-label-gpz/860003b4514aa388b39561d5005ce584/substation__gpz/860003b4514aa388b39561d5005ce584/section/001-voltage",
+      "sld-v2-gpz-hit-gpz/860003b4514aa388b39561d5005ce584/substation",
+      "sld-v2-gpz-canonical-gpz/860003b4514aa388b39561d5005ce584/substation",
+      "gpz-canonical-gpz/860003b4514aa388b39561d5005ce584/substation-frame",
+      "sld-v2-gpz-operator-header",
+      "gpz-header-name",
+      "gpz-canonical-hv",
+      "gpz-canonical-hv-source-indicator",
+      "gpz-canonical-hv-source-label-name",
+      "gpz-canonical-hv-source-label-voltage",
+      "gpz-canonical-hv-bus",
+      "gpz-canonical-transformers",
+      "gpz-canonical-transformer-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn",
+      "gpz-canonical-hv-tr-bay-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn",
+      "gpz-canonical-hv-tr-bay-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-ds",
+      "gpz-canonical-ds",
+      "gpz-canonical-hv-tr-bay-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-cb",
+      "gpz-canonical-cb",
+      "gpz-canonical-hv-tr-bay-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-ct",
+      "gpz-canonical-tr-label-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-designation",
+      "gpz-canonical-tr-label-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-power",
+      "gpz-canonical-tr-label-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-voltage",
+      "gpz-canonical-tr-field-columns",
+      "gpz-canonical-tr-field-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn",
+      "gpz-canonical-tr-field-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-ds",
+      "gpz-canonical-tr-field-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-cb",
+      "gpz-canonical-tr-field-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-ct",
+      "gpz-canonical-tr-field-gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn-es",
+      "gpz-canonical-section-gpz/860003b4514aa388b39561d5005ce584/section/001",
+      "gpz-canonical-bay-gpz/860003b4514aa388b39561d5005ce584/bay/001/001",
+      "gpz-bay-feeder-label",
+      "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#disconnect_bus",
+      "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#disconnect_bus-hitbox",
+      "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#disconnect_bus-button",
+      "gpz-canonical-ds",
+      "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#breaker",
+      "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#breaker-hitbox",
+      "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#breaker-button",
+      "gpz-canonical-cb",
+      "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#ct",
+      "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#ct-hitbox",
+      "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#ct-button",
+      "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#switch_disconnector",
+      "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#switch_disconnector-hitbox",
+      "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#switch_disconnector-button",
+      "gpz-canonical-load-switch",
+      "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#earthing_switch",
+      "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#earthing_switch-hitbox",
+      "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#earthing_switch-button",
+      "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#cable_head",
+      "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#cable_head-hitbox",
+      "gpz-canonical-apparatus-gpz/860003b4514aa388b39561d5005ce584/bay/001/001#cable_head-button",
+      "gpz-canonical-section-gpz/860003b4514aa388b39561d5005ce584/section/001-bus",
+      "gpz-canonical-section-label-Sekcja 1",
+      "gpz-canonical-section-label-Sekcja 1-bg",
+      "gpz-canonical-section-label-Sekcja 1-name"
+    ],
+    "textSample": "↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\nE2E SLD 0002\nZAKRES / WARIANT\nZakres obliczeń z adresu\nKonfiguruj zakres\nWyniki do obliczenia\n02:14:27\n28.05.2026\nOblicz\nNakładka\nAnalizy\nEksport\nFaza projektu:\nANALIZA\nKontrola:\n0\nObliczenia:\ndo obliczenia\nSzyny:\n15\nOdcinki SN:\n7\nPola SN:\n4\nStacje:\n1\nDługość:\n3,92 km\nTR:\n2\nOdbiory nN:\n1\nSzukaj\nKatalog\nKontrola\nMetadane\nHistoria\nSieć\nSchemat\nStudia\nWyniki\nW\nZabezpieczenia\nUkłady\nKatalogi\nRaporty\nHistoria\nSchemat i topologia\nNastępna akcja\ni\n●\nUkład dopuszczony do analizy\nAnaliza\nEtap układu\ndo analizy\nPrzegląd techniczny\nUkład skonfigurowany do obliczeń.\nGPZ i zasilanie\n●\n1\n⊙\nŹródło GPZ 15 kV\n●\nStacje SN/nN\n●\n1\n⊙\nStacja B\n·\nstacja przelotowa\n●\nMagistrale i odcinki SN\n●\n7\n⊙\nF2\n·\nYAKXS 3×120/16 · 0,21 km\n●\n⊙\nOdcinek 02\n·\nYAKXS 3×120/16 · 0,09 km\n●\n⊙\nOdcinek 03\n·\nYAKXS 3×120/16 · 0,12 km\n●\n⊙\nOdcinek 04\n·\n3 × NA2XS2Y 1×150/25 mm² · 1,00 km\n●\n⊙\nOdcinek 05\n·\nYAKXS 3×120/16 · 0,50 km\n●\n⊙\nOdcinek 06\n·\nYAKXS 3×120/16 · 1,00 km\n●\n⊙\nOdcinek 07\n·\n3 × NA2XS2Y 1×240/25 mm² · 1,00 km\n●\nUkłady PV/BESS/FW\n●\n1\n⊙\nPV 01\n·\nfalownik PV · Stacja B · 0,5 MW\n●\nOdbiory nN\n●\n1\n⊙\nOdbiór nN 1 - Stacja B\n·\n0,03 MW\n●\n+\nDodaj układ\nKonfiguracja\n34\nSekcja 0\n15 kV\nGPZ 15 kV\nSystem\n110 kV\nSzyna WN 110 kV\nPole WN TR1\nY\nTR1\n25 MVA\n110/15 kV\nPole TR1\nPole liniow…\nQ1\nQ0\nT1\nQ9\nQ8\nSekcja 1\n15 kV\n15 kV\nKabel SN · Al\nKabel SN · Al\nKabel SN · Al\nKabel SN · Al\nKabel SN · Al\n15 kV\nKabel SN · Al\nKabel SN · Al\nWE\nWY\nnN\nTR\nS01\n1 nN\nStacja B\nRMU·P\nWE\nWY\nODG 1\nZKSN\nŁCZ\nGPZ 15 kV\nYAKXS 3×120/16 · 210 m\nróżne typy katalogowe · 3,71 km\nStacje, długości i moce\n+\n-\n[]\nUKŁADY PV/BESS/FW:\n＋ PV (fotowoltaika)\n＋ BESS (magazyn)\n＋ FW (wiatr)\n☀ Jasny\n↓ SVG\nEksportuj schemat ▾\n▴ Warstwy (13)\n▸ Dowody (8)\n▸ Drzewo układu\nKARTA TECHNICZNA\nSchemat\n/\nZKSN SN\nZKSN SN\nROZDZIELNICA KABLOWA SN BEZ TRANSFORMATORA\nZKSN SN\nZK SN jest rozdzielnicą w torze kablowym. Ma pola liniowe WE/WY oraz pola odgałęźne z katalogu, ale nie zawiera transformatora SN/nN.\nROLA W SIECI\nrozdzielnica odgałęźna toru kablowego\nMEDIUM ODGAŁĘZIENIA\nkabel SN\nCIĄG GŁÓWNY\nCiąg kablowy SN\nTRANSFORMATOR\nnie występuje\nWARIANT KATALOGOWY\nRSN-6\nUKŁAD PÓL SN\nWE / WY / ODG 1\nPORTY ODGAŁĘŹNE\n1\nTOR GŁÓWNY WE/WY\nKontynuuj tor kablowy z pola WY\nWYPROWADZENIA KABLOWE\nODG 1: odgałęzienie kablowe już wyprowadzone\nBieżący zestaw: Zakres obliczeń z adresu. Zakres obliczeń: Zakres obliczeń z adresu. Wariant: Zakres obliczeń z adresu.\nSchemat / Układ\n|\nProjekt:\nE2E SLD 0002\n|\nZakres obliczeń:\nZakres obliczeń z adresu\n|\nWariant:\nnie",
+    "title": "MV-DESIGN PRO",
+    "url": "http://127.0.0.1:5173/#sld?project=de296d9b-94fe-4ff5-9cde-d06088113fc8&overlay=1&legend=1&sel=bp%2Fed7a37193a833ebc29e3dd7305152d17%2Fzksn&type=ZKSN&name=ZKSN+SN"
+  },
+  "logs": []
+}

@@ -105,6 +105,22 @@ export interface ConverterType extends CatalogType {
   cosphi_min?: number;
   cosphi_max?: number;
   e_kwh?: number;
+  model?: string;
+  control_mode?: string | null;
+  grid_code?: string | null;
+  dynamic_profile_id?: string | null;
+  ptpiree_status?: 'POWIAZANY' | 'NIEPOWIAZANY' | string;
+  ptpiree_certificate_ref?: string | null;
+  ptpiree_document_number?: string | null;
+  ptpiree_document_acceptance_date?: string | null;
+  ptpiree_wos_version?: string | null;
+  ptpiree_wipwc_version?: string | null;
+  ptpiree_ppm_scope?: string | null;
+  ptpiree_source_url?: string | null;
+  ptpiree_publication_date?: string | null;
+  verification_status?: string | null;
+  source_reference?: string | null;
+  catalog_status?: string | null;
 }
 
 /**
@@ -227,6 +243,16 @@ export interface PVInverterCatalogType extends CatalogType {
   cos_phi_max?: number;
   control_mode?: string;
   grid_code?: string;
+  dynamic_profile_id?: string | null;
+  ptpiree_status?: 'POWIAZANY' | 'NIEPOWIAZANY' | string;
+  ptpiree_certificate_ref?: string | null;
+  ptpiree_document_number?: string | null;
+  ptpiree_document_acceptance_date?: string | null;
+  ptpiree_wos_version?: string | null;
+  ptpiree_wipwc_version?: string | null;
+  ptpiree_ppm_scope?: string | null;
+  ptpiree_source_url?: string | null;
+  ptpiree_publication_date?: string | null;
 }
 
 /**
@@ -242,6 +268,81 @@ export interface BESSInverterCatalogType extends CatalogType {
   u_n_kv?: number;
   voltage_kv?: number;
   voltage_lv_kv?: number;
+  dynamic_profile_id?: string | null;
+  ptpiree_status?: 'POWIAZANY' | 'NIEPOWIAZANY' | string;
+  ptpiree_certificate_ref?: string | null;
+  ptpiree_document_number?: string | null;
+  ptpiree_document_acceptance_date?: string | null;
+  ptpiree_wos_version?: string | null;
+  ptpiree_wipwc_version?: string | null;
+  ptpiree_ppm_scope?: string | null;
+  ptpiree_source_url?: string | null;
+  ptpiree_publication_date?: string | null;
+}
+
+/**
+ * Generic inverter catalog type (INVERTER).
+ * Source: backend InverterType dataclass.
+ */
+export interface InverterCatalogType extends CatalogType {
+  kind: 'PV' | 'WIND' | 'BESS' | 'INVERTER' | string;
+  un_kv: number;
+  sn_mva: number;
+  pmax_mw: number;
+  qmin_mvar?: number | null;
+  qmax_mvar?: number | null;
+  cosphi_min?: number | null;
+  cosphi_max?: number | null;
+  model?: string | null;
+  ptpiree_status?: 'POWIAZANY' | 'NIEPOWIAZANY' | string;
+  ptpiree_certificate_ref?: string | null;
+  ptpiree_document_number?: string | null;
+  ptpiree_document_acceptance_date?: string | null;
+  ptpiree_wos_version?: string | null;
+  ptpiree_wipwc_version?: string | null;
+  ptpiree_ppm_scope?: string | null;
+  ptpiree_source_url?: string | null;
+  ptpiree_publication_date?: string | null;
+}
+
+/**
+ * MV surge arrester type (OGRANICZNIK_SN).
+ * Source: backend SurgeArresterType dataclass.
+ */
+export interface SurgeArresterCatalogType extends CatalogType {
+  u_m_kv: number;
+  mcov_kv: number;
+  u_rated_kv: number;
+  u_residual_at_10ka_kv: number;
+  tov_10s_kv: number;
+  energy_class: number;
+  energy_absorption_kj_per_kv: number;
+  bil_protected_kv: number;
+  application?: string;
+  neutral_system?: string | null;
+  model?: string | null;
+  standard?: string;
+}
+
+/**
+ * PTPiREE certificate snapshot record.
+ * Source: backend PtpireeGeneratorCertificate dataclass.
+ */
+export interface PtpireeGeneratorCertificateCatalogType extends CatalogType {
+  manufacturer: string;
+  model: string;
+  device_type: string;
+  document_number: string;
+  document_acceptance_date: string;
+  wos_version: string;
+  wipwc_version: string;
+  ppm_scope: string;
+  firmware_version?: string | null;
+  source_url: string;
+  publication_date?: string | null;
+  accepted_from?: string | null;
+  manufacturer_key: string;
+  model_key: string;
 }
 
 /**
@@ -310,11 +411,13 @@ export type CatalogNamespace =
   | 'KABEL_NN'
   | 'CT'
   | 'VT'
+  | 'OGRANICZNIK_SN'
   | 'OBCIAZENIE'
   | 'ZRODLO_NN_PV'
   | 'ZRODLO_NN_BESS'
   | 'ZABEZPIECZENIE'
   | 'NASTAWY_ZABEZPIECZEN'
+  | 'PTPIREE_CERTYFIKAT_GENERATORA'
   | 'CONVERTER'
   | 'INVERTER'
   | 'mv_branch_points';
@@ -326,7 +429,7 @@ export type TypeCategory = 'LINE' | 'CABLE' | 'TRANSFORMER' | 'SWITCH_EQUIPMENT'
   | 'CONVERTER' | 'MEASUREMENT_TRANSFORMER' | 'PROTECTION_DEVICE'
   | 'LV_CABLE' | 'LOAD' | 'MV_APPARATUS' | 'LV_APPARATUS'
   | 'CT' | 'VT' | 'PV_INVERTER' | 'BESS_INVERTER' | 'SYSTEM_SOURCE'
-  | 'BRANCH_POLE' | 'ZKSN';
+  | 'SURGE_ARRESTER' | 'PTPIREE_CERTIFICATE' | 'BRANCH_POLE' | 'ZKSN';
 
 /**
  * Type reference in element (points to catalog).

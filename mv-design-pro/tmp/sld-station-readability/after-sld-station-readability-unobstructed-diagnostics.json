@@ -1,0 +1,59 @@
+{
+  "stationButtons": [
+    {
+      "aria": "Port WE pola WE",
+      "hasHitArea": true,
+      "role": "button",
+      "testid": "sld-v2-mini-rmu-port-anchor-stn/ac3f845407ac60c5df26c7e641dacec2/station-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/000"
+    },
+    {
+      "aria": "Pole WE WE",
+      "hasHitArea": false,
+      "role": "button",
+      "testid": "sld-v2-bay-column-sn-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/000"
+    },
+    {
+      "aria": "Port WY pola WY",
+      "hasHitArea": true,
+      "role": "button",
+      "testid": "sld-v2-mini-rmu-port-anchor-stn/ac3f845407ac60c5df26c7e641dacec2/station-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/001"
+    },
+    {
+      "aria": "Pole WY WY",
+      "hasHitArea": false,
+      "role": "button",
+      "testid": "sld-v2-bay-column-sn-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/001"
+    },
+    {
+      "aria": "Port TR pola TR",
+      "hasHitArea": true,
+      "role": "button",
+      "testid": "sld-v2-mini-rmu-port-anchor-stn/ac3f845407ac60c5df26c7e641dacec2/station-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/002"
+    },
+    {
+      "aria": "Pole TR TR",
+      "hasHitArea": false,
+      "role": "button",
+      "testid": "sld-v2-bay-column-sn-stn/ac3f845407ac60c5df26c7e641dacec2/sn_field/002"
+    }
+  ],
+  "stationRoot": true,
+  "stationTexts": [
+    {
+      "fontSize": 14,
+      "testid": "sld-v2-mini-station-code-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+      "text": "S01"
+    },
+    {
+      "fontSize": 10,
+      "testid": "sld-v2-mini-station-nn-count-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+      "text": "1 nN"
+    },
+    {
+      "fontSize": 10,
+      "testid": "sld-v2-mini-rmu-stn/ac3f845407ac60c5df26c7e641dacec2/station",
+      "text": "Stacja B"
+    }
+  ],
+  "tooLarge": []
+}

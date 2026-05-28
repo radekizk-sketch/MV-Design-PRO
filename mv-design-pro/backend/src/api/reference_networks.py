@@ -175,7 +175,10 @@ def _run_solver_for_network(network_id: str, solver_kind: str) -> dict[str, Any]
     PRAWDZIWE obliczone wartości. Walidacja w `/validate` porównuje wynik
     solvera vs expected JSON z literatury (Stevenson/Kersting/IEC/CIGRE).
     """
-    from application.reference_networks.computation import solve_reference_network
+    from application.reference_networks.computation import (
+        solve_reference_network,
+        solve_reference_short_circuit,
+    )
 
     net = get_reference_network(network_id)
     enm = net.builder_fn()
@@ -183,23 +186,11 @@ def _run_solver_for_network(network_id: str, solver_kind: str) -> dict[str, Any]
     # PF/BFS: prawdziwy solver
     actual = solve_reference_network(network_id, enm)
 
-    # SC: do dalszego rozszerzenia — obecnie pusty (sieci 1/2/3/5 nie mają SC w expected
-    # poza iec60909-example). Pełna implementacja SC requires extending
-    # solve_reference_network() o dispatch do short_circuit_iec60909 solver.
-    actual_sc: dict[str, dict[str, float]] = {}
+    # SC: prawdziwy solver IEC 60909, expected JSON sluzy tylko do porownania.
+    actual_sc: dict[str, dict[str, Any]] = {}
     try:
         expected = load_expected_values_from_json(net.expected_path)
-        # Krótki dodatkowy step: jeśli expected ma SC entries, używamy ich jako
-        # actual (regression test mode dla SC, dopóki SC dispatch nie wired).
-        # Real SC computation będzie dodane w next sprint.
-        for sc in expected.short_circuit:
-            key = f"{sc.fault_node_id}__{sc.sc_type}"
-            actual_sc[key] = {
-                "ikss_a": sc.ikss_a,
-                "ip_a": sc.ip_a,
-                "ith_a": sc.ith_a,
-                "sk_mva": sc.sk_mva,
-            }
+        actual_sc = solve_reference_short_circuit(enm, expected.short_circuit)
     except FileNotFoundError:
         pass
 
@@ -259,7 +250,7 @@ def validate_network(network_id: str) -> ValidationResponse:
             ),
         )
 
-    # Get actual result (regression-baseline mode for now)
+    # Get actual solver result and compare against reference expected values.
     actual = _run_solver_for_network(network_id, net.supported_solvers[0])
     pf_comps = compare_power_flow(actual["buses"], expected)
     pf_b_comps = compare_power_flow_branches(actual["branches"], expected)

@@ -389,13 +389,13 @@ export function SldAnalysisLauncher({
 
   const executeBundle = useCallback(async (mode: 'QUICK' | 'FULL') => {
     if (!caseId) {
-      setLauncherError('Wybierz zakres obliczeń przed uruchomieniem analiz.');
+      setLauncherError('Wybierz zakres obliczeń przed wykonaniem analiz.');
       return;
     }
 
     if (workspaceBlockState) {
       const message = resolveAnalysisLauncherBlockMessage(workspaceBlockState)
-        ?? 'Konfiguracja układu nie spełnia jeszcze warunków do uruchomienia analiz.';
+        ?? 'Konfiguracja układu nie spełnia jeszcze warunków do wykonania analiz.';
       setLauncherError(message);
       notify(message, 'warning');
       return;

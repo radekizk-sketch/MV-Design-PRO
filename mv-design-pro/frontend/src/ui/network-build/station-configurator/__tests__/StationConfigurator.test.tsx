@@ -246,6 +246,27 @@ describe('StationConfigTransformerCard — multi-voltage nN', () => {
     expect(screen.queryByTestId('multi-voltage-info')).not.toBeInTheDocument();
   });
 
+  it('prowadzi z pustej karty transformatora do dodania katalogowego TR SN/nN', () => {
+    const onAddTransformer = vi.fn();
+    render(
+      <StationConfigTransformerCard
+        transformers={[]}
+        availableLvVoltages={[0.4]}
+        onAddTransformer={onAddTransformer}
+      />,
+    );
+
+    expect(screen.getByTestId('station-transformer-empty-state')).toHaveTextContent(
+      'Brak transformatora SN/nN w modelu stacji.',
+    );
+    expect(screen.getByTestId('station-transformer-empty-state')).toHaveTextContent(
+      'Bez tego obliczenia zwarciowe',
+    );
+
+    fireEvent.click(screen.getByTestId('station-add-transformer-from-catalog'));
+    expect(onAddTransformer).toHaveBeenCalledOnce();
+  });
+
   it('select U_LV pozwala zmienić poziom nN transformatora', () => {
     const onChange = vi.fn();
     render(
@@ -269,6 +290,67 @@ describe('StationConfigTransformerCard — multi-voltage nN', () => {
     const select = screen.getByTestId('tr-ulv-tr1') as HTMLSelectElement;
     fireEvent.change(select, { target: { value: '6' } });
     expect(onChange).toHaveBeenCalledWith('tr1', { ulvKv: 6 });
+  });
+
+  it('pozwala przypisać transformator z katalogu i zastosować rekomendację', () => {
+    const onChange = vi.fn();
+    render(
+      <StationConfigTransformerCard
+        transformers={[
+          {
+            transformerId: 'tr1',
+            designation: 'TR1',
+            catalogRef: null,
+            snMva: 0.063,
+            uhvKv: 15,
+            ulvKv: 0.4,
+            statusForSc: 'gotowe',
+            statusForPf: 'gotowe',
+            statusForAsymmetry: 'gotowe',
+          },
+        ]}
+        availableLvVoltages={[0.4]}
+        transformerCatalogOptions={{
+          tr1: [
+            {
+              id: 'tr-15-04-63',
+              name: 'TR 63 kVA 15/0,4 kV',
+              summary: '0,063 MVA · 15/0,4 kV · Dyn11',
+              ratedPowerMva: 0.063,
+              voltageHvKv: 15,
+              voltageLvKv: 0.4,
+              ukPercent: 4,
+              pkKw: 1.35,
+              p0Kw: 0.2,
+              vectorGroup: 'Dyn11',
+              adequatePower: true,
+              recommended: true,
+            },
+            {
+              id: 'tr-15-04-100',
+              name: 'TR 100 kVA 15/0,4 kV',
+              summary: '0,1 MVA · 15/0,4 kV · Dyn11',
+              ratedPowerMva: 0.1,
+              voltageHvKv: 15,
+              voltageLvKv: 0.4,
+              ukPercent: 4,
+              pkKw: 1.75,
+              p0Kw: 0.28,
+              vectorGroup: 'Dyn11',
+              adequatePower: true,
+              recommended: false,
+            },
+          ],
+        }}
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('tr-catalog-apply-tr1'));
+    expect(onChange).toHaveBeenCalledWith('tr1', { catalogRef: 'tr-15-04-63' });
+
+    fireEvent.change(screen.getByTestId('tr-catalog-tr1'), { target: { value: 'tr-15-04-100' } });
+    expect(onChange).toHaveBeenCalledWith('tr1', { catalogRef: 'tr-15-04-100' });
   });
 });
 

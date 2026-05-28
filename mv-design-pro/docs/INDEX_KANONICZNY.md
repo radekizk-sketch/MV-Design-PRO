@@ -6,6 +6,7 @@ Data aktualizacji: **2026-04-24**
 ## 0. Kanon nadrzedny V12.xx
 
 - [v12xx/KANON_V12_XX.md](./v12xx/KANON_V12_XX.md) - aktywne prawo produktu V12.xx
+- [v12xx/KANON_V12_6_PROFESORSKI.md](./v12xx/KANON_V12_6_PROFESORSKI.md) - aktywne rozszerzenie akademicko-przemyslowe E-40..E-50
 - [v12xx/REJESTR_DECYZJI.md](./v12xx/REJESTR_DECYZJI.md) - decyzje kanonu
 - [v12xx/REJESTR_KONFLIKTOW.md](./v12xx/REJESTR_KONFLIKTOW.md) - konflikty i rozstrzygniecia
 - [v12xx/REJESTR_DLUGU.md](./v12xx/REJESTR_DLUGU.md) - jawny rejestr dlugu V12.xx
@@ -54,6 +55,7 @@ Data aktualizacji: **2026-04-24**
 - [analysis/P33_LF_SENSITIVITY_CANONICAL_KILLER.md](./analysis/P33_LF_SENSITIVITY_CANONICAL_KILLER.md)
 - [architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md](./architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md)
 - [analysis/URUCHAMIANIE_ANALIZ_I_GOTOWOSC.md](./analysis/URUCHAMIANIE_ANALIZ_I_GOTOWOSC.md)
+- [analysis/NC_RFG_PTPiREE_TESTY_KANON.md](./analysis/NC_RFG_PTPiREE_TESTY_KANON.md)
 
 ## 5. Fundament jakości i audytu
 

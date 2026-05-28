@@ -1,0 +1,10 @@
+﻿{
+    "feature":  "sld_drawer_unification",
+    "timestamp":  "20260528_012622",
+    "command":  "claude -p \u003cprompt\u003e",
+    "claude_available":  true,
+    "prompt_path":  "mv-design-pro\\docs\\audits\\CLAUDE_DESIGN_REVIEW_sld_drawer_unification_20260528_012622.prompt.md",
+    "review_path":  "mv-design-pro\\docs\\audits\\CLAUDE_DESIGN_REVIEW_sld_drawer_unification_20260528_012622.md",
+    "cwd":  "C:\\Users\\radek\\Documents\\GitHub\\MV-Design-PRO",
+    "exit_code":  0
+}

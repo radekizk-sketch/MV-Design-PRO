@@ -490,7 +490,11 @@ function HvSection(props: HvSectionProps): JSX.Element {
     >
       {/* Wskaźnik źródła systemu 110 kV — strzałka kierunku zasilania
           z lewej strony szyny (kanon SCADA: zasilanie przychodzi z systemu). */}
-      <g data-testid="gpz-canonical-hv-source-indicator" data-parity-key="gpz.hv.source">
+      <g
+        data-testid="gpz-canonical-hv-source-indicator"
+        data-parity-key="gpz.hv.source"
+        data-readable-label-stack="true"
+      >
         <line
           x1={SECTION_LABEL_WIDTH - 28}
           y1={0}
@@ -505,22 +509,24 @@ function HvSection(props: HvSectionProps): JSX.Element {
         />
         <text
           x={SECTION_LABEL_WIDTH - 40}
-          y={-4}
+          y={-10}
           textAnchor="end"
           fill={COLOR_TEXT_PRIMARY}
           fontFamily={FONT_SANS}
           fontSize={10}
           fontWeight={700}
+          data-testid="gpz-canonical-hv-source-label-name"
         >
           System
         </text>
         <text
           x={SECTION_LABEL_WIDTH - 40}
-          y={7}
+          y={10}
           textAnchor="end"
           fill={COLOR_TEXT_SECONDARY}
           fontFamily={FONT_MONO}
           fontSize={10}
+          data-testid="gpz-canonical-hv-source-label-voltage"
         >
           110 kV
         </text>
@@ -1879,22 +1885,40 @@ function SectionLabel(props: SectionLabelProps): JSX.Element {
   const { x, y, label, voltageKv } = props;
   const width = Math.max(78, Math.min(124, label.length * 8 + 34));
   return (
-    <g data-testid={`gpz-canonical-section-label-${label}`} data-parity-key="gpz.section.label" transform={`translate(${x}, ${y})`}>
+    <g
+      data-testid={`gpz-canonical-section-label-${label}`}
+      data-parity-key="gpz.section.label"
+      data-readable-label-stack="true"
+      transform={`translate(${x}, ${y})`}
+    >
       <rect
         x={-6}
-        y={-14}
+        y={-18}
         width={width}
-        height={30}
+        height={36}
         rx={2}
         fill="#0B141B"
         stroke={COLOR_TEXT_MUTED}
         strokeOpacity={0.24}
         data-testid={`gpz-canonical-section-label-${label}-bg`}
       />
-      <text fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={14} fontWeight={700}>
+      <text
+        y={-5}
+        fill={COLOR_TEXT_PRIMARY}
+        fontFamily={FONT_SANS}
+        fontSize={12}
+        fontWeight={700}
+        data-testid={`gpz-canonical-section-label-${label}-name`}
+      >
         {label}
       </text>
-      <text y={12} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={10}>
+      <text
+        y={13}
+        fill={COLOR_TEXT_MUTED}
+        fontFamily={FONT_MONO}
+        fontSize={9}
+        data-testid={`gpz-canonical-section-label-${label}-voltage`}
+      >
         {voltageKv} kV
       </text>
     </g>

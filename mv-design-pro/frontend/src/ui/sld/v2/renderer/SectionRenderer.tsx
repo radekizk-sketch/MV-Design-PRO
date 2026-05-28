@@ -9,7 +9,6 @@ import {
   COLOR_TEXT_PRIMARY,
   COLOR_TEXT_SECONDARY,
   FONT_SANS,
-  FONT_SIZES,
   STROKE_BUSBAR_PX,
 } from '../theme/tokens';
 
@@ -53,25 +52,29 @@ export function SectionRenderer(props: SectionRendererProps): JSX.Element {
       transform={`translate(${x}, ${y})`}
     >
       {/* Etykieta sekcji nad szyną */}
-      <text
-        x={0}
-        y={-20}
-        fill={COLOR_TEXT_PRIMARY}
-        fontFamily={FONT_SANS}
-        fontSize={FONT_SIZES.switchgearParams}
-        fontWeight={600}
-      >
-        {label}
-      </text>
-      <text
-        x={0}
-        y={-4}
-        fill={COLOR_TEXT_SECONDARY}
-        fontFamily={FONT_SANS}
-        fontSize={FONT_SIZES.technicalPanel}
-      >
-        {busVoltageKv} kV
-      </text>
+      <g data-readable-label-stack="true" data-testid={`sld-v2-section-label-stack-${id}`}>
+        <text
+          x={0}
+          y={-26}
+          fill={COLOR_TEXT_PRIMARY}
+          fontFamily={FONT_SANS}
+          fontSize={16}
+          fontWeight={600}
+          data-testid={`sld-v2-section-label-${id}-name`}
+        >
+          {label}
+        </text>
+        <text
+          x={0}
+          y={-8}
+          fill={COLOR_TEXT_SECONDARY}
+          fontFamily={FONT_SANS}
+          fontSize={10}
+          data-testid={`sld-v2-section-label-${id}-voltage`}
+        >
+          {busVoltageKv} kV
+        </text>
+      </g>
       {/* Szyna sekcji */}
       <line
         x1={0}

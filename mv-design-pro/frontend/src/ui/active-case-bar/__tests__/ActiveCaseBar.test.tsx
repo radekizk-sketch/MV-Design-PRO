@@ -58,7 +58,7 @@ describe('ActiveCaseBar', () => {
   it('trzyma kanoniczny stan przypadku zamiast przejmować status z oglądanego uruchomienia', () => {
     useAppStateStore
       .getState()
-      .setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'NONE');
+      .setActiveCase('case-1', 'Zakres 1', 'ShortCircuitCase', 'NONE');
     useExecutionRunsStore.setState({ activeRunId: 'run-42' });
     useResultsInspectorStore.setState({
       selectedRunId: 'run-42',
@@ -80,7 +80,7 @@ describe('ActiveCaseBar', () => {
 
     render(<ActiveCaseBar />);
 
-    expect(screen.getByTestId('result-status')).toHaveTextContent('Wyniki nieuruchomione');
+    expect(screen.getByTestId('result-status')).toHaveTextContent('Wyniki do obliczenia');
     expect(screen.queryByText('Wyniki aktualne')).toBeNull();
     expect(screen.getByTestId('active-run-id')).toHaveTextContent('Aktywny przebieg obliczeń');
     expect(screen.getByTestId('active-run-id')).not.toHaveTextContent('run-42');
@@ -92,7 +92,7 @@ describe('ActiveCaseBar', () => {
 
     useAppStateStore
       .getState()
-      .setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'FRESH');
+      .setActiveCase('case-1', 'Zakres 1', 'ShortCircuitCase', 'FRESH');
     useResultsInspectorStore.setState({
       selectedRunId: 'run-42',
       resultsIndex: {

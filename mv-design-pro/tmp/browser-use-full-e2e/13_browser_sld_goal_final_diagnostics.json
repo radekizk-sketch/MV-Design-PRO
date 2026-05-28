@@ -1,0 +1,34 @@
+{
+  "derMissingPccRoots": 0,
+  "hasCableHeads": 2,
+  "hasPortMagnets": 5,
+  "hasSupplyPath": 4,
+  "labelCount": 55,
+  "overlapCount": 5,
+  "svgPresent": true,
+  "topOverlaps": [
+    {
+      "a": "Sekcja 0",
+      "b": "15 kV"
+    },
+    {
+      "a": "Sekcja I",
+      "b": "15 kV"
+    },
+    {
+      "a": "System",
+      "b": "110 kV"
+    },
+    {
+      "a": "Sekcja 1",
+      "b": "15 kV"
+    },
+    {
+      "a": "Sekcja 2",
+      "b": "15 kV"
+    }
+  ],
+  "url": "http://127.0.0.1:5173/#sld",
+  "visibleFalseZero": false,
+  "visibleForbidden": []
+}

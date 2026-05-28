@@ -395,7 +395,8 @@ describe('SldCanvasV2 - tabele dokumentacyjne w widoku roboczym', () => {
     const selectedLod4 = render(
       <SldCanvasV2 {...baseProps} ders={[der]} selectedId="der-pv-lod" lodOverride={4} />,
     );
-    expect(selectedLod4.container.querySelector('[data-element-kind="der_full"]')).not.toBeNull();
+    expect(selectedLod4.container.querySelector('[data-element-kind="der_compact"]')).not.toBeNull();
+    expect(selectedLod4.container.querySelector('[data-element-kind="der_full"]')).toBeNull();
   });
 
   it('ukrywa przewody przyłączeniowe DER do bliskiego poziomu pracy', () => {
@@ -445,7 +446,8 @@ describe('SldCanvasV2 - tabele dokumentacyjne w widoku roboczym', () => {
     const selectedLod4 = render(
       <SldCanvasV2 {...baseProps} ders={[der]} selectedId="der-pv-full-lod" lodOverride={4} />,
     );
-    expect(selectedLod4.container.querySelector('[data-element-kind="der_full"]')).not.toBeNull();
+    expect(selectedLod4.container.querySelector('[data-element-kind="der_compact"]')).not.toBeNull();
+    expect(selectedLod4.container.querySelector('[data-element-kind="der_full"]')).toBeNull();
   });
 
   it('pokazuje transformator blokowy DER jako element układu przyłączeniowego', () => {
@@ -462,11 +464,11 @@ describe('SldCanvasV2 - tabele dokumentacyjne w widoku roboczym', () => {
 
     const lod4 = render(<SldCanvasV2 {...baseProps} ders={[der]} selectedId="der-pv-block" lodOverride={4} />);
     const symbol = lod4.container.querySelector('[data-testid="sld-v2-der-der-pv-block-block-transformer"]');
-    const label = lod4.container.querySelector('[data-testid="sld-v2-der-der-pv-block-block-transformer-label"]');
+    const label = lod4.container.querySelector('[data-testid="sld-v2-der-der-pv-block-compact-block-transformer"]');
     const root = lod4.container.querySelector('[data-testid="sld-v2-der-der-pv-block"]');
 
     expect(symbol).not.toBeNull();
-    expect(label?.textContent).toBe('TR blokowy 15/0,69 kV 1250 kVA Dyn5');
+    expect(label?.textContent).toContain('TR blokowy 1250 kVA');
     expect(root?.getAttribute('data-block-transformer-label')).toBe('TR 15/0,69 kV 1250 kVA Dyn5');
     expect(label?.textContent).not.toMatch(/der\/|tr-block|ref|hash/i);
   });
@@ -494,24 +496,42 @@ describe('SldCanvasV2 - tabele dokumentacyjne w widoku roboczym', () => {
   });
 
   it('opis połączenia DER wskazuje transformator blokowy, a nie transformator stacji', () => {
+    const onSelectElement = vi.fn();
     const connections = [
       {
         id: 'der-wire-pv-block',
+        derRef: 'PV-BLOCK-1MW',
+        transformerRef: 'TR-BLOCK-PV-1250',
+        pccRef: 'PV-BLOCK-1MW/pcc',
         pathPoints: [
           { x: 140, y: 160 },
-          { x: 180, y: 190 },
-          { x: 230, y: 190 },
+          { x: 180, y: 160 },
+          { x: 180, y: 110 },
+          { x: 230, y: 110 },
         ],
         connectionKind: 'der_block_transformer' as const,
         transformerLabel: 'TR 15/0,69 kV 1250 kVA Dyn5',
       },
     ];
 
-    const { container } = render(<SldCanvasV2 {...baseProps} connections={connections} lodOverride={1} />);
+    const { container } = render(
+      <SldCanvasV2
+        {...baseProps}
+        connections={connections}
+        lodOverride={1}
+        onSelectElement={onSelectElement}
+      />,
+    );
     const transformer = container.querySelector('[data-testid="sld-v2-connection-transformer-der-wire-pv-block"]');
+    const pccBay = container.querySelector('[data-testid="sld-v2-connection-pcc-bay-der-wire-pv-block"]');
 
-    expect(transformer?.textContent).toContain('TR blokowy 15/0,69 kV 1250 kVA Dyn5');
+    expect(transformer?.textContent).toContain('TR blokowy 1250 kVA');
     expect(transformer?.textContent).not.toMatch(/der\/|tr-block|ref|hash/i);
+    expect(pccBay?.textContent).toContain('PCC');
+    fireEvent.click(transformer as Element);
+    expect(onSelectElement).toHaveBeenCalledWith('TR-BLOCK-PV-1250', 'der_block_transformer');
+    fireEvent.click(pccBay as Element);
+    expect(onSelectElement).toHaveBeenCalledWith('PV-BLOCK-1MW/pcc', 'der_pcc_bay');
   });
 
   it('ukrywa przewody przyłączeniowe DER w przegladzie topologii', () => {
@@ -637,7 +657,7 @@ describe('SldCanvasV2 - tabele dokumentacyjne w widoku roboczym', () => {
       container.querySelectorAll('[data-testid="sld-v2-run-run-gap-junction-st-gap"] circle'),
     );
 
-    expect(circles.map((circle) => circle.getAttribute('cx'))).toEqual(['65', '135']);
+    expect(circles.map((circle) => circle.getAttribute('cx'))).toEqual(['55', '145']);
   });
 
   it('nie dubluje etykiet stacji i ZKSN z globalnej warstwy labeli', () => {
