@@ -130,7 +130,9 @@ function ContextBlock({
 }
 
 function ResultStatus({ status }: { status: ResultStatus }) {
-  const config = RESULT_STATUS_CONFIG[status];
+  // Defensywny fallback: nieznany/zdezaktualizowany status (np. z utrwalonego
+  // localStorage po zmianie schematu) NIE może wywrócić całego app shella.
+  const config = RESULT_STATUS_CONFIG[status] ?? RESULT_STATUS_CONFIG.NONE;
   return (
     <div
       data-testid="top-bar-result-status"
