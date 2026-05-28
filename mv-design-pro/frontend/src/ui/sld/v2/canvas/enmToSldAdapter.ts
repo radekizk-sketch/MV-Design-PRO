@@ -256,12 +256,15 @@ function stationXFromCumKm(
   cumKm: number,
   posInRun: number,
   previousX: number | null,
+  minimumBaseX: number = X_STATIONS_START,
 ): number {
   const distancePx =
     cumKm > 0
       ? cumKm * PX_PER_KM
       : (posInRun + 1) * STATION_DEFAULT_PITCH;
-  const minimumX = X_STATIONS_START + posInRun * STATION_DEFAULT_PITCH;
+  // V-03: dla lateralu minimumBaseX = X stacji-rodzica (rozłożone drzewo);
+  // dla magistrali pozostaje X_STATIONS_START (zachowanie historyczne).
+  const minimumX = minimumBaseX + posInRun * STATION_DEFAULT_PITCH;
   const proposedX = Math.max(trunkStartX + distancePx, minimumX);
   if (previousX === null) return proposedX;
   return Math.max(proposedX, previousX + STATION_MIN_PITCH);
@@ -2779,6 +2782,27 @@ function buildSldLineRunsForLayout(
     });
   });
 
+  // V-03: klasyfikuj korytarze odgałęźne jako 'branch' z origin-stacją, by layout
+  // rozłożył laterale od stacji-rodzica (drzewo), zamiast stosu lewo-wyrównanego.
+  // Run jest lateralem, gdy stacja-rodzic (from_bus pierwszego segmentu) leży na
+  // INNYM runie. Główna magistrala wychodzi z GPZ/źródła (origin nie jest stacją).
+  const stationToRunId = new Map<string, string>();
+  for (const run of layoutRuns) {
+    for (const st of run.stations) stationToRunId.set(st.substation_ref, run.id);
+  }
+  for (const run of layoutRuns) {
+    if (run.run_kind !== 'main_trunk') continue;
+    const firstSeg = [...run.segments].sort((a, b) => a.order - b.order)[0];
+    const branch0 = firstSeg ? branchByRef.get(firstSeg.segment_ref) : null;
+    const originStationRef = resolveFieldStationRefForBus(fieldStationByRef, branch0?.from_bus_ref);
+    if (!originStationRef) continue;
+    const originRunId = stationToRunId.get(originStationRef);
+    if (originRunId && originRunId !== run.id) {
+      run.run_kind = 'branch';
+      run.branch_origin_station_ref = originStationRef;
+    }
+  }
+
   return layoutRuns.sort(compareLineRunsForLayout);
 }
 
@@ -2806,10 +2830,23 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
   // ENM może mieć dowolną liczbę stacji, a adapter zachowuje kolejność
   // topologiczną przez układ wężowy zamiast ściskać dużą sieć w jednym rzędzie.
   let stationSequence = 1;
+  // V-03: X każdej umieszczonej stacji — by laterale startowały od stacji-rodzica
+  // (rozłożone drzewo), a nie wszystkie od lewej krawędzi (stos).
+  const stationXByRef = new Map<string, number>();
 
   sortedRuns.forEach((lr, runIdx) => {
     const sortedStations = [...lr.stations].sort((a, b) => a.order - b.order);
     const sortedSegments = [...lr.segments].sort((a, b) => a.order - b.order);
+    // V-03: laterale (branch/ring/loop) startują od X stacji-rodzica; magistrala
+    // od GPZ. Gdy rodzic jeszcze nieumieszczony → fallback do zachowania bazowego.
+    const originRef = lr.branch_origin_station_ref ?? null;
+    const isLateral = lr.run_kind !== 'main_trunk';
+    const parentX =
+      isLateral && originRef && stationXByRef.has(originRef)
+        ? stationXByRef.get(originRef)!
+        : null;
+    const runStartX = parentX ?? GPZ_TRUNK_HEAD_X;
+    const minimumBaseX = parentX ?? X_STATIONS_START;
     // K30-51: track previous station X per row for collision-avoidance (min pitch).
     let previousXInRow: number | null = null;
     sortedStations.forEach((sref, posInRun) => {
@@ -2831,8 +2868,10 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
 
       // K30-51: distance-based X. CumKm > 0 → exact position from trunk start.
       // CumKm = 0 (no segments yet) → fallback uniform pitch posInRun * default.
-      const stationX = stationXFromCumKm(GPZ_TRUNK_HEAD_X, cumKm, posInRun, previousXInRow);
+      const stationX = stationXFromCumKm(runStartX, cumKm, posInRun, previousXInRow, minimumBaseX);
       previousXInRow = stationX;
+      stationXByRef.set(sub.ref_id, stationX);
+      if (sub.id) stationXByRef.set(sub.id, stationX);
 
       stations.push({
         id: sub.ref_id,
