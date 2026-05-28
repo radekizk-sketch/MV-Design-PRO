@@ -25,17 +25,17 @@ Jeśli harness e2e-real nie istnieje lub nie robi zrzutów — pierwszym krokiem
 
 ## 1. PRZYGOTOWANIE DANYCH TESTOWYCH (render na realnej złożoności, nie na pustym stanie)
 
-Zrzuty wykonujesz na **projekcie o realnej złożoności**, bo to przy gęstości wychodzą nachodzenia i mikroskala (defekty z V12.2). Minimalny projekt referencyjny:
+Zrzuty wykonujesz na **sieci o realnej, dużej skali**, bo dopiero przy gęstości ujawniają się nachodzenia, mikroskala, błędy routingu połączeń i problemy wydajności (defekty z V12.2 i V-01…V-10). Mały, 1-stacyjny przykład **ukrywa** te problemy i jest zakazany jako jedyna podstawa oceny.
 
+**Wymagana sieć referencyjna — co najmniej 50 stacji:**
 - GPZ 15 kV (dane_OSD: Sk''/Ik'', R/X, uziemienie punktu neutralnego),
-- magistrala SN + min. 2 odgałęzienia, odcinki kabel + napowietrzna,
-- min. 2 stacje SN/nN (w tym jedna z transformatorem),
-- ZKSN na kablu, słup rozgałęźny na linii napowietrznej,
-- min. 1 źródło OZE (PV przez transformator → PCC) + 1 BESS,
-- wybrany `case_ref` = ZWARCIOWY_MAKS z policzonymi wynikami,
-- drugi `case_ref` = ZWARCIOWY_MIN (do testu przełączania/„drugiej prawdy").
+- magistrala SN + **liczne odgałęzienia**, odcinki kabel + napowietrzna, **≥ 50 stacji SN/nN**,
+- ZKSN na kablach, słupy rozgałęźne na liniach napowietrznych, sprzęgła,
+- **wszystkie łańcuchy przyłączenia OZE rozmieszczone w sieci (V-10):** PV przez transformator nN/SN → PCC; OZE bezpośrednio w pole SN; BESS dwukierunkowy; FW; oraz min. jedna stacja z układem mieszanym (kilka źródeł + odbiory),
+- każde połączenie zaczepione o głowice/terminale (V-07); każdy element klikalny (V-08),
+- wybrany `case_ref` = ZWARCIOWY_MAKS z policzonymi wynikami; drugi `case_ref` = ZWARCIOWY_MIN (test przełączania/„drugiej prawdy").
 
-Użyj istniejącego projektu E2E (`E2E SLD 0002` z dotychczasowych zrzutów) lub seeda testowego, jeśli repo go ma.
+Jeśli repo nie ma seeda o tej skali — **wygenerowanie sieci testowej ≥ 50 stacji jest częścią zadania** (proceduralnie, z realnymi katalogami). To na niej dowodzisz auto-layoutu (Sugiyama) i czytelności.
 
 ---
 
@@ -103,10 +103,12 @@ Dla każdego wykrytego defektu wizualnego:
 ## 6. KRYTERIUM ZAKOŃCZENIA ZADANIA
 
 Zadanie skończone, gdy:
-- każdy surface ma komplet zrzutów w realnych stanach,
+- każdy surface ma komplet zrzutów w realnych stanach, **na sieci ≥ 50 stacji** (V-09),
 - wszystkie 8 warunków §7.9 i 9 warunków §7B.9 mają werdykt PASS udowodniony zrzutem PO (lub jawnie zarejestrowany dług wizualny z planem naprawy),
+- **wszystkie 11 warunków progu §7.3 spełnione**, w tym: zero przewodów wiszących w powietrzu (V-07, każde połączenie z głowicy/terminala), wszystkie elementy klikalne (V-08), wszystkie łańcuchy OZE/BESS/FW pokazane i poprawne (V-10),
+- **werdykt eksperta SLD ≥ 8/10** udokumentowany zrzutem,
 - `STAN_REPO.md` zaktualizowany: K-07, K-19, K-20, K-21 przestają być „niezweryfikowane wizualnie",
-- zero otwartych defektów A-01…A-07 (K-21 = 0).
+- zero otwartych defektów A-01…A-07 oraz V-01…V-10.
 
 **Dopiero po domknięciu weryfikacji wizualnej** wracamy do dosypywania modułów funkcjonalnych (D-04 ZIP → D-01 Arc Flash → …) wg `STAN_REPO.md`.
 
@@ -130,6 +132,10 @@ Poprzednia sesja oceniła pojedyncze elementy (symbole, etykiety katalogowe, chr
 | **V-04** | „Pole liniow…" ucięte; „GPZ 15 kV" pojawia się 3× (badge + nagłówek + pudło) — „druga prawda" wizualna; drobny tekst na granicy czytelności | Etykiety pełne, nieucięte, jedna instancja nazwy obiektu, czytelny rozmiar |
 | **V-05** | Magistrale jako grube zielone markery zamiast cienkich precyzyjnych linii szyn z oznaczeniem napięcia/kierunku (kanon miniSCADA) | Linia szyny/magistrali = cienka, precyzyjna, z oznaczeniem; grubość nie może krzyczeć i psuć subtelności reszty |
 | **V-06** | Brak ramki rysunku, metryczki (tabelki rysunkowej), wyraźnej skali, legendy w kadrze | §7.9.7 wymaga trybu prezentacyjnego zdatnego do operatu — to jest widok roboczy, nie dokument |
+| **V-07** ⛔ | **BŁĄD FIZYCZNY/TOPOLOGICZNY:** trzy linie wychodzą z dołu ramki pola i WISZĄ W POWIETRZU, nie zaczepione o nic | **Najpoważniejszy defekt — schemat jest technicznie FAŁSZYWY.** Każdy przewód SN wychodzi z konkretnego punktu przyłączenia: **głowicy kablowej pola odpływowego**, i kończy się na terminalu pola wejściowego następnego obiektu (stacja/ZKSN/słup). Połączenie NIE może zaczynać się „pod ramką" — musi wychodzić bezpośrednio z głowicy/terminala. Wymaga jawnego modelu punktów przyłączenia (connection points / terminals) i routingu krawędzi od terminala do terminala, z węzłem w punkcie rozgałęzienia |
+| **V-08** ⛔ | Elementy nie są nawigowalne — schemat jest martwym obrazkiem | **Każdy element klikalny i prowadzący do właściwego miejsca:** pole/głowica/odcinek/węzeł/stacja/transformator/źródło OZE/łącznik → klik otwiera konfigurację obiektu LUB jego wyniki+wywód White Box. To realizacja rdzenia (§7B.8, §7.8: SLD = interfejs do silnika dowodowego). Hit-box pokrywa się z symbolem (A-07) |
+| **V-09** ⛔ | Schemat testowany na karykaturalnie małej sieci (1 stacja) — ukrywa nachodzenia, skalę, wydajność, routing | **Test wyłącznie na dużej sieci ≥ 50 stacji** z magistralą, wieloma odgałęzieniami, ZKSN, słupami rozgałęźnymi. Auto-layout (Sugiyama), czytelność, brak nachodzeń, wydajność renderu — dowiedzione na realnej skali, nie na zabawce |
+| **V-10** ⛔ | Nie pokazano wszystkich łańcuchów przyłączenia OZE | **Wszystkie konfiguracje wpięcia przetestowane wizualnie na dużej sieci:** (a) PV przez transformator nN/SN → pole SN → PCC; (b) OZE bezpośrednio w pole SN → PCC; (c) BESS dwukierunkowy; (d) FW; (e) układy mieszane (kilka źródeł + odbiory w jednej stacji). Każdy z poprawnym, zaczepionym połączeniem (V-07) i klikalny (V-08) |
 
 ### 7.3. MIERZALNY PRÓG JAKOŚCI (nie do obejścia kosmetyką)
 
@@ -141,7 +147,11 @@ SLD przechodzi dopiero, gdy zrzut PO spełnia jednocześnie:
 4. **Etykiety** — zero ucięć, jedna instancja nazwy obiektu, czytelny rozmiar przy 100% zoomu.
 5. **Magistrale** — cienkie precyzyjne linie z oznaczeniem napięcia i kierunku (nie grube markery).
 6. **Tryb prezentacyjny** — ramka rysunku + metryczka + skala + legenda; zrzut nadaje się do wklejenia do operatu bez wstydu.
-7. **Werdykt eksperta CAD/SCADA ≥ 8/10** (J-01) na zrzucie PO — udokumentowany, nie zadeklarowany.
+7. **Połączenia zaczepione (V-07)** — KAŻDY przewód wychodzi z konkretnej głowicy/terminala i kończy na terminalu następnego obiektu; ZERO linii wiszących w powietrzu; węzeł w każdym punkcie rozgałęzienia. Weryfikacja: prześledź wzrokiem każde połączenie od końca do końca — oba muszą być zaczepione o punkt przyłączenia.
+8. **Klikalność (V-08)** — każdy element (pole/głowica/odcinek/węzeł/stacja/transformator/OZE/łącznik) klikalny, prowadzi do konfiguracji lub wyników+wywodu; hit-box = symbol.
+9. **Duża sieć (V-09)** — wszystkie powyższe dowiedzione na sieci **≥ 50 stacji** z odgałęzieniami; brak nachodzeń, czytelność i wydajność renderu utrzymane przy tej skali.
+10. **Wszystkie łańcuchy OZE (V-10)** — PV-przez-trafo, OZE-bezpośrednio, BESS, FW, układy mieszane — każdy poprawnie zaczepiony i klikalny, pokazany na zrzucie.
+11. **Werdykt eksperta CAD/SCADA ≥ 8/10** (J-01) na zrzucie PO — udokumentowany, nie zadeklarowany.
 
 ### 7.4. Procedura wymuszenia (iteruj aż próg osiągnięty)
 
