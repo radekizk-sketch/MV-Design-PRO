@@ -153,6 +153,26 @@ SLD przechodzi dopiero, gdy zrzut PO spełnia jednocześnie:
 10. **Wszystkie łańcuchy OZE (V-10)** — PV-przez-trafo, OZE-bezpośrednio, BESS, FW, układy mieszane — każdy poprawnie zaczepiony i klikalny, pokazany na zrzucie.
 11. **Werdykt eksperta CAD/SCADA ≥ 8/10** (J-01) na zrzucie PO — udokumentowany, nie zadeklarowany.
 
+### 7.6. ARCHITEKTURA SILNIKA LAYOUTU I ZAKOTWICZENIA PORTÓW (decyzja właściciela — wiążąca)
+
+Ustalenia sesji 2026-05-28: **V-07 to defekt renderu, nie modelu** — ENM ma pełny model terminali (`Port/PortRef/PortKind`, `endpoint_a_port/endpoint_b_port`, `starting_port_ref`, `external_ports`), a `enmToSldAdapter.ts` go ignoruje (liczy geometrię ze sztywnych slotów). Sieć 52 stacji ujawniła, że auto-layout produkuje płaski „grzebień" (jeden rząd, ~70% pustki, brak drzewa). Decyzje:
+
+**A. Layout i zakotwiczenie portów robione RÓWNOLEGLE, w jednej iteracji — przez wspólny kontrakt geometrii.**
+Aby „równolegle" nie znaczyło „podwójna robota", obowiązuje zasada: **silnik layoutu jest jedynym źródłem geometrii.** Zwraca dla każdego obiektu nie tylko jego pozycję, ale i **pozycje jego portów (kotwic)**. Zakotwiczenie odpływów (V-07) NIE liczy nic samodzielnie — odpytuje layout „gdzie jest port głowicy pola X" i rysuje krawędź **port→port** (głowica pola odpływowego → terminal pola wejściowego następnego obiektu). Adapter przestaje używać slotów `Y_RUN_BASE`/`X_START + j×pitch`; czyta kotwice z layoutu. Dzięki temu zmiana layoutu automatycznie przesuwa porty i krawędzie — jedna spójna warstwa, zero podwójnej pracy.
+
+**B. Dwa przełączalne tryby — JEDNA prawda topologiczna, DWIE warstwy geometrii (zakaz drugiej prawdy).**
+Model topologiczny ENM jest jeden. Tryb zmienia wyłącznie sposób liczenia pozycji, NIGDY dane (Z15 rozszerzone na geometrię). Wszystko inne — porty, krawędzie, etykiety, hit-boxy — czyta z warstwy geometrii bieżącego trybu.
+
+- **Tryb topologiczny (SLD):** magistrala jako oś, **laterale rozłożone w rankach** (hierarchia drzewa/Sugiyama), proporcje czytelne, wypełnienie kadru ≥75%. Tryb projektowy i do operatu — „jak sieć jest połączona". Musi rozwiązać „grzebień" z V-09: stacje rozgałęzione w laterale, nie w jeden rząd.
+- **Tryb geo-schematyczny:** układ zbliżony do geografii (pozycje stacji wg współrzędnych), ale schematyczny — linie prostowane, nie surowy GPS. „Gdzie to jest w terenie".
+
+**C. Diagnoza danych geo PRZED rysowaniem trybu geo (ta sama dyscyplina co V-07).**
+Pierwsze pytanie trybu geo: **czy ENM ma współrzędne geograficzne stacji/węzłów?** Ustal to w kodzie (jak przy V-07) zanim cokolwiek narysujesz. Jeśli TAK — tryb geo czyta je. Jeśli NIE — zarejestruj jako dług (źródło współrzędnych do ustalenia: import GIS / ręczne / z CGMES) i nie udawaj geo na zmyślonych pozycjach. Werdykt „render czy brak danych" musi być jawny.
+
+**D. Przełącznik trybu w chrome SLD** — widoczny, stan zapamiętywany; przełączenie przelicza layout i odświeża geometrię spójnie (porty, krawędzie, etykiety podążają).
+
+**Próg §7.3 obowiązuje w OBU trybach** — oba muszą osiągnąć ≥ 8/10 i komplet 11 warunków na sieci ≥ 50 stacji.
+
 ### 7.4. Procedura wymuszenia (iteruj aż próg osiągnięty)
 
 Dla SLD obowiązuje pętla z ZASADY NR 2, ale z **wysokim progiem wyjścia**: poprawiaj → zrzut → oceń wg 7.3 → jeśli którykolwiek z 7 warunków FAIL, popraw dalej. **Zakaz zamknięcia SLD przy ocenie < 8/10.** Porównuj każdy zrzut PO z `sld_canvas_detail.png` (stan 1/10) — różnica musi być ewidentna, nie kosmetyczna. Referencja docelowa: panel Elektrometal miniSCADA + schemat jednokreskowy z operatu (kanon §7.3).
