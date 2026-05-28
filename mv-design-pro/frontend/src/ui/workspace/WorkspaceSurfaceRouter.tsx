@@ -83,6 +83,7 @@ import {
   ANALYSIS_ROUTE_DEFAULT_TAB,
   ANALYSIS_SURFACE_SCREEN_CODE,
   REPORT_SURFACE_SCREEN_CODE,
+  SURFACE_REGISTRY,
   type WorkspaceSurfaceCode,
   type WorkspaceSurfaceDescriptor,
 } from './types';
@@ -1218,12 +1219,14 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const readinessBlockers = readiness?.blockers ?? [];
   const hasCompletedRun = Boolean(activeRunId && isCompletedAnalysisRunStatus(runContract?.status));
   const hasSolverTrace = Boolean(runContract?.traceSummary);
+  const sourceContributionSurfaceDefinition = SURFACE_REGISTRY['E-33'];
   const openProofSurface = () =>
-    openChildSurface('report', {
+    openChildSurface('E-36', {
       screenCode: 'E-36',
-      titlePl: 'Uzasadnienie obliczeń',
+      titlePl: SURFACE_REGISTRY['E-36'].titlePl,
       sizeClass: 'C',
       openMode: 'replace_right_panel',
+      supportsMiniSld: SURFACE_REGISTRY['E-36'].supportsMiniSld,
     });
   const openAnalysisSurface = () =>
     openChildSurface('analysis', {
@@ -1232,6 +1235,14 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       titlePl: 'Wyniki obliczeń sieci',
       sizeClass: 'C',
       supportsMiniSld: true,
+    });
+  const openSourceContributionsSurface = () =>
+    openChildSurface('E-33', {
+      screenCode: 'E-33',
+      titlePl: sourceContributionSurfaceDefinition.titlePl,
+      sizeClass: 'C',
+      openMode: 'replace_right_panel',
+      supportsMiniSld: sourceContributionSurfaceDefinition.supportsMiniSld,
     });
   const openProtectionSurface = () =>
     openChildSurface('analysis', {
@@ -1613,7 +1624,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
               />
               <SurfaceActionButton
                 label="Wkłady źródeł"
-                onClick={openAnalysisSurface}
+                onClick={openSourceContributionsSurface}
               />
             </div>
           </div>

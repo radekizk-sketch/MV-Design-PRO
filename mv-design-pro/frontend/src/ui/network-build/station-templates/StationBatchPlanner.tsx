@@ -162,7 +162,7 @@ export interface StationBatchPlannerProps {
 
 export function StationBatchPlanner({
   caseId,
-  segmentRefs,
+  segmentRefs = [],
   targetCount = 50,
   onApplied,
 }: StationBatchPlannerProps) {
@@ -180,7 +180,7 @@ export function StationBatchPlanner({
     fetchStationTemplates()
       .then((payload) => {
         if (cancelled) return;
-        setTemplates(payload.templates);
+        setTemplates(Array.isArray(payload.templates) ? payload.templates : []);
       })
       .catch((caught: unknown) => {
         if (cancelled) return;

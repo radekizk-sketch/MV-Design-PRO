@@ -226,14 +226,17 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
   const compactPqSecondaryFontSize = capWorldFontSize(10, viewportScale, 14);
   const fullNameFontSize = capWorldFontSize(getFontSize('parameter'), viewportScale, 16);
   const fullMeasurementFontSize = capWorldFontSize(getFontSize('fieldMeasurement'), viewportScale, 14);
+  const showCompactName = lod === 'compact' && Boolean(selected) && name.trim().length > 0;
+  const compactVerticalShift = showCompactName ? 14 : 0;
+  const compactPowerLabelY = half + 14 + compactVerticalShift;
   const showCompactBlockTransformerLabel = lod === 'compact'
     && Boolean(hasBlockTransformer)
     && Boolean(compactBlockTransformerVisibleLabel);
   const compactBlockTransformerLabelY = showCompactEngineeringDetails
     && operatingPMw !== null
     && operatingPMw !== undefined
-    ? half + (operatingQMvar !== null && operatingQMvar !== undefined ? 50 : 40)
-    : half + (nominalPowerKw !== null && nominalPowerKw !== undefined ? 30 : 20);
+    ? half + (operatingQMvar !== null && operatingQMvar !== undefined ? 50 : 40) + compactVerticalShift
+    : half + (nominalPowerKw !== null && nominalPowerKw !== undefined ? 30 : 20) + compactVerticalShift;
 
   return (
     <g
@@ -276,10 +279,24 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
         {KIND_LABEL_PL[kind]}
       </text>
       {/* Compact LOD: moc znamionowa + cos φ punkt pracy */}
-      {lod === 'compact' && nominalPowerKw !== null && nominalPowerKw !== undefined && (
+      {showCompactName && (
         <text
           x={0}
           y={half + 14}
+          textAnchor="middle"
+          fill={COLOR_TEXT_PRIMARY}
+          fontFamily={FONT_SANS}
+          fontSize={capWorldFontSize(8, viewportScale, 13)}
+          fontWeight={700}
+          data-testid={`sld-v2-der-${id}-compact-name`}
+        >
+          {canvasNameLabel}
+        </text>
+      )}
+      {lod === 'compact' && nominalPowerKw !== null && nominalPowerKw !== undefined && (
+        <text
+          x={0}
+          y={compactPowerLabelY}
           textAnchor="middle"
           fill={COLOR_TEXT_SECONDARY}
           fontFamily={FONT_MONO}
@@ -331,7 +348,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
           <g data-testid={`sld-v2-der-${id}-compact-cos-phi`}>
             <rect
               x={-32}
-              y={half + 14}
+              y={compactPowerLabelY}
               width={64}
               height={showCosPhi ? 26 : 16}
               rx={3}
@@ -343,7 +360,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
             />
             <text
               x={0}
-              y={half + 24}
+              y={compactPowerLabelY + 10}
               textAnchor="middle"
               fill="#88BBDD"
               fontFamily={FONT_MONO}
@@ -355,7 +372,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
             {showCosPhi && (
               <text
                 x={0}
-                y={half + 36}
+                y={compactPowerLabelY + 22}
                 textAnchor="middle"
                 fill="#88BBDD"
                 fontFamily={FONT_MONO}
