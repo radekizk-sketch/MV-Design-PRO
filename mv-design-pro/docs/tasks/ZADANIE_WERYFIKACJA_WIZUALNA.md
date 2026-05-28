@@ -169,6 +169,10 @@ Model topologiczny ENM jest jeden. Tryb zmienia wyłącznie sposób liczenia poz
 **C. Diagnoza danych geo PRZED rysowaniem trybu geo (ta sama dyscyplina co V-07).**
 Pierwsze pytanie trybu geo: **czy ENM ma współrzędne geograficzne stacji/węzłów?** Ustal to w kodzie (jak przy V-07) zanim cokolwiek narysujesz. Jeśli TAK — tryb geo czyta je. Jeśli NIE — zarejestruj jako dług (źródło współrzędnych do ustalenia: import GIS / ręczne / z CGMES) i nie udawaj geo na zmyślonych pozycjach. Werdykt „render czy brak danych" musi być jawny.
 
+> **WERDYKT DIAGNOZY (2026-05-28):** ENM **NIE MA** współrzędnych geo (zero `latitude/longitude/wgs/epsg/puwg/crs/srid`; `Substation` ma tylko `position_km` = odległość wzdłuż kabla, czyli topologia; frontendowe `x/y` to współrzędne layoutu, nie geo). Dodatkowo: **nie ma dedykowanego silnika layoutu** — pozycje liczy `enmToSldAdapter.ts` ze slotów; kontrakt geometrii (7.6.A) to NOWA warstwa, nie refaktor.
+>
+> **DECYZJA WŁAŚCICIELA (2026-05-28): tryb geo ODŁOŻONY jako dług.** Powody: (1) tryb geo bez danych to atrapa — zakaz; (2) cała wartość naprawcza (grzebień, V-07, drzewo, czytelność) jest w trybie **topologicznym**, nie geo; (3) wiązanie geo z CGMES teraz odwróciłoby priorytety (D-02 jest na pozycji 3, po weryfikacji wizualnej i walidacji wartości). **Sekwencja: tryb topologiczny do ≥8/10 teraz → CGMES (D-02) w swoim czasie → tryb geo podłącza się do `DiagramLayout`/`PositionPoint` z CGMES, bez przeróbki architektury (7.6.B już to przewiduje).** Przełącznik trybu (7.6.D) buduje się od razu, ale geo pokazuje stan „dane niedostępne — wymaga importu CGMES", nie atrapę.
+
 **D. Przełącznik trybu w chrome SLD** — widoczny, stan zapamiętywany; przełączenie przelicza layout i odświeża geometrię spójnie (porty, krawędzie, etykiety podążają).
 
 **Próg §7.3 obowiązuje w OBU trybach** — oba muszą osiągnąć ≥ 8/10 i komplet 11 warunków na sieci ≥ 50 stacji.
