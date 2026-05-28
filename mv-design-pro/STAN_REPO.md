@@ -1,6 +1,6 @@
 # STAN_REPO.md — ŻYWY REJESTR STANU MV-DESIGN-PRO
 
-> **TO JEST PIERWSZE CZYTANIE DLA KAŻDEGO AGENTA.** Zanim sięgniesz po `PROMPT_MV_DESIGN_PRO_PRZEBUDOWA.md` (kanon docelowy), przeczytaj ten plik — mówi, co NAPRAWDĘ jest w repo i jaki jest RZECZYWISTY dług. Kanon mówi „co znaczy skończone"; ten rejestr mówi „gdzie jesteśmy". **Repo > specy > ten rejestr** (gdy rejestr jest nieaktualny, prawdą jest świeży skan repo wg §5.0).
+> **TO JEST PIERWSZE CZYTANIE DLA KAŻDEGO AGENTA.** Zanim sięgniesz po `PROMPT_MV_DESIGN_PRO_PRZEBUDOWA.md` (kanon docelowy), przeczytaj ten plik — mówi, co NAPRAWDĘ jest w repo i jaki jest RZECZYWISTY dług. Kanon mówi „co znaczy skończone"; ten rejestr mówi „gdzie jesteśmy". **Repo > specy > ten rejestr** (gdy rejestr jest nieaktualny, prawdą jest świeży skan repo wg §5.0). Dla zadań masowych/równoległych — orkiestracja wg `ORKIESTRACJA_AGENTOW.md` (workflow + swarm), z barierami B-01…B-05.
 
 **Ostatnia aktualizacja:** 2026-05-28 · **Gałąź:** `claude/zealous-bardeen-xrqtp` · **Poziom repo:** domknięcie V12.6 (PLANS.md v5.1)
 **Cykl życia:** aktualizowany KAŻDĄ sesją. Każda zmiana stanu kryterium / długu → wpis tutaj.
@@ -48,6 +48,8 @@
 | D-10 | `ncrfg_compliance/checker.py` `DYNAMIC_TEST_IDS` zwracają `no_module` (legacy, niepodpięte do API) | — | DO WYGASZENIA (zastąpione przez `ncrfg_ptpiree`) | niski |
 | D-11 | API 501: `power_flow_comparisons`, `power_flow_runs`, `fault_loop` TT/IT | — | DECYZJA ZAKRESOWA | niski |
 | D-12 | **Tryb geo-schematyczny SLD** — odłożony (ENM bez współrzędnych geo); podłączyć do CGMES `DiagramLayout`/`PositionPoint` po D-02 | 7.6.C | ODŁOŻONY (zależny od D-02) | po D-02 |
+| D-13 | **„Druga prawda" (Z15) we frontendzie** — UI liczy fizykę zamiast czytać: `ProtectionCurvesEditor.tsx` generuje krzywe IEC/IEEE + koordynację (autor: „should come from backend"); `AddDerWizard.tsx:505` `powerKw/0.9` dobór trafo w UI | Z15, K-12 | DO PRZENIESIENIA do backendu/silnika | 2 |
+| D-14 | **K-08: 3 analizy V12.6 bez sanity-bounds** — `_reliability`, `_opf_loss_lcc`, `_uncertainty` nie walidują własnych wyników; `_benchmark_validation` waliduje hardcoded literały gdy brak referencji; istniejące checki bez per-poziom-napięcia absurdity-guard | K-08, K-04 | WDROŻYĆ sanity-bounds | **1 (najwyższy diagnostyczny)** |
 
 **Domknięte porządkowo 2026-05-28:** D-07 (`eligibility_service` — usunięta fraza „Funkcja w przygotowaniu"), D-08 (`frt_hvrt` — usunięte etykiety-wymówki), D-09 (`ncrfg_compliance/checker` docstring).
 
@@ -96,5 +98,22 @@
 Każda pozycja: pełne wdrożenie (UI → solver → kontrakt → test → integracja), sanity-bounds, weryfikacja wizualna na stacku.
 
 ---
+
+## 7. AUDYT SWARM 2026-05-29 (orkiestracja read-only, 3 subagenty + integracja B-04)
+
+Pierwszy run orkiestracji wg `ORKIESTRACJA_AGENTOW.md` (3 subagenty read-only: backend-debt, frontend-debt, value-integrity/V-defekty; integracja w głównej sesji). Bariery: B-01 (read-only, zero edycji), B-02 (zero werdyktu wizualnego — tylko stan kodu), B-04 (klasyfikacja kandydatów przez integratora).
+
+**Status defektów SLD V-01…V-10 (z kodu, nie z prozy):**
+- **ADDRESSED-IN-CODE:** **V-05** (magistrala cienka 3,5 px + chip napięcia + strzałki kierunku), **V-08** (klikalność — ~92 miejsc `onSelectElement` + `data-element-kind` dla pól/aparatów/stacji/trafo/ZKSN; hit-boxy). *(V-08 wcześniej „niezweryfikowane" → faktycznie zrobione.)*
+- **OPEN:** **V-06** (komponenty `SldTitleBlock/SldLegendOverlay/SldScaleRuler/SldRevisionTable/SldNorthArrow/SldPowerBalancePanel` ISTNIEJĄ + propsy zadeklarowane w `SldCanvasV2`, ale **nigdy nie renderowane** — tylko testy je konsumują; brak komponentu ramki rysunku); **V-07** (geometria kabli wciąż ze slotów; `portRef` wypełnia tylko `terminalBindings` metadane, nie pozycje — zgodnie z diagnozą §6).
+- **PARTIAL:** V-01 (fit centruje, ale kompozycja rzadka), V-02 (token zunifikowany, ale geometria trunku z innego pipeline'u niż aparatura GPZ), V-03 (drzewo jest; brak wagi hierarchii poza lane index), V-04 (dedup „GPZ 15 kV" ✔, ucięcia złagodzone nie udowodnione), V-09 (kod skaluje; substrate 52 stacji jest), V-10 (łańcuchy OZE zakodowane, ale bloker `add_converter_source` → der=0 na seedzie).
+
+**Dług nowy (wysokiej pewności, dowód file:line):** D-13 (Z15 frontend), D-14 (K-08 sanity-bounds — priorytet diagnostyczny właściciela).
+
+**Kandydaci backend do weryfikacji (B-04 — nie potwierdzone jako blokery):** `solver_input/builder.py:415` PROTECTION stub (pusty payload) + `enm/models.py:55` `ProtectionSetting` „stub" — ALE ochrona DZIAŁA przez własny pipeline `application/analyses/protection/` (pipeline/coordination/sanity_checks); to ścieżki drugorzędne/legacy, nie brak ochrony. `api/designer/engine.py` „Run Analysis not implemented" — ścieżka niepewna (główny pipeline `execution/runs` działa), do weryfikacji. `audit2_catalogs.py:1150` DER defaults hardcoded — wiąże z V-10. Znane: TT/IT=D-11, ncrfg=D-10.
+
+**Legitymne (nie dług):** 501 dla opcjonalnych zależności (reportlab/python-docx), `no_module` jako kontrakt statusu, komentarze/TODO bez wpływu runtime, walidacja wejścia (`input_invalid`).
+
+-----
 
 *Żywy rejestr stanu. Aktualizuj każdą sesją. Źródłem prawdy ostatecznej jest świeży skan repo (§5.0) — gdy ten plik się z nim rozjedzie, prawdą jest repo.*
