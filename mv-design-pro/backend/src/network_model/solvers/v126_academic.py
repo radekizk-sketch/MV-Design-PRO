@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import cmath
 import hashlib
 import json
 import math
@@ -103,6 +104,8 @@ class V126AcademicSolver:
         trace = TraceBuilder(analysis_type)
         if analysis_type == V126AnalysisType.POWER_QUALITY_HARMONICS:
             result = self._power_quality(model, trace)
+        elif analysis_type == V126AnalysisType.SSCI_IMPEDANCE:
+            result = self._ssci_impedance(model, trace)
         elif analysis_type == V126AnalysisType.VOLTAGE_STABILITY:
             result = self._voltage_stability(model, trace)
         elif analysis_type == V126AnalysisType.RELIABILITY_CONTINGENCY:
@@ -195,6 +198,83 @@ class V126AcademicSolver:
             ybus[0, 0] += 1e6
         return ybus
 
+    def _grid_source_shunt_admittance(
+        self, model: V126AcademicInput, harmonic: float
+    ) -> dict[int, complex]:
+        """Frequency-dependent grid-source shunt admittance Y_src(f) per bus.
+
+        For every bus that carries a grid fault level (``fault_level_mva``), the
+        external grid behind it is a series Thevenin source impedance
+        ``Z_src(f) = R_src + j*(f/50)*X_src`` whose admittance ``Y_src = 1/Z_src``
+        is shunted to ground at that bus (the network reference). The 50 Hz
+        ``R_src``/``X_src`` reuse the EXACT same split as
+        :meth:`_source_impedance` (``Z = Un^2/S_sc``, ``R = 0.15 Z``,
+        ``X = 0.99 Z``) so there is one truth for the grid impedance. The
+        reactance scales linearly with frequency (``harmonic = f/50``); the
+        resistance is held constant (skin effect is out of scope — stated
+        assumption). This shunt is added ONLY on the SSCI path so the existing
+        power-quality Z-scan stays byte-identical.
+        """
+        index = self._bus_index(model)
+        shunt: dict[int, complex] = {}
+        for bus in model.buses:
+            if not bus.fault_level_mva:
+                continue
+            bus_idx = index.get(bus.ref)
+            if bus_idx is None:
+                continue
+            z = bus.nominal_kv**2 / bus.fault_level_mva
+            z_src = complex(0.15 * z, harmonic * 0.99 * z)
+            if abs(z_src) == 0:
+                continue
+            shunt[bus_idx] = 1.0 / z_src
+        return shunt
+
+    def _driving_point_impedance(
+        self,
+        model: V126AcademicInput,
+        harmonic: float,
+        *,
+        with_source_shunt: bool,
+    ) -> np.ndarray[Any, Any]:
+        """Driving-point bus-impedance diagonal at one harmonic.
+
+        Builds the frequency-dependent ``Y_bus(f)`` via :meth:`_ybus` and inverts
+        it (``Z_bus = pinv(Y_bus)``), returning the diagonal ``Z_bus[i, i]`` (the
+        driving-point impedance seen at each bus). Shared by the power-quality
+        Z-scan and the SSCI grid-impedance sweep.
+
+        ``with_source_shunt`` controls whether the frequency-dependent grid-source
+        shunt ``Y_src(f)`` is added at the grid buses (see
+        :meth:`_grid_source_shunt_admittance`). The power-quality scan calls this
+        with ``False`` (no shunt) so its output is byte-identical to before; the
+        SSCI sweep calls it with ``True`` to obtain the correct system Thevenin
+        impedance the converter sees.
+
+        On the SSCI path the artificial 1e6 reference stiffening that
+        :meth:`_ybus` puts on bus 0 (a numerical "infinite bus" used only to make
+        the harmonic-scan matrix non-singular) is REMOVED and the physical finite
+        grid Thevenin ``Y_src(f)`` is used as the grounding path instead — so the
+        driving-point impedance reflects the real (finite) grid strength rather
+        than a near-short. If the model carries no grid-source bus at all, a tiny
+        reference is retained to keep the matrix invertible (stated fallback,
+        affects only an otherwise-floating network).
+        """
+        ybus = self._ybus(model, harmonic)
+        if with_source_shunt:
+            # Undo the artificial 1e6 reference (power-quality-only stiffening) so
+            # the physical grid Thevenin governs the SSCI driving-point impedance.
+            if len(model.buses):
+                ybus[0, 0] -= 1e6
+            shunts = self._grid_source_shunt_admittance(model, harmonic)
+            for bus_idx, y_src in shunts.items():
+                ybus[bus_idx, bus_idx] += y_src
+            if not shunts and len(model.buses):
+                # No grid-source bus: keep a small reference to avoid singularity.
+                ybus[0, 0] += 1e-6
+        zbus = np.linalg.pinv(ybus)
+        return np.diag(zbus)
+
     def _solve_linear(
         self, ybus: np.ndarray[Any, Any], injections: np.ndarray[Any, Any]
     ) -> np.ndarray[Any, Any]:
@@ -275,10 +355,12 @@ class V126AcademicSolver:
         z50: dict[str, float] = {}
         for f_hz in range(50, 2501, 10):
             harmonic = f_hz / model.base_frequency_hz
-            ybus = self._ybus(model, harmonic)
-            zbus = np.linalg.pinv(ybus)
+            # Shared driving-point-impedance helper WITHOUT the grid-source shunt:
+            # the power-quality Z-scan keeps its exact prior numerics (byte-identical
+            # golden). The SSCI sweep calls the same helper WITH the shunt.
+            zdiag = self._driving_point_impedance(model, harmonic, with_source_shunt=False)
             for bus in model.buses:
-                z = zbus[index[bus.ref], index[bus.ref]]
+                z = zdiag[index[bus.ref]]
                 z_abs = abs(z)
                 if f_hz == 50:
                     z50[bus.ref] = max(z_abs, 1e-9)
@@ -320,6 +402,357 @@ class V126AcademicSolver:
             has_inputs=len(model.harmonic_sources) > 0,
         )
         return {"nodes": nodes, "sanity": sanity}
+
+    # =========================================================================
+    # D-03 SSCI — impedance-based stability (PHYSICS half: Z_grid, Z_conv, L).
+    # The Nyquist / minor-loop verdict is a SEPARATE analysis-layer follow-up;
+    # this solver only emits the white-box impedance arrays it will consume.
+    # =========================================================================
+
+    @staticmethod
+    def _phasor(z: complex) -> JsonDict:
+        """Serialize a complex impedance/gain as {re, im, mag, phase_deg}."""
+        mag = abs(z)
+        phase = math.degrees(math.atan2(z.imag, z.real)) if mag else 0.0
+        return {
+            "re": _round(z.real),
+            "im": _round(z.imag),
+            "mag": _round(mag),
+            "phase_deg": _round(phase, 3),
+        }
+
+    def _ssci_frequencies_hz(self) -> list[float]:
+        """Sub-synchronous-focused, log-spaced sweep ~1..250 Hz (61 points).
+
+        Dense enough to resolve the PLL-band behaviour (negative-resistance
+        region below f_pll) and the low-frequency minor-loop interaction. The
+        vector is fixed and deterministic (no input-dependent point selection).
+        """
+        lo, hi, n = 1.0, 250.0, 61
+        step = (math.log10(hi) - math.log10(lo)) / (n - 1)
+        return [round(10 ** (math.log10(lo) + step * k), 4) for k in range(n)]
+
+    def _z_conv_components(self, converter: Any, f_hz: float) -> tuple[complex, dict[str, complex]]:
+        """Positive-sequence small-signal output impedance Z_conv(jw) of one
+        grid-following current-controlled VSC at frequency ``f_hz`` (ohms), plus
+        the intermediate transfer functions (for the white-box trace).
+
+        MODEL (impedance-based SSCI; positive-sequence reduced form):
+        Sun (2011) "Impedance-Based Stability Criterion for Grid-Connected
+        Inverters", IEEE TPEL 26(11); Cespedes & Sun (2014) "Impedance Modeling
+        and Analysis of Grid-Connected Voltage-Source Converters", IEEE TPEL
+        29(3); Wen et al. (2016) "Analysis of D-Q Small-Signal Impedance of
+        Grid-Tied Inverters", IEEE TPEL 31(1).
+
+            Z_conv(jw) = [ Z_f(jw) + G_d(jw)*G_ci(jw) ]
+                         / [ 1 - G_d(jw)*H_pll(jw)*(I0*G_ci(jw) - V0)/V0 ]
+
+        where (all impedances per-unit on Z_base = Un^2/Sn, then scaled to ohms):
+          - Z_f(jw) = R_f + j*w_pu*L_f          physical LCL/L filter (pu),
+            w_pu = w / w_base, w_base = 2*pi*f_base;
+          - G_ci(jw) = a_ci*(L_f + R_f/(j*w_pu)) IMC-tuned current PI in pu,
+            a_ci = 2*pi*f_ci / w_base (current-loop crossover); equivalently
+            K_p = w_ci*L_f, K_i = w_ci*R_f with the loop gain G_ci/Z_f = a_ci/(j*w_pu);
+          - G_d(jw) = exp(-j*w*T_d)              control/PWM delay, T_d = control_delay_ms*1e-3;
+          - H_pll(jw) = a_pll/(j*w_pu + a_pll)   PLL closed loop, a_pll = 2*pi*f_pll / w_base;
+          - V0, I0                               terminal voltage / current at the
+            operating point (pu). The denominator PLL term, scaled by the
+            operating-point current I0, is the operating-point-dependent coupling
+            that creates the sub-synchronous negative-resistance region (the SSCI
+            mechanism). Outside the PLL band H_pll -> 0 (coupling vanishes); inside
+            the current-loop band G_ci is large (current-source-like high Z); as
+            w -> inf, G_ci/Z_f -> 0 so Z_conv -> Z_f.
+
+        ASSUMPTIONS (stated, no fabrication):
+          - positive-sequence SISO reduction of the full dq impedance (the
+            dominant axis for sub-synchronous SSCI); the dq cross-coupling is
+            folded into the single PLL term above (Cespedes-Sun positive-seq form);
+          - IMC current-loop tuning K_p=w_ci*L_f, K_i=w_ci*R_f (one-degree-of-
+            freedom PI; the standard textbook tuning, Yazdani & Iravani 2010 ch.8);
+          - control delay T_d = 0 if control_delay_ms is None (delay term G_d = 1);
+          - outer voltage loop included as a low-frequency stiffening of the
+            current reference ONLY when voltage_loop_bandwidth_hz is present (see
+            below); omitted cleanly otherwise;
+          - resistance R_f is frequency-independent (skin effect out of scope).
+
+        MANDATORY card fields: current_loop_bandwidth_hz, pll_bandwidth_hz,
+        filter_l_pu. Missing any of these raises ValueError (caught by the caller
+        and surfaced as missing-data — NO fallback / NO fabricated value).
+        """
+        f_ci = converter.current_loop_bandwidth_hz
+        f_pll = converter.pll_bandwidth_hz
+        l_f = converter.filter_l_pu
+        missing = [
+            name
+            for name, value in (
+                ("current_loop_bandwidth_hz", f_ci),
+                ("pll_bandwidth_hz", f_pll),
+                ("filter_l_pu", l_f),
+            )
+            if value is None
+        ]
+        if missing:
+            raise ValueError(
+                "Brak obowiazkowych pol karty falownika dla Z_conv(f): " + ", ".join(missing)
+            )
+        r_f = converter.filter_r_pu if converter.filter_r_pu is not None else 0.0
+        t_d = converter.control_delay_ms * 1e-3 if converter.control_delay_ms is not None else 0.0
+
+        w = 2.0 * math.pi * f_hz
+        w_base = 2.0 * math.pi * 50.0
+        w_pu = w / w_base
+        s_pu = complex(0.0, w_pu)
+        a_ci = 2.0 * math.pi * f_ci / w_base
+        a_pll = 2.0 * math.pi * f_pll / w_base
+
+        # Operating point (pu): V0 at rated (1.0); I0 = |S|/V0 from the converter
+        # P/Q if given, else rated injection (1.0). No physics recomputed here —
+        # the values come from the model/params.
+        v0 = 1.0
+        if converter.p_mw is not None or converter.q_mvar is not None:
+            p = converter.p_mw or 0.0
+            q = converter.q_mvar or 0.0
+            s_mva = math.hypot(p, q)
+            i0 = (s_mva / converter.rated_mva) / v0 if converter.rated_mva else 1.0
+        else:
+            i0 = 1.0
+
+        z_f = complex(r_f, 0.0) + s_pu * l_f
+        g_ci = a_ci * (complex(l_f, 0.0) + complex(r_f, 0.0) / s_pu)
+        # Optional outer voltage loop: low-frequency current-reference stiffening
+        # H_v = a_cv/(s_pu + a_cv). Applied as (1 + H_v) gain on the synthesized
+        # active impedance G_ci, raising the in-band output impedance below the
+        # voltage-loop corner. Omitted entirely when the bandwidth is absent.
+        if converter.voltage_loop_bandwidth_hz is not None:
+            a_cv = 2.0 * math.pi * converter.voltage_loop_bandwidth_hz / w_base
+            h_v = a_cv / (s_pu + a_cv)
+            g_ci = g_ci * (1.0 + h_v)
+        g_d = cmath.exp(complex(0.0, -w * t_d))
+        h_pll = a_pll / (s_pu + a_pll)
+
+        numerator = z_f + g_d * g_ci
+        denominator = 1.0 - g_d * h_pll * (i0 * g_ci - v0) / v0
+        z_conv_pu = numerator / denominator
+
+        z_base = converter.rated_kv**2 / converter.rated_mva if converter.rated_kv else 1.0
+        z_conv = z_conv_pu * z_base
+
+        components = {
+            "z_f_pu": z_f,
+            "g_ci": g_ci,
+            "g_d": g_d,
+            "h_pll": h_pll,
+            "z_conv_pu": z_conv_pu,
+            "z_conv_ohm": z_conv,
+        }
+        return z_conv, components
+
+    def _ssci_select_converter(self, model: V126AcademicInput) -> Any:
+        """The converter under SSCI study: explicit ``parameters['ssci_converter_ref']``
+        if given, else the first declared converter. Returns None if none exist.
+        """
+        ref = model.parameters.get("ssci_converter_ref")
+        if ref is not None:
+            return next((c for c in model.converters if c.ref == ref), None)
+        return model.converters[0] if model.converters else None
+
+    def _ssci_impedance(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
+        converter = self._ssci_select_converter(model)
+        if converter is None:
+            trace.add(
+                "ssci_impedance_no_converter",
+                "Z_conv(jw) wymaga przeksztaltnika (VSC) w modelu",
+                {"converters": 0},
+                "Brak przeksztaltnika do analizy SSCI.",
+                {"status": "dane niekompletne"},
+                "Brak danych wejsciowych (przeksztaltnik).",
+            )
+            return {
+                "status": "dane niekompletne",
+                "message_pl": (
+                    "Analiza SSCI (Z_grid/Z_conv) wymaga przeksztaltnika (falownika) "
+                    "w modelu. Brak przeksztaltnika — analiza niewykonana."
+                ),
+                "missing_fields": ["converter"],
+                "sanity": _sanity_block([], has_inputs=False),
+            }
+
+        index = self._bus_index(model)
+        bus_idx = index.get(converter.bus_ref)
+        if bus_idx is None:
+            return {
+                "status": "dane niekompletne",
+                "message_pl": (
+                    f"Przeksztaltnik '{converter.ref}' wskazuje na nieistniejacy wezel "
+                    f"'{converter.bus_ref}'."
+                ),
+                "missing_fields": ["converter.bus_ref"],
+                "sanity": _sanity_block([], has_inputs=False),
+            }
+
+        frequencies = self._ssci_frequencies_hz()
+
+        # Probe Z_conv mandatory fields once (clear missing-data, no fabrication).
+        try:
+            self._z_conv_components(converter, frequencies[0])
+        except ValueError as exc:
+            f_ci = converter.current_loop_bandwidth_hz
+            f_pll = converter.pll_bandwidth_hz
+            l_f = converter.filter_l_pu
+            missing = [
+                name
+                for name, value in (
+                    ("current_loop_bandwidth_hz", f_ci),
+                    ("pll_bandwidth_hz", f_pll),
+                    ("filter_l_pu", l_f),
+                )
+                if value is None
+            ]
+            trace.add(
+                "ssci_impedance_missing_card_fields",
+                "Z_conv(jw) wymaga: current_loop_bandwidth_hz, pll_bandwidth_hz, filter_l_pu",
+                {"converter_ref": converter.ref, "missing": missing},
+                str(exc),
+                {"status": "dane niekompletne"},
+                "Brak danych karty falownika; brak oszacowania zastepczego (zakaz fabrykacji).",
+            )
+            return {
+                "status": "dane niekompletne",
+                "converter_ref": converter.ref,
+                "bus_ref": converter.bus_ref,
+                "message_pl": (
+                    "Analiza SSCI wymaga pol karty falownika (pasmo petli pradowej, "
+                    "pasmo PLL, indukcyjnosc filtra). Brakuje: " + ", ".join(missing)
+                ),
+                "missing_fields": missing,
+                "sanity": _sanity_block([], has_inputs=False),
+            }
+
+        z_grid_rows: list[JsonDict] = []
+        z_conv_rows: list[JsonDict] = []
+        l_rows: list[JsonDict] = []
+        re_zconv_min = math.inf
+        re_zconv_min_f = 0.0
+        for f_hz in frequencies:
+            harmonic = f_hz / model.base_frequency_hz
+            zdiag = self._driving_point_impedance(model, harmonic, with_source_shunt=True)
+            z_grid = complex(zdiag[bus_idx])
+            z_conv, _components = self._z_conv_components(converter, f_hz)
+            minor_loop = z_grid / z_conv if abs(z_conv) else complex(math.inf, 0.0)
+            z_grid_rows.append({"f_hz": f_hz, **self._phasor(z_grid)})
+            z_conv_rows.append({"f_hz": f_hz, **self._phasor(z_conv)})
+            l_rows.append({"f_hz": f_hz, **self._phasor(minor_loop)})
+            if z_conv.real < re_zconv_min:
+                re_zconv_min = z_conv.real
+                re_zconv_min_f = f_hz
+
+        # White-box trace: emit the model + the per-step transfer functions at a
+        # representative low (sub-PLL) frequency so the proof shows the mechanism.
+        probe_f = frequencies[0]
+        _z_probe, comp = self._z_conv_components(converter, probe_f)
+        f_pll = float(converter.pll_bandwidth_hz)
+        z_base = converter.rated_kv**2 / converter.rated_mva if converter.rated_kv else 1.0
+        t_d_ms = converter.control_delay_ms if converter.control_delay_ms is not None else 0.0
+        trace.add(
+            "ssci_zconv_model",
+            "Z_conv(jw) = [Z_f + G_d*G_ci] / [1 - G_d*H_pll*(I0*G_ci - V0)/V0]",
+            {
+                "ref": "Sun 2011 (IEEE TPEL 26-11); Cespedes&Sun 2014 (29-3); Wen 2016 (31-1)",
+                "current_loop_bandwidth_hz": float(converter.current_loop_bandwidth_hz),
+                "voltage_loop_bandwidth_hz": (
+                    float(converter.voltage_loop_bandwidth_hz)
+                    if converter.voltage_loop_bandwidth_hz is not None
+                    else None
+                ),
+                "pll_bandwidth_hz": f_pll,
+                "control_delay_ms": float(t_d_ms),
+                "filter_l_pu": float(converter.filter_l_pu),
+                "filter_r_pu": (
+                    float(converter.filter_r_pu) if converter.filter_r_pu is not None else 0.0
+                ),
+                "z_base_ohm": _round(z_base),
+            },
+            (
+                f"w_ci=2*pi*{converter.current_loop_bandwidth_hz} rad/s; "
+                f"w_pll=2*pi*{f_pll} rad/s; T_d={t_d_ms} ms; "
+                "K_p=w_ci*L_f, K_i=w_ci*R_f (IMC); Z_base=Un^2/Sn"
+            ),
+            {
+                "probe_f_hz": probe_f,
+                "G_ci": self._phasor(comp["g_ci"]),
+                "H_pll": self._phasor(comp["h_pll"]),
+                "G_d": self._phasor(comp["g_d"]),
+                "Z_f_pu": self._phasor(comp["z_f_pu"]),
+                "Z_conv_pu": self._phasor(comp["z_conv_pu"]),
+                "Z_conv_ohm": self._phasor(comp["z_conv_ohm"]),
+            },
+            "Z_f w pu (Ohm/Ohm), skalowane przez Z_base [Ohm]; G bezwymiarowe.",
+        )
+        trace.add(
+            "ssci_zgrid_sweep",
+            "Z_grid(f) = diag(pinv(Y_bus(f) + Y_src(f))) @ bus(falownika)",
+            {
+                "bus_ref": converter.bus_ref,
+                "f_min_hz": frequencies[0],
+                "f_max_hz": frequencies[-1],
+                "points": len(frequencies),
+            },
+            (
+                "Y_bus(f) jak w skanie PQ + bocznik zrodla Y_src(f)=1/(0.15z + j(f/50)0.99z), "
+                "z=Un^2/Sk; impedancja sterujaca na wezle falownika."
+            ),
+            {"z_grid_at_f_min": self._phasor(complex(z_grid_rows[0]["re"], z_grid_rows[0]["im"]))},
+            "Ohm; pinv macierzy admitancji [S] daje impedancje [Ohm].",
+        )
+        trace.add(
+            "ssci_minor_loop_gain",
+            "L(jw) = Z_grid(jw) / Z_conv(jw)",
+            {"points": len(frequencies)},
+            (
+                "Iloraz impedancji sieci i wyjsciowej falownika; warstwa analizy oceni "
+                "blizosc do punktu -1 (kryterium Nyquista) — TUTAJ tylko fizyka."
+            ),
+            {
+                "re_zconv_min": _round(re_zconv_min),
+                "re_zconv_min_f_hz": re_zconv_min_f,
+                "negative_resistance_region": re_zconv_min < 0.0,
+            },
+            "Ohm/Ohm = bezwymiarowe.",
+        )
+
+        # K-08: sanity-bounds — impedancje skonczone; obecnosc strefy ujemnej
+        # rezystancji Z_conv (mechanizm SSCI) ponizej pasma PLL.
+        z_grid_finite = all(_finite(row["re"], row["im"]) for row in z_grid_rows)
+        z_conv_finite = all(_finite(row["re"], row["im"]) for row in z_conv_rows)
+        l_finite = all(_finite(row["re"], row["im"]) for row in l_rows)
+        sanity = _sanity_block(
+            [
+                ("z_grid_finite", z_grid_finite, "Z_grid nieskonczone/NaN"),
+                ("z_conv_finite", z_conv_finite, "Z_conv nieskonczone/NaN"),
+                ("minor_loop_finite", l_finite, "L(f) nieskonczone/NaN"),
+                (
+                    "negative_resistance_present",
+                    re_zconv_min < 0.0,
+                    "Brak strefy Re(Z_conv)<0 ponizej pasma PLL — mechanizm SSCI nieobecny",
+                ),
+            ],
+            has_inputs=True,
+        )
+        return {
+            "converter_ref": converter.ref,
+            "bus_ref": converter.bus_ref,
+            "base_frequency_hz": model.base_frequency_hz,
+            "frequencies_hz": frequencies,
+            "z_grid": z_grid_rows,
+            "z_conv": z_conv_rows,
+            "minor_loop_gain": l_rows,
+            "z_conv_negative_resistance": {
+                "re_min_ohm": _round(re_zconv_min),
+                "f_at_re_min_hz": re_zconv_min_f,
+                "present": re_zconv_min < 0.0,
+            },
+            "sanity": sanity,
+        }
 
     def _voltage_stability(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         pv_curves: list[JsonDict] = []

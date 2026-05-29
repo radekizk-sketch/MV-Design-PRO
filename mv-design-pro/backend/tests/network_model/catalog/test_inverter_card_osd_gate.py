@@ -131,6 +131,8 @@ def test_osd_gate_never_blocks_datasheet_fields() -> None:
         "voltage_loop_bandwidth_hz",
         "pll_bandwidth_hz",
         "control_delay_ms",
+        "filter_l_pu",
+        "filter_r_pu",
         "p_installed_mw",
         "pn_ac_mw",
         "p_connection_mw",

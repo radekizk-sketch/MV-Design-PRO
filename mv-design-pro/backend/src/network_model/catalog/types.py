@@ -243,12 +243,16 @@ _CARD_SC_MODEL_FIELDS: tuple[str, ...] = (
     "sc_sustained_k",
 )
 
-# SSCI / Z_conv(f) controller-bandwidth card fields (feeds D-03 SSCI / Z_conv).
+# SSCI / Z_conv(f) controller-bandwidth + filter card fields (feeds D-03 SSCI /
+# Z_conv). Filter L/R join this block because, like the bandwidths, they are
+# typical-class VSC estimates (ESTIMATED, never DATASHEET) consumed by Z_conv(f).
 _CARD_SSCI_FIELDS: tuple[str, ...] = (
     "current_loop_bandwidth_hz",
     "voltage_loop_bandwidth_hz",
     "pll_bandwidth_hz",
     "control_delay_ms",
+    "filter_l_pu",
+    "filter_r_pu",
 )
 
 # Power-hierarchy card fields (Pzainst >= Pn,AC >= Pprzylacz >= Posiagl).
@@ -287,6 +291,8 @@ def _card_schema_kwargs(data: dict[str, Any]) -> dict[str, Any]:
         "voltage_loop_bandwidth_hz": _opt_float("voltage_loop_bandwidth_hz"),
         "pll_bandwidth_hz": _opt_float("pll_bandwidth_hz"),
         "control_delay_ms": _opt_float("control_delay_ms"),
+        "filter_l_pu": _opt_float("filter_l_pu"),
+        "filter_r_pu": _opt_float("filter_r_pu"),
         "p_installed_mw": _opt_float("p_installed_mw"),
         "pn_ac_mw": _opt_float("pn_ac_mw"),
         "p_connection_mw": _opt_float("p_connection_mw"),
@@ -1011,6 +1017,11 @@ class ConverterType:
     voltage_loop_bandwidth_hz: float | None = None
     pll_bandwidth_hz: float | None = None
     control_delay_ms: float | None = None
+    # SSCI / Z_conv(f) LCL/L converter-filter fields (per-unit on the converter's
+    # own base Z_base = Un^2/Sn). Feed the D-03 Z_conv(f) output-impedance model.
+    # ESTIMATED like the bandwidths (typical VSC design values, never DATASHEET).
+    filter_l_pu: float | None = None
+    filter_r_pu: float | None = None
     # Power hierarchy: Pzainst >= Pn,AC >= Pprzylacz >= Posiagl (validated when set).
     p_installed_mw: float | None = None  # Pzainst (moc zainstalowana)
     pn_ac_mw: float | None = None  # Pn,AC (moc znamionowa AC)
@@ -2806,6 +2817,8 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "voltage_loop_bandwidth_hz",
             "pll_bandwidth_hz",
             "control_delay_ms",
+            "filter_l_pu",
+            "filter_r_pu",
             "p_installed_mw",
             "pn_ac_mw",
             "p_connection_mw",

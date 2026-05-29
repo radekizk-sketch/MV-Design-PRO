@@ -75,6 +75,8 @@ def _converter_record(
     voltage_loop_bandwidth_hz: float | None = None,
     pll_bandwidth_hz: float | None = None,
     control_delay_ms: float | None = None,
+    filter_l_pu: float | None = None,
+    filter_r_pu: float | None = None,
     card_field_status: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     params: dict[str, Any] = {
@@ -110,6 +112,8 @@ def _converter_record(
         ("voltage_loop_bandwidth_hz", voltage_loop_bandwidth_hz),
         ("pll_bandwidth_hz", pll_bandwidth_hz),
         ("control_delay_ms", control_delay_ms),
+        ("filter_l_pu", filter_l_pu),
+        ("filter_r_pu", filter_r_pu),
     ):
         if card_value is not None:
             params[card_key] = card_value
@@ -178,12 +182,17 @@ _REFERENCE_POWER_HIERARCHY_FIELDS: tuple[str, ...] = (
     "p_installed_mw",
     "pn_ac_mw",
 )
-# Controller-bandwidth fields carried as typical-class estimates (=> ESTIMATED).
+# Controller-bandwidth + converter-filter fields carried as typical-class
+# estimates (=> ESTIMATED). The filter L/R join this block because, like the
+# bandwidths, public datasheets do not publish them and the reference cards carry
+# typical VSC-design values (never DATASHEET) with the same literature citation.
 _REFERENCE_BANDWIDTH_FIELDS: tuple[str, ...] = (
     "current_loop_bandwidth_hz",
     "voltage_loop_bandwidth_hz",
     "pll_bandwidth_hz",
     "control_delay_ms",
+    "filter_l_pu",
+    "filter_r_pu",
 )
 
 
@@ -1115,6 +1124,8 @@ _REFERENCE_PV_STRING = _converter_record(
     voltage_loop_bandwidth_hz=80.0,
     pll_bandwidth_hz=30.0,
     control_delay_ms=0.5,
+    filter_l_pu=0.08,  # string PV LCL: niska indukcyjnosc, wysoka f_sw (typowa)
+    filter_r_pu=0.005,
     card_field_status=_reference_card_field_status(
         datasheet_ref="Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)",
         rating_fields=_REFERENCE_RATING_FIELDS,
@@ -1147,6 +1158,8 @@ _REFERENCE_PV_CENTRAL = _converter_record(
     voltage_loop_bandwidth_hz=70.0,
     pll_bandwidth_hz=25.0,
     control_delay_ms=0.6,
+    filter_l_pu=0.10,  # central PV LCL: wyzsza indukcyjnosc, nizsza f_sw (typowa)
+    filter_r_pu=0.004,
     card_field_status=_reference_card_field_status(
         datasheet_ref="Karta techniczna Sungrow SG3150U-MV (sungrowpower.com)",
         rating_fields=_REFERENCE_RATING_FIELDS,
@@ -1180,6 +1193,8 @@ _REFERENCE_BESS_PCS = _converter_record(
     voltage_loop_bandwidth_hz=100.0,
     pll_bandwidth_hz=35.0,
     control_delay_ms=0.5,
+    filter_l_pu=0.10,  # BESS PCS LCL: typowa indukcyjnosc filtra magazynu
+    filter_r_pu=0.003,
     card_field_status=_reference_card_field_status(
         datasheet_ref="Karta techniczna Sungrow SC2000UD-MV PCS (sungrowpower.com)",
         rating_fields=_REFERENCE_RATING_FIELDS,

@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 class V126AnalysisType(str, Enum):
     POWER_QUALITY_HARMONICS = "power_quality_harmonics"
+    SSCI_IMPEDANCE = "ssci_impedance"
     VOLTAGE_STABILITY = "voltage_stability"
     RELIABILITY_CONTINGENCY = "reliability_contingency"
     EARTHING_SAFETY = "earthing_safety"
@@ -80,6 +81,20 @@ class V126ConverterInput(BaseModel):
     droop_p_f_percent: float | None = Field(default=None, ge=0)
     droop_q_u_percent: float | None = Field(default=None, ge=0)
     black_start_capable: bool = False
+    # SSCI / Z_conv(f) small-signal output-impedance card fields (D-03). Flow
+    # from the converter's ConverterType catalog card via build_v126_input_from_enm.
+    # All optional: a missing mandatory field surfaces as missing-data in the SSCI
+    # solver (no fabrication / no fallback).
+    rated_kv: float | None = Field(default=None, gt=0)
+    current_loop_bandwidth_hz: float | None = Field(default=None, gt=0)
+    voltage_loop_bandwidth_hz: float | None = Field(default=None, gt=0)
+    pll_bandwidth_hz: float | None = Field(default=None, gt=0)
+    control_delay_ms: float | None = Field(default=None, ge=0)
+    filter_l_pu: float | None = Field(default=None, gt=0)
+    filter_r_pu: float | None = Field(default=None, ge=0)
+    # Operating point (P,Q) at the converter terminal for the SSCI coupling term.
+    p_mw: float | None = None
+    q_mvar: float | None = None
 
 
 class V126MotorInput(BaseModel):
@@ -160,6 +175,17 @@ def build_v126_input_from_enm(
         if generator.gen_type in {"pv_inverter", "bess", "fw_pmsg", "fw_dfig", "fw_scig"}:
             rated = max(abs(generator.p_mw), 0.1)
             mode = "GFL" if generator.gen_type != "bess" else "GFM_droop"
+            # SSCI / Z_conv(f) card fields flow from the converter's ConverterType
+            # catalog card (materialized into the generator's solver params). No
+            # fabrication: a field absent from the card stays None and the SSCI
+            # solver surfaces it as missing-data.
+            card = generator.materialized_params or {}
+
+            def _card_float(key: str, _card: dict[str, Any] = card) -> float | None:
+                value = _card.get(key)
+                return float(value) if value is not None else None
+
+            rated_kv = _card_float("un_kv")
             converters.append(
                 V126ConverterInput(
                     ref=generator.ref_id,
@@ -168,6 +194,15 @@ def build_v126_input_from_enm(
                     rated_mva=rated,
                     droop_p_f_percent=4.0 if mode != "GFL" else None,
                     droop_q_u_percent=3.0 if mode != "GFL" else None,
+                    rated_kv=rated_kv,
+                    current_loop_bandwidth_hz=_card_float("current_loop_bandwidth_hz"),
+                    voltage_loop_bandwidth_hz=_card_float("voltage_loop_bandwidth_hz"),
+                    pll_bandwidth_hz=_card_float("pll_bandwidth_hz"),
+                    control_delay_ms=_card_float("control_delay_ms"),
+                    filter_l_pu=_card_float("filter_l_pu"),
+                    filter_r_pu=_card_float("filter_r_pu"),
+                    p_mw=generator.p_mw,
+                    q_mvar=generator.q_mvar,
                 )
             )
             harmonic_sources.append(
@@ -188,7 +223,9 @@ def build_v126_input_from_enm(
             load_mvar=load_by_bus.get(bus.ref_id, (0.0, 0.0))[1],
             generation_mw=gen_by_bus.get(bus.ref_id, (0.0, 0.0))[0],
             generation_mvar=gen_by_bus.get(bus.ref_id, (0.0, 0.0))[1],
-            fault_level_mva=next((source.sk3_mva for source in enm.sources if source.bus_ref == bus.ref_id), None),
+            fault_level_mva=next(
+                (source.sk3_mva for source in enm.sources if source.bus_ref == bus.ref_id), None
+            ),
         )
         for bus in enm.buses
     ]
@@ -213,7 +250,8 @@ def build_v126_input_from_enm(
                     x_ohm_per_km=float(getattr(branch, "x_ohm_per_km", 0.12)),
                     b_siemens_per_km=float(getattr(branch, "b_siemens_per_km", 0.0) or 0.0),
                     ampacity_a=float(getattr(rating, "in_a", None) or 300.0),
-                    failure_rate_per_year=(0.08 if branch.type == "line_overhead" else 0.015) * length_km,
+                    failure_rate_per_year=(0.08 if branch.type == "line_overhead" else 0.015)
+                    * length_km,
                     mttr_h=3.5 if branch.type == "line_overhead" else 12.0,
                     is_open=is_open,
                 )

@@ -294,14 +294,15 @@ def card_field_quality_map(converter: Any) -> dict[str, CardFieldStatus]:
             source_ref=source_ref if present else None,
         )
 
-    # Controller-bandwidth (SSCI / Z_conv) block: ESTIMATED by default when
-    # present (never DATASHEET without a real source), SYSTEM_DEFAULT when absent.
+    # Controller-bandwidth + converter-filter (SSCI / Z_conv) block: ESTIMATED by
+    # default when present (never DATASHEET without a real source), SYSTEM_DEFAULT
+    # when absent. Filter L/R are typical-class VSC estimates, just like the bands.
     for name in _CARD_SSCI_FIELDS:
         present = getattr(converter, name, None) is not None
         result[name] = CardFieldStatus(
             field_name=name,
             quality=FieldQuality.ESTIMATED if present else FieldQuality.SYSTEM_DEFAULT,
-            note="oszacowanie pasma regulatora; wymaga zrodla z karty technicznej",
+            note="oszacowanie pasma/filtra regulatora; wymaga zrodla z karty technicznej",
         )
 
     return result
