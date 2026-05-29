@@ -25,6 +25,7 @@ Silnik layoutu zwraca pełną warstwę geometrii; adapter/renderer tylko ją czy
 ```ts
 // frontend/src/ui/sld/v2/geometry/layoutContract.ts (NOWY)
 export type LayoutMode = 'topological' | 'geo';
+export type LodLevel = 'L0' | 'L1' | 'L2';  // L0 przegląd sieci / L1 stacja-ciąg / L2 pole-szczegół — JEDNA prawda geometrii (zagnieżdżona), trzy poziomy detalu
 
 export interface PortAnchor {
   portId: string;            // ENM PortRef.port_id (np. "...FEEDER.BRANCH")
@@ -36,15 +37,18 @@ export interface PortAnchor {
 
 export interface NodeGeometry {
   ref: string;               // ENM ref_id obiektu (GPZ/stacja/pole/węzeł)
-  x: number; y: number;      // lewy-górny / środek symbolu
+  x: number; y: number;      // world-space (układ rodzica) — JEDYNE źródło
   width: number; height: number;
   rank: number;              // poziom w drzewie (0 = GPZ); dla geo: nieużywane
-  ports: readonly PortAnchor[];
+  lod: LodLevel;             // poziom, na którym węzeł jest osobnym obiektem: STACJA=L0, POLE=L1, APARAT=L2
+  ports: readonly PortAnchor[];       // L2: głowice/terminale; L0/L1: porty brzegowe (zagregowane, WCIĄŻ zakotwiczone)
+  children?: readonly NodeGeometry[]; // rozwinięcie na następny poziom (pola w stacji → aparaty w polu); zagnieżdżenie = JEDNA prawda, nie osobne pozycje
 }
 
 export interface EdgeGeometry {
   ref: string;               // ref kabla/linii
-  fromPortId: string; toPortId: string;   // krawędź port→port (NIE slot→slot)
+  lod: LodLevel;             // najniższy poziom, na którym krawędź jest osobna; L0/L1 = zagregowana stacja→stacja/pole→pole, L2 = port→port
+  fromPortId: string; toPortId: string;   // krawędź port→port (NIE slot→slot); na L0/L1 porty brzegowe bloków
   polyline: ReadonlyArray<{ x: number; y: number }>; // routing ortogonalny
 }
 
@@ -112,6 +116,48 @@ implementacji: lateralo- i OZE-bogata sieć ≥50 stacji.
 Topologiczny: drzewo (nie grzebień), ≥75% kadru, port→port (zero wiszących), klikalność,
 czytelność na ≥50 stacjach, wszystkie łańcuchy OZE, tryb prezentacyjny. Geo: dopiero po
 dostarczeniu współrzędnych (inaczej jawny dług). Werdykt eksperta ≥8/10 na zrzucie PO.
+
+**Rozszerzony próg §7.3 (LOD, dodane 2026-05-29):** 12) **L0 czytelny dla ≥50 stacji** —
+stacje rozróżnialne, zero mikro-znaczków, kadr ≥75%; 13) **L2** pełna aparatura + głowice +
+wyniki bez nachodzenia; 14) **przejścia LOD płynne** (sekwencja zrzutów / nagranie, bez
+migotania); 15) **etykiety/wyniki widoczne tylko na poziomie, gdzie się mieszczą** (zero
+nachodzenia przez LOD, nie wyłącznie przez collision-avoidance); 16) **klik nawiguje
+blok→stacja→pole**, hit-box=symbol na każdym poziomie. Werdykt ≥8/10 (B-02) oceniany na
+WSZYSTKICH trzech poziomach (L0/L1/L2), nie jednym.
+
+## 7. Level of Detail (LOD) — trzy poziomy, JEDNA prawda geometrii (rozszerzenie 2026-05-29)
+
+LOD = dwie SPRZĘŻONE warstwy (obie wymagane): **graficzny** (zoom geometryczny — ten sam
+obiekt, różny detal wizualny) + **danych** (semantyczny — ILE informacji; sprzężony z 4
+warstwami §7.1 topologia/wyniki/stan/chrome i etykietami-slotami §7.2). Bez LOD schemat
+≥50 stacji jest nieczytelny niezależnie od jakości layoutu (dowód: 52 stacje jako
+mikro-znaczki). **JEDNA prawda:** geometria jest ZAGNIEŻDŻONA (`NodeGeometry.children`) —
+stacja (L0) zawiera pola (L1) zawierają aparaty (L2); LOD wybiera GŁĘBOKOŚĆ renderu +
+widoczność warstw, NIE liczy trzech osobnych prawd o pozycjach.
+
+| Poziom | Topologia | Wyniki | Etykiety | Porty / krawędzie |
+|--------|-----------|--------|----------|-------------------|
+| **L0** przegląd | stacje jako BLOKI (bbox dzieci), magistrala + laterale | brak / agregat per ciąg | nazwa stacji + status gotowości | brzegowe stacja→stacja, zakotwiczone |
+| **L1** stacja/ciąg | pola, transformatory, sprzęgła (rozwinięcie bloku) | kluczowe (Ik″ szyna, obciążenie ciągu) | nazwa pola, rola IN/OUT/TR/FEEDER, stan łącznika | brzegowe pole→pole, zakotwiczone |
+| **L2** pole/szczegół | pełna aparatura (CB/DS/ES, przekładniki, GŁOWICE) | pełne (Ik″/ip/Ith, prądy, spadki) | katalogowe (typ/przekrój/długość), wynik per węzeł | głowica→terminal (V-07 pełne) |
+
+**Reguły wiążące:**
+- **Widoczność warstw sterowana LOD** rozwiązuje nachodzenie etykiet (A-01/A-03)
+  STRUKTURALNIE: etykiety/wyniki nie istnieją tam, gdzie i tak by się nachodziły (L0 =
+  topologia + stan; wyniki i większość etykiet dopiero L1/L2). NIE polegamy wyłącznie na
+  collision-avoidance.
+- **Port-anchoring (V-07) na KAŻDYM poziomie:** L2 głowica→terminal; L0/L1 uproszczone, ale
+  WCIĄŻ zakotwiczone do portów brzegowych (zero wiszących na każdym poziomie).
+- **Klikalność (V-08) na KAŻDYM poziomie:** klik blok L0 → zoom L1; klik pole L1 → L2 +
+  inspektor. Hit-box = symbol na każdym poziomie.
+- **Przejścia PŁYNNE:** fade/interpolacja zoom→LodLevel, bez migotania/skoku.
+- **Override:** użytkownik może wymusić poziom (jak warstwy §7.6).
+- **Wydajność/wirtualizacja:** L0 dla ≥50 stacji NIE renderuje pełnej aparatury (to cała
+  poanta); render TYLKO widocznego viewportu (>100 węzłów płynnie, §7B.7).
+
+**`lod-controller`** (nowy moduł, `engine/sld-layout/lodController.ts`): progi
+zoom→`LodLevel`, płynne przejścia, polityka widoczności warstw per poziom, wirtualizacja
+viewportu. Czyta z `LayoutResult` (NIE liczy pozycji — jedna prawda geometrii).
 
 ---
 *Kontrakt wiążący dla przebudowy SLD. Implementacja iteruje na substracie 52 stacji,
