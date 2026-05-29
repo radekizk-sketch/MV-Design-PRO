@@ -42,7 +42,7 @@
 | D-01 | **Arc Flash** — energia incydentu IEEE 1584-2018, granice, ŚOI; IAC IEC 62271-200 jako obliczenie | K-25, §8C.1 | BRAK — **wymaga autorytatywnych tablic IEEE 1584-2018** (patrz ustalenie niżej) | 3 |
 | D-02 | **CIM / CGMES** (IEC 61970/61968) import-eksport | K-30, §8C.8 | BRAK | 4 |
 | D-03 | **SCR/WSCR per PCC** (✔ część) + stabilność impedancyjna (Nyquist) + **SSCI** | K-30, §8C.4 | CZĘŚCIOWO (SCR/WSCR done; skan impedancji sieci Z(f)+rezonanse JEST w `_power_quality`; brakuje sprzężenia falownik↔sieć — **wymaga modelu impedancji małosygnałowej falownika**, patrz ustalenie niżej) | 2 |
-| D-04 | **Jawny model obciążeń ZIP** P(U)/Q(U)/P(f)/Q(f) | K-29, §8C.5 | BRAK (QSTS jest) | 1 |
+| D-04 | **Jawny model obciążeń ZIP** P(U)/Q(U)/P(f)/Q(f) | K-29, §8C.5 | **ADR-011 PROPOSED** — właściciel autoryzował edycję rdzenia (B-01 zniesione zakresowo); kontrakt solverowy spisany, czeka na zatwierdzenie ADR przed edycją NR (dowód niżej) | 1 |
 | D-05 | **IEC 61850** (logical nodes/GOOSE) + **estymacja stanu WLS** | §8C.8 | BRAK | 5 |
 | D-06 | Dobór uziemienia (Petersen/rezystor), kompensacja Q, CVC/Volt-VAR, IEC 60853 (cykliczna) | §8C.7 | ZWERYFIKOWAĆ zakres | 5 |
 | D-10 | `ncrfg_compliance/checker.py` `DYNAMIC_TEST_IDS` zwracają `no_module` (legacy, niepodpięte do API) | — | DO WYGASZENIA (zastąpione przez `ncrfg_ptpiree`) | niski |
@@ -70,6 +70,8 @@
 > - **D-01 (Arc Flash IEEE 1584-2018):** model bezpieczeństwa (ŚOI/granice/PPE). Poprawna implementacja wymaga **autorytatywnych tablic współczynników IEEE 1584-2018** (5 konfiguracji elektrod × 3 poziomy napięcia, korekcje obudowy). Implementacja „z pamięci" ryzykuje subtelnie błędne wartości, których sanity-bounds NIE wyłapią (przejdą jako wiarygodne, dadzą złe PPE) — dokładnie zagrożenie, przed którym ostrzega ZASADA. **Wymaga: tablic ze standardu + walidacji wobec przykładu z normy.**
 
 Rekomendacja: dla D-01/D-03 dostarczyć dane autorytatywne (tablice IEEE 1584-2018 / parametry sterowania falowników) albo świadomie zlecić wersję best-effort z jawnym oznaczeniem „do weryfikacji wobec normy". Do tego czasu — nie zmyślam fizyki bezpieczeństwa.
+
+**DOWÓD D-04 / ADR-011 (2026-05-29):** właściciel wybrał „Authorize frozen-core edit" — świadome, **zakresowe** zniesienie B-01 dla integracji ZIP w rozpływie mocy. Zgodnie z wybraną ścieżką („ADR for your approval, **then** extend") spisany pełny kontrakt solverowy: `docs/adr/ADR-011-zip-load-model-power-flow.md` (Status: **Proposed**). Kontrakt obejmuje: model wielomianowy P(V)/Q(V) (a+b+c=1), lokalizację współczynników w katalogu (Rule #10), integrację w NR (per-iteracja `p_spec(V)` + człon ZIP w Jakobianie J12/J22), **inwariant reduce-to-NR** (a=b=0,c=1 ⇒ wynik bajt-identyczny — gwarancja bezpieczeństwa rdzenia), white-box, determinizm, jawne odrzucenie ZIP w GS/FD (bez cichego pominięcia), wyłączenie P(f)/Q(f) ze statycznego rozpływu, brak zmiany Frozen Result API. Realizuje inwariant **Z-ZIP-04** (`SPEC_CHAPTER_07:1032`). Bramka: docs-guard OK. **Rdzeń NR NIETKNIĘTY — czekam na zatwierdzenie ADR przed edycją** (twardy przystanek B-01 zdjęty warunkowo, ale szczegóły kontraktu do akceptacji).
 
 ---
 
