@@ -7,13 +7,11 @@ import numpy as np
 from network_model.core.graph import NetworkGraph
 from network_model.solvers.power_flow_newton_internal import (
     build_initial_voltage,
-    build_power_spec,
     build_power_spec_v2,
     build_slack_island,
     build_ybus_pu,
     compute_branch_flows,
     compute_power_injections,
-    newton_raphson_solve,
     newton_raphson_solve_v2,
     validate_input,
 )
@@ -121,15 +119,19 @@ class PowerFlowNewtonSolver:
                     "theta_rad": float(np.angle(v0[idx])),
                 }
 
-        if pv_indices:
-            p_spec, q_spec, pv_setpoints, pv_q_limits = build_power_spec_v2(
-                slack_island_nodes, pf_input.base_mva, pf_input.pq, pf_input.pv
-            )
-            apply_zip_frequency(
-                p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz
-            )
-            for idx, u_pu in pv_setpoints.items():
-                v0[idx] = u_pu * np.exp(1j * np.angle(v0[idx]))
+        # ADR-011 §5a / ZASADA NR 3: a single NR physics path (v2). It handles
+        # the PQ-only case (empty PV) identically to the former v1 — verified
+        # byte-identical (np.array_equal voltages, equal iterations). The second
+        # NR implementation has been removed (no second truth in the core).
+        p_spec, q_spec, pv_setpoints, pv_q_limits = build_power_spec_v2(
+            slack_island_nodes, pf_input.base_mva, pf_input.pq, pf_input.pv
+        )
+        apply_zip_frequency(
+            p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz
+        )
+        for idx, u_pu in pv_setpoints.items():
+            v0[idx] = u_pu * np.exp(1j * np.angle(v0[idx]))
+        if pq_indices or pv_indices:
             (
                 v,
                 converged,
@@ -153,29 +155,12 @@ class PowerFlowNewtonSolver:
                 zip_table,
             )
         else:
-            p_spec, q_spec = build_power_spec(slack_island_nodes, pf_input.base_mva, pf_input.pq)
-            apply_zip_frequency(
-                p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz
-            )
+            v = v0
+            converged = True
+            iterations = 0
+            max_mismatch = 0.0
+            nr_trace = []
             pv_to_pq_switches = []
-            if pq_indices:
-                v, converged, iterations, max_mismatch, nr_trace = newton_raphson_solve(
-                    ybus_pu,
-                    slack_index,
-                    pq_indices,
-                    p_spec,
-                    q_spec,
-                    v0,
-                    options,
-                    node_index_to_id,
-                    zip_table,
-                )
-            else:
-                v = v0
-                converged = True
-                iterations = 0
-                max_mismatch = 0.0
-                nr_trace = []
 
         if not converged:
             iterations = int(options.max_iter)
