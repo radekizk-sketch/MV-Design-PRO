@@ -22,6 +22,7 @@ def test_advanced_solver_capability_registry_is_complete_and_real() -> None:
         "VOLTAGE_STABILITY",
         "RELIABILITY_CONTINGENCY",
         "EARTHING_SAFETY",
+        "NEUTRAL_EARTHING_DESIGN",
         "INSULATION_COORDINATION",
         "EARTH_FAULT_DETECTION",
         "TRANSIENT_TRV",
@@ -50,4 +51,4 @@ def test_advanced_solver_capability_contract_reports_full_support() -> None:
     assert contract["all_implemented"] is True
     assert contract["all_proof_supported"] is True
     assert contract["all_reportable"] is True
-    assert len(contract["capabilities"]) == 24
+    assert len(contract["capabilities"]) == 25

@@ -112,6 +112,8 @@ class V126AcademicSolver:
             result = self._reliability(model, trace)
         elif analysis_type == V126AnalysisType.EARTHING_SAFETY:
             result = self._earthing(model, trace)
+        elif analysis_type == V126AnalysisType.NEUTRAL_EARTHING_DESIGN:
+            result = self._neutral_earthing_design(model, trace)
         elif analysis_type == V126AnalysisType.INSULATION_COORDINATION:
             result = self._insulation(model, trace)
         elif analysis_type == V126AnalysisType.EARTH_FAULT_DETECTION:
@@ -1020,6 +1022,353 @@ class V126AcademicSolver:
             "u_step_allowable_v": _round(u_step_allow, 3),
             "safety_status": safety,
             "fault_clearing_time_s": data.fault_clearing_time_s,
+        }
+
+    # D-06a/b: PROJEKT UZIEMIENIA PUNKTU NEUTRALNEGO SIECI (dławik Petersena /
+    # rezystor uziemiający NER). Fizyka pierwszych zasad (NIE tablica) — kompensacja
+    # prądu pojemnościowego doziemienia i dobór rezystancji punktu neutralnego.
+    # Odrębne od _earthing() (IEEE 80 — siatka uziemiająca, napięcia rażenia).
+    # Źródło C0: B0 = b0_siemens_per_km × length_km galwanicznie połączonej sieci SN.
+    # Referencje (wzory pierwszych zasad, nie współczynniki tablicowe):
+    #   - W. Petersen, kompensacja rezonansowa: ωL = 1/(3ωC0) → L = 1/(3ω²C0).
+    #   - IEC 62271-203 / IEC 60071 / VDE praktyka sieci skompensowanych.
+    #   - Prąd pojemnościowy: Ic = 3·ω·C0·U_f = √3·ω·C0·U_l (tożsame, U_f = U_l/√3).
+    #   - Stopień rozstrojenia v = (I_L − I_C)/I_C; prąd resztkowy I_res = I_C·√(d²+v²).
+    #   - NER: R = U_f / I_ef; sprawdzenie cieplne I_ef²·R·t ≤ E_rating.
+    def _neutral_earthing_design(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
+        omega = 2.0 * math.pi * model.base_frequency_hz
+        params = model.parameters
+        # Typ uziemienia: jawny parametr; fallback do GroundingConfig.type z modelu.
+        scheme = str(
+            params.get("neutral_earthing_type")
+            or params.get("neutral_grounding")
+            or "petersen_coil"
+        )
+
+        # --- Krok 1: zsumuj pojemność doziemną C0 sieci galwanicznie połączonej. ---
+        # Tylko linie/kable z jawnym b0 (zero-sequence / line-to-earth). Element bez
+        # b0 → "dane niekompletne" (zakaz fabrykacji C0). Łączniki otwarte pomijane.
+        b0_total_s = 0.0
+        contributing: list[JsonDict] = []
+        missing_b0: list[str] = []
+        for branch in model.branches:
+            if branch.kind not in {"line_overhead", "cable"}:
+                continue
+            if getattr(branch, "is_open", False):
+                continue
+            b0_per_km = getattr(branch, "b0_siemens_per_km", None)
+            if b0_per_km is None:
+                missing_b0.append(branch.ref)
+                continue
+            b0_branch = float(b0_per_km) * branch.length_km
+            b0_total_s += b0_branch
+            contributing.append(
+                {
+                    "branch_ref": branch.ref,
+                    "kind": branch.kind,
+                    "length_km": branch.length_km,
+                    "b0_siemens_per_km": float(b0_per_km),
+                    "b0_total_siemens": _round(b0_branch, 12),
+                }
+            )
+
+        # Napięcie sieci (linia–linia) z najwyższego węzła SN modelu.
+        u_line_kv = max((bus.nominal_kv for bus in model.buses), default=0.0)
+        u_line_v = u_line_kv * 1000.0
+        u_phase_v = u_line_v / math.sqrt(3.0)
+
+        # Brak jakiejkolwiek pojemności doziemnej → C0 nie do policzenia (nie zgadujemy).
+        if b0_total_s <= 0.0 or u_line_kv <= 0.0:
+            reason = (
+                "Brak jawnej pojemności doziemnej B0 (b0_siemens_per_km) dla linii/kabli "
+                "sieci SN — C0 nieoznaczalne (zakaz fabrykacji)."
+                if b0_total_s <= 0.0
+                else "Brak napięcia znamionowego sieci (U_l) — projekt niewykonalny."
+            )
+            trace.add(
+                "neutral_earthing_no_c0",
+                "C0 = (1/ω)·Σ(b0_branch_total); Ic = √3·ω·C0·U_l",
+                {
+                    "branches_with_b0": len(contributing),
+                    "branches_missing_b0": missing_b0,
+                    "u_line_kv": u_line_kv,
+                },
+                reason,
+                {"status": "dane niekompletne"},
+                "Brak danych wejściowych (B0 lub U_l) — brak oszacowania zastępczego.",
+            )
+            return {
+                "status": "dane niekompletne",
+                "neutral_earthing_type": scheme,
+                "message_pl": reason,
+                "missing_fields": (["b0_siemens_per_km"] if b0_total_s <= 0.0 else ["nominal_kv"]),
+                "branches_missing_b0": missing_b0,
+                "sanity": _sanity_block([], has_inputs=False),
+            }
+
+        # C0 [F] z sumy susceptancji doziemnych: B0 = ω·C0 ⇒ C0 = B0/ω.
+        c0_farad = b0_total_s / omega
+        # Prąd pojemniczy doziemienia (1-fazowe doziemienie metaliczne): Ic = √3·ω·C0·U_l.
+        ic_a = math.sqrt(3.0) * omega * c0_farad * u_line_v
+        trace.add(
+            "neutral_earthing_capacitive_current",
+            "C0 = (1/ω)·Σ(b0·len);  Ic = 3·ω·C0·U_f = √3·ω·C0·U_l",
+            {
+                "ref": "Petersen resonant earthing; IEC 62271-203 / VDE practice",
+                "omega_rad_s": _round(omega, 6),
+                "b0_total_siemens": _round(b0_total_s, 12),
+                "u_line_kv": u_line_kv,
+                "branches_contributing": len(contributing),
+                "branches_missing_b0": missing_b0,
+            },
+            f"C0={_round(b0_total_s, 12)}/{_round(omega, 4)}; "
+            f"Ic=√3·{_round(omega, 4)}·{_round(c0_farad, 12)}·{u_line_v}",
+            {"c0_farad": _round(c0_farad, 12), "ic_a": _round(ic_a, 4)},
+            "S/(rad/s)=F; (rad/s)·F·V=A. U_f=U_l/√3 ⇒ 3ωC0U_f=√3ωC0U_l.",
+        )
+
+        if scheme == "resistor_grounded" or scheme == "resistor":
+            result = self._ner_design(model, trace, ic_a, u_phase_v)
+        else:
+            result = self._petersen_design(model, trace, c0_farad, ic_a, omega)
+        result["neutral_earthing_type"] = scheme
+        result["capacitive_earth_fault_current_a"] = _round(ic_a, 4)
+        result["c0_farad"] = _round(c0_farad, 12)
+        result["network_line_voltage_kv"] = u_line_kv
+        result["branches_missing_b0"] = missing_b0
+        result["branches_contributing"] = contributing
+        return result
+
+    def _petersen_design(
+        self,
+        model: V126AcademicInput,
+        trace: TraceBuilder,
+        c0_farad: float,
+        ic_a: float,
+        omega: float,
+    ) -> JsonDict:
+        params = model.parameters
+        # Rozstrojenie: jawny parametr (default 0.05 = ±5 %), NIE ukryta stała.
+        detuning = float(params.get("petersen_detuning", 0.05))
+        # Składowa rezystancyjna (tłumienie) prądu resztkowego d = I_R/I_C — jawny
+        # parametr, default 0.0 (gdy karta dławika nie podaje strat). Bez d>0 prąd
+        # resztkowy przy idealnym rezonansie = 0 (z modelu, nie zgadnięty).
+        damping_d = float(params.get("petersen_residual_damping", 0.0))
+
+        # Rezonans: ωL = 1/(3ωC0) ⇒ L = 1/(3·ω²·C0); X_L = ωL.
+        x_coil_ohm = 1.0 / (3.0 * omega * c0_farad)
+        l_coil_h = 1.0 / (3.0 * omega**2 * c0_farad)
+        # Prąd dławika w rezonansie kompensuje Ic: I_L = Ic.
+        i_coil_a = ic_a
+        trace.add(
+            "petersen_resonance_tuning",
+            "ωL = 1/(3ωC0)  ⇒  L = 1/(3·ω²·C0);  X_L = ωL;  I_L(rezonans)=Ic",
+            {
+                "ref": "W. Petersen, kompensacja rezonansowa (sieć skompensowana)",
+                "c0_farad": _round(c0_farad, 12),
+                "omega_rad_s": _round(omega, 6),
+                "ic_a": _round(ic_a, 4),
+            },
+            f"L=1/(3·{_round(omega, 4)}²·{_round(c0_farad, 12)}); "
+            f"X_L=1/(3·{_round(omega, 4)}·{_round(c0_farad, 12)})",
+            {
+                "l_coil_h": _round(l_coil_h, 8),
+                "x_coil_ohm": _round(x_coil_ohm, 4),
+                "i_coil_rating_a": _round(i_coil_a, 4),
+            },
+            "1/((rad/s)²·F)=H; 1/((rad/s)·F)=Ω; prąd dławika [A] = Ic [A].",
+        )
+
+        # Prąd resztkowy: stopień rozstrojenia v ⇒ I_res = Ic·√(d² + v²).
+        # W rezonansie (v=0): I_res = Ic·d (czysto rezystancyjny; =0 gdy d=0).
+        i_res_resonance_a = ic_a * damping_d
+        i_res_detuned_a = ic_a * math.sqrt(damping_d**2 + detuning**2)
+        trace.add(
+            "petersen_residual_current",
+            "v=(I_L−I_C)/I_C;  I_res = I_C·√(d² + v²)",
+            {
+                "ic_a": _round(ic_a, 4),
+                "detuning_v": detuning,
+                "residual_damping_d": damping_d,
+            },
+            f"I_res(rezonans)=Ic·{damping_d}; "
+            f"I_res(±{detuning})=Ic·√({damping_d}²+{detuning}²)",
+            {
+                "i_residual_resonance_a": _round(i_res_resonance_a, 6),
+                "i_residual_detuned_a": _round(i_res_detuned_a, 6),
+            },
+            "bezwymiarowe·A = A.",
+        )
+
+        # K-08: sanity-bounds — wartości skończone i nieujemne; rozstrojenie w [0,1).
+        sanity = _sanity_block(
+            [
+                (
+                    "l_coil_positive",
+                    _finite(l_coil_h) and l_coil_h > 0.0,
+                    "Indukcyjność dławika ≤ 0 lub nieskończona",
+                ),
+                (
+                    "x_coil_positive",
+                    _finite(x_coil_ohm) and x_coil_ohm > 0.0,
+                    "Reaktancja dławika ≤ 0 lub nieskończona",
+                ),
+                (
+                    "residual_le_ic",
+                    _finite(i_res_detuned_a) and 0.0 <= i_res_detuned_a <= ic_a + 1e-9,
+                    "Prąd resztkowy poza [0, Ic] (niefizyczny)",
+                ),
+                (
+                    "detuning_range",
+                    _finite(detuning) and 0.0 <= detuning < 1.0,
+                    "Rozstrojenie poza [0,1)",
+                ),
+            ],
+            has_inputs=True,
+        )
+        return {
+            "sanity": sanity,
+            "design_mode": "petersen_coil",
+            "coil_reactance_ohm": _round(x_coil_ohm, 4),
+            "coil_inductance_h": _round(l_coil_h, 8),
+            "coil_current_rating_a": _round(i_coil_a, 4),
+            "detuning_assumed": detuning,
+            "residual_damping_assumed": damping_d,
+            "residual_current_at_resonance_a": _round(i_res_resonance_a, 6),
+            "residual_current_at_detuning_a": _round(i_res_detuned_a, 6),
+            "tuning_status": (
+                "dostrojony" if i_res_detuned_a <= 0.1 * ic_a else "rozstrojony_poza_10pct"
+            ),
+        }
+
+    def _ner_design(
+        self,
+        model: V126AcademicInput,
+        trace: TraceBuilder,
+        ic_a: float,
+        u_phase_v: float,
+    ) -> JsonDict:
+        params = model.parameters
+        # Docelowy prąd doziemienia I_ef — jawny parametr projektowy (NIE stała).
+        target_raw = params.get("ner_target_earth_fault_current_a")
+        if target_raw is None:
+            reason = (
+                "Dobór rezystora NER wymaga docelowego prądu doziemienia I_ef "
+                "(ner_target_earth_fault_current_a) — parametr projektowy nie podany."
+            )
+            trace.add(
+                "ner_no_target",
+                "R ≈ U_f / I_ef",
+                {"u_phase_v": _round(u_phase_v, 4)},
+                reason,
+                {"status": "dane niekompletne"},
+                "Brak parametru projektowego I_ef — brak wartości zgadywanej.",
+            )
+            return {
+                "status": "dane niekompletne",
+                "design_mode": "resistor_grounded",
+                "message_pl": reason,
+                "missing_fields": ["ner_target_earth_fault_current_a"],
+                "sanity": _sanity_block([], has_inputs=False),
+            }
+        i_ef_target_a = float(target_raw)
+
+        # R = U_f / I_ef (rezystancja punktu neutralnego dominuje impedancję zerową).
+        r_ohm = u_phase_v / i_ef_target_a
+        # Wypadkowy prąd doziemienia: składowa rezystancyjna przez R w fazie z napięciem
+        # i składowa pojemnościowa Ic w kwadraturze: I_ef = √(I_R² + Ic²), I_R = U_f/R.
+        i_resistive_a = u_phase_v / r_ohm
+        i_ef_a = math.sqrt(i_resistive_a**2 + ic_a**2)
+        trace.add(
+            "ner_resistance_sizing",
+            "R = U_f / I_ef;  I_ef_wyp = √((U_f/R)² + Ic²)",
+            {
+                "ref": "Resistance-earthed neutral; IEC 60364 / VDE practice",
+                "u_phase_v": _round(u_phase_v, 4),
+                "i_ef_target_a": i_ef_target_a,
+                "ic_a": _round(ic_a, 4),
+            },
+            f"R={_round(u_phase_v, 4)}/{i_ef_target_a}; "
+            f"I_ef=√(({_round(u_phase_v, 4)}/{_round(r_ohm, 4)})²+{_round(ic_a, 4)}²)",
+            {"r_ohm": _round(r_ohm, 4), "i_ef_resultant_a": _round(i_ef_a, 4)},
+            "V/A=Ω; √(A²+A²)=A.",
+        )
+
+        # Sprawdzenie cieplne: energia I_ef²·R·t_clear ≤ znamionowa energia rezystora.
+        # t_clear: jawny czas wyłączenia (z nastaw/parametru). Brak → "dane niekompletne".
+        t_clear_raw = params.get("ner_clearing_time_s")
+        rating_raw = params.get("ner_energy_rating_j")
+        thermal: JsonDict
+        if t_clear_raw is None or rating_raw is None:
+            missing = [
+                name
+                for name, value in (
+                    ("ner_clearing_time_s", t_clear_raw),
+                    ("ner_energy_rating_j", rating_raw),
+                )
+                if value is None
+            ]
+            trace.add(
+                "ner_thermal_incomplete",
+                "E_dissipated = I_ef²·R·t_clear ≤ E_rating",
+                {"missing": missing},
+                "Brak czasu wyłączenia lub znamionowej energii rezystora.",
+                {"status": "dane niekompletne"},
+                "Sprawdzenie cieplne wymaga t_clear i E_rating — bez zgadywania.",
+            )
+            thermal = {
+                "status": "dane niekompletne",
+                "missing_fields": missing,
+            }
+        else:
+            t_clear_s = float(t_clear_raw)
+            e_rating_j = float(rating_raw)
+            e_dissipated_j = i_ef_a**2 * r_ohm * t_clear_s
+            thermal_ok = e_dissipated_j <= e_rating_j
+            trace.add(
+                "ner_thermal_withstand",
+                "E_dissipated = I_ef²·R·t_clear ≤ E_rating",
+                {
+                    "i_ef_a": _round(i_ef_a, 4),
+                    "r_ohm": _round(r_ohm, 4),
+                    "t_clear_s": t_clear_s,
+                    "e_rating_j": e_rating_j,
+                },
+                f"E={_round(i_ef_a, 4)}²·{_round(r_ohm, 4)}·{t_clear_s}",
+                {
+                    "e_dissipated_j": _round(e_dissipated_j, 4),
+                    "thermal_ok": thermal_ok,
+                },
+                "A²·Ω·s = W·s = J ≤ J.",
+            )
+            thermal = {
+                "status": "zgodny" if thermal_ok else "niezgodny",
+                "energy_dissipated_j": _round(e_dissipated_j, 4),
+                "energy_rating_j": e_rating_j,
+                "clearing_time_s": t_clear_s,
+                "thermal_ok": thermal_ok,
+            }
+
+        # K-08: sanity-bounds — R i I_ef skończone i dodatnie.
+        sanity = _sanity_block(
+            [
+                ("r_positive", _finite(r_ohm) and r_ohm > 0.0, "R ≤ 0 lub nieskończone"),
+                (
+                    "i_ef_positive",
+                    _finite(i_ef_a) and i_ef_a > 0.0,
+                    "I_ef ≤ 0 lub nieskończone",
+                ),
+            ],
+            has_inputs=True,
+        )
+        return {
+            "sanity": sanity,
+            "design_mode": "resistor_grounded",
+            "resistor_ohm": _round(r_ohm, 4),
+            "target_earth_fault_current_a": i_ef_target_a,
+            "resultant_earth_fault_current_a": _round(i_ef_a, 4),
+            "resistive_component_a": _round(i_resistive_a, 4),
+            "thermal_check": thermal,
         }
 
     def _insulation(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:

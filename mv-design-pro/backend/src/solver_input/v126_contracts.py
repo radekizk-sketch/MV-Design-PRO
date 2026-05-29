@@ -21,6 +21,7 @@ class V126AnalysisType(str, Enum):
     OPF_LOSS_LCC = "opf_loss_lcc"
     BENCHMARK_VALIDATION = "benchmark_validation"
     UNCERTAINTY_SENSITIVITY = "uncertainty_sensitivity"
+    NEUTRAL_EARTHING_DESIGN = "neutral_earthing_design"
 
 
 class V126BusInput(BaseModel):
@@ -45,6 +46,11 @@ class V126BranchInput(BaseModel):
     r_ohm_per_km: float = Field(default=0.18, ge=0)
     x_ohm_per_km: float = Field(default=0.12, ge=0)
     b_siemens_per_km: float = Field(default=0.0, ge=0)
+    # Zero-sequence (line-to-earth) shunt susceptance B0 = ω·C0 [S/km]. Source of the
+    # network line-to-earth capacitance for the neutral-earthing design (Petersen/NER).
+    # None when the catalog/model has no zero-sequence shunt for this branch — surfaced
+    # as "dane niekompletne" (no fabrication of C0).
+    b0_siemens_per_km: float | None = Field(default=None)
     ampacity_a: float = Field(default=300.0, gt=0)
     failure_rate_per_year: float = Field(default=0.015, ge=0)
     mttr_h: float = Field(default=12.0, ge=0)
@@ -239,6 +245,7 @@ def build_v126_input_from_enm(
         if branch.type in {"line_overhead", "cable"}:
             length_km = float(getattr(branch, "length_km", 1.0))
             rating = getattr(branch, "rating", None)
+            b0_per_km = getattr(branch, "b0_siemens_per_km", None)
             branches.append(
                 V126BranchInput(
                     ref=branch.ref_id,
@@ -249,6 +256,7 @@ def build_v126_input_from_enm(
                     r_ohm_per_km=float(getattr(branch, "r_ohm_per_km", 0.18)),
                     x_ohm_per_km=float(getattr(branch, "x_ohm_per_km", 0.12)),
                     b_siemens_per_km=float(getattr(branch, "b_siemens_per_km", 0.0) or 0.0),
+                    b0_siemens_per_km=(float(b0_per_km) if b0_per_km is not None else None),
                     ampacity_a=float(getattr(rating, "in_a", None) or 300.0),
                     failure_rate_per_year=(0.08 if branch.type == "line_overhead" else 0.015)
                     * length_km,
