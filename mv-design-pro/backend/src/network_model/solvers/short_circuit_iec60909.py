@@ -330,12 +330,7 @@ class ShortCircuitIEC60909Solver:
             inputs=z_inputs,
             substitution=substitution,
             substitution_latex=substitution,
-            result={
-                "z_equiv_ohm": z_equiv,
-                "r_ohm": z_equiv.real,
-                "x_ohm": z_equiv.imag,
-                "z_equiv_abs_ohm": z_equiv_abs,
-            },
+            result={"z_equiv_ohm": z_equiv},
         )
 
         tracer.add(
