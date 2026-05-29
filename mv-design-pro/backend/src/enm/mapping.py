@@ -25,6 +25,11 @@ from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
 from network_model.core.ybus import AdmittanceMatrixBuilder
+from network_model.solvers.power_flow_zip import (
+    ZipCoeffs,
+    aggregate_zip,
+    zip_coeffs_from_materialized_params,
+)
 
 from .models import (
     Cable,
@@ -177,9 +182,20 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
     # Collect P/Q per bus from loads and generators
     bus_p: dict[str, float] = {}
     bus_q: dict[str, float] = {}
+    # ADR-011 (Z-ZIP-04): per-bus ZIP components for power-weighted aggregation.
+    # Each entry is (P0_mw, Q0_mw, coeffs|None); coeffs comes from the load's
+    # catalog-materialized params (None => constant power, no change).
+    bus_zip_components: dict[str, list[tuple[float, float, ZipCoeffs | None]]] = {}
     for load in enm.loads:
         bus_p[load.bus_ref] = bus_p.get(load.bus_ref, 0.0) - load.p_mw
         bus_q[load.bus_ref] = bus_q.get(load.bus_ref, 0.0) - load.q_mvar
+        bus_zip_components.setdefault(load.bus_ref, []).append(
+            (
+                load.p_mw,
+                load.q_mvar,
+                zip_coeffs_from_materialized_params(load.materialized_params),
+            )
+        )
     for gen in enm.generators:
         bus_p[gen.bus_ref] = bus_p.get(gen.bus_ref, 0.0) + gen.p_mw
         bus_q[gen.bus_ref] = bus_q.get(gen.bus_ref, 0.0) + (gen.q_mvar or 0.0)
@@ -195,6 +211,9 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
         is_slack = bus.ref_id in source_bus_refs
         p = bus_p.get(bus.ref_id, 0.0)
         q = bus_q.get(bus.ref_id, 0.0)
+        # ADR-011 (Z-ZIP-04): power-weighted aggregation of the bus loads into a
+        # single ZipCoeffs. Constant-power buses aggregate to None (unchanged).
+        bus_zip = aggregate_zip(bus_zip_components.get(bus.ref_id, []))
 
         if is_slack:
             node = Node(
@@ -206,6 +225,7 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 voltage_angle=0.0,
                 active_power=p if p != 0.0 else None,
                 reactive_power=q if q != 0.0 else None,
+                zip_coeffs=bus_zip,
             )
         else:
             node = Node(
@@ -215,6 +235,7 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 voltage_level=bus.voltage_kv,
                 active_power=p,
                 reactive_power=q,
+                zip_coeffs=bus_zip,
             )
         graph.add_node(node)
 

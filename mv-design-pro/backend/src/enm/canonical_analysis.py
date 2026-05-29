@@ -483,6 +483,17 @@ def _load_graph(run: CanonicalRun):
     return map_enm_to_network_graph(enm)
 
 
+def _study_frequency_hz(run: CanonicalRun) -> float:
+    """ADR-011 (Z-ZIP-04): system frequency for the study, from the ENM header
+    defaults (ENMDefaults.frequency_hz). Falls back to 50.0 Hz."""
+    snapshot = run.snapshot or {}
+    defaults = (snapshot.get("header") or {}).get("defaults") or {}
+    try:
+        return float(defaults.get("frequency_hz", 50.0))
+    except (TypeError, ValueError):
+        return 50.0
+
+
 def _phase_value_from_options(
     options: dict[str, Any],
     key: str,
@@ -1122,6 +1133,9 @@ def _execute_power_flow(run: CanonicalRun) -> None:
             node_id=node_id,
             p_mw=float(node.active_power or 0.0),
             q_mvar=float(node.reactive_power or 0.0),
+            # ADR-011 (Z-ZIP-04): aggregated ZIP coefficients for the bus (None
+            # => constant power). Solver reduces to classic PQ when None.
+            zip_coeffs=node.zip_coeffs,
         )
         for node_id, node in sorted(graph.nodes.items())
         if node.node_type == NodeType.PQ and node_id != slack_node_id
@@ -1151,6 +1165,9 @@ def _execute_power_flow(run: CanonicalRun) -> None:
         slack=SlackSpec(node_id=slack_node_id, u_pu=1.0, angle_rad=0.0),
         pq=pq_specs,
         options=options,
+        # ADR-011 (Z-ZIP-04): study frequency from the ENM header defaults
+        # (drives the P(f)/Q(f) factor; at f0 the factor is 1.0).
+        base_frequency_hz=_study_frequency_hz(run),
         audit2_extensions=audit2_extensions,
     )
     requested_solver_method = _normalize_power_flow_solver_method(

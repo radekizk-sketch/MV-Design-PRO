@@ -10,6 +10,7 @@ from analysis.power_flow.types import (
     PVSpec,
     SlackSpec,
 )
+from network_model.solvers.power_flow_zip import zip_coeffs_from_materialized_params
 
 
 def _coerce_slack_spec(slack: SlackSpec | dict[str, Any]) -> SlackSpec:
@@ -28,11 +29,18 @@ def _coerce_pq_specs(pq_specs: Iterable[PQSpec | dict[str, Any]] | None) -> list
         if isinstance(spec, PQSpec):
             items.append(spec)
             continue
+        # ADR-011 (Z-ZIP-04): read ZIP coefficients from a nested "zip_coeffs"
+        # dict if present, else from flat ZIP params (None => constant power).
+        nested = spec.get("zip_coeffs")
+        zip_coeffs = zip_coeffs_from_materialized_params(
+            nested if isinstance(nested, dict) else spec
+        )
         items.append(
             PQSpec(
                 node_id=str(spec.get("node_id") or ""),
                 p_mw=float(spec.get("p_mw", 0.0)),
                 q_mvar=float(spec.get("q_mvar", 0.0)),
+                zip_coeffs=zip_coeffs,
             )
         )
     return items

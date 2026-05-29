@@ -33,6 +33,7 @@ from network_model.catalog.types import ConverterKind
 from network_model.core import InverterSource, NetworkGraph, create_network_snapshot
 from network_model.core.branch import Branch, LineBranch, TransformerBranch
 from network_model.solvers import ShortCircuitIEC60909Solver, ShortCircuitType
+from network_model.solvers.power_flow_zip import zip_coeffs_from_materialized_params
 from network_model.validation import NetworkValidator as ModelNetworkValidator
 from network_model.validation import Severity as ModelSeverity
 
@@ -595,6 +596,12 @@ class AnalysisRunService:
                 node_id=str(item.get("node_id")),
                 p_mw=float(item.get("p_mw", 0.0)),
                 q_mvar=float(item.get("q_mvar", 0.0)),
+                # ADR-011 (Z-ZIP-04): read ZIP coefficients from a nested
+                # "zip_coeffs" dict if present, else from flat ZIP params on the
+                # item (None => constant power, no change).
+                zip_coeffs=zip_coeffs_from_materialized_params(
+                    item.get("zip_coeffs") if isinstance(item.get("zip_coeffs"), dict) else item
+                ),
             )
             for item in snapshot.get("pq", [])
         ]

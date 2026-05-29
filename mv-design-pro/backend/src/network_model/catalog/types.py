@@ -23,10 +23,10 @@ Usage:
     )
 """
 
+import unicodedata
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
-import unicodedata
 from uuid import uuid4
 
 # =============================================================================
@@ -522,10 +522,7 @@ class CableType:
             and self.return_conductor_cross_section_mm2 is not None
             and self.return_conductor_cross_section_mm2 > 0
         ):
-            return (
-                self.return_conductor_jth_1s_a_per_mm2
-                * self.return_conductor_cross_section_mm2
-            )
+            return self.return_conductor_jth_1s_a_per_mm2 * self.return_conductor_cross_section_mm2
         return None
 
     def to_dict(self) -> dict[str, Any]:
@@ -1278,13 +1275,17 @@ class PtpireeGeneratorCertificate:
             wipwc_version=str(data.get("wipwc_version", "")),
             ppm_scope=str(data.get("ppm_scope", "")),
             firmware_version=(
-                str(data.get("firmware_version")) if data.get("firmware_version") is not None else None
+                str(data.get("firmware_version"))
+                if data.get("firmware_version") is not None
+                else None
             ),
             source_url=str(
                 data.get("source_url") or "https://ptpiree.pl/kodeksy-sieci/wykaz-certyfikatow/"
             ),
             publication_date=(
-                str(data.get("publication_date")) if data.get("publication_date") is not None else None
+                str(data.get("publication_date"))
+                if data.get("publication_date") is not None
+                else None
             ),
             accepted_from=(
                 str(data.get("accepted_from")) if data.get("accepted_from") is not None else None
@@ -1616,6 +1617,14 @@ class LoadType:
         cos_phi_mode: Power factor mode ("IND", "POJ", "BRAK").
         profile_id: Reference to load profile (optional).
         manufacturer: Manufacturer/source (optional).
+        a_p, b_p, c_p: ZIP voltage shares for P (Z/I/P), sum to 1 (ADR-011).
+        a_q, b_q, c_q: ZIP voltage shares for Q (Z/I/P), sum to 1 (ADR-011).
+        v0_pu: ZIP reference voltage [pu].
+        k_pf, k_qf: linear frequency sensitivities for P/Q (ADR-011).
+        f0_hz: ZIP reference frequency [Hz].
+
+    ZIP defaults are pure constant power (a=b=0, c=1, k=0), so published load
+    types behave exactly as before unless overridden (reduce-to-NR invariant).
     """
 
     id: str
@@ -1627,6 +1636,18 @@ class LoadType:
     cos_phi_mode: str = "IND"
     profile_id: str | None = None
     manufacturer: str | None = None
+    # ADR-011 (Z-ZIP-04): voltage- and frequency-dependent load coefficients.
+    # Defaults = constant power, frequency-independent (no change for PQ loads).
+    a_p: float = 0.0
+    b_p: float = 0.0
+    c_p: float = 1.0
+    a_q: float = 0.0
+    b_q: float = 0.0
+    c_q: float = 1.0
+    v0_pu: float = 1.0
+    k_pf: float = 0.0
+    k_qf: float = 0.0
+    f0_hz: float = 50.0
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog obciazen MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -1644,6 +1665,16 @@ class LoadType:
             "cos_phi_mode": self.cos_phi_mode,
             "profile_id": self.profile_id,
             "manufacturer": self.manufacturer,
+            "a_p": self.a_p,
+            "b_p": self.b_p,
+            "c_p": self.c_p,
+            "a_q": self.a_q,
+            "b_q": self.b_q,
+            "c_q": self.c_q,
+            "v0_pu": self.v0_pu,
+            "k_pf": self.k_pf,
+            "k_qf": self.k_qf,
+            "f0_hz": self.f0_hz,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1665,6 +1696,16 @@ class LoadType:
             cos_phi_mode=str(data.get("cos_phi_mode", "IND")),
             profile_id=data.get("profile_id"),
             manufacturer=data.get("manufacturer"),
+            a_p=float(data.get("a_p", 0.0)),
+            b_p=float(data.get("b_p", 0.0)),
+            c_p=float(data.get("c_p", 1.0)),
+            a_q=float(data.get("a_q", 0.0)),
+            b_q=float(data.get("b_q", 0.0)),
+            c_q=float(data.get("c_q", 1.0)),
+            v0_pu=float(data.get("v0_pu", 1.0)),
+            k_pf=float(data.get("k_pf", 0.0)),
+            k_qf=float(data.get("k_qf", 0.0)),
+            f0_hz=float(data.get("f0_hz", 50.0)),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog obciazen MV-DESIGN-PRO / profile referencyjne",
@@ -2413,7 +2454,24 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
     ),
     CatalogNamespace.OBCIAZENIE.value: MaterializationContract(
         namespace=CatalogNamespace.OBCIAZENIE.value,
-        solver_fields=("p_kw", "q_kvar", "model"),
+        # ADR-011 (Z-ZIP-04): ZIP + frequency coefficients materialize into
+        # Load.materialized_params. Defaults are constant power, so existing
+        # published load types remain byte-identical (reduce-to-NR).
+        solver_fields=(
+            "p_kw",
+            "q_kvar",
+            "model",
+            "a_p",
+            "b_p",
+            "c_p",
+            "a_q",
+            "b_q",
+            "c_q",
+            "v0_pu",
+            "k_pf",
+            "k_qf",
+            "f0_hz",
+        ),
         ui_fields=(
             ("p_kw", "P [kW]", "kW"),
             ("q_kvar", "Q [kvar]", "kvar"),

@@ -6,10 +6,15 @@ węzeł w modelu sieci elektroenergetycznej używanym w obliczeniach
 rozpływu mocy.
 """
 
+from __future__ import annotations
+
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from network_model.solvers.power_flow_zip import ZipCoeffs
 
 
 class NodeType(Enum):
@@ -58,6 +63,11 @@ class Node:
     voltage_angle: float | None = field(default=None)
     active_power: float | None = field(default=None)
     reactive_power: float | None = field(default=None)
+    # ADR-011 (Z-ZIP-04): aggregated voltage-/frequency-dependent (ZIP) load
+    # coefficients for this bus. None => classic constant-power PQ (no change).
+    # Computed by map_enm_to_network_graph from per-load materialized_params;
+    # not serialized (the canonical path rebuilds the graph from the ENM).
+    zip_coeffs: ZipCoeffs | None = field(default=None)
 
     def __post_init__(self) -> None:
         """
@@ -200,7 +210,7 @@ class Node:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Node":
+    def from_dict(cls, data: dict[str, Any]) -> Node:
         """
         Tworzy obiekt węzła ze słownika.
 

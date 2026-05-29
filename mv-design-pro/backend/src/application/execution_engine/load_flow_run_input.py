@@ -6,6 +6,7 @@ with deterministic canonical hashing.
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 from dataclasses import dataclass, field
@@ -21,6 +22,7 @@ from network_model.solvers.power_flow_types import (
     PVSpec,
     SlackSpec,
 )
+from network_model.solvers.power_flow_zip import ZipCoeffs
 
 
 @dataclass(frozen=True)
@@ -47,6 +49,9 @@ class LoadFlowLoadInput:
     node_id: str
     p_mw: float
     q_mvar: float
+    # ADR-011 (Z-ZIP-04): optional voltage-/frequency-dependent (ZIP) load
+    # coefficients. None => classic constant-power PQ (reduce-to-NR).
+    zip_coeffs: ZipCoeffs | None = None
 
 
 @dataclass(frozen=True)
@@ -106,7 +111,19 @@ class LoadFlowRunInput:
                 for b in self.branches
             ],
             "loads": [
-                {"node_id": ld.node_id, "p_mw": ld.p_mw, "q_mvar": ld.q_mvar} for ld in self.loads
+                {
+                    "node_id": ld.node_id,
+                    "p_mw": ld.p_mw,
+                    "q_mvar": ld.q_mvar,
+                    # ADR-011: only emit ZIP when present so constant-power
+                    # loads keep their existing canonical hash byte-identical.
+                    **(
+                        {"zip_coeffs": dataclasses.asdict(ld.zip_coeffs)}
+                        if ld.zip_coeffs is not None
+                        else {}
+                    ),
+                }
+                for ld in self.loads
             ],
             "generators": [
                 {
@@ -172,7 +189,15 @@ class LoadFlowRunInput:
                 u_pu=self.slack_u_pu,
                 angle_rad=self.slack_angle_rad,
             ),
-            pq=[PQSpec(node_id=x.node_id, p_mw=x.p_mw, q_mvar=x.q_mvar) for x in self.loads],
+            pq=[
+                PQSpec(
+                    node_id=x.node_id,
+                    p_mw=x.p_mw,
+                    q_mvar=x.q_mvar,
+                    zip_coeffs=x.zip_coeffs,
+                )
+                for x in self.loads
+            ],
             pv=[
                 PVSpec(
                     node_id=g.node_id,

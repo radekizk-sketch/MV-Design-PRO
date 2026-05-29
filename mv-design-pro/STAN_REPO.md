@@ -2,7 +2,9 @@
 
 > **TO JEST PIERWSZE CZYTANIE DLA KAŻDEGO AGENTA.** Zanim sięgniesz po `PROMPT_MV_DESIGN_PRO_PRZEBUDOWA.md` (kanon docelowy), przeczytaj ten plik — mówi, co NAPRAWDĘ jest w repo i jaki jest RZECZYWISTY dług. Kanon mówi „co znaczy skończone"; ten rejestr mówi „gdzie jesteśmy". **Repo > specy > ten rejestr** (gdy rejestr jest nieaktualny, prawdą jest świeży skan repo wg §5.0). Dla zadań masowych/równoległych — orkiestracja wg `ORKIESTRACJA_AGENTOW.md` (workflow + swarm), z barierami B-01…B-05.
 
-**Ostatnia aktualizacja:** 2026-05-28 · **Gałąź:** `claude/zealous-bardeen-xrqtp` · **Poziom repo:** domknięcie V12.6 (PLANS.md v5.1)
+> **ZASADA NR 3 (nadrzędna): NIC NA POTEM.** Wykryte = naprawione natychmiast, w tej samej pracy. Zakaz „follow-on" / „osobny przebieg" / „bounded increment" / „dług porządkowy odłożony" / jawnego błędu zamiast funkcji / okrajania zakresu. Dług architektoniczny wykryty przy okazji (np. dwie ścieżki NR tej samej fizyki) → naprawiony od razu. Rozmiar → orkiestracja teraz, nie odroczenie.
+
+**Ostatnia aktualizacja:** 2026-05-29 · **Gałąź:** `claude/zealous-bardeen-xrqtp` · **Poziom repo:** domknięcie V12.6 (PLANS.md v5.1)
 **Cykl życia:** aktualizowany KAŻDĄ sesją. Każda zmiana stanu kryterium / długu → wpis tutaj.
 
 ---
@@ -42,7 +44,7 @@
 | D-01 | **Arc Flash** — energia incydentu IEEE 1584-2018, granice, ŚOI; IAC IEC 62271-200 jako obliczenie | K-25, §8C.1 | BRAK — **wymaga autorytatywnych tablic IEEE 1584-2018** (patrz ustalenie niżej) | 3 |
 | D-02 | **CIM / CGMES** (IEC 61970/61968) import-eksport | K-30, §8C.8 | BRAK | 4 |
 | D-03 | **SCR/WSCR per PCC** (✔ część) + stabilność impedancyjna (Nyquist) + **SSCI** | K-30, §8C.4 | CZĘŚCIOWO (SCR/WSCR done; skan impedancji sieci Z(f)+rezonanse JEST w `_power_quality`; brakuje sprzężenia falownik↔sieć — **wymaga modelu impedancji małosygnałowej falownika**, patrz ustalenie niżej) | 2 |
-| D-04 | **Jawny model obciążeń ZIP** P(U)/Q(U)/P(f)/Q(f) | K-29, §8C.5 | **ADR-011 PROPOSED** — właściciel autoryzował edycję rdzenia (B-01 zniesione zakresowo); kontrakt solverowy spisany, czeka na zatwierdzenie ADR przed edycją NR (dowód niżej) | 1 |
+| D-04 | **Pełny model ZIP + P(f)/Q(f) we WSZYSTKICH solverach** (NR v1+v2, GS, FD) + pełne wpięcie ENM→katalog→solver (7+ builderów PQSpec) + **scalenie dwóch ścieżek NR** (ZASADA NR 3 — natychmiast) | K-29, §8C.5 | **W TOKU** — ZIP+P(f) wdrożone we wszystkich 3 solverach (reduce-to-NR bajt-identyczny, parytet NR/GS/FD), wpięcie ENM→katalog→solver kompletne; ADR-011 przepisane na pełny zakres; **scalenie ścieżek NR — w tej pracy** (dowód niżej) | wysoki |
 | D-05 | **IEC 61850** (logical nodes/GOOSE) + **estymacja stanu WLS** | §8C.8 | BRAK | 5 |
 | D-06 | Dobór uziemienia (Petersen/rezystor), kompensacja Q, CVC/Volt-VAR, IEC 60853 (cykliczna) | §8C.7 | ZWERYFIKOWAĆ zakres | 5 |
 | D-10 | `ncrfg_compliance/checker.py` `DYNAMIC_TEST_IDS` zwracają `no_module` (legacy, niepodpięte do API) | — | DO WYGASZENIA (zastąpione przez `ncrfg_ptpiree`) | niski |
@@ -71,7 +73,14 @@
 
 Rekomendacja: dla D-01/D-03 dostarczyć dane autorytatywne (tablice IEEE 1584-2018 / parametry sterowania falowników) albo świadomie zlecić wersję best-effort z jawnym oznaczeniem „do weryfikacji wobec normy". Do tego czasu — nie zmyślam fizyki bezpieczeństwa.
 
-**DOWÓD D-04 / ADR-011 (2026-05-29):** właściciel wybrał „Authorize frozen-core edit" — świadome, **zakresowe** zniesienie B-01 dla integracji ZIP w rozpływie mocy. Zgodnie z wybraną ścieżką („ADR for your approval, **then** extend") spisany pełny kontrakt solverowy: `docs/adr/ADR-011-zip-load-model-power-flow.md` (Status: **Proposed**). Kontrakt obejmuje: model wielomianowy P(V)/Q(V) (a+b+c=1), lokalizację współczynników w katalogu (Rule #10), integrację w NR (per-iteracja `p_spec(V)` + człon ZIP w Jakobianie J12/J22), **inwariant reduce-to-NR** (a=b=0,c=1 ⇒ wynik bajt-identyczny — gwarancja bezpieczeństwa rdzenia), white-box, determinizm, jawne odrzucenie ZIP w GS/FD (bez cichego pominięcia), wyłączenie P(f)/Q(f) ze statycznego rozpływu, brak zmiany Frozen Result API. Realizuje inwariant **Z-ZIP-04** (`SPEC_CHAPTER_07:1032`). Bramka: docs-guard OK. **Rdzeń NR NIETKNIĘTY — czekam na zatwierdzenie ADR przed edycją** (twardy przystanek B-01 zdjęty warunkowo, ale szczegóły kontraktu do akceptacji).
+**DOWÓD D-04 / ADR-011 (2026-05-29):** właściciel autoryzował edycję rdzenia (B-01, zakresowo) i **pełny zakres** (ZASADA NR 3 — bez „GS/FD odrzucają", bez „P(f) poza zakresem"). ADR-011 **przepisane na pełny zakres** (Status: Accepted). Wdrożone i udowodnione:
+> - **Model:** wielomian ZIP P(V)/Q(V) (a+b+c=1) + liniowa zależność częstotliwościowa `1+k·(f−f0)/f0`; współczynniki z katalogu (`LoadType` + `MaterializationContract.solver_fields`), Rule #10. `f` = wejście studium (`PowerFlowInput.base_frequency_hz` z `ENMDefaults.frequency_hz`).
+> - **NR v1+v2:** `p_spec/q_spec` per iteracja z |V| + człon ZIP w Jakobianie J12/J22 (konwencja zweryfikowana w kodzie: aktualizacja `v_mag+=ΔV` ⇒ J12=∂P/∂V czysta). Częstotliwość = jednorazowe skalowanie bazy. Commit b7f60c8.
+> - **GS i FD liczą ZIP** (nie odrzucają): GS — `S_i(|V|)` per przejście; FD — efektywny spec w mismatchu, B′/B″ stałe. Commit 72d41d7.
+> - **Parytet NR/GS/FD** na const-Z: |V_B|=0.980203747 (9 m.dz.); const-Z mniej obciąża niż const-P we wszystkich; P(f)@49Hz parytet. `test_power_flow_zip_solver_parity.py`.
+> - **reduce-to-NR bajt-identyczny** per solver (a=b=0,c=1,f=f0): dVmax=0, slack P identyczny; 80+ testów GS/FD/parity bez zmian; `test_power_flow_zip.py` (14).
+> - **Pełne wpięcie ENM→katalog→Node(agregacja ważona mocą)→PQSpec** we wszystkich builderach obciążeń (canonical_analysis, load_flow_run_input, network_wizard, analysis_run, power_flow_input_builder); setpointy inwerter/konwerter = generacja, ZIP nie dotyczy. E2E: ZIP load z katalogu zmienia napięcie na ścieżce kanonicznej. 633 testy enm+PF zielone; guardy katalog/arch/binding OK.
+> - **POZOSTAJE W TEJ PRACY (ZASADA NR 3):** scalenie dwóch ścieżek NR (`newton_raphson_solve` v1 + `_v2`) — jedna fizyka, reduce-to-NR jako bramka; odświeżenie `solver_hashes.json` (autoryzowana zmiana rdzenia). Realizuje **Z-ZIP-04** (`SPEC_CHAPTER_07:1032`).
 
 ---
 

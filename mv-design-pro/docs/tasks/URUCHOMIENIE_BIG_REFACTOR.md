@@ -16,6 +16,7 @@ Na **torze backendowym i integralności wartości** (wszystko, co ma obiektywne 
 - **Big refactor dozwolony** w obszarach niezamrożonych: warstwa interpretacji wyników, frontend (usuwanie drugiej prawdy), testy, sanity-bounds, nowe solvery.
 - **Użyj pełnej mocy orkiestracji** (`ORKIESTRACJA_AGENTOW.md`): `/effort ultracode` lub `workflow` dla zadań masowych/równoległych (audyt, walidacja wielu solverów, dług wielopozycyjny); swarm subagentów wg §3 z barierami B-01…B-05. Recenzja adwersarialna PRZED scaleniem (B-04).
 - **Pętla jakości sam-na-sam:** implementuj → testuj → sanity-bounds → recenzent-norm → scal. Iteruj aż kryterium spełnione, nie aż „wygląda gotowo".
+- **ZASADA NR 3 — NIC NA POTEM (egzekwowana bezwzględnie):** wykryte = naprawione w tej samej pracy. Zakaz „follow-on" / „osobny przebieg" / „bounded increment" / „dług porządkowy odłożony" / jawnego błędu (`NotSupportedError`) zamiast funkcji / okrajania zakresu. Dług architektoniczny wykryty przy okazji (np. dwie ścieżki NR tej samej fizyki) → naprawiasz od razu. Rozmiar/przekrojowość → orkiestracja teraz. Jeśli piszesz „później/sekwencyjnie/poza zakresem" — to sygnał, że odkładasz: zatrzymaj się i zrób to teraz.
 
 ## 3. DWA TWARDE PRZYSTANKI (jedyne miejsca, gdzie się zatrzymujesz)
 

@@ -34,6 +34,7 @@ from network_model.catalog import CatalogRepository
 from network_model.catalog.types import ConverterKind
 from network_model.core import NetworkGraph
 from network_model.core.branch import Branch, LineBranch, TransformerBranch
+from network_model.solvers.power_flow_zip import zip_coeffs_from_materialized_params
 
 from .dtos import (
     BranchPayload,
@@ -1003,11 +1004,14 @@ class NetworkWizardService:
             if not load.get("in_service", True):
                 continue
             payload = load.get("payload", {})
+            # ADR-011 (Z-ZIP-04): build ZIP coefficients from the load payload
+            # if it carries them (None => constant power, no change).
             pq_specs.append(
                 PQSpec(
                     node_id=str(load["node_id"]),
                     p_mw=float(payload.get("p_mw", 0.0)),
                     q_mvar=float(payload.get("q_mvar", 0.0)),
+                    zip_coeffs=zip_coeffs_from_materialized_params(payload),
                 )
             )
 

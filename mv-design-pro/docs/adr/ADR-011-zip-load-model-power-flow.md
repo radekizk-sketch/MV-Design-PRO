@@ -67,6 +67,17 @@ typie katalogowym `LoadType` (`catalog/types.py`), eksponowane przez
 - **FD:** `p_spec/q_spec` przeliczane w mismatchu; macierze B′/B″ stałe (z `ybus.imag`,
   niezależne od obciążenia) — natura FD zachowana.
 
+### 5a. Scalenie dwóch ścieżek NR (ZASADA NR 3 — w tej samej pracy)
+
+`newton_raphson_solve` (v1, PQ-only) i `newton_raphson_solve_v2` (z PV + przełączaniem
+PV→PQ) to **dwie implementacje tej samej fizyki NR** → ryzyko drugiej prawdy w rdzeniu
+(błąd naprawiony w jednej, nie w drugiej). v2 jest przypadkiem ogólnym (przy braku PV
+redukuje się do v1). **Scalamy do jednej ścieżki fizyki** w tej samej pracy co ZIP —
+nie odkładamy. Bramka: **reduce-to-NR bajt-identyczny** — przepuszczenie przypadku
+PQ-only przez zunifikowaną ścieżkę musi dać identyczne wyniki i ślad jak obecne v1
+(brak cichej regresji w węzłach PV). Po scaleniu: jeden builder Jakobianu, jeden rdzeń
+iteracji; duplikat usunięty.
+
 ### 6. INWARIANT reduce-to-NR (bramka bezpieczeństwa, per solver)
 
 Przy `a=b=0, c=1, f=f0`: czynnik napięciowy=1, czynnik częstotliwościowy=1, pochodna
