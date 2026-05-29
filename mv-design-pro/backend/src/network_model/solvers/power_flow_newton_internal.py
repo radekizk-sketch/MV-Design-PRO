@@ -502,6 +502,15 @@ def newton_raphson_solve(
                     trace_entry["mismatch_per_bus"] = mismatch_per_bus
                 # P20a: Final state
                 trace_entry["state_next"] = _build_state_dict(v, node_index_to_id)
+                # ADR-011: converged ZIP injections (computed at the converged |V|)
+                if zip_table:
+                    trace_entry["zip_loads"] = {
+                        node_index_to_id.get(z_idx, str(z_idx)): {
+                            "p_spec_pu": float(p_spec_eff[z_idx]),
+                            "q_spec_pu": float(q_spec_eff[z_idx]),
+                        }
+                        for z_idx in sorted(zip_table)
+                    }
             trace.append(trace_entry)
             break
 
@@ -757,6 +766,14 @@ def newton_raphson_solve_v2(
                 if mismatch_per_bus:
                     trace_entry["mismatch_per_bus"] = mismatch_per_bus
                 trace_entry["state_next"] = _build_state_dict(v, node_index_to_id)
+                if zip_table:
+                    trace_entry["zip_loads"] = {
+                        node_index_to_id.get(z_idx, str(z_idx)): {
+                            "p_spec_pu": float(p_spec_eff[z_idx]),
+                            "q_spec_pu": float(q_spec_eff[z_idx]),
+                        }
+                        for z_idx in sorted(zip_table)
+                    }
             trace.append(trace_entry)
             break
 
@@ -835,6 +852,14 @@ def newton_raphson_solve_v2(
             # P20a: Jacobian blocks for v2 (different structure - n_p x n_p for J1, n_p x n_q for J2, etc.)
             n_q = len(active_pq)
             trace_entry["jacobian"] = _serialize_jacobian_blocks_v2(jacobian, n_p, n_q)
+            if zip_table:
+                trace_entry["zip_loads"] = {
+                    node_index_to_id.get(z_idx, str(z_idx)): {
+                        "p_spec_pu": float(p_spec_eff[z_idx]),
+                        "q_spec_pu": float(q_spec_eff[z_idx]),
+                    }
+                    for z_idx in sorted(zip_table)
+                }
 
         trace.append(trace_entry)
 

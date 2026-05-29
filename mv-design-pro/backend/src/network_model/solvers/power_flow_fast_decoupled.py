@@ -48,7 +48,12 @@ from network_model.solvers.power_flow_newton_internal import (
     validate_input,
 )
 from network_model.solvers.power_flow_types import PowerFlowInput, PowerFlowOptions
-from network_model.solvers.power_flow_zip import reject_zip_in_pq
+from network_model.solvers.power_flow_zip import (
+    ZipCoeffs,
+    apply_zip_frequency,
+    build_zip_table,
+    zip_effective_spec,
+)
 from scipy import linalg
 
 
@@ -143,7 +148,6 @@ class PowerFlowFastDecoupledSolver:
         """
         graph: NetworkGraph = pf_input.typed_graph()
         options = pf_input.options
-        reject_zip_in_pq(pf_input.pq, "Fast Decoupled")
 
         # Merge options
         if fd_options is not None:
@@ -233,6 +237,12 @@ class PowerFlowFastDecoupledSolver:
             pv_setpoints = {}
             pv_q_limits = {}
 
+        # ADR-011 ZIP: one-time frequency base scaling (constant w.r.t. V) and the
+        # voltage-dependent ZIP table (per-iteration recompute in the mismatch).
+        # B'/B" stay constant (built from ybus.imag). Empty table => reduce-to-NR.
+        apply_zip_frequency(p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz)
+        zip_table = build_zip_table(pf_input.pq, node_index_map)
+
         # Run Fast-Decoupled iteration
         (
             v,
@@ -260,6 +270,7 @@ class PowerFlowFastDecoupledSolver:
             full_trace,
             node_index_to_id,
             pf_input.base_mva,
+            zip_table,
         )
 
         # Handle non-convergence
@@ -491,6 +502,7 @@ class PowerFlowFastDecoupledSolver:
         full_trace: bool,
         node_index_to_id: dict[int, str],
         base_mva: float,
+        zip_table: dict[int, ZipCoeffs] | None = None,
     ) -> tuple[
         np.ndarray,
         bool,
@@ -520,10 +532,14 @@ class PowerFlowFastDecoupledSolver:
             full_trace: Whether to record full trace.
             node_index_to_id: Map from index to node ID.
             base_mva: Base power in MVA.
+            zip_table: Voltage-dependent ZIP coefficients keyed by bus index
+                (ADR-011). Only the mismatch uses the V-dependent spec; B'/B" stay
+                constant. Empty/None => classic constant-power path (reduce-to-NR).
 
         Returns:
             Tuple of (voltage, converged, iterations, max_mismatch, trace, pv_switches).
         """
+        zip_table = zip_table or {}
         v = v0.copy()
         trace: list[dict[str, Any]] = []
         pv_to_pq_switches: list[dict[str, Any]] = []
@@ -625,8 +641,12 @@ class PowerFlowFastDecoupledSolver:
             # --- Calculate power mismatches ---
             p_calc, q_calc = compute_power_injections(ybus, v)
 
+            # ADR-011 ZIP: evaluate the specified injection at the current |V|
+            # (no-op when zip_table is empty => reduce-to-NR). B' is unaffected.
+            p_eff, _ = zip_effective_spec(p_spec, q_spec, v, zip_table)
+
             # P mismatch for all non-slack buses
-            d_p_full = p_spec - p_calc
+            d_p_full = p_eff - p_calc
             d_p = d_p_full[non_slack_indices]
 
             # Q mismatch for PQ buses only
@@ -656,7 +676,10 @@ class PowerFlowFastDecoupledSolver:
             if b_double_prime_lu is not None and len(active_pq) > 0:
                 # Recalculate Q after angle update
                 _, q_calc_updated = compute_power_injections(ybus, v)
-                d_q_updated = q_spec[active_pq] - q_calc_updated[active_pq]
+                # ADR-011 ZIP: recompute the specified Q at the updated |V| (no-op
+                # when zip_table is empty => reduce-to-NR). B" is unaffected.
+                _, q_eff = zip_effective_spec(p_spec, q_spec, v, zip_table)
+                d_q_updated = q_eff[active_pq] - q_calc_updated[active_pq]
 
                 # ΔQ / |V| for PQ buses
                 v_mag_pq = np.abs(v[active_pq])
@@ -683,8 +706,12 @@ class PowerFlowFastDecoupledSolver:
 
             # --- Calculate final mismatch for convergence check ---
             p_calc_final, q_calc_final = compute_power_injections(ybus, v)
-            d_p_final = p_spec[non_slack_indices] - p_calc_final[non_slack_indices]
-            d_q_final = q_spec[active_pq] - q_calc_final[active_pq]
+            # ADR-011 ZIP: the convergence test compares against the specified
+            # injection at the final |V| (matches NR). With an empty zip_table this
+            # returns p_spec/q_spec unchanged => reduce-to-NR (byte-identical).
+            p_eff_final, q_eff_final = zip_effective_spec(p_spec, q_spec, v, zip_table)
+            d_p_final = p_eff_final[non_slack_indices] - p_calc_final[non_slack_indices]
+            d_q_final = q_eff_final[active_pq] - q_calc_final[active_pq]
 
             mismatch = (
                 np.concatenate([d_p_final, d_q_final])

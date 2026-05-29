@@ -18,13 +18,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import numpy as np
+
 _SUM_TOL = 1e-6
-
-
-class ZipNotSupportedError(NotImplementedError):
-    """Raised when a solver path that does not yet implement ZIP receives
-    non-trivial ZIP coefficients. Never silently falls back to constant power
-    (no silent wrong result)."""
 
 
 @dataclass(frozen=True)
@@ -55,13 +51,6 @@ class ZipCoeffs:
     def has_frequency_dependence(self) -> bool:
         return self.k_pf != 0.0 or self.k_qf != 0.0
 
-    def is_trivial(self, f_hz: float) -> bool:
-        """True when this load reduces exactly to classic constant-power PQ at the
-        given system frequency (reduce-to-NR condition: a=b=0 and freq factor==1)."""
-        return self.is_constant_power() and (
-            not self.has_frequency_dependence() or f_hz == self.f0_hz
-        )
-
 
 def validate_zip_coeffs(c: ZipCoeffs) -> None:
     """Validate the ZIP polynomial (Rule: no guessing — reject malformed input)."""
@@ -79,21 +68,6 @@ def validate_zip_coeffs(c: ZipCoeffs) -> None:
             )
 
 
-def reject_zip_in_pq(pq_specs: object, solver_name: str) -> None:
-    """Raise if any PQ spec carries non-trivial ZIP coefficients.
-
-    Used by solver paths that do not yet implement ZIP (Gauss-Seidel, Fast
-    Decoupled). Never silently degrades a ZIP load to constant power.
-    Duck-typed on ``.zip_coeffs`` to avoid importing PQSpec (circular)."""
-    for spec in pq_specs:  # type: ignore[attr-defined]
-        coeffs = getattr(spec, "zip_coeffs", None)
-        if coeffs is not None and not coeffs.is_constant_power():
-            raise ZipNotSupportedError(
-                f"{solver_name} does not support ZIP loads yet (ADR-011); "
-                "use the Newton-Raphson solver for voltage-dependent loads."
-            )
-
-
 def zip_factor(a: float, b: float, c: float, v_pu: float, v0_pu: float) -> float:
     """Polynomial multiplier P_load(V)/P0 = a*(V/V0)^2 + b*(V/V0) + c."""
     r = v_pu / v0_pu
@@ -103,6 +77,48 @@ def zip_factor(a: float, b: float, c: float, v_pu: float, v0_pu: float) -> float
 def zip_factor_derivative(a: float, b: float, v_pu: float, v0_pu: float) -> float:
     """d/dV of the multiplier = 2*a*V/V0^2 + b/V0 (used for the Jacobian term)."""
     return 2.0 * a * v_pu / (v0_pu * v0_pu) + b / v0_pu
+
+
+def build_zip_table(pq_specs: object, node_index_map: dict[str, int]) -> dict[int, ZipCoeffs]:
+    """Validated VOLTAGE-dependent ZIP table keyed by bus index (per-iteration
+    recompute set). Frequency-only loads are excluded here — their constant factor
+    is handled once by apply_zip_frequency. Empty => classic path (reduce-to-NR).
+    Shared by NR/GS/FD; duck-typed on .zip_coeffs / .node_id."""
+    table: dict[int, ZipCoeffs] = {}
+    for spec in pq_specs:  # type: ignore[attr-defined]
+        c = getattr(spec, "zip_coeffs", None)
+        if c is None or c.is_constant_power():
+            continue
+        idx = node_index_map.get(spec.node_id)
+        if idx is None:
+            continue
+        validate_zip_coeffs(c)
+        table[idx] = c
+    return table
+
+
+def zip_effective_spec(
+    p_spec: np.ndarray,
+    q_spec: np.ndarray,
+    v: np.ndarray,
+    zip_table: dict[int, ZipCoeffs] | None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Recompute the specified injection at ZIP buses from the current |v|.
+
+    Returns (p_eff, q_eff). The base p_spec/q_spec must already carry any
+    one-time frequency scaling (see apply_zip_frequency); this applies only the
+    per-iteration VOLTAGE factor. With an empty/None zip_table the inputs are
+    returned unchanged (reduce-to-NR). Shared by NR/GS/FD for a single ZIP
+    recompute contract."""
+    if not zip_table:
+        return p_spec, q_spec
+    p_eff = p_spec.copy()
+    q_eff = q_spec.copy()
+    v_mag = np.abs(v)
+    for idx, c in zip_table.items():
+        p_eff[idx] = p_spec[idx] * zip_factor(c.a_p, c.b_p, c.c_p, v_mag[idx], c.v0_pu)
+        q_eff[idx] = q_spec[idx] * zip_factor(c.a_q, c.b_q, c.c_q, v_mag[idx], c.v0_pu)
+    return p_eff, q_eff
 
 
 def frequency_factor(k: float, f_hz: float, f0_hz: float) -> float:

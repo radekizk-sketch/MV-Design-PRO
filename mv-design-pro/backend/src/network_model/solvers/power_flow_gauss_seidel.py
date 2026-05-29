@@ -42,7 +42,13 @@ from network_model.solvers.power_flow_newton_internal import (
     validate_input,
 )
 from network_model.solvers.power_flow_types import PowerFlowInput, PowerFlowOptions
-from network_model.solvers.power_flow_zip import reject_zip_in_pq
+from network_model.solvers.power_flow_zip import (
+    ZipCoeffs,
+    apply_zip_frequency,
+    build_zip_table,
+    zip_effective_spec,
+    zip_factor,
+)
 
 
 @dataclass
@@ -128,7 +134,6 @@ class PowerFlowGaussSeidelSolver:
         """
         graph: NetworkGraph = pf_input.typed_graph()
         options = pf_input.options
-        reject_zip_in_pq(pf_input.pq, "Gauss-Seidel")
 
         # Merge options
         if gs_options is not None:
@@ -210,6 +215,12 @@ class PowerFlowGaussSeidelSolver:
             pv_setpoints = {}
             pv_q_limits = {}
 
+        # ADR-011 ZIP: one-time frequency base scaling (constant w.r.t. V) and the
+        # voltage-dependent ZIP table (per-iteration recompute). Empty table =>
+        # classic constant-power path (reduce-to-NR: identical code, identical output).
+        apply_zip_frequency(p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz)
+        zip_table = build_zip_table(pf_input.pq, node_index_map)
+
         # Run Gauss-Seidel iteration
         (
             v,
@@ -234,6 +245,7 @@ class PowerFlowGaussSeidelSolver:
             full_trace,
             node_index_to_id,
             pf_input.base_mva,
+            zip_table,
         )
 
         # Handle non-convergence with optional fallback to Newton-Raphson
@@ -437,6 +449,7 @@ class PowerFlowGaussSeidelSolver:
         full_trace: bool,
         node_index_to_id: dict[int, str],
         base_mva: float,
+        zip_table: dict[int, ZipCoeffs] | None = None,
     ) -> tuple[
         np.ndarray,
         bool,
@@ -463,10 +476,13 @@ class PowerFlowGaussSeidelSolver:
             full_trace: Whether to record full trace.
             node_index_to_id: Map from index to node ID.
             base_mva: Base power in MVA.
+            zip_table: Voltage-dependent ZIP coefficients keyed by bus index
+                (ADR-011). Empty/None => classic constant-power path (reduce-to-NR).
 
         Returns:
             Tuple of (voltage, converged, iterations, max_mismatch, trace, pv_switches).
         """
+        zip_table = zip_table or {}
         v = v0.copy()
         trace: list[dict[str, Any]] = []
         pv_to_pq_switches: list[dict[str, Any]] = []
@@ -521,8 +537,16 @@ class PowerFlowGaussSeidelSolver:
                 sum_yv = sum(ybus[idx, k] * v[k] for k in range(n) if k != idx)
 
                 # Specified power injection (already in generation convention:
-                # p_spec is negative for loads, positive for generation)
-                s_i = complex(p_spec[idx], q_spec[idx])
+                # p_spec is negative for loads, positive for generation).
+                # ADR-011 ZIP: at a voltage-dependent bus, recompute the specified
+                # injection from the current |V| (fixed-point recompute, no Jacobian).
+                if idx in zip_table:
+                    c = zip_table[idx]
+                    p_i = p_spec[idx] * zip_factor(c.a_p, c.b_p, c.c_p, abs(v[idx]), c.v0_pu)
+                    q_i = q_spec[idx] * zip_factor(c.a_q, c.b_q, c.c_q, abs(v[idx]), c.v0_pu)
+                    s_i = complex(p_i, q_i)
+                else:
+                    s_i = complex(p_spec[idx], q_spec[idx])
 
                 # Gauss-Seidel update for PQ bus
                 # V_i^{new} = (1/Y_ii) * (S_i^*/V_i^* - Σ Y_ij V_j)
@@ -582,8 +606,11 @@ class PowerFlowGaussSeidelSolver:
                 [i for i in range(n) if i != slack_index and (i in active_pq or i in active_pv)]
             )
 
-            d_p = p_spec[non_slack_indices] - p_calc[non_slack_indices]
-            d_q = q_spec[active_pq] - q_calc[active_pq]
+            # ADR-011 ZIP: evaluate the specified injection at the current |V|
+            # for the mismatch (no-op when zip_table is empty => reduce-to-NR).
+            p_eff, q_eff = zip_effective_spec(p_spec, q_spec, v, zip_table)
+            d_p = p_eff[non_slack_indices] - p_calc[non_slack_indices]
+            d_q = q_eff[active_pq] - q_calc[active_pq]
 
             mismatch = np.concatenate([d_p, d_q]) if len(d_p) > 0 or len(d_q) > 0 else np.array([])
             max_mismatch = float(np.max(np.abs(mismatch))) if mismatch.size else 0.0
