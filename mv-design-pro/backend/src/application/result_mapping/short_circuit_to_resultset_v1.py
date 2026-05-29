@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from analysis.short_circuit_plausibility import evaluate_ikss_plausibility
 from application.solvers.short_circuit_binding import ShortCircuitBindingResult
 from domain.execution import (
     ElementResult,
@@ -143,8 +144,17 @@ def _build_global_results(
     sr: Any,
     analysis_type: ExecutionAnalysisType,
 ) -> dict[str, Any]:
-    """Build global results dict from solver output."""
+    """Build global results dict from solver output.
+
+    Includes a per-voltage-level Ik'' plausibility verdict (D-14). This is an
+    interpretation-layer annotation computed from the frozen result (un_v, ikss_a);
+    it does not modify or recompute any solver value.
+    """
     zkk_ohm = sr.zkk_ohm
+    plausibility = evaluate_ikss_plausibility(
+        ikss_a=float(sr.ikss_a),
+        nominal_voltage_v=float(sr.un_v),
+    )
     return {
         "analysis_type": analysis_type.value,
         "short_circuit_type": sr.short_circuit_type.value,
@@ -166,4 +176,5 @@ def _build_global_results(
         "rx_ratio": float(sr.rx_ratio),
         "contributions_count": len(sr.contributions),
         "white_box_steps_count": len(sr.white_box_trace),
+        "plausibility": plausibility.to_dict(),
     }

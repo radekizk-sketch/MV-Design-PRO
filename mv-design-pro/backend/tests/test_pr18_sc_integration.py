@@ -566,6 +566,33 @@ class TestContractShape:
         }
         assert expected_keys.issubset(set(rs.global_results.keys()))
 
+    def test_global_results_carries_ikss_plausibility(self):
+        """Global results carry a per-voltage-level Ik'' plausibility verdict (D-14)."""
+        graph = _create_golden_graph()
+        config = _golden_config()
+        engine, case = _create_engine_with_case()
+
+        run = engine.create_run(
+            study_case_id=case.id,
+            analysis_type=ExecutionAnalysisType.SC_3F,
+            solver_input=_sample_solver_input(),
+        )
+        _, rs = engine.execute_run_sc(
+            run.id,
+            graph=graph,
+            config=config,
+            fault_node_id="BUS_MV",
+            readiness_snapshot={"ready": True},
+            validation_snapshot={"is_valid": True},
+        )
+
+        plausibility = rs.global_results["plausibility"]
+        assert plausibility["contract"] == "ShortCircuitPlausibilityV1"
+        # A golden MV network produces a credible fault current.
+        assert plausibility["status"] == "wiarygodny"
+        assert plausibility["voltage_band"] in {"nN", "SN", "WN", "NN"}
+        assert plausibility["violations"] == []
+
     def test_fault_node_element_result_has_sc_values(self):
         """The fault node element result contains SC current values."""
         graph = _create_golden_graph()

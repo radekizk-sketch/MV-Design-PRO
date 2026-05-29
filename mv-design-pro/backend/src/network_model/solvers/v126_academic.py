@@ -8,6 +8,11 @@ from itertools import combinations
 from typing import Any
 
 import numpy as np
+from network_model.solvers.v126_sanity import (
+    opf_loss_sanity,
+    reliability_sanity,
+    uncertainty_sanity,
+)
 from solver_input.v126_contracts import V126AcademicInput, V126AnalysisType
 
 JsonDict = dict[str, Any]
@@ -31,6 +36,51 @@ def _round(value: float, digits: int = 6) -> float:
 
 def _status(ok: bool) -> str:
     return "zgodny" if ok else "niezgodny"
+
+
+def _coerce_finite_float(value: Any) -> float | None:
+    """Return ``value`` as a finite float, or ``None`` if it is not a real number."""
+    if isinstance(value, bool) or not isinstance(value, int | float) or not math.isfinite(value):
+        return None
+    return float(value)
+
+
+# Benchmark references (D-14): authoritative targets for solver self-validation.
+#
+# Each entry is a DEFINITIONAL / conservation-law reference that holds for ANY
+# correct power-flow solution. The solver's ACTUALLY computed value must be
+# supplied by the caller (a real benchmark run) via parameters["benchmark_results"]
+# and is compared against these references. We never compare a hardcoded
+# "calculated" literal against a hardcoded reference — that produces a
+# self-fulfilling, false-green validation (K-09).
+_UNIVERSAL_BENCHMARK_TARGETS: dict[str, JsonDict] = {
+    "power_balance_residual_mw": {
+        "reference": 0.0,
+        "tolerance_abs": 1e-3,
+        "compare": "abs",
+        "unit": "MW",
+        "source": "Bilans mocy czynnej: suma generacji = suma obciążeń + straty (residuum ≈ 0).",
+    },
+    "reactive_balance_residual_mvar": {
+        "reference": 0.0,
+        "tolerance_abs": 1e-3,
+        "compare": "abs",
+        "unit": "Mvar",
+        "source": "Bilans mocy biernej: residuum bilansu Q ≈ 0 dla rozwiązania zbieżnego.",
+    },
+    "slack_bus_angle_deg": {
+        "reference": 0.0,
+        "tolerance_abs": 1e-6,
+        "compare": "abs",
+        "unit": "°",
+        "source": "Definicja węzła bilansującego: kąt napięcia = 0° (odniesienie).",
+    },
+}
+
+
+def _benchmark_reference(test: str) -> JsonDict | None:
+    """Authoritative reference for a benchmark quantity, or None if unknown."""
+    return _UNIVERSAL_BENCHMARK_TARGETS.get(test)
 
 
 class TraceBuilder:
@@ -161,6 +211,23 @@ class V126AcademicSolver:
             return np.linalg.solve(ybus, injections)
         except np.linalg.LinAlgError:
             return np.linalg.pinv(ybus) @ injections
+
+    def _attach_sanity(self, payload: JsonDict, sanity: JsonDict, trace: TraceBuilder) -> JsonDict:
+        """Attach an absurdity barrier (K-08) verdict and a WHITE BOX trace step.
+
+        The barrier never modifies a computed value — it only flags whether the
+        numbers are physically plausible (D-14).
+        """
+        payload["sanity"] = sanity
+        trace.add(
+            "sanity_bounds",
+            "Bariera absurdu (K-08): wartości wynikowe porównane z fizycznymi granicami.",
+            {"checks_total": sanity["checks_total"], "bounds": sanity["bounds"]},
+            "Każda wielkość sprawdzana względem granic fizycznych; przekroczenie oznacza wynik niewiarygodny.",
+            {"status": sanity["status"], "violations": len(sanity["violations"])},
+            "Granice w jednostkach ocenianej wielkości; status bezwymiarowy.",
+        )
+        return payload
 
     def _power_quality(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         harmonics = sorted({2, 3, 5, 7, 11, 13, 17, 19, 23, 25, 29, 31, 35, 37, 41, 43, 47, 49})
@@ -356,7 +423,7 @@ class V126AcademicSolver:
             {"saidi_min_per_year": _round(saidi, 4), "saifi_per_year": _round(saifi, 5)},
             "1/rok * h * 60 daje min/rok.",
         )
-        return {
+        payload = {
             "contingency_ranking": sorted(contingencies, key=lambda item: (-item["severity"], item["contingency"]))[:100],
             "indices": {
                 "saidi_min_per_year": _round(saidi, 4),
@@ -365,6 +432,7 @@ class V126AcademicSolver:
                 "maifi_per_year": _round(0.12 * saifi, 5),
             },
         }
+        return self._attach_sanity(payload, reliability_sanity(payload, model), trace)
 
     def _earthing(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         data = model.earthing
@@ -650,7 +718,7 @@ class V126AcademicSolver:
             {"total_losses_kw": _round(total_kw, 5), "annual_kwh": _round(annual_kwh, 3)},
             "A^2*Ohm = W; kW*h = kWh.",
         )
-        return {
+        payload = {
             "objective": "min_delta_p_losses",
             "branch_losses": branch_rows,
             "transformer_losses_kw": _round(transformer_kw, 5),
@@ -664,40 +732,117 @@ class V126AcademicSolver:
                 "q_set_strategy": "minimize_losses_with_voltage_limits",
             },
         }
+        return self._attach_sanity(payload, opf_loss_sanity(payload, model), trace)
 
     def _benchmark_validation(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
-        references = model.parameters.get("benchmark_references")
-        if not isinstance(references, list):
-            references = [
-                {"network": "IEEE_9_bus", "test": "PowerFlow_NR", "reference": 1.0, "calculated": 1.0004, "tolerance_percent": 0.1},
-                {"network": "IEEE_14_bus", "test": "PowerFlow_NR", "reference": 1.0, "calculated": 1.0008, "tolerance_percent": 0.1},
-                {"network": "CIGRE_MV", "test": "PowerFlow_NR", "reference": 1.0, "calculated": 1.002, "tolerance_percent": 0.5},
-                {"network": "IEEE_39_bus", "test": "VoltageStability", "reference": 1.0, "calculated": 1.003, "tolerance_percent": 0.5},
-            ]
+        """Validate solver output against authoritative references (D-14, K-09).
+
+        Compares REAL computed values supplied by the caller (from an actual
+        benchmark run, ``parameters["benchmark_results"]``) against references
+        from the trusted registry. Caller-supplied reference values are ignored
+        on purpose — otherwise a caller could paste matching literals and force a
+        false PASS. When no real computed values are supplied the overall status
+        is ``NIEZWERYFIKOWANE`` (never ``PASS``).
+        """
+        raw = model.parameters.get("benchmark_results")
+        if raw is None:
+            raw = model.parameters.get("benchmark_references")  # legacy key
+        supplied = raw if isinstance(raw, list) else []
+
         rows: list[JsonDict] = []
-        for item in references:
-            ref = float(item["reference"])
-            calc = float(item["calculated"])
-            delta = abs(calc - ref) / max(abs(ref), 1e-9) * 100.0
-            tol = float(item["tolerance_percent"])
-            rows.append(
-                {
-                    "network": item["network"],
-                    "test": item["test"],
-                    "tolerance_percent": tol,
-                    "delta_percent": _round(delta, 5),
-                    "status": "PASS" if delta <= tol else "FAIL",
-                }
-            )
+        comparable = 0
+        for item in supplied:
+            if not isinstance(item, dict):
+                continue
+            network = str(item.get("network", "?"))
+            test = str(item.get("test", "?"))
+            ref_entry = _benchmark_reference(test)
+            calc_f = _coerce_finite_float(item.get("calculated"))
+            if ref_entry is None:
+                rows.append(
+                    {
+                        "network": network,
+                        "test": test,
+                        "status": "BRAK_REFERENCJI",
+                        "note": "Brak autorytatywnej referencji dla tego testu w rejestrze.",
+                    }
+                )
+                continue
+            if calc_f is None:
+                rows.append(
+                    {
+                        "network": network,
+                        "test": test,
+                        "reference": ref_entry["reference"],
+                        "unit": ref_entry["unit"],
+                        "status": "BRAK_DANYCH",
+                        "note": "Brak rzeczywistej wartości obliczonej — nie podstawiamy literału.",
+                        "source": ref_entry["source"],
+                    }
+                )
+                continue
+            ref = float(ref_entry["reference"])
+            if ref_entry.get("compare") == "abs":
+                deviation = abs(calc_f - ref)
+                tol = float(ref_entry["tolerance_abs"])
+                rows.append(
+                    {
+                        "network": network,
+                        "test": test,
+                        "reference": ref,
+                        "calculated": _round(calc_f, 6),
+                        "deviation_abs": _round(deviation, 9),
+                        "tolerance_abs": tol,
+                        "unit": ref_entry["unit"],
+                        "source": ref_entry["source"],
+                        "status": "PASS" if deviation <= tol else "FAIL",
+                    }
+                )
+            else:
+                deviation = abs(calc_f - ref) / max(abs(ref), 1e-9) * 100.0
+                tol = float(ref_entry["tolerance_percent"])
+                rows.append(
+                    {
+                        "network": network,
+                        "test": test,
+                        "reference": ref,
+                        "calculated": _round(calc_f, 6),
+                        "delta_percent": _round(deviation, 5),
+                        "tolerance_percent": tol,
+                        "unit": ref_entry["unit"],
+                        "source": ref_entry["source"],
+                        "status": "PASS" if deviation <= tol else "FAIL",
+                    }
+                )
+            comparable += 1
+
+        if comparable == 0:
+            overall = "NIEZWERYFIKOWANE"
+        elif any(row["status"] == "FAIL" for row in rows):
+            overall = "FAIL"
+        elif all(row["status"] == "PASS" for row in rows if row["status"] in {"PASS", "FAIL"}):
+            overall = "PASS"
+        else:
+            overall = "NIEZWERYFIKOWANE"
+
+        available = sorted(_UNIVERSAL_BENCHMARK_TARGETS.keys())
         trace.add(
             "benchmark_regression",
-            "delta_percent = |calc - ref| / |ref| * 100%",
-            {"benchmarks": len(rows)},
-            "Porownanie wynikow solvera z wartosciami referencyjnymi IEEE/CIGRE.",
-            {"max_deviation_percent": max((row["delta_percent"] for row in rows), default=0.0)},
-            "Wartosci tego samego typu, delta w %.",
+            "odchylenie = |obliczone − referencja|; PASS gdy odchylenie ≤ tolerancja.",
+            {"supplied_results": len(supplied), "comparable": comparable, "available_targets": available},
+            "Referencje z rejestru autorytatywnego; wartości obliczone muszą pochodzić z rzeczywistego przebiegu.",
+            {"status": overall, "rows": len(rows)},
+            "Wartości tego samego typu; odchylenie w jednostce wielkości lub %.",
         )
-        return {"validation_report": rows, "status": "PASS" if all(row["status"] == "PASS" for row in rows) else "FAIL"}
+        return {
+            "validation_report": rows,
+            "status": overall,
+            "available_targets": available,
+            "note": (
+                "Walidacja porównuje rzeczywiste wartości obliczone z autorytatywnymi referencjami. "
+                "Bez dostarczonych wartości status to NIEZWERYFIKOWANE — PASS nie jest raportowany na podstawie literałów."
+            ),
+        }
 
     def _uncertainty(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         sensitivities: list[JsonDict] = []
@@ -735,8 +880,9 @@ class V126AcademicSolver:
         total = sum(item["sigma_contribution_percent"] for item in ranked) or 1.0
         for item in ranked:
             item["share_percent"] = _round(item["sigma_contribution_percent"] / total * 100.0, 4)
-        return {
+        payload = {
             "expanded_uncertainty_percent_k2": _round(expanded, 5),
             "sensitivity_ranking": ranked[:20],
             "display_contract": "wartość nominalna ± niepewność rozszerzona k=2",
         }
+        return self._attach_sanity(payload, uncertainty_sanity(payload, model), trace)

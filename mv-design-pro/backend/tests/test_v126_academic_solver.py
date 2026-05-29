@@ -140,6 +140,133 @@ def test_reliability_indices_are_reportable() -> None:
     assert result["result"]["contingency_ranking"][0]["order"] in {"N-1", "N-2"}
 
 
+# ---------------------------------------------------------------------------
+# D-14: absurdity barriers (K-08) attached to the academic analyses.
+# ---------------------------------------------------------------------------
+
+
+def _sanity_trace_steps(envelope: dict) -> list[dict]:
+    return [step for step in envelope["white_box_trace"] if step["key"] == "sanity_bounds"]
+
+
+def test_reliability_carries_credible_sanity_verdict() -> None:
+    envelope = V126AcademicSolver().run(V126AnalysisType.RELIABILITY_CONTINGENCY, _academic_input())
+    sanity = envelope["result"]["sanity"]
+    assert sanity["status"] == "wiarygodny"
+    assert sanity["contract"] == "AbsurdityBarrierV1"
+    assert sanity["violations"] == []
+    # The barrier is auditable: a WHITE BOX trace step documents the check.
+    assert len(_sanity_trace_steps(envelope)) == 1
+
+
+def test_opf_and_uncertainty_carry_sanity_verdicts() -> None:
+    solver = V126AcademicSolver()
+    for analysis_type in (V126AnalysisType.OPF_LOSS_LCC, V126AnalysisType.UNCERTAINTY_SENSITIVITY):
+        envelope = solver.run(analysis_type, _academic_input())
+        assert envelope["result"]["sanity"]["status"] == "wiarygodny"
+        assert len(_sanity_trace_steps(envelope)) == 1
+
+
+def test_uncertainty_barrier_flags_absurd_solver_output() -> None:
+    # A branch with a grossly oversized impedance drives the propagated expanded
+    # uncertainty far past the value itself — the barrier must flag it.
+    model = _academic_input().model_copy(
+        update={
+            "branches": [
+                V126BranchInput(
+                    ref="K1",
+                    from_bus_ref="B1",
+                    to_bus_ref="B2",
+                    kind="cable",
+                    length_km=100.0,
+                    r_ohm_per_km=1000.0,
+                    x_ohm_per_km=1000.0,
+                    ampacity_a=260.0,
+                )
+            ]
+        }
+    )
+    envelope = V126AcademicSolver().run(V126AnalysisType.UNCERTAINTY_SENSITIVITY, model)
+    sanity = envelope["result"]["sanity"]
+    assert sanity["status"] == "niewiarygodny"
+    assert any(v["code"] == "UNC-ABSURD" for v in sanity["violations"])
+
+
+def test_sanity_block_is_deterministic() -> None:
+    solver = V126AcademicSolver()
+    model = _academic_input()
+    first = solver.run(V126AnalysisType.RELIABILITY_CONTINGENCY, model)
+    second = solver.run(V126AnalysisType.RELIABILITY_CONTINGENCY, model)
+    assert first["deterministic_hash"] == second["deterministic_hash"]
+    assert first["result"]["sanity"] == second["result"]["sanity"]
+
+
+# ---------------------------------------------------------------------------
+# D-14 / K-09: benchmark validation no longer reports PASS from hardcoded literals.
+# ---------------------------------------------------------------------------
+
+
+def test_benchmark_validation_without_real_results_is_not_verified() -> None:
+    envelope = V126AcademicSolver().run(V126AnalysisType.BENCHMARK_VALIDATION, _academic_input())
+    result = envelope["result"]
+    # No fabricated passing rows; status must NOT be a green PASS.
+    assert result["status"] == "NIEZWERYFIKOWANE"
+    assert result["validation_report"] == []
+    assert "power_balance_residual_mw" in result["available_targets"]
+
+
+def test_benchmark_validation_with_real_results_compares_against_references() -> None:
+    model = _academic_input().model_copy(
+        update={
+            "parameters": {
+                "benchmark_results": [
+                    {
+                        "network": "IEEE_9_bus",
+                        "test": "power_balance_residual_mw",
+                        "calculated": 0.0005,
+                    },
+                    {
+                        "network": "IEEE_14_bus",
+                        "test": "power_balance_residual_mw",
+                        "calculated": 0.5,
+                    },
+                    {"network": "Custom", "test": "unknown_metric", "calculated": 1.0},
+                ]
+            }
+        }
+    )
+    result = V126AcademicSolver().run(V126AnalysisType.BENCHMARK_VALIDATION, model)["result"]
+    by_network = {row["network"]: row for row in result["validation_report"]}
+    assert by_network["IEEE_9_bus"]["status"] == "PASS"
+    assert by_network["IEEE_14_bus"]["status"] == "FAIL"
+    assert by_network["Custom"]["status"] == "BRAK_REFERENCJI"
+    # One FAIL among comparable rows → overall FAIL.
+    assert result["status"] == "FAIL"
+
+
+def test_benchmark_validation_rejects_caller_supplied_reference_literals() -> None:
+    # A caller cannot force a PASS by pasting a matching reference: references come
+    # only from the trusted registry, and an unknown test yields BRAK_REFERENCJI.
+    model = _academic_input().model_copy(
+        update={
+            "parameters": {
+                "benchmark_references": [
+                    {
+                        "network": "IEEE_9_bus",
+                        "test": "PowerFlow_NR",
+                        "reference": 1.0,
+                        "calculated": 1.0,
+                        "tolerance_percent": 0.1,
+                    },
+                ]
+            }
+        }
+    )
+    result = V126AcademicSolver().run(V126AnalysisType.BENCHMARK_VALIDATION, model)["result"]
+    assert result["status"] == "NIEZWERYFIKOWANE"
+    assert result["validation_report"][0]["status"] == "BRAK_REFERENCJI"
+
+
 def test_earthing_uses_ieee80_contract() -> None:
     result = V126AcademicSolver().run(V126AnalysisType.EARTHING_SAFETY, _academic_input())
     assert result["result"]["r_g_ohm"] > 0
@@ -155,8 +282,18 @@ def test_v126_api_run_result_and_trace() -> None:
             {
                 "header": ENMHeader(name="test").model_dump(),
                 "buses": [
-                    {"id": "11111111-1111-1111-1111-111111111101", "ref_id": "B1", "name": "GPZ", "voltage_kv": 15.0},
-                    {"id": "11111111-1111-1111-1111-111111111102", "ref_id": "B2", "name": "Stacja", "voltage_kv": 15.0},
+                    {
+                        "id": "11111111-1111-1111-1111-111111111101",
+                        "ref_id": "B1",
+                        "name": "GPZ",
+                        "voltage_kv": 15.0,
+                    },
+                    {
+                        "id": "11111111-1111-1111-1111-111111111102",
+                        "ref_id": "B2",
+                        "name": "Stacja",
+                        "voltage_kv": 15.0,
+                    },
                 ],
                 "branches": [
                     {
