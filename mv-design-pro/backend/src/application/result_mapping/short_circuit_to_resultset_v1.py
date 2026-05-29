@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from analysis.sanity_bounds import evaluate_short_circuit_current
 from application.solvers.short_circuit_binding import ShortCircuitBindingResult
 from domain.execution import (
     ElementResult,
@@ -145,6 +146,13 @@ def _build_global_results(
 ) -> dict[str, Any]:
     """Build global results dict from solver output."""
     zkk_ohm = sr.zkk_ohm
+    # D-14b (DEF-01 / K-08): guard sanity-bounds Ik'' per poziom napięcia, wpięty na
+    # ścieżce konsumpcji wyników (overlay/proof/tabele czytają global_results — jedna
+    # prawda, Z15). Czyta zamrożony wynik (un_v, ikss_a), nie modyfikuje solvera (B-01).
+    ikss_sanity = evaluate_short_circuit_current(
+        float(sr.un_v) / 1000.0 if sr.un_v else None,
+        float(sr.ikss_a) / 1000.0,
+    ).to_dict()
     return {
         "analysis_type": analysis_type.value,
         "short_circuit_type": sr.short_circuit_type.value,
@@ -166,4 +174,5 @@ def _build_global_results(
         "rx_ratio": float(sr.rx_ratio),
         "contributions_count": len(sr.contributions),
         "white_box_steps_count": len(sr.white_box_trace),
+        "ikss_sanity": ikss_sanity,
     }
