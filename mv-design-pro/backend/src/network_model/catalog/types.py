@@ -51,6 +51,7 @@ class CatalogNamespace(Enum):
     VT = "VT"
     OGRANICZNIK_SN = "OGRANICZNIK_SN"
     OBCIAZENIE = "OBCIAZENIE"
+    KOMPENSATOR_SN = "KOMPENSATOR_SN"
     ZRODLO_SN = "ZRODLO_SN"
     ZRODLO_NN_PV = "ZRODLO_NN_PV"
     ZRODLO_NN_BESS = "ZRODLO_NN_BESS"
@@ -1948,6 +1949,76 @@ class LoadType:
 
 
 # =============================================================================
+# SHUNT CAPACITOR TYPE (KOMPENSATOR_SN) — baterie kondensatorów SN
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class ShuntCapacitorType:
+    """Immutable shunt-capacitor-bank type definition for catalog.
+
+    Reprezentuje stałą baterię kondensatorów SN do kompensacji mocy biernej.
+    Susceptancja pojemnościowa wynika z pierwszych zasad:
+        B = Q_rated / U_rated²   (Q = B·U²)
+    a w jednostkach względnych na bazie systemu: b_pu = Q_rated / S_base.
+
+    Attributes:
+        id: Unique identifier.
+        name: Type name (e.g., "Bateria kondensatorów SN 1,2 Mvar 15 kV").
+        rated_mvar: Reactive power rating [Mvar] @ rated voltage.
+        rated_kv: Rated voltage [kV].
+        loss_kw: Optional active dielectric/resistor losses [kW] (None => lossless).
+        manufacturer: Manufacturer/source (optional).
+    """
+
+    id: str
+    name: str
+    rated_mvar: float = 0.0
+    rated_kv: float = 0.0
+    loss_kw: float | None = None
+    manufacturer: str | None = None
+    verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
+    source_reference: str = "Katalog kompensatorow MV-DESIGN-PRO"
+    catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
+    contract_version: str = CATALOG_CONTRACT_VERSION
+    verification_note: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "rated_mvar": self.rated_mvar,
+            "rated_kv": self.rated_kv,
+            "loss_kw": self.loss_kw,
+            "manufacturer": self.manufacturer,
+            **_catalog_metadata_to_dict(
+                verification_status=self.verification_status,
+                source_reference=self.source_reference,
+                catalog_status=self.catalog_status,
+                contract_version=self.contract_version,
+                verification_note=self.verification_note,
+            ),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ShuntCapacitorType":
+        return cls(
+            id=str(data.get("id", str(uuid4()))),
+            name=str(data.get("name", "")),
+            rated_mvar=float(data.get("rated_mvar", 0.0)),
+            rated_kv=float(data.get("rated_kv", 0.0)),
+            loss_kw=(float(data["loss_kw"]) if data.get("loss_kw") is not None else None),
+            manufacturer=data.get("manufacturer"),
+            **_catalog_metadata_kwargs(
+                data,
+                default_source_reference="Katalog kompensatorow MV-DESIGN-PRO",
+                default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
+                default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
+            ),
+        )
+
+
+# =============================================================================
 # MV APPARATUS TYPE (APARAT_SN) — aparaty łączeniowe SN
 # =============================================================================
 
@@ -2708,6 +2779,19 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("p_kw", "P [kW]", "kW"),
             ("q_kvar", "Q [kvar]", "kvar"),
             ("cos_phi", "cos φ", ""),
+        ),
+    ),
+    CatalogNamespace.KOMPENSATOR_SN.value: MaterializationContract(
+        namespace=CatalogNamespace.KOMPENSATOR_SN.value,
+        solver_fields=(
+            "rated_mvar",
+            "rated_kv",
+            "loss_kw",
+        ),
+        ui_fields=(
+            ("rated_mvar", "Qn [Mvar]", "Mvar"),
+            ("rated_kv", "Un [kV]", "kV"),
+            ("loss_kw", "Straty [kW]", "kW"),
         ),
     ),
     CatalogNamespace.ZRODLO_SN.value: MaterializationContract(

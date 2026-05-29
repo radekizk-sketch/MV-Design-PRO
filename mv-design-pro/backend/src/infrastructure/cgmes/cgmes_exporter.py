@@ -53,6 +53,7 @@ if TYPE_CHECKING:
         Generator,
         Load,
         OverheadLine,
+        ShuntCapacitor,
         Source,
         Substation,
         SwitchBranch,
@@ -443,6 +444,33 @@ def _emit_load(eq: ET.Element, tp: ET.Element, load: Load) -> None:
 
 
 # ---------------------------------------------------------------------------
+# ShuntCapacitor -> LinearShuntCompensator
+# ---------------------------------------------------------------------------
+
+
+def _emit_shunt(eq: ET.Element, tp: ET.Element, cap: ShuntCapacitor) -> None:
+    """ShuntCapacitor -> LinearShuntCompensator (D-06c).
+
+    Susceptancja na sekcję z pierwszych zasad: B = Q_rated / U_rated² [S].
+    Modelujemy jeden stopień (maximumSections=1, sections=1 gdy załączona).
+    """
+    mrid = mrid_for("LinearShuntCompensator", cap.ref_id)
+    lsc = _obj(eq, "LinearShuntCompensator", mrid)
+    _prop(lsc, "IdentifiedObject.name", cap.name)
+    b_per_section = 0.0
+    if cap.rated_kv and cap.rated_kv > 0:
+        # B [S] = Q [VAr] / U² [V²]; Q_rated in Mvar -> VAr, U_rated in kV -> V.
+        b_per_section = mva_to_va(cap.rated_mvar) / (kv_to_v(cap.rated_kv) ** 2)
+    _prop(lsc, "LinearShuntCompensator.bPerSection", fmt_float(b_per_section))
+    _prop(lsc, "LinearShuntCompensator.gPerSection", fmt_float(0.0))
+    _prop(lsc, "ShuntCompensator.nomU", fmt_float(kv_to_v(cap.rated_kv)))
+    _prop(lsc, "ShuntCompensator.maximumSections", "1")
+    _prop(lsc, "ShuntCompensator.sections", "0" if cap.status == "open" else "1")
+    t1 = _terminal(eq, owner_ref=cap.ref_id, equipment_mrid=mrid, seq=1)
+    _connect_terminal_tp(tp, t1, cap.bus_ref)
+
+
+# ---------------------------------------------------------------------------
 # Substation -> Substation + VoltageLevel(s)
 # ---------------------------------------------------------------------------
 
@@ -506,6 +534,9 @@ def build_eq_tp_trees(enm: EnergyNetworkModel) -> tuple[ET.Element, ET.Element]:
 
     for load in sorted(enm.loads, key=lambda lo: lo.ref_id):
         _emit_load(eq, tp, load)
+
+    for cap in sorted(enm.shunt_capacitors, key=lambda c: c.ref_id):
+        _emit_shunt(eq, tp, cap)
 
     for sub in sorted(enm.substations, key=lambda s: s.ref_id):
         _emit_substation(eq, sub, bus_kv)

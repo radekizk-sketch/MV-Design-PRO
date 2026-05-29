@@ -37,6 +37,7 @@ _ELEMENT_KEYS = (
     "sources",
     "loads",
     "generators",
+    "shunt_capacitors",
     "substations",
     "bays",
     "junctions",
@@ -119,6 +120,13 @@ _SEMANTIC_INCLUDE_GENERATOR = (
     "catalog_ref",
 )
 _SEMANTIC_INCLUDE_LOAD = ("ref_id", "name", "bus_ref", "model", "catalog_ref")
+_SEMANTIC_INCLUDE_SHUNT_CAPACITOR = (
+    "ref_id",
+    "name",
+    "bus_ref",
+    "catalog_ref",
+    "catalog_namespace",
+)
 _SEMANTIC_INCLUDE_BAY = (
     "ref_id",
     "name",
@@ -145,22 +153,20 @@ def _semantic_payload(enm: EnergyNetworkModel) -> dict[str, Any]:
     raw = enm.model_dump(mode="json", exclude={"header"})
     return {
         "buses": [_project(b, _SEMANTIC_INCLUDE_BUS) for b in raw.get("buses", [])],
-        "branches": [
-            _project(b, _SEMANTIC_INCLUDE_BRANCH) for b in raw.get("branches", [])
-        ],
+        "branches": [_project(b, _SEMANTIC_INCLUDE_BRANCH) for b in raw.get("branches", [])],
         "transformers": [
-            _project(t, _SEMANTIC_INCLUDE_TRANSFORMER)
-            for t in raw.get("transformers", [])
+            _project(t, _SEMANTIC_INCLUDE_TRANSFORMER) for t in raw.get("transformers", [])
         ],
         "sources": [_project(s, _SEMANTIC_INCLUDE_SOURCE) for s in raw.get("sources", [])],
-        "generators": [
-            _project(g, _SEMANTIC_INCLUDE_GENERATOR) for g in raw.get("generators", [])
+        "generators": [_project(g, _SEMANTIC_INCLUDE_GENERATOR) for g in raw.get("generators", [])],
+        "loads": [_project(ld, _SEMANTIC_INCLUDE_LOAD) for ld in raw.get("loads", [])],
+        "shunt_capacitors": [
+            _project(sc, _SEMANTIC_INCLUDE_SHUNT_CAPACITOR)
+            for sc in raw.get("shunt_capacitors", [])
         ],
-        "loads": [_project(l, _SEMANTIC_INCLUDE_LOAD) for l in raw.get("loads", [])],
         "bays": [_project(b, _SEMANTIC_INCLUDE_BAY) for b in raw.get("bays", [])],
         "substations": [
-            _project(s, _SEMANTIC_INCLUDE_SUBSTATION)
-            for s in raw.get("substations", [])
+            _project(s, _SEMANTIC_INCLUDE_SUBSTATION) for s in raw.get("substations", [])
         ],
     }
 
