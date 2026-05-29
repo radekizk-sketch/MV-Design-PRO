@@ -134,7 +134,7 @@ Rekomendacja: dla D-01/D-03 dostarczyć dane autorytatywne (tablice IEEE 1584-20
    - **POMIAR FILL (§7.3.1, harness):** union-bbox elementów SLD = **fillW 100% / fillH 100%** (treść rozpięta na cały kadr), ALE kompozycja rzadka — pusty górny-prawy obszar (GPZ izolowany lewy-górny, magistrala niżej). „≥75% bbox" spełnione; „zero wielkich pustych obszarów" — NIE. Do poprawy: zbalansowanie drzewa (laterale nad i pod magistralą) lub zmniejszenie luki GPZ→magistrala.
 1. **Reszta weryfikacji wizualnej** — harness interakcyjny (A-07, §7B.9-3/5/6), pozostałe surface'y.
 2. **K-04 + K-08** — walidacja progów V12.6 i sanity-bounds (wiarygodność wartości przed nowymi modułami).
-3. **D-04 ZIP** → **D-03 stabilność impedancyjna/SSCI** → **D-01 Arc Flash** → **D-02 CIM/CGMES** → **D-05/D-06**.
+3. **D-04 ZIP** ✅ → **D-03 stabilność impedancyjna/SSCI** ✅ (fizyka+werdykt, commits `13d41d5`+`85b8281`) → **D-01 Arc Flash** ⏸️ ZABLOKOWANY DANYMI (IEEE 1584-2018 — fizyka bezpieczeństwa; nie zmyślam tablic z pamięci, czeka na dane właściciela lub świadome zlecenie best-effort z oznaczeniem) → **D-02 CIM/CGMES** 🔄 W TOKU (recon+design, przeskok przed zablokowanym D-01) → **D-05/D-06**.
 4. Porządki: D-10 (wygaszenie legacy), D-11 (decyzja zakresowa).
 
 Każda pozycja: pełne wdrożenie (UI → solver → kontrakt → test → integracja), sanity-bounds, weryfikacja wizualna na stacku.
