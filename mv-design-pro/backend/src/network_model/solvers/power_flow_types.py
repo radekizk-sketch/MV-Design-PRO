@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from network_model.solvers.power_flow_inverter import InverterControl
 from network_model.solvers.power_flow_zip import ZipCoeffs
 
 if TYPE_CHECKING:
@@ -38,6 +39,10 @@ class PQSpec:
     # None => classic constant-power PQ (reduce-to-NR invariant). When set,
     # p_mw/q_mvar are treated as the load base P0/Q0 at the reference voltage.
     zip_coeffs: ZipCoeffs | None = None
+    # ADR-011 §5b: optional inverter/converter source control (Q(U), P(f)/LFSM,
+    # cosφ modes). None => constant-PQ source (reduce-to-NR). Mutually exclusive
+    # with zip_coeffs on a given bus (a bus is a load XOR a source).
+    inverter_control: InverterControl | None = None
 
 
 @dataclass

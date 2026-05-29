@@ -78,6 +78,34 @@ PQ-only przez zunifikowaną ścieżkę musi dać identyczne wyniki i ślad jak o
 (brak cichej regresji w węzłach PV). Po scaleniu: jeden builder Jakobianu, jeden rdzeń
 iteracji; duplikat usunięty.
 
+### 5b. Źródła falownikowe U/f (WSZYSTKO WSZĘDZIE — ZASADA NR 3)
+
+Korekta: „falownik = generacja, więc model U/f go nie dotyczy" było błędem. Falownik
+(PV/BESS/FW) jest bytem U/f-zależnym i jest modelowany w **tym samym rozpływie** co
+odbiory ZIP — jako wstrzyk PQ (źródła wchodzą dziś jako `PQSpec`), z charakterystyką
+sterowania na `PQSpec.inverter_control`. Tryby NC RfG (§8.7), w pu na `base_mva`,
+konwencja wstrzyku:
+
+- **Q_CONST** — stałe Q (przypadek „off", reduce-to-NR),
+- **COSPHI_CONST** — `Q = q_over_p·|P|` (znak = nad/niedowzbudzenie),
+- **COSPHI_P** — `q_over_p(P)` odcinkami-liniowo (od `P/Pmax`),
+- **Q_U** — droop volt-var `Q(|V|)`: jedyny tryb **napięciowo-zależny** (deadband
+  low/high + `slope_pu_per_pu` + clamp do `[q_min,q_max]`, ta sama reprezentacja co
+  pakiet dowodu Q(U) — jedno źródło prawdy),
+- **P(f)/LFSM-O/U** — jednorazowe skalowanie wstrzyku czynnego (f = stałe wejście
+  studium, identycznie jak ZIP P(f)).
+
+**Integracja (mirror ZIP):** `apply_inverter_setpoint` (jednorazowo: LFSM + Q dla
+trybów V-niezależnych) + `build_inverter_table` (zbiór buséw Q_U) + `inverter_effective_spec`
+(Q per iteracja z |V|). Jakobian: człon `∂Q_spec/∂V = qu_dq_dv` na diagonali J22
+(P nie zależy od V → brak członu J12). We **wszystkich trzech solverach** (NR, GS, FD),
+ten sam kontrakt. Charakterystyki z katalogu (`ConverterType`/`InverterType`, Rule #10),
+materializowane na źródło. White Box: `inverter_sources` (Q/P spec + tryb) w trace.
+
+reduce-to-NR rozszerzony: źródło pasywne (Q_CONST, brak LFSM, f=f0) ⇒
+`inverter_control_from_params` zwraca None ⇒ `PQSpec` bez zmian ⇒ wynik bajt-identyczny.
+*(Zweryfikowane dla NR: pasywne źródło = czysty wstrzyk PQ, napięcia i slack identyczne.)*
+
 ### 6. INWARIANT reduce-to-NR (bramka bezpieczeństwa, per solver)
 
 Przy `a=b=0, c=1, f=f0`: czynnik napięciowy=1, czynnik częstotliwościowy=1, pochodna

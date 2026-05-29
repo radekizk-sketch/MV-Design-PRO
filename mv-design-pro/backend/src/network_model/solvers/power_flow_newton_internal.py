@@ -7,6 +7,11 @@ from typing import Any
 import numpy as np
 from network_model.core.branch import Branch, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
+from network_model.solvers.power_flow_inverter import (
+    InverterControl,
+    qu_dq_dv,
+    qu_q,
+)
 from network_model.solvers.power_flow_types import (
     PowerFlowInput,
     PowerFlowOptions,
@@ -46,6 +51,29 @@ def _apply_zip_jacobian_v2(
         dq_dv = q_spec[z_idx] * zip_factor_derivative(z_c.a_q, z_c.b_q, v_mag[z_idx], z_c.v0_pu)
         jacobian[row_p, n_p + col_q] -= dp_dv
         jacobian[n_p + col_q, n_p + col_q] -= dq_dv
+
+
+def _apply_inverter_jacobian_v2(
+    jacobian: np.ndarray,
+    v: np.ndarray,
+    non_slack_indices: list[int],
+    active_pq: list[int],
+    inv_table: dict[int, InverterControl],
+) -> None:
+    """ADR-011 §5b: inverter Q(U) correction for the v2 Jacobian.
+
+    An inverter source is a PQ bus whose Q follows the volt-var droop Q(U); its
+    only voltage derivative is ∂Q_spec/∂V (the droop slope), so it touches the
+    J22 diagonal exactly like the ZIP ∂Q/∂V term. P is frequency- (not voltage-)
+    dependent, so there is no J12 term. In the deadband or where Q is clamped the
+    slope is 0 → no change (reduce-to-NR)."""
+    n_p = len(non_slack_indices)
+    v_mag = np.abs(v)
+    for idx, c in inv_table.items():
+        if idx not in active_pq or idx not in non_slack_indices:
+            continue
+        col_q = active_pq.index(idx)
+        jacobian[n_p + col_q, n_p + col_q] -= qu_dq_dv(c, v_mag[idx])
 
 
 def validate_input(pf_input: PowerFlowInput) -> tuple[list[str], list[str]]:
@@ -370,6 +398,7 @@ def newton_raphson_solve_v2(
     base_mva: float,
     node_index_to_id: dict[int, str],
     zip_table: dict[int, ZipCoeffs] | None = None,
+    inv_table: dict[int, InverterControl] | None = None,
 ) -> tuple[
     np.ndarray,
     bool,
@@ -433,17 +462,23 @@ def newton_raphson_solve_v2(
         # Gated — with no ZIP load the base p_spec/q_spec are used unchanged
         # (reduce-to-NR). Placed after PV-limit handling so switched-bus q_spec
         # values are respected; ZIP touches only ZIP (PQ-load) buses.
-        if zip_table:
+        if zip_table or inv_table:
             v_mag_now = np.abs(v)
             p_spec_eff = p_spec.copy()
             q_spec_eff = q_spec.copy()
-            for z_idx, z_c in zip_table.items():
-                p_spec_eff[z_idx] = p_spec[z_idx] * zip_factor(
-                    z_c.a_p, z_c.b_p, z_c.c_p, v_mag_now[z_idx], z_c.v0_pu
-                )
-                q_spec_eff[z_idx] = q_spec[z_idx] * zip_factor(
-                    z_c.a_q, z_c.b_q, z_c.c_q, v_mag_now[z_idx], z_c.v0_pu
-                )
+            if zip_table:
+                for z_idx, z_c in zip_table.items():
+                    p_spec_eff[z_idx] = p_spec[z_idx] * zip_factor(
+                        z_c.a_p, z_c.b_p, z_c.c_p, v_mag_now[z_idx], z_c.v0_pu
+                    )
+                    q_spec_eff[z_idx] = q_spec[z_idx] * zip_factor(
+                        z_c.a_q, z_c.b_q, z_c.c_q, v_mag_now[z_idx], z_c.v0_pu
+                    )
+            if inv_table:
+                # ADR-011 §5b: Q(U) volt-var sources recompute Q from |V| each
+                # iteration (P is frequency-, not voltage-dependent → unchanged).
+                for i_idx, i_c in inv_table.items():
+                    q_spec_eff[i_idx] = qu_q(i_c, v_mag_now[i_idx])
         else:
             p_spec_eff = p_spec
             q_spec_eff = q_spec
@@ -507,6 +542,15 @@ def newton_raphson_solve_v2(
                         }
                         for z_idx in sorted(zip_table)
                     }
+                if inv_table:
+                    trace_entry["inverter_sources"] = {
+                        node_index_to_id.get(i_idx, str(i_idx)): {
+                            "p_spec_pu": float(p_spec_eff[i_idx]),
+                            "q_spec_pu": float(q_spec_eff[i_idx]),
+                            "mode": inv_table[i_idx].mode.value,
+                        }
+                        for i_idx in sorted(inv_table)
+                    }
             trace.append(trace_entry)
             break
 
@@ -515,6 +559,8 @@ def newton_raphson_solve_v2(
             _apply_zip_jacobian_v2(
                 jacobian, v, non_slack_indices, active_pq, p_spec, q_spec, zip_table
             )
+        if inv_table:
+            _apply_inverter_jacobian_v2(jacobian, v, non_slack_indices, active_pq, inv_table)
         try:
             step = np.linalg.solve(jacobian, mismatch)
         except np.linalg.LinAlgError:
@@ -592,6 +638,15 @@ def newton_raphson_solve_v2(
                         "q_spec_pu": float(q_spec_eff[z_idx]),
                     }
                     for z_idx in sorted(zip_table)
+                }
+            if inv_table:
+                trace_entry["inverter_sources"] = {
+                    node_index_to_id.get(i_idx, str(i_idx)): {
+                        "p_spec_pu": float(p_spec_eff[i_idx]),
+                        "q_spec_pu": float(q_spec_eff[i_idx]),
+                        "mode": inv_table[i_idx].mode.value,
+                    }
+                    for i_idx in sorted(inv_table)
                 }
 
         trace.append(trace_entry)
