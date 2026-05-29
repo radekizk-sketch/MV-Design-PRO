@@ -26,7 +26,7 @@ Usage:
 import unicodedata
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 # =============================================================================
@@ -225,6 +225,72 @@ def _uf_control_kwargs(data: dict[str, Any]) -> dict[str, Any]:
         "lfsm_deadband_hz": _opt_float("lfsm_deadband_hz"),
         "lfsm_allow_increase": bool(data.get("lfsm_allow_increase", False)),
         "f0_hz": _opt_float("f0_hz"),
+    }
+
+
+# =============================================================================
+# INVERTER CARD ("karta falownika") — complete datasheet-card schema fields.
+# All fields are OPTIONAL with None defaults so existing published converter
+# types round-trip byte-identically (the schema is COMPLETE; per-field data
+# quality says how trustworthy each value is — see solver_input.provenance).
+# =============================================================================
+
+# SC fault-model card fields (feeds short-circuit beyond the simple k_sc*In).
+_CARD_SC_MODEL_FIELDS: tuple[str, ...] = (
+    "sc_model",
+    "sc_pq_split",
+    "sc_transient_k",
+    "sc_sustained_k",
+)
+
+# SSCI / Z_conv(f) controller-bandwidth card fields (feeds D-03 SSCI / Z_conv).
+_CARD_SSCI_FIELDS: tuple[str, ...] = (
+    "current_loop_bandwidth_hz",
+    "voltage_loop_bandwidth_hz",
+    "pll_bandwidth_hz",
+    "control_delay_ms",
+)
+
+# Power-hierarchy card fields (Pzainst >= Pn,AC >= Pprzylacz >= Posiagl).
+_CARD_POWER_HIERARCHY_FIELDS: tuple[str, ...] = (
+    "p_installed_mw",
+    "pn_ac_mw",
+    "p_connection_mw",
+    "p_achievable_mw",
+)
+
+# All card-schema field names added on top of the legacy ConverterType fields.
+_CARD_SCHEMA_FIELDS: tuple[str, ...] = (
+    _CARD_SC_MODEL_FIELDS + _CARD_SSCI_FIELDS + _CARD_POWER_HIERARCHY_FIELDS
+)
+
+
+def _card_schema_to_dict(source: Any) -> dict[str, Any]:
+    """Serialize the inverter-card schema fields of a converter type."""
+    return {name: getattr(source, name) for name in _CARD_SCHEMA_FIELDS}
+
+
+def _card_schema_kwargs(data: dict[str, Any]) -> dict[str, Any]:
+    """Parse the inverter-card schema fields from a dict (round-trips to_dict)."""
+
+    def _opt_float(key: str) -> float | None:
+        value = data.get(key)
+        return float(value) if value is not None else None
+
+    sc_model = data.get("sc_model")
+    return {
+        "sc_model": str(sc_model) if sc_model is not None else None,
+        "sc_pq_split": _opt_float("sc_pq_split"),
+        "sc_transient_k": _opt_float("sc_transient_k"),
+        "sc_sustained_k": _opt_float("sc_sustained_k"),
+        "current_loop_bandwidth_hz": _opt_float("current_loop_bandwidth_hz"),
+        "voltage_loop_bandwidth_hz": _opt_float("voltage_loop_bandwidth_hz"),
+        "pll_bandwidth_hz": _opt_float("pll_bandwidth_hz"),
+        "control_delay_ms": _opt_float("control_delay_ms"),
+        "p_installed_mw": _opt_float("p_installed_mw"),
+        "pn_ac_mw": _opt_float("pn_ac_mw"),
+        "p_connection_mw": _opt_float("p_connection_mw"),
+        "p_achievable_mw": _opt_float("p_achievable_mw"),
     }
 
 
@@ -933,6 +999,23 @@ class ConverterType:
     lfsm_deadband_hz: float | None = None
     lfsm_allow_increase: bool = False
     f0_hz: float | None = None
+    # Inverter-card ("karta falownika") SC fault-model fields. Feed the
+    # short-circuit solver beyond the simple k_sc*In contribution. All optional
+    # (None) so published types round-trip byte-identically.
+    sc_model: Literal["simple_k_factor", "pq_component", "from_datasheet"] | None = None
+    sc_pq_split: float | None = None  # P/(P+Q) split for the SC contribution
+    sc_transient_k: float | None = None  # fast/transient fault factor k*In
+    sc_sustained_k: float | None = None  # sustained fault factor k*In
+    # SSCI / Z_conv(f) controller-bandwidth fields. Feed D-03 SSCI / Z_conv(f).
+    current_loop_bandwidth_hz: float | None = None
+    voltage_loop_bandwidth_hz: float | None = None
+    pll_bandwidth_hz: float | None = None
+    control_delay_ms: float | None = None
+    # Power hierarchy: Pzainst >= Pn,AC >= Pprzylacz >= Posiagl (validated when set).
+    p_installed_mw: float | None = None  # Pzainst (moc zainstalowana)
+    pn_ac_mw: float | None = None  # Pn,AC (moc znamionowa AC)
+    p_connection_mw: float | None = None  # Pprzylacz (moc przylaczeniowa)
+    p_achievable_mw: float | None = None  # Posiagl (moc osiagalna)
     ptpiree_status: str | None = None
     ptpiree_certificate_ref: str | None = None
     ptpiree_document_number: str | None = None
@@ -947,6 +1030,27 @@ class ConverterType:
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+
+    def validate_power_hierarchy(self) -> None:
+        """Assert Pzainst >= Pn,AC >= Pprzylacz >= Posiagl for the fields present.
+
+        Only consecutive pairs that are BOTH present are checked, so a partially
+        filled card never raises spuriously. Raises ValueError on violation.
+        """
+        ordered: tuple[tuple[str, float | None], ...] = (
+            ("p_installed_mw", self.p_installed_mw),
+            ("pn_ac_mw", self.pn_ac_mw),
+            ("p_connection_mw", self.p_connection_mw),
+            ("p_achievable_mw", self.p_achievable_mw),
+        )
+        present = [(name, value) for name, value in ordered if value is not None]
+        for (upper_name, upper), (lower_name, lower) in zip(present, present[1:], strict=False):
+            if lower > upper:
+                raise ValueError(
+                    f"Naruszenie hierarchii mocy karty falownika: "
+                    f"{lower_name}={lower} > {upper_name}={upper} "
+                    f"(wymagane Pzainst >= Pn,AC >= Pprzylacz >= Posiagl)"
+                )
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -968,6 +1072,8 @@ class ConverterType:
             "dynamic_profile_id": self.dynamic_profile_id,
             # control_mode is emitted by _uf_control_to_dict (ADR-011 §5b).
             **_uf_control_to_dict(self),
+            # Inverter-card schema fields (SC model, SSCI bands, power hierarchy).
+            **_card_schema_to_dict(self),
             "ptpiree_status": self.ptpiree_status,
             "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
             "ptpiree_document_number": self.ptpiree_document_number,
@@ -1016,6 +1122,8 @@ class ConverterType:
             dynamic_profile_id=data.get("dynamic_profile_id"),
             # control_mode + U/f-control fields parsed by _uf_control_kwargs.
             **_uf_control_kwargs(data),
+            # Inverter-card schema fields parsed by _card_schema_kwargs.
+            **_card_schema_kwargs(data),
             ptpiree_status=data.get("ptpiree_status"),
             ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
             ptpiree_document_number=data.get("ptpiree_document_number"),
@@ -2652,6 +2760,8 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
         # ADR-011 §5b: U/f-control characteristic materializes into the source's
         # materialized_params. Defaults keep a passive constant-PQ source, so
         # existing published converter types remain byte-identical (reduce-to-NR).
+        # Inverter-card SC-model / SSCI / power-hierarchy fields are appended; all
+        # default to None so existing published types remain byte-identical.
         solver_fields=(
             "un_kv",
             "sn_mva",
@@ -2672,6 +2782,19 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "lfsm_deadband_hz",
             "lfsm_allow_increase",
             "f0_hz",
+            # Inverter-card ("karta falownika") schema fields.
+            "sc_model",
+            "sc_pq_split",
+            "sc_transient_k",
+            "sc_sustained_k",
+            "current_loop_bandwidth_hz",
+            "voltage_loop_bandwidth_hz",
+            "pll_bandwidth_hz",
+            "control_delay_ms",
+            "p_installed_mw",
+            "pn_ac_mw",
+            "p_connection_mw",
+            "p_achievable_mw",
         ),
         ui_fields=(
             ("un_kv", "Un [kV]", "kV"),

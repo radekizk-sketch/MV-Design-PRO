@@ -17,12 +17,54 @@ from typing import Any
 
 
 class SourceKind(Enum):
-    """Origin of a parameter value in solver-input payload."""
+    """Origin of a parameter value in solver-input payload (PIPELINE axis).
+
+    Answers: *where did this value come from in the pipeline* — catalog lookup,
+    user override, a derivation rule, or a forbidden default.
+    """
 
     CATALOG = "CATALOG"
     OVERRIDE = "OVERRIDE"
     DERIVED = "DERIVED"
     DEFAULT_FORBIDDEN = "DEFAULT_FORBIDDEN"
+
+
+class FieldQuality(str, Enum):
+    """Data-quality provenance axis for a single card field.
+
+    Orthogonal to :class:`SourceKind` (which records *where* a value came from in
+    the pipeline). ``FieldQuality`` records *how trustworthy* the value is:
+
+    - ``DATASHEET`` (karta_techniczna): value taken from a manufacturer datasheet
+      / type-test report — fully trustworthy for the OSD package.
+    - ``ESTIMATED`` (oszacowane): value is an engineering estimate without a real
+      source (e.g. a controller bandwidth assumed from technology defaults). It
+      MUST be tagged ``ESTIMATED`` — never ``DATASHEET`` — until a real source is
+      attached.
+    - ``SYSTEM_DEFAULT`` (domyslne_techniczne): value is a system/technical
+      default carried by the schema (the field is present but no real value has
+      been provided).
+
+    Paramount rule: "no gaps" means the schema is COMPLETE (every field present),
+    NOT that every field is filled with a fabricated value. A value with no real
+    source is ``ESTIMATED`` (or ``SYSTEM_DEFAULT``), never ``DATASHEET``.
+    """
+
+    DATASHEET = "DATASHEET"
+    ESTIMATED = "ESTIMATED"
+    SYSTEM_DEFAULT = "SYSTEM_DEFAULT"
+
+    @property
+    def label_pl(self) -> str:
+        """Polish UI label (no codenames)."""
+        return _FIELD_QUALITY_LABEL_PL[self]
+
+
+_FIELD_QUALITY_LABEL_PL: dict[FieldQuality, str] = {
+    FieldQuality.DATASHEET: "karta_techniczna",
+    FieldQuality.ESTIMATED: "oszacowane",
+    FieldQuality.SYSTEM_DEFAULT: "domyslne_techniczne",
+}
 
 
 @dataclass(frozen=True)
@@ -60,6 +102,9 @@ class ProvenanceEntry:
         value_hash: Deterministic hash of the value (SHA-256 of JSON-encoded value).
         unit: Physical unit if applicable (e.g., "ohm/km", "A").
         note: Technical note (no soft language).
+        quality: Data-quality axis (DATASHEET / ESTIMATED / SYSTEM_DEFAULT).
+            Orthogonal to ``source_kind``; optional so existing entries serialize
+            byte-identically when unset.
     """
 
     element_ref: str
@@ -69,6 +114,7 @@ class ProvenanceEntry:
     value_hash: str = ""
     unit: str | None = None
     note: str | None = None
+    quality: FieldQuality | None = None
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -82,7 +128,59 @@ class ProvenanceEntry:
             result["unit"] = self.unit
         if self.note is not None:
             result["note"] = self.note
+        if self.quality is not None:
+            result["quality"] = self.quality.value
         return result
+
+
+@dataclass(frozen=True)
+class CardFieldStatus:
+    """Data-quality status of one field on a converter (inverter) card.
+
+    Lightweight, JSON-serializable. The map {field_name -> CardFieldStatus}
+    attached to a card answers, per field, *how trustworthy* its value is. A
+    field MISSING from this map is NOT allowed for a complete card — the schema
+    is complete, so every card field has a status; the status (not the presence)
+    says how trustworthy each value is.
+
+    Attributes:
+        field_name: Card field name (matches a ConverterType attribute).
+        quality: Data-quality classification (DATASHEET / ESTIMATED / SYSTEM_DEFAULT).
+        source_ref: Reference to the real source (datasheet / report) if any.
+        note: Technical note (no soft language).
+    """
+
+    field_name: str
+    quality: FieldQuality
+    source_ref: str | None = None
+    note: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
+            "field_name": self.field_name,
+            "quality": self.quality.value,
+        }
+        if self.source_ref is not None:
+            result["source_ref"] = self.source_ref
+        if self.note is not None:
+            result["note"] = self.note
+        return result
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> CardFieldStatus:
+        return cls(
+            field_name=str(data["field_name"]),
+            quality=FieldQuality(str(data["quality"])),
+            source_ref=data.get("source_ref"),
+            note=data.get("note"),
+        )
+
+
+def card_status_map_to_dict(
+    status_map: dict[str, CardFieldStatus],
+) -> dict[str, dict[str, Any]]:
+    """Serialize a {field_name -> CardFieldStatus} map deterministically."""
+    return {name: status_map[name].to_dict() for name in sorted(status_map)}
 
 
 def compute_value_hash(value: Any) -> str:
@@ -130,3 +228,80 @@ def build_provenance_summary(entries: list[ProvenanceEntry]) -> ProvenanceSummar
         overrides_used_refs=tuple(sorted(override_refs)),
         derived_fields_count=derived_count,
     )
+
+
+# Inverter-card ("karta falownika") rating/identity fields. When present these
+# seed to DATASHEET (a published catalog rating is treated as datasheet-grade).
+_CARD_RATING_FIELDS: tuple[str, ...] = (
+    "un_kv",
+    "sn_mva",
+    "pmax_mw",
+    "qmin_mvar",
+    "qmax_mvar",
+    "cosphi_min",
+    "cosphi_max",
+    "manufacturer",
+    "model",
+)
+
+
+def card_field_quality_map(converter: Any) -> dict[str, CardFieldStatus]:
+    """Derive the SEED data-quality map for an inverter card (ConverterType).
+
+    This is only the seed; explicit per-card overrides come later (a separate
+    step). Default rule, per field of the COMPLETE card schema:
+
+    - rating / manufacturer / model present (not None) => ``DATASHEET``
+      (a published catalog rating is treated as datasheet-grade);
+    - controller-bandwidth (SSCI / Z_conv) fields => ``ESTIMATED`` by default
+      (these are engineering estimates until a real datasheet value is attached —
+      they MUST NOT be tagged DATASHEET just to make D-03 compute);
+    - any other card field that is absent (None) => ``SYSTEM_DEFAULT``;
+    - SC-model / power-hierarchy fields present (not None) => ``DATASHEET``.
+
+    A field MISSING from the schema is not allowed: the schema is complete, so
+    every card field appears in this map; the quality (not the presence) says how
+    trustworthy each value is.
+
+    ``converter`` is typed ``Any`` to avoid a hard import of the catalog layer at
+    module load; the field tuples are imported lazily from the catalog (single
+    source of truth for the card schema).
+    """
+    from network_model.catalog.types import (  # lazy: avoid import cycle
+        _CARD_POWER_HIERARCHY_FIELDS,
+        _CARD_SC_MODEL_FIELDS,
+        _CARD_SSCI_FIELDS,
+    )
+
+    result: dict[str, CardFieldStatus] = {}
+    source_ref = getattr(converter, "source_reference", None)
+
+    # Rating / identity block: DATASHEET when present, else SYSTEM_DEFAULT.
+    for name in _CARD_RATING_FIELDS:
+        present = getattr(converter, name, None) is not None
+        result[name] = CardFieldStatus(
+            field_name=name,
+            quality=FieldQuality.DATASHEET if present else FieldQuality.SYSTEM_DEFAULT,
+            source_ref=source_ref if present else None,
+        )
+
+    # SC-model and power-hierarchy blocks: DATASHEET when present, else SYSTEM_DEFAULT.
+    for name in _CARD_SC_MODEL_FIELDS + _CARD_POWER_HIERARCHY_FIELDS:
+        present = getattr(converter, name, None) is not None
+        result[name] = CardFieldStatus(
+            field_name=name,
+            quality=FieldQuality.DATASHEET if present else FieldQuality.SYSTEM_DEFAULT,
+            source_ref=source_ref if present else None,
+        )
+
+    # Controller-bandwidth (SSCI / Z_conv) block: ESTIMATED by default when
+    # present (never DATASHEET without a real source), SYSTEM_DEFAULT when absent.
+    for name in _CARD_SSCI_FIELDS:
+        present = getattr(converter, name, None) is not None
+        result[name] = CardFieldStatus(
+            field_name=name,
+            quality=FieldQuality.ESTIMATED if present else FieldQuality.SYSTEM_DEFAULT,
+            note="oszacowanie pasma regulatora; wymaga zrodla z karty technicznej",
+        )
+
+    return result
