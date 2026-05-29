@@ -1,5 +1,27 @@
 # CLAUDE.md - AI Assistant Guidelines for MV-DESIGN-PRO
 
+---
+
+## ⛔ ZASADY NADRZĘDNE PROJEKTU (czytaj przed każdą pracą)
+
+Pełny kanon: `PROMPT_MV_DESIGN_PRO_PRZEBUDOWA.md`. Stan i dług: `STAN_REPO.md` (czytaj NAJPIERW). Repo > specy > rejestr.
+
+**ZASADA NR 1 — ZERO DŁUGU.** Każda funkcja w UI ma w pełni wdrożony backend: UI + solver + kontrakt + testy + integracja. Zakaz `no_module` / `funkcja w przygotowaniu` / `TODO` / zaślepek. Funkcja istniejąca tylko w testach, niewpięta w ścieżkę użytkownika, to dług.
+
+**ZASADA NR 2 — WERYFIKACJA WIZUALNA.** Kod się kompiluje ≠ ekran działa. Dowodem jest render/zrzut, nie kod. Werdykt wizualny SLD wystawia właściciel (gate B-02), nie agent. Zakaz samocertyfikacji jakości wizualnej.
+
+**ZASADA NR 3 — NIC NA POTEM.** Wykryte = naprawione natychmiast, w tej samej pracy. Zakaz: „follow-on", „osobny przebieg", „sekwencyjnie", „bounded increment", „dług porządkowy odłożony", jawnego błędu (`NotSupportedError`) zamiast funkcji, okrajania zakresu „bo nie tu". Dług architektoniczny wykryty przy okazji (np. dwie ścieżki tej samej fizyki) → naprawiony od razu. „Duże/przekrojowe" → orkiestracja teraz (`ORKIESTRACJA_AGENTOW.md`), nie odroczenie. Jeśli piszesz „później/sekwencyjnie/poza zakresem" — to sygnał, że odkładasz: zatrzymaj się i zrób to teraz.
+
+**ZAKAZ SKRÓTÓW.** Kompletność ponad zwięzłość. Zakaz „etc.", „analogicznie", „uproszczony", „do dopracowania", „do dopracowania później". Każdy przypadek brzegowy, każde miejsce wpięcia, każdy solver — w pełni, jawnie.
+
+**PEŁNA IMPLEMENTACJA.** Luka wykryta = solver napisany wg właściwej normy + kontrakt + White Box + testy + sanity-bounds + wpięcie we WSZYSTKIE miejsca (nie część). Wymaganie nie pasujące do bieżącego miejsca wpinasz tam, gdzie pasuje — nie odkładasz.
+
+**JEDYNE DOZWOLONE ZATRZYMANIA** (to NIE są odroczenia): (1) edycja zamrożonego rdzenia bez zgody właściciela — B-01; (2) werdykt wizualny SLD — B-02; (3) bramki bezpieczeństwa, np. reduce-to-NR przy zmianie rdzenia. Poza tym: działaj do końca, autonomicznie, bez odkładania.
+
+**UCZCIWOŚĆ.** Raportuj stan zgodnie z prawdą — co domknięte z dowodem, co częściowe, czego nie zrobiono i dlaczego. Korekta w obie strony. Nigdy nie zawyżaj. „Renderuje się / testy zielone / wygląda gotowo" ≠ dowód ukończenia.
+
+---
+
 ## Project Overview
 
 MV-DESIGN-PRO is a professional Medium Voltage (MV) network design and analysis system for the power industry. It provides tools for network modeling, short circuit calculations (IEC 60909), power flow analysis (Newton-Raphson, Gauss-Seidel, Fast Decoupled), protection coordination, and proof generation with full OZE (renewable energy) integration.
