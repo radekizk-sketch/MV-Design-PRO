@@ -11,7 +11,7 @@
 
 | Sprawdzenie | Wynik | Data |
 |---|---|---|
-| Backend pytest | 5249 passed, 0 failed | 2026-05-28 |
+| Backend pytest | **5271 passed**, 11 skipped, 4 xpassed, 0 failed (po D-14) | 2026-05-29 |
 | Frontend type-check (tsc) | PASS | 2026-05-28 |
 | Guardy (arch/pcc/codenames/forbidden-terms/heurystyki/vulture) | PASS | 2026-05-28 |
 | Skala: backend 625 `.py` (+378 testów), frontend 597 `.tsx`/696 `.ts`, 88 guardów | — | 2026-05-28 |
@@ -48,7 +48,7 @@
 | D-10 | `ncrfg_compliance/checker.py` `DYNAMIC_TEST_IDS` zwracają `no_module` (legacy, niepodpięte do API) | — | DO WYGASZENIA (zastąpione przez `ncrfg_ptpiree`) | niski |
 | D-11 | API 501: `power_flow_comparisons`, `power_flow_runs`, `fault_loop` TT/IT | — | DECYZJA ZAKRESOWA | niski |
 | D-12 | **Tryb geo-schematyczny SLD** — odłożony (ENM bez współrzędnych geo); podłączyć do CGMES `DiagramLayout`/`PositionPoint` po D-02 | 7.6.C | ODŁOŻONY (zależny od D-02) | po D-02 |
-| D-13 | **„Druga prawda" (Z15) we frontendzie** — UI liczy fizykę zamiast czytać: `ProtectionCurvesEditor.tsx` generuje krzywe IEC/IEEE + koordynację (autor: „should come from backend"); `AddDerWizard.tsx:505` `powerKw/0.9` dobór trafo w UI | Z15, K-12 | DO PRZENIESIENIA do backendu/silnika | 2 |
+| D-13 | **„Druga prawda" (Z15) we frontendzie** — (a) `ProtectionCurvesEditor.tsx` generuje krzywe IEC/IEEE + koordynację: **DEAD/legacy (niemontowany w żadnym surface — tylko barrel index.ts)**; backend MA `protection/curves/{iec,ieee}_curves.py` + API `protection_coordination.py` → fix = czytać z backendu lub usunąć martwy duplikat. (b) `AddDerWizard.tsx:505` `powerKw/0.9` — LIVE, pre-filtr pojemności trafo w ~4 miejscach; backend `add_converter_source` waliduje pojemność AUTORYTATYWNIE → fix = delegacja do backendu (jedna prawda). Live UI ⇒ wymaga weryfikacji renderem (B-02). | Z15, K-12 | DO PRZENIESIENIA (a: dead duplikat; b: delegacja do backendu + render) | 2 |
 | D-14 | **K-08: sanity-bounds analiz V12.6** — `_reliability`/`_opf_loss_lcc`/`_uncertainty` + fix `_benchmark_validation` (cichy fałsz K-09) + per-poziom-napięcia guard Ik'' (DEF-01) | K-08, K-04, K-09 | **WDROŻONE** (blok `sanity` w 3 metodach; benchmark bez refs → „dane niekompletne"; moduł `analysis/sanity_bounds`); POZOSTAJE: wpięcie guardu Ik'' w ścieżkę konsumpcji wyników SC | — |
 
 **Domknięte porządkowo 2026-05-28:** D-07 (`eligibility_service` — usunięta fraza „Funkcja w przygotowaniu"), D-08 (`frt_hvrt` — usunięte etykiety-wymówki), D-09 (`ncrfg_compliance/checker` docstring).
