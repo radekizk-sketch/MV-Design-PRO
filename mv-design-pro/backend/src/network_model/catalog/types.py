@@ -168,6 +168,66 @@ def _catalog_metadata_to_dict(
     return payload
 
 
+# ADR-011 §5b: optional U/f-control fields shared by ConverterType / InverterType.
+# Defaults keep a source passive (constant PQ) so published types round-trip
+# unchanged. The keys mirror inverter_control_from_params' expected param names.
+_UF_CONTROL_FIELDS: tuple[str, ...] = (
+    "control_mode",
+    "cosphi",
+    "q_absorbing",
+    "cosphi_p_points",
+    "qu_deadband_low_pu",
+    "qu_deadband_high_pu",
+    "qu_slope_pu_per_pu",
+    "qu_q_min_mvar",
+    "qu_q_max_mvar",
+    "lfsm_droop_pct",
+    "lfsm_deadband_hz",
+    "lfsm_allow_increase",
+    "f0_hz",
+)
+
+
+def _uf_control_to_dict(source: Any) -> dict[str, Any]:
+    """Serialize the optional U/f-control fields of a converter/inverter type."""
+    payload: dict[str, Any] = {}
+    for name in _UF_CONTROL_FIELDS:
+        value = getattr(source, name)
+        if name == "cosphi_p_points" and value is not None:
+            payload[name] = [[float(x), float(y)] for x, y in value]
+        else:
+            payload[name] = value
+    return payload
+
+
+def _uf_control_kwargs(data: dict[str, Any]) -> dict[str, Any]:
+    """Parse the optional U/f-control fields from a dict (round-trips to_dict)."""
+    raw_points = data.get("cosphi_p_points")
+    points: tuple[tuple[float, float], ...] | None = (
+        tuple((float(x), float(y)) for x, y in raw_points) if raw_points is not None else None
+    )
+
+    def _opt_float(key: str) -> float | None:
+        value = data.get(key)
+        return float(value) if value is not None else None
+
+    return {
+        "control_mode": data.get("control_mode"),
+        "cosphi": _opt_float("cosphi"),
+        "q_absorbing": bool(data.get("q_absorbing", False)),
+        "cosphi_p_points": points,
+        "qu_deadband_low_pu": _opt_float("qu_deadband_low_pu"),
+        "qu_deadband_high_pu": _opt_float("qu_deadband_high_pu"),
+        "qu_slope_pu_per_pu": _opt_float("qu_slope_pu_per_pu"),
+        "qu_q_min_mvar": _opt_float("qu_q_min_mvar"),
+        "qu_q_max_mvar": _opt_float("qu_q_max_mvar"),
+        "lfsm_droop_pct": _opt_float("lfsm_droop_pct"),
+        "lfsm_deadband_hz": _opt_float("lfsm_deadband_hz"),
+        "lfsm_allow_increase": bool(data.get("lfsm_allow_increase", False)),
+        "f0_hz": _opt_float("f0_hz"),
+    }
+
+
 # =============================================================================
 # CATALOG BINDING — canonical binding contract
 # =============================================================================
@@ -857,6 +917,22 @@ class ConverterType:
     control_mode: str | None = None
     grid_code: str | None = None
     dynamic_profile_id: str | None = None
+    # ADR-011 §5b: optional U/f-control characteristic (Q(U), P(f)/LFSM, cosphi
+    # modes). All default to a passive constant-PQ source so existing published
+    # types are byte-identical (reduce-to-NR). Materialized into the source's
+    # solver params and read by inverter_control_from_params.
+    cosphi: float | None = None
+    q_absorbing: bool = False
+    cosphi_p_points: tuple[tuple[float, float], ...] | None = None
+    qu_deadband_low_pu: float | None = None
+    qu_deadband_high_pu: float | None = None
+    qu_slope_pu_per_pu: float | None = None
+    qu_q_min_mvar: float | None = None
+    qu_q_max_mvar: float | None = None
+    lfsm_droop_pct: float | None = None
+    lfsm_deadband_hz: float | None = None
+    lfsm_allow_increase: bool = False
+    f0_hz: float | None = None
     ptpiree_status: str | None = None
     ptpiree_certificate_ref: str | None = None
     ptpiree_document_number: str | None = None
@@ -888,9 +964,10 @@ class ConverterType:
             "e_kwh": self.e_kwh,
             "manufacturer": self.manufacturer,
             "model": self.model,
-            "control_mode": self.control_mode,
             "grid_code": self.grid_code,
             "dynamic_profile_id": self.dynamic_profile_id,
+            # control_mode is emitted by _uf_control_to_dict (ADR-011 §5b).
+            **_uf_control_to_dict(self),
             "ptpiree_status": self.ptpiree_status,
             "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
             "ptpiree_document_number": self.ptpiree_document_number,
@@ -935,9 +1012,10 @@ class ConverterType:
             e_kwh=(float(data.get("e_kwh")) if data.get("e_kwh") is not None else None),
             manufacturer=data.get("manufacturer"),
             model=data.get("model"),
-            control_mode=data.get("control_mode"),
             grid_code=data.get("grid_code"),
             dynamic_profile_id=data.get("dynamic_profile_id"),
+            # control_mode + U/f-control fields parsed by _uf_control_kwargs.
+            **_uf_control_kwargs(data),
             ptpiree_status=data.get("ptpiree_status"),
             ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
             ptpiree_document_number=data.get("ptpiree_document_number"),
@@ -988,6 +1066,23 @@ class InverterType:
     kind: str = "INVERTER"
     manufacturer: str | None = None
     model: str | None = None
+    # ADR-011 §5b: optional U/f-control characteristic (Q(U), P(f)/LFSM, cosphi
+    # modes). All default to a passive constant-PQ source so existing published
+    # types are byte-identical (reduce-to-NR). Materialized into the source's
+    # solver params and read by inverter_control_from_params.
+    control_mode: str | None = None
+    cosphi: float | None = None
+    q_absorbing: bool = False
+    cosphi_p_points: tuple[tuple[float, float], ...] | None = None
+    qu_deadband_low_pu: float | None = None
+    qu_deadband_high_pu: float | None = None
+    qu_slope_pu_per_pu: float | None = None
+    qu_q_min_mvar: float | None = None
+    qu_q_max_mvar: float | None = None
+    lfsm_droop_pct: float | None = None
+    lfsm_deadband_hz: float | None = None
+    lfsm_allow_increase: bool = False
+    f0_hz: float | None = None
     ptpiree_status: str | None = None
     ptpiree_certificate_ref: str | None = None
     ptpiree_document_number: str | None = None
@@ -1018,6 +1113,7 @@ class InverterType:
             "kind": self.kind,
             "manufacturer": self.manufacturer,
             "model": self.model,
+            **_uf_control_to_dict(self),
             "ptpiree_status": self.ptpiree_status,
             "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
             "ptpiree_document_number": self.ptpiree_document_number,
@@ -1056,6 +1152,8 @@ class InverterType:
             kind=str(data.get("kind") or data.get("inverter_kind") or "INVERTER"),
             manufacturer=data.get("manufacturer"),
             model=data.get("model"),
+            # control_mode + U/f-control fields parsed by _uf_control_kwargs.
+            **_uf_control_kwargs(data),
             ptpiree_status=data.get("ptpiree_status"),
             ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
             ptpiree_document_number=data.get("ptpiree_document_number"),
@@ -2551,7 +2649,30 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
     ),
     CatalogNamespace.CONVERTER.value: MaterializationContract(
         namespace=CatalogNamespace.CONVERTER.value,
-        solver_fields=("un_kv", "sn_mva", "pmax_mw", "qmin_mvar", "qmax_mvar", "kind"),
+        # ADR-011 §5b: U/f-control characteristic materializes into the source's
+        # materialized_params. Defaults keep a passive constant-PQ source, so
+        # existing published converter types remain byte-identical (reduce-to-NR).
+        solver_fields=(
+            "un_kv",
+            "sn_mva",
+            "pmax_mw",
+            "qmin_mvar",
+            "qmax_mvar",
+            "kind",
+            "control_mode",
+            "cosphi",
+            "q_absorbing",
+            "cosphi_p_points",
+            "qu_deadband_low_pu",
+            "qu_deadband_high_pu",
+            "qu_slope_pu_per_pu",
+            "qu_q_min_mvar",
+            "qu_q_max_mvar",
+            "lfsm_droop_pct",
+            "lfsm_deadband_hz",
+            "lfsm_allow_increase",
+            "f0_hz",
+        ),
         ui_fields=(
             ("un_kv", "Un [kV]", "kV"),
             ("sn_mva", "Sn [MVA]", "MVA"),
@@ -2563,7 +2684,30 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
     ),
     CatalogNamespace.INVERTER.value: MaterializationContract(
         namespace=CatalogNamespace.INVERTER.value,
-        solver_fields=("un_kv", "sn_mva", "pmax_mw", "qmin_mvar", "qmax_mvar", "kind"),
+        # ADR-011 §5b: U/f-control characteristic materializes into the source's
+        # materialized_params. Defaults keep a passive constant-PQ source, so
+        # existing published inverter types remain byte-identical (reduce-to-NR).
+        solver_fields=(
+            "un_kv",
+            "sn_mva",
+            "pmax_mw",
+            "qmin_mvar",
+            "qmax_mvar",
+            "kind",
+            "control_mode",
+            "cosphi",
+            "q_absorbing",
+            "cosphi_p_points",
+            "qu_deadband_low_pu",
+            "qu_deadband_high_pu",
+            "qu_slope_pu_per_pu",
+            "qu_q_min_mvar",
+            "qu_q_max_mvar",
+            "lfsm_droop_pct",
+            "lfsm_deadband_hz",
+            "lfsm_allow_increase",
+            "f0_hz",
+        ),
         ui_fields=(
             ("un_kv", "Un [kV]", "kV"),
             ("sn_mva", "Sn [MVA]", "MVA"),

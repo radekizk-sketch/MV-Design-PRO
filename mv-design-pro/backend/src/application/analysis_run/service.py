@@ -33,6 +33,7 @@ from network_model.catalog.types import ConverterKind
 from network_model.core import InverterSource, NetworkGraph, create_network_snapshot
 from network_model.core.branch import Branch, LineBranch, TransformerBranch
 from network_model.solvers import ShortCircuitIEC60909Solver, ShortCircuitType
+from network_model.solvers.power_flow_inverter import inverter_control_from_params
 from network_model.solvers.power_flow_zip import zip_coeffs_from_materialized_params
 from network_model.validation import NetworkValidator as ModelNetworkValidator
 from network_model.validation import Severity as ModelSeverity
@@ -452,25 +453,31 @@ class AnalysisRunService:
                 setpoint = inverter_setpoints.get(str(source.get("id")))
                 if setpoint is None:
                     continue
-                pq_specs.append(
-                    {
-                        "node_id": str(source["node_id"]),
-                        "p_mw": setpoint.p_mw,
-                        "q_mvar": self._resolve_inverter_q_mvar(setpoint),
-                    }
-                )
+                # ADR-011 §5b: carry U/f-control params so the solver can build
+                # the InverterControl (omitted when passive => reduce-to-NR).
+                pq_item = {
+                    "node_id": str(source["node_id"]),
+                    "p_mw": setpoint.p_mw,
+                    "q_mvar": self._resolve_inverter_q_mvar(setpoint),
+                }
+                control_params = self._inverter_control_snapshot(payload)
+                if control_params:
+                    pq_item["inverter_control"] = control_params
+                pq_specs.append(pq_item)
                 continue
             if source.get("source_type") == "CONVERTER":
                 setpoint = converter_setpoints.get(str(source.get("id")))
                 if setpoint is None:
                     continue
-                pq_specs.append(
-                    {
-                        "node_id": str(source["node_id"]),
-                        "p_mw": setpoint.p_mw,
-                        "q_mvar": self._resolve_converter_q_mvar(setpoint),
-                    }
-                )
+                pq_item = {
+                    "node_id": str(source["node_id"]),
+                    "p_mw": setpoint.p_mw,
+                    "q_mvar": self._resolve_converter_q_mvar(setpoint),
+                }
+                control_params = self._inverter_control_snapshot(payload)
+                if control_params:
+                    pq_item["inverter_control"] = control_params
+                pq_specs.append(pq_item)
                 continue
             pv_specs.append(
                 {
@@ -591,6 +598,7 @@ class AnalysisRunService:
             u_pu=float(slack_data.get("u_pu", 1.0)),
             angle_rad=float(slack_data.get("angle_rad", 0.0)),
         )
+        base_mva = float(snapshot.get("base_mva", 100.0))
         pq_specs = [
             PQSpec(
                 node_id=str(item.get("node_id")),
@@ -601,6 +609,22 @@ class AnalysisRunService:
                 # item (None => constant power, no change).
                 zip_coeffs=zip_coeffs_from_materialized_params(
                     item.get("zip_coeffs") if isinstance(item.get("zip_coeffs"), dict) else item
+                ),
+                # ADR-011 §5b: read the inverter/converter U/f-control from the
+                # nested "inverter_control" params dict (None => constant-PQ
+                # source, reduce-to-NR).
+                inverter_control=inverter_control_from_params(
+                    (
+                        item.get("inverter_control")
+                        if isinstance(item.get("inverter_control"), dict)
+                        else None
+                    ),
+                    base_mva,
+                    (
+                        (item.get("inverter_control") or {}).get("sn_mva")
+                        if isinstance(item.get("inverter_control"), dict)
+                        else None
+                    ),
                 ),
             )
             for item in snapshot.get("pq", [])
@@ -618,7 +642,7 @@ class AnalysisRunService:
         options = PowerFlowOptions(**(snapshot.get("options") or {}))
         return PowerFlowInput(
             graph=graph,
-            base_mva=float(snapshot.get("base_mva", 100.0)),
+            base_mva=base_mva,
             slack=slack_spec,
             pq=pq_specs,
             pv=pv_specs,
@@ -1208,6 +1232,35 @@ class AnalysisRunService:
         ]
         normalized.sort(key=lambda item: item["id"])
         return normalized
+
+    # ADR-011 §5b: control keys read by inverter_control_from_params, carried
+    # through the (JSON-serializable) input snapshot for INVERTER/CONVERTER
+    # sources. Absent keys => passive constant-PQ source (reduce-to-NR).
+    _INVERTER_CONTROL_KEYS: tuple[str, ...] = (
+        "control_mode",
+        "cosphi",
+        "q_absorbing",
+        "cosphi_p_points",
+        "qu_deadband_low_pu",
+        "qu_deadband_high_pu",
+        "qu_slope_pu_per_pu",
+        "qu_q_min_mvar",
+        "qu_q_max_mvar",
+        "qmin_mvar",
+        "qmax_mvar",
+        "lfsm_droop_pct",
+        "lfsm_deadband_hz",
+        "lfsm_allow_increase",
+        "f0_hz",
+        "sn_mva",
+    )
+
+    def _inverter_control_snapshot(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Extract the U/f-control params from a source payload for the snapshot.
+
+        Returns only the keys present, so a passive source contributes nothing
+        and its snapshot stays byte-identical (reduce-to-NR)."""
+        return {key: payload[key] for key in self._INVERTER_CONTROL_KEYS if key in payload}
 
     def _normalize_inverter_setpoints(
         self, payload: dict[str, Any] | None

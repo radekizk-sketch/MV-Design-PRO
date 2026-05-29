@@ -36,6 +36,12 @@ from typing import Any, Literal
 
 import numpy as np
 from network_model.core.graph import NetworkGraph
+from network_model.solvers.power_flow_inverter import (
+    InverterControl,
+    apply_inverter_setpoint,
+    build_inverter_table,
+    inverter_effective_spec,
+)
 from network_model.solvers.power_flow_newton import PowerFlowNewtonSolution
 from network_model.solvers.power_flow_newton_internal import (
     build_initial_voltage,
@@ -243,6 +249,14 @@ class PowerFlowFastDecoupledSolver:
         apply_zip_frequency(p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz)
         zip_table = build_zip_table(pf_input.pq, node_index_map)
 
+        # ADR-011 §5b: one-time inverter shaping (LFSM P(f) + cosφ/Q modes); Q(U)
+        # sources are recomputed per iteration in the Q mismatch via inv_table.
+        # B'/B" stay constant (built from ybus.imag). Empty table => reduce-to-NR.
+        apply_inverter_setpoint(
+            p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz
+        )
+        inv_table = build_inverter_table(pf_input.pq, node_index_map)
+
         # Run Fast-Decoupled iteration
         (
             v,
@@ -271,6 +285,7 @@ class PowerFlowFastDecoupledSolver:
             node_index_to_id,
             pf_input.base_mva,
             zip_table,
+            inv_table,
         )
 
         # Handle non-convergence
@@ -503,6 +518,7 @@ class PowerFlowFastDecoupledSolver:
         node_index_to_id: dict[int, str],
         base_mva: float,
         zip_table: dict[int, ZipCoeffs] | None = None,
+        inv_table: dict[int, InverterControl] | None = None,
     ) -> tuple[
         np.ndarray,
         bool,
@@ -535,11 +551,15 @@ class PowerFlowFastDecoupledSolver:
             zip_table: Voltage-dependent ZIP coefficients keyed by bus index
                 (ADR-011). Only the mismatch uses the V-dependent spec; B'/B" stay
                 constant. Empty/None => classic constant-power path (reduce-to-NR).
+            inv_table: Voltage-dependent inverter Q(U) controls keyed by bus index
+                (ADR-011 §5b). Only the Q mismatch uses the V-dependent spec; B'/B"
+                stay constant. Empty/None => classic path (reduce-to-NR).
 
         Returns:
             Tuple of (voltage, converged, iterations, max_mismatch, trace, pv_switches).
         """
         zip_table = zip_table or {}
+        inv_table = inv_table or {}
         v = v0.copy()
         trace: list[dict[str, Any]] = []
         pv_to_pq_switches: list[dict[str, Any]] = []
@@ -678,7 +698,10 @@ class PowerFlowFastDecoupledSolver:
                 _, q_calc_updated = compute_power_injections(ybus, v)
                 # ADR-011 ZIP: recompute the specified Q at the updated |V| (no-op
                 # when zip_table is empty => reduce-to-NR). B" is unaffected.
+                # ADR-011 §5b: chain the inverter Q(U) recompute (no-op when inv_table
+                # empty); inverter P is not voltage-dependent so the P side is untouched.
                 _, q_eff = zip_effective_spec(p_spec, q_spec, v, zip_table)
+                q_eff = inverter_effective_spec(q_eff, v, inv_table)
                 d_q_updated = q_eff[active_pq] - q_calc_updated[active_pq]
 
                 # ΔQ / |V| for PQ buses
@@ -709,7 +732,10 @@ class PowerFlowFastDecoupledSolver:
             # ADR-011 ZIP: the convergence test compares against the specified
             # injection at the final |V| (matches NR). With an empty zip_table this
             # returns p_spec/q_spec unchanged => reduce-to-NR (byte-identical).
+            # ADR-011 §5b: chain the inverter Q(U) recompute for the Q mismatch (no-op
+            # when inv_table empty); the P side is unaffected by inverters.
             p_eff_final, q_eff_final = zip_effective_spec(p_spec, q_spec, v, zip_table)
+            q_eff_final = inverter_effective_spec(q_eff_final, v, inv_table)
             d_p_final = p_eff_final[non_slack_indices] - p_calc_final[non_slack_indices]
             d_q_final = q_eff_final[active_pq] - q_calc_final[active_pq]
 

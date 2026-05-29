@@ -27,6 +27,13 @@ from typing import Any
 
 import numpy as np
 from network_model.core.graph import NetworkGraph
+from network_model.solvers.power_flow_inverter import (
+    InverterControl,
+    apply_inverter_setpoint,
+    build_inverter_table,
+    inverter_effective_spec,
+    qu_q,
+)
 from network_model.solvers.power_flow_newton import (
     PowerFlowNewtonSolution,
     PowerFlowNewtonSolver,
@@ -221,6 +228,14 @@ class PowerFlowGaussSeidelSolver:
         apply_zip_frequency(p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz)
         zip_table = build_zip_table(pf_input.pq, node_index_map)
 
+        # ADR-011 §5b: one-time inverter shaping (LFSM P(f) + cosφ/Q modes); Q(U)
+        # sources are recomputed per sweep via inv_table. Empty table => classic
+        # constant-PQ path (reduce-to-NR: identical code, identical output).
+        apply_inverter_setpoint(
+            p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz
+        )
+        inv_table = build_inverter_table(pf_input.pq, node_index_map)
+
         # Run Gauss-Seidel iteration
         (
             v,
@@ -246,6 +261,7 @@ class PowerFlowGaussSeidelSolver:
             node_index_to_id,
             pf_input.base_mva,
             zip_table,
+            inv_table,
         )
 
         # Handle non-convergence with optional fallback to Newton-Raphson
@@ -450,6 +466,7 @@ class PowerFlowGaussSeidelSolver:
         node_index_to_id: dict[int, str],
         base_mva: float,
         zip_table: dict[int, ZipCoeffs] | None = None,
+        inv_table: dict[int, InverterControl] | None = None,
     ) -> tuple[
         np.ndarray,
         bool,
@@ -478,11 +495,15 @@ class PowerFlowGaussSeidelSolver:
             base_mva: Base power in MVA.
             zip_table: Voltage-dependent ZIP coefficients keyed by bus index
                 (ADR-011). Empty/None => classic constant-power path (reduce-to-NR).
+            inv_table: Voltage-dependent inverter Q(U) controls keyed by bus index
+                (ADR-011 §5b). Empty/None => classic path. A bus is in zip_table
+                XOR inv_table, never both.
 
         Returns:
             Tuple of (voltage, converged, iterations, max_mismatch, trace, pv_switches).
         """
         zip_table = zip_table or {}
+        inv_table = inv_table or {}
         v = v0.copy()
         trace: list[dict[str, Any]] = []
         pv_to_pq_switches: list[dict[str, Any]] = []
@@ -540,11 +561,16 @@ class PowerFlowGaussSeidelSolver:
                 # p_spec is negative for loads, positive for generation).
                 # ADR-011 ZIP: at a voltage-dependent bus, recompute the specified
                 # injection from the current |V| (fixed-point recompute, no Jacobian).
+                # ADR-011 §5b: at a Q(U) inverter bus, recompute only the Q part from
+                # |V| (inverter P is frequency-, not voltage-dependent). A bus is in
+                # zip_table XOR inv_table, never both.
                 if idx in zip_table:
                     c = zip_table[idx]
                     p_i = p_spec[idx] * zip_factor(c.a_p, c.b_p, c.c_p, abs(v[idx]), c.v0_pu)
                     q_i = q_spec[idx] * zip_factor(c.a_q, c.b_q, c.c_q, abs(v[idx]), c.v0_pu)
                     s_i = complex(p_i, q_i)
+                elif idx in inv_table:
+                    s_i = complex(p_spec[idx], qu_q(inv_table[idx], abs(v[idx])))
                 else:
                     s_i = complex(p_spec[idx], q_spec[idx])
 
@@ -608,7 +634,10 @@ class PowerFlowGaussSeidelSolver:
 
             # ADR-011 ZIP: evaluate the specified injection at the current |V|
             # for the mismatch (no-op when zip_table is empty => reduce-to-NR).
+            # ADR-011 §5b: chain the inverter Q(U) recompute so the Q mismatch at
+            # Q(U) buses uses the voltage-dependent Q (no-op when inv_table empty).
             p_eff, q_eff = zip_effective_spec(p_spec, q_spec, v, zip_table)
+            q_eff = inverter_effective_spec(q_eff, v, inv_table)
             d_p = p_eff[non_slack_indices] - p_calc[non_slack_indices]
             d_q = q_eff[active_pq] - q_calc[active_pq]
 
