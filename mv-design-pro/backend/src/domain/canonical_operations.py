@@ -654,6 +654,18 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_action_id="fix_oze_nn_bus",
         fix_navigation={"panel": "inspector", "tab": "nn"},
     ),
+    "oze.card_field_not_accepted": ReadinessCodeSpec(
+        code="oze.card_field_not_accepted",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Pole karty falownika ma wartość oszacowaną lub domyślną i wymaga "
+            "świadomej akceptacji inżyniera przed dołączeniem do pakietu OSD"
+        ),
+        fix_action_id="fix_oze_card_field_acceptance",
+        fix_navigation={"panel": "inspector", "tab": "karta_falownika"},
+    ),
     # Ring
     "ring.endpoints_missing": ReadinessCodeSpec(
         code="ring.endpoints_missing",

@@ -253,6 +253,15 @@ def test_converter_type_round_trip_with_card_fields() -> None:
 # ---------------------------------------------------------------------------
 
 
+# Reference datasheet cards intentionally populate card-schema fields; the
+# byte-identity invariant below applies only to the pre-existing converters.
+_REFERENCE_CARD_IDS_WITH_CARD_FIELDS = {
+    "conv-pv-card-huawei-sun2000-215ktl",
+    "conv-pv-card-sungrow-sg3150u-mv",
+    "conv-bess-card-sungrow-sc2000ud-mv",
+}
+
+
 def test_published_converters_build_and_round_trip() -> None:
     repo = get_default_mv_catalog()
     converters = repo.list_converter_types()
@@ -264,6 +273,8 @@ def test_published_converters_build_and_round_trip() -> None:
 def test_published_converters_card_fields_are_none() -> None:
     repo = get_default_mv_catalog()
     for c in repo.list_converter_types():
+        if c.id in _REFERENCE_CARD_IDS_WITH_CARD_FIELDS:
+            continue  # reference cards declare real card-schema values
         data = c.to_dict()
         for name in _CARD_SCHEMA_FIELDS:
             assert data[name] is None, (c.id, name)
@@ -272,9 +283,9 @@ def test_published_converters_card_fields_are_none() -> None:
 def test_published_converter_legacy_fields_unchanged() -> None:
     # The legacy (non-card) projection of every published converter must be
     # byte-identical to itself across the new schema; the card additions are
-    # purely additive null keys.
+    # purely additive null keys (or, for the reference cards, populated values).
     repo = get_default_mv_catalog()
-    card = set(_CARD_SCHEMA_FIELDS)
+    card = set(_CARD_SCHEMA_FIELDS) | {"card_field_status"}
     for c in repo.list_converter_types():
         data = c.to_dict()
         legacy = {k: v for k, v in data.items() if k not in card}

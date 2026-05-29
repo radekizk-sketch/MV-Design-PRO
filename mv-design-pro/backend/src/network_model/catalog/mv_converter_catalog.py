@@ -65,6 +65,17 @@ def _converter_record(
     grid_code: str | None = None,
     dynamic_profile_id: str | None = None,
     note: str = "Referencyjny profil przemyslowy V1 z jawnym statusem i zrodlem.",
+    # Inverter datasheet-card ("karta falownika") optional fields. All keyword,
+    # all default to absent so existing records stay byte-identical.
+    p_installed_mw: float | None = None,
+    pn_ac_mw: float | None = None,
+    p_connection_mw: float | None = None,
+    p_achievable_mw: float | None = None,
+    current_loop_bandwidth_hz: float | None = None,
+    voltage_loop_bandwidth_hz: float | None = None,
+    pll_bandwidth_hz: float | None = None,
+    control_delay_ms: float | None = None,
+    card_field_status: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     params: dict[str, Any] = {
         "kind": kind,
@@ -87,7 +98,93 @@ def _converter_record(
         params["grid_code"] = grid_code
     if dynamic_profile_id is not None:
         params["dynamic_profile_id"] = dynamic_profile_id
+    # Card schema fields — added to params only when explicitly provided so that
+    # converters built without them serialize byte-identically (ConverterType
+    # round-trips absent keys to None).
+    for card_key, card_value in (
+        ("p_installed_mw", p_installed_mw),
+        ("pn_ac_mw", pn_ac_mw),
+        ("p_connection_mw", p_connection_mw),
+        ("p_achievable_mw", p_achievable_mw),
+        ("current_loop_bandwidth_hz", current_loop_bandwidth_hz),
+        ("voltage_loop_bandwidth_hz", voltage_loop_bandwidth_hz),
+        ("pll_bandwidth_hz", pll_bandwidth_hz),
+        ("control_delay_ms", control_delay_ms),
+    ):
+        if card_value is not None:
+            params[card_key] = card_value
+    if card_field_status is not None:
+        params["card_field_status"] = card_field_status
     return {"id": item_id, "name": name, "params": params}
+
+
+# Literature reference for typical inverter-based-generator (IBG) controller
+# bandwidths. Public datasheets virtually never publish these, so the reference
+# cards carry TYPICAL-CLASS values explicitly tagged ESTIMATED (never DATASHEET)
+# with this citation, per the paramount "no fabrication" rule.
+_BANDWIDTH_LITERATURE_REF = (
+    "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, "
+    "'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; "
+    "IEEE Std 1547-2018"
+)
+
+
+def _reference_card_field_status(
+    *,
+    datasheet_ref: str,
+    rating_fields: tuple[str, ...],
+    power_hierarchy_fields: tuple[str, ...] = (),
+    bandwidth_fields: tuple[str, ...] = (),
+) -> dict[str, dict[str, Any]]:
+    """Build a per-card data-quality override declaring explicit provenance.
+
+    Ratings / power-hierarchy taken from the named datasheet => DATASHEET (with
+    ``source_ref`` = the datasheet). Controller bandwidths => ESTIMATED with a
+    literature citation (never DATASHEET — anti-fabrication). The returned map is
+    the serialized {field_name -> CardFieldStatus.to_dict()} form consumed by
+    solver_input.provenance.resolve_card_field_quality_map.
+    """
+    status: dict[str, dict[str, Any]] = {}
+    for name in rating_fields + power_hierarchy_fields:
+        status[name] = {
+            "field_name": name,
+            "quality": "DATASHEET",
+            "source_ref": datasheet_ref,
+        }
+    for name in bandwidth_fields:
+        status[name] = {
+            "field_name": name,
+            "quality": "ESTIMATED",
+            "source_ref": _BANDWIDTH_LITERATURE_REF,
+            "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej",
+        }
+    return status
+
+
+# Rating / identity fields that a real datasheet pins down (=> DATASHEET).
+_REFERENCE_RATING_FIELDS: tuple[str, ...] = (
+    "un_kv",
+    "sn_mva",
+    "pmax_mw",
+    "qmin_mvar",
+    "qmax_mvar",
+    "cosphi_min",
+    "cosphi_max",
+    "manufacturer",
+    "model",
+)
+# Power-hierarchy fields populated on the reference cards (=> DATASHEET).
+_REFERENCE_POWER_HIERARCHY_FIELDS: tuple[str, ...] = (
+    "p_installed_mw",
+    "pn_ac_mw",
+)
+# Controller-bandwidth fields carried as typical-class estimates (=> ESTIMATED).
+_REFERENCE_BANDWIDTH_FIELDS: tuple[str, ...] = (
+    "current_loop_bandwidth_hz",
+    "voltage_loop_bandwidth_hz",
+    "pll_bandwidth_hz",
+    "control_delay_ms",
+)
 
 
 _NN_INVERTER_VOLTAGES_KV = (0.4, 0.5, 0.69, 0.8, 1.0, 3.15, 6.0, 6.3)
@@ -984,6 +1081,124 @@ CONVERTER_BESS: list[dict[str, Any]] = [
         note="BESS przemysłowy small-scale na nN — typ A.",
     ),
 ]
+
+# =============================================================================
+# KARTY REFERENCYJNE FALOWNIKOW (pelna "karta falownika" — dane z kart technicznych
+# producentow + jawna proweniencja per pole). Ratingi/hierarchia mocy = DATASHEET
+# (z karty), pasma regulatorow = ESTIMATED (wartosc typowa dla klasy z literatury,
+# nigdy DATASHEET). Co najmniej jedna karta na klase: string PV, central PV, PCS BESS.
+# Dodatki sa addytywne — istniejace wpisy katalogu pozostaja bajt-identyczne.
+# =============================================================================
+
+# String PV — Huawei SUN2000-215KTL-H3 (karta techniczna: 215 kW / 215 kVA,
+# Un 800 V AC, cosphi nast. 0.8 ind...0.8 poj). Pn,AC=215 kW; Pzainst (DC)
+# ~ 1.5x AC dla nowoczesnych string. Pasma regulatorow: oszacowanie typowe.
+_REFERENCE_PV_STRING = _converter_record(
+    item_id="conv-pv-card-huawei-sun2000-215ktl",
+    name="Karta falownika string PV Huawei SUN2000-215KTL-H3 0.215 MW / 0.8 kV",
+    kind="PV",
+    un_kv=0.8,
+    sn_mva=0.215,
+    pmax_mw=0.215,
+    qmin_mvar=-0.129,  # cosphi 0.8 => Q = 0.6*Sn
+    qmax_mvar=0.129,
+    cosphi_min=0.8,
+    cosphi_max=1.0,
+    manufacturer="HUAWEI",
+    model="SUN2000-215KTL-H3",
+    control_mode="Q_OF_U",
+    grid_code="NC_RfG_typ_B",
+    note="Karta techniczna Huawei SUN2000-215KTL-H3; pasma regulatorow oszacowane (typowe dla klasy).",
+    p_installed_mw=0.3225,  # Pzainst DC ~ 1.5x Pn,AC (string 1500 V DC)
+    pn_ac_mw=0.215,
+    current_loop_bandwidth_hz=900.0,
+    voltage_loop_bandwidth_hz=80.0,
+    pll_bandwidth_hz=30.0,
+    control_delay_ms=0.5,
+    card_field_status=_reference_card_field_status(
+        datasheet_ref="Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)",
+        rating_fields=_REFERENCE_RATING_FIELDS,
+        power_hierarchy_fields=_REFERENCE_POWER_HIERARCHY_FIELDS,
+        bandwidth_fields=_REFERENCE_BANDWIDTH_FIELDS,
+    ),
+)
+
+# Central PV — Sungrow SG3150U-MV (karta techniczna: 3150 kW / 3150 kVA AC,
+# Un 0.69 kV strona LV trafo, cosphi 0.8 ind...0.8 poj, 1500 V DC).
+_REFERENCE_PV_CENTRAL = _converter_record(
+    item_id="conv-pv-card-sungrow-sg3150u-mv",
+    name="Karta falownika central PV Sungrow SG3150U-MV 3.15 MW / 0.69 kV",
+    kind="PV",
+    un_kv=0.69,
+    sn_mva=3.15,
+    pmax_mw=3.15,
+    qmin_mvar=-1.89,  # cosphi 0.8 => Q = 0.6*Sn
+    qmax_mvar=1.89,
+    cosphi_min=0.8,
+    cosphi_max=1.0,
+    manufacturer="SUNGROW",
+    model="SG3150U-MV",
+    control_mode="Q_OF_U",
+    grid_code="NC_RfG_typ_C",
+    note="Karta techniczna Sungrow SG3150U-MV; pasma regulatorow oszacowane (typowe dla klasy).",
+    p_installed_mw=4.2,  # Pzainst DC ~ 1.33x Pn,AC (utility central 1500 V DC)
+    pn_ac_mw=3.15,
+    current_loop_bandwidth_hz=800.0,
+    voltage_loop_bandwidth_hz=70.0,
+    pll_bandwidth_hz=25.0,
+    control_delay_ms=0.6,
+    card_field_status=_reference_card_field_status(
+        datasheet_ref="Karta techniczna Sungrow SG3150U-MV (sungrowpower.com)",
+        rating_fields=_REFERENCE_RATING_FIELDS,
+        power_hierarchy_fields=_REFERENCE_POWER_HIERARCHY_FIELDS,
+        bandwidth_fields=_REFERENCE_BANDWIDTH_FIELDS,
+    ),
+)
+
+# BESS PCS — Sungrow SC2000UD-MV (karta techniczna PCS: 2000 kW / 2000 kVA,
+# Un 0.69 kV, cosphi 0.8 ind...0.8 poj; e_kwh dla bloku 2 h).
+_REFERENCE_BESS_PCS = _converter_record(
+    item_id="conv-bess-card-sungrow-sc2000ud-mv",
+    name="Karta falownika PCS BESS Sungrow SC2000UD-MV 2.0 MW / 4.0 MWh / 0.69 kV",
+    kind="BESS",
+    un_kv=0.69,
+    sn_mva=2.0,
+    pmax_mw=2.0,
+    qmin_mvar=-1.2,  # cosphi 0.8 => Q = 0.6*Sn
+    qmax_mvar=1.2,
+    cosphi_min=0.8,
+    cosphi_max=1.0,
+    manufacturer="SUNGROW",
+    model="SC2000UD-MV",
+    e_kwh=4000.0,
+    control_mode="Q_OF_U",
+    grid_code="NC_RfG_typ_C",
+    note="Karta techniczna Sungrow SC2000UD-MV PCS; pasma regulatorow oszacowane (typowe dla klasy).",
+    p_installed_mw=2.0,  # PCS Pzainst = Pn,AC (magazyn nie ma nadwymiarowania DC)
+    pn_ac_mw=2.0,
+    current_loop_bandwidth_hz=1000.0,
+    voltage_loop_bandwidth_hz=100.0,
+    pll_bandwidth_hz=35.0,
+    control_delay_ms=0.5,
+    card_field_status=_reference_card_field_status(
+        datasheet_ref="Karta techniczna Sungrow SC2000UD-MV PCS (sungrowpower.com)",
+        rating_fields=_REFERENCE_RATING_FIELDS,
+        power_hierarchy_fields=_REFERENCE_POWER_HIERARCHY_FIELDS,
+        bandwidth_fields=_REFERENCE_BANDWIDTH_FIELDS,
+    ),
+)
+
+# Full datasheet-card reference converters (one per class). Aggregated into the
+# class lists so every access function and statistic naturally includes them.
+CONVERTER_REFERENCE_CARDS: list[dict[str, Any]] = [
+    _REFERENCE_PV_STRING,
+    _REFERENCE_PV_CENTRAL,
+    _REFERENCE_BESS_PCS,
+]
+
+CONVERTER_PV.extend([_REFERENCE_PV_STRING, _REFERENCE_PV_CENTRAL])
+CONVERTER_BESS.append(_REFERENCE_BESS_PCS)
+
 
 for _converter_type in (
     CONVERTER_PV

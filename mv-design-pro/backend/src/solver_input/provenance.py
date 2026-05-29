@@ -305,3 +305,136 @@ def card_field_quality_map(converter: Any) -> dict[str, CardFieldStatus]:
         )
 
     return result
+
+
+def resolve_card_field_quality_map(converter: Any) -> dict[str, CardFieldStatus]:
+    """Resolve the EFFECTIVE per-field data-quality map for a converter card.
+
+    Starts from :func:`card_field_quality_map` (the default seed) and applies any
+    explicit per-card override carried by the converter as ``card_field_status``
+    (a ``{field_name -> CardFieldStatus}`` map, e.g. attached by the catalog
+    builder so a reference card can declare its real provenance). The override is
+    the single place a card asserts, per field, how trustworthy its value is — it
+    can promote a seeded ESTIMATED bandwidth to DATASHEET *only* when a real source
+    is attached (the carrier itself records ``source_ref``), and can never be
+    fabricated silently because the status is explicit and serialized.
+
+    ``converter`` is ``Any`` to avoid a hard catalog import at module load.
+    """
+    resolved = card_field_quality_map(converter)
+    override = getattr(converter, "card_field_status", None)
+    if override:
+        for name, status in override.items():
+            if isinstance(status, CardFieldStatus):
+                resolved[name] = status
+            elif isinstance(status, dict):
+                resolved[name] = CardFieldStatus.from_dict(status)
+    return resolved
+
+
+# ---------------------------------------------------------------------------
+# OSD acceptance gate — blocks the OSD package (NOT the analysis) on any card
+# field that is ESTIMATED / SYSTEM_DEFAULT and not consciously accepted.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class CardFieldAcceptance:
+    """Engineer-acceptance carrier for inverter-card fields toward the OSD package.
+
+    A field whose data quality is ``ESTIMATED`` / ``SYSTEM_DEFAULT`` does NOT block
+    the analysis (the full physical model runs on the typical value), but it MUST
+    be consciously accepted by an engineer before the card may enter the OSD /
+    connection-application ("wniosek przylaczeniowy") package. This carrier is that
+    conscious acceptance: a frozen, serializable set of accepted field names plus
+    the accepting engineer's identity for the audit trail.
+
+    Attributes:
+        accepted_fields: card field names the engineer has explicitly accepted as
+            estimated/default for the OSD package.
+        accepted_by: optional engineer identity (for the audit trail).
+        note: optional technical note (no soft language).
+    """
+
+    accepted_fields: frozenset[str] = field(default_factory=frozenset)
+    accepted_by: str | None = None
+    note: str | None = None
+
+    @classmethod
+    def of(cls, fields: set[str] | frozenset[str] | None, **kwargs: Any) -> CardFieldAcceptance:
+        """Build from a plain set (``None`` => nothing accepted)."""
+        return cls(accepted_fields=frozenset(fields or ()), **kwargs)
+
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {"accepted_fields": sorted(self.accepted_fields)}
+        if self.accepted_by is not None:
+            result["accepted_by"] = self.accepted_by
+        if self.note is not None:
+            result["note"] = self.note
+        return result
+
+
+# Readiness code (single source of truth) for an unaccepted estimated/default
+# card field that blocks the OSD package. Mirrors READINESS_CODES key in
+# domain.canonical_operations (no parallel readiness system).
+OSD_CARD_FIELD_BLOCKER_CODE = "oze.card_field_not_accepted"
+
+
+def osd_card_gate(
+    converter: Any,
+    accepted_fields: set[str] | frozenset[str] | CardFieldAcceptance | None,
+) -> tuple[bool, list[Any]]:
+    """OSD acceptance gate for one inverter card. Blocks ONLY the OSD package.
+
+    For each card field whose effective :class:`FieldQuality` is ``ESTIMATED`` or
+    ``SYSTEM_DEFAULT`` and that is NOT in ``accepted_fields``, emit a
+    :class:`~enm.domain_ops_models.ReadinessBlocker` (the existing readiness model —
+    no second truth) with a Polish message::
+
+        pole '<f>' = <quality> wymaga akceptacji inzyniera przed pakietem OSD
+
+    ``DATASHEET`` fields never block. The analysis path is independent of this gate:
+    the solver still runs on the typical (estimated) value — the gate guards the
+    OSD / connection-application export only, exactly per the paramount rule
+    (full physical model, explicit status, no deferral, conscious acceptance to
+    leave the estimate in the formal package).
+
+    Args:
+        converter: a ConverterType-like card (typed ``Any`` to avoid a catalog
+            import at module load).
+        accepted_fields: the consciously-accepted field names — a plain set, a
+            :class:`CardFieldAcceptance` carrier, or ``None`` (nothing accepted).
+
+    Returns:
+        ``(ready, blockers)`` — ``ready`` is True iff ``blockers`` is empty.
+        Blockers are deterministically ordered by field name.
+    """
+    from enm.domain_ops_models import ReadinessBlocker  # lazy: avoid import cycle
+
+    if isinstance(accepted_fields, CardFieldAcceptance):
+        accepted = set(accepted_fields.accepted_fields)
+    else:
+        accepted = set(accepted_fields or ())
+
+    quality_map = resolve_card_field_quality_map(converter)
+    element_ref = getattr(converter, "id", None)
+
+    blockers: list[Any] = []
+    for field_name in sorted(quality_map):
+        status = quality_map[field_name]
+        if status.quality is FieldQuality.DATASHEET:
+            continue  # datasheet-grade values never block the OSD package
+        if field_name in accepted:
+            continue  # consciously accepted by an engineer
+        blockers.append(
+            ReadinessBlocker(
+                code=OSD_CARD_FIELD_BLOCKER_CODE,
+                message_pl=(
+                    f"pole '{field_name}' = {status.quality.value} "
+                    "wymaga akceptacji inzyniera przed pakietem OSD"
+                ),
+                element_ref=element_ref,
+            )
+        )
+
+    return (not blockers, blockers)

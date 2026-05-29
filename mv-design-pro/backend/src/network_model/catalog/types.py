@@ -1016,6 +1016,13 @@ class ConverterType:
     pn_ac_mw: float | None = None  # Pn,AC (moc znamionowa AC)
     p_connection_mw: float | None = None  # Pprzylacz (moc przylaczeniowa)
     p_achievable_mw: float | None = None  # Posiagl (moc osiagalna)
+    # Per-card data-quality override ("karta falownika" provenance). A serialized
+    # {field_name -> CardFieldStatus.to_dict()} map declaring, per field, how
+    # trustworthy each value is (DATASHEET / ESTIMATED / SYSTEM_DEFAULT). Stored as
+    # plain dicts to avoid a solver_input import in the catalog layer; consumed by
+    # solver_input.provenance.resolve_card_field_quality_map. Optional/None so the
+    # published converters round-trip byte-identically (the key is omitted unless set).
+    card_field_status: dict[str, dict[str, Any]] | None = None
     ptpiree_status: str | None = None
     ptpiree_certificate_ref: str | None = None
     ptpiree_document_number: str | None = None
@@ -1074,6 +1081,9 @@ class ConverterType:
             **_uf_control_to_dict(self),
             # Inverter-card schema fields (SC model, SSCI bands, power hierarchy).
             **_card_schema_to_dict(self),
+            # Per-card data-quality override: emitted only when set so published
+            # converters (card_field_status=None) stay byte-identical.
+            **({"card_field_status": self.card_field_status} if self.card_field_status else {}),
             "ptpiree_status": self.ptpiree_status,
             "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
             "ptpiree_document_number": self.ptpiree_document_number,
@@ -1124,6 +1134,11 @@ class ConverterType:
             **_uf_control_kwargs(data),
             # Inverter-card schema fields parsed by _card_schema_kwargs.
             **_card_schema_kwargs(data),
+            card_field_status=(
+                {str(k): dict(v) for k, v in data["card_field_status"].items()}
+                if data.get("card_field_status")
+                else None
+            ),
             ptpiree_status=data.get("ptpiree_status"),
             ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
             ptpiree_document_number=data.get("ptpiree_document_number"),
