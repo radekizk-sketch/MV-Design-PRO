@@ -39,9 +39,9 @@
 
 | # | Pozycja | Kryterium | Status | Priorytet |
 |---|---|---|---|---|
-| D-01 | **Arc Flash** — energia incydentu IEEE 1584-2018, granice, ŚOI; IAC IEC 62271-200 jako obliczenie | K-25, §8C.1 | BRAK | 3 |
+| D-01 | **Arc Flash** — energia incydentu IEEE 1584-2018, granice, ŚOI; IAC IEC 62271-200 jako obliczenie | K-25, §8C.1 | BRAK — **wymaga autorytatywnych tablic IEEE 1584-2018** (patrz ustalenie niżej) | 3 |
 | D-02 | **CIM / CGMES** (IEC 61970/61968) import-eksport | K-30, §8C.8 | BRAK | 4 |
-| D-03 | **SCR/WSCR per PCC** (✔ część) + stabilność impedancyjna (Nyquist) + **SSCI** | K-30, §8C.4 | CZĘŚCIOWO (SCR done; impedancyjna/SSCI brak) | 2 |
+| D-03 | **SCR/WSCR per PCC** (✔ część) + stabilność impedancyjna (Nyquist) + **SSCI** | K-30, §8C.4 | CZĘŚCIOWO (SCR/WSCR done; skan impedancji sieci Z(f)+rezonanse JEST w `_power_quality`; brakuje sprzężenia falownik↔sieć — **wymaga modelu impedancji małosygnałowej falownika**, patrz ustalenie niżej) | 2 |
 | D-04 | **Jawny model obciążeń ZIP** P(U)/Q(U)/P(f)/Q(f) | K-29, §8C.5 | BRAK (QSTS jest) | 1 |
 | D-05 | **IEC 61850** (logical nodes/GOOSE) + **estymacja stanu WLS** | §8C.8 | BRAK | 5 |
 | D-06 | Dobór uziemienia (Petersen/rezystor), kompensacja Q, CVC/Volt-VAR, IEC 60853 (cykliczna) | §8C.7 | ZWERYFIKOWAĆ zakres | 5 |
@@ -64,6 +64,12 @@
 **DOWÓD D-14c (2026-05-29):** powłoka sanity-bounds kompletna — **12/12 analiz V12.6** ma blok `sanity` (4 z D-14 + 8 z D-14c). Każdy blok sprawdza granicę wiarygodności (skończoność/znak/zakres fizyczny), NIE liczy fizyki (czyta policzone wyniki). Brak wejść → `status="dane niekompletne"`, `checks_passed=0` (np. PQ bez źródeł harmonicznych, silnik bez `motors`). Testy `tests/test_v126_sanity_bounds.py` (15, w tym `test_every_analysis_has_sanity_block`, `test_missing_inputs_report_incomplete_not_fake_pass`, determinizm) + 40 konsumentów (`test_v126_academic_solver`, `test_audit2_validation_pack`, `test_audit2_catalogs_api`) zielone. Bramki: `trace_determinism_guard` PASS (run_hash/signature/permutation invariance pod poetry), `v12xx_canon_guard` OK, ruff+black czyste. Helper `_finite()` chroni przed NaN/inf. Determinizm zachowany.
 
 > Uwaga audytowa: `solver_boundary_guard` flaguje `short_circuit_iec60909.py` jako zmieniony vs `origin/main` — to **pre-existing** stan gałęzi (commit `e6f2877`, wcześniejsza sesja), NIE pochodzi z D-14/D-14b/D-14c. Mój diff D-14c dotyka wyłącznie `v126_academic.py` (analiza akademicka, poza listą chronioną guardu) + testu. Guard jest projektowany dla wąskich PR-ów load-flow; na gałęzi big-refactor flaguje skumulowaną historię SC.
+
+**USTALENIE D-03 / D-01 (2026-05-29) — blokada DANYMI, nie twardym przystankiem:** oba moduły wymagają autorytatywnych danych inżynierskich, których NIE wolno odtwarzać z pamięci (ZASADA: „działający solver dający złą wartość jest groźniejszy niż brak solvera"):
+> - **D-03 (część brakująca = SSCI / Nyquist falownik↔sieć):** skan impedancji *sieci* Z_grid(jω) + rezonanse JUŻ są (`_power_quality._ybus(model, h)` + `z_scan`/`resonance_peaks`). Brakuje impedancji *małosygnałowej falownika* Z_conv(jω) — wymaga pasm regulatorów (PLL, pętla prądowa/napięciowa), których model NIE ma (`V126ConverterInput` ma tylko inercję/tłumienie/droop GFM, nie pasma). Wersja „przesiewowa" (np. flaga SSCI gdy niski SCR + kompensacja szeregowa) byłaby **heurystyką** (zakazane w warstwie fizyki) i teatrem ukończenia. Pełny solver impedancyjny = nowy solver (dozwolony), ale wymaga rozszerzenia modelu o parametry sterowania falownika — **decyzja zakresowa właściciela**.
+> - **D-01 (Arc Flash IEEE 1584-2018):** model bezpieczeństwa (ŚOI/granice/PPE). Poprawna implementacja wymaga **autorytatywnych tablic współczynników IEEE 1584-2018** (5 konfiguracji elektrod × 3 poziomy napięcia, korekcje obudowy). Implementacja „z pamięci" ryzykuje subtelnie błędne wartości, których sanity-bounds NIE wyłapią (przejdą jako wiarygodne, dadzą złe PPE) — dokładnie zagrożenie, przed którym ostrzega ZASADA. **Wymaga: tablic ze standardu + walidacji wobec przykładu z normy.**
+
+Rekomendacja: dla D-01/D-03 dostarczyć dane autorytatywne (tablice IEEE 1584-2018 / parametry sterowania falowników) albo świadomie zlecić wersję best-effort z jawnym oznaczeniem „do weryfikacji wobec normy". Do tego czasu — nie zmyślam fizyki bezpieczeństwa.
 
 ---
 
