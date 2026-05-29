@@ -13,12 +13,15 @@ from application.reference_networks import (
 class TestRegistryCompleteness:
     """All reference networks must be registered (per validation acceptance criteria)."""
 
-    def test_nine_networks_registered(self) -> None:
-        assert len(REFERENCE_NETWORK_REGISTRY) == 9
+    def test_all_networks_registered(self) -> None:
+        assert len(REFERENCE_NETWORK_REGISTRY) == 12
 
     def test_all_required_ids_present(self) -> None:
         required = {
             "ieee-4bus",
+            "ieee-9bus",
+            "ieee-14bus",
+            "ieee-39bus",
             "iec60909-example",
             "pandapower-iec60909-radial",
             "cigre-mv-14",

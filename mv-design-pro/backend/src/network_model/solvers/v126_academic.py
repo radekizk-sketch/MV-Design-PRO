@@ -1815,11 +1815,18 @@ class V126AcademicSolver:
                 "sanity": _sanity_block([], has_inputs=False),
             }
         rows: list[JsonDict] = []
+        proof_types: set[str] = set()
         for item in references:
             ref = float(item["reference"])
             calc = float(item["calculated"])
             delta = abs(calc - ref) / max(abs(ref), 1e-9) * 100.0
             tol = float(item["tolerance_percent"])
+            # K-09: each reference may declare its provenance/proof type. When a row
+            # carries a cross-validation marker (e.g. IEEE 9/14/39 vs pandapower) we
+            # surface it so the proof can state HOW the reference was obtained. Refs
+            # without a marker keep the generic benchmark-regression type.
+            row_proof_type = str(item.get("proof_type", "benchmark_regression"))
+            proof_types.add(row_proof_type)
             rows.append(
                 {
                     "network": item["network"],
@@ -1827,12 +1834,17 @@ class V126AcademicSolver:
                     "tolerance_percent": tol,
                     "delta_percent": _round(delta, 5),
                     "status": "PASS" if delta <= tol else "FAIL",
+                    "proof_type": row_proof_type,
                 }
             )
+        # A single overall proof type when homogeneous; otherwise the neutral label.
+        overall_proof_type = (
+            next(iter(proof_types)) if len(proof_types) == 1 else "benchmark_regression"
+        )
         trace.add(
             "benchmark_regression",
             "delta_percent = |calc - ref| / |ref| * 100%",
-            {"benchmarks": len(rows)},
+            {"benchmarks": len(rows), "proof_type": overall_proof_type},
             "Porownanie wynikow solvera z wartosciami referencyjnymi IEEE/CIGRE.",
             {"max_deviation_percent": max((row["delta_percent"] for row in rows), default=0.0)},
             "Wartosci tego samego typu, delta w %.",
@@ -1840,6 +1852,7 @@ class V126AcademicSolver:
         return {
             "validation_report": rows,
             "references_provided": True,
+            "proof_type": overall_proof_type,
             "status": "PASS" if all(row["status"] == "PASS" for row in rows) else "FAIL",
         }
 

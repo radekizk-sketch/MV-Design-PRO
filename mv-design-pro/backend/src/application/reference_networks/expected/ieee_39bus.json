@@ -1,0 +1,292 @@
+{
+  "network_id": "ieee-39bus",
+  "source": "MATPOWER case39 via pandapower 3.4.0",
+  "source_note": "Independent cross-validation reference. Network topology + parameters from pandapower.networks.case39 (canonical MATPOWER dataset), NOT from our solver. Per-bus |V|/angle computed by pandapower Newton-Raphson (algorithm='nr', tolerance_mva=1e-10). The committed builder ENM is structurally identical to case39 (fidelity asserted at generation time). Regenerate with: pip install pandapower==3.4.0; poetry run python scripts/generate_ieee_references.py --confirm.",
+  "provenance": {
+    "reference_tool": "pandapower 3.4.0",
+    "reference_source": "MATPOWER case39",
+    "generated_by_script": "scripts/generate_ieee_references.py",
+    "assumptions": {
+      "lf": "pandapower runpp(algorithm='nr', tolerance_mva=1e-10); flat start; single external grid as slack; generators modelled as ideal PV buses (no binding Q-limits in the canonical cases); off-nominal transformer taps and bus shunts honoured in the per-unit Ybus.",
+      "sc": "NOT GENERATED. MATPOWER case39 carries no short-circuit data (no s_sc_max_mva on the external grid, no sub-transient machine reactances on the generators); running pandapower.shortcircuit.calc_sc would require fabricating that data. SC cross-validation against the IEEE cases is therefore out of scope. The pandapower-iec60909-radial fixture provides a real pandapower-sourced SC reference instead."
+    }
+  },
+  "power_flow": [
+    {
+      "bus_id": "B0",
+      "v_pu": 1.039383642,
+      "angle_deg": -13.536602,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B1",
+      "v_pu": 1.048494113,
+      "angle_deg": -9.785267,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B2",
+      "v_pu": 1.030707707,
+      "angle_deg": -12.276384,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B3",
+      "v_pu": 1.004459967,
+      "angle_deg": -12.626734,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B4",
+      "v_pu": 1.006006257,
+      "angle_deg": -11.192339,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B5",
+      "v_pu": 1.008225578,
+      "angle_deg": -10.40833,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B6",
+      "v_pu": 0.998397283,
+      "angle_deg": -12.755626,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B7",
+      "v_pu": 0.997872316,
+      "angle_deg": -13.335844,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B8",
+      "v_pu": 1.038331965,
+      "angle_deg": -14.178442,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B9",
+      "v_pu": 1.01784313,
+      "angle_deg": -8.170875,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B10",
+      "v_pu": 1.01338578,
+      "angle_deg": -8.936966,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B11",
+      "v_pu": 1.000815032,
+      "angle_deg": -8.998824,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B12",
+      "v_pu": 1.014922963,
+      "angle_deg": -8.929927,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B13",
+      "v_pu": 1.012318962,
+      "angle_deg": -10.715295,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B14",
+      "v_pu": 1.016185365,
+      "angle_deg": -11.345399,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B15",
+      "v_pu": 1.032520259,
+      "angle_deg": -10.033348,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B16",
+      "v_pu": 1.034236506,
+      "angle_deg": -11.116436,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B17",
+      "v_pu": 1.031572601,
+      "angle_deg": -11.986168,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B18",
+      "v_pu": 1.050106758,
+      "angle_deg": -5.410073,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B19",
+      "v_pu": 0.991010543,
+      "angle_deg": -6.821178,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B20",
+      "v_pu": 1.032319182,
+      "angle_deg": -7.628746,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B21",
+      "v_pu": 1.050142737,
+      "angle_deg": -3.18312,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B22",
+      "v_pu": 1.045145075,
+      "angle_deg": -3.381276,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B23",
+      "v_pu": 1.03800101,
+      "angle_deg": -9.913759,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B24",
+      "v_pu": 1.057682748,
+      "angle_deg": -8.369235,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B25",
+      "v_pu": 1.052561293,
+      "angle_deg": -9.43877,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B26",
+      "v_pu": 1.038344912,
+      "angle_deg": -11.362152,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B27",
+      "v_pu": 1.050373657,
+      "angle_deg": -5.928359,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B28",
+      "v_pu": 1.050114902,
+      "angle_deg": -3.169874,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B29",
+      "v_pu": 1.0499,
+      "angle_deg": -7.370475,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B30",
+      "v_pu": 0.982,
+      "angle_deg": 0.0,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B31",
+      "v_pu": 0.9841,
+      "angle_deg": -0.188437,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B32",
+      "v_pu": 0.9972,
+      "angle_deg": -0.193174,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B33",
+      "v_pu": 1.0123,
+      "angle_deg": -1.631119,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B34",
+      "v_pu": 1.0494,
+      "angle_deg": 1.776507,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B35",
+      "v_pu": 1.0636,
+      "angle_deg": 4.468437,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B36",
+      "v_pu": 1.0275,
+      "angle_deg": -1.582899,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B37",
+      "v_pu": 1.0265,
+      "angle_deg": 3.892818,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B38",
+      "v_pu": 1.03,
+      "angle_deg": -14.535256,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    }
+  ],
+  "power_flow_branches": [],
+  "short_circuit": [],
+  "dynamic_samples": []
+}
