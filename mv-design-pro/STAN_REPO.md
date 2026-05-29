@@ -49,7 +49,7 @@
 | D-11 | API 501: `power_flow_comparisons`, `power_flow_runs`, `fault_loop` TT/IT | — | DECYZJA ZAKRESOWA | niski |
 | D-12 | **Tryb geo-schematyczny SLD** — odłożony (ENM bez współrzędnych geo); podłączyć do CGMES `DiagramLayout`/`PositionPoint` po D-02 | 7.6.C | ODŁOŻONY (zależny od D-02) | po D-02 |
 | D-13 | **„Druga prawda" (Z15) we frontendzie** — UI liczy fizykę zamiast czytać: `ProtectionCurvesEditor.tsx` generuje krzywe IEC/IEEE + koordynację (autor: „should come from backend"); `AddDerWizard.tsx:505` `powerKw/0.9` dobór trafo w UI | Z15, K-12 | DO PRZENIESIENIA do backendu/silnika | 2 |
-| D-14 | **K-08: 3 analizy V12.6 bez sanity-bounds** — `_reliability`, `_opf_loss_lcc`, `_uncertainty` nie walidują własnych wyników; `_benchmark_validation` waliduje hardcoded literały gdy brak referencji; istniejące checki bez per-poziom-napięcia absurdity-guard | K-08, K-04 | WDROŻYĆ sanity-bounds | **1 (najwyższy diagnostyczny)** |
+| D-14 | **K-08: sanity-bounds analiz V12.6** — `_reliability`/`_opf_loss_lcc`/`_uncertainty` + fix `_benchmark_validation` (cichy fałsz K-09) + per-poziom-napięcia guard Ik'' (DEF-01) | K-08, K-04, K-09 | **WDROŻONE** (blok `sanity` w 3 metodach; benchmark bez refs → „dane niekompletne"; moduł `analysis/sanity_bounds`); POZOSTAJE: wpięcie guardu Ik'' w ścieżkę konsumpcji wyników SC | — |
 
 **Domknięte porządkowo 2026-05-28:** D-07 (`eligibility_service` — usunięta fraza „Funkcja w przygotowaniu"), D-08 (`frt_hvrt` — usunięte etykiety-wymówki), D-09 (`ncrfg_compliance/checker` docstring).
 

@@ -33,6 +33,32 @@ def _status(ok: bool) -> str:
     return "zgodny" if ok else "niezgodny"
 
 
+# D-14 (K-08): jednolita warstwa sanity-bounds dla analiz V12.6. Status wg §6.1:
+# "zweryfikowany" (w zakresie) / "poza zakresem wiarygodności" (przekroczona granica
+# fizyczna) / "dane niekompletne" (brak wejść do oceny). NIE liczy fizyki — ocenia
+# wiarygodność już policzonych wyników, blokuje absurdy przed pakietem OSD (DEF-01).
+def _sanity_block(
+    checks: list[tuple[str, bool, str]],
+    *,
+    has_inputs: bool = True,
+) -> JsonDict:
+    """checks: lista (nazwa, w_zakresie, opis_pl). Zwraca blok wiarygodności."""
+    if not has_inputs:
+        return {
+            "status": "dane niekompletne",
+            "violations": [],
+            "checks_total": len(checks),
+            "checks_passed": 0,
+        }
+    violations = [{"check": name, "detail_pl": detail} for name, ok, detail in checks if not ok]
+    return {
+        "status": "zweryfikowany" if not violations else "poza zakresem wiarygodności",
+        "violations": violations,
+        "checks_total": len(checks),
+        "checks_passed": sum(1 for _, ok, _ in checks if ok),
+    }
+
+
 class TraceBuilder:
     def __init__(self, analysis_type: V126AnalysisType) -> None:
         self.analysis_type = analysis_type.value
@@ -116,7 +142,9 @@ class V126AcademicSolver:
         return bus.nominal_kv if bus is not None else model.buses[0].nominal_kv
 
     def _branch_z_ohm(self, branch: Any) -> complex:
-        return complex(branch.r_ohm_per_km * branch.length_km, branch.x_ohm_per_km * branch.length_km)
+        return complex(
+            branch.r_ohm_per_km * branch.length_km, branch.x_ohm_per_km * branch.length_km
+        )
 
     def _ybus(self, model: V126AcademicInput, harmonic: float = 1.0) -> np.ndarray[Any, Any]:
         size = len(model.buses)
@@ -129,7 +157,10 @@ class V126AcademicSolver:
             j = index.get(branch.to_bus_ref)
             if i is None or j is None:
                 continue
-            z = complex(branch.r_ohm_per_km * branch.length_km, harmonic * branch.x_ohm_per_km * branch.length_km)
+            z = complex(
+                branch.r_ohm_per_km * branch.length_km,
+                harmonic * branch.x_ohm_per_km * branch.length_km,
+            )
             if abs(z) == 0:
                 continue
             y = 1 / z
@@ -144,7 +175,10 @@ class V126AcademicSolver:
             if i is None or j is None:
                 continue
             z_base = (transformer.uhv_kv**2) / transformer.sn_mva
-            z = complex(transformer.pk_kw / (1000.0 * transformer.sn_mva**2), transformer.uk_percent / 100 * z_base)
+            z = complex(
+                transformer.pk_kw / (1000.0 * transformer.sn_mva**2),
+                transformer.uk_percent / 100 * z_base,
+            )
             if abs(z) == 0:
                 continue
             y = 1 / complex(z.real, harmonic * z.imag)
@@ -156,7 +190,9 @@ class V126AcademicSolver:
             ybus[0, 0] += 1e6
         return ybus
 
-    def _solve_linear(self, ybus: np.ndarray[Any, Any], injections: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
+    def _solve_linear(
+        self, ybus: np.ndarray[Any, Any], injections: np.ndarray[Any, Any]
+    ) -> np.ndarray[Any, Any]:
         try:
             return np.linalg.solve(ybus, injections)
         except np.linalg.LinAlgError:
@@ -203,7 +239,9 @@ class V126AcademicSolver:
                 bus_idx = index[bus.ref]
                 voltage = voltages[bus_idx] / 1000.0
                 magnitude_kv = abs(voltage)
-                phase = math.degrees(math.atan2(voltage.imag, voltage.real)) if magnitude_kv else 0.0
+                phase = (
+                    math.degrees(math.atan2(voltage.imag, voltage.real)) if magnitude_kv else 0.0
+                )
                 bus_results[bus.ref]["u_h"].append(
                     {"h": h, "magnitude_kv": _round(magnitude_kv), "phase_deg": _round(phase, 3)}
                 )
@@ -223,7 +261,9 @@ class V126AcademicSolver:
                 limits.append("IEEE 519 TDD > 5%")
             bus_results[bus.ref]["thd_u_percent"] = _round(thd, 4)
             bus_results[bus.ref]["tdd_percent"] = _round(tdd, 4)
-            bus_results[bus.ref]["k_factor"] = _round(math.sqrt(k_factor[bus.ref]) / load_current, 4)
+            bus_results[bus.ref]["k_factor"] = _round(
+                math.sqrt(k_factor[bus.ref]) / load_current, 4
+            )
             bus_results[bus.ref]["compatibility_status"] = "niezgodny" if limits else "zgodny"
             bus_results[bus.ref]["violated_limits"] = limits
 
@@ -292,7 +332,9 @@ class V126AcademicSolver:
                     "margin_mvar": _round(q_available - abs(q_min), 4),
                 }
             )
-            l_indices.append({"bus_ref": bus.ref, "l_index": _round(l_index, 5), "alert": l_index > 0.5})
+            l_indices.append(
+                {"bus_ref": bus.ref, "l_index": _round(l_index, 5), "alert": l_index > 0.5}
+            )
         trace.add(
             "voltage_stability_indices",
             "L_j ~= P_load / S_sc * 4; PM = (lambda_max - 1) * 100%",
@@ -306,17 +348,24 @@ class V126AcademicSolver:
             "qv_curves": qv_curves,
             "modal_analysis": {
                 "smallest_eigenvalue": _round(smallest, 6),
-                "critical_mode": {"eigenvalue": _round(smallest, 6), "participating_buses": participants},
+                "critical_mode": {
+                    "eigenvalue": _round(smallest, 6),
+                    "participating_buses": participants,
+                },
             },
             "l_index_per_bus": l_indices,
-            "voltage_stability_margin_percent": _round(min((row["margin_percent"] for row in pv_curves), default=0.0), 3),
+            "voltage_stability_margin_percent": _round(
+                min((row["margin_percent"] for row in pv_curves), default=0.0), 3
+            ),
         }
 
     def _branch_current_a(self, model: V126AcademicInput, branch: Any) -> float:
         to_bus = next((bus for bus in model.buses if bus.ref == branch.to_bus_ref), None)
         if to_bus is None:
             return 0.0
-        apparent_mva = math.hypot(to_bus.load_mw - to_bus.generation_mw, to_bus.load_mvar - to_bus.generation_mvar)
+        apparent_mva = math.hypot(
+            to_bus.load_mw - to_bus.generation_mw, to_bus.load_mvar - to_bus.generation_mvar
+        )
         return apparent_mva * 1000.0 / (math.sqrt(3) * max(to_bus.nominal_kv, 1e-6))
 
     def _reliability(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
@@ -327,7 +376,9 @@ class V126AcademicSolver:
         for branch in model.branches:
             current = self._branch_current_a(model, branch)
             overload = max(0.0, current / branch.ampacity_a - 1.0)
-            affected = sum(bus.customer_count for bus in model.buses if bus.ref == branch.to_bus_ref)
+            affected = sum(
+                bus.customer_count for bus in model.buses if bus.ref == branch.to_bus_ref
+            )
             severity = overload * 100.0 + affected / customers_total * 10.0
             contingencies.append(
                 {
@@ -337,17 +388,47 @@ class V126AcademicSolver:
                     "max_loading_percent": _round(current / branch.ampacity_a * 100.0, 2),
                 }
             )
-            saidi += branch.failure_rate_per_year * branch.mttr_h * 60.0 * affected / customers_total
+            saidi += (
+                branch.failure_rate_per_year * branch.mttr_h * 60.0 * affected / customers_total
+            )
             saifi += branch.failure_rate_per_year * affected / customers_total
         for first, second in combinations(model.branches[:80], 2):
             contingencies.append(
                 {
                     "contingency": f"{first.ref}+{second.ref}",
                     "order": "N-2",
-                    "severity": _round(first.failure_rate_per_year + second.failure_rate_per_year, 5),
+                    "severity": _round(
+                        first.failure_rate_per_year + second.failure_rate_per_year, 5
+                    ),
                 }
             )
         caidi = saidi / saifi if saifi else 0.0
+        # D-14: sanity-bounds (IEEE 1366 — wielkości fizycznie ograniczone).
+        minutes_per_year = 525600.0
+        overloaded = [c for c in contingencies if c.get("max_loading_percent", 0.0) > 100.0]
+        raw_customers = sum(bus.customer_count for bus in model.buses)
+        sanity = _sanity_block(
+            [
+                ("saidi_nonneg", saidi >= 0.0, "SAIDI < 0 (niefizyczne)"),
+                (
+                    "saidi_max",
+                    saidi <= minutes_per_year,
+                    f"SAIDI > {minutes_per_year:.0f} min/rok (> rok przerwy)",
+                ),
+                ("saifi_nonneg", saifi >= 0.0, "SAIFI < 0 (niefizyczne)"),
+                ("saifi_max", saifi <= 1000.0, "SAIFI > 1000/rok (nierealne)"),
+            ],
+            has_inputs=raw_customers > 0 and len(model.branches) > 0,
+        )
+        if overloaded:
+            sanity.setdefault("violations", []).append(
+                {
+                    "check": "n1_overload",
+                    "detail_pl": f"{len(overloaded)} kontyngencji N-1 z przeciążeniem > 100%",
+                }
+            )
+            if sanity["status"] == "zweryfikowany":
+                sanity["status"] = "poza zakresem wiarygodności"
         trace.add(
             "reliability_indices",
             "SAIDI = sum(lambda_e * MTTR_e * 60 * N_e) / N_t; SAIFI = sum(lambda_e * N_e)/N_t",
@@ -357,13 +438,16 @@ class V126AcademicSolver:
             "1/rok * h * 60 daje min/rok.",
         )
         return {
-            "contingency_ranking": sorted(contingencies, key=lambda item: (-item["severity"], item["contingency"]))[:100],
+            "contingency_ranking": sorted(
+                contingencies, key=lambda item: (-item["severity"], item["contingency"])
+            )[:100],
             "indices": {
                 "saidi_min_per_year": _round(saidi, 4),
                 "saifi_per_year": _round(saifi, 5),
                 "caidi_min_per_interruption": _round(caidi, 4),
                 "maifi_per_year": _round(0.12 * saifi, 5),
             },
+            "sanity": sanity,
         }
 
     def _earthing(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
@@ -384,9 +468,7 @@ class V126AcademicSolver:
         lc = conductors_x * data.length_m + conductors_y * data.width_m + data.rods_total_length_m
         rg = data.rho1_ohm_m * (
             1 / max(lc, 1e-9)
-            + 1
-            / math.sqrt(20 * area)
-            * (1 + 1 / (1 + data.buried_depth_m * math.sqrt(20 / area)))
+            + 1 / math.sqrt(20 * area) * (1 + 1 / (1 + data.buried_depth_m * math.sqrt(20 / area)))
         )
         ig_ka = data.fault_current_ka * data.split_factor
         gpr_kv = ig_ka * rg
@@ -396,8 +478,16 @@ class V126AcademicSolver:
         ks = 0.6 + data.mesh_spacing_m / max(20 * data.buried_depth_m, 1e-9)
         u_touch = data.rho1_ohm_m * km * ki * ig_ka * 1000 / max(lc, 1e-9)
         u_step = data.rho1_ohm_m * ks * ki * ig_ka * 1000 / max(lc, 1e-9)
-        u_touch_allow = (1000 + 1.5 * data.surface_layer_derating * data.surface_layer_rho_ohm_m) * 0.157 / math.sqrt(data.fault_clearing_time_s)
-        u_step_allow = (1000 + 6 * data.surface_layer_derating * data.surface_layer_rho_ohm_m) * 0.157 / math.sqrt(data.fault_clearing_time_s)
+        u_touch_allow = (
+            (1000 + 1.5 * data.surface_layer_derating * data.surface_layer_rho_ohm_m)
+            * 0.157
+            / math.sqrt(data.fault_clearing_time_s)
+        )
+        u_step_allow = (
+            (1000 + 6 * data.surface_layer_derating * data.surface_layer_rho_ohm_m)
+            * 0.157
+            / math.sqrt(data.fault_clearing_time_s)
+        )
         trace.add(
             "ieee80_sverak",
             "Rg = rho * [1/Lc + 1/sqrt(20A)*(1 + 1/(1+h*sqrt(20/A)))]",
@@ -434,7 +524,12 @@ class V126AcademicSolver:
         }
 
     def _insulation(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
-        bil_table = [(12.0, 75.0, 28.0), (17.5, 95.0, 38.0), (24.0, 125.0, 50.0), (36.0, 170.0, 70.0)]
+        bil_table = [
+            (12.0, 75.0, 28.0),
+            (17.5, 95.0, 38.0),
+            (24.0, 125.0, 50.0),
+            (36.0, 170.0, 70.0),
+        ]
         rows: list[JsonDict] = []
         for item in model.insulation:
             bil, withstand = next(
@@ -442,11 +537,17 @@ class V126AcademicSolver:
                 (170.0, 70.0),
             )
             if item.arrester_mcov_kv is None:
-                mcov = item.u_m_kv * 1.05 if item.network_neutral == "isolated" else item.u_m_kv / math.sqrt(3) * 1.05
+                mcov = (
+                    item.u_m_kv * 1.05
+                    if item.network_neutral == "isolated"
+                    else item.u_m_kv / math.sqrt(3) * 1.05
+                )
             else:
                 mcov = item.arrester_mcov_kv
             residual = item.arrester_residual_10ka_kv or mcov * 2.8
-            tov = item.predicted_tov_kv or item.u_m_kv * (1.4 if item.network_neutral == "isolated" else 1.15)
+            tov = item.predicted_tov_kv or item.u_m_kv * (
+                1.4 if item.network_neutral == "isolated" else 1.15
+            )
             margin = (bil - residual) / max(residual, 1e-9) * 100.0
             rows.append(
                 {
@@ -460,7 +561,9 @@ class V126AcademicSolver:
                     "bil_protected_kv": bil,
                     "short_duration_50hz_kv": withstand,
                     "bil_margin_percent": _round(margin, 3),
-                    "verification_status": "spelniony" if margin >= 20 and tov <= mcov * 1.25 else "niespelniony",
+                    "verification_status": (
+                        "spelniony" if margin >= 20 and tov <= mcov * 1.25 else "niespelniony"
+                    ),
                 }
             )
         trace.add(
@@ -475,7 +578,12 @@ class V126AcademicSolver:
 
     def _earth_fault_detection(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         neutral = str(model.parameters.get("neutral_grounding", "petersen_tuned"))
-        relay_methods = set(model.parameters.get("relay_methods", ["wattmetric", "admittance", "transient_directional", "fifth_harmonic"]))
+        relay_methods = set(
+            model.parameters.get(
+                "relay_methods",
+                ["wattmetric", "admittance", "transient_directional", "fifth_harmonic"],
+            )
+        )
         table = {
             "isolated": ("wattmetric", "transient_directional"),
             "petersen_tuned": ("wattmetric", "fifth_harmonic"),
@@ -506,21 +614,37 @@ class V126AcademicSolver:
         }
 
     def _transient(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
-        u_r = float(model.parameters.get("breaker_rated_voltage_kv", max((bus.nominal_kv for bus in model.buses), default=15.0)))
+        u_r = float(
+            model.parameters.get(
+                "breaker_rated_voltage_kv",
+                max((bus.nominal_kv for bus in model.buses), default=15.0),
+            )
+        )
         natural_frequency_hz = float(model.parameters.get("trv_natural_frequency_hz", 12000.0))
         tau_s = float(model.parameters.get("trv_tau_s", 0.00018))
         points: list[JsonDict] = []
         min_margin = 999.0
         for i in range(1, 51):
             t = i * 2e-6
-            u = u_r * (1 - math.cos(2 * math.pi * natural_frequency_hz * t)) * math.exp(-t / tau_s) + u_r / math.sqrt(3)
+            u = u_r * (1 - math.cos(2 * math.pi * natural_frequency_hz * t)) * math.exp(
+                -t / tau_s
+            ) + u_r / math.sqrt(3)
             envelope = 2.0 * u_r * min(1.0, t / 88e-6)
             margin = (envelope - u) / max(envelope, 1e-9) * 100.0
             min_margin = min(min_margin, margin)
-            points.append({"t_us": _round(t * 1e6, 3), "u_trv_kv": _round(u, 5), "envelope_kv": _round(envelope, 5)})
+            points.append(
+                {
+                    "t_us": _round(t * 1e6, 3),
+                    "u_trv_kv": _round(u, 5),
+                    "envelope_kv": _round(envelope, 5),
+                }
+            )
         inrush_multiple = float(model.parameters.get("inrush_multiple_in", 8.0))
         second_harmonic_percent = 63.0 / inrush_multiple
-        ferro_risk = str(model.parameters.get("neutral_grounding", "isolated")) == "isolated" and sum(branch.b_siemens_per_km * branch.length_km for branch in model.branches) > 1e-5
+        ferro_risk = (
+            str(model.parameters.get("neutral_grounding", "isolated")) == "isolated"
+            and sum(branch.b_siemens_per_km * branch.length_km for branch in model.branches) > 1e-5
+        )
         trace.add(
             "trv_inrush_ferro",
             "u_TRV(t)=Ur*(1-cos(wn*t))*exp(-t/tau)+Ur/sqrt(3)",
@@ -538,7 +662,10 @@ class V126AcademicSolver:
                 "second_harmonic_percent_of_peak": _round(second_harmonic_percent, 4),
                 "blocking_87t_recommended": second_harmonic_percent >= 10,
             },
-            "ferroresonance": {"risk": ferro_risk, "recommendation": "rezystor tlumiacy VT" if ferro_risk else "brak alertu"},
+            "ferroresonance": {
+                "risk": ferro_risk,
+                "recommendation": "rezystor tlumiacy VT" if ferro_risk else "brak alertu",
+            },
         }
 
     def _motor_starting(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
@@ -547,8 +674,17 @@ class V126AcademicSolver:
             source_z = self._source_impedance(model, motor.bus_ref)
             i_n = motor.rated_kw / (math.sqrt(3) * motor.rated_voltage_kv * 0.9)
             i_start = i_n * motor.locked_rotor_multiplier
-            du = abs(source_z) * i_start / max(motor.rated_voltage_kv * 1000 / math.sqrt(3), 1e-9) * 100
-            thermal_ratio = motor.locked_rotor_multiplier**2 * motor.start_time_s / motor.allowable_locked_rotor_time_s
+            du = (
+                abs(source_z)
+                * i_start
+                / max(motor.rated_voltage_kv * 1000 / math.sqrt(3), 1e-9)
+                * 100
+            )
+            thermal_ratio = (
+                motor.locked_rotor_multiplier**2
+                * motor.start_time_s
+                / motor.allowable_locked_rotor_time_s
+            )
             torque_start = motor.max_torque_pu * 2 / (1 / motor.critical_slip + motor.critical_slip)
             rows.append(
                 {
@@ -559,7 +695,11 @@ class V126AcademicSolver:
                     "torque_start_pu": _round(torque_start, 4),
                     "torque_margin_pu": _round(torque_start - motor.load_start_torque_pu, 4),
                     "thermal_i2t_ratio": _round(thermal_ratio, 4),
-                    "verification_status": _status(du <= 15 and thermal_ratio <= 1 and torque_start > motor.load_start_torque_pu),
+                    "verification_status": _status(
+                        du <= 15
+                        and thermal_ratio <= 1
+                        and torque_start > motor.load_start_torque_pu
+                    ),
                 }
             )
         trace.add(
@@ -577,7 +717,14 @@ class V126AcademicSolver:
         if bus is not None and bus.fault_level_mva:
             z = bus.nominal_kv**2 / bus.fault_level_mva
             return complex(0.15 * z, 0.99 * z)
-        path_branch = next((branch for branch in model.branches if branch.to_bus_ref == bus_ref and not branch.is_open), None)
+        path_branch = next(
+            (
+                branch
+                for branch in model.branches
+                if branch.to_bus_ref == bus_ref and not branch.is_open
+            ),
+            None,
+        )
         return self._branch_z_ohm(path_branch) if path_branch is not None else complex(0.1, 0.4)
 
     def _hosting_capacity(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
@@ -598,7 +745,14 @@ class V126AcademicSolver:
                     dv = net_gen * z / max(bus.nominal_kv**2, 1e-9)
                     voltage = bus.voltage_pu + dv
                     current = abs(net_gen) * 1000 / (math.sqrt(3) * bus.nominal_kv)
-                    ampacity = max((branch.ampacity_a for branch in model.branches if branch.to_bus_ref == bus.ref), default=300.0)
+                    ampacity = max(
+                        (
+                            branch.ampacity_a
+                            for branch in model.branches
+                            if branch.to_bus_ref == bus.ref
+                        ),
+                        default=300.0,
+                    )
                     if 0.90 <= voltage <= 1.10 and current <= ampacity:
                         ok += 1
                 probability = ok / simulations
@@ -633,15 +787,37 @@ class V126AcademicSolver:
             current = self._branch_current_a(model, branch)
             losses_kw = 3 * current**2 * branch.r_ohm_per_km * branch.length_km / 1000
             total_kw += losses_kw
-            branch_rows.append({"branch_ref": branch.ref, "loss_kw": _round(losses_kw, 5), "current_a": _round(current, 3)})
-        transformer_kw = sum(transformer.p0_kw + transformer.pk_kw * 0.45**2 for transformer in model.transformers)
+            branch_rows.append(
+                {
+                    "branch_ref": branch.ref,
+                    "loss_kw": _round(losses_kw, 5),
+                    "current_a": _round(current, 3),
+                }
+            )
+        transformer_kw = sum(
+            transformer.p0_kw + transformer.pk_kw * 0.45**2 for transformer in model.transformers
+        )
         total_kw += transformer_kw
         energy_price = float(model.parameters.get("energy_price_pln_per_kwh", 0.65))
         discount = float(model.parameters.get("discount_rate", 0.05))
         years = int(model.parameters.get("lcc_years", 30))
         annual_kwh = total_kw * float(model.parameters.get("loss_hours_per_year", 4000.0))
-        opex_pv = sum(annual_kwh * energy_price / ((1 + discount) ** year) for year in range(1, years + 1))
+        opex_pv = sum(
+            annual_kwh * energy_price / ((1 + discount) ** year) for year in range(1, years + 1)
+        )
         co2_factor = float(model.parameters.get("co2_kg_per_kwh", 0.72))
+        # D-14: sanity-bounds — straty i koszty fizycznie nieujemne i skończone.
+        annual_co2 = annual_kwh * co2_factor
+        sanity = _sanity_block(
+            [
+                ("losses_nonneg", total_kw >= 0.0, "Straty całkowite < 0 (niefizyczne)"),
+                ("losses_finite", math.isfinite(total_kw), "Straty nieskończone/NaN"),
+                ("losses_upper", total_kw <= 1.0e6, "Straty > 1 GW na sieci SN (absurd)"),
+                ("opex_nonneg", opex_pv >= 0.0, "LCC OPEX PV < 0 (niefizyczne)"),
+                ("co2_nonneg", annual_co2 >= 0.0, "Emisja CO2 < 0 (niefizyczne)"),
+            ],
+            has_inputs=len(model.branches) > 0 or len(model.transformers) > 0,
+        )
         trace.add(
             "opf_losses_lcc",
             "DeltaP = 3*I^2*R; LCC = CAPEX + sum(OPEX_t/(1+r)^t)",
@@ -657,23 +833,44 @@ class V126AcademicSolver:
             "total_losses_kw": _round(total_kw, 5),
             "annual_losses_kwh": _round(annual_kwh, 3),
             "lcc_loss_opex_pv_pln": _round(opex_pv, 2),
-            "annual_co2_kg": _round(annual_kwh * co2_factor, 3),
+            "annual_co2_kg": _round(annual_co2, 3),
             "decision_variables": {
                 "oltc_tap_position": 0,
-                "nop_position_ref": next((branch.ref for branch in model.branches if branch.is_open), None),
+                "nop_position_ref": next(
+                    (branch.ref for branch in model.branches if branch.is_open), None
+                ),
                 "q_set_strategy": "minimize_losses_with_voltage_limits",
             },
+            "sanity": sanity,
         }
 
     def _benchmark_validation(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         references = model.parameters.get("benchmark_references")
-        if not isinstance(references, list):
-            references = [
-                {"network": "IEEE_9_bus", "test": "PowerFlow_NR", "reference": 1.0, "calculated": 1.0004, "tolerance_percent": 0.1},
-                {"network": "IEEE_14_bus", "test": "PowerFlow_NR", "reference": 1.0, "calculated": 1.0008, "tolerance_percent": 0.1},
-                {"network": "CIGRE_MV", "test": "PowerFlow_NR", "reference": 1.0, "calculated": 1.002, "tolerance_percent": 0.5},
-                {"network": "IEEE_39_bus", "test": "VoltageStability", "reference": 1.0, "calculated": 1.003, "tolerance_percent": 0.5},
-            ]
+        references_provided = isinstance(references, list) and len(references) > 0
+        if not references_provided:
+            # D-14 / K-09: NIE fabrykujemy zaliczających literałów (calc≈ref) — to
+            # był cichy fałsz (zawsze PASS niezależnie od solvera). Bez realnych
+            # referencji (IEEE 9/14/39, CIGRE MV) z wartościami policzonymi przez
+            # solver werdykt NIE jest wystawiany.
+            trace.add(
+                "benchmark_regression",
+                "delta_percent = |calc - ref| / |ref| * 100%",
+                {"benchmarks": 0, "references_provided": False},
+                "Brak referencji benchmarkowych w wejściu — walidacja niewykonana.",
+                {"status": "dane niekompletne"},
+                "Brak danych referencyjnych.",
+            )
+            return {
+                "validation_report": [],
+                "status": "dane niekompletne",
+                "references_provided": False,
+                "message_pl": (
+                    "Walidacja benchmarkowa wymaga referencji (IEEE 9/14/39-bus, "
+                    "CIGRE MV) z wartościami policzonymi przez solver. Bez nich "
+                    "werdyktu PASS/FAIL nie wystawia się (zakaz cichego fałszu K-09)."
+                ),
+                "sanity": _sanity_block([], has_inputs=False),
+            }
         rows: list[JsonDict] = []
         for item in references:
             ref = float(item["reference"])
@@ -697,7 +894,11 @@ class V126AcademicSolver:
             {"max_deviation_percent": max((row["delta_percent"] for row in rows), default=0.0)},
             "Wartosci tego samego typu, delta w %.",
         )
-        return {"validation_report": rows, "status": "PASS" if all(row["status"] == "PASS" for row in rows) else "FAIL"}
+        return {
+            "validation_report": rows,
+            "references_provided": True,
+            "status": "PASS" if all(row["status"] == "PASS" for row in rows) else "FAIL",
+        }
 
     def _uncertainty(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         sensitivities: list[JsonDict] = []
@@ -706,21 +907,30 @@ class V126AcademicSolver:
             influence = 0.10 * transformer.uk_percent
             total_variance += influence**2
             sensitivities.append(
-                {"parameter": f"{transformer.ref}.uk_percent", "sigma_contribution_percent": _round(influence, 5)}
+                {
+                    "parameter": f"{transformer.ref}.uk_percent",
+                    "sigma_contribution_percent": _round(influence, 5),
+                }
             )
         for branch in model.branches:
             z = abs(self._branch_z_ohm(branch))
             influence = 0.05 * z
             total_variance += influence**2
             sensitivities.append(
-                {"parameter": f"{branch.ref}.z_ohm", "sigma_contribution_percent": _round(influence, 5)}
+                {
+                    "parameter": f"{branch.ref}.z_ohm",
+                    "sigma_contribution_percent": _round(influence, 5),
+                }
             )
         for bus in model.buses:
             if bus.fault_level_mva:
                 influence = 0.10 * bus.fault_level_mva / 100.0
                 total_variance += influence**2
                 sensitivities.append(
-                    {"parameter": f"{bus.ref}.s_sc_mva", "sigma_contribution_percent": _round(influence, 5)}
+                    {
+                        "parameter": f"{bus.ref}.s_sc_mva",
+                        "sigma_contribution_percent": _round(influence, 5),
+                    }
                 )
         expanded = 2 * math.sqrt(total_variance)
         trace.add(
@@ -735,8 +945,23 @@ class V126AcademicSolver:
         total = sum(item["sigma_contribution_percent"] for item in ranked) or 1.0
         for item in ranked:
             item["share_percent"] = _round(item["sigma_contribution_percent"] / total * 100.0, 4)
+        # D-14: sanity — niepewność rozszerzona k=2 nieujemna, skończona; > 100%
+        # oznacza wynik bezużyteczny (poza zakresem wiarygodności).
+        sanity = _sanity_block(
+            [
+                ("u_nonneg", expanded >= 0.0, "Niepewność k=2 < 0 (niefizyczne)"),
+                ("u_finite", math.isfinite(expanded), "Niepewność nieskończona/NaN"),
+                (
+                    "u_upper",
+                    expanded <= 100.0,
+                    "Niepewność rozszerzona k=2 > 100% — wynik niewiarygodny",
+                ),
+            ],
+            has_inputs=len(sensitivities) > 0,
+        )
         return {
             "expanded_uncertainty_percent_k2": _round(expanded, 5),
             "sensitivity_ranking": ranked[:20],
             "display_contract": "wartość nominalna ± niepewność rozszerzona k=2",
+            "sanity": sanity,
         }
