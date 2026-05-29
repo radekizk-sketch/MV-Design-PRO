@@ -14,6 +14,65 @@ from network_model.solvers.power_flow_types import (
     PVSpec,
     ShuntSpec,
 )
+from network_model.solvers.power_flow_zip import (
+    ZipCoeffs,
+    zip_factor,
+    zip_factor_derivative,
+)
+
+
+def _apply_zip_jacobian(
+    jacobian: np.ndarray,
+    v: np.ndarray,
+    pq_indices: list[int],
+    p_spec: np.ndarray,
+    q_spec: np.ndarray,
+    zip_table: dict[int, ZipCoeffs],
+) -> None:
+    """ADR-011 (Z-ZIP-04): in-place ZIP correction of the assembled Jacobian.
+
+    Subtracts d(P_spec)/dV and d(Q_spec)/dV from the J12 (dP/dV) and J22 (dQ/dV)
+    diagonals at each ZIP bus, because the mismatch f = P_spec(V) - P_calc now
+    carries a voltage-dependent specified term. With a=b=0,c=1 the derivative is
+    zero, so the Jacobian is unchanged (reduce-to-NR invariant).
+    """
+    n_pq = len(pq_indices)
+    v_mag = np.abs(v)
+    for z_idx, z_c in zip_table.items():
+        if z_idx not in pq_indices:
+            continue
+        pos = pq_indices.index(z_idx)
+        dp_dv = p_spec[z_idx] * zip_factor_derivative(z_c.a_p, z_c.b_p, v_mag[z_idx], z_c.v0_pu)
+        dq_dv = q_spec[z_idx] * zip_factor_derivative(z_c.a_q, z_c.b_q, v_mag[z_idx], z_c.v0_pu)
+        jacobian[pos, n_pq + pos] -= dp_dv
+        jacobian[n_pq + pos, n_pq + pos] -= dq_dv
+
+
+def _apply_zip_jacobian_v2(
+    jacobian: np.ndarray,
+    v: np.ndarray,
+    non_slack_indices: list[int],
+    active_pq: list[int],
+    p_spec: np.ndarray,
+    q_spec: np.ndarray,
+    zip_table: dict[int, ZipCoeffs],
+) -> None:
+    """ADR-011: ZIP correction for the v2 (PV/PQ-switching) Jacobian.
+
+    Block layout: top=[j11(n_p x n_p), j12(n_p x n_q)], bottom=[j21, j22(n_q x n_q)].
+    A ZIP bus is a PQ load, so it appears in non_slack_indices (P eq) and active_pq
+    (Q eq). Same reduce-to-NR property: a=b=0 => derivative 0 => no change."""
+    n_p = len(non_slack_indices)
+    v_mag = np.abs(v)
+    for z_idx, z_c in zip_table.items():
+        if z_idx not in active_pq or z_idx not in non_slack_indices:
+            continue
+        row_p = non_slack_indices.index(z_idx)
+        col_q = active_pq.index(z_idx)
+        dp_dv = p_spec[z_idx] * zip_factor_derivative(z_c.a_p, z_c.b_p, v_mag[z_idx], z_c.v0_pu)
+        dq_dv = q_spec[z_idx] * zip_factor_derivative(z_c.a_q, z_c.b_q, v_mag[z_idx], z_c.v0_pu)
+        jacobian[row_p, n_p + col_q] -= dp_dv
+        jacobian[n_p + col_q, n_p + col_q] -= dq_dv
 
 
 def validate_input(pf_input: PowerFlowInput) -> tuple[list[str], list[str]]:
@@ -357,11 +416,17 @@ def newton_raphson_solve(
     v0: np.ndarray,
     options: PowerFlowOptions,
     node_index_to_id: dict[int, str] | None = None,
+    zip_table: dict[int, ZipCoeffs] | None = None,
 ) -> tuple[np.ndarray, bool, int, float, list[dict[str, Any]]]:
     """Newton-Raphson power flow solver with optional white-box trace.
 
     P20a: When options.trace_level == "full", generates complete white-box trace
     including per-bus mismatch, Jacobian, delta_state, and state_next.
+
+    ADR-011 (Z-ZIP-04): when ``zip_table`` maps a bus index to ZipCoeffs, that
+    bus's specified injection is recomputed from the current |V| every iteration
+    and the Jacobian gains a ZIP correction term. When ``zip_table`` is falsy the
+    code path is identical to the classic constant-power solve (reduce-to-NR).
     """
     v = v0.copy()
     trace: list[dict[str, Any]] = []
@@ -375,8 +440,25 @@ def newton_raphson_solve(
 
     for iteration in range(1, options.max_iter + 1):
         p_calc, q_calc = compute_power_injections(ybus, v)
-        d_p = p_spec[pq_indices] - p_calc[pq_indices]
-        d_q = q_spec[pq_indices] - q_calc[pq_indices]
+        # ADR-011: voltage-dependent (ZIP) loads recompute the specified
+        # injection from the current |V| each iteration. Gated — with no ZIP
+        # load the base p_spec/q_spec are used unchanged (reduce-to-NR).
+        if zip_table:
+            v_mag_now = np.abs(v)
+            p_spec_eff = p_spec.copy()
+            q_spec_eff = q_spec.copy()
+            for z_idx, z_c in zip_table.items():
+                p_spec_eff[z_idx] = p_spec[z_idx] * zip_factor(
+                    z_c.a_p, z_c.b_p, z_c.c_p, v_mag_now[z_idx], z_c.v0_pu
+                )
+                q_spec_eff[z_idx] = q_spec[z_idx] * zip_factor(
+                    z_c.a_q, z_c.b_q, z_c.c_q, v_mag_now[z_idx], z_c.v0_pu
+                )
+        else:
+            p_spec_eff = p_spec
+            q_spec_eff = q_spec
+        d_p = p_spec_eff[pq_indices] - p_calc[pq_indices]
+        d_q = q_spec_eff[pq_indices] - q_calc[pq_indices]
 
         max_mismatch = float(np.max(np.abs(np.concatenate([d_p, d_q]))))
         mismatch_norm = float(np.linalg.norm(np.concatenate([d_p, d_q])))
@@ -424,6 +506,8 @@ def newton_raphson_solve(
             break
 
         jacobian = build_jacobian(ybus, v, pq_indices, p_calc, q_calc)
+        if zip_table:
+            _apply_zip_jacobian(jacobian, v, pq_indices, p_spec, q_spec, zip_table)
         try:
             step = np.linalg.solve(jacobian, np.concatenate([d_p, d_q]))
         except np.linalg.LinAlgError:
@@ -483,6 +567,16 @@ def newton_raphson_solve(
             trace_entry["state_next"] = _build_state_dict(v, node_index_to_id)
             # P20a: Jacobian blocks (J1=dP/dθ, J2=dP/dV, J3=dQ/dθ, J4=dQ/dV)
             trace_entry["jacobian"] = _serialize_jacobian_blocks(jacobian, n_pq)
+            # ADR-011: white-box ZIP — recomputed (voltage-dependent) injection
+            # per ZIP bus at this iteration's |V|.
+            if zip_table:
+                trace_entry["zip_loads"] = {
+                    node_index_to_id.get(z_idx, str(z_idx)): {
+                        "p_spec_pu": float(p_spec_eff[z_idx]),
+                        "q_spec_pu": float(q_spec_eff[z_idx]),
+                    }
+                    for z_idx in sorted(zip_table)
+                }
 
         trace.append(trace_entry)
 
@@ -533,6 +627,7 @@ def newton_raphson_solve_v2(
     options: PowerFlowOptions,
     base_mva: float,
     node_index_to_id: dict[int, str],
+    zip_table: dict[int, ZipCoeffs] | None = None,
 ) -> tuple[
     np.ndarray,
     bool,
@@ -592,8 +687,26 @@ def newton_raphson_solve_v2(
 
         non_slack_indices = sorted([idx for idx in active_pq + active_pv if idx != slack_index])
 
-        d_p = p_spec[non_slack_indices] - p_calc[non_slack_indices]
-        d_q = q_spec[active_pq] - q_calc[active_pq]
+        # ADR-011: recompute voltage-dependent (ZIP) injections from current |V|.
+        # Gated — with no ZIP load the base p_spec/q_spec are used unchanged
+        # (reduce-to-NR). Placed after PV-limit handling so switched-bus q_spec
+        # values are respected; ZIP touches only ZIP (PQ-load) buses.
+        if zip_table:
+            v_mag_now = np.abs(v)
+            p_spec_eff = p_spec.copy()
+            q_spec_eff = q_spec.copy()
+            for z_idx, z_c in zip_table.items():
+                p_spec_eff[z_idx] = p_spec[z_idx] * zip_factor(
+                    z_c.a_p, z_c.b_p, z_c.c_p, v_mag_now[z_idx], z_c.v0_pu
+                )
+                q_spec_eff[z_idx] = q_spec[z_idx] * zip_factor(
+                    z_c.a_q, z_c.b_q, z_c.c_q, v_mag_now[z_idx], z_c.v0_pu
+                )
+        else:
+            p_spec_eff = p_spec
+            q_spec_eff = q_spec
+        d_p = p_spec_eff[non_slack_indices] - p_calc[non_slack_indices]
+        d_q = q_spec_eff[active_pq] - q_calc[active_pq]
 
         mismatch = np.concatenate([d_p, d_q])
         max_mismatch = float(np.max(np.abs(mismatch))) if mismatch.size else 0.0
@@ -648,6 +761,10 @@ def newton_raphson_solve_v2(
             break
 
         jacobian = build_jacobian_v2(ybus, v, non_slack_indices, active_pq, p_calc, q_calc)
+        if zip_table:
+            _apply_zip_jacobian_v2(
+                jacobian, v, non_slack_indices, active_pq, p_spec, q_spec, zip_table
+            )
         try:
             step = np.linalg.solve(jacobian, mismatch)
         except np.linalg.LinAlgError:
@@ -851,6 +968,7 @@ def _build_ybus_ohm(
             continue
         # SwitchState.CLOSED only — open switches don't conduct
         from network_model.core.switch import SwitchState
+
         if switch.state != SwitchState.CLOSED:
             continue
         from_idx = node_id_to_index.get(switch.from_node_id)

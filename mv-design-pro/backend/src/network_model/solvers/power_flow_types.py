@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from network_model.solvers.power_flow_zip import ZipCoeffs
+
 if TYPE_CHECKING:
     from network_model.core.graph import NetworkGraph
 
@@ -32,6 +34,10 @@ class PQSpec:
     node_id: str
     p_mw: float
     q_mvar: float
+    # ADR-011 (Z-ZIP-04): optional voltage-dependent (ZIP) load model.
+    # None => classic constant-power PQ (reduce-to-NR invariant). When set,
+    # p_mw/q_mvar are treated as the load base P0/Q0 at the reference voltage.
+    zip_coeffs: ZipCoeffs | None = None
 
 
 @dataclass
@@ -82,6 +88,11 @@ class PowerFlowInput:
     bus_limits: list[BusVoltageLimitSpec] = field(default_factory=list)
     branch_limits: list[BranchLimitSpec] = field(default_factory=list)
     options: PowerFlowOptions = field(default_factory=PowerFlowOptions)
+    # ADR-011 (Z-ZIP-04): system frequency for this study [Hz]. Drives the
+    # frequency factor of ZIP+f loads (1 + k*(f-f0)/f0). Default 50.0 => at
+    # nominal the factor is 1.0 (reduce-to-NR). Input-only; Frozen Result API
+    # unchanged.
+    base_frequency_hz: float = 50.0
     # Phase 30: audit2 extensions — opcjonalnie czytane przez solver wrapper
     # dla per-element adjustments (tap_changer, BESS reserved, P(f) droop, Z0/Z1).
     # NIE zmienia frozen Result API (nowe pole input, output bez zmian).

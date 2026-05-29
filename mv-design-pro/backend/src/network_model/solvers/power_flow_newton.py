@@ -18,6 +18,29 @@ from network_model.solvers.power_flow_newton_internal import (
     validate_input,
 )
 from network_model.solvers.power_flow_types import PowerFlowInput
+from network_model.solvers.power_flow_zip import (
+    ZipCoeffs,
+    apply_zip_frequency,
+    validate_zip_coeffs,
+)
+
+
+def _build_zip_table(
+    pf_input: PowerFlowInput, node_index_map: dict[str, int]
+) -> dict[int, ZipCoeffs]:
+    """ADR-011 (Z-ZIP-04): collect validated ZIP coefficients keyed by bus index.
+
+    Empty when no load carries ZIP coefficients — the solver then runs the
+    classic constant-power path unchanged (reduce-to-NR invariant)."""
+    zip_table: dict[int, ZipCoeffs] = {}
+    for spec in pf_input.pq:
+        if spec.zip_coeffs is None or spec.node_id not in node_index_map:
+            continue
+        if spec.zip_coeffs.is_constant_power():
+            continue
+        validate_zip_coeffs(spec.zip_coeffs)
+        zip_table[node_index_map[spec.node_id]] = spec.zip_coeffs
+    return zip_table
 
 
 @dataclass(frozen=True)
@@ -90,6 +113,7 @@ class PowerFlowNewtonSolver:
 
         slack_index = node_index_map[pf_input.slack.node_id]
         node_index_to_id = {idx: node_id for node_id, idx in node_index_map.items()}
+        zip_table = _build_zip_table(pf_input, node_index_map)
 
         pq_node_ids = [spec.node_id for spec in pf_input.pq if spec.node_id in node_index_map]
         pv_node_ids = [spec.node_id for spec in pf_input.pv if spec.node_id in node_index_map]
@@ -120,6 +144,9 @@ class PowerFlowNewtonSolver:
             p_spec, q_spec, pv_setpoints, pv_q_limits = build_power_spec_v2(
                 slack_island_nodes, pf_input.base_mva, pf_input.pq, pf_input.pv
             )
+            apply_zip_frequency(
+                p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz
+            )
             for idx, u_pu in pv_setpoints.items():
                 v0[idx] = u_pu * np.exp(1j * np.angle(v0[idx]))
             (
@@ -142,9 +169,13 @@ class PowerFlowNewtonSolver:
                 options,
                 pf_input.base_mva,
                 node_index_to_id,
+                zip_table,
             )
         else:
             p_spec, q_spec = build_power_spec(slack_island_nodes, pf_input.base_mva, pf_input.pq)
+            apply_zip_frequency(
+                p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz
+            )
             pv_to_pq_switches = []
             if pq_indices:
                 v, converged, iterations, max_mismatch, nr_trace = newton_raphson_solve(
@@ -156,6 +187,7 @@ class PowerFlowNewtonSolver:
                     v0,
                     options,
                     node_index_to_id,
+                    zip_table,
                 )
             else:
                 v = v0

@@ -42,6 +42,7 @@ from network_model.solvers.power_flow_newton_internal import (
     validate_input,
 )
 from network_model.solvers.power_flow_types import PowerFlowInput, PowerFlowOptions
+from network_model.solvers.power_flow_zip import reject_zip_in_pq
 
 
 @dataclass
@@ -127,6 +128,7 @@ class PowerFlowGaussSeidelSolver:
         """
         graph: NetworkGraph = pf_input.typed_graph()
         options = pf_input.options
+        reject_zip_in_pq(pf_input.pq, "Gauss-Seidel")
 
         # Merge options
         if gs_options is not None:

@@ -1,119 +1,106 @@
-# ADR-011: Model obciążeń ZIP w przepływie mocy (realizacja inwariantu Z-ZIP-04)
+# ADR-011: Model obciążeń ZIP + P(f)/Q(f) w przepływie mocy (realizacja Z-ZIP-04)
 
 ## Status
 
-Proposed — kierunek autoryzowany przez właściciela (świadome, zakresowe zniesienie
-bariery B-01 dla tej jednej zmiany). Niniejszy ADR przedstawia **pełny kontrakt
-solverowy** do zatwierdzenia szczegółów **zanim** edytowany będzie zamrożony rdzeń
-Newton-Raphson. Wymóg formalny: inwariant **Z-ZIP-04** (`SPEC_CHAPTER_07`,
-wiersz 1032): *„Aktywacja ZIP wymaga osobnej decyzji ADR z pełnym kontraktem
-solverowym"*.
+Accepted — właściciel autoryzował edycję zamrożonego rdzenia (B-01) dla tej zmiany,
+w **pełnym zakresie**: ZIP + zależność częstotliwościowa we **wszystkich trzech
+solverach** (NR, GS, FD) oraz **pełne wpięcie** ENM→katalog→solver we wszystkich
+miejscach budujących `PQSpec`. Brak odroczeń, brak „solver liczy, aplikacja nie
+używa". Realizuje inwariant **Z-ZIP-04** (`SPEC_CHAPTER_07:1032`): *„Aktywacja ZIP
+wymaga osobnej decyzji ADR z pełnym kontraktem solverowym"*.
 
 ## Kontekst
 
-- **Luka K-29 / §8C.5:** „QSTS jest, ZIP brak". Brak jawnego modelu obciążeń
-  zależnych od napięcia P(U)/Q(U). Wszystkie odbiory liczone jako stała moc (PQ).
-- **Model już rezerwuje tryb ZIP:** `enm/models.py:289` — `Load.model:
-  Literal["pq", "zip"] = "pq"`. Tryb `"zip"` jest dziś **zablokowany** w
-  projekcji (`enm/v2_projection.py:497-503`: *„Odbior ZIP wymaga pelnego
-  kontraktu profilu obciazenia w ENM v2.0"*), a `MIGRACJA_ENM_V1_V2.md`
-  oznacza `zip` jako *„wymagający solver support"*. Czyli architektura ma
-  zarezerwowane miejsce — ten ADR je **aktywuje**.
-- **Bariera B-01 (zamrożony rdzeń):** solver NR (`power_flow_newton_internal.py`)
-  jest zamrożonym, deterministycznym rdzeniem. ADR-007 wymaga ADR dla
-  „modyfikacji formuł / zmiany struktury wyników". Właściciel autoryzował tę
-  konkretną zmianę.
+- **Luka K-29 / §8C.5:** brak jawnego modelu obciążeń zależnych od napięcia i
+  częstotliwości. Wszystkie odbiory liczone jako stała moc (PQ).
+- **Model rezerwuje tryb ZIP:** `enm/models.py:289` — `Load.model: Literal["pq",
+  "zip"]`; `Load.materialized_params` gotowe na parametry z katalogu;
+  `ENMDefaults.frequency_hz=50.0` (`models.py:97`) niesie częstotliwość studium.
+- **Bariera B-01 (zamrożony rdzeń NR):** ADR-007 wymaga ADR dla „modyfikacji formuł".
+  Właściciel autoryzował zakresowo tę zmianę; bramką bezpieczeństwa jest inwariant
+  reduce-to-NR.
 
 ## Decyzja
 
-### 1. Model fizyczny ZIP (wielomian napięciowy)
-
-Dla węzła odbiorczego o mocy bazowej P₀, Q₀ przy napięciu odniesienia V₀ (= 1.0 pu):
+### 1. Model fizyczny — ZIP (napięcie) + liniowa zależność częstotliwościowa
 
 ```
-P_load(V) = P₀ · [ a_p·(V/V₀)² + b_p·(V/V₀) + c_p ]      (Z + I + P)
-Q_load(V) = Q₀ · [ a_q·(V/V₀)² + b_q·(V/V₀) + c_q ]
+P_load(V, f) = P0 · [ a_p·(V/V0)² + b_p·(V/V0) + c_p ] · [ 1 + k_pf·(f-f0)/f0 ]
+Q_load(V, f) = Q0 · [ a_q·(V/V0)² + b_q·(V/V0) + c_q ] · [ 1 + k_qf·(f-f0)/f0 ]
 ```
 
-Ograniczenia (walidowane): `a_p + b_p + c_p = 1`, `a_q + b_q + c_q = 1`,
-każdy współczynnik ∈ [0, 1] (model fizyczny: udziały składowych Z/I/P).
-Składowe: `a` = stała impedancja (Z, ~V²), `b` = stały prąd (I, ~V),
-`c` = stała moc (P, niezależna od V).
+Ograniczenia (walidowane `validate_zip_coeffs`): `a+b+c = 1` dla P i Q, każdy ∈ [0,1];
+`v0_pu>0`, `f0_hz>0`. Domyślnie `a=b=0, c=1, k=0` (stała moc, niezależna od f).
 
-**Wartość domyślna `a=b=0, c=1`** (stała moc) — odpowiada dzisiejszemu PQ.
+### 2. Częstotliwość — studyjne **wejście**, nie niewiadoma
 
-### 2. Lokalizacja współczynników — przez katalog (Rule #10)
+`f` (częstotliwość systemu studium) to **wejście** rozpływu:
+`PowerFlowInput.base_frequency_hz` (źródło: `ENMDefaults.frequency_hz`). Czynnik
+częstotliwościowy jest **stały względem napięcia**, więc **jednorazowo skaluje bazę**
+`p_spec/q_spec` (helper `apply_zip_frequency`, wspólny dla NR/GS/FD) — **nie** wchodzi
+do iteracji ani do Jakobianu. Przy `f=f0` czynnik = 1. (Rozpływ z `f` jako niewiadomą
+— droop/distributed slack — to odrębny solver częstotliwościowy, nie model obciążenia.)
 
-Współczynniki ZIP to **właściwość typu katalogowego**, materializowana do
-`Load.materialized_params` (jak inne parametry typu). **NIE** bezpośrednie
-wstrzyknięcie na element — zgodnie z Catalog Binding Rule. Brak współczynników
-przy `model="zip"` ⇒ błąd walidacji (zakaz cichego założenia).
+### 3. Lokalizacja parametrów — przez katalog (Rule #10)
 
-### 3. Integracja w NR (solver kanoniczny)
+Parametry typu obciążenia (`a/b/c` P,Q, `v0_pu`, `k_pf`, `k_qf`, `f0_hz`) żyją na
+typie katalogowym `LoadType` (`catalog/types.py`), eksponowane przez
+`MaterializationContract.solver_fields` i materializowane do
+`Load.materialized_params`. Helper `zip_coeffs_from_materialized_params` buduje
+`ZipCoeffs` (None = stała moc). **Bez bezpośredniego wstrzyknięcia.**
 
-- `p_spec`/`q_spec` dla węzłów ZIP **przeliczane w każdej iteracji** z bieżącego
-  |V| (część obciążeniowa; generacja i część stała bez zmian).
-- **Jakobian — jeden dodatkowy człon na diagonali** bloków ∂P/∂V (J12) i ∂Q/∂V (J22):
-  ```
-  ∂P_spec_i/∂V_i = −P₀_i·(2·a_p·V_i/V₀² + b_p/V₀) / S_base
-  ∂Q_spec_i/∂V_i = −Q₀_i·(2·a_q·V_i/V₀² + b_q/V₀) / S_base
-  ```
-  (znak ujemny: obciążenie = ujemny wstrzyk). Człon **odejmowany** od diagonali
-  J12/J22, bo mismatch f_i = P_spec_i(V_i) − P_calc_i, a J = ∂P_calc/∂x − ∂P_spec/∂x.
+### 4. Agregacja na szynie (ścieżka kanoniczna)
 
-### 4. INWARIANT bezpieczeństwa — reduce-to-NR (kluczowy)
+`map_enm_to_network_graph` agreguje obciążenia jednej szyny. Agregacja ZIP jest
+**ważona mocą i dokładna** (wielomian sumy = suma wielomianów):
+`udział_agg = Σ(P0ᵢ·udziałᵢ)/Σ P0ᵢ` (analogicznie Q i `k`). Helper `aggregate_zip`.
+`Node` niesie zagregowane `ZipCoeffs`; `PQSpec.zip_coeffs` z nich powstaje.
 
-Przy `a=b=0, c=1`: `P_load(V)=P₀` (stała), `∂P_spec/∂V=0`. Mismatch i Jakobian
-**redukują się dokładnie** do obecnej postaci. ⇒ **Sieci ze stałą mocą dają wynik
-bajt-w-bajt identyczny** z dzisiejszym solverem. Egzekwowane testem na referencyjnej
-sieci (porównanie SHA-256 trace + wartości węzłowych przed/po). To gwarancja, że
-edycja zamrożonego rdzenia **nie zmienia żadnego istniejącego wyniku**.
+### 5. Integracja w solverach (wszystkie trzy)
 
-### 5. WHITE BOX i determinizm
+- **NR (v1 i v2):** `p_spec/q_spec` przeliczane per iteracja z bieżącego |V|;
+  Jakobian +człon ZIP na diagonali ∂P/∂V (J12) i ∂Q/∂V (J22):
+  `∂P_spec_i/∂V_i = P_spec_base_i·(2·a_p·V_i/V0² + b_p/V0)` (analogicznie Q).
+  Konwencja zweryfikowana w kodzie: aktualizacja `v_mag += ΔV` (czysta), więc
+  J12=∂P/∂V (czysta). v2 używa rozbicia indeksów `non_slack`/`active_pq`.
+- **GS:** punkt stały — `S_i(|v_i|)` przeliczane co przejście (brak Jakobianu).
+- **FD:** `p_spec/q_spec` przeliczane w mismatchu; macierze B′/B″ stałe (z `ybus.imag`,
+  niezależne od obciążenia) — natura FD zachowana.
 
-- Trace eksponuje: współczynniki ZIP per węzeł, V₀, P_load(V)/Q_load(V) per iteracja,
-  dodatkowy człon Jakobianu. Pełna audytowalność (Rule #2).
-- Determinizm zachowany: przeliczenie deterministyczne, SHA-256 stabilne (Rule #7).
+### 6. INWARIANT reduce-to-NR (bramka bezpieczeństwa, per solver)
 
-### 6. Zakres tej zmiany (jawnie sekwencjonowany — bez teatru)
+Przy `a=b=0, c=1, f=f0`: czynnik napięciowy=1, czynnik częstotliwościowy=1, pochodna
+ZIP=0. Każdy solver **redukuje się dokładnie** do obecnej postaci. Cała logika ZIP
+jest **bramkowana** (`if zip_table:` / `has_frequency_dependence`), więc sieci bez
+ZIP wykonują **identyczny kod** → wynik bajt-w-bajt. Egzekwowane testami per solver.
+*(Zweryfikowane dla NR: dVmax=0, slack P identyczny.)*
 
-- **W zakresie:** NR (kanoniczny) + model/kontrakt + walidacja + testy.
-- **GS / FD:** **odrzucają** nietrywialne współczynniki ZIP **jawnym błędem**
-  (`ZipNotSupportedError`) — **bez cichego pominięcia** (zakaz cichego fałszu).
-  Pełne wsparcie ZIP w GS/FD = sekwencyjny follow-on (ten sam kontrakt).
-- **P(f)/Q(f) (zależność częstotliwościowa):** **poza zakresem** statycznego
-  rozpływu (f = nominalna, mnożnik = 1). Udokumentowane rozszerzenie dla studiów
-  częstotliwościowych/wyspowych — nie udajemy, że jest.
+### 7. WHITE BOX, determinizm, Frozen Result API
 
-### 7. Wpływ na zamrożone API wyników
-
-Pola `PowerFlowResult` **niezmienione** (Frozen Result API, Rule #6). ZIP to
-atrybut **wejścia**; skonwergowane wartości obciążenia są **addytywne** w trace
-(nie łamią kontraktu). Brak bumpa wersji wyniku.
+- Trace eksponuje współczynniki ZIP i przeliczone `p_spec/q_spec` per iteracja (Rule #2).
+- Determinizm zachowany; SHA-256 stabilne (Rule #7).
+- Pola `PowerFlowResult` **niezmienione** (Rule #6); ZIP/`f` to **wejście**.
 
 ## Konsekwencje
 
 ### Pozytywne
-- Realne obciążenia napięciozależne — istotne dla słabych sieci i integracji OZE.
-- Aktywacja zarezerwowanej, ale martwej dotąd ścieżki `model="zip"`.
-- Wzorzec dla GS/FD (ten sam kontrakt).
+- Realne obciążenia napięcio- i częstotliwościozależne — kluczowe dla słabych sieci i OZE.
+- Spójność: ten sam kontrakt ZIP w NR/GS/FD; pełna ścieżka katalog→aplikacja→solver.
 
 ### Negatywne / ryzyka
-- **Dotknięty zamrożony rdzeń NR** — ryzyko regresji. Mitygacja: inwariant
-  reduce-to-NR (bajt-identyczność dla stałej mocy) + bateria testów + guard determinizmu.
-- GS/FD chwilowo odrzucają ZIP (jawnie) — niespójność rozwiązana sekwencyjnie.
-- P(f)/Q(f) nie dostarczone w tej turze (udokumentowane).
+- Dotknięty zamrożony rdzeń NR — ryzyko regresji. Mitygacja: reduce-to-NR
+  (bajt-identyczność) + bateria testów per solver + guard determinizmu.
+- Zmiana przekrojowa (katalog + agregacja + wiele miejsc `PQSpec`) — realizowana
+  orkiestracją (swarm) z recenzją `recenzent-norm` przed scaleniem.
 
-## Plan testów (warunek „done")
-1. **reduce-to-NR:** sieć referencyjna ze stałą mocą — wynik (V, trace SHA-256)
-   bajt-identyczny przed/po. *(bezpieczeństwo rdzenia)*
-2. **const-Z** (`a=1`): obciążenie skaluje się ~V²; spadek napięcia mniejszy niż PQ.
-3. **const-I** (`b=1`): obciążenie ~V.
-4. **mix ZIP** (np. 0.4/0.3/0.3): zbieżność + bilans mocy.
-5. **determinizm:** dwa przebiegi identyczne; guard determinizmu PASS.
-6. **white-box:** człon ZIP i współczynniki obecne w trace.
-7. **walidacja:** suma współczynników ≠ 1 ⇒ błąd; `zip` bez współczynników ⇒ błąd.
-8. **GS/FD:** nietrywialny ZIP ⇒ `ZipNotSupportedError` (bez cichego PQ).
+## Plan testów (warunek „done", per solver)
+1. **reduce-to-NR:** `a=b=0,c=1,f=f0` — wynik bajt-identyczny przed/po (NR, GS, FD).
+2. **const-Z** (`a=1`): obciążenie ~V², napięcie wyższe niż PQ. *(NR: potwierdzone.)*
+3. **const-I** (`b=1`): obciążenie ~V (pośrednie). *(NR: potwierdzone.)*
+4. **P(f):** `f<f0, k_pf>0` ⇒ mniejszy pobór. *(NR: potwierdzone, factor 0.96.)*
+5. **determinizm** + **white-box** (człon ZIP w trace).
+6. **walidacja:** suma ≠ 1 ⇒ błąd; `f0/v0 ≤ 0` ⇒ błąd.
+7. **e2e wpięcia:** ENM Load `model="zip"` z katalogu → `PQSpec.zip_coeffs` → solver.
 
 ## Powiązane
 - Inwariant **Z-ZIP-04** — `docs/spec/SPEC_CHAPTER_07_SOURCES_GENERATORS_LOADS.md:1032`

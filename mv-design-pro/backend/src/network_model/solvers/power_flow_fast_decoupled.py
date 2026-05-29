@@ -48,6 +48,7 @@ from network_model.solvers.power_flow_newton_internal import (
     validate_input,
 )
 from network_model.solvers.power_flow_types import PowerFlowInput, PowerFlowOptions
+from network_model.solvers.power_flow_zip import reject_zip_in_pq
 from scipy import linalg
 
 
@@ -142,6 +143,7 @@ class PowerFlowFastDecoupledSolver:
         """
         graph: NetworkGraph = pf_input.typed_graph()
         options = pf_input.options
+        reject_zip_in_pq(pf_input.pq, "Fast Decoupled")
 
         # Merge options
         if fd_options is not None:
