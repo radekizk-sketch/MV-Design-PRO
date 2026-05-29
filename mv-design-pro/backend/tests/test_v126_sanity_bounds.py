@@ -8,8 +8,14 @@ from solver_input.v126_contracts import (
     V126AnalysisType,
     V126BranchInput,
     V126BusInput,
+    V126EarthingInput,
+    V126HarmonicSourceInput,
+    V126InsulationInput,
+    V126MotorInput,
     V126TransformerInput,
 )
+
+_VALID_STATUSES = {"zweryfikowany", "poza zakresem wiarygodności", "dane niekompletne"}
 
 
 def _input() -> V126AcademicInput:
@@ -129,3 +135,120 @@ class TestBenchmarkSilentFalseFix:
         ]
         res = _run(V126AnalysisType.BENCHMARK_VALIDATION, {"benchmark_references": refs})
         assert res["status"] == "PASS"
+
+
+def _run_model(analysis: V126AnalysisType, model: V126AcademicInput) -> dict:
+    return V126AcademicSolver().run(analysis, model)["result"]
+
+
+class TestV126SanityCoverageAllAnalyses:
+    """K-08: każda analiza V12.6 ma blok wiarygodności (sanity) — kompletna powłoka."""
+
+    ALWAYS_COMPLETE = [
+        V126AnalysisType.VOLTAGE_STABILITY,
+        V126AnalysisType.EARTH_FAULT_DETECTION,
+        V126AnalysisType.TRANSIENT_TRV,
+    ]
+    NEEDS_INPUT = [
+        V126AnalysisType.POWER_QUALITY_HARMONICS,
+        V126AnalysisType.EARTHING_SAFETY,
+        V126AnalysisType.INSULATION_COORDINATION,
+        V126AnalysisType.MOTOR_STARTING,
+    ]
+
+    def test_every_analysis_has_sanity_block(self) -> None:
+        for analysis in [
+            *self.ALWAYS_COMPLETE,
+            *self.NEEDS_INPUT,
+            V126AnalysisType.HOSTING_CAPACITY,
+        ]:
+            params = (
+                {"hosting_monte_carlo_n": 30}
+                if analysis == V126AnalysisType.HOSTING_CAPACITY
+                else None
+            )
+            res = _run(analysis, params)
+            assert "sanity" in res, f"{analysis.value} bez bloku sanity"
+            assert res["sanity"]["status"] in _VALID_STATUSES
+            assert res["sanity"]["checks_total"] >= 1
+
+    def test_always_complete_analyses_are_verified(self) -> None:
+        for analysis in self.ALWAYS_COMPLETE:
+            res = _run(analysis)
+            assert res["sanity"]["status"] == "zweryfikowany", analysis.value
+
+    def test_hosting_capacity_verified_and_within_scan(self) -> None:
+        res = _run(V126AnalysisType.HOSTING_CAPACITY, {"hosting_monte_carlo_n": 30})
+        assert res["sanity"]["status"] == "zweryfikowany"
+
+    def test_missing_inputs_report_incomplete_not_fake_pass(self) -> None:
+        # Bez danych wejściowych analiza NIE może udawać „zweryfikowany" (cichy fałsz).
+        for analysis in self.NEEDS_INPUT:
+            res = _run(analysis)
+            assert res["sanity"]["status"] == "dane niekompletne", analysis.value
+            assert res["sanity"]["checks_passed"] == 0
+
+
+class TestV126SanityWithRealInputs:
+    """Z poprawnymi danymi wejściowymi analizy raportują „zweryfikowany"."""
+
+    def test_power_quality_with_harmonic_sources_verified(self) -> None:
+        model = _input().model_copy(
+            update={
+                "harmonic_sources": [
+                    V126HarmonicSourceInput(
+                        bus_ref="B2",
+                        source_ref="HS1",
+                        base_current_a=50.0,
+                        spectrum_percent={5: 20.0, 7: 14.0, 11: 9.0},
+                    )
+                ]
+            }
+        )
+        res = _run_model(V126AnalysisType.POWER_QUALITY_HARMONICS, model)
+        assert res["sanity"]["status"] == "zweryfikowany"
+        assert res["sanity"]["checks_passed"] == res["sanity"]["checks_total"]
+
+    def test_earthing_with_data_verified(self) -> None:
+        model = _input().model_copy(update={"earthing": V126EarthingInput()})
+        res = _run_model(V126AnalysisType.EARTHING_SAFETY, model)
+        assert res["sanity"]["status"] == "zweryfikowany"
+        assert res["r_g_ohm"] >= 0.0 and res["gpr_kv"] >= 0.0
+
+    def test_insulation_with_arrester_verified(self) -> None:
+        model = _input().model_copy(
+            update={"insulation": [V126InsulationInput(location_bus_ref="B2", u_m_kv=17.5)]}
+        )
+        res = _run_model(V126AnalysisType.INSULATION_COORDINATION, model)
+        assert res["sanity"]["status"] == "zweryfikowany"
+
+    def test_motor_starting_credible_motor_verified(self) -> None:
+        # Silnik 15 kV dopasowany do szyny B2 (15 kV) — zapad napięcia w granicach wiarygodności.
+        model = _input().model_copy(
+            update={
+                "motors": [
+                    V126MotorInput(ref="M1", bus_ref="B2", rated_kw=500.0, rated_voltage_kv=15.0)
+                ]
+            }
+        )
+        res = _run_model(V126AnalysisType.MOTOR_STARTING, model)
+        assert res["sanity"]["status"] == "zweryfikowany"
+        for row in res["motors"]:
+            assert 0.0 <= row["voltage_dip_percent"] <= 100.0
+
+    def test_sanity_block_is_deterministic(self) -> None:
+        model = _input().model_copy(
+            update={
+                "harmonic_sources": [
+                    V126HarmonicSourceInput(
+                        bus_ref="B2",
+                        source_ref="HS1",
+                        base_current_a=50.0,
+                        spectrum_percent={5: 20.0},
+                    )
+                ]
+            }
+        )
+        first = _run_model(V126AnalysisType.POWER_QUALITY_HARMONICS, model)["sanity"]
+        second = _run_model(V126AnalysisType.POWER_QUALITY_HARMONICS, model)["sanity"]
+        assert first == second

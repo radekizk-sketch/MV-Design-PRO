@@ -59,6 +59,11 @@ def _sanity_block(
     }
 
 
+def _finite(*values: float) -> bool:
+    """True gdy wszystkie wartości są liczbami skończonymi (nie NaN/inf)."""
+    return all(isinstance(v, int | float) and math.isfinite(v) for v in values)
+
+
 class TraceBuilder:
     def __init__(self, analysis_type: V126AnalysisType) -> None:
         self.analysis_type = analysis_type.value
@@ -295,7 +300,26 @@ class V126AcademicSolver:
             {"buses_evaluated": len(bus_results)},
             "kV/kV daje %, A/A daje %.",
         )
-        return {"nodes": list(bus_results.values())}
+        nodes = list(bus_results.values())
+        # K-08: sanity-bounds wiarygodności PQ — THD/TDD/K-factor skończone i fizyczne
+        # (IEC 61000 / PN-EN 50160 to limity zgodności; tu sprawdzamy granicę wiarygodności).
+        thd_values = [float(n["thd_u_percent"]) for n in nodes]
+        tdd_values = [float(n["tdd_percent"]) for n in nodes]
+        kf_values = [float(n["k_factor"]) for n in nodes]
+        sanity = _sanity_block(
+            [
+                ("thd_finite", _finite(*thd_values), "THD_U nieskończone/NaN"),
+                ("thd_max", max(thd_values, default=0.0) <= 100.0, "THD_U > 100% (niefizyczne)"),
+                ("tdd_finite", _finite(*tdd_values), "TDD nieskończone/NaN"),
+                (
+                    "k_factor_nonneg",
+                    _finite(*kf_values) and all(v >= 0.0 for v in kf_values),
+                    "K-factor < 0 lub nieskończony",
+                ),
+            ],
+            has_inputs=len(model.harmonic_sources) > 0,
+        )
+        return {"nodes": nodes, "sanity": sanity}
 
     def _voltage_stability(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         pv_curves: list[JsonDict] = []
@@ -343,6 +367,27 @@ class V126AcademicSolver:
             {"smallest_eigenvalue": _round(smallest, 6)},
             "Indeksy są bezwymiarowe, margines P-V w %.",
         )
+        margin_min = _round(min((row["margin_percent"] for row in pv_curves), default=0.0), 3)
+        l_values = [float(row["l_index"]) for row in l_indices]
+        # K-08: sanity-bounds — margines skończony i nieujemny, L-index w [0,1]
+        # (L>1 lub eigen<=0 => kolaps napięciowy / wynik niefizyczny).
+        sanity = _sanity_block(
+            [
+                ("margin_finite", _finite(margin_min), "Margines P-V nieskończony/NaN"),
+                ("margin_nonneg", margin_min >= 0.0, "Margines P-V < 0 (układ za punktem kolapsu)"),
+                (
+                    "l_index_range",
+                    _finite(*l_values) and all(0.0 <= v <= 1.0 for v in l_values),
+                    "L-index poza [0,1] (niefizyczny)",
+                ),
+                (
+                    "eigenvalue_positive",
+                    _finite(smallest) and smallest > 0.0,
+                    "Najmniejsza wartość własna <= 0 (kolaps napięciowy)",
+                ),
+            ],
+            has_inputs=len(model.buses) > 0,
+        )
         return {
             "pv_curves": pv_curves,
             "qv_curves": qv_curves,
@@ -354,9 +399,8 @@ class V126AcademicSolver:
                 },
             },
             "l_index_per_bus": l_indices,
-            "voltage_stability_margin_percent": _round(
-                min((row["margin_percent"] for row in pv_curves), default=0.0), 3
-            ),
+            "voltage_stability_margin_percent": margin_min,
+            "sanity": sanity,
         }
 
     def _branch_current_a(self, model: V126AcademicInput, branch: Any) -> float:
@@ -502,7 +546,29 @@ class V126AcademicSolver:
             safety = "wymaga_ochrony"
         else:
             safety = "niezgodny"
+        # K-08: sanity-bounds IEEE 80 / EN 50522 — Rg, GPR, napięcia rażenia skończone i ≥ 0.
+        has_earthing = model.earthing is not None or isinstance(
+            model.parameters.get("earthing"), dict
+        )
+        sanity = _sanity_block(
+            [
+                ("rg_nonneg", _finite(rg) and rg >= 0.0, "Rg < 0 lub nieskończone"),
+                ("gpr_nonneg", _finite(gpr_kv) and gpr_kv >= 0.0, "GPR < 0 lub nieskończone"),
+                (
+                    "u_touch_nonneg",
+                    _finite(u_touch) and u_touch >= 0.0,
+                    "U_touch < 0 lub nieskończone",
+                ),
+                (
+                    "u_step_nonneg",
+                    _finite(u_step) and u_step >= 0.0,
+                    "U_step < 0 lub nieskończone",
+                ),
+            ],
+            has_inputs=has_earthing,
+        )
         return {
+            "sanity": sanity,
             "gpz_ref": data.gpz_ref,
             "soil_model": {"rho1": data.rho1_ohm_m, "rho2": data.rho2_ohm_m, "h1": data.h1_m},
             "grid_geometry": {
@@ -574,7 +640,27 @@ class V126AcademicSolver:
             {"non_compliant": sum(1 for row in rows if row["verification_status"] != "spelniony")},
             "kV/kV daje %.",
         )
-        return {"arresters": rows}
+        # K-08: sanity-bounds IEC 60071 — MCOV/BIL/margines skończone i nieujemne.
+        mcov_values = [float(r["mcov_kv"]) for r in rows]
+        bil_values = [float(r["bil_protected_kv"]) for r in rows]
+        margin_values = [float(r["bil_margin_percent"]) for r in rows]
+        sanity = _sanity_block(
+            [
+                (
+                    "mcov_nonneg",
+                    _finite(*mcov_values) and all(v >= 0.0 for v in mcov_values),
+                    "MCOV < 0 lub nieskończone",
+                ),
+                (
+                    "bil_positive",
+                    _finite(*bil_values) and all(v > 0.0 for v in bil_values),
+                    "BIL <= 0 lub nieskończone",
+                ),
+                ("margin_finite", _finite(*margin_values), "Margines BIL nieskończony/NaN"),
+            ],
+            has_inputs=len(model.insulation) > 0,
+        )
+        return {"arresters": rows, "sanity": sanity}
 
     def _earth_fault_detection(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         neutral = str(model.parameters.get("neutral_grounding", "petersen_tuned"))
@@ -601,16 +687,26 @@ class V126AcademicSolver:
             {"recommended_method": recommended, "available": available},
             "Decyzja logiczna bez jednostek.",
         )
+        u0_start = 5.0
+        # K-08: sanity (analiza decyzyjna) — wybór metody dobrze określony, nastawa U0 fizyczna.
+        sanity = _sanity_block(
+            [
+                ("method_selected", bool(recommended), "Brak rekomendowanej metody detekcji"),
+                ("u0_start_range", 0.0 < u0_start <= 100.0, "Nastawa U0 poza zakresem (0,100]%"),
+            ],
+            has_inputs=True,
+        )
         return {
             "neutral_grounding": neutral,
             "recommended_method": recommended,
             "alternative_method": alternative,
             "relay_support_status": "spelniony" if available else "brak_w_przekazniku",
             "settings": {
-                "u0_start_percent": 5.0,
+                "u0_start_percent": u0_start,
                 "p0_set_w": 1.0 if recommended == "wattmetric" else None,
                 "i5_multiplier": 3.0 if recommended == "fifth_harmonic" else None,
             },
+            "sanity": sanity,
         }
 
     def _transient(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
@@ -653,7 +749,25 @@ class V126AcademicSolver:
             {"trv_margin_percent": _round(min_margin, 4), "ferro_risk": ferro_risk},
             "kV porownane z kV, margines w %.",
         )
+        # K-08: sanity-bounds IEC 62271 — margines TRV skończony, krotność udaru i 2. harmoniczna fizyczne.
+        sanity = _sanity_block(
+            [
+                ("trv_margin_finite", _finite(min_margin), "Margines TRV nieskończony/NaN"),
+                (
+                    "inrush_multiple_range",
+                    _finite(inrush_multiple) and 0.0 < inrush_multiple <= 30.0,
+                    "Krotność udaru poza (0,30]×In (nierealna)",
+                ),
+                (
+                    "second_harmonic_range",
+                    _finite(second_harmonic_percent) and 0.0 <= second_harmonic_percent <= 100.0,
+                    "Udział 2. harmonicznej poza [0,100]%",
+                ),
+            ],
+            has_inputs=len(model.buses) > 0,
+        )
         return {
+            "sanity": sanity,
             "trv_curve": points,
             "trv_margin_percent": _round(min_margin, 4),
             "trv_status": "spelniony" if min_margin >= 10 else "niespelniony",
@@ -710,7 +824,37 @@ class V126AcademicSolver:
             {"non_compliant": sum(1 for row in rows if row["verification_status"] != "zgodny")},
             "A*Ohm/V daje wartosc bezwymiarowa, razy 100 daje %.",
         )
-        return {"motors": rows}
+        # K-08: sanity-bounds — prąd rozruchu ≥ 0, zapad napięcia w [0,100]%, krotność LR fizyczna.
+        i_start_values = [float(r["i_start_a"]) for r in rows]
+        dip_values = [float(r["voltage_dip_percent"]) for r in rows]
+        thermal_values = [float(r["thermal_i2t_ratio"]) for r in rows]
+        lr_values = [float(m.locked_rotor_multiplier) for m in model.motors]
+        sanity = _sanity_block(
+            [
+                (
+                    "i_start_nonneg",
+                    _finite(*i_start_values) and all(v >= 0.0 for v in i_start_values),
+                    "Prąd rozruchu < 0 lub nieskończony",
+                ),
+                (
+                    "voltage_dip_range",
+                    _finite(*dip_values) and all(0.0 <= v <= 100.0 for v in dip_values),
+                    "Zapad napięcia poza [0,100]%",
+                ),
+                (
+                    "lr_multiple_range",
+                    _finite(*lr_values) and all(0.0 < v <= 12.0 for v in lr_values),
+                    "Krotność prądu zablokowanego wirnika poza (0,12]×In",
+                ),
+                (
+                    "thermal_ratio_nonneg",
+                    _finite(*thermal_values) and all(v >= 0.0 for v in thermal_values),
+                    "Wskaźnik I²t < 0 lub nieskończony",
+                ),
+            ],
+            has_inputs=len(model.motors) > 0,
+        )
+        return {"motors": rows, "sanity": sanity}
 
     def _source_impedance(self, model: V126AcademicInput, bus_ref: str) -> complex:
         bus = next((item for item in model.buses if item.ref == bus_ref), None)
@@ -778,7 +922,24 @@ class V126AcademicSolver:
             {"buses": len(results)},
             "MW pozostaje jednostka mocy; prawdopodobienstwo bez jednostki.",
         )
-        return {"hosting_capacity": results}
+        # K-08: sanity-bounds — pojemność przyłączeniowa ≥ 0, skończona, w obrębie skanu (≤ 10 MW).
+        hc_values = [float(r["hosting_capacity_mw"]) for r in results]
+        sanity = _sanity_block(
+            [
+                (
+                    "hc_nonneg",
+                    _finite(*hc_values) and all(v >= 0.0 for v in hc_values),
+                    "Pojemność przyłączeniowa < 0 lub nieskończona",
+                ),
+                (
+                    "hc_within_scan",
+                    all(v <= 10.0 for v in hc_values),
+                    "Pojemność > zakresu skanowania (10 MW) — błąd procedury",
+                ),
+            ],
+            has_inputs=len(model.buses) > 0,
+        )
+        return {"hosting_capacity": results, "sanity": sanity}
 
     def _opf_loss_lcc(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         branch_rows: list[JsonDict] = []
