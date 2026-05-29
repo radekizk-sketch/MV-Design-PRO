@@ -31,8 +31,7 @@ from network_model.solvers.power_flow_inverter import (
     InverterControl,
     apply_inverter_setpoint,
     build_inverter_table,
-    inverter_effective_spec,
-    qu_q,
+    inverter_relax_q,
 )
 from network_model.solvers.power_flow_newton import (
     PowerFlowNewtonSolution,
@@ -515,9 +514,19 @@ class PowerFlowGaussSeidelSolver:
         active_pq = list(pq_indices)
         active_pv = list(pv_indices)
 
+        # ADR-011 §5b: under-relaxed Q(U) state. Seed from the base q_spec at the
+        # Q_U buses; advanced toward qu_q(|V|) at the start of each iteration with a
+        # slope-scaled step so the volt-var fixed-point gain stays < 1 (GS lacks NR's
+        # ∂Q/∂V Jacobian feedback). Converged value == qu_q(v*) => parity with NR and
+        # reduce-to-NR preserved (empty inv_table => no-op).
+        q_inv_state = {idx: float(q_spec[idx]) for idx in inv_table}
+
         for iteration in range(1, max_iter + 1):
             v_old = v.copy()
             switched_this_iter: list[str] = []
+
+            # Advance the under-relaxed Q(U) state using the current voltages.
+            inverter_relax_q(q_inv_state, v, inv_table)
 
             # --- PV bus Q-limit check and switching ---
             for idx in list(active_pv):
@@ -570,7 +579,7 @@ class PowerFlowGaussSeidelSolver:
                     q_i = q_spec[idx] * zip_factor(c.a_q, c.b_q, c.c_q, abs(v[idx]), c.v0_pu)
                     s_i = complex(p_i, q_i)
                 elif idx in inv_table:
-                    s_i = complex(p_spec[idx], qu_q(inv_table[idx], abs(v[idx])))
+                    s_i = complex(p_spec[idx], q_inv_state[idx])
                 else:
                     s_i = complex(p_spec[idx], q_spec[idx])
 
@@ -634,10 +643,14 @@ class PowerFlowGaussSeidelSolver:
 
             # ADR-011 ZIP: evaluate the specified injection at the current |V|
             # for the mismatch (no-op when zip_table is empty => reduce-to-NR).
-            # ADR-011 §5b: chain the inverter Q(U) recompute so the Q mismatch at
-            # Q(U) buses uses the voltage-dependent Q (no-op when inv_table empty).
+            # ADR-011 §5b: the Q mismatch at Q(U) buses uses the under-relaxed Q(U)
+            # state (same value the sweep used this iteration), so the convergence
+            # test and the update are consistent. No-op when inv_table is empty.
             p_eff, q_eff = zip_effective_spec(p_spec, q_spec, v, zip_table)
-            q_eff = inverter_effective_spec(q_eff, v, inv_table)
+            if inv_table:
+                q_eff = q_eff.copy()
+                for idx in inv_table:
+                    q_eff[idx] = q_inv_state[idx]
             d_p = p_eff[non_slack_indices] - p_calc[non_slack_indices]
             d_q = q_eff[active_pq] - q_calc[active_pq]
 

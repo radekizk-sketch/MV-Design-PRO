@@ -70,7 +70,7 @@ def _inp(ctrl, f_hz: float = 50.0) -> PowerFlowInput:
         base_mva=10.0,
         slack=SlackSpec(node_id="A", u_pu=1.0, angle_rad=0.0),
         pq=[PQSpec(node_id="B", p_mw=-2.0, q_mvar=0.0, inverter_control=ctrl)],
-        options=PowerFlowOptions(max_iter=200, tolerance=1e-9),
+        options=PowerFlowOptions(max_iter=400, tolerance=1e-9),
         base_frequency_hz=f_hz,
     )
 
@@ -119,20 +119,23 @@ def test_lfsm_frequency_parity() -> None:
     assert fd == pytest.approx(nr, abs=1e-4)
 
 
-def test_inverter_stiff_slope_nr_robust() -> None:
-    """Honest characterisation: at a very steep system-pu volt-var slope (source
-    rating ~ system base) NR stays robust. GS/FD are not required to converge here
-    (fixed-point / constant-B methods lack the volt-var Jacobian feedback)."""
+@pytest.mark.parametrize("slope", [4.0, 8.0])
+def test_steep_qu_slope_parity_with_relaxation(slope: float) -> None:
+    """Steep system-pu volt-var slopes (source rating ~ system base) oscillate in
+    plain GS/FD fixed-point iteration. With the under-relaxation of the Q(U)
+    recompute, GS and FD converge to the same voltage as NR — the slope-4 (FD)
+    and slope-8 (GS+FD) cases that otherwise diverge."""
     ctrl = inverter_control_from_params(
         {
             "control_mode": "Q(U)",
             "qu_deadband_low_pu": 0.98,
             "qu_deadband_high_pu": 1.005,
-            "qu_slope_pu_per_pu": 8.0,
+            "qu_slope_pu_per_pu": slope,
             "qu_q_min_mvar": -5.0,
             "qu_q_max_mvar": 5.0,
         },
         10.0,
     )
-    nr = solve_power_flow_physics(_inp(ctrl))
-    assert nr.converged
+    nr, gs, fd = _v_all(ctrl)
+    assert gs == pytest.approx(nr, abs=1e-4)
+    assert fd == pytest.approx(nr, abs=1e-4)

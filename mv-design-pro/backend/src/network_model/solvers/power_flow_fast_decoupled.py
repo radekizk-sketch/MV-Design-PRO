@@ -40,7 +40,7 @@ from network_model.solvers.power_flow_inverter import (
     InverterControl,
     apply_inverter_setpoint,
     build_inverter_table,
-    inverter_effective_spec,
+    inverter_relax_q,
 )
 from network_model.solvers.power_flow_newton import PowerFlowNewtonSolution
 from network_model.solvers.power_flow_newton_internal import (
@@ -572,6 +572,13 @@ class PowerFlowFastDecoupledSolver:
         active_pq = list(pq_indices)
         active_pv = list(pv_indices)
 
+        # ADR-011 §5b: under-relaxed Q(U) state. Seed from the base q_spec at the
+        # Q_U buses; advanced toward qu_q(|V|) at the start of each iteration with a
+        # slope-scaled step so the volt-var fixed-point gain stays < 1 (FD lacks NR's
+        # ∂Q/∂V Jacobian feedback). Converged value == qu_q(v*) => parity with NR and
+        # reduce-to-NR preserved (empty inv_table => no-op).
+        q_inv_state = {idx: float(q_spec[idx]) for idx in inv_table}
+
         # Build and factor B matrices initially
         b_prime, b_double_prime, non_slack_indices, _ = self._build_b_matrices(
             ybus, slack_index, active_pq, active_pv, method
@@ -602,6 +609,9 @@ class PowerFlowFastDecoupledSolver:
         for iteration in range(1, max_iter + 1):
             v_old = v.copy()
             switched_this_iter: list[str] = []
+
+            # Advance the under-relaxed Q(U) state using the current voltages.
+            inverter_relax_q(q_inv_state, v, inv_table)
 
             # --- PV bus Q-limit check and switching ---
             for idx in list(active_pv):
@@ -698,10 +708,14 @@ class PowerFlowFastDecoupledSolver:
                 _, q_calc_updated = compute_power_injections(ybus, v)
                 # ADR-011 ZIP: recompute the specified Q at the updated |V| (no-op
                 # when zip_table is empty => reduce-to-NR). B" is unaffected.
-                # ADR-011 §5b: chain the inverter Q(U) recompute (no-op when inv_table
-                # empty); inverter P is not voltage-dependent so the P side is untouched.
+                # ADR-011 §5b: the Q(U) buses use the under-relaxed Q(U) state (no-op
+                # when inv_table empty); inverter P is not voltage-dependent so the P
+                # side is untouched.
                 _, q_eff = zip_effective_spec(p_spec, q_spec, v, zip_table)
-                q_eff = inverter_effective_spec(q_eff, v, inv_table)
+                if inv_table:
+                    q_eff = q_eff.copy()
+                    for idx in inv_table:
+                        q_eff[idx] = q_inv_state[idx]
                 d_q_updated = q_eff[active_pq] - q_calc_updated[active_pq]
 
                 # ΔQ / |V| for PQ buses
@@ -732,10 +746,14 @@ class PowerFlowFastDecoupledSolver:
             # ADR-011 ZIP: the convergence test compares against the specified
             # injection at the final |V| (matches NR). With an empty zip_table this
             # returns p_spec/q_spec unchanged => reduce-to-NR (byte-identical).
-            # ADR-011 §5b: chain the inverter Q(U) recompute for the Q mismatch (no-op
-            # when inv_table empty); the P side is unaffected by inverters.
+            # ADR-011 §5b: the Q(U) buses use the under-relaxed Q(U) state for the Q
+            # mismatch (same value the Q-V half-iteration used this iteration), so the
+            # convergence test is consistent. No-op when inv_table is empty.
             p_eff_final, q_eff_final = zip_effective_spec(p_spec, q_spec, v, zip_table)
-            q_eff_final = inverter_effective_spec(q_eff_final, v, inv_table)
+            if inv_table:
+                q_eff_final = q_eff_final.copy()
+                for idx in inv_table:
+                    q_eff_final[idx] = q_inv_state[idx]
             d_p_final = p_eff_final[non_slack_indices] - p_calc_final[non_slack_indices]
             d_q_final = q_eff_final[active_pq] - q_calc_final[active_pq]
 

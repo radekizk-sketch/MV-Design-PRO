@@ -221,6 +221,32 @@ def inverter_effective_spec(
     return q_eff
 
 
+def inverter_relax_alpha(c: InverterControl) -> float:
+    """Under-relaxation factor for the GS/FD Q(U) fixed-point recompute, scaled
+    inversely with the volt-var slope so the fixed-point gain stays < 1 at steep
+    slopes (where GS/FD lack NR's volt-var Jacobian feedback). 1.0 for gentle
+    slopes (no damping). NR does not use this — it has the ∂Q/∂V Jacobian term."""
+    return min(1.0, 1.0 / max(1.0, c.qu_slope_pu_per_pu))
+
+
+def inverter_relax_q(
+    q_state: dict[int, float],
+    v: np.ndarray,
+    inv_table: dict[int, InverterControl] | None,
+) -> None:
+    """In-place under-relaxed update of the per-bus Q(U) state toward qu_q(|v|),
+    for GS/FD convergence at steep slopes (a documented white-box convergence aid,
+    like GS's SOR). Seed q_state[idx] from the base q_spec before the iteration
+    loop. The converged value equals qu_q(v*), so parity with NR and reduce-to-NR
+    are preserved — only the iteration path is damped."""
+    if not inv_table:
+        return
+    v_mag = np.abs(v)
+    for idx, c in inv_table.items():
+        alpha = inverter_relax_alpha(c)
+        q_state[idx] = (1.0 - alpha) * q_state[idx] + alpha * qu_q(c, v_mag[idx])
+
+
 def inverter_control_from_params(
     params: dict | None, base_mva: float, sn_mva: float | None = None
 ) -> InverterControl | None:
