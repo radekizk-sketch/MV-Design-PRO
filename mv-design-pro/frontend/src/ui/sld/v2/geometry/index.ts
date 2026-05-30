@@ -18,6 +18,9 @@ export type {
   LayoutEngine,
 } from './layoutContract';
 
+// Jedyna definicja footprintu bloku L0 (renderer + layout importują TĘ stałą).
+export { L0_STATION_BLOCK } from './layoutContract';
+
 export {
   TopologicalLayoutEngine,
   createTopologicalLayoutEngine,

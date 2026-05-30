@@ -34,6 +34,8 @@ import {
   type LodLevel as GeomLodLevel,
   type WorldViewport,
 } from '../../../../engine/sld-layout/lodController';
+// Jedyne źródło footprintu bloku L0 (ta sama stała używana przez layout engine).
+import { L0_STATION_BLOCK } from '../geometry';
 import { SldLodProvider } from '../lod/SldLodContext';
 import {
   COLOR_BG,
@@ -2279,9 +2281,14 @@ function cableRunIntersectsViewport(
   return polylineIntersectsViewport(run.pathPoints, vp);
 }
 
-/** Wymiary bloku przeglądowego stacji (L0) — rozróżnialny, bez mikro-detalu. */
-const L0_BLOCK_W = 120;
-const L0_BLOCK_H = 80;
+/**
+ * Wymiary bloku przeglądowego stacji (L0) — rozróżnialny, bez mikro-detalu.
+ * JEDNO źródło: kontrakt geometrii (`L0_STATION_BLOCK`). Layout engine używa tej
+ * samej stałej do rozmieszczania stacji, więc render i layout NIE mogą się
+ * rozjechać (anty-„druga prawda").
+ */
+const L0_BLOCK_W = L0_STATION_BLOCK.width;
+const L0_BLOCK_H = L0_STATION_BLOCK.height;
 
 /**
  * Status gotowości stacji na przeglądzie (L0): kolor kropki. To JEDYNA informacja

@@ -24,6 +24,25 @@ export type EnmSnapshot = TopologyInputV1;
 export type LayoutMode = 'topological' | 'geo';
 
 /**
+ * Stały rozmiar bloku przeglądowego stacji na L0 (world-space) — JEDNA prawda.
+ *
+ * To JEDYNA definicja footprintu bloku L0 w całym SLD. Importują ją zarówno:
+ *  - renderer (`SldCanvasV2` rysuje prostokąt dokładnie tego rozmiaru), JAK I
+ *  - silnik layoutu (`layoutEngine` używa go jako footprintu stacji przy
+ *    rozmieszczaniu na L0 — odstępy liczone z TEGO rozmiaru, nie z treści).
+ *
+ * Anty-„druga prawda": brak skopiowanych literałów 120/80 gdziekolwiek indziej.
+ * Wcześniej istniały DWIE niezależne definicje (renderer stałe 120×80 vs layout
+ * content-based footprint skalowany przez auto-fit), przez co render rysował
+ * stałe 120×80, a layout rezerwował mniejszą, przeskalowaną treść → bloki
+ * nachodziły na siebie na ekranie.
+ */
+export const L0_STATION_BLOCK: { readonly width: number; readonly height: number } = {
+  width: 120,
+  height: 80,
+};
+
+/**
  * Poziom detalu. JEDNA prawda geometrii (zagnieżdżona), trzy poziomy:
  * L0 przegląd sieci (stacje-bloki) / L1 stacja-ciąg (pola) / L2 pole-szczegół (aparaty).
  */
