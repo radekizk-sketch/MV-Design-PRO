@@ -12,6 +12,10 @@ import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { SldCanvasV2 } from './ui/sld/v2/canvas/SldCanvasV2';
 import { buildSldDataFromSnapshot, type SldDataPayload } from './ui/sld/v2/canvas/enmToSldAdapter';
+import {
+  parsePowerFlowCompanion,
+  type SldPowerFlowCompanion,
+} from './ui/sld/v2/canvas/SldPowerFlowCompanion';
 import type { EnergyNetworkModel, LogicalViewsV1 } from './types/enm';
 import type { LodLevel } from './ui/sld/v2/lod/LodPolicy';
 
@@ -48,12 +52,26 @@ async function loadSubstrateEnm(): Promise<EnergyNetworkModel> {
   return raw.enm;
 }
 
+// P-A POWER-FLOW TOR: fetch the FROZEN-solver companion (one truth) committed
+// next to the ENM. The SLD reads direction/energization from THIS — it never
+// recomputes them. Missing/invalid ⇒ null ⇒ topology-only fallback rendering.
+async function loadSubstratePowerFlow(): Promise<SldPowerFlowCompanion | null> {
+  try {
+    const resp = await fetch('/test-fixtures/sldSubstrate52s.powerflow.json');
+    if (!resp.ok) return null;
+    return parsePowerFlowCompanion(await resp.json());
+  } catch {
+    return null;
+  }
+}
+
 type Status = 'loading' | 'ready' | 'error';
 
 function SubstrateHarness(): JSX.Element {
   const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [status, setStatus] = useState<Status>('loading');
   const [sldData, setSldData] = useState<SldDataPayload | null>(null);
+  const [powerFlow, setPowerFlow] = useState<SldPowerFlowCompanion | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
   useEffect(() => {
@@ -63,10 +81,13 @@ function SubstrateHarness(): JSX.Element {
   }, []);
 
   useEffect(() => {
-    loadSubstrateEnm()
-      .then((enm) => {
-        const data = buildSldDataFromSnapshot(enm, EMPTY_LOGICAL_VIEWS);
+    Promise.all([loadSubstrateEnm(), loadSubstratePowerFlow()])
+      .then(([enm, companion]) => {
+        // P-A: the SLD is a projection of the solver — pass the companion so
+        // direction + energization are READ from the frozen solver result.
+        const data = buildSldDataFromSnapshot(enm, EMPTY_LOGICAL_VIEWS, companion);
         setSldData(data);
+        setPowerFlow(companion);
         setStatus('ready');
       })
       .catch((err: unknown) => {
@@ -111,6 +132,8 @@ function SubstrateHarness(): JSX.Element {
       data-gpzs={sldData.gpzs.length}
       data-lod-override={lodOverride ?? ''}
       data-focus-id={focusId ?? ''}
+      data-powerflow-case={powerFlow?.case_ref ?? ''}
+      data-powerflow-converged={powerFlow ? String(powerFlow.converged) : ''}
       style={{ width: size.width, height: size.height }}
     >
       <SldCanvasV2
@@ -128,6 +151,15 @@ function SubstrateHarness(): JSX.Element {
         terminalBindings={sldData.terminalBindings}
         labelSpecs={sldData.labelSpecs}
         readabilityReport={sldData.readabilityReport}
+        powerFlowCase={
+          sldData.powerFlow
+            ? {
+                caseRef: sldData.powerFlow.caseRef,
+                caseLabel: sldData.powerFlow.caseLabel,
+                converged: sldData.powerFlow.converged,
+              }
+            : null
+        }
         lodOverride={lodOverride}
         centerOnElementId={focusId}
         showLegend={true}

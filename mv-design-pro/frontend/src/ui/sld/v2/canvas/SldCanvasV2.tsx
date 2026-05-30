@@ -221,6 +221,16 @@ export interface SldCanvasV2Props {
   readonly shortCircuitProjection?: SldShortCircuitProjection | null;
   /** K30-46: projekcja stref ochrony Z1/Z2/Z3 per IEC 60255-127. */
   readonly protectionZoneProjection?: SldProtectionZoneProjection | null;
+  /** P-A POWER-FLOW TOR: active case (state declaration) shown on the canvas.
+   *  When supplied, a fixed-position badge declares the operating state the
+   *  energization + flow-direction tor is computed for (e.g. "Stan normalny
+   *  (radialny, NO otwarte)"). The tor itself is read from the solver companion
+   *  threaded through the cableRuns/stations props (one truth). */
+  readonly powerFlowCase?: {
+    readonly caseRef: string;
+    readonly caseLabel: string;
+    readonly converged: boolean;
+  } | null;
 }
 
 function estimateCanonicalGpzFootprint(gpz: GpzCanonicalRendererProps): { width: number; height: number } {
@@ -726,7 +736,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     width, height, gpzs, canonicalGpzs, sections, cableRuns, stations, branchPoints = [], ders, connections = [],
     topologyCorridors = [], topologyRuns = [], terminalBindings = [], labelSpecs = [], readabilityReport,
     selectedId, centerOnElementId, lodOverride, layerVisibility,
-    shortCircuitProjection, protectionZoneProjection,
+    shortCircuitProjection, protectionZoneProjection, powerFlowCase,
     onSelectElement, onDoubleClickStation, onDoubleClickDer, onContextMenu, onViewportTransformChange,
   } = props;
 
@@ -1678,6 +1688,25 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         </g>
       </g>
 
+      {/* P-A POWER-FLOW TOR: active-case state declaration. Screen-fixed badge so
+          the operator always sees which state (case_ref) the energization +
+          flow-direction tor is computed for. The tor data itself is read from the
+          solver companion (one truth); this only DECLARES the case. */}
+      {powerFlowCase && (
+        <g
+          data-testid="sld-v2-powerflow-case-badge"
+          data-case-ref={powerFlowCase.caseRef}
+          data-converged={powerFlowCase.converged ? 'true' : 'false'}
+          transform="translate(12, 16)"
+        >
+          <rect x={0} y={0} width={Math.min(420, 150 + powerFlowCase.caseLabel.length * 7)} height={26} rx={3}
+            fill={COLOR_PANEL} fillOpacity={0.92} stroke="#13C45A" strokeWidth={1} />
+          <circle cx={14} cy={13} r={4} fill={powerFlowCase.converged ? '#13C45A' : '#FF333D'} />
+          <text x={26} y={17} fill="#DDF7FF" fontSize={12} fontFamily="sans-serif" fontWeight={700}>
+            {`Stan: ${powerFlowCase.caseLabel}`}
+          </text>
+        </g>
+      )}
       {/* Wska?nik szczeg??owo?ci widoku dla projektanta. */}
       <g transform={`translate(8, ${height - 24})`}>
         <rect x={-4} y={-12} width={168} height={20} fill={COLOR_PANEL} fillOpacity={0.85} rx={2} />
@@ -2320,11 +2349,19 @@ function StationOverviewBlock(props: {
   const label = station.stationCode?.trim() || station.name || station.id;
   const borderColor = selected ? COLOR_SELECTION : '#2C3A48';
   const statusColor = stationReadinessColor(station);
+  // P-A POWER-FLOW TOR (one truth): a station is de-energized when the FROZEN
+  // solver did not energize its bus (`energized === false`, READ from the
+  // companion — never computed here). De-energized blocks are dimmed so the
+  // SLD shows exactly the solver's energized set. `undefined` (no companion) =
+  // full strength (no solver data to dim by).
+  const deEnergized = station.energized === false;
   return (
     <g
       data-testid={`sld-v2-station-overview-block-${station.id}`}
       data-lod-variant="block_overview"
       data-station-readiness={statusColor}
+      data-station-energized={station.energized === undefined ? undefined : station.energized ? 'true' : 'false'}
+      opacity={deEnergized ? 0.4 : 1}
       pointerEvents="none"
     >
       <rect
@@ -2335,8 +2372,9 @@ function StationOverviewBlock(props: {
         rx={6}
         ry={6}
         fill={COLOR_PANEL}
-        stroke={borderColor}
+        stroke={deEnergized ? '#3A4754' : borderColor}
         strokeWidth={selected ? 2.5 : 1.5}
+        strokeDasharray={deEnergized ? '6 4' : undefined}
       />
       {/* Status gotowości — kropka w lewym górnym rogu. */}
       <circle cx={x + 14} cy={y + 14} r={6} fill={statusColor} stroke="#0A0E14" strokeWidth={1} />
@@ -2346,7 +2384,7 @@ function StationOverviewBlock(props: {
         y={station.y + 4}
         textAnchor="middle"
         dominantBaseline="middle"
-        fill={COLOR_TEXT_PRIMARY}
+        fill={deEnergized ? '#8A99A8' : COLOR_TEXT_PRIMARY}
         fontFamily="sans-serif"
         fontSize={22}
         fontWeight={800}

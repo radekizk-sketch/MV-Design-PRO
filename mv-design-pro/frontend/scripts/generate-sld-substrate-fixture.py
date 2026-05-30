@@ -72,15 +72,25 @@ def main() -> int:
         "enm": dumped,
     }
 
-    out_dir = _FRONTEND / "src" / "ui" / "sld" / "v2" / "geometry" / "__tests__" / "fixtures"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / "sldSubstrate52s.enm.json"
-    out_path.write_text(
-        json.dumps(fixture, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
-        encoding="utf-8",
-    )
-
-    print(f"WROTE {out_path}")
+    payload = json.dumps(fixture, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
+    # Two committed locations (kept in lock-step): the layout-engine Vitest fixture
+    # and the harness/public fetch path (screenshot-harness-main + e2e specs).
+    out_paths = [
+        _FRONTEND
+        / "src"
+        / "ui"
+        / "sld"
+        / "v2"
+        / "geometry"
+        / "__tests__"
+        / "fixtures"
+        / "sldSubstrate52s.enm.json",
+        _FRONTEND / "public" / "test-fixtures" / "sldSubstrate52s.enm.json",
+    ]
+    for out_path in out_paths:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(payload, encoding="utf-8")
+        print(f"WROTE {out_path}")
     print(
         f"  stations={result['station_count']} branches={result['branch_count']} "
         f"der={result['der_count']} hash={builder_hash[:16]}"

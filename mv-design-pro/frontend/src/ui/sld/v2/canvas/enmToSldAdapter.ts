@@ -69,6 +69,11 @@ import type {
 } from '../renderer/GpzSwitchgearRenderer';
 import { ENM_BAY_ROLE_TO_FIELD_ROLE, FIELD_ROLE, type FieldRole } from '../domain/apparatusContracts';
 import { buildSupplyPathHighlight, type SupplyPathHighlight } from './SupplyPathHighlighter';
+import {
+  buildPowerFlowIndex,
+  type SldFlowDirection,
+  type SldPowerFlowCompanion,
+} from './SldPowerFlowCompanion';
 import { LABEL_PRIORITY, computeDeclutterMetrics, declutterLabels } from './LabelDeclutter';
 import type {
   SldBranchPointMarker,
@@ -351,6 +356,20 @@ interface CableRunRendererPropsLight {
   /** K30-41: napięcie ciągu [kV] z `inferRunVoltageKv`. Renderer dobiera tint
    *  stroke (gdy brak per-segment variant) + rysuje voltage chip przy starcie. */
   voltageKv?: number | null;
+  /** P-A POWER-FLOW TOR (one truth): per-segment direction READ from the frozen
+   *  solver companion (NOT geometry). 'forward' = power flows along the ENM
+   *  branch orientation (from→to, which the route is drawn in); 'reverse' =
+   *  against it (OZE backfeed). Renderer flips the arrow on 'reverse'. Absent ⇒
+   *  no solver companion ⇒ renderer falls back to geometric arrows. */
+  segmentDirections?: Readonly<Record<string, SldFlowDirection>>;
+  /** P-A: run-level direction (solver) for the representative energized segment —
+   *  drives the single overview flow arrow at L0/L1 where per-segment paths are
+   *  not drawn. Absent ⇒ geometric fallback. */
+  flowDirection?: SldFlowDirection;
+  /** P-A: per-segment energization READ from the solver companion
+   *  (`energized_branch_refs`). A segment NOT solved by the solver is
+   *  de-energized → renderer dims it. Absent ⇒ topology fallback (`energized`). */
+  segmentEnergized?: Readonly<Record<string, boolean>>;
 }
 
 type RunPoint = { x: number; y: number };
@@ -501,6 +520,18 @@ export interface SldDataPayload {
    *  sections / stations, gdy tryb operatorski „Pokaż tor zasilania" jest
    *  aktywny. */
   readonly supplyPath: SupplyPathHighlight;
+  /** P-A: header for the active power-flow case (state declaration shown on the
+   *  canvas). Present iff a frozen-solver companion was supplied to
+   *  `buildSldDataFromSnapshot`; the per-segment direction/energization on
+   *  `cableRuns`/`stations` then come from THAT solver result (one truth). */
+  readonly powerFlow: SldPowerFlowCaseHeader | null;
+}
+
+export interface SldPowerFlowCaseHeader {
+  readonly caseRef: string;
+  readonly caseLabel: string;
+  readonly converged: boolean;
+  readonly enmHash: string;
 }
 
 const EMPTY_SUPPLY_PATH_FROZEN: SupplyPathHighlight = Object.freeze({
@@ -539,6 +570,7 @@ const EMPTY_SLD_DATA: SldDataPayload = Object.freeze({
     labelPlacements: Object.freeze([]) as readonly [],
   }),
   supplyPath: EMPTY_SUPPLY_PATH_FROZEN,
+  powerFlow: null,
 });
 
 // =============================================================================
@@ -548,6 +580,7 @@ const EMPTY_SLD_DATA: SldDataPayload = Object.freeze({
 export function buildSldDataFromSnapshot(
   snapshot: EnergyNetworkModel | null,
   logicalViews: LogicalViewsV1 | null,
+  powerFlow?: SldPowerFlowCompanion | null,
 ): SldDataPayload {
   if (!snapshot) return EMPTY_SLD_DATA;
 
@@ -589,24 +622,67 @@ export function buildSldDataFromSnapshot(
     ders,
   });
 
-  // Propaguj energized/openPoint na cableRuns na podstawie wyniku SupplyPath.
+  // P-A POWER-FLOW TOR — ONE TRUTH. When a frozen-solver companion is supplied,
+  // energization + per-segment direction are READ from the solver result (the SLD
+  // is a projection of the math model). Without a companion, fall back to the
+  // topology-only `SupplyPathHighlighter` (no direction) — pre-P-A behaviour.
+  const pfIndex = buildPowerFlowIndex(powerFlow ?? null);
+
   const energizedBranchSet = new Set(supplyPath.energizedBranchRefs);
-  const openPointSet = new Set(supplyPath.openPointBranchRefs);
+  const openPointSet = pfIndex
+    ? new Set(powerFlow?.open_point_branch_refs ?? [])
+    : new Set(supplyPath.openPointBranchRefs);
+
   const cableRunsAnnotated = cableRuns.map((run) => {
     const refs = run.segmentRefs ?? [];
     if (refs.length === 0) {
       return run;
     }
+    if (pfIndex) {
+      // Solver-driven: per-segment energization + direction, READ (not computed).
+      const segmentEnergized: Record<string, boolean> = {};
+      const segmentDirections: Record<string, SldFlowDirection> = {};
+      for (const ref of refs) {
+        segmentEnergized[ref] = pfIndex.isBranchEnergized(ref);
+        segmentDirections[ref] = pfIndex.directionOf(ref);
+      }
+      const allEnergized = refs.every((ref) => segmentEnergized[ref]);
+      const anyOpenPoint = refs.some((ref) => openPointSet.has(ref));
+      // Run-level arrow uses the first energized segment that carries a real
+      // (non-zero) direction; this is the representative flow at L0/L1.
+      const representative =
+        refs.find((ref) => segmentDirections[ref] === 'forward' || segmentDirections[ref] === 'reverse');
+      const flowDirection: SldFlowDirection = representative
+        ? segmentDirections[representative]
+        : 'none';
+      return {
+        ...run,
+        energized: allEnergized,
+        containsOpenPoint: anyOpenPoint,
+        segmentEnergized,
+        segmentDirections,
+        flowDirection,
+      };
+    }
+    // Topology fallback (no solver companion).
     const allEnergized = refs.every((ref) => energizedBranchSet.has(ref));
     const anyOpenPoint = refs.some((ref) => openPointSet.has(ref));
     return { ...run, energized: allEnergized, containsOpenPoint: anyOpenPoint };
   });
 
+  // Per-station energization from the solver (SN bus in the slack island).
+  const stationsAnnotated = pfIndex
+    ? stations.map((station) => ({
+        ...station,
+        energized: stationEnergizedFromSolver(station.id, pfIndex),
+      }))
+    : stations;
+
   return {
     gpzs,
     sections,
     cableRuns: cableRunsAnnotated,
-    stations,
+    stations: stationsAnnotated,
     branchPoints,
     ders,
     derConnections,
@@ -616,7 +692,33 @@ export function buildSldDataFromSnapshot(
     labelSpecs: topologyProjection.labelSpecs,
     readabilityReport: topologyProjection.readabilityReport,
     supplyPath,
+    powerFlow: powerFlow
+      ? {
+          caseRef: powerFlow.case_ref,
+          caseLabel: powerFlow.case_label,
+          converged: powerFlow.converged,
+          enmHash: powerFlow.enm_hash,
+        }
+      : null,
   };
+}
+
+/** Station SN bus energization READ from the solver companion (one truth). The
+ *  station id is `stn/<hash>/station`; its SN bus is `stn/<hash>/sn_bus`. */
+function stationEnergizedFromSolver(
+  stationId: string,
+  pfIndex: ReturnType<typeof buildPowerFlowIndex>,
+): boolean {
+  if (!pfIndex) return true;
+  const base = stationId.endsWith('/station')
+    ? stationId.slice(0, -'/station'.length)
+    : stationId;
+  // Energized iff either the SN or nN bus is in the solver slack island.
+  return (
+    pfIndex.isBusEnergized(`${base}/sn_bus`)
+    || pfIndex.isBusEnergized(`${base}/nn_bus`)
+    || pfIndex.isBusEnergized(stationId)
+  );
 }
 
 interface SldTopologyProjection {

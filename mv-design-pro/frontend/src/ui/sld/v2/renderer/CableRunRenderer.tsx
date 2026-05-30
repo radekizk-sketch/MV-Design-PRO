@@ -14,6 +14,10 @@ import {
   STROKE_DASHED_RING_DASH_PX,
 } from '../theme/tokens';
 
+/** Local mirror of the solver companion's flow direction (kept renderer-local to
+ *  avoid importing the adapter into a leaf renderer). */
+export type SldFlowDirectionLite = 'forward' | 'reverse' | 'none';
+
 export interface CableRunStationPortGap {
   readonly stationId: string;
   readonly y: number;
@@ -97,6 +101,18 @@ export interface CableRunRendererProps {
   readonly energized?: boolean;
   /** True gdy ciag zawiera NMO / otwarty punkt z SupplyPathHighlighter. */
   readonly containsOpenPoint?: boolean;
+  /** P-A POWER-FLOW TOR (one truth): kierunek przepływu mocy per segment READ z
+   *  FROZEN solvera (znak P na końcu "from"). 'forward' = zgodnie z orientacją
+   *  trasy (pathPoints start→end); 'reverse' = przeciwnie (OZE oddaje moc w górę
+   *  sieci) → strzałka odwrócona; 'none' = brak przepływu (brak strzałki). Brak
+   *  mapy → fallback do strzałki geometrycznej (pre-P-A). */
+  readonly segmentDirections?: Readonly<Record<string, SldFlowDirectionLite>>;
+  /** P-A: kierunek reprezentatywny ciągu (solver) — dla pojedynczej strzałki na
+   *  L0/L1 gdy nie rysujemy per-segment ścieżek. */
+  readonly flowDirection?: SldFlowDirectionLite;
+  /** P-A: energizacja per segment READ z solvera (`energized_branch_refs`).
+   *  Segment nieobjęty przez solver = de-energized → renderer wyszarza. */
+  readonly segmentEnergized?: Readonly<Record<string, boolean>>;
   /** Presentation-only guide for stations that are placed but not bound to a real SN segment. */
   readonly topologyGuide?: boolean;
 }
@@ -125,7 +141,19 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     energized = false,
     containsOpenPoint = false,
     topologyGuide = false,
+    segmentDirections,
+    flowDirection,
+    segmentEnergized,
   } = props;
+  // P-A: solver mode is active when a direction map / run direction is supplied.
+  const hasSolverDirection = segmentDirections !== undefined || flowDirection !== undefined;
+  // P-A: dim de-energized runs (solver mode). `energized` is the run-level
+  // energization READ from the solver companion (all segments solved). When a run
+  // is NOT energized (e.g. the stub beyond an open NOP) we draw it greyed so the
+  // de-energized part of the network is visually distinct — the SLD shows exactly
+  // what the solver could not energize.
+  const deEnergizedRun = hasSolverDirection && !energized;
+  const runVisibleOpacity = deEnergizedRun ? 0.32 : 1;
   // LOD 0-1 pokazuje przebieg sieci bez natloku opisow. Parametry
   // poszczegolnych odcinkow SN pojawiaja sie od LOD 2.
   const visibleSegmentLabels = lod !== undefined && lod < 2 ? [] : segmentLabels;
@@ -193,10 +221,28 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
   // downstream), kluczowe w dispatcher operations.
   const flowArrow = computeFlowArrowMarker(pathPoints);
   const flowArrowSize = topologyDirectionArrowSize(viewportScale);
+  // P-A: in solver mode the run-level direction decides whether the physical flow
+  // opposes the route order (reverse ⇒ OZE backfeed) or there is no net flow
+  // (none ⇒ no arrow). ONE TRUTH — orientation equals sign(P) from the solver.
+  const solverFlowSuppressed = hasSolverDirection && flowDirection === 'none';
+  const solverFlowReversed = hasSolverDirection && flowDirection === 'reverse';
+  // P-A: resolve the single overview arrow's direction from the solver when in
+  // solver mode (flip on reverse). 'right'/'left' here is the SCREEN direction the
+  // tip points; the route's geometric direction is `flowArrow.direction`.
+  const resolvedFlowArrowDirection: 'right' | 'left' | null = flowArrow
+    ? !hasSolverDirection
+      ? flowArrow.direction
+      : solverFlowSuppressed
+        ? null
+        : solverFlowReversed
+          ? flowArrow.direction === 'right' ? 'left' : 'right'
+          : flowArrow.direction
+    : null;
   const showTopologyDirectionArrows =
     !topologyGuide
     && !missingEndpointPort
     && pathPoints.length >= 2
+    && !solverFlowSuppressed
     && (energized || lod === 0 || lod === 1);
   const readableSegmentLabels = declutterSegmentLabels(
     visibleSegmentLabels
@@ -250,6 +296,10 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
       data-supply-path-role={energized ? (runKind === 'branch' ? 'branch' : 'main_run') : 'not_energized'}
       data-open-point={containsOpenPoint ? 'true' : undefined}
       data-topology-guide={topologyGuide ? 'true' : undefined}
+      // P-A POWER-FLOW TOR (one truth): run-level direction READ from the frozen
+      // solver companion. 'solver' marks that orientation == sign(P), not geometry.
+      data-flow-source={hasSolverDirection ? 'solver' : undefined}
+      data-flow-direction={hasSolverDirection ? (flowDirection ?? 'none') : undefined}
     >
       <path
         d={hitPath}
@@ -282,6 +332,16 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             data-element-kind="cable_run"
             data-element-id={segmentPath.segmentRef}
             data-selected={segmentSelected ? 'true' : undefined}
+            // P-A POWER-FLOW TOR (one truth): per-segment energization + direction
+            // READ from the frozen solver companion. These DOM signals are what the
+            // render-based N-2/N-3 asserts measure (they cannot reproduce geometry).
+            data-energized={
+              segmentEnergized
+                ? (segmentEnergized[segmentPath.segmentRef] ? 'true' : 'false')
+                : undefined
+            }
+            data-flow-direction={segmentDirections?.[segmentPath.segmentRef]}
+            data-flow-source={hasSolverDirection ? 'solver' : undefined}
           >
             {hitRects.map((rect, rectIndex) => (
               <rect
@@ -350,11 +410,12 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           data-testid={`sld-v2-run-${id}-visible-${index}`}
           d={visiblePath}
           fill="none"
-          stroke={strokeColor}
+          stroke={deEnergizedRun ? '#5A6A78' : strokeColor}
           strokeWidth={selected ? strokeWidth + 1 : strokeWidth}
           strokeDasharray={dasharray}
           strokeLinecap="round"
           strokeLinejoin="round"
+          opacity={runVisibleOpacity}
           pointerEvents="none"
         />
       ))}
@@ -475,6 +536,12 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
         <g
           data-testid={`sld-v2-run-${id}-direction-arrows`}
           data-topology-arrow-scale={(flowArrowSize / 5).toFixed(2)}
+          // P-A: the orientation source + resolved direction are exposed so a
+          // render-based assert can read that the drawn arrow == sign(P) solver.
+          data-flow-source={hasSolverDirection ? 'solver' : 'geometry'}
+          data-flow-direction={
+            hasSolverDirection ? (solverFlowReversed ? 'reverse' : 'forward') : undefined
+          }
           pointerEvents="none"
         >
           {pathPoints.slice(0, -1).map((p, i) => {
@@ -486,7 +553,10 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             const segLen = Math.sqrt(dx * dx + dy * dy);
             // Skip very short segments to avoid clutter
             if (segLen < 20) return null;
-            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+            // Route-order angle, then flip 180° when the solver says the physical
+            // flow opposes the route order (OZE backfeed). NO geometric guess.
+            const baseAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+            const angle = solverFlowReversed ? baseAngle + 180 : baseAngle;
             const arrowSize = flowArrowSize * 0.8;
             return (
               <g
@@ -724,13 +794,14 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           segment. Pomocne dla operatora — natychmiast widać direction
           zasilania (upstream→downstream). Pomijamy gdy missingEndpointPort
           (warning state) lub pendingEndpoint (incomplete connection). */}
-      {flowArrow && !topologyGuide && !missingEndpointPort && !pendingEndpoint && (
+      {flowArrow && resolvedFlowArrowDirection && !topologyGuide && !missingEndpointPort && !pendingEndpoint && (
         <polygon
           data-testid={`sld-v2-run-${id}-flow-arrow`}
-          data-flow-direction={flowArrow.direction}
+          data-flow-direction={resolvedFlowArrowDirection}
+          data-flow-source={hasSolverDirection ? 'solver' : 'geometry'}
           data-topology-arrow-scale={(flowArrowSize / 5).toFixed(2)}
           points={
-            flowArrow.direction === 'right'
+            resolvedFlowArrowDirection === 'right'
               ? `${flowArrow.x - flowArrowSize},${flowArrow.y - flowArrowSize * 0.8} ${flowArrow.x + flowArrowSize},${flowArrow.y} ${flowArrow.x - flowArrowSize},${flowArrow.y + flowArrowSize * 0.8}`
               : `${flowArrow.x + flowArrowSize},${flowArrow.y - flowArrowSize * 0.8} ${flowArrow.x - flowArrowSize},${flowArrow.y} ${flowArrow.x + flowArrowSize},${flowArrow.y + flowArrowSize * 0.8}`
           }
