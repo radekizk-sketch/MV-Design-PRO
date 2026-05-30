@@ -10,13 +10,14 @@
  *
  * The cell-type set is CLOSED and taken verbatim from the ABB UniSwitch catalog
  * §4 "Rodzaje pól". Apparatus kinds are the ENM BayPrimaryDevice vocabulary
- * (subset relevant to the SN single-line view).
+ * (`BayPrimaryDeviceKind`, subset relevant to the SN single-line view).
  *
  * Layer: presentation contract only — NO physics, NO model mutation.
  */
 
-import type { StationApparatus, StationFieldRole } from "./contract";
-import type { StationDetailLevel } from "./geometry";
+import type { BayPrimaryDeviceKind } from '../../../../types/enm';
+import type { StationFieldRole } from './contract';
+import type { StationDetailLevel } from './geometry';
 
 /**
  * Closed set of ABB UniSwitch cell types (catalog §4 "Rodzaje pól").
@@ -33,117 +34,117 @@ import type { StationDetailLevel } from "./geometry";
  * - SDM_C — Pole pomiaru prądu (current metering: CT only)
  */
 export type AbbCellType =
-  | "SDC"
-  | "SDF"
-  | "CBC"
-  | "DBC"
-  | "BRC"
-  | "SEC"
-  | "SBC"
-  | "SMC"
-  | "SDM_V"
-  | "SDM_C";
+  | 'SDC'
+  | 'SDF'
+  | 'CBC'
+  | 'DBC'
+  | 'BRC'
+  | 'SEC'
+  | 'SBC'
+  | 'SMC'
+  | 'SDM_V'
+  | 'SDM_C';
 
 /** Per-cell-type catalog metadata. */
 export interface AbbCellTypeMeta {
   /** Catalog cell-type code. */
-  code: AbbCellType;
+  readonly code: AbbCellType;
   /** Polish catalog name ("Rodzaj pola"). */
-  namePl: string;
+  readonly namePl: string;
   /** Short Polish description of the cell function. */
-  functionPl: string;
+  readonly functionPl: string;
   /**
    * Ordered apparatus kinds the cell carries from busbar downward. This is the
    * canonical ABB stack; the actual field may carry a subset (e.g. optional VT).
    */
-  apparatusOrder: StationApparatus[];
+  readonly apparatusOrder: readonly BayPrimaryDeviceKind[];
   /** Canonical field roles this cell type fulfils. */
-  roles: StationFieldRole[];
+  readonly roles: readonly StationFieldRole[];
 }
 
 /**
  * The CLOSED cell-type catalog. Apparatus order and roles are anchored 1:1 to
  * the ABB UniSwitch catalog §4 facts.
  */
-export const ABB_CELL_LIBRARY: Record<AbbCellType, AbbCellTypeMeta> = {
+export const ABB_CELL_LIBRARY: Readonly<Record<AbbCellType, AbbCellTypeMeta>> = {
   SDC: {
-    code: "SDC",
-    namePl: "Pole z rozłącznikiem",
-    functionPl: "Pole liniowe z rozłącznikiem trzypołożeniowym",
-    apparatusOrder: ["LOAD_SWITCH", "CT", "CABLE_HEAD"],
-    roles: ["LINIA_IN", "LINIA_OUT", "LINIA_ODG"],
+    code: 'SDC',
+    namePl: 'Pole z rozłącznikiem',
+    functionPl: 'Pole liniowe z rozłącznikiem trzypołożeniowym',
+    apparatusOrder: ['LOAD_SWITCH', 'CT', 'CABLE_HEAD'],
+    roles: ['LINIA_IN', 'LINIA_OUT', 'LINIA_ODG'],
   },
   SDF: {
-    code: "SDF",
-    namePl: "Pole z rozłącznikiem i bezpiecznikami",
-    functionPl: "Pole transformatorowe z bezpiecznikami WN",
-    apparatusOrder: ["LOAD_SWITCH", "FUSE", "ES", "CABLE_HEAD"],
-    roles: ["TRANSFORMATOROWE"],
+    code: 'SDF',
+    namePl: 'Pole z rozłącznikiem i bezpiecznikami',
+    functionPl: 'Pole transformatorowe z bezpiecznikami WN',
+    apparatusOrder: ['LOAD_SWITCH', 'FUSE', 'ES', 'CABLE_HEAD'],
+    roles: ['TRANSFORMATOROWE'],
   },
   CBC: {
-    code: "CBC",
-    namePl: "Pole z wyłącznikiem",
-    functionPl: "Pole z wyłącznikiem i rozłącznikiem trzypołożeniowym",
-    apparatusOrder: ["CB", "LOAD_SWITCH", "CT", "CABLE_HEAD"],
-    roles: ["LINIA_IN", "LINIA_OUT", "LINIA_ODG", "TRANSFORMATOROWE"],
+    code: 'CBC',
+    namePl: 'Pole z wyłącznikiem',
+    functionPl: 'Pole z wyłącznikiem i rozłącznikiem trzypołożeniowym',
+    apparatusOrder: ['CB', 'LOAD_SWITCH', 'CT', 'CABLE_HEAD'],
+    roles: ['LINIA_IN', 'LINIA_OUT', 'LINIA_ODG', 'TRANSFORMATOROWE'],
   },
   DBC: {
-    code: "DBC",
-    namePl: "Pole bezpośredniego zasilania szyn",
-    functionPl: "Bezpośrednie zasilanie szyn (bez aparatury łączeniowej)",
-    apparatusOrder: ["CABLE_HEAD"],
-    roles: ["LINIA_IN"],
+    code: 'DBC',
+    namePl: 'Pole bezpośredniego zasilania szyn',
+    functionPl: 'Bezpośrednie zasilanie szyn (bez aparatury łączeniowej)',
+    apparatusOrder: ['CABLE_HEAD'],
+    roles: ['LINIA_IN'],
   },
   BRC: {
-    code: "BRC",
-    namePl: "Pole wzniosu szynowego",
-    functionPl: "Wznios szynowy z rozłącznikiem trzypołożeniowym",
-    apparatusOrder: ["LOAD_SWITCH"],
-    roles: ["SPRZEGLO"],
+    code: 'BRC',
+    namePl: 'Pole wzniosu szynowego',
+    functionPl: 'Wznios szynowy z rozłącznikiem trzypołożeniowym',
+    apparatusOrder: ['LOAD_SWITCH'],
+    roles: ['SPRZEGLO'],
   },
   SEC: {
-    code: "SEC",
-    namePl: "Pole sekcjonujące",
-    functionPl: "Sekcjonowanie szyn rozłącznikiem trzypołożeniowym",
-    apparatusOrder: ["LOAD_SWITCH"],
-    roles: ["SPRZEGLO"],
+    code: 'SEC',
+    namePl: 'Pole sekcjonujące',
+    functionPl: 'Sekcjonowanie szyn rozłącznikiem trzypołożeniowym',
+    apparatusOrder: ['LOAD_SWITCH'],
+    roles: ['SPRZEGLO'],
   },
   SBC: {
-    code: "SBC",
-    namePl: "Pole sekcjonujące z wyłącznikiem",
-    functionPl: "Sekcjonowanie szyn z wyłącznikiem i rozłącznikiem",
-    apparatusOrder: ["CB", "LOAD_SWITCH"],
-    roles: ["SPRZEGLO"],
+    code: 'SBC',
+    namePl: 'Pole sekcjonujące z wyłącznikiem',
+    functionPl: 'Sekcjonowanie szyn z wyłącznikiem i rozłącznikiem',
+    apparatusOrder: ['CB', 'LOAD_SWITCH'],
+    roles: ['SPRZEGLO'],
   },
   SMC: {
-    code: "SMC",
-    namePl: "Pole sprzęgłowe",
-    functionPl: "Sprzęgło: pole z wyłącznikiem (CBC) + pole wzniosu szynowego (BRC)",
-    apparatusOrder: ["CB", "LOAD_SWITCH"],
-    roles: ["SPRZEGLO"],
+    code: 'SMC',
+    namePl: 'Pole sprzęgłowe',
+    functionPl: 'Sprzęgło: pole z wyłącznikiem (CBC) + pole wzniosu szynowego (BRC)',
+    apparatusOrder: ['CB', 'LOAD_SWITCH'],
+    roles: ['SPRZEGLO'],
   },
   SDM_V: {
-    code: "SDM_V",
-    namePl: "Pole pomiaru napięcia",
-    functionPl: "Pomiar napięcia (przekładniki VT + bezpieczniki)",
-    apparatusOrder: ["VT", "FUSE"],
-    roles: ["POMIAROWE"],
+    code: 'SDM_V',
+    namePl: 'Pole pomiaru napięcia',
+    functionPl: 'Pomiar napięcia (przekładniki VT + bezpieczniki)',
+    apparatusOrder: ['VT', 'FUSE'],
+    roles: ['POMIAROWE'],
   },
   SDM_C: {
-    code: "SDM_C",
-    namePl: "Pole pomiaru prądu",
-    functionPl: "Pomiar prądu (przekładniki CT)",
-    apparatusOrder: ["CT"],
-    roles: ["POMIAROWE"],
+    code: 'SDM_C',
+    namePl: 'Pole pomiaru prądu',
+    functionPl: 'Pomiar prądu (przekładniki CT)',
+    apparatusOrder: ['CT'],
+    roles: ['POMIAROWE'],
   },
 };
 
-function hasKind(kinds: readonly StationApparatus[], kind: StationApparatus): boolean {
+function hasKind(kinds: readonly BayPrimaryDeviceKind[], kind: BayPrimaryDeviceKind): boolean {
   return kinds.includes(kind);
 }
 
-function hasAnySwitching(kinds: readonly StationApparatus[]): boolean {
-  return hasKind(kinds, "CB") || hasKind(kinds, "LOAD_SWITCH") || hasKind(kinds, "DS");
+function hasAnySwitching(kinds: readonly BayPrimaryDeviceKind[]): boolean {
+  return hasKind(kinds, 'CB') || hasKind(kinds, 'LOAD_SWITCH') || hasKind(kinds, 'DS');
 }
 
 /**
@@ -155,33 +156,33 @@ function hasAnySwitching(kinds: readonly StationApparatus[]): boolean {
  * - LINIA_* + CB                 → CBC, else (with a switch) → SDC
  * - LINIA_IN with no switching   → DBC (direct busbar in-feed)
  * - SPRZEGLO                     → SMC (coupler = CBC + BRC cells)
- * - POMIAROWE: VT only           → SDM_V; CT only → SDM_C
+ * - POMIAROWE: VT present        → SDM_V; else → SDM_C
  *
  * The classification is total over the closed role set; an explicit fallback to
  * SDC keeps the function deterministic for any line-like field.
  */
 export function classifyAbbCellType(
   role: StationFieldRole,
-  apparatusKinds: readonly StationApparatus[],
+  apparatusKinds: readonly BayPrimaryDeviceKind[],
 ): AbbCellType {
   switch (role) {
-    case "TRANSFORMATOROWE":
-      if (hasKind(apparatusKinds, "FUSE")) return "SDF";
-      if (hasKind(apparatusKinds, "CB")) return "CBC";
-      return "SDF";
-    case "LINIA_IN":
-    case "LINIA_OUT":
-    case "LINIA_ODG":
-      if (hasKind(apparatusKinds, "CB")) return "CBC";
-      if (!hasAnySwitching(apparatusKinds)) return "DBC";
-      return "SDC";
-    case "SPRZEGLO":
-      return "SMC";
-    case "POMIAROWE":
-      if (hasKind(apparatusKinds, "VT")) return "SDM_V";
-      return "SDM_C";
+    case 'TRANSFORMATOROWE':
+      if (hasKind(apparatusKinds, 'FUSE')) return 'SDF';
+      if (hasKind(apparatusKinds, 'CB')) return 'CBC';
+      return 'SDF';
+    case 'LINIA_IN':
+    case 'LINIA_OUT':
+    case 'LINIA_ODG':
+      if (hasKind(apparatusKinds, 'CB')) return 'CBC';
+      if (!hasAnySwitching(apparatusKinds)) return 'DBC';
+      return 'SDC';
+    case 'SPRZEGLO':
+      return 'SMC';
+    case 'POMIAROWE':
+      if (hasKind(apparatusKinds, 'VT')) return 'SDM_V';
+      return 'SDM_C';
     default:
-      return "SDC";
+      return 'SDC';
   }
 }
 
@@ -191,15 +192,15 @@ export function classifyAbbCellType(
  */
 export interface AbbSymbolDescriptor {
   /** Apparatus kind drawn (drives which primitive the component picks). */
-  kind: StationApparatus;
+  readonly kind: BayPrimaryDeviceKind;
   /** IEC device designation (e.g. "Q1", "Q2", "Q9", "T1"). */
-  designation: string;
+  readonly designation: string;
   /**
    * Whether this apparatus is the three-position load-break switch (rozłącznik
    * trzypołożeniowy). When true the renderer uses the 3-position symbol and the
    * earthing position is integral to this device.
    */
-  threePosition: boolean;
+  readonly threePosition: boolean;
 }
 
 /**
@@ -207,28 +208,28 @@ export interface AbbSymbolDescriptor {
  * conventionally label the breaker Q1, the bus switch/disconnector Q2, the
  * earthing switch Q9, instrument transformers T-series.
  */
-function designate(kind: StationApparatus, indexOfKind: number): string {
+function designate(kind: BayPrimaryDeviceKind, indexOfKind: number): string {
   switch (kind) {
-    case "CB":
-      return "Q1";
-    case "LOAD_SWITCH":
-      return "Q2";
-    case "DS":
-      return "Q2";
-    case "ES":
-      return "Q9";
-    case "CT":
-      return indexOfKind === 0 ? "T1" : `T${indexOfKind + 1}`;
-    case "VT":
-      return "T5";
-    case "FUSE":
-      return "F1";
-    case "CABLE_HEAD":
-      return "W1";
-    case "TRANSFORMER_DEVICE":
-      return "TR";
+    case 'CB':
+      return 'Q1';
+    case 'LOAD_SWITCH':
+      return 'Q2';
+    case 'DS':
+      return 'Q2';
+    case 'ES':
+      return 'Q9';
+    case 'CT':
+      return indexOfKind === 0 ? 'T1' : `T${indexOfKind + 1}`;
+    case 'VT':
+      return 'T5';
+    case 'FUSE':
+      return 'F1';
+    case 'CABLE_HEAD':
+      return 'W1';
+    case 'TRANSFORMER_DEVICE':
+      return 'TR';
     default:
-      return "";
+      return '';
   }
 }
 
@@ -236,8 +237,8 @@ function designate(kind: StationApparatus, indexOfKind: number): string {
  * The three-position load-break switch is the ABB signature apparatus. In the
  * single-line view it is the LOAD_SWITCH slot of every UniSwitch cell.
  */
-function isThreePosition(kind: StationApparatus): boolean {
-  return kind === "LOAD_SWITCH";
+function isThreePosition(kind: BayPrimaryDeviceKind): boolean {
+  return kind === 'LOAD_SWITCH';
 }
 
 /**
@@ -252,18 +253,18 @@ function isThreePosition(kind: StationApparatus): boolean {
  * the catalog apparatusOrder), so optional devices (e.g. VT) are honoured.
  */
 export function abbSymbolDescriptors(
-  apparatus: readonly StationApparatus[],
+  apparatus: readonly BayPrimaryDeviceKind[],
   level: StationDetailLevel,
 ): AbbSymbolDescriptor[] {
-  let visible: readonly StationApparatus[];
-  if (level === "far") {
+  let visible: readonly BayPrimaryDeviceKind[];
+  if (level === 'far') {
     visible = apparatus.slice(0, 1);
-  } else if (level === "closer") {
+  } else if (level === 'closer') {
     visible = apparatus.slice(0, 2);
   } else {
     visible = apparatus;
   }
-  const seen: Record<string, number> = {};
+  const seen: Partial<Record<BayPrimaryDeviceKind, number>> = {};
   return visible.map((kind) => {
     const idxOfKind = seen[kind] ?? 0;
     seen[kind] = idxOfKind + 1;

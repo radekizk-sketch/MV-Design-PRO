@@ -33,6 +33,23 @@ import type {
   StationProtectionFunction,
   StationRozdzielniaModel,
 } from './contract';
+import { classifyAbbCellType } from './abbFieldLibrary';
+
+// =============================================================================
+// ABB cell-type stamping (single symbol↔type source)
+// =============================================================================
+
+/**
+ * Stamp each field with its ABB UniSwitch cell type, derived deterministically
+ * from role + apparatus via the single classifier. The ABB library is the only
+ * symbol↔type source, so the cell type is never hand-authored here.
+ */
+function withCellTypes(fields: readonly StationFieldDescriptor[]): StationFieldDescriptor[] {
+  return fields.map((f) => ({
+    ...f,
+    abbCellType: classifyAbbCellType(f.role, f.apparatus.map((a) => a.kind)),
+  }));
+}
 
 // =============================================================================
 // Apparatus + protection builders (per canonical role)

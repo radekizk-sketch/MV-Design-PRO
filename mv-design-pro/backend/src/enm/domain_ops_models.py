@@ -356,6 +356,25 @@ class SNFieldSpec(_FrozenBase):
     catalog_bindings: CatalogBindings | None = None
     """Opcjonalne powiązania katalogowe aparatury."""
 
+    cell_type: (
+        Literal[
+            "SDC",
+            "SDF",
+            "CBC",
+            "DBC",
+            "BRC",
+            "SEC",
+            "SBC",
+            "SMC",
+            "SDM_V",
+            "SDM_C",
+        ]
+        | None
+    ) = None
+    """Typ pola ABB UniSwitch (katalog §4 „Rodzaje pól"). Opcjonalny i addytywny —
+    domyślnie None, więc jest wykluczany z deterministycznego odcisku ENM
+    (exclude_none). Nie wypełniać na istniejących fixture'ach."""
+
 
 class TransformerSpec(_FrozenBase):
     """Specyfikacja transformatora SN/nN w stacji.

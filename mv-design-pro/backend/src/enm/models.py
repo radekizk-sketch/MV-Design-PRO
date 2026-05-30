@@ -1033,6 +1033,25 @@ class BayBaseModel(BaseModel):
     control_surface: BayControlSurface = Field(default_factory=BayControlSurface)
     interlocks: BayInterlockSet = Field(default_factory=BayInterlockSet)
     source_endpoint: BaySourceEndpoint | None = None
+    # ABB UniSwitch cell type (catalog §4 "Rodzaje pól"). Optional and additive:
+    # defaults to None so it is excluded from the deterministic ENM fingerprint
+    # (hash uses exclude_none=True / model_dump excludes None) when unset. Do NOT
+    # populate on existing fixtures — populating would change their fingerprints.
+    cell_type: (
+        Literal[
+            "SDC",
+            "SDF",
+            "CBC",
+            "DBC",
+            "BRC",
+            "SEC",
+            "SBC",
+            "SMC",
+            "SDM_V",
+            "SDM_C",
+        ]
+        | None
+    ) = None
 
 
 class BayShortCircuitSourceContribution(BaseModel):

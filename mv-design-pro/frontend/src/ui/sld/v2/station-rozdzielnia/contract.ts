@@ -36,6 +36,7 @@ import type {
   EarthingSwitchState,
   GpzApparatusSwitchState,
 } from '../renderer/GpzSwitchgearTypes';
+import type { AbbCellType } from './abbFieldLibrary';
 
 // =============================================================================
 // Archetype (T1-T4 network-station archetypes)
@@ -207,6 +208,12 @@ export interface StationFieldDescriptor {
    * truth: this field's `branchRef` is in `companion.open_point_branch_refs`.
    */
   readonly isNormallyOpen?: boolean;
+  /**
+   * ABB UniSwitch cell type for this field (catalog §4 "Rodzaje pól"). Derived
+   * from {@link classifyAbbCellType} over role + apparatus. Optional so legacy
+   * descriptors remain valid; archetype builders always populate it.
+   */
+  readonly abbCellType?: AbbCellType;
 }
 
 // =============================================================================
