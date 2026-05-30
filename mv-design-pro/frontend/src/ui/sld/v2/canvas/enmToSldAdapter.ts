@@ -40,6 +40,11 @@ import type {
 import type { GpzRendererProps } from '../renderer/GpzRenderer';
 import type { SectionRendererProps } from '../renderer/SectionRenderer';
 import {
+  applyLayoutToGpzs,
+  applyLayoutToStations,
+  buildSldLayoutGeometry,
+} from './sldGeometryFromLayout';
+import {
   STATION_RUN_TRUNK_OFFSET_Y,
   type StationOnRunRendererProps,
 } from '../renderer/StationOnRunRenderer';
@@ -546,7 +551,7 @@ export function buildSldDataFromSnapshot(
 ): SldDataPayload {
   if (!snapshot) return EMPTY_SLD_DATA;
 
-  const gpzs = buildGpzs(snapshot);
+  let gpzs = buildGpzs(snapshot);
   const sections = buildSections(snapshot);
   let stations = buildStations(snapshot);
   let cableRuns = buildCableRuns(snapshot, logicalViews, stations);
@@ -557,6 +562,23 @@ export function buildSldDataFromSnapshot(
     branchPoints = stationLikeLayout.branchPoints;
     cableRuns = buildCableRuns(snapshot, logicalViews, stations);
   }
+
+  // Migracja geometrii §4: pozycje węzłów (stacje/GPZ) z JEDNEJ prawdy drzewa
+  // (LayoutEngine), nie ze slotów (`Y_RUN_BASE`, `X_STATIONS_START + j×pitch`).
+  // Bramka: tylko gdy silnik zbudował realne drzewo (≥1 krawędź) — inaczej
+  // pozostaje geometria slotowa (render działa). Przesuwamy stacje/GPZ, a potem
+  // PRZEBUDOWUJEMY cable-runs i branch-pointy z nowych pozycji stacji: istniejący
+  // `buildCableRuns` wyprowadza trasę z `station.x/y` (oraz głowic pól), więc kable
+  // podążają za stacjami-drzewa istniejącą (działającą) logiką routingu — bez
+  // sklejania per-segment (które dla wielostacyjnych ciągów dawało plątaninę).
+  const layout = buildSldLayoutGeometry(snapshot, snapshot.header?.hash_sha256 ?? 'enm');
+  if (layout) {
+    stations = applyLayoutToStations(stations, layout);
+    gpzs = applyLayoutToGpzs(gpzs, layout);
+    cableRuns = buildCableRuns(snapshot, logicalViews, stations);
+    branchPoints = buildBranchPointMarkers(snapshot, cableRuns, stations);
+  }
+
   const { ders, derConnections } = buildDers(snapshot, stations);
   const supplyPath = buildSupplyPathHighlight(snapshot);
   const topologyProjection = buildSldTopologyProjection(snapshot, {
@@ -3801,10 +3823,38 @@ function resolveLineRunOriginPoint(
   const originStation = stationByRef.get(originRef);
   if (originStation) return { x: originStation.x, y: originStation.y };
 
+  // Origin może być refem POLA stacji (`stn/<id>/sn_field/NNN`), nie samej stacji.
+  // Wyprowadź ref stacji-właściciela z prefiksu (ta sama konwencja co
+  // topologyTree.busOwnerStation: `stn/<id>` → `stn/<id>/station`, `gpz/<id>` →
+  // `gpz/<id>/substation`) i spróbuj ponownie. Bez tego odgałęzienie tappujące
+  // z pola stacji nie znajdowało origin → spadało do slotowego Y (wisiało po
+  // przesunięciu stacji do drzewa).
+  const ownerStationRef = ownerStationRefFromFieldRef(originRef);
+  if (ownerStationRef) {
+    const ownerStation = stationByRef.get(ownerStationRef);
+    if (ownerStation) return { x: ownerStation.x, y: ownerStation.y };
+  }
+
   const branchPoint = findBranchPointByRefOrBus(snapshot, originRef);
   if (!branchPoint) return null;
 
   return resolveBranchPointRouteAnchor(snapshot, branchPoint, builtRuns);
+}
+
+/**
+ * Ref stacji-właściciela z refu pola/szyny (konwencja prefiksu, zgodna z
+ * `topologyTree.busOwnerStation`). Zwraca `null` gdy ref nie pasuje do wzorca.
+ */
+function ownerStationRefFromFieldRef(ref: string): string | null {
+  if (ref.startsWith('stn/')) {
+    const id = ref.split('/')[1];
+    if (id) return `stn/${id}/station`;
+  }
+  if (ref.startsWith('gpz/')) {
+    const id = ref.split('/')[1];
+    if (id) return `gpz/${id}/substation`;
+  }
+  return null;
 }
 
 function findBranchPointByRefOrBus(
@@ -3944,11 +3994,18 @@ function buildCableRuns(
         .sort((a, b) => a.order - b.order)
         .map((stationRef) => stationByRef.get(stationRef.substation_ref))
         .filter((station): station is StationOnRunRendererProps => Boolean(station));
-      const y = runStations[0]?.y !== undefined
-        ? runStations[0].y - STATION_RUN_TRUNK_OFFSET_Y
-        : Y_RUN_BASE + idx * RUN_PITCH;
       const startingBayRef = inferRunStartingBayRef(runSegments, lineRun.starting_bay_ref);
       const sourcePoint = resolveLineRunOriginPoint(snapshot, lineRun, stationByRef, runs);
+      // Y ciągu: pierwsza stacja ciągu; gdy ciąg nie ma stacji (np. odgałęzienie
+      // odpinające się od stacji-rodzica) — Y punktu źródłowego (origin), by
+      // odgałęzienie wyszło PRZY stacji-rodzicu (tryb drzewa), a nie spadało do
+      // slotowego pasma `Y_RUN_BASE + idx×pitch` (które przy compaccie drzewa
+      // wisiałoby daleko pod siecią). Slot tylko gdy brak i stacji, i origin.
+      const y = runStations[0]?.y !== undefined
+        ? runStations[0].y - STATION_RUN_TRUNK_OFFSET_Y
+        : sourcePoint?.y !== undefined
+          ? sourcePoint.y
+          : Y_RUN_BASE + idx * RUN_PITCH;
       const startX = sourcePoint?.x ?? inferStartingBayOutletX(snapshot, startingBayRef, idx);
       const endX = runStations.length > 0
         ? runStations[runStations.length - 1].x + stationRunEndOffset(runStations[runStations.length - 1])
