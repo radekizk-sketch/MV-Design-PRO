@@ -425,6 +425,9 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           : null;
         const segmentExactSelected = selectedSegmentRefSet.has(segmentPath.segmentRef);
         const segmentHighlighted = Boolean(selected || segmentExactSelected);
+        // P-A: per-segment de-energization READ from the solver (segmentEnergized).
+        const segDeEnergized =
+          segmentEnergized !== undefined && segmentEnergized[segmentPath.segmentRef] === false;
         const segmentVisiblePaths = buildVisibleCablePaths(
           segmentPath.pathPoints,
           stationPortGaps,
@@ -435,7 +438,9 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             ? '#FF6B6B'
             : segmentHighlighted
               ? '#35C7FF'
-              : variantStyle?.stroke ?? strokeColor;
+              : segDeEnergized
+                ? '#5A6A78'
+                : variantStyle?.stroke ?? strokeColor;
         const segDasharray = topologyGuide
           ? '8 5'
           : missingEndpointPort
@@ -463,6 +468,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             strokeDasharray={segDasharray}
             strokeLinecap="round"
             strokeLinejoin="round"
+            opacity={segDeEnergized ? 0.32 : undefined}
             pointerEvents="none"
           />
         ));
