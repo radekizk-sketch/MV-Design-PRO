@@ -13,8 +13,10 @@ import { createTopologicalLayoutEngine } from '../layoutEngine';
 import fixture from '../../../ui/sld/v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json';
 import {
   LOD_LEVEL_ZOOM_THRESHOLDS,
+  OVERVIEW_DENSITY_VISIBLE_STATIONS,
   countRenderedDetail,
   createLodLevelController,
+  densityAwareLevel,
   geometryBBox,
   lodFadeFactor,
   lodLevelIndex,
@@ -239,6 +241,25 @@ describe('numericLodToLevel — bridge', () => {
         lodVisibilityPolicy(numericLodToLevel(n)),
       );
     }
+  });
+});
+
+describe('densityAwareLevel — L0 floor gdy dużo stacji w kadrze (M-08)', () => {
+  it('dużo widocznych stacji → wymusza L0 niezależnie od poziomu bazowego', () => {
+    expect(densityAwareLevel('L2', OVERVIEW_DENSITY_VISIBLE_STATIONS)).toBe('L0');
+    expect(densityAwareLevel('L1', 50)).toBe('L0');
+    expect(densityAwareLevel('L2', 53)).toBe('L0');
+  });
+
+  it('mało widocznych stacji → zachowuje poziom bazowy', () => {
+    expect(densityAwareLevel('L2', OVERVIEW_DENSITY_VISIBLE_STATIONS - 1)).toBe('L2');
+    expect(densityAwareLevel('L1', 3)).toBe('L1');
+    expect(densityAwareLevel('L0', 0)).toBe('L0');
+  });
+
+  it('próg konfigurowalny', () => {
+    expect(densityAwareLevel('L2', 10, 8)).toBe('L0');
+    expect(densityAwareLevel('L2', 5, 8)).toBe('L2');
   });
 });
 

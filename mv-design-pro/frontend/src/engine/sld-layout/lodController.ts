@@ -478,6 +478,32 @@ export function lodVisibilityPolicyForNumericLod(numericLod: 0 | 1 | 2 | 3 | 4):
   return lodVisibilityPolicy(numericLodToLevel(numericLod));
 }
 
+/**
+ * Domyślny próg gęstości: liczba stacji jednocześnie w kadrze, powyżej której widok
+ * jest „przeglądem sieci" (L0) — niezależnie od surowej skali. Powód: skala 0.76 to
+ * „zbliżenie" dla jednej stacji, ale „przegląd" dla 50 stacji. Gęstość = ile widać,
+ * nie tylko jak blisko (kontrakt §7: „L0 czytelny dla ≥50 stacji").
+ */
+export const OVERVIEW_DENSITY_VISIBLE_STATIONS = 16;
+
+/**
+ * Poziom „świadomy gęstości": gdy w kadrze jest dużo stacji (≥ próg), wymuś L0
+ * (czytelne bloki) niezależnie od poziomu wynikającego ze skali. To domyka fix
+ * gęstości M-08: auto-fit dużej sieci często ląduje przy skali mapującej na L1/L2,
+ * co dawałoby pełną aparaturę 50+ stacji (nieczytelne). Widoczność liczona po
+ * wirtualizacji (ile faktycznie na ekranie).
+ *
+ * NIE dotyczy jawnego override poziomu (użytkownik/harness wymusił poziom świadomie).
+ */
+export function densityAwareLevel(
+  baseLevel: LodLevel,
+  visibleStationCount: number,
+  threshold = OVERVIEW_DENSITY_VISIBLE_STATIONS,
+): LodLevel {
+  if (visibleStationCount >= threshold) return 'L0';
+  return baseLevel;
+}
+
 // ---------------------------------------------------------------------------
 // 6. Liczenie renderowanego detalu (do testów gęstości + diagnostyki)
 // ---------------------------------------------------------------------------

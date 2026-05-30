@@ -13,6 +13,7 @@ import { createRoot } from 'react-dom/client';
 import { SldCanvasV2 } from './ui/sld/v2/canvas/SldCanvasV2';
 import { buildSldDataFromSnapshot, type SldDataPayload } from './ui/sld/v2/canvas/enmToSldAdapter';
 import type { EnergyNetworkModel, LogicalViewsV1 } from './types/enm';
+import type { LodLevel } from './ui/sld/v2/lod/LodPolicy';
 
 const EMPTY_LOGICAL_VIEWS: LogicalViewsV1 = {
   trunks: [],
@@ -20,6 +21,22 @@ const EMPTY_LOGICAL_VIEWS: LogicalViewsV1 = {
   secondary_connectors: [],
   terminals: [],
 };
+
+/**
+ * Wymuszenie poziomu detalu z query-param `?lod=` (0..4) — pozwala Playwright
+ * deterministycznie złapać L0 (przegląd-bloki) i L2 (szczegół). `?focus=<id>`
+ * centruje+zbliża na stację (do zrzutu L2 szczegółu).
+ */
+function readLodOverride(): LodLevel | undefined {
+  const raw = new URLSearchParams(window.location.search).get('lod');
+  if (raw === null) return undefined;
+  const n = Number(raw);
+  return n >= 0 && n <= 4 ? (n as LodLevel) : undefined;
+}
+
+function readFocusId(): string | null {
+  return new URLSearchParams(window.location.search).get('focus');
+}
 
 // Fetch fixture at runtime from Vite's static file serving (public/)
 async function loadSubstrateEnm(): Promise<EnergyNetworkModel> {
@@ -76,6 +93,14 @@ function SubstrateHarness(): JSX.Element {
     );
   }
 
+  const lodOverride = readLodOverride();
+  const focusParam = readFocusId();
+  // `?focus=auto` → pierwsza stacja deterministycznie (do zrzutu szczegółu L2).
+  const focusId =
+    focusParam === 'auto'
+      ? (sldData.stations[0]?.id ?? null)
+      : focusParam;
+
   return (
     <div
       id="sld-harness-root"
@@ -84,6 +109,8 @@ function SubstrateHarness(): JSX.Element {
       data-stations={sldData.stations.length}
       data-cable-runs={sldData.cableRuns.length}
       data-gpzs={sldData.gpzs.length}
+      data-lod-override={lodOverride ?? ''}
+      data-focus-id={focusId ?? ''}
       style={{ width: size.width, height: size.height }}
     >
       <SldCanvasV2
@@ -101,6 +128,8 @@ function SubstrateHarness(): JSX.Element {
         terminalBindings={sldData.terminalBindings}
         labelSpecs={sldData.labelSpecs}
         readabilityReport={sldData.readabilityReport}
+        lodOverride={lodOverride}
+        centerOnElementId={focusId}
         showLegend={true}
         showScaleRuler={true}
       />

@@ -96,4 +96,75 @@ test.describe('sld:substrate:screenshot', () => {
     console.log(`Saved: ${widePath}`);
     expect(fs.existsSync(widePath)).toBe(true);
   });
+
+  // ---------------------------------------------------------------------------
+  // LOD demonstration (M-08 readability fix): L0 = readable blocks, L2 = detail.
+  // ---------------------------------------------------------------------------
+
+  test('substrate-53s L0 overview (readable blocks) — save PNG', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    // ?lod=0 forces overview level → stations render as readable BLOCKS
+    // (name + readiness), no micro-apparatus clutter (the density fix).
+    await page.goto(`${HARNESS_URL}?lod=0`);
+
+    const harnessRoot = page.locator('[data-testid="sld-harness-root"]').first();
+    await expect(harnessRoot).toHaveAttribute('data-status', 'ready', { timeout: 20000 });
+
+    const canvas = page.locator('[data-testid="sld-canvas-v2"]').first();
+    await expect(canvas).toBeVisible({ timeout: 15000 });
+    await page.waitForTimeout(900);
+
+    // Count readable blocks vs apparatus detail markers (proves the structural fix).
+    const blocks = await page.locator('[data-testid^="sld-v2-station-overview-block-"]').count();
+    const detail = await page.locator('[data-testid^="sld-v2-mini-rmu-"]').count();
+    const lodAttr = await canvas.getAttribute('data-lod');
+    console.log(`L0: blocks=${blocks} mini-rmu-detail=${detail} data-lod=${lodAttr}`);
+
+    const l0Path = path.join(OUTPUT_DIR, 'sld_substrate_53_L0.png');
+    await page.screenshot({ path: l0Path, fullPage: false });
+    console.log(`Saved: ${l0Path}`);
+
+    // L0 must render blocks and (near-)zero mini-RMU apparatus across the network.
+    expect(blocks).toBeGreaterThanOrEqual(50);
+    expect(detail).toBe(0);
+    expect(fs.existsSync(l0Path)).toBe(true);
+  });
+
+  test('substrate-53s L2 detail (zoomed apparatus) — save PNG', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    // ?lod=3 forces full-detail level; ?focus=auto centers+zooms on a station
+    // so the screenshot shows full apparatus detail (L2) rather than tiny blocks.
+    await page.goto(`${HARNESS_URL}?lod=3&focus=auto`);
+
+    const harnessRoot = page.locator('[data-testid="sld-harness-root"]').first();
+    await expect(harnessRoot).toHaveAttribute('data-status', 'ready', { timeout: 20000 });
+
+    const canvas = page.locator('[data-testid="sld-canvas-v2"]').first();
+    await expect(canvas).toBeVisible({ timeout: 15000 });
+    await page.waitForTimeout(900);
+
+    const blocks = await page.locator('[data-testid^="sld-v2-station-overview-block-"]').count();
+    const detail = await page.locator('[data-testid^="sld-v2-mini-rmu-"]').count();
+    const lodAttr = await canvas.getAttribute('data-lod');
+    console.log(`L2: blocks=${blocks} mini-rmu-detail=${detail} data-lod=${lodAttr}`);
+
+    const l2Path = path.join(OUTPUT_DIR, 'sld_substrate_53_L2.png');
+    await page.screenshot({ path: l2Path, fullPage: false });
+    console.log(`Saved: ${l2Path}`);
+
+    // Also capture a clipped region centered on the content so individual
+    // apparatus (fields WE/WY/TR, cable heads, results) is legible (zoomed detail).
+    const l2DetailPath = path.join(OUTPUT_DIR, 'sld_substrate_53_L2_detail.png');
+    await page.screenshot({
+      path: l2DetailPath,
+      clip: { x: 560, y: 280, width: 800, height: 540 },
+    });
+    console.log(`Saved: ${l2DetailPath}`);
+
+    // L2 renders full apparatus detail, no overview blocks.
+    expect(blocks).toBe(0);
+    expect(detail).toBeGreaterThan(0);
+    expect(fs.existsSync(l2Path)).toBe(true);
+    expect(fs.existsSync(l2DetailPath)).toBe(true);
+  });
 });

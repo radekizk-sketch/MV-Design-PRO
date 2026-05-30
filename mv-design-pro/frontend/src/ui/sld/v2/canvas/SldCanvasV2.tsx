@@ -26,6 +26,7 @@ import {
   type SldLayerId,
 } from '../lod/LodPolicy';
 import {
+  densityAwareLevel,
   numericLodToLevel,
   polylineIntersectsViewport,
   virtualizePositioned,
@@ -933,10 +934,6 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   /* Fallback dla test?w bez LodControllera (powinien by? zawsze inicjalizowany). */
   void inferLodFromScale; // referencja zachowana dla back-compat innych caller?w
 
-  /* Poziom geometrii (L0/L1/L2) z JEDNEJ prawdy numerycznego LOD — kontrakt §7.
-   * Na L0 (przegląd) renderujemy stacje jako CZYTELNE BLOKI (nazwa + status),
-   * nie pełną aparaturę — to strukturalny fix gęstości ≥50 stacji (M-08). */
-  const geomLevel: GeomLodLevel = numericLodToLevel(lod);
   /* Widoczny kadr (world-space) do wirtualizacji: na L0 dla dużej sieci renderujemy
    * tylko bloki przecinające ekran (§7B.7). Margines zapobiega znikaniu przygranicznych. */
   const worldViewport: WorldViewport = worldViewportFromTransform(
@@ -955,8 +952,24 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     ? cableRuns.filter((run) => cableRunIntersectsViewport(run, worldViewport))
     : cableRuns;
 
+  /* Poziom geometrii (L0/L1/L2). Bazowy z JEDNEJ prawdy numerycznego LOD — kontrakt §7.
+   * Świadomy gęstości (M-08): gdy w kadrze jest dużo stacji (auto-fit dużej sieci
+   * często ląduje na skali L1/L2), wymuś L0 = czytelne BLOKI zamiast pełnej aparatury
+   * 50+ stacji. NIE nadpisujemy jawnego override (użytkownik/harness wybrał poziom). */
+  const baseGeomLevel: GeomLodLevel = numericLodToLevel(lod);
+  const geomLevel: GeomLodLevel =
+    lodOverride !== undefined
+      ? baseGeomLevel
+      : densityAwareLevel(baseGeomLevel, visibleStations.length);
+
+  /* Efektywny LOD numeryczny spójny z poziomem geometrii: gdy gęstość zepchnęła
+   * widok do L0 (przegląd), traktuj go jak LOD 0 dla etykiet i ciągów kablowych —
+   * struktura L0 nie pokazuje etykiet odcinków/wyników (kontrakt §7), więc bloki
+   * stacji nie toną w opisach kabli. Poza L0: bez zmian (efektywny == surowy). */
+  const effectiveLod: LodLevel = geomLevel === 'L0' ? (0 as LodLevel) : lod;
+
   const layers = { ...DEFAULT_LAYER_VISIBILITY, ...(layerVisibility ?? {}) };
-  const topologyLabels = buildVisibleTopologyLabels(labelSpecs, readabilityReport, lod, selectedId);
+  const topologyLabels = buildVisibleTopologyLabels(labelSpecs, readabilityReport, effectiveLod, selectedId);
   const usesGlobalLabelPipeline =
     labelSpecs.length > 0 || Boolean(readabilityReport?.labelPlacements?.length);
 
@@ -1395,9 +1408,9 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                   {...run}
                   label={usesGlobalLabelPipeline ? undefined : run.label}
                   segmentLabels={usesGlobalLabelPipeline ? [] : run.segmentLabels}
-                  lod={lod}
+                  lod={effectiveLod}
                   viewportScale={transform.scale}
-                  stationPortGaps={buildConnectionNodePortGapsForRun(run, stations, branchPoints, lod)}
+                  stationPortGaps={buildConnectionNodePortGapsForRun(run, stations, branchPoints, effectiveLod)}
                   selected={selectedId === run.id || pathHighlightRunIds.has(run.id)}
                   selectedSegmentRefs={selectedSegmentRefsForRun(run, selectedId)}
                   loadingPct={lfDerived.cableLoadingPctByRunId.get(run.id) ?? null}
