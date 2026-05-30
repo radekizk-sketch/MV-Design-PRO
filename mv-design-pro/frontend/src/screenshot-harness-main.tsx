@@ -1,0 +1,114 @@
+/**
+ * Screenshot Harness — standalone entry for Playwright SLD substrate capture.
+ *
+ * Renders SldCanvasV2 directly with the ≥52-station substrate fixture
+ * (sldSubstrate52s.enm.json) via the real buildSldDataFromSnapshot adapter.
+ * No backend required — fixture fetched from Vite dev server.
+ *
+ * Used exclusively by: e2e/sld-substrate-screenshot.spec.ts
+ * Not part of the main app bundle (separate HTML entry).
+ */
+import { useEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { SldCanvasV2 } from './ui/sld/v2/canvas/SldCanvasV2';
+import { buildSldDataFromSnapshot, type SldDataPayload } from './ui/sld/v2/canvas/enmToSldAdapter';
+import type { EnergyNetworkModel, LogicalViewsV1 } from './types/enm';
+
+const EMPTY_LOGICAL_VIEWS: LogicalViewsV1 = {
+  trunks: [],
+  branches: [],
+  secondary_connectors: [],
+  terminals: [],
+};
+
+// Fetch fixture at runtime from Vite's static file serving (public/)
+async function loadSubstrateEnm(): Promise<EnergyNetworkModel> {
+  const resp = await fetch('/test-fixtures/sldSubstrate52s.enm.json');
+  if (!resp.ok) {
+    throw new Error(`Failed to load fixture: ${resp.status} ${resp.statusText}`);
+  }
+  const raw = await resp.json() as { enm: EnergyNetworkModel };
+  return raw.enm;
+}
+
+type Status = 'loading' | 'ready' | 'error';
+
+function SubstrateHarness(): JSX.Element {
+  const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+  const [status, setStatus] = useState<Status>('loading');
+  const [sldData, setSldData] = useState<SldDataPayload | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string>('');
+
+  useEffect(() => {
+    const onResize = () => setSize({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  useEffect(() => {
+    loadSubstrateEnm()
+      .then((enm) => {
+        const data = buildSldDataFromSnapshot(enm, EMPTY_LOGICAL_VIEWS);
+        setSldData(data);
+        setStatus('ready');
+      })
+      .catch((err: unknown) => {
+        setErrorMsg(String(err));
+        setStatus('error');
+      });
+  }, []);
+
+  if (status === 'loading') {
+    return (
+      <div id="sld-harness-root" data-testid="sld-harness-root" data-status="loading"
+        style={{ color: '#DDF7FF', padding: 32, fontFamily: 'monospace', background: '#07111C', width: size.width, height: size.height }}>
+        Loading substrate fixture...
+      </div>
+    );
+  }
+
+  if (status === 'error' || !sldData) {
+    return (
+      <div id="sld-harness-root" data-testid="sld-harness-root" data-status="error"
+        style={{ color: 'red', padding: 32, fontFamily: 'monospace', background: '#07111C', width: size.width, height: size.height }}>
+        Error loading fixture: {errorMsg}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      id="sld-harness-root"
+      data-testid="sld-harness-root"
+      data-status="ready"
+      data-stations={sldData.stations.length}
+      data-cable-runs={sldData.cableRuns.length}
+      data-gpzs={sldData.gpzs.length}
+      style={{ width: size.width, height: size.height }}
+    >
+      <SldCanvasV2
+        width={size.width}
+        height={size.height}
+        gpzs={sldData.gpzs}
+        sections={sldData.sections}
+        cableRuns={sldData.cableRuns}
+        stations={sldData.stations}
+        branchPoints={sldData.branchPoints}
+        ders={sldData.ders}
+        connections={sldData.derConnections}
+        topologyCorridors={sldData.topologyCorridors}
+        topologyRuns={sldData.topologyRuns}
+        terminalBindings={sldData.terminalBindings}
+        labelSpecs={sldData.labelSpecs}
+        readabilityReport={sldData.readabilityReport}
+        showLegend={true}
+        showScaleRuler={true}
+      />
+    </div>
+  );
+}
+
+const container = document.getElementById('root');
+if (container) {
+  createRoot(container).render(<SubstrateHarness />);
+}
