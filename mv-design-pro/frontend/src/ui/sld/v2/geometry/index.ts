@@ -25,3 +25,18 @@ export {
 
 export { buildTopologyTree } from '../../../../engine/sld-layout/topologyTree';
 export type { TopologyTree, TreeNode } from '../../../../engine/sld-layout/topologyTree';
+
+// Warstwa odczytu geometrii dla rendererów (V-07) — krawędzie port→port z LayoutResult.
+export {
+  buildPortAnchoredGeometryFromENM,
+  projectPortAnchoredGeometry,
+  buildPortAnchoredEdges,
+  indexPorts,
+  toCableRuns,
+} from './portAnchoredGeometry';
+export type {
+  GeometryPoint,
+  PortAnchoredEdge,
+  PortAnchoredGeometry,
+  PortAnchoredCableRun,
+} from './portAnchoredGeometry';
