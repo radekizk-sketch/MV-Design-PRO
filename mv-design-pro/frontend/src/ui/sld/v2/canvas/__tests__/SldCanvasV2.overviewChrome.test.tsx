@@ -596,8 +596,11 @@ describe('SldCanvasV2 - tabele dokumentacyjne w widoku roboczym', () => {
       derBadges: [],
     };
 
+    // L0 (przegląd): stacja renderowana jako CZYTELNY BLOK (nazwa + status), nie
+    // mini-RMU z aparaturą — strukturalny fix gęstości ≥50 stacji (§7, M-08).
     const lod0 = render(<SldCanvasV2 {...baseProps} stations={[station]} lodOverride={0} />);
-    expect(lod0.container.querySelector('[data-testid="sld-v2-mini-rmu-st-lod"]')?.getAttribute('data-lod-variant')).toBe('overview');
+    expect(lod0.container.querySelector('[data-testid="sld-v2-station-overview-block-st-lod"]')).not.toBeNull();
+    expect(lod0.container.querySelector('[data-testid="sld-v2-mini-rmu-st-lod"]')).toBeNull();
     expect(lod0.container.querySelector('[data-testid^="sld-symbol-transformer-"]')).toBeNull();
 
     const lod1 = render(<SldCanvasV2 {...baseProps} stations={[station]} lodOverride={1} />);
@@ -773,7 +776,11 @@ describe('SldCanvasV2 - tabele dokumentacyjne w widoku roboczym', () => {
       />,
     );
 
-    expect(container.querySelector('[data-testid="sld-v2-mini-rmu-overview-code-st-label"]')).not.toBeNull();
+    // L0: stacja = czytelny blok z kodem (§7, M-08); blok niesie kod stacji,
+    // więc globalna warstwa labeli NIE dubluje etykiety stacji.
+    const overviewBlock = container.querySelector('[data-testid="sld-v2-station-overview-block-st-label"]');
+    expect(overviewBlock).not.toBeNull();
+    expect(overviewBlock?.textContent).toContain('S01');
     expect(container.querySelector('[data-testid="sld-v2-zksn-switchgear-zksn-label"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="sld-v2-topology-label-label:station:st-label"]')).toBeNull();
     expect(container.querySelector('[data-testid="sld-v2-topology-label-label:branch-point:zksn-label"]')).toBeNull();

@@ -25,8 +25,24 @@ import {
   type LodLevel,
   type SldLayerId,
 } from '../lod/LodPolicy';
+import {
+  numericLodToLevel,
+  polylineIntersectsViewport,
+  virtualizePositioned,
+  worldViewportFromTransform,
+  type LodLevel as GeomLodLevel,
+  type WorldViewport,
+} from '../../../../engine/sld-layout/lodController';
 import { SldLodProvider } from '../lod/SldLodContext';
-import { COLOR_BG, COLOR_PANEL } from '../theme/tokens';
+import {
+  COLOR_BG,
+  COLOR_PANEL,
+  COLOR_DEVICE_CLOSED_BORDER,
+  COLOR_DEVICE_OPEN_BORDER,
+  COLOR_SELECTION,
+  COLOR_TEXT_PRIMARY,
+  COLOR_WARN,
+} from '../theme/tokens';
 import {
   CableRunRenderer,
   type CableRunRendererProps,
@@ -916,6 +932,29 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     : lodControllerRef.current.update(transform.scale);
   /* Fallback dla test?w bez LodControllera (powinien by? zawsze inicjalizowany). */
   void inferLodFromScale; // referencja zachowana dla back-compat innych caller?w
+
+  /* Poziom geometrii (L0/L1/L2) z JEDNEJ prawdy numerycznego LOD — kontrakt §7.
+   * Na L0 (przegląd) renderujemy stacje jako CZYTELNE BLOKI (nazwa + status),
+   * nie pełną aparaturę — to strukturalny fix gęstości ≥50 stacji (M-08). */
+  const geomLevel: GeomLodLevel = numericLodToLevel(lod);
+  /* Widoczny kadr (world-space) do wirtualizacji: na L0 dla dużej sieci renderujemy
+   * tylko bloki przecinające ekran (§7B.7). Margines zapobiega znikaniu przygranicznych. */
+  const worldViewport: WorldViewport = worldViewportFromTransform(
+    { scale: transform.scale, translateX: transform.translateX, translateY: transform.translateY },
+    { width, height },
+    96,
+  );
+  /* Wirtualizacja włączana tylko dla dużych sieci (próg) — małe schematy renderują
+   * się w całości (zero ryzyka regresji dla istniejących widoków). */
+  const VIRTUALIZATION_STATION_THRESHOLD = 24;
+  const virtualizationActive = stations.length > VIRTUALIZATION_STATION_THRESHOLD;
+  const visibleStations = virtualizationActive
+    ? virtualizePositioned(stations, worldViewport, 200)
+    : stations;
+  const visibleCableRuns = virtualizationActive
+    ? cableRuns.filter((run) => cableRunIntersectsViewport(run, worldViewport))
+    : cableRuns;
+
   const layers = { ...DEFAULT_LAYER_VISIBILITY, ...(layerVisibility ?? {}) };
   const topologyLabels = buildVisibleTopologyLabels(labelSpecs, readabilityReport, lod, selectedId);
   const usesGlobalLabelPipeline =
@@ -1337,7 +1376,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         {/* Stacje na ci?gu */}
         {layers.equipment && (
           <g data-testid="sld-cable-runs-layer">
-            {cableRuns.map((run) => (
+            {visibleCableRuns.map((run) => (
               <g
                 key={run.id}
                 data-connection-ref={run.id}
@@ -1383,9 +1422,14 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         )}
 
         <g data-testid="sld-v2-stations-layer">
-          {stations.map((st) => {
+          {visibleStations.map((st) => {
             const stationLod = st.lod ?? lod;
             const stationUsesMiniBlock = stationUsesMiniBlockRenderer(st, stationLod);
+            const stationSelected = selectedId === st.id;
+            /* L0 (przegląd): renderuj CZYTELNY BLOK (nazwa + status), nie pełną
+             * aparaturę — strukturalny fix gęstości ≥50 stacji (§7, M-08).
+             * Zaznaczona stacja zawsze pokazuje detal (override poziomu, kontrakt §7). */
+            const renderAsOverviewBlock = geomLevel === 'L0' && !stationSelected;
             return (
               <g
                 key={st.id}
@@ -1413,6 +1457,9 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                 }
                 style={{ cursor: onSelectElement ? 'pointer' : 'default' }}
               >
+                {renderAsOverviewBlock ? (
+                  <StationOverviewBlock station={st} selected={stationSelected} />
+                ) : (
                 <StationOnRunRenderer
                   {...st}
                   alarmSeverity={st.alarmSeverity ?? computeStationAlarmSeverity(st, overlayPayload)}
@@ -1423,7 +1470,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                   }
                   lod={stationLod}
                   viewportScale={transform.scale}
-                  selected={selectedId === st.id}
+                  selected={stationSelected}
                   onClick={
                     onSelectElement
                       ? (id) => {
@@ -1434,7 +1481,8 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                   }
                   onDoubleClick={onDoubleClickStation}
                 />
-                {!stationUsesMiniBlock && st.transformerRefs?.map((transformerRef, index) => (
+                )}
+                {!renderAsOverviewBlock && !stationUsesMiniBlock && st.transformerRefs?.map((transformerRef, index) => (
                   <g
                     key={`station-transformer-symbol-${transformerRef}`}
                     data-testid={`sld-symbol-transformer-${transformerRef}`}
@@ -2208,6 +2256,86 @@ function stationUsesMiniBlockRenderer(
   _currentLod: LodLevel,
 ): boolean {
   return station.snBays !== undefined;
+}
+
+/** Czy ciąg kablowy przecina widoczny kadr (wirtualizacja krawędzi). */
+function cableRunIntersectsViewport(
+  run: CableRunRendererProps,
+  vp: WorldViewport,
+): boolean {
+  return polylineIntersectsViewport(run.pathPoints, vp);
+}
+
+/** Wymiary bloku przeglądowego stacji (L0) — rozróżnialny, bez mikro-detalu. */
+const L0_BLOCK_W = 120;
+const L0_BLOCK_H = 80;
+
+/**
+ * Status gotowości stacji na przeglądzie (L0): kolor kropki. To JEDYNA informacja
+ * stanu na L0 (poza nazwą) — kontrakt §7 (status gotowości). Mapowanie:
+ *   krytyczny alarm / brak danych → czerwony; ostrzeżenie → bursztyn; OK → zielony.
+ */
+function stationReadinessColor(station: StationOnRunRendererProps): string {
+  if (station.alarmSeverity === 'critical') return COLOR_DEVICE_OPEN_BORDER;
+  if (station.missingData) return COLOR_WARN;
+  if (station.alarmSeverity === 'important' || station.alarmSeverity === 'warning') return COLOR_WARN;
+  return COLOR_DEVICE_CLOSED_BORDER;
+}
+
+/**
+ * Blok przeglądowy stacji (L0) — STRUKTURALNY fix gęstości (§7, M-08).
+ *
+ * Zamiast pełnego mini-bloku z aparaturą (118×96, nieczytelny przy skali ~0.2 dla
+ * 53 stacji), rysuje czysty prostokąt + kod/nazwa stacji + kropka statusu gotowości.
+ * Pozycja z propsów stacji (jedna prawda geometrii — adapter nałożył ją z LayoutResult);
+ * ten komponent NIE liczy pozycji. Hit-box = cały blok (klikalność V-08 na L0).
+ */
+function StationOverviewBlock(props: {
+  readonly station: StationOnRunRendererProps;
+  readonly selected: boolean;
+}): JSX.Element {
+  const { station, selected } = props;
+  const x = station.x - L0_BLOCK_W / 2;
+  const y = station.y - L0_BLOCK_H / 2;
+  const label = station.stationCode?.trim() || station.name || station.id;
+  const borderColor = selected ? COLOR_SELECTION : '#2C3A48';
+  const statusColor = stationReadinessColor(station);
+  return (
+    <g
+      data-testid={`sld-v2-station-overview-block-${station.id}`}
+      data-lod-variant="block_overview"
+      data-station-readiness={statusColor}
+      pointerEvents="none"
+    >
+      <rect
+        x={x}
+        y={y}
+        width={L0_BLOCK_W}
+        height={L0_BLOCK_H}
+        rx={6}
+        ry={6}
+        fill={COLOR_PANEL}
+        stroke={borderColor}
+        strokeWidth={selected ? 2.5 : 1.5}
+      />
+      {/* Status gotowości — kropka w lewym górnym rogu. */}
+      <circle cx={x + 14} cy={y + 14} r={6} fill={statusColor} stroke="#0A0E14" strokeWidth={1} />
+      {/* Kod/nazwa stacji — wyśrodkowana, jedyna etykieta na L0. */}
+      <text
+        x={station.x}
+        y={station.y + 4}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fill={COLOR_TEXT_PRIMARY}
+        fontFamily="sans-serif"
+        fontSize={22}
+        fontWeight={800}
+        letterSpacing={0.5}
+      >
+        {label}
+      </text>
+    </g>
+  );
 }
 
 
