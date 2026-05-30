@@ -39,12 +39,16 @@ from application.reference_networks.library import (
     get_reference_network,
     list_reference_networks,
 )
+from application.reference_networks.sld_substrate_power_flow import (
+    compute_substrate_power_flow,
+)
 
 __all__ = [
     "CROSS_VALIDATION_PROOF_TYPE",
     "FROZEN_SOLVER_CROSS_VALIDATION_PROOF_TYPE",
     "IEEE_CROSS_VALIDATION_NETWORK_IDS",
     "build_frozen_power_flow_input",
+    "compute_substrate_power_flow",
     "build_ieee_all_benchmark_references",
     "build_ieee_benchmark_references",
     "build_ieee_frozen_solver_benchmark_references",

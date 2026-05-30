@@ -82,6 +82,17 @@ _BESS_NAMESPACE = "ZRODLO_NN_BESS"
 _FW_CATALOG_REF = "conv-wind-nn-2mw-0p4kv"
 _FW_NAMESPACE = "CONVERTER"
 
+# P-A power-flow tor: nN station loads + a normally-open sectionaliser (NOP).
+# Loads near the GPZ make those feeders net-consuming (flow GPZ→stacja), while DER
+# tips net-generate (flow reverses upstream) → genuine BIDIRECTIONAL active-power
+# flow that the frozen solver computes. The NOP (open SN sectionaliser, real RM6
+# load switch) splits one lateral so part of the network is de-energised — exactly
+# what the solver reports as `not_solved` buses. Both are catalog-bound domain ops
+# (no fictional entities); the schematic == the ENM == what the solver computes.
+_LOAD_NAMESPACE = "OBCIAZENIE"
+_NOP_SWITCH_REF = "sw-ls-schneider-rm6-17kv-400a"  # Schneider RM6 SN load switch
+_NOP_SWITCH_NAMESPACE = "APARAT_SN"
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -248,6 +259,48 @@ def _add_der(
             },
             "power_setpoint_mw": power_mw,
             "source_name": name,
+        },
+    )
+
+
+def _add_station_load(
+    enm: dict[str, Any],
+    station_ref: str,
+    power_kw: float,
+    reactive_kvar: float,
+    name: str,
+) -> tuple[dict[str, Any], str | None]:
+    """Attach an nN load to a station via a catalog-bound outgoing feeder.
+
+    Creates an nN outgoing feeder (``add_nn_outgoing_field``) and an nN load
+    (``add_nn_load``) on it. Returns ``(new_enm, None)`` or ``(old_enm, error)``.
+    """
+    nn_ref = _nn_bus_ref(enm, station_ref)
+    if nn_ref is None:
+        return enm, f"No nN bus on station {station_ref}"
+    from enm.domain_operations import execute_domain_operation
+
+    feeder_result = execute_domain_operation(
+        enm_dict=enm,
+        op_name="add_nn_outgoing_field",
+        payload={"station_ref": station_ref, "bus_nn_ref": nn_ref},
+    )
+    if feeder_result.get("error"):
+        return enm, f"feeder: {feeder_result['error']}"
+    enm_feeder = feeder_result.get("snapshot")
+    feeder_ref = (feeder_result.get("selection_hint") or {}).get("element_id")
+    if enm_feeder is None or not feeder_ref:
+        return enm, "feeder: no snapshot/selection_hint"
+    return _try_op(
+        enm_feeder,
+        "add_nn_load",
+        {
+            "station_ref": station_ref,
+            "bus_nn_ref": nn_ref,
+            "feeder_ref": feeder_ref,
+            "active_power_kw": power_kw,
+            "reactive_power_kvar": reactive_kvar,
+            "load_name": name,
         },
     )
 
@@ -462,6 +515,77 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
         attach(stn_ref, "BESS", _BESS_CATALOG_REF, _BESS_NAMESPACE, 0.5, f"MIX_BESS_{i+1}")
 
     # -----------------------------------------------------------------------
+    # 5b. Station loads (P-A power-flow tor) — make the tor BIDIRECTIONAL
+    # -----------------------------------------------------------------------
+    # Loads on the GPZ-near trunk stations net-consume (active power flows
+    # GPZ→stacja there), while DER tips net-generate (flow reverses upstream).
+    # Each trunk station that carries no DER gets a substantial municipal load;
+    # this is the most realistic MV feeder (every distribution substation feeds
+    # nN load). The frozen solver then computes both flow directions; the SLD is
+    # a projection of THAT result.
+    load_errors: list[str] = []
+
+    def attach_load(stn: str, p_kw: float, q_kvar: float, name: str) -> None:
+        nonlocal enm
+        new_enm, err = _add_station_load(enm, stn, p_kw, q_kvar, name)
+        if err:
+            load_errors.append(f"{stn}: {err}")
+        else:
+            enm = new_enm
+
+    # Heavy loads on the first half of the trunk (closest to GPZ); lighter loads
+    # further out. DER-carrying trunk stations {0,1,2,3,...} also get a load so
+    # the local net balance (load vs gen) decides the flow sign at that bus.
+    for i, stn_ref in enumerate(trunk_station_refs):
+        # Front of feeder: 0.9 MW; tail: 0.4 MW — monotone so the reversal point
+        # sits where cumulative downstream generation overtakes downstream load.
+        p_kw = 900.0 if i < 6 else 400.0
+        attach_load(stn_ref, p_kw, p_kw * 0.33, f"Odbior miejski T{i + 1}")
+
+    # A few lateral-tip loads so laterals also carry real demand.
+    for i, stn_ref in enumerate(lateral_station_refs[:8]):
+        attach_load(stn_ref, 250.0, 80.0, f"Odbior wiejski L{i + 1}")
+
+    # -----------------------------------------------------------------------
+    # 5c. Normally-open point (NOP) — realistic reserve tie left open
+    # -----------------------------------------------------------------------
+    # An open SN sectionaliser (real Schneider RM6 load switch) on a deep lateral
+    # segment. In a real ring this would tie to an adjacent feeder; here it leaves
+    # the downstream stub de-energised — exactly the `not_solved` set the frozen
+    # solver returns. set_normal_open_point records it on the corridor too.
+    from enm.domain_operations import execute_domain_operation
+
+    nop_switch_ref: str | None = None
+    deep_segments = [
+        b["ref_id"] for b in enm.get("branches", []) if b.get("type") in ("cable", "line_overhead")
+    ]
+    if deep_segments:
+        # Deterministic deep pick: a lateral segment in the back third of the list.
+        nop_target_seg = deep_segments[(len(deep_segments) * 2) // 3]
+        nop_result = execute_domain_operation(
+            enm_dict=enm,
+            op_name="insert_section_switch_sn",
+            payload={
+                "segment_id": nop_target_seg,
+                "insert_at": {"mode": "RATIO", "value": 0.5},
+                "switch_type": "ROZLACZNIK",
+                "normal_state": "open",
+                "switch_name": "Lacznik sekcyjny NO (rezerwa)",
+                "catalog_ref": _NOP_SWITCH_REF,
+                "catalog_binding": {
+                    "catalog_namespace": _NOP_SWITCH_NAMESPACE,
+                    "catalog_item_id": _NOP_SWITCH_REF,
+                    "catalog_item_version": "2024.1",
+                },
+            },
+        )
+        if not nop_result.get("error") and nop_result.get("snapshot") is not None:
+            enm = nop_result["snapshot"]
+            nop_switch_ref = (nop_result.get("selection_hint") or {}).get("element_id")
+            if nop_switch_ref:
+                enm, _ = _try_op(enm, "set_normal_open_point", {"switch_ref": nop_switch_ref})
+
+    # -----------------------------------------------------------------------
     # 6. Metrics
     # -----------------------------------------------------------------------
     substations = [s for s in enm.get("substations", []) if "/station" in s.get("ref_id", "")]
@@ -491,5 +615,8 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
         "der_count": der_count,
         "der_types": der_types,
         "der_errors": der_errors,
+        "load_count": len(enm.get("loads", [])),
+        "load_errors": load_errors,
+        "nop_switch_ref": nop_switch_ref,
         "snapshot_hash": _snapshot_hash(enm),
     }
