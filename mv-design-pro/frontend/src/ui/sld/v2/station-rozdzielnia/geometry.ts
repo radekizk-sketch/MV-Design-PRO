@@ -172,7 +172,10 @@ export function computeStationGeometry(
   const busX2 = firstX + totalWidth + BUS_OVERHANG;
 
   // Bounds: busbar width × (label headroom above + deepest field path below).
-  const headroom = detail === 'close' ? 64 : detail === 'closer' ? 48 : 38;
+  // Headroom must clear BOTH the station header (top) AND the per-field role
+  // tags below it — hence generous, level-aware headroom (avoids the header
+  // colliding with WE/WY/TR tags at the compact 'far' level).
+  const headroom = detail === 'close' ? 72 : detail === 'closer' ? 60 : 52;
   const footroom = detail === 'close' ? 60 : detail === 'closer' ? 40 : 30;
   const top = BUS_Y - headroom;
   const bottom = BUS_Y + span + footroom;

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Inline favicon so the browser does not probe /favicon.ico (404 noise). -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>" />
+    <title>Stacja-rozdzielnia SN — render harness</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body, #root { width: 100%; min-height: 100vh; background: #050A10; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/station-rozdzielnia-harness-main.tsx"></script>
+  </body>
+</html>

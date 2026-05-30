@@ -284,7 +284,7 @@ function FieldColumn(props: {
   const { x } = geom;
 
   const roleTag = FIELD_ROLE_SHORT_TAG[field.role];
-  const headTagY = geom.busY - (detail === 'close' ? 30 : 22);
+  const headTagY = geom.busY - (detail === 'close' ? 32 : 26);
 
   const handleClick = onFieldClick ? () => onFieldClick(field.fieldId) : undefined;
 
