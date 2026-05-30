@@ -181,7 +181,7 @@ export function buildT1(): { model: StationRozdzielniaModel; companion: SldPower
     },
     [],
   );
-  return { model, companion };
+  return { model: { ...model, fields: withCellTypes(model.fields) }, companion };
 }
 
 // =============================================================================
@@ -228,7 +228,7 @@ export function buildT2(): { model: StationRozdzielniaModel; companion: SldPower
     },
     [],
   );
-  return { model, companion };
+  return { model: { ...model, fields: withCellTypes(model.fields) }, companion };
 }
 
 // =============================================================================
@@ -286,7 +286,7 @@ export function buildT3(): { model: StationRozdzielniaModel; companion: SldPower
     },
     [],
   );
-  return { model, companion };
+  return { model: { ...model, fields: withCellTypes(model.fields) }, companion };
 }
 
 // =============================================================================
@@ -347,7 +347,7 @@ export function buildT4(): { model: StationRozdzielniaModel; companion: SldPower
     },
     [BR.coupler],
   );
-  return { model, companion };
+  return { model: { ...model, fields: withCellTypes(model.fields) }, companion };
 }
 
 // =============================================================================
