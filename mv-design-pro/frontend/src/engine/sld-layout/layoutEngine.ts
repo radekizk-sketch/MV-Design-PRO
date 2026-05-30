@@ -14,6 +14,7 @@
 import type { PortKind } from '../../ui/sld/v2/core/ports';
 import { BAY_ROLE_TO_PORT_KIND } from '../../ui/sld/v2/core/ports';
 import {
+  L0_STATION_BLOCK,
   type EnmSnapshot,
   type EdgeGeometry,
   type LayoutBBox,
@@ -27,6 +28,7 @@ import {
   type PortSide,
 } from '../../ui/sld/v2/geometry/layoutContract';
 import {
+  StationKind,
   type TopologyStationV1,
   type TopologyFieldSpecV1,
 } from '../../ui/sld/core/topologyInputReader';
@@ -42,16 +44,27 @@ const APPARATUS_GAP_Y = 8;
 const FIELD_PAD = 10;
 const FIELD_GAP_X = 14;
 const FIELD_MIN_H = APPARATUS_H + 2 * FIELD_PAD;
-/** Min. rozmiar bloku stacji na L0 — rozróżnialny, zero mikro-znaczków (M-08). */
-const STATION_MIN_W = 120;
-const STATION_MIN_H = 84;
-const STATION_PAD = 12;
+/**
+ * Footprint bloku stacji na L0 — STAŁY, z jednej prawdy (`L0_STATION_BLOCK`).
+ * To DOKŁADNIE rozmiar, który renderer rysuje na L0; layout MUSI użyć tego samego
+ * rozmiaru do rozmieszczania (inaczej render i layout się rozjeżdżają → nachodzenie).
+ */
+const STATION_BLOCK_W = L0_STATION_BLOCK.width;
+const STATION_BLOCK_H = L0_STATION_BLOCK.height;
 
 /**
- * Wysokość pasma poziomu (oś Y): odstęp między sąsiednimi poziomami drzewa
- * (trunk=0, laterale +/-1..). Musi być > max wysokości bloku → separacja pionowa.
+ * Odstęp (gap) między sąsiednimi blokami stacji na L0 (world-space, przed auto-fit).
+ * Gwarantuje czytelną przerwę między stałymi blokami 120×80 + miejsce na krawędź.
  */
-const LATERAL_BAND_Y = 200;
+const L0_BLOCK_GAP_X = 60;
+const L0_BLOCK_GAP_Y = 120;
+
+/**
+ * Wysokość pasma poziomu (oś Y): odstęp środek-środek między sąsiednimi poziomami
+ * drzewa (trunk=0, laterale +/-1..). = stała wysokość bloku + gap → separacja pionowa
+ * stałych bloków L0 (nie zależy od treści; render i layout liczą z TEGO samego).
+ */
+const LATERAL_BAND_Y = STATION_BLOCK_H + L0_BLOCK_GAP_Y;
 
 const DEFAULT_FRAME: LayoutFrame = { width: 1600, height: 900, padding: 40 };
 /** Docelowe wypełnienie kadru (M-01). */
@@ -67,20 +80,6 @@ interface RawStation {
   cy: number; // środek bloku Y
   station: TopologyStationV1 | null;
   rank: number;
-}
-
-/**
- * Szerokość bloku stacji (świat surowy) — używana do gwarancji separacji kolumn.
- * Zależy od liczby pól; min STATION_MIN_W.
- */
-function stationBlockWidth(station: TopologyStationV1 | null): number {
-  const fields = station?.fieldSpecs ?? [];
-  const fieldW = APPARATUS_W + 2 * FIELD_PAD;
-  const contentW =
-    fields.length > 0
-      ? fields.length * fieldW + Math.max(0, fields.length - 1) * FIELD_GAP_X
-      : 0;
-  return Math.max(STATION_MIN_W, contentW + 2 * STATION_PAD);
 }
 
 function makePortId(ownerRef: string, role: string, side: PortSide): string {
@@ -136,12 +135,10 @@ function positionStations(
   // rodzeństwo lateralne (ten sam rodzic) dostaje rozłączne podzakresy.
   // Komórka = (kolumna całkowita, poziom całkowity); rozłączne komórki ⇒ M-02.
 
-  // Krok kolumny = max szerokość bloku + margines (gwarancja separacji w poziomie).
-  let maxBlockW = STATION_MIN_W;
-  for (const st of stationById.values()) {
-    maxBlockW = Math.max(maxBlockW, stationBlockWidth(st));
-  }
-  const colStepX = maxBlockW + 60;
+  // Krok kolumny = STAŁY footprint bloku L0 + gap (ta sama stała co render).
+  // L0 to przegląd: bloki mają stały rozmiar, więc odstęp środek-środek liczymy
+  // ze STAŁEGO rozmiaru — nie z treści (która rządzi tylko detalem L1/L2).
+  const colStepX = STATION_BLOCK_W + L0_BLOCK_GAP_X;
 
   interface Placed {
     ref: string;
@@ -177,7 +174,7 @@ function positionStations(
   const placeLateral = (startRef: string, colStart: number, level: number, dir: 1 | -1): void => {
     let currentRef: string | null = startRef;
     let lvl = level;
-    let baseCol = colStart;
+    const baseCol = colStart;
     while (currentRef !== null) {
       const kids = stationChildren(currentRef);
       const myWidth = computeLateralWidth(currentRef);
@@ -219,6 +216,13 @@ function positionStations(
       cursor += computeLateralWidth(latRef);
     });
     trunkCol += slotWidth;
+    // GPZ = przypadek specjalny: renderuje SZERSZY blok (tor 110 kV→TR→szyny SN→pola
+    // odpływowe) z etykietami sekcji w prawo. Rezerwujemy mu dodatkową kolumnę, by
+    // blok + etykiety nie nachodziły na pierwszą stację magistrali (źródło sieci ma
+    // własną, czytelną przestrzeń).
+    if (stationById.get(ref)?.stationType === StationKind.MAIN_SUBSTATION) {
+      trunkCol += 1;
+    }
   });
 
   // Stacje nieosiągnięte z drzewa (np. odizolowane) — kolejne kolumny, osobny poziom.
@@ -319,31 +323,31 @@ function buildStationGeometry(rawStation: RawStation): NodeGeometry {
   const station = rawStation.station;
   const fields = station?.fieldSpecs ?? [];
 
-  // Liczba kolumn pól; szerokość bloku z nich (min STATION_MIN_W).
+  // L0 footprint = STAŁY (`L0_STATION_BLOCK`), wyśrodkowany na (cx, cy). To dokładnie
+  // rozmiar rysowany przez renderer; odstępy na L0 liczone z tego samego rozmiaru.
+  const blockW = STATION_BLOCK_W;
+  const blockH = STATION_BLOCK_H;
+  const blockX = rawStation.cx - blockW / 2;
+  const blockY = rawStation.cy - blockH / 2;
+
+  // Detal L1/L2 (pola/aparaty) — NIEZMIENIONa logika treści. Pola układane są w
+  // wierszu, wyśrodkowane wokół środka stacji; są DZIEĆMI węzła L0 i projektowane
+  // dopiero na L1/L2 (na L0 odcięte). Mogą wykraczać poza stały footprint L0 —
+  // to nie wpływa na przegląd (L0 rysuje stały blok) ani na separację bloków L0.
   const fieldW = APPARATUS_W + 2 * FIELD_PAD;
   const contentW =
     fields.length > 0
       ? fields.length * fieldW + Math.max(0, fields.length - 1) * FIELD_GAP_X
       : 0;
-  const blockW = Math.max(STATION_MIN_W, contentW + 2 * STATION_PAD);
-
-  // Najpierw policz wysokości pól, by ustalić wysokość bloku.
-  const startX = rawStation.cx - blockW / 2;
-  const fieldsTopY = rawStation.cy - STATION_MIN_H / 2 + STATION_PAD;
-  const innerLeft = startX + (blockW - contentW) / 2;
+  const fieldsTopY = rawStation.cy - FIELD_MIN_H / 2;
+  const innerLeft = rawStation.cx - contentW / 2;
 
   const fieldNodes: NodeGeometry[] = [];
-  let maxFieldH = FIELD_MIN_H;
   fields.forEach((f, i) => {
     const fx = innerLeft + i * (fieldW + FIELD_GAP_X);
-    const { node, height } = buildFieldGeometry(f, fx, fieldsTopY, fieldW);
+    const { node } = buildFieldGeometry(f, fx, fieldsTopY, fieldW);
     fieldNodes.push(node);
-    if (height > maxFieldH) maxFieldH = height;
   });
-
-  const blockH = Math.max(STATION_MIN_H, maxFieldH + 2 * STATION_PAD);
-  const blockX = startX;
-  const blockY = rawStation.cy - blockH / 2;
 
   // Porty brzegowe stacji (L0/L1): IN (lewo), OUT (prawo), FEEDER (dół), TR (dół).
   const stationPorts: PortAnchor[] = [
@@ -530,7 +534,13 @@ function autoFit(
 
   // Skala tak, by bbox wypełnił TARGET_FILL użytecznej powierzchni (≥75%).
   const sFit = Math.min(usableW / contentW, usableH / contentH);
-  const s = sFit * TARGET_FILL;
+  // PODŁOGA s ≥ 1: bloki L0 mają STAŁY rozmiar renderu (nie skalują się ze skalą
+  // auto-fit). Odstęp środek-środek w świecie surowym = stały blok + gap; skalowanie
+  // w dół (s<1) ścisnęłoby odstępy poniżej stałego bloku → nachodzenie na ekranie.
+  // Dlatego nigdy nie zmniejszamy poniżej 1; dla małych sieci wciąż powiększamy
+  // (s>1) by wypełnić kadr (M-01). Duża sieć: s=1, bbox przekracza nominalny kadr,
+  // a płótno (viewport SLD) i tak ponownie dopasowuje całość (pan/zoom).
+  const s = Math.max(sFit * TARGET_FILL, 1);
 
   // Wycentruj.
   const scaledW = contentW * s;

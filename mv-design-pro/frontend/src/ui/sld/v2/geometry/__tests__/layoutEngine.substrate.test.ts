@@ -146,11 +146,17 @@ describe('M-01 frame fill >=75% at L0', () => {
     expect(binding, `fillW=${fillW.toFixed(3)} fillH=${fillH.toFixed(3)}`).toBeGreaterThanOrEqual(
       0.75,
     );
-    // bbox must stay inside the frame
-    expect(result.bbox.minX).toBeGreaterThanOrEqual(-0.01);
-    expect(result.bbox.minY).toBeGreaterThanOrEqual(-0.01);
-    expect(result.bbox.maxX).toBeLessThanOrEqual(FRAME.width + 0.01);
-    expect(result.bbox.maxY).toBeLessThanOrEqual(FRAME.height + 0.01);
+    // FIXED-block contract: L0 blocks render at a fixed footprint and do NOT scale
+    // with the auto-fit factor. For a large network the world therefore EXCEEDS the
+    // nominal frame (so fixed blocks keep their separation — zero render overlap),
+    // and the SLD canvas viewport re-fits the whole bbox with pan/zoom. The world
+    // must stay finite and centered on the frame centre (V-01: never corner-anchored).
+    expect(Number.isFinite(result.bbox.minX)).toBe(true);
+    expect(Number.isFinite(result.bbox.maxX)).toBe(true);
+    const bboxCx = (result.bbox.minX + result.bbox.maxX) / 2;
+    const bboxCy = (result.bbox.minY + result.bbox.maxY) / 2;
+    expect(Math.abs(bboxCx - FRAME.width / 2)).toBeLessThanOrEqual(1);
+    expect(Math.abs(bboxCy - FRAME.height / 2)).toBeLessThanOrEqual(1);
   });
 });
 

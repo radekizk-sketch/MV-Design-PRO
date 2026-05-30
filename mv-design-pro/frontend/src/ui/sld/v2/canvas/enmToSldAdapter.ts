@@ -1820,11 +1820,38 @@ function buildGpzs(snapshot: EnergyNetworkModel): GpzRendererProps[] {
       0,
     );
 
+    /* Liczba pól liniowych GPZ z REALNEJ topologii: kable/linie SN wychodzące z
+     * szyn sekcji SN (gpz_sections[].bus_ref). To są ciągi, którymi sieć faktycznie
+     * wyprowadza z GPZ — nie zmyślona wartość. Używane jako `outgoingBayCount`, gdy
+     * ENM nie modeluje jawnych pól odpływowych (bays=∅), żeby GPZ nie był pustym
+     * pudłem (źródło sieci musi pokazać swoje pola). */
+    const snSectionBusRefs = new Set(
+      (gpz.gpz_sections ?? [])
+        .map((sec) => sec.bus_ref)
+        .filter((ref): ref is string => typeof ref === 'string' && ref.length > 0),
+    );
+    const outgoingLineFieldCount = branches.filter(
+      (b) =>
+        isCableLikeBranch(b) &&
+        ((b.from_bus_ref != null && snSectionBusRefs.has(b.from_bus_ref)) ||
+          (b.to_bus_ref != null && snSectionBusRefs.has(b.to_bus_ref))),
+    ).length;
+    /* Pola odpływowe: jawne pola LINE_OUT z ENM, w przeciwnym razie realne ciągi
+     * wychodzące. Pozostawiamy `undefined` tylko gdy nie ma ani jednego — wtedy
+     * renderer użyje swojego sensownego minimum. */
+    const outgoingBayCount =
+      feedersCount > 0
+        ? feedersCount
+        : outgoingLineFieldCount > 0
+          ? outgoingLineFieldCount
+          : undefined;
+
     return {
       id: gpz.ref_id,
       x: gpzXByIndex(idx),
       y: Y_GPZ,
       name: gpz.name || gpz.ref_id,
+      outgoingBayCount,
       /* INVARIANT 9: gdy null, przekazujemy wartość techniczną tylko dla geometrii,
        * a renderer pokazuje klasę WN bez znaku zastępczego. */
       voltageHighKv: hvVoltageKv ?? 110,
