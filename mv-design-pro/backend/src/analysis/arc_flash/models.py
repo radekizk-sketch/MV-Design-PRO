@@ -1,43 +1,48 @@
-"""Modele D-01 Arc Flash — STRUKTURA IEEE 1584-2018 z PUSTĄ TABLICĄ współczynników.
+"""Modele D-01 Arc Flash — IEEE 1584-2018 (model publiczny, współczynniki z danych).
 
 WARSTWA ANALIZY / OBLICZENIA (interpretacja wyniku zwarciowego, NIE fizyka
 solvera — Z15). Moduł odczytuje GOTOWY wynik zwarciowy (prąd zwarcia bolted
 ``I_bf`` z solvera IEC 60909 — ``ShortCircuitResult.ikss_a``) i wylicza energię
-incydentu, granicę łuku oraz kategorię ŚOI wg STRUKTURY (równań) opublikowanej
-w IEEE 1584-2018.
+incydentu, granicę łuku oraz kategorię ŚOI wg równań opublikowanych w
+IEEE 1584-2018.
 
 ╔══════════════════════════════════════════════════════════════════════════╗
-║  DYSCYPLINA DANYCH BEZPIECZEŃSTWA — TABLICA WSPÓŁCZYNNIKÓW JEST PUSTA       ║
+║  PROWENIENCJA WSPÓŁCZYNNIKÓW — OPEN-SOURCE / AUDIT-PENDING (UCZCIWIE)       ║
 ║                                                                            ║
 ║  To jest FIZYKA BEZPIECZEŃSTWA (kategorie ŚOI, granice łuku elektrycznego).║
-║  Błędna wartość współczynnika to DOKŁADNIE to zagrożenie, przed którym     ║
-║  chronimy — dlatego ŻADEN współczynnik NIE jest tu zmyślany ani odtwarzany ║
-║  z pamięci.                                                                ║
+║  Dlatego proweniencja jest deklarowana DOKŁADNIE, bez zawyżania:           ║
 ║                                                                            ║
-║  • STRUKTURA / równania modelu są publiczne i zbudowane w pełni (przepływ  ║
-║    parametryzowany tablicą).                                               ║
-║  • WARTOŚCI współczynników regresji to dane tablicowe IEEE 1584-2018       ║
-║    (objęte prawem autorskim). Tablica jest dostarczona PUSTA — każdy wpis  ║
-║    nosi marker ``BRAK — wymaga tablic IEEE 1584-2018 od właściciela``.     ║
-║    BRAK liczby udającej współczynnik: brakujący współczynnik to None.      ║
+║  • RÓWNANIA modelu są publiczne (postać IEEE 1584-2018) i zbudowane w      ║
+║    pełni — przepływ parametryzowany TYPOWANĄ tablicą współczynników.       ║
+║  • WARTOŚCI współczynników pochodzą z OPEN-SOURCE'OWEJ implementacji MIT   ║
+║    ``rwl/arcflash`` (GitHub), odwołującej się do kalkulatorów IEEE         ║
+║    DataPort — NIE z licencjonowanej kopii IEEE Std 1584-2018.              ║
+║    Ładowane z pliku danych w repo (``data/norm_coefficients/...``),        ║
+║    NIE rozsypane w kodzie — każda liczba ma jawne źródło (audytowalne).    ║
 ║                                                                            ║
-║  Obliczenie na pustej tablicy zwraca STATUS                                ║
-║  ``dane niekompletne — tablice współczynników IEEE 1584`` (NIE liczbę).    ║
-║  Gdy właściciel wypełni tablicę autorytatywnymi wartościami, TEN SAM       ║
-║  przepływ policzy wynik, a proweniencja stanie się ``norma_IEEE_1584``     ║
-║  (zweryfikowana). Ścieżka „przełączenia na zweryfikowane” jest gotowa.     ║
+║  Wynik liczy się NAPRAWDĘ (realne E/AFB), ale nosi status                  ║
+║  ``COMPUTED_IEEE_1584_OPEN_SOURCE`` z proweniencją                         ║
+║  ``IEEE 1584-2018 via open-source MIT impl rwl/arcflash; NOT               ║
+║  licensed-norm-verified`` i polskim zastrzeżeniem. Bramka OSD nadal        ║
+║  BLOKUJE użycie CERTYFIKOWANE/przyłączeniowe, dopóki inżynier świadomie    ║
+║  nie zaakceptuje proweniencji open-source. Gdy właściciel dostarczy        ║
+║  tablicę ZWERYFIKOWANĄ z licencjonowaną normą, TEN SAM przepływ przełączy  ║
+║  status na ``COMPUTED_IEEE_1584`` (zweryfikowany) BEZ zmiany kodu.         ║
 ╚══════════════════════════════════════════════════════════════════════════╝
 
 Struktura modelu (IEEE 1584-2018, publiczna — parametryzowana tablicą):
-  - Prąd łuku ``I_arc`` z prądu zwarcia bolted ``I_bf``, napięcia, odstępu
-    elektrod ``G`` i konfiguracji elektrod; liczony w trzech kotwach napięcia
-    600 / 2700 / 14300 V i interpolowany między kotwami otaczającymi napięcie.
-  - Energia incydentu ``E`` na odległości roboczej ``D`` w czasie łuku ``t`` z
-    korekcją rozmiaru obudowy (również tablicowa, pusta).
-  - Granica łuku ``AFB`` — odległość, na której ``E = 1,2 cal/cm²`` (publiczny
-    próg oparzenia II°).
-  - Kategoria ŚOI — mapowanie progów NFPA 70E:2024 (granice również tablicowe,
-    puste — proweniencja ``norma_NFPA_70E``).
+  - Prąd łuku pośredni ``I_arc`` z prądu zwarcia bolted ``I_bf``, napięcia,
+    odstępu elektrod ``G`` i konfiguracji elektrod; liczony w trzech kotwach
+    napięcia 600 / 2700 / 14300 V i interpolowany między kotwami (Tab. 1).
+  - Współczynnik zmienności prądu łuku ``var_cf`` (Tab. 2) i prąd minimalny
+    ``I_arc_min = I_arc·(1 − 0,5·var_cf)`` (czuły scenariusz koordynacji).
+  - Energia incydentu ``E`` [J/cm²] na odległości roboczej ``D`` w czasie łuku
+    ``t`` [ms] z korekcją rozmiaru obudowy ``CF`` (Tab. 3/4/5 + Tab. 7),
+    raportowana także w cal/cm².
+  - Granica łuku ``AFB`` — odległość, na której ``E = 1,2 cal/cm²``
+    (= 5,0208 J/cm², publiczny próg oparzenia II°).
+  - Kategoria ŚOI — mapowanie progów NFPA 70E (granice tablicowe; dane NFPA
+    NIE są dostarczone → mapowanie pozostaje „dane niekompletne").
 
 Zakres ważności IEEE 1584-2018: 208 V–15 kV, I_bf 500 A–106 kA. POZA zakresem
 (zwłaszcza > 15 kV) — ODRĘBNA ścieżka metody Ralpha Lee (teoretyczna metoda
@@ -66,17 +71,18 @@ from enum import Enum
 from typing import Any
 
 # ---------------------------------------------------------------------------
-# Markery i etykiety (maszynowo-czytelne, nienegocjowalne kontrakty).
+# Markery, proweniencja i etykiety (maszynowo-czytelne, nienegocjowalne).
 # ---------------------------------------------------------------------------
 
 # Marker pojedynczego BRAKUJĄCEGO wpisu tablicy. Pojawia się wszędzie, gdzie
-# autorytatywna wartość IEEE 1584-2018 NIE jest jeszcze dostarczona. Stabilny —
-# konsumenci (UI/raport/OSD/White Box) wykrywają po nim brak danych tablicowych.
+# autorytatywna wartość współczynnika NIE jest dostarczona (np. tablica NFPA 70E
+# albo niepełna tablica IEEE). Stabilny — konsumenci (UI/raport/OSD/White Box)
+# wykrywają po nim brak danych tablicowych.
 ARC_FLASH_COEFF_MISSING_MARKER = "BRAK — wymaga tablic IEEE 1584-2018 od właściciela"
 
-# Status zwracany, gdy obliczenie napotka pustą tablicę współczynników IEEE.
-# Mirroruje wzorzec "dane niekompletne" z solverów (np. v126_academic) — wynik
-# NIE jest liczbą, tylko jawnym brakiem danych normatywnych.
+# Status zwracany, gdy obliczenie napotka pustą/niepełną tablicę współczynników.
+# Mirroruje wzorzec "dane niekompletne" z innych modułów — wynik NIE jest liczbą,
+# tylko jawnym brakiem danych.
 ARC_FLASH_TABLE_INCOMPLETE_STATUS = "dane niekompletne — tablice współczynników IEEE 1584"
 
 # Status zwracany, gdy brakuje OBOWIĄZKOWEGO wejścia (I_bf / U / czas łuku).
@@ -86,27 +92,56 @@ ARC_FLASH_INPUT_INCOMPLETE_STATUS = "dane niekompletne"
 # nie wolno mylić tej wartości z wynikiem IEEE 1584.
 ARC_FLASH_RALPH_LEE_LABEL = "metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018)"
 
+# Proweniencja wartości współczynników IEEE — open-source, NIE licencjonowana norma.
+# String maszynowo-czytelny niesiony na KAŻDYM policzonym wyniku IEEE.
+ARC_FLASH_OPEN_SOURCE_PROVENANCE = (
+    "IEEE 1584-2018 via open-source MIT impl rwl/arcflash; NOT licensed-norm-verified"
+)
+
+# Polskie zastrzeżenie towarzyszące KAŻDEMU policzonemu wynikowi IEEE (open-source).
+ARC_FLASH_OPEN_SOURCE_CAVEAT_PL = (
+    "Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń "
+    "certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018"
+)
+
+# URL-e źródeł do cytowania (z pliku danych ``sources``). Niesione na wyniku, by
+# proweniencja była audytowalna bez sięgania do pliku.
+ARC_FLASH_SOURCE_URLS: tuple[str, ...] = (
+    "https://standards.ieee.org/ieee/1584/5802/",
+    "https://ieee-dataport.org/open-access/arc-flash-ie-and-iarc-calculators",
+    "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table1.rs",
+    "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table2.rs",
+    "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table3_4_5.rs",
+    "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table7.rs",
+)
+
 
 class ArcFlashStatus(str, Enum):
     """Status WYNIKU Arc Flash — odrębna oś od jakości danych wejściowych.
 
     Oś ODRĘBNA od :class:`solver_input.provenance.FieldQuality` (jakość DANYCH
     wejściowych: datasheet / oszacowane / domyślne). Tu chodzi o to, czy wynik
-    został policzony i z jakiej ścieżki — nie o jakość pojedynczego pola.
+    został policzony, JAKĄ ścieżką i z JAKĄ proweniencją współczynników.
 
-    - ``COMPUTED_IEEE_1584`` — policzono ścieżką IEEE 1584-2018 na WYPEŁNIONEJ,
-      autorytatywnej tablicy współczynników (proweniencja ``norma_IEEE_1584``,
-      zweryfikowana). W pustym repozytorium ten status NIE wystąpi — pojawi się
-      dopiero, gdy właściciel dostarczy tablice. Ścieżka jest gotowa.
+    - ``COMPUTED_IEEE_1584_OPEN_SOURCE`` — policzono ścieżką IEEE 1584-2018 na
+      tablicy współczynników z implementacji OPEN-SOURCE MIT ``rwl/arcflash``
+      (proweniencja open-source, NIE zweryfikowana z licencjonowaną normą).
+      Wynik jest realny i skończony; bramka OSD blokuje użycie certyfikowane bez
+      świadomej akceptacji proweniencji. To bieżący stan repo.
+    - ``COMPUTED_IEEE_1584`` — policzono ścieżką IEEE 1584-2018 na tablicy
+      ZWERYFIKOWANEJ wobec licencjonowanej IEEE Std 1584-2018 (proweniencja
+      ``norma_IEEE_1584``). Docelowy stan po dostarczeniu zweryfikowanej tablicy;
+      ten sam przepływ, BEZ zmiany kodu.
     - ``COMPUTED_RALPH_LEE`` — policzono ODRĘBNĄ metodą Ralpha Lee (poza
       zakresem ważności IEEE 1584-2018, > 15 kV). Postać zamknięta, bez tablicy.
     - ``INCOMPLETE_TABLE`` — obowiązkowe wejścia są, ale tablica współczynników
-      IEEE 1584-2018 jest PUSTA; wynik niepoliczony ("dane niekompletne —
-      tablice współczynników IEEE 1584"). NIE zmyślamy współczynników.
+      IEEE 1584-2018 jest PUSTA/niepełna dla konfiguracji; wynik niepoliczony.
+      NIE zmyślamy współczynników.
     - ``INCOMPLETE_INPUT`` — brak obowiązkowego wejścia (I_bf / U / czas łuku);
       wynik niepoliczony ("dane niekompletne"). NIE zmyślamy wejść.
     """
 
+    COMPUTED_IEEE_1584_OPEN_SOURCE = "COMPUTED_IEEE_1584_OPEN_SOURCE"
     COMPUTED_IEEE_1584 = "COMPUTED_IEEE_1584"
     COMPUTED_RALPH_LEE = "COMPUTED_RALPH_LEE"
     INCOMPLETE_TABLE = "INCOMPLETE_TABLE"
@@ -118,10 +153,25 @@ class ArcFlashStatus(str, Enum):
 
     @property
     def is_computed(self) -> bool:
-        return self in (ArcFlashStatus.COMPUTED_IEEE_1584, ArcFlashStatus.COMPUTED_RALPH_LEE)
+        return self in (
+            ArcFlashStatus.COMPUTED_IEEE_1584_OPEN_SOURCE,
+            ArcFlashStatus.COMPUTED_IEEE_1584,
+            ArcFlashStatus.COMPUTED_RALPH_LEE,
+        )
+
+    @property
+    def is_ieee(self) -> bool:
+        """True dla ścieżki IEEE (open-source lub zweryfikowanej)."""
+        return self in (
+            ArcFlashStatus.COMPUTED_IEEE_1584_OPEN_SOURCE,
+            ArcFlashStatus.COMPUTED_IEEE_1584,
+        )
 
 
 _STATUS_LABEL_PL: dict[ArcFlashStatus, str] = {
+    ArcFlashStatus.COMPUTED_IEEE_1584_OPEN_SOURCE: (
+        "policzony (IEEE 1584-2018, współczynniki open-source — weryfikacja z normą wymagana)"
+    ),
     ArcFlashStatus.COMPUTED_IEEE_1584: "policzony (IEEE 1584-2018, tablice zweryfikowane)",
     ArcFlashStatus.COMPUTED_RALPH_LEE: ARC_FLASH_RALPH_LEE_LABEL,
     ArcFlashStatus.INCOMPLETE_TABLE: ARC_FLASH_TABLE_INCOMPLETE_STATUS,
@@ -151,6 +201,13 @@ class ElectrodeConfig(str, Enum):
         return self in (ElectrodeConfig.VCB, ElectrodeConfig.VCBB, ElectrodeConfig.HCB)
 
 
+class EnclosureType(str, Enum):
+    """Typ obudowy dla korekcji rozmiaru (IEEE 1584-2018, Tab. 7)."""
+
+    TYPICAL = "Typical"  # obudowa typowa
+    SHALLOW = "Shallow"  # obudowa płytka (CF = 1/x)
+
+
 # ---------------------------------------------------------------------------
 # Kotwy napięcia i progi/definicje publiczne (NIE współczynniki dopasowania).
 # ---------------------------------------------------------------------------
@@ -160,13 +217,18 @@ class VoltageAnchor(float, Enum):
     """Trzy kotwy napięcia IEEE 1584-2018 (definicja modelu, publiczna).
 
     Wartości napięć są DEFINICJĄ struktury interpolacji (nie współczynnikami
-    regresji objętymi prawem autorskim). Tablica współczynników jest indeksowana
-    parą ``(ElectrodeConfig, VoltageAnchor)``.
+    regresji). Tablica współczynników prądu/energii jest indeksowana parą
+    ``(ElectrodeConfig, VoltageAnchor)``.
     """
 
     V600 = 0.600  # 600 V
     V2700 = 2.700  # 2700 V
     V14300 = 14.300  # 14300 V
+
+    @property
+    def voc_v(self) -> int:
+        """Napięcie kotwy V_oc [V] (klucz wierszy w pliku danych)."""
+        return int(round(self.value * 1000.0))
 
 
 # Granica energii dla granicy łuku AFB: 1,2 cal/cm² (publiczny próg oparzenia
@@ -174,13 +236,16 @@ class VoltageAnchor(float, Enum):
 # nie współczynnik objęty prawem autorskim — wolno użyć.
 INCIDENT_ENERGY_AFB_CAL_CM2 = 1.2
 
-# Przelicznik J/cm² → cal/cm² (stała fizyczna).
+# Przelicznik J/cm² → cal/cm² (stała fizyczna). 1,2 cal/cm² = 5,0208 J/cm².
 JOULE_PER_CAL_CM2 = 4.184
+INCIDENT_ENERGY_AFB_JOULE_CM2 = INCIDENT_ENERGY_AFB_CAL_CM2 * JOULE_PER_CAL_CM2  # 5.0208
 
-# Odległość odniesienia energii (610 mm) i czas odniesienia (0,2 s) — definicje
-# modelu IEEE 1584-2018 (publiczne ramy normalizacji, nie współczynniki regresji).
-REFERENCE_DISTANCE_MM = 610.0
-REFERENCE_TIME_S = 0.2
+# Współczynnik czasu w równaniu energii IEEE 1584-2018 (publiczny, t w ms):
+# E = (12,552/50)·t · 10^(...). Stała postaci równania, nie współczynnik regresji.
+INCIDENT_ENERGY_TIME_FACTOR = 12.552 / 50.0
+
+# Przelicznik mm → cal (model Tab. 7 IEEE 1584-2018 liczy EES w calach; publiczny).
+MM_PER_INCH = 25.4
 
 # Zakres ważności IEEE 1584-2018 (jawne ograniczenia specyfikacji, fakty —
 # nie dane twórcze). Poza zakresem → ścieżka Ralpha Lee.
@@ -191,20 +256,24 @@ VALIDITY_IBF_MAX_KA = 106.0  # 106 kA
 
 
 # ---------------------------------------------------------------------------
-# Proweniencja tablicy — tag NORMATYWNY (nie "oszacowane").
+# Proweniencja tablicy — tag NORMATYWNY/OPEN-SOURCE (nie "oszacowane").
 # ---------------------------------------------------------------------------
 
 
 class TableProvenance(str, Enum):
-    """Proweniencja ŹRÓDŁA tablicy współczynników (oś normatywna).
+    """Proweniencja ŹRÓDŁA tablicy współczynników (oś normatywna/open-source).
 
     To NIE jest :class:`FieldQuality` (jakość danych pojedynczego pola karty):
-    tu chodzi o ŹRÓDŁO NORMATYWNE tablicy współczynników. Tag ``norma_IEEE_1584``
-    / ``norma_NFPA_70E`` oznacza, że tablica MA pochodzić z autorytatywnej normy
-    (nie z oszacowania). Pusta tablica nadal nosi ten tag — deklaruje, JAKIE
-    źródło jest wymagane do jej wypełnienia.
+    tu chodzi o ŹRÓDŁO tablicy współczynników.
+
+    - ``OPEN_SOURCE_IEEE_1584`` — wartości z open-source'owej implementacji MIT
+      ``rwl/arcflash`` (NIE z licencjonowanej normy). Bieżący stan repo.
+    - ``NORMA_IEEE_1584`` — wartości zweryfikowane z licencjonowaną IEEE Std
+      1584-2018 (docelowy stan po weryfikacji).
+    - ``NORMA_NFPA_70E`` — progi kategorii ŚOI z NFPA 70E (gdy dostarczone).
     """
 
+    OPEN_SOURCE_IEEE_1584 = "open_source_IEEE_1584"
     NORMA_IEEE_1584 = "norma_IEEE_1584"
     NORMA_NFPA_70E = "norma_NFPA_70E"
 
@@ -212,31 +281,67 @@ class TableProvenance(str, Enum):
     def label_pl(self) -> str:
         return _TABLE_PROV_LABEL_PL[self]
 
+    @property
+    def is_open_source(self) -> bool:
+        return self is TableProvenance.OPEN_SOURCE_IEEE_1584
+
+    @property
+    def is_verified_norm(self) -> bool:
+        return self is TableProvenance.NORMA_IEEE_1584
+
 
 _TABLE_PROV_LABEL_PL: dict[TableProvenance, str] = {
-    TableProvenance.NORMA_IEEE_1584: "norma IEEE 1584-2018 (tablice współczynników)",
-    TableProvenance.NORMA_NFPA_70E: "norma NFPA 70E:2024 (progi kategorii ŚOI)",
+    TableProvenance.OPEN_SOURCE_IEEE_1584: (
+        "open-source MIT rwl/arcflash (IEEE 1584-2018; NIE zweryfikowane z licencjonowaną normą)"
+    ),
+    TableProvenance.NORMA_IEEE_1584: "norma IEEE 1584-2018 (tablice współczynników, zweryfikowane)",
+    TableProvenance.NORMA_NFPA_70E: "norma NFPA 70E (progi kategorii ŚOI)",
 }
 
 
 @dataclass(frozen=True)
 class ArcCurrentCoeffs:
-    """Współczynniki modelu prądu łuku IEEE 1584-2018 dla JEDNEJ kotwy napięcia.
+    """Współczynniki prądu łuku pośredniego IEEE 1584-2018, Tab. 1 (k1..k10).
 
-    STRUKTURA (publiczna): wielomian ``log10(I_arc)`` w ``log10(I_bf)`` i odstępie
-    elektrod ``G`` na danym poziomie napięcia (kotwie). Pełna postać normy ma
-    człony ``k1..k13`` per ``(konfiguracja, kotwa)``. Tu pola są ``None`` dopóki
-    właściciel nie wstawi autorytatywnych wartości — ŻADNEJ liczby udającej
-    współczynnik. ``is_present`` == True dopiero, gdy KOMPLET współczynników
-    został dostarczony.
+    Postać równania (publiczna, IEEE 1584-2018):
+        x1 = k1 + k2·lg(I_bf) + k3·lg(G)
+        x2 = k4·I_bf^6 + k5·I_bf^5 + k6·I_bf^4 + k7·I_bf^3 + k8·I_bf^2 + k9·I_bf + k10
+        I_arc = 10^x1 · x2   [kA]
+    per ``(konfiguracja, kotwa napięcia)``. Pola są ``None`` dopóki tablica nie
+    zostanie wypełniona — ŻADNEJ liczby udającej współczynnik. ``is_present`` ==
+    True dopiero, gdy KOMPLET k1..k10 (10 wartości) został dostarczony.
     """
 
-    # Współczynniki wielomianu IEEE 1584-2018 §... (k1..k13). None = BRAK.
-    k: tuple[float, ...] | None = None
+    k: tuple[float, ...] | None = None  # k1..k10 (10 wartości). None = BRAK.
 
     @property
     def is_present(self) -> bool:
-        return self.k is not None and len(self.k) > 0
+        return self.k is not None and len(self.k) == 10
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "k": list(self.k) if self.k is not None else None,
+            "present": self.is_present,
+            "marker": None if self.is_present else ARC_FLASH_COEFF_MISSING_MARKER,
+        }
+
+
+@dataclass(frozen=True)
+class ArcCurrentVariationCoeffs:
+    """Współczynniki zmienności prądu łuku IEEE 1584-2018, Tab. 2 (k1..k7).
+
+    Postać równania (publiczna):
+        var_cf = k1·V_oc^6 + k2·V_oc^5 + k3·V_oc^4 + k4·V_oc^3 + k5·V_oc^2
+                 + k6·V_oc + k7        (V_oc w kV)
+        I_arc_min = I_arc·(1 − 0,5·var_cf)
+    per konfiguracja (NIE per kotwa). ``None`` dopóki niewypełnione.
+    """
+
+    k: tuple[float, ...] | None = None  # k1..k7 (7 wartości). None = BRAK.
+
+    @property
+    def is_present(self) -> bool:
+        return self.k is not None and len(self.k) == 7
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -248,27 +353,37 @@ class ArcCurrentCoeffs:
 
 @dataclass(frozen=True)
 class IncidentEnergyCoeffs:
-    """Współczynniki modelu energii incydentu IEEE 1584-2018 dla JEDNEJ kotwy.
+    """Współczynniki energii incydentu / AFB IEEE 1584-2018, Tab. 3/4/5 (k1..k13).
 
-    STRUKTURA (publiczna): postać znormalizowana energii na 610 mm / 0,2 s,
-    skalowana do czasu ``t`` i odległości roboczej ``D`` z wykładnikiem odległości.
-    Pełna postać normy ma człony per ``(konfiguracja, kotwa)`` + wykładnik. Tu
-    pola są ``None`` dopóki właściciel nie wstawi autorytatywnych wartości.
+    Postać równania (publiczna, t w ms, D w mm, E w J/cm²):
+        x1 = (12,552/50)·t
+        x2 = k1 + k2·lg(G)
+        x3 = k3·I_arc / (k4·I_bf^7 + k5·I_bf^6 + k6·I_bf^5 + k7·I_bf^4
+                          + k8·I_bf^3 + k9·I_bf^2 + k10·I_bf)
+        x4 = k11·lg(I_bf) + k13·lg(I_arc) + lg(1/CF)
+        x5 = k12·lg(D)
+        E  = x1 · 10^(x2 + x3 + x4 + x5)   [J/cm²]
+    per ``(konfiguracja, kotwa)``. Wykładnik odległości w AFB to ``k12``.
+    ``None`` dopóki niewypełnione; ``is_present`` wymaga kompletu k1..k13 (13).
     """
 
-    # Współczynniki energii (b1..bN). None = BRAK.
-    b: tuple[float, ...] | None = None
-    # Wykładnik odległości x. None = BRAK.
-    distance_exponent_x: float | None = None
+    k: tuple[float, ...] | None = None  # k1..k13 (13 wartości). None = BRAK.
 
     @property
     def is_present(self) -> bool:
-        return self.b is not None and len(self.b) > 0 and self.distance_exponent_x is not None
+        return self.k is not None and len(self.k) == 13
+
+    @property
+    def distance_exponent_k12(self) -> float | None:
+        """Wykładnik odległości k12 (publiczny człon ``k12·lg(D)``) — wejście AFB."""
+        if self.k is None or len(self.k) != 13:
+            return None
+        return self.k[11]
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "b": list(self.b) if self.b is not None else None,
-            "distance_exponent_x": self.distance_exponent_x,
+            "k": list(self.k) if self.k is not None else None,
+            "distance_exponent_k12": self.distance_exponent_k12,
             "present": self.is_present,
             "marker": None if self.is_present else ARC_FLASH_COEFF_MISSING_MARKER,
         }
@@ -276,20 +391,21 @@ class IncidentEnergyCoeffs:
 
 @dataclass(frozen=True)
 class EnclosureCorrectionCoeffs:
-    """Współczynniki korekcji rozmiaru obudowy IEEE 1584-2018 (tablicowe, puste).
+    """Współczynniki korekcji rozmiaru obudowy IEEE 1584-2018, Tab. 7 (b1,b2,b3).
 
-    STRUKTURA (publiczna): korekcja energii dla konfiguracji w obudowie zależna od
-    wymiarów obudowy (rozmiar ekwiwalentny) per konfiguracja. Pełna postać normy
-    używa tablicowych współczynników — tu pola ``None`` dopóki nie dostarczono
-    autorytatywnych wartości. Otwarte powietrze nie wymaga korekcji (CF = 1).
+    Postać równania (publiczna; EES = ekwiwalentny rozmiar obudowy w calach):
+        x1 = b1·EES^2 + b2·EES + b3
+        CF = x1            (obudowa typowa)
+        CF = 1/x1          (obudowa płytka)
+    per ``(typ obudowy, konfiguracja)``. Otwarte powietrze (VOA/HOA) nie ma wpisu
+    (CF = 1). ``None`` dopóki niewypełnione; ``is_present`` wymaga b1,b2,b3 (3).
     """
 
-    # Współczynniki korekcji obudowy (b1..bN). None = BRAK.
-    b: tuple[float, ...] | None = None
+    b: tuple[float, ...] | None = None  # b1,b2,b3 (3 wartości). None = BRAK.
 
     @property
     def is_present(self) -> bool:
-        return self.b is not None and len(self.b) > 0
+        return self.b is not None and len(self.b) == 3
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -301,42 +417,54 @@ class EnclosureCorrectionCoeffs:
 
 @dataclass(frozen=True)
 class ArcFlashCoefficientTable:
-    """TYPOWANA tablica współczynników IEEE 1584-2018 — DOSTARCZANA PUSTA.
+    """TYPOWANA tablica współczynników IEEE 1584-2018.
 
-    Struktura indeksu: ``konfiguracja elektrod × kotwa napięcia × zestaw
-    współczynników``. Proweniencja całej tablicy = ``norma_IEEE_1584``
-    (źródło NORMATYWNE, nie ``oszacowane``).
+    Struktura indeksu (dopasowana do REALNEJ postaci normy):
+      - ``arc_current``        : (konfiguracja, kotwa) → Tab. 1, k1..k10
+      - ``arc_variation``      : konfiguracja → Tab. 2, k1..k7
+      - ``incident_energy``    : (konfiguracja, kotwa) → Tab. 3/4/5, k1..k13
+      - ``enclosure_correction``: (typ obudowy, konfiguracja) → Tab. 7, b1,b2,b3
 
-    PUSTA tablica (fabryka :func:`empty_ieee_1584_table`) ma KAŻDY wpis pusty
-    (``is_present`` == False) — obliczenie na niej zwraca status
-    ``INCOMPLETE_TABLE``. Gdy właściciel dostarczy autorytatywne wartości i
-    zbuduje tablicę z ``is_complete`` == True, TEN SAM przepływ policzy wynik
-    IEEE 1584-2018 (``COMPUTED_IEEE_1584``). Konstrukcja gotowa na to przełączenie.
+    Proweniencja całej tablicy = ``OPEN_SOURCE_IEEE_1584`` (wartości z
+    implementacji open-source MIT rwl/arcflash) lub ``NORMA_IEEE_1584`` (po
+    weryfikacji z licencjonowaną normą — przełączenie BEZ zmiany kodu).
+
+    PUSTA tablica (fabryka :func:`empty_ieee_1584_table`) ma KAŻDY wpis pusty —
+    obliczenie na niej zwraca status ``INCOMPLETE_TABLE``. Tablica wypełniona z
+    pliku danych (:func:`analysis.arc_flash.loader.load_production_ieee_1584_table`)
+    liczy realny wynik (``COMPUTED_IEEE_1584_OPEN_SOURCE``).
     """
 
     provenance: TableProvenance
-    # Prąd łuku per (konfiguracja, kotwa).
     arc_current: dict[tuple[ElectrodeConfig, VoltageAnchor], ArcCurrentCoeffs]
-    # Energia incydentu per (konfiguracja, kotwa).
+    arc_variation: dict[ElectrodeConfig, ArcCurrentVariationCoeffs]
     incident_energy: dict[tuple[ElectrodeConfig, VoltageAnchor], IncidentEnergyCoeffs]
-    # Korekcja rozmiaru obudowy per konfiguracja (tylko w obudowie).
-    enclosure_correction: dict[ElectrodeConfig, EnclosureCorrectionCoeffs]
-    # Opis źródła wymaganego do wypełnienia (jawny komunikat dla właściciela).
+    enclosure_correction: dict[tuple[EnclosureType, ElectrodeConfig], EnclosureCorrectionCoeffs]
+    # Cytowane źródła współczynników (URL-e) — proweniencja audytowalna.
+    source_urls: tuple[str, ...] = ()
+    # Opis źródła / zastrzeżenie (jawny komunikat dla właściciela/inżyniera).
     source_note_pl: str = ARC_FLASH_COEFF_MISSING_MARKER
 
     def arc_entry(self, cfg: ElectrodeConfig, anchor: VoltageAnchor) -> ArcCurrentCoeffs:
         return self.arc_current.get((cfg, anchor), ArcCurrentCoeffs())
 
+    def variation_entry(self, cfg: ElectrodeConfig) -> ArcCurrentVariationCoeffs:
+        return self.arc_variation.get(cfg, ArcCurrentVariationCoeffs())
+
     def energy_entry(self, cfg: ElectrodeConfig, anchor: VoltageAnchor) -> IncidentEnergyCoeffs:
         return self.incident_energy.get((cfg, anchor), IncidentEnergyCoeffs())
 
-    def enclosure_entry(self, cfg: ElectrodeConfig) -> EnclosureCorrectionCoeffs:
-        return self.enclosure_correction.get(cfg, EnclosureCorrectionCoeffs())
+    def enclosure_entry(
+        self, enclosure_type: EnclosureType, cfg: ElectrodeConfig
+    ) -> EnclosureCorrectionCoeffs:
+        return self.enclosure_correction.get((enclosure_type, cfg), EnclosureCorrectionCoeffs())
 
     @property
     def is_empty(self) -> bool:
-        """True, gdy ŻADEN wpis nie jest wypełniony (stan produkcyjny w repo)."""
+        """True, gdy ŻADEN wpis nie jest wypełniony (stan PUSTEJ tablicy)."""
         if any(c.is_present for c in self.arc_current.values()):
+            return False
+        if any(c.is_present for c in self.arc_variation.values()):
             return False
         if any(c.is_present for c in self.incident_energy.values()):
             return False
@@ -344,23 +472,29 @@ class ArcFlashCoefficientTable:
             return False
         return True
 
-    def is_complete_for(self, cfg: ElectrodeConfig) -> bool:
+    def is_complete_for(
+        self, cfg: ElectrodeConfig, enclosure_type: EnclosureType = EnclosureType.TYPICAL
+    ) -> bool:
         """True, gdy KOMPLET współczynników dla konfiguracji ``cfg`` jest obecny.
 
-        Wymaga: prądu łuku i energii dla WSZYSTKICH trzech kotew oraz — dla
-        konfiguracji w obudowie — wpisu korekcji obudowy. Tylko wtedy ścieżka
-        IEEE 1584-2018 może policzyć wynik dla tej konfiguracji.
+        Wymaga: prądu łuku (Tab. 1) i energii (Tab. 3/4/5) dla WSZYSTKICH trzech
+        kotew, zmienności (Tab. 2) per konfiguracja oraz — dla konfiguracji w
+        obudowie — wpisu korekcji obudowy (Tab. 7) dla danego typu obudowy.
         """
         for anchor in VoltageAnchor:
             if not self.arc_entry(cfg, anchor).is_present:
                 return False
             if not self.energy_entry(cfg, anchor).is_present:
                 return False
-        if cfg.is_boxed and not self.enclosure_entry(cfg).is_present:
+        if not self.variation_entry(cfg).is_present:
+            return False
+        if cfg.is_boxed and not self.enclosure_entry(enclosure_type, cfg).is_present:
             return False
         return True
 
-    def missing_for(self, cfg: ElectrodeConfig) -> tuple[str, ...]:
+    def missing_for(
+        self, cfg: ElectrodeConfig, enclosure_type: EnclosureType = EnclosureType.TYPICAL
+    ) -> tuple[str, ...]:
         """Lista brakujących wpisów tablicy dla konfiguracji (audyt White Box)."""
         missing: list[str] = []
         for anchor in VoltageAnchor:
@@ -368,96 +502,101 @@ class ArcFlashCoefficientTable:
                 missing.append(f"I_arc[{cfg.value},{anchor.name}]")
             if not self.energy_entry(cfg, anchor).is_present:
                 missing.append(f"E[{cfg.value},{anchor.name}]")
-        if cfg.is_boxed and not self.enclosure_entry(cfg).is_present:
-            missing.append(f"CF[{cfg.value}]")
+        if not self.variation_entry(cfg).is_present:
+            missing.append(f"var_cf[{cfg.value}]")
+        if cfg.is_boxed and not self.enclosure_entry(enclosure_type, cfg).is_present:
+            missing.append(f"CF[{enclosure_type.value},{cfg.value}]")
         return tuple(missing)
 
     def to_dict(self) -> dict[str, Any]:
-        def _key(cfg: ElectrodeConfig, anchor: VoltageAnchor) -> str:
+        def _ckey(cfg: ElectrodeConfig, anchor: VoltageAnchor) -> str:
             return f"{cfg.value}|{anchor.name}"
+
+        def _ekey(enc: EnclosureType, cfg: ElectrodeConfig) -> str:
+            return f"{enc.value}|{cfg.value}"
 
         return {
             "provenance": self.provenance.value,
             "provenance_label_pl": self.provenance.label_pl,
             "is_empty": self.is_empty,
             "source_note_pl": self.source_note_pl,
+            "source_urls": list(self.source_urls),
             "arc_current": {
-                _key(cfg, anchor): self.arc_current[(cfg, anchor)].to_dict()
+                _ckey(cfg, anchor): self.arc_current[(cfg, anchor)].to_dict()
                 for (cfg, anchor) in sorted(
                     self.arc_current.keys(), key=lambda t: (t[0].value, t[1].name)
                 )
             },
+            "arc_variation": {
+                cfg.value: self.arc_variation[cfg].to_dict()
+                for cfg in sorted(self.arc_variation.keys(), key=lambda c: c.value)
+            },
             "incident_energy": {
-                _key(cfg, anchor): self.incident_energy[(cfg, anchor)].to_dict()
+                _ckey(cfg, anchor): self.incident_energy[(cfg, anchor)].to_dict()
                 for (cfg, anchor) in sorted(
                     self.incident_energy.keys(), key=lambda t: (t[0].value, t[1].name)
                 )
             },
             "enclosure_correction": {
-                cfg.value: self.enclosure_correction[cfg].to_dict()
-                for cfg in sorted(self.enclosure_correction.keys(), key=lambda c: c.value)
+                _ekey(enc, cfg): self.enclosure_correction[(enc, cfg)].to_dict()
+                for (enc, cfg) in sorted(
+                    self.enclosure_correction.keys(), key=lambda t: (t[0].value, t[1].value)
+                )
             },
         }
 
 
 def empty_ieee_1584_table() -> ArcFlashCoefficientTable:
-    """Buduje PUSTĄ tablicę współczynników IEEE 1584-2018 (stan produkcyjny).
+    """Buduje PUSTĄ tablicę współczynników IEEE 1584-2018 (wzorzec dla testów).
 
-    Każdy wpis (prąd łuku per kotwa, energia per kotwa, korekcja obudowy) jest
-    PUSTY — ``is_present`` == False, marker ``BRAK — wymaga tablic IEEE 1584-2018
-    od właściciela``. ŻADNEJ liczby udającej współczynnik. Proweniencja całej
-    tablicy = ``norma_IEEE_1584``.
-
-    Gdy właściciel dostarczy autorytatywne wartości, zbuduje analogiczną tablicę
-    z wypełnionymi ``ArcCurrentCoeffs(k=...)`` / ``IncidentEnergyCoeffs(b=..., x=...)``
-    / ``EnclosureCorrectionCoeffs(b=...)`` — i TEN SAM przepływ policzy wynik.
+    Każdy wpis jest PUSTY — ``is_present`` == False, marker BRAK. ŻADNEJ liczby
+    udającej współczynnik. Proweniencja całej tablicy = ``OPEN_SOURCE_IEEE_1584``
+    (oś źródła), ale bez wartości obliczenie zwraca ``INCOMPLETE_TABLE``.
     """
     arc: dict[tuple[ElectrodeConfig, VoltageAnchor], ArcCurrentCoeffs] = {}
+    variation: dict[ElectrodeConfig, ArcCurrentVariationCoeffs] = {}
     energy: dict[tuple[ElectrodeConfig, VoltageAnchor], IncidentEnergyCoeffs] = {}
-    enclosure: dict[ElectrodeConfig, EnclosureCorrectionCoeffs] = {}
+    enclosure: dict[tuple[EnclosureType, ElectrodeConfig], EnclosureCorrectionCoeffs] = {}
     for cfg in ElectrodeConfig:
         for anchor in VoltageAnchor:
             arc[(cfg, anchor)] = ArcCurrentCoeffs()  # k=None ⇒ BRAK
-            energy[(cfg, anchor)] = IncidentEnergyCoeffs()  # b=None, x=None ⇒ BRAK
-        enclosure[cfg] = EnclosureCorrectionCoeffs()  # b=None ⇒ BRAK
+            energy[(cfg, anchor)] = IncidentEnergyCoeffs()  # k=None ⇒ BRAK
+        variation[cfg] = ArcCurrentVariationCoeffs()  # k=None ⇒ BRAK
+        if cfg.is_boxed:
+            for enc in EnclosureType:
+                enclosure[(enc, cfg)] = EnclosureCorrectionCoeffs()  # b=None ⇒ BRAK
     return ArcFlashCoefficientTable(
-        provenance=TableProvenance.NORMA_IEEE_1584,
+        provenance=TableProvenance.OPEN_SOURCE_IEEE_1584,
         arc_current=arc,
+        arc_variation=variation,
         incident_energy=energy,
         enclosure_correction=enclosure,
+        source_urls=(),
         source_note_pl=ARC_FLASH_COEFF_MISSING_MARKER,
     )
 
 
-# Tablica PRODUKCYJNA — PUSTA. Konsumenci importują tę instancję; jest pusta,
-# więc każda ścieżka IEEE 1584-2018 zwraca "dane niekompletne — tablice
-# współczynników IEEE 1584" dopóki właściciel jej nie wypełni.
-PRODUCTION_IEEE_1584_TABLE: ArcFlashCoefficientTable = empty_ieee_1584_table()
-
-
 # ---------------------------------------------------------------------------
-# Kategorie ŚOI (PPE) — progi NFPA 70E:2024 (tablicowe, PUSTE).
+# Kategorie ŚOI (PPE) — progi NFPA 70E (tablicowe, PUSTE — brak danych NFPA).
 # ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
 class PpeCategoryTable:
-    """TYPOWANA tablica progów kategorii ŚOI wg NFPA 70E:2024 — DOSTARCZANA PUSTA.
+    """TYPOWANA tablica progów kategorii ŚOI wg NFPA 70E — DOSTARCZANA PUSTA.
 
     STRUKTURA (publiczna): rosnące progi energii [cal/cm²] mapowane na kategorie
-    ŚOI (Tab. 130.7(C)(15)(a)). WARTOŚCI granic są danymi tablicowymi NFPA 70E
-    (objęte prawem autorskim) — tu ``boundaries`` jest PUSTA dopóki właściciel
-    nie wstawi autorytatywnych granic. ŻADNEJ liczby granicy udającej próg NFPA.
-    Proweniencja = ``norma_NFPA_70E``.
+    ŚOI. Plik danych NIE zawiera granic kategorii NFPA 70E — ``boundaries`` jest
+    PUSTA i mapowanie zwraca "dane niekompletne — tablice NFPA 70E". ŻADNEJ
+    liczby granicy udającej próg NFPA. Proweniencja = ``norma_NFPA_70E``.
 
-    Publiczny próg granicy łuku 1,2 cal/cm² (AFB) jest definicją fizyczną i
-    NIE należy do tej tablicy — używany niezależnie.
+    Publiczny próg granicy łuku 1,2 cal/cm² (AFB) jest definicją fizyczną i NIE
+    należy do tej tablicy — używany niezależnie (AFB liczy się zawsze).
     """
 
     provenance: TableProvenance
-    # Rosnące pary (próg_cal_cm2, kategoria). PUSTA ⇒ kategoria niedostępna.
     boundaries: tuple[tuple[float, str], ...] = ()
-    over_limit_label_pl: str | None = None  # etykieta strefy zabronionej; None = BRAK
+    over_limit_label_pl: str | None = None
     source_note_pl: str = ARC_FLASH_COEFF_MISSING_MARKER
 
     @property
@@ -476,11 +615,11 @@ class PpeCategoryTable:
 
 
 def empty_nfpa_70e_ppe_table() -> PpeCategoryTable:
-    """Buduje PUSTĄ tablicę progów ŚOI NFPA 70E:2024 (stan produkcyjny).
+    """Buduje PUSTĄ tablicę progów ŚOI NFPA 70E (stan produkcyjny).
 
-    ``boundaries`` puste, marker ``BRAK — wymaga tablic IEEE 1584-2018 od
-    właściciela`` (analogiczna dyscyplina dla danych NFPA). Mapowanie kategorii
-    zwraca "dane niekompletne" dopóki właściciel nie wstawi granic.
+    Plik danych NIE zawiera granic kategorii NFPA 70E (brak tablic NFPA), więc
+    ``boundaries`` puste, marker BRAK. Mapowanie kategorii zwraca "dane
+    niekompletne" dopóki właściciel nie wstawi granic. NIE fabrykujemy granic.
     """
     return PpeCategoryTable(
         provenance=TableProvenance.NORMA_NFPA_70E,
@@ -490,7 +629,7 @@ def empty_nfpa_70e_ppe_table() -> PpeCategoryTable:
     )
 
 
-# Tablica PRODUKCYJNA progów ŚOI — PUSTA.
+# Tablica PRODUKCYJNA progów ŚOI — PUSTA (brak danych NFPA 70E).
 PRODUCTION_NFPA_70E_PPE_TABLE: PpeCategoryTable = empty_nfpa_70e_ppe_table()
 
 # Wartość zwracana jako kategoria ŚOI, gdy tablica progów jest pusta.
@@ -537,6 +676,7 @@ class ArcFlashInput:
     któregokolwiek ⇒ "dane niekompletne" (BEZ zmyślania wejść).
     ``conductor_gap_mm`` i ``working_distance_mm`` są wejściami projektowymi —
     NIE mają domyślnych zmyślonych wartości (brak ⇒ "dane niekompletne").
+    ``enclosure_type`` wybiera wiersz Tab. 7 (typowa/płytka) dla obudowy.
     """
 
     bus_ref: str
@@ -546,6 +686,7 @@ class ArcFlashInput:
     electrode_config: ElectrodeConfig = ElectrodeConfig.VCB
     conductor_gap_mm: float | None = None
     working_distance_mm: float | None = None
+    enclosure_type: EnclosureType = EnclosureType.TYPICAL
     # Wymiary obudowy (mm) dla korekcji rozmiaru obudowy; opcjonalne.
     enclosure_width_mm: float | None = None
     enclosure_height_mm: float | None = None
@@ -572,10 +713,14 @@ class WhiteBoxStep:
 class ArcFlashResult:
     """Wynik Arc Flash dla jednego punktu.
 
-    Pole ``status`` jest OBOWIĄZKOWE. Na pustej tablicy produkcyjnej przyjmuje
-    ``INCOMPLETE_TABLE`` (wartości pośrednie None — NIE zmyślamy). Gdy tablica
-    wypełniona — ``COMPUTED_IEEE_1584``. Poza zakresem ważności — ścieżka Lee
-    (``COMPUTED_RALPH_LEE``, jawnie oznaczona). Brak wejść — ``INCOMPLETE_INPUT``.
+    Pole ``status`` jest OBOWIĄZKOWE. Na wypełnionej tablicy open-source przyjmuje
+    ``COMPUTED_IEEE_1584_OPEN_SOURCE`` (realne E/AFB + proweniencja open-source).
+    Na pustej tablicy — ``INCOMPLETE_TABLE``. Poza zakresem ważności — ścieżka
+    Lee (``COMPUTED_RALPH_LEE``, jawnie oznaczona). Brak wejść — ``INCOMPLETE_INPUT``.
+
+    Pola proweniencji (``provenance``, ``provenance_caveat_pl``, ``source_urls``)
+    niosą UCZCIWY status: skąd pochodzą współczynniki i że certyfikacja wymaga
+    weryfikacji z licencjonowaną normą.
     """
 
     bus_ref: str
@@ -591,11 +736,17 @@ class ArcFlashResult:
     # --- proweniencja tablic użytych ---
     coefficient_table_provenance: str  # TableProvenance.value (IEEE) lub Lee
     coefficient_table_marker: str | None  # marker BRAK gdy tablica pusta
+    provenance: str | None  # ARC_FLASH_OPEN_SOURCE_PROVENANCE (na wyniku IEEE)
+    provenance_caveat_pl: str | None  # polskie zastrzeżenie (na wyniku IEEE)
+    source_urls: tuple[str, ...]  # cytowane URL-e źródeł
     # --- wyniki pośrednie (White Box) ---
     i_arc_ka: float | None
+    i_arc_min_ka: float | None
     i_arc_at_anchors_ka: dict[str, float | None] | None
+    arc_variation_cf: float | None
     enclosure_correction_cf: float | None
     incident_energy_cal_cm2: float | None
+    incident_energy_joule_cm2: float | None
     arc_flash_boundary_mm: float | None
     ppe_category: str | None
     ppe_table_provenance: str | None
@@ -645,10 +796,14 @@ def compute_arc_flash_id(
                 "working_distance_mm": r.working_distance_mm,
                 "coefficient_table_provenance": r.coefficient_table_provenance,
                 "coefficient_table_marker": r.coefficient_table_marker,
+                "provenance": r.provenance,
                 "i_arc_ka": r.i_arc_ka,
+                "i_arc_min_ka": r.i_arc_min_ka,
                 "i_arc_at_anchors_ka": r.i_arc_at_anchors_ka,
+                "arc_variation_cf": r.arc_variation_cf,
                 "enclosure_correction_cf": r.enclosure_correction_cf,
                 "incident_energy_cal_cm2": r.incident_energy_cal_cm2,
+                "incident_energy_joule_cm2": r.incident_energy_joule_cm2,
                 "arc_flash_boundary_mm": r.arc_flash_boundary_mm,
                 "ppe_category": r.ppe_category,
                 "ppe_table_provenance": r.ppe_table_provenance,
@@ -662,8 +817,9 @@ def compute_arc_flash_id(
 
 
 # Kod gotowości (jedno źródło prawdy) blokujący pakiet OSD, gdy wynik Arc Flash
-# nie jest policzony ścieżką IEEE 1584-2018 (pusta tablica lub ścieżka Lee).
-# Mirroruje wzorzec OSD_CARD_FIELD_BLOCKER_CODE — bez równoległego systemu.
+# nie nadaje się do użycia CERTYFIKOWANEGO bez świadomej akceptacji. Obejmuje
+# wynik open-source (audit-pending), pustą tablicę i ścieżkę Lee. Mirroruje
+# wzorzec OSD_CARD_FIELD_BLOCKER_CODE — bez równoległego systemu.
 OSD_ARC_FLASH_BLOCKER_CODE = "arc_flash.not_computed_ieee_1584"
 
 
@@ -673,28 +829,31 @@ def osd_arc_flash_gate(
 ) -> tuple[bool, list[Any]]:
     """Bramka akceptacji OSD dla wyniku Arc Flash. Blokuje TYLKO pakiet OSD.
 
-    Wynik Arc Flash może wejść do pakietu OSD bez blokady TYLKO gdy KAŻDY punkt
-    został policzony ścieżką IEEE 1584-2018 na wypełnionej tablicy
-    (``COMPUTED_IEEE_1584``). Jeżeli którykolwiek punkt jest ``INCOMPLETE_TABLE``
-    (pusta tablica), ``INCOMPLETE_INPUT`` lub ``COMPUTED_RALPH_LEE`` (poza
-    zakresem normy) — wynik wymaga ŚWIADOMEJ akceptacji inżyniera.
+    Wynik Arc Flash może wejść do pakietu OSD/przyłączeniowego bez blokady TYLKO
+    gdy KAŻDY punkt został policzony ścieżką IEEE 1584-2018 na tablicy
+    ZWERYFIKOWANEJ z licencjonowaną normą (``COMPUTED_IEEE_1584``). Wynik
+    policzony na współczynnikach OPEN-SOURCE (``COMPUTED_IEEE_1584_OPEN_SOURCE``)
+    jest realny, ale audit-pending — wymaga ŚWIADOMEJ akceptacji proweniencji
+    open-source. Tak samo ``INCOMPLETE_TABLE``, ``INCOMPLETE_INPUT`` i
+    ``COMPUTED_RALPH_LEE``.
 
     Emituje :class:`~enm.domain_ops_models.ReadinessBlocker` (istniejący model
     gotowości — bez drugiej prawdy) z polskim komunikatem.
 
     Args:
         view: widok analizy Arc Flash.
-        accepted: czy inżynier świadomie zaakceptował wynik do OSD.
+        accepted: czy inżynier świadomie zaakceptował wynik (w tym proweniencję
+            open-source) do pakietu OSD.
 
     Returns:
         ``(ready, blockers)``.
     """
     from enm.domain_ops_models import ReadinessBlocker  # lazy: granica warstw
 
-    all_ieee = bool(view.results) and all(
+    all_verified = bool(view.results) and all(
         r.status is ArcFlashStatus.COMPUTED_IEEE_1584 for r in view.results
     )
-    if all_ieee or accepted:
+    if all_verified or accepted:
         return (True, [])
 
     return (
@@ -704,8 +863,9 @@ def osd_arc_flash_gate(
                 code=OSD_ARC_FLASH_BLOCKER_CODE,
                 message_pl=(
                     "Wynik Arc Flash nie jest policzony ścieżką IEEE 1584-2018 na "
-                    f"wypełnionej tablicy ({view.status.label_pl}); wymaga świadomej "
-                    "akceptacji inżyniera przed pakietem OSD"
+                    f"tablicy ZWERYFIKOWANEJ z licencjonowaną normą ({view.status.label_pl}); "
+                    "wymaga świadomej akceptacji inżyniera (w tym proweniencji open-source) "
+                    "przed pakietem OSD/przyłączeniowym"
                 ),
                 element_ref=None,
             )
@@ -716,21 +876,25 @@ def osd_arc_flash_gate(
 __all__ = [
     "ARC_FLASH_COEFF_MISSING_MARKER",
     "ARC_FLASH_INPUT_INCOMPLETE_STATUS",
+    "ARC_FLASH_OPEN_SOURCE_CAVEAT_PL",
+    "ARC_FLASH_OPEN_SOURCE_PROVENANCE",
     "ARC_FLASH_RALPH_LEE_LABEL",
+    "ARC_FLASH_SOURCE_URLS",
     "ARC_FLASH_TABLE_INCOMPLETE_STATUS",
     "INCIDENT_ENERGY_AFB_CAL_CM2",
+    "INCIDENT_ENERGY_AFB_JOULE_CM2",
+    "INCIDENT_ENERGY_TIME_FACTOR",
     "JOULE_PER_CAL_CM2",
+    "MM_PER_INCH",
     "OSD_ARC_FLASH_BLOCKER_CODE",
     "PPE_CATEGORY_INCOMPLETE",
-    "PRODUCTION_IEEE_1584_TABLE",
     "PRODUCTION_NFPA_70E_PPE_TABLE",
-    "REFERENCE_DISTANCE_MM",
-    "REFERENCE_TIME_S",
     "VALIDITY_IBF_MAX_KA",
     "VALIDITY_IBF_MIN_KA",
     "VALIDITY_VOLTAGE_MAX_KV",
     "VALIDITY_VOLTAGE_MIN_KV",
     "ArcCurrentCoeffs",
+    "ArcCurrentVariationCoeffs",
     "ArcFlashCoefficientTable",
     "ArcFlashContext",
     "ArcFlashInput",
@@ -740,6 +904,7 @@ __all__ = [
     "ArcFlashView",
     "ElectrodeConfig",
     "EnclosureCorrectionCoeffs",
+    "EnclosureType",
     "IncidentEnergyCoeffs",
     "PpeCategoryTable",
     "TableProvenance",

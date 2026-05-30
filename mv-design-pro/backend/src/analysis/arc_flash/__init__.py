@@ -1,15 +1,16 @@
-"""D-01 Arc Flash — STRUKTURA IEEE 1584-2018 z PUSTĄ TABLICĄ współczynników.
+"""D-01 Arc Flash — IEEE 1584-2018 (model publiczny, współczynniki open-source).
 
 ╔══════════════════════════════════════════════════════════════════════════╗
-║  DANE BEZPIECZEŃSTWA — TABLICA WSPÓŁCZYNNIKÓW JEST PUSTA                    ║
-║  STRUKTURA (równania) modelu IEEE 1584-2018 jest publiczna i zbudowana w   ║
-║  całości. WARTOŚCI współczynników regresji to dane tablicowe IEEE          ║
-║  1584-2018 (objęte prawem autorskim) — dostarczane jako PUSTA tablica      ║
-║  typowana (proweniencja ``norma_IEEE_1584``), z markerem ``BRAK — wymaga   ║
-║  tablic IEEE 1584-2018 od właściciela``. ŻADEN współczynnik nie jest       ║
-║  zmyślany. Obliczenie na pustej tablicy zwraca status                      ║
-║  ``dane niekompletne — tablice współczynników IEEE 1584``. Gdy właściciel  ║
-║  wypełni tablicę, TEN SAM przepływ policzy wynik (norma_IEEE_1584).        ║
+║  PROWENIENCJA — OPEN-SOURCE / AUDIT-PENDING (UCZCIWIE, BEZ ZAWYŻANIA)       ║
+║  RÓWNANIA modelu IEEE 1584-2018 są publiczne i zbudowane w całości. WARTOŚCI║
+║  współczynników pochodzą z OPEN-SOURCE'OWEJ implementacji MIT               ║
+║  ``rwl/arcflash`` (NIE z licencjonowanej IEEE Std 1584-2018) i są ŁADOWANE  ║
+║  z trwałego pliku danych w repo (audytowalnie, bez magicznych liczb w       ║
+║  kodzie). Wynik liczy się NAPRAWDĘ ze statusem                             ║
+║  ``COMPUTED_IEEE_1584_OPEN_SOURCE`` i polskim zastrzeżeniem; bramka OSD     ║
+║  blokuje użycie CERTYFIKOWANE, dopóki inżynier świadomie nie zaakceptuje    ║
+║  proweniencji open-source. Po weryfikacji z licencjonowaną normą status     ║
+║  przełącza się na ``COMPUTED_IEEE_1584`` (zweryfikowany) BEZ zmiany kodu.   ║
 ╚══════════════════════════════════════════════════════════════════════════╝
 
 Warstwa OBLICZENIA / interpretacji (Z15): odczytuje gotowy wynik zwarciowy
@@ -21,26 +22,40 @@ Zakres ważności IEEE 1584-2018: 208 V–15 kV, I_bf 500 A–106 kA. Poza zakre
 (zwł. > 15 kV) — ODRĘBNA metoda Ralpha Lee (postać zamknięta, jawnie oznaczona,
 NIE jako IEEE 1584).
 
+Kategoria ŚOI (NFPA 70E): plik danych NIE zawiera granic kategorii NFPA 70E,
+więc mapowanie ŚOI pozostaje „dane niekompletne — tablice NFPA 70E" (granice
+NIE są zmyślane). AFB przy publicznym progu 1,2 cal/cm² liczy się niezależnie.
+
 IAC IEC 62271-200 (łuk wewnętrzny) jest ODRĘBNYM obliczeniem — NIE należy do
 modelu energii incydentu IEEE 1584 i nie jest tu zaimplementowany.
 """
 
 from analysis.arc_flash.builder import ArcFlashBuilder
+from analysis.arc_flash.loader import (
+    PRODUCTION_IEEE_1584_TABLE,
+    build_table_from_payload,
+    load_ieee_1584_table,
+    load_production_ieee_1584_table,
+)
 from analysis.arc_flash.models import (
     ARC_FLASH_COEFF_MISSING_MARKER,
     ARC_FLASH_INPUT_INCOMPLETE_STATUS,
+    ARC_FLASH_OPEN_SOURCE_CAVEAT_PL,
+    ARC_FLASH_OPEN_SOURCE_PROVENANCE,
     ARC_FLASH_RALPH_LEE_LABEL,
+    ARC_FLASH_SOURCE_URLS,
     ARC_FLASH_TABLE_INCOMPLETE_STATUS,
     INCIDENT_ENERGY_AFB_CAL_CM2,
+    INCIDENT_ENERGY_AFB_JOULE_CM2,
     OSD_ARC_FLASH_BLOCKER_CODE,
     PPE_CATEGORY_INCOMPLETE,
-    PRODUCTION_IEEE_1584_TABLE,
     PRODUCTION_NFPA_70E_PPE_TABLE,
     VALIDITY_IBF_MAX_KA,
     VALIDITY_IBF_MIN_KA,
     VALIDITY_VOLTAGE_MAX_KV,
     VALIDITY_VOLTAGE_MIN_KV,
     ArcCurrentCoeffs,
+    ArcCurrentVariationCoeffs,
     ArcFlashCoefficientTable,
     ArcFlashContext,
     ArcFlashInput,
@@ -50,6 +65,7 @@ from analysis.arc_flash.models import (
     ArcFlashView,
     ElectrodeConfig,
     EnclosureCorrectionCoeffs,
+    EnclosureType,
     IncidentEnergyCoeffs,
     PpeCategoryTable,
     TableProvenance,
@@ -64,9 +80,13 @@ from analysis.arc_flash.models import (
 __all__ = [
     "ARC_FLASH_COEFF_MISSING_MARKER",
     "ARC_FLASH_INPUT_INCOMPLETE_STATUS",
+    "ARC_FLASH_OPEN_SOURCE_CAVEAT_PL",
+    "ARC_FLASH_OPEN_SOURCE_PROVENANCE",
     "ARC_FLASH_RALPH_LEE_LABEL",
+    "ARC_FLASH_SOURCE_URLS",
     "ARC_FLASH_TABLE_INCOMPLETE_STATUS",
     "INCIDENT_ENERGY_AFB_CAL_CM2",
+    "INCIDENT_ENERGY_AFB_JOULE_CM2",
     "OSD_ARC_FLASH_BLOCKER_CODE",
     "PPE_CATEGORY_INCOMPLETE",
     "PRODUCTION_IEEE_1584_TABLE",
@@ -76,6 +96,7 @@ __all__ = [
     "VALIDITY_VOLTAGE_MAX_KV",
     "VALIDITY_VOLTAGE_MIN_KV",
     "ArcCurrentCoeffs",
+    "ArcCurrentVariationCoeffs",
     "ArcFlashBuilder",
     "ArcFlashCoefficientTable",
     "ArcFlashContext",
@@ -86,13 +107,17 @@ __all__ = [
     "ArcFlashView",
     "ElectrodeConfig",
     "EnclosureCorrectionCoeffs",
+    "EnclosureType",
     "IncidentEnergyCoeffs",
     "PpeCategoryTable",
     "TableProvenance",
     "VoltageAnchor",
     "WhiteBoxStep",
+    "build_table_from_payload",
     "compute_arc_flash_id",
     "empty_ieee_1584_table",
     "empty_nfpa_70e_ppe_table",
+    "load_ieee_1584_table",
+    "load_production_ieee_1584_table",
     "osd_arc_flash_gate",
 ]

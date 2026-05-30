@@ -1,11 +1,13 @@
-"""Builder Arc Flash — STRUKTURA IEEE 1584-2018 parametryzowana TABLICĄ.
+"""Builder Arc Flash — równania IEEE 1584-2018 (publiczne) na współczynnikach z danych.
 
-Liczy prąd łuku, energię incydentu, granicę łuku i kategorię ŚOI wg STRUKTURY
-równań IEEE 1584-2018, z pełnym wywodem White Box. STRUKTURA jest publiczna;
-WARTOŚCI współczynników pochodzą z TABLICY (w repozytorium PUSTEJ — proweniencja
-``norma_IEEE_1584``). Gdy tablica jest pusta, KAŻDA ścieżka IEEE zwraca status
-``dane niekompletne — tablice współczynników IEEE 1584`` (NIE liczbę). Gdy
-właściciel wypełni tablicę, TEN SAM przepływ policzy wynik.
+Liczy prąd łuku, zmienność, energię incydentu, granicę łuku i kategorię ŚOI wg
+RÓWNAŃ opublikowanych w IEEE 1584-2018, z pełnym wywodem White Box. Równania są
+publiczne; WARTOŚCI współczynników pochodzą z TABLICY ładowanej z pliku danych
+(open-source MIT rwl/arcflash — proweniencja ``open_source_IEEE_1584``,
+audit-pending). Wynik liczy się NAPRAWDĘ, ze statusem
+``COMPUTED_IEEE_1584_OPEN_SOURCE`` i polskim zastrzeżeniem. Gdy tablica jest
+pusta/niepełna dla konfiguracji, ścieżka IEEE zwraca status ``dane niekompletne
+— tablice współczynników IEEE 1584`` (NIE liczbę).
 
 Poza zakresem ważności IEEE 1584-2018 (zwł. > 15 kV) builder przełącza się na
 ODRĘBNĄ metodę Ralpha Lee (postać zamknięta, bez tablicy), JAWNIE oznaczoną.
@@ -13,7 +15,10 @@ ODRĘBNĄ metodę Ralpha Lee (postać zamknięta, bez tablicy), JAWNIE oznaczon�
 Granica warstw (arch_guard): moduł konsumuje wynik zwarciowy jako zwykłe
 wejście (``ArcFlashInput``, odwzorowane z ``ShortCircuitResult`` w warstwie
 application) — NIE importuje solvera. ŻADEN współczynnik IEEE/NFPA nie jest tu
-zmyślany — brakujący współczynnik to None/BRAK, nigdy fałszywy float.
+zmyślany — brakujący współczynnik to None/BRAK, nigdy fałszywy float. Jedyne
+stałe inline to publiczne stałe modelu/fizyki (1,2 cal/cm², stała Lee, przeliczniki
+jednostek, napięcia kotew, progi rozmiaru obudowy 508/660,4/1244,6 mm) — NIE
+współczynniki regresji.
 """
 
 from __future__ import annotations
@@ -21,22 +26,27 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable
 
+from analysis.arc_flash.loader import PRODUCTION_IEEE_1584_TABLE
 from analysis.arc_flash.models import (
     ARC_FLASH_COEFF_MISSING_MARKER,
+    ARC_FLASH_OPEN_SOURCE_CAVEAT_PL,
+    ARC_FLASH_OPEN_SOURCE_PROVENANCE,
     ARC_FLASH_RALPH_LEE_LABEL,
+    ARC_FLASH_SOURCE_URLS,
     ARC_FLASH_TABLE_INCOMPLETE_STATUS,
     INCIDENT_ENERGY_AFB_CAL_CM2,
+    INCIDENT_ENERGY_AFB_JOULE_CM2,
+    INCIDENT_ENERGY_TIME_FACTOR,
     JOULE_PER_CAL_CM2,
+    MM_PER_INCH,
     PPE_CATEGORY_INCOMPLETE,
-    PRODUCTION_IEEE_1584_TABLE,
     PRODUCTION_NFPA_70E_PPE_TABLE,
-    REFERENCE_DISTANCE_MM,
-    REFERENCE_TIME_S,
     VALIDITY_IBF_MAX_KA,
     VALIDITY_IBF_MIN_KA,
     VALIDITY_VOLTAGE_MAX_KV,
     VALIDITY_VOLTAGE_MIN_KV,
     ArcCurrentCoeffs,
+    ArcCurrentVariationCoeffs,
     ArcFlashCoefficientTable,
     ArcFlashContext,
     ArcFlashInput,
@@ -46,12 +56,22 @@ from analysis.arc_flash.models import (
     ArcFlashView,
     ElectrodeConfig,
     EnclosureCorrectionCoeffs,
+    EnclosureType,
     IncidentEnergyCoeffs,
     PpeCategoryTable,
     VoltageAnchor,
     WhiteBoxStep,
     compute_arc_flash_id,
 )
+
+# Publiczne progi rozmiaru obudowy IEEE 1584-2018 (Tab. 7 / model EES) [mm].
+# To ramy modelu (granice przedziałów), nie współczynniki regresji.
+_ENCLOSURE_LOW_MM = 508.0
+_ENCLOSURE_MID_MM = 660.4
+_ENCLOSURE_HIGH_MM = 1244.6
+# Domyślny ekwiwalentny wymiar obudowy gdy wymiarów nie podano: publiczna
+# „typowa" obudowa 20 cali = 508 mm (gałąź dim<508 → 20" w modelu Tab. 7).
+_DEFAULT_BOX_INCH = _ENCLOSURE_LOW_MM / MM_PER_INCH  # 20"
 
 
 def _round(value: float | None, digits: int = 4) -> float | None:
@@ -63,14 +83,15 @@ def _round(value: float | None, digits: int = 4) -> float | None:
 
 
 class ArcFlashBuilder:
-    """Liczy Arc Flash (STRUKTURA IEEE 1584-2018) z White Box, parametr. tablicą.
+    """Liczy Arc Flash (równania IEEE 1584-2018) z White Box, współczynniki z tablicy.
 
     NIEZMIENNIK DANYCH BEZPIECZEŃSTWA:
     - Brak obowiązkowego wejścia ⇒ ``INCOMPLETE_INPUT`` ("dane niekompletne").
-    - Tablica współczynników pusta ⇒ ``INCOMPLETE_TABLE`` ("dane niekompletne —
-      tablice współczynników IEEE 1584"); wartości pośrednie None.
+    - Tablica współczynników pusta/niepełna ⇒ ``INCOMPLETE_TABLE`` ("dane
+      niekompletne — tablice współczynników IEEE 1584"); wartości pośrednie None.
     - Poza zakresem ważności ⇒ ``COMPUTED_RALPH_LEE`` (jawnie metoda Lee).
-    - Tablica wypełniona, w zakresie ⇒ ``COMPUTED_IEEE_1584``.
+    - Tablica wypełniona (open-source), w zakresie ⇒ ``COMPUTED_IEEE_1584_OPEN_SOURCE``
+      (realny wynik + proweniencja open-source, audit-pending).
     ŻADEN współczynnik nie jest zmyślany.
     """
 
@@ -79,8 +100,8 @@ class ArcFlashBuilder:
         coefficient_table: ArcFlashCoefficientTable | None = None,
         ppe_table: PpeCategoryTable | None = None,
     ) -> None:
-        # Domyślnie tablice PRODUKCYJNE (puste). Test-only może wstrzyknąć
-        # WYRAŹNIE oznaczoną tablicę-atrapę, by sprawdzić MATEMATYKĘ struktury.
+        # Domyślnie tablica PRODUKCYJNA wypełniona z pliku danych (open-source).
+        # Tablica progów ŚOI jest pusta (brak danych NFPA 70E).
         self._table = coefficient_table or PRODUCTION_IEEE_1584_TABLE
         self._ppe_table = ppe_table or PRODUCTION_NFPA_70E_PPE_TABLE
 
@@ -104,7 +125,11 @@ class ArcFlashBuilder:
 
     @staticmethod
     def _aggregate_status(results: tuple[ArcFlashResult, ...]) -> ArcFlashStatus:
-        """Status widoku = najgorszy ze statusów (brak wejść > brak tablicy > Lee > IEEE)."""
+        """Status widoku = najgorszy ze statusów.
+
+        Kolejność „najgorszy → najlepszy": brak wejść > brak tablicy > Lee >
+        IEEE open-source > IEEE zweryfikowany.
+        """
         if not results:
             return ArcFlashStatus.INCOMPLETE_INPUT
         statuses = {r.status for r in results}
@@ -112,6 +137,7 @@ class ArcFlashBuilder:
             ArcFlashStatus.INCOMPLETE_INPUT,
             ArcFlashStatus.INCOMPLETE_TABLE,
             ArcFlashStatus.COMPUTED_RALPH_LEE,
+            ArcFlashStatus.COMPUTED_IEEE_1584_OPEN_SOURCE,
         ):
             if worst in statuses:
                 return worst
@@ -193,124 +219,155 @@ class ArcFlashBuilder:
         working_distance: float,
     ) -> ArcFlashResult:
         cfg = item.electrode_config
+        enc_type = item.enclosure_type
         table = self._table
 
         # Tablica niewypełniona dla tej konfiguracji ⇒ "dane niekompletne — tablice".
-        if not table.is_complete_for(cfg):
-            return self._incomplete_table_result(item, table.missing_for(cfg))
+        if not table.is_complete_for(cfg, enc_type):
+            return self._incomplete_table_result(item, table.missing_for(cfg, enc_type))
 
+        arc_time_ms = arc_time * 1000.0  # równanie energii IEEE używa t w ms
         steps: list[WhiteBoxStep] = []
 
-        # 3a) Prąd łuku I_arc w trzech kotwach napięcia + interpolacja (§ struktura).
+        # 3a) Prąd łuku I_arc w trzech kotwach + interpolacja po U (Tab. 1, Eq 1).
         i_arc_anchors: dict[str, float] = {}
         for anchor in VoltageAnchor:
             coeffs = table.arc_entry(cfg, anchor)
             i_arc_anchors[anchor.name] = self._arc_current_at_anchor(i_bf, gap, coeffs)
         i_arc = self._interpolate_anchor(voltage, i_arc_anchors)
+
+        # 3b) Zmienność prądu łuku var_cf i prąd minimalny (Tab. 2, Eq 2/25).
+        var_cf = self._arc_variation_cf(voltage, table.variation_entry(cfg))
+        i_arc_min = i_arc * (1.0 - 0.5 * var_cf)
         steps.append(
             WhiteBoxStep(
                 symbol="I_arc",
                 formula_latex=(
-                    r"\log_{10} I_{arc,anchor} = f_k(\log_{10} I_{bf}, G)\;;\quad "
-                    r"I_{arc} = \mathrm{interp}_{U}\big(I_{arc,600},I_{arc,2700},I_{arc,14300}\big)"
+                    r"I_{arc,kotwa} = 10^{k_1+k_2\lg I_{bf}+k_3\lg G}\cdot"
+                    r"\sum_{i} k_{i}\,I_{bf}^{\,p_i}\;;\quad "
+                    r"I_{arc}=\mathrm{interp}_{U}(\cdot)\;;\quad "
+                    r"I_{arc,min}=I_{arc}(1-0{,}5\,\mathrm{VarCf})"
                 ),
                 substitution_pl=(
                     f"I_bf={_round(i_bf)} kA, G={_round(gap)} mm, U={_round(voltage)} kV "
                     f"[{cfg.value}]; kotwy: "
                     + ", ".join(f"{k}={_round(v)} kA" for k, v in sorted(i_arc_anchors.items()))
+                    + f"; VarCf={_round(var_cf)}"
                 ),
-                result_pl=f"I_arc = {_round(i_arc)} kA (IEEE 1584-2018, tablice zweryfikowane)",
-                unit_check_pl="I_bf,I_arc w kA; G w mm; interpolacja po U [kV] między kotwami.",
-                table_ref=f"I_arc[{cfg.value}, kotwy 600/2700/14300 V] = norma_IEEE_1584",
+                result_pl=(
+                    f"I_arc = {_round(i_arc)} kA, I_arc_min = {_round(i_arc_min)} kA "
+                    "(IEEE 1584-2018, współczynniki open-source)"
+                ),
+                unit_check_pl=(
+                    "I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV]."
+                ),
+                table_ref=(
+                    f"I_arc[{cfg.value}, kotwy 600/2700/14300 V] (Tab.1) + "
+                    f"VarCf[{cfg.value}] (Tab.2) = open_source_IEEE_1584"
+                ),
             )
         )
 
-        # 3b) Korekcja rozmiaru obudowy CF (tablicowa; CF=1 w otwartym powietrzu).
-        cf = self._enclosure_correction(item, table.enclosure_entry(cfg))
+        # 3c) Korekcja rozmiaru obudowy CF (Tab. 7; CF=1 w otwartym powietrzu).
+        cf = self._enclosure_correction(item, table.enclosure_entry(enc_type, cfg))
         steps.append(
             WhiteBoxStep(
                 symbol="CF",
-                formula_latex=r"E = E_{n} \cdot CF \quad (CF=1 \text{ w otwartym powietrzu})",
+                formula_latex=(
+                    r"CF = b_1\,EES^2 + b_2\,EES + b_3 \quad"
+                    r"(CF=1 \text{ w otwartym powietrzu; } CF=1/x \text{ obudowa płytka})"
+                ),
                 substitution_pl=(
                     f"konfiguracja {cfg.value} "
-                    f"({'w obudowie' if cfg.is_boxed else 'otwarte powietrze'})"
+                    f"({'w obudowie ' + enc_type.value if cfg.is_boxed else 'otwarte powietrze'})"
                 ),
                 result_pl=f"CF = {_round(cf)}",
-                unit_check_pl="CF bezwymiarowe; mnożnik energii dla obudowy.",
+                unit_check_pl="CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.",
                 table_ref=(
-                    f"CF[{cfg.value}] = norma_IEEE_1584"
+                    f"CF[{enc_type.value},{cfg.value}] (Tab.7) = open_source_IEEE_1584"
                     if cfg.is_boxed
                     else "CF = 1 (otwarte powietrze, brak wpisu tablicy)"
                 ),
             )
         )
 
-        # 3c) Energia incydentu E na odległości roboczej (interpolacja po kotwach).
-        e_anchors: dict[str, float] = {}
+        # 3d) Energia incydentu E [J/cm²] na odległości roboczej (Tab. 3/4/5, Eq 3-6).
+        #     Każda kotwa używa SWOJEGO I_arc kotwy; wynik interpolowany po U.
+        e_anchors_jcm2: dict[str, float] = {}
         for anchor in VoltageAnchor:
-            e_anchors[anchor.name] = self._incident_energy_at_anchor(
-                i_arc, gap, arc_time, working_distance, cf, table.energy_entry(cfg, anchor)
+            e_anchors_jcm2[anchor.name] = self._incident_energy_at_anchor(
+                i_bf,
+                i_arc_anchors[anchor.name],
+                gap,
+                arc_time_ms,
+                working_distance,
+                cf,
+                table.energy_entry(cfg, anchor),
             )
-        incident_energy = self._interpolate_anchor(voltage, e_anchors)
+        incident_energy_jcm2 = self._interpolate_anchor(voltage, e_anchors_jcm2)
+        incident_energy_cal = incident_energy_jcm2 / JOULE_PER_CAL_CM2
         steps.append(
             WhiteBoxStep(
                 symbol="E",
                 formula_latex=(
-                    r"\log_{10} E_{n} = g_b(\log_{10} I_{arc}, G)\;;\quad "
-                    r"E = \frac{CF\cdot E_n}{4{,}184}\cdot\frac{t}{0{,}2}"
-                    r"\left(\frac{610}{D}\right)^{x}\;;\quad E=\mathrm{interp}_U(\cdots)"
+                    r"E_{kotwa} = \tfrac{12{,}552}{50}\,t\cdot 10^{\,x_2+x_3+x_4+x_5}\;;\quad "
+                    r"x_4 = k_{11}\lg I_{bf}+k_{13}\lg I_{arc}+\lg(1/CF)\;;\quad "
+                    r"x_5 = k_{12}\lg D\;;\quad E=\mathrm{interp}_U(\cdot)\;[\mathrm{J/cm^2}]"
                 ),
                 substitution_pl=(
-                    f"I_arc={_round(i_arc)} kA, G={_round(gap)} mm, t={_round(arc_time)} s, "
+                    f"I_bf={_round(i_bf)} kA, G={_round(gap)} mm, t={_round(arc_time_ms)} ms, "
                     f"D={_round(working_distance)} mm, CF={_round(cf)}; kotwy: "
-                    + ", ".join(f"{k}={_round(v)} cal/cm²" for k, v in sorted(e_anchors.items()))
+                    + ", ".join(f"{k}={_round(v)} J/cm²" for k, v in sorted(e_anchors_jcm2.items()))
                 ),
                 result_pl=(
-                    f"E = {_round(incident_energy)} cal/cm² (IEEE 1584-2018, zweryfikowane)"
+                    f"E = {_round(incident_energy_jcm2)} J/cm² = "
+                    f"{_round(incident_energy_cal)} cal/cm² "
+                    "(IEEE 1584-2018, współczynniki open-source)"
                 ),
                 unit_check_pl=(
-                    "E_n w J/cm² (610 mm, 0,2 s); 1/4,184 J/cm²→cal/cm²; "
-                    "t/0,2 i 610/D bezwymiarowe; interpolacja po U."
+                    "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U."
                 ),
-                table_ref=f"E[{cfg.value}, kotwy 600/2700/14300 V] = norma_IEEE_1584",
+                table_ref=f"E[{cfg.value}, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584",
             )
         )
 
-        # 3d) Granica łuku AFB — odległość, na której E = 1,2 cal/cm² (publiczny próg).
-        afb = self._arc_flash_boundary(voltage, i_arc, gap, arc_time, cf, cfg, table)
+        # 3e) Granica łuku AFB — odległość, na której E = 1,2 cal/cm² (= 5,0208 J/cm²).
+        afb = self._arc_flash_boundary(voltage, e_anchors_jcm2, working_distance, cfg, table)
         steps.append(
             WhiteBoxStep(
                 symbol="AFB",
                 formula_latex=(
-                    r"D_{AFB} = 610\left(\frac{CF\cdot E_n\cdot (t/0{,}2)}"
-                    r"{1{,}2\cdot 4{,}184}\right)^{1/x}\quad(\mathrm{interp}_U)"
+                    r"D_{AFB,kotwa} = \left(\frac{5{,}0208}{E/D^{k_{12}}}\right)^{1/k_{12}}"
+                    r"\quad(\mathrm{interp}_U);\quad 5{,}0208\,\mathrm{J/cm^2}=1{,}2\,\mathrm{cal/cm^2}"
                 ),
                 substitution_pl=(
                     f"E_próg = {INCIDENT_ENERGY_AFB_CAL_CM2} cal/cm² = "
-                    f"{_round(INCIDENT_ENERGY_AFB_CAL_CM2 * JOULE_PER_CAL_CM2)} J/cm²; "
-                    f"I_arc={_round(i_arc)} kA, t={_round(arc_time)} s, CF={_round(cf)}, "
-                    f"U={_round(voltage)} kV"
+                    f"{_round(INCIDENT_ENERGY_AFB_JOULE_CM2)} J/cm²; "
+                    f"U={_round(voltage)} kV, D={_round(working_distance)} mm"
                 ),
-                result_pl=f"AFB = {_round(afb)} mm (IEEE 1584-2018, zweryfikowane)",
+                result_pl=(f"AFB = {_round(afb)} mm (IEEE 1584-2018, współczynniki open-source)"),
                 unit_check_pl="D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².",
-                table_ref=f"E[{cfg.value}] (odwrócone) = norma_IEEE_1584; próg 1,2 cal/cm² publiczny",
+                table_ref=(
+                    f"E[{cfg.value}] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; "
+                    "próg 1,2 cal/cm² publiczny"
+                ),
             )
         )
 
-        # 3e) Kategoria ŚOI (progi NFPA 70E — tablica PUSTA ⇒ "dane niekompletne").
-        ppe, ppe_prov = self._ppe_category(incident_energy)
+        # 3f) Kategoria ŚOI (progi NFPA 70E — tablica PUSTA ⇒ "dane niekompletne").
+        ppe, ppe_prov = self._ppe_category(incident_energy_cal)
         steps.append(
             WhiteBoxStep(
                 symbol="ŚOI",
                 formula_latex=r"\text{kategoria} = f_{NFPA\,70E}(E)",
                 substitution_pl=(
-                    f"E = {_round(incident_energy)} cal/cm²; tablica progów NFPA 70E: "
-                    + ("PUSTA" if self._ppe_table.is_empty else "wypełniona")
+                    f"E = {_round(incident_energy_cal)} cal/cm²; tablica progów NFPA 70E: "
+                    + ("PUSTA (dane niekompletne)" if self._ppe_table.is_empty else "wypełniona")
                 ),
                 result_pl=f"kategoria ŚOI = {ppe}",
                 unit_check_pl="E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
                 table_ref=(
-                    f"{ARC_FLASH_COEFF_MISSING_MARKER}"
+                    f"{ARC_FLASH_COEFF_MISSING_MARKER} (tablice NFPA 70E)"
                     if self._ppe_table.is_empty
                     else f"progi ŚOI = {self._ppe_table.provenance.value}"
                 ),
@@ -319,15 +376,15 @@ class ArcFlashBuilder:
 
         why = (
             f"Arc Flash (konfiguracja {cfg.value}, IEEE 1584-2018): prąd łuku "
-            f"I_arc ≈ {_round(i_arc, 2)} kA, energia incydentu E ≈ "
-            f"{_round(incident_energy, 2)} cal/cm² na odległości roboczej, granica "
-            f"łuku AFB ≈ {_round(afb, 1)} mm, kategoria ŚOI = {ppe}. Wartości "
-            "policzone na zweryfikowanej tablicy współczynników (norma_IEEE_1584)."
+            f"I_arc ≈ {_round(i_arc, 2)} kA (I_arc_min ≈ {_round(i_arc_min, 2)} kA), energia "
+            f"incydentu E ≈ {_round(incident_energy_cal, 2)} cal/cm² na odległości roboczej, "
+            f"granica łuku AFB ≈ {_round(afb, 1)} mm, kategoria ŚOI = {ppe}. "
+            f"{ARC_FLASH_OPEN_SOURCE_CAVEAT_PL}."
         )
 
         return ArcFlashResult(
             bus_ref=item.bus_ref,
-            status=ArcFlashStatus.COMPUTED_IEEE_1584,
+            status=ArcFlashStatus.COMPUTED_IEEE_1584_OPEN_SOURCE,
             method=ArcFlashMethod.IEEE_1584_2018,
             electrode_config=cfg.value,
             i_bf_ka=_round(i_bf),
@@ -337,10 +394,16 @@ class ArcFlashBuilder:
             working_distance_mm=_round(working_distance),
             coefficient_table_provenance=table.provenance.value,
             coefficient_table_marker=None,
+            provenance=ARC_FLASH_OPEN_SOURCE_PROVENANCE,
+            provenance_caveat_pl=ARC_FLASH_OPEN_SOURCE_CAVEAT_PL,
+            source_urls=table.source_urls or ARC_FLASH_SOURCE_URLS,
             i_arc_ka=_round(i_arc),
+            i_arc_min_ka=_round(i_arc_min),
             i_arc_at_anchors_ka={k: _round(v) for k, v in i_arc_anchors.items()},
+            arc_variation_cf=_round(var_cf),
             enclosure_correction_cf=_round(cf),
-            incident_energy_cal_cm2=_round(incident_energy),
+            incident_energy_cal_cm2=_round(incident_energy_cal),
+            incident_energy_joule_cm2=_round(incident_energy_jcm2),
             arc_flash_boundary_mm=_round(afb),
             ppe_category=ppe,
             ppe_table_provenance=ppe_prov,
@@ -417,12 +480,12 @@ class ArcFlashBuilder:
                 formula_latex=r"\text{kategoria} = f_{NFPA\,70E}(E)",
                 substitution_pl=(
                     f"E = {_round(e_lee)} cal/cm²; tablica progów NFPA 70E: "
-                    + ("PUSTA" if self._ppe_table.is_empty else "wypełniona")
+                    + ("PUSTA (dane niekompletne)" if self._ppe_table.is_empty else "wypełniona")
                 ),
                 result_pl=f"kategoria ŚOI = {ppe}",
                 unit_check_pl="E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
                 table_ref=(
-                    ARC_FLASH_COEFF_MISSING_MARKER
+                    f"{ARC_FLASH_COEFF_MISSING_MARKER} (tablice NFPA 70E)"
                     if self._ppe_table.is_empty
                     else f"progi ŚOI = {self._ppe_table.provenance.value}"
                 ),
@@ -450,10 +513,16 @@ class ArcFlashBuilder:
             working_distance_mm=_round(working_distance),
             coefficient_table_provenance=ArcFlashMethod.RALPH_LEE.value,
             coefficient_table_marker=None,
+            provenance=None,  # metoda Lee to postać zamknięta, nie współczynniki open-source
+            provenance_caveat_pl=None,
+            source_urls=(),
             i_arc_ka=None,  # metoda Lee nie liczy I_arc (zakłada bolted)
+            i_arc_min_ka=None,
             i_arc_at_anchors_ka=None,
+            arc_variation_cf=None,
             enclosure_correction_cf=None,
             incident_energy_cal_cm2=_round(e_lee),
+            incident_energy_joule_cm2=_round(e_lee * JOULE_PER_CAL_CM2),
             arc_flash_boundary_mm=_round(afb_lee),
             ppe_category=ppe,
             ppe_table_provenance=ppe_prov,
@@ -488,9 +557,9 @@ class ArcFlashBuilder:
             f"{ARC_FLASH_TABLE_INCOMPLETE_STATUS}. Brakujące wpisy tablicy "
             f"(konfiguracja {item.electrode_config.value}): "
             + ", ".join(missing_entries)
-            + f". {ARC_FLASH_COEFF_MISSING_MARKER}. STRUKTURA modelu jest gotowa — "
-            "po wstawieniu autorytatywnych współczynników IEEE 1584-2018 ten sam "
-            "przepływ policzy wynik. Współczynniki NIE są zmyślane."
+            + f". {ARC_FLASH_COEFF_MISSING_MARKER}. Równania modelu są gotowe — "
+            "po wstawieniu kompletu współczynników IEEE 1584-2018 ten sam przepływ "
+            "policzy wynik. Współczynniki NIE są zmyślane."
         )
         return self._bare_result(
             item,
@@ -521,10 +590,16 @@ class ArcFlashBuilder:
             working_distance_mm=item.working_distance_mm,
             coefficient_table_provenance=self._table.provenance.value,
             coefficient_table_marker=table_marker,
+            provenance=None,
+            provenance_caveat_pl=None,
+            source_urls=(),
             i_arc_ka=None,
+            i_arc_min_ka=None,
             i_arc_at_anchors_ka=None,
+            arc_variation_cf=None,
             enclosure_correction_cf=None,
             incident_energy_cal_cm2=None,
+            incident_energy_joule_cm2=None,
             arc_flash_boundary_mm=None,
             ppe_category=None,
             ppe_table_provenance=None,
@@ -533,149 +608,216 @@ class ArcFlashBuilder:
             white_box=(),
         )
 
-    # --- równania (STRUKTURA IEEE 1584-2018, współczynniki z TABLICY) ----
+    # --- równania (IEEE 1584-2018, współczynniki z TABLICY) -------------
 
     @staticmethod
     def _arc_current_at_anchor(i_bf_ka: float, gap_mm: float, c: ArcCurrentCoeffs) -> float:
-        """Prąd łuku I_arc [kA] dla JEDNEJ kotwy (STRUKTURA log-wielomianowa).
+        """Prąd łuku pośredni I_arc [kA] dla JEDNEJ kotwy (IEEE 1584-2018, Eq 1).
 
-        STRUKTURA: log10(I_arc) jako wielomian log10(I_bf) z członem odstępu G.
-        Współczynniki ``c.k`` pochodzą z TABLICY. Postać ogólna parametryzowana:
-            log10(I_arc) = k0 + k1*log10(I_bf) + k2*log10(G) + k3*log10(I_bf)*log10(G) + ...
-        Builder ewaluuje wielomian wg DŁUGOŚCI dostarczonego wektora k — bez
-        zaszytych wartości. (Pusta tablica nie dotrze tutaj: ścieżka blokowana
-        wcześniej przez ``is_complete_for``.)
+        x1 = k1 + k2·lg(I_bf) + k3·lg(G)
+        x2 = k4·I_bf^6 + k5·I_bf^5 + k6·I_bf^4 + k7·I_bf^3 + k8·I_bf^2 + k9·I_bf + k10
+        I_arc = 10^x1 · x2
+        Współczynniki ``c.k`` = k1..k10 z TABLICY. (Pusta tablica nie dotrze tutaj:
+        ścieżka blokowana wcześniej przez ``is_complete_for``.)
         """
-        assert c.k is not None  # gwarantowane przez is_complete_for
-        log_ibf = math.log10(i_bf_ka)
-        log_g = math.log10(gap_mm)
-        terms = (1.0, log_ibf, log_g, log_ibf * log_g, log_ibf**2, log_g**2)
-        log_iarc = sum(k * t for k, t in zip(c.k, terms, strict=False))
-        return 10.0**log_iarc
+        assert c.k is not None and len(c.k) == 10  # gwarantowane przez is_complete_for
+        k = c.k
+        x1 = k[0] + k[1] * math.log10(i_bf_ka) + k[2] * math.log10(gap_mm)
+        x2 = (
+            k[3] * i_bf_ka**6
+            + k[4] * i_bf_ka**5
+            + k[5] * i_bf_ka**4
+            + k[6] * i_bf_ka**3
+            + k[7] * i_bf_ka**2
+            + k[8] * i_bf_ka
+            + k[9]
+        )
+        return float(10.0**x1 * x2)
 
     @staticmethod
-    def _normalized_energy(i_arc_ka: float, gap_mm: float, c: IncidentEnergyCoeffs) -> float:
-        """Energia ZNORMALIZOWANA E_n [J/cm²] na 610 mm / 0,2 s (STRUKTURA).
+    def _arc_variation_cf(voltage_kv: float, c: ArcCurrentVariationCoeffs) -> float:
+        """Współczynnik zmienności prądu łuku VarCf (IEEE 1584-2018, Tab. 2, Eq 2).
 
-        STRUKTURA: log10(E_n) jako wielomian log10(I_arc) z członem odstępu G.
-        Współczynniki ``c.b`` z TABLICY; ewaluacja wg długości wektora b.
+        VarCf = k1·V_oc^6 + k2·V_oc^5 + k3·V_oc^4 + k4·V_oc^3 + k5·V_oc^2
+                + k6·V_oc + k7   (V_oc w kV). Współczynniki ``c.k`` = k1..k7 z TABLICY.
         """
-        assert c.b is not None
-        log_iarc = math.log10(i_arc_ka)
-        log_g = math.log10(gap_mm)
-        terms = (1.0, log_iarc, log_g, log_iarc * log_g, log_iarc**2, log_g**2)
-        log_en = sum(b * t for b, t in zip(c.b, terms, strict=False))
-        return 10.0**log_en
+        assert c.k is not None and len(c.k) == 7
+        k = c.k
+        return (
+            k[0] * voltage_kv**6
+            + k[1] * voltage_kv**5
+            + k[2] * voltage_kv**4
+            + k[3] * voltage_kv**3
+            + k[4] * voltage_kv**2
+            + k[5] * voltage_kv
+            + k[6]
+        )
 
     @classmethod
     def _incident_energy_at_anchor(
         cls,
+        i_bf_ka: float,
         i_arc_ka: float,
         gap_mm: float,
-        arc_time_s: float,
+        arc_time_ms: float,
         working_distance_mm: float,
         cf: float,
         c: IncidentEnergyCoeffs,
     ) -> float:
-        """Energia incydentu E [cal/cm²] dla JEDNEJ kotwy (STRUKTURA §...).
+        """Energia incydentu E [J/cm²] dla JEDNEJ kotwy (IEEE 1584-2018, Eq 3-6).
 
-        E[cal/cm²] = CF * E_n * (t/0,2) * (610/D)^x / 4,184. Współczynniki z TABLICY.
+        x1 = (12,552/50)·t
+        x2 = k1 + k2·lg(G)
+        x3 = k3·I_arc / (k4·I_bf^7 + k5·I_bf^6 + k6·I_bf^5 + k7·I_bf^4
+                          + k8·I_bf^3 + k9·I_bf^2 + k10·I_bf)
+        x4 = k11·lg(I_bf) + k13·lg(I_arc) + lg(1/CF)
+        x5 = k12·lg(D)
+        E  = x1 · 10^(x2 + x3 + x4 + x5)
+        Współczynniki ``c.k`` = k1..k13 z TABLICY (t w ms, D w mm).
         """
-        assert c.distance_exponent_x is not None
-        e_n = cls._normalized_energy(i_arc_ka, gap_mm, c)
-        e_jcm2 = (
-            cf
-            * e_n
-            * (arc_time_s / REFERENCE_TIME_S)
-            * (REFERENCE_DISTANCE_MM / working_distance_mm) ** c.distance_exponent_x
+        assert c.k is not None and len(c.k) == 13
+        k = c.k
+        x1 = INCIDENT_ENERGY_TIME_FACTOR * arc_time_ms
+        x2 = k[0] + k[1] * math.log10(gap_mm)
+        denom = (
+            k[3] * i_bf_ka**7
+            + k[4] * i_bf_ka**6
+            + k[5] * i_bf_ka**5
+            + k[6] * i_bf_ka**4
+            + k[7] * i_bf_ka**3
+            + k[8] * i_bf_ka**2
+            + k[9] * i_bf_ka
         )
-        return e_jcm2 / JOULE_PER_CAL_CM2
+        x3 = (k[2] * i_arc_ka) / denom
+        x4 = k[10] * math.log10(i_bf_ka) + k[12] * math.log10(i_arc_ka) + math.log10(1.0 / cf)
+        x5 = k[11] * math.log10(working_distance_mm)
+        return float(x1 * 10.0 ** (x2 + x3 + x4 + x5))
 
     @staticmethod
     def _enclosure_correction(item: ArcFlashInput, c: EnclosureCorrectionCoeffs) -> float:
-        """Korekcja rozmiaru obudowy CF (STRUKTURA §...; współczynniki z TABLICY).
+        """Korekcja rozmiaru obudowy CF (IEEE 1584-2018, Tab. 7; współczynniki z TABLICY).
 
         Otwarte powietrze (VOA/HOA) ⇒ CF = 1 (brak obudowy, brak wpisu tablicy).
-        W obudowie ⇒ CF z wymiarów obudowy i współczynników ``c.b`` z tablicy. Gdy
-        wymiarów brak — używany jest „rozmiar ekwiwalentny” z pierwszego
-        współczynnika tablicy jako odniesienia (tablicowe, nie zmyślone).
+        W obudowie ⇒ EES (ekwiwalentny rozmiar obudowy, cale) z wymiarów obudowy
+        wg publicznych progów 508/660,4/1244,6 mm, następnie
+            x = b1·EES² + b2·EES + b3 ;  CF = x (typowa) lub 1/x (płytka).
+        Gdy wymiarów nie podano — publiczna „typowa" obudowa 20" (508 mm) wg modelu
+        (gałąź dim<508 → 20"); to PUBLICZNY domyślny rozmiar modelu, NIE współczynnik.
         """
-        if not item.electrode_config.is_boxed:
+        cfg = item.electrode_config
+        enc_type = item.enclosure_type
+        if not cfg.is_boxed:
             return 1.0
-        assert c.b is not None and len(c.b) >= 2  # gwarantowane przez is_complete_for
-        dims = [
-            d
-            for d in (
-                item.enclosure_width_mm,
-                item.enclosure_height_mm,
-                item.enclosure_depth_mm,
-            )
-            if d and d > 0.0
-        ]
-        # b[0] = rozmiar odniesienia [mm]; b[1] = wykładnik skali; pozostałe rezerwa.
-        ref_mm = c.b[0]
-        exponent = c.b[1]
-        if not dims:
-            equiv = ref_mm
-        else:
-            equiv = sum(float(d) for d in dims) / len(dims)
-        cf = (ref_mm / equiv) ** exponent
-        return cf
+        assert c.b is not None and len(c.b) == 3  # gwarantowane przez is_complete_for
+        b = c.b
+        height_in = ArcFlashBuilder._equivalent_dimension_inch(
+            item.enclosure_height_mm, item.voltage_kv, cfg, enc_type
+        )
+        width_in = ArcFlashBuilder._equivalent_dimension_inch(
+            item.enclosure_width_mm, item.voltage_kv, cfg, enc_type
+        )
+        ees_in = (height_in + width_in) / 2.0
+        x = b[0] * ees_in**2 + b[1] * ees_in + b[2]
+        if enc_type is EnclosureType.SHALLOW:
+            return 1.0 / x
+        return x
+
+    @staticmethod
+    def _equivalent_dimension_inch(
+        dim_mm: float | None,
+        voltage_kv: float | None,
+        cfg: ElectrodeConfig,
+        enc_type: EnclosureType,
+    ) -> float:
+        """Ekwiwalentny wymiar obudowy [cale] wg progów IEEE 1584-2018 (Tab. 7 / model).
+
+        Progi publiczne (ramy modelu, nie współczynniki):
+          - dim < 508 mm   : typowa → 20" (508 mm); płytka → faktyczny wymiar (mm→in).
+          - 508..660,4 mm  : dim·0,03937 (mm→in bezpośrednio).
+          - 660,4..1244,6  : transformacja eq.11/12 z V_oc i parametrami (a,b) konfiguracji.
+          - > 1244,6 mm    : clamp do 1244,6 mm w transformacji eq.11/12.
+        Brak wymiaru ⇒ publiczna „typowa" obudowa 20" (508 mm).
+        """
+        if dim_mm is None or dim_mm <= 0.0:
+            return _DEFAULT_BOX_INCH
+        if dim_mm < _ENCLOSURE_LOW_MM:
+            if enc_type is EnclosureType.TYPICAL:
+                return _DEFAULT_BOX_INCH  # 20"
+            return dim_mm / MM_PER_INCH
+        if dim_mm <= _ENCLOSURE_MID_MM:
+            return dim_mm / MM_PER_INCH
+        clamped = min(dim_mm, _ENCLOSURE_HIGH_MM)
+        return ArcFlashBuilder._eq_11_12_inch(clamped, voltage_kv, cfg)
+
+    @staticmethod
+    def _eq_11_12_inch(dim_mm: float, voltage_kv: float | None, cfg: ElectrodeConfig) -> float:
+        """Transformacja eq.11/12 IEEE 1584-2018 dla wymiaru obudowy > 660,4 mm [cale].
+
+        dim_in = (660,4 + (dim − 660,4)·(V_oc + a)/b) / 25,4, gdzie (a,b) zależą od
+        konfiguracji (VCB 4/20, VCBB 10/24, HCB 10/22). Parametry (a,b) to publiczne
+        stałe modelu rozmiaru obudowy (nie współczynniki regresji energii).
+        """
+        a, b = _EQ_11_12_PARAMS.get(cfg, (4.0, 20.0))
+        voc = voltage_kv if voltage_kv is not None else 0.0
+        y1 = dim_mm - _ENCLOSURE_MID_MM
+        y2 = (voc + a) / b
+        return (_ENCLOSURE_MID_MM + (y1 * y2)) / MM_PER_INCH
 
     @classmethod
     def _arc_flash_boundary(
         cls,
         voltage_kv: float,
-        i_arc_ka: float,
-        gap_mm: float,
-        arc_time_s: float,
-        cf: float,
+        e_anchors_jcm2: dict[str, float],
+        working_distance_mm: float,
         cfg: ElectrodeConfig,
         table: ArcFlashCoefficientTable,
     ) -> float:
-        """Granica łuku AFB [mm] — interpolacja AFB z trzech kotew.
+        """Granica łuku AFB [mm] — interpolacja AFB z trzech kotew (IEEE 1584-2018).
 
-        Dla każdej kotwy odwraca model energii względem D przy E = 1,2 cal/cm²,
-        następnie interpoluje wynik po napięciu. Publiczny próg 1,2 cal/cm².
+        Dla każdej kotwy: D_AFB = (5,0208 / (E/D^k12))^(1/k12) (odwrócenie modelu
+        energii względem D przy E = 1,2 cal/cm² = 5,0208 J/cm²), gdzie E to energia
+        TEJ kotwy na odległości roboczej D. Następnie interpolacja po napięciu.
         """
         afb_anchors: dict[str, float] = {}
-        e_threshold_jcm2 = INCIDENT_ENERGY_AFB_CAL_CM2 * JOULE_PER_CAL_CM2
         for anchor in VoltageAnchor:
             c = table.energy_entry(cfg, anchor)
-            assert c.distance_exponent_x is not None
-            e_n = cls._normalized_energy(i_arc_ka, gap_mm, c)
-            denom = cf * e_n * (arc_time_s / REFERENCE_TIME_S)
-            ratio = e_threshold_jcm2 / denom  # = (610/D)^x
-            afb_anchors[anchor.name] = REFERENCE_DISTANCE_MM / (
-                ratio ** (1.0 / c.distance_exponent_x)
-            )
+            assert c.k is not None and len(c.k) == 13
+            k12 = c.k[11]
+            e_jcm2 = e_anchors_jcm2[anchor.name]
+            f = e_jcm2 / working_distance_mm**k12
+            afb_anchors[anchor.name] = (INCIDENT_ENERGY_AFB_JOULE_CM2 / f) ** (1.0 / k12)
         return cls._interpolate_anchor(voltage_kv, afb_anchors)
 
     @staticmethod
     def _interpolate_anchor(voltage_kv: float, anchor_values: dict[str, float]) -> float:
-        """Interpolacja liniowa wartości między kotwami otaczającymi napięcie U.
+        """Interpolacja po napięciu między kotwami (IEEE 1584-2018, Eq 16-24).
 
-        Publiczne ramy interpolacji IEEE 1584-2018: policz na kotwach otaczających
-        U i interpoluj liniowo; poniżej najniższej / powyżej najwyższej kotwy
-        przyjmij wartość skrajnej kotwy (clamp). Kotwy: 600 / 2700 / 14300 V.
+        Postać publiczna (kotwy 600/2700/14300 V):
+          - U ≤ 0,6 kV          : wartość kotwy 600 V (clamp dolny),
+          - 0,6 < U ≤ 2,7 kV    : mieszanka x3 par 600↔2700 V,
+          - U > 2,7 kV          : x2 = ((x14300−x2700)/11,6)·(U−14,3) + x14300
+                                  (interpolacja na parze 2700↔14300 V; kotwa 14300 V
+                                  dla U bliskiego 14,3 kV).
         """
-        pts = sorted((VoltageAnchor[name].value, value) for name, value in anchor_values.items())
-        if voltage_kv <= pts[0][0]:
-            return pts[0][1]
-        if voltage_kv >= pts[-1][0]:
-            return pts[-1][1]
-        for (v_lo, e_lo), (v_hi, e_hi) in zip(pts, pts[1:], strict=False):
-            if v_lo <= voltage_kv <= v_hi:
-                frac = (voltage_kv - v_lo) / (v_hi - v_lo)
-                return e_lo + frac * (e_hi - e_lo)
-        return pts[-1][1]  # nieosiągalne (clamp wyżej)
+        x600 = anchor_values["V600"]
+        x2700 = anchor_values["V2700"]
+        x14300 = anchor_values["V14300"]
+        if voltage_kv <= float(VoltageAnchor.V600.value):
+            return x600
+        x1 = ((x2700 - x600) / 2.1) * (voltage_kv - 2.7) + x2700
+        x2 = ((x14300 - x2700) / 11.6) * (voltage_kv - 14.3) + x14300
+        if voltage_kv <= float(VoltageAnchor.V2700.value):
+            x3 = (x1 * (2.7 - voltage_kv)) / 2.1 + (x2 * (voltage_kv - 0.6)) / 2.1
+            return x3
+        return x2
 
     def _ppe_category(self, incident_energy_cal_cm2: float) -> tuple[str, str | None]:
         """Kategoria ŚOI z progów NFPA 70E. PUSTA tablica ⇒ "dane niekompletne".
 
         Zwraca (etykieta_kategorii, proweniencja_tablicy_lub_None). Gdy tablica
-        progów jest pusta, kategoria = "dane niekompletne — tablice NFPA 70E"
-        i proweniencja None (NIE zmyślamy granic kategorii).
+        progów jest pusta (brak danych NFPA 70E), kategoria = "dane niekompletne —
+        tablice NFPA 70E" i proweniencja None (NIE zmyślamy granic kategorii).
+        AFB (1,2 cal/cm²) liczy się niezależnie od tej tablicy.
         """
         table = self._ppe_table
         if table.is_empty:
@@ -687,3 +829,12 @@ class ArcFlashBuilder:
             table.over_limit_label_pl or PPE_CATEGORY_INCOMPLETE,
             table.provenance.value,
         )
+
+
+# Parametry (a,b) transformacji eq.11/12 rozmiaru obudowy IEEE 1584-2018 (Tab. ~9):
+# publiczne stałe modelu rozmiaru obudowy (NIE współczynniki regresji energii).
+_EQ_11_12_PARAMS: dict[ElectrodeConfig, tuple[float, float]] = {
+    ElectrodeConfig.VCB: (4.0, 20.0),
+    ElectrodeConfig.VCBB: (10.0, 24.0),
+    ElectrodeConfig.HCB: (10.0, 22.0),
+}
