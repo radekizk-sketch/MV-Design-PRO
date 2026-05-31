@@ -8,6 +8,21 @@
  * next to the ENM. The renderer INTERPRETS it on L2 — it never recomputes a flow.
  */
 
+/**
+ * One White Box derivation step (A→B→C→D): formula → data → substitution →
+ * result. `source` is provenance: 'solver' (frozen NR primitive) or
+ * 'interpretacja' (derived from solver output for display).
+ */
+export interface VfWhiteBoxStep {
+  readonly title: string;
+  readonly formula_latex: string;
+  readonly inputs: Readonly<Record<string, unknown>>;
+  readonly substitution_latex: string;
+  readonly result: Readonly<Record<string, unknown>>;
+  readonly result_unit: string;
+  readonly source: 'solver' | 'interpretacja';
+}
+
 /** Voltage at one busbar (SN section or nN 400 V). */
 export interface VfBus {
   readonly bus_ref: string;
@@ -18,6 +33,8 @@ export interface VfBus {
   /** (U_pu − 1)·100 — signed deviation from nominal [%]. */
   readonly deviation_percent: number;
   readonly angle_deg: number;
+  /** Gate D — the U derivation from the frozen NR solution. */
+  readonly white_box: readonly VfWhiteBoxStep[];
 }
 
 /** Power flow through one branch/field. */
@@ -30,6 +47,8 @@ export interface VfBranch {
   readonly direction: 'forward' | 'reverse' | 'none';
   /** I / I_rated · 100 [%], or null if the branch has no rated current. */
   readonly loading_percent: number | null;
+  /** Gate D — the I/S/loading derivation from the frozen NR solution. */
+  readonly white_box: readonly VfWhiteBoxStep[];
 }
 
 export interface SldVoltageFlowCompanion {

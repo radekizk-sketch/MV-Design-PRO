@@ -8,15 +8,27 @@
  * the ENM. The renderer INTERPRETS it on L2 — it never recomputes a short circuit.
  */
 
-/** One White Box step carried verbatim from the solver trace (LaTeX-ready). */
+/**
+ * One White Box step carried verbatim from the solver trace — a full A→B→C→D
+ * derivation: A=title/formula, B=inputs (data), C=substitution, D=result+unit.
+ * LaTeX strings are the solver's own; rendered as readable math text at L2.
+ */
 export interface ScWhiteBoxStep {
   readonly key?: string;
+  readonly title?: string;
   readonly description?: string;
+  /** A — the symbolic formula (LaTeX). */
   readonly formula_latex?: string;
+  /** B — the input data (named values; complex as {re, im}). */
   readonly inputs?: Readonly<Record<string, unknown>>;
+  /** C — the formula with the data substituted (LaTeX). */
   readonly substitution_latex?: string;
+  readonly substitution?: string;
+  /** D — the result value(s). */
   readonly result?: Readonly<Record<string, unknown>>;
   readonly unit?: string;
+  readonly result_unit?: string;
+  readonly notes?: string;
   readonly [k: string]: unknown;
 }
 

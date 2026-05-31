@@ -46,18 +46,20 @@ test.describe('sld:station-rozdzielnia:screenshot', () => {
       await expect(root).toHaveAttribute('data-status', 'ready', { timeout: 15000 });
       await expect(root).toHaveAttribute('data-archetype', archetype);
 
-      // All three detail levels rendered (responsive composite).
+      // Three responsive detail levels + the gate-D White Box panel.
       await expect(page.locator('[data-testid="sr-harness-panel-far"]')).toBeVisible();
       await expect(page.locator('[data-testid="sr-harness-panel-closer"]')).toBeVisible();
       await expect(page.locator('[data-testid="sr-harness-panel-close"]')).toBeVisible();
+      await expect(page.locator('[data-testid="sr-harness-panel-whitebox"]')).toBeVisible();
 
-      // The unit renders (busbar + fields) at every level (3 detail panels).
+      // The unit renders (busbar + fields) at every level (3 levels + White Box).
       const units = page.locator(`[data-testid="station-rozdzielnia-sr-${archetype.toLowerCase()}"]`);
-      expect(await units.count()).toBe(3);
-      // At least one main busbar per panel (T4 sekcyjna adds a second section
-      // busbar `sr-busbar-b-*`, so the count is ≥ 3 across the three panels).
+      expect(await units.count()).toBe(4);
+      // At least one main busbar per panel.
       const busbars = page.locator('[data-testid^="sr-busbar-sr-"]');
-      expect(await busbars.count()).toBeGreaterThanOrEqual(3);
+      expect(await busbars.count()).toBeGreaterThanOrEqual(4);
+      // Gate D — the expanded White Box derivation is present in the composite.
+      await expect(page.locator('[data-whitebox="expanded"]').first()).toBeVisible();
 
       await page.waitForTimeout(400);
 

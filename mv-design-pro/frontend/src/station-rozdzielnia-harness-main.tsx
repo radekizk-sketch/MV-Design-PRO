@@ -43,6 +43,7 @@ function LevelPanel(props: {
   label: string;
   panelWidth: number;
   panelHeight: number;
+  whiteBox?: boolean;
   onFieldClick: (fieldId: string) => void;
 }): JSX.Element {
   const { archetype, detail, label, panelWidth, panelHeight, onFieldClick } = props;
@@ -67,7 +68,7 @@ function LevelPanel(props: {
 
   return (
     <div
-      data-testid={`sr-harness-panel-${detail}`}
+      data-testid={`sr-harness-panel-${whiteBox ? 'whitebox' : detail}`}
       data-detail={detail}
       style={{
         border: '1px solid #13435A',
@@ -170,6 +171,17 @@ function Harness(): JSX.Element {
             onFieldClick={(fieldId) => setLastClick(fieldId)}
           />
         ))}
+        {/* Gate D — the deepest L2 view: the complete engineering object with the
+            expanded White Box derivation (short circuit + voltage) for the SN busbar. */}
+        <LevelPanel
+          archetype={archetype}
+          detail="close"
+          label="szczyt — kompletny obiekt: White Box (zwarcie + napięcie) A→B→C→D"
+          panelWidth={PANEL_W}
+          panelHeight={520}
+          whiteBox
+          onFieldClick={(fieldId) => setLastClick(fieldId)}
+        />
       </div>
     </div>
   );

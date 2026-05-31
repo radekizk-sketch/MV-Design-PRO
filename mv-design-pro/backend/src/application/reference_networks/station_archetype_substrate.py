@@ -594,6 +594,21 @@ def _vf_graph_and_pq(
     return s.graph, s.slack_id, list(s.pq), buses
 
 
+def _wb(title: str, formula: str, inputs: dict[str, Any], subst: str, result: dict[str, Any], unit: str, source: str) -> dict[str, Any]:
+    """One White Box step (A→B→C→D): formula → data → substitution → result. The
+    `source` tags provenance — 'solver' (frozen NR primitive) or 'interpretacja'
+    (derived from solver output for display). Mirrors the SC trace shape."""
+    return {
+        "title": title,
+        "formula_latex": formula,
+        "inputs": inputs,
+        "substitution_latex": subst,
+        "result": result,
+        "result_unit": unit,
+        "source": source,
+    }
+
+
 def build_voltage_flow_companion(archetype: str) -> dict[str, Any]:
     graph, slack_id, pq, buses = _vf_graph_and_pq(archetype)
     pf_input = PowerFlowInput(
@@ -631,14 +646,56 @@ def build_voltage_flow_companion(archetype: str) -> dict[str, Any]:
         p_mw = round(float(s_from.real), 4) if s_from is not None else 0.0
         q_mvar = round(float(s_from.imag), 4) if s_from is not None else 0.0
         s_mva = round((p_mw**2 + q_mvar**2) ** 0.5, 4)
+        i_a = round(i_ka * 1000.0, 2)
+        from_un_kv = float(graph.nodes[branch.from_node_id].voltage_level)
         branch_entries[branch_id] = {
             "branch_ref": branch_id,
-            "i_a": round(i_ka * 1000.0, 2),
+            "i_a": i_a,
             "p_mw": p_mw,
             "q_mvar": q_mvar,
             "s_mva": s_mva,
             "direction": _flow_direction(p_mw),
             "loading_percent": loading_pct,
+            # White Box (gate D): how the displayed flow is derived from the NR
+            # solution (S_from is a solver primitive; I and loading are derived).
+            "white_box": [
+                _wb(
+                    "Moc gałęzi S (zespolona)",
+                    r"\underline{S} = \underline{U} \cdot \underline{I}^{*}\ \text{(rozwiązanie NR)}",
+                    {"solver": "newton-raphson"},
+                    rf"P = {p_mw}\ \text{{MW}},\ Q = {q_mvar}\ \text{{Mvar}}",
+                    {"p_mw": p_mw, "q_mvar": q_mvar},
+                    "MW / Mvar",
+                    "solver",
+                ),
+                _wb(
+                    "Moc pozorna S",
+                    r"S = \sqrt{P^2 + Q^2}",
+                    {"p_mw": p_mw, "q_mvar": q_mvar},
+                    rf"S = \sqrt{{{p_mw}^2 + {q_mvar}^2}}",
+                    {"s_mva": s_mva},
+                    "MVA",
+                    "interpretacja",
+                ),
+                _wb(
+                    "Prąd gałęzi I",
+                    r"I = \frac{S \cdot 10^3}{\sqrt{3} \cdot U_n}",
+                    {"s_mva": s_mva, "u_n_kv": from_un_kv},
+                    rf"I = \frac{{{s_mva} \cdot 10^3}}{{\sqrt{{3}} \cdot {from_un_kv}}}",
+                    {"i_a": i_a},
+                    "A",
+                    "interpretacja",
+                ),
+                _wb(
+                    "Obciążenie pola",
+                    r"obc. = \frac{I}{I_{zn}} \cdot 100\%",
+                    {"i_a": i_a, "i_zn_a": rated_a if rated_a > 0 else None},
+                    (rf"obc. = \frac{{{i_a}}}{{{rated_a}}} \cdot 100\%" if rated_a > 0 else "n/d"),
+                    {"loading_percent": loading_pct},
+                    "%",
+                    "interpretacja",
+                ),
+            ],
         }
 
     return {

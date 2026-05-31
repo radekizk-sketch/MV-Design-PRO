@@ -373,3 +373,92 @@ describe('GATE F — bus voltages + field power flows from the frozen NR solver'
     expect(txt).toMatch(/Q=/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// GATE D — expanded White Box (A→B→C→D) on busbars + fields at L2
+// ---------------------------------------------------------------------------
+
+function renderWhiteBox(archetype: 'T1' | 'T2' | 'T3' | 'T4') {
+  const { model, companion } = buildArchetype(archetype);
+  return render(
+    <svg>
+      <StationRozdzielniaSN model={model} companion={companion} detail="close" whiteBox />
+    </svg>,
+  );
+}
+
+describe('GATE D — complete White Box derivation present + rendered at L2', () => {
+  it('every busbar SC carries a complete A→B→C→D trace (formula+substitution+result)', () => {
+    for (const archetype of ['T1', 'T2', 'T3', 'T4'] as const) {
+      const { model } = buildArchetype(archetype);
+      for (const busRef of SC_BUSES[archetype]) {
+        const trace = model.shortCircuit!.buses[busRef].max.white_box_trace;
+        expect(trace.length, `${archetype}/${busRef} SC trace empty`).toBeGreaterThanOrEqual(6);
+        for (const step of trace) {
+          expect(step.formula_latex, 'A (formula) missing').toBeTruthy();
+          expect(step.substitution_latex, 'C (substitution) missing').toBeTruthy();
+          expect(step.result, 'D (result) missing').toBeTruthy();
+        }
+      }
+    }
+  });
+
+  it('every busbar voltage AND every field flow carries a White Box derivation', () => {
+    for (const archetype of ['T1', 'T2', 'T3', 'T4'] as const) {
+      const { model } = buildArchetype(archetype);
+      // Bus voltage derivations.
+      for (const busRef of SC_BUSES[archetype]) {
+        const wb = model.voltageFlow!.buses[busRef].white_box;
+        expect(wb.length, `${archetype}/${busRef} VF bus WB empty`).toBeGreaterThanOrEqual(3);
+        for (const s of wb) {
+          expect(s.formula_latex).toBeTruthy();
+          expect(s.substitution_latex).toBeTruthy();
+          expect(s.result).toBeTruthy();
+          expect(['solver', 'interpretacja']).toContain(s.source);
+        }
+      }
+      // Field flow derivations.
+      for (const f of model.fields) {
+        if (f.role === 'SPRZEGLO' || !f.branchRef) continue;
+        const wb = model.voltageFlow!.branches[f.branchRef].white_box;
+        expect(wb.length, `${archetype}/${f.fieldId} VF branch WB empty`).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
+  it('provenance is tagged: at least one solver-sourced step + interpretation steps', () => {
+    const { model } = buildArchetype('T1');
+    const wb = model.voltageFlow!.buses['SN_BUS'].white_box;
+    expect(wb.some((s) => s.source === 'solver')).toBe(true);
+    expect(wb.some((s) => s.source === 'interpretacja')).toBe(true);
+  });
+
+  it('renders the expanded White Box at L2 with all four parts + case_ref', () => {
+    const { container } = renderWhiteBox('T1');
+    // SC + voltage White Box panels are present.
+    const scPanel = container.querySelector('[data-testid="sr-wb-sc-SN_BUS"]');
+    const vfPanel = container.querySelector('[data-testid="sr-wb-vf-SN_BUS"]');
+    expect(scPanel, 'SC White Box panel must render at L2').toBeTruthy();
+    expect(vfPanel, 'voltage White Box panel must render at L2').toBeTruthy();
+    // Each step carries the raw LaTeX (canonical math form) in the DOM.
+    const step0 = container.querySelector('[data-testid="sr-wb-sc-SN_BUS-step-0"]');
+    expect(step0!.getAttribute('data-formula-latex')).toBeTruthy();
+    expect(step0!.getAttribute('data-substitution-latex')).toBeTruthy();
+    // The rendered text shows A) / B) / C) / D) parts.
+    const txt = scPanel!.textContent ?? '';
+    expect(txt).toMatch(/A\)/);
+    expect(txt).toMatch(/B\) dane/);
+    expect(txt).toMatch(/C\)/);
+    expect(txt).toMatch(/D\)/);
+  });
+
+  it('the White Box is an L2-only expansion (absent at closer)', () => {
+    const { model, companion } = buildArchetype('T1');
+    const { container } = render(
+      <svg>
+        <StationRozdzielniaSN model={model} companion={companion} detail="closer" whiteBox />
+      </svg>,
+    );
+    expect(container.querySelector('[data-whitebox="expanded"]')).toBeFalsy();
+  });
+});

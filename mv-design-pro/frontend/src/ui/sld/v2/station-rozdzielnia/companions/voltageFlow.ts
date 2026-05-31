@@ -30,7 +30,65 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "loading_percent": 8.11,
         "p_mw": 1.265,
         "q_mvar": 0.4,
-        "s_mva": 1.3267
+        "s_mva": 1.3267,
+        "white_box": [
+          {
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
+            "inputs": {
+              "solver": "newton-raphson"
+            },
+            "result": {
+              "p_mw": 1.265,
+              "q_mvar": 0.4
+            },
+            "result_unit": "MW / Mvar",
+            "source": "solver",
+            "substitution_latex": "P = 1.265\\ \\text{MW},\\ Q = 0.4\\ \\text{Mvar}",
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
+          },
+          {
+            "formula_latex": "S = \\sqrt{P^2 + Q^2}",
+            "inputs": {
+              "p_mw": 1.265,
+              "q_mvar": 0.4
+            },
+            "result": {
+              "s_mva": 1.3267
+            },
+            "result_unit": "MVA",
+            "source": "interpretacja",
+            "substitution_latex": "S = \\sqrt{1.265^2 + 0.4^2}",
+            "title": "Moc pozorna S"
+          },
+          {
+            "formula_latex": "I = \\frac{S \\cdot 10^3}{\\sqrt{3} \\cdot U_n}",
+            "inputs": {
+              "s_mva": 1.3267,
+              "u_n_kv": 15.0
+            },
+            "result": {
+              "i_a": 51.07
+            },
+            "result_unit": "A",
+            "source": "interpretacja",
+            "substitution_latex": "I = \\frac{1.3267 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
+          },
+          {
+            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "inputs": {
+              "i_a": 51.07,
+              "i_zn_a": 630.0
+            },
+            "result": {
+              "loading_percent": 8.11
+            },
+            "result_unit": "%",
+            "source": "interpretacja",
+            "substitution_latex": "obc. = \\frac{51.07}{630.0} \\cdot 100\\%",
+            "title": "Obci\u0105\u017cenie pola"
+          }
+        ]
       },
       "sr/branch/out": {
         "branch_ref": "sr/branch/out",
@@ -39,7 +97,65 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "loading_percent": 5.27,
         "p_mw": 0.8215,
         "q_mvar": 0.253,
-        "s_mva": 0.8596
+        "s_mva": 0.8596,
+        "white_box": [
+          {
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
+            "inputs": {
+              "solver": "newton-raphson"
+            },
+            "result": {
+              "p_mw": 0.8215,
+              "q_mvar": 0.253
+            },
+            "result_unit": "MW / Mvar",
+            "source": "solver",
+            "substitution_latex": "P = 0.8215\\ \\text{MW},\\ Q = 0.253\\ \\text{Mvar}",
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
+          },
+          {
+            "formula_latex": "S = \\sqrt{P^2 + Q^2}",
+            "inputs": {
+              "p_mw": 0.8215,
+              "q_mvar": 0.253
+            },
+            "result": {
+              "s_mva": 0.8596
+            },
+            "result_unit": "MVA",
+            "source": "interpretacja",
+            "substitution_latex": "S = \\sqrt{0.8215^2 + 0.253^2}",
+            "title": "Moc pozorna S"
+          },
+          {
+            "formula_latex": "I = \\frac{S \\cdot 10^3}{\\sqrt{3} \\cdot U_n}",
+            "inputs": {
+              "s_mva": 0.8596,
+              "u_n_kv": 15.0
+            },
+            "result": {
+              "i_a": 33.22
+            },
+            "result_unit": "A",
+            "source": "interpretacja",
+            "substitution_latex": "I = \\frac{0.8596 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
+          },
+          {
+            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "inputs": {
+              "i_a": 33.22,
+              "i_zn_a": 630.0
+            },
+            "result": {
+              "loading_percent": 5.27
+            },
+            "result_unit": "%",
+            "source": "interpretacja",
+            "substitution_latex": "obc. = \\frac{33.22}{630.0} \\cdot 100\\%",
+            "title": "Obci\u0105\u017cenie pola"
+          }
+        ]
       },
       "sr/branch/tr": {
         "branch_ref": "sr/branch/tr",
@@ -48,7 +164,65 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "loading_percent": null,
         "p_mw": 0.44,
         "q_mvar": 0.14,
-        "s_mva": 0.4617
+        "s_mva": 0.4617,
+        "white_box": [
+          {
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
+            "inputs": {
+              "solver": "newton-raphson"
+            },
+            "result": {
+              "p_mw": 0.44,
+              "q_mvar": 0.14
+            },
+            "result_unit": "MW / Mvar",
+            "source": "solver",
+            "substitution_latex": "P = 0.44\\ \\text{MW},\\ Q = 0.14\\ \\text{Mvar}",
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
+          },
+          {
+            "formula_latex": "S = \\sqrt{P^2 + Q^2}",
+            "inputs": {
+              "p_mw": 0.44,
+              "q_mvar": 0.14
+            },
+            "result": {
+              "s_mva": 0.4617
+            },
+            "result_unit": "MVA",
+            "source": "interpretacja",
+            "substitution_latex": "S = \\sqrt{0.44^2 + 0.14^2}",
+            "title": "Moc pozorna S"
+          },
+          {
+            "formula_latex": "I = \\frac{S \\cdot 10^3}{\\sqrt{3} \\cdot U_n}",
+            "inputs": {
+              "s_mva": 0.4617,
+              "u_n_kv": 15.0
+            },
+            "result": {
+              "i_a": 17.85
+            },
+            "result_unit": "A",
+            "source": "interpretacja",
+            "substitution_latex": "I = \\frac{0.4617 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
+          },
+          {
+            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "inputs": {
+              "i_a": 17.85,
+              "i_zn_a": null
+            },
+            "result": {
+              "loading_percent": null
+            },
+            "result_unit": "%",
+            "source": "interpretacja",
+            "substitution_latex": "n/d",
+            "title": "Obci\u0105\u017cenie pola"
+          }
+        ]
       }
     },
     "buses": {
@@ -89,7 +263,65 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "loading_percent": 2.31,
         "p_mw": 0.3503,
         "q_mvar": 0.1406,
-        "s_mva": 0.3775
+        "s_mva": 0.3775,
+        "white_box": [
+          {
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
+            "inputs": {
+              "solver": "newton-raphson"
+            },
+            "result": {
+              "p_mw": 0.3503,
+              "q_mvar": 0.1406
+            },
+            "result_unit": "MW / Mvar",
+            "source": "solver",
+            "substitution_latex": "P = 0.3503\\ \\text{MW},\\ Q = 0.1406\\ \\text{Mvar}",
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
+          },
+          {
+            "formula_latex": "S = \\sqrt{P^2 + Q^2}",
+            "inputs": {
+              "p_mw": 0.3503,
+              "q_mvar": 0.1406
+            },
+            "result": {
+              "s_mva": 0.3775
+            },
+            "result_unit": "MVA",
+            "source": "interpretacja",
+            "substitution_latex": "S = \\sqrt{0.3503^2 + 0.1406^2}",
+            "title": "Moc pozorna S"
+          },
+          {
+            "formula_latex": "I = \\frac{S \\cdot 10^3}{\\sqrt{3} \\cdot U_n}",
+            "inputs": {
+              "s_mva": 0.3775,
+              "u_n_kv": 15.0
+            },
+            "result": {
+              "i_a": 14.53
+            },
+            "result_unit": "A",
+            "source": "interpretacja",
+            "substitution_latex": "I = \\frac{0.3775 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
+          },
+          {
+            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "inputs": {
+              "i_a": 14.53,
+              "i_zn_a": 630.0
+            },
+            "result": {
+              "loading_percent": 2.31
+            },
+            "result_unit": "%",
+            "source": "interpretacja",
+            "substitution_latex": "obc. = \\frac{14.53}{630.0} \\cdot 100\\%",
+            "title": "Obci\u0105\u017cenie pola"
+          }
+        ]
       },
       "sr/branch/tr": {
         "branch_ref": "sr/branch/tr",
@@ -98,7 +330,65 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "loading_percent": null,
         "p_mw": 0.35,
         "q_mvar": 0.14,
-        "s_mva": 0.377
+        "s_mva": 0.377,
+        "white_box": [
+          {
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
+            "inputs": {
+              "solver": "newton-raphson"
+            },
+            "result": {
+              "p_mw": 0.35,
+              "q_mvar": 0.14
+            },
+            "result_unit": "MW / Mvar",
+            "source": "solver",
+            "substitution_latex": "P = 0.35\\ \\text{MW},\\ Q = 0.14\\ \\text{Mvar}",
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
+          },
+          {
+            "formula_latex": "S = \\sqrt{P^2 + Q^2}",
+            "inputs": {
+              "p_mw": 0.35,
+              "q_mvar": 0.14
+            },
+            "result": {
+              "s_mva": 0.377
+            },
+            "result_unit": "MVA",
+            "source": "interpretacja",
+            "substitution_latex": "S = \\sqrt{0.35^2 + 0.14^2}",
+            "title": "Moc pozorna S"
+          },
+          {
+            "formula_latex": "I = \\frac{S \\cdot 10^3}{\\sqrt{3} \\cdot U_n}",
+            "inputs": {
+              "s_mva": 0.377,
+              "u_n_kv": 15.0
+            },
+            "result": {
+              "i_a": 14.53
+            },
+            "result_unit": "A",
+            "source": "interpretacja",
+            "substitution_latex": "I = \\frac{0.377 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
+          },
+          {
+            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "inputs": {
+              "i_a": 14.53,
+              "i_zn_a": null
+            },
+            "result": {
+              "loading_percent": null
+            },
+            "result_unit": "%",
+            "source": "interpretacja",
+            "substitution_latex": "n/d",
+            "title": "Obci\u0105\u017cenie pola"
+          }
+        ]
       }
     },
     "buses": {
@@ -139,7 +429,65 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "loading_percent": 2.06,
         "p_mw": 0.3202,
         "q_mvar": 0.1005,
-        "s_mva": 0.3356
+        "s_mva": 0.3356,
+        "white_box": [
+          {
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
+            "inputs": {
+              "solver": "newton-raphson"
+            },
+            "result": {
+              "p_mw": 0.3202,
+              "q_mvar": 0.1005
+            },
+            "result_unit": "MW / Mvar",
+            "source": "solver",
+            "substitution_latex": "P = 0.3202\\ \\text{MW},\\ Q = 0.1005\\ \\text{Mvar}",
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
+          },
+          {
+            "formula_latex": "S = \\sqrt{P^2 + Q^2}",
+            "inputs": {
+              "p_mw": 0.3202,
+              "q_mvar": 0.1005
+            },
+            "result": {
+              "s_mva": 0.3356
+            },
+            "result_unit": "MVA",
+            "source": "interpretacja",
+            "substitution_latex": "S = \\sqrt{0.3202^2 + 0.1005^2}",
+            "title": "Moc pozorna S"
+          },
+          {
+            "formula_latex": "I = \\frac{S \\cdot 10^3}{\\sqrt{3} \\cdot U_n}",
+            "inputs": {
+              "s_mva": 0.3356,
+              "u_n_kv": 15.0
+            },
+            "result": {
+              "i_a": 12.95
+            },
+            "result_unit": "A",
+            "source": "interpretacja",
+            "substitution_latex": "I = \\frac{0.3356 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
+          },
+          {
+            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "inputs": {
+              "i_a": 12.95,
+              "i_zn_a": 630.0
+            },
+            "result": {
+              "loading_percent": 2.06
+            },
+            "result_unit": "%",
+            "source": "interpretacja",
+            "substitution_latex": "obc. = \\frac{12.95}{630.0} \\cdot 100\\%",
+            "title": "Obci\u0105\u017cenie pola"
+          }
+        ]
       },
       "sr/branch/in": {
         "branch_ref": "sr/branch/in",
@@ -148,7 +496,65 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "loading_percent": 5.08,
         "p_mw": 0.7921,
         "q_mvar": 0.2542,
-        "s_mva": 0.8319
+        "s_mva": 0.8319,
+        "white_box": [
+          {
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
+            "inputs": {
+              "solver": "newton-raphson"
+            },
+            "result": {
+              "p_mw": 0.7921,
+              "q_mvar": 0.2542
+            },
+            "result_unit": "MW / Mvar",
+            "source": "solver",
+            "substitution_latex": "P = 0.7921\\ \\text{MW},\\ Q = 0.2542\\ \\text{Mvar}",
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
+          },
+          {
+            "formula_latex": "S = \\sqrt{P^2 + Q^2}",
+            "inputs": {
+              "p_mw": 0.7921,
+              "q_mvar": 0.2542
+            },
+            "result": {
+              "s_mva": 0.8319
+            },
+            "result_unit": "MVA",
+            "source": "interpretacja",
+            "substitution_latex": "S = \\sqrt{0.7921^2 + 0.2542^2}",
+            "title": "Moc pozorna S"
+          },
+          {
+            "formula_latex": "I = \\frac{S \\cdot 10^3}{\\sqrt{3} \\cdot U_n}",
+            "inputs": {
+              "s_mva": 0.8319,
+              "u_n_kv": 15.0
+            },
+            "result": {
+              "i_a": 32.02
+            },
+            "result_unit": "A",
+            "source": "interpretacja",
+            "substitution_latex": "I = \\frac{0.8319 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
+          },
+          {
+            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "inputs": {
+              "i_a": 32.02,
+              "i_zn_a": 630.0
+            },
+            "result": {
+              "loading_percent": 5.08
+            },
+            "result_unit": "%",
+            "source": "interpretacja",
+            "substitution_latex": "obc. = \\frac{32.02}{630.0} \\cdot 100\\%",
+            "title": "Obci\u0105\u017cenie pola"
+          }
+        ]
       },
       "sr/branch/main-out": {
         "branch_ref": "sr/branch/main-out",
@@ -157,7 +563,65 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "loading_percent": 3.03,
         "p_mw": 0.4705,
         "q_mvar": 0.151,
-        "s_mva": 0.4941
+        "s_mva": 0.4941,
+        "white_box": [
+          {
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
+            "inputs": {
+              "solver": "newton-raphson"
+            },
+            "result": {
+              "p_mw": 0.4705,
+              "q_mvar": 0.151
+            },
+            "result_unit": "MW / Mvar",
+            "source": "solver",
+            "substitution_latex": "P = 0.4705\\ \\text{MW},\\ Q = 0.151\\ \\text{Mvar}",
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
+          },
+          {
+            "formula_latex": "S = \\sqrt{P^2 + Q^2}",
+            "inputs": {
+              "p_mw": 0.4705,
+              "q_mvar": 0.151
+            },
+            "result": {
+              "s_mva": 0.4941
+            },
+            "result_unit": "MVA",
+            "source": "interpretacja",
+            "substitution_latex": "S = \\sqrt{0.4705^2 + 0.151^2}",
+            "title": "Moc pozorna S"
+          },
+          {
+            "formula_latex": "I = \\frac{S \\cdot 10^3}{\\sqrt{3} \\cdot U_n}",
+            "inputs": {
+              "s_mva": 0.4941,
+              "u_n_kv": 15.0
+            },
+            "result": {
+              "i_a": 19.07
+            },
+            "result_unit": "A",
+            "source": "interpretacja",
+            "substitution_latex": "I = \\frac{0.4941 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
+          },
+          {
+            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "inputs": {
+              "i_a": 19.07,
+              "i_zn_a": 630.0
+            },
+            "result": {
+              "loading_percent": 3.03
+            },
+            "result_unit": "%",
+            "source": "interpretacja",
+            "substitution_latex": "obc. = \\frac{19.07}{630.0} \\cdot 100\\%",
+            "title": "Obci\u0105\u017cenie pola"
+          }
+        ]
       }
     },
     "buses": {
@@ -189,7 +653,65 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "loading_percent": 4.31,
         "p_mw": 0.672,
         "q_mvar": 0.214,
-        "s_mva": 0.7053
+        "s_mva": 0.7053,
+        "white_box": [
+          {
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
+            "inputs": {
+              "solver": "newton-raphson"
+            },
+            "result": {
+              "p_mw": 0.672,
+              "q_mvar": 0.214
+            },
+            "result_unit": "MW / Mvar",
+            "source": "solver",
+            "substitution_latex": "P = 0.672\\ \\text{MW},\\ Q = 0.214\\ \\text{Mvar}",
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
+          },
+          {
+            "formula_latex": "S = \\sqrt{P^2 + Q^2}",
+            "inputs": {
+              "p_mw": 0.672,
+              "q_mvar": 0.214
+            },
+            "result": {
+              "s_mva": 0.7053
+            },
+            "result_unit": "MVA",
+            "source": "interpretacja",
+            "substitution_latex": "S = \\sqrt{0.672^2 + 0.214^2}",
+            "title": "Moc pozorna S"
+          },
+          {
+            "formula_latex": "I = \\frac{S \\cdot 10^3}{\\sqrt{3} \\cdot U_n}",
+            "inputs": {
+              "s_mva": 0.7053,
+              "u_n_kv": 15.0
+            },
+            "result": {
+              "i_a": 27.14
+            },
+            "result_unit": "A",
+            "source": "interpretacja",
+            "substitution_latex": "I = \\frac{0.7053 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
+          },
+          {
+            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "inputs": {
+              "i_a": 27.14,
+              "i_zn_a": 630.0
+            },
+            "result": {
+              "loading_percent": 4.31
+            },
+            "result_unit": "%",
+            "source": "interpretacja",
+            "substitution_latex": "obc. = \\frac{27.14}{630.0} \\cdot 100\\%",
+            "title": "Obci\u0105\u017cenie pola"
+          }
+        ]
       },
       "sr/branch/line-b": {
         "branch_ref": "sr/branch/line-b",
@@ -198,7 +720,65 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "loading_percent": 3.92,
         "p_mw": 0.6116,
         "q_mvar": 0.1933,
-        "s_mva": 0.6414
+        "s_mva": 0.6414,
+        "white_box": [
+          {
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
+            "inputs": {
+              "solver": "newton-raphson"
+            },
+            "result": {
+              "p_mw": 0.6116,
+              "q_mvar": 0.1933
+            },
+            "result_unit": "MW / Mvar",
+            "source": "solver",
+            "substitution_latex": "P = 0.6116\\ \\text{MW},\\ Q = 0.1933\\ \\text{Mvar}",
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
+          },
+          {
+            "formula_latex": "S = \\sqrt{P^2 + Q^2}",
+            "inputs": {
+              "p_mw": 0.6116,
+              "q_mvar": 0.1933
+            },
+            "result": {
+              "s_mva": 0.6414
+            },
+            "result_unit": "MVA",
+            "source": "interpretacja",
+            "substitution_latex": "S = \\sqrt{0.6116^2 + 0.1933^2}",
+            "title": "Moc pozorna S"
+          },
+          {
+            "formula_latex": "I = \\frac{S \\cdot 10^3}{\\sqrt{3} \\cdot U_n}",
+            "inputs": {
+              "s_mva": 0.6414,
+              "u_n_kv": 15.0
+            },
+            "result": {
+              "i_a": 24.69
+            },
+            "result_unit": "A",
+            "source": "interpretacja",
+            "substitution_latex": "I = \\frac{0.6414 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
+          },
+          {
+            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "inputs": {
+              "i_a": 24.69,
+              "i_zn_a": 630.0
+            },
+            "result": {
+              "loading_percent": 3.92
+            },
+            "result_unit": "%",
+            "source": "interpretacja",
+            "substitution_latex": "obc. = \\frac{24.69}{630.0} \\cdot 100\\%",
+            "title": "Obci\u0105\u017cenie pola"
+          }
+        ]
       },
       "sr/branch/out": {
         "branch_ref": "sr/branch/out",
@@ -207,7 +787,65 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "loading_percent": 4.31,
         "p_mw": 0.671,
         "q_mvar": 0.212,
-        "s_mva": 0.7037
+        "s_mva": 0.7037,
+        "white_box": [
+          {
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
+            "inputs": {
+              "solver": "newton-raphson"
+            },
+            "result": {
+              "p_mw": 0.671,
+              "q_mvar": 0.212
+            },
+            "result_unit": "MW / Mvar",
+            "source": "solver",
+            "substitution_latex": "P = 0.671\\ \\text{MW},\\ Q = 0.212\\ \\text{Mvar}",
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
+          },
+          {
+            "formula_latex": "S = \\sqrt{P^2 + Q^2}",
+            "inputs": {
+              "p_mw": 0.671,
+              "q_mvar": 0.212
+            },
+            "result": {
+              "s_mva": 0.7037
+            },
+            "result_unit": "MVA",
+            "source": "interpretacja",
+            "substitution_latex": "S = \\sqrt{0.671^2 + 0.212^2}",
+            "title": "Moc pozorna S"
+          },
+          {
+            "formula_latex": "I = \\frac{S \\cdot 10^3}{\\sqrt{3} \\cdot U_n}",
+            "inputs": {
+              "s_mva": 0.7037,
+              "u_n_kv": 15.0
+            },
+            "result": {
+              "i_a": 27.14
+            },
+            "result_unit": "A",
+            "source": "interpretacja",
+            "substitution_latex": "I = \\frac{0.7037 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
+          },
+          {
+            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "inputs": {
+              "i_a": 27.14,
+              "i_zn_a": 630.0
+            },
+            "result": {
+              "loading_percent": 4.31
+            },
+            "result_unit": "%",
+            "source": "interpretacja",
+            "substitution_latex": "obc. = \\frac{27.14}{630.0} \\cdot 100\\%",
+            "title": "Obci\u0105\u017cenie pola"
+          }
+        ]
       },
       "sr/branch/out-b": {
         "branch_ref": "sr/branch/out-b",
@@ -216,7 +854,65 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "loading_percent": 3.92,
         "p_mw": 0.6108,
         "q_mvar": 0.1916,
-        "s_mva": 0.6401
+        "s_mva": 0.6401,
+        "white_box": [
+          {
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
+            "inputs": {
+              "solver": "newton-raphson"
+            },
+            "result": {
+              "p_mw": 0.6108,
+              "q_mvar": 0.1916
+            },
+            "result_unit": "MW / Mvar",
+            "source": "solver",
+            "substitution_latex": "P = 0.6108\\ \\text{MW},\\ Q = 0.1916\\ \\text{Mvar}",
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
+          },
+          {
+            "formula_latex": "S = \\sqrt{P^2 + Q^2}",
+            "inputs": {
+              "p_mw": 0.6108,
+              "q_mvar": 0.1916
+            },
+            "result": {
+              "s_mva": 0.6401
+            },
+            "result_unit": "MVA",
+            "source": "interpretacja",
+            "substitution_latex": "S = \\sqrt{0.6108^2 + 0.1916^2}",
+            "title": "Moc pozorna S"
+          },
+          {
+            "formula_latex": "I = \\frac{S \\cdot 10^3}{\\sqrt{3} \\cdot U_n}",
+            "inputs": {
+              "s_mva": 0.6401,
+              "u_n_kv": 15.0
+            },
+            "result": {
+              "i_a": 24.69
+            },
+            "result_unit": "A",
+            "source": "interpretacja",
+            "substitution_latex": "I = \\frac{0.6401 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
+          },
+          {
+            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "inputs": {
+              "i_a": 24.69,
+              "i_zn_a": 630.0
+            },
+            "result": {
+              "loading_percent": 3.92
+            },
+            "result_unit": "%",
+            "source": "interpretacja",
+            "substitution_latex": "obc. = \\frac{24.69}{630.0} \\cdot 100\\%",
+            "title": "Obci\u0105\u017cenie pola"
+          }
+        ]
       }
     },
     "buses": {
