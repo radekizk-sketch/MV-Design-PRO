@@ -136,6 +136,9 @@ describe('GATE C — N-8: apparatus identity is LOD-invariant + canonical shapes
       const { model } = buildArchetype(archetype);
       const { container } = renderAt(archetype, 'far');
       for (const field of model.fields) {
+        // The SMC coupler (sectioned bus) is drawn as a two-cell horizontal
+        // coupler, not a rep-symbol column — its shapes are checked by GATE A.
+        if (model.sectionedBus && field.role === 'SPRZEGLO') continue;
         const repKind = representativeKind(field);
         if (!repKind) continue;
         const sym = container.querySelector(`[data-testid="sr-field-rep-symbol-${field.fieldId}"]`);

@@ -61,11 +61,12 @@ describe('archetypes — canonical roles per the task spec', () => {
     expect(roles).not.toContain('LINIA_OUT');
   });
 
-  it('T3 ODGAŁĘŹNA has LINIA_IN + LINIA_OUT + LINIA_ODG', () => {
+  it('T3 ZKSN has 1×LINIA_IN + n×LINIA_OUT and NO LINIA_ODG (branch = more WY)', () => {
     const roles = buildArchetype('T3').model.fields.map((f) => f.role);
-    expect(roles).toContain('LINIA_IN');
-    expect(roles).toContain('LINIA_OUT');
-    expect(roles).toContain('LINIA_ODG');
+    expect(roles.filter((r) => r === 'LINIA_IN')).toHaveLength(1);
+    expect(roles.filter((r) => r === 'LINIA_OUT').length).toBeGreaterThanOrEqual(2);
+    // The ODG role no longer exists — a rozgałęzienie is just more WY.
+    expect(roles).not.toContain('LINIA_ODG');
   });
 
   it('T4 SEKCYJNA has SPRZEGLO with a normally-open point', () => {

@@ -281,12 +281,19 @@ export function buildT2(): { model: StationRozdzielniaModel; companion: SldPower
 }
 
 // =============================================================================
-// T3 — ZKSN (BranchPointSN, NOT a station): cable junction MAIN_IN / MAIN_OUT /
-//      BRANCH, line fields (SDC), NO transformer, NO nN, NO load. BL-01: cable.
+// T3 — ZKSN (BranchPointSN, NOT a station): a cable junction = 1×WE (incomer)
+//      + n×WY (outgoing). A "branch" is just MORE outgoing WY fields — there is
+//      NO separate "ODG" role. All fields are SDC line fields; NO transformer,
+//      NO nN, NO load (the junction stays on SN). BL-01: cable only.
 // =============================================================================
+
+/** Outgoing-WY branch refs of the ZKSN, in dispatcher order (n parametric). */
+const T3_WY_BRANCH_REFS: readonly string[] = [BR.mainOut, BR.branch];
+const T3_WY_FEEDER_NAMES: readonly string[] = ['CIĄG', 'OKRĘŻNA'];
 
 export function buildT3(): { model: StationRozdzielniaModel; companion: SldPowerFlowCompanion } {
   const companion = STATION_ARCHETYPE_COMPANIONS.T3;
+  // 1×WE incomer.
   const fields: StationFieldDescriptor[] = [
     {
       fieldId: 'sr-t3-in',
@@ -297,25 +304,20 @@ export function buildT3(): { model: StationRozdzielniaModel; companion: SldPower
       protection: [],
       branchRef: BR.in,
     },
-    {
-      fieldId: 'sr-t3-out',
-      role: 'LINIA_OUT',
-      bayNumber: '2',
-      feederName: 'CIĄG',
-      apparatus: sdcLineApparatus('sr-t3-out', 'closed'),
-      protection: [],
-      branchRef: BR.mainOut,
-    },
-    {
-      fieldId: 'sr-t3-odg',
-      role: 'LINIA_ODG',
-      bayNumber: '3',
-      feederName: 'OKRĘŻNA',
-      apparatus: sdcLineApparatus('sr-t3-odg', 'closed'),
-      protection: [],
-      branchRef: BR.branch,
-    },
   ];
+  // n×WY outgoing — every outgoing cable is the SAME role (LINIA_OUT) and type
+  // (SDC). A rozgałęzienie is simply more WY, never a distinct "ODG" field.
+  T3_WY_BRANCH_REFS.forEach((branchRef, i) => {
+    fields.push({
+      fieldId: `sr-t3-wy${i + 1}`,
+      role: 'LINIA_OUT',
+      bayNumber: String(i + 2),
+      feederName: T3_WY_FEEDER_NAMES[i] ?? `WY${i + 1}`,
+      apparatus: sdcLineApparatus(`sr-t3-wy${i + 1}`, 'closed'),
+      protection: [],
+      branchRef,
+    });
+  });
   const model: StationRozdzielniaModel = {
     stationId: 'sr-t3',
     archetype: 'T3',
