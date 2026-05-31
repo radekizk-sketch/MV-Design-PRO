@@ -55,8 +55,8 @@ export type StationArchetype = 'T1' | 'T2' | 'T3' | 'T4';
 export const STATION_ARCHETYPE_TYPE_PL: Readonly<Record<StationArchetype, string>> = {
   T1: 'przelotowa',
   T2: 'końcowa',
-  T3: 'odgałęźna',
-  T4: 'sprzęgłowa',
+  T3: 'ZKSN — złącze kablowe', // a cable junction (1×WE + n×WY), not a station
+  T4: 'sekcyjna (sprzęgło SMC)',
 };
 
 /** ENM `Substation.station_type` per archetype (model-truth binding). */

@@ -833,7 +833,13 @@ export function StationRozdzielniaSN(props: StationRozdzielniaSNProps): JSX.Elem
   let sectionGap: { aEnd: number; bStart: number } | null = null;
   if (model.sectionedBus) {
     const coupler = geometry.fields.find((f) => f.role === 'SPRZEGLO');
-    if (coupler) sectionGap = { aEnd: coupler.x - 10, bStart: coupler.x + 10 };
+    // The SMC coupler needs room for TWO cells + a breaker between them — give it
+    // a wide gap (most of a field pitch) so the rozłącznik A · wyłącznik ·
+    // rozłącznik B layout breathes instead of overlapping.
+    if (coupler) {
+      const halfGap = detail === 'far' ? 26 : detail === 'closer' ? 36 : 44;
+      sectionGap = { aEnd: coupler.x - halfGap, bStart: coupler.x + halfGap };
+    }
   }
   const sectionAEnergized = model.sectionABranchRef
     ? index?.isBranchEnergized(model.sectionABranchRef) ?? true
