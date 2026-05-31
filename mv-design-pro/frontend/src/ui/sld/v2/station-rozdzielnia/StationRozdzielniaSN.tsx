@@ -67,6 +67,7 @@ import {
   type StationDetailLevel,
 } from './geometry';
 import type { ScBus } from './companions/shortCircuitTypes';
+import type { VfBus, VfBranch } from './companions/voltageFlowTypes';
 
 // =============================================================================
 // Props
@@ -347,10 +348,11 @@ function FieldColumn(props: {
   direction: 'forward' | 'reverse' | 'none';
   energized: boolean;
   powerMw: number | null;
+  vfBranch: VfBranch | null;
   selected: boolean;
   onFieldClick?: (fieldId: string) => void;
 }): JSX.Element {
-  const { field, geom, detail, busColor, direction, energized, powerMw, selected, onFieldClick } = props;
+  const { field, geom, detail, busColor, direction, energized, powerMw, vfBranch, selected, onFieldClick } = props;
   const state = fieldSwitchState(field);
   const isOpen = state === 'open' || field.isNormallyOpen;
   const pathColor = isOpen ? COLOR_DEVICE_OPEN : energized ? busColor : COLOR_TEXT_MUTED;
@@ -530,20 +532,25 @@ function FieldColumn(props: {
         </text>
       )}
 
-      {/* SCADA power readout (close zoom): solver P at the field's branch. */}
-      {detail === 'close' && powerMw !== null && (
-        <text
-          x={x}
-          y={geom.pathBottomY + 25}
-          textAnchor="middle"
-          fill={COLOR_TEXT_MUTED}
-          fontFamily={FONT_MONO}
-          fontSize={7}
-          fontWeight={600}
-          data-testid={`sr-field-power-${field.fieldId}`}
-        >
-          {`P=${formatPower(powerMw)}`}
-        </text>
+      {/* SCADA I/P/Q/loading readout (close zoom, gate F): full power flow from the
+          frozen NR solver. Falls back to P-only when no VF branch is available. */}
+      {detail === 'close' && (vfBranch || powerMw !== null) && (
+        <g data-testid={`sr-field-power-${field.fieldId}`} data-vf-branch={field.branchRef ?? ''}>
+          {(vfBranch ? vfFieldLines(vfBranch) : [`P=${formatPower(powerMw as number)}`]).map((ln, i) => (
+            <text
+              key={i}
+              x={x}
+              y={geom.pathBottomY + 25 + i * 8.5}
+              textAnchor="middle"
+              fill={i === 0 ? COLOR_TEXT_SECONDARY : COLOR_TEXT_MUTED}
+              fontFamily={FONT_MONO}
+              fontSize={6.8}
+              fontWeight={i === 0 ? 700 : 600}
+            >
+              {ln}
+            </text>
+          ))}
+        </g>
       )}
 
       {/* Normally-open point: state shown by COLOUR (the open apparatus is red and
@@ -912,6 +919,42 @@ function BusbarShortCircuitPanel(props: {
 }
 
 // =============================================================================
+// Busbar voltage badge (gate F) — U from the frozen NR solver, at L2
+// =============================================================================
+
+/**
+ * The per-busbar voltage badge shown at L2 — gate F. U [kV] + [p.u./%] +
+ * signed deviation from nominal, READ from the frozen Newton-Raphson companion
+ * (`VfBus`). A green/amber dot flags whether |deviation| is within ±5 %.
+ */
+function BusbarVoltageBadge(props: { vf: VfBus; x: number; y: number; anchor?: 'start' | 'end' }): JSX.Element {
+  const { vf, x, y, anchor = 'start' } = props;
+  const within = Math.abs(vf.deviation_percent) <= 5;
+  const dotX = anchor === 'start' ? x - 6 : x + 6;
+  return (
+    <g data-testid={`sr-vf-badge-${vf.bus_ref}`} data-vf-bus={vf.bus_ref} pointerEvents="none">
+      <circle cx={dotX} cy={y - 3} r={2.4} fill={within ? '#5BE08A' : '#FFB020'} />
+      <text x={x} y={y} textAnchor={anchor} fill="#CFE9FF" fontFamily={FONT_MONO} fontSize={7.5} fontWeight={800}>
+        {`U=${vf.u_kv.toFixed(vf.un_kv < 1 ? 3 : 2)} kV`}
+      </text>
+      <text x={x} y={y + 9} textAnchor={anchor} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={6.6} fontWeight={600}>
+        {`${vf.u_pu.toFixed(3)} pu · ${vf.deviation_percent >= 0 ? '+' : ''}${vf.deviation_percent.toFixed(2)} %`}
+      </text>
+    </g>
+  );
+}
+
+/** Format a VF branch readout: I / P / Q / loading (gate F, field level). */
+function vfFieldLines(vf: VfBranch): string[] {
+  const lines = [
+    `I=${vf.i_a.toFixed(0)} A`,
+    `P=${formatPower(vf.p_mw)} · Q=${vf.q_mvar.toFixed(2)} Mvar`,
+  ];
+  if (vf.loading_percent !== null) lines.push(`obc. ${vf.loading_percent.toFixed(1)} %`);
+  return lines;
+}
+
+// =============================================================================
 // The component
 // =============================================================================
 
@@ -1074,6 +1117,7 @@ export function StationRozdzielniaSN(props: StationRozdzielniaSNProps): JSX.Elem
           ? (index?.isBranchEnergized(field.branchRef) ?? true) && !(index?.isOpenPoint(field.branchRef) ?? false)
           : true;
         const powerMw = field.branchRef ? index?.powerOf(field.branchRef) ?? null : null;
+        const vfBranch = field.branchRef ? model.voltageFlow?.branches[field.branchRef] ?? null : null;
         return (
           <FieldColumn
             key={field.fieldId}
@@ -1084,6 +1128,7 @@ export function StationRozdzielniaSN(props: StationRozdzielniaSNProps): JSX.Elem
             direction={direction}
             energized={energized}
             powerMw={powerMw}
+            vfBranch={vfBranch}
             selected={selectedFieldId === field.fieldId}
             onFieldClick={onFieldClick}
           />
@@ -1116,6 +1161,21 @@ export function StationRozdzielniaSN(props: StationRozdzielniaSNProps): JSX.Elem
           );
         }
         return <>{panels}</>;
+      })()}
+
+      {/* VOLTAGE badges on EVERY busbar at L2 (gate F) — U[kV/pu/%] from the
+          frozen NR solver. SN busbar (or section A), section B (T4), nN bus. */}
+      {detail === 'close' && model.voltageFlow && (() => {
+        const vf = model.voltageFlow;
+        const badges: JSX.Element[] = [];
+        const snVf = model.snBusScRef ? vf.buses[model.snBusScRef] : undefined;
+        if (snVf) badges.push(<BusbarVoltageBadge key={snVf.bus_ref} vf={snVf} x={geometry.busbar.x1 + 14} y={geometry.busbar.y - 24} anchor="start" />);
+        const snBVf = model.snBusBScRef ? vf.buses[model.snBusBScRef] : undefined;
+        if (snBVf) badges.push(<BusbarVoltageBadge key={snBVf.bus_ref} vf={snBVf} x={geometry.busbar.x2 - 14} y={geometry.busbar.y - 24} anchor="end" />);
+        const nnRef = model.nnBlock?.scBusRef;
+        const nnVf = nnRef ? vf.buses[nnRef] : undefined;
+        if (nnVf && geometry.nn) badges.push(<BusbarVoltageBadge key={nnVf.bus_ref} vf={nnVf} x={geometry.nn.busbar.x1 + 8} y={geometry.nn.busbar.y - 8} anchor="start" />);
+        return <>{badges}</>;
       })()}
 
       {/* Bus voltage label (closer + close). */}

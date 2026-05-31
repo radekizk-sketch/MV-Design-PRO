@@ -38,6 +38,7 @@ import type {
 } from '../renderer/GpzSwitchgearTypes';
 import type { AbbCellType } from './abbFieldLibrary';
 import type { SldShortCircuitCompanion } from './companions/shortCircuitTypes';
+import type { SldVoltageFlowCompanion } from './companions/voltageFlowTypes';
 
 // =============================================================================
 // Archetype (T1-T4 network-station archetypes)
@@ -338,4 +339,11 @@ export interface StationRozdzielniaModel {
   readonly snBusScRef?: string;
   /** SC bus_ref for the section-B SN busbar (T4). */
   readonly snBusBScRef?: string;
+  /**
+   * Frozen-solver Newton-Raphson voltage + power-flow dossier (gate F). The
+   * renderer reads per-busbar U [kV/p.u./%] and per-branch I/P/Q/S + loading from
+   * here on L2 — it never recomputes a power flow. The SN/nN SC bus refs above
+   * double as the VF bus refs (same node ids).
+   */
+  readonly voltageFlow?: SldVoltageFlowCompanion;
 }

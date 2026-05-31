@@ -1489,23 +1489,23 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "fault_node_id": "SEC_A",
                 "short_circuit_type": "3F",
                 "z1_ohm": {
-                  "im": 0.9,
-                  "re": 0.45000224999999994
+                  "im": 0.8999999999999999,
+                  "re": 0.4500022499999999
                 },
                 "z2_ohm": {
-                  "im": 0.9,
-                  "re": 0.45000224999999994
+                  "im": 0.8999999999999999,
+                  "re": 0.4500022499999999
                 }
               },
               "key": "Zk",
               "notes": null,
               "result": {
-                "r_ohm": 0.45000224999999994,
-                "x_ohm": 0.9,
+                "r_ohm": 0.4500022499999999,
+                "x_ohm": 0.8999999999999999,
                 "z_equiv_abs_ohm": 1.0062315961075077,
                 "z_equiv_ohm": {
-                  "im": 0.9,
-                  "re": 0.45000224999999994
+                  "im": 0.8999999999999999,
+                  "re": 0.4500022499999999
                 }
               },
               "substitution": "\\left(0.450002 + j 0.9\\right)",
@@ -1532,9 +1532,9 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
               "inputs": {
-                "r_ohm": 0.45000224999999994,
+                "r_ohm": 0.4500022499999999,
                 "rx_ratio": 0.5000024999999999,
-                "x_ohm": 0.9
+                "x_ohm": 0.8999999999999999
               },
               "key": "kappa",
               "notes": null,
@@ -1563,10 +1563,10 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
               "inputs": {
-                "exp_factor": 1.5068989191779372e-07,
+                "exp_factor": 1.5068989191779345e-07,
                 "ikss_a": 9467.283156760486,
                 "kappa": 1.2386659169449343,
-                "ta_s": 0.006366165892846351,
+                "ta_s": 0.00636616589284635,
                 "tb_s": 0.1
               },
               "key": "Ib",
@@ -1624,23 +1624,23 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "fault_node_id": "SEC_A",
                 "short_circuit_type": "3F",
                 "z1_ohm": {
-                  "im": 0.9,
-                  "re": 0.45000224999999994
+                  "im": 0.8999999999999999,
+                  "re": 0.4500022499999999
                 },
                 "z2_ohm": {
-                  "im": 0.9,
-                  "re": 0.45000224999999994
+                  "im": 0.8999999999999999,
+                  "re": 0.4500022499999999
                 }
               },
               "key": "Zk",
               "notes": null,
               "result": {
-                "r_ohm": 0.45000224999999994,
-                "x_ohm": 0.9,
+                "r_ohm": 0.4500022499999999,
+                "x_ohm": 0.8999999999999999,
                 "z_equiv_abs_ohm": 1.0062315961075077,
                 "z_equiv_ohm": {
-                  "im": 0.9,
-                  "re": 0.45000224999999994
+                  "im": 0.8999999999999999,
+                  "re": 0.4500022499999999
                 }
               },
               "substitution": "\\left(0.450002 + j 0.9\\right)",
@@ -1667,9 +1667,9 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
               "inputs": {
-                "r_ohm": 0.45000224999999994,
+                "r_ohm": 0.4500022499999999,
                 "rx_ratio": 0.5000024999999999,
-                "x_ohm": 0.9
+                "x_ohm": 0.8999999999999999
               },
               "key": "kappa",
               "notes": null,
@@ -1698,10 +1698,10 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
               "inputs": {
-                "exp_factor": 1.5068989191779372e-07,
+                "exp_factor": 1.5068989191779345e-07,
                 "ikss_a": 8176.28999902042,
                 "kappa": 1.2386659169449343,
-                "ta_s": 0.006366165892846351,
+                "ta_s": 0.00636616589284635,
                 "tb_s": 0.1
               },
               "key": "Ib",

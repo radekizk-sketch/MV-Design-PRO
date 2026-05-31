@@ -534,6 +534,132 @@ def build_all_sc() -> dict[str, dict[str, Any]]:
     return {name: build_sc_companion(name) for name in _ARCHETYPES}
 
 
+# ---------------------------------------------------------------------------
+# Voltage + power-flow companion (gate F) — bus U + branch I/P/Q/S from the
+# FROZEN Newton-Raphson solver (READ-ONLY). Run on the SAME two-voltage graph
+# as the SC dossier (real TransformerBranch), so the nN busbar voltage is
+# physically correct (not the single-base power-flow substrate).
+# ---------------------------------------------------------------------------
+# Loadflow case (declared state the solution belongs to).
+_LF_CASE_REF = "ROZPLYW_MAX_OBC"
+
+
+def _vf_graph_and_pq(
+    archetype: str,
+) -> tuple[NetworkGraph, str, list[PQSpec], list[tuple[str, float]]]:
+    """(graph, slack_id, pq, [(bus_id, un_kv)]) — a two-voltage loadflow substrate
+    with a REAL transformer so bus voltages (incl. nN 400 V) are physical."""
+    s = _Substrate()
+    if archetype in ("T1", "T2"):
+        s.add_slack("GPZ")
+        s.add_bus("SN_BUS", _BASE_KV)
+        s.add_bus("NN_BUS", _NN_KV)
+        s.add_line(SR_IN, "GPZ", "SN_BUS", _SN_LINE_R, _SN_LINE_X)
+        s.add_transformer(
+            SR_TR, "SN_BUS", "NN_BUS",
+            hv_kv=_BASE_KV, lv_kv=_NN_KV, uk_percent=_TRAFO_UK_PCT, rated_mva=_TRAFO_MVA,
+        )
+        s.add_load("NN_BUS", p_mw=0.44 if archetype == "T1" else 0.35, q_mvar=0.14)
+        if archetype == "T1":
+            s.add_bus("LINE_OUT_END", _BASE_KV)
+            s.add_line(SR_OUT, "SN_BUS", "LINE_OUT_END", _SN_LINE_R, _SN_LINE_X)
+            s.add_load("LINE_OUT_END", p_mw=0.82, q_mvar=0.25)
+        buses = [("SN_BUS", _BASE_KV), ("NN_BUS", _NN_KV)]
+    elif archetype == "T3":
+        s.add_slack("GPZ")
+        s.add_bus("ZKSN", _BASE_KV)
+        s.add_bus("MAIN_OUT_END", _BASE_KV)
+        s.add_bus("BRANCH_END", _BASE_KV)
+        s.add_line(SR_IN, "GPZ", "ZKSN", _SN_LINE_R, _SN_LINE_X)
+        s.add_line(SR_MAIN_OUT, "ZKSN", "MAIN_OUT_END", _SN_LINE_R, _SN_LINE_X)
+        s.add_line(SR_BRANCH, "ZKSN", "BRANCH_END", _SN_LINE_R, _SN_LINE_X)
+        s.add_load("MAIN_OUT_END", p_mw=0.47, q_mvar=0.15)
+        s.add_load("BRANCH_END", p_mw=0.32, q_mvar=0.10)
+        buses = [("ZKSN", _BASE_KV)]
+    else:  # T4 — two sections fed independently (coupler open), each with a load feeder.
+        s.add_slack("GPZ_A")
+        s.add_bus("SEC_A", _BASE_KV)
+        s.add_bus("SEC_B", _BASE_KV)
+        s.add_bus("LOAD_A", _BASE_KV)
+        s.add_bus("LOAD_B", _BASE_KV)
+        s.add_line(SR_IN, "GPZ_A", "SEC_A", _SN_LINE_R, _SN_LINE_X)
+        s.add_line(SR_LINE_B, "GPZ_A", "SEC_B", _SN_LINE_R, _SN_LINE_X)
+        s.add_line(SR_OUT, "SEC_A", "LOAD_A", _SN_LINE_R, _SN_LINE_X)
+        s.add_line(SR_OUT_B, "SEC_B", "LOAD_B", _SN_LINE_R, _SN_LINE_X)
+        s.add_load("LOAD_A", p_mw=0.67, q_mvar=0.21)
+        s.add_load("LOAD_B", p_mw=0.61, q_mvar=0.19)
+        buses = [("SEC_A", _BASE_KV), ("SEC_B", _BASE_KV)]
+    s.finalize_pq()
+    assert s.slack_id is not None
+    return s.graph, s.slack_id, list(s.pq), buses
+
+
+def build_voltage_flow_companion(archetype: str) -> dict[str, Any]:
+    graph, slack_id, pq, buses = _vf_graph_and_pq(archetype)
+    pf_input = PowerFlowInput(
+        graph=graph,
+        base_mva=_BASE_MVA,
+        slack=SlackSpec(node_id=slack_id, u_pu=1.0, angle_rad=0.0),
+        pq=pq,
+        options=PowerFlowOptions(
+            tolerance=_TOLERANCE, max_iter=_MAX_ITER, trace_level="basic", validate=False
+        ),
+    )
+    sol = solve_power_flow_physics(pf_input)
+
+    bus_entries: dict[str, dict[str, Any]] = {}
+    for bus_id, un_kv in buses:
+        u_pu = float(sol.node_u_mag.get(bus_id, 0.0))
+        u_kv = round(u_pu * un_kv, 4)
+        bus_entries[bus_id] = {
+            "bus_ref": bus_id,
+            "un_kv": un_kv,
+            "u_kv": u_kv,
+            "u_pu": round(u_pu, 5),
+            "u_percent": round(u_pu * 100.0, 3),
+            "deviation_percent": round((u_pu - 1.0) * 100.0, 3),
+            "angle_deg": round(float(sol.node_angle.get(bus_id, 0.0)) * 180.0 / 3.141592653589793, 3),
+        }
+
+    branch_entries: dict[str, dict[str, Any]] = {}
+    for branch_id in sorted(graph.branches):
+        s_from = sol.branch_s_from_mva.get(branch_id)
+        i_ka = float(sol.branch_current_ka.get(branch_id, 0.0))
+        branch = graph.branches[branch_id]
+        rated_a = float(getattr(branch, "rated_current_a", 0.0) or 0.0)
+        loading_pct = round((i_ka * 1000.0 / rated_a) * 100.0, 2) if rated_a > 0 else None
+        p_mw = round(float(s_from.real), 4) if s_from is not None else 0.0
+        q_mvar = round(float(s_from.imag), 4) if s_from is not None else 0.0
+        s_mva = round((p_mw**2 + q_mvar**2) ** 0.5, 4)
+        branch_entries[branch_id] = {
+            "branch_ref": branch_id,
+            "i_a": round(i_ka * 1000.0, 2),
+            "p_mw": p_mw,
+            "q_mvar": q_mvar,
+            "s_mva": s_mva,
+            "direction": _flow_direction(p_mw),
+            "loading_percent": loading_pct,
+        }
+
+    return {
+        "schema": "sld_voltage_flow_companion_v1",
+        "enm_hash": f"station-substrate/{archetype}",
+        "solver_method": str(getattr(sol, "solver_method", "newton-raphson")),
+        "case_ref": _LF_CASE_REF,
+        "converged": bool(sol.converged),
+        "iterations": int(sol.iterations),
+        "base_mva": _BASE_MVA,
+        # White Box: the NR iteration trace (formula → mismatch → update → result).
+        "white_box_steps": len(sol.nr_trace),
+        "buses": dict(sorted(bus_entries.items())),
+        "branches": dict(sorted(branch_entries.items())),
+    }
+
+
+def build_all_vf() -> dict[str, dict[str, Any]]:
+    return {name: build_voltage_flow_companion(name) for name in _ARCHETYPES}
+
+
 def _companions_dir() -> str:
     here = os.path.dirname(os.path.abspath(__file__))
     repo = os.path.abspath(os.path.join(here, "..", "..", "..", ".."))
@@ -615,6 +741,42 @@ def write_sc_companions() -> str:
     return path
 
 
+_TS_VF_HEADER = """\
+/**
+ * GENERATED — DO NOT EDIT BY HAND.
+ *
+ * Per-archetype VOLTAGE + POWER-FLOW companions (gate F). Produced by running the
+ * FROZEN Newton-Raphson solver (`solve_power_flow_physics`) on a two-voltage
+ * substrate (real SN/nN TransformerBranch) in
+ * `backend/src/application/reference_networks/station_archetype_substrate.py`
+ * (READ-ONLY w.r.t. the solver, B-01). Regenerate with:
+ *
+ *   cd mv-design-pro/backend && poetry run python -m \\
+ *     application.reference_networks.station_archetype_substrate --write
+ *
+ * Every busbar carries U [kV] + [p.u./%] + deviation; every branch carries
+ * I/P/Q/S + direction + loading %. The renderer INTERPRETS these on L2 — it
+ * never recomputes a power flow.
+ */
+import type { StationArchetype } from '../contract';
+import type { SldVoltageFlowCompanion } from './voltageFlowTypes';
+
+export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
+  Record<StationArchetype, SldVoltageFlowCompanion>
+> = """
+
+
+def write_vf_companions() -> str:
+    out_dir = _companions_dir()
+    os.makedirs(out_dir, exist_ok=True)
+    body = json.dumps(build_all_vf(), indent=2, sort_keys=True)
+    ts = _TS_VF_HEADER + body + ";\n"
+    path = os.path.join(out_dir, "voltageFlow.ts")
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(ts)
+    return path
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--write", action="store_true", help="write the companion TS modules")
@@ -622,8 +784,19 @@ def main() -> None:
     if args.write:
         print(f"wrote {write_companions()}")
         print(f"wrote {write_sc_companions()}")
+        print(f"wrote {write_vf_companions()}")
     else:
-        print(json.dumps({"power_flow": build_all(), "short_circuit": build_all_sc()}, indent=2, sort_keys=True))
+        print(
+            json.dumps(
+                {
+                    "power_flow": build_all(),
+                    "short_circuit": build_all_sc(),
+                    "voltage_flow": build_all_vf(),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
 
 
 if __name__ == "__main__":

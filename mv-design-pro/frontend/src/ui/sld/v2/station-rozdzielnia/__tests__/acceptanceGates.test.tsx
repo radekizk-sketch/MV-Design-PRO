@@ -314,3 +314,62 @@ describe('GATE E — short-circuit dossier on every SN/nN busbar at L2', () => {
     expect(nn.max.kappa).toBeGreaterThan(model.shortCircuit!.buses['SN_BUS'].max.kappa);
   });
 });
+
+// ---------------------------------------------------------------------------
+// GATE F — voltages on every busbar + power flow on every field at L2 (NR)
+// ---------------------------------------------------------------------------
+
+describe('GATE F — bus voltages + field power flows from the frozen NR solver', () => {
+  it('every busbar carries U[kV]+[p.u.]+deviation, every branch carries I/P/Q/S', () => {
+    for (const archetype of ['T1', 'T2', 'T3', 'T4'] as const) {
+      const { model } = buildArchetype(archetype);
+      const vf = model.voltageFlow;
+      expect(vf, `${archetype} must carry a voltage-flow companion`).toBeTruthy();
+      expect(vf!.case_ref).toMatch(/^ROZPLYW_/);
+      expect(vf!.white_box_steps).toBeGreaterThan(0);
+      // Every SC busbar also has a voltage (U near 1 p.u., physical).
+      for (const busRef of SC_BUSES[archetype]) {
+        const b = vf!.buses[busRef];
+        expect(b, `${archetype} VF bus ${busRef} missing`).toBeTruthy();
+        expect(b.u_kv).toBeGreaterThan(0);
+        expect(b.u_pu).toBeGreaterThan(0.9);
+        expect(b.u_pu).toBeLessThan(1.1);
+        expect(typeof b.deviation_percent).toBe('number');
+      }
+      // Every field with a branchRef has an I/P/Q/S flow.
+      for (const f of model.fields) {
+        if (f.role === 'SPRZEGLO' || !f.branchRef) continue;
+        const br = vf!.branches[f.branchRef];
+        expect(br, `${archetype} field ${f.fieldId} (${f.branchRef}) has no flow`).toBeTruthy();
+        expect(br.i_a).toBeGreaterThanOrEqual(0);
+        expect(typeof br.p_mw).toBe('number');
+        expect(typeof br.q_mvar).toBe('number');
+        expect(br.s_mva).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+
+  it('renders a voltage badge on every busbar at L2 (and NOT at closer)', () => {
+    for (const archetype of ['T1', 'T2', 'T3', 'T4'] as const) {
+      const close = renderAt(archetype, 'close').container;
+      for (const busRef of SC_BUSES[archetype]) {
+        expect(
+          close.querySelector(`[data-testid="sr-vf-badge-${busRef}"]`),
+          `${archetype} L2 must render voltage badge for ${busRef}`,
+        ).toBeTruthy();
+      }
+      const closer = renderAt(archetype, 'closer').container;
+      expect(closer.querySelector('[data-testid^="sr-vf-badge-"]')).toBeFalsy();
+    }
+  });
+
+  it('the field SCADA readout shows I + P + Q (not P alone) at L2', () => {
+    const { container } = renderAt('T1', 'close');
+    const readout = container.querySelector('[data-testid="sr-field-power-sr-t1-in"]');
+    expect(readout).toBeTruthy();
+    const txt = readout!.textContent ?? '';
+    expect(txt).toMatch(/I=/);
+    expect(txt).toMatch(/P=/);
+    expect(txt).toMatch(/Q=/);
+  });
+});

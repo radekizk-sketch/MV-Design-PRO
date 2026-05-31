@@ -38,6 +38,7 @@ import type {
 import { classifyAbbCellType } from './abbFieldLibrary';
 import { STATION_ARCHETYPE_COMPANIONS } from './companions';
 import { STATION_ARCHETYPE_SHORT_CIRCUIT } from './companions/shortCircuit';
+import { STATION_ARCHETYPE_VOLTAGE_FLOW } from './companions/voltageFlow';
 
 // =============================================================================
 // ABB cell-type stamping (single symbol↔type source)
@@ -233,6 +234,7 @@ export function buildT1(): { model: StationRozdzielniaModel; companion: SldPower
     caseLabel: companion.case_label,
     nnBlock: nn,
     shortCircuit: STATION_ARCHETYPE_SHORT_CIRCUIT.T1,
+    voltageFlow: STATION_ARCHETYPE_VOLTAGE_FLOW.T1,
     snBusScRef: 'SN_BUS',
   };
   return { model, companion };
@@ -281,6 +283,7 @@ export function buildT2(): { model: StationRozdzielniaModel; companion: SldPower
     caseLabel: companion.case_label,
     nnBlock: nn,
     shortCircuit: STATION_ARCHETYPE_SHORT_CIRCUIT.T2,
+    voltageFlow: STATION_ARCHETYPE_VOLTAGE_FLOW.T2,
     snBusScRef: 'SN_BUS',
   };
   return { model, companion };
@@ -336,6 +339,7 @@ export function buildT3(): { model: StationRozdzielniaModel; companion: SldPower
     caseRef: companion.case_ref,
     caseLabel: companion.case_label,
     shortCircuit: STATION_ARCHETYPE_SHORT_CIRCUIT.T3,
+    voltageFlow: STATION_ARCHETYPE_VOLTAGE_FLOW.T3,
     snBusScRef: 'ZKSN',
   };
   return { model, companion };
@@ -411,6 +415,7 @@ export function buildT4(): { model: StationRozdzielniaModel; companion: SldPower
     sectionABranchRef: BR.in,
     sectionBBranchRef: BR.lineB,
     shortCircuit: STATION_ARCHETYPE_SHORT_CIRCUIT.T4,
+    voltageFlow: STATION_ARCHETYPE_VOLTAGE_FLOW.T4,
     snBusScRef: 'SEC_A',
     snBusBScRef: 'SEC_B',
   };
