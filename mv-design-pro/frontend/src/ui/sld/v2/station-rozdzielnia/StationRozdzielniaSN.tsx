@@ -407,7 +407,7 @@ function FieldColumn(props: {
       />
 
       {/* Vertical power path from busbar down through the apparatus stack. */}
-      <line
+      <line data-routing="orthogonal"
         x1={x}
         y1={geom.busY}
         x2={x}
@@ -603,7 +603,7 @@ function NNFeederColumn(props: {
       style={{ cursor: handleClick ? 'pointer' : 'default' }}
     >
       {/* Feeder drop. */}
-      <line x1={x} y1={geom.busY} x2={x} y2={geom.bottomY} stroke={nnBusColor} strokeWidth={1.8} />
+      <line data-routing="orthogonal" x1={x} y1={geom.busY} x2={x} y2={geom.bottomY} stroke={nnBusColor} strokeWidth={1.8} />
       {/* nN feeder switch (LV breaker square). */}
       <rect x={x - 4} y={geom.busY + 8} width={8} height={8} rx={1} fill="#0A8D43" stroke={COLOR_DEVICE_CLOSED_BORDER} strokeWidth={1} />
       {/* Terminator: PV = inverter node; load = arrowhead. */}
@@ -673,7 +673,7 @@ function NNTier(props: {
   return (
     <g data-testid="sr-nn-tier" data-nn-voltage-kv={block.busVoltageKv}>
       {/* Transformation boundary: SN field bottom → transformer → nN main → nN bus. */}
-      <line x1={nn.spineX} y1={nn.snHandoffY} x2={nn.spineX} y2={nn.transformerY - 9} stroke={COLOR_TEXT_MUTED} strokeWidth={2} />
+      <line data-routing="orthogonal" x1={nn.spineX} y1={nn.snHandoffY} x2={nn.spineX} y2={nn.transformerY - 9} stroke={COLOR_TEXT_MUTED} strokeWidth={2} />
       <ApparatusTransformerSymbol
         cx={nn.spineX}
         cy={nn.transformerY}
@@ -681,7 +681,7 @@ function NNTier(props: {
         neutralEarthed
       />
       {/* nN main breaker between transformer and nN busbar. */}
-      <line x1={nn.spineX} y1={nn.transformerY + 9} x2={nn.spineX} y2={nn.busbar.y} stroke={nnBusColor} strokeWidth={1.8} />
+      <line data-routing="orthogonal" x1={nn.spineX} y1={nn.transformerY + 9} x2={nn.spineX} y2={nn.busbar.y} stroke={nnBusColor} strokeWidth={1.8} />
       <rect x={nn.spineX - 4} y={nn.mainBreakerY - 4} width={8} height={8} rx={1} fill="#0A8D43" stroke={COLOR_DEVICE_CLOSED_BORDER} strokeWidth={1} />
       {detail === 'close' && (
         <text x={nn.spineX + 9} y={nn.mainBreakerY + 3} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={600}>
@@ -741,20 +741,20 @@ function NNTier(props: {
 // =============================================================================
 
 /**
- * The ABB SMC bus coupler drawn as the catalog defines it — TWO vertical CELLS
- * bridging the two bus sections (the SCADA "pole 6-7" idiom), NOT three symbols
- * lying in the bus gap:
+ * The ABB SMC bus coupler — TWO vertical CELLS bridging the two bus sections
+ * (the SCADA "pole 6-7" idiom), with PURE ORTHOGONAL routing (Manhattan, 90°
+ * corners only — NO diagonal segments anywhere):
  *
- *   SEKCJA A ─┐                          ┌─ SEKCJA B
- *             │ CELA A                   │ CELA B
- *        [rozłącznik 3-poł. A ◇]    [rozłącznik 3-poł. B ◇]
- *        [WYŁĄCZNIK sprzęgła □]            │
- *             └────────── tie ────────────┘
+ *   ═══ SEKCJA A ═══┐              ┌═══ SEKCJA B ═══
+ *                   │ CELA A       │ CELA B
+ *                 [◇ Q1]         [◇ Q2]
+ *                   │              │
+ *                 [□ Q0]          │
+ *                   └──── tie ─────┘   (horizontal bridge; breaker under the left)
  *
- * The breaker sits UNDER the left rozłącznik (per the catalog SMC = CBC cell +
- * BRC cell). State is shown by COLOUR/FILL only (green=closed, red=open) — never
- * by a shape change and never with a ⊘ glyph. The normally-open status is the
- * breaker drawn as a RED OPEN □ plus a "NOP" text tag.
+ * Every connection is horizontal or vertical. State is shown by COLOUR/FILL only
+ * (green=closed, red=open) — never by a shape change and never with a ⊘ glyph.
+ * The normally-open status is the breaker drawn as a RED OPEN □ + a "NOP" tag.
  */
 function SmcCoupler(props: {
   field: StationFieldDescriptor;
@@ -768,13 +768,17 @@ function SmcCoupler(props: {
   const { field, busY, aEnd, bStart, detail, breakerOpen, onFieldClick } = props;
   const swA = field.apparatus.find((a) => a.designation === 'Q1');
   const swB = field.apparatus.find((a) => a.designation === 'Q2');
-  // Two vertical cells: A (left, with the breaker under its switch) and B (right).
-  const aX = aEnd + (bStart - aEnd) * 0.33;
-  const bX = aEnd + (bStart - aEnd) * 0.67;
-  const swY = busY + (detail === 'far' ? 13 : 20);
-  const breakerY = swY + (detail === 'far' ? 13 : 22); // breaker UNDER the left switch
-  const tieY = breakerY + (detail === 'far' ? 9 : 14);
+  // Two vertical cells: A (left, breaker under its switch) and B (right). Columns
+  // are inset from the section-bus ends so the busbar stubs are horizontal.
+  const span = bStart - aEnd;
+  const aX = aEnd + span * 0.3;
+  const bX = aEnd + span * 0.7;
+  const swH = detail === 'far' ? 6 : 8;
+  const swY = busY + (detail === 'far' ? 14 : 22);
+  const breakerY = swY + (detail === 'far' ? 14 : 24); // breaker UNDER the left switch
+  const tieY = breakerY + (detail === 'far' ? 10 : 16);
   const lineColor = breakerOpen ? COLOR_DEVICE_OPEN : COLOR_FIELD_TRUNK_ENERGIZED;
+  const dash = breakerOpen ? '3 3' : undefined;
   const swState = breakerOpen ? 'open' : 'closed';
   const breakerState = breakerOpen ? 'open' : 'closed';
   const handle = (id: string) => (onFieldClick ? (e: MouseEvent) => { e.stopPropagation(); onFieldClick(id); } : undefined);
@@ -789,43 +793,47 @@ function SmcCoupler(props: {
       role={onFieldClick ? 'button' : undefined}
       aria-label={onFieldClick ? 'Sprzęgło SMC (2 pola: rozłącznik + wyłącznik | rozłącznik)' : undefined}
     >
-      {/* CELL A (left): section-A drop → rozłącznik A → WYŁĄCZNIK → down to the tie. */}
+      {/* CELL A (left): horizontal bus stub → vertical drop → rozłącznik → breaker. */}
       <g data-testid="sr-coupler-cell-a" onClick={handle(`${field.fieldId}/q1`)} style={{ cursor: onFieldClick ? 'pointer' : 'default' }}>
-        <line x1={aEnd} y1={busY} x2={aX} y2={swY - 9} stroke={lineColor} strokeWidth={1.8} />
+        {/* horizontal stub from section-A bus end to the cell column (orthogonal) */}
+        <line data-routing="orthogonal" x1={aEnd} y1={busY} x2={aX} y2={busY} stroke={lineColor} strokeWidth={1.8} />
+        {/* vertical drop bus → switch */}
+        <line data-routing="orthogonal" x1={aX} y1={busY} x2={aX} y2={swY - swH - 1} stroke={lineColor} strokeWidth={1.8} />
         <g data-apparatus-kind="three_position_switch" data-symbol-shape="diamond" data-state={swState}>
-          <ApparatusThreePositionSwitch cx={aX} cy={swY} position={swA?.switchState === 'open' || breakerOpen ? 'open' : 'closed'} h={detail === 'far' ? 6 : 8} />
+          <ApparatusThreePositionSwitch cx={aX} cy={swY} position={swA?.switchState === 'open' || breakerOpen ? 'open' : 'closed'} h={swH} />
         </g>
-        {detail !== 'far' && <text x={aX - 11} y={swY + 2} textAnchor="end" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>Q1</text>}
-        {/* connector switch → breaker */}
-        <line x1={aX} y1={swY + 9} x2={aX} y2={breakerY - (detail === 'far' ? 6 : 8)} stroke={lineColor} strokeWidth={1.8} />
-        {/* WYŁĄCZNIK sprzęgła — square, state by COLOUR (red open / green closed). */}
+        {detail !== 'far' && <text x={aX - 12} y={swY + 2} textAnchor="end" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>Q1</text>}
+        {/* vertical connector switch → breaker */}
+        <line data-routing="orthogonal" x1={aX} y1={swY + swH + 1} x2={aX} y2={breakerY - (detail === 'far' ? 6 : 8)} stroke={lineColor} strokeWidth={1.8} />
+        {/* WYŁĄCZNIK sprzęgła — square, UPRIGHT, state by COLOUR. */}
         <g data-testid="sr-coupler-breaker" data-apparatus-kind="circuit_breaker" data-symbol-shape="square" data-state={breakerState} onClick={handle(`${field.fieldId}/q0`)}>
           <ApparatusCbSquare cx={aX} cy={breakerY} state={breakerState} energized={!breakerOpen} />
         </g>
-        {detail !== 'far' && <text x={aX - 11} y={breakerY + 2} textAnchor="end" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>Q0</text>}
+        {detail !== 'far' && <text x={aX - 12} y={breakerY + 2} textAnchor="end" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>Q0</text>}
         {/* NOP tag — text, NOT a ⊘ glyph; the red open □ already shows the state. */}
         {breakerOpen && detail !== 'far' && (
-          <text data-testid="sr-coupler-nop" x={aX + 11} y={breakerY + 2} fill={COLOR_DEVICE_OPEN} fontFamily={FONT_MONO} fontSize={7} fontWeight={800}>NOP</text>
+          <text data-testid="sr-coupler-nop" x={aX + 12} y={breakerY + 2} fill={COLOR_DEVICE_OPEN} fontFamily={FONT_MONO} fontSize={7} fontWeight={800}>NOP</text>
         )}
         {breakerOpen && detail === 'far' && (
           <circle data-testid="sr-coupler-nop" cx={aX} cy={breakerY} r={0.1} fill="none" />
         )}
-        {/* breaker → tie line down */}
-        <line x1={aX} y1={breakerY + (detail === 'far' ? 6 : 8)} x2={aX} y2={tieY} stroke={lineColor} strokeWidth={1.8} strokeDasharray={breakerOpen ? '3 3' : undefined} />
+        {/* vertical breaker → tie */}
+        <line data-routing="orthogonal" x1={aX} y1={breakerY + (detail === 'far' ? 6 : 8)} x2={aX} y2={tieY} stroke={lineColor} strokeWidth={1.8} strokeDasharray={dash} />
       </g>
 
-      {/* CELL B (right): section-B drop → rozłącznik B → down to the tie. */}
+      {/* CELL B (right): horizontal bus stub → vertical drop → rozłącznik → tie. */}
       <g data-testid="sr-coupler-cell-b" onClick={handle(`${field.fieldId}/q2`)} style={{ cursor: onFieldClick ? 'pointer' : 'default' }}>
-        <line x1={bStart} y1={busY} x2={bX} y2={swY - 9} stroke={lineColor} strokeWidth={1.8} />
+        <line data-routing="orthogonal" x1={bStart} y1={busY} x2={bX} y2={busY} stroke={lineColor} strokeWidth={1.8} />
+        <line data-routing="orthogonal" x1={bX} y1={busY} x2={bX} y2={swY - swH - 1} stroke={lineColor} strokeWidth={1.8} />
         <g data-apparatus-kind="three_position_switch" data-symbol-shape="diamond" data-state={swState}>
-          <ApparatusThreePositionSwitch cx={bX} cy={swY} position={swB?.switchState === 'open' || breakerOpen ? 'open' : 'closed'} h={detail === 'far' ? 6 : 8} />
+          <ApparatusThreePositionSwitch cx={bX} cy={swY} position={swB?.switchState === 'open' || breakerOpen ? 'open' : 'closed'} h={swH} />
         </g>
-        {detail !== 'far' && <text x={bX + 11} y={swY + 2} textAnchor="start" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>Q2</text>}
-        <line x1={bX} y1={swY + 9} x2={bX} y2={tieY} stroke={lineColor} strokeWidth={1.8} strokeDasharray={breakerOpen ? '3 3' : undefined} />
+        {detail !== 'far' && <text x={bX + 12} y={swY + 2} textAnchor="start" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>Q2</text>}
+        <line data-routing="orthogonal" x1={bX} y1={swY + swH + 1} x2={bX} y2={tieY} stroke={lineColor} strokeWidth={1.8} strokeDasharray={dash} />
       </g>
 
-      {/* The tie connecting the two cells (A breaker output ↔ B switch output). */}
-      <line x1={aX} y1={tieY} x2={bX} y2={tieY} stroke={lineColor} strokeWidth={1.8} strokeDasharray={breakerOpen ? '3 3' : undefined} />
+      {/* The horizontal tie connecting the two cells (A breaker output ↔ B switch). */}
+      <line data-routing="orthogonal" x1={aX} y1={tieY} x2={bX} y2={tieY} stroke={lineColor} strokeWidth={1.8} strokeDasharray={dash} />
 
       {/* Bus-tie protection relay on the coupler breaker (close zoom). */}
       {detail === 'close' && <ProtectionChips field={field} cx={bX} topY={swY} />}

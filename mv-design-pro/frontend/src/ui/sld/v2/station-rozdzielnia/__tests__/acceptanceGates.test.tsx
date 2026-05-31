@@ -204,6 +204,51 @@ describe('GATE C — N-8: apparatus identity is LOD-invariant + canonical shapes
 });
 
 // ---------------------------------------------------------------------------
+// GATE ROUTING — every connection segment is orthogonal (Manhattan, 0°/90°)
+// ---------------------------------------------------------------------------
+
+describe('GATE ROUTING — zero diagonal connection segments (90° corners only)', () => {
+  it('every data-routing="orthogonal" line is horizontal or vertical (no skew)', () => {
+    for (const archetype of ['T1', 'T2', 'T3', 'T4'] as const) {
+      for (const detail of DETAILS) {
+        const { container } = renderAt(archetype, detail);
+        const lines = Array.from(
+          container.querySelectorAll('line[data-routing="orthogonal"]'),
+        );
+        let diagonal = 0;
+        for (const ln of lines) {
+          const x1 = Number(ln.getAttribute('x1'));
+          const y1 = Number(ln.getAttribute('y1'));
+          const x2 = Number(ln.getAttribute('x2'));
+          const y2 = Number(ln.getAttribute('y2'));
+          const horizontal = Math.abs(y1 - y2) < 1e-6;
+          const vertical = Math.abs(x1 - x2) < 1e-6;
+          if (!horizontal && !vertical) diagonal += 1;
+        }
+        expect(
+          diagonal,
+          `${archetype}@${detail}: ${diagonal} diagonal routing segments (must be 0)`,
+        ).toBe(0);
+      }
+    }
+  });
+
+  it('the coupler is routed orthogonally (its connection lines included)', () => {
+    const { container } = renderAt('T4', 'close');
+    const coupler = container.querySelector('[data-testid^="sr-coupler-sr-"]')!;
+    const lines = Array.from(coupler.querySelectorAll('line[data-routing="orthogonal"]'));
+    expect(lines.length, 'the coupler must have tagged routing lines').toBeGreaterThan(4);
+    for (const ln of lines) {
+      const x1 = Number(ln.getAttribute('x1'));
+      const y1 = Number(ln.getAttribute('y1'));
+      const x2 = Number(ln.getAttribute('x2'));
+      const y2 = Number(ln.getAttribute('y2'));
+      expect(Math.abs(y1 - y2) < 1e-6 || Math.abs(x1 - x2) < 1e-6).toBe(true);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // GATE E — short-circuit on EVERY SN and nN busbar at L2 (IEC 60909)
 // ---------------------------------------------------------------------------
 
