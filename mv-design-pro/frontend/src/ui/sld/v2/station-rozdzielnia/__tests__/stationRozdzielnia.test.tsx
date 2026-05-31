@@ -141,10 +141,15 @@ describe('render — all archetypes × all detail levels without crash', () => {
         expect(root!.getAttribute('data-detail')).toBe(detail);
         // Busbar present.
         expect(container.querySelector('[data-testid^="sr-busbar-"]')).toBeTruthy();
-        // Every field rendered.
+        // Every field rendered. The SPRZEGLO field of a sectioned bus (T4) is
+        // drawn as the horizontal SMC coupler, not a vertical field column.
         const { model } = buildArchetype(archetype);
         for (const f of model.fields) {
-          expect(container.querySelector(`[data-testid="sr-field-${f.fieldId}"]`)).toBeTruthy();
+          if (model.sectionedBus && f.role === 'SPRZEGLO') {
+            expect(container.querySelector(`[data-testid="sr-coupler-${f.fieldId}"]`)).toBeTruthy();
+          } else {
+            expect(container.querySelector(`[data-testid="sr-field-${f.fieldId}"]`)).toBeTruthy();
+          }
         }
       });
     }
@@ -203,17 +208,20 @@ describe('power-flow arrow direction matches the FROZEN-solver companion', () =>
     expect(loadFeeder!.getAttribute('data-flow-direction')).toBe('forward');
   });
 
-  it('open / de-energized branch (NOP coupler) → NO arrow', () => {
+  it('open / de-energized branch (NOP coupler) → NO arrow; NOP on the breaker', () => {
     const { model, companion } = buildT4();
     const { container } = render(
       <svg>
         <StationRozdzielniaSN model={model} companion={companion} detail="closer" />
       </svg>,
     );
-    // The coupler branch is in open_point_branch_refs with direction 'none'.
+    // The coupler branch is in open_point_branch_refs with direction 'none' — no
+    // through-flow arrow on the coupler.
     expect(container.querySelector('[data-testid="sr-flow-sr-t4-coupler"]')).toBeFalsy();
-    // And the NOP marker is shown.
-    expect(container.querySelector('[data-testid="sr-field-nop-sr-t4-coupler"]')).toBeTruthy();
+    // The NOP marker sits on the coupler BREAKER (SMC), not an abstract field X.
+    expect(container.querySelector('[data-testid="sr-coupler-nop"]')).toBeTruthy();
+    const coupler = container.querySelector('[data-testid="sr-coupler-sr-t4-coupler"]');
+    expect(coupler!.getAttribute('data-is-nop')).toBe('true');
   });
 
   it('REGRESSION TRIPWIRE: arrow direction is READ from the companion, not the role', () => {
@@ -254,12 +262,14 @@ describe('power-flow arrow direction matches the FROZEN-solver companion', () =>
 // ---------------------------------------------------------------------------
 
 describe('switch states + protection are rendered from the (ENM-derived) model', () => {
-  it('closed CB renders with data-state="closed"; open NOP coupler with open path', () => {
+  it('closed CB field renders data-state="closed"; SMC coupler breaker is open (NOP)', () => {
     const { container } = renderUnit('T4', 'close');
     const inField = container.querySelector('[data-testid="sr-field-sr-t4-in"]');
     expect(inField!.getAttribute('data-switch-state')).toBe('closed');
-    const coupler = container.querySelector('[data-testid="sr-field-sr-t4-coupler"]');
-    expect(coupler!.getAttribute('data-switch-state')).toBe('open');
+    // The coupler is the horizontal SMC; its breaker carries the open NOP state.
+    const couplerBreaker = container.querySelector('[data-testid="sr-coupler-breaker"]');
+    expect(couplerBreaker!.getAttribute('data-state')).toBe('open');
+    const coupler = container.querySelector('[data-testid="sr-coupler-sr-t4-coupler"]');
     expect(coupler!.getAttribute('data-is-nop')).toBe('true');
   });
 

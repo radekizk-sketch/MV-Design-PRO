@@ -44,6 +44,7 @@ import {
   ApparatusVtThreePhase,
   CtPrimary,
 } from '../renderer/GpzApparatusSymbols';
+import type { MouseEvent } from 'react';
 import {
   buildPowerFlowIndex,
   type SldPowerFlowCompanion,
@@ -727,6 +728,96 @@ function NNTier(props: {
 }
 
 // =============================================================================
+// SMC coupler (T4) — TWO cells: rozłącznik A · WYŁĄCZNIK · rozłącznik B
+// =============================================================================
+
+/**
+ * The ABB SMC bus coupler drawn as the catalog defines it — TWO cells across the
+ * bus split (NOT a single SEC switch):
+ *
+ *   [SEKCJA A]──[rozłącznik 3-poł. A]──[WYŁĄCZNIK sprzęgła]──[rozłącznik 3-poł. B]──[SEKCJA B]
+ *
+ * The two 3-position switches isolate each section independently; the breaker
+ * between them is the sectionalising point and carries the NORMALLY-OPEN status
+ * (red / open ⊗). Each of the three apparatus is clickable → config.
+ */
+function SmcCoupler(props: {
+  field: StationFieldDescriptor;
+  busY: number;
+  aEnd: number;
+  bStart: number;
+  detail: StationDetailLevel;
+  breakerOpen: boolean;
+  onFieldClick?: (fieldId: string) => void;
+}): JSX.Element {
+  const { field, busY, aEnd, bStart, detail, breakerOpen, onFieldClick } = props;
+  const midX = (aEnd + bStart) / 2;
+  const swA = field.apparatus.find((a) => a.designation === 'Q1');
+  const swB = field.apparatus.find((a) => a.designation === 'Q2');
+  // Cell anchor positions along the horizontal coupler bridge.
+  const aX = aEnd + (midX - aEnd) * 0.5;
+  const bX = midX + (bStart - midX) * 0.5;
+  const cellTop = busY;
+  const cellBottom = busY + (detail === 'far' ? 14 : 22);
+  const lineColor = breakerOpen ? COLOR_DEVICE_OPEN : COLOR_FIELD_TRUNK_ENERGIZED;
+  const swPos = breakerOpen ? 'open' : 'closed';
+  const handle = (id: string) => (onFieldClick ? (e: MouseEvent) => { e.stopPropagation(); onFieldClick(id); } : undefined);
+
+  return (
+    <g
+      data-testid={`sr-coupler-${field.fieldId}`}
+      data-coupler="smc"
+      data-rozlaczniki="2"
+      data-wylaczniki="1"
+      data-is-nop={breakerOpen ? 'true' : 'false'}
+      role={onFieldClick ? 'button' : undefined}
+      aria-label={onFieldClick ? 'Sprzęgło SMC (2 rozłączniki + wyłącznik)' : undefined}
+    >
+      {/* Horizontal coupler bridge between the two bus sections. */}
+      <line x1={aEnd} y1={busY} x2={bStart} y2={busY} stroke={lineColor} strokeWidth={2.2} strokeDasharray={breakerOpen ? '4 3' : undefined} />
+
+      {/* Cell A: rozłącznik 3-poł. closing SECTION A onto the coupler. */}
+      <g data-testid="sr-coupler-cell-a" data-apparatus-kind="three_position_switch" data-symbol-shape="diamond" onClick={handle(`${field.fieldId}/q1`)} style={{ cursor: onFieldClick ? 'pointer' : 'default' }}>
+        <line x1={aEnd} y1={busY} x2={aX} y2={cellTop} stroke={lineColor} strokeWidth={1.6} />
+        <ApparatusThreePositionSwitch cx={aX} cy={cellBottom} position={swA?.switchState === 'open' || breakerOpen ? 'open' : 'closed'} h={detail === 'far' ? 6 : 8} />
+        {detail !== 'far' && <text x={aX} y={cellBottom + 18} textAnchor="middle" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>Q1</text>}
+      </g>
+
+      {/* Breaker cell: the WYŁĄCZNIK sprzęgła (square), carrying the NOP status. */}
+      <g data-testid="sr-coupler-breaker" data-apparatus-kind="circuit_breaker" data-symbol-shape="square" data-state={swPos} onClick={handle(`${field.fieldId}/q0`)} style={{ cursor: onFieldClick ? 'pointer' : 'default' }}>
+        <ApparatusCbSquare cx={midX} cy={cellBottom} state={swPos} energized={!breakerOpen} />
+        {detail !== 'far' && <text x={midX} y={cellBottom + 18} textAnchor="middle" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>Q0</text>}
+        {/* NORMALLY-OPEN marker ⊗ on the breaker. */}
+        {breakerOpen && (
+          <g data-testid="sr-coupler-nop" pointerEvents="none">
+            <circle cx={midX} cy={cellBottom} r={9} fill="none" stroke={COLOR_DEVICE_OPEN_BORDER} strokeWidth={1.6} />
+            <line x1={midX - 6} y1={cellBottom - 6} x2={midX + 6} y2={cellBottom + 6} stroke={COLOR_DEVICE_OPEN_BORDER} strokeWidth={1.6} />
+          </g>
+        )}
+      </g>
+
+      {/* Cell B: rozłącznik 3-poł. closing SECTION B onto the coupler. */}
+      <g data-testid="sr-coupler-cell-b" data-apparatus-kind="three_position_switch" data-symbol-shape="diamond" onClick={handle(`${field.fieldId}/q2`)} style={{ cursor: onFieldClick ? 'pointer' : 'default' }}>
+        <line x1={bStart} y1={busY} x2={bX} y2={cellTop} stroke={lineColor} strokeWidth={1.6} />
+        <ApparatusThreePositionSwitch cx={bX} cy={cellBottom} position={swB?.switchState === 'open' || breakerOpen ? 'open' : 'closed'} h={detail === 'far' ? 6 : 8} />
+        {detail !== 'far' && <text x={bX} y={cellBottom + 18} textAnchor="middle" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>Q2</text>}
+      </g>
+
+      {/* Bus-tie protection relay on the coupler breaker (close zoom) — CBC/SMC
+          carry a relay (owner rule); SDC line fields do not. */}
+      {detail === 'close' && <ProtectionChips field={field} cx={midX} topY={cellBottom + 22} />}
+
+      {/* Label. */}
+      {detail !== 'far' && (
+        <text x={midX} y={busY - 16} textAnchor="middle" fill="#FFB020" fontFamily={FONT_MONO} fontSize={7.5} fontWeight={700} paintOrder="stroke" stroke="#05070A" strokeWidth={2}>
+          SPRZĘGŁO SMC
+        </text>
+      )}
+    </g>
+  );
+}
+
+// =============================================================================
 // The component
 // =============================================================================
 
@@ -852,10 +943,32 @@ export function StationRozdzielniaSN(props: StationRozdzielniaSNProps): JSX.Elem
         <NNTier nn={geometry.nn} block={model.nnBlock} detail={detail} index={index} onFieldClick={onFieldClick} />
       )}
 
-      {/* Fields. */}
+      {/* SMC coupler (T4) — drawn horizontally across the bus gap as TWO cells +
+          a breaker, NOT as a vertical field column. Skipped from the field map. */}
+      {sectionGap && (() => {
+        const couplerField = model.fields.find((f) => f.role === 'SPRZEGLO');
+        if (!couplerField) return null;
+        const breakerOpen =
+          (couplerField.isNormallyOpen ?? false) ||
+          (couplerField.branchRef ? index?.isOpenPoint(couplerField.branchRef) ?? false : false);
+        return (
+          <SmcCoupler
+            field={couplerField}
+            busY={geometry.busbar.y}
+            aEnd={sectionGap.aEnd}
+            bStart={sectionGap.bStart}
+            detail={detail}
+            breakerOpen={breakerOpen}
+            onFieldClick={onFieldClick}
+          />
+        );
+      })()}
+
+      {/* Fields (the SPRZEGLO field is drawn by SmcCoupler above, not here). */}
       {geometry.fields.map((fieldGeom) => {
         const field = model.fields.find((f) => f.fieldId === fieldGeom.fieldId);
         if (!field) return null;
+        if (sectionGap && field.role === 'SPRZEGLO') return null;
         const direction = field.branchRef ? index?.directionOf(field.branchRef) ?? 'none' : 'none';
         const energized = field.branchRef
           ? (index?.isBranchEnergized(field.branchRef) ?? true) && !(index?.isOpenPoint(field.branchRef) ?? false)

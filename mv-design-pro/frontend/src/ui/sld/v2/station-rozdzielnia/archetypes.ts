@@ -105,19 +105,27 @@ function cbcLineApparatus(
 }
 
 /**
- * SMC coupler: per the catalog the coupler "składa się z dwóch pól — pola z
- * wyłącznikiem typu CBC oraz pola wzniosu szynowego typu BRC". So: a breaker
- * (Q1, the CBC cell) + a riser switch (Q2 / rozłącznik 3-poł., the BRC cell).
- * The component draws this as TWO cells bridging the two bus sections.
+ * SMC coupler (ABB catalog §4.9): the coupler "składa się z dwóch pól — pola z
+ * wyłącznikiem typu CBC oraz pola wzniosu szynowego typu BRC". A genuine SMC is
+ * therefore TWO cells joined across the bus split:
+ *   - rozłącznik 3-poł. A (Q1) — closes section A onto the coupler,
+ *   - WYŁĄCZNIK sprzęgła (Q0)  — the protected, sectionalising breaker (NOP here),
+ *   - rozłącznik 3-poł. B (Q2) — closes section B onto the coupler.
+ * = 2 rozłączniki + 1 wyłącznik. (A single switch would be only a SEC.) The two
+ * 3-position switches isolate each section independently; the breaker between
+ * them is the section-coupling point that carries the normally-open status.
  */
 function smcCouplerApparatus(
   prefix: string,
-  state: NonNullable<StationApparatus['switchState']>,
+  breakerState: NonNullable<StationApparatus['switchState']>,
 ): StationApparatus[] {
-  const riserState = state === 'open' ? 'open' : 'closed';
+  // The section isolators follow the breaker's energisation intent: when the
+  // coupler is open (NOP) they rest open too; closing the coupler closes them.
+  const isolatorState = breakerState === 'open' ? 'open' : 'closed';
   return [
-    { deviceRef: `${prefix}/q1`, kind: 'CB', designation: 'Q1', switchState: state },
-    { deviceRef: `${prefix}/q2`, kind: 'LOAD_SWITCH', designation: 'Q2', switchState: riserState },
+    { deviceRef: `${prefix}/q1`, kind: 'LOAD_SWITCH', designation: 'Q1', switchState: isolatorState },
+    { deviceRef: `${prefix}/q0`, kind: 'CB', designation: 'Q0', switchState: breakerState },
+    { deviceRef: `${prefix}/q2`, kind: 'LOAD_SWITCH', designation: 'Q2', switchState: isolatorState },
   ];
 }
 
