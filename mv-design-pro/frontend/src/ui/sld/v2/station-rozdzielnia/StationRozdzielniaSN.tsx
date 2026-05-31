@@ -763,6 +763,32 @@ function NNTier(props: {
  * (green=closed, red=open) — never by a shape change and never with a ⊘ glyph.
  * The normally-open status is the breaker drawn as a RED OPEN □ + a "NOP" tag.
  */
+
+/**
+ * Upright rozłącznik diamond for the coupler (◇) — the canonical disconnector
+ * shape, drawn UPRIGHT with a VERTICAL contact line. State is shown by COLOUR
+ * only (green=closed, red=open); there is NO tilted blade and NO diagonal
+ * segment. The diamond outline is a <polygon> (a symbol, not routing); the only
+ * <line> is the vertical contact — so the coupler has zero diagonal segments.
+ */
+function CouplerDisconnectorDiamond(props: { cx: number; cy: number; h: number; open: boolean }): JSX.Element {
+  const { cx, cy, h, open } = props;
+  const color = open ? COLOR_DEVICE_OPEN_BORDER : COLOR_DEVICE_CLOSED_BORDER;
+  const fill = open ? 'none' : '#0A8D43';
+  return (
+    <g data-apparatus-kind="three_position_switch" data-symbol-shape="diamond" data-state={open ? 'open' : 'closed'}>
+      <polygon
+        points={`${cx},${cy - h} ${cx + h},${cy} ${cx},${cy + h} ${cx - h},${cy}`}
+        fill={fill}
+        stroke={color}
+        strokeWidth={1.6}
+      />
+      {/* Vertical contact line through the diamond — upright, never tilted. */}
+      <line x1={cx} y1={cy - h + 1.5} x2={cx} y2={cy + h - 1.5} stroke={color} strokeWidth={1.4} />
+    </g>
+  );
+}
+
 function SmcCoupler(props: {
   field: StationFieldDescriptor;
   busY: number;
@@ -786,8 +812,11 @@ function SmcCoupler(props: {
   const tieY = breakerY + (detail === 'far' ? 10 : 16);
   const lineColor = breakerOpen ? COLOR_DEVICE_OPEN : COLOR_FIELD_TRUNK_ENERGIZED;
   const dash = breakerOpen ? '3 3' : undefined;
-  const swState = breakerOpen ? 'open' : 'closed';
   const breakerState = breakerOpen ? 'open' : 'closed';
+  // The section isolators are open iff their own switch is open OR the coupler is
+  // open (NOP) — shown by COLOUR, never by a tilted blade.
+  const aOpen = swA?.switchState === 'open' || breakerOpen;
+  const bOpen = swB?.switchState === 'open' || breakerOpen;
   const handle = (id: string) => (onFieldClick ? (e: MouseEvent) => { e.stopPropagation(); onFieldClick(id); } : undefined);
 
   return (
@@ -806,9 +835,7 @@ function SmcCoupler(props: {
         <line data-routing="orthogonal" x1={aEnd} y1={busY} x2={aX} y2={busY} stroke={lineColor} strokeWidth={1.8} />
         {/* vertical drop bus → switch */}
         <line data-routing="orthogonal" x1={aX} y1={busY} x2={aX} y2={swY - swH - 1} stroke={lineColor} strokeWidth={1.8} />
-        <g data-apparatus-kind="three_position_switch" data-symbol-shape="diamond" data-state={swState}>
-          <ApparatusThreePositionSwitch cx={aX} cy={swY} position={swA?.switchState === 'open' || breakerOpen ? 'open' : 'closed'} h={swH} />
-        </g>
+        <CouplerDisconnectorDiamond cx={aX} cy={swY} h={swH} open={aOpen} />
         {detail !== 'far' && <text x={aX - 12} y={swY + 2} textAnchor="end" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>Q1</text>}
         {/* vertical connector switch → breaker */}
         <line data-routing="orthogonal" x1={aX} y1={swY + swH + 1} x2={aX} y2={breakerY - (detail === 'far' ? 6 : 8)} stroke={lineColor} strokeWidth={1.8} />
@@ -832,9 +859,7 @@ function SmcCoupler(props: {
       <g data-testid="sr-coupler-cell-b" onClick={handle(`${field.fieldId}/q2`)} style={{ cursor: onFieldClick ? 'pointer' : 'default' }}>
         <line data-routing="orthogonal" x1={bStart} y1={busY} x2={bX} y2={busY} stroke={lineColor} strokeWidth={1.8} />
         <line data-routing="orthogonal" x1={bX} y1={busY} x2={bX} y2={swY - swH - 1} stroke={lineColor} strokeWidth={1.8} />
-        <g data-apparatus-kind="three_position_switch" data-symbol-shape="diamond" data-state={swState}>
-          <ApparatusThreePositionSwitch cx={bX} cy={swY} position={swB?.switchState === 'open' || breakerOpen ? 'open' : 'closed'} h={swH} />
-        </g>
+        <CouplerDisconnectorDiamond cx={bX} cy={swY} h={swH} open={bOpen} />
         {detail !== 'far' && <text x={bX + 12} y={swY + 2} textAnchor="start" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>Q2</text>}
         <line data-routing="orthogonal" x1={bX} y1={swY + swH + 1} x2={bX} y2={tieY} stroke={lineColor} strokeWidth={1.8} strokeDasharray={dash} />
       </g>

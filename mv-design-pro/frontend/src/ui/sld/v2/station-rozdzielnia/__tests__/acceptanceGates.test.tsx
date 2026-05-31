@@ -233,17 +233,42 @@ describe('GATE ROUTING — zero diagonal connection segments (90° corners only)
     }
   });
 
-  it('the coupler is routed orthogonally (its connection lines included)', () => {
+  it('the coupler has ZERO diagonal segments — EVERY line, incl. switch symbols', () => {
+    // Extended scope (owner): not just routing lines — EVERY <line> inside the
+    // coupler must be horizontal or vertical, so a tilted disconnector blade
+    // (the old three-position switch when open) is caught. Upright ◇ only.
+    for (const detail of DETAILS) {
+      const { container } = renderAt('T4', detail);
+      const coupler = container.querySelector('[data-testid^="sr-coupler-sr-"]')!;
+      const lines = Array.from(coupler.querySelectorAll('line'));
+      expect(lines.length, 'the coupler must draw connection + contact lines').toBeGreaterThan(4);
+      let diagonal = 0;
+      for (const ln of lines) {
+        const x1 = Number(ln.getAttribute('x1'));
+        const y1 = Number(ln.getAttribute('y1'));
+        const x2 = Number(ln.getAttribute('x2'));
+        const y2 = Number(ln.getAttribute('y2'));
+        const horizontal = Math.abs(y1 - y2) < 1e-6;
+        const vertical = Math.abs(x1 - x2) < 1e-6;
+        if (!horizontal && !vertical) diagonal += 1;
+      }
+      expect(diagonal, `coupler@${detail}: ${diagonal} diagonal segments (must be 0)`).toBe(0);
+    }
+  });
+
+  it('the coupler reads as a ⊓ bridge: Q1/Q2 upright ◇, breaker □, state by colour', () => {
     const { container } = renderAt('T4', 'close');
     const coupler = container.querySelector('[data-testid^="sr-coupler-sr-"]')!;
-    const lines = Array.from(coupler.querySelectorAll('line[data-routing="orthogonal"]'));
-    expect(lines.length, 'the coupler must have tagged routing lines').toBeGreaterThan(4);
-    for (const ln of lines) {
-      const x1 = Number(ln.getAttribute('x1'));
-      const y1 = Number(ln.getAttribute('y1'));
-      const x2 = Number(ln.getAttribute('x2'));
-      const y2 = Number(ln.getAttribute('y2'));
-      expect(Math.abs(y1 - y2) < 1e-6 || Math.abs(x1 - x2) < 1e-6).toBe(true);
+    // Two disconnector diamonds (upright) + one breaker square.
+    const diamonds = coupler.querySelectorAll('[data-symbol-shape="diamond"]');
+    expect(diamonds.length, 'two upright ◇ disconnectors').toBe(2);
+    const breaker = coupler.querySelector('[data-testid="sr-coupler-breaker"][data-symbol-shape="square"]');
+    expect(breaker, 'breaker is a □').toBeTruthy();
+    // The NOP breaker is open → both isolators show state by data-state (colour),
+    // NOT by a tilted blade (asserted diagonal-free above).
+    expect(breaker!.getAttribute('data-state')).toBe('open');
+    for (const d of Array.from(diamonds)) {
+      expect(d.getAttribute('data-state')).toBe('open');
     }
   });
 });
