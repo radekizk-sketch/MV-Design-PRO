@@ -202,3 +202,70 @@ describe('GATE C — N-8: apparatus identity is LOD-invariant + canonical shapes
     expect(nop!.textContent).toBe('NOP');
   });
 });
+
+// ---------------------------------------------------------------------------
+// GATE E — short-circuit on EVERY SN and nN busbar at L2 (IEC 60909)
+// ---------------------------------------------------------------------------
+
+/** The busbars each archetype MUST carry SC on, by SC bus_ref. */
+const SC_BUSES: Record<'T1' | 'T2' | 'T3' | 'T4', readonly string[]> = {
+  T1: ['SN_BUS', 'NN_BUS'],
+  T2: ['SN_BUS', 'NN_BUS'],
+  T3: ['ZKSN'],
+  T4: ['SEC_A', 'SEC_B'],
+};
+
+describe('GATE E — short-circuit dossier on every SN/nN busbar at L2', () => {
+  it('the SC companion carries Ik"max/min + ip/ib/ith/κ + Z(R/X) + Icw verdict per bus', () => {
+    for (const archetype of ['T1', 'T2', 'T3', 'T4'] as const) {
+      const { model } = buildArchetype(archetype);
+      expect(model.shortCircuit, `${archetype} must carry a SC companion`).toBeTruthy();
+      for (const busRef of SC_BUSES[archetype]) {
+        const bus = model.shortCircuit!.buses[busRef];
+        expect(bus, `${archetype} SC bus ${busRef} missing`).toBeTruthy();
+        // Mandatory quantities present and physical (> 0).
+        expect(bus.max.ikss_ka).toBeGreaterThan(0);
+        expect(bus.max.ip_ka).toBeGreaterThan(bus.max.ikss_ka); // ip = κ·√2·Ik"
+        expect(bus.max.ith_ka).toBeGreaterThan(0);
+        expect(bus.max.ib_ka).toBeGreaterThan(0);
+        expect(bus.max.kappa).toBeGreaterThanOrEqual(1);
+        expect(bus.max.sk_mva).toBeGreaterThan(0);
+        // Ik"min (c=0.95) < Ik"max (c=1.10).
+        expect(bus.min.ikss_ka).toBeLessThan(bus.max.ikss_ka);
+        // Distinct case_refs.
+        expect(bus.max.case_ref).toBe('ZWARCIOWY_MAKS');
+        expect(bus.min.case_ref).toBe('ZWARCIOWY_MIN');
+        // Verification present: Ik"max ≤ Icw.
+        expect(bus.verification.rule).toBe('ikss_max_le_icw');
+        expect(typeof bus.verification.passed).toBe('boolean');
+        // White Box derivation carried (non-empty).
+        expect(bus.max.white_box_trace.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('renders a SC panel on EVERY busbar at L2 (and NOT at far/closer)', () => {
+    for (const archetype of ['T1', 'T2', 'T3', 'T4'] as const) {
+      const close = renderAt(archetype, 'close').container;
+      for (const busRef of SC_BUSES[archetype]) {
+        const panel = close.querySelector(`[data-testid="sr-sc-panel-${busRef}"]`);
+        expect(panel, `${archetype} L2 must render SC panel for ${busRef}`).toBeTruthy();
+        // White Box affordance present with step count.
+        const wb = close.querySelector(`[data-testid="sr-sc-whitebox-${busRef}"]`);
+        expect(wb).toBeTruthy();
+        expect(Number(wb!.getAttribute('data-wb-steps'))).toBeGreaterThan(0);
+      }
+      // SC panels are an L2-only affordance.
+      const closer = renderAt(archetype, 'closer').container;
+      expect(closer.querySelector('[data-testid^="sr-sc-panel-"]')).toBeFalsy();
+    }
+  });
+
+  it('nN 400 V busbar carries its own SC (transformer-dominated, κ ≈ 2)', () => {
+    const { model } = buildArchetype('T1');
+    const nn = model.shortCircuit!.buses['NN_BUS'];
+    expect(nn.un_kv).toBe(0.4);
+    // The nN κ is materially higher than the SN κ (low R/X behind the trafo).
+    expect(nn.max.kappa).toBeGreaterThan(model.shortCircuit!.buses['SN_BUS'].max.kappa);
+  });
+});

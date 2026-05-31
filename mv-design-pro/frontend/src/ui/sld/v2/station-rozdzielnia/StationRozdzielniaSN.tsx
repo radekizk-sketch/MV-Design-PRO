@@ -66,6 +66,7 @@ import {
   type NNGeometry,
   type StationDetailLevel,
 } from './geometry';
+import type { ScBus } from './companions/shortCircuitTypes';
 
 // =============================================================================
 // Props
@@ -840,6 +841,69 @@ function SmcCoupler(props: {
 }
 
 // =============================================================================
+// Busbar short-circuit panel (gate E) — IEC 60909 dossier at L2
+// =============================================================================
+
+/**
+ * The per-busbar short-circuit dossier shown at L2 (close zoom) — gate E. Every
+ * value is READ from the frozen-solver SC companion (`ScBus`); nothing is
+ * recomputed. Shows Ik''max/min, ip/ib/ith, κ, Sk'', R/X and the Ik''max ≤ Icw
+ * withstand verdict, with the case_ref and a White Box affordance (the LaTeX
+ * derivation is carried in `max.white_box_trace`).
+ */
+function BusbarShortCircuitPanel(props: {
+  sc: ScBus;
+  x: number;
+  y: number;
+}): JSX.Element {
+  const { sc, x, y } = props;
+  const ok = sc.verification.passed;
+  const rows: Array<[string, string]> = [
+    [`Ik"max (c=${sc.max.c_factor})`, `${sc.max.ikss_ka.toFixed(2)} kA`],
+    ['ip', `${sc.max.ip_ka.toFixed(1)} kA`],
+    ['Ith', `${sc.max.ith_ka.toFixed(2)} kA`],
+    ['Ib', `${sc.max.ib_ka.toFixed(2)} kA`],
+    ['κ', sc.max.kappa.toFixed(2)],
+    ['Sk"', `${sc.max.sk_mva.toFixed(1)} MVA`],
+    ['R/X', sc.max.rx_ratio.toFixed(3)],
+    [`Ik"min (c=${sc.min.c_factor})`, `${sc.min.ikss_ka.toFixed(2)} kA`],
+  ];
+  const rowH = 9;
+  const panelW = 116;
+  const panelH = 20 + rows.length * rowH + 22;
+  return (
+    <g data-testid={`sr-sc-panel-${sc.bus_ref}`} data-sc-bus={sc.bus_ref} pointerEvents="none">
+      <rect x={x} y={y} width={panelW} height={panelH} rx={3} fill="#0A1622" stroke="#1C3A4E" strokeWidth={1} opacity={0.96} />
+      {/* Title + case_ref. */}
+      <text x={x + 6} y={y + 12} fill="#9FE6FF" fontFamily={FONT_MONO} fontSize={7.5} fontWeight={800}>
+        {`ZWARCIE — ${sc.bus_ref} (${sc.un_kv} kV)`}
+      </text>
+      <text x={x + panelW - 6} y={y + 12} textAnchor="end" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={6} fontWeight={600}>
+        IEC 60909
+      </text>
+      {rows.map(([k, v], i) => {
+        const ry = y + 20 + i * rowH;
+        return (
+          <g key={k}>
+            <text x={x + 6} y={ry} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6.6}>{k}</text>
+            <text x={x + panelW - 6} y={ry} textAnchor="end" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_MONO} fontSize={6.6} fontWeight={700}>{v}</text>
+          </g>
+        );
+      })}
+      {/* Icw verification verdict. */}
+      <rect x={x + 4} y={y + panelH - 18} width={panelW - 8} height={14} rx={2} fill={ok ? '#0C2A18' : '#3A0E0E'} stroke={ok ? COLOR_DEVICE_CLOSED_BORDER : COLOR_DEVICE_OPEN_BORDER} strokeWidth={1} />
+      <text x={x + panelW / 2} y={y + panelH - 8} textAnchor="middle" fill={ok ? '#5BE08A' : '#FF6B6B'} fontFamily={FONT_MONO} fontSize={6.6} fontWeight={800}>
+        {`Ik"max ${sc.verification.ikss_max_ka.toFixed(1)} ${ok ? '≤' : '>'} Icw ${sc.verification.icw_ka} kA ${ok ? '✓' : '✗'}`}
+      </text>
+      {/* White Box affordance — the derivation exists (LaTeX trace from the solver). */}
+      <text data-testid={`sr-sc-whitebox-${sc.bus_ref}`} data-wb-steps={sc.max.white_box_trace.length} x={x + 6} y={y + panelH + 8} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={6} fontWeight={600}>
+        {`White Box: ${sc.max.white_box_trace.length} kroków · ${sc.max.case_ref}`}
+      </text>
+    </g>
+  );
+}
+
+// =============================================================================
 // The component
 // =============================================================================
 
@@ -1017,6 +1081,34 @@ export function StationRozdzielniaSN(props: StationRozdzielniaSNProps): JSX.Elem
           />
         );
       })}
+
+      {/* SHORT-CIRCUIT dossiers on EVERY busbar at L2 (gate E) — read from the
+          frozen IEC 60909 companion. SN busbar (or section A), section B (T4),
+          and the nN 400 V busbar each carry their own panel. */}
+      {detail === 'close' && model.shortCircuit && (() => {
+        const sc = model.shortCircuit;
+        const panels: JSX.Element[] = [];
+        const snBus = model.snBusScRef ? sc.buses[model.snBusScRef] : undefined;
+        if (snBus) {
+          panels.push(
+            <BusbarShortCircuitPanel key={snBus.bus_ref} sc={snBus} x={geometry.busbar.x1 - 132} y={geometry.busbar.y - 18} />,
+          );
+        }
+        const snBusB = model.snBusBScRef ? sc.buses[model.snBusBScRef] : undefined;
+        if (snBusB) {
+          panels.push(
+            <BusbarShortCircuitPanel key={snBusB.bus_ref} sc={snBusB} x={geometry.busbar.x2 + 16} y={geometry.busbar.y - 18} />,
+          );
+        }
+        const nnRef = model.nnBlock?.scBusRef;
+        const nnBus = nnRef ? sc.buses[nnRef] : undefined;
+        if (nnBus && geometry.nn) {
+          panels.push(
+            <BusbarShortCircuitPanel key={nnBus.bus_ref} sc={nnBus} x={geometry.nn.busbar.x2 + 16} y={geometry.nn.busbar.y - 14} />,
+          );
+        }
+        return <>{panels}</>;
+      })()}
 
       {/* Bus voltage label (closer + close). */}
       {detail !== 'far' && !sectionGap && (

@@ -37,6 +37,7 @@ import type {
 } from './contract';
 import { classifyAbbCellType } from './abbFieldLibrary';
 import { STATION_ARCHETYPE_COMPANIONS } from './companions';
+import { STATION_ARCHETYPE_SHORT_CIRCUIT } from './companions/shortCircuit';
 
 // =============================================================================
 // ABB cell-type stamping (single symbol↔type source)
@@ -177,6 +178,7 @@ function nnBlock(prefix: string, feeders: readonly StationNNFeeder[]): StationNN
     transformerBranchRef: BR.tr,
     mainBreakerRef: `${prefix}/nn-main`,
     feeders,
+    scBusRef: 'NN_BUS', // frozen-solver SC dossier key for the 400 V busbar
   };
 }
 
@@ -230,6 +232,8 @@ export function buildT1(): { model: StationRozdzielniaModel; companion: SldPower
     caseRef: companion.case_ref,
     caseLabel: companion.case_label,
     nnBlock: nn,
+    shortCircuit: STATION_ARCHETYPE_SHORT_CIRCUIT.T1,
+    snBusScRef: 'SN_BUS',
   };
   return { model, companion };
 }
@@ -276,6 +280,8 @@ export function buildT2(): { model: StationRozdzielniaModel; companion: SldPower
     caseRef: companion.case_ref,
     caseLabel: companion.case_label,
     nnBlock: nn,
+    shortCircuit: STATION_ARCHETYPE_SHORT_CIRCUIT.T2,
+    snBusScRef: 'SN_BUS',
   };
   return { model, companion };
 }
@@ -329,6 +335,8 @@ export function buildT3(): { model: StationRozdzielniaModel; companion: SldPower
     fields: withCellTypes(fields),
     caseRef: companion.case_ref,
     caseLabel: companion.case_label,
+    shortCircuit: STATION_ARCHETYPE_SHORT_CIRCUIT.T3,
+    snBusScRef: 'ZKSN',
   };
   return { model, companion };
 }
@@ -402,6 +410,9 @@ export function buildT4(): { model: StationRozdzielniaModel; companion: SldPower
     sectionedBus: true,
     sectionABranchRef: BR.in,
     sectionBBranchRef: BR.lineB,
+    shortCircuit: STATION_ARCHETYPE_SHORT_CIRCUIT.T4,
+    snBusScRef: 'SEC_A',
+    snBusBScRef: 'SEC_B',
   };
   return { model, companion };
 }

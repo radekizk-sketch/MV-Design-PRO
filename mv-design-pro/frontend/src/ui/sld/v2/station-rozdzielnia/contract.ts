@@ -37,6 +37,7 @@ import type {
   GpzApparatusSwitchState,
 } from '../renderer/GpzSwitchgearTypes';
 import type { AbbCellType } from './abbFieldLibrary';
+import type { SldShortCircuitCompanion } from './companions/shortCircuitTypes';
 
 // =============================================================================
 // Archetype (T1-T4 network-station archetypes)
@@ -268,6 +269,8 @@ export interface StationNNBlock {
   readonly mainBreakerRef: string;
   /** Outgoing nN feeders (loads) + optional PV source field. */
   readonly feeders: readonly StationNNFeeder[];
+  /** SC bus_ref for the nN busbar — looks up `model.shortCircuit.buses`. */
+  readonly scBusRef?: string;
 }
 
 // =============================================================================
@@ -325,4 +328,14 @@ export interface StationRozdzielniaModel {
   readonly sectionABranchRef?: string;
   /** Branch ref energising bus section B (right). Read from the companion. */
   readonly sectionBBranchRef?: string;
+  /**
+   * Frozen-solver IEC 60909 short-circuit dossier (gate E). The renderer reads
+   * per-busbar Ik''max/min + ip/ib/ith + Icw verification + White Box from here
+   * on L2 — it never recomputes a short circuit. Keyed by SC bus_ref.
+   */
+  readonly shortCircuit?: SldShortCircuitCompanion;
+  /** SC bus_ref for the (main / section-A) SN busbar — looks up `shortCircuit.buses`. */
+  readonly snBusScRef?: string;
+  /** SC bus_ref for the section-B SN busbar (T4). */
+  readonly snBusBScRef?: string;
 }
