@@ -788,6 +788,19 @@ def build_all_vf() -> dict[str, dict[str, Any]]:
 _IBG_K = 1.2
 
 
+# Protection function sets per machine type (gate I) — ANSI/IEC codes on the
+# connection field, per machine type (axis T). IBG ≠ synchronous ≠ asynchronous.
+_PROTECTION_BY_MACHINE: dict[str, list[str]] = {
+    # IBG (PV/BESS/full-converter wind): directional OC + voltage/frequency +
+    # rate-of-change + neutral OV + anti-islanding.
+    "IBG": ["67", "67N", "81U", "81O", "df/dt", "27", "59", "59N", "anti-islanding"],
+    # Synchronous machine: synchro-check + full machine protection.
+    "SYNCHRONOUS": ["25", "21", "40", "32", "46", "87", "59N", "67N", "81U", "81O"],
+    # Asynchronous machine: self-excitation guard + directional OC + Q control.
+    "ASYNCHRONOUS": ["67", "67N", "47", "27", "59", "81U", "81O"],
+}
+
+
 def _pv_source(
     *, technology: str, machine_type: str, nc_class: str, control_mode: str,
     p_zainst_kw: float, pn_ac_kw: float, p_przylacz_kw: float, p_osiagalna_kw: float,
@@ -797,6 +810,8 @@ def _pv_source(
         "machine_type": machine_type,
         "nc_rfg_class": nc_class,
         "control_mode": control_mode,
+        # Gate I — protection set is a function of the machine type (axis T).
+        "protection_codes": list(_PROTECTION_BY_MACHINE.get(machine_type, [])),
         "power_hierarchy": {
             "p_zainst_kw": p_zainst_kw,
             "pn_ac_kw": pn_ac_kw,

@@ -618,6 +618,17 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "pn_ac_kw": 50.0,
         "valid": true
       },
+      "protection_codes": [
+        "67",
+        "67N",
+        "81U",
+        "81O",
+        "df/dt",
+        "27",
+        "59",
+        "59N",
+        "anti-islanding"
+      ],
       "technology": "PV"
     },
     "voltage_flow": {
@@ -1263,6 +1274,17 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "pn_ac_kw": 990.0,
         "valid": true
       },
+      "protection_codes": [
+        "67",
+        "67N",
+        "81U",
+        "81O",
+        "df/dt",
+        "27",
+        "59",
+        "59N",
+        "anti-islanding"
+      ],
       "technology": "PV"
     },
     "voltage_flow": {
@@ -1908,6 +1930,17 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "pn_ac_kw": 1500.0,
         "valid": true
       },
+      "protection_codes": [
+        "67",
+        "67N",
+        "81U",
+        "81O",
+        "df/dt",
+        "27",
+        "59",
+        "59N",
+        "anti-islanding"
+      ],
       "technology": "PV"
     },
     "voltage_flow": {

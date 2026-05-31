@@ -25,6 +25,8 @@ export interface OzeSourceMeta {
   readonly machine_type: 'IBG' | 'SYNCHRONOUS' | 'ASYNCHRONOUS';
   readonly nc_rfg_class: string; // A | B | C | D
   readonly control_mode: string; // cosφ=const | Q=const | cosφ(P) | Q(U) | P(f)
+  /** Gate I — protection function codes (ANSI/IEC), a function of machine_type. */
+  readonly protection_codes: readonly string[];
   readonly power_hierarchy: OzePowerHierarchy;
 }
 
