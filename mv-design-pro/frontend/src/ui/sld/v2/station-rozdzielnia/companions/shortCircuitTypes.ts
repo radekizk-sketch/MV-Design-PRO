@@ -26,9 +26,9 @@ export interface ScWhiteBoxStep {
   readonly substitution?: string;
   /** D — the result value(s). */
   readonly result?: Readonly<Record<string, unknown>>;
-  readonly unit?: string;
-  readonly result_unit?: string;
-  readonly notes?: string;
+  readonly unit?: string | null;
+  readonly result_unit?: string | null;
+  readonly notes?: string | null;
   readonly [k: string]: unknown;
 }
 

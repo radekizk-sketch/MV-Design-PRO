@@ -103,6 +103,7 @@ function LevelPanel(props: {
             model={model}
             companion={companion}
             detail={detail}
+            whiteBox={whiteBox}
             onFieldClick={onFieldClick}
           />
         </g>
