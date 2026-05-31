@@ -217,8 +217,69 @@ export interface StationFieldDescriptor {
 }
 
 // =============================================================================
+// nN tier (second voltage level) — transformer + nN busbar + feeders + PV
+// =============================================================================
+
+/**
+ * The nN-side block of a transformer station (STEP 2). It is a SECOND voltage
+ * level: an nN busbar fed by the SN/nN transformer through the nN main breaker,
+ * with outgoing feeders (ODPLYW_NN) carrying load and an optional PV field
+ * (ZRODLO_NN_PV) that backfeeds the bus. Mirrors the ENM `NNBlockSpec` /
+ * `NNFeederSpec` taxonomy (domain_ops_models.py).
+ *
+ * Per the ZERO-SECOND-TRUTH rule, NO power values live here — the renderer reads
+ * each feeder's / PV's active power and direction from the frozen-solver
+ * companion via `branchRef`.
+ */
+export interface StationNNFeeder {
+  /** Stable id (click target). */
+  readonly feederId: string;
+  /** nN feeder role (ENM `NNFeederSpec.feeder_role`). */
+  readonly role: 'ODPLYW_NN' | 'ODPLYW_REZERWOWY' | 'ZRODLO_NN_PV' | 'ZRODLO_NN_BESS';
+  /** Short feeder name. */
+  readonly feederName?: string;
+  /**
+   * ENM branch `ref_id` whose solver flow gives THIS feeder's power + direction.
+   * The renderer reads the companion (one truth) — never re-derives it.
+   */
+  readonly branchRef: string;
+}
+
+/** SN/nN transformer descriptor (vector group + tap shown on the boundary). */
+export interface StationTransformer {
+  readonly deviceRef: string;
+  /** Vector group (e.g. "Dyn5"). */
+  readonly vectorGroup: string;
+  /** Rated power label (e.g. "630 kVA"). */
+  readonly ratingLabel?: string;
+  /** Whether an on-load tap changer is present (ENM `TransformerSpec.tap_changer_present`). */
+  readonly tapChanger?: boolean;
+}
+
+/** The nN-side block: busbar (second voltage) + transformer + feeders + PV. */
+export interface StationNNBlock {
+  /** nN busbar nominal voltage [kV] (distinct colour/weight from the SN bus). */
+  readonly busVoltageKv: number;
+  /** SN/nN transformer feeding this nN bus. */
+  readonly transformer: StationTransformer;
+  /** Branch ref of the SN-side transformer feeder (joins the SN TR field flow). */
+  readonly transformerBranchRef: string;
+  /** nN main breaker device ref (between transformer and nN bus). */
+  readonly mainBreakerRef: string;
+  /** Outgoing nN feeders (loads) + optional PV source field. */
+  readonly feeders: readonly StationNNFeeder[];
+}
+
+// =============================================================================
 // Station-rozdzielnia model (one geometry source consumes this)
 // =============================================================================
+
+/**
+ * How the model is drawn. 'station' = a switchgear busbar with field columns
+ * (T1/T2/T4). 'zksn' = a `BranchPointSN` projection (T3): a cable junction with
+ * line fields on MAIN_IN/MAIN_OUT/BRANCH, NO transformer/nN, NO wide busbar.
+ */
+export type StationProjection = 'station' | 'zksn';
 
 /**
  * The full typed model of ONE station-rozdzielnia SN. The geometry source and
@@ -231,6 +292,13 @@ export interface StationRozdzielniaModel {
   readonly name: string;
   /** Dispatcher station code (S01…), if assigned. */
   readonly stationCode?: string;
+  /** Render projection (default 'station'). 'zksn' = cable-junction projection. */
+  readonly projection?: StationProjection;
+  /**
+   * For a ZKSN/branch-point projection: the ENM `BranchPointSN.branch_point_type`.
+   * BL-01: 'zksn' is cable-only; BL-02: 'branch_pole' is overhead-only.
+   */
+  readonly branchPointType?: 'zksn' | 'branch_pole';
   /** SN busbar nominal voltage [kV] (tints the busbar per dispatcher convention). */
   readonly busVoltageKv: number;
   /** Fields by canonical role, in dispatcher order (left→right on the busbar). */
@@ -238,4 +306,23 @@ export interface StationRozdzielniaModel {
   /** Active case ref (state declaration the companion was solved on). */
   readonly caseRef?: string;
   readonly caseLabel?: string;
+  /**
+   * nN-side block (STEP 2): present for transformer stations (T1/T2). The SN
+   * TRANSFORMATOROWE field feeds this; the nN busbar is a second voltage level
+   * with feeders + optional PV. Absent for non-transformer archetypes (T3/T4).
+   */
+  readonly nnBlock?: StationNNBlock;
+  /**
+   * Sectioned busbar (T4 sekcyjna): the SPRZEGLO field is an ABB SMC coupler
+   * that splits the busbar into two independently-energised sections (CIĄG A
+   * left of the coupler, CIĄG B right). When set, the renderer draws TWO busbar
+   * segments (each energised per its own incomer in the companion) and the
+   * coupler as TWO cells: a CBC cell (wyłącznik Q1 + rozłącznik 3-poł. Q2) and a
+   * BRC cell (rozłącznik 3-poł. wznios Q3) bridging A↔B.
+   */
+  readonly sectionedBus?: boolean;
+  /** Branch ref energising bus section A (left). Read from the companion. */
+  readonly sectionABranchRef?: string;
+  /** Branch ref energising bus section B (right). Read from the companion. */
+  readonly sectionBBranchRef?: string;
 }
