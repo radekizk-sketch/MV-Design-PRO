@@ -36,7 +36,7 @@ import json
 import os
 from typing import Any, Literal
 
-from network_model.core.branch import BranchType, LineBranch
+from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 from network_model.solvers.power_flow_newton import (
@@ -48,6 +48,10 @@ from network_model.solvers.power_flow_types import (
     PowerFlowOptions,
     PQSpec,
     SlackSpec,
+)
+from network_model.solvers.short_circuit_iec60909 import (
+    ShortCircuitIEC60909Solver,
+    ShortCircuitResult,
 )
 
 _BASE_MVA = 100.0
@@ -85,12 +89,12 @@ def _line(branch_id: str, from_id: str, to_id: str, r: float, x: float) -> LineB
     )
 
 
-def _pq_node(node_id: str) -> Node:
+def _pq_node(node_id: str, voltage_kv: float = _BASE_KV) -> Node:
     return Node(
         id=node_id,
         name=node_id,
         node_type=NodeType.PQ,
-        voltage_level=_BASE_KV,
+        voltage_level=voltage_kv,
         active_power=0.0,
         reactive_power=0.0,
     )
@@ -120,8 +124,8 @@ class _Substrate:
         self.graph.add_node(_slack_node(node_id))
         self.slack_id = node_id
 
-    def add_bus(self, node_id: str) -> None:
-        self.graph.add_node(_pq_node(node_id))
+    def add_bus(self, node_id: str, voltage_kv: float = _BASE_KV) -> None:
+        self.graph.add_node(_pq_node(node_id, voltage_kv))
 
     def add_load(self, node_id: str, p_mw: float, q_mvar: float) -> None:
         self.pq.append(PQSpec(node_id=node_id, p_mw=p_mw, q_mvar=q_mvar))
@@ -138,6 +142,33 @@ class _Substrate:
             line.in_service = False
             self._open_branches.append(branch_id)
         self.graph.add_branch(line)
+
+    def add_transformer(
+        self,
+        branch_id: str,
+        hv: str,
+        lv: str,
+        *,
+        hv_kv: float,
+        lv_kv: float,
+        uk_percent: float,
+        rated_mva: float,
+    ) -> None:
+        """A real SN/nN TransformerBranch — so the SC solver steps voltage and the
+        nN busbar carries a physically correct Ik'' (transformer-dominated)."""
+        self.graph.add_branch(
+            TransformerBranch(
+                id=branch_id,
+                name=branch_id,
+                branch_type=BranchType.TRANSFORMER,
+                from_node_id=hv,
+                to_node_id=lv,
+                voltage_hv_kv=hv_kv,
+                voltage_lv_kv=lv_kv,
+                uk_percent=uk_percent,
+                rated_power_mva=rated_mva,
+            )
+        )
 
     def finalize_pq(self) -> None:
         """Every island bus that is neither slack nor already a PQ spec must
@@ -215,6 +246,105 @@ def _companion_from_solution(
         "energized_bus_refs": energized_bus_refs,
         "de_energized_bus_refs": de_energized_bus_refs,
         "open_point_branch_refs": sorted(substrate.open_branches),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Short-circuit companion (per busbar, IEC 60909) — gate E.
+# ---------------------------------------------------------------------------
+# IEC 60909 voltage factors c: max=1.10 (Ik''max → equipment withstand), min=0.95
+# (Ik''min → protection sensitivity). tk = 1.0 s (Ith reference duration).
+_C_MAX = 1.10
+_C_MIN = 0.95
+_TK_S = 1.0
+
+
+def _json_safe(value: Any) -> Any:
+    """Recursively convert solver trace values to JSON-ready types (complex →
+    {re, im}, numpy scalars → native). The White Box trace is carried verbatim
+    except for this lossless type normalisation."""
+    if isinstance(value, complex):
+        return {"re": float(value.real), "im": float(value.imag)}
+    if hasattr(value, "item"):  # numpy scalar
+        return value.item()
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list | tuple)):
+        return [_json_safe(v) for v in value]
+    return value
+
+
+def _sc_one(graph: NetworkGraph, bus_id: str, c_factor: float) -> ShortCircuitResult:
+    """Run the FROZEN IEC 60909 3-phase SC solver at one busbar (READ-ONLY)."""
+    return ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=graph,
+        fault_node_id=bus_id,
+        c_factor=c_factor,
+        tk_s=_TK_S,
+    )
+
+
+def _sc_bus_entry(
+    graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float
+) -> dict[str, Any]:
+    """Ik''max/min + ip/ib/ith/kappa + Sk + Icw verification at one busbar, with the
+    solver's White Box trace carried verbatim (interpretation, not recomputation)."""
+    rmax = _sc_one(graph, bus_id, _C_MAX)
+    rmin = _sc_one(graph, bus_id, _C_MIN)
+    ikss_max_ka = round(rmax.ikss_a / 1000.0, 3)
+    ikss_min_ka = round(rmin.ikss_a / 1000.0, 3)
+    return {
+        "bus_ref": bus_id,
+        "un_kv": un_kv,
+        "icw_ka": icw_ka,
+        # Ik''max branch (c=1.10): equipment-withstand verification.
+        "max": {
+            "case_ref": "ZWARCIOWY_MAKS",
+            "c_factor": _C_MAX,
+            "ikss_ka": ikss_max_ka,
+            "ip_ka": round(rmax.ip_a / 1000.0, 3),
+            "ib_ka": round(rmax.ib_a / 1000.0, 3),
+            "ith_ka": round(rmax.ith_a / 1000.0, 3),
+            "kappa": round(rmax.kappa, 3),
+            "sk_mva": round(rmax.sk_mva, 2),
+            "rx_ratio": round(rmax.rx_ratio, 4),
+            "white_box_trace": _json_safe(rmax.white_box_trace),
+        },
+        # Ik''min branch (c=0.95): protection-sensitivity reference.
+        "min": {
+            "case_ref": "ZWARCIOWY_MIN",
+            "c_factor": _C_MIN,
+            "ikss_ka": ikss_min_ka,
+            "ith_ka": round(rmin.ith_a / 1000.0, 3),
+            "kappa": round(rmin.kappa, 3),
+            "sk_mva": round(rmin.sk_mva, 2),
+            "white_box_trace": _json_safe(rmin.white_box_trace),
+        },
+        # Verification: Ik''max ≤ Icw (rozdzielnia withstand).
+        "verification": {
+            "rule": "ikss_max_le_icw",
+            "ikss_max_ka": ikss_max_ka,
+            "icw_ka": icw_ka,
+            "passed": bool(ikss_max_ka <= icw_ka),
+        },
+    }
+
+
+def build_short_circuit_companion(
+    archetype: str, graph: NetworkGraph, buses: list[tuple[str, float, float]]
+) -> dict[str, Any]:
+    """SC companion for one archetype: every (bus_id, un_kv, icw_ka) carries its
+    IEC 60909 Ik''max/min + ip/ib/ith + Icw verification + White Box trace."""
+    return {
+        "schema": "sld_short_circuit_companion_v1",
+        "enm_hash": f"station-substrate/{archetype}",
+        "standard": "IEC 60909",
+        "solver_method": "iec60909-3ph",
+        "tk_s": _TK_S,
+        "buses": {
+            bus_id: _sc_bus_entry(graph, bus_id, un_kv, icw_ka)
+            for bus_id, un_kv, icw_ka in buses
+        },
     }
 
 
@@ -326,6 +456,84 @@ def build_all() -> dict[str, dict[str, Any]]:
     return {name: build_companion(name) for name in _ARCHETYPES}
 
 
+# ---------------------------------------------------------------------------
+# Short-circuit graphs (gate E) — a SEPARATE two-voltage graph per archetype with
+# a REAL SN/nN TransformerBranch, so the nN busbar carries a physically correct
+# Ik''. The power-flow substrate (single-base, transformer-as-line) is unchanged,
+# so the accepted nN power-flow values are preserved. SC is READ-ONLY (B-01).
+# ---------------------------------------------------------------------------
+# Rozdzielnica withstand (Icw) per the ABB UniSwitch data: 25 kA SN. nN board
+# typically 20–25 kA; use 25 kA nN board rating for the verification headroom.
+_ICW_SN_KA = 25.0
+_ICW_NN_KA = 25.0
+_NN_KV = 0.4
+_TRAFO_UK_PCT = 6.0
+_TRAFO_MVA = 0.63
+
+
+def _sc_graph_sn_nn(*, with_line_out: bool) -> NetworkGraph:
+    """SN busbar fed from GPZ via a line; nN busbar behind a real transformer."""
+    s = _Substrate()
+    s.add_slack("GPZ")
+    s.add_bus("SN_BUS", _BASE_KV)
+    s.add_bus("NN_BUS", _NN_KV)
+    s.add_line(SR_IN, "GPZ", "SN_BUS", _SN_LINE_R, _SN_LINE_X)
+    if with_line_out:
+        s.add_bus("LINE_OUT_END", _BASE_KV)
+        s.add_line(SR_OUT, "SN_BUS", "LINE_OUT_END", _SN_LINE_R, _SN_LINE_X)
+    s.add_transformer(
+        SR_TR, "SN_BUS", "NN_BUS",
+        hv_kv=_BASE_KV, lv_kv=_NN_KV, uk_percent=_TRAFO_UK_PCT, rated_mva=_TRAFO_MVA,
+    )
+    return s.graph
+
+
+def _sc_graph_t3() -> NetworkGraph:
+    """ZKSN: SN cable junction only (no transformer/nN)."""
+    s = _Substrate()
+    s.add_slack("GPZ")
+    s.add_bus("ZKSN", _BASE_KV)
+    s.add_line(SR_IN, "GPZ", "ZKSN", _SN_LINE_R, _SN_LINE_X)
+    return s.graph
+
+
+def _sc_graph_t4() -> NetworkGraph:
+    """Sectioned bus: two SN sections fed independently (coupler open)."""
+    s = _Substrate()
+    s.add_slack("GPZ_A")
+    s.add_bus("SEC_A", _BASE_KV)
+    s.add_bus("SEC_B", _BASE_KV)
+    s.add_line(SR_IN, "GPZ_A", "SEC_A", _SN_LINE_R, _SN_LINE_X)
+    s.add_line(SR_LINE_B, "GPZ_A", "SEC_B", _SN_LINE_R, _SN_LINE_X)
+    return s.graph
+
+
+def _sc_spec(archetype: str) -> tuple[NetworkGraph, list[tuple[str, float, float]]]:
+    """(graph, [(bus_id, un_kv, icw_ka)]) — the busbars that must carry SC at L2."""
+    if archetype in ("T1", "T2"):
+        graph = _sc_graph_sn_nn(with_line_out=(archetype == "T1"))
+        return graph, [
+            ("SN_BUS", _BASE_KV, _ICW_SN_KA),
+            ("NN_BUS", _NN_KV, _ICW_NN_KA),
+        ]
+    if archetype == "T3":
+        return _sc_graph_t3(), [("ZKSN", _BASE_KV, _ICW_SN_KA)]
+    # T4 — two independently-energised SN sections.
+    return _sc_graph_t4(), [
+        ("SEC_A", _BASE_KV, _ICW_SN_KA),
+        ("SEC_B", _BASE_KV, _ICW_SN_KA),
+    ]
+
+
+def build_sc_companion(archetype: str) -> dict[str, Any]:
+    graph, buses = _sc_spec(archetype)
+    return build_short_circuit_companion(archetype, graph, buses)
+
+
+def build_all_sc() -> dict[str, dict[str, Any]]:
+    return {name: build_sc_companion(name) for name in _ARCHETYPES}
+
+
 def _companions_dir() -> str:
     here = os.path.dirname(os.path.abspath(__file__))
     repo = os.path.abspath(os.path.join(here, "..", "..", "..", ".."))
@@ -360,6 +568,31 @@ export const STATION_ARCHETYPE_COMPANIONS: Readonly<
 > = """
 
 
+_TS_SC_HEADER = """\
+/**
+ * GENERATED — DO NOT EDIT BY HAND.
+ *
+ * Per-archetype, per-busbar IEC 60909 SHORT-CIRCUIT companions (gate E). Produced
+ * by running the FROZEN ShortCircuitIEC60909Solver on a two-voltage substrate
+ * (real SN/nN TransformerBranch) in
+ * `backend/src/application/reference_networks/station_archetype_substrate.py`
+ * (READ-ONLY w.r.t. the solver, B-01). Regenerate with:
+ *
+ *   cd mv-design-pro/backend && poetry run python -m \\
+ *     application.reference_networks.station_archetype_substrate --write
+ *
+ * Every SN and nN busbar carries Ik''max/min + ip/ib/ith/kappa + Z(R/X) + Sk''
+ * + the Ik''max ≤ Icw verification + the solver White Box trace. The renderer
+ * INTERPRETS these on L2 — it never recomputes a short circuit.
+ */
+import type { StationArchetype } from '../contract';
+import type { SldShortCircuitCompanion } from './shortCircuitTypes';
+
+export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
+  Record<StationArchetype, SldShortCircuitCompanion>
+> = """
+
+
 def write_companions() -> str:
     out_dir = _companions_dir()
     os.makedirs(out_dir, exist_ok=True)
@@ -371,14 +604,26 @@ def write_companions() -> str:
     return path
 
 
+def write_sc_companions() -> str:
+    out_dir = _companions_dir()
+    os.makedirs(out_dir, exist_ok=True)
+    body = json.dumps(build_all_sc(), indent=2, sort_keys=True)
+    ts = _TS_SC_HEADER + body + ";\n"
+    path = os.path.join(out_dir, "shortCircuit.ts")
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(ts)
+    return path
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--write", action="store_true", help="write the companion TS module")
+    parser.add_argument("--write", action="store_true", help="write the companion TS modules")
     args = parser.parse_args()
     if args.write:
         print(f"wrote {write_companions()}")
+        print(f"wrote {write_sc_companions()}")
     else:
-        print(json.dumps(build_all(), indent=2, sort_keys=True))
+        print(json.dumps({"power_flow": build_all(), "short_circuit": build_all_sc()}, indent=2, sort_keys=True))
 
 
 if __name__ == "__main__":
