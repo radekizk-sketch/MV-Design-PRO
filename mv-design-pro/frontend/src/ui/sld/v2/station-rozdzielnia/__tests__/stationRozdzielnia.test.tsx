@@ -185,18 +185,22 @@ describe('power-flow arrow direction matches the FROZEN-solver companion', () =>
     expect(flow!.getAttribute('data-flow-points')).toBe('up');
   });
 
-  it('reverse branch → arrow flips (network field, down)', () => {
-    // T4 OUT branch is solver-signed 'reverse'.
-    const { model, companion } = buildT4();
+  it('reverse branch (T1 PV backfeed) → nN feeder arrow points UP into the bus', () => {
+    // The PV nN feeder is solver-signed 'reverse' (injection backfeeds the bus).
+    // This is REAL solver truth (negative P from the frozen substrate), not a
+    // fabricated sign — the renderer reads it from the companion.
+    const { model, companion } = buildT1();
     const { container } = render(
       <svg>
         <StationRozdzielniaSN model={model} companion={companion} detail="closer" />
       </svg>,
     );
-    const flow = container.querySelector('[data-testid="sr-flow-sr-t4-out"]');
-    expect(flow).toBeTruthy();
-    expect(flow!.getAttribute('data-flow-direction')).toBe('reverse');
-    expect(flow!.getAttribute('data-flow-points')).toBe('down');
+    const pvFeeder = container.querySelector('[data-testid="sr-nn-feeder-sr-t1-nn-pv"]');
+    expect(pvFeeder).toBeTruthy();
+    expect(pvFeeder!.getAttribute('data-flow-direction')).toBe('reverse');
+    // A load feeder on the same bus flows the other way (forward = down to load).
+    const loadFeeder = container.querySelector('[data-testid="sr-nn-feeder-sr-t1-nn-f1"]');
+    expect(loadFeeder!.getAttribute('data-flow-direction')).toBe('forward');
   });
 
   it('open / de-energized branch (NOP coupler) → NO arrow', () => {
@@ -259,18 +263,33 @@ describe('switch states + protection are rendered from the (ENM-derived) model',
     expect(coupler!.getAttribute('data-is-nop')).toBe('true');
   });
 
-  it('directional feeder (T3 ODG) renders 67/67N protection chips at close zoom', () => {
-    const { container } = renderUnit('T3', 'close');
-    const prot = container.querySelector('[data-testid="sr-protection-sr-t3-odg"]');
-    expect(prot).toBeTruthy();
-    expect(prot!.querySelector('[data-protection-code="50"]')).toBeTruthy();
-    expect(prot!.querySelector('[data-protection-code="67"]')).toBeTruthy();
-    expect(prot!.querySelector('[data-protection-code="67N"]')).toBeTruthy();
+  it('ABB protection is TYPE-CORRECT: CBC field carries the relay, SDC/SDF do not', () => {
+    // v2 rule (owner): SDF→bezpiecznik (the fuse IS the protection), CBC→przekaźnik.
+    // T2 has a CBC incomer (relay) and an SDF transformer field (fuse, no relay).
+    const { container } = renderUnit('T2', 'close');
+    // CBC incomer → 50/51 overcurrent relay chips.
+    const cbc = container.querySelector('[data-testid="sr-protection-sr-t2-in"]');
+    expect(cbc).toBeTruthy();
+    expect(cbc!.querySelector('[data-protection-code="50"]')).toBeTruthy();
+    expect(cbc!.querySelector('[data-protection-code="51"]')).toBeTruthy();
+    // SDF transformer field → NO relay chips (protected by HV fuses).
+    expect(container.querySelector('[data-testid="sr-protection-sr-t2-tr"]')).toBeFalsy();
+    // And the SDF field actually renders a fuse symbol.
+    expect(container.querySelector('[data-testid="sr-apparatus-sr-t2-tr/f1"]')).toBeTruthy();
+  });
+
+  it('T4 SMC coupler carries the bus-tie relay; T3 ZKSN (SDC) carries none', () => {
+    const t4 = renderUnit('T4', 'close').container;
+    expect(t4.querySelector('[data-testid="sr-protection-sr-t4-coupler"]')).toBeTruthy();
+    // T3 is a ZKSN cable junction: SDC line fields only → no relay chips at all.
+    const t3 = renderUnit('T3', 'close').container;
+    expect(t3.querySelector('[data-testid^="sr-protection-"]')).toBeFalsy();
   });
 
   it('protection chips appear only at close zoom (responsive detail)', () => {
-    expect(renderUnit('T1', 'far').container.querySelector('[data-testid^="sr-protection-"]')).toBeFalsy();
-    expect(renderUnit('T1', 'closer').container.querySelector('[data-testid^="sr-protection-"]')).toBeFalsy();
-    expect(renderUnit('T1', 'close').container.querySelector('[data-testid^="sr-protection-"]')).toBeTruthy();
+    // T2 CBC incomer carries the relay → only visible at close zoom.
+    expect(renderUnit('T2', 'far').container.querySelector('[data-testid^="sr-protection-"]')).toBeFalsy();
+    expect(renderUnit('T2', 'closer').container.querySelector('[data-testid^="sr-protection-"]')).toBeFalsy();
+    expect(renderUnit('T2', 'close').container.querySelector('[data-testid^="sr-protection-"]')).toBeTruthy();
   });
 });

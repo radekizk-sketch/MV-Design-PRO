@@ -1,39 +1,42 @@
 /**
- * STACJA-ROZDZIELNIA SN — the four network-station archetypes T1-T4.
+ * STACJA-ROZDZIELNIA SN — the four network-station archetypes T1-T4 (v2).
  *
- * Each archetype is built EXPLICITLY and COMPLETELY from the ENM canonical role
- * taxonomy (`BayCanonicalRole`) — NO "rest analogously". The apparatus stack per
- * role follows the recon'd canonical requirement sets (`fieldDeviceContracts.ts`
- * DEVICE_REQUIREMENT_SETS):
- *   - line field (IN/OUT/ODG): CB (Q0) + DS (Q9) + CT (T1) + ES (Q8) + cable head
- *   - transformer field:        CB (Q0) + CT (T1) + transformer (T1) [+ cable head]
- *   - coupler (sprzęgło):       DS (Q1) + CB (Q0) + DS (Q1)
- *   - measurement (pomiar):     VT (3-phase) [+ DS]
+ * Each archetype is built EXPLICITLY from the ENM canonical role taxonomy
+ * (`BayCanonicalRole`) and the ABB UniSwitch field-type library (catalog §4):
+ *   - SDC  (line field):        rozłącznik 3-poł. + CT + cable head  → LINIA_IN/OUT
+ *   - SDF  (transformer field): rozłącznik 3-poł. + bezpieczniki WN + uziemnik
+ *                               + transformer SN/nN                  → TRANSFORMATOROWE
+ *   - CBC  (breaker field):     wyłącznik + rozłącznik 3-poł. + CT   → protected tie/incomer
+ *   - SMC  (coupler):           CBC cell + BRC cell across two bus sections → SPRZEGLO
+ * The ABB cell type is NEVER hand-authored — it is derived from role + apparatus
+ * by the single classifier (`classifyAbbCellType`).
  *
- * Protection per applicability (ANSI/IEC device numbers — ENM
- * `ProtectionFunctionState.code`), per standard MV OSD practice:
- *   - line feeders (IN/OUT/ODG):  50/51 + 50N/51N; directional 67/67N where the
- *     run is meshed/ring-fed (T3 odgałęźna here demonstrates 67/67N on the OUT
- *     tie of a closed-ring branch).
- *   - transformer field:          50/51 + 50N/51N (HV-side overcurrent).
- *   - coupler:                     50/51 (bus-tie overcurrent).
- *   - measurement field:          27/59 (under/over-voltage on the VT).
+ * Protection is TYPE-CORRECT (owner v2: "SDF→bezpiecznik, CBC→przekaźnik"):
+ *   - SDC line fields  → no relay (switch only; ring/line protected upstream).
+ *   - SDF transformer  → HV fuses (the protection IS the fuse), no relay chips.
+ *   - CBC fields       → 50/51(/50N/51N) overcurrent relay per applicability.
  *
- * Each archetype ships with a power-flow companion SLICE produced by the FROZEN
- * solver's serialisation shape (`SldPowerFlowCompanion`). Direction is the SIGN
- * of the solver's branch P — the SLD reads it (one truth); it is not invented in
- * the renderer. T4 carries a normally-open point in `open_point_branch_refs`.
+ * POWER-FLOW (P-A, one truth): direction, energisation and the displayed power
+ * values are READ from the FROZEN-solver companion committed in `./companions`
+ * (produced by `station_archetype_substrate.py` running solve_power_flow_physics).
+ * The renderer never re-derives them. Branch refs here match the companion keys
+ * 1:1. T1/T2 carry an nN block (transformer → nN busbar → feeders + PV backfeed);
+ * T3 is a ZKSN (BranchPointSN) cable-junction projection; T4 is a two-section bus
+ * with an ABB SMC coupler at a normally-open point.
  */
 
-import type { SldPowerFlowCompanion, SldFlowDirection } from '../canvas/SldPowerFlowCompanion';
+import type { SldPowerFlowCompanion } from '../canvas/SldPowerFlowCompanion';
 import type {
   StationApparatus,
   StationArchetype,
   StationFieldDescriptor,
+  StationNNBlock,
+  StationNNFeeder,
   StationProtectionFunction,
   StationRozdzielniaModel,
 } from './contract';
 import { classifyAbbCellType } from './abbFieldLibrary';
+import { STATION_ARCHETYPE_COMPANIONS } from './companions';
 
 // =============================================================================
 // ABB cell-type stamping (single symbol↔type source)
@@ -47,37 +50,74 @@ import { classifyAbbCellType } from './abbFieldLibrary';
 function withCellTypes(fields: readonly StationFieldDescriptor[]): StationFieldDescriptor[] {
   return fields.map((f) => ({
     ...f,
-    abbCellType: classifyAbbCellType(f.role, f.apparatus.map((a) => a.kind)),
+    abbCellType: classifyAbbCellType(
+      f.role,
+      f.apparatus.map((a) => a.kind),
+    ),
   }));
 }
 
 // =============================================================================
-// Apparatus + protection builders (per canonical role)
+// ABB apparatus stacks (catalog §4 — bus → cable order)
 // =============================================================================
 
-function lineApparatus(prefix: string, cbState: StationApparatus['switchState']): StationApparatus[] {
+/** SDC line field: rozłącznik 3-położeniowy (Q1) + CT + cable head. */
+function sdcLineApparatus(
+  prefix: string,
+  swState: NonNullable<StationApparatus['switchState']>,
+): StationApparatus[] {
   return [
-    { deviceRef: `${prefix}/q9`, kind: 'DS', designation: 'Q9', switchState: cbState === 'open' ? 'open' : 'closed' },
-    { deviceRef: `${prefix}/q0`, kind: 'CB', designation: 'Q0', switchState: cbState },
+    { deviceRef: `${prefix}/q1`, kind: 'LOAD_SWITCH', designation: 'Q1', switchState: swState },
     { deviceRef: `${prefix}/t1`, kind: 'CT', designation: 'T1' },
-    { deviceRef: `${prefix}/q8`, kind: 'ES', designation: 'Q8', earthingState: 'open' },
     { deviceRef: `${prefix}/head`, kind: 'CABLE_HEAD' },
   ];
 }
 
-function transformerApparatus(prefix: string, cbState: StationApparatus['switchState']): StationApparatus[] {
+/**
+ * SDF transformer field: rozłącznik 3-poł. (Q1) + bezpieczniki WN (F1) + uziemnik
+ * (Q9). The SN/nN transformer itself is NOT a field apparatus — it is the
+ * transformation BOUNDARY between the SN tier and the nN tier, drawn once by the
+ * nN block (`StationNNBlock.transformer`), so it is not duplicated here.
+ */
+function sdfTransformerApparatus(
+  prefix: string,
+  swState: NonNullable<StationApparatus['switchState']>,
+): StationApparatus[] {
   return [
-    { deviceRef: `${prefix}/q0`, kind: 'CB', designation: 'Q0', switchState: cbState },
-    { deviceRef: `${prefix}/t1`, kind: 'CT', designation: 'T1' },
-    { deviceRef: `${prefix}/tr`, kind: 'TRANSFORMER_DEVICE', designation: 'T1', catalogLabel: '630 kVA' },
+    { deviceRef: `${prefix}/q1`, kind: 'LOAD_SWITCH', designation: 'Q1', switchState: swState },
+    { deviceRef: `${prefix}/f1`, kind: 'FUSE', designation: 'F1' },
+    { deviceRef: `${prefix}/q9`, kind: 'ES', designation: 'Q9', earthingState: 'open' },
   ];
 }
 
-function couplerApparatus(prefix: string, cbState: StationApparatus['switchState']): StationApparatus[] {
+/** CBC breaker field: wyłącznik (Q1) + rozłącznik 3-poł. (Q2) + CT + cable head. */
+function cbcLineApparatus(
+  prefix: string,
+  cbState: NonNullable<StationApparatus['switchState']>,
+): StationApparatus[] {
+  const isolatorState = cbState === 'open' ? 'open' : 'closed';
   return [
-    { deviceRef: `${prefix}/q1a`, kind: 'DS', designation: 'Q1', switchState: cbState === 'open' ? 'open' : 'closed' },
-    { deviceRef: `${prefix}/q0`, kind: 'CB', designation: 'Q0', switchState: cbState },
-    { deviceRef: `${prefix}/q1b`, kind: 'DS', designation: 'Q2', switchState: cbState === 'open' ? 'open' : 'closed' },
+    { deviceRef: `${prefix}/q1`, kind: 'CB', designation: 'Q1', switchState: cbState },
+    { deviceRef: `${prefix}/q2`, kind: 'LOAD_SWITCH', designation: 'Q2', switchState: isolatorState },
+    { deviceRef: `${prefix}/t1`, kind: 'CT', designation: 'T1' },
+    { deviceRef: `${prefix}/head`, kind: 'CABLE_HEAD' },
+  ];
+}
+
+/**
+ * SMC coupler: per the catalog the coupler "składa się z dwóch pól — pola z
+ * wyłącznikiem typu CBC oraz pola wzniosu szynowego typu BRC". So: a breaker
+ * (Q1, the CBC cell) + a riser switch (Q2 / rozłącznik 3-poł., the BRC cell).
+ * The component draws this as TWO cells bridging the two bus sections.
+ */
+function smcCouplerApparatus(
+  prefix: string,
+  state: NonNullable<StationApparatus['switchState']>,
+): StationApparatus[] {
+  const riserState = state === 'open' ? 'open' : 'closed';
+  return [
+    { deviceRef: `${prefix}/q1`, kind: 'CB', designation: 'Q1', switchState: state },
+    { deviceRef: `${prefix}/q2`, kind: 'LOAD_SWITCH', designation: 'Q2', switchState: riserState },
   ];
 }
 
@@ -96,74 +136,65 @@ function overcurrentSet(directional: boolean): StationProtectionFunction[] {
 }
 
 // =============================================================================
-// Branch-ref helpers (one ref per field; companion keys on these)
+// Canonical branch refs (match the frozen-solver companion keys 1:1).
 // =============================================================================
 
 const BR = {
   in: 'sr/branch/in',
   out: 'sr/branch/out',
-  odg: 'sr/branch/odg',
-  coupler: 'sr/branch/coupler',
   tr: 'sr/branch/tr',
+  nnF1: 'sr/branch/nn-f1',
+  nnF2: 'sr/branch/nn-f2',
+  nnPv: 'sr/branch/nn-pv',
+  mainOut: 'sr/branch/main-out',
+  branch: 'sr/branch/branch',
+  coupler: 'sr/branch/coupler',
+  lineB: 'sr/branch/line-b',
+  outB: 'sr/branch/out-b',
 } as const;
 
 // =============================================================================
-// Companion builder (frozen-solver serialisation shape)
+// nN block builder (transformer → nN busbar → feeders + PV; solver-read power)
 // =============================================================================
 
-function buildCompanion(
-  archetype: StationArchetype,
-  flows: Readonly<Record<string, { direction: SldFlowDirection; p: number }>>,
-  openPoints: readonly string[],
-): SldPowerFlowCompanion {
-  const branch_flow: Record<string, { direction: SldFlowDirection; p_from_mw: number }> = {};
-  const energizedBranches: string[] = [];
-  for (const [ref, f] of Object.entries(flows)) {
-    branch_flow[ref] = { direction: f.direction, p_from_mw: f.p };
-    // Energized = the solver solved it (direction forward/reverse OR a closed
-    // through-path with zero net flow that is still in the slack island). Open
-    // points are de-energized beyond them; here only the open branch itself is
-    // excluded from the energized set.
-    if (!openPoints.includes(ref)) energizedBranches.push(ref);
-  }
+function nnBlock(prefix: string, feeders: readonly StationNNFeeder[]): StationNNBlock {
   return {
-    schema: 'sld_power_flow_companion_v1',
-    case_ref: `case/${archetype}`,
-    case_label: `Stan podstawowy — ${archetype}`,
-    solver_method: 'newton-raphson',
-    converged: true,
-    iterations: 4,
-    base_mva: 100,
-    enm_hash: `enm/${archetype}`,
-    branch_flow,
-    energized_branch_refs: [...energizedBranches].sort(),
-    energized_bus_refs: [`bus/${archetype}`],
-    de_energized_bus_refs: [],
-    open_point_branch_refs: [...openPoints].sort(),
+    busVoltageKv: 0.4,
+    transformer: {
+      deviceRef: `${prefix}/tr`,
+      vectorGroup: 'Dyn5',
+      ratingLabel: '630 kVA',
+      tapChanger: true,
+    },
+    transformerBranchRef: BR.tr,
+    mainBreakerRef: `${prefix}/nn-main`,
+    feeders,
   };
 }
 
 // =============================================================================
-// T1 PRZELOTOWA — LINIA_IN + LINIA_OUT (+ TRANSFORMATOROWE for local load)
+// T1 PRZELOTOWA — SN: LINIA_IN (SDC) + TRANSFORMATOROWE (SDF) + LINIA_OUT (SDC)
+//                 nN: transformer Dyn5 → nN busbar → 2 odpływy + PV (backfeed)
 // =============================================================================
 
 export function buildT1(): { model: StationRozdzielniaModel; companion: SldPowerFlowCompanion } {
+  const companion = STATION_ARCHETYPE_COMPANIONS.T1;
   const fields: StationFieldDescriptor[] = [
     {
       fieldId: 'sr-t1-in',
       role: 'LINIA_IN',
       bayNumber: '10',
       feederName: 'GPZ',
-      apparatus: lineApparatus('sr-t1-in', 'closed'),
-      protection: overcurrentSet(false),
+      apparatus: sdcLineApparatus('sr-t1-in', 'closed'),
+      protection: [],
       branchRef: BR.in,
     },
     {
       fieldId: 'sr-t1-tr',
       role: 'TRANSFORMATOROWE',
       bayNumber: '11',
-      apparatus: transformerApparatus('sr-t1-tr', 'closed'),
-      protection: overcurrentSet(false),
+      apparatus: sdfTransformerApparatus('sr-t1-tr', 'closed'),
+      protection: [],
       branchRef: BR.tr,
     },
     {
@@ -171,48 +202,45 @@ export function buildT1(): { model: StationRozdzielniaModel; companion: SldPower
       role: 'LINIA_OUT',
       bayNumber: '12',
       feederName: 'SADY',
-      apparatus: lineApparatus('sr-t1-out', 'closed'),
-      protection: overcurrentSet(false),
+      apparatus: sdcLineApparatus('sr-t1-out', 'closed'),
+      protection: [],
       branchRef: BR.out,
     },
   ];
+  const nn = nnBlock('sr-t1', [
+    { feederId: 'sr-t1-nn-f1', role: 'ODPLYW_NN', feederName: 'ODPŁYW 1', branchRef: BR.nnF1 },
+    { feederId: 'sr-t1-nn-f2', role: 'ODPLYW_NN', feederName: 'ODPŁYW 2', branchRef: BR.nnF2 },
+    { feederId: 'sr-t1-nn-pv', role: 'ZRODLO_NN_PV', feederName: 'PV 150 kWp', branchRef: BR.nnPv },
+  ]);
   const model: StationRozdzielniaModel = {
     stationId: 'sr-t1',
     archetype: 'T1',
     name: 'Stacja przelotowa',
     stationCode: 'S07',
     busVoltageKv: 15,
-    fields,
-    caseRef: 'case/T1',
-    caseLabel: 'Stan podstawowy — T1',
+    fields: withCellTypes(fields),
+    caseRef: companion.case_ref,
+    caseLabel: companion.case_label,
+    nnBlock: nn,
   };
-  // Power flows in from GPZ, taps the transformer (down to local load), continues
-  // out to SADY. IN branch oriented from→to = into the station (forward); TR
-  // forward (bus→transformer); OUT forward (station→downstream).
-  const companion = buildCompanion(
-    'T1',
-    {
-      [BR.in]: { direction: 'forward', p: 6.4 },
-      [BR.tr]: { direction: 'forward', p: 0.63 },
-      [BR.out]: { direction: 'forward', p: 5.6 },
-    },
-    [],
-  );
-  return { model: { ...model, fields: withCellTypes(model.fields) }, companion };
+  return { model, companion };
 }
 
 // =============================================================================
-// T2 KOŃCOWA — LINIA_IN + TRANSFORMATOROWE (run end, no OUT)
+// T2 KOŃCOWA — SN: LINIA_IN (CBC, line-end protection) + TRANSFORMATOROWE (SDF)
+//              nN: transformer Dyn5 → nN busbar → 2 odpływy + PV. No LINIA_OUT.
 // =============================================================================
 
 export function buildT2(): { model: StationRozdzielniaModel; companion: SldPowerFlowCompanion } {
+  const companion = STATION_ARCHETYPE_COMPANIONS.T2;
   const fields: StationFieldDescriptor[] = [
     {
       fieldId: 'sr-t2-in',
       role: 'LINIA_IN',
       bayNumber: '10',
       feederName: 'CIĄG',
-      apparatus: lineApparatus('sr-t2-in', 'closed'),
+      // Radial feeder terminus → CBC incomer with line-end overcurrent protection.
+      apparatus: cbcLineApparatus('sr-t2-in', 'closed'),
       protection: overcurrentSet(false),
       branchRef: BR.in,
     },
@@ -220,125 +248,136 @@ export function buildT2(): { model: StationRozdzielniaModel; companion: SldPower
       fieldId: 'sr-t2-tr',
       role: 'TRANSFORMATOROWE',
       bayNumber: '11',
-      apparatus: transformerApparatus('sr-t2-tr', 'closed'),
-      protection: overcurrentSet(false),
+      apparatus: sdfTransformerApparatus('sr-t2-tr', 'closed'),
+      protection: [],
       branchRef: BR.tr,
     },
   ];
+  const nn = nnBlock('sr-t2', [
+    { feederId: 'sr-t2-nn-f1', role: 'ODPLYW_NN', feederName: 'ODPŁYW 1', branchRef: BR.nnF1 },
+    { feederId: 'sr-t2-nn-f2', role: 'ODPLYW_NN', feederName: 'ODPŁYW 2', branchRef: BR.nnF2 },
+    { feederId: 'sr-t2-nn-pv', role: 'ZRODLO_NN_PV', feederName: 'PV 120 kWp', branchRef: BR.nnPv },
+  ]);
   const model: StationRozdzielniaModel = {
     stationId: 'sr-t2',
     archetype: 'T2',
     name: 'Stacja końcowa',
     stationCode: 'S29',
     busVoltageKv: 15,
-    fields,
-    caseRef: 'case/T2',
-    caseLabel: 'Stan podstawowy — T2',
+    fields: withCellTypes(fields),
+    caseRef: companion.case_ref,
+    caseLabel: companion.case_label,
+    nnBlock: nn,
   };
-  // Run end: all incoming power feeds the local transformer. IN forward (in),
-  // TR forward (bus→transformer). No OUT.
-  const companion = buildCompanion(
-    'T2',
-    {
-      [BR.in]: { direction: 'forward', p: 0.63 },
-      [BR.tr]: { direction: 'forward', p: 0.63 },
-    },
-    [],
-  );
-  return { model: { ...model, fields: withCellTypes(model.fields) }, companion };
+  return { model, companion };
 }
 
 // =============================================================================
-// T3 ODGAŁĘŹNA — LINIA_IN + LINIA_OUT + LINIA_ODG
+// T3 — ZKSN (BranchPointSN, NOT a station): cable junction MAIN_IN / MAIN_OUT /
+//      BRANCH, line fields (SDC), NO transformer, NO nN, NO load. BL-01: cable.
 // =============================================================================
 
 export function buildT3(): { model: StationRozdzielniaModel; companion: SldPowerFlowCompanion } {
+  const companion = STATION_ARCHETYPE_COMPANIONS.T3;
   const fields: StationFieldDescriptor[] = [
     {
       fieldId: 'sr-t3-in',
       role: 'LINIA_IN',
-      bayNumber: '10',
+      bayNumber: '1',
       feederName: 'GPZ',
-      apparatus: lineApparatus('sr-t3-in', 'closed'),
-      protection: overcurrentSet(false),
+      apparatus: sdcLineApparatus('sr-t3-in', 'closed'),
+      protection: [],
       branchRef: BR.in,
-    },
-    {
-      fieldId: 'sr-t3-odg',
-      role: 'LINIA_ODG',
-      bayNumber: '11',
-      feederName: 'OKRĘŻNA',
-      apparatus: lineApparatus('sr-t3-odg', 'closed'),
-      // Branch tie of a meshed run → directional overcurrent applies.
-      protection: overcurrentSet(true),
-      branchRef: BR.odg,
     },
     {
       fieldId: 'sr-t3-out',
       role: 'LINIA_OUT',
-      bayNumber: '12',
+      bayNumber: '2',
       feederName: 'CIĄG',
-      apparatus: lineApparatus('sr-t3-out', 'closed'),
-      protection: overcurrentSet(false),
-      branchRef: BR.out,
+      apparatus: sdcLineApparatus('sr-t3-out', 'closed'),
+      protection: [],
+      branchRef: BR.mainOut,
+    },
+    {
+      fieldId: 'sr-t3-odg',
+      role: 'LINIA_ODG',
+      bayNumber: '3',
+      feederName: 'OKRĘŻNA',
+      apparatus: sdcLineApparatus('sr-t3-odg', 'closed'),
+      protection: [],
+      branchRef: BR.branch,
     },
   ];
   const model: StationRozdzielniaModel = {
     stationId: 'sr-t3',
     archetype: 'T3',
-    name: 'Stacja odgałęźna',
-    stationCode: 'S15',
+    name: 'ZKSN — złącze kablowe SN',
+    stationCode: 'Z04',
+    projection: 'zksn',
+    branchPointType: 'zksn',
     busVoltageKv: 15,
-    fields,
-    caseRef: 'case/T3',
-    caseLabel: 'Stan podstawowy — T3',
+    fields: withCellTypes(fields),
+    caseRef: companion.case_ref,
+    caseLabel: companion.case_label,
   };
-  // Power in from GPZ; splits to the main run (OUT) and the branch (ODG).
-  const companion = buildCompanion(
-    'T3',
-    {
-      [BR.in]: { direction: 'forward', p: 7.8 },
-      [BR.odg]: { direction: 'forward', p: 2.1 },
-      [BR.out]: { direction: 'forward', p: 5.5 },
-    },
-    [],
-  );
-  return { model: { ...model, fields: withCellTypes(model.fields) }, companion };
+  return { model, companion };
 }
 
 // =============================================================================
-// T4 SPRZĘGŁOWA/SEKCYJNA — SPRZEGLO + a normally-open point (NOP)
+// T4 SEKCYJNA — two independently-energised bus sections (CIĄG A / CIĄG B)
+//   joined by an ABB SMC coupler (CBC + BRC) at a NORMALLY-OPEN point.
+//   Section A: WE-A (in) + WY-A (out);  Section B: WE-B (line-b) + WY-B (out-b).
 // =============================================================================
 
 export function buildT4(): { model: StationRozdzielniaModel; companion: SldPowerFlowCompanion } {
+  const companion = STATION_ARCHETYPE_COMPANIONS.T4;
   const fields: StationFieldDescriptor[] = [
     {
       fieldId: 'sr-t4-in',
       role: 'LINIA_IN',
-      bayNumber: '10',
+      bayNumber: '1',
       feederName: 'CIĄG A',
-      apparatus: lineApparatus('sr-t4-in', 'closed'),
-      protection: overcurrentSet(false),
+      apparatus: sdcLineApparatus('sr-t4-in', 'closed'),
+      protection: [],
       branchRef: BR.in,
     },
     {
-      // The sectionalizing coupler — NORMALLY OPEN (the run boundary).
+      fieldId: 'sr-t4-out',
+      role: 'LINIA_OUT',
+      bayNumber: '2',
+      feederName: 'ODB. A',
+      apparatus: sdcLineApparatus('sr-t4-out', 'closed'),
+      protection: [],
+      branchRef: BR.out,
+    },
+    {
+      // The sectionalizing coupler — ABB SMC (CBC + BRC), NORMALLY OPEN.
       fieldId: 'sr-t4-coupler',
       role: 'SPRZEGLO',
-      bayNumber: '11',
-      apparatus: couplerApparatus('sr-t4-coupler', 'open'),
+      bayNumber: '3',
+      feederName: 'SPRZĘGŁO',
+      apparatus: smcCouplerApparatus('sr-t4-coupler', 'open'),
       protection: overcurrentSet(false),
       branchRef: BR.coupler,
       isNormallyOpen: true,
     },
     {
-      fieldId: 'sr-t4-out',
-      role: 'LINIA_OUT',
-      bayNumber: '12',
+      fieldId: 'sr-t4-in-b',
+      role: 'LINIA_IN',
+      bayNumber: '4',
       feederName: 'CIĄG B',
-      apparatus: lineApparatus('sr-t4-out', 'closed'),
-      protection: overcurrentSet(false),
-      branchRef: BR.out,
+      apparatus: sdcLineApparatus('sr-t4-in-b', 'closed'),
+      protection: [],
+      branchRef: BR.lineB,
+    },
+    {
+      fieldId: 'sr-t4-out-b',
+      role: 'LINIA_OUT',
+      bayNumber: '5',
+      feederName: 'ODB. B',
+      apparatus: sdcLineApparatus('sr-t4-out-b', 'closed'),
+      protection: [],
+      branchRef: BR.outB,
     },
   ];
   const model: StationRozdzielniaModel = {
@@ -347,24 +386,14 @@ export function buildT4(): { model: StationRozdzielniaModel; companion: SldPower
     name: 'Stacja sekcyjna',
     stationCode: 'S22',
     busVoltageKv: 15,
-    fields,
-    caseRef: 'case/T4',
-    caseLabel: 'Stan podstawowy — T4',
+    fields: withCellTypes(fields),
+    caseRef: companion.case_ref,
+    caseLabel: companion.case_label,
+    sectionedBus: true,
+    sectionABranchRef: BR.in,
+    sectionBBranchRef: BR.lineB,
   };
-  // The coupler branch is OPEN → no flow through it (the run is fed from one
-  // side only). IN forward; OUT fed from the other half (reverse w.r.t. the
-  // ENM branch orientation in this slice — demonstrates the solver-signed
-  // direction, NOT a guess). Coupler = 'none' + open point.
-  const companion = buildCompanion(
-    'T4',
-    {
-      [BR.in]: { direction: 'forward', p: 3.2 },
-      [BR.coupler]: { direction: 'none', p: 0 },
-      [BR.out]: { direction: 'reverse', p: -2.8 },
-    },
-    [BR.coupler],
-  );
-  return { model: { ...model, fields: withCellTypes(model.fields) }, companion };
+  return { model, companion };
 }
 
 // =============================================================================

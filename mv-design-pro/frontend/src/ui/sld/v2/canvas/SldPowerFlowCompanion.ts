@@ -75,6 +75,9 @@ export interface SldPowerFlowIndex {
   readonly enmHash: string;
   /** branch ref_id → direction (solver). Missing ref ⇒ caller treats as 'none'. */
   directionOf(branchRef: string): SldFlowDirection;
+  /** branch ref_id → signed active power at the "from" end [MW] (solver). Missing
+   *  ref ⇒ null (no solver value — caller shows nothing, never a guess). */
+  powerOf(branchRef: string): number | null;
   /** True iff the solver solved this branch (both ends energized). */
   isBranchEnergized(branchRef: string): boolean;
   /** True iff the bus is in the solver slack island. */
@@ -97,6 +100,7 @@ export function buildPowerFlowIndex(
     converged: companion.converged,
     enmHash: companion.enm_hash,
     directionOf: (branchRef) => flow[branchRef]?.direction ?? 'none',
+    powerOf: (branchRef) => flow[branchRef]?.p_from_mw ?? null,
     isBranchEnergized: (branchRef) => energizedBranches.has(branchRef),
     isBusEnergized: (busRef) => energizedBuses.has(busRef),
     isOpenPoint: (branchRef) => openPoints.has(branchRef),
