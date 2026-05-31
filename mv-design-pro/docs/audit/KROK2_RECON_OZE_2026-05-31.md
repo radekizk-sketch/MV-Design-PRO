@@ -50,3 +50,32 @@ Mechanizm ≤Icw realny — G2 nN przy domyślnym board 25 kA dawał FAIL 26,5>2
 
 ## Plan rund (gate B-02 po każdej rodzinie)
 2a PV (G1-G3) ← TERAZ (dane gotowe) · 2b BESS+hybryda (G4-G7) · 2c wiatr (G8-G9) · 2d wirujące (G10-G14).
+
+## Recon v2 (po SPEC RODZIN OZE — anty-zmyślanie, idiom stacji)
+
+Każdy element rodziny PRZYPIĘTY do ENM (source_ref), nie do wyobraźni:
+
+| Element idiomu | Model ENM (source_ref) | Plik |
+|---|---|---|
+| **Typ maszyny** (oś 5) | `Generator.gen_type ∈ {synchronous, pv_inverter, wind_inverter, fw_pmsg, fw_dfig, fw_scig, bess}` — IBG vs synchr. vs asynchr. **first-class** | `enm/models.py:337` |
+| **Granica/miejsce przyłączenia** (oś 6) | `Generator.connection_variant ∈ {LV_BEHIND_STATION_TRANSFORMER, DEDICATED_MV_CONNECTION, nn_side, block_transformer, SOURCE_CONNECTION_STATION}` + walidator spójności (station_ref/blocking_transformer_ref) | `enm/models.py:359` |
+| **Transformator blokowy/podwyższający** | `Generator.blocking_transformer_ref` (wymagany dla block_transformer) | `enm/models.py:380` |
+| **Pole źródłowe** | `BayBaseModel.bay_role ∈ {PV_SN, BESS_SN, FW_SN}` | `enm/models.py:1014` |
+| **Pole przyłączeniowe** (ochrona interfejsowa TU) | `bay_role = LINIA_OUT` (patrzy w sieć) + `BayProtectionControlUnit.functions` | `enm/models.py` |
+| **Pomiar na granicy SN** | `Measurement(purpose ∈ {protection, metering, combined})`; pole SDM-V/SDM-C | `enm/models.py:457` |
+| **Ochrona (funkcje)** | `ProtectionFunctionState.code` (ANSI/IEC) — zestaw wg typu maszyny | `enm/models.py:861` |
+
+**Mapowanie granica → wariant ENEA (oś 6):**
+- G-ZALICZNIK → `LV_BEHIND_STATION_TRANSFORMER` / `nn_side` (prosument za trafo odbiorczym)
+- G-GPZ / G-ZKSN / G-SŁUP / G-ZŁĄCZE-POM → `DEDICATED_MV_CONNECTION` (dedykowane przyłącze SN; głowica/ZKSN/słup/pomiar)
+- Trafo podwyższający → `block_transformer` (+ `blocking_transformer_ref`)
+
+**Wniosek:** idiom stacji (pole źródłowe + pole przyłączeniowe + szyna + znacznik granicy + ochrona
+interfejsowa na polu przyłączeniowym) jest w PEŁNI pokryty modelem. Każdy element niesie `source_ref`
+(ENM ścieżka / katalog / solver). Granica ∈ 5 wariantów (nie wymyślona). Model zwarciowy = `gen_type`
+(IBG `inverter.py` vs synchr./asynchr. `generator.py`). Zero luzu do zmyślania.
+
+**Luki (rozszerzenie additive, gdy potrzebne):** `machine_type ∈ {IBG,SYNCHRONOUS,ASYNCHRONOUS}` jako
+etykieta prezentacyjna wyprowadzana z `gen_type` (IBG = *_inverter/bess/fw_*; SYNCHRONOUS = synchronous;
+ASYNCHRONOUS = fw_scig / asynchroniczny hydro). Companiony OZE niosą ją jawnie + `source_ref` na elemencie.
+

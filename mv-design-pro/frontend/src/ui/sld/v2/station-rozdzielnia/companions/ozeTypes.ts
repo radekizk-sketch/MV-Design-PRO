@@ -60,6 +60,34 @@ export interface OzeSourceContribution {
 /** A short-circuit busbar dossier extended with the OZE source contribution. */
 export type OzeScBus = ScBus & { readonly source_contribution: OzeSourceContribution };
 
+/**
+ * One station field of the producer installation (anti-fabrication: pinned to the
+ * ENM via `source_ref`). The interface protection (looking at the grid) lives on
+ * the CONNECTION field only — never at the source.
+ */
+export interface OzeField {
+  readonly field_id: string;
+  readonly role: 'connection' | 'source' | 'measurement';
+  readonly kind: string;
+  /** ABB cell type (SDC | SDF | CBC | SMC | DBC | SDM-V | SDM-C | ...). */
+  readonly abb_cell: string;
+  readonly on_bus_ref: string;
+  /** Anti-fabrication: every element is pinned to the ENM / catalog / standard. */
+  readonly source_ref: string;
+  /** True ⇒ this is the interface-protection relay (connection field). */
+  readonly interface_protection: boolean;
+  readonly protection_codes: readonly string[];
+}
+
+/** The grid boundary / point of connection (ENEA axis-6 variant, pinned to ENM). */
+export interface OzeBoundary {
+  readonly variant: 'G-GPZ' | 'G-ZKSN' | 'G-SLUP' | 'G-ZLACZE-POM' | 'G-ZALICZNIK';
+  readonly enm_connection_variant: string;
+  readonly on_bus_ref: string;
+  readonly metered: boolean;
+  readonly source_ref: string;
+}
+
 export interface SldOzeArchetypeCompanion {
   readonly schema: 'sld_oze_archetype_companion_v1';
   readonly archetype: string;
@@ -67,6 +95,10 @@ export interface SldOzeArchetypeCompanion {
   /** Bus_ref of the point of common coupling (PCC). */
   readonly pcc_bus_ref: string;
   readonly source: OzeSourceMeta;
+  /** Station idiom — source field + connection field (+ measurement), each pinned. */
+  readonly fields: readonly OzeField[];
+  /** Grid boundary marker (ENEA variant). */
+  readonly boundary: OzeBoundary;
   readonly case_ref_pf: string;
   readonly case_ref_sc: string;
   readonly converged: boolean;

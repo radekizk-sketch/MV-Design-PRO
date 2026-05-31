@@ -35,10 +35,10 @@ function LevelPanel(props: { archetype: string; detail: StationDetailLevel; labe
   const { archetype, detail, label, onFieldClick } = props;
   const companion = OZE_ARCHETYPES_2A[archetype];
   const PANEL_W = 760;
-  const PANEL_H = detail === 'close' ? 360 : 240;
+  const PANEL_H = detail === 'close' ? 420 : 240;
   const viewW = PANEL_W;
   const viewH = PANEL_H - 32;
-  const scale = detail === 'far' ? 1.9 : detail === 'closer' ? 1.6 : 1.35;
+  const scale = detail === 'far' ? 1.9 : detail === 'closer' ? 1.6 : 1.3;
   return (
     <div
       data-testid={`oze-harness-panel-${detail}`}

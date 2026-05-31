@@ -57,12 +57,6 @@ function busColorForVoltage(kv: number): string {
   return COLOR_FIELD_TRUNK_ENERGIZED;
 }
 
-function formatPower(mw: number): string {
-  const abs = Math.abs(mw);
-  if (abs < 1) return `${Math.round(mw * 1000)} kW`;
-  return `${mw.toFixed(2)} MW`;
-}
-
 /** PV inverter symbol (IEC: ~ over =, in a circle) — orthogonal, state by colour. */
 function PvInverterSymbol(props: { cx: number; cy: number; r: number }): JSX.Element {
   const { cx, cy, r } = props;
@@ -145,17 +139,26 @@ function BusResults(props: { vf: OzeVfBus; sc: OzeScBus; x: number; y: number })
 export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element {
   const { companion, stationCode, name, detail, onFieldClick, x = 0, y = 0 } = props;
   const src = companion.source;
-  const busRefs = Object.keys(companion.voltage_flow.buses).sort();
   const pccRef = companion.pcc_bus_ref;
-  // Geometry: PCC busbar on top, source path below. Orthogonal throughout.
-  const W = 220;
+  const boundary = companion.boundary;
+  // The producer installation = a busbar with a CONNECTION field (interface
+  // protection, looking at the grid → boundary) + a SOURCE field (→ transformer
+  // → source). Drawn as columns on the PCC busbar; orthogonal throughout.
+  const connField = companion.fields.find((f) => f.role === 'connection');
+  const meterField = companion.fields.find((f) => f.role === 'measurement');
+  const srcField = companion.fields.find((f) => f.role === 'source');
+
+  const W = 240;
   const busY = 0;
   const busX1 = -W / 2;
   const busX2 = W / 2;
   const busKv = companion.voltage_flow.buses[pccRef]?.un_kv ?? 15;
   const busColor = busColorForVoltage(busKv);
-  const srcX = 0;
-  const incomerX = busX1 + 26;
+
+  // Field columns left→right: connection (grid side), measurement, source.
+  const connX = busX1 + 34;
+  const meterX = busX1 + 78;
+  const srcX = busX2 - 40;
 
   // The incomer flow direction (reverse = export) from the solver.
   const incomerBranch: OzeVfBranch | undefined =
@@ -164,11 +167,15 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
 
   const handle = (id: string) => (onFieldClick ? (e: MouseEvent) => { e.stopPropagation(); onFieldClick(id); } : undefined);
 
-  const srcTopY = busY;
   const breakerY = busY + (detail === 'far' ? 16 : 26);
-  const trafoY = breakerY + (detail === 'far' ? 16 : 26);
-  const invY = trafoY + (detail === 'far' ? 16 : 28);
-  const hasTrafo = pccRef.includes('SN') && busRefs.some((b) => b.includes('NN') || b.includes('COLLECTOR'));
+  const relayY = breakerY + (detail === 'far' ? 12 : 18);
+  // Source column: breaker → (transformer if the source sits behind one) → source.
+  const srcBreakerY = busY + (detail === 'far' ? 16 : 26);
+  // A transformer is drawn in the SOURCE column iff the source field is on a
+  // DIFFERENT (lower) busbar than the PCC — i.e. a block/step-up transformer.
+  const hasTrafo = !!srcField && srcField.on_bus_ref !== pccRef;
+  const trafoY = srcBreakerY + (detail === 'far' ? 16 : 26);
+  const srcSymY = (hasTrafo ? trafoY : srcBreakerY) + (detail === 'far' ? 16 : 28);
 
   return (
     <g
@@ -180,104 +187,159 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
       data-nc-class={src.nc_rfg_class}
       data-control-mode={src.control_mode}
       data-pcc={pccRef}
+      data-boundary={boundary.variant}
       data-converged={String(companion.converged)}
       transform={`translate(${x}, ${y})`}
     >
       {/* Header. */}
-      <text x={0} y={busY - 26} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={detail === 'close' ? 12 : 11} fontWeight={900} paintOrder="stroke" stroke="#05070A" strokeWidth={3}>
+      <text x={0} y={busY - 30} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={detail === 'close' ? 12 : 11} fontWeight={900} paintOrder="stroke" stroke="#05070A" strokeWidth={3}>
         {`${stationCode} · ${name}`}
       </text>
       {/* Machine type + NC RfG mode badge (gate G). */}
       {detail !== 'far' && (
-        <text data-testid="oze-source-badge" x={0} y={busY - 15} textAnchor="middle" fill="#FFB020" fontFamily={FONT_MONO} fontSize={7.5} fontWeight={700}>
+        <text data-testid="oze-source-badge" x={0} y={busY - 19} textAnchor="middle" fill="#FFB020" fontFamily={FONT_MONO} fontSize={7.5} fontWeight={700}>
           {`${src.technology} · ${src.machine_type} · NC ${src.nc_rfg_class} · ${src.control_mode}`}
         </text>
       )}
 
-      {/* PCC busbar. */}
-      <line x1={busX1} y1={busY} x2={busX2} y2={busY} stroke={busColor} strokeWidth={4} data-testid={`oze-busbar-${pccRef}`} />
-      <line x1={busX1} y1={busY - 5} x2={busX1} y2={busY + 5} stroke={busColor} strokeWidth={2} />
-      <line x1={busX2} y1={busY - 5} x2={busX2} y2={busY + 5} stroke={busColor} strokeWidth={2} />
-      {/* PCC marker. */}
-      <g data-testid="oze-pcc-marker">
-        <circle cx={incomerX} cy={busY} r={3} fill="#9FE6FF" stroke="#05070A" strokeWidth={0.8} />
+      {/* ─── GRID SIDE: the OSD network stub + the BOUNDARY marker ─── */}
+      <line data-testid="oze-grid-stub" x1={busX1 - 30} y1={busY} x2={busX1} y2={busY} stroke="#5A6B78" strokeWidth={2.4} strokeDasharray="5 3" />
+      {detail !== 'far' && (
+        <text x={busX1 - 15} y={busY - 8} textAnchor="middle" fill="#7E8790" fontFamily={FONT_MONO} fontSize={6.6} fontWeight={700}>SIEĆ OSD</text>
+      )}
+      {/* Boundary marker (axis-6 variant) — a labelled diamond on the grid edge. */}
+      <g data-testid="oze-boundary-marker" data-variant={boundary.variant} data-enm-variant={boundary.enm_connection_variant}>
+        <polygon points={`${busX1},${busY - 6} ${busX1 + 6},${busY} ${busX1},${busY + 6} ${busX1 - 6},${busY}`} fill="#0A1622" stroke="#9FE6FF" strokeWidth={1.6} />
         {detail !== 'far' && (
-          <text x={incomerX} y={busY - 8} textAnchor="middle" fill="#9FE6FF" fontFamily={FONT_MONO} fontSize={6.6} fontWeight={700}>PCC</text>
+          <text x={busX1} y={busY + 18} textAnchor="middle" fill="#9FE6FF" fontFamily={FONT_MONO} fontSize={6.4} fontWeight={800}>
+            {`${boundary.variant}${boundary.metered ? ' ⊟' : ''}`}
+          </text>
         )}
       </g>
-      {/* Incomer drop + reverse-export flow arrow (orthogonal). */}
-      <line x1={incomerX} y1={busY} x2={incomerX} y2={busY + (detail === 'far' ? 22 : 34)} stroke={busColor} strokeWidth={1.8} />
-      {detail !== 'far' && <FlowArrow x={incomerX} topY={busY + 3} botY={busY + 18} direction={incomerDir} />}
-      {/* Incomer flow readout — stacked under the PCC column (left), so it never
-          runs into the centre protection codes. */}
-      {detail === 'close' && incomerBranch && (
-        <g data-testid="oze-incomer-flow" pointerEvents="none">
-          <text x={incomerX} y={busY + 30} textAnchor="middle" fill={incomerDir === 'reverse' ? COLOR_TR_FLOW_DOWN : COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={6.6} fontWeight={700}>
-            {incomerDir === 'reverse' ? 'eksport ↑' : 'import ↓'}
-          </text>
-          <text x={incomerX} y={busY + 39} textAnchor="middle" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={6.4}>
-            {`${formatPower(incomerBranch.p_mw)}`}
-          </text>
-          <text x={incomerX} y={busY + 48} textAnchor="middle" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={6.4}>
-            {`I=${incomerBranch.i_a.toFixed(0)} A`}
-          </text>
+
+      {/* ─── PRODUCER busbar (PCC) ─── */}
+      <line x1={busX1} y1={busY} x2={busX2} y2={busY} stroke={busColor} strokeWidth={4} data-testid={`oze-busbar-${pccRef}`} />
+      <line x1={busX2} y1={busY - 5} x2={busX2} y2={busY + 5} stroke={busColor} strokeWidth={2} />
+      {detail !== 'far' && (
+        <text x={busX2 + 4} y={busY + 3} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>
+          {`${busKv >= 1 ? busKv.toFixed(0) + ' kV' : (busKv * 1000).toFixed(0) + ' V'}`}
+        </text>
+      )}
+
+      {/* ─── CONNECTION field (interface protection HERE, looking at the grid) ─── */}
+      {connField && (
+        <g
+          data-testid="oze-field-connection"
+          data-field-role="connection"
+          data-abb-cell={connField.abb_cell}
+          data-source-ref={connField.source_ref}
+          data-interface-protection="true"
+          onClick={handle(`${companion.archetype}/${connField.field_id}`)}
+          style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
+        >
+          <line x1={connX} y1={busY} x2={connX} y2={breakerY - (detail === 'far' ? 6 : 8)} stroke={busColor} strokeWidth={1.8} />
+          <g data-testid="oze-conn-breaker" data-symbol-shape="square" data-state="closed">
+            <ApparatusCbSquare cx={connX} cy={breakerY} state="closed" energized />
+          </g>
+          {/* Export/import flow arrow on the connection path (direction from solver). */}
+          {detail !== 'far' && <FlowArrow x={connX} topY={busY + 3} botY={busY + 18} direction={incomerDir} />}
+          {/* Field label ABOVE the breaker (right of the path) — clear of the codes. */}
+          {detail !== 'far' && (
+            <text x={connX + 11} y={breakerY - 4} textAnchor="start" fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_SANS} fontSize={6.6} fontWeight={700}>
+              {`PRZYŁ. ${connField.abb_cell}`}
+            </text>
+          )}
+          {/* Interface-protection relay (gate I): a relay box BELOW the breaker
+              with the codes wrapped in a NARROW right-hung stack (≤4 per row), so
+              it never reaches the hierarchy block on the far left. */}
+          {detail === 'close' && (() => {
+            const codes = connField.protection_codes;
+            const rows: string[] = [];
+            for (let i = 0; i < codes.length; i += 4) rows.push(codes.slice(i, i + 4).join('·'));
+            return (
+              <g data-testid="oze-protection" data-machine-type={src.machine_type} data-on-field="connection" pointerEvents="none">
+                <rect x={connX - 4} y={relayY - 4} width={8} height={8} rx={1} fill="#0A1622" stroke="#5BE08A" strokeWidth={1} />
+                <text x={connX} y={relayY + 2.4} textAnchor="middle" fill="#5BE08A" fontFamily={FONT_MONO} fontSize={5} fontWeight={800}>R</text>
+                {rows.map((r, i) => (
+                  <text key={i} x={connX + 8} y={relayY + 1 + i * 7} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={5.8} fontWeight={700}>{r}</text>
+                ))}
+              </g>
+            );
+          })()}
         </g>
       )}
 
-      {/* Source path: bus → breaker → (transformer) → inverter. Orthogonal. */}
-      <line x1={srcX} y1={srcTopY} x2={srcX} y2={breakerY - (detail === 'far' ? 6 : 8)} stroke={busColor} strokeWidth={1.8} />
-      <g data-testid="oze-source-breaker" data-symbol-shape="square" data-state="closed" onClick={handle(`${companion.archetype}/breaker`)} style={{ cursor: onFieldClick ? 'pointer' : 'default' }}>
-        <ApparatusCbSquare cx={srcX} cy={breakerY} state="closed" energized />
-      </g>
-      {hasTrafo ? (
-        <>
-          <line x1={srcX} y1={breakerY + (detail === 'far' ? 6 : 8)} x2={srcX} y2={trafoY - 9} stroke={busColor} strokeWidth={1.8} />
-          <ApparatusTransformerSymbol cx={srcX} cy={trafoY} vectorGroup="Dyn5" neutralEarthed />
-          <line x1={srcX} y1={trafoY + 9} x2={srcX} y2={invY - 8} stroke="#7DD3FC" strokeWidth={1.8} />
-          {detail !== 'far' && <PvInverterSymbol cx={srcX} cy={invY} r={detail === 'close' ? 8 : 7} />}
-        </>
-      ) : (
-        <>
-          <line x1={srcX} y1={breakerY + (detail === 'far' ? 6 : 8)} x2={srcX} y2={invY - 8} stroke={busColor} strokeWidth={1.8} />
-          {detail !== 'far' && <PvInverterSymbol cx={srcX} cy={invY} r={detail === 'close' ? 8 : 7} />}
-        </>
-      )}
-      {/* far: a state diamond for the source breaker so the unit reads at L0. */}
-      {detail === 'far' && (
-        <text x={srcX} y={invY + 4} textAnchor="middle" fill="#FFB020" fontFamily={FONT_MONO} fontSize={8} fontWeight={800}>{src.technology}</text>
+      {/* ─── MEASUREMENT field (SDM) at the SN boundary, if present ─── */}
+      {meterField && (
+        <g
+          data-testid="oze-field-measurement"
+          data-field-role="measurement"
+          data-abb-cell={meterField.abb_cell}
+          data-source-ref={meterField.source_ref}
+          onClick={handle(`${companion.archetype}/${meterField.field_id}`)}
+          style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
+        >
+          <line x1={meterX} y1={busY} x2={meterX} y2={breakerY} stroke={busColor} strokeWidth={1.6} />
+          {/* VT triple-circle glyph (measurement). */}
+          <circle cx={meterX - 3} cy={breakerY} r={2.4} fill="none" stroke="#7DD3FC" strokeWidth={1.1} />
+          <circle cx={meterX + 3} cy={breakerY} r={2.4} fill="none" stroke="#7DD3FC" strokeWidth={1.1} />
+          <circle cx={meterX} cy={breakerY + 3} r={2.4} fill="none" stroke="#7DD3FC" strokeWidth={1.1} />
+          {detail !== 'far' && (
+            <text x={meterX} y={breakerY + 16} textAnchor="middle" fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_SANS} fontSize={6.6} fontWeight={700} paintOrder="stroke" stroke="#05070A" strokeWidth={2}>
+              {`POM. (${meterField.abb_cell})`}
+            </text>
+          )}
+        </g>
       )}
 
-      {/* Protection set (gate I) — machine-type-dependent, close zoom. The codes
-          hang on a relay box BELOW the breaker (in the source column), wrapped to
-          two rows so they never run into the right-side result panels. */}
-      {detail === 'close' && (() => {
-        const codes = src.protection_codes;
-        const mid = Math.ceil(codes.length / 2);
-        const rowA = codes.slice(0, mid).join(' · ');
-        const rowB = codes.slice(mid).join(' · ');
-        const ry = breakerY + 4;
-        return (
-          <g data-testid="oze-protection" data-machine-type={src.machine_type} pointerEvents="none">
-            <rect x={srcX + 12} y={ry - 5} width={3} height={3} fill="#5BE08A" />
-            <line x1={srcX + 6} y1={ry - 3.5} x2={srcX + 12} y2={ry - 3.5} stroke={COLOR_TEXT_MUTED} strokeWidth={0.8} />
-            <text x={srcX + 17} y={ry} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={6.2} fontWeight={700}>{rowA}</text>
-            {rowB && <text x={srcX + 17} y={ry + 8} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={6.2} fontWeight={700}>{rowB}</text>}
+      {/* ─── SOURCE field: breaker → (transformer) → source symbol ─── */}
+      {srcField && (
+        <g
+          data-testid="oze-field-source"
+          data-field-role="source"
+          data-abb-cell={srcField.abb_cell}
+          data-source-ref={srcField.source_ref}
+          data-interface-protection="false"
+          onClick={handle(`${companion.archetype}/${srcField.field_id}`)}
+          style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
+        >
+          <line x1={srcX} y1={busY} x2={srcX} y2={srcBreakerY - (detail === 'far' ? 6 : 8)} stroke={busColor} strokeWidth={1.8} />
+          <g data-testid="oze-source-breaker" data-symbol-shape="square" data-state="closed">
+            <ApparatusCbSquare cx={srcX} cy={srcBreakerY} state="closed" energized />
           </g>
-        );
-      })()}
+          {hasTrafo ? (
+            <>
+              <line x1={srcX} y1={srcBreakerY + (detail === 'far' ? 6 : 8)} x2={srcX} y2={trafoY - 9} stroke={busColor} strokeWidth={1.8} />
+              <ApparatusTransformerSymbol cx={srcX} cy={trafoY} vectorGroup="Dyn5" neutralEarthed />
+              <line x1={srcX} y1={trafoY + 9} x2={srcX} y2={srcSymY - 8} stroke="#7DD3FC" strokeWidth={1.8} />
+            </>
+          ) : (
+            <line x1={srcX} y1={srcBreakerY + (detail === 'far' ? 6 : 8)} x2={srcX} y2={srcSymY - 8} stroke={busColor} strokeWidth={1.8} />
+          )}
+          {detail !== 'far' && <PvInverterSymbol cx={srcX} cy={srcSymY} r={detail === 'close' ? 8 : 7} />}
+          {detail !== 'far' && (
+            <text x={srcX} y={srcSymY + (detail === 'close' ? 16 : 14)} textAnchor="middle" fill="#FFB020" fontFamily={FONT_SANS} fontSize={7} fontWeight={700} paintOrder="stroke" stroke="#05070A" strokeWidth={2}>
+              {`${srcField.kind} (${srcField.abb_cell})`}
+            </text>
+          )}
+          {detail === 'far' && (
+            <text x={srcX} y={srcSymY + 4} textAnchor="middle" fill="#FFB020" fontFamily={FONT_MONO} fontSize={8} fontWeight={800}>{src.technology}</text>
+          )}
+        </g>
+      )}
 
       {/* Concise results at objects (close zoom): per-bus U + Ik'' + ≤Icw +
-          contribution. Stacked on the right, starting BELOW the busbar so they
-          clear the protection row. */}
-      {detail === 'close' && busRefs.map((busRef, i) => {
+          contribution — stacked on the RIGHT of the busbar, clear of the fields. */}
+      {detail === 'close' && Object.keys(companion.voltage_flow.buses).sort().map((busRef, i) => {
         const vf = companion.voltage_flow.buses[busRef];
         const sc = companion.short_circuit.buses[busRef];
         if (!vf || !sc) return null;
-        return <BusResults key={busRef} vf={vf} sc={sc} x={busX2 + 16} y={busY + 22 + i * 38} />;
+        return <BusResults key={busRef} vf={vf} sc={sc} x={busX2 + 18} y={busY + 16 + i * 40} />;
       })}
 
-      {/* Power hierarchy (gate H), close zoom, left of the unit. */}
-      {detail === 'close' && <PowerHierarchy h={src.power_hierarchy} x={busX1 - 100} y={busY + 22} />}
+      {/* Power hierarchy (gate H), close zoom, BELOW the unit on the left — clear
+          of the connection-field protection codes. */}
+      {detail === 'close' && <PowerHierarchy h={src.power_hierarchy} x={busX1 - 30} y={busY + 76} />}
     </g>
   );
 }

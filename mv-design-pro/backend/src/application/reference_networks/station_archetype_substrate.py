@@ -844,8 +844,13 @@ def _oze_companion(
     pcc_bus: str,
     source: dict[str, Any],
     ibg_ka: float,
+    fields: list[dict[str, Any]],
+    boundary: dict[str, Any],
 ) -> dict[str, Any]:
-    """Assemble one OZE archetype companion: source meta + PF + SC (incl. IBG)."""
+    """Assemble one OZE archetype companion: source meta + PF + SC (incl. IBG) +
+    the STATION IDIOM (source field + connection field + boundary), each element
+    carrying a source_ref (anti-fabrication: every element is pinned to the ENM /
+    catalog / standard / solver — nothing is painted onto an empty busbar)."""
     graph = substrate.graph
     sol = solve_power_flow_physics(substrate.to_input())
     vf_buses: dict[str, dict[str, Any]] = {}
@@ -888,11 +893,58 @@ def _oze_companion(
         "enm_hash": f"oze-substrate/{archetype}",
         "pcc_bus_ref": pcc_bus,
         "source": {**source, "power_hierarchy": {**h, "valid": hierarchy_ok}},
+        # Station idiom (anti-fabrication): the producer installation = source field
+        # + connection field (interface protection lives HERE, looking at the grid)
+        # + a boundary marker. Every field/boundary carries a source_ref.
+        "fields": fields,
+        "boundary": boundary,
         "case_ref_pf": "ROZPLYW_GEN_MAX",
         "case_ref_sc": "ZWARCIOWY_MAKS",
         "converged": bool(sol.converged),
         "voltage_flow": {"buses": dict(sorted(vf_buses.items())), "branches": dict(sorted(vf_branches.items()))},
         "short_circuit": {"standard": "IEC 60909", "buses": dict(sorted(sc_buses.items()))},
+    }
+
+
+# Allowed ENEA boundary variants (axis 6) — a closed set; mapped to the ENM
+# Generator.connection_variant. Painting any other point → gate FAIL.
+_BOUNDARY_VARIANTS = {
+    "G-GPZ": "DEDICATED_MV_CONNECTION",
+    "G-ZKSN": "DEDICATED_MV_CONNECTION",
+    "G-SLUP": "DEDICATED_MV_CONNECTION",
+    "G-ZLACZE-POM": "DEDICATED_MV_CONNECTION",
+    "G-ZALICZNIK": "LV_BEHIND_STATION_TRANSFORMER",
+}
+
+
+def _boundary(variant: str, *, on_bus: str, metered: bool) -> dict[str, Any]:
+    """A boundary marker pinned to an ENEA variant + the ENM connection_variant."""
+    assert variant in _BOUNDARY_VARIANTS, f"unknown boundary variant {variant}"
+    return {
+        "variant": variant,
+        "enm_connection_variant": _BOUNDARY_VARIANTS[variant],
+        "on_bus_ref": on_bus,
+        "metered": metered,
+        "source_ref": f"enm:Generator.connection_variant={_BOUNDARY_VARIANTS[variant]}",
+    }
+
+
+def _field(
+    field_id: str, *, role: str, kind: str, abb_cell: str, on_bus: str,
+    source_ref: str, interface_protection: bool, protection_codes: list[str] | None = None,
+) -> dict[str, Any]:
+    """One station field pinned to the ENM. role: connection|source|measurement.
+    interface_protection=True ⇒ the relay that looks at the grid (connection field
+    ONLY — never at the source)."""
+    return {
+        "field_id": field_id,
+        "role": role,  # 'connection' | 'source' | 'measurement'
+        "kind": kind,  # ABB cell label / source kind
+        "abb_cell": abb_cell,  # SDC | SDF | CBC | SMC | DBC | SDM-V | SDM-C ...
+        "on_bus_ref": on_bus,
+        "source_ref": source_ref,
+        "interface_protection": interface_protection,
+        "protection_codes": list(protection_codes or []),
     }
 
 
@@ -912,12 +964,24 @@ def build_g1() -> dict[str, Any]:
     s.add_load("NN_BUS", p_mw=0.01 - pv_kva / 1000.0 * 0.9, q_mvar=0.004)
     ibg = s.add_inverter("NN_BUS", rated_kva=pv_kva, un_kv=_NN_KV, k_sc=_IBG_K, source_type="PV")
     s.finalize_pq()
+    prot = list(_PROTECTION_BY_MACHINE["IBG"])
     return _oze_companion(
         "G1", substrate=s,
         buses=[("SN_BUS", _BASE_KV, _ICW_SN_KA), ("NN_BUS", _NN_KV, _ICW_NN_KA)],
         pcc_bus="NN_BUS", ibg_ka=ibg / 1000.0,
         source=_pv_source(technology="PV", machine_type="IBG", nc_class="A", control_mode="cosφ=const",
                           p_zainst_kw=55.0, pn_ac_kw=50.0, p_przylacz_kw=50.0, p_osiagalna_kw=45.0),
+        # Station idiom: source field (PV on nN, SDC) + connection field (interface
+        # protection HERE, on nN looking at the OSD network) on the nN busbar.
+        fields=[
+            _field("g1-conn", role="connection", kind="POLE_PRZYŁĄCZENIOWE", abb_cell="CBC",
+                   on_bus="NN_BUS", source_ref="enm:Bay.bay_role=LINIA_OUT",
+                   interface_protection=True, protection_codes=prot),
+            _field("g1-src", role="source", kind="PV", abb_cell="SDC",
+                   on_bus="NN_BUS", source_ref="enm:Generator.gen_type=pv_inverter",
+                   interface_protection=False),
+        ],
+        boundary=_boundary("G-ZALICZNIK", on_bus="NN_BUS", metered=True),
     )
 
 
@@ -944,6 +1008,21 @@ def build_g2() -> dict[str, Any]:
         pcc_bus="PCC_SN", ibg_ka=ibg / 1000.0,
         source=_pv_source(technology="PV", machine_type="IBG", nc_class="C", control_mode="Q(U)",
                           p_zainst_kw=1100.0, pn_ac_kw=990.0, p_przylacz_kw=990.0, p_osiagalna_kw=900.0),
+        # Station idiom: PV source field on the nN collector → block transformer →
+        # connection field on the SN PCC busbar (interface protection HERE) +
+        # measurement field at the SN boundary. Dedicated MV connection (G-ZKSN).
+        fields=[
+            _field("g2-conn", role="connection", kind="POLE_PRZYŁĄCZENIOWE", abb_cell="CBC",
+                   on_bus="PCC_SN", source_ref="enm:Bay.bay_role=LINIA_OUT",
+                   interface_protection=True, protection_codes=list(_PROTECTION_BY_MACHINE["IBG"])),
+            _field("g2-meter", role="measurement", kind="POLE_POMIAROWE", abb_cell="SDM-V",
+                   on_bus="PCC_SN", source_ref="enm:Measurement.purpose=metering",
+                   interface_protection=False),
+            _field("g2-src", role="source", kind="PV", abb_cell="SDC",
+                   on_bus="NN_COLLECTOR", source_ref="enm:Generator.gen_type=pv_inverter",
+                   interface_protection=False),
+        ],
+        boundary=_boundary("G-ZKSN", on_bus="PCC_SN", metered=True),
     )
 
 
@@ -966,6 +1045,18 @@ def build_g3() -> dict[str, Any]:
         pcc_bus="PCC_SN", ibg_ka=ibg / 1000.0,
         source=_pv_source(technology="PV", machine_type="IBG", nc_class="C", control_mode="cosφ(P)",
                           p_zainst_kw=1650.0, pn_ac_kw=1500.0, p_przylacz_kw=1500.0, p_osiagalna_kw=1350.0),
+        # Station idiom: SN-side PV inverters (source field on PV_SN, no transformer)
+        # → connection field on the SN PCC busbar (interface protection HERE).
+        # Dedicated MV connection via a cable junction (G-ZKSN).
+        fields=[
+            _field("g3-conn", role="connection", kind="POLE_PRZYŁĄCZENIOWE", abb_cell="CBC",
+                   on_bus="PCC_SN", source_ref="enm:Bay.bay_role=LINIA_OUT",
+                   interface_protection=True, protection_codes=list(_PROTECTION_BY_MACHINE["IBG"])),
+            _field("g3-src", role="source", kind="PV", abb_cell="SDC",
+                   on_bus="PV_SN", source_ref="enm:Generator.gen_type=pv_inverter",
+                   interface_protection=False),
+        ],
+        boundary=_boundary("G-ZKSN", on_bus="PCC_SN", metered=True),
     )
 
 

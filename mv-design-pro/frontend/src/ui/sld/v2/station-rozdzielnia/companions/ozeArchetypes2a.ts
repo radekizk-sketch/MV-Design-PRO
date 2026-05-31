@@ -16,10 +16,49 @@ import type { SldOzeArchetypeCompanion } from './ozeTypes';
 export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion>> = {
   "G1": {
     "archetype": "G1",
+    "boundary": {
+      "enm_connection_variant": "LV_BEHIND_STATION_TRANSFORMER",
+      "metered": true,
+      "on_bus_ref": "NN_BUS",
+      "source_ref": "enm:Generator.connection_variant=LV_BEHIND_STATION_TRANSFORMER",
+      "variant": "G-ZALICZNIK"
+    },
     "case_ref_pf": "ROZPLYW_GEN_MAX",
     "case_ref_sc": "ZWARCIOWY_MAKS",
     "converged": true,
     "enm_hash": "oze-substrate/G1",
+    "fields": [
+      {
+        "abb_cell": "CBC",
+        "field_id": "g1-conn",
+        "interface_protection": true,
+        "kind": "POLE_PRZY\u0141\u0104CZENIOWE",
+        "on_bus_ref": "NN_BUS",
+        "protection_codes": [
+          "67",
+          "67N",
+          "81U",
+          "81O",
+          "df/dt",
+          "27",
+          "59",
+          "59N",
+          "anti-islanding"
+        ],
+        "role": "connection",
+        "source_ref": "enm:Bay.bay_role=LINIA_OUT"
+      },
+      {
+        "abb_cell": "SDC",
+        "field_id": "g1-src",
+        "interface_protection": false,
+        "kind": "PV",
+        "on_bus_ref": "NN_BUS",
+        "protection_codes": [],
+        "role": "source",
+        "source_ref": "enm:Generator.gen_type=pv_inverter"
+      }
+    ],
     "pcc_bus_ref": "NN_BUS",
     "schema": "sld_oze_archetype_companion_v1",
     "short_circuit": {
@@ -672,10 +711,59 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
   },
   "G2": {
     "archetype": "G2",
+    "boundary": {
+      "enm_connection_variant": "DEDICATED_MV_CONNECTION",
+      "metered": true,
+      "on_bus_ref": "PCC_SN",
+      "source_ref": "enm:Generator.connection_variant=DEDICATED_MV_CONNECTION",
+      "variant": "G-ZKSN"
+    },
     "case_ref_pf": "ROZPLYW_GEN_MAX",
     "case_ref_sc": "ZWARCIOWY_MAKS",
     "converged": true,
     "enm_hash": "oze-substrate/G2",
+    "fields": [
+      {
+        "abb_cell": "CBC",
+        "field_id": "g2-conn",
+        "interface_protection": true,
+        "kind": "POLE_PRZY\u0141\u0104CZENIOWE",
+        "on_bus_ref": "PCC_SN",
+        "protection_codes": [
+          "67",
+          "67N",
+          "81U",
+          "81O",
+          "df/dt",
+          "27",
+          "59",
+          "59N",
+          "anti-islanding"
+        ],
+        "role": "connection",
+        "source_ref": "enm:Bay.bay_role=LINIA_OUT"
+      },
+      {
+        "abb_cell": "SDM-V",
+        "field_id": "g2-meter",
+        "interface_protection": false,
+        "kind": "POLE_POMIAROWE",
+        "on_bus_ref": "PCC_SN",
+        "protection_codes": [],
+        "role": "measurement",
+        "source_ref": "enm:Measurement.purpose=metering"
+      },
+      {
+        "abb_cell": "SDC",
+        "field_id": "g2-src",
+        "interface_protection": false,
+        "kind": "PV",
+        "on_bus_ref": "NN_COLLECTOR",
+        "protection_codes": [],
+        "role": "source",
+        "source_ref": "enm:Generator.gen_type=pv_inverter"
+      }
+    ],
     "pcc_bus_ref": "PCC_SN",
     "schema": "sld_oze_archetype_companion_v1",
     "short_circuit": {
@@ -1328,10 +1416,49 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
   },
   "G3": {
     "archetype": "G3",
+    "boundary": {
+      "enm_connection_variant": "DEDICATED_MV_CONNECTION",
+      "metered": true,
+      "on_bus_ref": "PCC_SN",
+      "source_ref": "enm:Generator.connection_variant=DEDICATED_MV_CONNECTION",
+      "variant": "G-ZKSN"
+    },
     "case_ref_pf": "ROZPLYW_GEN_MAX",
     "case_ref_sc": "ZWARCIOWY_MAKS",
     "converged": true,
     "enm_hash": "oze-substrate/G3",
+    "fields": [
+      {
+        "abb_cell": "CBC",
+        "field_id": "g3-conn",
+        "interface_protection": true,
+        "kind": "POLE_PRZY\u0141\u0104CZENIOWE",
+        "on_bus_ref": "PCC_SN",
+        "protection_codes": [
+          "67",
+          "67N",
+          "81U",
+          "81O",
+          "df/dt",
+          "27",
+          "59",
+          "59N",
+          "anti-islanding"
+        ],
+        "role": "connection",
+        "source_ref": "enm:Bay.bay_role=LINIA_OUT"
+      },
+      {
+        "abb_cell": "SDC",
+        "field_id": "g3-src",
+        "interface_protection": false,
+        "kind": "PV",
+        "on_bus_ref": "PV_SN",
+        "protection_codes": [],
+        "role": "source",
+        "source_ref": "enm:Generator.gen_type=pv_inverter"
+      }
+    ],
     "pcc_bus_ref": "PCC_SN",
     "schema": "sld_oze_archetype_companion_v1",
     "short_circuit": {
