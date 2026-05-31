@@ -594,10 +594,18 @@ def _vf_graph_and_pq(
     return s.graph, s.slack_id, list(s.pq), buses
 
 
-def _wb(title: str, formula: str, inputs: dict[str, Any], subst: str, result: dict[str, Any], unit: str, source: str) -> dict[str, Any]:
-    """One White Box step (A→B→C→D): formula → data → substitution → result. The
-    `source` tags provenance — 'solver' (frozen NR primitive) or 'interpretacja'
-    (derived from solver output for display). Mirrors the SC trace shape."""
+def _wb(
+    title: str,
+    formula: str,
+    inputs: dict[str, Any],
+    subst: str,
+    result: dict[str, Any],
+    unit: str,
+    source: str,
+) -> dict[str, Any]:
+    """One White Box step (A->B->C->D): formula -> data -> substitution -> result.
+    `source` tags provenance: 'solver' (frozen NR primitive) or 'interpretacja'
+    (derived from solver output for display)."""
     return {
         "title": title,
         "formula_latex": formula,
@@ -626,14 +634,46 @@ def build_voltage_flow_companion(archetype: str) -> dict[str, Any]:
     for bus_id, un_kv in buses:
         u_pu = float(sol.node_u_mag.get(bus_id, 0.0))
         u_kv = round(u_pu * un_kv, 4)
+        u_pu_r = round(u_pu, 5)
+        dev = round((u_pu - 1.0) * 100.0, 3)
         bus_entries[bus_id] = {
             "bus_ref": bus_id,
             "un_kv": un_kv,
             "u_kv": u_kv,
-            "u_pu": round(u_pu, 5),
+            "u_pu": u_pu_r,
             "u_percent": round(u_pu * 100.0, 3),
-            "deviation_percent": round((u_pu - 1.0) * 100.0, 3),
+            "deviation_percent": dev,
             "angle_deg": round(float(sol.node_angle.get(bus_id, 0.0)) * 180.0 / 3.141592653589793, 3),
+            # White Box (gate D): U derivation from the frozen NR solution.
+            "white_box": [
+                _wb(
+                    "Napięcie węzłowe U (p.u.)",
+                    r"U_{pu} = |\underline{U}|\ \text{(rozwiązanie Newton-Raphson)}",
+                    {"solver": "newton-raphson", "iteracje": int(sol.iterations)},
+                    rf"U_{{pu}} = {u_pu_r}",
+                    {"u_pu": u_pu_r},
+                    "p.u.",
+                    "solver",
+                ),
+                _wb(
+                    "Napięcie U [kV]",
+                    r"U = U_{pu} \cdot U_n",
+                    {"u_pu": u_pu_r, "u_n_kv": un_kv},
+                    rf"U = {u_pu_r} \cdot {un_kv}",
+                    {"u_kv": u_kv},
+                    "kV",
+                    "interpretacja",
+                ),
+                _wb(
+                    "Odchyłka napięcia ΔU",
+                    r"\Delta U = (U_{pu} - 1) \cdot 100\%",
+                    {"u_pu": u_pu_r},
+                    rf"\Delta U = ({u_pu_r} - 1) \cdot 100\%",
+                    {"deviation_percent": dev},
+                    "%",
+                    "interpretacja",
+                ),
+            ],
         }
 
     branch_entries: dict[str, dict[str, Any]] = {}
@@ -656,12 +696,10 @@ def build_voltage_flow_companion(archetype: str) -> dict[str, Any]:
             "s_mva": s_mva,
             "direction": _flow_direction(p_mw),
             "loading_percent": loading_pct,
-            # White Box (gate D): how the displayed flow is derived from the NR
-            # solution (S_from is a solver primitive; I and loading are derived).
             "white_box": [
                 _wb(
-                    "Moc gałęzi S (zespolona)",
-                    r"\underline{S} = \underline{U} \cdot \underline{I}^{*}\ \text{(rozwiązanie NR)}",
+                    "Moc galezi S (zespolona)",
+                    r"\underline{S} = \underline{U} \cdot \underline{I}^{*}\ \text{(rozwiazanie NR)}",
                     {"solver": "newton-raphson"},
                     rf"P = {p_mw}\ \text{{MW}},\ Q = {q_mvar}\ \text{{Mvar}}",
                     {"p_mw": p_mw, "q_mvar": q_mvar},
@@ -678,7 +716,7 @@ def build_voltage_flow_companion(archetype: str) -> dict[str, Any]:
                     "interpretacja",
                 ),
                 _wb(
-                    "Prąd gałęzi I",
+                    "Prad galezi I",
                     r"I = \frac{S \cdot 10^3}{\sqrt{3} \cdot U_n}",
                     {"s_mva": s_mva, "u_n_kv": from_un_kv},
                     rf"I = \frac{{{s_mva} \cdot 10^3}}{{\sqrt{{3}} \cdot {from_un_kv}}}",
@@ -687,7 +725,7 @@ def build_voltage_flow_companion(archetype: str) -> dict[str, Any]:
                     "interpretacja",
                 ),
                 _wb(
-                    "Obciążenie pola",
+                    "Obciazenie pola",
                     r"obc. = \frac{I}{I_{zn}} \cdot 100\%",
                     {"i_a": i_a, "i_zn_a": rated_a if rated_a > 0 else None},
                     (rf"obc. = \frac{{{i_a}}}{{{rated_a}}} \cdot 100\%" if rated_a > 0 else "n/d"),

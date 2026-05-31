@@ -18,8 +18,11 @@ export interface WhiteBoxStepLike {
   readonly inputs?: Readonly<Record<string, unknown>>;
   readonly substitution_latex?: string;
   readonly result?: Readonly<Record<string, unknown>>;
-  readonly result_unit?: string;
+  readonly result_unit?: string | null;
   readonly source?: string;
+  // Permissive: both the VF step and the SC trace step (which carries extra
+  // solver fields like `key`, `notes`, `unit`) satisfy this shape.
+  readonly [k: string]: unknown;
 }
 
 /** Lightly prettify a LaTeX fragment into readable inline math for the SVG text. */

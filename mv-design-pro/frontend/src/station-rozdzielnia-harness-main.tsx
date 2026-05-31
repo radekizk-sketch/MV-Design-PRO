@@ -46,13 +46,22 @@ function LevelPanel(props: {
   whiteBox?: boolean;
   onFieldClick: (fieldId: string) => void;
 }): JSX.Element {
-  const { archetype, detail, label, panelWidth, panelHeight, onFieldClick } = props;
+  const { archetype, detail, label, panelWidth, panelHeight, whiteBox = false, onFieldClick } = props;
   const { model, companion } = buildArchetype(archetype);
   // Pass the nN block so the auto-fit bounds INCLUDE the nN tier the component
   // draws (transformer boundary + nN busbar + feeders + PV) — otherwise the nN
   // side overflows the panel. ONE geometry source (N-5) feeds both fit + render.
   const geometry = computeStationGeometry(model.fields, detail, model.nnBlock);
-  const { bounds } = geometry;
+  // When the White Box is expanded, the derivation panels extend ~320 px below
+  // and ~360 px to the right of the station — include that in the fit bounds.
+  const bounds = whiteBox
+    ? {
+        x: geometry.bounds.x,
+        y: geometry.bounds.y,
+        width: geometry.bounds.width + 360,
+        height: geometry.bounds.height + 320,
+      }
+    : geometry.bounds;
   // Fit content into the panel with margin; never upscale past a readable cap.
   const margin = 24;
   const scale = Math.min(
