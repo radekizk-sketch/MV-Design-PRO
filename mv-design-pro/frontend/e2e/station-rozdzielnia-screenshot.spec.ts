@@ -51,11 +51,13 @@ test.describe('sld:station-rozdzielnia:screenshot', () => {
       await expect(page.locator('[data-testid="sr-harness-panel-closer"]')).toBeVisible();
       await expect(page.locator('[data-testid="sr-harness-panel-close"]')).toBeVisible();
 
-      // The unit renders (busbar + fields) at every level.
+      // The unit renders (busbar + fields) at every level (3 detail panels).
       const units = page.locator(`[data-testid="station-rozdzielnia-sr-${archetype.toLowerCase()}"]`);
       expect(await units.count()).toBe(3);
-      const busbars = page.locator('[data-testid^="sr-busbar-"]');
-      expect(await busbars.count()).toBe(3);
+      // At least one main busbar per panel (T4 sekcyjna adds a second section
+      // busbar `sr-busbar-b-*`, so the count is ≥ 3 across the three panels).
+      const busbars = page.locator('[data-testid^="sr-busbar-sr-"]');
+      expect(await busbars.count()).toBeGreaterThanOrEqual(3);
 
       await page.waitForTimeout(400);
 

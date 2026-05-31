@@ -47,7 +47,10 @@ function LevelPanel(props: {
 }): JSX.Element {
   const { archetype, detail, label, panelWidth, panelHeight, onFieldClick } = props;
   const { model, companion } = buildArchetype(archetype);
-  const geometry = computeStationGeometry(model.fields, detail);
+  // Pass the nN block so the auto-fit bounds INCLUDE the nN tier the component
+  // draws (transformer boundary + nN busbar + feeders + PV) — otherwise the nN
+  // side overflows the panel. ONE geometry source (N-5) feeds both fit + render.
+  const geometry = computeStationGeometry(model.fields, detail, model.nnBlock);
   const { bounds } = geometry;
   // Fit content into the panel with margin; never upscale past a readable cap.
   const margin = 24;
@@ -113,7 +116,10 @@ function Harness(): JSX.Element {
   const { model } = buildArchetype(archetype);
 
   const PANEL_W = 720;
-  const PANEL_H = 280;
+  // Transformer archetypes (T1/T2) carry an nN tier below the SN busbar, which
+  // roughly doubles the vertical content — give them a taller panel so the nN
+  // side renders at full readable size instead of being shrunk to fit.
+  const PANEL_H = model.nnBlock ? 440 : 300;
 
   return (
     <div
