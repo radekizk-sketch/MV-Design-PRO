@@ -38,6 +38,7 @@ from typing import Any, Literal
 
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
+from network_model.core.inverter import InverterSource
 from network_model.core.node import Node, NodeType
 from network_model.solvers.power_flow_newton import (
     PowerFlowNewtonSolution,
@@ -56,6 +57,7 @@ from network_model.solvers.short_circuit_iec60909 import (
 
 _BASE_MVA = 100.0
 _BASE_KV = 15.0
+_SQRT3 = 3.0**0.5
 _TOLERANCE = 1e-8
 _MAX_ITER = 30
 # Active-power magnitude (MVA) below which a branch flow has no direction. 1e-3
@@ -133,6 +135,25 @@ class _Substrate:
     def add_pv(self, node_id: str, p_inject_mw: float) -> None:
         # Frozen convention: PQSpec.p_mw is CONSUMPTION -> an injection is negative.
         self.pq.append(PQSpec(node_id=node_id, p_mw=-p_inject_mw, q_mvar=0.0))
+
+    def add_inverter(
+        self, node_id: str, *, rated_kva: float, un_kv: float, k_sc: float, source_type: str
+    ) -> float:
+        """Register an IBG (PV/BESS/full-converter wind) as an IEC 60909 §6.7
+        limited-current SC source. The frozen SC solver sums these (a BOUNDED
+        current Ik=k_sc·In), NOT a full machine contribution — the gate-J
+        distinction. Returns the source's Ik'' contribution [A]."""
+        in_rated_a = rated_kva * 1000.0 / (_SQRT3 * un_kv * 1000.0)
+        src = InverterSource(
+            name=f"{source_type}@{node_id}",
+            node_id=node_id,
+            in_rated_a=in_rated_a,
+            k_sc=k_sc,
+            contributes_negative_sequence=True,
+            contributes_zero_sequence=False,
+        )
+        self.graph.add_inverter_source(src)
+        return src.ik_sc_a
 
     def add_line(
         self, branch_id: str, a: str, b: str, r: float, x: float, *, closed: bool = True
@@ -755,6 +776,191 @@ def build_all_vf() -> dict[str, dict[str, Any]]:
     return {name: build_voltage_flow_companion(name) for name in _ARCHETYPES}
 
 
+# ===========================================================================
+# KROK 2 — OZE source archetypes (G family). Runda 2a: PV (G1-G3).
+# ===========================================================================
+# Each OZE archetype companion carries (all from the FROZEN solvers, READ-ONLY,
+# B-01): source meta (machine_type IBG/SYNCHRONOUS/ASYNCHRONOUS, technology, NC
+# RfG class + control mode, power hierarchy), power flow (bus U + branch I/P/Q/S;
+# generation = reverse export), and short circuit per bus (Ik''max/min) WITH the
+# IBG limited contribution tagged per gate J (bounded current, NOT a machine).
+# IBG short-circuit factor k_sc (IEC 60909-0:2016 §6.7): Ik = k_sc · I_rated.
+_IBG_K = 1.2
+
+
+def _pv_source(
+    *, technology: str, machine_type: str, nc_class: str, control_mode: str,
+    p_zainst_kw: float, pn_ac_kw: float, p_przylacz_kw: float, p_osiagalna_kw: float,
+) -> dict[str, Any]:
+    return {
+        "technology": technology,
+        "machine_type": machine_type,
+        "nc_rfg_class": nc_class,
+        "control_mode": control_mode,
+        "power_hierarchy": {
+            "p_zainst_kw": p_zainst_kw,
+            "pn_ac_kw": pn_ac_kw,
+            "p_przylacz_kw": p_przylacz_kw,
+            "p_osiagalna_kw": p_osiagalna_kw,
+        },
+    }
+
+
+def _oze_sc_bus(
+    graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float, ibg_ka: float
+) -> dict[str, Any]:
+    """SC dossier at one OZE busbar — the station SC entry + the IBG contribution
+    broken out (so the render shows a source-typed contribution, gate J)."""
+    entry = _sc_bus_entry(graph, bus_id, un_kv, icw_ka)
+    entry["source_contribution"] = {
+        "machine_type": "IBG",
+        "model": "IEC 60909 §6.7 — źródło prądowe ograniczone (k·I_rated)",
+        "ik_contribution_ka": round(ibg_ka, 3),
+        "is_synchronous_machine": False,
+    }
+    return entry
+
+
+def _oze_companion(
+    archetype: str,
+    *,
+    substrate: _Substrate,
+    buses: list[tuple[str, float, float]],  # (bus_id, un_kv, icw_ka)
+    pcc_bus: str,
+    source: dict[str, Any],
+    ibg_ka: float,
+) -> dict[str, Any]:
+    """Assemble one OZE archetype companion: source meta + PF + SC (incl. IBG)."""
+    graph = substrate.graph
+    sol = solve_power_flow_physics(substrate.to_input())
+    vf_buses: dict[str, dict[str, Any]] = {}
+    for bus_id, un_kv, _icw in buses:
+        u_pu = float(sol.node_u_mag.get(bus_id, 0.0))
+        vf_buses[bus_id] = {
+            "bus_ref": bus_id,
+            "un_kv": un_kv,
+            "u_kv": round(u_pu * un_kv, 4),
+            "u_pu": round(u_pu, 5),
+            "deviation_percent": round((u_pu - 1.0) * 100.0, 3),
+        }
+    vf_branches: dict[str, dict[str, Any]] = {}
+    for branch_id in sorted(graph.branches):
+        s_from = sol.branch_s_from_mva.get(branch_id)
+        i_ka = float(sol.branch_current_ka.get(branch_id, 0.0))
+        branch = graph.branches[branch_id]
+        rated_a = float(getattr(branch, "rated_current_a", 0.0) or 0.0)
+        p_mw = round(float(s_from.real), 4) if s_from is not None else 0.0
+        q_mvar = round(float(s_from.imag), 4) if s_from is not None else 0.0
+        vf_branches[branch_id] = {
+            "branch_ref": branch_id,
+            "i_a": round(i_ka * 1000.0, 2),
+            "p_mw": p_mw,
+            "q_mvar": q_mvar,
+            "s_mva": round((p_mw**2 + q_mvar**2) ** 0.5, 4),
+            "direction": _flow_direction(p_mw),
+            "loading_percent": (round((i_ka * 1000.0 / rated_a) * 100.0, 2) if rated_a > 0 else None),
+        }
+    sc_buses = {
+        bus_id: _oze_sc_bus(graph, bus_id, un_kv, icw_ka, ibg_ka)
+        for bus_id, un_kv, icw_ka in buses
+    }
+    h = source["power_hierarchy"]
+    chain = [h["p_zainst_kw"], h["pn_ac_kw"], h["p_przylacz_kw"], h["p_osiagalna_kw"]]
+    hierarchy_ok = all(chain[i] >= chain[i + 1] for i in range(len(chain) - 1))
+    return {
+        "schema": "sld_oze_archetype_companion_v1",
+        "archetype": archetype,
+        "enm_hash": f"oze-substrate/{archetype}",
+        "pcc_bus_ref": pcc_bus,
+        "source": {**source, "power_hierarchy": {**h, "valid": hierarchy_ok}},
+        "case_ref_pf": "ROZPLYW_GEN_MAX",
+        "case_ref_sc": "ZWARCIOWY_MAKS",
+        "converged": bool(sol.converged),
+        "voltage_flow": {"buses": dict(sorted(vf_buses.items())), "branches": dict(sorted(vf_branches.items()))},
+        "short_circuit": {"standard": "IEC 60909", "buses": dict(sorted(sc_buses.items()))},
+    }
+
+
+def build_g1() -> dict[str, Any]:
+    """G1 — PV prosumencka nN (za trafo odbiorczym): GPZ → SN → trafo SN/nN →
+    nN bus → odbiór + falownik PV. IBG, klasa A, cosφ=const."""
+    pv_kva = 50.0
+    s = _Substrate()
+    s.add_slack("GPZ")
+    s.add_bus("SN_BUS", _BASE_KV)
+    s.add_bus("NN_BUS", _NN_KV)
+    s.add_line(SR_IN, "GPZ", "SN_BUS", _SN_LINE_R, _SN_LINE_X)
+    s.add_transformer(SR_TR, "SN_BUS", "NN_BUS", hv_kv=_BASE_KV, lv_kv=_NN_KV, uk_percent=_TRAFO_UK_PCT, rated_mva=_TRAFO_MVA)
+    # Prosument: midday PV (45 kW) exceeds the local load (10 kW) → net REVERSE
+    # export to the grid (the solver signs it; we do not assume it). One netted
+    # PQ spec per node (a node carries a single injection, not two specs).
+    s.add_load("NN_BUS", p_mw=0.01 - pv_kva / 1000.0 * 0.9, q_mvar=0.004)
+    ibg = s.add_inverter("NN_BUS", rated_kva=pv_kva, un_kv=_NN_KV, k_sc=_IBG_K, source_type="PV")
+    s.finalize_pq()
+    return _oze_companion(
+        "G1", substrate=s,
+        buses=[("SN_BUS", _BASE_KV, _ICW_SN_KA), ("NN_BUS", _NN_KV, _ICW_NN_KA)],
+        pcc_bus="NN_BUS", ibg_ka=ibg / 1000.0,
+        source=_pv_source(technology="PV", machine_type="IBG", nc_class="A", control_mode="cosφ=const",
+                          p_zainst_kw=55.0, pn_ac_kw=50.0, p_przylacz_kw=50.0, p_osiagalna_kw=45.0),
+    )
+
+
+def build_g2() -> dict[str, Any]:
+    """G2 — Farma PV: falowniki nN + dedykowany trafo nN/SN. PCC na SN. IBG,
+    klasa C, Q(U)."""
+    pv_kva = 990.0
+    s = _Substrate()
+    s.add_slack("GPZ")
+    s.add_bus("PCC_SN", _BASE_KV)
+    s.add_bus("NN_COLLECTOR", _NN_KV)
+    s.add_line(SR_IN, "GPZ", "PCC_SN", _SN_LINE_R, _SN_LINE_X)
+    s.add_transformer(SR_TR, "PCC_SN", "NN_COLLECTOR", hv_kv=_BASE_KV, lv_kv=_NN_KV, uk_percent=_TRAFO_UK_PCT, rated_mva=1.0)
+    s.add_pv("NN_COLLECTOR", p_inject_mw=pv_kva / 1000.0 * 0.9)
+    ibg = s.add_inverter("NN_COLLECTOR", rated_kva=pv_kva, un_kv=_NN_KV, k_sc=_IBG_K, source_type="PV")
+    s.finalize_pq()
+    return _oze_companion(
+        # A 1 MVA PV collector nN board is specified for its actual Ik'' — a 31.5 kA
+        # board (standard rating above the computed ~26.5 kA), so the ≤Icw verdict
+        # passes for a correctly-specified board. The verdict still FAILS if Ik''
+        # exceeds it (the check is real, not rigged).
+        "G2", substrate=s,
+        buses=[("PCC_SN", _BASE_KV, _ICW_SN_KA), ("NN_COLLECTOR", _NN_KV, 31.5)],
+        pcc_bus="PCC_SN", ibg_ka=ibg / 1000.0,
+        source=_pv_source(technology="PV", machine_type="IBG", nc_class="C", control_mode="Q(U)",
+                          p_zainst_kw=1100.0, pn_ac_kw=990.0, p_przylacz_kw=990.0, p_osiagalna_kw=900.0),
+    )
+
+
+def build_g3() -> dict[str, Any]:
+    """G3 — Farma PV: falowniki SN bezpośrednio (blok falownik+trafo na SN). PCC
+    na SN. IBG, klasa C, cosφ(P)."""
+    pv_kva = 1500.0
+    s = _Substrate()
+    s.add_slack("GPZ")
+    s.add_bus("PCC_SN", _BASE_KV)
+    s.add_bus("PV_SN", _BASE_KV)
+    s.add_line(SR_IN, "GPZ", "PCC_SN", _SN_LINE_R, _SN_LINE_X)
+    s.add_line(SR_OUT, "PCC_SN", "PV_SN", _SN_LINE_R * 0.3, _SN_LINE_X * 0.3)
+    s.add_pv("PV_SN", p_inject_mw=pv_kva / 1000.0 * 0.9)
+    ibg = s.add_inverter("PV_SN", rated_kva=pv_kva, un_kv=_BASE_KV, k_sc=_IBG_K, source_type="PV")
+    s.finalize_pq()
+    return _oze_companion(
+        "G3", substrate=s,
+        buses=[("PCC_SN", _BASE_KV, _ICW_SN_KA), ("PV_SN", _BASE_KV, _ICW_SN_KA)],
+        pcc_bus="PCC_SN", ibg_ka=ibg / 1000.0,
+        source=_pv_source(technology="PV", machine_type="IBG", nc_class="C", control_mode="cosφ(P)",
+                          p_zainst_kw=1650.0, pn_ac_kw=1500.0, p_przylacz_kw=1500.0, p_osiagalna_kw=1350.0),
+    )
+
+
+_OZE_ARCHETYPES_2A = {"G1": build_g1, "G2": build_g2, "G3": build_g3}
+
+
+def build_all_oze_2a() -> dict[str, dict[str, Any]]:
+    return {name: fn() for name, fn in _OZE_ARCHETYPES_2A.items()}
+
+
 def _companions_dir() -> str:
     here = os.path.dirname(os.path.abspath(__file__))
     repo = os.path.abspath(os.path.join(here, "..", "..", "..", ".."))
@@ -872,6 +1078,36 @@ def write_vf_companions() -> str:
     return path
 
 
+_TS_OZE_HEADER = """\
+/**
+ * GENERATED — DO NOT EDIT BY HAND.
+ *
+ * KROK 2 Runda 2a — PV OZE-source archetype companions (G1-G3). Produced by
+ * running the FROZEN Newton-Raphson + IEC 60909 solvers (READ-ONLY, B-01) on
+ * two-voltage OZE substrates with a REAL transformer + an IBG InverterSource
+ * (IEC 60909-0:2016 §6.7 limited current). Regenerate with the module --write.
+ *
+ * Each carries: source meta (machine_type/technology/NC RfG class+mode/power
+ * hierarchy), per-bus U + per-branch I/P/Q/S (generation = reverse export), and
+ * per-bus Ik''max/min WITH the IBG limited contribution tagged (gate J: IBG is
+ * NOT a synchronous machine). The renderer INTERPRETS — it never recomputes.
+ */
+import type { SldOzeArchetypeCompanion } from './ozeTypes';
+
+export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion>> = """
+
+
+def write_oze_companions() -> str:
+    out_dir = _companions_dir()
+    os.makedirs(out_dir, exist_ok=True)
+    body = json.dumps(build_all_oze_2a(), indent=2, sort_keys=True)
+    ts = _TS_OZE_HEADER + body + ";\n"
+    path = os.path.join(out_dir, "ozeArchetypes2a.ts")
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(ts)
+    return path
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--write", action="store_true", help="write the companion TS modules")
@@ -880,6 +1116,7 @@ def main() -> None:
         print(f"wrote {write_companions()}")
         print(f"wrote {write_sc_companions()}")
         print(f"wrote {write_vf_companions()}")
+        print(f"wrote {write_oze_companions()}")
     else:
         print(
             json.dumps(
