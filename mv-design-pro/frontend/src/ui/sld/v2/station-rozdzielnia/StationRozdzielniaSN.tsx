@@ -100,12 +100,40 @@ function busColorForVoltage(kv: number): string {
   return COLOR_FIELD_TRUNK_ENERGIZED;
 }
 
+/**
+ * The field's REPRESENTATIVE switching apparatus — the device whose identity and
+ * canonical shape stands for the whole field at the overview level (N-8). This is
+ * a pure projection of the model's apparatus set (CB > LOAD_SWITCH > DS), the SAME
+ * apparatus shown in detail at L1/L2 — so its shape is invariant across the LOD
+ * ladder: zoom is a property of the VIEW, identity a property of the MODEL.
+ */
+function representativeApparatus(field: StationFieldDescriptor): StationApparatus | null {
+  return (
+    field.apparatus.find((a) => a.kind === 'CB') ??
+    field.apparatus.find((a) => a.kind === 'LOAD_SWITCH') ??
+    field.apparatus.find((a) => a.kind === 'DS') ??
+    null
+  );
+}
+
+/** Canonical IEC-60617 outline shape per switching apparatus kind (N-8). The
+ *  shape is a function of the apparatus TYPE only — never of the zoom level. */
+function canonicalShapeForKind(kind: StationApparatus['kind']): 'square' | 'diamond' | 'circle' | null {
+  switch (kind) {
+    case 'CB':
+      return 'square'; // wyłącznik □
+    case 'LOAD_SWITCH':
+      return 'diamond'; // rozłącznik ◇
+    case 'DS':
+      return 'circle'; // odłącznik ◯
+    default:
+      return null;
+  }
+}
+
 function fieldSwitchState(field: StationFieldDescriptor): StationApparatus['switchState'] {
-  // The field's overall state = its breaker (CB); fall back to the 3-pos switch.
-  const cb = field.apparatus.find((a) => a.kind === 'CB');
-  if (cb?.switchState) return cb.switchState;
-  const sd = field.apparatus.find((a) => a.kind === 'LOAD_SWITCH' || a.kind === 'DS');
-  return sd?.switchState ?? 'unknown';
+  const rep = representativeApparatus(field);
+  return rep?.switchState ?? 'unknown';
 }
 
 function stateColor(state: StationApparatus['switchState']): string {
@@ -421,17 +449,40 @@ function FieldColumn(props: {
         </text>
       )}
 
-      {/* FAR: a single state diamond near the busbar (compact). */}
-      {detail === 'far' && (
-        <polygon
-          points={`${x},${geom.busY + 8} ${x + 7},${geom.busY + 15} ${x},${geom.busY + 22} ${x - 7},${geom.busY + 15}`}
-          fill={isOpen ? 'none' : state === 'unknown' ? COLOR_DEVICE_UNKNOWN : '#0A8D43'}
-          stroke={stateColor(state)}
-          strokeWidth={isOpen ? 1.8 : 1.2}
-          data-testid={`sr-field-state-diamond-${field.fieldId}`}
-          data-apparatus-kind="switch_disconnector"
-        />
-      )}
+      {/* FAR: the field's REPRESENTATIVE apparatus in its CANONICAL shape (N-8) —
+          □ CB / ◇ LOAD_SWITCH / ◯ DS, the SAME apparatus identity as L1/L2, with
+          the switch state. NOT a generic glyph: a CB at far reads as a square, a
+          rozłącznik as a diamond, an odłącznik as a circle — never a symbol lie. */}
+      {detail === 'far' && (() => {
+        const rep = representativeApparatus(field);
+        const shape = rep ? canonicalShapeForKind(rep.kind) : null;
+        const cy = geom.busY + 15;
+        const fillColor = isOpen ? 'none' : state === 'unknown' ? COLOR_DEVICE_UNKNOWN : '#0A8D43';
+        const strokeColor = stateColor(state);
+        const sw = isOpen ? 1.8 : 1.4;
+        const common = {
+          'data-testid': `sr-field-rep-symbol-${field.fieldId}`,
+          'data-apparatus-kind': rep?.kind ?? 'none',
+          'data-symbol-shape': shape ?? 'none',
+          'data-state': state ?? 'unknown',
+        } as const;
+        if (shape === 'square') {
+          return <rect {...common} x={x - 7} y={cy - 7} width={14} height={14} rx={1} fill={fillColor} stroke={strokeColor} strokeWidth={sw} />;
+        }
+        if (shape === 'circle') {
+          return <circle {...common} cx={x} cy={cy} r={7.5} fill={fillColor} stroke={strokeColor} strokeWidth={sw} />;
+        }
+        // diamond (LOAD_SWITCH / rozłącznik) — and a safe default.
+        return (
+          <polygon
+            {...common}
+            points={`${x},${cy - 7} ${x + 7},${cy} ${x},${cy + 7} ${x - 7},${cy}`}
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={sw}
+          />
+        );
+      })()}
 
       {/* CLOSER + CLOSE: real apparatus symbols on the power path. */}
       {detail !== 'far' &&

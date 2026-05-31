@@ -120,6 +120,7 @@ export function ApparatusCbSquare(props: ApparatusVisualProps): JSX.Element {
       data-state={state}
       data-apparatus-kind="circuit_breaker"
       data-symbol-canon="circuit_breaker_square"
+      data-symbol-shape="square"
     >
       <rect
         x={cx - CB_SIZE / 2}
@@ -197,6 +198,7 @@ export function ApparatusDsCircle(props: ApparatusVisualProps): JSX.Element {
       data-state={state}
       data-apparatus-kind="disconnector"
       data-symbol-canon="disconnector_two_contact_lever"
+      data-symbol-shape="circle"
     >
       <circle cx={cx} cy={cy} r={DS_RADIUS} fill={fill} stroke={stroke} strokeWidth={1.2} />
       {/* 2 kropki styku stałe (IEC 7-13-02 — top + bottom contact points) */}
@@ -588,6 +590,7 @@ export function ApparatusThreePositionSwitch(
       data-state={position}
       data-apparatus-kind="three_position_switch"
       data-symbol-canon="three_position_load_break_isolator"
+      data-symbol-shape="diamond"
     >
       {/* Bus-side stub + top fixed contact (pivot). */}
       <line x1={cx} y1={topY - 3} x2={cx} y2={topY} stroke={liveColor} strokeWidth={1.6} />
