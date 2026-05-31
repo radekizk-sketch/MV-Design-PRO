@@ -68,7 +68,6 @@ import {
 } from './geometry';
 import type { ScBus } from './companions/shortCircuitTypes';
 import type { VfBus, VfBranch } from './companions/voltageFlowTypes';
-import { WhiteBoxPanel } from './whiteBox';
 
 // =============================================================================
 // Props
@@ -960,7 +959,7 @@ function vfFieldLines(vf: VfBranch): string[] {
 // =============================================================================
 
 export function StationRozdzielniaSN(props: StationRozdzielniaSNProps): JSX.Element {
-  const { model, companion, detail, onFieldClick, selectedFieldId, whiteBox = false, x = 0, y = 0 } = props;
+  const { model, companion, detail, onFieldClick, selectedFieldId, x = 0, y = 0 } = props;
   const geometry = computeStationGeometry(model.fields, detail, model.nnBlock);
   const busColor = busColorForVoltage(model.busVoltageKv);
   const index = buildPowerFlowIndex(companion);
@@ -1195,46 +1194,13 @@ export function StationRozdzielniaSN(props: StationRozdzielniaSNProps): JSX.Elem
         </text>
       )}
 
-      {/* GATE D — expanded White Box derivation at L2 for the focused SN busbar:
-          the complete A→B→C→D proof of the short circuit AND the voltage, with
-          provenance + case_ref. The DATA exists on every bus/field; this is the
-          on-screen "complete engineering object at maximum zoom". */}
-      {detail === 'close' && whiteBox && (() => {
-        const panels: JSX.Element[] = [];
-        const baseY = geometry.bounds.y + geometry.bounds.height + 18;
-        const scBus = model.snBusScRef ? model.shortCircuit?.buses[model.snBusScRef] : undefined;
-        const vfBus = model.snBusScRef ? model.voltageFlow?.buses[model.snBusScRef] : undefined;
-        const colX = geometry.bounds.x;
-        if (scBus) {
-          panels.push(
-            <WhiteBoxPanel
-              key="wb-sc"
-              testid={`sr-wb-sc-${scBus.bus_ref}`}
-              heading={`ZWARCIE I_k'' — ${scBus.bus_ref} (${scBus.un_kv} kV)`}
-              standard={model.shortCircuit?.standard ?? 'IEC 60909'}
-              caseRef={scBus.max.case_ref}
-              steps={scBus.max.white_box_trace}
-              x={colX}
-              y={baseY}
-            />,
-          );
-        }
-        if (vfBus) {
-          panels.push(
-            <WhiteBoxPanel
-              key="wb-vf"
-              testid={`sr-wb-vf-${vfBus.bus_ref}`}
-              heading={`NAPIĘCIE U — ${vfBus.bus_ref} (${vfBus.un_kv} kV)`}
-              standard={model.voltageFlow?.solver_method ?? 'newton-raphson'}
-              caseRef={model.voltageFlow?.case_ref ?? ''}
-              steps={vfBus.white_box}
-              x={colX + 346}
-              y={baseY}
-            />,
-          );
-        }
-        return <>{panels}</>;
-      })()}
+      {/* WHITE BOX placement (owner B-02): the full A→B→C→D derivation is NOT on
+          the canvas — it overloads the schematic. The concise RESULTS stay at the
+          objects (busbar: U + Ik''max/min + ≤Icw; field: I/P/Q/loading), and the
+          derivation DATA is preserved in the companions (model.shortCircuit /
+          model.voltageFlow white_box). Clicking an object (onFieldClick) is the
+          HOOK to the future right-side derivation panel — a separate surface,
+          designed in a later round. No derivation text blocks are drawn here. */}
     </g>
   );
 }

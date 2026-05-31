@@ -14,7 +14,7 @@
  *       apparatus type, on EVERY level (CB→square, LOAD_SWITCH→diamond, DS→circle).
  */
 import { render } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { StationRozdzielniaSN } from '../StationRozdzielniaSN';
 import { buildArchetype, buildT3, buildT4 } from '../archetypes';
@@ -375,19 +375,15 @@ describe('GATE F — bus voltages + field power flows from the frozen NR solver'
 });
 
 // ---------------------------------------------------------------------------
-// GATE D — expanded White Box (A→B→C→D) on busbars + fields at L2
+// GATE D — White Box derivation DATA preserved (off-canvas); click is the hook
 // ---------------------------------------------------------------------------
+// Owner B-02: the full A→B→C→D derivation is NOT drawn on the SLD canvas (it
+// overloads the schematic). The derivation DATA must still EXIST on every
+// bus/field (its place is a future right-side panel opened on object click), and
+// the canvas must carry the concise RESULTS + the click hook — but ZERO
+// derivation text blocks. These gates assert exactly that split.
 
-function renderWhiteBox(archetype: 'T1' | 'T2' | 'T3' | 'T4') {
-  const { model, companion } = buildArchetype(archetype);
-  return render(
-    <svg>
-      <StationRozdzielniaSN model={model} companion={companion} detail="close" whiteBox />
-    </svg>,
-  );
-}
-
-describe('GATE D — complete White Box derivation present + rendered at L2', () => {
+describe('GATE D — White Box derivation present in data, NOT drawn on the canvas', () => {
   it('every busbar SC carries a complete A→B→C→D trace (formula+substitution+result)', () => {
     for (const archetype of ['T1', 'T2', 'T3', 'T4'] as const) {
       const { model } = buildArchetype(archetype);
@@ -433,32 +429,41 @@ describe('GATE D — complete White Box derivation present + rendered at L2', ()
     expect(wb.some((s) => s.source === 'interpretacja')).toBe(true);
   });
 
-  it('renders the expanded White Box at L2 with all four parts + case_ref', () => {
-    const { container } = renderWhiteBox('T1');
-    // SC + voltage White Box panels are present.
-    const scPanel = container.querySelector('[data-testid="sr-wb-sc-SN_BUS"]');
-    const vfPanel = container.querySelector('[data-testid="sr-wb-vf-SN_BUS"]');
-    expect(scPanel, 'SC White Box panel must render at L2').toBeTruthy();
-    expect(vfPanel, 'voltage White Box panel must render at L2').toBeTruthy();
-    // Each step carries the raw LaTeX (canonical math form) in the DOM.
-    const step0 = container.querySelector('[data-testid="sr-wb-sc-SN_BUS-step-0"]');
-    expect(step0!.getAttribute('data-formula-latex')).toBeTruthy();
-    expect(step0!.getAttribute('data-substitution-latex')).toBeTruthy();
-    // The rendered text shows A) / B) / C) / D) parts.
-    const txt = scPanel!.textContent ?? '';
-    expect(txt).toMatch(/A\)/);
-    expect(txt).toMatch(/B\) dane/);
-    expect(txt).toMatch(/C\)/);
-    expect(txt).toMatch(/D\)/);
+  it('the derivation is NOT drawn on the canvas (no White Box text blocks at L2)', () => {
+    for (const archetype of ['T1', 'T2', 'T3', 'T4'] as const) {
+      const { model, companion } = buildArchetype(archetype);
+      const { container } = render(
+        <svg>
+          <StationRozdzielniaSN model={model} companion={companion} detail="close" />
+        </svg>,
+      );
+      expect(container.querySelector('[data-whitebox="expanded"]')).toBeFalsy();
+      expect(container.querySelector('[data-testid^="sr-wb-"]')).toBeFalsy();
+      // No "A) / B) dane / C) / D)" derivation rows leak onto the schematic.
+      expect(container.textContent ?? '').not.toMatch(/B\) dane/);
+    }
   });
 
-  it('the White Box is an L2-only expansion (absent at closer)', () => {
+  it('the concise RESULTS stay at the objects (busbar U + Ik"; field I/P/Q)', () => {
+    const { container } = renderAt('T1', 'close');
+    // Busbar: voltage badge + SC panel (results, not derivation).
+    expect(container.querySelector('[data-testid="sr-vf-badge-SN_BUS"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="sr-sc-panel-SN_BUS"]')).toBeTruthy();
+    // Field: I/P/Q readout.
+    const readout = container.querySelector('[data-testid="sr-field-power-sr-t1-in"]');
+    expect((readout!.textContent ?? '')).toMatch(/I=/);
+  });
+
+  it('clicking an object fires the hook (future right-side derivation panel)', () => {
+    const onFieldClick = vi.fn();
     const { model, companion } = buildArchetype('T1');
     const { container } = render(
       <svg>
-        <StationRozdzielniaSN model={model} companion={companion} detail="closer" whiteBox />
+        <StationRozdzielniaSN model={model} companion={companion} detail="close" onFieldClick={onFieldClick} />
       </svg>,
     );
-    expect(container.querySelector('[data-whitebox="expanded"]')).toBeFalsy();
+    const field = container.querySelector('[data-testid="sr-field-sr-t1-in"]') as SVGGElement;
+    field.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(onFieldClick).toHaveBeenCalledWith('sr-t1-in');
   });
 });

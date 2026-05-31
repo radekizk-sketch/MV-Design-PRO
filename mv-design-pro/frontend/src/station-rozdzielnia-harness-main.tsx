@@ -43,25 +43,15 @@ function LevelPanel(props: {
   label: string;
   panelWidth: number;
   panelHeight: number;
-  whiteBox?: boolean;
   onFieldClick: (fieldId: string) => void;
 }): JSX.Element {
-  const { archetype, detail, label, panelWidth, panelHeight, whiteBox = false, onFieldClick } = props;
+  const { archetype, detail, label, panelWidth, panelHeight, onFieldClick } = props;
   const { model, companion } = buildArchetype(archetype);
   // Pass the nN block so the auto-fit bounds INCLUDE the nN tier the component
   // draws (transformer boundary + nN busbar + feeders + PV) — otherwise the nN
   // side overflows the panel. ONE geometry source (N-5) feeds both fit + render.
   const geometry = computeStationGeometry(model.fields, detail, model.nnBlock);
-  // When the White Box is expanded, the derivation panels extend ~320 px below
-  // and ~360 px to the right of the station — include that in the fit bounds.
-  const bounds = whiteBox
-    ? {
-        x: geometry.bounds.x,
-        y: geometry.bounds.y,
-        width: geometry.bounds.width + 360,
-        height: geometry.bounds.height + 320,
-      }
-    : geometry.bounds;
+  const bounds = geometry.bounds;
   // Fit content into the panel with margin; never upscale past a readable cap.
   const margin = 24;
   const scale = Math.min(
@@ -77,7 +67,7 @@ function LevelPanel(props: {
 
   return (
     <div
-      data-testid={`sr-harness-panel-${whiteBox ? 'whitebox' : detail}`}
+      data-testid={`sr-harness-panel-${detail}`}
       data-detail={detail}
       style={{
         border: '1px solid #13435A',
@@ -112,7 +102,6 @@ function LevelPanel(props: {
             model={model}
             companion={companion}
             detail={detail}
-            whiteBox={whiteBox}
             onFieldClick={onFieldClick}
           />
         </g>
@@ -181,17 +170,6 @@ function Harness(): JSX.Element {
             onFieldClick={(fieldId) => setLastClick(fieldId)}
           />
         ))}
-        {/* Gate D — the deepest L2 view: the complete engineering object with the
-            expanded White Box derivation (short circuit + voltage) for the SN busbar. */}
-        <LevelPanel
-          archetype={archetype}
-          detail="close"
-          label="szczyt — kompletny obiekt: White Box (zwarcie + napięcie) A→B→C→D"
-          panelWidth={PANEL_W}
-          panelHeight={520}
-          whiteBox
-          onFieldClick={(fieldId) => setLastClick(fieldId)}
-        />
       </div>
     </div>
   );

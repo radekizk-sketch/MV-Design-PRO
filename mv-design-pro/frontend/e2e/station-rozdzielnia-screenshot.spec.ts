@@ -46,20 +46,21 @@ test.describe('sld:station-rozdzielnia:screenshot', () => {
       await expect(root).toHaveAttribute('data-status', 'ready', { timeout: 15000 });
       await expect(root).toHaveAttribute('data-archetype', archetype);
 
-      // Three responsive detail levels + the gate-D White Box panel.
+      // Three responsive detail levels (the SLD is back to far/closer/close —
+      // the White Box derivation lives off-canvas, owner B-02).
       await expect(page.locator('[data-testid="sr-harness-panel-far"]')).toBeVisible();
       await expect(page.locator('[data-testid="sr-harness-panel-closer"]')).toBeVisible();
       await expect(page.locator('[data-testid="sr-harness-panel-close"]')).toBeVisible();
-      await expect(page.locator('[data-testid="sr-harness-panel-whitebox"]')).toBeVisible();
 
-      // The unit renders (busbar + fields) at every level (3 levels + White Box).
+      // The unit renders (busbar + fields) at every level (3 levels).
       const units = page.locator(`[data-testid="station-rozdzielnia-sr-${archetype.toLowerCase()}"]`);
-      expect(await units.count()).toBe(4);
+      expect(await units.count()).toBe(3);
       // At least one main busbar per panel.
       const busbars = page.locator('[data-testid^="sr-busbar-sr-"]');
-      expect(await busbars.count()).toBeGreaterThanOrEqual(4);
-      // Gate D — the expanded White Box derivation is present in the composite.
-      await expect(page.locator('[data-whitebox="expanded"]').first()).toBeVisible();
+      expect(await busbars.count()).toBeGreaterThanOrEqual(3);
+      // Owner B-02 render proof: NO derivation blocks on the canvas.
+      expect(await page.locator('[data-whitebox="expanded"]').count()).toBe(0);
+      expect(await page.locator('[data-testid^="sr-wb-"]').count()).toBe(0);
 
       await page.waitForTimeout(400);
 
