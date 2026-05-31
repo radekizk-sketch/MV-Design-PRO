@@ -159,4 +159,46 @@ describe('GATE C — N-8: apparatus identity is LOD-invariant + canonical shapes
       expect(container.querySelector('[data-symbol-shape="diamond"]')).toBeTruthy();
     }
   });
+
+  it('GATE C extended — the coupler WYŁĄCZNIK is enumerated as a SQUARE at every LOD', () => {
+    // The owner's contradiction fix: C must cover ALL breakers, including the
+    // sprzęgło breaker — which must be a □ (square), never a ⊘ glyph.
+    for (const detail of DETAILS) {
+      const { container } = renderAt('T4', detail);
+      const breaker = container.querySelector('[data-testid="sr-coupler-breaker"]');
+      expect(breaker, `coupler breaker missing @ ${detail}`).toBeTruthy();
+      expect(
+        breaker!.getAttribute('data-symbol-shape'),
+        `coupler breaker must be a square @ ${detail}`,
+      ).toBe('square');
+    }
+  });
+
+  it('STATE ≠ SHAPE — open vs closed breaker keep the SAME square shape; state via data-state', () => {
+    // Closed breaker (T2 CBC incomer) and open breaker (T4 coupler NOP) are BOTH
+    // squares — the difference is colour/state, never the shape.
+    const t2 = renderAt('T2', 'close').container;
+    const closedCb = t2.querySelector('[data-symbol-shape="square"][data-state="closed"]');
+    expect(closedCb, 'a closed breaker square must exist (T2 CBC)').toBeTruthy();
+
+    const t4 = renderAt('T4', 'close').container;
+    const openBreaker = t4.querySelector('[data-testid="sr-coupler-breaker"]');
+    expect(openBreaker!.getAttribute('data-symbol-shape')).toBe('square');
+    expect(openBreaker!.getAttribute('data-state')).toBe('open');
+  });
+
+  it('NO ⊘ prohibition glyph anywhere in the station-rozdzielnia render', () => {
+    // The NOP is a red OPEN square + a "NOP" text tag — never a ⊘/⨯ overlay.
+    for (const archetype of ['T1', 'T2', 'T3', 'T4'] as const) {
+      const { container } = renderAt(archetype, 'close');
+      expect(container.textContent ?? '').not.toContain('⊘');
+      expect(container.textContent ?? '').not.toContain('⨯');
+      expect(container.textContent ?? '').not.toContain('⊗');
+    }
+    // The T4 NOP is a text tag, present and red.
+    const t4 = renderAt('T4', 'close').container;
+    const nop = t4.querySelector('[data-testid="sr-coupler-nop"]');
+    expect(nop, 'NOP tag must be present on the open coupler').toBeTruthy();
+    expect(nop!.textContent).toBe('NOP');
+  });
 });
