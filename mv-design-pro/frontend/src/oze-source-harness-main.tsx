@@ -23,8 +23,9 @@ const NAMES: Record<string, string> = {
   G1: 'PV prosumencka nN',
   G2: 'Farma PV — falowniki nN + trafo',
   G3: 'Farma PV — falowniki SN',
+  'G4-PVTR': 'PV 1 MW przez stację TR konsumencką',
 };
-const CODES: Record<string, string> = { G1: 'PV-01', G2: 'PV-02', G3: 'PV-03' };
+const CODES: Record<string, string> = { G1: 'PV-01', G2: 'PV-02', G3: 'PV-03', 'G4-PVTR': 'PV-1MW' };
 
 function readArchetype(): string {
   const raw = new URLSearchParams(window.location.search).get('archetype');

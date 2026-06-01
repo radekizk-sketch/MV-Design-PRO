@@ -83,23 +83,23 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "NN_BUS",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 0.01587809523809524,
-                    "re": 0.00032000160000000014
+                    "im": 0.0158780952381,
+                    "re": 0.0003200016
                   },
                   "z2_ohm": {
-                    "im": 0.01587809523809524,
-                    "re": 0.00032000160000000014
+                    "im": 0.0158780952381,
+                    "re": 0.0003200016
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.00032000160000000014,
-                  "x_ohm": 0.01587809523809524,
-                  "z_equiv_abs_ohm": 0.015881319511111956,
+                  "r_ohm": 0.0003200016,
+                  "x_ohm": 0.0158780952381,
+                  "z_equiv_abs_ohm": 0.0158813195111,
                   "z_equiv_ohm": {
-                    "im": 0.01587809523809524,
-                    "re": 0.00032000160000000014
+                    "im": 0.0158780952381,
+                    "re": 0.0003200016
                   }
                 },
                 "substitution": "\\left(0.000320002 + j 0.0158781\\right)",
@@ -111,13 +111,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "inputs": {
                   "c_factor": 1.1,
                   "un_v": 400.0,
-                  "voltage_factor": 0.5773502691896258,
-                  "z_equiv_abs_ohm": 0.015881319511111956
+                  "voltage_factor": 0.57735026919,
+                  "z_equiv_abs_ohm": 0.0158813195111
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 16082.384141881454
+                  "ikss_a": 16082.3841419
                 },
                 "substitution": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.0158813}",
                 "substitution_latex": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.0158813}",
@@ -126,14 +126,14 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.00032000160000000014,
-                  "rx_ratio": 0.020153651631477934,
-                  "x_ohm": 0.01587809523809524
+                  "r_ohm": 0.0003200016,
+                  "rx_ratio": 0.0201536516315,
+                  "x_ohm": 0.0158780952381
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.9425039121974956
+                  "kappa": 1.9425039122
                 },
                 "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0201537}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0201537}",
@@ -142,13 +142,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 16082.384141881454,
-                  "kappa": 1.9425039121974956
+                  "ikss_a": 16082.3841419,
+                  "kappa": 1.9425039122
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 44180.164784512206
+                  "ip_a": 44180.1647845
                 },
                 "substitution": "1.9425 \\cdot \\sqrt{2} \\cdot 16082.4",
                 "substitution_latex": "1.9425 \\cdot \\sqrt{2} \\cdot 16082.4",
@@ -157,16 +157,16 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 0.5309190916707444,
-                  "ikss_a": 16082.384141881454,
-                  "kappa": 1.9425039121974956,
-                  "ta_s": 0.15794154429394985,
+                  "exp_factor": 0.530919091671,
+                  "ikss_a": 16082.3841419,
+                  "kappa": 1.9425039122,
+                  "ta_s": 0.157941544294,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 17983.481847674695
+                  "ib_a": 17983.4818477
                 },
                 "substitution": "16082.4 \\cdot \\sqrt{1 + \\left((1.9425 - 1) \\cdot 0.530919\\right)^2}",
                 "substitution_latex": "16082.4 \\cdot \\sqrt{1 + \\left((1.9425 - 1) \\cdot 0.530919\\right)^2}",
@@ -175,13 +175,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 16082.384141881454,
+                  "ikss_a": 16082.3841419,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 16082.384141881454
+                  "ith_a": 16082.3841419
                 },
                 "substitution": "16082.4 \\cdot \\sqrt{1}",
                 "substitution_latex": "16082.4 \\cdot \\sqrt{1}",
@@ -190,13 +190,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 16082.384141881454,
+                  "ikss_a": 16082.3841419,
                   "un_v": 400.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 11.14220257623147
+                  "sk_mva": 11.1422025762
                 },
                 "substitution": "\\sqrt{3} \\cdot 400 \\cdot 16082.4 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 16082.4 / 10^6",
@@ -218,23 +218,23 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "NN_BUS",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 0.01587809523809524,
-                    "re": 0.00032000160000000014
+                    "im": 0.0158780952381,
+                    "re": 0.0003200016
                   },
                   "z2_ohm": {
-                    "im": 0.01587809523809524,
-                    "re": 0.00032000160000000014
+                    "im": 0.0158780952381,
+                    "re": 0.0003200016
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.00032000160000000014,
-                  "x_ohm": 0.01587809523809524,
-                  "z_equiv_abs_ohm": 0.015881319511111956,
+                  "r_ohm": 0.0003200016,
+                  "x_ohm": 0.0158780952381,
+                  "z_equiv_abs_ohm": 0.0158813195111,
                   "z_equiv_ohm": {
-                    "im": 0.01587809523809524,
-                    "re": 0.00032000160000000014
+                    "im": 0.0158780952381,
+                    "re": 0.0003200016
                   }
                 },
                 "substitution": "\\left(0.000320002 + j 0.0158781\\right)",
@@ -246,13 +246,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "inputs": {
                   "c_factor": 0.95,
                   "un_v": 400.0,
-                  "voltage_factor": 0.5773502691896258,
-                  "z_equiv_abs_ohm": 0.015881319511111956
+                  "voltage_factor": 0.57735026919,
+                  "z_equiv_abs_ohm": 0.0158813195111
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 13901.14119622195
+                  "ikss_a": 13901.1411962
                 },
                 "substitution": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.0158813}",
                 "substitution_latex": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.0158813}",
@@ -261,14 +261,14 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.00032000160000000014,
-                  "rx_ratio": 0.020153651631477934,
-                  "x_ohm": 0.01587809523809524
+                  "r_ohm": 0.0003200016,
+                  "rx_ratio": 0.0201536516315,
+                  "x_ohm": 0.0158780952381
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.9425039121974956
+                  "kappa": 1.9425039122
                 },
                 "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0201537}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0201537}",
@@ -277,13 +277,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 13901.14119622195,
-                  "kappa": 1.9425039121974956
+                  "ikss_a": 13901.1411962,
+                  "kappa": 1.9425039122
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 38188.03874622584
+                  "ip_a": 38188.0387462
                 },
                 "substitution": "1.9425 \\cdot \\sqrt{2} \\cdot 13901.1",
                 "substitution_latex": "1.9425 \\cdot \\sqrt{2} \\cdot 13901.1",
@@ -292,16 +292,16 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 0.5309190916707444,
-                  "ikss_a": 13901.14119622195,
-                  "kappa": 1.9425039121974956,
-                  "ta_s": 0.15794154429394985,
+                  "exp_factor": 0.530919091671,
+                  "ikss_a": 13901.1411962,
+                  "kappa": 1.9425039122,
+                  "ta_s": 0.157941544294,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 15544.394298678546
+                  "ib_a": 15544.3942987
                 },
                 "substitution": "13901.1 \\cdot \\sqrt{1 + \\left((1.9425 - 1) \\cdot 0.530919\\right)^2}",
                 "substitution_latex": "13901.1 \\cdot \\sqrt{1 + \\left((1.9425 - 1) \\cdot 0.530919\\right)^2}",
@@ -310,13 +310,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 13901.14119622195,
+                  "ikss_a": 13901.1411962,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 13901.14119622195
+                  "ith_a": 13901.1411962
                 },
                 "substitution": "13901.1 \\cdot \\sqrt{1}",
                 "substitution_latex": "13901.1 \\cdot \\sqrt{1}",
@@ -325,13 +325,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 13901.14119622195,
+                  "ikss_a": 13901.1411962,
                   "un_v": 400.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 9.630993134018086
+                  "sk_mva": 9.63099313402
                 },
                 "substitution": "\\sqrt{3} \\cdot 400 \\cdot 13901.1 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 13901.1 / 10^6",
@@ -374,22 +374,22 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "short_circuit_type": "3F",
                   "z1_ohm": {
                     "im": 0.9,
-                    "re": 0.45000225000000016
+                    "re": 0.45000225
                   },
                   "z2_ohm": {
                     "im": 0.9,
-                    "re": 0.45000225000000016
+                    "re": 0.45000225
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.45000225000000016,
+                  "r_ohm": 0.45000225,
                   "x_ohm": 0.9,
-                  "z_equiv_abs_ohm": 1.006231596107508,
+                  "z_equiv_abs_ohm": 1.00623159611,
                   "z_equiv_ohm": {
                     "im": 0.9,
-                    "re": 0.45000225000000016
+                    "re": 0.45000225
                   }
                 },
                 "substitution": "\\left(0.450002 + j 0.9\\right)",
@@ -401,13 +401,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "inputs": {
                   "c_factor": 1.1,
                   "un_v": 15000.0,
-                  "voltage_factor": 0.5773502691896258,
-                  "z_equiv_abs_ohm": 1.006231596107508
+                  "voltage_factor": 0.57735026919,
+                  "z_equiv_abs_ohm": 1.00623159611
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 9553.885697138927
+                  "ikss_a": 9553.88569714
                 },
                 "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
@@ -416,14 +416,14 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.45000225000000016,
-                  "rx_ratio": 0.5000025000000001,
+                  "r_ohm": 0.45000225,
+                  "rx_ratio": 0.5000025,
                   "x_ohm": 0.9
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.238665916944934
+                  "kappa": 1.23866591694
                 },
                 "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
@@ -432,13 +432,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 9553.885697138927,
-                  "kappa": 1.238665916944934
+                  "ikss_a": 9553.88569714,
+                  "kappa": 1.23866591694
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 16735.905951256376
+                  "ip_a": 16735.9059513
                 },
                 "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 9553.89",
                 "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 9553.89",
@@ -447,16 +447,16 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 1.5068989191779237e-07,
-                  "ikss_a": 9553.885697138927,
-                  "kappa": 1.238665916944934,
-                  "ta_s": 0.006366165892846347,
+                  "exp_factor": 1.50689891918e-07,
+                  "ikss_a": 9553.88569714,
+                  "kappa": 1.23866591694,
+                  "ta_s": 0.00636616589285,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 9553.885697138932
+                  "ib_a": 9553.88569714
                 },
                 "substitution": "9553.89 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
                 "substitution_latex": "9553.89 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
@@ -465,13 +465,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 9553.885697138927,
+                  "ikss_a": 9553.88569714,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 9553.885697138927
+                  "ith_a": 9553.88569714
                 },
                 "substitution": "9553.89 \\cdot \\sqrt{1}",
                 "substitution_latex": "9553.89 \\cdot \\sqrt{1}",
@@ -480,13 +480,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 9553.885697138927,
+                  "ikss_a": 9553.88569714,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 248.21723155725337
+                  "sk_mva": 248.217231557
                 },
                 "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9553.89 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9553.89 / 10^6",
@@ -509,22 +509,22 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "short_circuit_type": "3F",
                   "z1_ohm": {
                     "im": 0.9,
-                    "re": 0.45000225000000016
+                    "re": 0.45000225
                   },
                   "z2_ohm": {
                     "im": 0.9,
-                    "re": 0.45000225000000016
+                    "re": 0.45000225
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.45000225000000016,
+                  "r_ohm": 0.45000225,
                   "x_ohm": 0.9,
-                  "z_equiv_abs_ohm": 1.006231596107508,
+                  "z_equiv_abs_ohm": 1.00623159611,
                   "z_equiv_ohm": {
                     "im": 0.9,
-                    "re": 0.45000225000000016
+                    "re": 0.45000225
                   }
                 },
                 "substitution": "\\left(0.450002 + j 0.9\\right)",
@@ -536,13 +536,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "inputs": {
                   "c_factor": 0.95,
                   "un_v": 15000.0,
-                  "voltage_factor": 0.5773502691896258,
-                  "z_equiv_abs_ohm": 1.006231596107508
+                  "voltage_factor": 0.57735026919,
+                  "z_equiv_abs_ohm": 1.00623159611
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 8262.892539398861
+                  "ikss_a": 8262.8925394
                 },
                 "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
@@ -551,14 +551,14 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.45000225000000016,
-                  "rx_ratio": 0.5000025000000001,
+                  "r_ohm": 0.45000225,
+                  "rx_ratio": 0.5000025,
                   "x_ohm": 0.9
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.238665916944934
+                  "kappa": 1.23866591694
                 },
                 "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
@@ -567,13 +567,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 8262.892539398861,
-                  "kappa": 1.238665916944934
+                  "ikss_a": 8262.8925394,
+                  "kappa": 1.23866591694
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 14474.423999664314
+                  "ip_a": 14474.4239997
                 },
                 "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 8262.89",
                 "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8262.89",
@@ -582,16 +582,16 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 1.5068989191779237e-07,
-                  "ikss_a": 8262.892539398861,
-                  "kappa": 1.238665916944934,
-                  "ta_s": 0.006366165892846347,
+                  "exp_factor": 1.50689891918e-07,
+                  "ikss_a": 8262.8925394,
+                  "kappa": 1.23866591694,
+                  "ta_s": 0.00636616589285,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 8262.892539398867
+                  "ib_a": 8262.8925394
                 },
                 "substitution": "8262.89 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
                 "substitution_latex": "8262.89 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
@@ -600,13 +600,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 8262.892539398861,
+                  "ikss_a": 8262.8925394,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 8262.892539398861
+                  "ith_a": 8262.8925394
                 },
                 "substitution": "8262.89 \\cdot \\sqrt{1}",
                 "substitution_latex": "8262.89 \\cdot \\sqrt{1}",
@@ -615,13 +615,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 8262.892539398861,
+                  "ikss_a": 8262.8925394,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 214.6762454358097
+                  "sk_mva": 214.676245436
                 },
                 "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8262.89 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8262.89 / 10^6",
@@ -788,23 +788,23 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "NN_COLLECTOR",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 0.010240000000000003,
-                    "re": 0.00032000160000000014
+                    "im": 0.01024,
+                    "re": 0.0003200016
                   },
                   "z2_ohm": {
-                    "im": 0.010240000000000003,
-                    "re": 0.00032000160000000014
+                    "im": 0.01024,
+                    "re": 0.0003200016
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.00032000160000000014,
-                  "x_ohm": 0.010240000000000003,
-                  "z_equiv_abs_ohm": 0.010244998829868289,
+                  "r_ohm": 0.0003200016,
+                  "x_ohm": 0.01024,
+                  "z_equiv_abs_ohm": 0.0102449988299,
                   "z_equiv_ohm": {
-                    "im": 0.010240000000000003,
-                    "re": 0.00032000160000000014
+                    "im": 0.01024,
+                    "re": 0.0003200016
                   }
                 },
                 "substitution": "\\left(0.000320002 + j 0.01024\\right)",
@@ -816,13 +816,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "inputs": {
                   "c_factor": 1.1,
                   "un_v": 400.0,
-                  "voltage_factor": 0.5773502691896258,
-                  "z_equiv_abs_ohm": 0.010244998829868289
+                  "voltage_factor": 0.57735026919,
+                  "z_equiv_abs_ohm": 0.0102449988299
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 26510.645131891593
+                  "ikss_a": 26510.6451319
                 },
                 "substitution": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.010245}",
                 "substitution_latex": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.010245}",
@@ -831,14 +831,14 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.00032000160000000014,
-                  "rx_ratio": 0.03125015625000001,
-                  "x_ohm": 0.010240000000000003
+                  "r_ohm": 0.0003200016,
+                  "rx_ratio": 0.03125015625,
+                  "x_ohm": 0.01024
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.912299735886834
+                  "kappa": 1.91229973589
                 },
                 "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0312502}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0312502}",
@@ -847,13 +847,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 26510.645131891593,
-                  "kappa": 1.912299735886834
+                  "ikss_a": 26510.6451319,
+                  "kappa": 1.91229973589
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 71695.39457511055
+                  "ip_a": 71695.3945751
                 },
                 "substitution": "1.9123 \\cdot \\sqrt{2} \\cdot 26510.6",
                 "substitution_latex": "1.9123 \\cdot \\sqrt{2} \\cdot 26510.6",
@@ -862,16 +862,16 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 0.37465389982201375,
-                  "ikss_a": 26510.645131891593,
-                  "kappa": 1.912299735886834,
-                  "ta_s": 0.10185865428554157,
+                  "exp_factor": 0.374653899822,
+                  "ikss_a": 26510.6451319,
+                  "kappa": 1.91229973589,
+                  "ta_s": 0.101858654286,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 28016.433627510196
+                  "ib_a": 28016.4336275
                 },
                 "substitution": "26510.6 \\cdot \\sqrt{1 + \\left((1.9123 - 1) \\cdot 0.374654\\right)^2}",
                 "substitution_latex": "26510.6 \\cdot \\sqrt{1 + \\left((1.9123 - 1) \\cdot 0.374654\\right)^2}",
@@ -880,13 +880,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 26510.645131891593,
+                  "ikss_a": 26510.6451319,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 26510.645131891593
+                  "ith_a": 26510.6451319
                 },
                 "substitution": "26510.6 \\cdot \\sqrt{1}",
                 "substitution_latex": "26510.6 \\cdot \\sqrt{1}",
@@ -895,13 +895,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 26510.645131891593,
+                  "ikss_a": 26510.6451319,
                   "un_v": 400.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 18.367113723945906
+                  "sk_mva": 18.3671137239
                 },
                 "substitution": "\\sqrt{3} \\cdot 400 \\cdot 26510.6 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 26510.6 / 10^6",
@@ -923,23 +923,23 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "NN_COLLECTOR",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 0.010240000000000003,
-                    "re": 0.00032000160000000014
+                    "im": 0.01024,
+                    "re": 0.0003200016
                   },
                   "z2_ohm": {
-                    "im": 0.010240000000000003,
-                    "re": 0.00032000160000000014
+                    "im": 0.01024,
+                    "re": 0.0003200016
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.00032000160000000014,
-                  "x_ohm": 0.010240000000000003,
-                  "z_equiv_abs_ohm": 0.010244998829868289,
+                  "r_ohm": 0.0003200016,
+                  "x_ohm": 0.01024,
+                  "z_equiv_abs_ohm": 0.0102449988299,
                   "z_equiv_ohm": {
-                    "im": 0.010240000000000003,
-                    "re": 0.00032000160000000014
+                    "im": 0.01024,
+                    "re": 0.0003200016
                   }
                 },
                 "substitution": "\\left(0.000320002 + j 0.01024\\right)",
@@ -951,13 +951,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "inputs": {
                   "c_factor": 0.95,
                   "un_v": 400.0,
-                  "voltage_factor": 0.5773502691896258,
-                  "z_equiv_abs_ohm": 0.010244998829868289
+                  "voltage_factor": 0.57735026919,
+                  "z_equiv_abs_ohm": 0.0102449988299
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 23129.384018382716
+                  "ikss_a": 23129.3840184
                 },
                 "substitution": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.010245}",
                 "substitution_latex": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.010245}",
@@ -966,14 +966,14 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.00032000160000000014,
-                  "rx_ratio": 0.03125015625000001,
-                  "x_ohm": 0.010240000000000003
+                  "r_ohm": 0.0003200016,
+                  "rx_ratio": 0.03125015625,
+                  "x_ohm": 0.01024
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.912299735886834
+                  "kappa": 1.91229973589
                 },
                 "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0312502}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0312502}",
@@ -982,13 +982,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 23129.384018382716,
-                  "kappa": 1.912299735886834
+                  "ikss_a": 23129.3840184,
+                  "kappa": 1.91229973589
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 62551.11126972728
+                  "ip_a": 62551.1112697
                 },
                 "substitution": "1.9123 \\cdot \\sqrt{2} \\cdot 23129.4",
                 "substitution_latex": "1.9123 \\cdot \\sqrt{2} \\cdot 23129.4",
@@ -997,16 +997,16 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 0.37465389982201375,
-                  "ikss_a": 23129.384018382716,
-                  "kappa": 1.912299735886834,
-                  "ta_s": 0.10185865428554157,
+                  "exp_factor": 0.374653899822,
+                  "ikss_a": 23129.3840184,
+                  "kappa": 1.91229973589,
+                  "ta_s": 0.101858654286,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 24443.11894231063
+                  "ib_a": 24443.1189423
                 },
                 "substitution": "23129.4 \\cdot \\sqrt{1 + \\left((1.9123 - 1) \\cdot 0.374654\\right)^2}",
                 "substitution_latex": "23129.4 \\cdot \\sqrt{1 + \\left((1.9123 - 1) \\cdot 0.374654\\right)^2}",
@@ -1015,13 +1015,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 23129.384018382716,
+                  "ikss_a": 23129.3840184,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 23129.384018382716
+                  "ith_a": 23129.3840184
                 },
                 "substitution": "23129.4 \\cdot \\sqrt{1}",
                 "substitution_latex": "23129.4 \\cdot \\sqrt{1}",
@@ -1030,13 +1030,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 23129.384018382716,
+                  "ikss_a": 23129.3840184,
                   "un_v": 400.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 16.024507307044185
+                  "sk_mva": 16.024507307
                 },
                 "substitution": "\\sqrt{3} \\cdot 400 \\cdot 23129.4 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 23129.4 / 10^6",
@@ -1079,22 +1079,22 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "short_circuit_type": "3F",
                   "z1_ohm": {
                     "im": 0.9,
-                    "re": 0.45000225000000016
+                    "re": 0.45000225
                   },
                   "z2_ohm": {
                     "im": 0.9,
-                    "re": 0.45000225000000016
+                    "re": 0.45000225
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.45000225000000016,
+                  "r_ohm": 0.45000225,
                   "x_ohm": 0.9,
-                  "z_equiv_abs_ohm": 1.006231596107508,
+                  "z_equiv_abs_ohm": 1.00623159611,
                   "z_equiv_ohm": {
                     "im": 0.9,
-                    "re": 0.45000225000000016
+                    "re": 0.45000225
                   }
                 },
                 "substitution": "\\left(0.450002 + j 0.9\\right)",
@@ -1106,13 +1106,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "inputs": {
                   "c_factor": 1.1,
                   "un_v": 15000.0,
-                  "voltage_factor": 0.5773502691896258,
-                  "z_equiv_abs_ohm": 1.006231596107508
+                  "voltage_factor": 0.57735026919,
+                  "z_equiv_abs_ohm": 1.00623159611
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 11182.013456253671
+                  "ikss_a": 11182.0134563
                 },
                 "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
@@ -1121,14 +1121,14 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.45000225000000016,
-                  "rx_ratio": 0.5000025000000001,
+                  "r_ohm": 0.45000225,
+                  "rx_ratio": 0.5000025,
                   "x_ohm": 0.9
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.238665916944934
+                  "kappa": 1.23866591694
                 },
                 "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
@@ -1137,13 +1137,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 11182.013456253671,
-                  "kappa": 1.238665916944934
+                  "ikss_a": 11182.0134563,
+                  "kappa": 1.23866591694
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 19587.959442050607
+                  "ip_a": 19587.9594421
                 },
                 "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 11182",
                 "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 11182",
@@ -1152,16 +1152,16 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 1.5068989191779237e-07,
-                  "ikss_a": 11182.013456253671,
-                  "kappa": 1.238665916944934,
-                  "ta_s": 0.006366165892846347,
+                  "exp_factor": 1.50689891918e-07,
+                  "ikss_a": 11182.0134563,
+                  "kappa": 1.23866591694,
+                  "ta_s": 0.00636616589285,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 11182.013456253679
+                  "ib_a": 11182.0134563
                 },
                 "substitution": "11182 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
                 "substitution_latex": "11182 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
@@ -1170,13 +1170,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 11182.013456253671,
+                  "ikss_a": 11182.0134563,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 11182.013456253671
+                  "ith_a": 11182.0134563
                 },
                 "substitution": "11182 \\cdot \\sqrt{1}",
                 "substitution_latex": "11182 \\cdot \\sqrt{1}",
@@ -1185,13 +1185,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 11182.013456253671,
+                  "ikss_a": 11182.0134563,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 290.51723155725335
+                  "sk_mva": 290.517231557
                 },
                 "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 11182 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 11182 / 10^6",
@@ -1214,22 +1214,22 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "short_circuit_type": "3F",
                   "z1_ohm": {
                     "im": 0.9,
-                    "re": 0.45000225000000016
+                    "re": 0.45000225
                   },
                   "z2_ohm": {
                     "im": 0.9,
-                    "re": 0.45000225000000016
+                    "re": 0.45000225
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.45000225000000016,
+                  "r_ohm": 0.45000225,
                   "x_ohm": 0.9,
-                  "z_equiv_abs_ohm": 1.006231596107508,
+                  "z_equiv_abs_ohm": 1.00623159611,
                   "z_equiv_ohm": {
                     "im": 0.9,
-                    "re": 0.45000225000000016
+                    "re": 0.45000225
                   }
                 },
                 "substitution": "\\left(0.450002 + j 0.9\\right)",
@@ -1241,13 +1241,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "inputs": {
                   "c_factor": 0.95,
                   "un_v": 15000.0,
-                  "voltage_factor": 0.5773502691896258,
-                  "z_equiv_abs_ohm": 1.006231596107508
+                  "voltage_factor": 0.57735026919,
+                  "z_equiv_abs_ohm": 1.00623159611
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 9891.020298513606
+                  "ikss_a": 9891.02029851
                 },
                 "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
@@ -1256,14 +1256,14 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.45000225000000016,
-                  "rx_ratio": 0.5000025000000001,
+                  "r_ohm": 0.45000225,
+                  "rx_ratio": 0.5000025,
                   "x_ohm": 0.9
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.238665916944934
+                  "kappa": 1.23866591694
                 },
                 "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
@@ -1272,13 +1272,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 9891.020298513606,
-                  "kappa": 1.238665916944934
+                  "ikss_a": 9891.02029851,
+                  "kappa": 1.23866591694
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 17326.477490458547
+                  "ip_a": 17326.4774905
                 },
                 "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 9891.02",
                 "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 9891.02",
@@ -1287,16 +1287,16 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 1.5068989191779237e-07,
-                  "ikss_a": 9891.020298513606,
-                  "kappa": 1.238665916944934,
-                  "ta_s": 0.006366165892846347,
+                  "exp_factor": 1.50689891918e-07,
+                  "ikss_a": 9891.02029851,
+                  "kappa": 1.23866591694,
+                  "ta_s": 0.00636616589285,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 9891.020298513613
+                  "ib_a": 9891.02029851
                 },
                 "substitution": "9891.02 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
                 "substitution_latex": "9891.02 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
@@ -1305,13 +1305,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 9891.020298513606,
+                  "ikss_a": 9891.02029851,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 9891.020298513606
+                  "ith_a": 9891.02029851
                 },
                 "substitution": "9891.02 \\cdot \\sqrt{1}",
                 "substitution_latex": "9891.02 \\cdot \\sqrt{1}",
@@ -1320,13 +1320,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 9891.020298513606,
+                  "ikss_a": 9891.02029851,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 256.9762454358097
+                  "sk_mva": 256.976245436
                 },
                 "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9891.02 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9891.02 / 10^6",
@@ -1483,23 +1483,23 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "PCC_SN",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 0.9000000000000006,
-                    "re": 0.45000225000000066
+                    "im": 0.9,
+                    "re": 0.45000225
                   },
                   "z2_ohm": {
-                    "im": 0.9000000000000006,
-                    "re": 0.45000225000000066
+                    "im": 0.9,
+                    "re": 0.45000225
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.45000225000000066,
-                  "x_ohm": 0.9000000000000006,
-                  "z_equiv_abs_ohm": 1.0062315961075086,
+                  "r_ohm": 0.45000225,
+                  "x_ohm": 0.9,
+                  "z_equiv_abs_ohm": 1.00623159611,
                   "z_equiv_ohm": {
-                    "im": 0.9000000000000006,
-                    "re": 0.45000225000000066
+                    "im": 0.9,
+                    "re": 0.45000225
                   }
                 },
                 "substitution": "\\left(0.450002 + j 0.9\\right)",
@@ -1511,13 +1511,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "inputs": {
                   "c_factor": 1.1,
                   "un_v": 15000.0,
-                  "voltage_factor": 0.5773502691896258,
-                  "z_equiv_abs_ohm": 1.0062315961075086
+                  "voltage_factor": 0.57735026919,
+                  "z_equiv_abs_ohm": 1.00623159611
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 9536.565189063233
+                  "ikss_a": 9536.56518906
                 },
                 "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
@@ -1526,14 +1526,14 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.45000225000000066,
-                  "rx_ratio": 0.5000025000000005,
-                  "x_ohm": 0.9000000000000006
+                  "r_ohm": 0.45000225,
+                  "rx_ratio": 0.5000025,
+                  "x_ohm": 0.9
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.2386659169449339
+                  "kappa": 1.23866591694
                 },
                 "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
@@ -1542,13 +1542,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 9536.565189063233,
-                  "kappa": 1.2386659169449339
+                  "ikss_a": 9536.56518906,
+                  "kappa": 1.23866591694
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 16705.564956673446
+                  "ip_a": 16705.5649567
                 },
                 "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 9536.57",
                 "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 9536.57",
@@ -1557,16 +1557,16 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 1.5068989191779157e-07,
-                  "ikss_a": 9536.565189063233,
-                  "kappa": 1.2386659169449339,
-                  "ta_s": 0.006366165892846345,
+                  "exp_factor": 1.50689891918e-07,
+                  "ikss_a": 9536.56518906,
+                  "kappa": 1.23866591694,
+                  "ta_s": 0.00636616589285,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 9536.565189063238
+                  "ib_a": 9536.56518906
                 },
                 "substitution": "9536.57 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
                 "substitution_latex": "9536.57 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
@@ -1575,13 +1575,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 9536.565189063233,
+                  "ikss_a": 9536.56518906,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 9536.565189063233
+                  "ith_a": 9536.56518906
                 },
                 "substitution": "9536.57 \\cdot \\sqrt{1}",
                 "substitution_latex": "9536.57 \\cdot \\sqrt{1}",
@@ -1590,13 +1590,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 9536.565189063233,
+                  "ikss_a": 9536.56518906,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 247.7672315572532
+                  "sk_mva": 247.767231557
                 },
                 "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9536.57 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9536.57 / 10^6",
@@ -1618,23 +1618,23 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "PCC_SN",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 0.9000000000000006,
-                    "re": 0.45000225000000066
+                    "im": 0.9,
+                    "re": 0.45000225
                   },
                   "z2_ohm": {
-                    "im": 0.9000000000000006,
-                    "re": 0.45000225000000066
+                    "im": 0.9,
+                    "re": 0.45000225
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.45000225000000066,
-                  "x_ohm": 0.9000000000000006,
-                  "z_equiv_abs_ohm": 1.0062315961075086,
+                  "r_ohm": 0.45000225,
+                  "x_ohm": 0.9,
+                  "z_equiv_abs_ohm": 1.00623159611,
                   "z_equiv_ohm": {
-                    "im": 0.9000000000000006,
-                    "re": 0.45000225000000066
+                    "im": 0.9,
+                    "re": 0.45000225
                   }
                 },
                 "substitution": "\\left(0.450002 + j 0.9\\right)",
@@ -1646,13 +1646,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "inputs": {
                   "c_factor": 0.95,
                   "un_v": 15000.0,
-                  "voltage_factor": 0.5773502691896258,
-                  "z_equiv_abs_ohm": 1.0062315961075086
+                  "voltage_factor": 0.57735026919,
+                  "z_equiv_abs_ohm": 1.00623159611
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 8245.572031323167
+                  "ikss_a": 8245.57203132
                 },
                 "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
@@ -1661,14 +1661,14 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.45000225000000066,
-                  "rx_ratio": 0.5000025000000005,
-                  "x_ohm": 0.9000000000000006
+                  "r_ohm": 0.45000225,
+                  "rx_ratio": 0.5000025,
+                  "x_ohm": 0.9
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.2386659169449339
+                  "kappa": 1.23866591694
                 },
                 "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
@@ -1677,13 +1677,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 8245.572031323167,
-                  "kappa": 1.2386659169449339
+                  "ikss_a": 8245.57203132,
+                  "kappa": 1.23866591694
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 14444.083005081384
+                  "ip_a": 14444.0830051
                 },
                 "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 8245.57",
                 "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8245.57",
@@ -1692,16 +1692,16 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 1.5068989191779157e-07,
-                  "ikss_a": 8245.572031323167,
-                  "kappa": 1.2386659169449339,
-                  "ta_s": 0.006366165892846345,
+                  "exp_factor": 1.50689891918e-07,
+                  "ikss_a": 8245.57203132,
+                  "kappa": 1.23866591694,
+                  "ta_s": 0.00636616589285,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 8245.572031323172
+                  "ib_a": 8245.57203132
                 },
                 "substitution": "8245.57 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
                 "substitution_latex": "8245.57 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
@@ -1710,13 +1710,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 8245.572031323167,
+                  "ikss_a": 8245.57203132,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 8245.572031323167
+                  "ith_a": 8245.57203132
                 },
                 "substitution": "8245.57 \\cdot \\sqrt{1}",
                 "substitution_latex": "8245.57 \\cdot \\sqrt{1}",
@@ -1725,13 +1725,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 8245.572031323167,
+                  "ikss_a": 8245.57203132,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 214.22624543580957
+                  "sk_mva": 214.226245436
                 },
                 "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8245.57 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8245.57 / 10^6",
@@ -1773,23 +1773,23 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "PV_SN",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 1.1700000000000008,
-                    "re": 0.5850022500000007
+                    "im": 1.17,
+                    "re": 0.58500225
                   },
                   "z2_ohm": {
-                    "im": 1.1700000000000008,
-                    "re": 0.5850022500000007
+                    "im": 1.17,
+                    "re": 0.58500225
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.5850022500000007,
-                  "x_ohm": 1.1700000000000008,
-                  "z_equiv_abs_ohm": 1.308100773069516,
+                  "r_ohm": 0.58500225,
+                  "x_ohm": 1.17,
+                  "z_equiv_abs_ohm": 1.30810077307,
                   "z_equiv_ohm": {
-                    "im": 1.1700000000000008,
-                    "re": 0.5850022500000007
+                    "im": 1.17,
+                    "re": 0.58500225
                   }
                 },
                 "substitution": "\\left(0.585002 + j 1.17\\right)",
@@ -1801,13 +1801,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "inputs": {
                   "c_factor": 1.1,
                   "un_v": 15000.0,
-                  "voltage_factor": 0.5773502691896258,
-                  "z_equiv_abs_ohm": 1.308100773069516
+                  "voltage_factor": 0.57735026919,
+                  "z_equiv_abs_ohm": 1.30810077307
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 7351.809218090585
+                  "ikss_a": 7351.80921809
                 },
                 "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.3081}",
                 "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.3081}",
@@ -1816,14 +1816,14 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.5850022500000007,
-                  "rx_ratio": 0.5000019230769234,
-                  "x_ohm": 1.1700000000000008
+                  "r_ohm": 0.58500225,
+                  "rx_ratio": 0.500001923077,
+                  "x_ohm": 1.17
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.2386662954055023
+                  "kappa": 1.23866629541
                 },
                 "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
@@ -1832,13 +1832,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 7351.809218090585,
-                  "kappa": 1.2386662954055023
+                  "ikss_a": 7351.80921809,
+                  "kappa": 1.23866629541
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 12878.448532793587
+                  "ip_a": 12878.4485328
                 },
                 "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 7351.81",
                 "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 7351.81",
@@ -1847,16 +1847,16 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 1.5069262313248947e-07,
-                  "ikss_a": 7351.809218090585,
-                  "kappa": 1.2386662954055023,
-                  "ta_s": 0.006366173238394124,
+                  "exp_factor": 1.50692623132e-07,
+                  "ikss_a": 7351.80921809,
+                  "kappa": 1.23866629541,
+                  "ta_s": 0.00636617323839,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 7351.80921809059
+                  "ib_a": 7351.80921809
                 },
                 "substitution": "7351.81 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.50693e-07\\right)^2}",
                 "substitution_latex": "7351.81 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.50693e-07\\right)^2}",
@@ -1865,13 +1865,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 7351.809218090585,
+                  "ikss_a": 7351.80921809,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 7351.809218090585
+                  "ith_a": 7351.80921809
                 },
                 "substitution": "7351.81 \\cdot \\sqrt{1}",
                 "substitution_latex": "7351.81 \\cdot \\sqrt{1}",
@@ -1880,13 +1880,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 7351.809218090585,
+                  "ikss_a": 7351.80921809,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 191.0056063992917
+                  "sk_mva": 191.005606399
                 },
                 "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 7351.81 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 7351.81 / 10^6",
@@ -1908,23 +1908,23 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "PV_SN",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 1.1700000000000008,
-                    "re": 0.5850022500000007
+                    "im": 1.17,
+                    "re": 0.58500225
                   },
                   "z2_ohm": {
-                    "im": 1.1700000000000008,
-                    "re": 0.5850022500000007
+                    "im": 1.17,
+                    "re": 0.58500225
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.5850022500000007,
-                  "x_ohm": 1.1700000000000008,
-                  "z_equiv_abs_ohm": 1.308100773069516,
+                  "r_ohm": 0.58500225,
+                  "x_ohm": 1.17,
+                  "z_equiv_abs_ohm": 1.30810077307,
                   "z_equiv_ohm": {
-                    "im": 1.1700000000000008,
-                    "re": 0.5850022500000007
+                    "im": 1.17,
+                    "re": 0.58500225
                   }
                 },
                 "substitution": "\\left(0.585002 + j 1.17\\right)",
@@ -1936,13 +1936,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "inputs": {
                   "c_factor": 0.95,
                   "un_v": 15000.0,
-                  "voltage_factor": 0.5773502691896258,
-                  "z_equiv_abs_ohm": 1.308100773069516
+                  "voltage_factor": 0.57735026919,
+                  "z_equiv_abs_ohm": 1.30810077307
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 6358.737329119517
+                  "ikss_a": 6358.73732912
                 },
                 "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.3081}",
                 "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.3081}",
@@ -1951,14 +1951,14 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.5850022500000007,
-                  "rx_ratio": 0.5000019230769234,
-                  "x_ohm": 1.1700000000000008
+                  "r_ohm": 0.58500225,
+                  "rx_ratio": 0.500001923077,
+                  "x_ohm": 1.17
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.2386662954055023
+                  "kappa": 1.23866629541
                 },
                 "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
@@ -1967,13 +1967,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 6358.737329119517,
-                  "kappa": 1.2386662954055023
+                  "ikss_a": 6358.73732912,
+                  "kappa": 1.23866629541
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 11138.846098605336
+                  "ip_a": 11138.8460986
                 },
                 "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 6358.74",
                 "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 6358.74",
@@ -1982,16 +1982,16 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 1.5069262313248947e-07,
-                  "ikss_a": 6358.737329119517,
-                  "kappa": 1.2386662954055023,
-                  "ta_s": 0.006366173238394124,
+                  "exp_factor": 1.50692623132e-07,
+                  "ikss_a": 6358.73732912,
+                  "kappa": 1.23866629541,
+                  "ta_s": 0.00636617323839,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 6358.737329119522
+                  "ib_a": 6358.73732912
                 },
                 "substitution": "6358.74 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.50693e-07\\right)^2}",
                 "substitution_latex": "6358.74 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.50693e-07\\right)^2}",
@@ -2000,13 +2000,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 6358.737329119517,
+                  "ikss_a": 6358.73732912,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 6358.737329119517
+                  "ith_a": 6358.73732912
                 },
                 "substitution": "6358.74 \\cdot \\sqrt{1}",
                 "substitution_latex": "6358.74 \\cdot \\sqrt{1}",
@@ -2015,13 +2015,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 6358.737329119517,
+                  "ikss_a": 6358.73732912,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 165.2048418902974
+                  "sk_mva": 165.20484189
                 },
                 "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 6358.74 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 6358.74 / 10^6",
@@ -2104,6 +2104,721 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "deviation_percent": 0.347,
           "u_kv": 15.0521,
           "u_pu": 1.00347,
+          "un_kv": 15.0
+        }
+      }
+    }
+  },
+  "G4-PVTR": {
+    "archetype": "G4-PVTR",
+    "boundary": {
+      "enm_connection_variant": "LV_BEHIND_STATION_TRANSFORMER",
+      "metered": true,
+      "on_bus_ref": "SN_PCC",
+      "source_ref": "enm:Generator.connection_variant=LV_BEHIND_STATION_TRANSFORMER",
+      "variant": "G-ZALICZNIK"
+    },
+    "case_ref_pf": "ROZPLYW_GEN_MAX",
+    "case_ref_sc": "ZWARCIOWY_MAKS",
+    "converged": true,
+    "enm_hash": "oze-substrate/G4-PVTR",
+    "fields": [
+      {
+        "abb_cell": "CBC",
+        "field_id": "g4-conn",
+        "interface_protection": true,
+        "kind": "POLE_PRZY\u0141\u0104CZENIOWE",
+        "on_bus_ref": "SN_PCC",
+        "protection_codes": [
+          "67",
+          "67N",
+          "81U",
+          "81O",
+          "df/dt",
+          "27",
+          "59",
+          "59N",
+          "anti-islanding"
+        ],
+        "role": "connection",
+        "source_ref": "enm:Bay.bay_role=LINIA_OUT"
+      },
+      {
+        "abb_cell": "SDM-V",
+        "field_id": "g4-meter",
+        "interface_protection": false,
+        "kind": "POLE_POMIAROWE",
+        "on_bus_ref": "SN_PCC",
+        "protection_codes": [],
+        "role": "measurement",
+        "source_ref": "enm:Measurement.purpose=metering"
+      },
+      {
+        "abb_cell": "SDC",
+        "field_id": "g4-load",
+        "interface_protection": false,
+        "kind": "ODBI\u00d3R W\u0141ASNY",
+        "on_bus_ref": "NN_BUS",
+        "protection_codes": [],
+        "role": "load",
+        "source_ref": "enm:Bay.specialization=POTRZEBY_WLASNE"
+      },
+      {
+        "abb_cell": "SDC",
+        "field_id": "g4-src",
+        "interface_protection": false,
+        "kind": "PV 1 MW",
+        "on_bus_ref": "NN_BUS",
+        "protection_codes": [],
+        "role": "source",
+        "source_ref": "enm:Generator.gen_type=pv_inverter"
+      }
+    ],
+    "pcc_bus_ref": "SN_PCC",
+    "schema": "sld_oze_archetype_companion_v1",
+    "short_circuit": {
+      "buses": {
+        "NN_BUS": {
+          "bus_ref": "NN_BUS",
+          "icw_ka": 40.0,
+          "max": {
+            "c_factor": 1.1,
+            "case_ref": "ZWARCIOWY_MAKS",
+            "ib_ka": 33.37,
+            "ikss_ka": 32.242,
+            "ip_ka": 86.326,
+            "ith_ka": 32.242,
+            "kappa": 1.893,
+            "rx_ratio": 0.0385,
+            "sk_mva": 22.34,
+            "white_box_trace": [
+              {
+                "formula_latex": "Z_k = Z_1",
+                "inputs": {
+                  "fault_node_id": "NN_BUS",
+                  "short_circuit_type": "3F",
+                  "z1_ohm": {
+                    "im": 0.00832,
+                    "re": 0.0003200016
+                  },
+                  "z2_ohm": {
+                    "im": 0.00832,
+                    "re": 0.0003200016
+                  }
+                },
+                "key": "Zk",
+                "notes": null,
+                "result": {
+                  "r_ohm": 0.0003200016,
+                  "x_ohm": 0.00832,
+                  "z_equiv_abs_ohm": 0.0083261516335,
+                  "z_equiv_ohm": {
+                    "im": 0.00832,
+                    "re": 0.0003200016
+                  }
+                },
+                "substitution": "\\left(0.000320002 + j 0.00832\\right)",
+                "substitution_latex": "\\left(0.000320002 + j 0.00832\\right)",
+                "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
+              },
+              {
+                "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
+                "inputs": {
+                  "c_factor": 1.1,
+                  "un_v": 400.0,
+                  "voltage_factor": 0.57735026919,
+                  "z_equiv_abs_ohm": 0.0083261516335
+                },
+                "key": "Ikss",
+                "notes": null,
+                "result": {
+                  "ikss_a": 32242.4389948
+                },
+                "substitution": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.00832615}",
+                "substitution_latex": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.00832615}",
+                "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
+              },
+              {
+                "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
+                "inputs": {
+                  "r_ohm": 0.0003200016,
+                  "rx_ratio": 0.0384617307692,
+                  "x_ohm": 0.00832
+                },
+                "key": "kappa",
+                "notes": null,
+                "result": {
+                  "kappa": 1.89320240539
+                },
+                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0384617}",
+                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0384617}",
+                "title": "Wsp\u00f3\u0142czynnik udaru"
+              },
+              {
+                "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
+                "inputs": {
+                  "ikss_a": 32242.4389948,
+                  "kappa": 1.89320240539
+                },
+                "key": "Ip",
+                "notes": null,
+                "result": {
+                  "ip_a": 86325.6649273
+                },
+                "substitution": "1.8932 \\cdot \\sqrt{2} \\cdot 32242.4",
+                "substitution_latex": "1.8932 \\cdot \\sqrt{2} \\cdot 32242.4",
+                "title": "Pr\u0105d udarowy"
+              },
+              {
+                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "inputs": {
+                  "exp_factor": 0.298701387605,
+                  "ikss_a": 32242.4389948,
+                  "kappa": 1.89320240539,
+                  "ta_s": 0.082760156607,
+                  "tb_s": 0.1
+                },
+                "key": "Ib",
+                "notes": null,
+                "result": {
+                  "ib_a": 33370.2649525
+                },
+                "substitution": "32242.4 \\cdot \\sqrt{1 + \\left((1.8932 - 1) \\cdot 0.298701\\right)^2}",
+                "substitution_latex": "32242.4 \\cdot \\sqrt{1 + \\left((1.8932 - 1) \\cdot 0.298701\\right)^2}",
+                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+              },
+              {
+                "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
+                "inputs": {
+                  "ikss_a": 32242.4389948,
+                  "tk_s": 1.0
+                },
+                "key": "Ith",
+                "notes": null,
+                "result": {
+                  "ith_a": 32242.4389948
+                },
+                "substitution": "32242.4 \\cdot \\sqrt{1}",
+                "substitution_latex": "32242.4 \\cdot \\sqrt{1}",
+                "title": "Pr\u0105d zast\u0119pczy cieplny"
+              },
+              {
+                "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
+                "inputs": {
+                  "ikss_a": 32242.4389948,
+                  "un_v": 400.0
+                },
+                "key": "Sk",
+                "notes": null,
+                "result": {
+                  "sk_mva": 22.3382169995
+                },
+                "substitution": "\\sqrt{3} \\cdot 400 \\cdot 32242.4 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 32242.4 / 10^6",
+                "title": "Moc zwarciowa"
+              }
+            ]
+          },
+          "min": {
+            "c_factor": 0.95,
+            "case_ref": "ZWARCIOWY_MIN",
+            "ikss_ka": 28.082,
+            "ith_ka": 28.082,
+            "kappa": 1.893,
+            "sk_mva": 19.46,
+            "white_box_trace": [
+              {
+                "formula_latex": "Z_k = Z_1",
+                "inputs": {
+                  "fault_node_id": "NN_BUS",
+                  "short_circuit_type": "3F",
+                  "z1_ohm": {
+                    "im": 0.00832,
+                    "re": 0.0003200016
+                  },
+                  "z2_ohm": {
+                    "im": 0.00832,
+                    "re": 0.0003200016
+                  }
+                },
+                "key": "Zk",
+                "notes": null,
+                "result": {
+                  "r_ohm": 0.0003200016,
+                  "x_ohm": 0.00832,
+                  "z_equiv_abs_ohm": 0.0083261516335,
+                  "z_equiv_ohm": {
+                    "im": 0.00832,
+                    "re": 0.0003200016
+                  }
+                },
+                "substitution": "\\left(0.000320002 + j 0.00832\\right)",
+                "substitution_latex": "\\left(0.000320002 + j 0.00832\\right)",
+                "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
+              },
+              {
+                "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
+                "inputs": {
+                  "c_factor": 0.95,
+                  "un_v": 400.0,
+                  "voltage_factor": 0.57735026919,
+                  "z_equiv_abs_ohm": 0.0083261516335
+                },
+                "key": "Ikss",
+                "notes": null,
+                "result": {
+                  "ikss_a": 28081.9315147
+                },
+                "substitution": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.00832615}",
+                "substitution_latex": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.00832615}",
+                "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
+              },
+              {
+                "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
+                "inputs": {
+                  "r_ohm": 0.0003200016,
+                  "rx_ratio": 0.0384617307692,
+                  "x_ohm": 0.00832
+                },
+                "key": "kappa",
+                "notes": null,
+                "result": {
+                  "kappa": 1.89320240539
+                },
+                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0384617}",
+                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0384617}",
+                "title": "Wsp\u00f3\u0142czynnik udaru"
+              },
+              {
+                "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
+                "inputs": {
+                  "ikss_a": 28081.9315147,
+                  "kappa": 1.89320240539
+                },
+                "key": "Ip",
+                "notes": null,
+                "result": {
+                  "ip_a": 75186.353329
+                },
+                "substitution": "1.8932 \\cdot \\sqrt{2} \\cdot 28081.9",
+                "substitution_latex": "1.8932 \\cdot \\sqrt{2} \\cdot 28081.9",
+                "title": "Pr\u0105d udarowy"
+              },
+              {
+                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "inputs": {
+                  "exp_factor": 0.298701387605,
+                  "ikss_a": 28081.9315147,
+                  "kappa": 1.89320240539,
+                  "ta_s": 0.082760156607,
+                  "tb_s": 0.1
+                },
+                "key": "Ib",
+                "notes": null,
+                "result": {
+                  "ib_a": 29064.2247994
+                },
+                "substitution": "28081.9 \\cdot \\sqrt{1 + \\left((1.8932 - 1) \\cdot 0.298701\\right)^2}",
+                "substitution_latex": "28081.9 \\cdot \\sqrt{1 + \\left((1.8932 - 1) \\cdot 0.298701\\right)^2}",
+                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+              },
+              {
+                "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
+                "inputs": {
+                  "ikss_a": 28081.9315147,
+                  "tk_s": 1.0
+                },
+                "key": "Ith",
+                "notes": null,
+                "result": {
+                  "ith_a": 28081.9315147
+                },
+                "substitution": "28081.9 \\cdot \\sqrt{1}",
+                "substitution_latex": "28081.9 \\cdot \\sqrt{1}",
+                "title": "Pr\u0105d zast\u0119pczy cieplny"
+              },
+              {
+                "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
+                "inputs": {
+                  "ikss_a": 28081.9315147,
+                  "un_v": 400.0
+                },
+                "key": "Sk",
+                "notes": null,
+                "result": {
+                  "sk_mva": 19.4557328632
+                },
+                "substitution": "\\sqrt{3} \\cdot 400 \\cdot 28081.9 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 28081.9 / 10^6",
+                "title": "Moc zwarciowa"
+              }
+            ]
+          },
+          "source_contribution": {
+            "ik_contribution_ka": 1.732,
+            "is_synchronous_machine": false,
+            "machine_type": "IBG",
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+          },
+          "un_kv": 0.4,
+          "verification": {
+            "icw_ka": 40.0,
+            "ikss_max_ka": 32.242,
+            "passed": true,
+            "rule": "ikss_max_le_icw"
+          }
+        },
+        "SN_PCC": {
+          "bus_ref": "SN_PCC",
+          "icw_ka": 25.0,
+          "max": {
+            "c_factor": 1.1,
+            "case_ref": "ZWARCIOWY_MAKS",
+            "ib_ka": 11.199,
+            "ikss_ka": 11.199,
+            "ip_ka": 19.618,
+            "ith_ka": 11.199,
+            "kappa": 1.239,
+            "rx_ratio": 0.5,
+            "sk_mva": 290.97,
+            "white_box_trace": [
+              {
+                "formula_latex": "Z_k = Z_1",
+                "inputs": {
+                  "fault_node_id": "SN_PCC",
+                  "short_circuit_type": "3F",
+                  "z1_ohm": {
+                    "im": 0.9,
+                    "re": 0.45000225
+                  },
+                  "z2_ohm": {
+                    "im": 0.9,
+                    "re": 0.45000225
+                  }
+                },
+                "key": "Zk",
+                "notes": null,
+                "result": {
+                  "r_ohm": 0.45000225,
+                  "x_ohm": 0.9,
+                  "z_equiv_abs_ohm": 1.00623159611,
+                  "z_equiv_ohm": {
+                    "im": 0.9,
+                    "re": 0.45000225
+                  }
+                },
+                "substitution": "\\left(0.450002 + j 0.9\\right)",
+                "substitution_latex": "\\left(0.450002 + j 0.9\\right)",
+                "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
+              },
+              {
+                "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
+                "inputs": {
+                  "c_factor": 1.1,
+                  "un_v": 15000.0,
+                  "voltage_factor": 0.57735026919,
+                  "z_equiv_abs_ohm": 1.00623159611
+                },
+                "key": "Ikss",
+                "notes": null,
+                "result": {
+                  "ikss_a": 11199.3339643
+                },
+                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
+                "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
+                "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
+              },
+              {
+                "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
+                "inputs": {
+                  "r_ohm": 0.45000225,
+                  "rx_ratio": 0.5000025,
+                  "x_ohm": 0.9
+                },
+                "key": "kappa",
+                "notes": null,
+                "result": {
+                  "kappa": 1.23866591694
+                },
+                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
+                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
+                "title": "Wsp\u00f3\u0142czynnik udaru"
+              },
+              {
+                "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
+                "inputs": {
+                  "ikss_a": 11199.3339643,
+                  "kappa": 1.23866591694
+                },
+                "key": "Ip",
+                "notes": null,
+                "result": {
+                  "ip_a": 19618.3004366
+                },
+                "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 11199.3",
+                "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 11199.3",
+                "title": "Pr\u0105d udarowy"
+              },
+              {
+                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "inputs": {
+                  "exp_factor": 1.50689891918e-07,
+                  "ikss_a": 11199.3339643,
+                  "kappa": 1.23866591694,
+                  "ta_s": 0.00636616589285,
+                  "tb_s": 0.1
+                },
+                "key": "Ib",
+                "notes": null,
+                "result": {
+                  "ib_a": 11199.3339643
+                },
+                "substitution": "11199.3 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
+                "substitution_latex": "11199.3 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
+                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+              },
+              {
+                "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
+                "inputs": {
+                  "ikss_a": 11199.3339643,
+                  "tk_s": 1.0
+                },
+                "key": "Ith",
+                "notes": null,
+                "result": {
+                  "ith_a": 11199.3339643
+                },
+                "substitution": "11199.3 \\cdot \\sqrt{1}",
+                "substitution_latex": "11199.3 \\cdot \\sqrt{1}",
+                "title": "Pr\u0105d zast\u0119pczy cieplny"
+              },
+              {
+                "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
+                "inputs": {
+                  "ikss_a": 11199.3339643,
+                  "un_v": 15000.0
+                },
+                "key": "Sk",
+                "notes": null,
+                "result": {
+                  "sk_mva": 290.967231557
+                },
+                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 11199.3 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 11199.3 / 10^6",
+                "title": "Moc zwarciowa"
+              }
+            ]
+          },
+          "min": {
+            "c_factor": 0.95,
+            "case_ref": "ZWARCIOWY_MIN",
+            "ikss_ka": 9.908,
+            "ith_ka": 9.908,
+            "kappa": 1.239,
+            "sk_mva": 257.43,
+            "white_box_trace": [
+              {
+                "formula_latex": "Z_k = Z_1",
+                "inputs": {
+                  "fault_node_id": "SN_PCC",
+                  "short_circuit_type": "3F",
+                  "z1_ohm": {
+                    "im": 0.9,
+                    "re": 0.45000225
+                  },
+                  "z2_ohm": {
+                    "im": 0.9,
+                    "re": 0.45000225
+                  }
+                },
+                "key": "Zk",
+                "notes": null,
+                "result": {
+                  "r_ohm": 0.45000225,
+                  "x_ohm": 0.9,
+                  "z_equiv_abs_ohm": 1.00623159611,
+                  "z_equiv_ohm": {
+                    "im": 0.9,
+                    "re": 0.45000225
+                  }
+                },
+                "substitution": "\\left(0.450002 + j 0.9\\right)",
+                "substitution_latex": "\\left(0.450002 + j 0.9\\right)",
+                "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
+              },
+              {
+                "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
+                "inputs": {
+                  "c_factor": 0.95,
+                  "un_v": 15000.0,
+                  "voltage_factor": 0.57735026919,
+                  "z_equiv_abs_ohm": 1.00623159611
+                },
+                "key": "Ikss",
+                "notes": null,
+                "result": {
+                  "ikss_a": 9908.34080659
+                },
+                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
+                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
+                "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
+              },
+              {
+                "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
+                "inputs": {
+                  "r_ohm": 0.45000225,
+                  "rx_ratio": 0.5000025,
+                  "x_ohm": 0.9
+                },
+                "key": "kappa",
+                "notes": null,
+                "result": {
+                  "kappa": 1.23866591694
+                },
+                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
+                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
+                "title": "Wsp\u00f3\u0142czynnik udaru"
+              },
+              {
+                "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
+                "inputs": {
+                  "ikss_a": 9908.34080659,
+                  "kappa": 1.23866591694
+                },
+                "key": "Ip",
+                "notes": null,
+                "result": {
+                  "ip_a": 17356.818485
+                },
+                "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 9908.34",
+                "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 9908.34",
+                "title": "Pr\u0105d udarowy"
+              },
+              {
+                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "inputs": {
+                  "exp_factor": 1.50689891918e-07,
+                  "ikss_a": 9908.34080659,
+                  "kappa": 1.23866591694,
+                  "ta_s": 0.00636616589285,
+                  "tb_s": 0.1
+                },
+                "key": "Ib",
+                "notes": null,
+                "result": {
+                  "ib_a": 9908.34080659
+                },
+                "substitution": "9908.34 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
+                "substitution_latex": "9908.34 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
+                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+              },
+              {
+                "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
+                "inputs": {
+                  "ikss_a": 9908.34080659,
+                  "tk_s": 1.0
+                },
+                "key": "Ith",
+                "notes": null,
+                "result": {
+                  "ith_a": 9908.34080659
+                },
+                "substitution": "9908.34 \\cdot \\sqrt{1}",
+                "substitution_latex": "9908.34 \\cdot \\sqrt{1}",
+                "title": "Pr\u0105d zast\u0119pczy cieplny"
+              },
+              {
+                "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
+                "inputs": {
+                  "ikss_a": 9908.34080659,
+                  "un_v": 15000.0
+                },
+                "key": "Sk",
+                "notes": null,
+                "result": {
+                  "sk_mva": 257.426245436
+                },
+                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9908.34 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9908.34 / 10^6",
+                "title": "Moc zwarciowa"
+              }
+            ]
+          },
+          "source_contribution": {
+            "ik_contribution_ka": 1.732,
+            "is_synchronous_machine": false,
+            "machine_type": "IBG",
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+          },
+          "un_kv": 15.0,
+          "verification": {
+            "icw_ka": 25.0,
+            "ikss_max_ka": 11.199,
+            "passed": true,
+            "rule": "ikss_max_le_icw"
+          }
+        }
+      },
+      "standard": "IEC 60909"
+    },
+    "source": {
+      "control_mode": "Q(U)",
+      "machine_type": "IBG",
+      "nc_rfg_class": "C",
+      "power_hierarchy": {
+        "p_osiagalna_kw": 900.0,
+        "p_przylacz_kw": 1000.0,
+        "p_zainst_kw": 1100.0,
+        "pn_ac_kw": 1000.0,
+        "valid": true
+      },
+      "protection_codes": [
+        "67",
+        "67N",
+        "81U",
+        "81O",
+        "df/dt",
+        "27",
+        "59",
+        "59N",
+        "anti-islanding"
+      ],
+      "technology": "PV 1 MW"
+    },
+    "voltage_flow": {
+      "branches": {
+        "sr/branch/in": {
+          "branch_ref": "sr/branch/in",
+          "direction": "reverse",
+          "i_a": 22.64,
+          "loading_percent": 3.59,
+          "p_mw": -0.5793,
+          "q_mvar": 0.1014,
+          "s_mva": 0.5881
+        },
+        "sr/branch/tr": {
+          "branch_ref": "sr/branch/tr",
+          "direction": "reverse",
+          "i_a": 22.64,
+          "loading_percent": null,
+          "p_mw": -0.58,
+          "q_mvar": 0.1,
+          "s_mva": 0.5886
+        }
+      },
+      "buses": {
+        "NN_BUS": {
+          "bus_ref": "NN_BUS",
+          "deviation_percent": 0.075,
+          "u_kv": 0.4003,
+          "u_pu": 1.00075,
+          "un_kv": 0.4
+        },
+        "SN_PCC": {
+          "bus_ref": "SN_PCC",
+          "deviation_percent": 0.076,
+          "u_kv": 15.0113,
+          "u_pu": 1.00076,
           "un_kv": 15.0
         }
       }

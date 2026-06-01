@@ -260,3 +260,64 @@ describe('inherited — OZE unit routing is orthogonal (no diagonal lines)', () 
     expect(onFieldClick).toHaveBeenCalledWith('G1/g1-conn');
   });
 });
+
+// ---------------------------------------------------------------------------
+// G4-PVTR — PV 1 MW through a CUSTOMER TR station (own load + PV behind the trafo)
+// ---------------------------------------------------------------------------
+
+describe('G4-PVTR — PV 1 MW via customer transformer station', () => {
+  const G4 = 'G4-PVTR';
+
+  it('exists and is a customer station: connection + measurement + OWN-LOAD + source fields', () => {
+    const c = OZE_ARCHETYPES_2A[G4];
+    expect(c, 'G4-PVTR template must exist').toBeTruthy();
+    const roles = c.fields.map((f) => f.role).sort();
+    expect(roles).toEqual(['connection', 'load', 'measurement', 'source']);
+    // The own-load field is pinned to POTRZEBY_WLASNE (customer self-consumption).
+    const load = c.fields.find((f) => f.role === 'load')!;
+    expect(load.source_ref).toMatch(/POTRZEBY_WLASNE/);
+    // PV source is behind the station transformer (on the nN bus, not the PCC).
+    const srcF = c.fields.find((f) => f.role === 'source')!;
+    expect(srcF.on_bus_ref).not.toBe(c.pcc_bus_ref);
+  });
+
+  it('boundary is LV-behind-station-transformer (customer connection), metered', () => {
+    const b = OZE_ARCHETYPES_2A[G4].boundary;
+    expect(b.variant).toBe('G-ZALICZNIK');
+    expect(b.enm_connection_variant).toBe('LV_BEHIND_STATION_TRANSFORMER');
+    expect(b.metered).toBe(true);
+  });
+
+  it('net flow is solver-decided: PV 1 MW > own load → reverse export', () => {
+    const incomer = OZE_ARCHETYPES_2A[G4].voltage_flow.branches['sr/branch/in'];
+    expect(incomer.direction).toBe('reverse');
+    expect(incomer.p_mw).toBeLessThan(0);
+  });
+
+  it('SC verdict ≤Icw passes on a correctly-specified board; IBG (not a machine)', () => {
+    for (const bus of Object.values(OZE_ARCHETYPES_2A[G4].short_circuit.buses)) {
+      expect(bus.verification.passed).toBe(true);
+      expect(bus.source_contribution.is_synchronous_machine).toBe(false);
+    }
+  });
+
+  it('renders the own-load field + the station idiom at L2', () => {
+    const c = OZE_ARCHETYPES_2A[G4];
+    const { container } = render(
+      <svg>
+        <OzeSourceArchetype companion={c} stationCode="PV-1MW" name="PV 1 MW przez stację TR" detail="close" />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="oze-field-load"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="oze-field-connection"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="oze-field-source"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="oze-boundary-marker"]')).toBeTruthy();
+    // Every <line> orthogonal (inherited invariant).
+    const unit = container.querySelector('[data-testid="oze-source-G4-PVTR"]')!;
+    for (const ln of Array.from(unit.querySelectorAll('line'))) {
+      const x1 = Number(ln.getAttribute('x1')); const y1 = Number(ln.getAttribute('y1'));
+      const x2 = Number(ln.getAttribute('x2')); const y2 = Number(ln.getAttribute('y2'));
+      expect(Math.abs(x1 - x2) < 1e-6 || Math.abs(y1 - y2) < 1e-6).toBe(true);
+    }
+  });
+});

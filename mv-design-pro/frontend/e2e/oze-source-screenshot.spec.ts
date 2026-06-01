@@ -14,7 +14,7 @@ const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = 'http://127.0.0.1:5173/oze-source-harness.html';
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual');
 
-const ARCHETYPES = ['G1', 'G2', 'G3'] as const;
+const ARCHETYPES = ['G1', 'G2', 'G3', 'G4-PVTR'] as const;
 
 test.describe('sld:oze-source:screenshot', () => {
   test.beforeAll(() => {

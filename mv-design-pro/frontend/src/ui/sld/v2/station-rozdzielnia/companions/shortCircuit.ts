@@ -42,23 +42,23 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "fault_node_id": "NN_BUS",
                 "short_circuit_type": "3F",
                 "z1_ohm": {
-                  "im": 0.01587809523809524,
-                  "re": 0.0003200015999999998
+                  "im": 0.0158780952381,
+                  "re": 0.0003200016
                 },
                 "z2_ohm": {
-                  "im": 0.01587809523809524,
-                  "re": 0.0003200015999999998
+                  "im": 0.0158780952381,
+                  "re": 0.0003200016
                 }
               },
               "key": "Zk",
               "notes": null,
               "result": {
-                "r_ohm": 0.0003200015999999998,
-                "x_ohm": 0.01587809523809524,
-                "z_equiv_abs_ohm": 0.015881319511111956,
+                "r_ohm": 0.0003200016,
+                "x_ohm": 0.0158780952381,
+                "z_equiv_abs_ohm": 0.0158813195111,
                 "z_equiv_ohm": {
-                  "im": 0.01587809523809524,
-                  "re": 0.0003200015999999998
+                  "im": 0.0158780952381,
+                  "re": 0.0003200016
                 }
               },
               "substitution": "\\left(0.000320002 + j 0.0158781\\right)",
@@ -70,13 +70,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "inputs": {
                 "c_factor": 1.1,
                 "un_v": 400.0,
-                "voltage_factor": 0.5773502691896258,
-                "z_equiv_abs_ohm": 0.015881319511111956
+                "voltage_factor": 0.57735026919,
+                "z_equiv_abs_ohm": 0.0158813195111
               },
               "key": "Ikss",
               "notes": null,
               "result": {
-                "ikss_a": 15995.78160150301
+                "ikss_a": 15995.7816015
               },
               "substitution": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.0158813}",
               "substitution_latex": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.0158813}",
@@ -85,14 +85,14 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
               "inputs": {
-                "r_ohm": 0.0003200015999999998,
-                "rx_ratio": 0.020153651631477913,
-                "x_ohm": 0.01587809523809524
+                "r_ohm": 0.0003200016,
+                "rx_ratio": 0.0201536516315,
+                "x_ohm": 0.0158780952381
               },
               "key": "kappa",
               "notes": null,
               "result": {
-                "kappa": 1.9425039121974956
+                "kappa": 1.9425039122
               },
               "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0201537}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0201537}",
@@ -101,13 +101,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
               "inputs": {
-                "ikss_a": 15995.78160150301,
-                "kappa": 1.9425039121974956
+                "ikss_a": 15995.7816015,
+                "kappa": 1.9425039122
               },
               "key": "Ip",
               "notes": null,
               "result": {
-                "ip_a": 43942.25761410001
+                "ip_a": 43942.2576141
               },
               "substitution": "1.9425 \\cdot \\sqrt{2} \\cdot 15995.8",
               "substitution_latex": "1.9425 \\cdot \\sqrt{2} \\cdot 15995.8",
@@ -116,16 +116,16 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
               "inputs": {
-                "exp_factor": 0.5309190916707447,
-                "ikss_a": 15995.78160150301,
-                "kappa": 1.9425039121974956,
-                "ta_s": 0.15794154429395002,
+                "exp_factor": 0.530919091671,
+                "ikss_a": 15995.7816015,
+                "kappa": 1.9425039122,
+                "ta_s": 0.157941544294,
                 "tb_s": 0.1
               },
               "key": "Ib",
               "notes": null,
               "result": {
-                "ib_a": 17886.642025971738
+                "ib_a": 17886.642026
               },
               "substitution": "15995.8 \\cdot \\sqrt{1 + \\left((1.9425 - 1) \\cdot 0.530919\\right)^2}",
               "substitution_latex": "15995.8 \\cdot \\sqrt{1 + \\left((1.9425 - 1) \\cdot 0.530919\\right)^2}",
@@ -134,13 +134,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
               "inputs": {
-                "ikss_a": 15995.78160150301,
+                "ikss_a": 15995.7816015,
                 "tk_s": 1.0
               },
               "key": "Ith",
               "notes": null,
               "result": {
-                "ith_a": 15995.78160150301
+                "ith_a": 15995.7816015
               },
               "substitution": "15995.8 \\cdot \\sqrt{1}",
               "substitution_latex": "15995.8 \\cdot \\sqrt{1}",
@@ -149,13 +149,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
               "inputs": {
-                "ikss_a": 15995.78160150301,
+                "ikss_a": 15995.7816015,
                 "un_v": 400.0
               },
               "key": "Sk",
               "notes": null,
               "result": {
-                "sk_mva": 11.08220257623147
+                "sk_mva": 11.0822025762
               },
               "substitution": "\\sqrt{3} \\cdot 400 \\cdot 15995.8 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 15995.8 / 10^6",
@@ -177,23 +177,23 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "fault_node_id": "NN_BUS",
                 "short_circuit_type": "3F",
                 "z1_ohm": {
-                  "im": 0.01587809523809524,
-                  "re": 0.0003200015999999998
+                  "im": 0.0158780952381,
+                  "re": 0.0003200016
                 },
                 "z2_ohm": {
-                  "im": 0.01587809523809524,
-                  "re": 0.0003200015999999998
+                  "im": 0.0158780952381,
+                  "re": 0.0003200016
                 }
               },
               "key": "Zk",
               "notes": null,
               "result": {
-                "r_ohm": 0.0003200015999999998,
-                "x_ohm": 0.01587809523809524,
-                "z_equiv_abs_ohm": 0.015881319511111956,
+                "r_ohm": 0.0003200016,
+                "x_ohm": 0.0158780952381,
+                "z_equiv_abs_ohm": 0.0158813195111,
                 "z_equiv_ohm": {
-                  "im": 0.01587809523809524,
-                  "re": 0.0003200015999999998
+                  "im": 0.0158780952381,
+                  "re": 0.0003200016
                 }
               },
               "substitution": "\\left(0.000320002 + j 0.0158781\\right)",
@@ -205,13 +205,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "inputs": {
                 "c_factor": 0.95,
                 "un_v": 400.0,
-                "voltage_factor": 0.5773502691896258,
-                "z_equiv_abs_ohm": 0.015881319511111956
+                "voltage_factor": 0.57735026919,
+                "z_equiv_abs_ohm": 0.0158813195111
               },
               "key": "Ikss",
               "notes": null,
               "result": {
-                "ikss_a": 13814.538655843506
+                "ikss_a": 13814.5386558
               },
               "substitution": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.0158813}",
               "substitution_latex": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.0158813}",
@@ -220,14 +220,14 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
               "inputs": {
-                "r_ohm": 0.0003200015999999998,
-                "rx_ratio": 0.020153651631477913,
-                "x_ohm": 0.01587809523809524
+                "r_ohm": 0.0003200016,
+                "rx_ratio": 0.0201536516315,
+                "x_ohm": 0.0158780952381
               },
               "key": "kappa",
               "notes": null,
               "result": {
-                "kappa": 1.9425039121974956
+                "kappa": 1.9425039122
               },
               "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0201537}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0201537}",
@@ -236,13 +236,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
               "inputs": {
-                "ikss_a": 13814.538655843506,
-                "kappa": 1.9425039121974956
+                "ikss_a": 13814.5386558,
+                "kappa": 1.9425039122
               },
               "key": "Ip",
               "notes": null,
               "result": {
-                "ip_a": 37950.13157581364
+                "ip_a": 37950.1315758
               },
               "substitution": "1.9425 \\cdot \\sqrt{2} \\cdot 13814.5",
               "substitution_latex": "1.9425 \\cdot \\sqrt{2} \\cdot 13814.5",
@@ -251,16 +251,16 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
               "inputs": {
-                "exp_factor": 0.5309190916707447,
-                "ikss_a": 13814.538655843506,
-                "kappa": 1.9425039121974956,
-                "ta_s": 0.15794154429395002,
+                "exp_factor": 0.530919091671,
+                "ikss_a": 13814.5386558,
+                "kappa": 1.9425039122,
+                "ta_s": 0.157941544294,
                 "tb_s": 0.1
               },
               "key": "Ib",
               "notes": null,
               "result": {
-                "ib_a": 15447.554476975589
+                "ib_a": 15447.554477
               },
               "substitution": "13814.5 \\cdot \\sqrt{1 + \\left((1.9425 - 1) \\cdot 0.530919\\right)^2}",
               "substitution_latex": "13814.5 \\cdot \\sqrt{1 + \\left((1.9425 - 1) \\cdot 0.530919\\right)^2}",
@@ -269,13 +269,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
               "inputs": {
-                "ikss_a": 13814.538655843506,
+                "ikss_a": 13814.5386558,
                 "tk_s": 1.0
               },
               "key": "Ith",
               "notes": null,
               "result": {
-                "ith_a": 13814.538655843506
+                "ith_a": 13814.5386558
               },
               "substitution": "13814.5 \\cdot \\sqrt{1}",
               "substitution_latex": "13814.5 \\cdot \\sqrt{1}",
@@ -284,13 +284,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
               "inputs": {
-                "ikss_a": 13814.538655843506,
+                "ikss_a": 13814.5386558,
                 "un_v": 400.0
               },
               "key": "Sk",
               "notes": null,
               "result": {
-                "sk_mva": 9.570993134018085
+                "sk_mva": 9.57099313402
               },
               "substitution": "\\sqrt{3} \\cdot 400 \\cdot 13814.5 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 13814.5 / 10^6",
@@ -326,23 +326,23 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "fault_node_id": "SN_BUS",
                 "short_circuit_type": "3F",
                 "z1_ohm": {
-                  "im": 0.8999999999999998,
-                  "re": 0.4500022499999997
+                  "im": 0.9,
+                  "re": 0.45000225
                 },
                 "z2_ohm": {
-                  "im": 0.8999999999999998,
-                  "re": 0.4500022499999997
+                  "im": 0.9,
+                  "re": 0.45000225
                 }
               },
               "key": "Zk",
               "notes": null,
               "result": {
-                "r_ohm": 0.4500022499999997,
-                "x_ohm": 0.8999999999999998,
-                "z_equiv_abs_ohm": 1.0062315961075075,
+                "r_ohm": 0.45000225,
+                "x_ohm": 0.9,
+                "z_equiv_abs_ohm": 1.00623159611,
                 "z_equiv_ohm": {
-                  "im": 0.8999999999999998,
-                  "re": 0.4500022499999997
+                  "im": 0.9,
+                  "re": 0.45000225
                 }
               },
               "substitution": "\\left(0.450002 + j 0.9\\right)",
@@ -354,13 +354,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "inputs": {
                 "c_factor": 1.1,
                 "un_v": 15000.0,
-                "voltage_factor": 0.5773502691896258,
-                "z_equiv_abs_ohm": 1.0062315961075075
+                "voltage_factor": 0.57735026919,
+                "z_equiv_abs_ohm": 1.00623159611
               },
               "key": "Ikss",
               "notes": null,
               "result": {
-                "ikss_a": 9467.283156760488
+                "ikss_a": 9467.28315676
               },
               "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
@@ -369,14 +369,14 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
               "inputs": {
-                "r_ohm": 0.4500022499999997,
-                "rx_ratio": 0.5000024999999998,
-                "x_ohm": 0.8999999999999998
+                "r_ohm": 0.45000225,
+                "rx_ratio": 0.5000025,
+                "x_ohm": 0.9
               },
               "key": "kappa",
               "notes": null,
               "result": {
-                "kappa": 1.2386659169449343
+                "kappa": 1.23866591694
               },
               "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
@@ -385,13 +385,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
               "inputs": {
-                "ikss_a": 9467.283156760488,
-                "kappa": 1.2386659169449343
+                "ikss_a": 9467.28315676,
+                "kappa": 1.23866591694
               },
               "key": "Ip",
               "notes": null,
               "result": {
-                "ip_a": 16584.2009783418
+                "ip_a": 16584.2009783
               },
               "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
@@ -400,16 +400,16 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
               "inputs": {
-                "exp_factor": 1.5068989191779398e-07,
-                "ikss_a": 9467.283156760488,
-                "kappa": 1.2386659169449343,
-                "ta_s": 0.0063661658928463516,
+                "exp_factor": 1.50689891918e-07,
+                "ikss_a": 9467.28315676,
+                "kappa": 1.23866591694,
+                "ta_s": 0.00636616589285,
                 "tb_s": 0.1
               },
               "key": "Ib",
               "notes": null,
               "result": {
-                "ib_a": 9467.283156760494
+                "ib_a": 9467.28315676
               },
               "substitution": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
@@ -418,13 +418,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
               "inputs": {
-                "ikss_a": 9467.283156760488,
+                "ikss_a": 9467.28315676,
                 "tk_s": 1.0
               },
               "key": "Ith",
               "notes": null,
               "result": {
-                "ith_a": 9467.283156760488
+                "ith_a": 9467.28315676
               },
               "substitution": "9467.28 \\cdot \\sqrt{1}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{1}",
@@ -433,13 +433,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
               "inputs": {
-                "ikss_a": 9467.283156760488,
+                "ikss_a": 9467.28315676,
                 "un_v": 15000.0
               },
               "key": "Sk",
               "notes": null,
               "result": {
-                "sk_mva": 245.96723155725348
+                "sk_mva": 245.967231557
               },
               "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
@@ -461,23 +461,23 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "fault_node_id": "SN_BUS",
                 "short_circuit_type": "3F",
                 "z1_ohm": {
-                  "im": 0.8999999999999998,
-                  "re": 0.4500022499999997
+                  "im": 0.9,
+                  "re": 0.45000225
                 },
                 "z2_ohm": {
-                  "im": 0.8999999999999998,
-                  "re": 0.4500022499999997
+                  "im": 0.9,
+                  "re": 0.45000225
                 }
               },
               "key": "Zk",
               "notes": null,
               "result": {
-                "r_ohm": 0.4500022499999997,
-                "x_ohm": 0.8999999999999998,
-                "z_equiv_abs_ohm": 1.0062315961075075,
+                "r_ohm": 0.45000225,
+                "x_ohm": 0.9,
+                "z_equiv_abs_ohm": 1.00623159611,
                 "z_equiv_ohm": {
-                  "im": 0.8999999999999998,
-                  "re": 0.4500022499999997
+                  "im": 0.9,
+                  "re": 0.45000225
                 }
               },
               "substitution": "\\left(0.450002 + j 0.9\\right)",
@@ -489,13 +489,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "inputs": {
                 "c_factor": 0.95,
                 "un_v": 15000.0,
-                "voltage_factor": 0.5773502691896258,
-                "z_equiv_abs_ohm": 1.0062315961075075
+                "voltage_factor": 0.57735026919,
+                "z_equiv_abs_ohm": 1.00623159611
               },
               "key": "Ikss",
               "notes": null,
               "result": {
-                "ikss_a": 8176.289999020421
+                "ikss_a": 8176.28999902
               },
               "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
@@ -504,14 +504,14 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
               "inputs": {
-                "r_ohm": 0.4500022499999997,
-                "rx_ratio": 0.5000024999999998,
-                "x_ohm": 0.8999999999999998
+                "r_ohm": 0.45000225,
+                "rx_ratio": 0.5000025,
+                "x_ohm": 0.9
               },
               "key": "kappa",
               "notes": null,
               "result": {
-                "kappa": 1.2386659169449343
+                "kappa": 1.23866591694
               },
               "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
@@ -520,13 +520,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
               "inputs": {
-                "ikss_a": 8176.289999020421,
-                "kappa": 1.2386659169449343
+                "ikss_a": 8176.28999902,
+                "kappa": 1.23866591694
               },
               "key": "Ip",
               "notes": null,
               "result": {
-                "ip_a": 14322.719026749737
+                "ip_a": 14322.7190267
               },
               "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
@@ -535,16 +535,16 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
               "inputs": {
-                "exp_factor": 1.5068989191779398e-07,
-                "ikss_a": 8176.289999020421,
-                "kappa": 1.2386659169449343,
-                "ta_s": 0.0063661658928463516,
+                "exp_factor": 1.50689891918e-07,
+                "ikss_a": 8176.28999902,
+                "kappa": 1.23866591694,
+                "ta_s": 0.00636616589285,
                 "tb_s": 0.1
               },
               "key": "Ib",
               "notes": null,
               "result": {
-                "ib_a": 8176.289999020427
+                "ib_a": 8176.28999902
               },
               "substitution": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
@@ -553,13 +553,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
               "inputs": {
-                "ikss_a": 8176.289999020421,
+                "ikss_a": 8176.28999902,
                 "tk_s": 1.0
               },
               "key": "Ith",
               "notes": null,
               "result": {
-                "ith_a": 8176.289999020421
+                "ith_a": 8176.28999902
               },
               "substitution": "8176.29 \\cdot \\sqrt{1}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{1}",
@@ -568,13 +568,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
               "inputs": {
-                "ikss_a": 8176.289999020421,
+                "ikss_a": 8176.28999902,
                 "un_v": 15000.0
               },
               "key": "Sk",
               "notes": null,
               "result": {
-                "sk_mva": 212.42624543580982
+                "sk_mva": 212.426245436
               },
               "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
@@ -619,23 +619,23 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "fault_node_id": "NN_BUS",
                 "short_circuit_type": "3F",
                 "z1_ohm": {
-                  "im": 0.01587809523809524,
-                  "re": 0.00032000160000000014
+                  "im": 0.0158780952381,
+                  "re": 0.0003200016
                 },
                 "z2_ohm": {
-                  "im": 0.01587809523809524,
-                  "re": 0.00032000160000000014
+                  "im": 0.0158780952381,
+                  "re": 0.0003200016
                 }
               },
               "key": "Zk",
               "notes": null,
               "result": {
-                "r_ohm": 0.00032000160000000014,
-                "x_ohm": 0.01587809523809524,
-                "z_equiv_abs_ohm": 0.015881319511111956,
+                "r_ohm": 0.0003200016,
+                "x_ohm": 0.0158780952381,
+                "z_equiv_abs_ohm": 0.0158813195111,
                 "z_equiv_ohm": {
-                  "im": 0.01587809523809524,
-                  "re": 0.00032000160000000014
+                  "im": 0.0158780952381,
+                  "re": 0.0003200016
                 }
               },
               "substitution": "\\left(0.000320002 + j 0.0158781\\right)",
@@ -647,13 +647,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "inputs": {
                 "c_factor": 1.1,
                 "un_v": 400.0,
-                "voltage_factor": 0.5773502691896258,
-                "z_equiv_abs_ohm": 0.015881319511111956
+                "voltage_factor": 0.57735026919,
+                "z_equiv_abs_ohm": 0.0158813195111
               },
               "key": "Ikss",
               "notes": null,
               "result": {
-                "ikss_a": 15995.78160150301
+                "ikss_a": 15995.7816015
               },
               "substitution": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.0158813}",
               "substitution_latex": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.0158813}",
@@ -662,14 +662,14 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
               "inputs": {
-                "r_ohm": 0.00032000160000000014,
-                "rx_ratio": 0.020153651631477934,
-                "x_ohm": 0.01587809523809524
+                "r_ohm": 0.0003200016,
+                "rx_ratio": 0.0201536516315,
+                "x_ohm": 0.0158780952381
               },
               "key": "kappa",
               "notes": null,
               "result": {
-                "kappa": 1.9425039121974956
+                "kappa": 1.9425039122
               },
               "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0201537}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0201537}",
@@ -678,13 +678,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
               "inputs": {
-                "ikss_a": 15995.78160150301,
-                "kappa": 1.9425039121974956
+                "ikss_a": 15995.7816015,
+                "kappa": 1.9425039122
               },
               "key": "Ip",
               "notes": null,
               "result": {
-                "ip_a": 43942.25761410001
+                "ip_a": 43942.2576141
               },
               "substitution": "1.9425 \\cdot \\sqrt{2} \\cdot 15995.8",
               "substitution_latex": "1.9425 \\cdot \\sqrt{2} \\cdot 15995.8",
@@ -693,16 +693,16 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
               "inputs": {
-                "exp_factor": 0.5309190916707444,
-                "ikss_a": 15995.78160150301,
-                "kappa": 1.9425039121974956,
-                "ta_s": 0.15794154429394985,
+                "exp_factor": 0.530919091671,
+                "ikss_a": 15995.7816015,
+                "kappa": 1.9425039122,
+                "ta_s": 0.157941544294,
                 "tb_s": 0.1
               },
               "key": "Ib",
               "notes": null,
               "result": {
-                "ib_a": 17886.642025971738
+                "ib_a": 17886.642026
               },
               "substitution": "15995.8 \\cdot \\sqrt{1 + \\left((1.9425 - 1) \\cdot 0.530919\\right)^2}",
               "substitution_latex": "15995.8 \\cdot \\sqrt{1 + \\left((1.9425 - 1) \\cdot 0.530919\\right)^2}",
@@ -711,13 +711,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
               "inputs": {
-                "ikss_a": 15995.78160150301,
+                "ikss_a": 15995.7816015,
                 "tk_s": 1.0
               },
               "key": "Ith",
               "notes": null,
               "result": {
-                "ith_a": 15995.78160150301
+                "ith_a": 15995.7816015
               },
               "substitution": "15995.8 \\cdot \\sqrt{1}",
               "substitution_latex": "15995.8 \\cdot \\sqrt{1}",
@@ -726,13 +726,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
               "inputs": {
-                "ikss_a": 15995.78160150301,
+                "ikss_a": 15995.7816015,
                 "un_v": 400.0
               },
               "key": "Sk",
               "notes": null,
               "result": {
-                "sk_mva": 11.08220257623147
+                "sk_mva": 11.0822025762
               },
               "substitution": "\\sqrt{3} \\cdot 400 \\cdot 15995.8 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 15995.8 / 10^6",
@@ -754,23 +754,23 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "fault_node_id": "NN_BUS",
                 "short_circuit_type": "3F",
                 "z1_ohm": {
-                  "im": 0.01587809523809524,
-                  "re": 0.00032000160000000014
+                  "im": 0.0158780952381,
+                  "re": 0.0003200016
                 },
                 "z2_ohm": {
-                  "im": 0.01587809523809524,
-                  "re": 0.00032000160000000014
+                  "im": 0.0158780952381,
+                  "re": 0.0003200016
                 }
               },
               "key": "Zk",
               "notes": null,
               "result": {
-                "r_ohm": 0.00032000160000000014,
-                "x_ohm": 0.01587809523809524,
-                "z_equiv_abs_ohm": 0.015881319511111956,
+                "r_ohm": 0.0003200016,
+                "x_ohm": 0.0158780952381,
+                "z_equiv_abs_ohm": 0.0158813195111,
                 "z_equiv_ohm": {
-                  "im": 0.01587809523809524,
-                  "re": 0.00032000160000000014
+                  "im": 0.0158780952381,
+                  "re": 0.0003200016
                 }
               },
               "substitution": "\\left(0.000320002 + j 0.0158781\\right)",
@@ -782,13 +782,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "inputs": {
                 "c_factor": 0.95,
                 "un_v": 400.0,
-                "voltage_factor": 0.5773502691896258,
-                "z_equiv_abs_ohm": 0.015881319511111956
+                "voltage_factor": 0.57735026919,
+                "z_equiv_abs_ohm": 0.0158813195111
               },
               "key": "Ikss",
               "notes": null,
               "result": {
-                "ikss_a": 13814.538655843506
+                "ikss_a": 13814.5386558
               },
               "substitution": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.0158813}",
               "substitution_latex": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.0158813}",
@@ -797,14 +797,14 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
               "inputs": {
-                "r_ohm": 0.00032000160000000014,
-                "rx_ratio": 0.020153651631477934,
-                "x_ohm": 0.01587809523809524
+                "r_ohm": 0.0003200016,
+                "rx_ratio": 0.0201536516315,
+                "x_ohm": 0.0158780952381
               },
               "key": "kappa",
               "notes": null,
               "result": {
-                "kappa": 1.9425039121974956
+                "kappa": 1.9425039122
               },
               "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0201537}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0201537}",
@@ -813,13 +813,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
               "inputs": {
-                "ikss_a": 13814.538655843506,
-                "kappa": 1.9425039121974956
+                "ikss_a": 13814.5386558,
+                "kappa": 1.9425039122
               },
               "key": "Ip",
               "notes": null,
               "result": {
-                "ip_a": 37950.13157581364
+                "ip_a": 37950.1315758
               },
               "substitution": "1.9425 \\cdot \\sqrt{2} \\cdot 13814.5",
               "substitution_latex": "1.9425 \\cdot \\sqrt{2} \\cdot 13814.5",
@@ -828,16 +828,16 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
               "inputs": {
-                "exp_factor": 0.5309190916707444,
-                "ikss_a": 13814.538655843506,
-                "kappa": 1.9425039121974956,
-                "ta_s": 0.15794154429394985,
+                "exp_factor": 0.530919091671,
+                "ikss_a": 13814.5386558,
+                "kappa": 1.9425039122,
+                "ta_s": 0.157941544294,
                 "tb_s": 0.1
               },
               "key": "Ib",
               "notes": null,
               "result": {
-                "ib_a": 15447.554476975589
+                "ib_a": 15447.554477
               },
               "substitution": "13814.5 \\cdot \\sqrt{1 + \\left((1.9425 - 1) \\cdot 0.530919\\right)^2}",
               "substitution_latex": "13814.5 \\cdot \\sqrt{1 + \\left((1.9425 - 1) \\cdot 0.530919\\right)^2}",
@@ -846,13 +846,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
               "inputs": {
-                "ikss_a": 13814.538655843506,
+                "ikss_a": 13814.5386558,
                 "tk_s": 1.0
               },
               "key": "Ith",
               "notes": null,
               "result": {
-                "ith_a": 13814.538655843506
+                "ith_a": 13814.5386558
               },
               "substitution": "13814.5 \\cdot \\sqrt{1}",
               "substitution_latex": "13814.5 \\cdot \\sqrt{1}",
@@ -861,13 +861,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
               "inputs": {
-                "ikss_a": 13814.538655843506,
+                "ikss_a": 13814.5386558,
                 "un_v": 400.0
               },
               "key": "Sk",
               "notes": null,
               "result": {
-                "sk_mva": 9.570993134018085
+                "sk_mva": 9.57099313402
               },
               "substitution": "\\sqrt{3} \\cdot 400 \\cdot 13814.5 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 13814.5 / 10^6",
@@ -904,22 +904,22 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "short_circuit_type": "3F",
                 "z1_ohm": {
                   "im": 0.9,
-                  "re": 0.45000225000000016
+                  "re": 0.45000225
                 },
                 "z2_ohm": {
                   "im": 0.9,
-                  "re": 0.45000225000000016
+                  "re": 0.45000225
                 }
               },
               "key": "Zk",
               "notes": null,
               "result": {
-                "r_ohm": 0.45000225000000016,
+                "r_ohm": 0.45000225,
                 "x_ohm": 0.9,
-                "z_equiv_abs_ohm": 1.006231596107508,
+                "z_equiv_abs_ohm": 1.00623159611,
                 "z_equiv_ohm": {
                   "im": 0.9,
-                  "re": 0.45000225000000016
+                  "re": 0.45000225
                 }
               },
               "substitution": "\\left(0.450002 + j 0.9\\right)",
@@ -931,13 +931,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "inputs": {
                 "c_factor": 1.1,
                 "un_v": 15000.0,
-                "voltage_factor": 0.5773502691896258,
-                "z_equiv_abs_ohm": 1.006231596107508
+                "voltage_factor": 0.57735026919,
+                "z_equiv_abs_ohm": 1.00623159611
               },
               "key": "Ikss",
               "notes": null,
               "result": {
-                "ikss_a": 9467.283156760483
+                "ikss_a": 9467.28315676
               },
               "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
@@ -946,14 +946,14 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
               "inputs": {
-                "r_ohm": 0.45000225000000016,
-                "rx_ratio": 0.5000025000000001,
+                "r_ohm": 0.45000225,
+                "rx_ratio": 0.5000025,
                 "x_ohm": 0.9
               },
               "key": "kappa",
               "notes": null,
               "result": {
-                "kappa": 1.238665916944934
+                "kappa": 1.23866591694
               },
               "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
@@ -962,13 +962,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
               "inputs": {
-                "ikss_a": 9467.283156760483,
-                "kappa": 1.238665916944934
+                "ikss_a": 9467.28315676,
+                "kappa": 1.23866591694
               },
               "key": "Ip",
               "notes": null,
               "result": {
-                "ip_a": 16584.20097834179
+                "ip_a": 16584.2009783
               },
               "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
@@ -977,16 +977,16 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
               "inputs": {
-                "exp_factor": 1.5068989191779237e-07,
-                "ikss_a": 9467.283156760483,
-                "kappa": 1.238665916944934,
-                "ta_s": 0.006366165892846347,
+                "exp_factor": 1.50689891918e-07,
+                "ikss_a": 9467.28315676,
+                "kappa": 1.23866591694,
+                "ta_s": 0.00636616589285,
                 "tb_s": 0.1
               },
               "key": "Ib",
               "notes": null,
               "result": {
-                "ib_a": 9467.283156760488
+                "ib_a": 9467.28315676
               },
               "substitution": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
@@ -995,13 +995,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
               "inputs": {
-                "ikss_a": 9467.283156760483,
+                "ikss_a": 9467.28315676,
                 "tk_s": 1.0
               },
               "key": "Ith",
               "notes": null,
               "result": {
-                "ith_a": 9467.283156760483
+                "ith_a": 9467.28315676
               },
               "substitution": "9467.28 \\cdot \\sqrt{1}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{1}",
@@ -1010,13 +1010,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
               "inputs": {
-                "ikss_a": 9467.283156760483,
+                "ikss_a": 9467.28315676,
                 "un_v": 15000.0
               },
               "key": "Sk",
               "notes": null,
               "result": {
-                "sk_mva": 245.96723155725334
+                "sk_mva": 245.967231557
               },
               "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
@@ -1039,22 +1039,22 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "short_circuit_type": "3F",
                 "z1_ohm": {
                   "im": 0.9,
-                  "re": 0.45000225000000016
+                  "re": 0.45000225
                 },
                 "z2_ohm": {
                   "im": 0.9,
-                  "re": 0.45000225000000016
+                  "re": 0.45000225
                 }
               },
               "key": "Zk",
               "notes": null,
               "result": {
-                "r_ohm": 0.45000225000000016,
+                "r_ohm": 0.45000225,
                 "x_ohm": 0.9,
-                "z_equiv_abs_ohm": 1.006231596107508,
+                "z_equiv_abs_ohm": 1.00623159611,
                 "z_equiv_ohm": {
                   "im": 0.9,
-                  "re": 0.45000225000000016
+                  "re": 0.45000225
                 }
               },
               "substitution": "\\left(0.450002 + j 0.9\\right)",
@@ -1066,13 +1066,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "inputs": {
                 "c_factor": 0.95,
                 "un_v": 15000.0,
-                "voltage_factor": 0.5773502691896258,
-                "z_equiv_abs_ohm": 1.006231596107508
+                "voltage_factor": 0.57735026919,
+                "z_equiv_abs_ohm": 1.00623159611
               },
               "key": "Ikss",
               "notes": null,
               "result": {
-                "ikss_a": 8176.289999020418
+                "ikss_a": 8176.28999902
               },
               "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
@@ -1081,14 +1081,14 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
               "inputs": {
-                "r_ohm": 0.45000225000000016,
-                "rx_ratio": 0.5000025000000001,
+                "r_ohm": 0.45000225,
+                "rx_ratio": 0.5000025,
                 "x_ohm": 0.9
               },
               "key": "kappa",
               "notes": null,
               "result": {
-                "kappa": 1.238665916944934
+                "kappa": 1.23866591694
               },
               "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
@@ -1097,13 +1097,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
               "inputs": {
-                "ikss_a": 8176.289999020418,
-                "kappa": 1.238665916944934
+                "ikss_a": 8176.28999902,
+                "kappa": 1.23866591694
               },
               "key": "Ip",
               "notes": null,
               "result": {
-                "ip_a": 14322.719026749728
+                "ip_a": 14322.7190267
               },
               "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
@@ -1112,16 +1112,16 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
               "inputs": {
-                "exp_factor": 1.5068989191779237e-07,
-                "ikss_a": 8176.289999020418,
-                "kappa": 1.238665916944934,
-                "ta_s": 0.006366165892846347,
+                "exp_factor": 1.50689891918e-07,
+                "ikss_a": 8176.28999902,
+                "kappa": 1.23866591694,
+                "ta_s": 0.00636616589285,
                 "tb_s": 0.1
               },
               "key": "Ib",
               "notes": null,
               "result": {
-                "ib_a": 8176.289999020423
+                "ib_a": 8176.28999902
               },
               "substitution": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
@@ -1130,13 +1130,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
               "inputs": {
-                "ikss_a": 8176.289999020418,
+                "ikss_a": 8176.28999902,
                 "tk_s": 1.0
               },
               "key": "Ith",
               "notes": null,
               "result": {
-                "ith_a": 8176.289999020418
+                "ith_a": 8176.28999902
               },
               "substitution": "8176.29 \\cdot \\sqrt{1}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{1}",
@@ -1145,13 +1145,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
               "inputs": {
-                "ikss_a": 8176.289999020418,
+                "ikss_a": 8176.28999902,
                 "un_v": 15000.0
               },
               "key": "Sk",
               "notes": null,
               "result": {
-                "sk_mva": 212.42624543580973
+                "sk_mva": 212.426245436
               },
               "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
@@ -1197,22 +1197,22 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "short_circuit_type": "3F",
                 "z1_ohm": {
                   "im": 0.9,
-                  "re": 0.45000225000000016
+                  "re": 0.45000225
                 },
                 "z2_ohm": {
                   "im": 0.9,
-                  "re": 0.45000225000000016
+                  "re": 0.45000225
                 }
               },
               "key": "Zk",
               "notes": null,
               "result": {
-                "r_ohm": 0.45000225000000016,
+                "r_ohm": 0.45000225,
                 "x_ohm": 0.9,
-                "z_equiv_abs_ohm": 1.006231596107508,
+                "z_equiv_abs_ohm": 1.00623159611,
                 "z_equiv_ohm": {
                   "im": 0.9,
-                  "re": 0.45000225000000016
+                  "re": 0.45000225
                 }
               },
               "substitution": "\\left(0.450002 + j 0.9\\right)",
@@ -1224,13 +1224,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "inputs": {
                 "c_factor": 1.1,
                 "un_v": 15000.0,
-                "voltage_factor": 0.5773502691896258,
-                "z_equiv_abs_ohm": 1.006231596107508
+                "voltage_factor": 0.57735026919,
+                "z_equiv_abs_ohm": 1.00623159611
               },
               "key": "Ikss",
               "notes": null,
               "result": {
-                "ikss_a": 9467.283156760483
+                "ikss_a": 9467.28315676
               },
               "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
@@ -1239,14 +1239,14 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
               "inputs": {
-                "r_ohm": 0.45000225000000016,
-                "rx_ratio": 0.5000025000000001,
+                "r_ohm": 0.45000225,
+                "rx_ratio": 0.5000025,
                 "x_ohm": 0.9
               },
               "key": "kappa",
               "notes": null,
               "result": {
-                "kappa": 1.238665916944934
+                "kappa": 1.23866591694
               },
               "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
@@ -1255,13 +1255,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
               "inputs": {
-                "ikss_a": 9467.283156760483,
-                "kappa": 1.238665916944934
+                "ikss_a": 9467.28315676,
+                "kappa": 1.23866591694
               },
               "key": "Ip",
               "notes": null,
               "result": {
-                "ip_a": 16584.20097834179
+                "ip_a": 16584.2009783
               },
               "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
@@ -1270,16 +1270,16 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
               "inputs": {
-                "exp_factor": 1.5068989191779237e-07,
-                "ikss_a": 9467.283156760483,
-                "kappa": 1.238665916944934,
-                "ta_s": 0.006366165892846347,
+                "exp_factor": 1.50689891918e-07,
+                "ikss_a": 9467.28315676,
+                "kappa": 1.23866591694,
+                "ta_s": 0.00636616589285,
                 "tb_s": 0.1
               },
               "key": "Ib",
               "notes": null,
               "result": {
-                "ib_a": 9467.283156760488
+                "ib_a": 9467.28315676
               },
               "substitution": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
@@ -1288,13 +1288,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
               "inputs": {
-                "ikss_a": 9467.283156760483,
+                "ikss_a": 9467.28315676,
                 "tk_s": 1.0
               },
               "key": "Ith",
               "notes": null,
               "result": {
-                "ith_a": 9467.283156760483
+                "ith_a": 9467.28315676
               },
               "substitution": "9467.28 \\cdot \\sqrt{1}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{1}",
@@ -1303,13 +1303,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
               "inputs": {
-                "ikss_a": 9467.283156760483,
+                "ikss_a": 9467.28315676,
                 "un_v": 15000.0
               },
               "key": "Sk",
               "notes": null,
               "result": {
-                "sk_mva": 245.96723155725334
+                "sk_mva": 245.967231557
               },
               "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
@@ -1332,22 +1332,22 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "short_circuit_type": "3F",
                 "z1_ohm": {
                   "im": 0.9,
-                  "re": 0.45000225000000016
+                  "re": 0.45000225
                 },
                 "z2_ohm": {
                   "im": 0.9,
-                  "re": 0.45000225000000016
+                  "re": 0.45000225
                 }
               },
               "key": "Zk",
               "notes": null,
               "result": {
-                "r_ohm": 0.45000225000000016,
+                "r_ohm": 0.45000225,
                 "x_ohm": 0.9,
-                "z_equiv_abs_ohm": 1.006231596107508,
+                "z_equiv_abs_ohm": 1.00623159611,
                 "z_equiv_ohm": {
                   "im": 0.9,
-                  "re": 0.45000225000000016
+                  "re": 0.45000225
                 }
               },
               "substitution": "\\left(0.450002 + j 0.9\\right)",
@@ -1359,13 +1359,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "inputs": {
                 "c_factor": 0.95,
                 "un_v": 15000.0,
-                "voltage_factor": 0.5773502691896258,
-                "z_equiv_abs_ohm": 1.006231596107508
+                "voltage_factor": 0.57735026919,
+                "z_equiv_abs_ohm": 1.00623159611
               },
               "key": "Ikss",
               "notes": null,
               "result": {
-                "ikss_a": 8176.289999020418
+                "ikss_a": 8176.28999902
               },
               "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
@@ -1374,14 +1374,14 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
               "inputs": {
-                "r_ohm": 0.45000225000000016,
-                "rx_ratio": 0.5000025000000001,
+                "r_ohm": 0.45000225,
+                "rx_ratio": 0.5000025,
                 "x_ohm": 0.9
               },
               "key": "kappa",
               "notes": null,
               "result": {
-                "kappa": 1.238665916944934
+                "kappa": 1.23866591694
               },
               "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
@@ -1390,13 +1390,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
               "inputs": {
-                "ikss_a": 8176.289999020418,
-                "kappa": 1.238665916944934
+                "ikss_a": 8176.28999902,
+                "kappa": 1.23866591694
               },
               "key": "Ip",
               "notes": null,
               "result": {
-                "ip_a": 14322.719026749728
+                "ip_a": 14322.7190267
               },
               "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
@@ -1405,16 +1405,16 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
               "inputs": {
-                "exp_factor": 1.5068989191779237e-07,
-                "ikss_a": 8176.289999020418,
-                "kappa": 1.238665916944934,
-                "ta_s": 0.006366165892846347,
+                "exp_factor": 1.50689891918e-07,
+                "ikss_a": 8176.28999902,
+                "kappa": 1.23866591694,
+                "ta_s": 0.00636616589285,
                 "tb_s": 0.1
               },
               "key": "Ib",
               "notes": null,
               "result": {
-                "ib_a": 8176.289999020423
+                "ib_a": 8176.28999902
               },
               "substitution": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
@@ -1423,13 +1423,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
               "inputs": {
-                "ikss_a": 8176.289999020418,
+                "ikss_a": 8176.28999902,
                 "tk_s": 1.0
               },
               "key": "Ith",
               "notes": null,
               "result": {
-                "ith_a": 8176.289999020418
+                "ith_a": 8176.28999902
               },
               "substitution": "8176.29 \\cdot \\sqrt{1}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{1}",
@@ -1438,13 +1438,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
               "inputs": {
-                "ikss_a": 8176.289999020418,
+                "ikss_a": 8176.28999902,
                 "un_v": 15000.0
               },
               "key": "Sk",
               "notes": null,
               "result": {
-                "sk_mva": 212.42624543580973
+                "sk_mva": 212.426245436
               },
               "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
@@ -1490,22 +1490,22 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "short_circuit_type": "3F",
                 "z1_ohm": {
                   "im": 0.9,
-                  "re": 0.45000224999999994
+                  "re": 0.45000225
                 },
                 "z2_ohm": {
                   "im": 0.9,
-                  "re": 0.45000224999999994
+                  "re": 0.45000225
                 }
               },
               "key": "Zk",
               "notes": null,
               "result": {
-                "r_ohm": 0.45000224999999994,
+                "r_ohm": 0.45000225,
                 "x_ohm": 0.9,
-                "z_equiv_abs_ohm": 1.0062315961075077,
+                "z_equiv_abs_ohm": 1.00623159611,
                 "z_equiv_ohm": {
                   "im": 0.9,
-                  "re": 0.45000224999999994
+                  "re": 0.45000225
                 }
               },
               "substitution": "\\left(0.450002 + j 0.9\\right)",
@@ -1517,13 +1517,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "inputs": {
                 "c_factor": 1.1,
                 "un_v": 15000.0,
-                "voltage_factor": 0.5773502691896258,
-                "z_equiv_abs_ohm": 1.0062315961075077
+                "voltage_factor": 0.57735026919,
+                "z_equiv_abs_ohm": 1.00623159611
               },
               "key": "Ikss",
               "notes": null,
               "result": {
-                "ikss_a": 9467.283156760486
+                "ikss_a": 9467.28315676
               },
               "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
@@ -1532,14 +1532,14 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
               "inputs": {
-                "r_ohm": 0.45000224999999994,
-                "rx_ratio": 0.5000024999999999,
+                "r_ohm": 0.45000225,
+                "rx_ratio": 0.5000025,
                 "x_ohm": 0.9
               },
               "key": "kappa",
               "notes": null,
               "result": {
-                "kappa": 1.2386659169449343
+                "kappa": 1.23866591694
               },
               "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
@@ -1548,13 +1548,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
               "inputs": {
-                "ikss_a": 9467.283156760486,
-                "kappa": 1.2386659169449343
+                "ikss_a": 9467.28315676,
+                "kappa": 1.23866591694
               },
               "key": "Ip",
               "notes": null,
               "result": {
-                "ip_a": 16584.200978341796
+                "ip_a": 16584.2009783
               },
               "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
@@ -1563,16 +1563,16 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
               "inputs": {
-                "exp_factor": 1.5068989191779372e-07,
-                "ikss_a": 9467.283156760486,
-                "kappa": 1.2386659169449343,
-                "ta_s": 0.006366165892846351,
+                "exp_factor": 1.50689891918e-07,
+                "ikss_a": 9467.28315676,
+                "kappa": 1.23866591694,
+                "ta_s": 0.00636616589285,
                 "tb_s": 0.1
               },
               "key": "Ib",
               "notes": null,
               "result": {
-                "ib_a": 9467.283156760492
+                "ib_a": 9467.28315676
               },
               "substitution": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
@@ -1581,13 +1581,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
               "inputs": {
-                "ikss_a": 9467.283156760486,
+                "ikss_a": 9467.28315676,
                 "tk_s": 1.0
               },
               "key": "Ith",
               "notes": null,
               "result": {
-                "ith_a": 9467.283156760486
+                "ith_a": 9467.28315676
               },
               "substitution": "9467.28 \\cdot \\sqrt{1}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{1}",
@@ -1596,13 +1596,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
               "inputs": {
-                "ikss_a": 9467.283156760486,
+                "ikss_a": 9467.28315676,
                 "un_v": 15000.0
               },
               "key": "Sk",
               "notes": null,
               "result": {
-                "sk_mva": 245.96723155725343
+                "sk_mva": 245.967231557
               },
               "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
@@ -1625,22 +1625,22 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "short_circuit_type": "3F",
                 "z1_ohm": {
                   "im": 0.9,
-                  "re": 0.45000224999999994
+                  "re": 0.45000225
                 },
                 "z2_ohm": {
                   "im": 0.9,
-                  "re": 0.45000224999999994
+                  "re": 0.45000225
                 }
               },
               "key": "Zk",
               "notes": null,
               "result": {
-                "r_ohm": 0.45000224999999994,
+                "r_ohm": 0.45000225,
                 "x_ohm": 0.9,
-                "z_equiv_abs_ohm": 1.0062315961075077,
+                "z_equiv_abs_ohm": 1.00623159611,
                 "z_equiv_ohm": {
                   "im": 0.9,
-                  "re": 0.45000224999999994
+                  "re": 0.45000225
                 }
               },
               "substitution": "\\left(0.450002 + j 0.9\\right)",
@@ -1652,13 +1652,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "inputs": {
                 "c_factor": 0.95,
                 "un_v": 15000.0,
-                "voltage_factor": 0.5773502691896258,
-                "z_equiv_abs_ohm": 1.0062315961075077
+                "voltage_factor": 0.57735026919,
+                "z_equiv_abs_ohm": 1.00623159611
               },
               "key": "Ikss",
               "notes": null,
               "result": {
-                "ikss_a": 8176.28999902042
+                "ikss_a": 8176.28999902
               },
               "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
@@ -1667,14 +1667,14 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
               "inputs": {
-                "r_ohm": 0.45000224999999994,
-                "rx_ratio": 0.5000024999999999,
+                "r_ohm": 0.45000225,
+                "rx_ratio": 0.5000025,
                 "x_ohm": 0.9
               },
               "key": "kappa",
               "notes": null,
               "result": {
-                "kappa": 1.2386659169449343
+                "kappa": 1.23866591694
               },
               "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
@@ -1683,13 +1683,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
               "inputs": {
-                "ikss_a": 8176.28999902042,
-                "kappa": 1.2386659169449343
+                "ikss_a": 8176.28999902,
+                "kappa": 1.23866591694
               },
               "key": "Ip",
               "notes": null,
               "result": {
-                "ip_a": 14322.719026749734
+                "ip_a": 14322.7190267
               },
               "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
@@ -1698,16 +1698,16 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
               "inputs": {
-                "exp_factor": 1.5068989191779372e-07,
-                "ikss_a": 8176.28999902042,
-                "kappa": 1.2386659169449343,
-                "ta_s": 0.006366165892846351,
+                "exp_factor": 1.50689891918e-07,
+                "ikss_a": 8176.28999902,
+                "kappa": 1.23866591694,
+                "ta_s": 0.00636616589285,
                 "tb_s": 0.1
               },
               "key": "Ib",
               "notes": null,
               "result": {
-                "ib_a": 8176.289999020425
+                "ib_a": 8176.28999902
               },
               "substitution": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
@@ -1716,13 +1716,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
               "inputs": {
-                "ikss_a": 8176.28999902042,
+                "ikss_a": 8176.28999902,
                 "tk_s": 1.0
               },
               "key": "Ith",
               "notes": null,
               "result": {
-                "ith_a": 8176.28999902042
+                "ith_a": 8176.28999902
               },
               "substitution": "8176.29 \\cdot \\sqrt{1}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{1}",
@@ -1731,13 +1731,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
               "inputs": {
-                "ikss_a": 8176.28999902042,
+                "ikss_a": 8176.28999902,
                 "un_v": 15000.0
               },
               "key": "Sk",
               "notes": null,
               "result": {
-                "sk_mva": 212.42624543580976
+                "sk_mva": 212.426245436
               },
               "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
@@ -1774,22 +1774,22 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "short_circuit_type": "3F",
                 "z1_ohm": {
                   "im": 0.9,
-                  "re": 0.45000225000000016
+                  "re": 0.45000225
                 },
                 "z2_ohm": {
                   "im": 0.9,
-                  "re": 0.45000225000000016
+                  "re": 0.45000225
                 }
               },
               "key": "Zk",
               "notes": null,
               "result": {
-                "r_ohm": 0.45000225000000016,
+                "r_ohm": 0.45000225,
                 "x_ohm": 0.9,
-                "z_equiv_abs_ohm": 1.006231596107508,
+                "z_equiv_abs_ohm": 1.00623159611,
                 "z_equiv_ohm": {
                   "im": 0.9,
-                  "re": 0.45000225000000016
+                  "re": 0.45000225
                 }
               },
               "substitution": "\\left(0.450002 + j 0.9\\right)",
@@ -1801,13 +1801,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "inputs": {
                 "c_factor": 1.1,
                 "un_v": 15000.0,
-                "voltage_factor": 0.5773502691896258,
-                "z_equiv_abs_ohm": 1.006231596107508
+                "voltage_factor": 0.57735026919,
+                "z_equiv_abs_ohm": 1.00623159611
               },
               "key": "Ikss",
               "notes": null,
               "result": {
-                "ikss_a": 9467.283156760483
+                "ikss_a": 9467.28315676
               },
               "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
@@ -1816,14 +1816,14 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
               "inputs": {
-                "r_ohm": 0.45000225000000016,
-                "rx_ratio": 0.5000025000000001,
+                "r_ohm": 0.45000225,
+                "rx_ratio": 0.5000025,
                 "x_ohm": 0.9
               },
               "key": "kappa",
               "notes": null,
               "result": {
-                "kappa": 1.238665916944934
+                "kappa": 1.23866591694
               },
               "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
@@ -1832,13 +1832,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
               "inputs": {
-                "ikss_a": 9467.283156760483,
-                "kappa": 1.238665916944934
+                "ikss_a": 9467.28315676,
+                "kappa": 1.23866591694
               },
               "key": "Ip",
               "notes": null,
               "result": {
-                "ip_a": 16584.20097834179
+                "ip_a": 16584.2009783
               },
               "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
@@ -1847,16 +1847,16 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
               "inputs": {
-                "exp_factor": 1.5068989191779237e-07,
-                "ikss_a": 9467.283156760483,
-                "kappa": 1.238665916944934,
-                "ta_s": 0.006366165892846347,
+                "exp_factor": 1.50689891918e-07,
+                "ikss_a": 9467.28315676,
+                "kappa": 1.23866591694,
+                "ta_s": 0.00636616589285,
                 "tb_s": 0.1
               },
               "key": "Ib",
               "notes": null,
               "result": {
-                "ib_a": 9467.283156760488
+                "ib_a": 9467.28315676
               },
               "substitution": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
@@ -1865,13 +1865,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
               "inputs": {
-                "ikss_a": 9467.283156760483,
+                "ikss_a": 9467.28315676,
                 "tk_s": 1.0
               },
               "key": "Ith",
               "notes": null,
               "result": {
-                "ith_a": 9467.283156760483
+                "ith_a": 9467.28315676
               },
               "substitution": "9467.28 \\cdot \\sqrt{1}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{1}",
@@ -1880,13 +1880,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
               "inputs": {
-                "ikss_a": 9467.283156760483,
+                "ikss_a": 9467.28315676,
                 "un_v": 15000.0
               },
               "key": "Sk",
               "notes": null,
               "result": {
-                "sk_mva": 245.96723155725334
+                "sk_mva": 245.967231557
               },
               "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
@@ -1909,22 +1909,22 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "short_circuit_type": "3F",
                 "z1_ohm": {
                   "im": 0.9,
-                  "re": 0.45000225000000016
+                  "re": 0.45000225
                 },
                 "z2_ohm": {
                   "im": 0.9,
-                  "re": 0.45000225000000016
+                  "re": 0.45000225
                 }
               },
               "key": "Zk",
               "notes": null,
               "result": {
-                "r_ohm": 0.45000225000000016,
+                "r_ohm": 0.45000225,
                 "x_ohm": 0.9,
-                "z_equiv_abs_ohm": 1.006231596107508,
+                "z_equiv_abs_ohm": 1.00623159611,
                 "z_equiv_ohm": {
                   "im": 0.9,
-                  "re": 0.45000225000000016
+                  "re": 0.45000225
                 }
               },
               "substitution": "\\left(0.450002 + j 0.9\\right)",
@@ -1936,13 +1936,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "inputs": {
                 "c_factor": 0.95,
                 "un_v": 15000.0,
-                "voltage_factor": 0.5773502691896258,
-                "z_equiv_abs_ohm": 1.006231596107508
+                "voltage_factor": 0.57735026919,
+                "z_equiv_abs_ohm": 1.00623159611
               },
               "key": "Ikss",
               "notes": null,
               "result": {
-                "ikss_a": 8176.289999020418
+                "ikss_a": 8176.28999902
               },
               "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
@@ -1951,14 +1951,14 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
               "inputs": {
-                "r_ohm": 0.45000225000000016,
-                "rx_ratio": 0.5000025000000001,
+                "r_ohm": 0.45000225,
+                "rx_ratio": 0.5000025,
                 "x_ohm": 0.9
               },
               "key": "kappa",
               "notes": null,
               "result": {
-                "kappa": 1.238665916944934
+                "kappa": 1.23866591694
               },
               "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
@@ -1967,13 +1967,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
               "inputs": {
-                "ikss_a": 8176.289999020418,
-                "kappa": 1.238665916944934
+                "ikss_a": 8176.28999902,
+                "kappa": 1.23866591694
               },
               "key": "Ip",
               "notes": null,
               "result": {
-                "ip_a": 14322.719026749728
+                "ip_a": 14322.7190267
               },
               "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
@@ -1982,16 +1982,16 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
               "inputs": {
-                "exp_factor": 1.5068989191779237e-07,
-                "ikss_a": 8176.289999020418,
-                "kappa": 1.238665916944934,
-                "ta_s": 0.006366165892846347,
+                "exp_factor": 1.50689891918e-07,
+                "ikss_a": 8176.28999902,
+                "kappa": 1.23866591694,
+                "ta_s": 0.00636616589285,
                 "tb_s": 0.1
               },
               "key": "Ib",
               "notes": null,
               "result": {
-                "ib_a": 8176.289999020423
+                "ib_a": 8176.28999902
               },
               "substitution": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
@@ -2000,13 +2000,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
               "inputs": {
-                "ikss_a": 8176.289999020418,
+                "ikss_a": 8176.28999902,
                 "tk_s": 1.0
               },
               "key": "Ith",
               "notes": null,
               "result": {
-                "ith_a": 8176.289999020418
+                "ith_a": 8176.28999902
               },
               "substitution": "8176.29 \\cdot \\sqrt{1}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{1}",
@@ -2015,13 +2015,13 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
             {
               "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
               "inputs": {
-                "ikss_a": 8176.289999020418,
+                "ikss_a": 8176.28999902,
                 "un_v": 15000.0
               },
               "key": "Sk",
               "notes": null,
               "result": {
-                "sk_mva": 212.42624543580973
+                "sk_mva": 212.426245436
               },
               "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",

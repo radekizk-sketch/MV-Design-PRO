@@ -67,7 +67,7 @@ export type OzeScBus = ScBus & { readonly source_contribution: OzeSourceContribu
  */
 export interface OzeField {
   readonly field_id: string;
-  readonly role: 'connection' | 'source' | 'measurement';
+  readonly role: 'connection' | 'source' | 'measurement' | 'load';
   readonly kind: string;
   /** ABB cell type (SDC | SDF | CBC | SMC | DBC | SDM-V | SDM-C | ...). */
   readonly abb_cell: string;

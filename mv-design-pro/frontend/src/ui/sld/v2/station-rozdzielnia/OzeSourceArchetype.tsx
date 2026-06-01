@@ -147,6 +147,7 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
   const connField = companion.fields.find((f) => f.role === 'connection');
   const meterField = companion.fields.find((f) => f.role === 'measurement');
   const srcField = companion.fields.find((f) => f.role === 'source');
+  const loadField = companion.fields.find((f) => f.role === 'load');
 
   const W = 240;
   const busY = 0;
@@ -155,9 +156,10 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
   const busKv = companion.voltage_flow.buses[pccRef]?.un_kv ?? 15;
   const busColor = busColorForVoltage(busKv);
 
-  // Field columns left→right: connection (grid side), measurement, source.
+  // Field columns left→right: connection (grid side), measurement, [load], source.
   const connX = busX1 + 34;
   const meterX = busX1 + 78;
+  const loadX = busX2 - 86;
   const srcX = busX2 - 40;
 
   // The incomer flow direction (reverse = export) from the solver.
@@ -287,6 +289,29 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
           {detail !== 'far' && (
             <text x={meterX} y={breakerY + 16} textAnchor="middle" fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_SANS} fontSize={6.6} fontWeight={700} paintOrder="stroke" stroke="#05070A" strokeWidth={2}>
               {`POM. (${meterField.abb_cell})`}
+            </text>
+          )}
+        </g>
+      )}
+
+      {/* ─── OWN-LOAD field (POTRZEBY_WLASNE) — customer station consumption ─── */}
+      {loadField && (
+        <g
+          data-testid="oze-field-load"
+          data-field-role="load"
+          data-abb-cell={loadField.abb_cell}
+          data-source-ref={loadField.source_ref}
+          onClick={handle(`${companion.archetype}/${loadField.field_id}`)}
+          style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
+        >
+          <line x1={loadX} y1={busY} x2={loadX} y2={srcSymY - 6} stroke={busColor} strokeWidth={1.8} />
+          {/* Load symbol — a filled downward triangle (IEC consumer). */}
+          {detail !== 'far' && (
+            <polygon points={`${loadX - 5},${srcSymY - 6} ${loadX + 5},${srcSymY - 6} ${loadX},${srcSymY + 3}`} fill="#7DD3FC" stroke="#7DD3FC" strokeWidth={1} />
+          )}
+          {detail !== 'far' && (
+            <text x={loadX} y={srcSymY + (detail === 'close' ? 14 : 12)} textAnchor="middle" fill="#7DD3FC" fontFamily={FONT_SANS} fontSize={6.6} fontWeight={700} paintOrder="stroke" stroke="#05070A" strokeWidth={2}>
+              {`ODB. WŁ. (${loadField.abb_cell})`}
             </text>
           )}
         </g>

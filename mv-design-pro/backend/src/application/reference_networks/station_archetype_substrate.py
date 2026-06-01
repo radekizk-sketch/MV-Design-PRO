@@ -280,14 +280,32 @@ _C_MIN = 0.95
 _TK_S = 1.0
 
 
+def _det(value: float) -> float:
+    """Round a float to 12 significant figures so the GENERATED companion is
+    byte-stable across runs (N-7 determinism). NumPy float accumulation order can
+    jitter the last ULP (e.g. 0.9 vs 0.8999999999999999); 12 sig-figs is far
+    beyond engineering precision yet kills the jitter."""
+    if value == 0.0 or not isinstance(value, float):
+        return value
+    from math import floor, isfinite, log10
+
+    if not isfinite(value):
+        return value
+    digits = 12 - 1 - floor(log10(abs(value)))
+    return round(value, digits)
+
+
 def _json_safe(value: Any) -> Any:
     """Recursively convert solver trace values to JSON-ready types (complex →
-    {re, im}, numpy scalars → native). The White Box trace is carried verbatim
-    except for this lossless type normalisation."""
+    {re, im}, numpy scalars → native), with deterministic float rounding (N-7).
+    The White Box trace is carried verbatim except for this lossless
+    type-normalisation + 12-sig-fig stabilisation."""
     if isinstance(value, complex):
-        return {"re": float(value.real), "im": float(value.imag)}
+        return {"re": _det(float(value.real)), "im": _det(float(value.imag))}
     if hasattr(value, "item"):  # numpy scalar
-        return value.item()
+        return _json_safe(value.item())
+    if isinstance(value, float):
+        return _det(value)
     if isinstance(value, dict):
         return {k: _json_safe(v) for k, v in value.items()}
     if isinstance(value, (list | tuple)):
@@ -1063,8 +1081,67 @@ def build_g3() -> dict[str, Any]:
 _OZE_ARCHETYPES_2A = {"G1": build_g1, "G2": build_g2, "G3": build_g3}
 
 
+def build_g4_pvtr() -> dict[str, Any]:
+    """G4-PVTR — PV 1 MW przyłączona przez STACJĘ TR KONSUMENCKĄ (odbiorczą).
+
+    Stacja odbiorcza (ENM station_type='customer') z WŁASNYM ODBIOREM
+    (Bay.specialization='POTRZEBY_WLASNE') i farmą PV 1 MW za transformatorem
+    stacji SN/nN. Przyłącze SN dedykowane z pomiarem na granicy. Kierunek netto
+    (eksport vs import) liczy SOLVER: gdy PV > odbiór własny → eksport zwrotny.
+
+    Topologia: GPZ → linia SN → szyna SN stacji (PCC) → [pole przyłączeniowe +
+    pole pomiarowe] ; transformator stacji SN/nN → szyna nN → [odbiór własny +
+    pole PV 1 MW]. connection_variant = LV_BEHIND_STATION_TRANSFORMER.
+    """
+    pv_kva = 1000.0
+    own_load_kw = 320.0  # odbiór własny stacji konsumenckiej (potrzeby własne)
+    s = _Substrate()
+    s.add_slack("GPZ")
+    s.add_bus("SN_PCC", _BASE_KV)
+    s.add_bus("NN_BUS", _NN_KV)
+    s.add_line(SR_IN, "GPZ", "SN_PCC", _SN_LINE_R, _SN_LINE_X)
+    # Station transformer SN/nN (1.25 MVA dla 1 MW PV + odbiór własny).
+    s.add_transformer(SR_TR, "SN_PCC", "NN_BUS", hv_kv=_BASE_KV, lv_kv=_NN_KV, uk_percent=_TRAFO_UK_PCT, rated_mva=1.25)
+    # Netto na szynie nN: odbiór własny − generacja PV (jeden netto-wpis na węzeł).
+    s.add_load("NN_BUS", p_mw=own_load_kw / 1000.0 - pv_kva / 1000.0 * 0.9, q_mvar=0.10)
+    ibg = s.add_inverter("NN_BUS", rated_kva=pv_kva, un_kv=_NN_KV, k_sc=_IBG_K, source_type="PV")
+    s.finalize_pq()
+    return _oze_companion(
+        "G4-PVTR", substrate=s,
+        # nN board 40 kA: a 1.25 MVA SN/nN transformer at uk=6% gives Ik''max≈32 kA
+        # at the 400 V busbar, so the standard 40 kA board is specified (the next
+        # rating above the computed value). The ≤Icw verdict still FAILS if Ik''
+        # exceeds it — the check is real (it flagged 32>31.5 on the lower board).
+        buses=[("SN_PCC", _BASE_KV, _ICW_SN_KA), ("NN_BUS", _NN_KV, 40.0)],
+        pcc_bus="SN_PCC", ibg_ka=ibg / 1000.0,
+        source=_pv_source(technology="PV 1 MW", machine_type="IBG", nc_class="C", control_mode="Q(U)",
+                          p_zainst_kw=1100.0, pn_ac_kw=1000.0, p_przylacz_kw=1000.0, p_osiagalna_kw=900.0),
+        # Station idiom: connection field (interface protection) + measurement on
+        # the SN PCC; OWN-LOAD field + PV source field on the nN bus behind the
+        # station transformer. Customer station = station_type='customer'.
+        fields=[
+            _field("g4-conn", role="connection", kind="POLE_PRZYŁĄCZENIOWE", abb_cell="CBC",
+                   on_bus="SN_PCC", source_ref="enm:Bay.bay_role=LINIA_OUT",
+                   interface_protection=True, protection_codes=list(_PROTECTION_BY_MACHINE["IBG"])),
+            _field("g4-meter", role="measurement", kind="POLE_POMIAROWE", abb_cell="SDM-V",
+                   on_bus="SN_PCC", source_ref="enm:Measurement.purpose=metering",
+                   interface_protection=False),
+            _field("g4-load", role="load", kind="ODBIÓR WŁASNY", abb_cell="SDC",
+                   on_bus="NN_BUS", source_ref="enm:Bay.specialization=POTRZEBY_WLASNE",
+                   interface_protection=False),
+            _field("g4-src", role="source", kind="PV 1 MW", abb_cell="SDC",
+                   on_bus="NN_BUS", source_ref="enm:Generator.gen_type=pv_inverter",
+                   interface_protection=False),
+        ],
+        boundary=_boundary("G-ZALICZNIK", on_bus="SN_PCC", metered=True),
+    )
+
+
+_OZE_ARCHETYPES_2A_EXT = {**_OZE_ARCHETYPES_2A, "G4-PVTR": build_g4_pvtr}
+
+
 def build_all_oze_2a() -> dict[str, dict[str, Any]]:
-    return {name: fn() for name, fn in _OZE_ARCHETYPES_2A.items()}
+    return {name: fn() for name, fn in _OZE_ARCHETYPES_2A_EXT.items()}
 
 
 def _companions_dir() -> str:
