@@ -39,7 +39,9 @@ from typing import Any, Literal
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.inverter import InverterSource
+from network_model.core.machine import AsynchronousMachineSource, SynchronousMachineSource
 from network_model.core.node import Node, NodeType
+from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
 from network_model.solvers.power_flow_newton import (
     PowerFlowNewtonSolution,
     solve_power_flow_physics,
@@ -154,6 +156,42 @@ class _Substrate:
         )
         self.graph.add_inverter_source(src)
         return src.ik_sc_a
+
+    def add_synchronous_machine(
+        self, node_id: str, *, sr_mva: float, ur_kv: float, xd_subtransient_pu: float,
+        cos_phi_r: float, c_max: float = 1.10,  # IEC c_max (== _C_MAX, defined later)
+    ) -> SynchronousMachineSource:
+        """Register a synchronous machine SC source (IEC 60909-0:2016 §6.3) — a
+        voltage source behind Z″_GK, i.e. a FULL machine contribution (gate J:
+        machine ≠ IBG). Added to the Y-bus shunt so the FROZEN SC solver includes it
+        in I″k/ip/ith; the per-machine breaking current (μ) comes from
+        ``compute_machine_contributions`` (§6.6)."""
+        # Deterministic id (the source_id is surfaced in the companion breakdown — a
+        # random UUID would break companion determinism).
+        seq = sum(1 for m in self.graph.synchronous_machine_sources.values() if m.node_id == node_id) + 1
+        src = SynchronousMachineSource(
+            id=f"sync/{node_id}/{seq}", name=f"SYN@{node_id}#{seq}", node_id=node_id,
+            sr_mva=sr_mva, ur_kv=ur_kv, xd_subtransient_pu=xd_subtransient_pu,
+            cos_phi_r=cos_phi_r, c_max=c_max,
+        )
+        self.graph.add_synchronous_machine_source(src)
+        return src
+
+    def add_asynchronous_machine(
+        self, node_id: str, *, pr_mw: float, ur_kv: float, cos_phi_r: float,
+        efficiency: float, i_lr_ratio: float, pole_pairs: int,
+    ) -> AsynchronousMachineSource:
+        """Register an asynchronous (induction) machine SC source (IEC 60909-0:2016
+        §6.7) — a voltage source behind Z_M, a FULL machine contribution (gate J).
+        The breaking current uses μ·q (§6.6.3); small motors may be neglected (§6.6)."""
+        seq = sum(1 for m in self.graph.asynchronous_machine_sources.values() if m.node_id == node_id) + 1
+        src = AsynchronousMachineSource(
+            id=f"async/{node_id}/{seq}", name=f"ASY@{node_id}#{seq}", node_id=node_id,
+            pr_mw=pr_mw, ur_kv=ur_kv, cos_phi_r=cos_phi_r, efficiency=efficiency,
+            i_lr_ratio=i_lr_ratio, pole_pairs=pole_pairs,
+        )
+        self.graph.add_asynchronous_machine_source(src)
+        return src
 
     def add_line(
         self, branch_id: str, a: str, b: str, r: float, x: float, *, closed: bool = True
@@ -804,6 +842,9 @@ def build_all_vf() -> dict[str, dict[str, Any]]:
 # IBG limited contribution tagged per gate J (bounded current, NOT a machine).
 # IBG short-circuit factor k_sc (IEC 60909-0:2016 §6.7): Ik = k_sc · I_rated.
 _IBG_K = 1.2
+# Minimum time delay t_min for the symmetrical breaking current i_b of rotating
+# machines (IEC 60909-0:2016 §6.6) — generic MV protection grading time.
+_MACHINE_TMIN_S = 0.10
 
 
 # Protection function sets per machine type (gate I) — ANSI/IEC codes on the
@@ -840,16 +881,53 @@ def _pv_source(
 
 
 def _oze_sc_bus(
-    graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float, ibg_ka: float
+    graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float,
+    *, machine_type: str, ibg_ka: float, t_min_s: float = _MACHINE_TMIN_S,
 ) -> dict[str, Any]:
-    """SC dossier at one OZE busbar — the station SC entry + the IBG contribution
-    broken out (so the render shows a source-typed contribution, gate J)."""
+    """SC dossier at one OZE busbar — the station SC entry + the source contribution
+    broken out BY MACHINE TYPE (gate J).
+
+    IBG = a BOUNDED current source (Ik = k·I_rated, IEC 60909-0:2016 §6.7); it is NOT
+    in the solver Z-bus, so it is tagged separately. A SYNCHRONOUS/ASYNCHRONOUS machine
+    is a voltage source behind Z″ that is ALREADY in the solver's I″k; here its PARTIAL
+    share + the symmetrical breaking current (μ, and async μ·q — §6.6) are broken out
+    via ``compute_machine_contributions`` (READ-ONLY, anti-fabrication: real solver)."""
     entry = _sc_bus_entry(graph, bus_id, un_kv, icw_ka)
+    if machine_type == "IBG":
+        entry["source_contribution"] = {
+            "machine_type": "IBG",
+            "model": "IEC 60909 §6.7 — źródło prądowe ograniczone (k·I_rated)",
+            "ik_contribution_ka": round(ibg_ka, 3),
+            "is_synchronous_machine": False,
+        }
+        return entry
+    res = compute_machine_contributions(graph, bus_id, c_factor=_C_MAX, t_min_s=t_min_s)
+    is_sync = machine_type == "SYNCHRONOUS"
     entry["source_contribution"] = {
-        "machine_type": "IBG",
-        "model": "IEC 60909 §6.7 — źródło prądowe ograniczone (k·I_rated)",
-        "ik_contribution_ka": round(ibg_ka, 3),
-        "is_synchronous_machine": False,
+        "machine_type": machine_type,
+        "model": (
+            "IEC 60909-0:2016 §6.3/§6.6 — maszyna synchroniczna za Z″ (zanik μ)"
+            if is_sync
+            else "IEC 60909-0:2016 §6.7/§6.6 — maszyna asynchroniczna za Z_M (zanik μ·q)"
+        ),
+        "ik_contribution_ka": round(res.ikss_machines_a / 1000.0, 3),
+        "ib_contribution_ka": round(res.ib_machines_a / 1000.0, 3),
+        "is_synchronous_machine": is_sync,
+        "t_min_s": t_min_s,
+        "motors_negligible": res.motors_negligible,
+        # Per-machine breakdown (WHITE BOX): partial I″k, breaking current, μ/q, I_r.
+        "machines": [
+            {
+                "source_id": c.source_id,
+                "node_ref": c.node_id,
+                "ikss_partial_ka": round(c.ikss_partial_a / 1000.0, 3),
+                "ib_partial_ka": round(c.ib_a / 1000.0, 3),
+                "mu": round(c.mu, 4),
+                "q": round(c.q, 4),
+                "ir_a": round(c.ir_a, 1),
+            }
+            for c in res.contributions
+        ],
     }
     return entry
 
@@ -899,7 +977,8 @@ def _oze_companion(
             "loading_percent": (round((i_ka * 1000.0 / rated_a) * 100.0, 2) if rated_a > 0 else None),
         }
     sc_buses = {
-        bus_id: _oze_sc_bus(graph, bus_id, un_kv, icw_ka, ibg_ka)
+        bus_id: _oze_sc_bus(graph, bus_id, un_kv, icw_ka,
+                            machine_type=source["machine_type"], ibg_ka=ibg_ka)
         for bus_id, un_kv, icw_ka in buses
     }
     h = source["power_hierarchy"]
@@ -1525,8 +1604,173 @@ def build_g6_wind() -> dict[str, Any]:
     )
 
 
+# ===========================================================================
+# KROK 2 — OZE source archetypes (G family). Runda 2b: maszyny WIRUJĄCE.
+# Biogaz (synchroniczna) + wiatr Typ 1 (asynchroniczna). W przeciwieństwie do
+# IBG (G1-G6, prąd ograniczony k·In, §6.7) udział zwarciowy pochodzi z PEŁNEGO
+# modelu maszyny (źródło za Z″, w solverze przez Y-bus) i jest rozbity per-maszyna
+# z prądem wyłączeniowym (μ, async μ·q — §6.6) przez compute_machine_contributions.
+# ===========================================================================
+_BIOGAZ_GENSET_KW = 1000.0   # 1 MW na agregat (generyczna kogeneracja biogazowa)
+_BIOGAZ_N_GENSETS = 2
+_BIOGAZ_XD_PU = 0.15         # x″d — reaktancja podprzejściowa (generyczny agregat)
+_BIOGAZ_COSPHI = 0.8
+
+_WINDA_LV_KV = 0.69          # nN generatora indukcyjnego (Typ 1 — stała prędkość)
+_WINDA_COLLECTOR_KV = 30.0   # szyna kolektorowa SN
+_WINDA_TURBINE_KW = 850.0    # 0.85 MW na turbinę (generyczny Typ 1)
+_WINDA_N_TURBINES = 3
+_WINDA_ILR = 6.0             # I_LR/I_rM generatora asynchronicznego
+_WINDA_POLE_PAIRS = 2
+_WINDA_COSPHI = 0.85
+_WINDA_EFF = 0.95
+_WINDA_TR_MVA = 1.0
+
+
+def _sn_line_connection_field(field_id: str, *, un_kv: float, protection_codes: list[str]) -> dict[str, Any]:
+    """The standard SN line-connection field (pole liniowe SN do OSD): the apparatus
+    stack busbar→cable (DS · CB · CT · VT · SA · głowica · uziemnik) + the cable port.
+    Shared by the rotating-machine archetypes (the interface protection looks at the
+    grid and lives HERE, never at the source)."""
+    return _field(
+        field_id, role="connection", kind="POLE LINIOWE SN (przyłącze)", abb_cell="CBC",
+        on_bus="SN_PCC", source_ref="enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe",
+        interface_protection=True, protection_codes=list(protection_codes),
+        apparatus=[
+            _app(f"{field_id}/ds", kind="DS", designation="Q1 (odłącznik szynowy)", placement="UPSTREAM"),
+            _app(f"{field_id}/cb", kind="CB", designation="Q0 (wyłącznik SN)", placement="MIDSTREAM"),
+            _app(f"{field_id}/ct", kind="CT", designation="przekładnik prądowy", placement="MIDSTREAM",
+                 source_ref="std:IEC_61869_CT"),
+            _app(f"{field_id}/vt", kind="VT", designation="przekładnik napięciowy", placement="OFF_PATH",
+                 source_ref="std:IEC_61869_VT"),
+            _app(f"{field_id}/sa", kind="SURGE_ARRESTER", designation="ogranicznik przepięć", placement="OFF_PATH"),
+            _app(f"{field_id}/head", kind="CABLE_HEAD", designation="głowica kablowa", placement="DOWNSTREAM"),
+            _app(f"{field_id}/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
+        ],
+        port=_port(f"{field_id}/port", kind="sn_input", un_kv=un_kv, entry_side="BOK-L",
+                   occupied_by="seg/kabel-osd", cable="kabel SN do OSD (typ wg projektu)",
+                   source_ref="enm:Port.kind=sn_input;std:przylacze_SN"),
+    )
+
+
+def build_g7_biogaz() -> dict[str, Any]:
+    """G7 — Biogazownia (kogeneracja) — GENERYCZNY archetyp wg norm (NC RfG / IEC
+    60909), agregaty SYNCHRONICZNE (NIE IBG) przyłączone na SN (generyczna abstrakcja
+    bloku agregat + podwyższenie napięcia), na szynie PCC z polem liniowym SN do OSD.
+
+    Zwarcie: maszyna synchroniczna = źródło za Z″_GK (IEC 60909-0:2016 §6.3) — PEŁNY
+    udział maszynowy w I″k (bramka J ≠ IBG), prąd wyłączeniowy i_b z zanikiem μ (§6.6).
+    Udział liczony przez compute_machine_contributions (READ-ONLY, prawdziwy solver)."""
+    n_gen = _BIOGAZ_N_GENSETS
+    genset_kw = _BIOGAZ_GENSET_KW
+    sr_mva = (genset_kw / 1000.0) / _BIOGAZ_COSPHI  # S_rG na agregat
+    p_farm_kw = n_gen * genset_kw
+
+    s = _Substrate()
+    s.add_slack("GPZ")
+    s.add_bus("SN_PCC", _BASE_KV)
+    s.add_line(SR_IN, "GPZ", "SN_PCC", _SN_LINE_R, _SN_LINE_X)
+    # Generacja (eksport) = ujemne obciążenie dla rozpływu; maszyna synchroniczna dla SC.
+    s.add_load("SN_PCC", p_mw=-p_farm_kw / 1000.0, q_mvar=0.0)
+    for _ in range(n_gen):
+        s.add_synchronous_machine("SN_PCC", sr_mva=sr_mva, ur_kv=_BASE_KV,
+                                  xd_subtransient_pu=_BIOGAZ_XD_PU, cos_phi_r=_BIOGAZ_COSPHI)
+    s.finalize_pq()
+
+    src = _pv_source(technology="Biogazownia — agregaty synchroniczne (kogeneracja)",
+                     machine_type="SYNCHRONOUS", nc_class="C", control_mode="U/Q · cosφ",
+                     p_zainst_kw=p_farm_kw, pn_ac_kw=p_farm_kw, p_przylacz_kw=p_farm_kw, p_osiagalna_kw=1900.0)
+    src["genset"] = {
+        "source_ref": "std:IEC_60909_6_3;enm:Generator.gen_type=biogas_synchronous",
+        "sn_kv": _BASE_KV,
+        "n_gensets": n_gen,
+        "genset_kw": genset_kw,
+        "xd_subtransient_pu": _BIOGAZ_XD_PU,
+        "cos_phi_r": _BIOGAZ_COSPHI,
+    }
+    genset_fields = [
+        _field(f"g7-gen{i + 1}", role="source", kind=f"Agregat synchroniczny {i + 1} · {genset_kw / 1000:.0f} MW",
+               abb_cell="SDC", on_bus="SN_PCC",
+               source_ref=f"enm:Generator.gen_type=biogas_synchronous;std:IEC_60909_6_3_gen_{i + 1}",
+               interface_protection=False)
+        for i in range(n_gen)
+    ]
+    return _oze_companion(
+        "G7-BIOGAZ", substrate=s,
+        buses=[("SN_PCC", _BASE_KV, 25.0)],
+        pcc_bus="SN_PCC", ibg_ka=0.0, source=src,
+        fields=[
+            _sn_line_connection_field("g7-line", un_kv=_BASE_KV,
+                                      protection_codes=_PROTECTION_BY_MACHINE["SYNCHRONOUS"]),
+            *genset_fields,
+        ],
+        boundary=_boundary("G-GPZ", on_bus="SN_PCC", metered=True),
+    )
+
+
+def build_g8_wind_async() -> dict[str, Any]:
+    """G8 — Wiatr Typ 1 (generator ASYNCHRONICZNY, stała prędkość) — GENERYCZNY
+    archetyp wg norm (NC RfG / IEC 61400 / IEC 60909). n turbin, KAŻDA z generatorem
+    indukcyjnym (nN) i własnym trafem turbinowym (nN→kolektor SN), zebranych radialnie
+    na szynie kolektora SN; pole liniowe SN łączy kolektor z OSD.
+
+    Zwarcie: maszyna asynchroniczna = źródło za Z_M (IEC 60909-0:2016 §6.7) — udział
+    maszynowy w I″k (bramka J ≠ IBG), prąd wyłączeniowy z zanikiem μ·q (§6.6.3); małe
+    silniki mogą być pomijalne (§6.6). Udział z compute_machine_contributions."""
+    n_turbines = _WINDA_N_TURBINES
+    turbine_kw = _WINDA_TURBINE_KW
+    p_farm_kw = n_turbines * turbine_kw
+
+    s = _Substrate()
+    s.add_slack("GPZ")
+    s.add_bus("SN_PCC", _WINDA_COLLECTOR_KV)
+    s.add_line(SR_IN, "GPZ", "SN_PCC", _SN_LINE_R, _SN_LINE_X)
+    for i in range(n_turbines):
+        lv = f"WTG_LV_{i + 1}"
+        s.add_bus(lv, _WINDA_LV_KV)
+        s.add_transformer(f"sr/branch/wtg-tr{i + 1}", "SN_PCC", lv,
+                          hv_kv=_WINDA_COLLECTOR_KV, lv_kv=_WINDA_LV_KV, uk_percent=6.0, rated_mva=_WINDA_TR_MVA)
+        s.add_load(lv, p_mw=-turbine_kw / 1000.0, q_mvar=0.0)
+        s.add_asynchronous_machine(lv, pr_mw=turbine_kw / 1000.0, ur_kv=_WINDA_LV_KV,
+                                   cos_phi_r=_WINDA_COSPHI, efficiency=_WINDA_EFF,
+                                   i_lr_ratio=_WINDA_ILR, pole_pairs=_WINDA_POLE_PAIRS)
+    s.finalize_pq()
+
+    src = _pv_source(technology="Wiatr — generatory indukcyjne (Typ 1, stała prędkość)",
+                     machine_type="ASYNCHRONOUS", nc_class="C", control_mode="kompensacja Q (bateria)",
+                     p_zainst_kw=p_farm_kw, pn_ac_kw=p_farm_kw, p_przylacz_kw=p_farm_kw, p_osiagalna_kw=2400.0)
+    src["collector"] = {
+        "source_ref": "std:IEC_61400;enm:Generator.gen_type=wind_t1_collector",
+        "collector_kv": _WINDA_COLLECTOR_KV,
+        "n_turbines": n_turbines,
+        "turbine_kw": turbine_kw,
+        "turbine_transformer": f"{_WINDA_LV_KV}/{_WINDA_COLLECTOR_KV:.0f} kV · {_WINDA_TR_MVA} MVA",
+        "turbine_lv_kv": _WINDA_LV_KV,
+        "topology": "radial",
+    }
+    turbine_fields = [
+        _field(f"g8-wtg{i + 1}", role="source", kind=f"WTG {i + 1} (async) · {turbine_kw / 1000:.2f} MW",
+               abb_cell="SDC", on_bus="SN_PCC",
+               source_ref=f"enm:Generator.gen_type=wind_t1;std:IEC_61400_wtg_{i + 1}",
+               interface_protection=False)
+        for i in range(n_turbines)
+    ]
+    return _oze_companion(
+        "G8-WIND-ASYNC", substrate=s,
+        buses=[("SN_PCC", _WINDA_COLLECTOR_KV, 25.0), ("WTG_LV_1", _WINDA_LV_KV, 50.0)],
+        pcc_bus="SN_PCC", ibg_ka=0.0, source=src,
+        fields=[
+            _sn_line_connection_field("g8-line", un_kv=_WINDA_COLLECTOR_KV,
+                                      protection_codes=_PROTECTION_BY_MACHINE["ASYNCHRONOUS"]),
+            *turbine_fields,
+        ],
+        boundary=_boundary("G-GPZ", on_bus="SN_PCC", metered=True),
+    )
+
+
 _OZE_ARCHETYPES_2A_EXT = {
     **_OZE_ARCHETYPES_2A, "G4-PVTR": build_g4_pvtr, "G5-BESS": build_g5_bess, "G6-WIND": build_g6_wind,
+    "G7-BIOGAZ": build_g7_biogaz, "G8-WIND-ASYNC": build_g8_wind_async,
 }
 
 

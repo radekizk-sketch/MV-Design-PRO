@@ -87,9 +87,10 @@ export interface OzeStorageSpec {
   readonly bidirectional: boolean;
 }
 
-/** Wind (Type 4) internal SN COLLECTOR network — the distinguishing structure: n
- *  turbines, each with its own turbine transformer (LV→collector), gathered on a
- *  collector bus, rather than n inverters on one nN bus behind one transformer. */
+/** Wind internal SN COLLECTOR network — the distinguishing structure: n turbines,
+ *  each with its own turbine transformer (LV→collector), gathered on a collector bus,
+ *  rather than n inverters on one nN bus behind one transformer. Used by both Type 4
+ *  (full converter, IBG) and Type 1 (asynchronous generator) wind farms. */
 export interface OzeCollectorSpec {
   readonly source_ref: string;
   readonly collector_kv: number;
@@ -98,6 +99,17 @@ export interface OzeCollectorSpec {
   readonly turbine_transformer: string;
   readonly turbine_lv_kv: number;
   readonly topology: string;
+}
+
+/** Biogas/CHP genset spec — n SYNCHRONOUS machines (IEC 60909-0:2016 §6.3), a FULL
+ *  machine SC source behind Z″ (distinct from IBG bounded current). */
+export interface OzeGensetSpec {
+  readonly source_ref: string;
+  readonly sn_kv: number;
+  readonly n_gensets: number;
+  readonly genset_kw: number;
+  readonly xd_subtransient_pu: number;
+  readonly cos_phi_r: number;
 }
 
 /** OZE source metadata (axes T/R/S of the taxonomy). */
@@ -117,8 +129,10 @@ export interface OzeSourceMeta {
   readonly bidirectional?: boolean;
   /** Storage spec (BESS) — the energy axis (kWh) alongside the power axis (kW). */
   readonly storage?: OzeStorageSpec;
-  /** Collector spec (Wind Type 4) — the internal SN collector network. */
+  /** Collector spec (Wind) — the internal SN collector network. */
   readonly collector?: OzeCollectorSpec;
+  /** Genset spec (biogas/CHP) — synchronous machines behind Z″ (§6.3). */
+  readonly genset?: OzeGensetSpec;
 }
 
 export interface OzeVfBus {
@@ -139,13 +153,36 @@ export interface OzeVfBranch {
   readonly loading_percent: number | null;
 }
 
-/** IBG short-circuit contribution breakdown (gate J). */
+/** One rotating machine's partial SC contribution (IEC 60909-0:2016 §6.6) — present
+ *  only for SYNCHRONOUS/ASYNCHRONOUS sources, absent for IBG. */
+export interface OzeMachinePartial {
+  readonly source_id: string;
+  readonly node_ref: string;
+  readonly ikss_partial_ka: number;
+  /** Symmetrical breaking current i_b = μ·(q)·I″k of this machine. */
+  readonly ib_partial_ka: number;
+  readonly mu: number;
+  readonly q: number;
+  readonly ir_a: number;
+}
+
+/** SC contribution breakdown by machine type (gate J). For IBG only the bounded-current
+ *  fields are set; for a SYNCHRONOUS/ASYNCHRONOUS machine the §6.6 breaking current and
+ *  the per-machine breakdown are added. */
 export interface OzeSourceContribution {
   readonly machine_type: string;
   readonly model: string;
   readonly ik_contribution_ka: number;
   /** Gate J flag: an IBG is NOT modelled as a synchronous machine. */
   readonly is_synchronous_machine: boolean;
+  /** Symmetrical breaking current Σi_b [kA] (rotating machines only, §6.6). */
+  readonly ib_contribution_ka?: number;
+  /** Minimum time delay t_min [s] used for i_b (§6.6). */
+  readonly t_min_s?: number;
+  /** Small-motor omission flag (§6.6) — asynchronous machines only. */
+  readonly motors_negligible?: boolean;
+  /** Per-machine breakdown (rotating machines only). */
+  readonly machines?: readonly OzeMachinePartial[];
 }
 
 /** A short-circuit busbar dossier extended with the OZE source contribution. */

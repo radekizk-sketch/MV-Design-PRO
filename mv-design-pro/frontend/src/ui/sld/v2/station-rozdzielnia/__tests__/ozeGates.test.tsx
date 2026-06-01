@@ -232,6 +232,73 @@ describe('GATE J — SC contribution is IBG (bounded current), NOT a machine', (
 });
 
 // ---------------------------------------------------------------------------
+// GATE J′ — rotating-machine SC contribution: the FULL machine model (not IBG).
+//   biogaz (synchroniczna, §6.3 Z″ + μ §6.6) · wiatr async (Z_M §6.7 + μ·q §6.6.3)
+// ---------------------------------------------------------------------------
+
+describe('GATE J′ — rotating machines: machine-typed SC contribution (not IBG)', () => {
+  it('G7-BIOGAZ source is SYNCHRONOUS with synchronous-machine protection', () => {
+    const c = OZE_ARCHETYPES_2A['G7-BIOGAZ'];
+    expect(c, 'G7-BIOGAZ template must exist').toBeTruthy();
+    expect(c.source.machine_type).toBe('SYNCHRONOUS');
+    const conn = c.fields.find((f) => f.role === 'connection')!;
+    expect(conn.protection_codes).toContain('25'); // synchro-check — synchronous only
+  });
+
+  it('G7-BIOGAZ breaks out the synchronous-machine contribution (Z″, μ) at every bus', () => {
+    const c = OZE_ARCHETYPES_2A['G7-BIOGAZ'];
+    for (const bus of Object.values(c.short_circuit.buses)) {
+      const sc = bus.source_contribution;
+      expect(sc.machine_type).toBe('SYNCHRONOUS');
+      expect(sc.is_synchronous_machine).toBe(true);
+      expect(sc.ik_contribution_ka).toBeGreaterThan(0);
+      expect(sc.ib_contribution_ka!).toBeGreaterThan(0);
+      expect(sc.model).toMatch(/6\.3|6\.6|maszyna synchroniczna/i);
+      expect(sc.machines!.length).toBeGreaterThan(0);
+      for (const m of sc.machines!) {
+        expect(m.q).toBe(1); // q = 1 for synchronous machines (μ only)
+        expect(m.mu).toBeGreaterThan(0);
+        expect(m.mu).toBeLessThanOrEqual(1);
+      }
+      expect(bus.verification.passed).toBe(true);
+    }
+  });
+
+  it('G8-WIND-ASYNC breaks out the asynchronous-machine contribution (Z_M, μ·q)', () => {
+    const c = OZE_ARCHETYPES_2A['G8-WIND-ASYNC'];
+    expect(c, 'G8-WIND-ASYNC template must exist').toBeTruthy();
+    expect(c.source.machine_type).toBe('ASYNCHRONOUS');
+    for (const bus of Object.values(c.short_circuit.buses)) {
+      const sc = bus.source_contribution;
+      expect(sc.machine_type).toBe('ASYNCHRONOUS');
+      expect(sc.is_synchronous_machine).toBe(false);
+      expect(sc.ik_contribution_ka).toBeGreaterThan(0);
+      expect(sc.model).toMatch(/6\.7|6\.6|asynchroniczna/i);
+      expect(typeof sc.motors_negligible).toBe('boolean');
+      for (const m of sc.machines!) {
+        expect(m.q).toBeGreaterThan(0);
+        expect(m.q).toBeLessThanOrEqual(1); // q ≤ 1 (asynchronous decay)
+      }
+      expect(bus.verification.passed).toBe(true);
+    }
+  });
+
+  it('renders the contribution as "maszyna" (not "ograniczony") for both machine types', () => {
+    for (const [a, mt] of [
+      ['G7-BIOGAZ', 'SYNCHRONOUS'],
+      ['G8-WIND-ASYNC', 'ASYNCHRONOUS'],
+    ] as const) {
+      const { container } = renderOze(a, 'close');
+      const contrib = container.querySelector('[data-testid="oze-sc-contrib-SN_PCC"]')!;
+      expect(contrib, `${a} must render an SN_PCC SC contribution`).toBeTruthy();
+      expect(contrib.getAttribute('data-machine-type')).toBe(mt);
+      expect(contrib.textContent).toContain('maszyna');
+      expect(contrib.textContent).not.toContain('ograniczony');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Inherited T1-T4 — orthogonal routing (zero diagonal connection lines)
 // ---------------------------------------------------------------------------
 

@@ -336,7 +336,7 @@ function BusResults(props: { vf: OzeVfBus; sc: OzeScBus; x: number; y: number })
       </text>
       {/* Gate J — the source contribution, machine-typed. */}
       <text x={x} y={y + 27} fill="#FFB020" fontFamily={FONT_MONO} fontSize={6.6} data-testid={`oze-sc-contrib-${vf.bus_ref}`} data-machine-type={sc.source_contribution.machine_type} data-synchronous={String(sc.source_contribution.is_synchronous_machine)}>
-        {`wkład ${sc.source_contribution.machine_type}: ${sc.source_contribution.ik_contribution_ka.toFixed(3)} kA (${sc.source_contribution.is_synchronous_machine ? 'maszyna' : 'ograniczony'})`}
+        {`wkład ${sc.source_contribution.machine_type}: ${sc.source_contribution.ik_contribution_ka.toFixed(3)} kA (${sc.source_contribution.machine_type === 'IBG' ? 'ograniczony' : 'maszyna'})${sc.source_contribution.ib_contribution_ka != null ? ` · i_b=${sc.source_contribution.ib_contribution_ka.toFixed(3)} kA` : ''}`}
       </text>
     </g>
   );
@@ -872,9 +872,11 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
           </text>
           {[
             `Kolektor: ${collector.collector_kv} kV · ${collector.topology}`,
-            `Turbiny: ${collector.n_turbines} × ${(collector.turbine_kw / 1000).toFixed(1)} MW (Typ 4, pełny przekształtnik)`,
+            `Turbiny: ${collector.n_turbines} × ${(collector.turbine_kw / 1000).toFixed(1)} MW ${src.machine_type === 'ASYNCHRONOUS' ? '(Typ 1, generator asynchroniczny)' : '(Typ 4, pełny przekształtnik)'}`,
             `Trafo turbiny (każda): ${collector.turbine_transformer}`,
-            `Maszyna: IBG — Ik ograniczony k·In (§6.7), NIE maszyna`,
+            src.machine_type === 'ASYNCHRONOUS'
+              ? `Maszyna: asynchroniczna — Ik za Z_M (§6.7), zanik μ·q (§6.6)`
+              : `Maszyna: IBG — Ik ograniczony k·In (§6.7), NIE maszyna`,
           ].map((ln, i) => (
             <text key={i} x={schemX} y={schemY + 9 + i * 8} fill={i === 3 ? COLOR_TEXT_MUTED : COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6} fontWeight={i === 3 ? 400 : 600}>
               {ln}
