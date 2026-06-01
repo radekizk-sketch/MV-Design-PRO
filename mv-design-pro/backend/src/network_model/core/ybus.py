@@ -129,6 +129,11 @@ class AdmittanceMatrixBuilder:
 
         if ground_slack_buses:
             self._ground_slack_buses(y_bus)
+            # Rotating machines (IEC 60909 §6.3/§6.7) are voltage-behind-Z″ sources;
+            # in the SC context they add a shunt Y″=1/Z″ at their node, exactly as the
+            # slack is grounded. SC context ONLY (ground_slack_buses ⇒ called solely by
+            # short_circuit_core); no-op when no machines ⇒ existing networks unchanged.
+            self._add_machine_shunts(y_bus)
 
         return y_bus
 
@@ -148,6 +153,24 @@ class AdmittanceMatrixBuilder:
                 if idx is not None and idx not in seen_indices:
                     y_bus[idx, idx] += y_slack_pu
                     seen_indices.add(idx)
+
+    def _add_machine_shunts(self, y_bus: np.ndarray) -> None:
+        """Add rotating-machine SC sources as shunt admittances Y″ = 1/Z″ (IEC 60909
+        §6.3 synchronous, §6.7 asynchronous). A machine is a voltage source behind Z″;
+        in the Z-bus method that is a shunt to the (grounded) EMF reference at the
+        machine's node. Deterministic order (sources are id-sorted); a no-op when no
+        machine sources exist, so machine-free networks keep a byte-identical Y-bus."""
+        machines: list[tuple[str, complex]] = [
+            (m.node_id, m.z_internal_ohm) for m in self._graph.get_synchronous_machine_sources()
+        ] + [
+            (m.node_id, m.z_internal_ohm) for m in self._graph.get_asynchronous_machine_sources()
+        ]
+        for node_id, z_internal_ohm in machines:
+            idx = self._node_id_to_index.get(node_id)
+            if idx is None or abs(z_internal_ohm) == 0.0:
+                continue
+            z_base = self.get_zbase_ohm(node_id)
+            y_bus[idx, idx] += z_base / z_internal_ohm
 
     def get_zbase_ohm(self, node_id: str) -> float:
         """Zwraca Zbase [Ω] dla danego węzła: Vn² / Sbase."""
