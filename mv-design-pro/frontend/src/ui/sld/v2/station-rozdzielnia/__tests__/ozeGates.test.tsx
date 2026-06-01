@@ -63,7 +63,12 @@ describe('GATE A — anti-fabrication: every element pinned, boundary ∈ set, s
       expect(roles).toContain('source');
       const { container } = renderOze(a, 'close');
       expect(container.querySelector('[data-testid="oze-field-connection"]')).toBeTruthy();
-      expect(container.querySelector('[data-testid="oze-field-source"]')).toBeTruthy();
+      // The source renders either as a PCC-bus source field (G1/G3) or as inverter
+      // feeders on the nN tier (G2 behind the step-up transformer).
+      const hasSource =
+        container.querySelector('[data-testid="oze-field-source"]') ||
+        container.querySelector('[data-testid^="oze-field-inv-"]');
+      expect(hasSource, `${a}: source must render (field or nN inverter feeder)`).toBeTruthy();
       expect(container.querySelector(`[data-testid="oze-busbar-${c.pcc_bus_ref}"]`)).toBeTruthy();
       expect(container.querySelector('[data-testid="oze-boundary-marker"]')).toBeTruthy();
     }
@@ -268,19 +273,64 @@ describe('inherited — OZE unit routing is orthogonal (no diagonal lines)', () 
 describe('G4-PVTR — PV 1 MW via customer transformer station', () => {
   const G4 = 'G4-PVTR';
 
-  it('exists and is a customer station: connection + measurement + OWN-LOAD + source fields', () => {
+  it('Buk 1 structure: SN POLE 1 (VCB) + POLE 2 (SŁ2+U) + nN Q1 + ≥3 inverters + RPW-PV', () => {
     const c = OZE_ARCHETYPES_2A[G4];
     expect(c, 'G4-PVTR template must exist').toBeTruthy();
-    const roles = c.fields.map((f) => f.role).sort();
-    // Schematic-faithful: 2 SN fields (connection VCB + switch SŁ2+U) + measurement
-    // + own-needs (load) + source. Distilled from the real drawing.
-    expect(roles).toEqual(['connection', 'load', 'measurement', 'source', 'switch']);
-    // The own-load field is pinned to POTRZEBY_WLASNE (customer self-consumption).
-    const load = c.fields.find((f) => f.role === 'load')!;
-    expect(load.source_ref).toMatch(/POTRZEBY_WLASNE/);
-    // PV source is behind the station transformer (on the nN bus, not the PCC).
-    const srcF = c.fields.find((f) => f.role === 'source')!;
-    expect(srcF.on_bus_ref).not.toBe(c.pcc_bus_ref);
+    // Two SN fields (connection VCB + switch SŁ2+U), an nN main breaker Q1, three
+    // inverter source feeders (NOT one block), and the own-needs (RPW-PV) load.
+    expect(c.fields.filter((f) => f.role === 'connection').length).toBe(1);
+    expect(c.fields.filter((f) => f.role === 'switch').length).toBe(1);
+    expect(c.fields.filter((f) => f.role === 'breaker').length).toBe(1); // Q1 nN
+    expect(c.fields.filter((f) => f.role === 'source').length).toBeGreaterThanOrEqual(3);
+    const own = c.fields.find((f) => f.role === 'load')!;
+    expect(own.source_ref).toMatch(/POTRZEBY_WLASNE/);
+    // NO phantom standalone measurement field — metering is a function of POLE 1.
+    expect(c.fields.some((f) => f.role === 'measurement')).toBe(false);
+    // The inverters sit behind the step-up transformer (on the nN bus).
+    for (const inv of c.fields.filter((f) => f.role === 'source')) {
+      expect(inv.on_bus_ref).not.toBe(c.pcc_bus_ref);
+    }
+    // The nN main breaker Q1 is pinned to the 3WA1108 setting card.
+    const q1 = c.fields.find((f) => f.role === 'breaker')!;
+    expect(q1.source_ref).toMatch(/3WA1108|1\.18/);
+  });
+
+  it('protection function names are REAL (Buk 1 doc), not invented ANSI codes', () => {
+    const c = OZE_ARCHETYPES_2A[G4];
+    const codes = c.source.protection_codes;
+    // SN relay (POLE 1) real functions.
+    expect(codes).toContain('G0>');
+    expect(codes).toContain('3U0');
+    expect(codes).toContain('I0>');
+    // The fabricated ANSI codes must NOT appear.
+    expect(codes).not.toContain('67');
+    expect(codes).not.toContain('67N');
+    expect(codes).not.toContain('anti-islanding');
+  });
+
+  it('coordination matrix (12 rows) comes from dok. 1.18 — three levels, two philosophies', () => {
+    const co = OZE_ARCHETYPES_2A[G4].source.coordination!;
+    expect(co, 'G4 must carry the coordination matrix').toBeTruthy();
+    expect(co.source_ref).toMatch(/1\.18/);
+    expect(co.matrix.length).toBe(12);
+    expect(co.levels.length).toBe(3);
+    // Soft trips → nN Q1; hard trips → SN Q0.
+    const f_high = co.matrix.find((r) => r.code === 'f>')!;
+    expect(f_high.trips).toMatch(/nN Q1/);
+    const i_short = co.matrix.find((r) => r.code === 'I>>')!;
+    expect(i_short.trips).toMatch(/SN Q0/);
+    // Real earth-fault functions present in the matrix.
+    expect(co.matrix.some((r) => r.code === 'G0>')).toBe(true);
+    expect(co.matrix.some((r) => r.code === 'SPZ')).toBe(true);
+  });
+
+  it('DC/AC ≈ 1.0 — Pzainst = 999.6 kWp (3×560×595), no oversizing', () => {
+    const c = OZE_ARCHETYPES_2A[G4];
+    const h = c.source.power_hierarchy;
+    expect(Math.round(h.p_zainst_kw)).toBe(1000); // 999.6 → 1000 rounded
+    expect(h.p_zainst_kw).toBeCloseTo(h.pn_ac_kw, 1); // DC ≈ AC
+    expect(c.source.schematic!.dc_ac_ratio).toBeCloseTo(1.0, 2);
+    expect(h.valid).toBe(true);
   });
 
   it('boundary is a dedicated MV connection (cable + głowica to OSD), metered', () => {
@@ -305,19 +355,24 @@ describe('G4-PVTR — PV 1 MW via customer transformer station', () => {
     }
   });
 
-  it('renders the own-load field + the station idiom at L2', () => {
+  it('renders the full Buk 1 idiom at L2: SN 2 pola + nN Q1 + 3 falowniki + RPW-PV', () => {
     const c = OZE_ARCHETYPES_2A[G4];
     const { container } = render(
       <svg>
-        <OzeSourceArchetype companion={c} stationCode="PV-1MW" name="PV 1 MW przez stację TR" detail="close" />
+        <OzeSourceArchetype companion={c} stationCode="PV-1MW" name="PV 1 MW „Buk 1”" detail="close" />
       </svg>,
     );
-    expect(container.querySelector('[data-testid="oze-field-load"]')).toBeTruthy();
+    // SN: connection (POLE 1 VCB) + switch (POLE 2 SŁ2+U).
     expect(container.querySelector('[data-testid="oze-field-connection"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="oze-field-source"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="oze-boundary-marker"]')).toBeTruthy();
-    // POLE NR 2 (SŁ2+U) switch field is present too.
     expect(container.querySelector('[data-testid="oze-field-switch"]')).toBeTruthy();
+    // nN tier: main breaker Q1 + ≥3 inverter feeders + own-needs.
+    expect(container.querySelector('[data-testid="oze-nn-tier"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="oze-field-breaker"]')).toBeTruthy();
+    expect(container.querySelectorAll('[data-testid^="oze-field-inv-"]').length).toBeGreaterThanOrEqual(3);
+    expect(container.querySelector('[data-testid="oze-field-load"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="oze-boundary-marker"]')).toBeTruthy();
+    // NO phantom standalone measurement field rendered.
+    expect(container.querySelector('[data-testid="oze-field-measurement"]')).toBeFalsy();
     // Every <line> orthogonal (inherited invariant).
     const unit = container.querySelector('[data-testid="oze-source-G4-PVTR"]')!;
     for (const ln of Array.from(unit.querySelectorAll('line'))) {

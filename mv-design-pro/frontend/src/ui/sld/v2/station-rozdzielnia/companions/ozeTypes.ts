@@ -44,9 +44,33 @@ export interface OzeSchematic {
   readonly nn_grid: string;
   readonly nn_main_breaker: string;
   readonly pv_modules: string;
+  readonly inverters?: string;
+  readonly dc_ac_ratio?: number;
   readonly ct: OzeSchematicCt;
   readonly vt: OzeSchematicVt;
   readonly own_needs: string;
+}
+
+/** One row of the protection-coordination matrix (distilled from the doc). */
+export interface OzeCoordRow {
+  readonly lp: number;
+  readonly code: string; // real function name: I>, Ust I>, G0>, 3U0, I0>, SPZ...
+  readonly name: string;
+  readonly inverter: string;
+  readonly relay_sn: string;
+  readonly measure: string; // SN | nN
+  readonly trips: string; // which breaker trips
+}
+
+/** Three-level protection coordination (inverter / nN Q1 / SN Q0), distilled
+ *  from the settings document (source_ref). Lives in the click-module, NOT on the
+ *  canvas — the canvas elements are clickable and bound to this. */
+export interface OzeCoordination {
+  readonly source_ref: string;
+  readonly levels: readonly string[];
+  readonly philosophy: { readonly soft: string; readonly hard: string };
+  readonly base: Readonly<Record<string, number>>;
+  readonly matrix: readonly OzeCoordRow[];
 }
 
 /** OZE source metadata (axes T/R/S of the taxonomy). */
@@ -55,11 +79,13 @@ export interface OzeSourceMeta {
   readonly machine_type: 'IBG' | 'SYNCHRONOUS' | 'ASYNCHRONOUS';
   readonly nc_rfg_class: string; // A | B | C | D
   readonly control_mode: string; // cosφ=const | Q=const | cosφ(P) | Q(U) | P(f)
-  /** Gate I — protection function codes (ANSI/IEC), a function of machine_type. */
+  /** Gate I — protection function codes (real names from the doc), per device. */
   readonly protection_codes: readonly string[];
   readonly power_hierarchy: OzePowerHierarchy;
   /** Present iff this template is distilled from a real reference schematic. */
   readonly schematic?: OzeSchematic;
+  /** Protection coordination matrix (click-module content, not on the canvas). */
+  readonly coordination?: OzeCoordination;
 }
 
 export interface OzeVfBus {
@@ -99,7 +125,7 @@ export type OzeScBus = ScBus & { readonly source_contribution: OzeSourceContribu
  */
 export interface OzeField {
   readonly field_id: string;
-  readonly role: 'connection' | 'source' | 'measurement' | 'load' | 'switch';
+  readonly role: 'connection' | 'source' | 'measurement' | 'load' | 'switch' | 'breaker';
   readonly kind: string;
   /** ABB cell type (SDC | SDF | CBC | SMC | DBC | SDM-V | SDM-C | ...). */
   readonly abb_cell: string;

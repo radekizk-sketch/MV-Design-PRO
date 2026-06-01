@@ -150,7 +150,22 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
   const meterField = companion.fields.find((f) => f.role === 'measurement');
   const srcField = companion.fields.find((f) => f.role === 'source');
   const loadField = companion.fields.find((f) => f.role === 'load');
+  const q1Field = companion.fields.find((f) => f.role === 'breaker');
   const schematic = companion.source.schematic;
+
+  // nN tier: the source feeders (≥1) sit on a bus DIFFERENT from the PCC (behind a
+  // step-up transformer). The tier carries an optional main breaker (Q1), the
+  // inverter source feeders (≥3 for Buk 1, NOT one block) + the own-needs load.
+  const srcOnOtherBus = companion.fields.find((f) => f.role === 'source' && f.on_bus_ref !== pccRef);
+  const nnBusRef = q1Field?.on_bus_ref ?? srcOnOtherBus?.on_bus_ref;
+  const nnTier = nnBusRef && nnBusRef !== pccRef
+    ? {
+        nnKv: companion.voltage_flow.buses[nnBusRef]?.un_kv ?? 0.8,
+        feeders: companion.fields.filter(
+          (f) => f.on_bus_ref === nnBusRef && (f.role === 'source' || f.role === 'load'),
+        ),
+      }
+    : null;
 
   // Wider canvas when the unit has many fields (schematic-faithful = 2 SN fields
   // + meter + own-needs + source).
@@ -178,13 +193,11 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
 
   const breakerY = busY + (detail === 'far' ? 16 : 26);
   const relayY = breakerY + (detail === 'far' ? 12 : 18);
-  // Source column: breaker → (transformer if the source sits behind one) → source.
+  // Legacy single-source column (G1/G3: source on the SAME bus as the PCC, no Q1).
   const srcBreakerY = busY + (detail === 'far' ? 16 : 26);
-  // A transformer is drawn in the SOURCE column iff the source field is on a
-  // DIFFERENT (lower) busbar than the PCC — i.e. a block/step-up transformer.
-  const hasTrafo = !!srcField && srcField.on_bus_ref !== pccRef;
-  const trafoY = srcBreakerY + (detail === 'far' ? 16 : 26);
-  const srcSymY = (hasTrafo ? trafoY : srcBreakerY) + (detail === 'far' ? 16 : 28);
+  const srcSymY = srcBreakerY + (detail === 'far' ? 16 : 28);
+  const pccSrcField = !nnTier ? srcField : undefined;
+  const pccLoadField = !nnTier ? loadField : undefined;
 
   return (
     <g
@@ -329,62 +342,120 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
         </g>
       )}
 
-      {/* ─── OWN-LOAD field (POTRZEBY_WLASNE) — customer station consumption ─── */}
-      {loadField && (
-        <g
-          data-testid="oze-field-load"
-          data-field-role="load"
-          data-abb-cell={loadField.abb_cell}
-          data-source-ref={loadField.source_ref}
-          onClick={handle(`${companion.archetype}/${loadField.field_id}`)}
-          style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
-        >
-          <line x1={loadX} y1={busY} x2={loadX} y2={srcSymY - 6} stroke={busColor} strokeWidth={1.8} />
-          {/* Load symbol — a filled downward triangle (IEC consumer). */}
-          {detail !== 'far' && (
-            <polygon points={`${loadX - 5},${srcSymY - 6} ${loadX + 5},${srcSymY - 6} ${loadX},${srcSymY + 3}`} fill="#7DD3FC" stroke="#7DD3FC" strokeWidth={1} />
-          )}
-          {detail !== 'far' && (
-            <text x={loadX} y={srcSymY + (detail === 'close' ? 14 : 12)} textAnchor="middle" fill="#7DD3FC" fontFamily={FONT_SANS} fontSize={6.6} fontWeight={700} paintOrder="stroke" stroke="#05070A" strokeWidth={2}>
-              {`ODB. WŁ. (${loadField.abb_cell})`}
-            </text>
-          )}
-        </g>
-      )}
+      {/* ════ nN TIER (800 V switchgear, układ IT) — when a step-up transformer
+           feeds an nN busbar with a main breaker + ≥3 inverter feeders + own-needs.
+           Step-up from the SN PCC busbar down to the nN busbar; orthogonal. ════ */}
+      {nnTier && (() => {
+        const trX = srcX;                       // transformer spine x
+        const trTopY = busY + (detail === 'far' ? 14 : 22);
+        const trMidY = trTopY + (detail === 'far' ? 12 : 18);
+        const nnBusY = trMidY + (detail === 'far' ? 16 : 26);
+        const nnX1 = busX1 + 18;
+        const nnX2 = busX2 - 8;
+        const feeders = nnTier.feeders;
+        const fStep = (nnX2 - (nnX1 + 26)) / Math.max(1, feeders.length);
+        const fBreakerY = nnBusY + (detail === 'far' ? 14 : 22);
+        const fSymY = fBreakerY + (detail === 'far' ? 14 : 24);
+        return (
+          <g data-testid="oze-nn-tier" data-nn-kv={nnTier.nnKv}>
+            {/* SN→transformer spine. */}
+            <line x1={trX} y1={busY} x2={trX} y2={trTopY - 9} stroke={busColor} strokeWidth={1.8} />
+            <ApparatusTransformerSymbol cx={trX} cy={trTopY} vectorGroup="Dyn5" neutralEarthed />
+            {/* transformer → nN main breaker Q1 → nN busbar. */}
+            <line x1={trX} y1={trTopY + 9} x2={trX} y2={trMidY - 7} stroke="#7DD3FC" strokeWidth={1.8} />
+            {q1Field && (
+              <g
+                data-testid="oze-field-breaker"
+                data-field-role="breaker"
+                data-abb-cell={q1Field.abb_cell}
+                data-source-ref={q1Field.source_ref}
+                data-interface-protection="true"
+                onClick={handle(`${companion.archetype}/${q1Field.field_id}`)}
+                style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
+              >
+                <g data-symbol-shape="square" data-state="closed">
+                  <ApparatusCbSquare cx={trX} cy={trMidY} state="closed" energized />
+                </g>
+                {detail !== 'far' && (
+                  <text x={trX + 11} y={trMidY + 2} textAnchor="start" fill="#5BE08A" fontFamily={FONT_MONO} fontSize={6.4} fontWeight={800}>Q1</text>
+                )}
+              </g>
+            )}
+            <line x1={trX} y1={trMidY + 7} x2={trX} y2={nnBusY} stroke="#7DD3FC" strokeWidth={1.8} />
+            {/* nN busbar (800 V, układ IT). */}
+            <line x1={nnX1} y1={nnBusY} x2={nnX2} y2={nnBusY} stroke="#7DD3FC" strokeWidth={3.4} data-testid="oze-nn-busbar" />
+            {detail !== 'far' && (
+              <text x={nnX2 + 4} y={nnBusY + 3} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6.6} fontWeight={700}>{`${nnTier.nnKv * 1000} V · IT`}</text>
+            )}
+            {/* Inverter feeders (≥3) + own-needs — each its own field, BTVC fuse. */}
+            {feeders.map((f, i) => {
+              const fx = nnX1 + 26 + i * fStep;
+              const isOwn = f.role === 'load';
+              return (
+                <g
+                  key={f.field_id}
+                  data-testid={isOwn ? 'oze-field-load' : `oze-field-inv-${i}`}
+                  data-field-role={f.role}
+                  data-abb-cell={f.abb_cell}
+                  data-source-ref={f.source_ref}
+                  onClick={handle(`${companion.archetype}/${f.field_id}`)}
+                  style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
+                >
+                  <line x1={fx} y1={nnBusY} x2={fx} y2={fBreakerY - 6} stroke="#7DD3FC" strokeWidth={1.6} />
+                  {/* BTVC fuse (rect) on inverter feeders. */}
+                  {!isOwn && detail !== 'far' && (
+                    <rect x={fx - 2.5} y={fBreakerY - 6} width={5} height={9} rx={0.6} fill="#0A8D43" stroke={COLOR_DEVICE_CLOSED_BORDER} strokeWidth={1} />
+                  )}
+                  <line x1={fx} y1={fBreakerY + (isOwn ? 0 : 3)} x2={fx} y2={fSymY - 7} stroke="#7DD3FC" strokeWidth={1.6} />
+                  {/* symbol: inverter (~) for source, load triangle for own-needs. */}
+                  {detail !== 'far' && (isOwn
+                    ? <polygon points={`${fx - 5},${fSymY - 6} ${fx + 5},${fSymY - 6} ${fx},${fSymY + 3}`} fill="#7DD3FC" stroke="#7DD3FC" strokeWidth={1} />
+                    : <PvInverterSymbol cx={fx} cy={fSymY} r={detail === 'close' ? 7 : 6} />)}
+                  {detail === 'close' && (
+                    <text x={fx} y={fSymY + 14} textAnchor="middle" fill={isOwn ? '#7DD3FC' : '#FFB020'} fontFamily={FONT_MONO} fontSize={5.6} fontWeight={700}>
+                      {isOwn ? 'RPW-PV' : `INW.${i + 1}`}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+          </g>
+        );
+      })()}
 
-      {/* ─── SOURCE field: breaker → (transformer) → source symbol ─── */}
-      {srcField && (
+      {/* Legacy single-source column (G1/G3: source on the PCC bus, no nN tier). */}
+      {pccSrcField && (
         <g
           data-testid="oze-field-source"
           data-field-role="source"
-          data-abb-cell={srcField.abb_cell}
-          data-source-ref={srcField.source_ref}
+          data-abb-cell={pccSrcField.abb_cell}
+          data-source-ref={pccSrcField.source_ref}
           data-interface-protection="false"
-          onClick={handle(`${companion.archetype}/${srcField.field_id}`)}
+          onClick={handle(`${companion.archetype}/${pccSrcField.field_id}`)}
           style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
         >
           <line x1={srcX} y1={busY} x2={srcX} y2={srcBreakerY - (detail === 'far' ? 6 : 8)} stroke={busColor} strokeWidth={1.8} />
           <g data-testid="oze-source-breaker" data-symbol-shape="square" data-state="closed">
             <ApparatusCbSquare cx={srcX} cy={srcBreakerY} state="closed" energized />
           </g>
-          {hasTrafo ? (
-            <>
-              <line x1={srcX} y1={srcBreakerY + (detail === 'far' ? 6 : 8)} x2={srcX} y2={trafoY - 9} stroke={busColor} strokeWidth={1.8} />
-              <ApparatusTransformerSymbol cx={srcX} cy={trafoY} vectorGroup="Dyn5" neutralEarthed />
-              <line x1={srcX} y1={trafoY + 9} x2={srcX} y2={srcSymY - 8} stroke="#7DD3FC" strokeWidth={1.8} />
-            </>
-          ) : (
-            <line x1={srcX} y1={srcBreakerY + (detail === 'far' ? 6 : 8)} x2={srcX} y2={srcSymY - 8} stroke={busColor} strokeWidth={1.8} />
-          )}
+          <line x1={srcX} y1={srcBreakerY + (detail === 'far' ? 6 : 8)} x2={srcX} y2={srcSymY - 8} stroke={busColor} strokeWidth={1.8} />
           {detail !== 'far' && <PvInverterSymbol cx={srcX} cy={srcSymY} r={detail === 'close' ? 8 : 7} />}
           {detail !== 'far' && (
             <text x={srcX} y={srcSymY + (detail === 'close' ? 16 : 14)} textAnchor="middle" fill="#FFB020" fontFamily={FONT_SANS} fontSize={7} fontWeight={700} paintOrder="stroke" stroke="#05070A" strokeWidth={2}>
-              {`${srcField.kind} (${srcField.abb_cell})`}
+              {`${pccSrcField.kind} (${pccSrcField.abb_cell})`}
             </text>
           )}
           {detail === 'far' && (
             <text x={srcX} y={srcSymY + 4} textAnchor="middle" fill="#FFB020" fontFamily={FONT_MONO} fontSize={8} fontWeight={800}>{src.technology}</text>
           )}
+        </g>
+      )}
+      {/* Legacy own-load on the PCC bus (only when no nN tier carries it). */}
+      {pccLoadField && (
+        <g data-testid="oze-field-load" data-field-role="load" data-abb-cell={pccLoadField.abb_cell} data-source-ref={pccLoadField.source_ref} onClick={handle(`${companion.archetype}/${pccLoadField.field_id}`)} style={{ cursor: onFieldClick ? 'pointer' : 'default' }}>
+          <line x1={loadX} y1={busY} x2={loadX} y2={srcSymY - 6} stroke={busColor} strokeWidth={1.8} />
+          {detail !== 'far' && <polygon points={`${loadX - 5},${srcSymY - 6} ${loadX + 5},${srcSymY - 6} ${loadX},${srcSymY + 3}`} fill="#7DD3FC" stroke="#7DD3FC" strokeWidth={1} />}
+          {detail !== 'far' && <text x={loadX} y={srcSymY + (detail === 'close' ? 14 : 12)} textAnchor="middle" fill="#7DD3FC" fontFamily={FONT_SANS} fontSize={6.6} fontWeight={700} paintOrder="stroke" stroke="#05070A" strokeWidth={2}>{`ODB. WŁ. (${pccLoadField.abb_cell})`}</text>}
         </g>
       )}
 
@@ -399,7 +470,7 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
 
       {/* Power hierarchy (gate H), close zoom, BELOW the unit on the left — clear
           of the connection-field protection codes. */}
-      {detail === 'close' && <PowerHierarchy h={src.power_hierarchy} x={busX1 - 30} y={busY + 76} />}
+      {detail === 'close' && <PowerHierarchy h={src.power_hierarchy} x={busX1 - 96} y={busY + 76} />}
 
       {/* Schematic equipment register (close zoom) — the distinguishing block of a
           template DISTILLED from a real drawing: transformer/CT/VT/grid/modules,
@@ -407,7 +478,7 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
           power hierarchy, clear of the right-side bus-result panels. */}
       {detail === 'close' && schematic && (
         <g data-testid="oze-schematic" data-source-ref={schematic.source_ref} pointerEvents="none">
-          <text x={busX1 - 30} y={busY + 130} fill="#9FE6FF" fontFamily={FONT_MONO} fontSize={7} fontWeight={800}>
+          <text x={busX1 - 96} y={busY + 132} fill="#9FE6FF" fontFamily={FONT_MONO} fontSize={7} fontWeight={800}>
             WG SCHEMATU (źródło)
           </text>
           {[
@@ -419,7 +490,7 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
             `PV: ${schematic.pv_modules}`,
             `Potrzeby własne: ${schematic.own_needs}`,
           ].map((ln, i) => (
-            <text key={i} x={busX1 - 30} y={busY + 139 + i * 8} fill={i === 3 ? COLOR_TEXT_MUTED : COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6} fontWeight={i === 3 ? 400 : 600}>
+            <text key={i} x={busX1 - 96} y={busY + 141 + i * 8} fill={i === 3 ? COLOR_TEXT_MUTED : COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6} fontWeight={i === 3 ? 400 : 600}>
               {ln}
             </text>
           ))}

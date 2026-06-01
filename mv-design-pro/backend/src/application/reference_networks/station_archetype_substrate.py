@@ -1088,78 +1088,162 @@ _PV1MW_SN_KV = 15.75
 _PV1MW_NN_KV = 0.8
 
 
+# Schematic-true nameplate voltages (distilled from the owner's execution drawing
+# of the SN/nN station with a 1 MW PV farm — NOT 0.4 kV; the PV inverters output
+# ~800 V AC and the step-up transformer is 15.75/0.8 kV).
+_PV1MW_SN_KV = 15.75
+_PV1MW_NN_KV = 0.8
+
+
+# Protection coordination matrix — PV "Buk 1", dok. 1.18 "Wykaz nastaw i
+# zabezpieczeń" (source_ref). Three-level coordination (inverter / nN Q1 / SN Q0)
+# with two trip philosophies: SOFT disturbances (f, RoCoF, U) → nN Q1; faults /
+# earth-faults / step-II overvoltage → SN Q0 (field 1). Each row carries the
+# inverter setting, the SN relay (e²TANGO-800) setting, the measurement side, and
+# the breaker that trips. Real function names — NOT ANSI 67/67N from memory.
+_BUK1_COORDINATION: list[dict[str, Any]] = [
+    {"lp": 1, "code": "I>", "name": "nadprądowe od przeciążeń",
+     "inverter": "tech. producenta", "relay_sn": "1,2 I_bSN = 6 A → 48 A SN / 5 s",
+     "measure": "SN", "trips": "SN Q0 pole 1"},
+    {"lp": 2, "code": "I>>", "name": "nadprądowe zwarciowe",
+     "inverter": "tech. producenta", "relay_sn": "4 I_bSN = 20 A → 160 A SN / 0,1 s",
+     "measure": "SN", "trips": "SN Q0 pole 1"},
+    {"lp": 3, "code": "Ust I>", "name": "przed wzrostem napięcia",
+     "inverter": "1,1 Un = 880 V (16,5 kV) / 5 s", "relay_sn": "1,12 U_bSN = 112 V → 16,80 kV / 3 s",
+     "measure": "SN", "trips": "nN Q1"},
+    {"lp": 4, "code": "Ust II>", "name": "przed wzrostem napięcia",
+     "inverter": "1,15 Un = 920 V (17,25 kV) / 0,05 s", "relay_sn": "1,15 U_bSN = 115 V → 17,25 kV / 0,3 s",
+     "measure": "SN", "trips": "SN Q0 pole 1"},
+    {"lp": 5, "code": "Ust I<", "name": "przed obniżeniem napięcia",
+     "inverter": "0,8 Un = 640 V (12,00 kV) / 0,05 s", "relay_sn": "0,8 U_bnN = 80 V → 12,00 kV / 5 s",
+     "measure": "nN", "trips": "nN Q1"},
+    {"lp": 6, "code": "f>", "name": "przed wzrostem częstotliwości",
+     "inverter": "51,5 Hz / 0,05 s", "relay_sn": "51,5 Hz / 0,3 s", "measure": "nN", "trips": "nN Q1"},
+    {"lp": 7, "code": "f<", "name": "przed obniżeniem częstotliwości",
+     "inverter": "47,5 Hz / 0,05 s", "relay_sn": "47,5 Hz / 0,3 s", "measure": "nN", "trips": "nN Q1"},
+    {"lp": 8, "code": "df/dt", "name": "częstotliwościowe (RoCoF)",
+     "inverter": "2 Hz/s / 0,05 s", "relay_sn": "2 Hz/s / 0,3 s", "measure": "nN", "trips": "nN Q1"},
+    {"lp": 9, "code": "G0>", "name": "konduktancyjne",
+     "inverter": "—", "relay_sn": "0,8 mS / 0,3 s", "measure": "SN", "trips": "SN Q0 pole 1"},
+    {"lp": 10, "code": "3U0", "name": "zerowo-napięciowe",
+     "inverter": "—", "relay_sn": "30 V / 5 s", "measure": "SN", "trips": "SN Q0 pole 1"},
+    {"lp": 11, "code": "I0>", "name": "zerowo-prądowe",
+     "inverter": "—", "relay_sn": "10 A / 0,2 s", "measure": "SN", "trips": "SN Q0 pole 1"},
+    {"lp": 12, "code": "SPZ", "name": "samoczynne ponowne załączenie",
+     "inverter": "od f>, f<, df/dt, Ust I< / 60 s", "relay_sn": "od f>, f<, df/dt, Ust I< / 600 s",
+     "measure": "nN", "trips": "nN Q1"},
+]
+# Protection function CODES per device, derived from the matrix (real names).
+_BUK1_SN_CODES = ["I>", "I>>", "Ust II>", "G0>", "3U0", "I0>"]   # SN Q0 (field 1) — hard trips
+_BUK1_NN_CODES = ["Ust I>", "Ust I<", "f>", "f<", "df/dt", "SPZ"]  # nN Q1 — soft trips
+
+
 def build_g4_pvtr() -> dict[str, Any]:
-    """G4-PVTR — PV 1 MW przez STACJĘ TR KONSUMENCKĄ — WIERNA PROJEKCJA realnego
-    schematu wykonawczego (docs/audit/AUDYT_SCHEMAT_PV1MW_TR_KONSUMENCKA).
+    """G4-PVTR — PV 1 MW "Buk 1" przez stację TR konsumencką — WIERNA PROJEKCJA
+    realnego schematu wykonawczego + dok. 1.18 "Wykaz nastaw i zabezpieczeń".
 
-    Łańcuch (generacja → sieć): moduły PV (JA SOLAR 595Wp ×2×560) → falowniki AC/DC
-    → SZYNA nN 800 V (3×P40×10) → Q1 wyłącznik nN 800A → TRANSFORMATOR 1000 kVA
-    0,8/15,75 kV (podwyższający) → SZYNA SN 15,75 kV → POLE NR 1 VCB (Q0 + CTM20
-    + VTB20 + e²TANGO) → POLE NR 2 SŁ2+U (Q2 + uziemnik + VT) → głowica → kabel SN
-    → |GRANICA| → SIEĆ OSD. Gałąź: POTRZEBY WŁASNE (TS 5kVA 800/230V → RPW-PV).
+    SN: dwupolowa rozdzielnia e²TANGO-800 — POLE 1 (VCB: odłącznik → Q0 □ TGI24 →
+    CTM20 3-rdz. → VTB20 4-uzw. → POLIM-D 18-06 → ITK 224 → uziemnik; przekaźnik
+    SN: I>/I>>/Ust II>/G0>/3U0/I0>) + POLE 2 (SŁ2+U: rozłącznik GTR5 ◇ + uziemnik
+    ◯ → ITK 224 → 3×YHAKXS do OSD; bez przekaźnika).
+    nN 800 V (układ IT): Q1 □ 3WA1108 800A (I>=720A / I>>=4000A) → szyna 3×P40×10 →
+    3 POLA FALOWNIKÓW (~333 kW; 560×595Wp/falownik; BTVC 315A/800V) + pole RPW-PV.
+    Koordynacja trójpoziomowa (dok. 1.18) — w module zabezpieczenia, nie na płótnie.
 
-    nN = 800 V (NIE 400). Dwa pola SN. Przekładniki wielordzeniowe. Układ sieci IT.
-    Wkład zwarciowy IBG ograniczony. Kierunek netto liczy SOLVER.
+    DC = 999,6 kWp (3×560×595Wp) = AC 999,6 kW → DC/AC ≈ 1,0 (brak oversizingu).
+    Eksport = stan podstawowy; kierunek/wartość z FROZEN solvera (nie z palca).
     """
-    pv_kva = 1000.0
-    own_load_kw = 60.0  # RPW-PV: potrzeby własne (TS 5kVA + odpływy F1-F10, grzejnik itp.)
+    # PV "Buk 1": 3 inverters, each 560 modules × 595 Wp = 333.2 kWp; 3×333.2 =
+    # 999.6 kWp DC. Each inverter ~333 kVA AC (DC/AC ≈ 1.0).
+    inv_count = 3
+    modules_per_inv = 560
+    wp_per_module = 595
+    kwp_per_inv = modules_per_inv * wp_per_module / 1000.0  # 333.2 kWp
+    p_dc_kwp = inv_count * kwp_per_inv  # 999.6 kWp
+    inv_kva = kwp_per_inv  # DC/AC ≈ 1.0
+    own_load_kw = 18.0  # RPW-PV potrzeby własne (TS 5 kVA + odpływy F1-F10)
+
     s = _Substrate()
     s.add_slack("GPZ")
-    # SN side solved on the SN per-unit base; the 0.8 kV nN node is real two-volt.
     s.add_bus("SN_PCC", _PV1MW_SN_KV)
     s.add_bus("NN_800", _PV1MW_NN_KV)
     s.add_line(SR_IN, "GPZ", "SN_PCC", _SN_LINE_R, _SN_LINE_X)
-    # Step-up transformer 0.8/15.75 kV, 1000 kVA (schematic nameplate).
     s.add_transformer(SR_TR, "SN_PCC", "NN_800", hv_kv=_PV1MW_SN_KV, lv_kv=_PV1MW_NN_KV, uk_percent=6.0, rated_mva=1.0)
-    # nN net injection: PV generation − own needs (RPW-PV). PV ≫ own load → export.
-    s.add_load("NN_800", p_mw=own_load_kw / 1000.0 - pv_kva / 1000.0 * 0.9, q_mvar=0.05)
-    ibg = s.add_inverter("NN_800", rated_kva=pv_kva, un_kv=_PV1MW_NN_KV, k_sc=_IBG_K, source_type="PV")
+    # Three SEPARATE inverter injections on the nN bus (each its own feeder field)
+    # + the own-needs load. The solver decides the net export direction.
+    inv_branch_refs = [f"sr/branch/inv{i + 1}" for i in range(inv_count)]
+    for i, br in enumerate(inv_branch_refs):
+        node = f"INV{i + 1}"
+        s.add_bus(node, _PV1MW_NN_KV)
+        s.add_line(br, "NN_800", node, _NN_FEEDER_R, _NN_FEEDER_X)
+        # Each inverter exports ~333 kW (0.9 PF utilisation of its kWp).
+        s.add_load(node, p_mw=-kwp_per_inv / 1000.0 * 0.9, q_mvar=0.0)
+        s.add_inverter(node, rated_kva=inv_kva, un_kv=_PV1MW_NN_KV, k_sc=_IBG_K, source_type="PV")
+    s.add_load("NN_800", p_mw=own_load_kw / 1000.0, q_mvar=0.01)  # RPW-PV draw
     s.finalize_pq()
-    # Pzainst (moc zainstalowana DC) ≥ Pn,AC. Schemat: moduły 595 Wp, łącznie
-    # ~2016 szt (DC ~1,2 MWp), falowniki 1 MW AC (oversizing DC/AC ≈ 1,2).
-    p_dc_kwp = 2016 * 0.595  # ≈ 1199.5 kWp DC
-    src = _pv_source(technology="PV 1 MW", machine_type="IBG", nc_class="C", control_mode="Q(U)",
-                     p_zainst_kw=p_dc_kwp, pn_ac_kw=1000.0, p_przylacz_kw=1000.0, p_osiagalna_kw=950.0)
-    # Schematic-distilled equipment register (source_ref = the real drawing).
+    total_ibg_ka = inv_count * (_IBG_K * (inv_kva * 1000.0 / (_SQRT3 * _PV1MW_NN_KV * 1000.0))) / 1000.0
+
+    src = _pv_source(technology="PV 1 MW „Buk 1”", machine_type="IBG", nc_class="C", control_mode="Q(U)",
+                     p_zainst_kw=p_dc_kwp, pn_ac_kw=p_dc_kwp, p_przylacz_kw=p_dc_kwp, p_osiagalna_kw=950.0)
+    # Override protection codes with the REAL Buk 1 function names (not ANSI).
+    src["protection_codes"] = list(_BUK1_SN_CODES)
+    src["coordination"] = {
+        "source_ref": "dok:1.18_Wykaz_nastaw_i_zabezpieczen_Buk1",
+        "levels": ["FALOWNIK (każdy)", "nN — Q1 (3WA1108)", "SN — Q0 pole 1 (e²TANGO-800)"],
+        "philosophy": {
+            "soft": "f>/f</df-dt, Ust I>/I< → nN Q1 (mniej inwazyjne, SPZ 600 s)",
+            "hard": "zwarcia/doziemienia/Ust II> → SN Q0 pole 1 (izolacja od OSD)",
+        },
+        "base": {"i_b_sn_a": 40.0, "u_b_sn_kv": 15.0, "u_b_nn_v": 800.0,
+                 "in_sn_a": 38.47, "in_nn_a": 721.40, "sn_kw": 1039.23},
+        "matrix": _BUK1_COORDINATION,
+    }
     src["schematic"] = {
-        "source_ref": "schemat:stacja_TR_PV1MW_wykonawczy",
+        "source_ref": "schemat:stacja_TR_PV1MW_Buk1_wykonawczy",
         "sn_kv": _PV1MW_SN_KV,
         "nn_kv": _PV1MW_NN_KV,
         "transformer": "1000 kVA · 15,75/0,8 kV · POLIM-D18N",
         "nn_grid": "IT",
-        "nn_main_breaker": "3WA1108 · 800 A · 1000 V",
-        "pv_modules": "JA SOLAR JAM72D40-595/MB · 595 Wp · ~2016 szt (≈1,2 MWp DC)",
+        "nn_main_breaker": "Q1 3WA1108 · 800 A · 1000 V · I>=720 A (0,9 In) · I>>=4000 A (4 In)",
+        "pv_modules": f"JA SOLAR JAM72D40-595/MB · 595 Wp · {inv_count}×{modules_per_inv} szt = {p_dc_kwp:.1f} kWp DC",
+        "inverters": f"{inv_count} × ~{kwp_per_inv:.0f} kW (BTVC 315 A/800 V na pole)",
+        "dc_ac_ratio": round(p_dc_kwp / 1000.0, 3),
         "ct": {"type": "CTM 20", "ratio": "40/5/5/5 A/A", "ith_ka": 16.0, "idyn_ka": 40.0,
                "cores": ["I 5VA 0,2s(FS5) pomiar", "II 5VA 0,2s analizator", "III 5VA 5P10 zab."]},
-        "vt": {"type": "VTB 20", "ratio": "15/√3 : 0,1/√3 ×3 : 0,1/3",
+        "vt": {"type": "VTB 20", "ratio": "15/√3 : 4×(0,1/√3)",
                "windings": ["I pomiar 0,2", "II pomiar 0,2", "III zab. 3P", "IV zab. 3P (otwarty trójkąt)"]},
-        "own_needs": "RPW-PV · TS 5 kVA 800/230 V · F1-F10",
+        "own_needs": "RPW-PV · TS 5 kVA 800/230 V · F0=HN-C20/1 · F1-F10",
     }
+    # nN inverter feeder fields (≥3, not one block) + Q1 main + own-needs.
+    nn_fields = [
+        _field(f"g4-inv{i + 1}", role="source",
+               kind=f"FALOWNIK {i + 1} · ~{kwp_per_inv:.0f} kW", abb_cell="SDC",
+               on_bus="NN_800", source_ref=f"enm:Generator.gen_type=pv_inverter;dok:1.18_falownik_{i + 1}",
+               interface_protection=False)
+        for i in range(inv_count)
+    ]
     return _oze_companion(
         "G4-PVTR", substrate=s,
-        # nN 800 V board: a 1 MVA step-up at uk=6% gives a high Ik'' at 800 V; the
-        # board is specified for it. SN PCC withstand from the CTM20 (Ith 16 kA).
+        # SN withstand from CTM20 (Ith 16 kA); nN 800 V board 50 kA.
         buses=[("SN_PCC", _PV1MW_SN_KV, 16.0), ("NN_800", _PV1MW_NN_KV, 50.0)],
-        pcc_bus="SN_PCC", ibg_ka=ibg / 1000.0,
+        pcc_bus="SN_PCC", ibg_ka=total_ibg_ka,
         source=src,
-        # Station idiom — TWO SN fields (POLE NR 1 VCB zabezpieczeniowe with the
-        # interface protection + POLE NR 2 SŁ2+U łącznikowe) + measurement; on nN:
-        # OWN-NEEDS (RPW-PV) + PV source. Every field pinned to the ENM.
+        # SN: POLE 1 VCB (interface protection / hard trips) + POLE 2 SŁ2+U switch.
+        # Measurement is a FUNCTION inside POLE 1 (rdzeń I CTM20) — NOT a phantom
+        # field. nN: Q1 main breaker + 3 inverter feeders + RPW-PV own-needs.
         fields=[
-            _field("g4-vcb", role="connection", kind="POLE NR 1 — VCB (e²TANGO)", abb_cell="CBC",
+            _field("g4-vcb", role="connection", kind="POLE 1 — VCB (e²TANGO-800)", abb_cell="CBC",
                    on_bus="SN_PCC", source_ref="enm:Bay.bay_role=LINIA_OUT;schemat:POLE_NR_1_VCB",
-                   interface_protection=True, protection_codes=list(_PROTECTION_BY_MACHINE["IBG"])),
-            _field("g4-sl2u", role="switch", kind="POLE NR 2 — SŁ2+U", abb_cell="SDC",
+                   interface_protection=True, protection_codes=list(_BUK1_SN_CODES)),
+            _field("g4-sl2u", role="switch", kind="POLE 2 — SŁ2+U (GTR5)", abb_cell="SDC",
                    on_bus="SN_PCC", source_ref="enm:Bay.bay_role=LINIA_OUT;schemat:POLE_NR_2_SL2U",
                    interface_protection=False),
-            _field("g4-meter", role="measurement", kind="CTM 20 / VTB 20", abb_cell="SDM-V",
-                   on_bus="SN_PCC", source_ref="enm:Measurement;schemat:CTM20_VTB20",
-                   interface_protection=False),
-            _field("g4-own", role="load", kind="POTRZEBY WŁASNE (RPW-PV)", abb_cell="SDC",
+            _field("g4-q1", role="breaker", kind="Q1 nN · 3WA1108 800 A", abb_cell="CBC",
+                   on_bus="NN_800", source_ref="dok:1.18_karta_Q1_3WA1108",
+                   interface_protection=True, protection_codes=list(_BUK1_NN_CODES)),
+            *nn_fields,
+            _field("g4-own", role="load", kind="RPW-PV (potrzeby własne)", abb_cell="SDC",
                    on_bus="NN_800", source_ref="enm:Bay.specialization=POTRZEBY_WLASNE;schemat:RPW-PV",
-                   interface_protection=False),
-            _field("g4-src", role="source", kind="PV 1 MW (falowniki)", abb_cell="DBC",
-                   on_bus="NN_800", source_ref="enm:Generator.gen_type=pv_inverter;schemat:falowniki_AC_DC",
                    interface_protection=False),
         ],
         boundary=_boundary("G-ZKSN", on_bus="SN_PCC", metered=True),
