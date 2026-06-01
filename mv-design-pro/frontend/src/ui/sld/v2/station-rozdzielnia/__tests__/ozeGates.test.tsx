@@ -668,3 +668,116 @@ describe('K-gates — cable entry on the cable head (PORT, axis 7)', () => {
     expect(container.querySelector('[data-testid="oze-port-g4-vcb"]')).toBeFalsy();
   });
 });
+
+// ---------------------------------------------------------------------------
+// G5-BESS — magazyn energii (IBG, DWUKIERUNKOWY) + oś energii (kWh). Generyczny,
+// przypięty do norm (source_ref = std:/norma:/enm:). Stacja końcowa (jak G4).
+// ---------------------------------------------------------------------------
+
+describe('G5-BESS — magazyn energii (IBG dwukierunkowy + oś energii kWh)', () => {
+  const G5 = 'G5-BESS';
+  const renderClose = () =>
+    render(
+      <svg>
+        <OzeSourceArchetype companion={OZE_ARCHETYPES_2A[G5]} stationCode="BESS-1MW" name="BESS 1 MW" detail="close" />
+      </svg>,
+    );
+
+  it('B1 — IBG dwukierunkowy: technology=BESS, machine=IBG, bidirectional flag + tryb 2-kier.', () => {
+    const c = OZE_ARCHETYPES_2A[G5];
+    expect(c, 'G5-BESS must exist').toBeTruthy();
+    expect(c.source.machine_type).toBe('IBG');
+    expect(c.source.technology).toMatch(/BESS/);
+    expect(c.source.bidirectional).toBe(true);
+    expect(c.source.control_mode).toMatch(/2-kier/);
+  });
+
+  it('B2 — oś ENERGII: storage (moc kW + pojemność kWh + czas + ładuj⇄rozładuj), przypięta', () => {
+    const st = OZE_ARCHETYPES_2A[G5].source.storage!;
+    expect(st, 'BESS must carry the storage spec').toBeTruthy();
+    expect(st.source_ref).toMatch(/^(std:|enm:)/);
+    expect(st.power_kw).toBeGreaterThan(0);
+    expect(st.capacity_kwh).toBeGreaterThan(0);
+    expect(st.duration_h).toBeCloseTo(st.capacity_kwh / st.power_kw, 1);
+    expect(st.n_pcs).toBeGreaterThanOrEqual(2);
+    expect(st.bidirectional).toBe(true);
+    expect(st.charge_kw).toBeGreaterThan(0);
+    expect(st.discharge_kw).toBeGreaterThan(0);
+  });
+
+  it('B3 — GENERYCZNY wg norm: każdy field/aparat source_ref ∈ std/norma/enm; brak schemat: i brak rejestru rysunku', () => {
+    const c = OZE_ARCHETYPES_2A[G5];
+    for (const f of c.fields) {
+      expect(f.source_ref, `${f.field_id} unpinned`).toMatch(/^(enm:|std:|norma:)/);
+      for (const a of f.apparatus ?? []) expect(a.source_ref).toMatch(/^(enm:|std:|norma:)/);
+    }
+    expect(c.fields.every((f) => !/schemat:/.test(f.source_ref)), 'no real-drawing pin on a generic archetype').toBe(true);
+    expect(c.source.schematic ?? null, 'a generic archetype carries no real schematic register').toBeNull();
+  });
+
+  it('B4 — TERMINAL: 1 pole liniowe (sn_input) + pole transformatorowe (bez wyjścia SN) + Q1 + ≥2 PCS + potrzeby własne', () => {
+    const c = OZE_ARCHETYPES_2A[G5];
+    expect(c.fields.filter((f) => f.role === 'connection').length).toBe(1);
+    expect(c.fields.filter((f) => f.role === 'transformer').length).toBe(1);
+    expect(c.fields.filter((f) => f.role === 'breaker').length).toBe(1);
+    expect(c.fields.filter((f) => f.role === 'source').length).toBeGreaterThanOrEqual(2);
+    expect(c.fields.some((f) => f.role === 'load')).toBe(true);
+    expect(c.fields.filter((f) => f.port?.kind === 'sn_input').length).toBe(1);
+    expect(c.fields.some((f) => f.port?.kind === 'sn_output'), 'terminal: no SN output').toBe(false);
+    expect(c.fields.find((f) => f.role === 'transformer')!.port ?? null).toBeNull();
+    for (const pcs of c.fields.filter((f) => f.role === 'source')) {
+      expect(pcs.on_bus_ref).not.toBe(c.pcc_bus_ref); // PCS behind the transformer
+    }
+  });
+
+  it('B5 — rozładowanie (eksport) z solvera: incomer reverse, p<0; strzałka W DÓŁ do OSD', () => {
+    const c = OZE_ARCHETYPES_2A[G5];
+    const incomer = c.voltage_flow.branches['sr/branch/in'];
+    expect(incomer.direction).toBe('reverse');
+    expect(incomer.p_mw).toBeLessThan(0);
+    const { container } = renderClose();
+    const flow = container.querySelector('[data-testid="oze-flow-g5-line"]')!;
+    expect(flow.getAttribute('data-flow-direction')).toBe('reverse');
+    expect(flow.getAttribute('data-flow-points')).toBe('down');
+  });
+
+  it('B6 — zwarcie IBG (prąd ograniczony, NIE maszyna) i ≤Icw na każdej szynie', () => {
+    for (const bus of Object.values(OZE_ARCHETYPES_2A[G5].short_circuit.buses)) {
+      expect(bus.source_contribution.machine_type).toBe('IBG');
+      expect(bus.source_contribution.is_synchronous_machine).toBe(false);
+      expect(bus.verification.passed).toBe(true);
+    }
+  });
+
+  it('B7 — render: stacja końcowa + PCS + bateria + MAGAZYN + ZKSN-na-kablu; ortogonalnie', () => {
+    const { container } = renderClose();
+    expect(container.querySelector('[data-testid="oze-field-connection"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="oze-field-transformer"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="oze-nn-tier"]')).toBeTruthy();
+    expect(container.querySelectorAll('[data-testid^="oze-field-inv-"]').length).toBeGreaterThanOrEqual(2);
+    expect(container.querySelector('[data-testid="oze-battery-0"]'), 'battery glyph on PCS distinguishes BESS from PV').toBeTruthy();
+    const storageBlk = container.querySelector('[data-testid="oze-storage"]')!;
+    expect(storageBlk, 'MAGAZYN energy register').toBeTruthy();
+    expect(storageBlk.getAttribute('data-source-ref')).toMatch(/^(std:|enm:)/);
+    expect(storageBlk.textContent ?? '').toMatch(/kWh/);
+    expect(container.querySelector('[data-testid="oze-schematic"]'), 'no real-drawing register on a generic BESS').toBeFalsy();
+    const lineStack = container.querySelector('[data-testid="oze-field-stack-g5-line"]')!;
+    expect(lineStack.querySelector('[data-testid="oze-boundary-marker"]'), 'ZKSN on the OSD cable').toBeTruthy();
+    expect(container.querySelector('[data-testid="oze-grid-stub"]'), 'no busbar-edge OSD stub (terminal)').toBeFalsy();
+    const unit = container.querySelector('[data-testid="oze-source-G5-BESS"]')!;
+    for (const ln of Array.from(unit.querySelectorAll('line'))) {
+      const x1 = Number(ln.getAttribute('x1')); const y1 = Number(ln.getAttribute('y1'));
+      const x2 = Number(ln.getAttribute('x2')); const y2 = Number(ln.getAttribute('y2'));
+      expect(Math.abs(x1 - x2) < 1e-6 || Math.abs(y1 - y2) < 1e-6).toBe(true);
+    }
+  });
+
+  it('B8 — ochrona = zestaw interfejsowy IBG (NIE kody maszyny synchronicznej)', () => {
+    const conn = OZE_ARCHETYPES_2A[G5].fields.find((f) => f.role === 'connection')!;
+    expect(conn.interface_protection).toBe(true);
+    expect(conn.protection_codes).toContain('anti-islanding');
+    expect(conn.protection_codes).toContain('81U');
+    expect(conn.protection_codes).not.toContain('25'); // synchro-check — synchronous only
+    expect(conn.protection_codes).not.toContain('40'); // loss of field — synchronous only
+  });
+});

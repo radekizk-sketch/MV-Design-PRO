@@ -1320,7 +1320,119 @@ def build_g4_pvtr() -> dict[str, Any]:
     )
 
 
-_OZE_ARCHETYPES_2A_EXT = {**_OZE_ARCHETYPES_2A, "G4-PVTR": build_g4_pvtr}
+# ── G5 — BESS (magazyn energii) — GENERYCZNY archetyp wg norm ───────────────────
+_BESS_SN_KV = _BASE_KV  # 15 kV generic SN (NOT a specific installation)
+_BESS_NN_KV = 0.4       # 0.4 kV generic nN (PCS side)
+
+
+def build_g5_bess() -> dict[str, Any]:
+    """G5 — BESS (magazyn energii) — GENERYCZNY archetyp wg norm (NC RfG / IRiESD /
+    IEC 62933 / IEC 62619), NIE konkretna instalacja (source_ref = std:/norma:/enm:).
+
+    Stacja KOŃCOWA: pole liniowe SN (przyłącze do OSD, granica ZKSN na kablu) + pole
+    transformatorowe (trafo SN/nN pod polem) → szyna nN → n×PCS (przekształtnik
+    DWUKIERUNKOWY, IBG) + potrzeby własne (HVAC/BMS). KLUCZOWA RÓŻNICA vs PV:
+    DWUKIERUNKOWOŚĆ — rozładowanie (eksport, stan podstawowy) ⇄ ładowanie (pobór);
+    kierunek z zamrożonego solvera. Oś ENERGII (kWh) obok osi mocy (kW).
+
+    Zwarcie: IBG — prąd ograniczony k·In (IEC 60909-0:2016 §6.7), jak PV — NIE maszyna.
+    """
+    n_pcs = 2
+    pcs_kw = 500.0
+    p_pcs_kw = n_pcs * pcs_kw          # 1000 kW mocy PCS
+    capacity_kwh = 2000.0              # magazyn 2 h (generic)
+    pcs_kva = pcs_kw                    # cosφ≈1 PCS
+    own_load_kw = 10.0                  # potrzeby własne (HVAC/BMS)
+
+    s = _Substrate()
+    s.add_slack("GPZ")
+    s.add_bus("SN_PCC", _BESS_SN_KV)
+    s.add_bus("NN", _BESS_NN_KV)
+    s.add_line(SR_IN, "GPZ", "SN_PCC", _SN_LINE_R, _SN_LINE_X)
+    s.add_transformer(SR_TR, "SN_PCC", "NN", hv_kv=_BESS_SN_KV, lv_kv=_BESS_NN_KV, uk_percent=6.0, rated_mva=1.25)
+    # DISCHARGE (export) = stan podstawowy pokazany: każdy PCS oddaje moc (ujemne
+    # obciążenie = generacja). Kierunek/wartość z FROZEN solvera (nie z palca).
+    pcs_branch_refs = [f"sr/branch/pcs{i + 1}" for i in range(n_pcs)]
+    for i, br in enumerate(pcs_branch_refs):
+        node = f"PCS{i + 1}"
+        s.add_bus(node, _BESS_NN_KV)
+        s.add_line(br, "NN", node, _NN_FEEDER_R, _NN_FEEDER_X)
+        s.add_load(node, p_mw=-pcs_kw / 1000.0, q_mvar=0.0)
+        s.add_inverter(node, rated_kva=pcs_kva, un_kv=_BESS_NN_KV, k_sc=_IBG_K, source_type="BESS")
+    s.add_load("NN", p_mw=own_load_kw / 1000.0, q_mvar=0.01)
+    s.finalize_pq()
+    total_ibg_ka = n_pcs * (_IBG_K * (pcs_kva * 1000.0 / (_SQRT3 * _BESS_NN_KV * 1000.0))) / 1000.0
+
+    src = _pv_source(technology="BESS (magazyn energii)", machine_type="IBG", nc_class="C",
+                     control_mode="P(f) · Q(U) · 2-kier.",
+                     p_zainst_kw=p_pcs_kw, pn_ac_kw=p_pcs_kw, p_przylacz_kw=p_pcs_kw, p_osiagalna_kw=950.0)
+    # BESS-specific: bidirectional + the ENERGY axis (kWh) alongside the power axis.
+    src["bidirectional"] = True
+    src["storage"] = {
+        "source_ref": "std:IEC_62933;enm:Generator.gen_type=bess",
+        "power_kw": p_pcs_kw,
+        "capacity_kwh": capacity_kwh,
+        "duration_h": round(capacity_kwh / p_pcs_kw, 2),
+        "n_pcs": n_pcs,
+        "pcs_kw": pcs_kw,
+        "charge_kw": p_pcs_kw,
+        "discharge_kw": p_pcs_kw,
+        "bidirectional": True,
+    }
+    nn_fields = [
+        _field(f"g5-pcs{i + 1}", role="source", kind=f"PCS {i + 1} · {pcs_kw:.0f} kW (2-kier.)", abb_cell="SDC",
+               on_bus="NN", source_ref=f"enm:Generator.gen_type=bess;std:NC_RfG_pcs_{i + 1}",
+               interface_protection=False)
+        for i in range(n_pcs)
+    ]
+    return _oze_companion(
+        "G5-BESS", substrate=s,
+        # SN withstand 16 kA (generic SN board); nN 50 kA.
+        buses=[("SN_PCC", _BESS_SN_KV, 16.0), ("NN", _BESS_NN_KV, 50.0)],
+        pcc_bus="SN_PCC", ibg_ka=total_ibg_ka,
+        source=src,
+        # Stacja końcowa: pole LINIOWE (przyłącze OSD, granica na kablu) + pole
+        # TRANSFORMATOROWE (trafo pod polem). nN: Q1 + n×PCS + potrzeby własne.
+        # Aparaty/oznaczenia GENERYCZNE wg norm (nie katalog konkretnej instalacji).
+        fields=[
+            _field("g5-line", role="connection", kind="POLE LINIOWE SN", abb_cell="CBC",
+                   on_bus="SN_PCC", source_ref="enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe",
+                   interface_protection=True, protection_codes=list(_PROTECTION_BY_MACHINE["IBG"]),
+                   apparatus=[
+                       _app("line/ds", kind="DS", designation="Q1 (odłącznik szynowy)", placement="UPSTREAM"),
+                       _app("line/cb", kind="CB", designation="Q0 (wyłącznik SN)", placement="MIDSTREAM"),
+                       _app("line/ct", kind="CT", designation="przekładnik prądowy", placement="MIDSTREAM",
+                            source_ref="std:IEC_61869_CT"),
+                       _app("line/vt", kind="VT", designation="przekładnik napięciowy", placement="OFF_PATH",
+                            source_ref="std:IEC_61869_VT"),
+                       _app("line/sa", kind="SURGE_ARRESTER", designation="ogranicznik przepięć", placement="OFF_PATH"),
+                       _app("line/head", kind="CABLE_HEAD", designation="głowica kablowa", placement="DOWNSTREAM"),
+                       _app("line/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
+                   ],
+                   port=_port("line/port", kind="sn_input", un_kv=_BESS_SN_KV, entry_side="BOK-L",
+                              occupied_by="seg/kabel-osd", cable="kabel SN do OSD (typ wg projektu)",
+                              source_ref="enm:Port.kind=sn_input;std:przylacze_SN")),
+            _field("g5-trafo", role="transformer", kind="POLE TRANSFORMATOROWE", abb_cell="SDC",
+                   on_bus="SN_PCC", source_ref="enm:Bay.bay_role=TRANSFORMATOR;std:IEC_62271_pole_trafo",
+                   interface_protection=False,
+                   apparatus=[
+                       _app("trafo/ls", kind="LOAD_SWITCH", designation="rozłącznik", placement="MIDSTREAM"),
+                       _app("trafo/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
+                       _app("trafo/head", kind="CABLE_HEAD", designation="głowica → trafo", placement="DOWNSTREAM"),
+                   ]),
+            _field("g5-q1", role="breaker", kind="Q1 nN (wyłącznik główny)", abb_cell="CBC",
+                   on_bus="NN", source_ref="std:IEC_60947_nN_ACB",
+                   interface_protection=True, protection_codes=["I>", "I>>"]),
+            *nn_fields,
+            _field("g5-own", role="load", kind="potrzeby własne (HVAC/BMS)", abb_cell="SDC",
+                   on_bus="NN", source_ref="enm:Bay.specialization=POTRZEBY_WLASNE;std:potrzeby_wlasne",
+                   interface_protection=False),
+        ],
+        boundary=_boundary("G-ZKSN", on_bus="SN_PCC", metered=True),
+    )
+
+
+_OZE_ARCHETYPES_2A_EXT = {**_OZE_ARCHETYPES_2A, "G4-PVTR": build_g4_pvtr, "G5-BESS": build_g5_bess}
 
 
 def build_all_oze_2a() -> dict[str, dict[str, Any]]:

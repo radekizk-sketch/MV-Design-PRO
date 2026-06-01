@@ -345,6 +345,12 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
   // The single OSD connection (terminal station): the line field whose cable docks
   // to the grid. The ZKSN boundary sits on THIS cable — not at the busbar edge.
   const osdLineField = companion.fields.find((f) => f.port?.kind === 'sn_input');
+  // BESS (storage) — bidirectional IBG: PCS feeders + a battery glyph + the energy
+  // (kWh) register, distinguishing it from a PV farm at a glance.
+  const storage = src.storage;
+  const isBess = !!storage;
+  const feederPrefix = isBess ? 'PCS' : 'INW';
+  const ownLabel = isBess ? 'PW' : 'RPW-PV';
 
   // nN tier: the source feeders (≥1) sit on a bus DIFFERENT from the PCC (behind a
   // step-up transformer). The tier carries an optional main breaker (Q1), the
@@ -662,13 +668,22 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
                     <rect x={fx - 2.5} y={fBreakerY - 6} width={5} height={9} rx={0.6} fill="#0A8D43" stroke={COLOR_DEVICE_CLOSED_BORDER} strokeWidth={1} />
                   )}
                   <line x1={fx} y1={fBreakerY + (isOwn ? 0 : 3)} x2={fx} y2={fSymY - 7} stroke="#7DD3FC" strokeWidth={1.6} />
-                  {/* symbol: inverter (~) for source, load triangle for own-needs. */}
+                  {/* symbol: inverter (~) for source, load triangle for own-needs;
+                      a BESS source carries a battery glyph beside the PCS (⎓). */}
                   {detail !== 'far' && (isOwn
                     ? <polygon points={`${fx - 5},${fSymY - 6} ${fx + 5},${fSymY - 6} ${fx},${fSymY + 3}`} fill="#7DD3FC" stroke="#7DD3FC" strokeWidth={1} />
                     : <PvInverterSymbol cx={fx} cy={fSymY} r={detail === 'close' ? 7 : 6} />)}
+                  {detail !== 'far' && isBess && !isOwn && (
+                    <g data-testid={`oze-battery-${i}`} pointerEvents="none">
+                      <line x1={fx + 6} y1={fSymY - 3} x2={fx + 14} y2={fSymY - 3} stroke="#FFB020" strokeWidth={1.3} />
+                      <line x1={fx + 8} y1={fSymY - 1} x2={fx + 12} y2={fSymY - 1} stroke="#FFB020" strokeWidth={1} />
+                      <line x1={fx + 6} y1={fSymY + 1} x2={fx + 14} y2={fSymY + 1} stroke="#FFB020" strokeWidth={1.3} />
+                      <line x1={fx + 8} y1={fSymY + 3} x2={fx + 12} y2={fSymY + 3} stroke="#FFB020" strokeWidth={1} />
+                    </g>
+                  )}
                   {detail === 'close' && (
                     <text x={fx} y={fSymY + 14} textAnchor="middle" fill={isOwn ? '#7DD3FC' : '#FFB020'} fontFamily={FONT_MONO} fontSize={5.6} fontWeight={700}>
-                      {isOwn ? 'RPW-PV' : `INW.${i + 1}`}
+                      {isOwn ? ownLabel : `${feederPrefix}.${i + 1}`}
                     </text>
                   )}
                 </g>
@@ -744,6 +759,27 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
             `VT ${schematic.vt.type} ${schematic.vt.ratio}`,
             `PV: ${schematic.pv_modules}`,
             `Potrzeby własne: ${schematic.own_needs}`,
+          ].map((ln, i) => (
+            <text key={i} x={schemX} y={schemY + 9 + i * 8} fill={i === 3 ? COLOR_TEXT_MUTED : COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6} fontWeight={i === 3 ? 400 : 600}>
+              {ln}
+            </text>
+          ))}
+        </g>
+      )}
+
+      {/* Storage register (BESS) — the ENERGY axis (kWh) + the bidirectional powers,
+          the block that distinguishes a magazyn from a PV farm. Pinned to the
+          standard (source_ref). Footer, in place of the schematic register. */}
+      {detail === 'close' && storage && (
+        <g data-testid="oze-storage" data-source-ref={storage.source_ref} pointerEvents="none">
+          <text x={schemX} y={schemY} fill="#9FE6FF" fontFamily={FONT_MONO} fontSize={7} fontWeight={800}>
+            MAGAZYN (oś energii)
+          </text>
+          {[
+            `Moc PCS: ${storage.n_pcs}×${storage.pcs_kw.toFixed(0)} kW = ${storage.power_kw.toFixed(0)} kW`,
+            `Pojemność: ${storage.capacity_kwh.toFixed(0)} kWh · ${storage.duration_h} h`,
+            `Praca 2-kier.: rozład. ${storage.discharge_kw.toFixed(0)} kW ⇄ ład. ${storage.charge_kw.toFixed(0)} kW`,
+            `Maszyna: IBG (PCS) — Ik ograniczony k·In (§6.7)`,
           ].map((ln, i) => (
             <text key={i} x={schemX} y={schemY + 9 + i * 8} fill={i === 3 ? COLOR_TEXT_MUTED : COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6} fontWeight={i === 3 ? 400 : 600}>
               {ln}

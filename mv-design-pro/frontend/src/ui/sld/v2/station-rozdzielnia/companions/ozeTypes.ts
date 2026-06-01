@@ -73,6 +73,20 @@ export interface OzeCoordination {
   readonly matrix: readonly OzeCoordRow[];
 }
 
+/** BESS storage spec — the ENERGY axis (kWh) alongside the power axis (kW), plus
+ *  the bidirectional charge/discharge powers. Present iff the source is storage. */
+export interface OzeStorageSpec {
+  readonly source_ref: string;
+  readonly power_kw: number;
+  readonly capacity_kwh: number;
+  readonly duration_h: number;
+  readonly n_pcs: number;
+  readonly pcs_kw: number;
+  readonly charge_kw: number;
+  readonly discharge_kw: number;
+  readonly bidirectional: boolean;
+}
+
 /** OZE source metadata (axes T/R/S of the taxonomy). */
 export interface OzeSourceMeta {
   readonly technology: string; // PV | BESS | FW | ...
@@ -86,6 +100,10 @@ export interface OzeSourceMeta {
   readonly schematic?: OzeSchematic;
   /** Protection coordination matrix (click-module content, not on the canvas). */
   readonly coordination?: OzeCoordination;
+  /** True ⇒ the source is bidirectional (BESS — charge ⇄ discharge). */
+  readonly bidirectional?: boolean;
+  /** Storage spec (BESS) — the energy axis (kWh) alongside the power axis (kW). */
+  readonly storage?: OzeStorageSpec;
 }
 
 export interface OzeVfBus {
