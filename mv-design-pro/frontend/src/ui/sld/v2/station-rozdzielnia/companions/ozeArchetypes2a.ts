@@ -30,6 +30,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
     "fields": [
       {
         "abb_cell": "CBC",
+        "apparatus": [],
         "field_id": "g1-conn",
         "interface_protection": true,
         "kind": "POLE_PRZY\u0141\u0104CZENIOWE",
@@ -50,6 +51,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       },
       {
         "abb_cell": "SDC",
+        "apparatus": [],
         "field_id": "g1-src",
         "interface_protection": false,
         "kind": "PV",
@@ -725,6 +727,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
     "fields": [
       {
         "abb_cell": "CBC",
+        "apparatus": [],
         "field_id": "g2-conn",
         "interface_protection": true,
         "kind": "POLE_PRZY\u0141\u0104CZENIOWE",
@@ -745,6 +748,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       },
       {
         "abb_cell": "SDM-V",
+        "apparatus": [],
         "field_id": "g2-meter",
         "interface_protection": false,
         "kind": "POLE_POMIAROWE",
@@ -755,6 +759,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       },
       {
         "abb_cell": "SDC",
+        "apparatus": [],
         "field_id": "g2-src",
         "interface_protection": false,
         "kind": "PV",
@@ -1430,6 +1435,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
     "fields": [
       {
         "abb_cell": "CBC",
+        "apparatus": [],
         "field_id": "g3-conn",
         "interface_protection": true,
         "kind": "POLE_PRZY\u0141\u0104CZENIOWE",
@@ -1450,6 +1456,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       },
       {
         "abb_cell": "SDC",
+        "apparatus": [],
         "field_id": "g3-src",
         "interface_protection": false,
         "kind": "PV",
@@ -2125,6 +2132,64 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
     "fields": [
       {
         "abb_cell": "CBC",
+        "apparatus": [
+          {
+            "catalog": null,
+            "designation": "Q9 (od\u0142\u0105cznik szynowy)",
+            "device_ref": "vcb/q9",
+            "kind": "DS",
+            "placement": "UPSTREAM",
+            "source_ref": "enm:BayPrimaryDevice.kind=DS"
+          },
+          {
+            "catalog": "TGI 24",
+            "designation": "Q0",
+            "device_ref": "vcb/q0",
+            "kind": "CB",
+            "placement": "MIDSTREAM",
+            "source_ref": "enm:BayPrimaryDevice.kind=CB"
+          },
+          {
+            "catalog": "CTM 20 \u00b7 40/5/5/5",
+            "designation": "T1.3",
+            "device_ref": "vcb/ct",
+            "kind": "CT",
+            "placement": "MIDSTREAM",
+            "source_ref": "schemat:CTM20_3rdz"
+          },
+          {
+            "catalog": "VTB 20",
+            "designation": "TU1.3",
+            "device_ref": "vcb/vt",
+            "kind": "VT",
+            "placement": "OFF_PATH",
+            "source_ref": "schemat:VTB20_4uzw"
+          },
+          {
+            "catalog": null,
+            "designation": "POLIM-D 18-06",
+            "device_ref": "vcb/sa",
+            "kind": "SURGE_ARRESTER",
+            "placement": "OFF_PATH",
+            "source_ref": "enm:BayPrimaryDevice.kind=SURGE_ARRESTER"
+          },
+          {
+            "catalog": null,
+            "designation": "ITK 224",
+            "device_ref": "vcb/head",
+            "kind": "CABLE_HEAD",
+            "placement": "DOWNSTREAM",
+            "source_ref": "enm:BayPrimaryDevice.kind=CABLE_HEAD"
+          },
+          {
+            "catalog": null,
+            "designation": "uziemnik",
+            "device_ref": "vcb/es",
+            "kind": "ES",
+            "placement": "GROUND_BRANCH",
+            "source_ref": "enm:BayPrimaryDevice.kind=ES"
+          }
+        ],
         "field_id": "g4-vcb",
         "interface_protection": true,
         "kind": "POLE 1 \u2014 VCB (e\u00b2TANGO-800)",
@@ -2142,6 +2207,32 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       },
       {
         "abb_cell": "SDC",
+        "apparatus": [
+          {
+            "catalog": null,
+            "designation": "GTR 5 (roz\u0142\u0105cznik)",
+            "device_ref": "sl2u/gtr5",
+            "kind": "LOAD_SWITCH",
+            "placement": "MIDSTREAM",
+            "source_ref": "enm:BayPrimaryDevice.kind=LOAD_SWITCH"
+          },
+          {
+            "catalog": null,
+            "designation": "uziemnik",
+            "device_ref": "sl2u/es",
+            "kind": "ES",
+            "placement": "GROUND_BRANCH",
+            "source_ref": "enm:BayPrimaryDevice.kind=ES"
+          },
+          {
+            "catalog": null,
+            "designation": "ITK 224 \u2192 3\u00d7YHAKXS 1\u00d770",
+            "device_ref": "sl2u/head",
+            "kind": "CABLE_HEAD",
+            "placement": "DOWNSTREAM",
+            "source_ref": "enm:BayPrimaryDevice.kind=CABLE_HEAD"
+          }
+        ],
         "field_id": "g4-sl2u",
         "interface_protection": false,
         "kind": "POLE 2 \u2014 S\u01412+U (GTR5)",
@@ -2152,6 +2243,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       },
       {
         "abb_cell": "CBC",
+        "apparatus": [],
         "field_id": "g4-q1",
         "interface_protection": true,
         "kind": "Q1 nN \u00b7 3WA1108 800 A",
@@ -2169,6 +2261,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       },
       {
         "abb_cell": "SDC",
+        "apparatus": [],
         "field_id": "g4-inv1",
         "interface_protection": false,
         "kind": "FALOWNIK 1 \u00b7 ~333 kW",
@@ -2179,6 +2272,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       },
       {
         "abb_cell": "SDC",
+        "apparatus": [],
         "field_id": "g4-inv2",
         "interface_protection": false,
         "kind": "FALOWNIK 2 \u00b7 ~333 kW",
@@ -2189,6 +2283,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       },
       {
         "abb_cell": "SDC",
+        "apparatus": [],
         "field_id": "g4-inv3",
         "interface_protection": false,
         "kind": "FALOWNIK 3 \u00b7 ~333 kW",
@@ -2199,6 +2294,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       },
       {
         "abb_cell": "SDC",
+        "apparatus": [],
         "field_id": "g4-own",
         "interface_protection": false,
         "kind": "RPW-PV (potrzeby w\u0142asne)",

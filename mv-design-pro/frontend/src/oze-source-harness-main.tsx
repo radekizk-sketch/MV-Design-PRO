@@ -36,10 +36,12 @@ function LevelPanel(props: { archetype: string; detail: StationDetailLevel; labe
   const { archetype, detail, label, onFieldClick } = props;
   const companion = OZE_ARCHETYPES_2A[archetype];
   const PANEL_W = 820;
-  const PANEL_H = detail === 'close' ? 520 : 240;
+  const PANEL_H = detail === 'close' ? 660 : 260;
   const viewW = PANEL_W;
   const viewH = PANEL_H - 32;
-  const scale = detail === 'far' ? 1.9 : detail === 'closer' ? 1.5 : 1.2;
+  // The Buk 1 archetype is wide (W≈440) — scale so the SN busbar fits the panel.
+  const wide = (companion.fields.length ?? 0) >= 6;
+  const scale = detail === 'far' ? (wide ? 1.45 : 1.9) : detail === 'closer' ? (wide ? 1.2 : 1.5) : 1.05;
   return (
     <div
       data-testid={`oze-harness-panel-${detail}`}

@@ -123,6 +123,17 @@ export type OzeScBus = ScBus & { readonly source_contribution: OzeSourceContribu
  * ENM via `source_ref`). The interface protection (looking at the grid) lives on
  * the CONNECTION field only — never at the source.
  */
+/** One apparatus on a field's power path (projection of ENM BayPrimaryDevice),
+ *  ordered busbar→cable via `placement`. */
+export interface OzeApparatus {
+  readonly device_ref: string;
+  readonly kind: string; // CB | DS | LOAD_SWITCH | ES | CT | VT | CABLE_HEAD | SURGE_ARRESTER | ...
+  readonly designation: string;
+  readonly catalog: string | null;
+  readonly placement: 'UPSTREAM' | 'MIDSTREAM' | 'DOWNSTREAM' | 'OFF_PATH' | 'GROUND_BRANCH';
+  readonly source_ref: string;
+}
+
 export interface OzeField {
   readonly field_id: string;
   readonly role: 'connection' | 'source' | 'measurement' | 'load' | 'switch' | 'breaker';
@@ -135,6 +146,8 @@ export interface OzeField {
   /** True ⇒ this is the interface-protection relay (connection field). */
   readonly interface_protection: boolean;
   readonly protection_codes: readonly string[];
+  /** Ordered apparatus stack (busbar→cable) for the detailed SN switchgear. */
+  readonly apparatus?: readonly OzeApparatus[];
 }
 
 /** The grid boundary / point of connection (ENEA axis-6 variant, pinned to ENM). */

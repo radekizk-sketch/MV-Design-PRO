@@ -416,3 +416,86 @@ describe('G4-PVTR — PV 1 MW via customer transformer station', () => {
     expect(txt).toMatch(/IT/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// U1-U6 — detailed SN switchgear: apparatus stacks + power flow through them
+// ---------------------------------------------------------------------------
+
+describe('U-gates — detailed SN switchgear (Buk 1)', () => {
+  const G4 = 'G4-PVTR';
+
+  it('U1 — 2 SN fields; POLE 1 stack = {DS,CB,CT,VT,SURGE_ARRESTER,CABLE_HEAD,ES}; POLE 2 = {LOAD_SWITCH,ES,CABLE_HEAD}', () => {
+    const c = OZE_ARCHETYPES_2A[G4];
+    const sn = c.fields.filter((f) => f.on_bus_ref === c.pcc_bus_ref && (f.role === 'connection' || f.role === 'switch'));
+    expect(sn.length).toBe(2);
+    const p1 = c.fields.find((f) => f.role === 'connection')!;
+    const p1kinds = new Set((p1.apparatus ?? []).map((a) => a.kind));
+    for (const k of ['DS', 'CB', 'CT', 'VT', 'SURGE_ARRESTER', 'CABLE_HEAD', 'ES']) {
+      expect(p1kinds.has(k), `POLE 1 missing ${k}`).toBe(true);
+    }
+    const p2 = c.fields.find((f) => f.role === 'switch')!;
+    const p2kinds = new Set((p2.apparatus ?? []).map((a) => a.kind));
+    for (const k of ['LOAD_SWITCH', 'ES', 'CABLE_HEAD']) {
+      expect(p2kinds.has(k), `POLE 2 missing ${k}`).toBe(true);
+    }
+  });
+
+  it('U2 — POLE 1 on-path order is busbar→cable (UPSTREAM→MIDSTREAM→DOWNSTREAM)', () => {
+    const p1 = OZE_ARCHETYPES_2A[G4].fields.find((f) => f.role === 'connection')!;
+    const rank: Record<string, number> = { UPSTREAM: 0, MIDSTREAM: 1, DOWNSTREAM: 2 };
+    const onPath = (p1.apparatus ?? []).filter((a) => a.placement in rank);
+    for (let i = 1; i < onPath.length; i++) {
+      expect(rank[onPath[i].placement]).toBeGreaterThanOrEqual(rank[onPath[i - 1].placement]);
+    }
+    // First on-path is the busbar disconnector (DS), last is the cable head.
+    expect(onPath[0].kind).toBe('DS');
+    expect(onPath[onPath.length - 1].kind).toBe('CABLE_HEAD');
+  });
+
+  it('U3 — power flow renders THROUGH the POLE 1 stack, direction == solver (export)', () => {
+    const c = OZE_ARCHETYPES_2A[G4];
+    const { container } = render(
+      <svg><OzeSourceArchetype companion={c} stationCode="PV-1MW" name="Buk 1" detail="close" /></svg>,
+    );
+    const flow = container.querySelector('[data-testid="oze-flow-g4-vcb"]');
+    expect(flow, 'POLE 1 must carry a power-flow arrow through its stack').toBeTruthy();
+    // Export → the incomer branch is solver-signed reverse → arrow points up.
+    expect(c.voltage_flow.branches['sr/branch/in'].direction).toBe('reverse');
+    expect(flow!.getAttribute('data-flow-direction')).toBe('reverse');
+  });
+
+  it('U4 — POLE 1 carries the SN relay (G0>/3U0/I0>); POLE 2 carries none', () => {
+    const c = OZE_ARCHETYPES_2A[G4];
+    const p1 = c.fields.find((f) => f.role === 'connection')!;
+    const p2 = c.fields.find((f) => f.role === 'switch')!;
+    expect(p1.interface_protection).toBe(true);
+    expect(p1.protection_codes).toContain('G0>');
+    expect(p2.interface_protection).toBe(false);
+    expect(p2.protection_codes.length).toBe(0);
+  });
+
+  it('U5 — apparatus glyphs render with canonical shapes; routing orthogonal', () => {
+    const { container } = render(
+      <svg><OzeSourceArchetype companion={OZE_ARCHETYPES_2A[G4]} stationCode="PV-1MW" name="Buk 1" detail="close" /></svg>,
+    );
+    const stack = container.querySelector('[data-testid="oze-field-stack-g4-vcb"]')!;
+    expect(stack.querySelector('[data-apparatus-kind="CB"] [data-symbol-shape="square"]')).toBeTruthy();
+    expect(stack.querySelector('[data-apparatus-kind="DS"] [data-symbol-shape="circle"]')).toBeTruthy();
+    // every <line> in the stack is orthogonal.
+    for (const ln of Array.from(stack.querySelectorAll('line'))) {
+      const x1 = Number(ln.getAttribute('x1')); const y1 = Number(ln.getAttribute('y1'));
+      const x2 = Number(ln.getAttribute('x2')); const y2 = Number(ln.getAttribute('y2'));
+      expect(Math.abs(x1 - x2) < 1e-6 || Math.abs(y1 - y2) < 1e-6).toBe(true);
+    }
+  });
+
+  it('U6 — every apparatus is pinned (source_ref) to ENM/schematic — nothing painted', () => {
+    const c = OZE_ARCHETYPES_2A[G4];
+    for (const f of c.fields) {
+      for (const a of f.apparatus ?? []) {
+        expect(a.source_ref, `${f.field_id}/${a.device_ref} unpinned`).toBeTruthy();
+        expect(a.source_ref).toMatch(/^(enm:|schemat:|dok:)/);
+      }
+    }
+  });
+});

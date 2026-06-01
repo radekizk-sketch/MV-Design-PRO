@@ -947,22 +947,42 @@ def _boundary(variant: str, *, on_bus: str, metered: bool) -> dict[str, Any]:
     }
 
 
+def _app(
+    device_ref: str, *, kind: str, designation: str, catalog: str | None = None,
+    placement: str = "MIDSTREAM", source_ref: str = "",
+) -> dict[str, Any]:
+    """One apparatus on a field's power path (projection of ENM BayPrimaryDevice).
+    `placement` orders the stack busbar→cable: UPSTREAM → MIDSTREAM → DOWNSTREAM,
+    with OFF_PATH/GROUND_BRANCH for side branches (VT, surge arrester, earth)."""
+    return {
+        "device_ref": device_ref,
+        "kind": kind,  # CB | DS | LOAD_SWITCH | ES | CT | VT | CABLE_HEAD | SURGE_ARRESTER ...
+        "designation": designation,  # Q0, GTR5, T1.3, TU1.3, ...
+        "catalog": catalog,
+        "placement": placement,
+        "source_ref": source_ref or f"enm:BayPrimaryDevice.kind={kind}",
+    }
+
+
 def _field(
     field_id: str, *, role: str, kind: str, abb_cell: str, on_bus: str,
     source_ref: str, interface_protection: bool, protection_codes: list[str] | None = None,
+    apparatus: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """One station field pinned to the ENM. role: connection|source|measurement.
-    interface_protection=True ⇒ the relay that looks at the grid (connection field
-    ONLY — never at the source)."""
+    """One station field pinned to the ENM. role: connection|source|measurement|
+    switch|load|breaker. interface_protection=True ⇒ the relay that looks at the
+    grid (connection field ONLY — never at the source). `apparatus` = ordered
+    stack (busbar→cable) for the detailed SN switchgear projection."""
     return {
         "field_id": field_id,
-        "role": role,  # 'connection' | 'source' | 'measurement'
+        "role": role,
         "kind": kind,  # ABB cell label / source kind
         "abb_cell": abb_cell,  # SDC | SDF | CBC | SMC | DBC | SDM-V | SDM-C ...
         "on_bus_ref": on_bus,
         "source_ref": source_ref,
         "interface_protection": interface_protection,
         "protection_codes": list(protection_codes or []),
+        "apparatus": list(apparatus or []),
     }
 
 
@@ -1234,10 +1254,27 @@ def build_g4_pvtr() -> dict[str, Any]:
         fields=[
             _field("g4-vcb", role="connection", kind="POLE 1 — VCB (e²TANGO-800)", abb_cell="CBC",
                    on_bus="SN_PCC", source_ref="enm:Bay.bay_role=LINIA_OUT;schemat:POLE_NR_1_VCB",
-                   interface_protection=True, protection_codes=list(_BUK1_SN_CODES)),
+                   interface_protection=True, protection_codes=list(_BUK1_SN_CODES),
+                   # Apparatus stack busbar→cable (schemat POLE NR 1, dok. wykonawczy).
+                   apparatus=[
+                       _app("vcb/q9", kind="DS", designation="Q9 (odłącznik szynowy)", placement="UPSTREAM"),
+                       _app("vcb/q0", kind="CB", designation="Q0", catalog="TGI 24", placement="MIDSTREAM"),
+                       _app("vcb/ct", kind="CT", designation="T1.3", catalog="CTM 20 · 40/5/5/5", placement="MIDSTREAM",
+                            source_ref="schemat:CTM20_3rdz"),
+                       _app("vcb/vt", kind="VT", designation="TU1.3", catalog="VTB 20", placement="OFF_PATH",
+                            source_ref="schemat:VTB20_4uzw"),
+                       _app("vcb/sa", kind="SURGE_ARRESTER", designation="POLIM-D 18-06", placement="OFF_PATH"),
+                       _app("vcb/head", kind="CABLE_HEAD", designation="ITK 224", placement="DOWNSTREAM"),
+                       _app("vcb/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
+                   ]),
             _field("g4-sl2u", role="switch", kind="POLE 2 — SŁ2+U (GTR5)", abb_cell="SDC",
                    on_bus="SN_PCC", source_ref="enm:Bay.bay_role=LINIA_OUT;schemat:POLE_NR_2_SL2U",
-                   interface_protection=False),
+                   interface_protection=False,
+                   apparatus=[
+                       _app("sl2u/gtr5", kind="LOAD_SWITCH", designation="GTR 5 (rozłącznik)", placement="MIDSTREAM"),
+                       _app("sl2u/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
+                       _app("sl2u/head", kind="CABLE_HEAD", designation="ITK 224 → 3×YHAKXS 1×70", placement="DOWNSTREAM"),
+                   ]),
             _field("g4-q1", role="breaker", kind="Q1 nN · 3WA1108 800 A", abb_cell="CBC",
                    on_bus="NN_800", source_ref="dok:1.18_karta_Q1_3WA1108",
                    interface_protection=True, protection_codes=list(_BUK1_NN_CODES)),
