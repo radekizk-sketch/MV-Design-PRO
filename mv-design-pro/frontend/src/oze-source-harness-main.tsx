@@ -36,14 +36,17 @@ function LevelPanel(props: { archetype: string; detail: StationDetailLevel; labe
   const { archetype, detail, label, onFieldClick } = props;
   const companion = OZE_ARCHETYPES_2A[archetype];
   const PANEL_W = 820;
-  const PANEL_H = detail === 'close' ? 660 : 260;
+  const wide = (companion.fields.length ?? 0) >= 6;
+  // Wide archetypes (Buk 1, ≥6 fields) carry a deep nN tier UNDER the transformer
+  // field, so the overview panels are a touch taller and the content is vertically
+  // CENTRED (not top-anchored) — otherwise the nN tier ran off the panel bottom.
+  const PANEL_H = detail === 'close' ? 660 : wide ? 300 : 260;
   const viewW = PANEL_W;
   const viewH = PANEL_H - 32;
-  // The Buk 1 archetype is wide (W≈440) — scale so the SN busbar fits the panel.
-  const wide = (companion.fields.length ?? 0) >= 6;
-  // Wide archetypes (Buk 1, ≥6 fields) shrink a touch at close so the right-side
-  // result panels clear the panel edge instead of clipping against it.
+  // Scale so the SN busbar fits the panel; wide archetypes shrink a touch.
   const scale = detail === 'far' ? (wide ? 1.45 : 1.9) : detail === 'closer' ? (wide ? 1.2 : 1.5) : wide ? 1.0 : 1.05;
+  // Vertical offset: centre the deep wide content; top-anchor the shallow ones.
+  const ty = detail === 'close' ? (wide ? -150 : 30) : detail === 'closer' ? (wide ? -56 : 10) : wide ? -34 : 10;
   return (
     <div
       data-testid={`oze-harness-panel-${detail}`}
@@ -54,7 +57,7 @@ function LevelPanel(props: { archetype: string; detail: StationDetailLevel; labe
         {label}
       </div>
       <svg data-testid={`oze-harness-svg-${detail}`} width={viewW} height={viewH} viewBox={`${-viewW / 2} ${-viewH / 2} ${viewW} ${viewH}`} style={{ display: 'block' }}>
-        <g transform={`scale(${scale}) translate(0, ${detail === 'close' ? (wide ? -150 : 30) : 10})`}>
+        <g transform={`scale(${scale}) translate(0, ${ty})`}>
           <OzeSourceArchetype companion={companion} stationCode={CODES[archetype] ?? archetype} name={NAMES[archetype] ?? archetype} detail={detail} onFieldClick={onFieldClick} />
         </g>
       </svg>
