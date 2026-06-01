@@ -781,3 +781,113 @@ describe('G5-BESS — magazyn energii (IBG dwukierunkowy + oś energii kWh)', ()
     expect(conn.protection_codes).not.toContain('40'); // loss of field — synchronous only
   });
 });
+
+// ---------------------------------------------------------------------------
+// G6-WIND — Wiatr Typ 4 (pełnoprzekształtnikowy): IBG + wewnętrzna SIEĆ KOLEKTOROWA
+// SN (n turbin, KAŻDA z własnym trafem turbinowym). Generyczny, przypięty do norm.
+// ---------------------------------------------------------------------------
+
+describe('G6-WIND — wiatr Typ 4 (IBG + sieć kolektorowa SN)', () => {
+  const G6 = 'G6-WIND';
+  const renderClose = () =>
+    render(
+      <svg>
+        <OzeSourceArchetype companion={OZE_ARCHETYPES_2A[G6]} stationCode="WIND-T4" name="Wiatr T4" detail="close" />
+      </svg>,
+    );
+
+  it('W1 — IBG pełnoprzekształtnikowy: technology=Wiatr Typ 4, machine=IBG', () => {
+    const c = OZE_ARCHETYPES_2A[G6];
+    expect(c, 'G6-WIND must exist').toBeTruthy();
+    expect(c.source.machine_type).toBe('IBG');
+    expect(c.source.technology).toMatch(/Wiatr|Typ 4/);
+  });
+
+  it('W2 — sieć KOLEKTOROWA: collector spec (kV + n turbin + moc + trafo turbiny + topologia), przypięta', () => {
+    const col = OZE_ARCHETYPES_2A[G6].source.collector!;
+    expect(col, 'wind must carry the collector spec').toBeTruthy();
+    expect(col.source_ref).toMatch(/^(std:|enm:)/);
+    expect(col.collector_kv).toBeGreaterThan(0);
+    expect(col.n_turbines).toBeGreaterThanOrEqual(2);
+    expect(col.turbine_kw).toBeGreaterThan(0);
+    expect(col.turbine_transformer).toMatch(/kV/);
+    expect(col.turbine_lv_kv).toBeGreaterThan(0);
+    expect(col.topology.length).toBeGreaterThan(0);
+  });
+
+  it('W3 — GENERYCZNY wg norm: każdy field source_ref ∈ std/norma/enm; brak schemat: i rejestru rysunku', () => {
+    const c = OZE_ARCHETYPES_2A[G6];
+    for (const f of c.fields) {
+      expect(f.source_ref, `${f.field_id} unpinned`).toMatch(/^(enm:|std:|norma:)/);
+      for (const a of f.apparatus ?? []) expect(a.source_ref).toMatch(/^(enm:|std:|norma:)/);
+    }
+    expect(c.fields.every((f) => !/schemat:/.test(f.source_ref))).toBe(true);
+    expect(c.source.schematic ?? null).toBeNull();
+  });
+
+  it('W4 — TOPOLOGIA kolektora: n×bay turbiny NA szynie kolektora (PCC) + 1 pole liniowe (sn_input); brak trafa-pola/nN/wyjścia SN', () => {
+    const c = OZE_ARCHETYPES_2A[G6];
+    const turbines = c.fields.filter((f) => f.role === 'source');
+    expect(turbines.length).toBeGreaterThanOrEqual(2);
+    for (const t of turbines) expect(t.on_bus_ref).toBe(c.pcc_bus_ref); // bays on the collector
+    expect(c.fields.filter((f) => f.role === 'connection').length).toBe(1);
+    expect(c.fields.some((f) => f.role === 'transformer'), 'no transformer FIELD (per-feeder instead)').toBe(false);
+    expect(c.fields.some((f) => f.role === 'breaker'), 'no shared nN main breaker').toBe(false);
+    expect(c.fields.filter((f) => f.port?.kind === 'sn_input').length).toBe(1);
+    expect(c.fields.some((f) => f.port?.kind === 'sn_output')).toBe(false);
+  });
+
+  it('W5 — generacja (eksport) z solvera: każda turbina p<0; incomer reverse + strzałka W DÓŁ do OSD', () => {
+    const c = OZE_ARCHETYPES_2A[G6];
+    const col = c.source.collector!;
+    for (let i = 1; i <= col.n_turbines; i++) {
+      const br = c.voltage_flow.branches[`sr/branch/wtg-tr${i}`];
+      expect(br, `turbine ${i} branch`).toBeTruthy();
+      expect(br.p_mw).toBeLessThan(0); // export
+    }
+    expect(c.voltage_flow.branches['sr/branch/in'].direction).toBe('reverse');
+    const { container } = renderClose();
+    const flow = container.querySelector('[data-testid="oze-flow-g6-line"]')!;
+    expect(flow.getAttribute('data-flow-direction')).toBe('reverse');
+    expect(flow.getAttribute('data-flow-points')).toBe('down');
+  });
+
+  it('W6 — zwarcie IBG ograniczone (NIE maszyna) i ≤Icw na każdej szynie', () => {
+    for (const bus of Object.values(OZE_ARCHETYPES_2A[G6].short_circuit.buses)) {
+      expect(bus.source_contribution.machine_type).toBe('IBG');
+      expect(bus.source_contribution.is_synchronous_machine).toBe(false);
+      expect(bus.verification.passed).toBe(true);
+    }
+  });
+
+  it('W7 — render: pole liniowe + KOLEKTOR (≥2 WTG z rotorem + trafo turbiny) + blok SIEĆ KOLEKTOROWA + ZKSN-na-kablu; bez nN; ortogonalnie', () => {
+    const { container } = renderClose();
+    expect(container.querySelector('[data-testid="oze-field-connection"]')).toBeTruthy();
+    const tier = container.querySelector('[data-testid="oze-collector-tier"]')!;
+    expect(tier, 'collector tier').toBeTruthy();
+    expect(container.querySelectorAll('[data-testid^="oze-field-wtg-"]').length).toBeGreaterThanOrEqual(2);
+    expect(container.querySelectorAll('[data-testid="oze-wtg-symbol"]').length).toBeGreaterThanOrEqual(2);
+    const block = container.querySelector('[data-testid="oze-collector"]')!;
+    expect(block, 'SIEĆ KOLEKTOROWA register').toBeTruthy();
+    expect(block.getAttribute('data-source-ref')).toMatch(/^(std:|enm:)/);
+    expect(block.textContent ?? '').toMatch(/kV/);
+    expect(container.querySelector('[data-testid="oze-nn-tier"]'), 'no shared nN tier').toBeFalsy();
+    expect(container.querySelector('[data-testid="oze-grid-stub"]'), 'no busbar-edge OSD stub').toBeFalsy();
+    const lineStack = container.querySelector('[data-testid="oze-field-stack-g6-line"]')!;
+    expect(lineStack.querySelector('[data-testid="oze-boundary-marker"]')).toBeTruthy();
+    const unit = container.querySelector('[data-testid="oze-source-G6-WIND"]')!;
+    for (const ln of Array.from(unit.querySelectorAll('line'))) {
+      const x1 = Number(ln.getAttribute('x1')); const y1 = Number(ln.getAttribute('y1'));
+      const x2 = Number(ln.getAttribute('x2')); const y2 = Number(ln.getAttribute('y2'));
+      expect(Math.abs(x1 - x2) < 1e-6 || Math.abs(y1 - y2) < 1e-6, `diagonal line ${x1},${y1}→${x2},${y2}`).toBe(true);
+    }
+  });
+
+  it('W8 — ochrona = zestaw interfejsowy IBG (nie kody maszyny synchronicznej)', () => {
+    const conn = OZE_ARCHETYPES_2A[G6].fields.find((f) => f.role === 'connection')!;
+    expect(conn.interface_protection).toBe(true);
+    expect(conn.protection_codes).toContain('anti-islanding');
+    expect(conn.protection_codes).not.toContain('25');
+    expect(conn.protection_codes).not.toContain('40');
+  });
+});

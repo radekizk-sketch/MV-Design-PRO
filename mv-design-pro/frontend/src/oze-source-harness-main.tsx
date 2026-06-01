@@ -25,8 +25,9 @@ const NAMES: Record<string, string> = {
   G3: 'Farma PV — falowniki SN',
   'G4-PVTR': 'PV 1 MW przez stację TR konsumencką',
   'G5-BESS': 'BESS 1 MW / 2 MWh — magazyn energii (2-kier.)',
+  'G6-WIND': 'Wiatr Typ 4 — 3×2 MW, sieć kolektorowa SN 30 kV',
 };
-const CODES: Record<string, string> = { G1: 'PV-01', G2: 'PV-02', G3: 'PV-03', 'G4-PVTR': 'PV-1MW', 'G5-BESS': 'BESS-1MW' };
+const CODES: Record<string, string> = { G1: 'PV-01', G2: 'PV-02', G3: 'PV-03', 'G4-PVTR': 'PV-1MW', 'G5-BESS': 'BESS-1MW', 'G6-WIND': 'WIND-T4' };
 
 function readArchetype(): string {
   const raw = new URLSearchParams(window.location.search).get('archetype');
@@ -37,10 +38,12 @@ function LevelPanel(props: { archetype: string; detail: StationDetailLevel; labe
   const { archetype, detail, label, onFieldClick } = props;
   const companion = OZE_ARCHETYPES_2A[archetype];
   const PANEL_W = 820;
-  const wide = (companion.fields.length ?? 0) >= 6;
-  // Wide archetypes (Buk 1, ≥6 fields) carry a deep nN tier UNDER the transformer
-  // field, so the overview panels are a touch taller and the content is vertically
-  // CENTRED (not top-anchored) — otherwise the nN tier ran off the panel bottom.
+  // "Deep" = carries detailed apparatus stacks (a connection stack going ~200 px
+  // down + footer blocks) OR many fields. Such archetypes (Buk 1, BESS, the wind
+  // collector) must be vertically CENTRED — otherwise the deep content (or its
+  // footer register) runs off the panel bottom. The wind collector has only 4
+  // fields but a full line-field stack, so field-count alone misclassifies it.
+  const wide = (companion.fields.length ?? 0) >= 6 || companion.fields.some((f) => (f.apparatus?.length ?? 0) > 0);
   const PANEL_H = detail === 'close' ? 660 : wide ? 300 : 260;
   const viewW = PANEL_W;
   const viewH = PANEL_H - 32;

@@ -70,6 +70,23 @@ function PvInverterSymbol(props: { cx: number; cy: number; r: number }): JSX.Ele
   );
 }
 
+/** Wind Type-4 turbine: full-converter (~ inside the generator circle) + a 3-blade
+ *  rotor on top. Rotor blades are a <path> (NOT <line>) so the orthogonality gate,
+ *  which only inspects connection <line> segments, stays satisfied. */
+function WtgSymbol(props: { cx: number; cy: number; r: number }): JSX.Element {
+  const { cx, cy, r } = props;
+  return (
+    <g data-testid="oze-wtg-symbol" data-symbol-canon="wtg_full_converter">
+      <circle cx={cx} cy={cy} r={r} fill="#0A1622" stroke="#FFB020" strokeWidth={1.6} />
+      <path d={`M ${cx - r * 0.5} ${cy + r * 0.25} q ${r * 0.25} -${r * 0.4} ${r * 0.5} 0 t ${r * 0.5} 0`} fill="none" stroke="#FFB020" strokeWidth={1.1} />
+      {/* rotor: hub mast (vertical line, ok) + 3 blades (path → exempt). */}
+      <line x1={cx} y1={cy - r} x2={cx} y2={cy - r - 4} stroke="#FFB020" strokeWidth={1.2} />
+      <circle cx={cx} cy={cy - r - 5} r={1.3} fill="#FFB020" />
+      <path d={`M ${cx} ${cy - r - 5} l 0 -5 M ${cx} ${cy - r - 5} l 4.3 2.6 M ${cx} ${cy - r - 5} l -4.3 2.6`} fill="none" stroke="#FFB020" strokeWidth={1.1} strokeLinecap="round" />
+    </g>
+  );
+}
+
 /** Reverse-aware vertical flow arrow on the incomer (generation = points UP). */
 function FlowArrow(props: { x: number; topY: number; botY: number; direction: 'forward' | 'reverse' | 'none' }): JSX.Element | null {
   const { x, topY, botY, direction } = props;
@@ -351,6 +368,14 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
   const isBess = !!storage;
   const feederPrefix = isBess ? 'PCS' : 'INW';
   const ownLabel = isBess ? 'PW' : 'RPW-PV';
+  // Wind Type 4 — the internal SN collector network: the turbine BAYS sit on the
+  // collector (PCC) bus, each with its OWN transformer + WTG hanging behind it (NOT
+  // a shared nN tier). Detected via the collector spec.
+  const collector = src.collector;
+  const isWind = !!collector;
+  const turbineFields = isWind
+    ? companion.fields.filter((f) => f.role === 'source' && f.on_bus_ref === pccRef)
+    : [];
 
   // nN tier: the source feeders (≥1) sit on a bus DIFFERENT from the PCC (behind a
   // step-up transformer). The tier carries an optional main breaker (Q1), the
@@ -407,7 +432,7 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
   // Legacy single-source column (G1/G3: source on the SAME bus as the PCC, no Q1).
   const srcBreakerY = busY + (detail === 'far' ? 16 : 26);
   const srcSymY = srcBreakerY + (detail === 'far' ? 16 : 28);
-  const pccSrcField = !nnTier ? srcField : undefined;
+  const pccSrcField = !nnTier && !isWind ? srcField : undefined;
   const pccLoadField = !nnTier ? loadField : undefined;
 
   return (
@@ -693,6 +718,55 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
         );
       })()}
 
+      {/* ─── WIND collector tier (G6): the turbine BAYS on the collector (PCC) bus,
+           each with its OWN turbine transformer + WTG hanging behind it. This is the
+           distinguishing structure — n distributed transformers + an SN collector,
+           NOT n inverters on one shared nN bus. ─── */}
+      {isWind && turbineFields.length > 0 && (() => {
+        const collX1 = busX1 + (hasStacks ? 130 : 40); // right of POLE 1's OSD-cable corridor
+        const collX2 = busX2 - 8;
+        const tStep = (collX2 - collX1) / Math.max(1, turbineFields.length);
+        const trY = busY + (detail === 'far' ? 18 : 30);
+        const wtgY = trY + (detail === 'far' ? 18 : 32);
+        const r = detail === 'close' ? 7 : 6;
+        return (
+          <g data-testid="oze-collector-tier" data-collector-kv={collector!.collector_kv} data-n-turbines={collector!.n_turbines}>
+            {turbineFields.map((f, i) => {
+              const tx = collX1 + (i + 0.5) * tStep;
+              const vf = companion.voltage_flow.branches[`sr/branch/wtg-tr${i + 1}`];
+              return (
+                <g
+                  key={f.field_id}
+                  data-testid={`oze-field-wtg-${i}`}
+                  data-field-role="source"
+                  data-abb-cell={f.abb_cell}
+                  data-source-ref={f.source_ref}
+                  onClick={handle(`${companion.archetype}/${f.field_id}`)}
+                  style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
+                >
+                  <line x1={tx} y1={busY} x2={tx} y2={trY - 9} stroke={busColor} strokeWidth={1.8} />
+                  <ApparatusTransformerSymbol cx={tx} cy={trY} vectorGroup="Dyn5" neutralEarthed />
+                  {detail !== 'far' && (
+                    <>
+                      <line x1={tx} y1={trY + 9} x2={tx} y2={wtgY - r - 6} stroke="#7DD3FC" strokeWidth={1.6} />
+                      <WtgSymbol cx={tx} cy={wtgY} r={r} />
+                    </>
+                  )}
+                  {detail === 'close' && (
+                    <>
+                      <text x={tx} y={wtgY + 17} textAnchor="middle" fill="#FFB020" fontFamily={FONT_MONO} fontSize={5.8} fontWeight={700}>{`WTG.${i + 1}`}</text>
+                      {vf && (
+                        <text x={tx} y={wtgY + 25} textAnchor="middle" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={5}>{`${Math.abs(vf.p_mw).toFixed(1)} MW`}</text>
+                      )}
+                    </>
+                  )}
+                </g>
+              );
+            })}
+          </g>
+        );
+      })()}
+
       {/* Legacy single-source column (G1/G3: source on the PCC bus, no nN tier). */}
       {pccSrcField && (
         <g
@@ -780,6 +854,27 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
             `Pojemność: ${storage.capacity_kwh.toFixed(0)} kWh · ${storage.duration_h} h`,
             `Praca 2-kier.: rozład. ${storage.discharge_kw.toFixed(0)} kW ⇄ ład. ${storage.charge_kw.toFixed(0)} kW`,
             `Maszyna: IBG (PCS) — Ik ograniczony k·In (§6.7)`,
+          ].map((ln, i) => (
+            <text key={i} x={schemX} y={schemY + 9 + i * 8} fill={i === 3 ? COLOR_TEXT_MUTED : COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6} fontWeight={i === 3 ? 400 : 600}>
+              {ln}
+            </text>
+          ))}
+        </g>
+      )}
+
+      {/* Collector register (Wind T4) — the internal SN collector network, the block
+          that distinguishes a wind farm (distributed turbine transformers) from a PV
+          farm (one shared transformer). Pinned to the standard (source_ref). */}
+      {detail === 'close' && collector && (
+        <g data-testid="oze-collector" data-source-ref={collector.source_ref} pointerEvents="none">
+          <text x={schemX} y={schemY} fill="#9FE6FF" fontFamily={FONT_MONO} fontSize={7} fontWeight={800}>
+            SIEĆ KOLEKTOROWA SN
+          </text>
+          {[
+            `Kolektor: ${collector.collector_kv} kV · ${collector.topology}`,
+            `Turbiny: ${collector.n_turbines} × ${(collector.turbine_kw / 1000).toFixed(1)} MW (Typ 4, pełny przekształtnik)`,
+            `Trafo turbiny (każda): ${collector.turbine_transformer}`,
+            `Maszyna: IBG — Ik ograniczony k·In (§6.7), NIE maszyna`,
           ].map((ln, i) => (
             <text key={i} x={schemX} y={schemY + 9 + i * 8} fill={i === 3 ? COLOR_TEXT_MUTED : COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6} fontWeight={i === 3 ? 400 : 600}>
               {ln}

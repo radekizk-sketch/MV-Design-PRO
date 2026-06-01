@@ -87,6 +87,19 @@ export interface OzeStorageSpec {
   readonly bidirectional: boolean;
 }
 
+/** Wind (Type 4) internal SN COLLECTOR network — the distinguishing structure: n
+ *  turbines, each with its own turbine transformer (LV→collector), gathered on a
+ *  collector bus, rather than n inverters on one nN bus behind one transformer. */
+export interface OzeCollectorSpec {
+  readonly source_ref: string;
+  readonly collector_kv: number;
+  readonly n_turbines: number;
+  readonly turbine_kw: number;
+  readonly turbine_transformer: string;
+  readonly turbine_lv_kv: number;
+  readonly topology: string;
+}
+
 /** OZE source metadata (axes T/R/S of the taxonomy). */
 export interface OzeSourceMeta {
   readonly technology: string; // PV | BESS | FW | ...
@@ -104,6 +117,8 @@ export interface OzeSourceMeta {
   readonly bidirectional?: boolean;
   /** Storage spec (BESS) — the energy axis (kWh) alongside the power axis (kW). */
   readonly storage?: OzeStorageSpec;
+  /** Collector spec (Wind Type 4) — the internal SN collector network. */
+  readonly collector?: OzeCollectorSpec;
 }
 
 export interface OzeVfBus {

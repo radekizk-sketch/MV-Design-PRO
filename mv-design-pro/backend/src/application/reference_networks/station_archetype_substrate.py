@@ -1432,7 +1432,102 @@ def build_g5_bess() -> dict[str, Any]:
     )
 
 
-_OZE_ARCHETYPES_2A_EXT = {**_OZE_ARCHETYPES_2A, "G4-PVTR": build_g4_pvtr, "G5-BESS": build_g5_bess}
+# ── G6 — Wiatr Typ 4 (pełnoprzekształtnikowy) — GENERYCZNY archetyp wg norm ──────
+_WIND_COLLECTOR_KV = 30.0  # 30 kV generic wind SN collector voltage
+_WIND_LV_KV = 0.69         # 0.69 kV turbine generator/converter LV
+
+
+def build_g6_wind() -> dict[str, Any]:
+    """G6 — Wiatr Typ 4 (pełny przekształtnik) — GENERYCZNY archetyp wg norm
+    (NC RfG / IEC 61400 / IEC 60909), NIE konkretna instalacja
+    (source_ref = std:/norma:/enm:).
+
+    KLUCZOWA RÓŻNICA vs PV/BESS: WEWNĘTRZNA SIEĆ KOLEKTOROWA SN — n turbin, KAŻDA z
+    WŁASNYM transformatorem turbinowym (LV→kolektor), zebranych na szynie kolektora
+    SN (radialnie), a NIE n falowników na jednej szynie nN za jednym trafem. Pole
+    liniowe SN łączy kolektor z OSD (granica na kablu). Generacja = eksport (kierunek
+    z zamrożonego solvera).
+
+    Zwarcie: turbina pełnoprzekształtnikowa = IBG, prąd ograniczony k·In
+    (IEC 60909-0:2016 §6.7) — jak PV — NIE maszyna (bramka J).
+    """
+    n_turbines = 3
+    turbine_kw = 2000.0           # 2 MW per turbine (generic Type 4)
+    turbine_kva = turbine_kw       # cosφ≈1 full converter
+    p_farm_kw = n_turbines * turbine_kw  # 6000 kW
+    tr_mva = 2.5                   # turbine transformer
+
+    s = _Substrate()
+    s.add_slack("GPZ")
+    s.add_bus("SN_PCC", _WIND_COLLECTOR_KV)  # collector bus == farm PCC
+    s.add_line(SR_IN, "GPZ", "SN_PCC", _SN_LINE_R, _SN_LINE_X)
+    # Each turbine: own transformer (LV→collector) + full-converter (IBG) at LV.
+    # Generation (export) = negative load; direction/value from the FROZEN solver.
+    for i in range(n_turbines):
+        lv = f"WTG_LV_{i + 1}"
+        s.add_bus(lv, _WIND_LV_KV)
+        s.add_transformer(f"sr/branch/wtg-tr{i + 1}", "SN_PCC", lv,
+                          hv_kv=_WIND_COLLECTOR_KV, lv_kv=_WIND_LV_KV, uk_percent=6.0, rated_mva=tr_mva)
+        s.add_load(lv, p_mw=-turbine_kw / 1000.0, q_mvar=0.0)
+        s.add_inverter(lv, rated_kva=turbine_kva, un_kv=_WIND_LV_KV, k_sc=_IBG_K, source_type="WIND")
+    s.finalize_pq()
+    # IBG contribution reflected to the collector (power-invariant In@collector).
+    total_ibg_ka = n_turbines * (_IBG_K * (turbine_kva * 1000.0 / (_SQRT3 * _WIND_COLLECTOR_KV * 1000.0))) / 1000.0
+
+    src = _pv_source(technology="Wiatr — turbiny pełnoprzekształtnikowe (Typ 4)", machine_type="IBG",
+                     nc_class="C", control_mode="P(f) · Q(U)",
+                     p_zainst_kw=p_farm_kw, pn_ac_kw=p_farm_kw, p_przylacz_kw=p_farm_kw, p_osiagalna_kw=5700.0)
+    # Wind-specific: the internal SN collector network (the distinguishing block).
+    src["collector"] = {
+        "source_ref": "std:IEC_61400;enm:Generator.gen_type=wind_t4_collector",
+        "collector_kv": _WIND_COLLECTOR_KV,
+        "n_turbines": n_turbines,
+        "turbine_kw": turbine_kw,
+        "turbine_transformer": f"{_WIND_LV_KV}/{_WIND_COLLECTOR_KV:.0f} kV · {tr_mva} MVA",
+        "turbine_lv_kv": _WIND_LV_KV,
+        "topology": "radial",
+    }
+    # Turbine BAYS sit on the COLLECTOR (PCC) bus — the transformer + WTG hang behind
+    # each bay (drawn per feeder), NOT a shared nN tier.
+    turbine_fields = [
+        _field(f"g6-wtg{i + 1}", role="source", kind=f"WTG {i + 1} · {turbine_kw / 1000:.0f} MW", abb_cell="SDC",
+               on_bus="SN_PCC", source_ref=f"enm:Generator.gen_type=wind_t4;std:IEC_61400_wtg_{i + 1}",
+               interface_protection=False)
+        for i in range(n_turbines)
+    ]
+    return _oze_companion(
+        "G6-WIND", substrate=s,
+        # Collector 30 kV (board 25 kA Icw); a representative turbine LV (50 kA).
+        buses=[("SN_PCC", _WIND_COLLECTOR_KV, 25.0), ("WTG_LV_1", _WIND_LV_KV, 50.0)],
+        pcc_bus="SN_PCC", ibg_ka=total_ibg_ka,
+        source=src,
+        fields=[
+            _field("g6-line", role="connection", kind="POLE LINIOWE SN (przyłącze)", abb_cell="CBC",
+                   on_bus="SN_PCC", source_ref="enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe",
+                   interface_protection=True, protection_codes=list(_PROTECTION_BY_MACHINE["IBG"]),
+                   apparatus=[
+                       _app("line/ds", kind="DS", designation="Q1 (odłącznik szynowy)", placement="UPSTREAM"),
+                       _app("line/cb", kind="CB", designation="Q0 (wyłącznik SN)", placement="MIDSTREAM"),
+                       _app("line/ct", kind="CT", designation="przekładnik prądowy", placement="MIDSTREAM",
+                            source_ref="std:IEC_61869_CT"),
+                       _app("line/vt", kind="VT", designation="przekładnik napięciowy", placement="OFF_PATH",
+                            source_ref="std:IEC_61869_VT"),
+                       _app("line/sa", kind="SURGE_ARRESTER", designation="ogranicznik przepięć", placement="OFF_PATH"),
+                       _app("line/head", kind="CABLE_HEAD", designation="głowica kablowa", placement="DOWNSTREAM"),
+                       _app("line/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
+                   ],
+                   port=_port("line/port", kind="sn_input", un_kv=_WIND_COLLECTOR_KV, entry_side="BOK-L",
+                              occupied_by="seg/kabel-osd", cable="kabel SN do OSD (typ wg projektu)",
+                              source_ref="enm:Port.kind=sn_input;std:przylacze_SN")),
+            *turbine_fields,
+        ],
+        boundary=_boundary("G-GPZ", on_bus="SN_PCC", metered=True),
+    )
+
+
+_OZE_ARCHETYPES_2A_EXT = {
+    **_OZE_ARCHETYPES_2A, "G4-PVTR": build_g4_pvtr, "G5-BESS": build_g5_bess, "G6-WIND": build_g6_wind,
+}
 
 
 def build_all_oze_2a() -> dict[str, dict[str, Any]]:
