@@ -296,6 +296,29 @@ describe('GATE J′ — rotating machines: machine-typed SC contribution (not IB
       expect(contrib.textContent).not.toContain('ograniczony');
     }
   });
+
+  it('renders the per-machine WHITE-BOX breakdown (I″k·i_b·μ·q) at close detail', () => {
+    // G7 biogaz — 2 synchronous gensets on SN_PCC: 2 lines, μ shown, no q.
+    const g7 = renderOze('G7-BIOGAZ', 'close');
+    const g7m = g7.container.querySelectorAll('[data-testid^="oze-sc-machine-SN_PCC-"]');
+    expect(g7m.length).toBe(2);
+    expect(g7m[0].textContent).toContain('μ=');
+    expect(g7m[0].textContent).not.toContain('q=');
+
+    // G8 wind async — 3 induction generators at the turbine terminal: 3 lines with q;
+    // the faulted turbine decays (μ<1), the remote turbines do not (μ=1).
+    const g8 = renderOze('G8-WIND-ASYNC', 'close');
+    const g8m = g8.container.querySelectorAll('[data-testid^="oze-sc-machine-WTG_LV_1-"]');
+    expect(g8m.length).toBe(3);
+    expect(g8m[0].textContent).toContain('q=');
+    const mus = Array.from(g8m).map((e) => Number(e.getAttribute('data-machine-mu')));
+    expect(Math.min(...mus)).toBeLessThan(1);
+    expect(Math.max(...mus)).toBe(1);
+
+    // IBG (G2) carries no per-machine breakdown.
+    const g2 = renderOze('G2', 'close');
+    expect(g2.container.querySelectorAll('[data-testid^="oze-sc-machine-"]').length).toBe(0);
+  });
 });
 
 // ---------------------------------------------------------------------------

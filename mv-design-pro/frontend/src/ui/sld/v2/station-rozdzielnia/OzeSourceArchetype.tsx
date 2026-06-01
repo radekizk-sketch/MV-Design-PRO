@@ -317,11 +317,14 @@ function PowerHierarchy(props: { h: SldOzeArchetypeCompanion['source']['power_hi
   );
 }
 
-/** Concise busbar results (U + Ik''max/min + ≤Icw verdict + IBG contribution). */
+/** Concise busbar results (U + Ik''max/min + ≤Icw verdict + source contribution +,
+ *  for rotating machines, the per-machine WHITE-BOX breakdown I″k·i_b·μ·q, §6.6). */
 function BusResults(props: { vf: OzeVfBus; sc: OzeScBus; x: number; y: number }): JSX.Element {
   const { vf, sc, x, y } = props;
   const ok = sc.verification.passed;
   const within = Math.abs(vf.deviation_percent) <= 5;
+  const contrib = sc.source_contribution;
+  const machines = contrib.machines ?? [];
   return (
     <g data-testid={`oze-bus-results-${vf.bus_ref}`} pointerEvents="none">
       <circle cx={x - 6} cy={y - 3} r={2.2} fill={within ? '#5BE08A' : '#FFB020'} />
@@ -335,9 +338,26 @@ function BusResults(props: { vf: OzeVfBus; sc: OzeScBus; x: number; y: number })
         {`Ik"max ${ok ? '≤' : '>'} Icw ${sc.icw_ka} kA ${ok ? '✓' : '✗'}`}
       </text>
       {/* Gate J — the source contribution, machine-typed. */}
-      <text x={x} y={y + 27} fill="#FFB020" fontFamily={FONT_MONO} fontSize={6.6} data-testid={`oze-sc-contrib-${vf.bus_ref}`} data-machine-type={sc.source_contribution.machine_type} data-synchronous={String(sc.source_contribution.is_synchronous_machine)}>
-        {`wkład ${sc.source_contribution.machine_type}: ${sc.source_contribution.ik_contribution_ka.toFixed(3)} kA (${sc.source_contribution.machine_type === 'IBG' ? 'ograniczony' : 'maszyna'})${sc.source_contribution.ib_contribution_ka != null ? ` · i_b=${sc.source_contribution.ib_contribution_ka.toFixed(3)} kA` : ''}`}
+      <text x={x} y={y + 27} fill="#FFB020" fontFamily={FONT_MONO} fontSize={6.6} data-testid={`oze-sc-contrib-${vf.bus_ref}`} data-machine-type={contrib.machine_type} data-synchronous={String(contrib.is_synchronous_machine)}>
+        {`wkład ${contrib.machine_type}: ${contrib.ik_contribution_ka.toFixed(3)} kA (${contrib.machine_type === 'IBG' ? 'ograniczony' : 'maszyna'})${contrib.ib_contribution_ka != null ? ` · i_b=${contrib.ib_contribution_ka.toFixed(3)} kA` : ''}`}
       </text>
+      {/* Per-machine WHITE-BOX breakdown (§6.6) — each rotating machine's partial I″k,
+          breaking current i_b, decay μ and (asynchronous) q. Absent for IBG. */}
+      {machines.map((m, j) => (
+        <text
+          key={m.source_id}
+          x={x + 5}
+          y={y + 36 + j * 8}
+          fill={COLOR_TEXT_MUTED}
+          fontFamily={FONT_MONO}
+          fontSize={6}
+          data-testid={`oze-sc-machine-${vf.bus_ref}-${j}`}
+          data-machine-mu={m.mu}
+          data-machine-q={m.q}
+        >
+          {`#${j + 1} ${m.node_ref}: I″k=${m.ikss_partial_ka.toFixed(3)} · i_b=${m.ib_partial_ka.toFixed(3)} kA · μ=${m.mu.toFixed(3)}${contrib.is_synchronous_machine ? '' : ` · q=${m.q.toFixed(3)}`}`}
+        </text>
+      ))}
     </g>
   );
 }
@@ -400,6 +420,16 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
   const busX2 = W / 2;
   const busKv = companion.voltage_flow.buses[pccRef]?.un_kv ?? 15;
   const busColor = busColorForVoltage(busKv);
+  // Per-bus result blocks widen when the source is a rotating machine and carries a
+  // per-machine SC breakdown (§6.6), so stacked bus blocks do not overlap. IBG
+  // archetypes have no `machines` ⇒ the step stays 40 px (no layout change).
+  const maxMachinesPerBus = Math.max(
+    0,
+    ...Object.values(companion.short_circuit.buses).map(
+      (b) => b.source_contribution.machines?.length ?? 0,
+    ),
+  );
+  const busResultStep = 40 + maxMachinesPerBus * 8;
 
   // Auxiliary text registers (power hierarchy + schematic) sit bottom-left for the
   // simple archetypes; for the DETAILED (stacked) Buk-1 board they move to a bottom
@@ -809,7 +839,7 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
         const vf = companion.voltage_flow.buses[busRef];
         const sc = companion.short_circuit.buses[busRef];
         if (!vf || !sc) return null;
-        return <BusResults key={busRef} vf={vf} sc={sc} x={busX2 + 18} y={busY + 16 + i * 40} />;
+        return <BusResults key={busRef} vf={vf} sc={sc} x={busX2 + 18} y={busY + 16 + i * busResultStep} />;
       })}
 
       {/* Power hierarchy (gate H), close zoom — bottom-left, or the footer for the
