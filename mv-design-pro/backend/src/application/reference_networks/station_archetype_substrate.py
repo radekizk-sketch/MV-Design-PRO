@@ -947,6 +947,26 @@ def _boundary(variant: str, *, on_bus: str, metered: bool) -> dict[str, Any]:
     }
 
 
+def _port(
+    port_id: str, *, kind: str, un_kv: float, entry_side: str, occupied_by: str,
+    cable: str | None = None, source_ref: str = "",
+) -> dict[str, Any]:
+    """A field's cable-connection PORT (projection of ENM Port). The cable docks
+    HERE (not at the middle of the field). `kind` ∈ Port.kind; `entry_side` (axis 7)
+    ∈ {DOL, BOK-L, BOK-P, GORA} fixes WHERE the cable enters (the docking contract
+    that keeps the network orthogonal at 53 stations); `occupied_by` = the cable
+    segment ref; `cable` = type/cross-section ('dane niekompletne' if unknown)."""
+    return {
+        "port_id": port_id,
+        "kind": kind,  # sn_input | sn_output | sn_branch | nn_feeder | ...
+        "nominal_voltage_kv": un_kv,
+        "entry_side": entry_side,  # axis 7 — DOL | BOK-L | BOK-P | GORA
+        "occupied_by": occupied_by,  # cable segment ref (Port.occupied_by)
+        "cable": cable or "dane niekompletne",
+        "source_ref": source_ref or f"enm:Port.kind={kind}",
+    }
+
+
 def _app(
     device_ref: str, *, kind: str, designation: str, catalog: str | None = None,
     placement: str = "MIDSTREAM", source_ref: str = "",
@@ -967,12 +987,13 @@ def _app(
 def _field(
     field_id: str, *, role: str, kind: str, abb_cell: str, on_bus: str,
     source_ref: str, interface_protection: bool, protection_codes: list[str] | None = None,
-    apparatus: list[dict[str, Any]] | None = None,
+    apparatus: list[dict[str, Any]] | None = None, port: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """One station field pinned to the ENM. role: connection|source|measurement|
     switch|load|breaker. interface_protection=True ⇒ the relay that looks at the
     grid (connection field ONLY — never at the source). `apparatus` = ordered
-    stack (busbar→cable) for the detailed SN switchgear projection."""
+    stack (busbar→cable); `port` = the cable-connection port (cable docks HERE,
+    on the field's cable head)."""
     return {
         "field_id": field_id,
         "role": role,
@@ -983,6 +1004,7 @@ def _field(
         "interface_protection": interface_protection,
         "protection_codes": list(protection_codes or []),
         "apparatus": list(apparatus or []),
+        "port": port,
     }
 
 
@@ -1266,7 +1288,11 @@ def build_g4_pvtr() -> dict[str, Any]:
                        _app("vcb/sa", kind="SURGE_ARRESTER", designation="POLIM-D 18-06", placement="OFF_PATH"),
                        _app("vcb/head", kind="CABLE_HEAD", designation="ITK 224", placement="DOWNSTREAM"),
                        _app("vcb/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
-                   ]),
+                   ],
+                   # Kabel zasilający z OSD wchodzi BOKIEM-L na głowicę ITK 224 (port sn_input).
+                   port=_port("vcb/port", kind="sn_input", un_kv=_PV1MW_SN_KV, entry_side="BOK-L",
+                              occupied_by="seg/kabel-osd", cable="3×XRUHAKXS 1×70/25 mm² · L≈484 m",
+                              source_ref="enm:Port.kind=sn_input;schemat:kabel_OSD")),
             _field("g4-sl2u", role="switch", kind="POLE 2 — SŁ2+U (GTR5)", abb_cell="SDC",
                    on_bus="SN_PCC", source_ref="enm:Bay.bay_role=LINIA_OUT;schemat:POLE_NR_2_SL2U",
                    interface_protection=False,
@@ -1274,7 +1300,11 @@ def build_g4_pvtr() -> dict[str, Any]:
                        _app("sl2u/gtr5", kind="LOAD_SWITCH", designation="GTR 5 (rozłącznik)", placement="MIDSTREAM"),
                        _app("sl2u/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
                        _app("sl2u/head", kind="CABLE_HEAD", designation="ITK 224 → 3×YHAKXS 1×70", placement="DOWNSTREAM"),
-                   ]),
+                   ],
+                   # Pole łącznikowo-liniowe — wyjście kablem do OSD BOKIEM-P (port sn_output).
+                   port=_port("sl2u/port", kind="sn_output", un_kv=_PV1MW_SN_KV, entry_side="BOK-P",
+                              occupied_by="seg/kabel-wy", cable="3×YHAKXS 1×70 mm²",
+                              source_ref="enm:Port.kind=sn_output;schemat:wyjscie_OSD")),
             _field("g4-q1", role="breaker", kind="Q1 nN · 3WA1108 800 A", abb_cell="CBC",
                    on_bus="NN_800", source_ref="dok:1.18_karta_Q1_3WA1108",
                    interface_protection=True, protection_codes=list(_BUK1_NN_CODES)),

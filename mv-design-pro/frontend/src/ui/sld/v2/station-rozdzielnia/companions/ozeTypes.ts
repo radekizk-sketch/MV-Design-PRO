@@ -134,6 +134,19 @@ export interface OzeApparatus {
   readonly source_ref: string;
 }
 
+/** A field's cable-connection PORT (projection of ENM Port) — the cable docks
+ *  HERE (on the cable head), entering from `entry_side` (axis 7). This is the
+ *  docking contract that keeps the network orthogonal at 53 stations. */
+export interface OzePort {
+  readonly port_id: string;
+  readonly kind: string; // sn_input | sn_output | sn_branch | nn_feeder | ...
+  readonly nominal_voltage_kv: number;
+  readonly entry_side: 'DOL' | 'BOK-L' | 'BOK-P' | 'GORA'; // axis 7
+  readonly occupied_by: string; // cable segment ref
+  readonly cable: string; // type/cross-section, or 'dane niekompletne'
+  readonly source_ref: string;
+}
+
 export interface OzeField {
   readonly field_id: string;
   readonly role: 'connection' | 'source' | 'measurement' | 'load' | 'switch' | 'breaker';
@@ -148,6 +161,8 @@ export interface OzeField {
   readonly protection_codes: readonly string[];
   /** Ordered apparatus stack (busbar→cable) for the detailed SN switchgear. */
   readonly apparatus?: readonly OzeApparatus[];
+  /** Cable-connection port — the cable docks on this field's cable head. */
+  readonly port?: OzePort | null;
 }
 
 /** The grid boundary / point of connection (ENEA axis-6 variant, pinned to ENM). */

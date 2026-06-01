@@ -499,3 +499,159 @@ describe('U-gates — detailed SN switchgear (Buk 1)', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// K1-K6 — CABLE ENTRY on the cable head (PORT, axis 7). The cable docks to the
+// PORT on the head — never to the middle of the field — entering from
+// `entry_side` (DOL/BOK-L/BOK-P/GORA). This is the docking contract that keeps
+// the network orthogonal across the 53-station composition (KROK 4).
+// ---------------------------------------------------------------------------
+
+describe('K-gates — cable entry on the cable head (PORT, axis 7)', () => {
+  const G4 = 'G4-PVTR';
+  const renderClose = () =>
+    render(
+      <svg>
+        <OzeSourceArchetype companion={OZE_ARCHETYPES_2A[G4]} stationCode="PV-1MW" name="Buk 1" detail="close" />
+      </svg>,
+    );
+
+  // Vertical span along a group's DOMINANT axis x (the tor mocy), merging gaps
+  // ≤7 px (the port node bridges a ~6 px gap). Returns the merged intervals so a
+  // single continuous interval proves an unbroken conductor.
+  function mainAxisSpan(group: Element): { intervals: Array<[number, number]>; top: number; bottom: number } {
+    const verts = Array.from(group.querySelectorAll('line')).filter(
+      (ln) => Math.abs(Number(ln.getAttribute('x1')) - Number(ln.getAttribute('x2'))) < 1e-6,
+    );
+    const lenByX = new Map<number, number>();
+    for (const ln of verts) {
+      const x = Math.round(Number(ln.getAttribute('x1')));
+      lenByX.set(x, (lenByX.get(x) ?? 0) + Math.abs(Number(ln.getAttribute('y2')) - Number(ln.getAttribute('y1'))));
+    }
+    let axisX = 0;
+    let best = -1;
+    for (const [x, len] of lenByX) if (len > best) { best = len; axisX = x; }
+    const segs = verts
+      .filter((ln) => Math.round(Number(ln.getAttribute('x1'))) === axisX)
+      .map((ln) => {
+        const a = Number(ln.getAttribute('y1'));
+        const b = Number(ln.getAttribute('y2'));
+        return [Math.min(a, b), Math.max(a, b)] as [number, number];
+      })
+      .sort((p, q) => p[0] - q[0]);
+    const merged: Array<[number, number]> = [];
+    for (const [a, b] of segs) {
+      const last = merged[merged.length - 1];
+      if (last && a - last[1] <= 7) last[1] = Math.max(last[1], b);
+      else merged.push([a, b]);
+    }
+    return { intervals: merged, top: merged[0]?.[0] ?? NaN, bottom: merged[merged.length - 1]?.[1] ?? NaN };
+  }
+
+  it('K1 — the supply field carries a cable PORT (sn_input), pinned; the outgoing field carries sn_output', () => {
+    const c = OZE_ARCHETYPES_2A[G4];
+    const p1 = c.fields.find((f) => f.role === 'connection')!;
+    const p2 = c.fields.find((f) => f.role === 'switch')!;
+    expect(p1.port, 'POLE 1 (supply) must carry a cable port').toBeTruthy();
+    expect(p1.port!.kind).toBe('sn_input');
+    expect(p1.port!.source_ref).toMatch(/^enm:Port/);
+    expect(p1.port!.cable).not.toMatch(/niekompletne/);
+    expect(p1.port!.nominal_voltage_kv).toBe(15.75);
+    expect(p2.port, 'POLE 2 must carry the outgoing cable port').toBeTruthy();
+    expect(p2.port!.kind).toBe('sn_output');
+  });
+
+  it('K2 — the cable docks ON the cable head: the port renders in the SAME stack as the CABLE_HEAD, as a square node', () => {
+    const c = OZE_ARCHETYPES_2A[G4];
+    const p1 = c.fields.find((f) => f.role === 'connection')!;
+    expect((p1.apparatus ?? []).some((a) => a.kind === 'CABLE_HEAD'), 'supply field must own a cable head').toBe(true);
+    const { container } = renderClose();
+    const stack = container.querySelector('[data-testid="oze-field-stack-g4-vcb"]')!;
+    expect(stack.querySelector('[data-apparatus-kind="CABLE_HEAD"]'), 'cable-head glyph must render').toBeTruthy();
+    const port = stack.querySelector('[data-testid="oze-port-g4-vcb"]');
+    expect(port, 'port must render in the SAME stack as the head (cable docks on the head)').toBeTruthy();
+    expect(port!.querySelector('rect'), 'port node is a square cable-connection point').toBeTruthy();
+  });
+
+  it('K3 — entry side (axis 7) is honoured: POLE 1 ← BOK-L, POLE 2 ← BOK-P; the elbow turns that way', () => {
+    const c = OZE_ARCHETYPES_2A[G4];
+    const SIDES = ['DOL', 'BOK-L', 'BOK-P', 'GORA'];
+    const p1 = c.fields.find((f) => f.role === 'connection')!;
+    const p2 = c.fields.find((f) => f.role === 'switch')!;
+    expect(SIDES).toContain(p1.port!.entry_side);
+    expect(SIDES).toContain(p2.port!.entry_side);
+    // Opposite sides ⇒ the two cables leave on opposite corridors (no crossing).
+    expect(p1.port!.entry_side).toBe('BOK-L');
+    expect(p2.port!.entry_side).toBe('BOK-P');
+    const { container } = renderClose();
+    for (const [fid, side] of [['g4-vcb', 'BOK-L'], ['g4-sl2u', 'BOK-P']] as const) {
+      const port = container.querySelector(`[data-testid="oze-port-${fid}"]`)!;
+      expect(port.getAttribute('data-entry-side')).toBe(side);
+      // The horizontal elbow turns toward the corridor: BOK-L → left, BOK-P → right.
+      const horiz = Array.from(port.querySelectorAll('line')).find(
+        (ln) => Math.abs(Number(ln.getAttribute('y1')) - Number(ln.getAttribute('y2'))) < 1e-6,
+      )!;
+      const x1 = Number(horiz.getAttribute('x1'));
+      const x2 = Number(horiz.getAttribute('x2'));
+      if (side === 'BOK-L') expect(x2).toBeLessThan(x1);
+      else expect(x2).toBeGreaterThan(x1);
+    }
+  });
+
+  it('K4 — tor mocy ciągły: the conductor runs unbroken from the busbar through the stack into the cable', () => {
+    const { container } = renderClose();
+    const stack = container.querySelector('[data-testid="oze-field-stack-g4-vcb"]')!;
+    const span = mainAxisSpan(stack);
+    // ONE continuous interval (the port node bridges its 6 px), from the busbar
+    // (~0) down past every apparatus, through the head/port, into the cable.
+    expect(span.intervals.length, `axis broken into ${span.intervals.length} pieces`).toBe(1);
+    expect(span.top).toBeLessThanOrEqual(2); // starts at the busbar
+    expect(span.bottom).toBeGreaterThan(120); // continues past the port node INTO the cable
+    // …and the flow continues in the solver-decided direction (export ⇒ reverse).
+    const flow = container.querySelector('[data-testid="oze-flow-g4-vcb"]')!;
+    expect(flow.getAttribute('data-flow-direction')).toBe('reverse');
+  });
+
+  it('K5 — occupied_by records the docking cable segment (contract for the 53-station net); distinct per port', () => {
+    const c = OZE_ARCHETYPES_2A[G4];
+    const p1 = c.fields.find((f) => f.role === 'connection')!;
+    const p2 = c.fields.find((f) => f.role === 'switch')!;
+    expect(p1.port!.occupied_by.length).toBeGreaterThan(0);
+    expect(p2.port!.occupied_by.length).toBeGreaterThan(0);
+    expect(p1.port!.occupied_by).not.toBe(p2.port!.occupied_by); // no double-booking
+    const { container } = renderClose();
+    expect(container.querySelector('[data-testid="oze-port-g4-vcb"]')!.getAttribute('data-occupied-by')).toBe(p1.port!.occupied_by);
+    expect(container.querySelector('[data-testid="oze-port-g4-sl2u"]')!.getAttribute('data-occupied-by')).toBe(p2.port!.occupied_by);
+  });
+
+  it('K6 — the port + cable are orthogonal and the node is a square (cable-connection point)', () => {
+    const { container } = renderClose();
+    for (const fid of ['g4-vcb', 'g4-sl2u']) {
+      const port = container.querySelector(`[data-testid="oze-port-${fid}"]`)!;
+      expect(port.querySelector('rect'), `${fid} port node must be a square`).toBeTruthy();
+      for (const ln of Array.from(port.querySelectorAll('line'))) {
+        const x1 = Number(ln.getAttribute('x1'));
+        const y1 = Number(ln.getAttribute('y1'));
+        const x2 = Number(ln.getAttribute('x2'));
+        const y2 = Number(ln.getAttribute('y2'));
+        expect(Math.abs(x1 - x2) < 1e-6 || Math.abs(y1 - y2) < 1e-6, `${fid}: diagonal cable ${x1},${y1}->${x2},${y2}`).toBe(true);
+      }
+    }
+  });
+
+  it('K-tripwire — a field WITHOUT a port draws NO cable entry (the gate is real, red→green)', () => {
+    const c = OZE_ARCHETYPES_2A[G4];
+    const stripped = {
+      ...c,
+      fields: c.fields.map((f) => (f.role === 'connection' ? { ...f, port: null } : f)),
+    };
+    const { container } = render(
+      <svg>
+        <OzeSourceArchetype companion={stripped} stationCode="X" name="X" detail="close" />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="oze-port-g4-vcb"]')).toBeFalsy();
+    // The other field still docks its cable (only POLE 1 was stripped).
+    expect(container.querySelector('[data-testid="oze-port-g4-sl2u"]')).toBeTruthy();
+  });
+});

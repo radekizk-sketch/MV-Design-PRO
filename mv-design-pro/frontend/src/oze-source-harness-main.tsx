@@ -41,7 +41,9 @@ function LevelPanel(props: { archetype: string; detail: StationDetailLevel; labe
   const viewH = PANEL_H - 32;
   // The Buk 1 archetype is wide (W≈440) — scale so the SN busbar fits the panel.
   const wide = (companion.fields.length ?? 0) >= 6;
-  const scale = detail === 'far' ? (wide ? 1.45 : 1.9) : detail === 'closer' ? (wide ? 1.2 : 1.5) : 1.05;
+  // Wide archetypes (Buk 1, ≥6 fields) shrink a touch at close so the right-side
+  // result panels clear the panel edge instead of clipping against it.
+  const scale = detail === 'far' ? (wide ? 1.45 : 1.9) : detail === 'closer' ? (wide ? 1.2 : 1.5) : wide ? 1.0 : 1.05;
   return (
     <div
       data-testid={`oze-harness-panel-${detail}`}
@@ -52,7 +54,7 @@ function LevelPanel(props: { archetype: string; detail: StationDetailLevel; labe
         {label}
       </div>
       <svg data-testid={`oze-harness-svg-${detail}`} width={viewW} height={viewH} viewBox={`${-viewW / 2} ${-viewH / 2} ${viewW} ${viewH}`} style={{ display: 'block' }}>
-        <g transform={`scale(${scale}) translate(0, ${detail === 'close' ? 30 : 10})`}>
+        <g transform={`scale(${scale}) translate(0, ${detail === 'close' ? (wide ? -150 : 30) : 10})`}>
           <OzeSourceArchetype companion={companion} stationCode={CODES[archetype] ?? archetype} name={NAMES[archetype] ?? archetype} detail={detail} onFieldClick={onFieldClick} />
         </g>
       </svg>
@@ -80,7 +82,7 @@ function Harness(): JSX.Element {
       <div style={{ color: '#7E8790', fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12, marginBottom: 14 }}>
         {`${companion.source.technology} · ${companion.source.machine_type} · NC ${companion.source.nc_rfg_class} · ${companion.source.control_mode} · PCC ${companion.pcc_bus_ref} · z zamrożonego solvera`}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: 760 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: 820 }}>
         {LEVELS.map(({ detail, label }) => (
           <LevelPanel key={detail} archetype={archetype} detail={detail} label={label} onFieldClick={(id) => setLastClick(id)} />
         ))}

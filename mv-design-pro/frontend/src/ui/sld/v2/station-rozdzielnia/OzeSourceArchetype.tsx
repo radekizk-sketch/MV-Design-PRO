@@ -215,6 +215,39 @@ function ApparatusStack(props: {
           </g>
         );
       })}
+      {/* CABLE ENTRY: port on the cable head + cable from the corridor docking to
+          it with a 90° elbow from entry_side (axis 7). The cable docks to the PORT
+          — never to the middle of the field. Orthogonal; flow continues through. */}
+      {field.port && (() => {
+        const p = field.port;
+        const portY = pathBottom + 6;              // port just below the head
+        const drop = 26;                            // vertical run from the port
+        const side = p.entry_side;
+        const horiz = side === 'BOK-L' ? -34 : side === 'BOK-P' ? 34 : 0;
+        const cableColor = direction === 'reverse' ? COLOR_TR_FLOW_DOWN : COLOR_FIELD_TRUNK_ENERGIZED;
+        // elbow: port → straight down → (if side) 90° turn toward the corridor.
+        const kneeY = portY + drop;
+        const endX = cx + horiz;
+        return (
+          <g data-testid={`oze-port-${field.field_id}`} data-port-kind={p.kind} data-entry-side={side} data-occupied-by={p.occupied_by} data-source-ref={p.source_ref}>
+            {/* head → port stub */}
+            <line x1={cx} y1={pathBottom} x2={cx} y2={portY} stroke="#27E0A0" strokeWidth={2} />
+            {/* port node (square = cable connection point) */}
+            <rect x={cx - 3} y={portY - 3} width={6} height={6} rx={0.8} fill="#0A1622" stroke="#9FE6FF" strokeWidth={1.4} />
+            {/* cable: vertical drop then 90° elbow toward the corridor (orthogonal) */}
+            <line x1={cx} y1={portY + 3} x2={cx} y2={kneeY} stroke={cableColor} strokeWidth={2.2} strokeLinecap="butt" />
+            {horiz !== 0 && <line x1={cx} y1={kneeY} x2={endX} y2={kneeY} stroke={cableColor} strokeWidth={2.2} strokeLinecap="butt" />}
+            {/* corridor stub marker (where the network/magistrala docks) */}
+            <line x1={endX} y1={kneeY - 4} x2={endX} y2={kneeY + 4} stroke="#5A6B78" strokeWidth={2.4} />
+            <text x={endX + (side === 'BOK-P' ? 4 : -4)} y={kneeY + 12} textAnchor={side === 'BOK-P' ? 'start' : 'end'} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={5.6} fontWeight={600}>
+              {`${p.kind} · ${side}`}
+            </text>
+            <text x={endX + (side === 'BOK-P' ? 4 : -4)} y={kneeY + 19} textAnchor={side === 'BOK-P' ? 'start' : 'end'} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={5.4} fontWeight={600}>
+              {p.cable}
+            </text>
+          </g>
+        );
+      })()}
     </g>
   );
 }
@@ -307,6 +340,16 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
   const busX2 = W / 2;
   const busKv = companion.voltage_flow.buses[pccRef]?.un_kv ?? 15;
   const busColor = busColorForVoltage(busKv);
+
+  // Auxiliary text registers (power hierarchy + schematic) sit bottom-left for the
+  // simple archetypes; for the DETAILED (stacked) Buk-1 board they move to a bottom
+  // FOOTER (below the nN tier) so they clear the POLE 1 cable corridor, which runs
+  // left from the cable head (entry_side BOK-L) into exactly that bottom-left zone.
+  const blocksInFooter = hasStacks;
+  const hierX = busX1 - 96;
+  const hierY = blocksInFooter ? busY + 286 : busY + 76;
+  const schemX = blocksInFooter ? busX1 + 10 : busX1 - 96;
+  const schemY = blocksInFooter ? busY + 286 : busY + 132;
 
   // Field columns left→right: connection (grid side), [switch SŁ2+U], measurement,
   // [own-needs/load], source. Wide separation for the labelled apparatus stacks.
@@ -410,19 +453,26 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
               {`PRZYŁ. ${connField.abb_cell}`}
             </text>
           )}
-          {/* Interface-protection relay (gate I): a relay box BELOW the breaker
-              with the codes wrapped in a NARROW right-hung stack (≤4 per row), so
-              it never reaches the hierarchy block on the far left. */}
+          {/* Interface-protection relay (gate I). In the DETAILED (stacked) view the
+              apparatus labels hug the axis, so the relay + its codes are hung to the
+              RIGHT of those labels (a short orthogonal tick off the CT level), in the
+              clear gap between the breaker and the CT — keeping the dense POLE 1 stack
+              legible. The compact view keeps the relay on the axis below the breaker. */}
           {detail === 'close' && (() => {
             const codes = connField.protection_codes;
             const rows: string[] = [];
             for (let i = 0; i < codes.length; i += 4) rows.push(codes.slice(i, i + 4).join('·'));
+            const stacked = (connField.apparatus?.length ?? 0) > 0;
+            const rTopY = stacked ? busY + 53 : relayY; // clear gap between the CB and the CT
+            const rBoxX = stacked ? connX + 26 : connX; // off the axis & the short apparatus labels
+            const codesX = stacked ? connX + 36 : connX + 8;
             return (
               <g data-testid="oze-protection" data-machine-type={src.machine_type} data-on-field="connection" pointerEvents="none">
-                <rect x={connX - 4} y={relayY - 4} width={8} height={8} rx={1} fill="#0A1622" stroke="#5BE08A" strokeWidth={1} />
-                <text x={connX} y={relayY + 2.4} textAnchor="middle" fill="#5BE08A" fontFamily={FONT_MONO} fontSize={5} fontWeight={800}>R</text>
+                {stacked && <line x1={connX + 9} y1={rTopY} x2={rBoxX - 5} y2={rTopY} stroke="#5BE08A" strokeWidth={1} strokeDasharray="2 1.5" />}
+                <rect x={rBoxX - 4} y={rTopY - 4} width={8} height={8} rx={1} fill="#0A1622" stroke="#5BE08A" strokeWidth={1} />
+                <text x={rBoxX} y={rTopY + 2.4} textAnchor="middle" fill="#5BE08A" fontFamily={FONT_MONO} fontSize={5} fontWeight={800}>R</text>
                 {rows.map((r, i) => (
-                  <text key={i} x={connX + 8} y={relayY + 1 + i * 7} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={5.8} fontWeight={700}>{r}</text>
+                  <text key={i} x={codesX} y={rTopY + 1 + i * 7} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={5.8} fontWeight={700}>{r}</text>
                 ))}
               </g>
             );
@@ -614,9 +664,9 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
         return <BusResults key={busRef} vf={vf} sc={sc} x={busX2 + 18} y={busY + 16 + i * 40} />;
       })}
 
-      {/* Power hierarchy (gate H), close zoom, BELOW the unit on the left — clear
-          of the connection-field protection codes. */}
-      {detail === 'close' && <PowerHierarchy h={src.power_hierarchy} x={busX1 - 96} y={busY + 76} />}
+      {/* Power hierarchy (gate H), close zoom — bottom-left, or the footer for the
+          detailed board (clear of the connection-field codes and the cable corridor). */}
+      {detail === 'close' && <PowerHierarchy h={src.power_hierarchy} x={hierX} y={hierY} />}
 
       {/* Schematic equipment register (close zoom) — the distinguishing block of a
           template DISTILLED from a real drawing: transformer/CT/VT/grid/modules,
@@ -624,7 +674,7 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
           power hierarchy, clear of the right-side bus-result panels. */}
       {detail === 'close' && schematic && (
         <g data-testid="oze-schematic" data-source-ref={schematic.source_ref} pointerEvents="none">
-          <text x={busX1 - 96} y={busY + 132} fill="#9FE6FF" fontFamily={FONT_MONO} fontSize={7} fontWeight={800}>
+          <text x={schemX} y={schemY} fill="#9FE6FF" fontFamily={FONT_MONO} fontSize={7} fontWeight={800}>
             WG SCHEMATU (źródło)
           </text>
           {[
@@ -636,7 +686,7 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
             `PV: ${schematic.pv_modules}`,
             `Potrzeby własne: ${schematic.own_needs}`,
           ].map((ln, i) => (
-            <text key={i} x={busX1 - 96} y={busY + 141 + i * 8} fill={i === 3 ? COLOR_TEXT_MUTED : COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6} fontWeight={i === 3 ? 400 : 600}>
+            <text key={i} x={schemX} y={schemY + 9 + i * 8} fill={i === 3 ? COLOR_TEXT_MUTED : COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6} fontWeight={i === 3 ? 400 : 600}>
               {ln}
             </text>
           ))}

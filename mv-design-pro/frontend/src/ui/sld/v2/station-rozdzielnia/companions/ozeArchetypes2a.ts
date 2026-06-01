@@ -35,6 +35,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "interface_protection": true,
         "kind": "POLE_PRZY\u0141\u0104CZENIOWE",
         "on_bus_ref": "NN_BUS",
+        "port": null,
         "protection_codes": [
           "67",
           "67N",
@@ -56,6 +57,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "interface_protection": false,
         "kind": "PV",
         "on_bus_ref": "NN_BUS",
+        "port": null,
         "protection_codes": [],
         "role": "source",
         "source_ref": "enm:Generator.gen_type=pv_inverter"
@@ -732,6 +734,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "interface_protection": true,
         "kind": "POLE_PRZY\u0141\u0104CZENIOWE",
         "on_bus_ref": "PCC_SN",
+        "port": null,
         "protection_codes": [
           "67",
           "67N",
@@ -753,6 +756,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "interface_protection": false,
         "kind": "POLE_POMIAROWE",
         "on_bus_ref": "PCC_SN",
+        "port": null,
         "protection_codes": [],
         "role": "measurement",
         "source_ref": "enm:Measurement.purpose=metering"
@@ -764,6 +768,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "interface_protection": false,
         "kind": "PV",
         "on_bus_ref": "NN_COLLECTOR",
+        "port": null,
         "protection_codes": [],
         "role": "source",
         "source_ref": "enm:Generator.gen_type=pv_inverter"
@@ -1440,6 +1445,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "interface_protection": true,
         "kind": "POLE_PRZY\u0141\u0104CZENIOWE",
         "on_bus_ref": "PCC_SN",
+        "port": null,
         "protection_codes": [
           "67",
           "67N",
@@ -1461,6 +1467,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "interface_protection": false,
         "kind": "PV",
         "on_bus_ref": "PV_SN",
+        "port": null,
         "protection_codes": [],
         "role": "source",
         "source_ref": "enm:Generator.gen_type=pv_inverter"
@@ -2194,6 +2201,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "interface_protection": true,
         "kind": "POLE 1 \u2014 VCB (e\u00b2TANGO-800)",
         "on_bus_ref": "SN_PCC",
+        "port": {
+          "cable": "3\u00d7XRUHAKXS 1\u00d770/25 mm\u00b2 \u00b7 L\u2248484 m",
+          "entry_side": "BOK-L",
+          "kind": "sn_input",
+          "nominal_voltage_kv": 15.75,
+          "occupied_by": "seg/kabel-osd",
+          "port_id": "vcb/port",
+          "source_ref": "enm:Port.kind=sn_input;schemat:kabel_OSD"
+        },
         "protection_codes": [
           "I>",
           "I>>",
@@ -2237,6 +2253,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "interface_protection": false,
         "kind": "POLE 2 \u2014 S\u01412+U (GTR5)",
         "on_bus_ref": "SN_PCC",
+        "port": {
+          "cable": "3\u00d7YHAKXS 1\u00d770 mm\u00b2",
+          "entry_side": "BOK-P",
+          "kind": "sn_output",
+          "nominal_voltage_kv": 15.75,
+          "occupied_by": "seg/kabel-wy",
+          "port_id": "sl2u/port",
+          "source_ref": "enm:Port.kind=sn_output;schemat:wyjscie_OSD"
+        },
         "protection_codes": [],
         "role": "switch",
         "source_ref": "enm:Bay.bay_role=LINIA_OUT;schemat:POLE_NR_2_SL2U"
@@ -2248,6 +2273,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "interface_protection": true,
         "kind": "Q1 nN \u00b7 3WA1108 800 A",
         "on_bus_ref": "NN_800",
+        "port": null,
         "protection_codes": [
           "Ust I>",
           "Ust I<",
@@ -2266,6 +2292,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "interface_protection": false,
         "kind": "FALOWNIK 1 \u00b7 ~333 kW",
         "on_bus_ref": "NN_800",
+        "port": null,
         "protection_codes": [],
         "role": "source",
         "source_ref": "enm:Generator.gen_type=pv_inverter;dok:1.18_falownik_1"
@@ -2277,6 +2304,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "interface_protection": false,
         "kind": "FALOWNIK 2 \u00b7 ~333 kW",
         "on_bus_ref": "NN_800",
+        "port": null,
         "protection_codes": [],
         "role": "source",
         "source_ref": "enm:Generator.gen_type=pv_inverter;dok:1.18_falownik_2"
@@ -2288,6 +2316,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "interface_protection": false,
         "kind": "FALOWNIK 3 \u00b7 ~333 kW",
         "on_bus_ref": "NN_800",
+        "port": null,
         "protection_codes": [],
         "role": "source",
         "source_ref": "enm:Generator.gen_type=pv_inverter;dok:1.18_falownik_3"
@@ -2299,6 +2328,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "interface_protection": false,
         "kind": "RPW-PV (potrzeby w\u0142asne)",
         "on_bus_ref": "NN_800",
+        "port": null,
         "protection_codes": [],
         "role": "load",
         "source_ref": "enm:Bay.specialization=POTRZEBY_WLASNE;schemat:RPW-PV"
