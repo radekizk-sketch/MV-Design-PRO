@@ -149,7 +149,7 @@ export interface OzePort {
 
 export interface OzeField {
   readonly field_id: string;
-  readonly role: 'connection' | 'source' | 'measurement' | 'load' | 'switch' | 'breaker';
+  readonly role: 'connection' | 'source' | 'measurement' | 'load' | 'switch' | 'breaker' | 'transformer';
   readonly kind: string;
   /** ABB cell type (SDC | SDF | CBC | SMC | DBC | SDM-V | SDM-C | ...). */
   readonly abb_cell: string;

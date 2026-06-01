@@ -273,13 +273,14 @@ describe('inherited — OZE unit routing is orthogonal (no diagonal lines)', () 
 describe('G4-PVTR — PV 1 MW via customer transformer station', () => {
   const G4 = 'G4-PVTR';
 
-  it('Buk 1 structure: SN POLE 1 (VCB) + POLE 2 (SŁ2+U) + nN Q1 + ≥3 inverters + RPW-PV', () => {
+  it('Buk 1 structure: SN POLE 1 (VCB line) + POLE 2 (SŁ2+U transformer field) + nN Q1 + ≥3 inverters + RPW-PV', () => {
     const c = OZE_ARCHETYPES_2A[G4];
     expect(c, 'G4-PVTR template must exist').toBeTruthy();
-    // Two SN fields (connection VCB + switch SŁ2+U), an nN main breaker Q1, three
-    // inverter source feeders (NOT one block), and the own-needs (RPW-PV) load.
+    // Terminal station: one LINE field (VCB → OSD cable) + one TRANSFORMER field
+    // (SŁ2+U → transformer), an nN main breaker Q1, three inverter source feeders
+    // (NOT one block), and the own-needs (RPW-PV) load.
     expect(c.fields.filter((f) => f.role === 'connection').length).toBe(1);
-    expect(c.fields.filter((f) => f.role === 'switch').length).toBe(1);
+    expect(c.fields.filter((f) => f.role === 'transformer').length).toBe(1);
     expect(c.fields.filter((f) => f.role === 'breaker').length).toBe(1); // Q1 nN
     expect(c.fields.filter((f) => f.role === 'source').length).toBeGreaterThanOrEqual(3);
     const own = c.fields.find((f) => f.role === 'load')!;
@@ -348,6 +349,31 @@ describe('G4-PVTR — PV 1 MW via customer transformer station', () => {
     expect(incomer.p_mw).toBeLessThan(0);
   });
 
+  it('TERMINAL station: ONE OSD line (POLE 1) + a transformer field (POLE 2, no SN output); ZKSN on the cable', () => {
+    const c = OZE_ARCHETYPES_2A[G4];
+    // Exactly ONE SN field is the line to the OSD (carries the sn_input cable);
+    // POLE 2 is the TRANSFORMER field and has NO outgoing SN port — the bay
+    // terminates at the transformer (not a second line to nowhere).
+    const osdLines = c.fields.filter((f) => f.port?.kind === 'sn_input');
+    expect(osdLines.length).toBe(1);
+    expect(osdLines[0].role).toBe('connection');
+    const trafo = c.fields.find((f) => f.role === 'transformer')!;
+    expect(trafo, 'POLE 2 must be the transformer field').toBeTruthy();
+    expect(trafo.port ?? null, 'the transformer field has NO outgoing SN port').toBeNull();
+    expect(c.fields.some((f) => f.port?.kind === 'sn_output'), 'no second line to nowhere').toBe(false);
+    // Render: the ZKSN boundary sits on the OSD cable (inside the line field's
+    // stack); there is NO busbar-edge OSD stub; the transformer + nN tier hangs
+    // under the transformer field.
+    const { container } = render(
+      <svg><OzeSourceArchetype companion={c} stationCode="PV-1MW" name="Buk 1" detail="close" /></svg>,
+    );
+    const lineStack = container.querySelector('[data-testid="oze-field-stack-g4-vcb"]')!;
+    expect(lineStack.querySelector('[data-testid="oze-boundary-marker"]'), 'ZKSN must sit on the OSD cable').toBeTruthy();
+    expect(container.querySelector('[data-testid="oze-grid-stub"]'), 'no busbar-edge OSD stub for a terminal station').toBeFalsy();
+    expect(container.querySelector('[data-testid="oze-field-transformer"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="oze-nn-tier"]')).toBeTruthy();
+  });
+
   it('SC verdict ≤Icw passes on a correctly-specified board; IBG (not a machine)', () => {
     for (const bus of Object.values(OZE_ARCHETYPES_2A[G4].short_circuit.buses)) {
       expect(bus.verification.passed).toBe(true);
@@ -362,9 +388,9 @@ describe('G4-PVTR — PV 1 MW via customer transformer station', () => {
         <OzeSourceArchetype companion={c} stationCode="PV-1MW" name="PV 1 MW „Buk 1”" detail="close" />
       </svg>,
     );
-    // SN: connection (POLE 1 VCB) + switch (POLE 2 SŁ2+U).
+    // SN: connection (POLE 1 VCB line) + transformer field (POLE 2 SŁ2+U).
     expect(container.querySelector('[data-testid="oze-field-connection"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="oze-field-switch"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="oze-field-transformer"]')).toBeTruthy();
     // nN tier: main breaker Q1 + ≥3 inverter feeders + own-needs.
     expect(container.querySelector('[data-testid="oze-nn-tier"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="oze-field-breaker"]')).toBeTruthy();
@@ -426,14 +452,14 @@ describe('U-gates — detailed SN switchgear (Buk 1)', () => {
 
   it('U1 — 2 SN fields; POLE 1 stack = {DS,CB,CT,VT,SURGE_ARRESTER,CABLE_HEAD,ES}; POLE 2 = {LOAD_SWITCH,ES,CABLE_HEAD}', () => {
     const c = OZE_ARCHETYPES_2A[G4];
-    const sn = c.fields.filter((f) => f.on_bus_ref === c.pcc_bus_ref && (f.role === 'connection' || f.role === 'switch'));
+    const sn = c.fields.filter((f) => f.on_bus_ref === c.pcc_bus_ref && (f.role === 'connection' || f.role === 'transformer'));
     expect(sn.length).toBe(2);
     const p1 = c.fields.find((f) => f.role === 'connection')!;
     const p1kinds = new Set((p1.apparatus ?? []).map((a) => a.kind));
     for (const k of ['DS', 'CB', 'CT', 'VT', 'SURGE_ARRESTER', 'CABLE_HEAD', 'ES']) {
       expect(p1kinds.has(k), `POLE 1 missing ${k}`).toBe(true);
     }
-    const p2 = c.fields.find((f) => f.role === 'switch')!;
+    const p2 = c.fields.find((f) => f.role === 'transformer')!;
     const p2kinds = new Set((p2.apparatus ?? []).map((a) => a.kind));
     for (const k of ['LOAD_SWITCH', 'ES', 'CABLE_HEAD']) {
       expect(p2kinds.has(k), `POLE 2 missing ${k}`).toBe(true);
@@ -452,22 +478,24 @@ describe('U-gates — detailed SN switchgear (Buk 1)', () => {
     expect(onPath[onPath.length - 1].kind).toBe('CABLE_HEAD');
   });
 
-  it('U3 — power flow renders THROUGH the POLE 1 stack, direction == solver (export)', () => {
+  it('U3 — power flow renders THROUGH the POLE 1 stack; on the OSD line export points DOWN (toward the OSD)', () => {
     const c = OZE_ARCHETYPES_2A[G4];
     const { container } = render(
       <svg><OzeSourceArchetype companion={c} stationCode="PV-1MW" name="Buk 1" detail="close" /></svg>,
     );
     const flow = container.querySelector('[data-testid="oze-flow-g4-vcb"]');
     expect(flow, 'POLE 1 must carry a power-flow arrow through its stack').toBeTruthy();
-    // Export → the incomer branch is solver-signed reverse → arrow points up.
+    // Export: the incomer branch is solver-signed reverse; on the OSD LINE the grid
+    // is DOWN the cable, so the export arrow points DOWN toward the OSD.
     expect(c.voltage_flow.branches['sr/branch/in'].direction).toBe('reverse');
     expect(flow!.getAttribute('data-flow-direction')).toBe('reverse');
+    expect(flow!.getAttribute('data-flow-points')).toBe('down');
   });
 
-  it('U4 — POLE 1 carries the SN relay (G0>/3U0/I0>); POLE 2 carries none', () => {
+  it('U4 — POLE 1 carries the SN relay (G0>/3U0/I0>); POLE 2 (transformer field) carries none', () => {
     const c = OZE_ARCHETYPES_2A[G4];
     const p1 = c.fields.find((f) => f.role === 'connection')!;
-    const p2 = c.fields.find((f) => f.role === 'switch')!;
+    const p2 = c.fields.find((f) => f.role === 'transformer')!;
     expect(p1.interface_protection).toBe(true);
     expect(p1.protection_codes).toContain('G0>');
     expect(p2.interface_protection).toBe(false);
@@ -548,17 +576,17 @@ describe('K-gates — cable entry on the cable head (PORT, axis 7)', () => {
     return { intervals: merged, top: merged[0]?.[0] ?? NaN, bottom: merged[merged.length - 1]?.[1] ?? NaN };
   }
 
-  it('K1 — the supply field carries a cable PORT (sn_input), pinned; the outgoing field carries sn_output', () => {
+  it('K1 — the OSD line field carries a cable PORT (sn_input), pinned; the transformer field has NO SN port', () => {
     const c = OZE_ARCHETYPES_2A[G4];
     const p1 = c.fields.find((f) => f.role === 'connection')!;
-    const p2 = c.fields.find((f) => f.role === 'switch')!;
-    expect(p1.port, 'POLE 1 (supply) must carry a cable port').toBeTruthy();
+    const p2 = c.fields.find((f) => f.role === 'transformer')!;
+    expect(p1.port, 'POLE 1 (OSD line) must carry a cable port').toBeTruthy();
     expect(p1.port!.kind).toBe('sn_input');
     expect(p1.port!.source_ref).toMatch(/^enm:Port/);
     expect(p1.port!.cable).not.toMatch(/niekompletne/);
     expect(p1.port!.nominal_voltage_kv).toBe(15.75);
-    expect(p2.port, 'POLE 2 must carry the outgoing cable port').toBeTruthy();
-    expect(p2.port!.kind).toBe('sn_output');
+    // The transformer field feeds the transformer internally — no docking port.
+    expect(p2.port ?? null, 'the transformer field must NOT carry a docking port').toBeNull();
   });
 
   it('K2 — the cable docks ON the cable head: the port renders in the SAME stack as the CABLE_HEAD, as a square node', () => {
@@ -573,29 +601,22 @@ describe('K-gates — cable entry on the cable head (PORT, axis 7)', () => {
     expect(port!.querySelector('rect'), 'port node is a square cable-connection point').toBeTruthy();
   });
 
-  it('K3 — entry side (axis 7) is honoured: POLE 1 ← BOK-L, POLE 2 ← BOK-P; the elbow turns that way', () => {
+  it('K3 — entry side (axis 7) honoured: the OSD line enters from BOK-L; the elbow turns left to the ZKSN', () => {
     const c = OZE_ARCHETYPES_2A[G4];
     const SIDES = ['DOL', 'BOK-L', 'BOK-P', 'GORA'];
     const p1 = c.fields.find((f) => f.role === 'connection')!;
-    const p2 = c.fields.find((f) => f.role === 'switch')!;
     expect(SIDES).toContain(p1.port!.entry_side);
-    expect(SIDES).toContain(p2.port!.entry_side);
-    // Opposite sides ⇒ the two cables leave on opposite corridors (no crossing).
     expect(p1.port!.entry_side).toBe('BOK-L');
-    expect(p2.port!.entry_side).toBe('BOK-P');
     const { container } = renderClose();
-    for (const [fid, side] of [['g4-vcb', 'BOK-L'], ['g4-sl2u', 'BOK-P']] as const) {
-      const port = container.querySelector(`[data-testid="oze-port-${fid}"]`)!;
-      expect(port.getAttribute('data-entry-side')).toBe(side);
-      // The horizontal elbow turns toward the corridor: BOK-L → left, BOK-P → right.
-      const horiz = Array.from(port.querySelectorAll('line')).find(
-        (ln) => Math.abs(Number(ln.getAttribute('y1')) - Number(ln.getAttribute('y2'))) < 1e-6,
-      )!;
-      const x1 = Number(horiz.getAttribute('x1'));
-      const x2 = Number(horiz.getAttribute('x2'));
-      if (side === 'BOK-L') expect(x2).toBeLessThan(x1);
-      else expect(x2).toBeGreaterThan(x1);
-    }
+    const port = container.querySelector('[data-testid="oze-port-g4-vcb"]')!;
+    expect(port.getAttribute('data-entry-side')).toBe('BOK-L');
+    // The horizontal elbow turns toward the corridor (BOK-L → left).
+    const horiz = Array.from(port.querySelectorAll('line')).find(
+      (ln) => Math.abs(Number(ln.getAttribute('y1')) - Number(ln.getAttribute('y2'))) < 1e-6,
+    )!;
+    expect(Number(horiz.getAttribute('x2'))).toBeLessThan(Number(horiz.getAttribute('x1')));
+    // The ZKSN boundary docks at the cable end (the single point of connection).
+    expect(port.querySelector('[data-testid="oze-boundary-marker"]'), 'ZKSN must dock on the OSD cable end').toBeTruthy();
   });
 
   it('K4 — tor mocy ciągły: the conductor runs unbroken from the busbar through the stack into the cable', () => {
@@ -612,34 +633,28 @@ describe('K-gates — cable entry on the cable head (PORT, axis 7)', () => {
     expect(flow.getAttribute('data-flow-direction')).toBe('reverse');
   });
 
-  it('K5 — occupied_by records the docking cable segment (contract for the 53-station net); distinct per port', () => {
+  it('K5 — occupied_by records the docking cable segment (the contract for the 53-station net)', () => {
     const c = OZE_ARCHETYPES_2A[G4];
     const p1 = c.fields.find((f) => f.role === 'connection')!;
-    const p2 = c.fields.find((f) => f.role === 'switch')!;
     expect(p1.port!.occupied_by.length).toBeGreaterThan(0);
-    expect(p2.port!.occupied_by.length).toBeGreaterThan(0);
-    expect(p1.port!.occupied_by).not.toBe(p2.port!.occupied_by); // no double-booking
     const { container } = renderClose();
     expect(container.querySelector('[data-testid="oze-port-g4-vcb"]')!.getAttribute('data-occupied-by')).toBe(p1.port!.occupied_by);
-    expect(container.querySelector('[data-testid="oze-port-g4-sl2u"]')!.getAttribute('data-occupied-by')).toBe(p2.port!.occupied_by);
   });
 
   it('K6 — the port + cable are orthogonal and the node is a square (cable-connection point)', () => {
     const { container } = renderClose();
-    for (const fid of ['g4-vcb', 'g4-sl2u']) {
-      const port = container.querySelector(`[data-testid="oze-port-${fid}"]`)!;
-      expect(port.querySelector('rect'), `${fid} port node must be a square`).toBeTruthy();
-      for (const ln of Array.from(port.querySelectorAll('line'))) {
-        const x1 = Number(ln.getAttribute('x1'));
-        const y1 = Number(ln.getAttribute('y1'));
-        const x2 = Number(ln.getAttribute('x2'));
-        const y2 = Number(ln.getAttribute('y2'));
-        expect(Math.abs(x1 - x2) < 1e-6 || Math.abs(y1 - y2) < 1e-6, `${fid}: diagonal cable ${x1},${y1}->${x2},${y2}`).toBe(true);
-      }
+    const port = container.querySelector('[data-testid="oze-port-g4-vcb"]')!;
+    expect(port.querySelector('rect'), 'port node must be a square').toBeTruthy();
+    for (const ln of Array.from(port.querySelectorAll('line'))) {
+      const x1 = Number(ln.getAttribute('x1'));
+      const y1 = Number(ln.getAttribute('y1'));
+      const x2 = Number(ln.getAttribute('x2'));
+      const y2 = Number(ln.getAttribute('y2'));
+      expect(Math.abs(x1 - x2) < 1e-6 || Math.abs(y1 - y2) < 1e-6, `diagonal cable ${x1},${y1}->${x2},${y2}`).toBe(true);
     }
   });
 
-  it('K-tripwire — a field WITHOUT a port draws NO cable entry (the gate is real, red→green)', () => {
+  it('K-tripwire — without the OSD-line port there is NO cable entry on the head (the gate is real, red→green)', () => {
     const c = OZE_ARCHETYPES_2A[G4];
     const stripped = {
       ...c,
@@ -651,7 +666,5 @@ describe('K-gates — cable entry on the cable head (PORT, axis 7)', () => {
       </svg>,
     );
     expect(container.querySelector('[data-testid="oze-port-g4-vcb"]')).toBeFalsy();
-    // The other field still docks its cable (only POLE 1 was stripped).
-    expect(container.querySelector('[data-testid="oze-port-g4-sl2u"]')).toBeTruthy();
   });
 });

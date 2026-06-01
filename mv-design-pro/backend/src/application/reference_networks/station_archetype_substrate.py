@@ -1184,10 +1184,13 @@ def build_g4_pvtr() -> dict[str, Any]:
     """G4-PVTR — PV 1 MW "Buk 1" przez stację TR konsumencką — WIERNA PROJEKCJA
     realnego schematu wykonawczego + dok. 1.18 "Wykaz nastaw i zabezpieczeń".
 
-    SN: dwupolowa rozdzielnia e²TANGO-800 — POLE 1 (VCB: odłącznik → Q0 □ TGI24 →
-    CTM20 3-rdz. → VTB20 4-uzw. → POLIM-D 18-06 → ITK 224 → uziemnik; przekaźnik
-    SN: I>/I>>/Ust II>/G0>/3U0/I0>) + POLE 2 (SŁ2+U: rozłącznik GTR5 ◇ + uziemnik
-    ◯ → ITK 224 → 3×YHAKXS do OSD; bez przekaźnika).
+    Stacja KOŃCOWA: jedno przyłącze SN do OSD (kabel POLA 1 → ZKSN → sieć OSD),
+    transformator zasilany z POLA 2 — w SN brak wyjścia (nie przelot).
+    SN: dwupolowa rozdzielnia e²TANGO-800 — POLE 1 LINIOWE (VCB: odłącznik → Q0 □
+    TGI24 → CTM20 3-rdz. → VTB20 4-uzw. → POLIM-D 18-06 → ITK 224 → uziemnik;
+    przekaźnik SN: I>/I>>/Ust II>/G0>/3U0/I0>; granica ZKSN na kablu zasilającym) +
+    POLE 2 TRANSFORMATOROWE (SŁ2+U: rozłącznik GTR5 ◇ + uziemnik ◯ → ITK 224 →
+    3×YHAKXS DO TRANSFORMATORA, który wisi pod polem; bez przekaźnika).
     nN 800 V (układ IT): Q1 □ 3WA1108 800A (I>=720A / I>>=4000A) → szyna 3×P40×10 →
     3 POLA FALOWNIKÓW (~333 kW; 560×595Wp/falownik; BTVC 315A/800V) + pole RPW-PV.
     Koordynacja trójpoziomowa (dok. 1.18) — w module zabezpieczenia, nie na płótnie.
@@ -1270,7 +1273,8 @@ def build_g4_pvtr() -> dict[str, Any]:
         buses=[("SN_PCC", _PV1MW_SN_KV, 16.0), ("NN_800", _PV1MW_NN_KV, 50.0)],
         pcc_bus="SN_PCC", ibg_ka=total_ibg_ka,
         source=src,
-        # SN: POLE 1 VCB (interface protection / hard trips) + POLE 2 SŁ2+U switch.
+        # SN: POLE 1 LINIOWE — VCB (interface protection / hard trips, granica ZKSN
+        # na kablu) + POLE 2 TRANSFORMATOROWE — SŁ2+U rozłącznik zasilający trafo.
         # Measurement is a FUNCTION inside POLE 1 (rdzeń I CTM20) — NOT a phantom
         # field. nN: Q1 main breaker + 3 inverter feeders + RPW-PV own-needs.
         fields=[
@@ -1293,18 +1297,17 @@ def build_g4_pvtr() -> dict[str, Any]:
                    port=_port("vcb/port", kind="sn_input", un_kv=_PV1MW_SN_KV, entry_side="BOK-L",
                               occupied_by="seg/kabel-osd", cable="3×XRUHAKXS 1×70/25 mm² · L≈484 m",
                               source_ref="enm:Port.kind=sn_input;schemat:kabel_OSD")),
-            _field("g4-sl2u", role="switch", kind="POLE 2 — SŁ2+U (GTR5)", abb_cell="SDC",
-                   on_bus="SN_PCC", source_ref="enm:Bay.bay_role=LINIA_OUT;schemat:POLE_NR_2_SL2U",
+            # POLE 2 — pole TRANSFORMATOROWE (nie „drugi kabel do OSD”): rozłącznik
+            # GTR5 + uziemnik → głowica → kabel 3×YHAKXS schodzi DO TRANSFORMATORA,
+            # który wisi POD tym polem. Stacja jest KOŃCOWA — w SN nie ma wyjścia.
+            _field("g4-sl2u", role="transformer", kind="POLE 2 — SŁ2+U (GTR5) · pole transformatorowe", abb_cell="SDC",
+                   on_bus="SN_PCC", source_ref="enm:Bay.bay_role=TRANSFORMATOR;schemat:POLE_NR_2_SL2U",
                    interface_protection=False,
                    apparatus=[
                        _app("sl2u/gtr5", kind="LOAD_SWITCH", designation="GTR 5 (rozłącznik)", placement="MIDSTREAM"),
                        _app("sl2u/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
-                       _app("sl2u/head", kind="CABLE_HEAD", designation="ITK 224 → 3×YHAKXS 1×70", placement="DOWNSTREAM"),
-                   ],
-                   # Pole łącznikowo-liniowe — wyjście kablem do OSD BOKIEM-P (port sn_output).
-                   port=_port("sl2u/port", kind="sn_output", un_kv=_PV1MW_SN_KV, entry_side="BOK-P",
-                              occupied_by="seg/kabel-wy", cable="3×YHAKXS 1×70 mm²",
-                              source_ref="enm:Port.kind=sn_output;schemat:wyjscie_OSD")),
+                       _app("sl2u/head", kind="CABLE_HEAD", designation="ITK 224 → 3×YHAKXS do TR", placement="DOWNSTREAM"),
+                   ]),
             _field("g4-q1", role="breaker", kind="Q1 nN · 3WA1108 800 A", abb_cell="CBC",
                    on_bus="NN_800", source_ref="dok:1.18_karta_Q1_3WA1108",
                    interface_protection=True, protection_codes=list(_BUK1_NN_CODES)),

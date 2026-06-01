@@ -2242,7 +2242,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           },
           {
             "catalog": null,
-            "designation": "ITK 224 \u2192 3\u00d7YHAKXS 1\u00d770",
+            "designation": "ITK 224 \u2192 3\u00d7YHAKXS do TR",
             "device_ref": "sl2u/head",
             "kind": "CABLE_HEAD",
             "placement": "DOWNSTREAM",
@@ -2251,20 +2251,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         ],
         "field_id": "g4-sl2u",
         "interface_protection": false,
-        "kind": "POLE 2 \u2014 S\u01412+U (GTR5)",
+        "kind": "POLE 2 \u2014 S\u01412+U (GTR5) \u00b7 pole transformatorowe",
         "on_bus_ref": "SN_PCC",
-        "port": {
-          "cable": "3\u00d7YHAKXS 1\u00d770 mm\u00b2",
-          "entry_side": "BOK-P",
-          "kind": "sn_output",
-          "nominal_voltage_kv": 15.75,
-          "occupied_by": "seg/kabel-wy",
-          "port_id": "sl2u/port",
-          "source_ref": "enm:Port.kind=sn_output;schemat:wyjscie_OSD"
-        },
+        "port": null,
         "protection_codes": [],
-        "role": "switch",
-        "source_ref": "enm:Bay.bay_role=LINIA_OUT;schemat:POLE_NR_2_SL2U"
+        "role": "transformer",
+        "source_ref": "enm:Bay.bay_role=TRANSFORMATOR;schemat:POLE_NR_2_SL2U"
       },
       {
         "abb_cell": "CBC",

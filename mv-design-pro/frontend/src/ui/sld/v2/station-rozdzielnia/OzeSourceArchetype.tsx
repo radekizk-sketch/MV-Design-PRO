@@ -143,8 +143,11 @@ function ApparatusStack(props: {
   direction: 'forward' | 'reverse' | 'none';
   labelSide?: 'left' | 'right';
   onClick?: (e: MouseEvent) => void;
+  /** When set, this field is the OSD LINE: the cable docks to the grid boundary
+   *  (ZKSN) at its end, and export flows DOWN the cable toward the OSD. */
+  gridBoundary?: SldOzeArchetypeCompanion['boundary'];
 }): JSX.Element {
-  const { field, cx, topY, direction, labelSide = 'right', onClick } = props;
+  const { field, cx, topY, direction, labelSide = 'right', onClick, gridBoundary } = props;
   const lx = labelSide === 'right' ? cx + 9 : cx - 9;
   const lAnchor = labelSide === 'right' ? 'start' : 'end';
   const stack = field.apparatus ?? [];
@@ -163,9 +166,11 @@ function ApparatusStack(props: {
     >
       {/* vertical power axis (the tor mocy) busbar→cable. */}
       <line x1={cx} y1={topY} x2={cx} y2={pathBottom} stroke="#27E0A0" strokeWidth={2} />
-      {/* power-flow arrow THROUGH the stack — reverse = export (up to busbar). */}
+      {/* power-flow arrow THROUGH the stack. Normally reverse = export UP to the
+          busbar; on the OSD LINE field the OSD is DOWN the cable, so export points
+          DOWN (busbar → cable → OSD). */}
       {direction !== 'none' && (() => {
-        const up = direction === 'reverse';
+        const up = gridBoundary ? direction === 'forward' : direction === 'reverse';
         const aTop = topY + step * 0.4;
         const aBot = topY + step * 1.4;
         const headY = up ? aTop : aBot;
@@ -237,14 +242,33 @@ function ApparatusStack(props: {
             {/* cable: vertical drop then 90° elbow toward the corridor (orthogonal) */}
             <line x1={cx} y1={portY + 3} x2={cx} y2={kneeY} stroke={cableColor} strokeWidth={2.2} strokeLinecap="butt" />
             {horiz !== 0 && <line x1={cx} y1={kneeY} x2={endX} y2={kneeY} stroke={cableColor} strokeWidth={2.2} strokeLinecap="butt" />}
-            {/* corridor stub marker (where the network/magistrala docks) */}
-            <line x1={endX} y1={kneeY - 4} x2={endX} y2={kneeY + 4} stroke="#5A6B78" strokeWidth={2.4} />
-            <text x={endX + (side === 'BOK-P' ? 4 : -4)} y={kneeY + 12} textAnchor={side === 'BOK-P' ? 'start' : 'end'} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={5.6} fontWeight={600}>
-              {`${p.kind} · ${side}`}
-            </text>
-            <text x={endX + (side === 'BOK-P' ? 4 : -4)} y={kneeY + 19} textAnchor={side === 'BOK-P' ? 'start' : 'end'} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={5.4} fontWeight={600}>
-              {p.cable}
-            </text>
+            {gridBoundary ? (
+              /* OSD LINE: the grid boundary (ZKSN) sits ON this cable — a labelled
+                 diamond at its end, then the SIEĆ OSD stub. This IS the single point
+                 of connection; there is no separate busbar-edge boundary. */
+              <g data-testid="oze-boundary-marker" data-variant={gridBoundary.variant} data-enm-variant={gridBoundary.enm_connection_variant}>
+                <polygon points={`${endX},${kneeY - 6} ${endX + 6},${kneeY} ${endX},${kneeY + 6} ${endX - 6},${kneeY}`} fill="#0A1622" stroke="#9FE6FF" strokeWidth={1.6} />
+                <line x1={endX} y1={kneeY + 6} x2={endX} y2={kneeY + 15} stroke="#5A6B78" strokeWidth={2.2} strokeDasharray="4 3" />
+                <text x={endX} y={kneeY + 24} textAnchor="middle" fill="#7E8790" fontFamily={FONT_MONO} fontSize={5.8} fontWeight={700}>SIEĆ OSD</text>
+                <text x={endX} y={kneeY - 10} textAnchor="middle" fill="#9FE6FF" fontFamily={FONT_MONO} fontSize={5.8} fontWeight={800}>
+                  {`${gridBoundary.variant}${gridBoundary.metered ? ' ⊟' : ''}`}
+                </text>
+                <text x={endX + (side === 'BOK-P' ? 10 : -10)} y={kneeY + 2.2} textAnchor={side === 'BOK-P' ? 'start' : 'end'} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={5.4} fontWeight={600}>
+                  {p.cable}
+                </text>
+              </g>
+            ) : (
+              <>
+                {/* corridor stub marker (where the network/magistrala docks) */}
+                <line x1={endX} y1={kneeY - 4} x2={endX} y2={kneeY + 4} stroke="#5A6B78" strokeWidth={2.4} />
+                <text x={endX + (side === 'BOK-P' ? 4 : -4)} y={kneeY + 12} textAnchor={side === 'BOK-P' ? 'start' : 'end'} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={5.6} fontWeight={600}>
+                  {`${p.kind} · ${side}`}
+                </text>
+                <text x={endX + (side === 'BOK-P' ? 4 : -4)} y={kneeY + 19} textAnchor={side === 'BOK-P' ? 'start' : 'end'} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={5.4} fontWeight={600}>
+                  {p.cable}
+                </text>
+              </>
+            )}
           </g>
         );
       })()}
@@ -310,12 +334,17 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
   // protection, looking at the grid → boundary) + a SOURCE field (→ transformer
   // → source). Drawn as columns on the PCC busbar; orthogonal throughout.
   const connField = companion.fields.find((f) => f.role === 'connection');
-  const switchField = companion.fields.find((f) => f.role === 'switch');
+  // POLE 2 = the TRANSFORMER field (terminal station): the step-up transformer
+  // hangs UNDER it, fed by its cable — it is NOT a second line to the OSD.
+  const trafoField = companion.fields.find((f) => f.role === 'transformer');
   const meterField = companion.fields.find((f) => f.role === 'measurement');
   const srcField = companion.fields.find((f) => f.role === 'source');
   const loadField = companion.fields.find((f) => f.role === 'load');
   const q1Field = companion.fields.find((f) => f.role === 'breaker');
   const schematic = companion.source.schematic;
+  // The single OSD connection (terminal station): the line field whose cable docks
+  // to the grid. The ZKSN boundary sits on THIS cable — not at the busbar edge.
+  const osdLineField = companion.fields.find((f) => f.port?.kind === 'sn_input');
 
   // nN tier: the source feeders (≥1) sit on a bus DIFFERENT from the PCC (behind a
   // step-up transformer). The tier carries an optional main breaker (Q1), the
@@ -351,11 +380,12 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
   const schemX = blocksInFooter ? busX1 + 10 : busX1 - 96;
   const schemY = blocksInFooter ? busY + 286 : busY + 132;
 
-  // Field columns left→right: connection (grid side), [switch SŁ2+U], measurement,
-  // [own-needs/load], source. Wide separation for the labelled apparatus stacks.
+  // Field columns. POLE 1 (line) is on the left; the TRANSFORMER bay (POLE 2 +
+  // step-up transformer + nN tier) sits centre-right so the nN busbar can spread
+  // and POLE 1's OSD-cable corridor (running left) never crosses it.
   const connX = busX1 + (hasStacks ? 64 : 34);
-  const switchX = busX1 + (hasStacks ? 190 : 70);
-  const meterX = busX1 + (switchField ? 106 : 78);
+  const trafoX = busX1 + (hasStacks ? 250 : 170);
+  const meterX = busX1 + 78;
   const loadX = busX2 - 86;
   const srcX = busX2 - 40;
 
@@ -399,20 +429,25 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
         </text>
       )}
 
-      {/* ─── GRID SIDE: the OSD network stub + the BOUNDARY marker ─── */}
-      <line data-testid="oze-grid-stub" x1={busX1 - 30} y1={busY} x2={busX1} y2={busY} stroke="#5A6B78" strokeWidth={2.4} strokeDasharray="5 3" />
-      {detail !== 'far' && (
-        <text x={busX1 - 15} y={busY - 8} textAnchor="middle" fill="#7E8790" fontFamily={FONT_MONO} fontSize={6.6} fontWeight={700}>SIEĆ OSD</text>
+      {/* ─── GRID SIDE (simple archetypes only) — OSD stub + boundary on the busbar
+           edge. For the TERMINAL station (an OSD-line field exists) the boundary
+           sits on POLE 1's cable instead, so this busbar-edge marker is omitted. ─── */}
+      {!osdLineField && (
+        <>
+          <line data-testid="oze-grid-stub" x1={busX1 - 30} y1={busY} x2={busX1} y2={busY} stroke="#5A6B78" strokeWidth={2.4} strokeDasharray="5 3" />
+          {detail !== 'far' && (
+            <text x={busX1 - 15} y={busY - 8} textAnchor="middle" fill="#7E8790" fontFamily={FONT_MONO} fontSize={6.6} fontWeight={700}>SIEĆ OSD</text>
+          )}
+          <g data-testid="oze-boundary-marker" data-variant={boundary.variant} data-enm-variant={boundary.enm_connection_variant}>
+            <polygon points={`${busX1},${busY - 6} ${busX1 + 6},${busY} ${busX1},${busY + 6} ${busX1 - 6},${busY}`} fill="#0A1622" stroke="#9FE6FF" strokeWidth={1.6} />
+            {detail !== 'far' && (
+              <text x={busX1} y={busY + 18} textAnchor="middle" fill="#9FE6FF" fontFamily={FONT_MONO} fontSize={6.4} fontWeight={800}>
+                {`${boundary.variant}${boundary.metered ? ' ⊟' : ''}`}
+              </text>
+            )}
+          </g>
+        </>
       )}
-      {/* Boundary marker (axis-6 variant) — a labelled diamond on the grid edge. */}
-      <g data-testid="oze-boundary-marker" data-variant={boundary.variant} data-enm-variant={boundary.enm_connection_variant}>
-        <polygon points={`${busX1},${busY - 6} ${busX1 + 6},${busY} ${busX1},${busY + 6} ${busX1 - 6},${busY}`} fill="#0A1622" stroke="#9FE6FF" strokeWidth={1.6} />
-        {detail !== 'far' && (
-          <text x={busX1} y={busY + 18} textAnchor="middle" fill="#9FE6FF" fontFamily={FONT_MONO} fontSize={6.4} fontWeight={800}>
-            {`${boundary.variant}${boundary.metered ? ' ⊟' : ''}`}
-          </text>
-        )}
-      </g>
 
       {/* ─── PRODUCER busbar (PCC) ─── */}
       <line x1={busX1} y1={busY} x2={busX2} y2={busY} stroke={busColor} strokeWidth={4} data-testid={`oze-busbar-${pccRef}`} />
@@ -434,10 +469,10 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
           onClick={handle(`${companion.archetype}/${connField.field_id}`)}
           style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
         >
-          {/* L0/L1: a single breaker box. L2: the FULL apparatus stack (detailed
-              switchgear) with the power-flow arrow running through it. */}
+          {/* L0/L1: a single breaker box (+ a short stub to the ZKSN boundary on the
+              OSD cable). L2: the FULL apparatus stack with the cable + ZKSN at its end. */}
           {detail === 'close' && (connField.apparatus?.length ?? 0) > 0 ? (
-            <ApparatusStack field={connField} cx={connX} topY={busY} direction={incomerDir} labelSide="right" onClick={handle(`${companion.archetype}/${connField.field_id}`)} />
+            <ApparatusStack field={connField} cx={connX} topY={busY} direction={incomerDir} labelSide="right" onClick={handle(`${companion.archetype}/${connField.field_id}`)} gridBoundary={osdLineField === connField ? boundary : undefined} />
           ) : (
             <>
               <line x1={connX} y1={busY} x2={connX} y2={breakerY - (detail === 'far' ? 6 : 8)} stroke={busColor} strokeWidth={1.8} />
@@ -445,6 +480,25 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
                 <ApparatusCbSquare cx={connX} cy={breakerY} state="closed" energized />
               </g>
               {detail !== 'far' && <FlowArrow x={connX} topY={busY + 3} botY={busY + 18} direction={incomerDir} />}
+              {/* Compact ZKSN boundary on the OSD cable, below the breaker. */}
+              {osdLineField === connField && (() => {
+                const bY = breakerY + (detail === 'far' ? 14 : 18);
+                return (
+                  <g data-testid="oze-boundary-marker" data-variant={boundary.variant} data-enm-variant={boundary.enm_connection_variant}>
+                    <line x1={connX} y1={breakerY + (detail === 'far' ? 6 : 8)} x2={connX} y2={bY - 6} stroke={busColor} strokeWidth={1.6} />
+                    <polygon points={`${connX},${bY - 6} ${connX + 6},${bY} ${connX},${bY + 6} ${connX - 6},${bY}`} fill="#0A1622" stroke="#9FE6FF" strokeWidth={1.6} />
+                    <line x1={connX} y1={bY + 6} x2={connX} y2={bY + 14} stroke="#5A6B78" strokeWidth={2.2} strokeDasharray="4 3" />
+                    {detail !== 'far' && (
+                      <text x={connX - 9} y={bY + 2} textAnchor="end" fill="#9FE6FF" fontFamily={FONT_MONO} fontSize={6.2} fontWeight={800}>
+                        {`${boundary.variant}${boundary.metered ? ' ⊟' : ''}`}
+                      </text>
+                    )}
+                    {detail !== 'far' && (
+                      <text x={connX} y={bY + 23} textAnchor="middle" fill="#7E8790" fontFamily={FONT_MONO} fontSize={6} fontWeight={700}>SIEĆ OSD</text>
+                    )}
+                  </g>
+                );
+              })()}
             </>
           )}
           {/* Field label ABOVE the breaker (right of the path) — clear of the codes. */}
@@ -480,38 +534,6 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
         </g>
       )}
 
-      {/* ─── SWITCH field (POLE NR 2 — SŁ2+U): rozłącznik ◇ + uziemnik + głowica ─ */}
-      {switchField && (
-        <g
-          data-testid="oze-field-switch"
-          data-field-role="switch"
-          data-abb-cell={switchField.abb_cell}
-          data-source-ref={switchField.source_ref}
-          onClick={handle(`${companion.archetype}/${switchField.field_id}`)}
-          style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
-        >
-          {detail === 'close' && (switchField.apparatus?.length ?? 0) > 0 ? (
-            <ApparatusStack field={switchField} cx={switchX} topY={busY} direction="none" labelSide="right" onClick={handle(`${companion.archetype}/${switchField.field_id}`)} />
-          ) : (
-            <>
-              <line x1={switchX} y1={busY} x2={switchX} y2={breakerY - 7} stroke={busColor} strokeWidth={1.8} />
-              <g data-symbol-shape="diamond" data-state="closed">
-                <polygon points={`${switchX},${breakerY - 6} ${switchX + 6},${breakerY} ${switchX},${breakerY + 6} ${switchX - 6},${breakerY}`} fill="#0A8D43" stroke={COLOR_DEVICE_CLOSED_BORDER} strokeWidth={1.6} />
-                <line x1={switchX} y1={breakerY - 4.5} x2={switchX} y2={breakerY + 4.5} stroke={COLOR_DEVICE_CLOSED_BORDER} strokeWidth={1.3} />
-              </g>
-              <line x1={switchX} y1={breakerY + 6} x2={switchX} y2={breakerY + 11} stroke={busColor} strokeWidth={1.4} />
-              <line x1={switchX - 4} y1={breakerY + 11} x2={switchX + 4} y2={breakerY + 11} stroke={busColor} strokeWidth={1.4} />
-              <line x1={switchX - 2.5} y1={breakerY + 13} x2={switchX + 2.5} y2={breakerY + 13} stroke={busColor} strokeWidth={1.1} />
-            </>
-          )}
-          {detail !== 'far' && (
-            <text x={switchX} y={busY - 7} textAnchor="middle" fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_SANS} fontSize={6.4} fontWeight={700} paintOrder="stroke" stroke="#05070A" strokeWidth={2}>
-              {`SŁ2+U ${switchField.abb_cell}`}
-            </text>
-          )}
-        </g>
-      )}
-
       {/* ─── MEASUREMENT field (SDM) at the SN boundary, if present ─── */}
       {meterField && (
         <g
@@ -535,18 +557,26 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
         </g>
       )}
 
-      {/* ════ nN TIER (800 V switchgear, układ IT) — when a step-up transformer
-           feeds an nN busbar with a main breaker + ≥3 inverter feeders + own-needs.
-           Step-up from the SN PCC busbar down to the nN busbar; orthogonal. ════ */}
+      {/* ════ TRANSFORMER BAY + nN TIER (800 V, układ IT). For the terminal station
+           POLE 2 (the transformer field) sits on the SN busbar and the step-up
+           transformer hangs UNDER it (fed by POLE 2's cable) → Q1 → nN busbar → ≥3
+           inverter feeders + own-needs. There is NO SN output: the bay terminates at
+           the transformer. (Simple farms without a transformer field tap the busbar
+           directly at srcX — legacy path.) Orthogonal throughout. ════ */}
       {nnTier && (() => {
-        const trX = srcX;                       // transformer spine x
-        // At L2 the SN apparatus stacks run ~130 px below the busbar, so the
-        // transformer + nN tier must start BELOW them (no overlap). At far/closer
-        // the SN fields are compact, so the tier stays high.
-        const trTopY = busY + (detail === 'close' ? 158 : detail === 'closer' ? 22 : 14);
+        const trafo = trafoField;                // POLE 2 = transformer field (terminal station)
+        const trX = trafo ? trafoX : srcX;       // transformer spine x (under POLE 2, else free tap)
+        // POLE 2's switch depth: a full apparatus stack at close, a rozłącznik
+        // diamond at far/closer. The transformer hangs directly below it.
+        const trafoOnPath = (trafo?.apparatus ?? []).filter((a) => ['UPSTREAM', 'MIDSTREAM', 'DOWNSTREAM'].includes(a.placement)).length;
+        const stacked = detail === 'close' && trafoOnPath > 0;
+        const pole2Bottom = trafo ? (stacked ? busY + (trafoOnPath + 1) * 21 : breakerY + 6) : busY;
+        const trTopY = trafo
+          ? pole2Bottom + (detail === 'close' ? 40 : 24)
+          : busY + (detail === 'close' ? 158 : detail === 'closer' ? 22 : 14);
         const trMidY = trTopY + (detail === 'far' ? 12 : 18);
         const nnBusY = trMidY + (detail === 'far' ? 16 : 26);
-        const nnX1 = busX1 + 18;
+        const nnX1 = busX1 + (hasStacks ? 130 : 18); // start right of POLE 1's OSD-cable corridor
         const nnX2 = busX2 - 8;
         const feeders = nnTier.feeders;
         const fStep = (nnX2 - (nnX1 + 26)) / Math.max(1, feeders.length);
@@ -554,8 +584,37 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
         const fSymY = fBreakerY + (detail === 'far' ? 14 : 24);
         return (
           <g data-testid="oze-nn-tier" data-nn-kv={nnTier.nnKv}>
-            {/* SN→transformer spine. */}
-            <line x1={trX} y1={busY} x2={trX} y2={trTopY - 9} stroke={busColor} strokeWidth={1.8} />
+            {/* POLE 2 — TRANSFORMER FIELD: rozłącznik on the busbar; the transformer
+                hangs below, fed by its cable (no SN output — terminal station). */}
+            {trafo && (
+              <g
+                data-testid="oze-field-transformer"
+                data-field-role="transformer"
+                data-abb-cell={trafo.abb_cell}
+                data-source-ref={trafo.source_ref}
+                onClick={handle(`${companion.archetype}/${trafo.field_id}`)}
+                style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
+              >
+                {stacked ? (
+                  <ApparatusStack field={trafo} cx={trX} topY={busY} direction="none" labelSide="right" onClick={handle(`${companion.archetype}/${trafo.field_id}`)} />
+                ) : (
+                  <>
+                    <line x1={trX} y1={busY} x2={trX} y2={breakerY - 7} stroke={busColor} strokeWidth={1.8} />
+                    <g data-symbol-shape="diamond" data-state="closed">
+                      <polygon points={`${trX},${breakerY - 6} ${trX + 6},${breakerY} ${trX},${breakerY + 6} ${trX - 6},${breakerY}`} fill="#0A8D43" stroke={COLOR_DEVICE_CLOSED_BORDER} strokeWidth={1.6} />
+                      <line x1={trX} y1={breakerY - 4.5} x2={trX} y2={breakerY + 4.5} stroke={COLOR_DEVICE_CLOSED_BORDER} strokeWidth={1.3} />
+                    </g>
+                  </>
+                )}
+                {detail !== 'far' && (
+                  <text x={trX} y={busY - 7} textAnchor="middle" fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_SANS} fontSize={6.4} fontWeight={700} paintOrder="stroke" stroke="#05070A" strokeWidth={2}>
+                    {`SŁ2+U ${trafo.abb_cell}`}
+                  </text>
+                )}
+              </g>
+            )}
+            {/* (POLE 2 cable head / busbar) → transformer spine. */}
+            <line x1={trX} y1={pole2Bottom} x2={trX} y2={trTopY - 9} stroke={busColor} strokeWidth={1.8} />
             <ApparatusTransformerSymbol cx={trX} cy={trTopY} vectorGroup="Dyn5" neutralEarthed />
             {/* transformer → nN main breaker Q1 → nN busbar. */}
             <line x1={trX} y1={trTopY + 9} x2={trX} y2={trMidY - 7} stroke="#7DD3FC" strokeWidth={1.8} />
