@@ -20,6 +20,7 @@
  */
 
 import {
+  COLOR_DEVICE_CLOSED_BORDER,
   COLOR_FIELD_TRUNK_ENERGIZED,
   COLOR_TEXT_MUTED,
   COLOR_TEXT_PRIMARY,
@@ -145,20 +146,26 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
   // protection, looking at the grid → boundary) + a SOURCE field (→ transformer
   // → source). Drawn as columns on the PCC busbar; orthogonal throughout.
   const connField = companion.fields.find((f) => f.role === 'connection');
+  const switchField = companion.fields.find((f) => f.role === 'switch');
   const meterField = companion.fields.find((f) => f.role === 'measurement');
   const srcField = companion.fields.find((f) => f.role === 'source');
   const loadField = companion.fields.find((f) => f.role === 'load');
+  const schematic = companion.source.schematic;
 
-  const W = 240;
+  // Wider canvas when the unit has many fields (schematic-faithful = 2 SN fields
+  // + meter + own-needs + source).
+  const W = companion.fields.length >= 5 ? 300 : 240;
   const busY = 0;
   const busX1 = -W / 2;
   const busX2 = W / 2;
   const busKv = companion.voltage_flow.buses[pccRef]?.un_kv ?? 15;
   const busColor = busColorForVoltage(busKv);
 
-  // Field columns left→right: connection (grid side), measurement, [load], source.
+  // Field columns left→right: connection (grid side), [switch SŁ2+U], measurement,
+  // [own-needs/load], source.
   const connX = busX1 + 34;
-  const meterX = busX1 + 78;
+  const switchX = busX1 + 70;
+  const meterX = busX1 + (switchField ? 106 : 78);
   const loadX = busX2 - 86;
   const srcX = busX2 - 40;
 
@@ -271,6 +278,34 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
         </g>
       )}
 
+      {/* ─── SWITCH field (POLE NR 2 — SŁ2+U): rozłącznik ◇ + uziemnik ─── */}
+      {switchField && (
+        <g
+          data-testid="oze-field-switch"
+          data-field-role="switch"
+          data-abb-cell={switchField.abb_cell}
+          data-source-ref={switchField.source_ref}
+          onClick={handle(`${companion.archetype}/${switchField.field_id}`)}
+          style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
+        >
+          <line x1={switchX} y1={busY} x2={switchX} y2={breakerY - 7} stroke={busColor} strokeWidth={1.8} />
+          {/* rozłącznik ◇ (upright, state by colour) */}
+          <g data-symbol-shape="diamond" data-state="closed">
+            <polygon points={`${switchX},${breakerY - 6} ${switchX + 6},${breakerY} ${switchX},${breakerY + 6} ${switchX - 6},${breakerY}`} fill="#0A8D43" stroke={COLOR_DEVICE_CLOSED_BORDER} strokeWidth={1.6} />
+            <line x1={switchX} y1={breakerY - 4.5} x2={switchX} y2={breakerY + 4.5} stroke={COLOR_DEVICE_CLOSED_BORDER} strokeWidth={1.3} />
+          </g>
+          {/* uziemnik (earth branch, left) */}
+          <line x1={switchX} y1={breakerY + 6} x2={switchX} y2={breakerY + 11} stroke={busColor} strokeWidth={1.4} />
+          <line x1={switchX - 4} y1={breakerY + 11} x2={switchX + 4} y2={breakerY + 11} stroke={busColor} strokeWidth={1.4} />
+          <line x1={switchX - 2.5} y1={breakerY + 13} x2={switchX + 2.5} y2={breakerY + 13} stroke={busColor} strokeWidth={1.1} />
+          {detail !== 'far' && (
+            <text x={switchX} y={breakerY + 24} textAnchor="middle" fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_SANS} fontSize={6.4} fontWeight={700} paintOrder="stroke" stroke="#05070A" strokeWidth={2}>
+              {`SŁ2+U ${switchField.abb_cell}`}
+            </text>
+          )}
+        </g>
+      )}
+
       {/* ─── MEASUREMENT field (SDM) at the SN boundary, if present ─── */}
       {meterField && (
         <g
@@ -365,6 +400,31 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
       {/* Power hierarchy (gate H), close zoom, BELOW the unit on the left — clear
           of the connection-field protection codes. */}
       {detail === 'close' && <PowerHierarchy h={src.power_hierarchy} x={busX1 - 30} y={busY + 76} />}
+
+      {/* Schematic equipment register (close zoom) — the distinguishing block of a
+          template DISTILLED from a real drawing: transformer/CT/VT/grid/modules,
+          each pinned to the schematic (source_ref). Placed BOTTOM-LEFT, below the
+          power hierarchy, clear of the right-side bus-result panels. */}
+      {detail === 'close' && schematic && (
+        <g data-testid="oze-schematic" data-source-ref={schematic.source_ref} pointerEvents="none">
+          <text x={busX1 - 30} y={busY + 130} fill="#9FE6FF" fontFamily={FONT_MONO} fontSize={7} fontWeight={800}>
+            WG SCHEMATU (źródło)
+          </text>
+          {[
+            `Trafo: ${schematic.transformer}`,
+            `nN ${schematic.nn_kv * 1000} V · układ ${schematic.nn_grid} · wył. ${schematic.nn_main_breaker}`,
+            `CT ${schematic.ct.type} ${schematic.ct.ratio} · Ith=${schematic.ct.ith_ka} kA · Idyn=${schematic.ct.idyn_ka} kA`,
+            `  rdzenie: ${schematic.ct.cores.join(' · ')}`,
+            `VT ${schematic.vt.type} ${schematic.vt.ratio}`,
+            `PV: ${schematic.pv_modules}`,
+            `Potrzeby własne: ${schematic.own_needs}`,
+          ].map((ln, i) => (
+            <text key={i} x={busX1 - 30} y={busY + 139 + i * 8} fill={i === 3 ? COLOR_TEXT_MUTED : COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6} fontWeight={i === 3 ? 400 : 600}>
+              {ln}
+            </text>
+          ))}
+        </g>
+      )}
     </g>
   );
 }

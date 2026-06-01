@@ -19,6 +19,36 @@ export interface OzePowerHierarchy {
   readonly valid: boolean;
 }
 
+/** CT/VT nameplate distilled from the reference schematic. */
+export interface OzeSchematicCt {
+  readonly type: string;
+  readonly ratio: string;
+  readonly ith_ka: number;
+  readonly idyn_ka: number;
+  readonly cores: readonly string[];
+}
+export interface OzeSchematicVt {
+  readonly type: string;
+  readonly ratio: string;
+  readonly windings: readonly string[];
+}
+
+/** Equipment register distilled element-by-element from a real schematic
+ *  (source_ref = the drawing) — present when the template is a faithful
+ *  projection of a reference document, not a synthesised archetype. */
+export interface OzeSchematic {
+  readonly source_ref: string;
+  readonly sn_kv: number;
+  readonly nn_kv: number;
+  readonly transformer: string;
+  readonly nn_grid: string;
+  readonly nn_main_breaker: string;
+  readonly pv_modules: string;
+  readonly ct: OzeSchematicCt;
+  readonly vt: OzeSchematicVt;
+  readonly own_needs: string;
+}
+
 /** OZE source metadata (axes T/R/S of the taxonomy). */
 export interface OzeSourceMeta {
   readonly technology: string; // PV | BESS | FW | ...
@@ -28,6 +58,8 @@ export interface OzeSourceMeta {
   /** Gate I — protection function codes (ANSI/IEC), a function of machine_type. */
   readonly protection_codes: readonly string[];
   readonly power_hierarchy: OzePowerHierarchy;
+  /** Present iff this template is distilled from a real reference schematic. */
+  readonly schematic?: OzeSchematic;
 }
 
 export interface OzeVfBus {
@@ -67,7 +99,7 @@ export type OzeScBus = ScBus & { readonly source_contribution: OzeSourceContribu
  */
 export interface OzeField {
   readonly field_id: string;
-  readonly role: 'connection' | 'source' | 'measurement' | 'load';
+  readonly role: 'connection' | 'source' | 'measurement' | 'load' | 'switch';
   readonly kind: string;
   /** ABB cell type (SDC | SDF | CBC | SMC | DBC | SDM-V | SDM-C | ...). */
   readonly abb_cell: string;

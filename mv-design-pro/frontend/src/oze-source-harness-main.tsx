@@ -35,11 +35,11 @@ function readArchetype(): string {
 function LevelPanel(props: { archetype: string; detail: StationDetailLevel; label: string; onFieldClick: (id: string) => void }): JSX.Element {
   const { archetype, detail, label, onFieldClick } = props;
   const companion = OZE_ARCHETYPES_2A[archetype];
-  const PANEL_W = 760;
-  const PANEL_H = detail === 'close' ? 420 : 240;
+  const PANEL_W = 820;
+  const PANEL_H = detail === 'close' ? 520 : 240;
   const viewW = PANEL_W;
   const viewH = PANEL_H - 32;
-  const scale = detail === 'far' ? 1.9 : detail === 'closer' ? 1.6 : 1.3;
+  const scale = detail === 'far' ? 1.9 : detail === 'closer' ? 1.5 : 1.2;
   return (
     <div
       data-testid={`oze-harness-panel-${detail}`}

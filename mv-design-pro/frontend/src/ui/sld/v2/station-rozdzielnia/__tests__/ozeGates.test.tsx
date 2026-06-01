@@ -272,7 +272,9 @@ describe('G4-PVTR — PV 1 MW via customer transformer station', () => {
     const c = OZE_ARCHETYPES_2A[G4];
     expect(c, 'G4-PVTR template must exist').toBeTruthy();
     const roles = c.fields.map((f) => f.role).sort();
-    expect(roles).toEqual(['connection', 'load', 'measurement', 'source']);
+    // Schematic-faithful: 2 SN fields (connection VCB + switch SŁ2+U) + measurement
+    // + own-needs (load) + source. Distilled from the real drawing.
+    expect(roles).toEqual(['connection', 'load', 'measurement', 'source', 'switch']);
     // The own-load field is pinned to POTRZEBY_WLASNE (customer self-consumption).
     const load = c.fields.find((f) => f.role === 'load')!;
     expect(load.source_ref).toMatch(/POTRZEBY_WLASNE/);
@@ -281,10 +283,12 @@ describe('G4-PVTR — PV 1 MW via customer transformer station', () => {
     expect(srcF.on_bus_ref).not.toBe(c.pcc_bus_ref);
   });
 
-  it('boundary is LV-behind-station-transformer (customer connection), metered', () => {
+  it('boundary is a dedicated MV connection (cable + głowica to OSD), metered', () => {
+    // The schematic shows an SN cable connection (3×XRUHAKXS, głowice ITK 224)
+    // to the OSD network → dedicated MV connection (G-ZKSN), SN-metered.
     const b = OZE_ARCHETYPES_2A[G4].boundary;
-    expect(b.variant).toBe('G-ZALICZNIK');
-    expect(b.enm_connection_variant).toBe('LV_BEHIND_STATION_TRANSFORMER');
+    expect(b.variant).toBe('G-ZKSN');
+    expect(b.enm_connection_variant).toBe('DEDICATED_MV_CONNECTION');
     expect(b.metered).toBe(true);
   });
 
@@ -312,6 +316,8 @@ describe('G4-PVTR — PV 1 MW via customer transformer station', () => {
     expect(container.querySelector('[data-testid="oze-field-connection"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="oze-field-source"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="oze-boundary-marker"]')).toBeTruthy();
+    // POLE NR 2 (SŁ2+U) switch field is present too.
+    expect(container.querySelector('[data-testid="oze-field-switch"]')).toBeTruthy();
     // Every <line> orthogonal (inherited invariant).
     const unit = container.querySelector('[data-testid="oze-source-G4-PVTR"]')!;
     for (const ln of Array.from(unit.querySelectorAll('line'))) {
@@ -319,5 +325,39 @@ describe('G4-PVTR — PV 1 MW via customer transformer station', () => {
       const x2 = Number(ln.getAttribute('x2')); const y2 = Number(ln.getAttribute('y2'));
       expect(Math.abs(x1 - x2) < 1e-6 || Math.abs(y1 - y2) < 1e-6).toBe(true);
     }
+  });
+
+  it('is a FAITHFUL projection of the schematic: nN=800V, CTM20 Ith/Idyn, IT grid', () => {
+    const sch = OZE_ARCHETYPES_2A[G4].source.schematic!;
+    expect(sch, 'G4 must carry the schematic register (source_ref = drawing)').toBeTruthy();
+    expect(sch.source_ref).toMatch(/schemat:/);
+    // nN = 800 V (NOT 400) — distilled from the 15.75/0.8 kV transformer.
+    expect(sch.nn_kv).toBe(0.8);
+    expect(sch.sn_kv).toBe(15.75);
+    // Multi-core CTM 20 with the exact withstand from the drawing.
+    expect(sch.ct.type).toBe('CTM 20');
+    expect(sch.ct.ith_ka).toBe(16);
+    expect(sch.ct.idyn_ka).toBe(40);
+    expect(sch.ct.cores.length).toBe(3);
+    // IT grid + the 3WA1108 nN main breaker.
+    expect(sch.nn_grid).toBe('IT');
+    expect(sch.nn_main_breaker).toMatch(/3WA1108/);
+    // The nN busbar voltage shown is the real 800 V.
+    expect(OZE_ARCHETYPES_2A[G4].voltage_flow.buses['NN_800'].un_kv).toBe(0.8);
+  });
+
+  it('renders the schematic equipment register at L2 (transformer/CT/VT/grid)', () => {
+    const { container } = render(
+      <svg>
+        <OzeSourceArchetype companion={OZE_ARCHETYPES_2A[G4]} stationCode="PV-1MW" name="PV 1 MW" detail="close" />
+      </svg>,
+    );
+    const block = container.querySelector('[data-testid="oze-schematic"]');
+    expect(block).toBeTruthy();
+    expect(block!.getAttribute('data-source-ref')).toMatch(/schemat:/);
+    const txt = block!.textContent ?? '';
+    expect(txt).toMatch(/15,75\/0,8/);
+    expect(txt).toMatch(/CTM 20/);
+    expect(txt).toMatch(/IT/);
   });
 });

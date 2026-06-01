@@ -1081,59 +1081,88 @@ def build_g3() -> dict[str, Any]:
 _OZE_ARCHETYPES_2A = {"G1": build_g1, "G2": build_g2, "G3": build_g3}
 
 
+# Schematic-true nameplate voltages (distilled from the owner's execution drawing
+# of the SN/nN station with a 1 MW PV farm — NOT 0.4 kV; the PV inverters output
+# ~800 V AC and the step-up transformer is 15.75/0.8 kV).
+_PV1MW_SN_KV = 15.75
+_PV1MW_NN_KV = 0.8
+
+
 def build_g4_pvtr() -> dict[str, Any]:
-    """G4-PVTR — PV 1 MW przyłączona przez STACJĘ TR KONSUMENCKĄ (odbiorczą).
+    """G4-PVTR — PV 1 MW przez STACJĘ TR KONSUMENCKĄ — WIERNA PROJEKCJA realnego
+    schematu wykonawczego (docs/audit/AUDYT_SCHEMAT_PV1MW_TR_KONSUMENCKA).
 
-    Stacja odbiorcza (ENM station_type='customer') z WŁASNYM ODBIOREM
-    (Bay.specialization='POTRZEBY_WLASNE') i farmą PV 1 MW za transformatorem
-    stacji SN/nN. Przyłącze SN dedykowane z pomiarem na granicy. Kierunek netto
-    (eksport vs import) liczy SOLVER: gdy PV > odbiór własny → eksport zwrotny.
+    Łańcuch (generacja → sieć): moduły PV (JA SOLAR 595Wp ×2×560) → falowniki AC/DC
+    → SZYNA nN 800 V (3×P40×10) → Q1 wyłącznik nN 800A → TRANSFORMATOR 1000 kVA
+    0,8/15,75 kV (podwyższający) → SZYNA SN 15,75 kV → POLE NR 1 VCB (Q0 + CTM20
+    + VTB20 + e²TANGO) → POLE NR 2 SŁ2+U (Q2 + uziemnik + VT) → głowica → kabel SN
+    → |GRANICA| → SIEĆ OSD. Gałąź: POTRZEBY WŁASNE (TS 5kVA 800/230V → RPW-PV).
 
-    Topologia: GPZ → linia SN → szyna SN stacji (PCC) → [pole przyłączeniowe +
-    pole pomiarowe] ; transformator stacji SN/nN → szyna nN → [odbiór własny +
-    pole PV 1 MW]. connection_variant = LV_BEHIND_STATION_TRANSFORMER.
+    nN = 800 V (NIE 400). Dwa pola SN. Przekładniki wielordzeniowe. Układ sieci IT.
+    Wkład zwarciowy IBG ograniczony. Kierunek netto liczy SOLVER.
     """
     pv_kva = 1000.0
-    own_load_kw = 320.0  # odbiór własny stacji konsumenckiej (potrzeby własne)
+    own_load_kw = 60.0  # RPW-PV: potrzeby własne (TS 5kVA + odpływy F1-F10, grzejnik itp.)
     s = _Substrate()
     s.add_slack("GPZ")
-    s.add_bus("SN_PCC", _BASE_KV)
-    s.add_bus("NN_BUS", _NN_KV)
+    # SN side solved on the SN per-unit base; the 0.8 kV nN node is real two-volt.
+    s.add_bus("SN_PCC", _PV1MW_SN_KV)
+    s.add_bus("NN_800", _PV1MW_NN_KV)
     s.add_line(SR_IN, "GPZ", "SN_PCC", _SN_LINE_R, _SN_LINE_X)
-    # Station transformer SN/nN (1.25 MVA dla 1 MW PV + odbiór własny).
-    s.add_transformer(SR_TR, "SN_PCC", "NN_BUS", hv_kv=_BASE_KV, lv_kv=_NN_KV, uk_percent=_TRAFO_UK_PCT, rated_mva=1.25)
-    # Netto na szynie nN: odbiór własny − generacja PV (jeden netto-wpis na węzeł).
-    s.add_load("NN_BUS", p_mw=own_load_kw / 1000.0 - pv_kva / 1000.0 * 0.9, q_mvar=0.10)
-    ibg = s.add_inverter("NN_BUS", rated_kva=pv_kva, un_kv=_NN_KV, k_sc=_IBG_K, source_type="PV")
+    # Step-up transformer 0.8/15.75 kV, 1000 kVA (schematic nameplate).
+    s.add_transformer(SR_TR, "SN_PCC", "NN_800", hv_kv=_PV1MW_SN_KV, lv_kv=_PV1MW_NN_KV, uk_percent=6.0, rated_mva=1.0)
+    # nN net injection: PV generation − own needs (RPW-PV). PV ≫ own load → export.
+    s.add_load("NN_800", p_mw=own_load_kw / 1000.0 - pv_kva / 1000.0 * 0.9, q_mvar=0.05)
+    ibg = s.add_inverter("NN_800", rated_kva=pv_kva, un_kv=_PV1MW_NN_KV, k_sc=_IBG_K, source_type="PV")
     s.finalize_pq()
+    # Pzainst (moc zainstalowana DC) ≥ Pn,AC. Schemat: moduły 595 Wp, łącznie
+    # ~2016 szt (DC ~1,2 MWp), falowniki 1 MW AC (oversizing DC/AC ≈ 1,2).
+    p_dc_kwp = 2016 * 0.595  # ≈ 1199.5 kWp DC
+    src = _pv_source(technology="PV 1 MW", machine_type="IBG", nc_class="C", control_mode="Q(U)",
+                     p_zainst_kw=p_dc_kwp, pn_ac_kw=1000.0, p_przylacz_kw=1000.0, p_osiagalna_kw=950.0)
+    # Schematic-distilled equipment register (source_ref = the real drawing).
+    src["schematic"] = {
+        "source_ref": "schemat:stacja_TR_PV1MW_wykonawczy",
+        "sn_kv": _PV1MW_SN_KV,
+        "nn_kv": _PV1MW_NN_KV,
+        "transformer": "1000 kVA · 15,75/0,8 kV · POLIM-D18N",
+        "nn_grid": "IT",
+        "nn_main_breaker": "3WA1108 · 800 A · 1000 V",
+        "pv_modules": "JA SOLAR JAM72D40-595/MB · 595 Wp · ~2016 szt (≈1,2 MWp DC)",
+        "ct": {"type": "CTM 20", "ratio": "40/5/5/5 A/A", "ith_ka": 16.0, "idyn_ka": 40.0,
+               "cores": ["I 5VA 0,2s(FS5) pomiar", "II 5VA 0,2s analizator", "III 5VA 5P10 zab."]},
+        "vt": {"type": "VTB 20", "ratio": "15/√3 : 0,1/√3 ×3 : 0,1/3",
+               "windings": ["I pomiar 0,2", "II pomiar 0,2", "III zab. 3P", "IV zab. 3P (otwarty trójkąt)"]},
+        "own_needs": "RPW-PV · TS 5 kVA 800/230 V · F1-F10",
+    }
     return _oze_companion(
         "G4-PVTR", substrate=s,
-        # nN board 40 kA: a 1.25 MVA SN/nN transformer at uk=6% gives Ik''max≈32 kA
-        # at the 400 V busbar, so the standard 40 kA board is specified (the next
-        # rating above the computed value). The ≤Icw verdict still FAILS if Ik''
-        # exceeds it — the check is real (it flagged 32>31.5 on the lower board).
-        buses=[("SN_PCC", _BASE_KV, _ICW_SN_KA), ("NN_BUS", _NN_KV, 40.0)],
+        # nN 800 V board: a 1 MVA step-up at uk=6% gives a high Ik'' at 800 V; the
+        # board is specified for it. SN PCC withstand from the CTM20 (Ith 16 kA).
+        buses=[("SN_PCC", _PV1MW_SN_KV, 16.0), ("NN_800", _PV1MW_NN_KV, 50.0)],
         pcc_bus="SN_PCC", ibg_ka=ibg / 1000.0,
-        source=_pv_source(technology="PV 1 MW", machine_type="IBG", nc_class="C", control_mode="Q(U)",
-                          p_zainst_kw=1100.0, pn_ac_kw=1000.0, p_przylacz_kw=1000.0, p_osiagalna_kw=900.0),
-        # Station idiom: connection field (interface protection) + measurement on
-        # the SN PCC; OWN-LOAD field + PV source field on the nN bus behind the
-        # station transformer. Customer station = station_type='customer'.
+        source=src,
+        # Station idiom — TWO SN fields (POLE NR 1 VCB zabezpieczeniowe with the
+        # interface protection + POLE NR 2 SŁ2+U łącznikowe) + measurement; on nN:
+        # OWN-NEEDS (RPW-PV) + PV source. Every field pinned to the ENM.
         fields=[
-            _field("g4-conn", role="connection", kind="POLE_PRZYŁĄCZENIOWE", abb_cell="CBC",
-                   on_bus="SN_PCC", source_ref="enm:Bay.bay_role=LINIA_OUT",
+            _field("g4-vcb", role="connection", kind="POLE NR 1 — VCB (e²TANGO)", abb_cell="CBC",
+                   on_bus="SN_PCC", source_ref="enm:Bay.bay_role=LINIA_OUT;schemat:POLE_NR_1_VCB",
                    interface_protection=True, protection_codes=list(_PROTECTION_BY_MACHINE["IBG"])),
-            _field("g4-meter", role="measurement", kind="POLE_POMIAROWE", abb_cell="SDM-V",
-                   on_bus="SN_PCC", source_ref="enm:Measurement.purpose=metering",
+            _field("g4-sl2u", role="switch", kind="POLE NR 2 — SŁ2+U", abb_cell="SDC",
+                   on_bus="SN_PCC", source_ref="enm:Bay.bay_role=LINIA_OUT;schemat:POLE_NR_2_SL2U",
                    interface_protection=False),
-            _field("g4-load", role="load", kind="ODBIÓR WŁASNY", abb_cell="SDC",
-                   on_bus="NN_BUS", source_ref="enm:Bay.specialization=POTRZEBY_WLASNE",
+            _field("g4-meter", role="measurement", kind="CTM 20 / VTB 20", abb_cell="SDM-V",
+                   on_bus="SN_PCC", source_ref="enm:Measurement;schemat:CTM20_VTB20",
                    interface_protection=False),
-            _field("g4-src", role="source", kind="PV 1 MW", abb_cell="SDC",
-                   on_bus="NN_BUS", source_ref="enm:Generator.gen_type=pv_inverter",
+            _field("g4-own", role="load", kind="POTRZEBY WŁASNE (RPW-PV)", abb_cell="SDC",
+                   on_bus="NN_800", source_ref="enm:Bay.specialization=POTRZEBY_WLASNE;schemat:RPW-PV",
+                   interface_protection=False),
+            _field("g4-src", role="source", kind="PV 1 MW (falowniki)", abb_cell="DBC",
+                   on_bus="NN_800", source_ref="enm:Generator.gen_type=pv_inverter;schemat:falowniki_AC_DC",
                    interface_protection=False),
         ],
-        boundary=_boundary("G-ZALICZNIK", on_bus="SN_PCC", metered=True),
+        boundary=_boundary("G-ZKSN", on_bus="SN_PCC", metered=True),
     )
 
 
