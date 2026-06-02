@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../types/enm';
-import { readTopologyFromENM } from '../../../ui/sld/core/topologyInputReader';
+import { BranchKind, readTopologyFromENM, type TopologyInputV1 } from '../../../ui/sld/core/topologyInputReader';
 import { buildTopologyTree } from '../topologyTree';
 import fixture from '../../../ui/sld/v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json';
 
@@ -29,6 +29,33 @@ describe('buildTopologyTree on substrate', () => {
   it('reaches every real station (full connectivity)', () => {
     expect(tree.stationCount).toBe(snapshot.stations.length);
     expect(tree.stationCount).toBeGreaterThanOrEqual(52);
+  });
+
+  it('INVARIANT: no real station left in a separate unreachable component', () => {
+    const placed = new Set(
+      [...tree.nodes.values()].filter((n) => n.isStation).map((n) => n.ref),
+    );
+    const unreachable = snapshot.stations.map((s) => s.id).filter((id) => !placed.has(id));
+    expect(unreachable, `unreachable real stations: ${JSON.stringify(unreachable)}`).toEqual([]);
+  });
+
+  it('conducts connectivity through a switch link (else a tapped station islands)', () => {
+    // A station can hang off the spine behind a switch (e.g. a normally-open reserve tie) with
+    // no other cable feed. The layout tree is a DRAWING skeleton, so it traverses in-service
+    // switch links to place that station — the switch is still drawn open; energization is the
+    // solver's job. Proof: take the switch links out of service and >=1 real station drops out.
+    expect(
+      snapshot.branches.some((b) => b.kind === BranchKind.BUS_LINK && b.inService),
+      'substrate models an in-service switch link',
+    ).toBe(true);
+    const withoutSwitchLinks: TopologyInputV1 = {
+      ...snapshot,
+      branches: snapshot.branches.map((b) =>
+        b.kind === BranchKind.BUS_LINK ? { ...b, inService: false } : b,
+      ),
+    };
+    const reduced = buildTopologyTree(withoutSwitchLinks);
+    expect(reduced.stationCount).toBeLessThan(tree.stationCount);
   });
 
   it('identifies a magistrala (trunk) as a path from the root', () => {
