@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 from typing import Any, Literal
 
@@ -158,8 +159,14 @@ class _Substrate:
         return src.ik_sc_a
 
     def add_synchronous_machine(
-        self, node_id: str, *, sr_mva: float, ur_kv: float, xd_subtransient_pu: float,
-        cos_phi_r: float, c_max: float = 1.10,  # IEC c_max (== _C_MAX, defined later)
+        self,
+        node_id: str,
+        *,
+        sr_mva: float,
+        ur_kv: float,
+        xd_subtransient_pu: float,
+        cos_phi_r: float,
+        c_max: float = 1.10,  # IEC c_max (== _C_MAX, defined later)
     ) -> SynchronousMachineSource:
         """Register a synchronous machine SC source (IEC 60909-0:2016 §6.3) — a
         voltage source behind Z″_GK, i.e. a FULL machine contribution (gate J:
@@ -168,28 +175,54 @@ class _Substrate:
         ``compute_machine_contributions`` (§6.6)."""
         # Deterministic id (the source_id is surfaced in the companion breakdown — a
         # random UUID would break companion determinism).
-        seq = sum(1 for m in self.graph.synchronous_machine_sources.values() if m.node_id == node_id) + 1
+        seq = (
+            sum(1 for m in self.graph.synchronous_machine_sources.values() if m.node_id == node_id)
+            + 1
+        )
         src = SynchronousMachineSource(
-            id=f"sync/{node_id}/{seq}", name=f"SYN@{node_id}#{seq}", node_id=node_id,
-            sr_mva=sr_mva, ur_kv=ur_kv, xd_subtransient_pu=xd_subtransient_pu,
-            cos_phi_r=cos_phi_r, c_max=c_max,
+            id=f"sync/{node_id}/{seq}",
+            name=f"SYN@{node_id}#{seq}",
+            node_id=node_id,
+            sr_mva=sr_mva,
+            ur_kv=ur_kv,
+            xd_subtransient_pu=xd_subtransient_pu,
+            cos_phi_r=cos_phi_r,
+            c_max=c_max,
         )
         self.graph.add_synchronous_machine_source(src)
         return src
 
     def add_asynchronous_machine(
-        self, node_id: str, *, pr_mw: float, ur_kv: float, cos_phi_r: float,
-        efficiency: float, i_lr_ratio: float, pole_pairs: int, wind_type_3: bool = False,
+        self,
+        node_id: str,
+        *,
+        pr_mw: float,
+        ur_kv: float,
+        cos_phi_r: float,
+        efficiency: float,
+        i_lr_ratio: float,
+        pole_pairs: int,
+        wind_type_3: bool = False,
     ) -> AsynchronousMachineSource:
         """Register an asynchronous (induction) machine SC source (IEC 60909-0:2016
         §6.7) — a voltage source behind Z_M, a FULL machine contribution (gate J).
         The breaking current uses μ·q (§6.6.3); small motors may be neglected (§6.6).
         ``wind_type_3`` marks a DFIG (crowbar → induction machine); same math, DFIG label."""
-        seq = sum(1 for m in self.graph.asynchronous_machine_sources.values() if m.node_id == node_id) + 1
+        seq = (
+            sum(1 for m in self.graph.asynchronous_machine_sources.values() if m.node_id == node_id)
+            + 1
+        )
         src = AsynchronousMachineSource(
-            id=f"async/{node_id}/{seq}", name=f"ASY@{node_id}#{seq}", node_id=node_id,
-            pr_mw=pr_mw, ur_kv=ur_kv, cos_phi_r=cos_phi_r, efficiency=efficiency,
-            i_lr_ratio=i_lr_ratio, pole_pairs=pole_pairs, wind_type_3=wind_type_3,
+            id=f"async/{node_id}/{seq}",
+            name=f"ASY@{node_id}#{seq}",
+            node_id=node_id,
+            pr_mw=pr_mw,
+            ur_kv=ur_kv,
+            cos_phi_r=cos_phi_r,
+            efficiency=efficiency,
+            i_lr_ratio=i_lr_ratio,
+            pole_pairs=pole_pairs,
+            wind_type_3=wind_type_3,
         )
         self.graph.add_asynchronous_machine_source(src)
         return src
@@ -213,9 +246,25 @@ class _Substrate:
         lv_kv: float,
         uk_percent: float,
         rated_mva: float,
+        x_over_r: float | None = None,
     ) -> None:
         """A real SN/nN TransformerBranch — so the SC solver steps voltage and the
-        nN busbar carries a physically correct Ik'' (transformer-dominated)."""
+        nN busbar carries a physically correct Ik'' (transformer-dominated).
+
+        The SC impedance magnitude is |Z| = uk%, but its R/X split needs the copper
+        losses pk: with pk=0 the SC R is 0 ⇒ X/R→∞ ⇒ κ→2 (unphysical for an LV busbar
+        behind a transformer). Pass ``x_over_r`` to derive pk from a target X/R (≈4.5
+        for distribution transformers, IEC 60909) so κ_nN lands at ~1.5; |Z| (hence
+        Ik'') is UNCHANGED. ``x_over_r=None`` keeps the legacy R≈0 — this physics fix
+        is OPT-IN per preset, so it stays scoped to the preset requesting it (no ripple
+        to other archetypes' determinism-pinned companions).
+        """
+        if x_over_r is None:
+            pk_kw = 0.0
+        else:
+            z_pu = uk_percent / 100.0
+            r_pu = z_pu / math.sqrt(1.0 + x_over_r * x_over_r)
+            pk_kw = r_pu * rated_mva * 1000.0
         self.graph.add_branch(
             TransformerBranch(
                 id=branch_id,
@@ -227,6 +276,7 @@ class _Substrate:
                 voltage_lv_kv=lv_kv,
                 uk_percent=uk_percent,
                 rated_power_mva=rated_mva,
+                pk_kw=pk_kw,
             )
         )
 
@@ -362,9 +412,7 @@ def _sc_one(graph: NetworkGraph, bus_id: str, c_factor: float) -> ShortCircuitRe
     )
 
 
-def _sc_bus_entry(
-    graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float
-) -> dict[str, Any]:
+def _sc_bus_entry(graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float) -> dict[str, Any]:
     """Ik''max/min + ip/ib/ith/kappa + Sk + Icw verification at one busbar, with the
     solver's White Box trace carried verbatim (interpretation, not recomputation)."""
     rmax = _sc_one(graph, bus_id, _C_MAX)
@@ -420,8 +468,7 @@ def build_short_circuit_companion(
         "solver_method": "iec60909-3ph",
         "tk_s": _TK_S,
         "buses": {
-            bus_id: _sc_bus_entry(graph, bus_id, un_kv, icw_ka)
-            for bus_id, un_kv, icw_ka in buses
+            bus_id: _sc_bus_entry(graph, bus_id, un_kv, icw_ka) for bus_id, un_kv, icw_ka in buses
         },
     }
 
@@ -560,8 +607,13 @@ def _sc_graph_sn_nn(*, with_line_out: bool) -> NetworkGraph:
         s.add_bus("LINE_OUT_END", _BASE_KV)
         s.add_line(SR_OUT, "SN_BUS", "LINE_OUT_END", _SN_LINE_R, _SN_LINE_X)
     s.add_transformer(
-        SR_TR, "SN_BUS", "NN_BUS",
-        hv_kv=_BASE_KV, lv_kv=_NN_KV, uk_percent=_TRAFO_UK_PCT, rated_mva=_TRAFO_MVA,
+        SR_TR,
+        "SN_BUS",
+        "NN_BUS",
+        hv_kv=_BASE_KV,
+        lv_kv=_NN_KV,
+        uk_percent=_TRAFO_UK_PCT,
+        rated_mva=_TRAFO_MVA,
     )
     return s.graph
 
@@ -634,8 +686,13 @@ def _vf_graph_and_pq(
         s.add_bus("NN_BUS", _NN_KV)
         s.add_line(SR_IN, "GPZ", "SN_BUS", _SN_LINE_R, _SN_LINE_X)
         s.add_transformer(
-            SR_TR, "SN_BUS", "NN_BUS",
-            hv_kv=_BASE_KV, lv_kv=_NN_KV, uk_percent=_TRAFO_UK_PCT, rated_mva=_TRAFO_MVA,
+            SR_TR,
+            "SN_BUS",
+            "NN_BUS",
+            hv_kv=_BASE_KV,
+            lv_kv=_NN_KV,
+            uk_percent=_TRAFO_UK_PCT,
+            rated_mva=_TRAFO_MVA,
         )
         s.add_load("NN_BUS", p_mw=0.44 if archetype == "T1" else 0.35, q_mvar=0.14)
         if archetype == "T1":
@@ -721,7 +778,9 @@ def build_voltage_flow_companion(archetype: str) -> dict[str, Any]:
             "u_pu": u_pu_r,
             "u_percent": round(u_pu * 100.0, 3),
             "deviation_percent": dev,
-            "angle_deg": round(float(sol.node_angle.get(bus_id, 0.0)) * 180.0 / 3.141592653589793, 3),
+            "angle_deg": round(
+                float(sol.node_angle.get(bus_id, 0.0)) * 180.0 / 3.141592653589793, 3
+            ),
             # White Box (gate D): U derivation from the frozen NR solution.
             "white_box": [
                 _wb(
@@ -865,8 +924,15 @@ _PROTECTION_BY_MACHINE: dict[str, list[str]] = {
 
 
 def _pv_source(
-    *, technology: str, machine_type: str, nc_class: str, control_mode: str,
-    p_zainst_kw: float, pn_ac_kw: float, p_przylacz_kw: float, p_osiagalna_kw: float,
+    *,
+    technology: str,
+    machine_type: str,
+    nc_class: str,
+    control_mode: str,
+    p_zainst_kw: float,
+    pn_ac_kw: float,
+    p_przylacz_kw: float,
+    p_osiagalna_kw: float,
 ) -> dict[str, Any]:
     return {
         "technology": technology,
@@ -885,8 +951,14 @@ def _pv_source(
 
 
 def _oze_sc_bus(
-    graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float,
-    *, machine_type: str, ibg_ka: float, t_min_s: float = _MACHINE_TMIN_S,
+    graph: NetworkGraph,
+    bus_id: str,
+    un_kv: float,
+    icw_ka: float,
+    *,
+    machine_type: str,
+    ibg_ka: float,
+    t_min_s: float = _MACHINE_TMIN_S,
 ) -> dict[str, Any]:
     """SC dossier at one OZE busbar — the station SC entry + the source contribution
     broken out BY MACHINE TYPE (gate J).
@@ -980,11 +1052,14 @@ def _oze_companion(
             "q_mvar": q_mvar,
             "s_mva": round((p_mw**2 + q_mvar**2) ** 0.5, 4),
             "direction": _flow_direction(p_mw),
-            "loading_percent": (round((i_ka * 1000.0 / rated_a) * 100.0, 2) if rated_a > 0 else None),
+            "loading_percent": (
+                round((i_ka * 1000.0 / rated_a) * 100.0, 2) if rated_a > 0 else None
+            ),
         }
     sc_buses = {
-        bus_id: _oze_sc_bus(graph, bus_id, un_kv, icw_ka,
-                            machine_type=source["machine_type"], ibg_ka=ibg_ka)
+        bus_id: _oze_sc_bus(
+            graph, bus_id, un_kv, icw_ka, machine_type=source["machine_type"], ibg_ka=ibg_ka
+        )
         for bus_id, un_kv, icw_ka in buses
     }
     h = source["power_hierarchy"]
@@ -1004,7 +1079,10 @@ def _oze_companion(
         "case_ref_pf": "ROZPLYW_GEN_MAX",
         "case_ref_sc": "ZWARCIOWY_MAKS",
         "converged": bool(sol.converged),
-        "voltage_flow": {"buses": dict(sorted(vf_buses.items())), "branches": dict(sorted(vf_branches.items()))},
+        "voltage_flow": {
+            "buses": dict(sorted(vf_buses.items())),
+            "branches": dict(sorted(vf_branches.items())),
+        },
         "short_circuit": {"standard": "IEC 60909", "buses": dict(sorted(sc_buses.items()))},
     }
 
@@ -1033,8 +1111,14 @@ def _boundary(variant: str, *, on_bus: str, metered: bool) -> dict[str, Any]:
 
 
 def _port(
-    port_id: str, *, kind: str, un_kv: float, entry_side: str, occupied_by: str,
-    cable: str | None = None, source_ref: str = "",
+    port_id: str,
+    *,
+    kind: str,
+    un_kv: float,
+    entry_side: str,
+    occupied_by: str,
+    cable: str | None = None,
+    source_ref: str = "",
 ) -> dict[str, Any]:
     """A field's cable-connection PORT (projection of ENM Port). The cable docks
     HERE (not at the middle of the field). `kind` ∈ Port.kind; `entry_side` (axis 7)
@@ -1053,8 +1137,13 @@ def _port(
 
 
 def _app(
-    device_ref: str, *, kind: str, designation: str, catalog: str | None = None,
-    placement: str = "MIDSTREAM", source_ref: str = "",
+    device_ref: str,
+    *,
+    kind: str,
+    designation: str,
+    catalog: str | None = None,
+    placement: str = "MIDSTREAM",
+    source_ref: str = "",
 ) -> dict[str, Any]:
     """One apparatus on a field's power path (projection of ENM BayPrimaryDevice).
     `placement` orders the stack busbar→cable: UPSTREAM → MIDSTREAM → DOWNSTREAM,
@@ -1070,9 +1159,17 @@ def _app(
 
 
 def _field(
-    field_id: str, *, role: str, kind: str, abb_cell: str, on_bus: str,
-    source_ref: str, interface_protection: bool, protection_codes: list[str] | None = None,
-    apparatus: list[dict[str, Any]] | None = None, port: dict[str, Any] | None = None,
+    field_id: str,
+    *,
+    role: str,
+    kind: str,
+    abb_cell: str,
+    on_bus: str,
+    source_ref: str,
+    interface_protection: bool,
+    protection_codes: list[str] | None = None,
+    apparatus: list[dict[str, Any]] | None = None,
+    port: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """One station field pinned to the ENM. role: connection|source|measurement|
     switch|load|breaker. interface_protection=True ⇒ the relay that looks at the
@@ -1102,7 +1199,15 @@ def build_g1() -> dict[str, Any]:
     s.add_bus("SN_BUS", _BASE_KV)
     s.add_bus("NN_BUS", _NN_KV)
     s.add_line(SR_IN, "GPZ", "SN_BUS", _SN_LINE_R, _SN_LINE_X)
-    s.add_transformer(SR_TR, "SN_BUS", "NN_BUS", hv_kv=_BASE_KV, lv_kv=_NN_KV, uk_percent=_TRAFO_UK_PCT, rated_mva=_TRAFO_MVA)
+    s.add_transformer(
+        SR_TR,
+        "SN_BUS",
+        "NN_BUS",
+        hv_kv=_BASE_KV,
+        lv_kv=_NN_KV,
+        uk_percent=_TRAFO_UK_PCT,
+        rated_mva=_TRAFO_MVA,
+    )
     # Prosument: midday PV (45 kW) exceeds the local load (10 kW) → net REVERSE
     # export to the grid (the solver signs it; we do not assume it). One netted
     # PQ spec per node (a node carries a single injection, not two specs).
@@ -1111,20 +1216,43 @@ def build_g1() -> dict[str, Any]:
     s.finalize_pq()
     prot = list(_PROTECTION_BY_MACHINE["IBG"])
     return _oze_companion(
-        "G1", substrate=s,
+        "G1",
+        substrate=s,
         buses=[("SN_BUS", _BASE_KV, _ICW_SN_KA), ("NN_BUS", _NN_KV, _ICW_NN_KA)],
-        pcc_bus="NN_BUS", ibg_ka=ibg / 1000.0,
-        source=_pv_source(technology="PV", machine_type="IBG", nc_class="A", control_mode="cosφ=const",
-                          p_zainst_kw=55.0, pn_ac_kw=50.0, p_przylacz_kw=50.0, p_osiagalna_kw=45.0),
+        pcc_bus="NN_BUS",
+        ibg_ka=ibg / 1000.0,
+        source=_pv_source(
+            technology="PV",
+            machine_type="IBG",
+            nc_class="A",
+            control_mode="cosφ=const",
+            p_zainst_kw=55.0,
+            pn_ac_kw=50.0,
+            p_przylacz_kw=50.0,
+            p_osiagalna_kw=45.0,
+        ),
         # Station idiom: source field (PV on nN, SDC) + connection field (interface
         # protection HERE, on nN looking at the OSD network) on the nN busbar.
         fields=[
-            _field("g1-conn", role="connection", kind="POLE_PRZYŁĄCZENIOWE", abb_cell="CBC",
-                   on_bus="NN_BUS", source_ref="enm:Bay.bay_role=LINIA_OUT",
-                   interface_protection=True, protection_codes=prot),
-            _field("g1-src", role="source", kind="PV", abb_cell="SDC",
-                   on_bus="NN_BUS", source_ref="enm:Generator.gen_type=pv_inverter",
-                   interface_protection=False),
+            _field(
+                "g1-conn",
+                role="connection",
+                kind="POLE_PRZYŁĄCZENIOWE",
+                abb_cell="CBC",
+                on_bus="NN_BUS",
+                source_ref="enm:Bay.bay_role=LINIA_OUT",
+                interface_protection=True,
+                protection_codes=prot,
+            ),
+            _field(
+                "g1-src",
+                role="source",
+                kind="PV",
+                abb_cell="SDC",
+                on_bus="NN_BUS",
+                source_ref="enm:Generator.gen_type=pv_inverter",
+                interface_protection=False,
+            ),
         ],
         boundary=_boundary("G-ZALICZNIK", on_bus="NN_BUS", metered=True),
     )
@@ -1139,33 +1267,72 @@ def build_g2() -> dict[str, Any]:
     s.add_bus("PCC_SN", _BASE_KV)
     s.add_bus("NN_COLLECTOR", _NN_KV)
     s.add_line(SR_IN, "GPZ", "PCC_SN", _SN_LINE_R, _SN_LINE_X)
-    s.add_transformer(SR_TR, "PCC_SN", "NN_COLLECTOR", hv_kv=_BASE_KV, lv_kv=_NN_KV, uk_percent=_TRAFO_UK_PCT, rated_mva=1.0)
+    s.add_transformer(
+        SR_TR,
+        "PCC_SN",
+        "NN_COLLECTOR",
+        hv_kv=_BASE_KV,
+        lv_kv=_NN_KV,
+        uk_percent=_TRAFO_UK_PCT,
+        rated_mva=1.0,
+    )
     s.add_pv("NN_COLLECTOR", p_inject_mw=pv_kva / 1000.0 * 0.9)
-    ibg = s.add_inverter("NN_COLLECTOR", rated_kva=pv_kva, un_kv=_NN_KV, k_sc=_IBG_K, source_type="PV")
+    ibg = s.add_inverter(
+        "NN_COLLECTOR", rated_kva=pv_kva, un_kv=_NN_KV, k_sc=_IBG_K, source_type="PV"
+    )
     s.finalize_pq()
     return _oze_companion(
         # A 1 MVA PV collector nN board is specified for its actual Ik'' — a 31.5 kA
         # board (standard rating above the computed ~26.5 kA), so the ≤Icw verdict
         # passes for a correctly-specified board. The verdict still FAILS if Ik''
         # exceeds it (the check is real, not rigged).
-        "G2", substrate=s,
+        "G2",
+        substrate=s,
         buses=[("PCC_SN", _BASE_KV, _ICW_SN_KA), ("NN_COLLECTOR", _NN_KV, 31.5)],
-        pcc_bus="PCC_SN", ibg_ka=ibg / 1000.0,
-        source=_pv_source(technology="PV", machine_type="IBG", nc_class="C", control_mode="Q(U)",
-                          p_zainst_kw=1100.0, pn_ac_kw=990.0, p_przylacz_kw=990.0, p_osiagalna_kw=900.0),
+        pcc_bus="PCC_SN",
+        ibg_ka=ibg / 1000.0,
+        source=_pv_source(
+            technology="PV",
+            machine_type="IBG",
+            nc_class="C",
+            control_mode="Q(U)",
+            p_zainst_kw=1100.0,
+            pn_ac_kw=990.0,
+            p_przylacz_kw=990.0,
+            p_osiagalna_kw=900.0,
+        ),
         # Station idiom: PV source field on the nN collector → block transformer →
         # connection field on the SN PCC busbar (interface protection HERE) +
         # measurement field at the SN boundary. Dedicated MV connection (G-ZKSN).
         fields=[
-            _field("g2-conn", role="connection", kind="POLE_PRZYŁĄCZENIOWE", abb_cell="CBC",
-                   on_bus="PCC_SN", source_ref="enm:Bay.bay_role=LINIA_OUT",
-                   interface_protection=True, protection_codes=list(_PROTECTION_BY_MACHINE["IBG"])),
-            _field("g2-meter", role="measurement", kind="POLE_POMIAROWE", abb_cell="SDM-V",
-                   on_bus="PCC_SN", source_ref="enm:Measurement.purpose=metering",
-                   interface_protection=False),
-            _field("g2-src", role="source", kind="PV", abb_cell="SDC",
-                   on_bus="NN_COLLECTOR", source_ref="enm:Generator.gen_type=pv_inverter",
-                   interface_protection=False),
+            _field(
+                "g2-conn",
+                role="connection",
+                kind="POLE_PRZYŁĄCZENIOWE",
+                abb_cell="CBC",
+                on_bus="PCC_SN",
+                source_ref="enm:Bay.bay_role=LINIA_OUT",
+                interface_protection=True,
+                protection_codes=list(_PROTECTION_BY_MACHINE["IBG"]),
+            ),
+            _field(
+                "g2-meter",
+                role="measurement",
+                kind="POLE_POMIAROWE",
+                abb_cell="SDM-V",
+                on_bus="PCC_SN",
+                source_ref="enm:Measurement.purpose=metering",
+                interface_protection=False,
+            ),
+            _field(
+                "g2-src",
+                role="source",
+                kind="PV",
+                abb_cell="SDC",
+                on_bus="NN_COLLECTOR",
+                source_ref="enm:Generator.gen_type=pv_inverter",
+                interface_protection=False,
+            ),
         ],
         boundary=_boundary("G-ZKSN", on_bus="PCC_SN", metered=True),
     )
@@ -1185,21 +1352,44 @@ def build_g3() -> dict[str, Any]:
     ibg = s.add_inverter("PV_SN", rated_kva=pv_kva, un_kv=_BASE_KV, k_sc=_IBG_K, source_type="PV")
     s.finalize_pq()
     return _oze_companion(
-        "G3", substrate=s,
+        "G3",
+        substrate=s,
         buses=[("PCC_SN", _BASE_KV, _ICW_SN_KA), ("PV_SN", _BASE_KV, _ICW_SN_KA)],
-        pcc_bus="PCC_SN", ibg_ka=ibg / 1000.0,
-        source=_pv_source(technology="PV", machine_type="IBG", nc_class="C", control_mode="cosφ(P)",
-                          p_zainst_kw=1650.0, pn_ac_kw=1500.0, p_przylacz_kw=1500.0, p_osiagalna_kw=1350.0),
+        pcc_bus="PCC_SN",
+        ibg_ka=ibg / 1000.0,
+        source=_pv_source(
+            technology="PV",
+            machine_type="IBG",
+            nc_class="C",
+            control_mode="cosφ(P)",
+            p_zainst_kw=1650.0,
+            pn_ac_kw=1500.0,
+            p_przylacz_kw=1500.0,
+            p_osiagalna_kw=1350.0,
+        ),
         # Station idiom: SN-side PV inverters (source field on PV_SN, no transformer)
         # → connection field on the SN PCC busbar (interface protection HERE).
         # Dedicated MV connection via a cable junction (G-ZKSN).
         fields=[
-            _field("g3-conn", role="connection", kind="POLE_PRZYŁĄCZENIOWE", abb_cell="CBC",
-                   on_bus="PCC_SN", source_ref="enm:Bay.bay_role=LINIA_OUT",
-                   interface_protection=True, protection_codes=list(_PROTECTION_BY_MACHINE["IBG"])),
-            _field("g3-src", role="source", kind="PV", abb_cell="SDC",
-                   on_bus="PV_SN", source_ref="enm:Generator.gen_type=pv_inverter",
-                   interface_protection=False),
+            _field(
+                "g3-conn",
+                role="connection",
+                kind="POLE_PRZYŁĄCZENIOWE",
+                abb_cell="CBC",
+                on_bus="PCC_SN",
+                source_ref="enm:Bay.bay_role=LINIA_OUT",
+                interface_protection=True,
+                protection_codes=list(_PROTECTION_BY_MACHINE["IBG"]),
+            ),
+            _field(
+                "g3-src",
+                role="source",
+                kind="PV",
+                abb_cell="SDC",
+                on_bus="PV_SN",
+                source_ref="enm:Generator.gen_type=pv_inverter",
+                interface_protection=False,
+            ),
         ],
         boundary=_boundary("G-ZKSN", on_bus="PCC_SN", metered=True),
     )
@@ -1215,11 +1405,11 @@ _PV1MW_SN_KV = 15.75
 _PV1MW_NN_KV = 0.8
 
 
-# Schematic-true nameplate voltages (distilled from the owner's execution drawing
-# of the SN/nN station with a 1 MW PV farm — NOT 0.4 kV; the PV inverters output
-# ~800 V AC and the step-up transformer is 15.75/0.8 kV).
-_PV1MW_SN_KV = 15.75
-_PV1MW_NN_KV = 0.8
+# Grid infeed to the PCC is GRID-dominated (X/R ≈ 7, PN-EN 60909) — not a resistive
+# cable. |Z| matches the generic SN line (Ik″ unchanged ≈ 9,9 kA), only X/R (→ κ, ip)
+# is made physical: SN κ ≈ 1,66 ⇒ ip ≈ 23 kA (was X/R=2, κ=1,24 — too resistive).
+_PV1MW_GRID_R = 0.142
+_PV1MW_GRID_X = 0.996
 
 
 # Protection coordination matrix — PV "Buk 1", dok. 1.18 "Wykaz nastaw i
@@ -1229,39 +1419,117 @@ _PV1MW_NN_KV = 0.8
 # inverter setting, the SN relay (e²TANGO-800) setting, the measurement side, and
 # the breaker that trips. Real function names — NOT ANSI 67/67N from memory.
 _BUK1_COORDINATION: list[dict[str, Any]] = [
-    {"lp": 1, "code": "I>", "name": "nadprądowe od przeciążeń",
-     "inverter": "tech. producenta", "relay_sn": "1,2 I_bSN = 6 A → 48 A SN / 5 s",
-     "measure": "SN", "trips": "SN Q0 pole 1"},
-    {"lp": 2, "code": "I>>", "name": "nadprądowe zwarciowe",
-     "inverter": "tech. producenta", "relay_sn": "4 I_bSN = 20 A → 160 A SN / 0,1 s",
-     "measure": "SN", "trips": "SN Q0 pole 1"},
-    {"lp": 3, "code": "Ust I>", "name": "przed wzrostem napięcia",
-     "inverter": "1,1 Un = 880 V (16,5 kV) / 5 s", "relay_sn": "1,12 U_bSN = 112 V → 16,80 kV / 3 s",
-     "measure": "SN", "trips": "nN Q1"},
-    {"lp": 4, "code": "Ust II>", "name": "przed wzrostem napięcia",
-     "inverter": "1,15 Un = 920 V (17,25 kV) / 0,05 s", "relay_sn": "1,15 U_bSN = 115 V → 17,25 kV / 0,3 s",
-     "measure": "SN", "trips": "SN Q0 pole 1"},
-    {"lp": 5, "code": "Ust I<", "name": "przed obniżeniem napięcia",
-     "inverter": "0,8 Un = 640 V (12,00 kV) / 0,05 s", "relay_sn": "0,8 U_bnN = 80 V → 12,00 kV / 5 s",
-     "measure": "nN", "trips": "nN Q1"},
-    {"lp": 6, "code": "f>", "name": "przed wzrostem częstotliwości",
-     "inverter": "51,5 Hz / 0,05 s", "relay_sn": "51,5 Hz / 0,3 s", "measure": "nN", "trips": "nN Q1"},
-    {"lp": 7, "code": "f<", "name": "przed obniżeniem częstotliwości",
-     "inverter": "47,5 Hz / 0,05 s", "relay_sn": "47,5 Hz / 0,3 s", "measure": "nN", "trips": "nN Q1"},
-    {"lp": 8, "code": "df/dt", "name": "częstotliwościowe (RoCoF)",
-     "inverter": "2 Hz/s / 0,05 s", "relay_sn": "2 Hz/s / 0,3 s", "measure": "nN", "trips": "nN Q1"},
-    {"lp": 9, "code": "G0>", "name": "konduktancyjne",
-     "inverter": "—", "relay_sn": "0,8 mS / 0,3 s", "measure": "SN", "trips": "SN Q0 pole 1"},
-    {"lp": 10, "code": "3U0", "name": "zerowo-napięciowe",
-     "inverter": "—", "relay_sn": "30 V / 5 s", "measure": "SN", "trips": "SN Q0 pole 1"},
-    {"lp": 11, "code": "I0>", "name": "zerowo-prądowe",
-     "inverter": "—", "relay_sn": "10 A / 0,2 s", "measure": "SN", "trips": "SN Q0 pole 1"},
-    {"lp": 12, "code": "SPZ", "name": "samoczynne ponowne załączenie",
-     "inverter": "od f>, f<, df/dt, Ust I< / 60 s", "relay_sn": "od f>, f<, df/dt, Ust I< / 600 s",
-     "measure": "nN", "trips": "nN Q1"},
+    {
+        "lp": 1,
+        "code": "I>",
+        "name": "nadprądowe od przeciążeń",
+        "inverter": "tech. producenta",
+        "relay_sn": "1,2 I_bSN = 6 A → 48 A SN / 5 s",
+        "measure": "SN",
+        "trips": "SN Q0 pole 1",
+    },
+    {
+        "lp": 2,
+        "code": "I>>",
+        "name": "nadprądowe zwarciowe",
+        "inverter": "tech. producenta",
+        "relay_sn": "4 I_bSN = 20 A → 160 A SN / 0,1 s",
+        "measure": "SN",
+        "trips": "SN Q0 pole 1",
+    },
+    {
+        "lp": 3,
+        "code": "Ust I>",
+        "name": "przed wzrostem napięcia",
+        "inverter": "1,1 Un = 880 V (16,5 kV) / 5 s",
+        "relay_sn": "1,12 U_bSN = 112 V → 16,80 kV / 3 s",
+        "measure": "SN",
+        "trips": "nN Q1",
+    },
+    {
+        "lp": 4,
+        "code": "Ust II>",
+        "name": "przed wzrostem napięcia",
+        "inverter": "1,15 Un = 920 V (17,25 kV) / 0,05 s",
+        "relay_sn": "1,15 U_bSN = 115 V → 17,25 kV / 0,3 s",
+        "measure": "SN",
+        "trips": "SN Q0 pole 1",
+    },
+    {
+        "lp": 5,
+        "code": "Ust I<",
+        "name": "przed obniżeniem napięcia",
+        "inverter": "0,8 Un = 640 V (12,00 kV) / 0,05 s",
+        "relay_sn": "0,8 U_bnN = 80 V → 12,00 kV / 5 s",
+        "measure": "nN",
+        "trips": "nN Q1",
+    },
+    {
+        "lp": 6,
+        "code": "f>",
+        "name": "przed wzrostem częstotliwości",
+        "inverter": "51,5 Hz / 0,05 s",
+        "relay_sn": "51,5 Hz / 0,3 s",
+        "measure": "nN",
+        "trips": "nN Q1",
+    },
+    {
+        "lp": 7,
+        "code": "f<",
+        "name": "przed obniżeniem częstotliwości",
+        "inverter": "47,5 Hz / 0,05 s",
+        "relay_sn": "47,5 Hz / 0,3 s",
+        "measure": "nN",
+        "trips": "nN Q1",
+    },
+    {
+        "lp": 8,
+        "code": "df/dt",
+        "name": "częstotliwościowe (RoCoF)",
+        "inverter": "2 Hz/s / 0,05 s",
+        "relay_sn": "2 Hz/s / 0,3 s",
+        "measure": "nN",
+        "trips": "nN Q1",
+    },
+    {
+        "lp": 9,
+        "code": "G0>",
+        "name": "konduktancyjne",
+        "inverter": "—",
+        "relay_sn": "0,8 mS / 0,3 s",
+        "measure": "SN",
+        "trips": "SN Q0 pole 1",
+    },
+    {
+        "lp": 10,
+        "code": "3U0",
+        "name": "zerowo-napięciowe",
+        "inverter": "—",
+        "relay_sn": "30 V / 5 s",
+        "measure": "SN",
+        "trips": "SN Q0 pole 1",
+    },
+    {
+        "lp": 11,
+        "code": "I0>",
+        "name": "zerowo-prądowe",
+        "inverter": "—",
+        "relay_sn": "10 A / 0,2 s",
+        "measure": "SN",
+        "trips": "SN Q0 pole 1",
+    },
+    {
+        "lp": 12,
+        "code": "SPZ",
+        "name": "samoczynne ponowne załączenie",
+        "inverter": "od f>, f<, df/dt, Ust I< / 60 s",
+        "relay_sn": "od f>, f<, df/dt, Ust I< / 600 s",
+        "measure": "nN",
+        "trips": "nN Q1",
+    },
 ]
 # Protection function CODES per device, derived from the matrix (real names).
-_BUK1_SN_CODES = ["I>", "I>>", "Ust II>", "G0>", "3U0", "I0>"]   # SN Q0 (field 1) — hard trips
+_BUK1_SN_CODES = ["I>", "I>>", "Ust II>", "G0>", "3U0", "I0>"]  # SN Q0 (field 1) — hard trips
 _BUK1_NN_CODES = ["Ust I>", "Ust I<", "f>", "f<", "df/dt", "SPZ"]  # nN Q1 — soft trips
 
 
@@ -1297,8 +1565,17 @@ def build_g4_pvtr() -> dict[str, Any]:
     s.add_slack("GPZ")
     s.add_bus("SN_PCC", _PV1MW_SN_KV)
     s.add_bus("NN_800", _PV1MW_NN_KV)
-    s.add_line(SR_IN, "GPZ", "SN_PCC", _SN_LINE_R, _SN_LINE_X)
-    s.add_transformer(SR_TR, "SN_PCC", "NN_800", hv_kv=_PV1MW_SN_KV, lv_kv=_PV1MW_NN_KV, uk_percent=6.0, rated_mva=1.0)
+    s.add_line(SR_IN, "GPZ", "SN_PCC", _PV1MW_GRID_R, _PV1MW_GRID_X)
+    s.add_transformer(
+        SR_TR,
+        "SN_PCC",
+        "NN_800",
+        hv_kv=_PV1MW_SN_KV,
+        lv_kv=_PV1MW_NN_KV,
+        uk_percent=6.0,
+        rated_mva=1.0,
+        x_over_r=4.5,  # §B-02 delta: physical R/X (κ_nN ≈ 1.53), |Z| unchanged
+    )
     # Three SEPARATE inverter injections on the nN bus (each its own feeder field)
     # + the own-needs load. The solver decides the net export direction.
     inv_branch_refs = [f"sr/branch/inv{i + 1}" for i in range(inv_count)]
@@ -1313,13 +1590,23 @@ def build_g4_pvtr() -> dict[str, Any]:
         s.add_inverter(node, rated_kva=inv_kva, un_kv=_PV1MW_NN_KV, k_sc=_IBG_K, source_type="PV")
     s.add_load("NN_800", p_mw=own_load_kw / 1000.0, q_mvar=0.01)  # RPW-PV draw
     s.finalize_pq()
-    total_ibg_ka = inv_count * (_IBG_K * (inv_kva * 1000.0 / (_SQRT3 * _PV1MW_NN_KV * 1000.0))) / 1000.0
+    total_ibg_ka = (
+        inv_count * (_IBG_K * (inv_kva * 1000.0 / (_SQRT3 * _PV1MW_NN_KV * 1000.0))) / 1000.0
+    )
 
     # Hierarchy: DC/AC ≈ 1.0 ⇒ achievable AC power = AC nominal = DC nameplate. Keeping
     # P_osiągalna ≥ the solver export (≈ 0.98 MW) — a station cannot export more than it
     # can achieve. All four equal (999.6 kW) is the no-oversizing case.
-    src = _pv_source(technology="PV 1 MW „Buk 1”", machine_type="IBG", nc_class="C", control_mode="Q(U)",
-                     p_zainst_kw=p_dc_kwp, pn_ac_kw=p_dc_kwp, p_przylacz_kw=p_dc_kwp, p_osiagalna_kw=p_dc_kwp)
+    src = _pv_source(
+        technology="PV 1 MW „Buk 1”",
+        machine_type="IBG",
+        nc_class="C",
+        control_mode="Q(U)",
+        p_zainst_kw=p_dc_kwp,
+        pn_ac_kw=p_dc_kwp,
+        p_przylacz_kw=p_dc_kwp,
+        p_osiagalna_kw=p_dc_kwp,
+    )
     # Override protection codes with the REAL Buk 1 function names (not ANSI).
     src["protection_codes"] = list(_BUK1_SN_CODES)
     src["coordination"] = {
@@ -1329,8 +1616,14 @@ def build_g4_pvtr() -> dict[str, Any]:
             "soft": "f>/f</df-dt, Ust I>/I< → nN Q1 (mniej inwazyjne, SPZ 600 s)",
             "hard": "zwarcia/doziemienia/Ust II> → SN Q0 pole 1 (izolacja od OSD)",
         },
-        "base": {"i_b_sn_a": 40.0, "u_b_sn_kv": 15.0, "u_b_nn_v": 800.0,
-                 "in_sn_a": 38.47, "in_nn_a": 721.40, "sn_kw": 1039.23},
+        "base": {
+            "i_b_sn_a": 40.0,
+            "u_b_sn_kv": 15.0,
+            "u_b_nn_v": 800.0,
+            "in_sn_a": 38.47,
+            "in_nn_a": 721.40,
+            "sn_kw": 1039.23,
+        },
         "matrix": _BUK1_COORDINATION,
     }
     src["schematic"] = {
@@ -1343,10 +1636,23 @@ def build_g4_pvtr() -> dict[str, Any]:
         "pv_modules": f"JA SOLAR JAM72D40-595/MB · 595 Wp · {inv_count}×{modules_per_inv} szt = {p_dc_kwp:.1f} kWp DC",
         "inverters": f"{inv_count} × ~{kwp_per_inv:.0f} kW (BTVC 315 A/800 V na pole)",
         "dc_ac_ratio": round(p_dc_kwp / 1000.0, 3),
-        "ct": {"type": "CTM 20", "ratio": "40/5/5/5 A/A", "ith_ka": 16.0, "idyn_ka": 40.0,
-               "cores": ["I 5VA 0,2s(FS5) pomiar", "II 5VA 0,2s analizator", "III 5VA 5P10 zab."]},
-        "vt": {"type": "VTB 20", "ratio": "15/√3 : 4×(0,1/√3)",
-               "windings": ["I pomiar 0,2", "II pomiar 0,2", "III zab. 3P", "IV zab. 3P (otwarty trójkąt)"]},
+        "ct": {
+            "type": "CTM 20",
+            "ratio": "40/5/5/5 A/A",
+            "ith_ka": 16.0,
+            "idyn_ka": 40.0,
+            "cores": ["I 5VA 0,2s(FS5) pomiar", "II 5VA 0,2s analizator", "III 5VA 5P10 zab."],
+        },
+        "vt": {
+            "type": "VTB 20",
+            "ratio": "15/√3 : 4×(0,1/√3)",
+            "windings": [
+                "I pomiar 0,2",
+                "II pomiar 0,2",
+                "III zab. 3P",
+                "IV zab. 3P (otwarty trójkąt)",
+            ],
+        },
         "own_needs": "RPW-PV · TS 5 kVA 800/230 V · F0=HN-C20/1 · F1-F10",
     }
     # §5 P0 — OSD neutral-point earthing determines the SN single-phase earth-fault
@@ -1369,60 +1675,139 @@ def build_g4_pvtr() -> dict[str, Any]:
     }
     # nN inverter feeder fields (≥3, not one block) + Q1 main + own-needs.
     nn_fields = [
-        _field(f"g4-inv{i + 1}", role="source",
-               kind=f"FALOWNIK {i + 1} · ~{kwp_per_inv:.0f} kW", abb_cell="SDC",
-               on_bus="NN_800", source_ref=f"enm:Generator.gen_type=pv_inverter;dok:1.18_falownik_{i + 1}",
-               interface_protection=False)
+        _field(
+            f"g4-inv{i + 1}",
+            role="source",
+            kind=f"FALOWNIK {i + 1} · ~{kwp_per_inv:.0f} kW",
+            abb_cell="SDC",
+            on_bus="NN_800",
+            source_ref=f"enm:Generator.gen_type=pv_inverter;dok:1.18_falownik_{i + 1}",
+            interface_protection=False,
+        )
         for i in range(inv_count)
     ]
     return _oze_companion(
-        "G4-PVTR", substrate=s,
+        "G4-PVTR",
+        substrate=s,
         # SN withstand from CTM20 (Ith 16 kA); nN 800 V board 50 kA.
         buses=[("SN_PCC", _PV1MW_SN_KV, 16.0), ("NN_800", _PV1MW_NN_KV, 50.0)],
-        pcc_bus="SN_PCC", ibg_ka=total_ibg_ka,
+        pcc_bus="SN_PCC",
+        ibg_ka=total_ibg_ka,
         source=src,
         # SN: POLE 1 LINIOWE — VCB (interface protection / hard trips, granica ZKSN
         # na kablu) + POLE 2 TRANSFORMATOROWE — SŁ2+U rozłącznik zasilający trafo.
         # Measurement is a FUNCTION inside POLE 1 (rdzeń I CTM20) — NOT a phantom
         # field. nN: Q1 main breaker + 3 inverter feeders + RPW-PV own-needs.
         fields=[
-            _field("g4-vcb", role="connection", kind="POLE 1 — VCB (e²TANGO-800)", abb_cell="CBC",
-                   on_bus="SN_PCC", source_ref="enm:Bay.bay_role=LINIA_OUT;schemat:POLE_NR_1_VCB",
-                   interface_protection=True, protection_codes=list(_BUK1_SN_CODES),
-                   # Apparatus stack busbar→cable (schemat POLE NR 1, dok. wykonawczy).
-                   apparatus=[
-                       _app("vcb/q9", kind="DS", designation="Q9 (odłącznik szynowy)", placement="UPSTREAM"),
-                       _app("vcb/q0", kind="CB", designation="Q0", catalog="TGI 24", placement="MIDSTREAM"),
-                       _app("vcb/ct", kind="CT", designation="T1.3", catalog="CTM 20 · 40/5/5/5", placement="MIDSTREAM",
-                            source_ref="schemat:CTM20_3rdz"),
-                       _app("vcb/vt", kind="VT", designation="TU1.3", catalog="VTB 20", placement="OFF_PATH",
-                            source_ref="schemat:VTB20_4uzw"),
-                       _app("vcb/sa", kind="SURGE_ARRESTER", designation="POLIM-D 18-06", placement="OFF_PATH"),
-                       _app("vcb/head", kind="CABLE_HEAD", designation="ITK 224", placement="DOWNSTREAM"),
-                       _app("vcb/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
-                   ],
-                   # Kabel zasilający z OSD wchodzi BOKIEM-L na głowicę ITK 224 (port sn_input).
-                   port=_port("vcb/port", kind="sn_input", un_kv=_PV1MW_SN_KV, entry_side="BOK-L",
-                              occupied_by="seg/kabel-osd", cable="3×XRUHAKXS 1×70/25 mm² · L≈484 m",
-                              source_ref="enm:Port.kind=sn_input;schemat:kabel_OSD")),
+            _field(
+                "g4-vcb",
+                role="connection",
+                kind="POLE 1 — VCB (e²TANGO-800)",
+                abb_cell="CBC",
+                on_bus="SN_PCC",
+                source_ref="enm:Bay.bay_role=LINIA_OUT;schemat:POLE_NR_1_VCB",
+                interface_protection=True,
+                protection_codes=list(_BUK1_SN_CODES),
+                # Apparatus stack busbar→cable (schemat POLE NR 1, dok. wykonawczy).
+                apparatus=[
+                    _app(
+                        "vcb/q9",
+                        kind="DS",
+                        designation="Q9 (odłącznik szynowy)",
+                        placement="UPSTREAM",
+                    ),
+                    _app(
+                        "vcb/q0",
+                        kind="CB",
+                        designation="Q0",
+                        catalog="TGI 24",
+                        placement="MIDSTREAM",
+                    ),
+                    _app(
+                        "vcb/ct",
+                        kind="CT",
+                        designation="T1.3",
+                        catalog="CTM 20 · 40/5/5/5",
+                        placement="MIDSTREAM",
+                        source_ref="schemat:CTM20_3rdz",
+                    ),
+                    _app(
+                        "vcb/vt",
+                        kind="VT",
+                        designation="TU1.3",
+                        catalog="VTB 20",
+                        placement="OFF_PATH",
+                        source_ref="schemat:VTB20_4uzw",
+                    ),
+                    _app(
+                        "vcb/sa",
+                        kind="SURGE_ARRESTER",
+                        designation="POLIM-D 18-06",
+                        placement="OFF_PATH",
+                    ),
+                    _app(
+                        "vcb/head", kind="CABLE_HEAD", designation="ITK 224", placement="DOWNSTREAM"
+                    ),
+                    _app("vcb/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
+                ],
+                # Kabel zasilający z OSD wchodzi BOKIEM-L na głowicę ITK 224 (port sn_input).
+                port=_port(
+                    "vcb/port",
+                    kind="sn_input",
+                    un_kv=_PV1MW_SN_KV,
+                    entry_side="BOK-L",
+                    occupied_by="seg/kabel-osd",
+                    cable="3×XRUHAKXS 1×70/25 mm² · L≈484 m",
+                    source_ref="enm:Port.kind=sn_input;schemat:kabel_OSD",
+                ),
+            ),
             # POLE 2 — pole TRANSFORMATOROWE (nie „drugi kabel do OSD”): rozłącznik
             # GTR5 + uziemnik → głowica → kabel 3×YHAKXS schodzi DO TRANSFORMATORA,
             # który wisi POD tym polem. Stacja jest KOŃCOWA — w SN nie ma wyjścia.
-            _field("g4-sl2u", role="transformer", kind="POLE 2 — SŁ2+U (GTR5) · pole transformatorowe", abb_cell="SDC",
-                   on_bus="SN_PCC", source_ref="enm:Bay.bay_role=TRANSFORMATOR;schemat:POLE_NR_2_SL2U",
-                   interface_protection=False,
-                   apparatus=[
-                       _app("sl2u/gtr5", kind="LOAD_SWITCH", designation="GTR 5 (rozłącznik)", placement="MIDSTREAM"),
-                       _app("sl2u/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
-                       _app("sl2u/head", kind="CABLE_HEAD", designation="ITK 224 → 3×YHAKXS do TR", placement="DOWNSTREAM"),
-                   ]),
-            _field("g4-q1", role="breaker", kind="Q1 nN · 3WA1108 800 A", abb_cell="CBC",
-                   on_bus="NN_800", source_ref="dok:1.18_karta_Q1_3WA1108",
-                   interface_protection=True, protection_codes=list(_BUK1_NN_CODES)),
+            _field(
+                "g4-sl2u",
+                role="transformer",
+                kind="POLE 2 — SŁ2+U (GTR5) · pole transformatorowe",
+                abb_cell="SDC",
+                on_bus="SN_PCC",
+                source_ref="enm:Bay.bay_role=TRANSFORMATOR;schemat:POLE_NR_2_SL2U",
+                interface_protection=False,
+                apparatus=[
+                    _app(
+                        "sl2u/gtr5",
+                        kind="LOAD_SWITCH",
+                        designation="GTR 5 (rozłącznik)",
+                        placement="MIDSTREAM",
+                    ),
+                    _app("sl2u/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
+                    _app(
+                        "sl2u/head",
+                        kind="CABLE_HEAD",
+                        designation="ITK 224 → 3×YHAKXS do TR",
+                        placement="DOWNSTREAM",
+                    ),
+                ],
+            ),
+            _field(
+                "g4-q1",
+                role="breaker",
+                kind="Q1 nN · 3WA1108 800 A",
+                abb_cell="CBC",
+                on_bus="NN_800",
+                source_ref="dok:1.18_karta_Q1_3WA1108",
+                interface_protection=True,
+                protection_codes=list(_BUK1_NN_CODES),
+            ),
             *nn_fields,
-            _field("g4-own", role="load", kind="RPW-PV (potrzeby własne)", abb_cell="SDC",
-                   on_bus="NN_800", source_ref="enm:Bay.specialization=POTRZEBY_WLASNE;schemat:RPW-PV",
-                   interface_protection=False),
+            _field(
+                "g4-own",
+                role="load",
+                kind="RPW-PV (potrzeby własne)",
+                abb_cell="SDC",
+                on_bus="NN_800",
+                source_ref="enm:Bay.specialization=POTRZEBY_WLASNE;schemat:RPW-PV",
+                interface_protection=False,
+            ),
         ],
         boundary=_boundary("G-ZKSN", on_bus="SN_PCC", metered=True),
     )
@@ -1430,7 +1815,7 @@ def build_g4_pvtr() -> dict[str, Any]:
 
 # ── G5 — BESS (magazyn energii) — GENERYCZNY archetyp wg norm ───────────────────
 _BESS_SN_KV = _BASE_KV  # 15 kV generic SN (NOT a specific installation)
-_BESS_NN_KV = 0.4       # 0.4 kV generic nN (PCS side)
+_BESS_NN_KV = 0.4  # 0.4 kV generic nN (PCS side)
 
 
 def build_g5_bess() -> dict[str, Any]:
@@ -1447,17 +1832,19 @@ def build_g5_bess() -> dict[str, Any]:
     """
     n_pcs = 2
     pcs_kw = 500.0
-    p_pcs_kw = n_pcs * pcs_kw          # 1000 kW mocy PCS
-    capacity_kwh = 2000.0              # magazyn 2 h (generic)
-    pcs_kva = pcs_kw                    # cosφ≈1 PCS
-    own_load_kw = 10.0                  # potrzeby własne (HVAC/BMS)
+    p_pcs_kw = n_pcs * pcs_kw  # 1000 kW mocy PCS
+    capacity_kwh = 2000.0  # magazyn 2 h (generic)
+    pcs_kva = pcs_kw  # cosφ≈1 PCS
+    own_load_kw = 10.0  # potrzeby własne (HVAC/BMS)
 
     s = _Substrate()
     s.add_slack("GPZ")
     s.add_bus("SN_PCC", _BESS_SN_KV)
     s.add_bus("NN", _BESS_NN_KV)
     s.add_line(SR_IN, "GPZ", "SN_PCC", _SN_LINE_R, _SN_LINE_X)
-    s.add_transformer(SR_TR, "SN_PCC", "NN", hv_kv=_BESS_SN_KV, lv_kv=_BESS_NN_KV, uk_percent=6.0, rated_mva=1.25)
+    s.add_transformer(
+        SR_TR, "SN_PCC", "NN", hv_kv=_BESS_SN_KV, lv_kv=_BESS_NN_KV, uk_percent=6.0, rated_mva=1.25
+    )
     # DISCHARGE (export) = stan podstawowy pokazany: każdy PCS oddaje moc (ujemne
     # obciążenie = generacja). Kierunek/wartość z FROZEN solvera (nie z palca).
     pcs_branch_refs = [f"sr/branch/pcs{i + 1}" for i in range(n_pcs)]
@@ -1471,9 +1858,16 @@ def build_g5_bess() -> dict[str, Any]:
     s.finalize_pq()
     total_ibg_ka = n_pcs * (_IBG_K * (pcs_kva * 1000.0 / (_SQRT3 * _BESS_NN_KV * 1000.0))) / 1000.0
 
-    src = _pv_source(technology="BESS (magazyn energii)", machine_type="IBG", nc_class="C",
-                     control_mode="P(f) · Q(U) · 2-kier.",
-                     p_zainst_kw=p_pcs_kw, pn_ac_kw=p_pcs_kw, p_przylacz_kw=p_pcs_kw, p_osiagalna_kw=950.0)
+    src = _pv_source(
+        technology="BESS (magazyn energii)",
+        machine_type="IBG",
+        nc_class="C",
+        control_mode="P(f) · Q(U) · 2-kier.",
+        p_zainst_kw=p_pcs_kw,
+        pn_ac_kw=p_pcs_kw,
+        p_przylacz_kw=p_pcs_kw,
+        p_osiagalna_kw=950.0,
+    )
     # BESS-specific: bidirectional + the ENERGY axis (kWh) alongside the power axis.
     src["bidirectional"] = True
     src["storage"] = {
@@ -1488,53 +1882,130 @@ def build_g5_bess() -> dict[str, Any]:
         "bidirectional": True,
     }
     nn_fields = [
-        _field(f"g5-pcs{i + 1}", role="source", kind=f"PCS {i + 1} · {pcs_kw:.0f} kW (2-kier.)", abb_cell="SDC",
-               on_bus="NN", source_ref=f"enm:Generator.gen_type=bess;std:NC_RfG_pcs_{i + 1}",
-               interface_protection=False)
+        _field(
+            f"g5-pcs{i + 1}",
+            role="source",
+            kind=f"PCS {i + 1} · {pcs_kw:.0f} kW (2-kier.)",
+            abb_cell="SDC",
+            on_bus="NN",
+            source_ref=f"enm:Generator.gen_type=bess;std:NC_RfG_pcs_{i + 1}",
+            interface_protection=False,
+        )
         for i in range(n_pcs)
     ]
     return _oze_companion(
-        "G5-BESS", substrate=s,
+        "G5-BESS",
+        substrate=s,
         # SN withstand 16 kA (generic SN board); nN 50 kA.
         buses=[("SN_PCC", _BESS_SN_KV, 16.0), ("NN", _BESS_NN_KV, 50.0)],
-        pcc_bus="SN_PCC", ibg_ka=total_ibg_ka,
+        pcc_bus="SN_PCC",
+        ibg_ka=total_ibg_ka,
         source=src,
         # Stacja końcowa: pole LINIOWE (przyłącze OSD, granica na kablu) + pole
         # TRANSFORMATOROWE (trafo pod polem). nN: Q1 + n×PCS + potrzeby własne.
         # Aparaty/oznaczenia GENERYCZNE wg norm (nie katalog konkretnej instalacji).
         fields=[
-            _field("g5-line", role="connection", kind="POLE LINIOWE SN", abb_cell="CBC",
-                   on_bus="SN_PCC", source_ref="enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe",
-                   interface_protection=True, protection_codes=list(_PROTECTION_BY_MACHINE["IBG"]),
-                   apparatus=[
-                       _app("line/ds", kind="DS", designation="Q1 (odłącznik szynowy)", placement="UPSTREAM"),
-                       _app("line/cb", kind="CB", designation="Q0 (wyłącznik SN)", placement="MIDSTREAM"),
-                       _app("line/ct", kind="CT", designation="przekładnik prądowy", placement="MIDSTREAM",
-                            source_ref="std:IEC_61869_CT"),
-                       _app("line/vt", kind="VT", designation="przekładnik napięciowy", placement="OFF_PATH",
-                            source_ref="std:IEC_61869_VT"),
-                       _app("line/sa", kind="SURGE_ARRESTER", designation="ogranicznik przepięć", placement="OFF_PATH"),
-                       _app("line/head", kind="CABLE_HEAD", designation="głowica kablowa", placement="DOWNSTREAM"),
-                       _app("line/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
-                   ],
-                   port=_port("line/port", kind="sn_input", un_kv=_BESS_SN_KV, entry_side="BOK-L",
-                              occupied_by="seg/kabel-osd", cable="kabel SN do OSD (typ wg projektu)",
-                              source_ref="enm:Port.kind=sn_input;std:przylacze_SN")),
-            _field("g5-trafo", role="transformer", kind="POLE TRANSFORMATOROWE", abb_cell="SDC",
-                   on_bus="SN_PCC", source_ref="enm:Bay.bay_role=TRANSFORMATOR;std:IEC_62271_pole_trafo",
-                   interface_protection=False,
-                   apparatus=[
-                       _app("trafo/ls", kind="LOAD_SWITCH", designation="rozłącznik", placement="MIDSTREAM"),
-                       _app("trafo/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
-                       _app("trafo/head", kind="CABLE_HEAD", designation="głowica → trafo", placement="DOWNSTREAM"),
-                   ]),
-            _field("g5-q1", role="breaker", kind="Q1 nN (wyłącznik główny)", abb_cell="CBC",
-                   on_bus="NN", source_ref="std:IEC_60947_nN_ACB",
-                   interface_protection=True, protection_codes=["I>", "I>>"]),
+            _field(
+                "g5-line",
+                role="connection",
+                kind="POLE LINIOWE SN",
+                abb_cell="CBC",
+                on_bus="SN_PCC",
+                source_ref="enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe",
+                interface_protection=True,
+                protection_codes=list(_PROTECTION_BY_MACHINE["IBG"]),
+                apparatus=[
+                    _app(
+                        "line/ds",
+                        kind="DS",
+                        designation="Q1 (odłącznik szynowy)",
+                        placement="UPSTREAM",
+                    ),
+                    _app(
+                        "line/cb", kind="CB", designation="Q0 (wyłącznik SN)", placement="MIDSTREAM"
+                    ),
+                    _app(
+                        "line/ct",
+                        kind="CT",
+                        designation="przekładnik prądowy",
+                        placement="MIDSTREAM",
+                        source_ref="std:IEC_61869_CT",
+                    ),
+                    _app(
+                        "line/vt",
+                        kind="VT",
+                        designation="przekładnik napięciowy",
+                        placement="OFF_PATH",
+                        source_ref="std:IEC_61869_VT",
+                    ),
+                    _app(
+                        "line/sa",
+                        kind="SURGE_ARRESTER",
+                        designation="ogranicznik przepięć",
+                        placement="OFF_PATH",
+                    ),
+                    _app(
+                        "line/head",
+                        kind="CABLE_HEAD",
+                        designation="głowica kablowa",
+                        placement="DOWNSTREAM",
+                    ),
+                    _app("line/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
+                ],
+                port=_port(
+                    "line/port",
+                    kind="sn_input",
+                    un_kv=_BESS_SN_KV,
+                    entry_side="BOK-L",
+                    occupied_by="seg/kabel-osd",
+                    cable="kabel SN do OSD (typ wg projektu)",
+                    source_ref="enm:Port.kind=sn_input;std:przylacze_SN",
+                ),
+            ),
+            _field(
+                "g5-trafo",
+                role="transformer",
+                kind="POLE TRANSFORMATOROWE",
+                abb_cell="SDC",
+                on_bus="SN_PCC",
+                source_ref="enm:Bay.bay_role=TRANSFORMATOR;std:IEC_62271_pole_trafo",
+                interface_protection=False,
+                apparatus=[
+                    _app(
+                        "trafo/ls",
+                        kind="LOAD_SWITCH",
+                        designation="rozłącznik",
+                        placement="MIDSTREAM",
+                    ),
+                    _app("trafo/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
+                    _app(
+                        "trafo/head",
+                        kind="CABLE_HEAD",
+                        designation="głowica → trafo",
+                        placement="DOWNSTREAM",
+                    ),
+                ],
+            ),
+            _field(
+                "g5-q1",
+                role="breaker",
+                kind="Q1 nN (wyłącznik główny)",
+                abb_cell="CBC",
+                on_bus="NN",
+                source_ref="std:IEC_60947_nN_ACB",
+                interface_protection=True,
+                protection_codes=["I>", "I>>"],
+            ),
             *nn_fields,
-            _field("g5-own", role="load", kind="potrzeby własne (HVAC/BMS)", abb_cell="SDC",
-                   on_bus="NN", source_ref="enm:Bay.specialization=POTRZEBY_WLASNE;std:potrzeby_wlasne",
-                   interface_protection=False),
+            _field(
+                "g5-own",
+                role="load",
+                kind="potrzeby własne (HVAC/BMS)",
+                abb_cell="SDC",
+                on_bus="NN",
+                source_ref="enm:Bay.specialization=POTRZEBY_WLASNE;std:potrzeby_wlasne",
+                interface_protection=False,
+            ),
         ],
         boundary=_boundary("G-ZKSN", on_bus="SN_PCC", metered=True),
     )
@@ -1542,7 +2013,7 @@ def build_g5_bess() -> dict[str, Any]:
 
 # ── G6 — Wiatr Typ 4 (pełnoprzekształtnikowy) — GENERYCZNY archetyp wg norm ──────
 _WIND_COLLECTOR_KV = 30.0  # 30 kV generic wind SN collector voltage
-_WIND_LV_KV = 0.69         # 0.69 kV turbine generator/converter LV
+_WIND_LV_KV = 0.69  # 0.69 kV turbine generator/converter LV
 
 
 def build_g6_wind() -> dict[str, Any]:
@@ -1560,10 +2031,10 @@ def build_g6_wind() -> dict[str, Any]:
     (IEC 60909-0:2016 §6.7) — jak PV — NIE maszyna (bramka J).
     """
     n_turbines = 3
-    turbine_kw = 2000.0           # 2 MW per turbine (generic Type 4)
-    turbine_kva = turbine_kw       # cosφ≈1 full converter
+    turbine_kw = 2000.0  # 2 MW per turbine (generic Type 4)
+    turbine_kva = turbine_kw  # cosφ≈1 full converter
     p_farm_kw = n_turbines * turbine_kw  # 6000 kW
-    tr_mva = 2.5                   # turbine transformer
+    tr_mva = 2.5  # turbine transformer
 
     s = _Substrate()
     s.add_slack("GPZ")
@@ -1574,17 +2045,37 @@ def build_g6_wind() -> dict[str, Any]:
     for i in range(n_turbines):
         lv = f"WTG_LV_{i + 1}"
         s.add_bus(lv, _WIND_LV_KV)
-        s.add_transformer(f"sr/branch/wtg-tr{i + 1}", "SN_PCC", lv,
-                          hv_kv=_WIND_COLLECTOR_KV, lv_kv=_WIND_LV_KV, uk_percent=6.0, rated_mva=tr_mva)
+        s.add_transformer(
+            f"sr/branch/wtg-tr{i + 1}",
+            "SN_PCC",
+            lv,
+            hv_kv=_WIND_COLLECTOR_KV,
+            lv_kv=_WIND_LV_KV,
+            uk_percent=6.0,
+            rated_mva=tr_mva,
+        )
         s.add_load(lv, p_mw=-turbine_kw / 1000.0, q_mvar=0.0)
-        s.add_inverter(lv, rated_kva=turbine_kva, un_kv=_WIND_LV_KV, k_sc=_IBG_K, source_type="WIND")
+        s.add_inverter(
+            lv, rated_kva=turbine_kva, un_kv=_WIND_LV_KV, k_sc=_IBG_K, source_type="WIND"
+        )
     s.finalize_pq()
     # IBG contribution reflected to the collector (power-invariant In@collector).
-    total_ibg_ka = n_turbines * (_IBG_K * (turbine_kva * 1000.0 / (_SQRT3 * _WIND_COLLECTOR_KV * 1000.0))) / 1000.0
+    total_ibg_ka = (
+        n_turbines
+        * (_IBG_K * (turbine_kva * 1000.0 / (_SQRT3 * _WIND_COLLECTOR_KV * 1000.0)))
+        / 1000.0
+    )
 
-    src = _pv_source(technology="Wiatr — turbiny pełnoprzekształtnikowe (Typ 4)", machine_type="IBG",
-                     nc_class="C", control_mode="P(f) · Q(U)",
-                     p_zainst_kw=p_farm_kw, pn_ac_kw=p_farm_kw, p_przylacz_kw=p_farm_kw, p_osiagalna_kw=5700.0)
+    src = _pv_source(
+        technology="Wiatr — turbiny pełnoprzekształtnikowe (Typ 4)",
+        machine_type="IBG",
+        nc_class="C",
+        control_mode="P(f) · Q(U)",
+        p_zainst_kw=p_farm_kw,
+        pn_ac_kw=p_farm_kw,
+        p_przylacz_kw=p_farm_kw,
+        p_osiagalna_kw=5700.0,
+    )
     # Wind-specific: the internal SN collector network (the distinguishing block).
     src["collector"] = {
         "source_ref": "std:IEC_61400;enm:Generator.gen_type=wind_t4_collector",
@@ -1598,35 +2089,83 @@ def build_g6_wind() -> dict[str, Any]:
     # Turbine BAYS sit on the COLLECTOR (PCC) bus — the transformer + WTG hang behind
     # each bay (drawn per feeder), NOT a shared nN tier.
     turbine_fields = [
-        _field(f"g6-wtg{i + 1}", role="source", kind=f"WTG {i + 1} · {turbine_kw / 1000:.0f} MW", abb_cell="SDC",
-               on_bus="SN_PCC", source_ref=f"enm:Generator.gen_type=wind_t4;std:IEC_61400_wtg_{i + 1}",
-               interface_protection=False)
+        _field(
+            f"g6-wtg{i + 1}",
+            role="source",
+            kind=f"WTG {i + 1} · {turbine_kw / 1000:.0f} MW",
+            abb_cell="SDC",
+            on_bus="SN_PCC",
+            source_ref=f"enm:Generator.gen_type=wind_t4;std:IEC_61400_wtg_{i + 1}",
+            interface_protection=False,
+        )
         for i in range(n_turbines)
     ]
     return _oze_companion(
-        "G6-WIND", substrate=s,
+        "G6-WIND",
+        substrate=s,
         # Collector 30 kV (board 25 kA Icw); a representative turbine LV (50 kA).
         buses=[("SN_PCC", _WIND_COLLECTOR_KV, 25.0), ("WTG_LV_1", _WIND_LV_KV, 50.0)],
-        pcc_bus="SN_PCC", ibg_ka=total_ibg_ka,
+        pcc_bus="SN_PCC",
+        ibg_ka=total_ibg_ka,
         source=src,
         fields=[
-            _field("g6-line", role="connection", kind="POLE LINIOWE SN (przyłącze)", abb_cell="CBC",
-                   on_bus="SN_PCC", source_ref="enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe",
-                   interface_protection=True, protection_codes=list(_PROTECTION_BY_MACHINE["IBG"]),
-                   apparatus=[
-                       _app("line/ds", kind="DS", designation="Q1 (odłącznik szynowy)", placement="UPSTREAM"),
-                       _app("line/cb", kind="CB", designation="Q0 (wyłącznik SN)", placement="MIDSTREAM"),
-                       _app("line/ct", kind="CT", designation="przekładnik prądowy", placement="MIDSTREAM",
-                            source_ref="std:IEC_61869_CT"),
-                       _app("line/vt", kind="VT", designation="przekładnik napięciowy", placement="OFF_PATH",
-                            source_ref="std:IEC_61869_VT"),
-                       _app("line/sa", kind="SURGE_ARRESTER", designation="ogranicznik przepięć", placement="OFF_PATH"),
-                       _app("line/head", kind="CABLE_HEAD", designation="głowica kablowa", placement="DOWNSTREAM"),
-                       _app("line/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
-                   ],
-                   port=_port("line/port", kind="sn_input", un_kv=_WIND_COLLECTOR_KV, entry_side="BOK-L",
-                              occupied_by="seg/kabel-osd", cable="kabel SN do OSD (typ wg projektu)",
-                              source_ref="enm:Port.kind=sn_input;std:przylacze_SN")),
+            _field(
+                "g6-line",
+                role="connection",
+                kind="POLE LINIOWE SN (przyłącze)",
+                abb_cell="CBC",
+                on_bus="SN_PCC",
+                source_ref="enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe",
+                interface_protection=True,
+                protection_codes=list(_PROTECTION_BY_MACHINE["IBG"]),
+                apparatus=[
+                    _app(
+                        "line/ds",
+                        kind="DS",
+                        designation="Q1 (odłącznik szynowy)",
+                        placement="UPSTREAM",
+                    ),
+                    _app(
+                        "line/cb", kind="CB", designation="Q0 (wyłącznik SN)", placement="MIDSTREAM"
+                    ),
+                    _app(
+                        "line/ct",
+                        kind="CT",
+                        designation="przekładnik prądowy",
+                        placement="MIDSTREAM",
+                        source_ref="std:IEC_61869_CT",
+                    ),
+                    _app(
+                        "line/vt",
+                        kind="VT",
+                        designation="przekładnik napięciowy",
+                        placement="OFF_PATH",
+                        source_ref="std:IEC_61869_VT",
+                    ),
+                    _app(
+                        "line/sa",
+                        kind="SURGE_ARRESTER",
+                        designation="ogranicznik przepięć",
+                        placement="OFF_PATH",
+                    ),
+                    _app(
+                        "line/head",
+                        kind="CABLE_HEAD",
+                        designation="głowica kablowa",
+                        placement="DOWNSTREAM",
+                    ),
+                    _app("line/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
+                ],
+                port=_port(
+                    "line/port",
+                    kind="sn_input",
+                    un_kv=_WIND_COLLECTOR_KV,
+                    entry_side="BOK-L",
+                    occupied_by="seg/kabel-osd",
+                    cable="kabel SN do OSD (typ wg projektu)",
+                    source_ref="enm:Port.kind=sn_input;std:przylacze_SN",
+                ),
+            ),
             *turbine_fields,
         ],
         boundary=_boundary("G-GPZ", on_bus="SN_PCC", metered=True),
@@ -1640,16 +2179,16 @@ def build_g6_wind() -> dict[str, Any]:
 # modelu maszyny (źródło za Z″, w solverze przez Y-bus) i jest rozbity per-maszyna
 # z prądem wyłączeniowym (μ, async μ·q — §6.6) przez compute_machine_contributions.
 # ===========================================================================
-_BIOGAZ_GENSET_KW = 1000.0   # 1 MW na agregat (generyczna kogeneracja biogazowa)
+_BIOGAZ_GENSET_KW = 1000.0  # 1 MW na agregat (generyczna kogeneracja biogazowa)
 _BIOGAZ_N_GENSETS = 2
-_BIOGAZ_XD_PU = 0.15         # x″d — reaktancja podprzejściowa (generyczny agregat)
+_BIOGAZ_XD_PU = 0.15  # x″d — reaktancja podprzejściowa (generyczny agregat)
 _BIOGAZ_COSPHI = 0.8
 
-_WINDA_LV_KV = 0.69          # nN generatora indukcyjnego (Typ 1 — stała prędkość)
-_WINDA_COLLECTOR_KV = 30.0   # szyna kolektorowa SN
-_WINDA_TURBINE_KW = 850.0    # 0.85 MW na turbinę (generyczny Typ 1)
+_WINDA_LV_KV = 0.69  # nN generatora indukcyjnego (Typ 1 — stała prędkość)
+_WINDA_COLLECTOR_KV = 30.0  # szyna kolektorowa SN
+_WINDA_TURBINE_KW = 850.0  # 0.85 MW na turbinę (generyczny Typ 1)
 _WINDA_N_TURBINES = 3
-_WINDA_ILR = 6.0             # I_LR/I_rM generatora asynchronicznego
+_WINDA_ILR = 6.0  # I_LR/I_rM generatora asynchronicznego
 _WINDA_POLE_PAIRS = 2
 _WINDA_COSPHI = 0.85
 _WINDA_EFF = 0.95
@@ -1663,36 +2202,76 @@ _WINDA3_LV_KV = 0.69
 _WINDA3_COLLECTOR_KV = 30.0
 _WINDA3_TURBINE_KW = 2000.0  # 2.0 MW na turbinę (generyczny DFIG)
 _WINDA3_N_TURBINES = 3
-_WINDA3_ILR = 4.0            # I_LR/I_rM z crowbar (poniżej klatkowej ~6)
+_WINDA3_ILR = 4.0  # I_LR/I_rM z crowbar (poniżej klatkowej ~6)
 _WINDA3_POLE_PAIRS = 2
 _WINDA3_COSPHI = 0.90
 _WINDA3_EFF = 0.96
 _WINDA3_TR_MVA = 2.5
 
 
-def _sn_line_connection_field(field_id: str, *, un_kv: float, protection_codes: list[str]) -> dict[str, Any]:
+def _sn_line_connection_field(
+    field_id: str, *, un_kv: float, protection_codes: list[str]
+) -> dict[str, Any]:
     """The standard SN line-connection field (pole liniowe SN do OSD): the apparatus
     stack busbar→cable (DS · CB · CT · VT · SA · głowica · uziemnik) + the cable port.
     Shared by the rotating-machine archetypes (the interface protection looks at the
     grid and lives HERE, never at the source)."""
     return _field(
-        field_id, role="connection", kind="POLE LINIOWE SN (przyłącze)", abb_cell="CBC",
-        on_bus="SN_PCC", source_ref="enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe",
-        interface_protection=True, protection_codes=list(protection_codes),
+        field_id,
+        role="connection",
+        kind="POLE LINIOWE SN (przyłącze)",
+        abb_cell="CBC",
+        on_bus="SN_PCC",
+        source_ref="enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe",
+        interface_protection=True,
+        protection_codes=list(protection_codes),
         apparatus=[
-            _app(f"{field_id}/ds", kind="DS", designation="Q1 (odłącznik szynowy)", placement="UPSTREAM"),
-            _app(f"{field_id}/cb", kind="CB", designation="Q0 (wyłącznik SN)", placement="MIDSTREAM"),
-            _app(f"{field_id}/ct", kind="CT", designation="przekładnik prądowy", placement="MIDSTREAM",
-                 source_ref="std:IEC_61869_CT"),
-            _app(f"{field_id}/vt", kind="VT", designation="przekładnik napięciowy", placement="OFF_PATH",
-                 source_ref="std:IEC_61869_VT"),
-            _app(f"{field_id}/sa", kind="SURGE_ARRESTER", designation="ogranicznik przepięć", placement="OFF_PATH"),
-            _app(f"{field_id}/head", kind="CABLE_HEAD", designation="głowica kablowa", placement="DOWNSTREAM"),
+            _app(
+                f"{field_id}/ds",
+                kind="DS",
+                designation="Q1 (odłącznik szynowy)",
+                placement="UPSTREAM",
+            ),
+            _app(
+                f"{field_id}/cb", kind="CB", designation="Q0 (wyłącznik SN)", placement="MIDSTREAM"
+            ),
+            _app(
+                f"{field_id}/ct",
+                kind="CT",
+                designation="przekładnik prądowy",
+                placement="MIDSTREAM",
+                source_ref="std:IEC_61869_CT",
+            ),
+            _app(
+                f"{field_id}/vt",
+                kind="VT",
+                designation="przekładnik napięciowy",
+                placement="OFF_PATH",
+                source_ref="std:IEC_61869_VT",
+            ),
+            _app(
+                f"{field_id}/sa",
+                kind="SURGE_ARRESTER",
+                designation="ogranicznik przepięć",
+                placement="OFF_PATH",
+            ),
+            _app(
+                f"{field_id}/head",
+                kind="CABLE_HEAD",
+                designation="głowica kablowa",
+                placement="DOWNSTREAM",
+            ),
             _app(f"{field_id}/es", kind="ES", designation="uziemnik", placement="GROUND_BRANCH"),
         ],
-        port=_port(f"{field_id}/port", kind="sn_input", un_kv=un_kv, entry_side="BOK-L",
-                   occupied_by="seg/kabel-osd", cable="kabel SN do OSD (typ wg projektu)",
-                   source_ref="enm:Port.kind=sn_input;std:przylacze_SN"),
+        port=_port(
+            f"{field_id}/port",
+            kind="sn_input",
+            un_kv=un_kv,
+            entry_side="BOK-L",
+            occupied_by="seg/kabel-osd",
+            cable="kabel SN do OSD (typ wg projektu)",
+            source_ref="enm:Port.kind=sn_input;std:przylacze_SN",
+        ),
     )
 
 
@@ -1716,13 +2295,25 @@ def build_g7_biogaz() -> dict[str, Any]:
     # Generacja (eksport) = ujemne obciążenie dla rozpływu; maszyna synchroniczna dla SC.
     s.add_load("SN_PCC", p_mw=-p_farm_kw / 1000.0, q_mvar=0.0)
     for _ in range(n_gen):
-        s.add_synchronous_machine("SN_PCC", sr_mva=sr_mva, ur_kv=_BASE_KV,
-                                  xd_subtransient_pu=_BIOGAZ_XD_PU, cos_phi_r=_BIOGAZ_COSPHI)
+        s.add_synchronous_machine(
+            "SN_PCC",
+            sr_mva=sr_mva,
+            ur_kv=_BASE_KV,
+            xd_subtransient_pu=_BIOGAZ_XD_PU,
+            cos_phi_r=_BIOGAZ_COSPHI,
+        )
     s.finalize_pq()
 
-    src = _pv_source(technology="Biogazownia — agregaty synchroniczne (kogeneracja)",
-                     machine_type="SYNCHRONOUS", nc_class="C", control_mode="U/Q · cosφ",
-                     p_zainst_kw=p_farm_kw, pn_ac_kw=p_farm_kw, p_przylacz_kw=p_farm_kw, p_osiagalna_kw=1900.0)
+    src = _pv_source(
+        technology="Biogazownia — agregaty synchroniczne (kogeneracja)",
+        machine_type="SYNCHRONOUS",
+        nc_class="C",
+        control_mode="U/Q · cosφ",
+        p_zainst_kw=p_farm_kw,
+        pn_ac_kw=p_farm_kw,
+        p_przylacz_kw=p_farm_kw,
+        p_osiagalna_kw=1900.0,
+    )
     src["genset"] = {
         "source_ref": "std:IEC_60909_6_3;enm:Generator.gen_type=biogas_synchronous",
         "sn_kv": _BASE_KV,
@@ -1732,19 +2323,28 @@ def build_g7_biogaz() -> dict[str, Any]:
         "cos_phi_r": _BIOGAZ_COSPHI,
     }
     genset_fields = [
-        _field(f"g7-gen{i + 1}", role="source", kind=f"Agregat synchroniczny {i + 1} · {genset_kw / 1000:.0f} MW",
-               abb_cell="SDC", on_bus="SN_PCC",
-               source_ref=f"enm:Generator.gen_type=biogas_synchronous;std:IEC_60909_6_3_gen_{i + 1}",
-               interface_protection=False)
+        _field(
+            f"g7-gen{i + 1}",
+            role="source",
+            kind=f"Agregat synchroniczny {i + 1} · {genset_kw / 1000:.0f} MW",
+            abb_cell="SDC",
+            on_bus="SN_PCC",
+            source_ref=f"enm:Generator.gen_type=biogas_synchronous;std:IEC_60909_6_3_gen_{i + 1}",
+            interface_protection=False,
+        )
         for i in range(n_gen)
     ]
     return _oze_companion(
-        "G7-BIOGAZ", substrate=s,
+        "G7-BIOGAZ",
+        substrate=s,
         buses=[("SN_PCC", _BASE_KV, 25.0)],
-        pcc_bus="SN_PCC", ibg_ka=0.0, source=src,
+        pcc_bus="SN_PCC",
+        ibg_ka=0.0,
+        source=src,
         fields=[
-            _sn_line_connection_field("g7-line", un_kv=_BASE_KV,
-                                      protection_codes=_PROTECTION_BY_MACHINE["SYNCHRONOUS"]),
+            _sn_line_connection_field(
+                "g7-line", un_kv=_BASE_KV, protection_codes=_PROTECTION_BY_MACHINE["SYNCHRONOUS"]
+            ),
             *genset_fields,
         ],
         boundary=_boundary("G-GPZ", on_bus="SN_PCC", metered=True),
@@ -1771,17 +2371,37 @@ def build_g8_wind_async() -> dict[str, Any]:
     for i in range(n_turbines):
         lv = f"WTG_LV_{i + 1}"
         s.add_bus(lv, _WINDA_LV_KV)
-        s.add_transformer(f"sr/branch/wtg-tr{i + 1}", "SN_PCC", lv,
-                          hv_kv=_WINDA_COLLECTOR_KV, lv_kv=_WINDA_LV_KV, uk_percent=6.0, rated_mva=_WINDA_TR_MVA)
+        s.add_transformer(
+            f"sr/branch/wtg-tr{i + 1}",
+            "SN_PCC",
+            lv,
+            hv_kv=_WINDA_COLLECTOR_KV,
+            lv_kv=_WINDA_LV_KV,
+            uk_percent=6.0,
+            rated_mva=_WINDA_TR_MVA,
+        )
         s.add_load(lv, p_mw=-turbine_kw / 1000.0, q_mvar=0.0)
-        s.add_asynchronous_machine(lv, pr_mw=turbine_kw / 1000.0, ur_kv=_WINDA_LV_KV,
-                                   cos_phi_r=_WINDA_COSPHI, efficiency=_WINDA_EFF,
-                                   i_lr_ratio=_WINDA_ILR, pole_pairs=_WINDA_POLE_PAIRS)
+        s.add_asynchronous_machine(
+            lv,
+            pr_mw=turbine_kw / 1000.0,
+            ur_kv=_WINDA_LV_KV,
+            cos_phi_r=_WINDA_COSPHI,
+            efficiency=_WINDA_EFF,
+            i_lr_ratio=_WINDA_ILR,
+            pole_pairs=_WINDA_POLE_PAIRS,
+        )
     s.finalize_pq()
 
-    src = _pv_source(technology="Wiatr — generatory indukcyjne (Typ 1, stała prędkość)",
-                     machine_type="ASYNCHRONOUS", nc_class="C", control_mode="kompensacja Q (bateria)",
-                     p_zainst_kw=p_farm_kw, pn_ac_kw=p_farm_kw, p_przylacz_kw=p_farm_kw, p_osiagalna_kw=2400.0)
+    src = _pv_source(
+        technology="Wiatr — generatory indukcyjne (Typ 1, stała prędkość)",
+        machine_type="ASYNCHRONOUS",
+        nc_class="C",
+        control_mode="kompensacja Q (bateria)",
+        p_zainst_kw=p_farm_kw,
+        pn_ac_kw=p_farm_kw,
+        p_przylacz_kw=p_farm_kw,
+        p_osiagalna_kw=2400.0,
+    )
     src["collector"] = {
         "source_ref": "std:IEC_61400;enm:Generator.gen_type=wind_t1_collector",
         "collector_kv": _WINDA_COLLECTOR_KV,
@@ -1792,19 +2412,30 @@ def build_g8_wind_async() -> dict[str, Any]:
         "topology": "radial",
     }
     turbine_fields = [
-        _field(f"g8-wtg{i + 1}", role="source", kind=f"WTG {i + 1} (async) · {turbine_kw / 1000:.2f} MW",
-               abb_cell="SDC", on_bus="SN_PCC",
-               source_ref=f"enm:Generator.gen_type=wind_t1;std:IEC_61400_wtg_{i + 1}",
-               interface_protection=False)
+        _field(
+            f"g8-wtg{i + 1}",
+            role="source",
+            kind=f"WTG {i + 1} (async) · {turbine_kw / 1000:.2f} MW",
+            abb_cell="SDC",
+            on_bus="SN_PCC",
+            source_ref=f"enm:Generator.gen_type=wind_t1;std:IEC_61400_wtg_{i + 1}",
+            interface_protection=False,
+        )
         for i in range(n_turbines)
     ]
     return _oze_companion(
-        "G8-WIND-ASYNC", substrate=s,
+        "G8-WIND-ASYNC",
+        substrate=s,
         buses=[("SN_PCC", _WINDA_COLLECTOR_KV, 25.0), ("WTG_LV_1", _WINDA_LV_KV, 50.0)],
-        pcc_bus="SN_PCC", ibg_ka=0.0, source=src,
+        pcc_bus="SN_PCC",
+        ibg_ka=0.0,
+        source=src,
         fields=[
-            _sn_line_connection_field("g8-line", un_kv=_WINDA_COLLECTOR_KV,
-                                      protection_codes=_PROTECTION_BY_MACHINE["ASYNCHRONOUS"]),
+            _sn_line_connection_field(
+                "g8-line",
+                un_kv=_WINDA_COLLECTOR_KV,
+                protection_codes=_PROTECTION_BY_MACHINE["ASYNCHRONOUS"],
+            ),
             *turbine_fields,
         ],
         boundary=_boundary("G-GPZ", on_bus="SN_PCC", metered=True),
@@ -1832,17 +2463,38 @@ def build_g9_wind_dfig() -> dict[str, Any]:
     for i in range(n_turbines):
         lv = f"WTG_LV_{i + 1}"
         s.add_bus(lv, _WINDA3_LV_KV)
-        s.add_transformer(f"sr/branch/wtg-tr{i + 1}", "SN_PCC", lv,
-                          hv_kv=_WINDA3_COLLECTOR_KV, lv_kv=_WINDA3_LV_KV, uk_percent=6.0, rated_mva=_WINDA3_TR_MVA)
+        s.add_transformer(
+            f"sr/branch/wtg-tr{i + 1}",
+            "SN_PCC",
+            lv,
+            hv_kv=_WINDA3_COLLECTOR_KV,
+            lv_kv=_WINDA3_LV_KV,
+            uk_percent=6.0,
+            rated_mva=_WINDA3_TR_MVA,
+        )
         s.add_load(lv, p_mw=-turbine_kw / 1000.0, q_mvar=0.0)
-        s.add_asynchronous_machine(lv, pr_mw=turbine_kw / 1000.0, ur_kv=_WINDA3_LV_KV,
-                                   cos_phi_r=_WINDA3_COSPHI, efficiency=_WINDA3_EFF,
-                                   i_lr_ratio=_WINDA3_ILR, pole_pairs=_WINDA3_POLE_PAIRS, wind_type_3=True)
+        s.add_asynchronous_machine(
+            lv,
+            pr_mw=turbine_kw / 1000.0,
+            ur_kv=_WINDA3_LV_KV,
+            cos_phi_r=_WINDA3_COSPHI,
+            efficiency=_WINDA3_EFF,
+            i_lr_ratio=_WINDA3_ILR,
+            pole_pairs=_WINDA3_POLE_PAIRS,
+            wind_type_3=True,
+        )
     s.finalize_pq()
 
-    src = _pv_source(technology="Wiatr — generatory dwustronnie zasilane (Typ 3, DFIG)",
-                     machine_type="DFIG", nc_class="C", control_mode="U/Q · LVRT (crowbar)",
-                     p_zainst_kw=p_farm_kw, pn_ac_kw=p_farm_kw, p_przylacz_kw=p_farm_kw, p_osiagalna_kw=5800.0)
+    src = _pv_source(
+        technology="Wiatr — generatory dwustronnie zasilane (Typ 3, DFIG)",
+        machine_type="DFIG",
+        nc_class="C",
+        control_mode="U/Q · LVRT (crowbar)",
+        p_zainst_kw=p_farm_kw,
+        pn_ac_kw=p_farm_kw,
+        p_przylacz_kw=p_farm_kw,
+        p_osiagalna_kw=5800.0,
+    )
     src["collector"] = {
         "source_ref": "std:IEC_61400;enm:Generator.gen_type=wind_t3_collector",
         "collector_kv": _WINDA3_COLLECTOR_KV,
@@ -1853,19 +2505,30 @@ def build_g9_wind_dfig() -> dict[str, Any]:
         "topology": "radial",
     }
     turbine_fields = [
-        _field(f"g9-wtg{i + 1}", role="source", kind=f"WTG {i + 1} (DFIG) · {turbine_kw / 1000:.1f} MW",
-               abb_cell="SDC", on_bus="SN_PCC",
-               source_ref=f"enm:Generator.gen_type=wind_t3;std:IEC_61400_wtg_{i + 1}",
-               interface_protection=False)
+        _field(
+            f"g9-wtg{i + 1}",
+            role="source",
+            kind=f"WTG {i + 1} (DFIG) · {turbine_kw / 1000:.1f} MW",
+            abb_cell="SDC",
+            on_bus="SN_PCC",
+            source_ref=f"enm:Generator.gen_type=wind_t3;std:IEC_61400_wtg_{i + 1}",
+            interface_protection=False,
+        )
         for i in range(n_turbines)
     ]
     return _oze_companion(
-        "G9-WIND-DFIG", substrate=s,
+        "G9-WIND-DFIG",
+        substrate=s,
         buses=[("SN_PCC", _WINDA3_COLLECTOR_KV, 31.5), ("WTG_LV_1", _WINDA3_LV_KV, 63.0)],
-        pcc_bus="SN_PCC", ibg_ka=0.0, source=src,
+        pcc_bus="SN_PCC",
+        ibg_ka=0.0,
+        source=src,
         fields=[
-            _sn_line_connection_field("g9-line", un_kv=_WINDA3_COLLECTOR_KV,
-                                      protection_codes=_PROTECTION_BY_MACHINE["DFIG"]),
+            _sn_line_connection_field(
+                "g9-line",
+                un_kv=_WINDA3_COLLECTOR_KV,
+                protection_codes=_PROTECTION_BY_MACHINE["DFIG"],
+            ),
             *turbine_fields,
         ],
         boundary=_boundary("G-GPZ", on_bus="SN_PCC", metered=True),
@@ -1873,8 +2536,12 @@ def build_g9_wind_dfig() -> dict[str, Any]:
 
 
 _OZE_ARCHETYPES_2A_EXT = {
-    **_OZE_ARCHETYPES_2A, "G4-PVTR": build_g4_pvtr, "G5-BESS": build_g5_bess, "G6-WIND": build_g6_wind,
-    "G7-BIOGAZ": build_g7_biogaz, "G8-WIND-ASYNC": build_g8_wind_async,
+    **_OZE_ARCHETYPES_2A,
+    "G4-PVTR": build_g4_pvtr,
+    "G5-BESS": build_g5_bess,
+    "G6-WIND": build_g6_wind,
+    "G7-BIOGAZ": build_g7_biogaz,
+    "G8-WIND-ASYNC": build_g8_wind_async,
     "G9-WIND-DFIG": build_g9_wind_dfig,
 }
 
