@@ -9,7 +9,8 @@
  * Canon: ◯ odłącznik · □ wyłącznik · ◇ rozłącznik (kształt=typ, kolor=stan) · uziemnik
  * IEC (linia, nie okrąg) · TR 2 okręgi + Dyn (szeregowo) · CT pierścień · VT bez ziemi
  * → V · głowica trójkąt · przekaźnik kwadrat I> (trip = linia przerywana) · falownik
- * kwadrat z przekątną ~/= · GRANICA ⊟ · POMIAR Wh · strzałka mocy (różowa). NIE: PCC.
+ * kwadrat z przekątną ~/= · POMIAR Wh (licznik = granica własności/eksploatacji) ·
+ * strzałka mocy (różowa). NIE: PCC, NIE: osobny znacznik granicy — granicą jest pomiar.
  */
 
 export const GREEN = '#1FA24A';
@@ -122,14 +123,6 @@ export function InverterSym({ x, y }: { x: number; y: number }): JSX.Element {
         <line x1={x - 9} y1={y - 6} x2={x - 3} y2={y - 6} />
         <line x1={x - 9} y1={y - 3} x2={x - 5} y2={y - 3} />
       </g>
-    </g>
-  );
-}
-export function GranicaMarker({ x, y }: { x: number; y: number }): JSX.Element {
-  return (
-    <g data-keepout={ko(x - 11, y - 11, 22, 22)}>
-      <rect x={x - 9} y={y - 9} width={18} height={18} rx={2} fill="#0A1622" stroke={AMBER} strokeWidth={1.8} transform={`rotate(45 ${x} ${y})`} />
-      <line x1={x - 5} y1={y} x2={x + 5} y2={y} stroke={AMBER} strokeWidth={1.6} />
     </g>
   );
 }

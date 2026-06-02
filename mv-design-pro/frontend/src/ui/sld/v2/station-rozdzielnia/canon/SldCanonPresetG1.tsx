@@ -9,7 +9,6 @@ import {
   CYAN,
   CtRing,
   fmt,
-  GranicaMarker,
   Glowica,
   InverterSym,
   ko,
@@ -138,12 +137,9 @@ export function SldCanonPresetG1({ companion }: { companion: SldOzeArchetypeComp
       {lbl(X.p3 + 18, 362, 'głowica ITK124', TXT_MUTED, 9.5, 600)}
       <CtRing x={X.p3} y={400} />
       {lbl(X.p3 + 18, 404, 'CT T4 100/1', TXT_MUTED, 9.5, 600)}
-      <GranicaMarker x={X.p3} y={452} />
-      {lbl(X.p3 - 72, 449, 'GRANICA', AMBER, 10.5, 800, 'end')}
-      {lbl(X.p3 - 72, 462, 'G-ZKSN → OSD', TXT_MUTED, 9, 600, 'end')}
-      <line x1={X.p3} y1={461} x2={X.p3} y2={505} stroke={SN_BUS} strokeWidth={2} />
-      <PowerArrow x={X.p3} y={482} dir="down" />
-      {lbl(X.p3 + 10, 486, 'eksport', PINK, 10, 800)}
+      <line x1={X.p3} y1={409} x2={X.p3} y2={505} stroke={SN_BUS} strokeWidth={2} />
+      <PowerArrow x={X.p3} y={462} dir="down" />
+      {lbl(X.p3 + 10, 466, 'eksport → OSD', PINK, 10, 800)}
       {lbl(X.p3 - 110, 530, '3×XRUHAKXS 1×70/25 · L=161/191 m → SIEĆ OSD', TXT_MUTED, 9, 600)}
 
       {/* ── node ① readout (U = nominał — placeholder; realna wartość ze solvera w §5) ── */}

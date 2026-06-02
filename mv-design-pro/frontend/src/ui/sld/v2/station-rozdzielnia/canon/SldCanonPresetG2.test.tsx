@@ -28,11 +28,20 @@ describe('SldCanonPresetG2 — canonical PV nN prosumer (G2)', () => {
     expect(renderG2().container.querySelector('[data-testid="sld-canon-g2"]')).toBeTruthy();
     expect(txt).toContain('SIEĆ OSD nN');
     expect(txt).toContain('nN · 0,4 kV · TN');
-    expect(txt).toContain('PV');
+    expect(txt).toContain('LICZNIK'); // bidirectional billing meter
+    expect(txt).toContain('wyłącznik główny odbiorcy'); // RGB
     expect(txt).toContain('ODBIÓR');
-    expect(txt).toContain('GRANICA');
     expect(txt).not.toContain('POLE 1'); // no SN bays
     expect(txt).not.toContain('Dyn5'); // the OSD MV/LV TR is upstream, not the prosumer's
+  });
+
+  it('the billing meter is the boundary AND sits BEFORE the consumer main breaker', () => {
+    const txt = renderG2().container.textContent ?? '';
+    // The meter = the ownership/operation boundary (no separate ⊟ marker).
+    expect(txt).toContain('GRANICA własności/eksploatacji (= licznik)');
+    // Render (top→down) order: the meter is rendered ABOVE (upstream of) the main breaker —
+    // a meter behind the breaker would let the consumer stop being metered (metering nonsense).
+    expect(txt.indexOf('LICZNIK')).toBeLessThan(txt.indexOf('wyłącznik główny odbiorcy'));
   });
 
   it('node readout bound to the FROZEN solver (Ik″/ip from companion; 1f-z = TN param)', () => {
@@ -49,6 +58,6 @@ describe('SldCanonPresetG2 — canonical PV nN prosumer (G2)', () => {
 
   it('LAYOUT INVARIANT: no annotation text overlaps a canonical glyph (shared check)', () => {
     const svg = renderG2().container.querySelector('svg')!;
-    expect(glyphTextCollisions(svg, [120, 545]), 'G2 text-on-glyph collisions').toEqual([]);
+    expect(glyphTextCollisions(svg, [110, 600]), 'G2 text-on-glyph collisions').toEqual([]);
   });
 });

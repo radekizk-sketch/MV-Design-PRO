@@ -64,13 +64,14 @@ describe('SldCanonPresetG1 — canonical PV 1 MW template (G1)', () => {
     }
   });
 
-  it('carries the metering bay (CT AD11 / VT FD11 / POMIAR) and the OSD boundary (GRANICA)', () => {
-    const txt = (renderG1().container.textContent ?? '');
+  it('metering via CT/VT on the SN busbar (POLE Pomiarowe) + export cable to OSD; no ⊟ marker', () => {
+    const txt = renderG1().container.textContent ?? '';
+    // SN station metering is instrument-transformer based (correct) — not in-line behind a breaker.
     expect(txt).toContain('CT AD11 · 40/5/5/5');
     expect(txt).toContain('VT FD11');
     expect(txt).toContain('POMIAR rozliczeniowy');
-    expect(txt).toContain('GRANICA');
-    expect(txt).toContain('G-ZKSN → OSD');
+    expect(txt).toContain('SIEĆ OSD'); // export cable to the OSD network
+    expect(txt).not.toContain('GRANICA'); // boundary is implied by the metering — no separate ⊟
   });
 
   it('SN U readout is the consistent nominal placeholder (15,75 kV · 1,00 pu) pending §5', () => {

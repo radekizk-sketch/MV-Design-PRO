@@ -28,7 +28,7 @@ const PRESETS = [
     name: 'G2 — PV nN (prosument)',
     companion: OZE_ARCHETYPES_2A['G1'],
     bus: 'NN_BUS',
-    band: [120, 545] as [number, number],
+    band: [110, 600] as [number, number],
     render: () => <SldCanonPresetG2 companion={OZE_ARCHETYPES_2A['G1']} />,
   },
 ];
