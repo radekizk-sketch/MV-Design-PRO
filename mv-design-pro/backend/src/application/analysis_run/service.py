@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from analysis.machine_short_circuit import interpret_machine_contributions
 from analysis.power_flow import PowerFlowSolver
 from analysis.power_flow._internal import build_slack_island, validate_input
 from analysis.power_flow.types import PowerFlowInput, PowerFlowOptions, PQSpec, PVSpec, SlackSpec
@@ -33,6 +34,7 @@ from network_model.catalog.types import ConverterKind
 from network_model.core import InverterSource, NetworkGraph, create_network_snapshot
 from network_model.core.branch import Branch, LineBranch, TransformerBranch
 from network_model.solvers import ShortCircuitIEC60909Solver, ShortCircuitType
+from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
 from network_model.solvers.power_flow_inverter import inverter_control_from_params
 from network_model.solvers.power_flow_zip import zip_coeffs_from_materialized_params
 from network_model.validation import NetworkValidator as ModelNetworkValidator
@@ -350,6 +352,26 @@ class AnalysisRunService:
             result_type="short_circuit_sn",
             payload=payload,
         )
+        # Per-machine SC breakdown (IEC 60909 §6.6) — a SEPARATE interpretation artifact
+        # for ANY network with rotating machines (synchronous / asynchronous / DFIG),
+        # not only the OZE archetypes. Computed from the SAME graph the solver used
+        # (orchestration), then INTERPRETED in the analysis layer. NOT added to the
+        # frozen ShortCircuitResult; no extra result is stored for machine-free networks.
+        machine_interp = interpret_machine_contributions(
+            compute_machine_contributions(
+                sc_input["graph"],
+                result.fault_node_id,
+                c_factor=result.c_factor,
+                t_min_s=result.tb_s,
+            )
+        )
+        if machine_interp.has_machines:
+            uow.results.add_result(
+                run_id=run.id,
+                project_id=run.project_id,
+                result_type="short_circuit_machine_contribution",
+                payload=machine_interp.to_dict(),
+            )
         summary = {
             "status": "FINISHED",
             "fault_node_id": payload.get("fault_node_id"),
