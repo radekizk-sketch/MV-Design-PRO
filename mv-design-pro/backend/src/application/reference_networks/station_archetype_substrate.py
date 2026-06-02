@@ -1276,7 +1276,7 @@ def build_g1() -> dict[str, Any]:
 
 
 def build_g2() -> dict[str, Any]:
-    """G2 — Farma PV: falowniki nN + dedykowany trafo nN/SN. PCC na SN. IBG,
+    """G2 — Farma PV: falowniki nN + dedykowany trafo nN/SN. Przyłącze na SN. IBG,
     klasa C, Q(U)."""
     pv_kva = 990.0
     s = _Substrate()
@@ -1319,7 +1319,7 @@ def build_g2() -> dict[str, Any]:
             p_osiagalna_kw=900.0,
         ),
         # Station idiom: PV source field on the nN collector → block transformer →
-        # connection field on the SN PCC busbar (interface protection HERE) +
+        # connection field on the SN busbar (interface protection HERE) +
         # measurement field at the SN boundary. Dedicated MV connection (G-ZKSN).
         fields=[
             _field(
@@ -1356,7 +1356,7 @@ def build_g2() -> dict[str, Any]:
 
 
 def build_g3() -> dict[str, Any]:
-    """G3 — Farma PV: falowniki SN bezpośrednio (blok falownik+trafo na SN). PCC
+    """G3 — Farma PV: falowniki SN bezpośrednio (blok falownik+trafo na SN). Przyłącze
     na SN. IBG, klasa C, cosφ(P)."""
     pv_kva = 1500.0
     s = _Substrate()
@@ -1385,7 +1385,7 @@ def build_g3() -> dict[str, Any]:
             p_osiagalna_kw=1350.0,
         ),
         # Station idiom: SN-side PV inverters (source field on PV_SN, no transformer)
-        # → connection field on the SN PCC busbar (interface protection HERE).
+        # → connection field on the SN busbar (interface protection HERE).
         # Dedicated MV connection via a cable junction (G-ZKSN).
         fields=[
             _field(
@@ -2076,7 +2076,7 @@ def build_g6_wind() -> dict[str, Any]:
 
     s = _Substrate()
     s.add_slack("GPZ")
-    s.add_bus("SN_PCC", _WIND_COLLECTOR_KV)  # collector bus == farm PCC
+    s.add_bus("SN_PCC", _WIND_COLLECTOR_KV)  # collector bus == farm SN busbar (przyłącze)
     # Collector SC is grid-infeed dominated → physical X/R≈7 (κ≈1.66), |Z| preserved so
     # Ik'' is UNCHANGED (same fix recipe as G4-PVTR/G5-BESS; not the low-X/R _SN_LINE).
     s.add_line(SR_IN, "GPZ", "SN_PCC", _GRID_INFEED_R, _GRID_INFEED_X)
@@ -2146,7 +2146,7 @@ def build_g6_wind() -> dict[str, Any]:
         "sn_idyn_ka": 63.0,
         "nn_idyn_ka": 105.0,
     }
-    # Turbine BAYS sit on the COLLECTOR (PCC) bus — the transformer + WTG hang behind
+    # Turbine BAYS sit on the COLLECTOR bus — the transformer + WTG hang behind
     # each bay (drawn per feeder), NOT a shared nN tier.
     turbine_fields = [
         _field(
@@ -2338,7 +2338,7 @@ def _sn_line_connection_field(
 def build_g7_biogaz() -> dict[str, Any]:
     """G7 — Biogazownia (kogeneracja) — GENERYCZNY archetyp wg norm (NC RfG / IEC
     60909), agregaty SYNCHRONICZNE (NIE IBG) przyłączone na SN (generyczna abstrakcja
-    bloku agregat + podwyższenie napięcia), na szynie PCC z polem liniowym SN do OSD.
+    bloku agregat + podwyższenie napięcia), na szynie przyłączeniowej z polem liniowym SN do OSD.
 
     Zwarcie: maszyna synchroniczna = źródło za Z″_GK (IEC 60909-0:2016 §6.3) — PEŁNY
     udział maszynowy w I″k (bramka J ≠ IBG), prąd wyłączeniowy i_b z zanikiem μ (§6.6).
