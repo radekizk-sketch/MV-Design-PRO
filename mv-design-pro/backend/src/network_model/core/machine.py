@@ -130,6 +130,13 @@ class AsynchronousMachineSource:
     i_lr_ratio: float = field(default=5.0)    # locked-rotor ratio I_LR/I_rM
     pole_pairs: int = field(default=1)        # p (for P_rM/p)
     r_over_x: float | None = field(default=None)  # R_M/X_M override; else IEC default
+    # DFIG (wind Type 3) marker. A doubly-fed induction generator has a partial-scale
+    # rotor converter; on a severe fault the crowbar fires (rotor shorted) and the
+    # machine behaves as a squirrel-cage induction generator — so it is modelled HERE
+    # as an asynchronous source behind Z_M (§6.7), with the converter contribution
+    # neglected (conservative for I″k,max). This flag only RELABELS the contribution
+    # "DFIG" and documents the crowbar assumption; the μ·q decay math is unchanged.
+    wind_type_3: bool = field(default=False)
     in_service: bool = field(default=True)
 
     @property
@@ -165,7 +172,12 @@ class AsynchronousMachineSource:
     def white_box(self) -> dict[str, float | complex | str]:
         z = self.z_internal_ohm
         return {
-            "model": "IEC 60909-0:2016 §6.7 — maszyna asynchroniczna (źródło za Z_M)",
+            "model": (
+                "IEC 60909-0:2016 §6.7 — DFIG (Typ 3): crowbar → maszyna asynchroniczna za Z_M"
+                if self.wind_type_3
+                else "IEC 60909-0:2016 §6.7 — maszyna asynchroniczna (źródło za Z_M)"
+            ),
+            "wind_type_3": self.wind_type_3,
             "pr_mw": self.pr_mw,
             "sr_mva": self.sr_mva,
             "ur_kv": self.ur_kv,

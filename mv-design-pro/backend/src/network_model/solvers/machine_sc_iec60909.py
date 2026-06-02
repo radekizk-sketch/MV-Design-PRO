@@ -185,8 +185,12 @@ def compute_machine_contributions(
         ratio = ip_a / m.ir_a if m.ir_a > 0 else 0.0
         mu = mu_factor(ratio, t_min_s)
         q = q_factor(m.p_per_pole_mw, t_min_s)
+        # DFIG (wind Type 3): on a severe fault the crowbar fires (rotor shorted), so
+        # the machine is treated as a squirrel-cage induction generator — same §6.7/§6.6
+        # μ·q math, only the label differs (the crowbar assumption is documented).
+        mtype = "DFIG" if getattr(m, "wind_type_3", False) else "ASYNCHRONOUS"
         contributions.append(MachinePartialContribution(
-            source_id=m.id, source_name=m.name, machine_type="ASYNCHRONOUS", node_id=m.node_id,
+            source_id=m.id, source_name=m.name, machine_type=mtype, node_id=m.node_id,
             z_internal_ohm=m.z_internal_ohm, ir_a=m.ir_a, ikss_partial_a=ip_a,
             ratio_ik_ir=ratio, mu=mu, q=q, ib_a=mu * q * ip_a, is_synchronous_machine=False,
         ))
@@ -208,7 +212,12 @@ def compute_machine_contributions(
         "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
         "n_synchronous": len(sync),
         "n_asynchronous": len(asyn),
+        "n_dfig": sum(1 for m in asyn if getattr(m, "wind_type_3", False)),
         "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
+        "dfig_assumption": (
+            "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny "
+            "asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
+        ),
     }
     return MachineShortCircuitResult(
         fault_node_id=fault_node_id, c_factor=c_factor, t_min_s=t_min_s,

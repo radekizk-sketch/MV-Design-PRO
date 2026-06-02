@@ -283,10 +283,33 @@ describe('GATE J′ — rotating machines: machine-typed SC contribution (not IB
     }
   });
 
+  it('G9-WIND-DFIG models a DFIG via crowbar → asynchronous machine (Z_M, μ·q)', () => {
+    const c = OZE_ARCHETYPES_2A['G9-WIND-DFIG'];
+    expect(c, 'G9-WIND-DFIG template must exist').toBeTruthy();
+    expect(c.source.machine_type).toBe('DFIG');
+    const conn = c.fields.find((f) => f.role === 'connection')!;
+    expect(conn.protection_codes).toContain('46'); // negative-sequence — DFIG set
+    expect(conn.protection_codes).not.toContain('25'); // no synchro-check (not synchronous)
+    for (const bus of Object.values(c.short_circuit.buses)) {
+      const sc = bus.source_contribution;
+      expect(sc.machine_type).toBe('DFIG');
+      expect(sc.is_synchronous_machine).toBe(false);
+      expect(sc.ik_contribution_ka).toBeGreaterThan(0);
+      expect(sc.model).toMatch(/DFIG|crowbar/i); // documented crowbar assumption
+      expect(sc.model).toMatch(/6\.7|6\.6/);
+      for (const m of sc.machines!) {
+        expect(m.q).toBeGreaterThan(0);
+        expect(m.q).toBeLessThanOrEqual(1); // q ≤ 1 (induction-machine decay during crowbar)
+      }
+      expect(bus.verification.passed).toBe(true);
+    }
+  });
+
   it('renders the contribution as "maszyna" (not "ograniczony") for both machine types', () => {
     for (const [a, mt] of [
       ['G7-BIOGAZ', 'SYNCHRONOUS'],
       ['G8-WIND-ASYNC', 'ASYNCHRONOUS'],
+      ['G9-WIND-DFIG', 'DFIG'],
     ] as const) {
       const { container } = renderOze(a, 'close');
       const contrib = container.querySelector('[data-testid="oze-sc-contrib-SN_PCC"]')!;

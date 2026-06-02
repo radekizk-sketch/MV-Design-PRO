@@ -179,16 +179,17 @@ class _Substrate:
 
     def add_asynchronous_machine(
         self, node_id: str, *, pr_mw: float, ur_kv: float, cos_phi_r: float,
-        efficiency: float, i_lr_ratio: float, pole_pairs: int,
+        efficiency: float, i_lr_ratio: float, pole_pairs: int, wind_type_3: bool = False,
     ) -> AsynchronousMachineSource:
         """Register an asynchronous (induction) machine SC source (IEC 60909-0:2016
         §6.7) — a voltage source behind Z_M, a FULL machine contribution (gate J).
-        The breaking current uses μ·q (§6.6.3); small motors may be neglected (§6.6)."""
+        The breaking current uses μ·q (§6.6.3); small motors may be neglected (§6.6).
+        ``wind_type_3`` marks a DFIG (crowbar → induction machine); same math, DFIG label."""
         seq = sum(1 for m in self.graph.asynchronous_machine_sources.values() if m.node_id == node_id) + 1
         src = AsynchronousMachineSource(
             id=f"async/{node_id}/{seq}", name=f"ASY@{node_id}#{seq}", node_id=node_id,
             pr_mw=pr_mw, ur_kv=ur_kv, cos_phi_r=cos_phi_r, efficiency=efficiency,
-            i_lr_ratio=i_lr_ratio, pole_pairs=pole_pairs,
+            i_lr_ratio=i_lr_ratio, pole_pairs=pole_pairs, wind_type_3=wind_type_3,
         )
         self.graph.add_asynchronous_machine_source(src)
         return src
@@ -857,6 +858,9 @@ _PROTECTION_BY_MACHINE: dict[str, list[str]] = {
     "SYNCHRONOUS": ["25", "21", "40", "32", "46", "87", "59N", "67N", "81U", "81O"],
     # Asynchronous machine: self-excitation guard + directional OC + Q control.
     "ASYNCHRONOUS": ["67", "67N", "47", "27", "59", "81U", "81O"],
+    # DFIG (wind Type 3): induction-machine OC + neg-seq + crowbar/converter ride-through
+    # (voltage/frequency + df/dt for NC RfG LVRT).
+    "DFIG": ["67", "67N", "46", "47", "27", "59", "81U", "81O", "df/dt"],
 }
 
 
@@ -903,13 +907,15 @@ def _oze_sc_bus(
         return entry
     res = compute_machine_contributions(graph, bus_id, c_factor=_C_MAX, t_min_s=t_min_s)
     is_sync = machine_type == "SYNCHRONOUS"
+    if is_sync:
+        model = "IEC 60909-0:2016 §6.3/§6.6 — maszyna synchroniczna za Z″ (zanik μ)"
+    elif machine_type == "DFIG":
+        model = "IEC 60909-0:2016 §6.7/§6.6 — DFIG (Typ 3): crowbar → maszyna asynchroniczna za Z_M (zanik μ·q)"
+    else:
+        model = "IEC 60909-0:2016 §6.7/§6.6 — maszyna asynchroniczna za Z_M (zanik μ·q)"
     entry["source_contribution"] = {
         "machine_type": machine_type,
-        "model": (
-            "IEC 60909-0:2016 §6.3/§6.6 — maszyna synchroniczna za Z″ (zanik μ)"
-            if is_sync
-            else "IEC 60909-0:2016 §6.7/§6.6 — maszyna asynchroniczna za Z_M (zanik μ·q)"
-        ),
+        "model": model,
         "ik_contribution_ka": round(res.ikss_machines_a / 1000.0, 3),
         "ib_contribution_ka": round(res.ib_machines_a / 1000.0, 3),
         "is_synchronous_machine": is_sync,
@@ -1626,6 +1632,20 @@ _WINDA_COSPHI = 0.85
 _WINDA_EFF = 0.95
 _WINDA_TR_MVA = 1.0
 
+# G9 — wiatr Typ 3 (DFIG, generator dwustronnie zasilany). Stojan na sieci, wirnik
+# przez przekształtnik częściowej mocy (~30 %). Model zwarciowy: zadziałanie crowbar
+# (rotor zwarty) → maszyna indukcyjna za Z_M (§6.7); udział przekształtnika pominięty
+# (zachowawczo dla I″k,max). i_LR niższe niż klatkowa (rezystancja crowbar).
+_WINDA3_LV_KV = 0.69
+_WINDA3_COLLECTOR_KV = 30.0
+_WINDA3_TURBINE_KW = 2000.0  # 2.0 MW na turbinę (generyczny DFIG)
+_WINDA3_N_TURBINES = 3
+_WINDA3_ILR = 4.0            # I_LR/I_rM z crowbar (poniżej klatkowej ~6)
+_WINDA3_POLE_PAIRS = 2
+_WINDA3_COSPHI = 0.90
+_WINDA3_EFF = 0.96
+_WINDA3_TR_MVA = 2.5
+
 
 def _sn_line_connection_field(field_id: str, *, un_kv: float, protection_codes: list[str]) -> dict[str, Any]:
     """The standard SN line-connection field (pole liniowe SN do OSD): the apparatus
@@ -1768,9 +1788,71 @@ def build_g8_wind_async() -> dict[str, Any]:
     )
 
 
+def build_g9_wind_dfig() -> dict[str, Any]:
+    """G9 — Wiatr Typ 3 (DFIG, generator dwustronnie zasilany) — GENERYCZNY archetyp
+    wg norm (NC RfG / IEC 61400 / IEC 60909). n turbin DFIG (stojan na sieci, wirnik
+    przez przekształtnik częściowej mocy), każda z własnym trafem turbinowym (nN→kolektor
+    SN), zebranych radialnie na szynie kolektora SN; pole liniowe SN łączy kolektor z OSD.
+
+    Zwarcie: DFIG = przy zwarciu zadziałanie crowbar (rotor zwarty) → maszyna indukcyjna
+    za Z_M (IEC 60909-0:2016 §6.7) — udział maszynowy w I″k (bramka J ≠ IBG), prąd
+    wyłączeniowy z zanikiem μ·q (§6.6.3). Udział przekształtnika pominięty (zachowawczo
+    dla I″k,max). Udział z compute_machine_contributions (założenie crowbar udokumentowane)."""
+    n_turbines = _WINDA3_N_TURBINES
+    turbine_kw = _WINDA3_TURBINE_KW
+    p_farm_kw = n_turbines * turbine_kw
+
+    s = _Substrate()
+    s.add_slack("GPZ")
+    s.add_bus("SN_PCC", _WINDA3_COLLECTOR_KV)
+    s.add_line(SR_IN, "GPZ", "SN_PCC", _SN_LINE_R, _SN_LINE_X)
+    for i in range(n_turbines):
+        lv = f"WTG_LV_{i + 1}"
+        s.add_bus(lv, _WINDA3_LV_KV)
+        s.add_transformer(f"sr/branch/wtg-tr{i + 1}", "SN_PCC", lv,
+                          hv_kv=_WINDA3_COLLECTOR_KV, lv_kv=_WINDA3_LV_KV, uk_percent=6.0, rated_mva=_WINDA3_TR_MVA)
+        s.add_load(lv, p_mw=-turbine_kw / 1000.0, q_mvar=0.0)
+        s.add_asynchronous_machine(lv, pr_mw=turbine_kw / 1000.0, ur_kv=_WINDA3_LV_KV,
+                                   cos_phi_r=_WINDA3_COSPHI, efficiency=_WINDA3_EFF,
+                                   i_lr_ratio=_WINDA3_ILR, pole_pairs=_WINDA3_POLE_PAIRS, wind_type_3=True)
+    s.finalize_pq()
+
+    src = _pv_source(technology="Wiatr — generatory dwustronnie zasilane (Typ 3, DFIG)",
+                     machine_type="DFIG", nc_class="C", control_mode="U/Q · LVRT (crowbar)",
+                     p_zainst_kw=p_farm_kw, pn_ac_kw=p_farm_kw, p_przylacz_kw=p_farm_kw, p_osiagalna_kw=5800.0)
+    src["collector"] = {
+        "source_ref": "std:IEC_61400;enm:Generator.gen_type=wind_t3_collector",
+        "collector_kv": _WINDA3_COLLECTOR_KV,
+        "n_turbines": n_turbines,
+        "turbine_kw": turbine_kw,
+        "turbine_transformer": f"{_WINDA3_LV_KV}/{_WINDA3_COLLECTOR_KV:.0f} kV · {_WINDA3_TR_MVA} MVA",
+        "turbine_lv_kv": _WINDA3_LV_KV,
+        "topology": "radial",
+    }
+    turbine_fields = [
+        _field(f"g9-wtg{i + 1}", role="source", kind=f"WTG {i + 1} (DFIG) · {turbine_kw / 1000:.1f} MW",
+               abb_cell="SDC", on_bus="SN_PCC",
+               source_ref=f"enm:Generator.gen_type=wind_t3;std:IEC_61400_wtg_{i + 1}",
+               interface_protection=False)
+        for i in range(n_turbines)
+    ]
+    return _oze_companion(
+        "G9-WIND-DFIG", substrate=s,
+        buses=[("SN_PCC", _WINDA3_COLLECTOR_KV, 31.5), ("WTG_LV_1", _WINDA3_LV_KV, 63.0)],
+        pcc_bus="SN_PCC", ibg_ka=0.0, source=src,
+        fields=[
+            _sn_line_connection_field("g9-line", un_kv=_WINDA3_COLLECTOR_KV,
+                                      protection_codes=_PROTECTION_BY_MACHINE["DFIG"]),
+            *turbine_fields,
+        ],
+        boundary=_boundary("G-GPZ", on_bus="SN_PCC", metered=True),
+    )
+
+
 _OZE_ARCHETYPES_2A_EXT = {
     **_OZE_ARCHETYPES_2A, "G4-PVTR": build_g4_pvtr, "G5-BESS": build_g5_bess, "G6-WIND": build_g6_wind,
     "G7-BIOGAZ": build_g7_biogaz, "G8-WIND-ASYNC": build_g8_wind_async,
+    "G9-WIND-DFIG": build_g9_wind_dfig,
 }
 
 

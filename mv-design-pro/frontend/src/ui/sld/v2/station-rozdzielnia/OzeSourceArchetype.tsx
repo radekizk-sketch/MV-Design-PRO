@@ -902,11 +902,13 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
           </text>
           {[
             `Kolektor: ${collector.collector_kv} kV · ${collector.topology}`,
-            `Turbiny: ${collector.n_turbines} × ${(collector.turbine_kw / 1000).toFixed(1)} MW ${src.machine_type === 'ASYNCHRONOUS' ? '(Typ 1, generator asynchroniczny)' : '(Typ 4, pełny przekształtnik)'}`,
+            `Turbiny: ${collector.n_turbines} × ${(collector.turbine_kw / 1000).toFixed(1)} MW ${src.machine_type === 'ASYNCHRONOUS' ? '(Typ 1, generator asynchroniczny)' : src.machine_type === 'DFIG' ? '(Typ 3, DFIG)' : '(Typ 4, pełny przekształtnik)'}`,
             `Trafo turbiny (każda): ${collector.turbine_transformer}`,
             src.machine_type === 'ASYNCHRONOUS'
               ? `Maszyna: asynchroniczna — Ik za Z_M (§6.7), zanik μ·q (§6.6)`
-              : `Maszyna: IBG — Ik ograniczony k·In (§6.7), NIE maszyna`,
+              : src.machine_type === 'DFIG'
+                ? `Maszyna: DFIG (crowbar→asynchr.) — Ik za Z_M (§6.7), zanik μ·q (§6.6)`
+                : `Maszyna: IBG — Ik ograniczony k·In (§6.7), NIE maszyna`,
           ].map((ln, i) => (
             <text key={i} x={schemX} y={schemY + 9 + i * 8} fill={i === 3 ? COLOR_TEXT_MUTED : COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6} fontWeight={i === 3 ? 400 : 600}>
               {ln}

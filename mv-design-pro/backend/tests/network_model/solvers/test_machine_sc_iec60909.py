@@ -58,6 +58,13 @@ def _async(node_id: str = "B") -> AsynchronousMachineSource:
                                      cos_phi_r=0.85, efficiency=0.95, i_lr_ratio=5.0, pole_pairs=2)
 
 
+def _dfig(node_id: str = "B") -> AsynchronousMachineSource:
+    # Same machine as _async, but flagged DFIG (wind Type 3) — crowbar → induction machine.
+    return AsynchronousMachineSource(id="M", name="DFIG", node_id=node_id, pr_mw=2.0, ur_kv=15.0,
+                                     cos_phi_r=0.85, efficiency=0.95, i_lr_ratio=5.0, pole_pairs=2,
+                                     wind_type_3=True)
+
+
 # ── Determinism / additivity ────────────────────────────────────────────────
 def test_machine_free_baseline_ikss():
     assert _ikss(_slack_line_bus()) == pytest.approx(9467.0, rel=0.01)
@@ -140,6 +147,38 @@ def test_asynchronous_partial_and_breaking():
     assert c.q == pytest.approx(0.57, abs=0.01)
     assert c.ib_a == pytest.approx(c.mu * c.q * c.ikss_partial_a, rel=1e-9)
     assert res.motors_negligible is False
+
+
+# ── DFIG (wind Type 3): crowbar → asynchronous machine (§6.7/§6.6) ────────────
+def test_dfig_modeled_as_asynchronous_with_crowbar_label():
+    g = _slack_line_bus()
+    g.add_asynchronous_machine_source(_dfig())
+    res = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)
+    c = res.contributions[0]
+    assert c.machine_type == "DFIG"
+    assert not c.is_synchronous_machine
+    # Same μ·q math as a squirrel-cage induction machine — only the label differs.
+    assert c.ikss_partial_a == pytest.approx(524.0, rel=0.02)
+    assert c.q == pytest.approx(0.57, abs=0.01)
+    assert c.ib_a == pytest.approx(c.mu * c.q * c.ikss_partial_a, rel=1e-9)
+    assert res.white_box["n_dfig"] == 1
+    assert "crowbar" in res.white_box["dfig_assumption"].lower()
+    assert _dfig().white_box()["wind_type_3"] is True
+    assert "DFIG" in str(_dfig().white_box()["model"])
+
+
+def test_dfig_partial_identical_to_squirrel_cage():
+    # The wind_type_3 flag is a documented LABEL (crowbar → induction machine); the
+    # partial current + breaking current are identical to the same machine unflagged.
+    g1, g2 = _slack_line_bus(), _slack_line_bus()
+    g1.add_asynchronous_machine_source(_async())
+    g2.add_asynchronous_machine_source(_dfig())
+    c1 = compute_machine_contributions(g1, "B").contributions[0]
+    c2 = compute_machine_contributions(g2, "B").contributions[0]
+    assert c2.ikss_partial_a == c1.ikss_partial_a
+    assert c2.ib_a == c1.ib_a
+    assert c1.machine_type == "ASYNCHRONOUS"
+    assert c2.machine_type == "DFIG"
 
 
 # ── μ / q factor functions (§6.6.1, §6.6.3) ──────────────────────────────────

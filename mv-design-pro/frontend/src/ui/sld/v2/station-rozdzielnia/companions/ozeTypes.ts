@@ -115,7 +115,7 @@ export interface OzeGensetSpec {
 /** OZE source metadata (axes T/R/S of the taxonomy). */
 export interface OzeSourceMeta {
   readonly technology: string; // PV | BESS | FW | ...
-  readonly machine_type: 'IBG' | 'SYNCHRONOUS' | 'ASYNCHRONOUS';
+  readonly machine_type: 'IBG' | 'SYNCHRONOUS' | 'ASYNCHRONOUS' | 'DFIG';
   readonly nc_rfg_class: string; // A | B | C | D
   readonly control_mode: string; // cosφ=const | Q=const | cosφ(P) | Q(U) | P(f)
   /** Gate I — protection function codes (real names from the doc), per device. */
