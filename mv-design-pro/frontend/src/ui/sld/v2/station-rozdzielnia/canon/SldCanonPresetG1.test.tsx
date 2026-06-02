@@ -72,4 +72,47 @@ describe('SldCanonPresetG1 — canonical PV 1 MW template (G1)', () => {
     expect(txt).toContain('GRANICA');
     expect(txt).toContain('G-ZKSN → OSD');
   });
+
+  it('SN U readout is the consistent nominal placeholder (15,75 kV · 1,00 pu) pending §5', () => {
+    const txt = renderG1().container.textContent ?? '';
+    // U shows the NOMINAL voltage at the solved pu (rounded) — internally consistent;
+    // the real value (possible export voltage rise) arrives from the solver in §5.
+    expect(txt).toContain('15,75 kV · 1,00 pu');
+    expect(txt).toContain('0,80 kV · 1,00 pu');
+  });
+
+  it('LAYOUT INVARIANT: no annotation text overlaps a canonical glyph (bounding-box §POZYCJE)', () => {
+    // Hard rule: zero text-on-glyph overlap. Every canonical symbol carries a
+    // data-keepout box; every annotation text (not inside a glyph group) must clear
+    // them. Locked here so the POLE-1 relay/uziemnik collision cannot recur in G2–G9.
+    const svg = renderG1().container.querySelector('svg')!;
+    const keepouts = Array.from(svg.querySelectorAll('[data-keepout]')).map((el) => {
+      const [x, y, w, h] = (el.getAttribute('data-keepout') ?? '').split(',').map(Number);
+      return { x0: x, y0: y, x1: x + w, y1: y + h };
+    });
+    expect(keepouts.length).toBeGreaterThan(10);
+
+    const CHAR = 0.62; // monospace advance ≈ 0.6·fontSize (slight over-estimate)
+    const BAND = [130, 820]; // schematic band (excludes header + legend)
+    const offenders: string[] = [];
+    for (const t of Array.from(svg.querySelectorAll('text'))) {
+      if (t.closest('[data-keepout]')) continue; // a symbol's own internal label
+      const x = Number(t.getAttribute('x'));
+      const y = Number(t.getAttribute('y'));
+      const size = Number(t.getAttribute('font-size'));
+      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(size)) continue;
+      if (y < BAND[0] || y > BAND[1]) continue;
+      const anchor = t.getAttribute('text-anchor') ?? 'start';
+      const w = (t.textContent ?? '').length * size * CHAR;
+      const tx0 = anchor === 'middle' ? x - w / 2 : anchor === 'end' ? x - w : x;
+      const box = { x0: tx0, x1: tx0 + w, y0: y - size, y1: y + 2 };
+      for (const k of keepouts) {
+        if (box.x0 < k.x1 && box.x1 > k.x0 && box.y0 < k.y1 && box.y1 > k.y0) {
+          offenders.push(`"${t.textContent}" @(${x},${y}) ∩ keepout(${k.x0},${k.y0},${k.x1},${k.y1})`);
+          break;
+        }
+      }
+    }
+    expect(offenders, `text-on-glyph collisions:\n${offenders.join('\n')}`).toEqual([]);
+  });
 });
