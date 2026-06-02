@@ -1,7 +1,7 @@
 /**
  * DoD §8 — formal acceptance for the canonical OZE preset family. Every preset on the
  * shared skeleton/kit is held to the same criteria: IEC symbol canon (§8.1), node
- * readouts bound to the FROZEN solver (§8.3), the P0/P1 data model present (§8.4 —
+ * readouts bound to the FROZEN solver (§8.3), the OSD safety data model present (§8.4 —
  * OSD neutral earthing + dynamic withstand), and a clean render with zero text-on-glyph
  * overlap (§8.5, bounding-box). Z2: a ✓ here means the data + layout were verified, not
  * assumed. New presets (G3…G9) add a row and inherit the whole checklist.
@@ -63,9 +63,9 @@ describe('DoD §8 — canonical OZE preset acceptance', () => {
         expect(svg().textContent ?? '').toContain(`${f1(sc.max.ikss_ka)} / ${f1(sc.min.ikss_ka)} kA`);
       });
 
-      it('§8.4 — P0/P1 in the model: OSD neutral earthing + dynamic withstand', () => {
-        expect(p.companion.source.grid_earthing, 'grid_earthing (P0)').toBeTruthy();
-        expect(p.companion.source.withstand, 'withstand — ip beside Icw (P1)').toBeTruthy();
+      it('§8.4 — data model: OSD neutral earthing + dynamic withstand', () => {
+        expect(p.companion.source.grid_earthing, 'grid_earthing — OSD neutral earthing').toBeTruthy();
+        expect(p.companion.source.withstand, 'withstand — ip beside Icw').toBeTruthy();
       });
 
       it('§8.5 — render clean: no annotation text overlaps a canonical glyph', () => {
