@@ -2077,7 +2077,9 @@ def build_g6_wind() -> dict[str, Any]:
     s = _Substrate()
     s.add_slack("GPZ")
     s.add_bus("SN_PCC", _WIND_COLLECTOR_KV)  # collector bus == farm PCC
-    s.add_line(SR_IN, "GPZ", "SN_PCC", _SN_LINE_R, _SN_LINE_X)
+    # Collector SC is grid-infeed dominated → physical X/R≈7 (κ≈1.66), |Z| preserved so
+    # Ik'' is UNCHANGED (same fix recipe as G4-PVTR/G5-BESS; not the low-X/R _SN_LINE).
+    s.add_line(SR_IN, "GPZ", "SN_PCC", _GRID_INFEED_R, _GRID_INFEED_X)
     # Each turbine: own transformer (LV→collector) + full-converter (IBG) at LV.
     # Generation (export) = negative load; direction/value from the FROZEN solver.
     for i in range(n_turbines):
@@ -2091,6 +2093,7 @@ def build_g6_wind() -> dict[str, Any]:
             lv_kv=_WIND_LV_KV,
             uk_percent=6.0,
             rated_mva=tr_mva,
+            x_over_r=4.5,  # physical turbine-TR R/X (κ_LV ≈ 1.52 < κ_collector); |Z| unchanged
         )
         s.add_load(lv, p_mw=-turbine_kw / 1000.0, q_mvar=0.0)
         s.add_inverter(
@@ -2123,6 +2126,25 @@ def build_g6_wind() -> dict[str, Any]:
         "turbine_transformer": f"{_WIND_LV_KV}/{_WIND_COLLECTOR_KV:.0f} kV · {tr_mva} MVA",
         "turbine_lv_kv": _WIND_LV_KV,
         "topology": "radial",
+    }
+    # P0 — OSD neutral earthing at the MV collector drives Ik''1f-z (node ①). The turbine
+    # LV (0.69 kV) sits behind a Dyn turbine transformer → its earthing is local, not the
+    # station IT board, so imd_it_nn=False (no shared nN IT tier in a wind farm).
+    src["grid_earthing"] = {
+        "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN",
+        "neutral_point": "kompensowana",
+        "ik_1f_ka": 0.12,
+        "imd_it_nn": False,
+        "note_pl": (
+            "SN kolektor 30 kV: I″k1f-z z uziemienia neutralnego OSD (kompensowana); "
+            "LV turbiny za trafem Dyn — uziemienie lokalne"
+        ),
+    }
+    # P1 — dynamic (peak) withstand beside the thermal Icw; ip from the FROZEN solver.
+    src["withstand"] = {
+        "source_ref": "norma:IEC_62271_Ipk;norma:IEC_61400",
+        "sn_idyn_ka": 63.0,
+        "nn_idyn_ka": 105.0,
     }
     # Turbine BAYS sit on the COLLECTOR (PCC) bus — the transformer + WTG hang behind
     # each bay (drawn per feeder), NOT a shared nN tier.

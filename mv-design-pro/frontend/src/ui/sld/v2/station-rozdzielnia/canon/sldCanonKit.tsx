@@ -168,6 +168,17 @@ export function BatteryGlyph({ x, y }: { x: number; y: number }): JSX.Element {
   );
 }
 
+/** Wind-turbine generator (WTG) — IEC rotating machine ◯ with "G"; pairs with the ~/=
+ * converter to read as a full-converter (Type 4) turbine. AMBER source color. */
+export function WindGen({ x, y }: { x: number; y: number }): JSX.Element {
+  return (
+    <g data-keepout={ko(x - 12, y - 12, 24, 24)}>
+      <circle cx={x} cy={y} r={12} fill="none" stroke={AMBER} strokeWidth={1.7} />
+      <text x={x} y={y + 4} textAnchor="middle" fill={AMBER} fontFamily={SANS} fontSize={12} fontWeight={800}>G</text>
+    </g>
+  );
+}
+
 const CIRCLED = ['①', '②', '③', '④', '⑤'];
 
 /** SCADA node readout (no frame, no table) — "wielkość = wartość" at the node. */
