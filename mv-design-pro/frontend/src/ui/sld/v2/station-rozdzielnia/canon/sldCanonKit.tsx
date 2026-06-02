@@ -144,6 +144,30 @@ export function PowerArrow({ x, y, dir }: { x: number; y: number; dir: 'up' | 'd
   );
 }
 
+/** Bidirectional power (BESS charge ⇄ discharge / 4Q) — arrowheads both ends. */
+export function PowerArrowBi({ x, y }: { x: number; y: number }): JSX.Element {
+  return (
+    <g stroke={PINK} fill={PINK} strokeWidth={2}>
+      <line x1={x} y1={y - 11} x2={x} y2={y + 11} />
+      <polygon points={`${x - 4},${y - 7} ${x + 4},${y - 7} ${x},${y - 13}`} stroke="none" />
+      <polygon points={`${x - 4},${y + 7} ${x + 4},${y + 7} ${x},${y + 13}`} stroke="none" />
+    </g>
+  );
+}
+
+/** Battery glyph (BESS) — drawn beside the PCS converter (~/= ⎓). */
+export function BatteryGlyph({ x, y }: { x: number; y: number }): JSX.Element {
+  return (
+    <g stroke={AMBER} strokeWidth={1.4} fill="none" data-keepout={ko(x - 2, y - 7, 18, 14)}>
+      <line x1={x} y1={y - 6} x2={x + 14} y2={y - 6} />
+      <line x1={x + 3} y1={y - 3} x2={x + 11} y2={y - 3} strokeWidth={1} />
+      <line x1={x} y1={y} x2={x + 14} y2={y} />
+      <line x1={x + 3} y1={y + 3} x2={x + 11} y2={y + 3} strokeWidth={1} />
+      <line x1={x} y1={y + 6} x2={x + 14} y2={y + 6} />
+    </g>
+  );
+}
+
 const CIRCLED = ['①', '②', '③', '④', '⑤'];
 
 /** SCADA node readout (no frame, no table) — "wielkość = wartość" at the node. */

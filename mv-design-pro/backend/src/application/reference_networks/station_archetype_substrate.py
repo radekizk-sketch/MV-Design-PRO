@@ -1422,11 +1422,11 @@ _PV1MW_SN_KV = 15.75
 _PV1MW_NN_KV = 0.8
 
 
-# Grid infeed to the PCC is GRID-dominated (X/R ≈ 7, PN-EN 60909) — not a resistive
-# cable. |Z| matches the generic SN line (Ik″ unchanged ≈ 9,9 kA), only X/R (→ κ, ip)
-# is made physical: SN κ ≈ 1,66 ⇒ ip ≈ 23 kA (was X/R=2, κ=1,24 — too resistive).
-_PV1MW_GRID_R = 0.142
-_PV1MW_GRID_X = 0.996
+# Grid infeed at the SN connection is GRID-dominated (X/R ≈ 7, PN-EN 60909) — not a
+# resistive cable. |Z| matches the generic SN line (Ik″ unchanged), only X/R (→ κ, ip)
+# is made physical: SN κ ≈ 1,66. Shared by the canonical SN-station presets (G1, G3).
+_GRID_INFEED_R = 0.142
+_GRID_INFEED_X = 0.996
 
 
 # Protection coordination matrix — PV "Buk 1", dok. 1.18 "Wykaz nastaw i
@@ -1582,7 +1582,7 @@ def build_g4_pvtr() -> dict[str, Any]:
     s.add_slack("GPZ")
     s.add_bus("SN_PCC", _PV1MW_SN_KV)
     s.add_bus("NN_800", _PV1MW_NN_KV)
-    s.add_line(SR_IN, "GPZ", "SN_PCC", _PV1MW_GRID_R, _PV1MW_GRID_X)
+    s.add_line(SR_IN, "GPZ", "SN_PCC", _GRID_INFEED_R, _GRID_INFEED_X)
     s.add_transformer(
         SR_TR,
         "SN_PCC",
@@ -1858,9 +1858,16 @@ def build_g5_bess() -> dict[str, Any]:
     s.add_slack("GPZ")
     s.add_bus("SN_PCC", _BESS_SN_KV)
     s.add_bus("NN", _BESS_NN_KV)
-    s.add_line(SR_IN, "GPZ", "SN_PCC", _SN_LINE_R, _SN_LINE_X)
+    s.add_line(SR_IN, "GPZ", "SN_PCC", _GRID_INFEED_R, _GRID_INFEED_X)
     s.add_transformer(
-        SR_TR, "SN_PCC", "NN", hv_kv=_BESS_SN_KV, lv_kv=_BESS_NN_KV, uk_percent=6.0, rated_mva=1.25
+        SR_TR,
+        "SN_PCC",
+        "NN",
+        hv_kv=_BESS_SN_KV,
+        lv_kv=_BESS_NN_KV,
+        uk_percent=6.0,
+        rated_mva=1.25,
+        x_over_r=4.5,
     )
     # DISCHARGE (export) = stan podstawowy pokazany: każdy PCS oddaje moc (ujemne
     # obciążenie = generacja). Kierunek/wartość z FROZEN solvera (nie z palca).
@@ -1897,6 +1904,20 @@ def build_g5_bess() -> dict[str, Any]:
         "charge_kw": p_pcs_kw,
         "discharge_kw": p_pcs_kw,
         "bidirectional": True,
+    }
+    # §5 — SN station: OSD neutral earthing drives Ik″1f-z (SN, compensated); the IT nN
+    # board carries an IMD (1st earth fault signalled). Dynamic withstand beside Icw.
+    src["grid_earthing"] = {
+        "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN",
+        "neutral_point": "kompensowana",
+        "ik_1f_ka": 0.12,
+        "imd_it_nn": True,
+        "note_pl": "nN IT: 1. doziemienie bez prądu — IMD; SN: I″k1f-z z uziemienia neutralnego OSD",
+    }
+    src["withstand"] = {
+        "source_ref": "karta:CTM20_Idyn;karta:rozdzielnica_nN",
+        "sn_idyn_ka": 40.0,
+        "nn_idyn_ka": 105.0,
     }
     nn_fields = [
         _field(

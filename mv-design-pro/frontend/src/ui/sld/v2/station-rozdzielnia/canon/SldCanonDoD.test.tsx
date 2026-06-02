@@ -13,6 +13,7 @@ import { OZE_ARCHETYPES_2A } from '../companions/ozeArchetypes2a';
 import { glyphTextCollisions } from './sldCanonKit';
 import { SldCanonPresetG1 } from './SldCanonPresetG1';
 import { SldCanonPresetG2 } from './SldCanonPresetG2';
+import { SldCanonPresetG3 } from './SldCanonPresetG3';
 
 const f1 = (v: number) => v.toFixed(1).replace('.', ',');
 
@@ -30,6 +31,13 @@ const PRESETS = [
     bus: 'NN_BUS',
     band: [110, 600] as [number, number],
     render: () => <SldCanonPresetG2 companion={OZE_ARCHETYPES_2A['G1']} />,
+  },
+  {
+    name: 'G3 — BESS (4Q)',
+    companion: OZE_ARCHETYPES_2A['G5-BESS'],
+    bus: 'SN_PCC',
+    band: [130, 800] as [number, number],
+    render: () => <SldCanonPresetG3 companion={OZE_ARCHETYPES_2A['G5-BESS']} />,
   },
 ];
 
