@@ -172,6 +172,22 @@ class UnitVerifier:
             "inputs": {"i_p": "kA"},
             "output": "kA",
         },
+        # Maszyny wirujące — prąd wyłączeniowy z zanikiem (§6.6)
+        "EQ_SC3F_011": {
+            "rule": "— (bezwymiarowy)",
+            "inputs": {"I_k''": "kA", "I_r": "kA"},
+            "output": "—",
+        },
+        "EQ_SC3F_012": {
+            "rule": "— (bezwymiarowy)",
+            "inputs": {"m": "MW"},
+            "output": "—",
+        },
+        "EQ_SC3F_013": {
+            "rule": "— · — · kA = kA",
+            "inputs": {"μ": "—", "q": "—", "I_k''": "kA"},
+            "output": "kA",
+        },
         # SC1 Post-Fault (§4.1)
         "EQ_SC1_001": {
             "rule": "Ω = Ω",

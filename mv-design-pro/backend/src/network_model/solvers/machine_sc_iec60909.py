@@ -74,7 +74,7 @@ class MachinePartialContribution:
 
     source_id: str
     source_name: str
-    machine_type: str  # "SYNCHRONOUS" | "ASYNCHRONOUS"
+    machine_type: str  # "SYNCHRONOUS" | "ASYNCHRONOUS" | "DFIG"
     node_id: str
     z_internal_ohm: complex
     ir_a: float
@@ -84,6 +84,7 @@ class MachinePartialContribution:
     q: float
     ib_a: float  # symmetrical breaking current = μ·q·I″k_partial (q = 1 for synchronous)
     is_synchronous_machine: bool
+    p_per_pole_mw: float = 0.0  # active power per pole pair m (drives q, §6.6.3; 0 for sync)
 
     def to_dict(self) -> dict:
         return {
@@ -99,6 +100,7 @@ class MachinePartialContribution:
             "q": float(self.q),
             "ib_a": float(self.ib_a),
             "is_synchronous_machine": self.is_synchronous_machine,
+            "p_per_pole_mw": float(self.p_per_pole_mw),
         }
 
 
@@ -146,7 +148,9 @@ def compute_machine_contributions(
     asyn = graph.get_asynchronous_machine_sources()
     if not sync and not asyn:
         return MachineShortCircuitResult(
-            fault_node_id=fault_node_id, c_factor=c_factor, t_min_s=t_min_s,
+            fault_node_id=fault_node_id,
+            c_factor=c_factor,
+            t_min_s=t_min_s,
             white_box={"note": "Brak maszyn wirujących — udział zerowy (model §6.6 nieaktywny)."},
         )
 
@@ -175,11 +179,23 @@ def compute_machine_contributions(
         ip_a = partial_a(m.node_id, m.z_internal_ohm)
         ratio = ip_a / m.ir_a if m.ir_a > 0 else 0.0
         mu = mu_factor(ratio, t_min_s)
-        contributions.append(MachinePartialContribution(
-            source_id=m.id, source_name=m.name, machine_type="SYNCHRONOUS", node_id=m.node_id,
-            z_internal_ohm=m.z_internal_ohm, ir_a=m.ir_a, ikss_partial_a=ip_a,
-            ratio_ik_ir=ratio, mu=mu, q=1.0, ib_a=mu * ip_a, is_synchronous_machine=True,
-        ))
+        contributions.append(
+            MachinePartialContribution(
+                source_id=m.id,
+                source_name=m.name,
+                machine_type="SYNCHRONOUS",
+                node_id=m.node_id,
+                z_internal_ohm=m.z_internal_ohm,
+                ir_a=m.ir_a,
+                ikss_partial_a=ip_a,
+                ratio_ik_ir=ratio,
+                mu=mu,
+                q=1.0,
+                ib_a=mu * ip_a,
+                is_synchronous_machine=True,
+                p_per_pole_mw=0.0,
+            )
+        )
     for m in asyn:
         ip_a = partial_a(m.node_id, m.z_internal_ohm)
         ratio = ip_a / m.ir_a if m.ir_a > 0 else 0.0
@@ -189,11 +205,23 @@ def compute_machine_contributions(
         # the machine is treated as a squirrel-cage induction generator — same §6.7/§6.6
         # μ·q math, only the label differs (the crowbar assumption is documented).
         mtype = "DFIG" if getattr(m, "wind_type_3", False) else "ASYNCHRONOUS"
-        contributions.append(MachinePartialContribution(
-            source_id=m.id, source_name=m.name, machine_type=mtype, node_id=m.node_id,
-            z_internal_ohm=m.z_internal_ohm, ir_a=m.ir_a, ikss_partial_a=ip_a,
-            ratio_ik_ir=ratio, mu=mu, q=q, ib_a=mu * q * ip_a, is_synchronous_machine=False,
-        ))
+        contributions.append(
+            MachinePartialContribution(
+                source_id=m.id,
+                source_name=m.name,
+                machine_type=mtype,
+                node_id=m.node_id,
+                z_internal_ohm=m.z_internal_ohm,
+                ir_a=m.ir_a,
+                ikss_partial_a=ip_a,
+                ratio_ik_ir=ratio,
+                mu=mu,
+                q=q,
+                ib_a=mu * q * ip_a,
+                is_synchronous_machine=False,
+                p_per_pole_mw=m.p_per_pole_mw,
+            )
+        )
 
     ikss_machines = sum(c.ikss_partial_a for c in contributions)
     ib_machines = sum(c.ib_a for c in contributions)
@@ -205,8 +233,10 @@ def compute_machine_contributions(
     white_box = {
         "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q)",
         "fault_node_id": fault_node_id,
-        "z_kk_ohm": {"re": (z_kk * builder.get_zbase_ohm(fault_node_id)).real,
-                     "im": (z_kk * builder.get_zbase_ohm(fault_node_id)).imag},
+        "z_kk_ohm": {
+            "re": (z_kk * builder.get_zbase_ohm(fault_node_id)).real,
+            "im": (z_kk * builder.get_zbase_ohm(fault_node_id)).imag,
+        },
         "i_base_a": i_base_k,
         "ikss_total_a": ikss_total_a,
         "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
@@ -220,7 +250,12 @@ def compute_machine_contributions(
         ),
     }
     return MachineShortCircuitResult(
-        fault_node_id=fault_node_id, c_factor=c_factor, t_min_s=t_min_s,
-        contributions=contributions, ikss_machines_a=ikss_machines, ib_machines_a=ib_machines,
-        motors_negligible=motors_negligible, white_box=white_box,
+        fault_node_id=fault_node_id,
+        c_factor=c_factor,
+        t_min_s=t_min_s,
+        contributions=contributions,
+        ikss_machines_a=ikss_machines,
+        ib_machines_a=ib_machines,
+        motors_negligible=motors_negligible,
+        white_box=white_box,
     )

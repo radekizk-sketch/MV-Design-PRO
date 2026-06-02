@@ -251,6 +251,141 @@ class TestSC3FProofGenerator:
         assert idyn == ip
 
 
+def _machine_result_for_proof():
+    """A small slack→line→bus network with one synchronous + one asynchronous machine
+    at the fault bus; returns the solver's per-machine breakdown (IEC 60909 §6.6)."""
+    from network_model.core.branch import BranchType, LineBranch
+    from network_model.core.graph import NetworkGraph
+    from network_model.core.machine import AsynchronousMachineSource, SynchronousMachineSource
+    from network_model.core.node import Node, NodeType
+    from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
+
+    g = NetworkGraph()
+    g.add_node(
+        Node(
+            id="GPZ",
+            name="GPZ",
+            node_type=NodeType.SLACK,
+            voltage_level=15.0,
+            active_power=0.0,
+            reactive_power=0.0,
+            voltage_magnitude=1.0,
+            voltage_angle=0.0,
+        )
+    )
+    g.add_node(
+        Node(
+            id="B",
+            name="B",
+            node_type=NodeType.PQ,
+            voltage_level=15.0,
+            active_power=0.0,
+            reactive_power=0.0,
+        )
+    )
+    g.add_branch(
+        LineBranch(
+            id="L",
+            name="L",
+            branch_type=BranchType.LINE,
+            from_node_id="GPZ",
+            to_node_id="B",
+            r_ohm_per_km=0.45,
+            x_ohm_per_km=0.90,
+            b_us_per_km=0.0,
+            length_km=1.0,
+            rated_current_a=0.0,
+        )
+    )
+    g.add_synchronous_machine_source(
+        SynchronousMachineSource(
+            id="G",
+            name="GEN",
+            node_id="B",
+            sr_mva=5.0,
+            ur_kv=15.0,
+            xd_subtransient_pu=0.15,
+            cos_phi_r=0.8,
+            c_max=1.1,
+        )
+    )
+    g.add_asynchronous_machine_source(
+        AsynchronousMachineSource(
+            id="M",
+            name="MOT",
+            node_id="B",
+            pr_mw=2.0,
+            ur_kv=15.0,
+            cos_phi_r=0.85,
+            efficiency=0.95,
+            i_lr_ratio=5.0,
+            pole_pairs=2,
+        )
+    )
+    return compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)
+
+
+@pytest.fixture
+def sc3f_with_machines(sc3f_test_input: SC3FInput) -> SC3FInput:
+    """SC3F input enriched with a per-machine breakdown (1 synchronous + 1 asynchronous)."""
+    from dataclasses import replace
+
+    return replace(sc3f_test_input, fault_node_id="B", machine_result=_machine_result_for_proof())
+
+
+class TestSC3FProofWithMachines:
+    """SC3F proof — per-machine §6.6 breaking-current section (μ / q / i_b)."""
+
+    def test_appends_machine_steps(self, sc3f_with_machines: SC3FInput):
+        proof = ProofGenerator.generate_sc3f_proof(sc3f_with_machines)
+        assert len(proof.steps) > 7  # 7 aggregate + machine steps
+        eq_ids = {s.equation.equation_id for s in proof.steps}
+        assert "EQ_SC3F_011" in eq_ids  # μ (decay)
+        assert "EQ_SC3F_012" in eq_ids  # q (asynchronous present)
+        assert "EQ_SC3F_013" in eq_ids  # i_b = μ·q·I″k
+
+    def test_all_unit_checks_pass_including_machines(self, sc3f_with_machines: SC3FInput):
+        proof = ProofGenerator.generate_sc3f_proof(sc3f_with_machines)
+        for step in proof.steps:
+            assert step.unit_check.passed, step.equation.equation_id
+        assert proof.summary.unit_check_passed
+
+    def test_ib_machines_in_key_results(self, sc3f_with_machines: SC3FInput):
+        proof = ProofGenerator.generate_sc3f_proof(sc3f_with_machines)
+        assert "ib_machines_ka" in proof.summary.key_results
+        assert proof.summary.key_results["ib_machines_ka"].value > 0
+
+    def test_synchronous_has_no_q_step_asynchronous_does(self, sc3f_with_machines: SC3FInput):
+        proof = ProofGenerator.generate_sc3f_proof(sc3f_with_machines)
+        # Two machines (1 sync + 1 async): both get μ + i_b; only the async gets a q step.
+        mu_steps = [s for s in proof.steps if s.equation.equation_id == "EQ_SC3F_011"]
+        q_steps = [s for s in proof.steps if s.equation.equation_id == "EQ_SC3F_012"]
+        ib_steps = [s for s in proof.steps if s.equation.equation_id == "EQ_SC3F_013"]
+        assert len(mu_steps) == 2
+        assert len(q_steps) == 1
+        assert len(ib_steps) == 2
+
+    def test_step_numbers_sequential_with_machines(self, sc3f_with_machines: SC3FInput):
+        proof = ProofGenerator.generate_sc3f_proof(sc3f_with_machines)
+        nums = [s.step_number for s in proof.steps]
+        assert nums == list(range(1, len(proof.steps) + 1))
+
+    def test_without_machines_still_seven_steps(self, sc3f_test_input: SC3FInput):
+        # Regression: machine_result=None ⇒ the original 7-step proof, unchanged.
+        proof = ProofGenerator.generate_sc3f_proof(sc3f_test_input)
+        assert len(proof.steps) == 7
+        assert "ib_machines_ka" not in proof.summary.key_results
+
+    def test_determinism_with_machines(self, sc3f_with_machines: SC3FInput):
+        artifact_id = uuid4()
+        a = ProofGenerator.generate_sc3f_proof(sc3f_with_machines, artifact_id).to_dict()
+        b = ProofGenerator.generate_sc3f_proof(sc3f_with_machines, artifact_id).to_dict()
+        for d in (a, b):
+            del d["document_id"]
+            del d["created_at"]
+        assert a == b
+
+
 # =============================================================================
 # VDROP Tests
 # =============================================================================
