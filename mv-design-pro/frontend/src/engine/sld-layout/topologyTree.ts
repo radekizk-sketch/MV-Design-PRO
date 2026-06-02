@@ -124,6 +124,21 @@ export function buildTopologyTree(snapshot: TopologyInputV1): TopologyTree {
     if (!prev || br.id.localeCompare(prev.id) < 0) edgeBranch.set(k, br);
   }
 
+  // Łącznik (BUS_LINK) w służbie utrzymuje CIĄGŁOŚĆ toru kablowego przez węzeł łącznikowy
+  // (np. stacja wpięta w magistralę przez łącznik). Dodaj jako krawędź WYŁĄCZNIE łączności
+  // — stan otwarty/zamknięty to detal rysunku, nie topologii układu: bez tego stacja za
+  // łącznikiem nie zostałaby w ogóle rozmieszczona. NIE zapisujemy go w `edgeBranch` —
+  // rysowanym rodzicem pozostaje odcinek CABLE/LINE (kontrakcja zszywa kabel przez łącznik).
+  // Łączniki wewnątrzstacyjne (pola, sprzęgła) rozwiązują się do pętli własnej → pomijane.
+  for (const br of snapshot.branches) {
+    if (br.kind !== BranchKind.BUS_LINK || !br.inService) continue;
+    const a = resolveBusNode(br.fromNodeId);
+    const b = resolveBusNode(br.toNodeId);
+    if (a === b) continue;
+    addAdj(a, b);
+    addAdj(b, a);
+  }
+
   // Kontrakcja węzłów pośrednich deg-2 (BUS:...) do krawędzi.
   // Powtarzaj aż stabilnie. Determinizm: iterujemy po posortowanych kluczach.
   let changed = true;
