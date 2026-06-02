@@ -52,7 +52,7 @@ export function SldCanonPresetG3({ companion }: { companion: SldOzeArchetypeComp
   const nPcs = st?.n_pcs ?? 2;
   const pcsKw = st?.pcs_kw ?? 500;
 
-  const X = { p1: 400, p2: 745, p3: 1090, node1: 1340 };
+  const X = { p1: 400, p2: 745, p3: 1090, ctBus: 950, node1: 1340 };
   const snBusY = 200;
   const nnBusY = 600;
   const snX1 = 280;
@@ -95,34 +95,46 @@ export function SldCanonPresetG3({ companion }: { companion: SldOzeArchetypeComp
       <PowerArrowBi x={X.p1} y={555} />
       {lbl(X.p1 + 12, 559, '4Q', PINK, 11, 800)}
 
-      {/* ── POLE 2 · Pomiarowe (CT/VT — pomiar rozliczeniowy = granica) ── */}
-      {lbl(X.p2 - 50, 160, 'POLE 2 · Pomiarowe', CYAN, 12, 700)}
+      {/* ── POLE 2 · Pomiarowe (VT-tap + licznik; CT w torze na szynie = granica) ── */}
+      {lbl(X.p2 - 60, 160, 'POLE 2 · Pomiarowe', CYAN, 12, 700)}
       <line x1={X.p2} y1={snBusY} x2={X.p2} y2={300} stroke={SN_BUS} strokeWidth={2} />
       <Odlacznik x={X.p2} y={252} />
       {lbl(X.p2 + 18, 256, 'Q odłącznik', TXT2, 11, 700)}
-      <CtRing x={X.p2} y={320} />
-      {lbl(X.p2 + 18, 324, 'CT — pierścień (pomiar)', TXT_MUTED, 9.5, 600)}
-      <VtNoGround x={X.p2} y={362} />
-      {lbl(X.p2 - 96, 374, 'VT — bez ziemi', TXT_MUTED, 9, 600)}
+      <g data-keepout={ko(X.p2 - 5, 318, 10, 20)}>
+        <rect x={X.p2 - 5} y={318} width={10} height={20} rx={1.5} fill="#0A1622" stroke="#E6F2FF" strokeWidth={1.4} />
+      </g>
+      {lbl(X.p2 + 14, 333, 'bezp. VT (GTS)', TXT_MUTED, 9.5, 600)}
+      <VtNoGround x={X.p2} y={360} />
+      {lbl(X.p2 - 96, 372, 'VT · 15/√3', TXT, 11, 700)}
+      {lbl(X.p2 - 96, 385, 'bez ziemi (→U)', TXT_MUTED, 9, 600)}
       <g data-keepout={ko(X.p2 - 11, 392, 22, 18)}>
         <rect x={X.p2 - 11} y={392} width={22} height={18} rx={2} fill="#0A1622" stroke={AMBER} strokeWidth={1.6} />
         <text x={X.p2} y={405} textAnchor="middle" fill={AMBER} fontFamily={MONO} fontSize={9} fontWeight={800}>Wh</text>
       </g>
-      {lbl(X.p2 + 18, 401, 'POMIAR rozliczeniowy', AMBER, 11, 700)}
-      {lbl(X.p2 + 18, 414, '(granica = układ pomiarowy)', TXT_MUTED, 8.5, 600)}
+      {lbl(X.p2 - 78, 428, 'POMIAR rozliczeniowy', AMBER, 11, 700)}
+      {lbl(X.p2 - 78, 441, 'granica = układ pomiarowy (I z CT, U z VT)', TXT_MUTED, 8.5, 600)}
+
+      {/* CT — pierścień na szynie SN (w torze prądowym); wtórny → licznik. */}
+      <CtRing x={X.ctBus} y={snBusY} />
+      {lbl(X.ctBus, 182, 'CT · 50/5/5', TXT, 10.5, 700, 'middle')}
+      <circle cx={X.ctBus} cy={snBusY + 38} r={2.5} fill={CYAN} />
+      <line x1={X.ctBus} y1={snBusY + 9} x2={X.ctBus} y2={snBusY + 36} stroke={CYAN} strokeWidth={1.2} strokeDasharray="3 3" />
+      {lbl(X.ctBus + 8, snBusY + 41, '→ I do licznika', TXT_MUTED, 9, 600)}
 
       {/* ── POLE 3 · Liniowe (przyłącze do OSD; moc dwukierunkowa) ── */}
       {lbl(X.p3 - 50, 160, 'POLE 3 · Liniowe', CYAN, 12, 700)}
       <line x1={X.p3} y1={snBusY} x2={X.p3} y2={470} stroke={SN_BUS} strokeWidth={2} />
       <Odlacznik x={X.p3} y={246} />
-      {lbl(X.p3 + 18, 250, 'Q odłącznik + uziemnik', TXT2, 11, 700)}
+      {lbl(X.p3 + 18, 250, 'Q odłącznik', TXT2, 11, 700)}
       <UziemnikIEC x={X.p3} y={300} />
       {lbl(X.p3 + 40, 318, 'uziemnik (IEC)', TXT_MUTED, 9.5, 600)}
-      <Glowica x={X.p3} y={388} />
-      {lbl(X.p3 + 18, 392, 'głowica kablowa', TXT_MUTED, 9.5, 600)}
-      <line x1={X.p3} y1={397} x2={X.p3} y2={505} stroke={SN_BUS} strokeWidth={2} />
-      <PowerArrowBi x={X.p3} y={450} />
-      {lbl(X.p3 + 14, 454, 'rozładowanie ⇄ ładowanie', PINK, 9.5, 800)}
+      <Glowica x={X.p3} y={358} />
+      {lbl(X.p3 + 18, 362, 'głowica kablowa', TXT_MUTED, 9.5, 600)}
+      <CtRing x={X.p3} y={400} />
+      {lbl(X.p3 + 18, 404, 'CT linii · 100/1', TXT_MUTED, 9.5, 600)}
+      <line x1={X.p3} y1={409} x2={X.p3} y2={505} stroke={SN_BUS} strokeWidth={2} />
+      <PowerArrowBi x={X.p3} y={462} />
+      {lbl(X.p3 + 14, 466, 'rozładow. ⇄ ładow.', PINK, 9.5, 800)}
       {lbl(X.p3 - 110, 528, '3×XRUHAKXS → SIEĆ OSD', TXT_MUTED, 9, 600)}
 
       {/* ── node ① readout ── */}
