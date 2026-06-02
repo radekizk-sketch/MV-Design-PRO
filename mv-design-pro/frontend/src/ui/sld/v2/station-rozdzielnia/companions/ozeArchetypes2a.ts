@@ -3048,7 +3048,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       "machine_type": "IBG",
       "nc_rfg_class": "C",
       "power_hierarchy": {
-        "p_osiagalna_kw": 950.0,
+        "p_osiagalna_kw": 999.5999999999999,
         "p_przylacz_kw": 999.5999999999999,
         "p_zainst_kw": 999.5999999999999,
         "pn_ac_kw": 999.5999999999999,
@@ -3102,62 +3102,62 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "sr/branch/in": {
           "branch_ref": "sr/branch/in",
           "direction": "reverse",
-          "i_a": 33.88,
-          "loading_percent": 5.38,
-          "p_mw": -0.8801,
-          "q_mvar": 0.0133,
-          "s_mva": 0.8802
+          "i_a": 37.71,
+          "loading_percent": 5.99,
+          "p_mw": -0.9797,
+          "q_mvar": 0.0141,
+          "s_mva": 0.9798
         },
         "sr/branch/inv1": {
           "branch_ref": "sr/branch/inv1",
           "direction": "reverse",
-          "i_a": 216.04,
-          "loading_percent": 34.29,
-          "p_mw": -0.2999,
+          "i_a": 240.0,
+          "loading_percent": 38.1,
+          "p_mw": -0.3332,
           "q_mvar": 0.0,
-          "s_mva": 0.2999
+          "s_mva": 0.3332
         },
         "sr/branch/inv2": {
           "branch_ref": "sr/branch/inv2",
           "direction": "reverse",
-          "i_a": 216.04,
-          "loading_percent": 34.29,
-          "p_mw": -0.2999,
+          "i_a": 240.0,
+          "loading_percent": 38.1,
+          "p_mw": -0.3332,
           "q_mvar": 0.0,
-          "s_mva": 0.2999
+          "s_mva": 0.3332
         },
         "sr/branch/inv3": {
           "branch_ref": "sr/branch/inv3",
           "direction": "reverse",
-          "i_a": 216.04,
-          "loading_percent": 34.29,
-          "p_mw": -0.2999,
+          "i_a": 240.0,
+          "loading_percent": 38.1,
+          "p_mw": -0.3332,
           "q_mvar": 0.0,
-          "s_mva": 0.2999
+          "s_mva": 0.3332
         },
         "sr/branch/tr": {
           "branch_ref": "sr/branch/tr",
           "direction": "reverse",
-          "i_a": 32.26,
+          "i_a": 35.91,
           "loading_percent": null,
-          "p_mw": -0.8816,
+          "p_mw": -0.9816,
           "q_mvar": 0.0102,
-          "s_mva": 0.8817
+          "s_mva": 0.9817
         }
       },
       "buses": {
         "NN_800": {
           "bus_ref": "NN_800",
-          "deviation_percent": 0.171,
-          "u_kv": 0.8014,
-          "u_pu": 1.00171,
+          "deviation_percent": 0.191,
+          "u_kv": 0.8015,
+          "u_pu": 1.00191,
           "un_kv": 0.8
         },
         "SN_PCC": {
           "bus_ref": "SN_PCC",
-          "deviation_percent": 0.171,
-          "u_kv": 15.777,
-          "u_pu": 1.00171,
+          "deviation_percent": 0.191,
+          "u_kv": 15.7801,
+          "u_pu": 1.00191,
           "un_kv": 15.75
         }
       }

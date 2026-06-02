@@ -1306,15 +1306,20 @@ def build_g4_pvtr() -> dict[str, Any]:
         node = f"INV{i + 1}"
         s.add_bus(node, _PV1MW_NN_KV)
         s.add_line(br, "NN_800", node, _NN_FEEDER_R, _NN_FEEDER_X)
-        # Each inverter exports ~333 kW (0.9 PF utilisation of its kWp).
-        s.add_load(node, p_mw=-kwp_per_inv / 1000.0 * 0.9, q_mvar=0.0)
+        # Each inverter injects its full AC output (DC/AC ≈ 1.0, no oversizing ⇒ AC
+        # nominal = kWp). The base case (stan podstawowy) is rated export; the net
+        # direction/value come from the FROZEN solver, never a hand-picked derating.
+        s.add_load(node, p_mw=-kwp_per_inv / 1000.0, q_mvar=0.0)
         s.add_inverter(node, rated_kva=inv_kva, un_kv=_PV1MW_NN_KV, k_sc=_IBG_K, source_type="PV")
     s.add_load("NN_800", p_mw=own_load_kw / 1000.0, q_mvar=0.01)  # RPW-PV draw
     s.finalize_pq()
     total_ibg_ka = inv_count * (_IBG_K * (inv_kva * 1000.0 / (_SQRT3 * _PV1MW_NN_KV * 1000.0))) / 1000.0
 
+    # Hierarchy: DC/AC ≈ 1.0 ⇒ achievable AC power = AC nominal = DC nameplate. Keeping
+    # P_osiągalna ≥ the solver export (≈ 0.98 MW) — a station cannot export more than it
+    # can achieve. All four equal (999.6 kW) is the no-oversizing case.
     src = _pv_source(technology="PV 1 MW „Buk 1”", machine_type="IBG", nc_class="C", control_mode="Q(U)",
-                     p_zainst_kw=p_dc_kwp, pn_ac_kw=p_dc_kwp, p_przylacz_kw=p_dc_kwp, p_osiagalna_kw=950.0)
+                     p_zainst_kw=p_dc_kwp, pn_ac_kw=p_dc_kwp, p_przylacz_kw=p_dc_kwp, p_osiagalna_kw=p_dc_kwp)
     # Override protection codes with the REAL Buk 1 function names (not ANSI).
     src["protection_codes"] = list(_BUK1_SN_CODES)
     src["coordination"] = {
