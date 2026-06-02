@@ -1349,6 +1349,24 @@ def build_g4_pvtr() -> dict[str, Any]:
                "windings": ["I pomiar 0,2", "II pomiar 0,2", "III zab. 3P", "IV zab. 3P (otwarty trójkąt)"]},
         "own_needs": "RPW-PV · TS 5 kVA 800/230 V · F0=HN-C20/1 · F1-F10",
     }
+    # §5 P0 — OSD neutral-point earthing determines the SN single-phase earth-fault
+    # current; the nN IT system carries an IMD (insulation monitoring) so the 1st earth
+    # fault is signalled, not tripped (current ≈ 0). Documented model params (not painted
+    # detail) — surfaced in the node readouts (Ik″1f-z) and the protection module.
+    src["grid_earthing"] = {
+        "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN",
+        "neutral_point": "kompensowana",  # {izolowana | kompensowana | rezystor} — OSD SN
+        "ik_1f_sn_ka": 0.12,  # I″k 1f-z SN wg uziemienia neutralnego OSD (sieć skompensowana)
+        "imd_it_nn": True,  # IMD na układzie IT nN — sygnalizacja 1. doziemienia (bez wyłączenia)
+        "note_pl": "nN IT: 1. doziemienie bez prądu — IMD sygnalizuje; SN: I″k1f-z z uziemienia neutralnego OSD",
+    }
+    # §5 P1 — dynamic (peak) withstand checked beside the thermal Icw. ip from the FROZEN
+    # solver; the ratings are equipment nameplates (CTM20 Idyn / 3WA1110 Icm ≈ 2,1·Icw).
+    src["withstand"] = {
+        "source_ref": "karta:CTM20_Idyn;karta:3WA1110_Icm",
+        "sn_idyn_ka": 40.0,  # CTM20 Idyn (dynamiczna SN)
+        "nn_idyn_ka": 105.0,  # 3WA1110 Icm (szczytowa prąd. nN)
+    }
     # nN inverter feeder fields (≥3, not one block) + Q1 main + own-needs.
     nn_fields = [
         _field(f"g4-inv{i + 1}", role="source",

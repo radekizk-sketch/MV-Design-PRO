@@ -3045,6 +3045,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         },
         "source_ref": "dok:1.18_Wykaz_nastaw_i_zabezpieczen_Buk1"
       },
+      "grid_earthing": {
+        "ik_1f_sn_ka": 0.12,
+        "imd_it_nn": true,
+        "neutral_point": "kompensowana",
+        "note_pl": "nN IT: 1. doziemienie bez pr\u0105du \u2014 IMD sygnalizuje; SN: I\u2033k1f-z z uziemienia neutralnego OSD",
+        "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN"
+      },
       "machine_type": "IBG",
       "nc_rfg_class": "C",
       "power_hierarchy": {
@@ -3095,7 +3102,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           ]
         }
       },
-      "technology": "PV 1 MW \u201eBuk 1\u201d"
+      "technology": "PV 1 MW \u201eBuk 1\u201d",
+      "withstand": {
+        "nn_idyn_ka": 105.0,
+        "sn_idyn_ka": 40.0,
+        "source_ref": "karta:CTM20_Idyn;karta:3WA1110_Icm"
+      }
     },
     "voltage_flow": {
       "branches": {

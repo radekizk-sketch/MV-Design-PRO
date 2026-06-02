@@ -113,6 +113,22 @@ export interface OzeGensetSpec {
 }
 
 /** OZE source metadata (axes T/R/S of the taxonomy). */
+/** §5 P0 — OSD neutral-point earthing + IT-system insulation monitoring (IMD). */
+export interface OzeGridEarthing {
+  readonly source_ref: string;
+  readonly neutral_point: string; // izolowana | kompensowana | rezystor (OSD SN)
+  readonly ik_1f_sn_ka: number; // single-phase earth-fault current on the SN side
+  readonly imd_it_nn: boolean; // IMD on the IT nN system (1st earth fault signalled)
+  readonly note_pl: string;
+}
+
+/** §5 P1 — dynamic (peak) withstand nameplates (checked beside the thermal Icw). */
+export interface OzeWithstand {
+  readonly source_ref: string;
+  readonly sn_idyn_ka: number;
+  readonly nn_idyn_ka: number;
+}
+
 export interface OzeSourceMeta {
   readonly technology: string; // PV | BESS | FW | ...
   readonly machine_type: 'IBG' | 'SYNCHRONOUS' | 'ASYNCHRONOUS' | 'DFIG';
@@ -125,6 +141,10 @@ export interface OzeSourceMeta {
   readonly schematic?: OzeSchematic;
   /** Protection coordination matrix (click-module content, not on the canvas). */
   readonly coordination?: OzeCoordination;
+  /** §5 P0 — OSD neutral-point earthing (drives Ik″1f-z SN) + IMD on the IT nN system. */
+  readonly grid_earthing?: OzeGridEarthing;
+  /** §5 P1 — dynamic (peak) withstand ratings checked beside the thermal Icw. */
+  readonly withstand?: OzeWithstand;
   /** True ⇒ the source is bidirectional (BESS — charge ⇄ discharge). */
   readonly bidirectional?: boolean;
   /** Storage spec (BESS) — the energy axis (kWh) alongside the power axis (kW). */

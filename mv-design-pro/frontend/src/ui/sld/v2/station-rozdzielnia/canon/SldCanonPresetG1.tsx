@@ -157,15 +157,17 @@ function lbl(x: number, y: number, t: string, color = TXT2, size = 11, weight = 
 function NodeReadout(props: {
   x: number; y: number; n: number; title: string;
   uKv: number; uPu: number; uOk: boolean; ik3fMax: number; ik3fMin: number;
-  ik1f: string; share: string; icw: number; icwOk: boolean;
+  ik1f: string; share: string; icw: number; icwOk: boolean; ip: number; idyn: number;
 }): JSX.Element {
-  const { x, y, n, title, uKv, uPu, uOk, ik3fMax, ik3fMin, ik1f, share, icw, icwOk } = props;
+  const { x, y, n, title, uKv, uPu, uOk, ik3fMax, ik3fMin, ik1f, share, icw, icwOk, ip, idyn } = props;
+  const ipOk = ip <= idyn;
   const rows: Array<[string, string, string]> = [
     ['U', `${fmt(uKv)} kV · ${fmt(uPu)} pu${uOk ? ' ✓' : ''}`, uOk ? OK : AMBER],
     ['Ik″ 3f', `${fmt(ik3fMax, 1)} / ${fmt(ik3fMin, 1)} kA`, TXT],
     ['Ik″ 1f-z', ik1f, TXT],
     ['udział', share, TXT],
     ['Icw', `${fmt(icw, 0)} kA${icwOk ? ' ✓' : ''}`, icwOk ? OK : '#FF6B6B'],
+    ['ip', `${fmt(ip, 1)} kA · idyn ${fmt(idyn, 0)} ${ipOk ? '✓' : '✗'}`, ipOk ? OK : '#FF6B6B'],
   ];
   return (
     <g>
@@ -190,6 +192,11 @@ export function SldCanonPresetG1({ companion }: { companion: SldOzeArchetypeComp
   const faln = snSc.source_contribution.ik_contribution_ka ?? 0; // inverter (IBG) share
   const snGridShare = Math.max(0, snSc.max.ikss_ka - faln);
   const nnTrShare = Math.max(0, nnSc.max.ikss_ka - faln);
+  // §5 P0 — OSD neutral earthing drives Ik″1f-z (SN); IT nN ⇒ 1st earth fault via IMD.
+  const earthing = companion.source.grid_earthing;
+  const withstand = companion.source.withstand;
+  const snIk1f = earthing ? `${fmt(earthing.ik_1f_sn_ka)} kA · ${earthing.neutral_point}` : '—';
+  const nnIk1f = `≈0 (IT)${earthing?.imd_it_nn ? ' · IMD' : ''}`;
 
   const X = { p1: 400, p2: 745, p3: 1090, ctBus: 930, node1: 1340, nnLbl: 1340 };
   const snBusY = 200;
@@ -292,8 +299,9 @@ export function SldCanonPresetG1({ companion }: { companion: SldOzeArchetypeComp
       <NodeReadout x={X.node1} y={236} n={1} title="szyna SN · 15,75 kV"
         uKv={sn.un_kv} uPu={sn.u_pu} uOk={Math.abs(sn.deviation_percent) <= 5}
         ik3fMax={snSc.max.ikss_ka} ik3fMin={snSc.min.ikss_ka}
-        ik1f="0,12 kA" share={`sieć ${fmt(snGridShare, 1)} + faln. ${fmt(faln, 1)} kA`}
-        icw={snSc.icw_ka} icwOk={snSc.verification.passed} />
+        ik1f={snIk1f} share={`sieć ${fmt(snGridShare, 1)} + faln. ${fmt(faln, 1)} kA`}
+        icw={snSc.icw_ka} icwOk={snSc.verification.passed}
+        ip={snSc.max.ip_ka} idyn={withstand?.sn_idyn_ka ?? 0} />
 
       {/* ── nN busbar ── */}
       <line x1={nnX1} y1={nnBusY} x2={nnX2} y2={nnBusY} stroke={NN_BUS} strokeWidth={5} strokeLinecap="round" />
@@ -323,8 +331,9 @@ export function SldCanonPresetG1({ companion }: { companion: SldOzeArchetypeComp
       <NodeReadout x={X.nnLbl} y={636} n={2} title="szyna nN · 0,80 kV · IT"
         uKv={nn.un_kv} uPu={nn.u_pu} uOk={Math.abs(nn.deviation_percent) <= 5}
         ik3fMax={nnSc.max.ikss_ka} ik3fMin={nnSc.min.ikss_ka}
-        ik1f="≈0 (IT)" share={`TR ${fmt(nnTrShare, 1)} + faln. ${fmt(faln, 1)} kA`}
-        icw={nnSc.icw_ka} icwOk={nnSc.verification.passed} />
+        ik1f={nnIk1f} share={`TR ${fmt(nnTrShare, 1)} + faln. ${fmt(faln, 1)} kA`}
+        icw={nnSc.icw_ka} icwOk={nnSc.verification.passed}
+        ip={nnSc.max.ip_ka} idyn={withstand?.nn_idyn_ka ?? 0} />
 
       {/* ── LEGENDA — symbole IEC ── */}
       <rect x={80} y={838} width={1420} height={86} rx={8} fill="none" stroke="#13435A" strokeWidth={1} />
