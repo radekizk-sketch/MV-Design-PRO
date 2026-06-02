@@ -116,8 +116,8 @@ export interface OzeGensetSpec {
 /** §5 P0 — OSD neutral-point earthing + IT-system insulation monitoring (IMD). */
 export interface OzeGridEarthing {
   readonly source_ref: string;
-  readonly neutral_point: string; // izolowana | kompensowana | rezystor (OSD SN)
-  readonly ik_1f_sn_ka: number; // single-phase earth-fault current on the SN side
+  readonly neutral_point: string; // izolowana | kompensowana | rezystor | bezpośrednie (TN)
+  readonly ik_1f_ka: number; // single-phase earth-fault current at the metered node (SN or nN)
   readonly imd_it_nn: boolean; // IMD on the IT nN system (1st earth fault signalled)
   readonly note_pl: string;
 }

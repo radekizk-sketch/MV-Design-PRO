@@ -1207,6 +1207,7 @@ def build_g1() -> dict[str, Any]:
         lv_kv=_NN_KV,
         uk_percent=_TRAFO_UK_PCT,
         rated_mva=_TRAFO_MVA,
+        x_over_r=3.0,  # OSD MV/LV distribution TR — physical R/X (κ_nN ≈ 1.4), preset G2
     )
     # Prosument: midday PV (45 kW) exceeds the local load (10 kW) → net REVERSE
     # export to the grid (the solver signs it; we do not assume it). One netted
@@ -1215,22 +1216,38 @@ def build_g1() -> dict[str, Any]:
     ibg = s.add_inverter("NN_BUS", rated_kva=pv_kva, un_kv=_NN_KV, k_sc=_IBG_K, source_type="PV")
     s.finalize_pq()
     prot = list(_PROTECTION_BY_MACHINE["IBG"])
+    src = _pv_source(
+        technology="PV",
+        machine_type="IBG",
+        nc_class="A",
+        control_mode="cosφ=const",
+        p_zainst_kw=55.0,
+        pn_ac_kw=50.0,
+        p_przylacz_kw=50.0,
+        p_osiagalna_kw=45.0,
+    )
+    # §5 — the prosumer LV network is TN (solid neutral at the OSD MV/LV transformer):
+    # the single-phase earth fault carries current (no IMD; cleared by time-graded OC).
+    src["grid_earthing"] = {
+        "source_ref": "norma:PN-EN_60909_doziemienie;OSD:sieć_nN_TN",
+        "neutral_point": "bezpośrednie (TN)",
+        "ik_1f_ka": 10.0,  # nN L-PE fault (TN, solid earth) — z uziemienia OSD
+        "imd_it_nn": False,
+        "note_pl": "nN TN: doziemienie z prądem (uziemienie bezpośrednie OSD) — wyłączane zwłocznie",
+    }
+    # Dynamic withstand nN (Icm ≈ 2.1·Icw for the LV board); SN side per OSD.
+    src["withstand"] = {
+        "source_ref": "karta:rozdzielnica_nN",
+        "sn_idyn_ka": 63.0,
+        "nn_idyn_ka": 52.5,
+    }
     return _oze_companion(
         "G1",
         substrate=s,
         buses=[("SN_BUS", _BASE_KV, _ICW_SN_KA), ("NN_BUS", _NN_KV, _ICW_NN_KA)],
         pcc_bus="NN_BUS",
         ibg_ka=ibg / 1000.0,
-        source=_pv_source(
-            technology="PV",
-            machine_type="IBG",
-            nc_class="A",
-            control_mode="cosφ=const",
-            p_zainst_kw=55.0,
-            pn_ac_kw=50.0,
-            p_przylacz_kw=50.0,
-            p_osiagalna_kw=45.0,
-        ),
+        source=src,
         # Station idiom: source field (PV on nN, SDC) + connection field (interface
         # protection HERE, on nN looking at the OSD network) on the nN busbar.
         fields=[
@@ -1662,7 +1679,7 @@ def build_g4_pvtr() -> dict[str, Any]:
     src["grid_earthing"] = {
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN",
         "neutral_point": "kompensowana",  # {izolowana | kompensowana | rezystor} — OSD SN
-        "ik_1f_sn_ka": 0.12,  # I″k 1f-z SN wg uziemienia neutralnego OSD (sieć skompensowana)
+        "ik_1f_ka": 0.12,  # I″k 1f-z SN wg uziemienia neutralnego OSD (sieć skompensowana)
         "imd_it_nn": True,  # IMD na układzie IT nN — sygnalizacja 1. doziemienia (bez wyłączenia)
         "note_pl": "nN IT: 1. doziemienie bez prądu — IMD sygnalizuje; SN: I″k1f-z z uziemienia neutralnego OSD",
     }

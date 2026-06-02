@@ -92,7 +92,7 @@ describe('SldCanonPresetG1 — canonical PV 1 MW template (G1)', () => {
     expect(txt).toContain(`${pl(sn.max.ip_ka)} kA · idyn ${w.sn_idyn_ka.toFixed(0)}`);
     expect(txt).toContain(`${pl(nn.max.ip_ka)} kA · idyn ${w.nn_idyn_ka.toFixed(0)}`);
     // P0 — Ik″1f-z (SN) bound to the OSD neutral-point earthing parameter (not hardcoded).
-    expect(txt).toContain(`${e.ik_1f_sn_ka.toFixed(2).replace('.', ',')} kA · ${e.neutral_point}`);
+    expect(txt).toContain(`${e.ik_1f_ka.toFixed(2).replace('.', ',')} kA · ${e.neutral_point}`);
     // P0 — IT nN: 1st earth fault signalled by the IMD (current ≈ 0, no trip).
     expect(txt).toContain('≈0 (IT) · IMD');
   });
