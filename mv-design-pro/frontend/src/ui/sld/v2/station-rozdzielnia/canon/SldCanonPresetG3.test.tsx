@@ -23,14 +23,16 @@ function renderG3() {
 const pl = (v: number, d = 1) => v.toFixed(d).replace('.', ',');
 
 describe('SldCanonPresetG3 — canonical BESS (G3, 4Q)', () => {
-  it('SN+TR skeleton with bidirectional PCS + own needs', () => {
+  it('SN station with THREE bays (as PV) + bidirectional PCS + own needs', () => {
     const { container } = renderG3();
     const txt = container.textContent ?? '';
     expect(container.querySelector('[data-testid="sld-canon-g3"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="g3-pcs-0"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="g3-pcs-1"]')).toBeTruthy();
-    expect(txt).toContain('POLE · Transformatorowe');
-    expect(txt).toContain('POLE · Liniowe');
+    // Same three-bay SN structure as preset G1 (PV) — including the dedicated meter bay.
+    expect(txt).toContain('POLE 1 · Transformatorowe');
+    expect(txt).toContain('POLE 2 · Pomiarowe');
+    expect(txt).toContain('POLE 3 · Liniowe');
     expect(txt).toContain('PCS 1 · 500 kW');
     expect(txt).toContain('4Q'); // bidirectional / four-quadrant
     expect(txt).toContain('pot. własne (HVAC/BMS)');
@@ -49,7 +51,7 @@ describe('SldCanonPresetG3 — canonical BESS (G3, 4Q)', () => {
     const nnSc = G3.short_circuit.buses['NN'];
     expect(txt).toContain(`${pl(snSc.max.ikss_ka)} / ${pl(snSc.min.ikss_ka)} kA`);
     expect(txt).toContain(`${pl(nnSc.max.ikss_ka)} / ${pl(nnSc.min.ikss_ka)} kA`);
-    expect(txt).toContain('pomiar rozliczeniowy');
+    expect(txt).toContain('POMIAR rozliczeniowy'); // dedicated metering bay (CT/VT)
     expect(txt).toContain('granica = układ pomiarowy');
     expect(txt).not.toContain('PCC');
   });

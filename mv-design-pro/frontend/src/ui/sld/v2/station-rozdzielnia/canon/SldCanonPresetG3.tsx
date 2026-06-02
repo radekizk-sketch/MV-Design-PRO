@@ -1,10 +1,10 @@
 /**
- * Canonical SLD template — PRESET G3 (BESS / magazyn energii, IEC). Same skeleton + symbol
- * canon as G1 (sldCanonKit): SN station via a step-up transformer, but the source is a
- * BIDIRECTIONAL battery PCS (4Q — ładowanie ⇄ rozładowanie). Two SN bays (Liniowe +
- * Transformatorowe), nN busbar with n×PCS + potrzeby własne. SoC/BMS live state lives in
- * the click-module, not on the canvas. Metering is instrument-transformer (CT/VT) on the
- * SN busbar — no separate boundary marker, no PCC. Node readouts bound to the FROZEN solver.
+ * Canonical SLD template — PRESET G3 (BESS / magazyn energii, IEC). SAME SN-station
+ * structure as G1 (PV) — three bays: POLE Transformatorowe · Pomiarowe · Liniowe — with
+ * the shared symbol canon + readouts from sldCanonKit. The only preset change vs G1: the
+ * source is a BIDIRECTIONAL battery PCS (4Q — ładowanie ⇄ rozładowanie) on the nN busbar,
+ * and SoC/BMS live state lives in the click-module (IEC 62933), not on the canvas.
+ * Metering = CT/VT on the SN busbar (POLE Pomiarowe) = boundary. No ⊟, no PCC.
  */
 import {
   AMBER,
@@ -14,13 +14,14 @@ import {
   fmt,
   Glowica,
   InverterSym,
+  ko,
   lbl,
+  MONO,
   NN_BUS,
   NodeBadge,
   NodeReadout,
   Odlacznik,
   PINK,
-  PowerArrow,
   PowerArrowBi,
   SANS,
   SN_BUS,
@@ -28,11 +29,13 @@ import {
   TXT,
   TXT2,
   TXT_MUTED,
+  UziemnikIEC,
+  VtNoGround,
   Wylacznik,
 } from './sldCanonKit';
 import type { SldOzeArchetypeCompanion } from '../companions/ozeTypes';
 
-/** PRESET G3 — BESS (magazyn energii). SN+TR connection, bidirectional PCS (4Q). */
+/** PRESET G3 — BESS (magazyn energii). SN+TR station (3 bays, as PV), bidirectional PCS. */
 export function SldCanonPresetG3({ companion }: { companion: SldOzeArchetypeCompanion }): JSX.Element {
   const sn = companion.voltage_flow.buses['SN_PCC'];
   const nn = companion.voltage_flow.buses['NN'];
@@ -49,59 +52,78 @@ export function SldCanonPresetG3({ companion }: { companion: SldOzeArchetypeComp
   const nPcs = st?.n_pcs ?? 2;
   const pcsKw = st?.pcs_kw ?? 500;
 
-  const X = { pTr: 430, pLine: 820, node1: 1330 };
+  const X = { p1: 400, p2: 745, p3: 1090, node1: 1340 };
   const snBusY = 200;
   const nnBusY = 600;
   const snX1 = 280;
-  const snX2 = 1500;
+  const snX2 = 1520;
   const nnX1 = 330;
-  const nnX2 = 1290;
-  const pcsX = nPcs === 2 ? [560, 770] : [520, 700, 880];
-  const ownX = 1010;
+  const nnX2 = 1300;
+  const pcsX = nPcs === 2 ? [575, 780] : [540, 720, 900];
+  const ownX = 1030;
   const title = 'SZABLON SLD — MAGAZYN ENERGII BESS (IEC)';
-  const subtitle = `SN: pole Liniowe · Transformatorowe | TR 1,25 MVA 15/0,4 kV Dyn | nN 0,4 kV IT | ${nPcs}× PCS ${pcsKw} kW (4Q) · ${(st?.power_kw ?? 1000) / 1000} MW / ${(st?.capacity_kwh ?? 2000) / 1000} MWh`;
+  const subtitle = `SN: pole Transformatorowe · Pomiarowe · Liniowe | TR 1,25 MVA 15/0,4 kV Dyn | nN 0,4 kV IT | ${nPcs}× PCS ${pcsKw} kW (4Q) · ${(st?.power_kw ?? 1000) / 1000} MW / ${(st?.capacity_kwh ?? 2000) / 1000} MWh`;
 
   return (
     <g data-testid="sld-canon-g3">
       {/* ── header ── */}
-      <text x={840} y={42} textAnchor="middle" fill="#F4F6F8" fontFamily={SANS} fontSize={22} fontWeight={800}>{title}</text>
-      <text x={840} y={70} textAnchor="middle" fill={AMBER} fontFamily={SANS} fontSize={13} fontWeight={700}>{subtitle}</text>
-      <text x={1520} y={112} textAnchor="end" fill={CYAN} fontFamily={SANS} fontSize={11} fontWeight={700}>WYNIKI w węzłach — ze solwera (czas rzecz.) · klik węzeł → White Box</text>
+      <text x={900} y={42} textAnchor="middle" fill="#F4F6F8" fontFamily={SANS} fontSize={22} fontWeight={800}>{title}</text>
+      <text x={900} y={70} textAnchor="middle" fill={AMBER} fontFamily={SANS} fontSize={13} fontWeight={700}>{subtitle}</text>
+      <text x={1540} y={112} textAnchor="end" fill={CYAN} fontFamily={SANS} fontSize={11} fontWeight={700}>WYNIKI w węzłach — ze solwera (czas rzecz.) · klik węzeł → White Box</text>
 
       {/* ── SN busbar ── */}
       <line x1={snX1} y1={snBusY} x2={snX2} y2={snBusY} stroke={SN_BUS} strokeWidth={5} strokeLinecap="round" />
       {lbl(snX2 + 14, snBusY + 4, 'SN · 15 kV', TXT2, 12, 700)}
       <NodeBadge x={X.node1 - 2} y={snBusY} n={1} />
 
-      {/* ── POLE TRANSFORMATOROWE ── */}
-      {lbl(X.pTr - 90, 160, 'POLE · Transformatorowe', CYAN, 12, 700)}
-      <line x1={X.pTr} y1={snBusY} x2={X.pTr} y2={460} stroke={SN_BUS} strokeWidth={2} />
-      <Odlacznik x={X.pTr} y={250} />
-      {lbl(X.pTr + 18, 254, 'Q odłącznik', TXT2, 11, 700)}
-      <Wylacznik x={X.pTr} y={310} />
-      {lbl(X.pTr + 18, 314, 'Q wyłącznik · VCB', TXT2, 11, 700)}
-      <TrafoDyn x={X.pTr} y={440} />
-      {lbl(X.pTr + 26, 438, 'T1 · Dyn', TXT, 12, 800)}
-      {lbl(X.pTr + 26, 452, '1,25 MVA · 15/0,4 kV', TXT_MUTED, 9.5, 600)}
-      <line x1={X.pTr} y1={460} x2={X.pTr} y2={505} stroke={CYAN} strokeWidth={2} />
-      <Wylacznik x={X.pTr} y={507} />
-      {lbl(X.pTr + 18, 511, 'Q1 nN · wył. główny', TXT2, 11, 700)}
-      <line x1={X.pTr} y1={525} x2={X.pTr} y2={nnBusY} stroke={NN_BUS} strokeWidth={2} />
+      {/* ── POLE 1 · Transformatorowe ── */}
+      {lbl(X.p1 - 90, 160, 'POLE 1 · Transformatorowe', CYAN, 12, 700)}
+      <line x1={X.p1} y1={snBusY} x2={X.p1} y2={460} stroke={SN_BUS} strokeWidth={2} />
+      <Odlacznik x={X.p1} y={250} />
+      {lbl(X.p1 + 18, 254, 'Q odłącznik', TXT2, 11, 700)}
+      <Wylacznik x={X.p1} y={310} />
+      {lbl(X.p1 + 18, 314, 'Q wyłącznik · VCB', TXT2, 11, 700)}
+      <UziemnikIEC x={X.p1} y={340} />
+      {lbl(X.p1 + 40, 358, 'uziemnik (IEC)', TXT_MUTED, 9.5, 600)}
+      <TrafoDyn x={X.p1} y={440} />
+      {lbl(X.p1 + 26, 438, 'T1 · Dyn', TXT, 12, 800)}
+      {lbl(X.p1 + 26, 452, '1,25 MVA · 15/0,4 kV', TXT_MUTED, 9.5, 600)}
+      <line x1={X.p1} y1={460} x2={X.p1} y2={505} stroke={CYAN} strokeWidth={2} />
+      <Wylacznik x={X.p1} y={507} />
+      {lbl(X.p1 + 18, 511, 'Q1 nN · wył. główny', TXT2, 11, 700)}
+      <line x1={X.p1} y1={525} x2={X.p1} y2={nnBusY} stroke={NN_BUS} strokeWidth={2} />
+      <PowerArrowBi x={X.p1} y={555} />
+      {lbl(X.p1 + 12, 559, '4Q', PINK, 11, 800)}
 
-      {/* ── POLE LINIOWE SN (przyłącze do OSD) — pomiar przekładnikowy CT/VT na szynie ── */}
-      {lbl(X.pLine - 50, 160, 'POLE · Liniowe', CYAN, 12, 700)}
-      <line x1={X.pLine} y1={snBusY} x2={X.pLine} y2={470} stroke={SN_BUS} strokeWidth={2} />
-      <Odlacznik x={X.pLine} y={250} />
-      {lbl(X.pLine + 18, 254, 'Q odłącznik + uziemnik', TXT2, 11, 700)}
-      <CtRing x={X.pLine} y={320} />
-      {lbl(X.pLine + 18, 318, 'CT/VT — pomiar rozliczeniowy', AMBER, 10.5, 700)}
-      {lbl(X.pLine + 18, 331, '(granica = układ pomiarowy)', TXT_MUTED, 8.5, 600)}
-      <Glowica x={X.pLine} y={388} />
-      {lbl(X.pLine + 18, 392, 'głowica kablowa', TXT_MUTED, 9.5, 600)}
-      <line x1={X.pLine} y1={397} x2={X.pLine} y2={505} stroke={SN_BUS} strokeWidth={2} />
-      <PowerArrowBi x={X.pLine} y={450} />
-      {lbl(X.pLine + 14, 454, 'rozładowanie ⇄ ładowanie', PINK, 9.5, 800)}
-      {lbl(X.pLine - 110, 528, '3×XRUHAKXS → SIEĆ OSD', TXT_MUTED, 9, 600)}
+      {/* ── POLE 2 · Pomiarowe (CT/VT — pomiar rozliczeniowy = granica) ── */}
+      {lbl(X.p2 - 50, 160, 'POLE 2 · Pomiarowe', CYAN, 12, 700)}
+      <line x1={X.p2} y1={snBusY} x2={X.p2} y2={300} stroke={SN_BUS} strokeWidth={2} />
+      <Odlacznik x={X.p2} y={252} />
+      {lbl(X.p2 + 18, 256, 'Q odłącznik', TXT2, 11, 700)}
+      <CtRing x={X.p2} y={320} />
+      {lbl(X.p2 + 18, 324, 'CT — pierścień (pomiar)', TXT_MUTED, 9.5, 600)}
+      <VtNoGround x={X.p2} y={362} />
+      {lbl(X.p2 - 96, 374, 'VT — bez ziemi', TXT_MUTED, 9, 600)}
+      <g data-keepout={ko(X.p2 - 11, 392, 22, 18)}>
+        <rect x={X.p2 - 11} y={392} width={22} height={18} rx={2} fill="#0A1622" stroke={AMBER} strokeWidth={1.6} />
+        <text x={X.p2} y={405} textAnchor="middle" fill={AMBER} fontFamily={MONO} fontSize={9} fontWeight={800}>Wh</text>
+      </g>
+      {lbl(X.p2 + 18, 401, 'POMIAR rozliczeniowy', AMBER, 11, 700)}
+      {lbl(X.p2 + 18, 414, '(granica = układ pomiarowy)', TXT_MUTED, 8.5, 600)}
+
+      {/* ── POLE 3 · Liniowe (przyłącze do OSD; moc dwukierunkowa) ── */}
+      {lbl(X.p3 - 50, 160, 'POLE 3 · Liniowe', CYAN, 12, 700)}
+      <line x1={X.p3} y1={snBusY} x2={X.p3} y2={470} stroke={SN_BUS} strokeWidth={2} />
+      <Odlacznik x={X.p3} y={246} />
+      {lbl(X.p3 + 18, 250, 'Q odłącznik + uziemnik', TXT2, 11, 700)}
+      <UziemnikIEC x={X.p3} y={300} />
+      {lbl(X.p3 + 40, 318, 'uziemnik (IEC)', TXT_MUTED, 9.5, 600)}
+      <Glowica x={X.p3} y={388} />
+      {lbl(X.p3 + 18, 392, 'głowica kablowa', TXT_MUTED, 9.5, 600)}
+      <line x1={X.p3} y1={397} x2={X.p3} y2={505} stroke={SN_BUS} strokeWidth={2} />
+      <PowerArrowBi x={X.p3} y={450} />
+      {lbl(X.p3 + 14, 454, 'rozładowanie ⇄ ładowanie', PINK, 9.5, 800)}
+      {lbl(X.p3 - 110, 528, '3×XRUHAKXS → SIEĆ OSD', TXT_MUTED, 9, 600)}
 
       {/* ── node ① readout ── */}
       <NodeReadout x={X.node1} y={236} n={1} title="szyna SN · 15 kV"
@@ -129,7 +151,7 @@ export function SldCanonPresetG3({ companion }: { companion: SldOzeArchetypeComp
           {lbl(fx, 747, `4Q · Ik″ ≈ ${fmt(faln / pcsX.length, 2)} kA`, TXT2, 9, 700, 'middle')}
         </g>
       ))}
-      {lbl((pcsX[0] + pcsX[pcsX.length - 1]) / 2, 770, 'SoC · BMS · DC = obwody DC → moduł magazynu (IEC 62933)', TXT_MUTED, 9.5, 600, 'middle')}
+      {lbl((pcsX[0] + pcsX[pcsX.length - 1]) / 2, 770, 'SoC · BMS · obwody DC → moduł magazynu (IEC 62933)', TXT_MUTED, 9.5, 600, 'middle')}
 
       {/* ── potrzeby własne (HVAC/BMS) ── */}
       <line x1={ownX} y1={nnBusY} x2={ownX} y2={nnBusY + 60} stroke={NN_BUS} strokeWidth={1.8} />
@@ -145,19 +167,20 @@ export function SldCanonPresetG3({ companion }: { companion: SldOzeArchetypeComp
         ip={nnSc.max.ip_ka} idyn={withstand?.nn_idyn_ka ?? 0} />
 
       {/* ── LEGENDA — symbole IEC (wspólny kanon) ── */}
-      <rect x={80} y={838} width={1200} height={86} rx={8} fill="none" stroke="#13435A" strokeWidth={1} />
+      <rect x={80} y={838} width={1300} height={86} rx={8} fill="none" stroke="#13435A" strokeWidth={1} />
       {lbl(104, 862, 'LEGENDA — symbole IEC', '#9FE6FF', 12, 800)}
       {[
         ['WYŁĄCZNIK □', (cx: number, cy: number) => <Wylacznik x={cx} y={cy} />],
         ['ODŁĄCZNIK ◯', (cx: number, cy: number) => <Odlacznik x={cx} y={cy} />],
+        ['UZIEMNIK (IEC)', (cx: number, cy: number) => <UziemnikIEC x={cx - 11} y={cy - 6} />],
         ['TR (2 okręgi+Dyn)', (cx: number, cy: number) => <TrafoDyn x={cx} y={cy} />],
         ['CT — pierścień', (cx: number, cy: number) => <CtRing x={cx} y={cy} />],
+        ['VT — bez ziemi (→V)', (cx: number, cy: number) => <VtNoGround x={cx - 14} y={cy} />],
         ['PCS ~/= + bateria', (cx: number, cy: number) => <InverterSym x={cx} y={cy} />],
         ['GŁOWICA (trójkąt)', (cx: number, cy: number) => <Glowica x={cx} y={cy} />],
         ['moc 2-kier. (4Q)', (cx: number, cy: number) => <PowerArrowBi x={cx} y={cy} />],
-        ['moc 1-kier.', (cx: number, cy: number) => <PowerArrow x={cx} y={cy - 9} dir="up" />],
       ].map(([label, sym], i) => {
-        const cx = 180 + i * 138;
+        const cx = 175 + i * 138;
         const cy = 888;
         return (
           <g key={String(label)}>
