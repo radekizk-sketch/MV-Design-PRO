@@ -2939,7 +2939,11 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       "storage": {
         "bidirectional": true,
         "capacity_kwh": 2000.0,
+        "charge_kw": 1000.0,
+        "discharge_kw": 1000.0,
         "duration_h": 2.0,
+        "n_pcs": 2,
+        "pcs_kw": 500.0,
         "power_kw": 1000.0,
         "source_ref": "std:IEC_62933;enm:Generator.gen_type=bess"
       },
@@ -4140,7 +4144,11 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       "storage": {
         "bidirectional": true,
         "capacity_kwh": 2000.0,
+        "charge_kw": 1000.0,
+        "discharge_kw": 1000.0,
         "duration_h": 2.0,
+        "n_pcs": 2,
+        "pcs_kw": 500.0,
         "power_kw": 1000.0,
         "source_ref": "std:IEC_62933;enm:Generator.gen_type=bess"
       },

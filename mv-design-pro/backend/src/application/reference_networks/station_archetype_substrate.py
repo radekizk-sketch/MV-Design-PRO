@@ -2154,6 +2154,10 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
         "power_kw": p_bess_kw,
         "capacity_kwh": _PVBESS_CAPACITY_KWH,
         "duration_h": round(_PVBESS_CAPACITY_KWH / p_bess_kw, 2),
+        "n_pcs": _PVBESS_BESS_PCS_COUNT,
+        "pcs_kw": _PVBESS_BESS_PCS_KVA,
+        "charge_kw": p_bess_kw,
+        "discharge_kw": p_bess_kw,
         "bidirectional": True,
     }
     src["grid_earthing"] = {

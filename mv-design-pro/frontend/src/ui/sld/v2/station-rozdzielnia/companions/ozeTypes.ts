@@ -87,6 +87,21 @@ export interface OzeStorageSpec {
   readonly bidirectional: boolean;
 }
 
+/** PV+BESS hybrid spec (canon G4) — a co-located PV generator + battery store. `coupling`
+ *  is SN_BUS (common SN busbar, PV and BESS each behind their own transformer) or AC_LV
+ *  (AC-coupled: PV inverters + BESS PCS on one LV bus behind one connection transformer).
+ *  The power balance uses a coincidence factor for the connection power (wniosek). */
+export interface OzeHybridSpec {
+  readonly source_ref: string;
+  readonly coupling: 'SN_BUS' | 'AC_LV';
+  readonly variant_pl: string;
+  readonly pv_kw: number;
+  readonly bess_kw: number;
+  readonly bess_capacity_kwh: number;
+  readonly coincidence_factor: number;
+  readonly p_export_max_kw: number;
+}
+
 /** Wind internal SN COLLECTOR network — the distinguishing structure: n turbines,
  *  each with its own turbine transformer (LV→collector), gathered on a collector bus,
  *  rather than n inverters on one nN bus behind one transformer. Used by both Type 4
@@ -149,6 +164,8 @@ export interface OzeSourceMeta {
   readonly bidirectional?: boolean;
   /** Storage spec (BESS) — the energy axis (kWh) alongside the power axis (kW). */
   readonly storage?: OzeStorageSpec;
+  /** Hybrid spec (PV+BESS, canon G4) — the coupling variant + the power balance. */
+  readonly hybrid?: OzeHybridSpec;
   /** Collector spec (Wind) — the internal SN collector network. */
   readonly collector?: OzeCollectorSpec;
   /** Genset spec (biogas/CHP) — synchronous machines behind Z″ (§6.3). */
