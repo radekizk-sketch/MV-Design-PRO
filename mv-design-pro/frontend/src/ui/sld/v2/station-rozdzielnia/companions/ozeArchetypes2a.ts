@@ -8794,7 +8794,26 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "turbine_transformer": "0.69/15 kV \u00b7 1.0 MVA"
       },
       "control_mode": "kompensacja Q (bateria)",
+      "grid_earthing": {
+        "ik_1f_ka": 0.06,
+        "imd_it_nn": false,
+        "neutral_point": "kompensowana",
+        "note_pl": "SN kolektor 15 kV: I\u2033k1f-z z uziemienia neutralnego OSD (kompensowana), pr\u0105d resztkowy \u221d Un; LV turbiny za trafem Dyn \u2014 uziemienie lokalne",
+        "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN"
+      },
       "machine_type": "ASYNCHRONOUS",
+      "metering": {
+        "ct": {
+          "cores": 2,
+          "ipn_a": 100.0,
+          "isn_a": 5.0
+        },
+        "source_ref": "norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
+        "vt": {
+          "fv": 1.9,
+          "usn_v": 100.0
+        }
+      },
       "nc_rfg_class": "C",
       "power_hierarchy": {
         "p_osiagalna_kw": 2400.0,
@@ -8812,7 +8831,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "81U",
         "81O"
       ],
-      "technology": "Wiatr \u2014 generatory indukcyjne (Typ 1, sta\u0142a pr\u0119dko\u015b\u0107)"
+      "technology": "Wiatr \u2014 generatory indukcyjne (Typ 1, sta\u0142a pr\u0119dko\u015b\u0107)",
+      "withstand": {
+        "nn_idyn_ka": 105.0,
+        "sn_idyn_ka": 63.0,
+        "source_ref": "norma:IEC_62271_Ipk;norma:IEC_61400"
+      }
     },
     "voltage_flow": {
       "branches": {

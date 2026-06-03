@@ -22,6 +22,7 @@ import { SldCanonPresetG3 } from './SldCanonPresetG3';
 import { SldCanonPresetG4 } from './SldCanonPresetG4';
 import { SldCanonPresetG5 } from './SldCanonPresetG5';
 import { SldCanonPresetG6 } from './SldCanonPresetG6';
+import { SldCanonPresetG7 } from './SldCanonPresetG7';
 
 type Preset = (props: { companion: SldOzeArchetypeCompanion }) => JSX.Element;
 
@@ -40,6 +41,7 @@ const CASES: readonly Case[] = [
   { name: 'G4 (PV+BESS · ac)', key: 'G4-PVBESS-AC', Comp: SldCanonPresetG4, snBus: 'SN_PCC' },
   { name: 'G5 (Wind Typ 4)', key: 'G5-WIND-T4', Comp: SldCanonPresetG5, snBus: 'SN_PCC' },
   { name: 'G6 (Wind DFIG)', key: 'G6-WIND-DFIG', Comp: SldCanonPresetG6, snBus: 'SN_PCC' },
+  { name: 'G7 (Wind Typ 1 async)', key: 'G7-WIND-ASYNC', Comp: SldCanonPresetG7, snBus: 'SN_PCC' },
 ];
 
 const INCOMER = 'sr/branch/in'; // the GPZ→SN connection branch (export to OSD) the CT measures

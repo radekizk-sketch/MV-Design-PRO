@@ -2705,6 +2705,26 @@ def build_g7_wind_async() -> dict[str, Any]:
         "turbine_lv_kv": _WINDA_LV_KV,
         "topology": "radial",
     }
+    src["metering"] = _metering(
+        source_ref="norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
+        ct_ipn_a=100.0,  # next-std ≥ I_load ≈ 98 A (3×0,85 MW @ 15 kV)
+        ct_cores=2,
+    )
+    src["withstand"] = {
+        "source_ref": "norma:IEC_62271_Ipk;norma:IEC_61400",
+        "sn_idyn_ka": 63.0,
+        "nn_idyn_ka": 105.0,
+    }
+    src["grid_earthing"] = {
+        "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN",
+        "neutral_point": "kompensowana",
+        "ik_1f_ka": 0.06,
+        "imd_it_nn": False,
+        "note_pl": (
+            "SN kolektor 15 kV: I″k1f-z z uziemienia neutralnego OSD (kompensowana), prąd "
+            "resztkowy ∝ Un; LV turbiny za trafem Dyn — uziemienie lokalne"
+        ),
+    }
     turbine_fields = [
         _field(
             f"g7-wtg{i + 1}",
