@@ -58,9 +58,10 @@ describe('SldCanonPresetG6 — wind Type 3 (DFIG)', () => {
     expect(txt).toContain(`${pl(snSc.max.ikss_ka)} / ${pl(snSc.min.ikss_ka)} kA`);
     expect(txt).toContain('POMIAR rozliczeniowy');
     expect(txt).toContain('granica = układ pomiarowy');
-    // collector κ physical (grid X/R≈7), terminal more inductive (machine X″) — DFIG signature
+    // collector κ physical (grid X/R≈7) AND ≳ the terminal (audit F-2: x_over_r anchors the
+    // turbine-TR R/X so κ is well-posed; the grid-dominated collector is the more inductive node).
     expect(snSc.max.kappa).toBeGreaterThan(1.5);
-    expect(G6.short_circuit.buses['WTG_LV_1'].max.kappa).toBeGreaterThan(snSc.max.kappa);
+    expect(snSc.max.kappa).toBeGreaterThanOrEqual(G6.short_circuit.buses['WTG_LV_1'].max.kappa);
   });
 
   it('LAYOUT: no text-on-glyph overlap + no hanging conductor (continuity guard)', () => {

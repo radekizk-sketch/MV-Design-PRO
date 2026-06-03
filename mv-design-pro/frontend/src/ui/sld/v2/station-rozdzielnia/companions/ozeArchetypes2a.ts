@@ -6341,13 +6341,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 21.496,
-            "ikss_ka": 21.495,
-            "ip_ka": 50.431,
-            "ith_ka": 21.495,
+            "ib_ka": 15.494,
+            "ikss_ka": 15.493,
+            "ip_ka": 36.349,
+            "ith_ka": 15.493,
             "kappa": 1.659,
             "rx_ratio": 0.1426,
-            "sk_mva": 558.46,
+            "sk_mva": 402.53,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -6355,27 +6355,27 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "SN_PCC",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 0.6096,
-                    "re": 0.08690225
+                    "im": 0.996,
+                    "re": 0.14200225
                   },
                   "z2_ohm": {
-                    "im": 0.6096,
-                    "re": 0.08690225
+                    "im": 0.996,
+                    "re": 0.14200225
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.08690225,
-                  "x_ohm": 0.6096,
-                  "z_equiv_abs_ohm": 0.615763072176,
+                  "r_ohm": 0.14200225,
+                  "x_ohm": 0.996,
+                  "z_equiv_abs_ohm": 1.00607188561,
                   "z_equiv_ohm": {
-                    "im": 0.6096,
-                    "re": 0.08690225
+                    "im": 0.996,
+                    "re": 0.14200225
                   }
                 },
-                "substitution": "\\left(0.0869023 + j 0.6096\\right)",
-                "substitution_latex": "\\left(0.0869023 + j 0.6096\\right)",
+                "substitution": "\\left(0.142002 + j 0.996\\right)",
+                "substitution_latex": "\\left(0.142002 + j 0.996\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
               {
@@ -6384,94 +6384,94 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "c_factor": 1.1,
                   "un_v": 15000.0,
                   "voltage_factor": 0.57735026919,
-                  "z_equiv_abs_ohm": 0.615763072176
+                  "z_equiv_abs_ohm": 1.00607188561
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 21495.2142859
+                  "ikss_a": 15493.3106039
                 },
-                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{0.615763}",
-                "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{0.615763}",
+                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00607}",
+                "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.08690225,
-                  "rx_ratio": 0.142556184383,
-                  "x_ohm": 0.6096
+                  "r_ohm": 0.14200225,
+                  "rx_ratio": 0.142572540161,
+                  "x_ohm": 0.996
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.65898694162
+                  "kappa": 1.658955589
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142556}",
-                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142556}",
+                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
+                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 21495.2142859,
-                  "kappa": 1.65898694162
+                  "ikss_a": 15493.3106039,
+                  "kappa": 1.658955589
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 50431.2513418
+                  "ip_a": 36349.1270377
                 },
-                "substitution": "1.65899 \\cdot \\sqrt{2} \\cdot 21495.2",
-                "substitution_latex": "1.65899 \\cdot \\sqrt{2} \\cdot 21495.2",
+                "substitution": "1.65896 \\cdot \\sqrt{2} \\cdot 15493.3",
+                "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 15493.3",
                 "title": "Pr\u0105d udarowy"
               },
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 0.0113500331334,
-                  "ikss_a": 21495.2142859,
-                  "kappa": 1.65898694162,
-                  "ta_s": 0.022328732181,
+                  "exp_factor": 0.0113442026223,
+                  "ikss_a": 15493.3106039,
+                  "kappa": 1.658955589,
+                  "ta_s": 0.0223261706515,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 21495.8155338
+                  "ib_a": 15493.7434848
                 },
-                "substitution": "21495.2 \\cdot \\sqrt{1 + \\left((1.65899 - 1) \\cdot 0.01135\\right)^2}",
-                "substitution_latex": "21495.2 \\cdot \\sqrt{1 + \\left((1.65899 - 1) \\cdot 0.01135\\right)^2}",
+                "substitution": "15493.3 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
+                "substitution_latex": "15493.3 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 21495.2142859,
+                  "ikss_a": 15493.3106039,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 21495.2142859
+                  "ith_a": 15493.3106039
                 },
-                "substitution": "21495.2 \\cdot \\sqrt{1}",
-                "substitution_latex": "21495.2 \\cdot \\sqrt{1}",
+                "substitution": "15493.3 \\cdot \\sqrt{1}",
+                "substitution_latex": "15493.3 \\cdot \\sqrt{1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 21495.2142859,
+                  "ikss_a": 15493.3106039,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 558.462048941
+                  "sk_mva": 402.528017152
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 21495.2 / 10^6",
-                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 21495.2 / 10^6",
+                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 15493.3 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 15493.3 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -6479,10 +6479,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "min": {
             "c_factor": 0.95,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 19.386,
-            "ith_ka": 19.386,
+            "ikss_ka": 14.202,
+            "ith_ka": 14.202,
             "kappa": 1.659,
-            "sk_mva": 503.65,
+            "sk_mva": 368.98,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -6490,27 +6490,27 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "SN_PCC",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 0.6096,
-                    "re": 0.08690225
+                    "im": 0.996,
+                    "re": 0.14200225
                   },
                   "z2_ohm": {
-                    "im": 0.6096,
-                    "re": 0.08690225
+                    "im": 0.996,
+                    "re": 0.14200225
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.08690225,
-                  "x_ohm": 0.6096,
-                  "z_equiv_abs_ohm": 0.615763072176,
+                  "r_ohm": 0.14200225,
+                  "x_ohm": 0.996,
+                  "z_equiv_abs_ohm": 1.00607188561,
                   "z_equiv_ohm": {
-                    "im": 0.6096,
-                    "re": 0.08690225
+                    "im": 0.996,
+                    "re": 0.14200225
                   }
                 },
-                "substitution": "\\left(0.0869023 + j 0.6096\\right)",
-                "substitution_latex": "\\left(0.0869023 + j 0.6096\\right)",
+                "substitution": "\\left(0.142002 + j 0.996\\right)",
+                "substitution_latex": "\\left(0.142002 + j 0.996\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
               {
@@ -6519,94 +6519,94 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "c_factor": 0.95,
                   "un_v": 15000.0,
                   "voltage_factor": 0.57735026919,
-                  "z_equiv_abs_ohm": 0.615763072176
+                  "z_equiv_abs_ohm": 1.00607188561
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 19385.5747762
+                  "ikss_a": 14202.1125054
                 },
-                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.615763}",
-                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.615763}",
+                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00607}",
+                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.08690225,
-                  "rx_ratio": 0.142556184383,
-                  "x_ohm": 0.6096
+                  "r_ohm": 0.14200225,
+                  "rx_ratio": 0.142572540161,
+                  "x_ohm": 0.996
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.65898694162
+                  "kappa": 1.658955589
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142556}",
-                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142556}",
+                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
+                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 19385.5747762,
-                  "kappa": 1.65898694162
+                  "ikss_a": 14202.1125054,
+                  "kappa": 1.658955589
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 45481.6956436
+                  "ip_a": 33319.8245914
                 },
-                "substitution": "1.65899 \\cdot \\sqrt{2} \\cdot 19385.6",
-                "substitution_latex": "1.65899 \\cdot \\sqrt{2} \\cdot 19385.6",
+                "substitution": "1.65896 \\cdot \\sqrt{2} \\cdot 14202.1",
+                "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 14202.1",
                 "title": "Pr\u0105d udarowy"
               },
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 0.0113500331334,
-                  "ikss_a": 19385.5747762,
-                  "kappa": 1.65898694162,
-                  "ta_s": 0.022328732181,
+                  "exp_factor": 0.0113442026223,
+                  "ikss_a": 14202.1125054,
+                  "kappa": 1.658955589,
+                  "ta_s": 0.0223261706515,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 19386.1170148
+                  "ib_a": 14202.5093104
                 },
-                "substitution": "19385.6 \\cdot \\sqrt{1 + \\left((1.65899 - 1) \\cdot 0.01135\\right)^2}",
-                "substitution_latex": "19385.6 \\cdot \\sqrt{1 + \\left((1.65899 - 1) \\cdot 0.01135\\right)^2}",
+                "substitution": "14202.1 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
+                "substitution_latex": "14202.1 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 19385.5747762,
+                  "ikss_a": 14202.1125054,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 19385.5747762
+                  "ith_a": 14202.1125054
                 },
-                "substitution": "19385.6 \\cdot \\sqrt{1}",
-                "substitution_latex": "19385.6 \\cdot \\sqrt{1}",
+                "substitution": "14202.1 \\cdot \\sqrt{1}",
+                "substitution_latex": "14202.1 \\cdot \\sqrt{1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 19385.5747762,
+                  "ikss_a": 14202.1125054,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 503.652006694
+                  "sk_mva": 368.981706513
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 19385.6 / 10^6",
-                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 19385.6 / 10^6",
+                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 14202.1 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 14202.1 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -6620,7 +6620,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "un_kv": 15.0,
           "verification": {
             "icw_ka": 25.0,
-            "ikss_max_ka": 21.495,
+            "ikss_max_ka": 15.493,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -6631,13 +6631,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 40.459,
-            "ikss_ka": 40.459,
-            "ip_ka": 87.873,
-            "ith_ka": 40.459,
-            "kappa": 1.536,
-            "rx_ratio": 0.214,
-            "sk_mva": 48.35,
+            "ib_ka": 38.365,
+            "ikss_ka": 38.365,
+            "ip_ka": 83.697,
+            "ith_ka": 38.365,
+            "kappa": 1.543,
+            "rx_ratio": 0.2096,
+            "sk_mva": 45.85,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -6645,27 +6645,27 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "WTG_LV_1",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 0.0124442174245,
-                    "re": 0.00266261934422
+                    "im": 0.0132618398245,
+                    "re": 0.00277921094422
                   },
                   "z2_ohm": {
-                    "im": 0.0124442174245,
-                    "re": 0.00266261934422
+                    "im": 0.0132618398245,
+                    "re": 0.00277921094422
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.00266261934422,
-                  "x_ohm": 0.0124442174245,
-                  "z_equiv_abs_ohm": 0.0127258826444,
+                  "r_ohm": 0.00277921094422,
+                  "x_ohm": 0.0132618398245,
+                  "z_equiv_abs_ohm": 0.0135499228412,
                   "z_equiv_ohm": {
-                    "im": 0.0124442174245,
-                    "re": 0.00266261934422
+                    "im": 0.0132618398245,
+                    "re": 0.00277921094422
                   }
                 },
-                "substitution": "\\left(0.00266262 + j 0.0124442\\right)",
-                "substitution_latex": "\\left(0.00266262 + j 0.0124442\\right)",
+                "substitution": "\\left(0.00277921 + j 0.0132618\\right)",
+                "substitution_latex": "\\left(0.00277921 + j 0.0132618\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
               {
@@ -6674,94 +6674,94 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "c_factor": 1.1,
                   "un_v": 690.0,
                   "voltage_factor": 0.57735026919,
-                  "z_equiv_abs_ohm": 0.0127258826444
+                  "z_equiv_abs_ohm": 0.0135499228412
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 40458.9812029
+                  "ikss_a": 38364.8455558
                 },
-                "substitution": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.0127259}",
-                "substitution_latex": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.0127259}",
+                "substitution": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.0135499}",
+                "substitution_latex": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.0135499}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.00266261934422,
-                  "rx_ratio": 0.2139643863,
-                  "x_ohm": 0.0124442174245
+                  "r_ohm": 0.00277921094422,
+                  "rx_ratio": 0.209564508469,
+                  "x_ohm": 0.0132618398245
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.53576921762
+                  "kappa": 1.54262231193
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.213964}",
-                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.213964}",
+                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.209565}",
+                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.209565}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 40458.9812029,
-                  "kappa": 1.53576921762
+                  "ikss_a": 38364.8455558,
+                  "kappa": 1.54262231193
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 87873.0901202
+                  "ip_a": 83696.6471297
                 },
-                "substitution": "1.53577 \\cdot \\sqrt{2} \\cdot 40459",
-                "substitution_latex": "1.53577 \\cdot \\sqrt{2} \\cdot 40459",
+                "substitution": "1.54262 \\cdot \\sqrt{2} \\cdot 38364.8",
+                "substitution_latex": "1.54262 \\cdot \\sqrt{2} \\cdot 38364.8",
                 "title": "Pr\u0105d udarowy"
               },
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 0.00120426068312,
-                  "ikss_a": 40458.9812029,
-                  "kappa": 1.53576921762,
-                  "ta_s": 0.0148767695263,
+                  "exp_factor": 0.00138277462213,
+                  "ikss_a": 38364.8455558,
+                  "kappa": 1.54262231193,
+                  "ta_s": 0.015189112341,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 40458.9896243
+                  "ib_a": 38364.8563553
                 },
-                "substitution": "40459 \\cdot \\sqrt{1 + \\left((1.53577 - 1) \\cdot 0.00120426\\right)^2}",
-                "substitution_latex": "40459 \\cdot \\sqrt{1 + \\left((1.53577 - 1) \\cdot 0.00120426\\right)^2}",
+                "substitution": "38364.8 \\cdot \\sqrt{1 + \\left((1.54262 - 1) \\cdot 0.00138277\\right)^2}",
+                "substitution_latex": "38364.8 \\cdot \\sqrt{1 + \\left((1.54262 - 1) \\cdot 0.00138277\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 40458.9812029,
+                  "ikss_a": 38364.8455558,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 40458.9812029
+                  "ith_a": 38364.8455558
                 },
-                "substitution": "40459 \\cdot \\sqrt{1}",
-                "substitution_latex": "40459 \\cdot \\sqrt{1}",
+                "substitution": "38364.8 \\cdot \\sqrt{1}",
+                "substitution_latex": "38364.8 \\cdot \\sqrt{1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 40458.9812029,
+                  "ikss_a": 38364.8455558,
                   "un_v": 690.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 48.3531376355
+                  "sk_mva": 45.8504045918
                 },
-                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 40459 / 10^6",
-                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 40459 / 10^6",
+                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 38364.8 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 38364.8 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -6769,10 +6769,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "min": {
             "c_factor": 0.95,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 35.763,
-            "ith_ka": 35.763,
-            "kappa": 1.536,
-            "sk_mva": 42.74,
+            "ikss_ka": 33.955,
+            "ith_ka": 33.955,
+            "kappa": 1.543,
+            "sk_mva": 40.58,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -6780,27 +6780,27 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "WTG_LV_1",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 0.0124442174245,
-                    "re": 0.00266261934422
+                    "im": 0.0132618398245,
+                    "re": 0.00277921094422
                   },
                   "z2_ohm": {
-                    "im": 0.0124442174245,
-                    "re": 0.00266261934422
+                    "im": 0.0132618398245,
+                    "re": 0.00277921094422
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.00266261934422,
-                  "x_ohm": 0.0124442174245,
-                  "z_equiv_abs_ohm": 0.0127258826444,
+                  "r_ohm": 0.00277921094422,
+                  "x_ohm": 0.0132618398245,
+                  "z_equiv_abs_ohm": 0.0135499228412,
                   "z_equiv_ohm": {
-                    "im": 0.0124442174245,
-                    "re": 0.00266261934422
+                    "im": 0.0132618398245,
+                    "re": 0.00277921094422
                   }
                 },
-                "substitution": "\\left(0.00266262 + j 0.0124442\\right)",
-                "substitution_latex": "\\left(0.00266262 + j 0.0124442\\right)",
+                "substitution": "\\left(0.00277921 + j 0.0132618\\right)",
+                "substitution_latex": "\\left(0.00277921 + j 0.0132618\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
               {
@@ -6809,94 +6809,94 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "c_factor": 0.95,
                   "un_v": 690.0,
                   "voltage_factor": 0.57735026919,
-                  "z_equiv_abs_ohm": 0.0127258826444
+                  "z_equiv_abs_ohm": 0.0135499228412
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 35763.3734773
+                  "ikss_a": 33954.801782
                 },
-                "substitution": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.0127259}",
-                "substitution_latex": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.0127259}",
+                "substitution": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.0135499}",
+                "substitution_latex": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.0135499}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.00266261934422,
-                  "rx_ratio": 0.2139643863,
-                  "x_ohm": 0.0124442174245
+                  "r_ohm": 0.00277921094422,
+                  "rx_ratio": 0.209564508469,
+                  "x_ohm": 0.0132618398245
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.53576921762
+                  "kappa": 1.54262231193
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.213964}",
-                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.213964}",
+                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.209565}",
+                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.209565}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 35763.3734773,
-                  "kappa": 1.53576921762
+                  "ikss_a": 33954.801782,
+                  "kappa": 1.54262231193
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 77674.6731414
+                  "ip_a": 74075.7071204
                 },
-                "substitution": "1.53577 \\cdot \\sqrt{2} \\cdot 35763.4",
-                "substitution_latex": "1.53577 \\cdot \\sqrt{2} \\cdot 35763.4",
+                "substitution": "1.54262 \\cdot \\sqrt{2} \\cdot 33954.8",
+                "substitution_latex": "1.54262 \\cdot \\sqrt{2} \\cdot 33954.8",
                 "title": "Pr\u0105d udarowy"
               },
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 0.00120426068312,
-                  "ikss_a": 35763.3734773,
-                  "kappa": 1.53576921762,
-                  "ta_s": 0.0148767695263,
+                  "exp_factor": 0.00138277462213,
+                  "ikss_a": 33954.801782,
+                  "kappa": 1.54262231193,
+                  "ta_s": 0.015189112341,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 35763.3809212
+                  "ib_a": 33954.8113401
                 },
-                "substitution": "35763.4 \\cdot \\sqrt{1 + \\left((1.53577 - 1) \\cdot 0.00120426\\right)^2}",
-                "substitution_latex": "35763.4 \\cdot \\sqrt{1 + \\left((1.53577 - 1) \\cdot 0.00120426\\right)^2}",
+                "substitution": "33954.8 \\cdot \\sqrt{1 + \\left((1.54262 - 1) \\cdot 0.00138277\\right)^2}",
+                "substitution_latex": "33954.8 \\cdot \\sqrt{1 + \\left((1.54262 - 1) \\cdot 0.00138277\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 35763.3734773,
+                  "ikss_a": 33954.801782,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 35763.3734773
+                  "ith_a": 33954.801782
                 },
-                "substitution": "35763.4 \\cdot \\sqrt{1}",
-                "substitution_latex": "35763.4 \\cdot \\sqrt{1}",
+                "substitution": "33954.8 \\cdot \\sqrt{1}",
+                "substitution_latex": "33954.8 \\cdot \\sqrt{1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 35763.3734773,
+                  "ikss_a": 33954.801782,
                   "un_v": 690.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 42.7413461398
+                  "sk_mva": 40.5798948747
                 },
-                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 35763.4 / 10^6",
-                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 35763.4 / 10^6",
+                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 33954.8 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 33954.8 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -6910,7 +6910,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "un_kv": 0.69,
           "verification": {
             "icw_ka": 50.0,
-            "ikss_max_ka": 40.459,
+            "ikss_max_ka": 38.365,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -6968,16 +6968,16 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "sr/branch/in": {
           "branch_ref": "sr/branch/in",
           "direction": "reverse",
-          "i_a": 230.43,
-          "loading_percent": 36.58,
-          "p_mw": -5.986,
-          "q_mvar": 0.0977,
-          "s_mva": 5.9868
+          "i_a": 230.15,
+          "loading_percent": 36.53,
+          "p_mw": -5.9773,
+          "q_mvar": 0.1589,
+          "s_mva": 5.9794
         },
         "sr/branch/wtg-tr1": {
           "branch_ref": "sr/branch/wtg-tr1",
           "direction": "reverse",
-          "i_a": 76.81,
+          "i_a": 76.72,
           "loading_percent": null,
           "p_mw": -2.0,
           "q_mvar": 0.0002,
@@ -6986,7 +6986,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "sr/branch/wtg-tr2": {
           "branch_ref": "sr/branch/wtg-tr2",
           "direction": "reverse",
-          "i_a": 76.81,
+          "i_a": 76.72,
           "loading_percent": null,
           "p_mw": -2.0,
           "q_mvar": 0.0002,
@@ -6995,7 +6995,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "sr/branch/wtg-tr3": {
           "branch_ref": "sr/branch/wtg-tr3",
           "direction": "reverse",
-          "i_a": 76.81,
+          "i_a": 76.72,
           "loading_percent": null,
           "p_mw": -2.0,
           "q_mvar": 0.0002,
@@ -7005,16 +7005,16 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       "buses": {
         "SN_PCC": {
           "bus_ref": "SN_PCC",
-          "deviation_percent": 0.218,
-          "u_kv": 15.0327,
-          "u_pu": 1.00218,
+          "deviation_percent": 0.342,
+          "u_kv": 15.0513,
+          "u_pu": 1.00342,
           "un_kv": 15.0
         },
         "WTG_LV_1": {
           "bus_ref": "WTG_LV_1",
-          "deviation_percent": 0.22,
-          "u_kv": 0.6915,
-          "u_pu": 1.0022,
+          "deviation_percent": 0.344,
+          "u_kv": 0.6924,
+          "u_pu": 1.00344,
           "un_kv": 0.69
         }
       }
@@ -7168,13 +7168,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 10.427,
-            "ikss_ka": 10.427,
-            "ip_ka": 23.981,
-            "ith_ka": 10.427,
-            "kappa": 1.626,
-            "rx_ratio": 0.1601,
-            "sk_mva": 270.91,
+            "ib_ka": 10.77,
+            "ikss_ka": 10.77,
+            "ip_ka": 24.524,
+            "ith_ka": 10.77,
+            "kappa": 1.61,
+            "rx_ratio": 0.1691,
+            "sk_mva": 279.81,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -7182,27 +7182,27 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "SN_PCC",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 0.902093460775,
-                    "re": 0.144439115725
+                    "im": 0.8721508452,
+                    "re": 0.147441291547
                   },
                   "z2_ohm": {
-                    "im": 0.902093460775,
-                    "re": 0.144439115725
+                    "im": 0.8721508452,
+                    "re": 0.147441291547
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.144439115725,
-                  "x_ohm": 0.902093460775,
-                  "z_equiv_abs_ohm": 0.913583751018,
+                  "r_ohm": 0.147441291547,
+                  "x_ohm": 0.8721508452,
+                  "z_equiv_abs_ohm": 0.884525879348,
                   "z_equiv_ohm": {
-                    "im": 0.902093460775,
-                    "re": 0.144439115725
+                    "im": 0.8721508452,
+                    "re": 0.147441291547
                   }
                 },
-                "substitution": "\\left(0.144439 + j 0.902093\\right)",
-                "substitution_latex": "\\left(0.144439 + j 0.902093\\right)",
+                "substitution": "\\left(0.147441 + j 0.872151\\right)",
+                "substitution_latex": "\\left(0.147441 + j 0.872151\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
               {
@@ -7211,94 +7211,94 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "c_factor": 1.1,
                   "un_v": 15000.0,
                   "voltage_factor": 0.57735026919,
-                  "z_equiv_abs_ohm": 0.913583751018
+                  "z_equiv_abs_ohm": 0.884525879348
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 10427.3739884
+                  "ikss_a": 10769.9273295
                 },
-                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{0.913584}",
-                "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{0.913584}",
+                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{0.884526}",
+                "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{0.884526}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.144439115725,
-                  "rx_ratio": 0.160115466972,
-                  "x_ohm": 0.902093460775
+                  "r_ohm": 0.147441291547,
+                  "rx_ratio": 0.169054805552,
+                  "x_ohm": 0.8721508452
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.62619770016
+                  "kappa": 1.6101567355
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.160115}",
-                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.160115}",
+                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.169055}",
+                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.169055}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 10427.3739884,
-                  "kappa": 1.62619770016
+                  "ikss_a": 10769.9273295,
+                  "kappa": 1.6101567355
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 23980.7792116
+                  "ip_a": 24524.26068
                 },
-                "substitution": "1.6262 \\cdot \\sqrt{2} \\cdot 10427.4",
-                "substitution_latex": "1.6262 \\cdot \\sqrt{2} \\cdot 10427.4",
+                "substitution": "1.61016 \\cdot \\sqrt{2} \\cdot 10769.9",
+                "substitution_latex": "1.61016 \\cdot \\sqrt{2} \\cdot 10769.9",
                 "title": "Pr\u0105d udarowy"
               },
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 0.00653766149086,
-                  "ikss_a": 10427.3739884,
-                  "kappa": 1.62619770016,
-                  "ta_s": 0.0198800211,
+                  "exp_factor": 0.00493692134405,
+                  "ikss_a": 10769.9273295,
+                  "kappa": 1.6101567355,
+                  "ta_s": 0.0188287984565,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 10427.4613682
+                  "ib_a": 10769.9761921
                 },
-                "substitution": "10427.4 \\cdot \\sqrt{1 + \\left((1.6262 - 1) \\cdot 0.00653766\\right)^2}",
-                "substitution_latex": "10427.4 \\cdot \\sqrt{1 + \\left((1.6262 - 1) \\cdot 0.00653766\\right)^2}",
+                "substitution": "10769.9 \\cdot \\sqrt{1 + \\left((1.61016 - 1) \\cdot 0.00493692\\right)^2}",
+                "substitution_latex": "10769.9 \\cdot \\sqrt{1 + \\left((1.61016 - 1) \\cdot 0.00493692\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 10427.3739884,
+                  "ikss_a": 10769.9273295,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 10427.3739884
+                  "ith_a": 10769.9273295
                 },
-                "substitution": "10427.4 \\cdot \\sqrt{1}",
-                "substitution_latex": "10427.4 \\cdot \\sqrt{1}",
+                "substitution": "10769.9 \\cdot \\sqrt{1}",
+                "substitution_latex": "10769.9 \\cdot \\sqrt{1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 10427.3739884,
+                  "ikss_a": 10769.9273295,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 270.911123063
+                  "sk_mva": 279.810919927
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 10427.4 / 10^6",
-                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 10427.4 / 10^6",
+                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 10769.9 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 10769.9 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -7306,10 +7306,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "min": {
             "c_factor": 0.95,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 9.005,
-            "ith_ka": 9.005,
-            "kappa": 1.626,
-            "sk_mva": 233.97,
+            "ikss_ka": 9.301,
+            "ith_ka": 9.301,
+            "kappa": 1.61,
+            "sk_mva": 241.65,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -7317,27 +7317,27 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "SN_PCC",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 0.902093460775,
-                    "re": 0.144439115725
+                    "im": 0.8721508452,
+                    "re": 0.147441291547
                   },
                   "z2_ohm": {
-                    "im": 0.902093460775,
-                    "re": 0.144439115725
+                    "im": 0.8721508452,
+                    "re": 0.147441291547
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.144439115725,
-                  "x_ohm": 0.902093460775,
-                  "z_equiv_abs_ohm": 0.913583751018,
+                  "r_ohm": 0.147441291547,
+                  "x_ohm": 0.8721508452,
+                  "z_equiv_abs_ohm": 0.884525879348,
                   "z_equiv_ohm": {
-                    "im": 0.902093460775,
-                    "re": 0.144439115725
+                    "im": 0.8721508452,
+                    "re": 0.147441291547
                   }
                 },
-                "substitution": "\\left(0.144439 + j 0.902093\\right)",
-                "substitution_latex": "\\left(0.144439 + j 0.902093\\right)",
+                "substitution": "\\left(0.147441 + j 0.872151\\right)",
+                "substitution_latex": "\\left(0.147441 + j 0.872151\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
               {
@@ -7346,107 +7346,107 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "c_factor": 0.95,
                   "un_v": 15000.0,
                   "voltage_factor": 0.57735026919,
-                  "z_equiv_abs_ohm": 0.913583751018
+                  "z_equiv_abs_ohm": 0.884525879348
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 9005.45935366
+                  "ikss_a": 9301.30087546
                 },
-                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.913584}",
-                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.913584}",
+                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.884526}",
+                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.884526}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.144439115725,
-                  "rx_ratio": 0.160115466972,
-                  "x_ohm": 0.902093460775
+                  "r_ohm": 0.147441291547,
+                  "rx_ratio": 0.169054805552,
+                  "x_ohm": 0.8721508452
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.62619770016
+                  "kappa": 1.6101567355
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.160115}",
-                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.160115}",
+                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.169055}",
+                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.169055}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 9005.45935366,
-                  "kappa": 1.62619770016
+                  "ikss_a": 9301.30087546,
+                  "kappa": 1.6101567355
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 20710.6729555
+                  "ip_a": 21180.0433145
                 },
-                "substitution": "1.6262 \\cdot \\sqrt{2} \\cdot 9005.46",
-                "substitution_latex": "1.6262 \\cdot \\sqrt{2} \\cdot 9005.46",
+                "substitution": "1.61016 \\cdot \\sqrt{2} \\cdot 9301.3",
+                "substitution_latex": "1.61016 \\cdot \\sqrt{2} \\cdot 9301.3",
                 "title": "Pr\u0105d udarowy"
               },
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 0.00653766149086,
-                  "ikss_a": 9005.45935366,
-                  "kappa": 1.62619770016,
-                  "ta_s": 0.0198800211,
+                  "exp_factor": 0.00493692134405,
+                  "ikss_a": 9301.30087546,
+                  "kappa": 1.6101567355,
+                  "ta_s": 0.0188287984565,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 9005.53481801
+                  "ib_a": 9301.34307503
                 },
-                "substitution": "9005.46 \\cdot \\sqrt{1 + \\left((1.6262 - 1) \\cdot 0.00653766\\right)^2}",
-                "substitution_latex": "9005.46 \\cdot \\sqrt{1 + \\left((1.6262 - 1) \\cdot 0.00653766\\right)^2}",
+                "substitution": "9301.3 \\cdot \\sqrt{1 + \\left((1.61016 - 1) \\cdot 0.00493692\\right)^2}",
+                "substitution_latex": "9301.3 \\cdot \\sqrt{1 + \\left((1.61016 - 1) \\cdot 0.00493692\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 9005.45935366,
+                  "ikss_a": 9301.30087546,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 9005.45935366
+                  "ith_a": 9301.30087546
                 },
-                "substitution": "9005.46 \\cdot \\sqrt{1}",
-                "substitution_latex": "9005.46 \\cdot \\sqrt{1}",
+                "substitution": "9301.3 \\cdot \\sqrt{1}",
+                "substitution_latex": "9301.3 \\cdot \\sqrt{1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 9005.45935366,
+                  "ikss_a": 9301.30087546,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 233.96869719
+                  "sk_mva": 241.654885392
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9005.46 / 10^6",
-                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9005.46 / 10^6",
+                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9301.3 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9301.3 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
           },
           "source_contribution": {
-            "ib_contribution_ka": 0.555,
-            "ik_contribution_ka": 0.974,
+            "ib_contribution_ka": 0.756,
+            "ik_contribution_ka": 1.327,
             "is_synchronous_machine": false,
             "machine_type": "DFIG",
             "machines": [
               {
-                "ib_partial_ka": 0.185,
-                "ikss_partial_ka": 0.325,
+                "ib_partial_ka": 0.252,
+                "ikss_partial_ka": 0.442,
                 "ir_a": 1936.9,
                 "mu": 1.0,
                 "node_ref": "WTG_LV_1",
@@ -7454,8 +7454,8 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "async/WTG_LV_1/1"
               },
               {
-                "ib_partial_ka": 0.185,
-                "ikss_partial_ka": 0.325,
+                "ib_partial_ka": 0.252,
+                "ikss_partial_ka": 0.442,
                 "ir_a": 1936.9,
                 "mu": 1.0,
                 "node_ref": "WTG_LV_2",
@@ -7463,8 +7463,8 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "async/WTG_LV_2/1"
               },
               {
-                "ib_partial_ka": 0.185,
-                "ikss_partial_ka": 0.325,
+                "ib_partial_ka": 0.252,
+                "ikss_partial_ka": 0.442,
                 "ir_a": 1936.9,
                 "mu": 1.0,
                 "node_ref": "WTG_LV_3",
@@ -7479,7 +7479,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "un_kv": 15.0,
           "verification": {
             "icw_ka": 31.5,
-            "ikss_max_ka": 10.427,
+            "ikss_max_ka": 10.77,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -7490,13 +7490,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 40.772,
-            "ikss_ka": 40.75,
-            "ip_ka": 100.656,
-            "ith_ka": 40.75,
-            "kappa": 1.747,
-            "rx_ratio": 0.0997,
-            "sk_mva": 48.7,
+            "ib_ka": 45.388,
+            "ikss_ka": 45.388,
+            "ip_ka": 93.556,
+            "ith_ka": 45.388,
+            "kappa": 1.458,
+            "rx_ratio": 0.2688,
+            "sk_mva": 54.24,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -7504,27 +7504,27 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "WTG_LV_1",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 0.0107004017744,
-                    "re": 0.00106709993067
+                    "im": 0.00932372619577,
+                    "re": 0.00250629419188
                   },
                   "z2_ohm": {
-                    "im": 0.0107004017744,
-                    "re": 0.00106709993067
+                    "im": 0.00932372619577,
+                    "re": 0.00250629419188
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.00106709993067,
-                  "x_ohm": 0.0107004017744,
-                  "z_equiv_abs_ohm": 0.0107534785254,
+                  "r_ohm": 0.00250629419188,
+                  "x_ohm": 0.00932372619577,
+                  "z_equiv_abs_ohm": 0.00965470769883,
                   "z_equiv_ohm": {
-                    "im": 0.0107004017744,
-                    "re": 0.00106709993067
+                    "im": 0.00932372619577,
+                    "re": 0.00250629419188
                   }
                 },
-                "substitution": "\\left(0.0010671 + j 0.0107004\\right)",
-                "substitution_latex": "\\left(0.0010671 + j 0.0107004\\right)",
+                "substitution": "\\left(0.00250629 + j 0.00932373\\right)",
+                "substitution_latex": "\\left(0.00250629 + j 0.00932373\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
               {
@@ -7533,94 +7533,94 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "c_factor": 1.1,
                   "un_v": 690.0,
                   "voltage_factor": 0.57735026919,
-                  "z_equiv_abs_ohm": 0.0107534785254
+                  "z_equiv_abs_ohm": 0.00965470769883
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 40750.4281782
+                  "ikss_a": 45388.1016375
                 },
-                "substitution": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.0107535}",
-                "substitution_latex": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.0107535}",
+                "substitution": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.00965471}",
+                "substitution_latex": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.00965471}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.00106709993067,
-                  "rx_ratio": 0.0997252209001,
-                  "x_ohm": 0.0107004017744
+                  "r_ohm": 0.00250629419188,
+                  "rx_ratio": 0.268808214576,
+                  "x_ohm": 0.00932372619577
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.74660057342
+                  "kappa": 1.45752241026
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0997252}",
-                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0997252}",
+                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.268808}",
+                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.268808}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 40750.4281782,
-                  "kappa": 1.74660057342
+                  "ikss_a": 45388.1016375,
+                  "kappa": 1.45752241026
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 100656.256052
+                  "ip_a": 93556.1319109
                 },
-                "substitution": "1.7466 \\cdot \\sqrt{2} \\cdot 40750.4",
-                "substitution_latex": "1.7466 \\cdot \\sqrt{2} \\cdot 40750.4",
+                "substitution": "1.45752 \\cdot \\sqrt{2} \\cdot 45388.1",
+                "substitution_latex": "1.45752 \\cdot \\sqrt{2} \\cdot 45388.1",
                 "title": "Pr\u0105d udarowy"
               },
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 0.0435885745936,
-                  "ikss_a": 40750.4281782,
-                  "kappa": 1.74660057342,
-                  "ta_s": 0.0319186945199,
+                  "exp_factor": 0.000215002882839,
+                  "ikss_a": 45388.1016375,
+                  "kappa": 1.45752241026,
+                  "ta_s": 0.0118415237676,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 40772.0011121
+                  "ib_a": 45388.1018571
                 },
-                "substitution": "40750.4 \\cdot \\sqrt{1 + \\left((1.7466 - 1) \\cdot 0.0435886\\right)^2}",
-                "substitution_latex": "40750.4 \\cdot \\sqrt{1 + \\left((1.7466 - 1) \\cdot 0.0435886\\right)^2}",
+                "substitution": "45388.1 \\cdot \\sqrt{1 + \\left((1.45752 - 1) \\cdot 0.000215003\\right)^2}",
+                "substitution_latex": "45388.1 \\cdot \\sqrt{1 + \\left((1.45752 - 1) \\cdot 0.000215003\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 40750.4281782,
+                  "ikss_a": 45388.1016375,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 40750.4281782
+                  "ith_a": 45388.1016375
                 },
-                "substitution": "40750.4 \\cdot \\sqrt{1}",
-                "substitution_latex": "40750.4 \\cdot \\sqrt{1}",
+                "substitution": "45388.1 \\cdot \\sqrt{1}",
+                "substitution_latex": "45388.1 \\cdot \\sqrt{1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 40750.4281782,
+                  "ikss_a": 45388.1016375,
                   "un_v": 690.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 48.7014503041
+                  "sk_mva": 54.2440036857
                 },
-                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 40750.4 / 10^6",
-                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 40750.4 / 10^6",
+                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 45388.1 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 45388.1 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -7628,10 +7628,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "min": {
             "c_factor": 0.95,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 35.194,
-            "ith_ka": 35.194,
-            "kappa": 1.747,
-            "sk_mva": 42.06,
+            "ikss_ka": 39.199,
+            "ith_ka": 39.199,
+            "kappa": 1.458,
+            "sk_mva": 46.85,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -7639,27 +7639,27 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "WTG_LV_1",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 0.0107004017744,
-                    "re": 0.00106709993067
+                    "im": 0.00932372619577,
+                    "re": 0.00250629419188
                   },
                   "z2_ohm": {
-                    "im": 0.0107004017744,
-                    "re": 0.00106709993067
+                    "im": 0.00932372619577,
+                    "re": 0.00250629419188
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.00106709993067,
-                  "x_ohm": 0.0107004017744,
-                  "z_equiv_abs_ohm": 0.0107534785254,
+                  "r_ohm": 0.00250629419188,
+                  "x_ohm": 0.00932372619577,
+                  "z_equiv_abs_ohm": 0.00965470769883,
                   "z_equiv_ohm": {
-                    "im": 0.0107004017744,
-                    "re": 0.00106709993067
+                    "im": 0.00932372619577,
+                    "re": 0.00250629419188
                   }
                 },
-                "substitution": "\\left(0.0010671 + j 0.0107004\\right)",
-                "substitution_latex": "\\left(0.0010671 + j 0.0107004\\right)",
+                "substitution": "\\left(0.00250629 + j 0.00932373\\right)",
+                "substitution_latex": "\\left(0.00250629 + j 0.00932373\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
               {
@@ -7668,116 +7668,116 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "c_factor": 0.95,
                   "un_v": 690.0,
                   "voltage_factor": 0.57735026919,
-                  "z_equiv_abs_ohm": 0.0107534785254
+                  "z_equiv_abs_ohm": 0.00965470769883
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 35193.5516085
+                  "ikss_a": 39198.8150506
                 },
-                "substitution": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.0107535}",
-                "substitution_latex": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.0107535}",
+                "substitution": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.00965471}",
+                "substitution_latex": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.00965471}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.00106709993067,
-                  "rx_ratio": 0.0997252209001,
-                  "x_ohm": 0.0107004017744
+                  "r_ohm": 0.00250629419188,
+                  "rx_ratio": 0.268808214576,
+                  "x_ohm": 0.00932372619577
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.74660057342
+                  "kappa": 1.45752241026
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0997252}",
-                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0997252}",
+                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.268808}",
+                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.268808}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 35193.5516085,
-                  "kappa": 1.74660057342
+                  "ikss_a": 39198.8150506,
+                  "kappa": 1.45752241026
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 86930.4029538
+                  "ip_a": 80798.4775594
                 },
-                "substitution": "1.7466 \\cdot \\sqrt{2} \\cdot 35193.6",
-                "substitution_latex": "1.7466 \\cdot \\sqrt{2} \\cdot 35193.6",
+                "substitution": "1.45752 \\cdot \\sqrt{2} \\cdot 39198.8",
+                "substitution_latex": "1.45752 \\cdot \\sqrt{2} \\cdot 39198.8",
                 "title": "Pr\u0105d udarowy"
               },
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 0.0435885745936,
-                  "ikss_a": 35193.5516085,
-                  "kappa": 1.74660057342,
-                  "ta_s": 0.0319186945199,
+                  "exp_factor": 0.000215002882839,
+                  "ikss_a": 39198.8150506,
+                  "kappa": 1.45752241026,
+                  "ta_s": 0.0118415237676,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 35212.1827787
+                  "ib_a": 39198.8152402
                 },
-                "substitution": "35193.6 \\cdot \\sqrt{1 + \\left((1.7466 - 1) \\cdot 0.0435886\\right)^2}",
-                "substitution_latex": "35193.6 \\cdot \\sqrt{1 + \\left((1.7466 - 1) \\cdot 0.0435886\\right)^2}",
+                "substitution": "39198.8 \\cdot \\sqrt{1 + \\left((1.45752 - 1) \\cdot 0.000215003\\right)^2}",
+                "substitution_latex": "39198.8 \\cdot \\sqrt{1 + \\left((1.45752 - 1) \\cdot 0.000215003\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 35193.5516085,
+                  "ikss_a": 39198.8150506,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 35193.5516085
+                  "ith_a": 39198.8150506
                 },
-                "substitution": "35193.6 \\cdot \\sqrt{1}",
-                "substitution_latex": "35193.6 \\cdot \\sqrt{1}",
+                "substitution": "39198.8 \\cdot \\sqrt{1}",
+                "substitution_latex": "39198.8 \\cdot \\sqrt{1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 35193.5516085,
+                  "ikss_a": 39198.8150506,
                   "un_v": 690.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 42.0603434444
+                  "sk_mva": 46.8470940922
                 },
-                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 35193.6 / 10^6",
-                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 35193.6 / 10^6",
+                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 39198.8 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 39198.8 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
           },
           "source_contribution": {
-            "ib_contribution_ka": 5.064,
-            "ik_contribution_ka": 10.622,
+            "ib_contribution_ka": 6.751,
+            "ik_contribution_ka": 15.588,
             "is_synchronous_machine": false,
             "machine_type": "DFIG",
             "machines": [
               {
-                "ib_partial_ka": 3.867,
-                "ikss_partial_ka": 8.522,
+                "ib_partial_ka": 5.152,
+                "ikss_partial_ka": 12.784,
                 "ir_a": 1936.9,
-                "mu": 0.7961,
+                "mu": 0.7071,
                 "node_ref": "WTG_LV_1",
                 "q": 0.57,
                 "source_id": "async/WTG_LV_1/1"
               },
               {
-                "ib_partial_ka": 0.598,
-                "ikss_partial_ka": 1.05,
+                "ib_partial_ka": 0.799,
+                "ikss_partial_ka": 1.402,
                 "ir_a": 1936.9,
                 "mu": 1.0,
                 "node_ref": "WTG_LV_2",
@@ -7785,8 +7785,8 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "async/WTG_LV_2/1"
               },
               {
-                "ib_partial_ka": 0.598,
-                "ikss_partial_ka": 1.05,
+                "ib_partial_ka": 0.799,
+                "ikss_partial_ka": 1.402,
                 "ir_a": 1936.9,
                 "mu": 1.0,
                 "node_ref": "WTG_LV_3",
@@ -7801,7 +7801,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "un_kv": 0.69,
           "verification": {
             "icw_ka": 63.0,
-            "ikss_max_ka": 40.75,
+            "ikss_max_ka": 45.388,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -7861,9 +7861,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "direction": "reverse",
           "i_a": 230.15,
           "loading_percent": 36.53,
-          "p_mw": -5.9774,
+          "p_mw": -5.9773,
           "q_mvar": 0.1589,
-          "s_mva": 5.9795
+          "s_mva": 5.9794
         },
         "sr/branch/wtg-tr1": {
           "branch_ref": "sr/branch/wtg-tr1",
@@ -7903,9 +7903,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         },
         "WTG_LV_1": {
           "bus_ref": "WTG_LV_1",
-          "deviation_percent": 0.342,
+          "deviation_percent": 0.344,
           "u_kv": 0.6924,
-          "u_pu": 1.00342,
+          "u_pu": 1.00344,
           "un_kv": 0.69
         }
       }
@@ -8560,13 +8560,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 10.05,
-            "ikss_ka": 10.05,
-            "ip_ka": 17.725,
-            "ith_ka": 10.05,
-            "kappa": 1.247,
-            "rx_ratio": 0.4873,
-            "sk_mva": 261.1,
+            "ib_ka": 10.041,
+            "ikss_ka": 10.041,
+            "ip_ka": 23.23,
+            "ith_ka": 10.041,
+            "kappa": 1.636,
+            "rx_ratio": 0.1548,
+            "sk_mva": 260.86,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -8574,27 +8574,27 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "SN_PCC",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 0.852107955133,
-                    "re": 0.415245231204
+                    "im": 0.937604892099,
+                    "re": 0.145120959232
                   },
                   "z2_ohm": {
-                    "im": 0.852107955133,
-                    "re": 0.415245231204
+                    "im": 0.937604892099,
+                    "re": 0.145120959232
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.415245231204,
-                  "x_ohm": 0.852107955133,
-                  "z_equiv_abs_ohm": 0.947901138958,
+                  "r_ohm": 0.145120959232,
+                  "x_ohm": 0.937604892099,
+                  "z_equiv_abs_ohm": 0.948769216668,
                   "z_equiv_ohm": {
-                    "im": 0.852107955133,
-                    "re": 0.415245231204
+                    "im": 0.937604892099,
+                    "re": 0.145120959232
                   }
                 },
-                "substitution": "\\left(0.415245 + j 0.852108\\right)",
-                "substitution_latex": "\\left(0.415245 + j 0.852108\\right)",
+                "substitution": "\\left(0.145121 + j 0.937605\\right)",
+                "substitution_latex": "\\left(0.145121 + j 0.937605\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
               {
@@ -8603,94 +8603,94 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "c_factor": 1.1,
                   "un_v": 15000.0,
                   "voltage_factor": 0.57735026919,
-                  "z_equiv_abs_ohm": 0.947901138958
+                  "z_equiv_abs_ohm": 0.948769216668
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 10049.8660146
+                  "ikss_a": 10040.6708758
                 },
-                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{0.947901}",
-                "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{0.947901}",
+                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{0.948769}",
+                "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{0.948769}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.415245231204,
-                  "rx_ratio": 0.487315285232,
-                  "x_ohm": 0.852107955133
+                  "r_ohm": 0.145120959232,
+                  "rx_ratio": 0.154778372483,
+                  "x_ohm": 0.937604892099
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.24714911951
+                  "kappa": 1.63598182253
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.487315}",
-                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.487315}",
+                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.154778}",
+                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.154778}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 10049.8660146,
-                  "kappa": 1.24714911951
+                  "ikss_a": 10040.6708758,
+                  "kappa": 1.63598182253
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 17725.3024364
+                  "ip_a": 23230.3740762
                 },
-                "substitution": "1.24715 \\cdot \\sqrt{2} \\cdot 10049.9",
-                "substitution_latex": "1.24715 \\cdot \\sqrt{2} \\cdot 10049.9",
+                "substitution": "1.63598 \\cdot \\sqrt{2} \\cdot 10040.7",
+                "substitution_latex": "1.63598 \\cdot \\sqrt{2} \\cdot 10040.7",
                 "title": "Pr\u0105d udarowy"
               },
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 2.24484045148e-07,
-                  "ikss_a": 10049.8660146,
-                  "kappa": 1.24714911951,
-                  "ta_s": 0.00653190851652,
+                  "exp_factor": 0.00773108565502,
+                  "ikss_a": 10040.6708758,
+                  "kappa": 1.63598182253,
+                  "ta_s": 0.0205655274104,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 10049.8660146
+                  "ib_a": 10040.7922427
                 },
-                "substitution": "10049.9 \\cdot \\sqrt{1 + \\left((1.24715 - 1) \\cdot 2.24484e-07\\right)^2}",
-                "substitution_latex": "10049.9 \\cdot \\sqrt{1 + \\left((1.24715 - 1) \\cdot 2.24484e-07\\right)^2}",
+                "substitution": "10040.7 \\cdot \\sqrt{1 + \\left((1.63598 - 1) \\cdot 0.00773109\\right)^2}",
+                "substitution_latex": "10040.7 \\cdot \\sqrt{1 + \\left((1.63598 - 1) \\cdot 0.00773109\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 10049.8660146,
+                  "ikss_a": 10040.6708758,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 10049.8660146
+                  "ith_a": 10040.6708758
                 },
-                "substitution": "10049.9 \\cdot \\sqrt{1}",
-                "substitution_latex": "10049.9 \\cdot \\sqrt{1}",
+                "substitution": "10040.7 \\cdot \\sqrt{1}",
+                "substitution_latex": "10040.7 \\cdot \\sqrt{1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 10049.8660146,
+                  "ikss_a": 10040.6708758,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 261.103178199
+                  "sk_mva": 260.864281484
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 10049.9 / 10^6",
-                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 10049.9 / 10^6",
+                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 10040.7 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 10040.7 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -8698,10 +8698,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "min": {
             "c_factor": 0.95,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 8.679,
-            "ith_ka": 8.679,
-            "kappa": 1.247,
-            "sk_mva": 225.5,
+            "ikss_ka": 8.671,
+            "ith_ka": 8.671,
+            "kappa": 1.636,
+            "sk_mva": 225.29,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -8709,27 +8709,27 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "SN_PCC",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 0.852107955133,
-                    "re": 0.415245231204
+                    "im": 0.937604892099,
+                    "re": 0.145120959232
                   },
                   "z2_ohm": {
-                    "im": 0.852107955133,
-                    "re": 0.415245231204
+                    "im": 0.937604892099,
+                    "re": 0.145120959232
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.415245231204,
-                  "x_ohm": 0.852107955133,
-                  "z_equiv_abs_ohm": 0.947901138958,
+                  "r_ohm": 0.145120959232,
+                  "x_ohm": 0.937604892099,
+                  "z_equiv_abs_ohm": 0.948769216668,
                   "z_equiv_ohm": {
-                    "im": 0.852107955133,
-                    "re": 0.415245231204
+                    "im": 0.937604892099,
+                    "re": 0.145120959232
                   }
                 },
-                "substitution": "\\left(0.415245 + j 0.852108\\right)",
-                "substitution_latex": "\\left(0.415245 + j 0.852108\\right)",
+                "substitution": "\\left(0.145121 + j 0.937605\\right)",
+                "substitution_latex": "\\left(0.145121 + j 0.937605\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
               {
@@ -8738,107 +8738,107 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "c_factor": 0.95,
                   "un_v": 15000.0,
                   "voltage_factor": 0.57735026919,
-                  "z_equiv_abs_ohm": 0.947901138958
+                  "z_equiv_abs_ohm": 0.948769216668
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 8679.42973989
+                  "ikss_a": 8671.48848362
                 },
-                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.947901}",
-                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.947901}",
+                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.948769}",
+                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.948769}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.415245231204,
-                  "rx_ratio": 0.487315285232,
-                  "x_ohm": 0.852107955133
+                  "r_ohm": 0.145120959232,
+                  "rx_ratio": 0.154778372483,
+                  "x_ohm": 0.937604892099
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.24714911951
+                  "kappa": 1.63598182253
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.487315}",
-                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.487315}",
+                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.154778}",
+                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.154778}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 8679.42973989,
-                  "kappa": 1.24714911951
+                  "ikss_a": 8671.48848362,
+                  "kappa": 1.63598182253
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 15308.2157405
+                  "ip_a": 20062.595793
                 },
-                "substitution": "1.24715 \\cdot \\sqrt{2} \\cdot 8679.43",
-                "substitution_latex": "1.24715 \\cdot \\sqrt{2} \\cdot 8679.43",
+                "substitution": "1.63598 \\cdot \\sqrt{2} \\cdot 8671.49",
+                "substitution_latex": "1.63598 \\cdot \\sqrt{2} \\cdot 8671.49",
                 "title": "Pr\u0105d udarowy"
               },
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 2.24484045148e-07,
-                  "ikss_a": 8679.42973989,
-                  "kappa": 1.24714911951,
-                  "ta_s": 0.00653190851652,
+                  "exp_factor": 0.00773108565502,
+                  "ikss_a": 8671.48848362,
+                  "kappa": 1.63598182253,
+                  "ta_s": 0.0205655274104,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 8679.42973989
+                  "ib_a": 8671.59330055
                 },
-                "substitution": "8679.43 \\cdot \\sqrt{1 + \\left((1.24715 - 1) \\cdot 2.24484e-07\\right)^2}",
-                "substitution_latex": "8679.43 \\cdot \\sqrt{1 + \\left((1.24715 - 1) \\cdot 2.24484e-07\\right)^2}",
+                "substitution": "8671.49 \\cdot \\sqrt{1 + \\left((1.63598 - 1) \\cdot 0.00773109\\right)^2}",
+                "substitution_latex": "8671.49 \\cdot \\sqrt{1 + \\left((1.63598 - 1) \\cdot 0.00773109\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 8679.42973989,
+                  "ikss_a": 8671.48848362,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 8679.42973989
+                  "ith_a": 8671.48848362
                 },
-                "substitution": "8679.43 \\cdot \\sqrt{1}",
-                "substitution_latex": "8679.43 \\cdot \\sqrt{1}",
+                "substitution": "8671.49 \\cdot \\sqrt{1}",
+                "substitution_latex": "8671.49 \\cdot \\sqrt{1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 8679.42973989,
+                  "ikss_a": 8671.48848362,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 225.498199353
+                  "sk_mva": 225.291879463
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8679.43 / 10^6",
-                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8679.43 / 10^6",
+                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8671.49 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8671.49 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
           },
           "source_contribution": {
-            "ib_contribution_ka": 0.276,
-            "ik_contribution_ka": 0.591,
+            "ib_contribution_ka": 0.273,
+            "ik_contribution_ka": 0.584,
             "is_synchronous_machine": false,
             "machine_type": "ASYNCHRONOUS",
             "machines": [
               {
-                "ib_partial_ka": 0.092,
-                "ikss_partial_ka": 0.197,
+                "ib_partial_ka": 0.091,
+                "ikss_partial_ka": 0.195,
                 "ir_a": 880.8,
                 "mu": 1.0,
                 "node_ref": "WTG_LV_1",
@@ -8846,8 +8846,8 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "async/WTG_LV_1/1"
               },
               {
-                "ib_partial_ka": 0.092,
-                "ikss_partial_ka": 0.197,
+                "ib_partial_ka": 0.091,
+                "ikss_partial_ka": 0.195,
                 "ir_a": 880.8,
                 "mu": 1.0,
                 "node_ref": "WTG_LV_2",
@@ -8855,8 +8855,8 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "async/WTG_LV_2/1"
               },
               {
-                "ib_partial_ka": 0.092,
-                "ikss_partial_ka": 0.197,
+                "ib_partial_ka": 0.091,
+                "ikss_partial_ka": 0.195,
                 "ir_a": 880.8,
                 "mu": 1.0,
                 "node_ref": "WTG_LV_3",
@@ -8871,7 +8871,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "un_kv": 15.0,
           "verification": {
             "icw_ka": 25.0,
-            "ikss_max_ka": 10.05,
+            "ikss_max_ka": 10.041,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -8882,13 +8882,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 19.942,
-            "ikss_ka": 19.942,
-            "ip_ka": 47.17,
-            "ith_ka": 19.942,
-            "kappa": 1.673,
-            "rx_ratio": 0.1355,
-            "sk_mva": 23.83,
+            "ib_ka": 20.06,
+            "ikss_ka": 20.06,
+            "ip_ka": 41.175,
+            "ith_ka": 20.06,
+            "kappa": 1.451,
+            "rx_ratio": 0.2735,
+            "sk_mva": 23.97,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -8896,27 +8896,27 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "WTG_LV_1",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 0.0217755321387,
-                    "re": 0.00295135942989
+                    "im": 0.0210705566696,
+                    "re": 0.00576307969488
                   },
                   "z2_ohm": {
-                    "im": 0.0217755321387,
-                    "re": 0.00295135942989
+                    "im": 0.0210705566696,
+                    "re": 0.00576307969488
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.00295135942989,
-                  "x_ohm": 0.0217755321387,
-                  "z_equiv_abs_ohm": 0.0219746290619,
+                  "r_ohm": 0.00576307969488,
+                  "x_ohm": 0.0210705566696,
+                  "z_equiv_abs_ohm": 0.0218444831922,
                   "z_equiv_ohm": {
-                    "im": 0.0217755321387,
-                    "re": 0.00295135942989
+                    "im": 0.0210705566696,
+                    "re": 0.00576307969488
                   }
                 },
-                "substitution": "\\left(0.00295136 + j 0.0217755\\right)",
-                "substitution_latex": "\\left(0.00295136 + j 0.0217755\\right)",
+                "substitution": "\\left(0.00576308 + j 0.0210706\\right)",
+                "substitution_latex": "\\left(0.00576308 + j 0.0210706\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
               {
@@ -8925,94 +8925,94 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "c_factor": 1.1,
                   "un_v": 690.0,
                   "voltage_factor": 0.57735026919,
-                  "z_equiv_abs_ohm": 0.0219746290619
+                  "z_equiv_abs_ohm": 0.0218444831922
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 19941.5814064
+                  "ikss_a": 20060.3900975
                 },
-                "substitution": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.0219746}",
-                "substitution_latex": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.0219746}",
+                "substitution": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.0218445}",
+                "substitution_latex": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.0218445}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.00295135942989,
-                  "rx_ratio": 0.135535582372,
-                  "x_ohm": 0.0217755321387
+                  "r_ohm": 0.00576307969488,
+                  "rx_ratio": 0.27351340476,
+                  "x_ohm": 0.0210705566696
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.67258788811
+                  "kappa": 1.45138991547
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.135536}",
-                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.135536}",
+                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.273513}",
+                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.273513}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 19941.5814064,
-                  "kappa": 1.67258788811
+                  "ikss_a": 20060.3900975,
+                  "kappa": 1.45138991547
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 47169.7463772
+                  "ip_a": 41175.4612776
                 },
-                "substitution": "1.67259 \\cdot \\sqrt{2} \\cdot 19941.6",
-                "substitution_latex": "1.67259 \\cdot \\sqrt{2} \\cdot 19941.6",
+                "substitution": "1.45139 \\cdot \\sqrt{2} \\cdot 20060.4",
+                "substitution_latex": "1.45139 \\cdot \\sqrt{2} \\cdot 20060.4",
                 "title": "Pr\u0105d udarowy"
               },
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 0.0141509163282,
-                  "ikss_a": 19941.5814064,
-                  "kappa": 1.67258788811,
-                  "ta_s": 0.0234853372533,
+                  "exp_factor": 0.000185458943264,
+                  "ikss_a": 20060.3900975,
+                  "kappa": 1.45138991547,
+                  "ta_s": 0.0116378166717,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 19942.4846128
+                  "ib_a": 20060.3901678
                 },
-                "substitution": "19941.6 \\cdot \\sqrt{1 + \\left((1.67259 - 1) \\cdot 0.0141509\\right)^2}",
-                "substitution_latex": "19941.6 \\cdot \\sqrt{1 + \\left((1.67259 - 1) \\cdot 0.0141509\\right)^2}",
+                "substitution": "20060.4 \\cdot \\sqrt{1 + \\left((1.45139 - 1) \\cdot 0.000185459\\right)^2}",
+                "substitution_latex": "20060.4 \\cdot \\sqrt{1 + \\left((1.45139 - 1) \\cdot 0.000185459\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 19941.5814064,
+                  "ikss_a": 20060.3900975,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 19941.5814064
+                  "ith_a": 20060.3900975
                 },
-                "substitution": "19941.6 \\cdot \\sqrt{1}",
-                "substitution_latex": "19941.6 \\cdot \\sqrt{1}",
+                "substitution": "20060.4 \\cdot \\sqrt{1}",
+                "substitution_latex": "20060.4 \\cdot \\sqrt{1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 19941.5814064,
+                  "ikss_a": 20060.3900975,
                   "un_v": 690.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 23.8324842037
+                  "sk_mva": 23.9744742593
                 },
-                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 19941.6 / 10^6",
-                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 19941.6 / 10^6",
+                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 20060.4 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 20060.4 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -9020,10 +9020,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "min": {
             "c_factor": 0.95,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 17.222,
-            "ith_ka": 17.222,
-            "kappa": 1.673,
-            "sk_mva": 20.58,
+            "ikss_ka": 17.325,
+            "ith_ka": 17.325,
+            "kappa": 1.451,
+            "sk_mva": 20.71,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -9031,27 +9031,27 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "fault_node_id": "WTG_LV_1",
                   "short_circuit_type": "3F",
                   "z1_ohm": {
-                    "im": 0.0217755321387,
-                    "re": 0.00295135942989
+                    "im": 0.0210705566696,
+                    "re": 0.00576307969488
                   },
                   "z2_ohm": {
-                    "im": 0.0217755321387,
-                    "re": 0.00295135942989
+                    "im": 0.0210705566696,
+                    "re": 0.00576307969488
                   }
                 },
                 "key": "Zk",
                 "notes": null,
                 "result": {
-                  "r_ohm": 0.00295135942989,
-                  "x_ohm": 0.0217755321387,
-                  "z_equiv_abs_ohm": 0.0219746290619,
+                  "r_ohm": 0.00576307969488,
+                  "x_ohm": 0.0210705566696,
+                  "z_equiv_abs_ohm": 0.0218444831922,
                   "z_equiv_ohm": {
-                    "im": 0.0217755321387,
-                    "re": 0.00295135942989
+                    "im": 0.0210705566696,
+                    "re": 0.00576307969488
                   }
                 },
-                "substitution": "\\left(0.00295136 + j 0.0217755\\right)",
-                "substitution_latex": "\\left(0.00295136 + j 0.0217755\\right)",
+                "substitution": "\\left(0.00576308 + j 0.0210706\\right)",
+                "substitution_latex": "\\left(0.00576308 + j 0.0210706\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
               {
@@ -9060,101 +9060,101 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "c_factor": 0.95,
                   "un_v": 690.0,
                   "voltage_factor": 0.57735026919,
-                  "z_equiv_abs_ohm": 0.0219746290619
+                  "z_equiv_abs_ohm": 0.0218444831922
                 },
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 17222.274851
+                  "ikss_a": 17324.882357
                 },
-                "substitution": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.0219746}",
-                "substitution_latex": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.0219746}",
+                "substitution": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.0218445}",
+                "substitution_latex": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.0218445}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
                 "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
                 "inputs": {
-                  "r_ohm": 0.00295135942989,
-                  "rx_ratio": 0.135535582372,
-                  "x_ohm": 0.0217755321387
+                  "r_ohm": 0.00576307969488,
+                  "rx_ratio": 0.27351340476,
+                  "x_ohm": 0.0210705566696
                 },
                 "key": "kappa",
                 "notes": null,
                 "result": {
-                  "kappa": 1.67258788811
+                  "kappa": 1.45138991547
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.135536}",
-                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.135536}",
+                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.273513}",
+                "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.273513}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 17222.274851,
-                  "kappa": 1.67258788811
+                  "ikss_a": 17324.882357,
+                  "kappa": 1.45138991547
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 40737.5082349
+                  "ip_a": 35560.6256488
                 },
-                "substitution": "1.67259 \\cdot \\sqrt{2} \\cdot 17222.3",
-                "substitution_latex": "1.67259 \\cdot \\sqrt{2} \\cdot 17222.3",
+                "substitution": "1.45139 \\cdot \\sqrt{2} \\cdot 17324.9",
+                "substitution_latex": "1.45139 \\cdot \\sqrt{2} \\cdot 17324.9",
                 "title": "Pr\u0105d udarowy"
               },
               {
                 "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
                 "inputs": {
-                  "exp_factor": 0.0141509163282,
-                  "ikss_a": 17222.274851,
-                  "kappa": 1.67258788811,
-                  "ta_s": 0.0234853372533,
+                  "exp_factor": 0.000185458943264,
+                  "ikss_a": 17324.882357,
+                  "kappa": 1.45138991547,
+                  "ta_s": 0.0116378166717,
                   "tb_s": 0.1
                 },
                 "key": "Ib",
                 "notes": null,
                 "result": {
-                  "ib_a": 17223.0548929
+                  "ib_a": 17324.8824177
                 },
-                "substitution": "17222.3 \\cdot \\sqrt{1 + \\left((1.67259 - 1) \\cdot 0.0141509\\right)^2}",
-                "substitution_latex": "17222.3 \\cdot \\sqrt{1 + \\left((1.67259 - 1) \\cdot 0.0141509\\right)^2}",
+                "substitution": "17324.9 \\cdot \\sqrt{1 + \\left((1.45139 - 1) \\cdot 0.000185459\\right)^2}",
+                "substitution_latex": "17324.9 \\cdot \\sqrt{1 + \\left((1.45139 - 1) \\cdot 0.000185459\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
                 "inputs": {
-                  "ikss_a": 17222.274851,
+                  "ikss_a": 17324.882357,
                   "tk_s": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 17222.274851
+                  "ith_a": 17324.882357
                 },
-                "substitution": "17222.3 \\cdot \\sqrt{1}",
-                "substitution_latex": "17222.3 \\cdot \\sqrt{1}",
+                "substitution": "17324.9 \\cdot \\sqrt{1}",
+                "substitution_latex": "17324.9 \\cdot \\sqrt{1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 17222.274851,
+                  "ikss_a": 17324.882357,
                   "un_v": 690.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 20.5825999941
+                  "sk_mva": 20.7052277694
                 },
-                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 17222.3 / 10^6",
-                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 17222.3 / 10^6",
+                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 17324.9 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 17324.9 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
           },
           "source_contribution": {
-            "ib_contribution_ka": 2.19,
-            "ik_contribution_ka": 6.389,
+            "ib_contribution_ka": 2.185,
+            "ik_contribution_ka": 6.379,
             "is_synchronous_machine": false,
             "machine_type": "ASYNCHRONOUS",
             "machines": [
@@ -9168,8 +9168,8 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "async/WTG_LV_1/1"
               },
               {
-                "ib_partial_ka": 0.135,
-                "ikss_partial_ka": 0.288,
+                "ib_partial_ka": 0.132,
+                "ikss_partial_ka": 0.283,
                 "ir_a": 880.8,
                 "mu": 1.0,
                 "node_ref": "WTG_LV_2",
@@ -9177,8 +9177,8 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "async/WTG_LV_2/1"
               },
               {
-                "ib_partial_ka": 0.135,
-                "ikss_partial_ka": 0.288,
+                "ib_partial_ka": 0.132,
+                "ikss_partial_ka": 0.283,
                 "ir_a": 880.8,
                 "mu": 1.0,
                 "node_ref": "WTG_LV_3",
@@ -9193,7 +9193,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "un_kv": 0.69,
           "verification": {
             "icw_ka": 50.0,
-            "ikss_max_ka": 19.942,
+            "ikss_max_ka": 20.06,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -9237,16 +9237,16 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "sr/branch/in": {
           "branch_ref": "sr/branch/in",
           "direction": "reverse",
-          "i_a": 97.66,
-          "loading_percent": 15.5,
-          "p_mw": -2.5371,
-          "q_mvar": 0.026,
-          "s_mva": 2.5372
+          "i_a": 98.0,
+          "loading_percent": 15.55,
+          "p_mw": -2.5458,
+          "q_mvar": 0.029,
+          "s_mva": 2.546
         },
         "sr/branch/wtg-tr1": {
           "branch_ref": "sr/branch/wtg-tr1",
           "direction": "reverse",
-          "i_a": 32.55,
+          "i_a": 32.67,
           "loading_percent": null,
           "p_mw": -0.85,
           "q_mvar": 0.0001,
@@ -9255,7 +9255,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "sr/branch/wtg-tr2": {
           "branch_ref": "sr/branch/wtg-tr2",
           "direction": "reverse",
-          "i_a": 32.55,
+          "i_a": 32.67,
           "loading_percent": null,
           "p_mw": -0.85,
           "q_mvar": 0.0001,
@@ -9264,7 +9264,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "sr/branch/wtg-tr3": {
           "branch_ref": "sr/branch/wtg-tr3",
           "direction": "reverse",
-          "i_a": 32.55,
+          "i_a": 32.67,
           "loading_percent": null,
           "p_mw": -0.85,
           "q_mvar": 0.0001,
@@ -9274,16 +9274,16 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       "buses": {
         "SN_PCC": {
           "bus_ref": "SN_PCC",
-          "deviation_percent": 0.502,
-          "u_kv": 15.0753,
-          "u_pu": 1.00502,
+          "deviation_percent": 0.154,
+          "u_kv": 15.0231,
+          "u_pu": 1.00154,
           "un_kv": 15.0
         },
         "WTG_LV_1": {
           "bus_ref": "WTG_LV_1",
-          "deviation_percent": 0.502,
-          "u_kv": 0.6935,
-          "u_pu": 1.00502,
+          "deviation_percent": 0.157,
+          "u_kv": 0.6911,
+          "u_pu": 1.00157,
           "un_kv": 0.69
         }
       }

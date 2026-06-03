@@ -2243,12 +2243,9 @@ def build_g4_pvbess_ac() -> dict[str, Any]:
 # The wind SN collector is 15 kV (ENEA standard). Re-levelling 30→15 kV at a CONSTANT
 # grid S_k″ DOUBLES the collector Ik″ (Ik″ = S_k″/(√3·Un); PN-EN 60909) — not cosmetic.
 _WIND_COLLECTOR_KV = 15.0  # 15 kV ENEA-valid wind SN collector voltage
-# G6 (Typ 4, IBG) collector grid infeed at the 15 kV ENEA PPP. Substrate input tuned so
-# the FROZEN solver reports S_k″ ≈ 559 MVA (the ENEA value, preserved from the 30 kV
-# model) → Ik″ ≈ 21.5 kA at 15 kV. X/R≈7 (κ≈1.66). Wind-specific (NOT the shared
-# _GRID_INFEED) so G4-PVTR/G5-BESS stay untouched at 15–15.75 kV.
-_WIND_GRID_INFEED_R = 0.0869
-_WIND_GRID_INFEED_X = 0.6096
+# F-1 (audit): the wind collector uses the FAMILY S_k″ STANDARD grid infeed (_GRID_INFEED,
+# ≈245 MVA at 15 kV, X/R≈7) — the SAME as G4-PVTR/G5-BESS/G6/hybrid. S_k″ is a property of
+# the ENEA connection POINT, not the DER type, so every 15 kV preset shares one infeed.
 _WIND_LV_KV = 0.69  # 0.69 kV turbine generator/converter LV
 
 
@@ -2275,9 +2272,9 @@ def build_g5_wind_t4() -> dict[str, Any]:
     s = _Substrate()
     s.add_slack("GPZ")
     s.add_bus("SN_PCC", _WIND_COLLECTOR_KV)  # collector bus == farm SN busbar (przyłącze)
-    # Collector SC is grid-infeed dominated → physical X/R≈7 (κ≈1.66). Wind-specific
-    # infeed holds S_k″ at the ENEA value while the bus drops 30→15 kV → Ik″ doubles.
-    s.add_line(SR_IN, "GPZ", "SN_PCC", _WIND_GRID_INFEED_R, _WIND_GRID_INFEED_X)
+    # Collector grid infeed = FAMILY STANDARD _GRID_INFEED (ENEA 15 kV S_k″ ≈ 245 MVA,
+    # X/R≈7, κ≈1.63) — shared with PV/BESS/G6 (audit F-1: S_k″ = connection-point property).
+    s.add_line(SR_IN, "GPZ", "SN_PCC", _GRID_INFEED_R, _GRID_INFEED_X)
     # Each turbine: own transformer (LV→collector) + full-converter (IBG) at LV.
     # Generation (export) = negative load; direction/value from the FROZEN solver.
     for i in range(n_turbines):
@@ -2464,7 +2461,7 @@ _WINDA3_LV_KV = 0.69
 _WINDA3_COLLECTOR_KV = 15.0  # szyna kolektorowa SN 15 kV (ENEA — 30 kV nie istnieje)
 _WINDA3_TURBINE_KW = 2000.0  # 2.0 MW na turbinę (generyczny DFIG)
 _WINDA3_N_TURBINES = 3
-_WINDA3_ILR = 4.0  # I_LR/I_rM z crowbar (poniżej klatkowej ~6)
+_WINDA3_ILR = 6.0  # I_LR/I_rM (FIX-SOON: crowbar→klatkowa; 6.0 dla I″k,max — nie zaniżać)
 _WINDA3_POLE_PAIRS = 2
 _WINDA3_COSPHI = 0.90
 _WINDA3_EFF = 0.96
@@ -2629,7 +2626,8 @@ def build_g8_wind_async() -> dict[str, Any]:
     s = _Substrate()
     s.add_slack("GPZ")
     s.add_bus("SN_PCC", _WINDA_COLLECTOR_KV)
-    s.add_line(SR_IN, "GPZ", "SN_PCC", _SN_LINE_R, _SN_LINE_X)
+    # Collector grid infeed = family standard _GRID_INFEED (X/R≈7), like G5/G6 (audit F-1).
+    s.add_line(SR_IN, "GPZ", "SN_PCC", _GRID_INFEED_R, _GRID_INFEED_X)
     for i in range(n_turbines):
         lv = f"WTG_LV_{i + 1}"
         s.add_bus(lv, _WINDA_LV_KV)
@@ -2641,6 +2639,7 @@ def build_g8_wind_async() -> dict[str, Any]:
             lv_kv=_WINDA_LV_KV,
             uk_percent=6.0,
             rated_mva=_WINDA_TR_MVA,
+            x_over_r=4.5,  # F-2: physical turbine-TR R/X (κ ugruntowane, nie pk=0 X/R=∞)
         )
         s.add_load(lv, p_mw=-turbine_kw / 1000.0, q_mvar=0.0)
         s.add_asynchronous_machine(
@@ -2723,7 +2722,8 @@ def build_g6_wind_dfig() -> dict[str, Any]:
     s.add_bus("SN_PCC", _WINDA3_COLLECTOR_KV)
     # Collector grid infeed: physical X/R≈7 (κ≈1.63) like Typ4 — |Z| preserved (=_SN_LINE
     # magnitude), so the collector Ik″ is UNCHANGED; only R/X → κ moves off the unphysical
-    # low-X/R _SN_LINE (κ≈1.25). The terminal stays more inductive (machine X″) — DFIG signature.
+    # low-X/R _SN_LINE (κ≈1.25). With x_over_r on the turbine TR (F-2) the terminal κ is
+    # well-posed and the collector (grid-dominated) is the more inductive node (collector ≳ zacisk).
     s.add_line(SR_IN, "GPZ", "SN_PCC", _GRID_INFEED_R, _GRID_INFEED_X)
     for i in range(n_turbines):
         lv = f"WTG_LV_{i + 1}"
@@ -2736,6 +2736,7 @@ def build_g6_wind_dfig() -> dict[str, Any]:
             lv_kv=_WINDA3_LV_KV,
             uk_percent=6.0,
             rated_mva=_WINDA3_TR_MVA,
+            x_over_r=4.5,  # F-2: physical turbine-TR R/X (κ_zacisk ugruntowane, nie pk=0 X/R=∞)
         )
         s.add_load(lv, p_mw=-turbine_kw / 1000.0, q_mvar=0.0)
         s.add_asynchronous_machine(

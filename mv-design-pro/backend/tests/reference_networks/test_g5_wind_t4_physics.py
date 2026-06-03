@@ -28,15 +28,16 @@ def test_g5_per_node_kappa_ip_are_physical_and_not_inverted():
     sn_ik, sn_xr, sn_k, sn_ip = _node(c, "SN_PCC")
     lv_ik, lv_xr, lv_k, lv_ip = _node(c, "WTG_LV_1")
 
-    # Collector — grid-dominated infeed at 15 kV: X/R > 5, κ 1.60-1.75, ip 49-52 kA.
+    # Collector — grid infeed at 15 kV (family standard _GRID_INFEED): X/R > 5, κ 1.60-1.75,
+    # ip 35-38 kA.
     assert sn_xr > 5.0, f"collector X/R={sn_xr:.2f} too resistive for a grid infeed"
     assert 1.60 <= sn_k <= 1.75, f"collector κ={sn_k:.3f} outside grid range"
-    assert 49.0 <= sn_ip <= 52.0, f"collector ip={sn_ip:.2f} kA outside 49-52"
+    assert 35.0 <= sn_ip <= 38.0, f"collector ip={sn_ip:.2f} kA outside 35-38"
 
-    # Turbine LV — behind the Dyn turbine transformer: X/R 3.5-6, κ 1.45-1.60, ip 85-90 kA.
+    # Turbine LV — behind the Dyn turbine transformer: X/R 3.5-6, κ 1.45-1.60, ip 82-86 kA.
     assert 3.5 <= lv_xr <= 6.0, f"turbine-LV X/R={lv_xr:.2f} unphysical behind a transformer"
     assert 1.45 <= lv_k <= 1.60, f"turbine-LV κ={lv_k:.3f} outside transformer range"
-    assert 85.0 <= lv_ip <= 90.0, f"turbine-LV ip={lv_ip:.2f} kA outside 85-90"
+    assert 82.0 <= lv_ip <= 86.0, f"turbine-LV ip={lv_ip:.2f} kA outside 82-86"
 
     # NOT inverted: the grid side must be MORE inductive than the LV side behind the TR.
     assert sn_k > lv_k, "κ inverted — collector must be more inductive than LV-behind-TR"
@@ -48,17 +49,17 @@ def test_g5_per_node_kappa_ip_are_physical_and_not_inverted():
         assert ip == pytest.approx(k * math.sqrt(2.0) * ik, abs=0.1)
 
 
-def test_g5_collector_is_15kv_with_doubled_ikss():
-    # ENEA SN has no 30 kV → the collector is 15 kV. Re-levelling 30→15 kV at a CONSTANT
-    # grid S_k″ (~559 MVA, the ENEA PPP value) DOUBLES the collector Ik″ (= S_k″/(√3·Un)),
-    # not a relabel. The turbine LV (0.69 kV, transformer-fed) is ~flat (slightly up).
+def test_g5_collector_uses_family_standard_infeed():
+    # ENEA SN has no 30 kV → collector is 15 kV. Audit F-1: all 15 kV presets share ONE grid
+    # infeed (_GRID_INFEED, the ENEA family standard) — S_k″ is a connection-point property,
+    # not the DER type. The Typ-4 IBG collector lands at ~15.5 kA / ~402 MVA (was a one-off 559).
     c = build_g5_wind_t4()
     coll = c["short_circuit"]["buses"]["SN_PCC"]
     assert coll["un_kv"] == 15.0
-    assert coll["max"]["ikss_ka"] == pytest.approx(21.5, abs=0.4)  # ~2× the prior 10.76 kA
-    assert coll["max"]["sk_mva"] == pytest.approx(559.0, abs=8.0)  # ENEA S_k″ preserved
-    assert coll["verification"]["passed"] is True  # 21.5 kA ≤ 25 kA Icw board
-    assert c["short_circuit"]["buses"]["WTG_LV_1"]["max"]["ikss_ka"] == pytest.approx(40.5, abs=1.0)
+    assert coll["max"]["ikss_ka"] == pytest.approx(15.5, abs=0.4)
+    assert coll["max"]["sk_mva"] == pytest.approx(402.0, abs=8.0)
+    assert coll["verification"]["passed"] is True  # 15.5 kA ≤ 25 kA Icw board
+    assert c["short_circuit"]["buses"]["WTG_LV_1"]["max"]["ikss_ka"] == pytest.approx(38.4, abs=1.0)
 
 
 def test_g5_carries_p0_p1_model():
