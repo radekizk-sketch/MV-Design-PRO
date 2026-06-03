@@ -28,10 +28,12 @@ def test_g1_per_node_kappa_ip_are_physical_and_not_inverted():
     sn_ik, sn_xr, sn_k, sn_ip = _node(c, "SN_PCC")
     nn_ik, nn_xr, nn_k, nn_ip = _node(c, "NN_800")
 
-    # SN — grid-dominated infeed: X/R > 5, κ 1.6-1.75, ip 22-24 kA.
+    # SN — grid-dominated infeed: X/R > 5, κ 1.6-1.75, ip ≈ 21.3 kA. Audit F-1: the reported
+    # collector = grid Thévenin + the PV IBG REFERRED through the step-up (0.8/15.75 kV → ≈ 0.04
+    # kA, negligible), NOT the solver's raw un-referred §6.7 sum.
     assert sn_xr > 5.0, f"SN X/R={sn_xr:.2f} too resistive for a grid infeed"
     assert 1.60 <= sn_k <= 1.75, f"SN κ={sn_k:.3f} outside grid range"
-    assert 22.0 <= sn_ip <= 24.5, f"SN ip={sn_ip:.2f} kA outside 22-24"
+    assert 20.5 <= sn_ip <= 22.5, f"SN ip={sn_ip:.2f} kA outside 20.5-22.5"
 
     # nN — behind the transformer: X/R 3-6, κ 1.4-1.55, ip 27-29 kA.
     assert 3.0 <= nn_xr <= 6.0, f"nN X/R={nn_xr:.2f} unphysical behind a transformer"
@@ -49,8 +51,12 @@ def test_g1_per_node_kappa_ip_are_physical_and_not_inverted():
 
 
 def test_g1_kappa_fix_preserves_ikss_magnitudes():
-    # The R/X correction must NOT move the SC magnitudes: |Z|=uk for the TR is unchanged
-    # and the grid-infeed |Z| was kept constant — so Ik″ stays at the accepted values.
+    # The R/X correction (B-02) must NOT move the underlying SC magnitudes: |Z|=uk for the TR is
+    # unchanged and the grid-infeed |Z| was kept constant. The nN bus (where the PV IBG sits, so
+    # referred = local) is the clean witness: Ik″ stays at 13.2 kA. The collector reads 9.06 kA —
+    # grid Thévenin + the IBG REFERRED to 15.75 kV (≈ 0.04 kA); audit F-1 corrected it down from
+    # the pre-fix 9.9 kA, which had counted the IBG raw (un-referred, ≈ 0.87 kA). The grid part
+    # is unchanged — only the IBG reporting (raw → referred) moved.
     c = build_g4_pvtr()
-    assert c["short_circuit"]["buses"]["SN_PCC"]["max"]["ikss_ka"] == pytest.approx(9.9, abs=0.25)
+    assert c["short_circuit"]["buses"]["SN_PCC"]["max"]["ikss_ka"] == pytest.approx(9.06, abs=0.2)
     assert c["short_circuit"]["buses"]["NN_800"]["max"]["ikss_ka"] == pytest.approx(13.2, abs=0.4)

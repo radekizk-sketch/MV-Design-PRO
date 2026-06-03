@@ -412,13 +412,36 @@ def _sc_one(graph: NetworkGraph, bus_id: str, c_factor: float) -> ShortCircuitRe
     )
 
 
+def _ibg_referred_a(graph: NetworkGraph, un_kv: float) -> float:
+    """IBG SC contribution at a bus, REFERRED through the turns ratio (audit F-1). The FROZEN
+    solver sums raw §6.7 ik_sc_a UN-referred onto every bus; the physical bus current is
+    Σ I_src·(U_src/U_bus) (the product of intermediate turns ratios). 0 if no inverter sources."""
+    if un_kv <= 0.0:
+        return 0.0
+    total = 0.0
+    for src in graph.get_inverter_sources():
+        node = graph.nodes.get(src.node_id)
+        u_src = node.voltage_level if node is not None else un_kv
+        total += src.ik_sc_a * (u_src / un_kv)
+    return total
+
+
 def _sc_bus_entry(graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float) -> dict[str, Any]:
-    """Ik''max/min + ip/ib/ith/kappa + Sk + Icw verification at one busbar, with the
-    solver's White Box trace carried verbatim (interpretation, not recomputation)."""
+    """Ik''max/min + ip/ib/ith/kappa + Sk + Icw verification at one busbar, with the solver's
+    White Box trace carried verbatim. Audit F-1: the FROZEN solver adds IBG current UN-REFERRED
+    to every bus (raw §6.7 ik_sc_a, ignoring the transformer between the IBG and the fault),
+    which inflates remote-bus (collector) Ik''. The reported scalars use the CONSISTENT metric:
+    grid Thévenin (solver Ik'' minus its raw IBG sum) + the IBG REFERRED via the turns ratio.
+    Machine sources are in the Z-bus (no inverter sources) → no-op — matching their reporting."""
     rmax = _sc_one(graph, bus_id, _C_MAX)
     rmin = _sc_one(graph, bus_id, _C_MIN)
-    ikss_max_ka = round(rmax.ikss_a / 1000.0, 3)
-    ikss_min_ka = round(rmin.ikss_a / 1000.0, 3)
+    ibg_ref_a = _ibg_referred_a(graph, un_kv)
+    ik_max_a = rmax.ikss_a - rmax.ik_inverters_a + ibg_ref_a
+    ik_min_a = rmin.ikss_a - rmin.ik_inverters_a + ibg_ref_a
+    f_max = (ik_max_a / rmax.ikss_a) if rmax.ikss_a else 1.0
+    f_min = (ik_min_a / rmin.ikss_a) if rmin.ikss_a else 1.0
+    ikss_max_ka = round(ik_max_a / 1000.0, 3)
+    ikss_min_ka = round(ik_min_a / 1000.0, 3)
     return {
         "bus_ref": bus_id,
         "un_kv": un_kv,
@@ -428,11 +451,11 @@ def _sc_bus_entry(graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float)
             "case_ref": "ZWARCIOWY_MAKS",
             "c_factor": _C_MAX,
             "ikss_ka": ikss_max_ka,
-            "ip_ka": round(rmax.ip_a / 1000.0, 3),
-            "ib_ka": round(rmax.ib_a / 1000.0, 3),
-            "ith_ka": round(rmax.ith_a / 1000.0, 3),
+            "ip_ka": round(rmax.ip_a * f_max / 1000.0, 3),
+            "ib_ka": round(rmax.ib_a * f_max / 1000.0, 3),
+            "ith_ka": round(rmax.ith_a * f_max / 1000.0, 3),
             "kappa": round(rmax.kappa, 3),
-            "sk_mva": round(rmax.sk_mva, 2),
+            "sk_mva": round(rmax.sk_mva * f_max, 2),
             "rx_ratio": round(rmax.rx_ratio, 4),
             "white_box_trace": _json_safe(rmax.white_box_trace),
         },
@@ -441,9 +464,9 @@ def _sc_bus_entry(graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float)
             "case_ref": "ZWARCIOWY_MIN",
             "c_factor": _C_MIN,
             "ikss_ka": ikss_min_ka,
-            "ith_ka": round(rmin.ith_a / 1000.0, 3),
+            "ith_ka": round(rmin.ith_a * f_min / 1000.0, 3),
             "kappa": round(rmin.kappa, 3),
-            "sk_mva": round(rmin.sk_mva, 2),
+            "sk_mva": round(rmin.sk_mva * f_min, 2),
             "white_box_trace": _json_safe(rmin.white_box_trace),
         },
         # Verification: Ik''max ≤ Icw (rozdzielnia withstand).
@@ -971,10 +994,15 @@ def _oze_sc_bus(
     via ``compute_machine_contributions`` (READ-ONLY, anti-fabrication: real solver)."""
     entry = _sc_bus_entry(graph, bus_id, un_kv, icw_ka)
     if machine_type == "IBG":
+        # Per-bus IBG share REFERRED through the turns ratio (audit F-1) — consistent with the
+        # Ik'' reported by _sc_bus_entry; collector ≈ referred (small), LV ≈ local k·In.
         entry["source_contribution"] = {
             "machine_type": "IBG",
-            "model": "IEC 60909 §6.7 — źródło prądowe ograniczone (k·I_rated)",
-            "ik_contribution_ka": round(ibg_ka, 3),
+            "model": (
+                "IEC 60909 §6.7 — źródło prądowe ograniczone (k·I_rated), "
+                "sprowadzone przez przekładnię"
+            ),
+            "ik_contribution_ka": round(_ibg_referred_a(graph, un_kv) / 1000.0, 3),
             "is_synchronous_machine": False,
         }
         return entry
@@ -2212,7 +2240,9 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
             kind=f"PCS BESS {i + 1} · {_PVBESS_BESS_PCS_KVA:.0f} kW (2-kier.)", abb_cell="SDC", on_bus=bess_bus,
             source_ref=f"enm:Generator.gen_type=bess;std:pcs_{i + 1}", interface_protection=False))
 
-    companion = _oze_companion(
+    # Per-bus IBG tag (turns-ratio referral incl. cross-terms) is set consistently by
+    # _oze_sc_bus / _ibg_referred_a (audit F-1) — no manual per-bus overwrite needed.
+    return _oze_companion(
         arch,
         substrate=s,
         buses=buses,
@@ -2222,11 +2252,6 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
         fields=fields,
         boundary=_boundary("G-ZKSN", on_bus="SN_PCC", metered=True),
     )
-    # Per-bus IBG tag: nN buses = LOCAL k·In; SN_PCC = referred (set by ibg_ka above).
-    sc_buses = companion["short_circuit"]["buses"]
-    for bus, amps in ibg_by_bus_a.items():
-        sc_buses[bus]["source_contribution"]["ik_contribution_ka"] = round(amps / 1000.0, 3)
-    return companion
 
 
 def build_g4_pvbess_bus() -> dict[str, Any]:

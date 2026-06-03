@@ -347,7 +347,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.087,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.4,
           "verification": {
@@ -363,13 +363,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 9.554,
-            "ikss_ka": 9.554,
-            "ip_ka": 16.736,
-            "ith_ka": 9.554,
+            "ib_ka": 9.47,
+            "ikss_ka": 9.47,
+            "ip_ka": 16.588,
+            "ith_ka": 9.47,
             "kappa": 1.239,
             "rx_ratio": 0.5,
-            "sk_mva": 248.22,
+            "sk_mva": 246.03,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -501,10 +501,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "min": {
             "c_factor": 0.95,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 8.263,
-            "ith_ka": 8.263,
+            "ikss_ka": 8.179,
+            "ith_ka": 8.179,
             "kappa": 1.239,
-            "sk_mva": 214.68,
+            "sk_mva": 212.49,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -634,15 +634,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "source_contribution": {
-            "ik_contribution_ka": 0.087,
+            "ik_contribution_ka": 0.002,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
             "icw_ka": 25.0,
-            "ikss_max_ka": 9.554,
+            "ikss_max_ka": 9.47,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -1070,7 +1070,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 1.715,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.4,
           "verification": {
@@ -1086,13 +1086,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 11.182,
-            "ikss_ka": 11.182,
-            "ip_ka": 19.588,
-            "ith_ka": 11.182,
+            "ib_ka": 9.513,
+            "ikss_ka": 9.513,
+            "ip_ka": 16.664,
+            "ith_ka": 9.513,
             "kappa": 1.239,
             "rx_ratio": 0.5,
-            "sk_mva": 290.52,
+            "sk_mva": 247.16,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -1224,10 +1224,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "min": {
             "c_factor": 0.95,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 9.891,
-            "ith_ka": 9.891,
+            "ikss_ka": 8.222,
+            "ith_ka": 8.222,
             "kappa": 1.239,
-            "sk_mva": 256.98,
+            "sk_mva": 213.61,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -1357,15 +1357,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "source_contribution": {
-            "ik_contribution_ka": 1.715,
+            "ik_contribution_ka": 0.046,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
             "icw_ka": 25.0,
-            "ikss_max_ka": 11.182,
+            "ikss_max_ka": 9.513,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -1769,7 +1769,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.069,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
@@ -2059,7 +2059,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.069,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
@@ -2593,7 +2593,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 1.731,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.8,
           "verification": {
@@ -2609,13 +2609,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 11.2,
-            "ikss_ka": 11.2,
-            "ip_ka": 26.276,
-            "ith_ka": 11.2,
+            "ib_ka": 9.561,
+            "ikss_ka": 9.561,
+            "ip_ka": 22.432,
+            "ith_ka": 9.561,
             "kappa": 1.659,
             "rx_ratio": 0.1426,
-            "sk_mva": 290.98,
+            "sk_mva": 248.41,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -2747,10 +2747,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "min": {
             "c_factor": 0.95,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 9.909,
-            "ith_ka": 9.909,
+            "ikss_ka": 8.27,
+            "ith_ka": 8.27,
             "kappa": 1.659,
-            "sk_mva": 257.44,
+            "sk_mva": 214.86,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -2883,12 +2883,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.092,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
             "icw_ka": 16.0,
-            "ikss_max_ka": 11.2,
+            "ikss_max_ka": 9.561,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -3234,13 +3234,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 32.863,
-            "ikss_ka": 32.863,
-            "ip_ka": 71.276,
-            "ith_ka": 32.863,
+            "ib_ka": 33.728,
+            "ikss_ka": 33.728,
+            "ip_ka": 73.152,
+            "ith_ka": 33.728,
             "kappa": 1.534,
             "rx_ratio": 0.2153,
-            "sk_mva": 22.77,
+            "sk_mva": 23.37,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -3372,10 +3372,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "min": {
             "c_factor": 0.95,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 28.736,
-            "ith_ka": 28.736,
+            "ikss_ka": 29.601,
+            "ith_ka": 29.601,
             "kappa": 1.534,
-            "sk_mva": 19.91,
+            "sk_mva": 20.51,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -3505,15 +3505,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "source_contribution": {
-            "ik_contribution_ka": 1.732,
+            "ik_contribution_ka": 3.462,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.4,
           "verification": {
             "icw_ka": 50.0,
-            "ikss_max_ka": 32.863,
+            "ikss_max_ka": 33.728,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -3524,13 +3524,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 14.913,
-            "ikss_ka": 14.913,
-            "ip_ka": 32.303,
-            "ith_ka": 14.913,
+            "ib_ka": 14.047,
+            "ikss_ka": 14.047,
+            "ip_ka": 30.427,
+            "ith_ka": 14.047,
             "kappa": 1.532,
             "rx_ratio": 0.2166,
-            "sk_mva": 20.66,
+            "sk_mva": 19.46,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -3662,10 +3662,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "min": {
             "c_factor": 0.95,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 13.233,
-            "ith_ka": 13.233,
+            "ikss_ka": 12.367,
+            "ith_ka": 12.367,
             "kappa": 1.532,
-            "sk_mva": 18.34,
+            "sk_mva": 17.14,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -3795,15 +3795,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "source_contribution": {
-            "ik_contribution_ka": 0.865,
+            "ik_contribution_ka": 1.731,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.8,
           "verification": {
             "icw_ka": 50.0,
-            "ikss_max_ka": 14.913,
+            "ikss_max_ka": 14.047,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -3814,13 +3814,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 12.066,
-            "ikss_ka": 12.066,
-            "ip_ka": 28.308,
-            "ith_ka": 12.066,
+            "ib_ka": 9.561,
+            "ikss_ka": 9.561,
+            "ip_ka": 22.432,
+            "ith_ka": 9.561,
             "kappa": 1.659,
             "rx_ratio": 0.1426,
-            "sk_mva": 313.48,
+            "sk_mva": 248.41,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -3952,10 +3952,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "min": {
             "c_factor": 0.95,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 10.775,
-            "ith_ka": 10.775,
+            "ikss_ka": 8.27,
+            "ith_ka": 8.27,
             "kappa": 1.659,
-            "sk_mva": 279.94,
+            "sk_mva": 214.86,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -4088,12 +4088,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.092,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
             "icw_ka": 16.0,
-            "ikss_max_ka": 12.066,
+            "ikss_max_ka": 9.561,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -4746,7 +4746,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.866,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.8,
           "verification": {
@@ -4762,13 +4762,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 9.884,
-            "ikss_ka": 9.884,
-            "ip_ka": 23.188,
-            "ith_ka": 9.884,
+            "ib_ka": 9.062,
+            "ikss_ka": 9.062,
+            "ip_ka": 21.26,
+            "ith_ka": 9.062,
             "kappa": 1.659,
             "rx_ratio": 0.1426,
-            "sk_mva": 269.62,
+            "sk_mva": 247.21,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -4900,10 +4900,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "min": {
             "c_factor": 0.95,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 8.654,
-            "ith_ka": 8.654,
+            "ikss_ka": 7.832,
+            "ith_ka": 7.832,
             "kappa": 1.659,
-            "sk_mva": 236.08,
+            "sk_mva": 213.66,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -5033,15 +5033,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "source_contribution": {
-            "ik_contribution_ka": 0.866,
+            "ik_contribution_ka": 0.044,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.75,
           "verification": {
             "icw_ka": 16.0,
-            "ikss_max_ka": 9.884,
+            "ikss_max_ka": 9.062,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -5785,7 +5785,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 1.732,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.4,
           "verification": {
@@ -5801,13 +5801,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 11.201,
-            "ikss_ka": 11.201,
-            "ip_ka": 26.278,
-            "ith_ka": 11.201,
+            "ib_ka": 9.515,
+            "ikss_ka": 9.515,
+            "ip_ka": 22.323,
+            "ith_ka": 9.515,
             "kappa": 1.659,
             "rx_ratio": 0.1426,
-            "sk_mva": 291.01,
+            "sk_mva": 247.21,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -5939,10 +5939,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "min": {
             "c_factor": 0.95,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 9.91,
-            "ith_ka": 9.91,
+            "ikss_ka": 8.224,
+            "ith_ka": 8.224,
             "kappa": 1.659,
-            "sk_mva": 257.46,
+            "sk_mva": 213.66,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -6072,15 +6072,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "source_contribution": {
-            "ik_contribution_ka": 1.732,
+            "ik_contribution_ka": 0.046,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
             "icw_ka": 16.0,
-            "ikss_max_ka": 11.201,
+            "ikss_max_ka": 9.515,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -6341,13 +6341,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 15.494,
-            "ikss_ka": 15.493,
-            "ip_ka": 36.349,
-            "ith_ka": 15.493,
+            "ib_ka": 9.746,
+            "ikss_ka": 9.746,
+            "ip_ka": 22.865,
+            "ith_ka": 9.746,
             "kappa": 1.659,
             "rx_ratio": 0.1426,
-            "sk_mva": 402.53,
+            "sk_mva": 253.21,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -6479,10 +6479,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "min": {
             "c_factor": 0.95,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 14.202,
-            "ith_ka": 14.202,
+            "ikss_ka": 8.455,
+            "ith_ka": 8.455,
             "kappa": 1.659,
-            "sk_mva": 368.98,
+            "sk_mva": 219.66,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -6615,12 +6615,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.277,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
             "icw_ka": 25.0,
-            "ikss_max_ka": 15.493,
+            "ikss_max_ka": 9.746,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -6902,10 +6902,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "source_contribution": {
-            "ik_contribution_ka": 0.277,
+            "ik_contribution_ka": 6.025,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.69,
           "verification": {

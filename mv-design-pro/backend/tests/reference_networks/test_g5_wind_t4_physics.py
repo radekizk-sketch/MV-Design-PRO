@@ -14,7 +14,10 @@ fix; only R/X → κ → ip move.
 import math
 
 import pytest
-from application.reference_networks.station_archetype_substrate import build_g5_wind_t4
+from application.reference_networks.station_archetype_substrate import (
+    build_g5_wind_t4,
+    build_g6_wind_dfig,
+)
 
 
 def _node(companion: dict, bus: str) -> tuple[float, float, float, float]:
@@ -29,10 +32,11 @@ def test_g5_per_node_kappa_ip_are_physical_and_not_inverted():
     lv_ik, lv_xr, lv_k, lv_ip = _node(c, "WTG_LV_1")
 
     # Collector — grid infeed at 15 kV (family standard _GRID_INFEED): X/R > 5, κ 1.60-1.75,
-    # ip 35-38 kA.
+    # ip ≈ 22.9 kA. Audit F-1: the reported collector = grid Thévenin + the IBG REFERRED through
+    # the turbine-transformer ratio (≈ 0.28 kA), NOT the solver's raw un-referred §6.7 sum.
     assert sn_xr > 5.0, f"collector X/R={sn_xr:.2f} too resistive for a grid infeed"
     assert 1.60 <= sn_k <= 1.75, f"collector κ={sn_k:.3f} outside grid range"
-    assert 35.0 <= sn_ip <= 38.0, f"collector ip={sn_ip:.2f} kA outside 35-38"
+    assert 22.0 <= sn_ip <= 24.0, f"collector ip={sn_ip:.2f} kA outside 22-24"
 
     # Turbine LV — behind the Dyn turbine transformer: X/R 3.5-6, κ 1.45-1.60, ip 82-86 kA.
     assert 3.5 <= lv_xr <= 6.0, f"turbine-LV X/R={lv_xr:.2f} unphysical behind a transformer"
@@ -52,13 +56,18 @@ def test_g5_per_node_kappa_ip_are_physical_and_not_inverted():
 def test_g5_collector_uses_family_standard_infeed():
     # ENEA SN has no 30 kV → collector is 15 kV. Audit F-1: all 15 kV presets share ONE grid
     # infeed (_GRID_INFEED, the ENEA family standard) — S_k″ is a connection-point property,
-    # not the DER type. The Typ-4 IBG collector lands at ~15.5 kA / ~402 MVA (was a one-off 559).
+    # not the DER type. The reported collector Ik″/S_k″ is the CONSISTENT metric: grid Thévenin
+    # (≈ 9.47 kA, IDENTICAL across the 15 kV family) + the DER REFERRED through the turns ratio.
+    # The Typ-4 IBG adds only ≈ 0.28 kA referred → collector ≈ 9.75 kA / ≈ 253 MVA. (The FROZEN
+    # solver's raw, UN-referred §6.7 sum ≈ 6 kA would 20× the apparent S_k″ — the metric bug
+    # fixed here.) This MUST be ≤ G6 (DFIG: machine in the Z-bus, ≈ +1.3 kA) — see the ordering
+    # lock below; reporting the IBG collector ABOVE the DFIG collector would be inverted.
     c = build_g5_wind_t4()
     coll = c["short_circuit"]["buses"]["SN_PCC"]
     assert coll["un_kv"] == 15.0
-    assert coll["max"]["ikss_ka"] == pytest.approx(15.5, abs=0.4)
-    assert coll["max"]["sk_mva"] == pytest.approx(402.0, abs=8.0)
-    assert coll["verification"]["passed"] is True  # 15.5 kA ≤ 25 kA Icw board
+    assert coll["max"]["ikss_ka"] == pytest.approx(9.75, abs=0.3)
+    assert coll["max"]["sk_mva"] == pytest.approx(253.0, abs=6.0)
+    assert coll["verification"]["passed"] is True  # 9.75 kA ≤ 25 kA Icw board
     assert c["short_circuit"]["buses"]["WTG_LV_1"]["max"]["ikss_ka"] == pytest.approx(38.4, abs=1.0)
 
 
@@ -72,3 +81,26 @@ def test_g5_carries_p0_p1_model():
     assert src["grid_earthing"]["ik_1f_ka"] == pytest.approx(0.06)
     assert src["withstand"]["sn_idyn_ka"] == pytest.approx(63.0)
     assert src["withstand"]["nn_idyn_ka"] == pytest.approx(105.0)
+
+
+def test_g5_ibg_collector_not_above_g6_dfig_collector():
+    """Audit F-1 direction lock (G5 Typ-4 IBG vs G6 Typ-3 DFIG).
+
+    Both share the SAME _GRID_INFEED on the SAME 15 kV collector topology, so the GRID part of
+    the collector Ik″ is identical. The DER part differs by physics: the DFIG is a rotating
+    machine in the Z-bus (crowbar → I″k ≈ 1.3 kA), the Typ-4 turbine is an IBG referred through
+    its transformer (≈ 0.28 kA). Superposing DER on the common grid Thévenin, the collector MUST
+    satisfy G6 ≳ G5 — never inverted. The pre-fix metric counted the IBG raw (un-referred) and
+    reported the IBG collector ABOVE the DFIG (G5 402 > G6 280 MVA): that is the bug this locks out.
+    """
+    g5 = build_g5_wind_t4()["short_circuit"]["buses"]["SN_PCC"]["max"]
+    g6 = build_g6_wind_dfig()["short_circuit"]["buses"]["SN_PCC"]["max"]
+
+    # Direction: DFIG (machine) collector ≥ Typ-4 (IBG) collector, in BOTH Ik″ and S_k″.
+    assert g6["ikss_ka"] >= g5["ikss_ka"], "collector Ik″ inverted: DFIG must be ≥ Typ-4 IBG"
+    assert g6["sk_mva"] >= g5["sk_mva"], "collector S_k″ inverted: DFIG must be ≥ Typ-4 IBG"
+
+    # Grid dominates → the gap is small (a few kA / tens of MVA), self-explaining without tuning.
+    assert 0.0 < (g6["ikss_ka"] - g5["ikss_ka"]) < 3.0
+    # Both stay below the 25 kA collector withstand (no preset tuned to pass — physics does).
+    assert g5["ikss_ka"] <= 25.0 and g6["ikss_ka"] <= 25.0
