@@ -256,17 +256,22 @@ const CIRCLED = ['①', '②', '③', '④', '⑤'];
 export function NodeReadout(props: {
   x: number; y: number; n: number; title: string;
   uKv: number; uPu: number; uOk: boolean; ik3fMax: number; ik3fMin: number;
-  ik1f: string; share: string; icw: number; icwOk: boolean; ip: number; idyn: number;
+  // idyn is the bus dynamic-withstand nameplate. OPTIONAL: omit it where no per-bus rating
+  // exists (e.g. a station whose single nn_idyn_ka scalar can't be assigned to one of several
+  // distinct nN buses) — then ip is shown without a (fabricated) pass/fail verdict.
+  ik1f: string; share: string; icw: number; icwOk: boolean; ip: number; idyn?: number;
 }): JSX.Element {
   const { x, y, n, title, uKv, uPu, uOk, ik3fMax, ik3fMin, ik1f, share, icw, icwOk, ip, idyn } = props;
-  const ipOk = ip <= idyn;
+  const ipOk = idyn === undefined ? true : ip <= idyn;
   const rows: Array<[string, string, string]> = [
     ['U', `${fmt(uKv)} kV · ${fmt(uPu)} pu${uOk ? ' ✓' : ''}`, uOk ? OK : AMBER],
     ['Ik″ 3f', `${fmt(ik3fMax, 1)} / ${fmt(ik3fMin, 1)} kA`, TXT],
     ['Ik″ 1f-z', ik1f, TXT],
     ['udział', share, TXT],
     ['Icw', `${fmt(icw, 0)} kA${icwOk ? ' ✓' : ''}`, icwOk ? OK : '#FF6B6B'],
-    ['ip', `${fmt(ip, 1)} kA · idyn ${fmt(idyn, 0)} ${ipOk ? '✓' : '✗'}`, ipOk ? OK : '#FF6B6B'],
+    idyn === undefined
+      ? ['ip', `${fmt(ip, 1)} kA`, TXT]
+      : ['ip', `${fmt(ip, 1)} kA · idyn ${fmt(idyn, 0)} ${ipOk ? '✓' : '✗'}`, ipOk ? OK : '#FF6B6B'],
   ];
   return (
     <g>
