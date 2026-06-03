@@ -14,6 +14,7 @@ import { glyphTextCollisions } from './sldCanonKit';
 import { SldCanonPresetG1 } from './SldCanonPresetG1';
 import { SldCanonPresetG2 } from './SldCanonPresetG2';
 import { SldCanonPresetG3 } from './SldCanonPresetG3';
+import { SldCanonPresetG4 } from './SldCanonPresetG4';
 import { SldCanonPresetG5 } from './SldCanonPresetG5';
 
 const f1 = (v: number) => v.toFixed(1).replace('.', ',');
@@ -39,6 +40,20 @@ const PRESETS = [
     bus: 'SN_PCC',
     band: [130, 800] as [number, number],
     render: () => <SldCanonPresetG3 companion={OZE_ARCHETYPES_2A['G5-BESS']} />,
+  },
+  {
+    name: 'G4 — PV+BESS hybryda (wspólna szyna SN)',
+    companion: OZE_ARCHETYPES_2A['G4-PVBESS-BUS'],
+    bus: 'SN_PCC',
+    band: [130, 640] as [number, number],
+    render: () => <SldCanonPresetG4 companion={OZE_ARCHETYPES_2A['G4-PVBESS-BUS']} />,
+  },
+  {
+    name: 'G4 — PV+BESS hybryda (AC-coupled)',
+    companion: OZE_ARCHETYPES_2A['G4-PVBESS-AC'],
+    bus: 'SN_PCC',
+    band: [130, 640] as [number, number],
+    render: () => <SldCanonPresetG4 companion={OZE_ARCHETYPES_2A['G4-PVBESS-AC']} />,
   },
   {
     name: 'G5 — Wiatr (Typ 4)',
