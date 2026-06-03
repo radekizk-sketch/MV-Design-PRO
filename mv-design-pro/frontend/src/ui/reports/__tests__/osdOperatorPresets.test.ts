@@ -5,6 +5,7 @@ import {
   getRequiredAttachments,
   listOperators,
   validatePowerCompatibility,
+  validateVoltageLevel,
 } from '../osdOperatorPresets';
 
 describe('OSD_OPERATOR_PRESETS', () => {
@@ -92,5 +93,26 @@ describe('voltage levels per operator', () => {
       const levels = getOperatorPreset(op).technicalRequirements.voltageLevelsKv;
       expect(levels).toContain(0.4);
     }
+  });
+});
+
+describe('validateVoltageLevel — twarda walidacja Un ∈ katalog OSD', () => {
+  it('ENEA ODRZUCA 30 kV (nie istnieje w sieci ENEA)', () => {
+    const r = validateVoltageLevel('ENEA', 30);
+    expect(r.valid).toBe(false);
+    expect(r.reason).toContain('30');
+    expect(r.reason).toContain('Enea');
+  });
+
+  it('ENEA akceptuje poziomy SN ENEA-valid: 6 / 15 / 20 kV', () => {
+    for (const kv of [6, 15, 20]) {
+      expect(validateVoltageLevel('ENEA', kv).valid, `${kv} kV`).toBe(true);
+    }
+  });
+
+  it('katalog SN ENEA = {0.4, 6, 15, 20, 110} kV — bez 30 kV', () => {
+    const levels = getOperatorPreset('ENEA').technicalRequirements.voltageLevelsKv;
+    expect(levels).toEqual([0.4, 6, 15, 20, 110]);
+    expect(levels).not.toContain(30);
   });
 });

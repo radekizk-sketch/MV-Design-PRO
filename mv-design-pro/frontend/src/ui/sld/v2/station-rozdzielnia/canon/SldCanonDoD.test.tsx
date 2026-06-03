@@ -14,7 +14,7 @@ import { glyphTextCollisions } from './sldCanonKit';
 import { SldCanonPresetG1 } from './SldCanonPresetG1';
 import { SldCanonPresetG2 } from './SldCanonPresetG2';
 import { SldCanonPresetG3 } from './SldCanonPresetG3';
-import { SldCanonPresetG4 } from './SldCanonPresetG4';
+import { SldCanonPresetG5 } from './SldCanonPresetG5';
 
 const f1 = (v: number) => v.toFixed(1).replace('.', ',');
 
@@ -41,11 +41,11 @@ const PRESETS = [
     render: () => <SldCanonPresetG3 companion={OZE_ARCHETYPES_2A['G5-BESS']} />,
   },
   {
-    name: 'G4 — Wiatr (Typ 4)',
+    name: 'G5 — Wiatr (Typ 4)',
     companion: OZE_ARCHETYPES_2A['G6-WIND'],
     bus: 'SN_PCC',
     band: [130, 640] as [number, number],
-    render: () => <SldCanonPresetG4 companion={OZE_ARCHETYPES_2A['G6-WIND']} />,
+    render: () => <SldCanonPresetG5 companion={OZE_ARCHETYPES_2A['G6-WIND']} />,
   },
 ];
 

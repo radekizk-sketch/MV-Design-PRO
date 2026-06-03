@@ -1,9 +1,9 @@
 /**
- * Canonical SLD template — PRESET G4 (Farma wiatrowa Typ 4, IEC). SAME shared kit + node
+ * Canonical SLD template — PRESET G5 (Farma wiatrowa Typ 4, IEC). SAME shared kit + node
  * readouts as G1/G3 and the SAME locked metering pattern (CT in the current path on the
  * collector busbar + VT/meter bay = granica, bez ⊟, bez PCC). The wind difference is REAL
- * topology, not a relabel: ONE 30 kV collector busbar with a connection bay to OSD, a
- * metering bay, and N turbine feeders — EACH with its own turbine transformer (0,69/30 kV)
+ * topology, not a relabel: ONE 15 kV collector busbar (ENEA SN — 30 kV nie istnieje) with a
+ * connection bay to OSD, a metering bay, and N turbine feeders — EACH with its own transformer (0,69/15 kV)
  * + full converter (~/=) + generator (◯G). The grid-facing SC source is the converter
  * (IBG, current-limited k·In per IEC 60909-0:2016 §6.7) — NOT a machine. Readouts ①②
  * bound to the FROZEN solver.
@@ -38,8 +38,8 @@ import {
 } from './sldCanonKit';
 import type { SldOzeArchetypeCompanion } from '../companions/ozeTypes';
 
-/** PRESET G4 — Wind Type 4 (full converter). Collector SN + N turbine feeders. */
-export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeCompanion }): JSX.Element {
+/** PRESET G5 — Wind Type 4 (full converter). Collector SN + N turbine feeders. */
+export function SldCanonPresetG5({ companion }: { companion: SldOzeArchetypeCompanion }): JSX.Element {
   const sn = companion.voltage_flow.buses['SN_PCC'];
   const lv = companion.voltage_flow.buses['WTG_LV_1'];
   const snSc = companion.short_circuit.buses['SN_PCC'];
@@ -53,25 +53,26 @@ export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeComp
   const snIk1f = earthing ? `${fmt(earthing.ik_1f_ka)} kA · ${earthing.neutral_point}` : '—';
   const nTurb = col?.n_turbines ?? 3;
   const turbMw = String((col?.turbine_kw ?? 2000) / 1000).replace('.', ',');
-  const turbTr = col?.turbine_transformer ?? '0,69/30 kV · 2,5 MVA';
+  const colKv = fmt(sn.un_kv, 0); // collector kV from the FROZEN solver companion (ENEA-valid, no 30 kV)
+  const turbTr = col?.turbine_transformer ?? '0,69/15 kV · 2,5 MVA';
 
   const X = { lin: 400, ctBus: 530, pom: 660, t: [920, 1130, 1340], node: 1580 };
   const snBusY = 200;
   const snX1 = 280;
   const snX2 = 1500;
   const title = 'SZABLON SLD — FARMA WIATROWA (Typ 4, IEC)';
-  const subtitle = `Kolektor SN 30 kV · pole Liniowe · Pomiarowe | ${nTurb}× WTG ${turbMw} MW (Typ 4 · pełny przekształtnik) · trafo turb. ${turbTr}`;
+  const subtitle = `Kolektor SN ${colKv} kV · pole Liniowe · Pomiarowe | ${nTurb}× WTG ${turbMw} MW (Typ 4 · pełny przekształtnik) · trafo turb. ${turbTr}`;
 
   return (
-    <g data-testid="sld-canon-g4">
+    <g data-testid="sld-canon-g5">
       {/* ── header ── */}
       <text x={940} y={42} textAnchor="middle" fill="#F4F6F8" fontFamily={SANS} fontSize={22} fontWeight={800}>{title}</text>
       <text x={940} y={70} textAnchor="middle" fill={AMBER} fontFamily={SANS} fontSize={13} fontWeight={700}>{subtitle}</text>
       <text x={1810} y={112} textAnchor="end" fill={CYAN} fontFamily={SANS} fontSize={11} fontWeight={700}>WYNIKI w węzłach — ze solwera (czas rzecz.) · klik węzeł → White Box</text>
 
-      {/* ── collector busbar (30 kV) ── */}
+      {/* ── collector busbar (15 kV) ── */}
       <line x1={snX1} y1={snBusY} x2={snX2} y2={snBusY} stroke={SN_BUS} strokeWidth={5} strokeLinecap="round" />
-      {lbl(snX2 + 14, snBusY + 4, 'SN · 30 kV (kolektor)', TXT2, 12, 700)}
+      {lbl(snX2 + 14, snBusY + 4, `SN · ${colKv} kV (kolektor)`, TXT2, 12, 700)}
       <NodeBadge x={1462} y={snBusY} n={1} />
 
       {/* ── POLE 1 · Liniowe (przyłącze → OSD) ── */}
@@ -112,7 +113,7 @@ export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeComp
       </g>
       {lbl(X.pom + 14, 333, 'bezp. VT (GTS)', TXT_MUTED, 9.5, 600)}
       <VtNoGround x={X.pom} y={360} />
-      {lbl(X.pom - 96, 372, 'VT · 30/√3', TXT, 11, 700)}
+      {lbl(X.pom - 96, 372, `VT · ${colKv}/√3`, TXT, 11, 700)}
       {lbl(X.pom - 96, 385, 'bez ziemi (→U)', TXT_MUTED, 9, 600)}
       <g data-keepout={ko(X.pom - 11, 392, 22, 18)}>
         <rect x={X.pom - 11} y={392} width={22} height={18} rx={2} fill="#0A1622" stroke={AMBER} strokeWidth={1.6} />
@@ -123,7 +124,7 @@ export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeComp
 
       {/* ── POLE turbinowe (N feeders): Q → CB → trafo turb. → ~/= → ◯G ── */}
       {X.t.map((fx, i) => (
-        <g key={i} data-testid={`g4-wtg-${i}`}>
+        <g key={i} data-testid={`g5-wtg-${i}`}>
           {i === 0 && lbl(fx - 40, 160, `POLE turbinowe (${nTurb}×)`, CYAN, 12, 700)}
           <line x1={fx} y1={snBusY} x2={fx} y2={420} stroke={SN_BUS} strokeWidth={2} />
           <PowerArrow x={fx} y={232} dir="up" />
@@ -143,8 +144,8 @@ export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeComp
       ))}
       {lbl((X.t[0] + X.t[X.t.length - 1]) / 2, 614, '0,69 kV: za przekształtnikiem (IBG, prąd ograniczony k·In) — NIE maszyna', TXT_MUTED, 9, 600, 'middle')}
 
-      {/* ── node ① — collector 30 kV ── */}
-      <NodeReadout x={X.node} y={236} n={1} title="kolektor SN · 30 kV"
+      {/* ── node ① — collector 15 kV ── */}
+      <NodeReadout x={X.node} y={236} n={1} title={`kolektor SN · ${colKv} kV`}
         uKv={sn.un_kv} uPu={sn.u_pu} uOk={Math.abs(sn.deviation_percent) <= 5}
         ik3fMax={snSc.max.ikss_ka} ik3fMin={snSc.min.ikss_ka}
         ik1f={snIk1f} share={`sieć ${fmt(snGridShare, 1)} + WTG ${fmt(faln, 1)} kA`}

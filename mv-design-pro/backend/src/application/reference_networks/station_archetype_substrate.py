@@ -2050,7 +2050,16 @@ def build_g5_bess() -> dict[str, Any]:
 
 
 # ── G6 — Wiatr Typ 4 (pełnoprzekształtnikowy) — GENERYCZNY archetyp wg norm ──────
-_WIND_COLLECTOR_KV = 30.0  # 30 kV generic wind SN collector voltage
+# ENEA SN catalog = {110, 20, 15, 6, 0.4} kV — 30 kV does NOT exist in ENEA's network.
+# The wind SN collector is 15 kV (ENEA standard). Re-levelling 30→15 kV at a CONSTANT
+# grid S_k″ DOUBLES the collector Ik″ (Ik″ = S_k″/(√3·Un); PN-EN 60909) — not cosmetic.
+_WIND_COLLECTOR_KV = 15.0  # 15 kV ENEA-valid wind SN collector voltage
+# G6 (Typ 4, IBG) collector grid infeed at the 15 kV ENEA PPP. Substrate input tuned so
+# the FROZEN solver reports S_k″ ≈ 559 MVA (the ENEA value, preserved from the 30 kV
+# model) → Ik″ ≈ 21.5 kA at 15 kV. X/R≈7 (κ≈1.66). Wind-specific (NOT the shared
+# _GRID_INFEED) so G4-PVTR/G5-BESS stay untouched at 15–15.75 kV.
+_WIND_GRID_INFEED_R = 0.0869
+_WIND_GRID_INFEED_X = 0.6096
 _WIND_LV_KV = 0.69  # 0.69 kV turbine generator/converter LV
 
 
@@ -2077,9 +2086,9 @@ def build_g6_wind() -> dict[str, Any]:
     s = _Substrate()
     s.add_slack("GPZ")
     s.add_bus("SN_PCC", _WIND_COLLECTOR_KV)  # collector bus == farm SN busbar (przyłącze)
-    # Collector SC is grid-infeed dominated → physical X/R≈7 (κ≈1.66), |Z| preserved so
-    # Ik'' is UNCHANGED (same fix recipe as G4-PVTR/G5-BESS; not the low-X/R _SN_LINE).
-    s.add_line(SR_IN, "GPZ", "SN_PCC", _GRID_INFEED_R, _GRID_INFEED_X)
+    # Collector SC is grid-infeed dominated → physical X/R≈7 (κ≈1.66). Wind-specific
+    # infeed holds S_k″ at the ENEA value while the bus drops 30→15 kV → Ik″ doubles.
+    s.add_line(SR_IN, "GPZ", "SN_PCC", _WIND_GRID_INFEED_R, _WIND_GRID_INFEED_X)
     # Each turbine: own transformer (LV→collector) + full-converter (IBG) at LV.
     # Generation (export) = negative load; direction/value from the FROZEN solver.
     for i in range(n_turbines):
@@ -2133,11 +2142,15 @@ def build_g6_wind() -> dict[str, Any]:
     src["grid_earthing"] = {
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN",
         "neutral_point": "kompensowana",
-        "ik_1f_ka": 0.12,
+        # I″k1f-z for the compensated 15 kV collector: the residual current after Petersen
+        # compensation ∝ Un (capacitive earth-fault current Ic of the collector cables),
+        # so 0.06 kA = 0.12·(15/30) — re-levelled from the 30 kV model and DISTINCT from
+        # G1 (PV, 0.12 kA): not a copy. Real Ic ⇒ network-specific; this is the archetype.
+        "ik_1f_ka": 0.06,
         "imd_it_nn": False,
         "note_pl": (
-            "SN kolektor 30 kV: I″k1f-z z uziemienia neutralnego OSD (kompensowana); "
-            "LV turbiny za trafem Dyn — uziemienie lokalne"
+            "SN kolektor 15 kV: I″k1f-z z uziemienia neutralnego OSD (kompensowana), "
+            "prąd resztkowy ∝ Un; LV turbiny za trafem Dyn — uziemienie lokalne"
         ),
     }
     # P1 — dynamic (peak) withstand beside the thermal Icw; ip from the FROZEN solver.
@@ -2163,7 +2176,7 @@ def build_g6_wind() -> dict[str, Any]:
     return _oze_companion(
         "G6-WIND",
         substrate=s,
-        # Collector 30 kV (board 25 kA Icw); a representative turbine LV (50 kA).
+        # Collector 15 kV (board 25 kA Icw covers Ik″≈21.5 kA); a representative turbine LV (50 kA).
         buses=[("SN_PCC", _WIND_COLLECTOR_KV, 25.0), ("WTG_LV_1", _WIND_LV_KV, 50.0)],
         pcc_bus="SN_PCC",
         ibg_ka=total_ibg_ka,
@@ -2245,7 +2258,7 @@ _BIOGAZ_XD_PU = 0.15  # x″d — reaktancja podprzejściowa (generyczny agregat
 _BIOGAZ_COSPHI = 0.8
 
 _WINDA_LV_KV = 0.69  # nN generatora indukcyjnego (Typ 1 — stała prędkość)
-_WINDA_COLLECTOR_KV = 30.0  # szyna kolektorowa SN
+_WINDA_COLLECTOR_KV = 15.0  # szyna kolektorowa SN 15 kV (ENEA — 30 kV nie istnieje)
 _WINDA_TURBINE_KW = 850.0  # 0.85 MW na turbinę (generyczny Typ 1)
 _WINDA_N_TURBINES = 3
 _WINDA_ILR = 6.0  # I_LR/I_rM generatora asynchronicznego
@@ -2259,7 +2272,7 @@ _WINDA_TR_MVA = 1.0
 # (rotor zwarty) → maszyna indukcyjna za Z_M (§6.7); udział przekształtnika pominięty
 # (zachowawczo dla I″k,max). i_LR niższe niż klatkowa (rezystancja crowbar).
 _WINDA3_LV_KV = 0.69
-_WINDA3_COLLECTOR_KV = 30.0
+_WINDA3_COLLECTOR_KV = 15.0  # szyna kolektorowa SN 15 kV (ENEA — 30 kV nie istnieje)
 _WINDA3_TURBINE_KW = 2000.0  # 2.0 MW na turbinę (generyczny DFIG)
 _WINDA3_N_TURBINES = 3
 _WINDA3_ILR = 4.0  # I_LR/I_rM z crowbar (poniżej klatkowej ~6)

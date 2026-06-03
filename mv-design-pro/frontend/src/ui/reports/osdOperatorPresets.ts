@@ -131,7 +131,7 @@ export const OSD_OPERATOR_PRESETS: Record<OsdOperator, OsdOperatorPreset> = {
       requireFrtCurves: true,
       requireAntiIslanding: true,
       requireQuPProfile: true,
-      voltageLevelsKv: [0.4, 15, 20, 110],
+      voltageLevelsKv: [0.4, 6, 15, 20, 110],
     },
   },
   PGE: {
@@ -189,4 +189,24 @@ export function validatePowerCompatibility(
     };
   }
   return { isCompatible: true };
+}
+
+/**
+ * Hard validation: is a connection voltage Un (kV) in the operator's published catalog?
+ * ENEA SN = {0.4, 6, 15, 20, 110} kV — 30 kV does NOT exist in ENEA's network and is
+ * REJECTED. Keeps reference presets (e.g. wind collectors) on OSD-valid levels.
+ */
+export function validateVoltageLevel(
+  operator: OsdOperator,
+  unKv: number,
+): { valid: boolean; reason?: string } {
+  const preset = OSD_OPERATOR_PRESETS[operator];
+  const levels = preset.technicalRequirements.voltageLevelsKv;
+  if (levels.includes(unKv)) {
+    return { valid: true };
+  }
+  return {
+    valid: false,
+    reason: `Napięcie ${unKv} kV nie występuje w sieci ${preset.name} (poziomy: ${levels.join(', ')} kV).`,
+  };
 }
