@@ -2086,7 +2086,7 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
     s.add_bus("SN_PCC", _PVBESS_SN_KV)
     s.add_line(SR_IN, "GPZ", "SN_PCC", _GRID_INFEED_R, _GRID_INFEED_X)
     # IBG short-circuit contribution tracked PER BUS (gate J §6.7). nN buses carry the
-    # LOCAL bounded current k·In; the SN/PCC carries it REFERRED through the transformers
+    # LOCAL bounded current k·In; the SN_PCC carries it REFERRED through the transformers
     # (I_SN = Σ I_nN·U_nN/U_SN) — like G6-WIND (referred to the collector), NOT the raw nN sum.
     ibg_by_bus_a: dict[str, float] = {}
     bus_kv: dict[str, float] = {}
@@ -2125,7 +2125,7 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
         buses = [("SN_PCC", _PVBESS_SN_KV, 16.0), ("NN", _PVBESS_PV_NN_KV, 50.0)]
 
     s.finalize_pq()
-    # SN/PCC IBG contribution = the per-bus nN currents referred through the transformers.
+    # SN_PCC IBG contribution = the per-bus nN currents referred through the transformers.
     sn_referred_a = sum(a * bus_kv[b] / _PVBESS_SN_KV for b, a in ibg_by_bus_a.items())
     total_ibg_ka = sn_referred_a / 1000.0
 
@@ -2221,7 +2221,7 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
         fields=fields,
         boundary=_boundary("G-ZKSN", on_bus="SN_PCC", metered=True),
     )
-    # Per-bus IBG tag: nN buses = LOCAL k·In; SN/PCC = referred (set by ibg_ka above).
+    # Per-bus IBG tag: nN buses = LOCAL k·In; SN_PCC = referred (set by ibg_ka above).
     sc_buses = companion["short_circuit"]["buses"]
     for bus, amps in ibg_by_bus_a.items():
         sc_buses[bus]["source_contribution"]["ik_contribution_ka"] = round(amps / 1000.0, 3)

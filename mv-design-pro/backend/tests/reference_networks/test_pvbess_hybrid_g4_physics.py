@@ -77,7 +77,7 @@ def test_ac_variant_shares_one_bus_behind_one_transformer():
 
 
 def test_ibg_contribution_referred_to_sn():
-    # IBG (PV+BESS) is current-limited (§6.7); its contribution at the SN/PCC MUST be
+    # IBG (PV+BESS) is current-limited (§6.7); its contribution at the SN_PCC MUST be
     # REFERRED through the transformers (I_SN = Σ I_nN·U_nN/U_SN) → small (~0.09 kA), like
     # G6-WIND (referred to the collector), NOT the raw nN sum (~2.6 kA). The nN buses keep
     # the LOCAL k·In (larger). Regression guard for the "~20× overstated SN share" defect.
