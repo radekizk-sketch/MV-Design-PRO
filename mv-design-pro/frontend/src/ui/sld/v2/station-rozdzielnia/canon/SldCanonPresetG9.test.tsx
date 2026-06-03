@@ -54,6 +54,20 @@ describe('SldCanonPresetG9 — GPO wielopolowe (mixed sources on one busbar)', (
     expect(txt).toContain('IBG');
   });
 
+  it('multi-band: PV/wind sources sit behind block transformers (damped), synchronous direct on SN', () => {
+    // PV 0,4 kV + wind 0,69 kV LV buses exist (block transformers in the SC path).
+    expect(G9.short_circuit.buses['PV_NN']?.un_kv).toBe(0.4);
+    expect(G9.short_circuit.buses['WIND_NN']?.un_kv).toBe(0.69);
+    // The source fields are bound to their bus: PV/wind on the LV bus, synchronous on SN.
+    const onBus = (k: string) => G9.fields.find((f) => f.source_kind === k)?.on_bus_ref;
+    expect(onBus('IBG')).toBe('PV_NN');
+    expect(onBus('ASYNCHRONOUS')).toBe('WIND_NN');
+    expect(onBus('SYNCHRONOUS')).toBe('SN_PCC'); // MV machine directly on the 15 kV busbar
+    const txt = renderG9().container.textContent ?? '';
+    expect(txt).toContain('TR 15/0,40 kV'); // PV block transformer rendered
+    expect(txt).toContain('TR 15/0,69 kV'); // wind block transformer rendered
+  });
+
   it('protection split per type: NC RfG interface; each bay carries its own machine/IBG set', () => {
     const iface = G9.fields.find((f) => f.interface_protection)?.protection_codes ?? [];
     expect(iface).toContain('anti-islanding');

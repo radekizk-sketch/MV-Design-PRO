@@ -18,6 +18,7 @@ import {
   ko,
   lbl,
   MONO,
+  NN_BUS,
   NodeBadge,
   NodeReadout,
   Odlacznik,
@@ -27,6 +28,7 @@ import {
   SANS,
   SN_BUS,
   SyncMachine,
+  TrafoDyn,
   TXT,
   TXT2,
   TXT_MUTED,
@@ -70,7 +72,7 @@ export function SldCanonPresetG9({ companion }: { companion: SldOzeArchetypeComp
       : kind === 'ASYNCHRONOUS' ? '◯G∼ async · §6.7 zanik'
         : '~/= IBG · §6.7 ogran.';
   const relayTag = (kind: OzeField['source_kind']): string =>
-    kind === 'SYNCHRONOUS' ? '87G' : kind === 'ASYNCHRONOUS' ? '46' : 'AI';
+    kind === 'SYNCHRONOUS' ? '87G' : kind === 'ASYNCHRONOUS' ? '51' : 'AI';
 
   const title = 'SZABLON SLD — GPO WIELOPOLOWE (różne źródła na jednej szynie SN, IEC)';
   const subtitle = `Szyna SN ${colKv} kV · pole Liniowe · Pomiarowe + ${sources.length} pola źródłowe RÓŻNYCH typów (IBG + synchr. ◯GS + async ◯G∼) — zwarcie: sieć + maszyny (Z-bus) + IBG (sprowadzony)`;
@@ -132,28 +134,39 @@ export function SldCanonPresetG9({ companion }: { companion: SldOzeArchetypeComp
       {lbl(X.pom - 78, 428, 'POMIAR rozliczeniowy', AMBER, 11, 700)}
       {lbl(X.pom - 78, 441, 'granica = układ pomiarowy (I z CT, U z VT)', TXT_MUTED, 8.5, 600)}
 
-      {/* ── POLA źródłowe (N×, RÓŻNE typy): Q → CB → [zab. per typ] → glif źródła ── */}
+      {/* ── POLA źródłowe (N×, RÓŻNE typy): Q → CB → [zab.] → (trafo blokowy → zacisk nN →) źródło ── */}
       {sources.map((f, i) => {
         const fx = sx[i] ?? sx[sx.length - 1] + (i - sx.length + 1) * 230;
+        // Block transformer iff the source sits on a LOWER-voltage bus (PV 0,4 / wind 0,69);
+        // the synchronous genset is an MV machine DIRECTLY on the 15 kV busbar (no trafo).
+        const lvBus = f.on_bus_ref !== 'SN_PCC' ? companion.voltage_flow.buses[f.on_bus_ref] : undefined;
+        const glyphY = 468;
         return (
           <g key={f.field_id} data-testid={`g9-src-${i}`} data-source-kind={f.source_kind}>
             {i === 0 && lbl(fx - 40, 160, `POLA źródłowe (${sources.length}×)`, CYAN, 12, 700)}
-            <line x1={fx} y1={snBusY} x2={fx} y2={420} stroke={SN_BUS} strokeWidth={2} />
+            <line x1={fx} y1={snBusY} x2={fx} y2={lvBus ? 372 : glyphY - 12} stroke={SN_BUS} strokeWidth={2} />
             <PowerArrow x={fx} y={232} dir="up" />
             <Odlacznik x={fx} y={250} />
             <Wylacznik x={fx} y={300} />
             <RelayBox x={fx - 80} y={300} label={relayTag(f.source_kind)} />
             <line x1={fx - 68} y1={300} x2={fx - 9} y2={300} stroke={AMBER} strokeWidth={1.3} strokeDasharray="3 3" />
             {lbl(fx - 12, 346, 'zab. pola', AMBER, 8.5, 700, 'end')}
-            <line x1={fx} y1={411} x2={fx} y2={430} stroke={SN_BUS} strokeWidth={2} />
-            {bayGlyph(f.source_kind, fx, 442)}
-            {lbl(fx, 474, f.kind, TXT, 9.5, 800, 'middle')}
-            {lbl(fx, 487, bayTag(f.source_kind), TXT2, 8.5, 700, 'middle')}
-            {lbl(fx, 500, f.protection_codes.join(' · '), TXT_MUTED, 7.5, 600, 'middle')}
+            {lvBus ? (
+              <g>
+                <TrafoDyn x={fx} y={392} />
+                {lbl(fx + 22, 388, `TR ${colKv}/${fmt(lvBus.un_kv, 2)} kV`, TXT_MUTED, 8, 600)}
+                <line x1={fx} y1={404} x2={fx} y2={glyphY - 12} stroke={NN_BUS} strokeWidth={2} />
+                {lbl(fx + 16, 451, `zacisk ${fmt(lvBus.un_kv, 2)} kV`, TXT_MUTED, 8, 600)}
+              </g>
+            ) : null}
+            {bayGlyph(f.source_kind, fx, glyphY)}
+            {lbl(fx, 500, f.kind, TXT, 9.5, 800, 'middle')}
+            {lbl(fx, 513, bayTag(f.source_kind), TXT2, 8.5, 700, 'middle')}
+            {lbl(fx, 526, f.protection_codes.join(' · '), TXT_MUTED, 7.5, 600, 'middle')}
           </g>
         );
       })}
-      {lbl((sx[0] + sx[sources.length - 1]) / 2, 524, 'GPO: maszyny w Z-bus (synchr. §6.3 podtrzymanie Ib≈Ik / async §6.7 zanik μ·q) + IBG sprowadzony (§6.7, F-1) — zwarcie superponowane na wspólnej szynie SN', TXT_MUTED, 9, 600, 'middle')}
+      {lbl((sx[0] + sx[sources.length - 1]) / 2, 542, 'GPO: maszyny w Z-bus (synchr. §6.3 podtrzymanie Ib≈Ik / async §6.7 zanik μ·q, trafo blokowy tłumi) + IBG sprowadzony (§6.7, F-1) — superpozycja na szynie SN', TXT_MUTED, 8.5, 600, 'middle')}
 
       {/* ── node ① — SN busbar 15 kV (sieć + maszyny + IBG) ── */}
       <NodeReadout x={node} y={236} n={1} title={`szyna GPO · ${colKv} kV`}

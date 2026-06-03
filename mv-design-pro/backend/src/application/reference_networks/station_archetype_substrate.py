@@ -2975,16 +2975,33 @@ def build_g9_gpo() -> dict[str, Any]:
     s.add_slack("GPZ")
     s.add_bus("SN_PCC", _BASE_KV)
     s.add_line(SR_IN, "GPZ", "SN_PCC", _GRID_INFEED_R, _GRID_INFEED_X)
-    s.add_inverter("SN_PCC", rated_kva=pv_kva, un_kv=_BASE_KV, k_sc=_IBG_K, source_type="PV")
+    # PV (IBG) — block transformer 0,4/15 kV; the inverter sits on the LV bus, its bounded
+    # current REFERRED to 15 kV through the turns ratio (F-1) — now a PHYSICAL trafo in the path.
+    s.add_bus("PV_NN", _NN_KV)
+    s.add_transformer(
+        "sr/branch/tr-pv", "SN_PCC", "PV_NN", hv_kv=_BASE_KV, lv_kv=_NN_KV,
+        uk_percent=6.0, rated_mva=2.5, x_over_r=4.5,
+    )
+    s.add_inverter("PV_NN", rated_kva=pv_kva, un_kv=_NN_KV, k_sc=_IBG_K, source_type="PV")
+    s.add_load("PV_NN", p_mw=-pv_kva / 1000.0, q_mvar=0.0)
+    # Synchronous genset — MV machine DIRECTLY on the 15 kV busbar (no transformer, like G8).
     s.add_synchronous_machine(
         "SN_PCC", sr_mva=sync_mw / 0.8, ur_kv=_BASE_KV, xd_subtransient_pu=0.15, cos_phi_r=0.8
     )
+    s.add_load("SN_PCC", p_mw=-sync_mw, q_mvar=0.0)
+    # Async wind — block transformer 0,69/15 kV; the machine sits BEHIND it, so its §6.7
+    # contribution at 15 kV is DAMPED by the transformer impedance (was overstated on the bus).
+    s.add_bus("WIND_NN", _WINDA_LV_KV)
+    s.add_transformer(
+        "sr/branch/tr-wind", "SN_PCC", "WIND_NN", hv_kv=_BASE_KV, lv_kv=_WINDA_LV_KV,
+        uk_percent=6.0, rated_mva=2.0, x_over_r=4.5,
+    )
     s.add_asynchronous_machine(
-        "SN_PCC", pr_mw=async_mw, ur_kv=_BASE_KV, cos_phi_r=0.85, efficiency=0.95,
+        "WIND_NN", pr_mw=async_mw, ur_kv=_WINDA_LV_KV, cos_phi_r=0.85, efficiency=0.95,
         i_lr_ratio=6.0, pole_pairs=2,
     )
+    s.add_load("WIND_NN", p_mw=-async_mw, q_mvar=0.0)
     p_export_kw = pv_kva + sync_mw * 1000.0 + async_mw * 1000.0
-    s.add_load("SN_PCC", p_mw=-p_export_kw / 1000.0, q_mvar=0.0)  # eksport (generacja)
     s.finalize_pq()
 
     src = _pv_source(
@@ -3022,7 +3039,7 @@ def build_g9_gpo() -> dict[str, Any]:
             "g9-line", un_kv=_BASE_KV, protection_codes=_PROTECTION_BY_MACHINE["MIXED"]
         ),
         _field(
-            "g9-pv", role="source", kind="PV — falownik (IBG)", abb_cell="SDC", on_bus="SN_PCC",
+            "g9-pv", role="source", kind="PV — falownik (IBG)", abb_cell="SDC", on_bus="PV_NN",
             source_ref="enm:Generator.gen_type=pv_inverter;std:IEC_60909_6_7",
             interface_protection=False, source_kind="IBG",
             protection_codes=["anti-islanding", "81U", "81O", "27", "59"],
@@ -3034,7 +3051,7 @@ def build_g9_gpo() -> dict[str, Any]:
             protection_codes=["87G", "40", "32", "64", "46", "21", "25", "27", "59", "81"],
         ),
         _field(
-            "g9-async", role="source", kind="Wiatr — generator async", abb_cell="SDC", on_bus="SN_PCC",
+            "g9-async", role="source", kind="Wiatr — generator async", abb_cell="SDC", on_bus="WIND_NN",
             source_ref="enm:Generator.gen_type=wind_async;std:IEC_60909_6_7",
             interface_protection=False, source_kind="ASYNCHRONOUS",
             protection_codes=["46", "47", "49", "51", "37", "32"],
@@ -3043,7 +3060,7 @@ def build_g9_gpo() -> dict[str, Any]:
     return _oze_companion(
         "G9-GPO",
         substrate=s,
-        buses=[("SN_PCC", _BASE_KV, 25.0)],
+        buses=[("SN_PCC", _BASE_KV, 25.0), ("PV_NN", _NN_KV, 65.0), ("WIND_NN", _WINDA_LV_KV, 50.0)],
         pcc_bus="SN_PCC",
         source=src,
         fields=fields,
