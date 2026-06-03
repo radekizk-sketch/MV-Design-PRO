@@ -182,7 +182,7 @@ export interface OzeMachineProtection {
 
 export interface OzeSourceMeta {
   readonly technology: string; // PV | BESS | FW | ...
-  readonly machine_type: 'IBG' | 'SYNCHRONOUS' | 'ASYNCHRONOUS' | 'DFIG';
+  readonly machine_type: 'IBG' | 'SYNCHRONOUS' | 'ASYNCHRONOUS' | 'DFIG' | 'MIXED';
   readonly nc_rfg_class: string; // A | B | C | D
   readonly control_mode: string; // cosφ=const | Q=const | cosφ(P) | Q(U) | P(f)
   /** Gate I — protection function codes (real names from the doc), per device. */
@@ -261,6 +261,10 @@ export interface OzeSourceContribution {
   readonly motors_negligible?: boolean;
   /** Per-machine breakdown (rotating machines only). */
   readonly machines?: readonly OzeMachinePartial[];
+  /** GPO (MIXED): the IBG share [kA] (referred, §6.7), split from the machine share. */
+  readonly ibg_ka?: number;
+  /** GPO (MIXED): the rotating-machine share [kA] (§6.3/§6.7, Z-bus). */
+  readonly machine_ka?: number;
 }
 
 /** A short-circuit busbar dossier extended with the OZE source contribution. */
@@ -307,6 +311,8 @@ export interface OzeField {
   /** True ⇒ this is the interface-protection relay (connection field). */
   readonly interface_protection: boolean;
   readonly protection_codes: readonly string[];
+  /** Source bay type (GPO) — drives the per-bay glyph + physics narrative. */
+  readonly source_kind?: 'IBG' | 'SYNCHRONOUS' | 'ASYNCHRONOUS';
   /** Ordered apparatus stack (busbar→cable) for the detailed SN switchgear. */
   readonly apparatus?: readonly OzeApparatus[];
   /** Cable-connection port — the cable docks on this field's cable head. */

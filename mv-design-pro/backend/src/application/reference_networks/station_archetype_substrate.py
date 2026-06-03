@@ -945,6 +945,9 @@ _PROTECTION_BY_MACHINE: dict[str, list[str]] = {
     # source.protection, NOT on the grid interface. anti-islanding is critical (self-excitation
     # of the induction generator from the compensation capacitor bank).
     "ASYNCHRONOUS": ["67", "67N", "27", "59", "81U", "81O", "df/dt", "anti-islanding"],
+    # GPO wielopolowe (różne źródła na wspólnej szynie) — INTERFEJS = NC RfG (jak wyżej); każde
+    # pole źródłowe ma własny zestaw maszynowy/IBG na polu (split per typ, audit #5).
+    "MIXED": ["67", "67N", "27", "59", "81U", "81O", "df/dt", "anti-islanding"],
     # DFIG (wind Type 3) — INTERFACE set only (line bay, NC RfG). The MACHINE functions
     # (46/47 neg-seq, 49, 51) + the rotor-CONVERTER protection live on source.protection,
     # NOT on the grid interface (audit #5).
@@ -1018,6 +1021,34 @@ def _oze_sc_bus(
     share + the symmetrical breaking current (μ, and async μ·q — §6.6) are broken out
     via ``compute_machine_contributions`` (READ-ONLY, anti-fabrication: real solver)."""
     entry = _sc_bus_entry(graph, bus_id, un_kv, icw_ka)
+    if machine_type == "MIXED":
+        # GPO wielopolowe — IBG (§6.7, sprowadzony) + maszyny wirujące (§6.3/§6.7, w Z-bus) na
+        # WSPÓLNEJ szynie SN. Rozbicie udziału: sieć = Ik'' − maszyny − IBG.
+        res = compute_machine_contributions(graph, bus_id, c_factor=_C_MAX, t_min_s=t_min_s)
+        ibg_ka = _ibg_referred_a(graph, un_kv) / 1000.0
+        machine_ka = res.ikss_machines_a / 1000.0
+        entry["source_contribution"] = {
+            "machine_type": "MIXED",
+            "model": "GPO — IBG (§6.7) + maszyny synchr./asynchr. (§6.3/§6.7) na wspólnej szynie SN",
+            "ik_contribution_ka": round(machine_ka + ibg_ka, 3),
+            "ibg_ka": round(ibg_ka, 3),
+            "machine_ka": round(machine_ka, 3),
+            "ib_contribution_ka": round(res.ib_machines_a / 1000.0, 3),
+            "is_synchronous_machine": False,
+            "machines": [
+                {
+                    "source_id": c.source_id,
+                    "node_ref": c.node_id,
+                    "ikss_partial_ka": round(c.ikss_partial_a / 1000.0, 3),
+                    "ib_partial_ka": round(c.ib_a / 1000.0, 3),
+                    "mu": round(c.mu, 4),
+                    "q": round(c.q, 4),
+                    "ir_a": round(c.ir_a, 1),
+                }
+                for c in res.contributions
+            ],
+        }
+        return entry
     if machine_type == "IBG":
         # Per-bus IBG share REFERRED through the turns ratio (audit F-1) — consistent with the
         # Ik'' reported by _sc_bus_entry; collector ≈ referred (small), LV ≈ local k·In.
@@ -1221,6 +1252,7 @@ def _field(
     protection_codes: list[str] | None = None,
     apparatus: list[dict[str, Any]] | None = None,
     port: dict[str, Any] | None = None,
+    source_kind: str | None = None,
 ) -> dict[str, Any]:
     """One station field pinned to the ENM. role: connection|source|measurement|
     switch|load|breaker. interface_protection=True ⇒ the relay that looks at the
@@ -1238,6 +1270,7 @@ def _field(
         "protection_codes": list(protection_codes or []),
         "apparatus": list(apparatus or []),
         "port": port,
+        **({"source_kind": source_kind} if source_kind is not None else {}),
     }
 
 
@@ -2930,6 +2963,94 @@ def build_g6_wind_dfig() -> dict[str, Any]:
     )
 
 
+def build_g9_gpo() -> dict[str, Any]:
+    """G9 — GPO WIELOPOLOWE (kulminacja rodziny): RÓŻNE źródła na JEDNEJ szynie SN 15 kV — PV
+    (IBG, §6.7), agregat synchroniczny (◯GS, §6.3, podtrzymanie wzbudzeniem) i maszyna
+    asynchroniczna (◯G∼, §6.7, zanik μ·q). Pole liniowe (eksport→OSD) + pole pomiarowe (granica)
+    + 3 pola źródłowe RÓŻNYCH typów. Zwarcie: sieć + maszyny (w Z-bus) + IBG (sprowadzony, F-1) —
+    rozbicie udziału per typ (machine_type=MIXED). Wspólny _GRID_INFEED (X/R≈7), interfejs NC RfG,
+    zabezpieczenia per pole."""
+    pv_kva, sync_mw, async_mw = 2000.0, 2.0, 1.5
+    s = _Substrate()
+    s.add_slack("GPZ")
+    s.add_bus("SN_PCC", _BASE_KV)
+    s.add_line(SR_IN, "GPZ", "SN_PCC", _GRID_INFEED_R, _GRID_INFEED_X)
+    s.add_inverter("SN_PCC", rated_kva=pv_kva, un_kv=_BASE_KV, k_sc=_IBG_K, source_type="PV")
+    s.add_synchronous_machine(
+        "SN_PCC", sr_mva=sync_mw / 0.8, ur_kv=_BASE_KV, xd_subtransient_pu=0.15, cos_phi_r=0.8
+    )
+    s.add_asynchronous_machine(
+        "SN_PCC", pr_mw=async_mw, ur_kv=_BASE_KV, cos_phi_r=0.85, efficiency=0.95,
+        i_lr_ratio=6.0, pole_pairs=2,
+    )
+    p_export_kw = pv_kva + sync_mw * 1000.0 + async_mw * 1000.0
+    s.add_load("SN_PCC", p_mw=-p_export_kw / 1000.0, q_mvar=0.0)  # eksport (generacja)
+    s.finalize_pq()
+
+    src = _pv_source(
+        technology="GPO wielopolowe — PV (IBG) + agregat synchr. + wiatr async",
+        machine_type="MIXED",
+        nc_class="C",
+        control_mode="U/Q · cosφ · P(f)",
+        p_zainst_kw=p_export_kw,
+        pn_ac_kw=p_export_kw,
+        p_przylacz_kw=p_export_kw,
+        p_osiagalna_kw=round(p_export_kw * 0.95, 1),
+    )
+    src["metering"] = _metering(
+        source_ref="norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
+        ct_ipn_a=250.0,  # next-std ≥ I_load ≈ 212 A (PV+synchr+async, 5,5 MW @ 15 kV)
+        ct_cores=2,
+    )
+    src["withstand"] = {
+        "source_ref": "norma:IEC_62271_Ipk;std:rozdzielnica_SN_GPO",
+        "sn_idyn_ka": 63.0,  # szczyt SN dla 25 kA Icw (2,5×Icw)
+        "nn_idyn_ka": 63.0,  # źródła na szynie SN (brak osobnego nN)
+    }
+    src["grid_earthing"] = {
+        "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN",
+        "neutral_point": "kompensowana",
+        "ik_1f_ka": 0.06,
+        "imd_it_nn": False,
+        "note_pl": (
+            "SN 15 kV: I″k1f-z z uziemienia neutralnego OSD (kompensowana); pkt neutralny "
+            "agregatu synchr. przez rezystor NGR (64/59N)"
+        ),
+    }
+    fields = [
+        _sn_line_connection_field(
+            "g9-line", un_kv=_BASE_KV, protection_codes=_PROTECTION_BY_MACHINE["MIXED"]
+        ),
+        _field(
+            "g9-pv", role="source", kind="PV — falownik (IBG)", abb_cell="SDC", on_bus="SN_PCC",
+            source_ref="enm:Generator.gen_type=pv_inverter;std:IEC_60909_6_7",
+            interface_protection=False, source_kind="IBG",
+            protection_codes=["anti-islanding", "81U", "81O", "27", "59"],
+        ),
+        _field(
+            "g9-sync", role="source", kind="Agregat synchroniczny", abb_cell="SDC", on_bus="SN_PCC",
+            source_ref="enm:Generator.gen_type=synchronous;std:IEC_60909_6_3",
+            interface_protection=False, source_kind="SYNCHRONOUS",
+            protection_codes=["87G", "40", "32", "64", "46", "21", "25", "27", "59", "81"],
+        ),
+        _field(
+            "g9-async", role="source", kind="Wiatr — generator async", abb_cell="SDC", on_bus="SN_PCC",
+            source_ref="enm:Generator.gen_type=wind_async;std:IEC_60909_6_7",
+            interface_protection=False, source_kind="ASYNCHRONOUS",
+            protection_codes=["46", "47", "49", "51", "37", "32"],
+        ),
+    ]
+    return _oze_companion(
+        "G9-GPO",
+        substrate=s,
+        buses=[("SN_PCC", _BASE_KV, 25.0)],
+        pcc_bus="SN_PCC",
+        source=src,
+        fields=fields,
+        boundary=_boundary("G-GPZ", on_bus="SN_PCC", metered=True),
+    )
+
+
 _OZE_ARCHETYPES_2A_EXT = {
     **_OZE_ARCHETYPES_2A,
     "G4-PVTR": build_g4_pvtr,
@@ -2940,6 +3061,7 @@ _OZE_ARCHETYPES_2A_EXT = {
     "G8-BIOGAZ": build_g8_biogaz,
     "G7-WIND-ASYNC": build_g7_wind_async,
     "G6-WIND-DFIG": build_g6_wind_dfig,
+    "G9-GPO": build_g9_gpo,
 }
 
 

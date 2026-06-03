@@ -19,6 +19,7 @@ import { SldCanonPresetG5 } from './SldCanonPresetG5';
 import { SldCanonPresetG6 } from './SldCanonPresetG6';
 import { SldCanonPresetG7 } from './SldCanonPresetG7';
 import { SldCanonPresetG8 } from './SldCanonPresetG8';
+import { SldCanonPresetG9 } from './SldCanonPresetG9';
 
 const f1 = (v: number) => v.toFixed(1).replace('.', ',');
 
@@ -85,6 +86,13 @@ const PRESETS = [
     bus: 'SN_PCC',
     band: [130, 580] as [number, number],
     render: () => <SldCanonPresetG8 companion={OZE_ARCHETYPES_2A['G8-BIOGAZ']} />,
+  },
+  {
+    name: 'G9 — GPO wielopolowe',
+    companion: OZE_ARCHETYPES_2A['G9-GPO'],
+    bus: 'SN_PCC',
+    band: [130, 545] as [number, number],
+    render: () => <SldCanonPresetG9 companion={OZE_ARCHETYPES_2A['G9-GPO']} />,
   },
 ];
 
