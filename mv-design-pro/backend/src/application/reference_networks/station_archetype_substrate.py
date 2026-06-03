@@ -2087,7 +2087,7 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
     s.add_line(SR_IN, "GPZ", "SN_PCC", _GRID_INFEED_R, _GRID_INFEED_X)
     # IBG short-circuit contribution tracked PER BUS (gate J §6.7). nN buses carry the
     # LOCAL bounded current k·In; the SN_PCC carries it REFERRED through the transformers
-    # (I_SN = Σ I_nN·U_nN/U_SN) — like G6-WIND (referred to the collector), NOT the raw nN sum.
+    # (I_SN = Σ I_nN·U_nN/U_SN) — like G5-WIND-T4 (referred to the collector), NOT the raw nN sum.
     ibg_by_bus_a: dict[str, float] = {}
     bus_kv: dict[str, float] = {}
 
@@ -2238,7 +2238,7 @@ def build_g4_pvbess_ac() -> dict[str, Any]:
     return _build_g4_pvbess("ac")
 
 
-# ── G6 — Wiatr Typ 4 (pełnoprzekształtnikowy) — GENERYCZNY archetyp wg norm ──────
+# ── G5 (kanon) — Wiatr Typ 4 (pełnoprzekształtnikowy) — GENERYCZNY archetyp wg norm ──
 # ENEA SN catalog = {110, 20, 15, 6, 0.4} kV — 30 kV does NOT exist in ENEA's network.
 # The wind SN collector is 15 kV (ENEA standard). Re-levelling 30→15 kV at a CONSTANT
 # grid S_k″ DOUBLES the collector Ik″ (Ik″ = S_k″/(√3·Un); PN-EN 60909) — not cosmetic.
@@ -2252,8 +2252,8 @@ _WIND_GRID_INFEED_X = 0.6096
 _WIND_LV_KV = 0.69  # 0.69 kV turbine generator/converter LV
 
 
-def build_g6_wind() -> dict[str, Any]:
-    """G6 — Wiatr Typ 4 (pełny przekształtnik) — GENERYCZNY archetyp wg norm
+def build_g5_wind_t4() -> dict[str, Any]:
+    """G5 (kanon) — Wiatr Typ 4 (pełny przekształtnik) — GENERYCZNY archetyp wg norm
     (NC RfG / IEC 61400 / IEC 60909), NIE konkretna instalacja
     (source_ref = std:/norma:/enm:).
 
@@ -2363,7 +2363,7 @@ def build_g6_wind() -> dict[str, Any]:
         for i in range(n_turbines)
     ]
     return _oze_companion(
-        "G6-WIND",
+        "G5-WIND-T4",
         substrate=s,
         # Collector 15 kV (board 25 kA Icw covers Ik″≈21.5 kA); a representative turbine LV (50 kA).
         buses=[("SN_PCC", _WIND_COLLECTOR_KV, 25.0), ("WTG_LV_1", _WIND_LV_KV, 50.0)],
@@ -2456,7 +2456,7 @@ _WINDA_COSPHI = 0.85
 _WINDA_EFF = 0.95
 _WINDA_TR_MVA = 1.0
 
-# G9 — wiatr Typ 3 (DFIG, generator dwustronnie zasilany). Stojan na sieci, wirnik
+# G6 (kanon) — wiatr Typ 3 (DFIG, generator dwustronnie zasilany). Stojan na sieci, wirnik
 # przez przekształtnik częściowej mocy (~30 %). Model zwarciowy: zadziałanie crowbar
 # (rotor zwarty) → maszyna indukcyjna za Z_M (§6.7); udział przekształtnika pominięty
 # (zachowawczo dla I″k,max). i_LR niższe niż klatkowa (rezystancja crowbar).
@@ -2704,8 +2704,8 @@ def build_g8_wind_async() -> dict[str, Any]:
     )
 
 
-def build_g9_wind_dfig() -> dict[str, Any]:
-    """G9 — Wiatr Typ 3 (DFIG, generator dwustronnie zasilany) — GENERYCZNY archetyp
+def build_g6_wind_dfig() -> dict[str, Any]:
+    """G6 (kanon) — Wiatr Typ 3 (DFIG, generator dwustronnie zasilany) — GENERYCZNY archetyp
     wg norm (NC RfG / IEC 61400 / IEC 60909). n turbin DFIG (stojan na sieci, wirnik
     przez przekształtnik częściowej mocy), każda z własnym trafem turbinowym (nN→kolektor
     SN), zebranych radialnie na szynie kolektora SN; pole liniowe SN łączy kolektor z OSD.
@@ -2721,7 +2721,10 @@ def build_g9_wind_dfig() -> dict[str, Any]:
     s = _Substrate()
     s.add_slack("GPZ")
     s.add_bus("SN_PCC", _WINDA3_COLLECTOR_KV)
-    s.add_line(SR_IN, "GPZ", "SN_PCC", _SN_LINE_R, _SN_LINE_X)
+    # Collector grid infeed: physical X/R≈7 (κ≈1.63) like Typ4 — |Z| preserved (=_SN_LINE
+    # magnitude), so the collector Ik″ is UNCHANGED; only R/X → κ moves off the unphysical
+    # low-X/R _SN_LINE (κ≈1.25). The terminal stays more inductive (machine X″) — DFIG signature.
+    s.add_line(SR_IN, "GPZ", "SN_PCC", _GRID_INFEED_R, _GRID_INFEED_X)
     for i in range(n_turbines):
         lv = f"WTG_LV_{i + 1}"
         s.add_bus(lv, _WINDA3_LV_KV)
@@ -2779,7 +2782,7 @@ def build_g9_wind_dfig() -> dict[str, Any]:
         for i in range(n_turbines)
     ]
     return _oze_companion(
-        "G9-WIND-DFIG",
+        "G6-WIND-DFIG",
         substrate=s,
         buses=[("SN_PCC", _WINDA3_COLLECTOR_KV, 31.5), ("WTG_LV_1", _WINDA3_LV_KV, 63.0)],
         pcc_bus="SN_PCC",
@@ -2803,10 +2806,10 @@ _OZE_ARCHETYPES_2A_EXT = {
     "G4-PVBESS-BUS": build_g4_pvbess_bus,
     "G4-PVBESS-AC": build_g4_pvbess_ac,
     "G5-BESS": build_g5_bess,
-    "G6-WIND": build_g6_wind,
+    "G5-WIND-T4": build_g5_wind_t4,
     "G7-BIOGAZ": build_g7_biogaz,
     "G8-WIND-ASYNC": build_g8_wind_async,
-    "G9-WIND-DFIG": build_g9_wind_dfig,
+    "G6-WIND-DFIG": build_g6_wind_dfig,
 }
 
 

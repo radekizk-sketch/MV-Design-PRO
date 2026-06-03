@@ -57,10 +57,10 @@ const PRESETS = [
   },
   {
     name: 'G5 — Wiatr (Typ 4)',
-    companion: OZE_ARCHETYPES_2A['G6-WIND'],
+    companion: OZE_ARCHETYPES_2A['G5-WIND-T4'],
     bus: 'SN_PCC',
     band: [130, 640] as [number, number],
-    render: () => <SldCanonPresetG5 companion={OZE_ARCHETYPES_2A['G6-WIND']} />,
+    render: () => <SldCanonPresetG5 companion={OZE_ARCHETYPES_2A['G5-WIND-T4']} />,
   },
 ];
 

@@ -12,7 +12,7 @@ import { OZE_ARCHETYPES_2A } from '../companions/ozeArchetypes2a';
 import { glyphTextCollisions } from './sldCanonKit';
 import { SldCanonPresetG5 } from './SldCanonPresetG5';
 
-const G5 = OZE_ARCHETYPES_2A['G6-WIND']; // wind Type-4 companion (solver-bound, IBG)
+const G5 = OZE_ARCHETYPES_2A['G5-WIND-T4']; // wind Type-4 companion (solver-bound, IBG)
 
 function renderG5() {
   return render(

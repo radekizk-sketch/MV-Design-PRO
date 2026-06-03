@@ -4,7 +4,7 @@ source contribution instead of the IBG bounded current (gate J). Mirrors the fro
 gate tests but pins the backend substrate builders directly."""
 
 from application.reference_networks.station_archetype_substrate import (
-    build_g6_wind,
+    build_g5_wind_t4,
     build_g7_biogaz,
     build_g8_wind_async,
 )
@@ -63,7 +63,7 @@ def test_g8_async_terminal_vs_collector_contrast():
 
 def test_ibg_archetype_unchanged():
     # G6 (wind Type 4) stays IBG — the machine model does NOT bleed into IBG sources.
-    c = build_g6_wind()
+    c = build_g5_wind_t4()
     assert c["source"]["machine_type"] == "IBG"
     for bus in _buses(c):
         sc = bus["source_contribution"]

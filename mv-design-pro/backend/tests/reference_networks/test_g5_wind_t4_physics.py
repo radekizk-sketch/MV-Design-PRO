@@ -1,4 +1,4 @@
-"""Wind Type 4 (preset G6-WIND) — per-node κ / ip physics sanity (PN-EN 60909).
+"""Wind Type 4 (preset G5-WIND-T4) — per-node κ / ip physics sanity (PN-EN 60909).
 
 Regression lock mirroring the G1/B-02 fix, applied to the wind collector archetype. The
 peak factor κ (hence ip) MUST be physical PER NODE: the grid-fed 15 kV collector is the
@@ -14,7 +14,7 @@ fix; only R/X → κ → ip move.
 import math
 
 import pytest
-from application.reference_networks.station_archetype_substrate import build_g6_wind
+from application.reference_networks.station_archetype_substrate import build_g5_wind_t4
 
 
 def _node(companion: dict, bus: str) -> tuple[float, float, float, float]:
@@ -23,8 +23,8 @@ def _node(companion: dict, bus: str) -> tuple[float, float, float, float]:
     return m["ikss_ka"], xr, m["kappa"], m["ip_ka"]
 
 
-def test_g6_per_node_kappa_ip_are_physical_and_not_inverted():
-    c = build_g6_wind()
+def test_g5_per_node_kappa_ip_are_physical_and_not_inverted():
+    c = build_g5_wind_t4()
     sn_ik, sn_xr, sn_k, sn_ip = _node(c, "SN_PCC")
     lv_ik, lv_xr, lv_k, lv_ip = _node(c, "WTG_LV_1")
 
@@ -48,11 +48,11 @@ def test_g6_per_node_kappa_ip_are_physical_and_not_inverted():
         assert ip == pytest.approx(k * math.sqrt(2.0) * ik, abs=0.1)
 
 
-def test_g6_collector_is_15kv_with_doubled_ikss():
+def test_g5_collector_is_15kv_with_doubled_ikss():
     # ENEA SN has no 30 kV → the collector is 15 kV. Re-levelling 30→15 kV at a CONSTANT
     # grid S_k″ (~559 MVA, the ENEA PPP value) DOUBLES the collector Ik″ (= S_k″/(√3·Un)),
     # not a relabel. The turbine LV (0.69 kV, transformer-fed) is ~flat (slightly up).
-    c = build_g6_wind()
+    c = build_g5_wind_t4()
     coll = c["short_circuit"]["buses"]["SN_PCC"]
     assert coll["un_kv"] == 15.0
     assert coll["max"]["ikss_ka"] == pytest.approx(21.5, abs=0.4)  # ~2× the prior 10.76 kA
@@ -61,9 +61,9 @@ def test_g6_collector_is_15kv_with_doubled_ikss():
     assert c["short_circuit"]["buses"]["WTG_LV_1"]["max"]["ikss_ka"] == pytest.approx(40.5, abs=1.0)
 
 
-def test_g6_carries_p0_p1_model():
+def test_g5_carries_p0_p1_model():
     # P0 (OSD neutral earthing) + P1 (dynamic withstand) must be present on the source.
-    c = build_g6_wind()
+    c = build_g5_wind_t4()
     src = c["source"]
     assert src["grid_earthing"]["neutral_point"] == "kompensowana"
     assert src["grid_earthing"]["imd_it_nn"] is False  # no station nN IT tier in a wind farm

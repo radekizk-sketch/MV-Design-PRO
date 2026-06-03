@@ -36,4 +36,4 @@ emit('g2-pv-nn', <SldCanonPresetG2 companion={OZE_ARCHETYPES_2A['G1']} />);
 emit('g3-bess', <SldCanonPresetG3 companion={OZE_ARCHETYPES_2A['G5-BESS']} />);
 emit('g4-pvbess-bus', <SldCanonPresetG4 companion={OZE_ARCHETYPES_2A['G4-PVBESS-BUS']} />);
 emit('g4-pvbess-ac', <SldCanonPresetG4 companion={OZE_ARCHETYPES_2A['G4-PVBESS-AC']} />);
-emit('g5-wind', <SldCanonPresetG5 companion={OZE_ARCHETYPES_2A['G6-WIND']} />);
+emit('g5-wind', <SldCanonPresetG5 companion={OZE_ARCHETYPES_2A['G5-WIND-T4']} />);

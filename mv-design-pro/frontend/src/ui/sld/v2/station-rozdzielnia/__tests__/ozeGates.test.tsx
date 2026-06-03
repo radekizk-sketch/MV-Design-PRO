@@ -283,9 +283,9 @@ describe('GATE J′ — rotating machines: machine-typed SC contribution (not IB
     }
   });
 
-  it('G9-WIND-DFIG models a DFIG via crowbar → asynchronous machine (Z_M, μ·q)', () => {
-    const c = OZE_ARCHETYPES_2A['G9-WIND-DFIG'];
-    expect(c, 'G9-WIND-DFIG template must exist').toBeTruthy();
+  it('G6-WIND-DFIG models a DFIG via crowbar → asynchronous machine (Z_M, μ·q)', () => {
+    const c = OZE_ARCHETYPES_2A['G6-WIND-DFIG'];
+    expect(c, 'G6-WIND-DFIG template must exist').toBeTruthy();
     expect(c.source.machine_type).toBe('DFIG');
     const conn = c.fields.find((f) => f.role === 'connection')!;
     expect(conn.protection_codes).toContain('46'); // negative-sequence — DFIG set
@@ -309,7 +309,7 @@ describe('GATE J′ — rotating machines: machine-typed SC contribution (not IB
     for (const [a, mt] of [
       ['G7-BIOGAZ', 'SYNCHRONOUS'],
       ['G8-WIND-ASYNC', 'ASYNCHRONOUS'],
-      ['G9-WIND-DFIG', 'DFIG'],
+      ['G6-WIND-DFIG', 'DFIG'],
     ] as const) {
       const { container } = renderOze(a, 'close');
       const contrib = container.querySelector('[data-testid="oze-sc-contrib-SN_PCC"]')!;
@@ -896,12 +896,12 @@ describe('G5-BESS — magazyn energii (IBG dwukierunkowy + oś energii kWh)', ()
 });
 
 // ---------------------------------------------------------------------------
-// G6-WIND — Wiatr Typ 4 (pełnoprzekształtnikowy): IBG + wewnętrzna SIEĆ KOLEKTOROWA
+// G5-WIND-T4 — Wiatr Typ 4 (pełnoprzekształtnikowy): IBG + wewnętrzna SIEĆ KOLEKTOROWA
 // SN (n turbin, KAŻDA z własnym trafem turbinowym). Generyczny, przypięty do norm.
 // ---------------------------------------------------------------------------
 
-describe('G6-WIND — wiatr Typ 4 (IBG + sieć kolektorowa SN)', () => {
-  const G6 = 'G6-WIND';
+describe('G5-WIND-T4 — wiatr Typ 4 (IBG + sieć kolektorowa SN)', () => {
+  const G6 = 'G5-WIND-T4';
   const renderClose = () =>
     render(
       <svg>
@@ -911,7 +911,7 @@ describe('G6-WIND — wiatr Typ 4 (IBG + sieć kolektorowa SN)', () => {
 
   it('W1 — IBG pełnoprzekształtnikowy: technology=Wiatr Typ 4, machine=IBG', () => {
     const c = OZE_ARCHETYPES_2A[G6];
-    expect(c, 'G6-WIND must exist').toBeTruthy();
+    expect(c, 'G5-WIND-T4 must exist').toBeTruthy();
     expect(c.source.machine_type).toBe('IBG');
     expect(c.source.technology).toMatch(/Wiatr|Typ 4/);
   });
@@ -988,7 +988,7 @@ describe('G6-WIND — wiatr Typ 4 (IBG + sieć kolektorowa SN)', () => {
     expect(container.querySelector('[data-testid="oze-grid-stub"]'), 'no busbar-edge OSD stub').toBeFalsy();
     const lineStack = container.querySelector('[data-testid="oze-field-stack-g6-line"]')!;
     expect(lineStack.querySelector('[data-testid="oze-boundary-marker"]')).toBeTruthy();
-    const unit = container.querySelector('[data-testid="oze-source-G6-WIND"]')!;
+    const unit = container.querySelector('[data-testid="oze-source-G5-WIND-T4"]')!;
     for (const ln of Array.from(unit.querySelectorAll('line'))) {
       const x1 = Number(ln.getAttribute('x1')); const y1 = Number(ln.getAttribute('y1'));
       const x2 = Number(ln.getAttribute('x2')); const y2 = Number(ln.getAttribute('y2'));
