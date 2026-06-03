@@ -12,6 +12,7 @@
 import {
   AMBER,
   AsyncMachine,
+  ctRatioLabel,
   CtRing,
   CYAN,
   fmt,
@@ -35,6 +36,7 @@ import {
   TXT_MUTED,
   UziemnikIEC,
   VtNoGround,
+  vtRatioLabel,
   Wylacznik,
 } from './sldCanonKit';
 import type { SldOzeArchetypeCompanion } from '../companions/ozeTypes';
@@ -54,6 +56,7 @@ export function SldCanonPresetG6({ companion }: { companion: SldOzeArchetypeComp
   const lvTrShare = Math.max(0, lvSc.max.ikss_ka - lvMach);
   const earthing = companion.source.grid_earthing;
   const withstand = companion.source.withstand;
+  const metering = companion.source.metering;
   const col = companion.source.collector;
   const snIk1f = earthing ? `${fmt(earthing.ik_1f_ka)} kA · ${earthing.neutral_point}` : 'lok. (OSD)';
   const nTurb = col?.n_turbines ?? 3;
@@ -109,7 +112,7 @@ export function SldCanonPresetG6({ companion }: { companion: SldOzeArchetypeComp
 
       {/* ── CT on the collector busbar (current path); secondary → meter ── */}
       <CtRing x={X.ctBus} y={snBusY} />
-      {lbl(X.ctBus, 182, 'CT · 200/5/5', TXT, 10.5, 700, 'middle')}
+      {lbl(X.ctBus, 182, ctRatioLabel(metering?.ct), TXT, 10.5, 700, 'middle')}
       <circle cx={X.ctBus} cy={snBusY + 38} r={2.5} fill={CYAN} />
       <line x1={X.ctBus} y1={snBusY + 9} x2={X.ctBus} y2={snBusY + 36} stroke={CYAN} strokeWidth={1.2} strokeDasharray="3 3" />
       {lbl(X.ctBus + 8, snBusY + 41, '→ I do licznika', TXT_MUTED, 9, 600)}
@@ -124,7 +127,7 @@ export function SldCanonPresetG6({ companion }: { companion: SldOzeArchetypeComp
       </g>
       {lbl(X.pom + 14, 333, 'bezp. VT (GTS)', TXT_MUTED, 9.5, 600)}
       <VtNoGround x={X.pom} y={360} />
-      {lbl(X.pom - 96, 372, `VT · ${colKv}/√3`, TXT, 11, 700)}
+      {lbl(X.pom - 96, 372, vtRatioLabel(sn.un_kv, metering?.vt), TXT, 11, 700)}
       {lbl(X.pom - 96, 385, 'bez ziemi (→U)', TXT_MUTED, 9, 600)}
       <g data-keepout={ko(X.pom - 11, 392, 22, 18)}>
         <rect x={X.pom - 11} y={392} width={22} height={18} rx={2} fill="#0A1622" stroke={AMBER} strokeWidth={1.6} />

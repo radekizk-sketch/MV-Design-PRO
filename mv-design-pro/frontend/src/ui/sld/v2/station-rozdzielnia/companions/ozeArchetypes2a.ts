@@ -2917,6 +2917,18 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "variant_pl": "AC-coupled (wsp\u00f3lna szyna nN, jeden trafo przy\u0142\u0105czeniowy)"
       },
       "machine_type": "IBG",
+      "metering": {
+        "ct": {
+          "cores": 2,
+          "ipn_a": 100.0,
+          "isn_a": 5.0
+        },
+        "source_ref": "norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
+        "vt": {
+          "fv": 1.9,
+          "usn_v": 100.0
+        }
+      },
       "nc_rfg_class": "C",
       "power_hierarchy": {
         "p_osiagalna_kw": 1999.0,
@@ -4122,6 +4134,18 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "variant_pl": "sprz\u0119\u017cenie na SN (wsp\u00f3lna szyna 15 kV, osobne trafa)"
       },
       "machine_type": "IBG",
+      "metering": {
+        "ct": {
+          "cores": 2,
+          "ipn_a": 100.0,
+          "isn_a": 5.0
+        },
+        "source_ref": "norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
+        "vt": {
+          "fv": 1.9,
+          "usn_v": 100.0
+        }
+      },
       "nc_rfg_class": "C",
       "power_hierarchy": {
         "p_osiagalna_kw": 1999.0,
@@ -5189,6 +5213,19 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN"
       },
       "machine_type": "IBG",
+      "metering": {
+        "ct": {
+          "cores": 3,
+          "ipn_a": 40.0,
+          "isn_a": 5.0,
+          "type": "AD11"
+        },
+        "source_ref": "norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
+        "vt": {
+          "fv": 1.9,
+          "usn_v": 100.0
+        }
+      },
       "nc_rfg_class": "C",
       "power_hierarchy": {
         "p_osiagalna_kw": 999.5999999999999,
@@ -6099,6 +6136,18 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN"
       },
       "machine_type": "IBG",
+      "metering": {
+        "ct": {
+          "cores": 2,
+          "ipn_a": 40.0,
+          "isn_a": 5.0
+        },
+        "source_ref": "norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
+        "vt": {
+          "fv": 1.9,
+          "usn_v": 100.0
+        }
+      },
       "nc_rfg_class": "C",
       "power_hierarchy": {
         "p_osiagalna_kw": 950.0,
@@ -6937,6 +6986,18 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN"
       },
       "machine_type": "IBG",
+      "metering": {
+        "ct": {
+          "cores": 2,
+          "ipn_a": 250.0,
+          "isn_a": 5.0
+        },
+        "source_ref": "norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
+        "vt": {
+          "fv": 1.9,
+          "usn_v": 100.0
+        }
+      },
       "nc_rfg_class": "C",
       "power_hierarchy": {
         "p_osiagalna_kw": 5700.0,
@@ -7827,6 +7888,18 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN"
       },
       "machine_type": "DFIG",
+      "metering": {
+        "ct": {
+          "cores": 2,
+          "ipn_a": 250.0,
+          "isn_a": 5.0
+        },
+        "source_ref": "norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
+        "vt": {
+          "fv": 1.9,
+          "usn_v": 100.0
+        }
+      },
       "nc_rfg_class": "C",
       "power_hierarchy": {
         "p_osiagalna_kw": 5800.0,

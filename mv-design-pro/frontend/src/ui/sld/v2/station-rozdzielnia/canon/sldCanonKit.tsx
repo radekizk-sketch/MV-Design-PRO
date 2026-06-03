@@ -13,6 +13,8 @@
  * strzałka mocy (różowa). NIE: PCC, NIE: osobny znacznik granicy — granicą jest pomiar.
  */
 
+import type { OzeMeteringCt, OzeMeteringVt } from '../companions/ozeTypes';
+
 export const GREEN = '#1FA24A';
 export const CYAN = '#3BA7D6';
 export const SN_BUS = '#1FA24A';
@@ -29,6 +31,30 @@ export const SANS = 'Inter, system-ui, sans-serif';
 export const fmt = (v: number, d = 2): string => v.toFixed(d).replace('.', ',');
 /** Keep-out box "x,y,w,h" — for preset-local glyphs (fuses, meters) outside the canon. */
 export const ko = (x: number, y: number, w: number, h: number): string => `${x},${y},${w},${h}`;
+
+/** Compose a CT ratio label from the structured nameplate — "CT · [type · ]ipn/isn/isn…".
+ *  The render NEVER hard-codes a ratio; absent data → explicit "—" (no literal substitution).
+ *  Selection (Ipn = next-std ≥ I_load) is the station wizard's; here we only render its field. */
+export function ctRatioLabel(ct?: OzeMeteringCt): string {
+  if (!ct) return 'CT · —';
+  const cores = Math.max(1, Math.round(ct.cores));
+  const secondary = Array.from({ length: cores }, () => fmt(ct.isn_a, 0)).join('/');
+  const tag = ct.type ? `${ct.type} · ` : '';
+  return `CT · ${tag}${fmt(ct.ipn_a, 0)}/${secondary}`;
+}
+
+/** Compose a VT ratio label "VT · [type · ]Un/√3". The primary is DERIVED from the bus Un
+ *  (line-to-earth, Un/√3) — deterministic, not a design choice — so only un_kv is required;
+ *  the optional type tag comes from the nameplate. Absent un_kv → "—" (no literal). The
+ *  secondary (Usn/√3) + Fv ride in the contract (vt) for the wizard/detail, not this label. */
+export function vtRatioLabel(unKv: number | undefined, vt?: OzeMeteringVt): string {
+  if (unKv === undefined || !Number.isFinite(unKv) || unKv <= 0) return 'VT · —';
+  // Primary = the bus Un shown FAITHFULLY (strip trailing zeros — 15 → "15", 15,75 → "15,75");
+  // never integer-rounded (15,75 → "16" would misrepresent the level).
+  const primary = unKv.toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
+  const tag = vt?.type ? `${vt.type} · ` : '';
+  return `VT · ${tag}${primary}/√3`;
+}
 
 export function lbl(
   x: number, y: number, t: string, color = TXT2, size = 11, weight = 600,

@@ -974,6 +974,31 @@ def _pv_source(
     }
 
 
+def _metering(
+    *,
+    source_ref: str,
+    ct_ipn_a: float,
+    ct_cores: int,
+    ct_isn_a: float = 5.0,
+    ct_type: str | None = None,
+    vt_usn_v: float = 100.0,
+    vt_fv: float = 1.9,
+    vt_type: str | None = None,
+) -> dict[str, Any]:
+    """SN measurement-bay CT/VT nameplates as STRUCTURED fields — the SLD renders the ratio
+    from these and never hard-codes one. ct_ipn_a is next-std ≥ I_load (the representative,
+    correct value; the station wizard does the real IEC 61869 selection). The VT primary is
+    derived from the bus Un in the view; here we carry the secondary (Usn/√3) + Fv (1.9 —
+    compensated SN, 8 h)."""
+    ct: dict[str, Any] = {"ipn_a": ct_ipn_a, "isn_a": ct_isn_a, "cores": ct_cores}
+    if ct_type is not None:
+        ct["type"] = ct_type
+    vt: dict[str, Any] = {"usn_v": vt_usn_v, "fv": vt_fv}
+    if vt_type is not None:
+        vt["type"] = vt_type
+    return {"source_ref": source_ref, "ct": ct, "vt": vt}
+
+
 def _oze_sc_bus(
     graph: NetworkGraph,
     bus_id: str,
@@ -1719,6 +1744,13 @@ def build_g4_pvtr() -> dict[str, Any]:
         "sn_idyn_ka": 40.0,  # CTM20 Idyn (dynamiczna SN)
         "nn_idyn_ka": 105.0,  # 3WA1110 Icm (szczytowa prąd. nN)
     }
+    src["metering"] = _metering(
+        source_ref="norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
+        ct_ipn_a=40.0,  # next-std ≥ I_load ≈ 38 A (PV 1 MW @ 15,75 kV)
+        ct_cores=3,
+        ct_type="AD11",
+        vt_type="FD11",
+    )
     # nN inverter feeder fields (≥3, not one block) + Q1 main + own-needs.
     nn_fields = [
         _field(
@@ -1948,6 +1980,11 @@ def build_g5_bess() -> dict[str, Any]:
         "sn_idyn_ka": 40.0,
         "nn_idyn_ka": 105.0,
     }
+    src["metering"] = _metering(
+        source_ref="norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
+        ct_ipn_a=40.0,  # next-std ≥ I_load ≈ 38 A (BESS @ 15 kV)
+        ct_cores=2,
+    )
     nn_fields = [
         _field(
             f"g5-pcs{i + 1}",
@@ -2207,6 +2244,11 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
         "sn_idyn_ka": 40.0,
         "nn_idyn_ka": 105.0,
     }
+    src["metering"] = _metering(
+        source_ref="norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
+        ct_ipn_a=100.0,  # next-std ≥ I_load ≈ 76 A (PV+BESS export @ 15 kV)
+        ct_cores=2,
+    )
 
     arch = "G4-PVBESS-BUS" if variant == "bus" else "G4-PVBESS-AC"
     pfx = "g4bus" if variant == "bus" else "g4ac"
@@ -2371,6 +2413,11 @@ def build_g5_wind_t4() -> dict[str, Any]:
         "sn_idyn_ka": 63.0,
         "nn_idyn_ka": 105.0,
     }
+    src["metering"] = _metering(
+        source_ref="norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
+        ct_ipn_a=250.0,  # next-std ≥ I_load ≈ 230 A (3×2 MW @ 15 kV)
+        ct_cores=2,
+    )
     # Turbine BAYS sit on the COLLECTOR bus — the transformer + WTG hang behind
     # each bay (drawn per feeder), NOT a shared nN tier.
     turbine_fields = [
@@ -2823,6 +2870,11 @@ def build_g6_wind_dfig() -> dict[str, Any]:
         "sn_idyn_ka": 80.0,  # szczyt SN (kolektor 31,5 kA Icw); ip≈24 kA ≤
         "nn_idyn_ka": 132.0,  # szczyt nN (zacisk 63 kA Icw); ip maszyny+crowbar ≈101 kA ≤
     }
+    src["metering"] = _metering(
+        source_ref="norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
+        ct_ipn_a=250.0,  # next-std ≥ I_load ≈ 230 A (3×2 MW @ 15 kV)
+        ct_cores=2,
+    )
     turbine_fields = [
         _field(
             f"g9-wtg{i + 1}",

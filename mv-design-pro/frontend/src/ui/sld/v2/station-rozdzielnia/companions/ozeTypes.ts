@@ -33,6 +33,31 @@ export interface OzeSchematicVt {
   readonly windings: readonly string[];
 }
 
+/** Station measurement-bay instrument transformers — the SN connection/metering-bay CT and
+ *  VT as STRUCTURED nameplate fields (NOT a pre-formatted ratio string). The SLD composes the
+ *  displayed ratio from these and never hard-codes one. Selection (Ipn = next-std ≥ I_load,
+ *  Usn, Fv, cores per use) is the STATION WIZARD's job (IEC 61869); here these are the
+ *  representative, correct values the wizard would produce, carried as data. */
+export interface OzeMeteringCt {
+  readonly ipn_a: number; // primary nominal current [A] — next-std ≥ I_load
+  readonly isn_a: number; // secondary nominal current [A], per core (1 or 5)
+  readonly cores: number; // number of secondary cores → ratio "ipn/isn/isn…"
+  readonly type?: string; // optional catalog/type tag (e.g. "AD11")
+  readonly accuracy_class?: string; // optional accuracy class
+}
+export interface OzeMeteringVt {
+  readonly usn_v: number; // secondary nominal voltage [V] (line value; phase = usn/√3)
+  readonly fv: number; // voltage factor (e.g. 1.9 — compensated network, 8 h)
+  readonly type?: string; // optional catalog/type tag (e.g. "FD11")
+  readonly accuracy_class?: string; // optional accuracy class
+  // The primary is DERIVED from the bus Un (line-to-earth, Un/√3) — deterministic, no field.
+}
+export interface OzeMetering {
+  readonly source_ref: string;
+  readonly ct?: OzeMeteringCt;
+  readonly vt?: OzeMeteringVt;
+}
+
 /** Equipment register distilled element-by-element from a real schematic
  *  (source_ref = the drawing) — present when the template is a faithful
  *  projection of a reference document, not a synthesised archetype. */
@@ -165,6 +190,9 @@ export interface OzeSourceMeta {
   readonly power_hierarchy: OzePowerHierarchy;
   /** Present iff this template is distilled from a real reference schematic. */
   readonly schematic?: OzeSchematic;
+  /** SN measurement-bay CT/VT nameplates (structured) — the SLD reads these to render the
+   *  instrument ratios; it never hard-codes one. Filled by the station wizard (IEC 61869). */
+  readonly metering?: OzeMetering;
   /** Protection coordination matrix (click-module content, not on the canvas). */
   readonly coordination?: OzeCoordination;
   /** §5 P0 — OSD neutral-point earthing (drives Ik″1f-z SN) + IMD on the IT nN system. */

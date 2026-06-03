@@ -9,6 +9,7 @@
 import {
   AMBER,
   BatteryGlyph,
+  ctRatioLabel,
   CtRing,
   CYAN,
   fmt,
@@ -31,6 +32,7 @@ import {
   TXT_MUTED,
   UziemnikIEC,
   VtNoGround,
+  vtRatioLabel,
   Wylacznik,
 } from './sldCanonKit';
 import type { SldOzeArchetypeCompanion } from '../companions/ozeTypes';
@@ -46,6 +48,7 @@ export function SldCanonPresetG3({ companion }: { companion: SldOzeArchetypeComp
   const nnTrShare = Math.max(0, nnSc.max.ikss_ka - faln);
   const earthing = companion.source.grid_earthing;
   const withstand = companion.source.withstand;
+  const metering = companion.source.metering;
   const snIk1f = earthing ? `${fmt(earthing.ik_1f_ka)} kA · ${earthing.neutral_point}` : '—';
   const nnIk1f = `≈0 (IT)${earthing?.imd_it_nn ? ' · IMD' : ''}`;
   const st = companion.source.storage;
@@ -105,7 +108,7 @@ export function SldCanonPresetG3({ companion }: { companion: SldOzeArchetypeComp
       </g>
       {lbl(X.p2 + 14, 333, 'bezp. VT (GTS)', TXT_MUTED, 9.5, 600)}
       <VtNoGround x={X.p2} y={360} />
-      {lbl(X.p2 - 96, 372, 'VT · 15/√3', TXT, 11, 700)}
+      {lbl(X.p2 - 96, 372, vtRatioLabel(sn.un_kv, metering?.vt), TXT, 11, 700)}
       {lbl(X.p2 - 96, 385, 'bez ziemi (→U)', TXT_MUTED, 9, 600)}
       <g data-keepout={ko(X.p2 - 11, 392, 22, 18)}>
         <rect x={X.p2 - 11} y={392} width={22} height={18} rx={2} fill="#0A1622" stroke={AMBER} strokeWidth={1.6} />
@@ -116,7 +119,7 @@ export function SldCanonPresetG3({ companion }: { companion: SldOzeArchetypeComp
 
       {/* CT — pierścień na szynie SN (w torze prądowym); wtórny → licznik. */}
       <CtRing x={X.ctBus} y={snBusY} />
-      {lbl(X.ctBus, 182, 'CT · 50/5/5', TXT, 10.5, 700, 'middle')}
+      {lbl(X.ctBus, 182, ctRatioLabel(metering?.ct), TXT, 10.5, 700, 'middle')}
       <circle cx={X.ctBus} cy={snBusY + 38} r={2.5} fill={CYAN} />
       <line x1={X.ctBus} y1={snBusY + 9} x2={X.ctBus} y2={snBusY + 36} stroke={CYAN} strokeWidth={1.2} strokeDasharray="3 3" />
       {lbl(X.ctBus + 8, snBusY + 41, '→ I do licznika', TXT_MUTED, 9, 600)}

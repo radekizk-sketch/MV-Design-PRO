@@ -12,6 +12,7 @@
 import {
   AMBER,
   BatteryGlyph,
+  ctRatioLabel,
   CtRing,
   CYAN,
   fmt,
@@ -32,6 +33,7 @@ import {
   TXT_MUTED,
   UziemnikIEC,
   VtNoGround,
+  vtRatioLabel,
   Wylacznik,
 } from './sldCanonKit';
 import type { OzeScBus, OzeVfBus, SldOzeArchetypeCompanion } from '../companions/ozeTypes';
@@ -49,6 +51,7 @@ export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeComp
   const snGridShare = Math.max(0, snSc.max.ikss_ka - faln);
   const earthing = companion.source.grid_earthing;
   const withstand = companion.source.withstand;
+  const metering = companion.source.metering;
   const snIk1f = earthing ? `${fmt(earthing.ik_1f_ka)} kA · ${earthing.neutral_point}` : '—';
   const nnIk1f = `≈0 (IT)${earthing?.imd_it_nn ? ' · IMD' : ''}`;
   const pvKw = hy?.pv_kw ?? 999;
@@ -112,12 +115,12 @@ export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeComp
       <Odlacznik x={px} y={252} />
       {lbl(px + 18, 256, 'Q odłącznik', TXT2, 11, 700)}
       <VtNoGround x={px} y={360} />
-      {lbl(px - 96, 372, `VT · ${colKv}/√3`, TXT, 11, 700)}
+      {lbl(px - 96, 372, vtRatioLabel(sn.un_kv, metering?.vt), TXT, 11, 700)}
       {lbl(px - 96, 385, 'bez ziemi (→U)', TXT_MUTED, 9, 600)}
       {lbl(px - 78, 428, 'POMIAR rozliczeniowy', AMBER, 11, 700)}
       {lbl(px - 78, 441, 'granica = układ pomiarowy (I z CT, U z VT)', TXT_MUTED, 8.5, 600)}
       <CtRing x={ctx} y={snBusY} />
-      {lbl(ctx, 182, 'CT · 50/5/5', TXT, 10.5, 700, 'middle')}
+      {lbl(ctx, 182, ctRatioLabel(metering?.ct), TXT, 10.5, 700, 'middle')}
     </>
   );
 

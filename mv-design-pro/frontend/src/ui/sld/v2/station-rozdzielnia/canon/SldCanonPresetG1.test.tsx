@@ -8,6 +8,7 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { OZE_ARCHETYPES_2A } from '../companions/ozeArchetypes2a';
+import { ctRatioLabel, vtRatioLabel } from './sldCanonKit';
 import { SldCanonPresetG1 } from './SldCanonPresetG1';
 
 const G1 = OZE_ARCHETYPES_2A['G4-PVTR']; // PV 1 MW companion (solver-bound)
@@ -67,8 +68,9 @@ describe('SldCanonPresetG1 — canonical PV 1 MW template (G1)', () => {
   it('metering via CT/VT on the SN busbar (POLE Pomiarowe) + export cable to OSD; no ⊟ marker', () => {
     const txt = renderG1().container.textContent ?? '';
     // SN station metering is instrument-transformer based (correct) — not in-line behind a breaker.
-    expect(txt).toContain('CT AD11 · 40/5/5/5');
-    expect(txt).toContain('VT FD11');
+    // CT/VT ratios are composed FROM the companion's metering fields (audit: zero render literals).
+    expect(txt).toContain(ctRatioLabel(G1.source.metering?.ct)); // CT · AD11 · 40/5/5/5
+    expect(txt).toContain(vtRatioLabel(G1.voltage_flow.buses['SN_PCC'].un_kv, G1.source.metering?.vt));
     expect(txt).toContain('POMIAR rozliczeniowy');
     expect(txt).toContain('SIEĆ OSD'); // export cable to the OSD network
     expect(txt).not.toContain('GRANICA'); // boundary is implied by the metering — no separate ⊟

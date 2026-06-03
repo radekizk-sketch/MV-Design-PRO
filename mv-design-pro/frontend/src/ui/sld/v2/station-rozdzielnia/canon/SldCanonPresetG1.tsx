@@ -7,6 +7,7 @@
 import {
   AMBER,
   CYAN,
+  ctRatioLabel,
   CtRing,
   fmt,
   Glowica,
@@ -29,6 +30,7 @@ import {
   TXT_MUTED,
   UziemnikIEC,
   VtNoGround,
+  vtRatioLabel,
   Wylacznik,
 } from './sldCanonKit';
 import type { SldOzeArchetypeCompanion } from '../companions/ozeTypes';
@@ -45,6 +47,7 @@ export function SldCanonPresetG1({ companion }: { companion: SldOzeArchetypeComp
   // §5 P0 — OSD neutral earthing drives Ik″1f-z (SN); IT nN ⇒ 1st earth fault via IMD.
   const earthing = companion.source.grid_earthing;
   const withstand = companion.source.withstand;
+  const metering = companion.source.metering;
   const snIk1f = earthing ? `${fmt(earthing.ik_1f_ka)} kA · ${earthing.neutral_point}` : '—';
   const nnIk1f = `≈0 (IT)${earthing?.imd_it_nn ? ' · IMD' : ''}`;
 
@@ -110,8 +113,8 @@ export function SldCanonPresetG1({ companion }: { companion: SldOzeArchetypeComp
       </g>
       {lbl(X.p2 + 14, 333, 'GTS 0,5A', TXT_MUTED, 9.5, 600)}
       <VtNoGround x={X.p2} y={360} />
-      {lbl(X.p2 - 96, 372, 'VT FD11', TXT, 11, 700)}
-      {lbl(X.p2 - 96, 385, '15/√3 · bez ziemi', TXT_MUTED, 9, 600)}
+      {lbl(X.p2 - 96, 372, vtRatioLabel(sn.un_kv, metering?.vt), TXT, 11, 700)}
+      {lbl(X.p2 - 96, 385, 'bez ziemi (→U)', TXT_MUTED, 9, 600)}
       <g data-keepout={ko(X.p2 - 11, 392, 22, 18)}>
         <rect x={X.p2 - 11} y={392} width={22} height={18} rx={2} fill="#0A1622" stroke={AMBER} strokeWidth={1.6} />
         <text x={X.p2} y={405} textAnchor="middle" fill={AMBER} fontFamily={MONO} fontSize={9} fontWeight={800}>Wh</text>
@@ -121,7 +124,7 @@ export function SldCanonPresetG1({ companion }: { companion: SldOzeArchetypeComp
 
       {/* CT AD11 — pierścień na szynie (pomiarowy, strona linii/OSD). */}
       <CtRing x={X.ctBus} y={snBusY} />
-      {lbl(X.ctBus, 182, 'CT AD11 · 40/5/5/5', TXT, 10.5, 700, 'middle')}
+      {lbl(X.ctBus, 182, ctRatioLabel(metering?.ct), TXT, 10.5, 700, 'middle')}
       <circle cx={X.ctBus} cy={snBusY + 38} r={2.5} fill={CYAN} />
       <line x1={X.ctBus} y1={snBusY + 9} x2={X.ctBus} y2={snBusY + 36} stroke={CYAN} strokeWidth={1.2} strokeDasharray="3 3" />
       {lbl(X.ctBus + 8, snBusY + 41, '→ I do −A16', TXT_MUTED, 9, 600)}
