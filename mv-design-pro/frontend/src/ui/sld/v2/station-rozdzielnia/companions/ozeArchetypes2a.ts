@@ -7110,13 +7110,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "protection_codes": [
           "67",
           "67N",
-          "46",
-          "47",
           "27",
           "59",
           "81U",
           "81O",
-          "df/dt"
+          "df/dt",
+          "anti-islanding"
         ],
         "role": "connection",
         "source_ref": "enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe"
@@ -7836,16 +7835,29 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "pn_ac_kw": 6000.0,
         "valid": true
       },
+      "protection": {
+        "converter": [
+          "RSC",
+          "DC-chopper",
+          "64R"
+        ],
+        "machine": [
+          "46",
+          "47",
+          "49",
+          "51"
+        ],
+        "source_ref": "norma:NC_RfG;norma:IEC_60255;std:DFIG_converter"
+      },
       "protection_codes": [
         "67",
         "67N",
-        "46",
-        "47",
         "27",
         "59",
         "81U",
         "81O",
-        "df/dt"
+        "df/dt",
+        "anti-islanding"
       ],
       "technology": "Wiatr \u2014 generatory dwustronnie zasilane (Typ 3, DFIG)",
       "withstand": {

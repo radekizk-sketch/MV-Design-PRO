@@ -11,6 +11,7 @@
  */
 import {
   AMBER,
+  AsyncMachine,
   CtRing,
   CYAN,
   fmt,
@@ -34,7 +35,6 @@ import {
   TXT_MUTED,
   UziemnikIEC,
   VtNoGround,
-  WindGen,
   Wylacznik,
 } from './sldCanonKit';
 import type { SldOzeArchetypeCompanion } from '../companions/ozeTypes';
@@ -60,6 +60,13 @@ export function SldCanonPresetG6({ companion }: { companion: SldOzeArchetypeComp
   const turbMw = String((col?.turbine_kw ?? 2000) / 1000).replace('.', ',');
   const colKv = fmt(sn.un_kv, 0); // collector kV from the FROZEN solver companion (ENEA-valid, no 30 kV)
   const turbTr = col?.turbine_transformer ?? '0,69/15 kV · 2,5 MVA';
+  // Audit #5: protection labels DERIVED from the companion (no hardcode = no false display).
+  // Interface = the connection-field codes (NC RfG, looking at the grid); machine + rotor
+  // converter from source.protection (46/47 neg-seq are MACHINE functions, not interface).
+  const ifaceCodes = (companion.fields.find((f) => f.interface_protection)?.protection_codes ?? []).join(' · ');
+  const prot = companion.source.protection;
+  const machineProt = prot?.machine.join(' · ') ?? '46 · 47 · 49 · 51';
+  const convProt = prot?.converter.join(' · ') ?? 'RSC · DC-chopper · 64R';
 
   const X = { lin: 400, ctBus: 530, pom: 660, t: [920, 1130, 1340], node: 1580 };
   const snBusY = 200;
@@ -89,8 +96,8 @@ export function SldCanonPresetG6({ companion }: { companion: SldOzeArchetypeComp
       {lbl(X.lin + 18, 304, 'Q0 wyłącznik · VCB', TXT2, 11, 700)}
       <RelayBox x={X.lin - 99} y={300} />
       <line x1={X.lin - 87} y1={300} x2={X.lin - 9} y2={300} stroke={CYAN} strokeWidth={1.3} strokeDasharray="3 3" />
-      {lbl(X.lin - 180, 333, 'zab. interfejsowe (NC RfG)', CYAN, 10, 700)}
-      {lbl(X.lin - 180, 346, '67/67N·81·27/59·df/dt·AI', TXT_MUTED, 9, 600)}
+      {lbl(X.lin - 188, 333, 'zab. interfejsowe (NC RfG)', CYAN, 10, 700)}
+      {lbl(X.lin - 12, 346, ifaceCodes, TXT_MUTED, 8.5, 600, 'end')}
       <UziemnikIEC x={X.lin} y={362} />
       {lbl(X.lin + 40, 380, 'uziemnik (IEC)', TXT_MUTED, 9.5, 600)}
       <Glowica x={X.lin} y={402} />
@@ -139,8 +146,8 @@ export function SldCanonPresetG6({ companion }: { companion: SldOzeArchetypeComp
           {lbl(fx + 16, 409, turbTr, TXT_MUTED, 8.5, 600)}
           <line x1={fx} y1={420} x2={fx} y2={500} stroke={NN_BUS} strokeWidth={2} />
           {i === 1 && <NodeBadge x={fx - 22} y={452} n={2} />}
-          {/* DFIG stator ◯ directly on the grid (the SC machine) */}
-          <WindGen x={fx} y={512} />
+          {/* DFIG stator ◯G∼ (ASYNCHRONOUS machine) directly on the grid (the SC source) */}
+          <AsyncMachine x={fx} y={512} />
           {/* rotor branch: PARTIAL converter ~/= (~30%), crowbar shorts it at fault */}
           <line x1={fx} y1={470} x2={fx + 34} y2={470} stroke={NN_BUS} strokeWidth={1.6} />
           <line x1={fx + 34} y1={470} x2={fx + 34} y2={503} stroke={NN_BUS} strokeWidth={1.6} />
@@ -152,7 +159,7 @@ export function SldCanonPresetG6({ companion }: { companion: SldOzeArchetypeComp
         </g>
       ))}
       {lbl((X.t[0] + X.t[X.t.length - 1]) / 2, 616, '0,69 kV: stojan DFIG na sieci = MASZYNA asynchroniczna (PN-EN 60909, za X″); crowbar zwiera wirnik przy zwarciu → klatkowa', TXT_MUTED, 9, 600, 'middle')}
-      {lbl((X.t[0] + X.t[X.t.length - 1]) / 2, 629, 'zab. maszyny: 27/59 · 81 · 51 · 46 · 49 + crowbar + ochrona przekształtnika wirnikowego', TXT_MUTED, 8.5, 600, 'middle')}
+      {lbl((X.t[0] + X.t[X.t.length - 1]) / 2, 629, `zab. maszyny: ${machineProt} + crowbar + przekształtnik wirnikowy: ${convProt}`, TXT_MUTED, 8.5, 600, 'middle')}
 
       {/* ── node ① — collector 15 kV (sieć + MASZYNA referred through the turbine TR) ── */}
       <NodeReadout x={X.node} y={236} n={1} title={`kolektor SN · ${colKv} kV`}
@@ -182,7 +189,7 @@ export function SldCanonPresetG6({ companion }: { companion: SldOzeArchetypeComp
         ['VT — bez ziemi (→V)', (cx: number, cy: number) => <VtNoGround x={cx - 14} y={cy} />],
         ['GŁOWICA (trójkąt)', (cx: number, cy: number) => <Glowica x={cx} y={cy} />],
         ['ZABEZPIECZENIE', (cx: number, cy: number) => <RelayBox x={cx} y={cy} />],
-        ['DFIG ◯ (maszyna async)', (cx: number, cy: number) => <WindGen x={cx} y={cy} />],
+        ['DFIG ◯G∼ (maszyna asynchr.)', (cx: number, cy: number) => <AsyncMachine x={cx} y={cy} />],
         ['PRZEKSZTAŁTNIK WIRNIKOWY ~/= (~30%)', (cx: number, cy: number) => <InverterSym x={cx} y={cy} />],
         ['kierunek mocy', (cx: number, cy: number) => <PowerArrow x={cx} y={cy - 9} dir="up" />],
       ].map(([label, sym], i) => {

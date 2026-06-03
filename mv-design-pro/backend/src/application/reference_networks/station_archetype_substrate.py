@@ -917,9 +917,10 @@ _PROTECTION_BY_MACHINE: dict[str, list[str]] = {
     "SYNCHRONOUS": ["25", "21", "40", "32", "46", "87", "59N", "67N", "81U", "81O"],
     # Asynchronous machine: self-excitation guard + directional OC + Q control.
     "ASYNCHRONOUS": ["67", "67N", "47", "27", "59", "81U", "81O"],
-    # DFIG (wind Type 3): induction-machine OC + neg-seq + crowbar/converter ride-through
-    # (voltage/frequency + df/dt for NC RfG LVRT).
-    "DFIG": ["67", "67N", "46", "47", "27", "59", "81U", "81O", "df/dt"],
+    # DFIG (wind Type 3) — INTERFACE set only (line bay, NC RfG). The MACHINE functions
+    # (46/47 neg-seq, 49, 51) + the rotor-CONVERTER protection live on source.protection,
+    # NOT on the grid interface (audit #5).
+    "DFIG": ["67", "67N", "27", "59", "81U", "81O", "df/dt", "anti-islanding"],
 }
 
 
@@ -2769,6 +2770,15 @@ def build_g6_wind_dfig() -> dict[str, Any]:
         "turbine_transformer": f"{_WINDA3_LV_KV}/{_WINDA3_COLLECTOR_KV:.0f} kV · {_WINDA3_TR_MVA} MVA",
         "turbine_lv_kv": _WINDA3_LV_KV,
         "topology": "radial",
+    }
+    # Audit #5: protection split. INTERFACE (NC RfG) lives on the connection field's
+    # protection_codes (the renderer derives the line-bay label from there — no hardcode).
+    # 46/47 (neg-seq) are MACHINE functions, not grid-interface; the rotor-CONVERTER set is
+    # named here (single truth).
+    src["protection"] = {
+        "source_ref": "norma:NC_RfG;norma:IEC_60255;std:DFIG_converter",
+        "machine": ["46", "47", "49", "51"],
+        "converter": ["RSC", "DC-chopper", "64R"],
     }
     # §5 P0 — OSD neutral-point earthing drives Ik″1f-z at the 15 kV collector (compensated;
     # ∝ Un, like Typ 4). P1 — dynamic (peak) withstand beside Icw; DFIG ip is HIGHER than the

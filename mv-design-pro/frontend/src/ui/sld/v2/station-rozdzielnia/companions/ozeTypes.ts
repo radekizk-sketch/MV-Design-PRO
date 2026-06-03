@@ -144,6 +144,15 @@ export interface OzeWithstand {
   readonly nn_idyn_ka: number;
 }
 
+/** Audit #5 — MACHINE + rotor-CONVERTER protection (rotating-machine sources). The grid
+ *  INTERFACE protection (NC RfG) lives on the connection field's protection_codes, NOT here
+ *  (46/47 neg-seq are machine functions, not interface). */
+export interface OzeMachineProtection {
+  readonly source_ref: string;
+  readonly machine: readonly string[];
+  readonly converter: readonly string[];
+}
+
 export interface OzeSourceMeta {
   readonly technology: string; // PV | BESS | FW | ...
   readonly machine_type: 'IBG' | 'SYNCHRONOUS' | 'ASYNCHRONOUS' | 'DFIG';
@@ -151,6 +160,8 @@ export interface OzeSourceMeta {
   readonly control_mode: string; // cosφ=const | Q=const | cosφ(P) | Q(U) | P(f)
   /** Gate I — protection function codes (real names from the doc), per device. */
   readonly protection_codes: readonly string[];
+  /** Audit #5 — machine + rotor-converter protection (rotating machines: DFIG, ...). */
+  readonly protection?: OzeMachineProtection;
   readonly power_hierarchy: OzePowerHierarchy;
   /** Present iff this template is distilled from a real reference schematic. */
   readonly schematic?: OzeSchematic;

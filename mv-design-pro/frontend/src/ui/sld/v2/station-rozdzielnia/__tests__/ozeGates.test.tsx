@@ -288,8 +288,12 @@ describe('GATE J′ — rotating machines: machine-typed SC contribution (not IB
     expect(c, 'G6-WIND-DFIG template must exist').toBeTruthy();
     expect(c.source.machine_type).toBe('DFIG');
     const conn = c.fields.find((f) => f.role === 'connection')!;
-    expect(conn.protection_codes).toContain('46'); // negative-sequence — DFIG set
+    // Audit #5: 46/47 (neg-seq) are MACHINE functions — NOT on the grid interface (connection field).
+    expect(conn.protection_codes).not.toContain('46'); // moved off the interface set
+    expect(conn.protection_codes).toContain('67'); // interface = directional OC (NC RfG)
     expect(conn.protection_codes).not.toContain('25'); // no synchro-check (not synchronous)
+    expect(c.source.protection!.machine).toContain('46'); // neg-seq lives on the machine set
+    expect(c.source.protection!.converter).toContain('64R'); // rotor earth-fault named (DFIG)
     for (const bus of Object.values(c.short_circuit.buses)) {
       const sc = bus.source_contribution;
       expect(sc.machine_type).toBe('DFIG');

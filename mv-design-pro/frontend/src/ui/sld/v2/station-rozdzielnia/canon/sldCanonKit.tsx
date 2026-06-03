@@ -179,6 +179,18 @@ export function WindGen({ x, y }: { x: number; y: number }): JSX.Element {
   );
 }
 
+/** IEC 60617 rotating machine ◯ marked "G∼" = ASYNCHRONOUS (induction) generator — the ∼ is
+ * the induction/AC marking, distinct from the synchronous WindGen ◯"G" (PMSG). Used where the
+ * machine itself is the SC source on the grid (DFIG stator, cage), not behind a full converter. */
+export function AsyncMachine({ x, y }: { x: number; y: number }): JSX.Element {
+  return (
+    <g data-keepout={ko(x - 12, y - 12, 24, 24)}>
+      <circle cx={x} cy={y} r={12} fill="none" stroke={AMBER} strokeWidth={1.7} />
+      <text x={x} y={y + 4} textAnchor="middle" fill={AMBER} fontFamily={SANS} fontSize={11} fontWeight={800}>G∼</text>
+    </g>
+  );
+}
+
 const CIRCLED = ['①', '②', '③', '④', '⑤'];
 
 /** SCADA node readout (no frame, no table) — "wielkość = wartość" at the node. */
