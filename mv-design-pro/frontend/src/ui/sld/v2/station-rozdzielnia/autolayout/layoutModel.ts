@@ -83,10 +83,21 @@ export function companionToStationModel(companion: SldOzeArchetypeCompanion): St
   });
   bays.push({ id: `${companion.archetype}/metering`, busId: mainBus, role: 'metering', label: 'Pole pomiarowe' });
 
+  // Single-type archetypes (G5–G8) don't tag each field; fall back to the source meta so the bay
+  // gets the right glyph. A MIXED archetype (G9) MUST carry per-field source_kind.
+  const fallbackKind = ((): SourceKind | undefined => {
+    switch (companion.source.machine_type) {
+      case 'IBG': return 'IBG';
+      case 'SYNCHRONOUS': return 'SYNCHRONOUS';
+      case 'ASYNCHRONOUS':
+      case 'DFIG': return 'ASYNCHRONOUS';
+      default: return undefined; // MIXED → per-field
+    }
+  })();
   const lvBusesWithSource = new Set<string>();
   for (const f of companion.fields.filter((f) => f.role === 'source')) {
     const onBus = f.on_bus_ref;
-    bays.push({ id: f.field_id, busId: onBus, role: 'source', label: f.kind, sourceKind: f.source_kind });
+    bays.push({ id: f.field_id, busId: onBus, role: 'source', label: f.kind, sourceKind: f.source_kind ?? fallbackKind });
     if (onBus !== mainBus) lvBusesWithSource.add(onBus);
   }
   // ONE block transformer (HV pole on the PCC) per LOWER busbar that carries sources.
