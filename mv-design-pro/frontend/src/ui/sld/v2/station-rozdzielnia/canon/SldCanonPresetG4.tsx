@@ -60,13 +60,23 @@ export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeComp
   const snX2 = 1540;
   const nnBusY = 600;
   const nodeX = 1350;
+  // BUS-variant nN trains: each bus span is computed FROM its transformer-drop x + feeder
+  // xs, so the drop ALWAYS lands on the bus (render↔model continuity — no hanging feeder).
+  const PAD = 35;
+  const pvTrX = 380;
+  const pvFeeders = [320, 440, 560];
+  const bessTrX = 760;
+  const pcsFeeders = [720, 880];
+  const span = (xs: number[]): [number, number] => [Math.min(...xs) - PAD, Math.max(...xs) + PAD];
+  const [pvX1, pvX2] = span([pvTrX, ...pvFeeders]);
+  const [bessX1, bessX2] = span([bessTrX, ...pcsFeeders]);
   const title = 'SZABLON SLD — HYBRYDA PV + BESS (IEC)';
   const subtitle = isBus
     ? `Wspólna szyna SN ${colKv} kV (sprzężenie na SN) | POLE TR PV · TR BESS · Pomiarowe · Liniowe | PV ${pvKw / 1000} MW + BESS ${bessKw / 1000} MW / ${bessMwh} MWh`
     : `AC-coupled — wspólny trafo przyłączeniowy (sprzężenie na nN) | POLE TR · Pomiarowe · Liniowe | PV ${pvKw / 1000} MW + BESS ${bessKw / 1000} MW / ${bessMwh} MWh`;
 
   // One nN source feeder: drop from the bus, breaker, inverter (+ battery for a PCS).
-  const sourceFeeder = (fx: number, key: string, label: string, kw: number, isPcs: boolean, share: number) => (
+  const sourceFeeder = (fx: number, key: string, label: string, kw: number, isPcs: boolean) => (
     <g key={key} data-testid={key}>
       <line x1={fx} y1={nnBusY} x2={fx} y2={648} stroke={NN_BUS} strokeWidth={1.8} />
       {isPcs ? <PowerArrowBi x={fx - 16} y={636} /> : <PowerArrow x={fx - 16} y={636} dir="up" />}
@@ -75,7 +85,7 @@ export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeComp
       <InverterSym x={fx} y={701} />
       {isPcs ? <BatteryGlyph x={fx + 15} y={701} /> : null}
       {lbl(fx, 734, `${label} · ${kw} kW`, isPcs ? AMBER : CYAN, 11, 800, 'middle')}
-      {lbl(fx, 747, `${isPcs ? '4Q' : '~/='} · Ik″ ≈ ${fmt(share, 2)} kA`, TXT2, 9, 700, 'middle')}
+      {lbl(fx, 747, isPcs ? '4Q · 2-kier.' : '~/= · IBG §6.7', TXT2, 9, 700, 'middle')}
     </g>
   );
 
@@ -137,6 +147,14 @@ export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeComp
       icw={bsc.icw_ka} icwOk={bsc.verification.passed} ip={bsc.max.ip_ka} idyn={idyn} />
   );
 
+  // nN-node share: grid-through-TR + LOCAL IBG (per-bus k·In from the companion).
+  const nnShare = (bsc: OzeScBus, srcLabel: string): string => {
+    const ibg = bsc.source_contribution.ik_contribution_ka ?? 0;
+    return `TR ${fmt(Math.max(0, bsc.max.ikss_ka - ibg), 1)} + ${srcLabel} ${fmt(ibg, 1)} kA`;
+  };
+  // SN-node share: grid + the PV+BESS IBG REFERRED to SN (~0.09 kA, not the raw nN sum).
+  const snShareTxt = `sieć ${fmt(snGridShare, 1)} + PV+BESS ${fmt(faln, 2)} kA`;
+
   return (
     <g data-testid={isBus ? 'sld-canon-g4-bus' : 'sld-canon-g4-ac'}>
       {/* ── header ── */}
@@ -151,33 +169,33 @@ export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeComp
 
       {isBus ? (
         <>
-          {/* ── BUS variant: TR PV + TR BESS on the common SN busbar ── */}
-          {lbl(360 - 84, 160, 'POLE · TR PV', CYAN, 12, 700)}
-          {trafoBay(360, 'T-PV · Dyn', `${fmt(1.0, 2)} MVA · ${colKv}/0,8 kV`, 462)}
-          {lbl(620 - 96, 160, 'POLE · TR BESS', CYAN, 12, 700)}
-          {trafoBay(620, 'T-BESS · Dyn', `${fmt(1.25, 2)} MVA · ${colKv}/0,4 kV`, 462)}
-          {meteringBay(900, 1010)}
-          {lineBay(1130)}
+          {/* ── BUS variant: TR PV + TR BESS on the common SN busbar; each drops onto its
+              OWN nN bus whose span is computed to contain the drop (render↔model continuity). ── */}
+          {lbl(pvTrX - 84, 160, 'POLE · TR PV', CYAN, 12, 700)}
+          {trafoBay(pvTrX, 'T-PV · Dyn', `${fmt(1.0, 2)} MVA · ${colKv}/0,8 kV`, 462)}
+          {lbl(bessTrX - 96, 160, 'POLE · TR BESS', CYAN, 12, 700)}
+          {trafoBay(bessTrX, 'T-BESS · Dyn', `${fmt(1.25, 2)} MVA · ${colKv}/0,4 kV`, 462)}
+          {meteringBay(1010, 1095)}
+          {lineBay(1180)}
 
-          {/* PV nN busbar (0,8 kV) + 3 inverters */}
-          <line x1={270} y1={nnBusY} x2={595} y2={nnBusY} stroke={NN_BUS} strokeWidth={5} strokeLinecap="round" />
-          {lbl(270, nnBusY - 10, 'nN PV · 0,8 kV', TXT2, 11, 700)}
-          <NodeBadge x={585} y={nnBusY} n={2} />
-          {[330, 432, 534].map((fx, i) => sourceFeeder(fx, `g4bus-pv-${i}`, `PV ${i + 1}`, 333, false, faln / 5))}
+          {/* PV nN busbar (0,8 kV, IT) — span [pvX1,pvX2] covers the T-PV drop + feeders */}
+          <line x1={pvX1} y1={nnBusY} x2={pvX2} y2={nnBusY} stroke={NN_BUS} strokeWidth={5} strokeLinecap="round" />
+          {lbl(pvX1, nnBusY - 10, 'nN PV · 0,8 kV · IT', TXT2, 11, 700)}
+          <NodeBadge x={pvX2 - 10} y={nnBusY} n={2} />
+          {pvFeeders.map((fx, i) => sourceFeeder(fx, `g4bus-pv-${i}`, `PV ${i + 1}`, 333, false))}
 
-          {/* BESS nN busbar (0,4 kV) + 2 PCS */}
-          <line x1={660} y1={nnBusY} x2={985} y2={nnBusY} stroke={NN_BUS} strokeWidth={5} strokeLinecap="round" />
-          {lbl(700, nnBusY - 10, 'nN BESS · 0,4 kV', TXT2, 11, 700)}
-          <NodeBadge x={975} y={nnBusY} n={3} />
-          {[740, 880].map((fx, i) => sourceFeeder(fx, `g4bus-pcs-${i}`, `PCS ${i + 1}`, 500, true, faln / 4))}
+          {/* BESS nN busbar (0,4 kV, IT) — span [bessX1,bessX2] covers the T-BESS drop + feeders */}
+          <line x1={bessX1} y1={nnBusY} x2={bessX2} y2={nnBusY} stroke={NN_BUS} strokeWidth={5} strokeLinecap="round" />
+          {lbl(bessX1, nnBusY - 10, 'nN BESS · 0,4 kV · IT', TXT2, 11, 700)}
+          <NodeBadge x={bessX2 - 10} y={nnBusY} n={3} />
+          {pcsFeeders.map((fx, i) => sourceFeeder(fx, `g4bus-pcs-${i}`, `PCS ${i + 1}`, 500, true))}
 
-          {/* node readouts ①②③ */}
-          {nodeReadout(nodeX, 236, 1, `szyna SN · ${colKv} kV`, sn, snSc,
-            `sieć ${fmt(snGridShare, 1)} + PV+BESS ${fmt(faln, 1)} kA`, snIk1f, withstand?.sn_idyn_ka ?? 0)}
+          {/* node readouts ①②③ (numerical share per bus) */}
+          {nodeReadout(nodeX, 236, 1, `szyna SN · ${colKv} kV`, sn, snSc, snShareTxt, snIk1f, withstand?.sn_idyn_ka ?? 0)}
           {nodeReadout(nodeX, 470, 2, 'szyna nN PV · 0,80 kV', vf['PV_NN'], sc['PV_NN'],
-            `TR + falowniki PV`, nnIk1f, withstand?.nn_idyn_ka ?? 0)}
+            nnShare(sc['PV_NN'], 'falow.'), nnIk1f, withstand?.nn_idyn_ka ?? 0)}
           {nodeReadout(nodeX, 700, 3, 'szyna nN BESS · 0,40 kV', vf['BESS_NN'], sc['BESS_NN'],
-            `TR + PCS (4Q)`, nnIk1f, withstand?.nn_idyn_ka ?? 0)}
+            nnShare(sc['BESS_NN'], 'PCS'), nnIk1f, withstand?.nn_idyn_ka ?? 0)}
         </>
       ) : (
         <>
@@ -191,14 +209,13 @@ export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeComp
           <line x1={300} y1={nnBusY} x2={1180} y2={nnBusY} stroke={NN_BUS} strokeWidth={5} strokeLinecap="round" />
           {lbl(1180 + 14, nnBusY + 4, 'nN · 0,8 kV · IT', TXT2, 12, 700)}
           <NodeBadge x={1160} y={nnBusY} n={2} />
-          {[400, 520, 640].map((fx, i) => sourceFeeder(fx, `g4ac-pv-${i}`, `PV ${i + 1}`, 333, false, faln / 5))}
-          {[860, 1000].map((fx, i) => sourceFeeder(fx, `g4ac-pcs-${i}`, `PCS ${i + 1}`, 500, true, faln / 4))}
+          {[400, 520, 640].map((fx, i) => sourceFeeder(fx, `g4ac-pv-${i}`, `PV ${i + 1}`, 333, false))}
+          {[860, 1000].map((fx, i) => sourceFeeder(fx, `g4ac-pcs-${i}`, `PCS ${i + 1}`, 500, true))}
 
-          {/* node readouts ①② */}
-          {nodeReadout(nodeX, 236, 1, `szyna SN · ${colKv} kV`, sn, snSc,
-            `sieć ${fmt(snGridShare, 1)} + PV+BESS ${fmt(faln, 1)} kA`, snIk1f, withstand?.sn_idyn_ka ?? 0)}
+          {/* node readouts ①② (numerical share per bus) */}
+          {nodeReadout(nodeX, 236, 1, `szyna SN · ${colKv} kV`, sn, snSc, snShareTxt, snIk1f, withstand?.sn_idyn_ka ?? 0)}
           {nodeReadout(nodeX, 690, 2, 'szyna nN · 0,80 kV · IT', vf['NN'], sc['NN'],
-            `TR + PV+BESS ${fmt(faln, 1)} kA`, nnIk1f, withstand?.nn_idyn_ka ?? 0)}
+            nnShare(sc['NN'], 'PV+BESS'), nnIk1f, withstand?.nn_idyn_ka ?? 0)}
         </>
       )}
 

@@ -2085,16 +2085,20 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
     s.add_slack("GPZ")
     s.add_bus("SN_PCC", _PVBESS_SN_KV)
     s.add_line(SR_IN, "GPZ", "SN_PCC", _GRID_INFEED_R, _GRID_INFEED_X)
-    ibg_a = 0.0
+    # IBG short-circuit contribution tracked PER BUS (gate J §6.7). nN buses carry the
+    # LOCAL bounded current k·In; the SN/PCC carries it REFERRED through the transformers
+    # (I_SN = Σ I_nN·U_nN/U_SN) — like G6-WIND (referred to the collector), NOT the raw nN sum.
+    ibg_by_bus_a: dict[str, float] = {}
+    bus_kv: dict[str, float] = {}
 
     def _add_sources(prefix: str, bus: str, count: int, kva: float, src_type: str, un_kv: float) -> None:
-        nonlocal ibg_a
+        bus_kv[bus] = un_kv
         for i in range(count):
             node = f"{prefix}{i + 1}"
             s.add_bus(node, un_kv)
             s.add_line(f"sr/branch/{prefix.lower()}{i + 1}", bus, node, _NN_FEEDER_R, _NN_FEEDER_X)
             s.add_load(node, p_mw=-kva / 1000.0, q_mvar=0.0)  # eksport (gen / rozładowanie)
-            ibg_a += s.add_inverter(
+            ibg_by_bus_a[bus] = ibg_by_bus_a.get(bus, 0.0) + s.add_inverter(
                 node, rated_kva=kva, un_kv=un_kv, k_sc=_IBG_K, source_type=src_type
             )
 
@@ -2121,7 +2125,9 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
         buses = [("SN_PCC", _PVBESS_SN_KV, 16.0), ("NN", _PVBESS_PV_NN_KV, 50.0)]
 
     s.finalize_pq()
-    total_ibg_ka = ibg_a / 1000.0
+    # SN/PCC IBG contribution = the per-bus nN currents referred through the transformers.
+    sn_referred_a = sum(a * bus_kv[b] / _PVBESS_SN_KV for b, a in ibg_by_bus_a.items())
+    total_ibg_ka = sn_referred_a / 1000.0
 
     coupling_pl = (
         "sprzężenie na SN (wspólna szyna 15 kV, osobne trafa)"
@@ -2205,7 +2211,7 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
             kind=f"PCS BESS {i + 1} · {_PVBESS_BESS_PCS_KVA:.0f} kW (2-kier.)", abb_cell="SDC", on_bus=bess_bus,
             source_ref=f"enm:Generator.gen_type=bess;std:pcs_{i + 1}", interface_protection=False))
 
-    return _oze_companion(
+    companion = _oze_companion(
         arch,
         substrate=s,
         buses=buses,
@@ -2215,6 +2221,11 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
         fields=fields,
         boundary=_boundary("G-ZKSN", on_bus="SN_PCC", metered=True),
     )
+    # Per-bus IBG tag: nN buses = LOCAL k·In; SN/PCC = referred (set by ibg_ka above).
+    sc_buses = companion["short_circuit"]["buses"]
+    for bus, amps in ibg_by_bus_a.items():
+        sc_buses[bus]["source_contribution"]["ik_contribution_ka"] = round(amps / 1000.0, 3)
+    return companion
 
 
 def build_g4_pvbess_bus() -> dict[str, Any]:

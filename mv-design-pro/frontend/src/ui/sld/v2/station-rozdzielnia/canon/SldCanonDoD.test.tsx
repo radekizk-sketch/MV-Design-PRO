@@ -10,7 +10,7 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { OZE_ARCHETYPES_2A } from '../companions/ozeArchetypes2a';
-import { glyphTextCollisions } from './sldCanonKit';
+import { busbarDanglingConductors, glyphTextCollisions } from './sldCanonKit';
 import { SldCanonPresetG1 } from './SldCanonPresetG1';
 import { SldCanonPresetG2 } from './SldCanonPresetG2';
 import { SldCanonPresetG3 } from './SldCanonPresetG3';
@@ -85,6 +85,10 @@ describe('DoD §8 — canonical OZE preset acceptance', () => {
 
       it('§8.5 — render clean: no annotation text overlaps a canonical glyph', () => {
         expect(glyphTextCollisions(svg(), p.band), 'text-on-glyph collisions').toEqual([]);
+      });
+
+      it('§8.6 — render↔model continuity: no conductor dangles off a busbar', () => {
+        expect(busbarDanglingConductors(svg()), 'hanging conductors').toEqual([]);
       });
     });
   }

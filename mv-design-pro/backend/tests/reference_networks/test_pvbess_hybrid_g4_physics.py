@@ -76,6 +76,22 @@ def test_ac_variant_shares_one_bus_behind_one_transformer():
     assert len([f for f in c["fields"] if f["role"] == "source"]) == 5
 
 
+def test_ibg_contribution_referred_to_sn():
+    # IBG (PV+BESS) is current-limited (§6.7); its contribution at the SN/PCC MUST be
+    # REFERRED through the transformers (I_SN = Σ I_nN·U_nN/U_SN) → small (~0.09 kA), like
+    # G6-WIND (referred to the collector), NOT the raw nN sum (~2.6 kA). The nN buses keep
+    # the LOCAL k·In (larger). Regression guard for the "~20× overstated SN share" defect.
+    for build in (build_g4_pvbess_bus, build_g4_pvbess_ac):
+        c = build()
+        b = c["short_circuit"]["buses"]
+        sn_ibg = b["SN_PCC"]["source_contribution"]["ik_contribution_ka"]
+        assert sn_ibg == pytest.approx(0.09, abs=0.03)  # referred to 15 kV (~0.1, like wind)
+        assert sn_ibg < 0.2  # NOT the raw nN sum (~2.6 kA)
+        for bus, e in b.items():
+            if bus != "SN_PCC":  # every nN bus carries the larger LOCAL contribution
+                assert e["source_contribution"]["ik_contribution_ka"] > sn_ibg * 5
+
+
 def test_hybrid_deterministic():
     assert build_g4_pvbess_bus() == build_g4_pvbess_bus()
     assert build_g4_pvbess_ac() == build_g4_pvbess_ac()

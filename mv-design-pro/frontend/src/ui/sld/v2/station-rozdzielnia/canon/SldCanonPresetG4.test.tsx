@@ -9,7 +9,7 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { OZE_ARCHETYPES_2A } from '../companions/ozeArchetypes2a';
-import { glyphTextCollisions } from './sldCanonKit';
+import { busbarDanglingConductors, glyphTextCollisions } from './sldCanonKit';
 import { SldCanonPresetG4 } from './SldCanonPresetG4';
 
 const BUS = OZE_ARCHETYPES_2A['G4-PVBESS-BUS']; // SN-coupled hybrid (solver-bound, IBG)
@@ -77,5 +77,22 @@ describe('SldCanonPresetG4 — PV+BESS hybrid (both coupling variants)', () => {
       const svg = renderG4(c).container.querySelector('svg')!;
       expect(glyphTextCollisions(svg, [130, 640]), 'G4 text-on-glyph collisions').toEqual([]);
     }
+  });
+
+  it('CONTINUITY: every transformer drop lands on its nN bus — no hanging conductor', () => {
+    // The BESS-island defect: T-BESS dropping next to (not onto) the BESS nN bus.
+    for (const c of [BUS, AC]) {
+      const svg = renderG4(c).container.querySelector('svg')!;
+      expect(busbarDanglingConductors(svg), 'G4 hanging conductors').toEqual([]);
+    }
+  });
+
+  it('SC share at ① is the PV+BESS IBG REFERRED to SN (~0,09 kA), not the raw nN sum', () => {
+    const txt = renderG4(BUS).container.textContent ?? '';
+    const snIbg = BUS.short_circuit.buses['SN_PCC'].source_contribution.ik_contribution_ka ?? 0;
+    expect(snIbg).toBeLessThan(0.2); // referred (~0.09), NOT ~2.6 kA
+    expect(txt).toContain(`PV+BESS ${snIbg.toFixed(2).replace('.', ',')} kA`);
+    // nN buses carry the larger LOCAL contribution (numerical share like ①).
+    expect(BUS.short_circuit.buses['BESS_NN'].source_contribution.ik_contribution_ka).toBeGreaterThan(1);
   });
 });

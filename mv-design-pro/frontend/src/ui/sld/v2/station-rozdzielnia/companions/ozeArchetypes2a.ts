@@ -2880,7 +2880,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "source_contribution": {
-            "ik_contribution_ka": 1.731,
+            "ik_contribution_ka": 0.092,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
@@ -3505,7 +3505,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "source_contribution": {
-            "ik_contribution_ka": 2.597,
+            "ik_contribution_ka": 1.732,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
@@ -3795,7 +3795,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "source_contribution": {
-            "ik_contribution_ka": 2.597,
+            "ik_contribution_ka": 0.865,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"
@@ -4085,7 +4085,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "source_contribution": {
-            "ik_contribution_ka": 2.597,
+            "ik_contribution_ka": 0.092,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated)"

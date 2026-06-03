@@ -241,3 +241,34 @@ export function glyphTextCollisions(svg: SVGSVGElement, band: [number, number] =
   }
   return out;
 }
+
+/** Render↔model CONTINUITY (DoD §8.6) — the conductor analogue of "no orphan station":
+ * every VERTICAL conductor endpoint that lands at a busbar's Y-level MUST lie within some
+ * busbar's X-span. A transformer drop / feeder cannot dangle next to a bus it never touches
+ * (a bus that is connected in the model rendered as a visual island). Conductors = the
+ * SN_BUS/NN_BUS coloured power lines (dashed signal lines excluded); busbars = the thick
+ * (≥4) horizontal ones. Returns the dangling endpoints (empty ⇒ every drawn connection is
+ * a continuous path). Shared by the family tests so the rule holds across G1…G9. */
+export function busbarDanglingConductors(svg: SVGSVGElement, tol = 4): string[] {
+  const n = (el: Element, a: string): number => Number(el.getAttribute(a));
+  const isConductor = (el: Element): boolean => {
+    const s = el.getAttribute('stroke');
+    return (s === SN_BUS || s === NN_BUS) && !el.getAttribute('stroke-dasharray');
+  };
+  const lines = Array.from(svg.querySelectorAll('line')).filter(isConductor);
+  const bars = lines
+    .filter((l) => Math.abs(n(l, 'y1') - n(l, 'y2')) < 1 && n(l, 'stroke-width') >= 4)
+    .map((l) => ({ y: n(l, 'y1'), x0: Math.min(n(l, 'x1'), n(l, 'x2')), x1: Math.max(n(l, 'x1'), n(l, 'x2')) }));
+  const out: string[] = [];
+  for (const l of lines) {
+    if (Math.abs(n(l, 'x1') - n(l, 'x2')) >= 1) continue; // vertical conductors only
+    const x = n(l, 'x1');
+    for (const y of [n(l, 'y1'), n(l, 'y2')]) {
+      if (!bars.some((b) => Math.abs(b.y - y) <= tol)) continue; // endpoint not at a bus level
+      if (!bars.some((b) => Math.abs(b.y - y) <= tol && x >= b.x0 - tol && x <= b.x1 + tol)) {
+        out.push(`conductor @x=${x} ends at busbar y=${y} but lands on no bus span (hanging)`);
+      }
+    }
+  }
+  return out;
+}
