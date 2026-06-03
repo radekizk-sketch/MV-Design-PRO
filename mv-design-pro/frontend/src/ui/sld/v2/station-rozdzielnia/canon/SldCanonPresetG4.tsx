@@ -115,7 +115,7 @@ export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeComp
       <Odlacznik x={px} y={252} />
       {lbl(px + 18, 256, 'Q odłącznik', TXT2, 11, 700)}
       <VtNoGround x={px} y={360} />
-      {lbl(px - 96, 372, vtRatioLabel(sn.un_kv, metering?.vt), TXT, 11, 700)}
+      {lbl(px - 96, 372, vtRatioLabel(sn.un_kv), TXT, 11, 700)}
       {lbl(px - 96, 385, 'bez ziemi (→U)', TXT_MUTED, 9, 600)}
       {lbl(px - 78, 428, 'POMIAR rozliczeniowy', AMBER, 11, 700)}
       {lbl(px - 78, 441, 'granica = układ pomiarowy (I z CT, U z VT)', TXT_MUTED, 8.5, 600)}

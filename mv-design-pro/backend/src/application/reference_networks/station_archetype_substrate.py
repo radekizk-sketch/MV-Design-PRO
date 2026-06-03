@@ -983,7 +983,6 @@ def _metering(
     ct_type: str | None = None,
     vt_usn_v: float = 100.0,
     vt_fv: float = 1.9,
-    vt_type: str | None = None,
 ) -> dict[str, Any]:
     """SN measurement-bay CT/VT nameplates as STRUCTURED fields — the SLD renders the ratio
     from these and never hard-codes one. ct_ipn_a is next-std ≥ I_load (the representative,
@@ -993,10 +992,7 @@ def _metering(
     ct: dict[str, Any] = {"ipn_a": ct_ipn_a, "isn_a": ct_isn_a, "cores": ct_cores}
     if ct_type is not None:
         ct["type"] = ct_type
-    vt: dict[str, Any] = {"usn_v": vt_usn_v, "fv": vt_fv}
-    if vt_type is not None:
-        vt["type"] = vt_type
-    return {"source_ref": source_ref, "ct": ct, "vt": vt}
+    return {"source_ref": source_ref, "ct": ct, "vt": {"usn_v": vt_usn_v, "fv": vt_fv}}
 
 
 def _oze_sc_bus(
@@ -1749,7 +1745,6 @@ def build_g4_pvtr() -> dict[str, Any]:
         ct_ipn_a=40.0,  # next-std ≥ I_load ≈ 38 A (PV 1 MW @ 15,75 kV)
         ct_cores=3,
         ct_type="AD11",
-        vt_type="FD11",
     )
     # nN inverter feeder fields (≥3, not one block) + Q1 main + own-needs.
     nn_fields = [
@@ -2607,8 +2602,8 @@ def _sn_line_connection_field(
     )
 
 
-def build_g7_biogaz() -> dict[str, Any]:
-    """G7 — Biogazownia (kogeneracja) — GENERYCZNY archetyp wg norm (NC RfG / IEC
+def build_g8_biogaz() -> dict[str, Any]:
+    """G8 — Biogazownia (kogeneracja SYNCHRONICZNA) — GENERYCZNY archetyp wg norm (NC RfG / IEC
     60909), agregaty SYNCHRONICZNE (NIE IBG) przyłączone na SN (generyczna abstrakcja
     bloku agregat + podwyższenie napięcia), na szynie przyłączeniowej z polem liniowym SN do OSD.
 
@@ -2656,7 +2651,7 @@ def build_g7_biogaz() -> dict[str, Any]:
     }
     genset_fields = [
         _field(
-            f"g7-gen{i + 1}",
+            f"g8-gen{i + 1}",
             role="source",
             kind=f"Agregat synchroniczny {i + 1} · {genset_kw / 1000:.0f} MW",
             abb_cell="SDC",
@@ -2667,7 +2662,7 @@ def build_g7_biogaz() -> dict[str, Any]:
         for i in range(n_gen)
     ]
     return _oze_companion(
-        "G7-BIOGAZ",
+        "G8-BIOGAZ",
         substrate=s,
         buses=[("SN_PCC", _BASE_KV, 25.0)],
         pcc_bus="SN_PCC",
@@ -2683,8 +2678,8 @@ def build_g7_biogaz() -> dict[str, Any]:
     )
 
 
-def build_g8_wind_async() -> dict[str, Any]:
-    """G8 — Wiatr Typ 1 (generator ASYNCHRONICZNY, stała prędkość) — GENERYCZNY
+def build_g7_wind_async() -> dict[str, Any]:
+    """G7 — Wiatr Typ 1 (generator ASYNCHRONICZNY, stała prędkość) — GENERYCZNY
     archetyp wg norm (NC RfG / IEC 61400 / IEC 60909). n turbin, KAŻDA z generatorem
     indukcyjnym (nN) i własnym trafem turbinowym (nN→kolektor SN), zebranych radialnie
     na szynie kolektora SN; pole liniowe SN łączy kolektor z OSD.
@@ -2747,7 +2742,7 @@ def build_g8_wind_async() -> dict[str, Any]:
     }
     turbine_fields = [
         _field(
-            f"g8-wtg{i + 1}",
+            f"g7-wtg{i + 1}",
             role="source",
             kind=f"WTG {i + 1} (async) · {turbine_kw / 1000:.2f} MW",
             abb_cell="SDC",
@@ -2758,7 +2753,7 @@ def build_g8_wind_async() -> dict[str, Any]:
         for i in range(n_turbines)
     ]
     return _oze_companion(
-        "G8-WIND-ASYNC",
+        "G7-WIND-ASYNC",
         substrate=s,
         buses=[("SN_PCC", _WINDA_COLLECTOR_KV, 25.0), ("WTG_LV_1", _WINDA_LV_KV, 50.0)],
         pcc_bus="SN_PCC",
@@ -2913,8 +2908,8 @@ _OZE_ARCHETYPES_2A_EXT = {
     "G4-PVBESS-AC": build_g4_pvbess_ac,
     "G5-BESS": build_g5_bess,
     "G5-WIND-T4": build_g5_wind_t4,
-    "G7-BIOGAZ": build_g7_biogaz,
-    "G8-WIND-ASYNC": build_g8_wind_async,
+    "G8-BIOGAZ": build_g8_biogaz,
+    "G7-WIND-ASYNC": build_g7_wind_async,
     "G6-WIND-DFIG": build_g6_wind_dfig,
 }
 

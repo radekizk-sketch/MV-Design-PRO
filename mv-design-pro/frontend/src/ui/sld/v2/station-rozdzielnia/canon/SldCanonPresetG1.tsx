@@ -113,7 +113,7 @@ export function SldCanonPresetG1({ companion }: { companion: SldOzeArchetypeComp
       </g>
       {lbl(X.p2 + 14, 333, 'GTS 0,5A', TXT_MUTED, 9.5, 600)}
       <VtNoGround x={X.p2} y={360} />
-      {lbl(X.p2 - 96, 372, vtRatioLabel(sn.un_kv, metering?.vt), TXT, 11, 700)}
+      {lbl(X.p2 - 96, 372, vtRatioLabel(sn.un_kv), TXT, 11, 700)}
       {lbl(X.p2 - 96, 385, 'bez ziemi (→U)', TXT_MUTED, 9, 600)}
       <g data-keepout={ko(X.p2 - 11, 392, 22, 18)}>
         <rect x={X.p2 - 11} y={392} width={22} height={18} rx={2} fill="#0A1622" stroke={AMBER} strokeWidth={1.6} />

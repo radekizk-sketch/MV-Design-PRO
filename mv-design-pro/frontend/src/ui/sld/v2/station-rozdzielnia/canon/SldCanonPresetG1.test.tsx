@@ -70,7 +70,7 @@ describe('SldCanonPresetG1 — canonical PV 1 MW template (G1)', () => {
     // SN station metering is instrument-transformer based (correct) — not in-line behind a breaker.
     // CT/VT ratios are composed FROM the companion's metering fields (audit: zero render literals).
     expect(txt).toContain(ctRatioLabel(G1.source.metering?.ct)); // CT · AD11 · 40/5/5/5
-    expect(txt).toContain(vtRatioLabel(G1.voltage_flow.buses['SN_PCC'].un_kv, G1.source.metering?.vt));
+    expect(txt).toContain(vtRatioLabel(G1.voltage_flow.buses['SN_PCC'].un_kv)); // VT · 15,75/√3
     expect(txt).toContain('POMIAR rozliczeniowy');
     expect(txt).toContain('SIEĆ OSD'); // export cable to the OSD network
     expect(txt).not.toContain('GRANICA'); // boundary is implied by the metering — no separate ⊟

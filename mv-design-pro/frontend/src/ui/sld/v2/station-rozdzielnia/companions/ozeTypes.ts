@@ -48,9 +48,9 @@ export interface OzeMeteringCt {
 export interface OzeMeteringVt {
   readonly usn_v: number; // secondary nominal voltage [V] (line value; phase = usn/√3)
   readonly fv: number; // voltage factor (e.g. 1.9 — compensated network, 8 h)
-  readonly type?: string; // optional catalog/type tag (e.g. "FD11")
   readonly accuracy_class?: string; // optional accuracy class
   // The primary is DERIVED from the bus Un (line-to-earth, Un/√3) — deterministic, no field.
+  // The VT type tag (e.g. "FD11") is NOT rendered on the cramped metering-bay label.
 }
 export interface OzeMetering {
   readonly source_ref: string;

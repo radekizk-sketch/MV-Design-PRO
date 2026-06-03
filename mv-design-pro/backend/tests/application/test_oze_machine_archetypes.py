@@ -5,8 +5,8 @@ gate tests but pins the backend substrate builders directly."""
 
 from application.reference_networks.station_archetype_substrate import (
     build_g5_wind_t4,
-    build_g7_biogaz,
-    build_g8_wind_async,
+    build_g8_biogaz,
+    build_g7_wind_async,
 )
 
 
@@ -15,7 +15,7 @@ def _buses(companion: dict) -> list:
 
 
 def test_g7_biogaz_synchronous_machine_contribution():
-    c = build_g7_biogaz()
+    c = build_g8_biogaz()
     assert c["source"]["machine_type"] == "SYNCHRONOUS"
     assert c["converged"]
     for bus in _buses(c):
@@ -34,7 +34,7 @@ def test_g7_biogaz_synchronous_machine_contribution():
 
 
 def test_g8_wind_async_machine_contribution():
-    c = build_g8_wind_async()
+    c = build_g7_wind_async()
     assert c["source"]["machine_type"] == "ASYNCHRONOUS"
     assert c["converged"]
     for bus in _buses(c):
@@ -52,7 +52,7 @@ def test_g8_wind_async_machine_contribution():
 def test_g8_async_terminal_vs_collector_contrast():
     # The faulted-turbine partial decays (μ<1, near-generator); the remote turbines
     # through the collector stay at μ=1 (far-from-generator) — the IEC 60909 signature.
-    c = build_g8_wind_async()
+    c = build_g7_wind_async()
     lv = c["short_circuit"]["buses"]["WTG_LV_1"]["source_contribution"]
     faulted = next(m for m in lv["machines"] if m["node_ref"] == "WTG_LV_1")
     remote = [m for m in lv["machines"] if m["node_ref"] != "WTG_LV_1"]
@@ -74,5 +74,5 @@ def test_ibg_archetype_unchanged():
 
 
 def test_machine_archetypes_deterministic():
-    assert build_g7_biogaz() == build_g7_biogaz()
-    assert build_g8_wind_async() == build_g8_wind_async()
+    assert build_g8_biogaz() == build_g8_biogaz()
+    assert build_g7_wind_async() == build_g7_wind_async()

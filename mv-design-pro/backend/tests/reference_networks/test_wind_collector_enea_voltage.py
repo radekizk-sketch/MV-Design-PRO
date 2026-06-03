@@ -10,7 +10,7 @@ import pytest
 
 from application.reference_networks.station_archetype_substrate import (
     build_g5_wind_t4,
-    build_g8_wind_async,
+    build_g7_wind_async,
     build_g6_wind_dfig,
 )
 
@@ -20,7 +20,7 @@ _ENEA_SN_KV = {6.0, 15.0, 20.0}
 
 @pytest.mark.parametrize(
     "build",
-    [build_g5_wind_t4, build_g8_wind_async, build_g6_wind_dfig],
+    [build_g5_wind_t4, build_g7_wind_async, build_g6_wind_dfig],
     ids=["Typ4", "Typ1-async", "Typ3-DFIG"],
 )
 def test_wind_collector_is_enea_valid_sn(build):

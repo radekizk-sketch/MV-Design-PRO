@@ -26,13 +26,13 @@ const NAMES: Record<string, string> = {
   'G4-PVTR': 'PV 1 MW przez stację TR konsumencką',
   'G5-BESS': 'BESS 1 MW / 2 MWh — magazyn energii (2-kier.)',
   'G5-WIND-T4': 'Wiatr Typ 4 — 3×2 MW, sieć kolektorowa SN 15 kV',
-  'G7-BIOGAZ': 'Biogazownia — agregaty synchroniczne (kogeneracja)',
-  'G8-WIND-ASYNC': 'Wiatr Typ 1 — generatory asynchroniczne, kolektor SN 15 kV',
+  'G8-BIOGAZ': 'Biogazownia — agregaty synchroniczne (kogeneracja)',
+  'G7-WIND-ASYNC': 'Wiatr Typ 1 — generatory asynchroniczne, kolektor SN 15 kV',
   'G6-WIND-DFIG': 'Wiatr Typ 3 — generatory DFIG (crowbar), kolektor SN 15 kV',
 };
 const CODES: Record<string, string> = {
   G1: 'PV-01', G2: 'PV-02', G3: 'PV-03', 'G4-PVTR': 'PV-1MW', 'G5-BESS': 'BESS-1MW',
-  'G5-WIND-T4': 'WIND-T4', 'G7-BIOGAZ': 'BIO-SYN', 'G8-WIND-ASYNC': 'WIND-T1',
+  'G5-WIND-T4': 'WIND-T4', 'G8-BIOGAZ': 'BIO-SYN', 'G7-WIND-ASYNC': 'WIND-T1',
   'G6-WIND-DFIG': 'WIND-T3',
 };
 

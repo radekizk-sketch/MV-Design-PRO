@@ -65,7 +65,7 @@ describe('canon CT/VT — rendered from companion fields, never a literal', () =
     it(`${name}: rendered CT/VT labels equal the companion-composed ratio`, () => {
       const txt = renderText(<Comp companion={base} />);
       expect(txt).toContain(ctRatioLabel(base.source.metering?.ct));
-      expect(txt).toContain(vtRatioLabel(unKv, base.source.metering?.vt));
+      expect(txt).toContain(vtRatioLabel(unKv));
     });
 
     it(`${name}: CT ratio is DATA-BOUND — mutating ipn_a moves the render (no literal)`, () => {
@@ -81,7 +81,7 @@ describe('canon CT/VT — rendered from companion fields, never a literal', () =
     it(`${name}: VT primary is DATA-BOUND to Un — mutating un_kv moves the render`, () => {
       const m = clone(base);
       m.voltage_flow.buses[snBus].un_kv = 21; // sentinel (≠ the real collector kV)
-      expect(renderText(<Comp companion={m} />)).toContain(vtRatioLabel(21, m.source.metering?.vt));
+      expect(renderText(<Comp companion={m} />)).toContain(vtRatioLabel(21));
     });
 
     it(`${name}: missing metering → "CT · —"; VT primary still derives from Un`, () => {

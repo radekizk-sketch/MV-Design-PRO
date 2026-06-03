@@ -237,16 +237,16 @@ describe('GATE J — SC contribution is IBG (bounded current), NOT a machine', (
 // ---------------------------------------------------------------------------
 
 describe('GATE J′ — rotating machines: machine-typed SC contribution (not IBG)', () => {
-  it('G7-BIOGAZ source is SYNCHRONOUS with synchronous-machine protection', () => {
-    const c = OZE_ARCHETYPES_2A['G7-BIOGAZ'];
-    expect(c, 'G7-BIOGAZ template must exist').toBeTruthy();
+  it('G8-BIOGAZ source is SYNCHRONOUS with synchronous-machine protection', () => {
+    const c = OZE_ARCHETYPES_2A['G8-BIOGAZ'];
+    expect(c, 'G8-BIOGAZ template must exist').toBeTruthy();
     expect(c.source.machine_type).toBe('SYNCHRONOUS');
     const conn = c.fields.find((f) => f.role === 'connection')!;
     expect(conn.protection_codes).toContain('25'); // synchro-check — synchronous only
   });
 
-  it('G7-BIOGAZ breaks out the synchronous-machine contribution (Z″, μ) at every bus', () => {
-    const c = OZE_ARCHETYPES_2A['G7-BIOGAZ'];
+  it('G8-BIOGAZ breaks out the synchronous-machine contribution (Z″, μ) at every bus', () => {
+    const c = OZE_ARCHETYPES_2A['G8-BIOGAZ'];
     for (const bus of Object.values(c.short_circuit.buses)) {
       const sc = bus.source_contribution;
       expect(sc.machine_type).toBe('SYNCHRONOUS');
@@ -264,9 +264,9 @@ describe('GATE J′ — rotating machines: machine-typed SC contribution (not IB
     }
   });
 
-  it('G8-WIND-ASYNC breaks out the asynchronous-machine contribution (Z_M, μ·q)', () => {
-    const c = OZE_ARCHETYPES_2A['G8-WIND-ASYNC'];
-    expect(c, 'G8-WIND-ASYNC template must exist').toBeTruthy();
+  it('G7-WIND-ASYNC breaks out the asynchronous-machine contribution (Z_M, μ·q)', () => {
+    const c = OZE_ARCHETYPES_2A['G7-WIND-ASYNC'];
+    expect(c, 'G7-WIND-ASYNC template must exist').toBeTruthy();
     expect(c.source.machine_type).toBe('ASYNCHRONOUS');
     for (const bus of Object.values(c.short_circuit.buses)) {
       const sc = bus.source_contribution;
@@ -311,8 +311,8 @@ describe('GATE J′ — rotating machines: machine-typed SC contribution (not IB
 
   it('renders the contribution as "maszyna" (not "ograniczony") for both machine types', () => {
     for (const [a, mt] of [
-      ['G7-BIOGAZ', 'SYNCHRONOUS'],
-      ['G8-WIND-ASYNC', 'ASYNCHRONOUS'],
+      ['G8-BIOGAZ', 'SYNCHRONOUS'],
+      ['G7-WIND-ASYNC', 'ASYNCHRONOUS'],
       ['G6-WIND-DFIG', 'DFIG'],
     ] as const) {
       const { container } = renderOze(a, 'close');
@@ -326,7 +326,7 @@ describe('GATE J′ — rotating machines: machine-typed SC contribution (not IB
 
   it('renders the per-machine WHITE-BOX breakdown (I″k·i_b·μ·q) at close detail', () => {
     // G7 biogaz — 2 synchronous gensets on SN_PCC: 2 lines, μ shown, no q.
-    const g7 = renderOze('G7-BIOGAZ', 'close');
+    const g7 = renderOze('G8-BIOGAZ', 'close');
     const g7m = g7.container.querySelectorAll('[data-testid^="oze-sc-machine-SN_PCC-"]');
     expect(g7m.length).toBe(2);
     expect(g7m[0].textContent).toContain('μ=');
@@ -334,7 +334,7 @@ describe('GATE J′ — rotating machines: machine-typed SC contribution (not IB
 
     // G8 wind async — 3 induction generators at the turbine terminal: 3 lines with q;
     // the faulted turbine decays (μ<1), the remote turbines do not (μ=1).
-    const g8 = renderOze('G8-WIND-ASYNC', 'close');
+    const g8 = renderOze('G7-WIND-ASYNC', 'close');
     const g8m = g8.container.querySelectorAll('[data-testid^="oze-sc-machine-WTG_LV_1-"]');
     expect(g8m.length).toBe(3);
     expect(g8m[0].textContent).toContain('q=');

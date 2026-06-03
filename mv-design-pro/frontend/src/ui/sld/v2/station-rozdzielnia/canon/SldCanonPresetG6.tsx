@@ -127,7 +127,7 @@ export function SldCanonPresetG6({ companion }: { companion: SldOzeArchetypeComp
       </g>
       {lbl(X.pom + 14, 333, 'bezp. VT (GTS)', TXT_MUTED, 9.5, 600)}
       <VtNoGround x={X.pom} y={360} />
-      {lbl(X.pom - 96, 372, vtRatioLabel(sn.un_kv, metering?.vt), TXT, 11, 700)}
+      {lbl(X.pom - 96, 372, vtRatioLabel(sn.un_kv), TXT, 11, 700)}
       {lbl(X.pom - 96, 385, 'bez ziemi (→U)', TXT_MUTED, 9, 600)}
       <g data-keepout={ko(X.pom - 11, 392, 22, 18)}>
         <rect x={X.pom - 11} y={392} width={22} height={18} rx={2} fill="#0A1622" stroke={AMBER} strokeWidth={1.6} />
