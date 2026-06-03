@@ -237,12 +237,19 @@ describe('GATE J — SC contribution is IBG (bounded current), NOT a machine', (
 // ---------------------------------------------------------------------------
 
 describe('GATE J′ — rotating machines: machine-typed SC contribution (not IBG)', () => {
-  it('G8-BIOGAZ source is SYNCHRONOUS with synchronous-machine protection', () => {
+  it('G8-BIOGAZ is SYNCHRONOUS — NC RfG interface + full generator protection split (audit #5)', () => {
     const c = OZE_ARCHETYPES_2A['G8-BIOGAZ'];
     expect(c, 'G8-BIOGAZ template must exist').toBeTruthy();
     expect(c.source.machine_type).toBe('SYNCHRONOUS');
+    // Interface (line bay) = NC RfG only; the generator functions (87G/40/32/64/25/21…) are split
+    // onto source.protection, NOT the grid interface.
     const conn = c.fields.find((f) => f.role === 'connection')!;
-    expect(conn.protection_codes).toContain('25'); // synchro-check — synchronous only
+    expect(conn.protection_codes).toContain('anti-islanding');
+    expect(conn.protection_codes).not.toContain('25');
+    expect(conn.protection_codes).not.toContain('87G');
+    expect(c.source.protection?.machine).toEqual(
+      expect.arrayContaining(['87G', '40', '32', '64', '25', '21']),
+    );
   });
 
   it('G8-BIOGAZ breaks out the synchronous-machine contribution (Z″, μ) at every bus', () => {
@@ -964,7 +971,7 @@ describe('G5-WIND-T4 — wiatr Typ 4 (IBG + sieć kolektorowa SN)', () => {
     }
     expect(c.voltage_flow.branches['sr/branch/in'].direction).toBe('reverse');
     const { container } = renderClose();
-    const flow = container.querySelector('[data-testid="oze-flow-g6-line"]')!;
+    const flow = container.querySelector('[data-testid="oze-flow-g5-line"]')!;
     expect(flow.getAttribute('data-flow-direction')).toBe('reverse');
     expect(flow.getAttribute('data-flow-points')).toBe('down');
   });
@@ -990,7 +997,7 @@ describe('G5-WIND-T4 — wiatr Typ 4 (IBG + sieć kolektorowa SN)', () => {
     expect(block.textContent ?? '').toMatch(/kV/);
     expect(container.querySelector('[data-testid="oze-nn-tier"]'), 'no shared nN tier').toBeFalsy();
     expect(container.querySelector('[data-testid="oze-grid-stub"]'), 'no busbar-edge OSD stub').toBeFalsy();
-    const lineStack = container.querySelector('[data-testid="oze-field-stack-g6-line"]')!;
+    const lineStack = container.querySelector('[data-testid="oze-field-stack-g5-line"]')!;
     expect(lineStack.querySelector('[data-testid="oze-boundary-marker"]')).toBeTruthy();
     const unit = container.querySelector('[data-testid="oze-source-G5-WIND-T4"]')!;
     for (const ln of Array.from(unit.querySelectorAll('line'))) {

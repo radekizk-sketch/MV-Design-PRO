@@ -16,6 +16,7 @@ import { SldCanonPresetG4 } from '../src/ui/sld/v2/station-rozdzielnia/canon/Sld
 import { SldCanonPresetG5 } from '../src/ui/sld/v2/station-rozdzielnia/canon/SldCanonPresetG5';
 import { SldCanonPresetG6 } from '../src/ui/sld/v2/station-rozdzielnia/canon/SldCanonPresetG6';
 import { SldCanonPresetG7 } from '../src/ui/sld/v2/station-rozdzielnia/canon/SldCanonPresetG7';
+import { SldCanonPresetG8 } from '../src/ui/sld/v2/station-rozdzielnia/canon/SldCanonPresetG8';
 
 const OUT = process.env.CANON_OUT ?? '/tmp/canon';
 const W = 1640;
@@ -42,3 +43,4 @@ emit('g4-pvbess-ac', <SldCanonPresetG4 companion={OZE_ARCHETYPES_2A['G4-PVBESS-A
 emit('g5-wind', <SldCanonPresetG5 companion={OZE_ARCHETYPES_2A['G5-WIND-T4']} />, WIND_W);
 emit('g6-wind-dfig', <SldCanonPresetG6 companion={OZE_ARCHETYPES_2A['G6-WIND-DFIG']} />, WIND_W);
 emit('g7-wind-async', <SldCanonPresetG7 companion={OZE_ARCHETYPES_2A['G7-WIND-ASYNC']} />, WIND_W);
+emit('g8-biogaz', <SldCanonPresetG8 companion={OZE_ARCHETYPES_2A['G8-BIOGAZ']} />, WIND_W);

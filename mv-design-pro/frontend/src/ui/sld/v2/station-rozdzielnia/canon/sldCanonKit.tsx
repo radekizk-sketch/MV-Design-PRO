@@ -216,6 +216,18 @@ export function AsyncMachine({ x, y }: { x: number; y: number }): JSX.Element {
   );
 }
 
+/** IEC 60617 rotating machine ◯ marked "GS" = SYNCHRONOUS generator — distinct from the
+ * AsyncMachine ◯"G∼" (induction). Used where a synchronous machine sits directly on the grid
+ * (cogeneration): its SC is SUSTAINED by excitation, NOT decaying to the grid-only like induction. */
+export function SyncMachine({ x, y }: { x: number; y: number }): JSX.Element {
+  return (
+    <g data-keepout={ko(x - 12, y - 12, 24, 24)}>
+      <circle cx={x} cy={y} r={12} fill="none" stroke={AMBER} strokeWidth={1.7} />
+      <text x={x} y={y + 4} textAnchor="middle" fill={AMBER} fontFamily={SANS} fontSize={10} fontWeight={800}>GS</text>
+    </g>
+  );
+}
+
 /** IEC 60617 capacitor — two parallel plates (non-polarised). A reactive-compensation bank for
  * an induction generator (which draws Q from the grid); leads top/bottom for inline placement. */
 export function CapacitorBank({ x, y }: { x: number; y: number }): JSX.Element {

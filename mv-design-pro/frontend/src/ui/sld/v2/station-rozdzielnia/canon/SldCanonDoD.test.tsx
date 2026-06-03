@@ -18,6 +18,7 @@ import { SldCanonPresetG4 } from './SldCanonPresetG4';
 import { SldCanonPresetG5 } from './SldCanonPresetG5';
 import { SldCanonPresetG6 } from './SldCanonPresetG6';
 import { SldCanonPresetG7 } from './SldCanonPresetG7';
+import { SldCanonPresetG8 } from './SldCanonPresetG8';
 
 const f1 = (v: number) => v.toFixed(1).replace('.', ',');
 
@@ -77,6 +78,13 @@ const PRESETS = [
     bus: 'SN_PCC',
     band: [130, 640] as [number, number],
     render: () => <SldCanonPresetG7 companion={OZE_ARCHETYPES_2A['G7-WIND-ASYNC']} />,
+  },
+  {
+    name: 'G8 — Kogeneracja (synchroniczna)',
+    companion: OZE_ARCHETYPES_2A['G8-BIOGAZ'],
+    bus: 'SN_PCC',
+    band: [130, 580] as [number, number],
+    render: () => <SldCanonPresetG8 companion={OZE_ARCHETYPES_2A['G8-BIOGAZ']} />,
   },
 ];
 

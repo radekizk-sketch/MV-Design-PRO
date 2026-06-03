@@ -936,8 +936,10 @@ _PROTECTION_BY_MACHINE: dict[str, list[str]] = {
     # IBG (PV/BESS/full-converter wind): directional OC + voltage/frequency +
     # rate-of-change + neutral OV + anti-islanding.
     "IBG": ["67", "67N", "81U", "81O", "df/dt", "27", "59", "59N", "anti-islanding"],
-    # Synchronous machine: synchro-check + full machine protection.
-    "SYNCHRONOUS": ["25", "21", "40", "32", "46", "87", "59N", "67N", "81U", "81O"],
+    # Synchronous machine (cogeneration) — INTERFACE set only (line bay, NC RfG), same as
+    # G6/G7. The FULL generator protection (87G diff, 40 loss-of-field, 32 reverse-power,
+    # 64 ground, 46 neg-seq, 21/25, 27/59/81) lives on source.protection, NOT the interface.
+    "SYNCHRONOUS": ["67", "67N", "27", "59", "81U", "81O", "df/dt", "anti-islanding"],
     # Asynchronous machine (wind Type 1) — INTERFACE set only (line bay, NC RfG), same as DFIG:
     # 46/47 neg-seq, 49, 51 (+ 37 motoring, 32 reverse-power) are MACHINE functions and live on
     # source.protection, NOT on the grid interface. anti-islanding is critical (self-excitation
@@ -2406,7 +2408,7 @@ def build_g5_wind_t4() -> dict[str, Any]:
         source=src,
         fields=[
             _field(
-                "g6-line",
+                "g5-line",
                 role="connection",
                 kind="POLE LINIOWE SN (przyłącze)",
                 abb_cell="CBC",
@@ -2587,7 +2589,9 @@ def build_g8_biogaz() -> dict[str, Any]:
     s = _Substrate()
     s.add_slack("GPZ")
     s.add_bus("SN_PCC", _BASE_KV)
-    s.add_line(SR_IN, "GPZ", "SN_PCC", _SN_LINE_R, _SN_LINE_X)
+    # Collector grid infeed = family standard _GRID_INFEED (X/R≈7), like G5/G6/G7 — audit F-1:
+    # S_k″ is a connection-point property shared by all 15 kV presets, not the DER type.
+    s.add_line(SR_IN, "GPZ", "SN_PCC", _GRID_INFEED_R, _GRID_INFEED_X)
     # Generacja (eksport) = ujemne obciążenie dla rozpływu; maszyna synchroniczna dla SC.
     s.add_load("SN_PCC", p_mw=-p_farm_kw / 1000.0, q_mvar=0.0)
     for _ in range(n_gen):
@@ -2618,6 +2622,34 @@ def build_g8_biogaz() -> dict[str, Any]:
         "xd_subtransient_pu": _BIOGAZ_XD_PU,
         "cos_phi_r": _BIOGAZ_COSPHI,
     }
+    src["metering"] = _metering(
+        source_ref="norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
+        ct_ipn_a=100.0,  # next-std ≥ I_load ≈ 77 A (2×1 MW @ 15 kV)
+        ct_cores=2,
+    )
+    src["withstand"] = {
+        "source_ref": "norma:IEC_62271_Ipk;std:agregat_synchroniczny",
+        "sn_idyn_ka": 63.0,  # peak withstand for the 25 kA Icw SN busbar
+        "nn_idyn_ka": 63.0,  # gensets sit on the SN busbar (no separate nN tier)
+    }
+    src["grid_earthing"] = {
+        "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN",
+        "neutral_point": "kompensowana",
+        "ik_1f_ka": 0.06,
+        "imd_it_nn": False,
+        "note_pl": (
+            "SN 15 kV: I″k1f-z z uziemienia neutralnego OSD (kompensowana), prąd resztkowy ∝ Un; "
+            "agregaty synchroniczne na szynie SN — punkt gwiazdowy generatora wg karty"
+        ),
+    }
+    # Audit #5 — FULL synchronous-generator protection, split from the NC RfG interface. The
+    # machine is sustained by EXCITATION: the SC does NOT decay to the grid-only like an
+    # induction machine (μ→steady-state Ik), so the dedicated generator set is mandatory.
+    src["protection"] = {
+        "source_ref": "norma:NC_RfG;norma:IEC_60255;std:generator_synchroniczny",
+        "machine": ["87G", "40", "32", "64", "46", "21", "25", "27", "59", "81"],
+        "converter": [],
+    }
     genset_fields = [
         _field(
             f"g8-gen{i + 1}",
@@ -2638,7 +2670,7 @@ def build_g8_biogaz() -> dict[str, Any]:
         source=src,
         fields=[
             _sn_line_connection_field(
-                "g7-line", un_kv=_BASE_KV, protection_codes=_PROTECTION_BY_MACHINE["SYNCHRONOUS"]
+                "g8-line", un_kv=_BASE_KV, protection_codes=_PROTECTION_BY_MACHINE["SYNCHRONOUS"]
             ),
             *genset_fields,
         ],
@@ -2756,7 +2788,7 @@ def build_g7_wind_async() -> dict[str, Any]:
         source=src,
         fields=[
             _sn_line_connection_field(
-                "g8-line",
+                "g7-line",
                 un_kv=_WINDA_COLLECTOR_KV,
                 protection_codes=_PROTECTION_BY_MACHINE["ASYNCHRONOUS"],
             ),
