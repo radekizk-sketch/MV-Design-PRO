@@ -2049,6 +2049,180 @@ def build_g5_bess() -> dict[str, Any]:
     )
 
 
+# ── G4 (kanon) — HYBRYDA PV + BESS na 15 kV (ENEA) — GENERYCZNY archetyp ─────────
+# Dwa warianty współpracy PV + magazyn (NC RfG / IEC 62933 / IEC 60909; OBA źródła
+# IBG §6.7 — prąd ograniczony k·In, NIE maszyna):
+#   BUS — wspólna szyna SN: PV i BESS, KAŻDE za własnym trafem nN/SN, zebrane na
+#         jednej szynie przyłączeniowej 15 kV (sprzężenie na SN).
+#   AC  — AC-coupled: falowniki PV i PCS BESS na WSPÓLNEJ szynie nN za JEDNYM trafem
+#         przyłączeniowym 15 kV (sprzężenie na nN, jedno pole transformatorowe).
+# Moce: PV 1 MW (3×333 kVA) + BESS 1 MW / 2 MWh (2×500 kVA). Bilans mocy (wniosek
+# przyłączeniowy): eksport PV i rozładowanie BESS mogą wystąpić jednocześnie ⇒ moc
+# przyłączeniowa = suma 2 MW (współczynnik jednoczesności k=1, zachowawczo dla I″k,max).
+_PVBESS_SN_KV = _BASE_KV  # 15 kV ENEA SN (przyłącze)
+_PVBESS_PV_NN_KV = 0.8  # nN falowników PV (BUS) + wspólna szyna nN (AC)
+_PVBESS_BESS_NN_KV = 0.4  # nN PCS BESS (wariant BUS)
+_PVBESS_PV_INV_COUNT = 3
+_PVBESS_PV_INV_KVA = 333.0  # 3×333 ≈ 1.0 MW PV (DC/AC ≈ 1.0)
+_PVBESS_BESS_PCS_COUNT = 2
+_PVBESS_BESS_PCS_KVA = 500.0  # 2×500 = 1.0 MW BESS
+_PVBESS_CAPACITY_KWH = 2000.0  # 2 MWh (magazyn 2 h)
+_PVBESS_PV_TR_MVA = 1.0  # trafo PV (wariant BUS)
+_PVBESS_BESS_TR_MVA = 1.25  # trafo BESS (wariant BUS)
+_PVBESS_AC_TR_MVA = 2.5  # wspólny trafo przyłączeniowy PV+BESS (wariant AC)
+
+
+def _build_g4_pvbess(variant: str) -> dict[str, Any]:
+    """G4 — hybryda PV + BESS na 15 kV; variant ∈ {"bus","ac"} (patrz nagłówek sekcji).
+    Eksport (generacja PV + rozładowanie BESS) = stan podstawowy; kierunek/wartość z
+    FROZEN solvera. Zwarcie: suma udziałów IBG (PV + PCS), każdy ograniczony k·In."""
+    assert variant in ("bus", "ac"), f"unknown PV+BESS variant {variant}"
+    p_pv_kw = _PVBESS_PV_INV_COUNT * _PVBESS_PV_INV_KVA
+    p_bess_kw = _PVBESS_BESS_PCS_COUNT * _PVBESS_BESS_PCS_KVA
+    p_total_kw = p_pv_kw + p_bess_kw
+
+    s = _Substrate()
+    s.add_slack("GPZ")
+    s.add_bus("SN_PCC", _PVBESS_SN_KV)
+    s.add_line(SR_IN, "GPZ", "SN_PCC", _GRID_INFEED_R, _GRID_INFEED_X)
+    ibg_a = 0.0
+
+    def _add_sources(prefix: str, bus: str, count: int, kva: float, src_type: str, un_kv: float) -> None:
+        nonlocal ibg_a
+        for i in range(count):
+            node = f"{prefix}{i + 1}"
+            s.add_bus(node, un_kv)
+            s.add_line(f"sr/branch/{prefix.lower()}{i + 1}", bus, node, _NN_FEEDER_R, _NN_FEEDER_X)
+            s.add_load(node, p_mw=-kva / 1000.0, q_mvar=0.0)  # eksport (gen / rozładowanie)
+            ibg_a += s.add_inverter(
+                node, rated_kva=kva, un_kv=un_kv, k_sc=_IBG_K, source_type=src_type
+            )
+
+    if variant == "bus":
+        s.add_bus("PV_NN", _PVBESS_PV_NN_KV)
+        s.add_transformer("sr/branch/tr-pv", "SN_PCC", "PV_NN", hv_kv=_PVBESS_SN_KV,
+                          lv_kv=_PVBESS_PV_NN_KV, uk_percent=6.0, rated_mva=_PVBESS_PV_TR_MVA, x_over_r=4.5)
+        _add_sources("PV_INV", "PV_NN", _PVBESS_PV_INV_COUNT, _PVBESS_PV_INV_KVA, "PV", _PVBESS_PV_NN_KV)
+        s.add_load("PV_NN", p_mw=12.0 / 1000.0, q_mvar=0.01)  # potrzeby własne PV
+        s.add_bus("BESS_NN", _PVBESS_BESS_NN_KV)
+        s.add_transformer("sr/branch/tr-bess", "SN_PCC", "BESS_NN", hv_kv=_PVBESS_SN_KV,
+                          lv_kv=_PVBESS_BESS_NN_KV, uk_percent=6.0, rated_mva=_PVBESS_BESS_TR_MVA, x_over_r=4.5)
+        _add_sources("BESS_PCS", "BESS_NN", _PVBESS_BESS_PCS_COUNT, _PVBESS_BESS_PCS_KVA, "BESS", _PVBESS_BESS_NN_KV)
+        s.add_load("BESS_NN", p_mw=10.0 / 1000.0, q_mvar=0.01)  # potrzeby własne BESS (HVAC/BMS)
+        buses = [("SN_PCC", _PVBESS_SN_KV, 16.0), ("PV_NN", _PVBESS_PV_NN_KV, 50.0),
+                 ("BESS_NN", _PVBESS_BESS_NN_KV, 50.0)]
+    else:  # ac — wspólna szyna nN za jednym trafem
+        s.add_bus("NN", _PVBESS_PV_NN_KV)
+        s.add_transformer(SR_TR, "SN_PCC", "NN", hv_kv=_PVBESS_SN_KV, lv_kv=_PVBESS_PV_NN_KV,
+                          uk_percent=6.0, rated_mva=_PVBESS_AC_TR_MVA, x_over_r=4.5)
+        _add_sources("PV_INV", "NN", _PVBESS_PV_INV_COUNT, _PVBESS_PV_INV_KVA, "PV", _PVBESS_PV_NN_KV)
+        _add_sources("BESS_PCS", "NN", _PVBESS_BESS_PCS_COUNT, _PVBESS_BESS_PCS_KVA, "BESS", _PVBESS_PV_NN_KV)
+        s.add_load("NN", p_mw=20.0 / 1000.0, q_mvar=0.02)  # wspólne potrzeby własne
+        buses = [("SN_PCC", _PVBESS_SN_KV, 16.0), ("NN", _PVBESS_PV_NN_KV, 50.0)]
+
+    s.finalize_pq()
+    total_ibg_ka = ibg_a / 1000.0
+
+    coupling_pl = (
+        "sprzężenie na SN (wspólna szyna 15 kV, osobne trafa)"
+        if variant == "bus"
+        else "AC-coupled (wspólna szyna nN, jeden trafo przyłączeniowy)"
+    )
+    src = _pv_source(
+        technology=f"Hybryda PV + BESS — {coupling_pl}",
+        machine_type="IBG",
+        nc_class="C",
+        control_mode="P(f) · Q(U) · 2-kier. (BESS)",
+        p_zainst_kw=p_total_kw,
+        pn_ac_kw=p_total_kw,
+        p_przylacz_kw=p_total_kw,
+        p_osiagalna_kw=p_total_kw,
+    )
+    src["bidirectional"] = True  # część BESS
+    src["hybrid"] = {
+        "source_ref": "std:IEC_62933;std:NC_RfG;enm:Generator.gen_type=pv+bess",
+        "coupling": "SN_BUS" if variant == "bus" else "AC_LV",
+        "variant_pl": coupling_pl,
+        "pv_kw": p_pv_kw,
+        "bess_kw": p_bess_kw,
+        "bess_capacity_kwh": _PVBESS_CAPACITY_KWH,
+        "coincidence_factor": 1.0,  # PV gen + BESS rozładowanie mogą wystąpić jednocześnie
+        "p_export_max_kw": p_total_kw,  # moc przyłączeniowa (eksport) = suma
+    }
+    src["storage"] = {
+        "source_ref": "std:IEC_62933;enm:Generator.gen_type=bess",
+        "power_kw": p_bess_kw,
+        "capacity_kwh": _PVBESS_CAPACITY_KWH,
+        "duration_h": round(_PVBESS_CAPACITY_KWH / p_bess_kw, 2),
+        "bidirectional": True,
+    }
+    src["grid_earthing"] = {
+        "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN",
+        "neutral_point": "kompensowana",
+        "ik_1f_ka": 0.12,  # SN 15 kV (sieć skompensowana OSD) — stacja końcowa
+        "imd_it_nn": True,  # nN IT: IMD sygnalizuje 1. doziemienie (bez wyłączenia)
+        "note_pl": "nN IT: 1. doziemienie bez prądu — IMD; SN 15 kV: I″k1f-z z uziemienia neutralnego OSD",
+    }
+    src["withstand"] = {
+        "source_ref": "karta:CTM20_Idyn;karta:rozdzielnica_nN",
+        "sn_idyn_ka": 40.0,
+        "nn_idyn_ka": 105.0,
+    }
+
+    arch = "G4-PVBESS-BUS" if variant == "bus" else "G4-PVBESS-AC"
+    pfx = "g4bus" if variant == "bus" else "g4ac"
+    pv_bus = "PV_NN" if variant == "bus" else "NN"
+    bess_bus = "BESS_NN" if variant == "bus" else "NN"
+    fields = [
+        _sn_line_connection_field(
+            f"{pfx}-line", un_kv=_PVBESS_SN_KV, protection_codes=_PROTECTION_BY_MACHINE["IBG"]
+        )
+    ]
+    if variant == "bus":
+        fields.append(_field(f"{pfx}-tr-pv", role="transformer",
+            kind=f"POLE TRAFO PV · {_PVBESS_PV_TR_MVA:.2f} MVA · 15/{_PVBESS_PV_NN_KV} kV",
+            abb_cell="SDC", on_bus="SN_PCC",
+            source_ref="enm:Bay.bay_role=TRANSFORMATOR;std:pole_trafo_PV", interface_protection=False))
+        fields.append(_field(f"{pfx}-tr-bess", role="transformer",
+            kind=f"POLE TRAFO BESS · {_PVBESS_BESS_TR_MVA:.2f} MVA · 15/{_PVBESS_BESS_NN_KV} kV",
+            abb_cell="SDC", on_bus="SN_PCC",
+            source_ref="enm:Bay.bay_role=TRANSFORMATOR;std:pole_trafo_BESS", interface_protection=False))
+    else:
+        fields.append(_field(f"{pfx}-tr", role="transformer",
+            kind=f"POLE TRAFO · {_PVBESS_AC_TR_MVA:.2f} MVA · 15/{_PVBESS_PV_NN_KV} kV",
+            abb_cell="SDC", on_bus="SN_PCC",
+            source_ref="enm:Bay.bay_role=TRANSFORMATOR;std:pole_trafo_wspolny", interface_protection=False))
+    for i in range(_PVBESS_PV_INV_COUNT):
+        fields.append(_field(f"{pfx}-pv{i + 1}", role="source",
+            kind=f"FALOWNIK PV {i + 1} · {_PVBESS_PV_INV_KVA:.0f} kW", abb_cell="SDC", on_bus=pv_bus,
+            source_ref=f"enm:Generator.gen_type=pv_inverter;std:falownik_{i + 1}", interface_protection=False))
+    for i in range(_PVBESS_BESS_PCS_COUNT):
+        fields.append(_field(f"{pfx}-pcs{i + 1}", role="source",
+            kind=f"PCS BESS {i + 1} · {_PVBESS_BESS_PCS_KVA:.0f} kW (2-kier.)", abb_cell="SDC", on_bus=bess_bus,
+            source_ref=f"enm:Generator.gen_type=bess;std:pcs_{i + 1}", interface_protection=False))
+
+    return _oze_companion(
+        arch,
+        substrate=s,
+        buses=buses,
+        pcc_bus="SN_PCC",
+        ibg_ka=total_ibg_ka,
+        source=src,
+        fields=fields,
+        boundary=_boundary("G-ZKSN", on_bus="SN_PCC", metered=True),
+    )
+
+
+def build_g4_pvbess_bus() -> dict[str, Any]:
+    """G4 (kanon) — hybryda PV + BESS, wariant WSPÓLNA SZYNA SN (sprzężenie na SN)."""
+    return _build_g4_pvbess("bus")
+
+
+def build_g4_pvbess_ac() -> dict[str, Any]:
+    """G4 (kanon) — hybryda PV + BESS, wariant AC-COUPLED (wspólny trafo, sprzężenie nN)."""
+    return _build_g4_pvbess("ac")
+
+
 # ── G6 — Wiatr Typ 4 (pełnoprzekształtnikowy) — GENERYCZNY archetyp wg norm ──────
 # ENEA SN catalog = {110, 20, 15, 6, 0.4} kV — 30 kV does NOT exist in ENEA's network.
 # The wind SN collector is 15 kV (ENEA standard). Re-levelling 30→15 kV at a CONSTANT
@@ -2611,6 +2785,8 @@ def build_g9_wind_dfig() -> dict[str, Any]:
 _OZE_ARCHETYPES_2A_EXT = {
     **_OZE_ARCHETYPES_2A,
     "G4-PVTR": build_g4_pvtr,
+    "G4-PVBESS-BUS": build_g4_pvbess_bus,
+    "G4-PVBESS-AC": build_g4_pvbess_ac,
     "G5-BESS": build_g5_bess,
     "G6-WIND": build_g6_wind,
     "G7-BIOGAZ": build_g7_biogaz,
