@@ -76,18 +76,27 @@ export function Wylacznik({ x, y, closed = true }: { x: number; y: number; close
     </g>
   );
 }
-export function UziemnikIEC({ x, y, dir = 'right' }: { x: number; y: number; dir?: 'right' | 'left' }): JSX.Element {
-  const s = dir === 'right' ? 1 : -1;
-  const gx = x + s * 22;
-  const box = dir === 'right' ? ko(x - 2, y - 9, 35, 29) : ko(x - 33, y - 9, 35, 29);
+/** IEC 60617 EARTHING SWITCH (uziemnik) — a SWITCHING apparatus, not a fixed tap to earth: a
+ * straight conductor stub off the bay + a moving blade deflected ~38° (default OPEN, state by
+ * colour), terminated by the STANDARD IEC earth electrode (one longest bar + two shorter below,
+ * joined by a short lead). Distinct from protective earth (no blade), the disconnector ◯ (no
+ * earth), and the cable head ▽ (triangle). */
+export function UziemnikIEC({ x, y, closed = false }: { x: number; y: number; closed?: boolean }): JSX.Element {
+  const sw = closed ? GREEN : '#FF6B6B'; // blade state colour — default OPEN
+  const bx = x + 16; // earthing-switch axis, branched off the bay conductor
   return (
-    <g data-keepout={box} stroke={CYAN} strokeWidth={1.6} fill="none">
-      <line x1={x} y1={y} x2={gx} y2={y} />
-      <line x1={gx} y1={y - 7} x2={gx + s * 9} y2={y + 7} />
-      <line x1={gx} y1={y} x2={gx} y2={y + 12} />
-      <line x1={gx - 6} y1={y + 12} x2={gx + 6} y2={y + 12} />
-      <line x1={gx - 4} y1={y + 15} x2={gx + 4} y2={y + 15} />
-      <line x1={gx - 2} y1={y + 18} x2={gx + 2} y2={y + 18} />
+    <g data-keepout={ko(x - 1, y - 2, 27, 30)} fill="none">
+      {/* straight conductor stub off the bay + fixed (upper) contact */}
+      <line x1={x} y1={y} x2={bx} y2={y} stroke={sw} strokeWidth={1.6} />
+      <line x1={bx} y1={y} x2={bx} y2={y + 4} stroke={sw} strokeWidth={1.8} />
+      {/* moving blade — pivots at the earth side, deflected ~38° (OPEN: a gap to the fixed contact) */}
+      <line x1={bx} y1={y + 15} x2={bx - 9} y2={y + 4} stroke={sw} strokeWidth={2} />
+      <circle cx={bx} cy={y + 15} r={1.5} fill={sw} stroke="none" />
+      {/* earth lead + standard IEC earth electrode (longest → shortest) */}
+      <line x1={bx} y1={y + 15} x2={bx} y2={y + 18} stroke={CYAN} strokeWidth={1.6} />
+      <line x1={bx - 8} y1={y + 18} x2={bx + 8} y2={y + 18} stroke={CYAN} strokeWidth={1.9} />
+      <line x1={bx - 5} y1={y + 21} x2={bx + 5} y2={y + 21} stroke={CYAN} strokeWidth={1.9} />
+      <line x1={bx - 2} y1={y + 24} x2={bx + 2} y2={y + 24} stroke={CYAN} strokeWidth={1.9} />
     </g>
   );
 }

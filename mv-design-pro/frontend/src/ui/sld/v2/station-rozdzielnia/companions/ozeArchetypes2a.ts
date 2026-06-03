@@ -7224,7 +7224,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       "buses": {
         "SN_PCC": {
           "bus_ref": "SN_PCC",
-          "icw_ka": 31.5,
+          "icw_ka": 25.0,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -7538,7 +7538,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           },
           "un_kv": 15.0,
           "verification": {
-            "icw_ka": 31.5,
+            "icw_ka": 25.0,
             "ikss_max_ka": 10.77,
             "passed": true,
             "rule": "ikss_max_le_icw"
@@ -7935,7 +7935,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       "technology": "Wiatr \u2014 generatory dwustronnie zasilane (Typ 3, DFIG)",
       "withstand": {
         "nn_idyn_ka": 132.0,
-        "sn_idyn_ka": 80.0,
+        "sn_idyn_ka": 63.0,
         "source_ref": "karta:rozdzielnica_SN_kolektor;karta:rozdzielnica_nN_turbina"
       }
     },
@@ -9360,6 +9360,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "cos_phi_r": 0.8,
         "genset_kw": 1000.0,
         "n_gensets": 2,
+        "neutral_earthing": "rezystor NGR (ogranicza I0 stojana)",
         "sn_kv": 15.0,
         "source_ref": "std:IEC_60909_6_3;enm:Generator.gen_type=biogas_synchronous",
         "xd_subtransient_pu": 0.15

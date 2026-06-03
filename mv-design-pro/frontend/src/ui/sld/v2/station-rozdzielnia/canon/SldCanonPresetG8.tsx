@@ -57,6 +57,7 @@ export function SldCanonPresetG8({ companion }: { companion: SldOzeArchetypeComp
   // (87G/40/32/64…) is split onto source.protection — like G6/G7 (audit #5).
   const ifaceCodes = (companion.fields.find((f) => f.interface_protection)?.protection_codes ?? []).join(' · ');
   const machineProt = (companion.source.protection?.machine ?? ['87G', '40', '32', '64']).join(' · ');
+  const neutralEarth = gen?.neutral_earthing ?? '—'; // generator star-point earthing (64/59N + 1f-z)
 
   const X = { lin: 400, ctBus: 530, pom: 660 };
   const gx = Array.from({ length: nGen }, (_, i) => 980 + i * 280); // genset feeder x-positions
@@ -144,6 +145,7 @@ export function SldCanonPresetG8({ companion }: { companion: SldOzeArchetypeComp
           {lbl(fx, 519, `◯GS synchroniczny · x″d=${fmt(xdPu, 2)}`, TXT2, 9, 700, 'middle')}
         </g>
       ))}
+      {lbl((gx[0] + gx[gx.length - 1]) / 2, 535, `pkt neutralny generatora 15 kV: ${neutralEarth} — podstawa 64/59N + I″k1f-z`, CYAN, 8.5, 700, 'middle')}
       {lbl((gx[0] + gx[gx.length - 1]) / 2, 548, '15 kV: agregaty synchroniczne na szynie = MASZYNA SYNCHRONICZNA (PN-EN 60909 §6.3, za Z″_GK); prąd zwarciowy PODTRZYMYWANY wzbudzeniem (Ib ≈ Ik — NIE zanika jak indukcyjna)', TXT_MUTED, 9, 600, 'middle')}
       {lbl((gx[0] + gx[gx.length - 1]) / 2, 561, `zab. generatora: ${machineProt} (pełny zestaw synchroniczny)`, TXT_MUTED, 8.5, 600, 'middle')}
 

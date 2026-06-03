@@ -2621,6 +2621,9 @@ def build_g8_biogaz() -> dict[str, Any]:
         "genset_kw": genset_kw,
         "xd_subtransient_pu": _BIOGAZ_XD_PU,
         "cos_phi_r": _BIOGAZ_COSPHI,
+        # Generator star-point earthing (15 kV) — the basis for stator-ground 64/59N and the
+        # single-phase earth-fault current. NGR (rezystor) limits I0 of the machine.
+        "neutral_earthing": "rezystor NGR (ogranicza I0 stojana)",
     }
     src["metering"] = _metering(
         source_ref="norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
@@ -2889,7 +2892,7 @@ def build_g6_wind_dfig() -> dict[str, Any]:
     }
     src["withstand"] = {
         "source_ref": "karta:rozdzielnica_SN_kolektor;karta:rozdzielnica_nN_turbina",
-        "sn_idyn_ka": 80.0,  # szczyt SN (kolektor 31,5 kA Icw); ip≈24 kA ≤
+        "sn_idyn_ka": 63.0,  # szczyt SN dla 25 kA Icw (2,5×Icw); ip≈24,5 kA ≤ 63 — rodzina ujednolicona
         "nn_idyn_ka": 132.0,  # szczyt nN (zacisk 63 kA Icw); ip maszyny+crowbar ≈101 kA ≤
     }
     src["metering"] = _metering(
@@ -2912,7 +2915,7 @@ def build_g6_wind_dfig() -> dict[str, Any]:
     return _oze_companion(
         "G6-WIND-DFIG",
         substrate=s,
-        buses=[("SN_PCC", _WINDA3_COLLECTOR_KV, 31.5), ("WTG_LV_1", _WINDA3_LV_KV, 63.0)],
+        buses=[("SN_PCC", _WINDA3_COLLECTOR_KV, 25.0), ("WTG_LV_1", _WINDA3_LV_KV, 63.0)],
         pcc_bus="SN_PCC",
         source=src,
         fields=[

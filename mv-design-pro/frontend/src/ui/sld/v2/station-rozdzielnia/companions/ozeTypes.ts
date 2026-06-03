@@ -150,6 +150,8 @@ export interface OzeGensetSpec {
   readonly genset_kw: number;
   readonly xd_subtransient_pu: number;
   readonly cos_phi_r: number;
+  /** Generator star-point earthing (resistor/reactor/isolated) — basis for 64/59N + 1f-z. */
+  readonly neutral_earthing?: string;
 }
 
 /** OZE source metadata (axes T/R/S of the taxonomy). */
