@@ -442,16 +442,23 @@ def _sc_bus_entry(graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float)
     f_min = (ik_min_a / rmin.ikss_a) if rmin.ikss_a else 1.0
     ikss_max_ka = round(ik_max_a / 1000.0, 3)
     ikss_min_ka = round(ik_min_a / 1000.0, 3)
+    ip_max_ka = round(rmax.ip_a * f_max / 1000.0, 3)
+    # Rated PEAK (dynamic) withstand Idyn — the equipment nameplate paired with Icw, carried
+    # PER BUS exactly like icw_ka (a multi-nN station then rates EACH busbar correctly). Ratio
+    # per standard: IEC 62271-1 Idyn = 2.5·Icw for MV switchgear (50 Hz); LV ACBs ≈ 2.1·Icw
+    # (3WA class). Checked at L2 as ip ≤ Idyn beside the thermal Ik″ ≤ Icw verdict.
+    idyn_ka = round((2.5 if un_kv >= 1.0 else 2.1) * icw_ka, 1)
     return {
         "bus_ref": bus_id,
         "un_kv": un_kv,
         "icw_ka": icw_ka,
+        "idyn_ka": idyn_ka,
         # Ik''max branch (c=1.10): equipment-withstand verification.
         "max": {
             "case_ref": "ZWARCIOWY_MAKS",
             "c_factor": _C_MAX,
             "ikss_ka": ikss_max_ka,
-            "ip_ka": round(rmax.ip_a * f_max / 1000.0, 3),
+            "ip_ka": ip_max_ka,
             "ib_ka": round(rmax.ib_a * f_max / 1000.0, 3),
             "ith_ka": round(rmax.ith_a * f_max / 1000.0, 3),
             "kappa": round(rmax.kappa, 3),
@@ -469,7 +476,8 @@ def _sc_bus_entry(graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float)
             "sk_mva": round(rmin.sk_mva * f_min, 2),
             "white_box_trace": _json_safe(rmin.white_box_trace),
         },
-        # Verification: Ik''max ≤ Icw (rozdzielnia withstand).
+        # Verification: Ik''max ≤ Icw (thermal withstand). The dynamic check (ip ≤ Idyn) is the
+        # paired per-bus nameplate above; both are shown at L2 with their own verdict.
         "verification": {
             "rule": "ikss_max_le_icw",
             "ikss_max_ka": ikss_max_ka,
@@ -1319,12 +1327,6 @@ def build_g1() -> dict[str, Any]:
         "imd_it_nn": False,
         "note_pl": "nN TN: doziemienie z prądem (uziemienie bezpośrednie OSD) — wyłączane zwłocznie",
     }
-    # Dynamic withstand nN (Icm ≈ 2.1·Icw for the LV board); SN side per OSD.
-    src["withstand"] = {
-        "source_ref": "karta:rozdzielnica_nN",
-        "sn_idyn_ka": 63.0,
-        "nn_idyn_ka": 52.5,
-    }
     return _oze_companion(
         "G1",
         substrate=s,
@@ -1380,13 +1382,14 @@ def build_g2() -> dict[str, Any]:
     s.add_inverter("NN_COLLECTOR", rated_kva=pv_kva, un_kv=_NN_KV, k_sc=_IBG_K, source_type="PV")
     s.finalize_pq()
     return _oze_companion(
-        # A 1 MVA PV collector nN board is specified for its actual Ik'' — a 31.5 kA
-        # board (standard rating above the computed ~26.5 kA), so the ≤Icw verdict
-        # passes for a correctly-specified board. The verdict still FAILS if Ik''
-        # exceeds it (the check is real, not rigged).
+        # A 1 MVA PV collector nN board is specified for BOTH withstand checks at its actual
+        # fault level: thermal Ik''≈26.5 kA and dynamic ip≈71.7 kA (high κ≈1.91 at the LV
+        # collector). A 40 kA board is the minimal standard rating that passes both — Ik''≤40 and
+        # ip ≤ Idyn=2.1·40=84 kA. (A 31.5 kA board clears the thermal check but its peak rating
+        # 2.1·31.5≈66 kA < 72 kA: the per-bus dynamic verdict is real, not rigged.)
         "G2",
         substrate=s,
-        buses=[("PCC_SN", _BASE_KV, _ICW_SN_KA), ("NN_COLLECTOR", _NN_KV, 31.5)],
+        buses=[("PCC_SN", _BASE_KV, _ICW_SN_KA), ("NN_COLLECTOR", _NN_KV, 40.0)],
         pcc_bus="PCC_SN",
         source=_pv_source(
             technology="PV",
@@ -1759,13 +1762,6 @@ def build_g4_pvtr() -> dict[str, Any]:
         "imd_it_nn": True,  # IMD na układzie IT nN — sygnalizacja 1. doziemienia (bez wyłączenia)
         "note_pl": "nN IT: 1. doziemienie bez prądu — IMD sygnalizuje; SN: I″k1f-z z uziemienia neutralnego OSD",
     }
-    # §5 P1 — dynamic (peak) withstand checked beside the thermal Icw. ip from the FROZEN
-    # solver; the ratings are equipment nameplates (CTM20 Idyn / 3WA1110 Icm ≈ 2,1·Icw).
-    src["withstand"] = {
-        "source_ref": "karta:CTM20_Idyn;karta:3WA1110_Icm",
-        "sn_idyn_ka": 40.0,  # CTM20 Idyn (dynamiczna SN)
-        "nn_idyn_ka": 105.0,  # 3WA1110 Icm (szczytowa prąd. nN)
-    }
     src["metering"] = _metering(
         source_ref="norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
         ct_ipn_a=40.0,  # next-std ≥ I_load ≈ 38 A (PV 1 MW @ 15,75 kV)
@@ -1986,18 +1982,13 @@ def build_g5_bess() -> dict[str, Any]:
         "bidirectional": True,
     }
     # §5 — SN station: OSD neutral earthing drives Ik″1f-z (SN, compensated); the IT nN
-    # board carries an IMD (1st earth fault signalled). Dynamic withstand beside Icw.
+    # board carries an IMD (1st earth fault signalled).
     src["grid_earthing"] = {
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN",
         "neutral_point": "kompensowana",
         "ik_1f_ka": 0.12,
         "imd_it_nn": True,
         "note_pl": "nN IT: 1. doziemienie bez prądu — IMD; SN: I″k1f-z z uziemienia neutralnego OSD",
-    }
-    src["withstand"] = {
-        "source_ref": "karta:CTM20_Idyn;karta:rozdzielnica_nN",
-        "sn_idyn_ka": 40.0,
-        "nn_idyn_ka": 105.0,
     }
     src["metering"] = _metering(
         source_ref="norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
@@ -2246,11 +2237,6 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
         "imd_it_nn": True,  # nN IT: IMD sygnalizuje 1. doziemienie (bez wyłączenia)
         "note_pl": "nN IT: 1. doziemienie bez prądu — IMD; SN 15 kV: I″k1f-z z uziemienia neutralnego OSD",
     }
-    src["withstand"] = {
-        "source_ref": "karta:CTM20_Idyn;karta:rozdzielnica_nN",
-        "sn_idyn_ka": 40.0,
-        "nn_idyn_ka": 105.0,
-    }
     src["metering"] = _metering(
         source_ref="norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
         ct_ipn_a=100.0,  # next-std ≥ I_load ≈ 76 A (PV+BESS export @ 15 kV)
@@ -2406,12 +2392,6 @@ def build_g5_wind_t4() -> dict[str, Any]:
             "SN kolektor 15 kV: I″k1f-z z uziemienia neutralnego OSD (kompensowana), "
             "prąd resztkowy ∝ Un; LV turbiny za trafem Dyn — uziemienie lokalne"
         ),
-    }
-    # P1 — dynamic (peak) withstand beside the thermal Icw; ip from the FROZEN solver.
-    src["withstand"] = {
-        "source_ref": "norma:IEC_62271_Ipk;norma:IEC_61400",
-        "sn_idyn_ka": 63.0,
-        "nn_idyn_ka": 105.0,
     }
     src["metering"] = _metering(
         source_ref="norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
@@ -2663,11 +2643,6 @@ def build_g8_biogaz() -> dict[str, Any]:
         ct_ipn_a=100.0,  # next-std ≥ I_load ≈ 77 A (2×1 MW @ 15 kV)
         ct_cores=2,
     )
-    src["withstand"] = {
-        "source_ref": "norma:IEC_62271_Ipk;std:agregat_synchroniczny",
-        "sn_idyn_ka": 63.0,  # peak withstand for the 25 kA Icw SN busbar
-        "nn_idyn_ka": 63.0,  # gensets sit on the SN busbar (no separate nN tier)
-    }
     src["grid_earthing"] = {
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN",
         "neutral_point": "kompensowana",
@@ -2781,11 +2756,6 @@ def build_g7_wind_async() -> dict[str, Any]:
         ct_ipn_a=100.0,  # next-std ≥ I_load ≈ 98 A (3×0,85 MW @ 15 kV)
         ct_cores=2,
     )
-    src["withstand"] = {
-        "source_ref": "norma:IEC_62271_Ipk;norma:IEC_61400",
-        "sn_idyn_ka": 63.0,
-        "nn_idyn_ka": 105.0,
-    }
     src["grid_earthing"] = {
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN",
         "neutral_point": "kompensowana",
@@ -2911,8 +2881,7 @@ def build_g6_wind_dfig() -> dict[str, Any]:
         "converter": ["RSC", "DC-chopper", "64R"],
     }
     # §5 P0 — OSD neutral-point earthing drives Ik″1f-z at the 15 kV collector (compensated;
-    # ∝ Un, like Typ 4). P1 — dynamic (peak) withstand beside Icw; DFIG ip is HIGHER than the
-    # IBG Typ 4 (machine + crowbar), so the nN peak rating must cover it.
+    # ∝ Un, like Typ 4).
     src["grid_earthing"] = {
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN",
         "neutral_point": "kompensowana",
@@ -2922,11 +2891,6 @@ def build_g6_wind_dfig() -> dict[str, Any]:
             "SN kolektor 15 kV: I″k1f-z z uziemienia neutralnego OSD (kompensowana), "
             "prąd resztkowy ∝ Un; zacisk DFIG za trafem Dyn — uziemienie lokalne"
         ),
-    }
-    src["withstand"] = {
-        "source_ref": "karta:rozdzielnica_SN_kolektor;karta:rozdzielnica_nN_turbina",
-        "sn_idyn_ka": 63.0,  # szczyt SN dla 25 kA Icw (2,5×Icw); ip≈24,5 kA ≤ 63 — rodzina ujednolicona
-        "nn_idyn_ka": 132.0,  # szczyt nN (zacisk 63 kA Icw); ip maszyny+crowbar ≈101 kA ≤
     }
     src["metering"] = _metering(
         source_ref="norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
@@ -3019,11 +2983,6 @@ def build_g9_gpo() -> dict[str, Any]:
         ct_ipn_a=250.0,  # next-std ≥ I_load ≈ 212 A (PV+synchr+async, 5,5 MW @ 15 kV)
         ct_cores=2,
     )
-    src["withstand"] = {
-        "source_ref": "norma:IEC_62271_Ipk;std:rozdzielnica_SN_GPO",
-        "sn_idyn_ka": 63.0,  # szczyt SN dla 25 kA Icw (2,5×Icw)
-        "nn_idyn_ka": 63.0,  # źródła na szynie SN (brak osobnego nN)
-    }
     src["grid_earthing"] = {
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN",
         "neutral_point": "kompensowana",

@@ -72,15 +72,21 @@ def test_g5_collector_uses_family_standard_infeed():
 
 
 def test_g5_carries_p0_p1_model():
-    # P0 (OSD neutral earthing) + P1 (dynamic withstand) must be present on the source.
+    # P0 (OSD neutral earthing) on the source + P1 (dynamic withstand) PER BUS.
     c = build_g5_wind_t4()
     src = c["source"]
     assert src["grid_earthing"]["neutral_point"] == "kompensowana"
     assert src["grid_earthing"]["imd_it_nn"] is False  # no station nN IT tier in a wind farm
     # I″k1f-z re-levelled to 15 kV (∝ Un): 0.06 kA, DISTINCT from G1 (PV, 0.12 kA) — not a copy.
     assert src["grid_earthing"]["ik_1f_ka"] == pytest.approx(0.06)
-    assert src["withstand"]["sn_idyn_ka"] == pytest.approx(63.0)
-    assert src["withstand"]["nn_idyn_ka"] == pytest.approx(105.0)
+    # P1 — dynamic peak withstand is now a PER-BUS nameplate (Idyn = 2.5·Icw SN / 2.1·Icw nN),
+    # no ambiguous source scalar; ip ≤ Idyn holds on every busbar.
+    assert "withstand" not in src
+    buses = c["short_circuit"]["buses"]
+    assert buses["SN_PCC"]["idyn_ka"] == pytest.approx(62.5)  # 2.5 × 25 kA Icw (collector)
+    assert buses["WTG_LV_1"]["idyn_ka"] == pytest.approx(105.0)  # 2.1 × 50 kA Icw (turbine LV)
+    for b in buses.values():
+        assert b["max"]["ip_ka"] <= b["idyn_ka"]
 
 
 def test_g5_ibg_collector_not_above_g6_dfig_collector():

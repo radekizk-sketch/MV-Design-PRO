@@ -47,7 +47,6 @@ export function SldCanonPresetG3({ companion }: { companion: SldOzeArchetypeComp
   const snGridShare = Math.max(0, snSc.max.ikss_ka - faln);
   const nnTrShare = Math.max(0, nnSc.max.ikss_ka - faln);
   const earthing = companion.source.grid_earthing;
-  const withstand = companion.source.withstand;
   const metering = companion.source.metering;
   const snIk1f = earthing ? `${fmt(earthing.ik_1f_ka)} kA · ${earthing.neutral_point}` : '—';
   const nnIk1f = `≈0 (IT)${earthing?.imd_it_nn ? ' · IMD' : ''}`;
@@ -146,7 +145,7 @@ export function SldCanonPresetG3({ companion }: { companion: SldOzeArchetypeComp
         ik3fMax={snSc.max.ikss_ka} ik3fMin={snSc.min.ikss_ka}
         ik1f={snIk1f} share={`sieć ${fmt(snGridShare, 1)} + PCS ${fmt(faln, 1)} kA`}
         icw={snSc.icw_ka} icwOk={snSc.verification.passed}
-        ip={snSc.max.ip_ka} idyn={withstand?.sn_idyn_ka ?? 0} />
+        ip={snSc.max.ip_ka} idyn={snSc.idyn_ka} />
 
       {/* ── nN busbar ── */}
       <line x1={nnX1} y1={nnBusY} x2={nnX2} y2={nnBusY} stroke={NN_BUS} strokeWidth={5} strokeLinecap="round" />
@@ -179,7 +178,7 @@ export function SldCanonPresetG3({ companion }: { companion: SldOzeArchetypeComp
         ik3fMax={nnSc.max.ikss_ka} ik3fMin={nnSc.min.ikss_ka}
         ik1f={nnIk1f} share={`TR ${fmt(nnTrShare, 1)} + PCS ${fmt(faln, 1)} kA`}
         icw={nnSc.icw_ka} icwOk={nnSc.verification.passed}
-        ip={nnSc.max.ip_ka} idyn={withstand?.nn_idyn_ka ?? 0} />
+        ip={nnSc.max.ip_ka} idyn={nnSc.idyn_ka} />
 
       {/* ── LEGENDA — symbole IEC (wspólny kanon) ── */}
       <rect x={80} y={838} width={1300} height={86} rx={8} fill="none" stroke="#13435A" strokeWidth={1} />

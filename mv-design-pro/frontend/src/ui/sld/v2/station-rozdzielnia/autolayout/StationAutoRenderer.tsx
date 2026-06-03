@@ -8,6 +8,7 @@ import {
   AMBER,
   AsyncMachine,
   CtRing,
+  CYAN,
   fmt,
   Glowica,
   InverterSym,
@@ -16,6 +17,7 @@ import {
   NodeReadout,
   Odlacznik,
   PowerArrow,
+  RelayBox,
   SANS,
   SN_BUS,
   SyncMachine,
@@ -30,6 +32,13 @@ import type { OzeScBus, OzeSourceContribution, SldOzeArchetypeCompanion } from '
 import type { BayPlacement, StationLayout } from './stationLayout';
 
 const kv = (v: number): string => (Number.isInteger(v) ? String(v) : fmt(v, 2));
+
+/** Wrap protection codes into ≤n-per-line groups (the per-bay annotation stays inside its pitch). */
+function chunk<T>(arr: readonly T[], n: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+  return out;
+}
 
 /** Local per-node share, the SAME breakdown as the canon: "sieć X + maszyna/IBG …"; zero terms
  *  dropped (PV node = IBG-only; machine node = machine-only); never a raw machine_type enum. On a
@@ -59,9 +68,36 @@ function sourceGlyph(kind: BayPlacement['sourceKind'], x: number, y: number): JS
   return <InverterSym x={x} y={y} />;
 }
 
+/** Short PRIMARY relay tag for the RelayBox glyph (the full set is spelled out beneath it).
+ *  Same convention as the hand-coded GPO preset: synchr → 87G, async → 51, IBG → AI. */
+function relayTag(kind: BayPlacement['sourceKind']): string {
+  return kind === 'SYNCHRONOUS' ? '87G' : kind === 'ASYNCHRONOUS' ? '51' : 'AI';
+}
+
+/** Relay annotation in a bay (E1 RelayBox + the protection_codes FROM THE MODEL): the interface
+ *  NC RfG set on the connection bay, the per-source machine/IBG set on a source bay. Dashed amber
+ *  link to the bay drop, codes wrapped to stay inside the pitch. Nothing drawn when codes empty. */
+function ProtBadge({ x, y, codes, iface, tag }: {
+  x: number; y: number; codes: readonly string[]; iface: boolean; tag: string;
+}): JSX.Element | null {
+  if (codes.length === 0) return null;
+  const rx = x - 60;
+  const lines = chunk(codes, 5).map((c) => c.join(' · '));
+  return (
+    <g data-testid="auto-prot" data-iface={iface ? '1' : '0'}>
+      <RelayBox x={rx} y={y} label={iface ? 'NC' : tag} />
+      <line x1={rx + 12} y1={y} x2={x - 9} y2={y} stroke={AMBER} strokeWidth={1.2} strokeDasharray="3 3" />
+      {lbl(rx, y + 23, iface ? 'zab. interfejsowe (NC RfG)' : 'zab. pola', CYAN, 7.5, 700, 'middle')}
+      {lines.map((ln, i) => <g key={i}>{lbl(rx, y + 34 + i * 11, ln, TXT_MUTED, 7, 600, 'middle')}</g>)}
+    </g>
+  );
+}
+
 /** A bay drawn at the geometry. SN bays carry the standard odłącznik + wyłącznik; an nN OUTGOING
  *  bay carries ONE apparatus (the main breaker is the transformer incomer — drawn there). */
-function Bay({ bay, busColor, lv }: { bay: BayPlacement; busColor: string; lv: boolean }): JSX.Element {
+function Bay({ bay, busColor, lv, codes, iface }: {
+  bay: BayPlacement; busColor: string; lv: boolean; codes: readonly string[]; iface: boolean;
+}): JSX.Element {
   const { x, busY, anchorY, role } = bay;
   return (
     <g data-testid={`auto-bay-${bay.id}`} data-role={role} data-source-kind={bay.sourceKind ?? ''}>
@@ -74,6 +110,7 @@ function Bay({ bay, busColor, lv }: { bay: BayPlacement; busColor: string; lv: b
           <Wylacznik x={x} y={busY + 96} />
         </>
       )}
+      {role !== 'metering' && <ProtBadge x={x} y={busY + (lv ? 46 : 96)} codes={codes} iface={iface} tag={relayTag(bay.sourceKind)} />}
       {role === 'line' && (
         <>
           <PowerArrow x={x} y={anchorY - 40} dir="down" />
@@ -109,14 +146,22 @@ export function StationAutoRenderer({
 }): JSX.Element {
   const sc = companion.short_circuit.buses;
   const vf = companion.voltage_flow.buses;
-  const w = companion.source.withstand;
   const e = companion.source.grid_earthing;
   const readoutX = layout.bbox.x + layout.bbox.width - 230;
   const trafoBusIds = new Set(layout.transformers.map((t) => t.id.replace(/^tr\//, '')));
-  // The withstand block carries ONE nn_idyn_ka scalar — unambiguous only with a single nN bus
-  // (G1/G5). A multi-nN station (G9) has differently-rated nN buses, so that scalar can't be a
-  // per-bus dynamic rating; show idyn there only on the SN tier (matches the hand-coded preset).
-  const singleNnBus = layout.buses.filter((bus) => bus.unKv < 1).length === 1;
+  // Protection codes per bay, READ FROM THE MODEL (field.protection_codes by field_id): the
+  // interface NC RfG set on the connection bay; the per-source set on each source bay. A
+  // single-machine archetype (G8) keeps its machine set on source.protection — use it when the
+  // field itself is empty. The renderer never invents a function code.
+  const fieldById = new Map(companion.fields.map((f) => [f.field_id, f]));
+  const bayProtection = (bay: BayPlacement): { codes: readonly string[]; iface: boolean } => {
+    const f = fieldById.get(bay.id);
+    if (!f) return { codes: [], iface: false };
+    if (f.protection_codes.length) return { codes: f.protection_codes, iface: f.interface_protection };
+    if (bay.role === 'source' && companion.source.protection?.machine?.length)
+      return { codes: companion.source.protection.machine, iface: false };
+    return { codes: [], iface: f.interface_protection };
+  };
 
   return (
     <g data-testid="sld-autolayout" data-hash={layout.hash}>
@@ -143,6 +188,7 @@ export function StationAutoRenderer({
             <Odlacznik x={tr.x} y={tr.hvY + 46} />
             <Wylacznik x={tr.x} y={tr.hvY + 96} />
             <TrafoDyn x={tr.x} y={mid} />
+            {lbl(tr.x + 16, mid - 2, 'Dyn', TXT2, 8.5, 700)}
             <Wylacznik x={tr.x} y={tr.lvY - 46} />
             {lbl(tr.x + 16, tr.lvY - 42, 'Q gł. nN · 51/87T', TXT_MUTED, 8, 600)}
           </g>
@@ -154,7 +200,9 @@ export function StationAutoRenderer({
         .filter((bay) => bay.role !== 'transformer')
         .map((bay) => {
           const bus = layout.buses.find((b) => b.id === bay.busId)!;
-          return <Bay key={bay.id} bay={bay} busColor={bus.unKv >= 1 ? SN_BUS : NN_BUS} lv={trafoBusIds.has(bay.busId)} />;
+          const prot = bayProtection(bay);
+          return <Bay key={bay.id} bay={bay} busColor={bus.unKv >= 1 ? SN_BUS : NN_BUS}
+            lv={trafoBusIds.has(bay.busId)} codes={prot.codes} iface={prot.iface} />;
         })}
 
       {/* ── node readouts (from the companion — idyn, share, 1f-z), to the right; no PCC name ── */}
@@ -174,7 +222,7 @@ export function StationAutoRenderer({
             ik1f={isSn && e ? `${fmt(e.ik_1f_ka)} kA · ${e.neutral_point}` : 'lok. (za trafem)'}
             share={shareLabel(b.source_contribution, b.max.ikss_ka, { isCollector: bus.band === 0, hasLocalIbg, hasLocalMachine })}
             icw={b.icw_ka} icwOk={b.verification.passed}
-            ip={b.max.ip_ka} idyn={isSn ? w?.sn_idyn_ka : (singleNnBus ? w?.nn_idyn_ka : undefined)} />
+            ip={b.max.ip_ka} idyn={b.idyn_ka} />
         );
       })}
     </g>

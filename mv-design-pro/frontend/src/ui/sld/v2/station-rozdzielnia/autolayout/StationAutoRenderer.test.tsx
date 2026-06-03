@@ -28,32 +28,26 @@ describe('E2 auto-layout render — matches the preset (same model + readouts)',
     for (const k of ['G4-PVTR', 'G8-BIOGAZ', 'G9-GPO']) expect(autoText(k).txt).not.toContain('PCC');
   });
 
-  it('idyn from the companion (ip ≤ idyn ✓), not 0', () => {
+  it('idyn read PER-BUS from the companion (ip ≤ idyn ✓), not 0', () => {
     const { txt, companion } = autoText('G8-BIOGAZ');
-    const idyn = companion.source.withstand!.sn_idyn_ka;
+    const idyn = companion.short_circuit.buses['SN_PCC'].idyn_ka; // per-bus, not a source scalar
     expect(idyn).toBeGreaterThan(0);
-    expect(txt).toContain(`idyn ${idyn}`); // rendered (NodeReadout shows "idyn 63 ✓"), not 0
+    expect(txt).toContain(`idyn ${fmt(idyn, 0)} ✓`);
     expect(txt).not.toContain('idyn 0');
     expect(companion.short_circuit.buses['SN_PCC'].max.ip_ka).toBeLessThanOrEqual(idyn);
   });
 
-  it('single-nN archetype (G4-PVTR) STILL shows the nN dynamic verdict (scalar is unambiguous)', () => {
-    const { txt, companion } = autoText('G4-PVTR');
-    const nn = companion.source.withstand!.nn_idyn_ka; // 1 SN + 1 nN → the scalar maps cleanly
-    expect(txt).toContain(`idyn ${nn} ✓`);
-    expect(txt).not.toContain('✗'); // healthy single-transformer station — no failed verdict
-  });
-
-  it('multi-nN station (G9) shows NO fabricated dynamic verdict on its nN buses', () => {
-    const { txt, companion } = autoText('G9-GPO');
-    // The SN collector DOES carry the dynamic verdict (sn_idyn_ka applies to the SN tier).
-    expect(txt).toContain(`idyn ${companion.source.withstand!.sn_idyn_ka} ✓`);
-    // Two distinct nN buses share ONE nn_idyn_ka scalar → no per-bus idyn, hence NO failed verdict.
-    expect(txt).not.toContain('✗');
-    // The nN peak (ip) is still shown — but WITHOUT an "· idyn …" suffix (no fabricated rating).
-    const pvIp = fmt(companion.short_circuit.buses['PV_NN'].max.ip_ka, 1);
-    expect(txt).toContain(`${pvIp} kA`);
-    expect(txt).not.toContain(`${pvIp} kA · idyn`);
+  it('EVERY bus (SN + each nN) carries its OWN idyn verdict — multi-nN G9 has NO failed/blank ip', () => {
+    for (const key of ['G4-PVTR', 'G8-BIOGAZ', 'G9-GPO']) {
+      const { txt, companion } = autoText(key);
+      expect(txt).not.toContain('✗'); // every per-bus Idyn ≥ ip (real nameplates, no fabrication)
+      for (const b of Object.values(companion.short_circuit.buses)) {
+        expect(b.idyn_ka).toBeGreaterThan(0);
+        expect(b.max.ip_ka).toBeLessThanOrEqual(b.idyn_ka);
+        // ip is shown WITH a dynamic verdict (no bare "ip … kA" without "· idyn …").
+        expect(txt).toContain(`${fmt(b.max.ip_ka, 1)} kA · idyn ${fmt(b.idyn_ka, 0)} ✓`);
+      }
+    }
   });
 
   it('1f-z restored from grid_earthing (kompensowana on SN)', () => {
@@ -93,5 +87,35 @@ describe('E2 auto-layout render — matches the preset (same model + readouts)',
     expect(windReadout).toMatch(/sieć [\d,]+ \+ masz [\d,]+ kA/);
     // PV_NN (IBG, no machine): "sieć … + IBG …".
     expect(txt).toMatch(/sieć [\d,]+ \+ IBG [\d,]+ kA/);
+  });
+
+  it('protection annotations — interface NC RfG on the line bay (codes FROM the model)', () => {
+    const { txt, companion } = autoText('G8-BIOGAZ');
+    expect(txt).toContain('zab. interfejsowe (NC RfG)');
+    const iface = companion.fields.find((f) => f.interface_protection)!.protection_codes;
+    expect(iface.length).toBeGreaterThan(0);
+    for (const code of iface) expect(txt).toContain(code); // 67 · 67N · 27 · 59 · 81U · 81O · …
+  });
+
+  it('protection annotations — per-source set on each source bay (G9 mixed: sync/async/IBG)', () => {
+    const { txt, companion } = autoText('G9-GPO');
+    expect(txt).toContain('zab. pola');
+    for (const f of companion.fields.filter((f) => f.role === 'source' && f.protection_codes.length)) {
+      for (const code of f.protection_codes) expect(txt).toContain(code);
+    }
+    // the synchronous-machine set must be there (87G/40/…) and the async set (46/47/49/51/37/32).
+    expect(txt).toContain('87G');
+    expect(txt).toContain('49');
+  });
+
+  it('protection annotations — single-machine archetype (G8) uses source.protection.machine', () => {
+    const { txt, companion } = autoText('G8-BIOGAZ');
+    for (const code of companion.source.protection!.machine) expect(txt).toContain(code); // 87G/40/32/64/…
+  });
+
+  it('transformer carries the vector-group mark (Dyn) on the block transformer', () => {
+    // G4-PVTR has one block transformer; G8 (gensets on SN) has none.
+    expect(autoText('G4-PVTR').txt).toContain('Dyn');
+    expect(autoText('G9-GPO').txt).toContain('Dyn');
   });
 });

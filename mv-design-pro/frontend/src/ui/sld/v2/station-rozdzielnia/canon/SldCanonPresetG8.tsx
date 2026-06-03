@@ -45,7 +45,6 @@ export function SldCanonPresetG8({ companion }: { companion: SldOzeArchetypeComp
   const snMach = snSc.source_contribution.ik_contribution_ka ?? 0;
   const snGridShare = Math.max(0, snSc.max.ikss_ka - snMach);
   const earthing = companion.source.grid_earthing;
-  const withstand = companion.source.withstand;
   const metering = companion.source.metering;
   const gen = companion.source.genset;
   const snIk1f = earthing ? `${fmt(earthing.ik_1f_ka)} kA · ${earthing.neutral_point}` : 'lok. (OSD)';
@@ -155,7 +154,7 @@ export function SldCanonPresetG8({ companion }: { companion: SldOzeArchetypeComp
         ik3fMax={snSc.max.ikss_ka} ik3fMin={snSc.min.ikss_ka}
         ik1f={snIk1f} share={`sieć ${fmt(snGridShare, 1)} + maszyna ${fmt(snMach, 2)} kA`}
         icw={snSc.icw_ka} icwOk={snSc.verification.passed}
-        ip={snSc.max.ip_ka} idyn={withstand?.sn_idyn_ka ?? 0} />
+        ip={snSc.max.ip_ka} idyn={snSc.idyn_ka} />
 
       {/* ── LEGENDA — symbole IEC (wspólny kanon) ── */}
       <rect x={80} y={838} width={1360} height={86} rx={8} fill="none" stroke="#13435A" strokeWidth={1} />

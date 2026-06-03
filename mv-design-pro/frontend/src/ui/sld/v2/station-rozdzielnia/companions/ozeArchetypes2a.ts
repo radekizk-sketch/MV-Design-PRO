@@ -70,6 +70,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "NN_BUS": {
           "bus_ref": "NN_BUS",
           "icw_ka": 25.0,
+          "idyn_ka": 52.5,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -360,6 +361,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_BUS": {
           "bus_ref": "SN_BUS",
           "icw_ka": 25.0,
+          "idyn_ka": 62.5,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -679,12 +681,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "59N",
         "anti-islanding"
       ],
-      "technology": "PV",
-      "withstand": {
-        "nn_idyn_ka": 52.5,
-        "sn_idyn_ka": 63.0,
-        "source_ref": "karta:rozdzielnica_nN"
-      }
+      "technology": "PV"
     },
     "voltage_flow": {
       "branches": {
@@ -792,7 +789,8 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       "buses": {
         "NN_COLLECTOR": {
           "bus_ref": "NN_COLLECTOR",
-          "icw_ka": 31.5,
+          "icw_ka": 40.0,
+          "idyn_ka": 84.0,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -1074,7 +1072,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           },
           "un_kv": 0.4,
           "verification": {
-            "icw_ka": 31.5,
+            "icw_ka": 40.0,
             "ikss_max_ka": 26.511,
             "passed": true,
             "rule": "ikss_max_le_icw"
@@ -1083,6 +1081,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "PCC_SN": {
           "bus_ref": "PCC_SN",
           "icw_ka": 25.0,
+          "idyn_ka": 62.5,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -1492,6 +1491,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "PCC_SN": {
           "bus_ref": "PCC_SN",
           "icw_ka": 25.0,
+          "idyn_ka": 62.5,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -1782,6 +1782,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "PV_SN": {
           "bus_ref": "PV_SN",
           "icw_ka": 25.0,
+          "idyn_ka": 62.5,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -2316,6 +2317,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "NN": {
           "bus_ref": "NN",
           "icw_ka": 50.0,
+          "idyn_ka": 105.0,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -2606,6 +2608,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_PCC": {
           "bus_ref": "SN_PCC",
           "icw_ka": 16.0,
+          "idyn_ka": 40.0,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -2959,12 +2962,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "power_kw": 1000.0,
         "source_ref": "std:IEC_62933;enm:Generator.gen_type=bess"
       },
-      "technology": "Hybryda PV + BESS \u2014 AC-coupled (wsp\u00f3lna szyna nN, jeden trafo przy\u0142\u0105czeniowy)",
-      "withstand": {
-        "nn_idyn_ka": 105.0,
-        "sn_idyn_ka": 40.0,
-        "source_ref": "karta:CTM20_Idyn;karta:rozdzielnica_nN"
-      }
+      "technology": "Hybryda PV + BESS \u2014 AC-coupled (wsp\u00f3lna szyna nN, jeden trafo przy\u0142\u0105czeniowy)"
     },
     "voltage_flow": {
       "branches": {
@@ -3243,6 +3241,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "BESS_NN": {
           "bus_ref": "BESS_NN",
           "icw_ka": 50.0,
+          "idyn_ka": 105.0,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -3533,6 +3532,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "PV_NN": {
           "bus_ref": "PV_NN",
           "icw_ka": 50.0,
+          "idyn_ka": 105.0,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -3823,6 +3823,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_PCC": {
           "bus_ref": "SN_PCC",
           "icw_ka": 16.0,
+          "idyn_ka": 40.0,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -4176,12 +4177,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "power_kw": 1000.0,
         "source_ref": "std:IEC_62933;enm:Generator.gen_type=bess"
       },
-      "technology": "Hybryda PV + BESS \u2014 sprz\u0119\u017cenie na SN (wsp\u00f3lna szyna 15 kV, osobne trafa)",
-      "withstand": {
-        "nn_idyn_ka": 105.0,
-        "sn_idyn_ka": 40.0,
-        "source_ref": "karta:CTM20_Idyn;karta:rozdzielnica_nN"
-      }
+      "technology": "Hybryda PV + BESS \u2014 sprz\u0119\u017cenie na SN (wsp\u00f3lna szyna 15 kV, osobne trafa)"
     },
     "voltage_flow": {
       "branches": {
@@ -4493,6 +4489,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "NN_800": {
           "bus_ref": "NN_800",
           "icw_ka": 50.0,
+          "idyn_ka": 105.0,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -4783,6 +4780,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_PCC": {
           "bus_ref": "SN_PCC",
           "icw_ka": 16.0,
+          "idyn_ka": 40.0,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -5275,12 +5273,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           ]
         }
       },
-      "technology": "PV 1 MW \u201eBuk 1\u201d",
-      "withstand": {
-        "nn_idyn_ka": 105.0,
-        "sn_idyn_ka": 40.0,
-        "source_ref": "karta:CTM20_Idyn;karta:3WA1110_Icm"
-      }
+      "technology": "PV 1 MW \u201eBuk 1\u201d"
     },
     "voltage_flow": {
       "branches": {
@@ -5545,6 +5538,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "NN": {
           "bus_ref": "NN",
           "icw_ka": 50.0,
+          "idyn_ka": 105.0,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -5835,6 +5829,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_PCC": {
           "bus_ref": "SN_PCC",
           "icw_ka": 16.0,
+          "idyn_ka": 40.0,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -6178,12 +6173,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "power_kw": 1000.0,
         "source_ref": "std:IEC_62933;enm:Generator.gen_type=bess"
       },
-      "technology": "BESS (magazyn energii)",
-      "withstand": {
-        "nn_idyn_ka": 105.0,
-        "sn_idyn_ka": 40.0,
-        "source_ref": "karta:CTM20_Idyn;karta:rozdzielnica_nN"
-      }
+      "technology": "BESS (magazyn energii)"
     },
     "voltage_flow": {
       "branches": {
@@ -6387,6 +6377,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_PCC": {
           "bus_ref": "SN_PCC",
           "icw_ka": 25.0,
+          "idyn_ka": 62.5,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -6677,6 +6668,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "WTG_LV_1": {
           "bus_ref": "WTG_LV_1",
           "icw_ka": 50.0,
+          "idyn_ka": 105.0,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -7017,12 +7009,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "59N",
         "anti-islanding"
       ],
-      "technology": "Wiatr \u2014 turbiny pe\u0142noprzekszta\u0142tnikowe (Typ 4)",
-      "withstand": {
-        "nn_idyn_ka": 105.0,
-        "sn_idyn_ka": 63.0,
-        "source_ref": "norma:IEC_62271_Ipk;norma:IEC_61400"
-      }
+      "technology": "Wiatr \u2014 turbiny pe\u0142noprzekszta\u0142tnikowe (Typ 4)"
     },
     "voltage_flow": {
       "branches": {
@@ -7225,6 +7212,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_PCC": {
           "bus_ref": "SN_PCC",
           "icw_ka": 25.0,
+          "idyn_ka": 62.5,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -7547,6 +7535,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "WTG_LV_1": {
           "bus_ref": "WTG_LV_1",
           "icw_ka": 63.0,
+          "idyn_ka": 132.3,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -7932,12 +7921,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "df/dt",
         "anti-islanding"
       ],
-      "technology": "Wiatr \u2014 generatory dwustronnie zasilane (Typ 3, DFIG)",
-      "withstand": {
-        "nn_idyn_ka": 132.0,
-        "sn_idyn_ka": 63.0,
-        "source_ref": "karta:rozdzielnica_SN_kolektor;karta:rozdzielnica_nN_turbina"
-      }
+      "technology": "Wiatr \u2014 generatory dwustronnie zasilane (Typ 3, DFIG)"
     },
     "voltage_flow": {
       "branches": {
@@ -8140,6 +8124,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_PCC": {
           "bus_ref": "SN_PCC",
           "icw_ka": 25.0,
+          "idyn_ka": 62.5,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -8462,6 +8447,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "WTG_LV_1": {
           "bus_ref": "WTG_LV_1",
           "icw_ka": 50.0,
+          "idyn_ka": 105.0,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -8845,12 +8831,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "df/dt",
         "anti-islanding"
       ],
-      "technology": "Wiatr \u2014 generatory indukcyjne (Typ 1, sta\u0142a pr\u0119dko\u015b\u0107)",
-      "withstand": {
-        "nn_idyn_ka": 105.0,
-        "sn_idyn_ka": 63.0,
-        "source_ref": "norma:IEC_62271_Ipk;norma:IEC_61400"
-      }
+      "technology": "Wiatr \u2014 generatory indukcyjne (Typ 1, sta\u0142a pr\u0119dko\u015b\u0107)"
     },
     "voltage_flow": {
       "branches": {
@@ -9041,6 +9022,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_PCC": {
           "bus_ref": "SN_PCC",
           "icw_ka": 25.0,
+          "idyn_ka": 62.5,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -9419,12 +9401,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "df/dt",
         "anti-islanding"
       ],
-      "technology": "Biogazownia \u2014 agregaty synchroniczne (kogeneracja)",
-      "withstand": {
-        "nn_idyn_ka": 63.0,
-        "sn_idyn_ka": 63.0,
-        "source_ref": "norma:IEC_62271_Ipk;std:agregat_synchroniczny"
-      }
+      "technology": "Biogazownia \u2014 agregaty synchroniczne (kogeneracja)"
     },
     "voltage_flow": {
       "branches": {
@@ -9620,6 +9597,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "PV_NN": {
           "bus_ref": "PV_NN",
           "icw_ka": 65.0,
+          "idyn_ka": 136.5,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -9933,6 +9911,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_PCC": {
           "bus_ref": "SN_PCC",
           "icw_ka": 25.0,
+          "idyn_ka": 62.5,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -10246,6 +10225,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "WIND_NN": {
           "bus_ref": "WIND_NN",
           "icw_ka": 50.0,
+          "idyn_ka": 105.0,
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
@@ -10599,12 +10579,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "df/dt",
         "anti-islanding"
       ],
-      "technology": "GPO wielopolowe \u2014 PV (IBG) + agregat synchr. + wiatr async",
-      "withstand": {
-        "nn_idyn_ka": 63.0,
-        "sn_idyn_ka": 63.0,
-        "source_ref": "norma:IEC_62271_Ipk;std:rozdzielnica_SN_GPO"
-      }
+      "technology": "GPO wielopolowe \u2014 PV (IBG) + agregat synchr. + wiatr async"
     },
     "voltage_flow": {
       "branches": {

@@ -69,7 +69,11 @@ export interface ScVerification {
 export interface ScBus {
   readonly bus_ref: string;
   readonly un_kv: number;
+  /** Rated short-time (thermal) withstand nameplate of this busbar [kA]. */
   readonly icw_ka: number;
+  /** Rated PEAK (dynamic) withstand nameplate of this busbar [kA], paired per-bus with Icw
+   *  (IEC 62271-1 Idyn = 2.5·Icw for MV / 2.1·Icw for LV). Checked at L2 as ip ≤ Idyn. */
+  readonly idyn_ka: number;
   readonly max: ScMax;
   readonly min: ScMin;
   readonly verification: ScVerification;

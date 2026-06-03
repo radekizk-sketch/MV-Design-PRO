@@ -164,13 +164,6 @@ export interface OzeGridEarthing {
   readonly note_pl: string;
 }
 
-/** §5 P1 — dynamic (peak) withstand nameplates (checked beside the thermal Icw). */
-export interface OzeWithstand {
-  readonly source_ref: string;
-  readonly sn_idyn_ka: number;
-  readonly nn_idyn_ka: number;
-}
-
 /** Audit #5 — MACHINE + rotor-CONVERTER protection (rotating-machine sources). The grid
  *  INTERFACE protection (NC RfG) lives on the connection field's protection_codes, NOT here
  *  (46/47 neg-seq are machine functions, not interface). */
@@ -199,8 +192,6 @@ export interface OzeSourceMeta {
   readonly coordination?: OzeCoordination;
   /** §5 P0 — OSD neutral-point earthing (drives Ik″1f-z SN) + IMD on the IT nN system. */
   readonly grid_earthing?: OzeGridEarthing;
-  /** §5 P1 — dynamic (peak) withstand ratings checked beside the thermal Icw. */
-  readonly withstand?: OzeWithstand;
   /** True ⇒ the source is bidirectional (BESS — charge ⇄ discharge). */
   readonly bidirectional?: boolean;
   /** Storage spec (BESS) — the energy axis (kWh) alongside the power axis (kW). */

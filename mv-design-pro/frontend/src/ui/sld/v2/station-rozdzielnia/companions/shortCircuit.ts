@@ -25,6 +25,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
       "NN_BUS": {
         "bus_ref": "NN_BUS",
         "icw_ka": 25.0,
+        "idyn_ka": 52.5,
         "max": {
           "c_factor": 1.1,
           "case_ref": "ZWARCIOWY_MAKS",
@@ -309,6 +310,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
       "SN_BUS": {
         "bus_ref": "SN_BUS",
         "icw_ka": 25.0,
+        "idyn_ka": 62.5,
         "max": {
           "c_factor": 1.1,
           "case_ref": "ZWARCIOWY_MAKS",
@@ -602,6 +604,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
       "NN_BUS": {
         "bus_ref": "NN_BUS",
         "icw_ka": 25.0,
+        "idyn_ka": 52.5,
         "max": {
           "c_factor": 1.1,
           "case_ref": "ZWARCIOWY_MAKS",
@@ -886,6 +889,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
       "SN_BUS": {
         "bus_ref": "SN_BUS",
         "icw_ka": 25.0,
+        "idyn_ka": 62.5,
         "max": {
           "c_factor": 1.1,
           "case_ref": "ZWARCIOWY_MAKS",
@@ -1179,6 +1183,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
       "ZKSN": {
         "bus_ref": "ZKSN",
         "icw_ka": 25.0,
+        "idyn_ka": 62.5,
         "max": {
           "c_factor": 1.1,
           "case_ref": "ZWARCIOWY_MAKS",
@@ -1472,6 +1477,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
       "SEC_A": {
         "bus_ref": "SEC_A",
         "icw_ka": 25.0,
+        "idyn_ka": 62.5,
         "max": {
           "c_factor": 1.1,
           "case_ref": "ZWARCIOWY_MAKS",
@@ -1756,6 +1762,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
       "SEC_B": {
         "bus_ref": "SEC_B",
         "icw_ka": 25.0,
+        "idyn_ka": 62.5,
         "max": {
           "c_factor": 1.1,
           "case_ref": "ZWARCIOWY_MAKS",

@@ -50,7 +50,6 @@ export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeComp
   const faln = snSc.source_contribution.ik_contribution_ka ?? 0; // PV + BESS IBG share (sum)
   const snGridShare = Math.max(0, snSc.max.ikss_ka - faln);
   const earthing = companion.source.grid_earthing;
-  const withstand = companion.source.withstand;
   const metering = companion.source.metering;
   const snIk1f = earthing ? `${fmt(earthing.ik_1f_ka)} kA · ${earthing.neutral_point}` : '—';
   const nnIk1f = `≈0 (IT)${earthing?.imd_it_nn ? ' · IMD' : ''}`;
@@ -143,11 +142,11 @@ export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeComp
   );
 
   const nodeReadout = (x: number, y: number, n: number, titleTxt: string, b: OzeVfBus, bsc: OzeScBus,
-    shareTxt: string, ik1f: string, idyn: number) => (
+    shareTxt: string, ik1f: string) => (
     <NodeReadout x={x} y={y} n={n} title={titleTxt}
       uKv={b.un_kv} uPu={b.u_pu} uOk={Math.abs(b.deviation_percent) <= 5}
       ik3fMax={bsc.max.ikss_ka} ik3fMin={bsc.min.ikss_ka} ik1f={ik1f} share={shareTxt}
-      icw={bsc.icw_ka} icwOk={bsc.verification.passed} ip={bsc.max.ip_ka} idyn={idyn} />
+      icw={bsc.icw_ka} icwOk={bsc.verification.passed} ip={bsc.max.ip_ka} idyn={bsc.idyn_ka} />
   );
 
   // nN-node share: grid-through-TR + LOCAL IBG (per-bus k·In from the companion).
@@ -194,11 +193,11 @@ export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeComp
           {pcsFeeders.map((fx, i) => sourceFeeder(fx, `g4bus-pcs-${i}`, `PCS ${i + 1}`, 500, true))}
 
           {/* node readouts ①②③ (numerical share per bus) */}
-          {nodeReadout(nodeX, 236, 1, `szyna SN · ${colKv} kV`, sn, snSc, snShareTxt, snIk1f, withstand?.sn_idyn_ka ?? 0)}
+          {nodeReadout(nodeX, 236, 1, `szyna SN · ${colKv} kV`, sn, snSc, snShareTxt, snIk1f)}
           {nodeReadout(nodeX, 470, 2, 'szyna nN PV · 0,80 kV', vf['PV_NN'], sc['PV_NN'],
-            nnShare(sc['PV_NN'], 'falow.'), nnIk1f, withstand?.nn_idyn_ka ?? 0)}
+            nnShare(sc['PV_NN'], 'falow.'), nnIk1f)}
           {nodeReadout(nodeX, 700, 3, 'szyna nN BESS · 0,40 kV', vf['BESS_NN'], sc['BESS_NN'],
-            nnShare(sc['BESS_NN'], 'PCS'), nnIk1f, withstand?.nn_idyn_ka ?? 0)}
+            nnShare(sc['BESS_NN'], 'PCS'), nnIk1f)}
         </>
       ) : (
         <>
@@ -216,9 +215,9 @@ export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeComp
           {[860, 1000].map((fx, i) => sourceFeeder(fx, `g4ac-pcs-${i}`, `PCS ${i + 1}`, 500, true))}
 
           {/* node readouts ①② (numerical share per bus) */}
-          {nodeReadout(nodeX, 236, 1, `szyna SN · ${colKv} kV`, sn, snSc, snShareTxt, snIk1f, withstand?.sn_idyn_ka ?? 0)}
+          {nodeReadout(nodeX, 236, 1, `szyna SN · ${colKv} kV`, sn, snSc, snShareTxt, snIk1f)}
           {nodeReadout(nodeX, 690, 2, 'szyna nN · 0,80 kV · IT', vf['NN'], sc['NN'],
-            nnShare(sc['NN'], 'PV+BESS'), nnIk1f, withstand?.nn_idyn_ka ?? 0)}
+            nnShare(sc['NN'], 'PV+BESS'), nnIk1f)}
         </>
       )}
 

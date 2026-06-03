@@ -47,10 +47,9 @@ describe('SldCanonPresetG2 — canonical PV nN prosumer (G2)', () => {
   it('node readout bound to the FROZEN solver (Ik″/ip from companion; 1f-z = TN param)', () => {
     const txt = renderG2().container.textContent ?? '';
     const sc = G2.short_circuit.buses['NN_BUS'];
-    const w = G2.source.withstand!;
     const e = G2.source.grid_earthing!;
     expect(txt).toContain(`${pl(sc.max.ikss_ka)} / ${pl(sc.min.ikss_ka)} kA`);
-    expect(txt).toContain(`${pl(sc.max.ip_ka)} kA · idyn ${w.nn_idyn_ka.toFixed(0)}`);
+    expect(txt).toContain(`${pl(sc.max.ip_ka)} kA · idyn ${sc.idyn_ka.toFixed(0)}`);
     // TN system: 1st earth fault carries current (no IMD), from the OSD neutral earthing.
     expect(txt).toContain(`${e.ik_1f_ka.toFixed(2).replace('.', ',')} kA · ${e.neutral_point}`);
     expect(e.imd_it_nn).toBe(false);

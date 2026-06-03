@@ -49,7 +49,6 @@ export function SldCanonPresetG2({ companion }: { companion: SldOzeArchetypeComp
   const faln = nnSc.source_contribution.ik_contribution_ka ?? 0; // PV inverter (IBG) share
   const gridShare = Math.max(0, nnSc.max.ikss_ka - faln);
   const earthing = companion.source.grid_earthing;
-  const withstand = companion.source.withstand;
   const ik1f = earthing ? `${fmt(earthing.ik_1f_ka)} kA · ${earthing.neutral_point}` : '—';
   const pvKw = Math.round(companion.source.power_hierarchy.pn_ac_kw);
 
@@ -123,7 +122,7 @@ export function SldCanonPresetG2({ companion }: { companion: SldOzeArchetypeComp
         ik3fMax={nnSc.max.ikss_ka} ik3fMin={nnSc.min.ikss_ka}
         ik1f={ik1f} share={`OSD ${fmt(gridShare, 1)} + faln. ${fmt(faln, 2)} kA`}
         icw={nnSc.icw_ka} icwOk={nnSc.verification.passed}
-        ip={nnSc.max.ip_ka} idyn={withstand?.nn_idyn_ka ?? 0} />
+        ip={nnSc.max.ip_ka} idyn={nnSc.idyn_ka} />
 
       {/* ── LEGENDA — symbole IEC (wspólny kanon) ── */}
       <rect x={80} y={630} width={1060} height={86} rx={8} fill="none" stroke="#13435A" strokeWidth={1} />

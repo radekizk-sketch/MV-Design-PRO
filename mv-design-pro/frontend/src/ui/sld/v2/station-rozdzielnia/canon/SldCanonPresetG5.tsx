@@ -50,7 +50,6 @@ export function SldCanonPresetG5({ companion }: { companion: SldOzeArchetypeComp
   const snGridShare = Math.max(0, snSc.max.ikss_ka - faln);
   const lvTrShare = Math.max(0, lvSc.max.ikss_ka - faln);
   const earthing = companion.source.grid_earthing;
-  const withstand = companion.source.withstand;
   const metering = companion.source.metering;
   const col = companion.source.collector;
   const snIk1f = earthing ? `${fmt(earthing.ik_1f_ka)} kA · ${earthing.neutral_point}` : '—';
@@ -153,7 +152,7 @@ export function SldCanonPresetG5({ companion }: { companion: SldOzeArchetypeComp
         ik3fMax={snSc.max.ikss_ka} ik3fMin={snSc.min.ikss_ka}
         ik1f={snIk1f} share={`sieć ${fmt(snGridShare, 1)} + WTG ${fmt(faln, 1)} kA`}
         icw={snSc.icw_ka} icwOk={snSc.verification.passed}
-        ip={snSc.max.ip_ka} idyn={withstand?.sn_idyn_ka ?? 0} />
+        ip={snSc.max.ip_ka} idyn={snSc.idyn_ka} />
 
       {/* ── node ② — turbine LV 0.69 kV ── */}
       <NodeReadout x={X.node} y={470} n={2} title="zacisk turbiny · 0,69 kV"
@@ -161,7 +160,7 @@ export function SldCanonPresetG5({ companion }: { companion: SldOzeArchetypeComp
         ik3fMax={lvSc.max.ikss_ka} ik3fMin={lvSc.min.ikss_ka}
         ik1f="lok. (trafo Dyn turb.)" share={`TR ${fmt(lvTrShare, 1)} + ~/= ${fmt(faln, 1)} kA`}
         icw={lvSc.icw_ka} icwOk={lvSc.verification.passed}
-        ip={lvSc.max.ip_ka} idyn={withstand?.nn_idyn_ka ?? 0} />
+        ip={lvSc.max.ip_ka} idyn={lvSc.idyn_ka} />
 
       {/* ── LEGENDA — symbole IEC (wspólny kanon) ── */}
       <rect x={80} y={838} width={1500} height={86} rx={8} fill="none" stroke="#13435A" strokeWidth={1} />

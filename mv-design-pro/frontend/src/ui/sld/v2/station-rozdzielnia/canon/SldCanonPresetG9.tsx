@@ -48,7 +48,6 @@ export function SldCanonPresetG9({ companion }: { companion: SldOzeArchetypeComp
   const machKa = sc.machine_ka ?? 0;
   const gridShare = Math.max(0, snSc.max.ikss_ka - ibgKa - machKa);
   const earthing = companion.source.grid_earthing;
-  const withstand = companion.source.withstand;
   const metering = companion.source.metering;
   const snIk1f = earthing ? `${fmt(earthing.ik_1f_ka)} kA · ${earthing.neutral_point}` : 'lok. (OSD)';
   const colKv = fmt(sn.un_kv, 0); // SN kV from the FROZEN solver companion (ENEA-valid, no 30 kV)
@@ -174,7 +173,7 @@ export function SldCanonPresetG9({ companion }: { companion: SldOzeArchetypeComp
         ik3fMax={snSc.max.ikss_ka} ik3fMin={snSc.min.ikss_ka}
         ik1f={snIk1f} share={`sieć ${fmt(gridShare, 1)} + masz ${fmt(machKa, 2)} + IBG ${fmt(ibgKa, 2)} kA`}
         icw={snSc.icw_ka} icwOk={snSc.verification.passed}
-        ip={snSc.max.ip_ka} idyn={withstand?.sn_idyn_ka ?? 0} />
+        ip={snSc.max.ip_ka} idyn={snSc.idyn_ka} />
 
       {/* ── LEGENDA — symbole IEC (wspólny kanon) ── */}
       <rect x={80} y={838} width={1540} height={86} rx={8} fill="none" stroke="#13435A" strokeWidth={1} />

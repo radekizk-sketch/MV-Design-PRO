@@ -110,9 +110,11 @@ describe('DoD §8 — canonical OZE preset acceptance', () => {
         expect(svg().textContent ?? '').toContain(`${f1(sc.max.ikss_ka)} / ${f1(sc.min.ikss_ka)} kA`);
       });
 
-      it('§8.4 — data model: OSD neutral earthing + dynamic withstand', () => {
+      it('§8.4 — data model: OSD neutral earthing + per-bus dynamic withstand (Idyn ≥ ip)', () => {
         expect(p.companion.source.grid_earthing, 'grid_earthing — OSD neutral earthing').toBeTruthy();
-        expect(p.companion.source.withstand, 'withstand — ip beside Icw').toBeTruthy();
+        const sc = p.companion.short_circuit.buses[p.bus];
+        expect(sc.idyn_ka, 'Idyn — per-bus dynamic withstand nameplate').toBeGreaterThan(0);
+        expect(sc.max.ip_ka, 'ip ≤ Idyn (dynamic verdict)').toBeLessThanOrEqual(sc.idyn_ka);
       });
 
       it('§8.5 — render clean: no annotation text overlaps a canonical glyph', () => {

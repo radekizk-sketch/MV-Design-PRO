@@ -89,11 +89,10 @@ describe('SldCanonPresetG1 — canonical PV 1 MW template (G1)', () => {
     const sn = G1.short_circuit.buses['SN_PCC'];
     const nn = G1.short_circuit.buses['NN_800'];
     const e = G1.source.grid_earthing!;
-    const w = G1.source.withstand!;
     expect(e, 'G1 carries the §5 OSD neutral-earthing model').toBeTruthy();
-    // P1 — ip (peak) checked against the equipment dynamic withstand (idyn), beside Icw.
-    expect(txt).toContain(`${pl(sn.max.ip_ka)} kA · idyn ${w.sn_idyn_ka.toFixed(0)}`);
-    expect(txt).toContain(`${pl(nn.max.ip_ka)} kA · idyn ${w.nn_idyn_ka.toFixed(0)}`);
+    // P1 — ip (peak) checked against the PER-BUS equipment dynamic withstand (idyn), beside Icw.
+    expect(txt).toContain(`${pl(sn.max.ip_ka)} kA · idyn ${sn.idyn_ka.toFixed(0)}`);
+    expect(txt).toContain(`${pl(nn.max.ip_ka)} kA · idyn ${nn.idyn_ka.toFixed(0)}`);
     // P0 — Ik″1f-z (SN) bound to the OSD neutral-point earthing parameter (not hardcoded).
     expect(txt).toContain(`${e.ik_1f_ka.toFixed(2).replace('.', ',')} kA · ${e.neutral_point}`);
     // P0 — IT nN: 1st earth fault signalled by the IMD (current ≈ 0, no trip).
