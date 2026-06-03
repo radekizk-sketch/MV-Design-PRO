@@ -1002,7 +1002,6 @@ def _oze_sc_bus(
     icw_ka: float,
     *,
     machine_type: str,
-    ibg_ka: float,
     t_min_s: float = _MACHINE_TMIN_S,
 ) -> dict[str, Any]:
     """SC dossier at one OZE busbar — the station SC entry + the source contribution
@@ -1067,7 +1066,6 @@ def _oze_companion(
     buses: list[tuple[str, float, float]],  # (bus_id, un_kv, icw_ka)
     pcc_bus: str,
     source: dict[str, Any],
-    ibg_ka: float,
     fields: list[dict[str, Any]],
     boundary: dict[str, Any],
 ) -> dict[str, Any]:
@@ -1107,9 +1105,7 @@ def _oze_companion(
             ),
         }
     sc_buses = {
-        bus_id: _oze_sc_bus(
-            graph, bus_id, un_kv, icw_ka, machine_type=source["machine_type"], ibg_ka=ibg_ka
-        )
+        bus_id: _oze_sc_bus(graph, bus_id, un_kv, icw_ka, machine_type=source["machine_type"])
         for bus_id, un_kv, icw_ka in buses
     }
     h = source["power_hierarchy"]
@@ -1263,7 +1259,7 @@ def build_g1() -> dict[str, Any]:
     # export to the grid (the solver signs it; we do not assume it). One netted
     # PQ spec per node (a node carries a single injection, not two specs).
     s.add_load("NN_BUS", p_mw=0.01 - pv_kva / 1000.0 * 0.9, q_mvar=0.004)
-    ibg = s.add_inverter("NN_BUS", rated_kva=pv_kva, un_kv=_NN_KV, k_sc=_IBG_K, source_type="PV")
+    s.add_inverter("NN_BUS", rated_kva=pv_kva, un_kv=_NN_KV, k_sc=_IBG_K, source_type="PV")
     s.finalize_pq()
     prot = list(_PROTECTION_BY_MACHINE["IBG"])
     src = _pv_source(
@@ -1296,7 +1292,6 @@ def build_g1() -> dict[str, Any]:
         substrate=s,
         buses=[("SN_BUS", _BASE_KV, _ICW_SN_KA), ("NN_BUS", _NN_KV, _ICW_NN_KA)],
         pcc_bus="NN_BUS",
-        ibg_ka=ibg / 1000.0,
         source=src,
         # Station idiom: source field (PV on nN, SDC) + connection field (interface
         # protection HERE, on nN looking at the OSD network) on the nN busbar.
@@ -1344,9 +1339,7 @@ def build_g2() -> dict[str, Any]:
         rated_mva=1.0,
     )
     s.add_pv("NN_COLLECTOR", p_inject_mw=pv_kva / 1000.0 * 0.9)
-    ibg = s.add_inverter(
-        "NN_COLLECTOR", rated_kva=pv_kva, un_kv=_NN_KV, k_sc=_IBG_K, source_type="PV"
-    )
+    s.add_inverter("NN_COLLECTOR", rated_kva=pv_kva, un_kv=_NN_KV, k_sc=_IBG_K, source_type="PV")
     s.finalize_pq()
     return _oze_companion(
         # A 1 MVA PV collector nN board is specified for its actual Ik'' — a 31.5 kA
@@ -1357,7 +1350,6 @@ def build_g2() -> dict[str, Any]:
         substrate=s,
         buses=[("PCC_SN", _BASE_KV, _ICW_SN_KA), ("NN_COLLECTOR", _NN_KV, 31.5)],
         pcc_bus="PCC_SN",
-        ibg_ka=ibg / 1000.0,
         source=_pv_source(
             technology="PV",
             machine_type="IBG",
@@ -1416,14 +1408,13 @@ def build_g3() -> dict[str, Any]:
     s.add_line(SR_IN, "GPZ", "PCC_SN", _SN_LINE_R, _SN_LINE_X)
     s.add_line(SR_OUT, "PCC_SN", "PV_SN", _SN_LINE_R * 0.3, _SN_LINE_X * 0.3)
     s.add_pv("PV_SN", p_inject_mw=pv_kva / 1000.0 * 0.9)
-    ibg = s.add_inverter("PV_SN", rated_kva=pv_kva, un_kv=_BASE_KV, k_sc=_IBG_K, source_type="PV")
+    s.add_inverter("PV_SN", rated_kva=pv_kva, un_kv=_BASE_KV, k_sc=_IBG_K, source_type="PV")
     s.finalize_pq()
     return _oze_companion(
         "G3",
         substrate=s,
         buses=[("PCC_SN", _BASE_KV, _ICW_SN_KA), ("PV_SN", _BASE_KV, _ICW_SN_KA)],
         pcc_bus="PCC_SN",
-        ibg_ka=ibg / 1000.0,
         source=_pv_source(
             technology="PV",
             machine_type="IBG",
@@ -1657,9 +1648,6 @@ def build_g4_pvtr() -> dict[str, Any]:
         s.add_inverter(node, rated_kva=inv_kva, un_kv=_PV1MW_NN_KV, k_sc=_IBG_K, source_type="PV")
     s.add_load("NN_800", p_mw=own_load_kw / 1000.0, q_mvar=0.01)  # RPW-PV draw
     s.finalize_pq()
-    total_ibg_ka = (
-        inv_count * (_IBG_K * (inv_kva * 1000.0 / (_SQRT3 * _PV1MW_NN_KV * 1000.0))) / 1000.0
-    )
 
     # Hierarchy: DC/AC ≈ 1.0 ⇒ achievable AC power = AC nominal = DC nameplate. Keeping
     # P_osiągalna ≥ the solver export (≈ 0.98 MW) — a station cannot export more than it
@@ -1765,7 +1753,6 @@ def build_g4_pvtr() -> dict[str, Any]:
         # SN withstand from CTM20 (Ith 16 kA); nN 800 V board 50 kA.
         buses=[("SN_PCC", _PV1MW_SN_KV, 16.0), ("NN_800", _PV1MW_NN_KV, 50.0)],
         pcc_bus="SN_PCC",
-        ibg_ka=total_ibg_ka,
         source=src,
         # SN: POLE 1 LINIOWE — VCB (interface protection / hard trips, granica ZKSN
         # na kablu) + POLE 2 TRANSFORMATOROWE — SŁ2+U rozłącznik zasilający trafo.
@@ -1936,7 +1923,6 @@ def build_g5_bess() -> dict[str, Any]:
         s.add_inverter(node, rated_kva=pcs_kva, un_kv=_BESS_NN_KV, k_sc=_IBG_K, source_type="BESS")
     s.add_load("NN", p_mw=own_load_kw / 1000.0, q_mvar=0.01)
     s.finalize_pq()
-    total_ibg_ka = n_pcs * (_IBG_K * (pcs_kva * 1000.0 / (_SQRT3 * _BESS_NN_KV * 1000.0))) / 1000.0
 
     src = _pv_source(
         technology="BESS (magazyn energii)",
@@ -1998,7 +1984,6 @@ def build_g5_bess() -> dict[str, Any]:
         # SN withstand 16 kA (generic SN board); nN 50 kA.
         buses=[("SN_PCC", _BESS_SN_KV, 16.0), ("NN", _BESS_NN_KV, 50.0)],
         pcc_bus="SN_PCC",
-        ibg_ka=total_ibg_ka,
         source=src,
         # Stacja końcowa: pole LINIOWE (przyłącze OSD, granica na kablu) + pole
         # TRANSFORMATOROWE (trafo pod polem). nN: Q1 + n×PCS + potrzeby własne.
@@ -2146,22 +2131,14 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
     s.add_slack("GPZ")
     s.add_bus("SN_PCC", _PVBESS_SN_KV)
     s.add_line(SR_IN, "GPZ", "SN_PCC", _GRID_INFEED_R, _GRID_INFEED_X)
-    # IBG short-circuit contribution tracked PER BUS (gate J §6.7). nN buses carry the
-    # LOCAL bounded current k·In; the SN_PCC carries it REFERRED through the transformers
-    # (I_SN = Σ I_nN·U_nN/U_SN) — like G5-WIND-T4 (referred to the collector), NOT the raw nN sum.
-    ibg_by_bus_a: dict[str, float] = {}
-    bus_kv: dict[str, float] = {}
 
     def _add_sources(prefix: str, bus: str, count: int, kva: float, src_type: str, un_kv: float) -> None:
-        bus_kv[bus] = un_kv
         for i in range(count):
             node = f"{prefix}{i + 1}"
             s.add_bus(node, un_kv)
             s.add_line(f"sr/branch/{prefix.lower()}{i + 1}", bus, node, _NN_FEEDER_R, _NN_FEEDER_X)
             s.add_load(node, p_mw=-kva / 1000.0, q_mvar=0.0)  # eksport (gen / rozładowanie)
-            ibg_by_bus_a[bus] = ibg_by_bus_a.get(bus, 0.0) + s.add_inverter(
-                node, rated_kva=kva, un_kv=un_kv, k_sc=_IBG_K, source_type=src_type
-            )
+            s.add_inverter(node, rated_kva=kva, un_kv=un_kv, k_sc=_IBG_K, source_type=src_type)
 
     if variant == "bus":
         s.add_bus("PV_NN", _PVBESS_PV_NN_KV)
@@ -2186,9 +2163,6 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
         buses = [("SN_PCC", _PVBESS_SN_KV, 16.0), ("NN", _PVBESS_PV_NN_KV, 50.0)]
 
     s.finalize_pq()
-    # SN_PCC IBG contribution = the per-bus nN currents referred through the transformers.
-    sn_referred_a = sum(a * bus_kv[b] / _PVBESS_SN_KV for b, a in ibg_by_bus_a.items())
-    total_ibg_ka = sn_referred_a / 1000.0
 
     coupling_pl = (
         "sprzężenie na SN (wspólna szyna 15 kV, osobne trafa)"
@@ -2284,7 +2258,6 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
         substrate=s,
         buses=buses,
         pcc_bus="SN_PCC",
-        ibg_ka=total_ibg_ka,
         source=src,
         fields=fields,
         boundary=_boundary("G-ZKSN", on_bus="SN_PCC", metered=True),
@@ -2358,12 +2331,6 @@ def build_g5_wind_t4() -> dict[str, Any]:
             lv, rated_kva=turbine_kva, un_kv=_WIND_LV_KV, k_sc=_IBG_K, source_type="WIND"
         )
     s.finalize_pq()
-    # IBG contribution reflected to the collector (power-invariant In@collector).
-    total_ibg_ka = (
-        n_turbines
-        * (_IBG_K * (turbine_kva * 1000.0 / (_SQRT3 * _WIND_COLLECTOR_KV * 1000.0)))
-        / 1000.0
-    )
 
     src = _pv_source(
         technology="Wiatr — turbiny pełnoprzekształtnikowe (Typ 4)",
@@ -2433,7 +2400,6 @@ def build_g5_wind_t4() -> dict[str, Any]:
         # Collector 15 kV (board 25 kA Icw covers Ik″≈21.5 kA); a representative turbine LV (50 kA).
         buses=[("SN_PCC", _WIND_COLLECTOR_KV, 25.0), ("WTG_LV_1", _WIND_LV_KV, 50.0)],
         pcc_bus="SN_PCC",
-        ibg_ka=total_ibg_ka,
         source=src,
         fields=[
             _field(
@@ -2666,7 +2632,6 @@ def build_g8_biogaz() -> dict[str, Any]:
         substrate=s,
         buses=[("SN_PCC", _BASE_KV, 25.0)],
         pcc_bus="SN_PCC",
-        ibg_ka=0.0,
         source=src,
         fields=[
             _sn_line_connection_field(
@@ -2757,7 +2722,6 @@ def build_g7_wind_async() -> dict[str, Any]:
         substrate=s,
         buses=[("SN_PCC", _WINDA_COLLECTOR_KV, 25.0), ("WTG_LV_1", _WINDA_LV_KV, 50.0)],
         pcc_bus="SN_PCC",
-        ibg_ka=0.0,
         source=src,
         fields=[
             _sn_line_connection_field(
@@ -2887,7 +2851,6 @@ def build_g6_wind_dfig() -> dict[str, Any]:
         substrate=s,
         buses=[("SN_PCC", _WINDA3_COLLECTOR_KV, 31.5), ("WTG_LV_1", _WINDA3_LV_KV, 63.0)],
         pcc_bus="SN_PCC",
-        ibg_ka=0.0,
         source=src,
         fields=[
             _sn_line_connection_field(
