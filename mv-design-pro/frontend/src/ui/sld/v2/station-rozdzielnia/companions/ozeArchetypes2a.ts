@@ -7101,7 +7101,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           {
             "catalog": null,
             "designation": "Q1 (od\u0142\u0105cznik szynowy)",
-            "device_ref": "g9-line/ds",
+            "device_ref": "g6-line/ds",
             "kind": "DS",
             "placement": "UPSTREAM",
             "source_ref": "enm:BayPrimaryDevice.kind=DS"
@@ -7109,7 +7109,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           {
             "catalog": null,
             "designation": "Q0 (wy\u0142\u0105cznik SN)",
-            "device_ref": "g9-line/cb",
+            "device_ref": "g6-line/cb",
             "kind": "CB",
             "placement": "MIDSTREAM",
             "source_ref": "enm:BayPrimaryDevice.kind=CB"
@@ -7117,7 +7117,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           {
             "catalog": null,
             "designation": "przek\u0142adnik pr\u0105dowy",
-            "device_ref": "g9-line/ct",
+            "device_ref": "g6-line/ct",
             "kind": "CT",
             "placement": "MIDSTREAM",
             "source_ref": "std:IEC_61869_CT"
@@ -7125,7 +7125,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           {
             "catalog": null,
             "designation": "przek\u0142adnik napi\u0119ciowy",
-            "device_ref": "g9-line/vt",
+            "device_ref": "g6-line/vt",
             "kind": "VT",
             "placement": "OFF_PATH",
             "source_ref": "std:IEC_61869_VT"
@@ -7133,7 +7133,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           {
             "catalog": null,
             "designation": "ogranicznik przepi\u0119\u0107",
-            "device_ref": "g9-line/sa",
+            "device_ref": "g6-line/sa",
             "kind": "SURGE_ARRESTER",
             "placement": "OFF_PATH",
             "source_ref": "enm:BayPrimaryDevice.kind=SURGE_ARRESTER"
@@ -7141,7 +7141,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           {
             "catalog": null,
             "designation": "g\u0142owica kablowa",
-            "device_ref": "g9-line/head",
+            "device_ref": "g6-line/head",
             "kind": "CABLE_HEAD",
             "placement": "DOWNSTREAM",
             "source_ref": "enm:BayPrimaryDevice.kind=CABLE_HEAD"
@@ -7149,13 +7149,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           {
             "catalog": null,
             "designation": "uziemnik",
-            "device_ref": "g9-line/es",
+            "device_ref": "g6-line/es",
             "kind": "ES",
             "placement": "GROUND_BRANCH",
             "source_ref": "enm:BayPrimaryDevice.kind=ES"
           }
         ],
-        "field_id": "g9-line",
+        "field_id": "g6-line",
         "interface_protection": true,
         "kind": "POLE LINIOWE SN (przy\u0142\u0105cze)",
         "on_bus_ref": "SN_PCC",
@@ -7165,7 +7165,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "kind": "sn_input",
           "nominal_voltage_kv": 15.0,
           "occupied_by": "seg/kabel-osd",
-          "port_id": "g9-line/port",
+          "port_id": "g6-line/port",
           "source_ref": "enm:Port.kind=sn_input;std:przylacze_SN"
         },
         "protection_codes": [
@@ -7184,7 +7184,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       {
         "abb_cell": "SDC",
         "apparatus": [],
-        "field_id": "g9-wtg1",
+        "field_id": "g6-wtg1",
         "interface_protection": false,
         "kind": "WTG 1 (DFIG) \u00b7 2.0 MW",
         "on_bus_ref": "SN_PCC",
@@ -7196,7 +7196,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       {
         "abb_cell": "SDC",
         "apparatus": [],
-        "field_id": "g9-wtg2",
+        "field_id": "g6-wtg2",
         "interface_protection": false,
         "kind": "WTG 2 (DFIG) \u00b7 2.0 MW",
         "on_bus_ref": "SN_PCC",
@@ -7208,7 +7208,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       {
         "abb_cell": "SDC",
         "apparatus": [],
-        "field_id": "g9-wtg3",
+        "field_id": "g6-wtg3",
         "interface_protection": false,
         "kind": "WTG 3 (DFIG) \u00b7 2.0 MW",
         "on_bus_ref": "SN_PCC",
@@ -8086,11 +8086,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "protection_codes": [
           "67",
           "67N",
-          "47",
           "27",
           "59",
           "81U",
-          "81O"
+          "81O",
+          "df/dt",
+          "anti-islanding"
         ],
         "role": "connection",
         "source_ref": "enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe"
@@ -8822,14 +8823,27 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "pn_ac_kw": 2550.0,
         "valid": true
       },
+      "protection": {
+        "converter": [],
+        "machine": [
+          "46",
+          "47",
+          "49",
+          "51",
+          "37",
+          "32"
+        ],
+        "source_ref": "norma:NC_RfG;norma:IEC_60255;std:induction_generator"
+      },
       "protection_codes": [
         "67",
         "67N",
-        "47",
         "27",
         "59",
         "81U",
-        "81O"
+        "81O",
+        "df/dt",
+        "anti-islanding"
       ],
       "technology": "Wiatr \u2014 generatory indukcyjne (Typ 1, sta\u0142a pr\u0119dko\u015b\u0107)",
       "withstand": {

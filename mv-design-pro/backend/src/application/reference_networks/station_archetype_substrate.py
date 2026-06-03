@@ -938,8 +938,11 @@ _PROTECTION_BY_MACHINE: dict[str, list[str]] = {
     "IBG": ["67", "67N", "81U", "81O", "df/dt", "27", "59", "59N", "anti-islanding"],
     # Synchronous machine: synchro-check + full machine protection.
     "SYNCHRONOUS": ["25", "21", "40", "32", "46", "87", "59N", "67N", "81U", "81O"],
-    # Asynchronous machine: self-excitation guard + directional OC + Q control.
-    "ASYNCHRONOUS": ["67", "67N", "47", "27", "59", "81U", "81O"],
+    # Asynchronous machine (wind Type 1) — INTERFACE set only (line bay, NC RfG), same as DFIG:
+    # 46/47 neg-seq, 49, 51 (+ 37 motoring, 32 reverse-power) are MACHINE functions and live on
+    # source.protection, NOT on the grid interface. anti-islanding is critical (self-excitation
+    # of the induction generator from the compensation capacitor bank).
+    "ASYNCHRONOUS": ["67", "67N", "27", "59", "81U", "81O", "df/dt", "anti-islanding"],
     # DFIG (wind Type 3) — INTERFACE set only (line bay, NC RfG). The MACHINE functions
     # (46/47 neg-seq, 49, 51) + the rotor-CONVERTER protection live on source.protection,
     # NOT on the grid interface (audit #5).
@@ -2725,6 +2728,14 @@ def build_g7_wind_async() -> dict[str, Any]:
             "resztkowy ∝ Un; LV turbiny za trafem Dyn — uziemienie lokalne"
         ),
     }
+    # Audit #5 — MACHINE protection (split from the NC RfG interface, like G6). An induction
+    # generator has no converter; 37 motoring + 32 reverse-power guard the run-as-motor / loss
+    # of prime mover. (46/47 neg-seq, 49 thermal, 51 OC are the machine's own functions.)
+    src["protection"] = {
+        "source_ref": "norma:NC_RfG;norma:IEC_60255;std:induction_generator",
+        "machine": ["46", "47", "49", "51", "37", "32"],
+        "converter": [],
+    }
     turbine_fields = [
         _field(
             f"g7-wtg{i + 1}",
@@ -2856,7 +2867,7 @@ def build_g6_wind_dfig() -> dict[str, Any]:
     )
     turbine_fields = [
         _field(
-            f"g9-wtg{i + 1}",
+            f"g6-wtg{i + 1}",
             role="source",
             kind=f"WTG {i + 1} (DFIG) · {turbine_kw / 1000:.1f} MW",
             abb_cell="SDC",
@@ -2874,7 +2885,7 @@ def build_g6_wind_dfig() -> dict[str, Any]:
         source=src,
         fields=[
             _sn_line_connection_field(
-                "g9-line",
+                "g6-line",
                 un_kv=_WINDA3_COLLECTOR_KV,
                 protection_codes=_PROTECTION_BY_MACHINE["DFIG"],
             ),

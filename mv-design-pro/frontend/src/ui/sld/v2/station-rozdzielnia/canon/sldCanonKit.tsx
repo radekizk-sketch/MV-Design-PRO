@@ -216,6 +216,19 @@ export function AsyncMachine({ x, y }: { x: number; y: number }): JSX.Element {
   );
 }
 
+/** IEC 60617 capacitor — two parallel plates (non-polarised). A reactive-compensation bank for
+ * an induction generator (which draws Q from the grid); leads top/bottom for inline placement. */
+export function CapacitorBank({ x, y }: { x: number; y: number }): JSX.Element {
+  return (
+    <g data-keepout={ko(x - 9, y - 9, 18, 18)}>
+      <line x1={x} y1={y - 9} x2={x} y2={y - 2} stroke={CYAN} strokeWidth={1.5} />
+      <line x1={x - 8} y1={y - 2} x2={x + 8} y2={y - 2} stroke={CYAN} strokeWidth={2.2} />
+      <line x1={x - 8} y1={y + 3} x2={x + 8} y2={y + 3} stroke={CYAN} strokeWidth={2.2} />
+      <line x1={x} y1={y + 3} x2={x} y2={y + 9} stroke={CYAN} strokeWidth={1.5} />
+    </g>
+  );
+}
+
 const CIRCLED = ['①', '②', '③', '④', '⑤'];
 
 /** SCADA node readout (no frame, no table) — "wielkość = wartość" at the node. */

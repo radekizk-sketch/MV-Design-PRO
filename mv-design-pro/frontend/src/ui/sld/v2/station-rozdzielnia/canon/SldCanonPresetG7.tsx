@@ -12,6 +12,7 @@
 import {
   AMBER,
   AsyncMachine,
+  CapacitorBank,
   ctRatioLabel,
   CtRing,
   CYAN,
@@ -61,9 +62,11 @@ export function SldCanonPresetG7({ companion }: { companion: SldOzeArchetypeComp
   const turbMw = String((col?.turbine_kw ?? 850) / 1000).replace('.', ',');
   const colKv = fmt(sn.un_kv, 0); // collector kV from the FROZEN solver companion (ENEA-valid, no 30 kV)
   const turbTr = col?.turbine_transformer ?? '0,69/15 kV · 1,0 MVA';
-  // Interface protection = the connection-field codes (NC RfG + the asynchronous-machine set the
-  // builder pins on the line bay), DERIVED from the companion (no hardcode = no false display).
+  // Interface protection = the connection-field codes (NC RfG, looking at the grid), DERIVED from
+  // the companion (no hardcode = no false display). The MACHINE functions (46/47 neg-seq, 49, 51
+  // + 37 motoring, 32 reverse-power) are split onto source.protection — like G6 (audit #5).
   const ifaceCodes = (companion.fields.find((f) => f.interface_protection)?.protection_codes ?? []).join(' · ');
+  const machineProt = (companion.source.protection?.machine ?? ['46', '47', '49', '51']).join(' · ');
 
   const X = { lin: 400, ctBus: 530, pom: 660, t: [920, 1130, 1340], node: 1580 };
   const snBusY = 200;
@@ -145,18 +148,18 @@ export function SldCanonPresetG7({ companion }: { companion: SldOzeArchetypeComp
           {i === 1 && <NodeBadge x={fx - 22} y={460} n={2} />}
           {/* squirrel-cage induction generator ◯G∼ DIRECTLY on the grid (the SC source — no converter) */}
           <AsyncMachine x={fx} y={524} />
-          {/* reactive compensation (capacitor bank) — induction generators draw Q */}
+          {/* reactive compensation — capacitor bank (induction generators draw Q from the grid) */}
           <line x1={fx} y1={470} x2={fx + 34} y2={470} stroke={NN_BUS} strokeWidth={1.6} />
-          <line x1={fx + 34} y1={470} x2={fx + 34} y2={500} stroke={NN_BUS} strokeWidth={1.6} />
-          <line x1={fx + 27} y1={502} x2={fx + 41} y2={502} stroke={CYAN} strokeWidth={2} />
-          <line x1={fx + 27} y1={507} x2={fx + 41} y2={507} stroke={CYAN} strokeWidth={2} />
-          {lbl(fx + 48, 502, 'bateria', CYAN, 8.5, 700)}
-          {lbl(fx + 48, 514, 'kond. Q', TXT_MUTED, 8, 600)}
+          <line x1={fx + 34} y1={470} x2={fx + 34} y2={479} stroke={NN_BUS} strokeWidth={1.6} />
+          <CapacitorBank x={fx + 34} y={488} />
+          {lbl(fx + 48, 486, 'bateria', CYAN, 8.5, 700)}
+          {lbl(fx + 48, 498, 'kond. Q', TXT_MUTED, 8, 600)}
           {lbl(fx, 594, `${turbMw} MW · Typ 1 (async)`, AMBER, 10, 800, 'middle')}
           {lbl(fx, 607, '◯G∼ klatkowa · bez ~/=', TXT2, 9, 700, 'middle')}
         </g>
       ))}
-      {lbl((X.t[0] + X.t[X.t.length - 1]) / 2, 628, '0,69 kV: generator indukcyjny klatkowy na sieci = MASZYNA asynchroniczna (PN-EN 60909 §6.7, za Z_M); udział z zanikiem μ·q, kompensacja Q baterią', TXT_MUTED, 9, 600, 'middle')}
+      {lbl((X.t[0] + X.t[X.t.length - 1]) / 2, 616, '0,69 kV: generator indukcyjny klatkowy na sieci = MASZYNA asynchroniczna (PN-EN 60909 §6.7, za Z_M); udział z zanikiem μ·q, kompensacja Q baterią', TXT_MUTED, 9, 600, 'middle')}
+      {lbl((X.t[0] + X.t[X.t.length - 1]) / 2, 629, `zab. maszyny: ${machineProt} (bez przekształtnika — Typ 1)`, TXT_MUTED, 8.5, 600, 'middle')}
 
       {/* ── node ① — collector 15 kV (sieć + MASZYNA referred through the turbine TR) ── */}
       <NodeReadout x={X.node} y={236} n={1} title={`kolektor SN · ${colKv} kV`}
@@ -175,7 +178,7 @@ export function SldCanonPresetG7({ companion }: { companion: SldOzeArchetypeComp
         ip={lvSc.max.ip_ka} idyn={withstand?.nn_idyn_ka ?? 0} />
 
       {/* ── LEGENDA — symbole IEC (wspólny kanon) ── */}
-      <rect x={80} y={838} width={1400} height={86} rx={8} fill="none" stroke="#13435A" strokeWidth={1} />
+      <rect x={80} y={838} width={1500} height={86} rx={8} fill="none" stroke="#13435A" strokeWidth={1} />
       {lbl(104, 862, 'LEGENDA — symbole IEC', '#9FE6FF', 12, 800)}
       {[
         ['WYŁĄCZNIK □', (cx: number, cy: number) => <Wylacznik x={cx} y={cy} />],
@@ -187,6 +190,7 @@ export function SldCanonPresetG7({ companion }: { companion: SldOzeArchetypeComp
         ['GŁOWICA (trójkąt)', (cx: number, cy: number) => <Glowica x={cx} y={cy} />],
         ['ZABEZPIECZENIE', (cx: number, cy: number) => <RelayBox x={cx} y={cy} />],
         ['GEN. INDUKCYJNY ◯G∼ (async)', (cx: number, cy: number) => <AsyncMachine x={cx} y={cy} />],
+        ['BATERIA KOND. (komp. Q)', (cx: number, cy: number) => <CapacitorBank x={cx} y={cy} />],
         ['kierunek mocy', (cx: number, cy: number) => <PowerArrow x={cx} y={cy - 9} dir="up" />],
       ].map(([label, sym], i) => {
         const cx = 175 + i * 132;

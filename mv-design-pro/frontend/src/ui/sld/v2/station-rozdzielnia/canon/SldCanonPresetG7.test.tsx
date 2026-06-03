@@ -54,6 +54,23 @@ describe('SldCanonPresetG7 — wind Type 1 (asynchronous)', () => {
     expect(lvMach).toBeGreaterThan(snMach); // terminal share is the LOCAL machine (large)
   });
 
+  it('protection split matches G6: NC RfG interface (df/dt + anti-islanding, NO 46/47); machine separate', () => {
+    // Interface (connection bay, NC RfG) — directional OC + U/f + RoCoF + anti-islanding; the
+    // 46/47 neg-seq are MACHINE functions and MUST NOT sit on the interface (audit #5).
+    const iface = G7.fields.find((f) => f.interface_protection)?.protection_codes ?? [];
+    expect(iface).toContain('df/dt');
+    expect(iface).toContain('anti-islanding'); // critical — self-excitation from the Q-comp bank
+    expect(iface).not.toContain('46');
+    expect(iface).not.toContain('47');
+    // Machine functions live on source.protection (split), no rotor converter for Typ 1.
+    const mach = G7.source.protection?.machine ?? [];
+    expect(mach).toEqual(expect.arrayContaining(['46', '47', '49', '51', '37', '32']));
+    expect(G7.source.protection?.converter).toEqual([]);
+    const txt = renderG7().container.textContent ?? '';
+    expect(txt).toContain('anti-islanding'); // rendered on the interface zone
+    expect(txt).toContain('zab. maszyny'); // machine-protection note (split from interface)
+  });
+
   it('readouts bound to the FROZEN solver; metering = boundary; κ physical', () => {
     const txt = renderG7().container.textContent ?? '';
     const snSc = G7.short_circuit.buses['SN_PCC'];
