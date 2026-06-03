@@ -7820,6 +7820,13 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "turbine_transformer": "0.69/15 kV \u00b7 2.5 MVA"
       },
       "control_mode": "U/Q \u00b7 LVRT (crowbar)",
+      "grid_earthing": {
+        "ik_1f_ka": 0.06,
+        "imd_it_nn": false,
+        "neutral_point": "kompensowana",
+        "note_pl": "SN kolektor 15 kV: I\u2033k1f-z z uziemienia neutralnego OSD (kompensowana), pr\u0105d resztkowy \u221d Un; zacisk DFIG za trafem Dyn \u2014 uziemienie lokalne",
+        "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN"
+      },
       "machine_type": "DFIG",
       "nc_rfg_class": "C",
       "power_hierarchy": {
@@ -7840,7 +7847,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "81O",
         "df/dt"
       ],
-      "technology": "Wiatr \u2014 generatory dwustronnie zasilane (Typ 3, DFIG)"
+      "technology": "Wiatr \u2014 generatory dwustronnie zasilane (Typ 3, DFIG)",
+      "withstand": {
+        "nn_idyn_ka": 132.0,
+        "sn_idyn_ka": 80.0,
+        "source_ref": "karta:rozdzielnica_SN_kolektor;karta:rozdzielnica_nN_turbina"
+      }
     },
     "voltage_flow": {
       "branches": {

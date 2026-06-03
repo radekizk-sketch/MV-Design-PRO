@@ -2769,6 +2769,24 @@ def build_g6_wind_dfig() -> dict[str, Any]:
         "turbine_lv_kv": _WINDA3_LV_KV,
         "topology": "radial",
     }
+    # §5 P0 — OSD neutral-point earthing drives Ik″1f-z at the 15 kV collector (compensated;
+    # ∝ Un, like Typ 4). P1 — dynamic (peak) withstand beside Icw; DFIG ip is HIGHER than the
+    # IBG Typ 4 (machine + crowbar), so the nN peak rating must cover it.
+    src["grid_earthing"] = {
+        "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN",
+        "neutral_point": "kompensowana",
+        "ik_1f_ka": 0.06,
+        "imd_it_nn": False,  # brak stacyjnej szyny IT nN w farmie wiatrowej (jak Typ 4)
+        "note_pl": (
+            "SN kolektor 15 kV: I″k1f-z z uziemienia neutralnego OSD (kompensowana), "
+            "prąd resztkowy ∝ Un; zacisk DFIG za trafem Dyn — uziemienie lokalne"
+        ),
+    }
+    src["withstand"] = {
+        "source_ref": "karta:rozdzielnica_SN_kolektor;karta:rozdzielnica_nN_turbina",
+        "sn_idyn_ka": 80.0,  # szczyt SN (kolektor 31,5 kA Icw); ip≈24 kA ≤
+        "nn_idyn_ka": 132.0,  # szczyt nN (zacisk 63 kA Icw); ip maszyny+crowbar ≈101 kA ≤
+    }
     turbine_fields = [
         _field(
             f"g9-wtg{i + 1}",

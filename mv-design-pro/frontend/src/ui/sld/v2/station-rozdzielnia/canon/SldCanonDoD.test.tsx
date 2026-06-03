@@ -16,6 +16,7 @@ import { SldCanonPresetG2 } from './SldCanonPresetG2';
 import { SldCanonPresetG3 } from './SldCanonPresetG3';
 import { SldCanonPresetG4 } from './SldCanonPresetG4';
 import { SldCanonPresetG5 } from './SldCanonPresetG5';
+import { SldCanonPresetG6 } from './SldCanonPresetG6';
 
 const f1 = (v: number) => v.toFixed(1).replace('.', ',');
 
@@ -61,6 +62,13 @@ const PRESETS = [
     bus: 'SN_PCC',
     band: [130, 640] as [number, number],
     render: () => <SldCanonPresetG5 companion={OZE_ARCHETYPES_2A['G5-WIND-T4']} />,
+  },
+  {
+    name: 'G6 — Wiatr (Typ 3 DFIG)',
+    companion: OZE_ARCHETYPES_2A['G6-WIND-DFIG'],
+    bus: 'SN_PCC',
+    band: [130, 640] as [number, number],
+    render: () => <SldCanonPresetG6 companion={OZE_ARCHETYPES_2A['G6-WIND-DFIG']} />,
   },
 ];
 
