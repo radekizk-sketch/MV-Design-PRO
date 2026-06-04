@@ -279,7 +279,28 @@ export const SLD_NETWORK_53: SldNetworkModel = {
     "hv_kv": 110.0,
     "id": "GPZ",
     "name": "GPZ Referencyjny 15 kV",
-    "sn_kv": 15.0
+    "sections": [
+      {
+        "feeders": [
+          {
+            "name": "Pole liniowe GPZ",
+            "to": "S01",
+            "to_name": "Stacja T1"
+          }
+        ],
+        "name": "Sekcja 1",
+        "order": 0
+      }
+    ],
+    "sn_kv": 15.0,
+    "transformers": [
+      {
+        "id": "wn_sn",
+        "mva": 25.0,
+        "uhv_kv": 110.0,
+        "ulv_kv": 15.0
+      }
+    ]
   },
   "nop_station": "S46",
   "schema": "sld_network_model_v1",

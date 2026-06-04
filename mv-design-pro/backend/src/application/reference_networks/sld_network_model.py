@@ -173,6 +173,36 @@ def distill_sld_network(enm: dict[str, Any]) -> dict[str, Any]:
     gpz_tr = next(
         (transformers[r] for r in gpz.get("transformer_refs", []) if r in transformers), None
     )
+    # GPZ internals (full switchgear): WN/SN transformer(s) + busbar section(s) + outgoing feeder
+    # field(s). Feeders are the GPZ's MV line bays — here the trunk head(s) hanging off the GPZ.
+    gpz_transformers = [
+        {
+            "id": tr.split("/")[-1],
+            "mva": round(float(transformers[tr].get("sn_mva", 0.0)), 1),
+            "uhv_kv": round(float(transformers[tr].get("uhv_kv", 110.0)), 1),
+            "ulv_kv": round(float(transformers[tr].get("ulv_kv", 15.0)), 1),
+        }
+        for tr in gpz.get("transformer_refs", [])
+        if tr in transformers
+    ]
+    heads = [st for st in stations if st["parent"] is None]
+    gpz_sections = []
+    for sec in gpz.get("gpz_sections", []) or []:
+        names = sec.get("line_field_names") or ([sec.get("line_field_name")] if sec.get("line_field_name") else [])
+        gpz_sections.append(
+            {
+                "name": sec.get("name", "Sekcja"),
+                "order": int(sec.get("order", 0)),
+                "feeders": [
+                    {
+                        "name": names[i] if i < len(names) else f"Pole {i + 1}",
+                        "to": heads[i]["id"] if i < len(heads) else None,
+                        "to_name": heads[i]["name"] if i < len(heads) else None,
+                    }
+                    for i in range(max(len(names), len(heads) if sec.get("order", 0) == 0 else 0, 1))
+                ],
+            }
+        )
     return {
         "schema": "sld_network_model_v1",
         "gpz": {
@@ -180,6 +210,8 @@ def distill_sld_network(enm: dict[str, Any]) -> dict[str, Any]:
             "name": gpz.get("name", "GPZ"),
             "hv_kv": round(float(gpz_tr.get("uhv_kv", 110.0)), 1) if gpz_tr else 110.0,
             "sn_kv": round(bus_kv.get(root, 15.0), 1),
+            "transformers": gpz_transformers,
+            "sections": gpz_sections,
         },
         "stations": stations,
         "edges": sorted(

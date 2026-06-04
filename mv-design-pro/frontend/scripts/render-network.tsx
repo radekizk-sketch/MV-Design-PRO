@@ -9,6 +9,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { companionToStationModel } from '../src/ui/sld/v2/station-rozdzielnia/autolayout/layoutModel';
+import { GpzSwitchgear, gpzSwitchgearSize } from '../src/ui/sld/v2/station-rozdzielnia/autolayout/network/GpzSwitchgear';
 import { NetworkAutoRenderer } from '../src/ui/sld/v2/station-rozdzielnia/autolayout/network/NetworkAutoRenderer';
 import { layoutNetwork } from '../src/ui/sld/v2/station-rozdzielnia/autolayout/network/networkLayout';
 import { SLD_NETWORK_53 } from '../src/ui/sld/v2/station-rozdzielnia/autolayout/network/sldNetwork53';
@@ -43,4 +44,16 @@ mkdirSync(OUT, { recursive: true });
     `font-family="Inter, system-ui, sans-serif"><rect x="${x}" y="${y}" width="${w}" height="${height}" fill="#0A1622"/>${inner}</svg>`;
   writeFileSync(`${OUT}/network-zoom-station.svg`, svg);
   console.log('wrote', `${OUT}/network-zoom-station.svg`, '· (E2 station SLD)');
+}
+
+// ── GPZ as a full switchgear (E3b) ──
+{
+  const { gpz } = SLD_NETWORK_53;
+  const { width, height } = gpzSwitchgearSize(gpz);
+  const inner = renderToStaticMarkup(<GpzSwitchgear gpz={gpz} />);
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" ` +
+    `font-family="Inter, system-ui, sans-serif"><rect x="0" y="0" width="${width}" height="${height}" fill="#0A1622"/>${inner}</svg>`;
+  writeFileSync(`${OUT}/gpz-switchgear.svg`, svg);
+  console.log('wrote', `${OUT}/gpz-switchgear.svg`, `· (${gpz.transformers.length} TR, ${gpz.sections.reduce((n, s) => n + s.feeders.length, 0)} feeders)`);
 }

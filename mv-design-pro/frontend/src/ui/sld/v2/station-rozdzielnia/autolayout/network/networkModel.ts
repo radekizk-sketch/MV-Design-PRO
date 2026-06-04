@@ -9,11 +9,31 @@
  */
 
 /** GPZ — the 110/15 kV main supply substation at the head of the network. */
+export interface GpzTransformer {
+  readonly id: string;
+  readonly mva: number;
+  readonly uhv_kv: number; // 110
+  readonly ulv_kv: number; // 15
+}
+/** One outgoing MV line field on a GPZ busbar section (its downstream head station, if in model). */
+export interface GpzFeeder {
+  readonly name: string;
+  readonly to: string | null; // head station id
+  readonly to_name: string | null;
+}
+/** A GPZ 15 kV busbar section (S1, S2…) with its outgoing feeder fields. */
+export interface GpzSection {
+  readonly name: string;
+  readonly order: number;
+  readonly feeders: readonly GpzFeeder[];
+}
 export interface NetworkGpz {
   readonly id: string; // "GPZ"
   readonly name: string;
   readonly hv_kv: number; // 110
   readonly sn_kv: number; // 15
+  readonly transformers: readonly GpzTransformer[]; // WN/SN transformer(s)
+  readonly sections: readonly GpzSection[]; // 15 kV busbar section(s) + feeder fields
 }
 
 /** One MV/LV station in the radial tree: a connection on the 15 kV feeder + its 15/0,4 transformer. */
