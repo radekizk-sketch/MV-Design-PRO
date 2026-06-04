@@ -335,6 +335,17 @@ interface CableRunRendererPropsLight {
   /** Czy któryś z segmentów jest punktem otwartym (NMO / status='open')
    *  zgodnie z `SupplyPathHighlighter.openPointBranchRefs`. */
   containsOpenPoint?: boolean;
+  /** Punkty otwarte NA torze: pozycja {x,y} (geometria sąsiednich segmentów —
+   *  miejsce, gdzie zielony tor się rozcina) + REALNY identyfikator łącznika
+   *  (nazwa z modelu, bez fabrykowanych numerów). Renderer rysuje wyrazisty
+   *  czerwony znacznik cut-point. Deterministyczne: czysta projekcja danych
+   *  otwartego łącznika z `open_point_branch_refs`. */
+  openPointMarkers?: readonly {
+    id: string;
+    x: number;
+    y: number;
+    label: string;
+  }[];
   /** K30-41: napięcie ciągu [kV] z `inferRunVoltageKv`. Renderer dobiera tint
    *  stroke (gdy brak per-segment variant) + rysuje voltage chip przy starcie. */
   voltageKv?: number | null;
@@ -556,6 +567,115 @@ const EMPTY_SLD_DATA: SldDataPayload = Object.freeze({
 });
 
 // =============================================================================
+// Open-point (NMO / open section-switch) marker projection
+// =============================================================================
+
+type OpenPointMarker = { id: string; x: number; y: number; label: string };
+
+/**
+ * Project the FROZEN power-flow companion's `open_point_branch_refs` (open
+ * switches / NMO) onto precise on-path marker positions + their REAL identifier.
+ *
+ * The open switch is not itself a drawn cable segment, so it is anchored to the
+ * geometry of the adjacent cable segment(s) sharing the switch's bus node — the
+ * exact spot where the energized green path breaks. The label is the switch's
+ * model `name` (compacted); when the model carries NO operator number, a short
+ * "NO" badge is used (data honesty — never a fabricated "P-xx").
+ *
+ * Pure projection of open-point data → deterministic (sorted refs, array-order
+ * geometry lookup).
+ */
+function buildOpenPointMarkersByRun(
+  snapshot: EnergyNetworkModel,
+  openPointSet: ReadonlySet<string>,
+  cableRuns: readonly CableRunRendererPropsLight[],
+): Map<string, OpenPointMarker[]> {
+  const byRun = new Map<string, OpenPointMarker[]>();
+  if (openPointSet.size === 0) return byRun;
+
+  const branchByRef = new Map((snapshot.branches ?? []).map((b) => [b.ref_id, b]));
+
+  for (const openRef of [...openPointSet].sort((a, b) => a.localeCompare(b))) {
+    const openBranch = branchByRef.get(openRef);
+    // Bus nodes the open point connects; for an open switch these are its two
+    // helper nodes (the adjacent cables terminate on them).
+    const busNodes = new Set<string>(
+      [openBranch?.from_bus_ref, openBranch?.to_bus_ref].filter(
+        (ref): ref is string => typeof ref === 'string' && ref.length > 0,
+      ),
+    );
+
+    let runId: string | null = null;
+    let incoming: RunPoint | null = null; // path END touching the switch (green side)
+    let outgoing: RunPoint | null = null; // path START leaving the switch (dim side)
+    // Direct case: the open ref itself is a drawn segment (kept for robustness).
+    let selfMid: RunPoint | null = null;
+
+    for (const run of cableRuns) {
+      for (const segmentPath of run.segmentPaths ?? []) {
+        const points = segmentPath.pathPoints;
+        if (points.length < 2) continue;
+        if (segmentPath.segmentRef === openRef) {
+          selfMid = points[Math.floor(points.length / 2)];
+          runId = run.id;
+          continue;
+        }
+        if (busNodes.size === 0) continue;
+        const segBranch = branchByRef.get(segmentPath.segmentRef);
+        if (!segBranch) continue;
+        if (segBranch.to_bus_ref && busNodes.has(segBranch.to_bus_ref)) {
+          incoming = points[points.length - 1];
+          runId = run.id; // anchor marker on the run that owns the feeding side
+        }
+        if (segBranch.from_bus_ref && busNodes.has(segBranch.from_bus_ref)) {
+          outgoing = points[0];
+          if (runId === null) runId = run.id;
+        }
+      }
+    }
+
+    // Place the marker at the open point itself — the join between the energized
+    // (incoming) cable end and the de-energized (outgoing) cable start. The
+    // gap-midpoint lands exactly where the green path breaks (and self-corrects
+    // for the renderer's station-port snap, which nudges segment ends toward this
+    // join). Falls back to whichever side exists when only one neighbour is found.
+    let position: RunPoint | null = null;
+    if (incoming && outgoing) {
+      position = { x: (incoming.x + outgoing.x) / 2, y: (incoming.y + outgoing.y) / 2 };
+    } else {
+      position = incoming ?? outgoing ?? selfMid;
+    }
+    if (!position || runId === null) continue;
+
+    const marker: OpenPointMarker = {
+      id: openRef,
+      x: Math.round(position.x),
+      y: Math.round(position.y),
+      label: compactOpenPointLabel(openBranch?.name ?? null),
+    };
+    const list = byRun.get(runId);
+    if (list) list.push(marker);
+    else byRun.set(runId, [marker]);
+  }
+
+  return byRun;
+}
+
+/**
+ * Compact dispatcher label for an open point. Uses the switch's REAL model name
+ * when present (trimmed/clipped so it never collides with node labels); falls
+ * back to a short "NO" (otwarty) badge when the model has no name. NEVER invents
+ * an operator "P-xx" number that is not in the data.
+ */
+function compactOpenPointLabel(name: string | null): string {
+  const trimmed = (name ?? '').trim();
+  if (trimmed.length === 0) return 'NO';
+  // Keep it short for an on-line marker; clip overly long station-switch names.
+  const MAX = 22;
+  return trimmed.length > MAX ? `${trimmed.slice(0, MAX - 1)}…` : trimmed;
+}
+
+// =============================================================================
 // Main builder
 // =============================================================================
 
@@ -615,10 +735,20 @@ export function buildSldDataFromSnapshot(
     ? new Set(powerFlow?.open_point_branch_refs ?? [])
     : new Set(supplyPath.openPointBranchRefs);
 
+  // SCADA open-point furniture: resolve each open switch to a precise on-path
+  // position (where the energized green path breaks) + its REAL identifier
+  // (switch name from the model — no fabricated "P-xx"). The open switch itself
+  // is not a cable segment, so it is anchored to the geometry of the adjacent
+  // cable segment(s) that DO have a rendered path.
+  const openPointMarkersByRun = buildOpenPointMarkersByRun(snapshot, openPointSet, cableRuns);
+
   const cableRunsAnnotated = cableRuns.map((run) => {
+    const runMarkers = openPointMarkersByRun.get(run.id) ?? [];
     const refs = run.segmentRefs ?? [];
     if (refs.length === 0) {
-      return run;
+      return runMarkers.length > 0
+        ? { ...run, containsOpenPoint: true, openPointMarkers: runMarkers }
+        : run;
     }
     if (pfIndex) {
       // Solver-driven: per-segment energization + direction, READ (not computed).
@@ -629,7 +759,7 @@ export function buildSldDataFromSnapshot(
         segmentDirections[ref] = pfIndex.directionOf(ref);
       }
       const allEnergized = refs.every((ref) => segmentEnergized[ref]);
-      const anyOpenPoint = refs.some((ref) => openPointSet.has(ref));
+      const anyOpenPoint = runMarkers.length > 0 || refs.some((ref) => openPointSet.has(ref));
       // Run-level arrow uses the first energized segment that carries a real
       // (non-zero) direction; this is the representative flow at L0/L1.
       const representative =
@@ -641,6 +771,7 @@ export function buildSldDataFromSnapshot(
         ...run,
         energized: allEnergized,
         containsOpenPoint: anyOpenPoint,
+        openPointMarkers: runMarkers.length > 0 ? runMarkers : undefined,
         segmentEnergized,
         segmentDirections,
         flowDirection,
@@ -648,8 +779,13 @@ export function buildSldDataFromSnapshot(
     }
     // Topology fallback (no solver companion).
     const allEnergized = refs.every((ref) => energizedBranchSet.has(ref));
-    const anyOpenPoint = refs.some((ref) => openPointSet.has(ref));
-    return { ...run, energized: allEnergized, containsOpenPoint: anyOpenPoint };
+    const anyOpenPoint = runMarkers.length > 0 || refs.some((ref) => openPointSet.has(ref));
+    return {
+      ...run,
+      energized: allEnergized,
+      containsOpenPoint: anyOpenPoint,
+      openPointMarkers: runMarkers.length > 0 ? runMarkers : undefined,
+    };
   });
 
   // Per-station energization from the solver (SN bus in the slack island).

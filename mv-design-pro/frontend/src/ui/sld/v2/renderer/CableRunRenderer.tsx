@@ -8,6 +8,8 @@
  */
 
 import {
+  COLOR_DEVICE_OPEN,
+  COLOR_DEVICE_OPEN_BORDER,
   COLOR_FIELD_TRUNK_ENERGIZED,
   STROKE_BRANCH_LINE_PX,
   STROKE_TRUNK_LINE_PX,
@@ -17,6 +19,12 @@ import {
 /** Local mirror of the solver companion's flow direction (kept renderer-local to
  *  avoid importing the adapter into a leaf renderer). */
 export type SldFlowDirectionLite = 'forward' | 'reverse' | 'none';
+
+/** Open-point (NMO / open section-switch) cut-point marker geometry. Sized to
+ *  read on the zoomed-out network overview (L0) where it must break the green
+ *  power path prominently. */
+const OPEN_POINT_R = 9;
+const OPEN_POINT_HALO = OPEN_POINT_R + 3;
 
 export interface CableRunStationPortGap {
   readonly stationId: string;
@@ -101,6 +109,18 @@ export interface CableRunRendererProps {
   readonly energized?: boolean;
   /** True gdy ciag zawiera NMO / otwarty punkt z SupplyPathHighlighter. */
   readonly containsOpenPoint?: boolean;
+  /** Punkty otwarte (NMO / łącznik sekcyjny otwarty) NA torze — pozycja {x,y}
+   *  wynika z geometrii sąsiednich segmentów (miejsce, gdzie zielony tor się
+   *  rozcina), label to REALNY identyfikator z modelu (nazwa łącznika), bez
+   *  fabrykowanych numerów P-xx. Renderer rysuje wyrazisty czerwony znacznik
+   *  cut-point na linii — dyspozytorska konwencja SCADA. Deterministyczne:
+   *  pozycja + label to czysta funkcja danych łącznika. */
+  readonly openPointMarkers?: readonly {
+    readonly id: string;
+    readonly x: number;
+    readonly y: number;
+    readonly label: string;
+  }[];
   /** P-A POWER-FLOW TOR (one truth): kierunek przepływu mocy per segment READ z
    *  FROZEN solvera (znak P na końcu "from"). 'forward' = zgodnie z orientacją
    *  trasy (pathPoints start→end); 'reverse' = przeciwnie (OZE oddaje moc w górę
@@ -140,6 +160,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     viewportScale,
     energized = false,
     containsOpenPoint = false,
+    openPointMarkers = [],
     topologyGuide = false,
     segmentDirections,
     flowDirection,
@@ -214,6 +235,17 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     ? findLongestHorizontalSegmentMidpoint(pathPoints)
     : null;
   const terminalPoint = pathPoints[pathPoints.length - 1];
+  // SCADA open-point markers. Prefer the data-honest, geometry-precise markers
+  // supplied by the adapter (placed exactly where the green path breaks, with the
+  // real switch identifier). Fall back to a single terminal-anchored marker only
+  // when the run is flagged `containsOpenPoint` without precise positions, so
+  // legacy callers still surface the cut point.
+  const resolvedOpenPointMarkers: readonly { id: string; x: number; y: number; label: string }[] =
+    openPointMarkers.length > 0
+      ? openPointMarkers
+      : containsOpenPoint && terminalPoint
+        ? [{ id: `${id}-nmo`, x: terminalPoint.x, y: terminalPoint.y, label: 'NO' }]
+        : [];
   const pendingEndpointLabel = pendingEndpointLabels(segmentKind);
   // K30-42: power flow direction arrow — kierunek z start → end pathPoints.
   // Renderowane na najdłuższym horizontal segmencie w midpoincie. Pomaga
@@ -608,32 +640,59 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           </text>
         </g>
       )}
-      {containsOpenPoint && !topologyGuide && !missingEndpointPort && terminalPoint && (
+      {/* SCADA open-point furniture: prominent RED cut-point marker that visibly
+          BREAKS the bright-green energized path. Placed ON the line where the
+          power path stops (geometry of the neighbouring segments — the green side
+          ends here, the beyond-NOP side is already dimmed). Label = the open
+          point's REAL identifier from the model (switch name); NO fabricated
+          "P-xx" number is invented when the model has none. Deterministic: marker
+          position + label are a pure function of the open-point branch data. */}
+      {!topologyGuide && !missingEndpointPort && resolvedOpenPointMarkers.map((marker) => (
         <g
+          key={`${id}-open-point-${marker.id}`}
           data-testid={`sld-v2-run-${id}-nmo-open-point`}
           data-element-kind="open_point_marker"
           data-open-point="true"
-          transform={`translate(${terminalPoint.x}, ${terminalPoint.y - 24})`}
+          data-open-point-id={marker.id}
+          data-open-point-label={marker.label}
+          transform={`translate(${marker.x}, ${marker.y})`}
           pointerEvents="none"
         >
-          <circle r={11} fill="#3A0C0C" stroke="#FF333D" strokeWidth={1.7} />
-          <line x1={-6} y1={0} x2={6} y2={0} stroke="#FF333D" strokeWidth={2.4} transform="rotate(-35)" />
+          {/* Dark halo behind the marker so the red reads even over a bright
+              green trunk underneath. */}
+          <polygon
+            points={`0,${-OPEN_POINT_HALO} ${OPEN_POINT_HALO},0 0,${OPEN_POINT_HALO} ${-OPEN_POINT_HALO},0`}
+            fill="#05070A"
+            opacity={0.92}
+          />
+          {/* Bold red cut-point diamond (open-apparatus tokens). */}
+          <polygon
+            points={`0,${-OPEN_POINT_R} ${OPEN_POINT_R},0 0,${OPEN_POINT_R} ${-OPEN_POINT_R},0`}
+            fill={COLOR_DEVICE_OPEN}
+            stroke={COLOR_DEVICE_OPEN_BORDER}
+            strokeWidth={2.2}
+            strokeLinejoin="round"
+          />
+          {/* Short break ticks (gap) emphasising the path is CUT here. */}
+          <line x1={-OPEN_POINT_R - 4} y1={0} x2={-OPEN_POINT_R - 1.5} y2={0} stroke={COLOR_DEVICE_OPEN_BORDER} strokeWidth={2.4} />
+          <line x1={OPEN_POINT_R + 1.5} y1={0} x2={OPEN_POINT_R + 4} y2={0} stroke={COLOR_DEVICE_OPEN_BORDER} strokeWidth={2.4} />
           <text
             x={0}
-            y={18}
+            y={OPEN_POINT_R + 13}
             textAnchor="middle"
-            fill="#FFB3B3"
+            fill="#FF9AA0"
             fontFamily="sans-serif"
-            fontSize={8}
+            fontSize={9}
             fontWeight={900}
+            letterSpacing={0.3}
             paintOrder="stroke"
             stroke="#05070A"
-            strokeWidth={2}
+            strokeWidth={2.6}
           >
-            NMO
+            {marker.label}
           </text>
         </g>
-      )}
+      ))}
       {missingEndpointPort && (
         <g
           data-testid={`sld-v2-run-${id}-missing-port-marker`}
