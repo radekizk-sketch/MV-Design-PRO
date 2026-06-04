@@ -722,13 +722,24 @@ function HvTowerColumn(props: HvTowerColumnProps): JSX.Element {
             />
           )}
 
-          {/* Panel pomiarów TR po lewej (Temp. oleju / Uarn / NZACZ / MVA) */}
+          {/* Panel pomiarów TR (Temp. oleju / Uarn / NZACZ / MVA). Przy >1 TR
+             panele rozkładamy na ZEWNĄTRZ (lewy TR → w lewo, prawy TR → w prawo),
+             żeby nie kolidowały w środku między transformatorami. */}
           {measurements?.[idx] && (
             <TransformerMeasurementPanel
-              x={trX - TR_RADIUS - 12}
+              x={
+                transformerCount <= 1
+                  ? trX - TR_RADIUS - 12
+                  : idx >= transformerCount / 2
+                    ? trX + TR_RADIUS + 10
+                    : trX - TR_RADIUS - 10
+              }
               y={(trTopCenterY + trBottomCenterY) / 2 + TR_RADIUS + 12}
               data={measurements[idx]}
               trIndex={idx}
+              align={
+                transformerCount <= 1 ? undefined : idx >= transformerCount / 2 ? 'left' : 'right'
+              }
             />
           )}
 
@@ -1151,6 +1162,13 @@ interface TransformerMeasurementPanelProps {
   readonly y: number;
   readonly data: TransformerMeasurements;
   readonly trIndex: number;
+  /**
+   * Wyrównanie bloku label/value względem `x`.
+   *   - `undefined` → kanon dla pojedynczego TR: label kończy się na x, value od x (środek).
+   *   - `'left'`    → blok wyrasta w PRAWO od x (panel po prawej stronie TR).
+   *   - `'right'`   → blok kończy się na x, wyrasta w LEWO (panel po lewej stronie TR).
+   */
+  readonly align?: 'left' | 'right';
 }
 
 /**
@@ -1158,7 +1176,15 @@ interface TransformerMeasurementPanelProps {
  * Renderowany po lewej stronie symbolu TR jako stos label/value.
  */
 function TransformerMeasurementPanel(props: TransformerMeasurementPanelProps): JSX.Element {
-  const { x, y, data, trIndex } = props;
+  const { x, y, data, trIndex, align } = props;
+  // Szerokości kolumn dla wyrównania zewnętrznego (label | value).
+  // LABEL_COL_W mieści najszerszą etykietę „Temp. oleju" przy font 10 px.
+  const LABEL_COL_W = 62;
+  const VALUE_COL_W = 30;
+  const labelX = align === 'right' ? x - VALUE_COL_W : x;
+  const labelAnchor: 'start' | 'end' = align === 'left' ? 'start' : 'end';
+  const valueX = align === 'left' ? x + LABEL_COL_W : align === 'right' ? x : x + 4;
+  const valueAnchor: 'start' | 'end' = align === 'right' ? 'end' : 'start';
   const rows: { label: string; value: string; testId: string }[] = [];
   if (data.oilTemperatureC !== undefined) {
     rows.push({
@@ -1201,9 +1227,9 @@ function TransformerMeasurementPanel(props: TransformerMeasurementPanelProps): J
             data-testid={`sld-v2-gpz-tr-measurement-${row.testId}-${trIndex}`}
           >
             <text
-              x={x}
+              x={labelX}
               y={rowY}
-              textAnchor="end"
+              textAnchor={labelAnchor}
               fill={COLOR_TEXT_MUTED}
               fontFamily={FONT_SANS}
               fontSize={MEASUREMENT_FONT_SIZE}
@@ -1211,9 +1237,9 @@ function TransformerMeasurementPanel(props: TransformerMeasurementPanelProps): J
               {row.label}
             </text>
             <text
-              x={x + 4}
+              x={valueX}
               y={rowY}
-              textAnchor="start"
+              textAnchor={valueAnchor}
               fill={COLOR_MEASUREMENT_VALUE}
               fontFamily={FONT_MONO}
               fontSize={MEASUREMENT_FONT_SIZE}

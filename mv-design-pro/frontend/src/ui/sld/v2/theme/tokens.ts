@@ -252,8 +252,9 @@ export const FONT_SIZES = {
 export const GPZ_GEOMETRY = {
   /** Pasek tytułu (góra rozdzielni). */
   titleBarHeight: 26,
-  /** Wysokość kolumny HV-tower w trybie single-bus. */
-  hvTowerHeight: 78,
+  /** Wysokość kolumny HV-tower w trybie single-bus. Wyższa kolumna robi pionowy
+   *  prześwit na panele pomiarowe TR nad szyną SN (anty-kolizja z etykietami sekcji). */
+  hvTowerHeight: 96,
   /** Padding wewnętrzny (poziomy + pionowy). */
   horizontalPadding: 14,
   verticalPadding: 10,
@@ -304,8 +305,9 @@ export const GPZ_GEOMETRY = {
   /** Two-bus: gap między HV bays bottom a LV bus (TR symbols). */
   twoBusTrGap: 84,
   twoBusTrSpacing: 80,
-  /** Single-bus: spacing TR-ów w HV tower column. */
-  singleBusTrSpacing: 60,
+  /** Single-bus: spacing TR-ów w HV tower column. Szerszy odstęp robi miejsce
+   *  na panele pomiarowe TR rozłożone na zewnątrz (anty-kolizja w środku). */
+  singleBusTrSpacing: 84,
   /** Minimalna szerokość rozdzielni (clamp dla małych GPZ). */
   minSwitchgearWidth: 360,
   /** Magistrala sieci terenowej. */

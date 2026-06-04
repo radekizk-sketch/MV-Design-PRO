@@ -1057,6 +1057,27 @@ describe('GpzSwitchgearRenderer — TR measurements (Temp. oleju, Uarn, NZACZ, M
     ).not.toBeNull();
   });
 
+  it('2 TR → panele pomiarowe rozłożone na zewnątrz (lewy w lewo, prawy w prawo)', () => {
+    const { container } = r({
+      transformerCount: 2,
+      transformerMeasurements: [
+        { oilTemperatureC: 47.2, uarnKv: 15.4, nzacz: '9/19', apparentMva: 16 },
+        { oilTemperatureC: 49.5, uarnKv: 15.2, nzacz: '9/19', apparentMva: 18 },
+      ],
+    });
+    const valueAnchor = (idx: number) => {
+      const row = container.querySelector(
+        `[data-testid="sld-v2-gpz-tr-measurement-oil-temp-${idx}"]`,
+      );
+      const texts = row!.querySelectorAll('text');
+      return texts[texts.length - 1].getAttribute('text-anchor');
+    };
+    // Lewy TR (idx 0): panel po lewej, value wyrównane w prawo (blok rośnie w lewo).
+    expect(valueAnchor(0)).toBe('end');
+    // Prawy TR (idx 1): panel po prawej, value wyrównane w lewo (blok rośnie w prawo).
+    expect(valueAnchor(1)).toBe('start');
+  });
+
   it('transformerMeasurements flow="down" → strzałka kierunku przepływu (magenta/down)', () => {
     const { container } = r({
       transformerCount: 1,
