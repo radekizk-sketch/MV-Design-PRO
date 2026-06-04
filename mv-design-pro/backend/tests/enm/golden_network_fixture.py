@@ -40,6 +40,7 @@ from enm.models import (
     Substation,
     Transformer,
 )
+from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
 
 
 def build_golden_network() -> EnergyNetworkModel:
@@ -151,6 +152,7 @@ def build_golden_network() -> EnergyNetworkModel:
             substation_ref="sub_gpz",
             bus_ref="bus_gpz_15_s1",
             equipment_refs=["tr_gpz_t1"],
+            protection_codes=list(TRANSFORMER_BAY_PROTECTION_CODES),
         )
     )
     bays.append(
@@ -161,6 +163,7 @@ def build_golden_network() -> EnergyNetworkModel:
             substation_ref="sub_gpz",
             bus_ref="bus_gpz_15_s2",
             equipment_refs=["tr_gpz_t2"],
+            protection_codes=list(TRANSFORMER_BAY_PROTECTION_CODES),
         )
     )
 

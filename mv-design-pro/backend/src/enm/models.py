@@ -707,6 +707,11 @@ class Bay(ENMElement):
     gpz_section_id: str | None = None
     equipment_refs: list[str] = []
     protection_ref: str | None = None
+    # Kody funkcji zabezpieczeniowych ANSI/IEC do wyświetlenia na SLD, np.
+    # ['87T','51','50','51N'] — to są stringi, NIE enum; lustro mechanizmu
+    # OzeField.protection_codes (jedno źródło prawdy, wspólny wzorzec SLD).
+    # Enum ProtectionSetting pozostaje wyłącznie dla konfiguracji/koordynacji.
+    protection_codes: list[str] = Field(default_factory=list)
     # PR-3 rebuild SLD: porty pola — wnioskowane z bay_role + bus + reservation slots
     ports: list[Port] = []
     bay_template_ref: str | None = None  # referencja do BayTemplate w katalogu
