@@ -292,6 +292,13 @@ export const GPZ_GEOMETRY = {
   /** Panel pomiarów. */
   measurementRowHeight: 10,
   measurementPanelHeaderHeight: 12,
+  /** Wewnętrzny inset poziomy nagłówka pola/panelu — gwarantuje prześwit
+   *  między sąsiednimi wąskimi kolumnami (anty-kolizja D1/D2). */
+  labelClipInset: 4,
+  /** Przybliżony współczynnik szerokości glifu (advance ÷ fontSize) dla
+   *  Inter w wersalikach. Używany do przycinania etykiet do szerokości
+   *  kolumny z wielokropkiem (clip-to-width zamiast char-count). */
+  labelCharWidthFactor: 0.62,
   /** Sprzęgło. */
   couplerBayWidth: 120,
   couplerLegInset: 18,

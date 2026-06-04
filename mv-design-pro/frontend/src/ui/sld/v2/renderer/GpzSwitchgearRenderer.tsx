@@ -91,21 +91,12 @@ const HORIZONTAL_PADDING = GPZ_GEOMETRY.horizontalPadding;
 const APPARATUS_COL_X_OFFSET = GPZ_GEOMETRY.apparatusColXOffset;
 const BADGE_COL_X_OFFSET = GPZ_GEOMETRY.badgeColXOffset;
 const BADGE_WIDTH = GPZ_GEOMETRY.badgeWidth;
+const LABEL_CLIP_INSET = GPZ_GEOMETRY.labelClipInset;
 
 const KAS_ROW_HEIGHT = GPZ_GEOMETRY.kasRowHeight;
 
 const MEASUREMENT_ROW_HEIGHT = GPZ_GEOMETRY.measurementRowHeight;
 const MEASUREMENT_FONT_SIZE = FONT_SIZES.measurementPanel;
-
-/**
- * Skraca tekst do `maxLen` znaków z ellipsis "…" gdy ucięty.
- * Anti-pattern §15.4: silent slice() bez wskaźnika ucięcia jest zakazany —
- * operator nie wie że pełna nazwa była dłuższa.
- */
-function truncateWithEllipsis(text: string, maxLen: number): string {
-  if (text.length <= maxLen) return text;
-  return text.slice(0, Math.max(1, maxLen - 1)) + '…';
-}
 
 /**
  * Formatuje napięcie HV bus dla wyświetlenia. Gdy ENM nie niesie wartości
@@ -139,6 +130,7 @@ import {
   hasAnyMeasurement,
   formatInteger,
   computeMaxFooterDepth,
+  fitTextToWidth,
 } from './GpzSwitchgearLayout';
 import {
   CtPrimary,
@@ -759,7 +751,10 @@ function HvTowerColumn(props: HvTowerColumnProps): JSX.Element {
 
           {/* Panel pomiarów TR (Temp. oleju / Uarn / NZACZ / MVA). Przy >1 TR
              panele rozkładamy na ZEWNĄTRZ (lewy TR → w lewo, prawy TR → w prawo),
-             żeby nie kolidowały w środku między transformatorami. */}
+             żeby nie kolidowały w środku między transformatorami.
+             Pojedynczy TR: align='right' → cały blok label/value kończy się na x
+             i wyrasta w LEWO, więc nie nachodzi na okręgi uzwojeń (anty-kolizja
+             D3: poprzednio "MVA 25" lądowało na dolnym okręgu). */}
           {measurements?.[idx] && (
             <TransformerMeasurementPanel
               x={
@@ -769,11 +764,11 @@ function HvTowerColumn(props: HvTowerColumnProps): JSX.Element {
                     ? trX + TR_RADIUS + 10
                     : trX - TR_RADIUS - 10
               }
-              y={(trTopCenterY + trBottomCenterY) / 2 + TR_RADIUS + 12}
+              y={(trTopCenterY + trBottomCenterY) / 2 + TR_RADIUS + 16}
               data={measurements[idx]}
               trIndex={idx}
               align={
-                transformerCount <= 1 ? undefined : idx >= transformerCount / 2 ? 'left' : 'right'
+                transformerCount <= 1 ? 'right' : idx >= transformerCount / 2 ? 'left' : 'right'
               }
             />
           )}
@@ -1595,9 +1590,12 @@ function BayColumn(props: BayColumnProps): JSX.Element {
         data-missing-device={bay.hasMissingRequiredDevice ? 'true' : 'false'}
       />
 
-      {/* Nagłówek pola — feeder name lub designation */}
+      {/* Nagłówek pola — feeder name lub designation. Wyśrodkowany w kolumnie
+       * (nie na osi aparatów) i przycięty do szerokości kolumny minus inset,
+       * żeby długa nazwa nie wylewała się do sąsiedniej kolumny (anty-kolizja
+       * D2: "STAROŁĘ.WSCHODN…"). */}
       <text
-        x={apparatusCx}
+        x={x + BAY_COLUMN_WIDTH / 2}
         y={headerY + 9}
         textAnchor="middle"
         fill={COLOR_TEXT_PRIMARY}
@@ -1606,7 +1604,11 @@ function BayColumn(props: BayColumnProps): JSX.Element {
         fontWeight={600}
         data-testid="sld-v2-gpz-bay-header"
       >
-        {truncateWithEllipsis(bay.feederName ?? bay.designation, 8)}
+        {fitTextToWidth(
+          bay.feederName ?? bay.designation,
+          BAY_COLUMN_WIDTH - 2 * LABEL_CLIP_INSET,
+          FONT_SIZES.technicalPanel - 1,
+        )}
       </text>
 
       {/* Marker zwarcia doziemnego (cyan circle u góry) */}
@@ -1807,10 +1809,14 @@ function BayColumn(props: BayColumnProps): JSX.Element {
                 state={bay.esState}
                 side={esSide}
               />
+              {/* Etykieta ES przesunięta W DÓŁ obok trójkąta ziemi (cy + 5),
+               * a nie na linii gałęzi — inaczej dzieli wiersz z etykietą
+               * odłącznika liniowego (Q9) / wyłącznika (Q0) i zlewa się w
+               * nieczytelny ciąg "Q08"/"Q98" (anty-kolizja D4). */}
               {bay.qDesignations?.es && (
                 <QDesignationLabel
                   x={labelX}
-                  y={dsY + APPARATUS_PITCH * 0.4 - 4}
+                  y={dsY + APPARATUS_PITCH * 0.4 + 5}
                   text={bay.qDesignations.es}
                   slot="es"
                 />

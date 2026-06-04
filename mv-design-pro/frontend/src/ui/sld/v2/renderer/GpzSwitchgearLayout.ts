@@ -380,6 +380,29 @@ export function formatFrequency(value: number): string {
   return value.toFixed(2);
 }
 
+/**
+ * Przycina etykietę do dostępnej szerokości w pikselach z wielokropkiem.
+ *
+ * Anti-pattern §15.4 (silent slice) + audyt anty-kolizji D1/D2: w wąskich
+ * kolumnach (np. 64 px) char-count truncation pozwala długiej nazwie wylać się
+ * do sąsiedniej kolumny. Tu liczymy ile glifów mieści się w `maxWidthPx` przy
+ * danym `fontSizePx` (advance ≈ fontSize × labelCharWidthFactor) i ucinamy z "…".
+ *
+ * Deterministyczne (czysta arytmetyka, brak pomiaru DOM).
+ */
+export function fitTextToWidth(
+  text: string,
+  maxWidthPx: number,
+  fontSizePx: number,
+): string {
+  if (maxWidthPx <= 0) return '';
+  const charW = fontSizePx * GPZ_GEOMETRY.labelCharWidthFactor;
+  const maxChars = Math.max(1, Math.floor(maxWidthPx / charW));
+  if (text.length <= maxChars) return text;
+  // Zostaw miejsce na "…" (też ~1 glif).
+  return text.slice(0, Math.max(1, maxChars - 1)) + '…';
+}
+
 export function computeMaxFooterDepth(sections: readonly GpzSectionDescriptor[]): number {
   let kasDepth = 0;
   let measurementDepth = 0;

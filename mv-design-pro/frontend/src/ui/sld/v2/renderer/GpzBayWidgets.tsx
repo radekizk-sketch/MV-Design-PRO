@@ -19,7 +19,7 @@ import {
   GPZ_GEOMETRY,
 } from '../theme/tokens';
 import type { BayMeasurements, BaySecondaryFlags, GroundFaultMarkerState, SecondaryFlagState } from './GpzSwitchgearTypes';
-import { collectBadges, badgeVisual, statusLabel, collectMeasurementRows } from './GpzSwitchgearLayout';
+import { collectBadges, badgeVisual, statusLabel, collectMeasurementRows, fitTextToWidth } from './GpzSwitchgearLayout';
 
 const KAS_LED_RADIUS = GPZ_GEOMETRY.kasLedRadius;
 const BADGE_WIDTH = GPZ_GEOMETRY.badgeWidth;
@@ -30,6 +30,7 @@ const BADGE_FONT_SIZE = FONT_SIZES.badge;
 const MEASUREMENT_ROW_HEIGHT = GPZ_GEOMETRY.measurementRowHeight;
 const MEASUREMENT_PANEL_HEADER_HEIGHT = GPZ_GEOMETRY.measurementPanelHeaderHeight;
 const MEASUREMENT_FONT_SIZE = FONT_SIZES.measurementPanel;
+const LABEL_CLIP_INSET = GPZ_GEOMETRY.labelClipInset;
 
 // =============================================================================
 // BadgeStack
@@ -214,11 +215,12 @@ export function MeasurementPanel(props: MeasurementPanelProps): JSX.Element {
   const rows = collectMeasurementRows(measurements);
   const labelX = x - width / 2 + 4;
   const valueX = x + width / 2 - 4;
-
-  function truncateWithEllipsis(text: string, maxLen: number): string {
-    if (text.length <= maxLen) return text;
-    return text.slice(0, Math.max(1, maxLen - 1)) + '…';
-  }
+  /* Nagłówek (nazwa odpływu) przycięty do szerokości panelu minus inset z obu
+   * stron — zostawia prześwit do sąsiedniej kolumny (anty-kolizja D1: bez tego
+   * "STAROŁĘCKA" + "WSCHODNIA" zlewały się w jeden ciąg). */
+  const headerText = feederName
+    ? fitTextToWidth(feederName, width - 2 * LABEL_CLIP_INSET, MEASUREMENT_FONT_SIZE)
+    : '';
 
   return (
     <g data-testid="sld-v2-gpz-bay-measurement-panel" data-row-count={String(rows.length)}>
@@ -232,7 +234,7 @@ export function MeasurementPanel(props: MeasurementPanelProps): JSX.Element {
           fontSize={MEASUREMENT_FONT_SIZE}
           fontWeight={600}
         >
-          {truncateWithEllipsis(feederName, 10)}
+          {headerText}
         </text>
       )}
       {rows.map((row, idx) => {

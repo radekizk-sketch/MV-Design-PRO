@@ -2199,9 +2199,10 @@ describe('GpzSwitchgearRenderer — Quick-wins z 6/3 fix (dsBus + magenta + elli
         },
       ],
     });
-    /* Nagłówek pola ma maxLen=8 → 'FEEDER_…' (7 znaków + …). */
+    /* Nagłówek przycinany do szerokości kolumny (clip-to-width, anty-kolizja
+     * D2): font 12, szerokość 56 px → ~7 glifów → 'FEEDER…'. */
     const text = container.textContent ?? '';
-    expect(text).toContain('FEEDER_…');
+    expect(text).toContain('FEEDER…');
     expect(text).not.toContain('FEEDER_VERY_LONG_NAME'); // pełna nazwa NIE wyświetlona
     /* Operator widzi że nazwa była dłuższa (kanon UX). */
   });
