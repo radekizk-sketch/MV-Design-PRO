@@ -42,9 +42,13 @@ import {
   COLOR_PANEL,
   COLOR_DEVICE_CLOSED_BORDER,
   COLOR_DEVICE_OPEN_BORDER,
+  COLOR_FIELD_TRUNK_ENERGIZED,
   COLOR_SELECTION,
   COLOR_TEXT_PRIMARY,
+  COLOR_TEXT_SECONDARY,
   COLOR_WARN,
+  FONT_MONO,
+  FONT_SANS,
 } from '../theme/tokens';
 import {
   CableRunRenderer,
@@ -2331,12 +2335,40 @@ function stationReadinessColor(station: StationOnRunRendererProps): string {
 }
 
 /**
+ * Skrócona nazwa stacji do etykiety L0 (linia 1). Tłumi nazwy generyczne
+ * ("Stacja przelotowa SN/nN") oraz takie, które tylko powtarzają kod stacji —
+ * w obu przypadkach kod (linia 2) niesie tożsamość, więc nazwa byłaby szumem.
+ * Przycina do `maxChars`, by nigdy nie wyszła poza szerokość bloku (zero kolizji).
+ * Czysta funkcja danych węzła — deterministyczna, bez stanu/kolejności.
+ */
+function overviewStationShortName(
+  name: string | null | undefined,
+  code: string | null | undefined,
+  maxChars = 14,
+): string | null {
+  const raw = (name ?? '').trim();
+  if (!raw) return null;
+  const normalized = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+  const isGeneric = /^(nowa\s+stacja|stacja\s+sn\/nn(\s+\d+)?|stacja\s+(przelotowa|koncowa|odgalezna|sekcyjna)(\s+sn\/nn)?)(\s+\d+)?$/.test(normalized);
+  if (isGeneric) return null;
+  const normCode = (code ?? '').trim().toLowerCase();
+  if (normCode && (normalized === normCode || normalized.startsWith(`${normCode} `))) return null;
+  return raw.length > maxChars ? `${raw.slice(0, maxChars - 1)}…` : raw;
+}
+
+/**
  * Blok przeglądowy stacji (L0) — STRUKTURALNY fix gęstości (§7, M-08).
  *
  * Zamiast pełnego mini-bloku z aparaturą (118×96, nieczytelny przy skali ~0.2 dla
- * 53 stacji), rysuje czysty prostokąt + kod/nazwa stacji + kropka statusu gotowości.
- * Pozycja z propsów stacji (jedna prawda geometrii — adapter nałożył ją z LayoutResult);
- * ten komponent NIE liczy pozycji. Hit-box = cały blok (klikalność V-08 na L0).
+ * 53 stacji), rysuje czysty prostokąt + stos etykiet (nazwa + kod operatorski w
+ * cyjanie + moc kVA) + kropka statusu gotowości. Węzeł pod napięciem (wg FROZEN
+ * solvera — READ, nie liczone) jest tintowany na zieleń „live"; de-energized
+ * pozostaje wyszarzony. Pozycja z propsów stacji (jedna prawda geometrii —
+ * adapter nałożył ją z LayoutResult); ten komponent NIE liczy pozycji.
+ * Hit-box = cały blok (klikalność V-08 na L0).
  */
 function StationOverviewBlock(props: {
   readonly station: StationOnRunRendererProps;
@@ -2345,7 +2377,20 @@ function StationOverviewBlock(props: {
   const { station, selected } = props;
   const x = station.x - L0_BLOCK_W / 2;
   const y = station.y - L0_BLOCK_H / 2;
-  const label = station.stationCode?.trim() || station.name || station.id;
+  const code = station.stationCode?.trim() || null;
+  // Tożsamość węzła (jak w widokach szczegółu): nazwa, kod operatorski (cyjan),
+  // moc kVA. Surfacujemy istniejące pola — bez atrap; gdy pole faktycznie brak
+  // dla węzła, pomijamy jego linię (no placeholder).
+  const shortName = overviewStationShortName(station.name, code);
+  const kva = station.transformerRatedKva ?? null;
+  const kvaLabel = kva != null && kva > 0
+    ? (kva >= 1000 ? `${(kva / 1000).toFixed(1).replace('.', ',')} MVA` : `${kva} kVA`)
+    : null;
+  // Główna etykieta = nazwa, a gdy jej brak (lub generyczna) — kod, by węzeł
+  // nigdy nie był bezimienny. Drugorzędny kod cyjan pokazujemy tylko gdy nie
+  // jest już głównym wierszem (anty-duplikat).
+  const primaryLabel = shortName ?? code ?? (station.name || station.id);
+  const showCodeLine = code != null && primaryLabel !== code;
   const borderColor = selected ? COLOR_SELECTION : '#2C3A48';
   const statusColor = stationReadinessColor(station);
   // P-A POWER-FLOW TOR (one truth): a station is de-energized when the FROZEN
@@ -2354,15 +2399,45 @@ function StationOverviewBlock(props: {
   // SLD shows exactly the solver's energized set. `undefined` (no companion) =
   // full strength (no solver data to dim by).
   const deEnergized = station.energized === false;
+  // Węzeł „live": pod napięciem ⇒ obwódka/wypełnienie tintowane na zieleń
+  // energized (ten sam sygnał, który zasila tor mocy — NIE przeliczamy go).
+  // De-energized ⇒ bez tintu (wyszarzony, jak dotychczas). Brak danych
+  // (undefined) ⇒ neutralny panel (brak companion = brak prawa do zieleni).
+  const isLive = station.energized === true;
+  const fillColor = isLive ? '#0C2A1C' : COLOR_PANEL;
+  const liveBorder = isLive && !selected ? COLOR_FIELD_TRUNK_ENERGIZED : (deEnergized ? '#3A4754' : borderColor);
+  const primaryFill = deEnergized
+    ? '#8A99A8'
+    : isLive
+      ? COLOR_FIELD_TRUNK_ENERGIZED
+      : COLOR_TEXT_PRIMARY;
+  // Pionowy stos etykiet wyśrodkowany w bloku; rozstaw dobrany tak, by 3 linie
+  // mieściły się w 80 px wysokości bez nachodzenia.
+  const lineCount = 1 + (showCodeLine ? 1 : 0) + (kvaLabel ? 1 : 0);
+  const lineGap = 16;
+  const stackTopY = station.y - ((lineCount - 1) * lineGap) / 2;
+  let lineIdx = 0;
+  const primaryY = stackTopY + lineIdx * lineGap;
+  lineIdx += 1;
+  const codeY = stackTopY + lineIdx * lineGap;
+  if (showCodeLine) lineIdx += 1;
+  const kvaY = stackTopY + lineIdx * lineGap;
+  // Margines wewnętrzny, by clip-path nie ucinał liter na krawędzi bloku.
+  const clipInset = 6;
+  const clipId = `sld-v2-overview-block-clip-${station.id}`;
   return (
     <g
       data-testid={`sld-v2-station-overview-block-${station.id}`}
       data-lod-variant="block_overview"
       data-station-readiness={statusColor}
       data-station-energized={station.energized === undefined ? undefined : station.energized ? 'true' : 'false'}
+      data-station-live={isLive ? 'true' : 'false'}
       opacity={deEnergized ? 0.4 : 1}
       pointerEvents="none"
     >
+      <clipPath id={clipId}>
+        <rect x={x + clipInset} y={y} width={L0_BLOCK_W - clipInset * 2} height={L0_BLOCK_H} />
+      </clipPath>
       <rect
         x={x}
         y={y}
@@ -2370,27 +2445,62 @@ function StationOverviewBlock(props: {
         height={L0_BLOCK_H}
         rx={6}
         ry={6}
-        fill={COLOR_PANEL}
-        stroke={deEnergized ? '#3A4754' : borderColor}
-        strokeWidth={selected ? 2.5 : 1.5}
+        fill={fillColor}
+        stroke={liveBorder}
+        strokeWidth={selected ? 2.5 : isLive ? 1.8 : 1.5}
         strokeDasharray={deEnergized ? '6 4' : undefined}
       />
       {/* Status gotowości — kropka w lewym górnym rogu. */}
       <circle cx={x + 14} cy={y + 14} r={6} fill={statusColor} stroke="#0A0E14" strokeWidth={1} />
-      {/* Kod/nazwa stacji — wyśrodkowana, jedyna etykieta na L0. */}
-      <text
-        x={station.x}
-        y={station.y + 4}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fill={deEnergized ? '#8A99A8' : COLOR_TEXT_PRIMARY}
-        fontFamily="sans-serif"
-        fontSize={22}
-        fontWeight={800}
-        letterSpacing={0.5}
-      >
-        {label}
-      </text>
+      {/* Tożsamość stacji — stos: nazwa / kod operatorski (cyjan) / moc kVA. */}
+      <g clipPath={`url(#${clipId})`} data-station-label-stack="true">
+        <text
+          x={station.x}
+          y={primaryY}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill={primaryFill}
+          fontFamily={FONT_SANS}
+          fontSize={14}
+          fontWeight={800}
+          letterSpacing={0.3}
+          data-station-label-role="name"
+        >
+          {primaryLabel}
+        </text>
+        {showCodeLine && (
+          <text
+            x={station.x}
+            y={codeY}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={deEnergized ? '#6B7A88' : '#7EC8FF'}
+            fontFamily={FONT_MONO}
+            fontSize={11}
+            fontWeight={700}
+            letterSpacing={0.5}
+            data-station-label-role="operator-id"
+          >
+            {code}
+          </text>
+        )}
+        {kvaLabel && (
+          <text
+            x={station.x}
+            y={kvaY}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={deEnergized ? '#6B7A88' : COLOR_TEXT_SECONDARY}
+            fontFamily={FONT_MONO}
+            fontSize={10}
+            fontWeight={600}
+            letterSpacing={0.3}
+            data-station-label-role="kva"
+          >
+            {kvaLabel}
+          </text>
+        )}
+      </g>
     </g>
   );
 }
