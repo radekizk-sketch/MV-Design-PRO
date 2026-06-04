@@ -6,10 +6,11 @@
  * etykiety sekcji, kolorystykę energizacji.
  */
 
-import { describe, expect, it } from 'vitest';
-import { render } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render } from '@testing-library/react';
 
 import { GpzSwitchgearRenderer } from '../GpzSwitchgearRenderer';
+import type { GpzApparatusSelection } from '../gpzApparatusSelection';
 import { COLOR_DEVICE_CLOSED, COLOR_DEVICE_OPEN } from '../../theme/tokens';
 import { FIELD_ROLE } from '../../domain/apparatusContracts';
 
@@ -1359,12 +1360,8 @@ describe('GpzSwitchgearRenderer — uziemnik (ES) i Q-numeracja IEC 81346', () =
   });
 });
 
-describe('GpzSwitchgearRenderer — interaktywność (audyt UX D2)', () => {
-  function rWithBay(overrides: { onClickCb?: () => void; onClickDs?: () => void; onClickEs?: () => void; onClickKas?: () => void; onClickCoupler?: (id: string) => void }) {
-    const onClickCb = overrides.onClickCb ?? (() => {});
-    const onClickDs = overrides.onClickDs ?? (() => {});
-    const onClickEs = overrides.onClickEs ?? (() => {});
-    const onClickKas = overrides.onClickKas ?? (() => {});
+describe('GpzSwitchgearRenderer — interaktywność (kanon lustrzany do GpzCanonicalRenderer)', () => {
+  function rWithBay(overrides: Partial<Parameters<typeof GpzSwitchgearRenderer>[0]> = {}) {
     return render(
       <svg>
         <GpzSwitchgearRenderer
@@ -1381,56 +1378,241 @@ describe('GpzSwitchgearRenderer — interaktywność (audyt UX D2)', () => {
               name: 'S1',
               sectionLabel: 'S1',
               busVoltageKv: 15,
-              bays: [{ ...DEFAULT_BAYS[0], esState: 'unknown' as const, hasKasButton: true }],
+              bays: [
+                {
+                  ...DEFAULT_BAYS[0],
+                  esState: 'unknown' as const,
+                  hasKasButton: true,
+                  qDesignations: { cb: 'Q0', ds: 'Q9', dsBus: 'Q1', es: 'Q8', ct: 'T1' },
+                },
+              ],
             },
           ]}
           couplers={[]}
-          onClickCb={(b) => onClickCb()}
-          onClickDs={(b) => onClickDs()}
-          onClickEs={(b) => onClickEs()}
-          onClickKas={(b) => onClickKas()}
-          onClickCoupler={overrides.onClickCoupler}
+          {...overrides}
         />
       </svg>,
     );
   }
 
-  it('onClickCb wywoływany gdy klik w CB pola', async () => {
-    let calls = 0;
-    const { container } = rWithBay({ onClickCb: () => { calls += 1; } });
-    const cb = container.querySelector('[data-testid="sld-v2-gpz-bay-cb"]') as SVGElement;
-    cb.parentElement!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    expect(calls).toBe(1);
+  /** Grupa interakcji aparatu (`data-element-kind="apparatus"`) zawierająca dany symbol. */
+  function apparatusGroupOf(container: HTMLElement, symbolTestId: string): Element {
+    const symbol = container.querySelector(`[data-testid="${symbolTestId}"]`);
+    return symbol!.closest('[data-element-kind="apparatus"]')!;
+  }
+
+  it('onClickApparatus dla CB → selekcja "b-1#breaker" + designation Q0 + labelPl', () => {
+    const onClickApparatus = vi.fn();
+    const { container } = rWithBay({ onClickApparatus });
+    fireEvent.click(apparatusGroupOf(container, 'sld-v2-gpz-bay-cb'));
+    expect(onClickApparatus).toHaveBeenCalledTimes(1);
+    expect(onClickApparatus.mock.calls[0][0]).toEqual({
+      apparatusId: 'b-1#breaker',
+      bayRef: 'b-1',
+      apparatusKind: 'breaker',
+      designation: 'Q0',
+      labelPl: 'Wyłącznik',
+    } satisfies GpzApparatusSelection);
   });
 
-  it('onClickDs wywoływany gdy klik w DS pola', async () => {
-    let calls = 0;
-    const { container } = rWithBay({ onClickDs: () => { calls += 1; } });
-    const ds = container.querySelector('[data-testid="sld-v2-gpz-bay-ds"]') as SVGElement;
-    ds.parentElement!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    expect(calls).toBe(1);
+  it('onClickApparatus dla odłącznika liniowego → "b-1#switch_disconnector" + designation Q9', () => {
+    const onClickApparatus = vi.fn();
+    const { container } = rWithBay({ onClickApparatus });
+    /* DS_BUS i DS_LIN dzielą test-id sld-v2-gpz-bay-ds; rozróżniamy po etykiecie
+     * Q (slot="ds" jest odłącznikiem liniowym, slot="ds-bus" szynowym). */
+    const lineDs = container.querySelector('[data-testid="sld-v2-gpz-bay-q-ds"]')!
+      .closest('[data-element-kind="apparatus"]')!;
+    fireEvent.click(lineDs);
+    expect(onClickApparatus.mock.calls[0][0]).toEqual({
+      apparatusId: 'b-1#switch_disconnector',
+      bayRef: 'b-1',
+      apparatusKind: 'switch_disconnector',
+      designation: 'Q9',
+      labelPl: 'Odłącznik liniowy',
+    } satisfies GpzApparatusSelection);
   });
 
-  it('onClickEs wywoływany gdy klik w uziemnik (BHP-protected)', async () => {
-    let calls = 0;
-    const { container } = rWithBay({ onClickEs: () => { calls += 1; } });
-    const es = container.querySelector('[data-testid="sld-v2-gpz-bay-earthing-switch"]') as SVGElement;
-    es.parentElement!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    expect(calls).toBe(1);
+  it('onClickApparatus dla odłącznika szynowego → "b-1#disconnect_bus" + designation Q1', () => {
+    const onClickApparatus = vi.fn();
+    const { container } = rWithBay({ onClickApparatus });
+    const dsBus = container.querySelector('[data-testid="sld-v2-gpz-bay-q-ds-bus"]')!
+      .closest('[data-element-kind="apparatus"]')!;
+    fireEvent.click(dsBus);
+    expect(onClickApparatus.mock.calls[0][0]).toEqual({
+      apparatusId: 'b-1#disconnect_bus',
+      bayRef: 'b-1',
+      apparatusKind: 'disconnect_bus',
+      designation: 'Q1',
+      labelPl: 'Odłącznik szynowy',
+    } satisfies GpzApparatusSelection);
   });
 
-  it('onClickKas wywoływany gdy klik w KAS button', async () => {
-    let calls = 0;
-    const { container } = rWithBay({ onClickKas: () => { calls += 1; } });
-    const kas = container.querySelector('[data-testid="sld-v2-gpz-bay-kas"]') as SVGElement;
-    kas.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    expect(calls).toBe(1);
+  it('onClickApparatus dla uziemnika → "b-1#earthing_switch" + designation Q8 + labelPl', () => {
+    const onClickApparatus = vi.fn();
+    const { container } = rWithBay({ onClickApparatus });
+    fireEvent.click(apparatusGroupOf(container, 'sld-v2-gpz-bay-earthing-switch'));
+    expect(onClickApparatus.mock.calls[0][0]).toEqual({
+      apparatusId: 'b-1#earthing_switch',
+      bayRef: 'b-1',
+      apparatusKind: 'earthing_switch',
+      designation: 'Q8',
+      labelPl: 'Uziemnik',
+    } satisfies GpzApparatusSelection);
   });
 
-  it('cursor: pointer na CB/DS/ES/KAS gdy onClick podany', () => {
+  it('onClickApparatus dla CT → "b-1#ct" + designation T1 + labelPl', () => {
+    const onClickApparatus = vi.fn();
+    const { container } = rWithBay({ onClickApparatus });
+    fireEvent.click(apparatusGroupOf(container, 'sld-v2-gpz-bay-ct-primary'));
+    expect(onClickApparatus.mock.calls[0][0]).toEqual({
+      apparatusId: 'b-1#ct',
+      bayRef: 'b-1',
+      apparatusKind: 'ct',
+      designation: 'T1',
+      labelPl: 'Przekładnik prądowy',
+    } satisfies GpzApparatusSelection);
+  });
+
+  it('klik aparatu nie odpala onClickBay (stopPropagation jak w kanonie)', () => {
+    const onClickApparatus = vi.fn();
+    const onClickBay = vi.fn();
+    const { container } = rWithBay({ onClickApparatus, onClickBay });
+    fireEvent.click(apparatusGroupOf(container, 'sld-v2-gpz-bay-cb'));
+    expect(onClickApparatus).toHaveBeenCalledTimes(1);
+    expect(onClickBay).not.toHaveBeenCalled();
+  });
+
+  it('onContextMenuApparatus → selekcja + koordynaty kursora', () => {
+    const onContextMenuApparatus = vi.fn();
+    const { container } = rWithBay({ onContextMenuApparatus });
+    fireEvent.contextMenu(apparatusGroupOf(container, 'sld-v2-gpz-bay-cb'), {
+      clientX: 321,
+      clientY: 654,
+    });
+    expect(onContextMenuApparatus).toHaveBeenCalledWith(
+      expect.objectContaining({ apparatusId: 'b-1#breaker', apparatusKind: 'breaker' }),
+      expect.objectContaining({ clientX: 321, clientY: 654 }),
+    );
+  });
+
+  it('onClickKas wywoływany gdy klik w KAS button', () => {
+    const onClickKas = vi.fn();
+    const { container } = rWithBay({ onClickKas });
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-gpz-bay-kas"]')!);
+    expect(onClickKas).toHaveBeenCalledWith('b-1');
+  });
+
+  it('onDoubleClickBay wywoływany gdy dwuklik w kolumnę pola', () => {
+    const onDoubleClickBay = vi.fn();
+    const { container } = rWithBay({ onDoubleClickBay });
+    fireEvent.doubleClick(container.querySelector('[data-testid="sld-v2-gpz-bay-b-1"]')!);
+    expect(onDoubleClickBay).toHaveBeenCalledWith('b-1');
+  });
+
+  it('onContextMenuBay → bayRef + koordynaty kursora', () => {
+    const onContextMenuBay = vi.fn();
+    const { container } = rWithBay({ onContextMenuBay });
+    fireEvent.contextMenu(container.querySelector('[data-testid="sld-v2-gpz-bay-b-1"]')!, {
+      clientX: 10,
+      clientY: 20,
+    });
+    expect(onContextMenuBay).toHaveBeenCalledWith(
+      'b-1',
+      expect.objectContaining({ clientX: 10, clientY: 20 }),
+    );
+  });
+
+  it('onContextMenuSection → sectionId + koordynaty (uchwyt na etykiecie sekcji)', () => {
+    const onContextMenuSection = vi.fn();
+    const { container } = rWithBay({ onContextMenuSection });
+    fireEvent.contextMenu(
+      container.querySelector('[data-testid="sld-v2-gpz-section-label-sec-1"]')!,
+      { clientX: 5, clientY: 6 },
+    );
+    expect(onContextMenuSection).toHaveBeenCalledWith(
+      'sec-1',
+      expect.objectContaining({ clientX: 5, clientY: 6 }),
+    );
+  });
+
+  it('cursor: pointer na grupie aparatu gdy handler podany', () => {
+    const { container } = rWithBay({ onClickApparatus: vi.fn() });
+    const cbGroup = apparatusGroupOf(container, 'sld-v2-gpz-bay-cb');
+    expect(cbGroup.getAttribute('style')).toContain('cursor: pointer');
+  });
+
+  it('brak handlerów → grupa aparatu cursor: default i klik nieszkodliwy', () => {
     const { container } = rWithBay({});
-    const cbWrapper = container.querySelector('[data-testid="sld-v2-gpz-bay-cb"]')?.parentElement;
-    expect(cbWrapper?.getAttribute('style')).toContain('cursor: pointer');
+    const cbGroup = apparatusGroupOf(container, 'sld-v2-gpz-bay-cb');
+    expect(cbGroup.getAttribute('style')).toContain('cursor: default');
+    expect(() => fireEvent.click(cbGroup)).not.toThrow();
+  });
+});
+
+describe('GpzSwitchgearRenderer — klik transformatora (transformerRefs)', () => {
+  it('transformerRefs podane → klik symbolu TR woła onClickTransformer(ref) (single-bus)', () => {
+    const onClickTransformer = vi.fn();
+    const { container } = render(
+      <svg>
+        <GpzSwitchgearRenderer
+          id="gpz-tr"
+          x={0}
+          y={0}
+          name="GPZ"
+          voltageHighKv={110}
+          voltageLowKv={15}
+          sections={[
+            {
+              sectionId: 'sec-1',
+              order: 1,
+              name: 'S1',
+              sectionLabel: 'S1',
+              busVoltageKv: 15,
+              bays: DEFAULT_BAYS,
+            },
+          ]}
+          couplers={[]}
+          transformerCount={2}
+          transformerRefs={['tr-1', 'tr-2']}
+          onClickTransformer={onClickTransformer}
+        />
+      </svg>,
+    );
+    fireEvent.click(container.querySelector('[data-testid="gpz-canonical-transformer-tr-2"]')!);
+    expect(onClickTransformer).toHaveBeenCalledWith('tr-2');
+  });
+
+  it('brak transformerRefs → symbol TR nieklikalny (cursor default, brak crashu)', () => {
+    const onClickTransformer = vi.fn();
+    const { container } = render(
+      <svg>
+        <GpzSwitchgearRenderer
+          id="gpz-tr"
+          x={0}
+          y={0}
+          name="GPZ"
+          voltageHighKv={110}
+          voltageLowKv={15}
+          sections={[
+            {
+              sectionId: 'sec-1',
+              order: 1,
+              name: 'S1',
+              sectionLabel: 'S1',
+              busVoltageKv: 15,
+              bays: DEFAULT_BAYS,
+            },
+          ]}
+          couplers={[]}
+          transformerCount={1}
+          onClickTransformer={onClickTransformer}
+        />
+      </svg>,
+    );
+    const tr = container.querySelector('[data-testid="sld-v2-gpz-switchgear-transformer-symbol"]')!;
+    expect(tr.getAttribute('style')).toContain('cursor: default');
+    fireEvent.click(tr);
+    expect(onClickTransformer).not.toHaveBeenCalled();
   });
 });
 

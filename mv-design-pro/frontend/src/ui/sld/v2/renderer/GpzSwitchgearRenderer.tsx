@@ -168,6 +168,12 @@ import type {
   GpzSwitchgearRendererProps,
   TransformerMeasurements,
 } from './GpzSwitchgearTypes';
+import {
+  gpzApparatusId,
+  type GpzApparatusKind,
+  type GpzApparatusSelection,
+} from './gpzApparatusSelection';
+import type { MouseEvent, ReactNode } from 'react';
 
 // =============================================================================
 // Re-exports for backward compatibility
@@ -381,9 +387,10 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
                   bay={cell.bay}
                   voltageKv={cell.busVoltageKv}
                   onClickBay={props.onClickBay}
-                  onClickCb={props.onClickCb}
-                  onClickDs={props.onClickDs}
-                  onClickEs={props.onClickEs}
+                  onDoubleClickBay={props.onDoubleClickBay}
+                  onContextMenuBay={props.onContextMenuBay}
+                  onClickApparatus={props.onClickApparatus}
+                  onContextMenuApparatus={props.onContextMenuApparatus}
                   onClickKas={props.onClickKas}
                 />
               );
@@ -402,18 +409,16 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
 
           {/* HV etykiety sekcji */}
           {hvLayout.sectionLabels.map((label) => (
-            <text
+            <SectionLabel
               key={`hv-label-${label.sectionId}`}
               x={HORIZONTAL_PADDING + label.x}
               y={hvBusY - 4}
-              fill={COLOR_TEXT_SECONDARY}
-              fontFamily={FONT_SANS}
-              fontSize={FONT_SIZES.technicalPanel}
-              fontWeight={700}
-              data-testid={`sld-v2-gpz-hv-section-label-${label.sectionId}`}
-            >
-              {label.text}
-            </text>
+              sectionId={label.sectionId}
+              text={label.text}
+              testId={`sld-v2-gpz-hv-section-label-${label.sectionId}`}
+              onClickSection={props.onClickSection}
+              onContextMenuSection={props.onContextMenuSection}
+            />
           ))}
 
           {/* TR symbols między HV bays bottom a LV bus */}
@@ -425,6 +430,8 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
             voltageHighKv={props.voltageHighKv}
             voltageLowKv={props.voltageLowKv}
             measurements={props.transformerMeasurements}
+            transformerRefs={props.transformerRefs}
+            onClickTransformer={props.onClickTransformer}
           />
 
           {/* Pozioma szyna 15 kV (LV bus) — cyan, odróżnia od deviceClosed
@@ -474,9 +481,10 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
                   bay={cell.bay}
                   voltageKv={cell.busVoltageKv}
                   onClickBay={props.onClickBay}
-                  onClickCb={props.onClickCb}
-                  onClickDs={props.onClickDs}
-                  onClickEs={props.onClickEs}
+                  onDoubleClickBay={props.onDoubleClickBay}
+                  onContextMenuBay={props.onContextMenuBay}
+                  onClickApparatus={props.onClickApparatus}
+                  onContextMenuApparatus={props.onContextMenuApparatus}
                   onClickKas={props.onClickKas}
                 />
               );
@@ -495,18 +503,16 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
 
           {/* LV etykiety sekcji */}
           {layout.sectionLabels.map((label) => (
-            <text
+            <SectionLabel
               key={`lv-label-${label.sectionId}`}
               x={HORIZONTAL_PADDING + label.x}
               y={lvBusY - 4}
-              fill={COLOR_TEXT_SECONDARY}
-              fontFamily={FONT_SANS}
-              fontSize={FONT_SIZES.technicalPanel}
-              fontWeight={700}
-              data-testid={`sld-v2-gpz-section-label-${label.sectionId}`}
-            >
-              {label.text}
-            </text>
+              sectionId={label.sectionId}
+              text={label.text}
+              testId={`sld-v2-gpz-section-label-${label.sectionId}`}
+              onClickSection={props.onClickSection}
+              onContextMenuSection={props.onContextMenuSection}
+            />
           ))}
 
           {/* Pola liniowe SN — outgoing feeders w kierunku magistrali */}
@@ -536,6 +542,8 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
             voltageHighKv={props.voltageHighKv}
             voltageLowKv={props.voltageLowKv}
             measurements={props.transformerMeasurements}
+            transformerRefs={props.transformerRefs}
+            onClickTransformer={props.onClickTransformer}
           />
 
           {/* Pojedyncza pozioma szyna główna SN — operator-grade rendering */}
@@ -560,9 +568,10 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
                   bay={cell.bay}
                   voltageKv={cell.busVoltageKv}
                   onClickBay={props.onClickBay}
-                  onClickCb={props.onClickCb}
-                  onClickDs={props.onClickDs}
-                  onClickEs={props.onClickEs}
+                  onDoubleClickBay={props.onDoubleClickBay}
+                  onContextMenuBay={props.onContextMenuBay}
+                  onClickApparatus={props.onClickApparatus}
+                  onContextMenuApparatus={props.onContextMenuApparatus}
                   onClickKas={props.onClickKas}
                 />
               );
@@ -581,18 +590,16 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
 
           {/* Etykiety sekcji (S1, S2, ...) — po lewej każdej sekcji nad szyną. */}
           {layout.sectionLabels.map((label) => (
-            <text
+            <SectionLabel
               key={`label-${label.sectionId}`}
               x={HORIZONTAL_PADDING + label.x}
               y={busY - 4}
-              fill={COLOR_TEXT_SECONDARY}
-              fontFamily={FONT_SANS}
-              fontSize={FONT_SIZES.technicalPanel}
-              fontWeight={700}
-              data-testid={`sld-v2-gpz-section-label-${label.sectionId}`}
-            >
-              {label.text}
-            </text>
+              sectionId={label.sectionId}
+              text={label.text}
+              testId={`sld-v2-gpz-section-label-${label.sectionId}`}
+              onClickSection={props.onClickSection}
+              onContextMenuSection={props.onContextMenuSection}
+            />
           ))}
         </>
       )}
@@ -612,10 +619,22 @@ interface HvTowerColumnProps {
   voltageHighKv: number;
   voltageLowKv: number;
   measurements?: readonly TransformerMeasurements[];
+  transformerRefs?: readonly string[];
+  onClickTransformer?: (transformerRef: string) => void;
 }
 
 function HvTowerColumn(props: HvTowerColumnProps): JSX.Element {
-  const { cx, topY, bottomY, transformerCount, voltageHighKv, voltageLowKv, measurements } = props;
+  const {
+    cx,
+    topY,
+    bottomY,
+    transformerCount,
+    voltageHighKv,
+    voltageLowKv,
+    measurements,
+    transformerRefs,
+    onClickTransformer,
+  } = props;
 
   // Rozkład TR: jeśli >1, rozsadzamy poziomo wokół środka.
   const trSpacing = GPZ_GEOMETRY.singleBusTrSpacing;
@@ -652,8 +671,27 @@ function HvTowerColumn(props: HvTowerColumnProps): JSX.Element {
         {`${voltageHighKv} kV`}
       </text>
 
-      {trsX.map((trX, idx) => (
-        <g key={`tr-${idx}`} data-testid="sld-v2-gpz-switchgear-transformer-symbol" data-tr-index={String(idx)}>
+      {trsX.map((trX, idx) => {
+        const transformerRef = transformerRefs?.[idx];
+        const trClickable = Boolean(transformerRef && onClickTransformer);
+        return (
+        <g
+          key={`tr-${idx}`}
+          data-testid={transformerRef ? `gpz-canonical-transformer-${transformerRef}` : 'sld-v2-gpz-switchgear-transformer-symbol'}
+          data-tr-index={String(idx)}
+          data-element-kind={transformerRef ? 'transformer' : undefined}
+          data-element-id={transformerRef}
+          data-transformer-ref={transformerRef}
+          onClick={
+            trClickable
+              ? (e) => {
+                  e.stopPropagation();
+                  onClickTransformer?.(transformerRef!);
+                }
+              : undefined
+          }
+          style={{ cursor: trClickable ? 'pointer' : 'default' }}
+        >
           {/* Pionowy łącznik 110 kV → TR */}
           <line
             x1={trX}
@@ -750,7 +788,8 @@ function HvTowerColumn(props: HvTowerColumnProps): JSX.Element {
             strokeWidth={STROKE_FIELD_TRACK_PX}
           />
         </g>
-      ))}
+        );
+      })}
     </g>
   );
 }
@@ -945,6 +984,8 @@ interface TwoBusTrColumnProps {
   voltageHighKv: number;
   voltageLowKv: number;
   measurements?: readonly TransformerMeasurements[];
+  transformerRefs?: readonly string[];
+  onClickTransformer?: (transformerRef: string) => void;
 }
 
 /**
@@ -957,7 +998,17 @@ interface TwoBusTrColumnProps {
  *   - opcjonalnie: panel pomiarów + flow arrow + etykieta MVA
  */
 function TwoBusTrColumn(props: TwoBusTrColumnProps): JSX.Element {
-  const { cx, topY, bottomY, transformerCount, voltageHighKv, voltageLowKv, measurements } = props;
+  const {
+    cx,
+    topY,
+    bottomY,
+    transformerCount,
+    voltageHighKv,
+    voltageLowKv,
+    measurements,
+    transformerRefs,
+    onClickTransformer,
+  } = props;
   const trSpacing = GPZ_GEOMETRY.twoBusTrSpacing;
   const trsX: number[] = [];
   const startX = cx - ((transformerCount - 1) * trSpacing) / 2;
@@ -970,11 +1021,26 @@ function TwoBusTrColumn(props: TwoBusTrColumnProps): JSX.Element {
 
   return (
     <g data-testid="sld-v2-gpz-switchgear-two-bus-tr-column">
-      {trsX.map((trX, idx) => (
+      {trsX.map((trX, idx) => {
+        const transformerRef = transformerRefs?.[idx];
+        const trClickable = Boolean(transformerRef && onClickTransformer);
+        return (
         <g
           key={`twobus-tr-${idx}`}
-          data-testid="sld-v2-gpz-switchgear-transformer-symbol"
+          data-testid={transformerRef ? `gpz-canonical-transformer-${transformerRef}` : 'sld-v2-gpz-switchgear-transformer-symbol'}
           data-tr-index={String(idx)}
+          data-element-kind={transformerRef ? 'transformer' : undefined}
+          data-element-id={transformerRef}
+          data-transformer-ref={transformerRef}
+          onClick={
+            trClickable
+              ? (e) => {
+                  e.stopPropagation();
+                  onClickTransformer?.(transformerRef!);
+                }
+              : undefined
+          }
+          style={{ cursor: trClickable ? 'pointer' : 'default' }}
         >
           {/* Pionowy łącznik z HV bus do TR góra */}
           <line
@@ -1076,7 +1142,8 @@ function TwoBusTrColumn(props: TwoBusTrColumnProps): JSX.Element {
             />
           )}
         </g>
-      ))}
+        );
+      })}
     </g>
   );
 }
@@ -1251,23 +1318,158 @@ function TransformerMeasurementPanel(props: TransformerMeasurementPanelProps): J
 }
 
 // =============================================================================
+// Apparatus interaction wrapper (kanon lustrzany do GpzCanonicalRenderer)
+// =============================================================================
+
+/** Wiązka callbacków interakcji aparatu — przekazywana w głąb pól. */
+interface BayApparatusHandlers {
+  readonly onClickApparatus?: (selection: GpzApparatusSelection) => void;
+  readonly onContextMenuApparatus?: (
+    selection: GpzApparatusSelection,
+    evt: { clientX: number; clientY: number },
+  ) => void;
+}
+
+interface ClickableApparatusGroupProps extends BayApparatusHandlers {
+  readonly bayRef: string;
+  readonly kind: GpzApparatusKind;
+  readonly designation: string | null;
+  readonly labelPl: string;
+  readonly children: ReactNode;
+}
+
+/**
+ * Owija symbol aparatu w grupę z kanonicznymi `data-*` atrybutami oraz
+ * handlerami klik/menu emitującymi `GpzApparatusSelection`. `stopPropagation`
+ * zapobiega temu, by klik aparatu odpalił też klik całego pola (mirror
+ * komentarza CB-vs-bay w legacy).
+ */
+function ClickableApparatusGroup(props: ClickableApparatusGroupProps): JSX.Element {
+  const { bayRef, kind, designation, labelPl, onClickApparatus, onContextMenuApparatus } = props;
+  const id = gpzApparatusId(bayRef, kind);
+  const selection: GpzApparatusSelection = {
+    apparatusId: id,
+    bayRef,
+    apparatusKind: kind,
+    designation: designation ?? null,
+    labelPl,
+  };
+  const handleClick = onClickApparatus
+    ? (e: MouseEvent<Element>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClickApparatus(selection);
+      }
+    : undefined;
+  const handleContextMenu = onContextMenuApparatus
+    ? (e: MouseEvent<Element>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onContextMenuApparatus(selection, { clientX: e.clientX, clientY: e.clientY });
+      }
+    : undefined;
+  const interactive = Boolean(onClickApparatus || onContextMenuApparatus);
+  return (
+    <g
+      data-element-kind="apparatus"
+      data-element-id={id}
+      data-apparatus-kind={kind}
+      data-apparatus-label={labelPl}
+      data-designation-present={designation ? 'true' : 'false'}
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
+      style={{ cursor: interactive ? 'pointer' : 'default' }}
+    >
+      {props.children}
+    </g>
+  );
+}
+
+// =============================================================================
+// Section label (etykieta sekcji + interakcja sekcji)
+// =============================================================================
+
+interface SectionLabelProps {
+  readonly x: number;
+  readonly y: number;
+  readonly sectionId: string;
+  readonly text: string;
+  readonly testId: string;
+  readonly onClickSection?: (sectionId: string) => void;
+  readonly onContextMenuSection?: (sectionId: string, evt: { clientX: number; clientY: number }) => void;
+}
+
+/**
+ * Etykieta sekcji renderowana nad szyną. Pełni rolę uchwytu interakcji
+ * sekcji (klik + menu kontekstowe), bo szyna `<line>` jest współdzielona
+ * przez wszystkie sekcje i nie niesie pojedynczego `sectionId`.
+ */
+function SectionLabel(props: SectionLabelProps): JSX.Element {
+  const { x, y, sectionId, text, testId, onClickSection, onContextMenuSection } = props;
+  const interactive = Boolean(onClickSection || onContextMenuSection);
+  return (
+    <text
+      x={x}
+      y={y}
+      fill={COLOR_TEXT_SECONDARY}
+      fontFamily={FONT_SANS}
+      fontSize={FONT_SIZES.technicalPanel}
+      fontWeight={700}
+      data-testid={testId}
+      onClick={
+        onClickSection
+          ? (e) => {
+              e.stopPropagation();
+              onClickSection(sectionId);
+            }
+          : undefined
+      }
+      onContextMenu={
+        onContextMenuSection
+          ? (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onContextMenuSection(sectionId, { clientX: e.clientX, clientY: e.clientY });
+            }
+          : undefined
+      }
+      style={{ cursor: interactive ? 'pointer' : 'default' }}
+    >
+      {text}
+    </text>
+  );
+}
+
+// =============================================================================
 // Bay column (widoczna kolumna pola SCADA-grade)
 // =============================================================================
 
-interface BayColumnProps {
+interface BayColumnProps extends BayApparatusHandlers {
   x: number;
   busY: number;
   bay: GpzBayDescriptor;
   voltageKv: number;
   onClickBay?: (bayRef: string) => void;
-  onClickCb?: (bayRef: string) => void;
-  onClickDs?: (bayRef: string) => void;
-  onClickEs?: (bayRef: string) => void;
+  onDoubleClickBay?: (bayRef: string) => void;
+  onContextMenuBay?: (bayRef: string, evt: { clientX: number; clientY: number }) => void;
   onClickKas?: (bayRef: string) => void;
 }
 
 function BayColumn(props: BayColumnProps): JSX.Element {
-  const { x, busY, bay, onClickBay, onClickCb, onClickDs, onClickEs, onClickKas } = props;
+  const {
+    x,
+    busY,
+    bay,
+    onClickBay,
+    onDoubleClickBay,
+    onContextMenuBay,
+    onClickKas,
+    onClickApparatus,
+    onContextMenuApparatus,
+  } = props;
+  /* Oznaczenie odłącznika liniowego dla selekcji: preferuj nowy alias
+   * `dsLin`, w razie braku użyj legacy `ds`. */
+  const dsLinDesignation = bay.qDesignations?.dsLin ?? bay.qDesignations?.ds ?? null;
   /* INVARIANT 9 + anti-pattern §15.1 (audyt system): brak danych ≠ default
    * 'closed'. Renderer NIE może hardkodować stanów aparatów — gdy adapter
    * nie dostarczył runtime telemetry, renderer pokazuje neutral 'unknown'
@@ -1358,6 +1560,23 @@ function BayColumn(props: BayColumnProps): JSX.Element {
             }
           : undefined
       }
+      onDoubleClick={
+        onDoubleClickBay
+          ? (e) => {
+              e.stopPropagation();
+              onDoubleClickBay(bay.bayRef);
+            }
+          : undefined
+      }
+      onContextMenu={
+        onContextMenuBay
+          ? (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onContextMenuBay(bay.bayRef, { clientX: e.clientX, clientY: e.clientY });
+            }
+          : undefined
+      }
       style={{ cursor: onClickBay ? 'pointer' : 'default' }}
     >
       {/* Korpus kolumny (subtelne tło, manipulation = oliwkowe) */}
@@ -1411,16 +1630,13 @@ function BayColumn(props: BayColumnProps): JSX.Element {
        * (na typowym polu DS_BUS i DS_LIN sterowane tym samym sygnałem;
        * przyszły refaktor może rozdzielić `dsBusState`/`dsLinState`). */}
       {bay.qDesignations?.dsBus && (
-        <g
-          onClick={
-            onClickDs
-              ? (e) => {
-                  e.stopPropagation();
-                  onClickDs(bay.bayRef);
-                }
-              : undefined
-          }
-          style={{ cursor: onClickDs ? 'pointer' : undefined }}
+        <ClickableApparatusGroup
+          bayRef={bay.bayRef}
+          kind="disconnect_bus"
+          designation={bay.qDesignations?.dsBus ?? null}
+          labelPl="Odłącznik szynowy"
+          onClickApparatus={onClickApparatus}
+          onContextMenuApparatus={onContextMenuApparatus}
         >
           <ApparatusDsCircle cx={apparatusCx} cy={dsBusY} state={dsState} energized={energization === 'energized'} />
           <QDesignationLabel
@@ -1429,7 +1645,7 @@ function BayColumn(props: BayColumnProps): JSX.Element {
             text={bay.qDesignations.dsBus}
             slot="ds-bus"
           />
-        </g>
+        </ClickableApparatusGroup>
       )}
 
       {/* CB (filled square) + opcjonalna etykieta Q (IEC 81346-2).
@@ -1437,16 +1653,13 @@ function BayColumn(props: BayColumnProps): JSX.Element {
        * RENDER WARUNKOWY (BLOCKER MV-1+15): pole MEASUREMENT i RMU_LINE NIE mają
        * CB → showCb=false → renderer pomija. */}
       {showCb && (
-        <g
-          onClick={
-            onClickCb
-              ? (e) => {
-                  e.stopPropagation();
-                  onClickCb(bay.bayRef);
-                }
-              : undefined
-          }
-          style={{ cursor: onClickCb ? 'pointer' : undefined }}
+        <ClickableApparatusGroup
+          bayRef={bay.bayRef}
+          kind="breaker"
+          designation={bay.qDesignations?.cb ?? null}
+          labelPl="Wyłącznik"
+          onClickApparatus={onClickApparatus}
+          onContextMenuApparatus={onContextMenuApparatus}
         >
           <ApparatusCbSquare cx={apparatusCx} cy={cbY} state={cbState} energized={energization === 'energized'} />
           {bay.qDesignations?.cb && (
@@ -1457,13 +1670,20 @@ function BayColumn(props: BayColumnProps): JSX.Element {
               slot="cb"
             />
           )}
-        </g>
+        </ClickableApparatusGroup>
       )}
 
       {/* CT primary (small open circle) + ratio label po lewej.
        * MEASUREMENT bay nie ma CT → showCt=false. */}
       {showCt && (
-        <>
+        <ClickableApparatusGroup
+          bayRef={bay.bayRef}
+          kind="ct"
+          designation={bay.qDesignations?.ct ?? null}
+          labelPl="Przekładnik prądowy"
+          onClickApparatus={onClickApparatus}
+          onContextMenuApparatus={onContextMenuApparatus}
+        >
           <CtPrimary cx={apparatusCx} cy={ctY} ratio={bay.ctRatio} />
           {bay.qDesignations?.ct && (
             <QDesignationLabel
@@ -1473,7 +1693,7 @@ function BayColumn(props: BayColumnProps): JSX.Element {
               slot="ct"
             />
           )}
-        </>
+        </ClickableApparatusGroup>
       )}
 
       {/* VT trójfazowy dla MEASUREMENT bay — pełny symbol IEC 60617 S00310 +
@@ -1488,16 +1708,13 @@ function BayColumn(props: BayColumnProps): JSX.Element {
        * S00198). Renderowany na pozycji CB dla RMU pola (RMU_LINE_ORDER nie ma
        * CB, tylko SD jako jedyny łącznik). */}
       {showSwitchDisconnector && (
-        <g
-          onClick={
-            onClickDs
-              ? (e) => {
-                  e.stopPropagation();
-                  onClickDs(bay.bayRef);
-                }
-              : undefined
-          }
-          style={{ cursor: onClickDs ? 'pointer' : undefined }}
+        <ClickableApparatusGroup
+          bayRef={bay.bayRef}
+          kind="switch_disconnector"
+          designation={dsLinDesignation}
+          labelPl="Rozłącznik"
+          onClickApparatus={onClickApparatus}
+          onContextMenuApparatus={onContextMenuApparatus}
         >
           <ApparatusSwitchDisconnector
             cx={apparatusCx}
@@ -1513,7 +1730,7 @@ function BayColumn(props: BayColumnProps): JSX.Element {
               slot="switch-disconnector"
             />
           )}
-        </g>
+        </ClickableApparatusGroup>
       )}
 
       {/* DS (filled circle) + opcjonalna etykieta Q.
@@ -1521,16 +1738,13 @@ function BayColumn(props: BayColumnProps): JSX.Element {
        * (Q9) — NIEobecny dla TR według polityki. RMU_LINE używa SD na cbY
        * pozycji, nie ma DS na osi. */}
       {showDsCircle && bay.fieldRole !== FIELD_ROLE.TRANSFORMER && bay.fieldRole !== FIELD_ROLE.RMU_TRANSFORMER && (
-        <g
-          onClick={
-            onClickDs
-              ? (e) => {
-                  e.stopPropagation();
-                  onClickDs(bay.bayRef);
-                }
-              : undefined
-          }
-          style={{ cursor: onClickDs ? 'pointer' : undefined }}
+        <ClickableApparatusGroup
+          bayRef={bay.bayRef}
+          kind="switch_disconnector"
+          designation={dsLinDesignation}
+          labelPl="Odłącznik liniowy"
+          onClickApparatus={onClickApparatus}
+          onContextMenuApparatus={onContextMenuApparatus}
         >
           <ApparatusDsCircle cx={apparatusCx} cy={dsY} state={dsState} energized={energization === 'energized'} />
           {bay.qDesignations?.ds && (
@@ -1541,7 +1755,7 @@ function BayColumn(props: BayColumnProps): JSX.Element {
               slot="ds"
             />
           )}
-        </g>
+        </ClickableApparatusGroup>
       )}
 
       {/* FUSE — bezpieczniki na osi pola (MEASUREMENT, RMU_TRANSFORMER, TR
@@ -1578,33 +1792,31 @@ function BayColumn(props: BayColumnProps): JSX.Element {
           ? apparatusCx - ES_BRANCH_OFFSET - 12
           : apparatusCx + ES_BRANCH_OFFSET + 6;
         return (
-          <g
-            onClick={
-              onClickEs
-                ? (e) => {
-                    e.stopPropagation();
-                    onClickEs(bay.bayRef);
-                  }
-                : undefined
-            }
-            style={{ cursor: onClickEs ? 'pointer' : undefined }}
-            data-es-side={esSide}
+          <ClickableApparatusGroup
+            bayRef={bay.bayRef}
+            kind="earthing_switch"
+            designation={bay.qDesignations?.es ?? null}
+            labelPl="Uziemnik"
+            onClickApparatus={onClickApparatus}
+            onContextMenuApparatus={onContextMenuApparatus}
           >
-            <ApparatusEarthingSwitch
-              cxAxis={apparatusCx}
-              cy={dsY + APPARATUS_PITCH * 0.4}
-              state={bay.esState}
-              side={esSide}
-            />
-            {bay.qDesignations?.es && (
-              <QDesignationLabel
-                x={labelX}
-                y={dsY + APPARATUS_PITCH * 0.4 - 4}
-                text={bay.qDesignations.es}
-                slot="es"
+            <g data-es-side={esSide}>
+              <ApparatusEarthingSwitch
+                cxAxis={apparatusCx}
+                cy={dsY + APPARATUS_PITCH * 0.4}
+                state={bay.esState}
+                side={esSide}
               />
-            )}
-          </g>
+              {bay.qDesignations?.es && (
+                <QDesignationLabel
+                  x={labelX}
+                  y={dsY + APPARATUS_PITCH * 0.4 - 4}
+                  text={bay.qDesignations.es}
+                  slot="es"
+                />
+              )}
+            </g>
+          </ClickableApparatusGroup>
         );
       })()}
 

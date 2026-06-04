@@ -41,6 +41,11 @@ import {
   type TransmissionStatus,
 } from './GpzOperatorHeader';
 import { useSldLod } from '../lod/SldLodContext';
+import {
+  gpzApparatusId,
+  type GpzApparatusKind,
+  type GpzApparatusSelection,
+} from './gpzApparatusSelection';
 
 /* =============================================================================
    Domain types (z ENM, projected to canonical SLD)
@@ -104,24 +109,12 @@ export interface CanonicalGpzBay {
   readonly inManipulation?: boolean;
 }
 
-export type CanonicalGpzApparatusKind =
-  | 'disconnect_bus'
-  | 'breaker'
-  | 'ct'
-  | 'vt'
-  | 'switch_disconnector'
-  | 'earthing_switch'
-  | 'fuse'
-  | 'cable_head'
-  | 'transformer_symbol';
-
-export interface CanonicalGpzApparatusSelection {
-  readonly apparatusId: string;
-  readonly bayRef: string;
-  readonly apparatusKind: CanonicalGpzApparatusKind;
-  readonly designation: string | null;
-  readonly labelPl: string;
-}
+/**
+ * Aliasy zachowane dla kompatybilności wstecznej. Kanon mieszka w
+ * `gpzApparatusSelection.ts` (współdzielony z `GpzSwitchgearRenderer`).
+ */
+export type CanonicalGpzApparatusKind = GpzApparatusKind;
+export type CanonicalGpzApparatusSelection = GpzApparatusSelection;
 
 export type BayFieldRole =
   | 'LINE_OUT'
@@ -1251,7 +1244,7 @@ interface ClickableApparatusProps {
 }
 
 function apparatusId(bayRef: string, kind: CanonicalGpzApparatusKind): string {
-  return `${bayRef}#${kind}`;
+  return gpzApparatusId(bayRef, kind);
 }
 
 function compactBayFeederLabel(bay: CanonicalGpzBay): string | null {
