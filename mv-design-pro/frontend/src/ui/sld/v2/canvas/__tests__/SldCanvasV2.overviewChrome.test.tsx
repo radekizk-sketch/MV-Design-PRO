@@ -225,6 +225,20 @@ describe('SldCanvasV2 - tabele dokumentacyjne w widoku roboczym', () => {
         anchorPoint: { x: 150, y: 90 },
         width: 120,
         height: 18,
+        // Magistrala → na L0 RZADKA etykieta kabla wzdłuż trasy (parytet SCADA).
+        isTrunk: true,
+      },
+      {
+        // Odgałęzienie (nie-magistrala) → NIE pokazujemy na L0, by nie zaśmiecać.
+        id: 'label:run:run-branch',
+        ownerRef: 'run-branch',
+        ownerKind: 'run' as const,
+        text: 'Odgalezienie terenowe',
+        priority: 500,
+        anchorPoint: { x: 150, y: 200 },
+        width: 120,
+        height: 18,
+        isTrunk: false,
       },
       {
         id: 'label:segment:seg-global',
@@ -239,8 +253,8 @@ describe('SldCanvasV2 - tabele dokumentacyjne w widoku roboczym', () => {
     ];
     const readabilityReport = {
       score: 100,
-      totalLabels: 2,
-      placedLabels: 2,
+      totalLabels: 3,
+      placedLabels: 3,
       hiddenLabels: 0,
       criticalCollisions: 0,
       hiddenCriticalLabelRefs: [],
@@ -250,6 +264,7 @@ describe('SldCanvasV2 - tabele dokumentacyjne w widoku roboczym', () => {
       topologyContinuity: 'continuous' as const,
       labelPlacements: [
         { id: 'label:run:run-global', anchor: 'top' as const, bbox: { x: 90, y: 72, width: 120, height: 18 }, hidden: false, locked: false },
+        { id: 'label:run:run-branch', anchor: 'top' as const, bbox: { x: 90, y: 182, width: 120, height: 18 }, hidden: false, locked: false },
         { id: 'label:segment:seg-global', anchor: 'bottom' as const, bbox: { x: 60, y: 110, width: 180, height: 18 }, hidden: false, locked: false },
       ],
     };
@@ -264,7 +279,10 @@ describe('SldCanvasV2 - tabele dokumentacyjne w widoku roboczym', () => {
       />,
     );
     expect(lod0.container.querySelector('[data-testid="sld-v2-run-run-global-label"]')).toBeNull();
-    expect(lod0.container.querySelector('[data-testid="sld-v2-topology-label-label:run:run-global"]')).toBeNull();
+    // L0: magistrala niesie RZADKĄ etykietę kabla (real catalog/długość), ale
+    // odgałęzienie i opisy odcinków pozostają ukryte — "rzadko" > "tłok".
+    expect(lod0.container.querySelector('[data-testid="sld-v2-topology-label-label:run:run-global"]')).not.toBeNull();
+    expect(lod0.container.querySelector('[data-testid="sld-v2-topology-label-label:run:run-branch"]')).toBeNull();
     expect(lod0.container.querySelector('[data-testid="sld-v2-topology-label-label:segment:seg-global"]')).toBeNull();
 
     const lod1 = render(

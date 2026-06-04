@@ -1093,9 +1093,12 @@ function buildLabelSpecs(rendered: {
 
   for (const run of rendered.cableRuns) {
     const points = run.pathPoints;
-    const midPoint = points.length > 0
-      ? points[Math.floor(points.length / 2)]
-      : { x: 0, y: 0 };
+    // Etykietę ciągu kotwiczymy na środku NAJDŁUŻSZEGO odcinka poziomego trasy
+    // (a nie na narożniku L-kształtu), aby na przeglądzie (L0) opis kabla
+    // magistrali leżał wzdłuż zielonego toru — jak na referencji SCADA — z dala
+    // od bloku GPZ i pól startowych. Fallback do środka listy punktów.
+    const midPoint = longestHorizontalSegmentMidpoint(points)
+      ?? (points.length > 0 ? points[Math.floor(points.length / 2)] : { x: 0, y: 0 });
     if (run.label) {
       pushLabel(labels, {
         id: `label:run:${run.id}`,
@@ -1105,6 +1108,8 @@ function buildLabelSpecs(rendered: {
         priority: LABEL_PRIORITY.SEGMENT,
         anchorPoint: midPoint,
         preferredAnchor: 'top',
+        // Rzadka etykieta L0 tylko dla magistrali/głównego fidera.
+        isTrunk: run.runKind === 'main_trunk',
       });
     }
     for (const segmentLabel of run.segmentLabels ?? []) {
@@ -1246,6 +1251,28 @@ function buildReadabilityReport(args: {
     topologyContinuity,
     labelPlacements: placements,
   };
+}
+
+/**
+ * Środek najdłuższego poziomego odcinka trasy (deterministyczne, czysta funkcja).
+ * Używane do kotwiczenia etykiety ciągu wzdłuż toru — `null` gdy brak odcinka
+ * poziomego (np. ścieżka czysto pionowa).
+ */
+function longestHorizontalSegmentMidpoint(
+  points: ReadonlyArray<{ x: number; y: number }>,
+): { x: number; y: number } | null {
+  let best: { x: number; y: number; length: number } | null = null;
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const start = points[index];
+    const end = points[index + 1];
+    if (Math.abs(start.y - end.y) > 0.5) continue;
+    const length = Math.abs(end.x - start.x);
+    if (length <= 0) continue;
+    if (!best || length > best.length) {
+      best = { x: (start.x + end.x) / 2, y: start.y, length };
+    }
+  }
+  return best ? { x: best.x, y: best.y } : null;
 }
 
 function pushLabel(

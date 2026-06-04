@@ -382,6 +382,14 @@ function topologyLabelVisibleAtLod(
       // nie renderuje drugiej etykiety typu "S01 przelotowa" nad kodem "S01".
       return false;
     case 'run':
+      // Przegląd sieci (L0): RZADKA etykieta kabla wzdłuż trasy — tylko dla
+      // magistrali / głównego fidera (`isTrunk`), aby odwzorować referencję SCADA,
+      // gdzie kable opisane są wzdłuż przebiegu, bez zaśmiecania widoku opisami
+      // dziesiątek krótkich odgałęzień. Kolizje z blokami stacji / NOP / GPZ oraz
+      // innymi etykietami eliminuje deterministyczny declutter (run = priorytet
+      // SEGMENT < STATION/NMO/GPZ → nakładający się opis ciągu zostaje ukryty:
+      // "rzadko" > "tłok"). Odgałęzienia i opisy odcinków nadal od L1/L2.
+      if (lod === 0) return spec.isTrunk === true;
       return lod >= 1;
     case 'segment':
       // LOD 2: etykiety odcinków i długości. LOD 3/4 przejmują pola,
