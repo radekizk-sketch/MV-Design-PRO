@@ -1092,14 +1092,14 @@ export function SldWorkspaceContainer(
     const out: GpzCanonicalRendererProps[] = [];
     for (const g of sldData.gpzs) {
       try {
-        const canonical = buildCanonicalGpzProps(snapshot, g.id, { x: g.x, y: g.y });
+        const canonical = buildCanonicalGpzProps(snapshot, g.id, { x: g.x, y: g.y }, overlayPayload);
         out.push(canonical);
       } catch {
         // Substation nie jest typu 'gpz' lub nie istnieje — legacy fallback.
       }
     }
     return out;
-  }, [snapshot, sldData.gpzs]);
+  }, [snapshot, sldData.gpzs, overlayPayload]);
 
   const isEmpty = useMemo(() => {
     return (
