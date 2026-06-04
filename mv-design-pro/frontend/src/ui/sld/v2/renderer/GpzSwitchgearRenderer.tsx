@@ -73,7 +73,6 @@ const BAY_COLUMN_HEIGHT = GPZ_GEOMETRY.bayColumnHeight;
 const BAY_HEADER_HEIGHT = GPZ_GEOMETRY.bayHeaderHeight;
 const BAY_NUMBER_GAP = GPZ_GEOMETRY.bayNumberGap;
 
-const STEROWANIE_LABEL_X_OFFSET = GPZ_GEOMETRY.sterowanieLabelXOffset;
 const COUPLER_BAY_WIDTH = GPZ_GEOMETRY.couplerBayWidth;
 const COUPLER_BAY_HEIGHT = BAY_COLUMN_HEIGHT;
 const COUPLER_LEG_INSET = GPZ_GEOMETRY.couplerLegInset;
@@ -160,7 +159,6 @@ import {
   KasButton,
   MeasurementPanel,
   GroundFaultMarker,
-  SterowanieLabel,
 } from './GpzBayWidgets';
 
 // Types used internally; all types re-exported at bottom for backward compatibility
@@ -183,7 +181,6 @@ export type {
   BaySecondaryFlags,
   BayMeasurements,
   GroundFaultMarkerState,
-  BayControlMode,
   GpzBayDescriptor,
   TransformerPowerFlow,
   TransformerMeasurements,
@@ -1392,16 +1389,6 @@ function BayColumn(props: BayColumnProps): JSX.Element {
       >
         {truncateWithEllipsis(bay.feederName ?? bay.designation, 8)}
       </text>
-
-      {/* Vertical "STEROWANIE ZDALNE/LOKALNE" label na lewym marginesie */}
-      {bay.controlMode && (
-        <SterowanieLabel
-          cx={x + STEROWANIE_LABEL_X_OFFSET}
-          cyTop={bodyTopY + 4}
-          cyBottom={busY + BAY_COLUMN_HEIGHT - 4}
-          mode={bay.controlMode}
-        />
-      )}
 
       {/* Marker zwarcia doziemnego (cyan circle u góry) */}
       {bay.groundFault && bay.groundFault !== 'normal' && (

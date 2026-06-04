@@ -767,63 +767,6 @@ describe('GpzSwitchgearRenderer — sprzęgło: yellow manipulation highlight', 
 });
 
 // =============================================================================
-// SCADA-grade: vertical Sterowanie label (control mode indicator)
-// =============================================================================
-
-describe('GpzSwitchgearRenderer — vertical Sterowanie label', () => {
-  it('controlMode="remote" → "STEROWANIE ZDALNE" rotowany tekst zielony', () => {
-    const { container } = r({
-      sections: [
-        {
-          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
-          bays: [{ ...DEFAULT_BAYS[0], controlMode: 'remote' }],
-        },
-      ],
-    });
-    const label = container.querySelector('[data-testid="sld-v2-gpz-bay-sterowanie"]');
-    expect(label).not.toBeNull();
-    expect(label?.getAttribute('data-control-mode')).toBe('remote');
-    expect(label?.textContent).toBe('STEROWANIE ZDALNE');
-    const text = label?.querySelector('text');
-    expect(text?.getAttribute('fill')).toBe('#2DB54E'); // COLOR_BADGE_STATUS_OK
-    expect(text?.getAttribute('transform')).toContain('rotate(-90');
-  });
-
-  it('controlMode="local" → "STEROWANIE LOKALNE" żółty', () => {
-    const { container } = r({
-      sections: [
-        {
-          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
-          bays: [{ ...DEFAULT_BAYS[0], controlMode: 'local' }],
-        },
-      ],
-    });
-    const label = container.querySelector('[data-testid="sld-v2-gpz-bay-sterowanie"]');
-    expect(label?.textContent).toBe('STEROWANIE LOKALNE');
-    expect(label?.querySelector('text')?.getAttribute('fill')).toBe('#E5C828'); // COLOR_BADGE_BG_YELLOW
-  });
-
-  it('controlMode="unknown" → neutralna etykieta sterowania bez znaku zastępczego', () => {
-    const { container } = r({
-      sections: [
-        {
-          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
-          bays: [{ ...DEFAULT_BAYS[0], controlMode: 'unknown' }],
-        },
-      ],
-    });
-    const label = container.querySelector('[data-testid="sld-v2-gpz-bay-sterowanie"]');
-    expect(label?.textContent).toBe('STEROWANIE');
-    expect(label?.textContent).not.toContain('?');
-  });
-
-  it('brak controlMode → brak etykiety', () => {
-    const { container } = r();
-    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-sterowanie"]')).toBeNull();
-  });
-});
-
-// =============================================================================
 // SCADA-grade: P-number identifier under KAS LED
 // =============================================================================
 

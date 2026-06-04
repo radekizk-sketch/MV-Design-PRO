@@ -78,7 +78,6 @@ function canonicalGpzProps(id: string, name: string): GpzCanonicalRendererProps 
             esState: 'open',
             qDesignations: { cb: 'Q0', dsBus: 'Q1', dsLin: 'Q9', es: 'Q8' },
             statusFlags: [],
-            controlMode: 'remote',
             inManipulation: false,
           },
         ],

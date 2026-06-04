@@ -100,8 +100,6 @@ export interface CanonicalGpzBay {
   readonly statusFlags?: readonly StatusFlag[];
   /** Pomiary per pole. */
   readonly measurements?: BayMeasurements | null;
-  /** Tryb sterowania. */
-  readonly controlMode?: 'remote' | 'local' | 'unknown';
   /** Flag: pole w stanie manipulacji. */
   readonly inManipulation?: boolean;
 }

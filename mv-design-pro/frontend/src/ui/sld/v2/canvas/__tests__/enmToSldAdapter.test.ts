@@ -2090,22 +2090,20 @@ describe('projectBayTelemetry — mapowanie BayRuntimeState → GpzBayDescriptor
     expect(projectBayTelemetry(undefined)).toEqual({});
   });
 
-  it('CB zamknięty + zdalne → cbState=closed, controlMode=remote', () => {
+  it('CB zamknięty → cbState=closed', () => {
     const rt = makeRuntime({
       'apparatus_cb_q0': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
     });
     const r = projectBayTelemetry(rt);
     expect(r.cbState).toBe('closed');
-    expect(r.controlMode).toBe('remote');
   });
 
-  it('CB otwarty + miejscowe → cbState=open, controlMode=local', () => {
+  it('CB otwarty → cbState=open', () => {
     const rt = makeRuntime({
       'apparatus_cb': makeSwitchState({ actual_state: 'otwarty', control_mode: 'miejscowe' }),
     });
     const r = projectBayTelemetry(rt);
     expect(r.cbState).toBe('open');
-    expect(r.controlMode).toBe('local');
   });
 
   it('DS_LIN i ES osobno z różnymi stanami → mapowane niezależnie', () => {
@@ -2721,7 +2719,6 @@ describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (
     const bay = r.gpzs[0].sections?.[0].bays[0];
     expect(bay?.cbState).toBe('closed');
     expect(bay?.esState).toBe('open');
-    expect(bay?.controlMode).toBe('remote');
   });
 
   it('Bay BEZ runtime_state → cbState undefined, esState fallback ("unknown" gdy hasEs)', () => {
@@ -2748,7 +2745,6 @@ describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (
     const bay = r.gpzs[0].sections?.[0].bays[0];
     expect(bay?.cbState).toBeUndefined();
     expect(bay?.dsState).toBeUndefined();
-    expect(bay?.controlMode).toBeUndefined();
     /* hasEs=true dla OUT → fallback 'unknown' (Invariant 9). */
     expect(bay?.esState).toBe('unknown');
   });

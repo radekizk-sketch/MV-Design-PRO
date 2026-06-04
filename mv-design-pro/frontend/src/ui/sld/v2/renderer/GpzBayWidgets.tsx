@@ -3,12 +3,10 @@
  *
  * Extracted from GpzSwitchgearRenderer.tsx for modularization.
  * Contains: BadgeStack, BadgeRow, KasButton, MeasurementPanel,
- * GroundFaultMarker, SterowanieLabel, sterowanieText, sterowanieColor.
+ * GroundFaultMarker.
  */
 
 import {
-  COLOR_BADGE_BG_YELLOW,
-  COLOR_BADGE_STATUS_OK,
   COLOR_GROUND_FAULT,
   COLOR_KAS_LED,
   COLOR_MEASUREMENT_VALUE,
@@ -20,7 +18,7 @@ import {
   FONT_SIZES,
   GPZ_GEOMETRY,
 } from '../theme/tokens';
-import type { BayControlMode, BayMeasurements, BaySecondaryFlags, GroundFaultMarkerState, SecondaryFlagState } from './GpzSwitchgearTypes';
+import type { BayMeasurements, BaySecondaryFlags, GroundFaultMarkerState, SecondaryFlagState } from './GpzSwitchgearTypes';
 import { collectBadges, badgeVisual, statusLabel, collectMeasurementRows } from './GpzSwitchgearLayout';
 
 const KAS_LED_RADIUS = GPZ_GEOMETRY.kasLedRadius;
@@ -32,7 +30,6 @@ const BADGE_FONT_SIZE = FONT_SIZES.badge;
 const MEASUREMENT_ROW_HEIGHT = GPZ_GEOMETRY.measurementRowHeight;
 const MEASUREMENT_PANEL_HEADER_HEIGHT = GPZ_GEOMETRY.measurementPanelHeaderHeight;
 const MEASUREMENT_FONT_SIZE = FONT_SIZES.measurementPanel;
-const STEROWANIE_FONT_SIZE = FONT_SIZES.controlMode;
 
 // =============================================================================
 // BadgeStack
@@ -290,65 +287,3 @@ export function GroundFaultMarker(props: GroundFaultMarkerProps): JSX.Element {
   );
 }
 
-// =============================================================================
-// SterowanieLabel
-// =============================================================================
-
-interface SterowanieLabelProps {
-  readonly cx: number;
-  readonly cyTop: number;
-  readonly cyBottom: number;
-  readonly mode: BayControlMode;
-}
-
-/**
- * Pionowa etykieta trybu sterowania na lewym marginesie pola.
- *
- * Tekst rotowany -90° (czyta się od dołu do góry — kanon SCADA).
- * Pozycjonowany w pionowej środkowej osi `cx` w przedziale (cyTop, cyBottom).
- */
-export function SterowanieLabel(props: SterowanieLabelProps): JSX.Element {
-  const { cx, cyTop, cyBottom, mode } = props;
-  const cy = (cyTop + cyBottom) / 2;
-  const text = sterowanieText(mode);
-  const fill = sterowanieColor(mode);
-  return (
-    <g data-testid="sld-v2-gpz-bay-sterowanie" data-control-mode={mode}>
-      <text
-        transform={`rotate(-90, ${cx}, ${cy})`}
-        x={cx}
-        y={cy + 2}
-        textAnchor="middle"
-        fill={fill}
-        fontFamily={FONT_SANS}
-        fontSize={STEROWANIE_FONT_SIZE}
-        fontWeight={700}
-        letterSpacing={0.5}
-      >
-        {text}
-      </text>
-    </g>
-  );
-}
-
-export function sterowanieText(mode: BayControlMode): string {
-  switch (mode) {
-    case 'remote':
-      return 'STEROWANIE ZDALNE';
-    case 'local':
-      return 'STEROWANIE LOKALNE';
-    case 'unknown':
-      return 'STEROWANIE';
-  }
-}
-
-export function sterowanieColor(mode: BayControlMode): string {
-  switch (mode) {
-    case 'remote':
-      return COLOR_BADGE_STATUS_OK;
-    case 'local':
-      return COLOR_BADGE_BG_YELLOW;
-    case 'unknown':
-      return COLOR_TEXT_MUTED;
-  }
-}

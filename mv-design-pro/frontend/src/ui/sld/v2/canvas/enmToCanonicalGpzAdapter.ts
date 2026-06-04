@@ -331,7 +331,6 @@ function buildBay(bay: Bay, _buses: readonly Bus[]): CanonicalGpzBay {
     qDesignations: deriveQDesignations(fieldRole),
     statusFlags: extractStatusFlags(runtime),
     measurements: extractMeasurements(runtime),
-    controlMode: extractControlMode(runtime),
     inManipulation: extractInManipulation(runtime),
   };
 }
@@ -464,18 +463,6 @@ function extractMeasurements(_runtime: unknown): BayMeasurements | null {
   // TO-DO: mapping z runtime_state.measurements (gdy ENM rozszerzy o measurements
   // strukturę). Aktualnie zwracamy null; renderer pokaże empty panel (NIE placeholder).
   return null;
-}
-
-function extractControlMode(
-  runtime: { control_availability?: 'dostepne' | 'czesciowo_dostepne' | 'niedostepne' } | null,
-): CanonicalGpzBay['controlMode'] {
-  if (!runtime) return 'unknown';
-  switch (runtime.control_availability) {
-    case 'dostepne': return 'remote';
-    case 'czesciowo_dostepne': return 'remote';
-    case 'niedostepne': return 'local';
-    default: return 'unknown';
-  }
 }
 
 function extractInManipulation(

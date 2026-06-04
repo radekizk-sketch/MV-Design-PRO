@@ -233,8 +233,6 @@ export const FONT_SIZES = {
   kasLabel: 9,
   /** P-numer pod LED-em KAS (mono). */
   kasPNumber: 7,
-  /** Pionowa etykieta sterowania (rotowana). */
-  controlMode: 9,
   /** Panel pomiarowy pola (mono). */
   measurementPanel: 10,
   /** Etykieta przekładni CT/VT. */
@@ -294,8 +292,6 @@ export const GPZ_GEOMETRY = {
   /** Panel pomiarów. */
   measurementRowHeight: 10,
   measurementPanelHeaderHeight: 12,
-  /** Pionowa etykieta sterowania (rotowana -90°). */
-  sterowanieLabelXOffset: 6,
   /** Sprzęgło. */
   couplerBayWidth: 120,
   couplerLegInset: 18,

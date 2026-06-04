@@ -116,15 +116,6 @@ export interface BayMeasurements {
 /** Stan markera zwarcia doziemnego (cyan circle u góry pola). */
 export type GroundFaultMarkerState = 'normal' | 'detected' | 'fault';
 
-/**
- * Tryb sterowania pola — wyświetlany jako pionowa etykieta na lewym
- * marginesie kolumny pola.
- *   - `remote` → "STEROWANIE ZDALNE" (zielony)
- *   - `local`  → "STEROWANIE LOKALNE" (żółty/ostrzegawczy)
- *   - `unknown`→ etykieta przygaszona
- */
-export type BayControlMode = 'remote' | 'local' | 'unknown';
-
 export interface GpzBayDescriptor {
   readonly bayRef: string;
   readonly fieldRole: FieldRole;
@@ -152,11 +143,6 @@ export interface GpzBayDescriptor {
   readonly inManipulation?: boolean;
   /** Pomiary pola — renderowane w panelu pod numerem pola. */
   readonly measurements?: BayMeasurements;
-  /**
-   * Tryb sterowania pola — wyświetlany jako pionowa etykieta na lewym
-   * marginesie ("STEROWANIE ZDALNE" / "STEROWANIE LOKALNE"). Brak → brak etykiety.
-   */
-  readonly controlMode?: BayControlMode;
   /**
    * Numer P-* identyfikatora aparatu (np. "P133", "C434", "PE32").
    * Wyświetlany jako mała przygaszona etykieta pod LED-em KAS. Wymaga

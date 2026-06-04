@@ -21,7 +21,6 @@
 
 import type {
   BayDeviceState,
-  BayControlMode as EnmBayControlMode,
   BayRuntimeState,
   BaySwitchState,
   Cable,
@@ -60,7 +59,6 @@ import {
 import type { DerRendererProps } from '../renderer/DerRenderer';
 import type { ConnectionRendererProps } from '../renderer/ConnectionRenderer';
 import type {
-  BayControlMode,
   EarthingSwitchState,
   GpzApparatusSwitchState,
   GpzBayDescriptor,
@@ -127,18 +125,6 @@ function mapDeviceStateToEs(state: BayDeviceState | undefined): EarthingSwitchSt
   }
 }
 
-function mapControlMode(mode: EnmBayControlMode | undefined): BayControlMode | undefined {
-  if (mode === undefined) return undefined;
-  switch (mode) {
-    case 'zdalne':
-      return 'remote';
-    case 'miejscowe':
-    case 'lokalne_zablokowane':
-    case 'odstawione':
-      return 'local';
-  }
-}
-
 /**
  * Wybiera BaySwitchState dla aparatu danego rodzaju z `runtime_state.primary_device_states`.
  * Klucze tej mapy to `device_ref` z ENM (ID elementu). Konwencja Phase 0B-1: klucz
@@ -184,7 +170,6 @@ interface TelemetryProjection {
   readonly cbState?: GpzApparatusSwitchState;
   readonly dsState?: GpzApparatusSwitchState;
   readonly esState?: EarthingSwitchState;
-  readonly controlMode?: BayControlMode;
   readonly inManipulation?: boolean;
 }
 
@@ -197,8 +182,6 @@ export function projectBayTelemetry(runtime: BayRuntimeState | null | undefined)
   const cb = pickFirstStateForCategory(runtime.primary_device_states, 'cb');
   const dsLin = pickFirstStateForCategory(runtime.primary_device_states, 'ds_lin');
   const es = pickFirstStateForCategory(runtime.primary_device_states, 'es');
-  /* control_mode pola czytamy z CB (kanon: control_mode aparatu głównego rządzi polem). */
-  const controlMode = mapControlMode(cb?.control_mode);
   /* Manipulation: pending_command niezakończone LUB jakiś interlock_blocked
    * sygnalizuje że pole jest aktywnie zarządzane → renderer wyróżnia żółtym tłem. */
   const interlockOnAny = Boolean(
@@ -213,7 +196,6 @@ export function projectBayTelemetry(runtime: BayRuntimeState | null | undefined)
     cbState: mapDeviceStateToSwitch(cb?.actual_state),
     dsState: mapDeviceStateToSwitch(dsLin?.actual_state),
     esState: mapDeviceStateToEs(es?.actual_state),
-    controlMode,
     inManipulation,
   };
 }
@@ -2266,7 +2248,6 @@ function bayDescriptorFromEnm(
     cbState: telemetry.cbState,
     dsState: telemetry.dsState,
     esState,
-    controlMode: telemetry.controlMode,
     inManipulation: telemetry.inManipulation,
     qDesignations: deriveQDesignations(bay.bay_role),
     outgoingFeeder,
