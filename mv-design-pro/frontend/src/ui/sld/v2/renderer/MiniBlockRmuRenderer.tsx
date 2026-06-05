@@ -38,6 +38,7 @@ import {
   ApparatusCbSquare,
   ApparatusEarthingSwitch,
   ApparatusFuse,
+  ApparatusLvBreaker,
   ApparatusSwitchDisconnector,
   ApparatusTransformerSymbol,
 } from './GpzApparatusSymbols';
@@ -1006,6 +1007,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                       busColor={snBusColor}
                       transformerVectorGroup={props.transformerVectorGroup ?? null}
                       transformerRef={primaryTransformerRef}
+                      nnFeedersCount={props.nnFeedersCount}
                       onSymbolClick={handleSymbolClick}
                     />
                   ) : (
@@ -1669,6 +1671,9 @@ interface CompactDirectionalBayColumnProps {
   readonly busColor: string;
   readonly transformerVectorGroup?: string | null;
   readonly transformerRef?: string | null;
+  /** K30-128: liczba realnych odpływów nN (z ENM nn_field_specs FEEDER). TR bay
+   *  rysuje N gałęzi na szynie nN zamiast gołego kikuta. 0 → brak odpływów. */
+  readonly nnFeedersCount?: number;
   readonly onSymbolClick?: SymbolClickHandler;
 }
 
@@ -1683,6 +1688,7 @@ function CompactDirectionalBayColumn(props: CompactDirectionalBayColumnProps): J
     busColor,
     transformerVectorGroup,
     transformerRef,
+    nnFeedersCount = 0,
     onSymbolClick,
   } = props;
   const isLineBay = isLineLikeFieldRole(bay.fieldRole);
@@ -1946,16 +1952,80 @@ function CompactDirectionalBayColumn(props: CompactDirectionalBayColumnProps): J
           strokeWidth={1.8}
           data-parity-key="station.mini.tr.secondary_lead.compact"
         />
-        <line
-          x1={x - 26}
-          y1={lvY}
-          x2={x + 26}
-          y2={lvY}
-          stroke="#7DD3FC"
-          strokeWidth={2.3}
-          data-parity-key="station.mini.bus.lv.compact"
-          data-testid={`sld-v2-mini-rmu-compact-lv-row-${stationId}-${bay.bayRef}`}
-        />
+        {(() => {
+          // K30-128: realne odpływy nN jako N gałęzi na szynie nN (zamiast
+          // gołego kikuta z napisem "nN"). Liczba = realny FEEDER count z ENM
+          // (nn_field_specs). Szyna rozszerza się tak, by N odpływów było
+          // czytelnie rozłożonych; każdy = kanon wyłącznik nN (IEC 60617) z
+          // krótkim torem wyprowadzenia. BEZ fabrykowanych prądów/obciążeń —
+          // tylko struktura odpływów obecna w modelu.
+          const feeders = Math.max(0, Math.min(6, Math.floor(nnFeedersCount)));
+          const feederPitch = 16;
+          const halfBus = Math.max(26, feeders > 0 ? ((feeders - 1) * feederPitch) / 2 + 12 : 26);
+          const cbY = lvY + 9;
+          const outgoingY = cbY + 9;
+          const startX = feeders > 1 ? x - ((feeders - 1) * feederPitch) / 2 : x;
+          return (
+            <>
+              <line
+                x1={x - halfBus}
+                y1={lvY}
+                x2={x + halfBus}
+                y2={lvY}
+                stroke="#7DD3FC"
+                strokeWidth={2.3}
+                data-parity-key="station.mini.bus.lv.compact"
+                data-feeders-count={feeders}
+                data-testid={`sld-v2-mini-rmu-compact-lv-row-${stationId}-${bay.bayRef}`}
+              />
+              {feeders > 0 &&
+                Array.from({ length: feeders }).map((_, fi) => {
+                  const fx = startX + fi * feederPitch;
+                  const odplywId = `${stationId}/nn-odplyw/${fi}`;
+                  const feederClick = onSymbolClick?.(`${odplywId}/cb`);
+                  return (
+                    <g
+                      key={`lv-feeder-${fi}`}
+                      data-parity-key="station.mini.lv_feeder.compact"
+                      data-testid={`sld-v2-mini-rmu-compact-lv-feeder-${stationId}-${bay.bayRef}-${fi}`}
+                      data-feeder-index={fi}
+                      role={feederClick ? 'button' : undefined}
+                      tabIndex={feederClick ? 0 : undefined}
+                      aria-label={feederClick ? `Odpływ nN ${fi + 1}` : undefined}
+                      onClick={feederClick}
+                      onKeyDown={feederClick ? (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          feederClick(event as unknown as MouseEvent<SVGGElement>);
+                        }
+                      } : undefined}
+                      style={feederClick ? { cursor: 'pointer' } : undefined}
+                    >
+                      <title>{`Odpływ nN ${fi + 1}`}</title>
+                      <line
+                        x1={fx}
+                        y1={lvY}
+                        x2={fx}
+                        y2={cbY - 3}
+                        stroke="#7DD3FC"
+                        strokeWidth={1.4}
+                      />
+                      <ApparatusLvBreaker cx={fx} cy={cbY} state="closed" />
+                      <line
+                        x1={fx}
+                        y1={cbY + 3}
+                        x2={fx}
+                        y2={outgoingY}
+                        stroke="#7DD3FC"
+                        strokeWidth={1.4}
+                      />
+                      <circle cx={fx} cy={outgoingY} r={1.6} fill="#7DD3FC" />
+                    </g>
+                  );
+                })}
+            </>
+          );
+        })()}
         <text
           x={x - 31}
           y={lvY + 3}
