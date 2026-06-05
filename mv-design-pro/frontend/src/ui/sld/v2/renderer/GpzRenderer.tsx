@@ -17,6 +17,7 @@
  */
 
 import {
+  COLOR_BUS_LV,
   COLOR_LINE_PRIMARY,
   COLOR_LINE_SECONDARY,
   COLOR_PANEL_RAISED,
@@ -433,7 +434,10 @@ function PowerTowerColumn(props: PowerTowerColumnProps): JSX.Element {
         strokeWidth={STROKE_FIELD_TRACK_PX}
       />
 
-      {/* Szyny SN (poziome) */}
+      {/* Szyny SN (poziome) — zielona szyna SN (15 kV) zgodnie z konwencją
+          dyspozytorską (COLOR_BUS_LV): odróżnia poziom SN od białego toru 110 kV
+          (COLOR_BUS_HV) nad transformatorem i wiąże GPZ wizualnie z zasilanym
+          zielonym torem mocy 15 kV. NIE koliduje z czerwienią (alarm/otwarty). */}
       {sectionsY.map((y, idx) => (
         <g key={`sn-bus-${idx}`} data-testid={`sld-v2-gpz-sn-bus-${idx}`}>
           <line
@@ -441,7 +445,7 @@ function PowerTowerColumn(props: PowerTowerColumnProps): JSX.Element {
             y1={y}
             x2={cx + busLength / 2}
             y2={y}
-            stroke={COLOR_LINE_PRIMARY}
+            stroke={COLOR_BUS_LV}
             strokeWidth={STROKE_BUSBAR_PX}
           />
           <text
