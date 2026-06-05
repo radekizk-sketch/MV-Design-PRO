@@ -89,6 +89,7 @@ import {
   MiniBlockRmuRenderer,
   miniBlockStationPortOffsets,
   type MiniBlockBayDescriptor,
+  type MiniBlockDerBadge,
 } from '../renderer/MiniBlockRmuRenderer';
 import { FIELD_ROLE } from '../domain/apparatusContracts';
 import { ResultOverlayLayer } from './ResultOverlayLayer';
@@ -2368,6 +2369,60 @@ function overviewStationShortName(
 }
 
 /**
+ * Kolor akcentu generacji per rodzaj OZE — ten sam, którym `DerRenderer` maluje
+ * romb falownika (spójny język wizualny: PV bursztyn, BESS błękit, FW zieleń).
+ * Czysta funkcja danych badge'a — bez stanu.
+ */
+function derBadgeKindColor(kind: MiniBlockDerBadge['kind']): string {
+  switch (kind) {
+    case 'PV': return '#FFC857';
+    case 'BESS': return '#3FA9F5';
+    case 'FW': return '#7FB069';
+  }
+}
+
+/** Liczba w stylu PL (przecinek dziesiętny), bez zer końcowych. */
+function formatGenerationNumber(value: number): string {
+  const rounded = Math.round(value * 100) / 100;
+  return rounded.toLocaleString('pl-PL', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
+/** Moc generacji [MW] → krótka etykieta ("2 MW" / "0,5 MW" / "120 kW"). */
+function formatGenerationCapacity(totalMw: number): string {
+  if (totalMw >= 0.1) return `${formatGenerationNumber(totalMw)} MW`;
+  return `${Math.round(totalMw * 1000)} kW`;
+}
+
+/**
+ * Anotacja generacji stacji na przeglądzie (L0) — projekcja REALNYCH badge'y OZE
+ * stacji (kind + count + totalPMw z generatorów ENM). Zwraca `null`, gdy stacja
+ * nie ma żadnej generacji lub żaden badge nie niesie realnej mocy (brak danych ≠
+ * atrapa). Treść = pojedynczy rodzaj → "{rodzaj} {moc}"; wiele rodzajów → łączna
+ * moc pod etykietą "OZE". Deterministyczna, czysta funkcja danych badge'y.
+ */
+function overviewGenerationAnnotation(
+  badges: readonly MiniBlockDerBadge[] | undefined,
+): { glyphColor: string; label: string } | null {
+  if (!badges || badges.length === 0) return null;
+  const withPower = badges.filter(
+    (b) => typeof b.totalPMw === 'number' && Number.isFinite(b.totalPMw) && b.totalPMw > 0,
+  );
+  if (withPower.length === 0) return null;
+  const totalMw = withPower.reduce((sum, b) => sum + (b.totalPMw ?? 0), 0);
+  const kinds = [...new Set(withPower.map((b) => b.kind))];
+  const capacity = formatGenerationCapacity(totalMw);
+  if (kinds.length === 1) {
+    return { glyphColor: derBadgeKindColor(kinds[0]), label: `${kinds[0]} ${capacity}` };
+  }
+  // Wiele rodzajów na jednej stacji: akcent wg pierwszego (sort stabilny w
+  // adapterze), etykieta zbiorcza "OZE".
+  return { glyphColor: derBadgeKindColor(kinds[0]), label: `OZE ${capacity}` };
+}
+
+/**
  * Blok przeglądowy stacji (L0) — STRUKTURALNY fix gęstości (§7, M-08).
  *
  * Zamiast pełnego mini-bloku z aparaturą (118×96, nieczytelny przy skali ~0.2 dla
@@ -2433,6 +2488,23 @@ function StationOverviewBlock(props: {
   // Margines wewnętrzny, by clip-path nie ucinał liter na krawędzi bloku.
   const clipInset = 6;
   const clipId = `sld-v2-overview-block-clip-${station.id}`;
+  // Anotacja generacji (referencja SCADA: OZE jako wyróżniony blok generacji) —
+  // przypięta do dolnej krawędzi bloku, w jego POZIOMYM footprincie (bloki na L0
+  // są dowodnie nienakładające się → chip pinned-w-footprincie jest bezkolizyjny
+  // względem sąsiednich stacji, kabli i punktów otwartych). Dane = realne badge'y
+  // OZE stacji (kind + moc), bez fabrykowanych nazw.
+  const generation = overviewGenerationAnnotation(station.derBadges);
+  const genGlyphHalf = 5;
+  const genChipY = y + L0_BLOCK_H + 4;
+  const genChipH = 16;
+  const genFontSize = 10;
+  // Szerokość chipu z marginesem na romb + tekst, ograniczona do footprintu bloku.
+  const genChipW = generation
+    ? Math.min(L0_BLOCK_W, genGlyphHalf * 2 + 12 + generation.label.length * 6)
+    : 0;
+  const genChipX = station.x - genChipW / 2;
+  const genGlyphCx = genChipX + 8 + genGlyphHalf;
+  const genTextX = genGlyphCx + genGlyphHalf + 5;
   return (
     <g
       data-testid={`sld-v2-station-overview-block-${station.id}`}
@@ -2509,6 +2581,49 @@ function StationOverviewBlock(props: {
           </text>
         )}
       </g>
+      {/* Anotacja generacji OZE — wyróżniony blok generacji jak w referencji SCADA
+          (romb falownika w kolorze rodzaju + rodzaj/moc). Pinned do dolnej
+          krawędzi bloku, footprint = szerokość bloku → zero kolizji etykiet. */}
+      {generation && (
+        <g
+          data-testid={`sld-v2-station-generation-${station.id}`}
+          data-generation-label={generation.label}
+        >
+          <rect
+            x={genChipX}
+            y={genChipY}
+            width={genChipW}
+            height={genChipH}
+            rx={3}
+            ry={3}
+            fill="#1A1206"
+            stroke={generation.glyphColor}
+            strokeWidth={1}
+            opacity={deEnergized ? 0.5 : 0.95}
+          />
+          {/* Romb falownika/generatora (ten sam glif co DerRenderer). */}
+          <polygon
+            points={`${genGlyphCx},${genChipY + genChipH / 2 - genGlyphHalf} ${genGlyphCx + genGlyphHalf},${genChipY + genChipH / 2} ${genGlyphCx},${genChipY + genChipH / 2 + genGlyphHalf} ${genGlyphCx - genGlyphHalf},${genChipY + genChipH / 2}`}
+            fill={generation.glyphColor}
+            fillOpacity={0.85}
+            stroke="#0A0E14"
+            strokeWidth={0.6}
+          />
+          <text
+            x={genTextX}
+            y={genChipY + genChipH / 2}
+            textAnchor="start"
+            dominantBaseline="middle"
+            fill={deEnergized ? '#9A8A6A' : generation.glyphColor}
+            fontFamily={FONT_SANS}
+            fontSize={genFontSize}
+            fontWeight={700}
+            letterSpacing={0.2}
+          >
+            {generation.label}
+          </text>
+        </g>
+      )}
     </g>
   );
 }
