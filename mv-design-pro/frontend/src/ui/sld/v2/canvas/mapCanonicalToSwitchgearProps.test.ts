@@ -293,6 +293,29 @@ describe('mapCanonicalToSwitchgearProps', () => {
     expect(noDest.sections[0].bays[0].outgoingFeeder).toBeUndefined();
   });
 
+  it('protectionCodes pola: canonical → switchgear przepuszczane 1:1', () => {
+    const codes = ['87T', '51', '50', '51N', 'Buchholz', 'temp', 'ciśnienie'];
+    const out = mapCanonicalToSwitchgearProps(
+      baseCanonical({
+        sections: [
+          {
+            sectionId: 'sec-1',
+            order: 1,
+            label: 'S1',
+            busVoltageKv: 15,
+            bays: [baseBay({ fieldRole: 'TRANSFORMER', protectionCodes: codes })],
+          },
+        ],
+      }),
+    );
+    expect(out.sections[0].bays[0].protectionCodes).toEqual(codes);
+  });
+
+  it('protectionCodes nieobecne na canonical → undefined na switchgear', () => {
+    const out = mapCanonicalToSwitchgearProps(baseCanonical());
+    expect(out.sections[0].bays[0].protectionCodes).toBeUndefined();
+  });
+
   it('transformerRefs i transformerMeasurements (apparentMva only — bez oil/uarn/nzacz)', () => {
     const out = mapCanonicalToSwitchgearProps(baseCanonical());
     expect(out.transformerCount).toBe(2);

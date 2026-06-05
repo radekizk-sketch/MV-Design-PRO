@@ -19,7 +19,15 @@ import {
   GPZ_GEOMETRY,
 } from '../theme/tokens';
 import type { BayMeasurements, BaySecondaryFlags, GroundFaultMarkerState, SecondaryFlagState } from './GpzSwitchgearTypes';
-import { collectBadges, badgeVisual, statusLabel, collectMeasurementRows, fitTextToWidth } from './GpzSwitchgearLayout';
+import {
+  collectBadges,
+  badgeVisual,
+  statusLabel,
+  collectMeasurementRows,
+  fitTextToWidth,
+  PROTECTION_BADGE_CODES_PER_ROW,
+  PROTECTION_BADGE_ROW_HEIGHT,
+} from './GpzSwitchgearLayout';
 
 const KAS_LED_RADIUS = GPZ_GEOMETRY.kasLedRadius;
 const BADGE_WIDTH = GPZ_GEOMETRY.badgeWidth;
@@ -263,6 +271,79 @@ export function MeasurementPanel(props: MeasurementPanelProps): JSX.Element {
           </g>
         );
       })}
+    </g>
+  );
+}
+
+// =============================================================================
+// ProtectionCodeStack
+// =============================================================================
+
+/** Kolor obwódki relay (zielony — gotowość zabezpieczenia, kanon OZE gate I). */
+const PROTECTION_RELAY_COLOR = '#5BE08A';
+
+interface ProtectionCodeStackProps {
+  /** Środek kolumny pola (X). */
+  readonly cx: number;
+  /** Górna współrzędna stosu (Y). */
+  readonly y: number;
+  /** Kody ANSI/IEC z modelu (np. ['87T','51','50','51N',...]). */
+  readonly codes: readonly string[];
+}
+
+/**
+ * Kompaktowy mono stos kodów zabezpieczeniowych na polu — TEN SAM mechanizm
+ * string[] co OzeSourceArchetype (OZE gate I): wiersze do 4 kodów połączonych
+ * "·", obok mały kwadracik relay ("Z"). Renderuje WYŁĄCZNIE dostarczone kody
+ * (brak → element pusty; data-honest, brak placeholderów).
+ */
+export function ProtectionCodeStack(props: ProtectionCodeStackProps): JSX.Element | null {
+  const { cx, y, codes } = props;
+  if (codes.length === 0) return null;
+  const rows: string[] = [];
+  for (let i = 0; i < codes.length; i += PROTECTION_BADGE_CODES_PER_ROW) {
+    rows.push(codes.slice(i, i + PROTECTION_BADGE_CODES_PER_ROW).join('·'));
+  }
+  /* Mały marker relay po lewej w pierwszym wierszu (mirror OZE "R"). */
+  const relayX = cx - 18;
+  const codesX = cx - 11;
+  return (
+    <g data-testid="sld-v2-gpz-bay-protection" data-code-count={String(codes.length)} pointerEvents="none">
+      <rect
+        x={relayX - 4}
+        y={y - 4}
+        width={8}
+        height={8}
+        rx={1}
+        fill={COLOR_PANEL_RAISED}
+        stroke={PROTECTION_RELAY_COLOR}
+        strokeWidth={1}
+      />
+      <text
+        x={relayX}
+        y={y + 2.4}
+        textAnchor="middle"
+        fill={PROTECTION_RELAY_COLOR}
+        fontFamily={FONT_MONO}
+        fontSize={5}
+        fontWeight={800}
+      >
+        Z
+      </text>
+      {rows.map((row, idx) => (
+        <text
+          key={row}
+          x={codesX}
+          y={y + 1 + idx * PROTECTION_BADGE_ROW_HEIGHT}
+          fill={COLOR_TEXT_MUTED}
+          fontFamily={FONT_MONO}
+          fontSize={5.8}
+          fontWeight={700}
+          data-testid={`sld-v2-gpz-bay-protection-row-${idx}`}
+        >
+          {row}
+        </text>
+      ))}
     </g>
   );
 }

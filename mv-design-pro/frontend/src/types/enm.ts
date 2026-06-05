@@ -346,6 +346,11 @@ export interface Bay extends ENMElement {
   gpz_section_id?: string | null;
   equipment_refs: string[];
   protection_ref?: string | null;
+  /** Kody funkcji zabezpieczeniowych ANSI/IEC do wyświetlenia na SLD, np.
+   *  ['87T','51','50','51N'] — stringi (NIE enum); lustro mechanizmu
+   *  OzeField.protection_codes. Mirror backendowego `Bay.protection_codes`.
+   *  Additive, default []. */
+  protection_codes?: string[];
   /** Phase 0A audit fix 8/8: kanoniczny ID pola dla dyspozytora ("10", "23/1"). */
   bay_number?: string | null;
   /** Krótka nazwa odpływu/feedera (UI label osobny od bay.name). */

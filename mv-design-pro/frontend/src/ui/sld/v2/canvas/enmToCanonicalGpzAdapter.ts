@@ -97,12 +97,18 @@ export function buildCanonicalGpzProps(
     if (sec.bus_ref) sectionIdByLvBusRef.set(sec.bus_ref, sec.section_id);
   }
 
-  const transformers = buildTransformers(allTransformers, sectionIdByLvBusRef);
-  // Inżynierski wymóg: TR WN/SN przyłączony do szyny SN przez pole TR z
-  // aparaturą (DS-CB-CT-ES). Pole TR jest renderowane przez `TrFieldColumn`
-  // w `GpzCanonicalRenderer` (nad szyną SN, pomiędzy TR a sekcją SN) —
-  // adapter NIE syntezuje pola TR jako bay (uniknięcie podwójnego renderu
-  // poniżej szyny SN).
+  // Reconciliation TR-bay ↔ wieża: gdy transformator ma pole `bay_role:"TR"`
+  // (jego ref w `equipment_refs` pola TR), renderuje się WYŁĄCZNIE przez to
+  // pole (kolumna Q1→Q0→CT→ES + symbol TR na osi pola). Wieżę (TwoBusTrColumn /
+  // HvTowerColumn) wtedy POMIJAMY — eliminacja podwójnej reprezentacji. Gdy
+  // transformator NIE ma pola TR (starsze snapshoty) → wieża zostaje (brak
+  // regresji). Deterministyczne: czysta funkcja zbioru refów z pól TR.
+  const transformerRefsWithTrBay = collectTransformerRefsWithTrBay(allBays);
+  const transformers = buildTransformers(
+    allTransformers,
+    sectionIdByLvBusRef,
+    transformerRefsWithTrBay,
+  );
 
   return {
     id: substation.ref_id,
@@ -190,6 +196,7 @@ function mergeBaysWithFieldSpecs(station: Substation, bays: readonly Bay[]): Bay
       bus_ref: busRef,
       gpz_section_id: readString(spec.gpz_section_id),
       equipment_refs: readStringArray(spec.equipment_refs),
+      protection_codes: readStringArray(spec.protection_codes),
       bay_number: readString(spec.bay_number),
       feeder_short_name: readString(spec.feeder_short_name),
       outgoing_destination_ref: readString(spec.outgoing_destination_ref),
@@ -198,11 +205,29 @@ function mergeBaysWithFieldSpecs(station: Substation, bays: readonly Bay[]): Bay
   return [...byRef.values()];
 }
 
+/**
+ * Zbiór ref_id transformatorów, które mają pole `bay_role:"TR"` (transformator
+ * w `equipment_refs` pola). Te transformatory renderują się przez pole TR, nie
+ * przez wieżę — `buildTransformers` je pomija. Deterministyczne (czysta funkcja).
+ */
+function collectTransformerRefsWithTrBay(bays: readonly Bay[]): ReadonlySet<string> {
+  const refs = new Set<string>();
+  for (const bay of bays) {
+    if (bay.bay_role !== 'TR') continue;
+    for (const ref of bay.equipment_refs ?? []) {
+      if (ref) refs.add(ref);
+    }
+  }
+  return refs;
+}
+
 function buildTransformers(
   transformers: readonly Transformer[],
   sectionIdByLvBusRef: ReadonlyMap<string, string>,
+  transformerRefsWithTrBay: ReadonlySet<string>,
 ): CanonicalGpzTransformer[] {
   return transformers
+    .filter((tr) => !transformerRefsWithTrBay.has(tr.ref_id))
     .slice()
     .sort((a, b) => a.ref_id.localeCompare(b.ref_id))
     .map((tr, idx) => ({
@@ -349,6 +374,7 @@ function buildBay(
     esState: extractEsState(runtime),
     qDesignations: deriveQDesignations(fieldRole),
     statusFlags: extractStatusFlags(runtime),
+    protectionCodes: bay.protection_codes ?? [],
     measurements: extractBayMeasurements(bay, fieldRole, branches, overlay),
     inManipulation: extractInManipulation(runtime),
   };

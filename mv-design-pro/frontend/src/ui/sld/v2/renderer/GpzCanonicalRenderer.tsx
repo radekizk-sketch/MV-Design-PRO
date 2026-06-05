@@ -103,6 +103,11 @@ export interface CanonicalGpzBay {
   };
   /** Status badge'y (SPZ/SCO/OWG/NZ/LRW/ARN/...). */
   readonly statusFlags?: readonly StatusFlag[];
+  /** Kody funkcji zabezpieczeniowych ANSI/IEC do wyświetlenia na polu, np.
+   *  ['87T','51','50','51N','Buchholz','temp','ciśnienie'] (pole TR). Lustro
+   *  mechanizmu OzeField.protection_codes — stringi z modelu ENM (`Bay.protection_codes`),
+   *  renderer pokazuje WYŁĄCZNIE dostarczone kody (brak → brak badge'y). */
+  readonly protectionCodes?: readonly string[];
   /** Pomiary per pole. */
   readonly measurements?: BayMeasurements | null;
   /** Flag: pole w stanie manipulacji. */

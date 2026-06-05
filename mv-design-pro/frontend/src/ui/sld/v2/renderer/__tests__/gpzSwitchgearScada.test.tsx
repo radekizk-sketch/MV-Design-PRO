@@ -235,6 +235,82 @@ describe('GpzSwitchgearRenderer — TR z Y/Δ markers', () => {
   });
 });
 
+describe('GpzSwitchgearRenderer — pole TR (transformator na osi pola) + kody zabezpieczeń', () => {
+  const TR_CODES = ['87T', '51', '50', '51N', 'Buchholz', 'temp', 'ciśnienie'];
+
+  function trBay(overrides: Record<string, unknown> = {}) {
+    return {
+      bayRef: 'bay-tr1',
+      fieldRole: FIELD_ROLE.TRANSFORMER,
+      designation: 'Pole TR1',
+      feederName: 'Pole TR1',
+      hasMissingRequiredDevice: false,
+      energization: 'energized' as const,
+      cbState: 'closed' as const,
+      dsState: 'closed' as const,
+      esState: 'open' as const,
+      qDesignations: { cb: 'Q0', dsBus: 'Q1', es: 'Q8', ct: 'T1' },
+      protectionCodes: TR_CODES,
+      ...overrides,
+    };
+  }
+
+  it('pole TR renderuje symbol transformatora na osi pola (Q1→Q0→CT→TR)', () => {
+    const { container } = r({
+      sections: [
+        { sectionId: 'sec-1', order: 1, name: 'S1', sectionLabel: 'S1', busVoltageKv: 15, bays: [trBay()] },
+      ],
+    });
+    const bay = container.querySelector('[data-testid="sld-v2-gpz-bay-bay-tr1"]');
+    expect(bay).not.toBeNull();
+    expect(bay!.getAttribute('data-field-role')).toBe(FIELD_ROLE.TRANSFORMER);
+    expect(bay!.querySelector('[data-testid="sld-v2-gpz-bay-transformer-symbol"]')).not.toBeNull();
+    expect(bay!.querySelector('[data-testid="sld-v2-gpz-bay-cb"]')).not.toBeNull();
+  });
+
+  it('pole TR z protectionCodes → maluje stos badge\'y (87T/51/50/51N + Buchholz/temp/ciśnienie)', () => {
+    const { container } = r({
+      sections: [
+        { sectionId: 'sec-1', order: 1, name: 'S1', sectionLabel: 'S1', busVoltageKv: 15, bays: [trBay()] },
+      ],
+    });
+    const stack = container.querySelector('[data-testid="sld-v2-gpz-bay-protection"]');
+    expect(stack).not.toBeNull();
+    expect(stack!.getAttribute('data-code-count')).toBe(String(TR_CODES.length));
+    const text = stack!.textContent ?? '';
+    expect(text).toContain('87T·51·50·51N');
+    expect(text).toContain('Buchholz·temp·ciśnienie');
+  });
+
+  it('pole bez protectionCodes → brak stosu badge\'y (data-honest)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [trBay({ protectionCodes: undefined })],
+        },
+      ],
+    });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-protection"]')).toBeNull();
+  });
+
+  it('transformerCount=0 → brak wieży (transformator renderuje się przez pole TR)', () => {
+    const { container } = r({
+      transformerCount: 0,
+      sections: [
+        { sectionId: 'sec-1', order: 1, name: 'S1', sectionLabel: 'S1', busVoltageKv: 15, bays: [trBay()] },
+      ],
+    });
+    // Tryb single-bus: wieża to HvTowerColumn. Przy 0 transformatorów — brak Y/Δ markerów.
+    expect(container.querySelectorAll('[data-testid="sld-v2-gpz-tr-y-marker"]').length).toBe(0);
+    expect(container.querySelectorAll('[data-testid="sld-v2-gpz-switchgear-transformer-symbol"]').length).toBe(0);
+  });
+});
+
 describe('GpzSwitchgearRenderer — szyna główna', () => {
   it('renderuje pojedynczą szynę główną SN', () => {
     const { container } = r();

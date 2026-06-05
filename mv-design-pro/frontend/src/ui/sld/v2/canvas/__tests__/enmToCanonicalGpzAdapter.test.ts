@@ -202,6 +202,106 @@ describe('buildCanonicalGpzProps — transformatory', () => {
 });
 
 /* ---------------------------------------------------------------------------
+   TR-bay ↔ wieża reconciliation (eliminacja podwójnej reprezentacji)
+   --------------------------------------------------------------------------- */
+
+describe('buildCanonicalGpzProps — pole TR vs wieża (anty-podwójny render)', () => {
+  it('Transformator z polem bay_role:"TR" → POMIJANY jako wieża (renderuje się przez pole)', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        transformer_refs: ['tr-1'],
+        gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }],
+      })],
+      transformers: [transformer('tr-1', { name: 'TR-1' })],
+      bays: [bay('bay-tr1', 'TR', 'g', 'bus-15', { gpz_section_id: 's1', equipment_refs: ['tr-1'] })],
+      buses: [bus('bus-15', 15)],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    // Wieża pominięta — transformator NIE w props.transformers.
+    expect(props.transformers).toHaveLength(0);
+    // ...ale pole TR jest w sekcji jako pole o roli TRANSFORMER.
+    const trBay = props.sections[0].bays.find((b) => b.bayRef === 'bay-tr1');
+    expect(trBay?.fieldRole).toBe('TRANSFORMER');
+  });
+
+  it('Transformator BEZ pola TR (starszy snapshot) → wieża ZOSTAJE (brak regresji)', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        transformer_refs: ['tr-1'],
+        gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }],
+      })],
+      transformers: [transformer('tr-1', { name: 'TR-1' })],
+      bays: [bay('b-out', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' })],
+      buses: [bus('bus-15', 15)],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    expect(props.transformers).toHaveLength(1);
+    expect(props.transformers[0].transformerRef).toBe('tr-1');
+  });
+
+  it('Mix: jeden TR z polem (pominięty), drugi bez (wieża zostaje)', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        transformer_refs: ['tr-1', 'tr-2'],
+        gpz_sections: [
+          { section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' },
+          { section_id: 's2', order: 2, name: 'S2', bus_ref: 'bus-15' },
+        ],
+      })],
+      transformers: [transformer('tr-1', { name: 'TR-1' }), transformer('tr-2', { name: 'TR-2' })],
+      bays: [bay('bay-tr1', 'TR', 'g', 'bus-15', { gpz_section_id: 's1', equipment_refs: ['tr-1'] })],
+      buses: [bus('bus-15', 15)],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    // Tylko tr-2 jako wieża; tr-1 renderuje się przez pole.
+    expect(props.transformers.map((t) => t.transformerRef)).toEqual(['tr-2']);
+  });
+});
+
+/* ---------------------------------------------------------------------------
+   protection_codes (mechanizm string[] — lustro OZE)
+   --------------------------------------------------------------------------- */
+
+describe('buildCanonicalGpzProps — protection_codes pola', () => {
+  it('Bay.protection_codes → CanonicalGpzBay.protectionCodes (pole TR)', () => {
+    const codes = ['87T', '51', '50', '51N', 'Buchholz', 'temp', 'ciśnienie'];
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        transformer_refs: ['tr-1'],
+        gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }],
+      })],
+      transformers: [transformer('tr-1', { name: 'TR-1' })],
+      bays: [bay('bay-tr1', 'TR', 'g', 'bus-15', {
+        gpz_section_id: 's1',
+        equipment_refs: ['tr-1'],
+        protection_codes: codes,
+      })],
+      buses: [bus('bus-15', 15)],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const trBay = props.sections[0].bays.find((b) => b.bayRef === 'bay-tr1');
+    expect(trBay?.protectionCodes).toEqual(codes);
+  });
+
+  it('Bay bez protection_codes → protectionCodes = [] (data-honest, brak placeholdera)', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }],
+      })],
+      bays: [bay('b-out', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' })],
+      buses: [bus('bus-15', 15)],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    expect(props.sections[0].bays[0].protectionCodes).toEqual([]);
+  });
+});
+
+/* ---------------------------------------------------------------------------
    LV sections
    --------------------------------------------------------------------------- */
 

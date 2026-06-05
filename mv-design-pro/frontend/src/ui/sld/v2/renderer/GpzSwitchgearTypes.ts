@@ -145,6 +145,14 @@ export interface GpzBayDescriptor {
   /** Pomiary pola — renderowane w panelu pod numerem pola. */
   readonly measurements?: BayMeasurements;
   /**
+   * Kody funkcji zabezpieczeniowych ANSI/IEC (np. ['87T','51','50','51N',
+   * 'Buchholz','temp','ciśnienie'] dla pola TR). Renderowane jako kompaktowy
+   * stos mono badge'y na polu — ten sam mechanizm string[] co OzeField.
+   * protection_codes. Renderer pokazuje WYŁĄCZNIE dostarczone kody (brak →
+   * brak badge'y; data-honest).
+   */
+  readonly protectionCodes?: readonly string[];
+  /**
    * Numer P-* identyfikatora aparatu (np. "P133", "C434", "PE32").
    * Wyświetlany jako mała przygaszona etykieta pod LED-em KAS. Wymaga
    * `hasKasButton: true` żeby był widoczny.

@@ -80,6 +80,7 @@ function mapBay(b: CanonicalGpzBay): GpzBayDescriptor {
       : undefined,
     measurements: mapMeasurements(b.measurements),
     inManipulation: b.inManipulation,
+    protectionCodes: b.protectionCodes,
     outgoingFeeder: b.destinationLabel ? { destination: b.destinationLabel } : undefined,
   };
 }

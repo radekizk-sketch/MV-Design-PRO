@@ -403,9 +403,27 @@ export function fitTextToWidth(
   return text.slice(0, Math.max(1, maxChars - 1)) + '…';
 }
 
+/** Wysokość wiersza badge'a kodów zabezpieczeniowych (mono stack na polu). */
+export const PROTECTION_BADGE_ROW_HEIGHT = 7;
+/** Liczba kodów w wierszu (mirror OzeSourceArchetype: do 4 połączonych "·"). */
+export const PROTECTION_BADGE_CODES_PER_ROW = 4;
+
+/** Liczba wierszy badge'y kodów zabezpieczeń (do 4 kodów / wiersz). */
+function protectionBadgeRowCount(codes: readonly string[] | undefined): number {
+  if (!codes || codes.length === 0) return 0;
+  return Math.ceil(codes.length / PROTECTION_BADGE_CODES_PER_ROW);
+}
+
+/** Głębokość stosu badge'y kodów zabezpieczeń (0 gdy brak kodów). */
+export function protectionBadgeDepth(codes: readonly string[] | undefined): number {
+  const rows = protectionBadgeRowCount(codes);
+  return rows === 0 ? 0 : rows * PROTECTION_BADGE_ROW_HEIGHT + 4;
+}
+
 export function computeMaxFooterDepth(sections: readonly GpzSectionDescriptor[]): number {
   let kasDepth = 0;
   let measurementDepth = 0;
+  let protectionDepth = 0;
   for (const section of sections) {
     for (const bay of section.bays) {
       if (bay.hasKasButton) {
@@ -417,8 +435,9 @@ export function computeMaxFooterDepth(sections: readonly GpzSectionDescriptor[])
           MEASUREMENT_PANEL_HEADER_HEIGHT + rowCount * MEASUREMENT_ROW_HEIGHT + 4;
         measurementDepth = Math.max(measurementDepth, depth);
       }
+      protectionDepth = Math.max(protectionDepth, protectionBadgeDepth(bay.protectionCodes));
     }
   }
-  return kasDepth + measurementDepth;
+  return kasDepth + measurementDepth + protectionDepth;
 }
 

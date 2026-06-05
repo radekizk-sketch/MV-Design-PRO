@@ -96,6 +96,7 @@ const LABEL_CLIP_INSET = GPZ_GEOMETRY.labelClipInset;
 const KAS_ROW_HEIGHT = GPZ_GEOMETRY.kasRowHeight;
 
 const MEASUREMENT_ROW_HEIGHT = GPZ_GEOMETRY.measurementRowHeight;
+const MEASUREMENT_PANEL_HEADER_HEIGHT = GPZ_GEOMETRY.measurementPanelHeaderHeight;
 const MEASUREMENT_FONT_SIZE = FONT_SIZES.measurementPanel;
 
 /**
@@ -131,6 +132,7 @@ import {
   formatInteger,
   computeMaxFooterDepth,
   fitTextToWidth,
+  collectMeasurementRows,
 } from './GpzSwitchgearLayout';
 import {
   CtPrimary,
@@ -151,6 +153,7 @@ import {
   KasButton,
   MeasurementPanel,
   GroundFaultMarker,
+  ProtectionCodeStack,
 } from './GpzBayWidgets';
 
 // Types used internally; all types re-exported at bottom for backward compatibility
@@ -196,7 +199,11 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
   const sortedHvSections = props.hvSections
     ? [...props.hvSections].sort((a, b) => a.order - b.order)
     : [];
-  const transformerCount = Math.max(1, props.transformerCount ?? 1);
+  /* `transformerCount` steruje liczbą wież TR (TwoBusTrColumn / HvTowerColumn).
+   * Gdy wszystkie transformatory renderują się przez pole TR (adapter pomija
+   * wieże), mapper przekazuje `transformerCount: 0` → 0 wież (brak phantomu).
+   * Brak propsa (testy bezpośrednie renderera) → fallback 1 (backward-compat). */
+  const transformerCount = Math.max(0, props.transformerCount ?? 1);
   const isTwoBus = sortedHvSections.length > 0;
   const layout = computeSwitchgearLayout(sortedSections, props.couplers);
   const hvLayout = isTwoBus
@@ -628,6 +635,12 @@ function HvTowerColumn(props: HvTowerColumnProps): JSX.Element {
     onClickTransformer,
   } = props;
 
+  // 0 transformatorów (wszystkie renderują się przez pole TR) → brak wieży.
+  // Pusty `trsX` oznaczałby NaN w poziomej linii zasilania 110 kV poniżej.
+  if (transformerCount <= 0) {
+    return <g data-testid="sld-v2-gpz-switchgear-hv-tower" data-tr-count="0" />;
+  }
+
   // Rozkład TR: jeśli >1, rozsadzamy poziomo wokół środka.
   const trSpacing = GPZ_GEOMETRY.singleBusTrSpacing;
   const trsX: number[] = [];
@@ -1004,6 +1017,11 @@ function TwoBusTrColumn(props: TwoBusTrColumnProps): JSX.Element {
     transformerRefs,
     onClickTransformer,
   } = props;
+  // 0 transformatorów (wszystkie renderują się przez pole TR) → brak wieży.
+  if (transformerCount <= 0) {
+    return <g data-testid="sld-v2-gpz-switchgear-two-bus-tr-column" data-tr-count="0" />;
+  }
+
   const trSpacing = GPZ_GEOMETRY.twoBusTrSpacing;
   const trsX: number[] = [];
   const startX = cx - ((transformerCount - 1) * trSpacing) / 2;
@@ -1877,6 +1895,25 @@ function BayColumn(props: BayColumnProps): JSX.Element {
           width={BAY_COLUMN_WIDTH}
           feederName={bay.feederName}
           measurements={bay.measurements}
+        />
+      )}
+
+      {/* Stos kodów zabezpieczeniowych (87T/51/50/51N + Buchholz/temp/ciśnienie
+       * na polu TR) — TEN SAM mechanizm string[] co OZE. Renderowany pod
+       * panelem pomiarowym (lub pod numerem/KAS gdy brak pomiarów). Data-honest:
+       * tylko kody z modelu; pola bez kodów nie pokazują nic. */}
+      {bay.protectionCodes && bay.protectionCodes.length > 0 && (
+        <ProtectionCodeStack
+          cx={x + BAY_COLUMN_WIDTH / 2}
+          y={
+            bay.measurements && hasAnyMeasurement(bay.measurements)
+              ? measurementHeaderY +
+                MEASUREMENT_PANEL_HEADER_HEIGHT +
+                collectMeasurementRows(bay.measurements).length * MEASUREMENT_ROW_HEIGHT +
+                6
+              : measurementHeaderY + 4
+          }
+          codes={bay.protectionCodes}
         />
       )}
 
