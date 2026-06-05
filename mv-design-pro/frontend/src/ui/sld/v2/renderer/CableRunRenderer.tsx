@@ -307,8 +307,18 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           text: segmentTypeBadgeText(segmentKind, segmentPath.variant),
           x: point.x,
           y: point.y,
+          // Horizontal extent of the cable segment the chip sits on — lets the
+          // declutter slide the chip ALONG the cable to a clear offset when it
+          // would otherwise land on a station's bay/apparatus glyphs.
+          spanLoX: point.spanLoX,
+          spanHiX: point.spanHiX,
+          spanY: point.y,
         };
       }),
+      // K30: feed the station bay/apparatus keep-clear boxes into the declutter
+      // reservation so a cable-type chip never sits on apparatus glyphs at
+      // station zoom (priority: apparatus glyph > cable chip).
+      stationApparatusKeepClearBoxes(stationPortGaps),
     )
     : [];
   const readableEndpointResults = showDetailedSegmentBadges
@@ -1260,34 +1270,155 @@ function segmentTypeBadgeText(
 function segmentTypeBadgePoint(
   points: readonly Point[],
   index: number,
-): CableRunSegmentLabel {
-  const midpoint = findLongestHorizontalSegmentMidpoint(points)
+): SegmentTypeBadgeSeed {
+  const segment = findLongestHorizontalSegment(points);
+  const midpoint = segment
     ?? (points.length >= 2
-      ? { x: (points[0].x + points[points.length - 1].x) / 2, y: (points[0].y + points[points.length - 1].y) / 2 }
-      : { x: 0, y: 0 });
+      ? {
+          x: (points[0].x + points[points.length - 1].x) / 2,
+          y: (points[0].y + points[points.length - 1].y) / 2,
+          loX: Math.min(points[0].x, points[points.length - 1].x),
+          hiX: Math.max(points[0].x, points[points.length - 1].x),
+        }
+      : { x: 0, y: 0, loX: 0, hiX: 0 });
   const laneOffset = index % 2 === 0 ? -26 : 48;
   return {
     segmentRef: '',
     text: '',
     x: midpoint.x,
     y: midpoint.y + laneOffset,
+    spanLoX: midpoint.loX,
+    spanHiX: midpoint.hiX,
+    spanY: midpoint.y + laneOffset,
   };
 }
 
-function declutterSegmentTypeBadges(
-  labels: readonly CableRunSegmentLabel[],
-): CableRunSegmentLabel[] {
-  const placed: CableRunSegmentLabel[] = [];
-  return labels.map((label) => {
-    let candidate = label;
-    for (const offset of [0, -20, 20, -40, 40, -60, 60]) {
-      candidate = { ...label, y: label.y + offset };
-      if (!placed.some((other) => segmentLabelsOverlap(candidate, other))) break;
-    }
-    placed.push(candidate);
-    return candidate;
+/**
+ * Keep-clear box dla deklatera etykiet typu kabla: prostokąt {x,y,width,height}
+ * top-left, którego cable-type chip nie może zasłaniać (priorytet aparat > chip).
+ */
+type KeepClearBox = { x: number; y: number; width: number; height: number };
+
+/** Seed etykiety typu kabla z zakresem poziomym odcinka (do przesuwu wzdłuż kabla). */
+type SegmentTypeBadgeSeed = CableRunSegmentLabel & {
+  /** Lewy/prawy kraniec odcinka poziomego, na którym leży chip (world X). */
+  readonly spanLoX: number;
+  readonly spanHiX: number;
+  /** Bazowy Y odcinka (do przesuwu chipa nad tor, gdy slide-X nie wystarczy). */
+  readonly spanY: number;
+};
+
+// Połówka poziomego footprintu stacji compact (MiniBlockRmuRenderer COMPACT_WIDTH=220)
+// — chip ma omijać kolumny pól po obu stronach portu liniowego.
+const STATION_KEEP_CLEAR_HALF_WIDTH = 116;
+// Pas pionowy pól/aparatury stacji względem toru (gap.y): od tuż nad torem przez
+// szynę SN (≈ +80) w dół przez stos aparatury pola.
+const STATION_KEEP_CLEAR_ABOVE = 22;
+const STATION_KEEP_CLEAR_BELOW = 248;
+
+/**
+ * Buduje keep-clear boxy z portów stacji na torze. Każda stacja na ciągu ma
+ * kolumny pól (aparaty SN) zwisające pod torem — cable-type chip nie może na
+ * nie nachodzić. Deterministyczne: czysta funkcja geometrii portów.
+ */
+function stationApparatusKeepClearBoxes(
+  gaps: readonly CableRunStationPortGap[],
+): KeepClearBox[] {
+  return gaps.map((gap) => {
+    const portSpan = gap.outputX === null ? 0 : Math.abs(gap.outputX - gap.inputX);
+    const midX = gap.outputX === null ? gap.inputX : (gap.inputX + gap.outputX) / 2;
+    const halfWidth = Math.max(STATION_KEEP_CLEAR_HALF_WIDTH, portSpan / 2 + 40);
+    return {
+      x: midX - halfWidth,
+      y: gap.y - STATION_KEEP_CLEAR_ABOVE,
+      width: halfWidth * 2,
+      height: STATION_KEEP_CLEAR_ABOVE + STATION_KEEP_CLEAR_BELOW,
+    };
   });
 }
+
+function segmentTypeBadgeBox(label: CableRunSegmentLabel): KeepClearBox {
+  const halfWidth = estimateLabelWidth(label.text) / 2 + 7;
+  return { x: label.x - halfWidth, y: label.y - 10, width: halfWidth * 2, height: 18 };
+}
+
+function keepClearBoxesOverlap(a: KeepClearBox, b: KeepClearBox): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+/**
+ * Declutter etykiet typu kabla z REZERWACJĄ keep-clear boxów aparatury stacji.
+ *
+ * Priorytet: aparat pola > cable chip. Dla każdego chipa:
+ *   1. spróbuj pozycji bazowej,
+ *   2. przesuń chip WZDŁUŻ kabla (slide-X w obrębie odcinka) do najbliższego
+ *      prześwitu między stacjami, zachowując Y na torze,
+ *   3. jeśli slide-X nie znajdzie prześwitu — odsuń chip nad tor (lane-Y),
+ *   4. w ostateczności ukryj chip (aparat wygrywa).
+ *
+ * Deterministyczne: kolejność prób stała, czysta funkcja geometrii.
+ */
+function declutterSegmentTypeBadges(
+  labels: readonly SegmentTypeBadgeSeed[],
+  keepClearBoxes: readonly KeepClearBox[] = [],
+): CableRunSegmentLabel[] {
+  const placed: CableRunSegmentLabel[] = [];
+  const collides = (candidate: CableRunSegmentLabel): boolean => {
+    const box = segmentTypeBadgeBox(candidate);
+    if (keepClearBoxes.some((reserved) => keepClearBoxesOverlap(box, reserved))) return true;
+    return placed.some((other) => segmentLabelsOverlap(candidate, other));
+  };
+  const result: CableRunSegmentLabel[] = [];
+  for (const label of labels) {
+    const base: CableRunSegmentLabel = {
+      segmentRef: label.segmentRef,
+      text: label.text,
+      x: label.x,
+      y: label.y,
+    };
+    let candidate = base;
+    let resolved = !collides(candidate);
+
+    // 2. Slide ALONG the cable (X) within the segment span to find a clear gap.
+    if (!resolved) {
+      const halfWidth = estimateLabelWidth(label.text) / 2 + 7;
+      const loX = label.spanLoX + halfWidth;
+      const hiX = label.spanHiX - halfWidth;
+      if (hiX > loX) {
+        for (const step of SEGMENT_TYPE_BADGE_SLIDE_OFFSETS) {
+          const x = clamp(label.x + step, loX, hiX);
+          candidate = { ...base, x, y: label.spanY };
+          if (!collides(candidate)) { resolved = true; break; }
+        }
+      }
+    }
+
+    // 3. Lane-Y: lift the chip clear of the apparatus band (apparatus hangs below
+    //    the trunk, so prefer moving UP) while keeping the original X.
+    if (!resolved) {
+      for (const offset of SEGMENT_TYPE_BADGE_LANE_OFFSETS) {
+        candidate = { ...base, y: label.y + offset };
+        if (!collides(candidate)) { resolved = true; break; }
+      }
+    }
+
+    if (!resolved) {
+      // 4. No clear position — hide (apparatus glyph wins over cable chip).
+      continue;
+    }
+    placed.push(candidate);
+    result.push(candidate);
+  }
+  return result;
+}
+
+// Slide-X probe: najpierw bazowa pozycja (0), potem coraz dalej w obie strony
+// wzdłuż kabla — preferuj prześwit między stacjami.
+const SEGMENT_TYPE_BADGE_SLIDE_OFFSETS = [
+  0, 60, -60, 120, -120, 180, -180, 240, -240, 320, -320, 420, -420,
+];
+// Lane-Y probe: aparatura zwisa pod torem, więc preferuj ruch w górę.
+const SEGMENT_TYPE_BADGE_LANE_OFFSETS = [-22, -44, -66, -88, 22, 44];
 
 function declutterSegmentEndpointResults(
   results: readonly CableRunSegmentEndpointResult[],
@@ -1451,4 +1582,32 @@ function findLongestHorizontalSegmentMidpoint(points: readonly Point[]): Point |
     }
   }
   return best ? { x: best.x, y: best.y } : null;
+}
+
+/**
+ * Jak `findLongestHorizontalSegmentMidpoint`, ale zwraca też lewy/prawy kraniec
+ * (`loX`/`hiX`) odcinka — declutter cable-type chipów może przesuwać chip wzdłuż
+ * tego zakresu, aby ominąć kolumny pól stacji.
+ */
+function findLongestHorizontalSegment(
+  points: readonly Point[],
+): { x: number; y: number; loX: number; hiX: number } | null {
+  let best: { x: number; y: number; loX: number; hiX: number; length: number } | null = null;
+  for (let index = 0; index < points.length - 1; index++) {
+    const start = points[index];
+    const end = points[index + 1];
+    if (Math.abs(start.y - end.y) > 0.5) continue;
+    const length = Math.abs(end.x - start.x);
+    if (length <= 0) continue;
+    if (!best || length > best.length) {
+      best = {
+        x: (start.x + end.x) / 2,
+        y: start.y,
+        loX: Math.min(start.x, end.x),
+        hiX: Math.max(start.x, end.x),
+        length,
+      };
+    }
+  }
+  return best ? { x: best.x, y: best.y, loX: best.loX, hiX: best.hiX } : null;
 }
