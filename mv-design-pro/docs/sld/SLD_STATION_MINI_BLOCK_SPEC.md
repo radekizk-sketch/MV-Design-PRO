@@ -90,5 +90,5 @@ Token `COLOR_SELECTION` (a NIE hardkodowane `#35C7FF`). Używany dla wszystkich 
 
 ## 10. Testy (Phase 0A)
 
-- `renderer/__tests__/miniBlockRmu.test.tsx` - 67 cases (kompozycja z bays, blocker badge, DER badges, viewBox invariant, derive footprintów, K30-40 voltage-aware SN bus, K30-116 earthing scheme TN/IT/TT badge, hit area i klikalność pól DER).
+- `renderer/__tests__/miniBlockRmu.test.tsx` - 70 cases (kompozycja z bays, blocker badge, DER badges, viewBox invariant, derive footprintów, K30-40 voltage-aware SN bus, K30-116 earthing scheme TN/IT/TT badge, hit area i klikalność pól DER, nN feeder tails).
 - W połączeniu z `gpzCompactBlock.test.tsx` (22 cases) → 80 cases pokrywają mini-block + GPZ compact.
