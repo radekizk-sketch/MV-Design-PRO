@@ -1242,6 +1242,31 @@ describe('GpzSwitchgearRenderer — two-bus topology (110 kV + 15 kV z TR pomię
     expect(right?.textContent).toBe('15kV');
   });
 
+  it('two-bus mode → etykiety napięcia WEWNĄTRZ korpusu (gutter; kadr nie ucina "0kV"/"kV")', () => {
+    const { container } = rTwoBus();
+    /* Lewe etykiety (textAnchor="end") muszą mieć x ≥ szerokość glifów
+     * "110kV" (~41 px przy font 13), żeby tekst nie wystawał na x < 0 poza
+     * korpus rozdzielni — inaczej ciasny kadr eksportu ucina "110kV"→"0kV". */
+    const body = container.querySelector('[data-testid^="sld-v2-gpz-switchgear-"] > rect');
+    const bodyWidth = Number(body?.getAttribute('width'));
+    for (const testId of [
+      'sld-v2-gpz-switchgear-hv-bus-label-left',
+      'sld-v2-gpz-switchgear-lv-bus-label-left',
+    ]) {
+      const label = container.querySelector(`[data-testid="${testId}"]`);
+      expect(Number(label?.getAttribute('x'))).toBeGreaterThanOrEqual(41);
+    }
+    /* Prawe etykiety (textAnchor="start") — miejsce na glify do prawej
+     * krawędzi korpusu. */
+    for (const testId of [
+      'sld-v2-gpz-switchgear-hv-bus-label-right',
+      'sld-v2-gpz-switchgear-lv-bus-label-right',
+    ]) {
+      const label = container.querySelector(`[data-testid="${testId}"]`);
+      expect(Number(label?.getAttribute('x')) + 41).toBeLessThanOrEqual(bodyWidth);
+    }
+  });
+
   it('two-bus mode → HV bays renderowane (POR, EC2) z numerami pól', () => {
     const { container } = rTwoBus();
     expect(container.querySelector('[data-testid="sld-v2-gpz-bay-hv-1"]')).not.toBeNull();
@@ -2262,7 +2287,7 @@ describe('GpzSwitchgearRenderer — Quick-wins z 6/3 fix (dsBus + magenta + elli
     expect(upFill).not.toBe(downFill);
   });
 
-  it('feederName długi → ellipsis "…" w nagłówku (anti-pattern §15.4 fix)', () => {
+  it('feederName długi → łam do 2 linii, ellipsis dopiero gdy 2 linie nie mieszczą (anti-pattern §15.4 fix)', () => {
     const { container } = r({
       sections: [
         {
@@ -2275,12 +2300,39 @@ describe('GpzSwitchgearRenderer — Quick-wins z 6/3 fix (dsBus + magenta + elli
         },
       ],
     });
-    /* Nagłówek przycinany do szerokości kolumny (clip-to-width, anty-kolizja
-     * D2): font 12, szerokość 56 px → ~7 glifów → 'FEEDER…'. */
-    const text = container.textContent ?? '';
-    expect(text).toContain('FEEDER…');
-    expect(text).not.toContain('FEEDER_VERY_LONG_NAME'); // pełna nazwa NIE wyświetlona
+    /* Nagłówek łamany do DWÓCH linii w szerokości kolumny (wrap-to-width,
+     * anty-kolizja D2 + audyt SCADA-parity: pełne nazwy zamiast "Pole W…").
+     * Font 8, szerokość 56 px → ~11 glifów/linię; 21-znakowa nazwa bez spacji
+     * łamie się na separatorze '_' i dostaje ellipsis dopiero w 2. linii. */
+    const header = container.querySelector('[data-testid="sld-v2-gpz-bay-header"]');
+    const tspans = header?.querySelectorAll('tspan') ?? [];
+    expect(tspans.length).toBe(2);
+    expect(tspans[0].textContent).toBe('FEEDER_');
+    expect(tspans[1].textContent).toBe('VERY_LONG_…');
     /* Operator widzi że nazwa była dłuższa (kanon UX). */
+  });
+
+  it('feederName dwuwyrazowy → pełna nazwa w 2 liniach bez ellipsis (audyt: "STAROŁ…")', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], feederName: 'STAROŁĘKA WSCHODNIA' }],
+        },
+      ],
+    });
+    /* Realna nazwa odpływu (19 znaków, spacja) czyta się W CAŁOŚCI:
+     * łam na spacji → 'STAROŁĘKA' / 'WSCHODNIA', zero '…'. */
+    const header = container.querySelector('[data-testid="sld-v2-gpz-bay-header"]');
+    const tspans = header?.querySelectorAll('tspan') ?? [];
+    expect(tspans.length).toBe(2);
+    expect(tspans[0].textContent).toBe('STAROŁĘKA');
+    expect(tspans[1].textContent).toBe('WSCHODNIA');
+    expect(header?.textContent).not.toContain('…');
   });
 
   it('feederName krótki → bez ellipsis', () => {

@@ -403,6 +403,60 @@ export function fitTextToWidth(
   return text.slice(0, Math.max(1, maxChars - 1)) + '…';
 }
 
+/**
+ * Łamie etykietę do maksymalnie DWÓCH linii mieszczących się w `maxWidthPx`.
+ *
+ * Audyt SCADA-parity (nagłówki pól GPZ): twarde ucięcie jednoliniowe gubiło
+ * realne nazwy odpływów ("Pole W…", "STAROŁ…"). Dwie linie w paśmie nagłówka
+ * pozwalają pełnej nazwie czytać się w całości. Reguły (deterministyczne,
+ * czysta arytmetyka — bez pomiaru DOM):
+ *   1. Całość mieści się w 1 linii → [text].
+ *   2. Preferowany łam: OSTATNIA spacja w oknie 1. linii (spacja znika).
+ *   3. Fallback: ostatni separator `-_./` w oknie (separator zostaje w linii 1).
+ *   4. Brak separatora → twardy łam na granicy okna.
+ *   5. Linia 2 przycinana `fitTextToWidth` (ellipsis dopiero, gdy nawet dwie
+ *      linie nie mieszczą nazwy — operator wciąż widzi, że była dłuższa).
+ */
+export function wrapLabelToWidth(
+  text: string,
+  maxWidthPx: number,
+  fontSizePx: number,
+): string[] {
+  const trimmed = text.trim();
+  if (maxWidthPx <= 0) return [''];
+  const charW = fontSizePx * GPZ_GEOMETRY.labelCharWidthFactor;
+  const maxChars = Math.max(1, Math.floor(maxWidthPx / charW));
+  if (trimmed.length <= maxChars) return [trimmed];
+
+  // Okno 1. linii: maxChars znaków (+1 pozycja, bo spacja NA granicy pozwala
+  // linii 1 skończyć się dokładnie na maxChars).
+  const window = trimmed.slice(0, maxChars + 1);
+  let line1 = '';
+  let rest = '';
+  const lastSpace = window.lastIndexOf(' ');
+  if (lastSpace > 0 && lastSpace <= maxChars) {
+    line1 = trimmed.slice(0, lastSpace).trimEnd();
+    rest = trimmed.slice(lastSpace + 1).trimStart();
+  } else {
+    let punctIdx = -1;
+    for (let i = Math.min(maxChars, window.length) - 1; i > 0; i--) {
+      if (/[-_./]/.test(window[i])) {
+        punctIdx = i;
+        break;
+      }
+    }
+    if (punctIdx > 0) {
+      line1 = trimmed.slice(0, punctIdx + 1);
+      rest = trimmed.slice(punctIdx + 1);
+    } else {
+      line1 = trimmed.slice(0, maxChars);
+      rest = trimmed.slice(maxChars);
+    }
+  }
+  if (!rest) return [line1];
+  return [line1, fitTextToWidth(rest, maxWidthPx, fontSizePx)];
+}
+
 /** Wysokość wiersza badge'a kodów zabezpieczeniowych (mono stack na polu). */
 export const PROTECTION_BADGE_ROW_HEIGHT = 7;
 /** Liczba kodów w wierszu (mirror OzeSourceArchetype: do 4 połączonych "·"). */
@@ -420,24 +474,48 @@ export function protectionBadgeDepth(codes: readonly string[] | undefined): numb
   return rows === 0 ? 0 : rows * PROTECTION_BADGE_ROW_HEIGHT + 4;
 }
 
+/**
+ * Głębokość stopki pól (numer + KAS + panel pomiarowy + stos kodów
+ * zabezpieczeń) PONIŻEJ `columnBottomY + BAY_NUMBER_GAP` — LUSTRO pozycji
+ * renderera (BayColumn), nie suma niezależnych maksimów:
+ *   numberY            = base − 2,
+ *   measurementHeaderY = numberY + KAS_ROW (+KAS_ROW gdy KAS),
+ *   stos zabezpieczeń  = pod panelem pomiarowym (lub od razu pod headerem).
+ * Audyt SCADA-parity: stara suma pomijała strukturalny offset headera dla pól
+ * bez KAS — stos "87T·51·50·51N / Buchholz·…" wystawał poza ramkę korpusu
+ * (dolna krawędź przecinała badge). Per-bay bottom-max = ramka domyka całość.
+ */
 export function computeMaxFooterDepth(sections: readonly GpzSectionDescriptor[]): number {
-  let kasDepth = 0;
-  let measurementDepth = 0;
-  let protectionDepth = 0;
+  let depth = 0;
   for (const section of sections) {
     for (const bay of section.bays) {
-      if (bay.hasKasButton) {
-        kasDepth = Math.max(kasDepth, KAS_ROW_HEIGHT);
+      const hasKas = Boolean(bay.hasKasButton);
+      const measurements =
+        bay.measurements && hasAnyMeasurement(bay.measurements) ? bay.measurements : null;
+      const hasMeasurements = measurements !== null;
+      const rowCount = measurements ? collectMeasurementRows(measurements).length : 0;
+      /* Offset `measurementHeaderY` względem bazy (columnBottom + BAY_NUMBER_GAP). */
+      const headerOffset = KAS_ROW_HEIGHT - 2 + (hasKas ? KAS_ROW_HEIGHT : 0);
+      let bayDepth = 0;
+      if (hasKas) {
+        bayDepth = Math.max(bayDepth, KAS_ROW_HEIGHT + 6);
       }
-      if (bay.measurements && hasAnyMeasurement(bay.measurements)) {
-        const rowCount = collectMeasurementRows(bay.measurements).length;
-        const depth =
-          MEASUREMENT_PANEL_HEADER_HEIGHT + rowCount * MEASUREMENT_ROW_HEIGHT + 4;
-        measurementDepth = Math.max(measurementDepth, depth);
+      if (hasMeasurements) {
+        bayDepth = Math.max(
+          bayDepth,
+          headerOffset + MEASUREMENT_PANEL_HEADER_HEIGHT + rowCount * MEASUREMENT_ROW_HEIGHT + 4,
+        );
       }
-      protectionDepth = Math.max(protectionDepth, protectionBadgeDepth(bay.protectionCodes));
+      const badgeDepth = protectionBadgeDepth(bay.protectionCodes);
+      if (badgeDepth > 0) {
+        const stackTopOffset = hasMeasurements
+          ? headerOffset + MEASUREMENT_PANEL_HEADER_HEIGHT + rowCount * MEASUREMENT_ROW_HEIGHT + 6
+          : headerOffset + 4;
+        bayDepth = Math.max(bayDepth, stackTopOffset + badgeDepth);
+      }
+      depth = Math.max(depth, bayDepth);
     }
   }
-  return kasDepth + measurementDepth + protectionDepth;
+  return depth;
 }
 

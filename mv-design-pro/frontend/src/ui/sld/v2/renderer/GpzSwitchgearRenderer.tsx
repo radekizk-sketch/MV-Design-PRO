@@ -87,6 +87,7 @@ const CT_RADIUS = GPZ_GEOMETRY.ctRadius;
 const SECTION_BUS_OVERHANG = GPZ_GEOMETRY.sectionBusOverhang;
 const VERTICAL_PADDING = GPZ_GEOMETRY.verticalPadding;
 const HORIZONTAL_PADDING = GPZ_GEOMETRY.horizontalPadding;
+const BUS_LABEL_GUTTER = GPZ_GEOMETRY.busLabelGutter;
 
 const APPARATUS_COL_X_OFFSET = GPZ_GEOMETRY.apparatusColXOffset;
 const BADGE_COL_X_OFFSET = GPZ_GEOMETRY.badgeColXOffset;
@@ -131,7 +132,7 @@ import {
   hasAnyMeasurement,
   formatInteger,
   computeMaxFooterDepth,
-  fitTextToWidth,
+  wrapLabelToWidth,
   collectMeasurementRows,
 } from './GpzSwitchgearLayout';
 import {
@@ -215,7 +216,13 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
   const hvFooterDepth = isTwoBus ? computeMaxFooterDepth(sortedHvSections) : 0;
 
   const layoutMaxWidth = Math.max(layout.totalWidth, hvLayout?.totalWidth ?? 0);
-  const totalWidth = Math.max(GPZ_GEOMETRY.minSwitchgearWidth, layoutMaxWidth + 2 * HORIZONTAL_PADDING);
+  /* Gutter na etykiety napięcia szyn ("110kV"/"15kV") — tylko tryb two-bus
+   * (single-bus nie rysuje etykiet na końcach szyny). Etykiety kotwiczą się
+   * na końcach szyn WEWNĄTRZ korpusu rozdzielni, więc żaden ciasny kadr
+   * (eksport PNG, mała viewBox) nie ucina już "0kV"/"kV" na ramce. */
+  const busLabelGutter = isTwoBus ? BUS_LABEL_GUTTER : 0;
+  const contentLeftX = HORIZONTAL_PADDING + busLabelGutter;
+  const totalWidth = Math.max(GPZ_GEOMETRY.minSwitchgearWidth, layoutMaxWidth + 2 * contentLeftX);
 
   const outgoingFeederCount = sortedSections.reduce(
     (sum, section) => sum + section.bays.filter((bay) => bay.outgoingFeeder).length,
@@ -342,16 +349,16 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
           {/* Pozioma szyna 110 kV (HV bus) — kanon SCADA: biały, NIE czerwony.
              Czerwony zarezerwowany dla alarm/zwarcie. */}
           <line
-            x1={HORIZONTAL_PADDING - SECTION_BUS_OVERHANG}
+            x1={contentLeftX - SECTION_BUS_OVERHANG}
             y1={hvBusY}
-            x2={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG}
+            x2={totalWidth - contentLeftX + SECTION_BUS_OVERHANG}
             y2={hvBusY}
             stroke={COLOR_BUS_HV}
             strokeWidth={STROKE_BUSBAR_PX}
             data-testid="sld-v2-gpz-switchgear-hv-bus"
           />
           <text
-            x={HORIZONTAL_PADDING - SECTION_BUS_OVERHANG - 4}
+            x={contentLeftX - SECTION_BUS_OVERHANG - 4}
             y={hvBusY + 3}
             textAnchor="end"
             fill={COLOR_BUS_LABEL}
@@ -363,7 +370,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
             {`${formatHvVoltage(props.voltageHighKv, props.voltageHighKvKnown)}kV`}
           </text>
           <text
-            x={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG + 4}
+            x={totalWidth - contentLeftX + SECTION_BUS_OVERHANG + 4}
             y={hvBusY + 3}
             textAnchor="start"
             fill={COLOR_BUS_LABEL}
@@ -381,7 +388,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
               return (
                 <BayColumn
                   key={`hv-bay-${cell.bay.bayRef}`}
-                  x={HORIZONTAL_PADDING + cell.x}
+                  x={contentLeftX + cell.x}
                   busY={hvBusY}
                   bay={cell.bay}
                   voltageKv={cell.busVoltageKv}
@@ -397,7 +404,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
             return (
               <CouplerBay
                 key={`hv-coupler-${cell.coupler.couplerId}`}
-                x={HORIZONTAL_PADDING + cell.x}
+                x={contentLeftX + cell.x}
                 busY={hvBusY}
                 coupler={cell.coupler}
                 onClickCoupler={props.onClickCoupler}
@@ -410,7 +417,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
           {hvLayout.sectionLabels.map((label) => (
             <SectionLabel
               key={`hv-label-${label.sectionId}`}
-              x={HORIZONTAL_PADDING + label.x}
+              x={contentLeftX + label.x}
               y={hvBusY - 4}
               sectionId={label.sectionId}
               text={label.text}
@@ -436,16 +443,16 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
           {/* Pozioma szyna 15 kV (LV bus) — cyan, odróżnia od deviceClosed
              zielonego (kanon SCADA: bus voltage ≠ device state). */}
           <line
-            x1={HORIZONTAL_PADDING - SECTION_BUS_OVERHANG}
+            x1={contentLeftX - SECTION_BUS_OVERHANG}
             y1={lvBusY}
-            x2={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG}
+            x2={totalWidth - contentLeftX + SECTION_BUS_OVERHANG}
             y2={lvBusY}
             stroke={COLOR_BUS_LV}
             strokeWidth={STROKE_BUSBAR_PX}
             data-testid="sld-v2-gpz-switchgear-lv-bus"
           />
           <text
-            x={HORIZONTAL_PADDING - SECTION_BUS_OVERHANG - 4}
+            x={contentLeftX - SECTION_BUS_OVERHANG - 4}
             y={lvBusY + 3}
             textAnchor="end"
             fill={COLOR_BUS_LV}
@@ -457,7 +464,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
             {`${props.voltageLowKv}kV`}
           </text>
           <text
-            x={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG + 4}
+            x={totalWidth - contentLeftX + SECTION_BUS_OVERHANG + 4}
             y={lvBusY + 3}
             textAnchor="start"
             fill={COLOR_BUS_LV}
@@ -475,7 +482,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
               return (
                 <BayColumn
                   key={`lv-bay-${cell.bay.bayRef}`}
-                  x={HORIZONTAL_PADDING + cell.x}
+                  x={contentLeftX + cell.x}
                   busY={lvBusY}
                   bay={cell.bay}
                   voltageKv={cell.busVoltageKv}
@@ -491,7 +498,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
             return (
               <CouplerBay
                 key={`lv-coupler-${cell.coupler.couplerId}`}
-                x={HORIZONTAL_PADDING + cell.x}
+                x={contentLeftX + cell.x}
                 busY={lvBusY}
                 coupler={cell.coupler}
                 onClickCoupler={props.onClickCoupler}
@@ -504,7 +511,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
           {layout.sectionLabels.map((label) => (
             <SectionLabel
               key={`lv-label-${label.sectionId}`}
-              x={HORIZONTAL_PADDING + label.x}
+              x={contentLeftX + label.x}
               y={lvBusY - 4}
               sectionId={label.sectionId}
               text={label.text}
@@ -518,7 +525,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
           {hasOutgoingFeeders && (
             <FieldTrunkZone
               cells={layout.cells}
-              hOffset={HORIZONTAL_PADDING}
+              hOffset={contentLeftX}
               totalWidth={totalWidth}
               lvBaysBottomY={
                 lvBusY + BAY_COLUMN_HEIGHT + BAY_NUMBER_GAP + footerDepth
@@ -1609,25 +1616,37 @@ function BayColumn(props: BayColumnProps): JSX.Element {
       />
 
       {/* Nagłówek pola — feeder name lub designation. Wyśrodkowany w kolumnie
-       * (nie na osi aparatów) i przycięty do szerokości kolumny minus inset,
-       * żeby długa nazwa nie wylewała się do sąsiedniej kolumny (anty-kolizja
-       * D2: "STAROŁĘ.WSCHODN…"). */}
-      <text
-        x={x + BAY_COLUMN_WIDTH / 2}
-        y={headerY + 9}
-        textAnchor="middle"
-        fill={COLOR_TEXT_PRIMARY}
-        fontFamily={FONT_SANS}
-        fontSize={FONT_SIZES.technicalPanel - 1}
-        fontWeight={600}
-        data-testid="sld-v2-gpz-bay-header"
-      >
-        {fitTextToWidth(
+       * (nie na osi aparatów), kondensowany font + łam do DWÓCH linii w paśmie
+       * nagłówka: realne nazwy odpływów czytają się w całości (audyt
+       * SCADA-parity — koniec twardego "Pole W…"/"STAROŁ…"), a szerokość linii
+       * nadal ≤ kolumna minus inset → zero kolizji z sąsiednią kolumną (D2). */}
+      {(() => {
+        const headerLines = wrapLabelToWidth(
           bay.feederName ?? bay.designation,
           BAY_COLUMN_WIDTH - 2 * LABEL_CLIP_INSET,
-          FONT_SIZES.technicalPanel - 1,
-        )}
-      </text>
+          FONT_SIZES.bayHeaderName,
+        );
+        const headerLineYs = headerLines.length === 1
+          ? [headerY + 13]
+          : [headerY + 8.5, headerY + 18];
+        return (
+          <text
+            textAnchor="middle"
+            fill={COLOR_TEXT_PRIMARY}
+            fontFamily={FONT_SANS}
+            fontSize={FONT_SIZES.bayHeaderName}
+            fontWeight={700}
+            letterSpacing={0.2}
+            data-testid="sld-v2-gpz-bay-header"
+          >
+            {headerLines.map((line, idx) => (
+              <tspan key={idx} x={x + BAY_COLUMN_WIDTH / 2} y={headerLineYs[idx]}>
+                {line}
+              </tspan>
+            ))}
+          </text>
+        );
+      })()}
 
       {/* Marker zwarcia doziemnego (cyan circle u góry) */}
       {bay.groundFault && bay.groundFault !== 'normal' && (

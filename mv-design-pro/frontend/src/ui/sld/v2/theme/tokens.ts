@@ -239,6 +239,10 @@ export const FONT_SIZES = {
   transformerRatio: 8,
   /** Etykieta destination feedera. */
   feederDestination: 9,
+  /** Nagłówek pola GPZ (feeder name) — kondensowany, łamany do 2 linii,
+   *  żeby pełne nazwy odpływów czytały się bez twardego ucięcia ("Pole W…").
+   *  8 px × 2 linie w kolumnie 64 px mieści ~22 znaki realnej nazwy. */
+  bayHeaderName: 8,
 } as const;
 
 /* ---------------------------------------------------------------------------
@@ -266,8 +270,10 @@ export const GPZ_GEOMETRY = {
   bayColumnWidth: 64,
   bayColumnHeight: 124, // K30-113: 110 → 124 dla unified APPARATUS_PITCH (audyt #4 MEDIUM)
   bayGap: 6,
-  /** Nagłówek pola (feeder name). */
-  bayHeaderHeight: 12,
+  /** Nagłówek pola (feeder name) — pasmo mieści DWIE linie kondensowanej
+   *  nazwy (font `FONT_SIZES.bayHeaderName`), żeby realne nazwy odpływów
+   *  czytały się w całości zamiast twardego "Pole W…" (audyt SCADA-parity). */
+  bayHeaderHeight: 22,
   /** Odstęp od dolnej krawędzi kolumny do numeru pola. */
   bayNumberGap: 14,
   /** Pitch aparatów w kolumnie (Y). */
@@ -295,6 +301,10 @@ export const GPZ_GEOMETRY = {
   /** Wewnętrzny inset poziomy nagłówka pola/panelu — gwarantuje prześwit
    *  między sąsiednimi wąskimi kolumnami (anty-kolizja D1/D2). */
   labelClipInset: 4,
+  /** Lewy/prawy gutter korpusu rozdzielni (tryb two-bus) na etykiety napięcia
+   *  szyn ("110kV"/"15kV"). Etykiety kotwiczą się na końcach szyn WEWNĄTRZ
+   *  ramki korpusu — ciasny kadr eksportu nie ucina już "0kV"/"kV". */
+  busLabelGutter: 46,
   /** Przybliżony współczynnik szerokości glifu (advance ÷ fontSize) dla
    *  Inter w wersalikach. Używany do przycinania etykiet do szerokości
    *  kolumny z wielokropkiem (clip-to-width zamiast char-count). */

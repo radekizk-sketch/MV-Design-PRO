@@ -2040,9 +2040,13 @@ function CompactDirectionalBayColumn(props: CompactDirectionalBayColumnProps): J
         >
           nN
         </text>
+        {/* Oznaczenie TR NAD linią vector group (CompactTransformerSymbol
+            rysuje "Dyn…" na (cx+12, cy+3)) — stos TR / Dyn11 jak na realnym
+            SLD, zamiast dwóch etykiet na tej samej linii bazowej (kolizja
+            "DyTR1" z audytu SCADA-parity). */}
         <text
           x={x + 18}
-          y={trCy + 3}
+          y={trCy - 6}
           textAnchor="start"
           fill={COLOR_TEXT_SECONDARY}
           fontFamily={FONT_SANS}

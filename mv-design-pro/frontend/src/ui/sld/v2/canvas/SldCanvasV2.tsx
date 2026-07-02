@@ -2332,15 +2332,35 @@ const L0_BLOCK_W = L0_STATION_BLOCK.width;
 const L0_BLOCK_H = L0_STATION_BLOCK.height;
 
 /**
- * Status gotowości stacji na przeglądzie (L0): kolor kropki. To JEDYNA informacja
- * stanu na L0 (poza nazwą) — kontrakt §7 (status gotowości). Mapowanie:
- *   krytyczny alarm / brak danych → czerwony; ostrzeżenie → bursztyn; OK → zielony.
+ * Marker gotowości danych stacji na przeglądzie (L0) — kontrakt §7 (status
+ * gotowości). Gotowość ≠ energizacja: pełna czerwień jest w języku SCADA
+ * zarezerwowana dla kontekstu beznapięciowego/awarii łączeniowej, więc stacja
+ * POD NAPIĘCIEM (blok live-green wg FROZEN solvera) z krytycznym alarmem
+ * gotowości dostaje bursztynowy PIERŚCIEŃ (hollow), nie czerwoną kropkę —
+ * dyspozytor nie pomyli braku gotowości danych z zadziałaniem zabezpieczenia.
+ * Mapowanie:
+ *   krytyczny + pod napięciem → bursztynowy pierścień (hollow ring);
+ *   krytyczny + bez napięcia/brak danych solvera → czerwony (pełny);
+ *   ostrzeżenie / brak danych stacji → bursztyn (pełny);
+ *   OK → zielony (pełny).
+ * Czysta funkcja danych stacji — deterministyczna, bez stanu.
  */
-function stationReadinessColor(station: StationOnRunRendererProps): string {
-  if (station.alarmSeverity === 'critical') return COLOR_DEVICE_OPEN_BORDER;
-  if (station.missingData) return COLOR_WARN;
-  if (station.alarmSeverity === 'important' || station.alarmSeverity === 'warning') return COLOR_WARN;
-  return COLOR_DEVICE_CLOSED_BORDER;
+interface StationReadinessMarker {
+  readonly color: string;
+  readonly variant: 'solid' | 'ring';
+}
+
+function stationReadinessMarker(station: StationOnRunRendererProps): StationReadinessMarker {
+  if (station.alarmSeverity === 'critical') {
+    return station.energized === true
+      ? { color: COLOR_WARN, variant: 'ring' }
+      : { color: COLOR_DEVICE_OPEN_BORDER, variant: 'solid' };
+  }
+  if (station.missingData) return { color: COLOR_WARN, variant: 'solid' };
+  if (station.alarmSeverity === 'important' || station.alarmSeverity === 'warning') {
+    return { color: COLOR_WARN, variant: 'solid' };
+  }
+  return { color: COLOR_DEVICE_CLOSED_BORDER, variant: 'solid' };
 }
 
 /**
@@ -2455,7 +2475,7 @@ function StationOverviewBlock(props: {
   const primaryLabel = shortName ?? code ?? (station.name || station.id);
   const showCodeLine = code != null && primaryLabel !== code;
   const borderColor = selected ? COLOR_SELECTION : '#2C3A48';
-  const statusColor = stationReadinessColor(station);
+  const readiness = stationReadinessMarker(station);
   // P-A POWER-FLOW TOR (one truth): a station is de-energized when the FROZEN
   // solver did not energize its bus (`energized === false`, READ from the
   // companion — never computed here). De-energized blocks are dimmed so the
@@ -2509,7 +2529,8 @@ function StationOverviewBlock(props: {
     <g
       data-testid={`sld-v2-station-overview-block-${station.id}`}
       data-lod-variant="block_overview"
-      data-station-readiness={statusColor}
+      data-station-readiness={readiness.color}
+      data-station-readiness-variant={readiness.variant}
       data-station-energized={station.energized === undefined ? undefined : station.energized ? 'true' : 'false'}
       data-station-live={isLive ? 'true' : 'false'}
       opacity={deEnergized ? 0.4 : 1}
@@ -2530,8 +2551,23 @@ function StationOverviewBlock(props: {
         strokeWidth={selected ? 2.5 : isLive ? 1.8 : 1.5}
         strokeDasharray={deEnergized ? '6 4' : undefined}
       />
-      {/* Status gotowości — kropka w lewym górnym rogu. */}
-      <circle cx={x + 14} cy={y + 14} r={6} fill={statusColor} stroke="#0A0E14" strokeWidth={1} />
+      {/* Status gotowości — stały slot lewego górnego rogu, ponad pasmem stosu
+          etykiet (przy 3 liniach pierwsza linia zaczyna się ~y+17 → marker
+          y+6..y+16 nie zahacza o nazwę). Pełna kropka = stan zwykły;
+          bursztynowy PIERŚCIEŃ = not-ready przy stacji pod napięciem
+          (gotowość ≠ energizacja; czerwień tylko dla beznapięciowych/awarii). */}
+      {readiness.variant === 'ring' ? (
+        <circle
+          cx={x + 12}
+          cy={y + 11}
+          r={4.5}
+          fill="none"
+          stroke={readiness.color}
+          strokeWidth={2.5}
+        />
+      ) : (
+        <circle cx={x + 12} cy={y + 11} r={5} fill={readiness.color} stroke="#0A0E14" strokeWidth={1} />
+      )}
       {/* Tożsamość stacji — stos: nazwa / kod operatorski (cyjan) / moc kVA. */}
       <g clipPath={`url(#${clipId})`} data-station-label-stack="true">
         <text
