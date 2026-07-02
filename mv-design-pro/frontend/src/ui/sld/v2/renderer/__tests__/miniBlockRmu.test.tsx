@@ -717,6 +717,49 @@ describe('MiniBlockRmuRenderer - compact SCADA CAD poprawki', () => {
     expect(container.querySelector('[data-testid^="sld-v2-mini-rmu-compact-lv-row-"]')).not.toBeNull();
   });
 
+  it('compact renderuje N realnych odpływów nN na szynie nN (zamiast gołego kikuta)', () => {
+    const { container } = r('compact', {
+      nnFeedersCount: 3,
+      snBays: [
+        { bayRef: 'line-in', fieldRole: FIELD_ROLE.LINE_IN, designation: 'WE', hasMissingRequiredDevice: false },
+        { bayRef: 'tr', fieldRole: FIELD_ROLE.RMU_TRANSFORMER, designation: 'TR', hasMissingRequiredDevice: false },
+      ],
+    });
+    const feeders = container.querySelectorAll('[data-parity-key="station.mini.lv_feeder.compact"]');
+    expect(feeders).toHaveLength(3);
+    // Każdy odpływ nN niesie kanon wyłącznik nN (IEC 60617) + indeks.
+    feeders.forEach((feeder, index) => {
+      expect(feeder.getAttribute('data-feeder-index')).toBe(String(index));
+      expect(feeder.querySelector('[data-testid="sld-v2-gpz-bay-lv-breaker"]')).not.toBeNull();
+    });
+    const lvBus = container.querySelector('[data-parity-key="station.mini.bus.lv.compact"]');
+    expect(lvBus?.getAttribute('data-feeders-count')).toBe('3');
+  });
+
+  it('compact nie rysuje odpływów nN gdy nnFeedersCount=0 (uczciwa atrapa: sama szyna)', () => {
+    const { container } = r('compact', {
+      nnFeedersCount: 0,
+      snBays: [
+        { bayRef: 'line-in', fieldRole: FIELD_ROLE.LINE_IN, designation: 'WE', hasMissingRequiredDevice: false },
+        { bayRef: 'tr', fieldRole: FIELD_ROLE.RMU_TRANSFORMER, designation: 'TR', hasMissingRequiredDevice: false },
+      ],
+    });
+    expect(container.querySelectorAll('[data-parity-key="station.mini.lv_feeder.compact"]')).toHaveLength(0);
+    // Szyna nN nadal obecna (transformator → nN bus zachowane).
+    expect(container.querySelector('[data-parity-key="station.mini.bus.lv.compact"]')).not.toBeNull();
+  });
+
+  it('compact ogranicza widoczne odpływy nN do 6 (czytelność bloku, deterministycznie)', () => {
+    const { container } = r('compact', {
+      nnFeedersCount: 12,
+      snBays: [
+        { bayRef: 'line-in', fieldRole: FIELD_ROLE.LINE_IN, designation: 'WE', hasMissingRequiredDevice: false },
+        { bayRef: 'tr', fieldRole: FIELD_ROLE.RMU_TRANSFORMER, designation: 'TR', hasMissingRequiredDevice: false },
+      ],
+    });
+    expect(container.querySelectorAll('[data-parity-key="station.mini.lv_feeder.compact"]')).toHaveLength(6);
+  });
+
   it('compact renderuje dedykowane pole PV jako normalne pole SN rozdzielni', () => {
     const { container } = r('compact', {
       snBays: [

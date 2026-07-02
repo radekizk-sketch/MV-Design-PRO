@@ -5,6 +5,7 @@
  */
 
 import type { FieldRole } from '../domain/apparatusContracts';
+import type { GpzApparatusSelection } from './gpzApparatusSelection';
 
 // =============================================================================
 // Public types
@@ -116,15 +117,6 @@ export interface BayMeasurements {
 /** Stan markera zwarcia doziemnego (cyan circle u góry pola). */
 export type GroundFaultMarkerState = 'normal' | 'detected' | 'fault';
 
-/**
- * Tryb sterowania pola — wyświetlany jako pionowa etykieta na lewym
- * marginesie kolumny pola.
- *   - `remote` → "STEROWANIE ZDALNE" (zielony)
- *   - `local`  → "STEROWANIE LOKALNE" (żółty/ostrzegawczy)
- *   - `unknown`→ etykieta przygaszona
- */
-export type BayControlMode = 'remote' | 'local' | 'unknown';
-
 export interface GpzBayDescriptor {
   readonly bayRef: string;
   readonly fieldRole: FieldRole;
@@ -153,10 +145,13 @@ export interface GpzBayDescriptor {
   /** Pomiary pola — renderowane w panelu pod numerem pola. */
   readonly measurements?: BayMeasurements;
   /**
-   * Tryb sterowania pola — wyświetlany jako pionowa etykieta na lewym
-   * marginesie ("STEROWANIE ZDALNE" / "STEROWANIE LOKALNE"). Brak → brak etykiety.
+   * Kody funkcji zabezpieczeniowych ANSI/IEC (np. ['87T','51','50','51N',
+   * 'Buchholz','temp','ciśnienie'] dla pola TR). Renderowane jako kompaktowy
+   * stos mono badge'y na polu — ten sam mechanizm string[] co OzeField.
+   * protection_codes. Renderer pokazuje WYŁĄCZNIE dostarczone kody (brak →
+   * brak badge'y; data-honest).
    */
-  readonly controlMode?: BayControlMode;
+  readonly protectionCodes?: readonly string[];
   /**
    * Numer P-* identyfikatora aparatu (np. "P133", "C434", "PE32").
    * Wyświetlany jako mała przygaszona etykieta pod LED-em KAS. Wymaga
@@ -175,19 +170,22 @@ export interface GpzBayDescriptor {
   readonly esState?: EarthingSwitchState;
   /**
    * Oznaczenia aparatów wg IEC 81346-2 — Q0/Q1/Q9 dla łączników, T1 dla
-   * trafa. Renderowane jako małe etykiety obok każdego symbolu w polu.
+   * trafa. Renderowane jako małe etykiety obok każdego symbolu w polu oraz
+   * wypełniają `GpzApparatusSelection.designation` przy interakcji.
    * Klucze:
-   *  - `cb`  → wyłącznik (Q0 typowo)
-   *  - `ds`  → odłącznik liniowy (Q9 typowo)
+   *  - `cb`    → wyłącznik (Q0 typowo)
+   *  - `ds`    → odłącznik liniowy (Q9 typowo) — etykieta Q (legacy)
+   *  - `dsLin` → odłącznik liniowy (Q9 typowo) — alias kanonu selekcji
    *  - `dsBus` → odłącznik szynowy (Q1 typowo)
-   *  - `es`  → uziemnik (Q8 typowo)
-   *  - `ct`  → przekładnik prądowy (T1)
+   *  - `es`    → uziemnik (Q8 typowo)
+   *  - `ct`    → przekładnik prądowy (T1)
    *
    * Brak pola → renderer pomija etykietę.
    */
   readonly qDesignations?: {
     readonly cb?: string;
     readonly ds?: string;
+    readonly dsLin?: string;
     readonly dsBus?: string;
     readonly es?: string;
     readonly ct?: string;
@@ -331,6 +329,13 @@ export interface GpzSwitchgearRendererProps {
    */
   readonly transformerMeasurements?: readonly TransformerMeasurements[];
   /**
+   * Refy transformatorów wyrównane indeksowo do kolumn TR (TR1 → index 0,
+   * TR2 → index 1). Gdy podane, symbol TR o danym indeksie staje się
+   * klikalny (`onClickTransformer(ref)`). Brak refu → TR nieklikalny
+   * (brak crashu).
+   */
+  readonly transformerRefs?: readonly string[];
+  /**
    * Tekst akcji w pasku tytułu (kanon SCADA: "Kasowanie sygnalizacji
    * zabezpieczeń"). Renderowany po prawej stronie pod napięciem.
    */
@@ -341,17 +346,37 @@ export interface GpzSwitchgearRendererProps {
    */
   readonly fieldTrunkLabel?: string;
   readonly selected?: boolean;
+  /* =====================================================================
+     Interakcja — kontrakt lustrzany do GpzCanonicalRenderer.
+     Aparaty emitują kanoniczne `GpzApparatusSelection` z identycznymi
+     stringami `${bayRef}#${kind}`, dzięki czemu renderer może stać się
+     drop-in zamiennikiem w SldCanvasV2 bez utraty detail-drawer / menu.
+     ===================================================================== */
+  /** Klik w cały blok GPZ. */
   readonly onClick?: (id: string) => void;
+  /** Klik w szynę/etykietę sekcji. */
   readonly onClickSection?: (sectionId: string) => void;
+  /** Klik w kolumnę pola. */
   readonly onClickBay?: (bayRef: string) => void;
-  /** Klik w aparat CB pola — drill-down do statystyk/historii zwarć. */
-  readonly onClickCb?: (bayRef: string) => void;
-  /** Klik w aparat DS pola — drill-down do nastaw rozłącznika. */
-  readonly onClickDs?: (bayRef: string) => void;
-  /** Klik w uziemnik (ES) pola — kontrola BHP, wymaga uprawnień. */
-  readonly onClickEs?: (bayRef: string) => void;
-  /** Klik w przycisk KAS — kasowanie sygnalizacji zabezpieczeń. */
-  readonly onClickKas?: (bayRef: string) => void;
+  /** Dwuklik w kolumnę pola (np. otwarcie detail-drawer pola). */
+  readonly onDoubleClickBay?: (bayRef: string) => void;
+  /** Menu kontekstowe pola (prawy klik) z koordynatami kursora. */
+  readonly onContextMenuBay?: (bayRef: string, evt: { clientX: number; clientY: number }) => void;
+  /** Menu kontekstowe sekcji (prawy klik) z koordynatami kursora. */
+  readonly onContextMenuSection?: (sectionId: string, evt: { clientX: number; clientY: number }) => void;
+  /** Klik w aparat pola — zwraca pełną selekcję (zastępuje onClickCb/Ds/Es). */
+  readonly onClickApparatus?: (selection: GpzApparatusSelection) => void;
+  /** Menu kontekstowe aparatu pola (prawy klik) z selekcją + koordynatami. */
+  readonly onContextMenuApparatus?: (
+    selection: GpzApparatusSelection,
+    evt: { clientX: number; clientY: number },
+  ) => void;
   /** Klik w sprzęgło (CB sprzęgła) — operator otwiera/zamyka. */
   readonly onClickCoupler?: (couplerId: string) => void;
+  /** Klik w symbol transformatora — wymaga `transformerRefs` index-aligned. */
+  readonly onClickTransformer?: (transformerRef: string) => void;
+  /** Kasowanie sygnalizacji (reset) — kanon header/KAS. */
+  readonly onResetSignals?: () => void;
+  /** Klik w przycisk KAS — kasowanie sygnalizacji zabezpieczeń pola. */
+  readonly onClickKas?: (bayRef: string) => void;
 }

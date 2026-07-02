@@ -33,9 +33,7 @@ class BayDeviceTemplate(BaseModel):
     ]
     designation_q: str  # oznaczenie Q (Q1, Q2, ...)
     position: int  # 0..n od góry do dołu
-    placement: Literal[
-        "UPSTREAM", "MIDSTREAM", "DOWNSTREAM", "OFF_PATH", "GROUND_BRANCH"
-    ]
+    placement: Literal["UPSTREAM", "MIDSTREAM", "DOWNSTREAM", "OFF_PATH", "GROUND_BRANCH"]
     optional: bool = False
 
 
@@ -70,9 +68,7 @@ class BayTemplate(BaseModel):
 
     template_id: str
     name: str  # PL: "Pole liniowe wejściowe", "Pole transformatorowe", ...
-    bay_role: Literal[
-        "IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE"
-    ]
+    bay_role: Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE"]
     description: str
     devices: list[BayDeviceTemplate] = Field(default_factory=list)
     ports: list[BayPortTemplate] = Field(default_factory=list)
@@ -93,7 +89,9 @@ BAY_TEMPLATE_LINE_IN = BayTemplate(
         BayDeviceTemplate(kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"),
         BayDeviceTemplate(kind="DS_LINE", designation_q="Q2", position=3, placement="DOWNSTREAM"),
         BayDeviceTemplate(kind="ES", designation_q="Q9", position=4, placement="GROUND_BRANCH"),
-        BayDeviceTemplate(kind="CABLE_HEAD", designation_q="GK", position=5, placement="DOWNSTREAM"),
+        BayDeviceTemplate(
+            kind="CABLE_HEAD", designation_q="GK", position=5, placement="DOWNSTREAM"
+        ),
     ],
     ports=[BayPortTemplate(kind="sn_input", suffix="in")],
 )
@@ -109,10 +107,28 @@ BAY_TEMPLATE_LINE_OUT = BayTemplate(
         BayDeviceTemplate(kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"),
         BayDeviceTemplate(kind="DS_LINE", designation_q="Q2", position=3, placement="DOWNSTREAM"),
         BayDeviceTemplate(kind="ES", designation_q="Q9", position=4, placement="GROUND_BRANCH"),
-        BayDeviceTemplate(kind="CABLE_HEAD", designation_q="GK", position=5, placement="DOWNSTREAM"),
+        BayDeviceTemplate(
+            kind="CABLE_HEAD", designation_q="GK", position=5, placement="DOWNSTREAM"
+        ),
     ],
     ports=[BayPortTemplate(kind="sn_output", suffix="out")],
 )
+
+# Kanoniczny zestaw funkcji zabezpieczeniowych pola transformatorowego SN/WN
+# (ANSI/IEC), wyświetlany na SLD przez Bay.protection_codes — lustro mechanizmu
+# OzeField.protection_codes. Zawiera: różnicowe 87T + nadprądowe 51/50 +
+# ziemnozwarciowe 51N + mechaniczne transformatora (Buchholz / temperatura /
+# ciśnienie), które wyzwalają wyłącznik pola Q0. Stringi, NIE enum — deterministyczne.
+TRANSFORMER_BAY_PROTECTION_CODES: list[str] = [
+    "87T",
+    "51",
+    "50",
+    "51N",
+    "Buchholz",
+    "temp",
+    "ciśnienie",
+]
+
 
 BAY_TEMPLATE_TRANSFORMER = BayTemplate(
     template_id="bay_template_transformer",
@@ -125,7 +141,9 @@ BAY_TEMPLATE_TRANSFORMER = BayTemplate(
         BayDeviceTemplate(kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"),
         BayDeviceTemplate(kind="DS_LINE", designation_q="Q2", position=3, placement="DOWNSTREAM"),
         BayDeviceTemplate(kind="ES", designation_q="Q9", position=4, placement="GROUND_BRANCH"),
-        BayDeviceTemplate(kind="TRANSFORMER_DEVICE", designation_q="TR", position=5, placement="DOWNSTREAM"),
+        BayDeviceTemplate(
+            kind="TRANSFORMER_DEVICE", designation_q="TR", position=5, placement="DOWNSTREAM"
+        ),
     ],
     ports=[BayPortTemplate(kind="sn_transformer", suffix="trafo")],
 )
@@ -172,7 +190,9 @@ BAY_TEMPLATE_DER_PV = BayTemplate(
         BayDeviceTemplate(kind="VT", designation_q="T2", position=3, placement="OFF_PATH"),
         BayDeviceTemplate(kind="DS_LINE", designation_q="Q2", position=4, placement="DOWNSTREAM"),
         BayDeviceTemplate(kind="ES", designation_q="Q9", position=5, placement="GROUND_BRANCH"),
-        BayDeviceTemplate(kind="CABLE_HEAD", designation_q="GK", position=6, placement="DOWNSTREAM"),
+        BayDeviceTemplate(
+            kind="CABLE_HEAD", designation_q="GK", position=6, placement="DOWNSTREAM"
+        ),
     ],
     ports=[BayPortTemplate(kind="sn_der_pv", suffix="pv")],
 )
@@ -243,9 +263,7 @@ def get_bay_template(template_id: str) -> BayTemplate:
 
     if template_id not in BAY_TEMPLATE_REGISTRY:
         available = ", ".join(sorted(BAY_TEMPLATE_REGISTRY.keys()))
-        raise KeyError(
-            f"Unknown bay_template_id: {template_id}. Available: {available}"
-        )
+        raise KeyError(f"Unknown bay_template_id: {template_id}. Available: {available}")
     return BAY_TEMPLATE_REGISTRY[template_id]
 
 

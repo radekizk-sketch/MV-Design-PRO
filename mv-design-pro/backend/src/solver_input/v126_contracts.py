@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 class V126AnalysisType(str, Enum):
     POWER_QUALITY_HARMONICS = "power_quality_harmonics"
+    SSCI_IMPEDANCE = "ssci_impedance"
     VOLTAGE_STABILITY = "voltage_stability"
     RELIABILITY_CONTINGENCY = "reliability_contingency"
     EARTHING_SAFETY = "earthing_safety"
@@ -20,6 +21,7 @@ class V126AnalysisType(str, Enum):
     OPF_LOSS_LCC = "opf_loss_lcc"
     BENCHMARK_VALIDATION = "benchmark_validation"
     UNCERTAINTY_SENSITIVITY = "uncertainty_sensitivity"
+    NEUTRAL_EARTHING_DESIGN = "neutral_earthing_design"
 
 
 class V126BusInput(BaseModel):
@@ -44,6 +46,11 @@ class V126BranchInput(BaseModel):
     r_ohm_per_km: float = Field(default=0.18, ge=0)
     x_ohm_per_km: float = Field(default=0.12, ge=0)
     b_siemens_per_km: float = Field(default=0.0, ge=0)
+    # Zero-sequence (line-to-earth) shunt susceptance B0 = ω·C0 [S/km]. Source of the
+    # network line-to-earth capacitance for the neutral-earthing design (Petersen/NER).
+    # None when the catalog/model has no zero-sequence shunt for this branch — surfaced
+    # as "dane niekompletne" (no fabrication of C0).
+    b0_siemens_per_km: float | None = Field(default=None)
     ampacity_a: float = Field(default=300.0, gt=0)
     failure_rate_per_year: float = Field(default=0.015, ge=0)
     mttr_h: float = Field(default=12.0, ge=0)
@@ -80,6 +87,20 @@ class V126ConverterInput(BaseModel):
     droop_p_f_percent: float | None = Field(default=None, ge=0)
     droop_q_u_percent: float | None = Field(default=None, ge=0)
     black_start_capable: bool = False
+    # SSCI / Z_conv(f) small-signal output-impedance card fields (D-03). Flow
+    # from the converter's ConverterType catalog card via build_v126_input_from_enm.
+    # All optional: a missing mandatory field surfaces as missing-data in the SSCI
+    # solver (no fabrication / no fallback).
+    rated_kv: float | None = Field(default=None, gt=0)
+    current_loop_bandwidth_hz: float | None = Field(default=None, gt=0)
+    voltage_loop_bandwidth_hz: float | None = Field(default=None, gt=0)
+    pll_bandwidth_hz: float | None = Field(default=None, gt=0)
+    control_delay_ms: float | None = Field(default=None, ge=0)
+    filter_l_pu: float | None = Field(default=None, gt=0)
+    filter_r_pu: float | None = Field(default=None, ge=0)
+    # Operating point (P,Q) at the converter terminal for the SSCI coupling term.
+    p_mw: float | None = None
+    q_mvar: float | None = None
 
 
 class V126MotorInput(BaseModel):
@@ -160,6 +181,17 @@ def build_v126_input_from_enm(
         if generator.gen_type in {"pv_inverter", "bess", "fw_pmsg", "fw_dfig", "fw_scig"}:
             rated = max(abs(generator.p_mw), 0.1)
             mode = "GFL" if generator.gen_type != "bess" else "GFM_droop"
+            # SSCI / Z_conv(f) card fields flow from the converter's ConverterType
+            # catalog card (materialized into the generator's solver params). No
+            # fabrication: a field absent from the card stays None and the SSCI
+            # solver surfaces it as missing-data.
+            card = generator.materialized_params or {}
+
+            def _card_float(key: str, _card: dict[str, Any] = card) -> float | None:
+                value = _card.get(key)
+                return float(value) if value is not None else None
+
+            rated_kv = _card_float("un_kv")
             converters.append(
                 V126ConverterInput(
                     ref=generator.ref_id,
@@ -168,6 +200,15 @@ def build_v126_input_from_enm(
                     rated_mva=rated,
                     droop_p_f_percent=4.0 if mode != "GFL" else None,
                     droop_q_u_percent=3.0 if mode != "GFL" else None,
+                    rated_kv=rated_kv,
+                    current_loop_bandwidth_hz=_card_float("current_loop_bandwidth_hz"),
+                    voltage_loop_bandwidth_hz=_card_float("voltage_loop_bandwidth_hz"),
+                    pll_bandwidth_hz=_card_float("pll_bandwidth_hz"),
+                    control_delay_ms=_card_float("control_delay_ms"),
+                    filter_l_pu=_card_float("filter_l_pu"),
+                    filter_r_pu=_card_float("filter_r_pu"),
+                    p_mw=generator.p_mw,
+                    q_mvar=generator.q_mvar,
                 )
             )
             harmonic_sources.append(
@@ -188,7 +229,9 @@ def build_v126_input_from_enm(
             load_mvar=load_by_bus.get(bus.ref_id, (0.0, 0.0))[1],
             generation_mw=gen_by_bus.get(bus.ref_id, (0.0, 0.0))[0],
             generation_mvar=gen_by_bus.get(bus.ref_id, (0.0, 0.0))[1],
-            fault_level_mva=next((source.sk3_mva for source in enm.sources if source.bus_ref == bus.ref_id), None),
+            fault_level_mva=next(
+                (source.sk3_mva for source in enm.sources if source.bus_ref == bus.ref_id), None
+            ),
         )
         for bus in enm.buses
     ]
@@ -202,6 +245,7 @@ def build_v126_input_from_enm(
         if branch.type in {"line_overhead", "cable"}:
             length_km = float(getattr(branch, "length_km", 1.0))
             rating = getattr(branch, "rating", None)
+            b0_per_km = getattr(branch, "b0_siemens_per_km", None)
             branches.append(
                 V126BranchInput(
                     ref=branch.ref_id,
@@ -212,8 +256,10 @@ def build_v126_input_from_enm(
                     r_ohm_per_km=float(getattr(branch, "r_ohm_per_km", 0.18)),
                     x_ohm_per_km=float(getattr(branch, "x_ohm_per_km", 0.12)),
                     b_siemens_per_km=float(getattr(branch, "b_siemens_per_km", 0.0) or 0.0),
+                    b0_siemens_per_km=(float(b0_per_km) if b0_per_km is not None else None),
                     ampacity_a=float(getattr(rating, "in_a", None) or 300.0),
-                    failure_rate_per_year=(0.08 if branch.type == "line_overhead" else 0.015) * length_km,
+                    failure_rate_per_year=(0.08 if branch.type == "line_overhead" else 0.015)
+                    * length_km,
                     mttr_h=3.5 if branch.type == "line_overhead" else 12.0,
                     is_open=is_open,
                 )

@@ -297,6 +297,38 @@ describe('CableRunRenderer', () => {
     expect(container.querySelector('[data-testid="sld-v2-run-run_nmo-nmo-open-point"]')).toBeTruthy();
   });
 
+  it('punkt otwarty: wyrazisty czerwony znacznik cut-point z realnym identyfikatorem (openPointMarkers)', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="run_op"
+          runKind="branch"
+          segmentKind="cable_sn"
+          segmentRefs={['seg-a']}
+          pathPoints={[{ x: 0, y: 0 }, { x: 200, y: 0 }]}
+          energized
+          openPointMarkers={[
+            { id: 'sw/x/switch', x: 100, y: 0, label: 'Lacznik sekcyjny NO' },
+          ]}
+        />
+      </svg>,
+    );
+
+    const marker = container.querySelector('[data-testid="sld-v2-run-run_op-nmo-open-point"]');
+    expect(marker).toBeTruthy();
+    expect(marker?.getAttribute('data-element-kind')).toBe('open_point_marker');
+    // Marker placed AT the supplied open-point position (where the green path breaks).
+    expect(marker?.getAttribute('transform')).toBe('translate(100, 0)');
+    // Carries the REAL model identifier (no fabricated "P-xx").
+    expect(marker?.getAttribute('data-open-point-id')).toBe('sw/x/switch');
+    expect(marker?.getAttribute('data-open-point-label')).toBe('Lacznik sekcyjny NO');
+    expect(marker?.textContent).toContain('Lacznik sekcyjny NO');
+    // Bold red diamond uses the open-apparatus colour tokens (#C9151B / #FF333D).
+    const diamonds = Array.from(marker?.querySelectorAll('polygon') ?? []);
+    expect(diamonds.some((p) => p.getAttribute('fill') === '#C9151B')).toBe(true);
+    expect(diamonds.some((p) => p.getAttribute('stroke') === '#FF333D')).toBe(true);
+  });
+
   it('linia napowietrzna ma dasharray odróżniający od kabla', () => {
     const { container: cableContainer } = render(
       <svg>

@@ -5,19 +5,25 @@ from typing import Literal
 
 import numpy as np
 from network_model.core.graph import NetworkGraph
+from network_model.solvers.power_flow_inverter import (
+    apply_inverter_setpoint,
+    build_inverter_table,
+)
 from network_model.solvers.power_flow_newton_internal import (
     build_initial_voltage,
-    build_power_spec,
     build_power_spec_v2,
     build_slack_island,
     build_ybus_pu,
     compute_branch_flows,
     compute_power_injections,
-    newton_raphson_solve,
     newton_raphson_solve_v2,
     validate_input,
 )
 from network_model.solvers.power_flow_types import PowerFlowInput
+from network_model.solvers.power_flow_zip import (
+    apply_zip_frequency,
+    build_zip_table,
+)
 
 
 @dataclass(frozen=True)
@@ -90,6 +96,8 @@ class PowerFlowNewtonSolver:
 
         slack_index = node_index_map[pf_input.slack.node_id]
         node_index_to_id = {idx: node_id for node_id, idx in node_index_map.items()}
+        zip_table = build_zip_table(pf_input.pq, node_index_map)
+        inv_table = build_inverter_table(pf_input.pq, node_index_map)
 
         pq_node_ids = [spec.node_id for spec in pf_input.pq if spec.node_id in node_index_map]
         pv_node_ids = [spec.node_id for spec in pf_input.pv if spec.node_id in node_index_map]
@@ -116,12 +124,22 @@ class PowerFlowNewtonSolver:
                     "theta_rad": float(np.angle(v0[idx])),
                 }
 
-        if pv_indices:
-            p_spec, q_spec, pv_setpoints, pv_q_limits = build_power_spec_v2(
-                slack_island_nodes, pf_input.base_mva, pf_input.pq, pf_input.pv
-            )
-            for idx, u_pu in pv_setpoints.items():
-                v0[idx] = u_pu * np.exp(1j * np.angle(v0[idx]))
+        # ADR-011 §5a / ZASADA NR 3: a single NR physics path (v2). It handles
+        # the PQ-only case (empty PV) identically to the former v1 — verified
+        # byte-identical (np.array_equal voltages, equal iterations). The second
+        # NR implementation has been removed (no second truth in the core).
+        p_spec, q_spec, pv_setpoints, pv_q_limits = build_power_spec_v2(
+            slack_island_nodes, pf_input.base_mva, pf_input.pq, pf_input.pv
+        )
+        apply_zip_frequency(p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz)
+        # ADR-011 §5b: one-time inverter shaping (LFSM P(f) + cosφ/Q modes);
+        # Q(U) sources are recomputed per iteration via inv_table.
+        apply_inverter_setpoint(
+            p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz
+        )
+        for idx, u_pu in pv_setpoints.items():
+            v0[idx] = u_pu * np.exp(1j * np.angle(v0[idx]))
+        if pq_indices or pv_indices:
             (
                 v,
                 converged,
@@ -142,27 +160,16 @@ class PowerFlowNewtonSolver:
                 options,
                 pf_input.base_mva,
                 node_index_to_id,
+                zip_table,
+                inv_table,
             )
         else:
-            p_spec, q_spec = build_power_spec(slack_island_nodes, pf_input.base_mva, pf_input.pq)
+            v = v0
+            converged = True
+            iterations = 0
+            max_mismatch = 0.0
+            nr_trace = []
             pv_to_pq_switches = []
-            if pq_indices:
-                v, converged, iterations, max_mismatch, nr_trace = newton_raphson_solve(
-                    ybus_pu,
-                    slack_index,
-                    pq_indices,
-                    p_spec,
-                    q_spec,
-                    v0,
-                    options,
-                    node_index_to_id,
-                )
-            else:
-                v = v0
-                converged = True
-                iterations = 0
-                max_mismatch = 0.0
-                nr_trace = []
 
         if not converged:
             iterations = int(options.max_iter)

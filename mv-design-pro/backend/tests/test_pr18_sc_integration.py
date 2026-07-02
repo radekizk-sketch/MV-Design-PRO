@@ -1047,6 +1047,13 @@ class TestResultMapper:
         assert "im" in gr["zkk_ohm"]
         assert gr["contributions_count"] >= 1
         assert gr["white_box_steps_count"] >= 7
+        # D-14b: guard sanity-bounds Ik'' wpięty na ścieżce konsumpcji (overlay/proof
+        # czytają global_results). Golden MV → Ik'' wiarygodny.
+        assert "ikss_sanity" in gr
+        assert gr["ikss_sanity"]["status"] == "zweryfikowany"
+        assert gr["ikss_sanity"]["in_range"] is True
+        assert gr["ikss_sanity"]["voltage_band"] == "SN"
+        assert gr["ikss_sanity"]["blocks_osd_package"] is False
 
     def test_mapper_deterministic(self):
         """Same binding result → same ResultSet signature."""

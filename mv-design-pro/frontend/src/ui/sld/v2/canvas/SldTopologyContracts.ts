@@ -117,6 +117,14 @@ export interface SldLabelSpec {
   readonly height: number;
   readonly preferredAnchor?: LabelAnchor | null;
   readonly lockedAnchor?: LabelAnchor | null;
+  /**
+   * Tylko dla `ownerKind === 'run'`: czy ciąg jest magistralą / głównym fiderem
+   * (`runKind === 'main_trunk'`). Pozwala warstwie kanwy pokazać RZADKĄ etykietę
+   * kabla magistrali na przeglądzie sieci (L0) — analogicznie do referencji SCADA,
+   * gdzie kable opisane są wzdłuż trasy — bez zaśmiecania widoku etykietami
+   * krótkich odgałęzień. Brak / false → etykieta ciągu pojawia się dopiero od L1.
+   */
+  readonly isTrunk?: boolean;
 }
 
 export interface SldReadabilityReport {

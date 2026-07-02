@@ -37,8 +37,23 @@ def _ohm_per_unit_from_pu(r_pu: float, x_pu: float) -> complex:
     return 1.0 / z if abs(z) > 1e-12 else complex(0.0, 0.0)
 
 
-def _build_ybus_pu(buses: list[dict[str, Any]], branches: list[dict[str, Any]]) -> tuple[np.ndarray, dict[str, int]]:
+def _build_ybus_pu(
+    buses: list[dict[str, Any]],
+    branches: list[dict[str, Any]],
+    shunts: list[dict[str, Any]] | None = None,
+) -> tuple[np.ndarray, dict[str, int]]:
     """Build admittance matrix in per-unit from ENM dict.
+
+    Supports the standard PI branch model plus two optional features required to
+    represent the IEEE MATPOWER test cases faithfully:
+
+    - Off-nominal transformer ratio: a branch may carry an ``"ratio"`` field
+      (tap on the from-side, MATPOWER convention). With series admittance ``y``
+      and per-end shunt ``y_sh`` the stamping is
+      ``Y_ii += (y + y_sh)/t^2``, ``Y_jj += y + y_sh``, ``Y_ij = Y_ji -= y/t``.
+      Lines use the default ``t = 1.0`` and reduce to the classic PI model.
+    - Bus shunt elements (capacitor banks / reactors): the optional ``shunts``
+      list adds ``g_pu + j*b_pu`` to the relevant diagonal element.
 
     Returns:
         Ybus: complex N×N matrix
@@ -60,10 +75,21 @@ def _build_ybus_pu(buses: list[dict[str, Any]], branches: list[dict[str, Any]]) 
         )
         # Half shunt admittance per side (PI-model)
         y_shunt_half = complex(0.0, float(branch.get("b_pu", 0.0)) / 2.0)
-        ybus[i, i] += y_series + y_shunt_half
+        # Off-nominal turns ratio (tap on from-side); lines default to 1.0.
+        ratio = float(branch.get("ratio", 1.0)) or 1.0
+        ybus[i, i] += (y_series + y_shunt_half) / (ratio * ratio)
         ybus[j, j] += y_series + y_shunt_half
-        ybus[i, j] -= y_series
-        ybus[j, i] -= y_series
+        ybus[i, j] -= y_series / ratio
+        ybus[j, i] -= y_series / ratio
+    for shunt in shunts or []:
+        bus_id = shunt.get("bus")
+        if bus_id not in bus_index:
+            continue
+        idx = bus_index[bus_id]
+        ybus[idx, idx] += complex(
+            float(shunt.get("g_pu", 0.0)),
+            float(shunt.get("b_pu", 0.0)),
+        )
     return ybus, bus_index
 
 
@@ -151,12 +177,13 @@ def _power_flow_newton_raphson(
     sources = enm.get("sources", [])
     generators = enm.get("generators", [])
     loads = enm.get("loads", [])
+    shunts = enm.get("shunts", [])
     base_mva = float(enm.get("header", {}).get("base_mva", 100.0))
 
     if not buses:
         return {"buses": {}, "converged": True, "iterations": 0, "trace": []}
 
-    ybus, bus_index = _build_ybus_pu(buses, branches)
+    ybus, bus_index = _build_ybus_pu(buses, branches, shunts)
     n = len(buses)
 
     slack_indices, pv_indices, pq_indices, _s_inj, v_spec, p_spec = _classify_buses(
@@ -205,7 +232,9 @@ def _power_flow_newton_raphson(
         for k, i in enumerate(pq_indices):
             dq[k] = q_sched[i] - q_calc[i]
 
-        max_mismatch = max(np.max(np.abs(dp)) if len(dp) > 0 else 0.0, np.max(np.abs(dq)) if len(dq) > 0 else 0.0)
+        max_mismatch = max(
+            np.max(np.abs(dp)) if len(dp) > 0 else 0.0, np.max(np.abs(dq)) if len(dq) > 0 else 0.0
+        )
         trace.append({"iteration": iteration, "max_mismatch_pu": float(max_mismatch)})
 
         if max_mismatch < tolerance:
@@ -226,9 +255,13 @@ def _power_flow_newton_raphson(
                 if i == j:
                     jac[k, col] = -q_calc[i] - v_mag[i] ** 2 * ybus[i, i].imag
                 else:
-                    jac[k, col] = v_mag[i] * v_mag[j] * (
-                        ybus[i, j].real * math.sin(v_ang[i] - v_ang[j])
-                        - ybus[i, j].imag * math.cos(v_ang[i] - v_ang[j])
+                    jac[k, col] = (
+                        v_mag[i]
+                        * v_mag[j]
+                        * (
+                            ybus[i, j].real * math.sin(v_ang[i] - v_ang[j])
+                            - ybus[i, j].imag * math.cos(v_ang[i] - v_ang[j])
+                        )
                     )
             for col, j in enumerate(pq_indices):
                 if i == j:
@@ -244,13 +277,19 @@ def _power_flow_newton_raphson(
                 if i == j:
                     jac[n_non_slack + k, col] = p_calc[i] - v_mag[i] ** 2 * ybus[i, i].real
                 else:
-                    jac[n_non_slack + k, col] = -v_mag[i] * v_mag[j] * (
-                        ybus[i, j].real * math.cos(v_ang[i] - v_ang[j])
-                        + ybus[i, j].imag * math.sin(v_ang[i] - v_ang[j])
+                    jac[n_non_slack + k, col] = (
+                        -v_mag[i]
+                        * v_mag[j]
+                        * (
+                            ybus[i, j].real * math.cos(v_ang[i] - v_ang[j])
+                            + ybus[i, j].imag * math.sin(v_ang[i] - v_ang[j])
+                        )
                     )
             for col, j in enumerate(pq_indices):
                 if i == j:
-                    jac[n_non_slack + k, n_non_slack + col] = q_calc[i] / v_mag[i] - v_mag[i] * ybus[i, i].imag
+                    jac[n_non_slack + k, n_non_slack + col] = (
+                        q_calc[i] / v_mag[i] - v_mag[i] * ybus[i, i].imag
+                    )
                 else:
                     jac[n_non_slack + k, n_non_slack + col] = v_mag[i] * (
                         ybus[i, j].real * math.sin(v_ang[i] - v_ang[j])
@@ -263,8 +302,10 @@ def _power_flow_newton_raphson(
             dx = np.linalg.solve(jac, mismatch_vec)
         except np.linalg.LinAlgError:
             return {
-                "buses": {b["ref_id"]: {"v_pu": float(v_mag[i]), "angle_deg": math.degrees(v_ang[i])}
-                          for i, b in enumerate(buses)},
+                "buses": {
+                    b["ref_id"]: {"v_pu": float(v_mag[i]), "angle_deg": math.degrees(v_ang[i])}
+                    for i, b in enumerate(buses)
+                },
                 "converged": False,
                 "iterations": iteration,
                 "trace": trace,
@@ -313,7 +354,7 @@ def _power_flow_unbalanced_bfs(enm: dict[str, Any]) -> dict[str, Any]:
     branch_specs = []
     for branch in branches:
         # Convert pu to ohm using base
-        z_base = (base_kv ** 2) / base_mva
+        z_base = (base_kv**2) / base_mva
         branch_specs.append(
             UnbalancedBranchSpec(
                 branch_id=str(branch["ref_id"]),
@@ -353,7 +394,10 @@ def _power_flow_unbalanced_bfs(enm: dict[str, Any]) -> dict[str, Any]:
     return {
         "buses": {
             b.bus_id: {
-                "v_pu": (b.voltage_pu_magnitude_a + b.voltage_pu_magnitude_b + b.voltage_pu_magnitude_c) / 3.0,
+                "v_pu": (
+                    b.voltage_pu_magnitude_a + b.voltage_pu_magnitude_b + b.voltage_pu_magnitude_c
+                )
+                / 3.0,
                 "angle_deg": b.angle_deg_a,  # phase A as reference
             }
             for b in result.bus_results
@@ -366,7 +410,9 @@ def _power_flow_unbalanced_bfs(enm: dict[str, Any]) -> dict[str, Any]:
 
 def _bus_voltage_lookup(enm: dict[str, Any]) -> dict[str, float]:
     return {
-        str(bus["ref_id"]): float(bus.get("u_n_kv", bus.get("voltage_kv", enm.get("header", {}).get("base_kv", 15.0))))
+        str(bus["ref_id"]): float(
+            bus.get("u_n_kv", bus.get("voltage_kv", enm.get("header", {}).get("base_kv", 15.0)))
+        )
         for bus in enm.get("buses", [])
     }
 
@@ -473,9 +519,15 @@ def build_short_circuit_graph_from_enm(enm: dict[str, Any]) -> NetworkGraph:
                 from_node_id=str(transformer["from_bus"]),
                 to_node_id=str(transformer["to_bus"]),
                 in_service=bool(transformer.get("in_service", True)),
-                rated_power_mva=float(transformer.get("rated_power_mva", transformer.get("sn_mva", 0.0))),
-                voltage_hv_kv=float(transformer.get("voltage_hv_kv", transformer.get("primary_kv", 0.0))),
-                voltage_lv_kv=float(transformer.get("voltage_lv_kv", transformer.get("secondary_kv", 0.0))),
+                rated_power_mva=float(
+                    transformer.get("rated_power_mva", transformer.get("sn_mva", 0.0))
+                ),
+                voltage_hv_kv=float(
+                    transformer.get("voltage_hv_kv", transformer.get("primary_kv", 0.0))
+                ),
+                voltage_lv_kv=float(
+                    transformer.get("voltage_lv_kv", transformer.get("secondary_kv", 0.0))
+                ),
                 uk_percent=float(transformer.get("uk_percent", transformer.get("ukr_pct", 0.0))),
                 pk_kw=float(transformer.get("pk_kw", transformer.get("p_k_kw", 0.0))),
                 i0_percent=float(transformer.get("i0_percent", 0.0)),

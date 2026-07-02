@@ -16,11 +16,16 @@
 import type {
   Bay,
   BayDeviceState,
+  Branch,
   Bus,
   EnergyNetworkModel,
   Substation,
   Transformer,
 } from '../../../../types/enm';
+import {
+  getMetric,
+  type RawOverlayPayload,
+} from '../../../sld-overlay/rawResultOverlayStore';
 
 import type {
   BayFieldRole,
@@ -59,9 +64,13 @@ export interface BuildCanonicalGpzOptions {
  * Throws gdy substation NIE jest typu 'gpz' (mini-RMU używa innego renderera).
  */
 export function buildCanonicalGpzProps(
-  enm: Pick<EnergyNetworkModel, 'substations' | 'bays' | 'transformers' | 'buses' | 'generators'>,
+  enm: Pick<
+    EnergyNetworkModel,
+    'substations' | 'bays' | 'transformers' | 'buses' | 'generators' | 'branches'
+  >,
   substationRef: string,
   options: BuildCanonicalGpzOptions,
+  overlay?: RawOverlayPayload | null,
 ): GpzCanonicalRendererProps {
   const substation = (enm.substations ?? []).find((s) => s.ref_id === substationRef);
   if (!substation) {
@@ -79,7 +88,8 @@ export function buildCanonicalGpzProps(
     substation.transformer_refs?.includes(t.ref_id),
   );
 
-  const lvSections = buildLvSections(substation, allBays, enm.buses ?? []);
+  const allBranches = enm.branches ?? [];
+  const lvSections = buildLvSections(substation, allBays, enm.buses ?? [], allBranches, overlay ?? null);
   // Mapowanie sectionId po `bus_ref` z `substation.gpz_sections` — używane do
   // przypisania TR do sekcji wg `lv_bus_ref`.
   const sectionIdByLvBusRef = new Map<string, string>();
@@ -87,12 +97,18 @@ export function buildCanonicalGpzProps(
     if (sec.bus_ref) sectionIdByLvBusRef.set(sec.bus_ref, sec.section_id);
   }
 
-  const transformers = buildTransformers(allTransformers, sectionIdByLvBusRef);
-  // Inżynierski wymóg: TR WN/SN przyłączony do szyny SN przez pole TR z
-  // aparaturą (DS-CB-CT-ES). Pole TR jest renderowane przez `TrFieldColumn`
-  // w `GpzCanonicalRenderer` (nad szyną SN, pomiędzy TR a sekcją SN) —
-  // adapter NIE syntezuje pola TR jako bay (uniknięcie podwójnego renderu
-  // poniżej szyny SN).
+  // Reconciliation TR-bay ↔ wieża: gdy transformator ma pole `bay_role:"TR"`
+  // (jego ref w `equipment_refs` pola TR), renderuje się WYŁĄCZNIE przez to
+  // pole (kolumna Q1→Q0→CT→ES + symbol TR na osi pola). Wieżę (TwoBusTrColumn /
+  // HvTowerColumn) wtedy POMIJAMY — eliminacja podwójnej reprezentacji. Gdy
+  // transformator NIE ma pola TR (starsze snapshoty) → wieża zostaje (brak
+  // regresji). Deterministyczne: czysta funkcja zbioru refów z pól TR.
+  const transformerRefsWithTrBay = collectTransformerRefsWithTrBay(allBays);
+  const transformers = buildTransformers(
+    allTransformers,
+    sectionIdByLvBusRef,
+    transformerRefsWithTrBay,
+  );
 
   return {
     id: substation.ref_id,
@@ -108,7 +124,7 @@ export function buildCanonicalGpzProps(
     transformers,
     sections: lvSections,
     couplers: buildCouplers(substation, allBays),
-    hvSections: buildHvSections(substation, allBays, enm.buses ?? []),
+    hvSections: buildHvSections(substation, allBays, enm.buses ?? [], allBranches, overlay ?? null),
   };
 }
 
@@ -180,6 +196,7 @@ function mergeBaysWithFieldSpecs(station: Substation, bays: readonly Bay[]): Bay
       bus_ref: busRef,
       gpz_section_id: readString(spec.gpz_section_id),
       equipment_refs: readStringArray(spec.equipment_refs),
+      protection_codes: readStringArray(spec.protection_codes),
       bay_number: readString(spec.bay_number),
       feeder_short_name: readString(spec.feeder_short_name),
       outgoing_destination_ref: readString(spec.outgoing_destination_ref),
@@ -188,11 +205,29 @@ function mergeBaysWithFieldSpecs(station: Substation, bays: readonly Bay[]): Bay
   return [...byRef.values()];
 }
 
+/**
+ * Zbiór ref_id transformatorów, które mają pole `bay_role:"TR"` (transformator
+ * w `equipment_refs` pola). Te transformatory renderują się przez pole TR, nie
+ * przez wieżę — `buildTransformers` je pomija. Deterministyczne (czysta funkcja).
+ */
+function collectTransformerRefsWithTrBay(bays: readonly Bay[]): ReadonlySet<string> {
+  const refs = new Set<string>();
+  for (const bay of bays) {
+    if (bay.bay_role !== 'TR') continue;
+    for (const ref of bay.equipment_refs ?? []) {
+      if (ref) refs.add(ref);
+    }
+  }
+  return refs;
+}
+
 function buildTransformers(
   transformers: readonly Transformer[],
   sectionIdByLvBusRef: ReadonlyMap<string, string>,
+  transformerRefsWithTrBay: ReadonlySet<string>,
 ): CanonicalGpzTransformer[] {
   return transformers
+    .filter((tr) => !transformerRefsWithTrBay.has(tr.ref_id))
     .slice()
     .sort((a, b) => a.ref_id.localeCompare(b.ref_id))
     .map((tr, idx) => ({
@@ -219,6 +254,8 @@ function buildLvSections(
   gpz: Substation,
   bays: readonly Bay[],
   buses: readonly Bus[],
+  branches: readonly Branch[],
+  overlay: RawOverlayPayload | null,
 ): CanonicalGpzSection[] {
   const sectionDefs = gpz.gpz_sections ?? [];
   const lvBays = bays.filter((b) => isLvBay(b, buses));
@@ -236,7 +273,7 @@ function buildLvSections(
       order: 1,
       label: 'S1',
       busVoltageKv: defaultBus?.voltage_kv ?? 15,
-      bays: lvBays.map((b) => buildBay(b, buses)),
+      bays: lvBays.map((b) => buildBay(b, buses, branches, overlay)),
     }];
   }
 
@@ -253,7 +290,7 @@ function buildLvSections(
         order: sec.order,
         label: sec.name ?? `S${idx + 1}`,
         busVoltageKv: bus?.voltage_kv ?? 15,
-        bays: sectionBays.map((b) => buildBay(b, buses)),
+        bays: sectionBays.map((b) => buildBay(b, buses, branches, overlay)),
       };
     });
 }
@@ -293,6 +330,8 @@ function buildHvSections(
   gpz: Substation,
   bays: readonly Bay[],
   buses: readonly Bus[],
+  branches: readonly Branch[],
+  overlay: RawOverlayPayload | null,
 ): CanonicalGpzHvSection[] {
   const hvSectionDefs = gpz.gpz_hv_sections ?? [];
   if (hvSectionDefs.length === 0) {
@@ -311,12 +350,17 @@ function buildHvSections(
         order: sec.order,
         label: sec.name ?? `HV-${idx + 1}`,
         busVoltageKv: bus?.voltage_kv ?? 110,
-        bays: hvBays.map((b) => buildBay(b, buses)),
+        bays: hvBays.map((b) => buildBay(b, buses, branches, overlay)),
       };
     });
 }
 
-function buildBay(bay: Bay, _buses: readonly Bus[]): CanonicalGpzBay {
+function buildBay(
+  bay: Bay,
+  _buses: readonly Bus[],
+  branches: readonly Branch[],
+  overlay: RawOverlayPayload | null,
+): CanonicalGpzBay {
   const fieldRole = mapBayRoleToFieldRole(bay.bay_role);
   const runtime = bay.runtime_state ?? null;
   return {
@@ -330,8 +374,8 @@ function buildBay(bay: Bay, _buses: readonly Bus[]): CanonicalGpzBay {
     esState: extractEsState(runtime),
     qDesignations: deriveQDesignations(fieldRole),
     statusFlags: extractStatusFlags(runtime),
-    measurements: extractMeasurements(runtime),
-    controlMode: extractControlMode(runtime),
+    protectionCodes: bay.protection_codes ?? [],
+    measurements: extractBayMeasurements(bay, fieldRole, branches, overlay),
     inManipulation: extractInManipulation(runtime),
   };
 }
@@ -460,22 +504,86 @@ function extractStatusFlags(_runtime: unknown): StatusFlag[] {
   return [];
 }
 
-function extractMeasurements(_runtime: unknown): BayMeasurements | null {
-  // TO-DO: mapping z runtime_state.measurements (gdy ENM rozszerzy o measurements
-  // strukturę). Aktualnie zwracamy null; renderer pokaże empty panel (NIE placeholder).
-  return null;
+/* =============================================================================
+   Power-flow overlay → bay measurements (interpretacja wyniku solwera)
+   ============================================================================= */
+
+/**
+ * Deterministyczne rozwiązanie pola → branch odpływu.
+ *
+ * NIE zgaduje: zwraca wynik wyłącznie gdy DOKŁADNIE jeden branch pasuje.
+ *   - kandydaci = branche, których jeden koniec (from/to) == `bay.bus_ref`,
+ *   - jeśli pole ma `outgoing_destination_ref`, zawężamy do kandydatów,
+ *     których DRUGI koniec == ten ref (rozstrzygnięcie wieloznaczności),
+ *   - dokładnie 1 kandydat → zwróć { branchRef, gpzAtFrom }, w przeciwnym
+ *     razie → null (≥2 kandydatów bez disambiguacji lub brak → brak zgadywania).
+ *
+ * `gpzAtFrom` = czy szyna pola jest endpointem `from_bus_ref` branchu (dokumentuje
+ * stronę GPZ; raw overlay i tak ma jedną wartość P/Q/I na element).
+ */
+export function resolveFeederBranchRef(
+  bay: Pick<Bay, 'bus_ref' | 'outgoing_destination_ref'>,
+  branches: readonly Branch[],
+): { branchRef: string; gpzAtFrom: boolean } | null {
+  const busRef = bay.bus_ref;
+  if (!busRef) return null;
+
+  let candidates = branches.filter(
+    (b) => b.from_bus_ref === busRef || b.to_bus_ref === busRef,
+  );
+
+  const destinationRef = bay.outgoing_destination_ref ?? null;
+  if (destinationRef) {
+    candidates = candidates.filter((b) => {
+      const otherEnd = b.from_bus_ref === busRef ? b.to_bus_ref : b.from_bus_ref;
+      return otherEnd === destinationRef;
+    });
+  }
+
+  if (candidates.length !== 1) return null;
+  const branch = candidates[0];
+  return { branchRef: branch.ref_id, gpzAtFrom: branch.from_bus_ref === busRef };
 }
 
-function extractControlMode(
-  runtime: { control_availability?: 'dostepne' | 'czesciowo_dostepne' | 'niedostepne' } | null,
-): CanonicalGpzBay['controlMode'] {
-  if (!runtime) return 'unknown';
-  switch (runtime.control_availability) {
-    case 'dostepne': return 'remote';
-    case 'czesciowo_dostepne': return 'remote';
-    case 'niedostepne': return 'local';
-    default: return 'unknown';
+/** Skończona liczba albo null (NIE NaN/Infinity → traktujemy jako brak). */
+function finiteOrNull(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Wypełnia pomiary P/Q/I pola z gotowego raw overlay rozpływu mocy.
+ *
+ * Interpretacja istniejącego wyniku solwera — BEZ fizyki, BEZ heurystyk:
+ *   - tylko pola liniowe (LINE_OUT/LINE_IN/LINE_BRANCH) — pozostałe role nie mają
+ *     jednoznacznego pojedynczego branchu odpływu,
+ *   - branch musi być rozwiązany jednoznacznie (`resolveFeederBranchRef`),
+ *   - czytamy P_MW / Q_Mvar / I_A z overlay; brak metryki → to pole = null,
+ *   - mapujemy I_A na `i1A` (rozpływ dodatniej składowej = jedna zbalansowana
+ *     wartość prądu; NIE fabrykujemy asymetrii fazowej i2A/i3A ani napięć),
+ *   - gdy brak overlay / brak branchu / wszystkie 3 puste → null (panel pusty,
+ *     uczciwie).
+ */
+export function extractBayMeasurements(
+  bay: Pick<Bay, 'bus_ref' | 'outgoing_destination_ref'>,
+  fieldRole: BayFieldRole,
+  branches: readonly Branch[],
+  overlay: RawOverlayPayload | null,
+): BayMeasurements | null {
+  if (!overlay) return null;
+  if (fieldRole !== 'LINE_OUT' && fieldRole !== 'LINE_IN' && fieldRole !== 'LINE_BRANCH') {
+    return null;
   }
+
+  const resolved = resolveFeederBranchRef(bay, branches);
+  if (!resolved) return null;
+
+  const pMw = finiteOrNull(getMetric(overlay, resolved.branchRef, 'P_MW')?.value);
+  const qMvar = finiteOrNull(getMetric(overlay, resolved.branchRef, 'Q_Mvar')?.value);
+  const i1A = finiteOrNull(getMetric(overlay, resolved.branchRef, 'I_A')?.value);
+
+  if (pMw === null && qMvar === null && i1A === null) return null;
+
+  return { pMw, qMvar, i1A };
 }
 
 function extractInManipulation(

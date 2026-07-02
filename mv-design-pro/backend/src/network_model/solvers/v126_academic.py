@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import cmath
 import hashlib
 import json
 import math
@@ -31,6 +32,37 @@ def _round(value: float, digits: int = 6) -> float:
 
 def _status(ok: bool) -> str:
     return "zgodny" if ok else "niezgodny"
+
+
+# D-14 (K-08): jednolita warstwa sanity-bounds dla analiz V12.6. Status wg §6.1:
+# "zweryfikowany" (w zakresie) / "poza zakresem wiarygodności" (przekroczona granica
+# fizyczna) / "dane niekompletne" (brak wejść do oceny). NIE liczy fizyki — ocenia
+# wiarygodność już policzonych wyników, blokuje absurdy przed pakietem OSD (DEF-01).
+def _sanity_block(
+    checks: list[tuple[str, bool, str]],
+    *,
+    has_inputs: bool = True,
+) -> JsonDict:
+    """checks: lista (nazwa, w_zakresie, opis_pl). Zwraca blok wiarygodności."""
+    if not has_inputs:
+        return {
+            "status": "dane niekompletne",
+            "violations": [],
+            "checks_total": len(checks),
+            "checks_passed": 0,
+        }
+    violations = [{"check": name, "detail_pl": detail} for name, ok, detail in checks if not ok]
+    return {
+        "status": "zweryfikowany" if not violations else "poza zakresem wiarygodności",
+        "violations": violations,
+        "checks_total": len(checks),
+        "checks_passed": sum(1 for _, ok, _ in checks if ok),
+    }
+
+
+def _finite(*values: float) -> bool:
+    """True gdy wszystkie wartości są liczbami skończonymi (nie NaN/inf)."""
+    return all(isinstance(v, int | float) and math.isfinite(v) for v in values)
 
 
 class TraceBuilder:
@@ -72,12 +104,16 @@ class V126AcademicSolver:
         trace = TraceBuilder(analysis_type)
         if analysis_type == V126AnalysisType.POWER_QUALITY_HARMONICS:
             result = self._power_quality(model, trace)
+        elif analysis_type == V126AnalysisType.SSCI_IMPEDANCE:
+            result = self._ssci_impedance(model, trace)
         elif analysis_type == V126AnalysisType.VOLTAGE_STABILITY:
             result = self._voltage_stability(model, trace)
         elif analysis_type == V126AnalysisType.RELIABILITY_CONTINGENCY:
             result = self._reliability(model, trace)
         elif analysis_type == V126AnalysisType.EARTHING_SAFETY:
             result = self._earthing(model, trace)
+        elif analysis_type == V126AnalysisType.NEUTRAL_EARTHING_DESIGN:
+            result = self._neutral_earthing_design(model, trace)
         elif analysis_type == V126AnalysisType.INSULATION_COORDINATION:
             result = self._insulation(model, trace)
         elif analysis_type == V126AnalysisType.EARTH_FAULT_DETECTION:
@@ -116,7 +152,9 @@ class V126AcademicSolver:
         return bus.nominal_kv if bus is not None else model.buses[0].nominal_kv
 
     def _branch_z_ohm(self, branch: Any) -> complex:
-        return complex(branch.r_ohm_per_km * branch.length_km, branch.x_ohm_per_km * branch.length_km)
+        return complex(
+            branch.r_ohm_per_km * branch.length_km, branch.x_ohm_per_km * branch.length_km
+        )
 
     def _ybus(self, model: V126AcademicInput, harmonic: float = 1.0) -> np.ndarray[Any, Any]:
         size = len(model.buses)
@@ -129,7 +167,10 @@ class V126AcademicSolver:
             j = index.get(branch.to_bus_ref)
             if i is None or j is None:
                 continue
-            z = complex(branch.r_ohm_per_km * branch.length_km, harmonic * branch.x_ohm_per_km * branch.length_km)
+            z = complex(
+                branch.r_ohm_per_km * branch.length_km,
+                harmonic * branch.x_ohm_per_km * branch.length_km,
+            )
             if abs(z) == 0:
                 continue
             y = 1 / z
@@ -144,7 +185,10 @@ class V126AcademicSolver:
             if i is None or j is None:
                 continue
             z_base = (transformer.uhv_kv**2) / transformer.sn_mva
-            z = complex(transformer.pk_kw / (1000.0 * transformer.sn_mva**2), transformer.uk_percent / 100 * z_base)
+            z = complex(
+                transformer.pk_kw / (1000.0 * transformer.sn_mva**2),
+                transformer.uk_percent / 100 * z_base,
+            )
             if abs(z) == 0:
                 continue
             y = 1 / complex(z.real, harmonic * z.imag)
@@ -156,7 +200,86 @@ class V126AcademicSolver:
             ybus[0, 0] += 1e6
         return ybus
 
-    def _solve_linear(self, ybus: np.ndarray[Any, Any], injections: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
+    def _grid_source_shunt_admittance(
+        self, model: V126AcademicInput, harmonic: float
+    ) -> dict[int, complex]:
+        """Frequency-dependent grid-source shunt admittance Y_src(f) per bus.
+
+        For every bus that carries a grid fault level (``fault_level_mva``), the
+        external grid behind it is a series Thevenin source impedance
+        ``Z_src(f) = R_src + j*(f/50)*X_src`` whose admittance ``Y_src = 1/Z_src``
+        is shunted to ground at that bus (the network reference). The 50 Hz
+        ``R_src``/``X_src`` reuse the EXACT same split as
+        :meth:`_source_impedance` (``Z = Un^2/S_sc``, ``R = 0.15 Z``,
+        ``X = 0.99 Z``) so there is one truth for the grid impedance. The
+        reactance scales linearly with frequency (``harmonic = f/50``); the
+        resistance is held constant (skin effect is out of scope — stated
+        assumption). This shunt is added ONLY on the SSCI path so the existing
+        power-quality Z-scan stays byte-identical.
+        """
+        index = self._bus_index(model)
+        shunt: dict[int, complex] = {}
+        for bus in model.buses:
+            if not bus.fault_level_mva:
+                continue
+            bus_idx = index.get(bus.ref)
+            if bus_idx is None:
+                continue
+            z = bus.nominal_kv**2 / bus.fault_level_mva
+            z_src = complex(0.15 * z, harmonic * 0.99 * z)
+            if abs(z_src) == 0:
+                continue
+            shunt[bus_idx] = 1.0 / z_src
+        return shunt
+
+    def _driving_point_impedance(
+        self,
+        model: V126AcademicInput,
+        harmonic: float,
+        *,
+        with_source_shunt: bool,
+    ) -> np.ndarray[Any, Any]:
+        """Driving-point bus-impedance diagonal at one harmonic.
+
+        Builds the frequency-dependent ``Y_bus(f)`` via :meth:`_ybus` and inverts
+        it (``Z_bus = pinv(Y_bus)``), returning the diagonal ``Z_bus[i, i]`` (the
+        driving-point impedance seen at each bus). Shared by the power-quality
+        Z-scan and the SSCI grid-impedance sweep.
+
+        ``with_source_shunt`` controls whether the frequency-dependent grid-source
+        shunt ``Y_src(f)`` is added at the grid buses (see
+        :meth:`_grid_source_shunt_admittance`). The power-quality scan calls this
+        with ``False`` (no shunt) so its output is byte-identical to before; the
+        SSCI sweep calls it with ``True`` to obtain the correct system Thevenin
+        impedance the converter sees.
+
+        On the SSCI path the artificial 1e6 reference stiffening that
+        :meth:`_ybus` puts on bus 0 (a numerical "infinite bus" used only to make
+        the harmonic-scan matrix non-singular) is REMOVED and the physical finite
+        grid Thevenin ``Y_src(f)`` is used as the grounding path instead — so the
+        driving-point impedance reflects the real (finite) grid strength rather
+        than a near-short. If the model carries no grid-source bus at all, a tiny
+        reference is retained to keep the matrix invertible (stated fallback,
+        affects only an otherwise-floating network).
+        """
+        ybus = self._ybus(model, harmonic)
+        if with_source_shunt:
+            # Undo the artificial 1e6 reference (power-quality-only stiffening) so
+            # the physical grid Thevenin governs the SSCI driving-point impedance.
+            if len(model.buses):
+                ybus[0, 0] -= 1e6
+            shunts = self._grid_source_shunt_admittance(model, harmonic)
+            for bus_idx, y_src in shunts.items():
+                ybus[bus_idx, bus_idx] += y_src
+            if not shunts and len(model.buses):
+                # No grid-source bus: keep a small reference to avoid singularity.
+                ybus[0, 0] += 1e-6
+        zbus = np.linalg.pinv(ybus)
+        return np.diag(zbus)
+
+    def _solve_linear(
+        self, ybus: np.ndarray[Any, Any], injections: np.ndarray[Any, Any]
+    ) -> np.ndarray[Any, Any]:
         try:
             return np.linalg.solve(ybus, injections)
         except np.linalg.LinAlgError:
@@ -203,7 +326,9 @@ class V126AcademicSolver:
                 bus_idx = index[bus.ref]
                 voltage = voltages[bus_idx] / 1000.0
                 magnitude_kv = abs(voltage)
-                phase = math.degrees(math.atan2(voltage.imag, voltage.real)) if magnitude_kv else 0.0
+                phase = (
+                    math.degrees(math.atan2(voltage.imag, voltage.real)) if magnitude_kv else 0.0
+                )
                 bus_results[bus.ref]["u_h"].append(
                     {"h": h, "magnitude_kv": _round(magnitude_kv), "phase_deg": _round(phase, 3)}
                 )
@@ -223,17 +348,21 @@ class V126AcademicSolver:
                 limits.append("IEEE 519 TDD > 5%")
             bus_results[bus.ref]["thd_u_percent"] = _round(thd, 4)
             bus_results[bus.ref]["tdd_percent"] = _round(tdd, 4)
-            bus_results[bus.ref]["k_factor"] = _round(math.sqrt(k_factor[bus.ref]) / load_current, 4)
+            bus_results[bus.ref]["k_factor"] = _round(
+                math.sqrt(k_factor[bus.ref]) / load_current, 4
+            )
             bus_results[bus.ref]["compatibility_status"] = "niezgodny" if limits else "zgodny"
             bus_results[bus.ref]["violated_limits"] = limits
 
         z50: dict[str, float] = {}
         for f_hz in range(50, 2501, 10):
             harmonic = f_hz / model.base_frequency_hz
-            ybus = self._ybus(model, harmonic)
-            zbus = np.linalg.pinv(ybus)
+            # Shared driving-point-impedance helper WITHOUT the grid-source shunt:
+            # the power-quality Z-scan keeps its exact prior numerics (byte-identical
+            # golden). The SSCI sweep calls the same helper WITH the shunt.
+            zdiag = self._driving_point_impedance(model, harmonic, with_source_shunt=False)
             for bus in model.buses:
-                z = zbus[index[bus.ref], index[bus.ref]]
+                z = zdiag[index[bus.ref]]
                 z_abs = abs(z)
                 if f_hz == 50:
                     z50[bus.ref] = max(z_abs, 1e-9)
@@ -255,7 +384,377 @@ class V126AcademicSolver:
             {"buses_evaluated": len(bus_results)},
             "kV/kV daje %, A/A daje %.",
         )
-        return {"nodes": list(bus_results.values())}
+        nodes = list(bus_results.values())
+        # K-08: sanity-bounds wiarygodności PQ — THD/TDD/K-factor skończone i fizyczne
+        # (IEC 61000 / PN-EN 50160 to limity zgodności; tu sprawdzamy granicę wiarygodności).
+        thd_values = [float(n["thd_u_percent"]) for n in nodes]
+        tdd_values = [float(n["tdd_percent"]) for n in nodes]
+        kf_values = [float(n["k_factor"]) for n in nodes]
+        sanity = _sanity_block(
+            [
+                ("thd_finite", _finite(*thd_values), "THD_U nieskończone/NaN"),
+                ("thd_max", max(thd_values, default=0.0) <= 100.0, "THD_U > 100% (niefizyczne)"),
+                ("tdd_finite", _finite(*tdd_values), "TDD nieskończone/NaN"),
+                (
+                    "k_factor_nonneg",
+                    _finite(*kf_values) and all(v >= 0.0 for v in kf_values),
+                    "K-factor < 0 lub nieskończony",
+                ),
+            ],
+            has_inputs=len(model.harmonic_sources) > 0,
+        )
+        return {"nodes": nodes, "sanity": sanity}
+
+    # =========================================================================
+    # D-03 SSCI — impedance-based stability (PHYSICS half: Z_grid, Z_conv, L).
+    # The Nyquist / minor-loop verdict is a SEPARATE analysis-layer follow-up;
+    # this solver only emits the white-box impedance arrays it will consume.
+    # =========================================================================
+
+    @staticmethod
+    def _phasor(z: complex) -> JsonDict:
+        """Serialize a complex impedance/gain as {re, im, mag, phase_deg}."""
+        mag = abs(z)
+        phase = math.degrees(math.atan2(z.imag, z.real)) if mag else 0.0
+        return {
+            "re": _round(z.real),
+            "im": _round(z.imag),
+            "mag": _round(mag),
+            "phase_deg": _round(phase, 3),
+        }
+
+    def _ssci_frequencies_hz(self) -> list[float]:
+        """Sub-synchronous-focused, log-spaced sweep ~1..250 Hz (61 points).
+
+        Dense enough to resolve the PLL-band behaviour (negative-resistance
+        region below f_pll) and the low-frequency minor-loop interaction. The
+        vector is fixed and deterministic (no input-dependent point selection).
+        """
+        lo, hi, n = 1.0, 250.0, 61
+        step = (math.log10(hi) - math.log10(lo)) / (n - 1)
+        return [round(10 ** (math.log10(lo) + step * k), 4) for k in range(n)]
+
+    def _z_conv_components(self, converter: Any, f_hz: float) -> tuple[complex, dict[str, complex]]:
+        """Positive-sequence small-signal output impedance Z_conv(jw) of one
+        grid-following current-controlled VSC at frequency ``f_hz`` (ohms), plus
+        the intermediate transfer functions (for the white-box trace).
+
+        MODEL (impedance-based SSCI; positive-sequence reduced form):
+        Sun (2011) "Impedance-Based Stability Criterion for Grid-Connected
+        Inverters", IEEE TPEL 26(11); Cespedes & Sun (2014) "Impedance Modeling
+        and Analysis of Grid-Connected Voltage-Source Converters", IEEE TPEL
+        29(3); Wen et al. (2016) "Analysis of D-Q Small-Signal Impedance of
+        Grid-Tied Inverters", IEEE TPEL 31(1).
+
+            Z_conv(jw) = [ Z_f(jw) + G_d(jw)*G_ci(jw) ]
+                         / [ 1 - G_d(jw)*H_pll(jw)*(I0*G_ci(jw) - V0)/V0 ]
+
+        where (all impedances per-unit on Z_base = Un^2/Sn, then scaled to ohms):
+          - Z_f(jw) = R_f + j*w_pu*L_f          physical LCL/L filter (pu),
+            w_pu = w / w_base, w_base = 2*pi*f_base;
+          - G_ci(jw) = a_ci*(L_f + R_f/(j*w_pu)) IMC-tuned current PI in pu,
+            a_ci = 2*pi*f_ci / w_base (current-loop crossover); equivalently
+            K_p = w_ci*L_f, K_i = w_ci*R_f with the loop gain G_ci/Z_f = a_ci/(j*w_pu);
+          - G_d(jw) = exp(-j*w*T_d)              control/PWM delay, T_d = control_delay_ms*1e-3;
+          - H_pll(jw) = a_pll/(j*w_pu + a_pll)   PLL closed loop, a_pll = 2*pi*f_pll / w_base;
+          - V0, I0                               terminal voltage / current at the
+            operating point (pu). The denominator PLL term, scaled by the
+            operating-point current I0, is the operating-point-dependent coupling
+            that creates the sub-synchronous negative-resistance region (the SSCI
+            mechanism). Outside the PLL band H_pll -> 0 (coupling vanishes); inside
+            the current-loop band G_ci is large (current-source-like high Z); as
+            w -> inf, G_ci/Z_f -> 0 so Z_conv -> Z_f.
+
+        ASSUMPTIONS (stated, no fabrication):
+          - positive-sequence SISO reduction of the full dq impedance (the
+            dominant axis for sub-synchronous SSCI); the dq cross-coupling is
+            folded into the single PLL term above (Cespedes-Sun positive-seq form);
+          - IMC current-loop tuning K_p=w_ci*L_f, K_i=w_ci*R_f (one-degree-of-
+            freedom PI; the standard textbook tuning, Yazdani & Iravani 2010 ch.8);
+          - control delay T_d = 0 if control_delay_ms is None (delay term G_d = 1);
+          - outer voltage loop included as a low-frequency stiffening of the
+            current reference ONLY when voltage_loop_bandwidth_hz is present (see
+            below); omitted cleanly otherwise;
+          - resistance R_f is frequency-independent (skin effect out of scope).
+
+        MANDATORY card fields: current_loop_bandwidth_hz, pll_bandwidth_hz,
+        filter_l_pu. Missing any of these raises ValueError (caught by the caller
+        and surfaced as missing-data — NO fallback / NO fabricated value).
+        """
+        f_ci = converter.current_loop_bandwidth_hz
+        f_pll = converter.pll_bandwidth_hz
+        l_f = converter.filter_l_pu
+        missing = [
+            name
+            for name, value in (
+                ("current_loop_bandwidth_hz", f_ci),
+                ("pll_bandwidth_hz", f_pll),
+                ("filter_l_pu", l_f),
+            )
+            if value is None
+        ]
+        if missing:
+            raise ValueError(
+                "Brak obowiazkowych pol karty falownika dla Z_conv(f): " + ", ".join(missing)
+            )
+        r_f = converter.filter_r_pu if converter.filter_r_pu is not None else 0.0
+        t_d = converter.control_delay_ms * 1e-3 if converter.control_delay_ms is not None else 0.0
+
+        w = 2.0 * math.pi * f_hz
+        w_base = 2.0 * math.pi * 50.0
+        w_pu = w / w_base
+        s_pu = complex(0.0, w_pu)
+        a_ci = 2.0 * math.pi * f_ci / w_base
+        a_pll = 2.0 * math.pi * f_pll / w_base
+
+        # Operating point (pu): V0 at rated (1.0); I0 = |S|/V0 from the converter
+        # P/Q if given, else rated injection (1.0). No physics recomputed here —
+        # the values come from the model/params.
+        v0 = 1.0
+        if converter.p_mw is not None or converter.q_mvar is not None:
+            p = converter.p_mw or 0.0
+            q = converter.q_mvar or 0.0
+            s_mva = math.hypot(p, q)
+            i0 = (s_mva / converter.rated_mva) / v0 if converter.rated_mva else 1.0
+        else:
+            i0 = 1.0
+
+        z_f = complex(r_f, 0.0) + s_pu * l_f
+        g_ci = a_ci * (complex(l_f, 0.0) + complex(r_f, 0.0) / s_pu)
+        # Optional outer voltage loop: low-frequency current-reference stiffening
+        # H_v = a_cv/(s_pu + a_cv). Applied as (1 + H_v) gain on the synthesized
+        # active impedance G_ci, raising the in-band output impedance below the
+        # voltage-loop corner. Omitted entirely when the bandwidth is absent.
+        if converter.voltage_loop_bandwidth_hz is not None:
+            a_cv = 2.0 * math.pi * converter.voltage_loop_bandwidth_hz / w_base
+            h_v = a_cv / (s_pu + a_cv)
+            g_ci = g_ci * (1.0 + h_v)
+        g_d = cmath.exp(complex(0.0, -w * t_d))
+        h_pll = a_pll / (s_pu + a_pll)
+
+        numerator = z_f + g_d * g_ci
+        denominator = 1.0 - g_d * h_pll * (i0 * g_ci - v0) / v0
+        z_conv_pu = numerator / denominator
+
+        z_base = converter.rated_kv**2 / converter.rated_mva if converter.rated_kv else 1.0
+        z_conv = z_conv_pu * z_base
+
+        components = {
+            "z_f_pu": z_f,
+            "g_ci": g_ci,
+            "g_d": g_d,
+            "h_pll": h_pll,
+            "z_conv_pu": z_conv_pu,
+            "z_conv_ohm": z_conv,
+        }
+        return z_conv, components
+
+    def _ssci_select_converter(self, model: V126AcademicInput) -> Any:
+        """The converter under SSCI study: explicit ``parameters['ssci_converter_ref']``
+        if given, else the first declared converter. Returns None if none exist.
+        """
+        ref = model.parameters.get("ssci_converter_ref")
+        if ref is not None:
+            return next((c for c in model.converters if c.ref == ref), None)
+        return model.converters[0] if model.converters else None
+
+    def _ssci_impedance(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
+        converter = self._ssci_select_converter(model)
+        if converter is None:
+            trace.add(
+                "ssci_impedance_no_converter",
+                "Z_conv(jw) wymaga przeksztaltnika (VSC) w modelu",
+                {"converters": 0},
+                "Brak przeksztaltnika do analizy SSCI.",
+                {"status": "dane niekompletne"},
+                "Brak danych wejsciowych (przeksztaltnik).",
+            )
+            return {
+                "status": "dane niekompletne",
+                "message_pl": (
+                    "Analiza SSCI (Z_grid/Z_conv) wymaga przeksztaltnika (falownika) "
+                    "w modelu. Brak przeksztaltnika — analiza niewykonana."
+                ),
+                "missing_fields": ["converter"],
+                "sanity": _sanity_block([], has_inputs=False),
+            }
+
+        index = self._bus_index(model)
+        bus_idx = index.get(converter.bus_ref)
+        if bus_idx is None:
+            return {
+                "status": "dane niekompletne",
+                "message_pl": (
+                    f"Przeksztaltnik '{converter.ref}' wskazuje na nieistniejacy wezel "
+                    f"'{converter.bus_ref}'."
+                ),
+                "missing_fields": ["converter.bus_ref"],
+                "sanity": _sanity_block([], has_inputs=False),
+            }
+
+        frequencies = self._ssci_frequencies_hz()
+
+        # Probe Z_conv mandatory fields once (clear missing-data, no fabrication).
+        try:
+            self._z_conv_components(converter, frequencies[0])
+        except ValueError as exc:
+            f_ci = converter.current_loop_bandwidth_hz
+            f_pll = converter.pll_bandwidth_hz
+            l_f = converter.filter_l_pu
+            missing = [
+                name
+                for name, value in (
+                    ("current_loop_bandwidth_hz", f_ci),
+                    ("pll_bandwidth_hz", f_pll),
+                    ("filter_l_pu", l_f),
+                )
+                if value is None
+            ]
+            trace.add(
+                "ssci_impedance_missing_card_fields",
+                "Z_conv(jw) wymaga: current_loop_bandwidth_hz, pll_bandwidth_hz, filter_l_pu",
+                {"converter_ref": converter.ref, "missing": missing},
+                str(exc),
+                {"status": "dane niekompletne"},
+                "Brak danych karty falownika; brak oszacowania zastepczego (zakaz fabrykacji).",
+            )
+            return {
+                "status": "dane niekompletne",
+                "converter_ref": converter.ref,
+                "bus_ref": converter.bus_ref,
+                "message_pl": (
+                    "Analiza SSCI wymaga pol karty falownika (pasmo petli pradowej, "
+                    "pasmo PLL, indukcyjnosc filtra). Brakuje: " + ", ".join(missing)
+                ),
+                "missing_fields": missing,
+                "sanity": _sanity_block([], has_inputs=False),
+            }
+
+        z_grid_rows: list[JsonDict] = []
+        z_conv_rows: list[JsonDict] = []
+        l_rows: list[JsonDict] = []
+        re_zconv_min = math.inf
+        re_zconv_min_f = 0.0
+        for f_hz in frequencies:
+            harmonic = f_hz / model.base_frequency_hz
+            zdiag = self._driving_point_impedance(model, harmonic, with_source_shunt=True)
+            z_grid = complex(zdiag[bus_idx])
+            z_conv, _components = self._z_conv_components(converter, f_hz)
+            minor_loop = z_grid / z_conv if abs(z_conv) else complex(math.inf, 0.0)
+            z_grid_rows.append({"f_hz": f_hz, **self._phasor(z_grid)})
+            z_conv_rows.append({"f_hz": f_hz, **self._phasor(z_conv)})
+            l_rows.append({"f_hz": f_hz, **self._phasor(minor_loop)})
+            if z_conv.real < re_zconv_min:
+                re_zconv_min = z_conv.real
+                re_zconv_min_f = f_hz
+
+        # White-box trace: emit the model + the per-step transfer functions at a
+        # representative low (sub-PLL) frequency so the proof shows the mechanism.
+        probe_f = frequencies[0]
+        _z_probe, comp = self._z_conv_components(converter, probe_f)
+        f_pll = float(converter.pll_bandwidth_hz)
+        z_base = converter.rated_kv**2 / converter.rated_mva if converter.rated_kv else 1.0
+        t_d_ms = converter.control_delay_ms if converter.control_delay_ms is not None else 0.0
+        trace.add(
+            "ssci_zconv_model",
+            "Z_conv(jw) = [Z_f + G_d*G_ci] / [1 - G_d*H_pll*(I0*G_ci - V0)/V0]",
+            {
+                "ref": "Sun 2011 (IEEE TPEL 26-11); Cespedes&Sun 2014 (29-3); Wen 2016 (31-1)",
+                "current_loop_bandwidth_hz": float(converter.current_loop_bandwidth_hz),
+                "voltage_loop_bandwidth_hz": (
+                    float(converter.voltage_loop_bandwidth_hz)
+                    if converter.voltage_loop_bandwidth_hz is not None
+                    else None
+                ),
+                "pll_bandwidth_hz": f_pll,
+                "control_delay_ms": float(t_d_ms),
+                "filter_l_pu": float(converter.filter_l_pu),
+                "filter_r_pu": (
+                    float(converter.filter_r_pu) if converter.filter_r_pu is not None else 0.0
+                ),
+                "z_base_ohm": _round(z_base),
+            },
+            (
+                f"w_ci=2*pi*{converter.current_loop_bandwidth_hz} rad/s; "
+                f"w_pll=2*pi*{f_pll} rad/s; T_d={t_d_ms} ms; "
+                "K_p=w_ci*L_f, K_i=w_ci*R_f (IMC); Z_base=Un^2/Sn"
+            ),
+            {
+                "probe_f_hz": probe_f,
+                "G_ci": self._phasor(comp["g_ci"]),
+                "H_pll": self._phasor(comp["h_pll"]),
+                "G_d": self._phasor(comp["g_d"]),
+                "Z_f_pu": self._phasor(comp["z_f_pu"]),
+                "Z_conv_pu": self._phasor(comp["z_conv_pu"]),
+                "Z_conv_ohm": self._phasor(comp["z_conv_ohm"]),
+            },
+            "Z_f w pu (Ohm/Ohm), skalowane przez Z_base [Ohm]; G bezwymiarowe.",
+        )
+        trace.add(
+            "ssci_zgrid_sweep",
+            "Z_grid(f) = diag(pinv(Y_bus(f) + Y_src(f))) @ bus(falownika)",
+            {
+                "bus_ref": converter.bus_ref,
+                "f_min_hz": frequencies[0],
+                "f_max_hz": frequencies[-1],
+                "points": len(frequencies),
+            },
+            (
+                "Y_bus(f) jak w skanie PQ + bocznik zrodla Y_src(f)=1/(0.15z + j(f/50)0.99z), "
+                "z=Un^2/Sk; impedancja sterujaca na wezle falownika."
+            ),
+            {"z_grid_at_f_min": self._phasor(complex(z_grid_rows[0]["re"], z_grid_rows[0]["im"]))},
+            "Ohm; pinv macierzy admitancji [S] daje impedancje [Ohm].",
+        )
+        trace.add(
+            "ssci_minor_loop_gain",
+            "L(jw) = Z_grid(jw) / Z_conv(jw)",
+            {"points": len(frequencies)},
+            (
+                "Iloraz impedancji sieci i wyjsciowej falownika; warstwa analizy oceni "
+                "blizosc do punktu -1 (kryterium Nyquista) — TUTAJ tylko fizyka."
+            ),
+            {
+                "re_zconv_min": _round(re_zconv_min),
+                "re_zconv_min_f_hz": re_zconv_min_f,
+                "negative_resistance_region": re_zconv_min < 0.0,
+            },
+            "Ohm/Ohm = bezwymiarowe.",
+        )
+
+        # K-08: sanity-bounds — impedancje skonczone; obecnosc strefy ujemnej
+        # rezystancji Z_conv (mechanizm SSCI) ponizej pasma PLL.
+        z_grid_finite = all(_finite(row["re"], row["im"]) for row in z_grid_rows)
+        z_conv_finite = all(_finite(row["re"], row["im"]) for row in z_conv_rows)
+        l_finite = all(_finite(row["re"], row["im"]) for row in l_rows)
+        sanity = _sanity_block(
+            [
+                ("z_grid_finite", z_grid_finite, "Z_grid nieskonczone/NaN"),
+                ("z_conv_finite", z_conv_finite, "Z_conv nieskonczone/NaN"),
+                ("minor_loop_finite", l_finite, "L(f) nieskonczone/NaN"),
+                (
+                    "negative_resistance_present",
+                    re_zconv_min < 0.0,
+                    "Brak strefy Re(Z_conv)<0 ponizej pasma PLL — mechanizm SSCI nieobecny",
+                ),
+            ],
+            has_inputs=True,
+        )
+        return {
+            "converter_ref": converter.ref,
+            "bus_ref": converter.bus_ref,
+            "base_frequency_hz": model.base_frequency_hz,
+            "frequencies_hz": frequencies,
+            "z_grid": z_grid_rows,
+            "z_conv": z_conv_rows,
+            "minor_loop_gain": l_rows,
+            "z_conv_negative_resistance": {
+                "re_min_ohm": _round(re_zconv_min),
+                "f_at_re_min_hz": re_zconv_min_f,
+                "present": re_zconv_min < 0.0,
+            },
+            "sanity": sanity,
+        }
 
     def _voltage_stability(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         pv_curves: list[JsonDict] = []
@@ -292,7 +791,9 @@ class V126AcademicSolver:
                     "margin_mvar": _round(q_available - abs(q_min), 4),
                 }
             )
-            l_indices.append({"bus_ref": bus.ref, "l_index": _round(l_index, 5), "alert": l_index > 0.5})
+            l_indices.append(
+                {"bus_ref": bus.ref, "l_index": _round(l_index, 5), "alert": l_index > 0.5}
+            )
         trace.add(
             "voltage_stability_indices",
             "L_j ~= P_load / S_sc * 4; PM = (lambda_max - 1) * 100%",
@@ -301,22 +802,49 @@ class V126AcademicSolver:
             {"smallest_eigenvalue": _round(smallest, 6)},
             "Indeksy są bezwymiarowe, margines P-V w %.",
         )
+        margin_min = _round(min((row["margin_percent"] for row in pv_curves), default=0.0), 3)
+        l_values = [float(row["l_index"]) for row in l_indices]
+        # K-08: sanity-bounds — margines skończony i nieujemny, L-index w [0,1]
+        # (L>1 lub eigen<=0 => kolaps napięciowy / wynik niefizyczny).
+        sanity = _sanity_block(
+            [
+                ("margin_finite", _finite(margin_min), "Margines P-V nieskończony/NaN"),
+                ("margin_nonneg", margin_min >= 0.0, "Margines P-V < 0 (układ za punktem kolapsu)"),
+                (
+                    "l_index_range",
+                    _finite(*l_values) and all(0.0 <= v <= 1.0 for v in l_values),
+                    "L-index poza [0,1] (niefizyczny)",
+                ),
+                (
+                    "eigenvalue_positive",
+                    _finite(smallest) and smallest > 0.0,
+                    "Najmniejsza wartość własna <= 0 (kolaps napięciowy)",
+                ),
+            ],
+            has_inputs=len(model.buses) > 0,
+        )
         return {
             "pv_curves": pv_curves,
             "qv_curves": qv_curves,
             "modal_analysis": {
                 "smallest_eigenvalue": _round(smallest, 6),
-                "critical_mode": {"eigenvalue": _round(smallest, 6), "participating_buses": participants},
+                "critical_mode": {
+                    "eigenvalue": _round(smallest, 6),
+                    "participating_buses": participants,
+                },
             },
             "l_index_per_bus": l_indices,
-            "voltage_stability_margin_percent": _round(min((row["margin_percent"] for row in pv_curves), default=0.0), 3),
+            "voltage_stability_margin_percent": margin_min,
+            "sanity": sanity,
         }
 
     def _branch_current_a(self, model: V126AcademicInput, branch: Any) -> float:
         to_bus = next((bus for bus in model.buses if bus.ref == branch.to_bus_ref), None)
         if to_bus is None:
             return 0.0
-        apparent_mva = math.hypot(to_bus.load_mw - to_bus.generation_mw, to_bus.load_mvar - to_bus.generation_mvar)
+        apparent_mva = math.hypot(
+            to_bus.load_mw - to_bus.generation_mw, to_bus.load_mvar - to_bus.generation_mvar
+        )
         return apparent_mva * 1000.0 / (math.sqrt(3) * max(to_bus.nominal_kv, 1e-6))
 
     def _reliability(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
@@ -327,7 +855,9 @@ class V126AcademicSolver:
         for branch in model.branches:
             current = self._branch_current_a(model, branch)
             overload = max(0.0, current / branch.ampacity_a - 1.0)
-            affected = sum(bus.customer_count for bus in model.buses if bus.ref == branch.to_bus_ref)
+            affected = sum(
+                bus.customer_count for bus in model.buses if bus.ref == branch.to_bus_ref
+            )
             severity = overload * 100.0 + affected / customers_total * 10.0
             contingencies.append(
                 {
@@ -337,17 +867,47 @@ class V126AcademicSolver:
                     "max_loading_percent": _round(current / branch.ampacity_a * 100.0, 2),
                 }
             )
-            saidi += branch.failure_rate_per_year * branch.mttr_h * 60.0 * affected / customers_total
+            saidi += (
+                branch.failure_rate_per_year * branch.mttr_h * 60.0 * affected / customers_total
+            )
             saifi += branch.failure_rate_per_year * affected / customers_total
         for first, second in combinations(model.branches[:80], 2):
             contingencies.append(
                 {
                     "contingency": f"{first.ref}+{second.ref}",
                     "order": "N-2",
-                    "severity": _round(first.failure_rate_per_year + second.failure_rate_per_year, 5),
+                    "severity": _round(
+                        first.failure_rate_per_year + second.failure_rate_per_year, 5
+                    ),
                 }
             )
         caidi = saidi / saifi if saifi else 0.0
+        # D-14: sanity-bounds (IEEE 1366 — wielkości fizycznie ograniczone).
+        minutes_per_year = 525600.0
+        overloaded = [c for c in contingencies if c.get("max_loading_percent", 0.0) > 100.0]
+        raw_customers = sum(bus.customer_count for bus in model.buses)
+        sanity = _sanity_block(
+            [
+                ("saidi_nonneg", saidi >= 0.0, "SAIDI < 0 (niefizyczne)"),
+                (
+                    "saidi_max",
+                    saidi <= minutes_per_year,
+                    f"SAIDI > {minutes_per_year:.0f} min/rok (> rok przerwy)",
+                ),
+                ("saifi_nonneg", saifi >= 0.0, "SAIFI < 0 (niefizyczne)"),
+                ("saifi_max", saifi <= 1000.0, "SAIFI > 1000/rok (nierealne)"),
+            ],
+            has_inputs=raw_customers > 0 and len(model.branches) > 0,
+        )
+        if overloaded:
+            sanity.setdefault("violations", []).append(
+                {
+                    "check": "n1_overload",
+                    "detail_pl": f"{len(overloaded)} kontyngencji N-1 z przeciążeniem > 100%",
+                }
+            )
+            if sanity["status"] == "zweryfikowany":
+                sanity["status"] = "poza zakresem wiarygodności"
         trace.add(
             "reliability_indices",
             "SAIDI = sum(lambda_e * MTTR_e * 60 * N_e) / N_t; SAIFI = sum(lambda_e * N_e)/N_t",
@@ -357,13 +917,16 @@ class V126AcademicSolver:
             "1/rok * h * 60 daje min/rok.",
         )
         return {
-            "contingency_ranking": sorted(contingencies, key=lambda item: (-item["severity"], item["contingency"]))[:100],
+            "contingency_ranking": sorted(
+                contingencies, key=lambda item: (-item["severity"], item["contingency"])
+            )[:100],
             "indices": {
                 "saidi_min_per_year": _round(saidi, 4),
                 "saifi_per_year": _round(saifi, 5),
                 "caidi_min_per_interruption": _round(caidi, 4),
                 "maifi_per_year": _round(0.12 * saifi, 5),
             },
+            "sanity": sanity,
         }
 
     def _earthing(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
@@ -384,9 +947,7 @@ class V126AcademicSolver:
         lc = conductors_x * data.length_m + conductors_y * data.width_m + data.rods_total_length_m
         rg = data.rho1_ohm_m * (
             1 / max(lc, 1e-9)
-            + 1
-            / math.sqrt(20 * area)
-            * (1 + 1 / (1 + data.buried_depth_m * math.sqrt(20 / area)))
+            + 1 / math.sqrt(20 * area) * (1 + 1 / (1 + data.buried_depth_m * math.sqrt(20 / area)))
         )
         ig_ka = data.fault_current_ka * data.split_factor
         gpr_kv = ig_ka * rg
@@ -396,8 +957,16 @@ class V126AcademicSolver:
         ks = 0.6 + data.mesh_spacing_m / max(20 * data.buried_depth_m, 1e-9)
         u_touch = data.rho1_ohm_m * km * ki * ig_ka * 1000 / max(lc, 1e-9)
         u_step = data.rho1_ohm_m * ks * ki * ig_ka * 1000 / max(lc, 1e-9)
-        u_touch_allow = (1000 + 1.5 * data.surface_layer_derating * data.surface_layer_rho_ohm_m) * 0.157 / math.sqrt(data.fault_clearing_time_s)
-        u_step_allow = (1000 + 6 * data.surface_layer_derating * data.surface_layer_rho_ohm_m) * 0.157 / math.sqrt(data.fault_clearing_time_s)
+        u_touch_allow = (
+            (1000 + 1.5 * data.surface_layer_derating * data.surface_layer_rho_ohm_m)
+            * 0.157
+            / math.sqrt(data.fault_clearing_time_s)
+        )
+        u_step_allow = (
+            (1000 + 6 * data.surface_layer_derating * data.surface_layer_rho_ohm_m)
+            * 0.157
+            / math.sqrt(data.fault_clearing_time_s)
+        )
         trace.add(
             "ieee80_sverak",
             "Rg = rho * [1/Lc + 1/sqrt(20A)*(1 + 1/(1+h*sqrt(20/A)))]",
@@ -412,7 +981,29 @@ class V126AcademicSolver:
             safety = "wymaga_ochrony"
         else:
             safety = "niezgodny"
+        # K-08: sanity-bounds IEEE 80 / EN 50522 — Rg, GPR, napięcia rażenia skończone i ≥ 0.
+        has_earthing = model.earthing is not None or isinstance(
+            model.parameters.get("earthing"), dict
+        )
+        sanity = _sanity_block(
+            [
+                ("rg_nonneg", _finite(rg) and rg >= 0.0, "Rg < 0 lub nieskończone"),
+                ("gpr_nonneg", _finite(gpr_kv) and gpr_kv >= 0.0, "GPR < 0 lub nieskończone"),
+                (
+                    "u_touch_nonneg",
+                    _finite(u_touch) and u_touch >= 0.0,
+                    "U_touch < 0 lub nieskończone",
+                ),
+                (
+                    "u_step_nonneg",
+                    _finite(u_step) and u_step >= 0.0,
+                    "U_step < 0 lub nieskończone",
+                ),
+            ],
+            has_inputs=has_earthing,
+        )
         return {
+            "sanity": sanity,
             "gpz_ref": data.gpz_ref,
             "soil_model": {"rho1": data.rho1_ohm_m, "rho2": data.rho2_ohm_m, "h1": data.h1_m},
             "grid_geometry": {
@@ -433,8 +1024,360 @@ class V126AcademicSolver:
             "fault_clearing_time_s": data.fault_clearing_time_s,
         }
 
+    # D-06a/b: PROJEKT UZIEMIENIA PUNKTU NEUTRALNEGO SIECI (dławik Petersena /
+    # rezystor uziemiający NER). Fizyka pierwszych zasad (NIE tablica) — kompensacja
+    # prądu pojemnościowego doziemienia i dobór rezystancji punktu neutralnego.
+    # Odrębne od _earthing() (IEEE 80 — siatka uziemiająca, napięcia rażenia).
+    # Źródło C0: B0 = b0_siemens_per_km × length_km galwanicznie połączonej sieci SN.
+    # Referencje (wzory pierwszych zasad, nie współczynniki tablicowe):
+    #   - W. Petersen, kompensacja rezonansowa: ωL = 1/(3ωC0) → L = 1/(3ω²C0).
+    #   - IEC 62271-203 / IEC 60071 / VDE praktyka sieci skompensowanych.
+    #   - Prąd pojemnościowy: Ic = 3·ω·C0·U_f = √3·ω·C0·U_l (tożsame, U_f = U_l/√3).
+    #   - Stopień rozstrojenia v = (I_L − I_C)/I_C; prąd resztkowy I_res = I_C·√(d²+v²).
+    #   - NER: R = U_f / I_ef; sprawdzenie cieplne I_ef²·R·t ≤ E_rating.
+    def _neutral_earthing_design(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
+        omega = 2.0 * math.pi * model.base_frequency_hz
+        params = model.parameters
+        # Typ uziemienia: jawny parametr; fallback do GroundingConfig.type z modelu.
+        scheme = str(
+            params.get("neutral_earthing_type")
+            or params.get("neutral_grounding")
+            or "petersen_coil"
+        )
+
+        # --- Krok 1: zsumuj pojemność doziemną C0 sieci galwanicznie połączonej. ---
+        # Tylko linie/kable z jawnym b0 (zero-sequence / line-to-earth). Element bez
+        # b0 → "dane niekompletne" (zakaz fabrykacji C0). Łączniki otwarte pomijane.
+        b0_total_s = 0.0
+        contributing: list[JsonDict] = []
+        missing_b0: list[str] = []
+        for branch in model.branches:
+            if branch.kind not in {"line_overhead", "cable"}:
+                continue
+            if getattr(branch, "is_open", False):
+                continue
+            b0_per_km = getattr(branch, "b0_siemens_per_km", None)
+            if b0_per_km is None:
+                missing_b0.append(branch.ref)
+                continue
+            b0_branch = float(b0_per_km) * branch.length_km
+            b0_total_s += b0_branch
+            contributing.append(
+                {
+                    "branch_ref": branch.ref,
+                    "kind": branch.kind,
+                    "length_km": branch.length_km,
+                    "b0_siemens_per_km": float(b0_per_km),
+                    "b0_total_siemens": _round(b0_branch, 12),
+                }
+            )
+
+        # Napięcie sieci (linia–linia) z najwyższego węzła SN modelu.
+        u_line_kv = max((bus.nominal_kv for bus in model.buses), default=0.0)
+        u_line_v = u_line_kv * 1000.0
+        u_phase_v = u_line_v / math.sqrt(3.0)
+
+        # Brak jakiejkolwiek pojemności doziemnej → C0 nie do policzenia (nie zgadujemy).
+        if b0_total_s <= 0.0 or u_line_kv <= 0.0:
+            reason = (
+                "Brak jawnej pojemności doziemnej B0 (b0_siemens_per_km) dla linii/kabli "
+                "sieci SN — C0 nieoznaczalne (zakaz fabrykacji)."
+                if b0_total_s <= 0.0
+                else "Brak napięcia znamionowego sieci (U_l) — projekt niewykonalny."
+            )
+            trace.add(
+                "neutral_earthing_no_c0",
+                "C0 = (1/ω)·Σ(b0_branch_total); Ic = √3·ω·C0·U_l",
+                {
+                    "branches_with_b0": len(contributing),
+                    "branches_missing_b0": missing_b0,
+                    "u_line_kv": u_line_kv,
+                },
+                reason,
+                {"status": "dane niekompletne"},
+                "Brak danych wejściowych (B0 lub U_l) — brak oszacowania zastępczego.",
+            )
+            return {
+                "status": "dane niekompletne",
+                "neutral_earthing_type": scheme,
+                "message_pl": reason,
+                "missing_fields": (["b0_siemens_per_km"] if b0_total_s <= 0.0 else ["nominal_kv"]),
+                "branches_missing_b0": missing_b0,
+                "sanity": _sanity_block([], has_inputs=False),
+            }
+
+        # C0 [F] z sumy susceptancji doziemnych: B0 = ω·C0 ⇒ C0 = B0/ω.
+        c0_farad = b0_total_s / omega
+        # Prąd pojemniczy doziemienia (1-fazowe doziemienie metaliczne): Ic = √3·ω·C0·U_l.
+        ic_a = math.sqrt(3.0) * omega * c0_farad * u_line_v
+        trace.add(
+            "neutral_earthing_capacitive_current",
+            "C0 = (1/ω)·Σ(b0·len);  Ic = 3·ω·C0·U_f = √3·ω·C0·U_l",
+            {
+                "ref": "Petersen resonant earthing; IEC 62271-203 / VDE practice",
+                "omega_rad_s": _round(omega, 6),
+                "b0_total_siemens": _round(b0_total_s, 12),
+                "u_line_kv": u_line_kv,
+                "branches_contributing": len(contributing),
+                "branches_missing_b0": missing_b0,
+            },
+            f"C0={_round(b0_total_s, 12)}/{_round(omega, 4)}; "
+            f"Ic=√3·{_round(omega, 4)}·{_round(c0_farad, 12)}·{u_line_v}",
+            {"c0_farad": _round(c0_farad, 12), "ic_a": _round(ic_a, 4)},
+            "S/(rad/s)=F; (rad/s)·F·V=A. U_f=U_l/√3 ⇒ 3ωC0U_f=√3ωC0U_l.",
+        )
+
+        if scheme == "resistor_grounded" or scheme == "resistor":
+            result = self._ner_design(model, trace, ic_a, u_phase_v)
+        else:
+            result = self._petersen_design(model, trace, c0_farad, ic_a, omega)
+        result["neutral_earthing_type"] = scheme
+        result["capacitive_earth_fault_current_a"] = _round(ic_a, 4)
+        result["c0_farad"] = _round(c0_farad, 12)
+        result["network_line_voltage_kv"] = u_line_kv
+        result["branches_missing_b0"] = missing_b0
+        result["branches_contributing"] = contributing
+        return result
+
+    def _petersen_design(
+        self,
+        model: V126AcademicInput,
+        trace: TraceBuilder,
+        c0_farad: float,
+        ic_a: float,
+        omega: float,
+    ) -> JsonDict:
+        params = model.parameters
+        # Rozstrojenie: jawny parametr (default 0.05 = ±5 %), NIE ukryta stała.
+        detuning = float(params.get("petersen_detuning", 0.05))
+        # Składowa rezystancyjna (tłumienie) prądu resztkowego d = I_R/I_C — jawny
+        # parametr, default 0.0 (gdy karta dławika nie podaje strat). Bez d>0 prąd
+        # resztkowy przy idealnym rezonansie = 0 (z modelu, nie zgadnięty).
+        damping_d = float(params.get("petersen_residual_damping", 0.0))
+
+        # Rezonans: ωL = 1/(3ωC0) ⇒ L = 1/(3·ω²·C0); X_L = ωL.
+        x_coil_ohm = 1.0 / (3.0 * omega * c0_farad)
+        l_coil_h = 1.0 / (3.0 * omega**2 * c0_farad)
+        # Prąd dławika w rezonansie kompensuje Ic: I_L = Ic.
+        i_coil_a = ic_a
+        trace.add(
+            "petersen_resonance_tuning",
+            "ωL = 1/(3ωC0)  ⇒  L = 1/(3·ω²·C0);  X_L = ωL;  I_L(rezonans)=Ic",
+            {
+                "ref": "W. Petersen, kompensacja rezonansowa (sieć skompensowana)",
+                "c0_farad": _round(c0_farad, 12),
+                "omega_rad_s": _round(omega, 6),
+                "ic_a": _round(ic_a, 4),
+            },
+            f"L=1/(3·{_round(omega, 4)}²·{_round(c0_farad, 12)}); "
+            f"X_L=1/(3·{_round(omega, 4)}·{_round(c0_farad, 12)})",
+            {
+                "l_coil_h": _round(l_coil_h, 8),
+                "x_coil_ohm": _round(x_coil_ohm, 4),
+                "i_coil_rating_a": _round(i_coil_a, 4),
+            },
+            "1/((rad/s)²·F)=H; 1/((rad/s)·F)=Ω; prąd dławika [A] = Ic [A].",
+        )
+
+        # Prąd resztkowy: stopień rozstrojenia v ⇒ I_res = Ic·√(d² + v²).
+        # W rezonansie (v=0): I_res = Ic·d (czysto rezystancyjny; =0 gdy d=0).
+        i_res_resonance_a = ic_a * damping_d
+        i_res_detuned_a = ic_a * math.sqrt(damping_d**2 + detuning**2)
+        trace.add(
+            "petersen_residual_current",
+            "v=(I_L−I_C)/I_C;  I_res = I_C·√(d² + v²)",
+            {
+                "ic_a": _round(ic_a, 4),
+                "detuning_v": detuning,
+                "residual_damping_d": damping_d,
+            },
+            f"I_res(rezonans)=Ic·{damping_d}; "
+            f"I_res(±{detuning})=Ic·√({damping_d}²+{detuning}²)",
+            {
+                "i_residual_resonance_a": _round(i_res_resonance_a, 6),
+                "i_residual_detuned_a": _round(i_res_detuned_a, 6),
+            },
+            "bezwymiarowe·A = A.",
+        )
+
+        # K-08: sanity-bounds — wartości skończone i nieujemne; rozstrojenie w [0,1).
+        sanity = _sanity_block(
+            [
+                (
+                    "l_coil_positive",
+                    _finite(l_coil_h) and l_coil_h > 0.0,
+                    "Indukcyjność dławika ≤ 0 lub nieskończona",
+                ),
+                (
+                    "x_coil_positive",
+                    _finite(x_coil_ohm) and x_coil_ohm > 0.0,
+                    "Reaktancja dławika ≤ 0 lub nieskończona",
+                ),
+                (
+                    "residual_le_ic",
+                    _finite(i_res_detuned_a) and 0.0 <= i_res_detuned_a <= ic_a + 1e-9,
+                    "Prąd resztkowy poza [0, Ic] (niefizyczny)",
+                ),
+                (
+                    "detuning_range",
+                    _finite(detuning) and 0.0 <= detuning < 1.0,
+                    "Rozstrojenie poza [0,1)",
+                ),
+            ],
+            has_inputs=True,
+        )
+        return {
+            "sanity": sanity,
+            "design_mode": "petersen_coil",
+            "coil_reactance_ohm": _round(x_coil_ohm, 4),
+            "coil_inductance_h": _round(l_coil_h, 8),
+            "coil_current_rating_a": _round(i_coil_a, 4),
+            "detuning_assumed": detuning,
+            "residual_damping_assumed": damping_d,
+            "residual_current_at_resonance_a": _round(i_res_resonance_a, 6),
+            "residual_current_at_detuning_a": _round(i_res_detuned_a, 6),
+            "tuning_status": (
+                "dostrojony" if i_res_detuned_a <= 0.1 * ic_a else "rozstrojony_poza_10pct"
+            ),
+        }
+
+    def _ner_design(
+        self,
+        model: V126AcademicInput,
+        trace: TraceBuilder,
+        ic_a: float,
+        u_phase_v: float,
+    ) -> JsonDict:
+        params = model.parameters
+        # Docelowy prąd doziemienia I_ef — jawny parametr projektowy (NIE stała).
+        target_raw = params.get("ner_target_earth_fault_current_a")
+        if target_raw is None:
+            reason = (
+                "Dobór rezystora NER wymaga docelowego prądu doziemienia I_ef "
+                "(ner_target_earth_fault_current_a) — parametr projektowy nie podany."
+            )
+            trace.add(
+                "ner_no_target",
+                "R ≈ U_f / I_ef",
+                {"u_phase_v": _round(u_phase_v, 4)},
+                reason,
+                {"status": "dane niekompletne"},
+                "Brak parametru projektowego I_ef — brak wartości zgadywanej.",
+            )
+            return {
+                "status": "dane niekompletne",
+                "design_mode": "resistor_grounded",
+                "message_pl": reason,
+                "missing_fields": ["ner_target_earth_fault_current_a"],
+                "sanity": _sanity_block([], has_inputs=False),
+            }
+        i_ef_target_a = float(target_raw)
+
+        # R = U_f / I_ef (rezystancja punktu neutralnego dominuje impedancję zerową).
+        r_ohm = u_phase_v / i_ef_target_a
+        # Wypadkowy prąd doziemienia: składowa rezystancyjna przez R w fazie z napięciem
+        # i składowa pojemnościowa Ic w kwadraturze: I_ef = √(I_R² + Ic²), I_R = U_f/R.
+        i_resistive_a = u_phase_v / r_ohm
+        i_ef_a = math.sqrt(i_resistive_a**2 + ic_a**2)
+        trace.add(
+            "ner_resistance_sizing",
+            "R = U_f / I_ef;  I_ef_wyp = √((U_f/R)² + Ic²)",
+            {
+                "ref": "Resistance-earthed neutral; IEC 60364 / VDE practice",
+                "u_phase_v": _round(u_phase_v, 4),
+                "i_ef_target_a": i_ef_target_a,
+                "ic_a": _round(ic_a, 4),
+            },
+            f"R={_round(u_phase_v, 4)}/{i_ef_target_a}; "
+            f"I_ef=√(({_round(u_phase_v, 4)}/{_round(r_ohm, 4)})²+{_round(ic_a, 4)}²)",
+            {"r_ohm": _round(r_ohm, 4), "i_ef_resultant_a": _round(i_ef_a, 4)},
+            "V/A=Ω; √(A²+A²)=A.",
+        )
+
+        # Sprawdzenie cieplne: energia I_ef²·R·t_clear ≤ znamionowa energia rezystora.
+        # t_clear: jawny czas wyłączenia (z nastaw/parametru). Brak → "dane niekompletne".
+        t_clear_raw = params.get("ner_clearing_time_s")
+        rating_raw = params.get("ner_energy_rating_j")
+        thermal: JsonDict
+        if t_clear_raw is None or rating_raw is None:
+            missing = [
+                name
+                for name, value in (
+                    ("ner_clearing_time_s", t_clear_raw),
+                    ("ner_energy_rating_j", rating_raw),
+                )
+                if value is None
+            ]
+            trace.add(
+                "ner_thermal_incomplete",
+                "E_dissipated = I_ef²·R·t_clear ≤ E_rating",
+                {"missing": missing},
+                "Brak czasu wyłączenia lub znamionowej energii rezystora.",
+                {"status": "dane niekompletne"},
+                "Sprawdzenie cieplne wymaga t_clear i E_rating — bez zgadywania.",
+            )
+            thermal = {
+                "status": "dane niekompletne",
+                "missing_fields": missing,
+            }
+        else:
+            t_clear_s = float(t_clear_raw)
+            e_rating_j = float(rating_raw)
+            e_dissipated_j = i_ef_a**2 * r_ohm * t_clear_s
+            thermal_ok = e_dissipated_j <= e_rating_j
+            trace.add(
+                "ner_thermal_withstand",
+                "E_dissipated = I_ef²·R·t_clear ≤ E_rating",
+                {
+                    "i_ef_a": _round(i_ef_a, 4),
+                    "r_ohm": _round(r_ohm, 4),
+                    "t_clear_s": t_clear_s,
+                    "e_rating_j": e_rating_j,
+                },
+                f"E={_round(i_ef_a, 4)}²·{_round(r_ohm, 4)}·{t_clear_s}",
+                {
+                    "e_dissipated_j": _round(e_dissipated_j, 4),
+                    "thermal_ok": thermal_ok,
+                },
+                "A²·Ω·s = W·s = J ≤ J.",
+            )
+            thermal = {
+                "status": "zgodny" if thermal_ok else "niezgodny",
+                "energy_dissipated_j": _round(e_dissipated_j, 4),
+                "energy_rating_j": e_rating_j,
+                "clearing_time_s": t_clear_s,
+                "thermal_ok": thermal_ok,
+            }
+
+        # K-08: sanity-bounds — R i I_ef skończone i dodatnie.
+        sanity = _sanity_block(
+            [
+                ("r_positive", _finite(r_ohm) and r_ohm > 0.0, "R ≤ 0 lub nieskończone"),
+                (
+                    "i_ef_positive",
+                    _finite(i_ef_a) and i_ef_a > 0.0,
+                    "I_ef ≤ 0 lub nieskończone",
+                ),
+            ],
+            has_inputs=True,
+        )
+        return {
+            "sanity": sanity,
+            "design_mode": "resistor_grounded",
+            "resistor_ohm": _round(r_ohm, 4),
+            "target_earth_fault_current_a": i_ef_target_a,
+            "resultant_earth_fault_current_a": _round(i_ef_a, 4),
+            "resistive_component_a": _round(i_resistive_a, 4),
+            "thermal_check": thermal,
+        }
+
     def _insulation(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
-        bil_table = [(12.0, 75.0, 28.0), (17.5, 95.0, 38.0), (24.0, 125.0, 50.0), (36.0, 170.0, 70.0)]
+        bil_table = [
+            (12.0, 75.0, 28.0),
+            (17.5, 95.0, 38.0),
+            (24.0, 125.0, 50.0),
+            (36.0, 170.0, 70.0),
+        ]
         rows: list[JsonDict] = []
         for item in model.insulation:
             bil, withstand = next(
@@ -442,11 +1385,17 @@ class V126AcademicSolver:
                 (170.0, 70.0),
             )
             if item.arrester_mcov_kv is None:
-                mcov = item.u_m_kv * 1.05 if item.network_neutral == "isolated" else item.u_m_kv / math.sqrt(3) * 1.05
+                mcov = (
+                    item.u_m_kv * 1.05
+                    if item.network_neutral == "isolated"
+                    else item.u_m_kv / math.sqrt(3) * 1.05
+                )
             else:
                 mcov = item.arrester_mcov_kv
             residual = item.arrester_residual_10ka_kv or mcov * 2.8
-            tov = item.predicted_tov_kv or item.u_m_kv * (1.4 if item.network_neutral == "isolated" else 1.15)
+            tov = item.predicted_tov_kv or item.u_m_kv * (
+                1.4 if item.network_neutral == "isolated" else 1.15
+            )
             margin = (bil - residual) / max(residual, 1e-9) * 100.0
             rows.append(
                 {
@@ -460,7 +1409,9 @@ class V126AcademicSolver:
                     "bil_protected_kv": bil,
                     "short_duration_50hz_kv": withstand,
                     "bil_margin_percent": _round(margin, 3),
-                    "verification_status": "spelniony" if margin >= 20 and tov <= mcov * 1.25 else "niespelniony",
+                    "verification_status": (
+                        "spelniony" if margin >= 20 and tov <= mcov * 1.25 else "niespelniony"
+                    ),
                 }
             )
         trace.add(
@@ -471,11 +1422,36 @@ class V126AcademicSolver:
             {"non_compliant": sum(1 for row in rows if row["verification_status"] != "spelniony")},
             "kV/kV daje %.",
         )
-        return {"arresters": rows}
+        # K-08: sanity-bounds IEC 60071 — MCOV/BIL/margines skończone i nieujemne.
+        mcov_values = [float(r["mcov_kv"]) for r in rows]
+        bil_values = [float(r["bil_protected_kv"]) for r in rows]
+        margin_values = [float(r["bil_margin_percent"]) for r in rows]
+        sanity = _sanity_block(
+            [
+                (
+                    "mcov_nonneg",
+                    _finite(*mcov_values) and all(v >= 0.0 for v in mcov_values),
+                    "MCOV < 0 lub nieskończone",
+                ),
+                (
+                    "bil_positive",
+                    _finite(*bil_values) and all(v > 0.0 for v in bil_values),
+                    "BIL <= 0 lub nieskończone",
+                ),
+                ("margin_finite", _finite(*margin_values), "Margines BIL nieskończony/NaN"),
+            ],
+            has_inputs=len(model.insulation) > 0,
+        )
+        return {"arresters": rows, "sanity": sanity}
 
     def _earth_fault_detection(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         neutral = str(model.parameters.get("neutral_grounding", "petersen_tuned"))
-        relay_methods = set(model.parameters.get("relay_methods", ["wattmetric", "admittance", "transient_directional", "fifth_harmonic"]))
+        relay_methods = set(
+            model.parameters.get(
+                "relay_methods",
+                ["wattmetric", "admittance", "transient_directional", "fifth_harmonic"],
+            )
+        )
         table = {
             "isolated": ("wattmetric", "transient_directional"),
             "petersen_tuned": ("wattmetric", "fifth_harmonic"),
@@ -493,34 +1469,60 @@ class V126AcademicSolver:
             {"recommended_method": recommended, "available": available},
             "Decyzja logiczna bez jednostek.",
         )
+        u0_start = 5.0
+        # K-08: sanity (analiza decyzyjna) — wybór metody dobrze określony, nastawa U0 fizyczna.
+        sanity = _sanity_block(
+            [
+                ("method_selected", bool(recommended), "Brak rekomendowanej metody detekcji"),
+                ("u0_start_range", 0.0 < u0_start <= 100.0, "Nastawa U0 poza zakresem (0,100]%"),
+            ],
+            has_inputs=True,
+        )
         return {
             "neutral_grounding": neutral,
             "recommended_method": recommended,
             "alternative_method": alternative,
             "relay_support_status": "spelniony" if available else "brak_w_przekazniku",
             "settings": {
-                "u0_start_percent": 5.0,
+                "u0_start_percent": u0_start,
                 "p0_set_w": 1.0 if recommended == "wattmetric" else None,
                 "i5_multiplier": 3.0 if recommended == "fifth_harmonic" else None,
             },
+            "sanity": sanity,
         }
 
     def _transient(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
-        u_r = float(model.parameters.get("breaker_rated_voltage_kv", max((bus.nominal_kv for bus in model.buses), default=15.0)))
+        u_r = float(
+            model.parameters.get(
+                "breaker_rated_voltage_kv",
+                max((bus.nominal_kv for bus in model.buses), default=15.0),
+            )
+        )
         natural_frequency_hz = float(model.parameters.get("trv_natural_frequency_hz", 12000.0))
         tau_s = float(model.parameters.get("trv_tau_s", 0.00018))
         points: list[JsonDict] = []
         min_margin = 999.0
         for i in range(1, 51):
             t = i * 2e-6
-            u = u_r * (1 - math.cos(2 * math.pi * natural_frequency_hz * t)) * math.exp(-t / tau_s) + u_r / math.sqrt(3)
+            u = u_r * (1 - math.cos(2 * math.pi * natural_frequency_hz * t)) * math.exp(
+                -t / tau_s
+            ) + u_r / math.sqrt(3)
             envelope = 2.0 * u_r * min(1.0, t / 88e-6)
             margin = (envelope - u) / max(envelope, 1e-9) * 100.0
             min_margin = min(min_margin, margin)
-            points.append({"t_us": _round(t * 1e6, 3), "u_trv_kv": _round(u, 5), "envelope_kv": _round(envelope, 5)})
+            points.append(
+                {
+                    "t_us": _round(t * 1e6, 3),
+                    "u_trv_kv": _round(u, 5),
+                    "envelope_kv": _round(envelope, 5),
+                }
+            )
         inrush_multiple = float(model.parameters.get("inrush_multiple_in", 8.0))
         second_harmonic_percent = 63.0 / inrush_multiple
-        ferro_risk = str(model.parameters.get("neutral_grounding", "isolated")) == "isolated" and sum(branch.b_siemens_per_km * branch.length_km for branch in model.branches) > 1e-5
+        ferro_risk = (
+            str(model.parameters.get("neutral_grounding", "isolated")) == "isolated"
+            and sum(branch.b_siemens_per_km * branch.length_km for branch in model.branches) > 1e-5
+        )
         trace.add(
             "trv_inrush_ferro",
             "u_TRV(t)=Ur*(1-cos(wn*t))*exp(-t/tau)+Ur/sqrt(3)",
@@ -529,7 +1531,25 @@ class V126AcademicSolver:
             {"trv_margin_percent": _round(min_margin, 4), "ferro_risk": ferro_risk},
             "kV porownane z kV, margines w %.",
         )
+        # K-08: sanity-bounds IEC 62271 — margines TRV skończony, krotność udaru i 2. harmoniczna fizyczne.
+        sanity = _sanity_block(
+            [
+                ("trv_margin_finite", _finite(min_margin), "Margines TRV nieskończony/NaN"),
+                (
+                    "inrush_multiple_range",
+                    _finite(inrush_multiple) and 0.0 < inrush_multiple <= 30.0,
+                    "Krotność udaru poza (0,30]×In (nierealna)",
+                ),
+                (
+                    "second_harmonic_range",
+                    _finite(second_harmonic_percent) and 0.0 <= second_harmonic_percent <= 100.0,
+                    "Udział 2. harmonicznej poza [0,100]%",
+                ),
+            ],
+            has_inputs=len(model.buses) > 0,
+        )
         return {
+            "sanity": sanity,
             "trv_curve": points,
             "trv_margin_percent": _round(min_margin, 4),
             "trv_status": "spelniony" if min_margin >= 10 else "niespelniony",
@@ -538,7 +1558,10 @@ class V126AcademicSolver:
                 "second_harmonic_percent_of_peak": _round(second_harmonic_percent, 4),
                 "blocking_87t_recommended": second_harmonic_percent >= 10,
             },
-            "ferroresonance": {"risk": ferro_risk, "recommendation": "rezystor tlumiacy VT" if ferro_risk else "brak alertu"},
+            "ferroresonance": {
+                "risk": ferro_risk,
+                "recommendation": "rezystor tlumiacy VT" if ferro_risk else "brak alertu",
+            },
         }
 
     def _motor_starting(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
@@ -547,8 +1570,17 @@ class V126AcademicSolver:
             source_z = self._source_impedance(model, motor.bus_ref)
             i_n = motor.rated_kw / (math.sqrt(3) * motor.rated_voltage_kv * 0.9)
             i_start = i_n * motor.locked_rotor_multiplier
-            du = abs(source_z) * i_start / max(motor.rated_voltage_kv * 1000 / math.sqrt(3), 1e-9) * 100
-            thermal_ratio = motor.locked_rotor_multiplier**2 * motor.start_time_s / motor.allowable_locked_rotor_time_s
+            du = (
+                abs(source_z)
+                * i_start
+                / max(motor.rated_voltage_kv * 1000 / math.sqrt(3), 1e-9)
+                * 100
+            )
+            thermal_ratio = (
+                motor.locked_rotor_multiplier**2
+                * motor.start_time_s
+                / motor.allowable_locked_rotor_time_s
+            )
             torque_start = motor.max_torque_pu * 2 / (1 / motor.critical_slip + motor.critical_slip)
             rows.append(
                 {
@@ -559,7 +1591,11 @@ class V126AcademicSolver:
                     "torque_start_pu": _round(torque_start, 4),
                     "torque_margin_pu": _round(torque_start - motor.load_start_torque_pu, 4),
                     "thermal_i2t_ratio": _round(thermal_ratio, 4),
-                    "verification_status": _status(du <= 15 and thermal_ratio <= 1 and torque_start > motor.load_start_torque_pu),
+                    "verification_status": _status(
+                        du <= 15
+                        and thermal_ratio <= 1
+                        and torque_start > motor.load_start_torque_pu
+                    ),
                 }
             )
         trace.add(
@@ -570,14 +1606,51 @@ class V126AcademicSolver:
             {"non_compliant": sum(1 for row in rows if row["verification_status"] != "zgodny")},
             "A*Ohm/V daje wartosc bezwymiarowa, razy 100 daje %.",
         )
-        return {"motors": rows}
+        # K-08: sanity-bounds — prąd rozruchu ≥ 0, zapad napięcia w [0,100]%, krotność LR fizyczna.
+        i_start_values = [float(r["i_start_a"]) for r in rows]
+        dip_values = [float(r["voltage_dip_percent"]) for r in rows]
+        thermal_values = [float(r["thermal_i2t_ratio"]) for r in rows]
+        lr_values = [float(m.locked_rotor_multiplier) for m in model.motors]
+        sanity = _sanity_block(
+            [
+                (
+                    "i_start_nonneg",
+                    _finite(*i_start_values) and all(v >= 0.0 for v in i_start_values),
+                    "Prąd rozruchu < 0 lub nieskończony",
+                ),
+                (
+                    "voltage_dip_range",
+                    _finite(*dip_values) and all(0.0 <= v <= 100.0 for v in dip_values),
+                    "Zapad napięcia poza [0,100]%",
+                ),
+                (
+                    "lr_multiple_range",
+                    _finite(*lr_values) and all(0.0 < v <= 12.0 for v in lr_values),
+                    "Krotność prądu zablokowanego wirnika poza (0,12]×In",
+                ),
+                (
+                    "thermal_ratio_nonneg",
+                    _finite(*thermal_values) and all(v >= 0.0 for v in thermal_values),
+                    "Wskaźnik I²t < 0 lub nieskończony",
+                ),
+            ],
+            has_inputs=len(model.motors) > 0,
+        )
+        return {"motors": rows, "sanity": sanity}
 
     def _source_impedance(self, model: V126AcademicInput, bus_ref: str) -> complex:
         bus = next((item for item in model.buses if item.ref == bus_ref), None)
         if bus is not None and bus.fault_level_mva:
             z = bus.nominal_kv**2 / bus.fault_level_mva
             return complex(0.15 * z, 0.99 * z)
-        path_branch = next((branch for branch in model.branches if branch.to_bus_ref == bus_ref and not branch.is_open), None)
+        path_branch = next(
+            (
+                branch
+                for branch in model.branches
+                if branch.to_bus_ref == bus_ref and not branch.is_open
+            ),
+            None,
+        )
         return self._branch_z_ohm(path_branch) if path_branch is not None else complex(0.1, 0.4)
 
     def _hosting_capacity(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
@@ -598,7 +1671,14 @@ class V126AcademicSolver:
                     dv = net_gen * z / max(bus.nominal_kv**2, 1e-9)
                     voltage = bus.voltage_pu + dv
                     current = abs(net_gen) * 1000 / (math.sqrt(3) * bus.nominal_kv)
-                    ampacity = max((branch.ampacity_a for branch in model.branches if branch.to_bus_ref == bus.ref), default=300.0)
+                    ampacity = max(
+                        (
+                            branch.ampacity_a
+                            for branch in model.branches
+                            if branch.to_bus_ref == bus.ref
+                        ),
+                        default=300.0,
+                    )
                     if 0.90 <= voltage <= 1.10 and current <= ampacity:
                         ok += 1
                 probability = ok / simulations
@@ -624,7 +1704,24 @@ class V126AcademicSolver:
             {"buses": len(results)},
             "MW pozostaje jednostka mocy; prawdopodobienstwo bez jednostki.",
         )
-        return {"hosting_capacity": results}
+        # K-08: sanity-bounds — pojemność przyłączeniowa ≥ 0, skończona, w obrębie skanu (≤ 10 MW).
+        hc_values = [float(r["hosting_capacity_mw"]) for r in results]
+        sanity = _sanity_block(
+            [
+                (
+                    "hc_nonneg",
+                    _finite(*hc_values) and all(v >= 0.0 for v in hc_values),
+                    "Pojemność przyłączeniowa < 0 lub nieskończona",
+                ),
+                (
+                    "hc_within_scan",
+                    all(v <= 10.0 for v in hc_values),
+                    "Pojemność > zakresu skanowania (10 MW) — błąd procedury",
+                ),
+            ],
+            has_inputs=len(model.buses) > 0,
+        )
+        return {"hosting_capacity": results, "sanity": sanity}
 
     def _opf_loss_lcc(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         branch_rows: list[JsonDict] = []
@@ -633,15 +1730,37 @@ class V126AcademicSolver:
             current = self._branch_current_a(model, branch)
             losses_kw = 3 * current**2 * branch.r_ohm_per_km * branch.length_km / 1000
             total_kw += losses_kw
-            branch_rows.append({"branch_ref": branch.ref, "loss_kw": _round(losses_kw, 5), "current_a": _round(current, 3)})
-        transformer_kw = sum(transformer.p0_kw + transformer.pk_kw * 0.45**2 for transformer in model.transformers)
+            branch_rows.append(
+                {
+                    "branch_ref": branch.ref,
+                    "loss_kw": _round(losses_kw, 5),
+                    "current_a": _round(current, 3),
+                }
+            )
+        transformer_kw = sum(
+            transformer.p0_kw + transformer.pk_kw * 0.45**2 for transformer in model.transformers
+        )
         total_kw += transformer_kw
         energy_price = float(model.parameters.get("energy_price_pln_per_kwh", 0.65))
         discount = float(model.parameters.get("discount_rate", 0.05))
         years = int(model.parameters.get("lcc_years", 30))
         annual_kwh = total_kw * float(model.parameters.get("loss_hours_per_year", 4000.0))
-        opex_pv = sum(annual_kwh * energy_price / ((1 + discount) ** year) for year in range(1, years + 1))
+        opex_pv = sum(
+            annual_kwh * energy_price / ((1 + discount) ** year) for year in range(1, years + 1)
+        )
         co2_factor = float(model.parameters.get("co2_kg_per_kwh", 0.72))
+        # D-14: sanity-bounds — straty i koszty fizycznie nieujemne i skończone.
+        annual_co2 = annual_kwh * co2_factor
+        sanity = _sanity_block(
+            [
+                ("losses_nonneg", total_kw >= 0.0, "Straty całkowite < 0 (niefizyczne)"),
+                ("losses_finite", math.isfinite(total_kw), "Straty nieskończone/NaN"),
+                ("losses_upper", total_kw <= 1.0e6, "Straty > 1 GW na sieci SN (absurd)"),
+                ("opex_nonneg", opex_pv >= 0.0, "LCC OPEX PV < 0 (niefizyczne)"),
+                ("co2_nonneg", annual_co2 >= 0.0, "Emisja CO2 < 0 (niefizyczne)"),
+            ],
+            has_inputs=len(model.branches) > 0 or len(model.transformers) > 0,
+        )
         trace.add(
             "opf_losses_lcc",
             "DeltaP = 3*I^2*R; LCC = CAPEX + sum(OPEX_t/(1+r)^t)",
@@ -657,29 +1776,57 @@ class V126AcademicSolver:
             "total_losses_kw": _round(total_kw, 5),
             "annual_losses_kwh": _round(annual_kwh, 3),
             "lcc_loss_opex_pv_pln": _round(opex_pv, 2),
-            "annual_co2_kg": _round(annual_kwh * co2_factor, 3),
+            "annual_co2_kg": _round(annual_co2, 3),
             "decision_variables": {
                 "oltc_tap_position": 0,
-                "nop_position_ref": next((branch.ref for branch in model.branches if branch.is_open), None),
+                "nop_position_ref": next(
+                    (branch.ref for branch in model.branches if branch.is_open), None
+                ),
                 "q_set_strategy": "minimize_losses_with_voltage_limits",
             },
+            "sanity": sanity,
         }
 
     def _benchmark_validation(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         references = model.parameters.get("benchmark_references")
-        if not isinstance(references, list):
-            references = [
-                {"network": "IEEE_9_bus", "test": "PowerFlow_NR", "reference": 1.0, "calculated": 1.0004, "tolerance_percent": 0.1},
-                {"network": "IEEE_14_bus", "test": "PowerFlow_NR", "reference": 1.0, "calculated": 1.0008, "tolerance_percent": 0.1},
-                {"network": "CIGRE_MV", "test": "PowerFlow_NR", "reference": 1.0, "calculated": 1.002, "tolerance_percent": 0.5},
-                {"network": "IEEE_39_bus", "test": "VoltageStability", "reference": 1.0, "calculated": 1.003, "tolerance_percent": 0.5},
-            ]
+        references_provided = isinstance(references, list) and len(references) > 0
+        if not references_provided:
+            # D-14 / K-09: NIE fabrykujemy zaliczających literałów (calc≈ref) — to
+            # był cichy fałsz (zawsze PASS niezależnie od solvera). Bez realnych
+            # referencji (IEEE 9/14/39, CIGRE MV) z wartościami policzonymi przez
+            # solver werdykt NIE jest wystawiany.
+            trace.add(
+                "benchmark_regression",
+                "delta_percent = |calc - ref| / |ref| * 100%",
+                {"benchmarks": 0, "references_provided": False},
+                "Brak referencji benchmarkowych w wejściu — walidacja niewykonana.",
+                {"status": "dane niekompletne"},
+                "Brak danych referencyjnych.",
+            )
+            return {
+                "validation_report": [],
+                "status": "dane niekompletne",
+                "references_provided": False,
+                "message_pl": (
+                    "Walidacja benchmarkowa wymaga referencji (IEEE 9/14/39-bus, "
+                    "CIGRE MV) z wartościami policzonymi przez solver. Bez nich "
+                    "werdyktu PASS/FAIL nie wystawia się (zakaz cichego fałszu K-09)."
+                ),
+                "sanity": _sanity_block([], has_inputs=False),
+            }
         rows: list[JsonDict] = []
+        proof_types: set[str] = set()
         for item in references:
             ref = float(item["reference"])
             calc = float(item["calculated"])
             delta = abs(calc - ref) / max(abs(ref), 1e-9) * 100.0
             tol = float(item["tolerance_percent"])
+            # K-09: each reference may declare its provenance/proof type. When a row
+            # carries a cross-validation marker (e.g. IEEE 9/14/39 vs pandapower) we
+            # surface it so the proof can state HOW the reference was obtained. Refs
+            # without a marker keep the generic benchmark-regression type.
+            row_proof_type = str(item.get("proof_type", "benchmark_regression"))
+            proof_types.add(row_proof_type)
             rows.append(
                 {
                     "network": item["network"],
@@ -687,17 +1834,27 @@ class V126AcademicSolver:
                     "tolerance_percent": tol,
                     "delta_percent": _round(delta, 5),
                     "status": "PASS" if delta <= tol else "FAIL",
+                    "proof_type": row_proof_type,
                 }
             )
+        # A single overall proof type when homogeneous; otherwise the neutral label.
+        overall_proof_type = (
+            next(iter(proof_types)) if len(proof_types) == 1 else "benchmark_regression"
+        )
         trace.add(
             "benchmark_regression",
             "delta_percent = |calc - ref| / |ref| * 100%",
-            {"benchmarks": len(rows)},
+            {"benchmarks": len(rows), "proof_type": overall_proof_type},
             "Porownanie wynikow solvera z wartosciami referencyjnymi IEEE/CIGRE.",
             {"max_deviation_percent": max((row["delta_percent"] for row in rows), default=0.0)},
             "Wartosci tego samego typu, delta w %.",
         )
-        return {"validation_report": rows, "status": "PASS" if all(row["status"] == "PASS" for row in rows) else "FAIL"}
+        return {
+            "validation_report": rows,
+            "references_provided": True,
+            "proof_type": overall_proof_type,
+            "status": "PASS" if all(row["status"] == "PASS" for row in rows) else "FAIL",
+        }
 
     def _uncertainty(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         sensitivities: list[JsonDict] = []
@@ -706,21 +1863,30 @@ class V126AcademicSolver:
             influence = 0.10 * transformer.uk_percent
             total_variance += influence**2
             sensitivities.append(
-                {"parameter": f"{transformer.ref}.uk_percent", "sigma_contribution_percent": _round(influence, 5)}
+                {
+                    "parameter": f"{transformer.ref}.uk_percent",
+                    "sigma_contribution_percent": _round(influence, 5),
+                }
             )
         for branch in model.branches:
             z = abs(self._branch_z_ohm(branch))
             influence = 0.05 * z
             total_variance += influence**2
             sensitivities.append(
-                {"parameter": f"{branch.ref}.z_ohm", "sigma_contribution_percent": _round(influence, 5)}
+                {
+                    "parameter": f"{branch.ref}.z_ohm",
+                    "sigma_contribution_percent": _round(influence, 5),
+                }
             )
         for bus in model.buses:
             if bus.fault_level_mva:
                 influence = 0.10 * bus.fault_level_mva / 100.0
                 total_variance += influence**2
                 sensitivities.append(
-                    {"parameter": f"{bus.ref}.s_sc_mva", "sigma_contribution_percent": _round(influence, 5)}
+                    {
+                        "parameter": f"{bus.ref}.s_sc_mva",
+                        "sigma_contribution_percent": _round(influence, 5),
+                    }
                 )
         expanded = 2 * math.sqrt(total_variance)
         trace.add(
@@ -735,8 +1901,23 @@ class V126AcademicSolver:
         total = sum(item["sigma_contribution_percent"] for item in ranked) or 1.0
         for item in ranked:
             item["share_percent"] = _round(item["sigma_contribution_percent"] / total * 100.0, 4)
+        # D-14: sanity — niepewność rozszerzona k=2 nieujemna, skończona; > 100%
+        # oznacza wynik bezużyteczny (poza zakresem wiarygodności).
+        sanity = _sanity_block(
+            [
+                ("u_nonneg", expanded >= 0.0, "Niepewność k=2 < 0 (niefizyczne)"),
+                ("u_finite", math.isfinite(expanded), "Niepewność nieskończona/NaN"),
+                (
+                    "u_upper",
+                    expanded <= 100.0,
+                    "Niepewność rozszerzona k=2 > 100% — wynik niewiarygodny",
+                ),
+            ],
+            has_inputs=len(sensitivities) > 0,
+        )
         return {
             "expanded_uncertainty_percent_k2": _round(expanded, 5),
             "sensitivity_ranking": ranked[:20],
             "display_contract": "wartość nominalna ± niepewność rozszerzona k=2",
+            "sanity": sanity,
         }

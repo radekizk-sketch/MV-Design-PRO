@@ -23,10 +23,10 @@ Usage:
     )
 """
 
+import unicodedata
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
-import unicodedata
+from typing import Any, Literal
 from uuid import uuid4
 
 # =============================================================================
@@ -51,6 +51,7 @@ class CatalogNamespace(Enum):
     VT = "VT"
     OGRANICZNIK_SN = "OGRANICZNIK_SN"
     OBCIAZENIE = "OBCIAZENIE"
+    KOMPENSATOR_SN = "KOMPENSATOR_SN"
     ZRODLO_SN = "ZRODLO_SN"
     ZRODLO_NN_PV = "ZRODLO_NN_PV"
     ZRODLO_NN_BESS = "ZRODLO_NN_BESS"
@@ -166,6 +167,138 @@ def _catalog_metadata_to_dict(
     if verification_note:
         payload["verification_note"] = verification_note
     return payload
+
+
+# ADR-011 §5b: optional U/f-control fields shared by ConverterType / InverterType.
+# Defaults keep a source passive (constant PQ) so published types round-trip
+# unchanged. The keys mirror inverter_control_from_params' expected param names.
+_UF_CONTROL_FIELDS: tuple[str, ...] = (
+    "control_mode",
+    "cosphi",
+    "q_absorbing",
+    "cosphi_p_points",
+    "qu_deadband_low_pu",
+    "qu_deadband_high_pu",
+    "qu_slope_pu_per_pu",
+    "qu_q_min_mvar",
+    "qu_q_max_mvar",
+    "lfsm_droop_pct",
+    "lfsm_deadband_hz",
+    "lfsm_allow_increase",
+    "f0_hz",
+)
+
+
+def _uf_control_to_dict(source: Any) -> dict[str, Any]:
+    """Serialize the optional U/f-control fields of a converter/inverter type."""
+    payload: dict[str, Any] = {}
+    for name in _UF_CONTROL_FIELDS:
+        value = getattr(source, name)
+        if name == "cosphi_p_points" and value is not None:
+            payload[name] = [[float(x), float(y)] for x, y in value]
+        else:
+            payload[name] = value
+    return payload
+
+
+def _uf_control_kwargs(data: dict[str, Any]) -> dict[str, Any]:
+    """Parse the optional U/f-control fields from a dict (round-trips to_dict)."""
+    raw_points = data.get("cosphi_p_points")
+    points: tuple[tuple[float, float], ...] | None = (
+        tuple((float(x), float(y)) for x, y in raw_points) if raw_points is not None else None
+    )
+
+    def _opt_float(key: str) -> float | None:
+        value = data.get(key)
+        return float(value) if value is not None else None
+
+    return {
+        "control_mode": data.get("control_mode"),
+        "cosphi": _opt_float("cosphi"),
+        "q_absorbing": bool(data.get("q_absorbing", False)),
+        "cosphi_p_points": points,
+        "qu_deadband_low_pu": _opt_float("qu_deadband_low_pu"),
+        "qu_deadband_high_pu": _opt_float("qu_deadband_high_pu"),
+        "qu_slope_pu_per_pu": _opt_float("qu_slope_pu_per_pu"),
+        "qu_q_min_mvar": _opt_float("qu_q_min_mvar"),
+        "qu_q_max_mvar": _opt_float("qu_q_max_mvar"),
+        "lfsm_droop_pct": _opt_float("lfsm_droop_pct"),
+        "lfsm_deadband_hz": _opt_float("lfsm_deadband_hz"),
+        "lfsm_allow_increase": bool(data.get("lfsm_allow_increase", False)),
+        "f0_hz": _opt_float("f0_hz"),
+    }
+
+
+# =============================================================================
+# INVERTER CARD ("karta falownika") — complete datasheet-card schema fields.
+# All fields are OPTIONAL with None defaults so existing published converter
+# types round-trip byte-identically (the schema is COMPLETE; per-field data
+# quality says how trustworthy each value is — see solver_input.provenance).
+# =============================================================================
+
+# SC fault-model card fields (feeds short-circuit beyond the simple k_sc*In).
+_CARD_SC_MODEL_FIELDS: tuple[str, ...] = (
+    "sc_model",
+    "sc_pq_split",
+    "sc_transient_k",
+    "sc_sustained_k",
+)
+
+# SSCI / Z_conv(f) controller-bandwidth + filter card fields (feeds D-03 SSCI /
+# Z_conv). Filter L/R join this block because, like the bandwidths, they are
+# typical-class VSC estimates (ESTIMATED, never DATASHEET) consumed by Z_conv(f).
+_CARD_SSCI_FIELDS: tuple[str, ...] = (
+    "current_loop_bandwidth_hz",
+    "voltage_loop_bandwidth_hz",
+    "pll_bandwidth_hz",
+    "control_delay_ms",
+    "filter_l_pu",
+    "filter_r_pu",
+)
+
+# Power-hierarchy card fields (Pzainst >= Pn,AC >= Pprzylacz >= Posiagl).
+_CARD_POWER_HIERARCHY_FIELDS: tuple[str, ...] = (
+    "p_installed_mw",
+    "pn_ac_mw",
+    "p_connection_mw",
+    "p_achievable_mw",
+)
+
+# All card-schema field names added on top of the legacy ConverterType fields.
+_CARD_SCHEMA_FIELDS: tuple[str, ...] = (
+    _CARD_SC_MODEL_FIELDS + _CARD_SSCI_FIELDS + _CARD_POWER_HIERARCHY_FIELDS
+)
+
+
+def _card_schema_to_dict(source: Any) -> dict[str, Any]:
+    """Serialize the inverter-card schema fields of a converter type."""
+    return {name: getattr(source, name) for name in _CARD_SCHEMA_FIELDS}
+
+
+def _card_schema_kwargs(data: dict[str, Any]) -> dict[str, Any]:
+    """Parse the inverter-card schema fields from a dict (round-trips to_dict)."""
+
+    def _opt_float(key: str) -> float | None:
+        value = data.get(key)
+        return float(value) if value is not None else None
+
+    sc_model = data.get("sc_model")
+    return {
+        "sc_model": str(sc_model) if sc_model is not None else None,
+        "sc_pq_split": _opt_float("sc_pq_split"),
+        "sc_transient_k": _opt_float("sc_transient_k"),
+        "sc_sustained_k": _opt_float("sc_sustained_k"),
+        "current_loop_bandwidth_hz": _opt_float("current_loop_bandwidth_hz"),
+        "voltage_loop_bandwidth_hz": _opt_float("voltage_loop_bandwidth_hz"),
+        "pll_bandwidth_hz": _opt_float("pll_bandwidth_hz"),
+        "control_delay_ms": _opt_float("control_delay_ms"),
+        "filter_l_pu": _opt_float("filter_l_pu"),
+        "filter_r_pu": _opt_float("filter_r_pu"),
+        "p_installed_mw": _opt_float("p_installed_mw"),
+        "pn_ac_mw": _opt_float("pn_ac_mw"),
+        "p_connection_mw": _opt_float("p_connection_mw"),
+        "p_achievable_mw": _opt_float("p_achievable_mw"),
+    }
 
 
 # =============================================================================
@@ -522,10 +655,7 @@ class CableType:
             and self.return_conductor_cross_section_mm2 is not None
             and self.return_conductor_cross_section_mm2 > 0
         ):
-            return (
-                self.return_conductor_jth_1s_a_per_mm2
-                * self.return_conductor_cross_section_mm2
-            )
+            return self.return_conductor_jth_1s_a_per_mm2 * self.return_conductor_cross_section_mm2
         return None
 
     def to_dict(self) -> dict[str, Any]:
@@ -860,6 +990,51 @@ class ConverterType:
     control_mode: str | None = None
     grid_code: str | None = None
     dynamic_profile_id: str | None = None
+    # ADR-011 §5b: optional U/f-control characteristic (Q(U), P(f)/LFSM, cosphi
+    # modes). All default to a passive constant-PQ source so existing published
+    # types are byte-identical (reduce-to-NR). Materialized into the source's
+    # solver params and read by inverter_control_from_params.
+    cosphi: float | None = None
+    q_absorbing: bool = False
+    cosphi_p_points: tuple[tuple[float, float], ...] | None = None
+    qu_deadband_low_pu: float | None = None
+    qu_deadband_high_pu: float | None = None
+    qu_slope_pu_per_pu: float | None = None
+    qu_q_min_mvar: float | None = None
+    qu_q_max_mvar: float | None = None
+    lfsm_droop_pct: float | None = None
+    lfsm_deadband_hz: float | None = None
+    lfsm_allow_increase: bool = False
+    f0_hz: float | None = None
+    # Inverter-card ("karta falownika") SC fault-model fields. Feed the
+    # short-circuit solver beyond the simple k_sc*In contribution. All optional
+    # (None) so published types round-trip byte-identically.
+    sc_model: Literal["simple_k_factor", "pq_component", "from_datasheet"] | None = None
+    sc_pq_split: float | None = None  # P/(P+Q) split for the SC contribution
+    sc_transient_k: float | None = None  # fast/transient fault factor k*In
+    sc_sustained_k: float | None = None  # sustained fault factor k*In
+    # SSCI / Z_conv(f) controller-bandwidth fields. Feed D-03 SSCI / Z_conv(f).
+    current_loop_bandwidth_hz: float | None = None
+    voltage_loop_bandwidth_hz: float | None = None
+    pll_bandwidth_hz: float | None = None
+    control_delay_ms: float | None = None
+    # SSCI / Z_conv(f) LCL/L converter-filter fields (per-unit on the converter's
+    # own base Z_base = Un^2/Sn). Feed the D-03 Z_conv(f) output-impedance model.
+    # ESTIMATED like the bandwidths (typical VSC design values, never DATASHEET).
+    filter_l_pu: float | None = None
+    filter_r_pu: float | None = None
+    # Power hierarchy: Pzainst >= Pn,AC >= Pprzylacz >= Posiagl (validated when set).
+    p_installed_mw: float | None = None  # Pzainst (moc zainstalowana)
+    pn_ac_mw: float | None = None  # Pn,AC (moc znamionowa AC)
+    p_connection_mw: float | None = None  # Pprzylacz (moc przylaczeniowa)
+    p_achievable_mw: float | None = None  # Posiagl (moc osiagalna)
+    # Per-card data-quality override ("karta falownika" provenance). A serialized
+    # {field_name -> CardFieldStatus.to_dict()} map declaring, per field, how
+    # trustworthy each value is (DATASHEET / ESTIMATED / SYSTEM_DEFAULT). Stored as
+    # plain dicts to avoid a solver_input import in the catalog layer; consumed by
+    # solver_input.provenance.resolve_card_field_quality_map. Optional/None so the
+    # published converters round-trip byte-identically (the key is omitted unless set).
+    card_field_status: dict[str, dict[str, Any]] | None = None
     ptpiree_status: str | None = None
     ptpiree_certificate_ref: str | None = None
     ptpiree_document_number: str | None = None
@@ -874,6 +1049,27 @@ class ConverterType:
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+
+    def validate_power_hierarchy(self) -> None:
+        """Assert Pzainst >= Pn,AC >= Pprzylacz >= Posiagl for the fields present.
+
+        Only consecutive pairs that are BOTH present are checked, so a partially
+        filled card never raises spuriously. Raises ValueError on violation.
+        """
+        ordered: tuple[tuple[str, float | None], ...] = (
+            ("p_installed_mw", self.p_installed_mw),
+            ("pn_ac_mw", self.pn_ac_mw),
+            ("p_connection_mw", self.p_connection_mw),
+            ("p_achievable_mw", self.p_achievable_mw),
+        )
+        present = [(name, value) for name, value in ordered if value is not None]
+        for (upper_name, upper), (lower_name, lower) in zip(present, present[1:], strict=False):
+            if lower > upper:
+                raise ValueError(
+                    f"Naruszenie hierarchii mocy karty falownika: "
+                    f"{lower_name}={lower} > {upper_name}={upper} "
+                    f"(wymagane Pzainst >= Pn,AC >= Pprzylacz >= Posiagl)"
+                )
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -891,9 +1087,15 @@ class ConverterType:
             "e_kwh": self.e_kwh,
             "manufacturer": self.manufacturer,
             "model": self.model,
-            "control_mode": self.control_mode,
             "grid_code": self.grid_code,
             "dynamic_profile_id": self.dynamic_profile_id,
+            # control_mode is emitted by _uf_control_to_dict (ADR-011 §5b).
+            **_uf_control_to_dict(self),
+            # Inverter-card schema fields (SC model, SSCI bands, power hierarchy).
+            **_card_schema_to_dict(self),
+            # Per-card data-quality override: emitted only when set so published
+            # converters (card_field_status=None) stay byte-identical.
+            **({"card_field_status": self.card_field_status} if self.card_field_status else {}),
             "ptpiree_status": self.ptpiree_status,
             "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
             "ptpiree_document_number": self.ptpiree_document_number,
@@ -938,9 +1140,17 @@ class ConverterType:
             e_kwh=(float(data.get("e_kwh")) if data.get("e_kwh") is not None else None),
             manufacturer=data.get("manufacturer"),
             model=data.get("model"),
-            control_mode=data.get("control_mode"),
             grid_code=data.get("grid_code"),
             dynamic_profile_id=data.get("dynamic_profile_id"),
+            # control_mode + U/f-control fields parsed by _uf_control_kwargs.
+            **_uf_control_kwargs(data),
+            # Inverter-card schema fields parsed by _card_schema_kwargs.
+            **_card_schema_kwargs(data),
+            card_field_status=(
+                {str(k): dict(v) for k, v in data["card_field_status"].items()}
+                if data.get("card_field_status")
+                else None
+            ),
             ptpiree_status=data.get("ptpiree_status"),
             ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
             ptpiree_document_number=data.get("ptpiree_document_number"),
@@ -991,6 +1201,23 @@ class InverterType:
     kind: str = "INVERTER"
     manufacturer: str | None = None
     model: str | None = None
+    # ADR-011 §5b: optional U/f-control characteristic (Q(U), P(f)/LFSM, cosphi
+    # modes). All default to a passive constant-PQ source so existing published
+    # types are byte-identical (reduce-to-NR). Materialized into the source's
+    # solver params and read by inverter_control_from_params.
+    control_mode: str | None = None
+    cosphi: float | None = None
+    q_absorbing: bool = False
+    cosphi_p_points: tuple[tuple[float, float], ...] | None = None
+    qu_deadband_low_pu: float | None = None
+    qu_deadband_high_pu: float | None = None
+    qu_slope_pu_per_pu: float | None = None
+    qu_q_min_mvar: float | None = None
+    qu_q_max_mvar: float | None = None
+    lfsm_droop_pct: float | None = None
+    lfsm_deadband_hz: float | None = None
+    lfsm_allow_increase: bool = False
+    f0_hz: float | None = None
     ptpiree_status: str | None = None
     ptpiree_certificate_ref: str | None = None
     ptpiree_document_number: str | None = None
@@ -1021,6 +1248,7 @@ class InverterType:
             "kind": self.kind,
             "manufacturer": self.manufacturer,
             "model": self.model,
+            **_uf_control_to_dict(self),
             "ptpiree_status": self.ptpiree_status,
             "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
             "ptpiree_document_number": self.ptpiree_document_number,
@@ -1059,6 +1287,8 @@ class InverterType:
             kind=str(data.get("kind") or data.get("inverter_kind") or "INVERTER"),
             manufacturer=data.get("manufacturer"),
             model=data.get("model"),
+            # control_mode + U/f-control fields parsed by _uf_control_kwargs.
+            **_uf_control_kwargs(data),
             ptpiree_status=data.get("ptpiree_status"),
             ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
             ptpiree_document_number=data.get("ptpiree_document_number"),
@@ -1278,13 +1508,17 @@ class PtpireeGeneratorCertificate:
             wipwc_version=str(data.get("wipwc_version", "")),
             ppm_scope=str(data.get("ppm_scope", "")),
             firmware_version=(
-                str(data.get("firmware_version")) if data.get("firmware_version") is not None else None
+                str(data.get("firmware_version"))
+                if data.get("firmware_version") is not None
+                else None
             ),
             source_url=str(
                 data.get("source_url") or "https://ptpiree.pl/kodeksy-sieci/wykaz-certyfikatow/"
             ),
             publication_date=(
-                str(data.get("publication_date")) if data.get("publication_date") is not None else None
+                str(data.get("publication_date"))
+                if data.get("publication_date") is not None
+                else None
             ),
             accepted_from=(
                 str(data.get("accepted_from")) if data.get("accepted_from") is not None else None
@@ -1616,6 +1850,14 @@ class LoadType:
         cos_phi_mode: Power factor mode ("IND", "POJ", "BRAK").
         profile_id: Reference to load profile (optional).
         manufacturer: Manufacturer/source (optional).
+        a_p, b_p, c_p: ZIP voltage shares for P (Z/I/P), sum to 1 (ADR-011).
+        a_q, b_q, c_q: ZIP voltage shares for Q (Z/I/P), sum to 1 (ADR-011).
+        v0_pu: ZIP reference voltage [pu].
+        k_pf, k_qf: linear frequency sensitivities for P/Q (ADR-011).
+        f0_hz: ZIP reference frequency [Hz].
+
+    ZIP defaults are pure constant power (a=b=0, c=1, k=0), so published load
+    types behave exactly as before unless overridden (reduce-to-NR invariant).
     """
 
     id: str
@@ -1627,6 +1869,18 @@ class LoadType:
     cos_phi_mode: str = "IND"
     profile_id: str | None = None
     manufacturer: str | None = None
+    # ADR-011 (Z-ZIP-04): voltage- and frequency-dependent load coefficients.
+    # Defaults = constant power, frequency-independent (no change for PQ loads).
+    a_p: float = 0.0
+    b_p: float = 0.0
+    c_p: float = 1.0
+    a_q: float = 0.0
+    b_q: float = 0.0
+    c_q: float = 1.0
+    v0_pu: float = 1.0
+    k_pf: float = 0.0
+    k_qf: float = 0.0
+    f0_hz: float = 50.0
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog obciazen MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -1644,6 +1898,16 @@ class LoadType:
             "cos_phi_mode": self.cos_phi_mode,
             "profile_id": self.profile_id,
             "manufacturer": self.manufacturer,
+            "a_p": self.a_p,
+            "b_p": self.b_p,
+            "c_p": self.c_p,
+            "a_q": self.a_q,
+            "b_q": self.b_q,
+            "c_q": self.c_q,
+            "v0_pu": self.v0_pu,
+            "k_pf": self.k_pf,
+            "k_qf": self.k_qf,
+            "f0_hz": self.f0_hz,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1665,9 +1929,89 @@ class LoadType:
             cos_phi_mode=str(data.get("cos_phi_mode", "IND")),
             profile_id=data.get("profile_id"),
             manufacturer=data.get("manufacturer"),
+            a_p=float(data.get("a_p", 0.0)),
+            b_p=float(data.get("b_p", 0.0)),
+            c_p=float(data.get("c_p", 1.0)),
+            a_q=float(data.get("a_q", 0.0)),
+            b_q=float(data.get("b_q", 0.0)),
+            c_q=float(data.get("c_q", 1.0)),
+            v0_pu=float(data.get("v0_pu", 1.0)),
+            k_pf=float(data.get("k_pf", 0.0)),
+            k_qf=float(data.get("k_qf", 0.0)),
+            f0_hz=float(data.get("f0_hz", 50.0)),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog obciazen MV-DESIGN-PRO / profile referencyjne",
+                default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
+                default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
+            ),
+        )
+
+
+# =============================================================================
+# SHUNT CAPACITOR TYPE (KOMPENSATOR_SN) — baterie kondensatorów SN
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class ShuntCapacitorType:
+    """Immutable shunt-capacitor-bank type definition for catalog.
+
+    Reprezentuje stałą baterię kondensatorów SN do kompensacji mocy biernej.
+    Susceptancja pojemnościowa wynika z pierwszych zasad:
+        B = Q_rated / U_rated²   (Q = B·U²)
+    a w jednostkach względnych na bazie systemu: b_pu = Q_rated / S_base.
+
+    Attributes:
+        id: Unique identifier.
+        name: Type name (e.g., "Bateria kondensatorów SN 1,2 Mvar 15 kV").
+        rated_mvar: Reactive power rating [Mvar] @ rated voltage.
+        rated_kv: Rated voltage [kV].
+        loss_kw: Optional active dielectric/resistor losses [kW] (None => lossless).
+        manufacturer: Manufacturer/source (optional).
+    """
+
+    id: str
+    name: str
+    rated_mvar: float = 0.0
+    rated_kv: float = 0.0
+    loss_kw: float | None = None
+    manufacturer: str | None = None
+    verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
+    source_reference: str = "Katalog kompensatorow MV-DESIGN-PRO"
+    catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
+    contract_version: str = CATALOG_CONTRACT_VERSION
+    verification_note: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "rated_mvar": self.rated_mvar,
+            "rated_kv": self.rated_kv,
+            "loss_kw": self.loss_kw,
+            "manufacturer": self.manufacturer,
+            **_catalog_metadata_to_dict(
+                verification_status=self.verification_status,
+                source_reference=self.source_reference,
+                catalog_status=self.catalog_status,
+                contract_version=self.contract_version,
+                verification_note=self.verification_note,
+            ),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ShuntCapacitorType":
+        return cls(
+            id=str(data.get("id", str(uuid4()))),
+            name=str(data.get("name", "")),
+            rated_mvar=float(data.get("rated_mvar", 0.0)),
+            rated_kv=float(data.get("rated_kv", 0.0)),
+            loss_kw=(float(data["loss_kw"]) if data.get("loss_kw") is not None else None),
+            manufacturer=data.get("manufacturer"),
+            **_catalog_metadata_kwargs(
+                data,
+                default_source_reference="Katalog kompensatorow MV-DESIGN-PRO",
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
             ),
@@ -2413,11 +2757,41 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
     ),
     CatalogNamespace.OBCIAZENIE.value: MaterializationContract(
         namespace=CatalogNamespace.OBCIAZENIE.value,
-        solver_fields=("p_kw", "q_kvar", "model"),
+        # ADR-011 (Z-ZIP-04): ZIP + frequency coefficients materialize into
+        # Load.materialized_params. Defaults are constant power, so existing
+        # published load types remain byte-identical (reduce-to-NR).
+        solver_fields=(
+            "p_kw",
+            "q_kvar",
+            "model",
+            "a_p",
+            "b_p",
+            "c_p",
+            "a_q",
+            "b_q",
+            "c_q",
+            "v0_pu",
+            "k_pf",
+            "k_qf",
+            "f0_hz",
+        ),
         ui_fields=(
             ("p_kw", "P [kW]", "kW"),
             ("q_kvar", "Q [kvar]", "kvar"),
             ("cos_phi", "cos φ", ""),
+        ),
+    ),
+    CatalogNamespace.KOMPENSATOR_SN.value: MaterializationContract(
+        namespace=CatalogNamespace.KOMPENSATOR_SN.value,
+        solver_fields=(
+            "rated_mvar",
+            "rated_kv",
+            "loss_kw",
+        ),
+        ui_fields=(
+            ("rated_mvar", "Qn [Mvar]", "Mvar"),
+            ("rated_kv", "Un [kV]", "kV"),
+            ("loss_kw", "Straty [kW]", "kW"),
         ),
     ),
     CatalogNamespace.ZRODLO_SN.value: MaterializationContract(
@@ -2493,7 +2867,47 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
     ),
     CatalogNamespace.CONVERTER.value: MaterializationContract(
         namespace=CatalogNamespace.CONVERTER.value,
-        solver_fields=("un_kv", "sn_mva", "pmax_mw", "qmin_mvar", "qmax_mvar", "kind"),
+        # ADR-011 §5b: U/f-control characteristic materializes into the source's
+        # materialized_params. Defaults keep a passive constant-PQ source, so
+        # existing published converter types remain byte-identical (reduce-to-NR).
+        # Inverter-card SC-model / SSCI / power-hierarchy fields are appended; all
+        # default to None so existing published types remain byte-identical.
+        solver_fields=(
+            "un_kv",
+            "sn_mva",
+            "pmax_mw",
+            "qmin_mvar",
+            "qmax_mvar",
+            "kind",
+            "control_mode",
+            "cosphi",
+            "q_absorbing",
+            "cosphi_p_points",
+            "qu_deadband_low_pu",
+            "qu_deadband_high_pu",
+            "qu_slope_pu_per_pu",
+            "qu_q_min_mvar",
+            "qu_q_max_mvar",
+            "lfsm_droop_pct",
+            "lfsm_deadband_hz",
+            "lfsm_allow_increase",
+            "f0_hz",
+            # Inverter-card ("karta falownika") schema fields.
+            "sc_model",
+            "sc_pq_split",
+            "sc_transient_k",
+            "sc_sustained_k",
+            "current_loop_bandwidth_hz",
+            "voltage_loop_bandwidth_hz",
+            "pll_bandwidth_hz",
+            "control_delay_ms",
+            "filter_l_pu",
+            "filter_r_pu",
+            "p_installed_mw",
+            "pn_ac_mw",
+            "p_connection_mw",
+            "p_achievable_mw",
+        ),
         ui_fields=(
             ("un_kv", "Un [kV]", "kV"),
             ("sn_mva", "Sn [MVA]", "MVA"),
@@ -2505,7 +2919,30 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
     ),
     CatalogNamespace.INVERTER.value: MaterializationContract(
         namespace=CatalogNamespace.INVERTER.value,
-        solver_fields=("un_kv", "sn_mva", "pmax_mw", "qmin_mvar", "qmax_mvar", "kind"),
+        # ADR-011 §5b: U/f-control characteristic materializes into the source's
+        # materialized_params. Defaults keep a passive constant-PQ source, so
+        # existing published inverter types remain byte-identical (reduce-to-NR).
+        solver_fields=(
+            "un_kv",
+            "sn_mva",
+            "pmax_mw",
+            "qmin_mvar",
+            "qmax_mvar",
+            "kind",
+            "control_mode",
+            "cosphi",
+            "q_absorbing",
+            "cosphi_p_points",
+            "qu_deadband_low_pu",
+            "qu_deadband_high_pu",
+            "qu_slope_pu_per_pu",
+            "qu_q_min_mvar",
+            "qu_q_max_mvar",
+            "lfsm_droop_pct",
+            "lfsm_deadband_hz",
+            "lfsm_allow_increase",
+            "f0_hz",
+        ),
         ui_fields=(
             ("un_kv", "Un [kV]", "kV"),
             ("sn_mva", "Sn [MVA]", "MVA"),

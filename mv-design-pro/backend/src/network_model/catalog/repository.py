@@ -20,6 +20,7 @@ from .types import (
     ProtectionSettingTemplate,
     PtpireeGeneratorCertificate,
     PVInverterType,
+    ShuntCapacitorType,
     SourceSystemType,
     SurgeArresterType,
     SwitchEquipmentType,
@@ -196,6 +197,7 @@ class CatalogRepository:
     pv_inverter_types: dict[str, PVInverterType] = field(default_factory=dict)
     bess_inverter_types: dict[str, BESSInverterType] = field(default_factory=dict)
     surge_arrester_types: dict[str, SurgeArresterType] = field(default_factory=dict)
+    shunt_capacitor_types: dict[str, ShuntCapacitorType] = field(default_factory=dict)
     ptpiree_generator_certificates: dict[str, PtpireeGeneratorCertificate] = field(
         default_factory=dict
     )
@@ -223,6 +225,7 @@ class CatalogRepository:
         pv_inverter_types: Iterable[dict] | None = None,
         bess_inverter_types: Iterable[dict] | None = None,
         surge_arrester_types: Iterable[dict] | None = None,
+        shunt_capacitor_types: Iterable[dict] | None = None,
         ptpiree_generator_certificates: Iterable[dict] | None = None,
     ) -> CatalogRepository:
         def _build_line_type(record: dict) -> LineType:
@@ -320,6 +323,11 @@ class CatalogRepository:
             data.update(record.get("params") or {})
             return SurgeArresterType.from_dict(data)
 
+        def _build_shunt_capacitor_type(record: dict) -> ShuntCapacitorType:
+            data = {"id": record.get("id"), "name": record.get("name")}
+            data.update(record.get("params") or {})
+            return ShuntCapacitorType.from_dict(data)
+
         def _build_ptpiree_generator_certificate(
             record: dict,
         ) -> PtpireeGeneratorCertificate:
@@ -403,6 +411,10 @@ class CatalogRepository:
             surge_arrester_types={
                 str(item.id): item
                 for item in map(_build_surge_arrester_type, list(surge_arrester_types or []))
+            },
+            shunt_capacitor_types={
+                str(item.id): item
+                for item in map(_build_shunt_capacitor_type, list(shunt_capacitor_types or []))
             },
             ptpiree_generator_certificates={
                 str(item.id): item
@@ -532,6 +544,12 @@ class CatalogRepository:
     def get_surge_arrester_type(self, type_id: str) -> SurgeArresterType | None:
         return self.surge_arrester_types.get(str(type_id))
 
+    def list_shunt_capacitor_types(self) -> list[ShuntCapacitorType]:
+        return self._sorted(self.shunt_capacitor_types.values())
+
+    def get_shunt_capacitor_type(self, type_id: str) -> ShuntCapacitorType | None:
+        return self.shunt_capacitor_types.get(str(type_id))
+
     def list_ptpiree_generator_certificates(self) -> list[PtpireeGeneratorCertificate]:
         return sorted(
             self.ptpiree_generator_certificates.values(),
@@ -582,6 +600,7 @@ def get_default_mv_catalog() -> CatalogRepository:
     from .mv_cable_line_catalog import get_all_cable_types, get_all_line_types
     from .mv_converter_catalog import get_all_converter_types
     from .mv_ptpiree_catalog import get_all_ptpiree_generator_certificates
+    from .mv_shunt_capacitor_catalog import get_all_shunt_capacitor_records
     from .mv_source_catalog import get_all_source_system_types
     from .mv_surge_arrester_catalog import get_all_surge_arrester_types
     from .mv_switch_catalog import get_all_switch_equipment_types
@@ -604,5 +623,6 @@ def get_default_mv_catalog() -> CatalogRepository:
         vt_types=get_all_vt_types(),
         source_system_types=get_all_source_system_types(),
         surge_arrester_types=get_all_surge_arrester_types(),
+        shunt_capacitor_types=get_all_shunt_capacitor_records(),
         ptpiree_generator_certificates=get_all_ptpiree_generator_certificates(),
     )

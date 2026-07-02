@@ -125,6 +125,7 @@ NAMESPACE_TO_TYPE_CLASS: dict[str, str] = {
     "CT": "CTType",
     "VT": "VTType",
     "OBCIAZENIE": "LoadType",
+    "KOMPENSATOR_SN": "ShuntCapacitorType",
     "ZRODLO_NN_PV": "PVInverterType",
     "ZRODLO_NN_BESS": "BESSInverterType",
     "ZABEZPIECZENIE": "ProtectionDeviceType",

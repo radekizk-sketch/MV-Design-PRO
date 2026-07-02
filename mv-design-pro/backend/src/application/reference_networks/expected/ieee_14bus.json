@@ -1,0 +1,117 @@
+{
+  "network_id": "ieee-14bus",
+  "source": "MATPOWER case14 via pandapower 3.4.0",
+  "source_note": "Independent cross-validation reference. Network topology + parameters from pandapower.networks.case14 (canonical MATPOWER dataset), NOT from our solver. Per-bus |V|/angle computed by pandapower Newton-Raphson (algorithm='nr', tolerance_mva=1e-10). The committed builder ENM is structurally identical to case14 (fidelity asserted at generation time). Regenerate with: pip install pandapower==3.4.0; poetry run python scripts/generate_ieee_references.py --confirm.",
+  "provenance": {
+    "reference_tool": "pandapower 3.4.0",
+    "reference_source": "MATPOWER case14",
+    "generated_by_script": "scripts/generate_ieee_references.py",
+    "assumptions": {
+      "lf": "pandapower runpp(algorithm='nr', tolerance_mva=1e-10); flat start; single external grid as slack; generators modelled as ideal PV buses (no binding Q-limits in the canonical cases); off-nominal transformer taps and bus shunts honoured in the per-unit Ybus.",
+      "sc": "NOT GENERATED. MATPOWER case14 carries no short-circuit data (no s_sc_max_mva on the external grid, no sub-transient machine reactances on the generators); running pandapower.shortcircuit.calc_sc would require fabricating that data. SC cross-validation against the IEEE cases is therefore out of scope. The pandapower-iec60909-radial fixture provides a real pandapower-sourced SC reference instead."
+    }
+  },
+  "power_flow": [
+    {
+      "bus_id": "B0",
+      "v_pu": 1.06,
+      "angle_deg": 0.0,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B1",
+      "v_pu": 1.045,
+      "angle_deg": -4.982589,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B2",
+      "v_pu": 1.01,
+      "angle_deg": -12.7251,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B3",
+      "v_pu": 1.017670854,
+      "angle_deg": -10.312901,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B4",
+      "v_pu": 1.01951386,
+      "angle_deg": -8.773854,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B5",
+      "v_pu": 1.07,
+      "angle_deg": -14.220946,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B6",
+      "v_pu": 1.061519532,
+      "angle_deg": -13.359627,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B7",
+      "v_pu": 1.09,
+      "angle_deg": -13.359627,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B8",
+      "v_pu": 1.055931721,
+      "angle_deg": -14.938521,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B9",
+      "v_pu": 1.050984625,
+      "angle_deg": -15.097288,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B10",
+      "v_pu": 1.056906519,
+      "angle_deg": -14.790622,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B11",
+      "v_pu": 1.055188563,
+      "angle_deg": -15.075585,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B12",
+      "v_pu": 1.050381714,
+      "angle_deg": -15.156276,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    },
+    {
+      "bus_id": "B13",
+      "v_pu": 1.035529946,
+      "angle_deg": -16.033645,
+      "rtol": 0.005,
+      "note": "pandapower NR (algorithm='nr', tolerance_mva=1e-10)"
+    }
+  ],
+  "power_flow_branches": [],
+  "short_circuit": [],
+  "dynamic_samples": []
+}

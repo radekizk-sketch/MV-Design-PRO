@@ -10,6 +10,7 @@ import networkx as nx
 
 from .branch import Branch
 from .inverter import InverterSource
+from .machine import AsynchronousMachineSource, SynchronousMachineSource
 from .node import Node, NodeType
 from .station import Station
 from .switch import Switch
@@ -50,6 +51,10 @@ class NetworkGraph:
         self.nodes: dict[str, Node] = {}
         self.branches: dict[str, Branch] = {}
         self.inverter_sources: dict[str, InverterSource] = {}
+        # Rotating-machine SC sources (IEC 60909 §6.3/§6.7) — voltage-behind-Z″,
+        # added to the Y-bus as a shunt (unlike inverters = bounded current sources).
+        self.synchronous_machine_sources: dict[str, SynchronousMachineSource] = {}
+        self.asynchronous_machine_sources: dict[str, AsynchronousMachineSource] = {}
         self.switches: dict[str, Switch] = {}
         self.stations: dict[str, Station] = {}
         self._graph: nx.MultiGraph = nx.MultiGraph()
@@ -247,6 +252,37 @@ class NetworkGraph:
             if self._is_inverter_in_service(source)
         ]
         sources.sort(key=lambda source: source.id)
+        return sources
+
+    # ── Rotating-machine SC sources (IEC 60909 §6.3 synchronous, §6.7 asynchronous).
+    # Mirror the inverter registration: deterministic ordering by id, in-service
+    # filtering, node-existence validation. ──────────────────────────────────────
+    def add_synchronous_machine_source(self, source: SynchronousMachineSource) -> None:
+        """Register a synchronous-machine SC source (voltage behind Z″_G)."""
+        if source.id in self.synchronous_machine_sources:
+            raise ValueError(f"Maszyna synchroniczna o ID '{source.id}' już istnieje w grafie.")
+        if source.node_id not in self.nodes:
+            raise ValueError(f"Węzeł '{source.node_id}' nie istnieje w grafie.")
+        self.synchronous_machine_sources[source.id] = source
+
+    def get_synchronous_machine_sources(self) -> list[SynchronousMachineSource]:
+        """Active synchronous-machine sources, deterministically ordered by id."""
+        sources = [s for s in self.synchronous_machine_sources.values() if getattr(s, "in_service", True)]
+        sources.sort(key=lambda s: s.id)
+        return sources
+
+    def add_asynchronous_machine_source(self, source: AsynchronousMachineSource) -> None:
+        """Register an asynchronous-machine SC source (voltage behind Z_M)."""
+        if source.id in self.asynchronous_machine_sources:
+            raise ValueError(f"Maszyna asynchroniczna o ID '{source.id}' już istnieje w grafie.")
+        if source.node_id not in self.nodes:
+            raise ValueError(f"Węzeł '{source.node_id}' nie istnieje w grafie.")
+        self.asynchronous_machine_sources[source.id] = source
+
+    def get_asynchronous_machine_sources(self) -> list[AsynchronousMachineSource]:
+        """Active asynchronous-machine sources, deterministically ordered by id."""
+        sources = [s for s in self.asynchronous_machine_sources.values() if getattr(s, "in_service", True)]
+        sources.sort(key=lambda s: s.id)
         return sources
 
     def remove_node(self, node_id: str) -> None:

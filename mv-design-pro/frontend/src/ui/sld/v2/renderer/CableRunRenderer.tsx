@@ -8,11 +8,23 @@
  */
 
 import {
+  COLOR_DEVICE_OPEN,
+  COLOR_DEVICE_OPEN_BORDER,
   COLOR_FIELD_TRUNK_ENERGIZED,
   STROKE_BRANCH_LINE_PX,
   STROKE_TRUNK_LINE_PX,
   STROKE_DASHED_RING_DASH_PX,
 } from '../theme/tokens';
+
+/** Local mirror of the solver companion's flow direction (kept renderer-local to
+ *  avoid importing the adapter into a leaf renderer). */
+export type SldFlowDirectionLite = 'forward' | 'reverse' | 'none';
+
+/** Open-point (NMO / open section-switch) cut-point marker geometry. Sized to
+ *  read on the zoomed-out network overview (L0) where it must break the green
+ *  power path prominently. */
+const OPEN_POINT_R = 9;
+const OPEN_POINT_HALO = OPEN_POINT_R + 3;
 
 export interface CableRunStationPortGap {
   readonly stationId: string;
@@ -97,6 +109,30 @@ export interface CableRunRendererProps {
   readonly energized?: boolean;
   /** True gdy ciag zawiera NMO / otwarty punkt z SupplyPathHighlighter. */
   readonly containsOpenPoint?: boolean;
+  /** Punkty otwarte (NMO / łącznik sekcyjny otwarty) NA torze — pozycja {x,y}
+   *  wynika z geometrii sąsiednich segmentów (miejsce, gdzie zielony tor się
+   *  rozcina), label to REALNY identyfikator z modelu (nazwa łącznika), bez
+   *  fabrykowanych numerów P-xx. Renderer rysuje wyrazisty czerwony znacznik
+   *  cut-point na linii — dyspozytorska konwencja SCADA. Deterministyczne:
+   *  pozycja + label to czysta funkcja danych łącznika. */
+  readonly openPointMarkers?: readonly {
+    readonly id: string;
+    readonly x: number;
+    readonly y: number;
+    readonly label: string;
+  }[];
+  /** P-A POWER-FLOW TOR (one truth): kierunek przepływu mocy per segment READ z
+   *  FROZEN solvera (znak P na końcu "from"). 'forward' = zgodnie z orientacją
+   *  trasy (pathPoints start→end); 'reverse' = przeciwnie (OZE oddaje moc w górę
+   *  sieci) → strzałka odwrócona; 'none' = brak przepływu (brak strzałki). Brak
+   *  mapy → fallback do strzałki geometrycznej (pre-P-A). */
+  readonly segmentDirections?: Readonly<Record<string, SldFlowDirectionLite>>;
+  /** P-A: kierunek reprezentatywny ciągu (solver) — dla pojedynczej strzałki na
+   *  L0/L1 gdy nie rysujemy per-segment ścieżek. */
+  readonly flowDirection?: SldFlowDirectionLite;
+  /** P-A: energizacja per segment READ z solvera (`energized_branch_refs`).
+   *  Segment nieobjęty przez solver = de-energized → renderer wyszarza. */
+  readonly segmentEnergized?: Readonly<Record<string, boolean>>;
   /** Presentation-only guide for stations that are placed but not bound to a real SN segment. */
   readonly topologyGuide?: boolean;
 }
@@ -124,8 +160,21 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     viewportScale,
     energized = false,
     containsOpenPoint = false,
+    openPointMarkers = [],
     topologyGuide = false,
+    segmentDirections,
+    flowDirection,
+    segmentEnergized,
   } = props;
+  // P-A: solver mode is active when a direction map / run direction is supplied.
+  const hasSolverDirection = segmentDirections !== undefined || flowDirection !== undefined;
+  // P-A: dim de-energized runs (solver mode). `energized` is the run-level
+  // energization READ from the solver companion (all segments solved). When a run
+  // is NOT energized (e.g. the stub beyond an open NOP) we draw it greyed so the
+  // de-energized part of the network is visually distinct — the SLD shows exactly
+  // what the solver could not energize.
+  const deEnergizedRun = hasSolverDirection && !energized;
+  const runVisibleOpacity = deEnergizedRun ? 0.32 : 1;
   // LOD 0-1 pokazuje przebieg sieci bez natloku opisow. Parametry
   // poszczegolnych odcinkow SN pojawiaja sie od LOD 2.
   const visibleSegmentLabels = lod !== undefined && lod < 2 ? [] : segmentLabels;
@@ -186,6 +235,17 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     ? findLongestHorizontalSegmentMidpoint(pathPoints)
     : null;
   const terminalPoint = pathPoints[pathPoints.length - 1];
+  // SCADA open-point markers. Prefer the data-honest, geometry-precise markers
+  // supplied by the adapter (placed exactly where the green path breaks, with the
+  // real switch identifier). Fall back to a single terminal-anchored marker only
+  // when the run is flagged `containsOpenPoint` without precise positions, so
+  // legacy callers still surface the cut point.
+  const resolvedOpenPointMarkers: readonly { id: string; x: number; y: number; label: string }[] =
+    openPointMarkers.length > 0
+      ? openPointMarkers
+      : containsOpenPoint && terminalPoint
+        ? [{ id: `${id}-nmo`, x: terminalPoint.x, y: terminalPoint.y, label: 'NO' }]
+        : [];
   const pendingEndpointLabel = pendingEndpointLabels(segmentKind);
   // K30-42: power flow direction arrow — kierunek z start → end pathPoints.
   // Renderowane na najdłuższym horizontal segmencie w midpoincie. Pomaga
@@ -193,10 +253,28 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
   // downstream), kluczowe w dispatcher operations.
   const flowArrow = computeFlowArrowMarker(pathPoints);
   const flowArrowSize = topologyDirectionArrowSize(viewportScale);
+  // P-A: in solver mode the run-level direction decides whether the physical flow
+  // opposes the route order (reverse ⇒ OZE backfeed) or there is no net flow
+  // (none ⇒ no arrow). ONE TRUTH — orientation equals sign(P) from the solver.
+  const solverFlowSuppressed = hasSolverDirection && flowDirection === 'none';
+  const solverFlowReversed = hasSolverDirection && flowDirection === 'reverse';
+  // P-A: resolve the single overview arrow's direction from the solver when in
+  // solver mode (flip on reverse). 'right'/'left' here is the SCREEN direction the
+  // tip points; the route's geometric direction is `flowArrow.direction`.
+  const resolvedFlowArrowDirection: 'right' | 'left' | null = flowArrow
+    ? !hasSolverDirection
+      ? flowArrow.direction
+      : solverFlowSuppressed
+        ? null
+        : solverFlowReversed
+          ? flowArrow.direction === 'right' ? 'left' : 'right'
+          : flowArrow.direction
+    : null;
   const showTopologyDirectionArrows =
     !topologyGuide
     && !missingEndpointPort
     && pathPoints.length >= 2
+    && !solverFlowSuppressed
     && (energized || lod === 0 || lod === 1);
   const readableSegmentLabels = declutterSegmentLabels(
     visibleSegmentLabels
@@ -229,8 +307,18 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           text: segmentTypeBadgeText(segmentKind, segmentPath.variant),
           x: point.x,
           y: point.y,
+          // Horizontal extent of the cable segment the chip sits on — lets the
+          // declutter slide the chip ALONG the cable to a clear offset when it
+          // would otherwise land on a station's bay/apparatus glyphs.
+          spanLoX: point.spanLoX,
+          spanHiX: point.spanHiX,
+          spanY: point.y,
         };
       }),
+      // K30: feed the station bay/apparatus keep-clear boxes into the declutter
+      // reservation so a cable-type chip never sits on apparatus glyphs at
+      // station zoom (priority: apparatus glyph > cable chip).
+      stationApparatusKeepClearBoxes(stationPortGaps),
     )
     : [];
   const readableEndpointResults = showDetailedSegmentBadges
@@ -250,6 +338,10 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
       data-supply-path-role={energized ? (runKind === 'branch' ? 'branch' : 'main_run') : 'not_energized'}
       data-open-point={containsOpenPoint ? 'true' : undefined}
       data-topology-guide={topologyGuide ? 'true' : undefined}
+      // P-A POWER-FLOW TOR (one truth): run-level direction READ from the frozen
+      // solver companion. 'solver' marks that orientation == sign(P), not geometry.
+      data-flow-source={hasSolverDirection ? 'solver' : undefined}
+      data-flow-direction={hasSolverDirection ? (flowDirection ?? 'none') : undefined}
     >
       <path
         d={hitPath}
@@ -282,6 +374,16 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             data-element-kind="cable_run"
             data-element-id={segmentPath.segmentRef}
             data-selected={segmentSelected ? 'true' : undefined}
+            // P-A POWER-FLOW TOR (one truth): per-segment energization + direction
+            // READ from the frozen solver companion. These DOM signals are what the
+            // render-based N-2/N-3 asserts measure (they cannot reproduce geometry).
+            data-energized={
+              segmentEnergized
+                ? (segmentEnergized[segmentPath.segmentRef] ? 'true' : 'false')
+                : undefined
+            }
+            data-flow-direction={segmentDirections?.[segmentPath.segmentRef]}
+            data-flow-source={hasSolverDirection ? 'solver' : undefined}
           >
             {hitRects.map((rect, rectIndex) => (
               <rect
@@ -318,7 +420,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             d={visiblePath}
             fill="none"
             stroke={runKind === 'branch' ? '#5BB8FF' : '#13C45A'}
-            strokeWidth={strokeWidth + 7}
+            strokeWidth={strokeWidth + 3}
             strokeLinecap="round"
             strokeLinejoin="round"
             opacity={0.18}
@@ -336,7 +438,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             d={vp}
             fill="none"
             stroke={runKind === 'branch' ? '#5BB8FF' : '#13C45A'}
-            strokeWidth={strokeWidth + 7}
+            strokeWidth={strokeWidth + 3}
             strokeLinecap="round"
             strokeLinejoin="round"
             opacity={0.18}
@@ -350,11 +452,12 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           data-testid={`sld-v2-run-${id}-visible-${index}`}
           d={visiblePath}
           fill="none"
-          stroke={strokeColor}
+          stroke={deEnergizedRun ? '#5A6A78' : strokeColor}
           strokeWidth={selected ? strokeWidth + 1 : strokeWidth}
           strokeDasharray={dasharray}
           strokeLinecap="round"
           strokeLinejoin="round"
+          opacity={runVisibleOpacity}
           pointerEvents="none"
         />
       ))}
@@ -364,6 +467,9 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           : null;
         const segmentExactSelected = selectedSegmentRefSet.has(segmentPath.segmentRef);
         const segmentHighlighted = Boolean(selected || segmentExactSelected);
+        // P-A: per-segment de-energization READ from the solver (segmentEnergized).
+        const segDeEnergized =
+          segmentEnergized !== undefined && segmentEnergized[segmentPath.segmentRef] === false;
         const segmentVisiblePaths = buildVisibleCablePaths(
           segmentPath.pathPoints,
           stationPortGaps,
@@ -374,7 +480,9 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             ? '#FF6B6B'
             : segmentHighlighted
               ? '#35C7FF'
-              : variantStyle?.stroke ?? strokeColor;
+              : segDeEnergized
+                ? '#5A6A78'
+                : variantStyle?.stroke ?? strokeColor;
         const segDasharray = topologyGuide
           ? '8 5'
           : missingEndpointPort
@@ -402,6 +510,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             strokeDasharray={segDasharray}
             strokeLinecap="round"
             strokeLinejoin="round"
+            opacity={segDeEnergized ? 0.32 : undefined}
             pointerEvents="none"
           />
         ));
@@ -475,6 +584,12 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
         <g
           data-testid={`sld-v2-run-${id}-direction-arrows`}
           data-topology-arrow-scale={(flowArrowSize / 5).toFixed(2)}
+          // P-A: the orientation source + resolved direction are exposed so a
+          // render-based assert can read that the drawn arrow == sign(P) solver.
+          data-flow-source={hasSolverDirection ? 'solver' : 'geometry'}
+          data-flow-direction={
+            hasSolverDirection ? (solverFlowReversed ? 'reverse' : 'forward') : undefined
+          }
           pointerEvents="none"
         >
           {pathPoints.slice(0, -1).map((p, i) => {
@@ -486,7 +601,10 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             const segLen = Math.sqrt(dx * dx + dy * dy);
             // Skip very short segments to avoid clutter
             if (segLen < 20) return null;
-            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+            // Route-order angle, then flip 180° when the solver says the physical
+            // flow opposes the route order (OZE backfeed). NO geometric guess.
+            const baseAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+            const angle = solverFlowReversed ? baseAngle + 180 : baseAngle;
             const arrowSize = flowArrowSize * 0.8;
             return (
               <g
@@ -532,32 +650,59 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           </text>
         </g>
       )}
-      {containsOpenPoint && !topologyGuide && !missingEndpointPort && terminalPoint && (
+      {/* SCADA open-point furniture: prominent RED cut-point marker that visibly
+          BREAKS the bright-green energized path. Placed ON the line where the
+          power path stops (geometry of the neighbouring segments — the green side
+          ends here, the beyond-NOP side is already dimmed). Label = the open
+          point's REAL identifier from the model (switch name); NO fabricated
+          "P-xx" number is invented when the model has none. Deterministic: marker
+          position + label are a pure function of the open-point branch data. */}
+      {!topologyGuide && !missingEndpointPort && resolvedOpenPointMarkers.map((marker) => (
         <g
+          key={`${id}-open-point-${marker.id}`}
           data-testid={`sld-v2-run-${id}-nmo-open-point`}
           data-element-kind="open_point_marker"
           data-open-point="true"
-          transform={`translate(${terminalPoint.x}, ${terminalPoint.y - 24})`}
+          data-open-point-id={marker.id}
+          data-open-point-label={marker.label}
+          transform={`translate(${marker.x}, ${marker.y})`}
           pointerEvents="none"
         >
-          <circle r={11} fill="#3A0C0C" stroke="#FF333D" strokeWidth={1.7} />
-          <line x1={-6} y1={0} x2={6} y2={0} stroke="#FF333D" strokeWidth={2.4} transform="rotate(-35)" />
+          {/* Dark halo behind the marker so the red reads even over a bright
+              green trunk underneath. */}
+          <polygon
+            points={`0,${-OPEN_POINT_HALO} ${OPEN_POINT_HALO},0 0,${OPEN_POINT_HALO} ${-OPEN_POINT_HALO},0`}
+            fill="#05070A"
+            opacity={0.92}
+          />
+          {/* Bold red cut-point diamond (open-apparatus tokens). */}
+          <polygon
+            points={`0,${-OPEN_POINT_R} ${OPEN_POINT_R},0 0,${OPEN_POINT_R} ${-OPEN_POINT_R},0`}
+            fill={COLOR_DEVICE_OPEN}
+            stroke={COLOR_DEVICE_OPEN_BORDER}
+            strokeWidth={2.2}
+            strokeLinejoin="round"
+          />
+          {/* Short break ticks (gap) emphasising the path is CUT here. */}
+          <line x1={-OPEN_POINT_R - 4} y1={0} x2={-OPEN_POINT_R - 1.5} y2={0} stroke={COLOR_DEVICE_OPEN_BORDER} strokeWidth={2.4} />
+          <line x1={OPEN_POINT_R + 1.5} y1={0} x2={OPEN_POINT_R + 4} y2={0} stroke={COLOR_DEVICE_OPEN_BORDER} strokeWidth={2.4} />
           <text
             x={0}
-            y={18}
+            y={OPEN_POINT_R + 13}
             textAnchor="middle"
-            fill="#FFB3B3"
+            fill="#FF9AA0"
             fontFamily="sans-serif"
-            fontSize={8}
+            fontSize={9}
             fontWeight={900}
+            letterSpacing={0.3}
             paintOrder="stroke"
             stroke="#05070A"
-            strokeWidth={2}
+            strokeWidth={2.6}
           >
-            NMO
+            {marker.label}
           </text>
         </g>
-      )}
+      ))}
       {missingEndpointPort && (
         <g
           data-testid={`sld-v2-run-${id}-missing-port-marker`}
@@ -724,13 +869,14 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           segment. Pomocne dla operatora — natychmiast widać direction
           zasilania (upstream→downstream). Pomijamy gdy missingEndpointPort
           (warning state) lub pendingEndpoint (incomplete connection). */}
-      {flowArrow && !topologyGuide && !missingEndpointPort && !pendingEndpoint && (
+      {flowArrow && resolvedFlowArrowDirection && !topologyGuide && !missingEndpointPort && !pendingEndpoint && (
         <polygon
           data-testid={`sld-v2-run-${id}-flow-arrow`}
-          data-flow-direction={flowArrow.direction}
+          data-flow-direction={resolvedFlowArrowDirection}
+          data-flow-source={hasSolverDirection ? 'solver' : 'geometry'}
           data-topology-arrow-scale={(flowArrowSize / 5).toFixed(2)}
           points={
-            flowArrow.direction === 'right'
+            resolvedFlowArrowDirection === 'right'
               ? `${flowArrow.x - flowArrowSize},${flowArrow.y - flowArrowSize * 0.8} ${flowArrow.x + flowArrowSize},${flowArrow.y} ${flowArrow.x - flowArrowSize},${flowArrow.y + flowArrowSize * 0.8}`
               : `${flowArrow.x + flowArrowSize},${flowArrow.y - flowArrowSize * 0.8} ${flowArrow.x - flowArrowSize},${flowArrow.y} ${flowArrow.x + flowArrowSize},${flowArrow.y + flowArrowSize * 0.8}`
           }
@@ -1124,34 +1270,155 @@ function segmentTypeBadgeText(
 function segmentTypeBadgePoint(
   points: readonly Point[],
   index: number,
-): CableRunSegmentLabel {
-  const midpoint = findLongestHorizontalSegmentMidpoint(points)
+): SegmentTypeBadgeSeed {
+  const segment = findLongestHorizontalSegment(points);
+  const midpoint = segment
     ?? (points.length >= 2
-      ? { x: (points[0].x + points[points.length - 1].x) / 2, y: (points[0].y + points[points.length - 1].y) / 2 }
-      : { x: 0, y: 0 });
+      ? {
+          x: (points[0].x + points[points.length - 1].x) / 2,
+          y: (points[0].y + points[points.length - 1].y) / 2,
+          loX: Math.min(points[0].x, points[points.length - 1].x),
+          hiX: Math.max(points[0].x, points[points.length - 1].x),
+        }
+      : { x: 0, y: 0, loX: 0, hiX: 0 });
   const laneOffset = index % 2 === 0 ? -26 : 48;
   return {
     segmentRef: '',
     text: '',
     x: midpoint.x,
     y: midpoint.y + laneOffset,
+    spanLoX: midpoint.loX,
+    spanHiX: midpoint.hiX,
+    spanY: midpoint.y + laneOffset,
   };
 }
 
-function declutterSegmentTypeBadges(
-  labels: readonly CableRunSegmentLabel[],
-): CableRunSegmentLabel[] {
-  const placed: CableRunSegmentLabel[] = [];
-  return labels.map((label) => {
-    let candidate = label;
-    for (const offset of [0, -20, 20, -40, 40, -60, 60]) {
-      candidate = { ...label, y: label.y + offset };
-      if (!placed.some((other) => segmentLabelsOverlap(candidate, other))) break;
-    }
-    placed.push(candidate);
-    return candidate;
+/**
+ * Keep-clear box dla deklatera etykiet typu kabla: prostokąt {x,y,width,height}
+ * top-left, którego cable-type chip nie może zasłaniać (priorytet aparat > chip).
+ */
+type KeepClearBox = { x: number; y: number; width: number; height: number };
+
+/** Seed etykiety typu kabla z zakresem poziomym odcinka (do przesuwu wzdłuż kabla). */
+type SegmentTypeBadgeSeed = CableRunSegmentLabel & {
+  /** Lewy/prawy kraniec odcinka poziomego, na którym leży chip (world X). */
+  readonly spanLoX: number;
+  readonly spanHiX: number;
+  /** Bazowy Y odcinka (do przesuwu chipa nad tor, gdy slide-X nie wystarczy). */
+  readonly spanY: number;
+};
+
+// Połówka poziomego footprintu stacji compact (MiniBlockRmuRenderer COMPACT_WIDTH=220)
+// — chip ma omijać kolumny pól po obu stronach portu liniowego.
+const STATION_KEEP_CLEAR_HALF_WIDTH = 116;
+// Pas pionowy pól/aparatury stacji względem toru (gap.y): od tuż nad torem przez
+// szynę SN (≈ +80) w dół przez stos aparatury pola.
+const STATION_KEEP_CLEAR_ABOVE = 22;
+const STATION_KEEP_CLEAR_BELOW = 248;
+
+/**
+ * Buduje keep-clear boxy z portów stacji na torze. Każda stacja na ciągu ma
+ * kolumny pól (aparaty SN) zwisające pod torem — cable-type chip nie może na
+ * nie nachodzić. Deterministyczne: czysta funkcja geometrii portów.
+ */
+function stationApparatusKeepClearBoxes(
+  gaps: readonly CableRunStationPortGap[],
+): KeepClearBox[] {
+  return gaps.map((gap) => {
+    const portSpan = gap.outputX === null ? 0 : Math.abs(gap.outputX - gap.inputX);
+    const midX = gap.outputX === null ? gap.inputX : (gap.inputX + gap.outputX) / 2;
+    const halfWidth = Math.max(STATION_KEEP_CLEAR_HALF_WIDTH, portSpan / 2 + 40);
+    return {
+      x: midX - halfWidth,
+      y: gap.y - STATION_KEEP_CLEAR_ABOVE,
+      width: halfWidth * 2,
+      height: STATION_KEEP_CLEAR_ABOVE + STATION_KEEP_CLEAR_BELOW,
+    };
   });
 }
+
+function segmentTypeBadgeBox(label: CableRunSegmentLabel): KeepClearBox {
+  const halfWidth = estimateLabelWidth(label.text) / 2 + 7;
+  return { x: label.x - halfWidth, y: label.y - 10, width: halfWidth * 2, height: 18 };
+}
+
+function keepClearBoxesOverlap(a: KeepClearBox, b: KeepClearBox): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+/**
+ * Declutter etykiet typu kabla z REZERWACJĄ keep-clear boxów aparatury stacji.
+ *
+ * Priorytet: aparat pola > cable chip. Dla każdego chipa:
+ *   1. spróbuj pozycji bazowej,
+ *   2. przesuń chip WZDŁUŻ kabla (slide-X w obrębie odcinka) do najbliższego
+ *      prześwitu między stacjami, zachowując Y na torze,
+ *   3. jeśli slide-X nie znajdzie prześwitu — odsuń chip nad tor (lane-Y),
+ *   4. w ostateczności ukryj chip (aparat wygrywa).
+ *
+ * Deterministyczne: kolejność prób stała, czysta funkcja geometrii.
+ */
+function declutterSegmentTypeBadges(
+  labels: readonly SegmentTypeBadgeSeed[],
+  keepClearBoxes: readonly KeepClearBox[] = [],
+): CableRunSegmentLabel[] {
+  const placed: CableRunSegmentLabel[] = [];
+  const collides = (candidate: CableRunSegmentLabel): boolean => {
+    const box = segmentTypeBadgeBox(candidate);
+    if (keepClearBoxes.some((reserved) => keepClearBoxesOverlap(box, reserved))) return true;
+    return placed.some((other) => segmentLabelsOverlap(candidate, other));
+  };
+  const result: CableRunSegmentLabel[] = [];
+  for (const label of labels) {
+    const base: CableRunSegmentLabel = {
+      segmentRef: label.segmentRef,
+      text: label.text,
+      x: label.x,
+      y: label.y,
+    };
+    let candidate = base;
+    let resolved = !collides(candidate);
+
+    // 2. Slide ALONG the cable (X) within the segment span to find a clear gap.
+    if (!resolved) {
+      const halfWidth = estimateLabelWidth(label.text) / 2 + 7;
+      const loX = label.spanLoX + halfWidth;
+      const hiX = label.spanHiX - halfWidth;
+      if (hiX > loX) {
+        for (const step of SEGMENT_TYPE_BADGE_SLIDE_OFFSETS) {
+          const x = clamp(label.x + step, loX, hiX);
+          candidate = { ...base, x, y: label.spanY };
+          if (!collides(candidate)) { resolved = true; break; }
+        }
+      }
+    }
+
+    // 3. Lane-Y: lift the chip clear of the apparatus band (apparatus hangs below
+    //    the trunk, so prefer moving UP) while keeping the original X.
+    if (!resolved) {
+      for (const offset of SEGMENT_TYPE_BADGE_LANE_OFFSETS) {
+        candidate = { ...base, y: label.y + offset };
+        if (!collides(candidate)) { resolved = true; break; }
+      }
+    }
+
+    if (!resolved) {
+      // 4. No clear position — hide (apparatus glyph wins over cable chip).
+      continue;
+    }
+    placed.push(candidate);
+    result.push(candidate);
+  }
+  return result;
+}
+
+// Slide-X probe: najpierw bazowa pozycja (0), potem coraz dalej w obie strony
+// wzdłuż kabla — preferuj prześwit między stacjami.
+const SEGMENT_TYPE_BADGE_SLIDE_OFFSETS = [
+  0, 60, -60, 120, -120, 180, -180, 240, -240, 320, -320, 420, -420,
+];
+// Lane-Y probe: aparatura zwisa pod torem, więc preferuj ruch w górę.
+const SEGMENT_TYPE_BADGE_LANE_OFFSETS = [-22, -44, -66, -88, 22, 44];
 
 function declutterSegmentEndpointResults(
   results: readonly CableRunSegmentEndpointResult[],
@@ -1315,4 +1582,32 @@ function findLongestHorizontalSegmentMidpoint(points: readonly Point[]): Point |
     }
   }
   return best ? { x: best.x, y: best.y } : null;
+}
+
+/**
+ * Jak `findLongestHorizontalSegmentMidpoint`, ale zwraca też lewy/prawy kraniec
+ * (`loX`/`hiX`) odcinka — declutter cable-type chipów może przesuwać chip wzdłuż
+ * tego zakresu, aby ominąć kolumny pól stacji.
+ */
+function findLongestHorizontalSegment(
+  points: readonly Point[],
+): { x: number; y: number; loX: number; hiX: number } | null {
+  let best: { x: number; y: number; loX: number; hiX: number; length: number } | null = null;
+  for (let index = 0; index < points.length - 1; index++) {
+    const start = points[index];
+    const end = points[index + 1];
+    if (Math.abs(start.y - end.y) > 0.5) continue;
+    const length = Math.abs(end.x - start.x);
+    if (length <= 0) continue;
+    if (!best || length > best.length) {
+      best = {
+        x: (start.x + end.x) / 2,
+        y: start.y,
+        loX: Math.min(start.x, end.x),
+        hiX: Math.max(start.x, end.x),
+        length,
+      };
+    }
+  }
+  return best ? { x: best.x, y: best.y, loX: best.loX, hiX: best.hiX } : null;
 }

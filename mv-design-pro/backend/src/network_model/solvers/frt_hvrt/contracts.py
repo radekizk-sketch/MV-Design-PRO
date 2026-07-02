@@ -29,7 +29,7 @@ class FrtHvrtSolverInput(BaseModel):
 
 FrtHvrtStatus = Literal[
     "ok",
-    "der_dropped",        # DER wypadł z synchronizacji
+    "der_dropped",  # DER wypadł z synchronizacji
     "no_module",
     "input_invalid",
 ]
@@ -62,20 +62,19 @@ class FrtHvrtResult(BaseModel):
 
 
 class FrtHvrtSolverAdapter:
-    """Adapter solvera FRT/HVRT. Status no_module dopóki PR-16-impl pending."""
+    """Adapter solvera FRT/HVRT RMS time-domain.
 
-    NO_MODULE_REASON_PL = (
-        "Solver FRT/HVRT RMS time-domain (czasowo-domeny dla LVRT 0–80% Un + "
-        "HVRT 110–130% Un wg krzywej profilu operatora) nie jest podpięty w "
-        "aktualnym module obliczeniowym. Schema FrtHvrtSolverInput + krzywe "
-        "FRT/HVRT w 5 profilach NC RfG (PSE/Energa/Tauron/Enea/PGE, PR-9) + "
-        "12 turbin wiatrowych w katalogu (PR-11) + UI cards (PR-9/10/11) — "
-        "wszystkie gotowe do podpięcia. Pełna implementacja numeryczna RMS "
-        "w osobnej sesji eksperta solver (~18 osobodni)."
-    )
+    Deleguje do podpiętego silnika numerycznego ``engine.run_frt_hvrt`` —
+    symulacja czasowo-domeny LVRT (0–80% Un) i HVRT (110–130% Un) z realną
+    trajektorią V/Iq/P, marginesem do krzywej profilu i czasem odzysku mocy.
+    Status ``no_module`` nie jest zwracany: brak danych wejściowych skutkuje
+    ``input_invalid`` (walidacja), a poprawne wejście — wynikiem ``ok`` /
+    ``der_dropped`` z silnika.
+    """
 
     def validate_input(
-        self, solver_input: FrtHvrtSolverInput,
+        self,
+        solver_input: FrtHvrtSolverInput,
     ) -> tuple[bool, list[str]]:
         errors: list[str] = []
         if solver_input.simulation_duration_s <= 0:
@@ -110,4 +109,5 @@ class FrtHvrtSolverAdapter:
             )
         # PR-16-impl: realne wyniki numeryczne (MVP voltage dip simulation)
         from src.network_model.solvers.frt_hvrt.engine import run_frt_hvrt
+
         return run_frt_hvrt(solver_input)

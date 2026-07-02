@@ -98,6 +98,7 @@ _NAMESPACE_ACCESSOR: dict[str, str] = {
     CatalogNamespace.VT.value: "get_vt_type",
     CatalogNamespace.OGRANICZNIK_SN.value: "get_surge_arrester_type",
     CatalogNamespace.OBCIAZENIE.value: "get_load_type",
+    CatalogNamespace.KOMPENSATOR_SN.value: "get_shunt_capacitor_type",
     CatalogNamespace.ZRODLO_SN.value: "get_source_system_type",
     CatalogNamespace.ZRODLO_NN_PV.value: "get_pv_inverter_type",
     CatalogNamespace.ZRODLO_NN_BESS.value: "get_bess_inverter_type",

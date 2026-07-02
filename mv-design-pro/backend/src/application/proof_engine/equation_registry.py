@@ -419,6 +419,97 @@ EQ_SC3F_008a = EquationDefinition(
     "AUDIT: c NIE występuje.",
 )
 
+# --- Maszyny wirujące: prąd wyłączeniowy z zanikiem (IEC 60909-0:2016 § 6.6) -----
+EQ_SC3F_011 = EquationDefinition(
+    equation_id="EQ_SC3F_011",
+    name_pl="Współczynnik zanikania μ (składowa AC) maszyny",
+    standard_ref="IEC 60909-0:2016 § 6.6.1 (Fig. 100–103)",
+    latex=r"\mu = 0.84 + 0.26 \cdot e^{-0.26 \cdot I_k''/I_r} \quad (t_{min} \leq 35\,\text{ms})",
+    symbols=(
+        SymbolDefinition(
+            symbol="\\mu",
+            unit="—",
+            description_pl="Współczynnik zanikania składowej AC prądu wyłączeniowego",
+            mapping_key="mu_factor",
+        ),
+        SymbolDefinition(
+            symbol="I_k''",
+            unit="kA",
+            description_pl="Początkowy prąd zwarciowy maszyny (udział częściowy)",
+            mapping_key="ikss_partial_ka",
+        ),
+        SymbolDefinition(
+            symbol="I_r",
+            unit="kA",
+            description_pl="Prąd znamionowy maszyny",
+            mapping_key="ir_ka",
+        ),
+    ),
+    unit_derivation="— (bezwymiarowy)",
+    notes="μ = 1 dla I_k''/I_r ≤ 2 (z dala od generatora). Współczynniki krzywej "
+    "wybierane wg t_min (0.02 / 0.05 / 0.10 / ≥0.25 s). AUDIT: c NIE występuje.",
+)
+
+EQ_SC3F_012 = EquationDefinition(
+    equation_id="EQ_SC3F_012",
+    name_pl="Współczynnik zanikania q maszyny asynchronicznej",
+    standard_ref="IEC 60909-0:2016 § 6.6.3",
+    latex=r"q = 1.03 + 0.12 \cdot \ln(m) \quad (t_{min} \leq 35\,\text{ms})",
+    symbols=(
+        SymbolDefinition(
+            symbol="q",
+            unit="—",
+            description_pl="Dodatkowy współczynnik zanikania silnika asynchronicznego",
+            mapping_key="q_factor",
+        ),
+        SymbolDefinition(
+            symbol="m",
+            unit="MW",
+            description_pl="Moc czynna na parę biegunów (P_rM / p)",
+            mapping_key="p_per_pole_mw",
+        ),
+    ),
+    unit_derivation="— (bezwymiarowy)",
+    notes="q ≤ 1; współczynniki krzywej wybierane wg t_min. Dla maszyn synchronicznych "
+    "q = 1 (brak dodatkowego zaniku). AUDIT: c NIE występuje.",
+)
+
+EQ_SC3F_013 = EquationDefinition(
+    equation_id="EQ_SC3F_013",
+    name_pl="Prąd wyłączeniowy symetryczny maszyny",
+    standard_ref="IEC 60909-0:2016 § 6.6 (eq. 74)",
+    latex=r"i_{b} = \mu \cdot q \cdot I_k''",
+    symbols=(
+        SymbolDefinition(
+            symbol="i_{b}",
+            unit="kA",
+            description_pl="Prąd wyłączeniowy symetryczny maszyny (do doboru zdolności łączeniowej)",
+            mapping_key="ib_partial_ka",
+        ),
+        SymbolDefinition(
+            symbol="\\mu",
+            unit="—",
+            description_pl="Współczynnik zanikania AC",
+            mapping_key="mu_factor",
+        ),
+        SymbolDefinition(
+            symbol="q",
+            unit="—",
+            description_pl="Współczynnik zanikania asynchroniczny (= 1 dla synchronicznych)",
+            mapping_key="q_factor",
+        ),
+        SymbolDefinition(
+            symbol="I_k''",
+            unit="kA",
+            description_pl="Początkowy prąd zwarciowy maszyny (udział częściowy)",
+            mapping_key="ikss_partial_ka",
+        ),
+    ),
+    unit_derivation="— · — · kA = kA",
+    notes="Prąd wyłączeniowy maszyny do doboru zdolności łączeniowej aparatury. "
+    "AUDIT: c NIE występuje (I_k'' już zawiera c).",
+)
+
 
 # =============================================================================
 # VDROP — Kanoniczne równania (BINDING)
@@ -2307,6 +2398,9 @@ class AntiDoubleCountingAudit:
         "EQ_SC3F_007": False,  # Moc S_k'' — c NIE występuje
         "EQ_SC3F_008": False,  # Prąd cieplny — c NIE występuje
         "EQ_SC3F_008a": False,  # Prąd dynamiczny — c NIE występuje
+        "EQ_SC3F_011": False,  # Współczynnik μ — c NIE występuje
+        "EQ_SC3F_012": False,  # Współczynnik q — c NIE występuje
+        "EQ_SC3F_013": False,  # Prąd wyłączeniowy maszyny i_b — c NIE występuje (I_k'' zawiera c)
     }
 
     # Równania pomocnicze (solver-only)
@@ -2446,6 +2540,9 @@ SC3F_EQUATIONS: dict[str, EquationDefinition] = {
     "EQ_SC3F_008a": EQ_SC3F_008a,
     "EQ_SC3F_009": EQ_SC3F_009,
     "EQ_SC3F_010": EQ_SC3F_010,
+    "EQ_SC3F_011": EQ_SC3F_011,
+    "EQ_SC3F_012": EQ_SC3F_012,
+    "EQ_SC3F_013": EQ_SC3F_013,
 }
 
 # VDROP equations registry

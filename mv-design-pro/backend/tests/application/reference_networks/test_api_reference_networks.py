@@ -5,14 +5,14 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 
-def test_list_endpoint_returns_9_networks() -> None:
+def test_list_endpoint_returns_all_networks() -> None:
     from api.main import app
 
     client = TestClient(app)
     response = client.get("/api/v1/reference-networks")
     assert response.status_code == 200
     networks = response.json()
-    assert len(networks) == 9
+    assert len(networks) == 12
 
 
 def test_list_endpoint_includes_required_fields() -> None:
@@ -53,9 +53,7 @@ def test_run_endpoint_returns_result() -> None:
     from api.main import app
 
     client = TestClient(app)
-    response = client.post(
-        "/api/v1/reference-networks/ieee-4bus/run?solver_kind=power_flow_newton"
-    )
+    response = client.post("/api/v1/reference-networks/ieee-4bus/run?solver_kind=power_flow_newton")
     assert response.status_code == 200
     body = response.json()
     assert body["network_id"] == "ieee-4bus"
@@ -77,13 +75,16 @@ def test_validate_endpoint_ieee_4bus_passes() -> None:
     assert report["pf_pass_count"] >= 4  # 4 buses
 
 
-def test_validate_endpoint_all_9_networks_pass() -> None:
+def test_validate_endpoint_all_networks_pass() -> None:
     """All registered networks must return PASS with real solver outputs."""
     from api.main import app
 
     client = TestClient(app)
     for net_id in [
         "ieee-4bus",
+        "ieee-9bus",
+        "ieee-14bus",
+        "ieee-39bus",
         "iec60909-example",
         "pandapower-iec60909-radial",
         "cigre-mv-14",

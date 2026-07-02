@@ -1,8 +1,10 @@
-"""NC RfG compliance checker — automatyczny testbench (PR-16).
+"""NC RfG compliance checker — automatyczny testbench.
 
 Brief 2 §16. Per typ modułu A/B/C/D × per profil operatora × 18 testów.
-Static rules engine sprawdza dane DER vs profile YAML; pełen RMS testbench
-wymaga podpięcia FrtHvrtSolverAdapter (PR-16-impl).
+Static rules engine sprawdza dane DER vs profile YAML; testy FRT (T1/T2)
+uruchamiają podpięty ``FrtHvrtSolverAdapter`` z realnym silnikiem RMS.
+Pozostałe testy dynamiczne (T8/T10/T11/T16/T17/T18) korzystają z modułu
+``solvers.ncrfg_ptpiree`` (pełna bateria zgodności) lub solvera RMS.
 """
 
 from __future__ import annotations
@@ -80,11 +82,27 @@ class NcRfgComplianceChecker:
 
     # Static tests — sprawdzane bez solvera RMS
     STATIC_TEST_IDS = {
-        "T3", "T4", "T5", "T6", "T7", "T9", "T12", "T13", "T14", "T15",
+        "T3",
+        "T4",
+        "T5",
+        "T6",
+        "T7",
+        "T9",
+        "T12",
+        "T13",
+        "T14",
+        "T15",
     }
     # Dynamic tests — wymagają RMS solver (PR-16-impl)
     DYNAMIC_TEST_IDS = {
-        "T1", "T2", "T8", "T10", "T11", "T16", "T17", "T18",
+        "T1",
+        "T2",
+        "T8",
+        "T10",
+        "T11",
+        "T16",
+        "T17",
+        "T18",
     }
 
     def check(
@@ -94,7 +112,8 @@ class NcRfgComplianceChecker:
     ) -> NcRfgComplianceReport:
         profile = load_nc_rfg_profile(operator_id)
         module_type = profile.classify_module(
-            der_data.p_max_kw, der_data.voltage_kv,
+            der_data.p_max_kw,
+            der_data.voltage_kv,
         )
         if module_type is None:
             return NcRfgComplianceReport(
@@ -129,29 +148,39 @@ class NcRfgComplianceChecker:
         )
 
     def _check_single_test(
-        self, test_id: str, test_name_pl: str, der_data: DerDataForCompliance,
+        self,
+        test_id: str,
+        test_name_pl: str,
+        der_data: DerDataForCompliance,
     ) -> ComplianceTestResult:
         # Static tests — checks dostępne lokalnie
         if test_id == "T3":  # P(f) droop
             return self._verdict_from_bool(
-                test_id, test_name_pl, der_data.has_pf_droop,
+                test_id,
+                test_name_pl,
+                der_data.has_pf_droop,
                 "Droop P(f) skonfigurowany",
                 "Brak konfiguracji droop P(f) — wymagane dla modułów B/C/D.",
             )
         if test_id == "T4":  # Q(U)
             return self._verdict_from_bool(
-                test_id, test_name_pl, der_data.has_qu_curve,
+                test_id,
+                test_name_pl,
+                der_data.has_qu_curve,
                 "Krzywa Q(U) dostarczona",
                 "Brak krzywej Q(U) — wymagane dla pracy w trybie q_of_u.",
             )
         if test_id == "T5":  # cos φ stały
             if der_data.cos_phi_min is None:
                 return ComplianceTestResult(
-                    test_id=test_id, test_name_pl=test_name_pl,
-                    verdict="no_data", message_pl="Brak danych cos φ.",
+                    test_id=test_id,
+                    test_name_pl=test_name_pl,
+                    verdict="no_data",
+                    message_pl="Brak danych cos φ.",
                 )
             return ComplianceTestResult(
-                test_id=test_id, test_name_pl=test_name_pl,
+                test_id=test_id,
+                test_name_pl=test_name_pl,
                 verdict="pass" if der_data.cos_phi_min >= 0.95 else "fail",
                 message_pl=(
                     f"cos φ_min = {der_data.cos_phi_min:.2f} "
@@ -161,13 +190,17 @@ class NcRfgComplianceChecker:
             )
         if test_id == "T14":  # SCADA comm
             return self._verdict_from_bool(
-                test_id, test_name_pl, der_data.has_scada_communication,
+                test_id,
+                test_name_pl,
+                der_data.has_scada_communication,
                 "Komunikacja SCADA z operatorem skonfigurowana",
                 "Brak komunikacji SCADA z operatorem.",
             )
         if test_id == "T15":  # Disturbance recorder
             return self._verdict_from_bool(
-                test_id, test_name_pl, der_data.has_disturbance_recorder,
+                test_id,
+                test_name_pl,
+                der_data.has_disturbance_recorder,
                 "Rejestrator zakłóceń obecny",
                 "Brak rejestratora zakłóceń.",
             )
@@ -175,7 +208,8 @@ class NcRfgComplianceChecker:
             has_curve = der_data.has_lvrt_curve if test_id == "T1" else der_data.has_hvrt_curve
             if not has_curve:
                 return ComplianceTestResult(
-                    test_id=test_id, test_name_pl=test_name_pl,
+                    test_id=test_id,
+                    test_name_pl=test_name_pl,
                     verdict="no_data",
                     message_pl=(
                         "Brak krzywej "
@@ -183,12 +217,13 @@ class NcRfgComplianceChecker:
                         + " — wymagane do testu RMS."
                     ),
                 )
-            # PR-16-impl: uruchamiamy FrtHvrtSolverAdapter dla scenariusza testowego
+            # FRT/HVRT: uruchamiamy podpięty silnik RMS dla scenariusza testowego
             from src.network_model.solvers.frt_hvrt import (
                 FrtHvrtSolverAdapter,
                 FrtHvrtSolverInput,
                 FrtScenario,
             )
+
             adapter = FrtHvrtSolverAdapter()
             test_kind = "lvrt" if test_id == "T1" else "hvrt"
             voltage_dip = 0.05 if test_kind == "lvrt" else 1.30
@@ -207,7 +242,8 @@ class NcRfgComplianceChecker:
             )
             if result.scenario_results and result.scenario_results[0].stayed_connected:
                 return ComplianceTestResult(
-                    test_id=test_id, test_name_pl=test_name_pl,
+                    test_id=test_id,
+                    test_name_pl=test_name_pl,
                     verdict="pass",
                     message_pl=(
                         f"DER pozostał w pracy podczas {test_kind.upper()} "
@@ -215,30 +251,37 @@ class NcRfgComplianceChecker:
                     ),
                 )
             return ComplianceTestResult(
-                test_id=test_id, test_name_pl=test_name_pl,
+                test_id=test_id,
+                test_name_pl=test_name_pl,
                 verdict="fail",
                 message_pl=f"DER wypadł z pracy podczas testu {test_kind.upper()}.",
             )
         if test_id in self.DYNAMIC_TEST_IDS:
             return ComplianceTestResult(
-                test_id=test_id, test_name_pl=test_name_pl,
+                test_id=test_id,
+                test_name_pl=test_name_pl,
                 verdict="no_module",
                 message_pl=self.NO_MODULE_REASON_PL,
             )
         # Static placeholder dla pozostałych testów
         return ComplianceTestResult(
-            test_id=test_id, test_name_pl=test_name_pl,
+            test_id=test_id,
+            test_name_pl=test_name_pl,
             verdict="no_data",
             message_pl="Test wymaga dodatkowych danych konfiguracyjnych.",
         )
 
     @staticmethod
     def _verdict_from_bool(
-        test_id: str, test_name_pl: str, condition: bool,
-        pass_msg_pl: str, fail_msg_pl: str,
+        test_id: str,
+        test_name_pl: str,
+        condition: bool,
+        pass_msg_pl: str,
+        fail_msg_pl: str,
     ) -> ComplianceTestResult:
         return ComplianceTestResult(
-            test_id=test_id, test_name_pl=test_name_pl,
+            test_id=test_id,
+            test_name_pl=test_name_pl,
             verdict="pass" if condition else "fail",
             message_pl=pass_msg_pl if condition else fail_msg_pl,
         )

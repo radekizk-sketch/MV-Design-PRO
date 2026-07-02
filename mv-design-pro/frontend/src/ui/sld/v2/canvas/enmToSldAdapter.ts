@@ -21,7 +21,6 @@
 
 import type {
   BayDeviceState,
-  BayControlMode as EnmBayControlMode,
   BayRuntimeState,
   BaySwitchState,
   Cable,
@@ -40,6 +39,11 @@ import type {
 import type { GpzRendererProps } from '../renderer/GpzRenderer';
 import type { SectionRendererProps } from '../renderer/SectionRenderer';
 import {
+  applyLayoutToGpzs,
+  applyLayoutToStations,
+  buildSldLayoutGeometry,
+} from './sldGeometryFromLayout';
+import {
   STATION_RUN_TRUNK_OFFSET_Y,
   type StationOnRunRendererProps,
 } from '../renderer/StationOnRunRenderer';
@@ -55,7 +59,6 @@ import {
 import type { DerRendererProps } from '../renderer/DerRenderer';
 import type { ConnectionRendererProps } from '../renderer/ConnectionRenderer';
 import type {
-  BayControlMode,
   EarthingSwitchState,
   GpzApparatusSwitchState,
   GpzBayDescriptor,
@@ -64,6 +67,11 @@ import type {
 } from '../renderer/GpzSwitchgearRenderer';
 import { ENM_BAY_ROLE_TO_FIELD_ROLE, FIELD_ROLE, type FieldRole } from '../domain/apparatusContracts';
 import { buildSupplyPathHighlight, type SupplyPathHighlight } from './SupplyPathHighlighter';
+import {
+  buildPowerFlowIndex,
+  type SldFlowDirection,
+  type SldPowerFlowCompanion,
+} from './SldPowerFlowCompanion';
 import { LABEL_PRIORITY, computeDeclutterMetrics, declutterLabels } from './LabelDeclutter';
 import type {
   SldBranchPointMarker,
@@ -117,18 +125,6 @@ function mapDeviceStateToEs(state: BayDeviceState | undefined): EarthingSwitchSt
   }
 }
 
-function mapControlMode(mode: EnmBayControlMode | undefined): BayControlMode | undefined {
-  if (mode === undefined) return undefined;
-  switch (mode) {
-    case 'zdalne':
-      return 'remote';
-    case 'miejscowe':
-    case 'lokalne_zablokowane':
-    case 'odstawione':
-      return 'local';
-  }
-}
-
 /**
  * Wybiera BaySwitchState dla aparatu danego rodzaju z `runtime_state.primary_device_states`.
  * Klucze tej mapy to `device_ref` z ENM (ID elementu). Konwencja Phase 0B-1: klucz
@@ -174,7 +170,6 @@ interface TelemetryProjection {
   readonly cbState?: GpzApparatusSwitchState;
   readonly dsState?: GpzApparatusSwitchState;
   readonly esState?: EarthingSwitchState;
-  readonly controlMode?: BayControlMode;
   readonly inManipulation?: boolean;
 }
 
@@ -187,8 +182,6 @@ export function projectBayTelemetry(runtime: BayRuntimeState | null | undefined)
   const cb = pickFirstStateForCategory(runtime.primary_device_states, 'cb');
   const dsLin = pickFirstStateForCategory(runtime.primary_device_states, 'ds_lin');
   const es = pickFirstStateForCategory(runtime.primary_device_states, 'es');
-  /* control_mode pola czytamy z CB (kanon: control_mode aparatu głównego rządzi polem). */
-  const controlMode = mapControlMode(cb?.control_mode);
   /* Manipulation: pending_command niezakończone LUB jakiś interlock_blocked
    * sygnalizuje że pole jest aktywnie zarządzane → renderer wyróżnia żółtym tłem. */
   const interlockOnAny = Boolean(
@@ -203,7 +196,6 @@ export function projectBayTelemetry(runtime: BayRuntimeState | null | undefined)
     cbState: mapDeviceStateToSwitch(cb?.actual_state),
     dsState: mapDeviceStateToSwitch(dsLin?.actual_state),
     esState: mapDeviceStateToEs(es?.actual_state),
-    controlMode,
     inManipulation,
   };
 }
@@ -256,12 +248,15 @@ function stationXFromCumKm(
   cumKm: number,
   posInRun: number,
   previousX: number | null,
+  minimumBaseX: number = X_STATIONS_START,
 ): number {
   const distancePx =
     cumKm > 0
       ? cumKm * PX_PER_KM
       : (posInRun + 1) * STATION_DEFAULT_PITCH;
-  const minimumX = X_STATIONS_START + posInRun * STATION_DEFAULT_PITCH;
+  // V-03: dla lateralu minimumBaseX = X stacji-rodzica (rozłożone drzewo);
+  // dla magistrali pozostaje X_STATIONS_START (zachowanie historyczne).
+  const minimumX = minimumBaseX + posInRun * STATION_DEFAULT_PITCH;
   const proposedX = Math.max(trunkStartX + distancePx, minimumX);
   if (previousX === null) return proposedX;
   return Math.max(proposedX, previousX + STATION_MIN_PITCH);
@@ -340,9 +335,34 @@ interface CableRunRendererPropsLight {
   /** Czy któryś z segmentów jest punktem otwartym (NMO / status='open')
    *  zgodnie z `SupplyPathHighlighter.openPointBranchRefs`. */
   containsOpenPoint?: boolean;
+  /** Punkty otwarte NA torze: pozycja {x,y} (geometria sąsiednich segmentów —
+   *  miejsce, gdzie zielony tor się rozcina) + REALNY identyfikator łącznika
+   *  (nazwa z modelu, bez fabrykowanych numerów). Renderer rysuje wyrazisty
+   *  czerwony znacznik cut-point. Deterministyczne: czysta projekcja danych
+   *  otwartego łącznika z `open_point_branch_refs`. */
+  openPointMarkers?: readonly {
+    id: string;
+    x: number;
+    y: number;
+    label: string;
+  }[];
   /** K30-41: napięcie ciągu [kV] z `inferRunVoltageKv`. Renderer dobiera tint
    *  stroke (gdy brak per-segment variant) + rysuje voltage chip przy starcie. */
   voltageKv?: number | null;
+  /** P-A POWER-FLOW TOR (one truth): per-segment direction READ from the frozen
+   *  solver companion (NOT geometry). 'forward' = power flows along the ENM
+   *  branch orientation (from→to, which the route is drawn in); 'reverse' =
+   *  against it (OZE backfeed). Renderer flips the arrow on 'reverse'. Absent ⇒
+   *  no solver companion ⇒ renderer falls back to geometric arrows. */
+  segmentDirections?: Readonly<Record<string, SldFlowDirection>>;
+  /** P-A: run-level direction (solver) for the representative energized segment —
+   *  drives the single overview flow arrow at L0/L1 where per-segment paths are
+   *  not drawn. Absent ⇒ geometric fallback. */
+  flowDirection?: SldFlowDirection;
+  /** P-A: per-segment energization READ from the solver companion
+   *  (`energized_branch_refs`). A segment NOT solved by the solver is
+   *  de-energized → renderer dims it. Absent ⇒ topology fallback (`energized`). */
+  segmentEnergized?: Readonly<Record<string, boolean>>;
 }
 
 type RunPoint = { x: number; y: number };
@@ -493,6 +513,18 @@ export interface SldDataPayload {
    *  sections / stations, gdy tryb operatorski „Pokaż tor zasilania" jest
    *  aktywny. */
   readonly supplyPath: SupplyPathHighlight;
+  /** P-A: header for the active power-flow case (state declaration shown on the
+   *  canvas). Present iff a frozen-solver companion was supplied to
+   *  `buildSldDataFromSnapshot`; the per-segment direction/energization on
+   *  `cableRuns`/`stations` then come from THAT solver result (one truth). */
+  readonly powerFlow: SldPowerFlowCaseHeader | null;
+}
+
+export interface SldPowerFlowCaseHeader {
+  readonly caseRef: string;
+  readonly caseLabel: string;
+  readonly converged: boolean;
+  readonly enmHash: string;
 }
 
 const EMPTY_SUPPLY_PATH_FROZEN: SupplyPathHighlight = Object.freeze({
@@ -531,7 +563,117 @@ const EMPTY_SLD_DATA: SldDataPayload = Object.freeze({
     labelPlacements: Object.freeze([]) as readonly [],
   }),
   supplyPath: EMPTY_SUPPLY_PATH_FROZEN,
+  powerFlow: null,
 });
+
+// =============================================================================
+// Open-point (NMO / open section-switch) marker projection
+// =============================================================================
+
+type OpenPointMarker = { id: string; x: number; y: number; label: string };
+
+/**
+ * Project the FROZEN power-flow companion's `open_point_branch_refs` (open
+ * switches / NMO) onto precise on-path marker positions + their REAL identifier.
+ *
+ * The open switch is not itself a drawn cable segment, so it is anchored to the
+ * geometry of the adjacent cable segment(s) sharing the switch's bus node — the
+ * exact spot where the energized green path breaks. The label is the switch's
+ * model `name` (compacted); when the model carries NO operator number, a short
+ * "NO" badge is used (data honesty — never a fabricated "P-xx").
+ *
+ * Pure projection of open-point data → deterministic (sorted refs, array-order
+ * geometry lookup).
+ */
+function buildOpenPointMarkersByRun(
+  snapshot: EnergyNetworkModel,
+  openPointSet: ReadonlySet<string>,
+  cableRuns: readonly CableRunRendererPropsLight[],
+): Map<string, OpenPointMarker[]> {
+  const byRun = new Map<string, OpenPointMarker[]>();
+  if (openPointSet.size === 0) return byRun;
+
+  const branchByRef = new Map((snapshot.branches ?? []).map((b) => [b.ref_id, b]));
+
+  for (const openRef of [...openPointSet].sort((a, b) => a.localeCompare(b))) {
+    const openBranch = branchByRef.get(openRef);
+    // Bus nodes the open point connects; for an open switch these are its two
+    // helper nodes (the adjacent cables terminate on them).
+    const busNodes = new Set<string>(
+      [openBranch?.from_bus_ref, openBranch?.to_bus_ref].filter(
+        (ref): ref is string => typeof ref === 'string' && ref.length > 0,
+      ),
+    );
+
+    let runId: string | null = null;
+    let incoming: RunPoint | null = null; // path END touching the switch (green side)
+    let outgoing: RunPoint | null = null; // path START leaving the switch (dim side)
+    // Direct case: the open ref itself is a drawn segment (kept for robustness).
+    let selfMid: RunPoint | null = null;
+
+    for (const run of cableRuns) {
+      for (const segmentPath of run.segmentPaths ?? []) {
+        const points = segmentPath.pathPoints;
+        if (points.length < 2) continue;
+        if (segmentPath.segmentRef === openRef) {
+          selfMid = points[Math.floor(points.length / 2)];
+          runId = run.id;
+          continue;
+        }
+        if (busNodes.size === 0) continue;
+        const segBranch = branchByRef.get(segmentPath.segmentRef);
+        if (!segBranch) continue;
+        if (segBranch.to_bus_ref && busNodes.has(segBranch.to_bus_ref)) {
+          incoming = points[points.length - 1];
+          runId = run.id; // anchor marker on the run that owns the feeding side
+        }
+        if (segBranch.from_bus_ref && busNodes.has(segBranch.from_bus_ref)) {
+          outgoing = points[0];
+          if (runId === null) runId = run.id;
+        }
+      }
+    }
+
+    // Place the marker at the open point itself — the join between the energized
+    // (incoming) cable end and the de-energized (outgoing) cable start. The
+    // gap-midpoint lands exactly where the green path breaks (and self-corrects
+    // for the renderer's station-port snap, which nudges segment ends toward this
+    // join). Falls back to whichever side exists when only one neighbour is found.
+    let position: RunPoint | null = null;
+    if (incoming && outgoing) {
+      position = { x: (incoming.x + outgoing.x) / 2, y: (incoming.y + outgoing.y) / 2 };
+    } else {
+      position = incoming ?? outgoing ?? selfMid;
+    }
+    if (!position || runId === null) continue;
+
+    const marker: OpenPointMarker = {
+      id: openRef,
+      x: Math.round(position.x),
+      y: Math.round(position.y),
+      label: compactOpenPointLabel(openBranch?.name ?? null),
+    };
+    const list = byRun.get(runId);
+    if (list) list.push(marker);
+    else byRun.set(runId, [marker]);
+  }
+
+  return byRun;
+}
+
+/**
+ * Compact dispatcher label for an open point. Uses the switch's REAL model name
+ * when present (trimmed/clipped so it never collides with node labels); falls
+ * back to a short "NO" (otwarty) badge when the model has no name. NEVER invents
+ * an operator "P-xx" number that is not in the data.
+ */
+function compactOpenPointLabel(name: string | null): string {
+  const trimmed = (name ?? '').trim();
+  if (trimmed.length === 0) return 'NO';
+  // Keep it short for an on-line marker; clip overly long station-switch names.
+  const MAX = 22;
+  return trimmed.length > MAX ? `${trimmed.slice(0, MAX - 1)}…` : trimmed;
+}
 
 // =============================================================================
 // Main builder
@@ -540,10 +682,11 @@ const EMPTY_SLD_DATA: SldDataPayload = Object.freeze({
 export function buildSldDataFromSnapshot(
   snapshot: EnergyNetworkModel | null,
   logicalViews: LogicalViewsV1 | null,
+  powerFlow?: SldPowerFlowCompanion | null,
 ): SldDataPayload {
   if (!snapshot) return EMPTY_SLD_DATA;
 
-  const gpzs = buildGpzs(snapshot);
+  let gpzs = buildGpzs(snapshot);
   const sections = buildSections(snapshot);
   let stations = buildStations(snapshot);
   let cableRuns = buildCableRuns(snapshot, logicalViews, stations);
@@ -554,6 +697,23 @@ export function buildSldDataFromSnapshot(
     branchPoints = stationLikeLayout.branchPoints;
     cableRuns = buildCableRuns(snapshot, logicalViews, stations);
   }
+
+  // Migracja geometrii §4: pozycje węzłów (stacje/GPZ) z JEDNEJ prawdy drzewa
+  // (LayoutEngine), nie ze slotów (`Y_RUN_BASE`, `X_STATIONS_START + j×pitch`).
+  // Bramka: tylko gdy silnik zbudował realne drzewo (≥1 krawędź) — inaczej
+  // pozostaje geometria slotowa (render działa). Przesuwamy stacje/GPZ, a potem
+  // PRZEBUDOWUJEMY cable-runs i branch-pointy z nowych pozycji stacji: istniejący
+  // `buildCableRuns` wyprowadza trasę z `station.x/y` (oraz głowic pól), więc kable
+  // podążają za stacjami-drzewa istniejącą (działającą) logiką routingu — bez
+  // sklejania per-segment (które dla wielostacyjnych ciągów dawało plątaninę).
+  const layout = buildSldLayoutGeometry(snapshot, snapshot.header?.hash_sha256 ?? 'enm');
+  if (layout) {
+    stations = applyLayoutToStations(stations, layout);
+    gpzs = applyLayoutToGpzs(gpzs, layout);
+    cableRuns = buildCableRuns(snapshot, logicalViews, stations);
+    branchPoints = buildBranchPointMarkers(snapshot, cableRuns, stations);
+  }
+
   const { ders, derConnections } = buildDers(snapshot, stations);
   const supplyPath = buildSupplyPathHighlight(snapshot);
   const topologyProjection = buildSldTopologyProjection(snapshot, {
@@ -564,24 +724,83 @@ export function buildSldDataFromSnapshot(
     ders,
   });
 
-  // Propaguj energized/openPoint na cableRuns na podstawie wyniku SupplyPath.
+  // P-A POWER-FLOW TOR — ONE TRUTH. When a frozen-solver companion is supplied,
+  // energization + per-segment direction are READ from the solver result (the SLD
+  // is a projection of the math model). Without a companion, fall back to the
+  // topology-only `SupplyPathHighlighter` (no direction) — pre-P-A behaviour.
+  const pfIndex = buildPowerFlowIndex(powerFlow ?? null);
+
   const energizedBranchSet = new Set(supplyPath.energizedBranchRefs);
-  const openPointSet = new Set(supplyPath.openPointBranchRefs);
+  const openPointSet = pfIndex
+    ? new Set(powerFlow?.open_point_branch_refs ?? [])
+    : new Set(supplyPath.openPointBranchRefs);
+
+  // SCADA open-point furniture: resolve each open switch to a precise on-path
+  // position (where the energized green path breaks) + its REAL identifier
+  // (switch name from the model — no fabricated "P-xx"). The open switch itself
+  // is not a cable segment, so it is anchored to the geometry of the adjacent
+  // cable segment(s) that DO have a rendered path.
+  const openPointMarkersByRun = buildOpenPointMarkersByRun(snapshot, openPointSet, cableRuns);
+
   const cableRunsAnnotated = cableRuns.map((run) => {
+    const runMarkers = openPointMarkersByRun.get(run.id) ?? [];
     const refs = run.segmentRefs ?? [];
     if (refs.length === 0) {
-      return run;
+      return runMarkers.length > 0
+        ? { ...run, containsOpenPoint: true, openPointMarkers: runMarkers }
+        : run;
     }
+    if (pfIndex) {
+      // Solver-driven: per-segment energization + direction, READ (not computed).
+      const segmentEnergized: Record<string, boolean> = {};
+      const segmentDirections: Record<string, SldFlowDirection> = {};
+      for (const ref of refs) {
+        segmentEnergized[ref] = pfIndex.isBranchEnergized(ref);
+        segmentDirections[ref] = pfIndex.directionOf(ref);
+      }
+      const allEnergized = refs.every((ref) => segmentEnergized[ref]);
+      const anyOpenPoint = runMarkers.length > 0 || refs.some((ref) => openPointSet.has(ref));
+      // Run-level arrow uses the first energized segment that carries a real
+      // (non-zero) direction; this is the representative flow at L0/L1.
+      const representative =
+        refs.find((ref) => segmentDirections[ref] === 'forward' || segmentDirections[ref] === 'reverse');
+      const flowDirection: SldFlowDirection = representative
+        ? segmentDirections[representative]
+        : 'none';
+      return {
+        ...run,
+        energized: allEnergized,
+        containsOpenPoint: anyOpenPoint,
+        openPointMarkers: runMarkers.length > 0 ? runMarkers : undefined,
+        segmentEnergized,
+        segmentDirections,
+        flowDirection,
+      };
+    }
+    // Topology fallback (no solver companion).
     const allEnergized = refs.every((ref) => energizedBranchSet.has(ref));
-    const anyOpenPoint = refs.some((ref) => openPointSet.has(ref));
-    return { ...run, energized: allEnergized, containsOpenPoint: anyOpenPoint };
+    const anyOpenPoint = runMarkers.length > 0 || refs.some((ref) => openPointSet.has(ref));
+    return {
+      ...run,
+      energized: allEnergized,
+      containsOpenPoint: anyOpenPoint,
+      openPointMarkers: runMarkers.length > 0 ? runMarkers : undefined,
+    };
   });
+
+  // Per-station energization from the solver (SN bus in the slack island).
+  const stationsAnnotated = pfIndex
+    ? stations.map((station) => ({
+        ...station,
+        energized: stationEnergizedFromSolver(station.id, pfIndex),
+      }))
+    : stations;
 
   return {
     gpzs,
     sections,
     cableRuns: cableRunsAnnotated,
-    stations,
+    stations: stationsAnnotated,
     branchPoints,
     ders,
     derConnections,
@@ -591,7 +810,33 @@ export function buildSldDataFromSnapshot(
     labelSpecs: topologyProjection.labelSpecs,
     readabilityReport: topologyProjection.readabilityReport,
     supplyPath,
+    powerFlow: powerFlow
+      ? {
+          caseRef: powerFlow.case_ref,
+          caseLabel: powerFlow.case_label,
+          converged: powerFlow.converged,
+          enmHash: powerFlow.enm_hash,
+        }
+      : null,
   };
+}
+
+/** Station SN bus energization READ from the solver companion (one truth). The
+ *  station id is `stn/<hash>/station`; its SN bus is `stn/<hash>/sn_bus`. */
+function stationEnergizedFromSolver(
+  stationId: string,
+  pfIndex: ReturnType<typeof buildPowerFlowIndex>,
+): boolean {
+  if (!pfIndex) return true;
+  const base = stationId.endsWith('/station')
+    ? stationId.slice(0, -'/station'.length)
+    : stationId;
+  // Energized iff either the SN or nN bus is in the solver slack island.
+  return (
+    pfIndex.isBusEnergized(`${base}/sn_bus`)
+    || pfIndex.isBusEnergized(`${base}/nn_bus`)
+    || pfIndex.isBusEnergized(stationId)
+  );
 }
 
 interface SldTopologyProjection {
@@ -848,9 +1093,12 @@ function buildLabelSpecs(rendered: {
 
   for (const run of rendered.cableRuns) {
     const points = run.pathPoints;
-    const midPoint = points.length > 0
-      ? points[Math.floor(points.length / 2)]
-      : { x: 0, y: 0 };
+    // Etykietę ciągu kotwiczymy na środku NAJDŁUŻSZEGO odcinka poziomego trasy
+    // (a nie na narożniku L-kształtu), aby na przeglądzie (L0) opis kabla
+    // magistrali leżał wzdłuż zielonego toru — jak na referencji SCADA — z dala
+    // od bloku GPZ i pól startowych. Fallback do środka listy punktów.
+    const midPoint = longestHorizontalSegmentMidpoint(points)
+      ?? (points.length > 0 ? points[Math.floor(points.length / 2)] : { x: 0, y: 0 });
     if (run.label) {
       pushLabel(labels, {
         id: `label:run:${run.id}`,
@@ -860,6 +1108,8 @@ function buildLabelSpecs(rendered: {
         priority: LABEL_PRIORITY.SEGMENT,
         anchorPoint: midPoint,
         preferredAnchor: 'top',
+        // Rzadka etykieta L0 tylko dla magistrali/głównego fidera.
+        isTrunk: run.runKind === 'main_trunk',
       });
     }
     for (const segmentLabel of run.segmentLabels ?? []) {
@@ -1001,6 +1251,28 @@ function buildReadabilityReport(args: {
     topologyContinuity,
     labelPlacements: placements,
   };
+}
+
+/**
+ * Środek najdłuższego poziomego odcinka trasy (deterministyczne, czysta funkcja).
+ * Używane do kotwiczenia etykiety ciągu wzdłuż toru — `null` gdy brak odcinka
+ * poziomego (np. ścieżka czysto pionowa).
+ */
+function longestHorizontalSegmentMidpoint(
+  points: ReadonlyArray<{ x: number; y: number }>,
+): { x: number; y: number } | null {
+  let best: { x: number; y: number; length: number } | null = null;
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const start = points[index];
+    const end = points[index + 1];
+    if (Math.abs(start.y - end.y) > 0.5) continue;
+    const length = Math.abs(end.x - start.x);
+    if (length <= 0) continue;
+    if (!best || length > best.length) {
+      best = { x: (start.x + end.x) / 2, y: start.y, length };
+    }
+  }
+  return best ? { x: best.x, y: best.y } : null;
 }
 
 function pushLabel(
@@ -1795,11 +2067,38 @@ function buildGpzs(snapshot: EnergyNetworkModel): GpzRendererProps[] {
       0,
     );
 
+    /* Liczba pól liniowych GPZ z REALNEJ topologii: kable/linie SN wychodzące z
+     * szyn sekcji SN (gpz_sections[].bus_ref). To są ciągi, którymi sieć faktycznie
+     * wyprowadza z GPZ — nie zmyślona wartość. Używane jako `outgoingBayCount`, gdy
+     * ENM nie modeluje jawnych pól odpływowych (bays=∅), żeby GPZ nie był pustym
+     * pudłem (źródło sieci musi pokazać swoje pola). */
+    const snSectionBusRefs = new Set(
+      (gpz.gpz_sections ?? [])
+        .map((sec) => sec.bus_ref)
+        .filter((ref): ref is string => typeof ref === 'string' && ref.length > 0),
+    );
+    const outgoingLineFieldCount = branches.filter(
+      (b) =>
+        isCableLikeBranch(b) &&
+        ((b.from_bus_ref != null && snSectionBusRefs.has(b.from_bus_ref)) ||
+          (b.to_bus_ref != null && snSectionBusRefs.has(b.to_bus_ref))),
+    ).length;
+    /* Pola odpływowe: jawne pola LINE_OUT z ENM, w przeciwnym razie realne ciągi
+     * wychodzące. Pozostawiamy `undefined` tylko gdy nie ma ani jednego — wtedy
+     * renderer użyje swojego sensownego minimum. */
+    const outgoingBayCount =
+      feedersCount > 0
+        ? feedersCount
+        : outgoingLineFieldCount > 0
+          ? outgoingLineFieldCount
+          : undefined;
+
     return {
       id: gpz.ref_id,
       x: gpzXByIndex(idx),
       y: Y_GPZ,
       name: gpz.name || gpz.ref_id,
+      outgoingBayCount,
       /* INVARIANT 9: gdy null, przekazujemy wartość techniczną tylko dla geometrii,
        * a renderer pokazuje klasę WN bez znaku zastępczego. */
       voltageHighKv: hvVoltageKv ?? 110,
@@ -2112,7 +2411,6 @@ function bayDescriptorFromEnm(
     cbState: telemetry.cbState,
     dsState: telemetry.dsState,
     esState,
-    controlMode: telemetry.controlMode,
     inManipulation: telemetry.inManipulation,
     qDesignations: deriveQDesignations(bay.bay_role),
     outgoingFeeder,
@@ -2779,6 +3077,27 @@ function buildSldLineRunsForLayout(
     });
   });
 
+  // V-03: klasyfikuj korytarze odgałęźne jako 'branch' z origin-stacją, by layout
+  // rozłożył laterale od stacji-rodzica (drzewo), zamiast stosu lewo-wyrównanego.
+  // Run jest lateralem, gdy stacja-rodzic (from_bus pierwszego segmentu) leży na
+  // INNYM runie. Główna magistrala wychodzi z GPZ/źródła (origin nie jest stacją).
+  const stationToRunId = new Map<string, string>();
+  for (const run of layoutRuns) {
+    for (const st of run.stations) stationToRunId.set(st.substation_ref, run.id);
+  }
+  for (const run of layoutRuns) {
+    if (run.run_kind !== 'main_trunk') continue;
+    const firstSeg = [...run.segments].sort((a, b) => a.order - b.order)[0];
+    const branch0 = firstSeg ? branchByRef.get(firstSeg.segment_ref) : null;
+    const originStationRef = resolveFieldStationRefForBus(fieldStationByRef, branch0?.from_bus_ref);
+    if (!originStationRef) continue;
+    const originRunId = stationToRunId.get(originStationRef);
+    if (originRunId && originRunId !== run.id) {
+      run.run_kind = 'branch';
+      run.branch_origin_station_ref = originStationRef;
+    }
+  }
+
   return layoutRuns.sort(compareLineRunsForLayout);
 }
 
@@ -2806,10 +3125,23 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
   // ENM może mieć dowolną liczbę stacji, a adapter zachowuje kolejność
   // topologiczną przez układ wężowy zamiast ściskać dużą sieć w jednym rzędzie.
   let stationSequence = 1;
+  // V-03: X każdej umieszczonej stacji — by laterale startowały od stacji-rodzica
+  // (rozłożone drzewo), a nie wszystkie od lewej krawędzi (stos).
+  const stationXByRef = new Map<string, number>();
 
   sortedRuns.forEach((lr, runIdx) => {
     const sortedStations = [...lr.stations].sort((a, b) => a.order - b.order);
     const sortedSegments = [...lr.segments].sort((a, b) => a.order - b.order);
+    // V-03: laterale (branch/ring/loop) startują od X stacji-rodzica; magistrala
+    // od GPZ. Gdy rodzic jeszcze nieumieszczony → fallback do zachowania bazowego.
+    const originRef = lr.branch_origin_station_ref ?? null;
+    const isLateral = lr.run_kind !== 'main_trunk';
+    const parentX =
+      isLateral && originRef && stationXByRef.has(originRef)
+        ? stationXByRef.get(originRef)!
+        : null;
+    const runStartX = parentX ?? GPZ_TRUNK_HEAD_X;
+    const minimumBaseX = parentX ?? X_STATIONS_START;
     // K30-51: track previous station X per row for collision-avoidance (min pitch).
     let previousXInRow: number | null = null;
     sortedStations.forEach((sref, posInRun) => {
@@ -2831,8 +3163,10 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
 
       // K30-51: distance-based X. CumKm > 0 → exact position from trunk start.
       // CumKm = 0 (no segments yet) → fallback uniform pitch posInRun * default.
-      const stationX = stationXFromCumKm(GPZ_TRUNK_HEAD_X, cumKm, posInRun, previousXInRow);
+      const stationX = stationXFromCumKm(runStartX, cumKm, posInRun, previousXInRow, minimumBaseX);
       previousXInRow = stationX;
+      stationXByRef.set(sub.ref_id, stationX);
+      if (sub.id) stationXByRef.set(sub.id, stationX);
 
       stations.push({
         id: sub.ref_id,
@@ -3762,10 +4096,38 @@ function resolveLineRunOriginPoint(
   const originStation = stationByRef.get(originRef);
   if (originStation) return { x: originStation.x, y: originStation.y };
 
+  // Origin może być refem POLA stacji (`stn/<id>/sn_field/NNN`), nie samej stacji.
+  // Wyprowadź ref stacji-właściciela z prefiksu (ta sama konwencja co
+  // topologyTree.busOwnerStation: `stn/<id>` → `stn/<id>/station`, `gpz/<id>` →
+  // `gpz/<id>/substation`) i spróbuj ponownie. Bez tego odgałęzienie tappujące
+  // z pola stacji nie znajdowało origin → spadało do slotowego Y (wisiało po
+  // przesunięciu stacji do drzewa).
+  const ownerStationRef = ownerStationRefFromFieldRef(originRef);
+  if (ownerStationRef) {
+    const ownerStation = stationByRef.get(ownerStationRef);
+    if (ownerStation) return { x: ownerStation.x, y: ownerStation.y };
+  }
+
   const branchPoint = findBranchPointByRefOrBus(snapshot, originRef);
   if (!branchPoint) return null;
 
   return resolveBranchPointRouteAnchor(snapshot, branchPoint, builtRuns);
+}
+
+/**
+ * Ref stacji-właściciela z refu pola/szyny (konwencja prefiksu, zgodna z
+ * `topologyTree.busOwnerStation`). Zwraca `null` gdy ref nie pasuje do wzorca.
+ */
+function ownerStationRefFromFieldRef(ref: string): string | null {
+  if (ref.startsWith('stn/')) {
+    const id = ref.split('/')[1];
+    if (id) return `stn/${id}/station`;
+  }
+  if (ref.startsWith('gpz/')) {
+    const id = ref.split('/')[1];
+    if (id) return `gpz/${id}/substation`;
+  }
+  return null;
 }
 
 function findBranchPointByRefOrBus(
@@ -3905,11 +4267,18 @@ function buildCableRuns(
         .sort((a, b) => a.order - b.order)
         .map((stationRef) => stationByRef.get(stationRef.substation_ref))
         .filter((station): station is StationOnRunRendererProps => Boolean(station));
-      const y = runStations[0]?.y !== undefined
-        ? runStations[0].y - STATION_RUN_TRUNK_OFFSET_Y
-        : Y_RUN_BASE + idx * RUN_PITCH;
       const startingBayRef = inferRunStartingBayRef(runSegments, lineRun.starting_bay_ref);
       const sourcePoint = resolveLineRunOriginPoint(snapshot, lineRun, stationByRef, runs);
+      // Y ciągu: pierwsza stacja ciągu; gdy ciąg nie ma stacji (np. odgałęzienie
+      // odpinające się od stacji-rodzica) — Y punktu źródłowego (origin), by
+      // odgałęzienie wyszło PRZY stacji-rodzicu (tryb drzewa), a nie spadało do
+      // slotowego pasma `Y_RUN_BASE + idx×pitch` (które przy compaccie drzewa
+      // wisiałoby daleko pod siecią). Slot tylko gdy brak i stacji, i origin.
+      const y = runStations[0]?.y !== undefined
+        ? runStations[0].y - STATION_RUN_TRUNK_OFFSET_Y
+        : sourcePoint?.y !== undefined
+          ? sourcePoint.y
+          : Y_RUN_BASE + idx * RUN_PITCH;
       const startX = sourcePoint?.x ?? inferStartingBayOutletX(snapshot, startingBayRef, idx);
       const endX = runStations.length > 0
         ? runStations[runStations.length - 1].x + stationRunEndOffset(runStations[runStations.length - 1])

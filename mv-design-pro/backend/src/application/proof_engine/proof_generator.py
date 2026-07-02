@@ -63,6 +63,9 @@ from application.proof_engine.equation_registry import (
     EQ_SC3F_006,
     EQ_SC3F_007,
     EQ_SC3F_008,
+    EQ_SC3F_011,
+    EQ_SC3F_012,
+    EQ_SC3F_013,
     EQ_VDROP_001,
     EQ_VDROP_002,
     EQ_VDROP_003,
@@ -93,6 +96,10 @@ from application.proof_engine.types import (
     UnitCheckResult,
 )
 from application.proof_engine.unit_verifier import UnitVerifier
+from network_model.solvers.machine_sc_iec60909 import (
+    MachinePartialContribution,
+    MachineShortCircuitResult,
+)
 
 if TYPE_CHECKING:
     from network_model.catalog import CatalogRepository
@@ -138,6 +145,10 @@ class SC3FInput:
     # Opcjonalne wartości pośrednie (z white_box_trace)
     m_factor: float = 1.0
     n_factor: float = 0.0
+
+    # Opcjonalny rozkład maszynowy (IEC 60909 §6.6) — gdy sieć zawiera maszyny wirujące,
+    # generator dołącza per-maszyna kroki μ / q / i_b. None ⇒ brak sekcji maszynowej.
+    machine_result: MachineShortCircuitResult | None = None
 
     @classmethod
     def from_short_circuit_result(
@@ -610,6 +621,24 @@ class ProofGenerator:
         steps.append(step_7)
 
         # =====================================================================
+        # Sekcja maszynowa (IEC 60909 §6.6) — per-maszyna μ / q / i_b, gdy sieć
+        # zawiera maszyny wirujące. Synchroniczne: μ + i_b (q = 1, krok q pominięty);
+        # asynchroniczne / DFIG: μ + q + i_b. Kolejność = deterministyczna z solvera.
+        # =====================================================================
+        ib_machines_ka = 0.0
+        if data.machine_result is not None and data.machine_result.contributions:
+            t_min_s = data.machine_result.t_min_s
+            for machine in data.machine_result.contributions:
+                step_number += 1
+                steps.append(cls._create_sc3f_step_machine_mu(step_number, machine, t_min_s))
+                if not machine.is_synchronous_machine:
+                    step_number += 1
+                    steps.append(cls._create_sc3f_step_machine_q(step_number, machine, t_min_s))
+                step_number += 1
+                steps.append(cls._create_sc3f_step_machine_ib(step_number, machine))
+            ib_machines_ka = data.machine_result.ib_machines_a / 1000.0
+
+        # =====================================================================
         # Podsumowanie
         # =====================================================================
         unit_checks_passed = all(s.unit_check.passed for s in steps)
@@ -622,6 +651,10 @@ class ProofGenerator:
             "sk_mva": ProofValue.create("S_k''", data.sk_mva, "MVA", "sk_mva"),
             "kappa": ProofValue.create("\\kappa", data.kappa, "—", "kappa"),
         }
+        if data.machine_result is not None and data.machine_result.contributions:
+            key_results["ib_machines_ka"] = ProofValue.create(
+                "i_{b,maszyny}", ib_machines_ka, "kA", "ib_machines_ka"
+            )
 
         summary = ProofSummary(
             key_results=key_results,
@@ -1589,6 +1622,136 @@ class ProofGenerator:
                 "U_n": "u_n_kv",
                 "Z_th": "z_thevenin_ohm",
                 "I_k''": "ikss_ka",
+            },
+        )
+
+    # --- Maszyny wirujące: zanik prądu wyłączeniowego μ / q / i_b (§6.6) ----------
+    @staticmethod
+    def _mu_curve_coeffs(t_min_s: float) -> tuple[float, float, float]:
+        """(a, b, c) dla μ = a + b·e^(−c·I″k/I_r), wg t_min (IEC 60909 §6.6.1)."""
+        if t_min_s <= 0.035:
+            return (0.84, 0.26, 0.26)
+        if t_min_s <= 0.075:
+            return (0.71, 0.51, 0.30)
+        if t_min_s <= 0.175:
+            return (0.62, 0.72, 0.32)
+        return (0.56, 0.94, 0.38)
+
+    @staticmethod
+    def _q_curve_coeffs(t_min_s: float) -> tuple[float, float]:
+        """(a, b) dla q = a + b·ln(m), wg t_min (IEC 60909 §6.6.3)."""
+        if t_min_s <= 0.035:
+            return (1.03, 0.12)
+        if t_min_s <= 0.075:
+            return (0.79, 0.12)
+        if t_min_s <= 0.175:
+            return (0.57, 0.12)
+        return (0.26, 0.10)
+
+    @classmethod
+    def _create_sc3f_step_machine_mu(
+        cls,
+        step_number: int,
+        machine: MachinePartialContribution,
+        t_min_s: float,
+    ) -> ProofStep:
+        """Krok maszynowy: współczynnik zanikania μ (§6.6.1)."""
+        equation = EQ_SC3F_011
+        ratio = machine.ratio_ik_ir
+        ikss_p = machine.ikss_partial_a / 1000.0
+        ir = machine.ir_a / 1000.0
+        if ratio <= 2.0:
+            substitution = (
+                f"\\mu = 1 \\quad (I_k''/I_r = {ratio:.3f} \\leq 2,\\ "
+                f"\\text{{z dala od generatora}})"
+            )
+        else:
+            a, b, c = cls._mu_curve_coeffs(t_min_s)
+            raw = a + b * math.exp(-c * ratio)
+            substitution = f"\\mu = {a} + {b} \\cdot e^{{-{c} \\cdot {ratio:.3f}}} = {raw:.4f}"
+            if abs(raw - machine.mu) > 5e-4:
+                substitution += f" \\rightarrow {machine.mu:.4f}\\ (0 \\leq \\mu \\leq 1)"
+        return ProofStep(
+            step_id=ProofStep.generate_step_id("SC3F", step_number),
+            step_number=step_number,
+            title_pl=f"{equation.name_pl} — {machine.source_name}",
+            equation=equation,
+            input_values=(
+                ProofValue.create("I_k''", ikss_p, "kA", "ikss_partial_ka"),
+                ProofValue.create("I_r", ir, "kA", "ir_ka"),
+            ),
+            substitution_latex=substitution,
+            result=ProofValue.create("\\mu", machine.mu, "—", "mu_factor"),
+            unit_check=UnitVerifier.verify_equation(
+                equation.equation_id, {"I_k''": "kA", "I_r": "kA"}, "—"
+            ),
+            source_keys={"I_k''": "ikss_partial_ka", "I_r": "ir_ka", "μ": "mu_factor"},
+        )
+
+    @classmethod
+    def _create_sc3f_step_machine_q(
+        cls,
+        step_number: int,
+        machine: MachinePartialContribution,
+        t_min_s: float,
+    ) -> ProofStep:
+        """Krok maszynowy: dodatkowy współczynnik zanikania q dla maszyny asynchronicznej (§6.6.3)."""
+        equation = EQ_SC3F_012
+        m_val = machine.p_per_pole_mw
+        if m_val <= 0.0:
+            substitution = "q = 1 \\quad (m \\leq 0)"
+        else:
+            a, b = cls._q_curve_coeffs(t_min_s)
+            raw = a + b * math.log(m_val)
+            substitution = f"q = {a} + {b} \\cdot \\ln({m_val:.4f}) = {raw:.4f}"
+            if abs(raw - machine.q) > 5e-4:
+                substitution += f" \\rightarrow {machine.q:.4f}\\ (q \\leq 1)"
+        return ProofStep(
+            step_id=ProofStep.generate_step_id("SC3F", step_number),
+            step_number=step_number,
+            title_pl=f"{equation.name_pl} — {machine.source_name}",
+            equation=equation,
+            input_values=(ProofValue.create("m", m_val, "MW", "p_per_pole_mw"),),
+            substitution_latex=substitution,
+            result=ProofValue.create("q", machine.q, "—", "q_factor"),
+            unit_check=UnitVerifier.verify_equation(equation.equation_id, {"m": "MW"}, "—"),
+            source_keys={"m": "p_per_pole_mw", "q": "q_factor"},
+        )
+
+    @classmethod
+    def _create_sc3f_step_machine_ib(
+        cls,
+        step_number: int,
+        machine: MachinePartialContribution,
+    ) -> ProofStep:
+        """Krok maszynowy: prąd wyłączeniowy symetryczny i_b = μ·q·I″k (§6.6)."""
+        equation = EQ_SC3F_013
+        ikss_p = machine.ikss_partial_a / 1000.0
+        ib = machine.ib_a / 1000.0
+        substitution = (
+            f"i_b = {machine.mu:.4f} \\cdot {machine.q:.4f} \\cdot {ikss_p:.4f} = "
+            f"{ib:.4f}\\,\\text{{kA}}"
+        )
+        return ProofStep(
+            step_id=ProofStep.generate_step_id("SC3F", step_number),
+            step_number=step_number,
+            title_pl=f"{equation.name_pl} — {machine.source_name}",
+            equation=equation,
+            input_values=(
+                ProofValue.create("\\mu", machine.mu, "—", "mu_factor"),
+                ProofValue.create("q", machine.q, "—", "q_factor"),
+                ProofValue.create("I_k''", ikss_p, "kA", "ikss_partial_ka"),
+            ),
+            substitution_latex=substitution,
+            result=ProofValue.create("i_{b}", ib, "kA", "ib_partial_ka"),
+            unit_check=UnitVerifier.verify_equation(
+                equation.equation_id, {"μ": "—", "q": "—", "I_k''": "kA"}, "kA"
+            ),
+            source_keys={
+                "μ": "mu_factor",
+                "q": "q_factor",
+                "I_k''": "ikss_partial_ka",
+                "i_b": "ib_partial_ka",
             },
         )
 

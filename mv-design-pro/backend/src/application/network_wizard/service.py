@@ -34,6 +34,8 @@ from network_model.catalog import CatalogRepository
 from network_model.catalog.types import ConverterKind
 from network_model.core import NetworkGraph
 from network_model.core.branch import Branch, LineBranch, TransformerBranch
+from network_model.solvers.power_flow_inverter import inverter_control_from_params
+from network_model.solvers.power_flow_zip import zip_coeffs_from_materialized_params
 
 from .dtos import (
     BranchPayload,
@@ -1003,11 +1005,14 @@ class NetworkWizardService:
             if not load.get("in_service", True):
                 continue
             payload = load.get("payload", {})
+            # ADR-011 (Z-ZIP-04): build ZIP coefficients from the load payload
+            # if it carries them (None => constant power, no change).
             pq_specs.append(
                 PQSpec(
                     node_id=str(load["node_id"]),
                     p_mw=float(payload.get("p_mw", 0.0)),
                     q_mvar=float(payload.get("q_mvar", 0.0)),
+                    zip_coeffs=zip_coeffs_from_materialized_params(payload),
                 )
             )
 
@@ -1022,11 +1027,16 @@ class NetworkWizardService:
                 setpoint = inverter_setpoints.get(str(source.get("id")))
                 if setpoint is None:
                     continue
+                # ADR-011 §5b: build the U/f-control characteristic from the
+                # source's materialized params (None => constant-PQ, reduce-to-NR).
                 pq_specs.append(
                     PQSpec(
                         node_id=str(source["node_id"]),
                         p_mw=setpoint.p_mw,
                         q_mvar=self._resolve_inverter_q_mvar(setpoint),
+                        inverter_control=inverter_control_from_params(
+                            payload, base_mva, payload.get("sn_mva")
+                        ),
                     )
                 )
                 continue
@@ -1039,6 +1049,9 @@ class NetworkWizardService:
                         node_id=str(source["node_id"]),
                         p_mw=setpoint.p_mw,
                         q_mvar=self._resolve_converter_q_mvar(setpoint),
+                        inverter_control=inverter_control_from_params(
+                            payload, base_mva, payload.get("sn_mva")
+                        ),
                     )
                 )
                 continue

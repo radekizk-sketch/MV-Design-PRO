@@ -116,6 +116,12 @@ export interface StationOnRunRendererProps {
   readonly voltageDeviationPct?: number | null;
   /** Aktualna skala viewportu SLD, uzywana do czytelnosci etykiet overview. */
   readonly viewportScale?: number;
+  /** P-A POWER-FLOW TOR (one truth): czy szyna stacji jest pod napięciem wg
+   *  FROZEN solvera (czy SN/nN bus jest w wyspie slacka). READ z companion —
+   *  NIE liczone w SLD. `false` → blok L0 wyszarzony (de-energized, np. za
+   *  otwartym NOP). Brak (undefined) → traktowane jak pod napięciem (brak
+   *  companion = brak danych solvera). */
+  readonly energized?: boolean;
 }
 
 const TYPE_TO_LABEL_PL: Record<StationOnRunRendererProps['topologicalType'], string> = {

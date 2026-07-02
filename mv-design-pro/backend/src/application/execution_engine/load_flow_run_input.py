@@ -6,6 +6,7 @@ with deterministic canonical hashing.
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 from dataclasses import dataclass, field
@@ -14,6 +15,10 @@ from typing import Any
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
+from network_model.solvers.power_flow_inverter import (
+    InverterControl,
+    inverter_control_from_params,
+)
 from network_model.solvers.power_flow_types import (
     PowerFlowInput,
     PowerFlowOptions,
@@ -21,6 +26,18 @@ from network_model.solvers.power_flow_types import (
     PVSpec,
     SlackSpec,
 )
+from network_model.solvers.power_flow_zip import ZipCoeffs
+
+
+def _build_inverter_control(
+    params: dict[str, Any] | None, base_mva: float
+) -> InverterControl | None:
+    """ADR-011 §5b: build the U/f-control from raw params on base_mva.
+
+    Reads sn_mva from the params dict when present. None => constant-PQ source."""
+    if not params:
+        return None
+    return inverter_control_from_params(params, base_mva, params.get("sn_mva"))
 
 
 @dataclass(frozen=True)
@@ -47,6 +64,13 @@ class LoadFlowLoadInput:
     node_id: str
     p_mw: float
     q_mvar: float
+    # ADR-011 (Z-ZIP-04): optional voltage-/frequency-dependent (ZIP) load
+    # coefficients. None => classic constant-power PQ (reduce-to-NR).
+    zip_coeffs: ZipCoeffs | None = None
+    # ADR-011 §5b: optional inverter/converter U/f-control params (the keys read
+    # by inverter_control_from_params). None => constant-PQ source; the typed
+    # InverterControl is built in to_power_flow_input using base_mva.
+    inverter_control_params: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -106,7 +130,26 @@ class LoadFlowRunInput:
                 for b in self.branches
             ],
             "loads": [
-                {"node_id": ld.node_id, "p_mw": ld.p_mw, "q_mvar": ld.q_mvar} for ld in self.loads
+                {
+                    "node_id": ld.node_id,
+                    "p_mw": ld.p_mw,
+                    "q_mvar": ld.q_mvar,
+                    # ADR-011: only emit ZIP when present so constant-power
+                    # loads keep their existing canonical hash byte-identical.
+                    **(
+                        {"zip_coeffs": dataclasses.asdict(ld.zip_coeffs)}
+                        if ld.zip_coeffs is not None
+                        else {}
+                    ),
+                    # ADR-011 §5b: only emit inverter control when present so
+                    # constant-PQ sources keep their canonical hash unchanged.
+                    **(
+                        {"inverter_control": ld.inverter_control_params}
+                        if ld.inverter_control_params
+                        else {}
+                    ),
+                }
+                for ld in self.loads
             ],
             "generators": [
                 {
@@ -172,7 +215,20 @@ class LoadFlowRunInput:
                 u_pu=self.slack_u_pu,
                 angle_rad=self.slack_angle_rad,
             ),
-            pq=[PQSpec(node_id=x.node_id, p_mw=x.p_mw, q_mvar=x.q_mvar) for x in self.loads],
+            pq=[
+                PQSpec(
+                    node_id=x.node_id,
+                    p_mw=x.p_mw,
+                    q_mvar=x.q_mvar,
+                    zip_coeffs=x.zip_coeffs,
+                    # ADR-011 §5b: build the U/f-control on base_mva (None =>
+                    # constant-PQ source, reduce-to-NR).
+                    inverter_control=_build_inverter_control(
+                        x.inverter_control_params, self.base_mva
+                    ),
+                )
+                for x in self.loads
+            ],
             pv=[
                 PVSpec(
                     node_id=g.node_id,

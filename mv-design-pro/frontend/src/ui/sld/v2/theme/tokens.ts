@@ -137,7 +137,10 @@ export const STROKE_BUSBAR_PX = 3 as const; // szyna główna
 export const STROKE_FIELD_TRACK_PX = 2 as const; // tor pola
 export const STROKE_GROUND_BRANCH_PX = 2 as const; // gałąź uziemnika
 export const STROKE_BRANCH_LINE_PX = 2.5 as const; // linia odgałęzienia (cieńsza niż trunk)
-export const STROKE_TRUNK_LINE_PX = 8 as const; // K30-53: trunk dominantny tor mocy (3.2× branch)
+// V-05: magistrala = CIENKA precyzyjna linia szyny, nie gruby marker. Subtelna
+// dominacja toru mocy (delikatnie grubsza od szyny 3 / odgałęzienia 2.5) wg AC-01,
+// bez „krzyczącej" grubości 8 px, która łamała jeden język wizualny (V-02).
+export const STROKE_TRUNK_LINE_PX = 3.5 as const;
 export const STROKE_DASHED_RING_DASH_PX = '6 4' as const; // dash array dla pierścieni
 
 /**
@@ -230,14 +233,16 @@ export const FONT_SIZES = {
   kasLabel: 9,
   /** P-numer pod LED-em KAS (mono). */
   kasPNumber: 7,
-  /** Pionowa etykieta sterowania (rotowana). */
-  controlMode: 9,
   /** Panel pomiarowy pola (mono). */
   measurementPanel: 10,
   /** Etykieta przekładni CT/VT. */
   transformerRatio: 8,
   /** Etykieta destination feedera. */
   feederDestination: 9,
+  /** Nagłówek pola GPZ (feeder name) — kondensowany, łamany do 2 linii,
+   *  żeby pełne nazwy odpływów czytały się bez twardego ucięcia ("Pole W…").
+   *  8 px × 2 linie w kolumnie 64 px mieści ~22 znaki realnej nazwy. */
+  bayHeaderName: 8,
 } as const;
 
 /* ---------------------------------------------------------------------------
@@ -249,8 +254,9 @@ export const FONT_SIZES = {
 export const GPZ_GEOMETRY = {
   /** Pasek tytułu (góra rozdzielni). */
   titleBarHeight: 26,
-  /** Wysokość kolumny HV-tower w trybie single-bus. */
-  hvTowerHeight: 78,
+  /** Wysokość kolumny HV-tower w trybie single-bus. Wyższa kolumna robi pionowy
+   *  prześwit na panele pomiarowe TR nad szyną SN (anty-kolizja z etykietami sekcji). */
+  hvTowerHeight: 96,
   /** Padding wewnętrzny (poziomy + pionowy). */
   horizontalPadding: 14,
   verticalPadding: 10,
@@ -264,8 +270,10 @@ export const GPZ_GEOMETRY = {
   bayColumnWidth: 64,
   bayColumnHeight: 124, // K30-113: 110 → 124 dla unified APPARATUS_PITCH (audyt #4 MEDIUM)
   bayGap: 6,
-  /** Nagłówek pola (feeder name). */
-  bayHeaderHeight: 12,
+  /** Nagłówek pola (feeder name) — pasmo mieści DWIE linie kondensowanej
+   *  nazwy (font `FONT_SIZES.bayHeaderName`), żeby realne nazwy odpływów
+   *  czytały się w całości zamiast twardego "Pole W…" (audyt SCADA-parity). */
+  bayHeaderHeight: 22,
   /** Odstęp od dolnej krawędzi kolumny do numeru pola. */
   bayNumberGap: 14,
   /** Pitch aparatów w kolumnie (Y). */
@@ -290,8 +298,17 @@ export const GPZ_GEOMETRY = {
   /** Panel pomiarów. */
   measurementRowHeight: 10,
   measurementPanelHeaderHeight: 12,
-  /** Pionowa etykieta sterowania (rotowana -90°). */
-  sterowanieLabelXOffset: 6,
+  /** Wewnętrzny inset poziomy nagłówka pola/panelu — gwarantuje prześwit
+   *  między sąsiednimi wąskimi kolumnami (anty-kolizja D1/D2). */
+  labelClipInset: 4,
+  /** Lewy/prawy gutter korpusu rozdzielni (tryb two-bus) na etykiety napięcia
+   *  szyn ("110kV"/"15kV"). Etykiety kotwiczą się na końcach szyn WEWNĄTRZ
+   *  ramki korpusu — ciasny kadr eksportu nie ucina już "0kV"/"kV". */
+  busLabelGutter: 46,
+  /** Przybliżony współczynnik szerokości glifu (advance ÷ fontSize) dla
+   *  Inter w wersalikach. Używany do przycinania etykiet do szerokości
+   *  kolumny z wielokropkiem (clip-to-width zamiast char-count). */
+  labelCharWidthFactor: 0.62,
   /** Sprzęgło. */
   couplerBayWidth: 120,
   couplerLegInset: 18,
@@ -301,8 +318,9 @@ export const GPZ_GEOMETRY = {
   /** Two-bus: gap między HV bays bottom a LV bus (TR symbols). */
   twoBusTrGap: 84,
   twoBusTrSpacing: 80,
-  /** Single-bus: spacing TR-ów w HV tower column. */
-  singleBusTrSpacing: 60,
+  /** Single-bus: spacing TR-ów w HV tower column. Szerszy odstęp robi miejsce
+   *  na panele pomiarowe TR rozłożone na zewnątrz (anty-kolizja w środku). */
+  singleBusTrSpacing: 84,
   /** Minimalna szerokość rozdzielni (clamp dla małych GPZ). */
   minSwitchgearWidth: 360,
   /** Magistrala sieci terenowej. */

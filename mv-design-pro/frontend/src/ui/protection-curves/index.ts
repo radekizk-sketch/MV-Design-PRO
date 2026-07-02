@@ -10,14 +10,9 @@
  * and editing for overcurrent protection coordination.
  */
 
-// Main component
-export { ProtectionCurvesEditor } from './ProtectionCurvesEditor';
-
-// Sub-components
+// Chart component. Curve points are computed authoritatively by the backend
+// (protection/curves modules); the frontend only renders them — single truth (Z15).
 export { TimeCurrentChart } from './TimeCurrentChart';
-export { CurveLibrary } from './CurveLibrary';
-export { CurveSettings } from './CurveSettings';
-export { CoordinationAnalysis } from './CoordinationAnalysis';
 
 // Types
 export type {

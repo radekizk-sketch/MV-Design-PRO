@@ -297,6 +297,35 @@ class Load(ENMElement):
 
 
 # ---------------------------------------------------------------------------
+# ShuntCapacitor (bank kondensatorow — kompensacja mocy biernej)
+# ---------------------------------------------------------------------------
+
+
+class ShuntCapacitor(ENMElement):
+    """Stała bateria kondensatorów (kompensacja mocy biernej) na szynie.
+
+    Element FIRST-CLASS ENM: reprezentuje równoległą susceptancję pojemnościową
+    przyłączoną do jednej szyny. W rozpływie mocy mapuje się na istniejący
+    mechanizm shuntów solvera (ShuntSpec) przez susceptancję b_pu liczoną z
+    pierwszych zasad: B = Q_rated / U_rated² → b_pu = Q_rated / S_base.
+
+    Przełączanie dyskretne (sterowane napięciem) NIE jest w zakresie —
+    modelujemy stały bank (status in_service: closed/open).
+    """
+
+    bus_ref: str
+    rated_mvar: float
+    rated_kv: float
+    status: Literal["closed", "open"] = "closed"
+    catalog_ref: str | None = None
+    catalog_namespace: str | None = None
+    parameter_source: Literal["CATALOG", "OVERRIDE", "MANUAL_EQUIVALENT"] | None = None
+    source_mode: Literal["KATALOG", "MIGRACJA", "EKSPERCKI_RECZNY"] | None = None
+    materialized_params: dict | None = None
+    overrides: list[ParameterOverride] = []
+
+
+# ---------------------------------------------------------------------------
 # Generator
 # ---------------------------------------------------------------------------
 
@@ -328,13 +357,16 @@ class Generator(ENMElement):
     overrides: list[ParameterOverride] = []
 
     # PV/BESS connection variant (KROK 2: explicit, no guessing)
-    connection_variant: Literal[
-        "LV_BEHIND_STATION_TRANSFORMER",
-        "DEDICATED_MV_CONNECTION",
-        "SOURCE_CONNECTION_STATION",
-        "nn_side",
-        "block_transformer",
-    ] | None = None
+    connection_variant: (
+        Literal[
+            "LV_BEHIND_STATION_TRANSFORMER",
+            "DEDICATED_MV_CONNECTION",
+            "SOURCE_CONNECTION_STATION",
+            "nn_side",
+            "block_transformer",
+        ]
+        | None
+    ) = None
     """
     Wariant przylaczenia PV/BESS:
     - 'nn_side': po stronie nN stacji (przez transformator stacji SN/nN)
@@ -675,6 +707,11 @@ class Bay(ENMElement):
     gpz_section_id: str | None = None
     equipment_refs: list[str] = []
     protection_ref: str | None = None
+    # Kody funkcji zabezpieczeniowych ANSI/IEC do wyświetlenia na SLD, np.
+    # ['87T','51','50','51N'] — to są stringi, NIE enum; lustro mechanizmu
+    # OzeField.protection_codes (jedno źródło prawdy, wspólny wzorzec SLD).
+    # Enum ProtectionSetting pozostaje wyłącznie dla konfiguracji/koordynacji.
+    protection_codes: list[str] = Field(default_factory=list)
     # PR-3 rebuild SLD: porty pola — wnioskowane z bay_role + bus + reservation slots
     ports: list[Port] = []
     bay_template_ref: str | None = None  # referencja do BayTemplate w katalogu
@@ -1001,6 +1038,25 @@ class BayBaseModel(BaseModel):
     control_surface: BayControlSurface = Field(default_factory=BayControlSurface)
     interlocks: BayInterlockSet = Field(default_factory=BayInterlockSet)
     source_endpoint: BaySourceEndpoint | None = None
+    # ABB UniSwitch cell type (catalog §4 "Rodzaje pól"). Optional and additive:
+    # defaults to None so it is excluded from the deterministic ENM fingerprint
+    # (hash uses exclude_none=True / model_dump excludes None) when unset. Do NOT
+    # populate on existing fixtures — populating would change their fingerprints.
+    cell_type: (
+        Literal[
+            "SDC",
+            "SDF",
+            "CBC",
+            "DBC",
+            "BRC",
+            "SEC",
+            "SBC",
+            "SMC",
+            "SDM_V",
+            "SDM_C",
+        ]
+        | None
+    ) = None
 
 
 class BayShortCircuitSourceContribution(BaseModel):
@@ -1177,6 +1233,7 @@ class EnergyNetworkModel(BaseModel):
     sources: list[Source] = []
     loads: list[Load] = []
     generators: list[Generator] = []
+    shunt_capacitors: list[ShuntCapacitor] = []
     substations: list[Substation] = []
     bays: list[Bay] = []
     junctions: list[Junction] = []

@@ -16,9 +16,11 @@ AnalysisCapability = Literal[
     "DYNAMIC_STABILITY",
     "SOURCE_COMPLIANCE",
     "POWER_QUALITY_HARMONICS",
+    "SSCI_IMPEDANCE",
     "VOLTAGE_STABILITY",
     "RELIABILITY_CONTINGENCY",
     "EARTHING_SAFETY",
+    "NEUTRAL_EARTHING_DESIGN",
     "INSULATION_COORDINATION",
     "EARTH_FAULT_DETECTION",
     "TRANSIENT_TRV",
@@ -81,7 +83,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         availability="available",
         implementation_status="implemented",
         solver_version="iec60909-sn-v1",
-        required_inputs=("snapshot", "fault_node_id", "positive_sequence_network", "negative_sequence_network"),
+        required_inputs=(
+            "snapshot",
+            "fault_node_id",
+            "positive_sequence_network",
+            "negative_sequence_network",
+        ),
         output_contract="ShortCircuitResultV1",
         proof_support=True,
         reportable=True,
@@ -133,7 +140,13 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         availability="available",
         implementation_status="implemented",
         solver_version="load-flow-fd-v1",
-        required_inputs=("snapshot", "slack_node", "pq_nodes", "branch_admittance", "xd_ratio_applicability"),
+        required_inputs=(
+            "snapshot",
+            "slack_node",
+            "pq_nodes",
+            "branch_admittance",
+            "xd_ratio_applicability",
+        ),
         output_contract="PowerFlowResultV1",
         proof_support=True,
         reportable=True,
@@ -205,6 +218,22 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         reference_test="test_v126_academic_solver.py::test_power_quality_trace_and_hash_are_deterministic",
         applicability="Harmonic power flow, THDU/TDD, skan Z(f), rezonans i kompatybilnosc jakosci energii.",
     ),
+    "SSCI_IMPEDANCE": SolverCapability(
+        capability="SSCI_IMPEDANCE",
+        analysis_type="ssci_impedance",
+        availability="available",
+        implementation_status="implemented",
+        solver_version="v126-academic-whitebox-1.0",
+        required_inputs=("committed_enm", "converter_card", "fault_level"),
+        output_contract="AcademicAnalysisResultV1",
+        proof_support=True,
+        reportable=True,
+        reference_test="test_v126_ssci_impedance.py::test_ssci_envelope_shape_and_arrays",
+        applicability=(
+            "Stabilnosc impedancyjna SSCI (Sun 2011/Wen 2016): Z_grid(f)/Z_conv(f), "
+            "wzmocnienie petli mniejszej L(f) i werdykt Nyquista."
+        ),
+    ),
     "VOLTAGE_STABILITY": SolverCapability(
         capability="VOLTAGE_STABILITY",
         analysis_type="voltage_stability",
@@ -243,6 +272,25 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         reportable=True,
         reference_test="test_v126_academic_solver.py::test_earthing_uses_ieee80_contract",
         applicability="IEEE 80 / PN-EN 50522: Rg, GPR, napiecie dotykowe i krokowe.",
+    ),
+    "NEUTRAL_EARTHING_DESIGN": SolverCapability(
+        capability="NEUTRAL_EARTHING_DESIGN",
+        analysis_type="neutral_earthing_design",
+        availability="available",
+        implementation_status="implemented",
+        solver_version="v126-academic-whitebox-1.0",
+        required_inputs=("committed_enm", "line_to_earth_capacitance_b0", "neutral_earthing_type"),
+        output_contract="AcademicAnalysisResultV1",
+        proof_support=True,
+        reportable=True,
+        reference_test=(
+            "test_v126_neutral_earthing_design.py::"
+            "TestPetersenResonanceTuning::test_coil_inductance_matches_resonance_formula"
+        ),
+        applicability=(
+            "Projekt uziemienia punktu neutralnego: dlawik Petersena (kompensacja "
+            "rezonansowa Ic) albo rezystor NER (dobor R i sprawdzenie cieplne)."
+        ),
     ),
     "INSULATION_COORDINATION": SolverCapability(
         capability="INSULATION_COORDINATION",

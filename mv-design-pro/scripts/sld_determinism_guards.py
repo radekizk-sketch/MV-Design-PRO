@@ -64,7 +64,12 @@ FORBIDDEN_LEGACY_PATHS = [
     "ui/sld/InlineBranchObjectRenderer",
     "ui/sld/ConnectionRenderer",
     "ui/sld/JunctionDotLayer",
-    "engine/sld-layout/",
+    # NOTE: `engine/sld-layout/` was the OLD V1 layout pipeline (Sugiyama/A*/ELK),
+    # wygaszony w PR-5c. Po cutover §4 (commit 0baa9e8 „layout-engine foundation —
+    # one truth") katalog ten jest NOWYM, kanonicznym silnikiem layoutu
+    # (`TopologicalLayoutEngine`, `lodController`) — JEDYNE źródło geometrii per
+    # SLD_GEOMETRY_CONTRACT_V1 §1/§7. Wpis usunięty: blokował wymagany kontraktem
+    # moduł (geometry/index.ts i canvas importują go zgodnie z kontraktem).
 ]
 
 FORBIDDEN_PKG = ["elkjs"]

@@ -202,4 +202,20 @@ describe('TopBar - compact V12 chrome', () => {
       'Dodaj GPZ i układ sieci',
     );
   });
+
+  it('nie wywraca app shella przy nieznanym statusie wyniku (defensywny fallback)', () => {
+    // Regresja: utrwalony/nieznany activeCaseResultStatus (np. po zmianie
+    // schematu localStorage) nie może wyrzucić wyjątku w stale renderowanym
+    // pasku górnym (wcześniej: "Cannot read properties of undefined (reading 'label')").
+    act(() => {
+      useAppStateStore.getState().setActiveCaseResultStatus('OK' as never);
+    });
+
+    expect(() => render(<TopBar projectName="Test" />)).not.toThrow();
+
+    const statusBadge = screen.getByTestId('top-bar-result-status');
+    expect(statusBadge).toBeInTheDocument();
+    // Fallback do NONE: "Wyniki do obliczenia".
+    expect(statusBadge).toHaveTextContent('Wyniki do obliczenia');
+  });
 });

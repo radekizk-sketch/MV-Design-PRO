@@ -66,6 +66,75 @@ describe('CableRunRenderer — wyniki i typy odcinkow na SLD', () => {
     expect(container.innerHTML).toContain('brak wyniku');
   });
 
+  it('odsuwa cable-type chip od aparatury pola stacji przy zoomie stacji (aparat > chip)', () => {
+    // Pojedynczy poziomy odcinek y=0 od x=0 do x=600 → domyślny chip w środku
+    // (x≈300). Stacja na torze ma port w x=300 (keep-clear ≈ x∈[184,416]).
+    // Declutter musi przesunąć chip WZDŁUŻ kabla poza ten pas (lub go ukryć).
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="run-clear"
+          runKind="main_trunk"
+          pathPoints={[{ x: 0, y: 0 }, { x: 600, y: 0 }]}
+          segmentKind="cable_sn"
+          segmentPaths={[
+            {
+              segmentRef: 'seg/clear',
+              pathPoints: [{ x: 0, y: 0 }, { x: 600, y: 0 }],
+              variant: { insulation: 'XLPE', conductor: 'Al' },
+            },
+          ]}
+          stationPortGaps={[{ stationId: 'stn/x', y: 0, inputX: 300, outputX: null }]}
+          lod={3}
+        />
+      </svg>,
+    );
+
+    const chip = container.querySelector(
+      '[data-testid="sld-v2-run-run-clear-segment-type-seg/clear"]',
+    );
+    expect(chip).toBeTruthy();
+    // Chip nie może leżeć nad kolumną pola stacji (x∈[184,416] na y w pasie aparatury).
+    const transform = chip?.getAttribute('transform') ?? '';
+    const match = /translate\(([-\d.]+),\s*([-\d.]+)\)/.exec(transform);
+    expect(match).toBeTruthy();
+    const cxChip = Number(match![1]);
+    const cyChip = Number(match![2]);
+    const inApparatusBandX = cxChip > 184 && cxChip < 416;
+    const inApparatusBandY = cyChip > -22 && cyChip < 248;
+    expect(inApparatusBandX && inApparatusBandY).toBe(false);
+  });
+
+  it('zachowuje cable-type chip gdy brak stacji na torze (back-compat)', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="run-nogap"
+          runKind="main_trunk"
+          pathPoints={[{ x: 0, y: 0 }, { x: 600, y: 0 }]}
+          segmentKind="cable_sn"
+          segmentPaths={[
+            {
+              segmentRef: 'seg/nogap',
+              pathPoints: [{ x: 0, y: 0 }, { x: 600, y: 0 }],
+              variant: { insulation: 'XLPE', conductor: 'Al' },
+            },
+          ]}
+          lod={3}
+        />
+      </svg>,
+    );
+    // Bez keep-clear boxów chip pozostaje w pozycji bazowej (środek odcinka).
+    const chip = container.querySelector(
+      '[data-testid="sld-v2-run-run-nogap-segment-type-seg/nogap"]',
+    );
+    expect(chip).toBeTruthy();
+    const transform = chip?.getAttribute('transform') ?? '';
+    const match = /translate\(([-\d.]+),\s*([-\d.]+)\)/.exec(transform);
+    expect(match).toBeTruthy();
+    expect(Number(match![1])).toBe(300);
+  });
+
   it('pokazuje typ i wynik aktywnego odcinka takze przy LOD 0/1', () => {
     const { container } = render(
       <svg>

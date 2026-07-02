@@ -346,6 +346,11 @@ export interface Bay extends ENMElement {
   gpz_section_id?: string | null;
   equipment_refs: string[];
   protection_ref?: string | null;
+  /** Kody funkcji zabezpieczeniowych ANSI/IEC do wyświetlenia na SLD, np.
+   *  ['87T','51','50','51N'] — stringi (NIE enum); lustro mechanizmu
+   *  OzeField.protection_codes. Mirror backendowego `Bay.protection_codes`.
+   *  Additive, default []. */
+  protection_codes?: string[];
   /** Phase 0A audit fix 8/8: kanoniczny ID pola dla dyspozytora ("10", "23/1"). */
   bay_number?: string | null;
   /** Krótka nazwa odpływu/feedera (UI label osobny od bay.name). */
@@ -658,6 +663,25 @@ export interface BaySourceEndpoint {
   operating_mode: 'praca_sieciowa' | 'ladowanie' | 'rozladowanie' | 'gotowosc' | 'odstawione';
 }
 
+/**
+ * ABB UniSwitch cell types (mirror of the optional `cell_type` Literal on
+ * BayBaseModel / SNFieldSpec). The closed set matches catalog §4 "Rodzaje pól".
+ * The authoritative frontend enum lives in
+ * ui/sld/v2/station-rozdzielnia/abbFieldLibrary.ts; this mirror documents the
+ * backend contract.
+ */
+export type AbbCellTypeSN =
+  | 'SDC'
+  | 'SDF'
+  | 'CBC'
+  | 'DBC'
+  | 'BRC'
+  | 'SEC'
+  | 'SBC'
+  | 'SMC'
+  | 'SDM_V'
+  | 'SDM_C';
+
 export interface BayBaseModel {
   bay_ref: string;
   bay_role: BayCanonicalRole;
@@ -672,6 +696,8 @@ export interface BayBaseModel {
   control_surface: BayControlSurface;
   interlocks: BayInterlockSet;
   source_endpoint?: BaySourceEndpoint | null;
+  /** ABB UniSwitch cell type (catalog §4 "Rodzaje pól"). Optional/additive. */
+  cell_type?: AbbCellTypeSN | null;
 }
 
 export interface BayShortCircuitSourceContribution {

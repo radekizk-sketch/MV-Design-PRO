@@ -51,6 +51,7 @@ from network_model.solvers.power_flow_types import (
     PowerFlowInput,
     PowerFlowOptions,
     PQSpec,
+    ShuntSpec,
     SlackSpec,
 )
 from network_model.solvers.short_circuit_core import ShortCircuitType
@@ -481,6 +482,17 @@ def run_source_compliance_now(
 def _load_graph(run: CanonicalRun):
     enm = EnergyNetworkModel.model_validate(run.snapshot)
     return map_enm_to_network_graph(enm)
+
+
+def _study_frequency_hz(run: CanonicalRun) -> float:
+    """ADR-011 (Z-ZIP-04): system frequency for the study, from the ENM header
+    defaults (ENMDefaults.frequency_hz). Falls back to 50.0 Hz."""
+    snapshot = run.snapshot or {}
+    defaults = (snapshot.get("header") or {}).get("defaults") or {}
+    try:
+        return float(defaults.get("frequency_hz", 50.0))
+    except (TypeError, ValueError):
+        return 50.0
 
 
 def _phase_value_from_options(
@@ -1104,6 +1116,56 @@ def _maybe_load_audit2_extensions(
         return extract_solver_extensions_from_payload(payload)
 
 
+def _build_shunt_specs_from_snapshot(snapshot: dict[str, Any], base_mva: float) -> list[ShuntSpec]:
+    """Map ENM ShuntCapacitor elements onto the EXISTING solver shunt mechanism.
+
+    NOT-A-SOLVER: this is pure input preparation (mechanical white-box mapping),
+    no physics is computed in the solver layer.
+
+    First-principles susceptance of a fixed capacitor bank rated Q_rated [Mvar]
+    at U_rated [kV]:
+        B = Q_rated / U_rated²            (because Q = B · U²)
+    In per-unit on the system base S_base [MVA] (the same base the solver uses to
+    build Y_bus from Z_base = U²/S_base):
+        b_pu = B · Z_base = (Q_rated / U_rated²) · (U_rated² / S_base)
+             = Q_rated / S_base
+    A capacitor adds a POSITIVE shunt susceptance (+jB), so b_pu > 0; the solver
+    then delivers Q = B · |V|² automatically, i.e. the actual injected reactive
+    power scales with the square of the operating voltage (correct physics).
+
+    Missing/invalid rated_mvar or rated_kv is NOT guessed — such elements raise a
+    ValueError (the validator surfaces the same condition as a BLOCKER earlier).
+    """
+    specs: list[ShuntSpec] = []
+    for raw in snapshot.get("shunt_capacitors") or []:
+        if not isinstance(raw, dict):
+            continue
+        if str(raw.get("status") or "closed") == "open":
+            continue
+        ref_id = str(raw.get("ref_id") or "")
+        bus_ref = str(raw.get("bus_ref") or "")
+        if not bus_ref:
+            raise ValueError(
+                f"Bateria kondensatorow '{ref_id}' nie ma przypisanej szyny (bus_ref)."
+            )
+        rated_mvar = raw.get("rated_mvar")
+        rated_kv = raw.get("rated_kv")
+        if rated_mvar is None or float(rated_mvar) <= 0.0:
+            raise ValueError(
+                f"Bateria kondensatorow '{ref_id}' nie ma dodatniej mocy "
+                f"znamionowej (rated_mvar)."
+            )
+        if rated_kv is None or float(rated_kv) <= 0.0:
+            raise ValueError(
+                f"Bateria kondensatorow '{ref_id}' nie ma dodatniego napiecia "
+                f"znamionowego (rated_kv)."
+            )
+        # b_pu = Q_rated / S_base (positive susceptance for a capacitor).
+        b_pu = float(rated_mvar) / base_mva
+        specs.append(ShuntSpec(node_id=_graph_id_from_ref(bus_ref), g_pu=0.0, b_pu=b_pu))
+    return specs
+
+
 def _execute_power_flow(run: CanonicalRun) -> None:
     graph = _load_graph(run)
     graph_element_context = _build_snapshot_graph_element_context(run.snapshot or {})
@@ -1122,6 +1184,9 @@ def _execute_power_flow(run: CanonicalRun) -> None:
             node_id=node_id,
             p_mw=float(node.active_power or 0.0),
             q_mvar=float(node.reactive_power or 0.0),
+            # ADR-011 (Z-ZIP-04): aggregated ZIP coefficients for the bus (None
+            # => constant power). Solver reduces to classic PQ when None.
+            zip_coeffs=node.zip_coeffs,
         )
         for node_id, node in sorted(graph.nodes.items())
         if node.node_type == NodeType.PQ and node_id != slack_node_id
@@ -1145,12 +1210,20 @@ def _execute_power_flow(run: CanonicalRun) -> None:
 
         apply_audit2_to_network_model(graph=graph, audit2_extensions=audit2_extensions)
 
+    # D-06c: fixed shunt capacitor banks → existing solver shunt mechanism.
+    # ENM ShuntCapacitor -> ShuntSpec(b_pu = Q_rated / S_base). Solver untouched.
+    shunt_specs = _build_shunt_specs_from_snapshot(run.snapshot or {}, base_mva)
+
     pf_input = PowerFlowInput(
         graph=graph,
         base_mva=base_mva,
         slack=SlackSpec(node_id=slack_node_id, u_pu=1.0, angle_rad=0.0),
         pq=pq_specs,
+        shunts=shunt_specs,
         options=options,
+        # ADR-011 (Z-ZIP-04): study frequency from the ENM header defaults
+        # (drives the P(f)/Q(f) factor; at f0 the factor is 1.0).
+        base_frequency_hz=_study_frequency_hz(run),
         audit2_extensions=audit2_extensions,
     )
     requested_solver_method = _normalize_power_flow_solver_method(

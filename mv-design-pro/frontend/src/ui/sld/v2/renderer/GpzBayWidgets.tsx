@@ -3,12 +3,10 @@
  *
  * Extracted from GpzSwitchgearRenderer.tsx for modularization.
  * Contains: BadgeStack, BadgeRow, KasButton, MeasurementPanel,
- * GroundFaultMarker, SterowanieLabel, sterowanieText, sterowanieColor.
+ * GroundFaultMarker.
  */
 
 import {
-  COLOR_BADGE_BG_YELLOW,
-  COLOR_BADGE_STATUS_OK,
   COLOR_GROUND_FAULT,
   COLOR_KAS_LED,
   COLOR_MEASUREMENT_VALUE,
@@ -20,8 +18,16 @@ import {
   FONT_SIZES,
   GPZ_GEOMETRY,
 } from '../theme/tokens';
-import type { BayControlMode, BayMeasurements, BaySecondaryFlags, GroundFaultMarkerState, SecondaryFlagState } from './GpzSwitchgearTypes';
-import { collectBadges, badgeVisual, statusLabel, collectMeasurementRows } from './GpzSwitchgearLayout';
+import type { BayMeasurements, BaySecondaryFlags, GroundFaultMarkerState, SecondaryFlagState } from './GpzSwitchgearTypes';
+import {
+  collectBadges,
+  badgeVisual,
+  statusLabel,
+  collectMeasurementRows,
+  fitTextToWidth,
+  PROTECTION_BADGE_CODES_PER_ROW,
+  PROTECTION_BADGE_ROW_HEIGHT,
+} from './GpzSwitchgearLayout';
 
 const KAS_LED_RADIUS = GPZ_GEOMETRY.kasLedRadius;
 const BADGE_WIDTH = GPZ_GEOMETRY.badgeWidth;
@@ -32,7 +38,7 @@ const BADGE_FONT_SIZE = FONT_SIZES.badge;
 const MEASUREMENT_ROW_HEIGHT = GPZ_GEOMETRY.measurementRowHeight;
 const MEASUREMENT_PANEL_HEADER_HEIGHT = GPZ_GEOMETRY.measurementPanelHeaderHeight;
 const MEASUREMENT_FONT_SIZE = FONT_SIZES.measurementPanel;
-const STEROWANIE_FONT_SIZE = FONT_SIZES.controlMode;
+const LABEL_CLIP_INSET = GPZ_GEOMETRY.labelClipInset;
 
 // =============================================================================
 // BadgeStack
@@ -217,11 +223,12 @@ export function MeasurementPanel(props: MeasurementPanelProps): JSX.Element {
   const rows = collectMeasurementRows(measurements);
   const labelX = x - width / 2 + 4;
   const valueX = x + width / 2 - 4;
-
-  function truncateWithEllipsis(text: string, maxLen: number): string {
-    if (text.length <= maxLen) return text;
-    return text.slice(0, Math.max(1, maxLen - 1)) + '…';
-  }
+  /* Nagłówek (nazwa odpływu) przycięty do szerokości panelu minus inset z obu
+   * stron — zostawia prześwit do sąsiedniej kolumny (anty-kolizja D1: bez tego
+   * "STAROŁĘCKA" + "WSCHODNIA" zlewały się w jeden ciąg). */
+  const headerText = feederName
+    ? fitTextToWidth(feederName, width - 2 * LABEL_CLIP_INSET, MEASUREMENT_FONT_SIZE)
+    : '';
 
   return (
     <g data-testid="sld-v2-gpz-bay-measurement-panel" data-row-count={String(rows.length)}>
@@ -235,7 +242,7 @@ export function MeasurementPanel(props: MeasurementPanelProps): JSX.Element {
           fontSize={MEASUREMENT_FONT_SIZE}
           fontWeight={600}
         >
-          {truncateWithEllipsis(feederName, 10)}
+          {headerText}
         </text>
       )}
       {rows.map((row, idx) => {
@@ -269,6 +276,79 @@ export function MeasurementPanel(props: MeasurementPanelProps): JSX.Element {
 }
 
 // =============================================================================
+// ProtectionCodeStack
+// =============================================================================
+
+/** Kolor obwódki relay (zielony — gotowość zabezpieczenia, kanon OZE gate I). */
+const PROTECTION_RELAY_COLOR = '#5BE08A';
+
+interface ProtectionCodeStackProps {
+  /** Środek kolumny pola (X). */
+  readonly cx: number;
+  /** Górna współrzędna stosu (Y). */
+  readonly y: number;
+  /** Kody ANSI/IEC z modelu (np. ['87T','51','50','51N',...]). */
+  readonly codes: readonly string[];
+}
+
+/**
+ * Kompaktowy mono stos kodów zabezpieczeniowych na polu — TEN SAM mechanizm
+ * string[] co OzeSourceArchetype (OZE gate I): wiersze do 4 kodów połączonych
+ * "·", obok mały kwadracik relay ("Z"). Renderuje WYŁĄCZNIE dostarczone kody
+ * (brak → element pusty; data-honest, brak placeholderów).
+ */
+export function ProtectionCodeStack(props: ProtectionCodeStackProps): JSX.Element | null {
+  const { cx, y, codes } = props;
+  if (codes.length === 0) return null;
+  const rows: string[] = [];
+  for (let i = 0; i < codes.length; i += PROTECTION_BADGE_CODES_PER_ROW) {
+    rows.push(codes.slice(i, i + PROTECTION_BADGE_CODES_PER_ROW).join('·'));
+  }
+  /* Mały marker relay po lewej w pierwszym wierszu (mirror OZE "R"). */
+  const relayX = cx - 18;
+  const codesX = cx - 11;
+  return (
+    <g data-testid="sld-v2-gpz-bay-protection" data-code-count={String(codes.length)} pointerEvents="none">
+      <rect
+        x={relayX - 4}
+        y={y - 4}
+        width={8}
+        height={8}
+        rx={1}
+        fill={COLOR_PANEL_RAISED}
+        stroke={PROTECTION_RELAY_COLOR}
+        strokeWidth={1}
+      />
+      <text
+        x={relayX}
+        y={y + 2.4}
+        textAnchor="middle"
+        fill={PROTECTION_RELAY_COLOR}
+        fontFamily={FONT_MONO}
+        fontSize={5}
+        fontWeight={800}
+      >
+        Z
+      </text>
+      {rows.map((row, idx) => (
+        <text
+          key={row}
+          x={codesX}
+          y={y + 1 + idx * PROTECTION_BADGE_ROW_HEIGHT}
+          fill={COLOR_TEXT_MUTED}
+          fontFamily={FONT_MONO}
+          fontSize={5.8}
+          fontWeight={700}
+          data-testid={`sld-v2-gpz-bay-protection-row-${idx}`}
+        >
+          {row}
+        </text>
+      ))}
+    </g>
+  );
+}
+
+// =============================================================================
 // GroundFaultMarker
 // =============================================================================
 
@@ -290,65 +370,3 @@ export function GroundFaultMarker(props: GroundFaultMarkerProps): JSX.Element {
   );
 }
 
-// =============================================================================
-// SterowanieLabel
-// =============================================================================
-
-interface SterowanieLabelProps {
-  readonly cx: number;
-  readonly cyTop: number;
-  readonly cyBottom: number;
-  readonly mode: BayControlMode;
-}
-
-/**
- * Pionowa etykieta trybu sterowania na lewym marginesie pola.
- *
- * Tekst rotowany -90° (czyta się od dołu do góry — kanon SCADA).
- * Pozycjonowany w pionowej środkowej osi `cx` w przedziale (cyTop, cyBottom).
- */
-export function SterowanieLabel(props: SterowanieLabelProps): JSX.Element {
-  const { cx, cyTop, cyBottom, mode } = props;
-  const cy = (cyTop + cyBottom) / 2;
-  const text = sterowanieText(mode);
-  const fill = sterowanieColor(mode);
-  return (
-    <g data-testid="sld-v2-gpz-bay-sterowanie" data-control-mode={mode}>
-      <text
-        transform={`rotate(-90, ${cx}, ${cy})`}
-        x={cx}
-        y={cy + 2}
-        textAnchor="middle"
-        fill={fill}
-        fontFamily={FONT_SANS}
-        fontSize={STEROWANIE_FONT_SIZE}
-        fontWeight={700}
-        letterSpacing={0.5}
-      >
-        {text}
-      </text>
-    </g>
-  );
-}
-
-export function sterowanieText(mode: BayControlMode): string {
-  switch (mode) {
-    case 'remote':
-      return 'STEROWANIE ZDALNE';
-    case 'local':
-      return 'STEROWANIE LOKALNE';
-    case 'unknown':
-      return 'STEROWANIE';
-  }
-}
-
-export function sterowanieColor(mode: BayControlMode): string {
-  switch (mode) {
-    case 'remote':
-      return COLOR_BADGE_STATUS_OK;
-    case 'local':
-      return COLOR_BADGE_BG_YELLOW;
-    case 'unknown':
-      return COLOR_TEXT_MUTED;
-  }
-}

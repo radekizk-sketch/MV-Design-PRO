@@ -41,6 +41,11 @@ import {
   type TransmissionStatus,
 } from './GpzOperatorHeader';
 import { useSldLod } from '../lod/SldLodContext';
+import {
+  gpzApparatusId,
+  type GpzApparatusKind,
+  type GpzApparatusSelection,
+} from './gpzApparatusSelection';
 
 /* =============================================================================
    Domain types (z ENM, projected to canonical SLD)
@@ -98,32 +103,23 @@ export interface CanonicalGpzBay {
   };
   /** Status badge'y (SPZ/SCO/OWG/NZ/LRW/ARN/...). */
   readonly statusFlags?: readonly StatusFlag[];
+  /** Kody funkcji zabezpieczeniowych ANSI/IEC do wyświetlenia na polu, np.
+   *  ['87T','51','50','51N','Buchholz','temp','ciśnienie'] (pole TR). Lustro
+   *  mechanizmu OzeField.protection_codes — stringi z modelu ENM (`Bay.protection_codes`),
+   *  renderer pokazuje WYŁĄCZNIE dostarczone kody (brak → brak badge'y). */
+  readonly protectionCodes?: readonly string[];
   /** Pomiary per pole. */
   readonly measurements?: BayMeasurements | null;
-  /** Tryb sterowania. */
-  readonly controlMode?: 'remote' | 'local' | 'unknown';
   /** Flag: pole w stanie manipulacji. */
   readonly inManipulation?: boolean;
 }
 
-export type CanonicalGpzApparatusKind =
-  | 'disconnect_bus'
-  | 'breaker'
-  | 'ct'
-  | 'vt'
-  | 'switch_disconnector'
-  | 'earthing_switch'
-  | 'fuse'
-  | 'cable_head'
-  | 'transformer_symbol';
-
-export interface CanonicalGpzApparatusSelection {
-  readonly apparatusId: string;
-  readonly bayRef: string;
-  readonly apparatusKind: CanonicalGpzApparatusKind;
-  readonly designation: string | null;
-  readonly labelPl: string;
-}
+/**
+ * Aliasy zachowane dla kompatybilności wstecznej. Kanon mieszka w
+ * `gpzApparatusSelection.ts` (współdzielony z `GpzSwitchgearRenderer`).
+ */
+export type CanonicalGpzApparatusKind = GpzApparatusKind;
+export type CanonicalGpzApparatusSelection = GpzApparatusSelection;
 
 export type BayFieldRole =
   | 'LINE_OUT'
@@ -1253,7 +1249,7 @@ interface ClickableApparatusProps {
 }
 
 function apparatusId(bayRef: string, kind: CanonicalGpzApparatusKind): string {
-  return `${bayRef}#${kind}`;
+  return gpzApparatusId(bayRef, kind);
 }
 
 function compactBayFeederLabel(bay: CanonicalGpzBay): string | null {

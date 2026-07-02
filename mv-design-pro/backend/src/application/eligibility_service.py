@@ -552,12 +552,18 @@ class EligibilityService:
         if not has_grounding and not has_trafo_neutral and enm.buses:
             info.append(
                 AnalysisEligibilityIssue(
-                    code="ELIG_SC1_EARTHING_MODEL_NOT_AVAILABLE_YET",
+                    code="ELIG_SC1_EARTHING_MODEL_INCOMPLETE",
                     severity=IssueSeverity.INFO,
                     message_pl=(
-                        "Model uziemienia nie jest jeszcze skonfigurowany. "
-                        "Zwarcie jednofazowe może wymagać danych uziemienia "
-                        "w przyszłych wersjach. Funkcja w przygotowaniu."
+                        "Dane niekompletne: brak modelu uziemienia. "
+                        "Zwarcie jednofazowe wymaga sposobu uziemienia punktu "
+                        "neutralnego — uzupełnij uziemienie szyny lub punkt "
+                        "neutralny transformatora, aby uruchomić obliczenie."
+                    ),
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        modal_type="NodeModal",
+                        payload_hint={"required": "grounding"},
                     ),
                 )
             )

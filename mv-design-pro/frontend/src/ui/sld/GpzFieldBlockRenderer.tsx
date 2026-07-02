@@ -481,17 +481,35 @@ function CanonicalLineBay({
       {powerPathDevices.length === 0 ? (
         <MissingApparatusMarker x={axisX} y={yTop} fieldId={field.fieldId} />
       ) : (
-        powerPathDevices.slice(0, 5).map((device, index) => (
-          <SwitchTile
-            key={device.id}
-            x={tileX}
-            y={yTop + index * (TILE_HEIGHT + TILE_GAP)}
-            label={deviceLabel(device)}
-            kind={deviceKind(device)}
-            state="unknown"
-            testId={`gpz-device-${field.fieldId}-${device.id}`}
-          />
-        ))
+        powerPathDevices.slice(0, 5).map((device, index) => {
+          const tileY = yTop + index * (TILE_HEIGHT + TILE_GAP);
+          const ctRatio = device.deviceType === DeviceTypeV1.CT ? device.parameters.ctRatio : null;
+          return (
+            <g key={device.id}>
+              <SwitchTile
+                x={tileX}
+                y={tileY}
+                label={deviceLabel(device)}
+                kind={deviceKind(device)}
+                state="unknown"
+                testId={`gpz-device-${field.fieldId}-${device.id}`}
+              />
+              {ctRatio && (
+                <text
+                  data-testid={`gpz-ct-ratio-${field.fieldId}`}
+                  x={tileX + TILE_WIDTH + 7}
+                  y={tileY + TILE_HEIGHT / 2 + 17}
+                  fill={MUTED_WIRE}
+                  fontFamily="'JetBrains Mono', 'Fira Code', Menlo, monospace"
+                  fontSize={9}
+                  fontWeight={600}
+                >
+                  {ctRatio}
+                </text>
+              )}
+            </g>
+          );
+        })
       )}
 
       {earthingDevices.length > 0 && (
@@ -714,6 +732,12 @@ export const GpzSwitchgearRenderer: React.FC<GpzSwitchgearRendererProps> = ({
 
   const leftSection = sections[0] ?? null;
   const rightSection = sections[1] ?? null;
+  const incomingVoltage = (() => {
+    const name = leftSection?.rootBusName;
+    if (!name) return null;
+    const match = name.match(/\d+(?:[.,]\d+)?\s*kV/i);
+    return match ? match[0] : name;
+  })();
 
   return (
     <g data-sld-role="gpz-switchgear-canonical" data-testid="gpz-switchgear-canonical">
@@ -750,15 +774,32 @@ export const GpzSwitchgearRenderer: React.FC<GpzSwitchgearRendererProps> = ({
       >
         GPZ / ROZDZIELNIA SN
       </text>
-      <g data-sld-role="gpz-incoming-context" pointerEvents="none">
+      <g
+        data-sld-role="gpz-incoming-context"
+        data-testid="gpz-incoming-transformer"
+        pointerEvents="none"
+      >
+        {/* Strona WN (sieć zasilająca) */}
         <line
           x1={layout.transformerAxisX}
-          y1={layout.busY - 72}
+          y1={layout.busY - 70}
+          x2={layout.transformerAxisX}
+          y2={layout.busY - 61}
+          stroke={MUTED_WIRE}
+          strokeWidth={2.2}
+          strokeDasharray="6 4"
+        />
+        {/* Transformator WN/SN — dwa uzwojenia (IEC 60617) */}
+        <circle cx={layout.transformerAxisX} cy={layout.busY - 52} r={9} fill="none" stroke={MUTED_WIRE} strokeWidth={2} />
+        <circle cx={layout.transformerAxisX} cy={layout.busY - 42} r={9} fill="none" stroke={MUTED_WIRE} strokeWidth={2} />
+        {/* Strona SN do szyny */}
+        <line
+          x1={layout.transformerAxisX}
+          y1={layout.busY - 33}
           x2={layout.transformerAxisX}
           y2={layout.busY}
           stroke={MUTED_WIRE}
           strokeWidth={2.2}
-          strokeDasharray="7 5"
         />
         <line
           x1={layout.transformerAxisX}
@@ -770,13 +811,25 @@ export const GpzSwitchgearRenderer: React.FC<GpzSwitchgearRendererProps> = ({
         />
         <text
           x={layout.transformerAxisX + 18}
-          y={layout.busY - 56}
+          y={layout.busY - 50}
           fill={MUTED_WIRE}
           fontFamily="'JetBrains Mono', 'Fira Code', Menlo, monospace"
           fontSize={10}
+          fontWeight={700}
         >
-          Zasilanie WN/SN
+          WN/SN
         </text>
+        {incomingVoltage && (
+          <text
+            x={layout.transformerAxisX + 18}
+            y={layout.busY - 37}
+            fill={MUTED_WIRE}
+            fontFamily="'JetBrains Mono', 'Fira Code', Menlo, monospace"
+            fontSize={10}
+          >
+            {incomingVoltage}
+          </text>
+        )}
       </g>
       <line
         x1={layout.leftBusStart}

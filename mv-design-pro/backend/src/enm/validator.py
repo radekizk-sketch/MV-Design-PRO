@@ -103,6 +103,7 @@ class ENMValidator:
         self._check_warnings(enm, issues)
         self._check_info(enm, issues)
         self._check_topology_entities(enm, issues)
+        self._check_shunt_capacitors(enm, issues)
         # V12S-007: pasmo napieciowe + ciaglosc przez stacje przelotowa
         self._check_voltage_band_consistency(enm, issues)
         self._check_through_station_continuity(enm, issues)
@@ -492,9 +493,7 @@ class ENMValidator:
         if _strict_port_binding_enabled():
             self._check_endpoint_ports(enm, issues)
 
-    def _check_endpoint_ports(
-        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
-    ) -> None:
+    def _check_endpoint_ports(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
         """E030: jawny port endpointu wymagany dla Cable / OverheadLine."""
         for branch in enm.branches:
             if not isinstance(branch, OverheadLine | Cable):
@@ -893,6 +892,117 @@ class ENMValidator:
                 )
 
     # ------------------------------------------------------------------
+    # Shunt capacitor banks (E040-E042, W040)
+    # ------------------------------------------------------------------
+
+    def _check_shunt_capacitors(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """Walidacja stałych baterii kondensatorów (kompensacja mocy biernej).
+
+        E040: bus_ref nie istnieje.
+        E041: rated_mvar <= 0 (brak / niepoprawna moc bierna — nie zgadujemy).
+        E042: rated_kv <= 0 (brak / niepoprawne napięcie znamionowe).
+        W040: rated_kv niespójne z napięciem szyny (>5% różnicy).
+        """
+        bus_by_ref = {b.ref_id: b for b in enm.buses}
+        for cap in enm.shunt_capacitors:
+            if cap.bus_ref not in bus_by_ref:
+                issues.append(
+                    ValidationIssue(
+                        code="E040",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Bateria kondensatorów '{cap.ref_id}' referencja do "
+                            f"nieistniejącej szyny '{cap.bus_ref}'."
+                        ),
+                        element_refs=[cap.ref_id, cap.bus_ref],
+                        wizard_step_hint="K6",
+                        suggested_fix="Przypisz baterię kondensatorów do istniejącej szyny.",
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=cap.ref_id,
+                            modal_type="ShuntCapacitorModal",
+                            payload_hint={"required": "bus_ref"},
+                        ),
+                    )
+                )
+
+            if cap.rated_mvar is None or cap.rated_mvar <= 0:
+                issues.append(
+                    ValidationIssue(
+                        code="E041",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Bateria kondensatorów '{cap.ref_id}' nie ma dodatniej "
+                            f"mocy znamionowej (rated_mvar <= 0)."
+                        ),
+                        element_refs=[cap.ref_id],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            f"Wprowadź moc bierną znamionową baterii '{cap.name}' [Mvar]."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=cap.ref_id,
+                            modal_type="ShuntCapacitorModal",
+                            payload_hint={"required": "rated_mvar"},
+                        ),
+                    )
+                )
+
+            if cap.rated_kv is None or cap.rated_kv <= 0:
+                issues.append(
+                    ValidationIssue(
+                        code="E042",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Bateria kondensatorów '{cap.ref_id}' nie ma dodatniego "
+                            f"napięcia znamionowego (rated_kv <= 0)."
+                        ),
+                        element_refs=[cap.ref_id],
+                        wizard_step_hint="K6",
+                        suggested_fix=(f"Wprowadź napięcie znamionowe baterii '{cap.name}' [kV]."),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=cap.ref_id,
+                            modal_type="ShuntCapacitorModal",
+                            payload_hint={"required": "rated_kv"},
+                        ),
+                    )
+                )
+                continue
+
+            bus = bus_by_ref.get(cap.bus_ref)
+            if (
+                bus is not None
+                and bus.voltage_kv
+                and bus.voltage_kv > 0
+                and cap.rated_kv > 0
+                and abs(cap.rated_kv - bus.voltage_kv) / bus.voltage_kv > 0.05
+            ):
+                issues.append(
+                    ValidationIssue(
+                        code="W040",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"Bateria kondensatorów '{cap.ref_id}' ma napięcie "
+                            f"znamionowe {cap.rated_kv} kV niespójne z napięciem "
+                            f"szyny '{cap.bus_ref}' ({bus.voltage_kv} kV)."
+                        ),
+                        element_refs=[cap.ref_id, cap.bus_ref],
+                        wizard_step_hint="K6",
+                        suggested_fix=("Dostosuj napięcie znamionowe baterii do napięcia szyny."),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=cap.ref_id,
+                            modal_type="ShuntCapacitorModal",
+                            payload_hint={"required": "rated_kv"},
+                        ),
+                    )
+                )
+
+    # ------------------------------------------------------------------
     # Graph connectivity check
     # ------------------------------------------------------------------
 
@@ -1078,8 +1188,7 @@ class ENMValidator:
                         element_refs=[sub.ref_id, *offending_bays],
                         wizard_step_hint="K3",
                         suggested_fix=(
-                            "Przypisz pola IN i OUT do magistrali SN stacji "
-                            "(wspolna szyna SN)."
+                            "Przypisz pola IN i OUT do magistrali SN stacji " "(wspolna szyna SN)."
                         ),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
@@ -1105,9 +1214,7 @@ class ENMValidator:
                         ),
                         element_refs=[sub.ref_id, *sorted(mv_buses_used)],
                         wizard_step_hint="K3",
-                        suggested_fix=(
-                            "Podlacz pola IN i OUT do tej samej szyny SN stacji."
-                        ),
+                        suggested_fix=("Podlacz pola IN i OUT do tej samej szyny SN stacji."),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
                             element_ref=sub.ref_id,

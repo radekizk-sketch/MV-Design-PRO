@@ -25,8 +25,31 @@ import {
   type LodLevel,
   type SldLayerId,
 } from '../lod/LodPolicy';
+import {
+  densityAwareLevel,
+  numericLodToLevel,
+  polylineIntersectsViewport,
+  virtualizePositioned,
+  worldViewportFromTransform,
+  type LodLevel as GeomLodLevel,
+  type WorldViewport,
+} from '../../../../engine/sld-layout/lodController';
+// Jedyne źródło footprintu bloku L0 (ta sama stała używana przez layout engine).
+import { L0_STATION_BLOCK } from '../geometry';
 import { SldLodProvider } from '../lod/SldLodContext';
-import { COLOR_BG, COLOR_PANEL } from '../theme/tokens';
+import {
+  COLOR_BG,
+  COLOR_PANEL,
+  COLOR_DEVICE_CLOSED_BORDER,
+  COLOR_DEVICE_OPEN_BORDER,
+  COLOR_FIELD_TRUNK_ENERGIZED,
+  COLOR_SELECTION,
+  COLOR_TEXT_PRIMARY,
+  COLOR_TEXT_SECONDARY,
+  COLOR_WARN,
+  FONT_MONO,
+  FONT_SANS,
+} from '../theme/tokens';
 import {
   CableRunRenderer,
   type CableRunRendererProps,
@@ -53,10 +76,9 @@ import { DEFAULT_SNAP_STATE } from '../viewport/Snap';
 import { ConnectionRenderer } from '../renderer/ConnectionRenderer';
 import { DerRenderer, type DerRendererProps } from '../renderer/DerRenderer';
 import { GpzRenderer, type GpzRendererProps } from '../renderer/GpzRenderer';
-import {
-  GpzCanonicalRenderer,
-  type GpzCanonicalRendererProps,
-} from '../renderer/GpzCanonicalRenderer';
+import type { GpzCanonicalRendererProps } from '../renderer/GpzCanonicalRenderer';
+import { GpzSwitchgearRenderer } from '../renderer/GpzSwitchgearRenderer';
+import { mapCanonicalToSwitchgearProps } from './mapCanonicalToSwitchgearProps';
 import { SectionRenderer, type SectionRendererProps } from '../renderer/SectionRenderer';
 import {
   StationOnRunRenderer,
@@ -67,6 +89,7 @@ import {
   MiniBlockRmuRenderer,
   miniBlockStationPortOffsets,
   type MiniBlockBayDescriptor,
+  type MiniBlockDerBadge,
 } from '../renderer/MiniBlockRmuRenderer';
 import { FIELD_ROLE } from '../domain/apparatusContracts';
 import { ResultOverlayLayer } from './ResultOverlayLayer';
@@ -202,6 +225,16 @@ export interface SldCanvasV2Props {
   readonly shortCircuitProjection?: SldShortCircuitProjection | null;
   /** K30-46: projekcja stref ochrony Z1/Z2/Z3 per IEC 60255-127. */
   readonly protectionZoneProjection?: SldProtectionZoneProjection | null;
+  /** P-A POWER-FLOW TOR: active case (state declaration) shown on the canvas.
+   *  When supplied, a fixed-position badge declares the operating state the
+   *  energization + flow-direction tor is computed for (e.g. "Stan normalny
+   *  (radialny, NO otwarte)"). The tor itself is read from the solver companion
+   *  threaded through the cableRuns/stations props (one truth). */
+  readonly powerFlowCase?: {
+    readonly caseRef: string;
+    readonly caseLabel: string;
+    readonly converged: boolean;
+  } | null;
 }
 
 function estimateCanonicalGpzFootprint(gpz: GpzCanonicalRendererProps): { width: number; height: number } {
@@ -227,6 +260,22 @@ function sameViewportTransform(a: ViewportTransform, b: ViewportTransform): bool
   );
 }
 
+// V-01: zawsze CENTRUJ przy wymuszonej skali czytelności (nigdy nie kotwicz do
+// lewego-górnego rogu — to było źródłem „schemat w 30% kadru, reszta pusta").
+function centeredTransformAtScale(
+  scale: number,
+  bbox: { minX: number; minY: number; maxX: number; maxY: number },
+  viewportSize: { readonly width: number; readonly height: number },
+): ViewportTransform {
+  const bboxCenterX = (bbox.minX + bbox.maxX) / 2;
+  const bboxCenterY = (bbox.minY + bbox.maxY) / 2;
+  return {
+    scale,
+    translateX: viewportSize.width / 2 - bboxCenterX * scale,
+    translateY: viewportSize.height / 2 - bboxCenterY * scale,
+  };
+}
+
 function applyOperatorReadableInitialTransform(
   fit: ViewportTransform,
   bbox: { minX: number; minY: number; maxX: number; maxY: number },
@@ -236,27 +285,19 @@ function applyOperatorReadableInitialTransform(
     readonly runCount: number;
     readonly derCount: number;
   },
+  viewportSize: { readonly width: number; readonly height: number },
 ): ViewportTransform {
   const smallOperatorTopology =
     args.stationCount <= 8 &&
     args.runCount <= 12 &&
     args.derCount <= 6;
   if (fit.scale < OPERATOR_LARGE_TOPOLOGY_MIN_SCALE) {
-    return {
-      scale: OPERATOR_LARGE_TOPOLOGY_MIN_SCALE,
-      translateX: 48 - bbox.minX * OPERATOR_LARGE_TOPOLOGY_MIN_SCALE,
-      translateY: 48 - bbox.minY * OPERATOR_LARGE_TOPOLOGY_MIN_SCALE,
-    };
+    return centeredTransformAtScale(OPERATOR_LARGE_TOPOLOGY_MIN_SCALE, bbox, viewportSize);
   }
   if (!args.hasCanonicalGpz || !smallOperatorTopology || fit.scale >= OPERATOR_READABLE_MIN_SCALE) {
     return fit;
   }
-
-  return {
-    scale: OPERATOR_READABLE_MIN_SCALE,
-    translateX: 48 - bbox.minX * OPERATOR_READABLE_MIN_SCALE,
-    translateY: 48 - bbox.minY * OPERATOR_READABLE_MIN_SCALE,
-  };
+  return centeredTransformAtScale(OPERATOR_READABLE_MIN_SCALE, bbox, viewportSize);
 }
 
 function isCanonicalGpzInteractiveDescendant(target: EventTarget | null): boolean {
@@ -342,6 +383,14 @@ function topologyLabelVisibleAtLod(
       // nie renderuje drugiej etykiety typu "S01 przelotowa" nad kodem "S01".
       return false;
     case 'run':
+      // Przegląd sieci (L0): RZADKA etykieta kabla wzdłuż trasy — tylko dla
+      // magistrali / głównego fidera (`isTrunk`), aby odwzorować referencję SCADA,
+      // gdzie kable opisane są wzdłuż przebiegu, bez zaśmiecania widoku opisami
+      // dziesiątek krótkich odgałęzień. Kolizje z blokami stacji / NOP / GPZ oraz
+      // innymi etykietami eliminuje deterministyczny declutter (run = priorytet
+      // SEGMENT < STATION/NMO/GPZ → nakładający się opis ciągu zostaje ukryty:
+      // "rzadko" > "tłok"). Odgałęzienia i opisy odcinków nadal od L1/L2.
+      if (lod === 0) return spec.isTrunk === true;
       return lod >= 1;
     case 'segment':
       // LOD 2: etykiety odcinków i długości. LOD 3/4 przejmują pola,
@@ -699,7 +748,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     width, height, gpzs, canonicalGpzs, sections, cableRuns, stations, branchPoints = [], ders, connections = [],
     topologyCorridors = [], topologyRuns = [], terminalBindings = [], labelSpecs = [], readabilityReport,
     selectedId, centerOnElementId, lodOverride, layerVisibility,
-    shortCircuitProjection, protectionZoneProjection,
+    shortCircuitProjection, protectionZoneProjection, powerFlowCase,
     onSelectElement, onDoubleClickStation, onDoubleClickDer, onContextMenu, onViewportTransformChange,
   } = props;
 
@@ -807,12 +856,13 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     for (const d of ders) allPoints.push({ x: d.x, y: d.y });
     if (allPoints.length === 0) return;
     const bbox = computeBoundingBox(allPoints);
-    // Powi?kszamy bbox aby uwzgl?dni? rozmiar blok?w
+    // V-01: symetryczny margines wokół treści (bbox zawiera już footprint GPZ),
+    // żeby fitToView wypełnił kadr i wycentrował, bez phantom-pustki po prawej.
     const expanded = {
-      minX: bbox.minX - 100,
-      minY: bbox.minY - 100,
-      maxX: bbox.maxX + 200,
-      maxY: bbox.maxY + 200,
+      minX: bbox.minX - 120,
+      minY: bbox.minY - 120,
+      maxX: bbox.maxX + 120,
+      maxY: bbox.maxY + 120,
     };
     const nextTransform = applyOperatorReadableInitialTransform(
       fitToView(expanded, { width, height }),
@@ -823,6 +873,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         runCount: cableRuns.length,
         derCount: ders.length,
       },
+      { width, height },
     );
     setTransform((current) => sameViewportTransform(current, nextTransform) ? current : nextTransform);
   }, [viewportContentSignature, width, height]);
@@ -872,10 +923,10 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     if (allPoints.length === 0) return null;
     const bbox = computeBoundingBox(allPoints);
     const expanded = {
-      minX: bbox.minX - 100,
-      minY: bbox.minY - 100,
-      maxX: bbox.maxX + 200,
-      maxY: bbox.maxY + 200,
+      minX: bbox.minX - 120,
+      minY: bbox.minY - 120,
+      maxX: bbox.maxX + 120,
+      maxY: bbox.maxY + 120,
     };
     return applyOperatorReadableInitialTransform(
       fitToView(expanded, { width, height }),
@@ -886,6 +937,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         runCount: cableRuns.length,
         derCount: ders.length,
       },
+      { width, height },
     );
   }, [gpzs, canonicalGpzs, sections, stations, branchPoints, ders, width, height, cableRuns.length]);
 
@@ -905,8 +957,43 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     : lodControllerRef.current.update(transform.scale);
   /* Fallback dla test?w bez LodControllera (powinien by? zawsze inicjalizowany). */
   void inferLodFromScale; // referencja zachowana dla back-compat innych caller?w
+
+  /* Widoczny kadr (world-space) do wirtualizacji: na L0 dla dużej sieci renderujemy
+   * tylko bloki przecinające ekran (§7B.7). Margines zapobiega znikaniu przygranicznych. */
+  const worldViewport: WorldViewport = worldViewportFromTransform(
+    { scale: transform.scale, translateX: transform.translateX, translateY: transform.translateY },
+    { width, height },
+    96,
+  );
+  /* Wirtualizacja włączana tylko dla dużych sieci (próg) — małe schematy renderują
+   * się w całości (zero ryzyka regresji dla istniejących widoków). */
+  const VIRTUALIZATION_STATION_THRESHOLD = 24;
+  const virtualizationActive = stations.length > VIRTUALIZATION_STATION_THRESHOLD;
+  const visibleStations = virtualizationActive
+    ? virtualizePositioned(stations, worldViewport, 200)
+    : stations;
+  const visibleCableRuns = virtualizationActive
+    ? cableRuns.filter((run) => cableRunIntersectsViewport(run, worldViewport))
+    : cableRuns;
+
+  /* Poziom geometrii (L0/L1/L2). Bazowy z JEDNEJ prawdy numerycznego LOD — kontrakt §7.
+   * Świadomy gęstości (M-08): gdy w kadrze jest dużo stacji (auto-fit dużej sieci
+   * często ląduje na skali L1/L2), wymuś L0 = czytelne BLOKI zamiast pełnej aparatury
+   * 50+ stacji. NIE nadpisujemy jawnego override (użytkownik/harness wybrał poziom). */
+  const baseGeomLevel: GeomLodLevel = numericLodToLevel(lod);
+  const geomLevel: GeomLodLevel =
+    lodOverride !== undefined
+      ? baseGeomLevel
+      : densityAwareLevel(baseGeomLevel, visibleStations.length);
+
+  /* Efektywny LOD numeryczny spójny z poziomem geometrii: gdy gęstość zepchnęła
+   * widok do L0 (przegląd), traktuj go jak LOD 0 dla etykiet i ciągów kablowych —
+   * struktura L0 nie pokazuje etykiet odcinków/wyników (kontrakt §7), więc bloki
+   * stacji nie toną w opisach kabli. Poza L0: bez zmian (efektywny == surowy). */
+  const effectiveLod: LodLevel = geomLevel === 'L0' ? (0 as LodLevel) : lod;
+
   const layers = { ...DEFAULT_LAYER_VISIBILITY, ...(layerVisibility ?? {}) };
-  const topologyLabels = buildVisibleTopologyLabels(labelSpecs, readabilityReport, lod, selectedId);
+  const topologyLabels = buildVisibleTopologyLabels(labelSpecs, readabilityReport, effectiveLod, selectedId);
   const usesGlobalLabelPipeline =
     labelSpecs.length > 0 || Boolean(readabilityReport?.labelPlacements?.length);
 
@@ -1150,8 +1237,8 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                 }
               >
                 {showCanonicalGpzDetail && (
-                  <GpzCanonicalRenderer
-                  {...canonical}
+                  <GpzSwitchgearRenderer
+                  {...mapCanonicalToSwitchgearProps(canonical)}
                   onClickBay={
                     onSelectElement
                       ? (bayRef) => onSelectElement(bayRef, 'bay')
@@ -1211,7 +1298,10 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                   }
                   />
                 )}
-                {lod <= 1 && (
+                {/* V-04: znacznik poglądowy TYLKO przy braku detalu (lod < 1).
+                   Przy lod === 1 detal kanoniczny już pokazuje nazwę GPZ —
+                   nakładanie obu dawało zdublowane „GPZ 15 kV" (druga prawda). */}
+                {lod < 1 && (
                   <g
                     data-testid={`sld-v2-gpz-overview-label-${g.id}`}
                     data-overview-label-scale={overviewTopologyLabelScale(transform.scale).toFixed(2)}
@@ -1323,7 +1413,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         {/* Stacje na ci?gu */}
         {layers.equipment && (
           <g data-testid="sld-cable-runs-layer">
-            {cableRuns.map((run) => (
+            {visibleCableRuns.map((run) => (
               <g
                 key={run.id}
                 data-connection-ref={run.id}
@@ -1342,9 +1432,9 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                   {...run}
                   label={usesGlobalLabelPipeline ? undefined : run.label}
                   segmentLabels={usesGlobalLabelPipeline ? [] : run.segmentLabels}
-                  lod={lod}
+                  lod={effectiveLod}
                   viewportScale={transform.scale}
-                  stationPortGaps={buildConnectionNodePortGapsForRun(run, stations, branchPoints, lod)}
+                  stationPortGaps={buildConnectionNodePortGapsForRun(run, stations, branchPoints, effectiveLod)}
                   selected={selectedId === run.id || pathHighlightRunIds.has(run.id)}
                   selectedSegmentRefs={selectedSegmentRefsForRun(run, selectedId)}
                   loadingPct={lfDerived.cableLoadingPctByRunId.get(run.id) ?? null}
@@ -1369,9 +1459,14 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         )}
 
         <g data-testid="sld-v2-stations-layer">
-          {stations.map((st) => {
+          {visibleStations.map((st) => {
             const stationLod = st.lod ?? lod;
             const stationUsesMiniBlock = stationUsesMiniBlockRenderer(st, stationLod);
+            const stationSelected = selectedId === st.id;
+            /* L0 (przegląd): renderuj CZYTELNY BLOK (nazwa + status), nie pełną
+             * aparaturę — strukturalny fix gęstości ≥50 stacji (§7, M-08).
+             * Zaznaczona stacja zawsze pokazuje detal (override poziomu, kontrakt §7). */
+            const renderAsOverviewBlock = geomLevel === 'L0' && !stationSelected;
             return (
               <g
                 key={st.id}
@@ -1399,6 +1494,9 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                 }
                 style={{ cursor: onSelectElement ? 'pointer' : 'default' }}
               >
+                {renderAsOverviewBlock ? (
+                  <StationOverviewBlock station={st} selected={stationSelected} />
+                ) : (
                 <StationOnRunRenderer
                   {...st}
                   alarmSeverity={st.alarmSeverity ?? computeStationAlarmSeverity(st, overlayPayload)}
@@ -1409,7 +1507,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                   }
                   lod={stationLod}
                   viewportScale={transform.scale}
-                  selected={selectedId === st.id}
+                  selected={stationSelected}
                   onClick={
                     onSelectElement
                       ? (id) => {
@@ -1420,7 +1518,8 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                   }
                   onDoubleClick={onDoubleClickStation}
                 />
-                {!stationUsesMiniBlock && st.transformerRefs?.map((transformerRef, index) => (
+                )}
+                {!renderAsOverviewBlock && !stationUsesMiniBlock && st.transformerRefs?.map((transformerRef, index) => (
                   <g
                     key={`station-transformer-symbol-${transformerRef}`}
                     data-testid={`sld-symbol-transformer-${transformerRef}`}
@@ -1601,6 +1700,25 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         </g>
       </g>
 
+      {/* P-A POWER-FLOW TOR: active-case state declaration. Screen-fixed badge so
+          the operator always sees which state (case_ref) the energization +
+          flow-direction tor is computed for. The tor data itself is read from the
+          solver companion (one truth); this only DECLARES the case. */}
+      {powerFlowCase && (
+        <g
+          data-testid="sld-v2-powerflow-case-badge"
+          data-case-ref={powerFlowCase.caseRef}
+          data-converged={powerFlowCase.converged ? 'true' : 'false'}
+          transform="translate(12, 16)"
+        >
+          <rect x={0} y={0} width={Math.min(420, 150 + powerFlowCase.caseLabel.length * 7)} height={26} rx={3}
+            fill={COLOR_PANEL} fillOpacity={0.92} stroke="#13C45A" strokeWidth={1} />
+          <circle cx={14} cy={13} r={4} fill={powerFlowCase.converged ? '#13C45A' : '#FF333D'} />
+          <text x={26} y={17} fill="#DDF7FF" fontSize={12} fontFamily="sans-serif" fontWeight={700}>
+            {`Stan: ${powerFlowCase.caseLabel}`}
+          </text>
+        </g>
+      )}
       {/* Wska?nik szczeg??owo?ci widoku dla projektanta. */}
       <g transform={`translate(8, ${height - 24})`}>
         <rect x={-4} y={-12} width={168} height={20} fill={COLOR_PANEL} fillOpacity={0.85} rx={2} />
@@ -2194,6 +2312,356 @@ function stationUsesMiniBlockRenderer(
   _currentLod: LodLevel,
 ): boolean {
   return station.snBays !== undefined;
+}
+
+/** Czy ciąg kablowy przecina widoczny kadr (wirtualizacja krawędzi). */
+function cableRunIntersectsViewport(
+  run: CableRunRendererProps,
+  vp: WorldViewport,
+): boolean {
+  return polylineIntersectsViewport(run.pathPoints, vp);
+}
+
+/**
+ * Wymiary bloku przeglądowego stacji (L0) — rozróżnialny, bez mikro-detalu.
+ * JEDNO źródło: kontrakt geometrii (`L0_STATION_BLOCK`). Layout engine używa tej
+ * samej stałej do rozmieszczania stacji, więc render i layout NIE mogą się
+ * rozjechać (anty-„druga prawda").
+ */
+const L0_BLOCK_W = L0_STATION_BLOCK.width;
+const L0_BLOCK_H = L0_STATION_BLOCK.height;
+
+/**
+ * Marker gotowości danych stacji na przeglądzie (L0) — kontrakt §7 (status
+ * gotowości). Gotowość ≠ energizacja: pełna czerwień jest w języku SCADA
+ * zarezerwowana dla kontekstu beznapięciowego/awarii łączeniowej, więc stacja
+ * POD NAPIĘCIEM (blok live-green wg FROZEN solvera) z krytycznym alarmem
+ * gotowości dostaje bursztynowy PIERŚCIEŃ (hollow), nie czerwoną kropkę —
+ * dyspozytor nie pomyli braku gotowości danych z zadziałaniem zabezpieczenia.
+ * Mapowanie:
+ *   krytyczny + pod napięciem → bursztynowy pierścień (hollow ring);
+ *   krytyczny + bez napięcia/brak danych solvera → czerwony (pełny);
+ *   ostrzeżenie / brak danych stacji → bursztyn (pełny);
+ *   OK → zielony (pełny).
+ * Czysta funkcja danych stacji — deterministyczna, bez stanu.
+ */
+interface StationReadinessMarker {
+  readonly color: string;
+  readonly variant: 'solid' | 'ring';
+}
+
+function stationReadinessMarker(station: StationOnRunRendererProps): StationReadinessMarker {
+  if (station.alarmSeverity === 'critical') {
+    return station.energized === true
+      ? { color: COLOR_WARN, variant: 'ring' }
+      : { color: COLOR_DEVICE_OPEN_BORDER, variant: 'solid' };
+  }
+  if (station.missingData) return { color: COLOR_WARN, variant: 'solid' };
+  if (station.alarmSeverity === 'important' || station.alarmSeverity === 'warning') {
+    return { color: COLOR_WARN, variant: 'solid' };
+  }
+  return { color: COLOR_DEVICE_CLOSED_BORDER, variant: 'solid' };
+}
+
+/**
+ * Skrócona nazwa stacji do etykiety L0 (linia 1). Tłumi nazwy generyczne
+ * ("Stacja przelotowa SN/nN") oraz takie, które tylko powtarzają kod stacji —
+ * w obu przypadkach kod (linia 2) niesie tożsamość, więc nazwa byłaby szumem.
+ * Przycina do `maxChars`, by nigdy nie wyszła poza szerokość bloku (zero kolizji).
+ * Czysta funkcja danych węzła — deterministyczna, bez stanu/kolejności.
+ */
+function overviewStationShortName(
+  name: string | null | undefined,
+  code: string | null | undefined,
+  maxChars = 14,
+): string | null {
+  const raw = (name ?? '').trim();
+  if (!raw) return null;
+  const normalized = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+  const isGeneric = /^(nowa\s+stacja|stacja\s+sn\/nn(\s+\d+)?|stacja\s+(przelotowa|koncowa|odgalezna|sekcyjna)(\s+sn\/nn)?)(\s+\d+)?$/.test(normalized);
+  if (isGeneric) return null;
+  const normCode = (code ?? '').trim().toLowerCase();
+  if (normCode && (normalized === normCode || normalized.startsWith(`${normCode} `))) return null;
+  return raw.length > maxChars ? `${raw.slice(0, maxChars - 1)}…` : raw;
+}
+
+/**
+ * Kolor akcentu generacji per rodzaj OZE — ten sam, którym `DerRenderer` maluje
+ * romb falownika (spójny język wizualny: PV bursztyn, BESS błękit, FW zieleń).
+ * Czysta funkcja danych badge'a — bez stanu.
+ */
+function derBadgeKindColor(kind: MiniBlockDerBadge['kind']): string {
+  switch (kind) {
+    case 'PV': return '#FFC857';
+    case 'BESS': return '#3FA9F5';
+    case 'FW': return '#7FB069';
+  }
+}
+
+/** Liczba w stylu PL (przecinek dziesiętny), bez zer końcowych. */
+function formatGenerationNumber(value: number): string {
+  const rounded = Math.round(value * 100) / 100;
+  return rounded.toLocaleString('pl-PL', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
+/** Moc generacji [MW] → krótka etykieta ("2 MW" / "0,5 MW" / "120 kW"). */
+function formatGenerationCapacity(totalMw: number): string {
+  if (totalMw >= 0.1) return `${formatGenerationNumber(totalMw)} MW`;
+  return `${Math.round(totalMw * 1000)} kW`;
+}
+
+/**
+ * Anotacja generacji stacji na przeglądzie (L0) — projekcja REALNYCH badge'y OZE
+ * stacji (kind + count + totalPMw z generatorów ENM). Zwraca `null`, gdy stacja
+ * nie ma żadnej generacji lub żaden badge nie niesie realnej mocy (brak danych ≠
+ * atrapa). Treść = pojedynczy rodzaj → "{rodzaj} {moc}"; wiele rodzajów → łączna
+ * moc pod etykietą "OZE". Deterministyczna, czysta funkcja danych badge'y.
+ */
+function overviewGenerationAnnotation(
+  badges: readonly MiniBlockDerBadge[] | undefined,
+): { glyphColor: string; label: string } | null {
+  if (!badges || badges.length === 0) return null;
+  const withPower = badges.filter(
+    (b) => typeof b.totalPMw === 'number' && Number.isFinite(b.totalPMw) && b.totalPMw > 0,
+  );
+  if (withPower.length === 0) return null;
+  const totalMw = withPower.reduce((sum, b) => sum + (b.totalPMw ?? 0), 0);
+  const kinds = [...new Set(withPower.map((b) => b.kind))];
+  const capacity = formatGenerationCapacity(totalMw);
+  if (kinds.length === 1) {
+    return { glyphColor: derBadgeKindColor(kinds[0]), label: `${kinds[0]} ${capacity}` };
+  }
+  // Wiele rodzajów na jednej stacji: akcent wg pierwszego (sort stabilny w
+  // adapterze), etykieta zbiorcza "OZE".
+  return { glyphColor: derBadgeKindColor(kinds[0]), label: `OZE ${capacity}` };
+}
+
+/**
+ * Blok przeglądowy stacji (L0) — STRUKTURALNY fix gęstości (§7, M-08).
+ *
+ * Zamiast pełnego mini-bloku z aparaturą (118×96, nieczytelny przy skali ~0.2 dla
+ * 53 stacji), rysuje czysty prostokąt + stos etykiet (nazwa + kod operatorski w
+ * cyjanie + moc kVA) + kropka statusu gotowości. Węzeł pod napięciem (wg FROZEN
+ * solvera — READ, nie liczone) jest tintowany na zieleń „live"; de-energized
+ * pozostaje wyszarzony. Pozycja z propsów stacji (jedna prawda geometrii —
+ * adapter nałożył ją z LayoutResult); ten komponent NIE liczy pozycji.
+ * Hit-box = cały blok (klikalność V-08 na L0).
+ */
+function StationOverviewBlock(props: {
+  readonly station: StationOnRunRendererProps;
+  readonly selected: boolean;
+}): JSX.Element {
+  const { station, selected } = props;
+  const x = station.x - L0_BLOCK_W / 2;
+  const y = station.y - L0_BLOCK_H / 2;
+  const code = station.stationCode?.trim() || null;
+  // Tożsamość węzła (jak w widokach szczegółu): nazwa, kod operatorski (cyjan),
+  // moc kVA. Surfacujemy istniejące pola — bez atrap; gdy pole faktycznie brak
+  // dla węzła, pomijamy jego linię (no placeholder).
+  const shortName = overviewStationShortName(station.name, code);
+  const kva = station.transformerRatedKva ?? null;
+  const kvaLabel = kva != null && kva > 0
+    ? (kva >= 1000 ? `${(kva / 1000).toFixed(1).replace('.', ',')} MVA` : `${kva} kVA`)
+    : null;
+  // Główna etykieta = nazwa, a gdy jej brak (lub generyczna) — kod, by węzeł
+  // nigdy nie był bezimienny. Drugorzędny kod cyjan pokazujemy tylko gdy nie
+  // jest już głównym wierszem (anty-duplikat).
+  const primaryLabel = shortName ?? code ?? (station.name || station.id);
+  const showCodeLine = code != null && primaryLabel !== code;
+  const borderColor = selected ? COLOR_SELECTION : '#2C3A48';
+  const readiness = stationReadinessMarker(station);
+  // P-A POWER-FLOW TOR (one truth): a station is de-energized when the FROZEN
+  // solver did not energize its bus (`energized === false`, READ from the
+  // companion — never computed here). De-energized blocks are dimmed so the
+  // SLD shows exactly the solver's energized set. `undefined` (no companion) =
+  // full strength (no solver data to dim by).
+  const deEnergized = station.energized === false;
+  // Węzeł „live": pod napięciem ⇒ obwódka/wypełnienie tintowane na zieleń
+  // energized (ten sam sygnał, który zasila tor mocy — NIE przeliczamy go).
+  // De-energized ⇒ bez tintu (wyszarzony, jak dotychczas). Brak danych
+  // (undefined) ⇒ neutralny panel (brak companion = brak prawa do zieleni).
+  const isLive = station.energized === true;
+  const fillColor = isLive ? '#0C2A1C' : COLOR_PANEL;
+  const liveBorder = isLive && !selected ? COLOR_FIELD_TRUNK_ENERGIZED : (deEnergized ? '#3A4754' : borderColor);
+  const primaryFill = deEnergized
+    ? '#8A99A8'
+    : isLive
+      ? COLOR_FIELD_TRUNK_ENERGIZED
+      : COLOR_TEXT_PRIMARY;
+  // Pionowy stos etykiet wyśrodkowany w bloku; rozstaw dobrany tak, by 3 linie
+  // mieściły się w 80 px wysokości bez nachodzenia.
+  const lineCount = 1 + (showCodeLine ? 1 : 0) + (kvaLabel ? 1 : 0);
+  const lineGap = 16;
+  const stackTopY = station.y - ((lineCount - 1) * lineGap) / 2;
+  let lineIdx = 0;
+  const primaryY = stackTopY + lineIdx * lineGap;
+  lineIdx += 1;
+  const codeY = stackTopY + lineIdx * lineGap;
+  if (showCodeLine) lineIdx += 1;
+  const kvaY = stackTopY + lineIdx * lineGap;
+  // Margines wewnętrzny, by clip-path nie ucinał liter na krawędzi bloku.
+  const clipInset = 6;
+  const clipId = `sld-v2-overview-block-clip-${station.id}`;
+  // Anotacja generacji (referencja SCADA: OZE jako wyróżniony blok generacji) —
+  // przypięta do dolnej krawędzi bloku, w jego POZIOMYM footprincie (bloki na L0
+  // są dowodnie nienakładające się → chip pinned-w-footprincie jest bezkolizyjny
+  // względem sąsiednich stacji, kabli i punktów otwartych). Dane = realne badge'y
+  // OZE stacji (kind + moc), bez fabrykowanych nazw.
+  const generation = overviewGenerationAnnotation(station.derBadges);
+  const genGlyphHalf = 5;
+  const genChipY = y + L0_BLOCK_H + 4;
+  const genChipH = 16;
+  const genFontSize = 10;
+  // Szerokość chipu z marginesem na romb + tekst, ograniczona do footprintu bloku.
+  const genChipW = generation
+    ? Math.min(L0_BLOCK_W, genGlyphHalf * 2 + 12 + generation.label.length * 6)
+    : 0;
+  const genChipX = station.x - genChipW / 2;
+  const genGlyphCx = genChipX + 8 + genGlyphHalf;
+  const genTextX = genGlyphCx + genGlyphHalf + 5;
+  return (
+    <g
+      data-testid={`sld-v2-station-overview-block-${station.id}`}
+      data-lod-variant="block_overview"
+      data-station-readiness={readiness.color}
+      data-station-readiness-variant={readiness.variant}
+      data-station-energized={station.energized === undefined ? undefined : station.energized ? 'true' : 'false'}
+      data-station-live={isLive ? 'true' : 'false'}
+      opacity={deEnergized ? 0.4 : 1}
+      pointerEvents="none"
+    >
+      <clipPath id={clipId}>
+        <rect x={x + clipInset} y={y} width={L0_BLOCK_W - clipInset * 2} height={L0_BLOCK_H} />
+      </clipPath>
+      <rect
+        x={x}
+        y={y}
+        width={L0_BLOCK_W}
+        height={L0_BLOCK_H}
+        rx={6}
+        ry={6}
+        fill={fillColor}
+        stroke={liveBorder}
+        strokeWidth={selected ? 2.5 : isLive ? 1.8 : 1.5}
+        strokeDasharray={deEnergized ? '6 4' : undefined}
+      />
+      {/* Status gotowości — stały slot lewego górnego rogu, ponad pasmem stosu
+          etykiet (przy 3 liniach pierwsza linia zaczyna się ~y+17 → marker
+          y+6..y+16 nie zahacza o nazwę). Pełna kropka = stan zwykły;
+          bursztynowy PIERŚCIEŃ = not-ready przy stacji pod napięciem
+          (gotowość ≠ energizacja; czerwień tylko dla beznapięciowych/awarii). */}
+      {readiness.variant === 'ring' ? (
+        <circle
+          cx={x + 12}
+          cy={y + 11}
+          r={4.5}
+          fill="none"
+          stroke={readiness.color}
+          strokeWidth={2.5}
+        />
+      ) : (
+        <circle cx={x + 12} cy={y + 11} r={5} fill={readiness.color} stroke="#0A0E14" strokeWidth={1} />
+      )}
+      {/* Tożsamość stacji — stos: nazwa / kod operatorski (cyjan) / moc kVA. */}
+      <g clipPath={`url(#${clipId})`} data-station-label-stack="true">
+        <text
+          x={station.x}
+          y={primaryY}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill={primaryFill}
+          fontFamily={FONT_SANS}
+          fontSize={14}
+          fontWeight={800}
+          letterSpacing={0.3}
+          data-station-label-role="name"
+        >
+          {primaryLabel}
+        </text>
+        {showCodeLine && (
+          <text
+            x={station.x}
+            y={codeY}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={deEnergized ? '#6B7A88' : '#7EC8FF'}
+            fontFamily={FONT_MONO}
+            fontSize={11}
+            fontWeight={700}
+            letterSpacing={0.5}
+            data-station-label-role="operator-id"
+          >
+            {code}
+          </text>
+        )}
+        {kvaLabel && (
+          <text
+            x={station.x}
+            y={kvaY}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={deEnergized ? '#6B7A88' : COLOR_TEXT_SECONDARY}
+            fontFamily={FONT_MONO}
+            fontSize={10}
+            fontWeight={600}
+            letterSpacing={0.3}
+            data-station-label-role="kva"
+          >
+            {kvaLabel}
+          </text>
+        )}
+      </g>
+      {/* Anotacja generacji OZE — wyróżniony blok generacji jak w referencji SCADA
+          (romb falownika w kolorze rodzaju + rodzaj/moc). Pinned do dolnej
+          krawędzi bloku, footprint = szerokość bloku → zero kolizji etykiet. */}
+      {generation && (
+        <g
+          data-testid={`sld-v2-station-generation-${station.id}`}
+          data-generation-label={generation.label}
+        >
+          <rect
+            x={genChipX}
+            y={genChipY}
+            width={genChipW}
+            height={genChipH}
+            rx={3}
+            ry={3}
+            fill="#1A1206"
+            stroke={generation.glyphColor}
+            strokeWidth={1}
+            opacity={deEnergized ? 0.5 : 0.95}
+          />
+          {/* Romb falownika/generatora (ten sam glif co DerRenderer). */}
+          <polygon
+            points={`${genGlyphCx},${genChipY + genChipH / 2 - genGlyphHalf} ${genGlyphCx + genGlyphHalf},${genChipY + genChipH / 2} ${genGlyphCx},${genChipY + genChipH / 2 + genGlyphHalf} ${genGlyphCx - genGlyphHalf},${genChipY + genChipH / 2}`}
+            fill={generation.glyphColor}
+            fillOpacity={0.85}
+            stroke="#0A0E14"
+            strokeWidth={0.6}
+          />
+          <text
+            x={genTextX}
+            y={genChipY + genChipH / 2}
+            textAnchor="start"
+            dominantBaseline="middle"
+            fill={deEnergized ? '#9A8A6A' : generation.glyphColor}
+            fontFamily={FONT_SANS}
+            fontSize={genFontSize}
+            fontWeight={700}
+            letterSpacing={0.2}
+          >
+            {generation.label}
+          </text>
+        </g>
+      )}
+    </g>
+  );
 }
 
 

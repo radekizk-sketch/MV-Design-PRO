@@ -7,6 +7,11 @@ from typing import Any
 import numpy as np
 from network_model.core.branch import Branch, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
+from network_model.solvers.power_flow_inverter import (
+    InverterControl,
+    qu_dq_dv,
+    qu_q,
+)
 from network_model.solvers.power_flow_types import (
     PowerFlowInput,
     PowerFlowOptions,
@@ -14,6 +19,61 @@ from network_model.solvers.power_flow_types import (
     PVSpec,
     ShuntSpec,
 )
+from network_model.solvers.power_flow_zip import (
+    ZipCoeffs,
+    zip_factor,
+    zip_factor_derivative,
+)
+
+
+def _apply_zip_jacobian_v2(
+    jacobian: np.ndarray,
+    v: np.ndarray,
+    non_slack_indices: list[int],
+    active_pq: list[int],
+    p_spec: np.ndarray,
+    q_spec: np.ndarray,
+    zip_table: dict[int, ZipCoeffs],
+) -> None:
+    """ADR-011: ZIP correction for the v2 (PV/PQ-switching) Jacobian.
+
+    Block layout: top=[j11(n_p x n_p), j12(n_p x n_q)], bottom=[j21, j22(n_q x n_q)].
+    A ZIP bus is a PQ load, so it appears in non_slack_indices (P eq) and active_pq
+    (Q eq). Same reduce-to-NR property: a=b=0 => derivative 0 => no change."""
+    n_p = len(non_slack_indices)
+    v_mag = np.abs(v)
+    for z_idx, z_c in zip_table.items():
+        if z_idx not in active_pq or z_idx not in non_slack_indices:
+            continue
+        row_p = non_slack_indices.index(z_idx)
+        col_q = active_pq.index(z_idx)
+        dp_dv = p_spec[z_idx] * zip_factor_derivative(z_c.a_p, z_c.b_p, v_mag[z_idx], z_c.v0_pu)
+        dq_dv = q_spec[z_idx] * zip_factor_derivative(z_c.a_q, z_c.b_q, v_mag[z_idx], z_c.v0_pu)
+        jacobian[row_p, n_p + col_q] -= dp_dv
+        jacobian[n_p + col_q, n_p + col_q] -= dq_dv
+
+
+def _apply_inverter_jacobian_v2(
+    jacobian: np.ndarray,
+    v: np.ndarray,
+    non_slack_indices: list[int],
+    active_pq: list[int],
+    inv_table: dict[int, InverterControl],
+) -> None:
+    """ADR-011 §5b: inverter Q(U) correction for the v2 Jacobian.
+
+    An inverter source is a PQ bus whose Q follows the volt-var droop Q(U); its
+    only voltage derivative is ∂Q_spec/∂V (the droop slope), so it touches the
+    J22 diagonal exactly like the ZIP ∂Q/∂V term. P is frequency- (not voltage-)
+    dependent, so there is no J12 term. In the deadband or where Q is clamped the
+    slope is 0 → no change (reduce-to-NR)."""
+    n_p = len(non_slack_indices)
+    v_mag = np.abs(v)
+    for idx, c in inv_table.items():
+        if idx not in active_pq or idx not in non_slack_indices:
+            continue
+        col_q = active_pq.index(idx)
+        jacobian[n_p + col_q, n_p + col_q] -= qu_dq_dv(c, v_mag[idx])
 
 
 def validate_input(pf_input: PowerFlowInput) -> tuple[list[str], list[str]]:
@@ -244,45 +304,6 @@ def compute_power_injections(ybus: np.ndarray, v: np.ndarray) -> tuple[np.ndarra
     return s_inj.real, s_inj.imag
 
 
-def build_jacobian(
-    ybus: np.ndarray,
-    v: np.ndarray,
-    pq_indices: list[int],
-    p_calc: np.ndarray,
-    q_calc: np.ndarray,
-) -> np.ndarray:
-    g = ybus.real
-    b = ybus.imag
-    n_pq = len(pq_indices)
-    j11 = np.zeros((n_pq, n_pq))
-    j12 = np.zeros((n_pq, n_pq))
-    j21 = np.zeros((n_pq, n_pq))
-    j22 = np.zeros((n_pq, n_pq))
-
-    v_mag = np.abs(v)
-    v_ang = np.angle(v)
-
-    for row, i in enumerate(pq_indices):
-        for col, k in enumerate(pq_indices):
-            theta = v_ang[i] - v_ang[k]
-            if i == k:
-                j11[row, col] = -q_calc[i] - b[i, i] * v_mag[i] ** 2
-                j21[row, col] = p_calc[i] - g[i, i] * v_mag[i] ** 2
-                j12[row, col] = p_calc[i] / v_mag[i] + g[i, i] * v_mag[i]
-                j22[row, col] = q_calc[i] / v_mag[i] - b[i, i] * v_mag[i]
-            else:
-                sin_t = np.sin(theta)
-                cos_t = np.cos(theta)
-                j11[row, col] = v_mag[i] * v_mag[k] * (g[i, k] * sin_t - b[i, k] * cos_t)
-                j21[row, col] = -v_mag[i] * v_mag[k] * (g[i, k] * cos_t + b[i, k] * sin_t)
-                j12[row, col] = v_mag[i] * (g[i, k] * cos_t + b[i, k] * sin_t)
-                j22[row, col] = v_mag[i] * (g[i, k] * sin_t - b[i, k] * cos_t)
-
-    top = np.hstack([j11, j12])
-    bottom = np.hstack([j21, j22])
-    return np.vstack([top, bottom])
-
-
 def build_jacobian_v2(
     ybus: np.ndarray,
     v: np.ndarray,
@@ -348,147 +369,6 @@ def build_jacobian_v2(
     return np.vstack([top, bottom])
 
 
-def newton_raphson_solve(
-    ybus: np.ndarray,
-    slack_index: int,
-    pq_indices: list[int],
-    p_spec: np.ndarray,
-    q_spec: np.ndarray,
-    v0: np.ndarray,
-    options: PowerFlowOptions,
-    node_index_to_id: dict[int, str] | None = None,
-) -> tuple[np.ndarray, bool, int, float, list[dict[str, Any]]]:
-    """Newton-Raphson power flow solver with optional white-box trace.
-
-    P20a: When options.trace_level == "full", generates complete white-box trace
-    including per-bus mismatch, Jacobian, delta_state, and state_next.
-    """
-    v = v0.copy()
-    trace: list[dict[str, Any]] = []
-    converged = False
-    max_mismatch = 0.0
-    full_trace = options.trace_level == "full"
-
-    # P20a: Build index mapping for deterministic trace output
-    if node_index_to_id is None:
-        node_index_to_id = {i: str(i) for i in range(len(v0))}
-
-    for iteration in range(1, options.max_iter + 1):
-        p_calc, q_calc = compute_power_injections(ybus, v)
-        d_p = p_spec[pq_indices] - p_calc[pq_indices]
-        d_q = q_spec[pq_indices] - q_calc[pq_indices]
-
-        max_mismatch = float(np.max(np.abs(np.concatenate([d_p, d_q]))))
-        mismatch_norm = float(np.linalg.norm(np.concatenate([d_p, d_q])))
-
-        # P20a: Build per-bus mismatch dict (deterministic order)
-        mismatch_per_bus: dict[str, dict[str, float]] | None = None
-        if full_trace:
-            mismatch_per_bus = {}
-            for _i, idx in enumerate(sorted(pq_indices)):
-                node_id = node_index_to_id.get(idx, str(idx))
-                mismatch_per_bus[node_id] = {
-                    "delta_p_pu": float(d_p[pq_indices.index(idx)]) if idx in pq_indices else 0.0,
-                    "delta_q_pu": float(d_q[pq_indices.index(idx)]) if idx in pq_indices else 0.0,
-                }
-
-        if not np.isfinite(max_mismatch) or not np.isfinite(mismatch_norm):
-            trace_entry: dict[str, Any] = {
-                "iter": iteration,
-                "max_mismatch_pu": max_mismatch,
-                "mismatch_norm": mismatch_norm,
-                "step_norm": 0.0,
-                "damping_used": float(options.damping),
-                "cause_if_failed_optional": "numerical_issue",
-            }
-            if full_trace and mismatch_per_bus:
-                trace_entry["mismatch_per_bus"] = mismatch_per_bus
-            trace.append(trace_entry)
-            break
-
-        if max_mismatch < options.tolerance:
-            converged = True
-            trace_entry = {
-                "iter": iteration,
-                "max_mismatch_pu": max_mismatch,
-                "mismatch_norm": mismatch_norm,
-                "step_norm": 0.0,
-                "damping_used": float(options.damping),
-            }
-            if full_trace:
-                if mismatch_per_bus:
-                    trace_entry["mismatch_per_bus"] = mismatch_per_bus
-                # P20a: Final state
-                trace_entry["state_next"] = _build_state_dict(v, node_index_to_id)
-            trace.append(trace_entry)
-            break
-
-        jacobian = build_jacobian(ybus, v, pq_indices, p_calc, q_calc)
-        try:
-            step = np.linalg.solve(jacobian, np.concatenate([d_p, d_q]))
-        except np.linalg.LinAlgError:
-            trace_entry = {
-                "iter": iteration,
-                "max_mismatch_pu": max_mismatch,
-                "mismatch_norm": mismatch_norm,
-                "step_norm": 0.0,
-                "damping_used": float(options.damping),
-                "cause_if_failed_optional": "singular_jacobian",
-            }
-            if full_trace and mismatch_per_bus:
-                trace_entry["mismatch_per_bus"] = mismatch_per_bus
-            trace.append(trace_entry)
-            break
-
-        step *= options.damping
-        step_norm = float(np.linalg.norm(step))
-
-        # P20a: Build delta_state before update
-        delta_state: dict[str, dict[str, float]] | None = None
-        if full_trace:
-            delta_state = {}
-            n_pq = len(pq_indices)
-            for _i, idx in enumerate(sorted(pq_indices)):
-                node_id = node_index_to_id.get(idx, str(idx))
-                pq_pos = pq_indices.index(idx)
-                delta_state[node_id] = {
-                    "delta_theta_rad": float(step[pq_pos]),
-                    "delta_v_pu": float(step[n_pq + pq_pos]),
-                }
-
-        v_mag = np.abs(v)
-        v_ang = np.angle(v)
-        n_pq = len(pq_indices)
-        v_ang[pq_indices] += step[:n_pq]
-        v_mag[pq_indices] += step[n_pq:]
-
-        for idx in pq_indices:
-            v[idx] = v_mag[idx] * np.exp(1j * v_ang[idx])
-        v[slack_index] = v0[slack_index]
-
-        trace_entry = {
-            "iter": iteration,
-            "max_mismatch_pu": max_mismatch,
-            "mismatch_norm": mismatch_norm,
-            "step_norm": step_norm,
-            "damping_used": float(options.damping),
-        }
-
-        # P20a: Add full trace data
-        if full_trace:
-            if mismatch_per_bus:
-                trace_entry["mismatch_per_bus"] = mismatch_per_bus
-            if delta_state:
-                trace_entry["delta_state"] = delta_state
-            trace_entry["state_next"] = _build_state_dict(v, node_index_to_id)
-            # P20a: Jacobian blocks (J1=dP/dθ, J2=dP/dV, J3=dQ/dθ, J4=dQ/dV)
-            trace_entry["jacobian"] = _serialize_jacobian_blocks(jacobian, n_pq)
-
-        trace.append(trace_entry)
-
-    return v, converged, iteration, max_mismatch, trace
-
-
 def _build_state_dict(
     v: np.ndarray, node_index_to_id: dict[int, str]
 ) -> dict[str, dict[str, float]]:
@@ -504,22 +384,6 @@ def _build_state_dict(
     return state
 
 
-def _serialize_jacobian_blocks(jacobian: np.ndarray, n_pq: int) -> dict[str, list[list[float]]]:
-    """P20a: Serialize Jacobian blocks for white-box trace (deterministic)."""
-    # Jacobian structure: [[J1, J2], [J3, J4]]
-    # J1 = dP/dθ, J2 = dP/dV, J3 = dQ/dθ, J4 = dQ/dV
-    j1 = jacobian[:n_pq, :n_pq]
-    j2 = jacobian[:n_pq, n_pq:]
-    j3 = jacobian[n_pq:, :n_pq]
-    j4 = jacobian[n_pq:, n_pq:]
-    return {
-        "J1_dP_dTheta": [[float(x) for x in row] for row in j1],
-        "J2_dP_dV": [[float(x) for x in row] for row in j2],
-        "J3_dQ_dTheta": [[float(x) for x in row] for row in j3],
-        "J4_dQ_dV": [[float(x) for x in row] for row in j4],
-    }
-
-
 def newton_raphson_solve_v2(
     ybus: np.ndarray,
     slack_index: int,
@@ -533,6 +397,8 @@ def newton_raphson_solve_v2(
     options: PowerFlowOptions,
     base_mva: float,
     node_index_to_id: dict[int, str],
+    zip_table: dict[int, ZipCoeffs] | None = None,
+    inv_table: dict[int, InverterControl] | None = None,
 ) -> tuple[
     np.ndarray,
     bool,
@@ -592,8 +458,32 @@ def newton_raphson_solve_v2(
 
         non_slack_indices = sorted([idx for idx in active_pq + active_pv if idx != slack_index])
 
-        d_p = p_spec[non_slack_indices] - p_calc[non_slack_indices]
-        d_q = q_spec[active_pq] - q_calc[active_pq]
+        # ADR-011: recompute voltage-dependent (ZIP) injections from current |V|.
+        # Gated — with no ZIP load the base p_spec/q_spec are used unchanged
+        # (reduce-to-NR). Placed after PV-limit handling so switched-bus q_spec
+        # values are respected; ZIP touches only ZIP (PQ-load) buses.
+        if zip_table or inv_table:
+            v_mag_now = np.abs(v)
+            p_spec_eff = p_spec.copy()
+            q_spec_eff = q_spec.copy()
+            if zip_table:
+                for z_idx, z_c in zip_table.items():
+                    p_spec_eff[z_idx] = p_spec[z_idx] * zip_factor(
+                        z_c.a_p, z_c.b_p, z_c.c_p, v_mag_now[z_idx], z_c.v0_pu
+                    )
+                    q_spec_eff[z_idx] = q_spec[z_idx] * zip_factor(
+                        z_c.a_q, z_c.b_q, z_c.c_q, v_mag_now[z_idx], z_c.v0_pu
+                    )
+            if inv_table:
+                # ADR-011 §5b: Q(U) volt-var sources recompute Q from |V| each
+                # iteration (P is frequency-, not voltage-dependent → unchanged).
+                for i_idx, i_c in inv_table.items():
+                    q_spec_eff[i_idx] = qu_q(i_c, v_mag_now[i_idx])
+        else:
+            p_spec_eff = p_spec
+            q_spec_eff = q_spec
+        d_p = p_spec_eff[non_slack_indices] - p_calc[non_slack_indices]
+        d_q = q_spec_eff[active_pq] - q_calc[active_pq]
 
         mismatch = np.concatenate([d_p, d_q])
         max_mismatch = float(np.max(np.abs(mismatch))) if mismatch.size else 0.0
@@ -644,10 +534,33 @@ def newton_raphson_solve_v2(
                 if mismatch_per_bus:
                     trace_entry["mismatch_per_bus"] = mismatch_per_bus
                 trace_entry["state_next"] = _build_state_dict(v, node_index_to_id)
+                if zip_table:
+                    trace_entry["zip_loads"] = {
+                        node_index_to_id.get(z_idx, str(z_idx)): {
+                            "p_spec_pu": float(p_spec_eff[z_idx]),
+                            "q_spec_pu": float(q_spec_eff[z_idx]),
+                        }
+                        for z_idx in sorted(zip_table)
+                    }
+                if inv_table:
+                    trace_entry["inverter_sources"] = {
+                        node_index_to_id.get(i_idx, str(i_idx)): {
+                            "p_spec_pu": float(p_spec_eff[i_idx]),
+                            "q_spec_pu": float(q_spec_eff[i_idx]),
+                            "mode": inv_table[i_idx].mode.value,
+                        }
+                        for i_idx in sorted(inv_table)
+                    }
             trace.append(trace_entry)
             break
 
         jacobian = build_jacobian_v2(ybus, v, non_slack_indices, active_pq, p_calc, q_calc)
+        if zip_table:
+            _apply_zip_jacobian_v2(
+                jacobian, v, non_slack_indices, active_pq, p_spec, q_spec, zip_table
+            )
+        if inv_table:
+            _apply_inverter_jacobian_v2(jacobian, v, non_slack_indices, active_pq, inv_table)
         try:
             step = np.linalg.solve(jacobian, mismatch)
         except np.linalg.LinAlgError:
@@ -718,6 +631,23 @@ def newton_raphson_solve_v2(
             # P20a: Jacobian blocks for v2 (different structure - n_p x n_p for J1, n_p x n_q for J2, etc.)
             n_q = len(active_pq)
             trace_entry["jacobian"] = _serialize_jacobian_blocks_v2(jacobian, n_p, n_q)
+            if zip_table:
+                trace_entry["zip_loads"] = {
+                    node_index_to_id.get(z_idx, str(z_idx)): {
+                        "p_spec_pu": float(p_spec_eff[z_idx]),
+                        "q_spec_pu": float(q_spec_eff[z_idx]),
+                    }
+                    for z_idx in sorted(zip_table)
+                }
+            if inv_table:
+                trace_entry["inverter_sources"] = {
+                    node_index_to_id.get(i_idx, str(i_idx)): {
+                        "p_spec_pu": float(p_spec_eff[i_idx]),
+                        "q_spec_pu": float(q_spec_eff[i_idx]),
+                        "mode": inv_table[i_idx].mode.value,
+                    }
+                    for i_idx in sorted(inv_table)
+                }
 
         trace.append(trace_entry)
 
@@ -851,6 +781,7 @@ def _build_ybus_ohm(
             continue
         # SwitchState.CLOSED only — open switches don't conduct
         from network_model.core.switch import SwitchState
+
         if switch.state != SwitchState.CLOSED:
             continue
         from_idx = node_id_to_index.get(switch.from_node_id)

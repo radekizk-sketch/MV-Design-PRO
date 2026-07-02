@@ -771,11 +771,13 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
       errorCode: null,
     });
 
-    render(<SldWorkspaceContainer width={900} height={520} />);
+    const { container } = render(<SldWorkspaceContainer width={900} height={520} />);
 
-    fireEvent.mouseDown(screen.getByTestId('gpz-canonical-apparatus-bay_1#breaker-button'), {
-      button: 0,
-    });
+    const breaker = container.querySelector(
+      '[data-element-kind="apparatus"][data-element-id="bay_1#breaker"][data-apparatus-kind="breaker"]',
+    );
+    expect(breaker).toBeTruthy();
+    fireEvent.click(breaker as Element);
 
     expect(useSelectionStore.getState().selectedElement).toMatchObject({
       id: 'bay_1#breaker',

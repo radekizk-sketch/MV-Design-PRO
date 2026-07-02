@@ -78,7 +78,6 @@ function canonicalGpzProps(id: string, name: string): GpzCanonicalRendererProps 
             esState: 'open',
             qDesignations: { cb: 'Q0', dsBus: 'Q1', dsLin: 'Q9', es: 'Q8' },
             statusFlags: [],
-            controlMode: 'remote',
             inManipulation: false,
           },
         ],
@@ -102,9 +101,9 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
         ders={[]}
       />,
     );
-    /* GpzCanonicalRenderer wystawia data-testid="gpz-canonical-renderer".
+    /* GpzSwitchgearRenderer wystawia data-testid="sld-v2-gpz-switchgear-<id>".
      * Legacy GpzRenderer NIE ma tego atrybutu. */
-    const canonical = container.querySelector('[data-testid="sld-v2-gpz-canonical-gpz-1"]');
+    const canonical = container.querySelector('[data-testid="sld-v2-gpz-switchgear-gpz-1"]');
     expect(canonical).toBeTruthy();
     cleanup();
   });
@@ -169,7 +168,7 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
       />,
     );
 
-    const bay = container.querySelector('[data-testid="gpz-canonical-bay-bay-1"]');
+    const bay = container.querySelector('[data-testid="sld-v2-gpz-bay-bay-1"]');
     expect(bay).toBeTruthy();
     fireEvent.click(bay as Element);
     expect(onSelectElement).toHaveBeenCalledWith('bay-1', 'bay');
@@ -192,7 +191,9 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
       />,
     );
 
-    const breaker = container.querySelector('[data-testid="gpz-canonical-apparatus-bay-1#breaker"]');
+    const breaker = container.querySelector(
+      '[data-element-kind="apparatus"][data-element-id="bay-1#breaker"][data-apparatus-kind="breaker"]',
+    );
     expect(breaker).toBeTruthy();
     fireEvent.click(breaker as Element);
     expect(onSelectElement).toHaveBeenCalledWith('bay-1#breaker', 'apparatus');
@@ -200,7 +201,7 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
     cleanup();
   });
 
-  it('prawy klik głowicy w polu GPZ otwiera menu aparatu cable_head', () => {
+  it('prawy klik aparatu w polu GPZ otwiera menu aparatu (uziemnik)', () => {
     const onSelectElement = vi.fn();
     const onContextMenu = vi.fn();
     const { container } = render(
@@ -218,14 +219,16 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
       />,
     );
 
-    const cableHead = container.querySelector('[data-testid="gpz-canonical-apparatus-bay-1#cable_head"]');
-    expect(cableHead).toBeTruthy();
-    fireEvent.contextMenu(cableHead as Element, { clientX: 321, clientY: 123 });
+    const earthingSwitch = container.querySelector(
+      '[data-element-kind="apparatus"][data-element-id="bay-1#earthing_switch"][data-apparatus-kind="earthing_switch"]',
+    );
+    expect(earthingSwitch).toBeTruthy();
+    fireEvent.contextMenu(earthingSwitch as Element, { clientX: 321, clientY: 123 });
 
-    expect(onSelectElement).toHaveBeenCalledWith('bay-1#cable_head', 'apparatus');
+    expect(onSelectElement).toHaveBeenCalledWith('bay-1#earthing_switch', 'apparatus');
     expect(onContextMenu).toHaveBeenCalledWith({
       kind: 'apparatus',
-      elementId: 'bay-1#cable_head',
+      elementId: 'bay-1#earthing_switch',
       clientX: 321,
       clientY: 123,
     });
@@ -246,7 +249,7 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
       />,
     );
     /* Brak canonical → legacy działa: znajdziemy nazwę w DOM (literalny tekst). */
-    expect(container.querySelector('[data-testid="sld-v2-gpz-canonical-gpz-1"]')).toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-switchgear-gpz-1"]')).toBeNull();
     expect(container.textContent).toContain('GPZ Legacy');
     cleanup();
   });
@@ -263,7 +266,7 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
         ders={[]}
       />,
     );
-    expect(container.querySelector('[data-testid="sld-v2-gpz-canonical-gpz-1"]')).toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-switchgear-gpz-1"]')).toBeNull();
     cleanup();
   });
 
@@ -283,8 +286,8 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
         ders={[]}
       />,
     );
-    /* Co najmniej jedno wystąpienie canonical i jedno legacy text. */
-    expect(container.querySelectorAll('[data-testid="sld-v2-gpz-canonical-gpz-1"]').length).toBe(1);
+    /* Co najmniej jedno wystąpienie switchgear i jedno legacy text. */
+    expect(container.querySelectorAll('[data-testid="sld-v2-gpz-switchgear-gpz-1"]').length).toBe(1);
     expect(container.textContent).toContain('GPZ Legacy Only');
     cleanup();
   });
@@ -302,14 +305,15 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
         ders={[]}
       />,
     );
-    /* Inv 9: brak danych ≠ placeholder. Nie ma "GPZ 1", "TR1", "Sekcja 2". */
+    /* Inv 9: brak danych ≠ placeholder. Nie ma "GPZ 1", "?/15 kV", sklejonych etykiet. */
     expect(container.textContent).not.toContain('GPZ 1');
     expect(container.textContent).not.toContain('?/15 kV');
     expect(container.textContent).not.toContain('SekcSekcja');
-    /* Renderowane są realne nazwy z propsów. */
+    /* Renderowane są realne nazwy z propsów. GpzSwitchgearRenderer numeruje
+     * transformatory pozycyjnie (TR1/TR2), sekcje po etykiecie (S1). */
     expect(container.textContent).toContain('GPZ-5 PST');
-    expect(container.textContent).toContain('T1');
-    expect(container.textContent).toContain('T2');
+    expect(container.textContent).toContain('TR1');
+    expect(container.textContent).toContain('TR2');
     expect(container.textContent).toContain('S1');
     cleanup();
   });
@@ -380,9 +384,11 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
       />,
     );
 
-    const powerPath = container.querySelector('[data-parity-key="gpz.bay.power_path"]');
-    expect(powerPath).toBeTruthy();
-    fireEvent.contextMenu(powerPath as Element, { clientX: 340, clientY: 240 });
+    const bayBody = container.querySelector(
+      '[data-testid="sld-v2-gpz-bay-bay-1"] [data-testid="sld-v2-gpz-bay-body"]',
+    );
+    expect(bayBody).toBeTruthy();
+    fireEvent.contextMenu(bayBody as Element, { clientX: 340, clientY: 240 });
 
     expect(onContextMenu).toHaveBeenCalledWith({
       kind: 'bay',

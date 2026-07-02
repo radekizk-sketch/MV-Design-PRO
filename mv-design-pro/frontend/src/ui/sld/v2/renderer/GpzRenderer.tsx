@@ -17,6 +17,7 @@
  */
 
 import {
+  COLOR_BUS_LV,
   COLOR_LINE_PRIMARY,
   COLOR_LINE_SECONDARY,
   COLOR_PANEL_RAISED,
@@ -38,6 +39,7 @@ import {
   type GpzSectionDescriptor,
   type TransformerMeasurements,
 } from './GpzSwitchgearRenderer';
+import type { GpzApparatusSelection } from './gpzApparatusSelection';
 
 // =============================================================================
 // Geometry constants
@@ -115,13 +117,22 @@ export interface GpzRendererProps {
   readonly fieldTrunkLabel?: string;
   /** Liczba odpływów SN — używane do wnioskowania `outgoingBayCount` przy LOD 0 z ENM. */
   readonly feedersCount?: number;
+  /** Refy transformatorów index-aligned do kolumn TR (włącza klik transformatora). */
+  readonly transformerRefs?: readonly string[];
   readonly onClickSection?: (sectionId: string) => void;
   readonly onClickBay?: (bayRef: string) => void;
-  readonly onClickCb?: (bayRef: string) => void;
-  readonly onClickDs?: (bayRef: string) => void;
-  readonly onClickEs?: (bayRef: string) => void;
+  readonly onDoubleClickBay?: (bayRef: string) => void;
+  readonly onContextMenuBay?: (bayRef: string, evt: { clientX: number; clientY: number }) => void;
+  readonly onContextMenuSection?: (sectionId: string, evt: { clientX: number; clientY: number }) => void;
+  readonly onClickApparatus?: (selection: GpzApparatusSelection) => void;
+  readonly onContextMenuApparatus?: (
+    selection: GpzApparatusSelection,
+    evt: { clientX: number; clientY: number },
+  ) => void;
   readonly onClickKas?: (bayRef: string) => void;
   readonly onClickCoupler?: (couplerId: string) => void;
+  readonly onClickTransformer?: (transformerRef: string) => void;
+  readonly onResetSignals?: () => void;
 }
 
 // =============================================================================
@@ -151,17 +162,22 @@ export function GpzRenderer(props: GpzRendererProps): JSX.Element {
         hvCouplers={props.hvCouplers}
         transformerCount={props.transformerCount}
         transformerMeasurements={props.transformerMeasurements}
+        transformerRefs={props.transformerRefs}
         titleBarAction={props.titleBarAction}
         fieldTrunkLabel={props.fieldTrunkLabel}
         selected={props.selected}
         onClick={props.onClick}
         onClickSection={props.onClickSection}
         onClickBay={props.onClickBay}
-        onClickCb={props.onClickCb}
-        onClickDs={props.onClickDs}
-        onClickEs={props.onClickEs}
+        onDoubleClickBay={props.onDoubleClickBay}
+        onContextMenuBay={props.onContextMenuBay}
+        onContextMenuSection={props.onContextMenuSection}
+        onClickApparatus={props.onClickApparatus}
+        onContextMenuApparatus={props.onContextMenuApparatus}
         onClickKas={props.onClickKas}
         onClickCoupler={props.onClickCoupler}
+        onClickTransformer={props.onClickTransformer}
+        onResetSignals={props.onResetSignals}
       />
     );
   }
@@ -418,7 +434,10 @@ function PowerTowerColumn(props: PowerTowerColumnProps): JSX.Element {
         strokeWidth={STROKE_FIELD_TRACK_PX}
       />
 
-      {/* Szyny SN (poziome) */}
+      {/* Szyny SN (poziome) — zielona szyna SN (15 kV) zgodnie z konwencją
+          dyspozytorską (COLOR_BUS_LV): odróżnia poziom SN od białego toru 110 kV
+          (COLOR_BUS_HV) nad transformatorem i wiąże GPZ wizualnie z zasilanym
+          zielonym torem mocy 15 kV. NIE koliduje z czerwienią (alarm/otwarty). */}
       {sectionsY.map((y, idx) => (
         <g key={`sn-bus-${idx}`} data-testid={`sld-v2-gpz-sn-bus-${idx}`}>
           <line
@@ -426,7 +445,7 @@ function PowerTowerColumn(props: PowerTowerColumnProps): JSX.Element {
             y1={y}
             x2={cx + busLength / 2}
             y2={y}
-            stroke={COLOR_LINE_PRIMARY}
+            stroke={COLOR_BUS_LV}
             strokeWidth={STROKE_BUSBAR_PX}
           />
           <text

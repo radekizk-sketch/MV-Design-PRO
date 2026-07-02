@@ -120,6 +120,7 @@ export function ApparatusCbSquare(props: ApparatusVisualProps): JSX.Element {
       data-state={state}
       data-apparatus-kind="circuit_breaker"
       data-symbol-canon="circuit_breaker_square"
+      data-symbol-shape="square"
     >
       <rect
         x={cx - CB_SIZE / 2}
@@ -197,6 +198,7 @@ export function ApparatusDsCircle(props: ApparatusVisualProps): JSX.Element {
       data-state={state}
       data-apparatus-kind="disconnector"
       data-symbol-canon="disconnector_two_contact_lever"
+      data-symbol-shape="circle"
     >
       <circle cx={cx} cy={cy} r={DS_RADIUS} fill={fill} stroke={stroke} strokeWidth={1.2} />
       {/* 2 kropki styku stałe (IEC 7-13-02 — top + bottom contact points) */}
@@ -521,6 +523,99 @@ export function ApparatusSwitchDisconnector(props: ApparatusSwitchDisconnectorPr
         // Closed: pionowa linia łącząca styki
         <line x1={cx} y1={cy - sdSize / 2 + 1.5} x2={cx} y2={cy + sdSize / 2 - 1.5} stroke={contactColor} strokeWidth={1.2} />
       )}
+    </g>
+  );
+}
+
+// =============================================================================
+// Three-position switch (rozłącznik trzypołożeniowy — ABB UniSwitch signature)
+// =============================================================================
+
+interface ApparatusThreePositionSwitchProps {
+  readonly cx: number;
+  readonly cy: number;
+  /**
+   * Position of the single moving contact (the ABB 3-position device selects ONE):
+   *  - 'closed'  (ZAŁ):       blade bridges bus → cable (in service)
+   *  - 'open'    (WYŁ):       blade at rest (isolated, gap)
+   *  - 'earthed' (UZIEMIONY): blade swings to the earth contact (cable earthed)
+   *  - 'unknown':             indeterminate (grey)
+   */
+  readonly position?: 'closed' | 'open' | 'earthed' | 'unknown';
+  /** Half-height of the device on the field path (contacts sit at ±h). */
+  readonly h?: number;
+}
+
+/**
+ * Rozłącznik trzypołożeniowy (IEC 60617 load-break isolator with integral
+ * earthing — the defining apparatus of the ABB UniSwitch cell). One moving
+ * blade selects exactly one of three positions: service (closed), isolated
+ * (open) or earthed. The earthing position is INTEGRAL to this device — there
+ * is no separate earthing switch in an SDC cell.
+ *
+ * Single-line construction: a top fixed contact (bus side) and a bottom fixed
+ * contact (cable side) on the vertical path, an earth contact branching to the
+ * left with a ground triangle, and the moving blade drawn from the top pivot to
+ * whichever contact is selected. A short load-break tick distinguishes it from a
+ * plain disconnector.
+ */
+export function ApparatusThreePositionSwitch(
+  props: ApparatusThreePositionSwitchProps,
+): JSX.Element {
+  const { cx, cy, position = 'unknown', h = 9 } = props;
+  const topY = cy - h;
+  const botY = cy + h;
+  const earthX = cx - h - 3;
+  const closed = position === 'closed';
+  const earthed = position === 'earthed';
+  const unknown = position === 'unknown';
+  const liveColor = unknown ? COLOR_TEXT_MUTED : COLOR_DEVICE_CLOSED_BORDER;
+  const bladeColor = closed
+    ? COLOR_DEVICE_CLOSED_BORDER
+    : earthed
+      ? COLOR_DEVICE_OPEN
+      : unknown
+        ? COLOR_TEXT_MUTED
+        : COLOR_DEVICE_OPEN_BORDER;
+  // Blade endpoint: closed → bottom contact; earthed → earth contact; open →
+  // a rest angle between (the visible gap).
+  const bladeEnd = closed
+    ? { x: cx, y: botY }
+    : earthed
+      ? { x: earthX, y: cy + 1 }
+      : { x: cx + h * 0.7, y: cy - h * 0.2 };
+  return (
+    <g
+      data-testid="sld-v2-apparatus-three-position-switch"
+      data-state={position}
+      data-apparatus-kind="three_position_switch"
+      data-symbol-canon="three_position_load_break_isolator"
+      data-symbol-shape="diamond"
+    >
+      {/* Bus-side stub + top fixed contact (pivot). */}
+      <line x1={cx} y1={topY - 3} x2={cx} y2={topY} stroke={liveColor} strokeWidth={1.6} />
+      <circle cx={cx} cy={topY} r={1.4} fill={liveColor} />
+      {/* Cable-side bottom fixed contact + stub. */}
+      <circle cx={cx} cy={botY} r={1.4} fill={closed ? liveColor : COLOR_TEXT_MUTED} />
+      <line x1={cx} y1={botY} x2={cx} y2={botY + 3} stroke={closed ? liveColor : COLOR_TEXT_MUTED} strokeWidth={1.6} />
+      {/* Earth contact branch (left) + ground triangle. */}
+      <circle cx={earthX} cy={cy + 1} r={1.2} fill={earthed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED} />
+      <line x1={earthX} y1={cy + 2.2} x2={earthX} y2={cy + 6} stroke={earthed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED} strokeWidth={1.2} />
+      <line x1={earthX - 3} y1={cy + 6} x2={earthX + 3} y2={cy + 6} stroke={earthed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED} strokeWidth={1.2} />
+      <line x1={earthX - 2} y1={cy + 7.4} x2={earthX + 2} y2={cy + 7.4} stroke={earthed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED} strokeWidth={1.0} />
+      <line x1={earthX - 1} y1={cy + 8.8} x2={earthX + 1} y2={cy + 8.8} stroke={earthed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED} strokeWidth={0.8} />
+      {/* The single moving blade from the top pivot to the selected contact. */}
+      <line
+        x1={cx}
+        y1={topY}
+        x2={bladeEnd.x}
+        y2={bladeEnd.y}
+        stroke={bladeColor}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+      {/* Load-break tick (distinguishes from a plain disconnector). */}
+      <line x1={cx + 3} y1={cy - h * 0.55} x2={cx + 5.5} y2={cy - h * 0.55 + 2.5} stroke={liveColor} strokeWidth={1.3} strokeLinecap="round" />
     </g>
   );
 }

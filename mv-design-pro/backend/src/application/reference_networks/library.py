@@ -59,6 +59,24 @@ def _ieee_4bus_builder() -> dict[str, Any]:
     return build_ieee_4bus_network()
 
 
+def _ieee_9bus_builder() -> dict[str, Any]:
+    from application.reference_networks.builders.ieee_9bus import build_ieee_9bus_network
+
+    return build_ieee_9bus_network()
+
+
+def _ieee_14bus_builder() -> dict[str, Any]:
+    from application.reference_networks.builders.ieee_14bus import build_ieee_14bus_network
+
+    return build_ieee_14bus_network()
+
+
+def _ieee_39bus_builder() -> dict[str, Any]:
+    from application.reference_networks.builders.ieee_39bus import build_ieee_39bus_network
+
+    return build_ieee_39bus_network()
+
+
 def _iec60909_example_builder() -> dict[str, Any]:
     from application.reference_networks.builders.iec60909_example import (
         build_iec60909_example_network,
@@ -128,6 +146,51 @@ REFERENCE_NETWORK_REGISTRY: dict[str, ReferenceNetwork] = {
         supported_solvers=("power_flow_newton",),
         builder_fn=_ieee_4bus_builder,
         expected_filename="ieee_4bus.json",
+    ),
+    "ieee-9bus": ReferenceNetwork(
+        id="ieee-9bus",
+        name_pl="IEEE 9-bus (WSCC)",
+        description_pl=(
+            "Klasyczna sieć WSCC 9-węzłowa 345 kV (3 generatory). Cross-validation "
+            "rozpływu mocy NR względem niezależnej implementacji pandapower."
+        ),
+        source="MATPOWER case9 (WSCC 9-bus) via pandapower 3.4.0",
+        voltage_kv=345.0,
+        has_der=False,
+        is_unbalanced=False,
+        supported_solvers=("power_flow_newton",),
+        builder_fn=_ieee_9bus_builder,
+        expected_filename="ieee_9bus.json",
+    ),
+    "ieee-14bus": ReferenceNetwork(
+        id="ieee-14bus",
+        name_pl="IEEE 14-bus",
+        description_pl=(
+            "Standardowa sieć IEEE 14-węzłowa z transformatorami z regulacją zaczepów "
+            "i baterią kondensatorów. Cross-validation rozpływu mocy NR vs pandapower."
+        ),
+        source="MATPOWER case14 (IEEE 14-bus) via pandapower 3.4.0",
+        voltage_kv=135.0,
+        has_der=False,
+        is_unbalanced=False,
+        supported_solvers=("power_flow_newton",),
+        builder_fn=_ieee_14bus_builder,
+        expected_filename="ieee_14bus.json",
+    ),
+    "ieee-39bus": ReferenceNetwork(
+        id="ieee-39bus",
+        name_pl="IEEE 39-bus (New England)",
+        description_pl=(
+            "Sieć New England 39-węzłowa 345 kV (10 generatorów, 11 transformatorów). "
+            "Cross-validation rozpływu mocy NR względem pandapower."
+        ),
+        source="MATPOWER case39 (New England 39-bus) via pandapower 3.4.0",
+        voltage_kv=345.0,
+        has_der=False,
+        is_unbalanced=False,
+        supported_solvers=("power_flow_newton",),
+        builder_fn=_ieee_39bus_builder,
+        expected_filename="ieee_39bus.json",
     ),
     "iec60909-example": ReferenceNetwork(
         id="iec60909-example",

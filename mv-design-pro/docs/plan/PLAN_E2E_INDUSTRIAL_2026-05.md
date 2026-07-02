@@ -285,4 +285,27 @@ Sprawdzone (lokalnie 2026-05-13):
 
 ---
 
+## 7. DO REJESTRU — zaplanowane powierzchnie (NIE w bieżącej rundzie)
+
+### 7.1 Panel boczny wywodu White Box (prawy, na klik obiektu) — stacja-rozdzielnia SN
+
+- **Decyzja właściciela (B-02, 2026-05-31):** pełny wywód White Box A→B→C→D NIE jest
+  rysowany na płótnie SLD (przeładowuje schemat). Na L2 przy obiektach zostają
+  ZWIĘZŁE wyniki (szyna: U + Ik''max/min + weryfikacja ≤ Icw; pole: I/P/Q/kierunek/
+  obciążenie%). Pełny wywód przenosi się do osobnej powierzchni.
+- **Zakres przyszłej powierzchni:** prawy panel boczny otwierany po kliknięciu
+  obiektu (pole / szyna). Renderuje pełny A→B→C→D (formuła → dane → podstawienie →
+  wynik), pochodzenie danych (`solver` / `interpretacja`), `case_ref`, oraz LaTeX
+  (KaTeX) jako kanoniczną formę matematyki.
+- **Dane są GOTOWE (nie do zbudowania od zera):** wywód jest już w companionach —
+  `STATION_ARCHETYPE_SHORT_CIRCUIT.*.buses[].max.white_box_trace` (IEC 60909, 7
+  kroków) oraz `STATION_ARCHETYPE_VOLTAGE_FLOW.*.buses[].white_box` /
+  `.branches[].white_box` (Newton-Raphson). Panel je tylko PREZENTUJE.
+- **Hak istnieje:** `StationRozdzielniaSN onFieldClick(fieldId)` — pola, odpływy nN,
+  aparaty sprzęgła i (docelowo) szyny wywołują callback; to punkt wejścia panelu.
+- **Status:** projekt w późniejszej rundzie (osobny surface w rejestrze powierzchni).
+  To przeniesienie MIEJSCA (płótno → panel na klik), nie okrojenie zakresu (ZASADA NR 3).
+
+---
+
 **KONIEC PLANU E2E INDUSTRIAL**
