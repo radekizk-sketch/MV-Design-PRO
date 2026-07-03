@@ -1309,18 +1309,8 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                     transform={`translate(${canonical.x + 170}, ${canonical.y + 96}) scale(${overviewTopologyLabelScale(transform.scale)})`}
                     pointerEvents="none"
                   >
-                    <rect
-                      x={-58}
-                      y={-18}
-                      width={116}
-                      height={36}
-                      rx={3}
-                      ry={3}
-                      fill="#07111C"
-                      stroke="#13C45A"
-                      strokeWidth={0.5}
-                      opacity={0.94}
-                    />
+                    {/* Etykieta GPZ jako tekst rysunkowy z halo — bez pigułki
+                        (język CAD, SLD_SCHEMAT_REDESIGN_2026-07 §2). */}
                     <text
                       x={0}
                       y={-3}
@@ -1331,6 +1321,9 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                       fontSize={12}
                       fontWeight={900}
                       letterSpacing={0}
+                      paintOrder="stroke"
+                      stroke="#05070A"
+                      strokeWidth={2.5}
                     >
                       {overviewName}
                     </text>
