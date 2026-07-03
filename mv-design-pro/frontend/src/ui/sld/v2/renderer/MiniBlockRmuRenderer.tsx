@@ -43,6 +43,7 @@ import {
   ApparatusSwitchDisconnector,
   ApparatusTransformerSymbol,
 } from './GpzApparatusSymbols';
+import { DerSourceSymbol } from './DerRenderer';
 
 // =============================================================================
 // Constants
@@ -691,33 +692,16 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                 data-block-transformer={hasDerBlockTransformer ? 'true' : 'false'}
                 transform={`translate(${OVERVIEW_WIDTH / 2 - 11}, ${OVERVIEW_HEIGHT / 2 - 12})`}
               >
-                {derMarkerShape === 'hexagon' && (
-                  <polygon
-                    points="0,-5 4.3,-2.5 4.3,2.5 0,5 -4.3,2.5 -4.3,-2.5"
-                    fill={derSummary.color}
-                    stroke="#07111C"
+                <g data-marker-shape={derMarkerShape}>
+                  <DerSourceSymbol
+                    cx={0}
+                    cy={0}
+                    half={5}
+                    kind={props.derBadges.find((badge) => badge.count > 0)?.kind ?? 'PV'}
+                    stroke={derSummary.color}
                     strokeWidth={1}
                   />
-                )}
-                {derMarkerShape === 'square' && (
-                  <rect
-                    x={-4.5}
-                    y={-4.5}
-                    width={9}
-                    height={9}
-                    fill={derSummary.color}
-                    stroke="#07111C"
-                    strokeWidth={1}
-                  />
-                )}
-                {derMarkerShape === 'triangle' && (
-                  <polygon
-                    points="0,-5 5,4 -5,4"
-                    fill={derSummary.color}
-                    stroke="#07111C"
-                    strokeWidth={1}
-                  />
-                )}
+                </g>
                 {hasDerBlockTransformer && (
                   <g
                     data-testid={`sld-v2-mini-rmu-overview-${props.id}-der-block-transformer`}
@@ -2251,63 +2235,9 @@ function DerBadges(props: DerBadgesProps): JSX.Element {
             data-testid={`sld-v2-mini-rmu-der-badge-${badge.kind}`}
             data-parity-key="station.mini.der_badge"
           >
-            {badge.kind === 'PV' && (
-              <>
-                <polygon
-                  points={`${cx},${cy - 10} ${cx + 8.66},${cy - 5} ${cx + 8.66},${cy + 5} ${cx},${cy + 10} ${cx - 8.66},${cy + 5} ${cx - 8.66},${cy - 5}`}
-                  fill={fill}
-                  stroke={COLOR_LINE_PRIMARY}
-                  strokeWidth={1.2}
-                />
-                {/* K30-67: IEC 60617 inverter sinusoid wave (PV cell→AC) */}
-                <path
-                  d={`M ${cx - 5} ${cy} Q ${cx - 2.5} ${cy - 3} ${cx} ${cy} T ${cx + 5} ${cy}`}
-                  fill="none"
-                  stroke="#0A0E14"
-                  strokeWidth={0.9}
-                  strokeLinecap="round"
-                />
-              </>
-            )}
-            {badge.kind === 'BESS' && (
-              <>
-                <rect
-                  x={cx - 9}
-                  y={cy - 9}
-                  width={18}
-                  height={18}
-                  fill={fill}
-                  stroke={COLOR_LINE_PRIMARY}
-                  strokeWidth={1.2}
-                />
-                {/* K30-67: IEC 60617 battery inverter sinusoid (DC→AC) */}
-                <path
-                  d={`M ${cx - 6} ${cy + 4} Q ${cx - 3} ${cy + 1} ${cx} ${cy + 4} T ${cx + 6} ${cy + 4}`}
-                  fill="none"
-                  stroke="#0A0E14"
-                  strokeWidth={0.9}
-                  strokeLinecap="round"
-                />
-                {/* K30-67: dwa pionowe paski = symbol baterii nad sinusoidą */}
-                <line x1={cx - 3} y1={cy - 6} x2={cx - 3} y2={cy - 1} stroke="#0A0E14" strokeWidth={1.4} />
-                <line x1={cx + 3} y1={cy - 6} x2={cx + 3} y2={cy - 1} stroke="#0A0E14" strokeWidth={1.4} />
-              </>
-            )}
-            {badge.kind === 'FW' && (
-              <>
-                <polygon
-                  points={`${cx},${cy - 10} ${cx + 9},${cy + 6} ${cx - 9},${cy + 6}`}
-                  fill={fill}
-                  stroke={COLOR_LINE_PRIMARY}
-                  strokeWidth={1.2}
-                />
-                {/* K30-67: śmigło wiatrowe IEC 60617 (3-bladed propeller mini) */}
-                <circle cx={cx} cy={cy + 1} r={1.5} fill="#0A0E14" />
-                <line x1={cx} y1={cy + 1} x2={cx} y2={cy - 4} stroke="#0A0E14" strokeWidth={1} strokeLinecap="round" />
-                <line x1={cx} y1={cy + 1} x2={cx + 4} y2={cy + 4} stroke="#0A0E14" strokeWidth={1} strokeLinecap="round" />
-                <line x1={cx} y1={cy + 1} x2={cx - 4} y2={cy + 4} stroke="#0A0E14" strokeWidth={1} strokeLinecap="round" />
-              </>
-            )}
+            {/* Symbol źródła IEC 60617 (kontur w kolorze typu, wnętrze kanwy)
+                zamiast wypełnionego kształtu-kafla (redesign 2026-07 §1c). */}
+            <DerSourceSymbol cx={cx} cy={cy} half={9} kind={badge.kind} stroke={fill} strokeWidth={1.2} />
             <title>{`${badge.kind}: ${badge.count} szt.`}</title>
             {/* K30-67: label przeniesiony pod symbol (IEC 60617 nie ma labels
                 wewnątrz symbol — wewnątrz jest sinusoida/strzałka). */}

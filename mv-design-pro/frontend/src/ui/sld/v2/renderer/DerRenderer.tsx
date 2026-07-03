@@ -7,8 +7,8 @@
 
 import { useSldLod } from '../lod/SldLodContext';
 import {
+  COLOR_BG,
   COLOR_LINE_PRIMARY,
-  COLOR_PANEL_RAISED,
   COLOR_TEXT_PRIMARY,
   COLOR_TEXT_SECONDARY,
   FONT_MONO,
@@ -80,6 +80,89 @@ export interface DerRendererProps {
 const DER_BLOCK_SIZE = 44;
 const DER_COMPACT_SIZE = 28;
 const DER_MARKER_SIZE = 12;
+
+/**
+ * Symbol źródła wg typu — język rysunku IEC 60617 zamiast rombu-kafla
+ * (SLD_SCHEMAT_REDESIGN_2026-07 §1c):
+ * - PV: kwadrat przekształtnika z przekątną, ⎓ (DC) u góry, ~ (AC) u dołu.
+ * - BESS: kwadrat z symbolem ogniwa (kreska długa/krótka) + ~ przekształtnika.
+ * - FW: okrąg generatora z "G" i tyldą (IEC 60617-6).
+ * Wnętrze w kolorze kanwy (occlusion), kontur w kolorze typu źródła.
+ */
+export function DerSourceSymbol(props: {
+  readonly cx: number;
+  readonly cy: number;
+  readonly half: number;
+  readonly kind: 'PV' | 'BESS' | 'FW';
+  readonly stroke: string;
+  readonly strokeWidth?: number;
+  readonly interiorFill?: string;
+}): JSX.Element {
+  const { cx, cy, half, kind, stroke } = props;
+  const sw = props.strokeWidth ?? 1.5;
+  const interior = props.interiorFill ?? COLOR_BG;
+  if (kind === 'FW') {
+    return (
+      <g data-symbol-canon="generator_circle_g_tilde" data-der-kind="FW">
+        <circle cx={cx} cy={cy} r={half} fill={interior} stroke={stroke} strokeWidth={sw} />
+        <text
+          x={cx}
+          y={cy + half * 0.12}
+          textAnchor="middle"
+          fill={stroke}
+          fontFamily="sans-serif"
+          fontSize={half * 0.9}
+          fontWeight={700}
+        >
+          G
+        </text>
+        <path
+          d={`M ${cx - half * 0.42} ${cy + half * 0.5} q ${half * 0.21} ${-half * 0.3} ${half * 0.42} 0 t ${half * 0.42} 0`}
+          fill="none"
+          stroke={stroke}
+          strokeWidth={sw * 0.8}
+          strokeLinecap="round"
+        />
+      </g>
+    );
+  }
+  const s = half;
+  if (kind === 'BESS') {
+    return (
+      <g data-symbol-canon="battery_converter_square" data-der-kind="BESS">
+        <rect x={cx - s} y={cy - s} width={2 * s} height={2 * s} fill={interior} stroke={stroke} strokeWidth={sw} />
+        {/* ogniwo: kreska długa (+) i krótka (−) */}
+        <line x1={cx - s * 0.5} y1={cy - s * 0.55} x2={cx + s * 0.5} y2={cy - s * 0.55} stroke={stroke} strokeWidth={sw * 0.9} />
+        <line x1={cx - s * 0.22} y1={cy - s * 0.2} x2={cx + s * 0.22} y2={cy - s * 0.2} stroke={stroke} strokeWidth={sw * 1.4} />
+        {/* ~ przekształtnika pod ogniwem */}
+        <path
+          d={`M ${cx - s * 0.5} ${cy + s * 0.45} q ${s * 0.25} ${-s * 0.35} ${s * 0.5} 0 t ${s * 0.5} 0`}
+          fill="none"
+          stroke={stroke}
+          strokeWidth={sw * 0.8}
+          strokeLinecap="round"
+        />
+      </g>
+    );
+  }
+  return (
+    <g data-symbol-canon="pv_inverter_square_dc_ac" data-der-kind="PV">
+      <rect x={cx - s} y={cy - s} width={2 * s} height={2 * s} fill={interior} stroke={stroke} strokeWidth={sw} />
+      <line x1={cx - s} y1={cy + s} x2={cx + s} y2={cy - s} stroke={stroke} strokeWidth={sw * 0.8} />
+      {/* ⎓ (DC) w górnym-lewym trójkącie */}
+      <line x1={cx - s * 0.72} y1={cy - s * 0.5} x2={cx - s * 0.12} y2={cy - s * 0.5} stroke={stroke} strokeWidth={sw * 0.8} />
+      <line x1={cx - s * 0.72} y1={cy - s * 0.28} x2={cx - s * 0.12} y2={cy - s * 0.28} stroke={stroke} strokeWidth={sw * 0.8} strokeDasharray={`${s * 0.16} ${s * 0.12}`} />
+      {/* ~ (AC) w dolnym-prawym trójkącie */}
+      <path
+        d={`M ${cx + s * 0.1} ${cy + s * 0.45} q ${s * 0.18} ${-s * 0.3} ${s * 0.36} 0 t ${s * 0.36} 0`}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={sw * 0.8}
+        strokeLinecap="round"
+      />
+    </g>
+  );
+}
 
 const KIND_LABEL_PL: Record<DerRendererProps['kind'], string> = {
   PV: 'PV',
@@ -258,23 +341,28 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
           nominalPowerKw !== null && nominalPowerKw !== undefined ? ` · ${nominalPowerKw.toFixed(0)} kW` : ''
         }${blockTransformerVisibleLabel ? ` · ${blockTransformerVisibleLabel}` : ''}`}
       </title>
-      {/* Romb (DER) */}
-      <polygon
-        points={`0,${-half} ${half},0 0,${half} ${-half},0`}
-        fill={KIND_FILL_COLOR[kind]}
-        fillOpacity={0.3}
-        stroke={selected ? '#35C7FF' : COLOR_LINE_PRIMARY}
-        strokeWidth={selected ? 2.5 : 1.5}
+      {/* Symbol źródła IEC 60617 (PV: przekształtnik ⎓/~, BESS: ogniwo+~,
+          FW: G~) — zamiast rombu z wypełnieniem (język rysunku, nie kafel). */}
+      <DerSourceSymbol
+        cx={0}
+        cy={0}
+        half={half}
+        kind={kind}
+        stroke={selected ? '#35C7FF' : KIND_FILL_COLOR[kind]}
+        strokeWidth={selected ? 2.2 : 1.5}
       />
-      {/* Etykieta typu DER */}
+      {/* Etykieta typu DER — tekst rysunkowy obok symbolu (nie w środku) */}
       <text
-        x={0}
-        y={4}
-        textAnchor="middle"
-          fill={COLOR_TEXT_PRIMARY}
+        x={half + 5}
+        y={-half + 8}
+        textAnchor="start"
+          fill={KIND_FILL_COLOR[kind]}
           fontFamily={FONT_SANS}
           fontSize={lod === 'compact' ? Math.max(getFontSize('deviceQ') - 4, 10) : getFontSize('deviceQ')}
           fontWeight={700}
+          paintOrder="stroke"
+          stroke="#05070A"
+          strokeWidth={2}
         >
         {KIND_LABEL_PL[kind]}
       </text>
@@ -307,19 +395,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
         </text>
       )}
       {showCompactBlockTransformerLabel && compactBlockTransformerVisibleLabel && (
-        <g data-testid={`sld-v2-der-${id}-compact-block-transformer`}>
-          <rect
-            x={-compactTransformerLabelWidth / 2}
-            y={compactBlockTransformerLabelY - 10}
-            width={compactTransformerLabelWidth}
-            height={13}
-            rx={3}
-            ry={3}
-            fill="#06110D"
-            stroke="#7EE0B5"
-            strokeWidth={0.9}
-            opacity={0.92}
-          />
+        <g data-testid={`sld-v2-der-${id}-compact-block-transformer`} data-label-width={compactTransformerLabelWidth}>
           <text
             x={0}
             y={compactBlockTransformerLabelY}
@@ -328,6 +404,9 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
             fontFamily={FONT_MONO}
             fontSize={compactTransformerFontSize}
             fontWeight={800}
+            paintOrder="stroke"
+            stroke="#05070A"
+            strokeWidth={2}
           >
             {compactBlockTransformerVisibleLabel}
           </text>
@@ -346,18 +425,6 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
         // K30-6: enlarged compact cos φ + P display (font 7→12, w/ pill background)
         return (
           <g data-testid={`sld-v2-der-${id}-compact-cos-phi`}>
-            <rect
-              x={-32}
-              y={compactPowerLabelY}
-              width={64}
-              height={showCosPhi ? 26 : 16}
-              rx={3}
-              ry={3}
-              fill="#0A1018"
-              stroke="#88BBDD"
-              strokeWidth={1.1}
-              opacity={0.9}
-            />
             <text
               x={0}
               y={compactPowerLabelY + 10}
@@ -366,6 +433,9 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
               fontFamily={FONT_MONO}
               fontSize={compactPqFontSize}
               fontWeight={700}
+              paintOrder="stroke"
+              stroke="#05070A"
+              strokeWidth={2}
             >
               {`${pKw.toFixed(0)}kW`}
             </text>
@@ -389,23 +459,17 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
       {/* K30-6: NC RFG module badge w compact LOD (krytyka OZE/NC RFG) */}
       {lod === 'compact' && ncRfgModule && (
         <g data-testid={`sld-v2-der-${id}-compact-nc-rfg`}>
-          <rect
-            x={half - 18}
-            y={-half - 4}
-            width={20}
-            height={14}
-            rx={2}
-            ry={2}
-            fill={ncRfgModule === 'A' ? '#7EE0B5' : ncRfgModule === 'B' ? '#FFD166' : ncRfgModule === 'C' ? '#FF8B5C' : '#FF6B6B'}
-          />
           <text
             x={half - 8}
             y={-half + 6}
             textAnchor="middle"
-            fill="#0A0E14"
+            fill={ncRfgModule === 'A' ? '#7EE0B5' : ncRfgModule === 'B' ? '#FFD166' : ncRfgModule === 'C' ? '#FF8B5C' : '#FF6B6B'}
             fontFamily={FONT_SANS}
             fontSize={10}
             fontWeight={900}
+            paintOrder="stroke"
+            stroke="#05070A"
+            strokeWidth={2}
           >
             {ncRfgModule}
           </text>
@@ -420,7 +484,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
        */}
       {showCompactEngineeringDetails && ncRfgModule && ncRfgModule !== 'A' && (
         <g data-testid={`sld-v2-der-${id}-qu-curve`} transform={`translate(${half + 6}, ${-half - 4})`}>
-          <rect width={40} height={20} rx={2} ry={2} fill="#0A1018" stroke="#5A6878" strokeWidth={0.8} opacity={0.85} />
+          <rect width={40} height={20} fill="none" stroke="#5A6878" strokeWidth={0.8} opacity={0.85} />
           {/* axes */}
           <line x1={2} y1={10} x2={38} y2={10} stroke="#3A4A5C" strokeWidth={0.5} />
           <line x1={20} y1={2} x2={20} y2={18} stroke="#3A4A5C" strokeWidth={0.5} />
@@ -510,7 +574,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
             cx={0}
             cy={-3}
             r={4.5}
-            fill={COLOR_PANEL_RAISED}
+            fill={COLOR_BG}
             stroke="#13C45A"
             strokeWidth={1.4}
           />
@@ -518,7 +582,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
             cx={0}
             cy={4}
             r={4.5}
-            fill={COLOR_PANEL_RAISED}
+            fill={COLOR_BG}
             stroke="#13C45A"
             strokeWidth={1.4}
           />
@@ -547,10 +611,9 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
             cx={-half + 6}
             cy={-half + 6}
             r={7}
-            fill={NC_RFG_MODULE_COLOR[ncRfgModule]}
-            stroke="#FFFFFF"
-            strokeWidth={1}
-            opacity={0.92}
+            fill={COLOR_BG}
+            stroke={NC_RFG_MODULE_COLOR[ncRfgModule]}
+            strokeWidth={1.2}
           >
             <title>{`NC RFG ${NC_RFG_MODULE_LABEL_PL[ncRfgModule]} (ENEA Operator)`}</title>
           </circle>
@@ -558,7 +621,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
             x={-half + 6}
             y={-half + 10}
             textAnchor="middle"
-            fill="#FFFFFF"
+            fill={NC_RFG_MODULE_COLOR[ncRfgModule]}
             fontFamily={FONT_SANS}
             fontSize={8}
             fontWeight={700}
