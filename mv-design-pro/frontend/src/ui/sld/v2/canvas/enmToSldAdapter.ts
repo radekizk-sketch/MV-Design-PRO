@@ -2178,8 +2178,8 @@ function buildHvSectionsFromEnm(args: BuildHvFromEnmArgs): GpzSectionDescriptor[
       return {
         sectionId: section.section_id,
         order: section.order,
-        name: section.name ?? `Sekcja HV ${section.order}`,
-        sectionLabel: section.line_field_name ?? `S${section.order}`,
+        name: section.name ?? `Sekcja HV ${section.order + 1}`,
+        sectionLabel: section.line_field_name ?? `S${section.order + 1}`,
         busVoltageKv: sectionVoltageKv,
         bays: sectionBays.map((bay) =>
           bayDescriptorFromEnm(bay, branches, substations, gpz),
@@ -2332,8 +2332,8 @@ function sectionFromGpzSection(
   return {
     sectionId: sec.section_id,
     order: sec.order,
-    name: sec.name ?? `Sekcja ${sec.order}`,
-    sectionLabel: sec.name ?? `S${sec.order}`,
+    name: sec.name ?? `Sekcja ${sec.order + 1}`,
+    sectionLabel: sec.name ?? `S${sec.order + 1}`,
     busVoltageKv: sectionVoltageKv,
     bays: bayDescriptors,
   };
@@ -2822,7 +2822,12 @@ function buildSections(snapshot: EnergyNetworkModel): SectionRendererProps[] {
         id: `${gpz.ref_id}__${sec.section_id}`,
         x: SECTION_X_BASE + idx * SECTION_PITCH,
         y: Y_SECTIONS,
-        number: sec.order,
+        // E11: user-facing section number = 1-based POSITION in the sorted list
+        // (`idx + 1`), never the raw `order` field (whose 0-/1-based convention
+        // is inconsistent across the model and leaked "Sekcja 0"). Prefer the
+        // domain name as the display label when present.
+        number: idx + 1,
+        displayLabel: sec.name ?? undefined,
         busVoltageKv: voltageKv,
         bayCount,
       });

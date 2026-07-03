@@ -140,7 +140,7 @@ describe('GpzSwitchgearRenderer — etykieta sekcji', () => {
     expect(container.querySelector('[data-testid="sld-v2-gpz-section-label-sec-1"]')?.textContent).toBe('S1');
   });
 
-  it('domyślna etykieta to S{order} jeśli sectionLabel nie podany', () => {
+  it('domyślna etykieta jest 1-based (E11: nigdy surowy indeks 0-based)', () => {
     const { container } = r({
       sections: [
         {
@@ -152,7 +152,9 @@ describe('GpzSwitchgearRenderer — etykieta sekcji', () => {
         },
       ],
     });
-    expect(container.querySelector('[data-testid="sld-v2-gpz-section-label-sec-99"]')?.textContent).toBe('S3');
+    // order jest 0-based (por. fixture: sekcja 1 → order 0); label użytkowy jest
+    // 1-based → order 3 daje "S4". Zakaz wycieku "S0"/surowego indeksu (E11).
+    expect(container.querySelector('[data-testid="sld-v2-gpz-section-label-sec-99"]')?.textContent).toBe('S4');
   });
 });
 
