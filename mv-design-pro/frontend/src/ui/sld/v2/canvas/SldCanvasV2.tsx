@@ -249,6 +249,29 @@ function estimateCanonicalGpzFootprint(gpz: GpzCanonicalRendererProps): { width:
 
 const OPERATOR_READABLE_MIN_SCALE = 0.64;
 const OPERATOR_LARGE_TOPOLOGY_MIN_SCALE = 0.22;
+
+/** Próg aktywacji pan (px ekranu) — poniżej to klik, powyżej chwyt płótna. */
+const PAN_ACTIVATION_PX = 4;
+
+/**
+ * Warstwa ruchu i afordancji (CAD-grade feel) — czysty CSS, zero re-renderów:
+ * - płynny zoom: transition na CSS transform grupy świata (GPU); pan jest 1:1
+ *   (klasa .sld-v2-panning wyłącza transition na czas chwytu),
+ * - hover: rozjaśnienie elementu interaktywnego + cursor pointer,
+ * - podczas pan: pointer-events off na elementach (bez migotania hover, tańszy hit-test).
+ * jsdom ignoruje transitions → determinizm testów bez zmian.
+ */
+const SLD_CANVAS_INTERACTION_CSS = `
+  .sld-v2-world { transition: transform 130ms cubic-bezier(0.22, 0.61, 0.36, 1); will-change: transform; }
+  .sld-v2-panning .sld-v2-world { transition: none; }
+  @media (prefers-reduced-motion: reduce) { .sld-v2-world { transition: none; } }
+  .sld-v2-canvas [data-element-kind][data-element-id] { cursor: pointer; }
+  @media (hover: hover) {
+    .sld-v2-canvas [data-element-kind][data-element-id]:hover { filter: brightness(1.25); }
+  }
+  .sld-v2-canvas.sld-v2-panning { cursor: grabbing; }
+  .sld-v2-canvas.sld-v2-panning [data-element-kind][data-element-id] { pointer-events: none; cursor: grabbing; }
+`;
 const VIEWPORT_ZOOM_IN_FACTOR = 1.35;
 const VIEWPORT_ZOOM_OUT_FACTOR = 0.75;
 
@@ -824,6 +847,11 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const [transform, setTransform] = useState<ViewportTransform>(IDENTITY_TRANSFORM);
   const isDraggingRef = useRef(false);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
+  /** Kandydat na pan (lewy przycisk w dół gdziekolwiek); aktywacja po progu ruchu. */
+  const panCandidateRef = useRef(false);
+  const panStartRef = useRef<{ x: number; y: number } | null>(null);
+  /** Czy w tym geście nastąpił pan — tłumi click na elemencie po chwycie płótna. */
+  const didPanRef = useRef(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const viewportContentSignature = useMemo(
     () => buildViewportContentSignature(gpzs, canonicalGpzs ?? [], sections, cableRuns, stations, branchPoints, ders),
@@ -1021,8 +1049,17 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   }, [handleWheel]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button === 1 || (e.button === 0 && e.target === e.currentTarget)) {
+    didPanRef.current = false;
+    if (e.button === 1) {
+      // Środkowy przycisk: pan natychmiast (konwencja CAD), bez progu.
       isDraggingRef.current = true;
+      lastPosRef.current = { x: e.clientX, y: e.clientY };
+      svgRef.current?.classList.add('sld-v2-panning');
+    } else if (e.button === 0) {
+      // Lewy przycisk GDZIEKOLWIEK: kandydat na pan; klik pozostaje klikiem
+      // dopóki ruch nie przekroczy progu (PAN_ACTIVATION_PX).
+      panCandidateRef.current = true;
+      panStartRef.current = { x: e.clientX, y: e.clientY };
       lastPosRef.current = { x: e.clientX, y: e.clientY };
     }
     if (e.button === 0 && e.target === e.currentTarget) {
@@ -1047,7 +1084,17 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   }, [onSelectElement]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDraggingRef.current || !lastPosRef.current) return;
+    if (!lastPosRef.current) return;
+    if (!isDraggingRef.current) {
+      // Aktywacja pan dopiero po przekroczeniu progu ruchu — klik zostaje klikiem.
+      if (!panCandidateRef.current || !panStartRef.current) return;
+      const ddx = e.clientX - panStartRef.current.x;
+      const ddy = e.clientY - panStartRef.current.y;
+      if (Math.hypot(ddx, ddy) < PAN_ACTIVATION_PX) return;
+      isDraggingRef.current = true;
+      didPanRef.current = true;
+      svgRef.current?.classList.add('sld-v2-panning');
+    }
     const dx = e.clientX - lastPosRef.current.x;
     const dy = e.clientY - lastPosRef.current.y;
     lastPosRef.current = { x: e.clientX, y: e.clientY };
@@ -1056,7 +1103,18 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
 
   const handleMouseUp = useCallback(() => {
     isDraggingRef.current = false;
+    panCandidateRef.current = false;
+    panStartRef.current = null;
     lastPosRef.current = null;
+    svgRef.current?.classList.remove('sld-v2-panning');
+  }, []);
+
+  /** Po chwycie płótna (pan) tłumi click, żeby puszczenie nad elementem nie wybierało go. */
+  const handleClickCapture = useCallback((e: React.MouseEvent) => {
+    if (!didPanRef.current) return;
+    didPanRef.current = false;
+    e.preventDefault();
+    e.stopPropagation();
   }, []);
 
   const handleSvgContextMenu = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
@@ -1102,15 +1160,18 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
       data-critical-label-collisions={String(readabilityReport?.criticalCollisions ?? 0)}
       width={width}
       height={height}
-      style={{ background: COLOR_BG, userSelect: 'none' }}
+      className="sld-v2-canvas"
+      style={{ background: COLOR_BG, userSelect: 'none', cursor: 'default' }}
       onMouseDown={handleMouseDown}
       onMouseDownCapture={handleMouseDownCapture}
       onPointerDownCapture={handlePointerDownCapture}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onClickCapture={handleClickCapture}
       onContextMenu={handleSvgContextMenu}
     >
+      <style>{SLD_CANVAS_INTERACTION_CSS}</style>
       <g data-testid="sld-canvas-root">
       {/* T?o */}
       <rect width={width} height={height} fill={COLOR_BG} />
@@ -1128,8 +1189,13 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         />
       )}
 
-      {/* World transform */}
-      <g transform={`translate(${transform.translateX}, ${transform.translateY}) scale(${transform.scale})`}>
+      {/* World transform — CSS transform (nie atrybut): umożliwia płynne
+          przejście zoomu na GPU (transition w .sld-v2-world) przy stanie
+          synchronicznym; pan wyłącza transition klasą .sld-v2-panning. */}
+      <g
+        className="sld-v2-world"
+        style={{ transform: `translate(${transform.translateX}px, ${transform.translateY}px) scale(${transform.scale})` }}
+      >
         {/* Phase 2 polish: CadOverlay (grid + magnesy + bend handles + ghosts +
             korytarze). Renderowany pod content ?eby nie zas?ania? obiekt?w
             domenowych. NIE pokazujemy gdy brak `cadOverlay` props (default off). */}
