@@ -14,6 +14,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSldDataFromSnapshot } from '../enmToSldAdapter';
+import { STATION_RUN_TRUNK_OFFSET_Y } from '../../renderer/StationOnRunRenderer';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -77,15 +78,31 @@ describe('SLD recovery — electrical/semantic oracles', () => {
     }
   });
 
-  // E02 (execplan Step 4) — executable SPEC, not yet green. The trunk must enter
-  // the station SN bus (bus-to-bus per ENM), not run as an elevated corridor
-  // above the stations. Kept skipped until the geometry change lands so the
-  // suite never claims E02 fixed prematurely.
-  it.skip('E02: trunk polyline reaches each trunk station bus (no elevated bypass) — SPEC step 4', () => {
+  // E02/E03: the trunk must physically REACH each trunk station's SN bus (the
+  // bus is drawn on the trunk axis at y = station.y - STATION_RUN_TRUNK_OFFSET_Y),
+  // proving current enters WE → bus → WY and there is no elevated corridor
+  // decoupled from the stations. Now asserted (no longer a skipped SPEC).
+  it('E02/E03: trunk polyline reaches every trunk station SN bus (no bypass)', () => {
     const trunk = data.cableRuns.find((r) => r.runKind === 'main_trunk');
     expect(trunk).toBeDefined();
-    // Target contract: at each trunk-station column the trunk Y equals the
-    // station SN-bus Y (station.y), NOT station.y - STATION_RUN_TRUNK_OFFSET_Y.
-    // Implement in buildCorridorRunGeometry (execplan Step 4), then unskip.
+    const pts = trunk!.pathPoints;
+    // Trunk stations = the top row (smallest y band) — the fishbone spine.
+    const topY = Math.min(...data.stations.map((s) => s.y));
+    const trunkStations = data.stations.filter((s) => Math.abs(s.y - topY) < 1);
+    expect(trunkStations.length).toBeGreaterThanOrEqual(3);
+    for (const st of trunkStations) {
+      const busY = st.y - STATION_RUN_TRUNK_OFFSET_Y;
+      // The trunk is a straight line at the bus axis; assert a HORIZONTAL
+      // segment at y≈busY spans station.x — the trunk physically passes THROUGH
+      // the station SN bus (WE→bus→WY), never a corridor decoupled from it.
+      const passesThrough = pts.some((p, i) => {
+        if (i === 0) return false;
+        const a = pts[i - 1];
+        const horizontal = Math.abs(a.y - busY) < 1 && Math.abs(p.y - busY) < 1;
+        const spans = st.x >= Math.min(a.x, p.x) - 2 && st.x <= Math.max(a.x, p.x) + 2;
+        return horizontal && spans;
+      });
+      expect(passesThrough, `trunk must pass through ${st.id} SN bus at y=${busY}`).toBe(true);
+    }
   });
 });

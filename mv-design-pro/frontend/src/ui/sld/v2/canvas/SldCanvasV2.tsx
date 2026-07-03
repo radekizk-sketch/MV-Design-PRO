@@ -2457,7 +2457,6 @@ function StationOverviewBlock(props: {
   // jest już głównym wierszem (anty-duplikat).
   const primaryLabel = shortName ?? code ?? (station.name || station.id);
   const showCodeLine = code != null && primaryLabel !== code;
-  const borderColor = selected ? COLOR_SELECTION : '#2C3A48';
   const readiness = stationReadinessMarker(station);
   // P-A POWER-FLOW TOR (one truth): a station is de-energized when the FROZEN
   // solver did not energize its bus (`energized === false`, READ from the
@@ -2470,31 +2469,38 @@ function StationOverviewBlock(props: {
   // De-energized ⇒ bez tintu (wyszarzony, jak dotychczas). Brak danych
   // (undefined) ⇒ neutralny panel (brak companion = brak prawa do zieleni).
   const isLive = station.energized === true;
-  const liveBorder = isLive && !selected ? COLOR_FIELD_TRUNK_ENERGIZED : (deEnergized ? '#3A4754' : borderColor);
   const primaryFill = deEnergized
     ? '#8A99A8'
     : isLive
       ? COLOR_FIELD_TRUNK_ENERGIZED
       : COLOR_TEXT_PRIMARY;
-  // Pionowy stos etykiet wyśrodkowany w bloku; rozstaw dobrany tak, by 3 linie
-  // mieściły się w 80 px wysokości bez nachodzenia.
-  const lineCount = 1 + (showCodeLine ? 1 : 0) + (kvaLabel ? 1 : 0);
-  const lineGap = 14;
-  const stackTopY = station.y - ((lineCount - 1) * lineGap) / 2;
-  let lineIdx = 0;
-  const primaryY = stackTopY + lineIdx * lineGap;
-  lineIdx += 1;
-  const codeY = stackTopY + lineIdx * lineGap;
-  if (showCodeLine) lineIdx += 1;
-  const kvaY = stackTopY + lineIdx * lineGap;
-  /* Język rysunku (SLD_SCHEMAT_REDESIGN_2026-07 §1b): stacja w widoku sieci
-   * to SYMBOL (mały prostokąt o ostrych rogach z glifem transformatora)
-   * + tekst rysunkowy OBOK symbolu — nie karta z wierszami w środku. */
-  const symbolHalfW = 13;
-  const symbolHalfH = 10;
-  const textX = station.x - L0_BLOCK_W / 2 + symbolHalfW * 2 + 14;
-  const symbolCx = station.x - L0_BLOCK_W / 2 + symbolHalfW + 6;
+  /* RECOVERY 2026-07 (absolute_principle): przy widoku CAŁEJ SIECI stacja NIE
+   * jest redukowana do kropki/kafla — pokazuje realny tor prądu WE → szyna SN →
+   * WY, z transformatorem schodzącym w dół. Szyna SN leży NA OSI MAGISTRALI
+   * (busY = station.y − STATION_RUN_TRUNK_OFFSET_Y), dokładnie tam, gdzie router
+   * kotwiczy kable (stationRunY). Dzięki temu magistrala fizycznie WCHODZI w WE,
+   * przechodzi przez szynę i WYCHODZI przez WY — koniec pozornego bypassu nad
+   * stacją (E02/E03). Transformator i etykiety schodzą PONIŻEJ szyny. */
+  const busY = station.y - STATION_RUN_TRUNK_OFFSET_Y;
+  const busHalf = 30;
+  const weX = station.x - 26; // wejście (WE) — lewy koniec szyny
+  const wyX = station.x + 26; // wyjście (WY) — prawy koniec szyny
+  const trX = station.x - 12; // pole TR schodzi lewo-od-środka (ODG/branch trzyma środek)
+  const trTopY = busY + 15;
+  const trCy = busY + 29;
+  const nnBusY = busY + 44;
   const stubColor = deEnergized ? '#3A4754' : isLive ? COLOR_FIELD_TRUNK_ENERGIZED : '#5A6878';
+  const busColor = deEnergized ? '#3A4754' : isLive ? COLOR_FIELD_TRUNK_ENERGIZED : '#7FA8C0';
+  // Etykiety schodzą pod pole TR (nie nachodzą na szynę ani tor).
+  const lineGap = 12;
+  const labelTopY = busY + 56;
+  let lineIdx = 0;
+  const primaryY = labelTopY + lineIdx * lineGap;
+  lineIdx += 1;
+  const codeY = labelTopY + lineIdx * lineGap;
+  if (showCodeLine) lineIdx += 1;
+  const kvaY = labelTopY + lineIdx * lineGap;
+  const textX = station.x;
   // Margines wewnętrzny, by clip-path nie ucinał liter na krawędzi bloku.
   const clipInset = 6;
   const clipId = `sld-v2-overview-block-clip-${station.id}`;
@@ -2527,46 +2533,50 @@ function StationOverviewBlock(props: {
       pointerEvents="none"
     >
       <clipPath id={clipId}>
-        <rect x={x + clipInset} y={y} width={L0_BLOCK_W - clipInset * 2} height={L0_BLOCK_H} />
+        <rect x={x + clipInset} y={busY - 10} width={L0_BLOCK_W - clipInset * 2} height={L0_BLOCK_H + 20} />
       </clipPath>
-      {/* Occlusion w kolorze kanwy (kable pod stacją nie przebijają tekstu) —
-          niewidoczne tło, nie panel. */}
+      {/* Occlusion w kolorze kanwy — obejmuje szynę+TR+etykiety, by kable pod
+          spodem nie przebijały schematu stacji. */}
       <rect
         x={x}
-        y={y}
+        y={busY - 8}
         width={L0_BLOCK_W}
-        height={L0_BLOCK_H}
+        height={(nnBusY - busY) + 60}
         fill={COLOR_BG}
         stroke={selected ? COLOR_SELECTION : 'none'}
         strokeWidth={selected ? 1.4 : 0}
         strokeDasharray={selected ? '5 4' : undefined}
         data-cad-role="station_occlusion"
       />
-      {/* Tor przelotowy przez węzeł stacji (ciągłość ciągu na rysunku). */}
-      <line
-        x1={station.x}
-        y1={y}
-        x2={station.x}
-        y2={y + L0_BLOCK_H}
-        stroke={stubColor}
-        strokeWidth={1.4}
-        opacity={0.9}
-        data-cad-role="station_through_stub"
-      />
-      {/* SYMBOL stacji: ostry prostokąt + glif transformatora (dwa okręgi). */}
-      <g data-cad-role="station_plan_symbol">
-        <rect
-          x={symbolCx - symbolHalfW}
-          y={station.y - symbolHalfH}
-          width={symbolHalfW * 2}
-          height={symbolHalfH * 2}
-          fill={COLOR_BG}
-          stroke={liveBorder}
-          strokeWidth={selected ? 2.2 : isLive ? 1.6 : 1.3}
-          strokeDasharray={deEnergized ? '5 3' : undefined}
+      {/* SCHEMAT STACJI (pełny tor prądu, nie kropka): szyna SN NA OSI MAGISTRALI
+          z terminalami WE (lewy) i WY (prawy), pole TR schodzące do strony nN. */}
+      <g data-cad-role="station_sn_bus_schematic">
+        {/* Szyna SN — pozioma linia na osi magistrali. Magistrala wchodzi WE,
+            przechodzi przez szynę, wychodzi WY (terminal-to-terminal). */}
+        <line
+          x1={station.x - busHalf}
+          y1={busY}
+          x2={station.x + busHalf}
+          y2={busY}
+          stroke={busColor}
+          strokeWidth={3}
+          strokeLinecap="butt"
+          data-cad-role="station_sn_bus"
+          data-bus-y={busY}
         />
-        <circle cx={symbolCx} cy={station.y - 2.6} r={4.6} fill="none" stroke={primaryFill} strokeWidth={1.1} />
-        <circle cx={symbolCx} cy={station.y + 2.6} r={4.6} fill="none" stroke={primaryFill} strokeWidth={1.1} />
+        {/* Terminale WE / WY — kropki połączeniowe na końcach szyny (punkty, do
+            których dochodzi/odchodzi kabel magistrali). */}
+        <circle cx={weX} cy={busY} r={2.4} fill={stubColor} data-cad-role="station_terminal_we" />
+        <circle cx={wyX} cy={busY} r={2.4} fill={stubColor} data-cad-role="station_terminal_wy" />
+        <text x={weX} y={busY - 6} textAnchor="middle" fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_SANS} fontSize={7} fontWeight={700} paintOrder="stroke" stroke={COLOR_BG} strokeWidth={2}>WE</text>
+        <text x={wyX} y={busY - 6} textAnchor="middle" fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_SANS} fontSize={7} fontWeight={700} paintOrder="stroke" stroke={COLOR_BG} strokeWidth={2}>WY</text>
+        {/* Pole transformatorowe — zejście z szyny w dół do transformatora SN/nN. */}
+        <line x1={trX} y1={busY} x2={trX} y2={trTopY} stroke={stubColor} strokeWidth={1.4} data-cad-role="station_tr_bay" />
+        <circle cx={trX} cy={trCy - 3} r={4.4} fill={COLOR_BG} stroke={primaryFill} strokeWidth={1.1} />
+        <circle cx={trX} cy={trCy + 3} r={4.4} fill={COLOR_BG} stroke={primaryFill} strokeWidth={1.1} />
+        <line x1={trX} y1={trCy + 7} x2={trX} y2={nnBusY} stroke={stubColor} strokeWidth={1.3} />
+        {/* Szyna nN — krótka linia (strona nN transformatora). */}
+        <line x1={trX - 9} y1={nnBusY} x2={trX + 9} y2={nnBusY} stroke={deEnergized ? '#3A4754' : '#7DD3FC'} strokeWidth={2} data-cad-role="station_lv_bus" />
       </g>
       {/* Status gotowości — stały slot lewego górnego rogu, ponad pasmem stosu
           etykiet (przy 3 liniach pierwsza linia zaczyna się ~y+17 → marker
@@ -2590,7 +2600,7 @@ function StationOverviewBlock(props: {
         <text
           x={textX}
           y={primaryY}
-          textAnchor="start"
+          textAnchor="middle"
           dominantBaseline="middle"
           fill={primaryFill}
           fontFamily={FONT_SANS}
@@ -2605,7 +2615,7 @@ function StationOverviewBlock(props: {
           <text
             x={textX}
             y={codeY}
-            textAnchor="start"
+            textAnchor="middle"
             dominantBaseline="middle"
             fill={deEnergized ? '#6B7A88' : '#7EC8FF'}
             fontFamily={FONT_MONO}
@@ -2621,7 +2631,7 @@ function StationOverviewBlock(props: {
           <text
             x={textX}
             y={kvaY}
-            textAnchor="start"
+            textAnchor="middle"
             dominantBaseline="middle"
             fill={deEnergized ? '#6B7A88' : COLOR_TEXT_SECONDARY}
             fontFamily={FONT_MONO}
