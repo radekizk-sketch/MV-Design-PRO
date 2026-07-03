@@ -74,7 +74,7 @@ import { computeLfDerivedMetrics } from './lfDerivedMetrics';
 import { computeScProjection, type ScBusMeta } from './scDerivedProjection';
 import { DEFAULT_SNAP_STATE } from '../viewport/Snap';
 import { ConnectionRenderer } from '../renderer/ConnectionRenderer';
-import { DerRenderer, type DerRendererProps } from '../renderer/DerRenderer';
+import { DerRenderer, DerSourceSymbol, type DerRendererProps } from '../renderer/DerRenderer';
 import { GpzRenderer, type GpzRendererProps } from '../renderer/GpzRenderer';
 import type { GpzCanonicalRendererProps } from '../renderer/GpzCanonicalRenderer';
 import { GpzSwitchgearRenderer } from '../renderer/GpzSwitchgearRenderer';
@@ -1659,20 +1659,10 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
               data-label-priority={spec.priority}
               transform={`translate(${placement.bbox.x}, ${placement.bbox.y})`}
             >
-              <rect
-                x={0}
-                y={0}
-                width={placement.bbox.width}
-                height={placement.bbox.height}
-                rx={3}
-                ry={3}
-                fill="#050A12"
-                stroke={topologyLabelStroke(spec)}
-                strokeWidth={0.8}
-                fillOpacity={0.86}
-                strokeOpacity={0.68}
-              />
+              {/* Etykieta topologii jako tekst rysunkowy z halo — bbox tylko
+                  do rozmieszczenia (declutter), bez pigułki (redesign §1e). */}
               <text
+                data-label-stroke-hint={topologyLabelStroke(spec)}
                 x={placement.bbox.width / 2}
                 y={placement.bbox.height / 2 + 0.5}
                 textAnchor="middle"
@@ -2418,7 +2408,7 @@ function formatGenerationCapacity(totalMw: number): string {
  */
 function overviewGenerationAnnotation(
   badges: readonly MiniBlockDerBadge[] | undefined,
-): { glyphColor: string; label: string } | null {
+): { glyphColor: string; label: string; kind: MiniBlockDerBadge['kind'] } | null {
   if (!badges || badges.length === 0) return null;
   const withPower = badges.filter(
     (b) => typeof b.totalPMw === 'number' && Number.isFinite(b.totalPMw) && b.totalPMw > 0,
@@ -2428,11 +2418,11 @@ function overviewGenerationAnnotation(
   const kinds = [...new Set(withPower.map((b) => b.kind))];
   const capacity = formatGenerationCapacity(totalMw);
   if (kinds.length === 1) {
-    return { glyphColor: derBadgeKindColor(kinds[0]), label: `${kinds[0]} ${capacity}` };
+    return { glyphColor: derBadgeKindColor(kinds[0]), label: `${kinds[0]} ${capacity}`, kind: kinds[0] };
   }
   // Wiele rodzajów na jednej stacji: akcent wg pierwszego (sort stabilny w
   // adapterze), etykieta zbiorcza "OZE".
-  return { glyphColor: derBadgeKindColor(kinds[0]), label: `OZE ${capacity}` };
+  return { glyphColor: derBadgeKindColor(kinds[0]), label: `OZE ${capacity}`, kind: kinds[0] };
 }
 
 /**
@@ -2480,7 +2470,6 @@ function StationOverviewBlock(props: {
   // De-energized ⇒ bez tintu (wyszarzony, jak dotychczas). Brak danych
   // (undefined) ⇒ neutralny panel (brak companion = brak prawa do zieleni).
   const isLive = station.energized === true;
-  const fillColor = isLive ? '#0C2A1C' : COLOR_PANEL;
   const liveBorder = isLive && !selected ? COLOR_FIELD_TRUNK_ENERGIZED : (deEnergized ? '#3A4754' : borderColor);
   const primaryFill = deEnergized
     ? '#8A99A8'
@@ -2490,7 +2479,7 @@ function StationOverviewBlock(props: {
   // Pionowy stos etykiet wyśrodkowany w bloku; rozstaw dobrany tak, by 3 linie
   // mieściły się w 80 px wysokości bez nachodzenia.
   const lineCount = 1 + (showCodeLine ? 1 : 0) + (kvaLabel ? 1 : 0);
-  const lineGap = 16;
+  const lineGap = 14;
   const stackTopY = station.y - ((lineCount - 1) * lineGap) / 2;
   let lineIdx = 0;
   const primaryY = stackTopY + lineIdx * lineGap;
@@ -2498,6 +2487,14 @@ function StationOverviewBlock(props: {
   const codeY = stackTopY + lineIdx * lineGap;
   if (showCodeLine) lineIdx += 1;
   const kvaY = stackTopY + lineIdx * lineGap;
+  /* Język rysunku (SLD_SCHEMAT_REDESIGN_2026-07 §1b): stacja w widoku sieci
+   * to SYMBOL (mały prostokąt o ostrych rogach z glifem transformatora)
+   * + tekst rysunkowy OBOK symbolu — nie karta z wierszami w środku. */
+  const symbolHalfW = 13;
+  const symbolHalfH = 10;
+  const textX = station.x - L0_BLOCK_W / 2 + symbolHalfW * 2 + 14;
+  const symbolCx = station.x - L0_BLOCK_W / 2 + symbolHalfW + 6;
+  const stubColor = deEnergized ? '#3A4754' : isLive ? COLOR_FIELD_TRUNK_ENERGIZED : '#5A6878';
   // Margines wewnętrzny, by clip-path nie ucinał liter na krawędzi bloku.
   const clipInset = 6;
   const clipId = `sld-v2-overview-block-clip-${station.id}`;
@@ -2532,18 +2529,45 @@ function StationOverviewBlock(props: {
       <clipPath id={clipId}>
         <rect x={x + clipInset} y={y} width={L0_BLOCK_W - clipInset * 2} height={L0_BLOCK_H} />
       </clipPath>
+      {/* Occlusion w kolorze kanwy (kable pod stacją nie przebijają tekstu) —
+          niewidoczne tło, nie panel. */}
       <rect
         x={x}
         y={y}
         width={L0_BLOCK_W}
         height={L0_BLOCK_H}
-        rx={6}
-        ry={6}
-        fill={fillColor}
-        stroke={liveBorder}
-        strokeWidth={selected ? 2.5 : isLive ? 1.8 : 1.5}
-        strokeDasharray={deEnergized ? '6 4' : undefined}
+        fill={COLOR_BG}
+        stroke={selected ? COLOR_SELECTION : 'none'}
+        strokeWidth={selected ? 1.4 : 0}
+        strokeDasharray={selected ? '5 4' : undefined}
+        data-cad-role="station_occlusion"
       />
+      {/* Tor przelotowy przez węzeł stacji (ciągłość ciągu na rysunku). */}
+      <line
+        x1={station.x}
+        y1={y}
+        x2={station.x}
+        y2={y + L0_BLOCK_H}
+        stroke={stubColor}
+        strokeWidth={1.4}
+        opacity={0.9}
+        data-cad-role="station_through_stub"
+      />
+      {/* SYMBOL stacji: ostry prostokąt + glif transformatora (dwa okręgi). */}
+      <g data-cad-role="station_plan_symbol">
+        <rect
+          x={symbolCx - symbolHalfW}
+          y={station.y - symbolHalfH}
+          width={symbolHalfW * 2}
+          height={symbolHalfH * 2}
+          fill={COLOR_BG}
+          stroke={liveBorder}
+          strokeWidth={selected ? 2.2 : isLive ? 1.6 : 1.3}
+          strokeDasharray={deEnergized ? '5 3' : undefined}
+        />
+        <circle cx={symbolCx} cy={station.y - 2.6} r={4.6} fill="none" stroke={primaryFill} strokeWidth={1.1} />
+        <circle cx={symbolCx} cy={station.y + 2.6} r={4.6} fill="none" stroke={primaryFill} strokeWidth={1.1} />
+      </g>
       {/* Status gotowości — stały slot lewego górnego rogu, ponad pasmem stosu
           etykiet (przy 3 liniach pierwsza linia zaczyna się ~y+17 → marker
           y+6..y+16 nie zahacza o nazwę). Pełna kropka = stan zwykły;
@@ -2564,13 +2588,13 @@ function StationOverviewBlock(props: {
       {/* Tożsamość stacji — stos: nazwa / kod operatorski (cyjan) / moc kVA. */}
       <g clipPath={`url(#${clipId})`} data-station-label-stack="true">
         <text
-          x={station.x}
+          x={textX}
           y={primaryY}
-          textAnchor="middle"
+          textAnchor="start"
           dominantBaseline="middle"
           fill={primaryFill}
           fontFamily={FONT_SANS}
-          fontSize={14}
+          fontSize={12}
           fontWeight={800}
           letterSpacing={0.3}
           data-station-label-role="name"
@@ -2579,13 +2603,13 @@ function StationOverviewBlock(props: {
         </text>
         {showCodeLine && (
           <text
-            x={station.x}
+            x={textX}
             y={codeY}
-            textAnchor="middle"
+            textAnchor="start"
             dominantBaseline="middle"
             fill={deEnergized ? '#6B7A88' : '#7EC8FF'}
             fontFamily={FONT_MONO}
-            fontSize={11}
+            fontSize={10.5}
             fontWeight={700}
             letterSpacing={0.5}
             data-station-label-role="operator-id"
@@ -2595,13 +2619,13 @@ function StationOverviewBlock(props: {
         )}
         {kvaLabel && (
           <text
-            x={station.x}
+            x={textX}
             y={kvaY}
-            textAnchor="middle"
+            textAnchor="start"
             dominantBaseline="middle"
             fill={deEnergized ? '#6B7A88' : COLOR_TEXT_SECONDARY}
             fontFamily={FONT_MONO}
-            fontSize={10}
+            fontSize={9.5}
             fontWeight={600}
             letterSpacing={0.3}
             data-station-label-role="kva"
@@ -2618,25 +2642,14 @@ function StationOverviewBlock(props: {
           data-testid={`sld-v2-station-generation-${station.id}`}
           data-generation-label={generation.label}
         >
-          <rect
-            x={genChipX}
-            y={genChipY}
-            width={genChipW}
-            height={genChipH}
-            rx={3}
-            ry={3}
-            fill="#1A1206"
+          {/* Symbol źródła IEC (kontur) + moc tekstem rysunkowym — bez chipu. */}
+          <DerSourceSymbol
+            cx={genGlyphCx}
+            cy={genChipY + genChipH / 2}
+            half={genGlyphHalf}
+            kind={generation.kind}
             stroke={generation.glyphColor}
             strokeWidth={1}
-            opacity={deEnergized ? 0.5 : 0.95}
-          />
-          {/* Romb falownika/generatora (ten sam glif co DerRenderer). */}
-          <polygon
-            points={`${genGlyphCx},${genChipY + genChipH / 2 - genGlyphHalf} ${genGlyphCx + genGlyphHalf},${genChipY + genChipH / 2} ${genGlyphCx},${genChipY + genChipH / 2 + genGlyphHalf} ${genGlyphCx - genGlyphHalf},${genChipY + genChipH / 2}`}
-            fill={generation.glyphColor}
-            fillOpacity={0.85}
-            stroke="#0A0E14"
-            strokeWidth={0.6}
           />
           <text
             x={genTextX}
@@ -2648,6 +2661,9 @@ function StationOverviewBlock(props: {
             fontSize={genFontSize}
             fontWeight={700}
             letterSpacing={0.2}
+            paintOrder="stroke"
+            stroke="#05070A"
+            strokeWidth={2}
           >
             {generation.label}
           </text>

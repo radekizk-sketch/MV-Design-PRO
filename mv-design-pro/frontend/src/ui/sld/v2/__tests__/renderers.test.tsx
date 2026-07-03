@@ -1013,7 +1013,7 @@ describe('CableRunRenderer', () => {
     const chip = container.querySelector('[data-testid="sld-v2-run-r-load-loading-chip"]');
     expect(chip).toBeTruthy();
     expect(chip?.getAttribute('data-loading-class')).toBe('normal');
-    expect(chip?.querySelector('rect')?.getAttribute('fill')).toBe('#13C45A');
+    expect(chip?.querySelector('text')?.getAttribute('fill')).toBe('#13C45A');
     expect(getByText('I 45%')).toBeInTheDocument();
   });
 
@@ -1031,7 +1031,7 @@ describe('CableRunRenderer', () => {
     );
     const chip = container.querySelector('[data-testid="sld-v2-run-r-warn-loading-chip"]');
     expect(chip?.getAttribute('data-loading-class')).toBe('warning');
-    expect(chip?.querySelector('rect')?.getAttribute('fill')).toBe('#FFD166');
+    expect(chip?.querySelector('text')?.getAttribute('fill')).toBe('#FFD166');
   });
 
   it('K30-45: loadingPct=120 → red chip + overload overlay (THERMAL OVERLOAD)', () => {
@@ -1048,7 +1048,7 @@ describe('CableRunRenderer', () => {
     );
     const chip = container.querySelector('[data-testid="sld-v2-run-r-ov-loading-chip"]');
     expect(chip?.getAttribute('data-loading-class')).toBe('overload');
-    expect(chip?.querySelector('rect')?.getAttribute('fill')).toBe('#FF333D');
+    expect(chip?.querySelector('text')?.getAttribute('fill')).toBe('#FF333D');
     // Overload overlay path
     expect(container.querySelector('[data-testid="sld-v2-run-r-ov-overload-overlay"]')).toBeTruthy();
   });

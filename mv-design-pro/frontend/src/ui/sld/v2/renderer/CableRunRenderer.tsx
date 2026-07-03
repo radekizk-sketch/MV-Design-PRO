@@ -796,24 +796,20 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           pointerEvents="none"
           transform={`translate(${pathPoints[0].x + 6}, ${pathPoints[0].y - 12})`}
         >
-          <rect
-            x={0}
-            y={-7}
-            width={32}
-            height={13}
-            rx={2}
-            fill={voltageBaseStroke}
-            opacity={0.85}
-          />
+          {/* Napięcie ciągu tekstem rysunkowym w kolorze klasy napięcia
+              (bez pigułki — SLD_SCHEMAT_REDESIGN_2026-07 §1e). */}
           <text
             x={16}
             y={3}
             textAnchor="middle"
-            fill="#0A0E14"
+            fill={voltageBaseStroke}
             fontFamily="sans-serif"
             fontSize={9}
             fontWeight={800}
             letterSpacing={0.3}
+            paintOrder="stroke"
+            stroke="#05070A"
+            strokeWidth={2}
           >
             {voltageKv >= 1
               ? `${Math.round(voltageKv)} kV`
@@ -835,15 +831,17 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             pointerEvents="none"
             transform={`translate(${x0}, ${y0})`}
           >
-            <rect x={0} y={-7} width={42} height={13} rx={2} fill={cls.color} opacity={0.85} />
             <text
               x={21}
               y={3}
               textAnchor="middle"
-              fill="#0A0E14"
+              fill={cls.color}
               fontFamily="sans-serif"
               fontSize={9}
               fontWeight={800}
+              paintOrder="stroke"
+              stroke="#05070A"
+              strokeWidth={2}
             >
               {`I ${loadingPct.toFixed(0)}%`}
             </text>
@@ -913,26 +911,20 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           transform={`translate(${segmentLabel.x}, ${segmentLabel.y})`}
           pointerEvents="none"
         >
-          <rect
-            x={-estimateLabelWidth(segmentLabel.text) / 2 - 7}
-            y={-10}
-            width={estimateLabelWidth(segmentLabel.text) + 14}
-            height={18}
-            rx={3}
-            fill="#071018"
-            stroke={segmentKind === 'overhead_line_sn' ? '#7DD3FC' : '#13C45A'}
-            strokeWidth={1.1}
-            opacity={0.94}
-          />
+          {/* Typ/przekrój/długość jako tekst wzdłuż linii (styl CAD),
+              kolor wg rodzaju odcinka, halo zamiast pigułki. */}
           <text
             x={0}
             y={3}
             textAnchor="middle"
-            fill="#DDF7FF"
+            fill={segmentKind === 'overhead_line_sn' ? '#7DD3FC' : '#9FE8C2'}
             fontFamily="sans-serif"
             fontSize={9}
-            fontWeight={800}
+            fontWeight={700}
             letterSpacing={0.2}
+            paintOrder="stroke"
+            stroke="#05070A"
+            strokeWidth={2.4}
           >
             {segmentLabel.text}
           </text>
@@ -951,25 +943,18 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             pointerEvents="none"
           >
             <line x1={0} y1={0} x2={0} y2={14} stroke={color} strokeWidth={1} opacity={0.75} />
-            <rect
-              x={-width / 2}
-              y={14}
-              width={width}
-              height={20}
-              rx={3}
-              fill="#071018"
-              stroke={color}
-              strokeWidth={1.2}
-              opacity={0.96}
-            />
             <text
               x={0}
               y={28}
               textAnchor="middle"
-              fill="#F4FBFF"
+              fill={color}
               fontFamily="monospace"
               fontSize={9}
               fontWeight={800}
+              paintOrder="stroke"
+              stroke="#05070A"
+              strokeWidth={2.4}
+              data-result-width-hint={width}
             >
               {result.text}
             </text>

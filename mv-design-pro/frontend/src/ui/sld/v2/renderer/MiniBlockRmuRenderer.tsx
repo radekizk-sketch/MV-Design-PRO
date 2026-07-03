@@ -9,6 +9,7 @@
 import type { MouseEvent } from 'react';
 
 import {
+  COLOR_BG,
   COLOR_BUS_LV,
   COLOR_DEVICE_CLOSED,
   COLOR_DEVICE_CLOSED_BORDER,
@@ -421,27 +422,28 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
               y={-OVERVIEW_HEIGHT / 2}
               width={OVERVIEW_WIDTH}
               height={OVERVIEW_HEIGHT}
-              rx={3}
-              ry={3}
-              fill="#07111C"
-              opacity={props.selected ? 0.26 : 0.08}
+              fill="transparent"
+              opacity={props.selected ? 1 : 0}
               stroke={props.selected ? COLOR_SELECTION : 'transparent'}
               strokeWidth={props.selected ? 1.4 : 0}
+              strokeDasharray={props.selected ? '5 4' : undefined}
               data-parity-key="station.mini.body.hitarea"
             />
+            {/* Granica stacji: cienki obrys przerywany, ostre rogi, bez
+                wypełnienia (język rysunku zamiast karty). */}
             <rect
               x={-RMU_W / 2 - 5}
               y={busY - 31}
               width={RMU_W + 10}
               height={77}
-              rx={3}
-              ry={3}
-              fill="#07111C"
-              fillOpacity={0.12}
-              stroke="#13435A"
-              strokeWidth={1}
+              fill="none"
+              stroke={COLOR_TEXT_MUTED}
+              strokeWidth={0.8}
+              strokeDasharray="6 4"
+              opacity={0.55}
               data-testid={`sld-v2-mini-rmu-overview-enclosure-${props.id}`}
               data-element-kind="rmu_enclosure"
+              data-cad-role="station_boundary_dashed"
             />
             <line
               data-testid={`sld-v2-mini-rmu-sn-row-${props.id}`}
@@ -642,19 +644,8 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                 data-overview-label-scale={codeScale.toFixed(2)}
                 transform={`translate(0, 24) scale(${codeScale})`}
               >
-                <rect
-                  x={-codeLabelWidth / 2}
-                  y={-8}
-                  width={codeLabelWidth}
-                  height={16}
-                  rx={2}
-                  ry={2}
-                  fill="#07111C"
-                  stroke={snBusColor}
-                  strokeWidth={0.4}
-                  opacity={0.92}
-                />
                 <text
+                  data-code-label-width={codeLabelWidth}
                   x={0}
                   y={1}
                   textAnchor="middle"
@@ -664,6 +655,9 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                   fontSize={12}
                   fontWeight={900}
                   letterSpacing={0}
+                  paintOrder="stroke"
+                  stroke={COLOR_SCADA_SHADOW}
+                  strokeWidth={2.4}
                 >
                   {code}
                 </text>
@@ -805,13 +799,14 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                 data-gap-right={externalBridgeGap.right}
                 pointerEvents="none"
               >
+                {/* Maska w kolorze kanwy — niewidoczna przerwa toru, nie
+                    czarny prostokąt (dopasowanie do COLOR_BG). */}
                 <rect
                   x={externalBridgeGap.left}
                   y={externalBridgeGap.y - 13}
                   width={externalBridgeGap.right - externalBridgeGap.left}
                   height={26}
-                  fill="#0A0E14"
-                  fillOpacity={0.98}
+                  fill={COLOR_BG}
                   stroke="none"
                   strokeWidth={0}
                   data-role="external_trunk_visual_cut"
