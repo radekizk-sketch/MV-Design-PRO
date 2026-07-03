@@ -15,6 +15,7 @@ import {
   COLOR_LINE_PRIMARY,
   COLOR_PANEL_RAISED,
   COLOR_SELECTION,
+  COLOR_TEXT_MUTED,
   COLOR_TEXT_PRIMARY,
   COLOR_TEXT_SECONDARY,
   FONT_SANS,
@@ -790,17 +791,21 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                 data-element-kind="rmu_enclosure"
                 data-layout-role="station_switchgear_frame"
               >
+                {/* Granica stacji: cienka linia PRZERYWANA, ostre rogi, bez
+                    wypełnienia — konwencja rysunkowa CAD (obrys obiektu),
+                    zamiast karty-kafla. */}
                 <rect
                   x={layout.busLeft - 20}
                   y={COMPACT_TERRAIN_PORT_Y + 10}
                   width={(layout.busRight - layout.busLeft) + 40}
                   height={layout.busY - COMPACT_TERRAIN_PORT_Y + 104}
-                  rx={2}
-                  ry={2}
-                  fill="transparent"
-                  stroke="transparent"
-                  strokeWidth={0}
+                  fill="none"
+                  stroke={COLOR_TEXT_MUTED}
+                  strokeWidth={0.8}
+                  strokeDasharray="6 4"
+                  opacity={0.55}
                   pointerEvents="none"
+                  data-cad-role="station_boundary_dashed"
                 />
               </g>
             )}
@@ -1188,8 +1193,10 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         const nopText = props.isNop ? '#FF333D' : '#7EC8FF';
         return (
           <g data-testid={`sld-v2-mini-station-code-${props.id}`} data-is-nop={props.isNop ? 'true' : 'false'} transform={`translate(0, ${headerBadgeY})`}>
-            <rect x={-22} y={-13} width={44} height={18} rx={2} ry={2} fill="#0A1018" stroke={nopRing} strokeWidth={props.isNop ? 1.8 : 1.2} opacity={0.95} />
-            <text x={0} y={1} textAnchor="middle" fill={nopText} fontFamily={FONT_SANS} fontSize={stationCodeFontSize} fontWeight={900} letterSpacing={0.8}>
+            {/* Kod stacji jako tekst rysunkowy (bez badge-boxa) — język CAD,
+                nie chip UI. Halo (paintOrder stroke) = konwencja SCADA na
+                ciemnym tle, nie tło-pigułka. */}
+            <text x={0} y={1} textAnchor="middle" fill={nopText} fontFamily={FONT_SANS} fontSize={stationCodeFontSize} fontWeight={900} letterSpacing={0.8} paintOrder="stroke" stroke={COLOR_SCADA_SHADOW} strokeWidth={2.5} data-badge-ring={nopRing}>
               {code}
             </text>
             {props.isNop && (
@@ -1212,18 +1219,6 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
           data-feeders-count={props.nnFeedersCount}
           transform={`translate(${nnCountBadgeX}, ${headerBadgeY})`}
         >
-          <rect
-            x={-15}
-            y={-13}
-            width={30}
-            height={18}
-            rx={2}
-            ry={2}
-            fill="#0D2818"
-            stroke="#4EC9B0"
-            strokeWidth={1}
-            opacity={0.95}
-          />
           <text
             x={0}
             y={1}
@@ -1232,6 +1227,9 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
             fontFamily={FONT_SANS}
             fontSize={nnCountFontSize}
             fontWeight={900}
+            paintOrder="stroke"
+            stroke={COLOR_SCADA_SHADOW}
+            strokeWidth={2}
           >
             {`${props.nnFeedersCount} nN`}
           </text>
@@ -1274,16 +1272,14 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
        *  vs hybrid PV+BESS 1500 kW visible bezpośrednio. */}
       {showDetailedBadges && props.totalLoadKw && props.totalLoadKw > 0 && (
         <g data-testid={`sld-v2-mini-station-load-${props.id}`} transform={`translate(-28, ${auxBadgeY})`}>
-          <rect x={-22} y={-9} width={44} height={16} rx={2} ry={2} fill="#5A2A1E" stroke="#FF8B5C" strokeWidth={1} />
-          <text x={0} y={2} textAnchor="middle" fill="#FF8B5C" fontFamily={FONT_SANS} fontSize={auxBadgeFontSize} fontWeight={900}>
+          <text x={0} y={2} textAnchor="middle" fill="#FF8B5C" fontFamily={FONT_SANS} fontSize={auxBadgeFontSize} fontWeight={900} paintOrder="stroke" stroke={COLOR_SCADA_SHADOW} strokeWidth={2}>
             L {props.totalLoadKw >= 1000 ? `${(props.totalLoadKw / 1000).toFixed(1)}MW` : `${props.totalLoadKw}kW`}
           </text>
         </g>
       )}
       {showDetailedBadges && props.totalGenerationKw != null && props.totalGenerationKw > 0 && (
         <g data-testid={`sld-v2-mini-station-gen-${props.id}`} transform={`translate(28, ${auxBadgeY})`}>
-          <rect x={-22} y={-9} width={44} height={16} rx={2} ry={2} fill="#1E4A2A" stroke="#7EE0B5" strokeWidth={1} />
-          <text x={0} y={2} textAnchor="middle" fill="#7EE0B5" fontFamily={FONT_SANS} fontSize={auxBadgeFontSize} fontWeight={900}>
+          <text x={0} y={2} textAnchor="middle" fill="#7EE0B5" fontFamily={FONT_SANS} fontSize={auxBadgeFontSize} fontWeight={900} paintOrder="stroke" stroke={COLOR_SCADA_SHADOW} strokeWidth={2}>
             G {props.totalGenerationKw >= 1000 ? `${(props.totalGenerationKw / 1000).toFixed(1)}MW` : `${props.totalGenerationKw}kW`}
           </text>
         </g>
@@ -1297,10 +1293,10 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         x={0}
         y={labelTypeY}
         textAnchor="middle"
-        fill={COLOR_SELECTION}
+        fill={COLOR_TEXT_SECONDARY}
         fontFamily={FONT_SANS}
         fontSize={typeFontSize}
-        fontWeight={800}
+        fontWeight={700}
         paintOrder="stroke"
         stroke={COLOR_SCADA_SHADOW}
         strokeWidth={showPvCircuit ? 1.2 : 3}
@@ -1352,16 +1348,6 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
           OSD wymaga do procedur manewrów + testów impedancji. */}
       {variant !== 'overview' && props.earthingScheme && (
         <g data-testid={`sld-v2-mini-rmu-earthing-scheme-${props.id}`}>
-          <rect
-            x={-22}
-            y={labelPowerY + (props.transformerVectorGroup ? 18 : 6)}
-            width={44}
-            height={11}
-            fill="#0E1822"
-            stroke="#7EE0B5"
-            strokeWidth={0.8}
-            rx={2}
-          />
           <text
             x={0}
             y={labelPowerY + (props.transformerVectorGroup ? 26 : 14)}
@@ -1735,17 +1721,15 @@ function CompactDirectionalBayColumn(props: CompactDirectionalBayColumnProps): J
         style={clickHandler ? { cursor: 'pointer' } : undefined}
       >
         <title>{`Pole ${roleLabel} ${bay.designation}`}</title>
+        {/* Pole = oś z symbolami, nie panel: rect zostaje wyłącznie jako
+            niewidoczny hit-area (bez wypełnienia/tintu — język rysunku). */}
         <rect
           x={x - 16}
           y={portY + 9}
           width={32}
           height={busY - portY + 34}
-          rx={2}
-          ry={2}
-          fill="#07111C"
-          fillOpacity={0.22}
-          stroke="#1B5068"
-          strokeWidth={0.7}
+          fill="transparent"
+          stroke="none"
           pointerEvents="all"
           data-hit-area="true"
           data-testid={`sld-v2-mini-rmu-compact-field-cell-${stationId}-${bay.bayRef}`}
@@ -1801,19 +1785,8 @@ function CompactDirectionalBayColumn(props: CompactDirectionalBayColumnProps): J
         <g
           data-testid={`sld-v2-mini-rmu-compact-port-caption-${stationId}-${bay.bayRef}`}
           data-label-placement="above_terrain_port"
+          data-caption-width={portCaptionWidth}
         >
-          <rect
-            x={x - portCaptionWidth / 2}
-            y={labelY - 9}
-            width={portCaptionWidth}
-            height={12}
-            rx={2}
-            ry={2}
-            fill="#07111C"
-            fillOpacity={0.88}
-            stroke="#1B5068"
-            strokeWidth={0.7}
-          />
           <text
             x={x}
             y={labelY}
@@ -1877,12 +1850,8 @@ function CompactDirectionalBayColumn(props: CompactDirectionalBayColumnProps): J
           y={busY - 5}
           width={36}
           height={96}
-          rx={2}
-          ry={2}
-          fill="#07111C"
-          fillOpacity={0.22}
-          stroke="#1B5068"
-          strokeWidth={0.7}
+          fill="transparent"
+          stroke="none"
           pointerEvents="all"
           data-hit-area="true"
           data-testid={`sld-v2-mini-rmu-compact-field-cell-${stationId}-${bay.bayRef}`}
@@ -2111,18 +2080,16 @@ function PvConnectionTree(props: PvConnectionTreeProps): JSX.Element {
       data-element-kind="pv_nn_connection_tree"
       data-element-id={`${stationId}/pv/nn-connection`}
     >
+      {/* Przedział PV/nN: granica przerywana bez wypełnienia (CAD), ostre rogi. */}
       <rect
         x={-86}
         y={baseY + 1}
         width={172}
         height={76}
-        fill="#120F05"
-        fillOpacity={0.44}
+        fill="none"
         stroke="#6F5A17"
         strokeWidth={0.8}
         strokeDasharray="4 3"
-        rx={2}
-        ry={2}
         data-parity-key="station.pv.nn_compartment"
       />
       <line x1={0} y1={baseY - 16} x2={0} y2={lvBusY} stroke={COLOR_DER_PV} strokeWidth={2.2} />
@@ -2149,12 +2116,8 @@ function PvConnectionTree(props: PvConnectionTreeProps): JSX.Element {
               y={breakerY - 5}
               width={36}
               height={44}
-              fill="#161507"
-              fillOpacity={0.78}
-              stroke="#9A7A1B"
-              strokeWidth={0.8}
-              rx={2}
-              ry={2}
+              fill="none"
+              stroke="none"
               data-parity-key="station.pv.nn_feeder.cell"
             />
             <line x1={x} y1={lvBusY} x2={x} y2={inverterY} stroke={COLOR_DER_PV} strokeWidth={1.8} />
