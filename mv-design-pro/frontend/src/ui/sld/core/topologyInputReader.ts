@@ -294,6 +294,14 @@ export interface TopologyInputV1 {
   readonly loads: readonly TopologyLoadV1[];
   readonly protectionBindings: readonly TopologyProtectionV1[];
   readonly logicalViews?: TopologyLogicalViewsV1;
+  /**
+   * Deklarowana oś magistrali głównej (R2, przebudowa 2026-07): stacje w
+   * KOLEJNOŚCI ELEKTRYCZNEJ z ENM `line_runs[run_kind=main_trunk]` (fallback:
+   * korytarz radialny `ordered_segment_refs`). Silnik układu MUSI użyć tej osi
+   * zamiast heurystyki najdłuższej ścieżki — schemat ma odwzorowywać
+   * rzeczywistą magistralę, nie artefakt BFS. Pusta lista = brak deklaracji.
+   */
+  readonly declaredTrunkStationIds?: readonly string[];
   readonly fixActions: readonly TopologyFixAction[];
 }
 
@@ -792,6 +800,100 @@ export function readTopologyFromENM(
     isEnabled: pa.is_enabled,
   }));
 
+  // --- Deklarowana oś magistrali (R2): line_runs main_trunk → kolejność stacji.
+  const stationOfBusRef = (busRef: string | null | undefined): string | null => {
+    if (!busRef) return null;
+    const direct = stationBusMap.get(busRef);
+    if (direct) return direct;
+    if (busRef.startsWith('stn/')) {
+      const id = busRef.split('/')[1];
+      if (id) return stations.some((st) => st.id === `stn/${id}/station`) ? `stn/${id}/station` : null;
+    }
+    if (busRef.startsWith('gpz/')) {
+      const id = busRef.split('/')[1];
+      if (id) return stations.some((st) => st.id === `gpz/${id}/substation`) ? `gpz/${id}/substation` : null;
+    }
+    return null;
+  };
+  const branchByRefId = new Map(enm.branches.map((br) => [br.ref_id, br]));
+  const declaredTrunkStationIds: string[] = [];
+  {
+    const mainTrunkRuns = [...(enm.line_runs ?? [])]
+      .filter((run) => run.run_kind === 'main_trunk')
+      .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    const radialCorridors = [...(enm.corridors ?? [])]
+      .filter((corridor) => corridor.corridor_type !== 'ring')
+      .sort((a, b) => String(a.ref_id ?? a.id).localeCompare(String(b.ref_id ?? b.id)));
+    const orderedSegmentRefs: string[] = mainTrunkRuns.length > 0
+      ? [...(mainTrunkRuns[0].segments ?? [])]
+          .sort((a, b) => a.order - b.order)
+          .map((seg) => seg.segment_ref)
+      : (radialCorridors[0]?.ordered_segment_refs ?? []);
+    const seen = new Set<string>();
+    const consumedSegmentRefs = new Set<string>();
+    for (const segmentRef of orderedSegmentRefs) {
+      // segment może być rozcięty łącznikiem na _L/_R — obie połówki liczą się
+      const candidates = branchByRefId.has(segmentRef)
+        ? [branchByRefId.get(segmentRef)!]
+        : enm.branches
+            .filter((br) => br.ref_id.startsWith(`${segmentRef}_`))
+            .sort((a, b) => a.ref_id.localeCompare(b.ref_id));
+      for (const br of candidates) {
+        consumedSegmentRefs.add(br.ref_id);
+        for (const busRef of [br.from_bus_ref, br.to_bus_ref]) {
+          const stationId = stationOfBusRef(busRef);
+          if (stationId && !seen.has(stationId)) {
+            seen.add(stationId);
+            declaredTrunkStationIds.push(stationId);
+          }
+        }
+      }
+    }
+    // Kontynuacja magistrali po realnych odcinkach SN NIEPOKRYTYCH żadnym
+    // zadeklarowanym ciągiem (lustro scalania adaptera: jawny line_run
+    // „rozszerza się o dalszy realny odcinek"). Odcinki należące do innych
+    // ciągów/odgałęzień NIE przedłużają osi. Kontynuacja tylko JEDNOZNACZNA
+    // (dokładnie jeden kandydat) — bez zgadywania.
+    if (declaredTrunkStationIds.length > 0) {
+      const coveredByAnyRun = new Set<string>(consumedSegmentRefs);
+      for (const run of enm.line_runs ?? []) {
+        for (const seg of run.segments ?? []) {
+          coveredByAnyRun.add(seg.segment_ref);
+          coveredByAnyRun.add(seg.segment_ref.replace('/segment', '/segment_L'));
+          coveredByAnyRun.add(seg.segment_ref.replace('/segment', '/segment_R'));
+        }
+      }
+      for (const corridor of enm.corridors ?? []) {
+        for (const segRef of corridor.ordered_segment_refs ?? []) coveredByAnyRun.add(segRef);
+      }
+      const isCableLike = (t: unknown): boolean => t === 'cable' || t === 'line_overhead' || t === 'line';
+      let cursor = declaredTrunkStationIds[declaredTrunkStationIds.length - 1];
+      let extending = true;
+      while (extending) {
+        extending = false;
+        const candidates = enm.branches
+          .filter((br) => isCableLike((br as { type?: unknown }).type) && !coveredByAnyRun.has(br.ref_id))
+          .map((br) => {
+            const a = stationOfBusRef(br.from_bus_ref);
+            const b = stationOfBusRef(br.to_bus_ref);
+            if (a === cursor && b && !seen.has(b)) return { br, next: b };
+            if (b === cursor && a && !seen.has(a)) return { br, next: a };
+            return null;
+          })
+          .filter((c): c is { br: (typeof enm.branches)[number]; next: string } => c !== null)
+          .sort((x, y) => x.br.ref_id.localeCompare(y.br.ref_id));
+        if (candidates.length === 1) {
+          const { br, next } = candidates[0];
+          coveredByAnyRun.add(br.ref_id);
+          seen.add(next);
+          declaredTrunkStationIds.push(next);
+          cursor = next;
+          extending = true;
+        }
+      }
+    }
+  }
+
   const logicalViewsRaw = enm.logical_views;
 
   const logicalViews: TopologyLogicalViewsV1 = {
@@ -822,6 +924,7 @@ export function readTopologyFromENM(
     loads: sortById(loads),
     protectionBindings: sortById(protectionBindings),
     logicalViews,
+    declaredTrunkStationIds,
     fixActions: [...fixActions].sort((a, b) => a.code.localeCompare(b.code) || (a.elementRef ?? '').localeCompare(b.elementRef ?? '')),
   };
 }

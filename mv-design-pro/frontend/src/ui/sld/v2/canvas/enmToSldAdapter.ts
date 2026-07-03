@@ -710,7 +710,16 @@ export function buildSldDataFromSnapshot(
   if (layout) {
     stations = applyLayoutToStations(stations, layout);
     gpzs = applyLayoutToGpzs(gpzs, layout);
-    cableRuns = buildCableRuns(snapshot, logicalViews, stations);
+    // R2: punkty wyjścia magistral z węzłów GPZ (prawa krawędź bloku, środek
+    // wysokości) — magistrala rysuje się OD GPZ, nie od slotowej głowicy.
+    const trunkOriginByOwner = new Map<string, RunPoint>();
+    for (const gpz of gpzs) {
+      const node = layout.nodeByRef.get(gpz.id);
+      if (node) {
+        trunkOriginByOwner.set(gpz.id, { x: node.x + node.width, y: node.y + node.height / 2 });
+      }
+    }
+    cableRuns = buildCableRuns(snapshot, logicalViews, stations, trunkOriginByOwner);
     branchPoints = buildBranchPointMarkers(snapshot, cableRuns, stations);
   }
 
@@ -2921,9 +2930,19 @@ function normalizeLineRunForLayout(
   const normalizedSegmentRefs = lineRunSegmentRefs(lineRun);
   const seenSegmentRefs = new Set<string>();
   const expandedSegmentRefs = normalizedSegmentRefs.flatMap((segmentRef) => {
+    const splitFromBranchPoints = splitSegmentRefsByParent.get(segmentRef);
+    // R2: odcinek cięty ŁĄCZNIKAMI (nie branch-pointami) rozwija się po
+    // przyrostkach `_L`/`_R` z realnych gałęzi ENM (rekurencyjnie).
+    const splitBySuffix = [...branchByRef.keys()]
+      .filter((ref) => ref.startsWith(`${segmentRef}_`))
+      .sort((a, b) => a.localeCompare(b));
     const refs = branchByRef.has(segmentRef)
       ? [segmentRef]
-      : [...(splitSegmentRefsByParent.get(segmentRef) ?? [segmentRef])];
+      : splitFromBranchPoints
+        ? [...splitFromBranchPoints]
+        : splitBySuffix.length > 0
+          ? splitBySuffix
+          : [segmentRef];
     return refs.filter((ref) => {
       if (seenSegmentRefs.has(ref)) return false;
       seenSegmentRefs.add(ref);
@@ -2982,6 +3001,28 @@ function lineRunKindLayoutRank(kind: SldLineRunForLayout['run_kind']): number {
   }
 }
 
+/**
+ * R2: deklarowany odcinek ciągu (`seg/<h>/segment`) może być ROZCIĘTY
+ * łącznikami na warianty `_L`/`_R` (rekurencyjnie: `_L_R_L`...). Rysujemy
+ * RZECZYWISTE gałęzie ENM: ref bazowy rozwija się do wszystkich połówek
+ * w porządku leksykalnym (_L przed _R — zgodnie z orientacją odcinka).
+ */
+function expandSegmentRefToBranches(
+  segmentRef: string,
+  branches: readonly Branch[],
+): Branch[] {
+  const exact = branches.filter((branch) => branch.ref_id === segmentRef);
+  if (exact.length > 0) return exact;
+  return branches
+    .filter((branch) => branch.ref_id.startsWith(`${segmentRef}_`))
+    .sort((a, b) => a.ref_id.localeCompare(b.ref_id));
+}
+
+/** Ref bazowy odcinka (bez przyrostków cięcia łącznikiem `_L`/`_R`). */
+function baseSegmentRef(segmentRef: string): string {
+  return segmentRef.replace(/(_[LR])+$/, '');
+}
+
 function buildSldLineRunsForLayout(
   snapshot: EnergyNetworkModel,
   fieldStationByRef: ReadonlyMap<string, Substation>,
@@ -2991,11 +3032,39 @@ function buildSldLineRunsForLayout(
   const branchByRef = new Map(cables.map((branch) => [branch.ref_id, branch]));
   const splitSegmentRefsByParent = splitSegmentRefsByParentFromBranchPoints(snapshot, branchByRef);
   const explicitRuns = (snapshot.line_runs ?? [])
-    .map((lineRun) => normalizeLineRunForLayout(lineRun, branchByRef, splitSegmentRefsByParent));
+    .map((lineRun) => normalizeLineRunForLayout(lineRun, branchByRef, splitSegmentRefsByParent))
+    .map((run) => {
+      // R2: gdy line_run nie deklaruje stacji, wyprowadź je z KOŃCÓWEK
+      // rzeczywistych odcinków (kolejność elektryczna) — stacje ciągu nie mogą
+      // zależeć od resztkowego korytarza.
+      if (run.stations.length > 0) return run;
+      const inferred = inferStationRefsForSegments(
+        run.segments.map((seg) => seg.segment_ref),
+        branchByRef,
+        fieldStationByRef,
+      );
+      // Stacja-RODZIC odgałęzienia (origin) leży na ciągu macierzystym — nie
+      // jest stacją TEGO ciągu (jej obecność fałszowałaby koniec ciągu i
+      // gasiła marker oczekującego zakończenia).
+      const firstSegmentRef = [...run.segments].sort((a, b) => a.order - b.order)[0]?.segment_ref;
+      const firstBranch = firstSegmentRef ? branchByRef.get(firstSegmentRef) : undefined;
+      const originOwner = run.branch_origin_station_ref
+        ? resolveFieldStationRefForBus(fieldStationByRef, run.branch_origin_station_ref)
+          ?? ownerStationRefFromFieldRef(run.branch_origin_station_ref)
+        : run.run_kind === 'branch'
+          ? resolveFieldStationRefForBus(fieldStationByRef, firstBranch?.from_bus_ref)
+          : null;
+      const stations = inferred.filter((stationRef) => stationRef !== originOwner);
+      return {
+        ...run,
+        stations: stations.map((substation_ref, order) => ({ substation_ref, order: order + 1 })),
+      };
+    });
   const coveredSegments = new Set<string>();
   for (const run of explicitRuns) {
     for (const segmentRef of lineRunSegmentRefs(run)) {
       coveredSegments.add(segmentRef);
+      coveredSegments.add(baseSegmentRef(segmentRef));
     }
   }
 
@@ -3003,7 +3072,12 @@ function buildSldLineRunsForLayout(
     .sort((a, b) => a.ref_id.localeCompare(b.ref_id))
     .flatMap((corridor, corridorIndex): SldLineRunForLayout[] => {
       const segmentRefs = (corridor.ordered_segment_refs ?? [])
-        .filter((segmentRef) => !coveredSegments.has(segmentRef));
+        .filter((segmentRef) =>
+          !coveredSegments.has(segmentRef) && !coveredSegments.has(baseSegmentRef(segmentRef))
+          // ref z przestrzeni łączników (`sw/...` = punkt NO korytarza) nie jest
+          // odcinkiem do rysowania — nie tworzy ciągu resztkowego (gramatyka
+          // ref_id ENM, nie heurystyka nazw)
+          && !segmentRef.startsWith('sw/'));
       if (segmentRefs.length === 0) return [];
       for (const segmentRef of segmentRefs) coveredSegments.add(segmentRef);
       const stationRefs = uniqueStrings([
@@ -4244,23 +4318,296 @@ function averageRunPoints(points: readonly RunPoint[]): RunPoint {
   };
 }
 
+// =============================================================================
+// R2 — ROUTER KORYTARZOWY (przebudowa globalna 2026-07).
+//
+// Diagnoza inżynierska: dotychczasowa geometria ciągów zakładała 1 segment =
+// 1 stacja i „zamiatała" stacje po współrzędnej X per rząd (snake). Realny ciąg
+// magistralny ma między stacjami zaciski pośrednie (kilka odcinków na jeden
+// przelot), a kolejność rysowania MUSI być elektryczna (kolejność odcinków
+// z line_run/korytarza), nie geometryczna. Skutkiem starego założenia były
+// skosy przez stacje i etykiety odcinków rozrzucone poza własnym torem.
+//
+// Nowa zasada (jak w dokumentacji projektowej OSD):
+//  1. KOTWICE ciągu = rzeczywiste końcówki KAŻDEGO odcinka (from_bus/to_bus →
+//     stacja albo zacisk pośredni), w kolejności elektrycznej.
+//  2. Zaciski pośrednie (bez stacji) dostają deterministyczne pozycje na rzędzie
+//     poprzedniej znanej kotwicy, rozłożone równomiernie do następnej znanej.
+//  3. Każdy przeskok kotwica→kotwica jest ORTOGONALNY: ten sam rząd = pozioma;
+//     ta sama kolumna = pionowa; zmiana rzędu = wzdłuż rzędu do kolumny celu,
+//     potem pion (opuszczenie w kolumnie stacji docelowej). Start z punktu
+//     źródłowego (głowica pola GPZ / stacja-rodzic odgałęzienia) = pion do
+//     rzędu celu, potem poziom.
+//  4. Ścieżka odcinka = przeskok jego końcówek; etykieta odcinka leży na JEGO
+//     torze (najdłuższy poziomy pododcinek). Tor całego ciągu = konkatenacja.
+// =============================================================================
+
+interface CorridorAnchor {
+  ref: string;
+  kind: 'origin' | 'station' | 'terminal';
+  x: number;
+  y: number;
+  station?: StationOnRunRendererProps;
+}
+
+interface CorridorRunGeometry {
+  readonly pathPoints: RunPoint[];
+  readonly segmentPaths: NonNullable<CableRunRendererPropsLight['segmentPaths']>;
+  readonly segmentLabels: NonNullable<CableRunRendererPropsLight['segmentLabels']>;
+}
+
+/** Ortogonalny przeskok kotwica→kotwica (reguła 3 routera korytarzowego). */
+function corridorHopPath(from: CorridorAnchor, to: CorridorAnchor): RunPoint[] {
+  const F = { x: from.x, y: from.y };
+  const T = { x: to.x, y: to.y };
+  if (Math.abs(F.y - T.y) <= 0.5) return [F, T];
+  if (Math.abs(F.x - T.x) <= 0.5) return [F, T];
+  if (from.kind === 'origin') {
+    // start ciągu: pion z punktu źródłowego do rzędu celu, potem poziom
+    return [F, { x: F.x, y: T.y }, T];
+  }
+  // zmiana rzędu między kotwicami: wzdłuż rzędu do kolumny celu, potem pion
+  return [F, { x: T.x, y: F.y }, T];
+}
+
+/**
+ * Zbuduj geometrię ciągu z RZECZYWISTYCH końcówek odcinków (reguły 1-4).
+ * Zwraca null, gdy nie udało się zbudować łańcucha (np. brak odcinków) —
+ * wtedy wołający zachowuje geometrię dotychczasową.
+ */
+function buildCorridorRunGeometry(
+  runSegments: readonly Branch[],
+  runStations: readonly StationOnRunRendererProps[],
+  stationByRef: ReadonlyMap<string, StationOnRunRendererProps>,
+  fieldStationByRef: ReadonlyMap<string, Substation>,
+  origin: RunPoint,
+): CorridorRunGeometry | null {
+  if (runSegments.length === 0) return null;
+
+  // --- reguła 1: łańcuch kotwic w kolejności elektrycznej -------------------
+  const anchors: CorridorAnchor[] = [
+    { ref: '__origin__', kind: 'origin', x: origin.x, y: origin.y },
+  ];
+  /** indeksy kotwic (from, to) per odcinek — w kolejności runSegments */
+  const hops: Array<{ fromIdx: number; toIdx: number }> = [];
+  let cursorRef: string | null = null;
+  for (const segment of runSegments) {
+    const aStationRef = resolveFieldStationRefForBus(fieldStationByRef, segment.from_bus_ref);
+    const bStationRef = resolveFieldStationRefForBus(fieldStationByRef, segment.to_bus_ref);
+    const aRef = aStationRef ?? segment.from_bus_ref ?? `__a_${anchors.length}`;
+    const bRef = bStationRef ?? segment.to_bus_ref ?? `__b_${anchors.length}`;
+    let nextRef: string;
+    let nextStationRef: string | null;
+    if (cursorRef === null || aRef === cursorRef) {
+      nextRef = bRef;
+      nextStationRef = bStationRef;
+      if (cursorRef === null) cursorRef = aRef;
+    } else if (bRef === cursorRef) {
+      nextRef = aRef;
+      nextStationRef = aStationRef;
+    } else {
+      // rozjazd danych (odcinek nie kontynuuje łańcucha) — kontynuuj od `to`,
+      // deterministycznie; brak zgadywania pozycji (kotwica jak każda inna)
+      nextRef = bRef;
+      nextStationRef = bStationRef;
+    }
+    const station = nextStationRef ? stationByRef.get(nextStationRef) : undefined;
+    anchors.push({
+      ref: nextRef,
+      kind: station ? 'station' : 'terminal',
+      x: station ? station.x : Number.NaN,
+      y: station ? stationRunY(station) : Number.NaN,
+      ...(station ? { station } : {}),
+    });
+    hops.push({ fromIdx: anchors.length - 2, toIdx: anchors.length - 1 });
+    cursorRef = nextRef;
+  }
+
+  // --- fuzja z deklaracją line_run.stations[] --------------------------------
+  // Modele aliasowe wiążą stacje ciągu deklaracją stations[] (kolejność
+  // elektryczna), a końcówki odcinków używają szyn-aliasów nie rozwiązywalnych
+  // prefiksem. Niedopasowane stacje z deklaracji przypisujemy KOLEJNO do
+  // nierozwiązanych kotwic w porządku łańcucha — bez zgadywania (obie listy są
+  // w kolejności elektrycznej).
+  const matchedStationIds = new Set(
+    anchors.filter((a) => a.station).map((a) => a.station!.id),
+  );
+  const unmatchedStations = runStations.filter((st) => !matchedStationIds.has(st.id));
+  if (unmatchedStations.length > 0) {
+    let fuseIdx = 0;
+    for (const anchor of anchors) {
+      if (fuseIdx >= unmatchedStations.length) break;
+      if (anchor.kind !== 'terminal') continue;
+      const st = unmatchedStations[fuseIdx];
+      fuseIdx += 1;
+      anchor.kind = 'station';
+      anchor.station = st;
+      anchor.x = st.x;
+      anchor.y = stationRunY(st);
+    }
+  }
+
+  // --- reguła 2: pozycje zacisków pośrednich (interpolacja na rzędzie) ------
+  const known = (a: CorridorAnchor): boolean => Number.isFinite(a.x) && Number.isFinite(a.y);
+  let i = 1;
+  while (i < anchors.length) {
+    if (known(anchors[i])) {
+      i += 1;
+      continue;
+    }
+    // maksymalny blok nieznanych [i .. j-1]; K1 = anchors[i-1], K2 = anchors[j]
+    let j = i;
+    while (j < anchors.length && !known(anchors[j])) j += 1;
+    const k1 = anchors[i - 1];
+    const k2 = j < anchors.length ? anchors[j] : null;
+    const count = j - i;
+    if (k2) {
+      const rowY = k1.kind === 'origin' ? k2.y : k1.y;
+      for (let m = 0; m < count; m += 1) {
+        const t = (m + 1) / (count + 1);
+        anchors[i + m].x = k1.x + (k2.x - k1.x) * t;
+        anchors[i + m].y = rowY;
+      }
+    } else if (k1.kind === 'origin') {
+      // ciąg oczekujący (bez żadnej stacji): geometria zgodna z kontraktem
+      // odcinka oczekującego (pendingRunEndX) — rozłożona równomiernie;
+      // rząd 80 px pod głowicą.
+      const total = pendingRunEndX(k1.x, count) - k1.x;
+      for (let m = 0; m < count; m += 1) {
+        anchors[i + m].x = k1.x + (total * (m + 1)) / count;
+        anchors[i + m].y = k1.y + STATION_RUN_TRUNK_OFFSET_Y;
+      }
+    } else {
+      // Ogon za ostatnią stacją (trasa do kolejnego zacisku): przedłuż wzdłuż
+      // ORIENTACJI ostatniego przęsła — magistrala pozioma → w prawo; odczep
+      // pionowy → w dół (grzebień). Orientację czytamy z poprzedniej znanej
+      // kotwicy (k0 → k1). Bez tego ogon odczepu skręcał w bok (artefakt).
+      let k0: CorridorAnchor | null = null;
+      for (let b = i - 2; b >= 0; b -= 1) {
+        if (known(anchors[b])) { k0 = anchors[b]; break; }
+      }
+      const vertical = k0 !== null && Math.abs(k1.y - k0.y) > Math.abs(k1.x - k0.x);
+      if (vertical) {
+        const dirY = k0 !== null && k1.y < k0.y ? -1 : 1;
+        for (let m = 0; m < count; m += 1) {
+          anchors[i + m].x = k1.x;
+          anchors[i + m].y = k1.y + dirY * POST_STATION_SEGMENT_PITCH * (m + 1);
+        }
+      } else {
+        const base = (k1.station ? stationOutputX(k1.station) : null) ?? k1.x;
+        for (let m = 0; m < count; m += 1) {
+          anchors[i + m].x = base + POST_STATION_SEGMENT_PITCH * (m + 1);
+          anchors[i + m].y = k1.y;
+        }
+      }
+    }
+    i = j;
+  }
+
+  // --- doprecyzowanie wejść/wyjść stacji na przeskokach poziomych -----------
+  // (linia zatrzymuje się na kolumnie WE, wychodzi z kolumny WY — jak na
+  // schemacie dyspozytorskim; przeskoki pionowe zostają w osi stacji)
+  const hopFromX = (from: CorridorAnchor, to: CorridorAnchor): number => {
+    if (!from.station || Math.abs(from.y - to.y) > 0.5) return from.x;
+    const exit = to.x >= from.x ? stationOutputX(from.station) : stationInputX(from.station);
+    return exit ?? from.x;
+  };
+  const hopToX = (from: CorridorAnchor, to: CorridorAnchor): number => {
+    if (!to.station) return to.x;
+    // Strona wejścia (kolumna WE/WY) obowiązuje, gdy OSTATNI pododcinek
+    // przeskoku jest poziomy: ten sam rząd, albo start z punktu źródłowego
+    // (pion z głowicy, potem poziom do stacji). Pion kończący (zmiana rzędu
+    // między kotwicami) schodzi w osi stacji.
+    const sameRow = Math.abs(from.y - to.y) <= 0.5;
+    const horizontalFinal = sameRow || (from.kind === 'origin' && Math.abs(from.x - to.x) > 0.5);
+    if (horizontalFinal) {
+      const entry = from.x <= to.x ? stationInputX(to.station) : stationOutputX(to.station);
+      return entry ?? to.x;
+    }
+    return to.x;
+  };
+
+  const segmentPaths: Array<{
+    segmentRef: string;
+    pathPoints: RunPoint[];
+    variant?: { insulation: 'XLPE' | 'EPR' | 'PVC' | 'PAPER' | 'OVERHEAD' | 'UNKNOWN'; conductor: 'Al' | 'Cu' | 'AlSt' | 'UNKNOWN' };
+  }> = [];
+  const pathPoints: RunPoint[] = [];
+  const pushPoint = (p: RunPoint): void => {
+    const last = pathPoints[pathPoints.length - 1];
+    if (last && Math.abs(last.x - p.x) <= 0.5 && Math.abs(last.y - p.y) <= 0.5) return;
+    pathPoints.push(p);
+  };
+  runSegments.forEach((segment, index) => {
+    const { fromIdx, toIdx } = hops[index];
+    const from = anchors[fromIdx];
+    const to = anchors[toIdx];
+    const fx = hopFromX(from, to);
+    const tx = hopToX(from, to);
+    const hop = corridorHopPath(
+      { ...from, x: fx },
+      { ...to, x: tx },
+    );
+    segmentPaths.push({
+      segmentRef: segment.ref_id,
+      pathPoints: hop,
+      variant: inferCableVariant(segment),
+    });
+    hop.forEach(pushPoint);
+  });
+
+  // --- etykiety odcinków na WŁASNYM torze (dedupe jak K30-52) ---------------
+  let previousLabel: string | null = null;
+  const segmentLabels: Array<{ segmentRef: string; text: string; x: number; y: number }> = [];
+  runSegments.forEach((segment, index) => {
+    const label = buildCableRunLabel([segment], classifySegmentKind(segment));
+    if (label === previousLabel) return;
+    previousLabel = label;
+    const point = segmentLabelPointFromPath(segmentPaths[index].pathPoints, index);
+    segmentLabels.push({ segmentRef: segment.ref_id, text: label, x: point.x, y: point.y });
+  });
+
+  // Tor całego ciągu: usuń punkty współliniowe (czysta polilinia — tylko
+  // zmiany kierunku), jak na rysunku technicznym.
+  const collapsed: RunPoint[] = [];
+  for (const p of pathPoints) {
+    const n = collapsed.length;
+    if (n >= 2) {
+      const a = collapsed[n - 2];
+      const b = collapsed[n - 1];
+      const collinearH = Math.abs(a.y - b.y) <= 0.5 && Math.abs(b.y - p.y) <= 0.5;
+      const collinearV = Math.abs(a.x - b.x) <= 0.5 && Math.abs(b.x - p.x) <= 0.5;
+      if (collinearH || collinearV) {
+        collapsed[n - 1] = p;
+        continue;
+      }
+    }
+    collapsed.push(p);
+  }
+
+  return { pathPoints: collapsed, segmentPaths, segmentLabels };
+}
+
 function buildCableRuns(
   snapshot: EnergyNetworkModel,
   logicalViews: LogicalViewsV1 | null,
   stations: readonly StationOnRunRendererProps[],
+  trunkOriginByOwner?: ReadonlyMap<string, RunPoint>,
 ): CableRunRendererPropsLight[] {
   const branches = (snapshot.branches ?? [])
     .filter((branch) => isCableLikeBranch(branch) && isMediumVoltageNetworkBranch(snapshot, branch));
-  const lineRuns = buildSldLineRunsForLayout(snapshot, collectFieldStationByRef(snapshot));
+  const fieldStationByRef = collectFieldStationByRef(snapshot);
+  const lineRuns = buildSldLineRunsForLayout(snapshot, fieldStationByRef);
   const stationByRef = new Map(stations.map((station) => [station.id, station]));
   const runs: CableRunRendererPropsLight[] = [];
 
   if (lineRuns.length > 0) {
     lineRuns.forEach((lineRun, idx) => {
       const segmentRefs = lineRunSegmentRefs(lineRun);
+      // R2: odcinek deklarowany rozwija się do RZECZYWISTYCH gałęzi (połówki
+      // cięte łącznikami) — geometria i etykiety liczą się z realnych odcinków.
       const runSegments = segmentRefs
-        .map((segmentRef) => branches.find((branch) => branch.ref_id === segmentRef))
-        .filter((branch): branch is Branch => Boolean(branch));
+        .flatMap((segmentRef) => expandSegmentRefToBranches(segmentRef, branches));
       const firstSegment = runSegments[0] ?? branches[0] ?? null;
       const segmentKind = firstSegment ? classifySegmentKind(firstSegment) : 'cable_sn';
       const runStations = [...lineRun.stations]
@@ -4319,47 +4666,44 @@ function buildCableRuns(
       const segmentLabels = extraLabels.length > 0
         ? [...baseSegmentLabels, ...extraLabels]
         : baseSegmentLabels;
-      const segmentPaths = buildRunSegmentPaths(
-        runSegments,
-        runStations,
-        startX,
-        y,
-        terminalX,
-        sourcePoint,
-      );
 
       const portStatus = detectMissingEndpointPorts(runSegments);
-      // K30-10: snake routing pathPoints przy multi-row layout. Jeśli stations
-      // są w ≥2 rows (detected by unique Y values), buduj zigzag path z U-turns.
-      const uniqueYs = [...new Set(runStations.map((s) => s.y - STATION_RUN_TRUNK_OFFSET_Y))].sort((a, b) => a - b);
-      let snakePoints: { x: number; y: number }[];
-      if (uniqueYs.length > 1) {
-        // Stacje pogrupowane per row Y. Per row: cable goes left↔right zgodnie z
-        // station X positions (snake reverses kierunek w parzystych rzędach).
-        const firstPoint = sourcePoint ?? { x: startX, y: GPZ_FIELD_CABLE_HEAD_Y };
-        snakePoints = [firstPoint, { x: startX, y: uniqueYs[0] }];
-        uniqueYs.forEach((rowY, rowIdx) => {
-          const stationsInRow = runStations.filter((s) => (s.y - STATION_RUN_TRUNK_OFFSET_Y) === rowY);
-          if (stationsInRow.length === 0) return;
-          const xs = stationsInRow.map((s) => s.x);
-          const minX = Math.min(...xs);
-          const maxX = Math.max(...xs);
-          // Cable enters row z lewej (rowIdx parzysty) lub prawej (rowIdx nieparzysty) — snake direction
-          const enterX = rowIdx % 2 === 0 ? minX : maxX;
-          const exitX = rowIdx % 2 === 0 ? maxX : minX;
-          // jeśli to nie pierwszy row, dodaj vertical jump z poprzedniej Y
-          if (rowIdx > 0) snakePoints.push({ x: enterX, y: rowY });
-          else snakePoints[snakePoints.length - 1] = { x: enterX, y: rowY };
-          // horizontal traverse
-          snakePoints.push({ x: exitX, y: rowY });
-        });
-      } else {
-        snakePoints = [
-          sourcePoint ?? { x: startX, y: GPZ_FIELD_CABLE_HEAD_Y },
-          { x: startX, y },
-          { x: terminalX, y },
-        ];
-      }
+      // R2 — router korytarzowy: kotwice z RZECZYWISTYCH końcówek odcinków,
+      // kolejność elektryczna, trasowanie ortogonalne (zero skosów). Gdy nie
+      // da się zbudować łańcucha — uczciwy fallback do geometrii slotowej.
+      // R2: początek magistrali w RZECZYWISTYM węźle GPZ (z układu drzewa),
+      // nie w slotowej głowicy — magistrala musi WYCHODZIĆ z GPZ na rysunku.
+      const firstSegmentOwner = runSegments.length > 0
+        ? (resolveFieldStationRefForBus(fieldStationByRef, runSegments[0].from_bus_ref)
+          ?? ownerStationRefFromFieldRef(runSegments[0].from_bus_ref ?? ''))
+        : null;
+      const gpzOrigin = firstSegmentOwner ? trunkOriginByOwner?.get(firstSegmentOwner) : undefined;
+      // Ciąg resztkowy (korytarz z odcinkami spoza jawnych line_runs) może
+      // zaczynać się w stacji sieci — wtedy początek toru = ta stacja, nie
+      // slotowa głowica GPZ (zero „wiszących" początków).
+      const firstSegmentStation = firstSegmentOwner ? stationByRef.get(firstSegmentOwner) : undefined;
+      const stationOrigin = firstSegmentStation
+        ? { x: firstSegmentStation.x, y: firstSegmentStation.y }
+        : undefined;
+      const origin = sourcePoint ?? gpzOrigin ?? stationOrigin ?? { x: startX, y: GPZ_FIELD_CABLE_HEAD_Y };
+      const corridorGeometry = buildCorridorRunGeometry(
+        runSegments,
+        runStations,
+        stationByRef,
+        fieldStationByRef,
+        origin,
+      );
+      const segmentPaths = corridorGeometry
+        ? corridorGeometry.segmentPaths
+        : buildRunSegmentPaths(runSegments, runStations, startX, y, terminalX, sourcePoint);
+      const runPathPoints = corridorGeometry
+        ? corridorGeometry.pathPoints
+        : [origin, { x: startX, y }, { x: terminalX, y }];
+      const effectiveSegmentLabels = corridorGeometry
+        ? (extraLabels.length > 0
+          ? [...corridorGeometry.segmentLabels, ...extraLabels]
+          : corridorGeometry.segmentLabels)
+        : segmentLabels;
       runs.push({
         id: lineRun.id,
         runKind: lineRun.run_kind,
@@ -4367,11 +4711,11 @@ function buildCableRuns(
         segmentRefs: runSegments.map((segment) => segment.ref_id),
         segmentPaths,
         label: buildCableRunLabel(runSegments.length > 0 ? runSegments : firstSegment ? [firstSegment] : [], segmentKind),
-        segmentLabels,
+        segmentLabels: effectiveSegmentLabels,
         pendingEndpoint: !hasResolvedRunEndpoint(snapshot, runSegments, runStations),
         missingEndpointPort: portStatus.missing,
         missingPortSegmentRefs: portStatus.missingSegmentRefs,
-        pathPoints: snakePoints,
+        pathPoints: runPathPoints,
         voltageKv,
       });
     });

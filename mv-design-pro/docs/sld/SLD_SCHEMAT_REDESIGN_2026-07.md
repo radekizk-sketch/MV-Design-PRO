@@ -160,3 +160,49 @@ jest treścią ruchową, nie dekoracją; zostaje.
 B1 stacja-zoom → B2 GPZ → B3 OZE → B4 widok sieci L0/L1. Jedna iteracja =
 jeden widok = jeden commit; po każdej: render → samo-audyt 10 rolami →
 bramki (type-check, lint, vitest sld/v2, guardy codenames/forbidden/docs).
+
+---
+
+## 6. PRZEBUDOWA UKŁADU (R, 2026-07) — od „klocków rozstawionych" do SCHEMATU IDEOWEGO
+
+Po przebudowie języka rysunku (§1–5) właściciel odrzucił układ: „schemat nie
+przedstawia rzeczywistej sieci, jest nielogiczny z pkt widzenia inżyniera".
+Diagnoza: problem nie był w symbolach, lecz w WARSTWIE UKŁADU (kolejność stacji,
+prowadzenie magistrali, trasowanie). Przebudowa globalna:
+
+### 6.1. Topologia fixtury (fakt, nie założenie)
+Ekstrakcja z ENM: sieć = **ość rybia (fishbone)** — jedna magistrala z GPZ:
+`GPZ → T1 → T8 → T11 → T2 → T3 → T9 → T4 → T5 → T10 → T12 → T6 → T7`
+(12 stacji, kolejność ELEKTRYCZNA z `line_run` main_trunk), a z każdej stacji
+magistralnej jeden łańcuch odczepowy 3–4 stacji (`L{n}-1..4`). Jeden punkt NO
+(łącznik sekcyjny) na odczepie L6.
+
+### 6.2. Oś magistrali z DEKLARACJI modelu (nie heurystyka BFS)
+`topologyInputReader` wyprowadza `declaredTrunkStationIds` z `line_runs`
+main_trunk (fallback: korytarz radialny), rozwijając odcinki cięte łącznikami
+(`_L`/`_R` rekurencyjnie). `topologyTree` używa TEJ osi zamiast „najdłuższej
+ścieżki od korzenia" i przepina drzewo wzdłuż niej (heurystyka pozostaje tylko
+jako fallback dla modeli bez deklaracji). Kontynuacja po realnych odcinkach SN
+niepokrytych żadnym ciągiem — tylko jednoznaczna (bez zgadywania).
+
+### 6.3. Paradygmat układu: GRZEBIEŃ W DÓŁ (decyzja właściciela)
+Wybrany spośród trzech (grzebień w dół / wiersze magistral / naprzemiennie):
+**magistrala = oś pozioma u góry, WSZYSTKIE odgałęzienia schodzą pionowo w dół**,
+równolegle, każde w kolumnie swojej stacji magistralnej. `layoutEngine`
+`positionStations`: laterale zawsze `dir=+1` (koniec naprzemienności góra/dół —
+to była konwencja „zbalansowanego drzewa", nie schematu ideowego OSD).
+
+### 6.4. Router korytarzowy (trasowanie ortogonalne z realnych końcówek)
+`buildCorridorRunGeometry` w adapterze: kotwice = RZECZYWISTE końcówki każdego
+odcinka (`from_bus`/`to_bus` → stacja albo zacisk pośredni) w kolejności
+elektrycznej; zaciski pośrednie interpolowane na rzędzie; każdy przeskok
+ortogonalny (poziom/pion, bez skosów przez stacje); ogon ciągu przedłuża się
+wzdłuż ORIENTACJI ostatniego przęsła (magistrala → w prawo, odczep → w dół).
+Etykiety odcinków (typ/przekrój/długość) leżą na własnym torze. Fallback do
+geometrii slotowej gdy łańcucha nie da się zbudować (uczciwy, nie atrapa).
+
+### 6.5. Determinizm i dane
+Zero fabrykacji: pozycje z układu drzewa (jedna prawda geometrii), wartości
+z modelu/ResultSet. Punkt NO rozcina odczep — stacja za nim wygaszona
+(READ z solvera, nie liczone w SLD). 2721 testów (sld/v2 + engine + core)
+zielonych; kontrakty zaktualizowane z zachowaniem intencji.

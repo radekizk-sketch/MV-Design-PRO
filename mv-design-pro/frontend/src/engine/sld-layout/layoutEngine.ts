@@ -197,9 +197,12 @@ function positionStations(
 
   // Trunk: kolejne kolumny od korzenia. Każda stacja-trunk rezerwuje swój zakres +
   // zakresy lateralne. Determinizm: trunkRefs w kolejności od korzenia.
-  // Kierunek lateralu naprzemiennie GLOBALNIE (nad/pod osią) → zbalansowane drzewo (§2).
+  //
+  // R2b (2026-07, wybór właściciela: „grzebień w dół"): magistrala = oś pozioma
+  // u GÓRY (poziom 0), a WSZYSTKIE odgałęzienia schodzą pionowo W DÓŁ (dir=+1),
+  // równolegle, każde w kolumnie swojej stacji magistralnej. Bez naprzemienności
+  // góra/dół — to konwencja schematu ideowego OSD (nie zbalansowane drzewo).
   let trunkCol = 0;
-  let lateralParity = 0;
   tree.trunkRefs.forEach((ref) => {
     const laterals = stationChildren(ref).filter((c) => !tree.nodes.get(c)?.onTrunk);
     // szerokość zakresu tej stacji = max(1, suma szerokości lateralnych)
@@ -207,12 +210,10 @@ function positionStations(
     const slotWidth = Math.max(1, lateralsWidth);
     // stacja trunk wyśrodkowana nad swoim slotem
     placed.push({ ref, col: trunkCol + (slotWidth - 1) / 2, level: 0 });
-    // laterale: rozłączne podzakresy w obrębie slotu; kierunek naprzemiennie globalnie
+    // laterale: rozłączne podzakresy w obrębie slotu; ZAWSZE w dół (grzebień).
     let cursor = trunkCol;
     laterals.forEach((latRef) => {
-      const dir: 1 | -1 = lateralParity % 2 === 0 ? 1 : -1;
-      lateralParity += 1;
-      placeLateral(latRef, cursor, dir, dir);
+      placeLateral(latRef, cursor, 1, 1);
       cursor += computeLateralWidth(latRef);
     });
     trunkCol += slotWidth;
