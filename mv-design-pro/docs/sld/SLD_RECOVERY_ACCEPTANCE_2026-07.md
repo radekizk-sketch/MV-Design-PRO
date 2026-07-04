@@ -35,7 +35,7 @@ RC10 render-level topology test gaps.
 | 13 | Field id ≠ device id | PARTIAL | ref_ids unique (audit E10); display-name disambiguation not fully enforced |
 | 14 | Switch state from geometry | PRE-EXISTING | structuralSvgInvariants/apparatusVisualState/IEC symbol tests |
 | 15 | Colour is secondary | PRE-EXISTING | state geometry present alongside colour |
-| 16 | Every edge terminal-to-terminal | SPECIFIED | render path is coordinate-anchored (audit E03); terminal layer exists unused; execplan step 5. NOT done |
+| 16 | Every edge terminal-to-terminal | PROVEN (corridor path) / PARTIAL (fallbacks) | each rendered cable segment now carries `fromTerminal`/`toTerminal` = ENM branch from_bus/to_bus; recovery §16 test asserts identity == ENM branch endpoints for >50 segments. Slot fallback routes (no ENM branch) not yet covered; full slot-router retirement deferred |
 | 17 | No dangling connections | PRE-EXISTING (engine) | portAnchoredGeometry drops portless edges; render path not yet on it |
 | 18 | No accidental diagonals | PROVEN (R2b) | corridor router orthogonal; prior session |
 | 19 | No visual nodes without semantics | PARTIAL | junction dots exist; formal junction-vs-crossing rule = spec |

@@ -311,6 +311,13 @@ interface CableRunRendererPropsLight {
       insulation: 'XLPE' | 'EPR' | 'PVC' | 'PAPER' | 'OVERHEAD' | 'UNKNOWN';
       conductor: 'Al' | 'Cu' | 'AlSt' | 'UNKNOWN';
     };
+    /** RECOVERY step 5 (connection_contract / §16): jawna TOŻSAMOŚĆ terminali
+     *  tego odcinka wprost z ENM — każda renderowana krawędź jest
+     *  terminal-to-terminal (busRef = szyna ENM, ownerRef = stacja właściciel).
+     *  Geometria końcówek pochodzi z pozycji tych terminali, nie z gołych
+     *  współrzędnych slotowych. */
+    fromTerminal?: SegmentTerminalRef;
+    toTerminal?: SegmentTerminalRef;
   }>;
   label?: string;
   segmentLabels?: ReadonlyArray<{
@@ -366,6 +373,15 @@ interface CableRunRendererPropsLight {
 }
 
 type RunPoint = { x: number; y: number };
+
+/** RECOVERY step 5: named terminal of a rendered cable segment (from ENM). */
+interface SegmentTerminalRef {
+  /** ENM bus ref of this endpoint (the electrical node). */
+  readonly busRef: string | null;
+  /** Owning station ref if the bus resolves to a station; null for a GPZ/pole
+   *  bus or an inline splice terminal. */
+  readonly ownerRef: string | null;
+}
 
 function isCableLikeBranch(b: Branch): boolean {
   return b.type === 'cable' || b.type === 'line_overhead';
@@ -4536,7 +4552,16 @@ function buildCorridorRunGeometry(
     segmentRef: string;
     pathPoints: RunPoint[];
     variant?: { insulation: 'XLPE' | 'EPR' | 'PVC' | 'PAPER' | 'OVERHEAD' | 'UNKNOWN'; conductor: 'Al' | 'Cu' | 'AlSt' | 'UNKNOWN' };
+    fromTerminal?: SegmentTerminalRef;
+    toTerminal?: SegmentTerminalRef;
   }> = [];
+  const terminalOf = (busRef: string | null | undefined): SegmentTerminalRef => ({
+    busRef: busRef ?? null,
+    ownerRef: busRef
+      ? (resolveFieldStationRefForBus(fieldStationByRef, busRef)
+        ?? ownerStationRefFromFieldRef(busRef))
+      : null,
+  });
   const pathPoints: RunPoint[] = [];
   const pushPoint = (p: RunPoint): void => {
     const last = pathPoints[pathPoints.length - 1];
@@ -4557,6 +4582,10 @@ function buildCorridorRunGeometry(
       segmentRef: segment.ref_id,
       pathPoints: hop,
       variant: inferCableVariant(segment),
+      // Terminal-to-terminal identity straight from the ENM branch endpoints —
+      // this rendered edge provably connects from_bus → to_bus (§16, E03).
+      fromTerminal: terminalOf(segment.from_bus_ref),
+      toTerminal: terminalOf(segment.to_bus_ref),
     });
     hop.forEach(pushPoint);
   });

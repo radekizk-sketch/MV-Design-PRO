@@ -105,4 +105,27 @@ describe('SLD recovery — electrical/semantic oracles', () => {
       expect(passesThrough, `trunk must pass through ${st.id} SN bus at y=${busY}`).toBe(true);
     }
   });
+
+  // §16 / connection_contract (recovery step 5): every rendered cable segment is
+  // TERMINAL-TO-TERMINAL — its endpoints are the ENM branch's from_bus/to_bus,
+  // not bare coordinates. Proven by matching each segmentPath's fromTerminal/
+  // toTerminal busRef to the ENM branch it renders.
+  it('§16: every rendered cable segment carries ENM terminal identity (from_bus→to_bus)', () => {
+    const branchByRef = new Map(enm.branches.map((b) => [b.ref_id, b]));
+    let checked = 0;
+    for (const run of data.cableRuns) {
+      for (const seg of run.segmentPaths ?? []) {
+        const branch = branchByRef.get(seg.segmentRef);
+        if (!branch) continue; // fallback/synthetic segments have no ENM branch
+        checked += 1;
+        expect(seg.fromTerminal, `segment ${seg.segmentRef} missing fromTerminal`).toBeTruthy();
+        expect(seg.toTerminal, `segment ${seg.segmentRef} missing toTerminal`).toBeTruthy();
+        // Identity must equal the ENM branch endpoints — no coordinate-only edge.
+        expect(seg.fromTerminal?.busRef).toBe(branch.from_bus_ref);
+        expect(seg.toTerminal?.busRef).toBe(branch.to_bus_ref);
+      }
+    }
+    // The substrate's corridor-routed runs must actually exercise this path.
+    expect(checked).toBeGreaterThan(50);
+  });
 });
