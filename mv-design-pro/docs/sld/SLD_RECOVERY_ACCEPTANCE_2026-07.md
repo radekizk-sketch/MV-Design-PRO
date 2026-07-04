@@ -25,7 +25,7 @@ RC10 render-level topology test gaps.
 | 3 | One binding electrical semantics | PROVEN | SLD_ELECTRICAL_SEMANTICS.md truth table + traversal |
 | 4 | GPZ one unambiguous path to SN | PARTIAL | traversal proven single-source; render still shows 110/TR1 block + trunk without explicit spine continuity (SPECIFIED: execplan step—GPZ spine) |
 | 5 | Simplified source ≠ second source | PARTIAL | ENM has 1 source (recovery E01 test PROVEN); render coherence of the 15 kV equivalent vs 110/TR1 not yet unified |
-| 6 | Pass-through station no bypass | SPECIFIED | E02 root cause proven; fix = execplan step 4; `it.skip` oracle in recovery test. NOT done |
+| 6 | Pass-through station no bypass | PROVEN | station SN bus now on trunk axis (WE→bus→WY), transformer drops below; recovery E02/E03 test asserts trunk passes through every trunk-station SN bus; render `sld_full_current_path_L1.png` |
 | 7 | WE/WY/ODG explicit meaning+terminals | PRE-EXISTING (enum) / PARTIAL | `FIELD_ROLE` distinct (audit E04); ODG ENM ingest is a latent gap |
 | 8 | Transformer field explicit chain | PRE-EXISTING | station TR bay renders DS→fuse→TR→nN (MiniBlockRmuRenderer); covered by station tests |
 | 9 | PV/BESS/FW unambiguous PCC | PARTIAL | E07 recovery test PROVEN DER anchored to station (PCC=nN bus); explicit PCC marker/label = execplan step 8 remainder |
