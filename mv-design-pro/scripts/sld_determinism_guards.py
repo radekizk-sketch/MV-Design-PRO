@@ -5,7 +5,7 @@ Po pełnym wygaszeniu starego pipeline (Sugiyama + A* + ELK + V1 layoutPipeline)
 ten guard sprawdza, że nowy konstruktywny builder (`ui/sld/v2/`) ma:
 
 1. Wymagany szkielet katalogowy (theme/geometry/builder/viewport/lod/canvas/renderer/command/core/domain).
-2. Testy v2 są obecne (HierarchicalLayout, ViewportController, LodPolicy, renderers, visualFixtures).
+2. Testy v2 są obecne (layoutEngine.substrate, ViewportController, LodPolicy, renderers, portAnchoredGeometry.substrate).
 3. Brak importu wygaszonych modułów (Sugiyama, A*, ELK, sldCanonicalStyle, IndustrialAesthetics, layoutPipeline V1, SLDView).
 4. Brak importu wygaszonego pakietu `elkjs` w package.json.
 5. Brak fabrykacji ID/czasu w builder/ (crypto.randomUUID/Date.now/Math.random).
@@ -41,11 +41,15 @@ REQUIRED_V2_DIRS = [
 ]
 
 REQUIRED_V2_TESTS = [
-    "ui/sld/v2/__tests__/HierarchicalLayout.test.ts",
+    # Live topological layout engine determinism (dawny martwy HierarchicalLayout
+    # usunięty w konsolidacji 2026-07 — teraz substrate testy żywego silnika).
+    "ui/sld/v2/geometry/__tests__/layoutEngine.substrate.test.ts",
     "ui/sld/v2/__tests__/ViewportController.test.ts",
     "ui/sld/v2/__tests__/LodPolicy.test.ts",
     "ui/sld/v2/__tests__/renderers.test.tsx",
-    "ui/sld/v2/__tests__/visualFixtures.test.ts",
+    # Live render-path geometry determinism (dawny visualFixtures na martwym
+    # silniku usunięty — teraz port-anchored substrate żywej ścieżki renderu).
+    "ui/sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts",
     "ui/sld/v2/command/__tests__/SldCommandService.test.ts",
     "ui/sld/v2/core/__tests__/ports.test.ts",
 ]

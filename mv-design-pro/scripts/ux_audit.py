@@ -143,10 +143,14 @@ def _semantic_banner_wired() -> bool:
 
 
 def _spine_error_coloring() -> bool:
-    """SpineRenderer koloruje issue (real-time error na SLD)."""
-    sr = FE / "ui/sld/v2/renderer/SpineRenderer.tsx"
+    """Żywy renderer stacji koloruje issue/alarm (real-time error na SLD).
+
+    (Dawny SpineRenderer usunięto w konsolidacji 2026-07 — był martwy; issue/alarm
+    coloring żywej ścieżki renderu jest w StationOnRunRenderer.)
+    """
+    sr = FE / "ui/sld/v2/renderer/StationOnRunRenderer.tsx"
     text = _read(sr)
-    return text != "" and ("issue" in text.lower() or "error" in text.lower() or "semantic" in text.lower())
+    return text != "" and ("issue" in text.lower() or "alarm" in text.lower() or "severity" in text.lower())
 
 
 def audit_stage(stage: Stage) -> StageResult:
@@ -226,10 +230,10 @@ def audit_stage(stage: Stage) -> StageResult:
         "operationHistory" if c8 else "brak historii operacji",
     ))
 
-    # C9 — real-time error na SLD (SpineRenderer error coloring)
+    # C9 — real-time error na SLD (StationOnRunRenderer issue/alarm coloring)
     res.criteria.append(CriterionResult(
         9, "error na SLD", _spine_error_coloring(),
-        "SpineRenderer issue-aware" if _spine_error_coloring() else "SLD nie pokazuje issue",
+        "StationOnRunRenderer issue-aware" if _spine_error_coloring() else "SLD nie pokazuje issue",
     ))
 
     # C10 — brak raw ID/hash w WIDOCZNYM tekście (delegowane do no_raw_ids_in_ui_guard).

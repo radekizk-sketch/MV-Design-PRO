@@ -25,12 +25,12 @@ CHECKS: tuple[tuple[Path, tuple[str, ...]], ...] = (
             "data-missing-terminals",
         ),
     ),
+    # (readabilityMetrics.test.ts usunięty w konsolidacji 2026-07 — testował
+    #  martwy CorridorLayout; anti-overlap żywej ścieżki pokrywa LabelDeclutter.)
     (
-        REPO_ROOT / "frontend/src/ui/sld/v2/__tests__/readabilityMetrics.test.ts",
+        REPO_ROOT / "frontend/src/ui/sld/v2/canvas/__tests__/LabelDeclutter.test.ts",
         (
-            "30 stacji",
-            "network_30",
-            "Critical object overlap = 0",
+            "declutter",
         ),
     ),
     (

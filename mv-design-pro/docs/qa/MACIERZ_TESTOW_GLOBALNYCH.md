@@ -29,9 +29,10 @@ Frontend katalog-first i workflow:
 - `frontend/src/ui/network-build/__tests__/catalogFirstRules.test.ts`
 - `frontend/src/ui/network-build/__tests__/workflowIntegration.test.ts`
 
-Frontend SLD v2 (po wygaszeniu starego SLD — PR-5c):
-- `frontend/src/ui/sld/v2/__tests__/HierarchicalLayout.test.ts`
-- `frontend/src/ui/sld/v2/__tests__/visualFixtures.test.ts`
+Frontend SLD v2 (po wygaszeniu starego SLD — PR-5c; konsolidacja martwego
+silnika layoutu builder/{Hierarchical,Corridor,...} — 2026-07):
+- `frontend/src/ui/sld/v2/geometry/__tests__/layoutEngine.substrate.test.ts`
+- `frontend/src/ui/sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts`
 - `frontend/src/ui/sld/v2/__tests__/renderers.test.tsx`
 - `frontend/src/ui/sld/v2/__tests__/ViewportController.test.ts`
 - `frontend/src/ui/sld/v2/__tests__/LodPolicy.test.ts`

@@ -1,6 +1,19 @@
 /**
  * GpzCanonicalRenderer — Phase R2 Operator-Grade Rebuild (clean-room).
  *
+ * STATUS (konsolidacja 2026-07): NIE jest to drugi *aktywny* renderer. W aplikacji
+ * GPZ renderuje `GpzSwitchgearRenderer` (przez `mapCanonicalToSwitchgearProps`).
+ * Ten moduł pełni dwie żywe role:
+ *   (a) `GpzCanonicalRendererProps` + typy `CanonicalGpz*` — KANONICZNY KONTRAKT
+ *       propsów GPZ, konsumowany przez adaptery ENM i SldWorkspaceContainer;
+ *   (b) komponent `GpzCanonicalRenderer` — REFERENCYJNY ORACLE SPEC renderowany
+ *       wyłącznie w testach (noDirectTie / busbarTopology / visualParityChecklist),
+ *       które kotwiczą inwarianty GPZ (brak direct-tie, topologia szyn single/
+ *       double/ring, klucze parity) dla żywego `GpzSwitchgearRenderer`.
+ * Usunięcie komponentu bez migracji tych inwariantów na żywy renderer skasowałoby
+ * JEDYNE ich pokrycie — dlatego świadomie zachowany jako oracle (patrz
+ * REJESTR_KONFLIKTOW / execplan Step 6).
+ *
  * Pełen renderer GPZ klasy SCADA OSD (Mikronika MIKRA II / Sygnity / PSE-Energa).
  *
  * NIE MODYFIKUJE legacy GpzRenderer.tsx ani GpzSwitchgearRenderer.tsx.

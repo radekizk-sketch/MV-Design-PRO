@@ -46,9 +46,27 @@ NOT claimed done.
 - files: `sldGeometryFromLayout.ts`, `enmToSldAdapter.ts` (routing), canvas.
 - risk: large; touches ~2700 tests. Not executed this session.
 
-## Step 6 [N] — Retire dead/duplicate paths
-- `renderer/GpzCanonicalRenderer.tsx` (dead), `builder/{HierarchicalLayout,CorridorLayout,LayoutStrategyDispatch}` (dormant), legacy `GpzRenderer` fallback.
-- Requires migrating tests that render them. Not executed this session.
+## Step 6 [DONE] — Retire dead/duplicate paths (consolidation)
+- Reachability scan (import-statement precision) found a dead cluster LARGER than
+  the audit named: the whole spine/corridor/hierarchical layout subsystem.
+- DELETED (0 prod importers, verified): `ui/sld/TrunkSpineRenderer.tsx`,
+  `renderer/SpineRenderer.tsx`, `builder/{SpinePolicy,CorridorLayout,
+  HierarchicalLayout,LayoutStrategyDispatch,LayoutComplexityScore,
+  splitLinePreview}.ts` + their pure-dead tests; `scripts/sld_render_artifacts.ts`.
+- CI/guards rewired off the dead engine onto the LIVE topological substrate tests
+  (`sld-determinism.yml`, `sld_determinism_guards.py`, `layout_readability_guard.py`,
+  `label_overlap_guard.py`, `ux_audit.py`, `MACIERZ_TESTOW_GLOBALNYCH.md`).
+- `GpzCanonicalRenderer` NOT deleted: it is the sole coverage of GPZ invariants
+  (no-direct-tie / busbar-topology / parity) that the live `GpzSwitchgearRenderer`
+  does not independently test. Retained + documented as TEST-ONLY spec oracle
+  (its `*Props` types remain the live canonical contract). Deleting it would drop
+  that safety net — contradicts "test is proof".
+- `GpzRenderer` fallback NOT deleted: it is a LIVE graceful-degradation branch,
+  not dead code.
+- Remaining (next increment): migrate the GPZ invariants onto the live renderer,
+  then the oracle can go; §16 slot-fallback terminal-anchoring; canonical-only
+  (drop `GpzRenderer` fallback) with a guaranteed-canonical invariant.
+- Verify: tsc clean; `vitest src/ui/sld src/engine` 156 files / 2733 green; guards green.
 
 ## Step 7 [DONE] — Safe viewport + mobile camera (E15/E16)
 - goal: `fitToView` operates on a SAFE rectangle (element minus header/panels/

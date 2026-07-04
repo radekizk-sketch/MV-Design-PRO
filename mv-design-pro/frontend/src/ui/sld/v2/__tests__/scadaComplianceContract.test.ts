@@ -119,14 +119,17 @@ describe('SCADA Compliance Contract — tor mocy + symbole + porty', () => {
   });
 
   describe('Determinizm renderu — FNV-1a hash + golden snapshots', () => {
-    it('Visual fixtures test istnieje (regression baseline)', () => {
-      expect(fileExists('ui/sld/v2/__tests__/visualFixtures.test.ts')).toBe(true);
+    it('Layout substrate regression baseline istnieje (żywy silnik topologiczny)', () => {
+      // Poprzedni baseline (visualFixtures na martwym HierarchicalLayout) usunięto
+      // w konsolidacji 2026-07; regresję determinizmu pokrywa żywy substrate test.
+      expect(fileExists('ui/sld/v2/geometry/__tests__/layoutEngine.substrate.test.ts')).toBe(true);
     });
 
     it('Determinism guard w skryptach repo', () => {
       // sld_determinism_guards.py — sprawdzane oddzielnie przez CI guard.
-      // Tutaj tylko upewniamy, że SLD V2 ma stable test foundation.
-      expect(fileExists('ui/sld/v2/builder/HierarchicalLayout.ts')).toBe(true);
+      // Tutaj tylko upewniamy, że SLD V2 ma stable test foundation (żywa geometria
+      // port-anchored, nie martwy builder/ HierarchicalLayout).
+      expect(fileExists('ui/sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts')).toBe(true);
     });
   });
 
@@ -136,7 +139,9 @@ describe('SCADA Compliance Contract — tor mocy + symbole + porty', () => {
     });
 
     it('Readability metrics test foundation', () => {
-      expect(fileExists('ui/sld/v2/__tests__/readabilityMetrics.test.ts')).toBe(true);
+      // Poprzedni readabilityMetrics (na martwym CorridorLayout) usunięto w
+      // konsolidacji 2026-07; anti-collision pokrywa żywy LabelDeclutter test.
+      expect(fileExists('ui/sld/v2/canvas/__tests__/LabelDeclutter.test.ts')).toBe(true);
     });
   });
 

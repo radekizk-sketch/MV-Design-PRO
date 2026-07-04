@@ -21,7 +21,6 @@ import * as Tokens from '../theme/tokens';
 import * as Viewport from '../viewport/ViewportController';
 import * as Adapter from '../canvas/enmToSldAdapter';
 import * as Command from '../command/SldCommandService';
-import * as Hierarchical from '../builder/HierarchicalLayout';
 import * as BuildSeq from '../builder/BuildSequence';
 
 describe('SLD V2 build gate — public API surface', () => {
@@ -93,10 +92,6 @@ describe('SLD V2 build gate — public API surface', () => {
     expect(typeof Command.toastBus.subscribe).toBe('function');
     expect(Command.SLD_MENU_REGISTRY).toBeDefined();
     expect(typeof Command.getMenuActions).toBe('function');
-  });
-
-  it('HierarchicalLayout eksportuje computeLayout', () => {
-    expect(typeof Hierarchical.computeLayout).toBe('function');
   });
 
   it('BuildSequence publiczne API komend', () => {

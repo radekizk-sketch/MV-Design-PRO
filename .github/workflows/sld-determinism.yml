@@ -38,9 +38,9 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npm ci
 
-      - name: Run HierarchicalLayout determinism tests (PR-5)
+      - name: Run layout engine substrate determinism tests (live topological engine)
         working-directory: mv-design-pro/frontend
-        run: npx vitest run --no-file-parallelism src/ui/sld/v2/__tests__/HierarchicalLayout.test.ts --reporter=verbose
+        run: npx vitest run --no-file-parallelism src/ui/sld/v2/geometry/__tests__/layoutEngine.substrate.test.ts --reporter=verbose
 
       - name: Run ViewportController contract tests
         working-directory: mv-design-pro/frontend
@@ -54,9 +54,9 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npx vitest run --no-file-parallelism src/ui/sld/v2/__tests__/renderers.test.tsx --reporter=verbose
 
-      - name: Run visual fixtures tests (15 fixtures × 4 LOD)
+      - name: Run port-anchored geometry substrate tests (live render path)
         working-directory: mv-design-pro/frontend
-        run: npx vitest run --no-file-parallelism src/ui/sld/v2/__tests__/visualFixtures.test.ts --reporter=verbose
+        run: npx vitest run --no-file-parallelism src/ui/sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts --reporter=verbose
 
       - name: Run StationInternalView tests (PR-6)
         working-directory: mv-design-pro/frontend
@@ -78,36 +78,9 @@ jobs:
           path: mv-design-pro/frontend/test-results/
           retention-days: 30
 
-  sld-render-artifacts:
-    name: SLD Render Artifacts (v2)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: mv-design-pro/frontend/package-lock.json
-
-      - name: Install dependencies
-        working-directory: mv-design-pro/frontend
-        run: npm ci
-
-      - name: Install tsx
-        working-directory: mv-design-pro
-        run: npm install -g tsx
-
-      - name: Generate SLD v2 render artifacts (3 golden networks)
-        working-directory: mv-design-pro
-        run: npx tsx scripts/sld_render_artifacts.ts
-
-      - name: Upload SLD render artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: sld-render-artifacts
-          path: mv-design-pro/artifacts/
-          retention-days: 30
+  # NOTE (konsolidacja 2026-07): the former "SLD Render Artifacts" job invoked
+  # scripts/sld_render_artifacts.ts, which rendered the *dead* BuildSequence →
+  # HierarchicalLayout engine — never the live topological render path. It was
+  # retired together with that dead engine. Live determinism is now guarded by
+  # the layoutEngine.substrate + portAnchoredGeometry.substrate vitest steps in
+  # the sld-contract-tests job above.
