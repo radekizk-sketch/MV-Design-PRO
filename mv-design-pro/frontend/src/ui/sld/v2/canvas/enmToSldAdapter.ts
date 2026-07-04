@@ -4392,6 +4392,25 @@ function corridorHopPath(from: CorridorAnchor, to: CorridorAnchor): RunPoint[] {
 }
 
 /**
+ * Tożsamość terminala (busRef + owner) z końcówki gałęzi ENM. WSPÓLNA dla toru
+ * korytarzowego i fallbacku slotowego — każdy renderowany odcinek jest wtedy
+ * terminal-to-terminal (from_bus → to_bus), bez krawędzi „tylko-współrzędne"
+ * (§16, E03).
+ */
+function segmentTerminalOf(
+  busRef: string | null | undefined,
+  fieldStationByRef: ReadonlyMap<string, Substation>,
+): SegmentTerminalRef {
+  return {
+    busRef: busRef ?? null,
+    ownerRef: busRef
+      ? (resolveFieldStationRefForBus(fieldStationByRef, busRef)
+        ?? ownerStationRefFromFieldRef(busRef))
+      : null,
+  };
+}
+
+/**
  * Zbuduj geometrię ciągu z RZECZYWISTYCH końcówek odcinków (reguły 1-4).
  * Zwraca null, gdy nie udało się zbudować łańcucha (np. brak odcinków) —
  * wtedy wołający zachowuje geometrię dotychczasową.
@@ -4555,13 +4574,8 @@ function buildCorridorRunGeometry(
     fromTerminal?: SegmentTerminalRef;
     toTerminal?: SegmentTerminalRef;
   }> = [];
-  const terminalOf = (busRef: string | null | undefined): SegmentTerminalRef => ({
-    busRef: busRef ?? null,
-    ownerRef: busRef
-      ? (resolveFieldStationRefForBus(fieldStationByRef, busRef)
-        ?? ownerStationRefFromFieldRef(busRef))
-      : null,
-  });
+  const terminalOf = (busRef: string | null | undefined): SegmentTerminalRef =>
+    segmentTerminalOf(busRef, fieldStationByRef);
   const pathPoints: RunPoint[] = [];
   const pushPoint = (p: RunPoint): void => {
     const last = pathPoints[pathPoints.length - 1];
@@ -4729,7 +4743,7 @@ function buildCableRuns(
       );
       const segmentPaths = corridorGeometry
         ? corridorGeometry.segmentPaths
-        : buildRunSegmentPaths(runSegments, runStations, startX, y, terminalX, sourcePoint);
+        : buildRunSegmentPaths(runSegments, runStations, startX, y, terminalX, sourcePoint, fieldStationByRef);
       const runPathPoints = corridorGeometry
         ? corridorGeometry.pathPoints
         : [origin, { x: startX, y }, { x: terminalX, y }];
@@ -4787,7 +4801,7 @@ function buildCableRuns(
         ? Math.max(endX + postStationSegmentCount * POST_STATION_SEGMENT_PITCH, startX + STATION_PITCH)
         : endX;
       const segmentLabels = buildRunSegmentLabels(runSegments, runStations, startX, y, terminalX);
-      const segmentPaths = buildRunSegmentPaths(runSegments, runStations, startX, y, terminalX);
+      const segmentPaths = buildRunSegmentPaths(runSegments, runStations, startX, y, terminalX, null, fieldStationByRef);
       const portStatus = detectMissingEndpointPorts(runSegments);
       const voltageKv = inferRunVoltageKv(snapshot, runSegments);
       // K30-10: snake routing dla synthesized line_runs (multi-row case).
@@ -4851,7 +4865,7 @@ function buildCableRuns(
         : pendingRunEndX(xStart, segments.length);
       const segmentKind = classifySegmentKind(segments[0]);
       const segmentLabels = buildRunSegmentLabels(segments, stationsOnRun, xStart, y, xEnd);
-      const segmentPaths = buildRunSegmentPaths(segments, stationsOnRun, xStart, y, xEnd);
+      const segmentPaths = buildRunSegmentPaths(segments, stationsOnRun, xStart, y, xEnd, null, fieldStationByRef);
 
       const portStatus = detectMissingEndpointPorts(segments);
       const voltageKv = inferRunVoltageKv(snapshot, segments);
@@ -4893,7 +4907,7 @@ function buildCableRuns(
         runKind: 'branch',
         segmentKind,
         segmentRefs: segments.map((segment) => segment.ref_id),
-        segmentPaths: buildRunSegmentPaths(segments, [], xStart, yBranch, xEnd),
+        segmentPaths: buildRunSegmentPaths(segments, [], xStart, yBranch, xEnd, null, fieldStationByRef),
         label: buildCableRunLabel(segments, segmentKind),
         segmentLabels: buildRunSegmentLabels(segments, [], xStart, yBranch, xEnd),
         missingEndpointPort: portStatus.missing,
@@ -4920,7 +4934,7 @@ function buildCableRuns(
       : pendingRunEndX(xStart, 1);
     const segmentKind = classifySegmentKind(b);
     const segmentLabels = buildRunSegmentLabels([b], stationsOnRun, xStart, y, xEnd);
-    const segmentPaths = buildRunSegmentPaths([b], stationsOnRun, xStart, y, xEnd);
+    const segmentPaths = buildRunSegmentPaths([b], stationsOnRun, xStart, y, xEnd, null, fieldStationByRef);
     const portStatus = detectMissingEndpointPorts([b]);
     const voltageKv = inferRunVoltageKv(snapshot, [b]);
     runs.push({
@@ -5069,6 +5083,7 @@ function buildRunSegmentPaths(
   y: number,
   terminalX: number,
   sourcePoint: RunPoint | null = null,
+  fieldStationByRef?: ReadonlyMap<string, Substation>,
 ): NonNullable<CableRunRendererPropsLight['segmentPaths']> {
   return segments.map((segment, index) => {
     return {
@@ -5083,6 +5098,14 @@ function buildRunSegmentPaths(
         sourcePoint,
       ),
       variant: inferCableVariant(segment),
+      // §16: tor slotowy (fallback) też jest terminal-to-terminal — końcówki
+      // z gałęzi ENM (from_bus → to_bus), identyczna tożsamość jak w korytarzu.
+      ...(fieldStationByRef
+        ? {
+            fromTerminal: segmentTerminalOf(segment.from_bus_ref, fieldStationByRef),
+            toTerminal: segmentTerminalOf(segment.to_bus_ref, fieldStationByRef),
+          }
+        : {}),
     };
   });
 }

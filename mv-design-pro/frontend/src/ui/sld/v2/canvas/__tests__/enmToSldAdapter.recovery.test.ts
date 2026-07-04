@@ -113,19 +113,69 @@ describe('SLD recovery — electrical/semantic oracles', () => {
   it('§16: every rendered cable segment carries ENM terminal identity (from_bus→to_bus)', () => {
     const branchByRef = new Map(enm.branches.map((b) => [b.ref_id, b]));
     let checked = 0;
+    let unanchored = 0; // renderowany odcinek BEZ tożsamości terminala — zakazany
     for (const run of data.cableRuns) {
       for (const seg of run.segmentPaths ?? []) {
         const branch = branchByRef.get(seg.segmentRef);
-        if (!branch) continue; // fallback/synthetic segments have no ENM branch
+        // Każdy renderowany segmentPath ma segmentRef = ref gałęzi ENM; brak
+        // fromTerminal/toTerminal = krawędź „tylko-współrzędne" (zakazana, §16).
+        if (!branch || !seg.fromTerminal || !seg.toTerminal) {
+          unanchored += 1;
+          continue;
+        }
         checked += 1;
-        expect(seg.fromTerminal, `segment ${seg.segmentRef} missing fromTerminal`).toBeTruthy();
-        expect(seg.toTerminal, `segment ${seg.segmentRef} missing toTerminal`).toBeTruthy();
         // Identity must equal the ENM branch endpoints — no coordinate-only edge.
-        expect(seg.fromTerminal?.busRef).toBe(branch.from_bus_ref);
-        expect(seg.toTerminal?.busRef).toBe(branch.to_bus_ref);
+        expect(seg.fromTerminal.busRef).toBe(branch.from_bus_ref);
+        expect(seg.toTerminal.busRef).toBe(branch.to_bus_ref);
       }
     }
     // The substrate's corridor-routed runs must actually exercise this path.
     expect(checked).toBeGreaterThan(50);
+    // COMPLETENESS: żaden renderowany odcinek nie może być bez tożsamości terminala.
+    expect(unanchored, 'każdy renderowany odcinek musi być terminal-to-terminal').toBe(0);
+  });
+
+  // §16 (fallback path): a snapshot WITHOUT line_runs skips the corridor router
+  // and renders via the slot fallback (buildRunSegmentPaths). Those segments must
+  // ALSO be terminal-anchored — proven here so the invariant holds on every path,
+  // not only the substrate's corridor-routed runs.
+  it('§16: slot-fallback segments (no line_runs) are also terminal-to-terminal', () => {
+    const bus = (id: string): Record<string, unknown> => ({
+      id, ref_id: id, name: id, voltage_kv: 15, phase_system: '3ph', tags: [], meta: {},
+    });
+    const station = (ref: string, name: string): Record<string, unknown> => ({
+      id: ref, ref_id: ref, name, tags: [], meta: {},
+      station_type: 'inline', bus_refs: [], transformer_refs: [],
+    });
+    const cable = (ref: string, from: string, to: string): Record<string, unknown> => ({
+      id: ref, ref_id: ref, name: ref, type: 'cable',
+      from_bus_ref: from, to_bus_ref: to, tags: [], meta: {},
+    });
+    const fallbackSnapshot = {
+      header: enm.header,
+      buses: [bus('bus/gpz'), bus('bus/s1'), bus('bus/s2')],
+      // Łańcuch ≥2 kabli, BEZ line_runs → syntetyczny main_trunk (slot fallback).
+      branches: [cable('cbl/1', 'bus/gpz', 'bus/s1'), cable('cbl/2', 'bus/s1', 'bus/s2')],
+      transformers: [], sources: [], loads: [], generators: [],
+      substations: [
+        { ...station('stn/gpz/station', 'GPZ'), station_type: 'gpz', bus_refs: ['bus/gpz'] },
+        station('stn/1/station', 'Stacja 1'),
+        station('stn/2/station', 'Stacja 2'),
+      ],
+      bays: [], measurements: [], protection_devices: [], protection_assignments: [],
+      line_runs: [], connection_nodes: [], cable_joints: [],
+    } as unknown as EnergyNetworkModel;
+
+    const fallbackData = buildSldDataFromSnapshot(fallbackSnapshot, null);
+    const branchByRef = new Map(fallbackSnapshot.branches.map((b) => [b.ref_id, b]));
+    const rendered = fallbackData.cableRuns.flatMap((run) => run.segmentPaths ?? []);
+    // Fallback musi faktycznie coś wyrenderować (inaczej test niczego nie dowodzi).
+    const branchSegments = rendered.filter((seg) => branchByRef.has(seg.segmentRef));
+    expect(branchSegments.length).toBeGreaterThan(0);
+    for (const seg of branchSegments) {
+      const branch = branchByRef.get(seg.segmentRef)!;
+      expect(seg.fromTerminal?.busRef, `fallback ${seg.segmentRef} fromTerminal`).toBe(branch.from_bus_ref);
+      expect(seg.toTerminal?.busRef, `fallback ${seg.segmentRef} toTerminal`).toBe(branch.to_bus_ref);
+    }
   });
 });

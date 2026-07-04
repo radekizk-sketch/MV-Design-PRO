@@ -46,6 +46,21 @@ NOT claimed done.
 - files: `sldGeometryFromLayout.ts`, `enmToSldAdapter.ts` (routing), canvas.
 - risk: large; touches ~2700 tests. Not executed this session.
 
+## Step 5c [DONE] — Terminal identity on the slot-fallback path (§16 fully closed)
+- Finding: only `buildCorridorRunGeometry` set `fromTerminal`/`toTerminal`; the
+  slot fallback `buildRunSegmentPaths` (5 call sites: corridor-null, synthesized
+  chain, legacy single/branch) emitted coordinate-only segments — latent because
+  the substrate fixture has `line_runs` and always uses the corridor path.
+- Fix: extracted shared `segmentTerminalOf(busRef, fieldStationByRef)`; corridor
+  builder + `buildRunSegmentPaths` both derive terminals from the ENM branch
+  `from_bus_ref`/`to_bus_ref`. Metadata-only — coordinates/hashes unchanged.
+- Proof: §16 recovery test strengthened to assert completeness (zero un-anchored
+  segments on the fixture) + a new test builds a no-`line_runs` snapshot that
+  forces the slot fallback and asserts its segments are terminal-anchored;
+  verified to FAIL without the fix (`expected undefined to be 'bus/gpz'`).
+- Verify: tsc clean; recovery 7/7; `vitest src/ui/sld/v2 src/engine` 138 files /
+  2409 green; sld_determinism guard 0 violations.
+
 ## Step 6 [DONE] — Retire dead/duplicate paths (consolidation)
 - Reachability scan (import-statement precision) found a dead cluster LARGER than
   the audit named: the whole spine/corridor/hierarchical layout subsystem.

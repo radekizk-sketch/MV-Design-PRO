@@ -35,7 +35,7 @@ RC10 render-level topology test gaps.
 | 13 | Field id ≠ device id | PARTIAL | ref_ids unique (audit E10); display-name disambiguation not fully enforced |
 | 14 | Switch state from geometry | PRE-EXISTING | structuralSvgInvariants/apparatusVisualState/IEC symbol tests |
 | 15 | Colour is secondary | PRE-EXISTING | state geometry present alongside colour |
-| 16 | Every edge terminal-to-terminal | PROVEN (corridor path) / PARTIAL (fallbacks) | each rendered cable segment now carries `fromTerminal`/`toTerminal` = ENM branch from_bus/to_bus; recovery §16 test asserts identity == ENM branch endpoints for >50 segments. Slot fallback routes (no ENM branch) not yet covered; full slot-router retirement deferred |
+| 16 | Every edge terminal-to-terminal | PROVEN (corridor + fallback) | every rendered cable segment carries `fromTerminal`/`toTerminal` = ENM branch from_bus/to_bus via the shared `segmentTerminalOf` helper — BOTH the corridor router AND the slot fallback (`buildRunSegmentPaths`). Recovery §16 test: (a) fixture — identity == ENM endpoints for >50 segments AND zero un-anchored (completeness); (b) no-`line_runs` snapshot forces the slot fallback and asserts its segments are terminal-anchored (proven to fail without the fix: `expected undefined to be 'bus/gpz'`) |
 | 17 | No dangling connections | PRE-EXISTING (engine) | portAnchoredGeometry drops portless edges; render path not yet on it |
 | 18 | No accidental diagonals | PROVEN (R2b) | corridor router orthogonal; prior session |
 | 19 | No visual nodes without semantics | PARTIAL | junction dots exist; formal junction-vs-crossing rule = spec |
@@ -54,7 +54,7 @@ RC10 render-level topology test gaps.
 | 32 | Mobile tests pass | PROVEN | ViewportController.test: initialCameraForNetwork at 430×932 + 390×844 (focus mode, scale ≥ floor, geometry untouched, landscape=fit, no-focus/small-bbox degrade to fit); SldCanvasV2.mobileCamera.test: real canvas at both phone sizes |
 | 33 | Large-network tests pass | PRE-EXISTING | performance.perf.test.ts |
 | 34 | Export = screen geometry | PRE-EXISTING (SVG) | serializes live canvas SVG (audit Q7) |
-| 35 | P0 = 0 | NOT MET | E02/E03/single-projection/mobile-strip P0s + §20 dead layout engine CLOSED; §16 slot-fallback routes remain |
+| 35 | P0 = 0 | NOT MET | E02/E03/§16 (both paths)/single-projection/mobile-strip + §20 dead engine + §21 renderer CLOSED; residual P0s: none identified in this pass — remaining items are P1 |
 | 36 | P1 = 0 | NOT MET | dead layout/spine cluster removed; §21 single active renderer (canonical); safe-viewport (§26) CLOSED; residue: `GpzRenderer` live fallback (§22, not dead), "RMU" jargon, DER PCC marker |
 
 ## 3. Changed files (this session)
@@ -81,7 +81,7 @@ RC10 render-level topology test gaps.
 - guards: no_codenames, forbidden_ui_terms, docs, sld_determinism, dialog_completeness, repo_hygiene, layout_readability, label_overlap, ux_audit → pass. (`ui_terminology_guard` fails on pre-existing `V126AcademicSurface.tsx`, unchanged by this work, not a CI gate.)
 
 ## 5. Honest remaining P0/P1 (NOT hidden)
-- **§16 slot-fallback** — routes with no ENM branch not yet terminal-anchored (slot router still used for synthetic segments). (execplan step 5-full) — deferred, NOT faked.
+- **§16 CLOSED** — slot fallback (`buildRunSegmentPaths`) now terminal-anchored via the shared `segmentTerminalOf` helper; proven on both the corridor path (completeness: zero un-anchored) and a fallback-triggering snapshot (guard proven to fail without the fix).
 - **§22 `GpzRenderer` fallback** — LIVE graceful-degradation branch (renders a GPZ that lacks canonical props). NOT dead code; canonical-only retirement needs a guaranteed-canonical invariant + error path — separate deliberate change.
 - **§21 CLOSED** — resolved by consolidating onto `GpzCanonicalRenderer` as the active renderer (the direction that ADDS the missing busbar-topology/no-direct-tie/parity to the live path), not by porting into the incomplete renderer. Confirmed finding: the live `GpzSwitchgearRenderer` genuinely lacked ring/double busbar + no-direct-tie + parity (audit F1-P0) — the swap fixes that in production.
 - **P1** — DER explicit PCC marker; "RMU" jargon; display-name disambiguation.
