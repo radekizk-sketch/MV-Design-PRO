@@ -101,9 +101,9 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
         ders={[]}
       />,
     );
-    /* GpzSwitchgearRenderer wystawia data-testid="sld-v2-gpz-switchgear-<id>".
-     * Legacy GpzRenderer NIE ma tego atrybutu. */
-    const canonical = container.querySelector('[data-testid="sld-v2-gpz-switchgear-gpz-1"]');
+    /* GpzCanonicalRenderer (aktywny renderer po konsolidacji 2026-07) wystawia
+     * data-testid="sld-v2-gpz-canonical-<id>". Legacy GpzRenderer NIE ma tego. */
+    const canonical = container.querySelector('[data-testid="sld-v2-gpz-canonical-gpz-1"]');
     expect(canonical).toBeTruthy();
     cleanup();
   });
@@ -168,7 +168,7 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
       />,
     );
 
-    const bay = container.querySelector('[data-testid="sld-v2-gpz-bay-bay-1"]');
+    const bay = container.querySelector('[data-testid="gpz-canonical-bay-bay-1"]');
     expect(bay).toBeTruthy();
     fireEvent.click(bay as Element);
     expect(onSelectElement).toHaveBeenCalledWith('bay-1', 'bay');
@@ -286,8 +286,8 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
         ders={[]}
       />,
     );
-    /* Co najmniej jedno wystąpienie switchgear i jedno legacy text. */
-    expect(container.querySelectorAll('[data-testid="sld-v2-gpz-switchgear-gpz-1"]').length).toBe(1);
+    /* Co najmniej jedno wystąpienie canonical i jedno legacy text. */
+    expect(container.querySelectorAll('[data-testid="sld-v2-gpz-canonical-gpz-1"]').length).toBe(1);
     expect(container.textContent).toContain('GPZ Legacy Only');
     cleanup();
   });
@@ -309,11 +309,12 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
     expect(container.textContent).not.toContain('GPZ 1');
     expect(container.textContent).not.toContain('?/15 kV');
     expect(container.textContent).not.toContain('SekcSekcja');
-    /* Renderowane są realne nazwy z propsów. GpzSwitchgearRenderer numeruje
-     * transformatory pozycyjnie (TR1/TR2), sekcje po etykiecie (S1). */
+    /* Renderowane są realne nazwy z propsów. GpzCanonicalRenderer renderuje
+     * designation transformatora WIERNIE (T1/T2 — nie relabeluje pozycyjnie jak
+     * dawny switchgear), sekcje po etykiecie (S1). */
     expect(container.textContent).toContain('GPZ-5 PST');
-    expect(container.textContent).toContain('TR1');
-    expect(container.textContent).toContain('TR2');
+    expect(container.textContent).toContain('T1');
+    expect(container.textContent).toContain('T2');
     expect(container.textContent).toContain('S1');
     cleanup();
   });
@@ -384,9 +385,7 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
       />,
     );
 
-    const bayBody = container.querySelector(
-      '[data-testid="sld-v2-gpz-bay-bay-1"] [data-testid="sld-v2-gpz-bay-body"]',
-    );
+    const bayBody = container.querySelector('[data-testid="gpz-canonical-bay-bay-1"]');
     expect(bayBody).toBeTruthy();
     fireEvent.contextMenu(bayBody as Element, { clientX: 340, clientY: 240 });
 

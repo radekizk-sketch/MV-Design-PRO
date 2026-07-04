@@ -79,9 +79,7 @@ import { DEFAULT_SNAP_STATE } from '../viewport/Snap';
 import { ConnectionRenderer } from '../renderer/ConnectionRenderer';
 import { DerRenderer, DerSourceSymbol, type DerRendererProps } from '../renderer/DerRenderer';
 import { GpzRenderer, type GpzRendererProps } from '../renderer/GpzRenderer';
-import type { GpzCanonicalRendererProps } from '../renderer/GpzCanonicalRenderer';
-import { GpzSwitchgearRenderer } from '../renderer/GpzSwitchgearRenderer';
-import { mapCanonicalToSwitchgearProps } from './mapCanonicalToSwitchgearProps';
+import { GpzCanonicalRenderer, type GpzCanonicalRendererProps } from '../renderer/GpzCanonicalRenderer';
 import { SectionRenderer, type SectionRendererProps } from '../renderer/SectionRenderer';
 import {
   StationOnRunRenderer,
@@ -1292,8 +1290,8 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                 }
               >
                 {showCanonicalGpzDetail && (
-                  <GpzSwitchgearRenderer
-                  {...mapCanonicalToSwitchgearProps(canonical)}
+                  <GpzCanonicalRenderer
+                  {...canonical}
                   onClickBay={
                     onSelectElement
                       ? (bayRef) => onSelectElement(bayRef, 'bay')

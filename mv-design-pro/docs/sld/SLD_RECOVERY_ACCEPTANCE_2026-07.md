@@ -40,7 +40,7 @@ RC10 render-level topology test gaps.
 | 18 | No accidental diagonals | PROVEN (R2b) | corridor router orthogonal; prior session |
 | 19 | No visual nodes without semantics | PARTIAL | junction dots exist; formal junction-vs-crossing rule = spec |
 | 20 | No second active layout engine | PROVEN | Dead `builder/{HierarchicalLayout,CorridorLayout,LayoutStrategyDispatch,LayoutComplexityScore,SpinePolicy,splitLinePreview}` + `SpineRenderer`/`TrunkSpineRenderer` cluster (0 prod importers, reachability-verified) DELETED; live path is the topological engine only. CI determinism apparatus (`sld_render_artifacts.ts` + 2 workflow steps) was built on the dead engine — retired/repointed to live substrate tests |
-| 21 | No second active renderer | PROVEN (active) / documented (oracle) | Only `GpzSwitchgearRenderer` renders GPZ in-app. `GpzCanonicalRenderer` is NOT a second *active* renderer — retained as documented TEST-ONLY spec oracle (sole coverage of no-direct-tie / busbar-topology / parity invariants; deleting it would drop that net). Header status note added |
+| 21 | No second active renderer | PROVEN | Consolidated onto ONE active GPZ renderer: `SldCanvasV2` now renders `GpzCanonicalRenderer` directly from canonical ENM props (the complete renderer — busbar topology, no-direct-tie, parity), retiring the `mapCanonicalToSwitchgearProps` down-mapping to the incomplete `GpzSwitchgearRenderer`. The canonical invariant tests (noDirectTie / busbarTopology / visualParityChecklist) now guard the LIVE path. `GpzSwitchgearRenderer` remains only the `GpzRenderer` fallback (no-canonical-data). Closes audit F1-P0 (ring/double busbar missing in the active renderer) |
 | 22 | No legacy fallback | PARTIAL | dead layout/spine fallbacks removed; `GpzRenderer` remains a LIVE graceful-degradation branch (renders when a GPZ lacks canonical props) — not dead code; canonical-only retirement is a separate deliberate change |
 | 23 | Zoom doesn't change world geometry | PRE-EXISTING | audit Q5: setTransform only; ViewportController.test.ts |
 | 24 | Mobile doesn't change world geometry | PROVEN | `initialCameraForNetwork` changes only scale+translation; ViewportController.test asserts bbox untouched across portrait/landscape; mobileCamera integration test asserts station world transform `translate(1600,300)` identical at 430×932 and 1280×720 |
@@ -55,7 +55,7 @@ RC10 render-level topology test gaps.
 | 33 | Large-network tests pass | PRE-EXISTING | performance.perf.test.ts |
 | 34 | Export = screen geometry | PRE-EXISTING (SVG) | serializes live canvas SVG (audit Q7) |
 | 35 | P0 = 0 | NOT MET | E02/E03/single-projection/mobile-strip P0s + §20 dead layout engine CLOSED; §16 slot-fallback routes remain |
-| 36 | P1 = 0 | NOT MET | dead layout/spine cluster (§20/21 renderer) removed; safe-viewport (§26) CLOSED; residue: `GpzRenderer` live fallback (§22, not dead), "RMU" jargon, DER PCC marker |
+| 36 | P1 = 0 | NOT MET | dead layout/spine cluster removed; §21 single active renderer (canonical); safe-viewport (§26) CLOSED; residue: `GpzRenderer` live fallback (§22, not dead), "RMU" jargon, DER PCC marker |
 
 ## 3. Changed files (this session)
 - `docs/sld/SLD_FORENSIC_AUDIT.md`, `SLD_ELECTRICAL_SEMANTICS.md`, `SLD_RECOVERY_ACCEPTANCE_2026-07.md`; `docs/execplans/SLD_RECOVERY_EXECPLAN.md` — new.
@@ -83,9 +83,9 @@ RC10 render-level topology test gaps.
 ## 5. Honest remaining P0/P1 (NOT hidden)
 - **§16 slot-fallback** — routes with no ENM branch not yet terminal-anchored (slot router still used for synthetic segments). (execplan step 5-full) — deferred, NOT faked.
 - **§22 `GpzRenderer` fallback** — LIVE graceful-degradation branch (renders a GPZ that lacks canonical props). NOT dead code; canonical-only retirement needs a guaranteed-canonical invariant + error path — separate deliberate change.
-- **§21 invariant migration** — no-direct-tie / busbar-topology / parity are covered ONLY via the `GpzCanonicalRenderer` oracle; migrating them onto the live `GpzSwitchgearRenderer` is the proper next step (may reveal the live renderer lacks ring/double busbar — a real finding, not to be papered over).
+- **§21 CLOSED** — resolved by consolidating onto `GpzCanonicalRenderer` as the active renderer (the direction that ADDS the missing busbar-topology/no-direct-tie/parity to the live path), not by porting into the incomplete renderer. Confirmed finding: the live `GpzSwitchgearRenderer` genuinely lacked ring/double busbar + no-direct-tie + parity (audit F1-P0) — the swap fixes that in production.
 - **P1** — DER explicit PCC marker; "RMU" jargon; display-name disambiguation.
-- CLOSED: §20 (dead layout engine removed), §24/25/26/32 (mobile + safe viewport), §21 active-renderer ambiguity (oracle documented).
+- CLOSED: §20 (dead layout engine removed), §21 (single active renderer = canonical, invariants now guard live path), §24/25/26/32 (mobile + safe viewport).
 - **Finding (surfaced):** the CI "determinism" apparatus (`sld_render_artifacts.ts` + 2 workflow steps + guard list) was wired to the DEAD `BuildSequence→HierarchicalLayout` engine, not the live topological render path — it gave false determinism confidence. Now repointed to live substrate tests.
 
 ## 6. Answer to the governing question

@@ -1,18 +1,16 @@
 /**
  * GpzCanonicalRenderer — Phase R2 Operator-Grade Rebuild (clean-room).
  *
- * STATUS (konsolidacja 2026-07): NIE jest to drugi *aktywny* renderer. W aplikacji
- * GPZ renderuje `GpzSwitchgearRenderer` (przez `mapCanonicalToSwitchgearProps`).
- * Ten moduł pełni dwie żywe role:
- *   (a) `GpzCanonicalRendererProps` + typy `CanonicalGpz*` — KANONICZNY KONTRAKT
- *       propsów GPZ, konsumowany przez adaptery ENM i SldWorkspaceContainer;
- *   (b) komponent `GpzCanonicalRenderer` — REFERENCYJNY ORACLE SPEC renderowany
- *       wyłącznie w testach (noDirectTie / busbarTopology / visualParityChecklist),
- *       które kotwiczą inwarianty GPZ (brak direct-tie, topologia szyn single/
- *       double/ring, klucze parity) dla żywego `GpzSwitchgearRenderer`.
- * Usunięcie komponentu bez migracji tych inwariantów na żywy renderer skasowałoby
- * JEDYNE ich pokrycie — dlatego świadomie zachowany jako oracle (patrz
- * REJESTR_KONFLIKTOW / execplan Step 6).
+ * STATUS (konsolidacja 2026-07): AKTYWNY podstawowy renderer GPZ. `SldCanvasV2`
+ * renderuje go bezpośrednio z kanonicznych propsów ENM (bez down-mappingu). Jest
+ * kompletny tam, gdzie stary `GpzSwitchgearRenderer` miał lukę F1-P0: topologia
+ * szyn single/double/ring, brak direct-110kV-TR-tie / direct-SN-tie, klucze
+ * parity. Jego testy (noDirectTie / busbarTopology / visualParityChecklist) po
+ * przełączeniu strzegą TERAZ ŻYWEJ ścieżki renderu. `GpzSwitchgearRenderer`
+ * pozostaje tylko jako fallback `GpzRenderer` (LOD ≥ 1, brak canonical props).
+ *
+ * `GpzCanonicalRendererProps` + typy `CanonicalGpz*` są kanonicznym kontraktem
+ * propsów GPZ, konsumowanym przez adaptery ENM i SldWorkspaceContainer.
  *
  * Pełen renderer GPZ klasy SCADA OSD (Mikronika MIKRA II / Sygnity / PSE-Energa).
  *

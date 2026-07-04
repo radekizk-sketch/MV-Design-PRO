@@ -58,15 +58,31 @@ NOT claimed done.
   `label_overlap_guard.py`, `ux_audit.py`, `MACIERZ_TESTOW_GLOBALNYCH.md`).
 - `GpzCanonicalRenderer` NOT deleted: it is the sole coverage of GPZ invariants
   (no-direct-tie / busbar-topology / parity) that the live `GpzSwitchgearRenderer`
-  does not independently test. Retained + documented as TEST-ONLY spec oracle
-  (its `*Props` types remain the live canonical contract). Deleting it would drop
-  that safety net — contradicts "test is proof".
-- `GpzRenderer` fallback NOT deleted: it is a LIVE graceful-degradation branch,
-  not dead code.
-- Remaining (next increment): migrate the GPZ invariants onto the live renderer,
-  then the oracle can go; §16 slot-fallback terminal-anchoring; canonical-only
-  (drop `GpzRenderer` fallback) with a guaranteed-canonical invariant.
+  did not independently test. Retained + documented (its `*Props` types are the
+  live canonical contract). Deleting it would drop that safety net.
+- `GpzRenderer` fallback NOT deleted: LIVE graceful-degradation branch, not dead.
 - Verify: tsc clean; `vitest src/ui/sld src/engine` 156 files / 2733 green; guards green.
+
+## Step 6b [DONE] — GPZ renderer consolidation (§21 closed)
+- Finding (confirmed): the live `GpzSwitchgearRenderer` genuinely lacked
+  ring/double busbar + no-direct-tie + parity (audit F1-P0); the app rendered the
+  LESS-complete renderer by down-mapping canonical props via
+  `mapCanonicalToSwitchgearProps`.
+- Fix (right direction — add the missing features to the live path, not port into
+  the incomplete renderer): `SldCanvasV2` now renders `GpzCanonicalRenderer`
+  DIRECTLY from canonical ENM props (same interaction contract, same callbacks).
+  `mapCanonicalToSwitchgearProps` + its test DELETED (dead after the swap).
+- Result: ONE active GPZ renderer (canonical); its invariant tests (noDirectTie /
+  busbarTopology / visualParityChecklist) now guard the LIVE render path.
+  `GpzSwitchgearRenderer` remains only the `GpzRenderer` fallback.
+- Test migration: `SldCanvasV2.canonicalGpzIntegration.test` repointed from
+  switchgear testids to canonical (`sld-v2-gpz-canonical-*` / `gpz-canonical-bay-*`);
+  transformer text now `T1/T2` (canonical renders designation faithfully, unlike
+  the old positional `TR1/TR2` relabel).
+- Verify: tsc clean; `vitest src/ui/sld src/engine` 155 files / 2713 green; eslint +
+  sld_determinism + docs + no_codenames + forbidden_ui_terms guards green.
+- Remaining: §16 slot-fallback terminal-anchoring; canonical-only (drop the
+  `GpzRenderer` fallback) with a guaranteed-canonical invariant.
 
 ## Step 7 [DONE] — Safe viewport + mobile camera (E15/E16)
 - goal: `fitToView` operates on a SAFE rectangle (element minus header/panels/
