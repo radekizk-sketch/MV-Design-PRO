@@ -50,7 +50,7 @@ NOT claimed done.
 - `renderer/GpzCanonicalRenderer.tsx` (dead), `builder/{HierarchicalLayout,CorridorLayout,LayoutStrategyDispatch}` (dormant), legacy `GpzRenderer` fallback.
 - Requires migrating tests that render them. Not executed this session.
 
-## Step 7 [N] — Safe viewport + mobile camera (E15/E16)
+## Step 7 [DONE] — Safe viewport + mobile camera (E15/E16)
 - goal: `fitToView` operates on a SAFE rectangle (element minus header/panels/
   toolbar); portrait default centers source/active feeder at a readable scale
   instead of aspect-letterboxing the wide-short world; "Dopasuj całą sieć" is an
@@ -58,7 +58,25 @@ NOT claimed done.
 - files: `viewport/ViewportController.ts`, `SldCanvasV2.tsx` initial-camera,
   `SldWorkspaceContainer.tsx` measured-size → safe-rect.
 - constraint: world geometry unchanged; only camera + safe-rect.
-- Not executed this session (needs mobile viewport test harness).
+- DONE:
+  - `ViewportController`: `SafeInsets`/`ZERO_INSETS`/`safeRect`; `fitToView` +
+    `centerOnPoint` fit/center within the safe rect (default zero-inset =
+    regression-equal to prior behaviour); new pure `initialCameraForNetwork`
+    returning `{transform, mode}` — landscape/desktop → `fit`; portrait where
+    fit-scale < readable floor → `focus` (readable scale centered on source/GPZ,
+    rest of trunk reachable by pan).
+  - `SldCanvasV2`: `safeInsets` prop; `computeSourceFocusPoint`; initial-camera
+    effect uses `initialCameraForNetwork` (mobile focus) then operator-readable
+    flooring only in fit mode; `computeFitTransformForCurrentNetwork` (the
+    explicit "Dopasuj całą sieć" action) always fits the WHOLE bbox in the safe
+    rect; `data-translate-x/y` exposed for test observability.
+  - `SldWorkspaceContainer`: `SLD_CANVAS_SAFE_INSETS` (top 52 / bottom 44 / sides
+    16) passed to the canvas.
+  - tests: `ViewportController.test` (safeRect, fitToView-insets,
+    initialCameraForNetwork at 430×932 + 390×844, geometry-untouched);
+    `SldCanvasV2.mobileCamera.test` (real canvas: scale ≥ 0.5 on both phones,
+    source in frame, desktop fits, station world transform identical across
+    sizes). World geometry proven unchanged (camera = scale+translation only).
 
 ## Step 8 [S] — E07 DER PCC clarity
 - goal: `nn_side` DER render anchored to station nN bus with explicit PCC marker;

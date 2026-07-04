@@ -87,6 +87,11 @@ import { selectStationDistributionTransformers } from '../../../network-build/st
 
 const MIN_CANVAS_WIDTH_PX = 360;
 const MIN_CANVAS_HEIGHT_PX = 240;
+// E16: safe rect = element minus chrome nakładek (toolbar u góry, chipy kontroli
+// u dołu, marginesy boczne). Kamera startowa i „Dopasuj całą sieć" liczą fit/
+// centrowanie względem tego prostokąta, więc treść nie chowa się pod nakładkami.
+// Rezerwy chrome — NIE zmieniają geometrii świata, tylko obszar docelowy kamery.
+const SLD_CANVAS_SAFE_INSETS = { top: 52, right: 16, bottom: 44, left: 16 } as const;
 const STATION_INTERNAL_WIDTH_PX = 880;
 const STATION_INTERNAL_HEIGHT_PX = 560;
 const GPZ_LV_SECTION_COUPLER_GAP = 72;
@@ -2470,6 +2475,7 @@ export function SldWorkspaceContainer(
       <SldCanvasV2
         width={measured.width}
         height={measured.height}
+        safeInsets={SLD_CANVAS_SAFE_INSETS}
         gpzs={sldData.gpzs}
         canonicalGpzs={canonicalGpzs}
         sections={sldData.sections}

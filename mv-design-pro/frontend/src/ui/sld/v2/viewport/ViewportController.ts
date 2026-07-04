@@ -20,6 +20,41 @@ export interface BoundingBox {
   readonly maxY: number;
 }
 
+/**
+ * Insety chrome (header / panele / toolbar) zasłaniające krawędzie kanwy. Safe
+ * rect = element viewport MINUS te insety — fit/centrowanie liczone jest względem
+ * safe rect, więc treść nie chowa się pod nakładkami. To jest zmiana KAMERY, nie
+ * geometrii świata.
+ */
+export interface SafeInsets {
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+  readonly left: number;
+}
+
+export const ZERO_INSETS: SafeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
+
+export interface SafeRect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** Safe rectangle = viewport minus chrome insets. Never collapses below 1px. */
+export function safeRect(
+  viewportSize: { readonly width: number; readonly height: number },
+  insets: SafeInsets = ZERO_INSETS,
+): SafeRect {
+  return {
+    x: insets.left,
+    y: insets.top,
+    width: Math.max(viewportSize.width - insets.left - insets.right, 1),
+    height: Math.max(viewportSize.height - insets.top - insets.bottom, 1),
+  };
+}
+
 export const IDENTITY_TRANSFORM: ViewportTransform = {
   scale: 1,
   translateX: 0,
@@ -93,6 +128,7 @@ export function fitToView(
   bbox: BoundingBox,
   viewportSize: { readonly width: number; readonly height: number },
   paddingPx = 40,
+  insets: SafeInsets = ZERO_INSETS,
 ): ViewportTransform {
   const bboxWidth = bbox.maxX - bbox.minX;
   const bboxHeight = bbox.maxY - bbox.minY;
@@ -100,35 +136,79 @@ export function fitToView(
     return IDENTITY_TRANSFORM;
   }
 
-  const usableWidth = Math.max(viewportSize.width - 2 * paddingPx, 1);
-  const usableHeight = Math.max(viewportSize.height - 2 * paddingPx, 1);
+  const rect = safeRect(viewportSize, insets);
+  const usableWidth = Math.max(rect.width - 2 * paddingPx, 1);
+  const usableHeight = Math.max(rect.height - 2 * paddingPx, 1);
 
   const scaleX = usableWidth / bboxWidth;
   const scaleY = usableHeight / bboxHeight;
   const scale = clamp(Math.min(scaleX, scaleY), MIN_SCALE, MAX_SCALE);
 
-  // Centrowanie bbox
+  // Centrowanie bbox w SAFE rect (nie w całym elemencie) — treść nie chowa się
+  // pod nakładkami toolbaru/paneli.
   const bboxCenterX = (bbox.minX + bbox.maxX) / 2;
   const bboxCenterY = (bbox.minY + bbox.maxY) / 2;
-  const translateX = viewportSize.width / 2 - bboxCenterX * scale;
-  const translateY = viewportSize.height / 2 - bboxCenterY * scale;
+  const translateX = rect.x + rect.width / 2 - bboxCenterX * scale;
+  const translateY = rect.y + rect.height / 2 - bboxCenterY * scale;
 
   return { scale, translateX, translateY };
 }
 
 /**
- * Centruje wybrany obiekt w viewport (zachowuje obecną skalę).
+ * Centruje wybrany obiekt w viewport (zachowuje obecną skalę). Centrowanie liczone
+ * względem safe rect, więc obiekt nie ląduje pod nakładką.
  */
 export function centerOnPoint(
   worldPoint: { readonly x: number; readonly y: number },
   viewportSize: { readonly width: number; readonly height: number },
   scale: number,
+  insets: SafeInsets = ZERO_INSETS,
 ): ViewportTransform {
+  const rect = safeRect(viewportSize, insets);
   return {
     scale,
-    translateX: viewportSize.width / 2 - worldPoint.x * scale,
-    translateY: viewportSize.height / 2 - worldPoint.y * scale,
+    translateX: rect.x + rect.width / 2 - worldPoint.x * scale,
+    translateY: rect.y + rect.height / 2 - worldPoint.y * scale,
   };
+}
+
+export interface InitialCamera {
+  readonly transform: ViewportTransform;
+  /**
+   * 'fit' → cały bbox zmieszczony w safe rect.
+   * 'focus' → skala czytelna wyśrodkowana na punkcie źródła (GPZ), bo dopasowanie
+   *   szeroko-niskiego świata do pionowego (mobilnego) viewportu dałoby
+   *   mikroskopijny pasek. Reszta magistrali dostępna przez pan.
+   */
+  readonly mode: 'fit' | 'focus';
+}
+
+/**
+ * Kamera początkowa, która NIGDY nie zamienia szeroko-niskiego świata w
+ * mikroskopijny pasek na pionowym (mobilnym) viewportcie. Landscape/desktop →
+ * fit. Portrait, gdzie fit spadłby poniżej progu czytelności → skala czytelna
+ * wyśrodkowana na `focusPoint` (źródło/GPZ). GEOMETRIA ŚWIATA NIETKNIĘTA — zmienia
+ * się wyłącznie skala + translacja.
+ */
+export function initialCameraForNetwork(args: {
+  readonly bbox: BoundingBox;
+  readonly viewportSize: { readonly width: number; readonly height: number };
+  readonly focusPoint: { readonly x: number; readonly y: number } | null;
+  readonly readableMinScale: number;
+  readonly paddingPx?: number;
+  readonly insets?: SafeInsets;
+}): InitialCamera {
+  const insets = args.insets ?? ZERO_INSETS;
+  const padding = args.paddingPx ?? 40;
+  const fit = fitToView(args.bbox, args.viewportSize, padding, insets);
+  const portrait = args.viewportSize.height > args.viewportSize.width;
+  if (portrait && args.focusPoint && fit.scale < args.readableMinScale) {
+    return {
+      transform: centerOnPoint(args.focusPoint, args.viewportSize, args.readableMinScale, insets),
+      mode: 'focus',
+    };
+  }
+  return { transform: fit, mode: 'fit' };
 }
 
 /**

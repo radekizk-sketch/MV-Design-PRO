@@ -43,38 +43,45 @@ RC10 render-level topology test gaps.
 | 21 | No second active renderer | SPECIFIED | GpzCanonicalRenderer dead, GpzRenderer legacy fallback; removal = step 6. NOT done |
 | 22 | No legacy fallback | SPECIFIED | slot fallback + GpzRenderer fallback exist. NOT done |
 | 23 | Zoom doesn't change world geometry | PRE-EXISTING | audit Q5: setTransform only; ViewportController.test.ts |
-| 24 | Mobile doesn't change world geometry | PRE-EXISTING | world geometry viewport-independent (audit §4) |
-| 25 | Mobile default not a microscopic strip | SPECIFIED | root cause proven (fixed 1600×900 + aspect-blind fit); fix = execplan step 7. NOT done |
-| 26 | Fit uses safe viewport | SPECIFIED | no safe rect (audit E16); execplan step 7. NOT done |
+| 24 | Mobile doesn't change world geometry | PROVEN | `initialCameraForNetwork` changes only scale+translation; ViewportController.test asserts bbox untouched across portrait/landscape; mobileCamera integration test asserts station world transform `translate(1600,300)` identical at 430×932 and 1280×720 |
+| 25 | Mobile default not a microscopic strip | PROVEN | E15: portrait viewport where fit-scale < 0.5 centers on source (GPZ) at readable scale instead of letterboxing the wide-short world; mobileCamera integration test (real SldCanvasV2) asserts `data-scale ≥ 0.5` at 430×932 and 390×844, source inside frame, desktop still fits whole network |
+| 26 | Fit uses safe viewport | PROVEN | E16: `fitToView`/`centerOnPoint`/initial camera fit+center within safe rect (element minus chrome insets); ViewportController.test asserts top-inset pushes content to safe-rect centre; container passes `SLD_CANVAS_SAFE_INSETS`; default zero-inset regression-equal to prior behaviour |
 | 27 | Central LOD | PRE-EXISTING | LodPolicy.ts single registry (audit §6) |
 | 28 | Labels not on wires | PARTIAL | prior redesign moved labels off pills; declutter exists; not exhaustively proven |
 | 29 | Semantic tests pass | PROVEN | recovery oracles + topologyTree + electricalGraphConsistency green |
 | 30 | Determinism tests pass | PRE-EXISTING | layoutCutover/substrate/electricalGraph determinism green |
-| 31 | Desktop tests pass | PROVEN | 2725 tests + 1 skipped green |
-| 32 | Mobile tests pass | SPECIFIED | no mobile test yet (execplan step 7) |
+| 31 | Desktop tests pass | PROVEN | 2744 tests green (151 files, src/ui/sld/v2 + src/engine + src/ui/sld/core) |
+| 32 | Mobile tests pass | PROVEN | ViewportController.test: initialCameraForNetwork at 430×932 + 390×844 (focus mode, scale ≥ floor, geometry untouched, landscape=fit, no-focus/small-bbox degrade to fit); SldCanvasV2.mobileCamera.test: real canvas at both phone sizes |
 | 33 | Large-network tests pass | PRE-EXISTING | performance.perf.test.ts |
 | 34 | Export = screen geometry | PRE-EXISTING (SVG) | serializes live canvas SVG (audit Q7) |
-| 35 | P0 = 0 | NOT MET | E02/E03/single-projection/mobile P0s remain (SPECIFIED) |
-| 36 | P1 = 0 | NOT MET | dead-code, safe-viewport, naming residue remain |
+| 35 | P0 = 0 | NOT MET | E02/E03/single-projection/mobile-strip P0s CLOSED; §20 two-engine seam remains (SPECIFIED) |
+| 36 | P1 = 0 | NOT MET | dead-code (§21/22), naming residue remain; safe-viewport (§26) CLOSED |
 
 ## 3. Changed files (this session)
 - `docs/sld/SLD_FORENSIC_AUDIT.md`, `SLD_ELECTRICAL_SEMANTICS.md`, `SLD_RECOVERY_ACCEPTANCE_2026-07.md`; `docs/execplans/SLD_RECOVERY_EXECPLAN.md` — new.
-- `frontend/src/ui/sld/v2/canvas/enmToSldAdapter.ts` — E11 section number=idx+1+name; E11 order-based fallbacks→1-based.
+- `frontend/src/ui/sld/v2/canvas/enmToSldAdapter.ts` — E11 section number=idx+1+name; E11 order-based fallbacks→1-based; step 5 terminal identity.
 - `frontend/src/ui/sld/v2/renderer/GpzSwitchgearLayout.ts` — section fallback 1-based.
 - `frontend/src/ui/sld/v2/canvas/__tests__/enmToSldAdapter.recovery.test.ts` — new oracles.
 - `frontend/src/ui/sld/v2/renderer/__tests__/gpzSwitchgearScada.test.tsx` — 1-based intent.
+- **Step 7 (E15/E16):** `frontend/src/ui/sld/v2/viewport/ViewportController.ts` — `SafeInsets`/`ZERO_INSETS`/`safeRect`, `fitToView`+`centerOnPoint` safe-rect aware, new `initialCameraForNetwork` (mobile focus vs fit).
+- `frontend/src/ui/sld/v2/canvas/SldCanvasV2.tsx` — `safeInsets` prop, `computeSourceFocusPoint`, mobile-aware initial-camera effect, safe-rect flooring, `data-translate-x/y`, "Dopasuj całą sieć" explicit fit.
+- `frontend/src/ui/sld/v2/canvas/SldWorkspaceContainer.tsx` — `SLD_CANVAS_SAFE_INSETS` passed to canvas.
+- `frontend/src/ui/sld/v2/__tests__/ViewportController.test.ts` — safeRect + fitToView-insets + initialCameraForNetwork oracles.
+- `frontend/src/ui/sld/v2/canvas/__tests__/SldCanvasV2.mobileCamera.test.tsx` — new; real-canvas mobile proof.
+- `frontend/src/ui/sld/v2/canvas/__tests__/SldCanvasV2.lodIntegration.test.tsx` — fit-button title update.
 
 ## 4. Test evidence
-- `vitest run --no-file-parallelism src/ui/sld/v2 src/engine src/ui/sld/core` → 150 files, 2725 pass, 1 skip.
-- recovery oracles: E01/E07/E08/E11 pass; E02 skip (spec).
-- guards: no_codenames, forbidden_ui_terms, docs, sld_determinism → pass.
+- `vitest run --no-file-parallelism src/ui/sld/v2 src/engine src/ui/sld/core` → 151 files, 2744 pass.
+- recovery oracles: E01/E02/E03/E07/E08/E11/§16 pass.
+- Step 7: ViewportController.test 24 pass (incl. safe-rect + mobile camera); SldCanvasV2.mobileCamera.test 5 pass (430×932, 390×844).
+- guards: no_codenames, forbidden_ui_terms, docs, sld_determinism, dialog_completeness → pass. (`ui_terminology_guard` fails on pre-existing `V126AcademicSurface.tsx`, unchanged by this work, not a CI gate.)
 - `tsc --noEmit` clean; eslint clean on changed files.
 
 ## 5. Honest remaining P0/P1 (NOT hidden)
-- **P0 E02/E03/§16/§20** — single terminal-anchored projection: render must consume `portAnchoredGeometry` edges; trunk into station SN bus; retire slot router + two-truth seam. (execplan steps 4,5) — large, deferred, NOT faked.
-- **P0 §25/26/32** — safe viewport + mobile camera + mobile test. (step 7)
+- **§16 fallback / §20** — slot-fallback routes (no ENM branch) not yet terminal-anchored; two-truth engine seam (slot + topological) remains. (execplan steps 5-full/6) — deferred, NOT faked.
 - **P1 §21/22** — remove dead `GpzCanonicalRenderer` + dormant `builder/*` + legacy `GpzRenderer` fallback. (step 6)
 - **P1** — DER explicit PCC marker; "RMU" jargon; display-name disambiguation.
+- CLOSED this step: §24 (mobile world-geometry), §25 (mobile strip), §26 (safe viewport), §32 (mobile tests).
 
 ## 6. Answer to the governing question
 **DOES EVERY VISIBLE POWER PATH REPRESENT THE EXACT ELECTRICAL PATH IN ENM?**

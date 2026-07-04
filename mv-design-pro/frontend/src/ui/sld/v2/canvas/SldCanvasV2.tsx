@@ -12,8 +12,11 @@ import {
   computeBoundingBox,
   fitToView,
   IDENTITY_TRANSFORM,
+  initialCameraForNetwork,
   pan as panTransform,
   zoomToCursor,
+  ZERO_INSETS,
+  type SafeInsets,
   type ViewportTransform,
 } from '../viewport/ViewportController';
 import {
@@ -131,6 +134,11 @@ export interface SldCanvasV2Props {
   /** Wymiary viewport (pixele ekranu). */
   readonly width: number;
   readonly height: number;
+  /** E16: insety chrome (toolbar/panele) zasłaniające krawędzie kanwy. Kamera
+   *  początkowa i „Dopasuj całą sieć" liczą fit/centrowanie względem safe rect
+   *  (element minus insety), więc treść nie chowa się pod nakładkami. Brak →
+   *  zero (pełny element = safe rect). Zmiana KAMERY, nie geometrii świata. */
+  readonly safeInsets?: SafeInsets;
 
   /** Lista obiekt?w do renderowania. */
   readonly gpzs: readonly GpzRendererProps[];
@@ -249,6 +257,10 @@ function estimateCanonicalGpzFootprint(gpz: GpzCanonicalRendererProps): { width:
 
 const OPERATOR_READABLE_MIN_SCALE = 0.64;
 const OPERATOR_LARGE_TOPOLOGY_MIN_SCALE = 0.22;
+// E15: pionowy (mobilny) viewport nie może letterboxować szeroko-niskiego świata
+// w mikroskopijny pasek. Gdy fit spadnie poniżej tego progu, kamera startowa
+// centruje na źródle (GPZ) w tej skali czytelnej — reszta magistrali przez pan.
+const MOBILE_PORTRAIT_READABLE_MIN_SCALE = 0.5;
 const VIEWPORT_ZOOM_IN_FACTOR = 1.35;
 const VIEWPORT_ZOOM_OUT_FACTOR = 0.75;
 
@@ -262,17 +274,23 @@ function sameViewportTransform(a: ViewportTransform, b: ViewportTransform): bool
 
 // V-01: zawsze CENTRUJ przy wymuszonej skali czytelności (nigdy nie kotwicz do
 // lewego-górnego rogu — to było źródłem „schemat w 30% kadru, reszta pusta").
+// E16: centrowanie liczone względem safe rect (element minus insety chrome).
 function centeredTransformAtScale(
   scale: number,
   bbox: { minX: number; minY: number; maxX: number; maxY: number },
   viewportSize: { readonly width: number; readonly height: number },
+  insets: SafeInsets = ZERO_INSETS,
 ): ViewportTransform {
   const bboxCenterX = (bbox.minX + bbox.maxX) / 2;
   const bboxCenterY = (bbox.minY + bbox.maxY) / 2;
+  const rectX = insets.left;
+  const rectY = insets.top;
+  const rectW = Math.max(viewportSize.width - insets.left - insets.right, 1);
+  const rectH = Math.max(viewportSize.height - insets.top - insets.bottom, 1);
   return {
     scale,
-    translateX: viewportSize.width / 2 - bboxCenterX * scale,
-    translateY: viewportSize.height / 2 - bboxCenterY * scale,
+    translateX: rectX + rectW / 2 - bboxCenterX * scale,
+    translateY: rectY + rectH / 2 - bboxCenterY * scale,
   };
 }
 
@@ -286,18 +304,35 @@ function applyOperatorReadableInitialTransform(
     readonly derCount: number;
   },
   viewportSize: { readonly width: number; readonly height: number },
+  insets: SafeInsets = ZERO_INSETS,
 ): ViewportTransform {
   const smallOperatorTopology =
     args.stationCount <= 8 &&
     args.runCount <= 12 &&
     args.derCount <= 6;
   if (fit.scale < OPERATOR_LARGE_TOPOLOGY_MIN_SCALE) {
-    return centeredTransformAtScale(OPERATOR_LARGE_TOPOLOGY_MIN_SCALE, bbox, viewportSize);
+    return centeredTransformAtScale(OPERATOR_LARGE_TOPOLOGY_MIN_SCALE, bbox, viewportSize, insets);
   }
   if (!args.hasCanonicalGpz || !smallOperatorTopology || fit.scale >= OPERATOR_READABLE_MIN_SCALE) {
     return fit;
   }
-  return centeredTransformAtScale(OPERATOR_READABLE_MIN_SCALE, bbox, viewportSize);
+  return centeredTransformAtScale(OPERATOR_READABLE_MIN_SCALE, bbox, viewportSize, insets);
+}
+
+// E15: punkt źródła (GPZ) dla mobilnej kamery „focus" — środek bloku GPZ, żeby
+// pierwszy odcinek toru mocy był czytelny na starcie na pionowym ekranie.
+function computeSourceFocusPoint(
+  gpzs: readonly GpzRendererProps[],
+  canonicalGpzs: readonly GpzCanonicalRendererProps[] | undefined,
+): { x: number; y: number } | null {
+  const canon = canonicalGpzs?.[0];
+  if (canon) {
+    const footprint = estimateCanonicalGpzFootprint(canon);
+    return { x: canon.x + footprint.width / 2, y: canon.y + footprint.height / 2 };
+  }
+  const g = gpzs[0];
+  if (g) return { x: g.x, y: g.y };
+  return null;
 }
 
 function isCanonicalGpzInteractiveDescendant(target: EventTarget | null): boolean {
@@ -745,7 +780,7 @@ function centerTargetForElement(
 
 export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const {
-    width, height, gpzs, canonicalGpzs, sections, cableRuns, stations, branchPoints = [], ders, connections = [],
+    width, height, safeInsets = ZERO_INSETS, gpzs, canonicalGpzs, sections, cableRuns, stations, branchPoints = [], ders, connections = [],
     topologyCorridors = [], topologyRuns = [], terminalBindings = [], labelSpecs = [], readabilityReport,
     selectedId, centerOnElementId, lodOverride, layerVisibility,
     shortCircuitProjection, protectionZoneProjection, powerFlowCase,
@@ -864,19 +899,32 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
       maxX: bbox.maxX + 120,
       maxY: bbox.maxY + 120,
     };
-    const nextTransform = applyOperatorReadableInitialTransform(
-      fitToView(expanded, { width, height }),
-      expanded,
-      {
-        hasCanonicalGpz: (canonicalGpzs?.length ?? 0) > 0,
-        stationCount: stations.length,
-        runCount: cableRuns.length,
-        derCount: ders.length,
-      },
-      { width, height },
-    );
+    // E15/E16: kamera startowa świadoma safe rect + orientacji. Na pionowym
+    // (mobilnym) viewportcie, gdzie fit dałby mikroskopijny pasek, centruje na
+    // źródle (GPZ) w skali czytelnej zamiast letterboxować całość.
+    const camera = initialCameraForNetwork({
+      bbox: expanded,
+      viewportSize: { width, height },
+      focusPoint: computeSourceFocusPoint(gpzs, canonicalGpzs),
+      readableMinScale: MOBILE_PORTRAIT_READABLE_MIN_SCALE,
+      insets: safeInsets,
+    });
+    const nextTransform = camera.mode === 'focus'
+      ? camera.transform
+      : applyOperatorReadableInitialTransform(
+          camera.transform,
+          expanded,
+          {
+            hasCanonicalGpz: (canonicalGpzs?.length ?? 0) > 0,
+            stationCount: stations.length,
+            runCount: cableRuns.length,
+            derCount: ders.length,
+          },
+          { width, height },
+          safeInsets,
+        );
     setTransform((current) => sameViewportTransform(current, nextTransform) ? current : nextTransform);
-  }, [viewportContentSignature, width, height]);
+  }, [viewportContentSignature, width, height, safeInsets, gpzs, canonicalGpzs, stations.length, cableRuns.length, ders.length]);
 
   useEffect(() => {
     const target = centerTargetForElement(centerOnElementId, {
@@ -891,7 +939,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     if (!target) return;
     setTransform((current) => {
       const nextScale = Math.max(current.scale, target.minScale ?? current.scale);
-      const nextTransform = centerOnPoint(target, { width, height }, nextScale);
+      const nextTransform = centerOnPoint(target, { width, height }, nextScale, safeInsets);
       return sameViewportTransform(current, nextTransform) ? current : nextTransform;
     });
   }, [
@@ -902,6 +950,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     ders,
     gpzs,
     height,
+    safeInsets,
     sections,
     stations,
     viewportContentSignature,
@@ -928,8 +977,11 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
       maxX: bbox.maxX + 120,
       maxY: bbox.maxY + 120,
     };
+    // Jawna akcja użytkownika „Dopasuj całą sieć": zawsze fit CAŁEGO bboxa w safe
+    // rect (bez mobilnego focus-on-source — użytkownik świadomie chce widzieć
+    // całość). Safe rect chroni treść przed schowaniem pod nakładkami.
     return applyOperatorReadableInitialTransform(
-      fitToView(expanded, { width, height }),
+      fitToView(expanded, { width, height }, 40, safeInsets),
       expanded,
       {
         hasCanonicalGpz: (canonicalGpzs?.length ?? 0) > 0,
@@ -938,8 +990,9 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         derCount: ders.length,
       },
       { width, height },
+      safeInsets,
     );
-  }, [gpzs, canonicalGpzs, sections, stations, branchPoints, ders, width, height, cableRuns.length]);
+  }, [gpzs, canonicalGpzs, sections, stations, branchPoints, ders, width, height, safeInsets, cableRuns.length]);
 
   const zoomViewportAtCenter = useCallback((zoomFactor: number) => {
     setTransform((current) => zoomToCursor(current, { x: width / 2, y: height / 2 }, zoomFactor));
@@ -1091,6 +1144,8 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
       data-testid="sld-canvas-v2"
       data-lod={lod}
       data-scale={transform.scale.toFixed(3)}
+      data-translate-x={transform.translateX.toFixed(2)}
+      data-translate-y={transform.translateY.toFixed(2)}
       data-topology-runs={topologyRuns.length}
       data-topology-corridors={topologyCorridors.length}
       data-terminal-bindings={terminalBindings.length}
@@ -1730,7 +1785,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         <SldViewportControlButton
           x={68}
           label="[]"
-          title="Dopasuj widok sieci"
+          title="Dopasuj całą sieć"
           onActivate={fitViewportToNetwork}
           testId="sld-v2-fit-view"
         />

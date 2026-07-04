@@ -76,8 +76,8 @@ describe('SldCanvasV2 — LodController histereza runtime integration (Phase 0B-
     expect(zoomedOutScale).toBeLessThan(zoomedInScale);
 
     const fitButton = container.querySelector('[data-testid="sld-v2-fit-view"]');
-    expect(fitButton?.getAttribute('title')).toBe('Dopasuj widok sieci');
-    expect(fitButton?.getAttribute('aria-label')).toBe('Dopasuj widok sieci');
+    expect(fitButton?.getAttribute('title')).toBe('Dopasuj całą sieć');
+    expect(fitButton?.getAttribute('aria-label')).toBe('Dopasuj całą sieć');
   });
 
   it('opis poziomu szczegółowości nie pokazuje technicznego procentu zoomu', () => {

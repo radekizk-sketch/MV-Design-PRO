@@ -18,7 +18,9 @@ import {
   centerOnPoint,
   computeBoundingBox,
   fitToView,
+  initialCameraForNetwork,
   pan,
+  safeRect,
   screenToWorld,
   snapWorldPoint,
   worldToScreen,
@@ -106,6 +108,129 @@ describe('Viewport — centerOnPoint', () => {
     const centerScreen = worldToScreen({ x: 500, y: 300 }, t);
     expect(centerScreen.x).toBeCloseTo(400, 5);
     expect(centerScreen.y).toBeCloseTo(300, 5);
+  });
+
+  it('z safe insets centruje w środku SAFE rect (nie całego elementu)', () => {
+    const insets = { top: 100, right: 0, bottom: 0, left: 0 };
+    const t = centerOnPoint({ x: 500, y: 300 }, { width: 800, height: 600 }, 1, insets);
+    const centerScreen = worldToScreen({ x: 500, y: 300 }, t);
+    // safe rect = y∈[100,600], środek pionowy = 100 + 500/2 = 350.
+    expect(centerScreen.x).toBeCloseTo(400, 5);
+    expect(centerScreen.y).toBeCloseTo(350, 5);
+  });
+});
+
+describe('Viewport — safeRect', () => {
+  it('odejmuje insety od elementu', () => {
+    const rect = safeRect({ width: 800, height: 600 }, { top: 50, right: 20, bottom: 40, left: 10 });
+    expect(rect).toEqual({ x: 10, y: 50, width: 770, height: 510 });
+  });
+
+  it('nigdy nie zwija się poniżej 1px', () => {
+    const rect = safeRect({ width: 100, height: 100 }, { top: 80, right: 80, bottom: 80, left: 80 });
+    expect(rect.width).toBeGreaterThanOrEqual(1);
+    expect(rect.height).toBeGreaterThanOrEqual(1);
+  });
+
+  it('brak insetów → pełny element', () => {
+    expect(safeRect({ width: 800, height: 600 })).toEqual({ x: 0, y: 0, width: 800, height: 600 });
+  });
+});
+
+describe('Viewport — fitToView safe rect (E16)', () => {
+  it('centruje bbox w safe rect: górny inset przesuwa treść w dół', () => {
+    const bbox = { minX: 0, minY: 0, maxX: 100, maxY: 100 };
+    const viewport = { width: 800, height: 600 };
+    const insets = { top: 200, right: 0, bottom: 0, left: 0 };
+    const t = fitToView(bbox, viewport, 0, insets);
+    const bboxCenterScreen = worldToScreen({ x: 50, y: 50 }, t);
+    // środek safe rect w pionie = 200 + (600-200)/2 = 400.
+    expect(bboxCenterScreen.x).toBeCloseTo(400, 1);
+    expect(bboxCenterScreen.y).toBeCloseTo(400, 1);
+  });
+
+  it('brak insetów → identyczny wynik jak przed E16 (regresja)', () => {
+    const bbox = { minX: 0, minY: 0, maxX: 1000, maxY: 600 };
+    const viewport = { width: 800, height: 600 };
+    expect(fitToView(bbox, viewport, 0)).toEqual(fitToView(bbox, viewport, 0, { top: 0, right: 0, bottom: 0, left: 0 }));
+  });
+});
+
+describe('Viewport — initialCameraForNetwork (E15 mobile camera)', () => {
+  // Szeroko-niski świat (magistrala „grzebień w dół"): typowa geometria sieci.
+  const wideShortBbox = { minX: 0, minY: 0, maxX: 3000, maxY: 600 };
+  const source = { x: 150, y: 300 }; // GPZ na lewym końcu magistrali.
+
+  it('landscape/desktop → tryb fit (cała sieć zmieszczona)', () => {
+    const cam = initialCameraForNetwork({
+      bbox: wideShortBbox,
+      viewportSize: { width: 1280, height: 720 },
+      focusPoint: source,
+      readableMinScale: 0.5,
+    });
+    expect(cam.mode).toBe('fit');
+  });
+
+  it('portrait mobile 430×932: NIE mikroskopijny pasek — focus na źródle w skali czytelnej', () => {
+    const cam = initialCameraForNetwork({
+      bbox: wideShortBbox,
+      viewportSize: { width: 430, height: 932 },
+      focusPoint: source,
+      readableMinScale: 0.5,
+    });
+    // Fit dałby ~0.13 (letterbox). Kamera musi być czytelna, nie mikroskopijna.
+    expect(cam.mode).toBe('focus');
+    expect(cam.transform.scale).toBeGreaterThanOrEqual(0.5);
+    // Źródło (GPZ) jest widoczne — wyśrodkowane w kadrze, nie schowane za krawędzią.
+    const sourceScreen = worldToScreen(source, cam.transform);
+    expect(sourceScreen.x).toBeGreaterThanOrEqual(0);
+    expect(sourceScreen.x).toBeLessThanOrEqual(430);
+    expect(sourceScreen.y).toBeGreaterThanOrEqual(0);
+    expect(sourceScreen.y).toBeLessThanOrEqual(932);
+  });
+
+  it('portrait mobile 390×844: focus czytelny (drugi rozmiar telefonu)', () => {
+    const cam = initialCameraForNetwork({
+      bbox: wideShortBbox,
+      viewportSize: { width: 390, height: 844 },
+      focusPoint: source,
+      readableMinScale: 0.5,
+    });
+    expect(cam.mode).toBe('focus');
+    expect(cam.transform.scale).toBeGreaterThanOrEqual(0.5);
+  });
+
+  it('GEOMETRIA ŚWIATA NIETKNIĘTA: portrait vs landscape czytają ten sam bbox', () => {
+    // Kamera to wyłącznie skala + translacja — funkcja nie mutuje bboxa.
+    const before = { ...wideShortBbox };
+    initialCameraForNetwork({
+      bbox: wideShortBbox, viewportSize: { width: 430, height: 932 }, focusPoint: source, readableMinScale: 0.5,
+    });
+    initialCameraForNetwork({
+      bbox: wideShortBbox, viewportSize: { width: 1280, height: 720 }, focusPoint: source, readableMinScale: 0.5,
+    });
+    expect(wideShortBbox).toEqual(before);
+  });
+
+  it('portrait ale fit już czytelny (mały GPZ) → tryb fit, bez wymuszania focus', () => {
+    const smallBbox = { minX: 0, minY: 0, maxX: 400, maxY: 500 };
+    const cam = initialCameraForNetwork({
+      bbox: smallBbox,
+      viewportSize: { width: 430, height: 932 },
+      focusPoint: source,
+      readableMinScale: 0.5,
+    });
+    expect(cam.mode).toBe('fit');
+  });
+
+  it('brak focusPoint (brak GPZ) → tryb fit nawet na portrait (degradacja bezpieczna)', () => {
+    const cam = initialCameraForNetwork({
+      bbox: wideShortBbox,
+      viewportSize: { width: 430, height: 932 },
+      focusPoint: null,
+      readableMinScale: 0.5,
+    });
+    expect(cam.mode).toBe('fit');
   });
 });
 
