@@ -722,7 +722,10 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             y={pathPoints[0].y + 3}
             textAnchor="middle"
             fill="#FF6B6B"
-            className="select-none text-[9px] font-bold"
+            fontFamily="sans-serif"
+            fontSize={9}
+            fontWeight={700}
+            className="select-none"
           >
             !
           </text>
@@ -739,7 +742,10 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
             y={pathPoints[pathPoints.length - 1].y + 3}
             textAnchor="middle"
             fill="#FF6B6B"
-            className="select-none text-[9px] font-bold"
+            fontFamily="sans-serif"
+            fontSize={9}
+            fontWeight={700}
+            className="select-none"
           >
             !
           </text>
@@ -779,7 +785,10 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           stroke="#050810"
           strokeWidth={3}
           paintOrder="stroke"
-          className="select-none text-[11px] font-semibold"
+          fontFamily="sans-serif"
+          fontSize={11}
+          fontWeight={600}
+          className="select-none"
           pointerEvents="none"
         >
           {runLabel}
@@ -896,7 +905,13 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           stroke="#050810"
           strokeWidth={3}
           paintOrder="stroke"
-          className="select-none text-[11px] font-semibold"
+          // Rozmiar/font JAWNIE (nie klasą Tailwind) — spójne z rodzeństwem etykiet
+          // i z kalibracją declutteru (~11 px sans); odporne na kontekst bez CSS
+          // (eksport SVG, standalone render), gdzie klasa dawała serif 16 px i kolizje.
+          fontFamily="sans-serif"
+          fontSize={11}
+          fontWeight={600}
+          className="select-none"
           pointerEvents="none"
         >
           {segmentLabel.text}
