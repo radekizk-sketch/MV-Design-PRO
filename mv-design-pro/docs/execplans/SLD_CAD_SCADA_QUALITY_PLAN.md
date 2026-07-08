@@ -1,5 +1,11 @@
 # SLD CAD/SCADA QUALITY PLAN (2026-07) — plan wykonawczy dla dowolnego agenta
 
+> **SUPERSESJA (2026-07):** kroki K4-K6 zastąpione przez pełną przebudowę wg
+> `docs/sld/SLD_CAD_SPEC_V3.md` + `docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md`
+> (decyzja: declutter po fakcie nie osiągnie poziomu CAD — wymagany model
+> measure→allocate→route→label). Z TEGO dokumentu obowiązują nadal: §1 (reguły),
+> §3 (harness + sonda kolizji), K1-K3 (wykonane, commit `c088ef4`).
+
 **Cel nadrzędny:** schemat SLD jakości CAD/SCADA (klasa ETAP/ABB/DIgSILENT/Mikronika):
 inżynier projektujący sieć widzi WSZYSTKO, czego potrzebuje — poprawne technicznie
 i fizycznie — bez klikania i bez nachodzących etykiet, na każdym poziomie detalu.
