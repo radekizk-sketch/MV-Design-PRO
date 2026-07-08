@@ -16,10 +16,12 @@ import {
   snapUp,
   stationBlockHeight,
   stationNameBandHeight,
+  stationPortCaptionHeight,
   type StationMeasureInput,
 } from '../measure';
-import { computeBands, noBandsOverlap, type StationBandHeights } from '../bands';
+import { BUS_AXIS_BAND_HEIGHT, computeBands, noBandsOverlap, type StationBandHeights } from '../bands';
 import { allColumnsOnGrid, computeColumns, type ComputeColumnsInput } from '../columns';
+import { computeSegmentStagger, normalizeSegmentText, SEGMENT_LABEL_ROW_HEIGHT } from '../segments';
 
 function makeBay(fieldRole: FieldRole, index: number): MiniBlockBayDescriptor {
   return {
@@ -45,9 +47,16 @@ function makeStation(id: string, nameLength: number, bayCount: number): StationM
   };
 }
 
+// F3 fix r3: przekazujemy SUROWY tekst (nie gotową wysokość) — normalizacja
+// pustości/whitespace dzieje się WEWNĄTRZ `computeBands` (przez
+// `normalizeSegmentText`, `../segments`), tą samą funkcją co w
+// `computeColumns`. Wcześniej ten helper liczył `!= null` (bez trim), co
+// dawało wysokość w bands dla `''`, a `columns.ts` (FIX-4) poprawnie
+// pomijał slot — rozjazd, który r3 usuwa u ŹRÓDŁA.
 function bandHeightsFor(station: StationMeasureInput, incomingSegmentLabelText: string | null): StationBandHeights {
   return {
-    incomingSegmentLabelHeight: incomingSegmentLabelText != null ? labelLineHeight('t2') : 0,
+    incomingSegmentLabelText,
+    portCaptionHeight: stationPortCaptionHeight(station),
     stationBlockHeight: stationBlockHeight(station),
     nameBandHeight: stationNameBandHeight(station),
   };
@@ -57,7 +66,14 @@ function buildColumnsForStations(
   stations: readonly StationMeasureInput[],
   incomingSegmentLabelTexts: readonly (string | null)[],
 ) {
-  const bandsResult = computeBands(stations.map((s, i) => bandHeightsFor(s, incomingSegmentLabelTexts[i])));
+  // r2 (F3 fix): stagger liczony RAZ z tych samych wejść, współdzielony
+  // przez bands (flaga `segmentLabelTwoRow`) i columns (liczy sam, bo ma
+  // pełne `StationMeasureInput`).
+  const stagger = computeSegmentStagger(stations, incomingSegmentLabelTexts);
+  const bandsResult = computeBands(
+    stations.map((s, i) => bandHeightsFor(s, incomingSegmentLabelTexts[i])),
+    stagger.twoRow,
+  );
   const input: ComputeColumnsInput = {
     stations,
     incomingSegmentLabelTexts,
@@ -310,4 +326,105 @@ describe('V3 layout — property: żadne dwa zarezerwowane sloty się nie przeci
       }
     }
   }
+});
+
+describe('V3 layout — bands (spec §5.2, F3 fix r1): B2 rośnie z treści (podpis kierunku pola)', () => {
+  it('B2 = BUS_AXIS_BAND_HEIGHT + wiersz t3 gdy stacja ma podpis kierunku; bez podpisu — stała geometryczna (bez regresji)', () => {
+    const station = makeStation('s1', 5, 2);
+    const withoutCaption = bandHeightsFor(station, null);
+    const stationWithCaption: StationMeasureInput = {
+      ...station,
+      bayDirectionCaptions: ['kier. GPZ Południe', null],
+    };
+    const withCaption = bandHeightsFor(stationWithCaption, null);
+
+    const bandsWithout = computeBands([withoutCaption]);
+    const bandsWith = computeBands([withCaption]);
+
+    expect(bandsWithout.bands.B2.height).toBe(BUS_AXIS_BAND_HEIGHT);
+    expect(bandsWith.bands.B2.height).toBeGreaterThan(bandsWithout.bands.B2.height);
+  });
+
+  it('dłuższy podpis kierunku vs krótszy: wysokość B2 zależy od OBECNOŚCI podpisu (jeden wiersz t3), nie od jego długości znakowej (bez zawijania linii — spec nie definiuje wielowierszowych podpisów t3)', () => {
+    const station = makeStation('s1', 5, 2);
+    const shortCaption: StationMeasureInput = { ...station, bayDirectionCaptions: ['kier. S03'] };
+    const longCaption: StationMeasureInput = {
+      ...station,
+      bayDirectionCaptions: ['kier. GPZ Południowy-Wschód (bardzo długi opis kierunku)'],
+    };
+    const bandsShort = computeBands([bandHeightsFor(shortCaption, null)]);
+    const bandsLong = computeBands([bandHeightsFor(longCaption, null)]);
+    // Rośnie względem BRAKU podpisu (test powyżej); dla obu obecnych podpisów
+    // wysokość identyczna — długość znakowa wpływa na SZEROKOŚĆ (measure.ts),
+    // nie na wysokość wiersza t3 (bez zawijania, jedna prawda typografii).
+    expect(bandsShort.bands.B2.height).toBe(bandsLong.bands.B2.height);
+    expect(bandsShort.bands.B2.height).toBeGreaterThan(BUS_AXIS_BAND_HEIGHT);
+  });
+});
+
+describe('V3 layout — bands/columns (spec §5.2, F3 fix r2): alternacja 2-wierszowa B1', () => {
+  it('dwie sąsiednie WĄSKIE stacje z etykietą segmentu szerszą niż ich naturalny gabaryt → B1 dwuwierszowe, sloty naprzemienne (górny/dolny), zero nakładania', () => {
+    // Stacje maksymalnie wąskie (1-znakowa nazwa, 1 pole transformatorowe) —
+    // naturalny gabaryt mały; etykieta bardzo długa ⇒ z konstrukcji
+    // wymagany warunek stagger (`requiredSegmentLabelWidth > requiredStationWidth`,
+    // patrz DECYZJA w `segments.ts`).
+    const stationA = makeStation('a', 1, 1);
+    const stationB = makeStation('b', 1, 1);
+    const wideLabel = 'YAKXS 3×120/16 · 90 m — bardzo długi opis odcinka magistrali SN';
+
+    const stagger = computeSegmentStagger([stationA, stationB], [wideLabel, wideLabel]);
+    expect(stagger.twoRow).toBe(true);
+
+    const { bandsResult, columnsResult } = buildColumnsForStations([stationA, stationB], [wideLabel, wideLabel]);
+
+    expect(bandsResult.bands.B1.height).toBe(snapUp(2 * SEGMENT_LABEL_ROW_HEIGHT));
+    expect(columnsResult.segmentLabelSlots).toHaveLength(2);
+
+    const [slotA, slotB] = columnsResult.segmentLabelSlots;
+    expect(slotA.rect.y).not.toBe(slotB.rect.y); // naprzemiennie: różne wiersze
+    expect(slotA.rect.height).toBe(SEGMENT_LABEL_ROW_HEIGHT); // jeden wiersz per slot, nie całe podwojone B1
+    expect(slotB.rect.height).toBe(SEGMENT_LABEL_ROW_HEIGHT);
+    expect(rectsOverlap(slotA.rect, slotB.rect)).toBe(false);
+    // oba sloty mieszczą się WEWNĄTRZ pasma B1 (spójność geometrii pasmo↔slot)
+    for (const slot of [slotA, slotB]) {
+      expect(slot.rect.y).toBeGreaterThanOrEqual(bandsResult.bands.B1.y);
+      expect(slot.rect.y + slot.rect.height).toBeLessThanOrEqual(bandsResult.bands.B1.y + bandsResult.bands.B1.height);
+    }
+  });
+
+  it('gdy TYLKO JEDNA sąsiadująca stacja ma zbyt szeroką etykietę (druga bez segmentu) → B1 pozostaje jednowierszowe', () => {
+    const stationA = makeStation('a', 1, 1);
+    const stationB = makeStation('b', 30, 5);
+    const wideLabel = 'YAKXS 3×120/16 · 90 m — bardzo długi opis odcinka magistrali SN';
+
+    const stagger = computeSegmentStagger([stationA, stationB], [wideLabel, null]);
+    expect(stagger.twoRow).toBe(false);
+
+    const { bandsResult } = buildColumnsForStations([stationA, stationB], [wideLabel, null]);
+    expect(bandsResult.bands.B1.height).toBe(snapUp(SEGMENT_LABEL_ROW_HEIGHT));
+  });
+});
+
+describe('V3 layout — bands/columns (F3 fix r3): "" nie rezerwuje NIGDZIE (jedno wejście, spójna normalizacja)', () => {
+  it('normalizeSegmentText: pusty/whitespace/null ⇒ null; realny tekst ⇒ niezmieniony (jedna prawda dla bands I columns)', () => {
+    expect(normalizeSegmentText(null)).toBeNull();
+    expect(normalizeSegmentText(undefined)).toBeNull();
+    expect(normalizeSegmentText('')).toBeNull();
+    expect(normalizeSegmentText('   ')).toBeNull();
+    expect(normalizeSegmentText('15 kV')).toBe('15 kV');
+  });
+
+  it('"" i "   " dają IDENTYCZNY wynik co null zarówno w bands (B1) jak i w columns (segmentLabelSlots) — przed r3 "" dawał wysokość w bands bez slotu w columns', () => {
+    const station = makeStation('s1', 10, 3);
+    const withNull = buildColumnsForStations([station], [null]);
+    const withEmpty = buildColumnsForStations([station], ['']);
+    const withWhitespace = buildColumnsForStations([station], ['   ']);
+
+    for (const variant of [withEmpty, withWhitespace]) {
+      expect(variant.bandsResult.bands.B1.height).toBe(withNull.bandsResult.bands.B1.height);
+      expect(variant.bandsResult.bands.B1.height).toBe(0); // brak segmentu ⇒ zero rezerwacji, nigdzie
+      expect(variant.columnsResult.segmentLabelSlots).toHaveLength(0);
+      expect(variant.columnsResult.columns[0].width).toBe(withNull.columnsResult.columns[0].width);
+    }
+  });
 });

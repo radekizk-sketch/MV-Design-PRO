@@ -12,10 +12,23 @@
  * pochodzą z `bands.ts` (B5, B1), przekazywane jako parametr, żeby
  * `columns.ts` pozostał czystą arytmetyką 1D (szerokości) bez duplikowania
  * wiedzy o pasmach.
+ *
+ * F3 fix r3: normalizacja tekstu segmentu (`''`/whitespace = brak) korzysta
+ * teraz z `normalizeSegmentText` (`./segments`) — TA SAMA funkcja, którą
+ * używa `bands.ts` do liczenia wysokości B1 (wcześniej: dwie niezależne
+ * implementacje tej samej reguły, ryzyko rozjazdu).
+ * F3 fix r2: `computeColumns` liczy alternację 2-wierszową (`computeSegmentStagger`,
+ * `./segments`) SAMODZIELNIE — ma na wejściu pełne `StationMeasureInput`,
+ * więc nie trzeba przekazywać flagi z zewnątrz (w przeciwieństwie do
+ * `bands.ts`, które NIE zna kształtu stacji — patrz decyzja architektoniczna
+ * F2 udokumentowana tam). `ColumnsResult.segmentLabelTwoRow` eksponuje wynik
+ * decyzji, żeby wołający mógł przekazać TĘ SAMĄ flagę do `computeBands` bez
+ * liczenia jej po raz drugi.
  */
 
 import { GRID, type V3Rect } from '../core/grid';
 import { requiredSegmentLabelWidth, requiredStationWidth, snapUp, type StationMeasureInput } from './measure';
+import { computeSegmentStagger, normalizeSegmentText, SEGMENT_LABEL_ROW_HEIGHT } from './segments';
 
 /** Odstęp między kolumnami sąsiednich stacji (spec §5.3: `GAP(3×GRID)`). */
 export const COLUMN_GAP = 3 * GRID;
@@ -44,6 +57,11 @@ export interface ColumnsResult {
   readonly columns: readonly ColumnResult[];
   readonly segmentLabelSlots: readonly SegmentLabelSlotResult[];
   readonly totalWidth: number;
+  /** r2 (F3 fix): czy B1 wymaga alternacji 2-wierszowej (spec §5.2) — patrz
+   *  `computeSegmentStagger` w `./segments`. Wołający przekazuje TĘ SAMĄ
+   *  wartość do `computeBands` (drugi parametr), żeby wysokość pasma B1
+   *  odpowiadała rozmieszczeniu slotów tu wyliczonemu. */
+  readonly segmentLabelTwoRow: boolean;
 }
 
 export interface ComputeColumnsInput {
@@ -73,17 +91,22 @@ export function computeColumns(input: ComputeColumnsInput): ColumnsResult {
     );
   }
 
+  // r2 (F3 fix): decyzja alternacji 2-wierszowej — POLICZONA RAZ z tych
+  // samych wejść (`stations`, `incomingSegmentLabelTexts`), współdzielona
+  // przez normalizację (r3) z `bands.ts` (patrz `./segments`).
+  const stagger = computeSegmentStagger(stations, incomingSegmentLabelTexts);
+
   const columns: ColumnResult[] = [];
   const segmentLabelSlots: SegmentLabelSlotResult[] = [];
   let x = 0;
 
   stations.forEach((station, index) => {
     const stationWidth = requiredStationWidth(station);
-    // FIX-4 (recenzja F2): pusty/whitespace string ≠ realny tekst segmentu —
-    // traktujemy go jak brak, żeby nie rezerwować slotu ani szerokości pod
-    // etykietę, która nigdy nie zostanie narysowana.
-    const rawSegmentText = incomingSegmentLabelTexts[index];
-    const segmentText = rawSegmentText?.trim() ? rawSegmentText : null;
+    // FIX-4 (recenzja F2) + r3: pusty/whitespace string ≠ realny tekst
+    // segmentu — `normalizeSegmentText` (współdzielone z `bands.ts`) traktuje
+    // go jak brak, żeby nie rezerwować slotu ani szerokości pod etykietę,
+    // która nigdy nie zostanie narysowana.
+    const segmentText = normalizeSegmentText(incomingSegmentLabelTexts[index]);
     const segmentWidth = segmentText != null ? requiredSegmentLabelWidth(segmentText) : 0;
     // snapUp na wyjściu z max(...) — measure.ts już zwraca requiredStationWidth
     // na siatce, ale requiredSegmentLabelWidth (celowo, spec §5.1) nie jest
@@ -98,17 +121,27 @@ export function computeColumns(input: ComputeColumnsInput): ColumnsResult {
     });
 
     if (segmentText != null) {
-      segmentLabelSlots.push({
-        stationIndex: index,
-        rect: { x, y: segmentSlotBand.y, width, height: segmentSlotBand.height },
-      });
+      // r2: w trybie 2-wierszowym każdy slot zajmuje JEDEN wiersz (nie całe
+      // podwojone pasmo B1), przesunięty naprzemiennie góra/dół po
+      // parzystości indeksu (`stagger.rowOf`) — sąsiednie stacje trafiają w
+      // RÓŻNE wiersze, więc nawet szerokie etykiety wykraczające poza własną
+      // kolumnę nie kolidują wizualnie z sąsiadem.
+      const rect = stagger.twoRow
+        ? {
+            x,
+            y: segmentSlotBand.y + stagger.rowOf[index] * SEGMENT_LABEL_ROW_HEIGHT,
+            width,
+            height: SEGMENT_LABEL_ROW_HEIGHT,
+          }
+        : { x, y: segmentSlotBand.y, width, height: segmentSlotBand.height };
+      segmentLabelSlots.push({ stationIndex: index, rect });
     }
 
     x += width + COLUMN_GAP;
   });
 
   const totalWidth = columns.length > 0 ? x - COLUMN_GAP : 0;
-  return { columns, segmentLabelSlots, totalWidth };
+  return { columns, segmentLabelSlots, totalWidth, segmentLabelTwoRow: stagger.twoRow };
 }
 
 /** Wyrocznia pomocnicza: wszystkie x kolumn i szerokości na siatce (spec §11.2). */

@@ -28,6 +28,7 @@ import {
 
 const LABEL_LINE_HEIGHT_T1 = labelLineHeight('t1');
 const LABEL_LINE_HEIGHT_T2 = labelLineHeight('t2');
+const LABEL_LINE_HEIGHT_T3 = labelLineHeight('t3');
 const LABEL_LINE_HEIGHT_T4 = labelLineHeight('t4');
 
 /** FIX-5 (recenzja F2): `snapUp` mieszka teraz w `core/grid.ts` (obok
@@ -200,4 +201,17 @@ export function requiredStationWidth(station: StationMeasureInput): number {
  */
 export function requiredSegmentLabelWidth(text: string): number {
   return measureLabelWidth(text, 't2') + 2 * GRID;
+}
+
+/**
+ * Wysokość dodatkowa pasma osi magistrali (B2, spec §5.2) na podpis
+ * kierunku pola (t3, spec §9: „kier. Sxx" / „odg. Sxx") — F3 fix r1 (dług
+ * zapisany w F2/recenzji Opusa): B2 była stałą 32px niezależną od treści,
+ * choć podpisy portów muszą się w niej zmieścić. Zero, gdy ŻADNE pole tej
+ * stacji nie ma podpisu kierunku (bez regresji względem stałej geometrii
+ * osi/portu — `bands.ts` `BUS_AXIS_BAND_HEIGHT` — gdy podpisów brak).
+ */
+export function stationPortCaptionHeight(station: StationMeasureInput): number {
+  const hasCaption = (station.bayDirectionCaptions ?? []).some((caption) => caption?.trim());
+  return hasCaption ? LABEL_LINE_HEIGHT_T3 : 0;
 }

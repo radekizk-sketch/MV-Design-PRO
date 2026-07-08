@@ -376,8 +376,10 @@ interface CableRunRendererPropsLight {
 
 type RunPoint = { x: number; y: number };
 
-/** RECOVERY step 5: named terminal of a rendered cable segment (from ENM). */
-interface SegmentTerminalRef {
+/** RECOVERY step 5: named terminal of a rendered cable segment (from ENM).
+ *  Exported (SLD V3 F3, spec §16): `v3/layout/route.ts` carries this same
+ *  identity through routing untouched — zero cienia modelu, jeden typ. */
+export interface SegmentTerminalRef {
   /** ENM bus ref of this endpoint (the electrical node). */
   readonly busRef: string | null;
   /** Owning station ref if the bus resolves to a station; null for a GPZ/pole
