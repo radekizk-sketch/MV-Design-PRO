@@ -7,29 +7,47 @@
  * Zero DOM-measure/losowości/Date (P7) — pomiar tekstu WYŁĄCZNIE przez
  * `core/text.ts` (ta sama formuła co measure.ts/F2, jedna prawda).
  *
- * DECYZJA WIĄŻĄCA NADZORCY (F4, r7 — patrz plan wdrożenia §F4): slot etykiety
- * segmentu poziomego magistrali jest kotwiczony do PRZĘSŁA (odcinek szyny
- * biegnący MIĘDZY kolumnami sąsiednich stacji), nie do kolumny stacji
- * docelowej (jak sugerowałby powierzchownie `columns.ts`). Slot 1 (idealny):
- * wyśrodkowany na przęśle, w wierszu B1 wskazanym przez stagger (`./segments`
- * `computeSegmentStagger`, F3 r2). Gdy etykieta szersza niż przęsło (fizyczna
- * norma: `COLUMN_GAP` = 3×GRID = 24px << typowa etykieta kabla ~100-160px, a
- * więc PRAWIE ZAWSZE) — slot 2 zapasowy z OBOWIĄZKOWYM leader-line do środka
- * przęsła.
+ * DECYZJA WIĄŻĄCA NADZORCY (poprawka F4 po recenzji REQUEST-CHANGES; pełne
+ * centrowanie tap-do-tap to r7b — AUTORYZOWANE w F5, plan REBUILD_PLAN_V3):
+ * slot PODSTAWOWY (1, bez leadera) etykiety segmentu poziomego
+ * magistrali to `primaryRect` — rezerwacja `SegmentLabelSlotResult.rect` z
+ * `columns.ts` w pasmie B1, NAD kolumną stacji docelowej. Oś magistrali (B2)
+ * biegnie POZIOMO PRZEZ CAŁĄ szerokość rysunku, więc ten prostokąt leży
+ * fizycznie NAD odcinkiem szyny, do którego etykieta się odnosi — to NIE jest
+ * "kolumna zamiast przęsła", to ten sam odcinek osi widziany z góry.
+ * `columns.ts` GWARANTUJE `primaryRect.width >= szerokość etykiety`
+ * (`width_j = snapUp(max(blok stacji, requiredSegmentLabelWidth))`,
+ * `requiredSegmentLabelWidth = measureLabelWidth(text,'t2') + 2×GRID` —
+ * ściśle większe niż sama etykieta) — więc etykieta W WIDOKU SIECI Z
+ * KONSTRUKCJI ZAWSZE mieści się w `primaryRect`, slot 1 bez leadera.
  *
- * DECYZJA (luka spec, slot zapasowy = "wolny wiersz B1"): spec §4 mówi
- * "3: pasmo marginesu + leader" dla slotu zapasowego segmentu, ale F3 (r7)
- * zauważa, że `columns.ts` JUŻ rezerwuje w B1, w kolumnie stacji docelowej,
- * dokładnie tyle miejsca ile potrzebuje etykieta segmentu (spec §5.3:
- * `width_j = max(blok stacji, etykieta segmentu wejściowego)`) — w wierszu ze
- * staggera. Ten prostokąt (`SegmentLabelSlotResult.rect` z `columns.ts`) JEST
- * więc gotowym, z KONSTRUKCJI wolnym od kolizji "wolnym wierszem B1" — użyto
- * go jako slot zapasowy zamiast wynajdywać nowe pasmo marginesu. Unika to
- * duplikacji rezerwacji miejsca (P1) i jest spójne z resztą potoku: TA SAMA
- * geometria, którą measure/columns policzyły pod kątem "gdzie zmieści się
- * etykieta segmentu", jest tu użyta jako miejsce, w którym faktycznie ląduje
- * etykieta (z leaderem wskazującym na przęsło, do którego elektrycznie
- * należy).
+ * BŁĄD POPRZEDNIEJ WERSJI (błędna IMPLEMENTACJA intencji r7 — sama intencja
+ * „etykieta wizualnie na odcinku" pozostaje w mocy jako r7b/F5): traktował "przęsło" jako samą
+ * szczelinę `COLUMN_GAP` (3×GRID = 24px) MIĘDZY kolumnami — etykieta kabla
+ * (100-160px) nigdy się tam nie mieściła, więc KAŻDY segment lądował w slocie
+ * 2 z obowiązkowym leaderem ("las leaderów"), co odwraca konwencję CAD
+ * (leader = wyjątek, nie norma).
+ *
+ * Dwa pod-przypadki slotu 1 (bez leadera), rozróżnione geometrią:
+ *  - etykieta mieści się CZYSTO między `spanStart`..`spanEnd` (dziś: rzadkie,
+ *    bo `spanStart/spanEnd` to dziś krawędzie kolumn sąsiadów, nie
+ *    tap-do-tap; docelowo — gdy F5 dostarczy prawdziwe punkty zaczepienia
+ *    kabla — będzie to przypadek typowy) ⇒ WYŚRODKOWANA na przęśle, bez
+ *    clampa do `primaryRect` (może swobodnie wystawać poza kolumnę, bo
+ *    przęsło jest fizycznie szersze).
+ *  - w przeciwnym razie (dziś: NORMA, bo `spanWidth` = `COLUMN_GAP` = 24px)
+ *    ⇒ etykieta w `primaryRect`, z `x` biasowanym ku środkowi przęsła i
+ *    dosuniętym (clamp) do granic `primaryRect` — w praktyce dosuwa etykietę
+ *    do lewego skraju kolumny stacji docelowej ("kabel wchodzący do stacji
+ *    j"), zgodnie z geometrią B1 z `columns.ts`.
+ *
+ * Slot 2 (z OBOWIĄZKOWYM leaderem do środka przęsła) istnieje TYLKO jako
+ * ścieżka awaryjna — etykieta szersza niż `primaryRect` NIE WYSTĘPUJE z
+ * KONSTRUKCJI w widoku sieci (patrz gwarancja `columns.ts` wyżej), ale
+ * ścieżka musi istnieć i mieć pokrycie testowe (syntetyczne `primaryRect`
+ * celowo za wąskie) — analogicznie do slotu 3 w `resolveSegmentLateralLabel`
+ * niżej. Wymaga pola `marginRect` (throw z czytelnym komunikatem, gdy
+ * potrzebny a nieobecny).
  */
 
 import { GRID, rectsOverlap, snapToGrid, type V3Rect } from '../core/grid';
@@ -37,7 +55,7 @@ import { labelLineHeight, measureLabelWidth, type LabelClass } from '../core/tex
 
 /** Właściciel etykiety (spec §4, tabela slotów). */
 export type OwnerKind =
-  | 'segment-span'      // segment magistrali poziomy (kotwiczony do przęsła, r7)
+  | 'segment-span'      // segment magistrali poziomy (slot podstawowy = primaryRect, poprawka F4)
   | 'segment-lateral'    // segment pionowy (lateral), etykieta rotowana 90°
   | 'station-name'       // wiersz pasma nazw stacji (B5)
   | 'port-caption'       // podpis kierunku pola (t3, spec §9: „kier. Sxx"/„odg. Sxx")
@@ -67,7 +85,8 @@ export interface OwnedLabel {
 }
 
 // ---------------------------------------------------------------------------
-// Segment poziomy magistrali — kotwiczenie do PRZĘSŁA (r7).
+// Segment poziomy magistrali — slot podstawowy = primaryRect (poprawka F4, patrz
+// DECYZJA WIĄŻĄCA NADZORCY w nagłówku pliku).
 // ---------------------------------------------------------------------------
 
 export interface SegmentSpanOwnerInput {
@@ -81,10 +100,17 @@ export interface SegmentSpanOwnerInput {
   readonly busAxisY: number;
   /** Prostokąt zarezerwowany przez `columns.ts` (`SegmentLabelSlotResult.rect`)
    *  w kolumnie stacji docelowej, w wierszu wskazanym przez stagger — z
-   *  KONSTRUKCJI wolny od kolizji i wystarczająco szeroki (patrz DECYZJA w
-   *  nagłówku pliku). Dostarcza Y/wysokość wiersza (slot 1) ORAZ pełni rolę
-   *  slotu zapasowego (slot 2), gdy etykieta nie mieści się na przęśle. */
-  readonly fallbackRect: V3Rect;
+   *  KONSTRUKCJI wystarczająco szeroki dla etykiety (patrz DECYZJA w
+   *  nagłówku pliku: `columns.ts` gwarantuje `width >= szerokość etykiety`).
+   *  To jest slot PODSTAWOWY (1), nie zapasowy — etykieta ląduje tu w
+   *  normalnym przypadku, bez leadera. */
+  readonly primaryRect: V3Rect;
+  /** Slot zapasowy (2, z OBOWIĄZKOWYM leaderem) — WYMAGANY tylko, gdy
+   *  etykieta nie mieści się nawet w `primaryRect` (nie występuje z
+   *  KONSTRUKCJI w widoku sieci — patrz DECYZJA w nagłówku pliku — ale
+   *  ścieżka musi istnieć; funkcja rzuca, gdy potrzebny a nieobecny, tak jak
+   *  `fallbackRect` w `resolveSegmentLateralLabel`). */
+  readonly marginRect?: V3Rect;
 }
 
 function resolveSegmentSpanLabel(owner: SegmentSpanOwnerInput): OwnedLabel {
@@ -95,6 +121,8 @@ function resolveSegmentSpanLabel(owner: SegmentSpanOwnerInput): OwnedLabel {
   const fitsSpan = spanWidth > 0 && labelWidth <= spanWidth;
 
   if (fitsSpan) {
+    // Etykieta mieści się CZYSTO na przęśle (docelowo: tap-do-tap z F5) —
+    // wyśrodkowana bez clampa do primaryRect (może wystawać poza kolumnę).
     const x = snapToGrid(spanCenterX - labelWidth / 2);
     return {
       ownerRef: owner.ownerRef,
@@ -102,21 +130,45 @@ function resolveSegmentSpanLabel(owner: SegmentSpanOwnerInput): OwnedLabel {
       labelClass,
       text: owner.text,
       slotIndex: 1,
-      rect: { x, y: owner.fallbackRect.y, width: labelWidth, height: owner.fallbackRect.height },
+      rect: { x, y: owner.primaryRect.y, width: labelWidth, height: owner.primaryRect.height },
     };
   }
 
+  if (labelWidth <= owner.primaryRect.width) {
+    // Norma dzisiejsza: przęsło (krawędzie kolumn, COLUMN_GAP=24px) za wąskie,
+    // ale primaryRect (rezerwacja columns.ts) z KONSTRUKCJI mieści etykietę.
+    // x biasowany ku środkowi przęsła, dosunięty (clamp) do granic
+    // primaryRect — w praktyce dosuwa etykietę do lewego skraju kolumny
+    // stacji docelowej ("kabel wchodzący do stacji j").
+    const rawX = snapToGrid(spanCenterX - labelWidth / 2);
+    const maxX = owner.primaryRect.x + owner.primaryRect.width - labelWidth;
+    const x = Math.min(Math.max(rawX, owner.primaryRect.x), Math.max(maxX, owner.primaryRect.x));
+    return {
+      ownerRef: owner.ownerRef,
+      ownerKind: 'segment-span',
+      labelClass,
+      text: owner.text,
+      slotIndex: 1,
+      rect: { x, y: owner.primaryRect.y, width: labelWidth, height: owner.primaryRect.height },
+    };
+  }
+
+  if (!owner.marginRect) {
+    throw new Error(
+      `Segment „${owner.ownerRef}": etykieta nie mieści się ani na przęśle, ani w primaryRect (rezerwacji columns.ts), a marginRect (slot zapasowy, spec §4) nie został dostarczony.`,
+    );
+  }
   return {
     ownerRef: owner.ownerRef,
     ownerKind: 'segment-span',
     labelClass,
     text: owner.text,
     slotIndex: 2,
-    rect: owner.fallbackRect,
+    rect: owner.marginRect,
     leader: {
       from: {
-        x: owner.fallbackRect.x + owner.fallbackRect.width / 2,
-        y: owner.fallbackRect.y + owner.fallbackRect.height,
+        x: owner.marginRect.x + owner.marginRect.width / 2,
+        y: owner.marginRect.y + owner.marginRect.height,
       },
       to: { x: spanCenterX, y: owner.busAxisY },
     },

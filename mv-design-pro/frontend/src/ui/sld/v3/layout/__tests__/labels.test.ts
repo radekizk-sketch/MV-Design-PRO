@@ -91,13 +91,15 @@ function buildPipeline(stations: readonly StationMeasureInput[], incomingSegment
 const WIDE_CABLE_LABEL = 'YAKXS 3×120/16 · 90 m — bardzo długi opis odcinka magistrali SN';
 
 // ---------------------------------------------------------------------------
-// (a) Segment przęsłowy (r7): slot wyśrodkowany na przęśle, wiersz ze
-// staggera; etykieta szersza niż przęsło ⇒ slot zapasowy + leader do środka
-// przęsła.
+// (a) Segment przęsłowy (r8, poprawka po recenzji F4 REQUEST-CHANGES): slot
+// PODSTAWOWY (1, bez leadera) = primaryRect (rezerwacja `columns.ts`), z
+// dwoma pod-przypadkami geometrycznymi (czyste centrowanie na przęśle vs.
+// bias+clamp do primaryRect). Slot 2 (leader) TYLKO syntetycznie, gdy
+// primaryRect celowo za wąski — w widoku sieci z konstrukcji nie występuje.
 // ---------------------------------------------------------------------------
 
-describe('V3 labels — segment przęsłowy (spec §4/§5.5, decyzja r7)', () => {
-  it('etykieta KRÓTSZA niż przęsło ⇒ slot 1, wyśrodkowana na przęśle, bez leadera', () => {
+describe('V3 labels — segment przęsłowy (spec §4/§5.5, decyzja r8)', () => {
+  it('etykieta MIEŚCI SIĘ czysto na przęśle (spanStart..spanEnd) ⇒ slot 1, wyśrodkowana na przęśle BEZ clampa, bez leadera', () => {
     const station = makeStation('s1', 4, 2);
     const { bandsResult, columnsResult } = buildPipeline([station], ['x']);
     const slot = columnsResult.segmentLabelSlots[0];
@@ -109,7 +111,7 @@ describe('V3 labels — segment przęsłowy (spec §4/§5.5, decyzja r7)', () =>
       spanStart,
       spanEnd,
       busAxisY: bandsResult.bands.B2.y,
-      fallbackRect: slot.rect,
+      primaryRect: slot.rect,
     };
     const [label] = resolveLabels({ segmentSpans: [owner] });
 
@@ -123,7 +125,7 @@ describe('V3 labels — segment przęsłowy (spec §4/§5.5, decyzja r7)', () =>
     expect(Math.abs(label.rect.x % GRID)).toBe(0); // lewa krawędź slotu na siatce (spec §2)
   });
 
-  it('etykieta SZERSZA niż przęsło (norma: GAP=24px << etykieta kabla) ⇒ slot zapasowy = rezerwacja columns.ts + leader do środka przęsła, w wierszu ze staggera', () => {
+  it('przęsło WĄSKIE (norma dzisiejsza: krawędzie kolumn, GAP=24px << etykieta kabla) ⇒ slot 1 W primaryRect, x biasowany ku środkowi przęsła i dosunięty do kolumny, BEZ leadera', () => {
     // Dwie wąskie stacje sąsiadujące z bardzo długą etykietą ⇒ z konstrukcji
     // wymuszają alternację 2-wierszową (F3 r2, patrz layout.test.ts).
     const stationA = makeStation('a', 1, 1);
@@ -146,7 +148,7 @@ describe('V3 labels — segment przęsłowy (spec §4/§5.5, decyzja r7)', () =>
       spanStart: spanAStart,
       spanEnd: spanAEnd,
       busAxisY: bandsResult.bands.B2.y,
-      fallbackRect: slotA.rect,
+      primaryRect: slotA.rect,
     };
     const ownerB: SegmentSpanOwnerInput = {
       ownerRef: 'seg-b',
@@ -154,26 +156,98 @@ describe('V3 labels — segment przęsłowy (spec §4/§5.5, decyzja r7)', () =>
       spanStart: spanBStart,
       spanEnd: spanBEnd,
       busAxisY: bandsResult.bands.B2.y,
-      fallbackRect: slotB.rect,
+      primaryRect: slotB.rect,
     };
 
     const [labelA, labelB] = resolveLabels({ segmentSpans: [ownerA, ownerB] });
 
     for (const label of [labelA, labelB]) {
-      expect(label.slotIndex).toBe(2);
-      expect(label.leader).toBeDefined();
-      expect(leaderInvariantHolds([label])).toBe(true);
+      expect(label.slotIndex).toBe(1);
+      expect(label.leader).toBeUndefined();
     }
-    // Rect zapasowy = DOKŁADNIE rezerwacja z columns.ts (r7 decyzja: "wolny
-    // wiersz B1" = już zarezerwowany prostokąt, nie nowe pasmo marginesu).
-    expect(labelA.rect).toEqual(slotA.rect);
-    expect(labelB.rect).toEqual(slotB.rect);
+    // Etykieta mieści się W primaryRect (rezerwacja columns.ts) — nie
+    // wystaje poza kolumnę stacji docelowej.
+    expect(labelA.rect.x).toBeGreaterThanOrEqual(slotA.rect.x);
+    expect(labelA.rect.x + labelA.rect.width).toBeLessThanOrEqual(slotA.rect.x + slotA.rect.width);
+    expect(labelB.rect.x).toBeGreaterThanOrEqual(slotB.rect.x);
+    expect(labelB.rect.x + labelB.rect.width).toBeLessThanOrEqual(slotB.rect.x + slotB.rect.width);
+    expect(labelA.rect.y).toBe(slotA.rect.y);
+    expect(labelB.rect.y).toBe(slotB.rect.y);
     // Wiersz ze staggera: sąsiednie stacje trafiają w RÓŻNE wiersze B1.
     expect(labelA.rect.y).not.toBe(labelB.rect.y);
-    // Leader wskazuje na ŚRODEK przęsła (nie na kolumnę).
-    expect(labelA.leader!.to.x).toBeCloseTo((spanAStart + spanAEnd) / 2, 5);
-    expect(labelB.leader!.to.x).toBeCloseTo((spanBStart + spanBEnd) / 2, 5);
-    expect(labelA.leader!.to.y).toBe(bandsResult.bands.B2.y);
+  });
+
+  it('szerokie przęsło ⇒ etykieta wycentrowana NA PRZĘŚLE (slot 1, bez clampa do primaryRect, bez leadera)', () => {
+    const station = makeStation('s1', 1, 1);
+    const { bandsResult, columnsResult } = buildPipeline([station], ['15 kV']);
+    const slot = columnsResult.segmentLabelSlots[0];
+    // Przęsło znacznie szersze niż etykieta 't2' „15 kV" (~34px) — imitacja
+    // przyszłego tap-do-tap (F5), gdzie odległość między stacjami jest duża.
+    const spanStart = -1000;
+    const spanEnd = columnsResult.columns[0].x; // 0
+    const owner: SegmentSpanOwnerInput = {
+      ownerRef: 'seg-wide-span',
+      text: '15 kV',
+      spanStart,
+      spanEnd,
+      busAxisY: bandsResult.bands.B2.y,
+      primaryRect: slot.rect,
+    };
+    const [label] = resolveLabels({ segmentSpans: [owner] });
+
+    expect(label.slotIndex).toBe(1);
+    expect(label.leader).toBeUndefined();
+    const spanCenter = (spanStart + spanEnd) / 2;
+    const labelCenter = label.rect.x + label.rect.width / 2;
+    expect(Math.abs(labelCenter - spanCenter)).toBeLessThan(GRID);
+    // Wycentrowana NA PRZĘŚLE — dozwolone wystawanie poza primaryRect (brak
+    // clampa, bo ten pod-przypadek to "fitsSpan", nie "fits w primaryRect").
+    expect(label.rect.x).toBeLessThan(slot.rect.x);
+  });
+
+  it('SYNTETYCZNIE: primaryRect celowo za wąski dla etykiety, brak marginRect ⇒ rzuca (slot 2 wymaga dostarczonej rezerwacji)', () => {
+    const tinyPrimaryRect: V3Rect = { x: 0, y: 100, width: 4, height: 24 };
+    expect(() =>
+      resolveLabels({
+        segmentSpans: [
+          {
+            ownerRef: 'seg-too-narrow',
+            text: WIDE_CABLE_LABEL,
+            spanStart: -10,
+            spanEnd: 0,
+            busAxisY: 100,
+            primaryRect: tinyPrimaryRect,
+          },
+        ],
+      }),
+    ).toThrow();
+  });
+
+  it('SYNTETYCZNIE: primaryRect celowo za wąski, marginRect dostarczony ⇒ slot 2 + leader OBOWIĄZKOWY do środka przęsła', () => {
+    const tinyPrimaryRect: V3Rect = { x: 0, y: 100, width: 4, height: 24 };
+    const marginRect: V3Rect = { x: 500, y: 400, width: 200, height: 24 };
+    const spanStart = -10;
+    const spanEnd = 0;
+    const [label] = resolveLabels({
+      segmentSpans: [
+        {
+          ownerRef: 'seg-too-narrow',
+          text: WIDE_CABLE_LABEL,
+          spanStart,
+          spanEnd,
+          busAxisY: 100,
+          primaryRect: tinyPrimaryRect,
+          marginRect,
+        },
+      ],
+    });
+
+    expect(label.slotIndex).toBe(2);
+    expect(label.leader).toBeDefined();
+    expect(leaderInvariantHolds([label])).toBe(true);
+    expect(label.rect).toEqual(marginRect);
+    expect(label.leader!.to.x).toBeCloseTo((spanStart + spanEnd) / 2, 5);
+    expect(label.leader!.to.y).toBe(100);
   });
 });
 
@@ -369,7 +443,7 @@ describe('V3 labels — podpisy kierunku pola w B2 (spec §9/§4)', () => {
           spanStart,
           spanEnd: column.x,
           busAxisY: bandsResult.bands.B2.y,
-          fallbackRect: slot.rect,
+          primaryRect: slot.rect,
         });
       }
     });
@@ -403,7 +477,7 @@ describe('V3 labels — determinizm (pryncypium determinizmu)', () => {
           spanStart: -100,
           spanEnd: column.x,
           busAxisY: bandsResult.bands.B2.y,
-          fallbackRect: slot.rect,
+          primaryRect: slot.rect,
         },
       ],
       segmentLaterals: [
@@ -492,7 +566,7 @@ describe('V3 labels — overlapProbe: kontrprzykład (musi wykrywać, nie tylko 
           spanStart: -10,
           spanEnd: columnsResult.columns[0].x,
           busAxisY: bandsResult.bands.B2.y,
-          fallbackRect: slot.rect,
+          primaryRect: slot.rect,
         },
       ],
     });

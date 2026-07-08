@@ -15,6 +15,7 @@
 import type { ReactNode } from 'react';
 
 import { GRID } from '../core/grid';
+import { LABEL_TYPOGRAPHY } from '../core/text';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
 
@@ -131,8 +132,8 @@ function SheetLegend(props: { readonly entries: readonly SheetLegendEntry[] }): 
               x={LEGEND_GLYPH_COLUMN_WIDTH}
               y={y + 13}
               fontFamily="sans-serif"
-              fontSize={9}
-              fontWeight={700}
+              fontSize={LABEL_TYPOGRAPHY.t3.fontSize}
+              fontWeight={LABEL_TYPOGRAPHY.t3.fontWeight}
               fill={SHEET_STROKE}
             >
               {entry.labelPl}
@@ -163,8 +164,8 @@ function ZoneMarkers(props: { readonly width: number; readonly height: number })
             y={-10}
             textAnchor="middle"
             fontFamily="sans-serif"
-            fontSize={13}
-            fontWeight={700}
+            fontSize={LABEL_TYPOGRAPHY.t1.fontSize}
+            fontWeight={LABEL_TYPOGRAPHY.t1.fontWeight}
             fill={SHEET_STROKE}
           >
             {i + 1}
@@ -184,8 +185,8 @@ function ZoneMarkers(props: { readonly width: number; readonly height: number })
             textAnchor="middle"
             dominantBaseline="middle"
             fontFamily="sans-serif"
-            fontSize={13}
-            fontWeight={700}
+            fontSize={LABEL_TYPOGRAPHY.t1.fontSize}
+            fontWeight={LABEL_TYPOGRAPHY.t1.fontWeight}
             fill={SHEET_STROKE}
           >
             {letter}
@@ -273,8 +274,8 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
           y={height + 20}
           textAnchor="end"
           fontFamily="sans-serif"
-          fontSize={11}
-          fontWeight={600}
+          fontSize={LABEL_TYPOGRAPHY.t2.fontSize}
+          fontWeight={LABEL_TYPOGRAPHY.t2.fontWeight}
           fill={SHEET_STROKE}
         >
           {`Skala ${scaleLabel}`}
