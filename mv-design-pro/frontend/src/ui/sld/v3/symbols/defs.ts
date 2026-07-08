@@ -1,0 +1,125 @@
+/**
+ * SLD V3 — biblioteka symboli IEC 60617 jako CZYSTE DANE (SLD_CAD_SPEC_V3 §3).
+ *
+ * Każdy symbol: bbox (wielokrotność GRID), nazwane porty NA siatce i NA
+ * krawędzi bboxa (wyrocznia grid_probe/port_probe — spec §11.2/§11.3).
+ * Rysunek (glif SVG) w `glyphs.tsx`; layout zna WYŁĄCZNIE te dane.
+ *
+ * Odstępstwo od tabeli spec §3: symbole DER mają 32×32 (nie 24×24), bo port
+ * centralny 12px nie leży na siatce GRID=8 — wyrocznia siatki jest nadrzędna.
+ */
+
+import { GRID, isOnGrid, type SymbolPort } from '../core/grid';
+
+export type SymbolId =
+  | 'breaker'          // wyłącznik (CB)
+  | 'disconnector'     // odłącznik (DS)
+  | 'earthSwitch'      // uziemnik (ES)
+  | 'fuseSwitch'       // rozłącznik z bezpiecznikiem
+  | 'transformer2W'    // transformator dwuuzwojeniowy
+  | 'cableHead'        // głowica kablowa
+  | 'jointSleeve'      // mufa kablowa
+  | 'noPoint'          // punkt podziału NO (łącznik otwarty na torze)
+  | 'junction'         // węzeł T (jawna kropka)
+  | 'currentTransformer' // przekładnik prądowy CT
+  | 'voltageTransformer' // przekładnik napięciowy VT
+  | 'surgeArrester'    // ogranicznik przepięć SA
+  | 'derPv'            // falownik PV
+  | 'derBess'          // magazyn energii
+  | 'derGenerator';    // generator (G w okręgu)
+
+export interface SymbolDef {
+  readonly id: SymbolId;
+  readonly width: number;
+  readonly height: number;
+  readonly ports: readonly SymbolPort[];
+  /** Polska nazwa dla inspektora/tooltipa (spec §9 — zero enumów w UI). */
+  readonly labelPl: string;
+}
+
+function def(
+  id: SymbolId,
+  width: number,
+  height: number,
+  ports: readonly SymbolPort[],
+  labelPl: string,
+): SymbolDef {
+  return { id, width, height, ports, labelPl };
+}
+
+export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
+  breaker: def('breaker', 16, 16, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+    { name: 'bottom', x: 8, y: 16, dir: 'S' },
+  ], 'Wyłącznik'),
+  disconnector: def('disconnector', 16, 24, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+    { name: 'bottom', x: 8, y: 24, dir: 'S' },
+  ], 'Odłącznik'),
+  earthSwitch: def('earthSwitch', 16, 24, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+  ], 'Uziemnik'),
+  fuseSwitch: def('fuseSwitch', 16, 32, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+    { name: 'bottom', x: 8, y: 32, dir: 'S' },
+  ], 'Rozłącznik z bezpiecznikiem'),
+  transformer2W: def('transformer2W', 32, 40, [
+    { name: 'hv', x: 16, y: 0, dir: 'N' },
+    { name: 'lv', x: 16, y: 40, dir: 'S' },
+  ], 'Transformator SN/nN'),
+  cableHead: def('cableHead', 16, 16, [
+    { name: 'line', x: 8, y: 16, dir: 'S' },
+  ], 'Głowica kablowa'),
+  jointSleeve: def('jointSleeve', 16, 16, [
+    { name: 'a', x: 0, y: 8, dir: 'W' },
+    { name: 'b', x: 16, y: 8, dir: 'E' },
+  ], 'Mufa kablowa'),
+  noPoint: def('noPoint', 16, 16, [
+    { name: 'a', x: 0, y: 8, dir: 'W' },
+    { name: 'b', x: 16, y: 8, dir: 'E' },
+  ], 'Punkt podziału sieci (NO)'),
+  junction: def('junction', 16, 16, [
+    { name: 'n', x: 8, y: 0, dir: 'N' },
+    { name: 's', x: 8, y: 16, dir: 'S' },
+    { name: 'e', x: 16, y: 8, dir: 'E' },
+    { name: 'w', x: 0, y: 8, dir: 'W' },
+  ], 'Węzeł'),
+  currentTransformer: def('currentTransformer', 16, 24, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+    { name: 'bottom', x: 8, y: 24, dir: 'S' },
+  ], 'Przekładnik prądowy'),
+  voltageTransformer: def('voltageTransformer', 16, 24, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+  ], 'Przekładnik napięciowy'),
+  surgeArrester: def('surgeArrester', 16, 24, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+  ], 'Ogranicznik przepięć'),
+  derPv: def('derPv', 32, 32, [
+    { name: 'ac', x: 16, y: 0, dir: 'N' },
+  ], 'Instalacja fotowoltaiczna'),
+  derBess: def('derBess', 32, 32, [
+    { name: 'ac', x: 16, y: 0, dir: 'N' },
+  ], 'Magazyn energii'),
+  derGenerator: def('derGenerator', 32, 32, [
+    { name: 'ac', x: 16, y: 0, dir: 'N' },
+  ], 'Generator'),
+};
+
+/** Szyna zbiorcza — długość z treści (P1), więc fabryka, nie stała definicja. */
+export interface BusbarDef {
+  readonly length: number;
+  readonly ports: readonly SymbolPort[];
+}
+
+export function makeBusbarDef(length: number): BusbarDef {
+  if (!isOnGrid(length) || length < 2 * GRID) {
+    throw new Error(`Długość szyny musi być wielokrotnością GRID=${GRID} i ≥ ${2 * GRID}: ${length}`);
+  }
+  return {
+    length,
+    ports: [
+      { name: 'left', x: 0, y: 0, dir: 'W' },
+      { name: 'right', x: length, y: 0, dir: 'E' },
+    ],
+  };
+}

@@ -21,15 +21,23 @@ i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
 
 ---
 
-### F1. Fundament: siatka + biblioteka symboli
-- `v3/core/grid.ts` (GRID=8, snap, typy Rect/Port), `v3/core/text.ts`
-  (pomiar szerokości: measureText z fallbackiem deterministycznym — fallback
-  MUSI być użyty w testach node'owych).
-- `v3/symbols/*.tsx` — komplet z tabeli spec §3; każdy symbol eksportuje
-  `SYMBOL_DEF` (bbox/ports/labelSlots) + komponent SVG.
-- Testy: bbox wielokrotność GRID; porty na siatce; snapshot struktury SVG
-  (data-symbol-canon), stany łączników (otwarty/zamknięty geometrią).
-- DoD: `grid_probe` na samych symbolach = 100%; vitest zielone; commit.
+### F1. [DONE] Fundament: siatka + biblioteka symboli
+- ZROBIONE: `v3/core/grid.ts` (GRID=8, snap, V3Rect, SymbolPort),
+  `v3/core/text.ts` (4 klasy t1-t4; pomiar WYŁĄCZNIE deterministyczną formułą
+  `len × 0.62 × fontSize` — decyzja: DOM-measure ZREZYGNOWANY całkowicie, jedna
+  prawda geometrii wszędzie, determinizm), `v3/symbols/defs.ts` (15 symboli:
+  CB/DS/ES/rozłącznik-bezp./TR2W/głowica/mufa/NO/węzeł/CT/VT/SA/PV/BESS/G +
+  fabryka szyny `makeBusbarDef`), `v3/symbols/glyphs.tsx` (glify IEC, stany
+  łączników GEOMETRIĄ, rysunek bazowy mono + `stroke` override na nakładki).
+- Odstępstwo od spec §3 (udokumentowane w defs.ts): DER 32×32 (nie 24×24) —
+  port centralny musi leżeć na siatce; wyrocznia siatki nadrzędna.
+- `labelSlots` per symbol PRZENIESIONE do F4 (resolver etykiet jest ich
+  jedynym konsumentem — definicje razem z konsumentem, bez martwych danych).
+- Testy: `v3/symbols/__tests__/symbols.test.tsx` — 52 zielone (grid_probe
+  statyczny 100%: bbox %8, porty na siatce i krawędzi; kompletność rejestru;
+  stany CB/DS geometrią; NO z jawną przerwą; determinizm pomiaru tekstu).
+- Bramki: tsc, eslint, no_codenames (uwaga: „P7" w stringu testu wpada pod
+  guard — używaj pełnych słów w opisach), forbidden_ui_terms, sld_determinism.
 
 ### F2. Layout core: measure → bands → columns (czysta funkcja, bez DOM)
 - `v3/layout/measure.ts`, `v3/layout/bands.ts`, `v3/layout/columns.ts` wg spec
