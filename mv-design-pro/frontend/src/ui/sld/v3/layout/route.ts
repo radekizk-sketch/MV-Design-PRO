@@ -246,6 +246,15 @@ const MAX_DETOUR_PASSES = 8;
  * NA siatce, końce dokładnie w `from`/`to`), omijającą WSZYSTKIE `obstacles`
  * z konstrukcji (patrz DECYZJA — objazd korytarzowy w nagłówku pliku).
  * Deterministyczna: to samo wejście ⇒ identyczny wynik (P7).
+ *
+ * Gdy limit prób objazdu (`MAX_DETOUR_PASSES`) zostanie wyczerpany BEZ
+ * znalezienia trasy wolnej od kolizji (topologia poza zakresem routera
+ * korytarzowego F3, np. sprzeczne kierunki objazdu oscylujące między dwiema
+ * przeszkodami), funkcja NIE rzuca wyjątku — zwraca best-effort polilinię
+ * (ostatni stan `points`, wciąż port-to-port i na siatce). Render ma
+ * DOKOŃCZYĆ rysowanie; naruszenie zero-kolizji wykrywa i RAPORTUJE osobna
+ * wyrocznia `routeAvoidsObstacles` (§11.4 wire_probe) — to nie jest
+ * wyjątek czasu wykonania, tylko warunek do zgłoszenia przez oracle.
  */
 export function routeOrthogonal(
   from: RoutePort,
@@ -260,9 +269,7 @@ export function routeOrthogonal(
     if (!collision) return points;
     points = simplifyCollinear(applyDetour(points, collision));
   }
-  throw new Error(
-    'routeOrthogonal: nie udało się ominąć przeszkód w limicie prób — router korytarzowy F3, nie ogólny A* (patrz DECYZJA w route.ts)',
-  );
+  return points;
 }
 
 /**
@@ -301,8 +308,12 @@ export function endsAtPorts(route: RouteGeometry, from: RoutePort, to: RoutePort
   return !!first && !!last && first.x === from.x && first.y === from.y && last.x === to.x && last.y === to.y;
 }
 
-/** Czy punkt `p` leży NA odcinku ortogonalnym [s1,s2] (włącznie z końcami). */
+/** Czy punkt `p` leży we WNĘTRZU odcinka ortogonalnego [s1,s2] — z WYŁĄCZENIEM
+ *  obu końców. Użycie: klasyfikacja T-węzeł w `classifyRouteNodes` — dotknięcie
+ *  DOKŁADNIE końca `s1`/`s2` (wspólny port / styk koniec-do-końca dwóch tras)
+ *  NIE jest T-odczepem, więc nie kwalifikuje się jako junction (spec §5.4). */
 function pointOnSegment(p: RouteVertex, s1: RouteVertex, s2: RouteVertex): boolean {
+  if ((p.x === s1.x && p.y === s1.y) || (p.x === s2.x && p.y === s2.y)) return false; // koniec, nie wnętrze
   const minX = Math.min(s1.x, s2.x);
   const maxX = Math.max(s1.x, s2.x);
   const minY = Math.min(s1.y, s2.y);
@@ -386,6 +397,12 @@ export function classifyRouteNodes(routes: readonly RouteGeometry[]): RouteNodeC
     }
   }
 
+  const isRouteEndpoint = (p: RouteVertex, route: RouteGeometry): boolean => {
+    const first = route.points[0];
+    const last = route.points[route.points.length - 1];
+    return (!!first && p.x === first.x && p.y === first.y) || (!!last && p.x === last.x && p.y === last.y);
+  };
+
   const crossingKeys = new Set<string>();
   const crossings: RouteNode[] = [];
   for (let ri = 0; ri < routes.length; ri++) {
@@ -398,6 +415,11 @@ export function classifyRouteNodes(routes: readonly RouteGeometry[]): RouteNodeC
           if (!point) continue;
           const key = keyOf(point);
           if (junctionKeys.has(key) || crossingKeys.has(key)) continue;
+          // Punkt będący RÓWNOCZEŚNIE endpointem trasy `ri` lub `rj` (styk
+          // koniec-do-końca / wspólny port) to ani junction, ani crossing —
+          // nie ma tu dwóch niezależnych tras przechodzących nawzajem przez
+          // siebie, tylko naturalne złącze (patrz DECYZJA FIX-B w pointOnSegment).
+          if (isRouteEndpoint(point, routes[ri]) || isRouteEndpoint(point, routes[rj])) continue;
           crossingKeys.add(key);
           crossings.push(point);
         }

@@ -173,6 +173,32 @@ describe('V3 route — routeAvoidsObstacles / routeOrthogonal (spec §5.4, §11.
     expect(allVerticesOnGrid(route)).toBe(true);
     expect(endsAtPorts(route, from, to)).toBe(true);
   });
+
+  it('FIX-A: dwie przeszkody wymuszające OSCYLACJĘ objazdu (sprzeczne kierunki) → routeOrthogonal NIE rzuca, zwraca best-effort polilinię; wyrocznia routeAvoidsObstacles WYKRYWA naruszenie (false)', () => {
+    // Konstrukcja celowo wyczerpuje limit prób (MAX_DETOUR_PASSES): objazd
+    // przeszkody A przesuwa odcinek w rejon przeszkody B, objazd B przesuwa
+    // go z powrotem w rejon A — stan oscyluje w kółko (nigdy się nie
+    // stabilizuje w limicie 8 przejść). Router korytarzowy F3 NIE jest
+    // ogólnym A* (patrz DECYZJA w nagłówku route.ts) — to legalna topologia
+    // poza jego zakresem, którą ma zgłosić wyrocznia, nie wyjątek.
+    const from = port(0, 40, 'E');
+    const to = port(200, 40, 'W');
+    const obstacleA: V3Rect = { x: 64, y: 24, width: 32, height: 32 };
+    const obstacleB: V3Rect = { x: 60, y: 0, width: 20, height: 24 };
+
+    let points: readonly RouteVertex[] | undefined;
+    expect(() => {
+      points = routeOrthogonal(from, to, [obstacleA, obstacleB]);
+    }).not.toThrow();
+
+    expect(points).toBeDefined();
+    const route = { points: points! };
+    // Best-effort: nadal port-to-port i na siatce, mimo że NIE omija obu
+    // przeszkód (to właśnie ma wykryć wyrocznia poniżej).
+    expect(endsAtPorts(route, from, to)).toBe(true);
+    expect(allVerticesOnGrid(route)).toBe(true);
+    expect(routeAvoidsObstacles(route, [obstacleA, obstacleB])).toBe(false);
+  });
 });
 
 describe('V3 route — classifyRouteNodes (spec §5.4): T-węzeł (junction) vs skrzyżowanie (crossing)', () => {
@@ -218,6 +244,37 @@ describe('V3 route — classifyRouteNodes (spec §5.4): T-węzeł (junction) vs 
     const first = classifyRouteNodes([trunk, lateral]);
     const second = classifyRouteNodes([trunk, lateral]);
     expect(second).toEqual(first);
+  });
+
+  it('FIX-B kontrprzykład: dwie trasy wychodzące z TEGO SAMEGO portu → zero junctions (wspólny port na szynie, nie T-odczep)', () => {
+    const sharedPort = { x: 40, y: 40 };
+    const routeA = { points: [sharedPort, { x: 40, y: 100 }] };
+    const routeB = { points: [sharedPort, { x: 120, y: 40 }] };
+
+    const { junctions, crossings } = classifyRouteNodes([routeA, routeB]);
+
+    expect(junctions).toHaveLength(0);
+    expect(crossings).toHaveLength(0);
+  });
+
+  it('FIX-B kontrprzykład: styk koniec-do-końca dwóch tras → zero junctions', () => {
+    const routeC = { points: [{ x: 0, y: 40 }, { x: 100, y: 40 }] };
+    const routeD = { points: [{ x: 100, y: 40 }, { x: 100, y: 120 }] };
+
+    const { junctions, crossings } = classifyRouteNodes([routeC, routeD]);
+
+    expect(junctions).toHaveLength(0);
+    expect(crossings).toHaveLength(0);
+  });
+
+  it('FIX-B regresja: poprawny T-odczep (koniec JEDNEJ trasy we WNĘTRZU odcinka drugiej) nadal klasyfikowany jako junction', () => {
+    const trunk = { points: [{ x: 0, y: 40 }, { x: 160, y: 40 }] };
+    const lateral = { points: [{ x: 80, y: 40 }, { x: 80, y: 120 }] };
+
+    const { junctions, crossings } = classifyRouteNodes([trunk, lateral]);
+
+    expect(junctions).toEqual([{ x: 80, y: 40 }]);
+    expect(crossings).toHaveLength(0);
   });
 });
 

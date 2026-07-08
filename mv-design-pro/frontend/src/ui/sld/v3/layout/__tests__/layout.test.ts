@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { GRID, rectsOverlap, snapUp as snapUpFromGrid, type V3Rect } from '../../core/grid';
-import { labelLineHeight, measureLabelWidth } from '../../core/text';
+import { measureLabelWidth } from '../../core/text';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';

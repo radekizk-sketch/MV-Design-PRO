@@ -64,12 +64,29 @@ i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
   (r5) brak truncacji długich nazw (>22 zn.) — hak w F4/F6 (LOD);
   (r6) DER liczony w bloku stacji (B4) vs pasmo B3 — decyzja kompozycji w F5.
 
-### F3. Routing: kanały + węzły + §16
-- `v3/layout/route.ts` wg spec §5.4. Trasy niosą `fromTerminal/toTerminal`
-  (przejęte z segmentPaths adaptera — §16 NIE wolno zgubić).
-- Testy: T-węzeł=kropka, skrzyżowanie bez kropki, tory równoległe co GRID,
-  zero przecięć trasa↔bbox (property-test na syntetykach).
-- DoD: `port_probe`+`wire_probe` na syntetykach = 100%/0; commit.
+### F3. [DONE] Routing: kanały + węzły + §16 (+ długi r1-r3)
+- WYKONANE (Sonnet impl. `1cb396e` + poprawki po recenzji Opusa
+  **APPROVE-WITH-FIXES**; nadzór + pełny suite 2846/2846: sesja nadrzędna).
+- Dostarczone: `route.ts` (routeOrthogonal H/V na siatce, kanały co GRID,
+  buildRoute z terminalami §16 1:1 — typ `SegmentTerminalRef` WYEKSPORTOWANY
+  z adaptera v2, zero cienia; wyrocznie allVerticesOnGrid/routeAvoidsObstacles/
+  endsAtPorts; classifyRouteNodes: T-odczep=kropka TYLKO gdy koniec we WNĘTRZU
+  cudzego odcinka — wspólny port/styk koniec-do-końca to ani junction, ani
+  crossing), `segments.ts` (normalizeSegmentText = jedno źródło prawdy „segment
+  obecny" dla bands+columns, computeSegmentStagger), r1: B2 z treści podpisów
+  (presence-driven), r2: B1 dwuwierszowe naprzemienne.
+- Po recenzji: objazd jest BEST-EFFORT (bez throw) — naruszenie zgłasza
+  wyrocznia wire_probe (test oscylacji dwóch przeszkód: nie rzuca, wykrywa).
+- Testy: route 22 + layout 62 + symbols 52 = 136/136; pełny suite v2+v3+engine
+  158 plików / 2846 zielonych (adapter v2 dotknięty tylko eksportem).
+- NOWE RYZYKO/DECYZJA NA F5:
+  (r7) sloty etykiet segmentów są dziś kotwiczone PER KOLUMNA, a odcinek
+       magistrali fizycznie biegnie między kolumnami (przęsło). F5 MUSI
+       rozstrzygnąć kotwiczenie slotu do przęsła (gap+span) — wtedy stagger r2
+       nabiera realnego sensu (dziś jest redundantny wobec §5.3, bo kolumna
+       już jest max(stacja, etykieta)); objazd jest jednoprzeszkodowy per
+       przejście — przy gęstych scenach polegać na wyroczni, nie podnosić
+       limitu bez testu oscylacji wieloprzeszkodowej.
 
 ### F4. Label resolver + arkusz
 - `v3/layout/labels.ts` (spec §4/§5.5, leader-line przy slocie ≥2),
