@@ -39,14 +39,30 @@ i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
 - Bramki: tsc, eslint, no_codenames (uwaga: „P7" w stringu testu wpada pod
   guard — używaj pełnych słów w opisach), forbidden_ui_terms, sld_determinism.
 
-### F2. Layout core: measure → bands → columns (czysta funkcja, bez DOM)
-- `v3/layout/measure.ts`, `v3/layout/bands.ts`, `v3/layout/columns.ts` wg spec
-  §5.1–5.3. Wejście: scena elektryczna (typ z adaptera v2 — NIE nowy model
-  danych!). Wyjście: pozycje symboli + zarezerwowane sloty etykiet.
-- Testy jednostkowe na syntetykach: kolumna szersza gdy dłuższa etykieta
-  segmentu; pasma nie nachodzą (asercje arytmetyczne, bez renderu); prefix-sum
-  determinizm.
-- DoD: testy + property-test „żadne dwa sloty się nie przecinają"; commit.
+### F2. [DONE] Layout core: measure → bands → columns (czysta funkcja, bez DOM)
+- WYKONANE (implementacja: agent Sonnet; recenzja: agent Opus —
+  **APPROVE-WITH-FIXES**, wszystkie poprawki wdrożone; nadzór + bramki: sesja
+  nadrzędna). Commity: `2948ed3` (rdzeń) + follow-up (poprawki recenzji).
+- Dostarczone: `measure.ts` (szerokości z treści + snapUp; typ wejścia przez
+  `Pick<StationOnRunRendererProps,…>` — zero cienia modelu; sidecar oznacznika
+  aparatu `bay.designation` t3 + wejście `bayDirectionCaptions` na podpisy
+  kierunków §9 od F5; formatter mocy TR importowany z v2 — jedna prawda),
+  `bands.ts` (B1..B6, styk bez nachodzenia, półotwarta geometria), `columns.ts`
+  (prefix-sum; `''`/whitespace segmentu = brak slotu), `snapUp` w `core/grid.ts`.
+- Testy: 56 w layout.test.ts (w tym property 36 przypadków parowego
+  nieprzecinania rezerwacji); łącznie 585/585 zielonych (v3 + renderer v2).
+- ZAPISANE DŁUGI/RYZYKA dla F3-F5 (z recenzji Opusa + raportu poprawek):
+  (r1) B2 stała wysokość 32px — podpisy portów `kier. Sxx` muszą się zmieścić
+       albo B2 liczyć z treści (F3);
+  (r2) alternacja 2-wierszowa B1 (spec §5.2) wymaga sprzężenia po columns —
+       policzyć stagger PO prefix-sumach i ewentualnie przeliczyć B1 (F3/F4);
+  (r3) scalić DWA wejścia segmentu (wysokość B1 w bands vs teksty w columns)
+       w jedno wejście „segmenty" (F3) — dziś `''` daje wysokość w bands,
+       a nie daje slotu w columns (spójne z decyzją, ale do scalenia);
+  (r4) TRZECIA kopia formatera mocy TR w `MiniBlockRmuRenderer.tsx:164`
+       (lokalna) — ujednolicić przy F5/F8 (cutover);
+  (r5) brak truncacji długich nazw (>22 zn.) — hak w F4/F6 (LOD);
+  (r6) DER liczony w bloku stacji (B4) vs pasmo B3 — decyzja kompozycji w F5.
 
 ### F3. Routing: kanały + węzły + §16
 - `v3/layout/route.ts` wg spec §5.4. Trasy niosą `fromTerminal/toTerminal`

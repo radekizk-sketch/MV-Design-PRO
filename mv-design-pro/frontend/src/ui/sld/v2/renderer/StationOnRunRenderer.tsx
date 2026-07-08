@@ -35,7 +35,7 @@ const TRUNK_Y = -STATION_RUN_TRUNK_OFFSET_Y;
 const LABEL_Y = 36;
 const CODE_Y = 58;
 
-function formatTransformerRatedPower(kva: number): string {
+export function formatTransformerRatedPower(kva: number): string {
   return kva >= 1000
     ? `${(kva / 1000).toFixed(1).replace('.', ',')} MVA`
     : `${kva} kVA`;

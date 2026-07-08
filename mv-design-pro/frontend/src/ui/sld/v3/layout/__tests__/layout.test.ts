@@ -5,8 +5,9 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { GRID, rectsOverlap, type V3Rect } from '../../core/grid';
-import { labelLineHeight } from '../../core/text';
+import { GRID, rectsOverlap, snapUp as snapUpFromGrid, type V3Rect } from '../../core/grid';
+import { labelLineHeight, measureLabelWidth } from '../../core/text';
+import { SYMBOL_DEFS } from '../../symbols/defs';
 import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
 import {
@@ -81,6 +82,88 @@ describe('V3 layout — measure (spec §5.1)', () => {
   });
 });
 
+describe('V3 layout — measure (spec §5.1, FIX-3: rezerwacja etykiet WŁASNYCH aparatów/portów)', () => {
+  const baseFields = {
+    id: 's1',
+    name: 'St',
+    stationCode: null,
+    transformerRatedKva: null,
+    stationTypeLabel: null,
+  } as const;
+
+  it('dłuższy bay.designation (oznacznik aparatu) poszerza requiredStationWidth', () => {
+    const shortDesignation: MiniBlockBayDescriptor = {
+      bayRef: 'b1',
+      fieldRole: FIELD_ROLE.RMU_LINE,
+      designation: 'A',
+      hasMissingRequiredDevice: false,
+    };
+    const longDesignation: MiniBlockBayDescriptor = {
+      ...shortDesignation,
+      designation: 'kier. GPZ Południowy-Wschód (odcinek magistralny)',
+    };
+    const withShort: StationMeasureInput = { ...baseFields, snBays: [shortDesignation] };
+    const withLong: StationMeasureInput = { ...baseFields, snBays: [longDesignation] };
+    expect(requiredStationWidth(withLong)).toBeGreaterThan(requiredStationWidth(withShort));
+  });
+
+  it('bayDirectionCaptions z długim podpisem kierunku poszerza requiredStationWidth', () => {
+    const bay: MiniBlockBayDescriptor = {
+      bayRef: 'b1',
+      fieldRole: FIELD_ROLE.RMU_LINE,
+      designation: '',
+      hasMissingRequiredDevice: false,
+    };
+    const withoutCaption: StationMeasureInput = { ...baseFields, snBays: [bay] };
+    const withCaption: StationMeasureInput = {
+      ...baseFields,
+      snBays: [bay],
+      bayDirectionCaptions: ['kier. GPZ Południe (bardzo długi opis kierunku zasilania)'],
+    };
+    expect(requiredStationWidth(withCaption)).toBeGreaterThan(requiredStationWidth(withoutCaption));
+  });
+
+  it('brak designation i brak bayDirectionCaptions ⇒ szerokość kolumny = tylko footprint aparatu (bez regresji)', () => {
+    const bay: MiniBlockBayDescriptor = {
+      bayRef: 'b1',
+      fieldRole: FIELD_ROLE.RMU_LINE,
+      designation: '',
+      hasMissingRequiredDevice: false,
+    };
+    const station: StationMeasureInput = { ...baseFields, name: 'A', snBays: [bay] };
+    const expectedFootprintWidth = Math.max(SYMBOL_DEFS.disconnector.width, SYMBOL_DEFS.breaker.width);
+    const expectedNameWidth = measureLabelWidth('A', 't1');
+    expect(requiredStationWidth(station)).toBe(
+      snapUp(Math.max(expectedFootprintWidth, expectedNameWidth) + 2 * GRID),
+    );
+  });
+
+  it('designation złożony wyłącznie z białych znaków traktowany jak brak (spójnie z FIX-4)', () => {
+    const emptyDesignation: MiniBlockBayDescriptor = {
+      bayRef: 'b1',
+      fieldRole: FIELD_ROLE.RMU_LINE,
+      designation: '',
+      hasMissingRequiredDevice: false,
+    };
+    const whitespaceDesignation: MiniBlockBayDescriptor = { ...emptyDesignation, designation: '   ' };
+    const withEmpty: StationMeasureInput = { ...baseFields, snBays: [emptyDesignation] };
+    const withWhitespace: StationMeasureInput = { ...baseFields, snBays: [whitespaceDesignation] };
+    expect(requiredStationWidth(withWhitespace)).toBe(requiredStationWidth(withEmpty));
+  });
+});
+
+describe('V3 core/grid — snapUp (FIX-5: przeniesione z measure.ts, re-eksport zachowany)', () => {
+  it('zaokrągla W GÓRĘ do wielokrotności GRID (ceil)', () => {
+    expect(snapUpFromGrid(1)).toBe(8);
+    expect(snapUpFromGrid(8)).toBe(8);
+    expect(snapUpFromGrid(9)).toBe(16);
+  });
+
+  it('re-eksport z measure.ts jest tą samą funkcją co core/grid.ts', () => {
+    expect(snapUp).toBe(snapUpFromGrid);
+  });
+});
+
 describe('V3 layout — columns (spec §5.3): kolumna szersza przy dłuższej etykiecie segmentu', () => {
   it('krótka nazwa stacji + długa etykieta segmentu wejściowego → szerokość zdominowana przez etykietę', () => {
     const station = makeStation('s1', 3, 1);
@@ -97,6 +180,24 @@ describe('V3 layout — columns (spec §5.3): kolumna szersza przy dłuższej et
     const station = makeStation('s1', 20, 4);
     const tiny = buildColumnsForStations([station], ['x']);
     expect(tiny.columnsResult.columns[0].width).toBeGreaterThanOrEqual(requiredStationWidth(station));
+  });
+});
+
+describe('V3 layout — columns (spec §5.3, FIX-4): pusty/whitespace segmentText ≠ slot', () => {
+  it('"" nie tworzy wpisu w segmentLabelSlots ani nie poszerza kolumny', () => {
+    const station = makeStation('s1', 20, 4);
+    const withNull = buildColumnsForStations([station], [null]);
+    const withEmpty = buildColumnsForStations([station], ['']);
+    expect(withEmpty.columnsResult.segmentLabelSlots).toHaveLength(0);
+    expect(withEmpty.columnsResult.columns[0].width).toBe(withNull.columnsResult.columns[0].width);
+  });
+
+  it('"   " (same białe znaki) nie tworzy wpisu w segmentLabelSlots ani nie poszerza kolumny', () => {
+    const station = makeStation('s1', 20, 4);
+    const withNull = buildColumnsForStations([station], [null]);
+    const withWhitespace = buildColumnsForStations([station], ['   ']);
+    expect(withWhitespace.columnsResult.segmentLabelSlots).toHaveLength(0);
+    expect(withWhitespace.columnsResult.columns[0].width).toBe(withNull.columnsResult.columns[0].width);
   });
 });
 

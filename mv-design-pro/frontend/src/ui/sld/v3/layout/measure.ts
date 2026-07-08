@@ -10,47 +10,57 @@
  * UWAGA (odczyt wejścia v2): pola `x`/`y` z `StationOnRunRendererProps` /
  * `CableRunRendererProps` w v2 to STARA geometria slotowa (PITCH) — v3 jej
  * NIE używa i NIE czyta. Stąd `StationMeasureInput` niżej to podzbiór
- * WYŁĄCZNIE pól semantycznych (nazwa, kod, moc, role pól), zgodny z typami
- * v2 (import typu `MiniBlockBayDescriptor`, bez duplikowania modelu danych).
+ * WYŁĄCZNIE pól semantycznych (nazwa, kod, moc, role pól), wyprowadzony
+ * przez `Pick` z `StationOnRunRendererProps` (v2) — zero duplikacji modelu
+ * danych (recenzja F2, FIX-1): jeśli v2 doda/zmieni pole źródłowe, `Pick`
+ * przechwyci to na etapie kompilacji zamiast cichego rozjazdu kopii.
  */
 
-import { GRID } from '../core/grid';
+import { GRID, snapUp } from '../core/grid';
 import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS } from '../symbols/defs';
 import { FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
+import {
+  formatTransformerRatedPower,
+  type StationOnRunRendererProps,
+} from '../../v2/renderer/StationOnRunRenderer';
 
 const LABEL_LINE_HEIGHT_T1 = labelLineHeight('t1');
 const LABEL_LINE_HEIGHT_T2 = labelLineHeight('t2');
 const LABEL_LINE_HEIGHT_T4 = labelLineHeight('t4');
 
-/** Przyciągnięcie W GÓRĘ do siatki (P1: przestrzeń nie może być węższa/niższa
- *  niż wymaga treść — zaokrąglenie w dół obcięłoby ostatni piksel etykiety). */
-export function snapUp(value: number): number {
-  return Math.ceil(value / GRID) * GRID;
-}
+/** FIX-5 (recenzja F2): `snapUp` mieszka teraz w `core/grid.ts` (obok
+ *  `snapToGrid`) — re-eksport tutaj, żeby nie łamać istniejących importów
+ *  (`columns.ts`, testy) odwołujących się do `./measure`. */
+export { snapUp } from '../core/grid';
 
 /**
  * Podzbiór semantyczny stacji potrzebny do pomiaru (spec §4 pasmo NAZW,
- * §5.1). Odpowiednik pól z `StationOnRunRendererProps` (v2) — bez x/y.
+ * §5.1). Pola `id`/`name`/`stationCode`/`transformerRatedKva` pochodzą
+ * WPROST z `StationOnRunRendererProps` (v2, `Pick`) — bez x/y (geometria
+ * slotowa PITCH, patrz UWAGA na górze pliku).
  */
-export interface StationMeasureInput {
-  readonly id: string;
-  readonly name: string;
-  readonly stationCode?: string | null;
-  readonly transformerRatedKva?: number | null;
-  /** Typ stacji wg §9 nomenklatury (np. „stacja przelotowa") — slot t4. */
+export interface StationMeasureInput
+  extends Pick<StationOnRunRendererProps, 'id' | 'name' | 'stationCode' | 'transformerRatedKva'> {
+  /** Typ stacji wg §9 nomenklatury (np. „stacja przelotowa") — slot t4.
+   *  Pole WŁASNE v3: `StationOnRunRendererProps` (v2) NIE MA odpowiednika —
+   *  to nie jest podzbiór v2, to rozszerzenie specyficzne dla pomiaru V3. */
   readonly stationTypeLabel?: string | null;
   readonly snBays: readonly MiniBlockBayDescriptor[];
+  /** Podpisy kierunku pola (spec §9: `kier. S03` / `odg. S15`), index-aligned
+   *  do `snBays`. Pole WŁASNE v3 (bez odpowiednika w `StationOnRunRendererProps`).
+   *  F5 dostarczy realne wartości z topologii `line_runs`; nieobecność (dziś,
+   *  przed F5) oznacza brak rezerwacji miejsca na ten podpis — nie ukryty
+   *  dług, tylko jeszcze niedostarczone wejście (FIX-3, recenzja F2). */
+  readonly bayDirectionCaptions?: readonly (string | null)[];
 }
 
-/** Format mocy transformatora — spójny z `StationOnRunRenderer` (v2), żeby
- *  pomiar szerokości etykiety odpowiadał realnie rysowanemu tekstowi. */
-export function formatTransformerRatedPower(kva: number): string {
-  return kva >= 1000
-    ? `${(kva / 1000).toFixed(1).replace('.', ',')} MVA`
-    : `${kva} kVA`;
-}
+/** FIX-2 (recenzja F2): re-eksport formatera mocy TR z `StationOnRunRenderer`
+ *  (v2) — JEDNA prawda. Pomiar szerokości etykiety MUSI używać dokładnie tej
+ *  samej funkcji, którą renderer rysuje, inaczej rezerwacja miejsca i realny
+ *  tekst mogłyby się rozjechać przy zmianie formatu w jednym miejscu. */
+export { formatTransformerRatedPower } from '../../v2/renderer/StationOnRunRenderer';
 
 /**
  * Gabaryt kolumny pola (jedna pionowa kolumna aparatów, spec §3 "Stacja
@@ -63,6 +73,17 @@ export function formatTransformerRatedPower(kva: number): string {
  *    szyna nN/odpływy pomijane w wysokości kolumny, doliczane jako margines
  *    stałej wysokości bloku w `stationBlockHeight`);
  *  - pole DER: symbol DER (PV/BESS/generator wg `MiniBlockDerBadge.kind`).
+ *    (FIX-6, recenzja F2): DER jako pole w bloku stacji to dziś B4; relacja
+ *    z pasmem B3 (DER przy magistrali, spec) do rozstrzygnięcia w F5 — NIE
+ *    usuwać tej gałęzi bez decyzji kompozycji.
+ *
+ * FIX-3 (recenzja F2): to jest tylko gabaryt SYMBOLU aparatu — rezerwacja
+ * szerokości kolumny pola w `stationBlockWidth` DOLICZA do tego jeszcze slot
+ * na etykiety WŁASNE pola (oznacznik `bay.designation` i podpis kierunku
+ * `bayDirectionCaptions`), zgodnie ze spec §5.1 „max(bbox, najszerszy slot
+ * etykiet WŁASNYCH)" — rezerwacja jest teraz kompletna dla danych DOSTĘPNYCH
+ * (podpisy kierunku wejdą, gdy F5 je dostarczy; brak wejścia dziś ≠ ukryty
+ * dług, tylko jeszcze niedostarczone dane).
  */
 function bayColumnFootprint(role: FieldRole): { readonly width: number; readonly height: number } {
   if (role === FIELD_ROLE.TRANSFORMER || role === FIELD_ROLE.RMU_TRANSFORMER) {
@@ -83,15 +104,48 @@ function bayColumnFootprint(role: FieldRole): { readonly width: number; readonly
   return { width: Math.max(ds.width, cb.width), height: ds.height + GRID + cb.height };
 }
 
+/**
+ * Szerokość wymagana kolumny pola `snBays[index]` (spec §5.1, FIX-3):
+ * `max(footprint.width + GRID + szerokość_oznacznika, szerokość_podpisu_kierunku)`.
+ *  - oznacznik aparatu = `bay.designation` (t3); gdy puste/whitespace —
+ *    pomijamy CAŁY człon sidecar (nie doliczamy `GRID + 0`, bo nie ma czego
+ *    odseparowywać od bboxa);
+ *  - podpis kierunku = `bayDirectionCaptions?.[index]` (t3); gdy nieobecny
+ *    lub pusty — wkład 0 (patrz nagłówek `bayColumnFootprint`).
+ */
+function bayColumnRequiredWidth(
+  bay: MiniBlockBayDescriptor,
+  index: number,
+  bayDirectionCaptions: readonly (string | null)[] | undefined,
+): number {
+  const footprint = bayColumnFootprint(bay.fieldRole);
+  const designation = bay.designation.trim();
+  const widthWithSidecar = designation
+    ? footprint.width + GRID + measureLabelWidth(designation, 't3')
+    : footprint.width;
+
+  const caption = bayDirectionCaptions?.[index]?.trim();
+  const captionWidth = caption ? measureLabelWidth(caption, 't3') : 0;
+
+  return Math.max(widthWithSidecar, captionWidth);
+}
+
 /** Margines stały bloku stacji: prześwit na szynę SN (nad kolumnami) i szynę
  *  nN (pod kolumnami) — spec §3 "szyna SN + kolumny pól + TR + szyna nN". */
 const STATION_BLOCK_BUS_CLEARANCE = 2 * GRID;
 
-/** Szerokość bloku stacji z liczby pól: suma szerokości kolumn + odstępy GRID
- *  między kolumnami (spec §5.1, §5.3 "blok stacji z liczby pól"). */
-function stationBlockWidth(snBays: readonly MiniBlockBayDescriptor[]): number {
+/** Szerokość bloku stacji z liczby pól: suma szerokości kolumn (z rezerwacją
+ *  etykiet własnych, FIX-3) + odstępy GRID między kolumnami (spec §5.1,
+ *  §5.3 "blok stacji z liczby pól"). */
+function stationBlockWidth(
+  snBays: readonly MiniBlockBayDescriptor[],
+  bayDirectionCaptions: readonly (string | null)[] | undefined,
+): number {
   if (snBays.length === 0) return 0;
-  const columnsWidth = snBays.reduce((sum, bay) => sum + bayColumnFootprint(bay.fieldRole).width, 0);
+  const columnsWidth = snBays.reduce(
+    (sum, bay, index) => sum + bayColumnRequiredWidth(bay, index, bayDirectionCaptions),
+    0,
+  );
   return columnsWidth + GRID * Math.max(snBays.length - 1, 0);
 }
 
@@ -127,7 +181,7 @@ export function stationNameBandHeight(station: StationMeasureInput): number {
  * przyciągnięte do siatki W GÓRĘ.
  */
 export function requiredStationWidth(station: StationMeasureInput): number {
-  const blockWidth = stationBlockWidth(station.snBays);
+  const blockWidth = stationBlockWidth(station.snBays, station.bayDirectionCaptions);
 
   const nameWidths: number[] = [measureLabelWidth(station.name, 't1')];
   if (station.stationCode) nameWidths.push(measureLabelWidth(station.stationCode, 't1'));

@@ -79,7 +79,11 @@ export function computeColumns(input: ComputeColumnsInput): ColumnsResult {
 
   stations.forEach((station, index) => {
     const stationWidth = requiredStationWidth(station);
-    const segmentText = incomingSegmentLabelTexts[index];
+    // FIX-4 (recenzja F2): pusty/whitespace string ≠ realny tekst segmentu —
+    // traktujemy go jak brak, żeby nie rezerwować slotu ani szerokości pod
+    // etykietę, która nigdy nie zostanie narysowana.
+    const rawSegmentText = incomingSegmentLabelTexts[index];
+    const segmentText = rawSegmentText?.trim() ? rawSegmentText : null;
     const segmentWidth = segmentText != null ? requiredSegmentLabelWidth(segmentText) : 0;
     // snapUp na wyjściu z max(...) — measure.ts już zwraca requiredStationWidth
     // na siatce, ale requiredSegmentLabelWidth (celowo, spec §5.1) nie jest

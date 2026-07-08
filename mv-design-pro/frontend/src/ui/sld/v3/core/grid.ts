@@ -12,6 +12,12 @@ export function snapToGrid(value: number): number {
   return Math.round(value / GRID) * GRID;
 }
 
+/** Przyciągnięcie W GÓRĘ do siatki (P1: przestrzeń nie może być węższa/niższa
+ *  niż wymaga treść — zaokrąglenie w dół obcięłoby ostatni piksel etykiety). */
+export function snapUp(value: number): number {
+  return Math.ceil(value / GRID) * GRID;
+}
+
 export function isOnGrid(value: number): boolean {
   return value % GRID === 0;
 }
