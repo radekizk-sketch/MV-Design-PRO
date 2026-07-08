@@ -428,3 +428,118 @@ describe('V3 layout — bands/columns (F3 fix r3): "" nie rezerwuje NIGDZIE (jed
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// r7b (F5a): ColumnResult.tapX + rezerwacja SegmentLabelSlotResult.rect
+// wyśrodkowana na przęśle TAP-DO-TAP (nie na krawędziach kolumny).
+// ---------------------------------------------------------------------------
+
+describe('V3 layout — columns (r7b): tapX = zaczep magistrali (środek BLOKU, nie kolumny)', () => {
+  it('tapX jest na siatce dla każdej kolumny', () => {
+    const stations = [makeStation('s1', 5, 2), makeStation('s2', 25, 5), makeStation('s3', 2, 3)];
+    const { columnsResult } = buildColumnsForStations(stations, [null, '15 kV', null]);
+    for (const c of columnsResult.columns) {
+      expect(c.tapX % GRID).toBe(0);
+    }
+  });
+
+  it('tapX ≠ środek kolumny, gdy kolumna jest poszerzona przez etykietę segmentu (blok jest węższy niż kolumna)', () => {
+    // Stacja z 1 polem TR (blok wąski) + bardzo długa etykieta segmentu
+    // wejściowego (poszerza KOLUMNĘ znacznie ponad blok).
+    const station = makeStation('s1', 1, 1);
+    const wideLabel = 'YAKXS 3×120/16 · 90 m — bardzo długi opis odcinka magistrali SN';
+    const { columnsResult } = buildColumnsForStations([station], [wideLabel]);
+    const column = columnsResult.columns[0];
+    const columnCenter = column.x + column.width / 2;
+    expect(column.tapX).not.toBe(columnCenter);
+    // tapX leży w LEWEJ części (bliżej x=0+GRID) kolumny poszerzonej w prawo
+    // przez etykietę segmentu (blok zakotwiczony lewym marginesem GRID).
+    expect(column.tapX).toBeLessThan(columnCenter);
+  });
+
+  it('pierwsza kolumna: tapX = GRID + blockWidth/2 (lewa krawędź świata = 0)', () => {
+    const station = makeStation('s1', 3, 2);
+    const { columnsResult } = buildColumnsForStations([station], [null]);
+    expect(columnsResult.columns[0].x).toBe(0);
+    expect(columnsResult.columns[0].tapX).toBeGreaterThan(0);
+    expect(columnsResult.columns[0].tapX).toBeLessThan(columnsResult.columns[0].width);
+  });
+});
+
+describe('V3 layout — columns (r7b): rezerwacja etykiety segmentu wyśrodkowana na przęśle tap-do-tap', () => {
+  it('segmentLabelSlots[j].rect jest wyśrodkowany na [tapX_{j-1} lub 0, tapX_j], nie na krawędziach kolumny', () => {
+    const stations = [makeStation('s1', 5, 2), makeStation('s2', 12, 4)];
+    const labels = ['15 kV', 'YAKXS 3×70/16 · 45 m'];
+    const { columnsResult } = buildColumnsForStations(stations, labels);
+
+    columnsResult.segmentLabelSlots.forEach((slot) => {
+      const spanStart = slot.stationIndex > 0 ? columnsResult.columns[slot.stationIndex - 1].tapX : 0;
+      const spanEnd = columnsResult.columns[slot.stationIndex].tapX;
+      const spanCenter = (spanStart + spanEnd) / 2;
+      const rectCenter = slot.rect.x + slot.rect.width / 2;
+      expect(Math.abs(rectCenter - spanCenter)).toBeLessThan(GRID);
+      expect(slot.rect.width % GRID).toBe(0);
+      expect(slot.rect.x % GRID).toBe(0);
+    });
+  });
+
+  it('szerokość rezerwacji = snapUp(requiredSegmentLabelWidth(text)) — NIEZALEŻNA od szerokości kolumny (r7b)', () => {
+    const station = makeStation('s1', 30, 5); // kolumna szeroka (duża stacja)
+    const shortLabel = '15 kV';
+    const { columnsResult } = buildColumnsForStations([station], [shortLabel]);
+    const slot = columnsResult.segmentLabelSlots[0];
+    expect(slot.rect.width).toBe(snapUp(requiredSegmentLabelWidth(shortLabel)));
+    // Rezerwacja jest WĘŻSZA niż cała (szeroka) kolumna — dowód, że rect już
+    // nie jest przypięty do krawędzi/szerokości kolumny (przed r7b: rect.width
+    // === column.width zawsze).
+    expect(slot.rect.width).toBeLessThan(columnsResult.columns[0].width);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// r7b: computeSegmentStagger — dowód poprawki (dawny warunek, oparty o
+// `requiredStationWidth`, NIE wykrywał realnego ryzyka nachodzenia na wąskim
+// przęśle tap-do-tap pierwszej stacji; nowy warunek — oparty o `spanWidth`
+// z `computeStationTaps` — wykrywa je poprawnie).
+// ---------------------------------------------------------------------------
+
+describe('V3 layout — computeSegmentStagger (r7b): dokładny warunek span > dawne przybliżenie kolumnowe', () => {
+  it('etykieta zbyt szeroka na WĄSKIE przęsło (blisko krawędzi świata) pierwszej stacji, ale WĘŻSZA niż requiredStationWidth ⇒ dawny warunek (kolumnowy) NIE wykryłby ryzyka, nowy (span) wykrywa', () => {
+    // Stacja bardzo wąska (1-polowa, TR-only) blisko x=0 ⇒ jej WŁASNY tap-span
+    // (0..tapX_0) jest z natury mały (~połowa wąskiego bloku). Etykieta
+    // umiarkowanej długości mieści się w `requiredStationWidth` (dawny
+    // warunek: "OK"), ale NIE mieści się w realnym, wąskim przęśle 0..tapX_0.
+    const stationA = makeStation('a', 1, 1);
+    const stationB = makeStation('b', 1, 1);
+    const moderateLabel = '15 kV AB'; // umyślnie krótsza niż WIDE_CABLE_LABEL
+
+    const requiredStationWidthA = requiredStationWidth(stationA);
+    const requiredLabelWidth = requiredSegmentLabelWidth(moderateLabel);
+    // Sanity wejścia scenariusza: dawny warunek kolumnowy NIE oznaczyłby tej
+    // etykiety jako "zbyt szerokiej" (mieści się w całej kolumnie stacji).
+    expect(requiredLabelWidth).toBeLessThan(requiredStationWidthA);
+
+    const stagger = computeSegmentStagger([stationA, stationB], [moderateLabel, moderateLabel]);
+    // Nowy (span-aware) warunek WYKRYWA ryzyko mimo że dawny by go pominął.
+    expect(stagger.twoRow).toBe(true);
+
+    // Dowód praktyczny: z alternacją, finalne rezerwacje faktycznie się NIE
+    // przecinają (gdyby stagger.twoRow było (błędnie) `false`, poniższe by
+    // się nie powiodło — patrz analiza w segments.ts).
+    const { columnsResult } = buildColumnsForStations([stationA, stationB], [moderateLabel, moderateLabel]);
+    const [slotA, slotB] = columnsResult.segmentLabelSlots;
+    expect(rectsOverlap(slotA.rect, slotB.rect)).toBe(false);
+    expect(slotA.rect.y).not.toBe(slotB.rect.y);
+  });
+
+  it('gdy OBIE stacje mieszczą etykietę na WŁASNYM przęśle (spanWidth) ⇒ jeden wiersz wystarcza, zero kolizji', () => {
+    const stations = [makeStation('a', 20, 4), makeStation('b', 20, 4)];
+    const shortLabel = '15 kV';
+    const stagger = computeSegmentStagger(stations, [shortLabel, shortLabel]);
+    expect(stagger.twoRow).toBe(false);
+
+    const { columnsResult } = buildColumnsForStations(stations, [shortLabel, shortLabel]);
+    const [slotA, slotB] = columnsResult.segmentLabelSlots;
+    expect(rectsOverlap(slotA.rect, slotB.rect)).toBe(false);
+  });
+});

@@ -20,10 +20,36 @@
  * `StationMeasureInput`, zgodnie z decyzją architektoniczną F2) i columns
  * (`computeColumns` liczy stagger SAMODZIELNIE, bo ma pełne `StationMeasureInput`
  * na wejściu — patrz `columns.ts`).
+ *
+ * r7b (F5, decyzja nadzorcy REBUILD_PLAN_V3) — PRZEPISANE `computeSegmentStagger`:
+ * odkąd `columns.ts` centruje rezerwację etykiety segmentu NA PRZĘŚLE
+ * TAP-DO-TAP (zaczep poprzedniej stacji → zaczep tej stacji), stare
+ * przybliżenie „`requiredSegmentLabelWidth > requiredStationWidth`" (patrz
+ * DECYZJA niżej, POZOSTAWIONA jako historia — CIĄGLE UŻYWANE wnioskowanie o
+ * geometrii kolumny, ale NIE do alternacji, patrz `computeStationTaps`)
+ * przestało być wystarczające: `requiredStationWidth` to szerokość CAŁEJ
+ * kolumny stacji, a przęsło tap-do-tap bywa WĘŻSZE (np. pierwsza stacja,
+ * krawędź świata → jej zaczep, mniej więcej połowa bloku). Nowy warunek
+ * (`computeStationTaps` + porównanie do REALNEGO `spanWidth`) jest DOWODLIWIE
+ * poprawny — patrz komentarz przy `computeSegmentStagger` niżej.
  */
 
+import { GRID, snapToGrid } from '../core/grid';
 import { labelLineHeight } from '../core/text';
-import { requiredSegmentLabelWidth, requiredStationWidth, type StationMeasureInput } from './measure';
+import {
+  requiredSegmentLabelWidth,
+  requiredStationWidth,
+  snapUp,
+  stationBlockWidth,
+  type StationMeasureInput,
+} from './measure';
+
+/** Odstęp między kolumnami sąsiednich stacji (spec §5.3: `GAP(3×GRID)`).
+ *  r7b: przeniesione tu z `columns.ts` (re-eksportowane stamtąd dla
+ *  zachowania publicznego API) — potrzebne RÓWNIEŻ w `computeStationTaps`
+ *  (prefix-sum), a `segments.ts` nie może importować z `columns.ts` (ten
+ *  ostatni importuje Z `segments.ts` — cykl). */
+export const COLUMN_GAP = 3 * GRID;
 
 /** Pusty/whitespace/`null` = brak segmentu wejściowego — spójnie wszędzie (r3). */
 export function normalizeSegmentText(raw: string | null | undefined): string | null {
@@ -39,24 +65,77 @@ export interface SegmentStaggerResult {
   readonly rowOf: readonly (0 | 1)[];
 }
 
+/** Jeden wpis prepassu geometrii poziomej (r7b) — x/szerokość kolumny i
+ *  zaczep magistrali (`tapX`) stacji. Prefix-sum NIEZALEŻNY od `bands.ts`
+ *  (nie potrzebuje `segmentSlotBand`) — może więc być liczony PRZED bands
+ *  w tym samym przebiegu potoku (measure → bands → columns), zarówno do
+ *  dokładnej decyzji alternacji 2-wierszowej (`computeSegmentStagger`
+ *  niżej), jak i do finalnej geometrii w `computeColumns` (`./columns`) —
+ *  JEDNO źródło prawdy dla tej sumy prefiksowej (bez dwóch niezależnych
+ *  implementacji, ryzyko rozjazdu jak w F2/F3, patrz nagłówek pliku). */
+export interface StationTap {
+  readonly x: number;
+  readonly width: number;
+  /** Zaczep magistrali tej stacji — środek BLOKU stacji (szyna+kolumny pól),
+   *  NIE środek (być może szerszej z powodu etykiet) kolumny — spec §5.2/§4,
+   *  decyzja nadzorcy r7b (patrz `ColumnResult.tapX` w `./columns`). */
+  readonly tapX: number;
+}
+
 /**
- * DECYZJA (luka spec §5.2, r2 — patrz raport F3): spec nie precyzuje, czy
- * „segment krótszy niż etykieta" oznacza naturalny gabaryt stacji
- * (`requiredStationWidth`, PRZED uwzględnieniem etykiety) czy finalną
- * szerokość KOLUMNY po prefix-sumach (`computeColumns`). Finalna szerokość
- * kolumny to już `max(stationWidth, labelWidth)` (spec §5.3) — etykieta z
- * KONSTRUKCJI nigdy nie jest szersza od WŁASNEJ finalnej kolumny, więc to
- * porównanie byłoby zawsze fałszywe i alternacja nigdy by się nie
- * uruchomiła. Przyjęto jedyną interpretację, przy której warunek może być
- * prawdziwy: `requiredStationWidth` (gabaryt WŁASNY stacji bez etykiety) —
- * odpowiada intencji „fizyczny odcinek/stacja za wąska na tę etykietę".
- * Sprawdzane PAROWO dla SĄSIEDNICH stacji (spec: „dwa sąsiednie"). To
- * uproszczenie względem noty ryzyka F2 („policz stagger PO prefix-sumach
- * columns") — nie wymaga dwuprzebiegowego sprzężenia columns→stagger→bands,
- * bo `requiredStationWidth`/`requiredSegmentLabelWidth` są dostępne wprost z
- * `measure.ts`, NIEZALEŻNIE od prefix-sumów; ta sama własność jakościowa
- * (2-wierszowa alternacja przy fizycznie za wąskiej stacji na etykietę)
- * osiągana jedno-przebiegowo.
+ * Prepass x/width/tapX (r7b): TA SAMA arytmetyka co dawny wewnętrzny loop
+ * `computeColumns` (`./columns`, sprzed r7b) — wydzielona tu, żeby
+ * `computeSegmentStagger` mogła policzyć DOKŁADNY warunek geometryczny
+ * (span tap-do-tap), zanim `bands.ts` (który potrzebuje wyniku stagger, żeby
+ * ustalić wysokość B1) w ogóle się uruchomi — bez tego cyklu
+ * measure→bands→columns nie dałoby się zamknąć jednym przebiegiem.
+ */
+export function computeStationTaps(
+  stations: readonly StationMeasureInput[],
+  segmentTexts: readonly (string | null)[],
+): readonly StationTap[] {
+  const out: StationTap[] = [];
+  let x = 0;
+  stations.forEach((station, index) => {
+    const stationWidth = requiredStationWidth(station);
+    const text = normalizeSegmentText(segmentTexts[index]);
+    const segmentWidth = text != null ? requiredSegmentLabelWidth(text) : 0;
+    const width = snapUp(Math.max(stationWidth, segmentWidth));
+    const blockWidth = stationBlockWidth(station.snBays, station.bayDirectionCaptions);
+    // Margines lewy GRID wewnątrz kolumny (spec §5.1 "+2×GRID", GRID/stronę)
+    // — blok NIE jest centrowany w (być może szerszej) kolumnie, patrz
+    // DECYZJA przy `ColumnResult.tapX` w `./columns`.
+    const tapX = snapToGrid(x + GRID + blockWidth / 2);
+    out.push({ x, width, tapX });
+    x += width + COLUMN_GAP;
+  });
+  return out;
+}
+
+/**
+ * r7b: alternacja 2-wierszowa B1 na podstawie DOKŁADNEGO warunku
+ * geometrycznego — czy etykieta segmentu mieści się na WŁASNYM przęśle
+ * tap-do-tap (zaczep poprzedniej stacji → zaczep tej stacji,
+ * `computeStationTaps` wyżej) — zamiast przybliżenia sprzed r7b
+ * (`requiredSegmentLabelWidth(text) > requiredStationWidth(station)`:
+ * porównanie do CAŁEJ szerokości kolumny, nie do fizycznego przęsła, na
+ * którym etykieta faktycznie się wyśrodkowuje po r7b).
+ *
+ * DOWÓD niezmiennika „sloty sąsiadów się nie przecinają" (spec §11.1): jeśli
+ * dwie sąsiednie stacje i, i+1 mają OBIE segment i OBIE mieszczą się na
+ * WŁASNYCH przęsłach (`fitsOwnSpan`, poniżej), ich rezerwacje (wyśrodkowane,
+ * szerokość ≤ szerokość przęsła, oba na siatce GRID=8 z konstrukcji) leżą
+ * odpowiednio w `[spanStart_i, tapX_i]` i `[tapX_i, spanEnd_{i+1}]` —
+ * rozłączne, wspólna krawędź `tapX_i` to STYK, nie zachodzenie
+ * (`rectsOverlap` używa ostrej nierówności) — zero kolizji BEZ potrzeby
+ * drugiego wiersza. Gdy KTÓRAKOLWIEK z dwóch NIE mieści się na własnym
+ * przęśle, jej rezerwacja (wyśrodkowana) przelewa się SYMETRYCZNIE na obie
+ * strony przęsła — może kolidować z sąsiadem z OBU stron — stąd wyzwalamy
+ * dwuwierszową alternację dla całej PARY, gdy KTÓRAKOLWIEK ze stron przelewa
+ * (`unsafe[i] || unsafe[i+1]`), a NIE — jak w dawnym warunku — tylko gdy OBIE
+ * przelewają (`tooWide[i] && tooWide[i+1]`): koniunkcja NIE wystarczała, bo
+ * gdy przelewa TYLKO jedna z dwóch stacji, jej rezerwacja mogła i tak
+ * nachodzić na sąsiada, który sam mieści się na swoim przęśle.
  */
 export function computeSegmentStagger(
   stations: readonly StationMeasureInput[],
@@ -66,14 +145,19 @@ export function computeSegmentStagger(
     throw new Error('segmentTexts musi mieć tę samą długość co stations (spec §5.3)');
   }
 
-  const tooWide = stations.map((station, index) => {
-    const text = normalizeSegmentText(segmentTexts[index]);
-    return text != null && requiredSegmentLabelWidth(text) > requiredStationWidth(station);
+  const taps = computeStationTaps(stations, segmentTexts);
+  const hasSegment = stations.map((_, index) => normalizeSegmentText(segmentTexts[index]) != null);
+  const unsafe = stations.map((_, index) => {
+    if (!hasSegment[index]) return false;
+    const text = normalizeSegmentText(segmentTexts[index]) as string;
+    const spanStart = index > 0 ? taps[index - 1].tapX : 0;
+    const spanWidth = taps[index].tapX - spanStart;
+    return requiredSegmentLabelWidth(text) > spanWidth;
   });
 
   let twoRow = false;
-  for (let i = 0; i + 1 < tooWide.length; i++) {
-    if (tooWide[i] && tooWide[i + 1]) {
+  for (let i = 0; i + 1 < unsafe.length; i++) {
+    if (hasSegment[i] && hasSegment[i + 1] && (unsafe[i] || unsafe[i + 1])) {
       twoRow = true;
       break;
     }

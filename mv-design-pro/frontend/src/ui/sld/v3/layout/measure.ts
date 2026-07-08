@@ -85,8 +85,16 @@ export { formatTransformerRatedPower } from '../../v2/renderer/StationOnRunRende
  * etykiet WŁASNYCH)" — rezerwacja jest teraz kompletna dla danych DOSTĘPNYCH
  * (podpisy kierunku wejdą, gdy F5 je dostarczy; brak wejścia dziś ≠ ukryty
  * dług, tylko jeszcze niedostarczone dane).
+ *
+ * EKSPORT (F5, `compose/station.ts`): kompozycja MUSI używać TEGO SAMEGO
+ * gabarytu symbolu przy rozmieszczaniu aparatów w kolumnie pola, żeby bbox
+ * kompozycji nigdy nie przekroczył rezerwacji measure — zero cienia modelu
+ * (spec F5: „measure i compose MUSZĄ być spójne"). Gałęzie ról MUSZĄ
+ * pozostać zsynchronizowane z `apparatusSymbolsForRole` w `compose/station.ts`
+ * (test spójności w `compose/__tests__/station.test.ts` porównuje oba
+ * niezależne wyliczenia).
  */
-function bayColumnFootprint(role: FieldRole): { readonly width: number; readonly height: number } {
+export function bayColumnFootprint(role: FieldRole): { readonly width: number; readonly height: number } {
   if (role === FIELD_ROLE.TRANSFORMER || role === FIELD_ROLE.RMU_TRANSFORMER) {
     const ds = SYMBOL_DEFS.disconnector;
     const fuse = SYMBOL_DEFS.fuseSwitch;
@@ -113,8 +121,12 @@ function bayColumnFootprint(role: FieldRole): { readonly width: number; readonly
  *    odseparowywać od bboxa);
  *  - podpis kierunku = `bayDirectionCaptions?.[index]` (t3); gdy nieobecny
  *    lub pusty — wkład 0 (patrz nagłówek `bayColumnFootprint`).
+ *
+ * EKSPORT (F5, r7b): `compose/station.ts` używa TEJ SAMEJ funkcji do
+ * rozmieszczania kolumn pól WEWNĄTRZ bloku stacji (prefix-sum identyczny z
+ * `stationBlockWidth` niżej) — jedno źródło prawdy szerokości kolumny pola.
  */
-function bayColumnRequiredWidth(
+export function bayColumnRequiredWidth(
   bay: MiniBlockBayDescriptor,
   index: number,
   bayDirectionCaptions: readonly (string | null)[] | undefined,
@@ -137,8 +149,13 @@ const STATION_BLOCK_BUS_CLEARANCE = 2 * GRID;
 
 /** Szerokość bloku stacji z liczby pól: suma szerokości kolumn (z rezerwacją
  *  etykiet własnych, FIX-3) + odstępy GRID między kolumnami (spec §5.1,
- *  §5.3 "blok stacji z liczby pól"). */
-function stationBlockWidth(
+ *  §5.3 "blok stacji z liczby pól").
+ *
+ * EKSPORT (F5, r7b): `columns.ts` (`ColumnResult.tapX` — zaczep magistrali =
+ * środek BLOKU, nie środek całej, być może szerszej, kolumny) i
+ * `compose/station.ts` (lewa krawędź bloku = `tapX - blockWidth/2`) MUSZĄ
+ * używać dokładnie TEJ SAMEJ liczby — jedno źródło prawdy geometrii bloku. */
+export function stationBlockWidth(
   snBays: readonly MiniBlockBayDescriptor[],
   bayDirectionCaptions: readonly (string | null)[] | undefined,
 ): number {
