@@ -325,6 +325,8 @@ interface CableRunRendererPropsLight {
     text: string;
     x: number;
     y: number;
+    /** Rozmieszczona globalnym declutterem adaptera — renderer nie przesuwa. */
+    preplaced?: boolean;
   }>;
   pendingEndpoint?: boolean;
   /** True gdy któryś z segmentów (Cable / OverheadLine) ma brak
@@ -738,6 +740,11 @@ export function buildSldDataFromSnapshot(
     cableRuns = buildCableRuns(snapshot, logicalViews, stations, trunkOriginByOwner);
     branchPoints = buildBranchPointMarkers(snapshot, cableRuns, stations);
   }
+
+  // Plan CAD/SCADA K3/K4: globalne rozmieszczenie etykiet odcinków — jeden pass
+  // nad WSZYSTKIMI ciągami z keep-outami stacji i ramki GPZ (declutter per-run
+  // nie widzi cudzych etykiet). Renderer respektuje `preplaced`.
+  cableRuns = declutterAllRunLabelsGlobal(cableRuns, stations, gpzs, branchPoints);
 
   const { ders, derConnections } = buildDers(snapshot, stations);
   const supplyPath = buildSupplyPathHighlight(snapshot);
@@ -4634,6 +4641,130 @@ function buildCorridorRunGeometry(
   }
 
   return { pathPoints: collapsed, segmentPaths, segmentLabels };
+}
+
+// =============================================================================
+// GLOBALNY declutter etykiet odcinków (plan CAD/SCADA — K3/K4)
+// =============================================================================
+// Declutter per-run w CableRunRenderer nie widzi INNYCH ciągów ani etykiet
+// stacji — stąd kolizje cross-run w paśmie magistrali i etykieta↔stacja
+// (dowód: sonda kolizji z SLD_CAD_SCADA_QUALITY_PLAN.md §3, baseline 106).
+// Ten pass działa NAD WSZYSTKIMI ciągami w adapterze (jedyne miejsce, które zna
+// pełny świat: ciągi + stacje + GPZ), deterministycznie (stała kolejność,
+// ograniczona pętla lane'ów, zero losowości). Zmienia WYŁĄCZNIE x/y etykiet
+// (metadane opisu) — geometria torów/terminali (§16) nietknięta.
+
+const GLOBAL_LABEL_HEIGHT = 16;
+const GLOBAL_LABEL_LANE_STEP = 18;
+const GLOBAL_LABEL_MAX_LANES = 30;
+// Strefa zajęta stacji przy lod2 (mini-RMU): porty WE/WY/ODG nad szyną + blok
+// + nazwa/kod/kVA/nN poniżej. Szer./dół lustrzane do STATION_KEEP_CLEAR_* w
+// CableRunRenderer (116/248); góra poszerzona o pas tekstów portów.
+// Szerokość obejmuje najszerszy wariant (RMU·O: WE/WY/ODG/TR — 4 kolumny portów
+// + teksty ról wystające poza kolumnę); węższy 116 zostawiał ogon 'ODG'/'WY'
+// poza strefą (sonda: pary „YAKXS…↔ODG/WY").
+const GLOBAL_STATION_KEEPOUT_HALF_WIDTH = 150;
+const GLOBAL_STATION_KEEPOUT_ABOVE = 96;
+const GLOBAL_STATION_KEEPOUT_BELOW = 248;
+// Słup/węzeł odgałęźny (branch point): porty WE/WY/ODG na osi magistrali,
+// teksty ról nad osią — mniejsza koperta niż stacja.
+const GLOBAL_BRANCHPOINT_KEEPOUT_HALF_WIDTH = 90;
+const GLOBAL_BRANCHPOINT_KEEPOUT_ABOVE = 96;
+const GLOBAL_BRANCHPOINT_KEEPOUT_BELOW = 60;
+// Konserwatywna koperta ramki kanonicznego GPZ (header 320 + rozdzielnia LV);
+// wysokość z tych samych stałych, z których liczona jest ramka.
+const GLOBAL_GPZ_KEEPOUT_WIDTH = CANONICAL_HEADER_WIDTH + 640;
+const GLOBAL_GPZ_KEEPOUT_HEIGHT =
+  CANONICAL_LV_BLOCK_Y + CANONICAL_LV_BAY_HEIGHT + CANONICAL_PAGE_PADDING;
+
+interface GlobalLabelRect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** Ta sama kalibracja szerokości co `estimateLabelWidth` w CableRunRenderer. */
+function globalLabelWidth(text: string): number {
+  return Math.max(52, Math.min(220, text.length * 7.2));
+}
+
+function globalRectsOverlap(a: GlobalLabelRect, b: GlobalLabelRect): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x
+    && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+function globalLabelRectAt(x: number, y: number, text: string): GlobalLabelRect {
+  const width = globalLabelWidth(text);
+  return { x: x - width / 2, y: y - GLOBAL_LABEL_HEIGHT / 2 - 2, width, height: GLOBAL_LABEL_HEIGHT + 4 };
+}
+
+function declutterAllRunLabelsGlobal(
+  runs: CableRunRendererPropsLight[],
+  stations: ReadonlyArray<{ readonly x: number; readonly y: number }>,
+  gpzs: ReadonlyArray<{ readonly x: number; readonly y: number }>,
+  branchPoints: ReadonlyArray<{ readonly x: number; readonly y: number }> = [],
+): CableRunRendererPropsLight[] {
+  const keepOuts: GlobalLabelRect[] = [];
+  for (const st of stations) {
+    keepOuts.push({
+      x: st.x - GLOBAL_STATION_KEEPOUT_HALF_WIDTH,
+      y: st.y - GLOBAL_STATION_KEEPOUT_ABOVE,
+      width: GLOBAL_STATION_KEEPOUT_HALF_WIDTH * 2,
+      height: GLOBAL_STATION_KEEPOUT_ABOVE + GLOBAL_STATION_KEEPOUT_BELOW,
+    });
+  }
+  for (const bp of branchPoints) {
+    keepOuts.push({
+      x: bp.x - GLOBAL_BRANCHPOINT_KEEPOUT_HALF_WIDTH,
+      y: bp.y - GLOBAL_BRANCHPOINT_KEEPOUT_ABOVE,
+      width: GLOBAL_BRANCHPOINT_KEEPOUT_HALF_WIDTH * 2,
+      height: GLOBAL_BRANCHPOINT_KEEPOUT_ABOVE + GLOBAL_BRANCHPOINT_KEEPOUT_BELOW,
+    });
+  }
+  for (const gpz of gpzs) {
+    keepOuts.push({
+      x: gpz.x - 24,
+      y: gpz.y - 24,
+      width: GLOBAL_GPZ_KEEPOUT_WIDTH + 48,
+      height: GLOBAL_GPZ_KEEPOUT_HEIGHT + 48,
+    });
+  }
+  const placed: GlobalLabelRect[] = [];
+  const isFree = (rect: GlobalLabelRect): boolean =>
+    !placed.some((p) => globalRectsOverlap(rect, p))
+    && !keepOuts.some((k) => globalRectsOverlap(rect, k));
+  return runs.map((run) => {
+    const labels = run.segmentLabels;
+    if (!labels || labels.length === 0) return run;
+    const segmentLabels = labels.map((label) => {
+      // Lane'y symetrycznie od pozycji bazowej: 0, -1, +1, -2, +2, … (świat px).
+      let chosenY = label.y;
+      let found = false;
+      for (let lane = 0; lane <= GLOBAL_LABEL_MAX_LANES && !found; lane += 1) {
+        for (const sign of lane === 0 ? [1] : [-1, 1]) {
+          const y = label.y + sign * lane * GLOBAL_LABEL_LANE_STEP;
+          if (isFree(globalLabelRectAt(label.x, y, label.text))) {
+            chosenY = y;
+            found = true;
+            break;
+          }
+        }
+      }
+      // Brak wolnego lane'a (skrajna gęstość): eskaluj deterministycznie W GÓRĘ
+      // ponad zajęte pasmo — nadal bez losowości, bez ukrywania danych.
+      if (!found) {
+        let y = label.y - (GLOBAL_LABEL_MAX_LANES + 1) * GLOBAL_LABEL_LANE_STEP;
+        while (!isFree(globalLabelRectAt(label.x, y, label.text))) {
+          y -= GLOBAL_LABEL_LANE_STEP;
+        }
+        chosenY = y;
+      }
+      placed.push(globalLabelRectAt(label.x, chosenY, label.text));
+      return { ...label, y: chosenY, preplaced: true };
+    });
+    return { ...run, segmentLabels };
+  });
 }
 
 function buildCableRuns(

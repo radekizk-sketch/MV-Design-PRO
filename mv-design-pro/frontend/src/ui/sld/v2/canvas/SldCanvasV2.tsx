@@ -55,11 +55,14 @@ import {
 } from '../theme/tokens';
 import {
   CableRunRenderer,
+  segmentLabelKeepOutBox,
+  stationTextKeepOutBox,
   type CableRunRendererProps,
   type CableRunSegmentEndpointResult,
   type CableRunSegmentLabel,
   type CableRunSegmentPath,
   type CableRunStationPortGap,
+  type KeepClearBox,
 } from '../renderer/CableRunRenderer';
 import { CadOverlay } from './CadOverlay';
 import type { SldTitleBlockData } from './SldTitleBlock';
@@ -1048,6 +1051,26 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const usesGlobalLabelPipeline =
     labelSpecs.length > 0 || Boolean(readabilityReport?.labelPlacements?.length);
 
+  /* Plan CAD/SCADA K3/K4: GLOBALNE strefy zajęte dla declutteru badge'y typu
+   * kabla — wszystkie stacje (blok + pas tekstów), etykiety odcinków preplaced
+   * (globalny pass adaptera) i ramki kanonicznych GPZ. Declutter per-run zna
+   * tylko własny ciąg; bez tych stref chip „Kabel SN · Al" siadał na nazwach
+   * stacji i etykietach sąsiednich ciągów (sonda planu §3). */
+  const globalLabelKeepOuts = useMemo<readonly KeepClearBox[]>(() => {
+    const boxes: KeepClearBox[] = [];
+    for (const st of stations) boxes.push(stationTextKeepOutBox(st.x, st.y));
+    for (const run of cableRuns) {
+      for (const lbl of run.segmentLabels ?? []) {
+        if (lbl.preplaced) boxes.push(segmentLabelKeepOutBox(lbl));
+      }
+    }
+    for (const gpz of canonicalGpzs ?? []) {
+      const footprint = estimateCanonicalGpzFootprint(gpz);
+      boxes.push({ x: gpz.x, y: gpz.y, width: footprint.width, height: footprint.height });
+    }
+    return boxes;
+  }, [stations, cableRuns, canonicalGpzs]);
+
   useEffect(() => {
     onViewportTransformChange?.(transform);
   }, [onViewportTransformChange, transform]);
@@ -1481,6 +1504,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
                   lod={effectiveLod}
                   viewportScale={transform.scale}
                   stationPortGaps={buildConnectionNodePortGapsForRun(run, stations, branchPoints, effectiveLod)}
+                  globalKeepOutBoxes={globalLabelKeepOuts}
                   selected={selectedId === run.id || pathHighlightRunIds.has(run.id)}
                   selectedSegmentRefs={selectedSegmentRefsForRun(run, selectedId)}
                   loadingPct={lfDerived.cableLoadingPctByRunId.get(run.id) ?? null}

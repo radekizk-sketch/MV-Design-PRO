@@ -38,6 +38,11 @@ export interface CableRunSegmentLabel {
   readonly text: string;
   readonly x: number;
   readonly y: number;
+  /** Etykieta rozmieszczona GLOBALNYM declutterem w adapterze (zna wszystkie
+   *  ciągi + stacje + GPZ). Renderer NIE przesuwa jej ponownie — lokalne
+   *  heurystyki per-run nie mogą cofnąć globalnego rozmieszczenia; etykieta
+   *  pozostaje jednak przeszkodą dla etykiet nie-preplaced. */
+  readonly preplaced?: boolean;
 }
 
 /**
@@ -80,6 +85,9 @@ export interface CableRunRendererProps {
    *  pokazywany projektantowi jako przerwana topologia. */
   readonly missingEndpointPort?: boolean;
   readonly stationPortGaps?: readonly CableRunStationPortGap[];
+  /** GLOBALNE strefy zajęte (wszystkie stacje + etykiety preplaced + ramki GPZ)
+   *  z kanwy — badge typu kabla nie może na nich usiąść (cross-run). */
+  readonly globalKeepOutBoxes?: readonly KeepClearBox[];
   readonly selected?: boolean;
   readonly selectedSegmentRefs?: readonly string[];
   readonly onClick?: (id: string) => void;
@@ -150,6 +158,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     pendingEndpoint,
     missingEndpointPort,
     stationPortGaps = [],
+    globalKeepOutBoxes = [],
     selected,
     selectedSegmentRefs = [],
     onClick,
@@ -278,9 +287,13 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     && (energized || lod === 0 || lod === 1);
   const readableSegmentLabels = declutterSegmentLabels(
     visibleSegmentLabels
-      .map((segmentLabel) => avoidStationLabelCollision(segmentLabel, stationPortGaps))
       .map((segmentLabel) => (
-        pendingEndpoint && terminalPoint
+        segmentLabel.preplaced
+          ? segmentLabel
+          : avoidStationLabelCollision(segmentLabel, stationPortGaps)
+      ))
+      .map((segmentLabel) => (
+        !segmentLabel.preplaced && pendingEndpoint && terminalPoint
           ? avoidPendingEndpointLabelCollision(segmentLabel, terminalPoint)
           : segmentLabel
       )),
@@ -317,8 +330,10 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
       }),
       // K30: feed the station bay/apparatus keep-clear boxes into the declutter
       // reservation so a cable-type chip never sits on apparatus glyphs at
-      // station zoom (priority: apparatus glyph > cable chip).
-      stationApparatusKeepClearBoxes(stationPortGaps),
+      // station zoom (priority: apparatus glyph > cable chip). Plus GLOBALNE
+      // strefy z kanwy (wszystkie stacje + etykiety preplaced + GPZ) — chip nie
+      // koliduje cross-run (plan CAD/SCADA K3/K4).
+      [...stationApparatusKeepClearBoxes(stationPortGaps), ...globalKeepOutBoxes],
     )
     : [];
   const readableEndpointResults = showDetailedSegmentBadges
@@ -1211,8 +1226,11 @@ function avoidPendingEndpointLabelCollision(
 function declutterSegmentLabels(
   labels: readonly CableRunSegmentLabel[],
 ): CableRunSegmentLabel[] {
-  const placed: CableRunSegmentLabel[] = [];
+  // Etykiety preplaced (globalny declutter adaptera) są NIERUCHOME — wchodzą do
+  // `placed` jako przeszkody, ale nie szukają lane'ów.
+  const placed: CableRunSegmentLabel[] = labels.filter((label) => label.preplaced);
   return labels.map((label) => {
+    if (label.preplaced) return label;
     let candidate = label;
     const yOffsets = segmentLabelCandidateOffsets(labels.length);
     for (const yOffset of yOffsets) {
@@ -1262,7 +1280,12 @@ function segmentTypeBadgeText(
   const medium = segmentKind === 'overhead_line_sn' ? 'Linia nap. SN' : 'Kabel SN';
   if (!variant) return medium;
   const parts: string[] = [];
-  if (variant.insulation !== 'UNKNOWN') parts.push(variant.insulation);
+  // Surowy enum 'OVERHEAD' nie jest nazwą izolacji dla użytkownika — informację
+  // o medium niesie już polska etykieta ('Linia nap. SN'); nie wolno pokazywać
+  // sklejki „Kabel SN · OVERHEAD" (kontrakt E08 — zero enumów w UI).
+  if (variant.insulation !== 'UNKNOWN' && variant.insulation !== 'OVERHEAD') {
+    parts.push(variant.insulation);
+  }
   if (variant.conductor !== 'UNKNOWN') parts.push(variant.conductor);
   return parts.length > 0 ? `${medium} · ${parts.join(' ')}` : medium;
 }
@@ -1297,7 +1320,27 @@ function segmentTypeBadgePoint(
  * Keep-clear box dla deklatera etykiet typu kabla: prostokąt {x,y,width,height}
  * top-left, którego cable-type chip nie może zasłaniać (priorytet aparat > chip).
  */
-type KeepClearBox = { x: number; y: number; width: number; height: number };
+export type KeepClearBox = { x: number; y: number; width: number; height: number };
+
+/** Strefa tekstowo-blokowa stacji (mini-RMU) do GLOBALNEGO keep-outu badge'y —
+ *  te same liczby co `stationApparatusKeepClearBoxes` (jedno źródło wymiarów),
+ *  używane przez kanwę dla WSZYSTKICH stacji (declutter per-run zna tylko
+ *  stacje własnego ciągu — kolizje cross-run stąd; sonda planu CAD/SCADA). */
+export function stationTextKeepOutBox(x: number, y: number): KeepClearBox {
+  return {
+    x: x - STATION_KEEP_CLEAR_HALF_WIDTH,
+    y: y - STATION_KEEP_CLEAR_ABOVE,
+    width: STATION_KEEP_CLEAR_HALF_WIDTH * 2,
+    height: STATION_KEEP_CLEAR_ABOVE + STATION_KEEP_CLEAR_BELOW,
+  };
+}
+
+/** Box zajętości etykiety odcinka (preplaced z adaptera) — ta sama kalibracja
+ *  co `segmentTypeBadgeBox`, żeby badge'y nie siadały na etykietach. */
+export function segmentLabelKeepOutBox(label: { text: string; x: number; y: number }): KeepClearBox {
+  const halfWidth = estimateLabelWidth(label.text) / 2 + 7;
+  return { x: label.x - halfWidth, y: label.y - 10, width: halfWidth * 2, height: 18 };
+}
 
 /** Seed etykiety typu kabla z zakresem poziomym odcinka (do przesuwu wzdłuż kabla). */
 type SegmentTypeBadgeSeed = CableRunSegmentLabel & {

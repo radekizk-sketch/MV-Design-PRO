@@ -187,36 +187,57 @@ D4. (obserwacja) 2-3 etykiety długości mogą lądować na samej linii toru —
 
 ## 5. Kroki (każdy: cel → zmiana → dowód → commit)
 
-### K1. Sonda + baseline (bez zmian kodu)
-- Odtwórz harness (§3), uruchom `probe-overlaps.mjs`, zapisz JSON baseline
-  (liczba kolizji + top 25) do raportu w opisie commita następnego kroku.
-- DoD: baseline znany, top-kolizje sklasyfikowane per D1/D2/D3.
+### K1. [DONE] Sonda + baseline (bez zmian kodu)
+- Baseline (2026-07): **textCount 904, overlapCount 106**. Klasy: seg↔seg cross-run,
+  badge„Kabel SN·Al"↔nazwa stacji, seg↔teksty portów, stacja↔GPZ.
 
-### K2. D3 — polskie etykiety wariantu (małe, izolowane)
-- `segmentTypeBadgeText`/ścieżka badge w `CableRunRenderer.tsx`: 'OVERHEAD' →
-  „napowietrzna" (lub pomiń insulation dla linii napowietrznej — informacja jest już
-  w „Linia nap. SN"); test jednostkowy na mapowanie; guard E08 rozszerz o badge'e
-  (asercja: żaden tekst UI nie zawiera surowego „OVERHEAD").
-- DoD: test + render (chip czytelny, po polsku), bramki §1.6, commit.
+### K2. [DONE] D3 — polskie etykiety wariantu
+- `segmentTypeBadgeText`: token 'OVERHEAD' pomijany (medium „Linia nap. SN" niesie
+  informację); komentarz kontraktowy E08 w kodzie.
+- UWAGA dla następnego: test jednostkowy mapowania + rozszerzenie guardu E08 na
+  badge'e NIE zostały jeszcze dopisane — dopisz przy K4.
 
-### K3. D1 — declutter GLOBALNY pasma magistrali
-- Problem: declutter per-run. Rozwiązanie preferowane (mniejsze ryzyko niż zmiana
-  rozstawów świata): jeden przebieg declutteru NAD wszystkimi etykietami odcinków
-  ciągu magistralowego + keep-clear boxy: (a) osi toru ±8px, (b) kolumn bays stacji
-  (już są zbierane), (c) chipów DER. Lane'y w pionie ODDZIELNIE nad i pod torem,
-  z leader-line gdy etykieta odsunięta > 24px (styl CAD).
-- Alternatywa jeśli za ciasno fizycznie: zwiększ `STATION_PITCH` (adapter) o ~30-40%
-  — to zmiana geometrii świata: dozwolona, deterministyczna; zaktualizuj uczciwie
-  substrate testy i re-render. NIE zmieniaj `STATION_RUN_TRUNK_OFFSET_Y` bez
-  aktualizacji oracle E02.
-- DoD: `overlapCount` w paśmie magistrali = 0 (sonda), render 1:1 czytelny, wszystkie
-  oracles recovery zielone BEZ rozluźnień, bramki §1.6, commit.
+### K3. [DONE — mechanizm; pozostałe klasy → K4] D1 — declutter GLOBALNY pasma magistrali
+- ZAIMPLEMENTOWANE (commit z tego kroku):
+  (a) `enmToSldAdapter.ts`: `declutterAllRunLabelsGlobal` — jeden deterministyczny
+      pass nad WSZYSTKIMI etykietami odcinków wszystkich ciągów, keep-outy: stacje
+      (±150 / -96..+248 od station.y), branchPoints (±90 / -96..+60), ramka GPZ
+      (koperta z CANONICAL_*). Lane'y ±18px, eskalacja w górę; etykieta dostaje
+      `preplaced: true`. Wywołanie w `buildSldDataFromSnapshot` po finalnej
+      geometrii (po bloku layoutu).
+  (b) `CableRunRenderer.tsx`: `preplaced` respektowane (pre-passy pomijane,
+      etykieta = nieruchoma przeszkoda w `declutterSegmentLabels`); eksporty
+      `KeepClearBox`, `stationTextKeepOutBox`, `segmentLabelKeepOutBox`; prop
+      `globalKeepOutBoxes` scalany do declutteru badge'y typu.
+  (c) `SldCanvasV2.tsx`: memo `globalLabelKeepOuts` (wszystkie stacje + etykiety
+      preplaced + ramki kanonicznych GPZ z `estimateCanonicalGpzFootprint`)
+      przekazywany do każdego CableRunRenderer.
+- WYNIK SONDY: 106 → **61**. Klasy WYELIMINOWANE: seg↔seg cross-run,
+  badge↔nazwa-stacji, badge↔etykieta. Render: etykiety w czystych pasmach nad
+  magistralą (PNG w raporcie sesji).
+- POZOSTAŁE 61 par (zdiagnozowane sondą detail — NIE zgaduj od nowa):
+  (i) ~12× „Stacja Tn"↔„WY" oraz podobne z „taWS/30 kVA" na renderze: kolizja
+      WEWNĄTRZ mini-bloku TEJ SAMEJ stacji — nazwa stacji (`stationNameTextY`,
+      `MiniBlockRmuRenderer.tsx:240`) vs podpisy portów wariantu compact
+      (`labelY = portY - 9`, `:1672`) i kolumny bays. Świat: oba teksty w pasie
+      y≈132-133. FIX: rozsunięcie wierszy WEWNĄTRZ MiniBlockRmuRenderer
+      (nazwa/kod/kVA niżej lub podpisy portów wyżej) — czysto lokalny,
+      testowalny snapshotem struktury.
+  (ii) ~4× „YAKXS·90m"↔„ODG/WY" — pozostałość po (i) (te same pasma).
+  (iii) 2× stacja↔GPZ („Sekcja 1"↔„630 kVA", „110/15 kV"↔„Stacja L1-1"):
+      pierwsza stacja lateralu L1 za blisko ramki GPZ — GEOMETRIA ŚWIATA
+      (pozycje lateralu z silnika drzewa); wymaga przesunięcia startu lateralu
+      poniżej/za ramkę GPZ w layoutEngine + uczciwej aktualizacji substrate.
+- DoD kroku (mechanizm globalny): OSIĄGNIĘTE. DoD `overlapCount==0` przechodzi
+  do K4.
 
-### K4. D2 — etykiety stacji w declutterze
-- Wystaw bbox etykiet stacji (nazwa, kod, kVA) jako uczestników/keep-clear w
-  declutterze ciągów LUB przenieś nazwę+kVA do sloty pod stacją z gwarantowanym
-  odstępem (kolumna tekstu pod szyną nN, wyrównana do osi stacji), jak w ETAP.
-- DoD: zero kolizji tekst-stacja↔tekst-kabel i stacja↔stacja (sonda), render, bramki, commit.
+### K4. D2 — wewnętrzny layout mini-bloku + stacja↔GPZ (domknięcie do 0)
+- (i)/(ii) z K3: rozsuń wiersze w `MiniBlockRmuRenderer` (patrz diagnoza wyżej).
+- (iii): przesuń start lateralu w silniku drzewa; aktualizuj substrate testy uczciwie.
+- Dopisz: test jednostkowy `segmentTypeBadgeText` (K2) + rozszerzenie guardu E08
+  o badge'e; test jednostkowy `declutterAllRunLabelsGlobal` (determinizm + zero
+  kolizji na fixturze — czysta funkcja, bez DOM).
+- DoD: `overlapCount === 0` (sonda §3), render 1:1, bramki, commit.
 
 ### K5. Weryfikacja końcowa jakości CAD/SCADA (kryteria odbioru)
 Render 1:1 lod2 + sonda; WSZYSTKIE poniższe muszą być widoczne i bezkolizyjne:
