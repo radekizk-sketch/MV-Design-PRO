@@ -15,7 +15,7 @@ OBOWIĄZKOWĄM krokiem usunięcia ścieżki renderu v2 na końcu (żeby nie pows
 trwała „druga prawda" — lekcja z §20/§21 recovery). Elektryka (adapter v2,
 §8 spec) jest WSPÓŁDZIELONA, nie kopiowana.
 
-Definicja ukończenia całości = wszystkie wyrocznie spec §9 zielone na fixturze
+Definicja ukończenia całości = wszystkie wyrocznie spec §11 zielone na fixturze
 `sldSubstrate52s` ORAZ na min. 2 syntetykach (mała sieć 5 stacji; sieć z ringiem
 i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
 
@@ -64,7 +64,7 @@ i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
 - `v3/canvas/SldCanvasV3.tsx`: kamera/safe-viewport/LOD reuse z v2 (import, nie
   kopia). Nakładka energizacji/kierunków (spec §6) czyta solver companion jak
   dziś (jedna prawda). Trzy LOD-y wg spec §7, każdy z własną rezerwacją.
-- DoD: wyrocznie §9.1–9.5 na `sldSubstrate52s` dla L0/L1/L2 = zielone; commit.
+- DoD: wyrocznie §11.1–11.5 na `sldSubstrate52s` dla L0/L1/L2 = zielone; commit.
 
 ### F7. Render-odbiór + CI
 - Harness QUALITY_PLAN §3 rozszerzony: `overlap+grid+port+wire+determinism`
@@ -92,7 +92,7 @@ Przeczytaj W TEJ KOLEJNOŚCI: docs/sld/SLD_CAD_SPEC_V3.md (wiążąca),
 docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md (fazy F1-F8; sprawdź git log który
 etap ukończono — commity prefiksowane "feat(sld-v3): F<n>"),
 docs/execplans/SLD_CAD_SCADA_QUALITY_PLAN.md §1 i §3 (reguły + harness + sonda).
-Wykonuj fazy PO KOLEI, każda: implementacja → testy → wyrocznie spec §9 dla
+Wykonuj fazy PO KOLEI, każda: implementacja → testy → wyrocznie spec §11 dla
 zakresu fazy → render 1:1 (harness) → commit ze stopką (QUALITY_PLAN §1.7) →
 push. PNG + sonda to dowód; testy to warunek konieczny. Nie fałszuj zieleni,
 nie łam determinizmu, nie duplikuj elektryki adaptera v2 (współdziel). Gdy faza

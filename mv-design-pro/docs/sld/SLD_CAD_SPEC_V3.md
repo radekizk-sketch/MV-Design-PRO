@@ -177,7 +177,67 @@ testy przechodzą na kanoniczny GPZ; V3 przejmuje je 1:1), kamera+safe-viewport
 WYMIENIAMY: geometrię slotową (PITCH), mini-RMU card, declutter po fakcie,
 malowanie stanu zamiast nakładki.
 
-## 9. Wyrocznie odbioru (bramki CI — definicja „20× lepiej" mierzalna)
+## 9. Nomenklatura pól — jak czyta inżynier energetyk (BINDING)
+
+**Zakaz `WE`/`WY`/`ODG` na rysunku.** Uzasadnienie inżynierskie: w sieci SN z
+punktami NO, pierścieniami i OZE kierunek przepływu mocy jest ZMIENNY —
+„wejście/wyjście" to fałszywa semantyka. W energetyce pole liniowe identyfikuje
+się **kierunkiem (celem połączenia)**, pole transformatorowe — jednostką.
+
+| Dziś (usunąć) | Na rysunku (t3/t2) | Pełna nazwa (inspektor/tooltip) |
+|---|---|---|
+| WE | `kier. GPZ` / `kier. S01` | Pole liniowe — kierunek ⟨kod poprzedniego węzła na ciągu⟩ |
+| WY | `kier. S03` | Pole liniowe — kierunek ⟨kod następnego węzła⟩ |
+| ODG | `odg. S15` | Pole liniowe odgałęźne — kierunek ⟨kod stacji odgałęzienia⟩ |
+| TR | `TR1 · 630 kVA` | Pole transformatorowe TR1 |
+| SPR | `sprzęgło` | Pole sprzęgła sekcji |
+| POM | `pomiar` | Pole pomiarowe |
+
+Źródło danych kierunku: kolejność stacji w `line_runs` (poprzednik/następnik na
+ciągu; dla pierwszego pola — GPZ), dla odgałęzienia — pierwsza stacja gałęzi;
+fallback: `bay.designation` z ENM, nigdy generyczne „WE". Kod węzła = stationCode
+(S01…) lub skrót nazwy GPZ. Etykieta kierunku w slocie portu (t3); gdy brak
+miejsca — slot 2 z leaderem (§4).
+
+## 10. Pełny inwentarz funkcjonalny systemu — NIC nie ginie przy przebudowie
+
+V3 zastępuje TYLKO geometrię/rysunek. Poniższe funkcjonalności ISTNIEJĄ w v2 i
+muszą działać po cutoverze (F8 sprawdza każdą pozycję checklistą):
+
+**Interakcja:** klik-selekcja elementu (stacja/pole/aparat/odcinek/GPZ/DER/sekcja),
+podwójny klik (wejście w stację / drawer), menu kontekstowe per typ elementu,
+detail drawer (K30-71..98: zakładki, ARIA, breadcrumbs), property grid,
+PathHighlighter (podświetlenie toru zasilania stacji), lasso-selekcja,
+paleta DER (K30-78: PV/BESS/FW → klik na stację), workflow append/split
+(AppendOnEndpointController), edycja CAD (drag, bend handles, snap do siatki
+i portów — Snap.ts), undo/redo (history), mode-gate (tryb ekspercki).
+**Nakładki wyników (projekcje, zero fizyki w UI):** energizacja + kierunki
+przepływu z solvera (power-flow companion, jedna prawda), zwarciowa IEC 60909
+(K30-48/50), strefy zabezpieczeń Z1/Z2/Z3 (K30-46, IEC 60255-127), odchylenie
+napięcia per stacja (K30-49/44), obciążenie kabli % (K30-45), wyniki na
+końcówkach segmentów (endpoint result chips), severity/alarm badges per stacja
+(K30-8), telemetria pól (BayMeasurements, projectBayTelemetry).
+**Stany łączników:** closed/open/unknown geometrią symbolu (K30-7), punkt NO
+z realnym identyfikatorem łącznika, marker punktu otwarcia na torze.
+**Arkusz/OSD:** title block PN-EN ISO 7200 + kwalifikacje SEP (K30-38/99),
+tabela rewizji (K30-100), SldPowerBalancePanel (K30-101), legenda palet
+(K30-39), skala PN-EN ISO 5455 (K30-43), strzałka N (K30-47), uziemienie TR ⏚,
+grupa połączeń + zaczepy (K30-104?), mufa kablowa, głowica kablowa (K30-53).
+**Widok/kamera:** zoom kursora, pan, fit („Dopasuj całą sieć"), safe viewport,
+kamera mobilna (portrait focus na GPZ), centerOnElementId, wirtualizacja >24
+stacji, LOD L0/L1/L2 z LodPolicy, widok wnętrza stacji (StationInternalView),
+widok rozdzielni GPZ (kanoniczny — inwarianty noDirectTie/busbarTopology/parity).
+**Dane/eksport:** eksport SVG/PNG/PDF = geometria ekranu (parity), archiwum
+projektu ZIP, determinizm (hash), badge braków danych (missing-data,
+missing-port), readability report (data-* metryki), no-codenames/terminologia
+(guardy), i18n PL.
+**Integracje:** wizard (ten sam model), study cases (nakładki per case),
+results browser → centrowanie elementu, ENM inspector.
+
+Mapowanie na fazy: interakcja+stany → F5/F6; nakładki → F6; arkusz → F4;
+kamera/LOD → F6 (reuse); eksport/determinizm → F7; checklista całości → F8.
+
+## 11. Wyrocznie odbioru (bramki CI — definicja „20× lepiej" mierzalna)
 
 1. `overlap_probe`: kolizje tekst↔tekst i tekst↔symbol = **0** na L0/L1/L2,
    skala 1.0 (mechanizm z QUALITY_PLAN §3, rozszerzony o bbox symboli).
