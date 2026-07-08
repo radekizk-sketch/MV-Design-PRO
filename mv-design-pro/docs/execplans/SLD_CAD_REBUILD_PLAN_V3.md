@@ -88,10 +88,29 @@ i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
        przejście — przy gęstych scenach polegać na wyroczni, nie podnosić
        limitu bez testu oscylacji wieloprzeszkodowej.
 
-### F4. Label resolver + arkusz
-- `v3/layout/labels.ts` (spec §4/§5.5, leader-line przy slocie ≥2),
-  `v3/sheet/Frame.tsx` (ramka, strefy, skala, legenda; title block reuse).
-- DoD: `overlap_probe` (rozszerzony o bbox symboli) na syntetykach = 0; commit.
+### F4. [DONE] Label resolver + arkusz
+- WYKONANE (Sonnet impl. `38ff99e` + poprawki po recenzji Opusa — werdykt
+  **REQUEST-CHANGES**, naprawione w follow-upie; nadzór: sesja nadrzędna).
+- Dostarczone: `labels.ts` (OwnedLabel, resolveLabels dla wszystkich klas §4,
+  leader OBOWIĄZKOWY przy slocie≥2 + inwariant, wyrocznia overlapProbe z
+  kontrprzykładami — gotowa dla F7), `Frame.tsx` (ramka, strefy co 400px,
+  legenda z glifów, title block slotem, jawne fonty z LABEL_TYPOGRAPHY).
+- KLUCZOWA POPRAWKA recenzji (HIGH): semantyka slotu segmentu poziomego była
+  ODWRÓCONA (przęsło liczone jako 24px szczelina ⇒ leader przy każdej
+  etykiecie — las leaderów). Po poprawce: slot 1 = rezerwacja B1 nad kolumną
+  (leży fizycznie NAD magistralą, szerokość ≥ etykieta z konstrukcji F2),
+  BEZ leadera, x biasowany ku przęsłu; centrowanie przęsłowe gdy się mieści;
+  leader wyłącznie jako wyjątek (slot 2 z marginRect). Testy, które
+  kodyfikowały odwróconą konwencję, przepisane; dodany syntetyczny pozytyw
+  slotu 2. Spec §4 skorygowana („POD linią" niewykonalne — B3/B4).
+- DECYZJA ZAKRESOWA NADZORCY (r7b): pełne r7 (rezerwacja B1 wyśrodkowana na
+  przęśle TAP-DO-TAP) wymaga zmiany `columns.ts` — AUTORYZOWANE w F5 (kompozycja
+  zna pozycje zaczepów); wtedy stagger r2 nabiera pełnego sensu. Do tego czasu
+  bias-w-kolumnie jest poprawnym przybliżeniem bez leaderów.
+- Ryzyka F5-F6 z recenzji: §9 wyznaczanie kierunków (kier./odg.) powstaje u
+  wołającego (F5) i wymaga własnego guardu; probe nie sprawdza przecięć
+  leaderów z symbolami (to wire_probe §11.4, F7); throw przy braku
+  marginRect/fallbackRect do opakowania w F6.
 
 ### F5. Kompozycja stacji i GPZ z prymitywów
 - `v3/compose/station.ts` (spec §3 „Stacja SN/nN": szyna + kolumny pól z

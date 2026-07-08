@@ -95,7 +95,7 @@ Klasy etykiet i sloty (kolejność = priorytet miejsca):
 
 | Owner | Etykieta (klasa typograficzna) | Sloty |
 |---|---|---|
-| Segment kabla/linii poziomy | `typ·przekrój·długość` (t2) | 1: NAD linią, wyśrodkowana na odcinku; 2: POD linią; 3: pasmo marginesu + leader |
+| Segment kabla/linii poziomy | `typ·przekrój·długość` (t2) | 1: NAD linią (rekt pasma B1; wyśrodkowana na odcinku, gdy się mieści — inaczej bias ku stronie wejściowej, BEZ leadera); 2: drugi wiersz B1 (stagger); 3: margines + leader. *(Korekta 2026-07, recenzja F4: „POD linią" usunięte — pod osią magistrali leżą z konstrukcji pasma B3/B4, slot tam jest niewykonalny w widoku sieci.)* |
 | Segment pionowy (lateral) | j.w. (t2, rotacja 90°, czytana z dołu) | 1: PO LEWEJ linii; 2: PO PRAWEJ; 3: margines + leader |
 | Stacja | nazwa (t1); kod Sxx (t1, akcent); kVA TR (t2); typ stacji (t4) | pasmo NAZW pod blokiem stacji (zarezerwowane w layout); kolejność pionowa stała |
 | Port pola | WE/WY/ODG/TR (t3) | 1: nad portem; 2: obok z leaderem |
