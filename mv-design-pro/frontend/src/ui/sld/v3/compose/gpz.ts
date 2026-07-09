@@ -257,6 +257,14 @@ function hvLineBaySpec(): readonly FieldApparatusSpec[] {
 // WYŁĄCZNIE geometrii bez stanu (`stackFootprint`, `SYMBOL_DEFS`).
 // ---------------------------------------------------------------------------
 
+/** `topPort` — port N pierwszego symbolu stosu (fallback: pierwszy port
+ *  dostępny). `bottomPort` — port S OSTATNIEGO symbolu stosu, który go MA,
+ *  licząc od góry (FIX-C, recenzja F5b): symbole bez portu S na końcu stosu
+ *  (np. ES w polu TR/MEASUREMENT — `earthSwitch` ma WYŁĄCZNIE port N,
+ *  odgałęzia się bocznie) nie mogą kolapsować `bottomPort` do `topPort` —
+ *  odcinek przelotowy (np. `#tr-field-to-bus`) musi zaczynać się na porcie S
+ *  CT (lub innego symbolu z portem S), nie z góry stosu przez wszystkie
+ *  aparaty. Gdy ŻADEN symbol w stosie nie ma portu S, fallback = `topPort`. */
 interface FieldStack {
   readonly instances: readonly ComposedGpzSymbolInstance[];
   readonly topPort: RoutePort;
@@ -301,14 +309,25 @@ function buildFieldStack(
       const north = def.ports.find((p) => p.dir === 'N');
       topPort = north ? { x: x + north.x, y: y + north.y, dir: north.dir } : Object.values(ports)[0] ?? null;
     }
+    // FIX-C: nadpisujemy `bottomPort` WYŁĄCZNIE gdy ten symbol ma port S —
+    // symbol bez portu S (np. ES na końcu) zostawia poprzednią wartość
+    // nietkniętą, więc po pętli `bottomPort` niesie port S NAJNIŻSZEGO
+    // symbolu, który go ma, nie `topPort`.
     const south = def.ports.find((p) => p.dir === 'S');
-    bottomPort = south ? { x: x + south.x, y: y + south.y, dir: south.dir } : (topPort ?? Object.values(ports)[0] ?? null);
+    if (south) {
+      bottomPort = { x: x + south.x, y: y + south.y, dir: south.dir };
+    }
 
     y += def.height + (index < specs.length - 1 ? GRID : 0);
   });
 
-  if (!topPort || !bottomPort) {
+  if (!topPort) {
     throw new Error('composeGpz: pusty stos aparatów pola (brak symboli z portem)');
+  }
+  if (!bottomPort) {
+    // Żaden symbol w stosie nie ma portu S (np. stos złożony wyłącznie z
+    // ES/VT) — fallback na topPort, zachowując poprzednie zabezpieczenie.
+    bottomPort = topPort;
   }
   return { instances, topPort, bottomPort };
 }
@@ -544,7 +563,10 @@ export function composeGpz(props: GpzCanonicalRendererProps, origin: { readonly 
     segments.push({ ownerRef: `${layout.section.sectionId}#bus-primary`, points: [{ x: busLeftX, y: snBusY }, { x: busRightX, y: snBusY }], meta: primaryBusMeta });
 
     if (topology === 'double' || topology === 'ring') {
-      const reserveY = snapToGrid(snBusY - GRID / 2);
+      // FIX-B (recenzja F5b): `snBusY` jest już wielokrotnością GRID, więc
+      // `snapToGrid(snBusY - GRID/2)` wraca do `snBusY` (reserve pokrywał się
+      // z primary) — `- GRID` daje 8px odstępu, NA siatce, bez zaokrąglania.
+      const reserveY = snBusY - GRID;
       const reserveMeta: GpzElementMeta = {
         parityKeys: ['gpz.bus.sn.s2'],
         testId: `gpz-canonical-section-${layout.section.sectionId}-bus-s2`,
@@ -581,8 +603,16 @@ export function composeGpz(props: GpzCanonicalRendererProps, origin: { readonly 
 
     // Podpisy celu/kierunku pola (feederName/destinationLabel) — mechanizm
     // wierszy `colorSegmentLabelRows` (patrz nagłówek pliku: DECYZJA).
+    // FIX-A (recenzja F5b): gdy pole nie ma `bayNumber` ANI `destinationLabel`,
+    // oznacznik (`fieldDesignations`) i podpis celu (`fieldCaptions`) oba
+    // spadały na `feederName` — ten sam tekst dwukrotnie. Dedup: caption z
+    // `feederName` TYLKO gdy różni się od tekstu oznacznika (`designationText`,
+    // ta sama formuła co przy budowie `fieldDesignations` niżej).
     const captionCandidates = layout.fields.map((field) => {
-      const raw = field.bay.destinationLabel ? `→ ${field.bay.destinationLabel}` : field.bay.feederName;
+      const designationText = (field.bay.bayNumber ?? field.bay.feederName ?? '').trim();
+      const raw = field.bay.destinationLabel
+        ? `→ ${field.bay.destinationLabel}`
+        : (field.bay.feederName && field.bay.feederName.trim() !== designationText ? field.bay.feederName : null);
       const text = raw?.trim();
       if (!text) return null;
       const width = snapUp(measureLabelWidth(text, 't3'));

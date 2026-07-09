@@ -54,6 +54,10 @@ export interface PreviewElementMeta {
   readonly parityKey?: string;
   readonly testId?: string;
   readonly kind?: PreviewSegmentKind;
+  /** Szyna rezerwowa (busbarRole='reserve', topology='double') rysowana
+   *  przerywaną linią — FIX-E (recenzja F5b): wołający przenosi
+   *  `GpzElementMeta.dashed` tutaj, harness renderuje `strokeDasharray`. */
+  readonly dashed?: boolean;
 }
 
 export interface PreviewSymbol {
@@ -120,13 +124,14 @@ function PreviewSegmentNode(props: { readonly segment: PreviewSegment; readonly 
   if (segment.points.length < 2) return null;
   const kind = segment.meta?.kind ?? 'sn';
   const strokeWidth = SEGMENT_STROKE_WIDTH[kind];
+  const strokeDasharray = segment.meta?.dashed ? '4 3' : kind === 'leader' ? '3 2' : undefined;
   return (
     <path
       d={pointsToPath(segment.points)}
       fill="none"
       stroke={stroke}
       strokeWidth={strokeWidth}
-      strokeDasharray={kind === 'leader' ? '3 2' : undefined}
+      strokeDasharray={strokeDasharray}
       data-parity-key={parityKeysOf(segment.meta)}
       data-test-id={segment.meta?.testId}
     />

@@ -392,7 +392,6 @@ describe('V3 compose/gpz — migracja visualParityChecklist (WYŁĄCZNIE klucze 
     expect(missing).toEqual([]);
   });
 
-  it.todo('gpz.frame — warstwa canvas (F6), nie geometria compose');
   for (const [key, reason] of TODO_GPZ_PARITY_KEYS) {
     it.todo(`${key} — ${reason}`);
   }
@@ -449,6 +448,278 @@ describe('V3 compose/gpz — mechanizm wierszy podpisów celu pola (kolorowanie 
       ORIGIN,
     );
     expect(composition.labels.fieldCaptions).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FIX-A (recenzja F5b, MED): pole bez `bayNumber` ANI `destinationLabel`
+// dostawało `feederName` DWUKROTNIE — raz jako oznacznik
+// (`fieldDesignations`), raz jako podpis celu (`fieldCaptions`) — ten sam
+// tekst renderowany dwa razy. Dedup: caption z `feederName` TYLKO gdy różni
+// się od oznacznika.
+// ---------------------------------------------------------------------------
+
+describe('V3 compose/gpz — FIX-A: dedup oznacznika i podpisu pola (bez podwójnego feederName)', () => {
+  it('bay z feederName, BEZ bayNumber i BEZ destinationLabel ⇒ fieldCaptions puste, brak wspólnego tekstu z fieldDesignations', () => {
+    const composition = composeGpz(
+      baseProps({
+        sections: [
+          {
+            sectionId: 'sec-1',
+            order: 1,
+            label: 'S1',
+            busVoltageKv: 15,
+            bays: [lineBay('b-1', { bayNumber: null, destinationLabel: null, feederName: 'ODPŁYW 1' })],
+          },
+        ],
+      }),
+      ORIGIN,
+    );
+    expect(composition.labels.fieldCaptions).toHaveLength(0);
+    const designationTexts = composition.labels.fieldDesignations.map((d) => d.text);
+    const captionTexts = composition.labels.fieldCaptions.map((c) => c.text);
+    expect(designationTexts).toContain('ODPŁYW 1');
+    // Żaden tekst nie występuje jednocześnie w obu zbiorach.
+    expect(designationTexts.some((t) => captionTexts.includes(t))).toBe(false);
+  });
+
+  it('bay Z bayNumber ("05") i feederName, BEZ destinationLabel ⇒ caption = feederName (różni się od oznacznika "05")', () => {
+    const composition = composeGpz(
+      baseProps({
+        sections: [
+          {
+            sectionId: 'sec-1',
+            order: 1,
+            label: 'S1',
+            busVoltageKv: 15,
+            bays: [lineBay('b-1', { bayNumber: '05', destinationLabel: null, feederName: 'ODPŁYW 1' })],
+          },
+        ],
+      }),
+      ORIGIN,
+    );
+    const designation = composition.labels.fieldDesignations.find((d) => d.ownerRef === 'b-1#designation');
+    const caption = composition.labels.fieldCaptions.find((c) => c.ownerRef === 'b-1#caption');
+    expect(designation?.text).toBe('05');
+    expect(caption?.text).toBe('ODPŁYW 1');
+  });
+
+  it('destinationLabel obecny ⇒ caption = "→ " + destinationLabel niezależnie od feederName (dedup nie dotyczy tej gałęzi)', () => {
+    const composition = composeGpz(
+      baseProps({
+        sections: [
+          {
+            sectionId: 'sec-1',
+            order: 1,
+            label: 'S1',
+            busVoltageKv: 15,
+            bays: [lineBay('b-1', { bayNumber: null, destinationLabel: 'ST-01', feederName: 'ODPŁYW 1' })],
+          },
+        ],
+      }),
+      ORIGIN,
+    );
+    const caption = composition.labels.fieldCaptions.find((c) => c.ownerRef === 'b-1#caption');
+    expect(caption?.text).toBe('→ ST-01');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FIX-B (recenzja F5b, MED): szyna rezerwowa (`double`/`ring`) pokrywała się z
+// primary — `snapToGrid(snBusY - GRID/2)` wraca do `snBusY` (wielokrotność
+// GRID). Poprawka: `snBusY - GRID` (8px NAD primary, na siatce).
+// ---------------------------------------------------------------------------
+
+describe('V3 compose/gpz — FIX-B: szyna rezerwowa NIE pokrywa się z primary', () => {
+  it('topology=double: reserve.y !== primary.y, różnica = dokładnie GRID', () => {
+    const composition = composeGpz(
+      baseProps({
+        sections: [{ sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [lineBay('b-1')], busbarTopology: 'double' }],
+      }),
+      ORIGIN,
+    );
+    const segs = composition.segments.filter((s) => s.meta.sectionId === 'sec-1');
+    const primary = segs.find((s) => s.meta.busbarRole === 'primary')!;
+    const reserve = segs.find((s) => s.meta.busbarRole === 'reserve')!;
+    expect(primary.points[0].y).not.toBe(reserve.points[0].y);
+    expect(primary.points[0].y - reserve.points[0].y).toBe(GRID);
+  });
+
+  it('topology=ring: reserve.y !== primary.y (różnica = GRID), ring-closure łączy oba końce (reserveY↔snBusY)', () => {
+    const composition = composeGpz(
+      baseProps({
+        sections: [{ sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [lineBay('b-1')], busbarTopology: 'ring' }],
+      }),
+      ORIGIN,
+    );
+    const segs = composition.segments.filter((s) => s.meta.sectionId === 'sec-1');
+    const primary = segs.find((s) => s.meta.busbarRole === 'primary')!;
+    const reserve = segs.find((s) => s.meta.busbarRole === 'reserve')!;
+    const closure = segs.find((s) => s.meta.ringClosure)!;
+    expect(primary.points[0].y).not.toBe(reserve.points[0].y);
+    expect(primary.points[0].y - reserve.points[0].y).toBe(GRID);
+    // Closure musi dochodzić do AKTUALNEJ (poprawionej) wartości reserveY,
+    // nie do stanu sprzed poprawki.
+    const closureYs = closure.points.map((p) => p.y);
+    expect(closureYs).toContain(reserve.points[0].y);
+    expect(closureYs).toContain(primary.points[0].y);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FIX-C (recenzja F5b, LOW-MED): stos pola kończący się symbolem bez portu S
+// (np. ES w polu TR/MEASUREMENT) kolapsował `bottomPort` do `topPort` —
+// segment przelotowy startował z GÓRY stosu, przez wszystkie aparaty.
+// Poprawka: `bottomPort` = port S ostatniego symbolu, który go MA.
+// ---------------------------------------------------------------------------
+
+describe('V3 compose/gpz — FIX-C: bottomPort stosu z ES na końcu = port S CT (nie topPort)', () => {
+  it('pole TR transformatora: segment #tr-field-to-bus zaczyna się w porcie S symbolu CT, nie w topPort stosu', () => {
+    const composition = composeGpz(baseProps(), ORIGIN);
+    const tr = composition.transformers[0];
+    const ctSymbol = composition.symbols.find((s) => s.meta.testId === `${tr.trFieldTestId}-ct`)!;
+    const dsSymbol = composition.symbols.find((s) => s.meta.testId === `${tr.trFieldTestId}-ds`)!;
+    expect(ctSymbol).toBeDefined();
+    const ctSouthPort = ctSymbol.ports.bottom;
+    expect(ctSouthPort).toBeDefined();
+
+    const toBusSegment = composition.segments.find((s) => s.ownerRef === `${tr.transformerRef}#tr-field-to-bus`)!;
+    expect(toBusSegment).toBeDefined();
+    expect(toBusSegment.points[0].y).toBe(ctSouthPort.y);
+    // NIE topPort stosu (port N symbolu DS, pierwszego w stosie).
+    expect(toBusSegment.points[0].y).not.toBe(dsSymbol.ports.top.y);
+  });
+
+  it('test ogólny — dla KAŻDEGO transformatora niezależnie (pole TR kończy się ES): bottomPort (CT) > topPort (DS)', () => {
+    // `bottomPort` jest konsumowany downstream WYŁĄCZNIE przez pole TR
+    // dedykowane transformatora (`trFieldStack`, segment `#tr-field-to-bus`)
+    // — to jedyne miejsce w compose, gdzie stos kończy się symbolem (ES) bez
+    // portu S. Sprawdzamy niezależnie dla wielu transformatorów (wzorzec z
+    // istniejącego testu noDirectTie „wielu transformatorów").
+    const composition = composeGpz(
+      baseProps({
+        sections: [
+          { sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [lineBay('b-1')] },
+          { sectionId: 'sec-2', order: 2, label: 'S2', busVoltageKv: 15, bays: [lineBay('b-2')] },
+        ],
+        transformers: [TR1, { ...TR1, transformerRef: 'tr-2', designation: 'TR2', lvSectionId: 'sec-2' }],
+      }),
+      ORIGIN,
+    );
+    for (const tr of composition.transformers) {
+      const ctSymbol = composition.symbols.find((s) => s.meta.testId === `${tr.trFieldTestId}-ct`)!;
+      const dsSymbol = composition.symbols.find((s) => s.meta.testId === `${tr.trFieldTestId}-ds`)!;
+      const esSymbol = composition.symbols.find((s) => s.meta.testId === `${tr.trFieldTestId}-es`)!;
+      expect(ctSymbol).toBeDefined();
+      expect(dsSymbol).toBeDefined();
+      expect(esSymbol).toBeDefined();
+      const topPortY = dsSymbol.ports.top.y;
+      const bottomPortY = ctSymbol.ports.bottom.y;
+      expect(bottomPortY).toBeGreaterThan(topPortY);
+      const toBusSegment = composition.segments.find((s) => s.ownerRef === `${tr.transformerRef}#tr-field-to-bus`)!;
+      expect(toBusSegment.points[0].y).toBe(bottomPortY);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FIX-D (recenzja F5b, LOW, uczciwość wyroczni): kontrprzykłady na
+// `noDirectTransformerBusTies` — ręcznie sklecona minimalna `GpzComposition`
+// (nie wywodzona z `composeGpz`, żeby nie maskować ewentualnego błędu
+// wyroczni błędem w compose). Wyrocznia NIE była modyfikowana — oba
+// kontrprzykłady już dają `false` z istniejącej implementacji.
+// ---------------------------------------------------------------------------
+
+describe('V3 compose/gpz — FIX-D: kontrprzykłady wyroczni noDirectTransformerBusTies', () => {
+  function minimalSymbol(testId: string): GpzComposition['symbols'][number] {
+    return {
+      symbolId: 'disconnector',
+      x: 0,
+      y: 0,
+      ports: {},
+      meta: { parityKeys: [], testId },
+    };
+  }
+
+  function minimalGoodComposition(): GpzComposition {
+    const transformerRef = 'tr-x';
+    const hvBayTestId = 'hv-bay-x';
+    const trFieldTestId = 'tr-field-x';
+    return {
+      gpzId: 'gpz-manual',
+      symbols: [
+        minimalSymbol(`${hvBayTestId}-ds`),
+        minimalSymbol(`${hvBayTestId}-cb`),
+        minimalSymbol(`${hvBayTestId}-ct`),
+        minimalSymbol(`${trFieldTestId}-ds`),
+        minimalSymbol(`${trFieldTestId}-cb`),
+        minimalSymbol(`${trFieldTestId}-ct`),
+        minimalSymbol(`${trFieldTestId}-es`),
+      ],
+      segments: [
+        {
+          ownerRef: `${transformerRef}#hv-connector`,
+          points: [{ x: 0, y: 0 }, { x: 0, y: GRID }],
+          meta: {
+            parityKeys: ['gpz.transformer.hv_connector'],
+            transformerRef,
+            directTie110: false,
+            terminatesAt: 'hv_tr_bay_apparatus',
+          },
+        },
+        {
+          ownerRef: `${transformerRef}#field-anchor`,
+          points: [{ x: 0, y: 0 }, { x: 0, y: GRID }],
+          meta: {
+            parityKeys: ['gpz.transformer.field_anchor_connector'],
+            transformerRef,
+            directTieSn: false,
+            terminatesAt: 'tr_field_anchor',
+          },
+        },
+      ],
+      labels: {
+        stationName: { ownerRef: 'gpz-manual', nameSlot: { x: 0, y: 0, width: GRID, height: GRID }, rows: [] },
+        sectionLabels: [],
+        transformerLabels: [],
+        fieldDesignations: [],
+        fieldCaptions: [],
+      },
+      sections: [],
+      transformers: [{ transformerRef, designation: 'TRX', hvBayTestId, trFieldTestId }],
+      parityKeys: new Set(),
+      missingData: [],
+      bbox: { x: 0, y: 0, width: 0, height: 0 },
+    };
+  }
+
+  it('baseline ręczny (minimalna kompozycja poprawna z konstrukcji) ⇒ oracle true', () => {
+    expect(noDirectTransformerBusTies(minimalGoodComposition())).toBe(true);
+  });
+
+  it('segment z parityKey "gpz.transformer.lv_connector" (bezpośredni styk) ⇒ oracle false', () => {
+    const good = minimalGoodComposition();
+    const composition: GpzComposition = {
+      ...good,
+      segments: [
+        ...good.segments,
+        {
+          ownerRef: 'tr-x#lv-connector',
+          points: [{ x: 0, y: 0 }, { x: 0, y: GRID }],
+          meta: { parityKeys: ['gpz.transformer.lv_connector'], transformerRef: 'tr-x' },
+        },
+      ],
+    };
+    expect(noDirectTransformerBusTies(composition)).toBe(false);
+  });
+
+  it('brak field-anchor (terminatesAt="tr_field_anchor") ⇒ oracle false', () => {
+    const good = minimalGoodComposition();
+    const composition: GpzComposition = {
+      ...good,
+      segments: good.segments.filter((s) => !s.meta.parityKeys.includes('gpz.transformer.field_anchor_connector')),
+    };
+    expect(noDirectTransformerBusTies(composition)).toBe(false);
   });
 });
 
