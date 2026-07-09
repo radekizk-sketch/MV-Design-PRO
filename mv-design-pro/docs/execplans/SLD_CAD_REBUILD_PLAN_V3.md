@@ -147,6 +147,32 @@ i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
 - DoD: testy inwariantów GPZ zielone na v3; render pojedynczej stacji i GPZ
   (harness) oceniony wizualnie; commit.
 
+#### F5b — status po recenzji (Opus: APPROVE-WITH-FIXES; poprawki w follow-upie)
+- Rdzeń `379261e`; wizualny DoD nadzorcy wykonany (rendery: gramatyka
+  elektryczna GPZ poprawna; sonda: adapter v2 daje sections=1/bays=1 dla
+  fixtury — composeGpz wierny wejściu). Parity: 20 covered + 14 todo = pełna
+  lista v2, wszystkie todo zasadne (ocena recenzji).
+- Poprawki (FIX-A..F): dedup etykiety pola (designation/caption oba z
+  feederName), szyna rezerwowa −GRID nad primary (snapToGrid(−GRID/2)
+  kolapsował do primary; test tylko-meta tego nie łapał — dodana asercja
+  geometrii), bottomPort = ostatni symbol Z portem S (ES jako odgałęzienie,
+  nie koniec przelotu), kontrprzykłady wyroczni noDirectTransformerBusTies,
+  preview: sectionLabels + dashed/ring-closure.
+- RYZYKA/UWAGI DLA F6 (z recenzji — WIĄŻĄCE przy budowie kanwy):
+  (f6-1) kolorowanie wierszy captions jest PER SEKCJA — sekcje dzielą pasmo Y;
+         F6 koloruje GLOBALNIE albo dowodzi rozłączności między sekcjami;
+  (f6-2) `SldCanvasV3` konsumuje `GpzComposition`/`StationComposition`
+         BEZPOŚREDNIO (nie `PreviewComposition` — ten gubi sections/
+         transformers/parityKeys/missingData/bbox i style szyn);
+  (f6-3) bogactwo composeGpz (multi-sekcje/HV/couplers/double/ring) ograniczone
+         DANYMI adaptera v2 (fixtura: 1 sekcja/1 pole) — luka danych adaptera,
+         rozszerzenie adaptera to osobna decyzja (nie „naprawa" compose);
+  (f6-4) porty sprzęgła (breaker poziomy — brak glifu E/W w F1) oznaczone jako
+         przybliżone; F6 nie może na nich polegać przy routing/hit-testach;
+  (f6-5) fonty preview `sans-serif` → skonkretyzować wg §6; okablowanie pasma
+         nazw stacji robi kanwa (artefakt zlepienia nazw w harnessie nadzorcy
+         był błędem harnessa, nie compose).
+
 ### F6. SldCanvasV3 + LOD + nakładki stanu
 - `v3/canvas/SldCanvasV3.tsx`: kamera/safe-viewport/LOD reuse z v2 (import, nie
   kopia). Nakładka energizacji/kierunków (spec §6) czyta solver companion jak
