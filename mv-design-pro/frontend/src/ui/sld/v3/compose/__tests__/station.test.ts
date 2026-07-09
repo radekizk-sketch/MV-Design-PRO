@@ -7,16 +7,19 @@
 import { describe, expect, it } from 'vitest';
 
 import { GRID } from '../../core/grid';
+import { SYMBOL_DEFS } from '../../symbols/defs';
 import { FIELD_ROLE, ALL_FIELD_ROLES, type FieldRole } from '../../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
 import {
   bayColumnFootprint,
+  bayColumnRequiredWidth,
   stationBlockHeight,
   type StationMeasureInput,
 } from '../../layout/measure';
 import { computeBands, type StationBandHeights } from '../../layout/bands';
 import { computeColumns, type ComputeColumnsInput } from '../../layout/columns';
-import { computeSegmentStagger } from '../../layout/segments';
+import { colorSegmentLabelRows, computeSegmentLabelSlotX } from '../../layout/segments';
+import { resolveLabels } from '../../layout/labels';
 import {
   allCompositionSymbolsOnGrid,
   apparatusSymbolsForRole,
@@ -76,8 +79,8 @@ function buildComposeInput(
   station: StationMeasureInput,
   overrides: Partial<Omit<ComposeStationInput, 'station' | 'column' | 'busAxisY' | 'blockTopY' | 'nameSlot'>> = {},
 ): ComposeStationInput {
-  const stagger = computeSegmentStagger([station], [null]);
-  const bandsResult = computeBands([bandHeightsFor(station, null)], stagger.twoRow);
+  const rows = colorSegmentLabelRows(computeSegmentLabelSlotX([station], [null]));
+  const bandsResult = computeBands([bandHeightsFor(station, null)], rows.rowCount);
   const input: ComputeColumnsInput = {
     stations: [station],
     incomingSegmentLabelTexts: [null],
@@ -109,6 +112,43 @@ describe('V3 compose/station — spójność measure↔compose (wymóg zadania F
       const fromMeasure = bayColumnFootprint(role);
       expect(fromCompose).toEqual(fromMeasure);
     });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// (a2) FIX-3 (recenzja F5a): stos aparatów FLUSH-LEFT + oznacznik sidecar PO
+// PRAWEJ — bbox(stos ∪ oznacznik) musi zostać WEWNĄTRZ `bayColumnRequiredWidth`
+// (measure.ts), dla każdej roli i oznaczników 1..4 znaki (poprzedni kod
+// centrował stos w CAŁEJ rezerwacji, więc oznacznik ≥2-znakowy wystawał poza
+// pole — patrz nagłówek `station.ts`).
+// ---------------------------------------------------------------------------
+
+describe('V3 compose/station — FIX-3: bbox(stos + oznacznik) ⊆ rezerwacja pola (bayColumnRequiredWidth)', () => {
+  for (const role of ALL_FIELD_ROLES) {
+    for (const designationLength of [1, 2, 3, 4]) {
+      it(`rola ${role}, oznacznik ${designationLength}-znakowy: bbox w rezerwacji`, () => {
+        const designation = 'Q'.repeat(designationLength);
+        const bay = makeBay(role, 0, { designation });
+        const station = makeStation(`fix3-${role}-${designationLength}`, [bay]);
+        const composeInput = buildComposeInput(station);
+        const composition = composeStation(composeInput);
+
+        const reservedWidth = bayColumnRequiredWidth(bay, 0, station.bayDirectionCaptions);
+        const bx = composeInput.column.x + GRID; // blockLeftX (FIX-4): jedno pole = cały blok.
+
+        const symbolMinX = Math.min(...composition.symbols.map((s) => s.x));
+        const symbolMaxX = Math.max(...composition.symbols.map((s) => s.x + SYMBOL_DEFS[s.symbolId].width));
+
+        expect(composition.labels.apparatus).toHaveLength(1);
+        const [designationLabel] = resolveLabels({ simpleAnchored: composition.labels.apparatus });
+
+        const bboxMinX = Math.min(symbolMinX, designationLabel.rect.x);
+        const bboxMaxX = Math.max(symbolMaxX, designationLabel.rect.x + designationLabel.rect.width);
+
+        expect(bboxMinX).toBeGreaterThanOrEqual(bx);
+        expect(bboxMaxX).toBeLessThanOrEqual(bx + reservedWidth);
+      });
+    }
   }
 });
 

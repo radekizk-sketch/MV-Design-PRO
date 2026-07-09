@@ -14,14 +14,19 @@
  * sam język symboli co GPZ (mniejsza skala gabarytów).
  *
  * SPÓJNOŚĆ measure↔compose (wymóg zadania): rozmieszczenie kolumn pól
- * WEWNĄTRZ bloku używa TYCH SAMYCH funkcji co rezerwacja miejsca
- * (`bayColumnRequiredWidth`, `stationBlockWidth`, `layout/measure.ts` — zero
- * cienia), a stos aparatów per rola (`apparatusSymbolsForRole` niżej) MUSI
- * dawać IDENTYCZNY gabaryt {width,height} co `bayColumnFootprint` (measure) —
- * sprawdzane w `__tests__/station.test.ts` (describe „spójność
- * measure↔compose", jedna asercja per `FieldRole` z `ALL_FIELD_ROLES`; dwie
- * niezależne implementacje muszą się zgadzać, bo measure REZERWUJE miejsce,
- * a compose je WYPEŁNIA).
+ * WEWNĄTRZ bloku używa TEJ SAMEJ funkcji co rezerwacja miejsca
+ * (`bayColumnRequiredWidth`, `layout/measure.ts` — zero cienia; lewa krawędź
+ * bloku to `column.x + GRID`, FIX-4, patrz `composeStation`), a stos
+ * aparatów per rola (`apparatusSymbolsForRole` niżej) MUSI dawać IDENTYCZNY
+ * gabaryt {width,height} co `bayColumnFootprint` (measure) — sprawdzane w
+ * `__tests__/station.test.ts` (describe „spójność measure↔compose", jedna
+ * asercja per `FieldRole` z `ALL_FIELD_ROLES`; dwie niezależne implementacje
+ * muszą się zgadzać, bo measure REZERWUJE miejsce, a compose je WYPEŁNIA).
+ * FIX-3 (recenzja F5a): stos aparatów jest FLUSH-LEFT wewnątrz rezerwacji
+ * pola (`bx`), oznacznik (`bay.designation`) sidecar PO PRAWEJ stosu —
+ * dokładnie model measure (`bayColumnRequiredWidth`: `footprint.width + GRID
+ * + szerokość_oznacznika`), nie stos wycentrowany w całej rezerwacji (dawny
+ * kod, przez co oznacznik ≥2-znakowy wystawał poza pole).
  */
 
 import { GRID, rectsOverlap, snapToGrid, type V3Rect } from '../core/grid';
@@ -32,7 +37,6 @@ import type { RoutePort, RouteVertex } from '../layout/route';
 import {
   bayColumnRequiredWidth,
   formatTransformerRatedPower,
-  stationBlockWidth,
   type StationMeasureInput,
 } from '../layout/measure';
 import type {
@@ -256,13 +260,16 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   const hasLvSection = input.hasLvSection ?? false;
   const bayDirectionCaptions = station.bayDirectionCaptions ?? [];
 
-  const blockWidth = stationBlockWidth(station.snBays, station.bayDirectionCaptions);
-  // Lewa krawędź BLOKU liczona z `tapX` (nie z `column.x` wprost) — z
-  // DEFINICJI `tapX = blockLeftX + blockWidth/2` (patrz `columns.ts`), więc
-  // te dwie ścieżki dają identyczny wynik; liczenie z `tapX` ogranicza
-  // wiedzę tego modułu wyłącznie do zaczepu (spec F5: „kompozycja zna
-  // pozycje zaczepów").
-  const blockLeftX = snapToGrid(column.tapX - blockWidth / 2);
+  // FIX-4 (recenzja F5a): `tapX` w `measure`/`segments.ts`
+  // (`computeStationTaps`) jest `snapToGrid(column.x + GRID + blockWidth/2)`
+  // — odtwarzanie `blockLeftX` z `tapX - blockWidth/2` to ROUND-TRIP przez tę
+  // zaokrągloną wartość: gdy `blockWidth/2 ≡ 4 mod 8`, zaokrąglenie `tapX` w
+  // GÓRĘ/DÓŁ nie odwraca się dokładnie, dryf do 8px (poprzedni komentarz
+  // „identyczny wynik z definicji" był błędny — patrz recenzja). `column.x +
+  // GRID` to PRAWDA measure WPROST (ten sam margines lewy GRID, spec §5.1
+  // "+2×GRID"), bez zaokrąglenia po drodze — `column.x` jest już na siatce z
+  // konstrukcji (prefix-sum wielokrotności GRID).
+  const blockLeftX = column.x + GRID;
 
   const symbols: ComposedSymbolInstance[] = [];
   const segments: ComposedSegment[] = [];
@@ -277,10 +284,18 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   let bx = blockLeftX;
   station.snBays.forEach((bay, index) => {
     const reservedWidth = bayColumnRequiredWidth(bay, index, station.bayDirectionCaptions);
-    const centerX = snapToGrid(bx + reservedWidth / 2);
+    const symbolIds = apparatusSymbolsForRole(bay.fieldRole);
+    // FIX-3 (recenzja F5a): `bayColumnRequiredWidth` (measure.ts) rezerwuje
+    // `footprint.width + GRID + szerokość_oznacznika` — stos aparatów
+    // FLUSH-LEFT (przy `bx`) + oznacznik sidecar PO PRAWEJ stosu. Centrowanie
+    // stosu w CAŁEJ `reservedWidth` (poprzedni kod) przesuwało go w prawo o
+    // połowę sidecara, więc oznacznik ≥2-znakowy wystawał poza rezerwację —
+    // `centerX` liczony z `footprint.width` (nie `reservedWidth`) daje stosowi
+    // lewą krawędź DOKŁADNIE na `bx`, zgodnie z modelem measure.
+    const footprint = stackFootprint(symbolIds);
+    const centerX = snapToGrid(bx + footprint.width / 2);
     busTapXs.push(centerX);
 
-    const symbolIds = apparatusSymbolsForRole(bay.fieldRole);
     const stack = buildBayStack(symbolIds, centerX, blockTopY, bay);
     symbols.push(...stack.instances);
 
@@ -306,7 +321,11 @@ export function composeStation(input: ComposeStationInput): StationComposition {
       });
     }
 
-    // Oznacznik aparatu (bay.designation, t3) — obok pierwszego aparatu pola.
+    // Oznacznik aparatu (bay.designation, t3) — PO PRAWEJ stosu (FIX-3), nie
+    // po prawej jego ŚRODKA: `resolveSimpleAnchoredLabel` (`layout/labels.ts`)
+    // stawia slot `placement: 'right'` zaczynając w `anchor.x + GRID`, więc
+    // zaczep musi być prawą krawędzią stosu (`bx + footprint.width`) — dokładnie
+    // tam, gdzie measure.ts kończy `footprint.width` i zaczyna `GRID + oznacznik`.
     const designation = bay.designation.trim();
     if (designation) {
       apparatusLabels.push({
@@ -314,7 +333,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         ownerKind: 'apparatus',
         text: designation,
         labelClass: 't3',
-        anchor: { x: centerX, y: stack.topPort.y },
+        anchor: { x: snapToGrid(bx + footprint.width), y: stack.topPort.y },
         placement: 'right',
       });
     }

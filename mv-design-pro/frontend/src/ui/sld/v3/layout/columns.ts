@@ -17,13 +17,13 @@
  * teraz z `normalizeSegmentText` (`./segments`) — TA SAMA funkcja, którą
  * używa `bands.ts` do liczenia wysokości B1 (wcześniej: dwie niezależne
  * implementacje tej samej reguły, ryzyko rozjazdu).
- * F3 fix r2: `computeColumns` liczy alternację 2-wierszową (`computeSegmentStagger`,
- * `./segments`) SAMODZIELNIE — ma na wejściu pełne `StationMeasureInput`,
- * więc nie trzeba przekazywać flagi z zewnątrz (w przeciwieństwie do
- * `bands.ts`, które NIE zna kształtu stacji — patrz decyzja architektoniczna
- * F2 udokumentowana tam). `ColumnsResult.segmentLabelTwoRow` eksponuje wynik
- * decyzji, żeby wołający mógł przekazać TĘ SAMĄ flagę do `computeBands` bez
- * liczenia jej po raz drugi.
+ * F3 fix r2 (r9: mechanizm przydziału wierszy przepisany, patrz niżej):
+ * `computeColumns` liczy liczbę wierszy B1 SAMODZIELNIE — ma na wejściu
+ * pełne `StationMeasureInput`, więc nie trzeba przekazywać jej z zewnątrz
+ * (w przeciwieństwie do `bands.ts`, które NIE zna kształtu stacji — patrz
+ * decyzja architektoniczna F2 udokumentowana tam). `ColumnsResult.segmentLabelRowCount`
+ * eksponuje wynik, żeby wołający mógł przekazać TĘ SAMĄ liczbę do
+ * `computeBands` bez liczenia jej po raz drugi.
  *
  * r7b (F5, decyzja nadzorcy REBUILD_PLAN_V3 — pełne r7): `ColumnResult`
  * dostaje `tapX` — x zaczepu magistrali stacji (środek BLOKU stacji, patrz
@@ -34,15 +34,25 @@
  * F3): odcinek magistrali fizycznie biegnie MIĘDZY zaczepami, nie w obrębie
  * jednej kolumny. Prefix-sum x/width/tapX wydzielony do
  * `computeStationTaps` (`./segments`) — JEDNO źródło prawdy współdzielone z
- * `computeSegmentStagger` (dokładny warunek alternacji, patrz tamten plik).
+ * `computeSegmentLabelSlotX` (geometria X slotu, patrz tamten plik).
+ *
+ * r9 (F5a, poprawka po recenzji REQUEST-CHANGES na r7b — kontrprzykłady
+ * liczbowe potwierdzone, patrz nagłówek `segments.ts`): wiersz B1 KAŻDEGO
+ * slotu nie jest już liczony parzystością indeksu stacji
+ * (`computeSegmentStagger`, USUNIĘTE) — przydziela go
+ * `colorSegmentLabelRows` (`./segments`) kolorowaniem grafu przedziałów na
+ * RZECZYWISTYCH, przyciętych do arkusza prostokątach x/width
+ * (`computeSegmentLabelSlotX`). `ColumnsResult.segmentLabelTwoRow`
+ * (boolean) zastąpione przez `segmentLabelRowCount` (liczba wierszy
+ * faktycznie potrzebnych) — `computeBands` przyjmuje teraz tę liczbę.
  */
 
-import { GRID, snapToGrid, type V3Rect } from '../core/grid';
-import { requiredSegmentLabelWidth, snapUp, type StationMeasureInput } from './measure';
+import { GRID, type V3Rect } from '../core/grid';
+import type { StationMeasureInput } from './measure';
 import {
-  computeSegmentStagger,
+  colorSegmentLabelRows,
+  computeSegmentLabelSlotX,
   computeStationTaps,
-  normalizeSegmentText,
   SEGMENT_LABEL_ROW_HEIGHT,
 } from './segments';
 
@@ -78,11 +88,16 @@ export interface ColumnResult {
 export interface SegmentLabelSlotResult {
   /** Indeks stacji, do której wchodzi ten segment (`stations[index]`). */
   readonly stationIndex: number;
+  /** Wiersz B1 przydzielony temu slotowi (0-indeksowany, r9 —
+   *  `colorSegmentLabelRows`, `./segments`). `rect.y` już go uwzględnia —
+   *  pole wystawione osobno do diagnostyki/testów. */
+  readonly rowIndex: number;
   /** Zarezerwowany slot etykiety segmentu (B1), WYŚRODKOWANY na przęśle
-   *  tap-do-tap (r7b) — patrz nagłówek pliku. Szerokość =
-   *  `snapUp(requiredSegmentLabelWidth(text))` (gwarantuje `width` ≥
-   *  szerokość etykiety niezależnie od przęsła — kontrakt z `labels.ts`
-   *  DECYZJA WIĄŻĄCA), wiersz (Y) ze staggera jak dotąd. */
+   *  tap-do-tap (r7b), CAŁY prostokąt przycięty do arkusza (r9 — patrz
+   *  nagłówek pliku). Szerokość = `snapUp(requiredSegmentLabelWidth(text))`
+   *  (gwarantuje `width` ≥ szerokość etykiety niezależnie od przęsła —
+   *  kontrakt z `labels.ts` DECYZJA WIĄŻĄCA) i NIENARUSZONA przez przycięcie
+   *  do arkusza — tylko `x` się przesuwa. */
   readonly rect: V3Rect;
 }
 
@@ -90,11 +105,13 @@ export interface ColumnsResult {
   readonly columns: readonly ColumnResult[];
   readonly segmentLabelSlots: readonly SegmentLabelSlotResult[];
   readonly totalWidth: number;
-  /** r2 (F3 fix): czy B1 wymaga alternacji 2-wierszowej (spec §5.2) — patrz
-   *  `computeSegmentStagger` w `./segments`. Wołający przekazuje TĘ SAMĄ
-   *  wartość do `computeBands` (drugi parametr), żeby wysokość pasma B1
-   *  odpowiadała rozmieszczeniu slotów tu wyliczonemu. */
-  readonly segmentLabelTwoRow: boolean;
+  /** r9 (F5a fix, zastępuje `segmentLabelTwoRow: boolean`): liczba wierszy
+   *  B1 faktycznie potrzebnych (kolorowanie grafu przedziałów,
+   *  `colorSegmentLabelRows` w `./segments`) — `0` gdy żadna stacja nie ma
+   *  segmentu wejściowego. Wołający przekazuje TĘ SAMĄ wartość do
+   *  `computeBands` (drugi parametr), żeby wysokość pasma B1 odpowiadała
+   *  rozmieszczeniu slotów tu wyliczonemu. */
+  readonly segmentLabelRowCount: number;
 }
 
 export interface ComputeColumnsInput {
@@ -125,25 +142,19 @@ export function computeColumns(input: ComputeColumnsInput): ColumnsResult {
   }
 
   // r7b: prepass x/width/tapX — JEDNO źródło prawdy geometrii poziomej
-  // (`./segments`), współdzielone z `computeSegmentStagger` (dokładny
-  // warunek alternacji 2-wierszowej oparty o REALNY span tap-do-tap — patrz
-  // dowód niezmiennika w `segments.ts`). Ta sama para wejść (`stations`,
-  // `incomingSegmentLabelTexts`) przekazana do OBU funkcji gwarantuje
-  // identyczne `taps` wewnątrz `stagger` i tu — determinizm (P7).
+  // (`./segments`). r9: geometria X slotu (`computeSegmentLabelSlotX`, już
+  // przycięta do arkusza) i przydział wierszy (`colorSegmentLabelRows`,
+  // kolorowanie grafu przedziałów) liczone z TEJ SAMEJ pary wejść
+  // (`stations`, `incomingSegmentLabelTexts`) — determinizm (P7).
   const taps = computeStationTaps(stations, incomingSegmentLabelTexts);
-  const stagger = computeSegmentStagger(stations, incomingSegmentLabelTexts);
+  const slotXs = computeSegmentLabelSlotX(stations, incomingSegmentLabelTexts);
+  const rows = colorSegmentLabelRows(slotXs);
 
   const columns: ColumnResult[] = [];
   const segmentLabelSlots: SegmentLabelSlotResult[] = [];
 
   stations.forEach((station, index) => {
     const { x, width, tapX } = taps[index];
-    // FIX-4 (recenzja F2) + r3: pusty/whitespace string ≠ realny tekst
-    // segmentu — `normalizeSegmentText` (współdzielone z `bands.ts`) traktuje
-    // go jak brak, żeby nie rezerwować slotu ani szerokości pod etykietę,
-    // która nigdy nie zostanie narysowana.
-    const segmentText = normalizeSegmentText(incomingSegmentLabelTexts[index]);
-
     columns.push({
       stationId: station.id,
       x,
@@ -152,39 +163,26 @@ export function computeColumns(input: ComputeColumnsInput): ColumnsResult {
       tapX,
     });
 
-    if (segmentText != null) {
-      // r7b (DECYZJA WIĄŻĄCA NADZORCY): rezerwacja WYŚRODKOWANA na przęśle
-      // TAP-DO-TAPU — `spanStart` to zaczep POPRZEDNIEJ stacji (lub krawędź
-      // świata `0` dla pierwszej), `spanEnd` to zaczep TEJ stacji (`tapX`).
-      // Szerokość = `snapUp(requiredSegmentLabelWidth(text))` (NIE szerokość
-      // kolumny) — gwarantuje `rect.width` ≥ szerokość etykiety NIEZALEŻNIE
-      // od tego, jak wąskie jest przęsło (kontrakt z `labels.ts` DECYZJA
-      // WIĄŻĄCA: `primaryRect.width >= szerokość etykiety`).
-      const spanStart = index > 0 ? taps[index - 1].tapX : 0;
-      const spanCenter = (spanStart + tapX) / 2;
-      const labelWidth = snapUp(requiredSegmentLabelWidth(segmentText));
-      const rectX = snapToGrid(spanCenter - labelWidth / 2);
-
-      // r2: w trybie 2-wierszowym każdy slot zajmuje JEDEN wiersz (nie całe
-      // podwojone pasmo B1), przesunięty naprzemiennie góra/dół po
-      // parzystości indeksu (`stagger.rowOf`, JAK DOTĄD) — sąsiednie stacje
-      // trafiają w RÓŻNE wiersze, więc nawet etykiety przelewające się poza
-      // własne przęsło nie kolidują z sąsiadem (dowód w `segments.ts`).
-      const rect = stagger.twoRow
-        ? {
-            x: rectX,
-            y: segmentSlotBand.y + stagger.rowOf[index] * SEGMENT_LABEL_ROW_HEIGHT,
-            width: labelWidth,
-            height: SEGMENT_LABEL_ROW_HEIGHT,
-          }
-        : { x: rectX, y: segmentSlotBand.y, width: labelWidth, height: segmentSlotBand.height };
-      segmentLabelSlots.push({ stationIndex: index, rect });
+    const slotX = slotXs[index];
+    if (slotX != null) {
+      // r9: wiersz przydzielony kolorowaniem grafu przedziałów — dwa sloty
+      // nachodzące się w X z DEFINICJI algorytmu trafiają w różne wiersze
+      // (dowód niezmiennika w `segments.ts`), niezależnie od parzystości
+      // indeksu i niezależnie od tego, czy stacja pomiędzy nimi ma segment.
+      const rowIndex = rows.rowOf[index];
+      const rect = {
+        x: slotX.x,
+        y: segmentSlotBand.y + rowIndex * SEGMENT_LABEL_ROW_HEIGHT,
+        width: slotX.width,
+        height: SEGMENT_LABEL_ROW_HEIGHT,
+      };
+      segmentLabelSlots.push({ stationIndex: index, rowIndex, rect });
     }
   });
 
   const last = taps[taps.length - 1];
   const totalWidth = last ? last.x + last.width : 0;
-  return { columns, segmentLabelSlots, totalWidth, segmentLabelTwoRow: stagger.twoRow };
+  return { columns, segmentLabelSlots, totalWidth, segmentLabelRowCount: rows.rowCount };
 }
 
 /** Wyrocznia pomocnicza: wszystkie x/tapX kolumn i szerokości na siatce

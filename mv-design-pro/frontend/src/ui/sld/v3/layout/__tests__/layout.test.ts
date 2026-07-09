@@ -21,7 +21,12 @@ import {
 } from '../measure';
 import { BUS_AXIS_BAND_HEIGHT, computeBands, noBandsOverlap, type StationBandHeights } from '../bands';
 import { allColumnsOnGrid, computeColumns, type ComputeColumnsInput } from '../columns';
-import { computeSegmentStagger, normalizeSegmentText, SEGMENT_LABEL_ROW_HEIGHT } from '../segments';
+import {
+  colorSegmentLabelRows,
+  computeSegmentLabelSlotX,
+  normalizeSegmentText,
+  SEGMENT_LABEL_ROW_HEIGHT,
+} from '../segments';
 
 function makeBay(fieldRole: FieldRole, index: number): MiniBlockBayDescriptor {
   return {
@@ -66,13 +71,13 @@ function buildColumnsForStations(
   stations: readonly StationMeasureInput[],
   incomingSegmentLabelTexts: readonly (string | null)[],
 ) {
-  // r2 (F3 fix): stagger liczony RAZ z tych samych wejść, współdzielony
-  // przez bands (flaga `segmentLabelTwoRow`) i columns (liczy sam, bo ma
-  // pełne `StationMeasureInput`).
-  const stagger = computeSegmentStagger(stations, incomingSegmentLabelTexts);
+  // r9 (F5a fix): kolorowanie grafu przedziałów liczone RAZ z tych samych
+  // wejść, współdzielone przez bands (liczba `segmentLabelRowCount`) i
+  // columns (liczy sam, bo ma pełne `StationMeasureInput`).
+  const rows = colorSegmentLabelRows(computeSegmentLabelSlotX(stations, incomingSegmentLabelTexts));
   const bandsResult = computeBands(
     stations.map((s, i) => bandHeightsFor(s, incomingSegmentLabelTexts[i])),
-    stagger.twoRow,
+    rows.rowCount,
   );
   const input: ComputeColumnsInput = {
     stations,
@@ -288,6 +293,15 @@ describe('V3 layout — property: żadne dwa zarezerwowane sloty się nie przeci
   // etykiet segmentu × 4 liczby pól (2..5) — dwie stacje sąsiadujące per
   // kombinacja, sprawdzamy WSZYSTKIE pary zarezerwowanych prostokątów
   // (sloty nazw, sloty etykiet segmentów, bboxy bloków stacji B4).
+  //
+  // r9 (F5a, poprawka po recenzji REQUEST-CHANGES): ta enumeracja z DWÓCH
+  // stacji o IDENTYCZNEJ etykiecie na obu jest STRUKTURALNIE ślepa na klasę
+  // defektów r7b (parzystość indeksu ≠ realne nachodzenie w X) — parzystość
+  // 2 stacji zawsze daje różne wiersze (0, 1), więc kolizja i↔i+2 (wymaga
+  // ≥3 stacji) nigdy nie mogła wystąpić tutaj. Zachowana jako regresja
+  // węższego przypadku (dominacja szerokości etykiety segmentu vs. nazwy
+  // stacji); pokrycie klasy „i↔i+2" i „stacja i+1 bez segmentu" — patrz
+  // dwa kolejne describe niżej.
   const nameLengths = [2, 12, 30];
   const labelLengths = [0, 8, 45];
   const bayCounts = [2, 3, 4, 5];
@@ -328,6 +342,178 @@ describe('V3 layout — property: żadne dwa zarezerwowane sloty się nie przeci
   }
 });
 
+// ---------------------------------------------------------------------------
+// FIX-2 (recenzja F5a, po REQUEST-CHANGES na r7b): property-test odporny na
+// klasę defektów, którą powyższa 2-stacyjna enumeracja strukturalnie nie
+// mogła złapać — ≥3 stacje NARROW (1-polowe, maksymalizują ryzyko wystawania
+// slotu poza własne przęsło), permutacje etykiet ASYMETRYCZNYCH
+// (krótka/średnia/bardzo długa) na pozycjach, + wariant ze ŚRODKOWĄ stacją
+// BEZ segmentu (klasa defektu: warunek liczony TYLKO dla par sąsiednich nie
+// widzi kolizji i↔i+2, gdy i+1 nie ma segmentu w ogóle).
+// ---------------------------------------------------------------------------
+
+/** Stacja NARROW MINIMALNA (1-polowa, nazwa 1-znakowa, BEZ kodu/kVA/typu/
+ *  oznacznika aparatu) — maksymalizuje ryzyko, że slot etykiety segmentu
+ *  (wyśrodkowany na przęśle tap-do-tap) wystaje poza własne przęsło i
+ *  koliduje z sąsiadem (patrz kontrprzykłady recenzji: dowolny dodatkowy
+ *  gabaryt — kod stacji, oznacznik aparatu — poszerza kolumnę i zaciera
+ *  efekt; ta funkcja reprodukuje DOKŁADNIE geometrię zweryfikowaną w
+ *  recenzji na realnym kodzie, w przeciwieństwie do `makeStation` z górnej
+ *  części pliku, która ZAWSZE dokłada kod/kVA/typ/oznacznik „Pole N"). */
+function makeNarrowStation(id: string): StationMeasureInput {
+  const bay: MiniBlockBayDescriptor = {
+    bayRef: `${id}-bay-0`,
+    fieldRole: FIELD_ROLE.RMU_TRANSFORMER,
+    designation: '',
+    hasMissingRequiredDevice: false,
+  };
+  return {
+    id,
+    name: 'A',
+    stationCode: null,
+    transformerRatedKva: null,
+    stationTypeLabel: null,
+    snBays: [bay],
+  };
+}
+
+const LABEL_CLASSES = {
+  short: 'X',
+  medium: '15 kV',
+  long: 'YAKXS 3×120/16 · 90 m — bardzo długi opis odcinka magistrali SN',
+} as const;
+type LabelClassKey = keyof typeof LABEL_CLASSES;
+const LABEL_CLASS_KEYS: readonly LabelClassKey[] = ['short', 'medium', 'long'];
+
+/** Permutacje bez powtórzeń (deterministyczne, bez losowości — P7). */
+function permutationsOf<T>(items: readonly T[]): T[][] {
+  if (items.length <= 1) return [items.slice()];
+  const out: T[][] = [];
+  items.forEach((item, i) => {
+    const rest = [...items.slice(0, i), ...items.slice(i + 1)];
+    for (const perm of permutationsOf(rest)) out.push([item, ...perm]);
+  });
+  return out;
+}
+
+/** Asercje wspólne dla każdego przypadku property-testu FIX-2: zero
+ *  nachodzeń PARAMI wszystkich slotów zarezerwowanych (nazwa/B4/segment),
+ *  każdy slot etykiety segmentu W ARKUSZU (x >= 0, x+width <= totalWidth),
+ *  x/width na siatce, determinizm (to samo wejście ⇒ identyczny wynik). */
+function assertNoCollisionsAndInSheet(
+  stations: readonly StationMeasureInput[],
+  texts: readonly (string | null)[],
+): void {
+  const first = buildColumnsForStations(stations, texts);
+  const second = buildColumnsForStations(stations, texts);
+  expect(second.columnsResult).toEqual(first.columnsResult); // determinizm (P7)
+  expect(second.bandsResult).toEqual(first.bandsResult);
+
+  const { bandsResult, columnsResult } = first;
+  const reservedRects: V3Rect[] = [];
+  for (const col of columnsResult.columns) {
+    reservedRects.push(col.nameSlot);
+    reservedRects.push({ x: col.x, y: bandsResult.bands.B4.y, width: col.width, height: bandsResult.bands.B4.height });
+  }
+  for (const slot of columnsResult.segmentLabelSlots) reservedRects.push(slot.rect);
+
+  for (let i = 0; i < reservedRects.length; i++) {
+    for (let j = i + 1; j < reservedRects.length; j++) {
+      expect(
+        rectsOverlap(reservedRects[i], reservedRects[j]),
+        `rect[${i}]=${JSON.stringify(reservedRects[i])} vs rect[${j}]=${JSON.stringify(reservedRects[j])}`,
+      ).toBe(false);
+    }
+  }
+
+  for (const slot of columnsResult.segmentLabelSlots) {
+    expect(slot.rect.x).toBeGreaterThanOrEqual(0); // w arkuszu — nie POZA nim (kontrprzykład 2)
+    expect(slot.rect.x + slot.rect.width).toBeLessThanOrEqual(columnsResult.totalWidth);
+    expect(slot.rect.x % GRID).toBe(0);
+    expect(slot.rect.width % GRID).toBe(0);
+  }
+}
+
+describe('V3 layout — property FIX-2: ≥3 stacje × permutacje etykiet asymetrycznych, wszystkie sloty w arkuszu, zero kolizji', () => {
+  for (const stationCount of [3, 4, 5]) {
+    for (const perm of permutationsOf(LABEL_CLASS_KEYS)) {
+      // Dla stationCount > 3 klasy etykiet cyklicznie powtórzone (round-robin)
+      // po permutacji bazowej — bez eksplozji kombinatorycznej (4!/5! byłoby
+      // nadmiarowe), a nadal asymetrycznie i deterministycznie.
+      const classesForCount: readonly LabelClassKey[] = Array.from(
+        { length: stationCount },
+        (_, i) => perm[i % perm.length],
+      );
+      const label = classesForCount.join('>');
+
+      it(`${stationCount} stacji NARROW, etykiety [${label}]: zero kolizji, wszystkie sloty w arkuszu`, () => {
+        const stations = classesForCount.map((_, i) => makeNarrowStation(`s${i}`));
+        const texts = classesForCount.map((key) => LABEL_CLASSES[key]);
+        assertNoCollisionsAndInSheet(stations, texts);
+      });
+
+      it(`${stationCount} stacji NARROW, etykiety [${label}], środkowa BEZ segmentu: zero kolizji, wszystkie sloty w arkuszu`, () => {
+        const stations = classesForCount.map((_, i) => makeNarrowStation(`s${i}`));
+        const midIndex = Math.floor(stationCount / 2);
+        const texts = classesForCount.map((key, i) => (i === midIndex ? null : LABEL_CLASSES[key]));
+        assertNoCollisionsAndInSheet(stations, texts);
+      });
+    }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// FIX-2: regresje NAZWANE dla oba kontrprzykłady liczbowe z recenzji (dokładne
+// teksty jak w opisie defektu) + trzeci wariant (środkowa stacja bez
+// segmentu) opisany w tym samym akapicie recenzji. Zweryfikowane na realnym
+// (przed-fixowym) kodzie — patrz komentarze przy każdym teście.
+// ---------------------------------------------------------------------------
+
+describe('V3 layout — regresje kontrprzykładów recenzji F5a (r7b REQUEST-CHANGES)', () => {
+  it('kontrprzykład 1: 3 stacje 1-polowe, teksty ["X","15 kV","X"×38] ⇒ stary kod: slot0/slot2 ten sam wiersz (parzystość) i FAKTYCZNIE się przecinają', () => {
+    // Zweryfikowane na kodzie PRZED tym fixem: slot0={x:0,w:24}, slot2={x:0,w:280},
+    // stagger.rowOf=[0,1,0] (stacje 0 i 2 dzielą wiersz 0) ⇒ rectsOverlap=true.
+    const stations = [makeNarrowStation('a'), makeNarrowStation('b'), makeNarrowStation('c')];
+    const texts = ['X', '15 kV', 'X'.repeat(38)];
+    const { columnsResult } = buildColumnsForStations(stations, texts);
+
+    expect(columnsResult.segmentLabelSlots).toHaveLength(3);
+    expect(columnsResult.segmentLabelRowCount).toBeGreaterThanOrEqual(2); // kolorowanie WYMUSZA ≥2 wiersze
+    const [slot0, , slot2] = columnsResult.segmentLabelSlots;
+    expect(rectsOverlap(slot0.rect, slot2.rect)).toBe(false);
+    expect(slot0.rowIndex).not.toBe(slot2.rowIndex); // różne wiersze — kolorowanie, nie parzystość
+  });
+
+  it('kontrprzykład 2: 2 stacje 1-polowe, teksty ["X"×20,"X"×47] ⇒ stary kod: slot0.x=-64 (rezerwacja POZA arkuszem, ujemny x)', () => {
+    // Zweryfikowane na kodzie PRZED tym fixem: slot0={x:-64,w:160} — środek
+    // przęsła wyśrodkowywał slot, ale NIC nie przycinało go do arkusza.
+    const stations = [makeNarrowStation('a'), makeNarrowStation('b')];
+    const texts = ['X'.repeat(20), 'X'.repeat(47)];
+    const { columnsResult } = buildColumnsForStations(stations, texts);
+
+    for (const slot of columnsResult.segmentLabelSlots) {
+      expect(slot.rect.x).toBeGreaterThanOrEqual(0); // NIE poza arkuszem
+      expect(slot.rect.x + slot.rect.width).toBeLessThanOrEqual(columnsResult.totalWidth);
+    }
+  });
+
+  it('kontrprzykład 3: 3 stacje 1-polowe, teksty ["X",null,"X"×38] (środkowa BEZ segmentu) ⇒ stary kod: warunek par sąsiednich w ogóle nie odpalał, mimo realnej kolizji 0↔2', () => {
+    // Zweryfikowane na kodzie PRZED tym fixem: stagger.twoRow=false (para
+    // (0,1) i (1,2) nie ma OBU segmentów ⇒ warunek nigdy TRUE), ale
+    // slot0={x:0,w:24} i slot2={x:-8,w:280} FAKTYCZNIE się przecinają
+    // (oba w tym samym, jedynym wierszu — zero alternacji).
+    const stations = [makeNarrowStation('a'), makeNarrowStation('b'), makeNarrowStation('c')];
+    const texts = ['X', null, 'X'.repeat(38)];
+    const { columnsResult } = buildColumnsForStations(stations, texts);
+
+    expect(columnsResult.segmentLabelSlots).toHaveLength(2); // stacja środkowa bez segmentu
+    const [slot0, slot2] = columnsResult.segmentLabelSlots;
+    expect(slot2.stationIndex).toBe(2);
+    expect(rectsOverlap(slot0.rect, slot2.rect)).toBe(false);
+    expect(columnsResult.segmentLabelRowCount).toBeGreaterThanOrEqual(2); // kolorowanie WYKRYWA kolizję mimo brak segmentu w środku
+  });
+});
+
 describe('V3 layout — bands (spec §5.2, F3 fix r1): B2 rośnie z treści (podpis kierunku pola)', () => {
   it('B2 = BUS_AXIS_BAND_HEIGHT + wiersz t3 gdy stacja ma podpis kierunku; bez podpisu — stała geometryczna (bez regresji)', () => {
     const station = makeStation('s1', 5, 2);
@@ -362,26 +548,22 @@ describe('V3 layout — bands (spec §5.2, F3 fix r1): B2 rośnie z treści (pod
   });
 });
 
-describe('V3 layout — bands/columns (spec §5.2, F3 fix r2): alternacja 2-wierszowa B1', () => {
-  it('dwie sąsiednie WĄSKIE stacje z etykietą segmentu szerszą niż ich naturalny gabaryt → B1 dwuwierszowe, sloty naprzemienne (górny/dolny), zero nakładania', () => {
+describe('V3 layout — bands/columns (spec §5.2, F3 fix r2, r9: kolorowanie zamiast parzystości): wielowierszowość B1', () => {
+  it('dwie sąsiednie WĄSKIE stacje z etykietą segmentu szerszą niż ich naturalny gabaryt → B1 dwuwierszowe, sloty w różnych wierszach, zero nakładania', () => {
     // Stacje maksymalnie wąskie (1-znakowa nazwa, 1 pole transformatorowe) —
-    // naturalny gabaryt mały; etykieta bardzo długa ⇒ z konstrukcji
-    // wymagany warunek stagger (`requiredSegmentLabelWidth > requiredStationWidth`,
-    // patrz DECYZJA w `segments.ts`).
+    // naturalny gabaryt mały; etykieta bardzo długa ⇒ z konstrukcji sloty
+    // nachodzą się w X ⇒ kolorowanie WYMUSZA ≥2 wiersze (`colorSegmentLabelRows`).
     const stationA = makeStation('a', 1, 1);
     const stationB = makeStation('b', 1, 1);
     const wideLabel = 'YAKXS 3×120/16 · 90 m — bardzo długi opis odcinka magistrali SN';
 
-    const stagger = computeSegmentStagger([stationA, stationB], [wideLabel, wideLabel]);
-    expect(stagger.twoRow).toBe(true);
-
     const { bandsResult, columnsResult } = buildColumnsForStations([stationA, stationB], [wideLabel, wideLabel]);
-
-    expect(bandsResult.bands.B1.height).toBe(snapUp(2 * SEGMENT_LABEL_ROW_HEIGHT));
+    expect(columnsResult.segmentLabelRowCount).toBeGreaterThanOrEqual(2);
+    expect(bandsResult.bands.B1.height).toBe(snapUp(columnsResult.segmentLabelRowCount * SEGMENT_LABEL_ROW_HEIGHT));
     expect(columnsResult.segmentLabelSlots).toHaveLength(2);
 
     const [slotA, slotB] = columnsResult.segmentLabelSlots;
-    expect(slotA.rect.y).not.toBe(slotB.rect.y); // naprzemiennie: różne wiersze
+    expect(slotA.rect.y).not.toBe(slotB.rect.y); // różne wiersze (kolorowanie)
     expect(slotA.rect.height).toBe(SEGMENT_LABEL_ROW_HEIGHT); // jeden wiersz per slot, nie całe podwojone B1
     expect(slotB.rect.height).toBe(SEGMENT_LABEL_ROW_HEIGHT);
     expect(rectsOverlap(slotA.rect, slotB.rect)).toBe(false);
@@ -392,15 +574,13 @@ describe('V3 layout — bands/columns (spec §5.2, F3 fix r2): alternacja 2-wier
     }
   });
 
-  it('gdy TYLKO JEDNA sąsiadująca stacja ma zbyt szeroką etykietę (druga bez segmentu) → B1 pozostaje jednowierszowe', () => {
+  it('gdy TYLKO JEDNA sąsiadująca stacja ma zbyt szeroką etykietę (druga bez segmentu) i sloty NIE nachodzą się w X → B1 pozostaje jednowierszowe', () => {
     const stationA = makeStation('a', 1, 1);
     const stationB = makeStation('b', 30, 5);
     const wideLabel = 'YAKXS 3×120/16 · 90 m — bardzo długi opis odcinka magistrali SN';
 
-    const stagger = computeSegmentStagger([stationA, stationB], [wideLabel, null]);
-    expect(stagger.twoRow).toBe(false);
-
-    const { bandsResult } = buildColumnsForStations([stationA, stationB], [wideLabel, null]);
+    const { bandsResult, columnsResult } = buildColumnsForStations([stationA, stationB], [wideLabel, null]);
+    expect(columnsResult.segmentLabelRowCount).toBe(1);
     expect(bandsResult.bands.B1.height).toBe(snapUp(SEGMENT_LABEL_ROW_HEIGHT));
   });
 });
@@ -497,48 +677,46 @@ describe('V3 layout — columns (r7b): rezerwacja etykiety segmentu wyśrodkowan
 });
 
 // ---------------------------------------------------------------------------
-// r7b: computeSegmentStagger — dowód poprawki (dawny warunek, oparty o
-// `requiredStationWidth`, NIE wykrywał realnego ryzyka nachodzenia na wąskim
-// przęśle tap-do-tap pierwszej stacji; nowy warunek — oparty o `spanWidth`
-// z `computeStationTaps` — wykrywa je poprawnie).
+// r9 (F5a fix): kolorowanie grafu przedziałów (`colorSegmentLabelRows`) na
+// RZECZYWISTYCH rectach x/width subsumuje dowód r7b „span > przybliżenie
+// kolumnowe" — nie ma już osobnego warunku geometrycznego do udowodnienia,
+// tylko sprawdzenie realnych rectów, więc te same scenariusze (etykieta zbyt
+// szeroka na wąskie przęsło blisko krawędzi świata) są tu zachowane jako
+// regresja mechanizmu.
 // ---------------------------------------------------------------------------
 
-describe('V3 layout — computeSegmentStagger (r7b): dokładny warunek span > dawne przybliżenie kolumnowe', () => {
-  it('etykieta zbyt szeroka na WĄSKIE przęsło (blisko krawędzi świata) pierwszej stacji, ale WĘŻSZA niż requiredStationWidth ⇒ dawny warunek (kolumnowy) NIE wykryłby ryzyka, nowy (span) wykrywa', () => {
+describe('V3 layout — kolorowanie wierszy (r9): przęsło WĄSKIE blisko krawędzi świata wykrywane poprawnie', () => {
+  it('etykieta zbyt szeroka na WĄSKIE przęsło (blisko krawędzi świata) pierwszej stacji, ale WĘŻSZA niż requiredStationWidth ⇒ zero kolizji z konstrukcji (clamp do arkusza + kolorowanie, niezależnie od liczby wierszy faktycznie potrzebnych)', () => {
     // Stacja bardzo wąska (1-polowa, TR-only) blisko x=0 ⇒ jej WŁASNY tap-span
     // (0..tapX_0) jest z natury mały (~połowa wąskiego bloku). Etykieta
-    // umiarkowanej długości mieści się w `requiredStationWidth` (dawny
-    // warunek: "OK"), ale NIE mieści się w realnym, wąskim przęśle 0..tapX_0.
+    // umiarkowanej długości mieści się w `requiredStationWidth` (dawne
+    // przybliżenie kolumnowe: "OK"), ale NIE mieści się w realnym, wąskim
+    // przęśle 0..tapX_0 — r9 liczy na RZECZYWISTYCH, przyciętych do arkusza
+    // rectach, więc to rozróżnienie jest teraz nieistotne: liczy się tylko
+    // czy finalne rects się nachodzą (tu: clamp do arkusza już rozdziela je
+    // wystarczająco — 1 wiersz starcza; dawny mechanizm r7b musiałby wymusić
+    // 2 wiersze TYLKO bo nie przycinał rectu do arkusza).
     const stationA = makeStation('a', 1, 1);
     const stationB = makeStation('b', 1, 1);
     const moderateLabel = '15 kV AB'; // umyślnie krótsza niż WIDE_CABLE_LABEL
 
     const requiredStationWidthA = requiredStationWidth(stationA);
     const requiredLabelWidth = requiredSegmentLabelWidth(moderateLabel);
-    // Sanity wejścia scenariusza: dawny warunek kolumnowy NIE oznaczyłby tej
-    // etykiety jako "zbyt szerokiej" (mieści się w całej kolumnie stacji).
+    // Sanity wejścia scenariusza: dawne przybliżenie kolumnowe NIE oznaczyłoby
+    // tej etykiety jako "zbyt szerokiej" (mieści się w całej kolumnie stacji).
     expect(requiredLabelWidth).toBeLessThan(requiredStationWidthA);
 
-    const stagger = computeSegmentStagger([stationA, stationB], [moderateLabel, moderateLabel]);
-    // Nowy (span-aware) warunek WYKRYWA ryzyko mimo że dawny by go pominął.
-    expect(stagger.twoRow).toBe(true);
-
-    // Dowód praktyczny: z alternacją, finalne rezerwacje faktycznie się NIE
-    // przecinają (gdyby stagger.twoRow było (błędnie) `false`, poniższe by
-    // się nie powiodło — patrz analiza w segments.ts).
     const { columnsResult } = buildColumnsForStations([stationA, stationB], [moderateLabel, moderateLabel]);
     const [slotA, slotB] = columnsResult.segmentLabelSlots;
     expect(rectsOverlap(slotA.rect, slotB.rect)).toBe(false);
-    expect(slotA.rect.y).not.toBe(slotB.rect.y);
   });
 
   it('gdy OBIE stacje mieszczą etykietę na WŁASNYM przęśle (spanWidth) ⇒ jeden wiersz wystarcza, zero kolizji', () => {
     const stations = [makeStation('a', 20, 4), makeStation('b', 20, 4)];
     const shortLabel = '15 kV';
-    const stagger = computeSegmentStagger(stations, [shortLabel, shortLabel]);
-    expect(stagger.twoRow).toBe(false);
-
     const { columnsResult } = buildColumnsForStations(stations, [shortLabel, shortLabel]);
+    expect(columnsResult.segmentLabelRowCount).toBe(1);
+
     const [slotA, slotB] = columnsResult.segmentLabelSlots;
     expect(rectsOverlap(slotA.rect, slotB.rect)).toBe(false);
   });

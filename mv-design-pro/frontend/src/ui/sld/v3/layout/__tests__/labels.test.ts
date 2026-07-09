@@ -18,7 +18,7 @@ import {
 } from '../measure';
 import { BUS_AXIS_BAND_HEIGHT, computeBands, type StationBandHeights } from '../bands';
 import { computeColumns, type ComputeColumnsInput } from '../columns';
-import { computeSegmentStagger } from '../segments';
+import { colorSegmentLabelRows, computeSegmentLabelSlotX } from '../segments';
 import {
   leaderInvariantHolds,
   overlapProbe,
@@ -73,10 +73,10 @@ function bandHeightsFor(station: StationMeasureInput, incomingSegmentLabelText: 
 }
 
 function buildPipeline(stations: readonly StationMeasureInput[], incomingSegmentLabelTexts: readonly (string | null)[]) {
-  const stagger = computeSegmentStagger(stations, incomingSegmentLabelTexts);
+  const rows = colorSegmentLabelRows(computeSegmentLabelSlotX(stations, incomingSegmentLabelTexts));
   const bandsResult = computeBands(
     stations.map((s, i) => bandHeightsFor(s, incomingSegmentLabelTexts[i])),
-    stagger.twoRow,
+    rows.rowCount,
   );
   const input: ComputeColumnsInput = {
     stations,
@@ -85,7 +85,7 @@ function buildPipeline(stations: readonly StationMeasureInput[], incomingSegment
     segmentSlotBand: bandsResult.bands.B1,
   };
   const columnsResult = computeColumns(input);
-  return { bandsResult, columnsResult, stagger };
+  return { bandsResult, columnsResult, rows };
 }
 
 const WIDE_CABLE_LABEL = 'YAKXS 3×120/16 · 90 m — bardzo długi opis odcinka magistrali SN';
@@ -126,15 +126,15 @@ describe('V3 labels — segment przęsłowy (spec §4/§5.5, decyzja r8)', () =>
   });
 
   it('przęsło WĄSKIE (norma dzisiejsza: krawędzie kolumn, GAP=24px << etykieta kabla) ⇒ slot 1 W primaryRect, x biasowany ku środkowi przęsła i dosunięty do kolumny, BEZ leadera', () => {
-    // Dwie wąskie stacje sąsiadujące z bardzo długą etykietą ⇒ z konstrukcji
-    // wymuszają alternację 2-wierszową (F3 r2, patrz layout.test.ts).
+    // Dwie wąskie stacje sąsiadujące z bardzo długą etykietą ⇒ sloty się
+    // nakładają w X ⇒ kolorowanie wymusza ≥2 wiersze (r9, patrz layout.test.ts).
     const stationA = makeStation('a', 1, 1);
     const stationB = makeStation('b', 1, 1);
-    const { bandsResult, columnsResult, stagger } = buildPipeline(
+    const { bandsResult, columnsResult, rows } = buildPipeline(
       [stationA, stationB],
       [WIDE_CABLE_LABEL, WIDE_CABLE_LABEL],
     );
-    expect(stagger.twoRow).toBe(true);
+    expect(rows.rowCount).toBeGreaterThanOrEqual(2);
 
     const [slotA, slotB] = columnsResult.segmentLabelSlots;
     const spanAStart = -300;
@@ -173,7 +173,7 @@ describe('V3 labels — segment przęsłowy (spec §4/§5.5, decyzja r8)', () =>
     expect(labelB.rect.x + labelB.rect.width).toBeLessThanOrEqual(slotB.rect.x + slotB.rect.width);
     expect(labelA.rect.y).toBe(slotA.rect.y);
     expect(labelB.rect.y).toBe(slotB.rect.y);
-    // Wiersz ze staggera: sąsiednie stacje trafiają w RÓŻNE wiersze B1.
+    // Wiersz z kolorowania: sąsiednie stacje trafiają w RÓŻNE wiersze B1.
     expect(labelA.rect.y).not.toBe(labelB.rect.y);
   });
 

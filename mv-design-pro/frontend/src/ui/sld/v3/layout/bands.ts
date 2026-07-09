@@ -26,11 +26,11 @@
  * `incomingSegmentLabelText` (surowy tekst) — normalizacja pustości/
  * whitespace odbywa się TU, przez `normalizeSegmentText` (`./segments`),
  * tą samą funkcją co w `columns.ts` (wcześniej `''` dawał wysokość w bands,
- * a nie dawał slotu w columns — rozjazd, patrz `segments.ts`). Alternacja
- * 2-wierszowa (r2) to zewnętrzna decyzja (`computeSegmentStagger`,
- * `./segments`) przekazana jako flaga `segmentLabelTwoRow` — bands.ts
- * pozostaje nieświadome kształtu `StationMeasureInput` (decyzja
- * architektoniczna F2 zachowana).
+ * a nie dawał slotu w columns — rozjazd, patrz `segments.ts`). Wielowierszowość
+ * B1 (r2) to zewnętrzna decyzja (r9: `colorSegmentLabelRows`, `./segments`)
+ * przekazana jako liczba `segmentLabelRowCount` — bands.ts pozostaje
+ * nieświadome kształtu `StationMeasureInput` (decyzja architektoniczna F2
+ * zachowana).
  */
 
 import { GRID, rectsOverlap, type V3Rect } from '../core/grid';
@@ -57,7 +57,7 @@ export const BUS_AXIS_BAND_HEIGHT = 4 * GRID;
 export interface StationBandHeights {
   /** B1: tekst etykiety segmentu WCHODZĄCEGO do tej stacji (surowy, przed
    *  normalizacją — `null`/pusty/whitespace = brak, spójnie z `columns.ts`,
-   *  r3). Wysokość: 1 wiersz t2 (2 wiersze gdy `segmentLabelTwoRow`, §5.2). */
+   *  r3). Wysokość: `segmentLabelRowCount` wierszy t2 (r9, §5.2). */
   readonly incomingSegmentLabelText: string | null;
   /** B2: wysokość podpisu kierunku pola (t3, spec §9) tej stacji — 0/brak
    *  gdy żadne pole nie ma podpisu (r1; patrz `measure.ts`
@@ -90,22 +90,22 @@ function maxOf(values: readonly number[], fallback: number): number {
  * "Wysokości pasm = max po wszystkich stacjach wiersza"). Pasma się STYKAJĄ
  * (y_next = y_prev + height_prev) — brak odstępu, brak nachodzenia.
  *
- * @param segmentLabelTwoRow r2 (F3 fix): B1 = 2 wiersze zamiast 1, gdy
- *   wołający wykrył (przez `computeSegmentStagger`, `./segments`) dwie
- *   sąsiednie stacje ze zbyt szeroką etykietą segmentu wejściowego wobec
- *   ich naturalnego gabarytu (spec §5.2 "naprzemiennie"). Domyślnie `false`
- *   (1 wiersz) — bez regresji dla wywołań sprzed F3.
+ * @param segmentLabelRowCount r2 (F3 fix; r9: liczba zamiast boolean —
+ *   patrz `colorSegmentLabelRows`, `./segments`): liczba wierszy B1
+ *   faktycznie potrzebnych (kolorowanie grafu przedziałów slotów etykiet
+ *   segmentów, spec §5.2). Domyślnie `0`; gdy JAKAKOLWIEK stacja ma segment
+ *   wejściowy, wysokość jest wymuszona na CO NAJMNIEJ 1 wiersz niezależnie od
+ *   wartości parametru (obrona przed niespójnym wywołaniem — `bands.ts` i tak
+ *   widzi `incomingSegmentLabelText` każdej stacji).
  */
 export function computeBands(
   stations: readonly StationBandHeights[],
-  segmentLabelTwoRow = false,
+  segmentLabelRowCount = 0,
 ): BandsResult {
-  const segmentLabelRowCount = segmentLabelTwoRow ? 2 : 1;
+  const hasAnySegment = stations.some((s) => normalizeSegmentText(s.incomingSegmentLabelText) != null);
+  const effectiveRowCount = hasAnySegment ? Math.max(segmentLabelRowCount, 1) : 0;
   const rawHeights: Record<BandId, number> = {
-    B1: maxOf(
-      stations.map((s) => (normalizeSegmentText(s.incomingSegmentLabelText) != null ? SEGMENT_LABEL_ROW_HEIGHT : 0)),
-      0,
-    ) * segmentLabelRowCount,
+    B1: SEGMENT_LABEL_ROW_HEIGHT * effectiveRowCount,
     B2: BUS_AXIS_BAND_HEIGHT + maxOf(stations.map((s) => s.portCaptionHeight ?? 0), 0),
     B3: maxOf(stations.map((s) => s.derBandHeight ?? 0), 0),
     B4: maxOf(stations.map((s) => s.stationBlockHeight), 0),

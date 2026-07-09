@@ -112,11 +112,38 @@ i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
   leaderów z symbolami (to wire_probe §11.4, F7); throw przy braku
   marginRect/fallbackRect do opakowania w F6.
 
-### F5. Kompozycja stacji i GPZ z prymitywów
-- `v3/compose/station.ts` (spec §3 „Stacja SN/nN": szyna + kolumny pól z
-  `defaultSnBayRoles`, TR2W, szyna nN, odpływy), `v3/compose/gpz.ts` — GPZ
-  kanoniczny przemapowany na prymitywy v3 (inwarianty noDirectTie /
-  busbarTopology / parity PRZENIEŚĆ jako testy v3 — te same asercje data-*).
+### F5. Kompozycja stacji i GPZ z prymitywów — PODZIELONE na F5a/F5b (decyzja nadzorcy: pełne F5 za duże na jedno zlecenie)
+
+#### F5a. [DONE] Stacja + §9 kierunki + r7b (commity `d66091c` + follow-up)
+- Recenzja Opusa: **REQUEST-CHANGES** — hipoteza nadzorcy POTWIERDZONA
+  kontrprzykładem liczbowym: sloty przęsłowe szersze niż przęsło + stagger
+  parzystościowy ⇒ kolizje slotów i/i+2 w jednym wierszu; rezerwacje poza
+  arkuszem (x=−64); stacja bez segmentu nie odpalała staggera; property-test
+  strukturalnie ślepy (2 stacje, symetryczne etykiety).
+- NAPRAWIONE (follow-up): **kolorowanie grafu przedziałów** zamiast parzystości
+  (`colorSegmentLabelRows` — nachodzące interwały NIGDY w jednym wierszu,
+  z definicji; B1 = rowCount×wiersz; clamp rectu do arkusza bez zwężania —
+  kontrakt labels.ts zachowany; `segmentLabelTwoRow`→`segmentLabelRowCount`
+  + `rowIndex`); property-test przepisany (≥3 stacje, asymetria, no-segment)
+  + 3 nazwane regresje zweryfikowane jako padające przed fixem; compose
+  flush-left zgodnie z modelem measure (oznacznik w rezerwacji, test 1-4 zn.);
+  blockLeftX bez podwójnego snapu.
+- Dostarczone wcześniej (rdzeń): `compose/directions.ts` (§9: kier./odg. z
+  line_runs, twardy filtr WE/WY/ODG — property z adwersaryjnym designation;
+  APPROVE recenzji), `compose/station.ts` (stacja z prymitywów, spójność
+  compose↔measure po ALL_FIELD_ROLES), r7b tap-do-tap (tapX współdzieli
+  arytmetykę z measure).
+- Testy: 305/305 v3 (7 plików); pełna regresja przy rdzeniu 2932/2932.
+- NOTA DO CHECKLISTY CUTOVERU F8: podpisy kierunków v3 CELOWO różnią się od v2
+  dla stacji sekcyjnych (naprawiony utajony błąd v2 w pozycjonowaniu wśród
+  wszystkich pól zamiast liniowych — potwierdzone recenzją jako realny defekt
+  v2) — przy porównaniu v2/v3 to poprawka, nie regresja.
+
+#### F5b. [NEXT] GPZ z prymitywów + migracja inwariantów
+- `v3/compose/gpz.ts` — GPZ kanoniczny przemapowany na prymitywy v3;
+  inwarianty noDirectTie / busbarTopology / parity PRZENIEŚĆ jako testy v3
+  (te same asercje data-*). GPZ przejmuje NAPRAWIONY mechanizm wierszy
+  (kolorowanie przedziałów), nie stary stagger.
 - DoD: testy inwariantów GPZ zielone na v3; render pojedynczej stacji i GPZ
   (harness) oceniony wizualnie; commit.
 
