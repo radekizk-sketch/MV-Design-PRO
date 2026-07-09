@@ -173,11 +173,56 @@ i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
          nazw stacji robi kanwa (artefakt zlepienia nazw w harnessie nadzorcy
          był błędem harnessa, nie compose).
 
-### F6. SldCanvasV3 + LOD + nakładki stanu
+### F6. Scena sieci + SldCanvasV3 + LOD + nakładki stanu
+
+#### F6a. [DONE] `buildSceneV3` — składanie pełnej sceny sieci
+- `v3/scene/buildScene.ts`: czysta funkcja `buildSceneV3(snapshot, lod) →
+  SceneV3`; GPZ (composeGpz bezpośrednio, f6-2 spełnione — `SceneV3 extends
+  PreviewComposition` to tylko reuse KSZTAŁTU wyjścia; sections/transformers/
+  parityKeys/missingData re-eksponowane w `meta`) + magistrala + laterale
+  1-poziomowe; kolejność stacji z `SldDataPayload.topologyRuns[].stationRefs`
+  (semantyka adaptera, nie geometria); §16 trasy z fromTerminal/toTerminal;
+  KAŻDY LOD własna rezerwacja measure→bands→columns; JEDEN globalny
+  resolveLabels (f6-1 spełnione strukturalnie).
+- DoD osiągnięte: wyrocznie §11 (overlap symbol↔symbol, overlapProbe
+  etykieta↔etykieta/symbol, grid, §9-scoped) zielone dla L0/L1/L2 na realnej
+  fixturze `sldSubstrate52s` (FAKTYCZNIE 53 stacje: 12 magistrala + 41 w 12
+  lateralach; nazwa fixtury historyczna); determinizm (JSON.stringify);
+  30 testów `scene/__tests__/buildScene.test.ts`. Recenzja Opus: APPROVE;
+  poprawki po recenzji zastosowane (uzasadnienie zawężenia wyroczni grid do
+  „slot ≠ tekst" wg spec §2/§11.2; niezależne liczenie stacji lateralów w
+  teście kompletności; trim tekstu etykiety przęsła).
+- DECYZJE zapisane w nagłówku `buildScene.ts` (wiążące dla F6b): zaczep GPZ =
+  port `#descent` pierwszego pola liniowego (fallback prawa krawędź szyny SN +
+  stopNote); reprezentant wieloczłonowego przęsła = ostatni kawałek dotykający
+  bus-a stacji; wyrocznia grid scoped do symboli+tras (spec §11.2 dosłownie).
+- DŁUG WIĄŻĄCY NA F6b (§9, z recenzji): F5a `compose/station.ts` kładzie
+  surowe `bay.designation` (na fixturze 118/172 etykiet `apparatus` niesie
+  literalne WE/WY/ODG) jako etykietę `ownerKind:'apparatus'` — naruszenie
+  spec §9 „na rysunku", dziedziczone (F6a miało zakaz dotykania F1–F5).
+  Naprawa w F6b: apparatus = oznacznik Q/T (spec §4), NIE `designation`;
+  kierunek pola realizuje już poprawnie `port-caption` (kier./odg., 0 tokenów
+  na fixturze). Po naprawie ROZSZERZYĆ `noForbiddenDirectionTokens` na
+  `apparatus` (test-dokumentacja długu w buildScene.test.ts wtedy sfailuje —
+  celowo, usunąć ją razem z naprawą).
+- Potwierdzenie f6-1 na danych: GPZ fixtury ma 1 sekcję — per-sekcyjne
+  kolorowanie `fieldCaptions` nie manifestuje się; dla >1 sekcji scena emituje
+  stopNote zamiast dowodu rozłączności (domknąć przy rozszerzeniu danych
+  adaptera, patrz f6-3).
+- Kandydaci F6b/F7 (STOP-notatki nagłówka buildScene.ts): dedykowany symbol
+  stacji L0 „∎16 z kodem" (dziś placeholder `junction`); mufa `jointSleeve` na
+  WEWNĘTRZNYCH złączach wieloczłonowego przęsła; laterale zagnieżdżone
+  (odgałęzienie-od-odgałęzienia — dziś pominięcie + stopNote); wiele GPZ.
+
+#### F6b. [NEXT] SldCanvasV3 + LOD + nakładki stanu
 - `v3/canvas/SldCanvasV3.tsx`: kamera/safe-viewport/LOD reuse z v2 (import, nie
   kopia). Nakładka energizacji/kierunków (spec §6) czyta solver companion jak
-  dziś (jedna prawda). Trzy LOD-y wg spec §7, każdy z własną rezerwacją.
-- DoD: wyrocznie §11.1–11.5 na `sldSubstrate52s` dla L0/L1/L2 = zielone; commit.
+  dziś (jedna prawda). Renderuje `SceneV3` z `buildSceneV3` (F6a). Trzy LOD-y
+  wg spec §7 — przełączanie progami kamery, sceny per LOD z F6a.
+- OBOWIĄZKOWO w zakresie: spłata długu §9 apparatus (patrz F6a wyżej) +
+  rozszerzenie wyroczni; decyzja o dedykowanym symbolu stacji L0.
+- DoD: wyrocznie §11.1–11.5 na `sldSubstrate52s` dla L0/L1/L2 = zielone
+  (scena + kanwa); render wizualny (harness) oceniony; commit.
 
 ### F7. Render-odbiór + CI
 - Harness QUALITY_PLAN §3 rozszerzony: `overlap+grid+port+wire+determinism`

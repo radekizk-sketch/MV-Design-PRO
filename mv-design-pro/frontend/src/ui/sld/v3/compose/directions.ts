@@ -44,7 +44,11 @@ const FORBIDDEN_RAW_DIRECTION_TOKENS = /\b(WE|WY|ODG)\b/;
  *  liniowego (TR, sprzęgło, pomiar, DER). */
 export type LineBayDirection = 'previous' | 'next' | 'branch';
 
-function isLineLikeRole(role: FieldRole): boolean {
+/** EKSPORT (F6a, `scene/buildScene.ts`): rozstrzygnięcie „czy pole liniowe"
+ *  potrzebne WPROST przy wyznaczaniu portów wejścia/wyjścia magistrali dla
+ *  routingu (który bay jest `previous`/`next`/`branch`) — bez duplikowania
+ *  tej listy ról w scenie. */
+export function isLineLikeRole(role: FieldRole): boolean {
   return (
     role === FIELD_ROLE.LINE_IN
     || role === FIELD_ROLE.LINE_OUT
@@ -57,7 +61,10 @@ function isLineLikeRole(role: FieldRole): boolean {
 /** Klasyfikacja kierunku pola liniowego (spec §9, DECYZJA w nagłówku pliku).
  *  `lineBayPosition`: indeks TEGO pola WŚRÓD pól liniowych tej stacji
  *  (0-based, w kolejności `snBays`) — ignorowany dla ról jawnych. */
-function classifyLineBayDirection(role: FieldRole, lineBayPosition: number): LineBayDirection | null {
+/** EKSPORT (F6a): patrz `isLineLikeRole` wyżej — scena musi wiedzieć, KTÓRY
+ *  bay stacji jest portem wejścia/wyjścia magistrali (routing), używając
+ *  DOKŁADNIE tej samej klasyfikacji co podpisy kierunku (§9), zero cienia. */
+export function classifyLineBayDirection(role: FieldRole, lineBayPosition: number): LineBayDirection | null {
   if (role === FIELD_ROLE.LINE_IN) return 'previous';
   if (role === FIELD_ROLE.LINE_OUT) return 'next';
   if (role === FIELD_ROLE.LINE_BRANCH) return 'branch';
