@@ -39,19 +39,17 @@
  * fallback (gdy GPZ nie ma żadnego pola liniowego w danych) = prawa krawędź
  * szyny SN (opcja 2), z notatką STOP.
  *
- * DECYZJA (§9 vs `apparatus`-owe etykiety, WAŻNE dla wyroczni): spec §9
- * zakazuje `WE`/`WY`/`ODG` „na rysunku" — na realnej fixturze
- * `bay.designation` bywa LITERALNIE `"WE"`/`"WY"` (legacy pole ENM), a
- * `compose/station.ts` (F5a, zamrożony poza eksportami) kładzie ten tekst
- * jako etykietę `ownerKind:'apparatus'` (oznacznik aparatu, spec §4 miał na
- * myśli `Q0/Q1/T1`, NIE surowe `WE/WY`). To jest ISTNIEJĄCY rozjazd F5a
- * (konsumuje "designation" tam gdzie spec chciał podpisu kierunku, nie
- * oznacznika Q/T) — v3/F6a NIE MOŻE go naprawić (zero zmian w F1-F5).
- * Wyrocznia §9 w tym module jest więc SCOPED do klas etykiet, których spec
- * §9 rzeczywiście dotyczy (`port-caption` — realny zamiennik WE/WY/ODG) i
- * NIE obejmuje `apparatus` (oznacznik pola) — patrz `FORBIDDEN_DIRECTION_TOKENS`
- * i test w `__tests__/buildScene.test.ts`. WIĄŻĄCA notatka dla nadzorcy w
- * raporcie końcowym.
+ * DECYZJA (§9 vs `apparatus`-owe etykiety — SPŁACONA w F6b, patrz
+ * REBUILD_PLAN_V3 F6a „DŁUG WIĄŻĄCY NA F6b"): F5a `compose/station.ts`
+ * kładł surowe `bay.designation` (bywa LITERALNIE `WE`/`WY`/`ODG` — rola
+ * pola, `stationFieldDesignation` w `v2/canvas/enmToSldAdapter.ts`) jako
+ * etykietę `ownerKind:'apparatus'`, choć spec §4 chce tam oznacznik APARATU
+ * (`Q0/Q1/T1`), nie token roli pola zakazany przez §9. Naprawione w F6b:
+ * `compose/directions.ts` (`bayApparatusDesignation`) zwraca dane WPROST gdy
+ * nie są zakazanym tokenem, inaczej wyprowadza Q/T z roli+pozycji pola.
+ * Wyrocznia `noForbiddenDirectionTokens` niżej sprawdza teraz WSZYSTKIE
+ * klasy etykiet sceny (nie tylko `port-caption`) — regex ma granice `\b`,
+ * więc nazwy typu „Wesoła"/„Podgórze" nie fałszywie trafiają.
  *
  * ---------------------------------------------------------------------------
  * LOD (spec §7): KAŻDY poziom ma WŁASNĄ rezerwację (measure→bands→columns
@@ -138,6 +136,7 @@ import {
   stationBayCaptions,
   isLineLikeRole,
   classifyLineBayDirection,
+  FORBIDDEN_RAW_DIRECTION_TOKENS,
 } from '../compose/directions';
 import type {
   PreviewComposition,
@@ -195,11 +194,6 @@ const ROW_VERTICAL_GAP = 4 * GRID;
 const GPZ_NODE_CODE = 'GPZ';
 const NO_POINT_SIZE = SYMBOL_DEFS.noPoint.width;
 const COLLECTIVE_BOX_SIZE = SYMBOL_DEFS.junction.width;
-
-/** §9 (WIĄŻĄCA): tokeny zakazane na rysunku. Zakres wyroczni SCOPED do
- *  `port-caption` (patrz DECYZJA w nagłówku pliku — `apparatus` niesie
- *  dziś `bay.designation` surowe z F5a, poza kontrolą F6a). */
-const FORBIDDEN_DIRECTION_TOKENS = /\b(WE|WY|ODG)\b/;
 
 // ---------------------------------------------------------------------------
 // Pomocnicze: nazewnictwo typu stacji (§9), terminale §16 z cableRun.
@@ -1058,14 +1052,15 @@ export function allSceneGeometryOnGrid(scene: SceneV3): boolean {
   return symbolsOk && segmentsOk;
 }
 
-/** §9 (WIĄŻĄCA, SCOPED — patrz DECYZJA w nagłówku pliku): żadna etykieta
- *  klasy `port-caption` (realny zamiennik WE/WY/ODG) nie zawiera tokenów
- *  zakazanych. `apparatus` jest WYŁĄCZONE z zakresu tej wyroczni — patrz
- *  raport F6a (rozjazd F5a, poza zakresem naprawy tego zlecenia). */
+/** §9 (WIĄŻĄCA, SPŁACONA w F6b — patrz DECYZJA w nagłówku pliku): ŻADNA
+ *  etykieta sceny, niezależnie od `ownerKind`, nie zawiera tokenów
+ *  zakazanych `WE`/`WY`/`ODG`. Zakres obejmuje WSZYSTKIE klasy etykiet
+ *  (dawniej scoped do `port-caption` — `apparatus` niosło surowe
+ *  `bay.designation` z F5a, naprawione w `compose/directions.ts`
+ *  `bayApparatusDesignation`); regex dopasowuje na CAŁYCH słowach (`\b`),
+ *  więc nazwy stacji typu „Wesoła" nigdy nie fałszywie trafiają. */
 export function noForbiddenDirectionTokens(scene: SceneV3): boolean {
-  return scene.labels
-    .filter((l) => l.ownerKind === 'port-caption')
-    .every((l) => !FORBIDDEN_DIRECTION_TOKENS.test(l.text));
+  return scene.labels.every((l) => !FORBIDDEN_RAW_DIRECTION_TOKENS.test(l.text));
 }
 
 /** Zero nachodzeń symbol↔symbol (bboxy z `SYMBOL_DEFS`) — rozszerzenie F6a

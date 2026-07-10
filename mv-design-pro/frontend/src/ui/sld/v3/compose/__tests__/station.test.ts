@@ -133,7 +133,7 @@ describe('V3 compose/station — FIX-3: bbox(stos + oznacznik) ⊆ rezerwacja po
         const composeInput = buildComposeInput(station);
         const composition = composeStation(composeInput);
 
-        const reservedWidth = bayColumnRequiredWidth(bay, 0, station.bayDirectionCaptions);
+        const reservedWidth = bayColumnRequiredWidth(station.snBays, 0, station.bayDirectionCaptions);
         const bx = composeInput.column.x + GRID; // blockLeftX (FIX-4): jedno pole = cały blok.
 
         const symbolMinX = Math.min(...composition.symbols.map((s) => s.x));

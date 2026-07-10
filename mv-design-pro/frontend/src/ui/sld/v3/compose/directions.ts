@@ -28,6 +28,13 @@
  * footprintu `mv_lv_sectional` — pole liniowe drugiej sekcji leżące ZA polem
  * TR/SPR pierwszej sekcji — dawałoby błędne „ODG" zamiast „WE" tej sekcji;
  * v3 tej wady NIE dziedziczy, bo liczy pozycję tylko wśród pól LINIOWYCH).
+ *
+ *  3. `bayApparatusDesignation` (F6b, spłata długu §9 zapisanego w recenzji
+ *     F6a) — osobna warstwa: oznacznik APARATU pola (spec §4: „Q0/Q1/T1"),
+ *     NIE kierunek. Mieszka w tym pliku, bo współdzieli z (1)/(2) ten sam
+ *     zakaz tokenów (`FORBIDDEN_RAW_DIRECTION_TOKENS`, teraz eksportowany) —
+ *     `bay.designation` bywa surowym tokenem roli („WE"/„WY"/„ODG") w OBU
+ *     kontekstach (kierunek pola vs. oznacznik aparatu).
  */
 
 import { FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
@@ -36,8 +43,66 @@ import type { LineRunV1 } from '../../../../types/enm';
 
 /** Surowe tokeny zakazane na rysunku (spec §9) — dopasowanie na CAŁYCH
  *  słowach, wielkość liter jak w ENM/v2 (`bay.designation` bywa `'WE'` itp.,
- *  patrz `MiniBlockRmuRenderer.tsx` `overviewFieldRoleLabel`). */
-const FORBIDDEN_RAW_DIRECTION_TOKENS = /\b(WE|WY|ODG)\b/;
+ *  patrz `MiniBlockRmuRenderer.tsx` `overviewFieldRoleLabel`). EKSPORT (F6b,
+ *  spłata długu §9): jedno źródło prawdy dla `layout/measure.ts`
+ *  (`bayApparatusDesignation` niżej) i `scene/buildScene.ts`
+ *  (`noForbiddenDirectionTokens`) — zero duplikacji regexu w trzech
+ *  plikach. */
+export const FORBIDDEN_RAW_DIRECTION_TOKENS = /\b(WE|WY|ODG)\b/;
+
+/** Rola pola transformatorowego (spec §3) — predykat WYŁĄCZNIE do numeracji
+ *  oznacznika aparatu niżej (`bayApparatusDesignation`). Duplikat minimalnego
+ *  jednolinijkowego predykatu z `compose/station.ts` (`isTransformerRole`,
+ *  prywatny) — nie eksportujemy jednej wspólnej funkcji dla tak małej
+ *  logiki, żeby nie tworzyć dodatkowej zależności w drugą stronę. */
+function isTransformerFieldRole(role: FieldRole): boolean {
+  return role === FIELD_ROLE.TRANSFORMER || role === FIELD_ROLE.RMU_TRANSFORMER;
+}
+
+/**
+ * Oznacznik aparatu pola (spec §4: „Q0/Q1/T1") — spłata długu §9 (F6b,
+ * REBUILD_PLAN_V3): `bay.designation` z adaptera v2 bywa surowym tokenem
+ * ROLI pola (`WE`/`WY`/`ODG`/`TR`/`SPR`/`POM`, patrz `stationFieldDesignation`
+ * w `v2/canvas/enmToSldAdapter.ts`), NIE prawdziwym oznacznikiem aparatu —
+ * spec §4 chce w tym slocie Q/T, spec §9 zakazuje `WE`/`WY`/`ODG` na
+ * rysunku wprost.
+ *
+ * Reguła:
+ *  1. `bay.designation` niepuste i NIE jest zakazanym tokenem kierunku
+ *     (`FORBIDDEN_RAW_DIRECTION_TOKENS`) — dane mają PIERWSZEŃSTWO (prawda
+ *     danych > konwencja): zwracamy je bez zmian (prawdziwy oznacznik z
+ *     danych, np. „Q1", albo inny tekst pola nieobjęty zakazem §9, np.
+ *     „TR"/„PV"/„BESS" — te nie są tokenami kierunku, więc nie naruszają §9);
+ *  2. inaczej (puste LUB zakazany token) — wyprowadzamy oznacznik
+ *     DETERMINISTYCZNIE z roli i pozycji pola w `snBays` (konwencja
+ *     energetyczna): pole transformatorowe → `T` + numer WŚRÓD pól
+ *     transformatorowych tej stacji; wszystkie inne pola (liniowe/sprzęgło/
+ *     pomiar) → `Q` + numer WŚRÓD pól NIE-transformatorowych tej stacji.
+ *     Liczenie WYŁĄCZNIE po indeksie w `snBays` (bez `Map`, bez iteracji
+ *     niedeterministycznej) — zero losowości, wynik z konstrukcji tablicy.
+ *
+ * UŻYWANE w DWÓCH miejscach, które MUSZĄ się zgadzać (spec F5: „measure i
+ * compose muszą być spójne", nagłówek `compose/station.ts`): `layout/measure.ts`
+ * (`bayColumnRequiredWidth` — rezerwacja szerokości sidecara) i
+ * `compose/station.ts` (`composeStation` — realny tekst etykiety
+ * `ownerKind:'apparatus'`). Jedno źródło prawdy — inaczej rezerwacja miejsca
+ * i realny tekst rozjechałyby się przy zmianie konwencji w jednym miejscu.
+ */
+export function bayApparatusDesignation(
+  snBays: readonly MiniBlockBayDescriptor[],
+  index: number,
+): string {
+  const bay = snBays[index];
+  const raw = bay.designation.trim();
+  if (raw && !FORBIDDEN_RAW_DIRECTION_TOKENS.test(raw)) return raw;
+
+  const wantsTransformer = isTransformerFieldRole(bay.fieldRole);
+  let ordinal = 0;
+  for (let i = 0; i <= index; i++) {
+    if (isTransformerFieldRole(snBays[i].fieldRole) === wantsTransformer) ordinal += 1;
+  }
+  return wantsTransformer ? `T${ordinal}` : `Q${ordinal}`;
+}
 
 /** Kierunek pola liniowego wynikający z pozycji wśród pól liniowych tej
  *  stacji (patrz DECYZJA w nagłówku pliku) — `null` dla pól bez kierunku

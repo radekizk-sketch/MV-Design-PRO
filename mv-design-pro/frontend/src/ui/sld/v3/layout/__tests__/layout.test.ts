@@ -144,7 +144,7 @@ describe('V3 layout — measure (spec §5.1, FIX-3: rezerwacja etykiet WŁASNYCH
     expect(requiredStationWidth(withCaption)).toBeGreaterThan(requiredStationWidth(withoutCaption));
   });
 
-  it('brak designation i brak bayDirectionCaptions ⇒ szerokość kolumny = tylko footprint aparatu (bez regresji)', () => {
+  it('brak designation i brak bayDirectionCaptions ⇒ szerokość kolumny = footprint + oznacznik Q/T z konwencji (F6b, spec §4 wymaga oznacznika ZAWSZE)', () => {
     const bay: MiniBlockBayDescriptor = {
       bayRef: 'b1',
       fieldRole: FIELD_ROLE.RMU_LINE,
@@ -153,9 +153,14 @@ describe('V3 layout — measure (spec §5.1, FIX-3: rezerwacja etykiet WŁASNYCH
     };
     const station: StationMeasureInput = { ...baseFields, name: 'A', snBays: [bay] };
     const expectedFootprintWidth = Math.max(SYMBOL_DEFS.disconnector.width, SYMBOL_DEFS.breaker.width);
+    // F6b (spłata długu §9): `designation` puste ⇒ `bayApparatusDesignation`
+    // wyprowadza "Q1" (jedyne pole nie-transformatorowe tej stacji) —
+    // sidecar jest TERAZ ZAWSZE doliczany, bo spec §4 wymaga oznacznika
+    // aparatu w tym slocie (nigdy pustego) — patrz `compose/directions.ts`.
+    const expectedBlockWidth = expectedFootprintWidth + GRID + measureLabelWidth('Q1', 't3');
     const expectedNameWidth = measureLabelWidth('A', 't1');
     expect(requiredStationWidth(station)).toBe(
-      snapUp(Math.max(expectedFootprintWidth, expectedNameWidth) + 2 * GRID),
+      snapUp(Math.max(expectedBlockWidth, expectedNameWidth) + 2 * GRID),
     );
   });
 
@@ -352,14 +357,19 @@ describe('V3 layout — property: żadne dwa zarezerwowane sloty się nie przeci
 // widzi kolizji i↔i+2, gdy i+1 nie ma segmentu w ogóle).
 // ---------------------------------------------------------------------------
 
-/** Stacja NARROW MINIMALNA (1-polowa, nazwa 1-znakowa, BEZ kodu/kVA/typu/
- *  oznacznika aparatu) — maksymalizuje ryzyko, że slot etykiety segmentu
- *  (wyśrodkowany na przęśle tap-do-tap) wystaje poza własne przęsło i
- *  koliduje z sąsiadem (patrz kontrprzykłady recenzji: dowolny dodatkowy
- *  gabaryt — kod stacji, oznacznik aparatu — poszerza kolumnę i zaciera
- *  efekt; ta funkcja reprodukuje DOKŁADNIE geometrię zweryfikowaną w
- *  recenzji na realnym kodzie, w przeciwieństwie do `makeStation` z górnej
- *  części pliku, która ZAWSZE dokłada kod/kVA/typ/oznacznik „Pole N"). */
+/** Stacja NARROW MINIMALNA (1-polowa, nazwa 1-znakowa, BEZ kodu/kVA/typu) —
+ *  maksymalizuje ryzyko, że slot etykiety segmentu (wyśrodkowany na
+ *  przęśle tap-do-tap) wystaje poza własne przęsło i koliduje z sąsiadem
+ *  (patrz kontrprzykłady recenzji: dowolny dodatkowy gabaryt — kod stacji,
+ *  dłuższy oznacznik aparatu — poszerza kolumnę i zaciera efekt; ta funkcja
+ *  reprodukuje DOKŁADNIE geometrię zweryfikowaną w recenzji na realnym
+ *  kodzie, w przeciwieństwie do `makeStation` z górnej części pliku, która
+ *  ZAWSZE dokłada kod/kVA/typ/oznacznik „Pole N"). `designation: ''` NIE
+ *  daje już zerowego sidecara (F6b, spłata długu §9): `bayApparatusDesignation`
+ *  wyprowadza z pustego designation oznacznik Q/T z konwencji (tu: „T1",
+ *  jedyne pole tej stacji jest transformatorowe) — kolumna jest więc
+ *  minimalna DLA DANYCH DOSTĘPNYCH DZIŚ, nie zerowa; kontrprzykłady niżej
+ *  mają to uwzględnione w wyborze długości tekstów. */
 function makeNarrowStation(id: string): StationMeasureInput {
   const bay: MiniBlockBayDescriptor = {
     bayRef: `${id}-bay-0`,
@@ -470,11 +480,18 @@ describe('V3 layout — property FIX-2: ≥3 stacje × permutacje etykiet asymet
 // ---------------------------------------------------------------------------
 
 describe('V3 layout — regresje kontrprzykładów recenzji F5a (r7b REQUEST-CHANGES)', () => {
-  it('kontrprzykład 1: 3 stacje 1-polowe, teksty ["X","15 kV","X"×38] ⇒ stary kod: slot0/slot2 ten sam wiersz (parzystość) i FAKTYCZNIE się przecinają', () => {
+  it('kontrprzykład 1: 3 stacje 1-polowe, teksty ["XXXXX","15 kV","X"×38] ⇒ stary kod: slot0/slot2 ten sam wiersz (parzystość) i FAKTYCZNIE się przecinają', () => {
     // Zweryfikowane na kodzie PRZED tym fixem: slot0={x:0,w:24}, slot2={x:0,w:280},
     // stagger.rowOf=[0,1,0] (stacje 0 i 2 dzielą wiersz 0) ⇒ rectsOverlap=true.
+    // F6b (spłata długu §9): `makeNarrowStation` ma dziś ZAWSZE mandatowy
+    // oznacznik aparatu (`bayApparatusDesignation`, np. "T1") w sidecarze —
+    // stacja „1-polowa" nie jest już tak wąska jak przed F6b, więc slot0 z
+    // tekstem 1-znakowym ("X") przestał faktycznie kolidować ze slot2 (gap
+    // 8px, brak nakładania w X) — podniesione do 5 znaków, żeby odtworzyć
+    // GENUINE kolizję X-przedziałów, którą ten test ma sprawdzać (bez tego
+    // podniesienia test nie jest już kontrprzykładem, tylko martwym kodem).
     const stations = [makeNarrowStation('a'), makeNarrowStation('b'), makeNarrowStation('c')];
-    const texts = ['X', '15 kV', 'X'.repeat(38)];
+    const texts = ['X'.repeat(5), '15 kV', 'X'.repeat(38)];
     const { columnsResult } = buildColumnsForStations(stations, texts);
 
     expect(columnsResult.segmentLabelSlots).toHaveLength(3);
@@ -497,13 +514,17 @@ describe('V3 layout — regresje kontrprzykładów recenzji F5a (r7b REQUEST-CHA
     }
   });
 
-  it('kontrprzykład 3: 3 stacje 1-polowe, teksty ["X",null,"X"×38] (środkowa BEZ segmentu) ⇒ stary kod: warunek par sąsiednich w ogóle nie odpalał, mimo realnej kolizji 0↔2', () => {
+  it('kontrprzykład 3: 3 stacje 1-polowe, teksty ["XXXXX",null,"X"×38] (środkowa BEZ segmentu) ⇒ stary kod: warunek par sąsiednich w ogóle nie odpalał, mimo realnej kolizji 0↔2', () => {
     // Zweryfikowane na kodzie PRZED tym fixem: stagger.twoRow=false (para
     // (0,1) i (1,2) nie ma OBU segmentów ⇒ warunek nigdy TRUE), ale
     // slot0={x:0,w:24} i slot2={x:-8,w:280} FAKTYCZNIE się przecinają
     // (oba w tym samym, jedynym wierszu — zero alternacji).
+    // F6b (spłata długu §9): patrz komentarz w kontrprzykładzie 1 — "X"
+    // 1-znakowe przestało dawać genuine kolizję X-przedziałów po tym, jak
+    // `makeNarrowStation` zaczęła zawsze nosić oznacznik aparatu Q/T
+    // (sidecar), podniesione do 5 znaków.
     const stations = [makeNarrowStation('a'), makeNarrowStation('b'), makeNarrowStation('c')];
-    const texts = ['X', null, 'X'.repeat(38)];
+    const texts = ['X'.repeat(5), null, 'X'.repeat(38)];
     const { columnsResult } = buildColumnsForStations(stations, texts);
 
     expect(columnsResult.segmentLabelSlots).toHaveLength(2); // stacja środkowa bez segmentu

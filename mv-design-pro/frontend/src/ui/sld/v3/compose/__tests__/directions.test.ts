@@ -10,6 +10,7 @@ import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContract
 import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
 import type { LineRunV1 } from '../../../../../types/enm';
 import {
+  bayApparatusDesignation,
   bayDirectionCaption,
   resolveStationDirectionContext,
   stationBayCaptions,
@@ -214,5 +215,86 @@ describe('V3 compose/directions — property: żaden podpis nie zawiera surowego
   it('bayDirectionCaption zwraca null dla direction=null niezależnie od kontekstu/fallbacku', () => {
     const ctx: StationDirectionContext = { previousNodeCode: 'S99', nextNodeCode: 'S98', branchNodeCodes: ['S97'] };
     expect(bayDirectionCaption({ direction: null, context: ctx, branchIndex: 0, designationFallback: 'TR' })).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// bayApparatusDesignation (F6b, spłata długu §9): oznacznik APARATU pola
+// (spec §4: „Q0/Q1/T1"), NIE kierunek. `bay.designation` z adaptera v2 bywa
+// surowym tokenem roli pola ("WE"/"WY"/"ODG") — musi zostać zastąpiony
+// konwencją Q/T, ale prawdziwy oznacznik z danych (niebędący zakazanym
+// tokenem) ma pierwszeństwo.
+// ---------------------------------------------------------------------------
+
+describe('bayApparatusDesignation (spec §4 — oznacznik aparatu, spłata długu §9)', () => {
+  it('designation prawdziwe (nie token kierunku) — dane mają pierwszeństwo nad konwencją', () => {
+    const snBays = [makeBay(FIELD_ROLE.LINE_IN, 0, 'Q1'), makeBay(FIELD_ROLE.TRANSFORMER, 1, 'T7')];
+    expect(bayApparatusDesignation(snBays, 0)).toBe('Q1');
+    expect(bayApparatusDesignation(snBays, 1)).toBe('T7');
+  });
+
+  it('designation = token zakazany (WE/WY/ODG) — fallback na konwencję Q (pole nie-transformatorowe)', () => {
+    const snBays = [
+      makeBay(FIELD_ROLE.LINE_IN, 0, 'WE'),
+      makeBay(FIELD_ROLE.LINE_OUT, 1, 'WY'),
+      makeBay(FIELD_ROLE.LINE_BRANCH, 2, 'ODG'),
+    ];
+    expect(bayApparatusDesignation(snBays, 0)).toBe('Q1');
+    expect(bayApparatusDesignation(snBays, 1)).toBe('Q2');
+    expect(bayApparatusDesignation(snBays, 2)).toBe('Q3');
+  });
+
+  it('designation = token zakazany na polu transformatorowym — fallback na konwencję T, numeracja NIEZALEŻNA od pól Q', () => {
+    // Pole liniowe (Q) między dwoma polami transformatorowymi (T) — numeracja
+    // T liczona WYŁĄCZNIE wśród pól transformatorowych tej stacji, nie po
+    // ogólnym indeksie w `snBays` (spec: „T + numer WŚRÓD pól transformatorowych").
+    const snBays = [
+      makeBay(FIELD_ROLE.TRANSFORMER, 0, 'WE'),
+      makeBay(FIELD_ROLE.LINE_IN, 1, 'WE'),
+      makeBay(FIELD_ROLE.TRANSFORMER, 2, 'WY'),
+    ];
+    expect(bayApparatusDesignation(snBays, 0)).toBe('T1');
+    expect(bayApparatusDesignation(snBays, 1)).toBe('Q1');
+    expect(bayApparatusDesignation(snBays, 2)).toBe('T2');
+  });
+
+  it('designation puste/whitespace — fallback na konwencję (brak danych = brak realnego oznacznika)', () => {
+    const snBays = [makeBay(FIELD_ROLE.MEASUREMENT, 0, '  '), makeBay(FIELD_ROLE.COUPLER, 1, '')];
+    expect(bayApparatusDesignation(snBays, 0)).toBe('Q1');
+    expect(bayApparatusDesignation(snBays, 1)).toBe('Q2');
+  });
+
+  it('RMU_TRANSFORMER liczy się jak TRANSFORMER (konwencja T), niezależnie od pól RMU_LINE', () => {
+    const snBays = [
+      makeBay(FIELD_ROLE.RMU_LINE, 0, 'WE'),
+      makeBay(FIELD_ROLE.RMU_TRANSFORMER, 1, 'WY'),
+    ];
+    expect(bayApparatusDesignation(snBays, 0)).toBe('Q1');
+    expect(bayApparatusDesignation(snBays, 1)).toBe('T1');
+  });
+
+  it('deterministyczne: dwa wywołania na tych samych danych dają identyczny wynik', () => {
+    const snBays = [
+      makeBay(FIELD_ROLE.LINE_IN, 0, 'WE'),
+      makeBay(FIELD_ROLE.TRANSFORMER, 1, 'TR'),
+      makeBay(FIELD_ROLE.LINE_OUT, 2, 'WY'),
+    ];
+    const a = snBays.map((_, i) => bayApparatusDesignation(snBays, i));
+    const b = snBays.map((_, i) => bayApparatusDesignation(snBays, i));
+    expect(a).toEqual(b);
+    // 'TR' nie jest tokenem kierunku zakazanym przez §9 — dane zachowane.
+    expect(a[1]).toBe('TR');
+  });
+
+  it('wynik NIGDY nie zawiera surowego tokenu WE/WY/ODG', () => {
+    const snBays = [
+      makeBay(FIELD_ROLE.LINE_IN, 0, 'WE'),
+      makeBay(FIELD_ROLE.LINE_OUT, 1, 'WY'),
+      makeBay(FIELD_ROLE.LINE_BRANCH, 2, 'ODG'),
+      makeBay(FIELD_ROLE.TRANSFORMER, 3, 'WE'),
+    ];
+    snBays.forEach((_, i) => {
+      expect(bayApparatusDesignation(snBays, i)).not.toMatch(FORBIDDEN_TOKEN);
+    });
   });
 });

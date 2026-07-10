@@ -23,10 +23,22 @@
  * asercja per `FieldRole` z `ALL_FIELD_ROLES`; dwie niezależne implementacje
  * muszą się zgadzać, bo measure REZERWUJE miejsce, a compose je WYPEŁNIA).
  * FIX-3 (recenzja F5a): stos aparatów jest FLUSH-LEFT wewnątrz rezerwacji
- * pola (`bx`), oznacznik (`bay.designation`) sidecar PO PRAWEJ stosu —
- * dokładnie model measure (`bayColumnRequiredWidth`: `footprint.width + GRID
- * + szerokość_oznacznika`), nie stos wycentrowany w całej rezerwacji (dawny
- * kod, przez co oznacznik ≥2-znakowy wystawał poza pole).
+ * pola (`bx`), oznacznik (spec §4: „Q0/Q1/T1", `bayApparatusDesignation`)
+ * sidecar PO PRAWEJ stosu — dokładnie model measure (`bayColumnRequiredWidth`:
+ * `footprint.width + GRID + szerokość_oznacznika`), nie stos wycentrowany w
+ * całej rezerwacji (dawny kod, przez co oznacznik ≥2-znakowy wystawał poza
+ * pole).
+ *
+ * FIX-5 (F6b, spłata długu §9 zapisanego w recenzji F6a): ta wersja pliku
+ * NIE kładzie już surowego `bay.designation` jako etykietę
+ * `ownerKind:'apparatus'` — `bay.designation` z adaptera v2 bywa LITERALNIE
+ * `WE`/`WY`/`ODG` (rola pola, `stationFieldDesignation` w
+ * `v2/canvas/enmToSldAdapter.ts`), co naruszało spec §9 „na rysunku" (spec §4
+ * chce w tym slocie oznacznik APARATU Q/T, nie token roli pola). Naprawa:
+ * `bayApparatusDesignation` (`./directions`, współdzielona z
+ * `layout/measure.ts` — jedno źródło prawdy szerokości sidecara I realnego
+ * tekstu) zwraca dane WPROST, gdy nie są zakazanym tokenem (prawda danych >
+ * konwencja), inaczej wyprowadza Q/T z roli+pozycji pola w `snBays`.
  */
 
 import { GRID, rectsOverlap, snapToGrid, type V3Rect } from '../core/grid';
@@ -47,6 +59,7 @@ import type {
 } from '../layout/labels';
 import { FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
+import { bayApparatusDesignation } from './directions';
 
 // ---------------------------------------------------------------------------
 // Role pola → stos aparatów (spec §3). MUSI zostać zsynchronizowane z
@@ -283,7 +296,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
 
   let bx = blockLeftX;
   station.snBays.forEach((bay, index) => {
-    const reservedWidth = bayColumnRequiredWidth(bay, index, station.bayDirectionCaptions);
+    const reservedWidth = bayColumnRequiredWidth(station.snBays, index, station.bayDirectionCaptions);
     const symbolIds = apparatusSymbolsForRole(bay.fieldRole);
     // FIX-3 (recenzja F5a): `bayColumnRequiredWidth` (measure.ts) rezerwuje
     // `footprint.width + GRID + szerokość_oznacznika` — stos aparatów
@@ -321,12 +334,13 @@ export function composeStation(input: ComposeStationInput): StationComposition {
       });
     }
 
-    // Oznacznik aparatu (bay.designation, t3) — PO PRAWEJ stosu (FIX-3), nie
-    // po prawej jego ŚRODKA: `resolveSimpleAnchoredLabel` (`layout/labels.ts`)
+    // Oznacznik aparatu (spec §4: „Q0/Q1/T1", `bayApparatusDesignation` —
+    // FIX-5/§9, patrz nagłówek pliku) — PO PRAWEJ stosu (FIX-3), nie po
+    // prawej jego ŚRODKA: `resolveSimpleAnchoredLabel` (`layout/labels.ts`)
     // stawia slot `placement: 'right'` zaczynając w `anchor.x + GRID`, więc
     // zaczep musi być prawą krawędzią stosu (`bx + footprint.width`) — dokładnie
     // tam, gdzie measure.ts kończy `footprint.width` i zaczyna `GRID + oznacznik`.
-    const designation = bay.designation.trim();
+    const designation = bayApparatusDesignation(station.snBays, index);
     if (designation) {
       apparatusLabels.push({
         ownerRef: `${bay.bayRef}#designation`,

@@ -13,11 +13,11 @@
  *  E. Ciągłość elektryczna (§16) dla LOD 2 — trasy magistrali łączą kolejne
  *     stacje wg kolejności `topologyRuns[].stationRefs`.
  *
- * UWAGA (SCOPED wyrocznia §9, patrz nagłówek `buildScene.ts`): na realnej
- * fixturze `bay.designation` bywa LITERALNIE `"WE"/"WY"/"ODG"` (F5a,
- * zamrożone) i `compose/station.ts` kładzie ten tekst jako etykietę
- * `ownerKind:'apparatus'` — sekcja A.4 niżej demonstruje to WPROST (bez tego
- * SCOPE'owania `noForbiddenDirectionTokens` failowałoby na tej fixturze).
+ * UWAGA (F6b, spłata długu §9): `noForbiddenDirectionTokens` sprawdza dziś
+ * WSZYSTKIE klasy etykiet (dawniej scoped do `port-caption`, bo `apparatus`
+ * niosło surowe `bay.designation`, np. literalne `WE`/`WY`/`ODG` — F5a,
+ * naprawione w `compose/directions.ts` `bayApparatusDesignation`). Sekcja
+ * A.4 niżej dowodzi tego wprost na realnej fixturze.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -102,29 +102,28 @@ describe('buildSceneV3 — wyrocznie §11 per LOD (realna fixtura, 53 stacje)', 
         expect(probe.overlapCount).toBe(0);
       });
 
-      it('§9 (SCOPED do port-caption): brak zakazanych tokenów WE/WY/ODG', () => {
+      it('§9: brak zakazanych tokenów WE/WY/ODG na ŻADNEJ etykiecie sceny (wszystkie ownerKind)', () => {
         expect(noForbiddenDirectionTokens(scene)).toBe(true);
       });
     });
   }
 
-  it('DOKUMENTACJA SCOPE (§9): etykiety `apparatus` NIE są objęte wyrocznią — na tej fixturze faktycznie noszą surowe WE/WY/ODG (rozjazd F5a)', () => {
+  it('§9 (spłata długu F6b): etykiety `apparatus` NIE noszą surowych WE/WY/ODG — oznacznik z konwencji Q/T, gdy dane nie dają realnego oznacznika', () => {
     const scene = buildSceneV3(enm, 2);
     const forbiddenTokenPattern = /\b(WE|WY|ODG)\b/;
     const apparatusLabels = scene.labels.filter((l) => l.ownerKind === 'apparatus');
-    const apparatusWithRawToken = apparatusLabels.filter((l) => forbiddenTokenPattern.test(l.text));
-    // Rozjazd F5a jest RZECZYWISTY na tej fixturze (nie hipotetyczny) — gdyby
-    // apparatusWithRawToken.length było 0, ta dokumentacja byłaby nieprawdziwa
-    // (test by to wykrył jako regresję opisu, nie tylko ilustrację).
+    // Fixtura NADAL ma dziesiątki pól z `bay.designation` typu "WE"/"WY"/"ODG"
+    // (adapter v2 się nie zmienił) — to dowód, że naprawa faktycznie działa
+    // na realnych danych, nie że fixtura „już nie ma takich pól".
     expect(apparatusLabels.length).toBeGreaterThan(0);
-    expect(apparatusWithRawToken.length).toBeGreaterThan(0);
-    // Mimo to globalna wyrocznia (SCOPED do port-caption) pozostaje zielona.
-    expect(noForbiddenDirectionTokens(scene)).toBe(true);
-    // A port-caption (realny zamiennik WE/WY/ODG, spec §9) same NIGDY nie
-    // noszą surowego tokenu — to jest właściwy zakres wyroczni.
+    expect(apparatusLabels.every((l) => !forbiddenTokenPattern.test(l.text))).toBe(true);
+    // A port-caption (realny zamiennik WE/WY/ODG, spec §9) też nigdy nie
+    // noszą surowego tokenu.
     const portCaptions = scene.labels.filter((l) => l.ownerKind === 'port-caption');
     expect(portCaptions.length).toBeGreaterThan(0);
     expect(portCaptions.every((l) => !forbiddenTokenPattern.test(l.text))).toBe(true);
+    // Wyrocznia globalna (WSZYSTKIE klasy etykiet) pozostaje zielona.
+    expect(noForbiddenDirectionTokens(scene)).toBe(true);
   });
 });
 

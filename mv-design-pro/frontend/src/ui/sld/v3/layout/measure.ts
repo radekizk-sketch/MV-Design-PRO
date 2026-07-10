@@ -25,6 +25,7 @@ import {
   formatTransformerRatedPower,
   type StationOnRunRendererProps,
 } from '../../v2/renderer/StationOnRunRenderer';
+import { bayApparatusDesignation } from '../compose/directions';
 
 const LABEL_LINE_HEIGHT_T1 = labelLineHeight('t1');
 const LABEL_LINE_HEIGHT_T2 = labelLineHeight('t2');
@@ -116,23 +117,29 @@ export function bayColumnFootprint(role: FieldRole): { readonly width: number; r
 /**
  * Szerokość wymagana kolumny pola `snBays[index]` (spec §5.1, FIX-3):
  * `max(footprint.width + GRID + szerokość_oznacznika, szerokość_podpisu_kierunku)`.
- *  - oznacznik aparatu = `bay.designation` (t3); gdy puste/whitespace —
- *    pomijamy CAŁY człon sidecar (nie doliczamy `GRID + 0`, bo nie ma czego
- *    odseparowywać od bboxa);
+ *  - oznacznik aparatu (spec §4: „Q0/Q1/T1") = `bayApparatusDesignation`
+ *    (`compose/directions.ts`, F6b — spłata długu §9: `bay.designation` bywa
+ *    surowym tokenem roli „WE"/„WY"/„ODG", zastępowanym konwencją Q/T; ta
+ *    funkcja NIGDY nie zwraca pustego stringa, więc sidecar jest ZAWSZE
+ *    doliczany — patrz jej dokumentacja);
  *  - podpis kierunku = `bayDirectionCaptions?.[index]` (t3); gdy nieobecny
  *    lub pusty — wkład 0 (patrz nagłówek `bayColumnFootprint`).
  *
  * EKSPORT (F5, r7b): `compose/station.ts` używa TEJ SAMEJ funkcji do
  * rozmieszczania kolumn pól WEWNĄTRZ bloku stacji (prefix-sum identyczny z
  * `stationBlockWidth` niżej) — jedno źródło prawdy szerokości kolumny pola.
+ * Przyjmuje CAŁE `snBays` (nie pojedynczy `bay`), bo `bayApparatusDesignation`
+ * potrzebuje pozycji pola WŚRÓD pól tej samej kategorii (Q/T numeracja) —
+ * zero cienia względem `compose/station.ts`, które renderuje ten sam tekst.
  */
 export function bayColumnRequiredWidth(
-  bay: MiniBlockBayDescriptor,
+  snBays: readonly MiniBlockBayDescriptor[],
   index: number,
   bayDirectionCaptions: readonly (string | null)[] | undefined,
 ): number {
+  const bay = snBays[index];
   const footprint = bayColumnFootprint(bay.fieldRole);
-  const designation = bay.designation.trim();
+  const designation = bayApparatusDesignation(snBays, index);
   const widthWithSidecar = designation
     ? footprint.width + GRID + measureLabelWidth(designation, 't3')
     : footprint.width;
@@ -161,7 +168,7 @@ export function stationBlockWidth(
 ): number {
   if (snBays.length === 0) return 0;
   const columnsWidth = snBays.reduce(
-    (sum, bay, index) => sum + bayColumnRequiredWidth(bay, index, bayDirectionCaptions),
+    (sum, _bay, index) => sum + bayColumnRequiredWidth(snBays, index, bayDirectionCaptions),
     0,
   );
   return columnsWidth + GRID * Math.max(snBays.length - 1, 0);

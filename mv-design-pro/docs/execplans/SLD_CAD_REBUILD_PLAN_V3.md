@@ -219,10 +219,43 @@ i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
   kopia). Nakładka energizacji/kierunków (spec §6) czyta solver companion jak
   dziś (jedna prawda). Renderuje `SceneV3` z `buildSceneV3` (F6a). Trzy LOD-y
   wg spec §7 — przełączanie progami kamery, sceny per LOD z F6a.
-- OBOWIĄZKOWO w zakresie: spłata długu §9 apparatus (patrz F6a wyżej) +
-  rozszerzenie wyroczni; decyzja o dedykowanym symbolu stacji L0.
+- OBOWIĄZKOWO w zakresie: decyzja o dedykowanym symbolu stacji L0.
 - DoD: wyrocznie §11.1–11.5 na `sldSubstrate52s` dla L0/L1/L2 = zielone
   (scena + kanwa); render wizualny (harness) oceniony; commit.
+
+##### F6b-1. [DONE] Spłata długu §9 apparatus
+- `compose/directions.ts`: `bayApparatusDesignation(snBays, index)` — prawda
+  danych > konwencja (designation przechodzi wprost, gdy niepuste i nie jest
+  tokenem WE/WY/ODG; inaczej deterministycznie T+numer wśród pól trafo /
+  Q+numer wśród pozostałych, liczenie po indeksach tablicy);
+  `FORBIDDEN_RAW_DIRECTION_TOKENS` wyeksportowany (jedno źródło regexu).
+- `compose/station.ts` + `layout/measure.ts` (zmiany AUTORYZOWANE w zakresie
+  długu): oba liczą oznacznik TĄ SAMĄ funkcją — inwariant measure↔compose
+  zachowany; `bayColumnRequiredWidth` przyjmuje teraz całe `snBays` (numeracja
+  Q/T wymaga pozycji wśród pól tej samej kategorii).
+- `scene/buildScene.ts`: wyrocznia `noForbiddenDirectionTokens` rozszerzona
+  na WSZYSTKIE klasy etykiet (dawny scope `port-caption` zniesiony);
+  test-dokumentacja długu zastąpiona asercją odwrotną. Fixtura: 172 etykiety
+  `apparatus`, 0 z zakazanym tokenem (było 118).
+- Recenzja: agent-recenzent przerwany limitem sesji po potwierdzeniu zakresu
+  §4/§9; recenzję DOKOŃCZYŁ nadzorca (werdykt APPROVE): kontrprzykłady r7b
+  po podbiciu tekstu 1→5 znaków pozostają samo-chroniące (asercja
+  `segmentLabelRowCount ≥ 2` failuje, gdy wejście przestaje wymuszać realną
+  kolizję X-przedziałów — test nie może przejść pusto); wszystkie call-sites
+  `bayColumnRequiredWidth` na nowej sygnaturze; GPZ bez analogicznej wady
+  (oznacznik z bayNumber/feederName, nigdy z roli).
+- OTWARTE PUNKTY (do decyzji przy F6b/F7, NIE blokują):
+  (o1) tokeny ról `TR`/`SPR`/`POM` przechodzą wprost (prawda danych) — §9
+       zakazuje wiążąco tylko WE/WY/ODG, a „TR" jest idiomatyczne dla
+       inżyniera; jeśli spec §4 ma być czytany rygorystycznie (tylko Q/T),
+       dodać te tokeny do zamiany — decyzja świadoma, nie przeoczenie;
+  (o2) DER designation (`PV`/`BESS`/`FW`) ląduje w klasie `apparatus`
+       (prawda danych), choć spec §4 koncepcyjnie daje DER osobną klasę
+       etykiety (`labels.der` niezapełnione) — istniejący rozjazd sprzed
+       F6b, poza zakresem spłaty §9;
+  (o3) pola MEASUREMENT/COUPLER dzielą jedną sekwencję Q z liniowymi —
+       zgodne z literą §4; ewentualne rozdzielenie numeracji to decyzja
+       konwencji, nie defekt.
 
 ### F7. Render-odbiór + CI
 - Harness QUALITY_PLAN §3 rozszerzony: `overlap+grid+port+wire+determinism`
