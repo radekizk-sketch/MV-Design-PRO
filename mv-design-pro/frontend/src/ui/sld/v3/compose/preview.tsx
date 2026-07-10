@@ -37,7 +37,9 @@ import type { RouteVertex } from '../layout/route';
  *  po napięciu, tylko nakładką koloru (F6, poza zakresem tego harnessu). */
 export type PreviewSegmentKind = 'bus' | 'sn' | 'lv' | 'leader';
 
-const SEGMENT_STROKE_WIDTH: Readonly<Record<PreviewSegmentKind, number>> = {
+/** Eksportowane (F6b): `SldCanvasV3` reużywa TĘ SAMĄ hierarchię grubości
+ *  (spec §6), zero duplikacji stałych między harnessem debug i kanwą docelową. */
+export const SEGMENT_STROKE_WIDTH: Readonly<Record<PreviewSegmentKind, number>> = {
   bus: 4,
   sn: 1.6,
   lv: 1.2,
@@ -101,7 +103,9 @@ function parityKeysOf(meta: PreviewElementMeta | undefined): string | undefined 
   return meta.parityKey;
 }
 
-function pointsToPath(points: readonly RouteVertex[]): string {
+/** Eksportowana (F6b): `SldCanvasV3` reużywa tę samą projekcję punktów trasy
+ *  na `<path d>` — zero duplikacji między harnessem debug i kanwą docelową. */
+export function pointsToPath(points: readonly RouteVertex[]): string {
   return points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
 }
 

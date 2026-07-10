@@ -150,11 +150,14 @@ describe('buildSceneV3 — kontrakt LOD (spec §7)', () => {
     expect(counts['segment-span'] ?? 0).toBe(0);
     expect(counts['segment-lateral'] ?? 0).toBe(0);
     expect(counts['port-caption'] ?? 0).toBe(0);
-    // Każda z 53 stacji ma DOKŁADNIE jeden symbol 'junction' (placeholder
-    // zbiorczy, patrz nagłówek `buildScene.ts` — brak dedykowanego symbolu
-    // w bibliotece F1, STOP-notatka kandydująca do F6b).
-    const junctionSymbols = scene.symbols.filter((s) => s.symbolId === 'junction');
-    expect(junctionSymbols.length).toBe(EXPECTED_STATION_COUNT);
+    // Każda z 53 stacji ma DOKŁADNIE jeden symbol 'stationCollapsed' (F6b:
+    // dedykowany symbol zbiorczy stacji L0, kontur kwadratu — spłata
+    // STOP-notatki F6a; wcześniej placeholder `junction`, patrz nagłówek
+    // `buildScene.ts`).
+    const collapsedSymbols = scene.symbols.filter((s) => s.symbolId === 'stationCollapsed');
+    expect(collapsedSymbols.length).toBe(EXPECTED_STATION_COUNT);
+    // 'junction' pozostaje WYŁĄCZNIE węzłem T tras (route.ts) — nie stacją.
+    expect(scene.symbols.some((s) => s.symbolId === 'junction')).toBe(false);
   });
 
   it('LOD 1: pełne symbole stacji, ale zero etykiet segmentów i zero podpisów kierunku', () => {
@@ -164,8 +167,8 @@ describe('buildSceneV3 — kontrakt LOD (spec §7)', () => {
     expect(counts['segment-lateral'] ?? 0).toBe(0);
     expect(counts['port-caption'] ?? 0).toBe(0);
     // Pełne symbole (composeStation/composeGpz) — realne aparaty, NIE
-    // placeholder 'junction' (kontrast z LOD 0).
-    expect(scene.symbols.some((s) => s.symbolId === 'junction')).toBe(false);
+    // placeholder zbiorczy 'stationCollapsed' (kontrast z LOD 0).
+    expect(scene.symbols.some((s) => s.symbolId === 'stationCollapsed')).toBe(false);
     expect(scene.symbols.length).toBeGreaterThan(200);
     // Nazwy/kVA/typ stacji (pasmo B5) SĄ obecne na L1 (kontrast z brakiem
     // etykiet segmentów/podpisów kierunku powyżej).

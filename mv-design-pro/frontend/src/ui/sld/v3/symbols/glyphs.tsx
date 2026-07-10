@@ -230,6 +230,17 @@ export function DerGeneratorGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/** F6b: stacja SN/nN, widok zbiorczy (L0) — kontur kwadratu (P5: rysunek
+ *  bazowy mono, bez wypełnienia), NIE węzeł kropkowy `junction` (odróżnialny
+ *  z konstrukcji: `querySelector('circle')` musi być puste dla tego glifu). */
+export function StationCollapsedGlyph(props: GlyphProps): JSX.Element {
+  return (
+    <g {...glyphGroupProps('stationCollapsed', props)}>
+      <rect x={0} y={0} width={16} height={16} fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+    </g>
+  );
+}
+
 export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Element>> = {
   breaker: BreakerGlyph,
   disconnector: DisconnectorGlyph,
@@ -246,6 +257,7 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   derPv: DerPvGlyph,
   derBess: DerBessGlyph,
   derGenerator: DerGeneratorGlyph,
+  stationCollapsed: StationCollapsedGlyph,
 };
 
 /** Sanity: każdy glif ma definicję i odwrotnie (spójność biblioteki). */

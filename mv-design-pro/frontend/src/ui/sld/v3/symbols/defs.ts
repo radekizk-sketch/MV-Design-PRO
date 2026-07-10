@@ -26,7 +26,8 @@ export type SymbolId =
   | 'surgeArrester'    // ogranicznik przepięć SA
   | 'derPv'            // falownik PV
   | 'derBess'          // magazyn energii
-  | 'derGenerator';    // generator (G w okręgu)
+  | 'derGenerator'     // generator (G w okręgu)
+  | 'stationCollapsed'; // stacja SN/nN, widok zbiorczy (L0) — kontur kwadratu
 
 export interface SymbolDef {
   readonly id: SymbolId;
@@ -103,6 +104,17 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
   derGenerator: def('derGenerator', 32, 32, [
     { name: 'ac', x: 16, y: 0, dir: 'N' },
   ], 'Generator'),
+  // F6b (spłata STOP-notatki F6a): dedykowany symbol zbiorczy stacji na L0 —
+  // porty N/S/E/W jak `junction` (ten sam kontrakt geometrii routingu), ale
+  // rysunek to KONTUR KWADRATU (nie 4-portowy węzeł kropkowy), żeby stacja na
+  // L0 była odróżnialna od jawnego węzła T tras (`junction`), spec §3 „Stacja
+  // SN/nN … NIE kafel" — na L0 to nadal „∎16 z kodem", nie punkt.
+  stationCollapsed: def('stationCollapsed', 16, 16, [
+    { name: 'n', x: 8, y: 0, dir: 'N' },
+    { name: 's', x: 8, y: 16, dir: 'S' },
+    { name: 'e', x: 16, y: 8, dir: 'E' },
+    { name: 'w', x: 0, y: 8, dir: 'W' },
+  ], 'Stacja (widok zbiorczy)'),
 };
 
 /** Szyna zbiorcza — długość z treści (P1), więc fabryka, nie stała definicja. */

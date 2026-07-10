@@ -56,11 +56,10 @@
  * liczone NA NOWO per LOD — bands różnią się wysokością, patrz spec).
  * ---------------------------------------------------------------------------
  *  L0: GPZ blok (pełny) + magistrale/laterale + stacje jako symbol zbiorczy
- *      (`junction` 16×16 — F1 nie ma dedykowanego „kwadratu z kodem", więc
- *      reużywamy istniejący 4-portowy węzeł 16×16 jako placeholder zgodny z
- *      kontraktem geometrii „∎16" — STOP-notatka: brak dedykowanego symbolu
- *      w bibliotece F1, kandydat do rozszerzenia `symbols/defs.ts` w F6b) +
- *      TYLKO kod stacji jako podpis + NO.
+ *      DEDYKOWANY (`stationCollapsed` 16×16, kontur kwadratu — spłata
+ *      STOP-notatki F6a; do F6b placeholder był `junction`, 4-portowy węzeł
+ *      kropkowy — teraz `symbols/defs.ts`/`glyphs.tsx` mają odrębny symbol,
+ *      patrz REBUILD_PLAN_V3 F6b) + TYLKO kod stacji jako podpis + NO.
  *  L1: pełne symbole (composeStation/composeGpz), nazwy+kVA+typ+NO+DER, BEZ
  *      etykiet segmentów (typ·przekrój·długość) i BEZ podpisów kierunku pól
  *      (kier./odg.) — `bayDirectionCaptions` i teksty przęseł wyłączone.
@@ -193,7 +192,7 @@ const GPZ_TRUNK_GAP = 4 * GRID;
 const ROW_VERTICAL_GAP = 4 * GRID;
 const GPZ_NODE_CODE = 'GPZ';
 const NO_POINT_SIZE = SYMBOL_DEFS.noPoint.width;
-const COLLECTIVE_BOX_SIZE = SYMBOL_DEFS.junction.width;
+const COLLECTIVE_BOX_SIZE = SYMBOL_DEFS.stationCollapsed.width;
 
 // ---------------------------------------------------------------------------
 // Pomocnicze: nazewnictwo typu stacji (§9), terminale §16 z cableRun.
@@ -446,7 +445,7 @@ function composeRowStation(
     const boxX = snapToGrid(column.tapX - COLLECTIVE_BOX_SIZE / 2);
     const boxY = snapToGrid(busAxisY - COLLECTIVE_BOX_SIZE / 2);
     return {
-      symbols: [{ symbolId: 'junction', x: boxX, y: boxY, meta: { testId: `sld-v3-l0-${measureInput.id}` } }],
+      symbols: [{ symbolId: 'stationCollapsed', x: boxX, y: boxY, meta: { testId: `sld-v3-l0-${measureInput.id}` } }],
       segments: [],
       stationNameOwner: {
         ownerRef: measureInput.id,

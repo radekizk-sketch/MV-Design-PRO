@@ -84,6 +84,17 @@ describe('V3 symbols — rejestr glifów i stany', () => {
     expect(container.querySelectorAll('line').length).toBe(2);
     expect(container.querySelector('circle')).toBeTruthy();
   });
+
+  it('stacja (widok zbiorczy, F6b): kontur kwadratu, NIE węzeł kropkowy — odróżnialna od `junction`', () => {
+    const Glyph = SYMBOL_GLYPHS.stationCollapsed;
+    const { container } = render(<svg><Glyph x={0} y={0} /></svg>);
+    const rect = container.querySelector('rect');
+    expect(rect).toBeTruthy();
+    expect(rect?.getAttribute('fill')).toBe('none');
+    expect(rect?.getAttribute('width')).toBe('16');
+    expect(rect?.getAttribute('height')).toBe('16');
+    expect(container.querySelector('circle')).toBeFalsy();
+  });
 });
 
 describe('V3 typografia — deterministyczny pomiar (spec §2, pryncypium determinizmu)', () => {

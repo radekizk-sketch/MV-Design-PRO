@@ -223,6 +223,56 @@ i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
 - DoD: wyrocznie §11.1–11.5 na `sldSubstrate52s` dla L0/L1/L2 = zielone
   (scena + kanwa); render wizualny (harness) oceniony; commit.
 
+##### F6b-2. [DONE] SldCanvasV3 + symbol `stationCollapsed`
+- `canvas/SldCanvasV3.tsx` (SVG: segmenty→symbole→etykiety w SheetFrame,
+  klik→`onElementClick(testId)`), `canvas/camera.ts` (matematyka viewportu
+  REUŻYTA z `v2/viewport/ViewportController.ts` przez import; okablowanie
+  Pointer Events + natywny non-passive wheel WŁASNE — v2 nie ma hooka kamery
+  ani obsługi dotyku), `canvas/overlay.ts` (`SldV3Overlay` — energizacja
+  WYŁĄCZNIE kolorem, spec §6; test nie-tautologiczny: innerHTML z
+  zneutralizowanym stroke/fill identyczny przed/po overlay).
+- Symbol `stationCollapsed` 16×16 (kontur kwadratu, porty jak `junction`) —
+  spłata STOP-notatki F6a; L0 w buildScene przełączony z placeholdera;
+  `junction` pozostaje wyłącznie węzłem T tras.
+- Własna 3-poziomowa polityka LOD z histerezą (progi 0.4/1.2, margines 0.15)
+  zamiast v2 `LodPolicy` — DEWIACJA od spec §8 zarejestrowana jako
+  **V12K-026** w REJESTR_KONFLIKTOW (LodPolicy twardo 5-poziomowa,
+  niekompatybilna z `SceneLod` L0/L1/L2). `lodOverride` = jawny escape-hatch
+  dla testów/embedderów; ścieżka produkcyjna = LOD z kamery (§7).
+- Recenzja Opus: APPROVE (pinch/wheel bez wycieków listenerów i bez
+  off-by-transform; histereza bez migotania/zakleszczenia, monotoniczna,
+  czysta funkcja; determinizm renderu potwierdzony). Testy: +26 (kamera 15,
+  kanwa 10, symbole 1); v3 405 pass / 14 todo; pełna regresja sld zielona.
+- DO F6c/F7 (z recenzji):
+  (k1) tożsamość odcinków: `PreviewSegment.meta` nie niesie ownerRef/testId
+       dla odcinków stacji/magistrali (tylko GPZ ma) — energizacja
+       per-odcinek tras nie-GPZ wymaga zmiany `buildScene.ts`;
+  (k2) kalibracja wizualna F7: progi LOD 0.4/1.2, margines 0.15, czułość
+       wheel 0.0015 (liczby bez podstawy w spec — decyzje własne) + „glow"
+       energizacji (spec §6 wspomina, kanwa robi sam kolor);
+  (k3) kamera nie robi refit przy zmianie width/height/snapshot po mount
+       (zachowuje pan/zoom użytkownika) — świadomie; przemyśleć przy
+       cutoverze F8.
+- WIZUALNY DoD NADZORCY (rendery kanwy 1920×1080, LOD 0/1/2, fixtura 53
+  stacje — potwierdzone: struktura grzebienia, §9 na rysunku (kier./odg.,
+  Q1/Q2/Q3/TR), etykiety przęseł typ·przekrój·długość bez kolizji wzajemnych,
+  L0 = ∎16 + kody S01..S53). ZNALEZISKA do F6c/F7:
+  (k4) fit kamery liczy się na scenie wg LOD KAMERY, nie `lodOverride`
+       (harness z lodOverride=0 dostaje mały rysunek); głębiej: każdy LOD ma
+       WŁASNY rozmiar świata (osobne rezerwacje §7), więc przełączenie LOD
+       przy zoomie zmienia skalę świata — F7 musi zdecydować o mapowaniu
+       skali przy przejściach LOD (dziś przejścia będą skokowe);
+  (k5) legenda arkusza: dwa pierwsze wpisy nachodzą na siebie („Pole liniowe
+       GPZ" na „Wyłącznik"); etykieta sekcji GPZ obcięta lewą krawędzią
+       arkusza („Sekcja 1 · 15 kV") — defekty SheetFrame/composeGpz (F4/F5b,
+       widoczne dopiero na renderze kanwy);
+  (k6) kolizje etykieta↔PRZEWÓD: pionowe linie pass-through (zejścia
+       magistrali do niższych rzędów) przecinają pasma nazw stacji innych
+       rzędów (np. „Stacja L3-2") — ŻADNA wyrocznia tego nie łapie
+       (overlapProbe = etykieta↔etykieta i etykieta↔symbol); do F6c/F7:
+       rozszerzyć wyrocznię o odcinki LUB rezerwować korytarz pionowy w
+       kolumnach.
+
 ##### F6b-1. [DONE] Spłata długu §9 apparatus
 - `compose/directions.ts`: `bayApparatusDesignation(snBays, index)` — prawda
   danych > konwencja (designation przechodzi wprost, gdy niepuste i nie jest
