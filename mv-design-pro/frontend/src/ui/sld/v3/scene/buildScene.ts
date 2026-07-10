@@ -70,14 +70,33 @@
  * ---------------------------------------------------------------------------
  * Zaimplementowany JEDEN poziom lateralu (prosty ciąg w dół od stacji
  * macierzystej), WŁASNYM potokiem measure→bands→columns jak magistrala,
- * przesunięty tak, by pierwsza stacja lateralu leżała DOKŁADNIE pod portem
- * odgałęzienia stacji-origin (trasa pionowa bez zygzaka). Na fixturze
- * `sldSubstrate52s` WSZYSTKIE 12 lateralów wychodzą Z GŁÓWNEGO ciągu (brak
- * zagnieżdżeń — potwierdzone empirycznie, patrz raport) — zagnieżdżone
- * laterale (odgałęzienie od odgałęzienia) NIE są obsłużone: stacje takiego
- * ciągu (gdyby się pojawiły w innej sieci) zostaną pominięte z notatką STOP
- * w `meta.stopNotes`, zamiast rekurencyjnego stosu pasm (hack poza zakresem
+ * przesunięty tak, by pierwsza stacja lateralu leżała DOKŁADNIE pod X KANAŁU
+ * zejścia (`channelX`, F6d — NIE pod portem odgałęzienia samym, patrz
+ * `computeLateralChannelX`/przypadek b niżej). Na fixturze `sldSubstrate52s`
+ * WSZYSTKIE 12 lateralów wychodzą Z GŁÓWNEGO ciągu (brak zagnieżdżeń —
+ * potwierdzone empirycznie, patrz raport) — zagnieżdżone laterale
+ * (odgałęzienie od odgałęzienia) NIE są obsłużone: stacje takiego ciągu
+ * (gdyby się pojawiły w innej sieci) zostaną pominięte z notatką STOP w
+ * `meta.stopNotes`, zamiast rekurencyjnego stosu pasm (hack poza zakresem
  * f6a).
+ *
+ * F6d (spłata długu k6, REBUILD_PLAN_V3 F6d — KANAŁY PIONOWE): trasa
+ * zejścia NIE jest już jednym prostym pionem od portu odgałęźnego — robi
+ * jog (port → dół do strefy rozdzielającej B4/B5 stacji-origin → w prawo do
+ * szczeliny `COLUMN_GAP` poza blokiem, `channelX` → dół) i wiersze POŚREDNIE
+ * (leżące GŁĘBIEJ w grzebieniu) rezerwują pustą szczelinę TEJ szerokości w
+ * swoich kolumnach (`insertColumnChannels`, `layout/columns.ts`) na X-ie
+ * TEGO konkretnego `channelX`. Dowód (sonda `labelWireCollisions`, patrz jej
+ * docstring niżej): kolizje klasy `station-name`/`segment-span` spadły do
+ * ZERA na WSZYSTKICH LOD (były 25/100/100 i do 3, patrz F6c). Residuum
+ * (poza zakresem F6d — dług F6e, patrz test `buildScene.test.ts` „D3/k6
+ * RESIDUUM" i REBUILD_PLAN_V3): przedistniejący nakład etykieta↔przewód
+ * WŁASNEGO pola stacji — `apparatus` GPZ: pion własnego pola PRZECINA
+ * etykietę „Pole liniowe GPZ" na ~40px (realna bisekcja tekstu, zmierzone
+ * w recenzji F6d), `port-caption`: drop własnego pola muska „kier. Sxx"
+ * na ~8px. Niezależne od lateralów (git stash: pod-zbiór kolizji HEAD,
+ * F6d je REDUKUJE apparatus 5→3, port-caption 318→314); naprawa wymaga
+ * `compose/gpz.ts`/`compose/station.ts` (zabronione dla F6d) = F6e.
  */
 
 import type { EnergyNetworkModel, LineRunV1 } from '../../../../types/enm';
@@ -109,8 +128,8 @@ import {
   stationPortCaptionHeight,
   type StationMeasureInput,
 } from '../layout/measure';
-import { computeBands, BUS_AXIS_BAND_HEIGHT, type BandsResult, type StationBandHeights } from '../layout/bands';
-import { computeColumns, type ColumnsResult, type ColumnResult } from '../layout/columns';
+import { computeBands, BUS_AXIS_BAND_HEIGHT, DESCENT_STRIP_HEIGHT, type BandsResult, type StationBandHeights } from '../layout/bands';
+import { computeColumns, insertColumnChannels, type ColumnsResult, type ColumnResult } from '../layout/columns';
 import { computeSegmentLabelSlotX, colorSegmentLabelRows } from '../layout/segments';
 import {
   resolveLabels,
@@ -193,6 +212,14 @@ const ROW_VERTICAL_GAP = 4 * GRID;
 const GPZ_NODE_CODE = 'GPZ';
 const NO_POINT_SIZE = SYMBOL_DEFS.noPoint.width;
 const COLLECTIVE_BOX_SIZE = SYMBOL_DEFS.stationCollapsed.width;
+
+/** F6d (przypadek b): odstęp jogu zejścia lateralu od prawej krawędzi bloku
+ *  stacji-origin, do szczeliny `COLUMN_GAP` między stacjami tego wiersza
+ *  (patrz `computeLateralChannelX` niżej). Gdy tej samej stacji wychodzi
+ *  WIELE laterali (branchPos > 0), każdy kolejny kanał tej samej szczeliny
+ *  jest odsunięty o dodatkowy `LATERAL_CHANNEL_STEP` (degeneracja (c):
+ *  „dwa zejścia w tej samej szczelinie" — rozsunięcie w ramach szczeliny). */
+const LATERAL_CHANNEL_STEP = GRID;
 
 // ---------------------------------------------------------------------------
 // Pomocnicze: nazewnictwo typu stacji (§9), terminale §16 z cableRun.
@@ -541,17 +568,89 @@ function connectHorizontal(
   return buildRoute({ from, to, fromTerminal, toTerminal });
 }
 
-function connectVertical(
-  fromX: number,
-  fromY: number,
-  toX: number,
-  toY: number,
-  fromTerminal: SegmentTerminalRef | undefined,
-  toTerminal: SegmentTerminalRef | undefined,
-): { readonly points: readonly RouteVertex[]; readonly fromTerminal?: SegmentTerminalRef; readonly toTerminal?: SegmentTerminalRef } {
-  const from: RoutePort = { x: fromX, y: fromY, dir: 'S' };
-  const to: RoutePort = { x: toX, y: toY, dir: 'N' };
-  return buildRoute({ from, to, fromTerminal, toTerminal });
+// ---------------------------------------------------------------------------
+// F6d (spłata długu k6, REBUILD_PLAN_V3 F6d) — origin lateralu (pole
+// odgałęźne stacji magistrali głównej) + X kanału jogu (przypadek b).
+// Wydzielone z pętli laterali, żeby MÓGŁ być wywołany DWA RAZY: raz w
+// prepassie (policz WSZYSTKIE X-y kanałów PRZED budowaniem jakiegokolwiek
+// wiersza lateralu — `insertColumnChannels`/przypadek a wymaga znać X-y
+// PÓŹNIEJSZYCH zejść z wyprzedzeniem), raz w głównej pętli (budowa wiersza).
+// Obie mapy `branchOriginUsage` są NIEZALEŻNE, świeże instancje — ale
+// deterministyczna funkcja (kolejność `branchRuns` + te same warunki
+// odrzucenia) daje IDENTYCZNY branchPos w obu wywołaniach, więc kanały
+// prepassu i origin głównej pętli są zawsze zgodne (zero cienia stanu).
+// ---------------------------------------------------------------------------
+
+interface ResolvedBranchOrigin {
+  readonly originOwnerRef: string;
+  readonly originRow: RowStation;
+  readonly branchPos: number;
+  readonly originPort: { readonly x: number; readonly y: number };
+}
+
+function resolveBranchOrigin(
+  run: SldTopologyRun,
+  cableRunById: ReadonlyMap<string, SldCableRun>,
+  mainRowById: ReadonlyMap<string, RowStation>,
+  branchOriginUsage: Map<string, number>,
+): ResolvedBranchOrigin | null {
+  const originOwnerRef = cableRunById.get(run.id)?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null;
+  const originRow = originOwnerRef ? mainRowById.get(originOwnerRef) : undefined;
+  if (!originOwnerRef || !originRow) return null;
+  const branchPos = branchOriginUsage.get(originOwnerRef) ?? 0;
+  branchOriginUsage.set(originOwnerRef, branchPos + 1);
+  const originPort = originRow.composed.branchPort(branchPos);
+  if (!originPort) return null;
+  return { originOwnerRef, originRow, branchPos, originPort };
+}
+
+/**
+ * F6d (przypadek b): X kanału zejścia — GRID w głąb szczeliny `COLUMN_GAP`
+ * na PRAWO od kolumny stacji-origin na magistrali głównej (`mainColumns`,
+ * już globalnie ułożone). „Na prawo" zawsze bezpieczne: gdy stacja-origin
+ * ma sąsiada po prawej, punkt leży w naturalnej szczelinie 3×GRID (GRID
+ * prześwitu z obu stron przy `LATERAL_CHANNEL_STEP` domyślnym); gdy jest
+ * OSTATNIĄ stacją wiersza, punkt leży w otwartej przestrzeni za blokiem
+ * (spec F6d: „jeśli origin jest ostatnią stacją — użyj przestrzeni na
+ * prawo od jej bloku") — TA SAMA formuła obsługuje oba przypadki, zero
+ * rozróżnienia warunkowego. Wiele laterali tej samej stacji (branchPos>0,
+ * degeneracja (c) „dwa zejścia w tej samej szczelinie") dostają kolejne
+ * kroki `LATERAL_CHANNEL_STEP` w głąb TEJ SAMEJ szczeliny.
+ */
+function computeLateralChannelX(
+  mainColumns: readonly ColumnResult[],
+  originOwnerRef: string,
+  branchPos: number,
+): number | null {
+  const col = mainColumns.find((c) => c.stationId === originOwnerRef);
+  if (!col) return null;
+  return snapToGrid(col.x + col.width + GRID + branchPos * LATERAL_CHANNEL_STEP);
+}
+
+/**
+ * F6d prepass: X kanału KAŻDEGO branchRunu, liczone WYŁĄCZNIE z magistrali
+ * głównej (już w pełni skomponowanej w globalnych współrzędnych) — PRZED
+ * zbudowaniem geometrii jakiegokolwiek wiersza lateralu. Wymagane przez
+ * przypadek (a): `insertColumnChannels` (`layout/columns.ts`) musi znać X-y
+ * WSZYSTKICH zejść PÓŹNIEJSZYCH w kolejności komponowania, żeby zarezerwować
+ * dla nich kanały w KAŻDYM wcześniejszym wierszu, który będą przecinać.
+ */
+function computeLateralChannelXById(
+  branchRuns: readonly SldTopologyRun[],
+  cableRunById: ReadonlyMap<string, SldCableRun>,
+  mainRowById: ReadonlyMap<string, RowStation>,
+  mainColumns: readonly ColumnResult[],
+): ReadonlyMap<string, number> {
+  const out = new Map<string, number>();
+  const usage = new Map<string, number>();
+  for (const run of branchRuns) {
+    const origin = resolveBranchOrigin(run, cableRunById, mainRowById, usage);
+    if (!origin) continue;
+    const channelX = computeLateralChannelX(mainColumns, origin.originOwnerRef, origin.branchPos);
+    if (channelX == null) continue;
+    out.set(run.id, channelX);
+  }
+  return out;
 }
 
 interface RowConnectResult {
@@ -560,13 +659,44 @@ interface RowConnectResult {
   readonly spanLabels: SegmentSpanOwnerInput[];
 }
 
+/**
+ * F6d (przypadek a, ubezpieczenie): `resolveSegmentSpanLabel` (`layout/labels.ts`,
+ * FORBIDDEN do zmiany) centruje etykietę na CAŁYM przęśle tap-do-tap
+ * (`spanStart`..`spanEnd`), IGNORUJĄC `primaryRect`, gdy etykieta się tam
+ * mieści (`fitsSpan`) — a kanał wstawiony przez `insertColumnChannels`
+ * (`layout/columns.ts`) POSZERZA właśnie TO przęsło (przesuwa `tapX`
+ * kolumny `cur` na prawo), więc środek (nowego, szerszego) przęsła może
+ * wypaść DOKŁADNIE na kanale (znalezisko F6d — sonda na fixturze: 5 kolizji
+ * klasy `segment-span`, zanim ta funkcja została dodana). Naprawa PO
+ * STRONIE WOŁAJĄCEGO (ten plik, w zakresie): jeśli jakikolwiek punkt kanału
+ * tego wiersza leży WEWNĄTRZ zgłaszanego przęsła, przycinamy `spanEnd` PRZED
+ * pierwszym takim punktem (z prześwitem GRID) — `fitsSpan` w `labels.ts`
+ * albo przestaje być prawdą (etykieta wraca do bezpiecznego `primaryRect`,
+ * już channel-aware z konstrukcji `insertColumnChannels`), albo, jeśli
+ * ZMIEŚCI się w przyciętym (węższym) przęśle, centruje się w nim —
+ * w obu przypadkach z definicji NIE dotyka terytorium kanału.
+ */
+function truncateSpanAtChannels(
+  spanStart: number,
+  spanEnd: number,
+  channelPointsX: readonly number[],
+): { readonly spanStart: number; readonly spanEnd: number } {
+  const inside = channelPointsX.filter((p) => p > spanStart && p < spanEnd);
+  if (inside.length === 0) return { spanStart, spanEnd };
+  const firstPoint = Math.min(...inside);
+  return { spanStart, spanEnd: Math.max(spanStart, firstPoint - GRID) };
+}
+
 /** Odcinki MIĘDZY kolejnymi stacjami TEGO SAMEGO wiersza (magistrala lub
- *  lateral) — spec §5.4 „route między tapX kolejnych węzłów". */
+ *  lateral) — spec §5.4 „route między tapX kolejnych węzłów". `channelPointsX`
+ *  (F6d, domyślnie puste — magistrala nie ma kanałów): patrz
+ *  `truncateSpanAtChannels` wyżej. */
 function connectRowStations(
   row: readonly RowStation[],
   layout: RowLayout,
   cableRun: SldCableRun | undefined,
   lod: SceneLod,
+  channelPointsX: readonly number[] = [],
 ): RowConnectResult {
   const connectors: PreviewSegment[] = [];
   const routeGeoms: RouteGeometry[] = [];
@@ -583,11 +713,16 @@ function connectRowStations(
       const slot = layout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === i);
       const text = incomingLabelText(cableRun, cur.id);
       if (slot && text) {
+        const { spanStart, spanEnd } = truncateSpanAtChannels(
+          prev.composed.exitTapX,
+          cur.composed.entryTapX,
+          channelPointsX,
+        );
         spanLabels.push({
           ownerRef: `${cur.id}#segment-label`,
           text,
-          spanStart: prev.composed.exitTapX,
-          spanEnd: cur.composed.entryTapX,
+          spanStart,
+          spanEnd,
           busAxisY: layout.busAxisY,
           primaryRect: slot.rect,
         });
@@ -846,20 +981,30 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   const branchOriginUsage = new Map<string, number>();
 
   const branchRuns = sldData.topologyRuns.filter((r) => r.kind === 'branch');
-  for (const run of branchRuns) {
-    const originOwnerRef = cableRunById.get(run.id)?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null;
-    const originRow = originOwnerRef ? mainRowById.get(originOwnerRef) : undefined;
-    if (!originOwnerRef || !originRow) {
+  // F6d prepass (przypadek a, patrz nagłówek `computeLateralChannelXById`):
+  // X kanału KAŻDEGO lateralu, znane PRZED zbudowaniem geometrii
+  // jakiegokolwiek wiersza — wiersz `li` musi zarezerwować kanały dla zejść
+  // lateroli `li+1..` (leżących GŁĘBIEJ w grzebieniu, więc przecinających
+  // TEN wiersz w drodze do swojego, patrz `nextRowTopY`/kolejność poniżej).
+  const lateralChannelXById = mainLayout
+    ? computeLateralChannelXById(branchRuns, cableRunById, mainRowById, mainLayout.columnsResult.columns)
+    : new Map<string, number>();
+
+  for (let li = 0; li < branchRuns.length; li++) {
+    const run = branchRuns[li];
+    const origin = resolveBranchOrigin(run, cableRunById, mainRowById, branchOriginUsage);
+    if (!origin) {
       stopNotes.push(
-        `Lateral „${run.id}": stacja-origin (${originOwnerRef ?? 'nieznana'}) nie leży na magistrali głównej — odgałęzienie zagnieżdżone (odgałęzienie-od-odgałęzienia) POZA zakresem F6a, ciąg pominięty.`,
+        `Lateral „${run.id}": stacja-origin nie leży na magistrali głównej (odgałęzienie zagnieżdżone, POZA zakresem F6a) lub nie ma pola odgałęźnego dla tego branchPos — ciąg pominięty.`,
       );
       continue;
     }
-    const branchPos = branchOriginUsage.get(originOwnerRef) ?? 0;
-    branchOriginUsage.set(originOwnerRef, branchPos + 1);
-    const originPort = originRow.composed.branchPort(branchPos);
-    if (!originPort) {
-      stopNotes.push(`Lateral „${run.id}": stacja-origin „${originOwnerRef}" nie ma pola odgałęźnego #${branchPos} — ciąg pominięty.`);
+    const { originOwnerRef, originPort } = origin;
+    const channelX = lateralChannelXById.get(run.id);
+    if (channelX == null) {
+      stopNotes.push(
+        `Lateral „${run.id}": nie znaleziono kolumny stacji-origin „${originOwnerRef}" na magistrali głównej — kanał zejścia (F6d) nie mógł być wyliczony, ciąg pominięty.`,
+      );
       continue;
     }
 
@@ -867,14 +1012,17 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     let layout = buildRowLayout(run.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, cableRun, lod, stopNotes);
     if (layout.measureInputs.length === 0) continue;
 
-    // Wyrównanie X: pierwsza stacja lateralu MUSI leżeć DOKŁADNIE pod
-    // portem odgałęzienia stacji-origin (trasa pionowa bez zygzaka) —
-    // dwuprzebiegowa kompozycja jak GPZ (pass1 lokalny → poznaj entryTapX
-        // stacji 0 → przesuń → pass2 finalny).
+    // Wyrównanie X (F6d, przypadek b — DECYZJA WIĄŻĄCA): pierwsza stacja
+    // lateralu leży DOKŁADNIE pod X KANAŁU (`channelX`, poza blokiem
+    // stacji-origin, w szczelinie COLUMN_GAP — patrz `computeLateralChannelX`),
+    // NIE pod `originPort.x` (który leży WEWNĄTRZ bloku stacji-origin — pion
+    // musi zrobić jog do kanału PRZED wejściem w pasmo nazw, patrz trasa
+    // niżej). Dwuprzebiegowa kompozycja jak GPZ (pass1 lokalny → poznaj
+    // entryTapX stacji 0 → przesuń → pass2 finalny).
     const firstCol0 = layout.columnsResult.columns[0];
     const firstProps0 = stationById.get(layout.measureInputs[0].id)!;
     const provisional = composeRowStation(layout.measureInputs[0], firstProps0, firstCol0, layout.busAxisY, layout.blockTopY, lod, []);
-    const dx = snapToGrid(originPort.x - provisional.entryTapX);
+    const dx = snapToGrid(channelX - provisional.entryTapX);
     // Korytarz między-wierszowy musi zmieścić etykietę segmentu-lateralu
     // (spec §4, `layout/labels.ts` `resolveSegmentLateralLabel`, `fitsLength`)
     // POMIĘDZY `priorContentBottom` (dół WSZYSTKIEGO już umieszczonego —
@@ -897,6 +1045,22 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     layout = shiftRowLayout(layout, dx, dy);
     nextRowTopY = dy + layout.bandsResult.totalHeight + ROW_VERTICAL_GAP;
     lateralRunIds.push(run.id);
+
+    // F6d (przypadek a): zarezerwuj kanały w TYM wierszu dla zejść lateroli
+    // PÓŹNIEJSZYCH w kolejności komponowania (`li+1..`, leżących GŁĘBIEJ w
+    // grzebieniu) — ich piony przechodzą PRZEZ ten wiersz w drodze do
+    // swojego. Współrzędne GLOBALNE (`layout` już przesunięty przez
+    // `shiftRowLayout` wyżej) — zero konwersji lokalna/globalna, kolumna 0
+    // (dx-wyrównana pod WŁASNY `channelX` tego wiersza) jest wyłączona z
+    // przesunięcia przez `insertColumnChannels` z konstrukcji (patrz jej
+    // nagłówek, `layout/columns.ts`).
+    const laterChannelXs = branchRuns
+      .slice(li + 1)
+      .map((laterRun) => lateralChannelXById.get(laterRun.id))
+      .filter((x): x is number => x != null);
+    const channels = insertColumnChannels(layout.columnsResult, laterChannelXs, `Lateral „${run.id}"`);
+    stopNotes.push(...channels.stopNotes);
+    layout = { ...layout, columnsResult: channels.result };
 
     const lateralRow: RowStation[] = [];
     layout.columnsResult.columns.forEach((col, i) => {
@@ -929,39 +1093,57 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
 
     if (lateralRow.length > 0) {
       const first = lateralRow[0];
-      const fromTerminal = fromTerminalForOwner(cableRun, originOwnerRef);
-      const toTerminal = toTerminalForOwner(cableRun, first.id);
-      const route = connectVertical(originPort.x, originPort.y, first.composed.entryTapX, layout.blockTopY, fromTerminal, toTerminal);
-      allSegments.push({ points: route.points, meta: { kind: 'sn' } });
-      allRouteGeoms.push({ points: route.points });
+      // F6d (przypadek b, spłata długu k6 — patrz REBUILD_PLAN_V3 F6d):
+      // trasa wieloodcinkowa ortogonalna, budowana JAWNIE (nie przez
+      // `buildRoute` — ta obsługuje wyłącznie trasy 2-portowe I/L, nie
+      // 3-odcinkowy jog): port odgałęźny (WEWNĄTRZ bloku
+      // stacji-origin, `originPort`) → dół do stropu strefy rozdzielającej
+      // B4/B5 (`stripTopY`, `DESCENT_STRIP_HEIGHT` w `bands.ts`) → jog
+      // poziomy do kanału `channelX` (szczelina COLUMN_GAP, POZA blokiem —
+      // `computeLateralChannelX`) → dół przez B5 stacji-origin i WSZYSTKIE
+      // wiersze pośrednie (kanały zarezerwowane dla TEGO `channelX` przez
+      // przypadek (a) w iteracjach WCZEŚNIEJSZYCH tej pętli, `li' < li`) do
+      // bloku stacji docelowej (`first.composed.entryTapX === channelX` z
+      // konstrukcji, wyrównanie dx wyżej). Wszystkie punkty na siatce z
+      // istniejących niezmienników (`stripTopY`/`channelX`/`entryTapX`/
+      // `blockTopY` — patrz komentarze przy ich definicjach); duplikaty
+      // kolejnych punktów (gdy `originPort.x === channelX`, teoretyczny
+      // przypadek zerowy) są usuwane, żeby nie emitować zdegenerowanych
+      // odcinków.
+      const stripTopY = mainLayout!.bandsResult.bands.B5.y - DESCENT_STRIP_HEIGHT;
+      const rawJogPoints: RouteVertex[] = [
+        { x: originPort.x, y: originPort.y },
+        { x: originPort.x, y: stripTopY },
+        { x: channelX, y: stripTopY },
+        { x: channelX, y: layout.blockTopY },
+        { x: first.composed.entryTapX, y: layout.blockTopY },
+      ];
+      const jogPoints = rawJogPoints.filter(
+        (p, idx) => idx === 0 || p.x !== rawJogPoints[idx - 1].x || p.y !== rawJogPoints[idx - 1].y,
+      );
+      allSegments.push({ points: jogPoints, meta: { kind: 'sn' } });
+      allRouteGeoms.push({ points: jogPoints });
       if (lod === 2) {
         const text = incomingLabelText(cableRun, first.id);
         if (text) {
-          // DECYZJA (F6a): `originPort.y` (zaczep pola odgałęźnego
-          // stacji-origin) leży NA OGÓŁ WYŻEJ niż `priorContentBottom` (dół
-          // WSZYSTKIEGO już umieszczonego nad tym wierszem — patrz DECYZJA
-          // przy obliczaniu `minDy` wyżej), a `layout.blockTopY` (użyty w
-          // `connectVertical` NIŻEJ, dla prawdziwej geometrii trasy) leży
-          // WEWNĄTRZ REZERWACJI tego wiersza (pasma B1..B3, m.in. podpis
-          // kierunku pola pierwszej stacji lateralu) — pole odgałęźne bywa
-          // krótszym stosem aparatów niż inne pola stacji-origin (np.
-          // transformator), więc geometryczna trasa pionowa (`allSegments`,
-          // NIEZMIENIONA) przechodzi PRZEZ własne pasmo nazw stacji-origin
-          // (i, dla drugiego+ lateralu, przez CAŁY poprzedni wiersz lateralu)
-          // AŻ do bloku stacji docelowej. Etykieta segmentu, żeby NIE
-          // nachodzić na ŻADNĄ z tych rezerwacji (własną stacji-origin PONAD
-          // korytarzem, WŁASNĄ stacji-docelowej PONIŻEJ korytarza), jest
-          // kotwiczona WYŁĄCZNIE do widocznego korytarza między wierszami
-          // (`priorContentBottom`..`dy`), NIE do całej (dłuższej) trasy —
-          // stąd `lineYStart`/`lineYEnd` przycięte do granic korytarza, a nie
-          // do `originPort.y`/`layout.blockTopY`. Rezerwacja korytarza
-          // (`requiredCorridorHeight` przy obliczaniu `minDy` wyżej) jest
-          // dociągnięta tak, by przycięty odcinek był NIE KRÓTSZY niż
-          // szerokość tej etykiety.
+          // DECYZJA (F6a, X zaktualizowany F6d): `originPort.y` (zaczep pola
+          // odgałęźnego stacji-origin) leży NA OGÓŁ WYŻEJ niż
+          // `priorContentBottom` (dół WSZYSTKIEGO już umieszczonego nad tym
+          // wierszem — patrz DECYZJA przy obliczaniu `minDy` wyżej), a
+          // `layout.blockTopY` leży WEWNĄTRZ REZERWACJI tego wiersza (pasma
+          // B1..B3). Etykieta segmentu jest kotwiczona WYŁĄCZNIE do
+          // widocznego korytarza między wierszami (`priorContentBottom`..`dy`),
+          // NIE do całej (dłuższej, teraz też jog+kanał) trasy — stąd
+          // `lineYStart`/`lineYEnd` przycięte do granic korytarza (BEZ ZMIAN
+          // od F6a). `lineX` to teraz `channelX` (F6d) — finalny pion PO
+          // jogu, nie `originPort.x` (który leży WEWNĄTRZ bloku stacji-origin,
+          // poza widocznym korytarzem tej etykiety i tak, więc zmiana nie ma
+          // wpływu na `fitsLength`/clearance, tylko na to, PRZY KTÓRYM pionie
+          // etykieta faktycznie stoi — patrz raport F6d).
           segmentLaterals.push({
             ownerRef: `${first.id}#lateral-label`,
             text,
-            lineX: originPort.x,
+            lineX: channelX,
             lineYStart: Math.max(originPort.y, priorContentBottom),
             lineYEnd: Math.min(layout.blockTopY, dy),
           });
@@ -969,7 +1151,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       }
     }
 
-    const internal = connectRowStations(lateralRow, layout, cableRun, lod);
+    const internal = connectRowStations(lateralRow, layout, cableRun, lod, laterChannelXs);
     allSegments.push(...internal.connectors);
     allRouteGeoms.push(...internal.routeGeoms);
     // Etykiety segmentów WEWNĄTRZ lateralu są poziome (stacje lateralu idą w
@@ -1101,14 +1283,29 @@ export interface LabelWireCollision {
  * realnej fixturze: 0 kolizji tej klasy na LOD 0/1/2, więc wyjątek „własny
  * odcinek" byłby martwym kodem maskującym przyszłe regresje.
  *
- * STAN (F6c, dług zapisany w REBUILD_PLAN_V3 F6d): wyrocznia na realnej
- * fixturze FAILUJE — 28/105/426 kolizji na LOD 0/1/2. Źródło architektoniczne:
- * zejścia lateralne (`connectVertical`) biegną JEDNYM prostym pionem od osi
- * magistrali przez pasmo nazw WŁASNEJ stacji-origin i przez CAŁE pośrednie
- * wiersze (ich pasma nazw B5 i podpisów B3). Naprawa wymaga kanałów
- * pionowych (rezerwacja korytarza w kolumnach wierszy przecinanych +
- * pas wyjścia zejścia w pasmach wiersza origin) — zmiany w F3
- * (`bands.ts`/`columns.ts`), poza autoryzacją F6c; zaprojektowane jako F6d.
+ * STAN (F6d, REBUILD_PLAN_V3 F6d — SPŁATA GŁÓWNEJ CZĘŚCI DŁUGU k6): dług
+ * architektoniczny opisany w F6c (28/105/426 kolizji na LOD 0/1/2, źródło:
+ * zejścia lateralne biegnące JEDNYM prostym pionem przez pasmo nazw WŁASNEJ
+ * stacji-origin i przez CAŁE pośrednie wiersze) jest SPŁACONY: kanały
+ * pionowe (`insertColumnChannels`, `layout/columns.ts`, przypadek a) +
+ * jog origin→szczelina (`DESCENT_STRIP_HEIGHT`, `layout/bands.ts`, przypadek
+ * b) + przycięcie przęsła etykiety magistrali na kanałach własnego wiersza
+ * (`truncateSpanAtChannels` wyżej, ubezpieczenie odkryte przy spłacie —
+ * `resolveSegmentSpanLabel`/`labels.ts` centruje na PRZĘŚLE, ignorując
+ * `primaryRect`, gdy się mieści — kanał poszerza właśnie to przęsło).
+ * Dowód: kolizje klas `station-name`/`segment-span`/`segment-lateral` = 0 na
+ * WSZYSTKICH LOD (test `buildScene.test.ts`, opis „F6d (SPŁATA DŁUGU k6)").
+ *
+ * RESIDUUM (dług F6e — poza autoryzacją F6d, patrz REBUILD_PLAN_V3 i test
+ * `buildScene.test.ts` „D3/k6 RESIDUUM"): 3 kolizje `apparatus` (oznacznik
+ * pola liniowego GPZ, `compose/gpz.ts`) na WSZYSTKICH LOD i ~314 kolizji
+ * `port-caption` na LOD 2 (`compose/station.ts`) — nakład etykiety na oś
+ * przewodu WŁASNEGO pola stacji: `apparatus` GPZ do ~40px (pion własnego
+ * pola przez ŚRODEK etykiety „Pole liniowe GPZ" — realna bisekcja tekstu,
+ * zmierzona w recenzji F6d), `port-caption` ~8px (muśnięcie krawędzią).
+ * PRZEDISTNIEJĄCE (pod-zbiór kolizji HEAD sprzed F6d, ta naprawa je
+ * REDUKUJE: apparatus 5→3, port-caption 318→314 — niezależne od lateralów);
+ * naprawa wymaga plików zabronionych dla F6d = F6e.
  */
 export function labelWireCollisions(scene: SceneV3): readonly LabelWireCollision[] {
   const hits: LabelWireCollision[] = [];

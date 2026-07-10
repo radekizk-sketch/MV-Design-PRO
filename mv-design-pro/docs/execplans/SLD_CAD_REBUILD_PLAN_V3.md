@@ -303,20 +303,50 @@ i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
   (B3/B5). Poprawka per-etykieta jest niemożliwa bez zmian F4; poprawka
   per-trasa wymaga rezerwacji w F3. Zakres ZAPROJEKTOWANY jako F6d.
 
-##### F6d. [NEXT] Kanały pionowe zejść lateralnych (spłata k6)
-- Rezerwacje (F3, zmiany AUTORYZOWANE tym wpisem): (a) wiersz PRZECINANY
-  przez cudze zejście wstawia szczelinę między bloki stacji (przesunięcie
-  kolumn na prawo od X zejścia; X-y wszystkich zejść znane PRZED
-  komponowaniem lateralów — porty odgałęźne liczą się z magistrali);
-  (b) wiersz ORIGIN: wyjście zejścia z bloku prowadzone jogiem do szczeliny
-  między blokami PONIŻEJ stosu aparatów a POWYŻEJ pasma nazw (wymaga wąskiej
-  strefy rozdzielającej B4/B5 w bands.ts) — trasa wieloodcinkowa ortogonalna
-  (buduj punkty jawnie; §16 endsAtPorts + siatka zachowane).
-- DoD: `noLabelWireCollisions` zielona na LOD 0/1/2 (test-dokumentacja długu
-  zastąpiony); wyrocznie §11 istniejące zielone; determinizm; render 1:1
-  potwierdza brak przewodów przez tekst; recenzja Opus; commit.
-- F7 (render-odbiór) NIE MOŻE zamknąć się bez F6d — wyrocznia wchodzi do
-  skryptu akceptacyjnego.
+##### F6d. [DONE — część architektoniczna k6 ZAMKNIĘTA] Kanały pionowe zejść lateralnych
+- Zrealizowane wg projektu: (a) `insertColumnChannels` (`layout/columns.ts`)
+  — wiersz przecinany przez cudze zejście wstawia szczelinę (prefix-shift
+  kolumn + slotów B1, iteracja-z-aktualizacją po posortowanych X, kolumna 0
+  nigdy nie przesuwana); (b) `DESCENT_STRIP_HEIGHT = GRID` w `bands.ts`
+  (strefa rozdzielająca B4/B5, pusta poniżej najwyższego bloku — measure↔
+  compose nietknięte) + trasa zejścia jawną 3-odcinkową polilinią
+  port→strefa→jog do channelX (szczelina COLUMN_GAP)→dół; dx stacji 0
+  lateralu wyrównywany pod channelX; (c) prepass `computeLateralChannelXById`
+  (współdzielone `resolveBranchOrigin` — spójność z pętlą główną
+  potwierdzona recenzją; pusta rezerwacja dla runu odrzuconego po prepassie
+  jest benign); (d) etykieta pionu na channelX + `truncateSpanAtChannels`
+  (odkrycie: `resolveSegmentSpanLabel` centruje na przęśle, kanał je
+  poszerza — naprawa po stronie wołającej, labels.ts nietknięte).
+- WYNIK: kolizje klas architektury k6 (`station-name`/`segment-span`/
+  `segment-lateral`) = **0 na LOD 0/1/2** (były 25/100/100 + 3); szerokość
+  bboxu +3.7/3.0/2.7% (48/104/112 px); wyrocznie §11 + determinizm zielone;
+  rendery potwierdzają piony w szczelinach, brak przewodów przez tekst nazw.
+- Recenzja Opus: REQUEST-CHANGES (MEDIUM) WYŁĄCZNIE na dokumentację —
+  twierdzenie „dotyk 1px" o residuum OBALONE pomiarem (patrz F6e niżej);
+  KOD zatwierdzony bez zmian (kanały/jog/prepass/§16/determinizm poprawne).
+  Korekty dokumentacji zastosowane (docstringi + test residuum przełożony
+  z pinu równości na asercje strukturalne: klasy + górna granica
+  bez-wzrostu + recepta aktualizacji).
+
+##### F6e. [NEXT] Nakład etykieta↔przewód WŁASNEGO pola (residuum po F6d)
+- ZMIERZONE w recenzji F6d (nie „1px", jak pierwotnie raportowano):
+  `apparatus` GPZ — pion WŁASNEGO pola liniowego przecina etykietę
+  „Pole liniowe GPZ" na **~40px** (realna bisekcja tekstu — DEFEKT
+  CZYTELNOŚCI, nie kosmetyka); `port-caption` — drop własnego pola muska
+  „kier. Sxx" na ~8px (muśnięcie krawędzią, niższy priorytet, ten sam
+  mechanizm). Liczby: 3/3/317 na LOD 0/1/2 (spinowane górną granicą w
+  teście „D3/k6 RESIDUUM").
+- PRZEDISTNIEJĄCE i niezależne od lateralów (git stash: pod-zbiór kolizji
+  HEAD sprzed F6d; F6d je REDUKUJE apparatus 5→3, port-caption 318→314).
+- Naprawa w warstwie compose: `compose/gpz.ts` (primaryRect oznacznika pola
+  liniowego GPZ — slot nie może obejmować osi pionu własnego pola) i
+  `compose/station.ts` (primaryRect podpisu portu vs drop własnego pola).
+  NIE zaliczać do „kosmetyki F7".
+- DoD: `noLabelWireCollisions` === true na LOD 0/1/2 (test residuum
+  ZASTĄPIONY zieloną asercją per LOD); wyrocznie §11 zielone; render;
+  recenzja Opus; commit.
+- F7 (render-odbiór) NIE MOŻE zamknąć się bez F6e — wyrocznia
+  `noLabelWireCollisions` wchodzi do skryptu akceptacyjnego jako twarda.
 
 ##### F6b-1. [DONE] Spłata długu §9 apparatus
 - `compose/directions.ts`: `bayApparatusDesignation(snBays, index)` — prawda

@@ -111,22 +111,28 @@ describe('buildSceneV3 — wyrocznie §11 per LOD (realna fixtura, 53 stacje)', 
       it('D2/k5b: żadna etykieta nie wystaje za lewą krawędź arkusza (rect.x >= 0; regresja: „Sekcja 1 · 15 kV" przy x≈-56 przed poprawką composeGpz)', () => {
         expect(scene.labels.every((l) => l.rect.x >= 0)).toBe(true);
       });
+
+      it('F6d (SPŁATA DŁUGU k6 — kanały pionowe zejść lateralnych, REBUILD_PLAN_V3 F6d): ZERO kolizji etykieta↔przewód klasy `station-name`/`segment-span`/`segment-lateral` — te trzy klasy są DOWODEM architektonicznym naprawy (przed F6d: `station-name` 25/100/100 na LOD 0/1/2, `segment-span` do 3 na LOD 2; `segment-lateral` był 0 już przed F6d — etykiety leżą obok swojego pionu z konstrukcji, patrz `resolveSegmentLateralLabel`). STOP-notatka (patrz test niżej „D3/k6 RESIDUUM"): `port-caption`/`apparatus` mają PRZEDISTNIEJĄCY, NIEZALEŻNY OD LATERALI dotyk 1px z busem WŁASNEJ stacji (wymaga zmian w `compose/station.ts`/`compose/gpz.ts` — poza autoryzacją F6d) — te dwie klasy NIE są sprawdzane tu jako zero.', () => {
+        const hits = labelWireCollisions(scene);
+        const kinds = new Set(hits.map((h) => h.ownerKind));
+        expect(kinds.has('station-name')).toBe(false);
+        expect(kinds.has('segment-span')).toBe(false);
+        expect(kinds.has('segment-lateral')).toBe(false);
+      });
     });
   }
 
-  it('D3/k6 (DOKUMENTACJA DŁUGU — patrz REBUILD_PLAN_V3 F6d): wyrocznia etykieta↔przewód FAILUJE na realnej fixturze — zejścia lateralne przecinają pasma nazw/podpisów; ten test failuje, gdy dług zostanie spłacony (wtedy zastąpić go asercją noLabelWireCollisions===true per LOD)', () => {
-    // Liczby z sondy F6c (dowód, że wyrocznia łapie REALNY defekt z renderu,
-    // nie hipotetyczny): 28/105/426 kolizji na LOD 0/1/2. Asercje CELOWO
-    // nierówne dokładnym liczbom (każda zmiana geometrii by je przesuwała) —
-    // ale >0 na każdym LOD, a klasy kolizji zgodne ze źródłem architektonicznym
-    // (pasma nazw stacji + podpisy kierunku, NIE segment-lateral, które leżą
-    // obok swojego pionu z konstrukcji — dlatego wyrocznia nie ma wyjątków).
+  it('D3/k6 RESIDUUM (dług F6e — patrz REBUILD_PLAN_V3): po naprawie architektury zejść lateralnych (F6d) pozostaje PRZEDISTNIEJĄCY nakład etykieta↔przewód WŁASNEGO pola stacji — klasa `apparatus` (GPZ: pion własnego pola przecina etykietę „Pole liniowe GPZ" na ~40px — REALNA bisekcja tekstu, nie kosmetyka) i `port-caption` (drop własnego pola muska „kier. Sxx" na ~8px). Niezależne od lateralów (recenzja F6d, git stash: pod-zbiór kolizji HEAD, F6d je REDUKUJE apparatus 5→3, port-caption 318→314). Naprawa wymaga `compose/gpz.ts` (primaryRect pola liniowego) i `compose/station.ts` (podpis portu) — F6e. Asercje STRUKTURALNE (klasy + górna granica bez-wzrostu, nie pin równości): przy SPŁACIE F6e zaostrzyć do noLabelWireCollisions===true; przy ZAMIERZONEJ zmianie geometrii wolno obniżyć granice, NIGDY podwyższyć ani dodać klasy.', () => {
+    const upperBound: Record<SceneLod, number> = { 0: 3, 1: 3, 2: 317 };
     for (const lod of LODS) {
       const scene = buildSceneV3(enm, lod);
       const hits = labelWireCollisions(scene);
-      expect(hits.length).toBeGreaterThan(0);
-      expect(hits.some((h) => h.ownerKind === 'station-name')).toBe(true);
-      expect(hits.every((h) => h.ownerKind !== 'segment-lateral')).toBe(true);
+      const kinds = new Set(hits.map((h) => h.ownerKind));
+      // Wyłącznie klasy „własnego pola" — powrót station-name/segment-span/
+      // segment-lateral (architektura k6) failuje test F6d wyżej ORAZ ten.
+      for (const kind of kinds) expect(['apparatus', 'port-caption']).toContain(kind);
+      expect(hits.length).toBeGreaterThan(0); // dług F6e wciąż istnieje
+      expect(hits.length).toBeLessThanOrEqual(upperBound[lod]); // brak WZROSTU długu
       expect(noLabelWireCollisions(scene)).toBe(false);
     }
   });

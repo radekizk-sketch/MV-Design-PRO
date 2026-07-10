@@ -19,7 +19,7 @@ import {
   stationPortCaptionHeight,
   type StationMeasureInput,
 } from '../measure';
-import { BUS_AXIS_BAND_HEIGHT, computeBands, noBandsOverlap, type StationBandHeights } from '../bands';
+import { BUS_AXIS_BAND_HEIGHT, DESCENT_STRIP_HEIGHT, computeBands, noBandsOverlap, type StationBandHeights } from '../bands';
 import { allColumnsOnGrid, computeColumns, type ComputeColumnsInput } from '../columns';
 import {
   colorSegmentLabelRows,
@@ -249,9 +249,12 @@ describe('V3 layout — bands (spec §5.2): pasma stykają się, nigdy nie nacho
   });
 
   it('wysokość pasma = max po wszystkich stacjach wiersza (nie suma)', () => {
-    // B4 (blok stacji) największy dla s2 (5 pól) — pasmo B4 = dokładnie ta wartość.
+    // B4 (blok stacji) największy dla s2 (5 pól) — pasmo B4 = dokładnie ta
+    // wartość + DESCENT_STRIP_HEIGHT (F6d: strefa rozdzielająca B4/B5 dla
+    // jogu zejścia lateralu, patrz nagłówek `DESCENT_STRIP_HEIGHT` w `bands.ts`
+    // — doliczona JEDNOLICIE do KAŻDEGO wiersza, nie tylko origin).
     const b4Heights = stations.map((s) => stationBlockHeight(s));
-    expect(bandsResult.bands.B4.height).toBe(snapUpForTest(Math.max(...b4Heights)));
+    expect(bandsResult.bands.B4.height).toBe(snapUpForTest(Math.max(...b4Heights) + DESCENT_STRIP_HEIGHT));
   });
 });
 

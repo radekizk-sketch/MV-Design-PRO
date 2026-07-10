@@ -49,6 +49,26 @@ export const BAND_ORDER: readonly BandId[] = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6'
 export const BUS_AXIS_BAND_HEIGHT = 4 * GRID;
 
 /**
+ * F6d (splata dlugu k6, REBUILD_PLAN_V3 F6d, przypadek b -- zejscie lateralu
+ * z WLASNEGO pola odgaleznego stacji-origin): waska strefa PUSTA doliczona
+ * do dolu B4 (stos aparatow), TUZ PRZED B5 (pasmo nazw). Blok aparatow
+ * (`compose/station.ts`) jest umieszczany WYLACZNIE wzgledem `blockTopY`
+ * (gora B4) i wlasnej wysokosci (`stationBlockHeight`, `measure.ts`) --
+ * NIESWIADOM tej strefy, wiec jego geometria sie NIE zmienia; strefa to
+ * czysto dodatkowa rezerwacja WYSOKOSCI pasma B4 (bez zmiany B4.y, tylko
+ * B4.height), ktora przesuwa START B5 (pasmo nazw, pelna szerokosc kolumny)
+ * o `DESCENT_STRIP_HEIGHT` nizej -- otwiera pusty korytarz Y, w ktorym pion
+ * zejscia lateralu moze zrobic jog poziomy (do najblizszej szczeliny
+ * `COLUMN_GAP` miedzy blokami stacji tego wiersza) PRZED wejsciem w Y-zakres
+ * pasma nazw. Stosowana JEDNOLICIE dla KAZDEGO wiersza (main + laterale) --
+ * dzis jog wystepuje tylko na wierszu glownym (jedyny "origin" w
+ * autoryzowanym zakresie, brak zagniezdzonych lateralow), ale jednolite
+ * stosowanie unika specjalnego przypadku per-wiersz i jest nieszkodliwe
+ * (mala stala rezerwacja wysokosci na kazdym wierszu).
+ */
+export const DESCENT_STRIP_HEIGHT = GRID;
+
+/**
  * Wysokości zawartości JEDNEJ stacji/kolumny — wejście `computeBands` (spec
  * §5.2: "wejście = per-stacja wysokości zawartości"). Liczby/teksty pochodzą
  * z `measure.ts` (np. `stationBlockHeight`, `stationNameBandHeight`) — bands
@@ -108,7 +128,12 @@ export function computeBands(
     B1: SEGMENT_LABEL_ROW_HEIGHT * effectiveRowCount,
     B2: BUS_AXIS_BAND_HEIGHT + maxOf(stations.map((s) => s.portCaptionHeight ?? 0), 0),
     B3: maxOf(stations.map((s) => s.derBandHeight ?? 0), 0),
-    B4: maxOf(stations.map((s) => s.stationBlockHeight), 0),
+    // F6d: + DESCENT_STRIP_HEIGHT (patrz nagłówek nad `DESCENT_STRIP_HEIGHT`)
+    // -- doliczone WYŁĄCZNIE tu (koniec pasma B4), więc `blockTopY` (=B4.y,
+    // niezmienione) i wnętrze kompozycji stacji (`compose/station.ts`,
+    // nieświadome tej strefy) są nietknięte; tylko start B5 (`nameSlot.y`)
+    // przesuwa się niżej o tę wysokość.
+    B4: maxOf(stations.map((s) => s.stationBlockHeight), 0) + DESCENT_STRIP_HEIGHT,
     B5: maxOf(stations.map((s) => s.nameBandHeight), 0),
     B6: maxOf(stations.map((s) => s.lateralCorridorHeight ?? 0), 0),
   };

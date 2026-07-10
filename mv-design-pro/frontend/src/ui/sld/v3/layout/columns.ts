@@ -47,7 +47,7 @@
  * faktycznie potrzebnych) — `computeBands` przyjmuje teraz tę liczbę.
  */
 
-import { GRID, type V3Rect } from '../core/grid';
+import { GRID, snapUp, type V3Rect } from '../core/grid';
 import type { StationMeasureInput } from './measure';
 import {
   colorSegmentLabelRows,
@@ -190,4 +190,119 @@ export function computeColumns(input: ComputeColumnsInput): ColumnsResult {
  *  na którym zaczepiają odcinki wewnętrzne kompozycji, `compose/station.ts`). */
 export function allColumnsOnGrid(result: ColumnsResult): boolean {
   return result.columns.every((c) => c.x % GRID === 0 && c.width % GRID === 0 && c.tapX % GRID === 0);
+}
+
+// ---------------------------------------------------------------------------
+// F6d (spłata długu k6, REBUILD_PLAN_V3 F6d, przypadek a — wiersz PRZECINANY
+// przez CUDZE zejście lateralne): rezerwacja kanałów pionowych w JUŻ
+// ZBUDOWANYM (i przesuniętym do współrzędnych globalnych, `shiftRowLayout`)
+// `ColumnsResult` tego wiersza, w miejscach X, gdzie przechodzi pion INNEGO
+// (dalszego w kolejności komponowania, więc leżącego GŁĘBIEJ w grzebieniu)
+// lateralu. Punkty X są ZNANE PRZED zbudowaniem tego wiersza (liczone z
+// magistrali głównej — `buildScene.ts` prepass), więc ten krok jest czystym
+// POST-PROCESSEM na wyniku `computeColumns`: przesuwa kolumny (i przypisane
+// im sloty etykiet segmentów) NA PRAWO od każdego punktu, na tyle, by punkt
+// zyskał `CHANNEL_MIN_CLEARANCE` prześwitu z KAŻDEJ strony od treści
+// (kolumna + jej pasmo nazw B5, oba o szerokości `column.width` — patrz
+// `ColumnResult.nameSlot`). Bands (Y) są NIETKNIĘTE — kanał to wyłącznie
+// operacja na osi X, contentBottom/blockTopY/busAxisY tego wiersza się nie
+// zmieniają (spec §5.2 bands są 1D-Y, columns 1D-X, rozdzielone).
+//
+// DECYZJA (kolumna 0 WYŁĄCZONA z przesunięcia): kolumna 0 tego wiersza jest
+// już dx-wyrównana (`buildScene.ts`) pod WŁASNY kanał zejścia tego lateralu
+// (`entryTapX === channelX` tego wiersza, §16) — przesunięcie kolumny 0 by
+// zepsuło ten niezmiennik. Punkt kanału, który wypadłby W/PRZED kolumną 0,
+// jest degeneracją (c, REBUILD_PLAN_V3 F6d) — na REALNEJ fixturze NIE
+// występuje (branchRuns są w kolejności stacji magistrali głównej, więc
+// kanały LATERALI PÓŹNIEJSZYCH w kolejności komponowania leżą w regule
+// ogólnej NA PRAWO od origin bieżącego wiersza — dowód empiryczny w
+// raporcie F6d); STOP-notatka zamiast próby (błędnej) korekty geometrii.
+// ---------------------------------------------------------------------------
+
+/** Minimalny prześwit wymagany z KAŻDEJ strony punktu kanału od treści
+ *  sąsiedniej kolumny (spec F6d: szerokość kanału całkowita >= 2×GRID). */
+const CHANNEL_MIN_CLEARANCE = GRID;
+
+export interface InsertColumnChannelsResult {
+  readonly result: ColumnsResult;
+  /** Notatki STOP dla degeneracji (c) — punkt kanału w/przed kolumną 0. */
+  readonly stopNotes: readonly string[];
+}
+
+/** Zasięg X „treści" przypisanej indeksowi kolumny `i`: UNIA bloku+pasma
+ *  nazw (`col.x`..`col.x+col.width`) i — gdy stacja `i` ma slot etykiety
+ *  segmentu wchodzącego (B1) — TEGO slotu (`computeSegmentLabelSlotX`
+ *  wyśrodkowuje go na przęśle tap-do-tap, więc bywa PRZESUNIĘTY względem
+ *  własnej kolumny, wystając w szczelinę `COLUMN_GAP` PRZED nią — właśnie
+ *  tam, gdzie ten moduł chce wstawiać kanały). Bez tej unii kanał mógłby
+ *  ominąć blok/pasmo nazw, ale wciąż przeciąć etykietę B1 (znalezisko F6d —
+ *  patrz raport: 2 kolizje klasy `segment-span` na realnej fixturze przed tą
+ *  poprawką). */
+interface ContentBounds {
+  readonly left: number;
+  readonly right: number;
+}
+
+function computeContentBounds(
+  columns: readonly ColumnResult[],
+  slots: readonly SegmentLabelSlotResult[],
+): ContentBounds[] {
+  const slotByIndex = new Map(slots.map((s) => [s.stationIndex, s]));
+  return columns.map((col, i) => {
+    const slot = slotByIndex.get(i);
+    const left = slot ? Math.min(col.x, slot.rect.x) : col.x;
+    const right = slot ? Math.max(col.x + col.width, slot.rect.x + slot.rect.width) : col.x + col.width;
+    return { left, right };
+  });
+}
+
+/** Czy `point` leży (z prześwitem `CHANNEL_MIN_CLEARANCE` z każdej strony)
+ *  w obrębie zasięgu treści `bounds`. */
+function pointInDangerZone(point: number, bounds: ContentBounds): boolean {
+  return point >= bounds.left - CHANNEL_MIN_CLEARANCE && point <= bounds.right + CHANNEL_MIN_CLEARANCE;
+}
+
+/**
+ * Wstawia kanały pionowe (przypadek a, patrz nagłówek sekcji) dla listy
+ * punktów X (współrzędne GLOBALNE, ten sam układ co `input.columns[].x` —
+ * wołający wywołuje to PO `shiftRowLayout`, nie przed). Deterministyczna:
+ * punkty przetwarzane w porządku rosnącym (`sort`), niezależnie od porządku
+ * wejściowego (P7); kolumna 0 nigdy nie jest przesuwana (patrz DECYZJA).
+ */
+export function insertColumnChannels(
+  input: ColumnsResult,
+  channelPointsX: readonly number[],
+  rowLabel: string,
+): InsertColumnChannelsResult {
+  if (channelPointsX.length === 0) return { result: input, stopNotes: [] };
+
+  const stopNotes: string[] = [];
+  let columns = input.columns.map((c) => ({ ...c, nameSlot: { ...c.nameSlot } }));
+  let slots = input.segmentLabelSlots.map((s) => ({ ...s, rect: { ...s.rect } }));
+  let totalWidth = input.totalWidth;
+
+  const sortedPoints = [...new Set(channelPointsX)].sort((a, b) => a - b);
+
+  for (const point of sortedPoints) {
+    const bounds = computeContentBounds(columns, slots);
+    const idx = bounds.findIndex((b) => pointInDangerZone(point, b));
+    if (idx === -1) continue; // już bezpieczny (leży w istniejącej szczelinie z prześwitem)
+    if (idx === 0) {
+      stopNotes.push(
+        `${rowLabel}: kanał zejścia lateralu przy X=${point} wypadłby w/przed kolumną 0 tego wiersza — degeneracja (c, REBUILD_PLAN_V3 F6d), pominięto (kolumna 0 jest dx-wyrównana pod WŁASNY kanał, nie może być przesunięta).`,
+      );
+      continue;
+    }
+    const delta = snapUp(point + CHANNEL_MIN_CLEARANCE - bounds[idx].left);
+    if (delta <= 0) continue;
+    columns = columns.map((c, i) =>
+      i < idx
+        ? c
+        : { ...c, x: c.x + delta, tapX: c.tapX + delta, nameSlot: { ...c.nameSlot, x: c.nameSlot.x + delta } },
+    );
+    slots = slots.map((s) => (s.stationIndex >= idx ? { ...s, rect: { ...s.rect, x: s.rect.x + delta } } : s));
+    totalWidth += delta;
+  }
+
+  return { result: { columns, segmentLabelSlots: slots, totalWidth, segmentLabelRowCount: input.segmentLabelRowCount }, stopNotes };
 }
