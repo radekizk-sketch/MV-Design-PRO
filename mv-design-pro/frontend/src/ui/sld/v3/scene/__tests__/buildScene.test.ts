@@ -28,7 +28,9 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import {
   buildSceneV3,
   allSceneGeometryOnGrid,
+  labelWireCollisions,
   noForbiddenDirectionTokens,
+  noLabelWireCollisions,
   noSceneSymbolOverlaps,
   type SceneLod,
   type SceneV3,
@@ -105,8 +107,29 @@ describe('buildSceneV3 — wyrocznie §11 per LOD (realna fixtura, 53 stacje)', 
       it('§9: brak zakazanych tokenów WE/WY/ODG na ŻADNEJ etykiecie sceny (wszystkie ownerKind)', () => {
         expect(noForbiddenDirectionTokens(scene)).toBe(true);
       });
+
+      it('D2/k5b: żadna etykieta nie wystaje za lewą krawędź arkusza (rect.x >= 0; regresja: „Sekcja 1 · 15 kV" przy x≈-56 przed poprawką composeGpz)', () => {
+        expect(scene.labels.every((l) => l.rect.x >= 0)).toBe(true);
+      });
     });
   }
+
+  it('D3/k6 (DOKUMENTACJA DŁUGU — patrz REBUILD_PLAN_V3 F6d): wyrocznia etykieta↔przewód FAILUJE na realnej fixturze — zejścia lateralne przecinają pasma nazw/podpisów; ten test failuje, gdy dług zostanie spłacony (wtedy zastąpić go asercją noLabelWireCollisions===true per LOD)', () => {
+    // Liczby z sondy F6c (dowód, że wyrocznia łapie REALNY defekt z renderu,
+    // nie hipotetyczny): 28/105/426 kolizji na LOD 0/1/2. Asercje CELOWO
+    // nierówne dokładnym liczbom (każda zmiana geometrii by je przesuwała) —
+    // ale >0 na każdym LOD, a klasy kolizji zgodne ze źródłem architektonicznym
+    // (pasma nazw stacji + podpisy kierunku, NIE segment-lateral, które leżą
+    // obok swojego pionu z konstrukcji — dlatego wyrocznia nie ma wyjątków).
+    for (const lod of LODS) {
+      const scene = buildSceneV3(enm, lod);
+      const hits = labelWireCollisions(scene);
+      expect(hits.length).toBeGreaterThan(0);
+      expect(hits.some((h) => h.ownerKind === 'station-name')).toBe(true);
+      expect(hits.every((h) => h.ownerKind !== 'segment-lateral')).toBe(true);
+      expect(noLabelWireCollisions(scene)).toBe(false);
+    }
+  });
 
   it('§9 (spłata długu F6b): etykiety `apparatus` NIE noszą surowych WE/WY/ODG — oznacznik z konwencji Q/T, gdy dane nie dają realnego oznacznika', () => {
     const scene = buildSceneV3(enm, 2);

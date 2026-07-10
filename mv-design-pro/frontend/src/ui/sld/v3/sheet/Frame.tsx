@@ -93,20 +93,58 @@ export interface SheetFrameProps {
   readonly children?: ReactNode;
 }
 
-const LEGEND_ROW_HEIGHT = 24;
 const LEGEND_GLYPH_COLUMN_WIDTH = 40;
 const LEGEND_ORIGIN = { x: GRID, y: GRID };
+/** Wysokość wiersza minimalna (dotychczasowa stała — zachowana dla
+ *  najmniejszych glifów, np. `breaker`/`noPoint` 16px) oraz odstęp pionowy
+ *  MIĘDZY wierszami (spec P1: przestrzeń wiersza nie może być węższa niż
+ *  wymaga treść — glif WYŻSZY niż 24px, np. `fuseSwitch` 32px lub
+ *  `transformer2W` 40px, dotąd nadpisywał wiersz NIŻEJ, patrz D1/k5a). */
+const LEGEND_ROW_MIN_HEIGHT = 24;
+const LEGEND_ROW_PADDING = 8;
+/** Wysokość próbki linii legendy (kabel/linia napowietrzna) — brak symbolu
+ *  IEC, tylko odcinek, więc wysokość porównywalna z najmniejszym glifem. */
+const LEGEND_LINE_SAMPLE_HEIGHT = 16;
 
-function LegendLineSample(props: { readonly id: string; readonly y: number }): JSX.Element {
+export interface LegendRowLayout {
+  readonly entry: SheetLegendEntry;
+  readonly y: number;
+  readonly height: number;
+}
+
+function legendEntryContentHeight(entry: SheetLegendEntry): number {
+  return entry.kind === 'symbol' ? SYMBOL_DEFS[entry.id as SymbolId].height : LEGEND_LINE_SAMPLE_HEIGHT;
+}
+
+/**
+ * Layout wierszy legendy jako prefix-sum wysokości TREŚCI (nie stały krok) —
+ * czysta funkcja, eksportowana dla testu geometrii (D1/k5a: „prostokąty
+ * wierszy legendy rozłączne — policz z geometrii, nie snapshot"). Każdy
+ * wiersz rezerwuje `max(LEGEND_ROW_MIN_HEIGHT, treść + padding)`, więc glif
+ * WYŻSZY niż domyślne 24px (fuseSwitch/transformer2W) nie wchodzi w wiersz
+ * następny — kolejny wiersz zaczyna się DOKŁADNIE po końcu poprzedniego.
+ */
+export function computeLegendRowLayout(entries: readonly SheetLegendEntry[]): readonly LegendRowLayout[] {
+  const rows: LegendRowLayout[] = [];
+  let y = 0;
+  for (const entry of entries) {
+    const height = Math.max(LEGEND_ROW_MIN_HEIGHT, legendEntryContentHeight(entry) + LEGEND_ROW_PADDING);
+    rows.push({ entry, y, height });
+    y += height;
+  }
+  return rows;
+}
+
+function LegendLineSample(props: { readonly id: string; readonly centerY: number }): JSX.Element {
   const dash = props.id === 'overhead' ? '6 3 1 3' : undefined;
   return (
     <line
       data-testid={`sld-sheet-legend-line-${props.id}`}
       data-parity-key={`legend-line-${props.id}`}
       x1={0}
-      y1={props.y + 8}
+      y1={props.centerY}
       x2={28}
-      y2={props.y + 8}
+      y2={props.centerY}
       stroke={SHEET_STROKE}
       strokeWidth={1.6}
       strokeDasharray={dash}
@@ -114,23 +152,37 @@ function LegendLineSample(props: { readonly id: string; readonly y: number }): J
   );
 }
 
-function SheetLegend(props: { readonly entries: readonly SheetLegendEntry[] }): JSX.Element {
+function SheetLegend(props: {
+  readonly entries: readonly SheetLegendEntry[];
+  readonly sheetHeight: number;
+}): JSX.Element {
+  const rows = computeLegendRowLayout(props.entries);
+  // D1b (F6c): legenda w DOLNYM-lewym rogu arkusza, nie górnym — górny-lewy
+  // róg zajmuje GPZ (scena zaczyna się w originie arkusza; sekcja WN i
+  // etykieta „Sekcja 1 · …" lądowały POD legendą — kolizja strefy ramki z
+  // treścią, potwierdzona renderem F6c). Dolny-lewy jest wolny na układzie
+  // grzebieniowym (laterale schodzą schodkowo W PRAWO); REZERWACJA strefy
+  // legendy względem treści (gwarancja, nie heurystyka) = zakres F6d.
+  const legendHeight = rows.length > 0 ? rows[rows.length - 1].y + rows[rows.length - 1].height : 0;
+  const originY = Math.max(LEGEND_ORIGIN.y, props.sheetHeight - legendHeight - LEGEND_ORIGIN.y);
   return (
     <g
       data-testid="sld-sheet-legend"
       data-parity-key="sheet-legend"
-      transform={`translate(${LEGEND_ORIGIN.x}, ${LEGEND_ORIGIN.y})`}
+      transform={`translate(${LEGEND_ORIGIN.x}, ${originY})`}
     >
-      {props.entries.map((entry, index) => {
-        const y = index * LEGEND_ROW_HEIGHT;
+      {rows.map(({ entry, y, height }) => {
         const Glyph = entry.kind === 'symbol' ? SYMBOL_GLYPHS[entry.id as SymbolId] : undefined;
+        const centerY = y + height / 2;
+        const glyphY = Glyph ? y + (height - SYMBOL_DEFS[entry.id as SymbolId].height) / 2 : y;
         return (
           <g key={entry.id} data-testid={`sld-sheet-legend-item-${entry.id}`} data-parity-key={`legend-item-${entry.id}`}>
-            {Glyph ? <Glyph x={4} y={y} /> : <LegendLineSample id={entry.id} y={y} />}
+            {Glyph ? <Glyph x={4} y={glyphY} /> : <LegendLineSample id={entry.id} centerY={centerY} />}
             <text
               data-parity-key={`legend-label-${entry.id}`}
               x={LEGEND_GLYPH_COLUMN_WIDTH}
-              y={y + 13}
+              y={centerY}
+              dominantBaseline="middle"
               fontFamily="sans-serif"
               fontSize={LABEL_TYPOGRAPHY.t3.fontSize}
               fontWeight={LABEL_TYPOGRAPHY.t3.fontWeight}
@@ -280,7 +332,7 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
         >
           {`Skala ${scaleLabel}`}
         </text>
-        <SheetLegend entries={legend} />
+        <SheetLegend entries={legend} sheetHeight={height} />
         <g data-testid="sld-sheet-content" data-parity-key="sheet-content">
           {children}
         </g>

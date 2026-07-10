@@ -4,7 +4,8 @@
 import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
 
-import { SheetFrame } from '../Frame';
+import { rectsOverlap, type V3Rect } from '../../core/grid';
+import { computeLegendRowLayout, SheetFrame, type SheetLegendEntry } from '../Frame';
 
 describe('V3 sheet — SheetFrame (spec §2: strefy referencyjne co 400px)', () => {
   it('1600×800 (4 kolumny × 2 wiersze) ⇒ znaczniki stref 1..4 i A..B obecne', () => {
@@ -68,6 +69,41 @@ describe('V3 sheet — SheetFrame (legenda, spec §2: symbole i linie)', () => {
     const legend = container.querySelector('[data-testid="sld-sheet-legend"]');
     expect(legend!.querySelectorAll('[data-symbol-canon]').length).toBe(1);
   });
+
+  it(
+    'D1/k5a: wiersze legendy domyślnej ROZŁĄCZNE geometrycznie — glif WYŻSZY niż ' +
+      'wiersz minimalny (fuseSwitch 32px, transformer2W 40px) NIE zachodzi na wiersz niżej ' +
+      '(regresja: dawny stały krok 24px nadpisywał kolejny wiersz)',
+    () => {
+      const { container } = render(<SheetFrame width={800} height={400} scaleLabel="1:1000" />);
+      const legend = container.querySelector('[data-testid="sld-sheet-legend"]')!;
+      const entries: SheetLegendEntry[] = Array.from(
+        legend.querySelectorAll('[data-testid^="sld-sheet-legend-item-"]'),
+      ).map((item) => ({
+        kind: item.querySelector('[data-symbol-canon]') ? 'symbol' : 'line',
+        id: item.getAttribute('data-testid')!.replace('sld-sheet-legend-item-', ''),
+        labelPl: '',
+      }));
+      expect(entries.length).toBeGreaterThanOrEqual(9); // 7 symbole + 2 linie (default)
+
+      const rows = computeLegendRowLayout(entries);
+      // Pełna szerokość wiersza jest nieistotna dla kolizji Y — używamy tej
+      // samej szerokości >0 dla wszystkich wierszy (rectsOverlap sprawdza AND
+      // obu osi; x nakłada się celowo, żeby test badał WYŁĄCZNIE osobność Y).
+      const rects: V3Rect[] = rows.map((r) => ({ x: 0, y: r.y, width: 100, height: r.height }));
+      for (let i = 0; i < rects.length; i++) {
+        for (let j = i + 1; j < rects.length; j++) {
+          expect(rectsOverlap(rects[i], rects[j])).toBe(false);
+        }
+      }
+      // Kontrprzykład samo-chroniący: dawna stała wysokość 24px BY zafailowała
+      // dla fuseSwitch(h=32)/transformer2W(h=40) — potwierdzamy, że wysokość
+      // wiersza rzeczywiście rośnie względem glifu (nie jest to zawsze 24).
+      const tallRow = rows.find((r) => r.entry.id === 'transformer2W');
+      expect(tallRow).toBeTruthy();
+      expect(tallRow!.height).toBeGreaterThan(24);
+    },
+  );
 });
 
 describe('V3 sheet — SheetFrame (zakaz klas Tailwind w SVG <text>, lekcja z 5a235ce)', () => {

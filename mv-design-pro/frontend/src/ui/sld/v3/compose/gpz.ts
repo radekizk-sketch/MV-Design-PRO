@@ -398,6 +398,37 @@ function sectionLayoutById(layouts: readonly SectionLayout[]): ReadonlyMap<strin
   return new Map(layouts.map((l) => [l.section.sectionId, l]));
 }
 
+/** Tekst etykiety sekcji (spec §4 „Szyna: napięcie nad lewym końcem szyny",
+ *  kanon v2 SectionLabel) — WYODRĘBNIONE (użycie w DWÓCH miejscach: pomiar
+ *  marginesu lewego niżej i budowa etykiety w pętli sekcji), zero
+ *  duplikacji formuły tekstu. */
+function sectionLabelText(section: CanonicalGpzSection): string {
+  return `${section.label} · ${section.busVoltageKv} kV`;
+}
+
+/**
+ * D2/k5b (BINDING): etykieta sekcji jest WYŚRODKOWANA na `busLeftX`
+ * (`resolveSimpleAnchoredLabel`, placement 'above': `x = anchor.x - width/2`)
+ * — dla sekcji NAJBARDZIEJ W LEWO (`order` najmniejszy) `busLeftX` = start
+ * layoutu sekcji, a bez marginesu ten start leży w originie GPZ (x=0 w
+ * scenie, `buildScene.ts` zaczepia GPZ na lewym krańcu arkusza) — etykieta
+ * wystawałaby w lewo o `width/2` NA UJEMNE `x` (obcięta lewą krawędzią
+ * arkusza, potwierdzone na fixturze: „Sekcja 1 · 15 kV" przy x≈-56).
+ * Naprawa TAM GDZIE PRZYCZYNA (spec §4 „etykieta ma slot WŁASNY, leader
+ * wyjątkiem" — clamp pozycji zniekształciłby ten slot, przesunięcie startu
+ * układu sekcji go zachowuje): start sekcji przesunięty w prawo o połowę
+ * szerokości etykiety NAJBARDZIEJ LEWEJ sekcji (ta sama formuła tekstu jak
+ * przy budowie `sectionLabels` niżej — `sectionLabelText`). Sekcje inne niż
+ * najbardziej lewa mogą też mieć etykietę szerszą niż ich własna kolumna,
+ * ale wystają w kolumnę SĄSIADA (SECTION_GAP), nie za krawędź arkusza — poza
+ * zakresem D2 (potwierdzone na fixturze: 1 sekcja, brak sąsiada z tej strony). */
+function firstSectionLabelLeftMargin(sections: readonly CanonicalGpzSection[]): number {
+  if (sections.length === 0) return 0;
+  const first = [...sections].sort((a, b) => a.order - b.order)[0];
+  const halfWidth = Math.ceil(measureLabelWidth(sectionLabelText(first), 't2') / 2);
+  return snapUp(halfWidth);
+}
+
 /** Sekcja docelowa transformatora — 1:1 z v2 (`GpzCanonicalRenderer.tsx`
  *  `TransformersBlock`): mapowanie przez `lvSectionId`, fallback po indeksie
  *  wśród sekcji uporządkowanych `order`. */
@@ -520,7 +551,10 @@ export function composeGpz(props: GpzCanonicalRendererProps, origin: { readonly 
     });
 
   // -- 2. Sekcje SN — layout X (prefix-sum), niezależny od WN/TR. -----------
-  const sectionsStartX = hvSections.length > 0 ? hvLineBayCursor + SECTION_GAP : originX;
+  // D2/k5b (patrz `firstSectionLabelLeftMargin`): rezerwacja slotu etykiety
+  // sekcji najbardziej w lewo, żeby nie wystawała za lewą krawędź arkusza.
+  const sectionsStartX =
+    (hvSections.length > 0 ? hvLineBayCursor + SECTION_GAP : originX) + firstSectionLabelLeftMargin(props.sections);
   const sectionLayouts = layoutSections(props.sections, sectionsStartX);
   const sectionById = sectionLayoutById(sectionLayouts);
 
@@ -594,7 +628,7 @@ export function composeGpz(props: GpzCanonicalRendererProps, origin: { readonly 
     sectionLabels.push({
       ownerRef: `${layout.section.sectionId}#label`,
       ownerKind: 'busbar-voltage',
-      text: `${layout.section.label} · ${layout.section.busVoltageKv} kV`,
+      text: sectionLabelText(layout.section),
       labelClass: 't2',
       anchor: { x: busLeftX, y: snBusY },
       placement: 'above',

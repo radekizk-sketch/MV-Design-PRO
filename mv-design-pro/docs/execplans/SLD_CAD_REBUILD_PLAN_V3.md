@@ -273,6 +273,51 @@ i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
        rozszerzyć wyrocznię o odcinki LUB rezerwować korytarz pionowy w
        kolumnach.
 
+##### F6c. [DONE — częściowo; reszta zaprojektowana jako F6d] Naprawy z wizualnego DoD
+- D1/k5a NAPRAWIONE (`sheet/Frame.tsx`, autoryzowana zmiana F4): wysokość
+  wiersza legendy content-driven (prefix-sum wysokości glifu + padding,
+  min 24px) — dawny stały krok 24px był nadpisywany przez glify 32/40px
+  (fuseSwitch/transformer2W). Test geometrii rozłączności wierszy
+  (samo-chroniący: asertuje wysokość > 24 dla transformer2W).
+- D1b (`sheet/Frame.tsx`): legenda przeniesiona do DOLNEGO-lewego rogu —
+  górny-lewy zajmuje GPZ (etykieta „Sekcja 1 · …" i sekcja WN lądowały pod
+  legendą; kolizja strefy ramki z treścią potwierdzona renderem po D2).
+  Dolny-lewy wolny na układzie grzebieniowym (heurystyka pozycji, NIE
+  gwarancja) — REZERWACJA strefy legendy względem treści = zakres F6d.
+- D2/k5b NAPRAWIONE (`compose/gpz.ts`): start layoutu sekcji przesunięty o
+  połowę szerokości etykiety najbardziej lewej sekcji („Sekcja 1 · 15 kV"
+  była centrowana na busLeftX = origin sceny ⇒ x≈−56, obcięta krawędzią).
+  Test per LOD: żadna etykieta sceny z rect.x < 0.
+- D3/k6 CZĘŚCIOWO: wyrocznia `labelWireCollisions`/`noLabelWireCollisions`
+  dodana do `buildScene.ts` (odcinki ortogonalne jako prostokąty ±1px; BEZ
+  wyjątków — sondą potwierdzone 0 kolizji klasy segment-lateral, etykiety
+  pionów leżą obok swojego odcinka z konstrukcji). Na fixturze wyrocznia
+  FAILUJE: **28/105/426 kolizji na LOD 0/1/2** (dowód, że łapie defekt z
+  renderu). Test-dokumentacja długu w buildScene.test.ts (failuje przy
+  spłacie — wtedy zastąpić asercją zieloną per LOD).
+- STOP (uczciwa eskalacja zamiast hacka): NAPRAWA k6 wymaga KANAŁÓW
+  PIONOWYCH — źródło architektoniczne: `connectVertical` prowadzi zejście
+  JEDNYM prostym pionem od osi magistrali przez pasmo nazw WŁASNEJ
+  stacji-origin (pion wychodzi WEWNĄTRZ footprintu bloku, a pasmo B5
+  rozciąga się na CAŁĄ szerokość bloku) i przez pełne pośrednie wiersze
+  (B3/B5). Poprawka per-etykieta jest niemożliwa bez zmian F4; poprawka
+  per-trasa wymaga rezerwacji w F3. Zakres ZAPROJEKTOWANY jako F6d.
+
+##### F6d. [NEXT] Kanały pionowe zejść lateralnych (spłata k6)
+- Rezerwacje (F3, zmiany AUTORYZOWANE tym wpisem): (a) wiersz PRZECINANY
+  przez cudze zejście wstawia szczelinę między bloki stacji (przesunięcie
+  kolumn na prawo od X zejścia; X-y wszystkich zejść znane PRZED
+  komponowaniem lateralów — porty odgałęźne liczą się z magistrali);
+  (b) wiersz ORIGIN: wyjście zejścia z bloku prowadzone jogiem do szczeliny
+  między blokami PONIŻEJ stosu aparatów a POWYŻEJ pasma nazw (wymaga wąskiej
+  strefy rozdzielającej B4/B5 w bands.ts) — trasa wieloodcinkowa ortogonalna
+  (buduj punkty jawnie; §16 endsAtPorts + siatka zachowane).
+- DoD: `noLabelWireCollisions` zielona na LOD 0/1/2 (test-dokumentacja długu
+  zastąpiony); wyrocznie §11 istniejące zielone; determinizm; render 1:1
+  potwierdza brak przewodów przez tekst; recenzja Opus; commit.
+- F7 (render-odbiór) NIE MOŻE zamknąć się bez F6d — wyrocznia wchodzi do
+  skryptu akceptacyjnego.
+
 ##### F6b-1. [DONE] Spłata długu §9 apparatus
 - `compose/directions.ts`: `bayApparatusDesignation(snBays, index)` — prawda
   danych > konwencja (designation przechodzi wprost, gdy niepuste i nie jest

@@ -1073,3 +1073,66 @@ export function noSceneSymbolOverlaps(scene: SceneV3): boolean {
   }
   return true;
 }
+
+/** Grubość „prostokąta" odcinka w wyroczni etykieta↔przewód niżej: ±1px
+ *  wokół osi linii (stroke bazowy 1.6-2px, patrz `compose/preview.tsx`
+ *  `SEGMENT_STROKE_WIDTH`) — celowo ZANIŻONA względem realnego stroke, żeby
+ *  wyrocznia łapała PRZECIĘCIA tekstu przez linię, a nie stykanie się
+ *  krawędziami (styk krawędzi slotu z przewodem to nie defekt czytelności). */
+const WIRE_PROBE_HALF_THICKNESS = 1;
+
+export interface LabelWireCollision {
+  readonly ownerRef: string;
+  readonly ownerKind: string;
+  readonly text: string;
+  readonly segmentIndex: number;
+}
+
+/**
+ * Wyrocznia D3/k6 (rozszerzenie §11.1 o klasę etykieta↔PRZEWÓD, nieobecną w
+ * `overlapProbe` z F4, który sprawdza wyłącznie etykieta↔etykieta i
+ * etykieta↔symbol): ŻADEN prosty pododcinek ŻADNEGO segmentu sceny nie
+ * przecina prostokąta ŻADNEJ etykiety. Odcinki są ortogonalne z konstrukcji
+ * (§5.4), więc pododcinek = prostokąt o grubości `2×WIRE_PROBE_HALF_THICKNESS`.
+ *
+ * BEZ WYJĄTKÓW: etykiety `segment-lateral` (obrócone, wzdłuż pionu) leżą
+ * OBOK swojego odcinka z konstrukcji (`resolveSegmentLateralLabel`,
+ * `layout/labels.ts` — slot odsunięty od osi linii) — potwierdzone sondą na
+ * realnej fixturze: 0 kolizji tej klasy na LOD 0/1/2, więc wyjątek „własny
+ * odcinek" byłby martwym kodem maskującym przyszłe regresje.
+ *
+ * STAN (F6c, dług zapisany w REBUILD_PLAN_V3 F6d): wyrocznia na realnej
+ * fixturze FAILUJE — 28/105/426 kolizji na LOD 0/1/2. Źródło architektoniczne:
+ * zejścia lateralne (`connectVertical`) biegną JEDNYM prostym pionem od osi
+ * magistrali przez pasmo nazw WŁASNEJ stacji-origin i przez CAŁE pośrednie
+ * wiersze (ich pasma nazw B5 i podpisów B3). Naprawa wymaga kanałów
+ * pionowych (rezerwacja korytarza w kolumnach wierszy przecinanych +
+ * pas wyjścia zejścia w pasmach wiersza origin) — zmiany w F3
+ * (`bands.ts`/`columns.ts`), poza autoryzacją F6c; zaprojektowane jako F6d.
+ */
+export function labelWireCollisions(scene: SceneV3): readonly LabelWireCollision[] {
+  const hits: LabelWireCollision[] = [];
+  for (const label of scene.labels) {
+    for (let si = 0; si < scene.segments.length; si++) {
+      const pts = scene.segments[si].points;
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1];
+        const b = pts[i];
+        const wireRect: V3Rect = {
+          x: Math.min(a.x, b.x) - WIRE_PROBE_HALF_THICKNESS,
+          y: Math.min(a.y, b.y) - WIRE_PROBE_HALF_THICKNESS,
+          width: Math.abs(b.x - a.x) + 2 * WIRE_PROBE_HALF_THICKNESS,
+          height: Math.abs(b.y - a.y) + 2 * WIRE_PROBE_HALF_THICKNESS,
+        };
+        if (rectsOverlap(label.rect, wireRect)) {
+          hits.push({ ownerRef: label.ownerRef, ownerKind: label.ownerKind, text: label.text, segmentIndex: si });
+        }
+      }
+    }
+  }
+  return hits;
+}
+
+export function noLabelWireCollisions(scene: SceneV3): boolean {
+  return labelWireCollisions(scene).length === 0;
+}
