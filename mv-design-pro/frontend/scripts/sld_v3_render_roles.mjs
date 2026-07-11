@@ -13,6 +13,17 @@
  * Wyjście: PNG w `mv-design-pro/docs/sld/renders/v3/` (patrz raport F7 —
  * decyzja o (nie)commitowaniu leży po stronie recenzenta/nadzorcy, ten skrypt
  * tylko zapisuje pliki). HTML pośrednie w scratchpadzie (NIE w repo).
+ *
+ * F8a-2 — FIX-2 (recenzja Opusa): dawna wersja tego harnessu zakładała, że
+ * `SldCanvasV3` fituje kamerę ZAWSZE do bboxa LOD 2 (patrz historia k4,
+ * REBUILD_PLAN_V3 F6b-2) i dorzucała WŁASNĄ kompensację clipem/dsf dla
+ * L0/L1 (`toWorldRect(sceneL1.bbox)`/`buildSceneV3(enm, 0).bbox`), żeby
+ * mały-rysunek-w-rogu był czytelny na PNG. Od F8a (k4.1, ROZWIĄZANE w
+ * `canvas/SldCanvasV3.tsx`) kamera produkcyjna fituje do bboxa TEGO LOD, do
+ * którego przekazano `lodOverride` — kompensacja harnessu jest teraz
+ * SPRZECZNA z kamerą (kadrowałaby DRUGI RAZ to, co kamera już poprawnie
+ * wykadrowała), usunięta. `cameraTransformFor` niżej reużywa 1:1 logikę
+ * wyboru celu fitu z `SldCanvasV3`.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -50,14 +61,22 @@ const FULL_W = 1920;
 const FULL_H = 1080;
 
 /** Ten sam obliczenie kamery, co `SldCanvasV3` wykonuje WEWNĘTRZNIE przy
- *  mount (`fitBbox` zawsze z LOD 2 — patrz `canvas/SldCanvasV3.tsx`
- *  `useMemo(() => boundingBoxOfRect(buildSceneV3(snapshot, 2).bbox), ...)`),
- *  reużyte tu 1:1, żeby przeliczyć world→screen dla obszarów zoomu BEZ
- *  duplikowania/zgadywania liczb pikseli (k4, REBUILD_PLAN_V3 F6b-2 —
- *  kamera fituje WYŁĄCZNIE do bboxa LOD 2, niezależnie od `lodOverride`). */
-function cameraTransformFor(viewportSize) {
-  const fitBbox = boundingBoxOfRect(buildSceneV3(enm, 2).bbox);
-  return computeInitialCameraState(fitBbox, viewportSize).transform;
+ *  mount — patrz `canvas/SldCanvasV3.tsx` (`fitTargetLod = lodOverride ?? 2`,
+ *  `fitBbox = lodBboxes[fitTargetLod]`): F8a-2 (recenzja FIX-2) skoryguje
+ *  dawne (BŁĘDNE) założenie tego harnessu, że kamera fituje ZAWSZE do bboxa
+ *  LOD 2 — od F8a kamera fituje do bboxa TEGO LOD, do którego wołający
+ *  przekazał `lodOverride` (k4.1, ROZWIĄZANE w produkcyjnym kodzie). Ten
+ *  helper reużywa 1:1 tę samą logikę wyboru celu fitu, żeby przeliczyć
+ *  world→screen dla obszarów zoomu BEZ duplikowania/zgadywania liczb
+ *  pikseli. */
+function cameraTransformFor(viewportSize, lodOverride) {
+  const fitTargetLod = lodOverride ?? 2;
+  const lodBboxes = {
+    0: boundingBoxOfRect(buildSceneV3(enm, 0).bbox),
+    1: boundingBoxOfRect(buildSceneV3(enm, 1).bbox),
+    2: boundingBoxOfRect(buildSceneV3(enm, 2).bbox),
+  };
+  return computeInitialCameraState(lodBboxes[fitTargetLod], viewportSize, lodBboxes).transform;
 }
 
 function unionWorldRect(rects) {
@@ -70,9 +89,11 @@ function unionWorldRect(rects) {
 
 /** Screen-space clip (px) dla Playwright `page.screenshot({ clip })`, z world
  *  rect + margines w jednostkach świata, przeliczony przez TĘ SAMĄ kamerę,
- *  którą renderuje kanwa (`cameraTransformFor`). */
-function clipFor(worldRect, viewportSize, marginWorld = 4 * GRID) {
-  const transform = cameraTransformFor(viewportSize);
+ *  którą renderuje kanwa (`cameraTransformFor`) — domyślnie dla `lodOverride=2`
+ *  (zoomy projektanta, LOD 2 zawsze), jawny `lodOverride` dla zoomów na
+ *  scenach L0/L1. */
+function clipFor(worldRect, viewportSize, marginWorld = 4 * GRID, lodOverride = 2) {
+  const transform = cameraTransformFor(viewportSize, lodOverride);
   const topLeft = worldToScreen({ x: worldRect.minX - marginWorld, y: worldRect.minY - marginWorld }, transform);
   const bottomRight = worldToScreen({ x: worldRect.maxX + marginWorld, y: worldRect.maxY + marginWorld }, transform);
   return {
@@ -134,20 +155,6 @@ const stationWorldRect = unionWorldRect(stationRects);
 //    nagłówek — nakładka koloruje tu WYŁĄCZNIE symbole, nie przewody stacji).
 // ---------------------------------------------------------------------------
 
-/** k4 (REBUILD_PLAN_V3 F6b-2, STOP-notatka ZNALEZISKO — patrz nagłówek
- *  `canvas/SldCanvasV3.tsx`: `fitBbox` liczony ZAWSZE z `buildSceneV3(snapshot, 2)`,
- *  NIEZALEŻNIE od `lodOverride`): przy `lodOverride=0`/`1` kamera fituje do
- *  WIĘKSZEGO bboxa L2, więc mniejsza faktyczna scena L0/L1 renderuje się
- *  MAŁA, w rogu viewportu — potwierdzone empirycznie (`audytor_L0_plan`
- *  bez tej korekty: rysunek ~220×300 CSS px w rogu 1920×1080 płótna, patrz
- *  raport F7). Harness NIE naprawia produkcyjnej kamery (poza zakresem —
- *  kod v3 zamrożony) — kadruje/supersamplinguje clipem do WŁASNEGO bboxa
- *  danego LOD, tą samą techniką co zoomy projektanta wyżej (treść wektorowa,
- *  zero utraty jakości). */
-function toWorldRect(rect) {
-  return { minX: rect.x, minY: rect.y, maxX: rect.x + rect.width, maxY: rect.y + rect.height };
-}
-
 const sceneL1 = buildSceneV3(enm, 1);
 function symbolTestId(symbol, index) {
   return symbol.meta?.testId ?? `sld-v3-symbol-${index}`;
@@ -194,18 +201,21 @@ jobs.push({
     FULL_H,
   ),
   viewport: { width: FULL_W, height: FULL_H },
-  // k4: kadr do WŁASNEGO bboxa L1 (patrz komentarz `toWorldRect` wyżej) —
-  // kamera produkcyjna fituje ZAWSZE do bboxa L2, więc L1 bez tej korekty
-  // byłby mały w rogu 1920×1080 (empirycznie potwierdzone, patrz raport F7).
-  clip: clipFor(toWorldRect(sceneL1.bbox), { width: FULL_W, height: FULL_H }, 6 * GRID),
+  // F8a-2 — FIX-2: BRAK clipu — kamera produkcyjna fituje teraz (k4.1,
+  // ROZWIĄZANE) do bboxa L1 samego (nie L2), więc scena L1 wypełnia
+  // 1920×1080 poprawnie bez kompensacji harnessu (dawny clip do
+  // `toWorldRect(sceneL1.bbox)` kadrowałby DRUGI RAZ to, co kamera już
+  // wykadrowała — usunięty, patrz nagłówek pliku).
+  clip: null,
 });
 
 jobs.push({
   name: 'audytor_L0_plan',
   html: writeHtml('audytor_L0_plan', React.createElement(SldCanvasV3, { snapshot: enm, width: FULL_W, height: FULL_H, lodOverride: 0 }), FULL_W, FULL_H),
   viewport: { width: FULL_W, height: FULL_H },
-  // k4: kadr do WŁASNEGO bboxa L0 (jak wyżej).
-  clip: clipFor(toWorldRect(buildSceneV3(enm, 0).bbox), { width: FULL_W, height: FULL_H }, 6 * GRID),
+  // F8a-2 — FIX-2: BRAK clipu (jak wyżej dla L1) — kamera fituje do bboxa L0
+  // samego.
+  clip: null,
 });
 
 // ---------------------------------------------------------------------------

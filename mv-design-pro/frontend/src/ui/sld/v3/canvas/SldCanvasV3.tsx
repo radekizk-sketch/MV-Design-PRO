@@ -37,6 +37,7 @@ import {
   computeInitialCameraState,
   pointerDistance,
   pointerMidpoint,
+  type BoundingBox,
 } from './camera';
 import type { SldV3Overlay } from './overlay';
 
@@ -61,7 +62,12 @@ export interface SldCanvasV3Props {
   /** Escape hatch (test/harness/embedding, np. Results Browser centrujący na
    *  konkretnym LOD): nadpisuje LOD wynikające z kamery. Domyślnie (brak
    *  propa) LOD wynika z progów zoomu kamery (spec §7) — zachowanie
-   *  produkcyjne. */
+   *  produkcyjne.
+   *  F8a (k4.1): gdy podany, kamera FITUJE do bboxa sceny TEGO LOD (nie
+   *  zawsze LOD2) — usuwa dawny defekt „mały rysunek w rogu" dla
+   *  embedderów przekazujących `lodOverride` (patrz SLD_V3_ACCEPTANCE.md
+   *  §3, znane ograniczenie k4 — ROZWIĄZANE). Zmiana propa PO mouncie
+   *  wywołuje pełny refit (nowy cel fitu = nowy świat kamery, k3). */
   readonly lodOverride?: SceneLod;
 }
 
@@ -204,20 +210,72 @@ function toLocalPoint(svg: SVGSVGElement | null, clientX: number, clientY: numbe
 export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const { snapshot, width, height, overlay, onElementClick, lodOverride } = props;
 
-  // Bbox dopasowania kamery: LOD 2 (najpełniejsza scena) — niezależne od tego,
-  // jaki LOD jest faktycznie renderowany na starcie (skala startowa dopiero
-  // po fit-cie decyduje o LOD renderowanym, patrz `computeInitialCameraState`).
-  const fitBbox = useMemo(() => boundingBoxOfRect(buildSceneV3(snapshot, 2).bbox), [snapshot]);
+  // F8a — ROZSTRZYGNIĘCIE k4/k3 (REBUILD_PLAN_V3 §F8, SLD_V3_ACCEPTANCE.md §3):
+  // scena liczona dla WSZYSTKICH trzech LOD naraz (nie tylko `effectiveLod`) —
+  // światy L0/L1/L2 mają różne bboxy (osobne rezerwacje §7), a kamera musi
+  // znać wszystkie trzy, żeby: (k4.1) fitować do bboxa `lodOverride`, gdy
+  // podany (nie zawsze LOD2), i (k4.2) mapować skalę przy przejściach LOD
+  // wywołanych kamerą (`camera.ts` `applyLodScaleMapping`). Koszt: liczymy 3
+  // scen(y) zamiast 1 — akceptowalne (fixtura 53 stacje ≈ setki węzłów/LOD,
+  // memoizowane po `snapshot`, przeliczane tylko przy zmianie sieci).
+  const sceneByLod = useMemo<Readonly<Record<SceneLod, SceneV3>>>(
+    () => ({ 0: buildSceneV3(snapshot, 0), 1: buildSceneV3(snapshot, 1), 2: buildSceneV3(snapshot, 2) }),
+    [snapshot],
+  );
+  const lodBboxes = useMemo<Readonly<Record<SceneLod, BoundingBox>>>(
+    () => ({
+      0: boundingBoxOfRect(sceneByLod[0].bbox),
+      1: boundingBoxOfRect(sceneByLod[1].bbox),
+      2: boundingBoxOfRect(sceneByLod[2].bbox),
+    }),
+    [sceneByLod],
+  );
   const viewportSize = useMemo(() => ({ width, height }), [width, height]);
+
+  // (k4.1) Cel fitu: bbox LOD wskazanego przez `lodOverride`, gdy podany —
+  // domyślnie (produkcja, brak override) LOD2 (najpełniejsza scena), jak
+  // dawniej.
+  const fitTargetLod: SceneLod = lodOverride ?? 2;
+  const fitBbox = lodBboxes[fitTargetLod];
 
   const [camera, dispatch] = useReducer(
     cameraReducer,
-    { bbox: fitBbox, viewportSize },
-    (arg) => computeInitialCameraState(arg.bbox, arg.viewportSize),
+    { bbox: fitBbox, viewportSize, lodBboxes },
+    (arg) => computeInitialCameraState(arg.bbox, arg.viewportSize, arg.lodBboxes),
   );
 
+  // (k3) 'refit' PEŁNY gdy zmienia się `snapshot` (nowa sieć = nowy świat) lub
+  // `lodOverride` (zmienia się CEL fitu, patrz k4.1) — pan/zoom użytkownika
+  // NIE jest zachowywany (świadomie, spec §F8). Efekt pomija pierwsze
+  // wywołanie po mouncie — stan startowy już policzony przez lazy-initializer
+  // `useReducer` wyżej z tym samym `fitBbox`/`lodBboxes`.
+  const skippedInitialRefit = useRef(false);
+  useEffect(() => {
+    if (!skippedInitialRefit.current) {
+      skippedInitialRefit.current = true;
+      return;
+    }
+    dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize });
+    // `viewportSize` w akcji to viewport AKTUALNY w chwili refitu (nie w
+    // chwili montażu) — poprawne nawet gdy width/height zmieniły się w tym
+    // samym renderze co snapshot/lodOverride.
+  }, [snapshot, lodOverride]);
+
+  // (k3) 'resize' gdy zmienia się TYLKO viewport (width/height) — świat ten
+  // sam, kamera zachowuje pan/zoom użytkownika i tylko dostosowuje punkt
+  // centrowania do nowego rozmiaru (`camera.ts` `applyResize`). Efekt pomija
+  // pierwsze wywołanie po mouncie (stan startowy już poprawny).
+  const skippedInitialResize = useRef(false);
+  useEffect(() => {
+    if (!skippedInitialResize.current) {
+      skippedInitialResize.current = true;
+      return;
+    }
+    dispatch({ type: 'resize', viewportSize });
+  }, [width, height]);
+
   const effectiveLod: SceneLod = lodOverride ?? camera.lod;
-  const scene = useMemo(() => buildSceneV3(snapshot, effectiveLod), [snapshot, effectiveLod]);
+  const scene = sceneByLod[effectiveLod];
   const sheetSize = useMemo(() => sheetSizeFor(scene), [scene]);
   const viewBox = cameraViewBox(camera.transform, viewportSize);
 

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
 import { useAppStateStore } from '../ui/app-state/store';
@@ -10,6 +10,7 @@ import { useNotificationStore } from '../ui/notifications/store';
 import { useSelectionStore } from '../ui/selection/store';
 import { useExecutionRunsStore } from '../ui/study-cases/runStore';
 import { useSnapshotStore } from '../ui/topology/snapshotStore';
+import { SLD_RENDER_VERSION_STORAGE_KEY } from '../ui/sld/sldRenderVersion';
 import {
   ANALYSIS_SURFACE_SCREEN_CODE,
   REPORT_SURFACE_SCREEN_CODE,
@@ -120,6 +121,13 @@ describe('App hash routes', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     window.location.hash = '#sld';
+    // F8a (SLD_CAD_REBUILD_PLAN_V3 §F8): domyślny render SLD to teraz v3
+    // (`SldRenderHost`/`SldCanvasV3Workspace`), ale ten plik testuje ROUTING
+    // aplikacji przez asercje na v2-specyficznym drzewie (drawer, context
+    // menu, `sld-workspace-container` itd.) — pinujemy jawnie na v2, żeby
+    // istniejące pokrycie routingu zostało nietknięte; v3 ma WŁASNE testy
+    // cutoveru w `ui/sld/__tests__/SldRenderHost.test.tsx`.
+    localStorage.setItem(SLD_RENDER_VERSION_STORAGE_KEY, 'v2');
     useAppStateStore.getState().reset();
     useExecutionRunsStore.getState().reset();
     useExecutionRunsStore.setState({ createAndExecuteRun: originalCreateAndExecuteRun });
@@ -128,6 +136,10 @@ describe('App hash routes', () => {
     useNetworkBuildStore.getState().reset();
     useNotificationStore.getState().clearAll();
     useSelectionStore.getState().clearSelection();
+  });
+
+  afterEach(() => {
+    localStorage.removeItem(SLD_RENDER_VERSION_STORAGE_KEY);
   });
 
   it('renderuje cala aplikacje w ekranowym motywie dark SCADA', async () => {

@@ -24,6 +24,7 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { SldCanvasV3 } from '../SldCanvasV3';
 import type { SldV3Overlay } from '../overlay';
+import { boundingBoxOfRect, cameraViewBox, computeInitialCameraState } from '../camera';
 
 afterEach(() => cleanup());
 
@@ -166,5 +167,119 @@ describe('SldCanvasV3 — determinizm', () => {
     const { container: a } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
     const { container: b } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
     expect(a.innerHTML).toBe(b.innerHTML);
+  });
+});
+
+/** `viewBox="minX minY worldWidth worldHeight"` → skala = viewportWidthPx /
+ *  worldWidth (odwrotność `cameraViewBox`, `canvas/camera.ts`). */
+function scaleFromViewBox(viewBox: string, viewportWidthPx: number): number {
+  const [, , worldWidth] = viewBox.split(' ').map(Number);
+  return viewportWidthPx / worldWidth;
+}
+
+/** Środek świata pokazywany PRZEZ viewBox = środek prostokąta viewBox — SVG
+ *  mapuje viewBox proporcjonalnie w width/height, więc środek ekranu ZAWSZE
+ *  odpowiada środkowi viewBox, niezależnie od width/height. */
+function worldCenterFromViewBox(viewBox: string): { x: number; y: number } {
+  const [minX, minY, worldWidth, worldHeight] = viewBox.split(' ').map(Number);
+  return { x: minX + worldWidth / 2, y: minY + worldHeight / 2 };
+}
+
+function viewBoxOf(container: HTMLElement): string {
+  return container.querySelector('[data-testid="sld-canvas-v3"]')!.getAttribute('viewBox')!;
+}
+
+describe('SldCanvasV3 — F8a k4.1: lodOverride fituje do bboxa TEGO LOD (nie zawsze LOD2)', () => {
+  it('lodOverride=0: viewBox startowy dopasowany do bboxa L0, RÓŻNY od dopasowania do L2 (dawny defekt „mały rysunek w rogu")', () => {
+    const bbox0 = boundingBoxOfRect(buildSceneV3(enm, 0).bbox);
+    const bbox2 = boundingBoxOfRect(buildSceneV3(enm, 2).bbox);
+    const viewportSize = { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
+    const expectedFitToL0 = cameraViewBox(computeInitialCameraState(bbox0, viewportSize).transform, viewportSize);
+    const expectedWrongFitToL2 = cameraViewBox(computeInitialCameraState(bbox2, viewportSize).transform, viewportSize);
+
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} />);
+    const actual = viewBoxOf(container);
+
+    expect(actual).toBe(expectedFitToL0);
+    expect(actual).not.toBe(expectedWrongFitToL2);
+  });
+
+  it('lodOverride=2 (lub brak override — domyślny cel fitu = LOD2): viewBox dopasowany do bboxa L2, jak dawniej', () => {
+    const bbox2 = boundingBoxOfRect(buildSceneV3(enm, 2).bbox);
+    const viewportSize = { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
+    const expectedFitToL2 = cameraViewBox(computeInitialCameraState(bbox2, viewportSize).transform, viewportSize);
+
+    const { container: withOverride } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
+    const { container: withoutOverride } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
+
+    expect(viewBoxOf(withOverride)).toBe(expectedFitToL2);
+    expect(viewBoxOf(withoutOverride)).toBe(expectedFitToL2);
+  });
+});
+
+describe('SldCanvasV3 — F8a k3: refit PEŁNY na zmianę snapshot; resize (width/height) zachowuje pan/zoom', () => {
+  // Uwaga metodologiczna: jsdom w tym środowisku testowym NIE implementuje
+  // `PointerEvent` (`globalThis.PointerEvent` nie jest konstruktorem —
+  // zweryfikowane empirycznie), więc `fireEvent.pointerDown/Move/Up` na
+  // realnej kanwie nie niesie `clientX/clientY/pointerId` (dochodzą jako
+  // `undefined`, kanwa liczy NaN). Symulacja pan/zoom w tych testach używa
+  // WHEEL (`fireEvent.wheel`, `MouseEvent`-owe `clientX/clientY` DZIAŁAJĄ w
+  // jsdom — zweryfikowane) jako jedynej DOM-testowalnej ścieżki zmiany
+  // kamery; pinch/pan pointer-based mają pokrycie WYŁĄCZNIE na poziomie
+  // czystych funkcji (`camera.test.ts`), tak jak przed F8a (brak regresji
+  // pokrycia — pointer/pinch nie miały testu DOM ani przed tą dostawą).
+  const WHEEL_DELTA_Y = -50; // mały zoom-in, NIE przekracza progu LOD0 (0.4×1.15)
+
+  it('zmiana referencji `snapshot` (nowa sieć) odrzuca zoom użytkownika i wraca do fitu — pełny refit', () => {
+    const { container, rerender } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
+    );
+    const svg = container.querySelector('[data-testid="sld-canvas-v3"]')!;
+    const initialViewBox = viewBoxOf(container);
+
+    // Zoom (scale + translate) — kamera oddala się od fitu startowego.
+    fireEvent.wheel(svg, { clientX: 200, clientY: 150, deltaY: WHEEL_DELTA_Y });
+    const zoomedViewBox = viewBoxOf(container);
+    expect(zoomedViewBox).not.toBe(initialViewBox);
+
+    // Nowa referencja snapshot (ta sama treść, ale NOWY obiekt — jak przy
+    // odświeżeniu ze store'a po EDYCJI modelu) ⇒ pełny refit, zoom odrzucony.
+    rerender(<SldCanvasV3 snapshot={{ ...enm }} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
+    expect(viewBoxOf(container)).toBe(initialViewBox);
+  });
+
+  it('zmiana width/height (bez zmiany snapshot) ZACHOWUJE skalę i zoom użytkownika — tylko viewport się dostosowuje', () => {
+    const { container, rerender } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
+    );
+    const svg = container.querySelector('[data-testid="sld-canvas-v3"]')!;
+    const bbox2 = boundingBoxOfRect(buildSceneV3(enm, 2).bbox);
+    const bboxCenter = { x: (bbox2.minX + bbox2.maxX) / 2, y: (bbox2.minY + bbox2.maxY) / 2 };
+
+    // Zoom z kursorem POZA środkiem viewportu (200,150 ≠ środek 600,400) —
+    // po zoomie punkt świata pod ŚRODKIEM viewportu przesuwa się poza
+    // bboxCenter (inaczej zoom symetryczny względem środka nie odróżniałby
+    // się od świeżego fitu, który też centruje bbox).
+    fireEvent.wheel(svg, { clientX: 200, clientY: 150, deltaY: WHEEL_DELTA_Y });
+    const viewBoxBeforeResize = viewBoxOf(container);
+    const scaleBeforeResize = scaleFromViewBox(viewBoxBeforeResize, CANVAS_WIDTH);
+    const worldCenterBeforeResize = worldCenterFromViewBox(viewBoxBeforeResize);
+    // Kontrola założenia testu: zoom naprawdę przesunął środek świata z bbox
+    // center (inaczej test niczego by nie odróżniał od świeżego fitu).
+    expect(worldCenterBeforeResize.x).not.toBeCloseTo(bboxCenter.x, 3);
+
+    const nextWidth = CANVAS_WIDTH + 300;
+    rerender(<SldCanvasV3 snapshot={enm} width={nextWidth} height={CANVAS_HEIGHT} />);
+    const viewBoxAfterResize = viewBoxOf(container);
+    const scaleAfterResize = scaleFromViewBox(viewBoxAfterResize, nextWidth);
+    const worldCenterAfterResize = worldCenterFromViewBox(viewBoxAfterResize);
+
+    // Skala NIETKNIĘTA przez resize (k3) — tylko przez zoom/LOD-mapping.
+    expect(scaleAfterResize).toBeCloseTo(scaleBeforeResize, 10);
+    // Punkt świata pod środkiem viewportu PRZED resize (przesunięty zoomem,
+    // NIE bbox center) pozostaje pod środkiem PO resize — dowód, że to
+    // resize (zachowanie pan/zoom), nie świeży fit (który wycentrowałby bbox).
+    expect(worldCenterAfterResize.x).toBeCloseTo(worldCenterBeforeResize.x, 6);
+    expect(worldCenterAfterResize.y).toBeCloseTo(worldCenterBeforeResize.y, 6);
   });
 });

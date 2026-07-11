@@ -413,7 +413,37 @@ i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
   empirycznie, 5 PNG obejrzane — zero nieodnotowanych defektów).
 - Podpięcie do CI = F8 (po cutoverze), opisane w doc.
 
-### F8. Cutover + usunięcie v2 renderu
+### F8a. [DONE] Rozstrzygnięcie k4 (kamera/LOD) + feature-flag cutoveru na v3
+- k4.1: fit kamery do bboxa `lodOverride ?? 2` (`sceneByLod` memoizowane);
+  k4.2: `applyLodScaleMapping` przy przejściu LOD (punkt świata pod środkiem
+  viewportu zachowany; proporcja szerokości bboxów); k4.3/k3: akcje reducera
+  `refit` (zmiana snapshot/lodOverride — odrzuca pan/zoom) i `resize`
+  (zachowuje skalę+środek świata).
+- Cutover: `USE_SLD_CANVAS_V3` (featureFlags, domyślnie true) +
+  `resolveSldRenderVersion()` (localStorage override — rollback bez rebuildu);
+  `SldRenderHost` = jedyny punkt decyzji v2/v3; `SldCanvasV3Workspace` czyta
+  ENM z useSnapshotStore (TEN SAM store co v2 — zero shadow-modelu), klik →
+  useSelectionStore (fallback 'DescriptiveElement' jak v2). v2 NIETKNIĘTE.
+- Recenzja Opus: REQUEST-CHANGES (High: oscylacja LOD 0↔1 na produkcyjnym
+  zoomie — histereza w surowej skali + mapping = strobowanie przez ~5 ticków,
+  potwierdzone symulacją; Med: harness renderów sprzeczny z naprawioną
+  kamerą). RUNDA KOREKCYJNA: histereza przeniesiona do przestrzeni
+  `refScale = scale × widthOf(lod)/widthOf(2)` — mapping zachowuje refScale
+  Z KONSTRUKCJI (inwariant testowany), oscylacja strukturalnie niemożliwa;
+  test regresyjny monotoniczności (zoom-in/out po realnych proporcjach
+  1344/3608/4280, 90 ticków, zero nawrotów — FAILOWAŁ z wyłączonym fixem);
+  harness bez clip-kompensacji, PNG L0/L1 zregenerowane (L2 bajt-identyczne).
+- STOP-y (dług F8b, z recenzji): overlay energizacji NIEpodłączony (dwa
+  nieujednolicone źródła wyników + k1 brak testId odcinków nie-GPZ);
+  split-preview ignorowane w gałęzi v3 (known-loss za domyślną flagą —
+  migracja funkcjonalna = F8b); selekcja zdegradowana do 'DescriptiveElement'
+  (bogatszy typ wymaga meta w buildScene); useMeasuredSize zduplikowany
+  (konsolidacja przy usuwaniu v2); App.routes.test.tsx WYKLUCZONY z suite
+  (pokrycie tras app-level = 0 w CI — dodać test trasy #sld w v3).
+- Bramki: pełna regresja 7524 pass / 542 pliki; v3+host 472 pass / 14 todo;
+  accept:sld-v3 ALL PASS; tsc/eslint/guardy OK.
+
+### F8b. [NEXT] Cutover — dokończenie + usunięcie v2 renderu
 - Feature-flag → domyślnie v3; migracja testów integracyjnych kanwy; po zielonym
   pełnym suicie USUŃ: mini-RMU card path, geometrię slotową (PITCH), declutter
   po fakcie (globalny pass z c088ef4 staje się zbędny — usuń), stary
@@ -434,6 +464,83 @@ i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
   wszystkich pól zamiast liniowych) — przy porównaniu v2/v3 to poprawka,
   nie regresja.
 - DoD: jedna ścieżka renderu; pełny suite zielony; guardy zielone; push.
+
+---
+
+## F9. Dyrektywa ścieżki mocy (2026-07)
+
+**Wejście:** `docs/sld/SLD_POWER_PATH_AUDIT_2026-07.md` (audyt 12 ustaleń) +
+`docs/sld/SLD_CAD_SPEC_V3_AMENDMENT_A1_DRAFT.md` (draft §12–§15).
+**Zależność od F8:** F9 realizuje ustalenia dyrektywy PONAD cutover v3. **Rekomendacja kolejności:**
+F9.1 (merge spec) może iść RÓWNOLEGLE do F8a/F8b (dokument, nie kod). F9.2+ (kod) startują **po F8b**
+(cutover na v3), aby budować łańcuch celki i nakładki na JEDNEJ ścieżce renderu, bez utrwalania „drugiej
+prawdy" w v2. Wyjątek: prace czysto-danych na adapterze (F9.2) mogą wystartować przed F8b, bo adapter jest
+współdzielony (spec §8) — ale konsumpcja w compose (F9.3) czeka na F8b.
+**Reguły (bez zmian):** WHITE BOX + domain_no_guessing; nakładki = zero fizyki w UI; determinizm; wyrocznie
+§11 muszą pozostać zielone po KAŻDEJ fazie; brak lokalnych łatek i duplikacji elektryki adaptera.
+
+### F9.1. [SPEC] Merge poprawki A1 do wiążącej spec + rozstrzygnięcie konfliktów
+- Zakres: rozstrzygnąć K-A (kolejność aparatów), K-B (SA bez danych), K-D (DER badge vs źródło) — audyt §5;
+  scalić `SLD_CAD_SPEC_V3_AMENDMENT_A1_DRAFT.md` §12–§15 do `SLD_CAD_SPEC_V3.md`; wpisać rozstrzygnięcia do
+  `docs/v12xx/REJESTR_KONFLIKTOW.md` (następne wolne ≥ V12K-027).
+- DoD: spec V3 zawiera §12–§15; rejestr konfliktów zaktualizowany; docs_guard zielony.
+- Autoryzacje plików: `docs/sld/SLD_CAD_SPEC_V3.md`, `docs/v12xx/REJESTR_KONFLIKTOW.md`,
+  `docs/sld/SLD_CAD_SPEC_V3_AMENDMENT_A1_DRAFT.md` (zamknięcie), `docs/INDEX*.md` (wpis).
+
+### F9.2. [DANE — może przed F8b] Projekcja `primary_devices` + źródeł przez adapter
+- Zakres: rozszerzyć kontrakt `MiniBlockBayDescriptor` (`v2/renderer/MiniBlockRmuRenderer.tsx`) o rzut
+  `Bay.primary_devices` (kind+placement+section_side+symbol_ref+switch_state) — adapter
+  `v2/canvas/enmToSldAdapter.ts`; wystawić DER i `Source`(external_grid) jako źródła sceny (nie tylko badge);
+  wielo-GPZ. Elektryka pozostaje jedną prawdą (adapter), zero cienia modelu.
+- DoD: kontrakt niesie uporządkowaną listę aparatów per pole i listę źródeł; testy adaptera zielone;
+  pełny suite zielony (adapter współdzielony — brak regresji v2/v3).
+- Autoryzacje: `v2/canvas/enmToSldAdapter.ts`, `v2/renderer/MiniBlockRmuRenderer.tsx`, testy adaptera.
+
+### F9.3. [KOD — po F8b] Łańcuch celki w stacji + sylwetki pól + akcent węzłów
+- Zakres: `v3/compose/station.ts` — stos aparatów z `primary_devices` (prymat danych, §12.1), fallback
+  konwencji ze znacznikiem (§12.4); głowica jako wejście pola (§12.3); rozróżnialne sylwetki (§14.3);
+  `v3/scene/buildScene.ts` — akcent węzłów rozgałęzień (§14.4); ewentualny wariant symbolu w
+  `v3/symbols/*` (UWAGA: nie wchodzić w pliki edytowane przez agenta równoległego — koordynacja).
+- DoD: `cell_sequence_probe`, `field_entry_probe`, `field_silhouette_probe`, `branch_accent_probe`
+  zielone na `sldSubstrate52s` L0/L1/L2; wyrocznie §11 nadal zielone; determinizm; render 1:1 oceniony.
+- Autoryzacje: `v3/compose/station.ts`, `v3/scene/buildScene.ts`, `v3/symbols/*` (po koordynacji), testy v3.
+
+### F9.4. [KOD — po F8b] Źródła widoczne + ciągłość źródło→odbiór (strona nN)
+- Zakres: `v3/scene/buildScene.ts` + `v3/compose/*` — rysowanie wszystkich źródeł (GPZ/Source/DER),
+  odpływy nN (konsumpcja `nnFeedersCount`), laterale zagnieżdżone lub jawny stopNote; wzmocnienie §16 o
+  „źródło widoczne i połączone".
+- DoD: `sources_visible_probe`, `source_connectivity_probe`, `continuity_probe` zielone; §11 zielone;
+  render oceniony.
+- Autoryzacje: `v3/scene/buildScene.ts`, `v3/compose/station.ts`, `v3/compose/gpz.ts`, `v3/layout/*` (jeśli
+  odpływy nN wymagają rezerwacji measure/bands), testy v3.
+
+### F9.5. [KOD — po F8b, po k1] Nakładka przepływu mocy (strzałki + MW/MVAr/A)
+- Zakres: spłata długu k1 (tożsamość odcinków nie-GPZ: `PreviewSegment.meta.ownerRef/testId` w
+  `buildScene.ts`); `v3/canvas/overlay.ts` — strzałki kierunkowe + wartości z wyniku PF (companion),
+  dwukierunkowy DER, animacja opcjonalna. Zero fizyki w UI (spec §10). UWAGA: `v3/canvas/*` jest w toku
+  zmian F8a — koordynacja/kolejność z agentem kamery obowiązkowa.
+- DoD: `flow_overlay_probe` zielony; overlay wyłączony bez wyniku (brak atrap); determinizm nakładki.
+- Autoryzacje: `v3/scene/buildScene.ts` (meta), `v3/canvas/overlay.ts`, testy overlay.
+
+### F9.6. [WYMAGA ZMIAN POZA FRONTEND — DOMAIN] Kind SA + stan operacyjny źródła
+- Zakres: (a) dodać `SURGE_ARRESTER` do `BayPrimaryDeviceKind` (`backend/src/enm/models.py`, warstwa DOMAIN —
+  mutacja modelu tylko w domenie, CLAUDE.md) + lustro `frontend/src/types/enm.ts` — rozstrzyga K-B;
+  (b) pole stanu operacyjnego źródła (standby/maintenance) lub biało-skrzynkowa reguła wywodzenia (§13.3),
+  bez heurystyki. Zależy od decyzji F9.1/K-B.
+- DoD: kind SA obecny w modelu i mapowaniu; `source_state_probe` zielony; testy backend + FE; docs.
+- Autoryzacje: `backend/src/enm/models.py`, `backend/src/enm/mapping.py` (jeśli dotyczy), `frontend/src/types/enm.ts`,
+  `v2/domain/apparatusContracts.ts` (mapowanie), testy domeny.
+
+### F9.7. [KOD] Optymalizacja pionów + acceptance + docs
+- Zakres: `vertical_length_probe` (§15.1) jako raportowana miara nie-rosnąca; wpięcie wszystkich nowych
+  wyroczni A1 do `frontend/scripts/sld_v3_acceptance.mjs`; odświeżenie renderów odbioru; aktualizacja
+  `docs/sld/SLD_V3_ACCEPTANCE.md`, `MACIERZ_TESTOW`, INDEX.
+- DoD: acceptance obejmuje wyrocznie §12–§15; rendery odbioru odświeżone; docs_guard zielony; CI zielone.
+- Autoryzacje: `frontend/scripts/sld_v3_acceptance.mjs`, `docs/sld/*`, `docs/sld/renders/v3/*` (po F8),
+  test-listy CI.
+
+**Fazy z zależnością danych/backendu:** F9.6 (backend/ENM — DOMAIN). F9.2 dotyka adaptera współdzielonego.
+Pozostałe (F9.3/F9.4/F9.5/F9.7) są frontend-only w potoku v3.
 
 ---
 
