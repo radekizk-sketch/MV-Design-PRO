@@ -490,7 +490,30 @@ współdzielony (spec §8) — ale konsumpcja w compose (F9.3) czeka na F8b.
 - Autoryzacje plików: `docs/sld/SLD_CAD_SPEC_V3.md`, `docs/v12xx/REJESTR_KONFLIKTOW.md`,
   `docs/sld/SLD_CAD_SPEC_V3_AMENDMENT_A1_DRAFT.md` (zamknięcie), `docs/INDEX*.md` (wpis).
 
-### F9.2. [DANE — może przed F8b] Projekcja `primary_devices` + źródeł przez adapter
+### F9.2. [DONE] Projekcja `primary_devices` + źródeł przez adapter
+- Dostarczone (commit F9.2): `projectBayPrimaryDevices` (sort deterministyczny
+  wg placement + stabilny tie-breaker; switch_state 1:1 z enumem backendu;
+  undefined bez danych) + `buildSources` → `SldDataPayload.sources`
+  (21 źródeł na fixturze: 1 external_grid + 8 pv + 8 bess + 4 wind);
+  wyłącznie addytywnie (+454/-0); 11 nowych testów; recenzja Opus APPROVE;
+  pełna regresja 7535 pass.
+- ODKRYCIE STOP-1 (zweryfikowane recenzją u źródła): snapshot ENM NIE
+  serializuje `primary_devices` (pole żyje w read-modelu field-view);
+  fixtura ma bays.length=0. ERRATA E1 wpisana do spec §12.1; rozstrzygnięcie
+  architekta **V12K-030 (c-2)**: domknięcie kanału przez field-view dołączany
+  do payloadu snapshotu w jednym pobraniu (`attach_field_view`), BEZ
+  denormalizacji danych wywiedzionych na surowy `Bay` — realizacja w F9.6;
+  szew adaptera zostaje jako warunkowy (przekierowanie na field-view w F9.6).
+- KONSEKWENCJE dla dalszych faz:
+  (f92-1 → F9.3) fixtura `sldSubstrate52s` NIE ćwiczy ścieżki danych §12.1 —
+       F9.3 odbiera się na fallbacku konwencji §12.4 (każde pole ze
+       znacznikiem `data-apparatus-source="konwencja"`); `cell_sequence_probe`
+       w gałęzi „prymat danych" wymaga fixtury z niepustym primary_devices
+       (dostarczyć w F9.3 albo F9.6 — syntetyk albo rozszerzenie substrate);
+  (f92-2 → F9.4) `buildSources` cicho wyklucza generator z gen_type=null
+       (na fixturze latentne: 0 takich) — dopisać stopNote i obsłużyć w
+       `sources_visible_probe` (źródło nieznanego typu NIE może zginąć bez
+       śladu).
 - Zakres: rozszerzyć kontrakt `MiniBlockBayDescriptor` (`v2/renderer/MiniBlockRmuRenderer.tsx`) o rzut
   `Bay.primary_devices` (kind+placement+section_side+symbol_ref+switch_state) — adapter
   `v2/canvas/enmToSldAdapter.ts`; wystawić DER i `Source`(external_grid) jako źródła sceny (nie tylko badge);

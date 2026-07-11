@@ -292,9 +292,19 @@ kamera/LOD → F6 (reuse); eksport/determinizm → F7; checklista całości → 
   oraz `section_side`; symbol z `kind`→`ApparatusKind` (`apparatusContracts.ts`). Konwencja-wg-roli
   (§12.4) jest dozwolona WYŁĄCZNIE jako fallback dla pola bez `primary_devices`, i wtedy pole MUSI nieść
   znacznik `data-apparatus-source="konwencja"` (audytor odróżnia rysunek z danych od typowego).
-- **Źródło danych:** `Bay.primary_devices[*].{kind, placement, section_side, symbol_ref, switch_state}`
-  (`backend/src/enm/models.py:769-795`), rzutowane przez rozszerzony adapter (kontrakt
-  `MiniBlockBayDescriptor`, dziś gubi tę listę — patrz F9 planu).
+- **Źródło danych (ERRATA E1, 2026-07-11 — V12K-030):** typ
+  `BayPrimaryDevice{kind, placement, section_side, symbol_ref, switch_state}`
+  (`backend/src/enm/models.py:769-795`); pole `primary_devices` żyje na
+  `BayBaseModel` (`models.py:1033`) wewnątrz read-modelu field-view
+  (`BayCanonicalModel`, budowany w locie przez
+  `backend/src/application/field_read_model.py` z `equipment_refs`+branches+
+  measurements — dane WYWIEDZIONE, nie pierwotne). **Snapshot ENM
+  (`EnergyNetworkModel.bays[]`, element `Bay`) NIE serializuje
+  `primary_devices`** — luka kanału danych, nie „gubienie przez adapter".
+  Adapter (F9.2) rzutuje pole defensywnie (aktywne, gdy kanał danych je
+  dostarczy); domknięcie kanału = F9.6 wg rozstrzygnięcia c-2: field-view
+  dołączany do payloadu snapshotu w JEDNYM pobraniu (`attach_field_view`),
+  bez denormalizacji danych wywiedzionych na surowy `Bay`.
 - **Wyrocznia odbioru:** `cell_sequence_probe` — dla KAŻDEGO pola z `primary_devices`: sekwencja symboli
   na rysunku (od szyny w dół) == sekwencja `kind` posortowana wg `placement`; 0 aparatów „z domysłu"
   (każdy narysowany aparat ma `device_ref` z ENM albo pole ma znacznik `konwencja`).
