@@ -56,6 +56,13 @@ export interface StationMeasureInput
    *  przed F5) oznacza brak rezerwacji miejsca na ten podpis — nie ukryty
    *  dług, tylko jeszcze niedostarczone wejście (FIX-3, recenzja F2). */
   readonly bayDirectionCaptions?: readonly (string | null)[];
+  /** F6e: indeks pola, do którego Z GÓRY wchodzi pion zejścia lateralnego
+   *  (stacja 0 lateralu, pole „poprzednik" §9) — jego podpis kierunku musi
+   *  zmieścić się W CAŁOŚCI na prawo od pionu (wycinek B2 zaczyna się za
+   *  osią stosu + prześwit), więc kolumna rezerwuje dodatkowo
+   *  `entryDescentCaptionInset`. Nieobecny/null = zwykła stacja (magistrala,
+   *  dalsze stacje lateralu) — zero zmian względem stanu sprzed F6e. */
+  readonly entryDescentBayIndex?: number | null;
 }
 
 /** FIX-2 (recenzja F2): re-eksport formatera mocy TR z `StationOnRunRenderer`
@@ -136,6 +143,7 @@ export function bayColumnRequiredWidth(
   snBays: readonly MiniBlockBayDescriptor[],
   index: number,
   bayDirectionCaptions: readonly (string | null)[] | undefined,
+  entryDescentBayIndex?: number | null,
 ): number {
   const bay = snBays[index];
   const footprint = bayColumnFootprint(bay.fieldRole);
@@ -145,9 +153,28 @@ export function bayColumnRequiredWidth(
     : footprint.width;
 
   const caption = bayDirectionCaptions?.[index]?.trim();
-  const captionWidth = caption ? measureLabelWidth(caption, 't3') : 0;
+  // F6e: pole z pionem zejścia z góry (patrz `StationMeasureInput.
+  // entryDescentBayIndex`) — podpis kierunku musi zmieścić się na PRAWO od
+  // osi stosu (wycinek B2 przycięty w `compose/station.ts` TĄ SAMĄ stałą
+  // `entryDescentCaptionInset` — jedna prawda, wzór F6b-1).
+  const captionInset = index === entryDescentBayIndex ? entryDescentCaptionInset(bay.fieldRole) : 0;
+  const captionWidth = caption ? measureLabelWidth(caption, 't3') + captionInset : 0;
 
   return Math.max(widthWithSidecar, captionWidth);
+}
+
+/**
+ * F6e: odsunięcie LEWEJ krawędzi wycinka podpisu kierunku (B2) od lewej
+ * krawędzi kolumny pola, gdy do pola wchodzi Z GÓRY pion zejścia lateralnego:
+ * oś pionu = oś stosu aparatów (stos flush-left w kolumnie ⇒ oś na
+ * `footprint.width/2` od lewej), a wycinek ma zaczynać się ZA pionem z
+ * prześwitem GRID. `snapUp` osi — lewa krawędź slotu na siatce (spec §2)
+ * i nigdy na lewo od pionu. Używane w DWÓCH miejscach, które MUSZĄ się
+ * zgadzać: rezerwacja szerokości (`bayColumnRequiredWidth` wyżej) i pozycja
+ * wycinka (`compose/station.ts`).
+ */
+export function entryDescentCaptionInset(role: FieldRole): number {
+  return snapUp(bayColumnFootprint(role).width / 2) + GRID;
 }
 
 /** Margines stały bloku stacji: prześwit na szynę SN (nad kolumnami) i szynę
@@ -165,10 +192,11 @@ const STATION_BLOCK_BUS_CLEARANCE = 2 * GRID;
 export function stationBlockWidth(
   snBays: readonly MiniBlockBayDescriptor[],
   bayDirectionCaptions: readonly (string | null)[] | undefined,
+  entryDescentBayIndex?: number | null,
 ): number {
   if (snBays.length === 0) return 0;
   const columnsWidth = snBays.reduce(
-    (sum, _bay, index) => sum + bayColumnRequiredWidth(snBays, index, bayDirectionCaptions),
+    (sum, _bay, index) => sum + bayColumnRequiredWidth(snBays, index, bayDirectionCaptions, entryDescentBayIndex),
     0,
   );
   return columnsWidth + GRID * Math.max(snBays.length - 1, 0);
@@ -206,7 +234,7 @@ export function stationNameBandHeight(station: StationMeasureInput): number {
  * przyciągnięte do siatki W GÓRĘ.
  */
 export function requiredStationWidth(station: StationMeasureInput): number {
-  const blockWidth = stationBlockWidth(station.snBays, station.bayDirectionCaptions);
+  const blockWidth = stationBlockWidth(station.snBays, station.bayDirectionCaptions, station.entryDescentBayIndex);
 
   const nameWidths: number[] = [measureLabelWidth(station.name, 't1')];
   if (station.stationCode) nameWidths.push(measureLabelWidth(station.stationCode, 't1'));
@@ -228,14 +256,30 @@ export function requiredSegmentLabelWidth(text: string): number {
 }
 
 /**
+ * F6e (REBUILD_PLAN_V3 — residuum §11.1 `port-caption`): odstęp między DOLNĄ
+ * krawędzią podpisu kierunku pola a osią magistrali (`busAxisY`,
+ * `scene/buildScene.ts`). Bez niego `primaryRect` (`compose/station.ts`)
+ * kończył się DOKŁADNIE na osi — zejście WŁASNEGO pola zaczyna się na osi i
+ * idzie w dół, a sonda kolizji etykieta↔przewód (`labelWireCollisions`,
+ * `scene/buildScene.ts`) traktuje odcinek jako prostokąt ±1px wokół osi, więc
+ * dolny rząd pikseli podpisu zawsze nachodził na to zejście (i na samą oś).
+ * Rezerwacja wysokości (ta funkcja) i pozycja `primaryRect` (`compose/
+ * station.ts`) MUSZĄ liczyć tę samą stałą — jedna prawda, jak przy
+ * `bayColumnRequiredWidth`/`compose/station.ts` (F6b-1).
+ */
+export const PORT_CAPTION_BUS_CLEARANCE = GRID;
+
+/**
  * Wysokość dodatkowa pasma osi magistrali (B2, spec §5.2) na podpis
  * kierunku pola (t3, spec §9: „kier. Sxx" / „odg. Sxx") — F3 fix r1 (dług
  * zapisany w F2/recenzji Opusa): B2 była stałą 32px niezależną od treści,
  * choć podpisy portów muszą się w niej zmieścić. Zero, gdy ŻADNE pole tej
  * stacji nie ma podpisu kierunku (bez regresji względem stałej geometrii
  * osi/portu — `bands.ts` `BUS_AXIS_BAND_HEIGHT` — gdy podpisów brak).
+ * F6e: doliczony `PORT_CAPTION_BUS_CLEARANCE` — sam wiersz t3 (`LABEL_LINE_
+ * HEIGHT_T3`) rezerwował miejsce TYLKO na tekst, zero prześwitu do osi.
  */
 export function stationPortCaptionHeight(station: StationMeasureInput): number {
   const hasCaption = (station.bayDirectionCaptions ?? []).some((caption) => caption?.trim());
-  return hasCaption ? LABEL_LINE_HEIGHT_T3 : 0;
+  return hasCaption ? LABEL_LINE_HEIGHT_T3 + PORT_CAPTION_BUS_CLEARANCE : 0;
 }

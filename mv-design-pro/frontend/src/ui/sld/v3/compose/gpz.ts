@@ -690,12 +690,32 @@ export function composeGpz(props: GpzCanonicalRendererProps, origin: { readonly 
 
       const designation = (field.bay.bayNumber ?? field.bay.feederName ?? '').trim();
       if (designation) {
+        // FIX (F6e, REBUILD_PLAN_V3 — residuum §11.1 `apparatus`): `stack.topPort.y`
+        // leży PRAKTYCZNIE NA szynie SN (`topY = snBusY + GRID` z konstrukcji
+        // wyżej, NIEZALEŻNIE od wysokości stosu pola — port to góra stosu, nie
+        // jego dół). Placement 'right' centruje prostokąt WERTYKALNIE na
+        // `anchor.y` (`resolveSimpleAnchoredLabel`: `y = anchor.y - height/2`),
+        // więc górna połowa etykiety lądowała NAD portem, na wysokości samej
+        // szyny SN — rozłączna z ŻADNYM pionem kończącym się na szynie w
+        // zasięgu X etykiety nie była z konstrukcji (potwierdzone sondą: pole
+        // bez `bayNumber` niesie surowy `feederName` „Pole liniowe GPZ", 90px
+        // — sięgało kolumny sąsiedniego transformatora/sprzęgła kończącej się
+        // na TEJ SAMEJ szynie). Wszystkie piony pól/transformatorów KOŃCZĄ SIĘ
+        // na szynie (nigdy nie sięgają poniżej `snBusY`) — podniesienie
+        // kotwicy o `height/2` przesuwa górną krawędź prostokąta z `anchor.y
+        // − height/2` na DOKŁADNIE `stack.topPort.y` (port), więc etykieta
+        // leży W CAŁOŚCI poniżej szyny, rozłączna z każdym pionem kończącym
+        // się na niej — bez znajomości X sąsiadów, bez zmiany geometrii
+        // przewodów/symboli.
         fieldDesignations.push({
           ownerRef: `${field.bay.bayRef}#designation`,
           ownerKind: 'apparatus',
           text: designation,
           labelClass: 't3',
-          anchor: { x: snapToGrid(field.centerX + footprint.width / 2), y: stack.topPort.y },
+          anchor: {
+            x: snapToGrid(field.centerX + footprint.width / 2),
+            y: stack.topPort.y + labelLineHeight('t3') / 2,
+          },
           placement: 'right',
         });
       }

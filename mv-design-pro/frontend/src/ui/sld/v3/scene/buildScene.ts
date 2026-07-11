@@ -89,14 +89,9 @@
  * TEGO konkretnego `channelX`. Dowód (sonda `labelWireCollisions`, patrz jej
  * docstring niżej): kolizje klasy `station-name`/`segment-span` spadły do
  * ZERA na WSZYSTKICH LOD (były 25/100/100 i do 3, patrz F6c). Residuum
- * (poza zakresem F6d — dług F6e, patrz test `buildScene.test.ts` „D3/k6
- * RESIDUUM" i REBUILD_PLAN_V3): przedistniejący nakład etykieta↔przewód
- * WŁASNEGO pola stacji — `apparatus` GPZ: pion własnego pola PRZECINA
- * etykietę „Pole liniowe GPZ" na ~40px (realna bisekcja tekstu, zmierzone
- * w recenzji F6d), `port-caption`: drop własnego pola muska „kier. Sxx"
- * na ~8px. Niezależne od lateralów (git stash: pod-zbiór kolizji HEAD,
- * F6d je REDUKUJE apparatus 5→3, port-caption 318→314); naprawa wymaga
- * `compose/gpz.ts`/`compose/station.ts` (zabronione dla F6d) = F6e.
+ * „własnego pola" (apparatus GPZ + port-caption, 3/3/317 po F6d) SPŁACONE
+ * w F6e — patrz docstring `labelWireCollisions` niżej; wyrocznia
+ * etykieta↔przewód ZIELONA na LOD 0/1/2 (cała scena, wszystkie klasy).
  */
 
 import type { EnergyNetworkModel, LineRunV1 } from '../../../../types/enm';
@@ -362,6 +357,7 @@ function buildRowLayout(
   cableRun: SldCableRun | undefined,
   lod: SceneLod,
   stopNotes: string[],
+  firstStationEntryDescent = false,
 ): RowLayout {
   const stationCodeOf = (ref: string): string | null => stationById.get(ref)?.stationCode ?? null;
 
@@ -377,7 +373,21 @@ function buildRowLayout(
     const captions = stationBayCaptions(props.snBays ?? [], context);
     return buildMeasureInput(props, lod, captions);
   });
-  const validInputs = measureInputs.filter((m): m is StationMeasureInput => m != null);
+  let validInputs = measureInputs.filter((m): m is StationMeasureInput => m != null);
+
+  // F6e: stacja 0 lateralu przyjmuje Z GÓRY pion zejścia w polu „poprzednik"
+  // (§9) — pole to rezerwuje dodatkową szerokość na podpis kierunku PO
+  // PRAWEJ pionu (`entryDescentBayIndex` → `bayColumnRequiredWidth` +
+  // `compose/station.ts`, ta sama stała `entryDescentCaptionInset`). Gdy
+  // pola „poprzednik" brak, composeRowStation i tak spadnie na tap środka
+  // bloku (stopNote tam) — wtedy inset nieznany, flagi nie ustawiamy
+  // (kolizja podpisu możliwa tylko na sieciach bez pola liniowego wejścia).
+  if (firstStationEntryDescent && validInputs.length > 0) {
+    const entryIndex = findLineBayIndices(validInputs[0].snBays).previousIndex;
+    if (entryIndex != null) {
+      validInputs = [{ ...validInputs[0], entryDescentBayIndex: entryIndex }, ...validInputs.slice(1)];
+    }
+  }
 
   const incomingTexts: (string | null)[] =
     lod === 2 ? validInputs.map((m) => incomingLabelText(cableRun, m.id)) : validInputs.map(() => null);
@@ -1009,7 +1019,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     }
 
     const cableRun = cableRunById.get(run.id);
-    let layout = buildRowLayout(run.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, cableRun, lod, stopNotes);
+    let layout = buildRowLayout(run.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, cableRun, lod, stopNotes, true);
     if (layout.measureInputs.length === 0) continue;
 
     // Wyrównanie X (F6d, przypadek b — DECYZJA WIĄŻĄCA): pierwsza stacja
@@ -1296,16 +1306,17 @@ export interface LabelWireCollision {
  * Dowód: kolizje klas `station-name`/`segment-span`/`segment-lateral` = 0 na
  * WSZYSTKICH LOD (test `buildScene.test.ts`, opis „F6d (SPŁATA DŁUGU k6)").
  *
- * RESIDUUM (dług F6e — poza autoryzacją F6d, patrz REBUILD_PLAN_V3 i test
- * `buildScene.test.ts` „D3/k6 RESIDUUM"): 3 kolizje `apparatus` (oznacznik
- * pola liniowego GPZ, `compose/gpz.ts`) na WSZYSTKICH LOD i ~314 kolizji
- * `port-caption` na LOD 2 (`compose/station.ts`) — nakład etykiety na oś
- * przewodu WŁASNEGO pola stacji: `apparatus` GPZ do ~40px (pion własnego
- * pola przez ŚRODEK etykiety „Pole liniowe GPZ" — realna bisekcja tekstu,
- * zmierzona w recenzji F6d), `port-caption` ~8px (muśnięcie krawędzią).
- * PRZEDISTNIEJĄCE (pod-zbiór kolizji HEAD sprzed F6d, ta naprawa je
- * REDUKUJE: apparatus 5→3, port-caption 318→314 — niezależne od lateralów);
- * naprawa wymaga plików zabronionych dla F6d = F6e.
+ * RESIDUUM (F6e — SPŁACONE, patrz REBUILD_PLAN_V3 F6e): po F6d zostawało
+ * 3/3/317 kolizji z przewodem WŁASNEGO pola — `apparatus` GPZ (~40px,
+ * bisekcja „Pole liniowe GPZ" pionem własnego pola) i `port-caption`
+ * (~8px przy osi magistrali + 12 przy pionie wejściowym zejścia stacji 0
+ * lateralu). Naprawione: oznacznik pola GPZ obniżony W CAŁOŚCI pod szynę
+ * (`compose/gpz.ts`), podpis kierunku odsunięty od osi
+ * (`PORT_CAPTION_BUS_CLEARANCE`, measure↔compose ta sama stała) i od pionu
+ * wejściowego rezerwacją (`entryDescentBayIndex` →
+ * `entryDescentCaptionInset`, measure↔compose ta sama stała). Wyrocznia
+ * ZIELONA na LOD 0/1/2 (test w bloku wyroczni §11, `buildScene.test.ts`) —
+ * wchodzi do skryptu akceptacyjnego F7 jako twarda.
  */
 export function labelWireCollisions(scene: SceneV3): readonly LabelWireCollision[] {
   const hits: LabelWireCollision[] = [];

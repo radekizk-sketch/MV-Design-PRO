@@ -11,6 +11,8 @@ import { SYMBOL_DEFS } from '../../symbols/defs';
 import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
 import {
+  bayColumnRequiredWidth,
+  entryDescentCaptionInset,
   requiredSegmentLabelWidth,
   requiredStationWidth,
   snapUp,
@@ -126,6 +128,25 @@ describe('V3 layout — measure (spec §5.1, FIX-3: rezerwacja etykiet WŁASNYCH
     const withShort: StationMeasureInput = { ...baseFields, snBays: [shortDesignation] };
     const withLong: StationMeasureInput = { ...baseFields, snBays: [longDesignation] };
     expect(requiredStationWidth(withLong)).toBeGreaterThan(requiredStationWidth(withShort));
+  });
+
+  it('F6e: entryDescentBayIndex poszerza kolumnę pola-wejścia DOKŁADNIE o entryDescentCaptionInset (podpis kierunku mieści się w całości na prawo od osi pionu zejścia; kontrprzykład sprzed naprawy: wycinek B2 obejmował oś ⇒ pion przecinał „kier. Sxx" — 12 kolizji na fixturze)', () => {
+    const bay: MiniBlockBayDescriptor = {
+      bayRef: 'b1',
+      fieldRole: FIELD_ROLE.RMU_LINE,
+      designation: '',
+      hasMissingRequiredDevice: false,
+    };
+    const captions = ['kier. S09'];
+    const plain = bayColumnRequiredWidth([bay], 0, captions);
+    const withDescent = bayColumnRequiredWidth([bay], 0, captions, 0);
+    // Podpis (51px) dominuje nad footprintem+sidecar dla RMU_LINE — rezerwacja
+    // rośnie o pełny inset (oś stosu + prześwit GRID, snapUp na siatkę).
+    expect(withDescent - plain).toBe(entryDescentCaptionInset(FIELD_ROLE.RMU_LINE));
+    // Inne pola tej samej stacji (index ≠ entryDescentBayIndex) — bez zmian.
+    expect(bayColumnRequiredWidth([bay], 0, captions, 1)).toBe(plain);
+    // Bez podpisu kierunku inset nie ma czego odsuwać — bez zmian.
+    expect(bayColumnRequiredWidth([bay], 0, undefined, 0)).toBe(bayColumnRequiredWidth([bay], 0, undefined));
   });
 
   it('bayDirectionCaptions z długim podpisem kierunku poszerza requiredStationWidth', () => {

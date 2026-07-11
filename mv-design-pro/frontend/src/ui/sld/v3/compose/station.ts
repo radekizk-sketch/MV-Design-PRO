@@ -48,7 +48,9 @@ import type { SwitchState } from '../symbols/glyphs';
 import type { RoutePort, RouteVertex } from '../layout/route';
 import {
   bayColumnRequiredWidth,
+  entryDescentCaptionInset,
   formatTransformerRatedPower,
+  PORT_CAPTION_BUS_CLEARANCE,
   type StationMeasureInput,
 } from '../layout/measure';
 import type {
@@ -296,7 +298,12 @@ export function composeStation(input: ComposeStationInput): StationComposition {
 
   let bx = blockLeftX;
   station.snBays.forEach((bay, index) => {
-    const reservedWidth = bayColumnRequiredWidth(station.snBays, index, station.bayDirectionCaptions);
+    const reservedWidth = bayColumnRequiredWidth(
+      station.snBays,
+      index,
+      station.bayDirectionCaptions,
+      station.entryDescentBayIndex,
+    );
     const symbolIds = apparatusSymbolsForRole(bay.fieldRole);
     // FIX-3 (recenzja F5a): `bayColumnRequiredWidth` (measure.ts) rezerwuje
     // `footprint.width + GRID + szerokość_oznacznika` — stos aparatów
@@ -323,14 +330,32 @@ export function composeStation(input: ComposeStationInput): StationComposition {
 
     // Podpis kierunku pola (spec §9, `./directions`) — właściciel gotowy
     // dla `resolveLabels`. Wycinek B2 tego pola: szerokość rezerwacji pola,
-    // jeden wiersz t3 tuż NAD osią magistrali.
+    // jeden wiersz t3 NAD osią magistrali, odsunięty o `PORT_CAPTION_BUS_
+    // CLEARANCE` (F6e: `busAxisY - captionHeight` bez odstępu kończył
+    // prostokąt DOKŁADNIE na osi — nachodził na zejście WŁASNEGO pola,
+    // które zaczyna się na tej samej osi, patrz `measure.ts`
+    // `stationPortCaptionHeight`, ta sama stała po obu stronach).
     const captionText = bayDirectionCaptions[index];
     if (captionText) {
+      // F6e: pole z pionem zejścia z góry (`entryDescentBayIndex` — stacja 0
+      // lateralu) — wycinek B2 zaczyna się ZA osią pionu (oś stosu +
+      // prześwit, `entryDescentCaptionInset` — TA SAMA stała co w rezerwacji
+      // `bayColumnRequiredWidth`/measure.ts, jedna prawda jak F6b-1), więc
+      // podpis kierunku nigdy nie leży pod wchodzącym przewodem.
+      const captionInset =
+        index === station.entryDescentBayIndex ? entryDescentCaptionInset(bay.fieldRole) : 0;
+      const captionRectX = bx + captionInset;
+      const captionRectWidth = reservedWidth - captionInset;
       portCaptions.push({
         ownerRef: `${bay.bayRef}#direction`,
         text: captionText,
-        anchorX: centerX,
-        primaryRect: { x: bx, y: busAxisY - captionHeight, width: reservedWidth, height: captionHeight },
+        anchorX: captionInset > 0 ? captionRectX + Math.floor(captionRectWidth / 2) : centerX,
+        primaryRect: {
+          x: captionRectX,
+          y: busAxisY - captionHeight - PORT_CAPTION_BUS_CLEARANCE,
+          width: captionRectWidth,
+          height: captionHeight,
+        },
       });
     }
 

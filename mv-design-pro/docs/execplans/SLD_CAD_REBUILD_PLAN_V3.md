@@ -328,25 +328,32 @@ i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
   z pinu równości na asercje strukturalne: klasy + górna granica
   bez-wzrostu + recepta aktualizacji).
 
-##### F6e. [NEXT] Nakład etykieta↔przewód WŁASNEGO pola (residuum po F6d)
-- ZMIERZONE w recenzji F6d (nie „1px", jak pierwotnie raportowano):
-  `apparatus` GPZ — pion WŁASNEGO pola liniowego przecina etykietę
-  „Pole liniowe GPZ" na **~40px** (realna bisekcja tekstu — DEFEKT
-  CZYTELNOŚCI, nie kosmetyka); `port-caption` — drop własnego pola muska
-  „kier. Sxx" na ~8px (muśnięcie krawędzią, niższy priorytet, ten sam
-  mechanizm). Liczby: 3/3/317 na LOD 0/1/2 (spinowane górną granicą w
-  teście „D3/k6 RESIDUUM").
-- PRZEDISTNIEJĄCE i niezależne od lateralów (git stash: pod-zbiór kolizji
-  HEAD sprzed F6d; F6d je REDUKUJE apparatus 5→3, port-caption 318→314).
-- Naprawa w warstwie compose: `compose/gpz.ts` (primaryRect oznacznika pola
-  liniowego GPZ — slot nie może obejmować osi pionu własnego pola) i
-  `compose/station.ts` (primaryRect podpisu portu vs drop własnego pola).
-  NIE zaliczać do „kosmetyki F7".
-- DoD: `noLabelWireCollisions` === true na LOD 0/1/2 (test residuum
-  ZASTĄPIONY zieloną asercją per LOD); wyrocznie §11 zielone; render;
-  recenzja Opus; commit.
-- F7 (render-odbiór) NIE MOŻE zamknąć się bez F6e — wyrocznia
-  `noLabelWireCollisions` wchodzi do skryptu akceptacyjnego jako twarda.
+##### F6e. [DONE] Nakład etykieta↔przewód WŁASNEGO pola (residuum po F6d)
+- SPŁACONE W CAŁOŚCI: `noLabelWireCollisions === true` na LOD 0/1/2 na
+  realnej fixturze (test w bloku wyroczni §11; test-dokumentacja residuum
+  zastąpiony zieloną asercją `labelWireCollisions === []`). Trzy mechanizmy:
+  (1) oznacznik pola liniowego GPZ obniżony o pół wiersza t3 — prostokąt
+  W CAŁOŚCI pod szyną SN (`compose/gpz.ts`; piony pól kończą się NA szynie);
+  (2) `PORT_CAPTION_BUS_CLEARANCE = GRID` — podpis kierunku odsunięty od osi
+  magistrali (rezerwacja `stationPortCaptionHeight` i pozycja w
+  `compose/station.ts` liczą TĘ SAMĄ stałą);
+  (3) `entryDescentBayIndex` (stacja 0 lateralu, pole „poprzednik" §9) —
+  kolumna pola wejściowego rezerwuje `entryDescentCaptionInset(role)`
+  (snapUp(footprint/2)+GRID), wycinek B2 podpisu zaczyna się ZA osią pionu
+  zejścia; measure↔compose ta sama stała (wzór F6b-1).
+- ADNOTACJA (zakres vs plan): wybrano naprawę REZERWACJĄ zamiast
+  compose-only clippingu (odrzucony: `resolvePortCaption` rzuca bez
+  fallbackRect, gdy przycięty wycinek nie mieści tekstu) — footprint plików
+  objął też `measure.ts`/`segments.ts`/`buildScene.ts` (parytet
+  measure↔compose, niezmiennik F5/FIX-3); ta sama DoD.
+- Proces: agent implementacyjny przerwany limitem sesji po mechanizmach
+  (1)/(2); (3) + testy dokończył nadzorca. Recenzja Opus (całość diffu,
+  ze świadomością szwu): APPROVE — geometria wszystkich trzech mechanizmów
+  zweryfikowana dowodowo, sygnatury spójne, testy nie-tautologiczne.
+- Znana granica (udokumentowana w kodzie): stacja 0 lateralu bez pola
+  „poprzednik" nie dostaje rezerwacji (tap środka bloku + stopNote) —
+  możliwa kolizja podpisu tylko na sieciach bez pola liniowego wejścia
+  (nie na fixturze).
 
 ##### F6b-1. [DONE] Spłata długu §9 apparatus
 - `compose/directions.ts`: `bayApparatusDesignation(snBays, index)` — prawda
