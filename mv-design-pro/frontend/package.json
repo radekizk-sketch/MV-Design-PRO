@@ -16,6 +16,7 @@
     "test:coverage": "vitest run --coverage",
     "test:golden": "vitest run --no-file-parallelism src/ui/sld/core/__tests__/goldenNetworkE2E.test.ts src/ui/sld/core/__tests__/sldRenderManifestGolden.test.ts src/ui/sld/core/__tests__/switchgearConfigGolden.test.ts src/ui/sld-editor/utils/topological-layout/__tests__/goldenFixtures.test.ts src/ui/sld-editor/utils/topological-layout/__tests__/goldenNetworkSn.test.ts src/ui/__tests__/ux-golden-scenario.test.ts",
     "test:golden:update": "vitest run --update --no-file-parallelism src/ui/sld/core/__tests__/goldenNetworkE2E.test.ts src/ui/sld/core/__tests__/sldRenderManifestGolden.test.ts src/ui/sld/core/__tests__/switchgearConfigGolden.test.ts src/ui/sld-editor/utils/topological-layout/__tests__/goldenFixtures.test.ts src/ui/sld-editor/utils/topological-layout/__tests__/goldenNetworkSn.test.ts src/ui/__tests__/ux-golden-scenario.test.ts",
+    "accept:sld-v3": "vite-node scripts/sld_v3_acceptance.mjs",
     "test:e2e": "node ./scripts/playwright-run.mjs",
     "test:e2e:setup": "node ./scripts/playwright-setup.mjs",
     "test:e2e:ui": "node ./scripts/playwright-run.mjs --ui",

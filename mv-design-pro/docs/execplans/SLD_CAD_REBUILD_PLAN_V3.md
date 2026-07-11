@@ -389,20 +389,50 @@ i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
        zgodne z literą §4; ewentualne rozdzielenie numeracji to decyzja
        konwencji, nie defekt.
 
-### F7. Render-odbiór + CI
-- Harness QUALITY_PLAN §3 rozszerzony: `overlap+grid+port+wire+determinism`
-  jako jeden skrypt `scripts/sld_v3_acceptance.mjs` (uruchamialny lokalnie;
-  do CI po cutoverze). PNG per rola (projektant: dane kabli/TR/NO; operator:
-  stany łączników/energizacja; audytor: zgodność IEC/ramka).
-- DoD: wszystkie wyrocznie zielone + PNG zaakceptowane; commit.
+### F7. [DONE] Render-odbiór
+- `frontend/scripts/sld_v3_acceptance.mjs` (npm: `accept:sld-v3`, vite-node):
+  WSZYSTKIE wyrocznie per LOD 0/1/2 na fixturze — overlap (§11.1:
+  overlapProbe + noSceneSymbolOverlaps + noLabelWireCollisions), grid
+  (§11.2), §9, etykiety w arkuszu, determinizm sceny, §16 continuity
+  (adaptacja 1:1 asercji z buildScene.test.ts — zweryfikowana recenzją) —
+  exit≠0 przy JAKIMKOLWIEK FAIL (akumulacja, wyjątki łapane per-LOD);
+  raport deterministyczny (diff dwóch uruchomień = identyczny). REUŻYWA
+  wyroczni produkcyjnych przez import (zero re-implementacji — warunek
+  wiarygodności odbioru). Wynik: 24 PASS / 0 FAIL.
+- `frontend/scripts/sld_v3_render_roles.mjs` → 5 PNG w
+  `docs/sld/renders/v3/` (COMMITOWANE jako zapis odbioru, 268KB):
+  projektant L2 (full + zoom GPZ + zoom stacja — dane kabli/TR/§9 czytelne),
+  operator L1 (nakładka energizacji — kolor działa, podział deterministyczny
+  po indeksie tablicy sceny), audytor L0 (plan S01..S53 + ramka + legenda).
+  Kadrowanie L0/L1 kompensuje k4 PO STRONIE SKRYPTU (produkcja nietknięta).
+- Doc: `docs/sld/SLD_V3_ACCEPTANCE.md` (PL: uruchomienie, wyrocznie,
+  czytanie raportu, ograniczenia — brak punktów NO na fixturze, k1 overlay
+  segmentów nie-GPZ, k4 kamera).
+- Recenzja Opus: APPROVE (reużycie wyroczni potwierdzone import-po-imporcie,
+  §16 porównane 1:1, semantyka FAIL i determinizm raportu zweryfikowane
+  empirycznie, 5 PNG obejrzane — zero nieodnotowanych defektów).
+- Podpięcie do CI = F8 (po cutoverze), opisane w doc.
 
 ### F8. Cutover + usunięcie v2 renderu
 - Feature-flag → domyślnie v3; migracja testów integracyjnych kanwy; po zielonym
   pełnym suicie USUŃ: mini-RMU card path, geometrię slotową (PITCH), declutter
   po fakcie (globalny pass z c088ef4 staje się zbędny — usuń), stary
   CableRunRenderer rysunek etykiet. Adapter elektryczny ZOSTAJE.
+- ROZSTRZYGNIĘCIE k4 (OBOWIĄZKOWE w tym kroku, z recenzji F7 — decyzja
+  o odroczeniu żyje dziś w SLD_V3_ACCEPTANCE.md §3, harness F7 kompensuje
+  clipem): `SldCanvasV3` fituje kamerę ZAWSZE do bboxa LOD 2 niezależnie od
+  `lodOverride`, brak refit po zmianie propsów, a światy LOD mają różne
+  rozmiary (osobne rezerwacje §7) ⇒ przejścia LOD są skokowe. Do decyzji:
+  mapowanie skali przy przejściach + fit dla lodOverride + kalibracja
+  progów (k2: 0.4/1.2, margines 0.15, wheel 0.0015, „glow" energizacji).
+- Dopisać `accept:sld-v3` do CI (sld-determinism workflow) po przełączeniu
+  domyślki na v3; rendery-odbioru odświeżyć i podmienić w docs/sld/renders/v3.
 - Zaktualizuj: sld_determinism_guards (lista testów v3), MACIERZ_TESTOW,
   SLD_RECOVERY_ACCEPTANCE (§ nowa sekcja V3), INDEX dokumentów.
+- NOTA CUTOVER-DIFF (z F5a): podpisy kierunków v3 CELOWO różnią się od v2
+  dla stacji sekcyjnych (naprawiony utajony defekt v2 pozycjonowania wśród
+  wszystkich pól zamiast liniowych) — przy porównaniu v2/v3 to poprawka,
+  nie regresja.
 - DoD: jedna ścieżka renderu; pełny suite zielony; guardy zielone; push.
 
 ---
