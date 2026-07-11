@@ -479,7 +479,10 @@ współdzielony (spec §8) — ale konsumpcja w compose (F9.3) czeka na F8b.
 **Reguły (bez zmian):** WHITE BOX + domain_no_guessing; nakładki = zero fizyki w UI; determinizm; wyrocznie
 §11 muszą pozostać zielone po KAŻDEJ fazie; brak lokalnych łatek i duplikacji elektryki adaptera.
 
-### F9.1. [SPEC] Merge poprawki A1 do wiążącej spec + rozstrzygnięcie konfliktów
+### F9.1. [DONE] Merge poprawki A1 do wiążącej spec + rozstrzygnięcie konfliktów
+- Wynik: scalono `SLD_CAD_SPEC_V3_AMENDMENT_A1_DRAFT.md` §12–§15 (+ załącznik) do
+  `SLD_CAD_SPEC_V3.md`, konflikty K-A/K-B/K-D zarejestrowane jako V12K-027..029 w
+  `docs/v12xx/REJESTR_KONFLIKTOW.md`; draft oznaczony jako scalony/historyczny.
 - Zakres: rozstrzygnąć K-A (kolejność aparatów), K-B (SA bez danych), K-D (DER badge vs źródło) — audyt §5;
   scalić `SLD_CAD_SPEC_V3_AMENDMENT_A1_DRAFT.md` §12–§15 do `SLD_CAD_SPEC_V3.md`; wpisać rozstrzygnięcia do
   `docs/v12xx/REJESTR_KONFLIKTOW.md` (następne wolne ≥ V12K-027).

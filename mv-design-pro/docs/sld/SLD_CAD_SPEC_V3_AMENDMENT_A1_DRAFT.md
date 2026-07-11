@@ -1,7 +1,8 @@
 # SLD CAD SPEC V3 — POPRAWKA A1 (DRAFT): ścieżka mocy i źródła
 
-**Status:** DRAFT do recenzji nadzorcy PRZED scaleniem do wiążącej `SLD_CAD_SPEC_V3.md`.
-NIE jest jeszcze wiążąca. Numeracja i styl kontynuują spec V3 (nowe §12–§15).
+**Status:** SCALONE do `SLD_CAD_SPEC_V3.md` §12–§15 (2026-07-11) — dokument
+historyczny, NIE czytać jako źródło; rozstrzygnięcia K-A/K-B/K-D w
+`docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-027..029.
 **Wejście:** `SLD_POWER_PATH_AUDIT_2026-07.md` (audyt 12 ustaleń dyrektywy).
 **Warunek scalenia:** rozstrzygnięcie kandydatów konfliktów K-A (kolejność aparatów), K-B (SA bez danych),
 K-D (DER badge vs źródło) — patrz audyt §5.
