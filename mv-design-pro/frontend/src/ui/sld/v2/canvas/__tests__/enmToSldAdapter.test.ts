@@ -11,11 +11,16 @@
  *  7. Stacje pole-wymiarowe (mv_lv/inline/branch/...) → StationOnRunRendererProps.
  */
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
 
 import { buildSldDataFromSnapshot, projectBayTelemetry } from '../enmToSldAdapter';
 import { FIELD_ROLE } from '../../domain/apparatusContracts';
 import type {
+  Bay,
+  BayPrimaryDevice,
   BayRuntimeState,
   BaySwitchState,
   EnergyNetworkModel,
@@ -80,6 +85,13 @@ function buildEmptySnapshot(): EnergyNetworkModel {
     connection_nodes: [],
     cable_joints: [],
   } as never;
+}
+
+/** F9.2 sonda: fixtura realna `sldSubstrate52s` (v2, 53 stacje SN + 1 GPZ) —
+ *  ta sama fixtura co `v3/scene/__tests__/buildScene.test.ts`. */
+function resolveFixturePath(fileName: string): string {
+  const here = dirname(fileURLToPath(import.meta.url));
+  return resolve(here, '..', '..', 'geometry', '__tests__', 'fixtures', fileName);
 }
 
 function attachMainRun(
@@ -3777,5 +3789,231 @@ describe('SLD branch point projection', () => {
     expect(xValues[1]).toBeGreaterThan(xValues[0] ?? 0);
     expect(xValues[2]).toBeGreaterThan(xValues[1] ?? 0);
     expect(result.readabilityReport.orphanStationRefs).toEqual([]);
+  });
+});
+
+// =============================================================================
+// F9.2 (SLD_CAD_SPEC_V3 §12.1/§13) — projekcja primaryDevices + sources
+// =============================================================================
+
+function makePrimaryDevice(overrides: Partial<BayPrimaryDevice>): BayPrimaryDevice {
+  return {
+    device_ref: 'device',
+    symbol_ref: 'symbol:device',
+    kind: 'CB',
+    placement: 'MIDSTREAM',
+    is_controllable: true,
+    ...overrides,
+  };
+}
+
+function makeStationOnlySnapshot(stationRef: string): EnergyNetworkModel {
+  const snap = buildEmptySnapshot();
+  snap.substations = [
+    {
+      id: 'st', ref_id: stationRef, name: 'Stacja testowa', tags: [], meta: {},
+      station_type: 'inline', bus_refs: [], transformer_refs: [],
+    } as never,
+  ];
+  attachMainRun(snap, [stationRef]);
+  return snap;
+}
+
+describe('F9.2 — projekcja Bay.primary_devices (SLD_CAD_SPEC_V3 §12.1)', () => {
+  it('primaryDevices jest nieobecny, gdy Bay (ENM) nie niesie primary_devices — stan dzisiejszy (STOP-notatka raportu F9.2)', () => {
+    const snap = makeStationOnlySnapshot('ST-1');
+    snap.bays = [
+      { id: 'b1', ref_id: 'bay-1', name: 'Pole 1', tags: [], meta: {}, bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [] } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const station = r.stations.find((s) => s.id === 'ST-1');
+    expect(station?.snBays).toHaveLength(1);
+    expect(station?.snBays[0]?.primaryDevices).toBeUndefined();
+  });
+
+  it('gdy primary_devices obecne (kontrakt forward-compat), sortuje wg placement UPSTREAM→MIDSTREAM→DOWNSTREAM ze stabilnym tie-breakerem = kolejność ENM', () => {
+    const snap = makeStationOnlySnapshot('ST-1');
+    const primaryDevices: BayPrimaryDevice[] = [
+      makePrimaryDevice({ device_ref: 'ct-1', kind: 'CT', placement: 'MIDSTREAM' }),
+      makePrimaryDevice({ device_ref: 'ds-bus', kind: 'DS', placement: 'UPSTREAM' }),
+      makePrimaryDevice({ device_ref: 'cb-1', kind: 'CB', placement: 'MIDSTREAM' }),
+      makePrimaryDevice({ device_ref: 'head', kind: 'CABLE_HEAD', placement: 'DOWNSTREAM' }),
+    ];
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'Pole liniowe', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
+        primary_devices: primaryDevices,
+      } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const devices = r.stations.find((s) => s.id === 'ST-1')?.snBays[0]?.primaryDevices;
+    expect(devices?.map((d) => d.deviceRef)).toEqual(['ds-bus', 'ct-1', 'cb-1', 'head']);
+    expect(devices?.map((d) => d.placement)).toEqual(['UPSTREAM', 'MIDSTREAM', 'MIDSTREAM', 'DOWNSTREAM']);
+    expect(devices?.map((d) => d.kind)).toEqual(['DS', 'CT', 'CB', 'CABLE_HEAD']);
+  });
+
+  it('mapuje switch_state.actual_state na uproszczony słownik closed/open/unknown (mirror cbState/dsState/esState)', () => {
+    const snap = makeStationOnlySnapshot('ST-1');
+    const primaryDevices: BayPrimaryDevice[] = [
+      makePrimaryDevice({
+        device_ref: 'cb-closed', kind: 'CB', placement: 'MIDSTREAM',
+        switch_state: makeSwitchState({ actual_state: 'zamkniety' }),
+      }),
+      makePrimaryDevice({
+        device_ref: 'ds-open', kind: 'DS', placement: 'UPSTREAM',
+        switch_state: makeSwitchState({ actual_state: 'otwarty' }),
+      }),
+      makePrimaryDevice({
+        device_ref: 'es-fault', kind: 'ES', placement: 'OFF_PATH',
+        switch_state: makeSwitchState({ actual_state: 'awaria' }),
+      }),
+      makePrimaryDevice({ device_ref: 'ct-no-state', kind: 'CT', placement: 'MIDSTREAM' }),
+    ];
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'Pole', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
+        primary_devices: primaryDevices,
+      } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const devices = r.stations.find((s) => s.id === 'ST-1')?.snBays[0]?.primaryDevices ?? [];
+    const byRef = new Map(devices.map((d) => [d.deviceRef, d.switchState]));
+    expect(byRef.get('ds-open')).toBe('open');
+    expect(byRef.get('cb-closed')).toBe('closed');
+    expect(byRef.get('es-fault')).toBe('unknown');
+    expect(byRef.get('ct-no-state')).toBeUndefined();
+  });
+
+  it('przenosi section_side 1:1 (LEFT/CENTER/RIGHT), null gdy ENM nie niesie strony', () => {
+    const snap = makeStationOnlySnapshot('ST-1');
+    const primaryDevices: BayPrimaryDevice[] = [
+      makePrimaryDevice({ device_ref: 'ds-left', kind: 'DS', placement: 'UPSTREAM', section_side: 'LEFT' }),
+      makePrimaryDevice({ device_ref: 'cb-right', kind: 'CB', placement: 'MIDSTREAM', section_side: 'RIGHT' }),
+      makePrimaryDevice({ device_ref: 'ct-none', kind: 'CT', placement: 'MIDSTREAM' }),
+    ];
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'Pole', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
+        primary_devices: primaryDevices,
+      } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const devices = r.stations.find((s) => s.id === 'ST-1')?.snBays[0]?.primaryDevices ?? [];
+    const byRef = new Map(devices.map((d) => [d.deviceRef, d.sectionSide]));
+    expect(byRef.get('ds-left')).toBe('LEFT');
+    expect(byRef.get('cb-right')).toBe('RIGHT');
+    expect(byRef.get('ct-none')).toBeNull();
+  });
+
+  it('determinizm: 10× ten sam input → identyczna projekcja primaryDevices', () => {
+    const snap = makeStationOnlySnapshot('ST-1');
+    const primaryDevices: BayPrimaryDevice[] = [
+      makePrimaryDevice({ device_ref: 'ct-1', kind: 'CT', placement: 'MIDSTREAM' }),
+      makePrimaryDevice({ device_ref: 'ds-bus', kind: 'DS', placement: 'UPSTREAM' }),
+    ];
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'Pole', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
+        primary_devices: primaryDevices,
+      } as never,
+    ];
+
+    const runs = Array.from({ length: 10 }, () =>
+      buildSldDataFromSnapshot(snap, null).stations.find((s) => s.id === 'ST-1')?.snBays[0]?.primaryDevices,
+    );
+    for (const run of runs) {
+      expect(run).toEqual(runs[0]);
+    }
+  });
+});
+
+describe('F9.2 — projekcja źródeł SldDataPayload.sources (SLD_CAD_SPEC_V3 §13.1/§13.2)', () => {
+  it('pusty snapshot → sources = []', () => {
+    const r = buildSldDataFromSnapshot(buildEmptySnapshot(), null);
+    expect(r.sources).toEqual([]);
+  });
+
+  it('projektuje Source (ENM, sieć zewnętrzna) jako kind=external_grid z connectionRef=bus_ref, ratedPower/operationalState nieobecne', () => {
+    const snap = buildEmptySnapshot();
+    snap.sources = [
+      {
+        id: 'src-1', ref_id: 'GPZ/source/main', name: 'GPZ Referencyjny', tags: [], meta: {},
+        bus_ref: 'bus-hv-1', model: 'external_grid',
+      } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.sources).toEqual([
+      { id: 'GPZ/source/main', kind: 'external_grid', connectionRef: 'bus-hv-1', ratedPower: undefined, operationalState: undefined },
+    ]);
+  });
+
+  it('mapuje Generator.gen_type na kind pv/bess/generator/wind; gen_type nieznany/null wykluczony (zero zgadywania)', () => {
+    const snap = buildEmptySnapshot();
+    snap.generators = [
+      { id: 'g-pv', ref_id: 'gen-pv', name: 'PV', tags: [], meta: {}, bus_ref: 'bus-nn', p_mw: 0.5, gen_type: 'pv_inverter', station_ref: 'ST-1' } as never,
+      { id: 'g-bess', ref_id: 'gen-bess', name: 'BESS', tags: [], meta: {}, bus_ref: 'bus-nn', p_mw: 0.3, gen_type: 'bess', station_ref: 'ST-1' } as never,
+      { id: 'g-sync', ref_id: 'gen-sync', name: 'G', tags: [], meta: {}, bus_ref: 'bus-sn', p_mw: 2, gen_type: 'synchronous' } as never,
+      { id: 'g-fw', ref_id: 'gen-fw', name: 'FW', tags: [], meta: {}, bus_ref: 'bus-sn', p_mw: 5, gen_type: 'wind_inverter' } as never,
+      { id: 'g-unk', ref_id: 'gen-unk', name: 'Unknown', tags: [], meta: {}, bus_ref: 'bus-sn', p_mw: 1, gen_type: null } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const byRef = new Map(r.sources?.map((s) => [s.id, s.kind]));
+    expect(byRef.get('gen-pv')).toBe('pv');
+    expect(byRef.get('gen-bess')).toBe('bess');
+    expect(byRef.get('gen-sync')).toBe('generator');
+    expect(byRef.get('gen-fw')).toBe('wind');
+    expect(byRef.has('gen-unk')).toBe(false);
+    expect(r.sources).toHaveLength(4);
+  });
+
+  it('connectionRef preferuje Generator.station_ref, fallback do bus_ref; ratedPower preferuje limits.p_max_mw, fallback do p_mw', () => {
+    const snap = buildEmptySnapshot();
+    snap.generators = [
+      { id: 'g-1', ref_id: 'gen-1', name: 'PV z limits', tags: [], meta: {}, bus_ref: 'bus-nn-1', p_mw: 0.4, gen_type: 'pv_inverter', station_ref: 'ST-1', limits: { p_max_mw: 0.5 } } as never,
+      { id: 'g-2', ref_id: 'gen-2', name: 'PV bez station_ref/limits', tags: [], meta: {}, bus_ref: 'bus-nn-2', p_mw: 0.2, gen_type: 'pv_inverter' } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const byRef = new Map(r.sources?.map((s) => [s.id, s]));
+    expect(byRef.get('gen-1')).toMatchObject({ connectionRef: 'ST-1', ratedPower: 0.5 });
+    expect(byRef.get('gen-2')).toMatchObject({ connectionRef: 'bus-nn-2', ratedPower: 0.2 });
+  });
+
+  it('sonda fixtura sldSubstrate52s: liczba źródeł per kind (1 external_grid GPZ + 20 DER: 8 pv, 8 bess, 4 wind)', () => {
+    const fixturePath = resolveFixturePath('sldSubstrate52s.enm.json');
+    const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
+
+    const r = buildSldDataFromSnapshot(enm, null);
+    const byKind = new Map<string, number>();
+    for (const s of r.sources ?? []) {
+      byKind.set(s.kind, (byKind.get(s.kind) ?? 0) + 1);
+    }
+
+    expect(r.sources).toHaveLength(21);
+    expect(byKind.get('external_grid')).toBe(1);
+    expect(byKind.get('pv')).toBe(8);
+    expect(byKind.get('bess')).toBe(8);
+    expect(byKind.get('wind')).toBe(4);
+    expect(byKind.get('generator')).toBeUndefined();
+  });
+
+  it('sonda fixtura sldSubstrate52s: 0 pól MA primary_devices — fixtura nie ćwiczy §12.1 (0 Bay[] w ogóle, tylko meta.field_specs)', () => {
+    const fixturePath = resolveFixturePath('sldSubstrate52s.enm.json');
+    const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
+
+    expect(enm.bays).toHaveLength(0);
+    const r = buildSldDataFromSnapshot(enm, null);
+    const withPrimaryDevices = r.stations.flatMap((s) => s.snBays).filter((b) => b.primaryDevices !== undefined);
+    expect(withPrimaryDevices).toHaveLength(0);
   });
 });

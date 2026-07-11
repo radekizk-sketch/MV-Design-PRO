@@ -8,6 +8,7 @@
 
 import type { MouseEvent } from 'react';
 
+import type { BayPrimaryDeviceKind, BayPrimaryPlacement } from '../../../../types/enm';
 import {
   COLOR_BG,
   COLOR_BUS_LV,
@@ -75,6 +76,22 @@ type SymbolClickHandler = (elementId: string) => (e: MouseEvent<SVGGElement>) =>
 // Public types
 // =============================================================================
 
+/**
+ * F9.2 (SLD_CAD_SPEC_V3 §12.1) — jeden aparat pola, uporządkowany wg fizycznej
+ * ścieżki mocy. Projekcja `Bay.primary_devices` (ENM) — patrz
+ * `enmToSldAdapter.ts` `projectBayPrimaryDevices()` dla reguł sortowania i
+ * STOP-notatki o dostępności danych.
+ */
+export interface BayPrimaryDeviceView {
+  readonly kind: BayPrimaryDeviceKind;
+  readonly placement: BayPrimaryPlacement;
+  readonly sectionSide?: 'LEFT' | 'CENTER' | 'RIGHT' | null;
+  readonly deviceRef: string;
+  /** Uproszczony stan (mirror `cbState`/`dsState`/`esState` vocabulary).
+   *  `undefined` gdy ENM nie niesie `switch_state` dla tego aparatu. */
+  readonly switchState?: 'closed' | 'open' | 'unknown';
+}
+
 export interface MiniBlockBayDescriptor {
   readonly bayRef: string;
   readonly fieldRole: FieldRole;
@@ -87,6 +104,11 @@ export interface MiniBlockBayDescriptor {
   readonly dsState?: 'closed' | 'open' | 'unknown';
   /** K30-63: stan ES (uziemnika). Default 'open' (rest position). */
   readonly esState?: 'closed' | 'open' | 'unknown';
+  /** F9.2 (SLD_CAD_SPEC_V3 §12.1): uporządkowana lista aparatów pola z
+   *  `Bay.primary_devices` (ENM), gdy dane niepuste. `undefined` gdy pole nie
+   *  niesie `primary_devices` — konwencja-wg-roli (§12.4, fallback rysunkowy)
+   *  NIE jest projektowana tutaj (poza zakresem F9.2, patrz F9.3). */
+  readonly primaryDevices?: readonly BayPrimaryDeviceView[];
 }
 
 export interface MiniBlockDerBadge {

@@ -21,6 +21,8 @@
 
 import type {
   BayDeviceState,
+  BayPrimaryDevice,
+  BayPrimaryPlacement,
   BayRuntimeState,
   BaySwitchState,
   Cable,
@@ -53,6 +55,7 @@ import {
 } from '../renderer/MiniBlockFootprints';
 import {
   miniBlockStationPortOffsets,
+  type BayPrimaryDeviceView,
   type MiniBlockBayDescriptor,
   type MiniBlockDerBadge,
 } from '../renderer/MiniBlockRmuRenderer';
@@ -538,6 +541,39 @@ export interface SldDataPayload {
    *  `buildSldDataFromSnapshot`; the per-segment direction/energization on
    *  `cableRuns`/`stations` then come from THAT solver result (one truth). */
   readonly powerFlow: SldPowerFlowCaseHeader | null;
+  /** F9.2 (SLD_CAD_SPEC_V3 §13.1): wszystkie widoczne źródła sieci — sieć
+   *  zewnętrzna (`Source` ENM, każdy `model` reprezentuje równanie
+   *  zastępcze zasilania zewnętrznego) + DER (`Generator` PV/BESS/wind/
+   *  generator synchroniczny). Nie zawiera GPZ jako odrębnej pozycji — GPZ
+   *  (kontener rozdzielni) jest już widoczny przez `gpzs`; ten widok
+   *  wylicza POJEDYNCZE elementy źródłowe ENM. Patrz `buildSources()`.
+   *  Opcjonalne pole (reguła F9.2: zmiany w kontrakcie współdzielonym
+   *  adaptera TYLKO addytywne) — zawsze wypełnione (możliwe `[]`) przez
+   *  `buildSldDataFromSnapshot`/`EMPTY_SLD_DATA`. */
+  readonly sources?: readonly SldSourceView[];
+}
+
+/**
+ * F9.2 (SLD_CAD_SPEC_V3 §13.1/§13.2) — jedno widoczne źródło sieci.
+ * Projekcja WYŁĄCZNIE z danych ENM (`Source`, `Generator`) — zero zgadywania.
+ */
+export interface SldSourceView {
+  readonly id: string;
+  readonly kind: 'external_grid' | 'pv' | 'bess' | 'generator' | 'wind';
+  /** Punkt przyłączenia — bus (Source) albo stacja/pole (Generator), wg tego,
+   *  co ENM faktycznie niesie dla danego elementu. */
+  readonly connectionRef: string;
+  /** Moc znamionowa [MW], gdy ENM ją niesie. `Source` (zastępcze zasilanie
+   *  zewnętrzne) NIE ma mocy znamionowej w ENM — tylko moc/prąd zwarciowy
+   *  (Sk''/Ik''), co jest INNĄ wielkością fizyczną; dlatego zawsze `undefined`
+   *  dla `kind='external_grid'` (żadna wartość SC nie jest tu podstawiana). */
+  readonly ratedPower?: number | null;
+  /** Stan operacyjny źródła (§13.3). AUDYT `SLD_POWER_PATH_AUDIT_2026-07.md`
+   *  ustalenie 8: ENM NIE modeluje stanu operacyjnego źródła (standby/
+   *  maintenance nie istnieją; energized/disconnected/fault wymagałyby
+   *  jednoznacznego mapowania źródło→pole zasilające, którego ENM nie niesie
+   *  bez zgadywania). Zawsze `undefined` do czasu F9.6 (pole domenowe). */
+  readonly operationalState?: 'energized' | 'standby' | 'disconnected' | 'maintenance' | 'fault';
 }
 
 export interface SldPowerFlowCaseHeader {
@@ -584,6 +620,7 @@ const EMPTY_SLD_DATA: SldDataPayload = Object.freeze({
   }),
   supplyPath: EMPTY_SUPPLY_PATH_FROZEN,
   powerFlow: null,
+  sources: [],
 });
 
 // =============================================================================
@@ -749,6 +786,7 @@ export function buildSldDataFromSnapshot(
   cableRuns = declutterAllRunLabelsGlobal(cableRuns, stations, gpzs, branchPoints);
 
   const { ders, derConnections } = buildDers(snapshot, stations);
+  const sources = buildSources(snapshot);
   const supplyPath = buildSupplyPathHighlight(snapshot);
   const topologyProjection = buildSldTopologyProjection(snapshot, {
     gpzs,
@@ -838,6 +876,7 @@ export function buildSldDataFromSnapshot(
     branchPoints,
     ders,
     derConnections,
+    sources,
     topologyCorridors: topologyProjection.topologyCorridors,
     topologyRuns: topologyProjection.topologyRuns,
     terminalBindings: topologyProjection.terminalBindings,
@@ -3527,6 +3566,7 @@ function buildExplicitStationMiniBays(
         cbState: states.cb,
         dsState: states.ds,
         esState: states.es,
+        primaryDevices: projectBayPrimaryDevices(bay),
       };
     });
 
@@ -3869,6 +3909,92 @@ function bayRuntimeSwitchStates(bay: Bay): {
     else if (k.includes('es') || k.includes('earth') || k.includes('uziemnik')) es = state;
   }
   return { cb, ds, es };
+}
+
+// =============================================================================
+// F9.2 (SLD_CAD_SPEC_V3 §12.1) — projekcja Bay.primary_devices
+// =============================================================================
+
+/**
+ * STOP-notatka (F9.2, raport przekazany recenzentowi): `Bay` — czyli
+ * `ENMElement` z `EnergyNetworkModel.bays[]`, co ten adapter faktycznie
+ * konsumuje — NIE serializuje `primary_devices` w backendzie
+ * (`backend/src/enm/models.py`, klasa `Bay(ENMElement)`, linie ~701-733: brak
+ * takiego pola). `primary_devices` istnieje WYŁĄCZNIE na `BayBaseModel`/
+ * `BayCanonicalModel` (models.py:1017/1140), obiekcie budowanym w locie przez
+ * `backend/src/application/field_read_model.py:build_field_read_model()` i
+ * wystawianym osobnym endpointem (`/api/cases/{id}/enm/field-view`,
+ * `frontend/src/ui/field/useFieldReadModel.ts`) — INNYM kanałem danych niż
+ * snapshot ENM, który zasila `buildSldDataFromSnapshot`. Krótko: cytat spec
+ * §12.1 „Bay.primary_devices (models.py:769-795)” wskazuje na definicję TYPU
+ * `BayPrimaryDevice` (linie 769-795), NIE na pole `Bay.primary_devices` — takiego
+ * pola na `Bay` nie ma.
+ *
+ * Ten typ i funkcja czytają pole DEFENSYWNIE (bez zmiany kontraktu `Bay` —
+ * zero typu-życzenia): jeśli/kiedy backend zacznie serializować
+ * `primary_devices` na `Bay` w ramach `EnergyNetworkModel`, projekcja
+ * aktywuje się automatycznie bez dalszych zmian adaptera. Do tego czasu
+ * zwraca `undefined` dla KAŻDEGO pola na KAŻDYM realnym snapshocie — w tym na
+ * fixturze `sldSubstrate52s`, która w ogóle nie ma elementów `Bay` (0 wpisów;
+ * pola są tam reprezentowane przez `substation.meta.field_specs`, inną,
+ * trzecią ścieżkę danych — patrz raport F9.2, sonda).
+ */
+type BayWithOptionalPrimaryDevices = Bay & {
+  readonly primary_devices?: readonly BayPrimaryDevice[];
+};
+
+const PRIMARY_DEVICE_PLACEMENT_ORDER: Readonly<Record<BayPrimaryPlacement, number>> = {
+  UPSTREAM: 0,
+  MIDSTREAM: 1,
+  DOWNSTREAM: 2,
+  OFF_PATH: 3,
+  GROUND_BRANCH: 4,
+};
+
+function simplifyPrimaryDeviceSwitchState(
+  actualState: BayDeviceState | null | undefined,
+): 'closed' | 'open' | 'unknown' {
+  switch (actualState) {
+    case 'zamkniety':
+    case 'zamkniety_naped_rozbrojony':
+      return 'closed';
+    case 'otwarty':
+    case 'otwarty_naped_rozbrojony':
+      return 'open';
+    default:
+      return 'unknown';
+  }
+}
+
+/**
+ * Projekcja `Bay.primary_devices` → `BayPrimaryDeviceView[]`, posortowana wg
+ * `placement` (UPSTREAM→MIDSTREAM→DOWNSTREAM→OFF_PATH→GROUND_BRANCH) ze
+ * stabilnym tie-breakerem = kolejność źródłowa z ENM (indeks w tablicy).
+ * `undefined` gdy ENM nie niesie `primary_devices` dla tego pola (patrz
+ * STOP-notatka powyżej — dziś ZAWSZE `undefined`, kontrakt gotowy pod
+ * przyszłą serializację backendu).
+ */
+function projectBayPrimaryDevices(
+  bay: BayWithOptionalPrimaryDevices,
+): readonly BayPrimaryDeviceView[] | undefined {
+  const devices = bay.primary_devices;
+  if (!devices || devices.length === 0) return undefined;
+  return devices
+    .map((device, sourceIndex) => ({ device, sourceIndex }))
+    .sort((a, b) => {
+      const placementDelta =
+        PRIMARY_DEVICE_PLACEMENT_ORDER[a.device.placement] - PRIMARY_DEVICE_PLACEMENT_ORDER[b.device.placement];
+      return placementDelta !== 0 ? placementDelta : a.sourceIndex - b.sourceIndex;
+    })
+    .map(({ device }): BayPrimaryDeviceView => ({
+      kind: device.kind,
+      placement: device.placement,
+      sectionSide: device.section_side ?? null,
+      deviceRef: device.device_ref,
+      switchState: device.switch_state
+        ? simplifyPrimaryDeviceSwitchState(device.switch_state.actual_state)
+        : undefined,
+    }));
 }
 
 function mapStationBayRoleToMiniRole(fieldRole: MiniBlockBayDescriptor['fieldRole']): MiniBlockBayDescriptor['fieldRole'] {
@@ -5708,6 +5834,74 @@ function mapGenTypeToDerKind(gen: Generator): DerRendererProps['kind'] | null {
     default:
       return null;
   }
+}
+
+// =============================================================================
+// F9.2 (SLD_CAD_SPEC_V3 §13.1/§13.2) — widoczne źródła sieci (SldSourceView)
+// =============================================================================
+
+/**
+ * Mapuje `Generator.gen_type` (ENM) na kind `SldSourceView`. Osobna tabela od
+ * `mapGenTypeToDerKind` (DerRendererProps używa 'PV'/'BESS'/'FW' — inny
+ * słownik niż SldSourceView), ale ta sama zasada: `gen_type` nieznany/`null`
+ * ⇒ `null` (element wykluczony z widoku źródeł — zero zgadywania), NIE
+ * domyślny kind. Różnica względem DER-badge: `synchronous` mapuje na
+ * `'generator'` tutaj (dziś NIE rysowany jako DER wcale, `mapGenTypeToDerKind`
+ * nie ma dla niego case'u — patrz raport F9.2, STOP-notatka).
+ */
+function mapGeneratorToSourceKind(gen: Generator): SldSourceView['kind'] | null {
+  switch (gen.gen_type) {
+    case 'pv_inverter':
+      return 'pv';
+    case 'bess':
+      return 'bess';
+    case 'synchronous':
+      return 'generator';
+    case 'wind_inverter':
+    case 'fw_pmsg':
+    case 'fw_dfig':
+    case 'fw_scig':
+      return 'wind';
+    default:
+      return null;
+  }
+}
+
+/**
+ * Projekcja `SldDataPayload.sources` — WYŁĄCZNIE z `snapshot.sources`
+ * (`Source` ENM — sieć zewnętrzna, każdy `model` to inna reprezentacja tego
+ * samego zjawiska: zastępcze zasilanie zewnętrzne) i `snapshot.generators`
+ * (DER: PV/BESS/wind/generator synchroniczny). GPZ (`Substation`) NIE
+ * generuje tu odrębnej pozycji — kontener rozdzielni GPZ jest już widoczny
+ * przez `gpzs`; ten widok wylicza pojedyncze elementy źródłowe ENM (zgodnie
+ * z `Source.substation_ref`, GPZ i jego `Source` to inne obiekty ENM).
+ * Deterministyczne: kolejność = kolejność źródłowa `snapshot.sources` +
+ * `snapshot.generators` (stabilna dla tego samego snapshotu).
+ */
+function buildSources(snapshot: EnergyNetworkModel): SldSourceView[] {
+  const gridSources: SldSourceView[] = (snapshot.sources ?? []).map((source): SldSourceView => ({
+    id: source.ref_id,
+    kind: 'external_grid',
+    connectionRef: source.bus_ref,
+    ratedPower: undefined,
+    operationalState: undefined,
+  }));
+
+  const derSources: SldSourceView[] = (snapshot.generators ?? [])
+    .map((gen): SldSourceView | null => {
+      const kind = mapGeneratorToSourceKind(gen);
+      if (!kind) return null;
+      return {
+        id: gen.ref_id,
+        kind,
+        connectionRef: gen.station_ref ?? gen.bus_ref,
+        ratedPower: gen.limits?.p_max_mw ?? gen.p_mw ?? null,
+        operationalState: undefined,
+      };
+    })
+    .filter((view): view is SldSourceView => view !== null);
+
+  return [...gridSources, ...derSources];
 }
 
 /**
