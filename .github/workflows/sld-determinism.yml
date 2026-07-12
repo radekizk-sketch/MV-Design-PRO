@@ -70,6 +70,10 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npx vitest run --no-file-parallelism src/ui/sld/v2/core/__tests__/ports.test.ts --reporter=verbose
 
+      - name: Run SLD v3 render-odbiór acceptance (F7/F8b-2)
+        working-directory: mv-design-pro/frontend
+        run: npm run accept:sld-v3
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4

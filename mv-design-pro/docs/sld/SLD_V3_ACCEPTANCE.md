@@ -95,12 +95,12 @@ Przykład (skrócony):
 ### Co skrypt NIE robi
 
 - Nie renderuje PNG (to `sld_v3_render_roles.mjs`, sekcja 2).
-- Nie jest jeszcze podłączony do CI (`.github/workflows/`) — to zadanie
-  cutoveru F8 (`SLD_CAD_REBUILD_PLAN_V3.md` §F8). Podłączenie: dodać krok
-  `cd mv-design-pro/frontend && npx vite-node scripts/sld_v3_acceptance.mjs`
-  do `sld-determinism.yml` (analogicznie do istniejących kroków
-  `sld_determinism_guards.py`), PO cutoverze — dopóki v2 jest ścieżką
-  produkcyjną, ten skrypt weryfikuje kod v3 budowany równolegle.
+- **AKTYWNY w CI** (F8b-2, `SLD_CAD_REBUILD_PLAN_V3.md` §F8b-2): krok
+  „Run SLD v3 render-odbiór acceptance (F7/F8b-2)" w job `sld-contract-tests`
+  (`.github/workflows/sld-determinism.yml`) uruchamia `npm run accept:sld-v3`
+  po istniejących krokach vitest (job już ma `npm ci` wcześniej). Exit≠0 na
+  jakimkolwiek FAIL blokuje CI, tak samo jak `sld_determinism_guards.py`
+  w job `sld-guards`.
 - Nie naprawia znalezionych defektów — jeśli wyrocznia FAIL-uje, to dowód
   realnego defektu w kodzie v3 (scena/layout), nie w skrypcie. Skrypt STOP-uje
   z niezerowym exit code; naprawa jest zadaniem osobnym.

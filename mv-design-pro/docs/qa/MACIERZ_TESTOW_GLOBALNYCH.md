@@ -40,6 +40,21 @@ silnika layoutu builder/{Hierarchical,Corridor,...} — 2026-07):
 - `frontend/src/ui/sld/v2/command/__tests__/SldCommandService.test.ts`
 - `frontend/src/ui/sld/v2/core/__tests__/ports.test.ts`
 
+Frontend SLD v3 (SLD_CAD_REBUILD_PLAN_V3 F1-F8 — domyślna ścieżka renderu od
+F8a; v2 pozostaje fallbackiem, patrz §F8c w planie — usunięcie ZABLOKOWANE do
+pełnego parytetu §10):
+- `frontend/src/ui/sld/v3/symbols/__tests__/symbols.test.tsx`
+- `frontend/src/ui/sld/v3/layout/__tests__/layout.test.ts`
+- `frontend/src/ui/sld/v3/layout/__tests__/route.test.ts`
+- `frontend/src/ui/sld/v3/layout/__tests__/labels.test.ts`
+- `frontend/src/ui/sld/v3/scene/__tests__/buildScene.test.ts`
+- `frontend/src/ui/sld/v3/canvas/__tests__/camera.test.ts`
+- `frontend/src/ui/sld/v3/canvas/__tests__/sldCanvasV3.test.tsx`
+- `frontend/src/ui/sld/__tests__/SldRenderHost.test.tsx` (cutover v2/v3 + pomost split-preview)
+- `frontend/src/ui/workspace/__tests__/routerExtensionSurfaces.test.tsx` (drugi punkt osadzenia — `WorkspaceSurfaceRouter` E-01)
+- `frontend/scripts/sld_v3_acceptance.mjs` (`npm run accept:sld-v3` — render-odbiór wyroczni §11/§9/§16 na `sldSubstrate52s`, AKTYWNY w `.github/workflows/sld-determinism.yml`)
+- `scripts/sld_determinism_guards.py` (GUARD 6 — testy v3 obecne)
+
 Frontend White Box i eksport sladu:
 - `frontend/src/ui/proof/__tests__/TraceViewer.test.tsx`
 - `frontend/src/ui/proof/__tests__/traceCatalogContextExport.spec.tsx`

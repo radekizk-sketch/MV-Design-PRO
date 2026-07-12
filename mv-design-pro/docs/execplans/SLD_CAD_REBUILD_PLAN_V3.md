@@ -486,27 +486,121 @@ i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
   C-FIX); sld+config 3155 pass; accept ALL PASS; tsc/eslint/guardy OK;
   rendery bajt-identyczne.
 
-### F8b-2. [NEXT] Cutover — dokończenie + usunięcie v2 renderu
-- Feature-flag → domyślnie v3; migracja testów integracyjnych kanwy; po zielonym
-  pełnym suicie USUŃ: mini-RMU card path, geometrię slotową (PITCH), declutter
-  po fakcie (globalny pass z c088ef4 staje się zbędny — usuń), stary
-  CableRunRenderer rysunek etykiet. Adapter elektryczny ZOSTAJE.
-- ROZSTRZYGNIĘCIE k4 (OBOWIĄZKOWE w tym kroku, z recenzji F7 — decyzja
-  o odroczeniu żyje dziś w SLD_V3_ACCEPTANCE.md §3, harness F7 kompensuje
-  clipem): `SldCanvasV3` fituje kamerę ZAWSZE do bboxa LOD 2 niezależnie od
-  `lodOverride`, brak refit po zmianie propsów, a światy LOD mają różne
-  rozmiary (osobne rezerwacje §7) ⇒ przejścia LOD są skokowe. Do decyzji:
-  mapowanie skali przy przejściach + fit dla lodOverride + kalibracja
-  progów (k2: 0.4/1.2, margines 0.15, wheel 0.0015, „glow" energizacji).
-- Dopisać `accept:sld-v3` do CI (sld-determinism workflow) po przełączeniu
-  domyślki na v3; rendery-odbioru odświeżyć i podmienić w docs/sld/renders/v3.
-- Zaktualizuj: sld_determinism_guards (lista testów v3), MACIERZ_TESTOW,
-  SLD_RECOVERY_ACCEPTANCE (§ nowa sekcja V3), INDEX dokumentów.
-- NOTA CUTOVER-DIFF (z F5a): podpisy kierunków v3 CELOWO różnią się od v2
-  dla stacji sekcyjnych (naprawiony utajony defekt v2 pozycjonowania wśród
-  wszystkich pól zamiast liniowych) — przy porównaniu v2/v3 to poprawka,
-  nie regresja.
-- DoD: jedna ścieżka renderu; pełny suite zielony; guardy zielone; push.
+### F8b-2. [DONE] Cutover — dokończenie osadzenia + CI + guardy/docs (BEZ usuwania v2)
+- **DECYZJA NADZORCY (rewizja zakresu wobec opisu poniżej z wcześniejszej wersji
+  planu):** usunięcie ścieżki renderu v2 jest ZABLOKOWANE Polityką Zero
+  Regresji dyrektywy — v3 nie ma jeszcze CAD-edycji, drawera, context-menu,
+  DER-palety (spec §10; nagłówek `SldCanvasV3Workspace.tsx` to przyznaje).
+  Usunięcie = nowa faza **F8c** (niżej), bramkowana checklistą pełnego
+  parytetu §10 (+ F9.3-F9.5). F8b-2 zrealizowało WSZYSTKO POZA usunięciem:
+- A (drugi punkt osadzenia — znalezisko F8b-1): `WorkspaceSurfaceRouter.tsx:3131`
+  renderował `SldWorkspaceContainer` BEZPOŚREDNIO (z pominięciem
+  `SldRenderHost`) dla rozszerzonej powierzchni E-01. Przełączone na
+  `SldRenderHost` (import + wywołanie bez propsów — identyczne domyślne
+  zachowanie, bo router nie przekazywał żadnych propsów wcześniej;
+  `SldRenderHostProps` jest dokładnym nadzbiorem `SldWorkspaceContainerProps`,
+  więc żaden prop nie został zgubiony). Testy:
+  `frontend/src/ui/workspace/__tests__/routerExtensionSurfaces.test.tsx`
+  (nowy opis „SldRenderHost jako E-01" — domyślnie v3 + fallback v2 przez
+  `localStorage` działa też z tego punktu osadzenia).
+- B (CI): krok „Run SLD v3 render-odbiór acceptance (F7/F8b-2)"
+  (`npm run accept:sld-v3`, `working-directory: mv-design-pro/frontend`)
+  dopisany do job `sld-contract-tests` w `.github/workflows/sld-determinism.yml`,
+  PO istniejących krokach vitest, PRZED upload-artifact; job ma `npm ci`
+  wcześniej (niezmienione). Istniejące kroki NIETKNIĘTE.
+- C (guardy/docs): `scripts/sld_determinism_guards.py` — nowy GUARD 6
+  (`REQUIRED_V3_TESTS`: symbols/layout/route/labels/buildScene/camera/
+  sldCanvasV3), docstring modułu rozszerzony o v3, komunikat sumaryczny
+  „SLD v2 + v3 spójne"; `docs/sld/SLD_V3_ACCEPTANCE.md` §„Co skrypt NIE robi"
+  → sekcja CI oznaczona AKTYWNA (krok + job + exit semantics); MACIERZ_TESTOW
+  (`docs/qa/MACIERZ_TESTOW_GLOBALNYCH.md`) — nowa sekcja „Frontend SLD v3"
+  z listą testów v3 + acceptance script + guard. `docs/INDEX.md`/
+  `INDEX_KANONICZNY.md` NIE zmienione — sprawdzone: żaden inny dokument SLD v3
+  (włącznie z wiążącym `SLD_CAD_SPEC_V3.md`) nie jest tam wpisany, `docs_guard.py`
+  zielony bez zmiany (nie wymaga wpisu). `SLD_RECOVERY_ACCEPTANCE_2026-07.md`
+  (dokument v2-erowy, RC1-10/36 kryteriów) NIE dotknięty — poza zakresem
+  delegacji tej sesji; otwarte dla recenzenta.
+- D (ten wpis + F8c poniżej).
+- NOTA CUTOVER-DIFF (z F5a, nadal aktualna): podpisy kierunków v3 CELOWO
+  różnią się od v2 dla stacji sekcyjnych (naprawiony utajony defekt v2
+  pozycjonowania wśród wszystkich pól zamiast liniowych) — przy porównaniu
+  v2/v3 to poprawka, nie regresja.
+- ODROCZONE do F8c/F9 (NIE w zakresie F8b-2, jawnie, kod v2 ŻYWY dopóki v2
+  jest fallbackiem): feature-flag jest już domyślnie v3 od F8a
+  (`featureFlags.USE_SLD_CANVAS_V3`) — nic do zmiany; rozstrzygnięcie k4
+  (kamera/LOD skokowe przejścia); usunięcie mini-RMU card path / geometrii
+  slotowej (PITCH) / declutter-po-fakcie / starego `CableRunRenderer`
+  rysunku etykiet; odświeżenie renderów-odbioru w `docs/sld/renders/v3/`
+  (nie wymagane tą sesją — zero zmian geometrii produkcyjnej v3, tylko
+  punkt osadzenia).
+- DoD: drugi punkt osadzenia na hoście (jedna ścieżka decyzji v2/v3, dwa
+  miejsca wywołania); `accept:sld-v3` aktywne w CI; guardy/docs
+  zaktualizowane i zielone; v2 NIETKNIĘTE poza embeddingiem.
+
+### F8c. [ZABLOKOWANE — parytet §10] Usunięcie ścieżki renderu v2
+**Blokada (decyzja nadzorcy, F8b-2):** Polityka Zero Regresji dyrektywy
+zakazuje usunięcia `ui/sld/v2/*` (i mini-RMU card path / geometrii slotowej
+PITCH / declutter-po-fakcie / `CableRunRenderer` etykiet / `useMeasuredSize`
+duplikatu / rozstrzygnięcia k4) dopóki v3 nie ma funkcjonalnego parytetu ze
+spec §10. Rollback-flag (`localStorage`, `sldRenderVersion.ts`,
+`SLD_RENDER_VERSION_STORAGE_KEY`) ŻYJE do F8c — to jedyna dziś ścieżka
+powrotu do v2 bez rebuildu, gdyby v3 okazał się niewystarczający w produkcji.
+
+**Checklista bramkująca (WSZYSTKIE pozycje muszą być [DONE] przed otwarciem
+F8c; żadna nie jest dziś zamknięta):**
+1. **CAD-edycja** — geometria edytowalna myszą/klawiaturą na kanwie v3
+   (przesuwanie/rysowanie elementów) — v3 dziś jest wyłącznie odczytem
+   (spec §10 inwentarz; nagłówek `SldCanvasV3Workspace.tsx`).
+2. **Drawer szczegółów elementu** — panel boczny po kliknięciu elementu
+   (v2: property-grid/inspector); v3 dziś ma tylko `onElementClick` →
+   `selectElement` (F8b-1 B), bez UI drawera podłączonego do wyniku klik.
+3. **Context-menu** — menu kontekstowe na elementach kanwy (akcje edycji/
+   usuwania/konfiguracji) — brak odpowiednika w v3.
+4. **DER-paleta** — panel wstawiania PV/BESS/FW/inne DER na kanwę —
+   brak odpowiednika w v3 (v3 tylko RENDERUJE istniejące DER, nie
+   wstawia nowych).
+5. **Conscious Split (split-preview) realnie osiągalny w v3** — dziś pomost
+   `forceV2ForSplitPreview` w `SldRenderHost` (F8b-1 D) wymusza v2, gdy
+   `splitPreviewState` aktywny; `SplitPreviewPanel`/`ConsciousSplitController`
+   nie mają odpowiednika v3. Bramka: v3 renderuje ten workflow SAM, pomost
+   i jego test (`SldRenderHost.test.tsx` „F8b-1 D") usuwane razem z v2.
+6. **Nakładka solverowa przepływu mocy (F9.5)** — dziś v3 ma tylko nakładkę
+   energizacji topologicznej (`buildSupplyPathHighlight`, F8b-1 C); v2 ma
+   ścieżkę do `SldPowerFlowCompanion` (martwą w produkcji dziś, ale
+   architektonicznie dostępną) — F9.5 musi domknąć realną nakładkę PF w v3
+   przed uznaniem parytetu (nawet jeśli v2 też nie używa jej produkcyjnie —
+   parytet mierzy się względem SPEC, nie względem martwego kodu v2).
+7. **Konsolidacja `useMeasuredSize`** — dziś zduplikowany (v2:
+   `SldWorkspaceContainer.tsx`, v3: `SldCanvasV3Workspace.tsx`, nagłówek
+   F8a). Bramka: jedna implementacja współdzielona PRZED usunięciem v2 (po
+   usunięciu v2 pozostałaby naturalnie jedna, ale duplikacja dziś jest
+   długiem niezależnym od usunięcia — warto scalić wcześniej, żeby nie
+   przepisywać importów w commit'cie usuwającym).
+8. **Pełna migracja testów integracyjnych kanwy** — testy kontraktowe v2
+   pilnowane przez `sld_determinism_guards.py` GUARD 2 (`REQUIRED_V2_TESTS`:
+   layoutEngine.substrate, ViewportController, LodPolicy, renderers,
+   portAnchoredGeometry.substrate, SldCommandService, ports) muszą mieć
+   udowodniony odpowiednik pokrycia w v3 (GUARD 6 dziś pilnuje v3 równolegle,
+   NIE zastępczo) — bramka: dowód 1:1 pokrycia funkcjonalnego, potem
+   `REQUIRED_V2_TESTS`/katalogi v2 usuwane z guardu w TYM SAMYM commicie co
+   kod.
+9. **Rozstrzygnięcie k4** (kamera/LOD skokowe przejścia przy zmianie
+   `lodOverride`/propsów) — odroczone z F7/F8a/F8b-2; musi być zamknięte,
+   bo usunięcie v2 usuwa też dzisiejszy fallback operatorski, który maskuje
+   ten defekt UX w praktyce rzadkim użyciem `lodOverride`.
+10. **Rendery-odbioru v3 odświeżone** po zamknięciu 1-9 (`docs/sld/renders/v3/`)
+    + `SLD_V3_ACCEPTANCE.md` zaktualizowane o finalny stan bez v2.
+
+**Po zamknięciu checklisty, F8c wykonuje:** usunięcie `ui/sld/v2/*` (poza
+adapterem elektrycznym `enmToSldAdapter.ts`/`SupplyPathHighlighter.ts` —
+WSPÓŁDZIELONE, ZOSTAJĄ), `SldWorkspaceContainer`, `SldRenderHost` (staje się
+zbędnym punktem decyzji — jeden render, bez wyboru), `sldRenderVersion.ts` +
+`SLD_RENDER_VERSION_STORAGE_KEY` (rollback-flag odpada razem z v2), mini-RMU
+card path, geometrię slotową (PITCH), declutter-po-fakcie (globalny pass z
+`c088ef4`), stary `CableRunRenderer` rysunek etykiet; aktualizacja WSZYSTKICH
+dwóch punktów osadzenia (`App.tsx`, `WorkspaceSurfaceRouter.tsx`) na
+bezpośrednie `SldCanvasV3Workspace` (host bez wyboru może zostać jako cienka
+nazwa albo być inline'owany — decyzja przy realizacji F8c).
 
 ---
 

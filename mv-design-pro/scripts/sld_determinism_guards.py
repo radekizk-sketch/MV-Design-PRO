@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""SLD Determinism Guards — gates dla nowego SLD v2 (po PR-5c wygaszeniu starego SLD).
+"""SLD Determinism Guards — gates dla nowego SLD v2 (po PR-5c wygaszeniu starego SLD)
+oraz SLD v3 (SLD_CAD_REBUILD_PLAN_V3, domyślna ścieżka renderu od F8a).
 
 Po pełnym wygaszeniu starego pipeline (Sugiyama + A* + ELK + V1 layoutPipeline) w PR-5c
 ten guard sprawdza, że nowy konstruktywny builder (`ui/sld/v2/`) ma:
@@ -9,6 +10,8 @@ ten guard sprawdza, że nowy konstruktywny builder (`ui/sld/v2/`) ma:
 3. Brak importu wygaszonych modułów (Sugiyama, A*, ELK, sldCanonicalStyle, IndustrialAesthetics, layoutPipeline V1, SLDView).
 4. Brak importu wygaszonego pakietu `elkjs` w package.json.
 5. Brak fabrykacji ID/czasu w builder/ (crypto.randomUUID/Date.now/Math.random).
+6. Testy v3 są obecne (buildScene, camera, SldCanvasV3, layout, labels, route, symbols —
+   REBUILD_PLAN_V3 §F8b-2; v2 pozostaje ZABLOKOWANY do usunięcia do §F8c, patrz plan).
 
 Exit code: 0 = OK, 1 = naruszenia.
 """
@@ -52,6 +55,20 @@ REQUIRED_V2_TESTS = [
     "ui/sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts",
     "ui/sld/v2/command/__tests__/SldCommandService.test.ts",
     "ui/sld/v2/core/__tests__/ports.test.ts",
+]
+
+# Testy v3 (SLD_CAD_REBUILD_PLAN_V3 F1-F8 — domyślna ścieżka renderu od F8a).
+# Lista NIE jest wyczerpująca (v3 ma więcej plików testowych) — pilnuje
+# kluczowych wyroczni per warstwa (symbole/layout/routing/etykiety/scena/
+# kamera/kanwa), analogicznie do REQUIRED_V2_TESTS.
+REQUIRED_V3_TESTS = [
+    "ui/sld/v3/symbols/__tests__/symbols.test.tsx",
+    "ui/sld/v3/layout/__tests__/layout.test.ts",
+    "ui/sld/v3/layout/__tests__/route.test.ts",
+    "ui/sld/v3/layout/__tests__/labels.test.ts",
+    "ui/sld/v3/scene/__tests__/buildScene.test.ts",
+    "ui/sld/v3/canvas/__tests__/camera.test.ts",
+    "ui/sld/v3/canvas/__tests__/sldCanvasV3.test.tsx",
 ]
 
 FORBIDDEN_LEGACY_PATHS = [
@@ -161,13 +178,20 @@ def main() -> int:
     else:
         passed("GUARD 5: brak fabrykacji ID/czasu w builder/")
 
+    # Guard 6: testy v3 obecne
+    for rel in REQUIRED_V3_TESTS:
+        if not (FRONTEND_SRC / rel).exists():
+            violations.append(f"GUARD 6: brak testu v3 — {rel}")
+    if not any(v.startswith("GUARD 6:") for v in violations):
+        passed("GUARD 6: testy v3 obecne")
+
     print()
     if violations:
         print(f"{RED}TOTAL: {len(violations)} naruszeń — CI BLOCKED{RESET}")
         for v in violations:
             print(f"  {v}")
         return 1
-    print(f"{GREEN}TOTAL: 0 naruszeń — SLD v2 spójny{RESET}")
+    print(f"{GREEN}TOTAL: 0 naruszeń — SLD v2 + v3 spójne{RESET}")
     return 0
 
 
