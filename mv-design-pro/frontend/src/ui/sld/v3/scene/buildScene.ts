@@ -109,11 +109,9 @@ import { GRID, snapToGrid, snapUp, rectsOverlap, type V3Rect } from '../core/gri
 import { measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import {
-  buildRoute,
   classifyRouteNodes,
   type RouteGeometry,
   type RouteNode,
-  type RoutePort,
   type RouteVertex,
 } from '../layout/route';
 import {
@@ -208,6 +206,9 @@ const ROW_VERTICAL_GAP = 4 * GRID;
 const GPZ_NODE_CODE = 'GPZ';
 const NO_POINT_SIZE = SYMBOL_DEFS.noPoint.width;
 const COLLECTIVE_BOX_SIZE = SYMBOL_DEFS.stationCollapsed.width;
+/** F9.3 (spec §14.4): gabaryt akcentu węzła rozgałęzienia — patrz
+ *  `symbols/defs.ts` (32×32, 4×GRID, WIĘKSZY niż `junction` bazowy 16×16). */
+const BRANCH_JUNCTION_SIZE = SYMBOL_DEFS.branchJunction.width;
 
 /** F6d (przypadek b): odstęp jogu zejścia lateralu od prawej krawędzi bloku
  *  stacji-origin, do szczeliny `COLUMN_GAP` między stacjami tego wiersza
@@ -481,8 +482,20 @@ interface ComposedRowStation {
   readonly apparatusOwners: readonly SimpleAnchoredOwnerInput[];
   readonly portCaptionOwners: readonly PortCaptionOwnerInput[];
   readonly derOwners: readonly SimpleAnchoredOwnerInput[];
-  readonly entryTapX: number;
-  readonly exitTapX: number;
+  /**
+   * F9.3 (FIX-1, korekta po recenzji Opusa, spec §12.3): port POŁĄCZENIA
+   * kabla międzystacyjnego wchodzącego/wychodzącego z pola „poprzednik"/
+   * „następnik" (§9) — DOLNY PORT GŁOWICY KABLOWEJ tego pola (`cableHead`
+   * south port), TEN SAM wzorzec co `branchPort` niżej (`y = blockTopY +
+   * footprint.height`), NIE punkt 0 zejścia (oś szyny/busAxisY). Przed tą
+   * poprawką pole nazywało się `entryTapX`/`exitTapX` (tylko X, Y domyślne
+   * = busAxisY z konstrukcji wołającego) — kabel międzystacyjny wizualnie
+   * kończył się na osi magistrali, z dala od głowicy (dowód renderowy w
+   * recenzji: głowice „dyndały"). L0 (stacja zbiorczy symbol, brak realnych
+   * pól/głowic) zachowuje STARE zachowanie: `{x: column.tapX, y: busAxisY}`.
+   */
+  readonly entryPort: { readonly x: number; readonly y: number };
+  readonly exitPort: { readonly x: number; readonly y: number };
   /** Port odgałęzienia (lateral) N-tego pola branch tej stacji (0-indeks w
    *  kolejności `branchIndices`) — `null` gdy stacja nie ma tylu odgałęzień. */
   readonly branchPort: (branchPos: number) => { readonly x: number; readonly y: number } | null;
@@ -532,8 +545,8 @@ function composeRowStation(
       apparatusOwners: [],
       portCaptionOwners: [],
       derOwners: [],
-      entryTapX: column.tapX,
-      exitTapX: column.tapX,
+      entryPort: { x: column.tapX, y: busAxisY },
+      exitPort: { x: column.tapX, y: busAxisY },
       branchPort: () => ({ x: column.tapX, y: busAxisY }),
     };
   }
@@ -561,8 +574,20 @@ function composeRowStation(
       `Stacja „${measureInput.id}": brak pola liniowego „poprzednik" (§9) — port wejścia magistrali domyślny (środek bloku).`,
     );
   }
-  const entryTapX = tapXOfBay(previousIndex) ?? column.tapX;
-  const exitTapX = tapXOfBay(nextIndex) ?? column.tapX;
+  // F9.3 (FIX-1): port POŁĄCZENIA kabla = dolny port głowicy tego pola
+  // (`y = blockTopY + footprint.height`, wzorzec `branchPort` niżej) — X
+  // NIEZMIENIONE (`tapXOfBay`, centerX stosu, ta sama wartość co punkt 0 i 1
+  // zejścia, bo `#descent` jest odcinkiem WYŁĄCZNIE pionowym). Fallback (brak
+  // pola liniowego) wraca do starego zachowania — środek bloku NA OSI.
+  const portOfBay = (index: number | null): { readonly x: number; readonly y: number } | null => {
+    if (index == null) return null;
+    const bay = measureInput.snBays[index];
+    const x = tapXOfBay(index);
+    if (!bay || x == null) return null;
+    return { x, y: blockTopY + bayColumnFootprint(bay).height };
+  };
+  const entryPort = portOfBay(previousIndex) ?? { x: column.tapX, y: busAxisY };
+  const exitPort = portOfBay(nextIndex) ?? { x: column.tapX, y: busAxisY };
 
   const symbols: PreviewSymbol[] = composition.symbols.map((s) => ({
     symbolId: s.symbolId,
@@ -573,6 +598,13 @@ function composeRowStation(
       testId: s.bayRef ? `${s.bayRef}#${s.symbolId}` : undefined,
       ownerRef: s.bayRef,
       elementKind: classifySymbolElementKind(s.symbolId),
+      // F9.3 (spec §12.1): przepisane 1:1 z kompozycji — audytor DOM
+      // (`data-apparatus-source`) i testy czytają WYŁĄCZNIE stąd, zero
+      // re-derywacji. `ownerRef` NIEZMIENIONE (nadal `bayRef`, spec §16/
+      // nakładka energizacji kluczuje po refie POLA, nie per-aparat) —
+      // `deviceRef` (WHITE BOX §12.1) mieszka na `StationComposition`
+      // (`compose/station.ts`), poza zakresem propagacji do sceny w F9.3.
+      apparatusSource: s.apparatusSource,
     },
   }));
   const segments: PreviewSegment[] = composition.segments.map((s) => {
@@ -590,14 +622,14 @@ function composeRowStation(
     apparatusOwners: composition.labels.apparatus,
     portCaptionOwners: composition.labels.portCaptions,
     derOwners: composition.labels.der,
-    entryTapX,
-    exitTapX,
+    entryPort,
+    exitPort,
     branchPort: (branchPos: number) => {
       const idx = branchIndices[branchPos];
       if (idx == null) return null;
       const x = tapXOfBay(idx);
       if (x == null) return null;
-      const y = blockTopY + bayColumnFootprint(measureInput.snBays[idx].fieldRole).height;
+      const y = blockTopY + bayColumnFootprint(measureInput.snBays[idx]).height;
       return { x, y };
     },
   };
@@ -613,16 +645,70 @@ interface RowStation {
   readonly composed: ComposedRowStation;
 }
 
-function connectHorizontal(
-  fromX: number,
-  y: number,
-  toX: number,
+/**
+ * F9.3 (FIX-1, spec §12.3): jog ortogonalny GŁOWICA→GŁOWICA — dokładnie ten
+ * sam wzorzec co zejście lateralu (sekcja 6 niżej, `rawJogPoints`): pion z
+ * `from` w dół/góra do `corridorY` (poziom wspólny wiersza), poziom do
+ * X `to`, pion do `to`. Gdy `from.y === corridorY === to.y` (L0 — stacja
+ * zbiorczy symbol, port NA osi magistrali z konstrukcji), degeneruje się do
+ * prostej linii poziomej — dokładnie to, co dawało PRZED FIX-1 dedykowane
+ * `connectHorizontal` (usunięte — ten wariant je w pełni zastępuje, zero
+ * regresji na L0). Duplikaty punktów współliniowych usunięte (jak w sekcji
+ * 6) — nie zmienia geometrii, tylko reprezentację.
+ */
+function connectViaCorridor(
+  from: { readonly x: number; readonly y: number },
+  to: { readonly x: number; readonly y: number },
+  corridorY: number,
   fromTerminal: SegmentTerminalRef | undefined,
   toTerminal: SegmentTerminalRef | undefined,
 ): { readonly points: readonly RouteVertex[]; readonly fromTerminal?: SegmentTerminalRef; readonly toTerminal?: SegmentTerminalRef } {
-  const from: RoutePort = { x: fromX, y, dir: 'E' };
-  const to: RoutePort = { x: toX, y, dir: 'W' };
-  return buildRoute({ from, to, fromTerminal, toTerminal });
+  const raw: RouteVertex[] = [
+    { x: from.x, y: from.y },
+    { x: from.x, y: corridorY },
+    { x: to.x, y: corridorY },
+    { x: to.x, y: to.y },
+  ];
+  const points = raw.filter((p, i) => i === 0 || p.x !== raw[i - 1].x || p.y !== raw[i - 1].y);
+  return { points, fromTerminal, toTerminal };
+}
+
+/**
+ * F9.3 (FIX-1): dolna krawędź strefy rozdzielającej B4/B5 (`DESCENT_STRIP_
+ * HEIGHT`, `bands.ts`) tego WIERSZA, we współrzędnych GLOBALNYCH — działa
+ * RÓWNIEŻ dla wierszy przesuniętych przez `shiftRowLayout` (laterale, `dy≠0`),
+ * bo `bandsResult` NIE jest przesuwane (lokalne), a `layout.blockTopY` JEST
+ * (globalne): `B5.y_local = blockTopY_local + B4.height`, więc po przesunięciu
+ * `B5.y_global = blockTopY_global + B4.height` (wyprowadzenie: różnica
+ * wysokości jest niezmiennicza względem przesunięcia, `blockTopY` niesie już
+ * `dy`). Formuła RÓWNA `mainLayout.bandsResult.bands.B5.y` dla magistrali
+ * głównej (tam `dy=0` z konstrukcji, patrz sekcja 3) — jedna prawda geometrii
+ * używana też w sekcji 6 (`stripTopY`, tam zostawiony jawny wzór z historycznych
+ * powodów, wynik identyczny).
+ */
+function stripTopYOf(layout: RowLayout): number {
+  return layout.blockTopY + layout.bandsResult.bands.B4.height - DESCENT_STRIP_HEIGHT;
+}
+
+/**
+ * F9.3 (FIX-1): sub-poziom strefy UŻYWANY WYŁĄCZNIE przez jog MIĘDZYSTACYJNY
+ * (kabel głowica→głowica) — `GRID` PONIŻEJ `stripTopYOf` (sub-poziom
+ * zarezerwowany dla ODEJŚCIA lateralu z pola odgałęźnego, sekcja 6). Dwa
+ * różne sub-poziomy (patrz `DESCENT_STRIP_HEIGHT` w `bands.ts`) — inaczej oba
+ * jogi, gdy współrzędne w X (ta sama szczelina `COLUMN_GAP`), nakładałyby się
+ * WSPÓŁLINIOWO (dwa różne obwody na jednej linii), nie tylko krzyżowałyby
+ * się (co router już wspiera, `route.ts` `classifyRouteNodes`).
+ */
+function trunkCorridorYOf(layout: RowLayout): number {
+  return stripTopYOf(layout) + GRID;
+}
+
+/** L0 (stacja zbiorczy symbol) nie ma realnych głowic — port POŁĄCZENIA
+ *  leży NA osi magistrali z konstrukcji (`composeRowStation` L0), więc jog
+ *  degeneruje się do prostej linii: korytarz = `busAxisY` tego wiersza. L1/L2
+ *  używają sub-poziomu międzystacyjnego strefy B4/B5 (patrz wyżej). */
+function interStationCorridorY(layout: RowLayout, lod: SceneLod): number {
+  return lod === 0 ? layout.busAxisY : trunkCorridorYOf(layout);
 }
 
 // ---------------------------------------------------------------------------
@@ -758,12 +844,25 @@ function connectRowStations(
   const connectors: PreviewSegment[] = [];
   const routeGeoms: RouteGeometry[] = [];
   const spanLabels: SegmentSpanOwnerInput[] = [];
+  // F9.3 (FIX-1, spec §12.3): kabel międzystacyjny łączy GŁOWICĘ stacji `i`
+  // (dół stosu pola „następnik") z GŁOWICĄ stacji `i+1` (dół stosu pola
+  // „poprzednik") — jog ortogonalny przez sub-poziom strefy B4/B5
+  // (`trunkCorridorYOf`), TA SAMA klasa routingu co zejście lateralne
+  // (sekcja 6), NIE prosta linia na osi magistrali (stary bug — głowice
+  // dyndały, patrz recenzja). Etykieta odcinka (`spanLabels`) ZOSTAJE
+  // kotwiczona do osi magistrali (`layout.busAxisY`, BEZ ZMIAN) — spec nie
+  // wymaga bliskości etykiety do rzeczywistej trasy kabla, tylko zero
+  // kolizji (`noLabelWireCollisions`), a etykieta na osi jest rozłączna z
+  // jogiem (inny pasek Y) z konstrukcji.
+  const corridorY = interStationCorridorY(layout, lod);
   for (let i = 1; i < row.length; i++) {
     const prev = row[i - 1];
     const cur = row[i];
     const fromTerminal = fromTerminalForOwner(cableRun, prev.id);
     const toTerminal = toTerminalForOwner(cableRun, cur.id);
-    const route = connectHorizontal(prev.composed.exitTapX, layout.busAxisY, cur.composed.entryTapX, fromTerminal, toTerminal);
+    const fromPort = prev.composed.exitPort;
+    const toPort = cur.composed.entryPort;
+    const route = connectViaCorridor(fromPort, toPort, corridorY, fromTerminal, toTerminal);
     connectors.push({
       points: route.points,
       meta: { kind: 'sn', ownerRef: incomingSegmentRef(cableRun, cur.id), elementKind: 'segment' },
@@ -773,11 +872,7 @@ function connectRowStations(
       const slot = layout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === i);
       const text = incomingLabelText(cableRun, cur.id);
       if (slot && text) {
-        const { spanStart, spanEnd } = truncateSpanAtChannels(
-          prev.composed.exitTapX,
-          cur.composed.entryTapX,
-          channelPointsX,
-        );
+        const { spanStart, spanEnd } = truncateSpanAtChannels(fromPort.x, toPort.x, channelPointsX);
         spanLabels.push({
           ownerRef: `${cur.id}#segment-label`,
           text,
@@ -832,6 +927,35 @@ function findGpzTrunkPort(
   }
   stopNotes.push('GPZ: brak szyny SN w kompozycji (dane niekompletne) — magistrala zaczepiona w originie GPZ.');
   return { x: 0, y: 0 };
+}
+
+/**
+ * F9.3 (FIX-1, spec §12.3): port POŁĄCZENIA GPZ→magistrala — DOLNY PORT
+ * GŁOWICY KABLOWEJ pola liniowego GPZ (`findGpzTrunkBayRef`), TEN SAM wzorzec
+ * co `portOfBay`/`branchPort` w `composeRowStation` (dół stosu, nie punkt 0
+ * zejścia = szyna WN/SN GPZ). GPZ nie eksponuje `bottomPort` per-pole na
+ * wyjściu `composeGpz` (tylko lokalnie w zamknięciu `buildFieldStack`) —
+ * odczytujemy go z OSTATNIEGO symbolu instancji tego pola w kompozycji
+ * (kolejność budowy stosu = kolejność „od szyny w dół", spec §12.2, TEN SAM
+ * wzorzec co `fieldStacksEndAtCableHead`, `compose/station.ts`), dół bboxa
+ * tego symbolu. Fallback (brak pola liniowego/symboli) = `findGpzTrunkPort`
+ * (szyna, z jej własnym stopNote) — nie ma głowicy do zaczepienia.
+ */
+function findGpzTrunkBottomPort(
+  gpz: GpzComposition,
+  gpzData: GpzCanonicalRendererProps,
+  stopNotes: string[],
+): { readonly x: number; readonly y: number } {
+  const bayRef = findGpzTrunkBayRef(gpzData);
+  if (bayRef) {
+    const bayInstances = gpz.symbols.filter((s) => s.meta.bayRef === bayRef);
+    const last = bayInstances[bayInstances.length - 1];
+    if (last) {
+      const def = SYMBOL_DEFS[last.symbolId];
+      return { x: last.x + def.width / 2, y: last.y + def.height };
+    }
+  }
+  return findGpzTrunkPort(gpz, gpzData, stopNotes);
 }
 
 function gpzSegmentToPreview(seg: ComposedGpzSegment): PreviewSegment {
@@ -1019,11 +1143,17 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
 
     if (mainRow.length > 0) {
       const first = mainRow[0];
-      const gpzPort = gpzComposition ? findGpzTrunkPort(gpzComposition, gpzData!, stopNotes) : null;
+      // F9.3 (FIX-1, spec §12.3): port GPZ = DOLNY PORT GŁOWICY jego pola
+      // liniowego (`findGpzTrunkBottomPort`), NIE punkt zejścia na szynie WN/SN
+      // GPZ (`findGpzTrunkPort`, wciąż używany WYŁĄCZNIE do WYRÓWNANIA pass1→pass2
+      // w sekcji 2 — tamten port ma inne zadanie: dopasować OŚ GPZ do osi
+      // magistrali, nie być celem trasy kabla).
+      const gpzPort = gpzComposition ? findGpzTrunkBottomPort(gpzComposition, gpzData!, stopNotes) : null;
       if (gpzPort) {
         const fromTerminal = fromTerminalForOwner(mainCableRun, gpzData!.id);
         const toTerminal = toTerminalForOwner(mainCableRun, first.id);
-        const route = connectHorizontal(gpzPort.x, mainLayout.busAxisY, first.composed.entryTapX, fromTerminal, toTerminal);
+        const corridorY = interStationCorridorY(mainLayout, lod);
+        const route = connectViaCorridor(gpzPort, first.composed.entryPort, corridorY, fromTerminal, toTerminal);
         allSegments.push({
           points: route.points,
           meta: { kind: 'sn', ownerRef: incomingSegmentRef(mainCableRun, first.id), elementKind: 'segment' },
@@ -1044,7 +1174,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
               // magistrali (`gpzPort`) leży na polu bardziej W LEWO niż
               // inne elementy GPZ.
               spanStart: Math.max(gpzPort.x, gpzRightEdgeX),
-              spanEnd: first.composed.entryTapX,
+              spanEnd: first.composed.entryPort.x,
               busAxisY: mainLayout.busAxisY,
               primaryRect: slot.rect,
             });
@@ -1106,11 +1236,11 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // NIE pod `originPort.x` (który leży WEWNĄTRZ bloku stacji-origin — pion
     // musi zrobić jog do kanału PRZED wejściem w pasmo nazw, patrz trasa
     // niżej). Dwuprzebiegowa kompozycja jak GPZ (pass1 lokalny → poznaj
-    // entryTapX stacji 0 → przesuń → pass2 finalny).
+    // entryPort.x stacji 0 → przesuń → pass2 finalny).
     const firstCol0 = layout.columnsResult.columns[0];
     const firstProps0 = stationById.get(layout.measureInputs[0].id)!;
     const provisional = composeRowStation(layout.measureInputs[0], firstProps0, firstCol0, layout.busAxisY, layout.blockTopY, lod, []);
-    const dx = snapToGrid(channelX - provisional.entryTapX);
+    const dx = snapToGrid(channelX - provisional.entryPort.x);
     // Korytarz między-wierszowy musi zmieścić etykietę segmentu-lateralu
     // (spec §4, `layout/labels.ts` `resolveSegmentLateralLabel`, `fitsLength`)
     // POMIĘDZY `priorContentBottom` (dół WSZYSTKIEGO już umieszczonego —
@@ -1191,20 +1321,61 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       // `computeLateralChannelX`) → dół przez B5 stacji-origin i WSZYSTKIE
       // wiersze pośrednie (kanały zarezerwowane dla TEGO `channelX` przez
       // przypadek (a) w iteracjach WCZEŚNIEJSZYCH tej pętli, `li' < li`) do
-      // bloku stacji docelowej (`first.composed.entryTapX === channelX` z
+      // bloku stacji docelowej (`first.composed.entryPort.x === channelX` z
       // konstrukcji, wyrównanie dx wyżej). Wszystkie punkty na siatce z
-      // istniejących niezmienników (`stripTopY`/`channelX`/`entryTapX`/
+      // istniejących niezmienników (`stripTopY`/`channelX`/`entryPort`/
       // `blockTopY` — patrz komentarze przy ich definicjach); duplikaty
       // kolejnych punktów (gdy `originPort.x === channelX`, teoretyczny
-      // przypadek zerowy) są usuwane, żeby nie emitować zdegenerowanych
-      // odcinków.
-      const stripTopY = mainLayout!.bandsResult.bands.B5.y - DESCENT_STRIP_HEIGHT;
+      // przypadek zerowy, ORAZ zawsze między ostatnimi dwoma punktami po
+      // FIX-1 — patrz DECYZJA przy `rawJogPoints` niżej) są usuwane, żeby nie
+      // emitować zdegenerowanych odcinków.
+      const stripTopY = stripTopYOf(mainLayout!);
+
+      // F9.3 (spec §14.4 „jawne rozgałęzienia"): akcent węzła rozgałęzienia —
+      // NIE na `originPort` (port dolny pola odgałęźnego — TAM już stoi JEGO
+      // WŁASNY symbol, zwykle `cableHead` pola liniowego §12.2/§12.4,
+      // znalezisko F9.3: akcent scentrowany na `originPort` nachodził na ten
+      // symbol na CAŁEJ realnej fixturze, 10+ kolizji), a na zgięciu jogu w
+      // szczelinie kanału (`channelX`, `stripTopY` — `computeLateralChannelX`,
+      // F6d), punkt topologicznie RÓWNOWAŻNY (leży NA trasie tego lateralu,
+      // `rawJogPoints[2]` niżej) i Z KONSTRUKCJI wolny od symboli (szczelina
+      // COLUMN_GAP jest zarezerwowana WYŁĄCZNIE dla pionów zejść, nigdy dla
+      // bloków stacji). Geometria trasy (`rawJogPoints`) NIETKNIĘTA — akcent
+      // to WYŁĄCZNIE dodatkowy glif w punkcie już należącym do trasy.
+      //
+      // Y: gabaryt akcentu (32) > wysokość samego pasa `stripTopY`..B5.y
+      // (`DESCENT_STRIP_HEIGHT`, F9.3/FIX-1: 16 — patrz `bands.ts`) —
+      // wycentrowanie NA `stripTopY` nachodziło na pasmo nazw stacji (`B5`,
+      // znalezisko F9.3: 12 kolizji etykieta↔symbol „name-row-0" na realnej
+      // fixturze). Dolna krawędź akcentu jest więc DOCIĄGNIĘTA do stropu
+      // pasma nazw (`B5.y`, == `stripTopY + DESCENT_STRIP_HEIGHT` NIEZALEŻNIE
+      // od wartości stałej, z definicji `stripTopY`) — akcent rośnie
+      // WYŁĄCZNIE w GÓRĘ, w szczelinę kanału (wolną z konstrukcji, patrz
+      // wyżej), nigdy w B5; pozycja ABSOLUTNA akcentu (`B5.y -
+      // BRANCH_JUNCTION_SIZE`) jest więc NIEZMIENIONA przez podniesienie
+      // `DESCENT_STRIP_HEIGHT` w FIX-1 (skraca się tylko dystans nad nim).
+      const branchJunctionTopY = stripTopY + DESCENT_STRIP_HEIGHT - BRANCH_JUNCTION_SIZE;
+      allSymbols.push({
+        symbolId: 'branchJunction',
+        x: snapToGrid(channelX - BRANCH_JUNCTION_SIZE / 2),
+        y: snapToGrid(branchJunctionTopY),
+        meta: { testId: `sld-v3-branch-junction-${run.id}`, ownerRef: originOwnerRef, elementKind: 'apparatus' },
+      });
+
+      // F9.3 (FIX-1, spec §12.3): ostatni odcinek jogu schodzi do
+      // `first.composed.entryPort` (DOLNY PORT GŁOWICY pola „poprzednik"
+      // stacji 0 tego lateralu), NIE do `layout.blockTopY` (góra stosu, czyli
+      // — jak przy głównym bugu FIX-1 — koniec trasy na osi/górze pola, z
+      // dala od głowicy). `entryPort.x === channelX` z konstrukcji (wyrównanie
+      // dx wyżej), więc ostatnie dwa punkty są identyczne i redukują się
+      // filtrem duplikatów niżej — jog kończy się PROSTYM pionem z `channelX`
+      // w dół, dokładnie w porcie głowicy.
       const rawJogPoints: RouteVertex[] = [
         { x: originPort.x, y: originPort.y },
         { x: originPort.x, y: stripTopY },
         { x: channelX, y: stripTopY },
-        { x: channelX, y: layout.blockTopY },
-        { x: first.composed.entryTapX, y: layout.blockTopY },
+        { x: channelX, y: first.composed.entryPort.y },
+        { x: first.composed.entryPort.x, y: first.composed.entryPort.y },
       ];
       const jogPoints = rawJogPoints.filter(
         (p, idx) => idx === 0 || p.x !== rawJogPoints[idx - 1].x || p.y !== rawJogPoints[idx - 1].y,
@@ -1345,6 +1516,68 @@ export function noSceneSymbolOverlaps(scene: SceneV3): boolean {
     }
   }
   return true;
+}
+
+/**
+ * F9.3 (FIX-1, spec §12.3 — kontrakt POŁĄCZENIA, rozszerzenie `field_entry_
+ * probe` poza `compose/station.ts` `fieldStacksEndAtCableHead`): nie
+ * wystarczy, że stos KOŃCZY SIĘ symbolem głowicy (kompozycja per-stacja) —
+ * na SCENIE, po routingu, kabel MUSI się z tym portem FAKTYCZNIE łączyć.
+ * Znalezisko recenzji Opusa (FIX-1): przed poprawką kabel międzystacyjny
+ * kończył się na osi magistrali, z dala od głowicy — głowice „dyndały"
+ * (wizualnie odłączone od trasy). Sprawdzane na SCENIE: dla KAŻDEGO symbolu
+ * `cableHead` obecnego na scenie istnieje ≥1 wierzchołek KOŃCOWY (pierwszy
+ * lub ostatni punkt) jakiegoś odcinka, DOKŁADNIE w jego porcie `line`
+ * (South, spec `symbols/defs.ts`) — bez tego kabel nie mógłby fizycznie
+ * dotykać głowicy. `cableHead` bez ŻADNEGO odcinka kończącego się w jego
+ * porcie (pole liniowe skrajne bez sąsiada, np. ostatnia stacja ciągu na
+ * stronie „następnik" — brak danych o kolejnej stacji) NIE jest tu
+ * naruszeniem: ta wyrocznia dowodzi WYŁĄCZNIE, że TAM GDZIE trasa istnieje,
+ * dotyka głowicy — nie że każda głowica MUSI mieć trasę (to inny kontrakt,
+ * `source_connectivity_probe`/§14.1, poza zakresem F9.3).
+ */
+export function fieldEntryConnectionsReachCableHead(scene: SceneV3): readonly PreviewSymbol[] {
+  const cableHeads = scene.symbols.filter((s) => s.symbolId === 'cableHead');
+  if (cableHeads.length === 0) return [];
+  const def = SYMBOL_DEFS.cableHead;
+  const southPort = def.ports.find((p) => p.dir === 'S');
+  const portDx = southPort?.x ?? def.width / 2;
+  const portDy = southPort?.y ?? def.height;
+  const endpoints = new Set<string>();
+  scene.segments.forEach((seg) => {
+    const first = seg.points[0];
+    const last = seg.points[seg.points.length - 1];
+    if (first) endpoints.add(`${first.x},${first.y}`);
+    if (last) endpoints.add(`${last.x},${last.y}`);
+  });
+  return cableHeads.filter((head) => {
+    const key = `${head.x + portDx},${head.y + portDy}`;
+    return !endpoints.has(key);
+  });
+}
+
+export function allFieldEntryConnectionsReachCableHead(scene: SceneV3): boolean {
+  return fieldEntryConnectionsReachCableHead(scene).length === 0;
+}
+
+/**
+ * branch_accent_probe (spec §14.4): każdy punkt odejścia lateralu ma węzeł
+ * (`branchJunction`) o gabarycie WIĘKSZYM niż `junction` bazowy. Sprawdzane
+ * jako: liczba symboli `branchJunction` na scenie == liczba laterali
+ * NARYSOWANYCH (`meta.lateralRunIds` — laterale pominięte, `stopNotes`, nie
+ * są liczone, bo nie mają punktu odejścia na scenie) I gabaryt każdego
+ * `branchJunction` > gabaryt `junction`.
+ */
+export function noBranchWithoutAccent(scene: SceneV3): boolean {
+  const junctionDef = SYMBOL_DEFS.junction;
+  const accentDef = SYMBOL_DEFS.branchJunction;
+  if (!(accentDef.width > junctionDef.width && accentDef.height > junctionDef.height)) return false;
+  const accents = scene.symbols.filter((s) => s.symbolId === 'branchJunction');
+  if (accents.length !== scene.meta.lateralRunIds.length) return false;
+  return accents.every((s) => {
+    const def = SYMBOL_DEFS[s.symbolId];
+    return def.width > junctionDef.width && def.height > junctionDef.height;
+  });
 }
 
 /** Grubość „prostokąta" odcinka w wyroczni etykieta↔przewód niżej: ±1px

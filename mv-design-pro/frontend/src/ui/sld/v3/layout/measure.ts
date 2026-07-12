@@ -18,14 +18,18 @@
 
 import { GRID, snapUp } from '../core/grid';
 import { labelLineHeight, measureLabelWidth } from '../core/text';
-import { SYMBOL_DEFS } from '../symbols/defs';
-import { FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
 import {
   formatTransformerRatedPower,
   type StationOnRunRendererProps,
 } from '../../v2/renderer/StationOnRunRenderer';
 import { bayApparatusDesignation } from '../compose/directions';
+import {
+  apparatusSymbolsForRole,
+  resolveBayApparatusSymbolIds,
+  stackFootprint,
+} from '../compose/apparatusSequence';
+import type { FieldRole } from '../../v2/domain/apparatusContracts';
 
 const LABEL_LINE_HEIGHT_T1 = labelLineHeight('t1');
 const LABEL_LINE_HEIGHT_T2 = labelLineHeight('t2');
@@ -73,52 +77,26 @@ export { formatTransformerRatedPower } from '../../v2/renderer/StationOnRunRende
 
 /**
  * Gabaryt kolumny pola (jedna pionowa kolumna aparatów, spec §3 "Stacja
- * SN/nN"). DECYZJA (F2, patrz raport końcowy): dokładna kompozycja aparatów
- * per rola to zakres F5 (`compose/station.ts`) — tu używamy reprezentatywnego
- * stosu aparatów per klasę roli, wyłącznie do REZERWACJI miejsca:
- *  - pole liniowe/sprzęgło/pomiar: DS + CB (spec §3: „WE: DS+CB; WY: DS+CB");
- *  - pole transformatorowe: DS + rozłącznik z bezpiecznikiem + TR2W
- *    (spec §3: „TR: DS+bezpiecznik/CB + TR2W + szyna nN + odpływy nN" —
- *    szyna nN/odpływy pomijane w wysokości kolumny, doliczane jako margines
- *    stałej wysokości bloku w `stationBlockHeight`);
- *  - pole DER: symbol DER (PV/BESS/generator wg `MiniBlockDerBadge.kind`).
- *    (FIX-6, recenzja F2): DER jako pole w bloku stacji to dziś B4; relacja
- *    z pasmem B3 (DER przy magistrali, spec) do rozstrzygnięcia w F5 — NIE
- *    usuwać tej gałęzi bez decyzji kompozycji.
+ * SN/nN", §12 „prymat danych nad konwencją"). F9.3: gabaryt jest DATA-AWARE —
+ * gdy `bay.primaryDevices` niesie co najmniej jeden aparat mapowalny na
+ * symbol pola, rezerwacja liczy stos Z DANYCH (§12.1); inaczej fallback
+ * konwencji wg roli (§12.4). Rozstrzygnięcie „dane vs konwencja" i sama
+ * tabela konwencji żyją w `compose/apparatusSequence.ts`
+ * (`resolveBayApparatusSymbolIds`/`apparatusSymbolsForRole`) — TA SAMA funkcja
+ * jest wołana przez `compose/station.ts` (`buildBayStack`) przy REALNYM
+ * rysowaniu, więc rezerwacja i rysunek nie mogą się rozjechać (wzór F6b-1,
+ * test „spójność measure↔compose", `compose/__tests__/station.test.ts`).
  *
- * FIX-3 (recenzja F2): to jest tylko gabaryt SYMBOLU aparatu — rezerwacja
- * szerokości kolumny pola w `stationBlockWidth` DOLICZA do tego jeszcze slot
- * na etykiety WŁASNE pola (oznacznik `bay.designation` i podpis kierunku
- * `bayDirectionCaptions`), zgodnie ze spec §5.1 „max(bbox, najszerszy slot
- * etykiet WŁASNYCH)" — rezerwacja jest teraz kompletna dla danych DOSTĘPNYCH
- * (podpisy kierunku wejdą, gdy F5 je dostarczy; brak wejścia dziś ≠ ukryty
- * dług, tylko jeszcze niedostarczone dane).
- *
- * EKSPORT (F5, `compose/station.ts`): kompozycja MUSI używać TEGO SAMEGO
- * gabarytu symbolu przy rozmieszczaniu aparatów w kolumnie pola, żeby bbox
- * kompozycji nigdy nie przekroczył rezerwacji measure — zero cienia modelu
- * (spec F5: „measure i compose MUSZĄ być spójne"). Gałęzie ról MUSZĄ
- * pozostać zsynchronizowane z `apparatusSymbolsForRole` w `compose/station.ts`
- * (test spójności w `compose/__tests__/station.test.ts` porównuje oba
- * niezależne wyliczenia).
+ * FIX-3 (recenzja F2, wciąż w mocy): to jest tylko gabaryt SYMBOLI aparatu —
+ * rezerwacja szerokości kolumny pola w `stationBlockWidth` DOLICZA do tego
+ * jeszcze slot na etykiety WŁASNE pola (oznacznik `bay.designation` i podpis
+ * kierunku `bayDirectionCaptions`), zgodnie ze spec §5.1 „max(bbox, najszerszy
+ * slot etykiet WŁASNYCH)".
  */
-export function bayColumnFootprint(role: FieldRole): { readonly width: number; readonly height: number } {
-  if (role === FIELD_ROLE.TRANSFORMER || role === FIELD_ROLE.RMU_TRANSFORMER) {
-    const ds = SYMBOL_DEFS.disconnector;
-    const fuse = SYMBOL_DEFS.fuseSwitch;
-    const tr = SYMBOL_DEFS.transformer2W;
-    return {
-      width: Math.max(ds.width, fuse.width, tr.width),
-      height: ds.height + GRID + fuse.height + GRID + tr.height,
-    };
-  }
-  if (role === FIELD_ROLE.DER_PV) return { width: SYMBOL_DEFS.derPv.width, height: SYMBOL_DEFS.derPv.height };
-  if (role === FIELD_ROLE.DER_BESS) return { width: SYMBOL_DEFS.derBess.width, height: SYMBOL_DEFS.derBess.height };
-  if (role === FIELD_ROLE.DER_FW) return { width: SYMBOL_DEFS.derGenerator.width, height: SYMBOL_DEFS.derGenerator.height };
-  // Domyślnie: pole liniowe / sprzęgło / pomiar — DS + CB w kolumnie.
-  const ds = SYMBOL_DEFS.disconnector;
-  const cb = SYMBOL_DEFS.breaker;
-  return { width: Math.max(ds.width, cb.width), height: ds.height + GRID + cb.height };
+export function bayColumnFootprint(
+  bay: Pick<MiniBlockBayDescriptor, 'fieldRole' | 'primaryDevices'>,
+): { readonly width: number; readonly height: number } {
+  return stackFootprint(resolveBayApparatusSymbolIds(bay).symbolIds);
 }
 
 /**
@@ -146,7 +124,7 @@ export function bayColumnRequiredWidth(
   entryDescentBayIndex?: number | null,
 ): number {
   const bay = snBays[index];
-  const footprint = bayColumnFootprint(bay.fieldRole);
+  const footprint = bayColumnFootprint(bay);
   const designation = bayApparatusDesignation(snBays, index);
   const widthWithSidecar = designation
     ? footprint.width + GRID + measureLabelWidth(designation, 't3')
@@ -172,9 +150,16 @@ export function bayColumnRequiredWidth(
  * i nigdy na lewo od pionu. Używane w DWÓCH miejscach, które MUSZĄ się
  * zgadzać: rezerwacja szerokości (`bayColumnRequiredWidth` wyżej) i pozycja
  * wycinka (`compose/station.ts`).
+ *
+ * F9.3: liczona z KONWENCJI (`apparatusSymbolsForRole`), NIE z gabarytu
+ * data-aware `bayColumnFootprint` — inset to margines geometryczny stały dla
+ * danej ROLI (miejsce na pion wchodzący z góry), niezależny od tego, czy
+ * KONKRETNE pole akurat niesie `primary_devices`; sprzężenie z danymi
+ * konkretnego pola nie jest tu potrzebne i tylko zwiększałoby powierzchnię
+ * zmiany przy przełączaniu dane↔konwencja tego samego pola.
  */
 export function entryDescentCaptionInset(role: FieldRole): number {
-  return snapUp(bayColumnFootprint(role).width / 2) + GRID;
+  return snapUp(stackFootprint(apparatusSymbolsForRole(role)).width / 2) + GRID;
 }
 
 /** Margines stały bloku stacji: prześwit na szynę SN (nad kolumnami) i szynę
@@ -206,7 +191,7 @@ export function stationBlockWidth(
  *  wysokość = najwyższa kolumna + prześwit szyn SN/nN. */
 export function stationBlockHeight(station: StationMeasureInput): number {
   if (station.snBays.length === 0) return STATION_BLOCK_BUS_CLEARANCE;
-  const tallest = Math.max(...station.snBays.map((bay) => bayColumnFootprint(bay.fieldRole).height));
+  const tallest = Math.max(...station.snBays.map((bay) => bayColumnFootprint(bay).height));
   return tallest + STATION_BLOCK_BUS_CLEARANCE;
 }
 

@@ -66,7 +66,17 @@ export const BUS_AXIS_BAND_HEIGHT = 4 * GRID;
  * stosowanie unika specjalnego przypadku per-wiersz i jest nieszkodliwe
  * (mala stala rezerwacja wysokosci na kazdym wierszu).
  */
-export const DESCENT_STRIP_HEIGHT = GRID;
+// F9.3 (FIX-1, korekta po recenzji Opusa, spec par. 12.3): wysokosc podniesiona
+// z 1xGRID do 2xGRID -- strefa niesie teraz DWA rownolegle sub-poziomy jogu:
+// gorny (`stripTopY`, formula bez zmiany -- zejscie ODEJSCIA lateralu z pola
+// odgalezionego stacji-origin, sekcja 6 `buildScene.ts`) i dolny
+// (`stripTopY + GRID`, NOWY -- jog MIEDZYSTACYJNY glowica->glowica,
+// `buildScene.ts` `trunkCorridorYOf`). Dwa sub-poziomy sa NIEZBEDNE: obie
+// klasy jogu bywaja wspolrzedne w X (przechodza przez TA SAMA szczelinę
+// COLUMN_GAP) -- na JEDNYM poziomie Y dawaloby to WSPOLLINIOWE nakladanie
+// się dwoch niezaleznych obwodow, nie tylko krzyzowanie (ktore router juz
+// obsluguje, `route.ts` `classifyRouteNodes`).
+export const DESCENT_STRIP_HEIGHT = 2 * GRID;
 
 /**
  * Wysokości zawartości JEDNEJ stacji/kolumny — wejście `computeBands` (spec

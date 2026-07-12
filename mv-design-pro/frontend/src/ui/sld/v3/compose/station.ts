@@ -39,6 +39,20 @@
  * `layout/measure.ts` — jedno źródło prawdy szerokości sidecara I realnego
  * tekstu) zwraca dane WPROST, gdy nie są zakazanym tokenem (prawda danych >
  * konwencja), inaczej wyprowadza Q/T z roli+pozycji pola w `snBays`.
+ *
+ * F9.3 (SLD_CAD_SPEC_V3 §12 „Kompozycja celki pola wg fizycznej ścieżki
+ * mocy", §14.3 „Rozróżnialne sylwetki pól"): stos aparatów pola jest teraz
+ * DATA-AWARE (§12.1 „prymat danych nad konwencją") — `stackItemsForBay`
+ * niżej woła `resolveBayApparatusSymbolIds` (`./apparatusSequence`, JEDNA
+ * prawda współdzielona z `layout/measure.ts`): gdy `bay.primaryDevices`
+ * niesie ≥1 aparat mapowalny na symbol pola, stos budowany Z DANYCH
+ * (uporządkowanych już przez adapter wg `placement`); inaczej fallback
+ * konwencji §12.4 (tabela w `apparatusSequence.ts`, NIE tutaj — usunięta
+ * duplikacja `apparatusSymbolsForRole`/`stackFootprint` z tego pliku,
+ * re-eksportowane niżej dla zgodności istniejących importów). KAŻDA instancja
+ * symbolu niesie `apparatusSource` (`'dane' | 'konwencja'`, spec §12.1
+ * „znacznik audytora") i, dla ścieżki danych, `deviceRef` (ENM
+ * `BayPrimaryDevice.device_ref` — WHITE BOX, 0 aparatów „z domysłu").
  */
 
 import { GRID, rectsOverlap, snapToGrid, type V3Rect } from '../core/grid';
@@ -59,42 +73,76 @@ import type {
   StationNameBandOwnerInput,
   StationNameBandRow,
 } from '../layout/labels';
-import { FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
+import { ALL_FIELD_ROLES, FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
-import { bayApparatusDesignation } from './directions';
+import { bayApparatusDesignation, isLineLikeRole } from './directions';
+import {
+  apparatusSymbolsForRole,
+  resolveBayApparatusSymbolIds,
+  stackFootprint,
+  symbolIdForPrimaryDeviceKind,
+  type BayApparatusSource,
+} from './apparatusSequence';
 
-// ---------------------------------------------------------------------------
-// Role pola → stos aparatów (spec §3). MUSI zostać zsynchronizowane z
-// `bayColumnFootprint` (`layout/measure.ts`) — patrz nagłówek pliku.
-// ---------------------------------------------------------------------------
+// F9.3: `apparatusSymbolsForRole`/`stackFootprint` przeniesione do
+// `./apparatusSequence` (jedna prawda z `layout/measure.ts`) — re-eksport
+// zachowuje istniejące importy (`compose/gpz.ts` importuje `stackFootprint`
+// z `'./station'`; `__tests__/station.test.ts` importuje oba z `'../station'`).
+export { apparatusSymbolsForRole, stackFootprint };
 
-/** Stos symboli (od GÓRY do DOŁU, w kolejności rysowania) dla roli pola. */
-export function apparatusSymbolsForRole(role: FieldRole): readonly SymbolId[] {
-  if (role === FIELD_ROLE.TRANSFORMER || role === FIELD_ROLE.RMU_TRANSFORMER) {
-    return ['disconnector', 'fuseSwitch', 'transformer2W'];
-  }
-  if (role === FIELD_ROLE.DER_PV) return ['derPv'];
-  if (role === FIELD_ROLE.DER_BESS) return ['derBess'];
-  if (role === FIELD_ROLE.DER_FW) return ['derGenerator'];
-  // Domyślnie: pole liniowe / sprzęgło / pomiar — DS + CB (spec §3: „WE:
-  // DS+CB; WY: DS+CB").
-  return ['disconnector', 'breaker'];
-}
-
-/** Gabaryt stosu symboli: szerokość = najszerszy symbol, wysokość = suma
- *  wysokości + GRID między kolejnymi (spec §3, ten sam wzór co
- *  `bayColumnFootprint` w `layout/measure.ts` — test spójności w
- *  `__tests__/station.test.ts`). */
-export function stackFootprint(ids: readonly SymbolId[]): { readonly width: number; readonly height: number } {
-  const width = Math.max(...ids.map((id) => SYMBOL_DEFS[id].width));
-  const height = ids.reduce((sum, id, index) => sum + SYMBOL_DEFS[id].height + (index > 0 ? GRID : 0), 0);
-  return { width, height };
-}
-
+/**
+ * Stan łącznika dla ŚCIEŻKI KONWENCJI (§12.4) — mapowanie z agregatów
+ * `bay.cbState`/`bay.dsState`/`bay.esState` (jeden stan per KIND, nie per
+ * pozycja w stosie — konwencja nie rozróżnia „DS_szynowy" od „DS_liniowy",
+ * obie pozycje `disconnector` w §12.4 dostają TEN SAM `bay.dsState`, znana
+ * uproszczona reprezentacja: `MiniBlockBayDescriptor` niesie jeden agregat na
+ * kind, nie osobny stan per fizyczny aparat). Ścieżka DANYCH (§12.1) ma
+ * stan PER APARAT wprost z `BayPrimaryDeviceView.switchState` —
+ * `stackItemsForBay` niżej NIE woła tej funkcji w tej ścieżce.
+ */
 function apparatusStateFor(symbolId: SymbolId, bay: MiniBlockBayDescriptor): SwitchState | undefined {
   if (symbolId === 'breaker') return bay.cbState;
   if (symbolId === 'disconnector') return bay.dsState;
+  if (symbolId === 'earthSwitch') return bay.esState;
   return undefined;
+}
+
+/** Jeden aparat gotowy do rysowania w stosie — symbol + stan + (dla ścieżki
+ *  danych) `device_ref` ENM (WHITE BOX/audyt, spec §12.1). */
+interface StackItemSpec {
+  readonly symbolId: SymbolId;
+  readonly state?: SwitchState;
+  readonly deviceRef?: string;
+}
+
+/**
+ * Rozstrzyga stos aparatów JEDNEGO pola (spec §12.1 „prymat danych nad
+ * konwencją"): `resolveBayApparatusSymbolIds` (`./apparatusSequence`, jedna
+ * prawda z `layout/measure.ts`) daje listę `symbolId` + `source`; ta funkcja
+ * DODATKOWO dowiązuje stan łącznika (per-aparat dla ścieżki danych, per-kind
+ * dla konwencji) i `deviceRef` (WYŁĄCZNIE ścieżka danych — konwencja nie ma
+ * `device_ref`, bo NIE pochodzi z ENM, spec §12.4 „każdy stos z konwencji
+ * nosi `data-apparatus-source=\"konwencja\"`").
+ */
+function stackItemsForBay(
+  bay: MiniBlockBayDescriptor,
+): { readonly items: readonly StackItemSpec[]; readonly source: BayApparatusSource } {
+  const { symbolIds, source } = resolveBayApparatusSymbolIds(bay);
+  if (source === 'dane') {
+    // Ta sama filtracja co `resolveBayApparatusSymbolIds` (kind→symbol
+    // mapowalny, DER-kindy odfiltrowane) — reużywamy `symbolIdForPrimaryDeviceKind`
+    // WPROST (nie duplikujemy reguły filtracji), żeby dowiązać `deviceRef`/
+    // `switchState` 1:1 do `symbolIds` już wyliczonych wyżej.
+    const devices = (bay.primaryDevices ?? []).filter((d) => symbolIdForPrimaryDeviceKind(d.kind) != null);
+    const items: StackItemSpec[] = devices.map((d, index) => ({
+      symbolId: symbolIds[index],
+      state: d.switchState,
+      deviceRef: d.deviceRef,
+    }));
+    return { items, source };
+  }
+  const items = symbolIds.map((symbolId) => ({ symbolId, state: apparatusStateFor(symbolId, bay) }));
+  return { items, source };
 }
 
 // ---------------------------------------------------------------------------
@@ -108,6 +156,16 @@ export interface ComposedSymbolInstance {
   /** Powiązanie z polem ENM (trace/testy) — `undefined` dla symboli nie
    *  należących do żadnego konkretnego pola (dziś: brak takich w F5a). */
   readonly bayRef?: string;
+  /** F9.3 (spec §12.1, WHITE BOX): `BayPrimaryDevice.device_ref` ENM —
+   *  WYŁĄCZNIE gdy ten symbol pochodzi z `apparatusSource==='dane'`.
+   *  `undefined` dla stosu konwencji (§12.4) — brak `device_ref`, bo NIE
+   *  pochodzi z ENM (zero aparatów „z domysłu" z fałszywym refem). */
+  readonly deviceRef?: string;
+  /** F9.3 (spec §12.1): pochodzenie stosu tego pola — `'dane'` gdy zbudowany
+   *  z `Bay.primary_devices`, `'konwencja'` gdy z fallbacku §12.4. Audytor
+   *  DOM czyta to jako `data-apparatus-source` (`scene/buildScene.ts`,
+   *  `compose/preview.tsx`/`canvas/SldCanvasV3.tsx`). */
+  readonly apparatusSource: BayApparatusSource;
   readonly x: number;
   readonly y: number;
   readonly state?: SwitchState;
@@ -192,26 +250,30 @@ function portsInWorld(def: SymbolDef, x: number, y: number): Readonly<Record<str
 }
 
 function buildBayStack(
-  ids: readonly SymbolId[],
+  items: readonly StackItemSpec[],
   centerX: number,
   topY: number,
   bay: MiniBlockBayDescriptor,
+  apparatusSource: BayApparatusSource,
 ): BayStack {
   const instances: ComposedSymbolInstance[] = [];
   let y = topY;
   let topPort: RoutePort | null = null;
   let bottomPort: RoutePort | null = null;
 
-  ids.forEach((symbolId, index) => {
+  items.forEach((item, index) => {
+    const { symbolId } = item;
     const def = SYMBOL_DEFS[symbolId];
     const x = snapToGrid(centerX - def.width / 2);
     const ports = portsInWorld(def, x, y);
     instances.push({
       symbolId,
       bayRef: bay.bayRef,
+      deviceRef: item.deviceRef,
+      apparatusSource,
       x,
       y,
-      state: apparatusStateFor(symbolId, bay),
+      state: item.state,
       ports,
     });
 
@@ -222,7 +284,7 @@ function buildBayStack(
     const south = def.ports.find((p) => p.dir === 'S');
     bottomPort = south ? { x: x + south.x, y: y + south.y, dir: south.dir } : (topPort ?? Object.values(ports)[0] ?? null);
 
-    y += def.height + (index < ids.length - 1 ? GRID : 0);
+    y += def.height + (index < items.length - 1 ? GRID : 0);
   });
 
   if (!topPort || !bottomPort) {
@@ -304,7 +366,12 @@ export function composeStation(input: ComposeStationInput): StationComposition {
       station.bayDirectionCaptions,
       station.entryDescentBayIndex,
     );
-    const symbolIds = apparatusSymbolsForRole(bay.fieldRole);
+    // F9.3 (§12.1): stos „dane" gdy `bay.primaryDevices` niepuste i
+    // mapowalne, inaczej fallback konwencji (§12.4) — JEDNA prawda z
+    // `layout/measure.ts` (`bayColumnFootprint`/`bayColumnRequiredWidth`
+    // wołają `resolveBayApparatusSymbolIds` przez tę samą funkcję).
+    const { items, source } = stackItemsForBay(bay);
+    const symbolIds = items.map((item) => item.symbolId);
     // FIX-3 (recenzja F5a): `bayColumnRequiredWidth` (measure.ts) rezerwuje
     // `footprint.width + GRID + szerokość_oznacznika` — stos aparatów
     // FLUSH-LEFT (przy `bx`) + oznacznik sidecar PO PRAWEJ stosu. Centrowanie
@@ -316,7 +383,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     const centerX = snapToGrid(bx + footprint.width / 2);
     busTapXs.push(centerX);
 
-    const stack = buildBayStack(symbolIds, centerX, blockTopY, bay);
+    const stack = buildBayStack(items, centerX, blockTopY, bay, source);
     symbols.push(...stack.instances);
 
     // Zejście z osi magistrali (B2) do górnego portu pierwszego aparatu.
@@ -498,4 +565,120 @@ export function internalSegmentsEndAtPortsOrBus(composition: StationComposition)
     const last = seg.points[seg.points.length - 1];
     return !!first && !!last && endpointValid(first) && endpointValid(last);
   });
+}
+
+// ---------------------------------------------------------------------------
+// F9.3 — wyrocznie §12.3 (field_entry_probe) i §14.3 (field_silhouette_probe).
+// ---------------------------------------------------------------------------
+
+/**
+ * field_entry_probe (spec §12.3): dla KAŻDEGO pola liniowego (kabel jest
+ * fizycznym wejściem pola, §12.3 wymaganie) ostatni symbol JEGO stosu, w
+ * kolejności rysowania OD SZYNY W DÓŁ (§12.2), musi być głowicą kablową
+ * (`cableHead`) — zejście kablowe nigdy nie zaczyna się „od gołego stosu".
+ * Działa na KOMPOZYCJI (nie na tabeli konwencji w izolacji) — obejmuje więc
+ * RÓWNIEŻ ścieżkę danych (§12.1): gdy `primary_devices` nie niesie
+ * `CABLE_HEAD`, to jest LUKA DANYCH (audytor zgłasza FAIL), nie fabrykowanie
+ * (§12.1 zakazuje dorysowywać głowicę „z domysłu").
+ *
+ * DECYZJA ZAKRESU (F9.3, patrz raport): „gdy pole ma kabel" jest dziś TRUE
+ * dla KAŻDEGO pola liniowego (`isLineLikeRole`) — model `FieldRole`/
+ * `MiniBlockBayDescriptor` nie rozróżnia dziś linii napowietrznej od kablowej
+ * na poziomie POLA (ten podział istnieje na poziomie `Branch`/segmentu, poza
+ * kompozycją stacji) — kandydat na doprecyzowanie w F9.6+, jeśli/gdy kanał
+ * danych dostarczy tę informację per pole.
+ */
+export function fieldStacksEndAtCableHead(
+  composition: StationComposition,
+  snBays: readonly MiniBlockBayDescriptor[],
+): boolean {
+  return snBays.every((bay) => {
+    if (!isLineLikeRole(bay.fieldRole)) return true;
+    const stackSymbols = composition.symbols.filter((s) => s.bayRef === bay.bayRef);
+    const last = stackSymbols[stackSymbols.length - 1];
+    return last?.symbolId === 'cableHead';
+  });
+}
+
+/**
+ * Klasa sylwetki pola (spec §14.3: „wejście/wyjście/odgałęzienie/
+ * transformator/sprzęgło/pomiar/DER"). RULING V12K-031 (nadzorca, runda
+ * korekcyjna F9.3, recenzja Opusa — zastępuje pierwotną „DECYZJA F9.3 (dług)"
+ * poniższego akapitu): wejście/wyjście/odgałęzienie pola liniowego są
+ * FIZYCZNIE IDENTYCZNĄ konstrukcją rozdzielnicy (ta sama sekwencja aparatów,
+ * §12.2/§12.4) — rysowanie różnicy stosu/akcentu między nimi fabrykowałoby
+ * różnicę konstrukcyjną, której NIE MA (nadrzędny cel dyrektywy: prawda
+ * fizyczna > litera zadania rysunkowego). SĄ więc ŚWIADOMIE ZWINIĘTE w JEDNĄ
+ * klasę równoważności `'line'` — kierunek niesie podpis `kier./odg.`
+ * (`compose/directions.ts`) i, docelowo, strzałki przepływu mocy §14.2/F9.5
+ * (prawda solverowa), NIE sylwetka; odgałęzienie różni się AKCENTEM §14.4
+ * (`branchJunction`), nie stosem. Patrz `docs/v12xx/REJESTR_KONFLIKTOW.md`
+ * V12K-031 (pełna treść rulingu).
+ */
+export type FieldSilhouetteClass =
+  | 'line'
+  | 'transformer'
+  | 'coupler'
+  | 'measurement'
+  | 'der_pv'
+  | 'der_bess'
+  | 'der_fw';
+
+export function fieldSilhouetteClass(role: FieldRole): FieldSilhouetteClass {
+  if (isLineLikeRole(role)) return 'line';
+  if (isTransformerRole(role)) return 'transformer';
+  if (role === FIELD_ROLE.COUPLER) return 'coupler';
+  if (role === FIELD_ROLE.MEASUREMENT) return 'measurement';
+  if (role === FIELD_ROLE.DER_PV) return 'der_pv';
+  if (role === FIELD_ROLE.DER_BESS) return 'der_bess';
+  return 'der_fw';
+}
+
+/** Reprezentant roli KAŻDEJ klasy (jedno wejście do `apparatusSymbolsForRole`
+ *  per klasa) — sygnatura sylwetki to multiset `SymbolId` (sorted) stosu
+ *  KONWENCJI tej klasy; właściwość ROLI/klasy, nie pojedynczego pola (pole z
+ *  `primary_devices` może mieć inny realny stos — §14.3 mówi o rozróżnialności
+ *  KATEGORII pól, nie o konkretnej instancji). */
+const SILHOUETTE_CLASS_REPRESENTATIVE_ROLE: Readonly<Record<FieldSilhouetteClass, FieldRole>> = {
+  line: FIELD_ROLE.LINE_IN,
+  transformer: FIELD_ROLE.TRANSFORMER,
+  coupler: FIELD_ROLE.COUPLER,
+  measurement: FIELD_ROLE.MEASUREMENT,
+  der_pv: FIELD_ROLE.DER_PV,
+  der_bess: FIELD_ROLE.DER_BESS,
+  der_fw: FIELD_ROLE.DER_FW,
+};
+
+function silhouetteSignature(cls: FieldSilhouetteClass): string {
+  const role = SILHOUETTE_CLASS_REPRESENTATIVE_ROLE[cls];
+  return [...apparatusSymbolsForRole(role)].sort().join(',');
+}
+
+/**
+ * field_silhouette_probe (spec §14.3, V12K-031 — RESTAURACJA semantyki
+ * rola→cecha po recenzji Opusa FIX-2: wersja pośrednia sprawdzała tylko
+ * „klasa→sygnatura injektywne dla klas OBECNYCH w jednej stacji", co jest
+ * trywialnie prawdziwe, gdy stacja niesie tylko jedną klasę — nie dowodzi
+ * NICZEGO o systemie). Ta wersja dowodzi WŁAŚCIWOŚCI GLOBALNEJ, nie
+ * per-stacji: dla WSZYSTKICH ról zdefiniowanych (`ALL_FIELD_ROLES`,
+ * `apparatusContracts.ts`) — każde dwie role SPOZA TEJ SAMEJ klasy
+ * równoważności (`fieldSilhouetteClass`, V12K-031) MUSZĄ mieć RÓŻNE
+ * sygnatury wizualne (multiset `SymbolId` stosu konwencji); każde dwie role
+ * W TEJ SAMEJ klasie równoważności (np. `LINE_IN`/`LINE_OUT` — klasa
+ * `'line'`) MOGĄ (i w tej implementacji DZIELĄ) tę samą sygnaturę — to NIE
+ * jest naruszenie §14.3 (ruling V12K-031: identyczna konstrukcja fizyczna,
+ * kierunek niesiony podpisem/strzałkami, nie sylwetką).
+ */
+export function fieldSilhouettesAreInjective(): boolean {
+  for (let i = 0; i < ALL_FIELD_ROLES.length; i++) {
+    for (let j = i + 1; j < ALL_FIELD_ROLES.length; j++) {
+      const roleA = ALL_FIELD_ROLES[i];
+      const roleB = ALL_FIELD_ROLES[j];
+      const classA = fieldSilhouetteClass(roleA);
+      const classB = fieldSilhouetteClass(roleB);
+      if (classA === classB) continue; // ta sama klasa — dzielenie sygnatury dopuszczone (V12K-031).
+      if (silhouetteSignature(classA) === silhouetteSignature(classB)) return false;
+    }
+  }
+  return true;
 }

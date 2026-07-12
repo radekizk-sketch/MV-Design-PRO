@@ -27,8 +27,11 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import {
   buildSceneV3,
+  allFieldEntryConnectionsReachCableHead,
   allSceneGeometryOnGrid,
+  fieldEntryConnectionsReachCableHead,
   labelWireCollisions,
+  noBranchWithoutAccent,
   noForbiddenDirectionTokens,
   noLabelWireCollisions,
   noSceneSymbolOverlaps,
@@ -115,6 +118,55 @@ describe('buildSceneV3 — wyrocznie §11 per LOD (realna fixtura, 53 stacje)', 
       it('k6 SPŁACONE W CAŁOŚCI (F6d kanały pionowe + F6e nakłady własnego pola): ZERO kolizji etykieta↔przewód — WSZYSTKIE klasy, cała scena (historia: F6c wykryło 28/105/426 na LOD 0/1/2; F6d zbiło architekturę zejść do 3/3/317 „własnego pola"; F6e zbiło resztę do zera — oznacznik pola GPZ poniżej szyny, podpis kierunku odsunięty od osi magistrali i od pionu wejściowego zejścia przez rezerwację `entryDescentBayIndex`)', () => {
         expect(labelWireCollisions(scene)).toEqual([]);
         expect(noLabelWireCollisions(scene)).toBe(true);
+      });
+
+      it('branch_accent_probe (F9.3, §14.4): każdy punkt odejścia lateralu ma węzeł branchJunction WIĘKSZY niż junction bazowy; 0 rozgałęzień bez akcentu', () => {
+        expect(scene.meta.lateralRunIds.length).toBeGreaterThan(0);
+        expect(noBranchWithoutAccent(scene)).toBe(true);
+      });
+
+      it('F9.3 FIX-1 (§12.3, kontrakt POŁĄCZENIA): głowice kablowe BEZ trasy dotykającej ich portu istnieją WYŁĄCZNIE na fizycznych końcach ciągów (1 magistrala + N laterali = brak dalszej stacji za polem "następnik"); WSZYSTKIE inne głowice (wnętrze ciągów, GPZ→S0, origin→lateral) MUSZĄ być dotknięte trasą', () => {
+        if (lod === 0) {
+          // L0: stacje SN są symbolem zbiorczym (brak aparatów pola/głowic),
+          // ale GPZ renderuje się w PEŁNYM detalu na KAŻDYM LOD (`composeGpz`
+          // nie przyjmuje parametru lod, spec §7 dotyczy stacji, nie GPZ) —
+          // JEGO pole liniowe NIESIE własną głowicę, zawsze POŁĄCZONĄ (GPZ→S0,
+          // sekcja 5) — więc `cableHead` JEST obecny, ale zbiór nieosiągniętych
+          // głowic jest i tak pusty (GPZ ma zawsze następnika — magistralę).
+          expect(scene.symbols.some((s) => s.symbolId === 'cableHead')).toBe(true);
+          expect(fieldEntryConnectionsReachCableHead(scene)).toEqual([]);
+          expect(allFieldEntryConnectionsReachCableHead(scene)).toBe(true);
+          return;
+        }
+        expect(scene.symbols.some((s) => s.symbolId === 'cableHead')).toBe(true);
+        const unreached = fieldEntryConnectionsReachCableHead(scene);
+        // DECYZJA (F9.3 FIX-1, patrz docstring `fieldEntryConnectionsReachCableHead`):
+        // ta wyrocznia dowodzi WYŁĄCZNIE, że TAM GDZIE trasa istnieje, dotyka
+        // głowicy — nie że każda głowica MUSI mieć trasę (fizyczny koniec
+        // ciągu, „stacja końcowa" §9, legalnie nie ma kabla za polem
+        // „następnik"). Na fixturze `sldSubstrate52s` liczba takich końców =
+        // 1 (magistrala główna) + `lateralRunIds.length` (każdy lateral
+        // konczy się gdzieś) — potwierdzone empirycznie (patrz raport F9.3).
+        // Jeżeli liczba WZROŚNIE bez zmiany topologii fixtury — regresja
+        // (kabel międzystacyjny znowu nie dotyka głowicy WEWNĄTRZ ciągu).
+        expect(unreached.length).toBe(1 + scene.meta.lateralRunIds.length);
+        expect(allFieldEntryConnectionsReachCableHead(scene)).toBe(false);
+      });
+
+      it('F9.3 (§12.1): KAŻDY aparat pola STACJI (składający `apparatusSource`, spec §12.1) na fixturze nosi "konwencja" (brak primary_devices, f92-1)', () => {
+        // `apparatusSource` jest ustawiane WYŁĄCZNIE przez `composeStation`
+        // (`v3/compose/station.ts`) — GPZ (`compose/gpz.ts`, POZA
+        // autoryzacją F9.3) ma WŁASNĄ, nietkniętą gramatykę aparatów i NIE
+        // niesie tego pola; filtrowanie po obecności `apparatusSource`
+        // (nie po `elementKind`, który miesza stacje SN z GPZ) odróżnia
+        // dokładnie te symbole, które przeszły przez F9.3.
+        const stationFieldApparatus = scene.symbols.filter((s) => s.meta?.apparatusSource != null);
+        // LOD 0 (spec §7): stacje są symbolem zbiorczym `stationCollapsed`,
+        // ŻADEN aparat pola nie jest rysowany — filtr jest wtedy pusty
+        // (wyrocznia wciąż prawdziwa, wacuously) — sanity length>0 dotyczy
+        // WYŁĄCZNIE LOD 1/2, gdzie `composeStation` faktycznie się wykonuje.
+        if (lod !== 0) expect(stationFieldApparatus.length).toBeGreaterThan(0);
+        expect(stationFieldApparatus.every((s) => s.meta?.apparatusSource === 'konwencja')).toBe(true);
       });
     });
   }

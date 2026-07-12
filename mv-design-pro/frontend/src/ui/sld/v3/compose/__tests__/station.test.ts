@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { GRID } from '../../core/grid';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { FIELD_ROLE, ALL_FIELD_ROLES, type FieldRole } from '../../../v2/domain/apparatusContracts';
-import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
+import type { BayPrimaryDeviceView, MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
 import {
   bayColumnFootprint,
   bayColumnRequiredWidth,
@@ -24,6 +24,9 @@ import {
   allCompositionSymbolsOnGrid,
   apparatusSymbolsForRole,
   composeStation,
+  fieldSilhouetteClass,
+  fieldSilhouettesAreInjective,
+  fieldStacksEndAtCableHead,
   internalSegmentsEndAtPortsOrBus,
   noCompositionSymbolOverlaps,
   stackFootprint,
@@ -105,11 +108,11 @@ function buildComposeInput(
 // measure REZERWUJE miejsce, a compose je WYPEŁNIA — patrz nagłówek station.ts).
 // ---------------------------------------------------------------------------
 
-describe('V3 compose/station — spójność measure↔compose (wymóg zadania F5a)', () => {
+describe('V3 compose/station — spójność measure↔compose (wymóg zadania F5a, F9.3: bayColumnFootprint jest data-aware)', () => {
   for (const role of ALL_FIELD_ROLES) {
-    it(`rola ${role}: stackFootprint(apparatusSymbolsForRole) === bayColumnFootprint`, () => {
+    it(`rola ${role}, bez primary_devices (konwencja): stackFootprint(apparatusSymbolsForRole) === bayColumnFootprint`, () => {
       const fromCompose = stackFootprint(apparatusSymbolsForRole(role));
-      const fromMeasure = bayColumnFootprint(role);
+      const fromMeasure = bayColumnFootprint(makeBay(role, 0));
       expect(fromCompose).toEqual(fromMeasure);
     });
   }
@@ -224,7 +227,11 @@ describe('V3 compose/station — bbox kompozycji ⊆ rezerwacja measure/bands', 
     const composeInput = buildComposeInput(station);
     const composition = composeStation(composeInput);
 
-    const symbolMaxY = Math.max(...composition.symbols.map((s) => s.y + 40)); // 40 = wysokość TR2W (najwyższy symbol)
+    // F9.3: `+40` (wysokość TR2W) był poprawny tylko, gdy TR2W było
+    // NAJNIŻSZYM symbolem stacji — po F9.3 pole liniowe (§12.4, 6 aparatów)
+    // jest WYŻSZE niż pole TR (3 aparaty), więc realną wysokość symbolu
+    // trzeba czytać z `SYMBOL_DEFS`, nie zakładać stałej 40.
+    const symbolMaxY = Math.max(...composition.symbols.map((s) => s.y + SYMBOL_DEFS[s.symbolId].height));
     const blockHeightUsed = symbolMaxY - composeInput.blockTopY;
     expect(blockHeightUsed).toBeLessThanOrEqual(stationBlockHeight(station));
   });
@@ -307,6 +314,191 @@ describe('V3 compose/station — determinizm', () => {
     const first = composeStation(composeInput);
     const second = composeStation(composeInput);
     expect(second).toEqual(first);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (g) F9.3 — §12.1 „prymat danych nad konwencją": gałąź „dane" vs „konwencja"
+// + znacznik `apparatusSource`/`deviceRef` (cell_sequence_probe).
+//
+// DECYZJA ZAKRESU (patrz raport F9.3): `MiniBlockBayDescriptor.primaryDevices`
+// jest KONTRAKTEM WEJŚCIOWYM `compose/station.ts` — projekcja
+// `Bay.primary_devices` (ENM) → `primaryDevices` (sortowanie wg `placement`,
+// mapowanie `switch_state`) jest już w CAŁOŚCI przetestowana end-to-end w
+// F9.2 (`v2/canvas/__tests__/enmToSldAdapter.test.ts`, opis „F9.2 — projekcja
+// Bay.primary_devices"). Te testy budują `primaryDevices` WPROST (jak
+// wyprodukowałby go adapter — kolejność UPSTREAM→MIDSTREAM→DOWNSTREAM), żeby
+// sprawdzić stronę KONSUMPCJI (`compose/station.ts`), bez duplikowania
+// ENM→adapter poza autoryzacją tego zadania (`v3/compose/station.ts`).
+// ---------------------------------------------------------------------------
+
+/** Pełny łańcuch §12.2 (od szyny w dół, jak wyprodukowałby adapter — już
+ *  posortowany wg `placement`) — `DS_szynowy(UPSTREAM) → CB(MIDSTREAM) →
+ *  CT(MIDSTREAM) → DS_liniowy(DOWNSTREAM) → ES(DOWNSTREAM) →
+ *  CABLE_HEAD(DOWNSTREAM)`. */
+const FULL_LINE_CHAIN_PRIMARY_DEVICES: readonly BayPrimaryDeviceView[] = [
+  { deviceRef: 'ds-bus', kind: 'DS', placement: 'UPSTREAM', switchState: 'closed' },
+  { deviceRef: 'cb-1', kind: 'CB', placement: 'MIDSTREAM', switchState: 'closed' },
+  { deviceRef: 'ct-1', kind: 'CT', placement: 'MIDSTREAM' },
+  { deviceRef: 'ds-line', kind: 'DS', placement: 'DOWNSTREAM', switchState: 'open' },
+  { deviceRef: 'es-1', kind: 'ES', placement: 'DOWNSTREAM', switchState: 'open' },
+  { deviceRef: 'head-1', kind: 'CABLE_HEAD', placement: 'DOWNSTREAM' },
+];
+
+describe('V3 compose/station — F9.3 §12.1: gałąź „dane" (fixtura syntetyczna, f92-1)', () => {
+  it('cell_sequence_probe (dane): sekwencja symboli == sekwencja kind wg placement, apparatusSource="dane", deviceRef 1:1', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, { primaryDevices: FULL_LINE_CHAIN_PRIMARY_DEVICES });
+    const station = makeStation('data-path', [bay]);
+    const composition = composeStation(buildComposeInput(station));
+
+    expect(composition.symbols.map((s) => s.symbolId)).toEqual([
+      'disconnector', 'breaker', 'currentTransformer', 'disconnector', 'earthSwitch', 'cableHead',
+    ]);
+    expect(composition.symbols.every((s) => s.apparatusSource === 'dane')).toBe(true);
+    expect(composition.symbols.map((s) => s.deviceRef)).toEqual([
+      'ds-bus', 'cb-1', 'ct-1', 'ds-line', 'es-1', 'head-1',
+    ]);
+    // Stan łącznika PER APARAT (nie per-kind agregat konwencji) — dwa
+    // `disconnector` w tym łańcuchu mają RÓŻNE stany (`ds-bus` zamknięty,
+    // `ds-line` otwarty), co dowodzi, że stan pochodzi z `switchState`
+    // KAŻDEGO urządzenia, nie z jednego agregatu `bay.dsState`.
+    expect(composition.symbols[0].state).toBe('closed');
+    expect(composition.symbols[3].state).toBe('open');
+  });
+
+  it('DER-kindy w primary_devices są odfiltrowane (nie są aparatem pola, §12.1) — fallback konwencji, gdy WSZYSTKIE odfiltrowane', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: [{ deviceRef: 'pv-1', kind: 'GENERATOR_PV', placement: 'OFF_PATH' }],
+    });
+    const station = makeStation('der-only-devices', [bay]);
+    const composition = composeStation(buildComposeInput(station));
+
+    // Brak aparatów mapowalnych ⇒ fallback konwencji (§12.4) dla LINE_IN.
+    expect(composition.symbols.every((s) => s.apparatusSource === 'konwencja')).toBe(true);
+    expect(composition.symbols.map((s) => s.symbolId)).toEqual(
+      [...apparatusSymbolsForRole(FIELD_ROLE.LINE_IN)],
+    );
+  });
+
+  it('LOAD_SWITCH mapuje się na disconnector (aproksymacja udokumentowana, brak dedykowanego glifu)', () => {
+    const bay = makeBay(FIELD_ROLE.COUPLER, 0, {
+      primaryDevices: [{ deviceRef: 'ls-1', kind: 'LOAD_SWITCH', placement: 'UPSTREAM' }],
+    });
+    const station = makeStation('load-switch', [bay]);
+    const composition = composeStation(buildComposeInput(station));
+    expect(composition.symbols.map((s) => s.symbolId)).toEqual(['disconnector']);
+    expect(composition.symbols[0].apparatusSource).toBe('dane');
+  });
+});
+
+describe('V3 compose/station — F9.3 §12.4: gałąź „konwencja" — znacznik na KAŻDYM polu bez primary_devices', () => {
+  for (const role of ALL_FIELD_ROLES) {
+    it(`rola ${role}: bez primary_devices ⇒ WSZYSTKIE symbole apparatusSource="konwencja", 0 deviceRef, sekwencja == tabela §12.4`, () => {
+      const bay = makeBay(role, 0);
+      const station = makeStation(`convention-${role}`, [bay]);
+      const composition = composeStation(buildComposeInput(station));
+
+      expect(composition.symbols.length).toBeGreaterThan(0);
+      expect(composition.symbols.every((s) => s.apparatusSource === 'konwencja')).toBe(true);
+      expect(composition.symbols.every((s) => s.deviceRef === undefined)).toBe(true);
+      expect(composition.symbols.map((s) => s.symbolId)).toEqual([...apparatusSymbolsForRole(role)]);
+    });
+  }
+
+  it('§12.5 (V12K-028): ZERO symboli surgeArrester w konwencji, dla KAŻDEJ roli', () => {
+    for (const role of ALL_FIELD_ROLES) {
+      expect(apparatusSymbolsForRole(role)).not.toContain('surgeArrester');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (h) F9.3 — §12.3 field_entry_probe: pole liniowe kończy stos głowicą.
+// ---------------------------------------------------------------------------
+
+describe('V3 compose/station — F9.3 §12.3: field_entry_probe (głowica na końcu toru pola liniowego)', () => {
+  it('konwencja (§12.4): KAŻDE pole liniowe (LINE_IN/LINE_OUT/LINE_BRANCH/RMU_LINE/GPZ_LINE_BAY) kończy się cableHead', () => {
+    const lineRoles: FieldRole[] = [
+      FIELD_ROLE.LINE_IN, FIELD_ROLE.LINE_OUT, FIELD_ROLE.LINE_BRANCH, FIELD_ROLE.RMU_LINE, FIELD_ROLE.GPZ_LINE_BAY,
+    ];
+    const snBays = lineRoles.map((role, i) => makeBay(role, i));
+    const station = makeStation('entry-probe-convention', snBays);
+    const composition = composeStation(buildComposeInput(station));
+    expect(fieldStacksEndAtCableHead(composition, snBays)).toBe(true);
+  });
+
+  it('dane (§12.1): pole liniowe z CABLE_HEAD w DOWNSTREAM ⇒ zielone', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, { primaryDevices: FULL_LINE_CHAIN_PRIMARY_DEVICES });
+    const snBays = [bay];
+    const station = makeStation('entry-probe-data-ok', snBays);
+    const composition = composeStation(buildComposeInput(station));
+    expect(fieldStacksEndAtCableHead(composition, snBays)).toBe(true);
+  });
+
+  it('dane (§12.1): pole liniowe BEZ CABLE_HEAD w danych ⇒ FAIL (luka danych, NIE fabrykowana głowica)', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: FULL_LINE_CHAIN_PRIMARY_DEVICES.filter((d) => d.kind !== 'CABLE_HEAD'),
+    });
+    const snBays = [bay];
+    const station = makeStation('entry-probe-data-gap', snBays);
+    const composition = composeStation(buildComposeInput(station));
+    expect(fieldStacksEndAtCableHead(composition, snBays)).toBe(false);
+  });
+
+  it('pola NIE-liniowe (TR/sprzęgło/pomiar/DER) są poza zakresem wyroczni (zawsze zielone)', () => {
+    const snBays = [
+      makeBay(FIELD_ROLE.TRANSFORMER, 0),
+      makeBay(FIELD_ROLE.COUPLER, 1),
+      makeBay(FIELD_ROLE.MEASUREMENT, 2),
+      makeBay(FIELD_ROLE.DER_PV, 3),
+    ];
+    const station = makeStation('entry-probe-non-line', snBays);
+    const composition = composeStation(buildComposeInput(station));
+    expect(fieldStacksEndAtCableHead(composition, snBays)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (i) F9.3 — §14.3 field_silhouette_probe.
+// ---------------------------------------------------------------------------
+
+describe('V3 compose/station — F9.3 §14.3/V12K-031: field_silhouette_probe (rola→sylwetka injektywne PONAD KLASY równoważności, restauracja po recenzji Opusa FIX-2)', () => {
+  it('GLOBALNIE: każde dwie role SPOZA tej samej klasy równoważności mają RÓŻNE sygnatury wizualne (dowód na ALL_FIELD_ROLES, nie per-stacja)', () => {
+    expect(fieldSilhouettesAreInjective()).toBe(true);
+  });
+
+  it('7 klas sylwetki (linia/TR/sprzęgło/pomiar/3×DER) — reprezentanci dają parami RÓŻNE sygnatury', () => {
+    const classes: FieldRole[] = [
+      FIELD_ROLE.LINE_IN, FIELD_ROLE.TRANSFORMER, FIELD_ROLE.COUPLER, FIELD_ROLE.MEASUREMENT,
+      FIELD_ROLE.DER_PV, FIELD_ROLE.DER_BESS, FIELD_ROLE.DER_FW,
+    ];
+    const signatures = classes.map((role) => [...apparatusSymbolsForRole(role)].sort().join(','));
+    expect(new Set(signatures).size).toBe(signatures.length);
+  });
+
+  it('RULING V12K-031 (§14.3): LINE_IN/LINE_OUT/LINE_BRANCH/RMU_LINE/GPZ_LINE_BAY należą do JEDNEJ klasy równoważności `line` — fizycznie identyczna konstrukcja (§12.2/§12.4), dzielą sygnaturę ŚWIADOMIE (kierunek niesie podpis §9 + strzałki F9.5, NIE sylwetka) — to NIE jest naruszenie injektywności', () => {
+    const lineRoles: FieldRole[] = [
+      FIELD_ROLE.LINE_IN, FIELD_ROLE.LINE_OUT, FIELD_ROLE.LINE_BRANCH, FIELD_ROLE.RMU_LINE, FIELD_ROLE.GPZ_LINE_BAY,
+    ];
+    for (const role of lineRoles) expect(fieldSilhouetteClass(role)).toBe('line');
+    const signatures = new Set(lineRoles.map((role) => [...apparatusSymbolsForRole(role)].sort().join(',')));
+    // Wszystkie role „line" dzielą TĘ SAMĄ sygnaturę (stos konwencji per rola
+    // jest identyczny — `apparatusSymbolsForRole` domyślna gałąź) — dowód, że
+    // to jest ŚWIADOME dzielenie w klasie, nie przypadek.
+    expect(signatures.size).toBe(1);
+  });
+
+  it('RMU_TRANSFORMER należy do klasy `transformer` (razem z TRANSFORMER) — dzieli sygnaturę z TRANSFORMER, ale RÓŻNI SIĘ od klasy `line` (mv_lv_sectional: RMU_LINE/RMU_TRANSFORMER/COUPLER wymieszane, parami różne KLASY)', () => {
+    expect(fieldSilhouetteClass(FIELD_ROLE.RMU_TRANSFORMER)).toBe('transformer');
+    expect(fieldSilhouetteClass(FIELD_ROLE.TRANSFORMER)).toBe('transformer');
+    const sigLine = [...apparatusSymbolsForRole(FIELD_ROLE.RMU_LINE)].sort().join(',');
+    const sigTr = [...apparatusSymbolsForRole(FIELD_ROLE.RMU_TRANSFORMER)].sort().join(',');
+    const sigCoupler = [...apparatusSymbolsForRole(FIELD_ROLE.COUPLER)].sort().join(',');
+    expect(new Set([sigLine, sigTr, sigCoupler]).size).toBe(3);
+  });
+
+  it('ALL_FIELD_ROLES niesie WSZYSTKIE 12 ról zdefiniowanych (sanity — wyrocznia globalna musi ćwiczyć cały zbiór, nie podzbiór wybrany ręcznie)', () => {
+    expect(ALL_FIELD_ROLES.length).toBe(12);
   });
 });
 

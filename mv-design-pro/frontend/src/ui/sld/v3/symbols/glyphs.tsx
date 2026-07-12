@@ -150,6 +150,18 @@ export function JunctionGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/** F9.3 (spec §14.4): kropka WIĘKSZA (r=7 vs r=3 bazowy) na WIĘKSZYM
+ *  gabarycie (32×32 vs 16×16, `symbols/defs.ts`) — akcent węzła rozgałęzienia
+ *  odróżnialny od zwykłego T-węzła trasy (`junction`) BEZ zmiany geometrii
+ *  routingu (glif, nie trasa). */
+export function BranchJunctionGlyph(props: GlyphProps): JSX.Element {
+  return (
+    <g {...glyphGroupProps('branchJunction', props)}>
+      <circle cx={16} cy={16} r={7} fill={stroke(props)} />
+    </g>
+  );
+}
+
 export function CurrentTransformerGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('currentTransformer', props)}>
@@ -251,6 +263,7 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   jointSleeve: JointSleeveGlyph,
   noPoint: NoPointGlyph,
   junction: JunctionGlyph,
+  branchJunction: BranchJunctionGlyph,
   currentTransformer: CurrentTransformerGlyph,
   voltageTransformer: VoltageTransformerGlyph,
   surgeArrester: SurgeArresterGlyph,

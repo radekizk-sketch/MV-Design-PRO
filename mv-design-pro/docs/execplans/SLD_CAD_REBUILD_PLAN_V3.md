@@ -659,7 +659,7 @@ współdzielony (spec §8) — ale konsumpcja w compose (F9.3) czeka na F8b.
   pełny suite zielony (adapter współdzielony — brak regresji v2/v3).
 - Autoryzacje: `v2/canvas/enmToSldAdapter.ts`, `v2/renderer/MiniBlockRmuRenderer.tsx`, testy adaptera.
 
-### F9.3. [KOD — po F8b] Łańcuch celki w stacji + sylwetki pól + akcent węzłów
+### F9.3. [DONE] Łańcuch celki w stacji + sylwetki pól + akcent węzłów
 - Zakres: `v3/compose/station.ts` — stos aparatów z `primary_devices` (prymat danych, §12.1), fallback
   konwencji ze znacznikiem (§12.4); głowica jako wejście pola (§12.3); rozróżnialne sylwetki (§14.3);
   `v3/scene/buildScene.ts` — akcent węzłów rozgałęzień (§14.4); ewentualny wariant symbolu w
@@ -667,6 +667,31 @@ współdzielony (spec §8) — ale konsumpcja w compose (F9.3) czeka na F8b.
 - DoD: `cell_sequence_probe`, `field_entry_probe`, `field_silhouette_probe`, `branch_accent_probe`
   zielone na `sldSubstrate52s` L0/L1/L2; wyrocznie §11 nadal zielone; determinizm; render 1:1 oceniony.
 - Autoryzacje: `v3/compose/station.ts`, `v3/scene/buildScene.ts`, `v3/symbols/*` (po koordynacji), testy v3.
+- **Runda korekcyjna (recenzja Opusa, REQUEST-CHANGES, 2026-07-12):** 2 blokery + 3 wpisy naprawione —
+  FIX-1 (§12.3, BLOKER): kabel międzystacyjny/GPZ→magistrala/lateral→stacja0 łączy się teraz z DOLNYM
+  PORTEM GŁOWICY (wzorzec `branchPort`), nie z osią magistrali — jog przez sub-poziom strefy B4/B5
+  (`trunkCorridorYOf`, `DESCENT_STRIP_HEIGHT` podniesione z 1×GRID do 2×GRID); nowa wyrocznia sceny
+  `fieldEntryConnectionsReachCableHead`/`allFieldEntryConnectionsReachCableHead` (`scene/buildScene.ts`)
+  wpięta do `accept:sld-v3`. FIX-2 (§14.3, V12K-031): klasy sylwetki zdefiniowane PER KONSTRUKCJA (nie per
+  kierunek) — `field_silhouette_probe` (`fieldSilhouettesAreInjective`) przepisany na dowód PONAD
+  `ALL_FIELD_ROLES`, nie per-stacja. FIX-3: obie sondy wpięte do `scripts/sld_v3_acceptance.mjs` na realnej
+  fixturze. Pozostały dług (znany, NIE naprawiony w tej rundzie — patrz wpisy [LOW] niżej): (a)
+  `entryDescentCaptionInset` (`layout/measure.ts`) liczy inset z KONWENCJI roli, nie z gabarytu
+  data-aware konkretnego pola — aktywuje się z F9.6 (kanał danych `primary_devices` przez field-view,
+  V12K-030), gdy realny stos pola różni się długością od konwencji tej roli — naprawić PRZY F9.6, razem z
+  domknięciem kanału danych (jedna zmiana, nie dwie); (b) brak dedykowanej wyroczni symbol↔przewód dla
+  `branchJunction` (32×32 w szczelinie `COLUMN_GAP` 16px szerokiej, `layout/columns.ts`
+  `CHANNEL_MIN_CLEARANCE`=1×GRID) — akcent MOŻE otrzeć się o przewody przechodzące przez tę samą szczelinę
+  na sieciach z węższym `COLUMN_GAP` niż na fixturze `sldSubstrate52s` (gdzie dziś nie manifestuje się,
+  potwierdzone empirycznie przez `noSceneSymbolOverlaps`+`labelWireCollisions`, ale te wyrocznie NIE
+  sprawdzają symbol↔przewód wprost) — dług wyroczniowy, naprawić na F9.7 (optymalizacja pionów +
+  domknięcie acceptance) razem z `vertical_length_probe`; (c) [KOSMETYKA, wizualny DoD nadzorcy]
+  etykieta przęsła (typ·przekrój·długość) pozostaje w paśmie B1 U GÓRY (model slotów §4), podczas gdy
+  fizyczny kabel biegnie teraz DOLNYM korytarzem głowica→głowica — czytelne i bezkolizyjne, ale
+  etykieta nie sąsiaduje ze SWOIM przewodem; przegląd sąsiedztwa etykieta↔przewód na F9.7.
+- Wizualny DoD nadzorcy (render zoom stacji): pełne łańcuchy celek widoczne (szyna→DS→CB→CT→DS→ES→▲),
+  głowice POŁĄCZONE korytarzem dolnym, akcent rozgałęzienia na odejściu lateralu, kier./odg. + Q/T +
+  pasma nazw bez kolizji — POTWIERDZONE.
 
 ### F9.4. [KOD — po F8b] Źródła widoczne + ciągłość źródło→odbiór (strona nN)
 - Zakres: `v3/scene/buildScene.ts` + `v3/compose/*` — rysowanie wszystkich źródeł (GPZ/Source/DER),

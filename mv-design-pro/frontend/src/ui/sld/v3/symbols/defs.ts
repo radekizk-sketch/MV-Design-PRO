@@ -21,6 +21,7 @@ export type SymbolId =
   | 'jointSleeve'      // mufa kablowa
   | 'noPoint'          // punkt podziału NO (łącznik otwarty na torze)
   | 'junction'         // węzeł T (jawna kropka)
+  | 'branchJunction'   // węzeł rozgałęzienia lateralu — akcent (spec §14.4)
   | 'currentTransformer' // przekładnik prądowy CT
   | 'voltageTransformer' // przekładnik napięciowy VT
   | 'surgeArrester'    // ogranicznik przepięć SA
@@ -85,6 +86,17 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
     { name: 'e', x: 16, y: 8, dir: 'E' },
     { name: 'w', x: 0, y: 8, dir: 'W' },
   ], 'Węzeł'),
+  // F9.3 (spec §14.4 „jawne rozgałęzienia" — akcent węzłów): gabaryt 32×32
+  // (4×GRID, vs 16×16 `junction` bazowy) — ZAWSZE odróżnialny gabarytowo
+  // (branch_accent_probe: „gabaryt większy niż junction bazowy"). Porty N/S/
+  // E/W jak `junction`, skalowane do bboxa (spec §11.2/§11.3 grid_probe/
+  // port_probe — 32/2=16=2×GRID, centrowanie zostaje na siatce).
+  branchJunction: def('branchJunction', 32, 32, [
+    { name: 'n', x: 16, y: 0, dir: 'N' },
+    { name: 's', x: 16, y: 32, dir: 'S' },
+    { name: 'e', x: 32, y: 16, dir: 'E' },
+    { name: 'w', x: 0, y: 16, dir: 'W' },
+  ], 'Węzeł rozgałęzienia'),
   currentTransformer: def('currentTransformer', 16, 24, [
     { name: 'top', x: 8, y: 0, dir: 'N' },
     { name: 'bottom', x: 8, y: 24, dir: 'S' },

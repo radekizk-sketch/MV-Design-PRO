@@ -25,13 +25,17 @@ import { dirname, resolve } from 'node:path';
 
 import {
   buildSceneV3,
+  allFieldEntryConnectionsReachCableHead,
   allSceneGeometryOnGrid,
+  fieldEntryConnectionsReachCableHead,
   labelWireCollisions,
+  noBranchWithoutAccent,
   noForbiddenDirectionTokens,
   noLabelWireCollisions,
   noSceneSymbolOverlaps,
 } from '../src/ui/sld/v3/scene/buildScene.ts';
 import { overlapProbe } from '../src/ui/sld/v3/layout/labels.ts';
+import { fieldSilhouettesAreInjective } from '../src/ui/sld/v3/compose/station.ts';
 import { SYMBOL_DEFS } from '../src/ui/sld/v3/symbols/defs.ts';
 import { GRID } from '../src/ui/sld/v3/core/grid.ts';
 
@@ -141,6 +145,17 @@ function checkContinuity(scene) {
   );
 }
 
+// F9.3 (FIX-3, po recenzji Opusa): wpięcie field_silhouette_probe (§14.3,
+// V12K-031) — WŁAŚCIWOŚĆ GLOBALNA systemu (nie zależy od fixtury/sceny,
+// `fieldSilhouettesAreInjective` dowodzi na `ALL_FIELD_ROLES`), sprawdzana
+// RAZ, przed pętlą per-LOD.
+line('');
+line('=== field_silhouette_probe (§14.3, V12K-031, globalne — poza pętlą LOD) ===');
+check(
+  'field_silhouette_probe: każde dwie role SPOZA tej samej klasy równoważności mają RÓŻNE sygnatury wizualne',
+  fieldSilhouettesAreInjective(),
+);
+
 for (const lod of LODS) {
   line('');
   line(`=== LOD ${lod} ===`);
@@ -186,6 +201,47 @@ for (const lod of LODS) {
 
   // -- liczba stacji stała względem fixtury ----------------------------------
   check('meta.stationCount zgodne z realną fixturą', scene.meta.stationCount === EXPECTED_STATION_COUNT, `stationCount=${scene.meta.stationCount}`);
+
+  // -- §12.1 (F9.3): znacznik apparatusSource na KAŻDYM aparacie pola --------
+  // Fixtura `sldSubstrate52s` NIE ćwiczy ścieżki danych §12.1 (bays.length=0,
+  // konsekwencja f92-1) — na TEJ fixturze KAŻDY aparat pola musi nieść
+  // `apparatusSource==='konwencja'` (gałąź „dane" jest przetestowana w
+  // `compose/__tests__/station.test.ts` na fixturze syntetycznej).
+  if (lod !== 0) {
+    // `apparatusSource` jest ustawiane WYŁĄCZNIE przez `compose/station.ts`
+    // (F9.3) — GPZ (`compose/gpz.ts`, poza autoryzacją F9.3) NIE niesie tego
+    // pola, więc filtrujemy po jego OBECNOŚCI (nie po `elementKind`, który
+    // miesza stacje SN z GPZ — patrz `buildScene.test.ts`, ten sam fix).
+    const fieldApparatus = scene.symbols.filter((s) => s.meta?.apparatusSource != null);
+    const withoutMarker = fieldApparatus.filter((s) => s.meta?.apparatusSource !== 'konwencja');
+    check(
+      '§12.1 (cell_sequence_probe/konwencja): 100% aparatów pola nosi data-apparatus-source="konwencja"',
+      fieldApparatus.length > 0 && withoutMarker.length === 0,
+      `aparaty=${fieldApparatus.length} bez_znacznika=${withoutMarker.length}`,
+    );
+  }
+
+  // -- §14.4 (F9.3): akcent węzłów rozgałęzień --------------------------------
+  check(
+    'branch_accent_probe (§14.4): każdy punkt odejścia lateralu ma węzeł branchJunction większy niż junction bazowy',
+    noBranchWithoutAccent(scene),
+  );
+
+  // -- §12.3 (FIX-1, po recenzji Opusa): kontrakt POŁĄCZENIA kabel↔głowica --
+  // Głowice BEZ trasy dotykającej ich portu istnieją WYŁĄCZNIE na fizycznych
+  // końcach ciągów (1 magistrala + N laterali) — patrz docstring
+  // `fieldEntryConnectionsReachCableHead` (`scene/buildScene.ts`) i
+  // `buildScene.test.ts` (dowód empiryczny liczby na tej fixturze).
+  const unreachedHeads = fieldEntryConnectionsReachCableHead(scene);
+  const expectedDeadEnds = lod === 0 ? 0 : 1 + scene.meta.lateralRunIds.length;
+  check(
+    'field_entry_probe/kontrakt połączenia (§12.3): głowice bez trasy dotykającej portu == TYLKO fizyczne końce ciągów (1 magistrala + N laterali)',
+    unreachedHeads.length === expectedDeadEnds,
+    `nieosiągnięte=${unreachedHeads.length} oczekiwane=${expectedDeadEnds}`,
+  );
+  if (lod === 0) {
+    check('field_entry_probe (LOD 0): allFieldEntryConnectionsReachCableHead zielone (GPZ zawsze połączony z magistralą)', allFieldEntryConnectionsReachCableHead(scene));
+  }
 
   // -- determinizm (dwa wywołania → identyczny JSON) -------------------------
   const sceneAgain = buildSceneV3(enm, lod);

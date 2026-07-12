@@ -87,6 +87,14 @@ export interface PreviewElementMeta {
   readonly ownerRef?: string;
   /** F8b-1: kategoria elementu — patrz `PreviewElementKind`. */
   readonly elementKind?: PreviewElementKind;
+  /** F9.3 (SLD_CAD_SPEC_V3 §12.1): pochodzenie stosu aparatów pola —
+   *  `'dane'` gdy zbudowany z `Bay.primary_devices`, `'konwencja'` gdy z
+   *  fallbacku rysunkowego §12.4. Audytor DOM czyta to jako
+   *  `data-apparatus-source` na grupie symbolu (patrz `PreviewSymbolNode`
+   *  niżej i `canvas/SldCanvasV3.tsx`). `undefined` dla elementów, które nie
+   *  są aparatem pola (szyny, stacje, DER, segmenty).
+   */
+  readonly apparatusSource?: 'dane' | 'konwencja';
 }
 
 export interface PreviewSymbol {
@@ -144,7 +152,11 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
   // WYŁĄCZNIE meta, którego glif nie znałby (parityKey/testId z compose),
   // żeby nie duplikować atrybutu na dwóch zagnieżdżonych `<g>`.
   return (
-    <g data-parity-key={parityKeysOf(symbol.meta)} data-test-id={symbol.meta?.testId}>
+    <g
+      data-parity-key={parityKeysOf(symbol.meta)}
+      data-test-id={symbol.meta?.testId}
+      data-apparatus-source={symbol.meta?.apparatusSource}
+    >
       <Glyph x={symbol.x} y={symbol.y} state={symbol.state} stroke={stroke} />
     </g>
   );

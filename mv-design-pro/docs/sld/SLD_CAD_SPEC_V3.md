@@ -423,8 +423,21 @@ kamera/LOD → F6 (reuse); eksport/determinizm → F7; checklista całości → 
 - **Wymaganie:** podtypy pól (wejście/wyjście/odgałęzienie/transformator/sprzęgło/pomiar/DER) rozróżnialne
   wizualnie BEZ czytania etykiety (marker roli / wariant stosu / akcent), nie tylko podpisem `kier./odg.`.
 - **Źródło danych:** `bay_role`/`fieldRole`.
-- **Wyrocznia odbioru:** `field_silhouette_probe` — dla zestawu ról każde pole ma cechę wizualną unikalną
-  dla roli (test: mapowanie rola→cecha injektywne w obrębie stacji).
+- **Rozstrzygnięcie (V12K-031, nadzorca, runda korekcyjna F9.3 2026-07-12):** pola wejścia i wyjścia pola
+  liniowego są FIZYCZNIE IDENTYCZNĄ konstrukcją rozdzielnicy (ta sama sekwencja aparatów, §12.2/§12.4) —
+  rysowanie różnicy stosu/akcentu między nimi fabrykowałoby różnicę konstrukcyjną, której NIE MA (nadrzędny
+  cel dyrektywy: prawda fizyczna wygrywa z literą zadania rysunkowego). Klasy sylwetki są zdefiniowane PER
+  KONSTRUKCJA pola, nie per rola kierunkowa: `LINE_IN`/`LINE_OUT`/`LINE_BRANCH`/`RMU_LINE`/`GPZ_LINE_BAY`
+  należą do JEDNEJ klasy równoważności `line` (dzielą sygnaturę WIZUALNĄ świadomie — to NIE jest naruszenie
+  tego paragrafu); `TRANSFORMER`/`RMU_TRANSFORMER` → `transformer`; `COUPLER` → `coupler`; `MEASUREMENT` →
+  `measurement`; `DER_PV`/`DER_BESS`/`DER_FW` → każdy własna klasa. Kierunek (wejście/wyjście/odgałęzienie)
+  niesie podpis §9 (`kier. Sxx`/`odg. Sxx`) i, docelowo, strzałki przepływu mocy §14.2/F9.5 (prawda
+  solverowa) — NIE sylwetka. Odgałęzienie różni się od wejścia/wyjścia AKCENTEM §14.4 (`branchJunction`),
+  nie stosem. Patrz `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-031.
+- **Wyrocznia odbioru:** `field_silhouette_probe` — dla WSZYSTKICH ról zdefiniowanych (`ALL_FIELD_ROLES`,
+  nie w obrębie jednej stacji): każde dwie role SPOZA TEJ SAMEJ klasy równoważności (V12K-031) mają RÓŻNE
+  sygnatury wizualne (stos LUB akcent); każde dwie role W TEJ SAMEJ klasie równoważności MOGĄ (i w tej
+  implementacji dzielą) tę samą sygnaturę — to nie jest naruszenie.
 
 ### 14.4 Jawne rozgałęzienia (akcent węzłów)
 
