@@ -6,32 +6,44 @@
  * spec §6 „Stany łączników: wypełnienie/kąt symbolu (jak dziś w kanonicznym)".
  *
  * ---------------------------------------------------------------------------
- * STOP-notatka (zakres zadania — BEZ podłączania do backendu w tej dostawie):
- * ---------------------------------------------------------------------------
- * v2 czyta solver companion DWOMA niezależnymi, nieujednoliconymi ścieżkami:
- *  (a) globalny store zustand `useRawResultOverlayStore`
- *      (`sld-overlay/rawResultOverlayStore.ts`) — `RawOverlayPayload.elements`
- *      keyed by `ref_id`, czytany WEWNĄTRZ `SldCanvasV2` (nie przez props);
- *  (b) `SldPowerFlowCompanion` (`v2/canvas/SldPowerFlowCompanion.ts`) —
- *      energizacja/kierunek per branch/bus ENM ref, „jedna prawda" wg
- *      komentarzy v2.
- * Scalenie tych dwóch kształtów w jeden telefon-companion jest decyzją
- * architektoniczną POZA zakresem F6b (zadanie: renderować `SceneV3`, nie
- * integrować solver companion z backendem). `SldCanvasV3` przyjmuje WYŁĄCZNIE
- * ten mały, czytelny kontrakt — wołający (F7/F8 cutover) mapuje
- * `RawOverlayPayload`/`SldPowerFlowCompanion` na `energizedByTestId`.
+ * F8b-1 (REBUILD_PLAN_V3 §F8b, zadanie „parytet funkcjonalny v3" — C):
+ * STOP-notatka F6b PONIŻEJ ROZSTRZYGNIĘTA. Podłączone w `SldCanvasV3
+ * Workspace.tsx` (`useEnergizationOverlay`/`buildEnergizationOverlay`) —
+ * WOŁAJĄCY mapuje refs→testId przez `PreviewSymbol.meta.ownerRef`/
+ * `PreviewSegment.meta.ownerRef` (F8b-1 A, `buildScene.ts` — spłata długu k1
+ * opisanego niżej: odcinki NIESĄ ownerRef/elementKind, patrz `classifyStation
+ * SegmentKind`/`connectRowStations`/GPZ mappery). Kontrakt `SldV3Overlay`
+ * (`energizedByTestId`) NIETKNIĘTY — ownerRef→testId dzieje się w Workspace,
+ * DOKŁADNIE jak przewidziała ta notatka, nie w `SldCanvasV3`.
  *
- * OGRANICZENIE ZNANE (dziedziczone z F6a — `buildScene.ts` zamrożony poza
- * autoryzowanym zakresem F6b, patrz zadanie): `SceneV3` niesie `meta.testId`
- * per symbol (aparaty z `bayRef`, L0/NOP, elementy GPZ), ale odcinki
- * (`PreviewSegment`) WEWNĄTRZ stacji i MIĘDZY stacjami (magistrala/lateral)
- * NIE niosą `meta.testId` — tylko `meta.kind` (`bus`/`sn`/`lv`),
- * `classifyStationSegmentKind`/`connectRowStations` w `buildScene.ts` gubią
- * `ownerRef` przy spłaszczeniu do `PreviewSegment`. Nakładka energizacji per
- * ODCINEK jest więc możliwa TYLKO dla odcinków GPZ (mają `meta.testId`) w tej
- * dostawie — rozszerzenie tożsamości odcinków stacji/magistrali o
- * `ownerRef`/`testId` to kandydat F6c/F7 (wymaga zmiany `buildScene.ts`, poza
- * autoryzacją tego zlecenia).
+ * ŹRÓDŁO (uzasadnienie w `SldCanvasV3Workspace.tsx` nagłówek, skrót): ŻADEN z
+ * dwóch kandydatów niżej nie jest tym, co v2 faktycznie pokazuje operatorowi
+ * dziś — realny mechanizm to fallback topologiczny `buildSupplyPathHighlight`
+ * (`v2/canvas/SupplyPathHighlighter.ts`, ZERO fizyki), wywoływany WEWNĄTRZ
+ * `enmToSldAdapter.ts::buildSldDataFromSnapshot`, bo `SldWorkspaceContainer`
+ * (produkcyjny host v2) NIGDY nie dostarcza solver companion:
+ *  (a) `useRawResultOverlayStore` — podłączony w produkcji, ale zasila
+ *      METRYKI (odchylenie napięcia/obciążenie/severity), INNY wymiar
+ *      nakładki niż boolowa energizacja toru;
+ *  (b) `SldPowerFlowCompanion` — architektonicznie „jedna prawda" solverowa,
+ *      ale MARTWY w produkcyjnym drzewie renderu (nigdy nie dostarczony do
+ *      adaptera przez `SldWorkspaceContainer.tsx`) — kandydat na PRAWDZIWE
+ *      podłączenie solvera w F9.5 („Nakładka przepływu mocy").
+ *
+ * OGRANICZENIE ZNANE (dziedziczone z F6a, SPŁACONE w F8b-1 A): `SceneV3`
+ * niesie teraz `meta.ownerRef` per symbol I per segment (stacje, łączniki
+ * między stacjami, zejścia lateralne, GPZ) — nakładka energizacji per ODCINEK
+ * jest możliwa dla WSZYSTKICH klas segmentu z rozwiązywalnym ownerRef, nie
+ * tylko GPZ. Pozostałe znane luki (dokumentacja, NIE regresja): (1) `elementKind`
+ * 'apparatus'/'transformer'/'der' mają `ownerRef=bayRef`, który nie odpowiada
+ * żadnej kategorii `SupplyPathHighlight` (bus/branch/transformer/substation/
+ * generator/source ref) — ŚWIADOMIE wyłączone z nakładki (spec §6: stan
+ * łącznika to geometria, nie kolor; próba dopasowania dałaby fałszywe „false"
+ * dla WSZYSTKICH aparatów, patrz `SldCanvasV3Workspace.ts`); (2) segmenty GPZ
+ * zakotwiczone na `sectionId` (np. `${sectionId}#bus-primary`) nie rozwiązują
+ * się przez `SupplyPathHighlight` (sectionId ≠ bus/substation ref) — GPZ
+ * wewnętrzne szyny/sekcje bez nakładki, znana luka adaptera (f6-1/f6-3,
+ * rozszerzenie sectionId→busRef to zmiana adaptera poza zakresem F8b-1).
  */
 export interface SldV3Overlay {
   /**
@@ -43,4 +55,16 @@ export interface SldV3Overlay {
    * rysunek bazowy mono, bez nakładki (spec §6 P5).
    */
   readonly energizedByTestId: Readonly<Record<string, boolean>>;
+  /**
+   * F8b-1 FIX (recenzja): energizacja per `meta.ownerRef` elementu sceny —
+   * tożsamość NIEZALEŻNA OD LOD (ten sam element = ten sam ownerRef na
+   * każdym poziomie), w odróżnieniu od `testId`, którego FALLBACK jest
+   * indeksowy (`sld-v3-segment-${index}`) i KOLIDUJE między LOD-ami
+   * (60 vs 390 odcinków) — słownik budowany z trzech LOD-ów nadpisywał
+   * wpisy cudzych elementów (odcinek LOD0 #5 dostawał stan odcinka LOD2 #5).
+   * Kanwa PREFERUJE ten słownik, gdy element ma `meta.ownerRef`;
+   * `energizedByTestId` pozostaje dla elementów bez ownerRef i dla
+   * zgodności z istniejącymi konsumentami.
+   */
+  readonly energizedByOwnerRef?: Readonly<Record<string, boolean>>;
 }

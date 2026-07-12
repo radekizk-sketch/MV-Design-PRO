@@ -107,7 +107,7 @@ import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRende
 
 import { GRID, snapToGrid, snapUp, rectsOverlap, type V3Rect } from '../core/grid';
 import { measureLabelWidth } from '../core/text';
-import { SYMBOL_DEFS } from '../symbols/defs';
+import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import {
   buildRoute,
   classifyRouteNodes,
@@ -153,6 +153,7 @@ import {
 } from '../compose/directions';
 import type {
   PreviewComposition,
+  PreviewElementKind,
   PreviewSegment,
   PreviewSegmentKind,
   PreviewSymbol,
@@ -252,6 +253,38 @@ function incomingLabelText(cableRun: SldCableRun | undefined, ownerRef: string):
   const label = (cableRun?.segmentLabels ?? []).find((l) => l.segmentRef === sp.segmentRef);
   const text = label?.text?.trim();
   return text ? text : null;
+}
+
+/**
+ * F8b-1 (spłata długu k1): realny `segmentRef` odcinka WCHODZĄCEGO do
+ * `ownerRef` — TEN SAM wzorzec wyszukania co `incomingLabelText` powyżej
+ * (ostatni kawałek wieloczłonowego przęsła, ten którego `toTerminal.ownerRef`
+ * dotyka granicy). Zero zgadywania: `undefined`, gdy adapter nie ma
+ * dopasowania (np. odcinek GPZ→stacja0 bez zbudowanego `cableRun`) —
+ * WOŁAJĄCY zostawia `meta.ownerRef` nieustawione, NIE fabrykuje refu.
+ */
+function incomingSegmentRef(cableRun: SldCableRun | undefined, ownerRef: string): string | undefined {
+  const sp = (cableRun?.segmentPaths ?? []).find((p) => p.toTerminal?.ownerRef === ownerRef);
+  return sp?.segmentRef;
+}
+
+/**
+ * F8b-1 (fundament B/C): kategoria elementu WYŁĄCZNIE z `symbolId` — mała,
+ * zamknięta unia (`PreviewElementKind`, `compose/preview.tsx`). Zastosowana
+ * JEDNOLICIE do WSZYSTKICH symboli sceny (stacje L1/L2, L0 `stationCollapsed`,
+ * GPZ) — jedna prawda, zero rozjazdu między kontekstami.
+ */
+function classifySymbolElementKind(symbolId: SymbolId): PreviewElementKind {
+  if (symbolId === 'transformer2W') return 'transformer';
+  if (symbolId.startsWith('der')) return 'der';
+  if (symbolId === 'stationCollapsed') return 'station';
+  return 'apparatus';
+}
+
+/** F8b-1: elementKind segmentu — `'bus'` dla szyn (spec §6 `kind==='bus'`),
+ *  `'segment'` dla WSZYSTKICH pozostałych (SN/nN/leader). */
+function segmentElementKind(kind: PreviewSegmentKind): 'bus' | 'segment' {
+  return kind === 'bus' ? 'bus' : 'segment';
 }
 
 /**
@@ -482,7 +515,14 @@ function composeRowStation(
     const boxX = snapToGrid(column.tapX - COLLECTIVE_BOX_SIZE / 2);
     const boxY = snapToGrid(busAxisY - COLLECTIVE_BOX_SIZE / 2);
     return {
-      symbols: [{ symbolId: 'stationCollapsed', x: boxX, y: boxY, meta: { testId: `sld-v3-l0-${measureInput.id}` } }],
+      symbols: [
+        {
+          symbolId: 'stationCollapsed',
+          x: boxX,
+          y: boxY,
+          meta: { testId: `sld-v3-l0-${measureInput.id}`, ownerRef: measureInput.id, elementKind: 'station' },
+        },
+      ],
       segments: [],
       stationNameOwner: {
         ownerRef: measureInput.id,
@@ -529,12 +569,19 @@ function composeRowStation(
     x: s.x,
     y: s.y,
     state: s.state,
-    meta: { testId: s.bayRef ? `${s.bayRef}#${s.symbolId}` : undefined },
+    meta: {
+      testId: s.bayRef ? `${s.bayRef}#${s.symbolId}` : undefined,
+      ownerRef: s.bayRef,
+      elementKind: classifySymbolElementKind(s.symbolId),
+    },
   }));
-  const segments: PreviewSegment[] = composition.segments.map((s) => ({
-    points: s.points,
-    meta: { kind: classifyStationSegmentKind(s.ownerRef) },
-  }));
+  const segments: PreviewSegment[] = composition.segments.map((s) => {
+    const kind = classifyStationSegmentKind(s.ownerRef);
+    return {
+      points: s.points,
+      meta: { kind, ownerRef: s.ownerRef, elementKind: segmentElementKind(kind) },
+    };
+  });
 
   return {
     symbols,
@@ -717,7 +764,10 @@ function connectRowStations(
     const fromTerminal = fromTerminalForOwner(cableRun, prev.id);
     const toTerminal = toTerminalForOwner(cableRun, cur.id);
     const route = connectHorizontal(prev.composed.exitTapX, layout.busAxisY, cur.composed.entryTapX, fromTerminal, toTerminal);
-    connectors.push({ points: route.points, meta: { kind: 'sn' } });
+    connectors.push({
+      points: route.points,
+      meta: { kind: 'sn', ownerRef: incomingSegmentRef(cableRun, cur.id), elementKind: 'segment' },
+    });
     routeGeoms.push({ points: route.points });
     if (lod === 2) {
       const slot = layout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === i);
@@ -788,12 +838,37 @@ function gpzSegmentToPreview(seg: ComposedGpzSegment): PreviewSegment {
   const kind: PreviewSegmentKind = seg.meta.busbarRole || seg.meta.ringClosure ? 'bus' : 'sn';
   return {
     points: seg.points,
-    meta: { parityKeys: seg.meta.parityKeys, testId: seg.meta.testId, kind, dashed: seg.meta.dashed },
+    meta: {
+      parityKeys: seg.meta.parityKeys,
+      testId: seg.meta.testId,
+      kind,
+      dashed: seg.meta.dashed,
+      // F8b-1: `seg.ownerRef` GPZ (kompozyt zakotwiczony w realnym refie z
+      // sufiksem — `${sectionId}#bus-primary`/`${bayRef}#descent`/
+      // `${transformerRef}#hv-connector` itd., TA SAMA konwencja co segmenty
+      // stacji) — przenoszony wprost, zero re-derywacji.
+      ownerRef: seg.ownerRef,
+      elementKind: segmentElementKind(kind),
+    },
   };
 }
 
 function gpzSymbolToPreview(sym: ComposedGpzSymbolInstance): PreviewSymbol {
-  return { symbolId: sym.symbolId, x: sym.x, y: sym.y, state: sym.state, meta: { parityKeys: sym.meta.parityKeys, testId: sym.meta.testId } };
+  return {
+    symbolId: sym.symbolId,
+    x: sym.x,
+    y: sym.y,
+    state: sym.state,
+    meta: {
+      parityKeys: sym.meta.parityKeys,
+      testId: sym.meta.testId,
+      // F8b-1: refy, które `GpzElementMeta` już niesie (compose/gpz.ts) —
+      // bayRef (aparat pola) preferowany, potem transformerRef/sectionId dla
+      // symboli bez przypisanego pola. Zero re-derywacji z geometrii.
+      ownerRef: sym.meta.bayRef ?? sym.meta.transformerRef ?? sym.meta.sectionId,
+      elementKind: classifySymbolElementKind(sym.symbolId),
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -937,7 +1012,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           symbolId: 'noPoint',
           x: snapToGrid(col.tapX - NO_POINT_SIZE / 2),
           y: snapToGrid(mainLayout!.busAxisY - NO_POINT_SIZE / 2),
-          meta: { testId: `sld-v3-nop-${measureInput.id}` },
+          meta: { testId: `sld-v3-nop-${measureInput.id}`, ownerRef: measureInput.id, elementKind: 'apparatus' },
         });
       }
     });
@@ -949,7 +1024,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         const fromTerminal = fromTerminalForOwner(mainCableRun, gpzData!.id);
         const toTerminal = toTerminalForOwner(mainCableRun, first.id);
         const route = connectHorizontal(gpzPort.x, mainLayout.busAxisY, first.composed.entryTapX, fromTerminal, toTerminal);
-        allSegments.push({ points: route.points, meta: { kind: 'sn' } });
+        allSegments.push({
+          points: route.points,
+          meta: { kind: 'sn', ownerRef: incomingSegmentRef(mainCableRun, first.id), elementKind: 'segment' },
+        });
         allRouteGeoms.push({ points: route.points });
         if (lod === 2) {
           const slot = mainLayout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === 0);
@@ -1096,7 +1174,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           symbolId: 'noPoint',
           x: snapToGrid(col.tapX - NO_POINT_SIZE / 2),
           y: snapToGrid(layout.busAxisY - NO_POINT_SIZE / 2),
-          meta: { testId: `sld-v3-nop-${measureInput.id}` },
+          meta: { testId: `sld-v3-nop-${measureInput.id}`, ownerRef: measureInput.id, elementKind: 'apparatus' },
         });
       }
     });
@@ -1131,7 +1209,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const jogPoints = rawJogPoints.filter(
         (p, idx) => idx === 0 || p.x !== rawJogPoints[idx - 1].x || p.y !== rawJogPoints[idx - 1].y,
       );
-      allSegments.push({ points: jogPoints, meta: { kind: 'sn' } });
+      allSegments.push({
+        points: jogPoints,
+        meta: { kind: 'sn', ownerRef: incomingSegmentRef(cableRun, first.id), elementKind: 'segment' },
+      });
       allRouteGeoms.push({ points: jogPoints });
       if (lod === 2) {
         const text = incomingLabelText(cableRun, first.id);

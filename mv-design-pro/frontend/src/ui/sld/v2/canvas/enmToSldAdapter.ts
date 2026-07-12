@@ -559,7 +559,13 @@ export interface SldDataPayload {
  */
 export interface SldSourceView {
   readonly id: string;
-  readonly kind: 'external_grid' | 'pv' | 'bess' | 'generator' | 'wind';
+  /** F8b-1 (f92-2, SLD_CAD_REBUILD_PLAN_V3.md §F9.2 konsekwencja): `'unknown'`
+   *  dodany dla `Generator.gen_type` nierozpoznanego/`null` — WCZEŚNIEJ
+   *  taki generator był CICHO wykluczany z listy (`buildSources` filtrował
+   *  `null`), co naruszało „źródło nieznanego typu NIE może zginąć bez
+   *  śladu" (patrz `missingData` niżej). Zero zgadywania: `'unknown'` nie
+   *  jest fabrykacją realnego rodzaju, tylko jego HONEST brakiem. */
+  readonly kind: 'external_grid' | 'pv' | 'bess' | 'generator' | 'wind' | 'unknown';
   /** Punkt przyłączenia — bus (Source) albo stacja/pole (Generator), wg tego,
    *  co ENM faktycznie niesie dla danego elementu. */
   readonly connectionRef: string;
@@ -574,6 +580,10 @@ export interface SldSourceView {
    *  jednoznacznego mapowania źródło→pole zasilające, którego ENM nie niesie
    *  bez zgadywania). Zawsze `undefined` do czasu F9.6 (pole domenowe). */
   readonly operationalState?: 'energized' | 'standby' | 'disconnected' | 'maintenance' | 'fault';
+  /** F8b-1 (f92-2): `true`, gdy ten wpis reprezentuje dane niekompletne
+   *  (dziś: `kind='unknown'` — `Generator.gen_type` nierozpoznany/`null`).
+   *  Ta sama konwencja nazwy co `StationOnRunRendererProps.missingData`. */
+  readonly missingData?: boolean;
 }
 
 export interface SldPowerFlowCaseHeader {
@@ -5849,7 +5859,12 @@ function mapGenTypeToDerKind(gen: Generator): DerRendererProps['kind'] | null {
  * `'generator'` tutaj (dziś NIE rysowany jako DER wcale, `mapGenTypeToDerKind`
  * nie ma dla niego case'u — patrz raport F9.2, STOP-notatka).
  */
-function mapGeneratorToSourceKind(gen: Generator): SldSourceView['kind'] | null {
+/**
+ * F8b-1 (f92-2): zawsze zwraca `SldSourceView['kind']` — `'unknown'` dla
+ * `gen_type` nierozpoznanego/`null` (WCZEŚNIEJ `null`, co `buildSources`
+ * używał jako sygnał do wykluczenia generatora z listy — spłacone niżej).
+ */
+function mapGeneratorToSourceKind(gen: Generator): SldSourceView['kind'] {
   switch (gen.gen_type) {
     case 'pv_inverter':
       return 'pv';
@@ -5863,7 +5878,7 @@ function mapGeneratorToSourceKind(gen: Generator): SldSourceView['kind'] | null 
     case 'fw_scig':
       return 'wind';
     default:
-      return null;
+      return 'unknown';
   }
 }
 
@@ -5887,19 +5902,22 @@ function buildSources(snapshot: EnergyNetworkModel): SldSourceView[] {
     operationalState: undefined,
   }));
 
-  const derSources: SldSourceView[] = (snapshot.generators ?? [])
-    .map((gen): SldSourceView | null => {
-      const kind = mapGeneratorToSourceKind(gen);
-      if (!kind) return null;
-      return {
-        id: gen.ref_id,
-        kind,
-        connectionRef: gen.station_ref ?? gen.bus_ref,
-        ratedPower: gen.limits?.p_max_mw ?? gen.p_mw ?? null,
-        operationalState: undefined,
-      };
-    })
-    .filter((view): view is SldSourceView => view !== null);
+  // F8b-1 (f92-2): WSZYSTKIE generatory dają wpis — `kind='unknown'` +
+  // `missingData=true` dla `gen_type` nierozpoznanego/`null`, NIE cichy
+  // wykluczenie (poprzednie zachowanie: `.filter` odrzucał `null`, źródło
+  // „ginęło bez śladu" — naruszenie spec §13.1 „każda scena renderuje
+  // WSZYSTKIE punkty zasilania jako widoczne symbole źródeł").
+  const derSources: SldSourceView[] = (snapshot.generators ?? []).map((gen): SldSourceView => {
+    const kind = mapGeneratorToSourceKind(gen);
+    return {
+      id: gen.ref_id,
+      kind,
+      connectionRef: gen.station_ref ?? gen.bus_ref,
+      ratedPower: gen.limits?.p_max_mw ?? gen.p_mw ?? null,
+      operationalState: undefined,
+      missingData: kind === 'unknown' ? true : undefined,
+    };
+  });
 
   return [...gridSources, ...derSources];
 }

@@ -12,7 +12,8 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
-import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
+import { buildEnergizationOverlay as buildEnergizationOverlayForTest, SldCanvasV3Workspace, elementTypeForKind } from '../SldCanvasV3Workspace';
+import { buildSupplyPathHighlight, isElementEnergized } from '../../../v2/canvas/SupplyPathHighlighter';
 
 afterEach(() => cleanup());
 
@@ -62,9 +63,87 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
 
     const selected = useSelectionStore.getState().selectedElement;
     expect(selected).not.toBeNull();
-    // id = prefiks testId przed '#' (dla aparatury) lub cały testId (L0/NOP).
-    const expectedId = testId.includes('#') ? testId.split('#')[0] : testId;
-    expect(selected?.id).toBe(expectedId);
-    expect(selected?.type).toBe('DescriptiveElement');
+    // F8b-1 B: id = meta.ownerRef (realny ref ENM, np. bayRef aparatu) —
+    // POPRAWA względem starej heurystyki testId.split('#')[0], która dla
+    // symboli GPZ (testId = `gpz-canonical-bay-...-disconnector`, BEZ '#')
+    // dawałaby cały testId jako id (błędne); `ownerRef` niesie realny bayRef
+    // niezależnie od formatu testId.
+    expect(selected?.id).toBe(scene.symbols[0].meta?.ownerRef);
+    // F8b-1 B: typ selekcji pochodzi teraz z elementKind (nie zawsze
+    // 'DescriptiveElement' — patrz test dedykowany niżej).
+    expect(selected?.type).toBe('Switch');
+  });
+
+  describe('F8b-1 B — selekcja z realnym typem (elementKind → ElementType v2)', () => {
+    it('klik w symbol L0 (stationCollapsed) → SelectedElement.type = "Station", id = station ref', () => {
+      useSnapshotStore.setState({ snapshot: enm });
+      const scene = buildSceneV3(enm, 0);
+      const stationIndex = scene.symbols.findIndex((s) => s.symbolId === 'stationCollapsed');
+      expect(stationIndex).toBeGreaterThanOrEqual(0);
+      const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+      const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
+      fireEvent.click(stationGroup!);
+      const selected = useSelectionStore.getState().selectedElement;
+      expect(selected?.type).toBe('Station');
+      expect(selected?.id).toBe(scene.symbols[stationIndex].meta?.ownerRef);
+    });
+
+    it('elementTypeForKind: mapowanie na CAŁĄ małą unię PreviewElementKind + fallback undefined dla nieznanego/braku', () => {
+      expect(elementTypeForKind('station')).toBe('Station');
+      expect(elementTypeForKind('transformer')).toBe('TransformerBranch');
+      expect(elementTypeForKind('der')).toBe('Generator');
+      expect(elementTypeForKind('bus')).toBe('Bus');
+      expect(elementTypeForKind('segment')).toBe('LineBranch');
+      expect(elementTypeForKind('apparatus')).toBe('Switch');
+      expect(elementTypeForKind(undefined)).toBeUndefined();
+    });
+  });
+});
+
+describe('SldCanvasV3Workspace — F8b-1 C: nakładka energizacji z realnych wyników (topologia, ZERO fizyki)', () => {
+  it('bez snapshot: overlay pusty (nie crashuje, brak nakładki)', () => {
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    expect(container.querySelector('[data-testid="sld-canvas-v3"]')).toBeNull();
+  });
+
+  it('GPZ + stacje ciągu głównego są energizowane (topologia od źródła przez zamknięte łączniki) → symbol stationCollapsed (L0) ma nakładkę koloru (stroke != base)', () => {
+    useSnapshotStore.setState({ snapshot: enm });
+    const scene = buildSceneV3(enm, 0);
+    const stationIndex = scene.symbols.findIndex((s) => s.symbolId === 'stationCollapsed');
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
+    // Nakładka rysuje stroke NA GLIFIE (potomek grupy), nie na samej grupie —
+    // wystarczy, że jakiś potomek ma stroke ustawiony na kolor akcentu (nie
+    // wartość bazową V3_STROKE_BASE '#E8EEF4') LUB wygaszenia ('#5B6B76') —
+    // dowód, że nakładka faktycznie coś wpisała (nie mono-only).
+    const strokedDescendant = stationGroup!.querySelector('[stroke="#2ECC71"], [stroke="#5B6B76"]');
+    expect(strokedDescendant).toBeTruthy();
+  });
+
+  it('F8b-1 FIX (recenzja): nakładka kluczowana LOD-niezależnym ownerRef — indeksowy fallback testId kolidował między LOD-ami (odcinek LOD0 #5 dostawał stan odcinka LOD2 #5); wpis per ownerRef jest identyczny niezależnie od LOD-u, z którego liczony', () => {
+    useSnapshotStore.setState({ snapshot: enm });
+    const highlight = buildSupplyPathHighlight(enm);
+    // Niezależna rekomputacja: dla KAŻDEGO kwalifikowanego elementu KAŻDEGO
+    // LOD-u stan z nakładki (przez publiczny render nie ma dostępu do
+    // słownika, więc liczymy tym samym budowniczym co Workspace) musi być
+    // równy stanowi JEGO WŁASNEGO bazowego refu — kontrprzykład sprzed
+    // naprawy: klucz `sld-v3-segment-${index}` z LOD2 nadpisywał wpis LOD0.
+    const overlay = buildEnergizationOverlayForTest(enm);
+    expect(Object.keys(overlay.energizedByOwnerRef ?? {}).length).toBeGreaterThan(0);
+    // Zero kluczy indeksowych (dowód, że kolizyjna klasa kluczy zniknęła).
+    for (const key of Object.keys(overlay.energizedByOwnerRef ?? {})) {
+      expect(key.startsWith('sld-v3-segment-')).toBe(false);
+      expect(key.startsWith('sld-v3-symbol-')).toBe(false);
+    }
+    for (const lod of [0, 1, 2] as const) {
+      const scene = buildSceneV3(enm, lod);
+      for (const segment of scene.segments) {
+        const meta = segment.meta;
+        if (!meta?.ownerRef || !meta.elementKind) continue;
+        if (!['station', 'bus', 'segment'].includes(meta.elementKind)) continue;
+        const base = meta.ownerRef.includes('#') ? meta.ownerRef.slice(0, meta.ownerRef.indexOf('#')) : meta.ownerRef;
+        expect(overlay.energizedByOwnerRef?.[meta.ownerRef]).toBe(isElementEnergized(highlight, base));
+      }
+    }
   });
 });

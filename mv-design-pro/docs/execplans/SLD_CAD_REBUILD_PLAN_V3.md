@@ -443,7 +443,50 @@ i NO), render-odbiór per rola zaliczony, ścieżka v2 renderu usunięta.
 - Bramki: pełna regresja 7524 pass / 542 pliki; v3+host 472 pass / 14 todo;
   accept:sld-v3 ALL PASS; tsc/eslint/guardy OK.
 
-### F8b. [NEXT] Cutover — dokończenie + usunięcie v2 renderu
+### F8b-1. [DONE] Parytet funkcjonalny v3 (Polityka Zero Regresji dyrektywy)
+- A (tożsamość, spłata k1): `PreviewElementKind` (station|transformer|der|
+  apparatus|bus|segment) + `ownerRef`/`elementKind` w meta KAŻDEGO
+  symbolu/segmentu sceny (realne refy ENM: bayRef/segmentRef/stationId —
+  `incomingSegmentRef` lustrem `incomingLabelText`, zero fabrykacji);
+  geometria nietknięta (PNG SHA-256 bajt-identyczne).
+- B (selekcja): `onElementClick(testId, meta?)`; `elementTypeForKind` →
+  literały v2 (Station/TransformerBranch/Bus/LineBranch/Switch;
+  der→Generator); id = ownerRef — naprawa utajonego buga (klik w symbol GPZ
+  dawał śmieciowy id ze slicingu testId). Granice parytetu: apparatus
+  koalescuje Switch/Measurement (CT/VT → 'Switch'), der nie rozróżnia
+  PV/BESS/FW — dług na wzbogacenie meta (F9.3+).
+- C (energizacja): ODKRYCIE — żaden kandydat STOP-notatki F6b nie jest
+  realnym źródłem v2: `SldPowerFlowCompanion` MARTWY w drzewie produkcyjnym
+  (kontener woła adapter bez companion; podłączenie solvera = F9.5),
+  `useRawResultOverlayStore` to INNY wymiar (severity metryk, nie boolean);
+  realne źródło = `buildSupplyPathHighlight` (czysty BFS topologiczny, zero
+  fizyki) — v3 woła je wprost na tym samym snapshotcie. Nakładka WYŁĄCZNIE
+  dla station/bus/segment (stan łącznika = geometria glifu, spec §6).
+- C-FIX (recenzja Opus przerwana limitem sesji PO potwierdzeniu buga;
+  recenzję dokończył i naprawę wykonał nadzorca): słownik nakładki był
+  kluczowany testId z INDEKSOWYM fallbackiem (`sld-v3-segment-${index}`),
+  a budowany z TRZECH LOD-ów — kolizje kluczy między LOD-ami (60 vs 390
+  odcinków) nadpisywały wpisy cudzych elementów (odcinek LOD0 #5 dostawał
+  stan odcinka LOD2 #5). Naprawa: `energizedByOwnerRef` (tożsamość
+  LOD-niezależna, addytywnie w kontrakcie SldV3Overlay), kanwa preferuje
+  ownerRef; test wzmocniony (zero kluczy indeksowych + rekomputacja
+  niezależna per LOD per element).
+- D (split-preview): pomost `forceV2ForSplitPreview` w SldRenderHost;
+  USTALONO (nadzorca, dowód w kodzie): `splitPreviewState` to prop
+  SldWorkspaceContainer, którego ŻADEN produkcyjny caller nie ustawia —
+  funkcja nieosiągalna z aplikacji dziś, pomost jest defensywny, zero
+  żywej regresji.
+- f92-2: `buildSources` emituje generator o nieznanym gen_type jako
+  kind:'unknown' + missingData:true (koniec cichego gubienia źródła).
+- ZNALEZISKO dla F8b-2: `WorkspaceSurfaceRouter.tsx:3131` renderuje
+  `SldWorkspaceContainer` BEZPOŚREDNIO (z pominięciem SldRenderHost) —
+  drugi punkt osadzenia, którego cutover F8a nie objął; F8b-2 MUSI go
+  przełączyć na hosta (inaczej „druga prawda" ścieżki renderu zostaje).
+- Bramki: pełna regresja 7552+ pass (2× u implementera + rerun nadzorcy po
+  C-FIX); sld+config 3155 pass; accept ALL PASS; tsc/eslint/guardy OK;
+  rendery bajt-identyczne.
+
+### F8b-2. [NEXT] Cutover — dokończenie + usunięcie v2 renderu
 - Feature-flag → domyślnie v3; migracja testów integracyjnych kanwy; po zielonym
   pełnym suicie USUŃ: mini-RMU card path, geometrię slotową (PITCH), declutter
   po fakcie (globalny pass z c088ef4 staje się zbędny — usuń), stary

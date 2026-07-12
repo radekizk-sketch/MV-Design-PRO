@@ -114,7 +114,26 @@ describe('SldCanvasV3 — klik w symbol', () => {
 
     fireEvent.click(firstSymbolGroup!);
     expect(onElementClick).toHaveBeenCalledTimes(1);
-    expect(onElementClick).toHaveBeenCalledWith(expectedTestId);
+    expect(onElementClick).toHaveBeenCalledWith(expectedTestId, {
+      ownerRef: scene.symbols[0].meta?.ownerRef,
+      elementKind: scene.symbols[0].meta?.elementKind,
+    });
+  });
+
+  it('F8b-1: klik w symbol L0 (stationCollapsed) przekazuje ownerRef=station id + elementKind=station', () => {
+    const scene = buildSceneV3(enm, 0);
+    const stationIndex = scene.symbols.findIndex((s) => s.symbolId === 'stationCollapsed');
+    expect(stationIndex).toBeGreaterThanOrEqual(0);
+    const onElementClick = vi.fn();
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} onElementClick={onElementClick} />,
+    );
+    const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
+    fireEvent.click(stationGroup!);
+    expect(onElementClick).toHaveBeenCalledWith(expect.any(String), {
+      ownerRef: scene.symbols[stationIndex].meta?.ownerRef,
+      elementKind: 'station',
+    });
   });
 
   it('bez onElementClick klik nie rzuca (brak handlera to no-op bezpieczny)', () => {

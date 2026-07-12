@@ -3956,7 +3956,7 @@ describe('F9.2 — projekcja źródeł SldDataPayload.sources (SLD_CAD_SPEC_V3 �
     ]);
   });
 
-  it('mapuje Generator.gen_type na kind pv/bess/generator/wind; gen_type nieznany/null wykluczony (zero zgadywania)', () => {
+  it('mapuje Generator.gen_type na kind pv/bess/generator/wind; gen_type nieznany/null → kind=unknown + missingData=true (F8b-1/f92-2: NIE wykluczony — źródło nie może zginąć bez śladu)', () => {
     const snap = buildEmptySnapshot();
     snap.generators = [
       { id: 'g-pv', ref_id: 'gen-pv', name: 'PV', tags: [], meta: {}, bus_ref: 'bus-nn', p_mw: 0.5, gen_type: 'pv_inverter', station_ref: 'ST-1' } as never,
@@ -3972,8 +3972,17 @@ describe('F9.2 — projekcja źródeł SldDataPayload.sources (SLD_CAD_SPEC_V3 �
     expect(byRef.get('gen-bess')).toBe('bess');
     expect(byRef.get('gen-sync')).toBe('generator');
     expect(byRef.get('gen-fw')).toBe('wind');
-    expect(byRef.has('gen-unk')).toBe(false);
-    expect(r.sources).toHaveLength(4);
+    // F8b-1 (f92-2): gen_type=null NIE ginie bez śladu — kind='unknown',
+    // missingData=true, WCIĄŻ obecny na liście (spec §13.1: „0 źródeł ENM
+    // bez reprezentacji na scenie").
+    expect(byRef.get('gen-unk')).toBe('unknown');
+    const unk = r.sources?.find((s) => s.id === 'gen-unk');
+    expect(unk?.missingData).toBe(true);
+    expect(r.sources).toHaveLength(5);
+    // Źródła ROZPOZNANE nie noszą missingData (undefined, nie false — zgodnie
+    // z konwencją opcjonalnych flag adaptera).
+    const pv = r.sources?.find((s) => s.id === 'gen-pv');
+    expect(pv?.missingData).toBeUndefined();
   });
 
   it('connectionRef preferuje Generator.station_ref, fallback do bus_ref; ratedPower preferuje limits.p_max_mw, fallback do p_mw', () => {

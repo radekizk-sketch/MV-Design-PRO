@@ -28,7 +28,14 @@ import { SYMBOL_DEFS } from '../symbols/defs';
 import { SYMBOL_GLYPHS, V3_STROKE_BASE } from '../symbols/glyphs';
 import { LABEL_TYPOGRAPHY } from '../core/text';
 import type { OwnedLabel } from '../layout/labels';
-import { SEGMENT_STROKE_WIDTH, pointsToPath, type PreviewElementMeta, type PreviewSegment, type PreviewSymbol } from '../compose/preview';
+import {
+  SEGMENT_STROKE_WIDTH,
+  pointsToPath,
+  type PreviewElementKind,
+  type PreviewElementMeta,
+  type PreviewSegment,
+  type PreviewSymbol,
+} from '../compose/preview';
 import { SheetFrame } from '../sheet/Frame';
 import {
   boundingBoxOfRect,
@@ -49,6 +56,20 @@ const OVERLAY_DEENERGIZED_STROKE = '#5B6B76';
  *  jeden „tick" typowej myszy, deltaY≈100, daje ~16% zmiany skali). */
 const WHEEL_ZOOM_SENSITIVITY = 0.0015;
 
+/**
+ * F8b-1 (REBUILD_PLAN_V3 §F8b, zadanie „parytet funkcjonalny v3" — B:
+ * selekcja z realnym typem): dane elementu przekazywane WRAZ z `testId` przy
+ * kliku — `ownerRef`/`elementKind` z `PreviewSymbol.meta` (`scene/buildScene.ts`,
+ * F8b-1 A). Kanwa jest JEDYNYM miejscem, które zna AKTUALNY (kamera-driven)
+ * LOD sceny, więc rozwiązuje meta TU, nie w wołającym — unika duplikowania
+ * `buildSceneV3` w `SldCanvasV3Workspace` i niezgodności LOD (testId ma inny
+ * format per LOD, patrz `symbolTestId`/`buildScene.ts` L0 vs L1/L2).
+ */
+export interface SldElementClickMeta {
+  readonly ownerRef?: string;
+  readonly elementKind?: PreviewElementKind;
+}
+
 export interface SldCanvasV3Props {
   readonly snapshot: EnergyNetworkModel;
   readonly width: number;
@@ -57,8 +78,12 @@ export interface SldCanvasV3Props {
    *  Brak = rysunek bazowy mono, bez nakładki koloru. */
   readonly overlay?: SldV3Overlay;
   /** Klik w symbol — `testId` z `PreviewSymbol.meta.testId` (lub fallback
-   *  deterministyczny indeksem, gdy scena go nie niesie). */
-  readonly onElementClick?: (testId: string) => void;
+   *  deterministyczny indeksem, gdy scena go nie niesie), plus (F8b-1)
+   *  `meta.ownerRef`/`meta.elementKind` — fundament selekcji z realnym typem
+   *  w wołającym (`SldCanvasV3Workspace`). Drugi parametr jest opcjonalny —
+   *  wołający ignorujący go (istniejące handlery `(testId) => ...`) działają
+   *  bez zmian. */
+  readonly onElementClick?: (testId: string, meta?: SldElementClickMeta) => void;
   /** Escape hatch (test/harness/embedding, np. Results Browser centrujący na
    *  konkretnym LOD): nadpisuje LOD wynikające z kamery. Domyślnie (brak
    *  propa) LOD wynika z progów zoomu kamery (spec §7) — zachowanie
@@ -77,11 +102,14 @@ function strokeForEnergization(energized: boolean | undefined): string | undefin
   return undefined;
 }
 
-function symbolTestId(symbol: PreviewSymbol, index: number): string {
+/** Eksportowane (F8b-1): `SldCanvasV3Workspace` reużywa TĘ SAMĄ funkcję do
+ *  wiązania nakładki energizacji (`ownerRef` → `testId`) po tym samym
+ *  `buildSceneV3(snapshot, lod)` — zero duplikacji formatu testId. */
+export function symbolTestId(symbol: PreviewSymbol, index: number): string {
   return symbol.meta?.testId ?? `sld-v3-symbol-${index}`;
 }
 
-function segmentTestId(segment: PreviewSegment, index: number): string {
+export function segmentTestId(segment: PreviewSegment, index: number): string {
   return segment.meta?.testId ?? `sld-v3-segment-${index}`;
 }
 
@@ -95,18 +123,24 @@ function SceneSymbolNode(props: {
   readonly symbol: PreviewSymbol;
   readonly index: number;
   readonly overlay: SldV3Overlay | undefined;
-  readonly onElementClick: ((testId: string) => void) | undefined;
+  readonly onElementClick: ((testId: string, meta?: SldElementClickMeta) => void) | undefined;
 }): JSX.Element {
   const { symbol, index, overlay, onElementClick } = props;
   const def = SYMBOL_DEFS[symbol.symbolId];
   const Glyph = SYMBOL_GLYPHS[symbol.symbolId];
   const testId = symbolTestId(symbol, index);
-  const stroke = strokeForEnergization(overlay?.energizedByTestId[testId]);
+  // F8b-1 FIX (recenzja): preferuj tożsamość LOD-niezależną (ownerRef) —
+  // indeksowy fallback testId koliduje między LOD-ami, patrz `overlay.ts`.
+  const energizedSym = symbol.meta?.ownerRef != null
+    ? overlay?.energizedByOwnerRef?.[symbol.meta.ownerRef] ?? overlay?.energizedByTestId[testId]
+    : overlay?.energizedByTestId[testId];
+  const stroke = strokeForEnergization(energizedSym);
+  const clickMeta: SldElementClickMeta = { ownerRef: symbol.meta?.ownerRef, elementKind: symbol.meta?.elementKind };
   return (
     <g
       data-testid={testId}
       data-parity-key={parityKeysOf(symbol.meta)}
-      onClick={onElementClick ? () => onElementClick(testId) : undefined}
+      onClick={onElementClick ? () => onElementClick(testId, clickMeta) : undefined}
       style={onElementClick ? { cursor: 'pointer' } : undefined}
     >
       {/* Cel kliku powiększony do bboxa symbolu (ergonomia — glify IEC bywają
@@ -128,7 +162,11 @@ function SceneSegmentNode(props: {
   const kind = segment.meta?.kind ?? 'sn';
   const strokeWidth = SEGMENT_STROKE_WIDTH[kind];
   const strokeDasharray = segment.meta?.dashed ? '4 3' : kind === 'leader' ? '3 2' : undefined;
-  const stroke = strokeForEnergization(overlay?.energizedByTestId[testId]) ?? V3_STROKE_BASE;
+  // F8b-1 FIX (recenzja): jak w SceneSymbolNode — ownerRef przed testId.
+  const energizedSeg = segment.meta?.ownerRef != null
+    ? overlay?.energizedByOwnerRef?.[segment.meta.ownerRef] ?? overlay?.energizedByTestId[testId]
+    : overlay?.energizedByTestId[testId];
+  const stroke = strokeForEnergization(energizedSeg) ?? V3_STROKE_BASE;
   return (
     <path
       data-testid={testId}

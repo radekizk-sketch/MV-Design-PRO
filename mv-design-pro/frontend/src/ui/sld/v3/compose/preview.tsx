@@ -46,6 +46,20 @@ export const SEGMENT_STROKE_WIDTH: Readonly<Record<PreviewSegmentKind, number>> 
   leader: 0.8,
 };
 
+/**
+ * Mała, ZAMKNIĘTA unia kategorii elementu — fundament selekcji v3 (F8b-1,
+ * REBUILD_PLAN_V3 §F8b, zadanie „parytet funkcjonalny v3 przed usunięciem
+ * v2"). Pochodna WYŁĄCZNIE `symbolId`/rodzaju segmentu (`buildScene.ts`
+ * `classifySymbolElementKind`/`classifyStationSegmentKind`) — deterministyczna,
+ * zero zgadywania z danych. `'apparatus'` jest bucketem „reszta" (breaker/
+ * disconnector/earthSwitch/fuseSwitch/CT/VT/SA/cableHead/jointSleeve/NO-point)
+ * — spec §6 P5 traktuje stan łącznika jako GEOMETRIĘ (nie nakładkę koloru),
+ * więc dalsza granulacja tego bucketa nie jest potrzebna konsumentom (F8b-1
+ * B: mapowanie na typ selekcji v2; F8b-1 C: WYŁĄCZONY z nakładki energizacji
+ * — patrz `SldCanvasV3Workspace.ts`).
+ */
+export type PreviewElementKind = 'station' | 'transformer' | 'der' | 'apparatus' | 'bus' | 'segment';
+
 /** Metadane wspólne symbolu/segmentu, potrzebne WYŁĄCZNIE do debug-atrybutów
  *  (spec zadania F5b: „data-symbol-canon/data-parity-key przepisywane z
  *  meta") — nadzbiór tego, co niosą `GpzElementMeta`/adapter stacji. */
@@ -60,6 +74,19 @@ export interface PreviewElementMeta {
    *  przerywaną linią — FIX-E (recenzja F5b): wołający przenosi
    *  `GpzElementMeta.dashed` tutaj, harness renderuje `strokeDasharray`. */
   readonly dashed?: boolean;
+  /**
+   * F8b-1 (spłata długu k1, REBUILD_PLAN_V3 F6b-2/F8a): realny ref ENM (lub
+   * kompozyt zakotwiczony w realnym refie z sufiksem `#...`, ta sama
+   * konwencja co `ComposedSegment.ownerRef`/`GpzElementMeta` — np. bayRef,
+   * segmentRef, station ref, `${stationId}#sn-bus`) elementu, którego ten
+   * symbol/segment reprezentuje na scenie. Fundament selekcji (B) i nakładki
+   * energizacji (C) — WOŁAJĄCY (`buildScene.ts`) NIE zgaduje: `undefined`,
+   * gdy adapter nie daje jednoznacznego dopasowania (np. przęsło bez
+   * odpowiadającego `cableRun.segmentPaths`).
+   */
+  readonly ownerRef?: string;
+  /** F8b-1: kategoria elementu — patrz `PreviewElementKind`. */
+  readonly elementKind?: PreviewElementKind;
 }
 
 export interface PreviewSymbol {

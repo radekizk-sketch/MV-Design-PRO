@@ -332,3 +332,120 @@ describe('buildSceneV3 — ciągłość elektryczna ciągu głównego (spec §16
     expect(scene.junctions.length + scene.crossings.length).toBeGreaterThan(0);
   });
 });
+
+/**
+ * F8b-1 (SLD_CAD_REBUILD_PLAN_V3.md §F8b, spłata długu k1 + fundament B/C):
+ * `PreviewElementMeta.ownerRef`/`elementKind` — TYLKO meta (autoryzacja
+ * zadania), zero zmian geometrii/etykiet. Wyrocznie §11 wyżej pozostają
+ * zielone (nie dotknięte tym blokiem) — dowód, że dodanie meta NIE wpłynęło
+ * na geometrię.
+ */
+describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji B i nakładki C)', () => {
+  const scene2 = buildSceneV3(enm, 2);
+
+  it('elementKind wg symbolId: TR2W→transformer, der*→der, stationCollapsed→station, reszta→apparatus', () => {
+    const byKind = new Map(scene2.symbols.map((s) => [s.symbolId, s.meta?.elementKind]));
+    expect(byKind.get('transformer2W')).toBe('transformer');
+    for (const [symbolId, kind] of byKind) {
+      if (symbolId.startsWith('der')) expect(kind).toBe('der');
+    }
+    expect(scene2.symbols.every((s) => s.meta?.elementKind !== undefined)).toBe(true);
+    const nonSpecial = scene2.symbols.filter(
+      (s) => s.symbolId !== 'transformer2W' && !s.symbolId.startsWith('der') && s.symbolId !== 'stationCollapsed',
+    );
+    expect(nonSpecial.length).toBeGreaterThan(0);
+    expect(nonSpecial.every((s) => s.meta?.elementKind === 'apparatus')).toBe(true);
+  });
+
+  it('L0: stationCollapsed niesie ownerRef=station id + elementKind=station', () => {
+    const scene0 = buildSceneV3(enm, 0);
+    const stationSymbols = scene0.symbols.filter((s) => s.symbolId === 'stationCollapsed');
+    expect(stationSymbols.length).toBeGreaterThan(0);
+    for (const s of stationSymbols) {
+      expect(s.meta?.elementKind).toBe('station');
+      expect(s.meta?.ownerRef).toBeTruthy();
+      // testId ma postać `sld-v3-l0-${ownerRef}` z konstrukcji.
+      expect(s.meta?.testId).toBe(`sld-v3-l0-${s.meta?.ownerRef}`);
+    }
+  });
+
+  it('L0/L1/L2: symbol noPoint (NO) niesie ownerRef=station id + elementKind=apparatus', () => {
+    for (const lod of LODS) {
+      const scene = buildSceneV3(enm, lod);
+      const nopSymbols = scene.symbols.filter((s) => s.symbolId === 'noPoint');
+      for (const s of nopSymbols) {
+        expect(s.meta?.elementKind).toBe('apparatus');
+        expect(s.meta?.ownerRef).toBeTruthy();
+        expect(s.meta?.testId).toBe(`sld-v3-nop-${s.meta?.ownerRef}`);
+      }
+    }
+  });
+
+  it('aparatura stacji (L2): ownerRef === bayRef odczytany z testId (`${bayRef}#${symbolId}`)', () => {
+    const apparatusSymbols = scene2.symbols.filter(
+      (s) => s.meta?.testId && s.meta.testId.includes('#') && !s.meta.testId.startsWith('gpz-'),
+    );
+    expect(apparatusSymbols.length).toBeGreaterThan(0);
+    for (const s of apparatusSymbols) {
+      const bayRefFromTestId = s.meta!.testId!.slice(0, s.meta!.testId!.indexOf('#'));
+      expect(s.meta?.ownerRef).toBe(bayRefFromTestId);
+    }
+  });
+
+  it('segmenty stacji: elementKind bus/segment zgodny z meta.kind, ownerRef przeniesiony (composition.segments MA ownerRef)', () => {
+    const withOwnerRef = scene2.segments.filter((s) => s.meta?.ownerRef !== undefined);
+    expect(withOwnerRef.length).toBeGreaterThan(0);
+    for (const s of withOwnerRef) {
+      if (s.meta?.kind === 'bus') expect(s.meta.elementKind).toBe('bus');
+      else expect(s.meta?.elementKind).toBe('segment');
+    }
+    // Przynajmniej jeden segment SN-bus (stacja) z ownerRef kończącym się na
+    // `#sn-bus` (konwencja `compose/station.ts`) i elementKind='bus'.
+    const snBus = scene2.segments.find((s) => s.meta?.ownerRef?.endsWith('#sn-bus'));
+    expect(snBus).toBeTruthy();
+    expect(snBus?.meta?.elementKind).toBe('bus');
+  });
+
+  it('łączniki między stacjami (connectRowStations): ownerRef = realny segmentRef z cableRun.segmentPaths (brak fabrykacji)', () => {
+    const sldData = buildSldDataFromSnapshot(enm, enm.logical_views ?? null, null);
+    const allSegmentRefs = new Set(
+      sldData.cableRuns.flatMap((run) => (run.segmentPaths ?? []).map((p) => p.segmentRef)),
+    );
+    // Odcinki magistrali/lateralu klasy 'segment' z ownerRef MUSZĄ być
+    // realnymi segmentRef adaptera — zero wymyślania (odcinki GPZ/stacji mają
+    // ownerRef zakotwiczony z sufiksem '#', filtrowane precyzyjnie).
+    const connectorLike = scene2.segments.filter(
+      (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef !== undefined && !s.meta.ownerRef.includes('#'),
+    );
+    expect(connectorLike.length).toBeGreaterThan(0);
+    for (const s of connectorLike) {
+      expect(allSegmentRefs.has(s.meta!.ownerRef!)).toBe(true);
+    }
+  });
+
+  it('GPZ: mappery przenoszą refy, które kompozycja GPZ już niesie (ownerRef obecny na segmentach GPZ)', () => {
+    const gpzSegments = scene2.segments.filter((s) => s.meta?.testId?.startsWith('gpz-canonical-'));
+    expect(gpzSegments.length).toBeGreaterThan(0);
+    // Segmenty GPZ mają WŁASNY ownerRef (kompozyt zakotwiczony w realnym
+    // refie — sectionId/bayRef/transformerRef/couplerId) — nigdy undefined
+    // (composeGpz zawsze ustawia `ComposedGpzSegment.ownerRef`).
+    expect(gpzSegments.every((s) => typeof s.meta?.ownerRef === 'string' && s.meta.ownerRef.length > 0)).toBe(true);
+  });
+
+  it('determinizm meta: dwa wywołania buildSceneV3 na tym samym wejściu dają identyczne ownerRef/elementKind', () => {
+    const a = buildSceneV3(enm, 2);
+    const b = buildSceneV3(enm, 2);
+    expect(JSON.stringify(a.symbols.map((s) => s.meta))).toBe(JSON.stringify(b.symbols.map((s) => s.meta)));
+    expect(JSON.stringify(a.segments.map((s) => s.meta))).toBe(JSON.stringify(b.segments.map((s) => s.meta)));
+  });
+
+  it('meta (F8b-1) nie wpływa na geometrię — wyrocznie §11 pozostają zielone na L0/L1/L2 (regresja zerowa)', () => {
+    for (const lod of LODS) {
+      const scene = buildSceneV3(enm, lod);
+      expect(allSceneGeometryOnGrid(scene)).toBe(true);
+      expect(noSceneSymbolOverlaps(scene)).toBe(true);
+      expect(noLabelWireCollisions(scene)).toBe(true);
+      expect(noForbiddenDirectionTokens(scene)).toBe(true);
+    }
+  });
+});
