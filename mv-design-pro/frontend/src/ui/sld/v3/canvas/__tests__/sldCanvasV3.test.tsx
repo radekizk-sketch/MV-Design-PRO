@@ -21,10 +21,11 @@ import { cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3 } from '../../scene/buildScene';
-import { SldCanvasV3 } from '../SldCanvasV3';
-import type { SldV3Overlay } from '../overlay';
+import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
+import { SldCanvasV3, computeFlowOverlayPlacements, flowOverlayGeometry, formatFlowLabelPl } from '../SldCanvasV3';
+import { singleHopSegmentRefs, type SegmentFlowOverlay, type SldV3Overlay } from '../overlay';
 import { boundingBoxOfRect, cameraViewBox, computeInitialCameraState } from '../camera';
+import { SYMBOL_DEFS } from '../../symbols/defs';
 
 afterEach(() => cleanup());
 
@@ -187,6 +188,202 @@ describe('SldCanvasV3 — determinizm', () => {
     const { container: b } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
     expect(a.innerHTML).toBe(b.innerHTML);
   });
+});
+
+describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa sld-v3-flow-overlay)', () => {
+  /** Realny odcinek (segmentRef bez `#`) + jego indeks w scenie danego LOD —
+   *  testId nakładki jest indeksowy per LOD (`sld-v3-flow-${index}`). */
+  function flowTargetOnScene(lod: SceneLod): { readonly ownerRef: string; readonly index: number } {
+    const scene = buildSceneV3(enm, lod);
+    const index = scene.segments.findIndex(
+      (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#'),
+    );
+    expect(index).toBeGreaterThanOrEqual(0);
+    return { ownerRef: scene.segments[index].meta!.ownerRef!, index };
+  }
+
+  function overlayWithFlow(entries: Record<string, SegmentFlowOverlay>): SldV3Overlay {
+    return { energizedByTestId: {}, flowByOwnerRef: entries };
+  }
+
+  const FULL_FLOW = (ownerRef: string, forward = true): SegmentFlowOverlay => ({
+    ownerRef,
+    forward,
+    p: { value: 1.2, unit: 'MW' },
+    q: { value: 0.3, unit: 'Mvar' },
+    i: { value: 45, unit: 'A' },
+  });
+
+  it('(a) odcinek z wpisem w flowByOwnerRef → grot (polygon) + etykieta wartości w DOM (format polski, przecinek dziesiętny)', () => {
+    const { ownerRef, index } = flowTargetOnScene(2);
+    const { container } = render(
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        lodOverride={2}
+        overlay={overlayWithFlow({ [ownerRef]: FULL_FLOW(ownerRef) })}
+      />,
+    );
+    const group = container.querySelector(`[data-testid="sld-v3-flow-${index}"]`);
+    expect(group).toBeTruthy();
+    expect(group!.getAttribute('data-flow-owner-ref')).toBe(ownerRef);
+    expect(group!.getAttribute('data-flow-forward')).toBe('true');
+    expect(container.querySelector(`[data-testid="sld-v3-flow-arrow-${index}"]`)).toBeTruthy();
+    const label = container.querySelector(`[data-testid="sld-v3-flow-label-${index}"]`);
+    expect(label?.textContent).toBe('1,20 MW · 0,30 Mvar · 45 A');
+  });
+
+  it('(b) odcinki BEZ wpisu → zero grota i etykiety (warstwa niesie WYŁĄCZNIE odcinki z wynikiem); bez overlay warstwa pusta', () => {
+    const { ownerRef } = flowTargetOnScene(2);
+    const { container } = render(
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        lodOverride={2}
+        overlay={overlayWithFlow({ [ownerRef]: FULL_FLOW(ownerRef) })}
+      />,
+    );
+    // Dokładnie JEDEN wpis → dokładnie JEDNA grupa nakładki w warstwie.
+    expect(container.querySelector('[data-testid="sld-v3-flow-overlay"]')!.children.length).toBe(1);
+
+    const { container: noOverlay } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+    );
+    expect(noOverlay.querySelector('[data-testid="sld-v3-flow-overlay"]')!.children.length).toBe(0);
+  });
+
+  it('(c) forward=false → grot obrócony: polygon.points = flowOverlayGeometry(points, false), tip lustrzany względem forward=true', () => {
+    const { ownerRef, index } = flowTargetOnScene(2);
+    const points = buildSceneV3(enm, 2).segments[index].points;
+    const forwardGeom = flowOverlayGeometry(points, true)!;
+    const reversedGeom = flowOverlayGeometry(points, false)!;
+    expect(reversedGeom.arrowPoints).not.toBe(forwardGeom.arrowPoints);
+    // Tip po przeciwnej stronie środka biegu (lustro względem mid): środek
+    // odcinka tip_forward↔tip_reversed == mid biegu; oś biegu (runMid*)
+    // identyczna dla obu zwrotów — obrót grota NIE przesuwa osi etykiety.
+    expect(reversedGeom.tipX === forwardGeom.tipX && reversedGeom.tipY === forwardGeom.tipY).toBe(false);
+    expect((reversedGeom.tipX + forwardGeom.tipX) / 2).toBe(forwardGeom.runMidX);
+    expect((reversedGeom.tipY + forwardGeom.tipY) / 2).toBe(forwardGeom.runMidY);
+    expect(reversedGeom.runMidX).toBe(forwardGeom.runMidX);
+    expect(reversedGeom.runMidY).toBe(forwardGeom.runMidY);
+
+    const { container } = render(
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        lodOverride={2}
+        overlay={overlayWithFlow({ [ownerRef]: FULL_FLOW(ownerRef, false) })}
+      />,
+    );
+    const arrow = container.querySelector(`[data-testid="sld-v3-flow-arrow-${index}"]`);
+    expect(arrow!.getAttribute('points')).toBe(reversedGeom.arrowPoints);
+    expect(container.querySelector(`[data-testid="sld-v3-flow-${index}"]`)!.getAttribute('data-flow-forward')).toBe('false');
+  });
+
+  it('(d) determinizm renderu nakładki: dwa rendery tych samych propsów → identyczny innerHTML warstwy przepływu', () => {
+    const { ownerRef } = flowTargetOnScene(2);
+    const overlay = overlayWithFlow({ [ownerRef]: FULL_FLOW(ownerRef) });
+    const { container: a } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+    );
+    const { container: b } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+    );
+    expect(a.querySelector('[data-testid="sld-v3-flow-overlay"]')!.innerHTML).toBe(
+      b.querySelector('[data-testid="sld-v3-flow-overlay"]')!.innerHTML,
+    );
+  });
+
+  it('(e) L0 (plan sieci): grot obecny, tekst wartości NIEOBECNY (spec §15.2 — LOD steruje etykietami, nie ukrywa kierunku)', () => {
+    const { ownerRef, index } = flowTargetOnScene(0);
+    const { container } = render(
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        lodOverride={0}
+        overlay={overlayWithFlow({ [ownerRef]: FULL_FLOW(ownerRef) })}
+      />,
+    );
+    expect(container.querySelector(`[data-testid="sld-v3-flow-arrow-${index}"]`)).toBeTruthy();
+    expect(container.querySelector(`[data-testid="sld-v3-flow-label-${index}"]`)).toBeNull();
+  });
+
+  it('formatFlowLabelPl: człony TYLKO dla metryk obecnych (brak metryki = brak członu, zero atrap); znak Q zachowany; |P| bo znak P niesie strzałka; detail "p-only" (L1, spec §15.2) = samo P', () => {
+    expect(formatFlowLabelPl({ ownerRef: 'x', forward: false, p: { value: -3.456, unit: 'MW' } })).toBe('3,46 MW');
+    expect(
+      formatFlowLabelPl({ ownerRef: 'x', forward: true, p: { value: 1, unit: 'MW' }, q: { value: -0.45, unit: 'Mvar' } }),
+    ).toBe('1,00 MW · -0,45 Mvar');
+    expect(formatFlowLabelPl({ ownerRef: 'x', forward: true, i: { value: 87.6, unit: 'A' } })).toBe('88 A');
+    expect(
+      formatFlowLabelPl(
+        { ownerRef: 'x', forward: true, p: { value: 1.2, unit: 'MW' }, q: { value: 0.3, unit: 'Mvar' }, i: { value: 45, unit: 'A' } },
+        'p-only',
+      ),
+    ).toBe('1,20 MW');
+  });
+
+  it('L1: etykieta przepływu skrócona do P (spec §15.2 adaptacyjne etykiety — „L1 skrócone, L2 pełne")', () => {
+    const { ownerRef, index } = flowTargetOnScene(1);
+    const { container } = render(
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        lodOverride={1}
+        overlay={overlayWithFlow({ [ownerRef]: FULL_FLOW(ownerRef) })}
+      />,
+    );
+    expect(container.querySelector(`[data-testid="sld-v3-flow-label-${index}"]`)?.textContent).toBe('1,20 MW');
+  });
+
+  // F-2 + V-1 + V-2 (recenzja Opusa): rozłączność DLA WSZYSTKICH odcinków z
+  // nakładką, względem WSZYSTKICH klas etykiet sceny (w tym tytuły stacji
+  // `station-name` — V-1), WSZYSTKICH bboxów symboli (ikony DER — V-2) oraz
+  // innych etykiet przepływu (stack — V-2). Payload syntetyczny na KAŻDYM
+  // odcinku jednokawałkowym naraz (jak harness renderowy nadzorcy).
+  for (const [lod, detail] of [[1, 'p-only'], [2, 'full']] as const) {
+    it(`czytelność (LOD ${lod}, detail=${detail}): KAŻDA etykieta przepływu ma bbox rozłączny z każdą etykietą sceny, każdym symbolem i innymi etykietami przepływu`, () => {
+      const scene = buildSceneV3(enm, lod);
+      const singleHop = singleHopSegmentRefs(enm);
+      const entries: Record<string, SegmentFlowOverlay> = {};
+      for (const s of scene.segments) {
+        const ref = s.meta?.ownerRef;
+        if (ref && s.meta?.elementKind === 'segment' && singleHop.has(ref)) entries[ref] = FULL_FLOW(ref);
+      }
+      expect(Object.keys(entries).length).toBe(45);
+      const placements = computeFlowOverlayPlacements(scene, entries, detail);
+      expect(placements.length).toBe(45);
+      // Wyrocznia wewnętrzna algorytmu: każdy kandydat znaleziony (zero
+      // fallbacków na tej fixturze) …
+      expect(placements.filter((p) => p.label && !p.labelPlaced)).toEqual([]);
+      // … ORAZ niezależna weryfikacja rozłączności (nie ufamy fladze —
+      // liczymy nachodzenia wprost, wyrocznia gryzłaby też błąd flagi).
+      const obstacles = [
+        ...scene.labels.map((l) => ({ ...l.rect, tag: `label:${l.ownerKind}:${l.text}` })),
+        ...scene.symbols.map((s) => {
+          const def = SYMBOL_DEFS[s.symbolId];
+          return { x: s.x, y: s.y, width: def.width, height: def.height, tag: `symbol:${s.symbolId}` };
+        }),
+      ];
+      const labelRects = placements.filter((p) => p.label).map((p) => ({ ...p.labelRect, tag: `flow:${p.ownerRef}` }));
+      const overlapsOf = (a: { x: number; y: number; width: number; height: number }, list: typeof obstacles) =>
+        list.filter(
+          (r) => a.x < r.x + r.width && r.x < a.x + a.width && a.y < r.y + r.height && r.y < a.y + a.height,
+        );
+      for (const rect of labelRects) {
+        expect(overlapsOf(rect, obstacles)).toEqual([]);
+      }
+      for (let i = 0; i < labelRects.length; i++) {
+        for (let j = i + 1; j < labelRects.length; j++) {
+          expect(overlapsOf(labelRects[i], [labelRects[j]])).toEqual([]);
+        }
+      }
+    });
+  }
 });
 
 /** `viewBox="minX minY worldWidth worldHeight"` → skala = viewportWidthPx /

@@ -732,22 +732,87 @@ współdzielony (spec §8) — ale konsumpcja w compose (F9.3) czeka na F8b.
   zasilania) nad pierwszą sekcją szyny GPZ; zero kolizji etykiet (overlap_probe L1/L2 zielony po
   korekcie tapX) — POTWIERDZONE.
 
-### F9.5. [KOD — po F8b, po k1] Nakładka przepływu mocy (strzałki + MW/MVAr/A)
+### F9.5. [DONE] Nakładka przepływu mocy (strzałki + MW/MVAr/A)
 - Zakres: spłata długu k1 (tożsamość odcinków nie-GPZ: `PreviewSegment.meta.ownerRef/testId` w
   `buildScene.ts`); `v3/canvas/overlay.ts` — strzałki kierunkowe + wartości z wyniku PF (companion),
   dwukierunkowy DER, animacja opcjonalna. Zero fizyki w UI (spec §10). UWAGA: `v3/canvas/*` jest w toku
   zmian F8a — koordynacja/kolejność z agentem kamery obowiązkowa.
 - DoD: `flow_overlay_probe` zielony; overlay wyłączony bez wyniku (brak atrap); determinizm nakładki.
 - Autoryzacje: `v3/scene/buildScene.ts` (meta), `v3/canvas/overlay.ts`, testy overlay.
+- **Historia realizacji:** dług k1 okazał się już spłacony w F8b-1 A (odcinki niosą `ownerRef` =
+  realny `segmentRef` — edycja `buildScene.ts` niepotrzebna). (1) Warstwa danych: `overlay.ts` —
+  `flowByOwnerRef`/`SegmentFlowOverlay` (P/Q/I jako `FlowMetricReading` value+unit), czysty budowniczy
+  `buildFlowOverlayFromScene` czytający WYŁĄCZNIE `getMetric` z `useRawResultOverlayStore` (REALNY
+  produkcyjny kanał wyników — `SldPowerFlowCompanion` potwierdzony jako martwy, `SLDView` nieosiągalny
+  w drzewie produkcyjnym); kierunek `forward` wprost ze znaku `p_from_mw` (konwencja from-bus,
+  `power_flow_result.py`); kody metryk `P_MW`/`Q_Mvar`/`I_A` zweryfikowane u źródła backendu.
+  (2) Warstwa wizualna (autoryzacja rozszerzona przez nadzorcę o `SldCanvasV3.tsx`): warstwa
+  `sld-v3-flow-overlay` — grot wzdłuż najdłuższego biegu polilinii (orientacja z geometrii, zwrot z
+  `forward`), etykieta z polskim przecinkiem („1,20 MW · 0,30 Mvar · 45 A"), człony tylko dla obecnych
+  metryk; L0 sam grot, L1 skrót P-only, L2 pełne P·Q·I (§15.2).
+- **Runda korekcyjna (recenzja Opusa REQUEST-CHANGES + wizualne findingi nadzorcy):**
+  F-1 [MED] wiązanie `forward`↔geometria bez testu + ryzyko błędnej strzałki na przęsłach
+  WIELOKAWAŁKOWYCH (ownerRef = segmentRef ostatniego kawałka; from-bus = węzeł pośredni) — naprawa
+  OBIEMA gałęziami: bramka `singleHopSegmentRefs(snapshot)` (wpis kierunku TYLKO dla przęseł
+  jednokawałkowych, liczone z DANYCH — oba terminale rozwiązane; fixtura: 8/53 wielokawałkowych bez
+  strzałki = uczciwe „nie wiem") + test kontraktowy wiążący `points[0]` z niezależną kotwicą stacji
+  `fromTerminal` (45 przęseł, licznik asertowany) + negatyw (wielokawałkowe z P_MW ⇒ zero wpisu).
+  F-2 [LOW] test rozłączności rozszerzony na WSZYSTKIE 45 etykiet, L1+L2, z niezależnym liczeniem
+  nachodzeń. F-3 [LOW] allowlista `isLoadFlowPayload` (=== 'load_flow'; backend emituje "LOAD_FLOW",
+  `canonical_analysis.py::_execution_analysis_type_for_run`). V-1 [WIZUALNY, render nadzorcy]
+  etykieta przepływu nachodziła na tytuły stacji — `computeFlowOverlayPlacements` +
+  `flowLabelCandidates`: pierwszy bezkolizyjny kandydat względem wszystkich etykiet sceny (w tym
+  `station-name`), bboxów symboli i wcześniejszych etykiet przepływu; fallback przy pełnej kolizji =
+  kandydat[0] + `labelPlaced=false` (dane > estetyka, bez ukrycia/crasha). V-2 [WIZUALNY] ogon
+  etykiety pod ikoną DER + podwójna etykieta `#der-row-*` — bboxy symboli w przeszkodach + refy
+  kompozytowe `#der-row-*` wykluczone przez bramkę F-1 (nie są gałęziami solvera).
+- **Werdykt weryfikacji (Opus, APPROVE):** wszystkie naprawy potwierdzone adwersaryjnie (test F-1
+  nietautologiczny — odwrócenie kolejności points łamie asercję; placement deterministyczny,
+  czysto-funkcyjny; zakres autoryzacji dotrzymany). Rezydualne LOW (nieblokujące, do F9.7 przy
+  domknięciu acceptance): (r1) brak jawnego testu ścieżki fallbacku placementu (na fixturze nie
+  zachodzi); (r2) cytat „kierunek strzałki = znak P" niedosłowny względem §14.2 (spec: „pochodzi
+  z wyniku PF") — kosmetyka prozy; (r3) sonda acceptance V-1/V-2 czyta flagę `labelPlaced`
+  (niezależne liczenie kolizji jest w vitest — pokryte, ale sonda mogłaby liczyć sama).
+- **Stan na realnych danych:** nakładka buduje się dziś POPRAWNIE PUSTA na każdym realnym przebiegu —
+  luka backendu (brak `build_branch_results` w gałęzi PF `build_execution_result_set`) wpisana do
+  F9.6 (c); okablowanie frontendu zadziała natychmiast po jej zamknięciu, z dowodem kierunku na
+  realnych danych per F9.6 (f). Rendery akceptacyjne w repo NIEZMIENIONE zgodnie z projektem
+  (nakładka wyłączona bez wyniku = geometria bazowa nietknięta); wizualny DoD nadzorcy wykonany na
+  renderach z syntetycznym payloadem (harness w scratchpadzie sesji): L0 groty bez tekstu, L1/L2
+  etykiety bezkolizyjne — POTWIERDZONE po rundzie korekcyjnej.
+- Bramki końcowe: tsc czysty; eslint czysty; `accept:sld-v3` ALL PASS (flow_overlay_probe a/b/c +
+  negatyw + F-1 + V-1/V-2 na L0/L1/L2); vitest sld 169 plików / 3238; pełna regresja 543 pliki /
+  7646 pass; guardy zielone.
 
 ### F9.6. [WYMAGA ZMIAN POZA FRONTEND — DOMAIN] Kind SA + stan operacyjny źródła
 - Zakres: (a) dodać `SURGE_ARRESTER` do `BayPrimaryDeviceKind` (`backend/src/enm/models.py`, warstwa DOMAIN —
   mutacja modelu tylko w domenie, CLAUDE.md) + lustro `frontend/src/types/enm.ts` — rozstrzyga K-B;
   (b) pole stanu operacyjnego źródła (standby/maintenance) lub biało-skrzynkowa reguła wywodzenia (§13.3),
   bez heurystyki. Zależy od decyzji F9.1/K-B.
-- DoD: kind SA obecny w modelu i mapowaniu; `source_state_probe` zielony; testy backend + FE; docs.
-- Autoryzacje: `backend/src/enm/models.py`, `backend/src/enm/mapping.py` (jeśli dotyczy), `frontend/src/types/enm.ts`,
-  `v2/domain/apparatusContracts.ts` (mapowanie), testy domeny.
+- **Zakres rozszerzony (śledztwo F9.5, 2026-07-15):** (c) LUKA BACKEND blokująca realne dane nakładki
+  przepływu mocy — `backend/src/enm/canonical_analysis.py` `build_execution_result_set` w gałęzi `PF`
+  woła TYLKO `build_bus_results(run)`, NIGDY `build_branch_results(run)` (funkcja istnieje, poprawna,
+  używana przez inny endpoint) → `/api/execution/runs/{run_id}/results/v1` nie emituje elementów
+  gałęziowych dla LOAD_FLOW, więc `useRawResultOverlayStore` jest pusty dla gałęzi i nakładka F9.5
+  buduje się (poprawnie) pusta na realnych przebiegach. Naprawa = dołożyć wywołanie w gałęzi PF +
+  test kontraktu resultset (branch elements obecne dla LOAD_FLOW). (d) [ZNANY BŁĄD v2, do naprawy
+  przy okazji] `v2 ResultOverlayLayer.tsx` czyta kod metryki `'Q_MVAR'`, backend
+  (`result_builder_v1.py`) emituje `'Q_Mvar'` — odczyt mocy biernej gałęzi w v2 jest dziś cicho
+  martwy (mismatch wielkości liter); builder v3 używa zweryfikowanego `'Q_Mvar'`. (e) [ODŁOŻONE
+  z F9.5] dwukierunkowość DER per-generator: kontrakt PF backendu nie ma metryki iniekcji
+  per-generator (tylko zagregowana per szyna) — bez niej strzałka DER nie ma źródła danych;
+  rozstrzygnąć czy dodać metrykę (DOMAIN) czy uznać strzałkę na odcinku przyłącza za wystarczającą.
+  (f) [Z RECENZJI F9.5, MED F-1] dowód kierunku strzałki przepływu przy REALNYCH danych gałęziowych:
+  konwencja `forward` (znak `p_from_mw`, perspektywa from-bus) ↔ geometria `points[0]` musi być
+  zweryfikowana testem integracyjnym na realnym wyniku PF w momencie domknięcia (c) — szczególnie
+  dla przęseł WIELOKAWAŁKOWYCH (ownerRef = segmentRef ostatniego kawałka, from-bus = węzeł pośredni,
+  nie stacja poprzednia); rozstrzygnięcie frontendowe (gwarancja single-hop albo pokrycie multi-hop)
+  zapada w rundzie korekcyjnej F9.5 — tu domknąć dowód na danych realnych.
+- DoD: kind SA obecny w modelu i mapowaniu; `source_state_probe` zielony; branch results emitowane
+  dla LOAD_FLOW (test kontraktu); testy backend + FE; docs.
+- Autoryzacje: `backend/src/enm/models.py`, `backend/src/enm/mapping.py` (jeśli dotyczy),
+  `backend/src/enm/canonical_analysis.py` (gałąź PF), `frontend/src/types/enm.ts`,
+  `v2/domain/apparatusContracts.ts` (mapowanie), `v2 ResultOverlayLayer.tsx` (casing Q_Mvar), testy domeny.
 
 ### F9.7. [KOD] Optymalizacja pionów + acceptance + docs
 - Zakres: `vertical_length_probe` (§15.1) jako raportowana miara nie-rosnąca; wpięcie wszystkich nowych

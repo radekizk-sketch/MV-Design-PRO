@@ -42,6 +42,13 @@ import { overlapProbe } from '../src/ui/sld/v3/layout/labels.ts';
 import { fieldSilhouettesAreInjective } from '../src/ui/sld/v3/compose/station.ts';
 import { SYMBOL_DEFS } from '../src/ui/sld/v3/symbols/defs.ts';
 import { GRID } from '../src/ui/sld/v3/core/grid.ts';
+import {
+  buildFlowOverlayFromScene,
+  flowOverlayValuesTraceToPayload,
+  isFlowOverlayEmpty,
+  singleHopSegmentRefs,
+} from '../src/ui/sld/v3/canvas/overlay.ts';
+import { computeFlowOverlayPlacements } from '../src/ui/sld/v3/canvas/SldCanvasV3.tsx';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -264,6 +271,109 @@ for (const lod of LODS) {
     allSourcesConnected(scene),
     `luki=${connectivityGaps.length}`,
   );
+
+  // -- §14.2 (F9.5): flow_overlay_probe — nakładka przepływu mocy -----------
+  // UWAGA (WHITE BOX, nie fabrykacja): ten skrypt nie uruchamia solvera —
+  // fixtura `sldSubstrate52s` niesie WYŁĄCZNIE topologię ENM, zero wyniku
+  // power-flow. Sonda (a) dowodzi kontraktu „wyłączone bez wyniku" na
+  // REALNEJ scenie; (b)/(c)/negatyw dowodzą właściwości budowniczego
+  // (`buildFlowOverlayFromScene`, `overlay.ts`) na SYNTETYCZNYM payloadzie
+  // o kształcie identycznym z prawdziwym `RawOverlayPayload` (backend
+  // `result_contract_v1.py`; `analysis_type: 'LOAD_FLOW'` = dokładna wartość
+  // z `canonical_analysis.py` `_execution_analysis_type_for_run` — allowlista
+  // F-3), kluczowanym PRAWDZIWYM `segmentRef` odczytanym z tej sceny — nie
+  // wymyślonym stringiem. Realny kanał produkcyjny (`useRawResultOverlay
+  // Store`, zasilany przez `App.tsx`) i UDOKUMENTOWANA luka backendu, przez
+  // którą jest on dziś pusty dla gałęzi na KAŻDYM realnym przebiegu
+  // LOAD_FLOW, opisane w `canvas/overlay.ts` nagłówek F9.5. Bramka F-1
+  // (recenzja Opusa): kierunek emitowany WYŁĄCZNIE dla przęseł
+  // jednokawałkowych (`singleHopSegmentRefs`) — na tej fixturze 45/53.
+  const singleHop = singleHopSegmentRefs(enm);
+  const emptyFlow = buildFlowOverlayFromScene(scene, null, singleHop);
+  check('flow_overlay_probe (§14.2, a): overlay wyłączony bez wyniku (payload=null ⇒ pusta nakładka, zero atrap)', isFlowOverlayEmpty(emptyFlow));
+
+  const flowCandidateRef = scene.segments.find(
+    (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#') && singleHop.has(s.meta.ownerRef),
+  )?.meta?.ownerRef;
+  if (check('flow_overlay_probe: scena LOD ' + lod + ' zawiera odcinek z realnym segmentRef jednokawałkowym (kandydat do sondy b/c/negatyw)', flowCandidateRef != null)) {
+    const syntheticMetricsOf = (ref) => ({
+      ref_id: ref,
+      kind: 'branch',
+      badges: [],
+      severity: 'INFO',
+      metrics: {
+        P_MW: { code: 'P_MW', value: 1.23, unit: 'MW' },
+        Q_Mvar: { code: 'Q_Mvar', value: -0.45, unit: 'Mvar' },
+        I_A: { code: 'I_A', value: 67, unit: 'A' },
+      },
+    });
+    const syntheticPayload = {
+      run_id: 'accept-sld-v3-synthetic',
+      analysis_type: 'LOAD_FLOW',
+      elements: { [flowCandidateRef]: syntheticMetricsOf(flowCandidateRef) },
+    };
+    const flow = buildFlowOverlayFromScene(scene, syntheticPayload, singleHop);
+    check(
+      'flow_overlay_probe (§14.2, b): każda wartość nakładki wywiedziona z wyniku (brak wartości wpisanych w UI)',
+      !isFlowOverlayEmpty(flow) && flowOverlayValuesTraceToPayload(flow, syntheticPayload),
+    );
+    const flowAgain = buildFlowOverlayFromScene(scene, syntheticPayload, singleHop);
+    check(
+      'flow_overlay_probe (§14.2, c): determinizm nakładki (dwukrotne wywołanie tego samego wejścia ⇒ identyczny JSON)',
+      JSON.stringify(flow) === JSON.stringify(flowAgain),
+    );
+    const fabricated = {
+      [flowCandidateRef]: { ownerRef: flowCandidateRef, forward: true, p: { value: 999, unit: 'MW' } },
+    };
+    check(
+      'flow_overlay_probe (test negatywny — dowód, że wyrocznia gryzie): wartość niezgodna z payload MUSI dać FAIL',
+      flowOverlayValuesTraceToPayload(fabricated, syntheticPayload) === false,
+    );
+
+    // -- F-1 (recenzja Opusa): bramka kierunku gryzie ------------------------
+    const multiHopRef = scene.segments.find(
+      (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#') && !singleHop.has(s.meta.ownerRef),
+    )?.meta?.ownerRef;
+    if (lod === 2) {
+      check(
+        'flow_overlay_probe (F-1): fixtura zawiera przęsła wielokawałkowe — bramka jednokawałkowa ma realny skutek',
+        multiHopRef != null,
+      );
+    }
+    if (multiHopRef != null) {
+      const multiHopPayload = {
+        run_id: 'accept-sld-v3-synthetic',
+        analysis_type: 'LOAD_FLOW',
+        elements: { [multiHopRef]: syntheticMetricsOf(multiHopRef) },
+      };
+      check(
+        'flow_overlay_probe (F-1, negatyw): przęsło wielokawałkowe z P_MW w wyniku ⇒ ZERO wpisu kierunku (uczciwe „nie wiem", nie błędna strzałka)',
+        isFlowOverlayEmpty(buildFlowOverlayFromScene(scene, multiHopPayload, singleHop)),
+      );
+    }
+
+    // -- V-1/V-2 (recenzja wizualna): rozmieszczenie etykiet przepływu -------
+    // Payload na WSZYSTKICH odcinkach jednokawałkowych naraz (jak harness
+    // renderowy nadzorcy) — każda etykieta musi znaleźć pozycję rozłączną
+    // z etykietami sceny (w tym tytułami stacji — V-1), symbolami (ikony
+    // DER — V-2) i innymi etykietami przepływu. L0 bez etykiet (spec §15.2).
+    if (lod !== 0) {
+      const fullElements = {};
+      for (const s of scene.segments) {
+        const ref = s.meta?.ownerRef;
+        if (ref && s.meta?.elementKind === 'segment' && singleHop.has(ref)) fullElements[ref] = syntheticMetricsOf(ref);
+      }
+      const fullPayload = { run_id: 'accept-sld-v3-synthetic', analysis_type: 'LOAD_FLOW', elements: fullElements };
+      const fullFlow = buildFlowOverlayFromScene(scene, fullPayload, singleHop);
+      const placements = computeFlowOverlayPlacements(scene, fullFlow, lod === 1 ? 'p-only' : 'full');
+      const unplaced = placements.filter((p) => p.label && !p.labelPlaced);
+      check(
+        `flow_overlay_probe (V-1/V-2): wszystkie etykiety przepływu (${placements.length}) ulokowane bezkolizyjnie względem etykiet sceny, symboli i siebie nawzajem`,
+        placements.length > 0 && unplaced.length === 0,
+        `wpisy=${Object.keys(fullFlow).length} nieulokowane=${unplaced.length}`,
+      );
+    }
+  }
 
   // -- determinizm (dwa wywołania → identyczny JSON) -------------------------
   const sceneAgain = buildSceneV3(enm, lod);

@@ -26,7 +26,8 @@ import type { EnergyNetworkModel } from '../../../../types/enm';
 import { buildSceneV3, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import { SYMBOL_DEFS } from '../symbols/defs';
 import { SYMBOL_GLYPHS, V3_STROKE_BASE } from '../symbols/glyphs';
-import { LABEL_TYPOGRAPHY } from '../core/text';
+import { LABEL_TYPOGRAPHY, labelLineHeight, measureLabelWidth } from '../core/text';
+import { GRID } from '../core/grid';
 import type { OwnedLabel } from '../layout/labels';
 import {
   SEGMENT_STROKE_WIDTH,
@@ -37,6 +38,7 @@ import {
   type PreviewSymbol,
 } from '../compose/preview';
 import { SheetFrame } from '../sheet/Frame';
+import type { RouteVertex } from '../layout/route';
 import {
   boundingBoxOfRect,
   cameraReducer,
@@ -46,12 +48,26 @@ import {
   pointerMidpoint,
   type BoundingBox,
 } from './camera';
-import type { SldV3Overlay } from './overlay';
+import type { SegmentFlowOverlay, SldV3Overlay } from './overlay';
 
 const SLD_V3_BACKGROUND = '#0B0F14';
 /** Nakładka energizacji (spec §6 P5): kolor akcentu, NIE geometria. */
 const OVERLAY_ENERGIZED_STROKE = '#2ECC71';
 const OVERLAY_DEENERGIZED_STROKE = '#5B6B76';
+/** F9.5 (spec §14.2): kolor nakładki przepływu mocy — ODRĘBNY od energizacji
+ *  (zielony = „pod napięciem", cyjan = „kierunek/wartości przepływu"), żeby
+ *  operator nie mylił dwóch wymiarów nakładki na tym samym odcinku. */
+const FLOW_OVERLAY_COLOR = '#4FC3F7';
+/** Gabaryt grota strzałki przepływu [px świata] — mniejszy niż GRID×2, żeby
+ *  grot nie dominował nad symbolami toru (spec §6 hierarchia graficzna). */
+const FLOW_ARROW_LENGTH = 12;
+const FLOW_ARROW_HALF_WIDTH = 5;
+/** Offset etykiety wartości od osi przewodu [px świata] — PO PRZECIWNEJ
+ *  stronie niż etykiety przęseł pasma B1 (te są NAD osią magistrali,
+ *  `layout/bands.ts` B1 u góry; przepływ idzie POD przewód dla biegów
+ *  poziomych / na prawo dla pionów), spec §14.2 czytelność. */
+const FLOW_LABEL_OFFSET_BELOW = 16;
+const FLOW_LABEL_OFFSET_RIGHT = 12;
 /** Wrażliwość zoomu kółkiem — kalibracja wizualna (spec nie podaje liczby;
  *  jeden „tick" typowej myszy, deltaY≈100, daje ~16% zmiany skali). */
 const WHEEL_ZOOM_SENSITIVITY = 0.0015;
@@ -178,6 +194,311 @@ function SceneSegmentNode(props: {
       strokeWidth={strokeWidth}
       strokeDasharray={strokeDasharray}
     />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// F9.5 (spec §14.2) — nakładka przepływu mocy: strzałka kierunkowa + wartości
+// MW/Mvar/A na odcinkach z wpisem w `overlay.flowByOwnerRef`. Element NAKŁADKI
+// (inline SVG), NIE symbol sceny (`PreviewSymbol`/`symbols/defs.ts` —
+// kontrakt siatkowy symboli nie obejmuje dowolnie obracanego grota wzdłuż
+// trasy; decyzja nadzorcy F9.5, runda rozszerzenia autoryzacji). Brak wpisu
+// w `flowByOwnerRef` = brak strzałki i etykiety (dokładnie stan sprzed tej
+// dostawy — nakładka wyłączona bez wyniku, zero atrap).
+// ---------------------------------------------------------------------------
+
+/** Liczba w notacji polskiej (przecinek dziesiętny) — WYŁĄCZNIE formatowanie
+ *  (spec §10: „formatowanie dozwolone: jednostki, zaokrąglenie"). */
+function formatPlNumber(value: number, decimals: number): string {
+  return value.toFixed(decimals).replace('.', ',');
+}
+
+/**
+ * Etykieta wartości przepływu, format polski, np. „1,20 MW · 0,30 Mvar · 45 A".
+ * Człony WYŁĄCZNIE dla metryk obecnych we wpisie (brak metryki = brak członu,
+ * zero atrap). Jednostki 1:1 z wyniku solvera (`FlowMetricReading.unit`).
+ * P wyświetlane jako |P| — ZNAK P jest reprezentowany ZWROTEM strzałki
+ * (`forward`, spec §14.2 „kierunek strzałki = znak P z wyniku"), ten sam
+ * wzorzec co v2 (`ResultOverlayLayer.tsx`: `Math.abs(pVal)` + strzałka).
+ * Q niesie znak wprost (zwrot strzałki NIE reprezentuje znaku mocy biernej).
+ * Zaokrąglenia: P/Q dwa miejsca, I zero miejsc — decyzja prezentacyjna
+ * (dozwolona spec §10), nie zmiana wartości źródłowej (wyrocznia
+ * `flowOverlayValuesTraceToPayload` porównuje wartości ŹRÓDŁOWE w kontrakcie,
+ * nie sformatowany tekst).
+ */
+export type FlowLabelDetail = 'p-only' | 'full';
+
+export function formatFlowLabelPl(flow: SegmentFlowOverlay, detail: FlowLabelDetail = 'full'): string {
+  const parts: string[] = [];
+  if (flow.p) parts.push(`${formatPlNumber(Math.abs(flow.p.value), 2)} ${flow.p.unit}`);
+  // Spec §15.2 (adaptacyjne etykiety LOD — „L1 nazwa+kVA+typ → L2 pełne
+  // specyfikacje"): `'p-only'` (L1) niesie TYLKO moc czynną; pełny odczyt
+  // P·Q·I na L2. Powód praktyczny (dowód empiryczny na fixturze): pełna
+  // etykieta (~134 px) NIE MIEŚCI SIĘ w kieszeni korytarza L1 między
+  // głowicami a pasmem nazw (bieg 136 px, pasmo nazw 8 px niżej) — krótsza
+  // etykieta wchodzi w kandydata „nad przewodem"; to selekcja SZCZEGÓŁÓW
+  // per LOD (dozwolona §15.2), nie utrata danych (L2 pokazuje wszystko).
+  if (detail === 'full') {
+    if (flow.q) parts.push(`${formatPlNumber(flow.q.value, 2)} ${flow.q.unit}`);
+    if (flow.i) parts.push(`${formatPlNumber(flow.i.value, 0)} ${flow.i.unit}`);
+  }
+  return parts.join(' · ');
+}
+
+export interface FlowOverlayGeometry {
+  /** Wierzchołki grota (`<polygon points>`): tip, baza+, baza−. */
+  readonly arrowPoints: string;
+  /** Czubek grota — eksponowany dla testów zwrotu (forward=false ⇒ lustrzany). */
+  readonly tipX: number;
+  readonly tipY: number;
+  /** Najdłuższy bieg polilinii — wejście doboru pozycji etykiety
+   *  (`computeFlowOverlayPlacements` niżej; V-1/V-2 recenzji: pozycja
+   *  etykiety NIE jest już stałym offsetem, tylko wyborem bezkolizyjnego
+   *  kandydata względem etykiet i symboli sceny). */
+  readonly runMidX: number;
+  readonly runMidY: number;
+  readonly runLength: number;
+  readonly horizontal: boolean;
+}
+
+/**
+ * Geometria strzałki + pozycja etykiety dla polilinii odcinka (ortogonalnej
+ * z konstrukcji `buildSceneV3` — routing §5 zna wyłącznie biegi H/V).
+ * ORIENTACJA (oś) z geometrii najdłuższego biegu polilinii; ZWROT z `forward`
+ * (znak P_MW z wyniku, `overlay.ts` `SegmentFlowOverlay` — `points[0]` =
+ * strona `fromTerminal`, konwencja `p_from_mw` backendu; zero heurystyki).
+ * Czysta funkcja (zero DOM/Date/losowości) — determinizm renderu nakładki
+ * sprowadza się do determinizmu tej arytmetyki. `null` gdy polilinia za
+ * krótka na grot (nie rysujemy grota większego niż jego bieg).
+ */
+export function flowOverlayGeometry(
+  points: readonly RouteVertex[],
+  forward: boolean,
+): FlowOverlayGeometry | null {
+  if (points.length < 2) return null;
+  let bestIndex = -1;
+  let bestLength = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const length = Math.abs(points[i + 1].x - points[i].x) + Math.abs(points[i + 1].y - points[i].y);
+    if (length > bestLength) {
+      bestLength = length;
+      bestIndex = i;
+    }
+  }
+  if (bestIndex < 0 || bestLength < FLOW_ARROW_LENGTH) return null;
+  const a = points[bestIndex];
+  const b = points[bestIndex + 1];
+  const midX = (a.x + b.x) / 2;
+  const midY = (a.y + b.y) / 2;
+  // Jednostkowy wektor osi biegu (ortogonalny: dokładnie jedna składowa ±1).
+  let ux = Math.sign(b.x - a.x);
+  let uy = Math.sign(b.y - a.y);
+  if (!forward) {
+    ux = -ux;
+    uy = -uy;
+  }
+  const tipX = midX + (ux * FLOW_ARROW_LENGTH) / 2;
+  const tipY = midY + (uy * FLOW_ARROW_LENGTH) / 2;
+  const baseX = midX - (ux * FLOW_ARROW_LENGTH) / 2;
+  const baseY = midY - (uy * FLOW_ARROW_LENGTH) / 2;
+  // Prostopadła do osi — rozstaw podstawy grota.
+  const px = -uy;
+  const py = ux;
+  const arrowPoints =
+    `${tipX},${tipY} ` +
+    `${baseX + px * FLOW_ARROW_HALF_WIDTH},${baseY + py * FLOW_ARROW_HALF_WIDTH} ` +
+    `${baseX - px * FLOW_ARROW_HALF_WIDTH},${baseY - py * FLOW_ARROW_HALF_WIDTH}`;
+  return {
+    arrowPoints,
+    tipX,
+    tipY,
+    runMidX: midX,
+    runMidY: midY,
+    runLength: bestLength,
+    horizontal: uy === 0,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// F9.5 runda korekcyjna (recenzja Opusa, findingi wizualne V-1/V-2):
+// pozycja etykiety przepływu NIE jest stałym offsetem — jest wyborem
+// pierwszego BEZKOLIZYJNEGO kandydata względem WSZYSTKICH etykiet sceny
+// (V-1: tytuły stacji z pasma nazw — `station-name` — kolidowały z etykietą
+// przy tapie stacji), WSZYSTKICH bboxów symboli (V-2: ogon etykiety znikał
+// pod ikoną DER) oraz WCZEŚNIEJ położonych etykiet przepływu (V-2: stack
+// dwóch etykiet w tym samym miejscu). Czysta funkcja (zero DOM) — obstacle
+// set z danych sceny, kandydaci deterministyczni, wybór = pierwszy pasujący.
+// ---------------------------------------------------------------------------
+
+interface FlowRect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** Margines czytelności wokół etykiety przepływu [px świata]. */
+const FLOW_LABEL_MARGIN = 2;
+
+function flowRectsDisjoint(a: FlowRect, b: FlowRect, margin: number): boolean {
+  return (
+    a.x + a.width + margin <= b.x ||
+    b.x + b.width + margin <= a.x ||
+    a.y + a.height + margin <= b.y ||
+    b.y + b.height + margin <= a.y
+  );
+}
+
+/** Kandydaci pozycji ŚRODKA etykiety — kolejność = preferencja (pierwszy
+ *  bezkolizyjny wygrywa): bieg poziomy → pod przewodem w środku biegu,
+ *  potem nad, potem przesunięcia wzdłuż biegu (ćwiartki — z dala od końców
+ *  przy stacjach, V-1), potem DRUGI pierścień offsetów pionowych (+2×GRID —
+ *  na L1 pas między korytarzem a pasmem nazw bywa za ciasny na pierścień
+ *  pierwszy, dowód empiryczny na fixturze: 19 nieulokowanych etykiet
+ *  lateralnych bez drugiego pierścienia); bieg pionowy → analogicznie
+ *  prawo/lewo z przesunięciami. */
+function flowLabelCandidates(
+  geometry: FlowOverlayGeometry,
+  labelWidth: number,
+): readonly { readonly x: number; readonly y: number }[] {
+  const shift = Math.max(2 * GRID, Math.round(geometry.runLength / 4));
+  if (geometry.horizontal) {
+    const candidates: { x: number; y: number }[] = [];
+    for (const dy of [FLOW_LABEL_OFFSET_BELOW, -FLOW_LABEL_OFFSET_BELOW, FLOW_LABEL_OFFSET_BELOW + 2 * GRID, -FLOW_LABEL_OFFSET_BELOW - 2 * GRID]) {
+      for (const dx of [0, -shift, shift]) {
+        candidates.push({ x: geometry.runMidX + dx, y: geometry.runMidY + dy });
+      }
+    }
+    return candidates;
+  }
+  const right = geometry.runMidX + FLOW_LABEL_OFFSET_RIGHT + labelWidth / 2;
+  const left = geometry.runMidX - FLOW_LABEL_OFFSET_RIGHT - labelWidth / 2;
+  const candidates: { x: number; y: number }[] = [];
+  for (const x of [right, left, right + 2 * GRID, left - 2 * GRID]) {
+    for (const dy of [0, -shift, shift]) {
+      candidates.push({ x, y: geometry.runMidY + dy });
+    }
+  }
+  return candidates;
+}
+
+export interface FlowPlacement {
+  /** Indeks odcinka w `scene.segments` renderowanego LOD — spójny z testId. */
+  readonly segmentIndex: number;
+  readonly ownerRef: string;
+  readonly forward: boolean;
+  readonly arrowPoints: string;
+  /** '' gdy wartości wyłączone (L0, spec §15.2) lub wpis bez metryk. */
+  readonly label: string;
+  /** Środek bboxa etykiety (textAnchor=middle, dominantBaseline=middle). */
+  readonly labelX: number;
+  readonly labelY: number;
+  /** Bbox etykiety — eksponowany dla testów rozłączności (V-1/V-2). */
+  readonly labelRect: FlowRect;
+  /** `true` = znaleziono kandydata bezkolizyjnego; `false` = fallback na
+   *  pierwszego kandydata (dane WAŻNIEJSZE niż estetyka — nie ukrywamy
+   *  wartości; test na realnej fixturze dowodzi, że fallback nie jest tam
+   *  nigdy używany). */
+  readonly labelPlaced: boolean;
+}
+
+/**
+ * Rozmieszczenie CAŁEJ nakładki przepływu dla jednej sceny — groty + etykiety
+ * z unikaniem kolizji (V-1/V-2). Przeszkody: etykiety sceny (wszystkie klasy,
+ * w tym `station-name` — V-1), bboxy symboli (V-2), wcześniej położone
+ * etykiety przepływu (kolejność deterministyczna = indeks odcinka).
+ */
+export function computeFlowOverlayPlacements(
+  scene: SceneV3,
+  flowByOwnerRef: Readonly<Record<string, SegmentFlowOverlay>> | undefined,
+  /** `null` = bez etykiet (L0, sam grot — spec §15.2); `'p-only'` (L1) /
+   *  `'full'` (L2) — patrz `formatFlowLabelPl`. */
+  labelDetail: FlowLabelDetail | null,
+): readonly FlowPlacement[] {
+  if (!flowByOwnerRef) return [];
+  const obstacles: FlowRect[] = [
+    ...scene.labels.map((l) => l.rect),
+    ...scene.symbols.map((s) => {
+      const def = SYMBOL_DEFS[s.symbolId];
+      return { x: s.x, y: s.y, width: def.width, height: def.height };
+    }),
+  ];
+  const placements: FlowPlacement[] = [];
+  scene.segments.forEach((segment, segmentIndex) => {
+    const ownerRef = segment.meta?.ownerRef;
+    const flow = ownerRef != null ? flowByOwnerRef[ownerRef] : undefined;
+    if (!flow) return;
+    const geometry = flowOverlayGeometry(segment.points, flow.forward);
+    if (!geometry) return;
+    const label = labelDetail ? formatFlowLabelPl(flow, labelDetail) : '';
+    let labelX = 0;
+    let labelY = 0;
+    let labelRect: FlowRect = { x: 0, y: 0, width: 0, height: 0 };
+    let labelPlaced = false;
+    if (label) {
+      const width = measureLabelWidth(label, 't4');
+      const height = labelLineHeight('t4');
+      const candidates = flowLabelCandidates(geometry, width);
+      let chosen = candidates[0];
+      for (const candidate of candidates) {
+        const rect: FlowRect = { x: candidate.x - width / 2, y: candidate.y - height / 2, width, height };
+        if (obstacles.every((o) => flowRectsDisjoint(rect, o, FLOW_LABEL_MARGIN))) {
+          chosen = candidate;
+          labelPlaced = true;
+          break;
+        }
+      }
+      labelX = chosen.x;
+      labelY = chosen.y;
+      labelRect = { x: labelX - width / 2, y: labelY - height / 2, width, height };
+      obstacles.push(labelRect);
+    }
+    placements.push({
+      segmentIndex,
+      ownerRef: flow.ownerRef,
+      forward: flow.forward,
+      arrowPoints: geometry.arrowPoints,
+      label,
+      labelX,
+      labelY,
+      labelRect,
+      labelPlaced,
+    });
+  });
+  return placements;
+}
+
+function SceneFlowPlacementNode(props: { readonly placement: FlowPlacement }): JSX.Element {
+  const { placement } = props;
+  const typo = LABEL_TYPOGRAPHY.t4;
+  return (
+    <g
+      data-testid={`sld-v3-flow-${placement.segmentIndex}`}
+      data-flow-owner-ref={placement.ownerRef}
+      data-flow-forward={placement.forward ? 'true' : 'false'}
+      data-flow-label-placed={placement.label ? (placement.labelPlaced ? 'true' : 'false') : undefined}
+    >
+      <polygon
+        data-testid={`sld-v3-flow-arrow-${placement.segmentIndex}`}
+        points={placement.arrowPoints}
+        fill={FLOW_OVERLAY_COLOR}
+      />
+      {placement.label ? (
+        <text
+          data-testid={`sld-v3-flow-label-${placement.segmentIndex}`}
+          x={placement.labelX}
+          y={placement.labelY}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill={FLOW_OVERLAY_COLOR}
+          fontFamily="sans-serif"
+          fontSize={typo.fontSize}
+          fontWeight={typo.fontWeight}
+        >
+          {placement.label}
+        </text>
+      ) : null}
+    </g>
   );
 }
 
@@ -316,6 +637,15 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const effectiveLod: SceneLod = lodOverride ?? camera.lod;
   const scene = sceneByLod[effectiveLod];
   const sheetSize = useMemo(() => sheetSizeFor(scene), [scene]);
+  // F9.5: rozmieszczenie nakładki przepływu — przeliczane przy zmianie
+  // sceny (LOD/snapshot) lub wyniku; szczegółowość etykiet per LOD
+  // (spec §15.2): L0 sam grot, L1 tylko P, L2 pełne P·Q·I.
+  const flowByOwnerRef = overlay?.flowByOwnerRef;
+  const flowLabelDetail: FlowLabelDetail | null = effectiveLod === 0 ? null : effectiveLod === 1 ? 'p-only' : 'full';
+  const flowPlacements = useMemo(
+    () => computeFlowOverlayPlacements(scene, flowByOwnerRef, flowLabelDetail),
+    [scene, flowByOwnerRef, flowLabelDetail],
+  );
   const viewBox = cameraViewBox(camera.transform, viewportSize);
 
   // Pointer tracking (pan 1 dotyk/mysz, pinch 2 dotyki) — Pointer Events
@@ -409,6 +739,18 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         <g data-testid="sld-v3-labels">
           {scene.labels.map((label, index) => (
             <SceneLabelNode key={`label-${index}`} label={label} index={index} />
+          ))}
+        </g>
+        {/* F9.5 (spec §14.2): nakładka przepływu NAD warstwami bazowymi
+         * (segmenty/symbole/etykiety) — grot i wartości nie mogą być
+         * przykryte symbolami toru; warstwa pusta (zero węzłów DOM per
+         * odcinek), gdy `flowByOwnerRef` nie niesie wpisu — „overlay
+         * wyłączony bez wyniku". Pozycje etykiet liczone scenowo z unikaniem
+         * kolizji (V-1/V-2 recenzji — `computeFlowOverlayPlacements`).
+         * Wartości od L1 (spec §15.2: LOD steruje etykietami, nie kierunkiem). */}
+        <g data-testid="sld-v3-flow-overlay">
+          {flowPlacements.map((placement) => (
+            <SceneFlowPlacementNode key={`flow-${placement.segmentIndex}`} placement={placement} />
           ))}
         </g>
       </SheetFrame>

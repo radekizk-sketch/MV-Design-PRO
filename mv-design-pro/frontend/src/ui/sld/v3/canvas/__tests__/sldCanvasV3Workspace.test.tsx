@@ -12,10 +12,24 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
-import { buildEnergizationOverlay as buildEnergizationOverlayForTest, SldCanvasV3Workspace, elementTypeForKind } from '../SldCanvasV3Workspace';
+import {
+  buildEnergizationOverlay as buildEnergizationOverlayForTest,
+  buildFlowOverlayForSnapshot,
+  SldCanvasV3Workspace,
+  elementTypeForKind,
+} from '../SldCanvasV3Workspace';
 import { buildSupplyPathHighlight, isElementEnergized } from '../../../v2/canvas/SupplyPathHighlighter';
+import { isFlowOverlayEmpty, flowOverlayValuesTraceToPayload, singleHopSegmentRefs } from '../overlay';
+import { useRawResultOverlayStore, type RawOverlayElement, type RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  // F9.5: `useRawResultOverlayStore` jest globalnym singletonem (zasilanym w
+  // produkcji przez `App.tsx`) — testy MUSZĄ go sprzątać, inaczej payload
+  // ustawiony w jednym teście przecieka do kolejnych (kolejność testów w
+  // pliku wpływałaby na wynik — naruszenie determinizmu testów).
+  useRawResultOverlayStore.getState().clear();
+});
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -34,7 +48,16 @@ const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: En
 beforeEach(() => {
   useSnapshotStore.getState().reset();
   useSelectionStore.getState().clearSelection();
+  useRawResultOverlayStore.getState().clear();
 });
+
+function rawElement(refId: string, metrics: RawOverlayElement['metrics']): RawOverlayElement {
+  return { ref_id: refId, kind: 'branch', badges: [], metrics, severity: 'INFO' };
+}
+
+function rawPayload(elements: Record<string, RawOverlayElement>): RawOverlayPayload {
+  return { run_id: 'run-test', analysis_type: 'load_flow', elements };
+}
 
 describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
   it('brak snapshot w store: nie renderuje kanwy (brak sieci = brak rysunku, nie crash)', () => {
@@ -159,5 +182,71 @@ describe('SldCanvasV3Workspace — F8b-1 C: nakładka energizacji z realnych wyn
         expect(overlay.energizedByOwnerRef?.[meta.ownerRef]).toBe(isElementEnergized(highlight, base));
       }
     }
+  });
+});
+
+describe('SldCanvasV3Workspace — F9.5: nakładka przepływu mocy (spec §14.2, ZERO fizyki)', () => {
+  // F-1 (recenzja Opusa): ref MUSI być z bramki jednokawałkowej — tylko takie
+  // przechodzą przez `buildFlowOverlayForSnapshot` (kierunek udowodniony).
+  const singleHop = singleHopSegmentRefs(enm);
+  const realSegmentOwnerRef = buildSceneV3(enm, 2).segments.find(
+    (s) =>
+      s.meta?.elementKind === 'segment' &&
+      s.meta.ownerRef &&
+      !s.meta.ownerRef.includes('#') &&
+      singleHop.has(s.meta.ownerRef),
+  )!.meta!.ownerRef!;
+
+  it('bez przebiegu w useRawResultOverlayStore (stan domyślny produkcji przed uruchomieniem analizy): kanwa renderuje się bez crasha, nakładka pusta', () => {
+    useSnapshotStore.setState({ snapshot: enm });
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    expect(container.querySelector('[data-testid="sld-canvas-v3"]')).toBeTruthy();
+    expect(isFlowOverlayEmpty(buildFlowOverlayForSnapshot(enm, useRawResultOverlayStore.getState().payload))).toBe(true);
+  });
+
+  it('payload obecny w store, ALE brak snapshot: nie crashuje (brak sieci = brak rysunku, jak bez nakładki)', () => {
+    useRawResultOverlayStore.getState().setPayload(rawPayload({
+      [realSegmentOwnerRef]: rawElement(realSegmentOwnerRef, { P_MW: { code: 'P_MW', value: 1, unit: 'MW' } }),
+    }));
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    expect(container.querySelector('[data-testid="sld-canvas-v3"]')).toBeNull();
+    expect(container.querySelector('[data-testid="sld-canvas-v3-workspace"]')).toBeTruthy();
+  });
+
+  it('przebieg realny w store (ref = PRAWDZIWY segmentRef ze sceny): kanwa renderuje się bez crasha, buildFlowOverlayForSnapshot niesie wpis identyczny z buildFlowOverlayFromScene wołanym wprost (zero rozjazdu wołający↔budowniczy)', () => {
+    useSnapshotStore.setState({ snapshot: enm });
+    const payload = rawPayload({
+      [realSegmentOwnerRef]: rawElement(realSegmentOwnerRef, {
+        P_MW: { code: 'P_MW', value: -3.4, unit: 'MW' },
+        Q_Mvar: { code: 'Q_Mvar', value: 0.6, unit: 'Mvar' },
+        I_A: { code: 'I_A', value: 210, unit: 'A' },
+      }),
+    });
+    useRawResultOverlayStore.getState().setPayload(payload);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    expect(container.querySelector('[data-testid="sld-canvas-v3"]')).toBeTruthy();
+
+    const flow = buildFlowOverlayForSnapshot(enm, payload);
+    expect(flow[realSegmentOwnerRef]).toEqual({
+      ownerRef: realSegmentOwnerRef,
+      forward: false,
+      p: { value: -3.4, unit: 'MW' },
+      q: { value: 0.6, unit: 'Mvar' },
+      i: { value: 210, unit: 'A' },
+    });
+    expect(flowOverlayValuesTraceToPayload(flow, payload)).toBe(true);
+  });
+
+  it('determinizm: buildFlowOverlayForSnapshot(enm, payload) wywołane dwukrotnie ⇒ identyczny JSON.stringify', () => {
+    const payload = rawPayload({
+      [realSegmentOwnerRef]: rawElement(realSegmentOwnerRef, { P_MW: { code: 'P_MW', value: 0.9, unit: 'MW' } }),
+    });
+    const first = buildFlowOverlayForSnapshot(enm, payload);
+    const second = buildFlowOverlayForSnapshot(enm, payload);
+    expect(JSON.stringify(first)).toBe(JSON.stringify(second));
+  });
+
+  it('buildFlowOverlayForSnapshot(snapshot, null) ⇒ {} (kontrakt „overlay wyłączony bez wyniku" na poziomie funkcji wołanej przez hook produkcyjny)', () => {
+    expect(buildFlowOverlayForSnapshot(enm, null)).toEqual({});
   });
 });

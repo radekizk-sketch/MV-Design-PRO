@@ -80,10 +80,11 @@ import type { ElementType } from '../../../types';
 import { useSelectionStore } from '../../../selection';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { buildSupplyPathHighlight, isElementEnergized, type SupplyPathHighlight } from '../../v2/canvas/SupplyPathHighlighter';
+import { useRawResultOverlayStore, type RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { buildSceneV3, type SceneLod } from '../scene/buildScene';
 import type { PreviewElementKind } from '../compose/preview';
 import { SldCanvasV3, type SldElementClickMeta } from './SldCanvasV3';
-import type { SldV3Overlay } from './overlay';
+import { buildFlowOverlayFromScene, singleHopSegmentRefs, type SegmentFlowOverlay, type SldV3Overlay } from './overlay';
 
 const MIN_CANVAS_WIDTH_PX = 320;
 const MIN_CANVAS_HEIGHT_PX = 240;
@@ -250,6 +251,49 @@ function useEnergizationOverlay(snapshot: EnergyNetworkModel | null): SldV3Overl
   return useMemo(() => (snapshot ? buildEnergizationOverlay(snapshot) : EMPTY_OVERLAY), [snapshot]);
 }
 
+/**
+ * F9.5 (spec §14.2, „Nakładka przepływu mocy"): łączy `buildFlowOverlayFromScene`
+ * (`overlay.ts`, budowniczy CZYSTY jednej sceny) ze WSZYSTKICH TRZECH LOD
+ * naraz — TEN SAM wzorzec co `buildEnergizationOverlay` wyżej (ownerRef jest
+ * tożsamością LOD-niezależną, patrz `overlay.ts` nagłówek, więc scalanie
+ * trzech słowników jest neutralne: ten sam `ownerRef` na różnych LOD daje
+ * identyczny wpis). Źródło `payload`: `useRawResultOverlayStore` — prawdziwy,
+ * produkcyjnie zasilany przez `App.tsx` store (patrz `overlay.ts` nagłówek
+ * F9.5 dla pełnego uzasadnienia wyboru kanału i UDOKUMENTOWANEJ luki
+ * backendu, przez którą ten kanał jest DZIŚ pusty dla gałęzi na KAŻDYM
+ * realnym przebiegu — `{}` w tym wypadku, spec §14.2 „overlay wyłączony bez
+ * wyniku", nie błąd tej funkcji).
+ */
+export function buildFlowOverlayForSnapshot(
+  snapshot: EnergyNetworkModel,
+  payload: RawOverlayPayload | null,
+): Readonly<Record<string, SegmentFlowOverlay>> {
+  if (!payload) return {};
+  // F-1 (recenzja Opusa): zbiór refów jednokawałkowych liczony RAZ per
+  // wywołanie (ten sam adapter co buildSceneV3) — kierunek emitowany
+  // wyłącznie dla przęseł o udowodnionej orientacji, patrz
+  // `overlay.ts::singleHopSegmentRefs`.
+  const trustedRefs = singleHopSegmentRefs(snapshot);
+  const merged: Record<string, SegmentFlowOverlay> = {};
+  for (const lod of ALL_SCENE_LODS) {
+    Object.assign(merged, buildFlowOverlayFromScene(buildSceneV3(snapshot, lod), payload, trustedRefs));
+  }
+  return merged;
+}
+
+/** Memoizowana na `snapshot`+`payload` (zmiana wyniku solvera — nowy przebieg
+ *  aktywny — przelicza nakładkę; zmiana snapshotu bez wyniku daje `{}`, nie
+ *  `undefined`, żeby `SldCanvasV3` mógł zawsze scalić bez rozgałęzień null). */
+function useFlowOverlay(
+  snapshot: EnergyNetworkModel | null,
+  payload: RawOverlayPayload | null,
+): Readonly<Record<string, SegmentFlowOverlay>> {
+  return useMemo(
+    () => (snapshot ? buildFlowOverlayForSnapshot(snapshot, payload) : {}),
+    [snapshot, payload],
+  );
+}
+
 export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Element {
   const { width: widthOverride, height: heightOverride } = props;
   const containerRef = useRef<HTMLDivElement>(null);
@@ -259,7 +303,17 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // samego store'a) — zero shadow-modelu (Core Rule #3).
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const selectElement = useSelectionStore((state) => state.selectElement);
-  const overlay = useEnergizationOverlay(snapshot);
+  const energizationOverlay = useEnergizationOverlay(snapshot);
+  // F9.5: `useRawResultOverlayStore` — TEN SAM globalny store, który `App.tsx`
+  // zasila fetch'em wyniku aktywnego przebiegu, NIEZALEŻNIE od wersji kanwy
+  // (patrz `overlay.ts`/`buildFlowOverlayForSnapshot` nagłówki dla pełnego
+  // uzasadnienia i udokumentowanej luki backendu).
+  const rawOverlayPayload = useRawResultOverlayStore((state) => state.payload);
+  const flowByOwnerRef = useFlowOverlay(snapshot, rawOverlayPayload);
+  const overlay = useMemo<SldV3Overlay>(
+    () => ({ ...energizationOverlay, flowByOwnerRef }),
+    [energizationOverlay, flowByOwnerRef],
+  );
 
   const handleElementClick = useCallback(
     (testId: string, meta?: SldElementClickMeta) => {
