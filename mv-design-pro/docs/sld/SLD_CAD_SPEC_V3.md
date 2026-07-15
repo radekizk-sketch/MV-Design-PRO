@@ -537,6 +537,11 @@ jako WARSTWA ADNOTACJI schematu.
 
 - Konwencja obowiązuje render v3 (docelowy); v2 GPZ już rysuje `protection_codes`
   (`GpzSwitchgearRenderer`) — semantyka wspólna, parytet wymagany przy F8c (§10).
+- **Doprecyzowanie (rozstrzygnięcie architekta, runda korekcyjna F9.9):** w GPZ v3 rysowany jest
+  w F9.9 SAM OKRĄG przekaźnika z kodami (`CanonicalGpzBay.protectionCodes`), BEZ toru wyzwalania —
+  kompozycja GPZ nie śledzi `deviceRef` per aparat, więc tor bez rejestru urządzeń byłby zgadywany;
+  tor wyzwalania w GPZ = F8c/F9.10 (razem z rejestrem device-ref). Okrąg bez toru w GPZ NIE jest
+  `missingData` — to udokumentowany zakres etapu.
 - Wątek przebudowy interfejsu (`claude/power-network-design-ui-ir91mv`): słownik nowej IA
   przyjmuje terminy „przekaźnik zabezpieczeniowy", numery urządzeń C37.2 („52", „50/51"…);
   inspektor nowej powłoki prezentuje `ProtectionAssignment` + `settings`; stylowanie warstwy

@@ -968,7 +968,7 @@ współdzielony (spec §8) — ale konsumpcja w compose (F9.3) czeka na F8b.
     FAIL, exit 0); `python scripts/sld_determinism_guards.py`/`docs_guard.py`/`no_codenames_guard.py`/
     `utf8_mojibake_guard.py` PASS.
 
-### F9.9. [KOD — po F9.7] Oznaczenie zabezpieczeń ANSI/IEEE C37.2 (spec §17, Poprawka A2)
+### F9.9. [DONE] Oznaczenie zabezpieczeń ANSI/IEEE C37.2 (spec §17, Poprawka A2)
 - Zlecenie właściciela 2026-07-15 (schemat referencyjny ABB): przekaźnik zabezpieczeniowy = OKRĄG
   z kodami funkcji (np. 50/51) połączony linią PRZERYWANĄ (tor wyzwalania) z wyłącznikiem; wyłącznik
   z numerem urządzenia „52"; miernik „M". Konwencja wiążąca: spec §17 (commit 53a30b8b).
@@ -986,6 +986,37 @@ współdzielony (spec §8) — ale konsumpcja w compose (F9.3) czeka na F8b.
   §11 zielone; determinizm; render 1:1 oceniony; parytet v2 GPZ nienaruszony.
 - Autoryzacje: v2/canvas/enmToSldAdapter.ts (addytywnie), v3/symbols/*, v3/compose/*, v3/layout/measure.ts
   (kolumna adnotacji), v3/scene/buildScene.ts, scripts/sld_v3_acceptance.mjs, testy, docs/sld/*.
+- **Wynik realizacji (2026-07-15, recenzja REQUEST-CHANGES → runda korekcyjna → weryfikacja APPROVE):**
+  - Kanał danych: `protection_codes`/`protection_ref` żyją WPROST na snapshot `Bay` (models.py:709-714;
+    ProtectionAssignment/measurements top-level w EnergyNetworkModel) — INACZEJ niż primary_devices
+    (E1/V12K-030), zero defensywnego szwu. Fixtura `sldSubstrate52s` niesie 0 danych zabezpieczeń ⇒
+    acceptance dowodzi „zero okręgów bez danych" wprost; dowody pozytywne syntetyczne (compose + scena).
+  - Dostawa: glify `protectionRelay` (24×24, port link W y=8) i `meter`; kolumna adnotacji w
+    `bayColumnRequiredWidth` TYLKO dla pól z danymi (tapX/stationBlockWidth nietknięte); okrąg przy
+    kotwicy CT→CB, tor `protectionTrip` dash 4-2, etykiety „52"/„M"; missingData
+    `trip_link_unresolved` + `meter_anchor_unresolved`; kolizja przekaźnik/miernik na wspólnym CT
+    naprawiona (minGap, znalezisko własne implementatora z renderu).
+  - Runda korekcyjna: [BLOKER B-1] L1 renderował pełną adnotację — naprawione parametrem
+    `annotationDetail` (full/circle-only/none z `protectionAnnotationDetailForLod`); wyrocznia
+    `protectionAnnotationAtLod1IsCircleOnly` (pozytyw syntetyczny + 3 negatywy) +
+    `protectionMarkingGaps` LOD-aware (L2 WYMAGA kodów / L1 ZAKAZUJE, `codes-present-at-lod1`);
+    missingData tylko na L2 (ukryta linia ⇒ nieobserwowalna; odradza się przy L1→L2 — czystość
+    buildSceneV3). [R-1] GPZ: SAM okrąg z kodami (`CanonicalGpzBay.protectionCodes`), bez toru
+    (gpz nie śledzi deviceRef; tor = F8c/F9.10), wyjątek jawny w probe + spec §17.6 doprecyzowany.
+    [R-2] pełna lista kodów >2 w etykiecie slotu (`#protection-codes-full`, rezerwacja w measure,
+    miernik odsuwany). [R-3] `protectionTrip` wykluczony z OBU pętli unii spójności (test negatywny
+    + kontrola: ten sam mostek jako 'sn' łączy).
+  - Rezydua [LOW, nieblokujące]: (r1) docstringi w buildScene.ts:693-696/preview.tsx twierdzą
+    o wyłączeniu toru z port_probe/sceneSegmentEndpointGaps — faktycznie wyłączenie jest tylko
+    w unii spójności (poprawne per §17.5e; rozbieżność czysto redakcyjna); (r2) dobór kotwicy przy
+    duplikacie symbolId w GPZ = pierwszy z Array.find (deterministyczne, nieudokumentowane dosłownie).
+  - Wizualny DoD nadzorcy (PNG L1+L2, przypadek 4 kodów): L2 = okrąg „50/51|51N" + tor przerywany
+    do CB z „52" + pełna lista „50/51 · 51N · 67N · 87T" + „M" oddzielone + pole z nierozwiązanym
+    breaker_ref ma okrąg BEZ toru; L1 = same puste okręgi — POTWIERDZONE.
+  - Bramki: tsc czysty; eslint czysty; vitest sld 170 plików / 3284 pass; accept:sld-v3 ALL PASS
+    (100+ asercji; baseline'y F9.7 niezmienione: symbolWire {0,11,11}, vertical {9656,38504,53304});
+    pełna regresja 544 pliki / 7692 pass; guardy sld-determinism/codenames/forbidden-ui-terms/
+    overlay-no-physics/docs/mojibake zielone.
 
 ### F9.10. [KOD — po F9.9] Likwidacja kolizji branchJunction↔przewód (root-cause z F9.7 C)
 - Znalezisko F9.7 (REALNE, 11 kolizji L1/L2 na fixturze): `trunkCorridorYOf` wpada w Y-span

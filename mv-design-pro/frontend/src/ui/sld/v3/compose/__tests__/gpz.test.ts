@@ -14,6 +14,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { GRID } from '../../core/grid';
+import { SYMBOL_DEFS } from '../../symbols/defs';
 import type {
   CanonicalGpzBay,
   CanonicalGpzSection,
@@ -751,5 +752,82 @@ describe('V3 compose/gpz — determinizm', () => {
     const composition = composeGpz(baseProps(), ORIGIN);
     expect(GRID).toBe(8);
     expect(allGpzSymbolsOnGrid(composition)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (f) F9.9 R-1 (spec §17.1-§17.4, rozstrzygnięcie architekta 2026-07-15):
+// okrąg przekaźnika pola SN GPZ — SAM OKRĄG z kodami, BEZ toru wyzwalania
+// (kompozycja szablonowa GPZ nie śledzi device_ref per aparat — tor =
+// F8c/F9.10; patrz docstring `ComposedGpzProtectionSymbol`).
+// ---------------------------------------------------------------------------
+
+describe('V3 compose/gpz — F9.9 R-1: okrąg przekaźnika (§17, bez toru wyzwalania)', () => {
+  const propsWithCodes = (codes: readonly string[]): GpzCanonicalRendererProps =>
+    baseProps({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          label: 'S1',
+          busVoltageKv: 15,
+          bays: [lineBay('b-prot', { protectionCodes: codes }), lineBay('b-plain')],
+        },
+      ],
+    });
+
+  it('§17.2 brak danych = brak oznaczenia: pola bez protectionCodes ⇒ ZERO okręgów (wszystkie istniejące fixtury tego pliku)', () => {
+    const composition = composeGpz(baseProps(), ORIGIN);
+    expect(composition.protectionSymbols).toHaveLength(0);
+    expect(composition.labels.protection).toHaveLength(0);
+  });
+
+  it('full (L2): pole z kodami ⇒ DOKŁADNIE jeden okrąg z DWOMA pierwszymi kodami, ZERO segmentów toru wyzwalania, ZERO missingData §17', () => {
+    const composition = composeGpz(propsWithCodes(['50/51', '51N']), ORIGIN);
+    expect(composition.protectionSymbols).toHaveLength(1);
+    expect(composition.protectionSymbols[0].bayRef).toBe('b-prot');
+    expect(composition.protectionSymbols[0].protectionCodes).toEqual(['50/51', '51N']);
+    // BEZ toru wyzwalania (R-1) — i to NIE jest missingData (udokumentowany
+    // zakres F9.9, patrz docstring `ComposedGpzProtectionSymbol`).
+    expect(composition.segments.some((s) => s.ownerRef.endsWith('#trip-line'))).toBe(false);
+    expect(composition.missingData.some((m) => m.startsWith('bay.protection'))).toBe(false);
+  });
+
+  it('R-2 (§17.3 zd. 2): >2 kody ⇒ okrąg z dwoma pierwszymi + etykieta pełnej listy (kolejność źródłowa)', () => {
+    const composition = composeGpz(propsWithCodes(['87T', '51', '50', '51N']), ORIGIN);
+    expect(composition.protectionSymbols[0].protectionCodes).toEqual(['87T', '51']);
+    const fullList = composition.labels.protection.filter((l) => l.ownerRef.endsWith('#protection-codes-full'));
+    expect(fullList).toHaveLength(1);
+    expect(fullList[0].text).toBe('87T · 51 · 50 · 51N');
+  });
+
+  it('B-1 (§17.4 L1, circle-only): okrąg BEZ kodów, zero etykiet protection', () => {
+    const composition = composeGpz(propsWithCodes(['50/51', '51N', '67N']), ORIGIN, [], 'circle-only');
+    expect(composition.protectionSymbols).toHaveLength(1);
+    expect(composition.protectionSymbols[0].protectionCodes).toBeUndefined();
+    expect(composition.labels.protection).toHaveLength(0);
+  });
+
+  it('B-1 (§17.4 L0, none): warstwa adnotacji nieobecna mimo kodów w danych', () => {
+    const composition = composeGpz(propsWithCodes(['50/51']), ORIGIN, [], 'none');
+    expect(composition.protectionSymbols).toHaveLength(0);
+    expect(composition.labels.protection).toHaveLength(0);
+  });
+
+  it('istniejące wyrocznie GPZ (grid/overlap/porty/parity) pozostają zielone przy polu z kodami — okrąg nie zaburza toru mocy', () => {
+    const composition = composeGpz(propsWithCodes(['50/51', '51N', '67N']), ORIGIN);
+    expect(allGpzSymbolsOnGrid(composition)).toBe(true);
+    expect(noGpzSymbolOverlaps(composition)).toBe(true);
+    expect(gpzInternalSegmentsEndAtPortsOrBus(composition)).toBe(true);
+    expect(noDirectTransformerBusTies(composition)).toBe(true);
+    // Okrąg leży w KOLUMNIE ADNOTACJI pola (rezerwacja `fieldColumnRequiredWidth`
+    // — na prawo od stosu aparatów), na siatce.
+    const relay = composition.protectionSymbols[0];
+    expect(relay.x % GRID).toBe(0);
+    expect(relay.y % GRID).toBe(0);
+    const stackXs = composition.symbols
+      .filter((s) => s.meta.bayRef === 'b-prot')
+      .map((s) => s.x + SYMBOL_DEFS[s.symbolId].width);
+    expect(relay.x).toBeGreaterThanOrEqual(Math.max(...stackXs));
   });
 });

@@ -35,7 +35,12 @@ import type { RouteVertex } from '../layout/route';
 /** Rodzaj odcinka → grubość (spec §6). `'bus'` obejmuje WSZYSTKIE szyny
  *  (WN/SN, primary/reserve/ring-closure) — spec nie różnicuje grubości szyn
  *  po napięciu, tylko nakładką koloru (F6, poza zakresem tego harnessu). */
-export type PreviewSegmentKind = 'bus' | 'sn' | 'lv' | 'leader';
+/** F9.9 (spec §17.1): `'protectionTrip'` — tor wyzwalania (linia przerywana
+ *  dash 4-2, odrębna od `'leader'` dash 3-2) łącząca przekaźnik z wyłącznikiem.
+ *  Element WARSTWY ADNOTACJI (§17.1: „nie uczestniczy w ciągłości elektrycznej
+ *  ani w wyroczniach toru") — WYŁĄCZONY z wyroczni continuity/port_probe
+ *  (`scene/buildScene.ts`), ale OBJĘTY wyroczniami kolizji/siatki (§17.5e). */
+export type PreviewSegmentKind = 'bus' | 'sn' | 'lv' | 'leader' | 'protectionTrip';
 
 /** Eksportowane (F6b): `SldCanvasV3` reużywa TĘ SAMĄ hierarchię grubości
  *  (spec §6), zero duplikacji stałych między harnessem debug i kanwą docelową. */
@@ -44,6 +49,9 @@ export const SEGMENT_STROKE_WIDTH: Readonly<Record<PreviewSegmentKind, number>> 
   sn: 1.6,
   lv: 1.2,
   leader: 0.8,
+  // F9.9 (spec §17.1): tor wyzwalania — cienki jak leader (adnotacja, nie tor
+  // mocy), odróżniony dasharray (4-2, patrz `PreviewSegmentNode`/`SldCanvasV3`).
+  protectionTrip: 0.8,
 };
 
 /**
@@ -67,7 +75,13 @@ export const SEGMENT_STROKE_WIDTH: Readonly<Record<PreviewSegmentKind, number>> 
  *  symbol sieci zewnętrznej nie selekcjonował `'Source'`) — ten komentarz
  *  twierdził, że mapowanie istnieje, choć NIE istniało; naprawione (gałąź
  *  dodana), zdanie poniżej jest teraz prawdziwe. */
-export type PreviewElementKind = 'station' | 'transformer' | 'der' | 'source' | 'apparatus' | 'bus' | 'segment';
+/** F9.9 (spec §17.1): `'protectionAnnotation'` — przekaźnik/miernik. Element
+ *  warstwy adnotacji, celowo WYŁĄCZONY z reguły grupowania Union-Find
+ *  (`sourceConnectivityGaps`, `scene/buildScene.ts` — reguła 3 dotyczy
+ *  WYŁĄCZNIE `'apparatus'|'transformer'`), więc obecność tego elementu na
+ *  scenie NIGDY nie wpływa na wyrocznie ciągłości toru mocy. */
+export type PreviewElementKind =
+  | 'station' | 'transformer' | 'der' | 'source' | 'apparatus' | 'bus' | 'segment' | 'protectionAnnotation';
 
 /** Metadane wspólne symbolu/segmentu, potrzebne WYŁĄCZNIE do debug-atrybutów
  *  (spec zadania F5b: „data-symbol-canon/data-parity-key przepisywane z
@@ -110,6 +124,10 @@ export interface PreviewElementMeta {
    *  Adnotacja audytora (`compose/sourceKind.ts`), NIE fabrykacja rodzaju —
    *  `undefined` dla WSZYSTKICH elementów rozpoznanych/nie-źródłowych. */
   readonly missingData?: boolean;
+  /** F9.9 (spec §17.3): kody funkcji przekaźnika — WYŁĄCZNIE dla symboli
+   *  `protectionRelay` (`elementKind==='protectionAnnotation'`), przekazane
+   *  1:1 do `ProtectionRelayGlyph.labelLines` (`symbols/glyphs.tsx`). */
+  readonly protectionCodes?: readonly string[];
 }
 
 export interface PreviewSymbol {
@@ -173,7 +191,7 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
       data-apparatus-source={symbol.meta?.apparatusSource}
       data-missing-data={symbol.meta?.missingData ? 'true' : undefined}
     >
-      <Glyph x={symbol.x} y={symbol.y} state={symbol.state} stroke={stroke} />
+      <Glyph x={symbol.x} y={symbol.y} state={symbol.state} stroke={stroke} labelLines={symbol.meta?.protectionCodes} />
     </g>
   );
 }
@@ -183,7 +201,11 @@ function PreviewSegmentNode(props: { readonly segment: PreviewSegment; readonly 
   if (segment.points.length < 2) return null;
   const kind = segment.meta?.kind ?? 'sn';
   const strokeWidth = SEGMENT_STROKE_WIDTH[kind];
-  const strokeDasharray = segment.meta?.dashed ? '4 3' : kind === 'leader' ? '3 2' : undefined;
+  // F9.9 (spec §17.1: „linia wyzwalania: przerywana, dash 4-2") — dasharray
+  // WŁASNY dla `protectionTrip`, odróżniony od `dashed` (4-3, szyna rezerwowa)
+  // i `leader` (3-2, leader etykiety).
+  const strokeDasharray =
+    kind === 'protectionTrip' ? '4 2' : segment.meta?.dashed ? '4 3' : kind === 'leader' ? '3 2' : undefined;
   return (
     <path
       d={pointsToPath(segment.points)}

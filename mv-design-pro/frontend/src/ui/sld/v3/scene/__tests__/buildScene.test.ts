@@ -28,6 +28,7 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import {
   buildSceneV3,
   allFieldEntryConnectionsReachCableHead,
+  allProtectionMarkingsValid,
   allSceneGeometryOnGrid,
   allSceneSegmentEndpointsAnchored,
   allSourcesConnected,
@@ -37,8 +38,11 @@ import {
   noBranchWithoutAccent,
   noForbiddenDirectionTokens,
   noLabelWireCollisions,
+  noProtectionAnnotationAtLod0,
   noSceneSymbolOverlaps,
   noSymbolWireCollisions,
+  protectionAnnotationAtLod1IsCircleOnly,
+  protectionMarkingGaps,
   sceneSegmentEndpointGaps,
   sourceConnectivityGaps,
   sourceCoverageGaps,
@@ -719,5 +723,213 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(9656);
     expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(38504);
     expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(53304);
+  });
+});
+
+describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixturze REALNEJ (sldSubstrate52s: 0 Bay[], 0 protection_assignments, 0 measurements)', () => {
+  it('§17.2 „brak danych = brak oznaczenia" na REALNEJ fixturze: ZERO okręgów przekaźnika/miernika, ZERO torów wyzwalania na WSZYSTKICH LOD — dowód „vacuously true", nie fałszywy pozytyw (fixtura nie niesie Bay[] w ogóle)', () => {
+    for (const lod of LODS) {
+      const scene = buildSceneV3(enm, lod);
+      expect(scene.symbols.filter((s) => s.symbolId === 'protectionRelay')).toHaveLength(0);
+      expect(scene.symbols.filter((s) => s.symbolId === 'meter')).toHaveLength(0);
+      expect(scene.segments.filter((s) => s.meta?.kind === 'protectionTrip')).toHaveLength(0);
+      expect(allProtectionMarkingsValid(scene)).toBe(true);
+      expect(noProtectionAnnotationAtLod0(scene)).toBe(true);
+    }
+  });
+
+  it('(negatyw obowiązkowy, §17.5a) okrąg przekaźnika BEZ kodów ⇒ protectionMarkingGaps WYKRYWA (dowód, że wyrocznia gryzie, nie zawsze zielona)', () => {
+    const scene = buildSceneV3(enm, 2);
+    const synthetic: SceneV3 = {
+      ...scene,
+      symbols: [
+        ...scene.symbols,
+        {
+          symbolId: 'protectionRelay',
+          x: 800,
+          y: 800,
+          meta: { ownerRef: 'bay-fabricated', elementKind: 'protectionAnnotation', protectionCodes: [] },
+        },
+      ],
+    };
+    const gaps = protectionMarkingGaps(synthetic);
+    expect(gaps.some((g) => g.reason === 'circle-without-codes' && g.ownerRef === 'bay-fabricated')).toBe(true);
+    expect(allProtectionMarkingsValid(synthetic)).toBe(false);
+  });
+
+  it('(negatyw obowiązkowy, §17.2/§17.5b) linia wyzwalania do NIEWŁAŚCIWEGO/nierejestrowanego punktu (nie port aparatu tego samego pola) ⇒ protectionMarkingGaps WYKRYWA', () => {
+    const scene = buildSceneV3(enm, 2);
+    const synthetic: SceneV3 = {
+      ...scene,
+      symbols: [
+        ...scene.symbols,
+        {
+          symbolId: 'protectionRelay',
+          x: 800,
+          y: 800,
+          meta: { ownerRef: 'bay-x', elementKind: 'protectionAnnotation', protectionCodes: ['50/51'] },
+        },
+      ],
+      segments: [
+        ...scene.segments,
+        {
+          points: [{ x: 999, y: 999 }, { x: 800, y: 999 }, { x: 800, y: 808 }],
+          meta: { kind: 'protectionTrip', ownerRef: 'bay-x#trip-line', elementKind: 'protectionAnnotation' },
+        },
+      ],
+    };
+    const gaps = protectionMarkingGaps(synthetic);
+    expect(gaps.some((g) => g.reason === 'trip-line-endpoint-mismatch')).toBe(true);
+  });
+
+  it('(pozytyw kontrolny) para okrąg+tor poprawnie zakotwiczona na REJESTROWANYCH portach TEGO SAMEGO pola ⇒ zero luk', () => {
+    const scene = buildSceneV3(enm, 2);
+    const fakeBreaker: SceneV3['symbols'][number] = {
+      symbolId: 'breaker',
+      x: 800,
+      y: 900,
+      meta: { ownerRef: 'bay-y', elementKind: 'apparatus' },
+    };
+    const fakeRelay: SceneV3['symbols'][number] = {
+      symbolId: 'protectionRelay',
+      x: 700,
+      y: 900,
+      meta: { ownerRef: 'bay-y', elementKind: 'protectionAnnotation', protectionCodes: ['51'] },
+    };
+    const breakerTop = { x: fakeBreaker.x + 8, y: fakeBreaker.y }; // 'top' port offset (8,0)
+    const relayLink = { x: fakeRelay.x, y: fakeRelay.y + 8 }; // 'link' port offset (0,8)
+    const synthetic: SceneV3 = {
+      ...scene,
+      symbols: [...scene.symbols, fakeBreaker, fakeRelay],
+      segments: [
+        ...scene.segments,
+        {
+          points: [breakerTop, { x: relayLink.x, y: breakerTop.y }, relayLink],
+          meta: { kind: 'protectionTrip', ownerRef: 'bay-y#trip-line', elementKind: 'protectionAnnotation' },
+        },
+      ],
+    };
+    expect(protectionMarkingGaps(synthetic)).toEqual([]);
+    expect(allProtectionMarkingsValid(synthetic)).toBe(true);
+  });
+
+  // -------------------------------------------------------------------------
+  // B-1 (recenzja F9.9, spec §17.4 L1) — protectionAnnotationAtLod1IsCircleOnly.
+  // Dowody POZYTYWNE i NEGATYWNE na scenach syntetycznych (fixtura
+  // referencyjna jest pusto-prawdziwa — 0 danych §17.2, recenzent wytknął,
+  // że to nie wystarcza jako dowód).
+  // -------------------------------------------------------------------------
+
+  it('B-1 (§17.4 L1, POZYTYW): scena L1 z okręgiem przekaźnika BEZ kodów (i niczym więcej z warstwy §17) ⇒ oracle zielony', () => {
+    const scene = buildSceneV3(enm, 1);
+    const synthetic: SceneV3 = {
+      ...scene,
+      symbols: [
+        ...scene.symbols,
+        {
+          symbolId: 'protectionRelay',
+          x: 800,
+          y: 800,
+          meta: { ownerRef: 'bay-l1', elementKind: 'protectionAnnotation' },
+        },
+      ],
+    };
+    expect(synthetic.meta.lod).toBe(1);
+    // Okrąg OBECNY (dowód pozytywny — nie pusta scena) i oracle zielony.
+    expect(synthetic.symbols.some((s) => s.symbolId === 'protectionRelay')).toBe(true);
+    expect(protectionAnnotationAtLod1IsCircleOnly(synthetic)).toBe(true);
+    expect(allProtectionMarkingsValid(synthetic)).toBe(true); // ownerRef jest, kodów brak — L1 OK.
+  });
+
+  it('B-1 (§17.4 L1, NEGATYW ×3): kody na okręgu / tor wyzwalania / miernik na L1 ⇒ oracle FAIL (dowód, że gryzie)', () => {
+    const scene = buildSceneV3(enm, 1);
+    const withCodes: SceneV3 = {
+      ...scene,
+      symbols: [
+        ...scene.symbols,
+        {
+          symbolId: 'protectionRelay',
+          x: 800,
+          y: 800,
+          meta: { ownerRef: 'bay-l1', elementKind: 'protectionAnnotation', protectionCodes: ['50/51'] },
+        },
+      ],
+    };
+    expect(protectionAnnotationAtLod1IsCircleOnly(withCodes)).toBe(false);
+    // Ta sama wada widziana przez protectionMarkingGaps (codes-present-at-lod1).
+    expect(protectionMarkingGaps(withCodes).some((g) => g.reason === 'codes-present-at-lod1')).toBe(true);
+
+    const withTrip: SceneV3 = {
+      ...scene,
+      segments: [
+        ...scene.segments,
+        {
+          points: [{ x: 800, y: 900 }, { x: 900, y: 900 }],
+          meta: { kind: 'protectionTrip', ownerRef: 'bay-l1#trip-line', elementKind: 'protectionAnnotation' },
+        },
+      ],
+    };
+    expect(protectionAnnotationAtLod1IsCircleOnly(withTrip)).toBe(false);
+
+    const withMeter: SceneV3 = {
+      ...scene,
+      symbols: [
+        ...scene.symbols,
+        { symbolId: 'meter', x: 800, y: 800, meta: { ownerRef: 'bay-l1', elementKind: 'protectionAnnotation' } },
+      ],
+    };
+    expect(protectionAnnotationAtLod1IsCircleOnly(withMeter)).toBe(false);
+  });
+
+  it('B-1 sanity: na L2 oracle L1 nie dotyczy (zwraca true niezależnie od kodów) — rozdział odpowiedzialności per LOD', () => {
+    const scene2 = buildSceneV3(enm, 2);
+    expect(protectionAnnotationAtLod1IsCircleOnly(scene2)).toBe(true);
+  });
+
+  // -------------------------------------------------------------------------
+  // R-3 (recenzja F9.9): tor wyzwalania NIE mostkuje komponentów spójności
+  // w source_connectivity_probe (§17.1: adnotacja, nie przewód mocy).
+  // -------------------------------------------------------------------------
+
+  it('R-3: segment protectionTrip łączący ODCIĘTE źródło z szyną ⇒ źródło NADAL zgłaszane jako odcięte (tor wyzwalania wykluczony z unii)', () => {
+    const scene = buildSceneV3(enm, 2);
+    // Syntetyczne odcięte źródło: symbol gridSource daleko od sceny (port
+    // `bottom` w (808, 1024)) + szyna-wyspa obok; JEDYNE połączenie
+    // źródło→szyna to segment protectionTrip.
+    const strandedSource: SceneV3['symbols'][number] = {
+      symbolId: 'gridSource',
+      x: 800,
+      y: 1000,
+      meta: { ownerRef: 'src-stranded', elementKind: 'source' },
+    };
+    const islandBus: SceneV3['segments'][number] = {
+      points: [{ x: 900, y: 1024 }, { x: 1000, y: 1024 }],
+      meta: { kind: 'bus', ownerRef: 'island#sn-bus', elementKind: 'bus' },
+    };
+    const tripBridge: SceneV3['segments'][number] = {
+      points: [{ x: 808, y: 1024 }, { x: 900, y: 1024 }],
+      meta: { kind: 'protectionTrip', ownerRef: 'src-stranded#trip-line', elementKind: 'protectionAnnotation' },
+    };
+    const synthetic: SceneV3 = {
+      ...scene,
+      symbols: [...scene.symbols, strandedSource],
+      segments: [...scene.segments, islandBus, tripBridge],
+    };
+    const gaps = sourceConnectivityGaps(synthetic);
+    expect(gaps.some((g) => g.sourceId === 'src-stranded')).toBe(true);
+
+    // Kontrola: TEN SAM mostek jako zwykły przewód (kind 'sn') FAKTYCZNIE
+    // łączy — dowód, że wykluczenie dotyczy WYŁĄCZNIE protectionTrip, a
+    // geometria mostka jest poprawna (test nie przechodzi „przypadkiem").
+    const wireBridge: SceneV3['segments'][number] = {
+      points: tripBridge.points,
+      meta: { kind: 'sn', ownerRef: 'src-stranded#wire', elementKind: 'segment' },
+    };
+    const control: SceneV3 = {
+      ...scene,
+      symbols: [...scene.symbols, strandedSource],
+      segments: [...scene.segments, islandBus, wireBridge],
+    };
+    expect(sourceConnectivityGaps(control).some((g) => g.sourceId === 'src-stranded')).toBe(false);
   });
 });

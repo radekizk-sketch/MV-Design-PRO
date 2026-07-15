@@ -90,6 +90,29 @@ export interface BayPrimaryDeviceView {
   /** Uproszczony stan (mirror `cbState`/`dsState`/`esState` vocabulary).
    *  `undefined` gdy ENM nie niesie `switch_state` dla tego aparatu. */
   readonly switchState?: 'closed' | 'open' | 'unknown';
+  /** F9.9 (SLD_CAD_SPEC_V3 §17.2): `BayPrimaryDevice.linked_ref` — dla
+   *  aparatów pomiarowych (CT/VT) wskazuje `Measurement.ref_id` (wzorzec
+   *  potwierdzony w `backend/src/application/field_read_model.py:488`).
+   *  Fundament dopasowania kotwicy miernika „M" (`compose/protectionMarking.ts`
+   *  `resolveMeterAnchor`) — `undefined` gdy ENM nie niesie `linked_ref`. */
+  readonly linkedRef?: string;
+}
+
+/**
+ * F9.9 (SLD_CAD_SPEC_V3 §17.2) — adnotacja zabezpieczeń JEDNEGO pola,
+ * projekcja `Bay.protection_codes` + `Bay.protection_ref` →
+ * `ProtectionAssignment` (`v2/canvas/enmToSldAdapter.ts`
+ * `resolveBayProtectionMarking`). `codes` jest ZAWSZE niepuste (adapter
+ * zwraca `undefined` dla całego pola, gdy `Bay.protection_codes` jest puste —
+ * §17.2 „brak danych = brak oznaczenia"). `breakerRef`/`ctRef` to SUROWE
+ * referencje ENM (`ProtectionAssignment.breaker_ref`/`ct_ref`) — dopasowanie
+ * na KONKRETNY aparat NARYSOWANEGO stosu dzieje się w `compose/
+ * protectionMarking.ts` (adapter nie zna geometrii/kolejności rysowania).
+ */
+export interface BayProtectionMarkingView {
+  readonly codes: readonly string[];
+  readonly breakerRef?: string;
+  readonly ctRef?: string;
 }
 
 export interface MiniBlockBayDescriptor {
@@ -109,6 +132,15 @@ export interface MiniBlockBayDescriptor {
    *  niesie `primary_devices` — konwencja-wg-roli (§12.4, fallback rysunkowy)
    *  NIE jest projektowana tutaj (poza zakresem F9.2, patrz F9.3). */
   readonly primaryDevices?: readonly BayPrimaryDeviceView[];
+  /** F9.9 (SLD_CAD_SPEC_V3 §17.2): adnotacja zabezpieczeń tego pola —
+   *  `undefined` gdy `Bay.protection_codes` puste/nieobecne (brak danych =
+   *  brak oznaczenia, §17.2 dosłownie). */
+  readonly protectionMarking?: BayProtectionMarkingView;
+  /** F9.9 (SLD_CAD_SPEC_V3 §17.2): `Measurement.ref_id` pomiaru
+   *  `purpose==='metering'` powiązanego z tym polem (`bay_ref`) — `undefined`
+   *  gdy brak takiego pomiaru. Dopasowanie na aparat stosu (miernik „M")
+   *  przez `linkedRef` w `compose/protectionMarking.ts`. */
+  readonly meteringMeasurementRef?: string;
 }
 
 export interface MiniBlockDerBadge {

@@ -37,6 +37,8 @@ import type {
   Bay,
   GPZSection,
   Transformer,
+  ProtectionAssignment,
+  Measurement,
 } from '../../../../types/enm';
 import type { GpzRendererProps } from '../renderer/GpzRenderer';
 import type { SectionRendererProps } from '../renderer/SectionRenderer';
@@ -56,6 +58,7 @@ import {
 import {
   miniBlockStationPortOffsets,
   type BayPrimaryDeviceView,
+  type BayProtectionMarkingView,
   type MiniBlockBayDescriptor,
   type MiniBlockDerBadge,
 } from '../renderer/MiniBlockRmuRenderer';
@@ -3577,6 +3580,13 @@ function buildExplicitStationMiniBays(
         dsState: states.ds,
         esState: states.es,
         primaryDevices: projectBayPrimaryDevices(bay),
+        // F9.9 (SLD_CAD_SPEC_V3 §17.2): `Bay.protection_codes`/`protection_ref`
+        // żyją WPROST na snapshot `Bay` (w przeciwieństwie do `primary_devices`
+        // — patrz docstring `resolveBayProtectionMarking` powyżej), więc ta
+        // projekcja jest AKTYWNA już dziś, gdy ENM niesie dane (nie czeka na
+        // domknięcie osobnego kanału field-view).
+        protectionMarking: resolveBayProtectionMarking(bay, snapshot),
+        meteringMeasurementRef: resolveBayMeteringMeasurementRef(bay, snapshot),
       };
     });
 
@@ -4004,7 +4014,59 @@ function projectBayPrimaryDevices(
       switchState: device.switch_state
         ? simplifyPrimaryDeviceSwitchState(device.switch_state.actual_state)
         : undefined,
+      // F9.9 (SLD_CAD_SPEC_V3 §17.2): `linked_ref` — dla CT/VT wskazuje
+      // `Measurement.ref_id` (patrz `BayProtectionMarkingView` docstring).
+      linkedRef: device.linked_ref ?? undefined,
     }));
+}
+
+// =============================================================================
+// F9.9 (SLD_CAD_SPEC_V3 §17.2) — projekcja oznaczenia zabezpieczeń.
+// =============================================================================
+
+/**
+ * Projekcja adnotacji zabezpieczeń JEDNEGO pola (§17.2, zero zgadywania):
+ * `Bay.protection_codes` (WYŁĄCZNIE gdy niepuste — inaczej `undefined`, „brak
+ * danych = brak oznaczenia") + `Bay.protection_ref` rozwiązany na
+ * `ProtectionAssignment` w `snapshot.protection_assignments` (SUROWE refy
+ * `breaker_ref`/`ct_ref` — dopasowanie na aparat NARYSOWANEGO stosu dzieje
+ * się w `compose/protectionMarking.ts`, ten adapter nie zna geometrii).
+ * Zgodnie z modelem `Bay(ENMElement)` (`backend/src/enm/models.py:701-714`) —
+ * w PRZECIWIEŃSTWIE do `primary_devices` (errata E1/V12K-030), `protection_codes`
+ * i `protection_ref` żyją WPROST na snapshot `Bay`, nie na field-view — bez
+ * defensywnego szwu (kanał danych już domknięty).
+ */
+function resolveBayProtectionMarking(
+  bay: Bay,
+  snapshot: EnergyNetworkModel,
+): BayProtectionMarkingView | undefined {
+  const codes = bay.protection_codes ?? [];
+  if (codes.length === 0) return undefined;
+  const assignment = bay.protection_ref
+    ? (snapshot.protection_assignments ?? []).find(
+        (pa: ProtectionAssignment) => pa.ref_id === bay.protection_ref || pa.id === bay.protection_ref,
+      )
+    : undefined;
+  return {
+    codes,
+    breakerRef: assignment?.breaker_ref,
+    ctRef: assignment?.ct_ref ?? undefined,
+  };
+}
+
+/**
+ * Projekcja kotwicy miernika (§17.2): `Measurement.purpose==='metering'`
+ * powiązany z tym polem przez `bay_ref`. `undefined` gdy brak takiego
+ * pomiaru (§17.2 „brak danych = brak oznaczenia").
+ */
+function resolveBayMeteringMeasurementRef(
+  bay: Bay,
+  snapshot: EnergyNetworkModel,
+): string | undefined {
+  const measurement = (snapshot.measurements ?? []).find(
+    (m: Measurement) => m.purpose === 'metering' && m.bay_ref === bay.ref_id,
+  );
+  return measurement?.ref_id;
 }
 
 function mapStationBayRoleToMiniRole(fieldRole: MiniBlockBayDescriptor['fieldRole']): MiniBlockBayDescriptor['fieldRole'] {

@@ -55,8 +55,8 @@
  * `BayPrimaryDevice.device_ref` — WHITE BOX, 0 aparatów „z domysłu").
  */
 
-import { GRID, rectsOverlap, snapToGrid, type V3Rect } from '../core/grid';
-import { labelLineHeight } from '../core/text';
+import { GRID, rectsOverlap, snapToGrid, snapUp, type V3Rect } from '../core/grid';
+import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, type SymbolDef, type SymbolId } from '../symbols/defs';
 import type { SwitchState } from '../symbols/glyphs';
 import type { RoutePort, RouteVertex } from '../layout/route';
@@ -86,6 +86,17 @@ import {
   symbolIdForPrimaryDeviceKind,
   type BayApparatusSource,
 } from './apparatusSequence';
+import {
+  PROTECTION_ANNOTATION_DIAMETER,
+  PROTECTION_FULL_LIST_LABEL_CLASS,
+  bayHasProtectionAnnotation,
+  fullCodesListText,
+  protectionDeviceCenter,
+  resolveMeterAnchor,
+  resolveStationProtectionMarking,
+  type PlacedStackDevice,
+  type ProtectionAnnotationDetail,
+} from './protectionMarking';
 
 // F9.3: `apparatusSymbolsForRole`/`stackFootprint` przeniesione do
 // `./apparatusSequence` (jedna prawda z `layout/measure.ts`) — re-eksport
@@ -116,6 +127,10 @@ interface StackItemSpec {
   readonly symbolId: SymbolId;
   readonly state?: SwitchState;
   readonly deviceRef?: string;
+  /** F9.9 (spec §17.2): `BayPrimaryDevice.linked_ref` — WYŁĄCZNIE ścieżka
+   *  danych (§12.1), fundament dopasowania kotwicy miernika „M"
+   *  (`resolveMeterAnchor`, `./protectionMarking`). */
+  readonly linkedRef?: string;
 }
 
 /**
@@ -141,6 +156,7 @@ function stackItemsForBay(
       symbolId: symbolIds[index],
       state: d.switchState,
       deviceRef: d.deviceRef,
+      linkedRef: d.linkedRef,
     }));
     return { items, source };
   }
@@ -164,6 +180,13 @@ export interface ComposedSymbolInstance {
    *  `undefined` dla stosu konwencji (§12.4) — brak `device_ref`, bo NIE
    *  pochodzi z ENM (zero aparatów „z domysłu" z fałszywym refem). */
   readonly deviceRef?: string;
+  /** F9.9 (spec §17.2): `BayPrimaryDevice.linked_ref` — patrz `StackItemSpec`
+   *  wyżej; przeniesione 1:1 do instancji, żeby `resolveMeterAnchor` mogło
+   *  dopasować kotwicę miernika na już ZBUDOWANYM stosie. */
+  readonly linkedRef?: string;
+  /** F9.9 (spec §17.3): kody funkcji przekaźnika — WYŁĄCZNIE dla instancji
+   *  `symbolId==='protectionRelay'` (dwa pierwsze wg kolejności danych). */
+  readonly protectionCodes?: readonly string[];
   /** F9.3 (spec §12.1): pochodzenie stosu tego pola — `'dane'` gdy zbudowany
    *  z `Bay.primary_devices`, `'konwencja'` gdy z fallbacku §12.4. Audytor
    *  DOM czyta to jako `data-apparatus-source` (`scene/buildScene.ts`,
@@ -204,6 +227,10 @@ export interface StationCompositionLabelInputs {
   readonly apparatus: readonly SimpleAnchoredOwnerInput[];
   readonly der: readonly SimpleAnchoredOwnerInput[];
   readonly stationName: StationNameBandOwnerInput;
+  /** F9.9 (spec §17.3): etykieta „52" przy wyłączniku — WŁASNA lista (nie
+   *  `apparatus`, żeby nie mieszać semantyki Q/T-oznaczników z numerami
+   *  urządzeń ANSI/IEEE C37.2 w testach filtrujących po `ownerKind`). */
+  readonly protection: readonly SimpleAnchoredOwnerInput[];
 }
 
 export interface StationComposition {
@@ -223,6 +250,16 @@ export interface StationComposition {
    *  (`scene/buildScene.ts` `composeRowStation`) przenosi to do
    *  `scene.meta.stopNotes` — koniec cichego gubienia bez śladu. */
   readonly missingData: readonly string[];
+  /** F9.9 (spec §17.1): symbole warstwy adnotacji (przekaźnik/miernik) —
+   *  ODDZIELNE od `symbols` (§17.1: „nie uczestniczy... w wyroczniach toru")
+   *  — wołający (`scene/buildScene.ts`) projektuje je do `scene.symbols`
+   *  osobno, z `elementKind==='protectionAnnotation'`, WYŁĄCZONE z reguł
+   *  ciągłości/portów (`sourceConnectivityGaps`/`sceneSegmentEndpointGaps`),
+   *  ale OBJĘTE wyroczniami kolizji/siatki (§17.5e). */
+  readonly protectionSymbols: readonly ComposedSymbolInstance[];
+  /** F9.9 (spec §17.1): tor(y) wyzwalania (linia przerywana) — ODDZIELNE od
+   *  `segments` z tego samego powodu co `protectionSymbols` wyżej. */
+  readonly protectionSegments: readonly ComposedSegment[];
 }
 
 // ---------------------------------------------------------------------------
@@ -253,6 +290,15 @@ export interface ComposeStationInput {
    *  rezerwacji B4, `STATION_BLOCK_BUS_CLEARANCE` jest stała niezależnie).
    *  Domyślnie `false`. */
   readonly hasLvSection?: boolean;
+  /** F9.9 B-1 (spec §17.4): szczegółowość warstwy adnotacji zabezpieczeń,
+   *  wywiedziona z LOD przez wołającego (`scene/buildScene.ts`,
+   *  `protectionAnnotationDetailForLod` — DECYZJA: parametr wywiedziony, nie
+   *  surowy `lod`, bo composeStation jest funkcją KOMPOZYCJI, nie sceny —
+   *  zna szczegółowość rysunku, nie politykę zoomu; ta sama semantyka co
+   *  `bayDirectionCaptions` obecne/nieobecne per LOD). Domyślnie `'full'`
+   *  (zachowanie L2 — istniejące wywołania testowe/harness bez parametru
+   *  dostają pełny rysunek). */
+  readonly annotationDetail?: ProtectionAnnotationDetail;
 }
 
 // ---------------------------------------------------------------------------
@@ -298,6 +344,7 @@ function buildBayStack(
       symbolId,
       bayRef: bay.bayRef,
       deviceRef: item.deviceRef,
+      linkedRef: item.linkedRef,
       apparatusSource,
       x,
       y,
@@ -363,6 +410,7 @@ function computeBbox(symbols: readonly ComposedSymbolInstance[], segments: reado
 export function composeStation(input: ComposeStationInput): StationComposition {
   const { station, column, busAxisY, blockTopY, nameSlot } = input;
   const hasLvSection = input.hasLvSection ?? false;
+  const annotationDetail = input.annotationDetail ?? 'full';
   const bayDirectionCaptions = station.bayDirectionCaptions ?? [];
 
   // FIX-4 (recenzja F5a): `tapX` w `measure`/`segments.ts`
@@ -381,6 +429,11 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   const portCaptions: PortCaptionOwnerInput[] = [];
   const apparatusLabels: SimpleAnchoredOwnerInput[] = [];
   const derLabels: SimpleAnchoredOwnerInput[] = [];
+  // F9.9 (spec §17): warstwa adnotacji zabezpieczeń — patrz docstring
+  // `StationComposition.protectionSymbols`/`protectionSegments` wyżej.
+  const protectionLabels: SimpleAnchoredOwnerInput[] = [];
+  const protectionSymbols: ComposedSymbolInstance[] = [];
+  const protectionSegments: ComposedSegment[] = [];
   const lvPorts: RoutePort[] = [];
   const busTapXs: number[] = [];
   // F9.4 (runda korekcyjna, F-2): patrz docstring `StationComposition.missingData`.
@@ -424,6 +477,164 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         { x: centerX, y: stack.topPort.y },
       ],
     });
+
+    // F9.9 (spec §17.1-§17.4): warstwa adnotacji zabezpieczeń — WYŁĄCZNIE
+    // gdy pole niesie dane (§17.2 „brak danych = brak oznaczenia") ORAZ
+    // szczegółowość LOD ją dopuszcza (§17.4, B-1 recenzji: `annotationDetail`
+    // wywiedziony z LOD przez wołającego, `protectionAnnotationDetailForLod`
+    // — `'none'` na L0 nie występuje tu w praktyce, bo `composeRowStation`
+    // zwraca wcześniej na L0, ale gałąź jest jawna dla wołających spoza
+    // sceny). Kolumna jest już zarezerwowana w `reservedWidth`
+    // (`bayColumnRequiredWidth`, `layout/measure.ts`,
+    // `protectionAnnotationColumnWidth` — jedna prawda measure↔compose, wzór
+    // F6b-1) — okrąg PRAWO-wyrównany w tej rezerwacji, niezależnie od tego,
+    // która gałąź `max()` w measure zwyciężyła.
+    if (annotationDetail !== 'none' && bayHasProtectionAnnotation(bay)) {
+      const stackDevices: readonly PlacedStackDevice[] = stack.instances;
+      const circleLeftX = snapToGrid(bx + reservedWidth - PROTECTION_ANNOTATION_DIAMETER);
+      // Y rezerwowanego okręgu przekaźnika TEJ kolumny (gdy narysowany) —
+      // zapamiętane, żeby okrąg MIERNIKA (niżej) mógł się od niego odsunąć,
+      // gdy oba kotwiczą na TYM SAMYM aparacie (typowy przypadek: jeden CT
+      // obsługuje i ochronę, i pomiar rozliczeniowy) — bez tego oba okręgi
+      // lądowały DOKŁADNIE na sobie (wykryte na harnessu wizualnym nadzorcy,
+      // `render-v3-protection.tsx`), mimo że `noSceneSymbolOverlaps` tego NIE
+      // łapie na fixturze referencyjnej (0 pól z OBOMA jednocześnie).
+      let relayCircleTopY: number | null = null;
+      // R-2 (§17.3 zd. 2): tekst pełnej listy kodów (>2 funkcji) — `null` gdy
+      // ≤2 (okrąg niesie kody w całości). Liczone RAZ (miernik niżej używa
+      // do odsunięcia).
+      const marking = resolveStationProtectionMarking(bay, stackDevices);
+      const fullList =
+        annotationDetail === 'full' && marking ? fullCodesListText(marking.codes) : null;
+
+      if (marking) {
+        const anchorCenter = protectionDeviceCenter(marking.anchor);
+        const circleTopY = snapToGrid(anchorCenter.y - PROTECTION_ANNOTATION_DIAMETER / 2);
+        relayCircleTopY = circleTopY;
+        const linkPortDef = SYMBOL_DEFS.protectionRelay.ports[0]; // 'link' (W)
+        const linkPortWorld = { x: circleLeftX + linkPortDef.x, y: circleTopY + linkPortDef.y };
+        protectionSymbols.push({
+          symbolId: 'protectionRelay',
+          bayRef: bay.bayRef,
+          x: circleLeftX,
+          y: circleTopY,
+          ports: portsInWorld(SYMBOL_DEFS.protectionRelay, circleLeftX, circleTopY),
+          // spec §17.3: maks. 2 kody, dwa PIERWSZE wg kolejności listy z
+          // danych (zero sortowania/fabrykacji) — pełna lista w etykiecie
+          // slotu pola (R-2, `#protection-codes-full` niżej) gdy >2 funkcji.
+          // §17.4 L1 (`'circle-only'`): okrąg BEZ kodów — `undefined`, glif
+          // rysuje sam kontur.
+          protectionCodes: annotationDetail === 'full' ? marking.codes.slice(0, 2) : undefined,
+        });
+
+        if (fullList) {
+          // R-2 (§17.3 zd. 2): pełna lista kodów w etykiecie slotu pola
+          // (model §4) — POD okręgiem przekaźnika, w kolumnie adnotacji
+          // (measure zarezerwował `snapUp(szerokość listy)+GRID`,
+          // `protectionAnnotationColumnWidth`). Kotwica przesunięta w LEWO
+          // od prawej krawędzi rezerwacji o połowę szerokości etykiety —
+          // `resolveSimpleAnchoredLabel` (placement 'below') centruje
+          // prostokąt na `anchor.x`, więc prawa krawędź etykiety kończy się
+          // przy prawej krawędzi rezerwacji (± snapToGrid ≤4px, pokryte
+          // zapasem GRID w measure).
+          const fullListWidth = measureLabelWidth(fullList, PROTECTION_FULL_LIST_LABEL_CLASS);
+          protectionLabels.push({
+            ownerRef: `${bay.bayRef}#protection-codes-full`,
+            ownerKind: 'protection',
+            text: fullList,
+            labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
+            anchor: {
+              x: bx + reservedWidth - Math.ceil(fullListWidth / 2),
+              y: circleTopY + PROTECTION_ANNOTATION_DIAMETER,
+            },
+            placement: 'below',
+          });
+        }
+
+        if (annotationDetail === 'full' && marking.tripTarget) {
+          // §17.2: „nigdy linia do domyślnego aparatu" — dochodzi WYŁĄCZNIE
+          // do aparatu rozwiązanego z `ProtectionAssignment.breaker_ref`
+          // (`resolveStationProtectionMarking`), zaczepiona na jego
+          // REJESTROWANYM porcie N (`breaker.ports.top`) — ten sam punkt,
+          // który wyrocznia `symbolWireCollisions`/`sceneSegmentEndpointGaps`
+          // rozpoznaje jako legalne zakotwiczenie (zero nowych kolizji z
+          // konstrukcji, §17.5e).
+          const targetDef = SYMBOL_DEFS[marking.tripTarget.symbolId];
+          const targetNorth = targetDef.ports.find((p) => p.dir === 'N');
+          const targetPort = targetNorth
+            ? { x: marking.tripTarget.x + targetNorth.x, y: marking.tripTarget.y + targetNorth.y }
+            : { x: marking.tripTarget.x + targetDef.width / 2, y: marking.tripTarget.y };
+          protectionSegments.push({
+            ownerRef: `${bay.bayRef}#trip-line`,
+            points: [
+              targetPort,
+              { x: linkPortWorld.x, y: targetPort.y },
+              { x: linkPortWorld.x, y: linkPortWorld.y },
+            ],
+          });
+          // spec §17.1/§17.3: „52" — numer urządzenia ANSI/IEEE C37.2 dla
+          // wyłącznika (notacja, nie dana ENM — koordynacja §17.6 pkt 1).
+          // WŁASNA lista (`protectionLabels`, `ownerKind:'protection'`) —
+          // nie `apparatusLabels`, żeby nie mieszać semantyki oznacznika Q/T
+          // (spec §4) z numerem urządzenia C37.2.
+          protectionLabels.push({
+            ownerRef: `${bay.bayRef}#device-number`,
+            ownerKind: 'protection',
+            text: '52',
+            // spec §17.3 literalnie: „etykieta 8 px" — `core/text.ts` klasa
+            // `t4` (fontSize 8, komentarz w tabeli: „adnotacje") jest DOKŁADNYM
+            // dopasowaniem, NIE `t3` (9px, zarezerwowana dla oznaczników Q/T
+            // §4/§9 i podpisów kierunku — inna semantyka).
+            labelClass: 't4',
+            anchor: { x: marking.tripTarget.x + targetDef.width, y: targetPort.y },
+            placement: 'right',
+          });
+        } else if (annotationDetail === 'full') {
+          // §17.2: brak rozwiązywalnego `breaker_ref` w stosie pola — okrąg
+          // BEZ linii wyzwalania, luka danych zgłoszona (zamiast cichego
+          // pominięcia, wzorzec `station.der.unattached`). WYŁĄCZNIE tryb
+          // `'full'` (L2) — na L1 (`'circle-only'`) linia jest ukryta ZE
+          // SPECYFIKACJI (§17.4), więc rozwiązywalność łącza nie jest tam
+          // obserwowalna i nie jest raportowana (audyt luk danych = L2).
+          missingData.push('bay.protection.trip_link_unresolved');
+        }
+      }
+
+      // §17.4 L1 (`'circle-only'`): „bez «52»/«M»" — miernik NIE jest rysowany
+      // ani rozliczany (gałąź poniżej wyłącznie w trybie `'full'`).
+      if (annotationDetail === 'full') {
+        const meterAnchor = resolveMeterAnchor(bay.meteringMeasurementRef, stackDevices);
+        if (meterAnchor) {
+          const meterCenter = protectionDeviceCenter(meterAnchor);
+          let meterTopY = snapToGrid(meterCenter.y - PROTECTION_ANNOTATION_DIAMETER / 2);
+          // Kolizja z okręgiem przekaźnika TEJ SAMEJ kolumny (kotwica wspólna,
+          // patrz komentarz przy `relayCircleTopY` wyżej) — miernik przesunięty
+          // POD przekaźnik, minimalny prześwit GRID (ten sam odstęp co między
+          // aparatami stosu). R-2: gdy pod okręgiem leży etykieta pełnej listy
+          // kodów (`fullList`), prześwit obejmuje też jej wiersz (t4) + GRID —
+          // miernik ląduje POD etykietą, nie na niej.
+          const minGap =
+            PROTECTION_ANNOTATION_DIAMETER +
+            GRID +
+            (fullList ? labelLineHeight(PROTECTION_FULL_LIST_LABEL_CLASS) + GRID : 0);
+          if (relayCircleTopY != null && Math.abs(meterTopY - relayCircleTopY) < minGap) {
+            meterTopY = snapUp(relayCircleTopY + minGap);
+          }
+          protectionSymbols.push({
+            symbolId: 'meter',
+            bayRef: bay.bayRef,
+            x: circleLeftX,
+            y: meterTopY,
+            ports: portsInWorld(SYMBOL_DEFS.meter, circleLeftX, meterTopY),
+          });
+        } else if (bay.meteringMeasurementRef) {
+          // Rozszerzenie WŁASNE (poza literą §17.5, wzorzec `station.der.unattached`):
+          // pomiar wskazany, ale ŻADEN aparat stosu nie niesie pasującego
+          // `linked_ref` — luka danych zgłoszona zamiast cichego pominięcia.
+          missingData.push('bay.protection.meter_anchor_unresolved');
+        }
+      }
+    }
 
     // Podpis kierunku pola (spec §9, `./directions`) — właściciel gotowy
     // dla `resolveLabels`. Wycinek B2 tego pola: szerokość rezerwacji pola,
@@ -650,9 +861,17 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     stationId: station.id,
     symbols,
     segments,
-    labels: { portCaptions, apparatus: apparatusLabels, der: derLabels, stationName },
+    labels: {
+      portCaptions,
+      apparatus: apparatusLabels,
+      der: derLabels,
+      stationName,
+      protection: protectionLabels,
+    },
     bbox: computeBbox(symbols, segments),
     missingData,
+    protectionSymbols,
+    protectionSegments,
   };
 }
 

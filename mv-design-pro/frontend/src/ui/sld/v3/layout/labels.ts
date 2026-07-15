@@ -62,7 +62,8 @@ export type OwnerKind =
   | 'apparatus'          // oznacznik aparatu (Q0/Q1/T1, t3)
   | 'der'                // rodzaj+moc DER (t2) pod symbolem
   | 'busbar-voltage'     // napięcie szyny (t2) nad lewym końcem
-  | 'no-point';          // badge „NO" (t3) przy symbolu
+  | 'no-point'           // badge „NO" (t3) przy symbolu
+  | 'protection';        // F9.9: numer urządzenia „52" (spec §17.1/§17.3, ANSI/IEEE C37.2)
 
 export interface LabelPoint {
   readonly x: number;
@@ -369,7 +370,7 @@ export type SimpleAnchorPlacement = 'above' | 'below' | 'left' | 'right';
 
 export interface SimpleAnchoredOwnerInput {
   readonly ownerRef: string;
-  readonly ownerKind: 'apparatus' | 'der' | 'busbar-voltage' | 'no-point';
+  readonly ownerKind: 'apparatus' | 'der' | 'busbar-voltage' | 'no-point' | 'protection';
   readonly text: string;
   readonly labelClass: LabelClass;
   readonly anchor: LabelPoint;

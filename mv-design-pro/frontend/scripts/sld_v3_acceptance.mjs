@@ -26,6 +26,7 @@ import { dirname, resolve } from 'node:path';
 import {
   buildSceneV3,
   allFieldEntryConnectionsReachCableHead,
+  allProtectionMarkingsValid,
   allSceneGeometryOnGrid,
   allSceneSegmentEndpointsAnchored,
   allSourcesConnected,
@@ -35,8 +36,11 @@ import {
   noBranchWithoutAccent,
   noForbiddenDirectionTokens,
   noLabelWireCollisions,
+  noProtectionAnnotationAtLod0,
   noSceneSymbolOverlaps,
   noSymbolWireCollisions,
+  protectionAnnotationAtLod1IsCircleOnly,
+  protectionMarkingGaps,
   sceneSegmentEndpointGaps,
   sourceConnectivityGaps,
   sourceCoverageGaps,
@@ -512,10 +516,61 @@ for (const lod of LODS) {
     `wartość=${verticalLength} baseline=${verticalBaseline}`,
   );
 
+  // -- §17.5 protection_marking_probe (F9.9) ---------------------------------
+  // Fixtura referencyjna niesie 0 Bay[]/protection_assignments/measurements
+  // (patrz `scene/__tests__/buildScene.test.ts` F9.9) — na TEJ fixturze ta
+  // sonda dowodzi „zero okręgów bez danych" WPROST (0 okręgów w ogóle, dowód
+  // vacuously true, nie fałszywy pozytyw); dowód pozytywny (okrąg z danych,
+  // negatyw obowiązkowy) żyje w testach vitest syntetycznych
+  // (`compose/__tests__/station.test.ts`, `scene/__tests__/buildScene.test.ts`).
+  const relayCount = scene.symbols.filter((s) => s.symbolId === 'protectionRelay').length;
+  const meterCount = scene.symbols.filter((s) => s.symbolId === 'meter').length;
+  const tripLineCount = scene.segments.filter((s) => s.meta?.kind === 'protectionTrip').length;
+  const markingGaps = protectionMarkingGaps(scene);
+  check(
+    'protection_marking_probe (§17.5 a-c): okręgi przekaźnika mają kody+ownerRef (≤2), tory wyzwalania kończą się na REJESTROWANYCH portach wyłącznika+przekaźnika TEGO SAMEGO pola',
+    allProtectionMarkingsValid(scene),
+    `okręgi=${relayCount} mierniki=${meterCount} tory=${tripLineCount} luki=${markingGaps.length}`,
+  );
+  check(
+    'protection_marking_probe (§17.5e): L0 bez warstwy adnotacji zabezpieczeń',
+    noProtectionAnnotationAtLod0(scene),
+  );
+  // B-1 (§17.4 L1): sam okrąg bez kodów/toru/„52"/„M" — na tej fixturze
+  // pusto-prawdziwe (0 danych §17.2); dowód POZYTYWNY + negatywy na scenach
+  // syntetycznych w `buildScene.test.ts` (wymóg recenzji F9.9).
+  check(
+    'protection_marking_probe (§17.4 L1, B-1): warstwa adnotacji na L1 = sam okrąg (bez kodów/toru/„52"/„M")',
+    protectionAnnotationAtLod1IsCircleOnly(scene),
+  );
+
   // -- §16/§15.2 ciągłość elektryczna + lod_path_probe -----------------------
   // F9.7: rozszerzone z „WYŁĄCZNIE LOD 2" na WSZYSTKIE LOD (patrz docstring
   // `checkContinuity` — dowód empiryczny, spec §15.2 wymaga tego na L0/L1/L2).
   mainTrunkSignatureByLod[lod] = checkContinuity(scene);
+}
+
+// -- protection_marking_probe (negatyw obowiązkowy, §17.5a) ----------------
+// Dowód, że wyrocznia GRYZIE (nie zawsze zielona) — okrąg fabrykowany bez
+// kodów na scenie realnej MUSI failować `allProtectionMarkingsValid`.
+{
+  const scene = buildSceneV3(enm, 2);
+  const fabricated = {
+    ...scene,
+    symbols: [
+      ...scene.symbols,
+      {
+        symbolId: 'protectionRelay',
+        x: 0,
+        y: 0,
+        meta: { ownerRef: 'accept-sld-v3-fabricated', elementKind: 'protectionAnnotation', protectionCodes: [] },
+      },
+    ],
+  };
+  check(
+    'protection_marking_probe (test negatywny — dowód, że wyrocznia gryzie): okrąg BEZ kodów fabrykowany na scenie MUSI dać FAIL',
+    allProtectionMarkingsValid(fabricated) === false,
+  );
 }
 
 // -- §15.2 lod_path_probe: „pokrywa TE SAME połączenia topologiczne" -------

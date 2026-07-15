@@ -30,7 +30,9 @@ export type SymbolId =
   | 'derGenerator'     // generator (G w okręgu)
   | 'derWind'          // farma wiatrowa (turbina, F9.4 §13.2)
   | 'gridSource'       // sieć zewnętrzna (Source ENM, F9.4 §13.1/§13.2)
-  | 'stationCollapsed'; // stacja SN/nN, widok zbiorczy (L0) — kontur kwadratu
+  | 'stationCollapsed' // stacja SN/nN, widok zbiorczy (L0) — kontur kwadratu
+  | 'protectionRelay'  // F9.9: przekaźnik zabezpieczeniowy (okrąg + kody ANSI, §17.1)
+  | 'meter';           // F9.9: miernik (okrąg „M", §17.1)
 
 export interface SymbolDef {
   readonly id: SymbolId;
@@ -140,6 +142,26 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
     { name: 'e', x: 16, y: 8, dir: 'E' },
     { name: 'w', x: 0, y: 8, dir: 'W' },
   ], 'Stacja (widok zbiorczy)'),
+  // F9.9 (spec §17.1/§17.3): przekaźnik zabezpieczeniowy — okrąg 24×24
+  // (3×GRID) w kolumnie adnotacji pola. Element ADNOTACJI (NIE aparat toru
+  // mocy, §17.1: „nie uczestniczy w ciągłości elektrycznej ani w wyroczniach
+  // toru") — port `link` WYŁĄCZNIE geometryczny (zaczep TORU WYZWALANIA
+  // przerywanego, §17.1), nie oznacza udziału w routingu elektrycznym.
+  // Port `link` na y=8 (NIE geometryczny środek y=12 — 24/2=12 NIE jest
+  // wielokrotnością GRID=8, złamałoby grid_probe §11.2; y=8 jest najbliższą
+  // wielokrotnością GRID w bboxie 24×24, wybór wizualnie równoważny).
+  protectionRelay: def('protectionRelay', 24, 24, [
+    { name: 'link', x: 0, y: 8, dir: 'W' },
+  ], 'Przekaźnik zabezpieczeniowy'),
+  // F9.9 (spec §17.1): miernik — okrąg 24×24 (3×GRID), TA SAMA średnica co
+  // przekaźnik (§17.3 nie różnicuje gabarytu). Spec nie przewiduje rysowanej
+  // linii do miernika (kotwiczenie WYŁĄCZNIE pozycją, §17.2 „okrąg M przy
+  // przekładniku pomiarowym") — port `anchor` WYŁĄCZNIE dla spójności z
+  // biblioteką (każdy symbol ma ≥1 port, `symbols/__tests__/symbols.test.tsx`
+  // grid_probe), nieużywany przez routing/tor wyzwalania.
+  meter: def('meter', 24, 24, [
+    { name: 'anchor', x: 0, y: 8, dir: 'W' },
+  ], 'Miernik'),
 };
 
 /** Szyna zbiorcza — długość z treści (P1), więc fabryka, nie stała definicja. */

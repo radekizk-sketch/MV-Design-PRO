@@ -57,6 +57,13 @@ import type {
   StationNameBandRow,
 } from '../layout/labels';
 import { stackFootprint } from './station';
+import {
+  PROTECTION_ANNOTATION_DIAMETER,
+  PROTECTION_FULL_LIST_LABEL_CLASS,
+  fullCodesListText,
+  protectionAnnotationColumnWidth,
+  type ProtectionAnnotationDetail,
+} from './protectionMarking';
 import type {
   CanonicalGpzBay,
   CanonicalGpzBusbarTopology,
@@ -141,6 +148,34 @@ export interface GpzCompositionLabelInputs {
   /** Podpisy celu/kierunku pola (feederName/destinationLabel) — mechanizm
    *  wierszy (`colorSegmentLabelRows`), patrz nagłówek pliku. */
   readonly fieldCaptions: readonly PortCaptionOwnerInput[];
+  /** F9.9 R-1/R-2 (spec §17.3): etykieta pełnej listy kodów (>2 funkcji) —
+   *  lustro `StationCompositionLabelInputs.protection` (compose/station.ts).
+   *  GPZ NIE emituje „52" (tor wyzwalania odroczony — patrz
+   *  `GpzComposition.protectionSymbols` niżej), więc lista niesie dziś
+   *  WYŁĄCZNIE `#protection-codes-full`. */
+  readonly protection: readonly SimpleAnchoredOwnerInput[];
+}
+
+/**
+ * F9.9 R-1 (rozstrzygnięcie architekta, recenzja 2026-07-15): okrąg
+ * przekaźnika w GPZ — SAM OKRĄG z kodami (dane: `CanonicalGpzBay.
+ * protectionCodes`, adapter `enmToCanonicalGpzAdapter.ts:377`), BEZ toru
+ * wyzwalania: kompozycja GPZ nie śledzi `device_ref` per aparat (stosy z
+ * SZABLONÓW `FieldApparatusSpec`, nie z `primary_devices`), więc dopasowanie
+ * `ProtectionAssignment.breaker_ref` na KONKRETNY narysowany aparat jest tu
+ * niewykonalne bez rejestru device-ref — tor wyzwalania GPZ = F8c/F9.10.
+ * Okrąg bez toru w GPZ NIE jest luką danych (`missingData`) — to
+ * udokumentowany zakres F9.9 (patrz też wyjątek w `protectionMarkingGaps`,
+ * `scene/buildScene.ts`).
+ */
+export interface ComposedGpzProtectionSymbol {
+  readonly symbolId: 'protectionRelay';
+  readonly bayRef: string;
+  readonly x: number;
+  readonly y: number;
+  /** Dwa pierwsze kody z `protectionCodes` (§17.3) — `undefined` w trybie
+   *  `'circle-only'` (L1, §17.4). */
+  readonly protectionCodes?: readonly string[];
 }
 
 /**
@@ -168,6 +203,11 @@ export interface GpzComposition {
   readonly parityKeys: ReadonlySet<string>;
   /** Odpowiednik stanów „brak danych" v2 (`gpz.hv.missing`/`gpz.transformer.missing`). */
   readonly missingData: readonly string[];
+  /** F9.9 R-1 (spec §17.1/§17.4): okręgi przekaźników pól SN — ODDZIELNE od
+   *  `symbols` (warstwa adnotacji, jak `StationComposition.protectionSymbols`
+   *  — nie uczestniczy w wyroczniach toru/parity). Patrz docstring
+   *  `ComposedGpzProtectionSymbol`. */
+  readonly protectionSymbols: readonly ComposedGpzProtectionSymbol[];
   readonly bbox: V3Rect;
 }
 
@@ -363,6 +403,10 @@ interface FieldColumnLayout {
   /** Środek kolumny aparatów, WORLD X (sekcja jest już umieszczona w świecie
    *  w momencie budowy tej struktury — patrz `layoutSections`). */
   readonly centerX: number;
+  /** F9.9 R-1: prawa krawędź REZERWACJI kolumny pola (WORLD X) — okrąg
+   *  adnotacji zabezpieczeń jest do niej prawo-wyrównany (ten sam model co
+   *  `compose/station.ts`: `bx + reservedWidth`). */
+  readonly rightX: number;
 }
 
 interface SectionLayout {
@@ -372,15 +416,31 @@ interface SectionLayout {
   readonly fields: readonly FieldColumnLayout[];
 }
 
+/** F9.9 R-1: szerokość kolumny adnotacji zabezpieczeń pola GPZ — TA SAMA
+ *  funkcja co stacje (`protectionAnnotationColumnWidth`,
+ *  `compose/protectionMarking.ts`, jedna prawda measure↔compose), zasilona
+ *  adapterem kształtu (`CanonicalGpzBay.protectionCodes` →
+ *  `protectionMarking.codes`; GPZ nie niesie miernika/`ct_ref` — patrz
+ *  `ComposedGpzProtectionSymbol`). Zero, gdy pole bez kodów (§17.2). */
+function gpzBayAnnotationWidth(bay: CanonicalGpzBay): number {
+  const codes = bay.protectionCodes ?? [];
+  return protectionAnnotationColumnWidth({
+    protectionMarking: codes.length > 0 ? { codes } : undefined,
+  });
+}
+
 /** Szerokość WYMAGANA kolumny pola: gabaryt stosu aparatów (`stackFootprint`,
  *  reużyte z `./station` — zero duplikacji geometrii) + sidecar oznacznika
  *  (bayNumber/feederName, t3), analogicznie do `bayColumnRequiredWidth`
- *  (`layout/measure.ts`) w compose/station.ts. */
+ *  (`layout/measure.ts`) w compose/station.ts. F9.9 R-1: + kolumna adnotacji
+ *  zabezpieczeń, TYLKO dla pól z `protectionCodes` (§17.3 — zero zmian
+ *  geometrii dla pól bez danych; fixtura referencyjna: 0 pól z kodami,
+ *  zweryfikowane, baseline'y nietknięte). */
 function fieldColumnRequiredWidth(bay: CanonicalGpzBay, spec: readonly FieldApparatusSpec[]): number {
   const footprint = stackFootprint(spec.map((s) => s.symbolId));
   const designation = (bay.bayNumber ?? bay.feederName ?? '').trim();
   const sidecar = designation ? GRID + measureLabelWidth(designation, 't3') : 0;
-  return footprint.width + sidecar;
+  return footprint.width + sidecar + gpzBayAnnotationWidth(bay);
 }
 
 function layoutSectionFields(section: CanonicalGpzSection, startX: number): { readonly fields: readonly FieldColumnLayout[]; readonly width: number } {
@@ -391,7 +451,7 @@ function layoutSectionFields(section: CanonicalGpzSection, startX: number): { re
     const footprint = stackFootprint(spec.map((s) => s.symbolId));
     const reserved = snapUp(fieldColumnRequiredWidth(bay, spec));
     const centerX = snapToGrid(cursor + footprint.width / 2);
-    fields.push({ bay, index, spec, centerX });
+    fields.push({ bay, index, spec, centerX, rightX: cursor + reserved });
     cursor += reserved + FIELD_GAP;
   });
   const contentRight = fields.length > 0 ? cursor - FIELD_GAP + SECTION_MARGIN : startX + SECTION_MARGIN * 2;
@@ -505,6 +565,11 @@ export function composeGpz(
   props: GpzCanonicalRendererProps,
   origin: { readonly x: number; readonly y: number },
   gridSources: readonly GpzGridSourceInput[] = [],
+  // F9.9 B-1/R-1 (spec §17.4): szczegółowość warstwy adnotacji zabezpieczeń —
+  // ten sam kontrakt co `ComposeStationInput.annotationDetail`
+  // (compose/station.ts). GPZ jest komponowany na KAŻDYM LOD (w tym L0,
+  // patrz `buildScene.ts` nagłówek), więc `'none'` jest tu realną gałęzią.
+  annotationDetail: ProtectionAnnotationDetail = 'full',
 ): GpzComposition {
   const originX = snapToGrid(origin.x);
   const originY = snapToGrid(origin.y);
@@ -516,6 +581,8 @@ export function composeGpz(
   const transformerLabels: StationNameBandOwnerInput[] = [];
   const fieldDesignations: SimpleAnchoredOwnerInput[] = [];
   const fieldCaptions: PortCaptionOwnerInput[] = [];
+  const protectionLabels: SimpleAnchoredOwnerInput[] = [];
+  const protectionSymbols: ComposedGpzProtectionSymbol[] = [];
   const sectionMetas: GpzSectionMeta[] = [];
   const transformerMetas: GpzTransformerMeta[] = [];
 
@@ -754,6 +821,55 @@ export function composeGpz(
           anchorX: field.centerX,
           primaryRect: { x: candidate.x, y: rowY, width: candidate.width, height: captionRowHeight },
         });
+      }
+
+      // F9.9 R-1 (spec §17.1-§17.4): okrąg przekaźnika pola SN GPZ — SAM
+      // OKRĄG, bez toru wyzwalania (patrz docstring
+      // `ComposedGpzProtectionSymbol`: brak rejestru device-ref w stosach
+      // szablonowych GPZ; tor = F8c/F9.10; brak toru tu NIE jest
+      // `missingData`). Kotwica: geometryczny odpowiednik reguły §17.2 —
+      // CT stosu gdy narysowany, inaczej wyłącznik, inaczej pierwszy aparat
+      // (dopasowanie po `symbolId` NARYSOWANEGO stosu, nie po refach ENM —
+      // GPZ ich nie niesie; pozycjonowanie, nie asercja danych). Okrąg
+      // prawo-wyrównany do rezerwacji kolumny (`field.rightX`,
+      // `gpzBayAnnotationWidth` w `fieldColumnRequiredWidth` — jedna prawda
+      // rezerwacja↔rysunek). LOD §17.4: `'full'` kody (2 pierwsze) + pełna
+      // lista (>2, R-2); `'circle-only'` sam kontur; `'none'` nic.
+      const gpzCodes = field.bay.protectionCodes ?? [];
+      if (annotationDetail !== 'none' && gpzCodes.length > 0) {
+        const anchorInstance =
+          stack.instances.find((s) => s.symbolId === 'currentTransformer')
+          ?? stack.instances.find((s) => s.symbolId === 'breaker')
+          ?? stack.instances[0];
+        const anchorDef = SYMBOL_DEFS[anchorInstance.symbolId];
+        const anchorCenterY = anchorInstance.y + anchorDef.height / 2;
+        const circleLeftX = snapToGrid(field.rightX - PROTECTION_ANNOTATION_DIAMETER);
+        const circleTopY = snapToGrid(anchorCenterY - PROTECTION_ANNOTATION_DIAMETER / 2);
+        protectionSymbols.push({
+          symbolId: 'protectionRelay',
+          bayRef: field.bay.bayRef,
+          x: circleLeftX,
+          y: circleTopY,
+          protectionCodes: annotationDetail === 'full' ? gpzCodes.slice(0, 2) : undefined,
+        });
+        const fullList = annotationDetail === 'full' ? fullCodesListText(gpzCodes) : null;
+        if (fullList) {
+          // R-2 (§17.3 zd. 2) — ten sam model co `compose/station.ts`
+          // (`#protection-codes-full`): etykieta pod okręgiem, prawo-dosunięta
+          // do rezerwacji (measure zarezerwował `snapUp(szerokość)+GRID`).
+          const fullListWidth = measureLabelWidth(fullList, PROTECTION_FULL_LIST_LABEL_CLASS);
+          protectionLabels.push({
+            ownerRef: `${field.bay.bayRef}#protection-codes-full`,
+            ownerKind: 'protection',
+            text: fullList,
+            labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
+            anchor: {
+              x: field.rightX - Math.ceil(fullListWidth / 2),
+              y: circleTopY + PROTECTION_ANNOTATION_DIAMETER,
+            },
+            placement: 'below',
+          });
+        }
       }
     });
   });
@@ -1021,11 +1137,19 @@ export function composeGpz(
     gpzId: props.id,
     symbols,
     segments,
-    labels: { stationName, sectionLabels, transformerLabels, fieldDesignations, fieldCaptions },
+    labels: {
+      stationName,
+      sectionLabels,
+      transformerLabels,
+      fieldDesignations,
+      fieldCaptions,
+      protection: protectionLabels,
+    },
     sections: sectionMetas,
     transformers: transformerMetas,
     parityKeys,
     missingData,
+    protectionSymbols,
     bbox: computeBbox(symbols, segments),
   };
 }

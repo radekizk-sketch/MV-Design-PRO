@@ -151,6 +151,10 @@ import {
   FORBIDDEN_RAW_DIRECTION_TOKENS,
 } from '../compose/directions';
 import type { DerSourceKind, StationDerSourceInput } from '../compose/sourceKind';
+import {
+  bayHasProtectionAnnotation,
+  protectionAnnotationDetailForLod,
+} from '../compose/protectionMarking';
 import type {
   PreviewComposition,
   PreviewElementKind,
@@ -506,6 +510,8 @@ interface ComposedRowStation {
   readonly apparatusOwners: readonly SimpleAnchoredOwnerInput[];
   readonly portCaptionOwners: readonly PortCaptionOwnerInput[];
   readonly derOwners: readonly SimpleAnchoredOwnerInput[];
+  /** F9.9 (spec §17.3): etykiety „52" — patrz `StationCompositionLabelInputs.protection`. */
+  readonly protectionOwners: readonly SimpleAnchoredOwnerInput[];
   /**
    * F9.3 (FIX-1, korekta po recenzji Opusa, spec §12.3): port POŁĄCZENIA
    * kabla międzystacyjnego wchodzącego/wychodzącego z pola „poprzednik"/
@@ -569,6 +575,7 @@ function composeRowStation(
       apparatusOwners: [],
       portCaptionOwners: [],
       derOwners: [],
+      protectionOwners: [],
       entryPort: { x: column.tapX, y: busAxisY },
       exitPort: { x: column.tapX, y: busAxisY },
       branchPort: () => ({ x: column.tapX, y: busAxisY }),
@@ -583,6 +590,10 @@ function composeRowStation(
     blockTopY,
     nameSlot: column.nameSlot,
     hasLvSection,
+    // F9.9 B-1 (spec §17.4): L2 pełna adnotacja, L1 sam okrąg (bez kodów/
+    // toru/„52"/„M") — `protectionAnnotationDetailForLod`; L0 nie dochodzi
+    // tu (early-return `lod===0` wyżej).
+    annotationDetail: protectionAnnotationDetailForLod(lod),
   });
 
   // F9.4 (runda korekcyjna, F-2, spec §14.1): ujednolicone z GPZ
@@ -591,11 +602,31 @@ function composeRowStation(
   // `'station.der.unattached'` — DER na `nn_side` bez pola TR) przenoszone
   // do `stopNotes` TEGO wołania (parametr wspólny z resztą `buildRowLayout`,
   // patrz nagłówek funkcji) — koniec cichego gubienia bez śladu w audycie.
-  if (composition.missingData.length > 0) {
+  if (composition.missingData.includes('station.der.unattached')) {
     const derIds = (measureInput.derSources ?? []).map((d) => d.id).join(', ') || 'brak id';
     stopNotes.push(
       `Stacja „${measureInput.id}": DER przyłączone (nn_side) bez pola transformatorowego w danych — ` +
         `brak punktu przyłączenia geometrycznego (spec §14.1), źródło pominięte na scenie: ${derIds}.`,
+    );
+  }
+  // F9.9 (spec §17.2): tor wyzwalania/kotwica miernika nierozwiązywalne w
+  // stosie NARYSOWANYM (§17.2 „nigdy linia do domyślnego aparatu") —
+  // ujednolicone z DER (wzorzec wyżej), wołający czyta pole-po-polu
+  // (`bayHasProtectionAnnotation`/`resolveStationProtectionMarking`) z TYCH
+  // SAMYCH funkcji, którymi `compose/station.ts` zbudował kompozycję.
+  if (composition.missingData.includes('bay.protection.trip_link_unresolved')) {
+    const affected = measureInput.snBays
+      .filter((bay) => bayHasProtectionAnnotation(bay) && (bay.protectionMarking?.codes.length ?? 0) > 0)
+      .map((bay) => bay.bayRef)
+      .join(', ') || 'brak id';
+    stopNotes.push(
+      `Stacja „${measureInput.id}": okrąg przekaźnika narysowany bez toru wyzwalania — ` +
+        `„ProtectionAssignment.breaker_ref" nierozwiązywalny na aparat stosu pola (spec §17.2): ${affected}.`,
+    );
+  }
+  if (composition.missingData.includes('bay.protection.meter_anchor_unresolved')) {
+    stopNotes.push(
+      `Stacja „${measureInput.id}": pomiar rozliczeniowy wskazany, ale nierozwiązywalny na aparat CT/VT stosu pola (spec §17.2) — miernik „M" pominięty na scenie.`,
     );
   }
 
@@ -658,13 +689,38 @@ function composeRowStation(
     };
   });
 
+  // F9.9 (spec §17.1): warstwa adnotacji zabezpieczeń — projekcja ODDZIELNA
+  // od `composition.symbols`/`segments` powyżej (`elementKind:
+  // 'protectionAnnotation'`/`kind: 'protectionTrip'`, WYŁĄCZONE z reguł
+  // ciągłości/portów §12-§16 przez `sourceConnectivityGaps`/
+  // `sceneSegmentEndpointGaps`, patrz ich docstringi — dołączane do TEJ SAMEJ
+  // płaskiej `scene.symbols`/`scene.segments` dla wyroczni kolizji/siatki,
+  // §17.5e). `symbols`/`segments` (const, wyżej) NIE są mutowane w miejscu —
+  // scalenie jest ADDYTYWNE na wyjściu (`[...symbols, ...protectionSymbols]`).
+  const protectionSymbols: PreviewSymbol[] = composition.protectionSymbols.map((s) => ({
+    symbolId: s.symbolId,
+    x: s.x,
+    y: s.y,
+    meta: {
+      testId: `${s.bayRef}#${s.symbolId}`,
+      ownerRef: s.bayRef,
+      elementKind: 'protectionAnnotation',
+      protectionCodes: s.protectionCodes,
+    },
+  }));
+  const protectionSegments: PreviewSegment[] = composition.protectionSegments.map((s) => ({
+    points: s.points,
+    meta: { kind: 'protectionTrip', ownerRef: s.ownerRef, elementKind: 'protectionAnnotation' },
+  }));
+
   return {
-    symbols,
-    segments,
+    symbols: [...symbols, ...protectionSymbols],
+    segments: [...segments, ...protectionSegments],
     stationNameOwner: composition.labels.stationName,
     apparatusOwners: composition.labels.apparatus,
     portCaptionOwners: composition.labels.portCaptions,
     derOwners: composition.labels.der,
+    protectionOwners: composition.labels.protection,
     entryPort,
     exitPort,
     branchPort: (branchPos: number) => {
@@ -1145,7 +1201,12 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // F9.4: pass1 (Y-alignment tylko) NIE potrzebuje `gridSources` — port
     // zaczepu magistrali (`findGpzTrunkPort`) jest niezależny od symbolu
     // źródła zewnętrznego, dodawanego WYŁĄCZNIE nad szyną SN (część C).
-    const pass1 = composeGpz(gpzData, { x: 0, y: 0 });
+    // F9.9 B-1 (spec §17.4): szczegółowość warstwy adnotacji z LOD —
+    // pass1 (Y-alignment) też ją dostaje (identyczna geometria pass1↔pass2:
+    // adnotacja NIE zmienia portu zaczepu, ale spójność wywołań jest tańsza
+    // niż dowód, że nie zmieni go nigdy).
+    const annotationDetail = protectionAnnotationDetailForLod(lod);
+    const pass1 = composeGpz(gpzData, { x: 0, y: 0 }, [], annotationDetail);
     const port1 = findGpzTrunkPort(pass1, gpzData, []);
     const targetBusAxisY = mainLayout ? mainLayout.busAxisY : 0;
     const originY = snapToGrid(targetBusAxisY - port1.y);
@@ -1153,6 +1214,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       gpzData,
       { x: 0, y: originY },
       externalGridSources.map((s) => ({ id: s.id })),
+      annotationDetail,
     );
     gpzRightEdgeX = gpzComposition.bbox.x + gpzComposition.bbox.width;
     mainRowDx = snapUp(gpzRightEdgeX) + GPZ_TRUNK_GAP;
@@ -1164,9 +1226,29 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // -- 4. Skomponuj GPZ → preview + etykiety + meta. -------------------------
   if (gpzComposition) {
     allSymbols.push(...gpzComposition.symbols.map(gpzSymbolToPreview));
+    // F9.9 R-1 (spec §17.1): okręgi przekaźników GPZ — warstwa adnotacji
+    // (BEZ toru wyzwalania, patrz `ComposedGpzProtectionSymbol`,
+    // `compose/gpz.ts`), ten sam kształt meta co stacje (`composeRowStation`).
+    allSymbols.push(
+      ...gpzComposition.protectionSymbols.map((s): PreviewSymbol => ({
+        symbolId: s.symbolId,
+        x: s.x,
+        y: s.y,
+        meta: {
+          testId: `${s.bayRef}#${s.symbolId}`,
+          ownerRef: s.bayRef,
+          elementKind: 'protectionAnnotation',
+          protectionCodes: s.protectionCodes,
+        },
+      })),
+    );
     allSegments.push(...gpzComposition.segments.map(gpzSegmentToPreview));
     stationNameBands.push(gpzComposition.labels.stationName, ...gpzComposition.labels.transformerLabels);
-    simpleAnchored.push(...gpzComposition.labels.sectionLabels, ...gpzComposition.labels.fieldDesignations);
+    simpleAnchored.push(
+      ...gpzComposition.labels.sectionLabels,
+      ...gpzComposition.labels.fieldDesignations,
+      ...gpzComposition.labels.protection,
+    );
     // f6-1 (BINDING, patrz nagłówek pliku): fieldCaptions kolorowane PER
     // SEKCJA przez composeGpz; fixtura ma 1 sekcję (ryzyko nie manifestuje
     // się) — WIĄŻĄCA notatka dla >1 sekcji, patrz raport F6a.
@@ -1195,7 +1277,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       allSegments.push(...composed.segments);
       stationNameBands.push(composed.stationNameOwner);
       portCaptions.push(...composed.portCaptionOwners);
-      simpleAnchored.push(...composed.apparatusOwners, ...composed.derOwners);
+      simpleAnchored.push(...composed.apparatusOwners, ...composed.derOwners, ...composed.protectionOwners);
       if (props.isNop) {
         simpleAnchored.push({
           ownerRef: `${measureInput.id}#no-point`,
@@ -1364,7 +1446,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       allSegments.push(...composed.segments);
       stationNameBands.push(composed.stationNameOwner);
       portCaptions.push(...composed.portCaptionOwners);
-      simpleAnchored.push(...composed.apparatusOwners, ...composed.derOwners);
+      simpleAnchored.push(...composed.apparatusOwners, ...composed.derOwners, ...composed.protectionOwners);
       if (props.isNop) {
         simpleAnchored.push({
           ownerRef: `${measureInput.id}#no-point`,
@@ -2161,14 +2243,26 @@ export function sourceConnectivityGaps(scene: SceneV3): readonly SourceConnectiv
   const segNode = (i: number): number => i;
   const symNode = (i: number): number => segCount + i;
 
+  // F9.9 R-3 (rekomendacja recenzenta, spec §17.1 „nie uczestniczy w
+  // ciągłości elektrycznej"): tor wyzwalania (`kind==='protectionTrip'`) jest
+  // ADNOTACJĄ, nie przewodem mocy — WYKLUCZONY z unii przez dotyk (obie
+  // pętle), żeby nigdy nie mostkował komponentów spójności (przekaźnik→CB
+  // fizycznie łączy obwód wtórny, nie tor pierwotny). Test negatywny w
+  // `buildScene.test.ts` (syntetyczny tor łączący odcięte źródło z szyną ⇒
+  // źródło NADAL zgłaszane jako odcięte).
+  const isTripSegment = (si: number): boolean => scene.segments[si].meta?.kind === 'protectionTrip';
+
   for (let i = 0; i < segCount; i++) {
+    if (isTripSegment(i)) continue;
     for (let j = i + 1; j < segCount; j++) {
+      if (isTripSegment(j)) continue;
       if (segmentsTouch(scene.segments[i], scene.segments[j])) dsu.union(segNode(i), segNode(j));
     }
   }
   scene.symbols.forEach((sym, mi) => {
     const ports = symbolPortsInWorld(sym);
     scene.segments.forEach((seg, si) => {
+      if (isTripSegment(si)) return;
       if (ports.some((p) => pointTouchesSegment(p, seg))) dsu.union(symNode(mi), segNode(si));
     });
   });
@@ -2200,4 +2294,135 @@ export function sourceConnectivityGaps(scene: SceneV3): readonly SourceConnectiv
 
 export function allSourcesConnected(scene: SceneV3): boolean {
   return sourceConnectivityGaps(scene).length === 0;
+}
+
+// ---------------------------------------------------------------------------
+// F9.9 — protection_marking_probe (spec §17.5 a-e).
+// ---------------------------------------------------------------------------
+
+export interface ProtectionMarkingGap {
+  readonly reason:
+    | 'circle-without-codes'
+    | 'circle-without-owner'
+    | 'codes-exceed-two'
+    | 'codes-present-at-lod1'
+    | 'trip-line-endpoint-mismatch';
+  readonly ownerRef?: string;
+}
+
+/**
+ * protection_marking_probe (spec §17.5): (a) każdy okrąg przekaźnika
+ * (`symbolId==='protectionRelay'`) ma `meta.ownerRef` niepusty ORAZ — na L2
+ * — `meta.protectionCodes` niepuste — zero okręgów bez danych (§17.2 „brak
+ * danych = brak oznaczenia"), negatyw obowiązkowy pokryty testem
+ * (`buildScene.test.ts`: syntetyczny okrąg bez kodów ⇒ FAIL). Na L1 (§17.4,
+ * B-1 recenzji): okrąg MUSI być BEZ kodów (`'codes-present-at-lod1'` — kody
+ * na L1 to naruszenie kontraktu LOD, nie luka danych); pełny kształt L1
+ * dowodzi `protectionAnnotationAtLod1IsCircleOnly` niżej. (c, część
+ * STRUKTURALNA — granica liczności): maks. 2 kody w okręgu; DOWÓD PEŁNY
+ * „kody = prefiks `protection_codes` bez sortowania/fabrykacji" żyje na
+ * warstwie `compose/station.ts` (`compose/__tests__/station.test.ts`) — scena
+ * sama nie niesie źródłowej listy `Bay.protection_codes` (WYŁĄCZNIE dwa
+ * wybrane kody trafiają na symbol), więc nie może dowieść WOBEC źródła, tylko
+ * granicy liczności tutaj. (b) każda linia wyzwalania
+ * (`meta.kind==='protectionTrip'`) łączy REJESTROWANY port aparatu `breaker`
+ * z REJESTROWANYM portem `protectionRelay` TEGO SAMEGO pola (`ownerRef` bay
+ * wspólny, odczytany z sufiksu `#trip-line` — WHITE BOX, zero zgadywania
+ * którędy linia biegnie/do jakiego aparatu).
+ *
+ * WYJĄTEK JAWNY (R-1, rozstrzygnięcie architekta 2026-07-15): okrąg BEZ
+ * ŻADNEJ linii wyzwalania jest LEGALNY — dwa udokumentowane przypadki:
+ * (1) GPZ (kompozycja szablonowa bez rejestru device-ref — tor wyzwalania
+ * GPZ odroczony do F8c/F9.10, patrz `ComposedGpzProtectionSymbol`,
+ * `compose/gpz.ts`); (2) stacja z nierozwiązywalnym `breaker_ref`
+ * (§17.2 — raportowane osobno przez `missingData`
+ * `bay.protection.trip_link_unresolved`, nie przez tę sondę). Sonda (b)
+ * sprawdza więc WYŁĄCZNIE zakotwiczenie linii ISTNIEJĄCYCH — nigdy nie
+ * wymaga linii per okrąg.
+ *
+ * (d) determinizm: `buildSceneV3` jest czystą funkcją (P7) — dziedziczony z
+ * konstrukcji, bez odrębnej maszynerii (zero `Date`/`Math.random` w całej
+ * dostawie F9.9). (e) L0: patrz `noProtectionAnnotationAtLod0` niżej (inny
+ * kształt dowodu — per-LOD, nie per-scena pojedynczej).
+ */
+export function protectionMarkingGaps(scene: SceneV3): readonly ProtectionMarkingGap[] {
+  const gaps: ProtectionMarkingGap[] = [];
+  const relaySymbols = scene.symbols.filter((s) => s.symbolId === 'protectionRelay');
+  const breakerSymbols = scene.symbols.filter((s) => s.symbolId === 'breaker');
+
+  relaySymbols.forEach((s) => {
+    const codes = s.meta?.protectionCodes ?? [];
+    // §17.4 (B-1): wymaganie kodów jest funkcją LOD — L2 wymaga, L1 ZAKAZUJE.
+    if (scene.meta.lod === 2 && codes.length === 0) {
+      gaps.push({ reason: 'circle-without-codes', ownerRef: s.meta?.ownerRef });
+    }
+    if (scene.meta.lod === 1 && codes.length > 0) {
+      gaps.push({ reason: 'codes-present-at-lod1', ownerRef: s.meta?.ownerRef });
+    }
+    if (!s.meta?.ownerRef) gaps.push({ reason: 'circle-without-owner' });
+    if (codes.length > 2) gaps.push({ reason: 'codes-exceed-two', ownerRef: s.meta?.ownerRef });
+  });
+
+  scene.segments
+    .filter((seg) => seg.meta?.kind === 'protectionTrip')
+    .forEach((seg) => {
+      const bayRef = seg.meta?.ownerRef?.replace(/#trip-line$/, '');
+      const first = seg.points[0];
+      const last = seg.points[seg.points.length - 1];
+      const touchesOwnBreaker = breakerSymbols.some(
+        (b) =>
+          b.meta?.ownerRef === bayRef &&
+          symbolPortsInWorld(b).some((p) => p.x === first?.x && p.y === first?.y),
+      );
+      const touchesOwnRelay = relaySymbols.some(
+        (r) =>
+          r.meta?.ownerRef === bayRef &&
+          symbolPortsInWorld(r).some((p) => p.x === last?.x && p.y === last?.y),
+      );
+      if (!touchesOwnBreaker || !touchesOwnRelay) {
+        gaps.push({ reason: 'trip-line-endpoint-mismatch', ownerRef: seg.meta?.ownerRef });
+      }
+    });
+
+  return gaps;
+}
+
+export function allProtectionMarkingsValid(scene: SceneV3): boolean {
+  return protectionMarkingGaps(scene).length === 0;
+}
+
+/** (e) spec §17.4: L0 — „warstwa adnotacji NIEOBECNA" — zero symboli
+ *  `protectionRelay`/`meter`, zero segmentów `protectionTrip`. Prawdziwe Z
+ *  KONSTRUKCJI (L0 nie wywołuje `composeStation` na realnych polach —
+ *  `composeRowStation` gałąź `lod===0` zwraca WCZEŚNIEJ; GPZ dostaje
+ *  `annotationDetail='none'`), ta funkcja to dowód dla CI, nie mechanizm. */
+export function noProtectionAnnotationAtLod0(scene: SceneV3): boolean {
+  if (scene.meta.lod !== 0) return true;
+  const hasSymbol = scene.symbols.some((s) => s.symbolId === 'protectionRelay' || s.symbolId === 'meter');
+  const hasSegment = scene.segments.some((s) => s.meta?.kind === 'protectionTrip');
+  return !hasSymbol && !hasSegment;
+}
+
+/**
+ * F9.9 B-1 (spec §17.4 L1, wyrocznia wymagana recenzją): na L1 warstwa
+ * adnotacji zabezpieczeń to WYŁĄCZNIE okrąg przekaźnika BEZ kodów —
+ * (1) każdy `protectionRelay` ma puste/nieobecne `protectionCodes`;
+ * (2) zero segmentów `protectionTrip` (linia wyzwalania ukryta);
+ * (3) zero symboli `meter` („M" nieobecne);
+ * (4) zero etykiet `ownerKind==='protection'` („52"/pełna lista nieobecne).
+ * Dla scen L0/L2 zwraca `true` (nie dotyczy — tamte poziomy mają własne
+ * dowody: `noProtectionAnnotationAtLod0` / `protectionMarkingGaps`).
+ * Dowód POZYTYWNY (okrąg NA SCENIE L1 i nic poza nim) + negatywy — testy
+ * syntetyczne w `buildScene.test.ts` (fixtura referencyjna jest
+ * pusto-prawdziwa: 0 danych §17.2).
+ */
+export function protectionAnnotationAtLod1IsCircleOnly(scene: SceneV3): boolean {
+  if (scene.meta.lod !== 1) return true;
+  const relaysHaveNoCodes = scene.symbols
+    .filter((s) => s.symbolId === 'protectionRelay')
+    .every((s) => (s.meta?.protectionCodes ?? []).length === 0);
+  const noTripLines = !scene.segments.some((s) => s.meta?.kind === 'protectionTrip');
+  const noMeters = !scene.symbols.some((s) => s.symbolId === 'meter');
+  const noProtectionLabels = !scene.labels.some((l) => l.ownerKind === 'protection');
+  return relaysHaveNoCodes && noTripLines && noMeters && noProtectionLabels;
 }

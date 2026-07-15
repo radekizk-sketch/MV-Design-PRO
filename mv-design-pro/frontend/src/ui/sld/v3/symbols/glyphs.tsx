@@ -20,6 +20,11 @@ export interface GlyphProps {
   readonly state?: SwitchState;
   /** Nadpisanie koloru bazowego (nakładka napięcia na szynach itd.). */
   readonly stroke?: string;
+  /** F9.9 (spec §17.3): kody funkcji przekaźnika (np. ["50/51","51N"], maks.
+   *  2 linie) — WYŁĄCZNIE `ProtectionRelayGlyph` czyta to pole, pozostałe
+   *  glify je ignorują (wspólny `GlyphProps`, jak `state`, zero rozgałęzień
+   *  sygnatury per symbol). */
+  readonly labelLines?: readonly string[];
 }
 
 function glyphGroupProps(id: SymbolId, props: GlyphProps) {
@@ -287,6 +292,53 @@ export function StationCollapsedGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/**
+ * F9.9 (spec §17.1/§17.3): przekaźnik zabezpieczeniowy — okrąg z kodami
+ * funkcji ANSI/IEEE C37.2 (np. „50/51" nad „51N", maks. 2 linie ≤4 znaki,
+ * §17.3 — obcinanie/wybór DWÓCH pierwszych kodów jest odpowiedzialnością
+ * WOŁAJĄCEGO, `compose/station.ts`/`compose/gpz.ts`, ta funkcja rysuje
+ * WYŁĄCZNIE to, co dostanie w `labelLines`, zero własnej logiki wyboru).
+ * Brak wypełnienia (P5: rysunek bazowy mono) — element ADNOTACJI, nie stanu.
+ */
+export function ProtectionRelayGlyph(props: GlyphProps): JSX.Element {
+  const lines = props.labelLines ?? [];
+  const ty = lines.length > 1 ? [9, 17] : [13.5];
+  return (
+    <g {...glyphGroupProps('protectionRelay', props)}>
+      <circle cx={12} cy={12} r={11} fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      {lines.slice(0, 2).map((line, i) => (
+        <text
+          key={line}
+          x={12} y={ty[i]} textAnchor="middle"
+          fill={stroke(props)} fontFamily="sans-serif" fontSize={7} fontWeight={600}
+        >
+          {line}
+        </text>
+      ))}
+    </g>
+  );
+}
+
+/**
+ * F9.9 (spec §17.1): miernik — okrąg „M" statyczny (wzorzec `DerGeneratorGlyph`
+ * „G" — tekst BAKED w glifie, bo treść nie jest danymi zmiennymi, jest
+ * notacją stałą, koordynacja `docs/sld/SLD_PROTECTION_MARKING_COORDINATION_
+ * 2026-07.md` pkt 1: „numery C37.2 są NOTACJĄ, nie kodenames").
+ */
+export function MeterGlyph(props: GlyphProps): JSX.Element {
+  return (
+    <g {...glyphGroupProps('meter', props)}>
+      <circle cx={12} cy={12} r={11} fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <text
+        x={12} y={16} textAnchor="middle"
+        fill={stroke(props)} fontFamily="sans-serif" fontSize={12} fontWeight={700}
+      >
+        M
+      </text>
+    </g>
+  );
+}
+
 export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Element>> = {
   breaker: BreakerGlyph,
   disconnector: DisconnectorGlyph,
@@ -307,6 +359,8 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   derWind: DerWindGlyph,
   gridSource: GridSourceGlyph,
   stationCollapsed: StationCollapsedGlyph,
+  protectionRelay: ProtectionRelayGlyph,
+  meter: MeterGlyph,
 };
 
 /** Sanity: każdy glif ma definicję i odwrotnie (spójność biblioteki). */

@@ -29,6 +29,7 @@ import {
   resolveBayApparatusSymbolIds,
   stackFootprint,
 } from '../compose/apparatusSequence';
+import { protectionAnnotationColumnWidth } from '../compose/protectionMarking';
 import { derLabelText, derSymbolSize, type StationDerSourceInput } from '../compose/sourceKind';
 import type { FieldRole } from '../../v2/domain/apparatusContracts';
 
@@ -148,7 +149,15 @@ export function bayColumnRequiredWidth(
   const captionInset = index === entryDescentBayIndex ? entryDescentCaptionInset(bay.fieldRole) : 0;
   const captionWidth = caption ? measureLabelWidth(caption, 't3') + captionInset : 0;
 
-  return Math.max(widthWithSidecar, captionWidth);
+  // F9.9 (spec §17.3): kolumna adnotacji zabezpieczeń — DODANA na końcu
+  // (nie wchodzi do `max()` powyżej, bo leży FIZYCZNIE dalej na prawo,
+  // POZA sidecarem/podpisem kierunku, `protectionAnnotationColumnWidth`,
+  // `compose/protectionMarking.ts` — jedna prawda measure↔compose, wzór
+  // F6b-1). Zero, gdy pole nie niesie danych zabezpieczeń (zero zmian
+  // geometrii dla pól bez §17 — `bayHasProtectionAnnotation`).
+  const annotationWidth = protectionAnnotationColumnWidth(bay);
+
+  return Math.max(widthWithSidecar, captionWidth) + annotationWidth;
 }
 
 /**
