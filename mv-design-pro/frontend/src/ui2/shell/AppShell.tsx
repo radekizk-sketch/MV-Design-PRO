@@ -49,6 +49,8 @@ export interface AppShellProps {
   children?: ReactNode;
   /** Zawartość inspektora (panel prawy). */
   inspector?: ReactNode;
+  /** Drzewo kontekstowe przestrzeni (dolna część lewego panelu; ukryte przy listwie ikon). */
+  contextPanel?: ReactNode;
   /** Stan ładowania — renderuje szkielet powłoki. */
   loading?: boolean;
   /** Status połączenia z serwerem (klient health wpinany w E1.4 — TODO-KARTA). */
@@ -70,6 +72,7 @@ export interface AppShellProps {
 export function AppShell({
   children,
   inspector,
+  contextPanel,
   loading = false,
   backendStatus = 'connected',
   lastRunLabel = null,
@@ -225,7 +228,16 @@ export function AppShell({
       <div className="mvd-main-region">
         <div className="mvd-main-fill">
           <PanelLayout
-            left={<SpaceNav activeSpace={activeSpace} collapsed={leftCollapsed} onSelect={selectSpace} />}
+            left={
+              <div className="mvd-left-stack">
+                <SpaceNav activeSpace={activeSpace} collapsed={leftCollapsed} onSelect={selectSpace} />
+                {!leftCollapsed && contextPanel != null ? (
+                  <div className="mvd-left-context" data-testid="mvd-left-context">
+                    {contextPanel}
+                  </div>
+                ) : null}
+              </div>
+            }
             center={children ?? <p className="mvd-inspector-empty">{SHELL_STRINGS.workspaceHint}</p>}
             right={
               inspector ?? (

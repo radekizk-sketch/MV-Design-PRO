@@ -376,3 +376,17 @@
   border: 1px solid var(--mvd-line);
   margin-bottom: 10px;
 }
+
+/* E1.4 — stos lewego panelu: nawigacja przestrzeni + drzewo kontekstowe */
+.mvd-left-stack {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+.mvd-left-context {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border-top: 1px solid var(--mvd-line);
+}

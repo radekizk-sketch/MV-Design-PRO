@@ -147,9 +147,13 @@ Progress:
       - [x] E15.1 Magistrala zdarzeń (wykonawca Sonnet; pełny vitest 7393 pass; pokrycie
             gałęzi bus.ts 100%; zintegrowane `39a833b`; TODO-KARTA `selekcja.zrodlo`
             rozstrzygnięte: okna emitują selekcję z prawdziwym źródłem, adapter = fallback)
-      - [ ] E1.2 Drzewa kontekstowe (Sonnet — w produkcji)
-      - [ ] E1.3 Inspektor kontekstowy (Opus — w produkcji)
-      - [ ] E1.4–E1.7, E15.2, E2.1–E2.2 — backlog w karcie E1.1
+      - [x] E1.2 Drzewa kontekstowe (Sonnet; pełny vitest 7434 pass; zintegrowane `878bbbc`)
+      - [x] E1.3 Inspektor kontekstowy (Opus; pełny vitest 7445 pass; zintegrowane `e92928a`)
+      - [x] Weryfikacja łączna zarządcy: 553 pliki / 7534 testy pass na drzewie E1.1+E1.2+E1.3+E15.1
+      - [x] E1.4 Integracja powłoki (zarządca): AppRoot + drzewa w lewym panelu + inspektor
+            + magistrala + klient /api/health; test integracyjny scenariusza powiązania warstw;
+            188 testów ui2; decyzje TODO-KARTA zapisane w karcie E1.4 §2
+      - [ ] E1.5–E1.7, E15.2, E2.1–E2.2 — backlog w karcie E1.1
       - [x] V12K-026 RESOLVED: słownik nowej IA („przypadek obliczeniowy", „kreator");
             guard terminologii zielony w całym repo (naprawione 2 zastane naruszenia)
 - [ ] U2–U5 wg programu
