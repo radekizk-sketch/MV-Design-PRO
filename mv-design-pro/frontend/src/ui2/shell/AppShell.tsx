@@ -51,6 +51,8 @@ export interface AppShellProps {
   inspector?: ReactNode;
   /** Drzewo kontekstowe przestrzeni (dolna część lewego panelu; ukryte przy listwie ikon). */
   contextPanel?: ReactNode;
+  /** Pełny dialog wyszukiwarki (E1.5) — zastępuje wbudowany szkielet, gdy podany. */
+  renderSearchDialog?: (otwarta: boolean, zamknij: () => void) => ReactNode;
   /** Stan ładowania — renderuje szkielet powłoki. */
   loading?: boolean;
   /** Status połączenia z serwerem (klient health wpinany w E1.4 — TODO-KARTA). */
@@ -73,6 +75,7 @@ export function AppShell({
   children,
   inspector,
   contextPanel,
+  renderSearchDialog,
   loading = false,
   backendStatus = 'connected',
   lastRunLabel = null,
@@ -295,7 +298,8 @@ export function AppShell({
         onOpenBottomPanel={(tab) => openBottomPanel(tab)}
       />
 
-      {searchOpen && (
+      {renderSearchDialog != null && renderSearchDialog(searchOpen, () => setSearchOpen(false))}
+      {renderSearchDialog == null && searchOpen && (
         <div
           className="mvd-search-scrim"
           data-testid="mvd-search-scrim"

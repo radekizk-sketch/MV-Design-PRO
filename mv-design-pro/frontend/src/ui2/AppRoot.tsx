@@ -11,7 +11,7 @@
  *
  * `ui2` pozostaje poza produkcyjnym wejściem aplikacji (przełączenie powłoki = E1.7).
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { AppShell } from './shell/AppShell';
 import { useBackendHealth } from './shell/backendHealth';
@@ -19,8 +19,11 @@ import { ContextTree, useCasesTree, useRunsTree, useTopologyTree } from './nav';
 import { InspectorPanel } from './inspector';
 import { useObiektInspektora, useRewizjaModelu } from './adapters/inspectorAdapter';
 import { emituj, subskrybuj, startEventBusAdapters } from './events';
+import { CommandPalette, zbudujIndeksWyszukiwania, type PozycjaWyszukiwania } from './search';
+import { PulpitProjektu } from './spaces/projekt';
 import { useShellStore } from './shell/useShellStore';
 import type { SpaceId } from './shell/spaces';
+import { useSnapshotStore } from '../ui/topology/snapshotStore';
 
 /** Prawdziwe źródło selekcji emitowane przez drzewo powłoki (decyzja E1.4 §2.1). */
 const ZRODLO_DRZEWO_KONTEKSTOWE = 'drzewo-kontekstowe';
@@ -73,14 +76,63 @@ export function AppRoot() {
     emituj({ typ: 'selekcja', obiektId: id, zrodlo: ZRODLO_DRZEWO_KONTEKSTOWE });
   };
 
+  // Wyszukiwarka (E1.5 → integracja E1.4+): indeks z przestrzeni/poleceń + obiekty ze snapshotu.
+  const snapshot = useSnapshotStore((s) => s.snapshot);
+  const pozycjeWyszukiwania = useMemo(
+    () =>
+      zbudujIndeksWyszukiwania({
+        obiekty: () =>
+          (snapshot?.buses ?? []).map((szyna) => ({
+            id: szyna.ref_id || szyna.id,
+            nazwa: szyna.name || szyna.ref_id,
+          })),
+      }),
+    [snapshot],
+  );
+  const setActiveSpace = useShellStore((s) => s.setActiveSpace);
+  const setAdvancementMode = useShellStore((s) => s.setAdvancementMode);
+  const wykonajPozycje = (pozycja: PozycjaWyszukiwania) => {
+    if (pozycja.id.startsWith('przestrzen:')) {
+      setActiveSpace(pozycja.id.slice('przestrzen:'.length) as SpaceId);
+    } else if (pozycja.id.startsWith('obiekt:')) {
+      emituj({ typ: 'selekcja', obiektId: pozycja.id.slice('obiekt:'.length), zrodlo: 'wyszukiwarka' });
+    } else {
+      pozycja.akcja(); // TODO-KARTA: realne akcje poleceń/przykładów/pomocy — kolejne karty U1/U2.
+    }
+  };
+
   return (
     <AppShell
       backendStatus={backendStatus}
       onReconnect={reconnect}
       modelRevision={rewizjaModelu > 0 ? rewizjaModelu : null}
+      onOpenProject={() => setActiveSpace('projekt')}
+      children={
+        activeSpace === 'projekt' ? (
+          <PulpitProjektu
+            onNawiguj={setActiveSpace}
+            onOtworzProjekt={() => undefined /* TODO-KARTA: nowy/otwórz projekt (E2.2) */}
+            onZaznaczPrzypadek={(id) => emituj({ typ: 'selekcja', obiektId: id, zrodlo: 'pulpit-projektu' })}
+            onOtworzPrzypadek={() => setActiveSpace('obliczenia')}
+          />
+        ) : undefined
+      }
       contextPanel={
         <DrzewoPrzestrzeni space={activeSpace} zaznaczonyId={zaznaczonyId} onZaznacz={zaznacz} />
       }
+      renderSearchDialog={(otwarta, zamknij) => (
+        <CommandPalette
+          otwarta={otwarta}
+          onZamknij={zamknij}
+          pozycje={pozycjeWyszukiwania}
+          trybAktualny={advancementMode}
+          onWykonaj={(pozycja) => {
+            wykonajPozycje(pozycja);
+            zamknij();
+          }}
+          onPrzelaczTryb={setAdvancementMode}
+        />
+      )}
       inspector={
         <InspectorPanel
           obiekt={obiekt}

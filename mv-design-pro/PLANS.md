@@ -154,7 +154,15 @@ Progress:
             + magistrala + klient /api/health; test integracyjny scenariusza powiązania warstw;
             188 testów ui2; decyzje TODO-KARTA zapisane w karcie E1.4 §2;
             pełny vitest po integracji: 7538 pass (potwierdzone 2026-07-15)
-      - [ ] E1.5–E1.7, E15.2, E2.1–E2.2 — backlog w karcie E1.1
+      - [x] E1.5 Wyszukiwarka poleceń W-105 (Sonnet; pełny vitest 7579 pass; 41 testów;
+            zintegrowane `357ec04`)
+      - [x] E2.1 Pulpit projektu W-101 (Opus; pełny vitest 7577 pass; 39 testów;
+            zintegrowane `07fe669`; kafle bez źródła danych = stan „wkrótce" z TODO-KARTA)
+      - [x] Scalenie zarządcy #2: CommandPalette pod Ctrl+K (slot renderSearchDialog
+            w AppShell zamiast szkieletu), pulpit jako warsztat przestrzeni „Projekt",
+            provider obiektów wyszukiwarki ze snapshotu, akcje przestrzeni/obiektów
+            (nawigacja + selekcja przez magistralę), 270 testów ui2
+      - [ ] E1.6 guard językowy, E1.7 przełączenie powłoki, E15.2, E2.2 — backlog
       - [x] V12K-026 RESOLVED: słownik nowej IA („przypadek obliczeniowy", „kreator");
             guard terminologii zielony w całym repo (naprawione 2 zastane naruszenia)
 - [ ] U2–U5 wg programu

@@ -49,7 +49,7 @@ export const SHELL_STRINGS = {
   resultsOutdated: 'Wyniki: nieaktualne',
   resultsNone: 'Wyniki: do obliczenia',
 
-  searchPlaceholder: 'Szukaj poleceń i funkcji…',
+  searchPlaceholder: 'Szukaj poleceń, obiektów, okien…',
   searchHint: 'Wyszukiwarka poleceń — pełna wersja w kolejnym kroku (W-105).',
 
   bottomProblemy: 'Problemy',

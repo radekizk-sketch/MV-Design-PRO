@@ -26,6 +26,14 @@ function snapshotZRewizja(revision: number): EnergyNetworkModel {
       defaults: { frequency_hz: 50, unit_system: 'SI' },
     },
     buses: [{ id: 'bus-gpz', ref_id: 'GPZ', name: 'GPZ Przykładowo', tags: [], meta: {} }],
+    branches: [],
+    transformers: [],
+    sources: [],
+    loads: [],
+    generators: [],
+    substations: [],
+    bays: [],
+    junctions: [],
   } as unknown as EnergyNetworkModel;
 }
 
@@ -100,6 +108,22 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
   it('selektor trybów drzewa jest ukryty w U1 (decyzja E1.4 §2.2 — zero martwego UI)', () => {
     render(<AppRoot />);
     expect(screen.queryByTestId('mvd-tree-mode')).toBeNull();
+  });
+
+  it('przestrzeń „Projekt" renderuje pulpit projektu (E2.1) w warsztacie', () => {
+    act(() => {
+      useShellStore.setState({ activeSpace: 'projekt' });
+    });
+    render(<AppRoot />);
+    expect(screen.getByText('Pulpit projektu')).toBeTruthy();
+    expect(screen.getByText('Przypadki obliczeniowe')).toBeTruthy();
+  });
+
+  it('Ctrl+K otwiera pełną wyszukiwarkę poleceń (E1.5) zamiast szkieletu', () => {
+    render(<AppRoot />);
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    expect(screen.getByPlaceholderText('Szukaj poleceń, obiektów, okien…')).toBeTruthy();
+    expect(screen.queryByTestId('mvd-search-scrim')).toBeNull();
   });
 
   it('drzewo kontekstowe jest ukryte przy zwiniętym lewym panelu (listwa ikon)', () => {
