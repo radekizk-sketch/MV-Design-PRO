@@ -175,9 +175,15 @@ Progress:
       - [x] E2.2 Nowy/otwórz projekt W-102 (Sonnet; 30 testów; pełny bieg u wykonawcy zielony
             poza znanym błędem fixture naprawionym w `ed09d54`; zintegrowane `056b157`;
             TODO-KARTA: brak store'a projektów — lista przez props, hook przy wpięciu)
-      - [ ] E1.7 Przełączenie powłoki — FINAŁ U1 (karta `U1_E1_7_PRZELACZENIE_POWLOKI.md`
-            z decyzją architektoniczną LegacySurface: powłoka ginie teraz, powierzchnie
-            dziedzinowe wygaszane per okno w U2–U4; realizacja: zarządca, następna sesja)
+      - [x] E1.7 Przełączenie powłoki (Opus, dekompozycja a/b/c po STOP-raporcie):
+            E1.7a ekstrakcja orkiestracji z App.tsx do headless hooka (1457→397 linii;
+            pełny vitest 7673; e2e 173 pass, tor krytyczny zielony; `2274d72`) ·
+            E1.7b parytet kontraktu testid + LegacySurface + flaga wejścia (vitest 7685
+            — potwierdzone niezależnie przez zarządcę; e2e identyczne z baseline;
+            `103b03a`) · E1.7c NOWA POWŁOKA DOMYŚLNA + kasacja starej ramy
+            (−5595 linii, App.tsx/AppShellV12/CanonicalLayout/stara nawigacja usunięte;
+            e2e 180 pass / 2 fail pre-existing env; 3 spec-y zmigrowane z intencją;
+            `3693c01`). **FAZA U1 ZAMKNIĘTA 2026-07-15.**
       - [x] V12K-026 RESOLVED: słownik nowej IA („przypadek obliczeniowy", „kreator");
             guard terminologii zielony w całym repo (naprawione 2 zastane naruszenia)
 - [ ] U2–U5 wg programu
