@@ -10,6 +10,8 @@ import { SHELL_STRINGS, caseCountLabel, readinessLabel } from './strings';
 interface CaseBarProps {
   info: ShellCaseInfo;
   onOpenProject?: () => void;
+  /** Otwiera stan wariantów/przebiegów aktywnego zakresu (parytet E1.7c). */
+  onOpenVariants?: () => void;
 }
 
 function resultsText(status: ResultFreshness): string {
@@ -34,16 +36,37 @@ function resultsDotClass(status: ResultFreshness): string {
   }
 }
 
-export function CaseBar({ info, onOpenProject }: CaseBarProps) {
+export function CaseBar({ info, onOpenProject, onOpenVariants }: CaseBarProps) {
   const readinessOk = info.readinessBlockers === 0 && info.readinessWarnings === 0;
+  const nazwaZakresu = info.projectPresent
+    ? (info.caseName ?? SHELL_STRINGS.emptyValue)
+    : SHELL_STRINGS.emptyValue;
 
   return (
     <div className="mvd-casebar" data-testid="mvd-casebar">
       <span className="mvd-lbl">{SHELL_STRINGS.activeCase}</span>
 
-      <span className="mvd-chip mvd-chip-case" data-testid="mvd-casebar-chip">
-        {info.projectPresent ? (info.caseName ?? SHELL_STRINGS.emptyValue) : SHELL_STRINGS.emptyValue}
-      </span>
+      {info.projectPresent && info.projectName ? (
+        <span className="mvd-chip" data-testid="mvd-casebar-project">
+          {info.projectName}
+        </span>
+      ) : null}
+
+      {info.projectPresent && onOpenVariants ? (
+        <button
+          type="button"
+          className="mvd-chip mvd-chip-case"
+          data-testid="mvd-casebar-chip"
+          onClick={onOpenVariants}
+          title="Otwórz stan wariantów i przebiegów zakresu obliczeń"
+        >
+          {nazwaZakresu}
+        </button>
+      ) : (
+        <span className="mvd-chip mvd-chip-case" data-testid="mvd-casebar-chip">
+          {nazwaZakresu}
+        </span>
+      )}
 
       {info.projectPresent ? (
         <>

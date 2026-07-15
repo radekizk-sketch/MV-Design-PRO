@@ -9,6 +9,14 @@
  * Wygaszanie: karty U2–U4 przejmują funkcje okno po oknie; wpis zmienia
  * `zrodlo` na `nowa-powloka` dopiero, gdy nowe okna pokrywają funkcję
  * (macierz pokrycia, zero utraty funkcji).
+ *
+ * Stan po E1.7c: stara rama (App/AppShellV12/CanonicalLayout/TopBar/
+ * NavigationRail/StatusBarV12/ActiveCaseBar) SKASOWANA. Mosty aktywne:
+ * LegacyWarsztat (trasy legacy + powierzchnie), LegacyInspektor (panel prawy),
+ * LegacyPasekNarzedzi (pasek przepływu + wyszukiwanie ENM/przegląd zbiorczy/
+ * metadane/historia), LegacyChrome (powiadomienia/pomoc/nakładki/skróty),
+ * SchematContextPanel (panel kontekstu schematu w lewym panelu),
+ * AreaContextPanel i panele obszarów pozostają jako funkcje do przejęcia w U2.
  */
 
 import { SPACE_IDS, type SpaceId } from '../shell/spaces';
@@ -39,7 +47,7 @@ export const REJESTR_LEGACY: Readonly<Record<SpaceId, WpisRejestruLegacy>> = {
     zrodlo: 'legacy',
     obszaryLegacy: ['MODEL_SIECI', 'KATALOGI_TECHNICZNE'],
     montaz: 'SldWorkspaceContainer (kanwa budowy sieci; katalogi przez akcje kanwy)',
-    wygaszenie: 'U2: okna modelu sieci i przeglądarka katalogów w nowej powłoce',
+    wygaszenie: 'U2: okna modelu sieci i przeglądarka katalogów w nowej powłoce (po E1.7c: kanwa + pasek przepływu pracy przez mosty)',
   },
   schemat: {
     przestrzen: 'schemat',

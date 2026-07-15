@@ -2,7 +2,9 @@ import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AREA_DEFINITIONS } from '../../navigation/areaRegistry';
-import { NavigationRail } from '../../shell/NavigationRail';
+// E1.7c: pasek obszarów starej ramy (NavigationRail) skasowany — aktywną
+// nawigacją jest SpaceNav nowej powłoki (te same wymogi etykiet).
+import { SpaceNav } from '../../../ui2/shell/SpaceNav';
 import { AreaContextPanel } from '../../shell/context-panels/AreaContextPanel';
 import { findForbiddenUserLabels } from '../labelGuards';
 
@@ -49,11 +51,13 @@ vi.mock('../../shared/generatorTypeLabels', () => ({
 }));
 
 describe('ui-label-blacklist - strażnik etykiet użytkownika', () => {
-  it('pasek obszarów i panele kontekstu nie ujawniają roboczych etykiet', () => {
+  it('pasek przestrzeni i panele kontekstu nie ujawniają roboczych etykiet', () => {
     const fragments: string[] = [];
-    const rail = render(<NavigationRail />);
-    fragments.push(collectUserFacingText(rail.container));
-    rail.unmount();
+    const nawigacja = render(
+      <SpaceNav activeSpace="projekt" collapsed={false} onSelect={() => undefined} />,
+    );
+    fragments.push(collectUserFacingText(nawigacja.container));
+    nawigacja.unmount();
 
     for (const area of AREA_DEFINITIONS) {
       const view = render(<AreaContextPanel areaCode={area.id} />);

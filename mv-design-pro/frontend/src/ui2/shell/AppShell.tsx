@@ -67,6 +67,8 @@ export interface AppShellProps {
   onSave?: () => void;
   onCalculate?: () => void;
   onOpenProject?: () => void;
+  /** Otwiera stan wariantów/przebiegów aktywnego zakresu (chip paska przypadku). */
+  onOpenVariants?: () => void;
   onActiveSpaceChange?: (space: SpaceId) => void;
   onOpenSearch?: () => void;
 }
@@ -85,6 +87,7 @@ export function AppShell({
   onSave,
   onCalculate,
   onOpenProject,
+  onOpenVariants,
   onActiveSpaceChange,
   onOpenSearch,
 }: AppShellProps) {
@@ -228,7 +231,7 @@ export function AppShell({
 
       {/* Kontrakt e2e (E1.7b): pasek aktywnego przypadku nosi testid starej powłoki. */}
       <div data-testid="active-case-bar">
-        <CaseBar info={caseInfo} onOpenProject={onOpenProject} />
+        <CaseBar info={caseInfo} onOpenProject={onOpenProject} onOpenVariants={onOpenVariants} />
       </div>
 
       <div className="mvd-main-region">

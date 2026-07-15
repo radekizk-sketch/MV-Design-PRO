@@ -16,7 +16,7 @@ export const SHELL_STRINGS = {
 
   spacesHeading: 'Przestrzenie',
 
-  activeCase: 'Aktywny przypadek',
+  activeCase: 'Zakres obliczeń',
   fingerprint: 'Odcisk wyników SHA-256',
 
   modeGroup: 'Tryb',
@@ -25,14 +25,14 @@ export const SHELL_STRINGS = {
   modeExpert: 'Ekspercki',
 
   save: 'Zapisz',
-  calculate: 'Przelicz aktywny przypadek',
+  calculate: 'Oblicz',
   reconnect: 'Połącz ponownie',
   openProject: 'Otwórz projekt',
   resetLayout: 'Przywróć układ domyślny',
   viewMenu: 'Widok',
 
   toggleLeft: 'Nawigacja',
-  toggleRight: 'Inspektor',
+  toggleRight: 'Zwiń lub rozwiń panel inspektora',
   themeGroup: 'Motyw',
 
   inspectorHeading: 'Inspektor',

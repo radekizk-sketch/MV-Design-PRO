@@ -9,11 +9,12 @@
  *   danych — zero martwego UI); dane drzewa: tryb „zasilania";
  * - hierarchia przebiegów: zakres = aktywny przypadek (agregacja wielu przypadków = E7.x).
  *
- * E1.7b (parytet kontraktu): AppRoot woła headless `useLegacyOrchestrator` (E1.7a),
- * montuje `LegacySurface` w przestrzeniach bez nowej zawartości i eksponuje
- * wymagane testidy kontraktu e2e (`canonical-layout`, `app-ready`,
- * `active-case-bar`, `main-content`, `workspace-surface-main`). Wejście
- * produkcyjne wybiera `ui2/entry` (domyślnie stara powłoka — szew parytetowy).
+ * E1.7b/c (przełączenie powłoki): AppRoot jest PRODUKCYJNYM wejściem aplikacji.
+ * Woła headless `useLegacyOrchestrator` (E1.7a), renderuje `LegacyWarsztat`
+ * (trasy legacy + przestrzenie) i `LegacyInspektor` (panel prawy z mostem do
+ * powierzchni panelowych), montuje `LegacyChrome` (powiadomienia, pomoc,
+ * skróty, nakładki) i eksponuje testidy kontraktu e2e (`canonical-layout`,
+ * `app-ready`, `active-case-bar`, `main-content`, `workspace-surface-main`).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -25,12 +26,28 @@ import { useObiektInspektora, useRewizjaModelu } from './adapters/inspectorAdapt
 import { emituj, subskrybuj, startEventBusAdapters } from './events';
 import { CommandPalette, zbudujIndeksWyszukiwania, type PozycjaWyszukiwania } from './search';
 import { PulpitProjektu } from './spaces/projekt';
-import { LegacySurface } from './legacy/LegacySurface';
+import { LegacyWarsztat } from './legacy/LegacyWarsztat';
+import { LegacyInspektor } from './legacy/LegacyInspektor';
+import { LegacyChrome } from './legacy/LegacyChrome';
 import { useLegacyOrchestrator } from './legacy/useLegacyOrchestrator';
+import { POZYCJE_MENU_LEGACY, useLegacyMenuActions } from './legacy/useLegacyMenuActions';
 import { useShellStore } from './shell/useShellStore';
 import type { SpaceId } from './shell/spaces';
 import { useSnapshotStore } from '../ui/topology/snapshotStore';
 import { useAppStateStore } from '../ui/app-state';
+import {
+  navigateToAnalysis,
+  navigateToCaseConfig,
+  navigateToNetworkBuild,
+  navigateToReport,
+} from '../ui/navigation';
+import { AreaContextPanel } from '../ui/shell/context-panels';
+
+/** Panel kontekstu obszaru legacy (most E1.7c) — area-driven jak w starej ramie. */
+function PanelKontekstuObszaru() {
+  const activeArea = useAppStateStore((s) => s.activeArea);
+  return <AreaContextPanel areaCode={activeArea} />;
+}
 
 /** Prawdziwe źródło selekcji emitowane przez drzewo powłoki (decyzja E1.4 §2.1). */
 const ZRODLO_DRZEWO_KONTEKSTOWE = 'drzewo-kontekstowe';
@@ -74,7 +91,7 @@ export function AppRoot() {
 
   // E1.7a w nowej powłoce: ta sama orkiestracja (hydracja z URL, trasy legacy,
   // powierzchnie, obliczenia) działa w OBU wejściach — zero duplikacji logiki.
-  const { handleCalculate } = useLegacyOrchestrator();
+  const { route, handleCalculate } = useLegacyOrchestrator();
 
   // Kontrakt e2e: znacznik gotowości aplikacji (odpowiednik App.useAppReady).
   const [aplikacjaGotowa, setAplikacjaGotowa] = useState(false);
@@ -124,47 +141,108 @@ export function AppRoot() {
   );
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
   const setAdvancementMode = useShellStore((s) => s.setAdvancementMode);
+  // Akcje menu legacy (E1.7c) — osiągalne przez wyszukiwarkę poleceń.
+  const wykonajAkcjeMenu = useLegacyMenuActions(handleCalculate);
+  const pozycjeMenuLegacy = useMemo(
+    (): PozycjaWyszukiwania[] =>
+      POZYCJE_MENU_LEGACY.map((wpis) => ({
+        id: `menu-legacy:${wpis.akcjaId}`,
+        etykietaPL: wpis.etykietaPL,
+        grupa: 'polecenia',
+        akcja: () => wykonajAkcjeMenu(wpis.akcjaId),
+      })),
+    [wykonajAkcjeMenu],
+  );
+  const otworzPulpitProjektow = () => {
+    // Pulpit projektów (lista + nowy projekt) — trasa legacy #dashboard (most E1.7c).
+    setActiveSpace('projekt');
+    window.location.hash = '#dashboard';
+  };
+  // Most tras (E1.7c): JAWNY wybór przestrzeni ustawia trasę legacy — jedna
+  // prawda nawigacji (orkiestrator otwiera powierzchnie). Montaż zawartości
+  // NIE nawiguje, aby nie nadpisywać deep-linków (#analysis?run=..., itd.).
+  const mostTrasyPrzestrzeni = (space: SpaceId) => {
+    const stan = useAppStateStore.getState();
+    const runId = stan.activeRunId;
+    switch (space) {
+      case 'model':
+      case 'schemat':
+        navigateToNetworkBuild();
+        break;
+      case 'obliczenia':
+        navigateToCaseConfig({ caseId: stan.activeCaseId });
+        break;
+      case 'wyniki':
+        navigateToAnalysis({ runId });
+        break;
+      case 'dokumentacja':
+        navigateToReport({ runId });
+        break;
+      case 'gotowosc':
+      case 'projekt':
+        // Zawartość sterowana store'ami/przestrzenią — bez zmiany trasy.
+        break;
+    }
+  };
+  const wybierzPrzestrzen = (space: SpaceId) => {
+    setActiveSpace(space);
+    mostTrasyPrzestrzeni(space);
+  };
   const wykonajPozycje = (pozycja: PozycjaWyszukiwania) => {
     if (pozycja.id.startsWith('przestrzen:')) {
-      setActiveSpace(pozycja.id.slice('przestrzen:'.length) as SpaceId);
+      wybierzPrzestrzen(pozycja.id.slice('przestrzen:'.length) as SpaceId);
     } else if (pozycja.id.startsWith('obiekt:')) {
       emituj({ typ: 'selekcja', obiektId: pozycja.id.slice('obiekt:'.length), zrodlo: 'wyszukiwarka' });
+    } else if (pozycja.id === 'polecenie:przelicz') {
+      void handleCalculate();
+    } else if (pozycja.id === 'polecenie:otworz-projekt') {
+      otworzPulpitProjektow();
     } else {
-      pozycja.akcja(); // TODO-KARTA: realne akcje poleceń/przykładów/pomocy — kolejne karty U1/U2.
+      pozycja.akcja(); // Pozycje menu legacy mają realne akcje; reszta — kolejne karty U1/U2.
     }
   };
 
   return (
     <div data-testid="canonical-layout" data-ready={aplikacjaGotowa} className="mvd-app-obszar">
       {aplikacjaGotowa && <div data-testid="app-ready" style={{ display: 'none' }} />}
+      <LegacyChrome />
       <AppShell
       backendStatus={backendStatus}
       onReconnect={reconnect}
       modelRevision={rewizjaModelu > 0 ? rewizjaModelu : null}
-      onOpenProject={() => setActiveSpace('projekt')}
+      onOpenProject={otworzPulpitProjektow}
+      onOpenVariants={() => wykonajAkcjeMenu('variants')}
+      onActiveSpaceChange={mostTrasyPrzestrzeni}
       onCalculate={handleCalculate}
       children={
-        activeSpace === 'projekt' ? (
-          <div data-testid="workspace-surface-main">
+        <LegacyWarsztat
+          route={route}
+          space={activeSpace}
+          pulpit={
             <PulpitProjektu
-              onNawiguj={setActiveSpace}
-              onOtworzProjekt={() => undefined /* TODO-KARTA: nowy/otwórz projekt (E2.2) */}
+              onNawiguj={wybierzPrzestrzen}
+              onOtworzProjekt={otworzPulpitProjektow}
               onZaznaczPrzypadek={(id) => emituj({ typ: 'selekcja', obiektId: id, zrodlo: 'pulpit-projektu' })}
-              onOtworzPrzypadek={() => setActiveSpace('obliczenia')}
+              onOtworzPrzypadek={() => wybierzPrzestrzen('obliczenia')}
             />
-          </div>
-        ) : (
-          <LegacySurface space={activeSpace} />
-        )
+          }
+        />
       }
       contextPanel={
-        <DrzewoPrzestrzeni space={activeSpace} zaznaczonyId={zaznaczonyId} onZaznacz={zaznacz} />
+        activeSpace === 'schemat' ? (
+          // Most E1.7c: panel kontekstu OBSZARU (schemat/proces budowy) —
+          // przeniesiona funkcja lewego panelu starej ramy; sterowany
+          // activeArea (przełącznik „Konfiguracja" działa jak w starej ramie).
+          <PanelKontekstuObszaru />
+        ) : (
+          <DrzewoPrzestrzeni space={activeSpace} zaznaczonyId={zaznaczonyId} onZaznacz={zaznacz} />
+        )
       }
       renderSearchDialog={(otwarta, zamknij) => (
         <CommandPalette
           otwarta={otwarta}
           onZamknij={zamknij}
-          pozycje={pozycjeWyszukiwania}
+          pozycje={[...pozycjeWyszukiwania, ...pozycjeMenuLegacy]}
           trybAktualny={advancementMode}
           onWykonaj={(pozycja) => {
             wykonajPozycje(pozycja);
@@ -174,13 +252,17 @@ export function AppRoot() {
         />
       )}
       inspector={
-        <InspectorPanel
-          obiekt={obiekt}
-          rewizjaModelu={rewizjaModelu}
-          trybZaawansowania={advancementMode}
-          onOtworzDowod={() => undefined /* TODO-KARTA: przestrzeń Wyniki (E9) */}
-          onNawiguj={(cel) => emituj({ typ: 'selekcja', obiektId: cel.id, zrodlo: 'inspektor' })}
-          onPrzelicz={() => undefined /* TODO-KARTA: uruchomienie przebiegu (E7) */}
+        <LegacyInspektor
+          fallback={
+            <InspectorPanel
+              obiekt={obiekt}
+              rewizjaModelu={rewizjaModelu}
+              trybZaawansowania={advancementMode}
+              onOtworzDowod={() => undefined /* TODO-KARTA: przestrzeń Wyniki (E9) */}
+              onNawiguj={(cel) => emituj({ typ: 'selekcja', obiektId: cel.id, zrodlo: 'inspektor' })}
+              onPrzelicz={() => void handleCalculate()}
+            />
+          }
         />
       }
       />

@@ -2,19 +2,26 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
+// E1.7c: aktywna powłoka = ui2 (AppShell/CaseBar/strings) + aktywne
+// powierzchnie legacy; stara rama (AppShellV12/TopBar/NavigationRail)
+// została skasowana.
 const ACTIVE_SHELL_FILES = [
-  ['active-case-bar', 'ActiveCaseBar.tsx'],
   ['workspace', 'WorkspaceOperationalBar.tsx'],
   ['workspace', 'WorkspaceSurfaceRouter.tsx'],
   ['workspace', 'types.ts'],
   ['navigation', 'routes.ts'],
-  ['shell', 'AppShellV12.tsx'],
+  ['../ui2/shell', 'AppShell.tsx'],
+  ['../ui2/shell', 'CaseBar.tsx'],
+  ['../ui2/shell', 'strings.ts'],
 ] as const;
 
+// „Widok" (menu widoku powłoki, karta E1.1) i „Obliczenia" (nazwa przestrzeni
+// roboczej) są kanonicznymi elementami nowej powłoki — zakaz dotyczy
+// wskrzeszania okienkowego menu starego typu (Plik/Narzędzia/Pomoc).
 const ACTIVE_TOP_MENU_FILES = [
-  ['shell', 'AppShellV12.tsx'],
-  ['shell', 'TopBar.tsx'],
-  ['shell', 'NavigationRail.tsx'],
+  ['../ui2/shell', 'AppShell.tsx'],
+  ['../ui2/shell', 'TitleBar.tsx'],
+  ['../ui2/shell', 'SpaceNav.tsx'],
 ] as const;
 
 const FORBIDDEN_ACTIVE_LABELS = [
@@ -36,8 +43,6 @@ const FORBIDDEN_ACTIVE_LABELS = [
 
 const FORBIDDEN_LEGACY_TOP_MENU_LABELS = [
   'Plik',
-  'Widok',
-  'Obliczenia',
   'Narzedzia',
   'Narzędzia',
   'Pomoc',

@@ -1,4 +1,4 @@
-/* Most legacy (E1.7b) — opakowanie montażu starych powierzchni w warsztacie. */
+/* Most legacy (E1.7b/c) — opakowania montażu starych powierzchni w warsztacie. */
 
 .mvd-legacy-host {
   height: 100%;
@@ -7,7 +7,21 @@
   flex-direction: column;
 }
 
-.mvd-legacy-host > * {
+/* Wypełnia warsztat: treść właściwa (pasek narzędzi/baner zachowują naturalną
+   wysokość) oraz pojedyncze montaże powierzchni (oprawa z jednym dzieckiem). */
+.mvd-legacy-host > .mvd-legacy-warsztat-tresc,
+.mvd-legacy-host > :only-child {
+  flex: 1;
+  min-height: 0;
+}
+
+.mvd-legacy-warsztat-tresc {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mvd-legacy-warsztat-tresc > * {
   flex: 1;
   min-height: 0;
 }

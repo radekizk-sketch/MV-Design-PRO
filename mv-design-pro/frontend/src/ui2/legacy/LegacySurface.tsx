@@ -6,14 +6,14 @@
  * Zasady:
  * - komponenty z `ui/**` montowane BEZ modyfikacji; kontekst dostarczają
  *   te same store'y co w starym wejściu (zero shadow-state),
- * - nawigacja hash pozostaje jedną prawdą tras legacy: przestrzenie oparte
- *   o WorkspaceSurfaceRouter mostkują się przez navigateTo* (orkiestrator
- *   E1.7a otwiera właściwą powierzchnię — bez dublowania logiki tras),
+ * - nawigacja hash pozostaje jedną prawdą tras legacy: mosty tras uruchamia
+ *   WYŁĄCZNIE jawny wybór przestrzeni (AppRoot.onActiveSpaceChange) — montaż
+ *   nie nawiguje, aby nie nadpisywać deep-linków (E1.7c),
  * - testid `workspace-surface-main` (kontrakt e2e) nosi opakowanie montażu;
  *   dla powierzchni trasowych dostarcza go sam WorkspaceSurfaceRouter.
  */
 
-import { useEffect, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import './legacy.css';
 
 import { SldWorkspaceContainer } from '../../ui/sld/v2/canvas/SldWorkspaceContainer';
@@ -23,13 +23,6 @@ import { RunHistoryPanel } from '../../ui/study-cases/RunHistoryPanel';
 import { EngineeringReadinessPanel } from '../../ui/engineering-readiness';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { useAppStateStore } from '../../ui/app-state';
-import { useExecutionRunsStore } from '../../ui/study-cases/runStore';
-import {
-  navigateToAnalysis,
-  navigateToCaseConfig,
-  navigateToNetworkBuild,
-  navigateToReport,
-} from '../../ui/navigation';
 import type { ReadinessIssue, ReadinessSeverity, FixAction } from '../../ui/types';
 import { useShellStore } from '../shell/useShellStore';
 import { emituj } from '../events';
@@ -48,12 +41,11 @@ function OprawaWarsztatu({ children }: { children: ReactNode }) {
   );
 }
 
-/** Schemat/model: kanwa SLD (jak domyślna trasa starego wejścia). */
+/** Schemat/model: kanwa SLD (jak domyślna trasa starego wejścia).
+ * UWAGA (E1.7c): bez nawigacji montażowej — mosty tras działają wyłącznie
+ * przy JAWNYM wyborze przestrzeni (AppRoot.onActiveSpaceChange); montaż nie
+ * może nadpisywać deep-linków (#analysis/#variants/...). */
 function LegacySld() {
-  useEffect(() => {
-    // Most tras: utrzymuje '#sld' jako prawdę nawigacji (parametry kontekstu zachowane).
-    navigateToNetworkBuild();
-  }, []);
   return <SldWorkspaceContainer />;
 }
 
@@ -137,11 +129,6 @@ function LegacyObliczenia() {
   const setActiveRun = useAppStateStore((s) => s.setActiveRun);
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
 
-  useEffect(() => {
-    // Most tras: '#case-config' (parametry kontekstu zachowane przez navigateToHash).
-    navigateToCaseConfig({ caseId: useAppStateStore.getState().activeCaseId });
-  }, []);
-
   return (
     <div className="mvd-legacy-obliczenia">
       <CaseConfigPage />
@@ -162,18 +149,7 @@ function LegacyObliczenia() {
  * powierzchnię, a WorkspaceSurfaceRouter renderuje ją w warsztacie
  * (testid `workspace-surface-main` pochodzi z routera).
  */
-function LegacyPowierzchniaTrasowa({ cel }: { cel: 'analiza' | 'raport' }) {
-  useEffect(() => {
-    const runId =
-      useAppStateStore.getState().activeRunId
-      ?? useExecutionRunsStore.getState().activeRunId;
-    if (cel === 'analiza') {
-      navigateToAnalysis({ runId });
-    } else {
-      navigateToReport({ runId });
-    }
-  }, [cel]);
-
+function LegacyPowierzchniaTrasowa() {
   return (
     <div className="mvd-legacy-host">
       <WorkspaceSurfaceRouter region="main" />
@@ -213,9 +189,8 @@ export function LegacySurface({ space }: LegacySurfaceProps) {
         </OprawaWarsztatu>
       );
     case 'wyniki':
-      return <LegacyPowierzchniaTrasowa cel="analiza" />;
     case 'dokumentacja':
-      return <LegacyPowierzchniaTrasowa cel="raport" />;
+      return <LegacyPowierzchniaTrasowa />;
     default:
       return null;
   }

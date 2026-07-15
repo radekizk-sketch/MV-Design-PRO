@@ -168,7 +168,7 @@ test('utworzenie pierwszego projektu przechodzi deterministycznie do E-01 bez fr
 
   await expect(page.getByTestId('sld-workspace-container')).toBeVisible();
   await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Projekt 1');
-  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('nie wybrano');
+  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('do obliczenia');
   await expect(page.getByTestId('sld-empty-state')).toBeVisible();
 
   const uniqueWarnCount = guards.warningCounts.size;

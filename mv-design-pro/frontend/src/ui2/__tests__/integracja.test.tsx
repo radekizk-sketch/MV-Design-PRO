@@ -69,6 +69,10 @@ function summaryZGpz(): TopologyGraphSummary {
 
 describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () => {
   beforeEach(() => {
+    // E1.7c: trasa hash jest częścią stanu powłoki (LegacyWarsztat) — testy
+    // startują z czystej trasy (mosty przestrzeni ustawiają np. '#sld').
+    window.history.replaceState(null, '', '/');
+    window.location.hash = '';
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({ ok: true } as Response),

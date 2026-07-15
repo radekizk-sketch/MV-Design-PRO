@@ -370,8 +370,8 @@ test('peĹ‚ny przepĹ‚yw przemysĹ‚owy: 50 szablonĂłw stacji, OZE, anali
   expect(protectionView.summary?.total_assignments).toBeGreaterThanOrEqual(0);
 
   await openCaseInUi(page, seed);
-  await expect(page.getByRole('button', { name: /Wykonaj analizę|Oblicz/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^(Wykonaj analizę|Oblicz)$/ })).toBeVisible();
   await expect(page.locator('body')).toContainText('Stacje SN/nN');
-  await expect(page.locator('body')).toContainText('50 stacji');
+  await expect(page.locator('body')).toContainText(/Stacje:\s*50/);
   await expect(page.locator('body')).toContainText('Dowody (8)');
 });

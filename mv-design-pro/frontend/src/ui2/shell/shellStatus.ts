@@ -15,6 +15,7 @@ import {
   useAppStateStore,
 } from '../../ui/app-state';
 import { useCasesCount } from '../../ui/study-cases/store';
+import { calculationScopeDisplayName } from '../../ui/shell/publicNames';
 import { useReadinessLiveStore } from '../../ui/engineering-readiness/readinessLiveStore';
 
 export type BackendStatus = 'connected' | 'connecting' | 'error';
@@ -23,6 +24,8 @@ export type ResultFreshness = 'NONE' | 'FRESH' | 'OUTDATED';
 
 export interface ShellCaseInfo {
   projectPresent: boolean;
+  /** Nazwa aktywnego projektu (chip paska przypadku — kontrakt E1.7c). */
+  projectName: string | null;
   caseName: string | null;
   caseCount: number;
   resultStatus: ResultFreshness;
@@ -48,7 +51,11 @@ export function shortFingerprint(value: string | null): string | null {
 /** Read-only informacje o aktywnym przypadku i gotowości (z istniejących store'ów). */
 export function useShellCaseInfo(): ShellCaseInfo {
   const projectId = useActiveProjectId();
-  const caseName = useActiveCaseName();
+  const projectName = useAppStateStore((state) => state.activeProjectName);
+  const caseId = useAppStateStore((state) => state.activeCaseId);
+  const rawCaseName = useActiveCaseName();
+  // Publiczna nazwa zakresu obliczeń (sanitizer nazw z dawnej ramy — E1.7c).
+  const caseName = rawCaseName ? calculationScopeDisplayName(rawCaseName, caseId) : null;
   const caseCount = useCasesCount();
   const resultStatus = useAppStateStore((state) => state.activeCaseResultStatus);
   const ready = useReadinessLiveStore((state) => state.ready);
@@ -59,6 +66,7 @@ export function useShellCaseInfo(): ShellCaseInfo {
 
   return {
     projectPresent,
+    projectName: projectName ?? null,
     caseName,
     caseCount,
     resultStatus,

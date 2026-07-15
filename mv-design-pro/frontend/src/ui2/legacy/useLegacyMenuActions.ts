@@ -1,0 +1,190 @@
+/**
+ * Akcje menu starej powłoki (karta E1.7c) — PRZENIESIONE z `App.tsx`
+ * (handleMenuAction + openSldOverlayFromCurrentContext) po kasacji starej ramy.
+ *
+ * Funkcja zachowana: te same identyfikatory akcji i te same efekty (nawigacja
+ * tras legacy, otwieranie powierzchni, uruchamianie obliczeń). W nowej powłoce
+ * akcje są osiągalne przez wyszukiwarkę poleceń (Ctrl+K) — pozycje
+ * `POZYCJE_MENU_LEGACY` — oraz przycisk „Przelicz" paska tytułowego.
+ */
+
+import { useCallback } from 'react';
+
+import { useAppStateStore } from '../../ui/app-state';
+import { useExecutionRunsStore } from '../../ui/study-cases/runStore';
+import {
+  ROUTES,
+  getCurrentSearchParams,
+  navigateToAnalysis,
+  navigateToCaseConfig,
+  navigateToCatalog,
+  navigateToCompare,
+  navigateToNetworkBuild,
+  navigateToProof,
+  navigateToReport,
+  navigateToResultsProtection,
+  navigateToSwitchgear,
+  navigateToVariants,
+} from '../../ui/navigation';
+import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
+import {
+  ANALYSIS_SURFACE_SCREEN_CODE,
+  ANALYSIS_ROUTE_DEFAULT_TAB,
+  REPORT_SURFACE_SCREEN_CODE,
+} from '../../ui/workspace/types';
+
+function openSldOverlayFromCurrentContext(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const params = getCurrentSearchParams();
+  params.set('overlay', '1');
+  params.set('legend', '1');
+  const query = params.toString();
+  window.location.hash = query ? `${ROUTES.SLD.hash}?${query}` : ROUTES.SLD.hash;
+}
+
+export interface PozycjaMenuLegacy {
+  /** Identyfikator akcji starego menu (kontrakt handleMenuAction). */
+  akcjaId: string;
+  /** Polska etykieta pozycji w wyszukiwarce poleceń. */
+  etykietaPL: string;
+}
+
+/** Pozycje wyszukiwarki poleceń pokrywające akcje starego menu (zero utraty funkcji). */
+export const POZYCJE_MENU_LEGACY: readonly PozycjaMenuLegacy[] = [
+  { akcjaId: 'sld', etykietaPL: 'Budowa sieci (schemat)' },
+  { akcjaId: 'sld-view', etykietaPL: 'Podgląd schematu (tylko odczyt)' },
+  { akcjaId: 'overlay', etykietaPL: 'Nakładka wyników na schemacie' },
+  { akcjaId: 'switchgear', etykietaPL: 'Kreator rozdzielnicy' },
+  { akcjaId: 'case-manager', etykietaPL: 'Konfiguracja zakresu obliczeń' },
+  { akcjaId: 'catalog', etykietaPL: 'Katalogi techniczne' },
+  { akcjaId: 'analysis', etykietaPL: 'Analizy techniczne' },
+  { akcjaId: 'compare', etykietaPL: 'Porównanie przebiegów' },
+  { akcjaId: 'report', etykietaPL: 'Generator raportu' },
+  { akcjaId: 'variants', etykietaPL: 'Warianty i przebiegi' },
+  { akcjaId: 'readiness', etykietaPL: 'Kontrola gotowości układu' },
+  { akcjaId: 'proof', etykietaPL: 'Dowód obliczeniowy' },
+  { akcjaId: 'protection', etykietaPL: 'Wyniki zabezpieczeń' },
+];
+
+/**
+ * Hook akcji menu legacy — sygnatura i zachowanie identyczne z dawnym
+ * `App.handleMenuAction(actionId)`.
+ */
+export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
+  const setActiveArea = useAppStateStore((state) => state.setActiveArea);
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
+  const activeRunId = useAppStateStore((state) => state.activeRunId);
+  const executionActiveRunId = useExecutionRunsStore((state) => state.activeRunId);
+  const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
+  const effectiveRunId = activeRunId ?? executionActiveRunId;
+
+  return useCallback((actionId: string) => {
+    switch (actionId) {
+      case 'sld':
+        navigateToNetworkBuild();
+        break;
+      case 'network-build':
+        navigateToNetworkBuild();
+        break;
+      case 'overlay':
+        setActiveArea('SCHEMAT_TOPOLOGIA');
+        openSldOverlayFromCurrentContext();
+        break;
+      case 'switchgear':
+        navigateToSwitchgear({ caseId: activeCaseId });
+        break;
+      case 'power-distribution':
+        navigateToNetworkBuild();
+        break;
+      case 'case-manager':
+        navigateToCaseConfig({ caseId: activeCaseId });
+        break;
+      case 'sld-view':
+        window.location.hash = ROUTES.SLD_VIEW.hash;
+        break;
+      case 'catalog':
+        navigateToCatalog();
+        break;
+      case 'results':
+      case 'analysis':
+        openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
+          titlePl: 'Analizy techniczne',
+          tabId: ANALYSIS_ROUTE_DEFAULT_TAB,
+          entityRef: getCurrentSearchParams().get('sel'),
+          subjectKind: 'analysis_run',
+          subjectRef: effectiveRunId,
+          payload: {
+            runId: effectiveRunId,
+            legacyRoute: ROUTES.ANALYSIS.hash,
+            selectedName: getCurrentSearchParams().get('name'),
+            selectedType: getCurrentSearchParams().get('type'),
+          },
+        });
+        navigateToAnalysis({ runId: effectiveRunId });
+        break;
+      case 'compare':
+        navigateToCompare({ runId: effectiveRunId });
+        break;
+      case 'report':
+      case 'export':
+        setActiveArea('RAPORTY_UZASADNIENIA');
+        openRouteSurface(REPORT_SURFACE_SCREEN_CODE, {
+          entityRef: getCurrentSearchParams().get('sel'),
+          subjectKind: 'report',
+          subjectRef: effectiveRunId,
+          payload: {
+            runId: effectiveRunId,
+            selectedName: getCurrentSearchParams().get('name'),
+            selectedType: getCurrentSearchParams().get('type'),
+          },
+        });
+        navigateToReport({ runId: effectiveRunId });
+        break;
+      case 'variants':
+        navigateToVariants({ caseId: activeCaseId });
+        break;
+      case 'readiness':
+      case 'show-readiness':
+        setActiveArea('WYNIKI_ANALIZY');
+        openRouteSurface('E-04', {
+          titlePl: 'Konfiguracja techniczna układu',
+          tabId: 'kontrola',
+          subjectKind: 'analysis_case',
+          subjectRef: activeCaseId,
+          route: 'analysis',
+          openMode: 'replace_right_panel',
+        });
+        navigateToAnalysis({ caseId: activeCaseId, runId: effectiveRunId });
+        break;
+      case 'proof':
+      case 'whitebox':
+        navigateToProof({ runId: effectiveRunId });
+        break;
+      case 'protection':
+        navigateToResultsProtection({ runId: effectiveRunId });
+        break;
+      case 'run-sc-3f':
+      case 'run-sc-1f':
+      case 'run-power-flow':
+        void handleCalculate();
+        break;
+      case 'navigator':
+      case 'inspector':
+        // Przełączanie paneli — obsługiwane przez powłokę.
+        break;
+      default:
+        if (import.meta.env.DEV) {
+          console.debug(`[useLegacyMenuActions] Nieobsłużona akcja: ${actionId}`);
+        }
+    }
+  }, [
+    activeCaseId,
+    handleCalculate,
+    effectiveRunId,
+    openRouteSurface,
+    setActiveArea,
+  ]);
+}
