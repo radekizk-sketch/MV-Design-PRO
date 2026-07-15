@@ -1,0 +1,324 @@
+/*
+ * Style inspektora kontekstowego (okno W-110/W-602). Wszystkie kolory WYŁĄCZNIE
+ * przez tokeny --mvd-* (karta E1.3 §7, SPEC_POWIAZANIA). Bez literałów hex.
+ * Wartości liczbowe: font mono + tabular-nums (--mvd-font-mono z theme/tokens.css).
+ */
+
+.mvd-insp {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  color: var(--mvd-ink);
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.mvd-insp :focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+/* ---- stan pusty ---- */
+.mvd-insp-empty {
+  color: var(--mvd-muted);
+  font-size: 12px;
+  padding: 12px 4px;
+}
+
+/* ---- podział (pinezka) ---- */
+.mvd-insp-split {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+.mvd-insp-split-part {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+.mvd-insp-split-part[data-mvd-part='przypiety'] {
+  border-bottom: 2px solid var(--mvd-accent);
+}
+.mvd-insp-split-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mvd-muted);
+  font-weight: 600;
+  padding: 6px 4px 2px;
+}
+
+/* ---- widok obiektu ---- */
+.mvd-insp-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.mvd-insp-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 2px 8px;
+}
+.mvd-insp-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.mvd-insp-obj-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mvd-insp-obj-type {
+  color: var(--mvd-muted);
+  font-size: 11.5px;
+}
+
+/* ---- zakładki ---- */
+.mvd-insp-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-insp-tab {
+  border: 0;
+  background: none;
+  color: var(--mvd-muted);
+  padding: 6px 10px;
+  cursor: pointer;
+  font: inherit;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.mvd-insp-tab:hover {
+  color: var(--mvd-ink);
+}
+.mvd-insp-tab.mvd-on {
+  color: var(--mvd-accent);
+  border-bottom-color: var(--mvd-accent);
+  font-weight: 600;
+}
+
+.mvd-insp-panel {
+  padding: 8px 2px;
+  min-height: 0;
+}
+
+/* ---- sekcje akordeonu ---- */
+.mvd-insp-section {
+  border-bottom: 1px solid var(--mvd-line);
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+}
+.mvd-insp-section-head {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+.mvd-insp-section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  color: var(--mvd-ink);
+  padding: 4px 2px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+.mvd-insp-section-toggle:disabled {
+  cursor: default;
+}
+.mvd-insp-section-toggle:hover:not(:disabled) {
+  color: var(--mvd-accent);
+}
+.mvd-insp-caret {
+  color: var(--mvd-muted);
+  width: 1em;
+}
+.mvd-insp-tech-head {
+  color: var(--mvd-muted);
+  padding: 4px 2px;
+  text-transform: uppercase;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+}
+
+.mvd-insp-section-body {
+  padding: 2px 2px 2px 18px;
+}
+
+/* ---- siatka klucz–wartość ---- */
+.mvd-insp-kv-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mvd-insp-kv-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  justify-content: space-between;
+}
+.mvd-insp-kv-label {
+  color: var(--mvd-muted);
+  flex: 0 1 auto;
+}
+.mvd-insp-kv-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  text-align: right;
+  min-width: 0;
+}
+
+.mvd-insp-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.mvd-insp-unit {
+  color: var(--mvd-muted);
+}
+
+.mvd-insp-value-btn {
+  border: 0;
+  background: none;
+  color: inherit;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+.mvd-insp-value-btn:hover {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+
+.mvd-insp-origin {
+  color: var(--mvd-muted);
+  cursor: help;
+  font-size: 11px;
+}
+
+/* ---- błędy (sekcja wymuszona) ---- */
+.mvd-insp-errors {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--mvd-err-bg);
+  border: 1px solid var(--mvd-err);
+}
+.mvd-insp-error {
+  color: var(--mvd-err);
+  font-size: 12px;
+}
+
+/* ---- znacznik świeżości (współdzielony) ---- */
+.mvd-insp-fresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.mvd-insp-fresh-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.mvd-insp-fresh-ok {
+  color: var(--mvd-ok);
+}
+.mvd-insp-fresh-ok .mvd-insp-fresh-dot {
+  background: var(--mvd-ok);
+}
+.mvd-insp-fresh-stale {
+  color: var(--mvd-warn);
+}
+.mvd-insp-fresh-stale .mvd-insp-fresh-dot {
+  background: var(--mvd-warn);
+}
+.mvd-insp-fresh-recalc {
+  padding: 1px 8px;
+  font-size: 11px;
+}
+.mvd-insp-results-freshness {
+  padding: 6px 2px 8px;
+}
+
+/* ---- zakładka Dowód ---- */
+.mvd-insp-proofs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-insp-proof {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.mvd-insp-proof-tail {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---- zakładka Powiązania ---- */
+.mvd-insp-links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mvd-insp-links-head {
+  margin: 0 0 4px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mvd-muted);
+  font-weight: 600;
+}
+.mvd-insp-links-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-insp-link {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  color: var(--mvd-ink);
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+}
+.mvd-insp-link:hover {
+  background: var(--mvd-sel);
+}
+.mvd-insp-link-rel {
+  margin-left: auto;
+  color: var(--mvd-muted);
+  font-size: 11px;
+}
