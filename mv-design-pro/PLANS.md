@@ -108,6 +108,10 @@ Progress:
       polski język techniczny, zakaz surowych identyfikatorów z kodu w tekstach
       pierwszoplanowych (MODEL_INTERAKCJI §2.7); egzekwowanie — rozszerzenie
       `ui_terminology_guard` (obowiązkowa karta w U1)
+- [x] U0.10 Specyfikacja powiązania warstw (`docs/uiux/SPEC_POWIAZANIA_WARSTW_2026-07.md`) —
+      dyrektywa właściciela 2026-07-15: wszystkie warstwy powiązane wielowarstwowo (kreator →
+      schemat → drzewo → gotowość → ważność wyników → raporty z jednego zdarzenia); magistrala
+      zdarzeń + selekcja globalna + kontrakt świeżości rewizji; scenariusz akceptacyjny e2e w §7
 - [ ] U0.6 Makiety IA (artefakt) — zatwierdzenie właściciela
 - [ ] U1–U5 wg programu
 

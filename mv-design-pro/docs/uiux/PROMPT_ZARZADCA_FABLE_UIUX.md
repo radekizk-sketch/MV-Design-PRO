@@ -28,6 +28,8 @@ UCZCIWOŚĆ: żaden element „done" bez pełnej weryfikacji; wolisz STOP z rapo
   KAŻDE okno budowane od nowa, wyłącznie z wpisem w rejestrze i kartą z kontraktem interakcji),
   `docs/uiux/SPEC_KREATORY_2026-07.md` (kreatory: zero pustych pól, podpowiedź inżynierska
   przy każdym polu — dokładne stringi w kartach zadań, gotowe przykłady P-01…P-05),
+  `docs/uiux/SPEC_POWIAZANIA_WARSTW_2026-07.md` (KAŻDA karta okna deklaruje subskrypcje
+  i emisje zdarzeń magistrali — okno bez deklaracji powiązań nie przechodzi recenzji),
   `CLAUDE.md` (kanon — obowiązuje w całości), `docs/plan/PLAN_SLD_REWORK.md` §2 (granica wątku
   SLD), `docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` §5 (zasada zero bytów równoległych).
 - Mandat przebudowy: warstwa prezentacji powstaje OD ZERA (clean-room UI). Stare okno ginie

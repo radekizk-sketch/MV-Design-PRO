@@ -69,6 +69,7 @@
 - [uiux/INWENTARZ_FUNKCJI_2026-07.md](./uiux/INWENTARZ_FUNKCJI_2026-07.md) — WIĄŻĄCY inwentarz funkcji obliczeniowych + macierz pokrycia UI
 - [uiux/MODEL_INTERAKCJI_APLIKACJI_2026-07.md](./uiux/MODEL_INTERAKCJI_APLIKACJI_2026-07.md) — gramatyka interakcji całej aplikacji + rejestr okien (każde okno od nowa)
 - [uiux/SPEC_KREATORY_2026-07.md](./uiux/SPEC_KREATORY_2026-07.md) — kreatory: zero pustych pól, podpowiedzi inżynierskie, gotowe przykłady
+- [uiux/SPEC_POWIAZANIA_WARSTW_2026-07.md](./uiux/SPEC_POWIAZANIA_WARSTW_2026-07.md) — powiązanie warstw: propagacja model→schemat→gotowość→wyniki→raporty, wspólna selekcja, świeżość rewizji
 - [uiux/KARTA_KOORDYNACJI_SLD_01_TOKENY.md](./uiux/KARTA_KOORDYNACJI_SLD_01_TOKENY.md) — karta styku z wątkiem SLD (tokeny motywów)
 - [uiux/PROMPT_ZARZADCA_FABLE_UIUX.md](./uiux/PROMPT_ZARZADCA_FABLE_UIUX.md) — prompt zarządcy programu (orkiestracja wykonawców)
 
