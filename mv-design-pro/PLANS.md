@@ -112,6 +112,13 @@ Progress:
       dyrektywa właściciela 2026-07-15: wszystkie warstwy powiązane wielowarstwowo (kreator →
       schemat → drzewo → gotowość → ważność wyników → raporty z jednego zdarzenia); magistrala
       zdarzeń + selekcja globalna + kontrakt świeżości rewizji; scenariusz akceptacyjny e2e w §7
+- [x] U0.11 Taksonomia szablonów stacji (`docs/uiux/SZABLONY_STACJI_2026-07.md`) — dyrektywa
+      właściciela 2026-07-15: grupy logiczne A–E (zasilanie / dystrybucja / odbiorcze / OZE /
+      specjalne), stan zastany 57+ szablonów w 10 kategoriach, delta do dodania (GPZ, RS,
+      abonenckie, kompensacja, rezerwa zasilania), cel ≥ 80; przeglądarka szablonów w kreatorze
+- [ ] U0.12 Propozycje rozszerzeń P1–P12 (`docs/uiux/PROPOZYCJE_ROZSZERZEN_2026-07.md`) —
+      CZEKA NA DECYZJĘ WŁAŚCICIELA (TAK/NIE/PÓŹNIEJ per pozycja); rekomendacja zarządcy:
+      P1, P2, P5, P9, P10 do U3–U4
 - [ ] U0.6 Makiety IA (artefakt) — zatwierdzenie właściciela
 - [ ] U1–U5 wg programu
 

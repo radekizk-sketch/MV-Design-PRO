@@ -30,6 +30,7 @@ UCZCIWOŚĆ: żaden element „done" bez pełnej weryfikacji; wolisz STOP z rapo
   przy każdym polu — dokładne stringi w kartach zadań, gotowe przykłady P-01…P-05),
   `docs/uiux/SPEC_POWIAZANIA_WARSTW_2026-07.md` (KAŻDA karta okna deklaruje subskrypcje
   i emisje zdarzeń magistrali — okno bez deklaracji powiązań nie przechodzi recenzji),
+  `docs/uiux/SZABLONY_STACJI_2026-07.md` (taksonomia ról A–E, delta kategorii, przeglądarka),
   `CLAUDE.md` (kanon — obowiązuje w całości), `docs/plan/PLAN_SLD_REWORK.md` §2 (granica wątku
   SLD), `docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` §5 (zasada zero bytów równoległych).
 - Mandat przebudowy: warstwa prezentacji powstaje OD ZERA (clean-room UI). Stare okno ginie
