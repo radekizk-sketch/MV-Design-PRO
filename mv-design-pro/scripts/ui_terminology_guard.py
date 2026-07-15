@@ -133,8 +133,20 @@ def extract_ui_strings(line: str) -> list[str]:
     return fragments
 
 
-def find_banned_terms(text: str) -> list[str]:
-    return [label for label, pattern in BANNED_UI_TERMS.items() if pattern.search(text)]
+# Słownik nowej IA (Program UI/UX 2026-07, decyzja V12K-026 z 2026-07-15):
+# w nowej powłoce `frontend/src/ui2/**` terminy „przypadek (obliczeniowy)" i „kreator"
+# są KANONICZNE (zatwierdzone makietą U0.6). Bany na te dwa terminy nie obowiązują
+# w ui2; pozostałe bany (Run/Proof/Case/... oraz angielskie tokeny) obowiązują wszędzie.
+NEW_IA_ALLOWED_TERMS = {"Przypadek", "przypadek", "Kreator", "kreator"}
+NEW_IA_PATH_MARKER = "/ui2/"
+
+
+def find_banned_terms(text: str, *, new_ia: bool = False) -> list[str]:
+    return [
+        label
+        for label, pattern in BANNED_UI_TERMS.items()
+        if pattern.search(text) and not (new_ia and label in NEW_IA_ALLOWED_TERMS)
+    ]
 
 
 def scan_file(path: Path) -> list[Violation]:
@@ -152,7 +164,8 @@ def scan_file(path: Path) -> list[Violation]:
             # (np. `${branch.name}` w error message — `branch` to nazwa zmiennej,
             # nie token UI). Dotyczy WYŁĄCZNIE technicznych error/log messages.
             cleaned = PROGRAMMATIC_REF_PATTERN.sub("", fragment)
-            for token in find_banned_terms(cleaned):
+            is_new_ia = NEW_IA_PATH_MARKER in path.as_posix()
+            for token in find_banned_terms(cleaned, new_ia=is_new_ia):
                 violations.append(
                     Violation(
                         file_path=normalize_path(path),

@@ -250,7 +250,7 @@ export function V126AcademicSurface({ surface }: { surface: WorkspaceSurfaceDesc
         <section className="rounded border border-slate-700 bg-slate-950 p-4 text-slate-100">
           <div className="grid gap-3 md:grid-cols-3">
             <div>
-              <div className="text-[11px] uppercase text-slate-400">Run</div>
+              <div className="text-[11px] uppercase text-slate-400">Przebieg</div>
               <div className="break-all text-xs">{run.run_id}</div>
             </div>
             <div>
@@ -300,7 +300,7 @@ export function V126AcademicSurface({ surface }: { surface: WorkspaceSurfaceDesc
             <h3 className="text-sm font-semibold">Dowód</h3>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               <div className="rounded border border-slate-800 bg-slate-900 p-2">
-                <div className="text-[11px] uppercase text-slate-400">Proof</div>
+                <div className="text-[11px] uppercase text-slate-400">Identyfikator dowodu</div>
                 <div className="mt-1 break-all text-xs">{proof.proof_id}</div>
               </div>
               <div className="rounded border border-slate-800 bg-slate-900 p-2">
