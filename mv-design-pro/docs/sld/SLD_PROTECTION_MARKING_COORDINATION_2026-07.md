@@ -59,3 +59,21 @@ na swojej gałęzi lub przez właściciela. Brak sprzeciwu przy scaleniu = akcep
 - [ ] Wątek UI: inspektor (pkt 2.2)
 - [ ] Wątek UI: tokeny (pkt 2.3)
 - [ ] Wątek UI: renumeracja V12K (pkt 3)
+
+## 6. Aktualizacja 2026-07-15: dyrektywa D2 (Poprawka A3)
+
+Poprawka A3 (`docs/sld/SLD_CAD_SPEC_V3.md` §18-§20, rozstrzygnięcia architekta zapisane w
+`docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-033..037) rozszerza konwencję §17 o poprawność toru
+głównego, nomenklaturę pól/aparatów i walidację topologiczną funkcji zabezpieczeń. Dodatkowe
+punkty styku dla wątku UI (uzupełnienie tabeli w §2, plan realizacji SLD:
+`docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md` F10.1-F10.6):
+
+| # | Temat | Oczekiwane działanie wątku UI |
+|---|-------|-------------------------------|
+| 5 | Słownik IA | Dodać rozróżnienie: oznaczenie FUNKCYJNE pola (liniowe/transformatorowe/sprzęgłowe/pomiarowe/potrzeb własnych/generatorowe/inne technologiczne, §19.1) jest ODRĘBNE od identyfikatora aparatu (Q1/Q9/QE1/T1 przy symbolu, §19.1) — pole SAMO nie nosi już etykiety „Q". Identyfikator z fallbacku konwencji niesie znacznik „konwencja" (`data-designation-source="konwencja"`) — słownik powinien odróżniać dana vs konwencja, spójnie z zasadą WHITE BOX już przyjętą dla §17. |
+| 6 | Inspektor / property-grid | Walidacja topologiczna funkcji zabezpieczeń (§20.2: 67N⇒VT open-delta+I0, 87T⇒Transformer+2×CT+strefa, 51N⇒I0) prezentowana jako OSTRZEŻENIE / diagnostyka warstwy analysis/compliance — NIE błąd blokujący, NIE fizyka w UI; reguły są WHITE BOX (jawne warunki, bez heurystyk), pochodzą z `Bay.protection_codes`/`ProtectionAssignment`. |
+
+Kanał danych `BayPrimaryDevice.designation` (identyfikator per-aparat, DOMAIN) jest odłożony do
+fazy **F10.6** planu SLD (razem z przekładniami CT/VT, strefą 87T i zaległą oceną F9.6b stanu
+operacyjnego źródła) — do tego czasu inspektor pokazuje identyfikator z konwencji ze znacznikiem
+źródła, nigdy jako domniemaną daną pierwotną.

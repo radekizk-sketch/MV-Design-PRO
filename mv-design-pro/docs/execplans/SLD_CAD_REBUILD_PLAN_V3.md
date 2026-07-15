@@ -1069,6 +1069,96 @@ Pozostałe (F9.3/F9.4/F9.5/F9.7) są frontend-only w potoku v3.
 
 ---
 
+## F10. Poprawka A3 — poprawność inżynierska toru, aparatów i powiązań wtórnych (2026-07)
+
+**Wejście:** `docs/sld/SLD_ENGINEERING_CORRECTNESS_AUDIT_2026-07.md` (audyt D2-1..D2-9) +
+`docs/sld/SLD_CAD_SPEC_V3_AMENDMENT_A3_DRAFT.md` (scalony do `SLD_CAD_SPEC_V3.md` §18-§20).
+**Rozstrzygnięcia architekta:** §A3-DEC-1..5, wpisane INLINE w §18-§20 spec + rejestr
+`docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-033..037 (K-D2-A..E).
+**Kolejność (D2-9, wiążąca — tor mocy NAJPIERW, zgodnie z dyrektywą właściciela):** F10.1 (tor
+główny + laterale ES/VT/SA) → F10.2 (nomenklatura pól + identyfikatory + typ stacji) → F10.3
+(szyny/stany/symbole) → F10.4 (CT/VT adnotacje bez-DOMAIN) → F10.5 (powiązania wtórne + walidacja)
+→ F10.6 (runda DOMAIN: designation/przekładnie/strefa 87T/interlock + F9.6b).
+**Reguły (bez zmian):** WHITE BOX + domain_no_guessing; zero fizyki w UI/analysis (analysis waliduje,
+nie liczy); determinizm; wyrocznie §11(+A1/A2) muszą pozostać zielone po KAŻDEJ fazie; brak
+lokalnych łatek i duplikacji elektryki adaptera.
+
+### F10.1. [KRYTYCZNA] ES/VT/SA jako gałęzie boczne + opisane zakończenia torów
+- Zakres: `v3/compose/station.ts`/`buildBayStack` — wyjęcie ES/VT/SA z pionowego stosu szeregowego
+  pola, rysowanie jako gałąź boczna od węzła toru głównego (§18.1/§18.2); `v3/symbols/defs.ts`/
+  `glyphs.tsx` — port boczny/nowy wariant glifu ES/VT/SA (V12K-037, zmiana ADDYTYWNA); przedefiniowanie
+  `cell_sequence_probe` (§12.1) na tor GŁÓWNY z pominięciem ES/VT/SA; zakończenia toru mocy zawsze
+  OPISANE (§18.6) — etykieta nazwy/numeru linii + kierunku na głowicy, zakończenia sieciowe z jawną
+  etykietą na scenie zamiast wyłącznie `stopNote` diagnostycznego.
+- DoD (wyrocznie z draftu): `earth_switch_lateral_probe` (§18.1), `vt_parallel_probe` (§18.2),
+  `path_termination_labeled_probe` (§18.6) zielone na `sldSubstrate52s` L0/L1/L2; `cell_sequence_probe`
+  (§12.1) zielona z nową definicją toru głównego; wyrocznie §11(+A1/A2) nadal zielone; determinizm;
+  render 1:1 oceniony.
+- Autoryzacje: `v3/compose/station.ts`, `v3/compose/apparatusSequence.ts`, `v3/symbols/defs.ts`,
+  `v3/symbols/glyphs.tsx`, `v3/scene/buildScene.ts`, testy v3.
+
+### F10.2. Nomenklatura pól + identyfikatory aparatów (fallback) + typ stacji z topologii
+- Zakres: rozdzielenie oznaczenia FUNKCYJNEGO pola od identyfikatora per-aparat (§19.1) —
+  `bayApparatusDesignation` przestaje etykietować całe pole; fallback konwencji Q/T ze znacznikiem
+  `data-designation-source="konwencja"` (docelowe pole `BayPrimaryDevice.designation` odłożone do
+  F10.6-DOMAIN); podpis pola liniowego numer/nazwa linii + kierunek (§19.2, kanał adaptera D2);
+  typ stacji wyprowadzany z topologii zamiast `station_type` (§19.3); inwentaryzacja kompletności
+  `FieldRole` (§A3-DEC-5) — rozszerzenie WYŁĄCZNIE dla ról realnie występujących w danych.
+- DoD: `apparatus_identifier_probe` (§19.1), `line_bay_caption_probe` (§19.2),
+  `station_type_topology_probe` (§19.3) zielone na `sldSubstrate52s` L0/L1/L2; inwentaryzacja
+  `FieldRole` udokumentowana (WHITE BOX, zero ról-atrap); wyrocznie §11(+A1/A2) zielone; determinizm.
+- Autoryzacje: `v3/compose/directions.ts`, `v3/compose/station.ts`, `v2/canvas/enmToSldAdapter.ts`
+  (kanał numeru/nazwy linii, addytywnie), klasyfikator typu stacji (adapter/analysis), testy.
+
+### F10.3. Szyny + stany + jednoznaczność symboli
+- Zakres: etykieta szyny stacji (napięcie znamionowe + oznaczenie sekcji), widoczny stan sprzęgła
+  (§18.4, parytet z GPZ); jednoznaczność symboli łączników i „52" wyłącznie jako adnotacja przy
+  wyłączniku, nigdy jako kod funkcji w okręgu przekaźnika (§18.5).
+- DoD: `busbar_label_probe` (§18.4), `switch_symbol_unambiguity_probe` (§18.5) zielone na
+  `sldSubstrate52s` L0/L1/L2; wyrocznie §11(+A1/A2) zielone; render oceniony.
+- Autoryzacje: `v3/compose/station.ts`, `v3/layout/measure.ts` (rezerwacja etykiety szyny), testy v3.
+
+### F10.4. CT/VT adnotacje (część bez-DOMAIN)
+- Zakres: etykieta CT (identyfikator + przekładnia) TYLKO gdy dane obecne (§18.3) — do czasu
+  dostarczenia pól DOMAIN (D3, F10.6) rysowany sam okrąg CT bez przekładni, zero zgadywania.
+- DoD: `ct_annotation_probe` zielony (negatyw obowiązkowy: 0 przekładni „z domysłu"); wyrocznie
+  §11(+A1/A2) zielone; determinizm.
+- Autoryzacje: `v3/compose/station.ts`, `v3/compose/gpz.ts`, testy v3.
+
+### F10.5. Dwie linie wtórne + walidacja 67N/87T + dyscyplina adnotacji
+- Zakres: linia sygnału pomiarowego CT→przekaźnik (`ct_ref`) osobna od linii trip
+  przekaźnik→wyłącznik (`breaker_ref`) — §20.1; warstwa ANALYSIS/COMPLIANCE waliduje prerekwizyty
+  topologiczne 67N⇒VT, 87T⇒TR+2×CT, 51N⇒I0 na ISTNIEJĄCYCH polach — §20.2 (NIE solver, NIE render);
+  miernik „M" jednoznacznie odróżnialny od (niemodelowanego) napędu silnikowego — §20.4; priorytet
+  toru pierwotnego nad warstwą adnotacji — §20.3.
+- DoD: `secondary_link_duality_probe` (§20.1), `protection_function_topology_validation` (§20.2),
+  `meter_symbol_disambiguation` (§20.4), `annotation_no_overlap_primary_probe` (§20.3) zielone;
+  wyrocznie §11(+A1/A2)/§17.5 nienaruszone; determinizm.
+- Autoryzacje: `v3/compose/station.ts`, `v3/compose/gpz.ts`, nowy walidator topologiczny funkcji
+  zabezpieczeń w warstwie `backend/src/analysis/` (lub `backend/src/compliance/` — decyzja
+  umiejscowienia przy realizacji, zgodnie z CLAUDE.md „Analiza = interpretacja, NIE fizyka"), testy.
+
+### F10.6. [DOMAIN] designation + przekładnie + strefa 87T + interlock ES (+ zaległe F9.6b)
+- Zakres: `BayPrimaryDevice.designation` (D1, identyfikator per-aparat, rozstrzyga V12K-035);
+  przekładnia + układ pomiarowy CT (D3), przekładnia + open-delta VT (D4); strefa różnicowa 87T +
+  drugi CT (D5); interlock ES↔tor jako opcja (D6). Ta faza scala ODNOŚNIKIEM zaległą rundę
+  **F9.6b** (ocena wystarczalności łączy pośrednich Source/Generator→Bay dla stanu operacyjnego
+  źródła — `source_state_probe` §13.3, dziś zablokowane decyzją architekta F9.6(b): nowe pole
+  `bay_ref` TYLKO jeśli łącza pośrednie `GPZSection.incoming_source_ref`/`BayBaseModel.
+  source_endpoint` nie domykają jednoznacznie) — obie decyzje DOMAIN rozpatrywane RAZEM, jedna
+  runda zmian modelu ENM zamiast dwóch osobnych. Mutacja modelu WYŁĄCZNIE w warstwie DOMAIN
+  (CLAUDE.md).
+- DoD: nowe pola ENM udokumentowane i przetestowane (backend, mypy strict); `source_state_probe`
+  (F9.6b), pełne `ct_annotation_probe` (z przekładnią), pełna `protection_function_topology_validation`
+  (87T ze strefą + 2×CT, 67N z open-delta) zielone; lustro typów frontend (`frontend/src/types/
+  enm.ts`); guardy domain_no_guessing/catalog_binding/arch/pcc_zero PASS.
+- Autoryzacje: `backend/src/enm/models.py`, `backend/src/enm/mapping.py`,
+  `frontend/src/types/enm.ts`, `v2/domain/apparatusContracts.ts`, testy domeny — zakres finalny
+  (liczba i kształt nowych pól) do potwierdzenia przy otwarciu fazy, zależny od wyniku oceny F9.6b
+  (łącza pośrednie mogą zamknąć część zakresu bez nowych pól).
+
+---
+
 ## Prompt kontynuacji (wklej świeżemu agentowi)
 
 ```
