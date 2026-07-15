@@ -51,6 +51,20 @@ Raport fazowy U1 wg formatu promptu zarządcy po scaleniu.
   (`npm run test:e2e`, `critical-run-flow` real) zależą od starego DOM — bramka e2e jest
   obowiązkowa przed commitem przełączenia.
 
+## 3b. DECYZJA ARCHITEKTA po diagnozie wykonawcy (2026-07-15, STOP-raport)
+Jednocommitowe przełączenie ODRZUCONE (dowód: kontrakt DOM e2e + orkiestracja w App.tsx).
+Zatwierdzona dekompozycja:
+- **E1.7a Ekstrakcja orkiestracji:** bezwizualne efekty z `App.tsx` (hydracja store'ów z URL,
+  deep-linki `#analysis/#proof/…`, `openRouteSurface`, przeliczanie, overlay) → headless hook
+  `ui2/legacy/useLegacyOrchestrator.ts` (PRZENIESIENIE, nie kopia; te same store'y).
+  `App.tsx` renderuje `<Orchestrator/>` + starą ramę. E2e bez zmian — zielone.
+- **E1.7b Parytet kontraktu:** nowa powłoka montuje LegacySurface, eksponuje wymagane
+  testidy (`app-ready`, `active-case-bar`, `workspace-surface-main`, `main-content`,
+  odpowiednik `canonical-layout`) i trasę domyślną = SLD; wejście za flagą parytetową
+  (krótkożyciowy szew testowy, nie feature-flag na miesiące).
+- **E1.7c Przełączenie:** flaga na nową powłokę + migracja spec e2e partiami z zachowaniem
+  intencji asercji; kasacja starej ramy, gdy realnie osieroci się (rejestr wygaszania).
+
 ## 4. Ryzyko i wycofanie
 Największa karta styku ze starym kodem w U1. Wycofanie = rewert jednego commita przełączenia.
 Realizacja krokami: (a) LegacySurface + mapowanie, (b) przełączenie wejścia, (c) kasacja starej
