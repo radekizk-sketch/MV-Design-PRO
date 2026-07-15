@@ -122,6 +122,11 @@ Progress:
 - [x] U0.13 Zasada „ZAWSZE NA MAX" (Program §2.0, decyzja właściciela 2026-07-15): braki
       rozbudowujemy od razu, delta backendowa w zakresie programu (w granicach kanonu fizyki);
       gotowce w pełni edytowalne + szablony użytkownika (SPEC_KREATORY Z4, SZABLONY §4a)
+- [x] U0.14 Układ paneli (`docs/uiux/SPEC_UKLAD_PANELI_2026-07.md`) — dyrektywa właściciela
+      2026-07-15: lewy (nawigacja+kontekst, zwijany do listwy ikon) / środkowy (warsztat,
+      karty + podział widoku) / prawy (inspektor: zakładki, akordeon, pinezka, chowany) +
+      panel dolny + tryby Podstawowy/Rozszerzony/Ekspercki na mode-gate (ukrywanie okien
+      zaawansowanych; wyszukiwarka poleceń znajduje wszystko)
 - [ ] U0.6 Makiety IA (artefakt) — zatwierdzenie właściciela
 - [ ] U1–U5 wg programu
 

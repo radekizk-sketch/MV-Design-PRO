@@ -68,6 +68,8 @@ Układ dialogów domenowych — zgodny z `MACIERZ_OKIEN_DIALOGOWYCH_I_AKCJI.md` 
 
 Reguła: NIE WOLNO zbudować okna bez wpisu w rejestrze i bez karty zadania z kontraktem
 interakcji. Rejestr uzupełnia zarządca przy rozpisywaniu epików; każde okno dostaje ID `W-…`.
+Każde okno deklaruje też **minimalny tryb widoczności** (Podstawowy / Rozszerzony / Ekspercki —
+`SPEC_UKLAD_PANELI_2026-07.md` §2); zarządca dopisuje tryb w kartach epików.
 Stan początkowy (seed, wg przestrzeni N1–N7 z Programu §4):
 
 | ID | Okno (etykieta PL) | Przestrzeń | Epik | Zastępuje (stan zastany) |
