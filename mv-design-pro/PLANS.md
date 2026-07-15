@@ -116,9 +116,12 @@ Progress:
       właściciela 2026-07-15: grupy logiczne A–E (zasilanie / dystrybucja / odbiorcze / OZE /
       specjalne), stan zastany 57+ szablonów w 10 kategoriach, delta do dodania (GPZ, RS,
       abonenckie, kompensacja, rezerwa zasilania), cel ≥ 80; przeglądarka szablonów w kreatorze
-- [ ] U0.12 Propozycje rozszerzeń P1–P12 (`docs/uiux/PROPOZYCJE_ROZSZERZEN_2026-07.md`) —
-      CZEKA NA DECYZJĘ WŁAŚCICIELA (TAK/NIE/PÓŹNIEJ per pozycja); rekomendacja zarządcy:
-      P1, P2, P5, P9, P10 do U3–U4
+- [x] U0.12 Propozycje rozszerzeń P1–P22 (`docs/uiux/PROPOZYCJE_ROZSZERZEN_2026-07.md`) —
+      ZATWIERDZONE zasadą „na max" (decyzja właściciela 2026-07-15); kolejność: U3 (P3, P4,
+      P20), U4 (P1, P2, P5, P6, P9, P10, P13–P15, P18), po U4/U5 (reszta + grupa III)
+- [x] U0.13 Zasada „ZAWSZE NA MAX" (Program §2.0, decyzja właściciela 2026-07-15): braki
+      rozbudowujemy od razu, delta backendowa w zakresie programu (w granicach kanonu fizyki);
+      gotowce w pełni edytowalne + szablony użytkownika (SPEC_KREATORY Z4, SZABLONY §4a)
 - [ ] U0.6 Makiety IA (artefakt) — zatwierdzenie właściciela
 - [ ] U1–U5 wg programu
 

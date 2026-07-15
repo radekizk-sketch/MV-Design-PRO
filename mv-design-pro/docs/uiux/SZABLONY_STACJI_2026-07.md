@@ -50,6 +50,15 @@ samym module backendu, tym samym schematem danych (`StationTemplate`), z pełnym
   (segment magistrali wiejskiej → słupowe; szyna nn z PV → prosument/hybrydowe) — podpowiedź,
   nigdy przymus.
 
+## 4a. Szablony użytkownika (dyrektywa „na max" 2026-07-15)
+
+Inżynier może zapisać dowolną skonfigurowaną stację (w tym zmodyfikowany gotowiec) jako
+**własny szablon**: „Zapisz jako szablon…" → nazwa PL + opis zastosowania + przypisanie do
+grupy A–E. Szablony użytkownika żyją w bibliotece projektu (eksportowane z archiwum ZIP)
+z opcją awansu do biblioteki organizacji. W przeglądarce oznaczone jako „własne", w pełni
+równoprawne (miniatura, filtry, porównanie, apply). Wymaga delty backendowej: zapis definicji
+szablonu z modelu (odwrotność apply) — karta E3, ten sam schemat `StationTemplate`.
+
 ## 4. Delta backendowa (karty E3, w granicach programu)
 
 Dodanie kategorii A/C/E to rozszerzenie ISTNIEJĄCEGO modułu szablonów (nowe pliki kategorii

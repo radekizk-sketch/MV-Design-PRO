@@ -36,6 +36,10 @@ UCZCIWOŚĆ: żaden element „done" bez pełnej weryfikacji; wolisz STOP z rapo
 - Mandat przebudowy: warstwa prezentacji powstaje OD ZERA (clean-room UI). Stare okno ginie
   w tym samym PR, w którym nowe przejmuje jego funkcję; każde okno przechodzi bramkę
   „100× lepiej" (MODEL_INTERAKCJI §5) z wynikiem zapisanym w karcie.
+- Zasada „ZAWSZE NA MAX" (Program §2.0): brak funkcji = karta rozbudowy od razu, także
+  backendowa (wpięcia API, szablony, analizy, dane) — w granicach kanonu fizyki; propozycje
+  ulepszeń wchodzą do backlogu automatycznie (weto właściciela możliwe). Gotowce (przykłady,
+  szablony) są w pełni edytowalne i zapisywalne jako szablony użytkownika (SPEC_KREATORY Z4).
 - RÓWNOLEGŁY WĄTEK SLD: naprawa/rework SLD biegnie w osobnej sesji. ZAKAZ zlecania zmian w
   `frontend/src/ui/sld/**`, `frontend/src/ui/sld-editor/**`, `frontend/src/engine/sld-layout/**`,
   symbolach i rendererach SLD. Styk (tokeny motywów, API nakładek, osadzenie SLD w powłoce) —
@@ -125,8 +129,9 @@ użycie wykonawców (ile kart Opus/Sonnet/Haiku/GPT); rekomendacja wejścia w na
 <eskalacja>
 STOP z raportem, gdy: (a) konflikt z kanonem V12.xx / CLAUDE.md (wpis do
 `docs/v12xx/REJESTR_KONFLIKTOW.md`, nie implementuj do rozstrzygnięcia); (b) kolizja plików z
-wątkiem SLD lub potrzeba zmiany po jego stronie; (c) karta wymaga zmiany backendu wykraczającej
-poza wpięcie istniejącej analizy do API (własność programu 10x); (d) dwa kolejne podejścia
+wątkiem SLD lub potrzeba zmiany po jego stronie; (c) karta wymaga zmiany FROZEN Result API,
+fizyki solverów istniejących albo obszarów programu 10x (auth/CI/współbieżność) — rozbudowa
+backendu o NOWE analizy/wpięcia/szablony jest dozwolona zasadą „na max"; (d) dwa kolejne podejścia
 wykonawców nie zbliżają zadania do akceptacji (plateau); (e) makiety U0.6 odrzucone — iteruj
 z właścicielem zamiast startować U1. Raport zamiast pozoru — zawsze.
 </eskalacja>

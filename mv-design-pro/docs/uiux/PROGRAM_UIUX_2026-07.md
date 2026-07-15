@@ -38,6 +38,19 @@ UI, pozycje ◐ są dokańczane, pozycje ✅ są podnoszone jakościowo.
 
 ## 2. Ład programu
 
+### 2.0 Zasada „ZAWSZE NA MAX" (decyzja właściciela 2026-07-15 — nadrzędna dla zakresu)
+Jeśli czegokolwiek brakuje do pełnej wartości dla inżyniera — **rozbudowujemy od razu, także
+backend**. Konsekwencje:
+1. Propozycje rozszerzeń (P1–P12 i kolejne) są ZATWIERDZONE z automatu: wchodzą do backlogu
+   epików bez osobnej zgody; właściciel zachowuje prawo weta i zmiany kolejności.
+2. Rozbudowa backendu jest W ZAKRESIE programu, gdy funkcja jej wymaga (wpięcie analizy do API,
+   nowe kategorie szablonów, nowe analizy/interpretacje, dane profili). Granice niezmienne:
+   kanon warstw (fizyka tylko w solverach, WHITE BOX dla każdej nowej analizy/solvera),
+   katalog-first, determinizm, FROZEN Result API (zmiany wyłącznie przez wersjonowanie),
+   pliki wątku SLD nietykalne. Bezpieczeństwo/CI/współbieżność pozostają w programie 10x.
+3. Bramka „100× lepiej" ocenia też kompletność: okno, któremu brakuje funkcji możliwej do
+   zbudowania, nie przechodzi recenzji z adnotacją „na później" — dostaje kartę rozbudowy.
+
 ### 2.1 Relacja do kanonu
 Program NIE zmienia kanonu V12.xx, warstw architektury, FROZEN Result API ani zasad z `CLAUDE.md`
 (NOT-A-SOLVER, WHITE BOX, Single Model, determinizm, katalog-first, polskie etykiety, zakaz

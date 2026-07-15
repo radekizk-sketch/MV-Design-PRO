@@ -11,7 +11,7 @@ gotowe przykłady z maksymalnie uzupełnionymi danymi i podpowiedzią")
 
 ---
 
-## 1. Trzy zasady naczelne
+## 1. Cztery zasady naczelne
 
 ### Z1 — ZERO PUSTYCH PÓL
 Każde pole każdego kroku kreatora jest wstępnie wypełnione uzasadnioną wartością. Hierarchia
@@ -43,6 +43,14 @@ Każdy kreator otwiera się galerią kompletnych, w pełni sparametryzowanych pr
 obejściowym) i zostawia inżyniera w trybie edycji — może zmienić każdy element.
 Przykład ≠ szkic: przechodzi walidację, ma komplet typów katalogowych i gotowość
 umożliwiającą natychmiastowe uruchomienie analiz.
+
+### Z4 — GOTOWCE W PEŁNI EDYTOWALNE (dyrektywa właściciela 2026-07-15)
+Każdy gotowiec (przykład P-xx, szablon stacji, wzorzec referencyjny) po wczytaniu jest
+w 100% edytowalny: każdy element, każdy parametr, topologia (dodaj/usuń/przenieś) — kreator
+zaawansowany prowadzi edycję gotowca tymi samymi operacjami domenowymi co budowę od zera,
+z pełną propagacją do wszystkich warstw (`SPEC_POWIAZANIA_WARSTW_2026-07.md`). Zmodyfikowany
+gotowiec można zapisać jako **własny szablon użytkownika** (`SZABLONY_STACJI_2026-07.md` §4a)
+— do ponownego użycia w kolejnych projektach. Zakaz gotowców „tylko do odczytu".
 
 ## 2. Kreator sieci SN (W-201/W-202) — przepływ maksymalnie szczegółowy
 
