@@ -48,6 +48,13 @@ Reguły twarde:
 5. **Fokus i klawiatura:** pełna ścieżka klawiaturowa przez każde okno (Tab-order zdefiniowany
    w karcie okna), ARIA, kontrast ≥ WCAG AA.
 6. **Polskie etykiety, zakaz codenames** (guardy).
+7. **Wyłącznie polski język techniczny** (dyrektywa właściciela 2026-07-15): zakaz surowych
+   identyfikatorów z kodu w widocznych tekstach UI — żadnych nazw modułów/solverów
+   (`short_circuit_iec60909`), kodów snake_case (`earthing.resistance_missing`), angielskich
+   statusów ani skrótów kodowych pakietów. Etykieta główna ZAWSZE po polsku, terminologią
+   inżynierską (normy wolno cytować: „IEC 60909-0"). Identyfikatory techniczne (kody gotowości,
+   identyfikatory przebiegów, odciski SHA-256) wolno pokazać wyłącznie w strefie „szczegóły
+   techniczne" (inspektor, tooltip, eksport diagnostyczny) — nigdy jako treść pierwszoplanową.
 
 ## 3. Standard okna (każde okno od nowa wg tego wzorca)
 

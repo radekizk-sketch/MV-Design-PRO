@@ -82,6 +82,9 @@ Realizuj fazy U0→U5 z Programu §8, epik po epiku:
 <ograniczenia_twarde>
 - Kanon `CLAUDE.md` w całości: zero fizyki w UI, polskie etykiety, zakaz codenames, determinizm,
   katalog-first, FROZEN Result API, jeden model sieci.
+- Język interfejsu: WYŁĄCZNIE polski język techniczny; zakaz surowych identyfikatorów z kodu
+  (nazwy modułów, snake_case, angielskie statusy) w tekstach pierwszoplanowych — pełna reguła
+  w MODEL_INTERAKCJI §2.7; każda karta zadania cytuje ją w polu etykiet.
 - Zero bytów równoległych: nowy moduł zastępuje stary w tym samym PR (konsolidacja E12 i każda inna).
 - Zero fałszywego greena: zakaz skip/xfail/zawężania biegów; pełne bramki z Programu §10 przed
   każdym mergem; zmiany wizualne z artefaktem renderu.

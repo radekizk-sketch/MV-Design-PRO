@@ -106,8 +106,13 @@ Zasady IA:
   z wątkiem SLD F4 (karta koordynacyjna, nie fork).
 - **Typografia:** jedna rodzina UI + mono dla wartości liczbowych/jednostek; liczby wyrównane
   do prawej, jednostki zawsze obecne (kV, kA, MW, MVar, s, Ω/km).
-- **Język:** wyłącznie polskie etykiety; słownik terminów = `CLAUDE.md` §Terminology + kontrakty
-  `docs/ui/`; zakaz codenames (guard).
+- **Język:** wyłącznie polski język techniczny w CAŁYM interfejsie (dyrektywa właściciela
+  2026-07-15). Zakaz surowych identyfikatorów z kodu (nazwy modułów/solverów, snake_case,
+  angielskie statusy, skróty kodowe pakietów) w tekstach pierwszoplanowych; normy cytowane po
+  numerze („IEC 60909-0") są dozwolone. Identyfikatory techniczne tylko w strefie „szczegóły
+  techniczne" (MODEL_INTERAKCJI §2.7). Słownik terminów = `CLAUDE.md` §Terminology + kontrakty
+  `docs/ui/`; zakaz codenames (guard). Egzekwowanie: rozszerzenie `ui_terminology_guard`
+  o wykrywanie identyfikatorów kodowych w stringach UI — obowiązkowa karta w U1.
 - **Dostępność:** pełna obsługa klawiatury, ARIA, kontrast ≥ WCAG AA w obu motywach.
 - **Komponenty bazowe (biblioteka `ui/shared` przeprojektowana):** tabela danych (sort/filtr/
   wirtualizacja), formularz z walidacją zod, inspektor, karta wyniku, wykres (Recharts + KaTeX

@@ -104,6 +104,10 @@ Progress:
 - [x] U0.8 Specyfikacja kreatorów (`docs/uiux/SPEC_KREATORY_2026-07.md`) — dyrektywa
       właściciela 2026-07-15: maksymalna szczegółowość, zero pustych pól, podpowiedź
       inżynierska przy każdym polu, gotowe przykłady P-01…P-05 z kompletem danych
+- [x] U0.9 Zasada języka (dyrektywa właściciela 2026-07-15): w całym interfejsie wyłącznie
+      polski język techniczny, zakaz surowych identyfikatorów z kodu w tekstach
+      pierwszoplanowych (MODEL_INTERAKCJI §2.7); egzekwowanie — rozszerzenie
+      `ui_terminology_guard` (obowiązkowa karta w U1)
 - [ ] U0.6 Makiety IA (artefakt) — zatwierdzenie właściciela
 - [ ] U1–U5 wg programu
 
