@@ -141,7 +141,17 @@ Progress:
       pól, powiązanie warstw, układ paneli z trybami. **FAZA U0 ZAMKNIĘTA.**
 - [x] U0.17 Runda 4 P39–P47: maksymalna rozbudowa specjalisty OZE / NC RfG (dyrektywa
       właściciela 2026-07-15) + priorytet strumienia OZE w kolejności realizacji
-- [ ] U1 W TOKU (od 2026-07-15): karty E1/E2/E15 — pierwsza karta `docs/uiux/karty/U1_E1_1_POWLOKA.md`
+- [ ] U1 W TOKU (od 2026-07-15): karty w `docs/uiux/karty/`
+      - [x] E1.1 Powłoka W-110 + tokeny `--mvd-*` (wykonawca Opus; pełny vitest 7388 pass;
+            zintegrowane `a75b7e9`)
+      - [x] E15.1 Magistrala zdarzeń (wykonawca Sonnet; pełny vitest 7393 pass; pokrycie
+            gałęzi bus.ts 100%; zintegrowane `39a833b`; TODO-KARTA `selekcja.zrodlo`
+            rozstrzygnięte: okna emitują selekcję z prawdziwym źródłem, adapter = fallback)
+      - [ ] E1.2 Drzewa kontekstowe (Sonnet — w produkcji)
+      - [ ] E1.3 Inspektor kontekstowy (Opus — w produkcji)
+      - [ ] E1.4–E1.7, E15.2, E2.1–E2.2 — backlog w karcie E1.1
+      - [x] V12K-026 RESOLVED: słownik nowej IA („przypadek obliczeniowy", „kreator");
+            guard terminologii zielony w całym repo (naprawione 2 zastane naruszenia)
 - [ ] U2–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
