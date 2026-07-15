@@ -1676,6 +1676,218 @@ export function noBranchWithoutAccent(scene: SceneV3): boolean {
   });
 }
 
+// ---------------------------------------------------------------------------
+// F9.7 — port_probe (§11.3) / wire_probe scoped do symboli (§11.4), scena.
+// Dług F9.3(b) (REBUILD_PLAN_V3 F9.3, wpis „(b)"): `branchJunction` (32×32,
+// spec §14.4) rysowany w szczelinie `COLUMN_GAP` (16px, `layout/columns.ts`
+// `CHANNEL_MIN_CLEARANCE`=1×GRID) MOŻE ocierać się o przewody przechodzące
+// przez TĘ SAMĄ szczelinę na sieciach z węższym `COLUMN_GAP` niż fixtura
+// referencyjna — istniejące wyrocznie NIE sprawdzają symbol↔przewód WPROST:
+// `noSceneSymbolOverlaps` (wyżej) to WYŁĄCZNIE symbol↔symbol,
+// `labelWireCollisions` (niżej) to WYŁĄCZNIE etykieta↔przewód. Funkcje
+// niżej domykają OBIE luki naraz na poziomie SCENY (dotąd sprawdzane
+// wyłącznie PER KOMPOZYCJA, `compose/station.ts`
+// `internalSegmentsEndAtPortsOrBus` / `compose/gpz.ts`
+// `gpzInternalSegmentsEndAtPortsOrBus` — nie obejmowały odcinków
+// MOSTKUJĄCYCH między kompozycjami, np. GPZ→stacja/stacja→stacja/stacja→
+// lateral, budowanych bezpośrednio w tym pliku).
+// ---------------------------------------------------------------------------
+
+export interface SceneSegmentEndpointGap {
+  readonly segmentIndex: number;
+  readonly which: 'first' | 'last';
+  readonly x: number;
+  readonly y: number;
+}
+
+/**
+ * Odcinek jest REPREZENTACJĄ SZYNY (bus-like) — jego WŁASNE końce są
+ * KRAŃCAMI RYSOWANEGO PASKA, nie punktami wymagającymi dalszego
+ * zakotwiczenia (ten sam status co `meta.kind==='bus'` w
+ * `internalSegmentsEndAtPortsOrBus`/`gpzInternalSegmentsEndAtPortsOrBus`,
+ * `compose/station.ts`/`compose/gpz.ts` — busSegments tam walidują SIEBIE
+ * SAME tautologicznie, bo są częścią zbioru, względem którego liczy się
+ * przynależność). DOWÓD EMPIRYCZNY (F9.7, fixtura referencyjna): `kind:
+ * 'bus'` (`#sn-bus`/`#hv-bus`/`#bus-primary`/`#bus-reserve`) obejmuje
+ * WIĘKSZOŚĆ przypadków, ale DWA odcinki busopodobne niosą INNY `kind` z
+ * przyczyn historycznych (`classifyStationSegmentKind`/`gpzSegmentToPreview`
+ * nie oznaczały ich jako `'bus'`, mimo pełnienia tej samej roli
+ * wizualnej — krótki kikut szyny z JEDNYM zaczepem):
+ *  - `#lv-bus` (szyna nN stacji) niesie `kind:'lv'` (dzieli klasę z
+ *    `#lv-drop-*`, prawdziwymi PRZEWODAMI, których końce MUSZĄ być
+ *    sprawdzane — stąd rozróżnienie po `ownerRef`, nie po `kind`);
+ *  - `#source-bus-extension` (GPZ, przedłużenie szyny SN pod symbol
+ *    `gridSource`) niesie `kind:'sn'`.
+ * Bez tego wyjątku ta wyrocznia dawała 209/424 fałszywych alarmów na
+ * fixturze referencyjnej (oba końce KAŻDEGO takiego kikuta szyny — jeden
+ * dotykał zaczepu, drugi WOLNY z konstrukcji, bo szyna jest RYSOWANA z
+ * marginesem `GRID` wokół jedynego zaczepu, nie wyprowadzana z drugiego
+ * połączenia jak `#sn-bus`, którego szerokość wynika z rozstawu pól).
+ */
+function isBusbarLikeSegment(seg: PreviewSegment): boolean {
+  if (seg.meta?.kind === 'bus') return true;
+  const ref = seg.meta?.ownerRef;
+  return ref != null && (ref.endsWith('#lv-bus') || ref.endsWith('#source-bus-extension'));
+}
+
+/**
+ * port_probe (spec §11.3 — cytat: „100% końców tras = port symbolu"):
+ * KAŻDY koniec (pierwszy/ostatni wierzchołek) KAŻDEGO odcinka sceny, który
+ * NIE jest sam szyną (`isBusbarLikeSegment` wyżej — szyny walidują SWOJE
+ * końce tautologicznie, jak w wyroczniach per-kompozycja), jest DOKŁADNIE
+ * portem jakiegoś symbolu (`symbolPortsInWorld`, translacja
+ * `SYMBOL_DEFS[...].ports` na współrzędne świata) LUB dotyka INNEGO odcinka
+ * sceny (koniec LUB wnętrze, `pointTouchesSegment` — TA SAMA definicja co
+ * T-tap DER na wspólnej szynie rzędu, patrz `source_connectivity_probe`
+ * niżej: port środkowego DER dotyka WNĘTRZA `#der-row-bus`, nie tylko jego
+ * końca).
+ *
+ * DECYZJA (dowód empiryczny, F9.7): pierwsza wersja tej wyroczni ograniczała
+ * „dotyk odcinka" WYŁĄCZNIE do `meta.kind==='bus'` (dosłowne odczytanie
+ * spec „szyna") — dało to 209/424 fałszywych alarmów (patrz
+ * `isBusbarLikeSegment`). Rozszerzenie na „dotyka INNEGO odcinka sceny"
+ * (dowolnego, nie tylko szynowego) sprowadziło resztę do 0 — WSZYSTKIE
+ * pozostałe klasy (`#der-row-bus`/`#der-row-trunk`/`#grid-source-drop`) to
+ * legalne zakotwiczenia (te same refy kompozytowe, które `overlay.ts`
+ * `singleHopSegmentRefs` już dokumentuje jako „nie gałęzie solvera, ale
+ * realne odcinki rysunkowe"), a `isBusbarLikeSegment` domknęła OSTATNIE
+ * dwa przypadki busopodobne z niehistorycznym `kind`. Zero fałszywych
+ * alarmów po korekcie (zweryfikowane na fixturze).
+ */
+export function sceneSegmentEndpointGaps(scene: SceneV3): readonly SceneSegmentEndpointGap[] {
+  const portKeys = new Set<string>();
+  scene.symbols.forEach((s) => {
+    symbolPortsInWorld(s).forEach((p) => portKeys.add(`${p.x},${p.y}`));
+    // L0 (spec §7): `stationCollapsed` (16×16, symbol zbiorczy stacji) łączy
+    // się WŁASNYM ŚRODKIEM, nie krawędzią — konwencja routingu L0 od F6b
+    // (`composeRowStation`, gałąź `lod===0`; `SYMBOL_DEFS.stationCollapsed.
+    // ports` niesie WYŁĄCZNIE 4 porty krawędziowe, jak reszta biblioteki §3,
+    // bo te SĄ używane przez inne wyrocznie — grid_probe/`noSceneSymbolOverlaps`).
+    // Środek jest DODATKOWYM, udokumentowanym legalnym zakotwiczeniem
+    // WYŁĄCZNIE dla tego symbolu (dowód empiryczny F9.7: WSZYSTKICH 12
+    // końcowych odcinków laterali na L0 trafia DOKŁADNIE w środek, 0
+    // wyjątków — deterministyczna konwencja routingu, nie usterka).
+    if (s.symbolId === 'stationCollapsed') {
+      const def = SYMBOL_DEFS[s.symbolId];
+      portKeys.add(`${s.x + def.width / 2},${s.y + def.height / 2}`);
+    }
+  });
+
+  const gaps: SceneSegmentEndpointGap[] = [];
+  scene.segments.forEach((seg, si) => {
+    if (isBusbarLikeSegment(seg)) return;
+    const pts = seg.points;
+    if (pts.length < 2) return;
+    (
+      [
+        ['first', pts[0]],
+        ['last', pts[pts.length - 1]],
+      ] as const
+    ).forEach(([which, p]) => {
+      if (portKeys.has(`${p.x},${p.y}`)) return;
+      const touchesAnotherSegment = scene.segments.some((other, oi) => oi !== si && pointTouchesSegment(p, other));
+      if (touchesAnotherSegment) return;
+      gaps.push({ segmentIndex: si, which, x: p.x, y: p.y });
+    });
+  });
+  return gaps;
+}
+
+export function allSceneSegmentEndpointsAnchored(scene: SceneV3): boolean {
+  return sceneSegmentEndpointGaps(scene).length === 0;
+}
+
+export interface SymbolWireCollision {
+  readonly symbolIndex: number;
+  readonly symbolId: SymbolId;
+  readonly segmentIndex: number;
+}
+
+/** Wersja INKLUZYWNA (dotyk krawędzi LICZY SIĘ jako kolizja) porównania
+ *  pododcinka z prostokątem — celowo SUROWSZA niż `layout/route.ts`
+ *  `segmentIntersectsRectInterior` (routing WYŁĄCZNIE, ta funkcja pozwala
+ *  na styk krawędzi PODCZAS objazdu, bo router i tak zawraca zanim wejdzie
+ *  do wnętrza). Tu, zgodnie z dyrektywą F9.7 („odległość < 1px = kolizja,
+ *  styk portowy = legalny"), KAŻDY styk bboxa symbolu przez odcinek, który
+ *  NIE dotyka tego symbolu żadnym portem (patrz `symbolWireCollisions`
+ *  niżej), jest kolizją — nie tylko przecięcie wnętrza. */
+function segmentTouchesOrOverlapsRect(a: RouteVertex, b: RouteVertex, rect: V3Rect): boolean {
+  const minX = Math.min(a.x, b.x);
+  const maxX = Math.max(a.x, b.x);
+  const minY = Math.min(a.y, b.y);
+  const maxY = Math.max(a.y, b.y);
+  return maxX >= rect.x && minX <= rect.x + rect.width && maxY >= rect.y && minY <= rect.y + rect.height;
+}
+
+/**
+ * Dług F9.3(b) (patrz nagłówek sekcji) — dedykowana wyrocznia symbol↔przewód:
+ * ŻADEN symbol sceny nie nachodzi na (ani nie dotyka krawędzią) odcinek,
+ * którego nie dotyka WŁASNYM PORTEM. Dla pary (symbol, odcinek) BEZ styku
+ * portowego (`symbolPortsInWorld(symbol)` dotyka `pointTouchesSegment`
+ * odcinka) KAŻDE geometryczne nachodzenie/dotknięcie bboxa symbolu przez
+ * KTÓRYKOLWIEK pododcinek polilinii jest kolizją (`segmentTouchesOrOverlapsRect`,
+ * inkluzywna — krawędź LICZY SIĘ, spec dyrektywa „odległość < 1px = kolizja").
+ * Dla pary ZE stykiem portowym para jest POMIJANA W CAŁOŚCI (styk portowy =
+ * legalny, jak łączy się dana elektryczna) — routing z konstrukcji zbliża
+ * się do portu z ZEWNĄTRZ bboxa (§5.4 `routeAvoidsObstacles`), więc odcinek
+ * łączący NIE wchodzi do wnętrza WŁASNEGO symbolu w poprawnej geometrii;
+ * ta wyrocznia łapie wyłącznie kolizje z CUDZYMI odcinkami.
+ *
+ * Motywacja (dług F9.3(b)): `branchJunction` (32×32, spec §14.4) w
+ * szczelinie `COLUMN_GAP` (16px) — dotąd bez dedykowanej wyroczni.
+ * Uogólnione na WSZYSTKIE symbole sceny (nie tylko `branchJunction`) — to
+ * SAMA wyrocznia realizuje literę §11.4 wire_probe rozszerzoną o symbole
+ * (nie tylko etykiety, patrz `labelWireCollisions`).
+ */
+export function symbolWireCollisions(scene: SceneV3): readonly SymbolWireCollision[] {
+  const hits: SymbolWireCollision[] = [];
+  scene.symbols.forEach((sym, si) => {
+    const rect = symbolRect(sym);
+    const ports = symbolPortsInWorld(sym);
+    scene.segments.forEach((seg, sei) => {
+      if (ports.some((p) => pointTouchesSegment(p, seg))) return;
+      const pts = seg.points;
+      for (let i = 0; i + 1 < pts.length; i++) {
+        if (segmentTouchesOrOverlapsRect(pts[i], pts[i + 1], rect)) {
+          hits.push({ symbolIndex: si, symbolId: sym.symbolId, segmentIndex: sei });
+          break;
+        }
+      }
+    });
+  });
+  return hits;
+}
+
+export function noSymbolWireCollisions(scene: SceneV3): boolean {
+  return symbolWireCollisions(scene).length === 0;
+}
+
+// ---------------------------------------------------------------------------
+// F9.7 — vertical_length_probe (spec §15.1).
+// ---------------------------------------------------------------------------
+
+/**
+ * vertical_length_probe (spec §15.1 — cytat: „miara łącznej długości pionów
+ * raportowana i nie-rosnąca względem poprzedniej wersji"): suma długości
+ * WSZYSTKICH pododcinków PIONOWYCH (dwa kolejne wierzchołki o tym samym `x`)
+ * polilinii WSZYSTKICH odcinków sceny. Czysta geometria (P7 determinizm) —
+ * miara RAPORTOWANA (soft constraint §15.1: redukcja NIGDY kosztem
+ * czytelności/kolizji), nie samodzielna wyrocznia kolizji; porównanie z
+ * baseline żyje w `scripts/sld_v3_acceptance.mjs` (pierwsze wpięcie, F9.7).
+ */
+export function totalVerticalSegmentLength(scene: SceneV3): number {
+  let total = 0;
+  for (const segment of scene.segments) {
+    const pts = segment.points;
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const a = pts[i];
+      const b = pts[i + 1];
+      if (a.x === b.x) total += Math.abs(a.y - b.y);
+    }
+  }
+  return total;
+}
+
 /** Grubość „prostokąta" odcinka w wyroczni etykieta↔przewód niżej: ±1px
  *  wokół osi linii (stroke bazowy 1.6-2px, patrz `compose/preview.tsx`
  *  `SEGMENT_STROKE_WIDTH`) — celowo ZANIŻONA względem realnego stroke, żeby

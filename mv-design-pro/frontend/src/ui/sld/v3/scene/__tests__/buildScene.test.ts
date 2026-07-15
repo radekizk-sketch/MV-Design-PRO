@@ -29,6 +29,7 @@ import {
   buildSceneV3,
   allFieldEntryConnectionsReachCableHead,
   allSceneGeometryOnGrid,
+  allSceneSegmentEndpointsAnchored,
   allSourcesConnected,
   allSourcesVisible,
   fieldEntryConnectionsReachCableHead,
@@ -37,8 +38,12 @@ import {
   noForbiddenDirectionTokens,
   noLabelWireCollisions,
   noSceneSymbolOverlaps,
+  noSymbolWireCollisions,
+  sceneSegmentEndpointGaps,
   sourceConnectivityGaps,
   sourceCoverageGaps,
+  symbolWireCollisions,
+  totalVerticalSegmentLength,
   type SceneLod,
   type SceneV3,
 } from '../buildScene';
@@ -603,5 +608,116 @@ describe('buildSceneV3 — F9.4 runda korekcyjna: sourceConnectivityGaps/allSour
     const gaps = sourceConnectivityGaps(isolated);
     expect(gaps.some((g) => g.sourceId === 'gen-isolated-test')).toBe(true);
     expect(allSourcesConnected(isolated)).toBe(false);
+  });
+});
+
+describe('buildSceneV3 — F9.7: sceneSegmentEndpointGaps/allSceneSegmentEndpointsAnchored (spec §11.3 port_probe, scena)', () => {
+  it('fixtura referencyjna: KAŻDY koniec KAŻDEGO odcinka (poza szynami — patrz docstring `isBusbarLikeSegment`) jest portem symbolu, dotyka innego odcinka, LUB (L0) trafia w środek `stationCollapsed` — 0 luk na WSZYSTKICH LOD', () => {
+    for (const lod of LODS) {
+      const scene = buildSceneV3(enm, lod);
+      const gaps = sceneSegmentEndpointGaps(scene);
+      expect(gaps).toEqual([]);
+      expect(allSceneSegmentEndpointsAnchored(scene)).toBe(true);
+    }
+  });
+
+  it('test negatywny (dowód, że wyrocznia gryzie): odcinek z jednym końcem w PRÓŻNI (żaden port, żaden inny odcinek) ⇒ sceneSegmentEndpointGaps go zgłasza', () => {
+    const scene = buildSceneV3(enm, 2);
+    const dangling: SceneV3 = {
+      ...scene,
+      segments: [
+        ...scene.segments,
+        {
+          points: [
+            { x: 999_999_200, y: 999_999_200 },
+            { x: 999_999_264, y: 999_999_200 },
+          ],
+          meta: { kind: 'sn', ownerRef: 'dangling-test-segment', elementKind: 'segment' },
+        },
+      ],
+    };
+    const gaps = sceneSegmentEndpointGaps(dangling);
+    expect(gaps.some((g) => dangling.segments[g.segmentIndex].meta?.ownerRef === 'dangling-test-segment')).toBe(true);
+    expect(allSceneSegmentEndpointsAnchored(dangling)).toBe(false);
+  });
+});
+
+describe('buildSceneV3 — F9.7: symbolWireCollisions/noSymbolWireCollisions (spec §11.4 wire_probe rozszerzony na symbole, dług F9.3(b))', () => {
+  /**
+   * ZNALEZISKO F9.7 (dług F9.3(b) POTWIERDZONY, nie hipotetyczny): dokładnie
+   * 11 kolizji `branchJunction`↔przewód na L1/L2 (0 na L0 — `branchJunction`
+   * nierysowany na L0), 100% deterministyczne i powtarzalne. Przyczyna
+   * geometryczna (zbadana, patrz raport F9.7): `trunkCorridorYOf` (jog
+   * międzystacyjny głowica→głowica, F9.3 FIX-1) = `stripTopYOf + GRID`, a
+   * `branchJunction` (32×32, spec §14.4) zajmuje `[stripTopY-16, stripTopY+16]`
+   * — `DESCENT_STRIP_HEIGHT` (16px, `bands.ts`) NIE MIEŚCI akcentu węzła
+   * (32px) bez nachodzenia na sub-poziom korytarza międzystacyjnego, gdy
+   * korytarz przechodzi przez TĘ SAMĄ szczelinę `COLUMN_GAP`, w której stoi
+   * akcent. Naprawa wymaga zmiany `DESCENT_STRIP_HEIGHT`/rozmieszczenia
+   * `branchJunction` (wpływa na wysokość KAŻDEGO wiersza — poza
+   * bezpiecznym zakresem F9.7 bez pełnej rewalidacji renderów, patrz raport
+   * agenta). Baseline TU jest ŚWIADOMY i LICZONY (nie zero-tolerancja jak
+   * `noSceneSymbolOverlaps`) — regresja (wzrost liczby / nowe pary) MUSI
+   * failować, ale te 11 znanych par NIE blokuje CI, zgodnie z ustalonym
+   * wzorcem projektu dla udokumentowanych, policzonych odstępstw (patrz
+   * `expectedDeadEnds` w `scripts/sld_v3_acceptance.mjs`, ten sam wzorzec).
+   */
+  it('fixtura referencyjna: L0 zero kolizji symbol↔przewód; L1/L2 dokładnie 11 ZNANYCH kolizji `branchJunction` (dług F9.3(b), patrz docstring)', () => {
+    expect(symbolWireCollisions(buildSceneV3(enm, 0))).toEqual([]);
+    expect(noSymbolWireCollisions(buildSceneV3(enm, 0))).toBe(true);
+    for (const lod of [1, 2] as const) {
+      const scene = buildSceneV3(enm, lod);
+      const hits = symbolWireCollisions(scene);
+      expect(hits.length).toBe(11);
+      expect(hits.every((h) => h.symbolId === 'branchJunction')).toBe(true);
+    }
+  });
+
+  it('test negatywny (dowód, że wyrocznia gryzie): symbol BEZ styku portowego umieszczony WPROST na trasie CUDZEGO odcinka ⇒ symbolWireCollisions go zgłasza', () => {
+    const scene = buildSceneV3(enm, 2);
+    // Odcinek realny (magistrala/lateral), dowolny wystarczająco długi —
+    // wstawiamy symbol (junction bazowy, port N/S/E/W ISTNIEJE, ale
+    // CELOWO wyśrodkowany na WNĘTRZU cudzego odcinka, gdzie żaden z jego
+    // portów nie pokrywa się z żadnym punktem tego odcinka) w miejscu, o
+    // którym wiadomo z konstrukcji, że nic tam nie stoi (offset sceny).
+    const target = scene.segments.find((s) => s.points.length >= 2 && s.points[0].x !== s.points[1].x)!;
+    const [a, b] = target.points;
+    const midX = Math.round((a.x + b.x) / 2 / 8) * 8;
+    const collidingSymbol = {
+      symbolId: 'junction' as const,
+      // Węzeł 16×16 wyśrodkowany 3px NAD osią odcinka (a.y) — bbox
+      // [midX-8,midX+8]×[a.y-11,a.y+5] nachodzi na odcinek (grubość 0, ale
+      // sam TEST geometryczny w `symbolWireCollisions` jest inkluzywny —
+      // patrz `segmentTouchesOrOverlapsRect`), a JEGO porty (N/S/E/W na
+      // krawędzi 16×16) nie pokrywają się z ŻADNYM punktem `target`.
+      x: midX - 8,
+      y: a.y - 11,
+      meta: { ownerRef: 'colliding-test-symbol', elementKind: 'apparatus' as const },
+    };
+    const withCollision: SceneV3 = { ...scene, symbols: [...scene.symbols, collidingSymbol] };
+    const hits = symbolWireCollisions(withCollision);
+    expect(hits.some((h) => withCollision.symbols[h.symbolIndex].meta?.ownerRef === 'colliding-test-symbol')).toBe(true);
+    expect(noSymbolWireCollisions(withCollision)).toBe(false);
+  });
+});
+
+describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertical_length_probe)', () => {
+  it('miara jest deterministyczna i zgodna z prostą arytmetyką na syntetycznej scenie (dowód formuły)', () => {
+    const scene = buildSceneV3(enm, 2);
+    const synthetic: SceneV3 = {
+      ...scene,
+      segments: [
+        { points: [{ x: 0, y: 0 }, { x: 0, y: 40 }], meta: { kind: 'sn', elementKind: 'segment' } },
+        { points: [{ x: 0, y: 40 }, { x: 80, y: 40 }, { x: 80, y: 10 }], meta: { kind: 'sn', elementKind: 'segment' } },
+      ],
+    };
+    // pion 1: |40-0|=40; poziom (0, pomijany); pion 2: |10-40|=30 → suma 70.
+    expect(totalVerticalSegmentLength(synthetic)).toBe(70);
+  });
+
+  it('fixtura referencyjna: baseline aktualny per LOD (F9.7, pierwsze wpięcie) — patrz `scripts/sld_v3_acceptance.mjs` dla porównania nie-rosnącego w CI', () => {
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(9656);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(38504);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(53304);
   });
 });

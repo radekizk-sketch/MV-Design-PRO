@@ -218,8 +218,10 @@ function formatPlNumber(value: number, decimals: number): string {
  * Człony WYŁĄCZNIE dla metryk obecnych we wpisie (brak metryki = brak członu,
  * zero atrap). Jednostki 1:1 z wyniku solvera (`FlowMetricReading.unit`).
  * P wyświetlane jako |P| — ZNAK P jest reprezentowany ZWROTEM strzałki
- * (`forward`, spec §14.2 „kierunek strzałki = znak P z wyniku"), ten sam
- * wzorzec co v2 (`ResultOverlayLayer.tsx`: `Math.abs(pVal)` + strzałka).
+ * (`forward`, spec §14.2 dosłownie: „kierunek/wartość pochodzi z wyniku
+ * power-flow" — tu zrealizowane odczytem znaku P_MW, r2/F9.7: cytat
+ * sprowadzony do litery spec), ten sam wzorzec co v2
+ * (`ResultOverlayLayer.tsx`: `Math.abs(pVal)` + strzałka).
  * Q niesie znak wprost (zwrot strzałki NIE reprezentuje znaku mocy biernej).
  * Zaokrąglenia: P/Q dwa miejsca, I zero miejsc — decyzja prezentacyjna
  * (dozwolona spec §10), nie zmiana wartości źródłowej (wyrocznia

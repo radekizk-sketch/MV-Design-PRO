@@ -73,8 +73,9 @@ describe('overlay.ts — buildFlowOverlayFromScene (F9.5, spec §14.2)', () => {
     expect(realSegmentOwnerRefs.length).toBeGreaterThan(0);
     const payload = payloadOf({
       [realSegmentOwnerRefs[0]]: elementWithMetrics(realSegmentOwnerRefs[0], {
-        // Q/I bez P — §14.2 „kierunek strzałki = znak P z wyniku": wpis bez P
-        // musi być pominięty w CAŁOŚCI (Q/I same nie niosą kierunku).
+        // Q/I bez P — §14.2 „kierunek/wartość pochodzi z wyniku power-flow",
+        // zrealizowane odczytem znaku P_MW (r2, F9.7): wpis bez P musi być
+        // pominięty w CAŁOŚCI (Q/I same nie niosą kierunku).
         Q_Mvar: { code: 'Q_Mvar', value: 1.2, unit: 'Mvar' },
         I_A: { code: 'I_A', value: 50, unit: 'A' },
       }),

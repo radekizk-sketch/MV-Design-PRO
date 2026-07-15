@@ -902,13 +902,99 @@ współdzielony (spec §8) — ale konsumpcja w compose (F9.3) czeka na F8b.
     resultset_v1_schema, arch, pcc_zero, domain_no_guessing PASS; frontend tsc czysty, vitest
     sld 3241 pass, accept:sld-v3 ALL PASS.
 
-### F9.7. [KOD] Optymalizacja pionów + acceptance + docs
+### F9.7. [DONE] Optymalizacja pionów + acceptance + docs
 - Zakres: `vertical_length_probe` (§15.1) jako raportowana miara nie-rosnąca; wpięcie wszystkich nowych
   wyroczni A1 do `frontend/scripts/sld_v3_acceptance.mjs`; odświeżenie renderów odbioru; aktualizacja
   `docs/sld/SLD_V3_ACCEPTANCE.md`, `MACIERZ_TESTOW`, INDEX.
 - DoD: acceptance obejmuje wyrocznie §12–§15; rendery odbioru odświeżone; docs_guard zielony; CI zielone.
 - Autoryzacje: `frontend/scripts/sld_v3_acceptance.mjs`, `docs/sld/*`, `docs/sld/renders/v3/*` (po F8),
   test-listy CI.
+- **Wynik realizacji (2026-07-15):**
+  - **A (§15.1 `vertical_length_probe`):** [DONE] `totalVerticalSegmentLength` (`scene/buildScene.ts`) —
+    suma pododcinków pionowych sceny; wpięta do `accept:sld-v3` z baseline PIERWSZEGO wpięcia
+    (`VERTICAL_LENGTH_BASELINE = {0: 9656, 1: 38504, 2: 53304}`, fixtura `sldSubstrate52s`), gate
+    nie-rosnący. Testy jednostkowe (formuła + baseline) w `buildScene.test.ts`.
+  - **B (optymalizacja pionów, finding 11 dyrektywy):** [ANALIZA, GEOMETRIA NIETKNIĘTA] przegląd
+    `layout/measure.ts`/`layout/bands.ts` — wszystkie stałe odstępu (`GRID` między aparatami stosu,
+    `STATION_BLOCK_BUS_CLEARANCE`, `DER_ROW_TOP_CLEARANCE`, `PORT_CAPTION_BUS_CLEARANCE`,
+    `DESCENT_STRIP_HEIGHT`) są już przyciśnięte do minimum siatki z udokumentowanym uzasadnieniem
+    z poprzednich rund korekcyjnych (F3/F6d/F6e/F9.3 FIX-1) — żadne bezpieczne cięcie nie znalezione
+    bez ryzyka regresji kolizji wymagającej pełnej rewalidacji renderów. Baseline = wartość aktualna
+    (uczciwy wynik analizy, zgodnie z zadaniem, zamiast wymuszonej zmiany). Szczegóły:
+    `docs/sld/SLD_V3_ACCEPTANCE.md` §3.3.
+  - **C (dług F9.3(b), symbol↔przewód, §11.4):** [DONE — ZNALEZISKO POTWIERDZONE] `symbolWireCollisions`/
+    `noSymbolWireCollisions` (`scene/buildScene.ts`) — dedykowana wyrocznia sceny: żaden symbol nie
+    nachodzi (inkluzywnie, „odległość < 1px = kolizja") na segment, którego nie dotyka portem. Ryzyko
+    opisane w F9.3 jako „dziś nie manifestuje się" okazało się REALNE: **11 kolizji `branchJunction`↔
+    przewód na L1/L2 (0 na L0)**, przyczyna geometryczna zbadana i udokumentowana (jog międzystacyjny
+    `trunkCorridorYOf` leży wewnątrz zakresu Y `branchJunction`, bo `DESCENT_STRIP_HEIGHT` 16px nie
+    mieści akcentu 32px). Naprawa geometryczna (zmiana `DESCENT_STRIP_HEIGHT`/rozmieszczenia akcentu)
+    ŚWIADOMIE poza zakresem tej fazy (wpływa na wysokość KAŻDEGO wiersza, wymaga pełnej rewalidacji) —
+    rekomendacja: osobna faza (kandydat F9.10 — numer F9.9 zajęty przez oznaczenie zabezpieczeń §17, Poprawka A2). Wyrocznia wpięta z baseline LICZONYM
+    (`SYMBOL_WIRE_COLLISION_BASELINE = {0: 0, 1: 11, 2: 11}`, wzorzec `expectedDeadEnds` już ustalony w
+    projekcie) — regresja MUSI failować, 11 znanych par nie blokuje CI. Test negatywny dowodzi, że
+    wyrocznia gryzie. Szczegóły: `docs/sld/SLD_V3_ACCEPTANCE.md` §3.4.
+  - **D (dług F9.3(c), etykieta↔przewód sąsiedztwo):** [DECYZJA: POZOSTAWIĆ] ocena kosztu (nowy slot +
+    mechanizm placementu wzorem F9.5 + rewalidacja) vs korzyść (etykieta dziś jednoznaczna,
+    bezkolizyjna) — niekorzystna, zwłaszcza że docelowy korytarz jest UDOWODNIONYM ciasnym gardłem
+    (patrz C). Zero zmiany kodu. Uzasadnienie: `docs/sld/SLD_V3_ACCEPTANCE.md` §3.5.
+  - **E (rezydua F9.5):** (r1) [DONE] test ścieżki fallbacku placementu (`sldCanvasV3.test.tsx`) —
+    syntetyczna scena (bazowa realna + jeden zastąpiony odcinek + jedna etykieta-przeszkoda pokrywająca
+    WSZYSTKICH 12 kandydatów `flowLabelCandidates`) dowodzi `candidates[0]` + `labelPlaced=false` bez
+    wyjątku/NaN, plus dowód braku crasha na realnym renderze. (r2) [DONE] cytat §14.2 sprowadzony do
+    litery spec („kierunek/wartość pochodzi z wyniku power-flow") w 4 miejscach (`overlay.ts` ×3,
+    `SldCanvasV3.tsx` ×1) + 1 test — TYLKO komentarze, zero zmiany logiki. (r3) [DONE] sonda V-1/V-2 w
+    `sld_v3_acceptance.mjs` liczy kolizje NIEZALEŻNIE od `labelPlaced` (bboxy wprost, ta sama logika co
+    `sldCanvasV3.test.tsx`), flaga pozostaje informacyjna w raporcie.
+  - **F (audyt kompletności §11+A1):** [DONE] wszystkie 17 pozycji spec §11(+A1) — 14 wpiętych realnie
+    (3 NOWE w F9.7: port_probe/wire_probe-symbol/vertical_length_probe/lod_path_probe/source_symbol_probe
+    — pięć, nie trzy, patrz macierz), 1 jawnie „nie dotyczy" udokumentowane (source_state_probe §13.3,
+    zablokowane decyzją architekta F9.6(b), nie dług tej fazy). Pełna macierz: `SLD_V3_ACCEPTANCE.md` §3.1.
+    Dodatkowo: `lod_path_probe` (§15.2) rozszerzył zakres `checkContinuity` z WYŁĄCZNIE LOD 2 na
+    L0/L1/L2 (zweryfikowane empirycznie przed wpięciem — wszystkie asercje przechodzą identycznie na
+    każdym LOD) + porównanie sygnatury topologii MIĘDZY LOD.
+  - **G (rendery odbioru):** [BEZ ZMIAN, UZASADNIONE] geometria bazowa sceny NIETKNIĘTA w F9.7 (żaden
+    plik `layout/`, `compose/station.ts`, `compose/gpz.ts` nie był edytowany — wyłącznie NOWE eksporty
+    dodane na końcu `scene/buildScene.ts`, nowa funkcja w `compose/sourceKind.ts`, skrypt akceptacyjny,
+    testy, komentarze). Rendery `docs/sld/renders/v3/*.png` pozostają aktualne — odświeżenie pominięte
+    zgodnie z regułą „TYLKO jeżeli geometria się zmieniła".
+  - **H (docs):** [DONE] `docs/sld/SLD_V3_ACCEPTANCE.md` (nowa sekcja 3, pełna macierz + analiza B/C/D),
+    `docs/qa/MACIERZ_TESTOW_GLOBALNYCH.md` (nowe pliki testowe + opis rozszerzenia acceptance), ten wpis.
+    INDEX (`docs/INDEX.md`/`INDEX_KANONICZNY.md`) — sprawdzone, nie referencjonują F9.x/SLD_V3_ACCEPTANCE
+    wprost, brak wpisu do zsynchronizowania.
+  - Bramki: `npm run type-check` czysty; `eslint` czysty (pliki dotknięte); `vitest run src/ui/sld/v3
+    --no-file-parallelism` 553 pass / 14 todo (15 plików); `vitest run src/ui/sld --no-file-parallelism`
+    (pełny katalog) 3251 pass / 14 todo (170 plików); `npm run accept:sld-v3` ALL PASS (90 asercji, 0
+    FAIL, exit 0); `python scripts/sld_determinism_guards.py`/`docs_guard.py`/`no_codenames_guard.py`/
+    `utf8_mojibake_guard.py` PASS.
+
+### F9.9. [KOD — po F9.7] Oznaczenie zabezpieczeń ANSI/IEEE C37.2 (spec §17, Poprawka A2)
+- Zlecenie właściciela 2026-07-15 (schemat referencyjny ABB): przekaźnik zabezpieczeniowy = OKRĄG
+  z kodami funkcji (np. 50/51) połączony linią PRZERYWANĄ (tor wyzwalania) z wyłącznikiem; wyłącznik
+  z numerem urządzenia „52"; miernik „M". Konwencja wiążąca: spec §17 (commit 53a30b8b).
+- Zakres: adapter — projekcja `Bay.protection_codes` + `ProtectionAssignment` (breaker_ref/ct_ref)
+  do kontraktu sceny (v2/canvas/enmToSldAdapter.ts, addytywnie); v3 — glif okręgu przekaźnika
+  (symbols/), kolumna adnotacji pola (measure — rezerwacja szerokości TYLKO dla pól z danymi),
+  linia wyzwalania dash 4-2 (compose/station.ts + gpz.ts), etykieta „52"/„M" w slotach; wyrocznia
+  `protection_marking_probe` (a-e ze spec §17.5) + test negatywny; LOD per §17.4.
+- Zero zgadywania (§17.2): brak danych = brak oznaczenia; brak rozwiązywalnego breaker_ref =
+  okrąg bez linii + missingData `bay.protection.trip_link_unresolved`.
+- Koordynacja: `docs/sld/SLD_PROTECTION_MARKING_COORDINATION_2026-07.md` (wątek UI:
+  słownik/inspektor/tokeny; kolizja rejestru V12K-032).
+- DoD: probe zielona na fixturze (jeżeli fixtura nie niesie protection_codes — syntetyczny przypadek
+  testowy + acceptance na realnej fixturze bez okręgów jako dowód „brak danych = brak oznaczenia");
+  §11 zielone; determinizm; render 1:1 oceniony; parytet v2 GPZ nienaruszony.
+- Autoryzacje: v2/canvas/enmToSldAdapter.ts (addytywnie), v3/symbols/*, v3/compose/*, v3/layout/measure.ts
+  (kolumna adnotacji), v3/scene/buildScene.ts, scripts/sld_v3_acceptance.mjs, testy, docs/sld/*.
+
+### F9.10. [KOD — po F9.9] Likwidacja kolizji branchJunction↔przewód (root-cause z F9.7 C)
+- Znalezisko F9.7 (REALNE, 11 kolizji L1/L2 na fixturze): `trunkCorridorYOf` wpada w Y-span
+  `branchJunction` (32px) bo `DESCENT_STRIP_HEIGHT` (16px) go nie mieści. Wyrocznia
+  `symbolWireCollisions` wpięta z baseline liczonym (nie-rosnącym) — ta faza sprowadza baseline do 0.
+- Zakres: korekta wysokości pasma zejść / pozycji akcentu (layout/bands lub measure — matematyka
+  wspólna wysokości wierszy, wymaga pełnej re-walidacji wyroczni + porównania renderów przed/po);
+  baseline `SYMBOL_WIRE_COLLISION_BASELINE` → {0,0,0}; rendery odbioru odświeżone.
+- DoD: `noSymbolWireCollisions` bez baseline (twarde 0) na 3 LOD; wszystkie §11 zielone; render oceniony.
 
 **Fazy z zależnością danych/backendu:** F9.6 (backend/ENM — DOMAIN). F9.2 dotyka adaptera współdzielonego.
 Pozostałe (F9.3/F9.4/F9.5/F9.7) są frontend-only w potoku v3.

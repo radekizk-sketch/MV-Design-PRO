@@ -384,6 +384,82 @@ describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa 
       }
     });
   }
+
+  // r1 (F9.7, residuum LOW z werdyktu weryfikacji F9.5 — REBUILD_PLAN_V3
+  // F9.5 „Rezydualne LOW…: (r1) brak jawnego testu ścieżki fallbacku
+  // placementu (na fixturze nie zachodzi)"): fixtura realna `sldSubstrate52s`
+  // NIGDY nie wymusza PEŁNEJ kolizji wszystkich 12 kandydatów
+  // (`flowLabelCandidates`) — dowód gałęzi fallbacku (`candidates[0]` +
+  // `labelPlaced=false`) wymaga SYNTETYCZNEJ sceny (odstępstwo od nagłówka
+  // pliku „nie syntetyki" — jawnie autoryzowane przez zakres r1). Baza:
+  // realna scena (`buildSceneV3`, poprawny `SceneV3` kształt), z
+  // ZASTĄPIONYMI `segments`/`labels`/`symbols` — jeden syntetyczny odcinek
+  // poziomy + JEDEN etykieta-przeszkoda na tyle duża, żeby pokryć WSZYSTKIE
+  // kandydatów (dy∈{16,-16,32,-32}, dx∈{0,-shift,shift} wokół runMid, patrz
+  // `flowLabelCandidates`) — cel: wymusić pełną kolizję, nie odtworzyć
+  // dokładnie algorytm doboru kandydatów.
+  it('r1: fallback placementu — WSZYSTKIE kandydaty kolidują ⇒ candidates[0] + labelPlaced=false, bez wyjątku/NaN', () => {
+    const baseScene = buildSceneV3(enm, 2);
+    const ownerRef = 'r1-synthetic-segment';
+    const syntheticSegment = {
+      points: [
+        { x: 4000, y: 4000 },
+        { x: 4200, y: 4000 },
+      ],
+      meta: { ownerRef, elementKind: 'segment' as const, kind: 'sn' as const },
+    };
+    const blockerLabel = {
+      ownerRef: 'r1-blocker',
+      ownerKind: 'segment-span' as const,
+      labelClass: 't2' as const,
+      text: 'r1-blocker',
+      slotIndex: 1 as const,
+      rect: { x: 3900, y: 3900, width: 400, height: 200 },
+    };
+    const syntheticScene = { ...baseScene, segments: [syntheticSegment], labels: [blockerLabel], symbols: [] };
+    const flow: SegmentFlowOverlay = {
+      ownerRef,
+      forward: true,
+      p: { value: 1.2, unit: 'MW' },
+      q: { value: 0.3, unit: 'Mvar' },
+      i: { value: 45, unit: 'A' },
+    };
+
+    const placements = computeFlowOverlayPlacements(syntheticScene, { [ownerRef]: flow }, 'full');
+
+    expect(placements.length).toBe(1);
+    expect(placements[0].label).not.toBe('');
+    // Fallback: PIERWSZY kandydat wybrany mimo kolizji (dane > estetyka —
+    // patrz `computeFlowOverlayPlacements`, `chosen = candidates[0]`), flaga
+    // odzwierciedla to uczciwie (nie ukrywa etykiety, nie udaje sukcesu).
+    expect(placements[0].labelPlaced).toBe(false);
+    // Bez wyjątku/NaN — geometria fallbacku jest wciąż liczbami skończonymi
+    // (render może ją bezpiecznie narysować, nawet kolidującą).
+    expect(Number.isFinite(placements[0].labelX)).toBe(true);
+    expect(Number.isFinite(placements[0].labelY)).toBe(true);
+    expect(placements[0].labelRect.width).toBeGreaterThan(0);
+    expect(placements[0].labelRect.height).toBeGreaterThan(0);
+
+    // Render bez crasha (r1 „render bez crasha"): SldCanvasV3 realnej sceny
+    // + overlay na TYM SAMYM ownerRef syntetycznym nie istnieje w scenie
+    // realnej — r1 dowodzi brak crasha na poziomie budowniczego czystego
+    // (`computeFlowOverlayPlacements`, powyżej) ORAZ na poziomie renderu
+    // realnego komponentu z overlay NA PRAWDZIWYM odcinku (regresja: overlay
+    // z dowolnym wpisem nigdy nie rzuca, niezależnie od `labelPlaced`).
+    const { ownerRef: realOwnerRef, index } = flowTargetOnScene(2);
+    expect(() =>
+      render(
+        <SldCanvasV3
+          snapshot={enm}
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
+          lodOverride={2}
+          overlay={overlayWithFlow({ [realOwnerRef]: FULL_FLOW(realOwnerRef) })}
+        />,
+      ),
+    ).not.toThrow();
+    expect(index).toBeGreaterThanOrEqual(0);
+  });
 });
 
 /** `viewBox="minX minY worldWidth worldHeight"` → skala = viewportWidthPx /

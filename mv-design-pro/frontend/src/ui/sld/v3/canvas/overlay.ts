@@ -181,9 +181,14 @@ export interface FlowMetricReading {
 
 /**
  * Przepływ mocy jednego odcinka — kierunek + do trzech wartości (P/Q/I).
- * `forward`: `true` gdy znak `P_MW` z wyniku jest NIEUJEMNY (spec §14.2:
- * „kierunek strzałki = znak P z wyniku, nie własna heurystyka") — odczyt
- * WPROST ze znaku wartości solvera, zero interpretacji własnej. Geometryczne
+ * `forward`: `true` gdy znak `P_MW` z wyniku jest NIEUJEMNY. Spec §14.2
+ * (cytat DOSŁOWNY): „kierunek/wartość każdego odcinka pochodzi z wyniku
+ * power-flow (brak wartości wpisanych w UI)" — implementacja realizuje to
+ * wymaganie odczytem ZNAKU `P_MW` WPROST z wyniku solvera (r2, korekta
+ * F9.7: poprzednia wersja tego komentarza parafrazowała spec jako „kierunek
+ * strzałki = znak P z wyniku", co nie jest dosłownym brzmieniem §14.2 —
+ * treść niezmieniona, tylko cytat sprowadzony do litery spec), zero
+ * interpretacji własnej. Geometryczne
  * znaczenie `forward` (który koniec `segment.points` jest „początkiem"):
  * dla WSZYSTKICH konektorów międzystacyjnych/GPZ→stacja `scene/buildScene.ts`
  * buduje `points[0]` = strona `fromTerminal` (adapter), `points[last]` =
@@ -306,8 +311,10 @@ export function buildFlowOverlayFromScene(
     if (!ownerRef || segment.meta?.elementKind !== 'segment') continue;
     if (!trustedSingleHopRefs.has(ownerRef)) continue;
     const p = readMetricReading(payload, ownerRef, FLOW_METRIC_CODE_P);
-    // §14.2: „kierunek strzałki = znak P z wyniku, nie własna heurystyka" —
-    // brak P mierzalnego ⇒ brak kierunku wyprowadzalnego ⇒ CAŁY wpis pomijamy
+    // §14.2 (dosłownie): „kierunek/wartość pochodzi z wyniku power-flow" —
+    // tu zrealizowane jako odczyt znaku P_MW WPROST z wyniku (r2, F9.7:
+    // cytat sprowadzony do litery spec, treść bez zmian). Brak P mierzalnego
+    // ⇒ brak kierunku wyprowadzalnego ⇒ CAŁY wpis pomijamy
     // (Q/I samodzielnie, bez P, nie niosą kierunku — nie fabrykujemy strzałki
     // bez podstawy w znaku wyniku).
     if (!p) continue;
@@ -348,8 +355,10 @@ export function flowOverlayValuesTraceToPayload(
 ): boolean {
   if (!flowByOwnerRef) return true;
   for (const [ownerRef, entry] of Object.entries(flowByOwnerRef)) {
-    // §14.2 „kierunek strzałki = znak P z wyniku": `forward` MUSI odpowiadać
-    // znakowi `p.value` NIESIONEGO w tym samym wpisie (nie osobnej wartości) —
+    // §14.2 (dosłownie: „kierunek/wartość pochodzi z wyniku power-flow"),
+    // zrealizowane tu jako: `forward` MUSI odpowiadać znakowi `p.value`
+    // NIESIONEGO w tym samym wpisie (nie osobnej wartości) — r2 (F9.7):
+    // cytat sprowadzony do litery spec, treść dowodu bez zmian.
     // budowniczy zawsze dołącza `p` (patrz `buildFlowOverlayFromScene`: brak P
     // ⇒ cały wpis pomijany), więc `entry.p` nieobecne tu jest samo w sobie
     // dowodem fabrykacji (kierunek bez podstawy w wyniku).

@@ -64,6 +64,26 @@ export function symbolIdForSourceKind(kind: DerSourceKind): SymbolId {
   return DER_SOURCE_KIND_SYMBOL[kind];
 }
 
+/**
+ * F9.7 (spec §13.2 `source_symbol_probe`) — realizacja PRAWDZIWA funkcji, o
+ * której istnieniu wcześniejsza wersja tego docstringu (wyżej) BŁĘDNIE
+ * twierdziła („wyrocznia-widmo", naprawione w rundzie korekcyjnej F9.4 przez
+ * USUNIĘCIE fałszywego odwołania — patrz akapit wyżej). Ta funkcja domyka
+ * lukę wyroczniową na `accept:sld-v3` (audyt kompletności F9.7, spec §11
+ * pozycja 10): dowodzi injektywność `DER_SOURCE_KIND_SYMBOL` dla rodzajów
+ * ROZPOZNANYCH (`unknown` jest udokumentowanym wyjątkiem — dzieli glif z
+ * `generator`, WYŁĄCZONY z dowodu, patrz akapit wyżej) I sprawdza, że żaden
+ * rozpoznany rodzaj DER nie dzieli glifu z `gridSource` (sieć zewnętrzna,
+ * `compose/gpz.ts` — odrębna przestrzeń `source_kind`, spec §13.1/§13.2).
+ */
+export function sourceKindSymbolsAreInjective(): boolean {
+  const recognized: readonly DerSourceKind[] = ['pv', 'bess', 'generator', 'wind'];
+  const symbolIds = recognized.map((k) => DER_SOURCE_KIND_SYMBOL[k]);
+  const allUnique = new Set(symbolIds).size === symbolIds.length;
+  const noOverlapWithGridSource = !symbolIds.includes('gridSource' as SymbolId);
+  return allUnique && noOverlapWithGridSource;
+}
+
 /** Polska etykieta rodzaju (spec §4 „DER: rodzaj+moc pod symbolem", §9 zero
  *  enumów w UI — etykieta jest tekstem inspektora/podpisu, NIE kodem). */
 export const DER_SOURCE_KIND_LABEL_PL: Readonly<Record<DerSourceKind, string>> = {
