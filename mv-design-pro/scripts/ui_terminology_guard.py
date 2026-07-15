@@ -140,6 +140,12 @@ def extract_ui_strings(line: str) -> list[str]:
 NEW_IA_ALLOWED_TERMS = {"Przypadek", "przypadek", "Kreator", "kreator"}
 NEW_IA_PATH_MARKER = "/ui2/"
 
+# E1.6 (reguła U0.9 / MODEL_INTERAKCJI §2.7): w nowej powłoce `ui2/**` teksty
+# pierwszoplanowe UI nie mogą zawierać surowych identyfikatorów kodowych
+# (snake_case, np. `earthing.resistance_missing`, `run_id`). Identyfikatory
+# techniczne wolno pokazywać wyłącznie w strefie „szczegóły techniczne".
+NEW_IA_CODE_IDENT = re.compile(r"\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b")
+
 
 def find_banned_terms(text: str, *, new_ia: bool = False) -> list[str]:
     return [
@@ -165,6 +171,15 @@ def scan_file(path: Path) -> list[Violation]:
             # nie token UI). Dotyczy WYŁĄCZNIE technicznych error/log messages.
             cleaned = PROGRAMMATIC_REF_PATTERN.sub("", fragment)
             is_new_ia = NEW_IA_PATH_MARKER in path.as_posix()
+            if is_new_ia and NEW_IA_CODE_IDENT.search(cleaned):
+                violations.append(
+                    Violation(
+                        file_path=normalize_path(path),
+                        line_number=line_number,
+                        token="identyfikator-kodowy",
+                        snippet=fragment[:160],
+                    )
+                )
             for token in find_banned_terms(cleaned, new_ia=is_new_ia):
                 violations.append(
                     Violation(
