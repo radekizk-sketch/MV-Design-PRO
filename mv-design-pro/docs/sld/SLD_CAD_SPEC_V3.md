@@ -472,6 +472,79 @@ kamera/LOD → F6 (reuse); eksport/determinizm → F7; checklista całości → 
 
 ---
 
+## 17. Oznaczenie zabezpieczeń i aparatury wtórnej — konwencja ANSI/IEEE C37.2 (Poprawka A2, 2026-07-15)
+
+> Numer §16 jest w tej specyfikacji celowo pominięty — „§16" funkcjonuje historycznie w kodzie
+> i testach jako odwołanie do kontraktu CIĄGŁOŚCI ELEKTRYCZNEJ (SLD_CONTRACT_FLOW_V1);
+> nadpisanie go tutaj tworzyłoby dwuznaczność cytowań.
+
+Wzorzec przemysłowy (schemat referencyjny właściciela, 2026-07-15, konwencja ABB/ETAP):
+symbole aparatów pozostają IEC 60617; funkcje urządzeń oznaczane są numerami ANSI/IEEE C37.2
+jako WARSTWA ADNOTACJI schematu.
+
+### 17.1 Konwencja graficzna (BINDING)
+
+- **Wyłącznik:** istniejący symbol IEC (kwadrat) + numer urządzenia **„52"** jako etykieta
+  adnotacji przy symbolu (L2). Chevrony wysuwności (człon wysuwny) — TYLKO z danych
+  (wysuwność nie jest dziś w ENM → nie rysujemy, zero zgadywania; kandydat na rozszerzenie
+  modelu w przyszłej rundzie DOMAIN).
+- **Przekaźnik zabezpieczeniowy:** OKRĄG z kodami funkcji (np. „50/51", „51N") połączony
+  z wyłącznikiem linią PRZERYWANĄ (tor wyzwalania). Okrąg = element adnotacji, NIE aparat
+  toru mocy (nie uczestniczy w ciągłości elektrycznej ani w wyroczniach toru).
+- **Miernik:** okrąg **„M"** przy przekładniku pomiarowym.
+- Linia wyzwalania: przerywana (dash 4–2), ortogonalna, prowadzona kanałem adnotacji pola,
+  od okręgu przekaźnika do symbolu wyłącznika wskazanego DANYMI (§17.2).
+
+### 17.2 Źródła danych (zero zgadywania — twarde)
+
+- Kody funkcji przekaźnika: WYŁĄCZNIE `Bay.protection_codes` (ENM; jedyne źródło prawdy dla
+  wyświetlania na SLD — komentarz w modelu jest jednoznaczny; enum `ProtectionSetting` służy
+  konfiguracji/koordynacji, NIE rysowaniu). Lustro wzorca: `OzeField.protection_codes`.
+- Powiązanie przekaźnik→wyłącznik: `Bay.protection_ref` → `ProtectionAssignment.breaker_ref`.
+  Brak rozwiązywalnego `breaker_ref` w stosie pola = okrąg BEZ linii wyzwalania + `missingData`
+  (`bay.protection.trip_link_unresolved`) — nigdy linia do „domyślnego" aparatu.
+- Kotwica okręgu: przy CT stosu pola (`ProtectionAssignment.ct_ref` rozwiązany na aparat CT
+  w tym polu), a gdy brak CT — przy wyłączniku.
+- Miernik „M": `Measurement.purpose == 'metering'` powiązany z polem (`bay_ref`).
+- **Brak danych = brak oznaczenia.** Żadnych domyślnych „50/51" z roli pola ani konwencji.
+
+### 17.3 Geometria
+
+- Okrąg przekaźnika: średnica 24 px (3×GRID), w KOLUMNIE ADNOTACJI po prawej stronie stosu
+  aparatów pola (rezerwacja szerokości w `measure` — kolumna istnieje tylko dla pól z danymi),
+  środek wyrównany do wysokości kotwicy (§17.2).
+- Kody w okręgu: maks. 2 linie po ≤4 znaki (np. „50/51" nad „51N"); większa liczba funkcji →
+  w okręgu dwie najważniejsze wg kolejności listy `protection_codes`, pełna lista w etykiecie
+  slotu pola (model slotów §4). Kolejność listy z danych — bez sortowania własnego.
+- „52" przy wyłączniku: etykieta 8 px w slocie adnotacji symbolu (bez kolizji — wyrocznie §11).
+
+### 17.4 LOD (spójnie z §15.2)
+
+- L2: pełne oznaczenie (okrąg + kody + linia wyzwalania + „52" + „M").
+- L1: okrąg przekaźnika bez kodów i bez „52"/„M"; linia wyzwalania ukryta.
+- L0: warstwa adnotacji nieobecna (plan sieci).
+
+### 17.5 Wyrocznie odbioru
+
+- `protection_marking_probe`: (a) każdy okrąg przekaźnika na scenie ma `meta.ownerRef` = bay
+  z niepustym `protection_codes` (zero okręgów bez danych — negatyw obowiązkowy);
+  (b) każda linia wyzwalania łączy okrąg z portem symbolu wyłącznika wskazanego przez
+  `ProtectionAssignment.breaker_ref`; (c) kody w okręgu = prefiks listy `protection_codes`
+  (bez fabrykacji/sortowania); (d) determinizm; (e) L0 bez warstwy adnotacji.
+- Istniejące wyrocznie §11 (kolizje, siatka, sloty etykiet) obejmują nowe elementy bez wyjątków.
+
+### 17.6 Zakres globalny i koordynacja międzywątkowa
+
+- Konwencja obowiązuje render v3 (docelowy); v2 GPZ już rysuje `protection_codes`
+  (`GpzSwitchgearRenderer`) — semantyka wspólna, parytet wymagany przy F8c (§10).
+- Wątek przebudowy interfejsu (`claude/power-network-design-ui-ir91mv`): słownik nowej IA
+  przyjmuje terminy „przekaźnik zabezpieczeniowy", numery urządzeń C37.2 („52", „50/51"…);
+  inspektor nowej powłoki prezentuje `ProtectionAssignment` + `settings`; stylowanie warstwy
+  adnotacji (kolor linii wyzwalania, okrąg) przez tokeny `--mvd-*` przy osadzeniu SLD w powłoce
+  W-110. Kontrakt koordynacyjny: `docs/sld/SLD_PROTECTION_MARKING_COORDINATION_2026-07.md`.
+
+---
+
 ## Załącznik: mapa ustalenie → paragraf → wyrocznia (Poprawka A1)
 
 | Ustalenie | Paragraf | Wyrocznia |
