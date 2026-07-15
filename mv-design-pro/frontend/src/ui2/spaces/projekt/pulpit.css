@@ -1,0 +1,273 @@
+/*
+ * Style pulpitu projektu (przestrzeń „Projekt", W-101). Kolory WYŁĄCZNIE przez
+ * tokeny --mvd-* (theme/tokens.css) — zero literałów hex. Wartości liczbowe:
+ * font mono + tabular-nums.
+ */
+
+.mvd-pulpit {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  color: var(--mvd-ink);
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 4px;
+}
+
+.mvd-pulpit :focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+.mvd-pulpit-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-pulpit-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.mvd-pulpit-sub {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- siatka kafli ---- */
+.mvd-pulpit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+/* ---- kafel ---- */
+.mvd-kafel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 12px;
+  box-shadow: var(--mvd-shadow);
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+button.mvd-kafel {
+  cursor: pointer;
+  width: 100%;
+}
+button.mvd-kafel:hover {
+  border-color: var(--mvd-accent);
+}
+.mvd-kafel-mut {
+  background: var(--mvd-panel-2);
+  opacity: 0.85;
+}
+
+.mvd-kafel-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mvd-kafel-kpi {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 26px;
+  font-weight: 600;
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.mvd-kafel-kpi-txt {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 20px;
+}
+.mvd-kafel-kpi small {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--mvd-muted);
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+/* ---- siatka klucz–wartość w kaflu ---- */
+.mvd-kafel-kv {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+}
+.mvd-kafel-kv-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.mvd-kafel-kv-label {
+  color: var(--mvd-muted);
+}
+.mvd-kafel-kv-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  text-align: right;
+}
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.mvd-kafel-wkrotce {
+  color: var(--mvd-muted);
+  font-size: 12px;
+  margin: 0;
+}
+
+/* ---- tagi statusu ---- */
+.mvd-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--mvd-chip);
+  color: var(--mvd-ink);
+}
+.mvd-tag-ok {
+  background: var(--mvd-ok-bg);
+  color: var(--mvd-ok);
+}
+.mvd-tag-warn {
+  background: var(--mvd-warn-bg);
+  color: var(--mvd-warn);
+}
+.mvd-tag-err {
+  background: var(--mvd-err-bg);
+  color: var(--mvd-err);
+}
+.mvd-tag-mut {
+  background: var(--mvd-chip);
+  color: var(--mvd-muted);
+}
+
+/* ---- lista przypadków ---- */
+.mvd-pulpit-cases {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 12px;
+  box-shadow: var(--mvd-shadow);
+}
+.mvd-pulpit-cases-title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mvd-cases-scroll {
+  overflow-x: auto;
+}
+.mvd-cases-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.mvd-cases-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--mvd-muted);
+  border-bottom: 1px solid var(--mvd-line);
+  padding: 6px 8px;
+  white-space: nowrap;
+}
+.mvd-cases-table td {
+  border-bottom: 1px solid var(--mvd-line);
+  padding: 6px 8px;
+  vertical-align: baseline;
+}
+.mvd-cases-row {
+  cursor: pointer;
+}
+.mvd-cases-row:hover {
+  background: var(--mvd-sel);
+}
+.mvd-cases-row.mvd-on {
+  background: var(--mvd-sel);
+}
+.mvd-cases-name {
+  font-weight: 600;
+}
+.mvd-cases-active {
+  margin-left: 6px;
+  color: var(--mvd-accent);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mvd-cases-time {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.mvd-cases-empty {
+  color: var(--mvd-muted);
+  font-size: 12px;
+  padding: 8px;
+}
+
+/* ---- stan pusty / ładowanie ---- */
+.mvd-pulpit-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 32px 16px;
+  color: var(--mvd-muted);
+}
+.mvd-pulpit-state-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-pulpit-state-desc {
+  margin: 0;
+  font-size: 13px;
+}
+.mvd-btn {
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+.mvd-btn-primary {
+  background: var(--mvd-accent);
+  border-color: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+}
+.mvd-btn:hover {
+  border-color: var(--mvd-accent);
+}
+
+/* ---- świeżość wewnątrz kafla ---- */
+.mvd-kafel-fresh-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
