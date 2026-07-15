@@ -1,0 +1,263 @@
+/*
+ * Style przestrzeni „Gotowość" (W-401/W-402, karta E6.1). Kolory WYŁĄCZNIE
+ * przez tokeny --mvd-* (theme/tokens.css) — zero literałów hex. Liczby: font
+ * mono + tabular-nums (spójne z `spaces/projekt/pulpit.css`).
+ */
+
+.mvd-gotowosc {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  color: var(--mvd-ink);
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 4px;
+}
+
+.mvd-gotowosc :focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+.mvd-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- nagłówek ---- */
+.mvd-gotowosc-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-gotowosc-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.mvd-gotowosc-sub {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-gotowosc-podsumowanie {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---- tag waga (blokada / ostrzeżenie) ---- */
+.mvd-problem-tag {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--mvd-chip);
+  color: var(--mvd-ink);
+  white-space: nowrap;
+}
+.mvd-problem-tag-blokada {
+  background: var(--mvd-err-bg);
+  color: var(--mvd-err);
+}
+.mvd-problem-tag-ostrzezenie {
+  background: var(--mvd-warn-bg);
+  color: var(--mvd-warn);
+}
+
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- stan pozytywny: wszystko gotowe ---- */
+.mvd-gotowosc-ok {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border-radius: 6px;
+  background: var(--mvd-ok-bg);
+  color: var(--mvd-ok);
+}
+.mvd-gotowosc-ok-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+.mvd-gotowosc-ok-desc {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* ---- filtry ---- */
+.mvd-gotowosc-filtry {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.mvd-select,
+.mvd-input {
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  padding: 5px 8px;
+  border-radius: 4px;
+  font: inherit;
+}
+.mvd-btn {
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+.mvd-btn:hover {
+  border-color: var(--mvd-accent);
+}
+
+/* ---- lista sekcji celów ---- */
+.mvd-gotowosc-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-cel-sekcja {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  box-shadow: var(--mvd-shadow);
+  overflow: hidden;
+}
+.mvd-cel-naglowek {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.mvd-cel-naglowek:hover {
+  background: var(--mvd-sel);
+}
+.mvd-cel-tytul {
+  font-weight: 600;
+  flex: 1;
+}
+.mvd-cel-liczniki {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.mvd-cel-postep {
+  color: var(--mvd-muted);
+  font-size: 11.5px;
+}
+.mvd-cel-zwijak {
+  color: var(--mvd-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mvd-cel-tresc {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border-top: 1px solid var(--mvd-line);
+}
+.mvd-cel-brak {
+  margin: 0;
+  padding: 12px;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- wiersz problemu ---- */
+.mvd-problem-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-problem-row:last-child {
+  border-bottom: none;
+}
+.mvd-problem-select {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mvd-problem-select:disabled {
+  cursor: default;
+}
+.mvd-problem-desc {
+  flex: 1;
+  min-width: 0;
+}
+.mvd-problem-element {
+  color: var(--mvd-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.mvd-problem-kod {
+  color: var(--mvd-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.mvd-problem-brak-akcji {
+  color: var(--mvd-muted);
+  font-size: 11.5px;
+  font-style: italic;
+  white-space: nowrap;
+}
+
+/* ---- stan pusty / ładowanie / błąd ---- */
+.mvd-gotowosc-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 32px 16px;
+  color: var(--mvd-muted);
+}
+.mvd-gotowosc-state-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-gotowosc-state-desc {
+  margin: 0;
+  font-size: 13px;
+}
