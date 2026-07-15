@@ -4,6 +4,8 @@
 **Data:** 2026-07-15
 **Dokumenty powiązane (wiążące dla programu):**
 - `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md` — inwentarz funkcji + macierz pokrycia (nic nie pomijamy)
+- `docs/uiux/MODEL_INTERAKCJI_APLIKACJI_2026-07.md` — gramatyka interakcji + REJESTR OKIEN (każde okno od nowa)
+- `docs/uiux/KARTA_KOORDYNACJI_SLD_01_TOKENY.md` — karta styku z wątkiem SLD (tokeny motywów)
 - `docs/uiux/PROMPT_ZARZADCA_FABLE_UIUX.md` — prompt zarządcy programu (Fable)
 - `docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` — program inżynieryjny 10x (perymetr, jakość, współbieżność)
 - `docs/plan/PLAN_SLD_REWORK.md` + `docs/sld/SLD_INDUSTRIAL_SPEC_v1.md` — rework SLD (OSOBNY WĄTEK)
@@ -13,10 +15,14 @@
 
 ## 1. Cel
 
-Przeprojektować **każdy element interfejsu** MV-DESIGN-PRO od nowa — na podstawie istniejącego kodu
-jako inspiracji i istniejących funkcji obliczeniowych jako twardego zakresu — tak, aby system osiągnął
-klasę narzędzi ETAP / DIgSILENT PowerFactory / ABB e-Design, z zachowaniem wszystkich przewag repo:
-WHITE BOX obliczeń, determinizm, katalog-first, jeden model sieci.
+Zbudować warstwę prezentacji **całkowicie od nowa (clean-room UI)**: każde okno, każdy widok,
+każda interakcja (klik, dwuklik, prawy przycisk, hover, klawiatura) zaprojektowana i wykonana
+na nowo wg `MODEL_INTERAKCJI_APLIKACJI_2026-07.md` — istniejący kod służy WYŁĄCZNIE jako
+inspiracja i dowód zakresu funkcjonalnego, a stare okno ginie w tym samym PR, w którym nowe
+przejmuje jego funkcję. Cel jakościowy: klasa narzędzi ETAP / DIgSILENT PowerFactory /
+ABB e-Design, mierzona bramką „100× lepiej" (MODEL_INTERAKCJI §5), z zachowaniem wszystkich
+przewag repo: WHITE BOX obliczeń, determinizm, katalog-first, jeden model sieci.
+Granica przebudowy: backend, solvery, kontrakty API i pliki wątku SLD — nietknięte.
 
 **Użytkownik pierwszoplanowy:** inżynier projektujący sieci SN ze źródłami OZE (PV, BESS, FW),
 prowadzący projekt od GPZ przez magistrale, stacje SN/nn, przyłączenia DER, po analizy, dowody
@@ -151,7 +157,7 @@ Reguła konsolidacji: stary moduł znika w tym samym PR, w którym nowy przejmuj
 
 | Faza | Zakres | DoD (bramka wyjścia) |
 |---|---|---|
-| **U0 Porządek i kanon** | U0.1 inwentarz (✅ ten pakiet); U0.2 rejestracja programu w INDEX/PLANS/CLAUDE.md (✅); U0.3 weryfikacja wpięcia API dla pozycji „do weryfikacji" z inwentarza §6; U0.4 porządkowanie PLANS.md (historia → archiwum); U0.5 karta koordynacyjna tokenów motywów z wątkiem SLD; U0.6 makiety IA (artefakt HTML) zatwierdzone przez właściciela | inwentarz bez pozycji „do weryfikacji"; INDEX/PLANS/CLAUDE.md spójne; makiety zatwierdzone |
+| **U0 Porządek i kanon** | U0.1 inwentarz (✅); U0.2 rejestracja programu w INDEX/PLANS/CLAUDE.md (✅); U0.3 weryfikacja wpięcia API (✅ 2026-07-15 — wyniki w inwentarzu §4/§6); U0.4 porządkowanie PLANS.md (✅ — historia → archiwum); U0.5 karta koordynacyjna tokenów motywów z wątkiem SLD (✅ — czeka na odpowiedź wątku SLD); U0.6 makiety IA (artefakt HTML) zatwierdzone przez właściciela; U0.7 model interakcji + rejestr okien (✅ seed W-101…W-703) | inwentarz bez pozycji „do weryfikacji"; INDEX/PLANS/CLAUDE.md spójne; makiety zatwierdzone |
 | **U1 Powłoka** | E1, E2, E15 + design system (tokeny, komponenty bazowe) | nowa powłoka z 7 przestrzeniami; wszystkie dotychczasowe widoki osiągalne; pełne bramki zielone |
 | **U2 Model i dane** | E3, E4, E5, E6 | kreator od GPZ do DER przechodzi e2e; katalog-first wymuszony w UI; readiness czytelny |
 | **U3 Obliczenia i wyniki** | E7, E8, E9 | każda analiza z inwentarza uruchamialna i czytelna z UI; każdy wynik → ślad → dowód |
@@ -170,6 +176,8 @@ KARTA ZADANIA <epik>.<nr>
 2. Pliki wejściowe (istniejące, pełne ścieżki) i pliki wyjściowe (tworzone/zastępowane).
 3. Kontrakt danych: endpointy (metoda+ścieżka), schematy request/response, typy TS.
 4. Stany UI: pusty / ładowanie / błąd / brak danych / gotowy — opis każdego.
+4a. Kontrakt interakcji: tabela klik / 2× klik / prawy klik / hover / klawiatura zgodna z
+    gramatyką `MODEL_INTERAKCJI_APLIKACJI_2026-07.md` §2 + ID okna z rejestru okien (§4 tamże).
 5. Etykiety PL: dokładne stringi (słownik), formaty liczb i jednostek.
 6. Zależności i granice: czego NIE wolno dotykać (zawsze: pliki wątku SLD, solvery, Result API).
 7. Kryteria akceptacji: testowalne, z nazwami plików testów do napisania.

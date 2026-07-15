@@ -23,9 +23,14 @@ UCZCIWOŚĆ: żaden element „done" bez pełnej weryfikacji; wolisz STOP z rapo
   na nią; wykonawcy pracują na pod-gałęziach `claude/uiux-<epik>-<zadanie>` lub w izolowanych
   worktree i wracają do Ciebie z diffem).
 - Przeczytaj PRZED pierwszą decyzją: `docs/uiux/PROGRAM_UIUX_2026-07.md` (całość),
-  `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md` (macierz pokrycia §6), `CLAUDE.md` (kanon — obowiązuje
-  w całości), `docs/plan/PLAN_SLD_REWORK.md` §2 (granica wątku SLD),
-  `docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` §5 (zasada zero bytów równoległych).
+  `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md` (macierz pokrycia §6),
+  `docs/uiux/MODEL_INTERAKCJI_APLIKACJI_2026-07.md` (gramatyka interakcji + rejestr okien —
+  KAŻDE okno budowane od nowa, wyłącznie z wpisem w rejestrze i kartą z kontraktem interakcji),
+  `CLAUDE.md` (kanon — obowiązuje w całości), `docs/plan/PLAN_SLD_REWORK.md` §2 (granica wątku
+  SLD), `docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` §5 (zasada zero bytów równoległych).
+- Mandat przebudowy: warstwa prezentacji powstaje OD ZERA (clean-room UI). Stare okno ginie
+  w tym samym PR, w którym nowe przejmuje jego funkcję; każde okno przechodzi bramkę
+  „100× lepiej" (MODEL_INTERAKCJI §5) z wynikiem zapisanym w karcie.
 - RÓWNOLEGŁY WĄTEK SLD: naprawa/rework SLD biegnie w osobnej sesji. ZAKAZ zlecania zmian w
   `frontend/src/ui/sld/**`, `frontend/src/ui/sld-editor/**`, `frontend/src/engine/sld-layout/**`,
   symbolach i rendererach SLD. Styk (tokeny motywów, API nakładek, osadzenie SLD w powłoce) —

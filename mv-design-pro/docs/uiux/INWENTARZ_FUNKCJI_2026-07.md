@@ -74,12 +74,16 @@ study_cases, xlsx_import, enm, execution_runs, unified_runs, v126_academic, resu
 fault_loop, fault_scenarios, generators, grid_source_preview, sld_overrides, switchgear_config,
 solver_capabilities, solver_input.
 
-Moduły obecne w `src/api/`, których wpięcie wymaga weryfikacji per moduł (zadanie U0.3 Programu —
-mogą być wpinane pośrednio, np. przez router ENM): analysis_case_context, analysis_run_exports,
-analysis_runs_index, analysis_runs_read, archive_diff, batch_execution, canonical_run_views,
-case_runs, cases, cloud_backup, design_synth, domain_operations, domain_ops_policy,
-incremental_archive, power_flow (porównania/przebiegi j.w.), protection_coordination,
-protection_engine_v1, protection_runs, snapshots, topology_links, v125_contracts.
+Wpięcie pozostałych modułów `src/api/` — ZWERYFIKOWANE 2026-07-15 (U0.3, grep importów w żywym klonie):
+- **Wpięte pośrednio** (importowane przez zamontowane routery): analysis_case_context,
+  analysis_run_exports, canonical_run_views, domain_ops_policy, protection_runs
+  (przez protection_analysis_runs), v125_contracts, cases (w main.py).
+- **NIEWPIĘTE do aplikacji** (moduł istnieje, router niezamontowany w `main.py` ani pośrednio):
+  analysis_runs_index, analysis_runs_read, archive_diff, batch_execution (ma testy),
+  case_runs (ma testy), cloud_backup, design_synth, domain_operations (mutacje ENM idą przez
+  router enm.py — moduł do decyzji: wpiąć albo zarchiwizować), incremental_archive,
+  protection_coordination, protection_engine_v1, snapshots, topology_links.
+  Decyzja wpiąć/zarchiwizować per moduł = karty epików E7/E10/E13/E15 (zero bytów równoległych).
 
 ## 5. Powierzchnia frontendu (stan zastany)
 
@@ -108,36 +112,36 @@ Dowód dla ❌/◐: `grep -ril <termin> frontend/src` z 2026-07-15.
 | Funkcja | Solver/Analiza | API | UI (stan zastany) | Status |
 |---|---|---|---|---|
 | Zwarcia IEC 60909 | S1 | fault_scenarios, execution_runs, unified_runs | results, results-inspector, sld-overlay, proof | ✅ |
-| Zwarcia maszyn | S2 + A7 | do weryfikacji (U0.3) | brak (`machine_sc`: 0 plików) | ❌ |
+| Zwarcia maszyn | S2 + A7 | ✅ analysis_run/service.py + proof engine (zweryfikowane U0.3) | brak (`machine_sc`: 0 plików) | ❌ UI |
 | Rozpływ NR/GS/FD | S3–S5 | power_flow_runs, power_flow_comparisons | power-flow-results, power-flow-comparison, power-distribution | ✅ |
-| Rozpływ niesymetryczny | S6 | do weryfikacji (U0.3) | częściowe (`unbalanced`: 6 plików) | ◐ |
+| Rozpływ niesymetryczny | S6 | ◐ solver poza rejestrem zdolności (PF = tylko NR/GS/FD); wzmianka w reference_networks | częściowe (`unbalanced`: 6 plików) | ◐ |
 | Falowniki OZE w LF | S7 | generators, grid_source_preview | designer/wizard, ncrfg-tests | ◐ |
 | Obciążenia ZIP | S8 | solver_input | property-grid (parametry) | ◐ |
 | Pętla zwarciowa nn IEC 60364 | S9 | fault_loop | szczątkowe (`faultLoop`: 2 pliki) | ◐ |
 | Zabezpieczenia IEC 60255 | S10 + A10, A11 | protection_* (5 routerów) | protection, protection-coordination, protection-curves, protection-comparison | ✅ |
 | NC RfG / PTPiREE | S11 | ncrfg_ptpiree_tests | ncrfg-tests | ✅ |
 | FRT / HVRT | S12 | ncrfg_ptpiree_tests | pokryte (`frt`: 62, `hvrt`: 52 pliki) | ✅ |
-| Stabilność RMS | S13 | do weryfikacji (U0.3) | częściowe (`stability`: 20 plików — zweryfikować czy to RMS) | ◐ |
-| Estymacja stanu WLS | S14 | do weryfikacji (U0.3) | brak (`state_estimation`: 0 plików) | ❌ |
-| Stan fazowy SN | S15 | do weryfikacji (U0.3) | do weryfikacji | ◐ |
+| Stabilność RMS | S13 | ✅ v126 (dynamic_stability, voltage_stability) + solver_capabilities | częściowe (`stability`: 20 plików, gł. FRT/NC RfG) | ◐ |
+| Estymacja stanu WLS | S14 | ❌ NIEWPIĘTA (tylko testy) — wymaga wpięcia API | brak (`state_estimation`: 0 plików) | ❌ API+UI |
+| Stan fazowy SN | S15 | ✅ analysis_runs + execution_runs | częściowe (`phase_state`: 9 plików) | ◐ |
 | Podgląd źródła sieciowego | S16 | grid_source_preview | wizard (GridSourceEditor) | ✅ |
 | Pakiet akademicki V12.6 | S17 | v126_academic | ekrany E-40..E-50 (workspace) | ✅ |
-| Arc flash | A1 | do weryfikacji (U0.3) | brak (`arc_flash`: 0 plików) | ❌ |
-| Siła sieci (SCR) | A5 | do weryfikacji (U0.3) | brak (`grid_strength`: 0 plików) | ❌ |
-| Adekwatność mocy biernej | A12 | do weryfikacji (U0.3) | brak (`reactive_adequacy`: 0 plików) | ❌ |
-| Stabilność SSCI | A18 | do weryfikacji (U0.3) | brak (`ssci`: 0 plików) | ❌ |
-| Sanity bounds | A15 | do weryfikacji (U0.3) | brak (`sanity_bounds`: 0 plików) | ❌ |
-| Walidacja energetyczna | A4 | do weryfikacji (U0.3) | brak (`energy_validation`: 0 plików) | ❌ |
+| Arc flash | A1 | ❌ NIEWPIĘTA (tylko testy) — wymaga wpięcia API | brak (`arc_flash`: 0 plików) | ❌ API+UI |
+| Siła sieci (SCR) | A5 | ❌ NIEWPIĘTA (używana wewnętrznie przez modele arc_flash/ssci/reactive_adequacy) | brak (`grid_strength`: 0 plików) | ❌ API+UI |
+| Adekwatność mocy biernej | A12 | ❌ NIEWPIĘTA (tylko testy) — wymaga wpięcia API | brak (`reactive_adequacy`: 0 plików) | ❌ API+UI |
+| Stabilność SSCI | A18 | ◐ v126 ssci_impedance wpięte; analysis/ssci_stability NIEWPIĘTE | brak (`ssci`: 0 plików) | ❌ UI |
+| Sanity bounds | A15 | ◐ pośrednio: aplikowane w mapowaniu SC→ResultSet v1 | brak ekspozycji flag w UI | ❌ UI |
+| Walidacja energetyczna | A4 | ✅ analysis_run/orchestrator + sld/overlay_builder | brak (`energy_validation`: 0 plików) | ❌ UI |
 | Profil napięciowy | A19 | analysis_runs | voltage-profile | ✅ |
 | Wrażliwość (LF + ogólna) | A6, A17 | analysis_runs | sensitivity | ✅ |
 | Zgodność normatywna | A8 | analysis_runs | engineering-readiness, issue-panel | ◐ |
 | Porównania scenariuszy | A16 | comparison, *_comparisons | comparison, power-flow-comparison, protection-comparison | ◐ (duplikacja do konsolidacji) |
 | Rekomendacje | A13 | analysis_runs | results (rozproszone) | ◐ |
 | Pokrycie analizami | A3 | analysis_runs | analysis-eligibility | ◐ |
-| Granice (boundary) | A2 | analysis_runs | do weryfikacji | ◐ |
+| Granice (boundary) | A2 | ✅ application/analyses/boundary.py | brak dedykowanego widoku | ◐ |
 | Raporty PDF/DOCX | A14 | analysis_run_exports, proof_pack | reports, proof | ◐ |
 | Dowody WHITE BOX (wszystkie pakiety §3) | Proof Engine | proof_pack, equipment_proof_pack, result_contract_v1 | proof, results-inspector | ✅ |
-| Import XLSX | — | xlsx_import | do weryfikacji | ◐ |
+| Import XLSX | — | ✅ xlsx_import (wpięty w main.py) | częściowe (`xlsx`: 11 plików) | ◐ |
 | Archiwum projektu (ZIP) | — | project_archive, archive_diff, incremental_archive | project-archive | ✅ |
 | Katalog typów | — | catalog, audit2_catalogs | catalog, tech-card, property-grid | ✅ |
 | Kreator sieci/stacji | — | station_templates, switchgear_config, design_synth, reference_patterns | designer, network-build, reference-patterns | ◐ |
