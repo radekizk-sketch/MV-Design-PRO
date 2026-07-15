@@ -4,7 +4,7 @@
  * zmiana rewizji modelu → pasek stanu aktualizuje się bez przeładowania.
  * Store'y produkcyjne sterowane setState (bez API); fetch /api/health zamockowany.
  */
-import { render, screen, act, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, act, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EnergyNetworkModel, TopologyGraphSummary } from '../../types/enm';
@@ -13,6 +13,12 @@ import { useTopologyStore } from '../../ui/topology/store';
 import { AppRoot } from '../AppRoot';
 import { subskrybuj, type ZdarzenieSelekcja } from '../events';
 import { useShellStore } from '../shell/useShellStore';
+
+// E1.7b: kanwa SLD (ciężki komponent canvas) jest atrapowana — testy powłoki
+// sprawdzają kontrakt montażu (LegacySurface + testidy), nie silnik SLD.
+vi.mock('../../ui/sld/v2/canvas/SldWorkspaceContainer', () => ({
+  SldWorkspaceContainer: () => null,
+}));
 
 function snapshotZRewizja(revision: number): EnergyNetworkModel {
   return {
@@ -137,5 +143,36 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
       useShellStore.getState().toggleLeftCollapsed('model');
     });
     expect(screen.queryByTestId('mvd-left-context')).toBeNull();
+  });
+
+  // === E1.7b — kontrakt testid parytetu ze starą powłoką ===
+
+  it('kontrakt e2e: znacznik app-ready pojawia się po załadowaniu powłoki', async () => {
+    render(<AppRoot />);
+    expect(screen.getByTestId('canonical-layout')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByTestId('app-ready')).toBeTruthy();
+    });
+    expect(screen.getByTestId('canonical-layout').getAttribute('data-ready')).toBe('true');
+  });
+
+  it('kontrakt e2e: pasek aktywnego przypadku i środkowy panel noszą testidy starej powłoki', () => {
+    render(<AppRoot />);
+    expect(screen.getByTestId('active-case-bar')).toBeTruthy();
+    expect(screen.getByTestId('main-content')).toBeTruthy();
+  });
+
+  it('kontrakt e2e: przestrzeń legacy (model) montuje LegacySurface z workspace-surface-main', () => {
+    render(<AppRoot />);
+    expect(screen.getByTestId('workspace-surface-main')).toBeTruthy();
+  });
+
+  it('kontrakt e2e: przestrzeń z nową zawartością (projekt) też wystawia workspace-surface-main', () => {
+    act(() => {
+      useShellStore.setState({ activeSpace: 'projekt' });
+    });
+    render(<AppRoot />);
+    const warsztat = screen.getByTestId('workspace-surface-main');
+    expect(warsztat.textContent).toContain('Pulpit projektu');
   });
 });

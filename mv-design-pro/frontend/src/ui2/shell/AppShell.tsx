@@ -226,7 +226,10 @@ export function AppShell({
         onCalculate={onCalculate}
       />
 
-      <CaseBar info={caseInfo} onOpenProject={onOpenProject} />
+      {/* Kontrakt e2e (E1.7b): pasek aktywnego przypadku nosi testid starej powłoki. */}
+      <div data-testid="active-case-bar">
+        <CaseBar info={caseInfo} onOpenProject={onOpenProject} />
+      </div>
 
       <div className="mvd-main-region">
         <div className="mvd-main-fill">
@@ -241,7 +244,12 @@ export function AppShell({
                 ) : null}
               </div>
             }
-            center={children ?? <p className="mvd-inspector-empty">{SHELL_STRINGS.workspaceHint}</p>}
+            center={
+              /* Kontrakt e2e (E1.7b): środkowy panel = main-content (jak w starej powłoce). */
+              <div className="mvd-workspace-host" data-testid="main-content">
+                {children ?? <p className="mvd-inspector-empty">{SHELL_STRINGS.workspaceHint}</p>}
+              </div>
+            }
             right={
               inspector ?? (
                 <div>

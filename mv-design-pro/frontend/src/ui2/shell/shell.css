@@ -390,3 +390,15 @@
   overflow: auto;
   border-top: 1px solid var(--mvd-line);
 }
+
+/* E1.7b — kontrakt e2e: opakowania testid nowej powłoki. */
+.mvd-app-obszar {
+  height: 100%;
+  min-height: 0;
+}
+.mvd-workspace-host {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}

@@ -9,9 +9,13 @@
  *   danych — zero martwego UI); dane drzewa: tryb „zasilania";
  * - hierarchia przebiegów: zakres = aktywny przypadek (agregacja wielu przypadków = E7.x).
  *
- * `ui2` pozostaje poza produkcyjnym wejściem aplikacji (przełączenie powłoki = E1.7).
+ * E1.7b (parytet kontraktu): AppRoot woła headless `useLegacyOrchestrator` (E1.7a),
+ * montuje `LegacySurface` w przestrzeniach bez nowej zawartości i eksponuje
+ * wymagane testidy kontraktu e2e (`canonical-layout`, `app-ready`,
+ * `active-case-bar`, `main-content`, `workspace-surface-main`). Wejście
+ * produkcyjne wybiera `ui2/entry` (domyślnie stara powłoka — szew parytetowy).
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AppShell } from './shell/AppShell';
 import { useBackendHealth } from './shell/backendHealth';
@@ -21,9 +25,12 @@ import { useObiektInspektora, useRewizjaModelu } from './adapters/inspectorAdapt
 import { emituj, subskrybuj, startEventBusAdapters } from './events';
 import { CommandPalette, zbudujIndeksWyszukiwania, type PozycjaWyszukiwania } from './search';
 import { PulpitProjektu } from './spaces/projekt';
+import { LegacySurface } from './legacy/LegacySurface';
+import { useLegacyOrchestrator } from './legacy/useLegacyOrchestrator';
 import { useShellStore } from './shell/useShellStore';
 import type { SpaceId } from './shell/spaces';
 import { useSnapshotStore } from '../ui/topology/snapshotStore';
+import { useAppStateStore } from '../ui/app-state';
 
 /** Prawdziwe źródło selekcji emitowane przez drzewo powłoki (decyzja E1.4 §2.1). */
 const ZRODLO_DRZEWO_KONTEKSTOWE = 'drzewo-kontekstowe';
@@ -63,6 +70,18 @@ export function AppRoot() {
   const rewizjaModelu = useRewizjaModelu();
   const obiekt = useObiektInspektora(zaznaczonyId);
   const { status: backendStatus, reconnect } = useBackendHealth();
+  const activeProjectId = useAppStateStore((s) => s.activeProjectId);
+
+  // E1.7a w nowej powłoce: ta sama orkiestracja (hydracja z URL, trasy legacy,
+  // powierzchnie, obliczenia) działa w OBU wejściach — zero duplikacji logiki.
+  const { handleCalculate } = useLegacyOrchestrator();
+
+  // Kontrakt e2e: znacznik gotowości aplikacji (odpowiednik App.useAppReady).
+  const [aplikacjaGotowa, setAplikacjaGotowa] = useState(false);
+  useEffect(() => {
+    const klatka = requestAnimationFrame(() => setAplikacjaGotowa(true));
+    return () => cancelAnimationFrame(klatka);
+  }, []);
 
   // Start adapterów magistrali (raz na życie powłoki) + globalna synchronizacja selekcji.
   useEffect(() => startEventBusAdapters(), []);
@@ -70,6 +89,20 @@ export function AppRoot() {
     () => subskrybuj('selekcja', (z) => setZaznaczonyId(z.obiektId)),
     [],
   );
+
+  // Parytet trasy domyślnej (E1.7b): aktywny projekt → przestrzeń „Schemat" (SLD),
+  // jak domyślna trasa '' starego wejścia. Jednorazowo na życie powłoki.
+  const domyslnaPrzestrzenUstawiona = useRef(false);
+  const setActiveSpaceStore = useShellStore((s) => s.setActiveSpace);
+  useEffect(() => {
+    if (domyslnaPrzestrzenUstawiona.current || !activeProjectId) {
+      return;
+    }
+    domyslnaPrzestrzenUstawiona.current = true;
+    if (useShellStore.getState().activeSpace === 'projekt') {
+      setActiveSpaceStore('schemat');
+    }
+  }, [activeProjectId, setActiveSpaceStore]);
 
   const zaznacz = (id: string) => {
     // Okno emituje selekcję z prawdziwym źródłem; stan lokalny ustawi subskrypcja.
@@ -102,20 +135,27 @@ export function AppRoot() {
   };
 
   return (
-    <AppShell
+    <div data-testid="canonical-layout" data-ready={aplikacjaGotowa} className="mvd-app-obszar">
+      {aplikacjaGotowa && <div data-testid="app-ready" style={{ display: 'none' }} />}
+      <AppShell
       backendStatus={backendStatus}
       onReconnect={reconnect}
       modelRevision={rewizjaModelu > 0 ? rewizjaModelu : null}
       onOpenProject={() => setActiveSpace('projekt')}
+      onCalculate={handleCalculate}
       children={
         activeSpace === 'projekt' ? (
-          <PulpitProjektu
-            onNawiguj={setActiveSpace}
-            onOtworzProjekt={() => undefined /* TODO-KARTA: nowy/otwórz projekt (E2.2) */}
-            onZaznaczPrzypadek={(id) => emituj({ typ: 'selekcja', obiektId: id, zrodlo: 'pulpit-projektu' })}
-            onOtworzPrzypadek={() => setActiveSpace('obliczenia')}
-          />
-        ) : undefined
+          <div data-testid="workspace-surface-main">
+            <PulpitProjektu
+              onNawiguj={setActiveSpace}
+              onOtworzProjekt={() => undefined /* TODO-KARTA: nowy/otwórz projekt (E2.2) */}
+              onZaznaczPrzypadek={(id) => emituj({ typ: 'selekcja', obiektId: id, zrodlo: 'pulpit-projektu' })}
+              onOtworzPrzypadek={() => setActiveSpace('obliczenia')}
+            />
+          </div>
+        ) : (
+          <LegacySurface space={activeSpace} />
+        )
       }
       contextPanel={
         <DrzewoPrzestrzeni space={activeSpace} zaznaczonyId={zaznaczonyId} onZaznacz={zaznacz} />
@@ -143,6 +183,7 @@ export function AppRoot() {
           onPrzelicz={() => undefined /* TODO-KARTA: uruchomienie przebiegu (E7) */}
         />
       }
-    />
+      />
+    </div>
   );
 }
