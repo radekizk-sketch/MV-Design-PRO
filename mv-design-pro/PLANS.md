@@ -127,6 +127,11 @@ Progress:
       karty + podział widoku) / prawy (inspektor: zakładki, akordeon, pinezka, chowany) +
       panel dolny + tryby Podstawowy/Rozszerzony/Ekspercki na mode-gate (ukrywanie okien
       zaawansowanych; wyszukiwarka poleceń znajduje wszystko)
+- [x] U0.16 Propozycje rundy 3 P23–P38 (poziom profesorski: niepewność wyników, walidacja
+      metodą niezależną, rejestr założeń, analiza wymiarowa, profile czasowe, skan N-1,
+      wrażliwości węzłowe, obszary P–Q, kaskada zasilania, optymalizacja NOP, projekt uziomu,
+      ograniczniki, studium przyłączenia, strategie BESS, migotanie, walidacja modelu
+      falownika) — zatwierdzone zasadą „na max"; kolejność po U5 wg delty backendowej
 - [x] U0.15 Audyt rady specjalistów (`docs/uiux/AUDYT_RADY_SPECJALISTOW_2026-07.md`) —
       dyrektywa właściciela 2026-07-15: 13 perspektyw eksperckich, rozbudowa każdego okna
       rejestru (konkretne wymagania per ekran), delta rejestru +16 okien (W-105…W-707)

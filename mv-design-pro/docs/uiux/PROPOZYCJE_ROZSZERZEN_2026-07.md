@@ -58,8 +58,52 @@ z zachowaniem kanonu fizyki (WHITE BOX, warstwy, katalog-first, determinizm, FRO
 | P21 | Audytor / OSD | **Dziennik projektu** — automatyczny zapis decyzji (operacje, zmiany nastaw, rewizje) z podpisem czasowym, eksport do dokumentacji | audytowalność end-to-end; operacje domenowe już są zdarzeniami | E2/E13 |
 | P22 | Profesor / dydaktyka | **Tryb objaśnień** — przełącznik „pokaż teorię": przy każdym wyniku skrót teoretyczny (wzory, założenia, odsyłacz do normy) rozszerzający dowód WHITE BOX | istnieje warstwa akademicka V12.6; spiąć ją z codziennym warsztatem | E9 |
 
+## Grupa V — runda 3 (2026-07-15): poziom profesorski dla czterech specjalności
+
+Zatwierdzone zasadą „na max". „Δbackend" = wymaga delty backendowej (nowa analiza/rozszerzenie —
+w zakresie programu, kanon fizyki obowiązuje: WHITE BOX, warstwy, determinizm).
+
+### Profesor energetyki — rygor naukowy wyników
+
+| # | Propozycja | Treść inżynierska | Δbackend | Epik |
+|---|---|---|---|---|
+| P23 | **Propagacja niepewności do wyników** | tolerancje parametrów katalogowych (±ΔR, ±Δuk), temperatura, klasa danych wejściowych → pasmo ufności na każdej wielkości wynikowej (I″k = 12,84 kA ± 0,31); wykresy z pasmami; rozwija istniejące `uncertainty_sensitivity` | częściowa | E8/E9 |
+| P24 | **Walidacja metodą niezależną** | automatyczny cross-check: rozpływ NR vs GS vs FD (zbieżność do tolerancji), zwarcia metodą IEC vs superpozycją z rozpływem; raport rozbieżności z progiem alarmu; rozwija `benchmark_validation` | częściowa | E8 |
+| P25 | **Rejestr założeń projektu** | każde założenie (c, temperatura, stan łączeń, uproszczenia modelu) w jednym rejestrze z konsekwencjami („zawyża I″k po stronie bezpiecznej") i odsyłaczem do rozdziału normy; dowody cytują rejestr zamiast rozpraszać założenia | nie | E9 |
+| P26 | **Automatyczna analiza wymiarowa** | każdy krok dowodu z kontrolą jednostek (symbolicznie: [A]=[V]/[Ω]); błąd wymiarowy = blokada publikacji dowodu | częściowa | E9 |
+
+### Specjalista analiz sieciowych — głębia obliczeniowa
+
+| # | Propozycja | Treść inżynierska | Δbackend | Epik |
+|---|---|---|---|---|
+| P27 | **Analiza wielookresowa (profile czasowe)** | rozpływ sekwencyjny na profilach (typowe doby / 8760 h): histogramy napięć per szyna, krzywe uporządkowane obciążeń, energia strat rocznych, liczba godzin naruszeń; fundament dla P7 i wymiarowania BESS | TAK | E8 |
+| P28 | **Systematyczny skan kontyngencji N-1** | automatyczne wyłączanie każdej gałęzi → ranking krytyczności (przeciążenia, napięcia, niedostarczona moc); mapa słabych punktów sieci; rozwija `reliability_contingency` | częściowa | E8 |
+| P29 | **Współczynniki wrażliwości węzłowych** | macierze dV/dP, dV/dQ per węzeł (z Jacobianu — WHITE BOX już go eksponuje), wpływ 1 MW/1 MVar w węźle X na profil; tabela „gdzie interwencja da najwięcej" | częściowa | E8 |
+| P30 | **Obszary bezpiecznej pracy P–Q** | wykres zdolności P–Q w punkcie przyłączenia (ograniczenia: napięcia, obciążalność, zwarcia) + mapy U–Q per szyna; rozwija `reactive_adequacy` | częściowa | E11 |
+
+### Projektant sieci i stacji
+
+| # | Propozycja | Treść inżynierska | Δbackend | Epik |
+|---|---|---|---|---|
+| P31 | **Weryfikacja kaskady zasilania end-to-end** | jeden przebieg: GPZ→magistrala→stacja→nn→odbiór; kaskadowa kontrola przekrojów, aparatów, zabezpieczeń i spadków z raportem zgodności per ciąg; łączy P8/P9/P18 w jedną operację | częściowa | E3/E10 |
+| P32 | **Optymalizacja punktu podziału (NOP)** | ranking lokalizacji NOP wg strat, SAIDI, prądów wyrównawczych przy przełączeniach; warianty jako przypadki pochodne | TAK | E8 |
+| P33 | **Projekt uziomu stacji** | siatka uziomowa: rezystancja wypadkowa, napięcia krokowe i dotykowe (PN-EN 50522), dobór przewodów uziomowych do I″k1 i czasu wyłączenia; rozwija `earthing_safety` do warstwy projektowej | TAK | E10 |
+| P34 | **Dobór ograniczników przepięć** | energia, napięcie trwałej pracy, odległość ochronna od chronionego aparatu; spina `insulation_coordination` z katalogiem ograniczników | częściowa | E10 |
+
+### Specjalista OZE
+
+| # | Propozycja | Treść inżynierska | Δbackend | Epik |
+|---|---|---|---|---|
+| P35 | **Studium przyłączenia end-to-end** | kreator studium: warianty punktu przyłączenia → wymagane analizy w sekwencji (zwarcia, rozpływ, zdolność, NC RfG, harmoniczne) → dokument studium wykonalności przyłączenia; spina P2/P10/P19 w przepływ | częściowa | E11/E13 |
+| P36 | **Strategie pracy magazynu** | symulacja BESS na profilach: ścinanie szczytu, ograniczanie oddawania, współpraca z PV (autokonsumpcja), praca wyspowa; wynik: wymiarowanie mocy/pojemności z uzasadnieniem | TAK (po P27) | E11 |
+| P37 | **Migotanie i szybkie zmiany napięcia** | ocena flickera (Pst/Plt) i szybkich zmian napięcia od FW/PV wg IEC 61000-3-7 w punkcie przyłączenia; uzupełnia harmoniczne o pełną jakość energii | TAK | E11 |
+| P38 | **Walidacja modelu falownika testami** | porównanie odpowiedzi modelu FRT/regulatorów z przebiegami testów zgodności NC RfG (obwiednie); werdykt „model odzwierciedla urządzenie" do studium | częściowa | E11 |
+
+Okna dla P23–P38 dostają identyfikatory W-… przy rozpisywaniu kart (zarządca aktualizuje deltę
+rejestru w AUDYT_RADY_SPECJALISTOW / MODEL_INTERAKCJI §4).
+
 ## Kolejność realizacji (zarządca; właściciel może zmienić)
 
-1. **U3:** P3, P4, P20 (wyniki + gotowość) · 2. **U4:** P1, P2, P5, P6, P9, P10, P13, P14, P15, P18 (zabezpieczenia, OZE, dokumentacja) · 3. **po U4 / U5:** P7, P8, P11, P12, P16, P17, P19, P21, P22 oraz grupa III.
+1. **U3:** P3, P4, P20 (wyniki + gotowość) · 2. **U4:** P1, P2, P5, P6, P9, P10, P13, P14, P15, P18 (zabezpieczenia, OZE, dokumentacja) · 3. **po U4 / U5:** P7, P8, P11, P12, P16, P17, P19, P21, P22, następnie runda 3 w kolejności: najpierw bez delty backendowej i „częściowe" (P25, P26, P24, P23, P29, P28, P30, P31, P34, P35, P38), potem pełne delty (P27 → P36, P32, P33, P37) oraz grupa III.
 Każda pozycja wchodzi wyłącznie kartą zadania z pełnymi bramkami; nowe funkcje obliczeniowe
 dopisywane do INWENTARZA (macierz pokrycia rośnie, nigdy nie maleje).
