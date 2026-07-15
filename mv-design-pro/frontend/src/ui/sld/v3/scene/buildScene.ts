@@ -1510,6 +1510,16 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       // wyżej), nigdy w B5; pozycja ABSOLUTNA akcentu (`B5.y -
       // BRANCH_JUNCTION_SIZE`) jest więc NIEZMIENIONA przez podniesienie
       // `DESCENT_STRIP_HEIGHT` w FIX-1 (skraca się tylko dystans nad nim).
+      //
+      // F9.10 (root-cause z F9.7 C — patrz `symbolWireCollisions` niżej):
+      // TA WŁAŚNIE własność (akcent zakotwiczony do `B5.y`, `B5.y` rośnie
+      // WPROST z `DESCENT_STRIP_HEIGHT`, `trunkCorridorYOf` NIE rośnie — jest
+      // stałym przesunięciem od `stripTopY`, który jest NIEZALEŻNY od
+      // `DESCENT_STRIP_HEIGHT`) jest mechanizmem naprawy: podniesienie
+      // `DESCENT_STRIP_HEIGHT` (2×GRID → 6×GRID, `bands.ts`) przesuwa CAŁY
+      // akcent w dół, z dala od `trunkCorridorYOf`, bez ruszania
+      // `stripTopY`/`blockTopY`/geometrii bloku stacji. Patrz uzasadnienie
+      // liczbowe w `bands.ts` przy `DESCENT_STRIP_HEIGHT`.
       const branchJunctionTopY = stripTopY + DESCENT_STRIP_HEIGHT - BRANCH_JUNCTION_SIZE;
       allSymbols.push({
         symbolId: 'branchJunction',
@@ -1920,6 +1930,18 @@ function segmentTouchesOrOverlapsRect(a: RouteVertex, b: RouteVertex, rect: V3Re
  * Uogólnione na WSZYSTKIE symbole sceny (nie tylko `branchJunction`) — to
  * SAMA wyrocznia realizuje literę §11.4 wire_probe rozszerzoną o symbole
  * (nie tylko etykiety, patrz `labelWireCollisions`).
+ *
+ * F9.10 (root-cause naprawiony, REBUILD_PLAN_V3 F9.10): F9.7 wpięła tę
+ * wyrocznię z baseline LICZONYM (11 znanych kolizji `branchJunction`↔
+ * przewód na L1/L2, przyczyna: `DESCENT_STRIP_HEIGHT` 16px nie mieścił
+ * akcentu 32px, `trunkCorridorYOf` wpadał w Y-span akcentu — patrz historia
+ * gita tego pliku/`docs/sld/SLD_V3_ACCEPTANCE.md` §3.4 dla pełnej diagnozy).
+ * F9.10 naprawiła geometrię U ŹRÓDŁA (`DESCENT_STRIP_HEIGHT` 2×GRID→6×GRID,
+ * `layout/bands.ts`, uzasadnienie liczbowe tam) — wyrocznia jest teraz
+ * TWARDYM ZEREM na WSZYSTKICH LOD, baseline USUNIĘTY (`scripts/
+ * sld_v3_acceptance.mjs` sprawdza `hits.length === 0` wprost, jak
+ * `noSceneSymbolOverlaps`). Koszt: piony rosną (§15.1, `VERTICAL_LENGTH_
+ * BASELINE` podniesiony z uzasadnieniem, ten sam plik).
  */
 export function symbolWireCollisions(scene: SceneV3): readonly SymbolWireCollision[] {
   const hits: SymbolWireCollision[] = [];

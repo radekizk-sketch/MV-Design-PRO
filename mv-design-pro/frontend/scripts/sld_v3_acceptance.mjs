@@ -88,24 +88,36 @@ const EXPECTED_STATION_COUNT = 53;
  * niż baseline — spadek jest dozwolony i pożądany (przyszła optymalizacja),
  * wzrost jest regresją (FAIL). Aktualizacja baseline wymaga świadomej zmiany
  * TEGO pliku z uzasadnieniem (nie automatycznej).
+ *
+ * F9.10 (REBUILD_PLAN_V3 F9.10, root-cause z F9.7 C — naprawa geometryczna
+ * `symbolWireCollisions`, patrz gate `symbol_wire_probe` poniżej): baseline
+ * PODNIESIONY z {0: 9656, 1: 38504, 2: 53304} na WARTOŚĆ
+ * ZMIERZONĄ po zmianie `DESCENT_STRIP_HEIGHT` (2×GRID→6×GRID,
+ * `layout/bands.ts`) — świadome odstępstwo od reguły „nie-rosnąca", zgodnie
+ * ze spec §15.1 („redukcja jest ograniczeniem MIĘKKIM — nigdy kosztem
+ * czytelności ani kolizji"): kolizje symbol↔przewód (§11.4, twarde zero)
+ * mają pierwszeństwo przed minimalizacją pionów. Delta jest STAŁA na
+ * WSZYSTKICH LOD (+2496px) — spójne z tym, że rezerwacja `DESCENT_STRIP_
+ * HEIGHT` jest doliczana JEDNOLICIE do KAŻDEGO wiersza sceny niezależnie od
+ * LOD (patrz `bands.ts` `computeBands`/F6d).
  */
-const VERTICAL_LENGTH_BASELINE = { 0: 9656, 1: 38504, 2: 53304 };
+const VERTICAL_LENGTH_BASELINE = { 0: 12152, 1: 41000, 2: 55800 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —
- * `symbolWireCollisions`): fixtura referencyjna niesie 11 ZNANYCH kolizji
- * `branchJunction`↔przewód na L1/L2 (0 na L0), przyczyna geometryczna
- * udokumentowana w `scene/buildScene.ts` (docstring `symbolWireCollisions`)
- * i w teście `scene/__tests__/buildScene.test.ts` — `DESCENT_STRIP_HEIGHT`
- * (16px) nie mieści akcentu węzła (32px) bez nachodzenia na sub-poziom
- * korytarza międzystacyjnego. Naprawa wymaga zmiany wysokości pasm
- * (`layout/bands.ts`), wpływającej na KAŻDY wiersz sceny — poza bezpiecznym
- * zakresem tej fazy bez pełnej rewalidacji renderów (patrz raport). Baseline
- * jest LICZONY i NIEROSNĄCY (jak `vertical_length_probe`), NIE zero-
- * tolerancją — regresja (wzrost / kolizja INNEGO symbolu niż `branchJunction`)
- * MUSI failować.
+ * `symbolWireCollisions`) wpięła tę wyrocznię z baseline LICZONYM (11
+ * znanych kolizji `branchJunction`↔przewód na L1/L2, 0 na L0), przyczyna
+ * geometryczna udokumentowana w `scene/buildScene.ts` (docstring
+ * `symbolWireCollisions`) — `DESCENT_STRIP_HEIGHT` (16px) nie mieścił
+ * akcentu węzła (32px) bez nachodzenia na sub-poziom korytarza
+ * międzystacyjnego.
+ *
+ * F9.10 (REBUILD_PLAN_V3 F9.10): naprawa geometryczna U ŹRÓDŁA
+ * (`DESCENT_STRIP_HEIGHT` 2×GRID→6×GRID, `layout/bands.ts`, uzasadnienie
+ * liczbowe tam) sprowadza kolizje do ZERA na WSZYSTKICH LOD — baseline
+ * USUNIĘTY, gate jest teraz TWARDYM ZEREM (DoD F9.10: „noSymbolWireCollisions
+ * bez baseline"), tym samym wzorcem co `noSceneSymbolOverlaps` poniżej.
  */
-const SYMBOL_WIRE_COLLISION_BASELINE = { 0: 0, 1: 11, 2: 11 };
 
 let anyFail = false;
 const out = [];
@@ -492,19 +504,15 @@ for (const lod of LODS) {
     `luki=${endpointGaps.length}`,
   );
 
-  // -- §11.4 wire_probe rozszerzony o symbole (F9.7, dług F9.3(b)) ----------
-  // Baseline LICZONY, NIE zero-tolerancją — patrz SYMBOL_WIRE_COLLISION_BASELINE
-  // (nagłówek pliku): 11 ZNANYCH kolizji `branchJunction` na L1/L2, przyczyna
-  // udokumentowana w `scene/buildScene.ts` (`symbolWireCollisions` docstring).
-  // Regresja (wzrost LICZBY lub kolizja symbolu INNEGO niż `branchJunction`)
-  // MUSI failować — to jest twarda bramka na ZMIANĘ stanu, nie na jego istnienie.
+  // -- §11.4 wire_probe rozszerzony o symbole (F9.7 wpięcie, F9.10 naprawa) -
+  // F9.10 (REBUILD_PLAN_V3 F9.10): naprawa geometryczna U ŹRÓDŁA
+  // (`DESCENT_STRIP_HEIGHT`, `layout/bands.ts`) sprowadziła kolizje do zera —
+  // TWARDE ZERO, bez baseline (DoD F9.10), tak jak `noSceneSymbolOverlaps`.
   const wireSymbolHits = symbolWireCollisions(scene);
-  const wireSymbolBaseline = SYMBOL_WIRE_COLLISION_BASELINE[lod] ?? 0;
-  const onlyKnownSymbol = wireSymbolHits.every((h) => h.symbolId === 'branchJunction');
   check(
-    `symbol_wire_probe (§11.4/dług F9.3(b)): kolizje symbol↔przewód nie-rosnące względem baseline=${wireSymbolBaseline}, wyłącznie znany typ (branchJunction)`,
-    wireSymbolHits.length <= wireSymbolBaseline && onlyKnownSymbol,
-    `kolizje=${wireSymbolHits.length} baseline=${wireSymbolBaseline}`,
+    'symbol_wire_probe (§11.4, F9.10): zero kolizji symbol↔przewód (twarde zero, baseline usunięty)',
+    noSymbolWireCollisions(scene) && wireSymbolHits.length === 0,
+    `kolizje=${wireSymbolHits.length}`,
   );
 
   // -- §15.1 vertical_length_probe (F9.7, pierwsze wpięcie) ------------------

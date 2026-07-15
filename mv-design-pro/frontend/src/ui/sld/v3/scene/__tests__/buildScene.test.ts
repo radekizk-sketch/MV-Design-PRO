@@ -646,34 +646,35 @@ describe('buildSceneV3 — F9.7: sceneSegmentEndpointGaps/allSceneSegmentEndpoin
   });
 });
 
-describe('buildSceneV3 — F9.7: symbolWireCollisions/noSymbolWireCollisions (spec §11.4 wire_probe rozszerzony na symbole, dług F9.3(b))', () => {
+describe('buildSceneV3 — F9.7/F9.10: symbolWireCollisions/noSymbolWireCollisions (spec §11.4 wire_probe rozszerzony na symbole, dług F9.3(b))', () => {
   /**
    * ZNALEZISKO F9.7 (dług F9.3(b) POTWIERDZONY, nie hipotetyczny): dokładnie
    * 11 kolizji `branchJunction`↔przewód na L1/L2 (0 na L0 — `branchJunction`
    * nierysowany na L0), 100% deterministyczne i powtarzalne. Przyczyna
    * geometryczna (zbadana, patrz raport F9.7): `trunkCorridorYOf` (jog
    * międzystacyjny głowica→głowica, F9.3 FIX-1) = `stripTopYOf + GRID`, a
-   * `branchJunction` (32×32, spec §14.4) zajmuje `[stripTopY-16, stripTopY+16]`
-   * — `DESCENT_STRIP_HEIGHT` (16px, `bands.ts`) NIE MIEŚCI akcentu węzła
+   * `branchJunction` (32×32, spec §14.4) zajmowała `[stripTopY-16, stripTopY+16]`
+   * — `DESCENT_STRIP_HEIGHT` (16px, `bands.ts`) NIE MIEŚCIŁ akcentu węzła
    * (32px) bez nachodzenia na sub-poziom korytarza międzystacyjnego, gdy
    * korytarz przechodzi przez TĘ SAMĄ szczelinę `COLUMN_GAP`, w której stoi
-   * akcent. Naprawa wymaga zmiany `DESCENT_STRIP_HEIGHT`/rozmieszczenia
-   * `branchJunction` (wpływa na wysokość KAŻDEGO wiersza — poza
-   * bezpiecznym zakresem F9.7 bez pełnej rewalidacji renderów, patrz raport
-   * agenta). Baseline TU jest ŚWIADOMY i LICZONY (nie zero-tolerancja jak
-   * `noSceneSymbolOverlaps`) — regresja (wzrost liczby / nowe pary) MUSI
-   * failować, ale te 11 znanych par NIE blokuje CI, zgodnie z ustalonym
-   * wzorcem projektu dla udokumentowanych, policzonych odstępstw (patrz
-   * `expectedDeadEnds` w `scripts/sld_v3_acceptance.mjs`, ten sam wzorzec).
+   * akcent.
+   *
+   * F9.10 (REBUILD_PLAN_V3 F9.10, NAPRAWIONE): `DESCENT_STRIP_HEIGHT`
+   * podniesiony 2×GRID→6×GRID (`bands.ts`, uzasadnienie liczbowe tam) —
+   * akcent jest zakotwiczony do stropu pasma nazw (`B5.y = stripTopY +
+   * DESCENT_STRIP_HEIGHT`, rośnie WRAZ ze stałą), `trunkCorridorYOf`
+   * (`stripTopY + GRID`) NIE rośnie — więc podniesienie stałej rozsuwa
+   * akcent i korytarz. Kolizje = ZERO na WSZYSTKICH LOD, baseline USUNIĘTY
+   * (DoD F9.10: twarde zero, ten sam wzorzec co `noSceneSymbolOverlaps`).
    */
-  it('fixtura referencyjna: L0 zero kolizji symbol↔przewód; L1/L2 dokładnie 11 ZNANYCH kolizji `branchJunction` (dług F9.3(b), patrz docstring)', () => {
+  it('fixtura referencyjna: ZERO kolizji symbol↔przewód na WSZYSTKICH LOD (F9.10 — twarde zero, dług F9.3(b)/F9.7 spłacony)', () => {
     expect(symbolWireCollisions(buildSceneV3(enm, 0))).toEqual([]);
     expect(noSymbolWireCollisions(buildSceneV3(enm, 0))).toBe(true);
     for (const lod of [1, 2] as const) {
       const scene = buildSceneV3(enm, lod);
       const hits = symbolWireCollisions(scene);
-      expect(hits.length).toBe(11);
-      expect(hits.every((h) => h.symbolId === 'branchJunction')).toBe(true);
+      expect(hits.length).toBe(0);
+      expect(noSymbolWireCollisions(scene)).toBe(true);
     }
   });
 
@@ -719,10 +720,10 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     expect(totalVerticalSegmentLength(synthetic)).toBe(70);
   });
 
-  it('fixtura referencyjna: baseline aktualny per LOD (F9.7, pierwsze wpięcie) — patrz `scripts/sld_v3_acceptance.mjs` dla porównania nie-rosnącego w CI', () => {
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(9656);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(38504);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(53304);
+  it('fixtura referencyjna: baseline aktualny per LOD (F9.7 pierwsze wpięcie: 9656/38504/53304; F9.10 PODNIESIONY o +2496 na WSZYSTKICH LOD — koszt świadomy naprawy `DESCENT_STRIP_HEIGHT` 2×GRID→6×GRID dla zera kolizji symbol↔przewód, spec §15.1 „redukcja jest ograniczeniem miękkim", patrz `scripts/sld_v3_acceptance.mjs`) — patrz tamten plik dla porównania nie-rosnącego w CI', () => {
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(12152);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(41000);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(55800);
   });
 });
 

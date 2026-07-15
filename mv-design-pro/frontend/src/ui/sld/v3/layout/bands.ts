@@ -76,7 +76,45 @@ export const BUS_AXIS_BAND_HEIGHT = 4 * GRID;
 // COLUMN_GAP) -- na JEDNYM poziomie Y dawaloby to WSPOLLINIOWE nakladanie
 // się dwoch niezaleznych obwodow, nie tylko krzyzowanie (ktore router juz
 // obsluguje, `route.ts` `classifyRouteNodes`).
-export const DESCENT_STRIP_HEIGHT = 2 * GRID;
+//
+// F9.10 (root-cause z F9.7 C, REBUILD_PLAN_V3 F9.10, spec §11.4/§14.4):
+// wysokosc podniesiona z 2xGRID (16px) do 6xGRID (48px) -- 16px NIE MIESCIL
+// akcentu wezla rozgalezienia `branchJunction` (32x32, spec §14.4), ktorego
+// dolna krawedz jest DOCIAGNIETA do stropu pasma nazw (`B5.y`, patrz
+// `buildScene.ts` `branchJunctionTopY = stripTopY + DESCENT_STRIP_HEIGHT -
+// BRANCH_JUNCTION_SIZE`, czyli zawsze `[B5.y-32, B5.y]`). `stripTopY` sam w
+// sobie jest NIEZALEZNY od `DESCENT_STRIP_HEIGHT` (== `blockTopY +
+// stationBlockHeight`, z definicji `stripTopYOf` -- rezerwacja pasma
+// dolicza/odejmuje TĘ SAMĄ wartość), a `trunkCorridorYOf` (dolny sub-poziom,
+// `stripTopY + GRID`, STAŁY) NIE przesuwa się wraz ze wzrostem tej stałej --
+// więc podniesienie `DESCENT_STRIP_HEIGHT` przesuwa akcent (zakotwiczony do
+// `B5.y = stripTopY + DESCENT_STRIP_HEIGHT`) w DÓŁ, z dala od stałego
+// `trunkCorridorYOf`, bez ruszania geometrii samego bloku stacji (`blockTopY`
+// nietknięty) ani pozycji `trunkCorridorYOf`. Minimalna wartość dająca
+// nachodzenie=0 z marginesem (inkluzywny test kolizji, spec „odległość < 1px
+// = kolizja" -- styk krawędzi też jest kolizją): rachunek na wzorach wyżej:
+// górna krawędź akcentu = `stripTopY + DSH − 32`, korytarz = `stripTopY + 8`,
+// styk (równość) ⇔ `DSH = 40 = 5×GRID` -- czyli próg to
+// `DESCENT_STRIP_HEIGHT > 5×GRID`; przy `5×GRID` (40px) krawędzie się
+// STYKAJĄ (wciąż kolizja -- 40px NIE jest bezpieczne!), przy `4×GRID`
+// korytarz leży 8px WEWNĄTRZ akcentu (pełne nachodzenie); najbliższa
+// bezpieczna wartość na siatce to `6×GRID`, dająca `1×GRID` (8px) marginesu.
+// [Korekta rachunku po recenzji F9.10 -- pierwotny komentarz podawał styk
+// przy 4×GRID, co myliło o 1×GRID i czyniło 40px pozornie bezpiecznym.]
+// KOSZT (świadomy, spec §15.1 -- redukcja pionów jest ograniczeniem MIĘKKIM,
+// czytelność/kolizje=0 wygrywają): rezerwacja jest doliczana JEDNOLICIE do
+// KAŻDEGO wiersza sceny (jak w F6d), więc wysokość KAŻDEGO wiersza rośnie o
+// `4×GRID` (32px) -- to wydłuża piony ŁĄCZĄCE wiersze (`vertical_length_
+// probe`, §15.1); baseline `VERTICAL_LENGTH_BASELINE`
+// (`scripts/sld_v3_acceptance.mjs`) PODNIESIONY z tym uzasadnieniem (patrz
+// tamten plik i `docs/sld/SLD_V3_ACCEPTANCE.md` §3.3/§3.4). Warianty
+// odrzucone (raport agenta F9.10): (b) przesunięcie korytarza na PORT
+// symbolu -- jedyny wolny port bez konfliktu z pasmem nazw leży NA `B5.y`,
+// czyli na granicy pasma nazw (ryzyko regresji identycznej do znaleziska
+// F9.3/F6e -- kolizje z treścią pasma nazw); (c) zmniejszenie akcentu do
+// 16px -- łamie literę §14.4 („WYRAŹNIE większy węzeł" niż `junction`
+// bazowy 16×16 -- 16px byłby RÓWNY, nie większy).
+export const DESCENT_STRIP_HEIGHT = 6 * GRID;
 
 /**
  * Wysokości zawartości JEDNEJ stacji/kolumny — wejście `computeBands` (spec

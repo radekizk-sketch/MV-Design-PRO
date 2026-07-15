@@ -1018,7 +1018,7 @@ współdzielony (spec §8) — ale konsumpcja w compose (F9.3) czeka na F8b.
     pełna regresja 544 pliki / 7692 pass; guardy sld-determinism/codenames/forbidden-ui-terms/
     overlay-no-physics/docs/mojibake zielone.
 
-### F9.10. [KOD — po F9.9] Likwidacja kolizji branchJunction↔przewód (root-cause z F9.7 C)
+### F9.10. [DONE] Likwidacja kolizji branchJunction↔przewód (root-cause z F9.7 C)
 - Znalezisko F9.7 (REALNE, 11 kolizji L1/L2 na fixturze): `trunkCorridorYOf` wpada w Y-span
   `branchJunction` (32px) bo `DESCENT_STRIP_HEIGHT` (16px) go nie mieści. Wyrocznia
   `symbolWireCollisions` wpięta z baseline liczonym (nie-rosnącym) — ta faza sprowadza baseline do 0.
@@ -1026,6 +1026,43 @@ współdzielony (spec §8) — ale konsumpcja w compose (F9.3) czeka na F8b.
   wspólna wysokości wierszy, wymaga pełnej re-walidacji wyroczni + porównania renderów przed/po);
   baseline `SYMBOL_WIRE_COLLISION_BASELINE` → {0,0,0}; rendery odbioru odświeżone.
 - DoD: `noSymbolWireCollisions` bez baseline (twarde 0) na 3 LOD; wszystkie §11 zielone; render oceniony.
+- **Wynik realizacji (2026-07-15):**
+  - **Wariant wybrany (a):** `DESCENT_STRIP_HEIGHT` (`layout/bands.ts`) podniesiony `2×GRID`(16px)→
+    `6×GRID`(48px). Wyprowadzenie: `stripTopY` (`stripTopYOf`) jest algebraicznie NIEZALEŻNY od
+    `DESCENT_STRIP_HEIGHT` (== `blockTopY + stationBlockHeight` po skróceniu wzoru B4), więc stały
+    sub-poziom `trunkCorridorYOf` (`stripTopY + GRID`) NIE przesuwa się, gdy stała rośnie; akcent
+    `branchJunction` jest zakotwiczony do stropu pasma nazw (`B5.y = stripTopY + DESCENT_STRIP_HEIGHT`)
+    i ROŚNIE wraz ze stałą — podniesienie stałej rozsuwa akcent od stałego korytarza, bez ruszania
+    bloku stacji. Próg matematyczny (skorygowany po recenzji F9.10 — pierwotne uzasadnienie
+    podawało styk przy `4×GRID`, o `1×GRID` za nisko): styk ⇔ `DSH = 5×GRID` (40px), kolizja znika
+    dopiero przy `DESCENT_STRIP_HEIGHT > 5×GRID`; `5×GRID` = styk (wciąż kolizja inkluzywna, 40px
+    NIE jest bezpieczne), `4×GRID` = korytarz 8px wewnątrz akcentu; najbliższa bezpieczna wartość
+    na siatce `6×GRID` daje `1×GRID` (8px) marginesu.
+  - **Warianty odrzucone:** (b) przesunięcie korytarza na PORT symbolu — jedyny wolny port bez
+    konfliktu z pasmem nazw leży dokładnie na `B5.y` (granica pasma nazw) — odtworzyłoby znalezisko
+    F9.3/F6e (12 kolizji etykieta↔symbol „name-row-0"); (c) zmniejszenie akcentu do 16px — łamie §14.4
+    („WYRAŹNIE większy węzeł" niż `junction` bazowy 16×16 — 16px byłby równy, nie większy); (d) inna
+    korekta — nie znaleziono taniej alternatywy nienaruszającej geometrii bloku stacji ani pasma nazw.
+  - **Wynik geometryczny:** `symbolWireCollisions` = 0 na L0/L1/L2 (dowiedzione na fixturze
+    `sldSubstrate52s`). `SYMBOL_WIRE_COLLISION_BASELINE` USUNIĘTY ze `scripts/sld_v3_acceptance.mjs` —
+    gate `symbol_wire_probe` to teraz `noSymbolWireCollisions(scene)` wprost (twarde zero, wzorzec
+    `noSceneSymbolOverlaps`). Test pinujący w `buildScene.test.ts` (`hits.length).toBe(11)` → `toBe(0)`)
+    zaktualizowany z komentarzem F9.10.
+  - **Koszt (świadomy, spec §15.1 „redukcja jest ograniczeniem miękkim"):** wysokość KAŻDEGO wiersza
+    sceny rośnie o `4×GRID` (32px) — `vertical_length_probe` rośnie o **+2496px na WSZYSTKICH LOD**
+    (stała delta — rezerwacja doliczana jednolicie do każdego wiersza niezależnie od LOD).
+    `VERTICAL_LENGTH_BASELINE`: `{0: 9656→12152, 1: 38504→41000, 2: 53304→55800}`, podniesiony z
+    jawnym uzasadnieniem w `scripts/sld_v3_acceptance.mjs`/`buildScene.test.ts`/
+    `docs/sld/SLD_V3_ACCEPTANCE.md` §3.3/§3.4 — zero kolizji ma pierwszeństwo przed minimalizacją pionów.
+  - **Rewalidacja:** pełne wyrocznie §11(+A1) na 3 LOD (`accept:sld-v3` ALL PASS, 0 FAIL); pełny katalog
+    `vitest run src/ui/sld --no-file-parallelism` 170 plików / 3284 pass / 14 todo (IDENTYCZNIE jak przed
+    zmianą — zero regresji poza dwoma zaktualizowanymi asercjami pinującymi geometrię); 5 renderów
+    odbioru (`docs/sld/renders/v3/*.png`) odświeżone (geometria bazowa się zmieniła); porównanie PNG
+    przed/po w scratchpadzie nadzorcy (`v3_png/{before_f910,after_f910}/`, canvas LOD 0/1/2 + 5 ról) —
+    topologia/czytelność zachowana, tylko piony wierszy z lateralami nieznacznie dłuższe.
+  - Bramki: `npm run type-check` czysty; `eslint` czysty (pliki dotknięte); `vitest run src/ui/sld/v3
+    --no-file-parallelism` oraz pełny `src/ui/sld` zielone; `npm run accept:sld-v3` ALL PASS (exit 0);
+    `python scripts/sld_determinism_guards.py` 0 naruszeń; `python scripts/docs_guard.py` OK.
 
 **Fazy z zależnością danych/backendu:** F9.6 (backend/ENM — DOMAIN). F9.2 dotyka adaptera współdzielonego.
 Pozostałe (F9.3/F9.4/F9.5/F9.7) są frontend-only w potoku v3.

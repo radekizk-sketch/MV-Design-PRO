@@ -272,7 +272,7 @@ istniejących funkcjach budujących scenę — `compose/sourceKind.ts` (nowa
 funkcja, nie zmienia `DER_SOURCE_KIND_SYMBOL`), `scripts/sld_v3_acceptance.mjs`
 i pliki testowe/komentarze).
 
-### 3.4 symbol_wire_probe (§11.4, dług F9.3(b)) — ZNALEZISKO POTWIERDZONE, nie hipotetyczne
+### 3.4 symbol_wire_probe (§11.4, dług F9.3(b)) — ZNALEZISKO POTWIERDZONE w F9.7, NAPRAWIONE w F9.10
 
 F9.3 zostawiła udokumentowany, ale NIEZWERYFIKOWANY dług: „`branchJunction`
 (32×32) w szczelinie `COLUMN_GAP` MOŻE ocierać się o przewody… dziś nie
@@ -281,32 +281,63 @@ wprost". F9.7 dostarczyła REALNĄ wyrocznię (`symbolWireCollisions`) i
 zweryfikowała: **ryzyko jest REALNE — dokładnie 11 kolizji `branchJunction`↔
 przewód na L1/L2 (0 na L0)**, 100% deterministyczne i powtarzalne.
 
-**Przyczyna geometryczna (zbadana):** jog międzystacyjny głowica→głowica
+**Przyczyna geometryczna (zbadana w F9.7):** jog międzystacyjny głowica→głowica
 (`trunkCorridorYOf`, F9.3 FIX-1) leży na `stripTopY + GRID`;
-`branchJunction` zajmuje `[stripTopY-16, stripTopY+16]` (32px wysokości).
-`DESCENT_STRIP_HEIGHT` (16px, `layout/bands.ts`) rezerwuje miejsce na DWA
+`branchJunction` zajmowała `[stripTopY-16, stripTopY+16]` (32px wysokości).
+`DESCENT_STRIP_HEIGHT` (16px, `layout/bands.ts`) rezerwował miejsce na DWA
 8px sub-poziomy jogu, ale NIE na 32px akcent węzła — gdy korytarz
 międzystacyjny przechodzi przez TĘ SAMĄ szczelinę `COLUMN_GAP`, w której
-stoi akcent stacji-origin lateralu, ich zakresy Y nachodzą.
+stoi akcent stacji-origin lateralu, ich zakresy Y nachodziły.
 
-**Naprawa poza zakresem F9.7 (świadoma decyzja, nie przeoczenie):** zmiana
-wymagałaby powiększenia `DESCENT_STRIP_HEIGHT` (wpływa na wysokość KAŻDEGO
-wiersza sceny, nie tylko wierszy z lateralami) lub przeniesienia
-`branchJunction` — obie opcje wymagają pełnej rewalidacji wyroczni §11 +
-porównania renderów na całej fixturze (poza bezpiecznym budżetem tej fazy,
-zgodnie z regułą „KAŻDA zmiana geometrii musi przejść PEŁNE wyrocznie +
-porównanie renderów").
+**F9.10 — naprawa geometryczna U ŹRÓDŁA (2026-07-15):**
 
-**Stan wpięcia:** `symbolWireCollisions`/`noSymbolWireCollisions` wpięte do
-`accept:sld-v3` z baseline LICZONYM (`SYMBOL_WIRE_COLLISION_BASELINE` = `{0:
-0, 1: 11, 2: 11}`) — regresja (wzrost liczby LUB kolizja symbolu INNEGO niż
-`branchJunction`) MUSI failować CI; tych 11 znanych par NIE blokuje (ten sam
-wzorzec co `expectedDeadEnds` w §12.3, już ustalony w projekcie dla
-udokumentowanych, policzonych odstępstw). Test negatywny w
-`buildScene.test.ts` dowodzi, że wyrocznia gryzie na FRESH kolizji.
-**Rekomendacja dla przyszłej fazy:** naprawa geometryczna (rozszerzenie
-`DESCENT_STRIP_HEIGHT` lub przeniesienie akcentu) z pełną rewalidacją — do
-zaplanowania jako osobny wpis w `SLD_CAD_REBUILD_PLAN_V3.md` (F9.10 — numer F9.9 zajęty przez oznaczenie zabezpieczeń §17).
+- **Wariant wybrany (a — powiększenie pasma zejść):** `DESCENT_STRIP_HEIGHT`
+  podniesiony `2×GRID` (16px) → `6×GRID` (48px) (`layout/bands.ts`).
+  Wyprowadzenie: `stripTopY` (`stripTopYOf`) jest ALGEBRAICZNIE NIEZALEŻNY od
+  `DESCENT_STRIP_HEIGHT` (== `blockTopY + stationBlockHeight` po skróceniu —
+  `B4.height = stationBlockHeight + DESCENT_STRIP_HEIGHT`, a `stripTopYOf =
+  blockTopY + B4.height − DESCENT_STRIP_HEIGHT`), więc `trunkCorridorYOf`
+  (`stripTopY + GRID`, STAŁY) NIE przesuwa się przy zmianie stałej. Akcent
+  jest zakotwiczony do stropu pasma nazw (`branchJunctionTopY = B5.y −
+  BRANCH_JUNCTION_SIZE`, `B5.y = stripTopY + DESCENT_STRIP_HEIGHT`) — ROŚNIE
+  WRAZ ze stałą. Podniesienie stałej rozsuwa więc akcent od stałego
+  korytarza bez ruszania bloku stacji. Próg matematyczny (skorygowany po
+  recenzji F9.10): górna krawędź akcentu = `stripTopY + DSH − 32`, korytarz =
+  `stripTopY + 8`, styk ⇔ `DSH = 5×GRID` (40px) — kolizja znika dopiero przy
+  `DESCENT_STRIP_HEIGHT > 5×GRID`; przy `5×GRID` krawędzie się STYKAJĄ (nadal
+  kolizja wg reguły inkluzywnej „odległość < 1px" — 40px NIE jest bezpieczne),
+  przy `4×GRID` korytarz leży 8px wewnątrz akcentu; najbliższa bezpieczna
+  wartość na siatce to `6×GRID`, dająca `1×GRID` (8px) czystego marginesu.
+- **Warianty odrzucone:**
+  - **(b) przesunięcie korytarza na PORT symbolu** — jedyny wolny port
+    `branchJunction` bez konfliktu z pasmem nazw leży dokładnie na `B5.y`
+    (granica pasma nazw) — realizacja odtworzyłaby znalezisko F9.3/F6e
+    (12 kolizji etykieta↔symbol „name-row-0" przy wycentrowaniu na tej
+    granicy). Odrzucone jako regresja o znanym ryzyku.
+  - **(c) zmniejszenie akcentu do 16px** — złamałoby literę §14.4
+    („WYRAŹNIE większy węzeł" niż `junction` bazowy, 16×16 — 16px byłby
+    RÓWNY, nie większy). Odrzucone jako niezgodne ze specyfikacją.
+  - **(d) inna korekta** — nie znaleziono taniej alternatywy nie naruszającej
+    (a) geometrii bloku stacji (`blockTopY`/`compose/station.ts`,
+    nieświadome strefy zejść z konstrukcji) ani (b) pasma nazw.
+- **Wynik:** `symbolWireCollisions` = **0 na WSZYSTKICH LOD** (L0/L1/L2),
+  zweryfikowane na fixturze `sldSubstrate52s`. `SYMBOL_WIRE_COLLISION_BASELINE`
+  USUNIĘTY ze `scripts/sld_v3_acceptance.mjs` — gate `symbol_wire_probe` jest
+  teraz TWARDYM ZEREM (`noSymbolWireCollisions(scene)`), tym samym wzorcem co
+  `noSceneSymbolOverlaps`. Test pinujący w `buildScene.test.ts` (dawniej
+  `hits.length).toBe(11)`) zaktualizowany na `toBe(0)` z komentarzem F9.10.
+- **Koszt (świadomy, zaakceptowany per spec §15.1):** wysokość KAŻDEGO
+  wiersza sceny rośnie o `4×GRID` (32px) — `vertical_length_probe` (§15.1)
+  rośnie o **+2496px na WSZYSTKICH LOD** (stała delta, bo rezerwacja jest
+  doliczana jednolicie do każdego wiersza niezależnie od LOD — patrz 3.6).
+  Baseline PODNIESIONY z jawnym uzasadnieniem — zgodnie ze spec §15.1
+  („redukcja jest ograniczeniem MIĘKKIM — nigdy kosztem czytelności ani
+  kolizji"), zero kolizji ma pierwszeństwo przed minimalizacją pionów.
+- **Rewalidacja:** pełne wyrocznie §11(+A1) na 3 LOD — `accept:sld-v3` ALL
+  PASS; `vitest run src/ui/sld --no-file-parallelism` (pełny katalog) zielony;
+  5 renderów odbioru (`docs/sld/renders/v3/*.png`) odświeżone (geometria
+  bazowa scenowa się zmieniła — wymagane per DoD F9.10); porównanie PNG
+  przed/po w `scratchpad/v3_png/{before_f910,after_f910}/`.
 
 ### 3.5 Przegląd sąsiedztwa etykieta↔przewód (dług F9.3(c)) — DECYZJA: pozostawić
 
