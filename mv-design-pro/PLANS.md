@@ -152,7 +152,8 @@ Progress:
       - [x] Weryfikacja łączna zarządcy: 553 pliki / 7534 testy pass na drzewie E1.1+E1.2+E1.3+E15.1
       - [x] E1.4 Integracja powłoki (zarządca): AppRoot + drzewa w lewym panelu + inspektor
             + magistrala + klient /api/health; test integracyjny scenariusza powiązania warstw;
-            188 testów ui2; decyzje TODO-KARTA zapisane w karcie E1.4 §2
+            188 testów ui2; decyzje TODO-KARTA zapisane w karcie E1.4 §2;
+            pełny vitest po integracji: 7538 pass (potwierdzone 2026-07-15)
       - [ ] E1.5–E1.7, E15.2, E2.1–E2.2 — backlog w karcie E1.1
       - [x] V12K-026 RESOLVED: słownik nowej IA („przypadek obliczeniowy", „kreator");
             guard terminologii zielony w całym repo (naprawione 2 zastane naruszenia)
