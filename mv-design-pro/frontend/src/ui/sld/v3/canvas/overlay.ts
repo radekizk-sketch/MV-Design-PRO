@@ -58,19 +58,27 @@
  * wielkość liter) — rozjazd kluczy, Q nigdy się nie rozwiązywał nawet w v2;
  * `buildFlowOverlayFromScene` niżej używa POPRAWNEGO kodu `'Q_Mvar'`
  * (zweryfikowanego wprost w źródle backendu) od zawsze, nie kopiował błędu v2.
- * ZNALEZISKO POZA ZAKRESEM F9.6 (nienaprawione, do decyzji architekta —
- * patrz raport agenta F9.6): weryfikacja (f) na realnej sieci referencyjnej
- * ujawniła, że znak `p_from_mw` zwracany przez `canonical_analysis.py`'s
- * PF pipeline dla prostej sieci zasilanie→odbiór wychodzi PRZECIWNY do
- * znaku uzyskanego z tych samych R/X/P/Q wprost przez `PowerFlowInput`/
- * `PQSpec` (niskopoziomowy solver) — podejrzenie o rozjazd konwencji znaku
- * między `enm/mapping.py::map_enm_to_network_graph` (`Node.active_power`,
- * konwencja generacyjna) a `PQSpec.p_mw` oczekiwanym przez
- * `power_flow_newton_internal.py::build_power_spec_v2` (konwencja
- * obciążeniowa). Frontend (ten plik) czyta znak WPROST z wyniku solvera
- * (spec §14.2 — zero własnej heurystyki), więc jeśli powyższe podejrzenie
- * się potwierdzi, strzałka odziedziczy błędny kierunek aż do naprawy w
- * warstwie solver/domain (poza autoryzacją F9.6).
+ * ZNALEZISKO POZA ZAKRESEM F9.6 — NAPRAWIONE w F9.8 (2026-07-15, patrz
+ * `docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md` §F9.8 i `PLANS.md` §3.-1):
+ * weryfikacja (f) na realnej sieci referencyjnej ujawniła, że znak
+ * `p_from_mw` zwracany przez `canonical_analysis.py`'s PF pipeline dla
+ * prostej sieci zasilanie→odbiór wychodził PRZECIWNY do znaku uzyskanego z
+ * tych samych R/X/P/Q wprost przez `PowerFlowInput`/`PQSpec` (niskopoziomowy
+ * solver) — podwójna negacja: `enm/mapping.py::map_enm_to_network_graph`
+ * buduje `Node.active_power` w konwencji generacyjnej (celowo, przybite
+ * testem `test_enm_mapping.py`), a `canonical_analysis.py::_execute_power_flow`
+ * przekazywała tę wartość WPROST jako `PQSpec.p_mw`, którą
+ * `power_flow_newton_internal.py::build_power_spec_v2` neguje ponownie
+ * oczekując konwencji obciążeniowej. Naprawione konwersją gen→load NA
+ * GRANICY budowy `PQSpec` (`canonical_analysis.py` oraz analogiczny
+ * `application/reference_networks/sld_substrate_power_flow.py`); `mapping.py`
+ * i solver NIETKNIĘTE (oba poprawne na własnych warunkach). Dowód fizyczny:
+ * `backend/tests/test_canonical_analysis_api.py
+ * ::test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correct`
+ * (p_from_mw>0 zasilanie→odbiór, v_pu(odbiór)<v_pu(zasilanie) na realnym
+ * resultset v1). Frontend (ten plik) czyta znak WPROST z wyniku solvera
+ * (spec §14.2 — zero własnej heurystyki) — strzałka dziedziczy teraz
+ * POPRAWNY kierunek bez żadnej zmiany w tym pliku.
  *
  * PODZIAŁ RÓL (F9.5, po rozszerzeniu autoryzacji przez nadzorcę o
  * `SldCanvasV3.tsx`): ten plik dostarcza kontrakt + budowniczy CZYSTY

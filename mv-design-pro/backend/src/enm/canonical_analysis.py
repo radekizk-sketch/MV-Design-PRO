@@ -1182,8 +1182,18 @@ def _execute_power_flow(run: CanonicalRun) -> None:
     pq_specs = [
         PQSpec(
             node_id=node_id,
-            p_mw=float(node.active_power or 0.0),
-            q_mvar=float(node.reactive_power or 0.0),
+            # F9.8 WHITE BOX: `node.active_power`/`node.reactive_power` (built by
+            # `enm.mapping`) use the GENERATION convention (positive = injection
+            # into the bus; a pure load is negative — see mapping.py, pinned by
+            # test_enm_mapping.py and consumed by analysis/boundary/identifier.py).
+            # `PQSpec.p_mw`/`q_mvar` are consumed by
+            # `power_flow_newton_internal.build_power_spec_v2`, which negates them
+            # again expecting the LOAD convention (positive = consumption). This is
+            # the single conversion point gen->load at the PQSpec construction
+            # boundary; do NOT change the sign convention in mapping.py or in the
+            # solver (both are correct/frozen on their own terms).
+            p_mw=-float(node.active_power or 0.0),
+            q_mvar=-float(node.reactive_power or 0.0),
             # ADR-011 (Z-ZIP-04): aggregated ZIP coefficients for the bus (None
             # => constant power). Solver reduces to classic PQ when None.
             zip_coeffs=node.zip_coeffs,

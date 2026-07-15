@@ -844,7 +844,7 @@ współdzielony (spec §8) — ale konsumpcja w compose (F9.3) czeka na F8b.
     solver_boundary/pcc_zero/domain_no_guessing/catalog_binding PASS; frontend tsc czysty, vitest
     sld 3241 pass, accept:sld-v3 ALL PASS.
 
-### F9.8. [SOLVER-INPUT — KRYTYCZNE, osobna runda] Naprawa podwójnej negacji znaku w canonical PF
+### F9.8. [DONE] Naprawa podwójnej negacji znaku w canonical PF (SOLVER-INPUT, krytyczna)
 - **Znalezisko F9.6 (f), POTWIERDZONE niezależnie przez recenzenta (reprodukcja definitywna):**
   `mapping.py:190-191` buduje `Node.active_power = -Load.p_mw` (konwencja GENERACYJNA — celowa,
   przybita testem `test_enm_mapping.py:206` i konsumowana przez `boundary/identifier.py:189-190`);
@@ -875,6 +875,32 @@ współdzielony (spec §8) — ale konsumpcja w compose (F9.3) czeka na F8b.
 - DoD: reprodukcja z F9.6 daje v_pu<1.0 za obciążeniem i p_from_mw>0 od zasilania do odbioru;
   asercje bezwzględne w testach wymienionych wyżej; pełny suite backend zielony; strzałki F9.5
   na realnym przebiegu zgodne z fizyką (test integracyjny).
+- **Wynik realizacji (2026-07-15, recenzja Opusa APPROVE z niezależną reprodukcją):**
+  - Naprawa dokładnie w kształcie wiążącym: `canonical_analysis.py:1195-1196` +
+    `sld_substrate_power_flow.py:94-95` — konwersja gen→load (negacja P i Q) na granicy budowy
+    PQSpec, z komentarzem WHITE BOX dokumentującym obie konwencje i jedyny punkt konwersji;
+    `mapping.py`/`build_power_spec_v2`/`PowerFlowResult`/`build_branch_results` NIETKNIĘTE.
+  - Reprodukcja (sieć z test_shunt_capacitor_d06c, load 3 MW/2 Mvar): PRZED v_pu=1.0703 (rośnie
+    za obciążeniem), p_from=−2.85; PO v_pu=0.9172, p_from=+3.21. Recenzent odtworzył niezależnie
+    na własnej sieci (1.2 MW): −1.1991/1.0007 → +1.2009/0.9993 (git stash before/after).
+  - Testy: asercja bezwzględna `v_no_cap < 1.0` w test_shunt_capacitor_d06c (monotoniczności
+    nietknięte); test_direction_matches_solver_sign przepięty z RĘCZNEJ kopii budowy PQSpec
+    (niosła ten sam błąd — podwójna negacja kasowała się po obu stronach, test ślepy na błąd;
+    zweryfikowane przez recenzenta linia po linii) na produkcyjny `_build_power_flow_input`
+    (fidelity projekcji); NOWY niezależny dowód TOPOLOGICZNY
+    `test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correct` (realny
+    solver: p_from_mw>0 od zasilania do odbioru + v_pu(load)<v_pu(slack)) — domyka F9.6 (f)
+    i dowodzi poprawny kierunek strzałek F9.5 na realnych danych.
+  - Inwentaryzacja: recenzent przejrzał WSZYSTKIE 9 miejsc budowy PQSpec w src — tylko dwa
+    czytały node.active_power (oba naprawione), pozostałe w konwencji obciążeniowej wprost
+    z load.p_mw; boundary/identifier poprawny (mapping nietknięty); zero snapshotów z zaszytym
+    odwróconym znakiem; hashe determinizmu względne (bez literałów) — nic do regeneracji.
+  - Frontend: zmiana wyłącznie komentarza w overlay.ts („ZNALEZISKO…" → „NAPRAWIONE w F9.8",
+    historia zachowana).
+  - Bramki: backend pełny pytest 5700 pass (1 fail pre-istniejący niezwiązany); ruff/black/mypy
+    czyste (dotknięte); guardy load_flow_no_heuristics, solver_boundary, trace_determinism,
+    resultset_v1_schema, arch, pcc_zero, domain_no_guessing PASS; frontend tsc czysty, vitest
+    sld 3241 pass, accept:sld-v3 ALL PASS.
 
 ### F9.7. [KOD] Optymalizacja pionów + acceptance + docs
 - Zakres: `vertical_length_probe` (§15.1) jako raportowana miara nie-rosnąca; wpięcie wszystkich nowych

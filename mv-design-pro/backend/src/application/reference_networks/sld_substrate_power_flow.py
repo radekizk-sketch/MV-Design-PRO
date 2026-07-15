@@ -87,8 +87,15 @@ def _build_power_flow_input(enm: EnergyNetworkModel) -> tuple[PowerFlowInput, st
     pq_specs = [
         PQSpec(
             node_id=node_id,
-            p_mw=float(node.active_power or 0.0),
-            q_mvar=float(node.reactive_power or 0.0),
+            # F9.8 WHITE BOX: `node.active_power`/`node.reactive_power` use the
+            # GENERATION convention (positive = injection; see enm/mapping.py,
+            # pinned by test_enm_mapping.py). `PQSpec.p_mw`/`q_mvar` are consumed
+            # by `power_flow_newton_internal.build_power_spec_v2`, which negates
+            # them again expecting the LOAD convention. This is the single
+            # conversion point gen->load at the PQSpec construction boundary;
+            # mirrors `enm.canonical_analysis._execute_power_flow`.
+            p_mw=-float(node.active_power or 0.0),
+            q_mvar=-float(node.reactive_power or 0.0),
             zip_coeffs=node.zip_coeffs,
         )
         for node_id, node in sorted(graph.nodes.items())

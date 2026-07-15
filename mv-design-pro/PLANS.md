@@ -78,7 +78,7 @@ MV-DESIGN-PRO is a functional Medium Voltage network design and analysis system 
 
 ## 3. Active Work
 
-### 3.-1 ESKALACJA (2026-07-15): odwrócony znak mocy w canonical PF pipeline — KRYTYCZNE
+### 3.-1 ESKALACJA (2026-07-15): odwrócony znak mocy w canonical PF pipeline — NAPRAWIONE (F9.8, tego samego dnia)
 
 Podczas F9.6 przebudowy SLD v3 (`docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md` § F9.8) wykryto i
 NIEZALEŻNIE POTWIERDZONO (reprodukcja z dwóch ścieżek) pre-istniejącą podwójną negację znaku mocy:
@@ -89,8 +89,12 @@ konwencji obciążeniowej. Skutek: obciążenia wchodzą do rozpływu jako gener
 przebiegu LOAD_FLOW przez canonical pipeline. Istniejące testy nie łapią błędu (asercje wyłącznie
 względne/samo-spójne). Solver niskopoziomowy jest POPRAWNY — błąd leży w warstwie przygotowania
 wejścia (`canonical_analysis.py`, `sld_substrate_power_flow.py`). Plan naprawy (wiążący kształt,
-zalecony przez recenzję): § F9.8 w `docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md`. Do czasu naprawy
-wyniki rozpływu z canonical pipeline (w tym strzałki kierunku na SLD v3) mają odwrócone znaki.
+zalecony przez recenzję): § F9.8 w `docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md`.
+**STATUS: NAPRAWIONE w rundzie F9.8 (2026-07-15, recenzja APPROVE z niezależną reprodukcją):**
+konwersja gen→load na granicy budowy PQSpec (`canonical_analysis.py`, `sld_substrate_power_flow.py`),
+solver i mapping nietknięte; dowód topologiczny w
+`test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correct`; asercje bezwzględne
+dodane tam, gdzie testy były samo-spójne z błędem. Szczegóły i liczby przed/po: § F9.8 execplanu.
 
 ### 3.0.0 V12.6 academic end-to-end closure (completed)
 

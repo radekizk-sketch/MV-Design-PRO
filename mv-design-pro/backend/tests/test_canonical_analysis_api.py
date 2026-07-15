@@ -499,22 +499,14 @@ def test_resultset_v1_includes_branch_elements_for_load_flow(client: TestClient)
     # `values` w resultset v1 MUSZA byc DOKLADNIE tym, co juz zwraca
     # `build_branch_results` (ten sam run, inny endpoint) — zero podmiany
     # znaku/wartosci przy dolozeniu petli w `build_execution_result_set`.
-    # UWAGA (znalezisko poza zakresem F9.6, patrz raport): sam ZNAK
-    # `p_from_mw` dla tej referencyjnej sieci (from_bus_ref=zrodlo,
-    # to_bus_ref=odbior) wyszedl z solvera UJEMNY — co przy naiwnej
-    # interpretacji "dodatni = od zrodla do odbioru" (spec §14.2, docstring
-    # `v3/canvas/overlay.ts`) sugerowaloby strzalke w zla strone. Weryfikacja
-    # niezalezna (low-level `PowerFlowInput`/`PQSpec` z tymi samymi R/X/P/Q)
-    # daje ZNAK PRZECIWNY (dodatni, fizycznie sensowny — spadek napiecia w
-    # kierunku odbioru) — wskazuje to na PRE-EXISTING rozjazd konwencji znaku
-    # miedzy `enm/mapping.py::map_enm_to_network_graph` (Node.active_power =
-    # -Load, konwencja generacyjna) a `PQSpec.p_mw` oczekiwanym przez
-    # `power_flow_newton_internal.py::build_power_spec_v2` (konwencja
-    # obciazeniowa, `p_spec = -spec.p_mw`) w `canonical_analysis.py::
-    # _execute_power_flow`. To NIE jest w zakresie F9.6 (solver/domain
-    # physics, poza autoryzacja "galaz PF" `build_execution_result_set`) —
-    # test NIE zaklada zadnego konkretnego znaku fizycznego, tylko
-    # PRZEPUSZCZENIE 1:1 wartosci solvera (cokolwiek by nie wskazywaly).
+    # NAPRAWIONE w F9.8 (2026-07-15): znalezisko powyzej (znak `p_from_mw`
+    # ujemny dla zrodlo->odbior, sprzeczny z fizyka) bylo objawem podwojnej
+    # negacji w `canonical_analysis.py::_execute_power_flow` (PQSpec budowany
+    # wprost z `Node.active_power`, ktory jest w konwencji generacyjnej, a
+    # solver oczekuje konwencji obciazeniowej). Naprawiono konwersja gen->load
+    # NA GRANICY budowy PQSpec (`p_mw=-float(node.active_power or 0.0)`,
+    # analogicznie q). Dowod fizyczny na realnych danych ponizej w
+    # `test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correct`.
     branch_load_values = next(
         er["values"] for er in branch_elements if er["element_ref"] == "branch-load"
     )
@@ -530,6 +522,61 @@ def test_resultset_v1_includes_branch_elements_for_load_flow(client: TestClient)
     assert branch_metrics["P_MW"]["value"] == pytest.approx(branch_load_values["p_mw"])
     assert branch_metrics["Q_Mvar"]["value"] == pytest.approx(branch_load_values["q_mvar"])
     assert branch_metrics["I_A"]["value"] == pytest.approx(branch_load_values["i_a"])
+
+
+def test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correct(
+    client: TestClient,
+) -> None:
+    """F9.8: independent physical proof of the correct sign convention on real
+    resultset v1 data (closes F9.6 (f) / F9.5 arrow-direction finding).
+
+    Network: `bus-main` (slack, source) -[branch-load, from=bus-main,
+    to=bus-load]-> `bus-load` (pure PQ load, p_mw=1.2, q_mvar=0.35). Basic
+    circuit theory (independent of any internal solver sign convention):
+    active power flowing INTO a bus that only consumes power (no local
+    generation) must have `p_from_mw > 0` in the branch's own from->to
+    orientation, and the source-side bus (held at the slack setpoint) must sit
+    at a strictly higher |V| than the loaded bus downstream of a resistive/
+    inductive cable (voltage drop in the direction of flow). This does not
+    depend on re-deriving the PQSpec sign convention — it only uses the
+    physical fact that a load sink cannot be a net source.
+    """
+    case_id = str(uuid4())
+    _seed_power_flow_enm(client, case_id)
+
+    run_response = client.post(f"/api/cases/{case_id}/runs/power-flow")
+    assert run_response.status_code == 200
+    run_id = run_response.json()["run_id"]
+
+    resultset_response = client.get(f"/api/execution/runs/{run_id}/results/v1")
+    assert resultset_response.status_code == 200
+    resultset_payload = resultset_response.json()
+
+    branch_elements = {
+        er["element_ref"]: er
+        for er in resultset_payload["element_results"]
+        if er["element_type"] == "Branch"
+    }
+    bus_elements = {
+        er["element_ref"]: er
+        for er in resultset_payload["element_results"]
+        if er["element_type"] == "Bus"
+    }
+
+    branch_values = branch_elements["branch-load"]["values"]
+    # Power must flow FROM the source TOWARDS the load (from_bus_ref=bus-main,
+    # to_bus_ref=bus-load) — a pure sink cannot backfeed its only supply.
+    assert branch_values["p_from_mw"] > 0.0, (
+        "expected p_from_mw > 0 (source -> load); got "
+        f"{branch_values['p_from_mw']} — sign convention regression"
+    )
+
+    v_main = bus_elements["bus-main"]["values"]["u_pu"]
+    v_load = bus_elements["bus-load"]["values"]["u_pu"]
+    assert v_load < v_main, (
+        f"expected voltage drop towards the load (v_pu(bus-load)={v_load} < "
+        f"v_pu(bus-main)={v_main})"
+    )
 
 
 def test_canonical_run_persists_outside_process_memory(client: TestClient) -> None:
