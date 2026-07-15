@@ -72,7 +72,8 @@
 - [uiux/SPEC_POWIAZANIA_WARSTW_2026-07.md](./uiux/SPEC_POWIAZANIA_WARSTW_2026-07.md) — powiązanie warstw: propagacja model→schemat→gotowość→wyniki→raporty, wspólna selekcja, świeżość rewizji
 - [uiux/SPEC_UKLAD_PANELI_2026-07.md](./uiux/SPEC_UKLAD_PANELI_2026-07.md) — układ paneli lewy/środkowy/prawy + tryby zaawansowania (Podstawowy/Rozszerzony/Ekspercki)
 - [uiux/SZABLONY_STACJI_2026-07.md](./uiux/SZABLONY_STACJI_2026-07.md) — taksonomia szablonów stacji (role A–E, cel ≥ 80) + przeglądarka w kreatorze
-- [uiux/PROPOZYCJE_ROZSZERZEN_2026-07.md](./uiux/PROPOZYCJE_ROZSZERZEN_2026-07.md) — PROPOZYCJE P1–P12 dla inżyniera (czekają na decyzję właściciela)
+- [uiux/PROPOZYCJE_ROZSZERZEN_2026-07.md](./uiux/PROPOZYCJE_ROZSZERZEN_2026-07.md) — rozszerzenia P1–P22 dla inżyniera (zatwierdzone zasadą „na max")
+- [uiux/AUDYT_RADY_SPECJALISTOW_2026-07.md](./uiux/AUDYT_RADY_SPECJALISTOW_2026-07.md) — audyt rady specjalistów: rozbudowa każdego okna + delta rejestru
 - [uiux/KARTA_KOORDYNACJI_SLD_01_TOKENY.md](./uiux/KARTA_KOORDYNACJI_SLD_01_TOKENY.md) — karta styku z wątkiem SLD (tokeny motywów)
 - [uiux/PROMPT_ZARZADCA_FABLE_UIUX.md](./uiux/PROMPT_ZARZADCA_FABLE_UIUX.md) — prompt zarządcy programu (orkiestracja wykonawców)
 

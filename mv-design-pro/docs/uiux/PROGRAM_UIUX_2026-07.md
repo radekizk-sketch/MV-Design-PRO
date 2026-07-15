@@ -9,7 +9,8 @@
 - `docs/uiux/SPEC_POWIAZANIA_WARSTW_2026-07.md` — powiązanie warstw: jeden cykl propagacji, wspólna selekcja, kontrakt świeżości, nawigacja dwukierunkowa
 - `docs/uiux/SPEC_UKLAD_PANELI_2026-07.md` — układ paneli lewy/środkowy/prawy (rozszerzalne, chowane) + tryby zaawansowania (progresywne odsłanianie)
 - `docs/uiux/SZABLONY_STACJI_2026-07.md` — taksonomia szablonów stacji (role A–E, cel ≥ 80) + przeglądarka
-- `docs/uiux/PROPOZYCJE_ROZSZERZEN_2026-07.md` — PROPOZYCJE P1–P12 (status: czekają na decyzję właściciela)
+- `docs/uiux/PROPOZYCJE_ROZSZERZEN_2026-07.md` — rozszerzenia P1–P22 (zatwierdzone zasadą „na max")
+- `docs/uiux/AUDYT_RADY_SPECJALISTOW_2026-07.md` — audyt 13 perspektyw: rozbudowa każdego okna + delta rejestru (+16 okien)
 - `docs/uiux/KARTA_KOORDYNACJI_SLD_01_TOKENY.md` — karta styku z wątkiem SLD (tokeny motywów)
 - `docs/uiux/PROMPT_ZARZADCA_FABLE_UIUX.md` — prompt zarządcy programu (Fable)
 - `docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` — program inżynieryjny 10x (perymetr, jakość, współbieżność)

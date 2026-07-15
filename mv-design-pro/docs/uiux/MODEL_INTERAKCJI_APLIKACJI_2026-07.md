@@ -118,6 +118,10 @@ Stan początkowy (seed, wg przestrzeni N1–N7 z Programu §4):
 Rejestr jest ŻYWY: zarządca dodaje/uszczegóławia wiersze w kartach epików; usunięcie wiersza
 wymaga zgody właściciela (to usunięcie funkcji).
 
+**Rozszerzenie rejestru 2026-07-15 (audyt rady specjalistów):** +16 okien (W-105, W-211, W-212,
+W-404, W-504, W-616…W-622, W-704…W-707) — tabela delta wraz z trybami minimalnymi i wymaganiami
+rozbudowy KAŻDEGO okna: `docs/uiux/AUDYT_RADY_SPECJALISTOW_2026-07.md` (wiążąca część rejestru).
+
 ## 5. Definicja „100× lepiej" — mierzalna, nie sloganowa
 
 Każde okno przechodzi bramkę jakości względem stanu zastanego:

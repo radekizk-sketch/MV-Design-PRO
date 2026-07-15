@@ -127,6 +127,10 @@ Progress:
       karty + podział widoku) / prawy (inspektor: zakładki, akordeon, pinezka, chowany) +
       panel dolny + tryby Podstawowy/Rozszerzony/Ekspercki na mode-gate (ukrywanie okien
       zaawansowanych; wyszukiwarka poleceń znajduje wszystko)
+- [x] U0.15 Audyt rady specjalistów (`docs/uiux/AUDYT_RADY_SPECJALISTOW_2026-07.md`) —
+      dyrektywa właściciela 2026-07-15: 13 perspektyw eksperckich, rozbudowa każdego okna
+      rejestru (konkretne wymagania per ekran), delta rejestru +16 okien (W-105…W-707)
+      z trybami minimalnymi; rozbudowy = wymagania kart zadań (pominięcie tylko za zgodą)
 - [ ] U0.6 Makiety IA (artefakt) — zatwierdzenie właściciela
 - [ ] U1–U5 wg programu
 
