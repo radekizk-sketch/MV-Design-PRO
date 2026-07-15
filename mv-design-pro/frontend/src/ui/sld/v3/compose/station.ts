@@ -62,11 +62,14 @@ import type { SwitchState } from '../symbols/glyphs';
 import type { RoutePort, RouteVertex } from '../layout/route';
 import {
   bayColumnRequiredWidth,
+  DER_ROW_TOP_CLEARANCE,
+  derColumnRequiredWidth,
   entryDescentCaptionInset,
   formatTransformerRatedPower,
   PORT_CAPTION_BUS_CLEARANCE,
   type StationMeasureInput,
 } from '../layout/measure';
+import { derLabelText, symbolIdForSourceKind } from './sourceKind';
 import type {
   PortCaptionOwnerInput,
   SimpleAnchoredOwnerInput,
@@ -164,8 +167,24 @@ export interface ComposedSymbolInstance {
   /** F9.3 (spec §12.1): pochodzenie stosu tego pola — `'dane'` gdy zbudowany
    *  z `Bay.primary_devices`, `'konwencja'` gdy z fallbacku §12.4. Audytor
    *  DOM czyta to jako `data-apparatus-source` (`scene/buildScene.ts`,
-   *  `compose/preview.tsx`/`canvas/SldCanvasV3.tsx`). */
-  readonly apparatusSource: BayApparatusSource;
+   *  `compose/preview.tsx`/`canvas/SldCanvasV3.tsx`). F9.4: `undefined` dla
+   *  symboli DER (`sourceRef` obecny) — pole jest SPECYFICZNIE o pochodzeniu
+   *  stosu APARATU POLA (§12.1), semantyka NIE dotyczy DER; nadpisywanie
+   *  wartością `'dane'` zanieczyściłoby filtr `apparatusSource!=null` używany
+   *  przez testy F9.3 do wyodrębnienia WYŁĄCZNIE aparatów pola. */
+  readonly apparatusSource?: BayApparatusSource;
+  /** F9.4 (spec §13.1 V12K-029): `SldSourceView.id` — WYŁĄCZNIE dla symboli
+   *  DER (nie należą do żadnego `bay`, `bayRef` pozostaje `undefined` dla
+   *  tych instancji). Fundament tożsamości/selekcji (wzór `bayRef` dla
+   *  aparatów pola) i wyroczni `sourceCoverageGaps`/`allSourcesVisible`
+   *  (spec §13.1) oraz `sourceConnectivityGaps`/`allSourcesConnected` (spec
+   *  §14.1) — WSZYSTKIE cztery eksportowane, `scene/buildScene.ts` (runda
+   *  korekcyjna F9.4, patrz raport — dawniej wyrocznie-widma bez ciała). */
+  readonly sourceRef?: string;
+  /** F9.4 (spec §13.1, f92-2): `true`, gdy ten DER reprezentuje dane
+   *  niekompletne (`kind==='unknown'`) — adnotacja audytora, NIE fabrykacja
+   *  rodzaju (`compose/sourceKind.ts`). */
+  readonly missingData?: boolean;
   readonly x: number;
   readonly y: number;
   readonly state?: SwitchState;
@@ -195,6 +214,15 @@ export interface StationComposition {
   /** Bbox całej kompozycji (symbole + wierzchołki odcinków) — do wyroczni
    *  „bbox kompozycji ⊆ rezerwacja measure/bands" (test w `__tests__`). */
   readonly bbox: V3Rect;
+  /** F9.4 (runda korekcyjna, F-2, spec §14.1 „laterale... rysowane lub jawny
+   *  stopNote"): odpowiednik `GpzComposition.missingData` (`./gpz` —
+   *  identyczny wzorzec, ujednolicone) — luki danych napotkane PRZY TEJ
+   *  kompozycji, np. `'station.der.unattached'` (DER na `nn_side` bez
+   *  ŻADNEGO pola transformatorowego — brak punktu przyłączenia
+   *  geometrycznego, patrz gałąź `!attach` niżej). WOŁAJĄCY
+   *  (`scene/buildScene.ts` `composeRowStation`) przenosi to do
+   *  `scene.meta.stopNotes` — koniec cichego gubienia bez śladu. */
+  readonly missingData: readonly string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -355,6 +383,8 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   const derLabels: SimpleAnchoredOwnerInput[] = [];
   const lvPorts: RoutePort[] = [];
   const busTapXs: number[] = [];
+  // F9.4 (runda korekcyjna, F-2): patrz docstring `StationComposition.missingData`.
+  const missingData: string[] = [];
 
   const captionHeight = labelLineHeight('t3');
 
@@ -463,9 +493,17 @@ export function composeStation(input: ComposeStationInput): StationComposition {
 
   // Szyna nN + odpływy (spec §3) — TYLKO gdy stacja ma sekcję nN, zaczepiona
   // pod NAJNIŻSZYMI portami LV wszystkich pól transformatorowych tej
-  // stacji. Odpływy nN (liczba, rozstaw) POZA zakresem F5a — dane wejściowe
-  // (`nnFeedersCount`) nie są dziś częścią żadnego kontraktu measure/compose
-  // (gap udokumentowany w raporcie F5a); rysujemy WYŁĄCZNIE szynę zbiorczą.
+  // stacji. Odpływy nN odbiorców (liczba, rozstaw) POZA zakresem tej fazy —
+  // `nnFeedersCount` nie niesie danych o mocy/typie odbioru poszczególnych
+  // odpływów (dane WYWIEDZIONE z licznika, nie apparatus/urządzenie per
+  // odpływ) — rysowanie N generycznych kresek bez treści fabrykowałoby
+  // szczegół, którego dane nie niosą (zero zgadywania, §12.1 zasada
+  // analogiczna); rysujemy WYŁĄCZNIE szynę zbiorczą (gap udokumentowany w
+  // raporcie F5a, POZOSTAJE — kandydat F9.6+, gdy dane odpływów będą
+  // strukturalne). F9.4 (spec §14.1 strona nN, V12K-029): DER przyłączone do
+  // TEJ stacji SĄ realną, w pełni ustrukturyzowaną treścią strony nN na
+  // fixturze referencyjnej (0 Load w ENM) — dostarczone niżej.
+  let nnBusPoint: { readonly x: number; readonly y: number } | null = null;
   if (hasLvSection && lvPorts.length > 0) {
     const minX = Math.min(...lvPorts.map((p) => p.x));
     const maxX = Math.max(...lvPorts.map((p) => p.x));
@@ -489,6 +527,112 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         ],
       });
     });
+    nnBusPoint = { x: snapToGrid((busLeft + busRight) / 2), y: busY };
+  }
+
+  // F9.4 (spec §13.1 V12K-029, §14.1 strona nN): DER przyłączone do TEJ
+  // stacji (`connection_variant='nn_side'`) — pełnoprawne widoczne źródło,
+  // symbol POŁĄCZONY z szyną nN (`nnBusPoint`) lub, gdy stacja nie ma jawnej
+  // szyny nN, z DOLNYM portem PIERWSZEGO pola transformatorowego (fallback,
+  // `lvPorts[0]` — ten sam punkt, do którego zaczepiłaby się szyna nN, gdyby
+  // `hasLvSection` było ustawione). Rysowane WYŁĄCZNIE gdy `station.
+  // derSources` niesie wpisy (stacje bez DER: zero zmian geometrii,
+  // `derRowFootprint([])==={0,0}`).
+  const derSources = station.derSources ?? [];
+  if (derSources.length > 0) {
+    const attach = nnBusPoint ?? (lvPorts[0] ? { x: lvPorts[0].x, y: lvPorts[0].y } : null);
+    if (!attach) {
+      // Luka danych (spec §14.1 „laterale zagnieżdżone rysowane lub jawny
+      // stopNote"): stacja niesie DER na nn_side, ale nie ma ŻADNEGO pola
+      // transformatorowego w danych — brak punktu przyłączenia
+      // geometrycznego. Zero fabrykacji: DER NIE jest rysowany dla tej
+      // stacji. F9.4 (runda korekcyjna, F-2 — SPŁATA długu „ciche
+      // gubienie"): ta gałąź dawniej kończyła się TU, bez żadnego śladu —
+      // `missingData` niżej ujednolica z `GpzComposition` (`./gpz`,
+      // `gpz.source.unattached`, ten sam wzorzec); WOŁAJĄCY
+      // (`scene/buildScene.ts` `composeRowStation`) przenosi to do
+      // `scene.meta.stopNotes`, a `sourceCoverageGaps`/`allSourcesVisible`
+      // (`scene/buildScene.ts`, spec §13.1) i tak zgłasza brak symbolu przez
+      // parytet liczności — teraz naprawdę, nie w komentarzu (raport F9.4).
+      missingData.push('station.der.unattached');
+    } else {
+      const derRowY = attach.y + DER_ROW_TOP_CLEARANCE;
+      // FIX-3-wzorzec (spec §5.1 „max(bbox symbolu, najszerszy slot etykiet
+      // WŁASNYCH)", ten sam wzorzec co oznacznik aparatu — komentarz wyżej
+      // „PO PRAWEJ stosu"): rząd DER zaczyna się FLUSH-RIGHT za OSTATNIĄ
+      // kolumną pola (`bx` — TA SAMA wartość, o którą `layout/measure.ts`
+      // `stationBlockWidth` rozszerza rezerwację bloku, F9.4). Centrowanie
+      // pod `attach.x` (poprzednia wersja) kolidowało z kolumną SĄSIADA, gdy
+      // etykieta rodzaju+mocy była szersza niż gabaryt symbolu i rząd DER
+      // wystawał w LEWO poza własną kolumnę TR (wykryte empirycznie na
+      // fixturze referencyjnej — stacja z polem liniowym + 2× DER, raport
+      // F9.4). Każdy DER dostaje slot `derColumnRequiredWidth` (może być
+      // SZERSZY niż gabaryt symbolu) — symbol WYCENTROWANY w swoim slocie
+      // (etykieta centruje się pod symbolem z konstrukcji `layout/labels.ts`,
+      // więc centrowanie symbolu w slocie utrzymuje etykietę W GRANICACH
+      // slotu też).
+      let slotX = bx;
+      const centers: number[] = [];
+
+      derSources.forEach((source) => {
+        const symbolId = symbolIdForSourceKind(source.kind);
+        const def = SYMBOL_DEFS[symbolId];
+        const slotWidth = derColumnRequiredWidth(source);
+        const x = snapToGrid(slotX + (slotWidth - def.width) / 2);
+        const y = derRowY;
+        const ports = portsInWorld(def, x, y);
+        const centerX = x + def.width / 2;
+        centers.push(centerX);
+
+        symbols.push({
+          symbolId,
+          sourceRef: source.id,
+          missingData: source.missingData,
+          x,
+          y,
+          ports,
+        });
+
+        derLabels.push({
+          ownerRef: `${source.id}#der-label`,
+          ownerKind: 'der',
+          text: derLabelText(source),
+          labelClass: 't2',
+          anchor: { x: centerX, y: y + def.height },
+          placement: 'below',
+        });
+
+        slotX += slotWidth + GRID;
+      });
+
+      // Trunk (zaczep → oś rzędu, pion PRZY zaczepie, nie przy rzędzie — rząd
+      // jest teraz PO PRAWEJ zaczepu, flush-right za blokiem, nie pod nim) +
+      // rząd dystrybucyjny na poziomie górnych portów DER (`derRowY`, ac port
+      // offset y=0 — rząd i górna krawędź symboli są WSPÓŁLINIOWE z
+      // konstrukcji) — rozpięty od `attach.x` DO ostatniego DER (obejmuje
+      // WŁASNY pion trunk, nie tylko rozstaw symboli), żeby trunk i rząd się
+      // FAKTYCZNIE dotykały niezależnie od względnej pozycji `attach.x`
+      // wobec `centers` (ten sam model „na szynie" co
+      // `internalSegmentsEndAtPortsOrBus` niżej) — pojedynczy odcinek
+      // wystarcza do połączenia WSZYSTKICH symboli rzędu I trunku bez
+      // odrębnego zejścia per DER.
+      segments.push({
+        ownerRef: `${station.id}#der-row-trunk`,
+        points: [
+          { x: attach.x, y: attach.y },
+          { x: attach.x, y: derRowY },
+        ],
+      });
+      const busSpanLeft = Math.min(attach.x, ...centers);
+      const busSpanRight = Math.max(attach.x, ...centers);
+      segments.push({
+        ownerRef: `${station.id}#der-row-bus`,
+        points: [
+          { x: busSpanLeft, y: derRowY },
+          { x: busSpanRight, y: derRowY },
+        ],
+      });
+    }
   }
 
   // Pasmo nazw (B5, spec §4: kolejność pionowa stała) — TA SAMA kolejność
@@ -508,6 +652,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     segments,
     labels: { portCaptions, apparatus: apparatusLabels, der: derLabels, stationName },
     bbox: computeBbox(symbols, segments),
+    missingData,
   };
 }
 
@@ -546,7 +691,10 @@ export function internalSegmentsEndAtPortsOrBus(composition: StationComposition)
   composition.symbols.forEach((s) => Object.values(s.ports).forEach((p) => ports.push(p)));
 
   const busSegments = composition.segments.filter(
-    (s) => s.ownerRef.endsWith('#sn-bus') || s.ownerRef.endsWith('#lv-bus'),
+    // F9.4: `#der-row-bus` dołączony do zbioru „bus-like" — rząd DER (spec
+    // §13.1) jest, geometrycznie, dokładnie takim samym zaczepem jak
+    // sn-bus/lv-bus (odcinek, do którego dotykają porty WIELU symboli).
+    (s) => s.ownerRef.endsWith('#sn-bus') || s.ownerRef.endsWith('#lv-bus') || s.ownerRef.endsWith('#der-row-bus'),
   );
 
   const endpointValid = (p: RouteVertex): boolean => {

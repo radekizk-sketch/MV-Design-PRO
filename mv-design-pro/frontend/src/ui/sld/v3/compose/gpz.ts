@@ -93,6 +93,13 @@ export interface GpzElementMeta {
   /** Odpowiednik `data-terminates-at` w v2 — gdzie faktycznie kończy się
    *  odcinek (aparat pola, nie sąsiedni element elektryczny). */
   readonly terminatesAt?: string;
+  /** F9.4 (spec §13.1 V12K-029): `SldSourceView.id` — WYŁĄCZNIE dla symbolu
+   *  `gridSource` (sieć zewnętrzna, `Source` ENM). Fundament tożsamości/
+   *  selekcji i wyroczni `sourceCoverageGaps`/`allSourcesVisible` (spec
+   *  §13.1) oraz `sourceConnectivityGaps`/`allSourcesConnected` (spec §14.1)
+   *  — WSZYSTKIE cztery eksportowane, `scene/buildScene.ts` (runda
+   *  korekcyjna F9.4, patrz raport — dawniej wyrocznie-widma bez ciała). */
+  readonly sourceRef?: string;
 }
 
 export interface ComposedGpzSymbolInstance {
@@ -134,6 +141,19 @@ export interface GpzCompositionLabelInputs {
   /** Podpisy celu/kierunku pola (feederName/destinationLabel) — mechanizm
    *  wierszy (`colorSegmentLabelRows`), patrz nagłówek pliku. */
   readonly fieldCaptions: readonly PortCaptionOwnerInput[];
+}
+
+/**
+ * F9.4 (spec §13.1 V12K-029): jedno widoczne źródło zewnętrzne (`Source`
+ * ENM, `SldSourceView.kind==='external_grid'`) rysowane NAD GPZ — projekcja
+ * ZAWĘŻONA (adapter niesie `ratedPower`/`operationalState`, ale
+ * `SldSourceView` dokumentuje że dla `external_grid` są ZAWSZE `undefined`
+ * — Source nie ma mocy znamionowej w ENM, tylko Sk''/Ik'' — więc symbol nie
+ * niesie etykiety mocy, tylko id/tożsamość, spec §13.2 „minimalnie: symbol +
+ * połączenie").
+ */
+export interface GpzGridSourceInput {
+  readonly id: string;
 }
 
 export interface GpzComposition {
@@ -481,7 +501,11 @@ function switchStateOrUndefined(state: CanonicalGpzBay['esState'] | undefined): 
  * z `GpzCanonicalRendererProps` to STARA geometria slotowa v2 (PITCH) i NIE
  * jest tu czytana (analogicznie do `StationMeasureInput`/UWAGA w `layout/measure.ts`).
  */
-export function composeGpz(props: GpzCanonicalRendererProps, origin: { readonly x: number; readonly y: number }): GpzComposition {
+export function composeGpz(
+  props: GpzCanonicalRendererProps,
+  origin: { readonly x: number; readonly y: number },
+  gridSources: readonly GpzGridSourceInput[] = [],
+): GpzComposition {
   const originX = snapToGrid(origin.x);
   const originY = snapToGrid(origin.y);
   const parityKeys = new Set<string>(['gpz.root']);
@@ -909,6 +933,80 @@ export function composeGpz(props: GpzCanonicalRendererProps, origin: { readonly 
     const hvBusMeta: GpzElementMeta = { parityKeys: ['gpz.bus.hv'], testId: 'gpz-canonical-hv-bus', busbarRole: 'primary' };
     tag(hvBusMeta.parityKeys);
     segments.push({ ownerRef: `${props.id}#hv-bus`, points: [{ x: busLeft, y: hvBusY }, { x: busRight, y: hvBusY }], meta: hvBusMeta });
+  }
+
+  // -- 7b. F9.4 (spec §13.1 V12K-029, §13.2 „sieć zewnętrzna"): symbol
+  // widocznego źródła zasilania (`Source` ENM, `SldSourceView.kind===
+  // 'external_grid'`) — zaczep na szynie SN sekcji WCHODZĄCEJ (pierwsza wg
+  // `order`, konwencja obserwowana na fixturze referencyjnej:
+  // `gpz_sections[0].incoming_source_ref` — `Source.bus_ref` wskazuje SN,
+  // NIE szynę WN, nawet gdy GPZ ma transformator WN/SN, spec §13.1 ERRATA:
+  // Source modeluje zastępcze zasilanie zewnętrzne WPROST na SN, WHITE BOX
+  // zgodnie z `enmToSldAdapter.ts` `buildSources` docstring). DECYZJA ZAKRESU
+  // (STOP-notatka raportu F9.4): dopasowanie `Source.bus_ref` → KONKRETNA
+  // sekcja (gdy GPZ ma >1 sekcję) wymaga `bus_ref` na `CanonicalGpzSection`,
+  // którego adapter v2 (`enmToCanonicalGpzAdapter.ts`, POZA autoryzacją tej
+  // fazy) dziś nie eksponuje — fallback deterministyczny na sekcję order=0,
+  // kandydat na F9.6+ dla GPZ wielosekcyjnych. Minimalna realizacja
+  // (autoryzacja zadania): jeden glif per wpis `gridSources`, rozstawione
+  // poziomo gdy >1 (dual-feed GPZ, rzadkie — fixtura ma 1).
+  if (gridSources.length > 0) {
+    const firstSection = sectionLayouts[0] ?? null;
+    if (!firstSection) {
+      missingData.push('gpz.source.unattached');
+    } else {
+      // DECYZJA GEOMETRII (STOP-notatka raportu F9.4): zaczep NAD osią
+      // sekcji koliduje z polem WN TR (DS/CB/CT), które taponuje TĘ SAMĄ
+      // sekcję z GÓRY (odkryte empirycznie na fixturze referencyjnej —
+      // `earthSwitch` pola WN TR i `gridSource` nachodziły się na tym samym
+      // X). Zaczep PO PRAWEJ sekcji (na osi szyny SN, `snBusY`) jest wolny z
+      // konstrukcji (prawa krawędź sekcji to KONIEC rezerwacji treści, ten
+      // sam wzorzec fallbacku co `findGpzTrunkPort` „prawa krawędź szyny SN").
+      // Poprawne WYŁĄCZNIE dla GPZ z DOKŁADNIE jedną sekcją SN (fixtura) —
+      // GPZ wielosekcyjny wymaga zaczepu PRZY sekcji WCHODZĄCEJ konkretnie
+      // (kandydat F9.6+, ten sam gap co f6-1 „GPZ ma >1 sekcję").
+      const def = SYMBOL_DEFS.gridSource;
+      const attachY = snBusY;
+      const attachX = snapToGrid(firstSection.x + firstSection.width + 3 * GRID);
+      const symbolY = attachY - 3 * GRID - def.height;
+      let cursorX = attachX;
+
+      gridSources.forEach((source) => {
+        const x = cursorX;
+        const y = symbolY;
+        const ports = portsInWorld('gridSource', x, y);
+        const meta: GpzElementMeta = {
+          parityKeys: ['gpz.source.external_grid'],
+          testId: `gpz-canonical-source-${source.id}`,
+          sourceRef: source.id,
+        };
+        tag(meta.parityKeys);
+        symbols.push({ symbolId: 'gridSource', x, y, ports, meta });
+
+        const bottomPort = ports.bottom ?? { x: x + def.width / 2, y: y + def.height, dir: 'S' };
+        segments.push({
+          ownerRef: `${source.id}#grid-source-drop`,
+          points: [
+            { x: bottomPort.x, y: bottomPort.y },
+            { x: bottomPort.x, y: attachY },
+          ],
+          meta: { parityKeys: ['gpz.source.external_grid'], sourceRef: source.id },
+        });
+        cursorX += def.width + GRID;
+      });
+
+      // Odcinek KOŃCOWY szyny SN → punkt zaczepu (poza rezerwacją treści
+      // sekcji, spec §14.1 „ciągłość" — źródło musi mieć trasę DO szyny, nie
+      // tylko wisieć nad nią).
+      segments.push({
+        ownerRef: `${props.id}#source-bus-extension`,
+        points: [
+          { x: snapToGrid(firstSection.x + firstSection.width), y: attachY },
+          { x: snapToGrid(cursorX - GRID), y: attachY },
+        ],
+        meta: { parityKeys: ['gpz.source.external_grid'] },
+      });
+    }
   }
 
   // -- 8. Nazwa GPZ (header, spec §4 „GPZ: nazwa (t1), header bloku"). ------

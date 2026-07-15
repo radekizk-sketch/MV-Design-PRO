@@ -266,6 +266,114 @@ describe('V3 compose/station — szyna nN (spec §3: TYLKO gdy hasLvSection)', (
 });
 
 // ---------------------------------------------------------------------------
+// (d2) F9.4 (spec §13.1 V12K-029, §14.1 strona nN): DER przyłączone do
+// stacji — symbol + przewód + etykieta, koniec badge'a.
+// ---------------------------------------------------------------------------
+
+describe('V3 compose/station — F9.4: DER przyłączone (nn_side) jako pełnoprawne widoczne źródło', () => {
+  const snBays = [makeBay(FIELD_ROLE.RMU_LINE, 0), makeBay(FIELD_ROLE.RMU_TRANSFORMER, 1)];
+
+  it('1 DER (pv) + hasLvSection ⇒ symbol derPv połączony z szyną nN, etykieta „PV 500 kW"', () => {
+    const station = makeStation('der-1', snBays, {
+      derSources: [{ id: 'gen-pv-1', kind: 'pv', ratedPower: 0.5 }],
+    });
+    const composition = composeStation(buildComposeInput(station, { hasLvSection: true }));
+
+    const derSymbols = composition.symbols.filter((s) => s.symbolId === 'derPv');
+    expect(derSymbols).toHaveLength(1);
+    expect(derSymbols[0].sourceRef).toBe('gen-pv-1');
+    expect(derSymbols[0].missingData).toBeUndefined();
+
+    expect(composition.labels.der).toHaveLength(1);
+    expect(composition.labels.der[0].text).toBe('PV 500 kW');
+
+    expect(allCompositionSymbolsOnGrid(composition)).toBe(true);
+    expect(noCompositionSymbolOverlaps(composition)).toBe(true);
+    expect(internalSegmentsEndAtPortsOrBus(composition)).toBe(true);
+
+    // Połączenie realny: port `ac` DER leży NA odcinku `#der-row-bus`, który
+    // z kolei dotyka `#der-row-trunk`, zaczepionego na szynie nN.
+    const derRowBus = composition.segments.find((s) => s.ownerRef === `${station.id}#der-row-bus`);
+    const derRowTrunk = composition.segments.find((s) => s.ownerRef === `${station.id}#der-row-trunk`);
+    expect(derRowBus).toBeDefined();
+    expect(derRowTrunk).toBeDefined();
+    const acPort = derSymbols[0].ports.ac;
+    expect(acPort).toBeDefined();
+    expect(derRowBus!.points.every((p) => p.y === acPort!.y)).toBe(true);
+  });
+
+  it('2 DER (pv+bess) ⇒ dwa symbole, dwie etykiety, rząd szerszy niż jeden symbol', () => {
+    const station = makeStation('der-2', snBays, {
+      derSources: [
+        { id: 'gen-pv-1', kind: 'pv', ratedPower: 0.5 },
+        { id: 'gen-bess-1', kind: 'bess', ratedPower: 0.5 },
+      ],
+    });
+    const composition = composeStation(buildComposeInput(station, { hasLvSection: true }));
+
+    const derSymbols = composition.symbols.filter((s) => s.symbolId === 'derPv' || s.symbolId === 'derBess');
+    expect(derSymbols).toHaveLength(2);
+    expect(new Set(derSymbols.map((s) => s.sourceRef))).toEqual(new Set(['gen-pv-1', 'gen-bess-1']));
+    expect(composition.labels.der.map((l) => l.text).sort()).toEqual(['BESS 500 kW', 'PV 500 kW']);
+
+    expect(allCompositionSymbolsOnGrid(composition)).toBe(true);
+    expect(noCompositionSymbolOverlaps(composition)).toBe(true);
+    expect(internalSegmentsEndAtPortsOrBus(composition)).toBe(true);
+  });
+
+  it('DER kind=unknown (f92-2) ⇒ symbol derGenerator fallback + missingData=true, etykieta honest', () => {
+    const station = makeStation('der-unknown', snBays, {
+      derSources: [{ id: 'gen-unk-1', kind: 'unknown', ratedPower: 1, missingData: true }],
+    });
+    const composition = composeStation(buildComposeInput(station, { hasLvSection: true }));
+    const derSymbols = composition.symbols.filter((s) => s.symbolId === 'derGenerator');
+    expect(derSymbols).toHaveLength(1);
+    expect(derSymbols[0].missingData).toBe(true);
+    expect(composition.labels.der[0].text).toBe('Źródło (typ nieznany) 1,0 MW');
+  });
+
+  it('DER bez ratedPower ⇒ etykieta bez mocy (brak mocy → brak etykiety mocy, NIE zero)', () => {
+    const station = makeStation('der-no-power', snBays, {
+      derSources: [{ id: 'gen-pv-2', kind: 'pv', ratedPower: null }],
+    });
+    const composition = composeStation(buildComposeInput(station, { hasLvSection: true }));
+    expect(composition.labels.der[0].text).toBe('PV');
+  });
+
+  it('stacja bez derSources ⇒ zero symboli DER, zero zmian geometrii istniejącej (regresja)', () => {
+    const station = makeStation('no-der', snBays);
+    const composition = composeStation(buildComposeInput(station, { hasLvSection: true }));
+    const derSymbols = composition.symbols.filter((s) => s.symbolId.startsWith('der'));
+    expect(derSymbols).toHaveLength(0);
+    expect(composition.labels.der).toHaveLength(0);
+    expect(composition.segments.some((s) => s.ownerRef.endsWith('#der-row-bus'))).toBe(false);
+  });
+
+  it('DER na stacji bez pola TR i bez hasLvSection (brak punktu przyłączenia) ⇒ DER nie rysowany, zero fabrykacji', () => {
+    const lineOnly = makeStation('der-no-attach', [makeBay(FIELD_ROLE.RMU_LINE, 0), makeBay(FIELD_ROLE.RMU_LINE, 1)], {
+      derSources: [{ id: 'gen-pv-orphan', kind: 'pv', ratedPower: 0.5 }],
+    });
+    const composition = composeStation(buildComposeInput(lineOnly));
+    const derSymbols = composition.symbols.filter((s) => s.symbolId.startsWith('der'));
+    expect(derSymbols).toHaveLength(0);
+    // F9.4 (runda korekcyjna, F-2 — SPŁATA „cichego gubienia"): ta luka
+    // NIE jest już ciszą — `StationComposition.missingData` (ujednolicone z
+    // `GpzComposition.missingData`, `./gpz`) ZGŁASZA ją wprost. PRZED
+    // poprawką ta asercja byłaby `toEqual([])` — dowód, że wyrocznia
+    // faktycznie gryzie (test negatywny), nie dług w komentarzu.
+    expect(composition.missingData).toEqual(['station.der.unattached']);
+  });
+
+  it('stacja BEZ luki (DER podłączony poprawnie) ⇒ missingData PUSTE (fixtura pozytywna, kontrast z testem wyżej)', () => {
+    const station = makeStation('der-ok', snBays, {
+      derSources: [{ id: 'gen-pv-1', kind: 'pv', ratedPower: 0.5 }],
+    });
+    const composition = composeStation(buildComposeInput(station, { hasLvSection: true }));
+    expect(composition.missingData).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // (e) Podpisy kierunku (spec §9) — wejście gotowe dla resolveLabels.
 // ---------------------------------------------------------------------------
 

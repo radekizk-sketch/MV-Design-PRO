@@ -27,12 +27,16 @@ import {
   buildSceneV3,
   allFieldEntryConnectionsReachCableHead,
   allSceneGeometryOnGrid,
+  allSourcesConnected,
+  allSourcesVisible,
   fieldEntryConnectionsReachCableHead,
   labelWireCollisions,
   noBranchWithoutAccent,
   noForbiddenDirectionTokens,
   noLabelWireCollisions,
   noSceneSymbolOverlaps,
+  sourceConnectivityGaps,
+  sourceCoverageGaps,
 } from '../src/ui/sld/v3/scene/buildScene.ts';
 import { overlapProbe } from '../src/ui/sld/v3/layout/labels.ts';
 import { fieldSilhouettesAreInjective } from '../src/ui/sld/v3/compose/station.ts';
@@ -242,6 +246,24 @@ for (const lod of LODS) {
   if (lod === 0) {
     check('field_entry_probe (LOD 0): allFieldEntryConnectionsReachCableHead zielone (GPZ zawsze połączony z magistralą)', allFieldEntryConnectionsReachCableHead(scene));
   }
+
+  // -- §13.1/§14.1 (F9.4, runda korekcyjna po recenzji Opusa): wyrocznie -----
+  // widoczności/ciągłości źródeł — dawniej wyrocznie-widma (nazwy w
+  // komentarzach `compose/station.ts`/`compose/gpz.ts`/`compose/sourceKind.ts`
+  // bez ciała), teraz realne, wpięte tu jako twarde bramki.
+  const coverageGaps = sourceCoverageGaps(scene);
+  check(
+    'sources_visible_probe (§13.1): liczba narysowanych symboli źródeł == liczba źródeł podlegających temu LOD (external_grid zawsze, DER od L1)',
+    allSourcesVisible(scene),
+    `źródła_meta=${scene.meta.sources.length} luki=${coverageGaps.length}`,
+  );
+
+  const connectivityGaps = sourceConnectivityGaps(scene);
+  check(
+    'source_connectivity_probe (§14.1): każde widoczne źródło ma trasę segmentów do co najmniej jednej szyny',
+    allSourcesConnected(scene),
+    `luki=${connectivityGaps.length}`,
+  );
 
   // -- determinizm (dwa wywołania → identyczny JSON) -------------------------
   const sceneAgain = buildSceneV3(enm, lod);

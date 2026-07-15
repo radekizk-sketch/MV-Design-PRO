@@ -29,12 +29,16 @@ import {
   buildSceneV3,
   allFieldEntryConnectionsReachCableHead,
   allSceneGeometryOnGrid,
+  allSourcesConnected,
+  allSourcesVisible,
   fieldEntryConnectionsReachCableHead,
   labelWireCollisions,
   noBranchWithoutAccent,
   noForbiddenDirectionTokens,
   noLabelWireCollisions,
   noSceneSymbolOverlaps,
+  sourceConnectivityGaps,
+  sourceCoverageGaps,
   type SceneLod,
   type SceneV3,
 } from '../buildScene';
@@ -395,15 +399,20 @@ describe('buildSceneV3 — ciągłość elektryczna ciągu głównego (spec §16
 describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji B i nakładki C)', () => {
   const scene2 = buildSceneV3(enm, 2);
 
-  it('elementKind wg symbolId: TR2W→transformer, der*→der, stationCollapsed→station, reszta→apparatus', () => {
+  it('elementKind wg symbolId: TR2W→transformer, der*→der, gridSource→source (F9.4), stationCollapsed→station, reszta→apparatus', () => {
     const byKind = new Map(scene2.symbols.map((s) => [s.symbolId, s.meta?.elementKind]));
     expect(byKind.get('transformer2W')).toBe('transformer');
+    expect(byKind.get('gridSource')).toBe('source');
     for (const [symbolId, kind] of byKind) {
       if (symbolId.startsWith('der')) expect(kind).toBe('der');
     }
     expect(scene2.symbols.every((s) => s.meta?.elementKind !== undefined)).toBe(true);
     const nonSpecial = scene2.symbols.filter(
-      (s) => s.symbolId !== 'transformer2W' && !s.symbolId.startsWith('der') && s.symbolId !== 'stationCollapsed',
+      (s) =>
+        s.symbolId !== 'transformer2W' &&
+        !s.symbolId.startsWith('der') &&
+        s.symbolId !== 'gridSource' &&
+        s.symbolId !== 'stationCollapsed',
     );
     expect(nonSpecial.length).toBeGreaterThan(0);
     expect(nonSpecial.every((s) => s.meta?.elementKind === 'apparatus')).toBe(true);
@@ -499,5 +508,100 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
       expect(noLabelWireCollisions(scene)).toBe(true);
       expect(noForbiddenDirectionTokens(scene)).toBe(true);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F9.4 — runda korekcyjna po recenzji Opusa (REQUEST-CHANGES F-1 [HIGH]):
+// `sources_visible_probe` (§13.1) i `source_connectivity_probe` (§14.1)
+// istniały WYŁĄCZNIE w komentarzach jako nazwy ("wyrocznie-widma") — ciało
+// tu, testowane na REALNEJ fixturze (pozytyw) i syntetycznym negatywie
+// (dowód, że wyrocznie faktycznie gryzą, nie są dekoracją).
+// ---------------------------------------------------------------------------
+
+describe('buildSceneV3 — F9.4 runda korekcyjna: sourceCoverageGaps/allSourcesVisible (spec §13.1)', () => {
+  it('fixtura referencyjna: 21 źródeł w meta.sources (1 external_grid + 20 DER) na WSZYSTKICH LOD', () => {
+    for (const lod of LODS) {
+      const scene = buildSceneV3(enm, lod);
+      expect(scene.meta.sources).toHaveLength(21);
+      expect(scene.meta.sources.filter((s) => s.kind === 'external_grid')).toHaveLength(1);
+    }
+  });
+
+  it('L0 (spec §7 — decyzja F9.4: DER od L1): TYLKO external_grid podlega wyroczni, 0 luk (GPZ zawsze renderowany w pełni)', () => {
+    const scene = buildSceneV3(enm, 0);
+    const derSymbols = scene.symbols.filter((s) => s.meta?.elementKind === 'der');
+    expect(derSymbols).toHaveLength(0); // DER faktycznie nieobecne na L0, z konstrukcji.
+    expect(sourceCoverageGaps(scene)).toEqual([]);
+    expect(allSourcesVisible(scene)).toBe(true);
+  });
+
+  it('L1/L2: WSZYSTKIE 21 źródeł (external_grid + 20 DER) mają symbol na scenie, 0 luk', () => {
+    for (const lod of [1, 2] as const) {
+      const scene = buildSceneV3(enm, lod);
+      const derSymbols = scene.symbols.filter((s) => s.meta?.elementKind === 'der');
+      expect(derSymbols).toHaveLength(20);
+      expect(sourceCoverageGaps(scene)).toEqual([]);
+      expect(allSourcesVisible(scene)).toBe(true);
+    }
+  });
+
+  it('test negatywny (dowód, że wyrocznia gryzie): DER z connectionRef nieistniejącym w danych adaptera ⇒ sourceCoverageGaps zgłasza lukę, allSourcesVisible=false, stopNote wyjaśnia przyczynę (F-1.3)', () => {
+    const corrupted: EnergyNetworkModel = JSON.parse(JSON.stringify(enm));
+    const target = corrupted.generators?.[0];
+    expect(target).toBeTruthy();
+    const originalRef = target!.ref_id;
+    // `enmToSldAdapter.ts` buildSources(): connectionRef = gen.station_ref ??
+    // gen.bus_ref — obie wartości psujemy, żeby żadna nie rozwiązała się do
+    // ŻADNEJ stacji narysowanej na scenie (literówka refu — scenariusz F-1.3).
+    target!.station_ref = 'stn/does-not-exist-anywhere/station';
+    target!.bus_ref = 'stn/does-not-exist-anywhere/nn_bus';
+
+    const scene = buildSceneV3(corrupted, 1);
+    const gaps = sourceCoverageGaps(scene);
+    expect(gaps.some((g) => g.sourceId === originalRef)).toBe(true);
+    expect(allSourcesVisible(scene)).toBe(false);
+    // Symbol NIE istnieje wcale (ciche gubienie NAPRAWIONE przez F-1.3 —
+    // stopNote, nie fabrykacja symbolu w złym miejscu).
+    expect(scene.symbols.some((s) => s.meta?.ownerRef === originalRef)).toBe(false);
+    expect(
+      scene.meta.stopNotes.some(
+        (n) => n.includes('does-not-exist-anywhere') && n.includes(originalRef),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('buildSceneV3 — F9.4 runda korekcyjna: sourceConnectivityGaps/allSourcesConnected (spec §14.1)', () => {
+  it('fixtura referencyjna: KAŻDE widoczne źródło (external_grid na L0/L1/L2, DER na L1/L2) ma trasę do co najmniej jednej szyny — 0 luk', () => {
+    for (const lod of LODS) {
+      const scene = buildSceneV3(enm, lod);
+      const gaps = sourceConnectivityGaps(scene);
+      expect(gaps).toEqual([]);
+      expect(allSourcesConnected(scene)).toBe(true);
+    }
+  });
+
+  it('test negatywny (dowód, że wyrocznia gryzie): symbol źródła całkowicie odizolowany (żaden port nie dotyka żadnego odcinka sceny) ⇒ sourceConnectivityGaps go zgłasza', () => {
+    const scene = buildSceneV3(enm, 1);
+    // Syntetyczna scena: bierzemy realną (żeby geometria WSZYSTKICH innych
+    // elementów była wiarygodna), ale DODAJEMY jeden symbol DER daleko poza
+    // całą resztą rysunku (żaden port nie dotyka żadnego istniejącego
+    // odcinka) — konstrukcja bez modyfikacji istniejących elementów.
+    const isolated: SceneV3 = {
+      ...scene,
+      symbols: [
+        ...scene.symbols,
+        {
+          symbolId: 'derPv',
+          x: 999_999_992,
+          y: 999_999_992,
+          meta: { ownerRef: 'gen-isolated-test', elementKind: 'der' },
+        },
+      ],
+    };
+    const gaps = sourceConnectivityGaps(isolated);
+    expect(gaps.some((g) => g.sourceId === 'gen-isolated-test')).toBe(true);
+    expect(allSourcesConnected(isolated)).toBe(false);
   });
 });

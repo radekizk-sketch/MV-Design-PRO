@@ -58,7 +58,16 @@ export const SEGMENT_STROKE_WIDTH: Readonly<Record<PreviewSegmentKind, number>> 
  * B: mapowanie na typ selekcji v2; F8b-1 C: WYŁĄCZONY z nakładki energizacji
  * — patrz `SldCanvasV3Workspace.ts`).
  */
-export type PreviewElementKind = 'station' | 'transformer' | 'der' | 'apparatus' | 'bus' | 'segment';
+/** F9.4: `'source'` — sieć zewnętrzna (`Source` ENM, glif `gridSource`,
+ *  `compose/gpz.ts`) — ODRĘBNA od `'der'` (DER: PV/BESS/generator/farma
+ *  wiatrowa), bo semantycznie to inny rodzaj elementu ENM (v2 `ElementType`
+ *  ma dedykowany literał `'Source'`). Runda korekcyjna F9.4 (recenzja
+ *  Opusa, F-3): `SldCanvasV3Workspace.tsx` `elementTypeForKind` NIE MIAŁ
+ *  gałęzi `case 'source'` (spadał na `default`→`DescriptiveElement`, klik w
+ *  symbol sieci zewnętrznej nie selekcjonował `'Source'`) — ten komentarz
+ *  twierdził, że mapowanie istnieje, choć NIE istniało; naprawione (gałąź
+ *  dodana), zdanie poniżej jest teraz prawdziwe. */
+export type PreviewElementKind = 'station' | 'transformer' | 'der' | 'source' | 'apparatus' | 'bus' | 'segment';
 
 /** Metadane wspólne symbolu/segmentu, potrzebne WYŁĄCZNIE do debug-atrybutów
  *  (spec zadania F5b: „data-symbol-canon/data-parity-key przepisywane z
@@ -95,6 +104,12 @@ export interface PreviewElementMeta {
    *  są aparatem pola (szyny, stacje, DER, segmenty).
    */
   readonly apparatusSource?: 'dane' | 'konwencja';
+  /** F9.4 (spec §13.1, f92-2): `true` dla symboli źródła (`elementKind`
+   *  `'der'`/`'source'`) reprezentujących dane niekompletne (dziś: DER
+   *  `kind==='unknown'` — `Generator.gen_type` nierozpoznany/`null`).
+   *  Adnotacja audytora (`compose/sourceKind.ts`), NIE fabrykacja rodzaju —
+   *  `undefined` dla WSZYSTKICH elementów rozpoznanych/nie-źródłowych. */
+  readonly missingData?: boolean;
 }
 
 export interface PreviewSymbol {
@@ -156,6 +171,7 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
       data-parity-key={parityKeysOf(symbol.meta)}
       data-test-id={symbol.meta?.testId}
       data-apparatus-source={symbol.meta?.apparatusSource}
+      data-missing-data={symbol.meta?.missingData ? 'true' : undefined}
     >
       <Glyph x={symbol.x} y={symbol.y} state={symbol.state} stroke={stroke} />
     </g>

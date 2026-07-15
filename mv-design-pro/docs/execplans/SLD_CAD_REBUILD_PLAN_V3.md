@@ -647,10 +647,11 @@ współdzielony (spec §8) — ale konsumpcja w compose (F9.3) czeka na F8b.
        znacznikiem `data-apparatus-source="konwencja"`); `cell_sequence_probe`
        w gałęzi „prymat danych" wymaga fixtury z niepustym primary_devices
        (dostarczyć w F9.3 albo F9.6 — syntetyk albo rozszerzenie substrate);
-  (f92-2 → F9.4) `buildSources` cicho wyklucza generator z gen_type=null
-       (na fixturze latentne: 0 takich) — dopisać stopNote i obsłużyć w
-       `sources_visible_probe` (źródło nieznanego typu NIE może zginąć bez
-       śladu).
+  (f92-2 → F9.4) [SPŁACONE w F9.4] `buildSources` cicho wykluczał generator
+       z gen_type=null — teraz `kind='unknown'` + `missingData:true`
+       (adapter), glif fallback `derGenerator` + etykieta „Źródło (typ
+       nieznany)" (`v3/compose/sourceKind.ts`); źródło nieznanego typu
+       przechodzi przez `sources_visible_probe` jak każde inne (nie ginie).
 - Zakres: rozszerzyć kontrakt `MiniBlockBayDescriptor` (`v2/renderer/MiniBlockRmuRenderer.tsx`) o rzut
   `Bay.primary_devices` (kind+placement+section_side+symbol_ref+switch_state) — adapter
   `v2/canvas/enmToSldAdapter.ts`; wystawić DER i `Source`(external_grid) jako źródła sceny (nie tylko badge);
@@ -693,7 +694,7 @@ współdzielony (spec §8) — ale konsumpcja w compose (F9.3) czeka na F8b.
   głowice POŁĄCZONE korytarzem dolnym, akcent rozgałęzienia na odejściu lateralu, kier./odg. + Q/T +
   pasma nazw bez kolizji — POTWIERDZONE.
 
-### F9.4. [KOD — po F8b] Źródła widoczne + ciągłość źródło→odbiór (strona nN)
+### F9.4. [DONE] Źródła widoczne + ciągłość źródło→odbiór (strona nN)
 - Zakres: `v3/scene/buildScene.ts` + `v3/compose/*` — rysowanie wszystkich źródeł (GPZ/Source/DER),
   odpływy nN (konsumpcja `nnFeedersCount`), laterale zagnieżdżone lub jawny stopNote; wzmocnienie §16 o
   „źródło widoczne i połączone".
@@ -701,6 +702,35 @@ współdzielony (spec §8) — ale konsumpcja w compose (F9.3) czeka na F8b.
   render oceniony.
 - Autoryzacje: `v3/scene/buildScene.ts`, `v3/compose/station.ts`, `v3/compose/gpz.ts`, `v3/layout/*` (jeśli
   odpływy nN wymagają rezerwacji measure/bands), testy v3.
+- **Historia realizacji (dwuautorska + runda korekcyjna):** (1) agent implementacyjny dostarczył DER jako
+  pełne widoczne źródła (V12K-029: `sourceKind.ts` — `derWind`/`derPv`/`derBess`/generator, wiersz DER
+  flush-right nad stacją, trasa `#der-row-trunk`/`#der-row-bus` do szyny SN) + `gridSource` w GPZ
+  (`#grid-source-drop` + `#source-bus-extension`, parityKey `gpz.source.external_grid`), po czym padł na
+  limicie sesji; (2) NADZORCA wykrył i naprawił regres tapX (overlap_probe L2: etykiety S01↔S02) —
+  KOREKTA: rozdzielenie dwóch szerokości — `stationBlockWidth` (3 argumenty, TYLKO pola; centrowanie tapX
+  na szynie SN) vs `requiredStationWidth` (pola + GRID + `derRowFootprint().width`; rezerwacja kolumny) —
+  `layout/measure.ts` + `layout/segments.ts`, zweryfikowane adwersaryjnie przez Opusa; (3) recenzja Opusa
+  REQUEST-CHANGES — F-1 [HIGH] wyrocznie-widma: `sources_visible_probe`/`source_connectivity_probe`
+  istniały tylko w komentarzach (`buildScene.ts` twierdził „sourceCoverageGaps niżej to zgłasza" — fałsz);
+  F-2: DER bez punktu podpięcia ginął cicho; F-3: brak gałęzi `case 'source'` w `elementTypeForKind`;
+  (4) runda korekcyjna dostarczyła REALNE wyrocznie: `sourceCoverageGaps`/`allSourcesVisible` (§13.1 —
+  każdy wpis `scene.meta.sources` ma symbol o `elementKind∈{der,source}` i `meta.ownerRef===id`; L0
+  zwalnia DER, external_grid wymagany na KAŻDYM LOD) oraz `sourceConnectivityGaps`/`allSourcesConnected`
+  (§14.1 — Union-Find po `scene.segments`+portach symboli; cel = dowolny segment `meta.kind==='bus'`),
+  stopNotes dla DER z nierozwiązywalnym `connectionRef`, `StationComposition.missingData`
+  (`station.der.unattached`, lustro GpzComposition), `case 'source': return 'Source';`, sprzątnięcie
+  komentarzy-widm, testy negatywne dowodzące że wyrocznie gryzą; obie sondy wpięte do
+  `scripts/sld_v3_acceptance.mjs` (wynik na fixturze: źródła_meta=21, luki=0, wszystkie 3 LOD-y).
+- **Reguła grupowania ownerRef w Union-Find (udokumentowana, NIE fabrykacja topologii):** stosy aparatów
+  pola NIE mają między-aparatowych `PreviewSegment` (fakt geometrii sprzed F9.4 — aparaty w stosie
+  stykają się portami); Union-Find łączy symbole o tym samym `bayRef` i `elementKind∈{apparatus,
+  transformer}` jako jedną gałąź szeregową (odczyt istniejącej tożsamości, zero dorysowanej topologii).
+  DŁUG (F9.6+): jeżeli przyszła wyrocznia będzie wymagać ciągłości CZYSTO segmentowej, stosy pól muszą
+  dostać jawne segmenty między-aparatowe — osobny wpis przy F9.6.
+- Wizualny DoD nadzorcy (rendery 5 szt. odświeżone jako zapis akceptacyjny): BESS 500 kW / Farma
+  wiatrowa 2,0 MW / PV widoczne symbolami nad stacjami z trasą do szyny SN; `gridSource` (strzałka
+  zasilania) nad pierwszą sekcją szyny GPZ; zero kolizji etykiet (overlap_probe L1/L2 zielony po
+  korekcie tapX) — POTWIERDZONE.
 
 ### F9.5. [KOD — po F8b, po k1] Nakładka przepływu mocy (strzałki + MW/MVAr/A)
 - Zakres: spłata długu k1 (tożsamość odcinków nie-GPZ: `PreviewSegment.meta.ownerRef/testId` w

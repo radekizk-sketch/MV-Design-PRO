@@ -112,7 +112,15 @@ export function computeStationTaps(
     const text = normalizeSegmentText(segmentTexts[index]);
     const segmentWidth = text != null ? requiredSegmentLabelWidth(text) : 0;
     const width = snapUp(Math.max(stationWidth, segmentWidth));
-    const blockWidth = stationBlockWidth(station.snBays, station.bayDirectionCaptions, station.entryDescentBayIndex);
+    // F9.4 KOREKTA NADZORCY: baza centrowania tapX = kolumny PÓL (bez rzędu
+    // DER) — zaczep magistrali musi leżeć na szynie SN; ekstent z DER liczy
+    // wyłącznie `requiredStationWidth` (rezerwacja kolumny), patrz
+    // `layout/measure.ts` `stationBlockWidth`.
+    const blockWidth = stationBlockWidth(
+      station.snBays,
+      station.bayDirectionCaptions,
+      station.entryDescentBayIndex,
+    );
     // Margines lewy GRID wewnątrz kolumny (spec §5.1 "+2×GRID", GRID/stronę)
     // — blok NIE jest centrowany w (być może szerszej) kolumnie, patrz
     // DECYZJA przy `ColumnResult.tapX` w `./columns`.

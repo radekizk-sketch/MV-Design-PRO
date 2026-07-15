@@ -99,6 +99,7 @@ import {
   buildSldDataFromSnapshot,
   type SegmentTerminalRef,
   type SldDataPayload,
+  type SldSourceView,
 } from '../../v2/canvas/enmToSldAdapter';
 import { buildCanonicalGpzProps } from '../../v2/canvas/enmToCanonicalGpzAdapter';
 import type { GpzCanonicalRendererProps } from '../../v2/renderer/GpzCanonicalRenderer';
@@ -149,6 +150,7 @@ import {
   classifyLineBayDirection,
   FORBIDDEN_RAW_DIRECTION_TOKENS,
 } from '../compose/directions';
+import type { DerSourceKind, StationDerSourceInput } from '../compose/sourceKind';
 import type {
   PreviewComposition,
   PreviewElementKind,
@@ -187,6 +189,17 @@ export interface SceneV3Meta {
   /** Decyzje zakresu / luki danych napotkane przy budowie TEJ sceny —
    *  widoczne w testach/CI (nie ukryty dług w komentarzu). */
   readonly stopNotes: readonly string[];
+  /** F9.4 (spec §13.1 V12K-029): `SldDataPayload.sources` PRZENIESIONE 1:1
+   *  (zero re-derywacji) — źródło prawdy dla wyroczni `sourceCoverageGaps`/
+   *  `allSourcesVisible` (§13.1 „liczba narysowanych symboli źródeł == liczba
+   *  źródeł w ENM", eksportowane niżej w tym pliku, sekcja „Wyrocznie źródeł").
+   *  GPZ (`Substation`) NIE jest tu wliczony (adapter: kontener rozdzielni
+   *  jest widoczny przez `gpzId`/kompozycję GPZ, odrębnie od pojedynczych
+   *  źródeł ENM) — DECYZJA ZAKRESU niezmieniona przez rundę korekcyjną F9.4
+   *  (patrz raport): §13.1 wymienia GPZ jako punkt zasilania widoczny przez
+   *  ISTNIEJĄCY, osobny mechanizm (`meta.gpzId`/`meta.sections`), nie
+   *  duplikujemy go tu jako trzeci `SldSourceView`-podobny wpis. */
+  readonly sources: readonly SldSourceView[];
 }
 
 export interface SceneV3 extends PreviewComposition {
@@ -277,6 +290,9 @@ function incomingSegmentRef(cableRun: SldCableRun | undefined, ownerRef: string)
  */
 function classifySymbolElementKind(symbolId: SymbolId): PreviewElementKind {
   if (symbolId === 'transformer2W') return 'transformer';
+  // F9.4: `gridSource` (sieć zewnętrzna) sprawdzone PRZED `startsWith('der')`
+  // — nie jest DER, ma własny elementKind `'source'` (spec §13.1/§13.2).
+  if (symbolId === 'gridSource') return 'source';
   if (symbolId.startsWith('der')) return 'der';
   if (symbolId === 'stationCollapsed') return 'station';
   return 'apparatus';
@@ -364,11 +380,15 @@ function buildMeasureInput(
   props: StationOnRunRendererProps,
   lod: SceneLod,
   bayDirectionCaptions: readonly (string | null)[],
+  derSourcesByStationId: ReadonlyMap<string, readonly StationDerSourceInput[]>,
 ): StationMeasureInput {
   if (lod === 0) {
-    // L0 (spec §7): stacja = symbol zbiorczy + KOD (nic więcej). measure.ts
-    // nie ma trybu „tylko kod" — reużywamy pole `name` (wiersz obligatoryjny
-    // pasma nazw) jako nośnik kodu, zero zmian w measure.ts.
+    // L0 (spec §7 „stacje jako ∎16 z kodem Sxx + NO"): stacja = symbol
+    // zbiorczy + KOD (nic więcej), BEZ aparatów/DER — spec §7 lista L1
+    // wprost dopisuje „DER" do L1, nie do L0 (kontrakt LOD, decyzja F9.4:
+    // dokumentowana, nie domyślna). measure.ts nie ma trybu „tylko kod" —
+    // reużywamy pole `name` (wiersz obligatoryjny pasma nazw) jako nośnik
+    // kodu, zero zmian w measure.ts.
     return { id: props.id, name: props.stationCode ?? props.name, snBays: [] };
   }
   const includeCableAndPorts = lod === 2;
@@ -380,6 +400,9 @@ function buildMeasureInput(
     stationTypeLabel: stationTypeLabelPl(props.topologicalType),
     snBays: props.snBays ?? [],
     bayDirectionCaptions: includeCableAndPorts ? bayDirectionCaptions : undefined,
+    // F9.4 (spec §13.1 V12K-029, §7): DER widoczny od L1 — dostarczone
+    // WYŁĄCZNIE dla lod>=1 (lod===0 zwraca wcześniej, powyżej).
+    derSources: derSourcesByStationId.get(props.id) ?? undefined,
   };
 }
 
@@ -391,6 +414,7 @@ function buildRowLayout(
   cableRun: SldCableRun | undefined,
   lod: SceneLod,
   stopNotes: string[],
+  derSourcesByStationId: ReadonlyMap<string, readonly StationDerSourceInput[]>,
   firstStationEntryDescent = false,
 ): RowLayout {
   const stationCodeOf = (ref: string): string | null => stationById.get(ref)?.stationCode ?? null;
@@ -405,7 +429,7 @@ function buildRowLayout(
     }
     const context = resolveStationDirectionContext({ lineRuns, stationId: id, gpzNodeCode, stationCodeOf });
     const captions = stationBayCaptions(props.snBays ?? [], context);
-    return buildMeasureInput(props, lod, captions);
+    return buildMeasureInput(props, lod, captions, derSourcesByStationId);
   });
   let validInputs = measureInputs.filter((m): m is StationMeasureInput => m != null);
 
@@ -561,6 +585,20 @@ function composeRowStation(
     hasLvSection,
   });
 
+  // F9.4 (runda korekcyjna, F-2, spec §14.1): ujednolicone z GPZ
+  // (`gpzComposition.missingData` w sekcji 4 `buildSceneV3` niżej) —
+  // `StationComposition.missingData` (`compose/station.ts`, dziś WYŁĄCZNIE
+  // `'station.der.unattached'` — DER na `nn_side` bez pola TR) przenoszone
+  // do `stopNotes` TEGO wołania (parametr wspólny z resztą `buildRowLayout`,
+  // patrz nagłówek funkcji) — koniec cichego gubienia bez śladu w audycie.
+  if (composition.missingData.length > 0) {
+    const derIds = (measureInput.derSources ?? []).map((d) => d.id).join(', ') || 'brak id';
+    stopNotes.push(
+      `Stacja „${measureInput.id}": DER przyłączone (nn_side) bez pola transformatorowego w danych — ` +
+        `brak punktu przyłączenia geometrycznego (spec §14.1), źródło pominięte na scenie: ${derIds}.`,
+    );
+  }
+
   const { previousIndex, nextIndex, branchIndices } = findLineBayIndices(measureInput.snBays);
   const tapXOfBay = (index: number | null): number | null => {
     if (index == null) return null;
@@ -595,8 +633,10 @@ function composeRowStation(
     y: s.y,
     state: s.state,
     meta: {
-      testId: s.bayRef ? `${s.bayRef}#${s.symbolId}` : undefined,
-      ownerRef: s.bayRef,
+      // F9.4: DER nie mają `bayRef` (nie należą do żadnego pola) — `testId`/
+      // `ownerRef` spadają na `sourceRef` (`SldSourceView.id`, WHITE BOX).
+      testId: s.bayRef ? `${s.bayRef}#${s.symbolId}` : s.sourceRef ? `${s.sourceRef}#${s.symbolId}` : undefined,
+      ownerRef: s.bayRef ?? s.sourceRef,
       elementKind: classifySymbolElementKind(s.symbolId),
       // F9.3 (spec §12.1): przepisane 1:1 z kompozycji — audytor DOM
       // (`data-apparatus-source`) i testy czytają WYŁĄCZNIE stąd, zero
@@ -605,6 +645,9 @@ function composeRowStation(
       // `deviceRef` (WHITE BOX §12.1) mieszka na `StationComposition`
       // (`compose/station.ts`), poza zakresem propagacji do sceny w F9.3.
       apparatusSource: s.apparatusSource,
+      // F9.4 (spec §13.1, f92-2): przepisane 1:1 — adnotacja audytora dla
+      // DER o rozpoznaniu niepełnym (`kind==='unknown'`).
+      missingData: s.missingData,
     },
   }));
   const segments: PreviewSegment[] = composition.segments.map((s) => {
@@ -989,7 +1032,7 @@ function gpzSymbolToPreview(sym: ComposedGpzSymbolInstance): PreviewSymbol {
       // F8b-1: refy, które `GpzElementMeta` już niesie (compose/gpz.ts) —
       // bayRef (aparat pola) preferowany, potem transformerRef/sectionId dla
       // symboli bez przypisanego pola. Zero re-derywacji z geometrii.
-      ownerRef: sym.meta.bayRef ?? sym.meta.transformerRef ?? sym.meta.sectionId,
+      ownerRef: sym.meta.sourceRef ?? sym.meta.bayRef ?? sym.meta.transformerRef ?? sym.meta.sectionId,
       elementKind: classifySymbolElementKind(sym.symbolId),
     },
   };
@@ -1035,6 +1078,24 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   const cableRunById = new Map<string, SldCableRun>(sldData.cableRuns.map((c) => [c.id, c]));
   const lineRuns = buildLineRunShims(sldData.topologyRuns, cableRunById);
 
+  // F9.4 (spec §13.1 V12K-029): widoczne źródła sieci z adaptera
+  // (`SldDataPayload.sources`, F9.2) — DER (`kind!=='external_grid'`)
+  // pogrupowane PER STACJA przyłączenia (`connectionRef`, adapter woła to
+  // `station_ref ?? bus_ref` — gdy nie rozwiązuje się do stacji ISTNIEJĄCEJ
+  // na scenie, wpis ZOSTAJE nieprzypisany, `sourceCoverageGaps` niżej to
+  // zgłasza, zero cichego gubienia); `external_grid` osobno, dla GPZ
+  // (`composeGpz`, część C).
+  const allSources = sldData.sources ?? [];
+  const externalGridSources = allSources.filter((s) => s.kind === 'external_grid');
+  const derSourcesByStationId = new Map<string, StationDerSourceInput[]>();
+  allSources
+    .filter((s): s is SldSourceView & { kind: DerSourceKind } => s.kind !== 'external_grid')
+    .forEach((s) => {
+      const list = derSourcesByStationId.get(s.connectionRef) ?? [];
+      list.push({ id: s.id, kind: s.kind, ratedPower: s.ratedPower, missingData: s.missingData });
+      derSourcesByStationId.set(s.connectionRef, list);
+    });
+
   if (sldData.gpzs.length > 1) {
     stopNotes.push(
       `Wiele GPZ (${sldData.gpzs.length}) w ENM — F6a komponuje TYLKO pierwszy (${sldData.gpzs[0]?.id}); wielo-GPZ poza zakresem (kandydat F6b).`,
@@ -1063,7 +1124,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
 
   // -- 1. Magistrala (main trunk) — measure→bands→columns lokalnie (0,0). ---
   let mainLayout: RowLayout | null = mainTrunkRun
-    ? buildRowLayout(mainTrunkRun.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, mainCableRun, lod, stopNotes)
+    ? buildRowLayout(mainTrunkRun.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, mainCableRun, lod, stopNotes, derSourcesByStationId)
     : null;
 
   // -- 2. GPZ: pass1 @ (0,0) → dowiedz się bbox (X) i snBusY (Y docelowe). --
@@ -1081,11 +1142,18 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
    *  się w prawdziwym `gpzPort.x`). */
   let gpzRightEdgeX = 0;
   if (gpzData) {
+    // F9.4: pass1 (Y-alignment tylko) NIE potrzebuje `gridSources` — port
+    // zaczepu magistrali (`findGpzTrunkPort`) jest niezależny od symbolu
+    // źródła zewnętrznego, dodawanego WYŁĄCZNIE nad szyną SN (część C).
     const pass1 = composeGpz(gpzData, { x: 0, y: 0 });
     const port1 = findGpzTrunkPort(pass1, gpzData, []);
     const targetBusAxisY = mainLayout ? mainLayout.busAxisY : 0;
     const originY = snapToGrid(targetBusAxisY - port1.y);
-    gpzComposition = composeGpz(gpzData, { x: 0, y: originY });
+    gpzComposition = composeGpz(
+      gpzData,
+      { x: 0, y: originY },
+      externalGridSources.map((s) => ({ id: s.id })),
+    );
     gpzRightEdgeX = gpzComposition.bbox.x + gpzComposition.bbox.width;
     mainRowDx = snapUp(gpzRightEdgeX) + GPZ_TRUNK_GAP;
   }
@@ -1111,6 +1179,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   }
 
   // -- 5. Skomponuj stacje magistrali + routing GPZ→S0→S1→...→S11. ---------
+  // F9.4 (runda korekcyjna, F-1.3): stacje FAKTYCZNIE narysowane na scenie
+  // (uzupełniane też w sekcji 6, laterale) — patrz sprawdzenie po sekcji 6
+  // niżej („DER, którego connectionRef nie rozwiązuje się do stacji sceny").
+  const drawnStationIds = new Set<string>();
   const mainRow: RowStation[] = [];
   if (mainLayout) {
     mainLayout.columnsResult.columns.forEach((col, i) => {
@@ -1118,6 +1190,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const props = stationById.get(measureInput.id)!;
       const composed = composeRowStation(measureInput, props, col, mainLayout!.busAxisY, mainLayout!.blockTopY, lod, stopNotes);
       mainRow.push({ id: measureInput.id, composed });
+      drawnStationIds.add(measureInput.id);
       allSymbols.push(...composed.symbols);
       allSegments.push(...composed.segments);
       stationNameBands.push(composed.stationNameOwner);
@@ -1227,7 +1300,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     }
 
     const cableRun = cableRunById.get(run.id);
-    let layout = buildRowLayout(run.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, cableRun, lod, stopNotes, true);
+    let layout = buildRowLayout(run.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, cableRun, lod, stopNotes, derSourcesByStationId, true);
     if (layout.measureInputs.length === 0) continue;
 
     // Wyrównanie X (F6d, przypadek b — DECYZJA WIĄŻĄCA): pierwsza stacja
@@ -1286,6 +1359,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const props = stationById.get(measureInput.id)!;
       const composed = composeRowStation(measureInput, props, col, layout.busAxisY, layout.blockTopY, lod, stopNotes);
       lateralRow.push({ id: measureInput.id, composed });
+      drawnStationIds.add(measureInput.id);
       allSymbols.push(...composed.symbols);
       allSegments.push(...composed.segments);
       stationNameBands.push(composed.stationNameOwner);
@@ -1422,6 +1496,27 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     segmentSpans.push(...internal.spanLabels);
   }
 
+  // F9.4 (runda korekcyjna, F-1.3, spec §13.1): DER/źródło, którego
+  // `connectionRef` NIE rozwiązuje się do ŻADNEJ FAKTYCZNIE narysowanej
+  // stacji (`drawnStationIds`, uzupełniany w sekcjach 5/6 wyżej — literówka
+  // refu W ENM, LUB stacja istnieje w `sldData.stations`, ale leży poza
+  // magistralą/lateralami TEGO widoku, np. odgałęzienie zagnieżdżone,
+  // `stopNotes` sekcji 6) — PRZED tą poprawką wpis w `derSourcesByStationId`
+  // (zbudowany na samej górze `buildSceneV3`) był tworzony, ale NIGDY nie
+  // odczytany (`buildMeasureInput` czyta WYŁĄCZNIE dla stacji na
+  // NARYSOWANYM wierszu, `buildRowLayout`) — ciche gubienie, bez śladu w
+  // audycie. `sourceCoverageGaps`/`allSourcesVisible` (§13.1, niżej) i tak
+  // wykrywają brak symbolu przez parytet liczności — ten stopNote tłumaczy
+  // PRZYCZYNĘ, żeby audytor nie zgadywał.
+  derSourcesByStationId.forEach((sources, stationRef) => {
+    if (drawnStationIds.has(stationRef)) return;
+    stopNotes.push(
+      `Źródło(a) przyłączone do stacji „${stationRef}" (connectionRef), która NIE jest narysowana na ` +
+        `tej scenie (poza magistralą/lateralami tego widoku lub ref nie wskazuje żadnej stacji adaptera) — ` +
+        `pominięte bez symbolu: ${sources.map((s) => s.id).join(', ')} (spec §13.1).`,
+    );
+  });
+
   // -- 7. Rozwiąż WSZYSTKIE etykiety JEDNYM globalnym resolveLabels. --------
   const labels: readonly OwnedLabel[] = resolveLabels({
     segmentSpans,
@@ -1466,6 +1561,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       mainTrunkStationIds: mainRow.map((r) => r.id),
       lateralRunIds,
       stopNotes,
+      sources: allSources,
     },
   };
 }
@@ -1657,4 +1753,239 @@ export function labelWireCollisions(scene: SceneV3): readonly LabelWireCollision
 
 export function noLabelWireCollisions(scene: SceneV3): boolean {
   return labelWireCollisions(scene).length === 0;
+}
+
+// ---------------------------------------------------------------------------
+// F9.4 (runda korekcyjna po recenzji Opusa, REQUEST-CHANGES F-1 [HIGH]) —
+// wyrocznie §13.1/§14.1. Recenzja: rdzeń F9.4 (geometria/glify/korekta
+// nadzorcy tapX) był poprawny, ale DWIE wyrocznie tytułowe istniały TYLKO w
+// komentarzach — `sources_visible_probe`/`source_connectivity_probe` były
+// WYMIENIANE Z NAZWY w `compose/station.ts`/`compose/gpz.ts`/
+// `compose/sourceKind.ts`, ale NIE eksportowały ŻADNEGO ciała (wyrocznie-
+// widma). Realizacja niżej — zasada projektu: „wyrocznie w CI, nie dług w
+// komentarzu".
+// ---------------------------------------------------------------------------
+
+export interface SourceCoverageGap {
+  readonly sourceId: string;
+  readonly kind: SldSourceView['kind'];
+}
+
+/**
+ * sources_visible_probe (spec §13.1, cytat: „liczba narysowanych symboli
+ * źródeł == liczba źródeł w ENM (GPZ + Source + DER); 0 źródeł ENM bez
+ * reprezentacji na scenie"). SCOPED do `scene.meta.sources` (`Source`
+ * zewnętrzne + DER) — GPZ (`Substation`) policzony ODDZIELNIE przez
+ * `meta.gpzId`/kompozycję GPZ (DECYZJA udokumentowana w `SceneV3Meta.sources`
+ * docstring wyżej, ustalona PRZED tą rundą — nienaruszona: GPZ ma WŁASNY,
+ * już istniejący mechanizm widoczności, duplikowanie go jako trzeci
+ * `SldSourceView`-podobny wpis fabrykowałoby drugą prawdę o tym samym
+ * elemencie).
+ *
+ * Dopasowanie źródło↔symbol PO `sourceRef`/`ownerRef`: KAŻDY symbol DER
+ * (`compose/station.ts` `composeRowStation`, pole `sourceRef` →
+ * `PreviewSymbol.meta.ownerRef`) i KAŻDY symbol `gridSource`
+ * (`compose/gpz.ts` `gpzSymbolToPreview`, `meta.sourceRef` → `ownerRef`)
+ * niesie `ownerRef === SldSourceView.id` Z KONSTRUKCJI (zero re-derywacji,
+ * zero zgadywania) — parytet liczności sprowadza się do: dla KAŻDEGO
+ * `scene.meta.sources[i]` (podlegającego LOD, patrz niżej) istnieje ≥1
+ * symbol o `elementKind∈{'der','source'}` i `ownerRef===id`.
+ *
+ * L0 (spec §7, decyzja F9.4 udokumentowana w `buildMeasureInput` wyżej): DER
+ * NIE są rysowane na L0 (kompozycja stacji na tym LOD to WYŁĄCZNIE
+ * `stationCollapsed` + kod — `composeRowStation` L0 branch, WCZEŚNIEJ niż
+ * `composeStation`) — WYJĄTEK JAWNY z konstrukcji, DER nieobecne na L0 NIE
+ * są luką (`scene.meta.lod>=1` warunkuje filtrowanie niżej). `external_grid`
+ * (glif `gridSource`, GPZ) NIE zależy od `lod` (`composeGpz` wołane
+ * IDENTYCZNIE na KAŻDYM LOD, sekcja 2 `buildSceneV3` wyżej — brak gałęzi
+ * `if (lod...)` przy jego wywołaniu) — MUSI mieć symbol na WSZYSTKICH LOD,
+ * więc luka `external_grid` liczy się zawsze, niezależnie od `lod`.
+ */
+export function sourceCoverageGaps(scene: SceneV3): readonly SourceCoverageGap[] {
+  const visibleSourceRefs = new Set<string>();
+  scene.symbols.forEach((s) => {
+    if ((s.meta?.elementKind === 'der' || s.meta?.elementKind === 'source') && s.meta?.ownerRef) {
+      visibleSourceRefs.add(s.meta.ownerRef);
+    }
+  });
+  return scene.meta.sources
+    .filter((s) => scene.meta.lod >= 1 || s.kind === 'external_grid')
+    .filter((s) => !visibleSourceRefs.has(s.id))
+    .map((s) => ({ sourceId: s.id, kind: s.kind }));
+}
+
+export function allSourcesVisible(scene: SceneV3): boolean {
+  return sourceCoverageGaps(scene).length === 0;
+}
+
+/** Union-Find minimalny (bez rank/kompresji poza path-halving) — WYŁĄCZNIE
+ *  dla `sourceConnectivityGaps` niżej; rozmiar sceny (setki węzłów) nie
+ *  uzasadnia pełnej biblioteki. */
+class SceneDisjointSet {
+  private readonly parent: number[];
+  constructor(size: number) {
+    this.parent = Array.from({ length: size }, (_, i) => i);
+  }
+  find(x: number): number {
+    while (this.parent[x] !== x) {
+      this.parent[x] = this.parent[this.parent[x]];
+      x = this.parent[x];
+    }
+    return x;
+  }
+  union(a: number, b: number): void {
+    const ra = this.find(a);
+    const rb = this.find(b);
+    if (ra !== rb) this.parent[ra] = rb;
+  }
+}
+
+/**
+ * Punkt `p` DOTYKA odcinka `seg` — koniec KTÓREGOKOLWIEK podsegmentu jego
+ * polilinii (wierzchołek) LUB leży NA jego prostej rozpiętości (odcinki
+ * ortogonalne z konstrukcji, spec §5.4) — TEN SAM test geometryczny co
+ * `pointOnSegment` w `layout/route.ts` (klasyfikacja T-węzeł), tu
+ * ROZSZERZONY o dopasowanie KOŃCA (nie tylko wnętrze): dwa odcinki mogą się
+ * stykać KOŃCEM jednego ze ŚRODKIEM drugiego. Empirycznie WYMAGANE na
+ * fixturze referencyjnej: `#der-row-bus` (szyna zbiorcza rzędu DER,
+ * `compose/station.ts`) łączy WIELE symboli DER jednej stacji — gdy stacja
+ * ma ≥2 DER, TYLKO skrajne mają port DOKŁADNIE w jej wierzchołku, środkowe
+ * taponują jej WNĘTRZE (dowód: stacja z PV+BESS w `sldSubstrate52s`, port PV
+ * (3696,912) leży WEWNĄTRZ odcinka (3624,912)–(3776,912), port BESS
+ * DOKŁADNIE na jego prawym końcu). Bez tego rozszerzenia wyrocznia
+ * fałszywie zgłaszałaby PV jako odcięte, mimo poprawnego narysowania. Zero
+ * fizyki: WYŁĄCZNIE test geometryczny „punkt na odcinku".
+ */
+function pointTouchesSegment(p: RouteVertex, seg: PreviewSegment): boolean {
+  const pts = seg.points;
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    if ((p.x === a.x && p.y === a.y) || (p.x === b.x && p.y === b.y)) return true;
+    if (a.x === b.x && p.x === a.x && p.y >= Math.min(a.y, b.y) && p.y <= Math.max(a.y, b.y)) return true;
+    if (a.y === b.y && p.y === a.y && p.x >= Math.min(a.x, b.x) && p.x <= Math.max(a.x, b.x)) return true;
+  }
+  return false;
+}
+
+function segmentsTouch(a: PreviewSegment, b: PreviewSegment): boolean {
+  return a.points.some((p) => pointTouchesSegment(p, b)) || b.points.some((p) => pointTouchesSegment(p, a));
+}
+
+function symbolPortsInWorld(sym: PreviewSymbol): readonly RouteVertex[] {
+  return SYMBOL_DEFS[sym.symbolId].ports.map((p) => ({ x: sym.x + p.x, y: sym.y + p.y }));
+}
+
+export interface SourceConnectivityGap {
+  readonly sourceId: string;
+}
+
+/**
+ * source_connectivity_probe (spec §14.1, cytat: „dla KAŻDEGO widocznego
+ * źródła istnieje trasa łącząca je z co najmniej jedną szyną"). BFS/Union-
+ * Find PO `scene.segments` + porty symboli (`SYMBOL_DEFS`) — CZYSTA
+ * TOPOLOGIA (WYŁĄCZNIE współrzędne z konstrukcji), ZERO fizyki (zero
+ * odczytu impedancji/mocy/wyniku solvera, zero zależności od stanu
+ * łącznika):
+ *
+ *  1. Dwa odcinki są POŁĄCZONE, gdy się DOTYKAJĄ (`segmentsTouch` — koniec
+ *     LUB wnętrze, patrz `pointTouchesSegment`).
+ *  2. Odcinek jest POŁĄCZONY z symbolem, gdy KTÓRYKOLWIEK port symbolu (w
+ *     świecie) dotyka tego odcinka.
+ *  3. DWA symbole o `elementKind∈{'apparatus','transformer'}` TEGO SAMEGO
+ *     pola (`meta.ownerRef` wspólny — `bayRef`, jedyny przypadek, w którym
+ *     WIELE symboli sceny dzieli identyczny `ownerRef`, patrz
+ *     `composeRowStation`/`gpzSymbolToPreview`) są POŁĄCZONE WPROST,
+ *     niezależnie od tego, czy istnieje między nimi odcinek.
+ *
+ *     DECYZJA (WYMAGANA, patrz dowód niżej): stos aparatów jednego pola
+ *     (spec §12.1/§12.2, `compose/station.ts` `buildBayStack`) rysuje
+ *     odcinek WYŁĄCZNIE od osi magistrali do GÓRNEGO portu PIERWSZEGO
+ *     elementu stosu (`#descent`) — odstępy `GRID` MIĘDZY kolejnymi
+ *     elementami stosu (rezerwowane w `buildBayStack`, żeby glify się nie
+ *     stykały bbox-ami) NIE mają dziś WŁASNEGO `PreviewSegment` łączącego
+ *     port S elementu `i` z portem N elementu `i+1` — WIZUALNIE ciągłe
+ *     (leady KAŻDEGO glifu sięgają od N do S jego WŁASNEGO bbox-a,
+ *     `symbols/glyphs.tsx`), ale w modelu `scene.segments` to PRZERWA. Bez
+ *     reguły 3 ta wyrocznia fałszywie zgłasza WSZYSTKIE 20 źródeł fixtury
+ *     referencyjnej jako odcięte (dowód empiryczny, runda korekcyjna F9.4:
+ *     424 odcinki sceny L1 rozpadają się na 151 składowych spójności bez
+ *     reguły 3, największa rozmiaru 5 — scena jest rozdrobniona na poziomie
+ *     POJEDYNCZYCH elementów stosu, NIE tylko wokół DER). Reguła 3 NIE
+ *     fabrykuje nowej topologii: `bayRef` współdzielony przez WSZYSTKIE
+ *     elementy stosu JEDNEGO pola jest JUŻ istniejącą tożsamością „ten sam
+ *     fizyczny tor szeregowy" (`stackItemsForBay`/`buildBayStack`,
+ *     `compose/station.ts`) — reguła 3 WYŁĄCZNIE ją CZYTA. Naprawa
+ *     GEOMETRII (dorysowanie brakujących odcinków międzyelementowych stosu,
+ *     żeby ta reguła stała się zbędna) jest POZA ZAKRESEM tej rundy
+ *     (ograniczenie zadania: „Geometria/measure NIETKNIĘTE") — kandydat
+ *     F9.6+, patrz raport.
+ *
+ * Cel osiągalności (DECYZJA, spec §14.1 DOSŁOWNIE: „trasa łącząca je z co
+ * NAJMNIEJ jedną szyną" — nie „szyną stacji-hosta konkretnie"): DOWOLNY
+ * odcinek z `meta.kind==='bus'` osiągalny z portu symbolu źródła. Rozważona
+ * alternatywa „główna składowa spójności sceny" (sugerowana jako opcja w
+ * zadaniu) daje na fixturze referencyjnej IDENTYCZNY wynik PO regule 3
+ * (magistrala+laterale+GPZ stapiają się w jedną dużą składową) — „dowolna
+ * szyna" wybrana jako WIERNIEJSZA literze spec i niezależna od tego, czy
+ * scena akurat ma jedną dominującą składową (mniej krucha na przyszłe
+ * sceny z odłączonymi fragmentami z innych, udokumentowanych powodów).
+ *
+ * Złożoność: O(S²+S·M) (S=liczba odcinków, M=liczba symboli) — akceptowalne
+ * dla wyroczni CI/testowej (setki-tysiące elementów sceny, nie per-frame
+ * render), zmierzone <0.5s dla całej fixtury referencyjnej na WSZYSTKICH
+ * LOD łącznie.
+ */
+export function sourceConnectivityGaps(scene: SceneV3): readonly SourceConnectivityGap[] {
+  const sourceIndices: number[] = [];
+  scene.symbols.forEach((s, i) => {
+    if (s.meta?.elementKind === 'der' || s.meta?.elementKind === 'source') sourceIndices.push(i);
+  });
+  if (sourceIndices.length === 0) return [];
+
+  const segCount = scene.segments.length;
+  const symCount = scene.symbols.length;
+  const dsu = new SceneDisjointSet(segCount + symCount);
+  const segNode = (i: number): number => i;
+  const symNode = (i: number): number => segCount + i;
+
+  for (let i = 0; i < segCount; i++) {
+    for (let j = i + 1; j < segCount; j++) {
+      if (segmentsTouch(scene.segments[i], scene.segments[j])) dsu.union(segNode(i), segNode(j));
+    }
+  }
+  scene.symbols.forEach((sym, mi) => {
+    const ports = symbolPortsInWorld(sym);
+    scene.segments.forEach((seg, si) => {
+      if (ports.some((p) => pointTouchesSegment(p, seg))) dsu.union(symNode(mi), segNode(si));
+    });
+  });
+  const stackGroups = new Map<string, number[]>();
+  scene.symbols.forEach((sym, mi) => {
+    if ((sym.meta?.elementKind === 'apparatus' || sym.meta?.elementKind === 'transformer') && sym.meta?.ownerRef) {
+      const list = stackGroups.get(sym.meta.ownerRef) ?? [];
+      list.push(mi);
+      stackGroups.set(sym.meta.ownerRef, list);
+    }
+  });
+  stackGroups.forEach((indices) => {
+    for (let k = 1; k < indices.length; k++) dsu.union(symNode(indices[0]), symNode(indices[k]));
+  });
+
+  const busRoots = new Set<number>();
+  scene.segments.forEach((seg, si) => {
+    if (seg.meta?.kind === 'bus') busRoots.add(dsu.find(segNode(si)));
+  });
+
+  const gaps: SourceConnectivityGap[] = [];
+  sourceIndices.forEach((mi) => {
+    if (!busRoots.has(dsu.find(symNode(mi)))) {
+      gaps.push({ sourceId: scene.symbols[mi].meta?.ownerRef ?? `#symbol-${mi}` });
+    }
+  });
+  return gaps;
+}
+
+export function allSourcesConnected(scene: SceneV3): boolean {
+  return sourceConnectivityGaps(scene).length === 0;
 }

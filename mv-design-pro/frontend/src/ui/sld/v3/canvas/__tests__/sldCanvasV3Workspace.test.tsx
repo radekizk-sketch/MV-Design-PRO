@@ -92,10 +92,24 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
       expect(elementTypeForKind('station')).toBe('Station');
       expect(elementTypeForKind('transformer')).toBe('TransformerBranch');
       expect(elementTypeForKind('der')).toBe('Generator');
+      expect(elementTypeForKind('source')).toBe('Source');
       expect(elementTypeForKind('bus')).toBe('Bus');
       expect(elementTypeForKind('segment')).toBe('LineBranch');
       expect(elementTypeForKind('apparatus')).toBe('Switch');
       expect(elementTypeForKind(undefined)).toBeUndefined();
+    });
+
+    it('F9.4 (runda korekcyjna, F-3): klik w symbol gridSource (sieć zewnętrzna, GPZ) → SelectedElement.type = "Source", id = source ref — PRZED poprawką brakowało gałęzi "source" w elementTypeForKind (spadało na "DescriptiveElement")', () => {
+      useSnapshotStore.setState({ snapshot: enm });
+      const scene = buildSceneV3(enm, 1);
+      const sourceIndex = scene.symbols.findIndex((s) => s.symbolId === 'gridSource');
+      expect(sourceIndex).toBeGreaterThanOrEqual(0);
+      const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+      const sourceGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[sourceIndex];
+      fireEvent.click(sourceGroup!);
+      const selected = useSelectionStore.getState().selectedElement;
+      expect(selected?.type).toBe('Source');
+      expect(selected?.id).toBe(scene.symbols[sourceIndex].meta?.ownerRef);
     });
   });
 });

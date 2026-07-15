@@ -163,8 +163,14 @@ function elementIdFromTestId(testId: string): string {
  * v3 jest jedną, zamkniętą kategorią 'apparatus' — 'Switch' jest reprezentacją
  * większościową, udokumentowane uproszczenie, NIE regresja: v3 dziś dawał
  * 'DescriptiveElement' dla WSZYSTKICH). DER generic → 'Generator' (patrz
- * nagłówek pliku). `undefined` dla nierozpoznanej kategorii → wołający
- * spada na `DescriptiveElement`.
+ * nagłówek pliku). F9.4 (runda korekcyjna po recenzji Opusa, F-3): `'source'`
+ * (sieć zewnętrzna, glif `gridSource`, `compose/gpz.ts` — ODRĘBNA kategoria
+ * od `'der'` od F9.4, patrz `compose/preview.tsx` `PreviewElementKind`
+ * docstring) → `'Source'` (literał v2 ISTNIEJE, `ui/types.ts`: „A: GPZ /
+ * Źródło SN") — BRAKOWAŁO tej gałęzi (spadała na `default`/`DescriptiveElement`,
+ * klik w symbol sieci zewnętrznej nie selekcjonował poprawnego typu).
+ * `undefined` dla nierozpoznanej kategorii → wołający spada na
+ * `DescriptiveElement`.
  */
 export function elementTypeForKind(kind: PreviewElementKind | undefined): ElementType | undefined {
   switch (kind) {
@@ -174,6 +180,8 @@ export function elementTypeForKind(kind: PreviewElementKind | undefined): Elemen
       return 'TransformerBranch';
     case 'der':
       return 'Generator';
+    case 'source':
+      return 'Source';
     case 'bus':
       return 'Bus';
     case 'segment':

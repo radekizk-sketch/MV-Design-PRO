@@ -29,6 +29,7 @@ import {
   resolveBayApparatusSymbolIds,
   stackFootprint,
 } from '../compose/apparatusSequence';
+import { derLabelText, derSymbolSize, type StationDerSourceInput } from '../compose/sourceKind';
 import type { FieldRole } from '../../v2/domain/apparatusContracts';
 
 const LABEL_LINE_HEIGHT_T1 = labelLineHeight('t1');
@@ -67,6 +68,15 @@ export interface StationMeasureInput
    *  `entryDescentCaptionInset`. Nieobecny/null = zwykła stacja (magistrala,
    *  dalsze stacje lateralu) — zero zmian względem stanu sprzed F6e. */
   readonly entryDescentBayIndex?: number | null;
+  /** F9.4 (spec §13.1 V12K-029, §14.1 strona nN): źródła DER przyłączone do
+   *  TEJ stacji (`connection_variant='nn_side'`, `SldSourceView` adapter,
+   *  filtr po `connectionRef===station.id`, `scene/buildScene.ts`) —
+   *  rysowane jako symbole POŁĄCZONE z szyną nN (lub polem TR, gdy stacja
+   *  nie ma jawnej szyny nN, `compose/station.ts`). Nieobecne/`[]` = stacja
+   *  bez DER (zero zmian geometrii względem stanu przed F9.4). Pole
+   *  celowo NIEOBECNE na L0 (spec §7: DER widoczny od L1) — patrz
+   *  `scene/buildScene.ts` `buildMeasureInput`. */
+  readonly derSources?: readonly StationDerSourceInput[];
 }
 
 /** FIX-2 (recenzja F2): re-eksport formatera mocy TR z `StationOnRunRenderer`
@@ -166,12 +176,85 @@ export function entryDescentCaptionInset(role: FieldRole): number {
  *  nN (pod kolumnami) — spec §3 "szyna SN + kolumny pól + TR + szyna nN". */
 const STATION_BLOCK_BUS_CLEARANCE = 2 * GRID;
 
+/**
+ * F9.4 (spec §14.1 strona nN, §13.1 V12K-029): prześwit między szyną nN (lub
+ * portem TR, gdy stacja nie ma jawnej szyny nN) i rzędem symboli DER, oraz
+ * prześwit między symbolem i jego etykietą (spec §4: „DER: rodzaj+moc POD
+ * symbolem"). MIRROR w `compose/station.ts` (`DER_ROW_TOP_CLEARANCE`
+ * zaimportowany WPROST z tego pliku — jedna prawda measure↔compose, wzór
+ * F5a/F6b-1: `entryDescentCaptionInset`/`PORT_CAPTION_BUS_CLEARANCE`).
+ */
+export const DER_ROW_TOP_CLEARANCE = GRID;
+const DER_LABEL_GAP = GRID;
+const DER_ROW_BOTTOM_BUFFER = GRID;
+
+/**
+ * Szerokość WYMAGANA jednej kolumny DER (spec §5.1 „max(bbox symbolu,
+ * najszerszy slot etykiet WŁASNYCH)") — `max(gabaryt symbolu, szerokość
+ * etykiety rodzaj+moc)`, bo etykieta (`derLabelText`, t2) bywa SZERSZA niż
+ * symbol 32×32 (np. „Farma wiatrowa 2,0 MW" ≈ 150px) — bez tego rezerwacja
+ * pozwalałaby etykiecie wystawać w kolumnę SĄSIADA (kolizja etykieta↔symbol/
+ * przewód, wykryta empirycznie na fixturze referencyjnej).
+ *
+ * EKSPORT: `compose/station.ts` woła TĘ SAMĄ funkcję do rozmieszczenia rzędu
+ * (slot per DER, symbol WYCENTROWANY w slocie) — jedna prawda
+ * rezerwacja↔rysunek (wzór `bayColumnRequiredWidth`).
+ */
+export function derColumnRequiredWidth(source: StationDerSourceInput): number {
+  return Math.max(derSymbolSize(source.kind).width, measureLabelWidth(derLabelText(source), 't2'));
+}
+
+/**
+ * Gabaryt rzędu symboli DER JEDNEJ stacji (spec §13.1/§13.2) — szerokość =
+ * suma `derColumnRequiredWidth` (per DER, z etykietą) + odstępy GRID między
+ * kolumnami; wysokość = najwyższy symbol rzędu (dziś wszystkie DER 32×32,
+ * `symbols/defs.ts` — `max()` jest odporne na przyszłe różnice gabarytów per
+ * rodzaj). `{0,0}` gdy stacja bez DER (zero zmian geometrii względem stanu
+ * przed F9.4).
+ */
+export function derRowFootprint(
+  sources: readonly StationDerSourceInput[],
+): { readonly width: number; readonly height: number } {
+  if (sources.length === 0) return { width: 0, height: 0 };
+  const width = sources.reduce((sum, s) => sum + derColumnRequiredWidth(s), 0) + GRID * Math.max(sources.length - 1, 0);
+  const height = Math.max(...sources.map((s) => derSymbolSize(s.kind).height));
+  return { width, height };
+}
+
+/**
+ * Wysokość DODATKOWA na rząd DER (0, gdy stacja bez DER) — doliczana do
+ * `stationBlockHeight` (spec §5.2 B4): prześwit górny + wysokość symbolu +
+ * prześwit etykiety + wysokość etykiety (t2, „pod symbolem") + bufor dolny.
+ * Etykieta (`placement:'below'`, `layout/labels.ts`) leży POD symbolem —
+ * bez doliczenia jej wysokości tutaj B4 kończyłaby się w połowie etykiety
+ * (nachodzenie na pasmo nazw B5, wykryte empirycznie na fixturze
+ * referencyjnej — patrz raport F9.4).
+ */
+function derRowExtraHeight(sources: readonly StationDerSourceInput[]): number {
+  if (sources.length === 0) return 0;
+  return (
+    DER_ROW_TOP_CLEARANCE + derRowFootprint(sources).height + DER_LABEL_GAP + LABEL_LINE_HEIGHT_T2 + DER_ROW_BOTTOM_BUFFER
+  );
+}
+
 /** Szerokość bloku stacji z liczby pól: suma szerokości kolumn (z rezerwacją
  *  etykiet własnych, FIX-3) + odstępy GRID między kolumnami (spec §5.1,
  *  §5.3 "blok stacji z liczby pól").
  *
+ *  F9.4 KOREKTA NADZORCY (regresja overlap_probe wykryta po rundzie agenta):
+ *  rząd DER NIE wlicza się do TEJ szerokości. `stationBlockWidth` pełni
+ *  podwójną rolę — jest bazą centrowania `tapX` (zaczep magistrali MUSI
+ *  leżeć na szynie SN, czyli nad KOLUMNAMI PÓL) ORAZ lewej krawędzi bloku w
+ *  compose. Doliczenie szerokości rzędu DER (poprzednia wersja:
+ *  `baysWidth + GRID + derWidth`) przesuwało `tapX` poza oś szyny (środek
+ *  fantomowo poszerzonego bloku), co zniekształcało przęsła tap-do-tap i
+ *  kolidowało sloty etykiet segmentów (S01↔S02 na fixturze). EKSTENT
+ *  poziomy bloku Z rzędem DER (rezerwacja kolumny, żeby DER nie nachodził
+ *  na sąsiada) liczy `requiredStationWidth` niżej — DWIE różne szerokości,
+ *  dwa różne cele, jawnie rozdzielone.
+ *
  * EKSPORT (F5, r7b): `columns.ts` (`ColumnResult.tapX` — zaczep magistrali =
- * środek BLOKU, nie środek całej, być może szerszej, kolumny) i
+ * środek BLOKU KOLUMN PÓL, nie środek całej, być może szerszej, kolumny) i
  * `compose/station.ts` (lewa krawędź bloku = `tapX - blockWidth/2`) MUSZĄ
  * używać dokładnie TEJ SAMEJ liczby — jedno źródło prawdy geometrii bloku. */
 export function stationBlockWidth(
@@ -188,11 +271,13 @@ export function stationBlockWidth(
 }
 
 /** Wysokość bloku stacji (B4, spec §5.2): kolumny stoją OBOK siebie, więc
- *  wysokość = najwyższa kolumna + prześwit szyn SN/nN. */
+ *  wysokość = najwyższa kolumna + prześwit szyn SN/nN + F9.4 rząd DER
+ *  (0, gdy stacja bez DER — zero zmian geometrii). */
 export function stationBlockHeight(station: StationMeasureInput): number {
-  if (station.snBays.length === 0) return STATION_BLOCK_BUS_CLEARANCE;
+  const derExtra = derRowExtraHeight(station.derSources ?? []);
+  if (station.snBays.length === 0) return STATION_BLOCK_BUS_CLEARANCE + derExtra;
   const tallest = Math.max(...station.snBays.map((bay) => bayColumnFootprint(bay).height));
-  return tallest + STATION_BLOCK_BUS_CLEARANCE;
+  return tallest + STATION_BLOCK_BUS_CLEARANCE + derExtra;
 }
 
 /**
@@ -219,7 +304,18 @@ export function stationNameBandHeight(station: StationMeasureInput): number {
  * przyciągnięte do siatki W GÓRĘ.
  */
 export function requiredStationWidth(station: StationMeasureInput): number {
-  const blockWidth = stationBlockWidth(station.snBays, station.bayDirectionCaptions, station.entryDescentBayIndex);
+  // F9.4 KOREKTA NADZORCY (patrz `stationBlockWidth`): EKSTENT poziomy bloku
+  // = kolumny pól + rząd DER dopisany PO PRAWEJ (wzór sidecara FIX-3;
+  // `compose/station.ts` rysuje rząd flush-right od `bx` za ostatnią
+  // kolumną) — wchodzi WYŁĄCZNIE do rezerwacji szerokości KOLUMNY stacji
+  // (żeby DER nie nachodził na sąsiada), NIE do bazy centrowania `tapX`.
+  const baysWidth = stationBlockWidth(
+    station.snBays,
+    station.bayDirectionCaptions,
+    station.entryDescentBayIndex,
+  );
+  const derWidth = derRowFootprint(station.derSources ?? []).width;
+  const blockWidth = derWidth > 0 ? baysWidth + GRID + derWidth : baysWidth;
 
   const nameWidths: number[] = [measureLabelWidth(station.name, 't1')];
   if (station.stationCode) nameWidths.push(measureLabelWidth(station.stationCode, 't1'));

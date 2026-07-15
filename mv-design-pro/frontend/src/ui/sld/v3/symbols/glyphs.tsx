@@ -242,6 +242,40 @@ export function DerGeneratorGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/**
+ * F9.4 (spec §13.2, V12K-029): farma wiatrowa — IEC 60617 nie definiuje glifu
+ * turbiny wiatrowej; konwencja rysunkowa (jak `DerPvGlyph`/`DerBessGlyph`:
+ * rozróżnienie IKONĄ, nie tekstem) — maszt + piasta + trzy łopaty rozstawione
+ * 120°, czytelne mono bez podpisu.
+ */
+export function DerWindGlyph(props: GlyphProps): JSX.Element {
+  return derFrame(props, 'derWind', (
+    <g>
+      <line x1={16} y1={26} x2={16} y2={11} stroke={stroke(props)} strokeWidth={1.4} />
+      <circle cx={16} cy={11} r={1.6} fill={stroke(props)} />
+      <line x1={16} y1={11} x2={16} y2={3} stroke={stroke(props)} strokeWidth={1.2} />
+      <line x1={16} y1={11} x2={22.9} y2={14.9} stroke={stroke(props)} strokeWidth={1.2} />
+      <line x1={16} y1={11} x2={9.1} y2={14.9} stroke={stroke(props)} strokeWidth={1.2} />
+    </g>
+  ));
+}
+
+/**
+ * F9.4 (spec §13.1/§13.2): sieć zewnętrzna (`Source` ENM, `kind=
+ * 'external_grid'`) — strzałka zasilania W DÓŁ (konwencja: moc wchodzi Z
+ * ZEWNĄTRZ do szyny), odrębna od wszystkich symboli DER (bez ramki
+ * kwadratowej `derFrame` — ten symbol NIE jest instalacją DER).
+ */
+export function GridSourceGlyph(props: GlyphProps): JSX.Element {
+  return (
+    <g {...glyphGroupProps('gridSource', props)}>
+      <line x1={8} y1={0} x2={8} y2={8} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <path d="M4,8 L12,8 L8,16 Z" fill={stroke(props)} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={8} y1={16} x2={8} y2={24} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+    </g>
+  );
+}
+
 /** F6b: stacja SN/nN, widok zbiorczy (L0) — kontur kwadratu (P5: rysunek
  *  bazowy mono, bez wypełnienia), NIE węzeł kropkowy `junction` (odróżnialny
  *  z konstrukcji: `querySelector('circle')` musi być puste dla tego glifu). */
@@ -270,6 +304,8 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   derPv: DerPvGlyph,
   derBess: DerBessGlyph,
   derGenerator: DerGeneratorGlyph,
+  derWind: DerWindGlyph,
+  gridSource: GridSourceGlyph,
   stationCollapsed: StationCollapsedGlyph,
 };
 

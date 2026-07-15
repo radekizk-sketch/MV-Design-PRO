@@ -28,6 +28,8 @@ export type SymbolId =
   | 'derPv'            // falownik PV
   | 'derBess'          // magazyn energii
   | 'derGenerator'     // generator (G w okręgu)
+  | 'derWind'          // farma wiatrowa (turbina, F9.4 §13.2)
+  | 'gridSource'       // sieć zewnętrzna (Source ENM, F9.4 §13.1/§13.2)
   | 'stationCollapsed'; // stacja SN/nN, widok zbiorczy (L0) — kontur kwadratu
 
 export interface SymbolDef {
@@ -116,6 +118,17 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
   derGenerator: def('derGenerator', 32, 32, [
     { name: 'ac', x: 16, y: 0, dir: 'N' },
   ], 'Generator'),
+  // F9.4 (spec §13.2, V12K-029): farma wiatrowa — sam gabaryt/porty jak
+  // pozostałe DER (32×32, port `ac` na N) — rozróżnienie glifem (`glyphs.tsx`).
+  derWind: def('derWind', 32, 32, [
+    { name: 'ac', x: 16, y: 0, dir: 'N' },
+  ], 'Farma wiatrowa'),
+  // F9.4 (spec §13.1/§13.2): sieć zewnętrzna (Source ENM) — jeden port
+  // `bottom` (S), gabaryt 16×24 jak `disconnector`/`earthSwitch` (aparat
+  // jednokolumnowy, nie DER 32×32 — ten symbol nie jest instalacją DER).
+  gridSource: def('gridSource', 16, 24, [
+    { name: 'bottom', x: 8, y: 24, dir: 'S' },
+  ], 'Sieć zewnętrzna'),
   // F6b (spłata STOP-notatki F6a): dedykowany symbol zbiorczy stacji na L0 —
   // porty N/S/E/W jak `junction` (ten sam kontrakt geometrii routingu), ale
   // rysunek to KONTUR KWADRATU (nie 4-portowy węzeł kropkowy), żeby stacja na
