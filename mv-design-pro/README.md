@@ -8,7 +8,7 @@ Narzedzie do projektowania i analizy sieci sredniego napiecia zgodne z kanoniczn
 
 ## Architektura
 
-**Canonical specification:** see [`SYSTEM_SPEC.md`](./SYSTEM_SPEC.md) (executive overview) and [`docs/spec/`](./docs/spec/) (18 detailed chapters).
+**Canonical specification:** see [`docs/INDEX.md`](./docs/INDEX.md) (hierarchia kanonu V12.xx: `docs/v12xx/` + `docs/system/`) and [`SYSTEM_SPEC.md`](./SYSTEM_SPEC.md) (executive overview). Note: [`docs/spec/`](./docs/spec/) is ARCHIVAL (V11 reference), not source of truth.
 
 System jest zbudowany zgodnie z zasadami kanonicznej architektury referencyjnej:
 - **Jeden jawny model sieci** (NetworkModel)

@@ -62,6 +62,15 @@
 ### Plany
 - [plan/PLAN_E2E_INDUSTRIAL_2026-05.md](./plan/PLAN_E2E_INDUSTRIAL_2026-05.md) — plan E2E klasy przemysłowej
 - [plan/PLAN_SLD_REWORK.md](./plan/PLAN_SLD_REWORK.md) — fazowany plan reworku SLD (F1–F5)
+- [plan/PLAN_PRZEBUDOWY_10X_2026-07.md](./plan/PLAN_PRZEBUDOWY_10X_2026-07.md) — program inżynieryjny 10x (F0–F4)
+
+### Program UI/UX 2026-07 (AKTYWNY)
+- [uiux/PROGRAM_UIUX_2026-07.md](./uiux/PROGRAM_UIUX_2026-07.md) — program przebudowy UI/UX do klasy ETAP/PowerFactory (fazy U0–U5)
+- [uiux/INWENTARZ_FUNKCJI_2026-07.md](./uiux/INWENTARZ_FUNKCJI_2026-07.md) — WIĄŻĄCY inwentarz funkcji obliczeniowych + macierz pokrycia UI
+- [uiux/PROMPT_ZARZADCA_FABLE_UIUX.md](./uiux/PROMPT_ZARZADCA_FABLE_UIUX.md) — prompt zarządcy programu (orkiestracja wykonawców)
+
+> Rozgraniczenie wątków: rework SLD (PLAN_SLD_REWORK) biegnie w osobnej sesji; Program UI/UX
+> nie modyfikuje `ui/sld*`/`engine/sld-layout` — styk wyłącznie przez karty koordynacyjne.
 
 ---
 

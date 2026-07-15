@@ -12,9 +12,12 @@
 ## 1. Project Status Summary
 
 MV-DESIGN-PRO is a functional Medium Voltage network design and analysis system with:
-- 4 solvers (IEC 60909 SC, NR/GS/FD Power Flow)
-- 8+ proof packs (SC3F, VDROP, Equipment, PF, Losses, Protection, Earthing, LF Voltage)
-- 12+ analysis modules (Protection, Voltage, Normative, Coverage, Sensitivity, Comparison, Recommendations)
+- 18 solver modules (IEC 60909 SC + machine SC, NR/GS/FD/unbalanced Power Flow, inverter/ZIP models,
+  IEC 60364 fault loop, IEC 60255 protection, NC RfG/PTPiREE, FRT/HVRT, RMS stability, WLS state
+  estimation — binding inventory: `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md`)
+- 8+ proof packs (SC3F, VDROP, Equipment, PF, Losses, Protection, Earthing, LF Voltage, V12.6 academic)
+- 19 analysis modules (Protection, Voltage, Normative, Coverage, Sensitivity, Comparison,
+  Recommendations, Arc Flash, Grid Strength, Reactive Adequacy, SSCI, Sanity Bounds, Energy Validation, …)
 - Full frontend: SLD editor, Results Browser, Case Manager, Proof Inspector, Protection Diagnostics
 - 1600+ backend tests
 - Project import/export (ZIP, deterministic, versioned)
@@ -77,6 +80,27 @@ MV-DESIGN-PRO is a functional Medium Voltage network design and analysis system 
 ---
 
 ## 3. Active Work
+
+### 3.-1 Program UI/UX klasy przemysłowej 2026-07 (ACTIVE)
+
+Objective: przebudowa całego UI/UX do klasy ETAP/PowerFactory wg
+[`docs/uiux/PROGRAM_UIUX_2026-07.md`](docs/uiux/PROGRAM_UIUX_2026-07.md) (fazy U0–U5),
+zakres funkcjonalny gwarantowany przez
+[`docs/uiux/INWENTARZ_FUNKCJI_2026-07.md`](docs/uiux/INWENTARZ_FUNKCJI_2026-07.md),
+orkiestracja wg [`docs/uiux/PROMPT_ZARZADCA_FABLE_UIUX.md`](docs/uiux/PROMPT_ZARZADCA_FABLE_UIUX.md).
+Gałąź programu: `claude/power-network-design-ui-ir91mv`.
+
+Progress:
+- [x] U0.1 Inwentarz funkcji + macierz pokrycia (2026-07-15; bilans: 8 funkcji bez UI, ~17 częściowych)
+- [x] U0.2 Rejestracja programu (INDEX.md, PLANS.md, CLAUDE.md, naprawa dryfu README)
+- [ ] U0.3 Weryfikacja wpięcia API dla pozycji „do weryfikacji" z macierzy pokrycia
+- [ ] U0.4 Porządkowanie struktury PLANS.md (historia → archiwum)
+- [ ] U0.5 Karta koordynacyjna tokenów motywów z wątkiem SLD
+- [ ] U0.6 Makiety IA (artefakt) — zatwierdzenie właściciela
+- [ ] U1–U5 wg programu
+
+Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
+program UI/UX nie modyfikuje plików SLD (granica w Programie §2.3).
 
 ### 3.0.0 V12.6 academic end-to-end closure (completed)
 

@@ -189,6 +189,10 @@ META_AUDIT_ALLOWLIST = {
     "docs/audit/AUDYT_BRAKI_2026-05.md",
     "docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md",
     "docs/plan/PLAN_SLD_REWORK.md",
+    # 2026-07 programs — discuss the docs/spec/ archival drift (and its fix) as
+    # audit findings; they do not route active canon through docs/spec/.
+    "docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md",
+    "docs/uiux/PROGRAM_UIUX_2026-07.md",
     "docs/sld/SLD_INDUSTRIAL_SPEC_v1.md",
     # V12.xx canon registry already records conflict V12K-002 about docs/spec/
     # so its mention there is the canonical authoritative reference, not routing.

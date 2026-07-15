@@ -249,6 +249,8 @@ Authority order (highest first). Updated 2026-05-13 per conflict resolution V12K
 
 In case of conflict: higher priority wins. Conflicts must be recorded in `docs/v12xx/REJESTR_KONFLIKTOW.md`. The latest canon documents (DOC_INVENTORY_2026-05, AUDYT_BRAKI_2026-05, PLAN_E2E_INDUSTRIAL_2026-05, SLD_INDUSTRIAL_SPEC_v1) live under `mv-design-pro/docs/audit/` and `mv-design-pro/docs/plan/` and `mv-design-pro/docs/sld/`.
 
+Active operational programs (2026-07, subordinate to the canon above): `mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md` (UI/UX rebuild, with the BINDING functional inventory `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md`), `mv-design-pro/docs/plan/PLAN_SLD_REWORK.md` (SLD — separate thread), `mv-design-pro/docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` (engineering 10x). See "Active programs" in Project Status below.
+
 ## Architecture Layer Boundaries (CRITICAL)
 
 ```
@@ -640,24 +642,35 @@ The Proof Engine generates mathematical proofs from solver results:
 - PDF (`proof.pdf`)
 - DOCX
 
-## Project Status (as of 2026-05)
+## Project Status (as of 2026-07)
+
+**Binding functional inventory:** `mv-design-pro/docs/uiux/INWENTARZ_FUNKCJI_2026-07.md` —
+single source of truth for the solver/analysis/API/UI surface. Where this file's structure
+snapshot (above) and the inventory differ, the inventory wins.
 
 The system is fully functional with:
-- 4 solvers (IEC 60909 SC, NR/GS/FD Power Flow)
-- 8+ proof packs (SC3F, VDROP, Equipment, PF, Losses, Protection, Earthing, LF Voltage)
-- 12+ analysis modules (Protection, Voltage, Normative, Coverage, Sensitivity, Comparison, Recommendations)
-- Full frontend: SLD editor (industrial ETAP/ABB/DIgSILENT grade), Results Browser, Case Manager, Proof Inspector, Protection Diagnostics
-- 1600+ backend tests
-- Project import/export (ZIP, deterministic, versioned)
-- CAD geometry editing in SLD
-- PDF/DOCX report generation
-- ENM v1.0 (EnergyNetworkModel)
-- Active work: K30 SLD industrial-quality session (see `PLANS.md` § 3 and `mv-design-pro/docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md`). Current branch: `codex/k30-der-persistence`.
-  - SLD detail drawer (K30-71..98): right-side click-driven panel, real bay/apparatus/DER wiring, tab navigation, ARIA, breadcrumbs
-  - OSD acceptance items (K30-99..101): title block signature + SEP qualifications, revision table, SldPowerBalancePanel (bilans mocy do wniosku przyłączeniowego)
-  - Schematic quality fixes (K30-102..107): open-point marker, transformer earthing ⏚, vector group + tap-changer, power-flow arrows, cable head ▲, mufa kablowa
-  - RMU symbol audit (K30-108..127): IEC 60617-7-13 compliant DS/CB/ES, CT/SA/VT, earthing scheme badge (TN/IT/TT), LOD apparatus stack, label truncation, cellular visual
-  - K30 handoff snapshot: `mv-design-pro/docs/audit/K30_SESSION_HANDOFF_2026-05-16.md`
+- 18 solver modules (IEC 60909 SC + machine SC, NR/GS/FD/unbalanced Power Flow, inverter/ZIP
+  models, IEC 60364 fault loop, IEC 60255 protection, NC RfG/PTPiREE, FRT/HVRT, RMS stability,
+  WLS state estimation, phase state SN, grid source preview, V12.6 academic)
+- 8+ proof packs (SC3F, VDROP, Equipment, PF, Losses, Protection, Earthing, LF Voltage, V12.6 academic)
+- 19 analysis modules (incl. Arc Flash, Grid Strength, Reactive Adequacy, SSCI, Sanity Bounds,
+  Energy Validation — see inventory)
+- Full frontend (63 UI modules): SLD editor, Results, Study Cases, Proof Inspector, Protection, NC RfG tests
+- ~5,400 backend test functions; ~7,350 frontend tests (537 files); 79 guard scripts
+- Project import/export (ZIP, deterministic, versioned), CAD geometry editing in SLD,
+  PDF/DOCX report generation, ENM v1.0 (EnergyNetworkModel)
+
+### Active programs (2026-07) — three parallel threads, hard boundaries
+1. **Program UI/UX klasy przemysłowej** (`mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md`,
+   phases U0–U5; orchestration: `docs/uiux/PROMPT_ZARZADCA_FABLE_UIUX.md`).
+   Branch: `claude/power-network-design-ui-ir91mv`. Does NOT touch SLD internals.
+2. **SLD rework F1–F5** (`mv-design-pro/docs/plan/PLAN_SLD_REWORK.md`) — SEPARATE session/thread.
+   Owns `frontend/src/ui/sld/**`, `sld-editor/**`, `engine/sld-layout/**`.
+3. **Engineering 10x program F0–F4** (`mv-design-pro/docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md`) —
+   CI gates, auth/perimeter, concurrency, god-file containment.
+
+Cross-thread file collisions are forbidden; coordination only via cards recorded in the programs.
+Historical K30 handoff: `mv-design-pro/docs/audit/K30_SESSION_HANDOFF_2026-05-16.md`.
 
 ## Common Tasks
 
