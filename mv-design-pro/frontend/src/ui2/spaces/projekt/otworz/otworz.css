@@ -1,0 +1,57 @@
+/*
+ * Style ekranu „Nowy / otwórz projekt" (W-102). Uzupełnienie `../pulpit.css`
+ * (klasy `mvd-pulpit-*`, `mvd-kafel`, `mvd-cases-*` — reużyte przez import).
+ * Kolory WYŁĄCZNIE przez tokeny --mvd-* (theme/tokens.css) — zero literałów hex.
+ */
+
+.mvd-otworz {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  color: var(--mvd-ink);
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 4px;
+}
+
+.mvd-otworz :focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+/* ---- sekcja „Cel projektu" ---- */
+.mvd-otworz-cel-konsekwencja {
+  margin: -4px 0 8px;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-otworz-cel-grid,
+.mvd-otworz-przyklady-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.mvd-otworz-cel-opis,
+.mvd-otworz-przyklad-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- sekcja „Istniejące projekty" ---- */
+.mvd-otworz-projekty-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.mvd-otworz-projekty-head .mvd-pulpit-cases-title {
+  margin: 0;
+}
+.mvd-otworz-projekty-head .mvd-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
