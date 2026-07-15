@@ -58,10 +58,10 @@ export const REJESTR_LEGACY: Readonly<Record<SpaceId, WpisRejestruLegacy>> = {
   },
   gotowosc: {
     przestrzen: 'gotowosc',
-    zrodlo: 'legacy',
+    zrodlo: 'nowa-powloka',
     obszaryLegacy: ['gotowość rozproszona w MODEL_SIECI (panel kontroli technicznej)'],
-    montaz: 'EngineeringReadinessPanel zasilany z useSnapshotStore.readiness (adapter)',
-    wygaszenie: 'U2: przestrzeń Gotowość z pełną macierzą gotowości i akcjami naprawczymi',
+    montaz: 'PanelGotowosci (E6.1): braki wg celów, postęp per cel, akcje naprawcze',
+    wygaszenie: 'zrealizowane w U2 (most EngineeringReadinessPanel usunięty)',
   },
   obliczenia: {
     przestrzen: 'obliczenia',

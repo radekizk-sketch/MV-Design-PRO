@@ -54,9 +54,11 @@ export interface LegacyWarsztatProps {
   space: SpaceId;
   /** Zawartość przestrzeni „Projekt" (nowa powłoka). */
   pulpit: ReactNode;
+  /** Zawartość przestrzeni „Gotowość" (nowa powłoka — E6.1, wygaszenie mostu w U2). */
+  gotowosc: ReactNode;
 }
 
-function TrasaLubPrzestrzen({ route, space, pulpit }: LegacyWarsztatProps) {
+function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc }: LegacyWarsztatProps) {
   // Trasy dedykowane starego wejścia (przeniesiony przełącznik App.tsx).
   if (route === '#enm-inspector' && featureFlags.ENM_INSPECTOR_VISIBLE) {
     return <EnmInspectorPage />;
@@ -101,9 +103,12 @@ function TrasaLubPrzestrzen({ route, space, pulpit }: LegacyWarsztatProps) {
     return <UnknownRoutePage route={route} />;
   }
 
-  // Zawartość przestrzeni (nowa: projekt; most legacy: pozostałe).
+  // Zawartość przestrzeni (nowa: projekt, gotowość; most legacy: pozostałe).
   if (space === 'projekt') {
     return <div data-testid="workspace-surface-main">{pulpit}</div>;
+  }
+  if (space === 'gotowosc') {
+    return <div data-testid="workspace-surface-main">{gotowosc}</div>;
   }
   return <LegacySurface space={space} />;
 }

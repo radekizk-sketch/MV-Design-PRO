@@ -20,17 +20,12 @@ import { SldWorkspaceContainer } from '../../ui/sld/v2/canvas/SldWorkspaceContai
 import { WorkspaceSurfaceRouter } from '../../ui/workspace';
 import { CaseConfigPage } from '../../ui/study-cases/CaseConfigPage';
 import { RunHistoryPanel } from '../../ui/study-cases/RunHistoryPanel';
-import { EngineeringReadinessPanel } from '../../ui/engineering-readiness';
-import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { useAppStateStore } from '../../ui/app-state';
-import type { ReadinessIssue, ReadinessSeverity, FixAction } from '../../ui/types';
 import { useShellStore } from '../shell/useShellStore';
-import { emituj } from '../events';
 import type { SpaceId } from '../shell/spaces';
 import { REJESTR_LEGACY } from './legacyRegistry';
 
 /** Źródło selekcji emitowanej z mostu gotowości (magistrala E15.1). */
-const ZRODLO_GOTOWOSC = 'gotowosc-legacy';
 
 /** Opakowanie montażu legacy — nośnik testid kontraktu e2e w środkowym panelu. */
 function OprawaWarsztatu({ children }: { children: ReactNode }) {
@@ -47,80 +42,6 @@ function OprawaWarsztatu({ children }: { children: ReactNode }) {
  * może nadpisywać deep-linków (#analysis/#variants/...). */
 function LegacySld() {
   return <SldWorkspaceContainer />;
-}
-
-type ElementGotowosci = {
-  code: string;
-  message_pl: string;
-  element_ref: string | null;
-  severity: string;
-};
-
-function naProblemGotowosci(wpis: ElementGotowosci, severity: ReadinessSeverity): ReadinessIssue {
-  return {
-    code: wpis.code,
-    severity,
-    element_ref: wpis.element_ref,
-    element_refs: wpis.element_ref ? [wpis.element_ref] : [],
-    message_pl: wpis.message_pl,
-    wizard_step_hint: null,
-    suggested_fix: null,
-    fix_action: null,
-  };
-}
-
-/**
- * Gotowość: panel gotowości inżynierskiej zasilany z tej samej gotowości,
- * którą raportuje backend przy operacjach domenowych (useSnapshotStore.readiness).
- * Adapter minimalny (karta §3a: gotowość rozproszona w starym UI).
- */
-function LegacyGotowosc() {
-  const readiness = useSnapshotStore((s) => s.readiness);
-  const setActiveSpace = useShellStore((s) => s.setActiveSpace);
-
-  if (!readiness) {
-    return (
-      <p className="mvd-inspector-empty">
-        Brak danych gotowości. Wybierz projekt i zakres obliczeń, a kontrola techniczna układu
-        pojawi się tutaj po pierwszej operacji na modelu.
-      </p>
-    );
-  }
-
-  const problemy: ReadinessIssue[] = [
-    ...(readiness.blockers ?? []).map((wpis) => naProblemGotowosci(wpis, 'BLOCKER')),
-    ...(readiness.warnings ?? []).map((wpis) => naProblemGotowosci(wpis, 'IMPORTANT')),
-  ];
-  const bySeverity: Record<ReadinessSeverity, number> = {
-    BLOCKER: readiness.blockers?.length ?? 0,
-    IMPORTANT: readiness.warnings?.length ?? 0,
-    INFO: 0,
-  };
-  const status = bySeverity.BLOCKER > 0 ? 'FAIL' : bySeverity.IMPORTANT > 0 ? 'WARN' : 'OK';
-
-  const nawigujDoElementu = (elementRef: string) => {
-    emituj({ typ: 'selekcja', obiektId: elementRef, zrodlo: ZRODLO_GOTOWOSC });
-  };
-
-  // Akcje naprawcze wykonuje się na kanwie schematu (formularze operacji
-  // domenowych żyją w SldWorkspaceContainer) — most przenosi tam użytkownika.
-  const wykonajNaprawe = (fixAction: FixAction) => {
-    if (fixAction.element_ref) {
-      emituj({ typ: 'selekcja', obiektId: fixAction.element_ref, zrodlo: ZRODLO_GOTOWOSC });
-    }
-    setActiveSpace('schemat');
-  };
-
-  return (
-    <EngineeringReadinessPanel
-      issues={problemy}
-      status={status}
-      ready={readiness.ready}
-      bySeverity={bySeverity}
-      onNavigate={nawigujDoElementu}
-      onFix={wykonajNaprawe}
-    />
-  );
 }
 
 /** Obliczenia: konfiguracja zakresu obliczeń + historia przebiegów (study-cases). */
@@ -174,12 +95,6 @@ export function LegacySurface({ space }: LegacySurfaceProps) {
       return (
         <OprawaWarsztatu>
           <LegacySld />
-        </OprawaWarsztatu>
-      );
-    case 'gotowosc':
-      return (
-        <OprawaWarsztatu>
-          <LegacyGotowosc />
         </OprawaWarsztatu>
       );
     case 'obliczenia':

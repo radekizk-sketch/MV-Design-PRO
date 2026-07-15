@@ -26,6 +26,7 @@ import { useObiektInspektora, useRewizjaModelu } from './adapters/inspectorAdapt
 import { emituj, subskrybuj, startEventBusAdapters } from './events';
 import { CommandPalette, zbudujIndeksWyszukiwania, type PozycjaWyszukiwania } from './search';
 import { PulpitProjektu } from './spaces/projekt';
+import { PanelGotowosci } from './spaces/gotowosc';
 import { LegacyWarsztat } from './legacy/LegacyWarsztat';
 import { LegacyInspektor } from './legacy/LegacyInspektor';
 import { LegacyChrome } from './legacy/LegacyChrome';
@@ -218,6 +219,22 @@ export function AppRoot() {
         <LegacyWarsztat
           route={route}
           space={activeSpace}
+          gotowosc={
+            <PanelGotowosci
+              trybZaawansowania={advancementMode}
+              onSelekcja={(elementRef) =>
+                emituj({ typ: 'selekcja', obiektId: elementRef, zrodlo: 'panel-gotowosci' })
+              }
+              onAkcjaNaprawcza={(problem) => {
+                // Formularze operacji domenowych żyją na kanwie schematu —
+                // selekcja elementu + przejście do przestrzeni „Schemat" (jak most E1.7c).
+                if (problem.elementRef) {
+                  emituj({ typ: 'selekcja', obiektId: problem.elementRef, zrodlo: 'panel-gotowosci' });
+                }
+                wybierzPrzestrzen('schemat');
+              }}
+            />
+          }
           pulpit={
             <PulpitProjektu
               onNawiguj={wybierzPrzestrzen}
