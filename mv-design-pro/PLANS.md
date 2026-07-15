@@ -172,7 +172,12 @@ Progress:
             wykonawca E15.2 (czerwony test fixture pulpitu: brak kolekcji corridors/measurements/
             protection_assignments). Naprawione: fixture uzupełniony (270→287 testów ui2 zielone
             z pipefail); procedura zarządcy od teraz z `set -o pipefail`
-      - [ ] E2.2 nowy/otwórz projekt (Sonnet — w produkcji), E1.7 przełączenie powłoki — finał U1
+      - [x] E2.2 Nowy/otwórz projekt W-102 (Sonnet; 30 testów; pełny bieg u wykonawcy zielony
+            poza znanym błędem fixture naprawionym w `ed09d54`; zintegrowane `056b157`;
+            TODO-KARTA: brak store'a projektów — lista przez props, hook przy wpięciu)
+      - [ ] E1.7 Przełączenie powłoki — FINAŁ U1 (karta `U1_E1_7_PRZELACZENIE_POWLOKI.md`
+            z decyzją architektoniczną LegacySurface: powłoka ginie teraz, powierzchnie
+            dziedzinowe wygaszane per okno w U2–U4; realizacja: zarządca, następna sesja)
       - [x] V12K-026 RESOLVED: słownik nowej IA („przypadek obliczeniowy", „kreator");
             guard terminologii zielony w całym repo (naprawione 2 zastane naruszenia)
 - [ ] U2–U5 wg programu
