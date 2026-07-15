@@ -11,9 +11,10 @@
  *     WYŁĄCZNIE gdy pole nie niesie `Bay.primary_devices`. Kolejność OD SZYNY
  *     W DÓŁ (§12.2/V12K-027): pole liniowe `DS→CB→CT→DS→ES→głowica`; pole TR
  *     `DS→bezpiecznik→TR2W`; pole pomiarowe `DS→VT→ES`; pole sprzęgła
- *     `DS→CB→CT`. Zero SA (surge_arrester) w konwencji — V12K-028: ENM nie ma
- *     dziś `SURGE_ARRESTER` w `BayPrimaryDeviceKind`, SA nigdy nie jest
- *     rysowany „z domysłu" (§12.5).
+ *     `DS→CB→CT`. Zero SA (surgeArrester) w konwencji — V12K-028: mimo że od
+ *     F9.6 ENM zna `SURGE_ARRESTER` w `BayPrimaryDeviceKind`, SA WCIĄŻ nigdy
+ *     nie jest rysowany „z domysłu" (§12.5) — jedyna ścieżka do glifu
+ *     `surgeArrester` to `symbolIdForPrimaryDeviceKind` niżej (dane).
  *  2. `symbolIdForPrimaryDeviceKind` + `resolveBayApparatusSymbolIds` — ścieżka
  *     DANYCH (§12.1): gdy `bay.primaryDevices` niepuste (i mapowalne na co
  *     najmniej jeden symbol pola), stos budowany Z DANYCH, uporządkowanych
@@ -112,6 +113,10 @@ export function symbolIdForPrimaryDeviceKind(kind: BayPrimaryDeviceKind): Symbol
       return 'transformer2W';
     case 'FUSE':
       return 'fuseSwitch';
+    case 'SURGE_ARRESTER':
+      // F9.6 (§12.5, V12K-028): SA WYŁĄCZNIE ze ścieżki danych — mapowanie
+      // istnieje tylko tutaj, NIGDY w `apparatusSymbolsForRole` (konwencja).
+      return 'surgeArrester';
     case 'GENERATOR_PV':
     case 'GENERATOR_BESS':
     case 'GENERATOR_FW':

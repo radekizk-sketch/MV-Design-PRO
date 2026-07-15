@@ -476,7 +476,9 @@ const SEGMENT_RESULT_METRIC_CODES_SC = [
 const SEGMENT_RESULT_METRIC_CODES_LF = [
   'I_A',
   'P_MW',
-  'Q_MVAR',
+  // F9.6 (d): 'Q_Mvar' (mieszana wielkosc liter) — backend
+  // (`result_builder_v1.py` `_METRIC_MAP`) nigdy nie emituje 'Q_MVAR'.
+  'Q_Mvar',
   'U_kV',
   'U_pu',
   'P_kW',
@@ -544,7 +546,7 @@ function formatSegmentEndpointResult(
     .replace('IP_A', 'ip')
     .replace('I_A', 'I')
     .replace('P_MW', 'P')
-    .replace('Q_MVAR', 'Q')
+    .replace('Q_Mvar', 'Q')
     .replace('U_kV', 'U')
     .replace('U_pu', 'U')
     .replace('P_kW', 'P')

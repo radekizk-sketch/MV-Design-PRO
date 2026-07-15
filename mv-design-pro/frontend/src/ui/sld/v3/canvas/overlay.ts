@@ -37,29 +37,40 @@
  * sp.segmentRef]`) już używa jako klucza). Zero nowego mapowania refów
  * potrzebne — `buildFlowOverlayFromScene` niżej czyta wprost po `ownerRef`.
  *
- * ZNANY, UDOKUMENTOWANY DŁUG (NIE naprawiony w tej dostawie, poza
- * autoryzacją plików F9.5 — patrz raport końcowy agenta):
+ * DŁUG SPŁACONY W F9.6 (c) (historia — luka istniała w chwili dostawy F9.5,
+ * patrz `docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md` F9.6):
  * `enm/canonical_analysis.py::build_execution_result_set` dla
- * `run.analysis_type == "PF"` buduje `element_results` WYŁĄCZNIE z
- * `build_bus_results(run)` (węzły: U_kV/kąt) — NIGDY nie woła
- * `build_branch_results(run)` (istniejącej, poprawnej funkcji zwracającej
- * `p_mw`/`q_mvar`/`i_a` per gałąź, użytej gdzie indziej przez
- * `/analysis-runs/{run_id}/results/branches`). Skutek: `RawOverlayPayload.
- * elements` dla przebiegu LOAD_FLOW serwowanego przez
- * `/api/execution/runs/{run_id}/results/v1` NIE ZAWIERA DZIŚ żadnych
- * elementów klasy gałęzi — `buildFlowOverlayFromScene` PRAWIDŁOWO zwróci
- * PUSTĄ nakładkę na KAŻDYM realnym przebiegu produkcyjnym, dopóki ta luka
- * backendu (JEDNA linia w `build_execution_result_set`, poza warstwą
- * frontend — DOMAIN/backend, nieautoryzowana w tej dostawie) nie zostanie
- * zamknięta. To NIE jest fabrykacja kanału (wymóg zadania: „NIE fabrykuj
- * kanału, udokumentuj rzetelnie") — okablowanie jest prawdziwe i zadziała
- * NATYCHMIAST, bez dalszych zmian frontendu, gdy backend zacznie emitować
- * elementy gałęziowe. Dodatkowo znaleziono: v2 `ResultOverlayLayer.tsx`
- * czyta kod metryki `'Q_MVAR'` (wielkie litery), podczas gdy backend
+ * `run.analysis_type == "PF"` wołała WYŁĄCZNIE `build_bus_results(run)`
+ * (węzły: U_kV/kąt) — NIGDY `build_branch_results(run)` (istniejącej,
+ * poprawnej funkcji zwracającej `p_mw`/`q_mvar`/`i_a` per gałąź, użytej
+ * gdzie indziej przez `/analysis-runs/{run_id}/results/branches`), więc
+ * `RawOverlayPayload.elements` dla LOAD_FLOW nie niosło elementów gałęzi.
+ * F9.6 (c) dołożyła pętlę po `build_branch_results(run)` w tej samej gałęzi
+ * PF (aliasując `p_mw`/`q_mvar` na klucze `p_from_mw`/`q_from_mvar`
+ * rozpoznawane przez `_METRIC_MAP`, zero zmiany `build_branch_results` ani
+ * `PowerFlowResult` — Frozen Result API nietknięte) — `buildFlowOverlayFromScene`
+ * niżej dostaje dziś realne dane na KAŻDYM przebiegu LOAD_FLOW (test kontraktu:
+ * `backend/tests/test_canonical_analysis_api.py
+ * ::test_resultset_v1_includes_branch_elements_for_load_flow`). Dodatkowo
+ * naprawiono (d): v2 `ResultOverlayLayer.tsx`/`SldCanvasV2.tsx` czytały kod
+ * metryki `'Q_MVAR'` (wielkie litery), podczas gdy backend
  * (`result_builder_v1.py` `_METRIC_MAP`) emituje kod `'Q_Mvar'` (mieszana
- * wielkość liter) — rozjazd kluczy, Q nigdy się nie rozwiąże nawet w v2;
+ * wielkość liter) — rozjazd kluczy, Q nigdy się nie rozwiązywał nawet w v2;
  * `buildFlowOverlayFromScene` niżej używa POPRAWNEGO kodu `'Q_Mvar'`
- * (zweryfikowanego wprost w źródle backendu), nie kopiuje błędu v2.
+ * (zweryfikowanego wprost w źródle backendu) od zawsze, nie kopiował błędu v2.
+ * ZNALEZISKO POZA ZAKRESEM F9.6 (nienaprawione, do decyzji architekta —
+ * patrz raport agenta F9.6): weryfikacja (f) na realnej sieci referencyjnej
+ * ujawniła, że znak `p_from_mw` zwracany przez `canonical_analysis.py`'s
+ * PF pipeline dla prostej sieci zasilanie→odbiór wychodzi PRZECIWNY do
+ * znaku uzyskanego z tych samych R/X/P/Q wprost przez `PowerFlowInput`/
+ * `PQSpec` (niskopoziomowy solver) — podejrzenie o rozjazd konwencji znaku
+ * między `enm/mapping.py::map_enm_to_network_graph` (`Node.active_power`,
+ * konwencja generacyjna) a `PQSpec.p_mw` oczekiwanym przez
+ * `power_flow_newton_internal.py::build_power_spec_v2` (konwencja
+ * obciążeniowa). Frontend (ten plik) czyta znak WPROST z wyniku solvera
+ * (spec §14.2 — zero własnej heurystyki), więc jeśli powyższe podejrzenie
+ * się potwierdzi, strzałka odziedziczy błędny kierunek aż do naprawy w
+ * warstwie solver/domain (poza autoryzacją F9.6).
  *
  * PODZIAŁ RÓL (F9.5, po rozszerzeniu autoryzacji przez nadzorcę o
  * `SldCanvasV3.tsx`): ten plik dostarcza kontrakt + budowniczy CZYSTY

@@ -280,4 +280,47 @@ describe('ResultOverlayLayer — K30-6 result overlay', () => {
     expect(container.querySelector('[data-testid="sld-v2-branch-overlay-seg-A"]')).toBeTruthy();
     expect(container.innerHTML).toContain('12,50');
   });
+
+  it('F9.6 (d): LOAD_FLOW branch overlay czyta Q_Mvar (nie Q_MVAR) — Q renderuje się z payloadu backendu', () => {
+    // Backend (`result_builder_v1.py` `_METRIC_MAP`) emituje WYŁĄCZNIE kod
+    // 'Q_Mvar' (mieszana wielkość liter) — payload odzwierciedla dokładnie
+    // to, co produkuje backend. PRZED poprawką (d) komponent czytał
+    // 'Q_MVAR' (wielkie litery) i ten test failowałby (Q= nigdy nie
+    // renderuje się, mimo obecnej wartości w payloadzie).
+    const payload: RawOverlayPayload = {
+      run_id: 'run-lf-branch',
+      analysis_type: 'LOAD_FLOW',
+      elements: {
+        'seg-B': {
+          ref_id: 'seg-B',
+          kind: 'branch',
+          badges: [],
+          severity: 'INFO',
+          metrics: {
+            P_MW: { code: 'P_MW', value: 1.2, unit: 'MW', format_hint: 'fixed4' },
+            Q_Mvar: { code: 'Q_Mvar', value: 0.35, unit: 'Mvar', format_hint: 'fixed4' },
+            I_A: { code: 'I_A', value: 48.1, unit: 'A', format_hint: 'fixed1' },
+          },
+        },
+      },
+    };
+    useRawResultOverlayStore.getState().setPayload(payload);
+    const { container } = render(
+      <svg>
+        <ResultOverlayLayer
+          stations={[]}
+          cableRuns={[{
+            id: 'run-2',
+            segmentRefs: ['seg-B'],
+            segmentPaths: [{
+              segmentRef: 'seg-B',
+              pathPoints: [{ x: 100, y: 200 }, { x: 600, y: 200 }],
+            }],
+          }]}
+        />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-branch-overlay-seg-B"]')).toBeTruthy();
+    expect(container.innerHTML).toContain('Q=+0.35 Mvar');
+  });
 });

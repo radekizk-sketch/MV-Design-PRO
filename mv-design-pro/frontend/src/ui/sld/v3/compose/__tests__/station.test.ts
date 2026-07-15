@@ -497,6 +497,23 @@ describe('V3 compose/station — F9.3 §12.1: gałąź „dane" (fixtura syntety
     expect(composition.symbols.map((s) => s.symbolId)).toEqual(['disconnector']);
     expect(composition.symbols[0].apparatusSource).toBe('dane');
   });
+
+  it('F9.6 (§12.5, V12K-028): SURGE_ARRESTER w primary_devices renderuje symbol surgeArrester ze źródła "dane"', () => {
+    const chainWithSa: readonly BayPrimaryDeviceView[] = [
+      ...FULL_LINE_CHAIN_PRIMARY_DEVICES.slice(0, -1),
+      { deviceRef: 'sa-1', kind: 'SURGE_ARRESTER', placement: 'DOWNSTREAM' },
+      FULL_LINE_CHAIN_PRIMARY_DEVICES[FULL_LINE_CHAIN_PRIMARY_DEVICES.length - 1],
+    ];
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, { primaryDevices: chainWithSa });
+    const station = makeStation('data-path-sa', [bay]);
+    const composition = composeStation(buildComposeInput(station));
+
+    expect(composition.symbols.map((s) => s.symbolId)).toEqual([
+      'disconnector', 'breaker', 'currentTransformer', 'disconnector', 'earthSwitch', 'surgeArrester', 'cableHead',
+    ]);
+    expect(composition.symbols.every((s) => s.apparatusSource === 'dane')).toBe(true);
+    expect(composition.symbols.map((s) => s.deviceRef)).toContain('sa-1');
+  });
 });
 
 describe('V3 compose/station — F9.3 §12.4: gałąź „konwencja" — znacznik na KAŻDYM polu bez primary_devices', () => {

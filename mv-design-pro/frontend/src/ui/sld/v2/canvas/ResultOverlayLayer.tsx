@@ -351,9 +351,14 @@ export function ResultOverlayLayer(props: ResultOverlayLayerProps): JSX.Element 
         run.segmentPaths?.map((sp) => {
           const el = payload.elements[sp.segmentRef];
           if (!el) return null;
-          // LOAD_FLOW: P_MW + Q_MVAR + I_A; SC_3F: IK_3F_A
+          // LOAD_FLOW: P_MW + Q_Mvar + I_A; SC_3F: IK_3F_A
+          // F9.6 (d): kod metryki mocy biernej to 'Q_Mvar' (mieszana wielkosc
+          // liter), NIE 'Q_MVAR' — backend (`result_builder_v1.py`
+          // `_METRIC_MAP`) emituje wylacznie 'Q_Mvar'; poprzedni rozjazd
+          // wielkosci liter powodowal, ze Q nigdy sie nie rozwiazywalo (cichy
+          // martwy odczyt, patrz test regresyjny).
           const pMw = !isSc3F ? getMetric(payload, sp.segmentRef, 'P_MW') : null;
-          const qMvar = !isSc3F ? getMetric(payload, sp.segmentRef, 'Q_MVAR') : null;
+          const qMvar = !isSc3F ? getMetric(payload, sp.segmentRef, 'Q_Mvar') : null;
           const iA = !isSc3F ? getMetric(payload, sp.segmentRef, 'I_A') : null;
           const ik3fBranch = isSc3F ? getMetric(payload, sp.segmentRef, 'IK_3F_A') : null;
           const ik3fBranchSystem = isSc3F ? getFirstMetric(payload, sp.segmentRef, SC_SYSTEM_CONTRIBUTION_CODES) : null;

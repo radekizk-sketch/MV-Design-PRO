@@ -786,6 +786,9 @@ class BayPrimaryDevice(BaseModel):
         "GENERATOR_FW",
         "PCS",
         "BATTERY",
+        # F9.6 (SLD_CAD_SPEC_V3 §12.5, V12K-028): ogranicznik przepięć — rysowany
+        # WYŁĄCZNIE gdy pochodzi z danych (zero konwencji/zgadywania, §12.4).
+        "SURGE_ARRESTER",
     ]
     placement: Literal["UPSTREAM", "MIDSTREAM", "DOWNSTREAM", "OFF_PATH", "GROUND_BRANCH"]
     section_side: Literal["LEFT", "CENTER", "RIGHT"] | None = None

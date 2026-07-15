@@ -784,7 +784,7 @@ współdzielony (spec §8) — ale konsumpcja w compose (F9.3) czeka na F8b.
   negatyw + F-1 + V-1/V-2 na L0/L1/L2); vitest sld 169 plików / 3238; pełna regresja 543 pliki /
   7646 pass; guardy zielone.
 
-### F9.6. [WYMAGA ZMIAN POZA FRONTEND — DOMAIN] Kind SA + stan operacyjny źródła
+### F9.6. [DONE częściowo — (b) ZABLOKOWANE decyzją architekta, patrz niżej] Kind SA + stan operacyjny źródła
 - Zakres: (a) dodać `SURGE_ARRESTER` do `BayPrimaryDeviceKind` (`backend/src/enm/models.py`, warstwa DOMAIN —
   mutacja modelu tylko w domenie, CLAUDE.md) + lustro `frontend/src/types/enm.ts` — rozstrzyga K-B;
   (b) pole stanu operacyjnego źródła (standby/maintenance) lub biało-skrzynkowa reguła wywodzenia (§13.3),
@@ -813,6 +813,68 @@ współdzielony (spec §8) — ale konsumpcja w compose (F9.3) czeka na F8b.
 - Autoryzacje: `backend/src/enm/models.py`, `backend/src/enm/mapping.py` (jeśli dotyczy),
   `backend/src/enm/canonical_analysis.py` (gałąź PF), `frontend/src/types/enm.ts`,
   `v2/domain/apparatusContracts.ts` (mapowanie), `v2 ResultOverlayLayer.tsx` (casing Q_Mvar), testy domeny.
+- **Wynik realizacji (2026-07-15, recenzja Opusa APPROVE):**
+  - (a) [DONE] `SURGE_ARRESTER` w `BayPrimaryDevice.kind` (models.py:791) + lustro `types/enm.ts` +
+    `apparatusContracts.ts` + `apparatusSequence.ts::symbolIdForPrimaryDeviceKind→'surgeArrester'`
+    (glif istniał) + etykieta PL w `BayWindowSchematic.tsx`; V12K-028 dotrzymane — SA WYŁĄCZNIE ze
+    ścieżki danych §12.1, negatywny test konwencji niezmieniony i zielony.
+  - (b) [ZABLOKOWANE — decyzja architekta] stan operacyjny źródła: pola semantyczne istnieją
+    (`BaySwitchState.actual_state/control_mode`, `BaySourceEndpoint.operating_mode`), ale ENM nie
+    niesie JEDNOZNACZNEGO łącza Source/Generator→Bay (`Generator.station_ref` wskazuje stację, nie
+    pole). Recenzent uzupełnił: istnieją łącza POŚREDNIE do oceny w rundzie decyzyjnej —
+    GPZ: `Bay.gpz_section_id`→`GPZSection.incoming_source_ref`; DER: `BayBaseModel.source_endpoint` —
+    obie opcjonalne. DECYZJA ARCHITEKTA: runda F9.6b najpierw ocenia wystarczalność łączy pośrednich
+    (spec-first, bez zgadywania); nowe pole `bay_ref` TYLKO jeśli pośrednie nie domykają jednoznacznie;
+    `source_state_probe` czeka na tę rundę.
+  - (c) [DONE] gałąź PF `build_execution_result_set` emituje branch results (lustro pętli Bus,
+    canonical_analysis.py:2180-2195) z aliasami `p_from_mw`/`q_from_mvar` ← `p_mw`/`q_mvar` (czyste
+    przepuszczenie, zero arytmetyki, Frozen Result API nietknięte); test kontraktu porównuje 1:1
+    z niezależnym endpointem branches; `resultset_v1_schema_guard` PASS. Nakładka F9.5 dostaje
+    realne dane od tego commita.
+  - (d) [DONE] casing `Q_MVAR`→`Q_Mvar` naprawiony w OBU miejscach v2 (`ResultOverlayLayer.tsx` +
+    `SldCanvasV2.tsx` — ta sama klasa błędu); test regresyjny zweryfikowany przez revert.
+  - (e) [DECYZJA] metryka iniekcji per-generator NIE wchodzi (strzałka na odcinku przyłącza
+    wystarcza; zero zmian kontraktu wyników).
+  - (f) [DONE minimum] test przepuszczenia 1:1 bez asercji znaku fizycznego — ŚWIADOMIE, bo znak
+    z canonical pipeline jest dziś błędny (patrz F9.8); asercja dodatnia by failowała, ujemna
+    zabetonowałaby błąd. Dowód kierunku na poprawnych danych = DoD F9.8.
+  - Bramki: backend pełny pytest 5699 pass / 1 fail PRE-ISTNIEJĄCY niezwiązany
+    (test_no_todo_fixme_in_catalog_first_critical_paths, potwierdzony na bazowym commicie przez
+    stash); ruff/black czyste; mypy — dotknięte linie czyste; guardy resultset_v1_schema/arch/
+    solver_boundary/pcc_zero/domain_no_guessing/catalog_binding PASS; frontend tsc czysty, vitest
+    sld 3241 pass, accept:sld-v3 ALL PASS.
+
+### F9.8. [SOLVER-INPUT — KRYTYCZNE, osobna runda] Naprawa podwójnej negacji znaku w canonical PF
+- **Znalezisko F9.6 (f), POTWIERDZONE niezależnie przez recenzenta (reprodukcja definitywna):**
+  `mapping.py:190-191` buduje `Node.active_power = -Load.p_mw` (konwencja GENERACYJNA — celowa,
+  przybita testem `test_enm_mapping.py:206` i konsumowana przez `boundary/identifier.py:189-190`);
+  `canonical_analysis.py:1185-1186` przekazuje tę wartość WPROST jako `PQSpec.p_mw`; ale
+  `power_flow_newton_internal.py::build_power_spec_v2:260-261` neguje ponownie (oczekuje konwencji
+  OBCIĄŻENIOWEJ). Skutek: obciążenie wchodzi do solvera jako GENERACJA — na sieci referencyjnej
+  (load P=3/Q=2 za linią) canonical daje v_pu=1.0703 (ROŚNIE za obciążeniem) i p_from=-2.85,
+  podczas gdy poprawna ścieżka niskopoziomowa daje 0.917 i +3.21. KAŻDY realny przebieg LOAD_FLOW
+  przez canonical pipeline ma dziś odwrócone znaki przepływów i błędny profil napięcia; strzałki
+  F9.5 dziedziczą błędny kierunek. Drugie skażone miejsce: `application/reference_networks/
+  sld_substrate_power_flow.py:90-91` (ten sam wzorzec).
+- **Dlaczego testy zielone:** `test_shunt_capacitor_d06c.py:269-270` asertuje tylko monotoniczność
+  względną (docstring deklaruje „depresses |V| below 1.0", asercji absolutnej brak);
+  `test_sld_substrate_power_flow.py:133` wyprowadza oczekiwanie z tego samego odwróconego wejścia
+  (samo-spójne). Żaden test nie przybija fizycznie poprawnego znaku przez pipeline ENM.
+- **Kształt naprawy (zalecenie recenzenta, wiążące dla rundy):** konwersja gen→load NA GRANICY
+  budowy PQSpec — `canonical_analysis.py:1185-1186` oraz `sld_substrate_power_flow.py:90-91`:
+  `p_mw = -float(node.active_power or 0.0)` (analogicznie q). NIE ruszać `mapping.py` (złamie
+  test mapowania + boundary/identifier). NIE ruszać `build_power_spec_v2` (Frozen solver, poprawny).
+  Dodać asercje BEZWZGLĘDNE: `test_shunt_capacitor_d06c` (v_pu za obciążeniem < 1.0), niezależny
+  kierunek w `test_sld_substrate`, oraz test znaku `p_from_mw` w resultset v1 (domyka F9.6 (f)
+  i F9.5: dowód kierunku strzałki na realnych danych).
+- **Proces:** WHITE BOX — wszystkie zmiany widoczne w trace; przegląd WSZYSTKICH konsumentów
+  wyników canonical PF pod kątem zabetonowanych odwróconych oczekiwań (grep testów porównujących
+  znaki/kierunki); pełny pytest backend; przegląd golden/reference fixtures. Ryzyko: wyniki
+  zapisane w istniejących snapshotach/goldenach mogą nieść odwrócone znaki — inwentaryzacja przed
+  zmianą.
+- DoD: reprodukcja z F9.6 daje v_pu<1.0 za obciążeniem i p_from_mw>0 od zasilania do odbioru;
+  asercje bezwzględne w testach wymienionych wyżej; pełny suite backend zielony; strzałki F9.5
+  na realnym przebiegu zgodne z fizyką (test integracyjny).
 
 ### F9.7. [KOD] Optymalizacja pionów + acceptance + docs
 - Zakres: `vertical_length_probe` (§15.1) jako raportowana miara nie-rosnąca; wpięcie wszystkich nowych

@@ -463,6 +463,75 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert "xl/worksheets/sheet1.xml" in names
 
 
+def test_resultset_v1_includes_branch_elements_for_load_flow(client: TestClient) -> None:
+    """F9.6 (c): `build_execution_result_set` musi wolac `build_branch_results`
+    dla PF, inaczej `/api/execution/runs/{id}/results/v1` nie niesie elementow
+    galeziowych i nakladka przeplywu mocy (F9.5, spec Sec14.2) buduje sie pusta
+    na kazdym realnym przebiegu. Sieć referencyjna: `bus-main` (zrodlo) ->
+    `branch-load` (kabel, from_bus_ref=bus-main) -> `bus-load` (odbior)."""
+    case_id = str(uuid4())
+    _seed_power_flow_enm(client, case_id)
+
+    run_response = client.post(f"/api/cases/{case_id}/runs/power-flow")
+    assert run_response.status_code == 200
+    run_id = run_response.json()["run_id"]
+
+    # Wartosc referencyjna: ten sam run, inny (juz istniejacy, przetestowany
+    # gdzie indziej) endpoint galeziowy — `build_branch_results_response`.
+    reference_response = client.get(f"/api/analysis-runs/{run_id}/results/branches")
+    assert reference_response.status_code == 200
+    reference_row = next(
+        row for row in reference_response.json()["rows"] if row["element_id"] == "branch-load"
+    )
+
+    resultset_response = client.get(f"/api/execution/runs/{run_id}/results/v1")
+    assert resultset_response.status_code == 200
+    resultset_payload = resultset_response.json()
+
+    branch_elements = [
+        er for er in resultset_payload["element_results"] if er["element_type"] == "Branch"
+    ]
+    assert branch_elements, "resultset v1 musi niesc elementy galeziowe dla LOAD_FLOW"
+    branch_refs = {er["element_ref"] for er in branch_elements}
+    assert "branch-load" in branch_refs
+
+    # F9.6 (f) — dowod PRZEPUSZCZENIA (nie fabrykacji) na realnych danych:
+    # `values` w resultset v1 MUSZA byc DOKLADNIE tym, co juz zwraca
+    # `build_branch_results` (ten sam run, inny endpoint) — zero podmiany
+    # znaku/wartosci przy dolozeniu petli w `build_execution_result_set`.
+    # UWAGA (znalezisko poza zakresem F9.6, patrz raport): sam ZNAK
+    # `p_from_mw` dla tej referencyjnej sieci (from_bus_ref=zrodlo,
+    # to_bus_ref=odbior) wyszedl z solvera UJEMNY — co przy naiwnej
+    # interpretacji "dodatni = od zrodla do odbioru" (spec §14.2, docstring
+    # `v3/canvas/overlay.ts`) sugerowaloby strzalke w zla strone. Weryfikacja
+    # niezalezna (low-level `PowerFlowInput`/`PQSpec` z tymi samymi R/X/P/Q)
+    # daje ZNAK PRZECIWNY (dodatni, fizycznie sensowny — spadek napiecia w
+    # kierunku odbioru) — wskazuje to na PRE-EXISTING rozjazd konwencji znaku
+    # miedzy `enm/mapping.py::map_enm_to_network_graph` (Node.active_power =
+    # -Load, konwencja generacyjna) a `PQSpec.p_mw` oczekiwanym przez
+    # `power_flow_newton_internal.py::build_power_spec_v2` (konwencja
+    # obciazeniowa, `p_spec = -spec.p_mw`) w `canonical_analysis.py::
+    # _execute_power_flow`. To NIE jest w zakresie F9.6 (solver/domain
+    # physics, poza autoryzacja "galaz PF" `build_execution_result_set`) —
+    # test NIE zaklada zadnego konkretnego znaku fizycznego, tylko
+    # PRZEPUSZCZENIE 1:1 wartosci solvera (cokolwiek by nie wskazywaly).
+    branch_load_values = next(
+        er["values"] for er in branch_elements if er["element_ref"] == "branch-load"
+    )
+    assert branch_load_values["p_mw"] == pytest.approx(reference_row["p_mw"])
+    assert branch_load_values["q_mvar"] == pytest.approx(reference_row["q_mvar"])
+    assert branch_load_values["i_a"] == pytest.approx(reference_row["i_a"])
+    assert branch_load_values["p_mw"] != 0.0
+    assert branch_load_values["i_a"] > 0.0
+
+    overlay_elements = resultset_payload["overlay_payload"]["elements"]
+    assert "branch-load" in overlay_elements
+    branch_metrics = overlay_elements["branch-load"]["metrics"]
+    assert branch_metrics["P_MW"]["value"] == pytest.approx(branch_load_values["p_mw"])
+    assert branch_metrics["Q_Mvar"]["value"] == pytest.approx(branch_load_values["q_mvar"])
+    assert branch_metrics["I_A"]["value"] == pytest.approx(branch_load_values["i_a"])
+
+
 def test_canonical_run_persists_outside_process_memory(client: TestClient) -> None:
     case_id = str(uuid4())
     _seed_power_flow_enm(client, case_id)

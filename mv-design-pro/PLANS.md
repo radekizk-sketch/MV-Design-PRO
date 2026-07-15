@@ -78,6 +78,20 @@ MV-DESIGN-PRO is a functional Medium Voltage network design and analysis system 
 
 ## 3. Active Work
 
+### 3.-1 ESKALACJA (2026-07-15): odwrócony znak mocy w canonical PF pipeline — KRYTYCZNE
+
+Podczas F9.6 przebudowy SLD v3 (`docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md` § F9.8) wykryto i
+NIEZALEŻNIE POTWIERDZONO (reprodukcja z dwóch ścieżek) pre-istniejącą podwójną negację znaku mocy:
+`mapping.py` buduje `Node.active_power` w konwencji generacyjnej, `canonical_analysis.py:1185`
+przekazuje ją wprost do `PQSpec.p_mw`, a solver (`build_power_spec_v2`) neguje ponownie, oczekując
+konwencji obciążeniowej. Skutek: obciążenia wchodzą do rozpływu jako generacja — odwrócone znaki
+`p_from_mw`/`q_from_mvar` i błędny profil napięcia (rośnie za obciążeniem) w KAŻDYM realnym
+przebiegu LOAD_FLOW przez canonical pipeline. Istniejące testy nie łapią błędu (asercje wyłącznie
+względne/samo-spójne). Solver niskopoziomowy jest POPRAWNY — błąd leży w warstwie przygotowania
+wejścia (`canonical_analysis.py`, `sld_substrate_power_flow.py`). Plan naprawy (wiążący kształt,
+zalecony przez recenzję): § F9.8 w `docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md`. Do czasu naprawy
+wyniki rozpływu z canonical pipeline (w tym strzałki kierunku na SLD v3) mają odwrócone znaki.
+
 ### 3.0.0 V12.6 academic end-to-end closure (completed)
 
 Status:

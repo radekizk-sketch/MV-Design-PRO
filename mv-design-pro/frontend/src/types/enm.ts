@@ -432,7 +432,10 @@ export type BayPrimaryDeviceKind =
   | 'GENERATOR_BESS'
   | 'GENERATOR_FW'
   | 'PCS'
-  | 'BATTERY';
+  | 'BATTERY'
+  // F9.6 (SLD_CAD_SPEC_V3 §12.5, V12K-028): ogranicznik przepięć — rysowany
+  // WYŁĄCZNIE gdy pochodzi z danych (mirror `backend/src/enm/models.py`).
+  | 'SURGE_ARRESTER';
 
 export type BayPrimaryPlacement =
   | 'UPSTREAM'
