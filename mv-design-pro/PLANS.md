@@ -162,7 +162,17 @@ Progress:
             w AppShell zamiast szkieletu), pulpit jako warsztat przestrzeni „Projekt",
             provider obiektów wyszukiwarki ze snapshotu, akcje przestrzeni/obiektów
             (nawigacja + selekcja przez magistralę), 270 testów ui2
-      - [ ] E1.6 guard językowy, E1.7 przełączenie powłoki, E15.2, E2.2 — backlog
+      - [x] E1.6 Guard językowy: wykrywanie identyfikatorów snake_case w stringach UI ui2
+            (canary czerwony/zielony; self-test 6/6; `1f3263e`)
+      - [x] E15.2 Kontrakt świeżości (Sonnet; 17 testów; zintegrowane `3661fe2`; TODO-KARTA:
+            para rewizji dla stanu początkowego OUTDATED — decyzja: uczciwa etykieta bez pary
+            do czasu zdarzenia magistrali; filtracja per przypadek = przy E7)
+      - [x] KOREKTA RZETELNOŚCI: bieg potwierdzający scalenia #2 raportowany wcześniej jako
+            zielony był FAŁSZYWYM greenem (kod wyjścia potoku `| tail`, nie vitest) — wykrył to
+            wykonawca E15.2 (czerwony test fixture pulpitu: brak kolekcji corridors/measurements/
+            protection_assignments). Naprawione: fixture uzupełniony (270→287 testów ui2 zielone
+            z pipefail); procedura zarządcy od teraz z `set -o pipefail`
+      - [ ] E2.2 nowy/otwórz projekt (Sonnet — w produkcji), E1.7 przełączenie powłoki — finał U1
       - [x] V12K-026 RESOLVED: słownik nowej IA („przypadek obliczeniowy", „kreator");
             guard terminologii zielony w całym repo (naprawione 2 zastane naruszenia)
 - [ ] U2–U5 wg programu

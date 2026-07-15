@@ -34,6 +34,10 @@ function snapshotZRewizja(revision: number): EnergyNetworkModel {
     substations: [],
     bays: [],
     junctions: [],
+    branch_points: [],
+    corridors: [],
+    measurements: [],
+    protection_assignments: [],
   } as unknown as EnergyNetworkModel;
 }
 
