@@ -101,6 +101,9 @@ Progress:
 - [x] U0.7 Model interakcji całej aplikacji + rejestr okien W-101…W-703
       (`docs/uiux/MODEL_INTERAKCJI_APLIKACJI_2026-07.md`; mandat clean-room UI — decyzja
       właściciela 2026-07-15: każde okno i każda interakcja od nowa)
+- [x] U0.8 Specyfikacja kreatorów (`docs/uiux/SPEC_KREATORY_2026-07.md`) — dyrektywa
+      właściciela 2026-07-15: maksymalna szczegółowość, zero pustych pól, podpowiedź
+      inżynierska przy każdym polu, gotowe przykłady P-01…P-05 z kompletem danych
 - [ ] U0.6 Makiety IA (artefakt) — zatwierdzenie właściciela
 - [ ] U1–U5 wg programu
 

@@ -5,6 +5,7 @@
 **Dokumenty powiązane (wiążące dla programu):**
 - `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md` — inwentarz funkcji + macierz pokrycia (nic nie pomijamy)
 - `docs/uiux/MODEL_INTERAKCJI_APLIKACJI_2026-07.md` — gramatyka interakcji + REJESTR OKIEN (każde okno od nowa)
+- `docs/uiux/SPEC_KREATORY_2026-07.md` — kreatory: zero pustych pól, podpowiedź przy każdym polu, gotowe przykłady
 - `docs/uiux/KARTA_KOORDYNACJI_SLD_01_TOKENY.md` — karta styku z wątkiem SLD (tokeny motywów)
 - `docs/uiux/PROMPT_ZARZADCA_FABLE_UIUX.md` — prompt zarządcy programu (Fable)
 - `docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` — program inżynieryjny 10x (perymetr, jakość, współbieżność)
@@ -122,7 +123,7 @@ wykonawca (O=Opus, S=Sonnet, G=Codex GPT, F=Fable-zarządca; szczegóły w promp
 |---|---|---|---|---|
 | E1 Powłoka i nawigacja | shell, navigation, workspace, status-bar, notifications, settings, help, onboarding — nowa IA §4 | shell, navigation, workspace, layout, status-bar, notifications, settings, help, onboarding | O | U1 |
 | E2 Pulpit projektu | projekty, archiwum ZIP, diff archiwów, kopie | projects, project-archive | S | U1 |
-| E3 Kreator sieci i stacji | kreator od GPZ: magistrale, stacje, rozdzielnice, DER (PV/BESS/FW), szablony stacji, wzorce referencyjne, podgląd źródła; tryb ekspercki | designer, network-build, reference-patterns, wizard (kontrakty `docs/ui/UX_KREATOR_SIECI_SN_OD_GPZ.md`) | O | U2 |
+| E3 Kreator sieci i stacji | kreator od GPZ: magistrale, stacje, rozdzielnice, DER (PV/BESS/FW), szablony stacji, wzorce referencyjne, podgląd źródła; tryb ekspercki; WIĄŻĄCE: `SPEC_KREATORY_2026-07.md` (zero pustych pól, podpowiedź per pole, gotowe przykłady P-01…P-05) | designer, network-build, reference-patterns, wizard (kontrakty `docs/ui/UX_KREATOR_SIECI_SN_OD_GPZ.md`, `docs/ui/KANON_KREATOR_SN_NN_NA_ZYWO.md`) | O | U2 |
 | E4 Katalog-first | przeglądarka katalogu, karta techniczna, wiązanie typów, kompletność danych | catalog, tech-card, property-grid | S | U2 |
 | E5 Dane i topologia | drzewo topologii, inspektor ENM, menedżer danych, property grid multi-edit | topology, enm-inspector, data-manager, property-grid, schema-completeness | S | U2 |
 | E6 Gotowość i walidacja | readiness gate, panel problemów, fix-actions, eligibility | engineering-readiness, issue-panel, analysis-eligibility, mode-gate | S | U2 |

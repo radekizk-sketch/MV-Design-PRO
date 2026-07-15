@@ -68,6 +68,7 @@
 - [uiux/PROGRAM_UIUX_2026-07.md](./uiux/PROGRAM_UIUX_2026-07.md) — program przebudowy UI/UX do klasy ETAP/PowerFactory (fazy U0–U5; clean-room UI)
 - [uiux/INWENTARZ_FUNKCJI_2026-07.md](./uiux/INWENTARZ_FUNKCJI_2026-07.md) — WIĄŻĄCY inwentarz funkcji obliczeniowych + macierz pokrycia UI
 - [uiux/MODEL_INTERAKCJI_APLIKACJI_2026-07.md](./uiux/MODEL_INTERAKCJI_APLIKACJI_2026-07.md) — gramatyka interakcji całej aplikacji + rejestr okien (każde okno od nowa)
+- [uiux/SPEC_KREATORY_2026-07.md](./uiux/SPEC_KREATORY_2026-07.md) — kreatory: zero pustych pól, podpowiedzi inżynierskie, gotowe przykłady
 - [uiux/KARTA_KOORDYNACJI_SLD_01_TOKENY.md](./uiux/KARTA_KOORDYNACJI_SLD_01_TOKENY.md) — karta styku z wątkiem SLD (tokeny motywów)
 - [uiux/PROMPT_ZARZADCA_FABLE_UIUX.md](./uiux/PROMPT_ZARZADCA_FABLE_UIUX.md) — prompt zarządcy programu (orkiestracja wykonawców)
 
