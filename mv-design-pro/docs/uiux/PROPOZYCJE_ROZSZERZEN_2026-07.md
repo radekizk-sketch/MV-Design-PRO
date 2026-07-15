@@ -102,6 +102,28 @@ w zakresie programu, kanon fizyki obowiązuje: WHITE BOX, warstwy, determinizm).
 Okna dla P23–P38 dostają identyfikatory W-… przy rozpisywaniu kart (zarządca aktualizuje deltę
 rejestru w AUDYT_RADY_SPECJALISTOW / MODEL_INTERAKCJI §4).
 
+## Grupa VI — runda 4 (2026-07-15): specjalista OZE / NC RfG NA MAKSIMUM
+
+Dyrektywa właściciela: „rozwijamy maksymalnie specjalistę OZE/NC RfG". Strumień OZE dostaje
+PRIORYTET w kolejności realizacji (patrz niżej). Zatwierdzone zasadą „na max".
+
+| # | Propozycja | Treść inżynierska | Δbackend | Epik |
+|---|---|---|---|---|
+| P39 | **Macierz wymogów NC RfG per moduł** | pełna, interaktywna macierz wymagań modułu B/C/D (wg mocy i napięcia przyłączenia): wymóg → test → werdykt → dowód → dokument; „certyfikat zgodności projektu" generowany z macierzy; braki → asystent braków | częściowa | E11 |
+| P40 | **Odpowiedź na polecenia OSD** | symulacja zachowań sterowanych: ograniczenie mocy czynnej, zadana Q/cosφ/U, tryby LFSM-O/LFSM-U (odpowiedź częstotliwościowa z statyzmem), priorytet mocy czynnej vs biernej przy zapadzie | TAK | E11 |
+| P41 | **Rzeczywiste krzywe zdolności falowników** | import krzywych P–Q producenta (zależnych od U i temperatury) do katalogu; weryfikacja, czy rzeczywista krzywa pokrywa wymaganą przez OSD w całym zakresie | częściowa | E4/E11 |
+| P42 | **Dobór kompensacji farmy** | automatyczny dobór kompensacji (dławik/bateria/Q falowników) dla spełnienia cosφ w punkcie przyłączenia z uwzględnieniem generacji Q kabli przy niskiej generacji (noc) | TAK | E11 |
+| P43 | **Zapady wielokrotne i praca przy słabej sieci** | sekwencje FRT wielokrotnych zapadów, zachowanie przy niskim SCR (słaba sieć), wsparcie ride-through z magazynu | TAK | E11 |
+| P44 | **Energia niedostarczona (curtailment)** | szacowanie rocznej energii traconej przez ograniczenia sieciowe na profilach (wymaga P27) + wpływ na ekonomię przyłączenia; porównanie wariantów punktu przyłączenia o tę oś | TAK (po P27) | E11 |
+| P45 | **Zgodność powykonawcza** | import pomiarów z obiektu (rejestratory, CSV) → porównanie z modelem i wymogami → raport rozbieżności; domyka pętlę projekt → budowa → odbiór | TAK | E11/E13 |
+| P46 | **Ochrona przed pracą wyspową (LoM)** | dobór i weryfikacja zabezpieczeń od utraty sieci (ROCOF, przesunięcie wektora), koordynacja z automatyką SPZ w głębi sieci — fałszywe wyspy vs zbędne wyłączenia | TAK | E10/E11 |
+| P47 | **Pulpit instalacji OZE** | jeden ekran per źródło: stan zgodności NC RfG (z macierzy P39), zdolność punktu, jakość energii (harmoniczne+flicker), praca magazynu, dokumenty — kokpit specjalisty OZE | nie (agregacja) | E11 |
+
+### Priorytet strumienia OZE (dyrektywa 2026-07-15)
+Strumień OZE/NC RfG realizowany jako PIERWSZY wątek specjalistyczny U4 i kontynuowany po U5:
+kolejność wewnętrzna: P39 → P47 → P2/P19 (już w U4) → P41 → P30 → P35 → P38 → P40 → P42 →
+P43 → P46 → P37 → (po P27:) P44 → P45. Pozostałe strumienie wg kolejności ogólnej.
+
 ## Kolejność realizacji (zarządca; właściciel może zmienić)
 
 1. **U3:** P3, P4, P20 (wyniki + gotowość) · 2. **U4:** P1, P2, P5, P6, P9, P10, P13, P14, P15, P18 (zabezpieczenia, OZE, dokumentacja) · 3. **po U4 / U5:** P7, P8, P11, P12, P16, P17, P19, P21, P22, następnie runda 3 w kolejności: najpierw bez delty backendowej i „częściowe" (P25, P26, P24, P23, P29, P28, P30, P31, P34, P35, P38), potem pełne delty (P27 → P36, P32, P33, P37) oraz grupa III.

@@ -136,8 +136,13 @@ Progress:
       dyrektywa właściciela 2026-07-15: 13 perspektyw eksperckich, rozbudowa każdego okna
       rejestru (konkretne wymagania per ekran), delta rejestru +16 okien (W-105…W-707)
       z trybami minimalnymi; rozbudowy = wymagania kart zadań (pominięcie tylko za zgodą)
-- [ ] U0.6 Makiety IA (artefakt) — zatwierdzenie właściciela
-- [ ] U1–U5 wg programu
+- [x] U0.6 Makiety IA — ZATWIERDZONE przez właściciela 2026-07-15 („Akceptujemy") — 7 punktów:
+      układ powłoki, kolejność przestrzeni, gramatyka interakcji, motywy, kreatory zero pustych
+      pól, powiązanie warstw, układ paneli z trybami. **FAZA U0 ZAMKNIĘTA.**
+- [x] U0.17 Runda 4 P39–P47: maksymalna rozbudowa specjalisty OZE / NC RfG (dyrektywa
+      właściciela 2026-07-15) + priorytet strumienia OZE w kolejności realizacji
+- [ ] U1 W TOKU (od 2026-07-15): karty E1/E2/E15 — pierwsza karta `docs/uiux/karty/U1_E1_1_POWLOKA.md`
+- [ ] U2–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
 program UI/UX nie modyfikuje plików SLD (granica w Programie §2.3).
