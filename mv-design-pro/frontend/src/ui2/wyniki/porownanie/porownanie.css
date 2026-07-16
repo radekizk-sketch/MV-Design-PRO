@@ -1,0 +1,219 @@
+/*
+ * Style okna „Porównanie przebiegów" (karta E12.1). Kolory WYŁĄCZNIE przez tokeny
+ * --mvd-* (theme/tokens.css) — zero literałów hex. Uzupełnienie wzorca
+ * (`wzorzec.css`) o wybór A/B, zakładki, stany oraz szczegół problemu.
+ */
+
+.mvd-por {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--mvd-ink);
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 4px;
+}
+
+.mvd-por :focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+/* ---- nagłówek ---- */
+.mvd-por-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mvd-por-head-main {
+  flex: 1;
+  min-width: 0;
+}
+.mvd-por-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.mvd-por-sub {
+  margin: 2px 0 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-por-id {
+  color: var(--mvd-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ---- wybór A/B ---- */
+.mvd-por-wybor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  box-shadow: var(--mvd-shadow);
+}
+.mvd-por-wybor-tytul {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.mvd-por-selektory {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+.mvd-por-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mvd-por-pole-etyk {
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-por-select {
+  padding: 6px 8px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  font: inherit;
+}
+.mvd-por-select:hover {
+  border-color: var(--mvd-accent);
+}
+
+.mvd-btn {
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+.mvd-btn:hover {
+  border-color: var(--mvd-accent);
+}
+.mvd-por-przycisk {
+  align-self: flex-start;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  border-color: var(--mvd-accent);
+}
+.mvd-por-przycisk:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- stany ---- */
+.mvd-por-info {
+  margin: 0;
+  padding: 8px 4px;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+.mvd-por-blad {
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--mvd-err);
+  border-radius: 4px;
+  background: var(--mvd-err-bg);
+  color: var(--mvd-err);
+  font-size: 13px;
+}
+.mvd-por-pusty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 24px 12px;
+  color: var(--mvd-muted);
+}
+.mvd-por-pusty-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-por-pusty-desc {
+  margin: 0;
+  font-size: 13px;
+}
+.mvd-por-pusto {
+  margin: 0;
+  padding: 24px 16px;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+
+/* ---- zakładki ---- */
+.mvd-por-zakladki {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-por-tab {
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--mvd-muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mvd-por-tab:hover {
+  color: var(--mvd-ink);
+}
+.mvd-por-tab.mvd-on {
+  color: var(--mvd-accent);
+  border-bottom-color: var(--mvd-accent);
+}
+
+/* ---- szczegół problemu ---- */
+.mvd-por-szczegol {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  box-shadow: var(--mvd-shadow);
+  background: var(--mvd-panel);
+}
+.mvd-por-szczegol-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.mvd-por-szczegol-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+.mvd-por-szczegol-poz {
+  display: flex;
+  gap: 10px;
+}
+.mvd-por-szczegol-poz dt {
+  flex: 0 0 120px;
+  color: var(--mvd-muted);
+  margin: 0;
+}
+.mvd-por-szczegol-poz dd {
+  margin: 0;
+  color: var(--mvd-ink);
+}
+.mvd-por-szczegol-opis {
+  flex-direction: column;
+  gap: 2px;
+}
