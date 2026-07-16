@@ -210,3 +210,96 @@ export function pobierzKonwertery(kind?: string): Promise<RekordKonwertera[]> {
   const query = kind ? `?kind=${encodeURIComponent(kind)}` : '';
   return getJson<RekordKonwertera[]>(`/api/catalog/converter-types${query}`);
 }
+
+// =============================================================================
+// Zdolność przyłączeniowa (hosting capacity) — application/analyses/hosting_capacity.py
+// =============================================================================
+
+/**
+ * Kryterium wiążące granicę przyłączeniową (odwzorowuje `binding` / `binding_criterion`
+ * z `hosting_capacity.py`). `kind`:
+ *   - `none` — nie osiągnięto granicy w zadanym zakresie kroków,
+ *   - `non_convergence` — rozpływ przestał być zbieżny (twardy koniec pasma),
+ *   - `voltage` / `loading` — naruszenie kontroli (pola szczegółowe wypełnione).
+ * `check_type` = kod `EnergyCheckType` (słownik PL reużyty z okna „Jakość wyników").
+ */
+export interface KryteriumWiazaceZdolnosci {
+  readonly kind: 'none' | 'non_convergence' | 'voltage' | 'loading';
+  readonly check_type?: string;
+  readonly element_id?: string;
+  readonly element_name?: string | null;
+  readonly observed_value?: number | null;
+  readonly unit?: string;
+  readonly limit_fail?: number | null;
+}
+
+/** Pojedynczy scenariusz przeglądu (moc dodana → dopuszczalność + kryterium). */
+export interface ScenariuszZdolnosci {
+  readonly added_power_mw: number;
+  readonly converged: boolean;
+  readonly acceptable: boolean;
+  readonly binding: KryteriumWiazaceZdolnosci;
+}
+
+/** Wynik zdolności przyłączeniowej dla pojedynczego węzła-kandydata. */
+export interface WezelZdolnosci {
+  readonly bus_ref: string;
+  readonly bus_name: string | null;
+  readonly existing_generation_mw: number;
+  readonly max_hosting_capacity_mw: number;
+  readonly binding_criterion: KryteriumWiazaceZdolnosci;
+  readonly scenarios: readonly ScenariuszZdolnosci[];
+}
+
+/** Kontekst przebiegu rozpływu, na którym oparto przegląd. */
+export interface KontekstZdolnosci {
+  readonly trace_id: string;
+  readonly snapshot_id: string | null;
+  readonly case_name: string | null;
+}
+
+/** Parametry przeglądu odesłane przez backend (echo wejścia). */
+export interface ParametryZdolnosci {
+  readonly step_mw: number;
+  readonly max_steps: number;
+  readonly candidate_bus_refs: readonly string[];
+}
+
+/** Widok zdolności przyłączeniowej (odpowiedź hosting-capacity). */
+export interface WidokZdolnosci {
+  readonly analysis: string;
+  readonly context: KontekstZdolnosci;
+  readonly parameters: ParametryZdolnosci;
+  readonly input_hash: string;
+  readonly nodes: readonly WezelZdolnosci[];
+}
+
+/** Parametry zapytania o zdolność przyłączeniową (jawny bieg z okna). */
+export interface ZapytanieZdolnosci {
+  readonly runId: string;
+  /** Puste/pominięte → backend dobiera domyślnych kandydatów (węzły ze źródłami). */
+  readonly candidateBusRefs?: readonly string[];
+  readonly stepMw?: number;
+  readonly maxSteps?: number;
+}
+
+/**
+ * Zdolność przyłączeniowa dla przebiegu rozpływu. Węzły-kandydaci przekazywane
+ * jako powtórzone parametry `candidate_bus_refs` (kontrakt FastAPI `list[str]`);
+ * brak listy → domyślni kandydaci po stronie backendu.
+ */
+export function pobierzZdolnoscPrzylaczeniowa(
+  zapytanie: ZapytanieZdolnosci,
+): Promise<WidokZdolnosci> {
+  const czesci = [`run_id=${encodeURIComponent(zapytanie.runId)}`];
+  for (const ref of zapytanie.candidateBusRefs ?? []) {
+    czesci.push(`candidate_bus_refs=${encodeURIComponent(ref)}`);
+  }
+  if (zapytanie.stepMw !== undefined) {
+    czesci.push(`step_mw=${encodeURIComponent(String(zapytanie.stepMw))}`);
+  }
+  if (zapytanie.maxSteps !== undefined) {
+    czesci.push(`max_steps=${encodeURIComponent(String(zapytanie.maxSteps))}`);
+  }
+  return getJson<WidokZdolnosci>(`/api/oze-analysis/hosting-capacity?${czesci.join('&')}`);
+}
