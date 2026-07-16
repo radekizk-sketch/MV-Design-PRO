@@ -2,6 +2,7 @@
 export const MODEL_WARSZTAT_STRINGS = {
   zakladkaSchemat: 'Sieć na schemacie',
   zakladkaSzablony: 'Szablony stacji',
+  zakladkaKatalog: 'Katalog typów',
   ariaZakladki: 'Widok warsztatu modelu',
   kreatorTytul: 'Zastosuj szablon stacji',
 } as const;

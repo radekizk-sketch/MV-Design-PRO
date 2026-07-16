@@ -8,24 +8,54 @@
  * z preselekcją szablonu wskazanego w przeglądarce (E3.2 — prop
  * `initialTemplateId`, kreator startuje z pominiętym krokiem wyboru).
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { StationTemplateWizard } from '../../../ui/network-build/station-templates';
 import { SldWorkspaceContainer } from '../../../ui/sld/v2/canvas/SldWorkspaceContainer';
 import { useAppStateStore } from '../../../ui/app-state';
 import { PrzegladarkaSzablonow } from './szablony';
+import { KatalogPanel } from './katalog';
+import type { ElementUzycia } from './katalog';
+import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { emituj } from '../../events';
 import { MODEL_WARSZTAT_STRINGS as T } from './strings';
 import './modelWarsztat.css';
 
 const ZAKLADKI = [
   { id: 'schemat', etykieta: T.zakladkaSchemat },
   { id: 'szablony', etykieta: T.zakladkaSzablony },
+  { id: 'katalog', etykieta: T.zakladkaKatalog },
 ] as const;
 
 type ZakladkaId = (typeof ZAKLADKI)[number]['id'];
 
+/** Kolekcje modelu niosące catalog_ref (sekcja „Gdzie użyty" karty typu). */
+const KOLEKCJE_UZYC = ['branches', 'transformers', 'sources', 'loads', 'generators'] as const;
+
+function zbierzUzycia(snapshot: unknown): readonly ElementUzycia[] {
+  if (!snapshot || typeof snapshot !== 'object') return [];
+  const model = snapshot as Record<string, unknown>;
+  const wynik: ElementUzycia[] = [];
+  for (const kolekcja of KOLEKCJE_UZYC) {
+    const lista = model[kolekcja];
+    if (!Array.isArray(lista)) continue;
+    for (const el of lista as Array<Record<string, unknown>>) {
+      const ref = typeof el.ref_id === 'string' && el.ref_id ? el.ref_id : String(el.id ?? '');
+      if (!ref) continue;
+      wynik.push({
+        ref,
+        etykieta: typeof el.name === 'string' && el.name ? el.name : ref,
+        catalog_ref: typeof el.catalog_ref === 'string' ? el.catalog_ref : null,
+      });
+    }
+  }
+  return wynik;
+}
+
 export function ModelWarsztat() {
   const [zakladka, setZakladka] = useState<ZakladkaId>('schemat');
+  const snapshot = useSnapshotStore((s) => s.snapshot);
+  const uzycia = useMemo(() => zbierzUzycia(snapshot), [snapshot]);
   const [kreatorOtwarty, setKreatorOtwarty] = useState(false);
   const [wybranySzablonId, setWybranySzablonId] = useState<string | null>(null);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
@@ -46,7 +76,9 @@ export function ModelWarsztat() {
             onKeyDown={(e) => {
               if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
                 e.preventDefault();
-                setZakladka(zakladka === 'schemat' ? 'szablony' : 'schemat');
+                const idx = ZAKLADKI.findIndex((x) => x.id === zakladka);
+                const krok = e.key === 'ArrowRight' ? 1 : ZAKLADKI.length - 1;
+                setZakladka(ZAKLADKI[(idx + krok) % ZAKLADKI.length].id);
               }
             }}
           >
@@ -55,13 +87,22 @@ export function ModelWarsztat() {
         ))}
       </div>
       <div role="tabpanel" className="mvd-model-tresc">
-        {zakladka === 'schemat' ? (
-          <SldWorkspaceContainer />
-        ) : (
+        {zakladka === 'schemat' && <SldWorkspaceContainer />}
+        {zakladka === 'szablony' && (
           <PrzegladarkaSzablonow
             onZastosuj={(idSzablonu) => {
               setWybranySzablonId(idSzablonu);
               setKreatorOtwarty(true);
+            }}
+          />
+        )}
+        {zakladka === 'katalog' && (
+          <KatalogPanel
+            uzyciaSnapshot={uzycia}
+            onPokazElement={(ref) => {
+              // Nawigacja z karty typu: selekcja globalna + powrót na schemat.
+              emituj({ typ: 'selekcja', obiektId: ref, zrodlo: 'katalog' });
+              setZakladka('schemat');
             }}
           />
         )}
