@@ -111,3 +111,35 @@ def test_hosting_capacity_invalid_step_returns_422(app_client) -> None:
     resp = app_client.get(HOSTING, params={"run_id": str(run_id), "step_mw": 0.0})
     assert resp.status_code == 422
     assert "Krok mocy" in resp.json()["detail"]
+
+
+# --------------------------------------------------------------------------
+# D3a: straty i skrajne napięcia scenariuszy (ADDYTYWNE) — kontrakt API
+# --------------------------------------------------------------------------
+
+
+def test_hosting_capacity_scenario_exposes_losses_and_voltage_fields(app_client) -> None:
+    run_id = _pf_run_id()
+    resp = app_client.get(
+        HOSTING, params={"run_id": str(run_id), "candidate_bus_refs": ["bus_sn_c"]}
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    node = data["nodes"][0]
+    assert {"losses_baseline_p_mw", "losses_at_limit_p_mw"} <= set(node)
+    for scenario in node["scenarios"]:
+        assert {"total_losses_p_mw", "min_voltage_pu", "max_voltage_pu"} <= set(scenario)
+        assert isinstance(scenario["total_losses_p_mw"], float)
+        assert isinstance(scenario["min_voltage_pu"], float)
+        assert isinstance(scenario["max_voltage_pu"], float)
+
+
+def test_hosting_capacity_new_fields_are_deterministic(app_client) -> None:
+    run_id = _pf_run_id()
+    first = app_client.get(HOSTING, params={"run_id": str(run_id)}).json()
+    second = app_client.get(HOSTING, params={"run_id": str(run_id)}).json()
+    first_node = first["nodes"][0]
+    second_node = second["nodes"][0]
+    assert first_node["losses_baseline_p_mw"] == second_node["losses_baseline_p_mw"]
+    assert first_node["losses_at_limit_p_mw"] == second_node["losses_at_limit_p_mw"]
+    assert first_node["scenarios"] == second_node["scenarios"]

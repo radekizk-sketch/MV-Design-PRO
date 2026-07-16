@@ -297,3 +297,91 @@ def test_rejects_unfinished_run() -> None:
     run = _synthetic_pf_run(build_golden_enm(), status="RUNNING")
     with pytest.raises(ValueError, match="nie jest zakończony"):
         build_hosting_capacity_view(run)
+
+
+# --------------------------------------------------------------------------
+# D3a: straty i skrajne napięcia scenariuszy (ADDYTYWNE)
+# --------------------------------------------------------------------------
+
+
+def test_scenario_carries_losses_and_voltage_fields() -> None:
+    """Każdy scenariusz niesie nowe pola liczbowe (nie None) na zbieżnym golden run."""
+    run = _golden_pf_run()
+    view = build_hosting_capacity_view(run, candidate_bus_refs=["bus_sn_c"], max_steps=5)
+    for scenario in view["nodes"][0]["scenarios"]:
+        assert scenario["converged"] is True
+        assert isinstance(scenario["total_losses_p_mw"], float)
+        assert isinstance(scenario["min_voltage_pu"], float)
+        assert isinstance(scenario["max_voltage_pu"], float)
+        assert scenario["min_voltage_pu"] <= scenario["max_voltage_pu"]
+
+
+def test_scenario_losses_and_voltage_are_rounded_to_six_places() -> None:
+    run = _golden_pf_run()
+    view = build_hosting_capacity_view(run, candidate_bus_refs=["bus_sn_c"], max_steps=3)
+    for scenario in view["nodes"][0]["scenarios"]:
+        for key in ("total_losses_p_mw", "min_voltage_pu", "max_voltage_pu"):
+            value = scenario[key]
+            assert round(value, 6) == value
+
+
+def test_losses_increase_monotonically_with_added_power() -> None:
+    """Straty czynne rosną (nie maleją) wraz z dodawaną mocą — sanity walidacji
+    poprawności ścieżki odczytu (nie fizyki: solver liczy, tu tylko sprawdzamy
+    spójność odczytanych wartości)."""
+    run = _golden_pf_run()
+    view = build_hosting_capacity_view(run, candidate_bus_refs=["bus_sn_c"], max_steps=10)
+    losses = [s["total_losses_p_mw"] for s in view["nodes"][0]["scenarios"] if s["acceptable"]]
+    assert len(losses) >= 2
+    assert all(b >= a - 1e-9 for a, b in zip(losses, losses[1:], strict=False))
+
+
+def test_node_losses_baseline_and_at_limit_present_on_golden() -> None:
+    run = _golden_pf_run()
+    view = build_hosting_capacity_view(run, candidate_bus_refs=["bus_sn_c"], max_steps=10)
+    node = view["nodes"][0]
+    assert node["losses_baseline_p_mw"] == node["scenarios"][0]["total_losses_p_mw"]
+    assert node["losses_at_limit_p_mw"] is not None
+    last_acceptable = [s for s in node["scenarios"] if s["acceptable"]][-1]
+    assert node["losses_at_limit_p_mw"] == last_acceptable["total_losses_p_mw"]
+    # Przyrost strat: granica >= bazowa (więcej mocy dodanej -> więcej strat).
+    assert node["losses_at_limit_p_mw"] >= node["losses_baseline_p_mw"]
+
+
+def test_losses_at_limit_is_null_when_base_already_overloaded() -> None:
+    """Gdy 0 MW jest już niedopuszczalne, nie istnieje żaden dopuszczalny
+    scenariusz -> losses_at_limit_p_mw = null (bez zgadywania). Baseline nadal
+    dostępny, bo rozpływ dla 0 MW jest zbieżny."""
+    run = _synthetic_pf_run(_overloaded_base_enm())
+    view = build_hosting_capacity_view(run, candidate_bus_refs=["b_rem"], max_steps=5)
+    node = view["nodes"][0]
+    assert node["losses_at_limit_p_mw"] is None
+    assert node["losses_baseline_p_mw"] is not None
+    assert node["scenarios"][0]["min_voltage_pu"] is not None
+    assert node["scenarios"][0]["max_voltage_pu"] is not None
+
+
+def test_d3a_fields_are_additive_existing_fields_unchanged() -> None:
+    """Addytywność: obecność nowych pól nie zmienia dotychczasowych — kontrakt
+    D3 (struktura, wartości monotoniczności/binding) pozostaje identyczny."""
+    run = _golden_pf_run()
+    view = build_hosting_capacity_view(run, candidate_bus_refs=["bus_sn_c"], max_steps=20)
+    node = view["nodes"][0]
+    # Stare pola/kontrakt D3 bez zmian.
+    assert {
+        "bus_ref",
+        "bus_name",
+        "existing_generation_mw",
+        "max_hosting_capacity_mw",
+        "binding_criterion",
+        "scenarios",
+    } <= set(node)
+    assert node["max_hosting_capacity_mw"] > 0.0
+    assert node["binding_criterion"]["kind"] == "loading"
+    powers = [s["added_power_mw"] for s in node["scenarios"]]
+    assert powers == sorted(powers)
+    # Nowe pola dodane obok starych, nie zamiast.
+    assert {"losses_baseline_p_mw", "losses_at_limit_p_mw"} <= set(node)
+    for scenario in node["scenarios"]:
+        assert {"added_power_mw", "converged", "acceptable", "binding"} <= set(scenario)
+        assert {"total_losses_p_mw", "min_voltage_pu", "max_voltage_pu"} <= set(scenario)

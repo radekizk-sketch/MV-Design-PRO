@@ -18,10 +18,19 @@ napięć i obciążeń są dopuszczalne (brak statusu FAIL) i rozpływ jest zbie
 Pierwszy scenariusz niedopuszczalny wyznacza kryterium wiążące (napięcie/obciążenie
 + element). Ślad WHITE BOX: pełna lista scenariuszy (moc → status kontroli).
 
+D3a (ADDYTYWNE, pod ranking P19): każdy scenariusz niesie dodatkowo
+``total_losses_p_mw``/``min_voltage_pu``/``max_voltage_pu`` odczytane z
+``result_v1.summary`` wyniku rozpływu (ta sama ścieżka, którą stosuje D2 dla
+strat oraz solverowe ekstrema napięć — patrz ``_scenario_measurements``); każdy
+węzeł-kandydat niesie ``losses_baseline_p_mw`` (scenariusz 0 MW) i
+``losses_at_limit_p_mw`` (ostatni dopuszczalny scenariusz, ``None`` gdy brak
+dopuszczalnego scenariusza).
+
 Założenia domyślne (parametry z jawnymi wartościami, udokumentowane):
 - krok mocy: ``DEFAULT_STEP_MW`` = 0,5 MW,
 - limit kroków: ``DEFAULT_MAX_STEPS`` = 40 (scenariusze 0..40, tj. do 20 MW dodanej),
-- zaokrąglenia jawne: moc do 6 miejsc, wartości obserwowane do 4 miejsc.
+- zaokrąglenia jawne: moc do 6 miejsc, wartości obserwowane do 4 miejsc, straty i
+  napięcia (D3a) do 6 miejsc.
 """
 
 from __future__ import annotations
@@ -50,6 +59,10 @@ def _round_power(value: float) -> float:
 
 def _round_observed(value: float | None) -> float | None:
     return round(float(value), 4) if value is not None else None
+
+
+def _round6(value: float | None) -> float | None:
+    return round(float(value), 6) if value is not None else None
 
 
 def _probe_generator(bus_ref: str, added_mw: float) -> dict[str, Any]:
@@ -122,6 +135,22 @@ def _binding_from_items(items: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _scenario_measurements(raw_result: dict[str, Any]) -> dict[str, float | None]:
+    """Straty i skrajne napięcia scenariusza — TA SAMA ścieżka odczytu, którą
+    używa walidacja energetyczna D2 dla strat (``result_v1.summary.total_losses_p_mw``,
+    patrz ``application/analyses/energy_validation/service.py:62-67``) oraz solverowe
+    ekstrema napięć węzłowych, policzone już przez solver rozpływu (WHITE BOX;
+    ``network_model/solvers/power_flow_result.py:253-266``,
+    ``min_v_pu``/``max_v_pu`` w ``PowerFlowSummary``). Brak wyniku (np. wyjątek
+    solvera) → wszystkie wartości ``None`` (bez zgadywania)."""
+    summary = ((raw_result or {}).get("result_v1") or {}).get("summary") or {}
+    return {
+        "total_losses_p_mw": _round6(summary.get("total_losses_p_mw")),
+        "min_voltage_pu": _round6(summary.get("min_v_pu")),
+        "max_voltage_pu": _round6(summary.get("max_v_pu")),
+    }
+
+
 def _evaluate_scenario(
     base_run: CanonicalRun, bus_ref: str, added_mw: float
 ) -> tuple[bool, dict[str, Any]]:
@@ -140,6 +169,9 @@ def _evaluate_scenario(
             "converged": False,
             "acceptable": False,
             "binding": {"kind": "non_convergence"},
+            "total_losses_p_mw": None,
+            "min_voltage_pu": None,
+            "max_voltage_pu": None,
         }
         return False, record
 
@@ -161,6 +193,7 @@ def _evaluate_scenario(
         "converged": converged,
         "acceptable": acceptable,
         "binding": binding,
+        **_scenario_measurements(raw_result),
     }
     return acceptable, record
 
@@ -172,6 +205,19 @@ def _existing_generation_mw(snapshot: dict[str, Any], bus_ref: str) -> float:
         if gen.get("bus_ref") == bus_ref
     )
     return _round_power(total)
+
+
+def _losses_at_limit(scenarios: list[dict[str, Any]]) -> float | None:
+    """Straty przy mocy granicznej = ostatni DOPUSZCZALNY scenariusz.
+
+    Gdy scenariusz 0 MW jest już niedopuszczalny, pętla przeglądu przerywa się
+    natychmiast (patrz ``_candidate_capacity``) — nie istnieje żaden dopuszczalny
+    scenariusz, więc wartość jest nieosiągalna (``None``, bez zgadywania).
+    """
+    for record in reversed(scenarios):
+        if record["acceptable"]:
+            return record["total_losses_p_mw"]
+    return None
 
 
 def _candidate_capacity(
@@ -196,6 +242,8 @@ def _candidate_capacity(
         "existing_generation_mw": _existing_generation_mw(base_run.snapshot, bus_ref),
         "max_hosting_capacity_mw": _round_power(max_hosting_mw),
         "binding_criterion": binding,
+        "losses_baseline_p_mw": scenarios[0]["total_losses_p_mw"],
+        "losses_at_limit_p_mw": _losses_at_limit(scenarios),
         "scenarios": scenarios,
     }
 
