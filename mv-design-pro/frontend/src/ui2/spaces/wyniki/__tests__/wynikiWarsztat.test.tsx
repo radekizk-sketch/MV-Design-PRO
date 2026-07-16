@@ -104,6 +104,8 @@ describe('WynikiWarsztat — zakładki', () => {
     expect(screen.getByTestId('mvd-zdol-ekran')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-ranking'));
     expect(screen.getByTestId('mvd-rank-ekran')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-krzywe'));
+    expect(screen.getByTestId('mvd-krzywe-ekran')).toBeInTheDocument();
   });
 
   it('zakładka „Zgodność NC RfG": bez modułów wytwórczych — uczciwy stan pusty macierzy', () => {
