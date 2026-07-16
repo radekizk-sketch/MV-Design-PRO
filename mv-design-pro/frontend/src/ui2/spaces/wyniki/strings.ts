@@ -14,6 +14,7 @@ export const WYNIKI_WARSZTAT_STRINGS = {
   zakladkaRanking: 'Ranking przyłączeń',
   zakladkaKrzywe: 'Krzywe P–Q',
   zakladkaObszar: 'Obszar pracy P–Q',
+  zakladkaStudium: 'Studium przyłączenia',
   zakladkaPorownanie: 'Porównanie A/B',
   porownanieBezProjektu: 'Otwórz projekt, aby porównywać przebiegi obliczeń.',
   zakladkaPozostale: 'Pozostałe analizy',

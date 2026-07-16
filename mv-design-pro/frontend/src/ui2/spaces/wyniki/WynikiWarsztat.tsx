@@ -27,6 +27,7 @@ import {
   EkranObszaruPQ,
   EkranRankingu,
   EkranZdolnosci,
+  KreatorStudium,
   MacierzNcRfg,
   PulpitOze,
 } from '../../oze';
@@ -49,6 +50,7 @@ const ZAKLADKI = [
   { id: 'ranking', etykieta: T.zakladkaRanking },
   { id: 'krzywe', etykieta: T.zakladkaKrzywe },
   { id: 'obszar', etykieta: T.zakladkaObszar },
+  { id: 'studium', etykieta: T.zakladkaStudium },
   { id: 'pozostale', etykieta: T.zakladkaPozostale },
 ] as const;
 
@@ -61,7 +63,7 @@ const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId
   },
   {
     etykieta: T.grupaOze,
-    zakladki: ['ncrfg', 'pulpit-oze', 'zdolnosc', 'ranking', 'krzywe', 'obszar'],
+    zakladki: ['ncrfg', 'pulpit-oze', 'zdolnosc', 'ranking', 'krzywe', 'obszar', 'studium'],
   },
 ];
 
@@ -181,6 +183,7 @@ export function WynikiWarsztat({
         {zakladka === 'ranking' && <EkranRankingu trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'krzywe' && <EkranKrzywych trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'obszar' && <EkranObszaruPQ trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'studium' && <KreatorStudium trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'pulpit-oze' && (
           <PulpitOze
             trybZaawansowania={trybZaawansowania}
