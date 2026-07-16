@@ -1,0 +1,215 @@
+/*
+ * Style okna „Ranking punktów przyłączenia" (strumień OZE). Kolory WYŁĄCZNIE przez
+ * tokeny --mvd-* (theme/tokens.css) — zero literałów hex. Determinizm prezentacji:
+ * stałe wymiary, brak animacji zależnych od czasu. Tabela rankingu korzysta ze stylów
+ * wspólnego wzorca (`ui2/wyniki/wzorzec`); tu wyłącznie ramka okna, parametry i szczegół.
+ */
+
+.mvd-rank {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--mvd-ink);
+}
+
+.mvd-rank-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-rank-tytul {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+.mvd-rank-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- stany (brak przebiegu / idle / ładowanie / błąd) ---- */
+.mvd-rank-stan {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  padding: 12px;
+}
+.mvd-rank-stan--blad {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-rank-stan-title {
+  margin: 0;
+  font-weight: 600;
+}
+.mvd-rank-stan-desc {
+  margin: 4px 0 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- parametry biegu ---- */
+.mvd-rank-parametry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  box-shadow: var(--mvd-shadow);
+  padding: 12px;
+}
+.mvd-rank-param {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+}
+.mvd-rank-param > label,
+.mvd-rank-wezly > legend {
+  font-size: 12px;
+  font-weight: 600;
+}
+.mvd-rank-param-pole {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.mvd-rank-param-pole input,
+.mvd-rank-param select {
+  width: 120px;
+  padding: 4px 6px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+}
+.mvd-rank-param select {
+  width: 220px;
+}
+.mvd-rank-param-jedn {
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-rank-param-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 11px;
+}
+
+.mvd-rank-wezly {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  padding: 8px;
+  min-width: 220px;
+}
+.mvd-rank-wezly-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.mvd-rank-wezel-opcja {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.mvd-rank-oblicz {
+  align-self: flex-end;
+  padding: 6px 14px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 4px;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ---- szczegół wybranego węzła ---- */
+.mvd-rank-szczegol {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-rank-szczegol-naglowek {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.mvd-rank-szczegol-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.mvd-rank-szczegol-nazwa {
+  font-weight: 600;
+}
+.mvd-rank-szczegol-id {
+  color: var(--mvd-muted);
+  font-family: var(--mvd-font-mono);
+  font-size: 11px;
+}
+.mvd-rank-szczegol-lista {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  font-size: 12px;
+}
+.mvd-rank-szczegol-lista dt {
+  color: var(--mvd-muted);
+}
+.mvd-rank-szczegol-lista dd {
+  margin: 0;
+}
+
+.mvd-rank-slad-tytul {
+  font-size: 12px;
+  font-weight: 600;
+}
+.mvd-rank-slad-lista {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mvd-rank-slad-poz {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+}
+.mvd-rank-slad-moc {
+  min-width: 90px;
+}
+.mvd-rank-slad-status {
+  font-weight: 600;
+}
+.mvd-rank-slad-status--ok {
+  color: var(--mvd-ok);
+}
+.mvd-rank-slad-status--err {
+  color: var(--mvd-err);
+}
+.mvd-rank-slad-element {
+  color: var(--mvd-muted);
+}
+
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}

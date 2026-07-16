@@ -239,6 +239,16 @@ export interface ScenariuszZdolnosci {
   readonly converged: boolean;
   readonly acceptable: boolean;
   readonly binding: KryteriumWiazaceZdolnosci;
+  /**
+   * Pomiary D3a (ADDYTYWNE, pod ranking przyłączeń): straty czynne i skrajne
+   * napięcia scenariusza odczytane z `result_v1.summary` rozpływu
+   * (`hosting_capacity.py::_scenario_measurements`). Backend ZAWSZE zwraca te pola
+   * (możliwa wartość `null` przy niezbieżności). Deklaracja opcjonalna wyłącznie dla
+   * zgodności wstecznej ze starszymi fixture'ami okna „Zdolność przyłączeniowa".
+   */
+  readonly total_losses_p_mw?: number | null;
+  readonly min_voltage_pu?: number | null;
+  readonly max_voltage_pu?: number | null;
 }
 
 /** Wynik zdolności przyłączeniowej dla pojedynczego węzła-kandydata. */
@@ -248,6 +258,13 @@ export interface WezelZdolnosci {
   readonly existing_generation_mw: number;
   readonly max_hosting_capacity_mw: number;
   readonly binding_criterion: KryteriumWiazaceZdolnosci;
+  /**
+   * Straty czynne D3a: `losses_baseline_p_mw` — scenariusz 0 MW; `losses_at_limit_p_mw`
+   * — ostatni DOPUSZCZALNY scenariusz (`None`/`null`, gdy żaden scenariusz nie jest
+   * dopuszczalny). Opcjonalne wyłącznie dla zgodności wstecznej (patrz wyżej).
+   */
+  readonly losses_baseline_p_mw?: number | null;
+  readonly losses_at_limit_p_mw?: number | null;
   readonly scenarios: readonly ScenariuszZdolnosci[];
 }
 
@@ -302,4 +319,45 @@ export function pobierzZdolnoscPrzylaczeniowa(
     czesci.push(`max_steps=${encodeURIComponent(String(zapytanie.maxSteps))}`);
   }
   return getJson<WidokZdolnosci>(`/api/oze-analysis/hosting-capacity?${czesci.join('&')}`);
+}
+
+// =============================================================================
+// Kategorie modułów NC RfG (progi klas A/B/C/D) — catalog/profiles/nc_rfg/loader.py
+// =============================================================================
+
+/**
+ * Kategoria modułu wytwórczego NC RfG (art. 5) — PROGI KATALOGOWE operatora.
+ * Odwzorowuje podzbiór `NcRfgModuleType.model_dump` serializowany przez
+ * `GET /api/ncrfg-tests/catalog` (`api/ncrfg_ptpiree_tests.py::get_ncrfg_test_catalog`):
+ * dolny/górny próg mocy [kW] i górny limit napięcia [kV]. To DANE KATALOGOWE
+ * (nie ocena, nie fizyka) — służą mapowaniu słownikowemu mocy granicznej na klasę.
+ */
+export interface KlasaModuluNcRfg {
+  readonly id: string; // "A" | "B" | "C" | "D"
+  readonly threshold_kw_min: number;
+  readonly threshold_kw_max: number | null;
+  readonly voltage_kv_max: number | null;
+  readonly description_pl: string;
+}
+
+/** Profil operatora z progami klas (podzbiór wpisu `operators[]` katalogu NC RfG). */
+export interface ProfilOperatoraNcRfg {
+  readonly operator_id: string;
+  readonly operator_name_pl: string;
+  readonly module_types: readonly KlasaModuluNcRfg[];
+}
+
+/** Odpowiedź katalogu NC RfG w zakresie potrzebnym do mapowania klas (operatorzy). */
+export interface OdpowiedzKatalogNcRfg {
+  readonly operators: readonly ProfilOperatoraNcRfg[];
+}
+
+/**
+ * Katalog NC RfG (progi klas per operator). Reużywa tej samej końcówki, którą
+ * czyta konfigurator DER (`ui/ncrfg-tests/api`); tu potrzebne są wyłącznie progi
+ * `module_types` (pominięte w typie `ui/ncrfg-tests`), więc klient ma własny,
+ * węższy typ 1:1 z serializacją backendu.
+ */
+export function pobierzKatalogKlasNcRfg(): Promise<OdpowiedzKatalogNcRfg> {
+  return getJson<OdpowiedzKatalogNcRfg>('/api/ncrfg-tests/catalog');
 }
