@@ -17,7 +17,7 @@
 import { useState, type ReactNode } from 'react';
 
 import type { AdvancementMode } from '../../shell/modeModel';
-import { TabelaSzyn } from '../../wyniki/rozplyw';
+import { EkranRozplywu } from '../../wyniki/rozplyw';
 import { EkranZwarc } from '../../wyniki/zwarcia';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
@@ -123,7 +123,7 @@ export function WynikiWarsztat({
       </div>
       <div role="tabpanel" className="mvd-wyniki-tresc">
         {zakladka === 'rozplyw' && (
-          <TabelaSzyn trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+          <EkranRozplywu trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
         )}
         {zakladka === 'zwarcia' && (
           <EkranZwarc
