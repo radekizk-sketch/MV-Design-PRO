@@ -1,0 +1,144 @@
+import { describe, it, expect } from 'vitest';
+
+import {
+  mapujMacierz,
+  podsumowanieModulu,
+  podsumowanieProjektu,
+  rozwiazNapiecieKv,
+  zbudujModuly,
+  zbudujWejscieModulu,
+} from '../macierzModel';
+import { derFixture, katalogFixture, wynikFixture } from './fixtures';
+
+describe('rozwiazNapiecieKv — napięcie WYŁĄCZNIE z modelu (ZAKAZ zgadywania)', () => {
+  it('rozwiązuje 0,4 kV z poziomu napięcia przyłączenia (voltage_level_ref)', () => {
+    expect(rozwiazNapiecieKv(derFixture({ id: 'pv-1', voltage_level_ref: 'lv_0_4kV' }))).toBe(0.4);
+  });
+
+  it('zwraca null gdy brak poziomu napięcia — NIE zgaduje 15 kV', () => {
+    const der = derFixture({ id: 'pv-1', voltage_level_ref: null, connection_side: 'SN' });
+    expect(rozwiazNapiecieKv(der)).toBeNull();
+  });
+
+  it('zwraca null dla nieznanego odwołania poziomu napięcia', () => {
+    expect(rozwiazNapiecieKv(derFixture({ id: 'pv-1', voltage_level_ref: 'nieistnieje' }))).toBeNull();
+  });
+});
+
+describe('zbudujModuly — projekcja realnego źródła DER', () => {
+  it('zachowuje kolejność i buduje kolumnę per DER', () => {
+    const moduly = zbudujModuly([
+      derFixture({ id: 'pv-1', name: 'PV A' }),
+      derFixture({ id: 'bess-1', name: 'BESS B', der_kind: 'BESS' }),
+    ]);
+    expect(moduly.map((m) => m.derRef)).toEqual(['pv-1', 'bess-1']);
+    expect(moduly[1].rodzaj).toBe('BESS');
+  });
+
+  it('brak napięcia → blokada „brak_napiecia" (jawny stan braku danych)', () => {
+    const [modul] = zbudujModuly([derFixture({ id: 'pv-1', voltage_level_ref: null })]);
+    expect(modul.napiecieKv).toBeNull();
+    expect(modul.powodBlokady).toBe('brak_napiecia');
+  });
+
+  it('brak mocy → blokada „brak_mocy"', () => {
+    const [modul] = zbudujModuly([derFixture({ id: 'pv-1', nominal_power_kw: null })]);
+    expect(modul.powodBlokady).toBe('brak_mocy');
+  });
+
+  it('zdolność LVRT z profilu → pochodzenie „katalog"; SCADA → „deklarowane"', () => {
+    const [modul] = zbudujModuly([
+      derFixture({ id: 'pv-1', profiles: { lvrt_curve_ref: 'lvrt-enea-b' } }),
+    ]);
+    expect(modul.zdolnosci.hasLvrtCurve).toBe(true);
+    expect(modul.pochodzenieZdolnosci.hasLvrtCurve).toBe('katalog');
+    expect(modul.pochodzenieZdolnosci.hasScadaCommunication).toBe('deklarowane');
+  });
+
+  it('certyfikat PTPiREE z katalogu → ptpiree_verified', () => {
+    const [modul] = zbudujModuly([
+      derFixture({ id: 'pv-1', catalogs: { ptpiree_certificate_ref: 'cert-1' } }),
+    ]);
+    expect(modul.certyfikat).toBe('ptpiree_verified');
+  });
+});
+
+describe('zbudujWejscieModulu — wejście biegu', () => {
+  it('moduł zablokowany → null (nie trafia do biegu)', () => {
+    const [modul] = zbudujModuly([derFixture({ id: 'pv-1', voltage_level_ref: null })]);
+    expect(zbudujWejscieModulu(modul, 'enea')).toBeNull();
+  });
+
+  it('składa NcRfgModuleInput z napięciem z modelu, mocą i operatorem', () => {
+    const [modul] = zbudujModuly([
+      derFixture({ id: 'pv-1', nominal_power_kw: 500, voltage_level_ref: 'lv_0_4kV' }),
+    ]);
+    const wejscie = zbudujWejscieModulu(modul, 'pge');
+    expect(wejscie).not.toBeNull();
+    expect(wejscie?.voltage_kv).toBe(0.4);
+    expect(wejscie?.p_max_kw).toBe(500);
+    expect(wejscie?.operator_id).toBe('pge');
+    expect(wejscie?.der_ref).toBe('pv-1');
+  });
+});
+
+describe('mapujMacierz — siatka test × moduł', () => {
+  const moduly = zbudujModuly([
+    derFixture({ id: 'pv-1', name: 'PV Dach A' }),
+    derFixture({ id: 'bess-1', name: 'Magazyn energii 1', der_kind: 'BESS', nominal_power_kw: 800 }),
+    derFixture({ id: 'fw-1', name: 'Farma wiatrowa', der_kind: 'FW', voltage_level_ref: null }),
+  ]);
+
+  it('wiersze = testy katalogu; kolumny = wszystkie moduły', () => {
+    const wiersze = mapujMacierz(katalogFixture(), null, moduly);
+    expect(wiersze).toHaveLength(3);
+    expect(wiersze[0].komorki).toHaveLength(3);
+  });
+
+  it('przed biegiem → komórki w stanie „brak_biegu"', () => {
+    const wiersze = mapujMacierz(katalogFixture(), null, moduly);
+    expect(wiersze[0].komorki[0].stan).toBe('brak_biegu');
+    expect(wiersze[0].komorki[0].werdykt).toBeNull();
+  });
+
+  it('po biegu → werdykty z wyniku; moduł zablokowany → „brak_danych_modul"', () => {
+    const wiersze = mapujMacierz(katalogFixture(), wynikFixture(), moduly);
+    const lvrt = wiersze.find((w) => w.test.test_id === 'FRT_LVRT')!;
+    expect(lvrt.komorki[0].werdykt).toBe('pass'); // pv-1
+    expect(lvrt.komorki[1].werdykt).toBe('fail'); // bess-1
+    expect(lvrt.komorki[2].stan).toBe('brak_danych_modul'); // fw-1 (brak napięcia)
+    expect(lvrt.komorki[2].powodModulu).toBe('brak_napiecia');
+  });
+
+  it('werdykt „niewymagany" jest odwzorowany z wyniku', () => {
+    const wiersze = mapujMacierz(katalogFixture(), wynikFixture(), moduly);
+    const bs = wiersze.find((w) => w.test.test_id === 'BLACK_START')!;
+    expect(bs.komorki[0].werdykt).toBe('not_required');
+  });
+});
+
+describe('podsumowania per moduł i per projekt', () => {
+  const moduly = zbudujModuly([
+    derFixture({ id: 'pv-1', name: 'PV Dach A' }),
+    derFixture({ id: 'bess-1', name: 'Magazyn energii 1', der_kind: 'BESS' }),
+    derFixture({ id: 'fw-1', name: 'Farma wiatrowa', der_kind: 'FW', voltage_level_ref: null }),
+  ]);
+
+  it('per moduł: zgodny/niezgodny z wyniku; zablokowany → brak_danych', () => {
+    const wynik = wynikFixture();
+    expect(podsumowanieModulu(moduly[0], wynik).overallStatus).toBe('zgodny');
+    expect(podsumowanieModulu(moduly[1], wynik).overallStatus).toBe('niezgodny');
+    expect(podsumowanieModulu(moduly[2], wynik).overallStatus).toBe('brak_danych');
+    expect(podsumowanieModulu(moduly[2], wynik).zablokowany).toBe(true);
+  });
+
+  it('per projekt: agreguje moduły i wymagane/spełnione', () => {
+    const p = podsumowanieProjektu(moduly, wynikFixture());
+    expect(p.liczbaModulow).toBe(3);
+    expect(p.zgodne).toBe(1);
+    expect(p.niezgodne).toBe(1);
+    expect(p.brakDanych).toBe(1);
+    expect(p.wymaganeRazem).toBe(4); // 2 + 2 (moduł zablokowany nie wnosi)
+    expect(p.spelnioneRazem).toBe(3); // 2 + 1
+  });
+});

@@ -1,0 +1,195 @@
+/*
+ * Fixtures 1:1 z kontraktami `ui/ncrfg-tests/api` (karta P39 §3): katalog
+ * wymogów, wynik biegu (moduł zgodny / niezgodny / werdykt „niewymagany"),
+ * oraz budowniczy DER (StationDerConnection) do testów adaptera i komponentu.
+ */
+
+import type {
+  NcRfgRunResult,
+  NcRfgTestCatalogResponse,
+} from '../../../../ui/ncrfg-tests/api';
+import {
+  EMPTY_DER_CATALOGS,
+  EMPTY_DER_PROFILES,
+  EMPTY_DER_READINESS,
+  type DerKindUnified,
+  type StationDerConnection,
+} from '../../../../ui/network-build/station-der';
+
+export function derFixture(over: Partial<StationDerConnection> & { id: string }): StationDerConnection {
+  const der_kind: DerKindUnified = over.der_kind ?? 'PV';
+  return {
+    id: over.id,
+    project_id: over.project_id ?? 'proj-1',
+    station_id: over.station_id ?? 'st-1',
+    der_kind,
+    name: over.name ?? over.id,
+    connection_side: over.connection_side ?? 'nN',
+    pcc_ref: over.pcc_ref ?? 'pcc_st-1_szyna-1',
+    bay_ref: over.bay_ref ?? null,
+    transformer_ref: over.transformer_ref ?? null,
+    lv_busbar_ref: over.lv_busbar_ref ?? null,
+    connection_node_ref: over.connection_node_ref ?? null,
+    internal_cable_ref: over.internal_cable_ref ?? null,
+    // Uwaga: rozróżniamy jawny `null` (brak danej) od „nie podano" (undefined → domyślna).
+    voltage_level_ref: 'voltage_level_ref' in over ? over.voltage_level_ref! : 'lv_0_4kV',
+    catalogs: { ...EMPTY_DER_CATALOGS, ...(over.catalogs ?? {}) },
+    profiles: { ...EMPTY_DER_PROFILES, ...(over.profiles ?? {}) },
+    nominal_power_kw: 'nominal_power_kw' in over ? over.nominal_power_kw! : 500,
+    completeness: over.completeness ?? 'complete',
+    readiness: over.readiness ?? { ...EMPTY_DER_READINESS },
+    created_at: over.created_at ?? '1970-01-01T00:00:00Z',
+    updated_at: over.updated_at ?? '1970-01-01T00:00:00Z',
+  };
+}
+
+export function katalogFixture(): NcRfgTestCatalogResponse {
+  return {
+    procedure_version: 'PTPiREE Procedura testowania v3.0',
+    source_ref: 'ptpiree-2024',
+    operators: [
+      { operator_id: 'enea', operator_name_pl: 'Enea Operator', last_revision: '2024-01' },
+      { operator_id: 'pge', operator_name_pl: 'PGE Dystrybucja', last_revision: '2024-03' },
+    ],
+    tests: [
+      {
+        test_id: 'FREQ_P_F',
+        ability_pl: 'Regulacja mocy czynnej od częstotliwości P(f)',
+        procedure_basis_pl: 'NC RfG Art. 13, PTPiREE §4.2',
+        default_for_modules: ['PV', 'BESS', 'FW'],
+        conditional_pl: null,
+      },
+      {
+        test_id: 'FRT_LVRT',
+        ability_pl: 'Zdolność przetrwania zapadu napięcia (LVRT)',
+        procedure_basis_pl: 'NC RfG Art. 14, PTPiREE §5.1',
+        default_for_modules: ['PV', 'BESS', 'FW'],
+        conditional_pl: null,
+      },
+      {
+        test_id: 'BLACK_START',
+        ability_pl: 'Zdolność rozruchu autonomicznego',
+        procedure_basis_pl: 'NC RfG Art. 15, PTPiREE §6.4',
+        default_for_modules: [],
+        conditional_pl: 'Tylko na żądanie operatora',
+      },
+    ],
+  };
+}
+
+export function wynikFixture(): NcRfgRunResult {
+  return {
+    contract: 'NcRfgPtpireeTestResultV1',
+    procedure_version: 'PTPiREE Procedura testowania v3.0',
+    solver_version: 'ncrfg-1.0.0',
+    input_hash: 'in-abc',
+    deterministic_hash: 'det-9f8e7d6c',
+    modules: [
+      {
+        der_ref: 'pv-1',
+        der_name: 'PV Dach A',
+        operator_id: 'enea',
+        operator_name_pl: 'Enea Operator',
+        module_type: 'PV',
+        module_family: 'PPM',
+        p_max_kw: 500,
+        voltage_kv: 0.4,
+        required_count: 2,
+        pass_count: 2,
+        fail_count: 0,
+        no_data_count: 0,
+        not_required_count: 1,
+        overall_status: 'zgodny',
+        tests: [
+          {
+            test_id: 'FREQ_P_F',
+            ability_pl: 'Regulacja mocy czynnej od częstotliwości P(f)',
+            required: true,
+            required_reason_pl: 'Wymagane dla modułu typu B.',
+            verdict: 'pass',
+            summary_pl: 'Droop 5% i martwa strefa 0,2 Hz spełniają wymóg.',
+            metrics: { droop_percent: 5, dead_band_hz: 0.2 },
+            trace_refs: ['proof://pv-1/FREQ_P_F'],
+            fix_actions: [],
+          },
+          {
+            test_id: 'FRT_LVRT',
+            ability_pl: 'Zdolność przetrwania zapadu napięcia (LVRT)',
+            required: true,
+            required_reason_pl: 'Wymagane dla wszystkich modułów.',
+            verdict: 'pass',
+            summary_pl: 'Krzywa LVRT obecna i zgodna z obwiednią operatora.',
+            metrics: { reactive_current_gain: 2 },
+            trace_refs: ['proof://pv-1/FRT_LVRT'],
+            fix_actions: [],
+          },
+          {
+            test_id: 'BLACK_START',
+            ability_pl: 'Zdolność rozruchu autonomicznego',
+            required: false,
+            required_reason_pl: 'Nieżądane przez operatora dla tego modułu.',
+            verdict: 'not_required',
+            summary_pl: 'Operator nie wymaga rozruchu autonomicznego.',
+            metrics: {},
+            trace_refs: [],
+            fix_actions: [],
+          },
+        ],
+      },
+      {
+        der_ref: 'bess-1',
+        der_name: 'Magazyn energii 1',
+        operator_id: 'enea',
+        operator_name_pl: 'Enea Operator',
+        module_type: 'BESS',
+        module_family: 'PPM',
+        p_max_kw: 800,
+        voltage_kv: 0.4,
+        required_count: 2,
+        pass_count: 1,
+        fail_count: 1,
+        no_data_count: 0,
+        not_required_count: 1,
+        overall_status: 'niezgodny',
+        tests: [
+          {
+            test_id: 'FREQ_P_F',
+            ability_pl: 'Regulacja mocy czynnej od częstotliwości P(f)',
+            required: true,
+            required_reason_pl: 'Wymagane dla modułu typu B.',
+            verdict: 'pass',
+            summary_pl: 'Regulacja P(f) skonfigurowana poprawnie.',
+            metrics: { droop_percent: 4 },
+            trace_refs: ['proof://bess-1/FREQ_P_F'],
+            fix_actions: [],
+          },
+          {
+            test_id: 'FRT_LVRT',
+            ability_pl: 'Zdolność przetrwania zapadu napięcia (LVRT)',
+            required: true,
+            required_reason_pl: 'Wymagane dla wszystkich modułów.',
+            verdict: 'fail',
+            summary_pl: 'Brak krzywej LVRT — moduł nie spełnia wymogu.',
+            metrics: { has_lvrt_curve: false },
+            trace_refs: ['proof://bess-1/FRT_LVRT'],
+            fix_actions: ['Wybierz krzywą LVRT operatora w profilu modułu.'],
+          },
+          {
+            test_id: 'BLACK_START',
+            ability_pl: 'Zdolność rozruchu autonomicznego',
+            required: false,
+            required_reason_pl: 'Nieżądane przez operatora dla tego modułu.',
+            verdict: 'not_required',
+            summary_pl: 'Operator nie wymaga rozruchu autonomicznego.',
+            metrics: {},
+            trace_refs: [],
+            fix_actions: [],
+          },
+        ],
+      },
+    ],
+    test_catalog: katalogFixture().tests,
+    white_box_trace: [],
+    report_pl: 'Raport zgodności NC RfG.',
+  };
+}
