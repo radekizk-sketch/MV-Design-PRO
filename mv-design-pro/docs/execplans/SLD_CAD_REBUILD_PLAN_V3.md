@@ -1369,18 +1369,73 @@ lokalnych łatek i duplikacji elektryki adaptera.
 
 ---
 
-## Prompt kontynuacji (wklej świeżemu agentowi)
+## Prompt kontynuacji (wklej świeżemu agentowi — DO WDROŻENIA 100%)
 
 ```
-Pracujesz w /home/user/MV-Design-PRO, branch claude/sld-schema-cad-scada-rqvz73.
-Przeczytaj W TEJ KOLEJNOŚCI: docs/sld/SLD_CAD_SPEC_V3.md (wiążąca),
-docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md (fazy F1-F8; sprawdź git log który
-etap ukończono — commity prefiksowane "feat(sld-v3): F<n>"),
-docs/execplans/SLD_CAD_SCADA_QUALITY_PLAN.md §1 i §3 (reguły + harness + sonda).
-Wykonuj fazy PO KOLEI, każda: implementacja → testy → wyrocznie spec §11 dla
-zakresu fazy → render 1:1 (harness) → commit ze stopką (QUALITY_PLAN §1.7) →
-push. PNG + sonda to dowód; testy to warunek konieczny. Nie fałszuj zieleni,
-nie łam determinizmu, nie duplikuj elektryki adaptera v2 (współdziel). Gdy faza
-okaże się większa niż opis lub sprzeczna ze spec — STOP i spisz znalezisko w
-planie zamiast hackować. Nie pytaj o pozwolenie na fazy z planu.
+Pracujesz w /home/user/MV-Design-PRO, branch claude/sld-schema-cad-scada-rqvz73
+(HEAD po F10.6 — dyrektywy D1 i D2 zrealizowane: fazy F1-F10.6 [DONE], patrz
+git log --oneline -25). TRYB: najwyższa jakość, praca CIĄGŁA bez zatrzymań aż
+do wdrożenia 100% — nadzorca (Ty) kontroluje i zarządza; implementację wolno
+delegować agentom, ale KAŻDY odbiór robisz osobiście: własna sonda geometryczna
+(wzorce w scratchpadzie: probe-f101/f102-supervisor.ts — sonda musi GRYŹĆ na
+stanie sprzed zmiany), pełne bramki, wizualny DoD na renderach (PNG > deklaracja),
+commit WYŁĄCZNIE po pełnej regresji (frontend: npx vitest run
+--no-file-parallelism z mv-design-pro/frontend; backend przy zmianach DOMAIN:
+poetry run pytest -q — znany 1 pre-existing fail test_no_todo_fixme..., inny
+fail = STOP). Jeżeli agent padnie/nie dostarcza (transcript bez edycji po
+długim czasie) — przejmujesz implementację osobiście (wzorzec F10.1).
+
+PRZECZYTAJ W KOLEJNOŚCI: docs/sld/SLD_CAD_SPEC_V3.md (wiążąca, §1-§20 +
+załączniki A1/A3); ten plan (wpisy [DONE] F9.x/F10.x niosą decyzje i długi);
+docs/v12xx/REJESTR_KONFLIKTOW.md V12K-026..037; docs/sld/
+SLD_PROTECTION_MARKING_COORDINATION_2026-07.md (kontrakt z wątkiem UI).
+
+DO 100% POZOSTAJE (wykonuj PO KOLEI, każda pozycja = pełny cykl
+sonda→implementacja→wyrocznie→regresja→render→commit→push):
+
+F11.1 — Rejestr device-ref w GPZ: CanonicalGpzBay dostaje projekcję
+  deviceRef/ct_ref/Measurement per aparat (adapter enmToCanonicalGpzAdapter,
+  addytywnie) → tor wyzwalania §17 + linia pomiarowa §20.1 + adnotacje CT
+  §18.3 w GPZ (parytet ze stacjami; wyjątek „okrąg bez toru w GPZ" w
+  protectionMarkingGaps ZNIKA — usuń go świadomie z komentarzem); wyrocznie
+  gpz (parityKeys/noDirectTie/busbarTopology) muszą pozostać zielone.
+
+F11.2 — Źródło danych designation: przeanalizuj read-modele backendu
+  (_branch_to_primary_device, field_read_model.py) — skąd realnie może płynąć
+  BayPrimaryDevice.designation (dane katalogowe? nazwa urządzenia?); jeżeli
+  istnieje uczciwe źródło — podłącz + test; jeżeli nie — wpis do planu
+  „wymaga danych projektowych użytkownika" i ZAMKNIJ pozycję raportem.
+
+F11.3 — F9.6b finalnie: stan operacyjny źródła wymaga REALNEJ telemetrii —
+  operating_mode w field_read_model.py:891-925 to zaszyta stała („gotowosc").
+  Zbadaj czy ENM niesie surowe runtime_state DER-ów gdzie indziej; jeżeli tak
+  — dostarcz wywodzenie białoskrzynkowe + source_state_probe (§13.3); jeżeli
+  nie — usuń stałą-fabrykację (uczciwe None) + wpis do planu i ZAMKNIJ.
+
+F11.4 — F8c: usunięcie renderu v2 za checklistą parytetu §10 (10 punktów,
+  wpis F8c w tym planie): CAD-edit, drawer, context-menu, paleta DER,
+  split-preview, nakładka solverowa, konsolidacja useMeasuredSize, migracja
+  testów integracyjnych, k4, odświeżone rendery. KAŻDY punkt = dowód
+  (test/render), nie deklaracja. Elektryka adaptera v2 (enmToSldAdapter)
+  ZOSTAJE (współdzielona prawda) — usuwasz wyłącznie RENDER v2. Po usunięciu:
+  pełna regresja + wszystkie guardy (w tym sld_determinism_guards,
+  import_graph_guard, vulture_guard) + flaga localStorage mvdp.sldRenderVersion
+  przestaje istnieć (sprzątnij SldRenderHost do czystego v3).
+
+F11.5 — Domknięcie programu: PLANS.md §3 (status: dyrektywy D1+D2+F8c
+  wdrożone), SLD_V3_ACCEPTANCE.md (macierz finalna wszystkich wyroczni),
+  kontrakt koordynacyjny — sprawdź `git fetch origin` czy wątek UI
+  (claude/power-network-design-ui-ir91mv) potwierdził V12K-032/słownik;
+  jeżeli tak — odhacz Potwierdzenia; jeżeli nie — zostaw z adnotacją daty.
+  Rendery odbioru finalne 5 szt. + zoom na każdą klasę pola. NA KONIEC:
+  raport końcowy właścicielowi (co wdrożone, dowody, co czeka na dane/decyzje
+  zewnętrzne) — dopiero ten raport kończy pracę.
+
+REGUŁY TWARDE (bez wyjątków): spec-first (zmiana zachowania → najpierw §);
+zero zgadywania/atrap (brak danych = brak rysunku + jawny wpis); żadna
+wyrocznia nie może zostać osłabiona (baseline wolno podnieść TYLKO
+z uzasadnieniem treścią obowiązkową); determinizm; etykiety PL; zero
+kodenames; tapX/stationBlockWidth nietykalne bez pełnej re-walidacji;
+uczciwość raportów > zieleń na pokaz. Konflikty → REJESTR_KONFLIKTOW
+(zakres SLD: V12K-026..039). Nie pytaj o pozwolenie na pozycje z tej listy.
 ```
