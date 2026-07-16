@@ -274,7 +274,14 @@ Progress:
         potwierdzony przez zarządcę na scalonym drzewie; zintegrowane `dbd044f`;
         serwis energy_validation jako pakiet service.py — kolizja nazw
         rozstrzygnięta jawnie). Karta E8.4 okno jakości wyników W-607 `3c68d7d`;
-        wykonawcy w toku: P47a (pulpit na max), E8.4 (jakość wyników).
+        P47a pulpit OZE na max (Opus; 39 testów; pełny vitest u wykonawcy 8204
+        pass ZERO failed; zintegrowane `3f0c44e`; ui2 915 pass u zarządcy;
+        USTALONE: referencje magazynów `conv-bess-*` = item_id katalogu
+        konwerterów, `bess_bat_*` poza nim → jawny stan nieodnalezienia; ślad
+        SCR w ASCII spójnie z NC RfG; TODO-KARTA: mapowanie moduł→węzeł dla
+        podświetlenia, konwencja formatera energii; ZAOBSERWOWANE: przejściowy
+        szum testowy AnonymizationProvider/navigation — flaky do obserwacji).
+        Wykonawca w toku: E8.4 (okno jakości wyników W-607).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
