@@ -300,7 +300,13 @@ Progress:
         scenariuszy na kanonicznej ścieżce _execute_power_flow, ocena
         EnergyValidationBuilder; pełny pytest 5775 pass ZERO failed potwierdzony
         przez zarządcę; zintegrowane `234777c`; guard load_flow_no_heuristics
-        zielony). Karta P2 okno zdolności `ac6f9cb` — wykonawca w toku.
+        zielony). P2 okno zdolności przyłączeniowej (Opus; 33 testy; pełny
+        vitest u wykonawcy 8284 pass ZERO failed; zintegrowane `df5f5fc`).
+        Scalenie #10: zakładka „Zdolność przyłączeniowa" w warsztacie
+        (`95eb5af`; ui2 996 pass). NASTĘPNE: P19 ranking punktów przyłączenia
+        (konsumuje D3 + NC RfG + straty), P41 krzywe P–Q (delta katalogowa).
+        UWAGA IA: warsztat wyników ma 10 zakładek — do audytu rady (grupowanie
+        OZE) przy najbliższym przeglądzie fazowym.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
