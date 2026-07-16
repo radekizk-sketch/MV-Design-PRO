@@ -325,6 +325,10 @@ Progress:
         (`dac4c82`; ui2 1056 pass). STRUMIEŃ OZE — KOMPLET PIERWSZEJ FALI:
         P39→P47→P47a→P2→P19→P41 zrealizowane end-to-end (backend+okna+powłoka).
         Kolejne fale wg kolejności właściciela: P30→P35→P38→P40→P42→P43→P46→P37.
+        Pełny vitest kompletu fali: 632 pliki / 8345 pass (exit 0).
+        Scalenie #13 — przegląd IA: zakładki warsztatu wyników pogrupowane
+        („Analizy sieci" / „OZE i przyłączenia"; jeden tablist, testidy bez
+        zmian, klawiatura = kolejność wizualna; `288d7a6`; ui2 1056 pass).
         PROCEDURA: wykonawcy backendowi zawieszają się po pełnym pytest (3
         przypadki) — zarządca przejmuje: weryfikacja w worktree + commit
         w imieniu wykonawcy (bez oczekiwania na raport).
