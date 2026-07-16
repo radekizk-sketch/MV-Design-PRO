@@ -52,6 +52,12 @@ import {
 } from './camera';
 import type { SegmentFlowOverlay, SldV3Overlay } from './overlay';
 import { isLayerVisible, layerIdForElementMeta, type CanvasLayerVisibility } from './layers';
+import {
+  bridgePointsForPolyline,
+  interiorCrossings,
+  polylinePathWithBridges,
+  type PowerPathCrossing,
+} from '../scene/crossings';
 
 const SLD_V3_BACKGROUND = '#0B0F14';
 /** Nakładka energizacji (spec §6 P5): kolor akcentu, NIE geometria. */
@@ -250,11 +256,17 @@ function SceneSegmentNode(props: {
   readonly segment: PreviewSegment;
   readonly index: number;
   readonly overlay: SldV3Overlay | undefined;
+  /** F13.2 (spec §22.1, D3-3): przecięcia toru mocy CAŁEJ sceny — pion tego
+   *  odcinka przecinający poziom innego dostaje MOSTEK półłukowy (pion
+   *  przeskakuje poziom, `crossings.ts`). `undefined`/pusta lista = ścieżka
+   *  identyczna jak dotąd (`polylinePathWithBridges` bez mostków ==
+   *  `pointsToPath`, dowód w teście). */
+  readonly sceneCrossings: readonly PowerPathCrossing[] | undefined;
   readonly onElementContextMenu:
     | ((testId: string, meta: SldElementClickMeta | undefined, clientX: number, clientY: number) => void)
     | undefined;
 }): JSX.Element | null {
-  const { segment, index, overlay, onElementContextMenu } = props;
+  const { segment, index, overlay, sceneCrossings, onElementContextMenu } = props;
   if (segment.points.length < 2) return null;
   const testId = segmentTestId(segment, index);
   const kind = segment.meta?.kind ?? 'sn';
@@ -278,11 +290,21 @@ function SceneSegmentNode(props: {
     : overlay?.energizedByTestId[testId];
   const stroke = strokeForEnergization(energizedSeg) ?? V3_STROKE_BASE;
   const segmentClickMeta: SldElementClickMeta = { ownerRef: segment.meta?.ownerRef, elementKind: segment.meta?.elementKind };
+  // F13.2 (spec §22.1): mostki liczone deterministycznie z przecięć sceny —
+  // geometria sceny (punkty/porty/bbox/baseline'y §15.1) NIETKNIĘTA, mostek
+  // to wyłącznie kształt ścieżki SVG w miejscu przelotu bez połączenia.
+  const bridges = sceneCrossings && sceneCrossings.length > 0
+    ? bridgePointsForPolyline(segment.points, sceneCrossings)
+    : undefined;
+  const pathD = bridges && bridges.size > 0
+    ? polylinePathWithBridges(segment.points, bridges)
+    : pointsToPath(segment.points);
   return (
     <path
       data-testid={testId}
       data-parity-key={parityKeysOf(segment.meta)}
-      d={pointsToPath(segment.points)}
+      data-bridge-count={bridges && bridges.size > 0 ? [...bridges.values()].reduce((n, ys) => n + ys.length, 0) : undefined}
+      d={pathD}
       fill="none"
       stroke={stroke}
       strokeWidth={strokeWidth}
@@ -775,6 +797,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
 
   const effectiveLod: SceneLod = lodOverride ?? camera.lod;
   const scene = sceneByLod[effectiveLod];
+  // F13.2 (spec §22.1, D3-3): przecięcia toru mocy TEJ sceny — jedna prawda
+  // dla mostków wszystkich odcinków (deterministyczne, memoizowane per scena).
+  const sceneCrossings = useMemo(() => interiorCrossings(scene.segments), [scene]);
   const sheetSize = useMemo(() => sheetSizeFor(scene), [scene]);
   // F12-B pkt 4 (spec §10.1 ARCH-4): warstwa „nakładki wyników" (energizacja +
   // przepływ) — `null`/brak `layerVisibility` = widoczna (zero zmiany
@@ -894,6 +919,24 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       }
     >
       <SheetFrame width={sheetSize.width} height={sheetSize.height} scaleLabel="wg kamery">
+        {/* F13.1 (spec §21.2, D3-2/D3-12): rama strefy GPZ — DEKORACJA z meta
+         *  sceny (nie segment toru mocy — zero udziału w wyroczniach §11/
+         *  §15.1/§16), rysowana POD warstwami treści; styl: cienka linia
+         *  kreskowa (odróżnialna od torów i od ramki arkusza). */}
+        {scene.meta.gpzZone && (
+          <rect
+            data-testid="sld-v3-gpz-zone"
+            x={scene.meta.gpzZone.x}
+            y={scene.meta.gpzZone.y}
+            width={scene.meta.gpzZone.width}
+            height={scene.meta.gpzZone.height}
+            fill="none"
+            stroke={V3_STROKE_BASE}
+            strokeWidth={1.2}
+            strokeDasharray="12 6"
+            opacity={0.7}
+          />
+        )}
         {/* F12-B pkt 4 (spec §10.1 ARCH-4): filtr WYŁĄCZNIE renderu —
          * `scene.segments`/`scene.symbols`/`scene.labels` (`buildSceneV3`)
          * NIETKNIĘTE (mapowane w PEŁNI, `index` zachowany dla każdego elementu
@@ -910,6 +953,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                 segment={segment}
                 index={index}
                 overlay={effectiveOverlay}
+                sceneCrossings={sceneCrossings}
                 onElementContextMenu={onElementContextMenu}
               />
             );

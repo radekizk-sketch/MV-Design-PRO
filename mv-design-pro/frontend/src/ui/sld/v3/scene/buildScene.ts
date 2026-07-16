@@ -154,6 +154,7 @@ import {
   FORBIDDEN_RAW_DIRECTION_TOKENS,
 } from '../compose/directions';
 import { isSourceOperationalState, type DerSourceKind, type StationDerSourceInput } from '../compose/sourceKind';
+import { junctionDotGaps } from './crossings';
 import {
   bayHasProtectionAnnotation,
   protectionAnnotationDetailForLod,
@@ -211,6 +212,11 @@ export interface SceneV3Meta {
    *  ISTNIEJĄCY, osobny mechanizm (`meta.gpzId`/`meta.sections`), nie
    *  duplikujemy go tu jako trzeci `SldSourceView`-podobny wpis. */
   readonly sources: readonly SldSourceView[];
+  /** F13.1 (spec §21.2, przebudowa nadzorcy): rama strefy GPZ — DEKORACJA
+   *  rysowana przez kanwę/preview (POZA torem mocy i wyroczniami §11/§15.1/
+   *  §16); współrzędne świata (kompozycja pass-2). `null`/brak = brak GPZ
+   *  lub kompozycja pusta. */
+  readonly gpzZone?: import('../compose/gpz').GpzZoneDecoration | null;
 }
 
 export interface SceneV3 extends PreviewComposition {
@@ -232,7 +238,6 @@ const NO_POINT_SIZE = SYMBOL_DEFS.noPoint.width;
 const COLLECTIVE_BOX_SIZE = SYMBOL_DEFS.stationCollapsed.width;
 /** F9.3 (spec §14.4): gabaryt akcentu węzła rozgałęzienia — patrz
  *  `symbols/defs.ts` (32×32, 4×GRID, WIĘKSZY niż `junction` bazowy 16×16). */
-const BRANCH_JUNCTION_SIZE = SYMBOL_DEFS.branchJunction.width;
 
 /** F6d (przypadek b): odstęp jogu zejścia lateralu od prawej krawędzi bloku
  *  stacji-origin, do szczeliny `COLUMN_GAP` między stacjami tego wiersza
@@ -312,7 +317,9 @@ function classifySymbolElementKind(symbolId: SymbolId): PreviewElementKind {
 /** F8b-1: elementKind segmentu — `'bus'` dla szyn (spec §6 `kind==='bus'`),
  *  `'segment'` dla WSZYSTKICH pozostałych (SN/nN/leader). */
 function segmentElementKind(kind: PreviewSegmentKind): 'bus' | 'segment' {
-  return kind === 'bus' ? 'bus' : 'segment';
+  // F13.1 (spec §21.2): `busGpz` (grubsza szyna sekcji SN GPZ) to semantycznie
+  // TA SAMA kategoria co `bus` — inna wyłącznie klasa grubości renderu.
+  return kind === 'bus' || kind === 'busGpz' ? 'bus' : 'segment';
 }
 
 /**
@@ -1169,7 +1176,11 @@ function findGpzTrunkBottomPort(
 }
 
 function gpzSegmentToPreview(seg: ComposedGpzSegment): PreviewSegment {
-  const kind: PreviewSegmentKind = seg.meta.busbarRole || seg.meta.ringClosure ? 'bus' : 'sn';
+  // F13.1 (spec §21.2, D3-2/D3-2bis): `busbarKind` (compose/gpz.ts, szyny
+  // sekcji SN GPZ) ma pierwszeństwo nad domyślnym bus/sn — `undefined` dla
+  // KAŻDEGO innego segmentu (stacje/GPZ szyna WN/pozostałe), zero zmiany
+  // zachowania poza nowo otagowanymi szynami sekcji SN GPZ.
+  const kind: PreviewSegmentKind = seg.meta.busbarKind ?? (seg.meta.busbarRole || seg.meta.ringClosure ? 'bus' : 'sn');
   return {
     points: seg.points,
     meta: {
@@ -1305,6 +1316,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // -- 2. GPZ: pass1 @ (0,0) → dowiedz się bbox (X) i snBusY (Y docelowe). --
   let gpzComposition: GpzComposition | null = null;
   let mainRowDx = 0;
+  let mainRowDy = 0;
   /** Prawa krawędź CAŁEJO bbox-a GPZ (WSZYSTKIE symbole/segmenty GPZ, nie
    *  tylko pole liniowe zaczepu magistrali) — patrz DECYZJA przy
    *  `segmentSpans.push` niżej (sekcja 5): zaczep magistrali (`gpzPort`)
@@ -1335,12 +1347,32 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       externalGridSources.map((s) => ({ id: s.id })),
       annotationDetail,
     );
+    // F13.1 (§21, D3-2): kolumna WN + strefa GPZ sięgają PONAD szynę SN, więc
+    // przy ujemnym `originY` (wyrównanie dwuprzebiegowe do busAxisY magistrali)
+    // bbox kompozycji (ze strefą włącznie) może wyjść nad świat y=0 — czyli POD
+    // chrom arkusza (`SheetFrame` maluje margines nieprzezroczyście; arkusz NIE
+    // zna ujemnego originu i znać nie musi — kontrakt k5b/D2: treść sceny jest
+    // nieujemna). Naprawa u ŹRÓDŁA: cały świat (GPZ + magistrala + laterale,
+    // które pozycjonują się od `mainLayout`) schodzi w dół o nawis. Trzecia
+    // kompozycja zamiast translacji ad-hoc — `composeGpz` jest niezmiennicza
+    // translacyjnie względem originu (ten sam argument co pass1→pass2).
+    mainRowDy = snapUp(Math.max(0, -gpzComposition.bbox.y));
+    if (mainRowDy > 0) {
+      gpzComposition = composeGpz(
+        gpzData,
+        { x: 0, y: originY + mainRowDy },
+        externalGridSources.map((s) => ({ id: s.id })),
+        annotationDetail,
+      );
+    }
     gpzRightEdgeX = gpzComposition.bbox.x + gpzComposition.bbox.width;
     mainRowDx = snapUp(gpzRightEdgeX) + GPZ_TRUNK_GAP;
   }
 
-  // -- 3. Przesuń magistralę o (bbox GPZ + GAP), zero (dy=0, top wiersza). --
-  if (mainLayout) mainLayout = shiftRowLayout(mainLayout, mainRowDx, 0);
+  // -- 3. Przesuń magistralę o (bbox GPZ + GAP) w prawo i o nawis strefy GPZ
+  // nad y=0 w dół (F13.1 — patrz komentarz w sekcji 2; dy=0 gdy strefa nie
+  // wystaje, czyli zachowanie sprzed F13.1 bez zmian).
+  if (mainLayout) mainLayout = shiftRowLayout(mainLayout, mainRowDx, mainRowDy);
 
   // -- 4. Skomponuj GPZ → preview + etykiety + meta. -------------------------
   if (gpzComposition) {
@@ -1445,7 +1477,47 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         const fromTerminal = fromTerminalForOwner(mainCableRun, gpzData!.id);
         const toTerminal = toTerminalForOwner(mainCableRun, first.id);
         const corridorY = interStationCorridorY(mainLayout, lod);
-        const route = connectViaCorridor(gpzPort, first.composed.entryPort, corridorY, fromTerminal, toTerminal);
+        // F13.3-pre (D3-4/§22.3, wykryte przy przejęciu F13.1): gdy korytarz
+        // leży POWYŻEJ portu głowicy GPZ, prosty pion `connectViaCorridor`
+        // (x = gpzPort.x) PRZEBIJA własną szynę sekcji GPZ (wnętrze przęsła —
+        // pomiar L0: pion x=80 przez szynę 56..232). Kanon §22.3: żaden pion
+        // trasy nie przechodzi przez pas szyny — trasa prowadzona RYNNĄ poza
+        // prawą krawędzią bboxu GPZ (zone/kolumna WN włącznie): port → dół pod
+        // GPZ → prawo do rynny → góra do korytarza → dalej jak dotąd. Objazd
+        // TYLKO gdy prosty pion faktycznie przecina którąś szynę GPZ
+        // (deterministyczny test na segmentach kompozycji) — inaczej ścieżka
+        // IDENTYCZNA jak dotychczas (zero zmiany dla przypadku zdrowego).
+        const straightRiserCrossesGpzBus = gpzComposition!.segments.some((seg) => {
+          const kind = (seg as { meta?: { busbarKind?: string; busbarRole?: string } }).meta;
+          const isBus = seg.ownerRef.includes('#bus') || kind?.busbarKind === 'busGpz' || kind?.busbarRole != null;
+          if (!isBus) return false;
+          for (let i = 0; i + 1 < seg.points.length; i++) {
+            const a = seg.points[i];
+            const b = seg.points[i + 1];
+            if (a.y !== b.y) continue;
+            const inSpan = gpzPort.x > Math.min(a.x, b.x) && gpzPort.x < Math.max(a.x, b.x);
+            const between = a.y > Math.min(corridorY, gpzPort.y) && a.y < Math.max(corridorY, gpzPort.y);
+            if (inSpan && between) return true;
+          }
+          return false;
+        });
+        const route = straightRiserCrossesGpzBus
+          ? (() => {
+              const gpzBbox = gpzComposition!.bbox;
+              const belowY = snapUp(gpzBbox.y + gpzBbox.height) + GRID;
+              const gutterX = snapUp(gpzBbox.x + gpzBbox.width) + 2 * GRID;
+              const raw: RouteVertex[] = [
+                { x: gpzPort.x, y: gpzPort.y },
+                { x: gpzPort.x, y: belowY },
+                { x: gutterX, y: belowY },
+                { x: gutterX, y: corridorY },
+                { x: first.composed.entryPort.x, y: corridorY },
+                { x: first.composed.entryPort.x, y: first.composed.entryPort.y },
+              ];
+              const points = raw.filter((p, i) => i === 0 || p.x !== raw[i - 1].x || p.y !== raw[i - 1].y);
+              return { points, fromTerminal, toTerminal };
+            })()
+          : connectViaCorridor(gpzPort, first.composed.entryPort, corridorY, fromTerminal, toTerminal);
         allSegments.push({
           points: route.points,
           meta: { kind: 'sn', ownerRef: incomingSegmentRef(mainCableRun, first.id), elementKind: 'segment' },
@@ -1485,7 +1557,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
 
   // -- 6. Laterale (branch runs) — JEDEN poziom, wiersze w dół (spec F6a). --
   const mainRowById = new Map(mainRow.map((r) => [r.id, r]));
-  const mainRowBottom = mainLayout ? mainLayout.bandsResult.totalHeight : 0;
+  // F13.1: dół wiersza magistrali W ŚWIECIE = top wiersza (`mainRowDy`, nawis
+  // strefy GPZ nad y=0 — sekcja 2/3) + wysokość pasm; samo `totalHeight` było
+  // poprawne tylko przy dy=0 sprzed F13.1.
+  const mainRowBottom = mainLayout ? mainRowDy + mainLayout.bandsResult.totalHeight : 0;
   let nextRowTopY = mainRowBottom + ROW_VERTICAL_GAP;
   const lateralRunIds: string[] = [];
   const branchOriginUsage = new Map<string, number>();
@@ -1657,13 +1732,17 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       // akcent w dół, z dala od `trunkCorridorYOf`, bez ruszania
       // `stripTopY`/`blockTopY`/geometrii bloku stacji. Patrz uzasadnienie
       // liczbowe w `bands.ts` przy `DESCENT_STRIP_HEIGHT`.
-      const branchJunctionTopY = stripTopY + DESCENT_STRIP_HEIGHT - BRANCH_JUNCTION_SIZE;
-      allSymbols.push({
-        symbolId: 'branchJunction',
-        x: snapToGrid(channelX - BRANCH_JUNCTION_SIZE / 2),
-        y: snapToGrid(branchJunctionTopY),
-        meta: { testId: `sld-v3-branch-junction-${run.id}`, ownerRef: originOwnerRef, elementKind: 'apparatus' },
-      });
+      // F13.2 (V12K-039, spec §22.1 WYGRYWA z dawnym §14.4): akcent-kropka
+      // `branchJunction` na zgięciu jogu USUNIĘTY — stał 24 px od punktu, w
+      // którym pion kanału PRZECINA (bez połączenia) przęsło magistrali innej
+      // pary stacji, czyli czytał się jako FAŁSZYWY węzeł elektryczny na
+      // magistrali (D3-14, sonda geometryczna nadzorcy 2026-07-16). Kropka
+      // węzłowa może istnieć WYŁĄCZNIE na realnym węźle ENM
+      // (`junction_dot_probe`, `scene/crossings.ts`); rozpoznawalność
+      // odejścia lateralu (§14.4) realizują podpis kierunkowy pola
+      // (`line_bay_caption_probe`) + sylwetka §14.3 + mostki §22.1 na
+      // przelotach. Zmienna `branchJunctionTopY` i push symbolu skasowane —
+      // pełne uzasadnienie w REJESTR_KONFLIKTOW V12K-039.
 
       // F9.3 (FIX-1, spec §12.3): ostatni odcinek jogu schodzi do
       // `first.composed.entryPort` (DOLNY PORT GŁOWICY pola „poprzednik"
@@ -1819,6 +1898,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     ...allSymbols.map(symbolRect),
     ...allSegments.map(segmentRect),
     ...labels.map((l) => l.rect),
+    // F13.1: rama strefy GPZ to dekoracja (nie symbol/segment/etykieta) — bbox
+    // sceny musi ją objąć jawnie, inaczej kamera/arkusz przycinają jej krawędzie.
+    ...(gpzComposition?.zone ? [gpzComposition.zone] : []),
   ]);
 
   const stationCount = mainRow.length + branchRuns.reduce((acc, run) => {
@@ -1847,6 +1929,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       lateralRunIds,
       stopNotes,
       sources: allSources,
+      gpzZone: gpzComposition?.zone ?? null,
     },
   };
 }
@@ -2072,16 +2155,18 @@ export function allVtParallel(scene: SceneV3): boolean {
   return vtParallelGaps(scene).length === 0;
 }
 
+/**
+ * F13.2 (V12K-039): dawna `branch_accent_probe` (§14.4 — akcent-kropka
+ * `branchJunction` per lateral) ZASTĄPIONA dyscypliną §22.1 „kropka ⇔ realny
+ * węzeł" (`junctionDotGaps`, `./crossings`) — wyrocznia SILNIEJSZA, nie
+ * osłabiona: dawna WYMUSZAŁA kropki poza węzłami ENM (fałszywy odczyt węzła
+ * przy przelocie, D3-14); nowa zakazuje ich obustronnie. Nazwa eksportu
+ * zachowana (kompatybilność accept:sld-v3 do czasu przepięcia bramki).
+ * Rozpoznawalność odejścia lateralu (§14.4) pilnują `line_bay_caption_probe`
+ * + sylwetki §14.3.
+ */
 export function noBranchWithoutAccent(scene: SceneV3): boolean {
-  const junctionDef = SYMBOL_DEFS.junction;
-  const accentDef = SYMBOL_DEFS.branchJunction;
-  if (!(accentDef.width > junctionDef.width && accentDef.height > junctionDef.height)) return false;
-  const accents = scene.symbols.filter((s) => s.symbolId === 'branchJunction');
-  if (accents.length !== scene.meta.lateralRunIds.length) return false;
-  return accents.every((s) => {
-    const def = SYMBOL_DEFS[s.symbolId];
-    return def.width > junctionDef.width && def.height > junctionDef.height;
-  });
+  return junctionDotGaps(scene, SYMBOL_DEFS).length === 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -2097,7 +2182,10 @@ export function noBranchWithoutAccent(scene: SceneV3): boolean {
 // źródłowej wartości ENM do porównania).
 // ---------------------------------------------------------------------------
 
-const BUSBAR_LABEL_TEXT_PATTERN = /^Sekcja \d+(?: · \d+(?:\.\d+)? kV)?$/;
+// F13.1 (spec §21.1): forma WN „Szyna WN · 110 kV" dopisana do ZAMKNIĘTEGO
+// słownika form (§19.2 autorstwa dla sekcji SN; strona WN GPZ dostaje własną,
+// równie zamkniętą formę — rozszerzenie słownika, nie osłabienie wzorca).
+const BUSBAR_LABEL_TEXT_PATTERN = /^(?:Sekcja \d+|Szyna WN)(?: · \d+(?:\.\d+)? kV)?$/;
 
 export interface BusbarLabelGap {
   readonly reason: 'bus-without-label' | 'label-without-bus' | 'malformed-text';
@@ -2123,11 +2211,15 @@ export function busbarLabelGaps(scene: SceneV3): readonly BusbarLabelGap[] {
 
   const busRefs = scene.segments
     .map((s) => s.meta?.ownerRef)
-    .filter((ref): ref is string => ref != null && (ref.endsWith('#sn-bus') || ref.endsWith('#bus-primary')));
+    // F13.1 (spec §21.1): `#hv-bus` — szyna 110 kV GPZ objęta TĄ SAMĄ
+    // dyscypliną zakazu anonimowej szyny (forma „Szyna WN · V kV").
+    .filter((ref): ref is string => ref != null && (ref.endsWith('#sn-bus') || ref.endsWith('#bus-primary') || ref.endsWith('#hv-bus')));
   for (const busRef of busRefs) {
     const labelRef = busRef.endsWith('#sn-bus')
       ? busRef.replace(/#sn-bus$/, '#busbar-voltage')
-      : busRef.replace(/#bus-primary$/, '#label');
+      : busRef.endsWith('#hv-bus')
+        ? busRef.replace(/#hv-bus$/, '#hv-bus-label')
+        : busRef.replace(/#bus-primary$/, '#label');
     const label = busbarLabelsByOwnerRef.get(labelRef);
     if (!label) {
       gaps.push({ reason: 'bus-without-label', ownerRef: busRef, detail: `oczekiwana etykieta „${labelRef}" nieobecna` });
@@ -2135,7 +2227,7 @@ export function busbarLabelGaps(scene: SceneV3): readonly BusbarLabelGap[] {
     }
     matchedLabelRefs.add(labelRef);
     if (!BUSBAR_LABEL_TEXT_PATTERN.test(label.text)) {
-      gaps.push({ reason: 'malformed-text', ownerRef: labelRef, detail: `tekst „${label.text}" niezgodny z „Sekcja N"/„Sekcja N · V kV"` });
+      gaps.push({ reason: 'malformed-text', ownerRef: labelRef, detail: `tekst „${label.text}" niezgodny z „Sekcja N"/„Sekcja N · V kV"/„Szyna WN · V kV"` });
     }
   }
 
@@ -2572,9 +2664,12 @@ export interface SceneSegmentEndpointGap {
  * połączenia jak `#sn-bus`, którego szerokość wynika z rozstawu pól).
  */
 function isBusbarLikeSegment(seg: PreviewSegment): boolean {
-  if (seg.meta?.kind === 'bus') return true;
+  // F13.1 (spec §21.2): `busGpz` = szyna sekcji SN GPZ (grubsza klasa
+  // renderu, ta sama semantyka szyny). `#hv-bus-source-extension` — lustro
+  // `#source-bus-extension` dla wariantu z kolumną WN (F13.1).
+  if (seg.meta?.kind === 'bus' || seg.meta?.kind === 'busGpz') return true;
   const ref = seg.meta?.ownerRef;
-  return ref != null && (ref.endsWith('#lv-bus') || ref.endsWith('#source-bus-extension'));
+  return ref != null && (ref.endsWith('#lv-bus') || ref.endsWith('#source-bus-extension') || ref.endsWith('#hv-bus-source-extension'));
 }
 
 /**
@@ -3158,7 +3253,7 @@ export function sourceConnectivityGaps(scene: SceneV3): readonly SourceConnectiv
 
   const busRoots = new Set<number>();
   scene.segments.forEach((seg, si) => {
-    if (seg.meta?.kind === 'bus') busRoots.add(dsu.find(segNode(si)));
+    if (seg.meta?.kind === 'bus' || seg.meta?.kind === 'busGpz') busRoots.add(dsu.find(segNode(si)));
   });
 
   const gaps: SourceConnectivityGap[] = [];
@@ -3569,3 +3664,6 @@ export function meterDisambiguationGaps(scene: SceneV3): readonly MeterDisambigu
 export function allMeterSymbolsDisambiguated(scene: SceneV3): boolean {
   return meterDisambiguationGaps(scene).length === 0;
 }
+
+// F13.1 (SLD_CAD_SPEC_V3 §21, D3-1/D3-2/D3-2bis): wyrocznie kanonu GPZ WN/SN — plik odrębny, patrz `./gpzCanonProbes.ts`.
+export { gpzHvColumnGaps, allGpzHvColumnsComplete, gpzDominanceGaps, gpzIsDominant } from './gpzCanonProbes';

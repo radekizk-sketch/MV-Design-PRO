@@ -1594,6 +1594,51 @@ gpz_dominance_probe) [KRYTYCZNY]; F13.2 skrzyżowania: routing redukujący + mos
 [ŚREDNI]; F13.5 rendery+macierz+raport. Baseline'y §15.1 wolno podnieść WYŁĄCZNIE
 z uzasadnieniem liczbowym (koszt poprawności kanonicznej D3-1/D3-3).
 
+### F13.1 [DONE] GPZ WN/SN + dominanta (§21) — przejęcie od agenta przez nadzorcę
+
+Dyrektywa właściciela („Fable przejmij działanie…"): integracja i odbiór osobiście.
+WIP agenta ZACHOWANY tam, gdzie poprawny (derywacja WN w adapterze z relacji
+pierwszoklasowych ENM: TR `uhv_kv>60` + szyna WN + `Source` z Sk″/Ik″; kompozycja
+kolumny WN przyłącze→Szyna WN→DS/CB/CT→TR→sekcje SN; `gpzCanonProbes.ts`; 20 testów
+gpzHvColumn) — PRZEBUDOWANY tam, gdzie łamał kontrakty:
+- Rama strefy była SEGMENTEM TORU MOCY (zamknięty prostokąt) ⇒ 4-5 niedokotwiczonych
+  końców (§11.3), +1200 fałszywych pionów L0 (§15.1), kolizje etykiet. TERAZ:
+  `GpzComposition.zone` → `scene.meta.gpzZone` → dekoracja kanwy/preview
+  (`data-testid="sld-v3-gpz-zone"`, kreska 12-6), ZERO udziału w wyroczniach toru.
+- Nagłówek „GPZ ⟨nazwa⟩ · UHV/ULV kV" JEST blokiem `stationName` (D3-12), wewnątrz
+  ramy; translacja końcowa kompozycji gwarantuje nieujemność względem originu.
+- Rama obejmuje SLOTY etykiet pasmowych (`transformerLabels`: znamiona TR +
+  tabliczka „Sk″ … · 110 kV") — bez tego najszerszy tekst kolumny WN przebijał
+  prawą kreskę ramy (render-DoD).
+- Świat sceny: kolumna WN + strefa sięgają PONAD szynę SN, więc przy ujemnym
+  originY (dwuprzebiegowe wyrównanie) CAŁY świat schodzi w dół o nawis
+  (`mainRowDy`, buildScene sekcja 2/3; trzecia kompozycja — composeGpz jest
+  translacyjnie niezmiennicza) — arkusz NIE zna ujemnych współrzędnych, treść
+  nigdy pod chromem `SheetFrame`. Dół wiersza magistrali w świecie =
+  `mainRowDy + totalHeight` (naprawa założenia dy=0 w starcie laterali).
+- Pion zaczepu GPZ→magistrala przebijał WŁASNĄ szynę SN (pre-existing, ujawnione
+  przesunięciem) — obejście rynną pod bboxem GPZ (`straightRiserCrossesGpzBus`).
+- Etykieta szyny WN w słowniku zamkniętym: `Szyna WN · ⟨U⟩ kV` (busbar_label).
+Bramki §21 wpięte do acceptance: `gpz_hv_column_probe`, `gpz_dominance_probe`
+(strefa ≥ największa stacja; `busGpz` grubsza klasa kreski; tabliczka przy źródle).
+Baseline §15.1 L0 12280 (+160: rynna zaczepu — uzasadnienie liczbowe w acceptance).
+
+### F13.2 [DONE] Skrzyżowania i dyscyplina kropki węzłowej (§22.1, V12K-039)
+
+`scene/crossings.ts` (czysty moduł): `interiorCrossings` (ścisłe wnętrza H×V toru
+mocy; skrzyżowanie z SZYNĄ zakazane — wyrocznia twarda `crossingBusGaps=0`),
+`polylinePathWithBridges` (mostek-półłuk R=GRID/2 na PIONIE, wybrzuszenie zawsze
+w prawo; kanwa liczy TĄ SAMĄ funkcją ⇒ mostki „z konstrukcji", geometria sceny
+bajt-w-bajt nietknięta, `data-bridge-count` na odcinku), `junctionDotGaps`
+(kropka ⇔ realny węzeł ENM, OBUSTRONNIE). Stara kropka-akcent §14.4
+(`branchJunction` na zgięciu jogu, 24px od skrzyżowania-bez-połączenia) czytała
+się jak fałszywy węzeł (D3-14) — USUNIĘTA, konflikt zarejestrowany V12K-039,
+`noBranchWithoutAccent` przedefiniowane przez `junctionDotGaps` (silniejsze).
+14 testów (`crossings.test.ts`) z negatywami gryzącymi (syntetyczny T-węzeł,
+fałszywa kropka, SABOTAŻ pion×szyna). Bramki §22.1 w acceptance:
+`crossing_probe` (24 przecięcia sn×sn na L2 — wszystkie mostkowane, 0 z szyną),
+`junction_dot_probe` (0 luk). Baseline'y §15.1: L1 40952 / L2 54056 (−48 netto).
+
 ## Prompt kontynuacji (wklej świeżemu agentowi — DO WDROŻENIA 100%)
 
 ```

@@ -76,6 +76,17 @@ import { overlapProbe } from '../src/ui/sld/v3/layout/labels.ts';
 import { fieldSilhouettesAreInjective } from '../src/ui/sld/v3/compose/station.ts';
 import { sourceKindSymbolsAreInjective } from '../src/ui/sld/v3/compose/sourceKind.ts';
 import { SYMBOL_DEFS } from '../src/ui/sld/v3/symbols/defs.ts';
+import {
+  crossingBusGaps,
+  interiorCrossings,
+  junctionDotGaps,
+} from '../src/ui/sld/v3/scene/crossings.ts';
+import {
+  allGpzHvColumnsComplete,
+  gpzDominanceGaps,
+  gpzHvColumnGaps,
+  gpzIsDominant,
+} from '../src/ui/sld/v3/scene/gpzCanonProbes.ts';
 import { GRID } from '../src/ui/sld/v3/core/grid.ts';
 import {
   buildFlowOverlayFromScene,
@@ -150,7 +161,11 @@ const EXPECTED_STATION_COUNT = 53;
 // nowych kolizji jakiegokolwiek rodzaju na fixturze referencyjnej po tej
 // zmianie (`symbol_wire_probe`/`overlapProbe`/`noLabelWireCollisions`
 // wszystkie PASS z tą samą — twardą — regułą co przed F10.3).
-const VERTICAL_LENGTH_BASELINE = { 0: 12120, 1: 41000, 2: 54104 };
+// F13.1/F13.2 (D3, 2026-07-16, przejęcie nadzorcy): L0 12120→12280 (+160 —
+// rynna objazdu wyjścia GPZ, eliminacja przebicia własnej szyny §22.3);
+// L1 41000→40952, L2 54104→54056 (−48 netto: kolumna WN GPZ + kasacja
+// fałszywego akcentu-kropki V12K-039 + strefa GPZ jako dekoracja).
+const VERTICAL_LENGTH_BASELINE = { 0: 12280, 1: 40952, 2: 54056 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —
@@ -709,6 +724,35 @@ for (const lod of LODS) {
     'source_connectivity_probe (§14.1): każde widoczne źródło ma trasę segmentów do co najmniej jednej szyny',
     allSourcesConnected(scene),
     `luki=${connectivityGaps.length}`,
+  );
+
+  // -- §21 (F13.1, D3-1/D3-2): GPZ jako dominanta WN/SN ----------------------
+  const hvGaps = gpzHvColumnGaps(scene, enm);
+  check(
+    'gpz_hv_column_probe (§21.1): ENM niesie TR WN/SN ⇒ scena rysuje kolumnę WN (przyłącze→szyna WN→TR→sekcje SN); 0 GPZ z danymi WN bez kolumny',
+    allGpzHvColumnsComplete(scene, enm) && hvGaps.length === 0,
+    `luki=${hvGaps.length}`,
+  );
+  const domGaps = gpzDominanceGaps(scene);
+  check(
+    'gpz_dominance_probe (§21.2): strefa GPZ ≥ największa stacja; szyna GPZ grubsza (busGpz>bus); tabliczka danych przy źródle',
+    gpzIsDominant(scene) && domGaps.length === 0,
+    `luki=${domGaps.length}${domGaps.length ? ' np. ' + JSON.stringify(domGaps[0]) : ''}`,
+  );
+
+  // -- §22.1 (F13.2, D3-3/D3-5): fizyka obrazu — skrzyżowania i kropki -------
+  const crossings = interiorCrossings(scene.segments);
+  const busCrossGaps = crossingBusGaps(scene.segments);
+  check(
+    'crossing_probe (§22.1): 0 przecięć toru mocy z SZYNĄ (mostek na szynie zakazany); przecięcia sn×sn pokryte mostkami z konstrukcji (polylinePathWithBridges — kanwa liczy TĄ SAMĄ funkcją)',
+    busCrossGaps.length === 0,
+    `przecięcia_sn×sn=${crossings.filter((c) => !c.involvesBus).length} (mostkowane) przecięcia_z_szyną=${busCrossGaps.length}`,
+  );
+  const dotGaps = junctionDotGaps(scene, SYMBOL_DEFS);
+  check(
+    'junction_dot_probe (§22.1, V12K-039): kropka węzłowa ⇔ realny węzeł rozgałęzienia tras (obustronnie); 0 luk',
+    dotGaps.length === 0,
+    `luki=${dotGaps.length}${dotGaps.length ? ' np. ' + JSON.stringify(dotGaps[0]) : ''}`,
   );
 
   // -- §13.3 (F11.3): source_state_probe — stan źródła jako nakładka --------

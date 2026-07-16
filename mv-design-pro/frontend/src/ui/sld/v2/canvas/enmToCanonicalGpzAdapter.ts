@@ -19,6 +19,7 @@ import type {
   Branch,
   Bus,
   EnergyNetworkModel,
+  Source,
   Substation,
   Transformer,
 } from '../../../../types/enm';
@@ -33,6 +34,7 @@ import type {
   CanonicalGpzBay,
   CanonicalGpzCoupler,
   CanonicalGpzHvSection,
+  CanonicalGpzHvSystemSource,
   CanonicalGpzSection,
   CanonicalGpzTransformer,
   GpzCanonicalRendererProps,
@@ -90,6 +92,10 @@ export function buildCanonicalGpzProps(
     // zmiany.
     | 'protection_assignments'
     | 'measurements'
+    // F13.1 (spec §21.1, D3-1): derywacja kolumny WN gdy `gpz_hv_sections`
+    // puste czyta `snapshot.sources` (źródło systemowe na szynie GPZ) —
+    // addytywne, `buildScene.ts` przekazuje PEŁNY `EnergyNetworkModel`.
+    | 'sources'
   >,
   substationRef: string,
   options: BuildCanonicalGpzOptions,
@@ -156,6 +162,54 @@ export function buildCanonicalGpzProps(
     sections: lvSections,
     couplers: buildCouplers(substation, allBays),
     hvSections: buildHvSections(substation, allBays, enm.buses ?? [], allBranches, overlay ?? null, protectionCtx),
+    // F13.1 (spec §21.1): derywacja WYŁĄCZNIE gdy `gpz_hv_sections` puste —
+    // ścieżka `hvSectionDefs` (niepuste) jest nadrzędna i NIE potrzebuje tego
+    // pola (renderer/compose czyta `hvSections` wprost w tej gałęzi).
+    hvSystemSource:
+      (substation.gpz_hv_sections ?? []).length === 0
+        ? deriveHvSystemSource(substation, enm.buses ?? [], allTransformers, enm.sources ?? [])
+        : null,
+  };
+}
+
+/**
+ * F13.1 (SLD_CAD_SPEC_V3 §21.1, D3-1/D3-8/D3-10): wywodzi dane kolumny WN z
+ * relacji PIERWSZOKLASOWYCH ENM — zero zgadywania, brak KTÓREGOKOLWIEK z
+ * trzech rekordów (TR WN/SN, szyna WN, `Source` na szynie GPZ) ⇒ `null`
+ * (uczciwy brak, `compose/gpz.ts` NIE dopisuje etykiety/tabliczki danych).
+ *   1. TR WN/SN = `Substation.transformer_refs` → `snapshot.transformers`
+ *      z `uhv_kv > 60`.
+ *   2. szyna WN = wpis `Substation.bus_refs` → `snapshot.buses` z
+ *      `voltage_kv > 60`.
+ *   3. źródło systemowe = `snapshot.sources` z `bus_ref` ∈ `Substation.bus_refs`
+ *      (SN lub WN — obie należą do GPZ), nazwa z `meta.source_id` (fallback
+ *      `Source.name`).
+ */
+function deriveHvSystemSource(
+  gpz: Substation,
+  buses: readonly Bus[],
+  gpzTransformers: readonly Transformer[],
+  sources: readonly Source[],
+): CanonicalGpzHvSystemSource | null {
+  const hvTransformer = gpzTransformers.find((tr) => tr.uhv_kv > 60);
+  if (!hvTransformer) return null;
+
+  const hvBus = buses.find((b) => gpz.bus_refs?.includes(b.ref_id) && b.voltage_kv > 60);
+  if (!hvBus) return null;
+
+  const gpzBusRefs = new Set(gpz.bus_refs ?? []);
+  const source = sources.find((s) => s.bus_ref != null && gpzBusRefs.has(s.bus_ref));
+  if (!source) return null;
+
+  const name = readString(asRecord(source.meta)?.source_id) ?? readString(source.name);
+  if (!name) return null;
+
+  return {
+    sourceRef: source.ref_id,
+    name,
+    sk3Mva: source.sk3_mva ?? null,
+    ik3Ka: source.ik3_ka ?? null,
+    voltageKv: hvBus.voltage_kv,
   };
 }
 

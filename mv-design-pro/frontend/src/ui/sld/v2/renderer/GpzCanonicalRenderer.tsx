@@ -215,6 +215,29 @@ export interface CanonicalGpzHvSection {
   readonly bays: readonly CanonicalGpzBay[];
 }
 
+/**
+ * F13.1 (SLD_CAD_SPEC_V3 §21.1, D3-1/D3-8/D3-10): źródło systemowe WN,
+ * wywiedzione WYŁĄCZNIE z relacji pierwszoklasowych ENM (`Source` na szynie
+ * GPZ — SN lub WN — z danymi zwarciowymi), używane gdy `gpz_hv_sections` jest
+ * PUSTE (ścieżka derywacji, adapter `enmToCanonicalGpzAdapter.ts`). `sourceRef`
+ * koresponduje z `SldSourceView.id` (`Source.ref_id`, `v2/canvas/enmToSldAdapter.ts`
+ * `buildSources`) — `compose/gpz.ts` dopasowuje istniejący glif `gridSource`
+ * (zaczepiony przez ODDZIELNY kanał `gridSources`, buildScene.ts) po tym
+ * refie, żeby dopisać etykietę nazwy + tabliczkę danych, zero duplikatu
+ * symbolu/mechanizmu ciągłości (spec §13.1/§14.1 wyrocznie zostają nietknięte).
+ */
+export interface CanonicalGpzHvSystemSource {
+  readonly sourceRef: string;
+  /** `Source.meta.source_id` (preferowane) albo `Source.name` — NIGDY placeholder. */
+  readonly name: string;
+  readonly sk3Mva: number | null;
+  readonly ik3Ka: number | null;
+  /** Napięcie kolumny WN (`Bus.voltage_kv` szyny WN, NIE napięcie szyny, do
+   *  której faktycznie podłączony jest `Source` w modelu solvera — GPZ Sk''/Ik''
+   *  jest zawsze odniesione do strony WN, spec §21.1). */
+  readonly voltageKv: number | null;
+}
+
 export interface GpzCanonicalRendererProps {
   readonly id: string;
   readonly x: number;
@@ -233,6 +256,11 @@ export interface GpzCanonicalRendererProps {
   readonly alarms?: GpzAlarmFlags;
   /** HV side: 110 kV bus + pola HV liniowe + pola TR. Brak → tylko LV. */
   readonly hvSections?: readonly CanonicalGpzHvSection[];
+  /** F13.1 (spec §21.1): źródło systemowe WN wywiedzione z relacji
+   *  pierwszoklasowych gdy `hvSections` puste — `null`/`undefined` gdy
+   *  KTÓRYKOLWIEK z trzech rekordów (TR WN/SN, szyna WN, `Source` na szynie
+   *  GPZ) nieobecny (uczciwy brak, adapter NIE zgaduje). */
+  readonly hvSystemSource?: CanonicalGpzHvSystemSource | null;
   /** Transformatory NA OSI (T1...Tn). */
   readonly transformers: readonly CanonicalGpzTransformer[];
   /** LV side: ≥1 sekcja 15 kV. */

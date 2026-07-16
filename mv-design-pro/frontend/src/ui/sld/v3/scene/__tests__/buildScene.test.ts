@@ -149,8 +149,11 @@ describe('buildSceneV3 — wyrocznie §11 per LOD (realna fixtura, 53 stacje)', 
         expect(noLabelWireCollisions(scene)).toBe(true);
       });
 
-      it('branch_accent_probe (F9.3, §14.4): każdy punkt odejścia lateralu ma węzeł branchJunction WIĘKSZY niż junction bazowy; 0 rozgałęzień bez akcentu', () => {
+      it('junction_dot_probe (F13.2, §22.1, V12K-039 — zastępuje dawną branch_accent_probe): kropka wyłącznie na realnym węźle tras; po usunięciu akcentu-kropki scena bez kropek i bez luk', () => {
         expect(scene.meta.lateralRunIds.length).toBeGreaterThan(0);
+        // Dawny akcent-kropka (fałszywy odczyt węzła przy przelocie, D3-14)
+        // NIE istnieje na scenie:
+        expect(scene.symbols.some((s) => s.symbolId === 'branchJunction')).toBe(false);
         expect(noBranchWithoutAccent(scene)).toBe(true);
       });
 
@@ -482,7 +485,9 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
     const withOwnerRef = scene2.segments.filter((s) => s.meta?.ownerRef !== undefined);
     expect(withOwnerRef.length).toBeGreaterThan(0);
     for (const s of withOwnerRef) {
-      if (s.meta?.kind === 'bus') expect(s.meta.elementKind).toBe('bus');
+      // F13.1 (spec §21.2): `busGpz` = szyna sekcji SN GPZ (grubsza klasa
+      // renderu, TA SAMA semantyka `elementKind: 'bus'`).
+      if (s.meta?.kind === 'bus' || s.meta?.kind === 'busGpz') expect(s.meta.elementKind).toBe('bus');
       else expect(s.meta?.elementKind).toBe('segment');
     }
     // Przynajmniej jeden segment SN-bus (stacja) z ownerRef kończącym się na
@@ -737,9 +742,16 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
   });
 
   it('fixtura referencyjna: baseline aktualny per LOD (historia: F9.7 9656/38504/53304 → F9.10 +2496 za kolizje=0 → F10.1 OBNIŻONY: tor główny pola KRÓTSZY o ES wyjęty na bok §18.1 — blok stacji −32, co przez 78 przecięć pasm ODDAJE dokładnie koszt F9.10 na L1/L2; L0 −32 na zejściu GPZ → F10.2 OBNIŻONY na L2: podpisy kierunku pola z nazwą linii §19.2 (dłuższe teksty na fixturze referencyjnej, `LineRunV1.name` np. „Magistrala 01"/„Odgałęzienie SN kablowe") poszerzyły kolumny NIEKTÓRYCH pól — przez `colorSegmentLabelRows` (`layout/segments.ts`, r9, NIEZMIENIONE przez F10.2) zmiana szerokości kolumn przełożyła się na inne przydziały wierszy pasma B1, co ODDAJE 1072px pionów na L2 (spadek, nie wzrost — miara „nie-rosnąca" spec §15.1 spełniona z zapasem); L0/L1 BEZ zmian (L0 nie niesie `bayDirectionCaptions`, L1 ma je wyłączone — spec §7) → F10.3 PODNIESIONY na L1/L2 (spec §18.4 — etykieta szyny SN, `busbar_label_probe`): zakaz anonimowego odcinka szyny wymaga WŁASNEGO wiersza B2 (`stationBusbarLabelHeight`, `layout/measure.ts`) NAD podpisem kierunku pola — rezerwacja doliczana JEDNOLICIE do KAŻDEGO wiersza stacji z co najmniej jednym polem SN (`snBays.length>0`, zgodnie z `composeStation` — pomija tylko stacje bez pól), więc rośnie na L1/L2 (gdzie `snBays` jest niepuste), NIE na L0 (kolaps do `stationCollapsed`, `snBays: []` z konstrukcji `buildMeasureInput`). Świadome odstępstwo od reguły „nie-rosnąca" (jak F9.10: czytelność/zero-anonimowej-szyny ma pierwszeństwo przed minimalizacją pionów, spec §15.1 „redukcja jest ograniczeniem MIĘKKIM") — ZERO nowych kolizji symbol↔przewód/etykieta↔przewód/etykieta↔etykieta na fixturze referencyjnej (zweryfikowane `npm run accept:sld-v3`).', () => {
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(12120);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(41000);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(54104);
+    // → F13.1/F13.2 (D3, przejęcie nadzorcy): L0 PODNIESIONY 12120→12280
+    // (+160 — rynna objazdu wyjścia GPZ: prosty pion PRZEBIJAŁ własną szynę
+    // sekcji GPZ we wnętrzu przęsła, zakaz §22.3; koszt poprawności
+    // kanonicznej, świadome odstępstwo od „nie-rosnącej" jak F9.10/F10.3);
+    // L1 OBNIŻONY 41000→40952 i L2 54104→54056 (−48: kolumna WN dodaje piony
+    // GPZ, ale kasacja fałszywego akcentu-kropki V12K-039 i przebudowa strefy
+    // GPZ na dekorację zdejmują więcej — netto spadek).
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(12280);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(40952);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(54056);
   });
 });
 
@@ -810,7 +822,9 @@ describe('buildSceneV3 — F10.3: busbar_label_probe (spec §18.4) na fixturze R
       const busbarLabels = scene.labels.filter((l) => l.ownerKind === 'busbar-voltage');
       // 53 stacje + N sekcji GPZ (fixtura: 1) — parytet z GPZ dosłownie.
       expect(busbarLabels.length).toBeGreaterThanOrEqual(53);
-      expect(busbarLabels.every((l) => /^Sekcja \d+(?: · \d+(?:\.\d+)? kV)?$/.test(l.text))).toBe(true);
+      // F13.1 (spec §21.1): forma WN „Szyna WN · V kV" (szyna 110 kV GPZ)
+      // dopisana do zamkniętego słownika form (§19.2 SN + §21.1 WN).
+      expect(busbarLabels.every((l) => /^(?:Sekcja \d+|Szyna WN)(?: · \d+(?:\.\d+)? kV)?$/.test(l.text))).toBe(true);
     }
   });
 

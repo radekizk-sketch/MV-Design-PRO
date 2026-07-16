@@ -49,12 +49,19 @@ import type { ProtectionTopologyGap } from './protectionTopologyValidation';
  *  `PreviewSegmentNode`/`SldCanvasV3`). Element WARSTWY ADNOTACJI (jak
  *  `'protectionTrip'`) — WYŁĄCZONY z continuity/port_probe toru mocy
  *  (§20.1e), OBJĘTY wyroczniami kolizji/siatki. */
-export type PreviewSegmentKind = 'bus' | 'sn' | 'lv' | 'leader' | 'protectionTrip' | 'measurementLink';
+/** F13.1 (SLD_CAD_SPEC_V3 §21.2, D3-2/D3-2bis): `'busGpz'` — szyna(y) sekcji
+ *  SN GPZ, grubsza niż szyna stacji (`'bus'`, 4) — dominanta kompozycyjna GPZ
+ *  jako WN/SN. Szyna WN (`#hv-bus`) i szyny stacji ZOSTAJĄ `'bus'` (spec
+ *  §21.2 różnicuje WYŁĄCZNIE szynę sekcji SN GPZ, nie szynę WN ani stacje). */
+export type PreviewSegmentKind = 'bus' | 'busGpz' | 'sn' | 'lv' | 'leader' | 'protectionTrip' | 'measurementLink';
 
 /** Eksportowane (F6b): `SldCanvasV3` reużywa TĘ SAMĄ hierarchię grubości
  *  (spec §6), zero duplikacji stałych między harnessem debug i kanwą docelową. */
 export const SEGMENT_STROKE_WIDTH: Readonly<Record<PreviewSegmentKind, number>> = {
   bus: 4,
+  // F13.1 (spec §21.2): szyna sekcji SN GPZ — grubsza niż szyna stacji (D3-2
+  // dominanta kompozycyjna). Szyna stacji ZOSTAJE `bus`=4 (nietknięta).
+  busGpz: 6,
   sn: 1.6,
   lv: 1.2,
   leader: 0.8,

@@ -77,6 +77,7 @@ import {
 import type {
   CanonicalGpzBay,
   CanonicalGpzBusbarTopology,
+  CanonicalGpzHvSystemSource,
   CanonicalGpzSection,
   CanonicalGpzTransformer,
   GpzCanonicalRendererProps,
@@ -108,6 +109,13 @@ export interface GpzElementMeta {
    *  `data-direct-110kv-tr-tie`/`data-direct-sn-bus-tie` w v2). */
   readonly directTie110?: false;
   readonly directTieSn?: false;
+  /** F13.1 (spec §21.2, D3-2/D3-2bis): szyny sekcji SN GPZ (primary/reserve/
+   *  ring-closure) dostają grubszą klasę wizualną niż szyny stacji —
+   *  `'busGpz'` (stroke 6, `compose/preview.tsx` `SEGMENT_STROKE_WIDTH`,
+   *  addytywnie) zamiast zwykłego `'bus'` (4). Odczytywane przez
+   *  `buildScene.ts` `gpzSegmentToPreview` (mapowanie na `PreviewSegmentKind`)
+   *  — `undefined` dla segmentów, które NIE są szyną sekcji SN GPZ. */
+  readonly busbarKind?: 'busGpz';
   /** Odpowiednik `data-terminates-at` w v2 — gdzie faktycznie kończy się
    *  odcinek (aparat pola, nie sąsiedni element elektryczny). */
   readonly terminatesAt?: string;
@@ -258,6 +266,10 @@ export interface GpzComposition {
    *  odróżnialny stylem od `'protectionTrip'`, §20.1 „obie linie
    *  rozróżnialne wizualnie"). Lustro `StationComposition.measurementSegments`. */
   readonly measurementSegments: readonly ComposedGpzSegment[];
+  /** F13.1 (spec §21.2, przebudowa nadzorcy): rama strefy GPZ — DEKORACJA
+   *  (rysowana przez kanwę/preview z meta sceny), NIE segment toru mocy;
+   *  `null` dla kompozycji pustej. */
+  readonly zone: GpzZoneDecoration | null;
   readonly bbox: V3Rect;
 }
 
@@ -746,6 +758,27 @@ function switchStateOrUndefined(state: CanonicalGpzBay['esState'] | undefined): 
   return state;
 }
 
+/** F13.1 (spec §21.2): liczba w notacji polskiej (przecinek dziesiętny) —
+ *  WYŁĄCZNIE formatowanie tabliczki danych systemowych źródła WN, żaden
+ *  przelicznik/zaokrąglenie fizyczne (spójne z konwencją `SldCanvasV3.tsx`
+ *  `formatPlNumber`, nieeksportowaną stamtąd — kopia lokalna, zero cross-import
+ *  między warstwą kanwy a compose). Liczby całkowite bez części dziesiętnej. */
+function formatGpzSystemNumberPl(value: number): string {
+  if (Number.isInteger(value)) return value.toFixed(0);
+  return value.toFixed(2).replace(/0$/, '').replace(/\.$/, '').replace('.', ',');
+}
+
+/** F13.1 (spec §21.1/§21.2, D3-8/D3-10): tabliczka danych systemu — „Sk″ 250
+ *  MVA · Ik″ 9,62 kA · 110 kV" — WYŁĄCZNIE człony, dla których ENM niesie
+ *  wartość (brak = brak członu, zero atrap/zer fabrykowanych). */
+function gpzSystemSourceDataplateText(source: CanonicalGpzHvSystemSource): string | null {
+  const parts: string[] = [];
+  if (source.sk3Mva != null) parts.push(`Sk″ ${formatGpzSystemNumberPl(source.sk3Mva)} MVA`);
+  if (source.ik3Ka != null) parts.push(`Ik″ ${formatGpzSystemNumberPl(source.ik3Ka)} kA`);
+  if (source.voltageKv != null) parts.push(`${formatGpzSystemNumberPl(source.voltageKv)} kV`);
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
 /**
  * Komponuje GPZ z prymitywów (spec §3, §8). Czysta funkcja — deterministyczna
  * (to samo wejście ⇒ identyczny wynik, test w `__tests__/gpz.test.ts`).
@@ -888,6 +921,7 @@ export function composeGpz(
       testId: `gpz-canonical-section-${layout.section.sectionId}-bus`,
       sectionId: layout.section.sectionId,
       busbarRole: 'primary',
+      busbarKind: 'busGpz',
     };
     tag(primaryBusMeta.parityKeys);
     segments.push({ ownerRef: `${layout.section.sectionId}#bus-primary`, points: [{ x: busLeftX, y: snBusY }, { x: busRightX, y: snBusY }], meta: primaryBusMeta });
@@ -903,6 +937,7 @@ export function composeGpz(
         sectionId: layout.section.sectionId,
         busbarRole: 'reserve',
         dashed: topology === 'double',
+        busbarKind: 'busGpz',
       };
       tag(reserveMeta.parityKeys);
       segments.push({ ownerRef: `${layout.section.sectionId}#bus-reserve`, points: [{ x: busLeftX, y: reserveY }, { x: busRightX, y: reserveY }], meta: reserveMeta });
@@ -913,6 +948,7 @@ export function composeGpz(
           testId: `gpz-canonical-section-${layout.section.sectionId}-ring-closure`,
           sectionId: layout.section.sectionId,
           ringClosure: true,
+          busbarKind: 'busGpz',
         };
         tag(closureMeta.parityKeys);
         segments.push({ ownerRef: `${layout.section.sectionId}#ring-closure`, points: [{ x: busRightX, y: reserveY }, { x: busRightX, y: snBusY }], meta: closureMeta });
@@ -1353,6 +1389,13 @@ export function composeGpz(
       meta: { parityKeys: ['gpz.bay.power_path'], transformerRef: transformer.transformerRef, sectionId: target?.section.sectionId },
     });
 
+    // F13.1 (spec §21.1/D3-9): grupa połączeń (Yd11 itp.) DOPISANA do wiersza
+    // mocy — „Yd11 · 25 MVA" — WYŁĄCZNIE gdy ENM ją niesie (`vectorGroup`
+    // nullable, uczciwy brak: żaden literał zastępczy). Trzeci wiersz
+    // (przekładnia) NIETKNIĘTY.
+    const ratingRowText = transformer.vectorGroup
+      ? `${transformer.vectorGroup} · ${transformer.snMva} MVA`
+      : `${transformer.snMva} MVA`;
     transformerLabels.push({
       ownerRef: `${transformer.transformerRef}#label`,
       nameSlot: {
@@ -1360,14 +1403,14 @@ export function composeGpz(
         y: trTopY,
         width: snapUp(Math.max(
           measureLabelWidth(transformer.designation, 't1'),
-          measureLabelWidth(`${transformer.snMva} MVA`, 't2'),
+          measureLabelWidth(ratingRowText, 't2'),
           measureLabelWidth(`${transformer.uhvKv}/${transformer.ulvKv} kV`, 't2'),
         )),
         height: labelLineHeight('t1') + 2 * labelLineHeight('t2'),
       },
       rows: [
         { text: transformer.designation, labelClass: 't1' },
-        { text: `${transformer.snMva} MVA`, labelClass: 't2' },
+        { text: ratingRowText, labelClass: 't2' },
         { text: `${transformer.uhvKv}/${transformer.ulvKv} kV`, labelClass: 't2' },
       ],
     });
@@ -1384,6 +1427,7 @@ export function composeGpz(
   // gdy hasHvContent (§3: szyna WN obejmuje wszystkie pola WN i wszystkie
   // zaczepy pól WN TR — zaczepy zebrane WPROST z kroku 6, zero
   // rekonstrukcji ze zbudowanych symboli).
+  let hvBusRightEdge: number | null = null;
   if (hasHvContent) {
     const hvBayLeft = hvSections.length > 0 ? originX + SECTION_MARGIN : null;
     const hvBayRight = hvSections.length > 0 ? hvLineBayCursor - HV_LINE_BAY_GAP : null;
@@ -1396,45 +1440,67 @@ export function composeGpz(
     const right = candidatesX.length > 0 ? snapToGrid(Math.max(...candidatesX) + SECTION_MARGIN) : originX + 4 * GRID;
     const busLeft = left;
     const busRight = right;
+    hvBusRightEdge = busRight;
 
-    const hvBusMeta: GpzElementMeta = { parityKeys: ['gpz.bus.hv'], testId: 'gpz-canonical-hv-bus', busbarRole: 'primary' };
+    const hvBusMeta: GpzElementMeta = {
+      parityKeys: ['gpz.bus.hv'],
+      testId: 'gpz-canonical-hv-bus',
+      busbarRole: 'primary',
+    };
     tag(hvBusMeta.parityKeys);
     segments.push({ ownerRef: `${props.id}#hv-bus`, points: [{ x: busLeft, y: hvBusY }, { x: busRight, y: hvBusY }], meta: hvBusMeta });
+    // F13.1 (spec §21.1): napięcie szyny WN — etykieta „110 kV" nad lewym
+    // końcem, TA SAMA konwencja co etykieta sekcji SN (`sectionLabels`).
+    // Wartość WYŁĄCZNIE z danych: `hvSystemSource.voltageKv` (ścieżka
+    // derywacji) albo `hvSections[0].busVoltageKv` (ścieżka `gpz_hv_sections`
+    // niepuste) — gdy żadne z dwóch nieobecne, brak etykiety (uczciwy brak).
+    const hvBusVoltageKv = props.hvSystemSource?.voltageKv ?? hvSections[0]?.busVoltageKv ?? null;
+    if (hvBusVoltageKv != null) {
+      sectionLabels.push({
+        ownerRef: `${props.id}#hv-bus-label`,
+        ownerKind: 'busbar-voltage',
+        // F13.1 (przejęcie nadzorcy): forma zamknięta „Szyna WN · V kV" —
+        // spójna z `BUSBAR_LABEL_TEXT_PATTERN` (buildScene.ts, §19.2+§21.1);
+        // samo „110 kV" łamało wzorzec (malformed-text w busbar_label_probe).
+        text: `Szyna WN · ${hvBusVoltageKv} kV`,
+        labelClass: 't2',
+        anchor: { x: busLeft, y: hvBusY },
+        placement: 'above',
+      });
+      tag(['gpz.bus.hv.label']);
+    }
   }
 
   // -- 7b. F9.4 (spec §13.1 V12K-029, §13.2 „sieć zewnętrzna"): symbol
   // widocznego źródła zasilania (`Source` ENM, `SldSourceView.kind===
-  // 'external_grid'`) — zaczep na szynie SN sekcji WCHODZĄCEJ (pierwsza wg
-  // `order`, konwencja obserwowana na fixturze referencyjnej:
-  // `gpz_sections[0].incoming_source_ref` — `Source.bus_ref` wskazuje SN,
-  // NIE szynę WN, nawet gdy GPZ ma transformator WN/SN, spec §13.1 ERRATA:
-  // Source modeluje zastępcze zasilanie zewnętrzne WPROST na SN, WHITE BOX
-  // zgodnie z `enmToSldAdapter.ts` `buildSources` docstring). DECYZJA ZAKRESU
-  // (STOP-notatka raportu F9.4): dopasowanie `Source.bus_ref` → KONKRETNA
-  // sekcja (gdy GPZ ma >1 sekcję) wymaga `bus_ref` na `CanonicalGpzSection`,
-  // którego adapter v2 (`enmToCanonicalGpzAdapter.ts`, POZA autoryzacją tej
-  // fazy) dziś nie eksponuje — fallback deterministyczny na sekcję order=0,
-  // kandydat na F9.6+ dla GPZ wielosekcyjnych. Minimalna realizacja
-  // (autoryzacja zadania): jeden glif per wpis `gridSources`, rozstawione
-  // poziomo gdy >1 (dual-feed GPZ, rzadkie — fixtura ma 1).
+  // 'external_grid'`). F13.1 (spec §21.1, D3-1/D3-2 — audyt
+  // `SLD_ENGINEERING_CANON_AUDIT_D3_2026-07.md`): PRZENIESIONE ze szczytu
+  // szyny SN na SZCZYT KOLUMNY WN (nad szyną WN), gdy `hasHvContent` — GPZ to
+  // dominanta WN/SN, przyłącze systemowe MUSI wieńczyć tor WN, nie wchodzić
+  // na poziomie SN (dawna lokalizacja kolidowała czytelnością z D3-2). Gdy
+  // BRAK kolumny WN (`!hasHvContent` — GPZ bez danych TR/WN, rzadki stan
+  // niekompletny) zaczep ZOSTAJE nad szyną SN (fallback 1:1 z poprzedniej
+  // wersji, zero regresji dla tego przypadku). DECYZJA ZAKRESU (STOP-notatka
+  // raportu F9.4, nadal aktualna dla wariantu SN): dopasowanie `Source.bus_ref`
+  // → KONKRETNA sekcja (gdy GPZ ma >1 sekcję) wymaga `bus_ref` na
+  // `CanonicalGpzSection`, którego adapter v2 dziś nie eksponuje — fallback
+  // deterministyczny na sekcję order=0. Minimalna realizacja: jeden glif per
+  // wpis `gridSources`, rozstawione poziomo gdy >1 (dual-feed, rzadkie).
   if (gridSources.length > 0) {
     const firstSection = sectionLayouts[0] ?? null;
-    if (!firstSection) {
+    const attachAboveHv = hasHvContent && hvBusRightEdge != null;
+    if (!attachAboveHv && !firstSection) {
       missingData.push('gpz.source.unattached');
     } else {
-      // DECYZJA GEOMETRII (STOP-notatka raportu F9.4): zaczep NAD osią
-      // sekcji koliduje z polem WN TR (DS/CB/CT), które taponuje TĘ SAMĄ
-      // sekcję z GÓRY (odkryte empirycznie na fixturze referencyjnej —
-      // `earthSwitch` pola WN TR i `gridSource` nachodziły się na tym samym
-      // X). Zaczep PO PRAWEJ sekcji (na osi szyny SN, `snBusY`) jest wolny z
-      // konstrukcji (prawa krawędź sekcji to KONIEC rezerwacji treści, ten
-      // sam wzorzec fallbacku co `findGpzTrunkPort` „prawa krawędź szyny SN").
-      // Poprawne WYŁĄCZNIE dla GPZ z DOKŁADNIE jedną sekcją SN (fixtura) —
-      // GPZ wielosekcyjny wymaga zaczepu PRZY sekcji WCHODZĄCEJ konkretnie
-      // (kandydat F9.6+, ten sam gap co f6-1 „GPZ ma >1 sekcję").
       const def = SYMBOL_DEFS.gridSource;
-      const attachY = snBusY;
-      const attachX = snapToGrid(firstSection.x + firstSection.width + 3 * GRID);
+      // attachY/attachRightEdge/extensionOwnerRef różnią się WYŁĄCZNIE
+      // punktem zaczepu (szyna WN vs szyna SN) — reszta geometrii (rozstaw
+      // poziomy symboli, odcinek zejścia, przedłużenie szyny do zaczepu)
+      // WSPÓLNA dla obu gałęzi (zero duplikacji arytmetyki).
+      const attachY = attachAboveHv ? hvBusY : snBusY;
+      const busContentRightX = attachAboveHv ? hvBusRightEdge! : firstSection!.x + firstSection!.width;
+      const extensionOwnerRef = attachAboveHv ? `${props.id}#hv-bus-source-extension` : `${props.id}#source-bus-extension`;
+      const attachX = snapToGrid(busContentRightX + 3 * GRID);
       const symbolY = attachY - 3 * GRID - def.height;
       let cursorX = attachX;
 
@@ -1459,16 +1525,48 @@ export function composeGpz(
           ],
           meta: { parityKeys: ['gpz.source.external_grid'], sourceRef: source.id },
         });
+
+        // F13.1 (spec §21.1/D3-10): nazwa źródła + tabliczka danych systemu
+        // POD symbolem — WYŁĄCZNIE gdy adapter rozwiązał `hvSystemSource` I
+        // jego `sourceRef` odpowiada TEMU wpisowi `gridSources` (ten sam ref
+        // — `Source.ref_id` — po obu stronach, `SldSourceView.id`/
+        // `enmToCanonicalGpzAdapter.ts`). Brak dopasowania ⇒ ZERO etykiety
+        // (uczciwy brak, glif źródła zostaje — ciągłość/pokrycie nietknięte).
+        // Reużywa `transformerLabels` (StationNameBandOwnerInput, WYŁĄCZNIE
+        // kształt struktury — nie semantyka „transformator") zamiast nowego
+        // pola w `GpzCompositionLabelInputs`: `buildScene.ts` (poza
+        // autoryzacją tej fazy, edytowany równolegle) czyta DZIŚ TYLKO
+        // `labels.transformerLabels`/`labels.stationName` do
+        // `stationNameBands` — nowe pole wymagałoby tam dodatkowej linii.
+        if (props.hvSystemSource && props.hvSystemSource.sourceRef === source.id) {
+          const dataplate = gpzSystemSourceDataplateText(props.hvSystemSource);
+          const rows: StationNameBandRow[] = [{ text: props.hvSystemSource.name, labelClass: 't2' }];
+          if (dataplate) rows.push({ text: dataplate, labelClass: 't3' });
+          transformerLabels.push({
+            ownerRef: `${source.id}#system-source-label`,
+            nameSlot: {
+              x: snapToGrid(x + def.width + GRID),
+              y,
+              width: snapUp(Math.max(
+                measureLabelWidth(props.hvSystemSource.name, 't2'),
+                dataplate ? measureLabelWidth(dataplate, 't3') : 0,
+              )),
+              height: labelLineHeight('t2') + (dataplate ? labelLineHeight('t3') : 0),
+            },
+            rows,
+          });
+        }
+
         cursorX += def.width + GRID;
       });
 
-      // Odcinek KOŃCOWY szyny SN → punkt zaczepu (poza rezerwacją treści
-      // sekcji, spec §14.1 „ciągłość" — źródło musi mieć trasę DO szyny, nie
-      // tylko wisieć nad nią).
+      // Odcinek KOŃCOWY szyny (WN gdy kolumna WN obecna, inaczej SN) → punkt
+      // zaczepu (poza rezerwacją treści, spec §14.1 „ciągłość" — źródło musi
+      // mieć trasę DO szyny, nie tylko wisieć nad nią).
       segments.push({
-        ownerRef: `${props.id}#source-bus-extension`,
+        ownerRef: extensionOwnerRef,
         points: [
-          { x: snapToGrid(firstSection.x + firstSection.width), y: attachY },
+          { x: snapToGrid(busContentRightX), y: attachY },
           { x: snapToGrid(cursorX - GRID), y: attachY },
         ],
         meta: { parityKeys: ['gpz.source.external_grid'] },
@@ -1476,13 +1574,114 @@ export function composeGpz(
     }
   }
 
-  // -- 8. Nazwa GPZ (header, spec §4 „GPZ: nazwa (t1), header bloku"). ------
-  const nameRows: StationNameBandRow[] = [{ text: props.name, labelClass: 't1' }];
+  // -- 8+9. Strefa GPZ + nagłówek-tytuł (spec §21.2, D3-2/D3-2bis/D3-12;
+  // PRZEBUDOWA nadzorcy po przejęciu od agenta — poprzednia wersja rysowała
+  // ramę jako SEGMENT TORU MOCY (zamknięty prostokąt), co: (a) wprowadzało
+  // 4-5 niedokotwiczonych końców do `sceneSegmentEndpointGaps` (§11.3),
+  // (b) fałszowało `totalVerticalSegmentLength` o wysokość ramy (+1200 na
+  // L0 — piony ramy NIE są torem elektrycznym), (c) kolidowało etykietami.
+  // TERAZ: rama = DEKORACJA (`GpzComposition.zone`, rysowana przez kanwę/
+  // preview z meta sceny, ZERO udziału w wyroczniach toru), a nagłówek
+  // „GPZ ⟨nazwa⟩ · UHV/ULV kV" JEST blokiem nazwy GPZ (`stationName` —
+  // D3-12 „pas tytułowy ZAMIAST luźnych etykiet": jedna prawda tytułu,
+  // dawna luźna nazwa na originie kolidowała z kolumną WN).
+  // Rama musi objąć także SLOTY etykiet pasmowych kompozycji (transformerLabels:
+  // znamiona TR i tabliczka źródła systemowego — sloty mają ZMIERZONE szerokości,
+  // `measureLabelWidth`), nie tylko symbole/segmenty — inaczej tekst tabliczki
+  // („Sk″ … · 110 kV", najszerszy wiersz kolumny WN) przebija prawą krawędź
+  // ramy (D3 render-DoD: pion ramy przez środek tekstu). Etykiety kotwicowe
+  // (sectionLabels/fieldDesignations/protection) rozwiązują się na poziomie
+  // sceny — je absorbuje margines `frameMargin` (6×GRID) jak dotychczas.
+  const contentBboxSoFar = (() => {
+    const base = computeBbox(symbols, segments);
+    let minX = base.x;
+    let minY = base.y;
+    let maxX = base.x + base.width;
+    let maxY = base.y + base.height;
+    transformerLabels.forEach((l) => {
+      minX = Math.min(minX, l.nameSlot.x);
+      minY = Math.min(minY, l.nameSlot.y);
+      maxX = Math.max(maxX, l.nameSlot.x + l.nameSlot.width);
+      maxY = Math.max(maxY, l.nameSlot.y + l.nameSlot.height);
+    });
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  })();
+  let zone: GpzZoneDecoration | null = null;
+  const firstTransformer = props.transformers[0];
+  const headerText = firstTransformer
+    ? `GPZ ${props.name} · ${firstTransformer.uhvKv}/${firstTransformer.ulvKv} kV`
+    : `GPZ ${props.name}`;
+  const headerHeight = labelLineHeight('t1') + GRID;
+  let headerSlot = {
+    x: originX,
+    y: originY,
+    width: snapUp(measureLabelWidth(headerText, 't1') + 2 * GRID),
+    height: labelLineHeight('t1'),
+  };
+  if (Number.isFinite(contentBboxSoFar.width) && (contentBboxSoFar.width > 0 || contentBboxSoFar.height > 0)) {
+    // Margines strefy WIĘKSZY niż typowy odstęp kompozycji (SECTION_MARGIN =
+    // 2×GRID) — rezerwacja systemowa wokół całości GPZ, żeby powierzchnia
+    // strefy realnie dominowała nad przeciętną stacją wielopolową (D3-2bis;
+    // pomiar agenta na fixturze: bez marginesu 111488 < 135744 największej
+    // stacji).
+    const frameMargin = 6 * GRID;
+    const frameLeft = snapToGrid(contentBboxSoFar.x - frameMargin);
+    const frameTop = snapToGrid(contentBboxSoFar.y - frameMargin - headerHeight);
+    const frameRight = snapUp(contentBboxSoFar.x + contentBboxSoFar.width + frameMargin);
+    const frameBottom = snapUp(contentBboxSoFar.y + contentBboxSoFar.height + frameMargin);
+    zone = {
+      x: frameLeft,
+      y: frameTop,
+      width: frameRight - frameLeft,
+      height: frameBottom - frameTop,
+    };
+    tag(['gpz.zone.frame', 'gpz.zone.header']);
+    // Nagłówek WEWNĄTRZ ramy (górna belka) — nigdy poza arkuszem po
+    // translacji końcowej niżej.
+    headerSlot = {
+      x: snapToGrid(frameLeft + GRID),
+      y: snapToGrid(frameTop + GRID / 2),
+      width: headerSlot.width,
+      height: headerSlot.height,
+    };
+  }
   const stationName: StationNameBandOwnerInput = {
     ownerRef: props.id,
-    nameSlot: { x: originX, y: originY, width: snapUp(measureLabelWidth(props.name, 't1') + 2 * GRID), height: labelLineHeight('t1') },
-    rows: nameRows,
+    nameSlot: headerSlot,
+    rows: [{ text: headerText, labelClass: 't1' }],
   };
+
+  // -- 10. Translacja końcowa do współrzędnych nieujemnych względem originu
+  // (kontrakt k5b/D2: nic nie wystaje za lewą/górną krawędź arkusza; rama
+  // strefy wystaje o `frameMargin`+nagłówek PONAD treść, więc CAŁA kompozycja
+  // jest przesuwana o tę nadwyżkę — czysta translacja, deterministyczna,
+  // niezmiennicza dla dwuprzebiegowego wyrównania buildSceneV3, bo pass-1 i
+  // pass-2 dostają IDENTYCZNE przesunięcie względne).
+  const shiftX = zone ? Math.max(0, originX - zone.x) : 0;
+  const shiftY = zone ? Math.max(0, originY - zone.y) : 0;
+  if (shiftX > 0 || shiftY > 0) {
+    translateGpzComposition(shiftX, shiftY, {
+      symbols, segments, protectionSymbols, protectionSegments, measurementSegments,
+      sectionLabels, transformerLabels, fieldDesignations, fieldCaptions, protectionLabels,
+      stationName,
+    });
+    if (zone) {
+      zone = { ...zone, x: zone.x + shiftX, y: zone.y + shiftY };
+    }
+  }
+
+  const contentBbox = computeBbox(symbols, segments);
+  // Bbox kompozycji obejmuje ramę strefy (dekoracja też musi zmieścić się w
+  // arkuszu/kamerze), unia jawna — rama nie jest segmentem, `computeBbox` jej
+  // nie widzi.
+  const bbox = zone
+    ? {
+        x: Math.min(contentBbox.x, zone.x),
+        y: Math.min(contentBbox.y, zone.y),
+        width: Math.max(contentBbox.x + contentBbox.width, zone.x + zone.width) - Math.min(contentBbox.x, zone.x),
+        height: Math.max(contentBbox.y + contentBbox.height, zone.y + zone.height) - Math.min(contentBbox.y, zone.y),
+      }
+    : contentBbox;
 
   return {
     gpzId: props.id,
@@ -1503,7 +1702,85 @@ export function composeGpz(
     protectionSymbols,
     protectionSegments,
     measurementSegments,
-    bbox: computeBbox(symbols, segments),
+    zone,
+    bbox,
+  };
+}
+
+/** F13.1 (przebudowa nadzorcy): rama strefy GPZ — dekoracja rysowana przez
+ *  kanwę/preview z `SceneV3Meta.gpzZone`, POZA torem mocy (zero udziału w
+ *  wyroczniach §11/§15.1/§16). */
+export interface GpzZoneDecoration {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** Czysta translacja CAŁEJ kompozycji GPZ o (dx, dy) — mutuje przekazane
+ *  tablice/obiekty IN PLACE (wołane wyłącznie wewnątrz `composeGpz`, przed
+ *  zwróceniem — na zewnątrz kompozycja pozostaje niemutowalna). */
+function translateGpzComposition(
+  dx: number,
+  dy: number,
+  parts: {
+    symbols: ComposedGpzSymbolInstance[];
+    segments: ComposedGpzSegment[];
+    protectionSymbols: ComposedGpzProtectionSymbol[];
+    protectionSegments: ComposedGpzSegment[];
+    measurementSegments: ComposedGpzSegment[];
+    sectionLabels: SimpleAnchoredOwnerInput[];
+    transformerLabels: StationNameBandOwnerInput[];
+    fieldDesignations: SimpleAnchoredOwnerInput[];
+    fieldCaptions: PortCaptionOwnerInput[];
+    protectionLabels: SimpleAnchoredOwnerInput[];
+    stationName: StationNameBandOwnerInput;
+  },
+): void {
+  const movePoint = (p: { x: number; y: number }) => ({ x: p.x + dx, y: p.y + dy });
+  parts.symbols.forEach((s, i) => {
+    const ports: Record<string, RoutePort> = {};
+    for (const [k, port] of Object.entries(s.ports)) ports[k] = { ...port, x: port.x + dx, y: port.y + dy };
+    parts.symbols[i] = { ...s, x: s.x + dx, y: s.y + dy, ports };
+  });
+  const moveSegments = (list: ComposedGpzSegment[]) => {
+    list.forEach((seg, i) => {
+      list[i] = { ...seg, points: seg.points.map(movePoint) };
+    });
+  };
+  moveSegments(parts.segments);
+  moveSegments(parts.protectionSegments);
+  moveSegments(parts.measurementSegments);
+  parts.protectionSymbols.forEach((s, i) => {
+    parts.protectionSymbols[i] = { ...s, x: s.x + dx, y: s.y + dy };
+  });
+  const moveAnchored = (list: SimpleAnchoredOwnerInput[]) => {
+    list.forEach((l, i) => {
+      list[i] = { ...l, anchor: movePoint(l.anchor) };
+    });
+  };
+  moveAnchored(parts.sectionLabels);
+  moveAnchored(parts.fieldDesignations);
+  moveAnchored(parts.protectionLabels);
+  parts.transformerLabels.forEach((l, i) => {
+    parts.transformerLabels[i] = { ...l, nameSlot: { ...l.nameSlot, x: l.nameSlot.x + dx, y: l.nameSlot.y + dy } };
+  });
+  parts.fieldCaptions.forEach((l, i) => {
+    parts.fieldCaptions[i] = {
+      ...l,
+      anchorX: l.anchorX + dx,
+      primaryRect: { ...l.primaryRect, x: l.primaryRect.x + dx, y: l.primaryRect.y + dy },
+      ...(l.fallbackRect
+        ? { fallbackRect: { ...l.fallbackRect, x: l.fallbackRect.x + dx, y: l.fallbackRect.y + dy } }
+        : {}),
+    };
+  });
+  // stationName mutowany przez pola (obiekt readonly strukturalnie — tu
+  // jesteśmy właścicielem świeżo zbudowanej instancji).
+  (parts.stationName as { nameSlot: StationNameBandOwnerInput['nameSlot'] }).nameSlot = {
+    ...parts.stationName.nameSlot,
+    x: parts.stationName.nameSlot.x + dx,
+    y: parts.stationName.nameSlot.y + dy,
   };
 }
 
@@ -1534,11 +1811,20 @@ export function noGpzSymbolOverlaps(composition: GpzComposition): boolean {
 
 /** endsAtPorts (spec §11.3): każdy odcinek kończy się w porcie symbolu lub na
  *  szynie (busbar) tej samej kompozycji — analogicznie do
- *  `compose/station.ts` `internalSegmentsEndAtPortsOrBus`. */
+ *  `compose/station.ts` `internalSegmentsEndAtPortsOrBus`. F13.1 (spec
+ *  §21.2): rama strefy GPZ (`#zone-frame`, `busbarKind`-owner
+ *  `'gpz.zone.frame'`) jest ADNOTACJĄ KOMPOZYCYJNĄ (jak `protectionSegments`/
+ *  `measurementSegments`, poza `composition.segments` semantycznie, ale TU
+ *  fizycznie w tej samej liście — patrz DECYZJA w kroku 9 `composeGpz`,
+ *  konieczna bo `buildScene.ts` nie ma dodatkowego kanału bez zmiany poza
+ *  autoryzacją zadania) — jej narożniki NIE są węzłami toru mocy, więc
+ *  WYŁĄCZONA z tej wyroczni, analogicznie do wyjątku adnotacji w spec §17.1/
+ *  §20.1e. */
 export function gpzInternalSegmentsEndAtPortsOrBus(composition: GpzComposition): boolean {
   const ports: RoutePort[] = [];
   composition.symbols.forEach((s) => Object.values(s.ports).forEach((p) => ports.push(p)));
   const busSegments = composition.segments.filter((s) => s.meta.busbarRole === 'primary' || s.meta.ringClosure);
+  const powerPathSegments = composition.segments.filter((s) => s.meta.testId !== 'gpz-canonical-zone-frame');
 
   const endpointValid = (p: RouteVertex): boolean => {
     if (ports.some((port) => port.x === p.x && port.y === p.y)) return true;
@@ -1559,7 +1845,7 @@ export function gpzInternalSegmentsEndAtPortsOrBus(composition: GpzComposition):
     });
   };
 
-  return composition.segments.every((seg) => {
+  return powerPathSegments.every((seg) => {
     const first = seg.points[0];
     const last = seg.points[seg.points.length - 1];
     return !!first && !!last && endpointValid(first) && endpointValid(last);
