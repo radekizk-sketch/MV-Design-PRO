@@ -351,8 +351,13 @@ Progress:
         z obwiednią (Opus; 17 testów; refaktor wydzielający budowę wejścia
         z ncrfg_compliance/checker.py — 49 testów zgodności bez regresji;
         PRZEJĘTE przez zarządcę po zawieszeniu; zintegrowane `2472c7b`;
-        pełny pytest 5856 pass ZERO failed potwierdzony). Karta P38 okno
-        walidacji modelu falownika `e4fb7f7` — wykonawca w toku.
+        pełny pytest 5856 pass ZERO failed potwierdzony). P38 okno walidacji
+        modelu falownika (Opus; 36 testów; pełny vitest u wykonawcy 8445 pass
+        ZERO failed; zintegrowane `b5f658b`; UCZCIWE rozstrzygnięcie: D6 nie
+        echo-uje głębokości zapadu/czasu trwania — kolumna „Napięcie skrajne"
+        z trajektorii zamiast fabrykacji; rekomendacja echa parametrów w D6).
+        Scalenie #16: zakładka „Walidacja falownika" (`2f70995`; ui2 1156 pass).
+        FALA 2 OZE KOMPLETNA: P30→P35→P38 end-to-end (D5/D6 + okna + powłoka).
         PROCEDURA: wykonawcy backendowi zawieszają się po pełnym pytest (3
         przypadki) — zarządca przejmuje: weryfikacja w worktree + commit
         w imieniu wykonawcy (bez oczekiwania na raport).
