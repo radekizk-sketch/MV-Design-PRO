@@ -27,6 +27,7 @@ import { emituj, subskrybuj, startEventBusAdapters } from './events';
 import { CommandPalette, zbudujIndeksWyszukiwania, type PozycjaWyszukiwania } from './search';
 import { PulpitProjektu } from './spaces/projekt';
 import { PanelGotowosci } from './spaces/gotowosc';
+import { ModelWarsztat } from './spaces/model';
 import { LegacyWarsztat } from './legacy/LegacyWarsztat';
 import { LegacyInspektor } from './legacy/LegacyInspektor';
 import { LegacyChrome } from './legacy/LegacyChrome';
@@ -219,6 +220,7 @@ export function AppRoot() {
         <LegacyWarsztat
           route={route}
           space={activeSpace}
+          model={<ModelWarsztat />}
           gotowosc={
             <PanelGotowosci
               trybZaawansowania={advancementMode}

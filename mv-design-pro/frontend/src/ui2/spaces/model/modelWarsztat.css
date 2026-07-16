@@ -1,0 +1,9 @@
+/* Warsztat modelu (scalenie U2 #2) — wyłącznie tokeny --mvd-*. */
+.mvd-model-warsztat { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.mvd-model-zakladki { display: flex; gap: 2px; border-bottom: 1px solid var(--mvd-line); padding: 0 8px; background: var(--mvd-panel-2); }
+.mvd-model-zakladka { border: 0; background: none; color: var(--mvd-muted); padding: 8px 14px; cursor: pointer; font: inherit; border-bottom: 2px solid transparent; }
+.mvd-model-zakladka:hover { color: var(--mvd-ink); }
+.mvd-model-zakladka.mvd-on { color: var(--mvd-accent); border-bottom-color: var(--mvd-accent); font-weight: 600; }
+.mvd-model-tresc { flex: 1; min-height: 0; overflow: auto; }
+.mvd-model-kreator-scrim { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, 0.45); display: flex; align-items: center; justify-content: center; }
+.mvd-model-kreator-okno { background: var(--mvd-panel); border: 1px solid var(--mvd-line); border-radius: 8px; max-width: 920px; width: 92%; max-height: 88vh; overflow: auto; }
