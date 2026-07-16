@@ -357,7 +357,13 @@ Progress:
         echo-uje głębokości zapadu/czasu trwania — kolumna „Napięcie skrajne"
         z trajektorii zamiast fabrykacji; rekomendacja echa parametrów w D6).
         Scalenie #16: zakładka „Walidacja falownika" (`2f70995`; ui2 1156 pass).
-        FALA 2 OZE KOMPLETNA: P30→P35→P38 end-to-end (D5/D6 + okna + powłoka).
+        FALA 2 OZE KOMPLETNA: P30→P35→P38 end-to-end (D5/D6 + okna + powłoka);
+        pełny vitest 8445 potwierdzony (po restarcie kontenera — push przetrwał,
+        bieg powtórzony). FALA 3: D7 symulacja odpowiedzi na polecenia OSD
+        (Opus; 28 testów; dwa biegi bazowy-vs-polecenie; PRZEJĘTE po
+        zatrzymaniu wykonawcy — bramki dokończone przez zarządcę; zintegrowane
+        `0c6c0ed`; pełny pytest 5884 pass ZERO failed potwierdzony). Karta P40
+        okno odpowiedzi OSD `48ee5e5` — wykonawca w toku.
         PROCEDURA: wykonawcy backendowi zawieszają się po pełnym pytest (3
         przypadki) — zarządca przejmuje: weryfikacja w worktree + commit
         w imieniu wykonawcy (bez oczekiwania na raport).
