@@ -1,7 +1,7 @@
 # KARTA ZADANIA P39 — MACIERZ WYMOGÓW NC RfG PER MODUŁ (rozbudowa W-614)
 
 **Faza:** U4 (otwarcie strumienia OZE — priorytet dyrektywy 2026-07-15) · **Epik:** E11 ·
-**Wykonawca:** Opus · **Wiążące:** `PROPOZYCZE_ROZSZERZEN` P39, `MODEL_INTERAKCJI` §2.7
+**Wykonawca:** Opus · **Wiążące:** `PROPOZYCJE_ROZSZERZEN` P39, `MODEL_INTERAKCJI` §2.7
 i rejestr W-614, `AUDYT_RADY_SPECJALISTOW` (specjalista OZE/NC RfG), CLAUDE.md
 (NOT-A-SOLVER, WHITE BOX read-only, determinizm, PL-only).
 
