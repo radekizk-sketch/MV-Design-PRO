@@ -387,6 +387,41 @@ Następne PR-y (PR-5..PR-16) — patrz pełen plan `/root/.claude/plans/jeste-ur
 
 ---
 
+### 3.4 SLD v3 — przebudowa CAD/SCADA wg SLD_CAD_SPEC_V3 (2026-07, dyrektywy D1+D2 WDROŻONE)
+
+**Branch:** `claude/sld-schema-cad-scada-rqvz73` · **Plan:** `docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md` · **Spec (wiążąca):** `docs/sld/SLD_CAD_SPEC_V3.md`
+
+Program F1–F11 zamknięty (2026-07-16). Zakres wdrożony:
+- **Pipeline v3** (measure→bands→columns→route→label, GRID=8, LOD 0/1/2, determinizm) + kanwa
+  `SldCanvasV3` z kamerą (pan/zoom/pinch, histereza LOD, fit per LOD — k4 rozwiązane F8a).
+- **Dyrektywa D1** (oznaczenie zabezpieczeń jak na schemacie referencyjnym ABB): przekaźnik-okrąg
+  z kodami funkcji, wyłącznik „52"-kwadrat, tor wyzwalania (dash 4-2), linia pomiarowa CT→przekaźnik
+  (dash 2-2), miernik „M" z legendą dyskryminującą — spec §17/§20, GPZ objęty od F11.1.
+- **Dyrektywa D2** (9 ustaleń inżynierskich): ciągły tor z opisanymi zakończeniami (§18.6), pola
+  funkcjonalnie bez WE/WY (§19.4), Q per aparat (§19.1), typ stacji z topologii (§19.5), symbole
+  IEC ze stanem + szyny „Sekcja N · V kV" (§19.2/§19.3), uziemnik LATERALNIE z blokadą w legendzie
+  (§18.1), CT opisane/powiązane + VT równolegle (§18.2/§18.3), rozdzielone linie pomiar/TRIP +
+  walidacja topologiczna 67N/87T/51N (§20.1/§20.2), adnotacje nie zasłaniają toru (§20.3).
+- **Uczciwość danych**: naprawy fabrykacji u źródła (podwójna negacja znaku mocy w canonical PF —
+  §3.-1 wyżej; heurystyka zero_sequence; stała operating_mode → realny kanał `Generator.meta`,
+  F11.3 backend+frontend §13.3); brak danych = brak rysunku + stopNote/missingData.
+- **Wyrocznie jako bramki CI**: `npm run accept:sld-v3` — 30+ sond per LOD, każda z testem
+  negatywnym; macierz finalna: `docs/sld/SLD_V3_ACCEPTANCE.md` §5. Baseline'y §15.1:
+  12120/41000/54104 (nie-rosnące), symbolWire=0 (twardy).
+- **Parytet F8c (F11.4)**: drawer szczegółów, menu kontekstowe, paleta DER, konsolidacja
+  useMeasuredSize — dostarczone na v3; **usunięcie renderu v2 POZOSTAJE BRAMKOWANE** trzema
+  pozycjami dla właściciela (wykonawca akcji menu; geometria ręczna CAD — decyzja spec-first;
+  Conscious Split — produkcyjnie nieosiągalny, decyzja produktowa) — szczegóły: wpis F11.4 planu.
+- **Koordynacja z wątkiem UI**: kontrakt `docs/sld/SLD_PROTECTION_MARKING_COORDINATION_2026-07.md`;
+  kolizja identyfikatorów V12K-026 zarejestrowana (V12K-032, propozycja renumeracji przy scaleniu).
+
+Bramki końcowe: frontend 551 plików / 7790 testów PASS; backend 5720 PASS (1 pre-existing fail
+`test_no_todo_fixme_in_catalog_first_critical_paths`, poza zakresem); accept ALL PASS; guardy
+(sld_determinism/arch/no_codenames/dead_click/overlay_no_physics/forbidden_ui_terms/docs) PASS.
+Rendery odbioru: `docs/sld/renders/v3/` (odświeżone 2026-07-16).
+
+---
+
 ### 3.6 P0 implementation sprint (2026-05-13)
 
 Zrealizowane w jednym dniu (**20 commitów po cleanupie** — sprint kontynuowany):

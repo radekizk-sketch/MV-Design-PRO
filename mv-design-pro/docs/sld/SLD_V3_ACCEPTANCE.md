@@ -373,11 +373,13 @@ bezkolizyjna pozycja). Brak zmiany kodu. Udokumentowane tu i w
   (poza GPZ) nie niosą `testId`, więc `operator_L1_overlay.png` nie pokazuje
   koloru na przewodach spoza GPZ. Widoczne na renderze: kolor tylko na
   aparatach (kwadraty/kółka), nie na liniach.
-- **k4** (`canvas/SldCanvasV3.tsx`): patrz sekcja 2 wyżej — kamera fituje
-  zawsze do LOD 2; przy realnym użyciu `lodOverride` (Results Browser itp.)
-  bez korekty na poziomie wołającego, LOD 0/1 renderują się małe. Skrypt
-  render-odbioru kompensuje to WYŁĄCZNIE na poziomie harnessu (crop),
-  dokumentując defekt, nie naprawiając go.
+- **k4** (`canvas/SldCanvasV3.tsx`): ROZWIĄZANE w F8a (k4.1) — kamera fituje
+  do bboxa sceny TEGO LOD, do którego przekazano `lodOverride` (nie zawsze
+  LOD 2); zmiana propa po mouncie wywołuje pełny refit; testy
+  `sldCanvasV3.test.tsx` sekcje „F8a k4.1"/„F8a k3". Dawny opis (fit zawsze
+  do LOD 2 + kompensacja harnessu) dotyczył stanu sprzed F8a — skrypt
+  render-odbioru zaktualizowany (F8a-2 FIX-2, kompensacja usunięta jako
+  sprzeczna z naprawioną kamerą).
 - Fixtura `sldSubstrate52s` nie ma punktów NO (`isNop`) — żaden z wymaganych
   PNG nie może zademonstrować wizualnie badge'a „NO" na tej fixturze
   (symbol `noPoint` istnieje w kodzie i jest pokryty testami jednostkowymi
@@ -392,3 +394,50 @@ bezkolizyjna pozycja). Brak zmiany kodu. Udokumentowane tu i w
 ### 3.6 F10.1 — sondy §18 (2026-07-16)
 
 - `earth_switch_lateral_probe` (§18.1), `vt_parallel_probe` (§18.2), `path_termination_labeled_probe` (§18.6) — wpięte do accept:sld-v3 z negatywem; szczegóły w `SLD_CAD_REBUILD_PLAN_V3.md` §F10.1.
+
+## 5. Macierz finalna wyroczni (F11.5, stan na 2026-07-16 — `npm run accept:sld-v3` ALL PASS)
+
+Sondy nazwane wpięte do `accept:sld-v3`, per LOD 0/1/2 na fixturze `sldSubstrate52s`
+(53 stacje, 21 źródeł). Każda z sondą negatywną („wyrocznia gryzie") tam, gdzie spec
+§11/A1/A3 jej wymaga. Realizacje: `scene/buildScene.ts` (eksporty), chyba że wskazano inaczej.
+
+| Sonda | Spec | Status |
+|---|---|---|
+| grid_probe | §11.1 | PASS |
+| port_probe | §11.2 | PASS |
+| symbol_wire_probe | §11.4 | PASS (twardy zero) |
+| label_wire_probe | §11.4 | PASS (baseline liczony, sekcja 3.4) |
+| vertical_length_probe | §15.1 | PASS (baseline 12120/41000/54104, nie-rosnący) |
+| lod_path_probe | §15.2 | PASS |
+| field_entry_probe | §12.3 | PASS |
+| cell_sequence (testy pinowe) | §12.1/§12.2 | PASS (vitest, compose) |
+| apparatus_identifier_probe | §19.1 | PASS |
+| busbar_label_probe | §19.2 | PASS |
+| switch_symbol_unambiguity_probe | §19.3 | PASS |
+| line_bay_caption_probe | §19.4 | PASS |
+| station_type_topology_probe | §19.5 | PASS |
+| field_silhouette_probe | §14.3 | PASS |
+| branch_accent_probe | §14.4 | PASS |
+| sources_visible_probe | §13.1 | PASS |
+| source_symbol_probe | §13.2 | PASS |
+| source_state_probe | §13.3 | PASS (F11.3: a-bazowa + b-wariant pozytywny) |
+| source_connectivity_probe | §14.1 | PASS |
+| flow_overlay_probe | §14.2 | PASS (F9.5) |
+| earth_switch_lateral_probe | §18.1 | PASS (F10.1) |
+| vt_parallel_probe | §18.2 | PASS (F10.1) |
+| ct_annotation_probe | §18.3 | PASS (F10.4) |
+| path_termination_labeled_probe | §18.6 | PASS (F10.1) |
+| protection_marking_probe | §17 | PASS (F9.9/F11.1 — GPZ objęty, wyjątek §17.6 zniesiony) |
+| secondary_link_duality_probe | §20.1 | PASS (F10.5) |
+| protection topology (§20.2) | §20.2 | PASS (protectionFunctionTopologyGaps, badge „!") |
+| annotation_no_overlap_primary_probe | §20.3 | PASS |
+| meter disambiguation | §19/§20 | PASS (F10.5) |
+| endpoint anchoring (sceneSegmentEndpointGaps) | §16 | PASS |
+| continuity/układ (§16 asercje E) | §16 | PASS (vitest buildScene) |
+
+Rendery finalne (odświeżone 2026-07-16, `docs/sld/renders/v3/` — 5 szt.): każda klasa pola
+OBECNA w danych fixtury ma zoom — `projektant_L2_zoom_gpz.png` (Pole liniowe GPZ),
+`projektant_L2_zoom_stacja.png` (pole liniowe ×3 + pole transformatorowe + DER z podpisami).
+Klasy „pole sprzęgłowe"/„pole pomiarowe" NIE występują w danych `sldSubstrate52s`
+(uczciwy brak — nie fabrykujemy pól bez danych); ich sylwetki/podpisy pokrywa
+`fieldSilhouettesAreInjective` + `fieldFunctionalDesignation` (testy jednostkowe compose).
