@@ -684,3 +684,172 @@ export function pobierzTrajektorieFrt(
     + `&test_kind=${encodeURIComponent(zapytanie.testKind)}`;
   return getJsonZDetalem<WidokTrajektoriiFrt>(url);
 }
+
+// =============================================================================
+// Symulacja odpowiedzi źródła na polecenie OSD — application/analyses/odpowiedz_osd.py
+// (P40, D7); końcówka GET /api/oze-analysis/osd-response (api/oze_analysis_runs.py)
+// =============================================================================
+
+/**
+ * Rodzaj polecenia OSD (1:1 z `_COMMANDS` w `odpowiedz_osd.py`):
+ *   - `ograniczenie_p` — nastaw P = `p_limit_pct` % mocy bazowej (curtailment),
+ *   - `moc_bierna` — nastaw Q = `q_mvar` [Mvar],
+ *   - `cosfi` — nastaw Q z zadanego cosφ i charakteru (nad-/podwzbudny),
+ *   - `lfsm_o` — odpowiedź częstotliwościowa nadczęstotliwościowa (redukcja P),
+ *   - `lfsm_u` — odpowiedź częstotliwościowa podczęstotliwościowa (dopuszcza wzrost P).
+ */
+export type RodzajPoleceniaOsd =
+  | 'ograniczenie_p'
+  | 'moc_bierna'
+  | 'cosfi'
+  | 'lfsm_o'
+  | 'lfsm_u';
+
+/** Charakter mocy biernej dla polecenia cosφ (znak Q w `_resolve_setpoint`). */
+export type CharakterMocyBiernej = 'nadwzbudny' | 'podwzbudny';
+
+/** Kontekst przebiegu rozpływu, na którym oparto symulację odpowiedzi. */
+export interface KontekstOsd {
+  readonly trace_id: string;
+  readonly snapshot_id: string | null;
+  readonly case_name: string | null;
+}
+
+/**
+ * Parametry polecenia odesłane przez backend (echo wejścia). `overridden` to ślad
+ * nadpisania zależny od polecenia (np. `p_limit_pct` albo `cos_phi` + `q_charakter`
+ * albo `lfsm_factor` + `frequency_hz` …) — 1:1 z `_resolve_setpoint`.
+ */
+export interface ParametryOsd {
+  readonly source_ref: string;
+  readonly source_name: string | null;
+  readonly command: RodzajPoleceniaOsd;
+  readonly overridden: Readonly<Record<string, number | string | null>>;
+}
+
+/**
+ * Nastawy źródła przed/po + wstrzyknięcia szyny źródła z solvera (WHITE BOX).
+ * Wszystkie wartości zaokrąglone do 6 miejsc po stronie backendu; `null` gdy pole
+ * nie zostało policzone (np. niezbieżny bieg).
+ */
+export interface ZrodloOsd {
+  readonly ref_id: string;
+  readonly name: string | null;
+  readonly bus_ref: string;
+  readonly bus_name: string | null;
+  readonly p_setpoint_before_mw: number | null;
+  readonly p_setpoint_after_mw: number | null;
+  readonly q_setpoint_before_mvar: number | null;
+  readonly q_setpoint_after_mvar: number | null;
+  readonly bus_p_injected_before_mw: number | null;
+  readonly bus_p_injected_after_mw: number | null;
+  readonly bus_q_injected_before_mvar: number | null;
+  readonly bus_q_injected_after_mvar: number | null;
+}
+
+/**
+ * Napięcie węzła przed/po (delta) — 1:1 z `_node_voltages`. UWAGA: odpowiedź NIE
+ * niesie flagi naruszenia pasma napięciowego, więc tabela w oknie NIE stawia tagów
+ * (zero oceny lokalnej — patrz karta P40 §1.2).
+ */
+export interface WezelOsd {
+  readonly bus_ref: string;
+  readonly bus_name: string | null;
+  readonly v_before_pu: number | null;
+  readonly v_after_pu: number | null;
+  readonly v_delta_pu: number | null;
+}
+
+/** Straty sieci przed/po (delta) — 1:1 z `_losses`. */
+export interface StratyOsd {
+  readonly p_before_mw: number | null;
+  readonly p_after_mw: number | null;
+  readonly p_delta_mw: number | null;
+  readonly q_before_mvar: number | null;
+  readonly q_after_mvar: number | null;
+  readonly q_delta_mvar: number | null;
+}
+
+/** Podsumowanie pojedynczego biegu rozpływu (WHITE BOX) — 1:1 z `_run_trace`. */
+export interface BiegOsd {
+  readonly converged: boolean;
+  readonly iterations_count: number | null;
+  readonly total_losses_p_mw: number | null;
+  readonly min_voltage_pu: number | null;
+  readonly max_voltage_pu: number | null;
+  readonly slack_p_mw: number | null;
+  readonly slack_q_mvar: number | null;
+}
+
+/** Ślad WHITE BOX symulacji (co nadpisano + podsumowania obu biegów). */
+export interface SladOsd {
+  readonly overridden: {
+    readonly source_ref: string;
+    readonly p_before_mw: number | null;
+    readonly p_after_mw: number | null;
+    readonly q_before_mvar: number | null;
+    readonly q_after_mvar: number | null;
+    readonly command: Readonly<Record<string, number | string | null>>;
+  };
+  readonly baseline_run: BiegOsd;
+  readonly commanded_run: BiegOsd;
+}
+
+/**
+ * Widok symulacji odpowiedzi źródła na polecenie OSD (odpowiedź osd-response,
+ * 1:1 z `build_osd_response_view`).
+ */
+export interface WidokOdpowiedziOsd {
+  readonly analysis: string;
+  readonly context: KontekstOsd;
+  readonly parameters: ParametryOsd;
+  readonly input_hash: string;
+  readonly source: ZrodloOsd;
+  readonly nodes: readonly WezelOsd[];
+  readonly losses: StratyOsd;
+  readonly whitebox: SladOsd;
+}
+
+/**
+ * Parametry jawnego biegu symulacji odpowiedzi OSD. `runId`, `sourceRef`, `command`
+ * obowiązkowe; parametry polecenia opcjonalne i przekazywane WYŁĄCZNIE dla polecenia,
+ * które ich wymaga (kontrakt `_resolve_setpoint`).
+ */
+export interface ZapytanieOdpowiedziOsd {
+  readonly runId: string;
+  readonly sourceRef: string;
+  readonly command: RodzajPoleceniaOsd;
+  readonly pLimitPct?: number;
+  readonly qMvar?: number;
+  readonly cosPhi?: number;
+  readonly qCharakter?: CharakterMocyBiernej;
+  readonly frequencyHz?: number;
+  readonly droopPct?: number;
+  readonly deadbandHz?: number;
+}
+
+/**
+ * Symulacja odpowiedzi wskazanego źródła na polecenie OSD (dwa biegi rozpływu).
+ * Zwraca uczciwy komunikat PL z końcówki (404 brak przebiegu, 422 zły rodzaj
+ * analizy / nieznane źródło / nieznane polecenie / zły parametr).
+ */
+export function pobierzOdpowiedzOsd(
+  zapytanie: ZapytanieOdpowiedziOsd,
+): Promise<WidokOdpowiedziOsd> {
+  const czesci = [
+    `run_id=${encodeURIComponent(zapytanie.runId)}`,
+    `source_ref=${encodeURIComponent(zapytanie.sourceRef)}`,
+    `command=${encodeURIComponent(zapytanie.command)}`,
+  ];
+  const dodaj = (klucz: string, wartosc: number | string | undefined) => {
+    if (wartosc !== undefined) czesci.push(`${klucz}=${encodeURIComponent(String(wartosc))}`);
+  };
+  dodaj('p_limit_pct', zapytanie.pLimitPct);
+  dodaj('q_mvar', zapytanie.qMvar);
+  dodaj('cos_phi', zapytanie.cosPhi);
+  dodaj('q_charakter', zapytanie.qCharakter);
+  dodaj('frequency_hz', zapytanie.frequencyHz);
+  dodaj('droop_pct', zapytanie.droopPct);
+  dodaj('deadband_hz', zapytanie.deadbandHz);
+  return getJsonZDetalem<WidokOdpowiedziOsd>(`/api/oze-analysis/osd-response?${czesci.join('&')}`);
+}
