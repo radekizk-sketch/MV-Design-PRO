@@ -1,8 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
+  KLUCZ_GALAZ,
   KLUCZ_SZYNA,
+  KOLUMNY_GALEZI,
   KOLUMNY_SZYN,
   naProfilNapiec,
+  naSumeStratGalezi,
+  naWierszeGalezi,
   naWierszeSzyn,
   naZalozeniaRozplywu,
 } from '../adapters/rozplywAdapter';
@@ -14,7 +18,7 @@ import {
   NAPIECIE_MIN_PU,
   ROZPLYW_STRINGS,
 } from '../strings';
-import { busResultFixture, powerFlowResultFixture } from './fixtures';
+import { branchResultFixture, busResultFixture, powerFlowResultFixture } from './fixtures';
 
 describe('naWierszeSzyn — projekcja PowerFlowBusResult → wiersze wzorca (fixture 1:1)', () => {
   it('mapuje wszystkie pola wiersza szyny z formatem PL (przecinek dziesiętny)', () => {
@@ -105,5 +109,80 @@ describe('KOLUMNY_SZYN — deklaratywne kolumny z jednostkami (jednostki zawsze)
     expect(napiecePozaZakresem(NAPIECIE_MAX_PU)).toBe(false);
     expect(napiecePozaZakresem(0.9499)).toBe(true);
     expect(napiecePozaZakresem(1.0501)).toBe(true);
+  });
+});
+
+describe('naWierszeGalezi — projekcja PowerFlowBranchResult → wiersze wzorca (karta E8.3, fixture 1:1)', () => {
+  it('mapuje wszystkie pola wiersza gałęzi z formatem PL (przecinek dziesiętny)', () => {
+    const [w] = naWierszeGalezi([branchResultFixture()]);
+    expect(w[KLUCZ_GALAZ]).toEqual({ wartosc: 'L-1' });
+    expect(w.pPoczatek).toEqual({ wartosc: '10,500', sortKey: 10.5 });
+    expect(w.qPoczatek).toEqual({ wartosc: '2,400', sortKey: 2.4 });
+    expect(w.pKoniec).toEqual({ wartosc: '-10,400', sortKey: -10.4 });
+    expect(w.qKoniec).toEqual({ wartosc: '-2,300', sortKey: -2.3 });
+  });
+
+  it('straty prezentowane w kW/kvar (skalowanie MW/Mvar ×1000, nie fizyka)', () => {
+    const [w] = naWierszeGalezi([branchResultFixture({ losses_p_mw: 0.1, losses_q_mvar: 0.1 })]);
+    expect(w.stratyP).toEqual({ wartosc: '100,00', sortKey: 100 });
+    expect(w.stratyQ).toEqual({ wartosc: '100,00', sortKey: 100 });
+  });
+
+  it('branch_id jako oznaczenie elementu sieci — bez tłumaczenia, wprost z kontraktu', () => {
+    const [w] = naWierszeGalezi([branchResultFixture({ branch_id: 'CBL-SN-04' })]);
+    expect(w[KLUCZ_GALAZ].wartosc).toBe('CBL-SN-04');
+  });
+
+  it('zachowuje kolejność gałęzi ze źródła (bez własnego sortowania)', () => {
+    const wiersze = naWierszeGalezi(powerFlowResultFixture().branch_results);
+    expect(wiersze.map((w) => w[KLUCZ_GALAZ].wartosc)).toEqual(['L-1', 'L-2']);
+  });
+
+  it('jest deterministyczne: to samo wejście → identyczne wyjście', () => {
+    const wejscie = powerFlowResultFixture().branch_results;
+    expect(naWierszeGalezi(wejscie)).toEqual(naWierszeGalezi(wejscie));
+  });
+
+  it('pusta lista gałęzi → pusta lista wierszy (uczciwy stan pusty)', () => {
+    expect(naWierszeGalezi([])).toEqual([]);
+  });
+});
+
+describe('naSumeStratGalezi — podsumowanie strat (arytmetyka prezentacji, karta E8.3)', () => {
+  it('sumuje straty czynne i bierne po wszystkich gałęziach, skalując MW/Mvar → kW/kvar', () => {
+    const suma = naSumeStratGalezi(powerFlowResultFixture().branch_results);
+    // 0,1 MW + 0,08 MW = 0,18 MW = 180,00 kW; 0,1 Mvar + 0,04 Mvar = 0,14 Mvar = 140,00 kvar
+    expect(suma).toEqual({ stratyPKw: '180,00', stratyQKvar: '140,00' });
+  });
+
+  it('pusta lista gałęzi → suma zerowa (bez zgadywania braku danych)', () => {
+    expect(naSumeStratGalezi([])).toEqual({ stratyPKw: '0,00', stratyQKvar: '0,00' });
+  });
+
+  it('jest czystą funkcją: to samo wejście → identyczny wynik', () => {
+    const wejscie = powerFlowResultFixture().branch_results;
+    expect(naSumeStratGalezi(wejscie)).toEqual(naSumeStratGalezi(wejscie));
+  });
+});
+
+describe('KOLUMNY_GALEZI — deklaratywne kolumny z jednostkami (jednostki zawsze)', () => {
+  it('każda kolumna liczbowa jest mono i niesie jednostkę', () => {
+    const liczbowe = KOLUMNY_GALEZI.filter((k) => k.klucz !== KLUCZ_GALAZ);
+    for (const kol of liczbowe) {
+      expect(kol.mono).toBe(true);
+      expect(kol.jednostka).toBeTruthy();
+    }
+  });
+
+  it('kolumna główna (gałąź) niesie etykietę PL i wyrównanie do lewej', () => {
+    const kolGalaz = KOLUMNY_GALEZI.find((k) => k.klucz === KLUCZ_GALAZ);
+    expect(kolGalaz).toMatchObject({ etykieta: ROZPLYW_STRINGS.kolGalaz, wyrownanie: 'lewo' });
+  });
+
+  it('straty wyrażone w kW/kvar w nagłówku kolumny (jednostka prezentacji)', () => {
+    const stratyP = KOLUMNY_GALEZI.find((k) => k.klucz === 'stratyP');
+    const stratyQ = KOLUMNY_GALEZI.find((k) => k.klucz === 'stratyQ');
+    expect(stratyP?.jednostka).toBe(ROZPLYW_STRINGS.jednKW);
+    expect(stratyQ?.jednostka).toBe(ROZPLYW_STRINGS.jednKvar);
   });
 });

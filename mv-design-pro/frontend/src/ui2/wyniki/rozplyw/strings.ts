@@ -19,6 +19,7 @@ export const NAPIECIE_MAX_PU = 1.05;
 export const ROZPLYW_STRINGS = {
   // Nagłówek analizy
   analiza: 'Rozpływ mocy — napięcia szyn',
+  analizaGalezie: 'Rozpływ mocy — przepływy w gałęziach',
 
   // Stan pusty
   brakWyniku: 'Brak wyniku rozpływu do wyświetlenia',
@@ -30,6 +31,23 @@ export const ROZPLYW_STRINGS = {
   kolKat: 'Kąt',
   kolMocCzynna: 'Moc czynna',
   kolMocBierna: 'Moc bierna',
+
+  // Kolumny tabeli gałęzi (karta E8.3)
+  kolGalaz: 'Gałąź',
+  kolPPoczatek: 'P początek',
+  kolQPoczatek: 'Q początek',
+  kolPKoniec: 'P koniec',
+  kolQKoniec: 'Q koniec',
+  kolStratyP: 'Straty P',
+  kolStratyQ: 'Straty Q',
+
+  // Podzakładki okna rozpływu (karta E8.3)
+  ariaPodzakladki: 'Podzakładki wyniku rozpływu',
+  podzakladkaSzyny: 'Szyny',
+  podzakladkaGalezie: 'Gałęzie',
+
+  // Suma strat gałęzi (wiersz podsumowania pod tabelą, karta E8.3)
+  sumaStrat: 'Suma strat gałęzi',
 
   // Założenia (parametry przebiegu)
   zalMocBazowa: 'Moc bazowa',
@@ -53,6 +71,8 @@ export const ROZPLYW_STRINGS = {
   jednMW: 'MW',
   jednMvar: 'Mvar',
   jednMVA: 'MVA',
+  jednKW: 'kW',
+  jednKvar: 'kvar',
 } as const;
 
 /** Format liczby z przecinkiem dziesiętnym (deterministyczny). */
@@ -88,4 +108,20 @@ export function fmtTolerancja(n: number): string {
 /** Czy napięcie [p.u.] jest poza normatywnym przedziałem ±5% Un. */
 export function napiecePozaZakresem(vPu: number): boolean {
   return vPu < NAPIECIE_MIN_PU || vPu > NAPIECIE_MAX_PU;
+}
+
+/**
+ * Straty czynne gałęzi: MW → kW (skalowanie ×1000, 2 miejsca po przecinku).
+ * To WYŁĄCZNIE zmiana jednostki prezentacji tabeli gałęzi (karta E8.3) —
+ * wartość fizyczna strat pochodzi niezmieniona z wyniku solvera
+ * (`PowerFlowBranchResult.losses_p_mw`), tu tylko przeliczona na jednostkę
+ * czytelniejszą dla strat pojedynczej gałęzi (kW zamiast ułamków MW).
+ */
+export function fmtStrataKw(mw: number): string {
+  return fmtLiczba(mw * 1000, 2);
+}
+
+/** Straty bierne gałęzi: Mvar → kvar (skalowanie ×1000) — jak wyżej. */
+export function fmtStrataKvar(mvar: number): string {
+  return fmtLiczba(mvar * 1000, 2);
 }

@@ -28,9 +28,19 @@
  *    interpretacji rozpływu).
  * 3. Populacja store'u (`selectRun`/`loadResults`, `store.ts:109-184`) należy do
  *    okna inspektora rozpływu; ten adapter wyłącznie CZYTA `results` (read-only).
+ *
+ * DOPEŁNIENIE E8.3 (tabela GAŁĘZI): wiersze z `branch_results: PowerFlowBranchResult[]`
+ * (`types.ts:75-83` → branch_id, p_from_mw, q_from_mvar, p_to_mw, q_to_mvar,
+ * losses_p_mw, losses_q_mvar). DECYZJA ws. kolumny głównej (karta §2 „ZBADAJ"):
+ * kontrakt nie niesie nazwy PL gałęzi — WYŁĄCZNIE `branch_id` (surowy identyfikator
+ * elementu sieci, analogicznie do numeru katalogowego). Kolumna główna pokazuje
+ * `branch_id` bez zmian/tłumaczenia — identyfikatory elementów sieci są dopuszczone
+ * jako oznaczenia techniczne (MODEL_INTERAKCJI §2.7, jak oznaczenia katalogowe),
+ * nie są to swobodne literały UI wymagające tłumaczenia na PL.
  */
 
 import type {
+  PowerFlowBranchResult,
   PowerFlowBusResult,
   PowerFlowResultV1,
 } from '../../../../ui/power-flow-results/types';
@@ -42,6 +52,8 @@ import {
   fmtKat,
   fmtMoc,
   fmtPU,
+  fmtStrataKvar,
+  fmtStrataKw,
   fmtTolerancja,
   napiecePozaZakresem,
   NAPIECIE_MAX_PU,
@@ -110,6 +122,58 @@ export function naZalozeniaRozplywu(wynik: PowerFlowResultV1): WierszZalozenia[]
 /** Punkty profilu napięcia do wykresu (kolejność szyn ze źródła). */
 export function naProfilNapiec(busResults: PowerFlowBusResult[]): PunktProfilu[] {
   return busResults.map((r) => ({ szyna: r.bus_id, napiecie: r.v_pu }));
+}
+
+// ---------------------------------------------------------------------------
+// Kolumny tabeli gałęzi (karta E8.3 — dopełnienie W-603)
+// ---------------------------------------------------------------------------
+
+export const KLUCZ_GALAZ = 'galaz';
+
+export const KOLUMNY_GALEZI: DefinicjaKolumny[] = [
+  { klucz: KLUCZ_GALAZ, etykieta: ROZPLYW_STRINGS.kolGalaz, wyrownanie: 'lewo' },
+  { klucz: 'pPoczatek', etykieta: ROZPLYW_STRINGS.kolPPoczatek, jednostka: ROZPLYW_STRINGS.jednMW, mono: true },
+  { klucz: 'qPoczatek', etykieta: ROZPLYW_STRINGS.kolQPoczatek, jednostka: ROZPLYW_STRINGS.jednMvar, mono: true },
+  { klucz: 'pKoniec', etykieta: ROZPLYW_STRINGS.kolPKoniec, jednostka: ROZPLYW_STRINGS.jednMW, mono: true },
+  { klucz: 'qKoniec', etykieta: ROZPLYW_STRINGS.kolQKoniec, jednostka: ROZPLYW_STRINGS.jednMvar, mono: true },
+  { klucz: 'stratyP', etykieta: ROZPLYW_STRINGS.kolStratyP, jednostka: ROZPLYW_STRINGS.jednKW, mono: true },
+  { klucz: 'stratyQ', etykieta: ROZPLYW_STRINGS.kolStratyQ, jednostka: ROZPLYW_STRINGS.jednKvar, mono: true },
+];
+
+/** Mapuje wiersze gałęzi na wiersze tabeli wzorca (kolejność ze źródła zachowana).
+ * Straty (MW/Mvar w kontrakcie) prezentowane w kW/kvar — skalowanie jednostki
+ * prezentacji, patrz `fmtStrataKw`/`fmtStrataKvar` w `strings.ts`; `sortKey`
+ * niesie tę samą (skalowaną) wartość liczbową, więc sortowanie i wyświetlana
+ * jednostka są spójne. */
+export function naWierszeGalezi(branchResults: PowerFlowBranchResult[]): WierszTabeli[] {
+  return branchResults.map((r) => ({
+    [KLUCZ_GALAZ]: { wartosc: r.branch_id },
+    pPoczatek: { wartosc: fmtMoc(r.p_from_mw), sortKey: r.p_from_mw },
+    qPoczatek: { wartosc: fmtMoc(r.q_from_mvar), sortKey: r.q_from_mvar },
+    pKoniec: { wartosc: fmtMoc(r.p_to_mw), sortKey: r.p_to_mw },
+    qKoniec: { wartosc: fmtMoc(r.q_to_mvar), sortKey: r.q_to_mvar },
+    stratyP: { wartosc: fmtStrataKw(r.losses_p_mw), sortKey: r.losses_p_mw * 1000 },
+    stratyQ: { wartosc: fmtStrataKvar(r.losses_q_mvar), sortKey: r.losses_q_mvar * 1000 },
+  }));
+}
+
+/** Podsumowanie strat gałęzi (wiersz sumy pod tabelą, karta E8.3). */
+export interface PodsumowanieStratGalezi {
+  stratyPKw: string;
+  stratyQKvar: string;
+}
+
+/** Suma strat czynnych/biernych po wszystkich gałęziach wyniku — arytmetyka
+ * PREZENTACJI (proste sumowanie już policzonych przez solver wartości), NIE
+ * fizyka: solver dostarcza straty per gałąź, tu wyłącznie się je sumuje
+ * i skaluje jednostkę (MW/Mvar → kW/kvar, jak `naWierszeGalezi`). */
+export function naSumeStratGalezi(branchResults: PowerFlowBranchResult[]): PodsumowanieStratGalezi {
+  const sumaPMw = branchResults.reduce((acc, r) => acc + r.losses_p_mw, 0);
+  const sumaQMvar = branchResults.reduce((acc, r) => acc + r.losses_q_mvar, 0);
+  return {
+    stratyPKw: fmtStrataKw(sumaPMw),
+    stratyQKvar: fmtStrataKvar(sumaQMvar),
+  };
 }
 
 // ---------------------------------------------------------------------------

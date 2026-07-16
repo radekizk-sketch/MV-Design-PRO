@@ -39,3 +39,54 @@
   margin: 0;
   font-size: 13px;
 }
+
+/* Podzakładki Szyny/Gałęzie (karta E8.3) — wzór `wynikiWarsztat.css` zakładek. */
+.mvd-rozplyw-ekran {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.mvd-rozplyw-podzakladki {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--mvd-line);
+  padding: 0 4px;
+}
+.mvd-rozplyw-podzakladka {
+  border: 0;
+  background: none;
+  color: var(--mvd-muted);
+  padding: 6px 12px;
+  cursor: pointer;
+  font: inherit;
+  border-bottom: 2px solid transparent;
+}
+.mvd-rozplyw-podzakladka:hover {
+  color: var(--mvd-ink);
+}
+.mvd-rozplyw-podzakladka.mvd-on {
+  color: var(--mvd-accent);
+  border-bottom-color: var(--mvd-accent);
+  font-weight: 600;
+}
+.mvd-rozplyw-podzakladki-tresc {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Wiersz sumy strat pod tabelą gałęzi (karta E8.3). */
+.mvd-rozplyw-suma-strat {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--mvd-line);
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-rozplyw-suma-etykieta {
+  color: var(--mvd-muted);
+  font-weight: 400;
+}

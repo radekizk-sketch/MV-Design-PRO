@@ -8,6 +8,7 @@
  */
 
 import type {
+  PowerFlowBranchResult,
   PowerFlowBusResult,
   PowerFlowResultV1,
   PowerFlowRunHeader,
@@ -20,6 +21,21 @@ export function busResultFixture(over: Partial<PowerFlowBusResult> = {}): PowerF
     angle_deg: 0.0,
     p_injected_mw: 12.345,
     q_injected_mvar: 3.21,
+    ...over,
+  };
+}
+
+export function branchResultFixture(
+  over: Partial<PowerFlowBranchResult> = {},
+): PowerFlowBranchResult {
+  return {
+    branch_id: 'L-1',
+    p_from_mw: 10.5,
+    q_from_mvar: 2.4,
+    p_to_mw: -10.4,
+    q_to_mvar: -2.3,
+    losses_p_mw: 0.1,
+    losses_q_mvar: 0.1,
     ...over,
   };
 }
@@ -52,19 +68,20 @@ export function powerFlowResultFixture(
       }),
     ],
     branch_results: [
-      {
-        branch_id: 'L-1',
-        p_from_mw: 10.5,
-        q_from_mvar: 2.4,
-        p_to_mw: -10.4,
-        q_to_mvar: -2.3,
-        losses_p_mw: 0.1,
-        losses_q_mvar: 0.1,
-      },
+      branchResultFixture(),
+      branchResultFixture({
+        branch_id: 'L-2',
+        p_from_mw: 4.5,
+        q_from_mvar: 1.1,
+        p_to_mw: -4.42,
+        q_to_mvar: -1.06,
+        losses_p_mw: 0.08,
+        losses_q_mvar: 0.04,
+      }),
     ],
     summary: {
-      total_losses_p_mw: 0.1,
-      total_losses_q_mvar: 0.1,
+      total_losses_p_mw: 0.18,
+      total_losses_q_mvar: 0.14,
       min_v_pu: 0.941,
       max_v_pu: 1.0,
       slack_p_mw: 10.5,
