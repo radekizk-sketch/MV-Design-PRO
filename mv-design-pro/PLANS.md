@@ -347,6 +347,12 @@ Progress:
         failed; zintegrowane `cedd170`). Scalenie #15: zakładka „Studium
         przyłączenia" (`7f5511c`; ui2 1120 pass). TODO-KARTY: dokument studium
         (E13), nawigacja między zakładkami warsztatu.
+        P35 potwierdzone pełnym biegiem 8409. D6 API trajektorii FRT/HVRT
+        z obwiednią (Opus; 17 testów; refaktor wydzielający budowę wejścia
+        z ncrfg_compliance/checker.py — 49 testów zgodności bez regresji;
+        PRZEJĘTE przez zarządcę po zawieszeniu; zintegrowane `2472c7b`;
+        pełny pytest 5856 pass ZERO failed potwierdzony). Karta P38 okno
+        walidacji modelu falownika `e4fb7f7` — wykonawca w toku.
         PROCEDURA: wykonawcy backendowi zawieszają się po pełnym pytest (3
         przypadki) — zarządca przejmuje: weryfikacja w worktree + commit
         w imieniu wykonawcy (bez oczekiwania na raport).
