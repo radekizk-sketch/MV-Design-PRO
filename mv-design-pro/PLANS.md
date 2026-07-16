@@ -191,7 +191,12 @@ Progress:
         E7.2 przebiegi W-503 (43 t.) · E4.1 katalog+karta techniczna (44 t.) + 4 scalenia.
         Przestrzenie w pełni na nowej powłoce: Projekt, Gotowość, Obliczenia (3/7);
         Model = warsztat 3 zakładki (schemat/szablony/katalog). Pełny bieg: 7894 pass.
-  - [ ] U3–U5 wg programu
+- [ ] U3 W TOKU (2026-07-16): E8.1 wspólny wzorzec ekranu analizy + rozpływ szyn
+        (Opus; 50 testów — wzorzec 27 + rozpływ 23; pełny vitest u wykonawcy 7944 pass
+        z pipefail; ui2 655 pass u zarządcy; zintegrowane `fd630d8`; TODO-KARTA:
+        wirtualizacja >500 wierszy, świeżość liczbowa w TabelaSzyn, dowód per-szyna,
+        wpięcie store'u). Karta E8.2 (zwarcia W-604) zarejestrowana `0cbdbb1`.
+  - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
 program UI/UX nie modyfikuje plików SLD (granica w Programie §2.3).
