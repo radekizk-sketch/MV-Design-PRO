@@ -210,6 +210,18 @@ Progress:
         zwarciowe c/czas z konfiguracji aktywnego przypadku tylko przy zgodności
         przebieg↔przypadek; 18 testów przestrzeni; ui2 710 pass. Karty zarejestrowane:
         E9.1 dowód W-608 (`79e3f27`, delegowana), P39 macierz NC RfG (`0e9ef7f`, U4/OZE).
+        E9.1 przegląd dowodu (Opus; 40 testów; kanon 5 pól, MathBlock z ui/proof,
+        selekcja 'dowod' przez magistralę; zintegrowane `05577bf`; ui2 750 pass).
+        NAPRAWA REGRESJI E2E (wykryta pierwszym biegiem e2e od E1.7c, na świeżym
+        kontenerze): katalog `ui2/spaces/model/szablony/api/` z E3.1 wpadał w mock
+        speców `page.route('**/api/**')` — vite serwował moduł jako JSON i aplikacja
+        nie startowała w 24 specach (kreator stacji, ux-feedback, designer-flow,
+        pierwszy przypadek). Fix: moduł spłaszczony do `szablonyClient.ts` (`f43df1a`)
+        + expect.timeout 10→20 s (rozruch ~12 s na wolniejszym kontenerze, `3f033fb`)
+        + baseline'y wizualne chromium-linux (`55a0afc`, `eeb6046`). Wynik: e2e
+        179 pass / 2 znane środowiskowe / 15 skip + zaktualizowana migawka = parytet
+        baseline E1.7c. Procedura: po każdym biegu e2e przywracać PNG w docs/audit
+        (baseline'y win32 nadpisywane lokalnymi renderami).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —

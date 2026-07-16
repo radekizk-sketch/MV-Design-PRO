@@ -1,14 +1,14 @@
 /**
- * Warsztat przestrzeni „Wyniki" (scalenia U3 #1–#2, zarządca) — wygaszanie
- * mostu wyników okno po oknie: „Rozpływ mocy" (TabelaSzyn, karta E8.1)
- * i „Zwarcia" (EkranZwarc, karta E8.2) to okna nowej powłoki na wspólnym
- * wzorcu ekranu analizy; „Pozostałe analizy" to slot mostu (powierzchnia
- * trasowa #analysis — zabezpieczenia, porównania, dowody do przejęcia E9+).
+ * Warsztat przestrzeni „Wyniki" (scalenia U3 #1–#3, zarządca) — wygaszanie
+ * mostu wyników okno po oknie: „Rozpływ mocy" (TabelaSzyn, karta E8.1),
+ * „Zwarcia" (EkranZwarc, karta E8.2) i „Dowód obliczeń" (PrzegladDowodu,
+ * karta E9.1) to okna nowej powłoki; „Pozostałe analizy" to slot mostu
+ * (powierzchnia trasowa #analysis — zabezpieczenia, porównania, E10+).
  *
  * Zakładka startowa wg rodzaju aktywnego przebiegu (rozpływ/zwarcie/most);
  * wyliczana przy montażu — bez zaskakującego przełączania w trakcie pracy.
- * 2×klik na wartości z dowodem przełącza na most i deleguje do `onOtworzDowod`
- * (ślad obliczeń żyje dziś na powierzchni analiz; przejęcie — karta E9.1).
+ * 2×klik na wartości z dowodem przełącza na zakładkę „Dowód obliczeń"
+ * (okno E9.1; fokus kroku wg elementu = TODO-KARTA w DowodPrzebiegu).
  *
  * Założenia przebiegu zwarciowego (współczynnik c, czas cieplny) pochodzą
  * z konfiguracji AKTYWNEGO przypadku obliczeniowego — przekazywane tylko, gdy
@@ -22,6 +22,7 @@ import { EkranZwarc } from '../../wyniki/zwarcia';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useStudyCasesStore } from '../../../ui/study-cases/store';
+import { DowodPrzebiegu } from './DowodPrzebiegu';
 import { useWpiecieWynikow } from './useWpiecieWynikow';
 import { WYNIKI_WARSZTAT_STRINGS as T } from './strings';
 import './wynikiWarsztat.css';
@@ -29,6 +30,7 @@ import './wynikiWarsztat.css';
 const ZAKLADKI = [
   { id: 'rozplyw', etykieta: T.zakladkaRozplyw },
   { id: 'zwarcia', etykieta: T.zakladkaZwarcia },
+  { id: 'dowod', etykieta: T.zakladkaDowod },
   { id: 'pozostale', etykieta: T.zakladkaPozostale },
 ] as const;
 
@@ -36,8 +38,6 @@ type ZakladkaId = (typeof ZAKLADKI)[number]['id'];
 
 export interface WynikiWarsztatProps {
   trybZaawansowania: AdvancementMode;
-  /** Otwarcie dowodu/śladu obliczeń (nawigacja — decyzja AppRoot). */
-  onOtworzDowod: (ref: string) => void;
   /** Zawartość zakładki „Pozostałe analizy" (most — LegacySurface). */
   pozostale: ReactNode;
 }
@@ -59,16 +59,16 @@ function useZalozeniaZwarcioweAktywnegoPrzypadku(): {
   };
 }
 
-export function WynikiWarsztat({ trybZaawansowania, onOtworzDowod, pozostale }: WynikiWarsztatProps) {
+export function WynikiWarsztat({ trybZaawansowania, pozostale }: WynikiWarsztatProps) {
   const { aktywnyRodzaj } = useWpiecieWynikow();
   const [zakladka, setZakladka] = useState<ZakladkaId>(
     aktywnyRodzaj === 'rozplyw' ? 'rozplyw' : aktywnyRodzaj === 'zwarcie' ? 'zwarcia' : 'pozostale',
   );
   const zalozeniaZwarciowe = useZalozeniaZwarcioweAktywnegoPrzypadku();
 
-  const otworzDowodPrzezMost = (ref: string) => {
-    setZakladka('pozostale');
-    onOtworzDowod(ref);
+  // 2×klik na wartości z dowodem → zakładka „Dowód obliczeń" (okno E9.1).
+  const otworzDowod = (_ref: string) => {
+    setZakladka('dowod');
   };
 
   return (
@@ -99,16 +99,17 @@ export function WynikiWarsztat({ trybZaawansowania, onOtworzDowod, pozostale }: 
       </div>
       <div role="tabpanel" className="mvd-wyniki-tresc">
         {zakladka === 'rozplyw' && (
-          <TabelaSzyn trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowodPrzezMost} />
+          <TabelaSzyn trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
         )}
         {zakladka === 'zwarcia' && (
           <EkranZwarc
             trybZaawansowania={trybZaawansowania}
-            onOtworzDowod={otworzDowodPrzezMost}
+            onOtworzDowod={otworzDowod}
             wspolczynnikC={zalozeniaZwarciowe.wspolczynnikC}
             czasCieplnyS={zalozeniaZwarciowe.czasCieplnyS}
           />
         )}
+        {zakladka === 'dowod' && <DowodPrzebiegu trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'pozostale' && pozostale}
       </div>
     </div>

@@ -11,6 +11,7 @@ import { usePowerFlowResultsStore } from '../../../../ui/power-flow-results/stor
 import { useResultsInspectorStore } from '../../../../ui/results-inspector/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import type { ShortCircuitResults } from '../../../../ui/results-inspector/types';
+import { WZORZEC_STRINGS } from '../../../wyniki/wzorzec';
 import { WynikiWarsztat } from '../WynikiWarsztat';
 import { WYNIKI_WARSZTAT_STRINGS as T } from '../strings';
 import { przebiegFixture } from './fixtures';
@@ -25,6 +26,7 @@ beforeEach(() => {
   useResultsInspectorStore.setState({
     selectRun: vi.fn(async () => {}),
     loadShortCircuitResults: vi.fn(async () => {}),
+    loadExtendedTrace: vi.fn(async () => {}),
   });
   useExecutionRunsStore.setState({ runs: [], activeRunId: null });
   useAppStateStore.setState({ activeRunId: null });
@@ -53,17 +55,17 @@ function wynikZwarciowyFixture(): ShortCircuitResults {
 function props(over: Partial<Parameters<typeof WynikiWarsztat>[0]> = {}) {
   return {
     trybZaawansowania: 'basic' as const,
-    onOtworzDowod: vi.fn(),
     pozostale: <div data-testid="most-pozostale">powierzchnia analiz</div>,
     ...over,
   };
 }
 
 describe('WynikiWarsztat — zakładki', () => {
-  it('renderuje trzy zakładki z etykietami PL', () => {
+  it('renderuje cztery zakładki z etykietami PL', () => {
     render(<WynikiWarsztat {...props()} />);
     expect(screen.getByTestId('mvd-wyniki-zakladka-rozplyw')).toHaveTextContent(T.zakladkaRozplyw);
     expect(screen.getByTestId('mvd-wyniki-zakladka-zwarcia')).toHaveTextContent(T.zakladkaZwarcia);
+    expect(screen.getByTestId('mvd-wyniki-zakladka-dowod')).toHaveTextContent(T.zakladkaDowod);
     expect(screen.getByTestId('mvd-wyniki-zakladka-pozostale')).toHaveTextContent(
       T.zakladkaPozostale,
     );
@@ -130,5 +132,30 @@ describe('WynikiWarsztat — zakładki', () => {
     render(<WynikiWarsztat {...props()} />);
     fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-rozplyw'));
     expect(screen.getByTestId('mvd-rozplyw-szyny')).toBeInTheDocument();
+  });
+
+  it('zakładka „Dowód obliczeń": bez przebiegu — uczciwy stan pusty okna E9.1', () => {
+    render(<WynikiWarsztat {...props()} />);
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-dowod'));
+    expect(screen.getByTestId('mvd-dowod-pusty')).toBeInTheDocument();
+  });
+
+  it('2×klik na wartości z dowodem w tabeli zwarć przełącza na zakładkę „Dowód obliczeń"', () => {
+    useExecutionRunsStore.setState({
+      runs: [przebiegFixture({ id: 'run-sc-1', analysis_type: 'SC_3F' })],
+    });
+    useAppStateStore.setState({ activeRunId: 'run-sc-1' });
+    useResultsInspectorStore.setState({
+      selectedRunId: 'run-sc-1',
+      shortCircuitResults: wynikZwarciowyFixture(),
+    });
+    render(<WynikiWarsztat {...props()} />);
+    // Wiersz zwarciowy niesie element_id → komórka z dowodem (kontrakt wzorca).
+    const przyciskiDowodu = screen.getAllByRole('button', { name: WZORZEC_STRINGS.pokazDowod });
+    fireEvent.doubleClick(przyciskiDowodu[0]);
+    expect(screen.getByTestId('mvd-wyniki-zakladka-dowod')).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
   });
 });

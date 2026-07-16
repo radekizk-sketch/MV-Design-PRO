@@ -257,11 +257,6 @@ export function AppRoot() {
           wyniki={
             <WynikiWarsztat
               trybZaawansowania={advancementMode}
-              onOtworzDowod={() => {
-                // Ślad obliczeń żyje na powierzchni analiz (most) — deep-link
-                // do trasy #analysis dla aktywnego przebiegu (jedna prawda tras).
-                navigateToAnalysis({ runId: useAppStateStore.getState().activeRunId });
-              }}
               pozostale={<LegacySurface space="wyniki" />}
             />
           }
