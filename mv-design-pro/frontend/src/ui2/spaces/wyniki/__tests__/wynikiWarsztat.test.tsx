@@ -56,11 +56,19 @@ function props(over: Partial<Parameters<typeof WynikiWarsztat>[0]> = {}) {
   return {
     trybZaawansowania: 'basic' as const,
     pozostale: <div data-testid="most-pozostale">powierzchnia analiz</div>,
+    onOtworzDokumentacje: vi.fn(),
     ...over,
   };
 }
 
 describe('WynikiWarsztat — zakładki', () => {
+  it('renderuje komplet zakładek z etykietami PL (w tym Pulpit OZE)', () => {
+    render(<WynikiWarsztat {...props()} />);
+    expect(screen.getByTestId('mvd-wyniki-zakladka-pulpit-oze')).toHaveTextContent(
+      T.zakladkaPulpitOze,
+    );
+  });
+
   it('renderuje sześć zakładek z etykietami PL', () => {
     render(<WynikiWarsztat {...props()} />);
     expect(screen.getByTestId('mvd-wyniki-zakladka-rozplyw')).toHaveTextContent(T.zakladkaRozplyw);

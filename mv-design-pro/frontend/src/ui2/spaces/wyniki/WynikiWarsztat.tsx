@@ -22,7 +22,7 @@ import { EkranZwarc } from '../../wyniki/zwarcia';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useStudyCasesStore } from '../../../ui/study-cases/store';
-import { MacierzNcRfg } from '../../oze';
+import { MacierzNcRfg, PulpitOze } from '../../oze';
 import { EkranPorownania } from '../../wyniki/porownanie';
 import { DowodPrzebiegu } from './DowodPrzebiegu';
 import { useWpiecieWynikow } from './useWpiecieWynikow';
@@ -35,6 +35,7 @@ const ZAKLADKI = [
   { id: 'dowod', etykieta: T.zakladkaDowod },
   { id: 'porownanie', etykieta: T.zakladkaPorownanie },
   { id: 'ncrfg', etykieta: T.zakladkaNcRfg },
+  { id: 'pulpit-oze', etykieta: T.zakladkaPulpitOze },
   { id: 'pozostale', etykieta: T.zakladkaPozostale },
 ] as const;
 
@@ -44,6 +45,8 @@ export interface WynikiWarsztatProps {
   trybZaawansowania: AdvancementMode;
   /** Zawartość zakładki „Pozostałe analizy" (most — LegacySurface). */
   pozostale: ReactNode;
+  /** Nawigacja do przestrzeni „Dokumentacja" (pulpit OZE — decyzja AppRoot). */
+  onOtworzDokumentacje: () => void;
 }
 
 /** Parametry zwarciowe konfiguracji aktywnego przypadku — tylko gdy aktywny
@@ -76,7 +79,11 @@ function PorownanieAktywnegoProjektu({ trybZaawansowania }: { trybZaawansowania:
   return <EkranPorownania projektId={projektId} trybZaawansowania={trybZaawansowania} />;
 }
 
-export function WynikiWarsztat({ trybZaawansowania, pozostale }: WynikiWarsztatProps) {
+export function WynikiWarsztat({
+  trybZaawansowania,
+  pozostale,
+  onOtworzDokumentacje,
+}: WynikiWarsztatProps) {
   const { aktywnyRodzaj } = useWpiecieWynikow();
   const [zakladka, setZakladka] = useState<ZakladkaId>(
     aktywnyRodzaj === 'rozplyw' ? 'rozplyw' : aktywnyRodzaj === 'zwarcie' ? 'zwarcia' : 'pozostale',
@@ -129,6 +136,12 @@ export function WynikiWarsztat({ trybZaawansowania, pozostale }: WynikiWarsztatP
         {zakladka === 'dowod' && <DowodPrzebiegu trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'porownanie' && <PorownanieAktywnegoProjektu trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'ncrfg' && <MacierzNcRfg trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'pulpit-oze' && (
+          <PulpitOze
+            trybZaawansowania={trybZaawansowania}
+            onNawiguj={() => onOtworzDokumentacje()}
+          />
+        )}
         {zakladka === 'pozostale' && pozostale}
       </div>
     </div>

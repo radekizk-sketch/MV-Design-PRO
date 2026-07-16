@@ -258,6 +258,7 @@ export function AppRoot() {
             <WynikiWarsztat
               trybZaawansowania={advancementMode}
               pozostale={<LegacySurface space="wyniki" />}
+              onOtworzDokumentacje={() => wybierzPrzestrzen('dokumentacja')}
             />
           }
           pulpit={
