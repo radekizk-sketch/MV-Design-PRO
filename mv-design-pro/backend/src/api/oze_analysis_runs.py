@@ -20,6 +20,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from application.analyses.frt_trajektorie import build_frt_trajectories_view
 from application.analyses.grid_strength import build_grid_strength_view
 from application.analyses.hosting_capacity import (
     DEFAULT_MAX_STEPS,
@@ -119,6 +120,34 @@ def get_pq_area(
             max_steps_p=max_steps_p,
             max_steps_q=max_steps_q,
         )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get("/api/oze-analysis/frt-trajectories")
+def get_frt_trajectories(
+    der_ref: str = Query(...),
+    operator_id: str = Query(...),
+    test_kind: str = Query(...),
+) -> dict[str, Any]:
+    converter = get_default_mv_catalog().get_converter_type(der_ref)
+    if converter is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Moduł DER '{der_ref}' nie istnieje w katalogu przekształtników.",
+        )
+    try:
+        profile = load_nc_rfg_profile(operator_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    try:
+        return build_frt_trajectories_view(converter, profile, test_kind)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
