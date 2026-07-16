@@ -15,15 +15,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import {
-  fetchNcRfgTestCatalog,
-  runNcRfgPtpireeTests,
-  type NcRfgRunResult,
-  type NcRfgTestCatalogResponse,
-  type NcRfgVerdict,
-} from '../../../ui/ncrfg-tests/api';
+import { type NcRfgVerdict } from '../../../ui/ncrfg-tests/api';
 import { selectAllDers, useStationDerStore } from '../../../ui/network-build/station-der';
 import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
+import { useNcRfgStore } from '../ncRfgStore';
 import { PanelModulu } from './PanelModulu';
 import { SzczegolWerdyktu } from './SzczegolWerdyktu';
 import {
@@ -68,36 +63,27 @@ export function MacierzNcRfg({ trybZaawansowania }: MacierzNcRfgProps): JSX.Elem
   const ders = useStationDerStore((state) => selectAllDers(state));
   const opisyBazowe = useMemo(() => zbudujModuly(ders), [ders]);
 
+  // Stan biegu NC RfG — wspólny store (widoczny również w pulpicie instalacji OZE).
+  const katalog = useNcRfgStore((s) => s.katalog);
+  const bladKatalogu = useNcRfgStore((s) => s.bladKatalogu);
+  const operatorId = useNcRfgStore((s) => s.operatorId);
+  const status = useNcRfgStore((s) => s.status);
+  const wynik = useNcRfgStore((s) => s.wynik);
+  const bladBiegu = useNcRfgStore((s) => s.bladBiegu);
+  const zaladujKatalog = useNcRfgStore((s) => s.zaladujKatalog);
+  const ustawOperator = useNcRfgStore((s) => s.ustawOperator);
+  const przeprowadzTesty = useNcRfgStore((s) => s.przeprowadzTesty);
+
   const [edycje, setEdycje] = useState<Record<string, EdycjaModulu>>({});
-  const [katalog, setKatalog] = useState<NcRfgTestCatalogResponse | null>(null);
-  const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
-  const [operatorId, setOperatorId] = useState('enea');
-  const [status, setStatus] = useState<'idle' | 'running' | 'ready' | 'error'>('idle');
-  const [wynik, setWynik] = useState<NcRfgRunResult | null>(null);
-  const [bladBiegu, setBladBiegu] = useState<string | null>(null);
   const [wybranaKomorka, setWybranaKomorka] = useState<{ derRef: string; testId: string } | null>(
     null,
   );
   const [wybranyModul, setWybranyModul] = useState<string>('');
 
-  // Katalog wymogów — pobranie jednorazowe.
+  // Katalog wymogów — pobranie jednorazowe do wspólnego store'a.
   useEffect(() => {
-    let anulowano = false;
-    fetchNcRfgTestCatalog()
-      .then((payload) => {
-        if (anulowano) return;
-        setKatalog(payload);
-        setBladKatalogu(null);
-        if (payload.operators[0]) setOperatorId(payload.operators[0].operator_id);
-      })
-      .catch((err: unknown) => {
-        if (anulowano) return;
-        setBladKatalogu(err instanceof Error ? err.message : MACIERZ_STRINGS.bladKatalogu);
-      });
-    return () => {
-      anulowano = true;
-    };
-  }, []);
+    void zaladujKatalog();
+  }, [zaladujKatalog]);
 
   // Domyślny wybór modułu do panelu.
   useEffect(() => {
@@ -181,20 +167,7 @@ export function MacierzNcRfg({ trybZaawansowania }: MacierzNcRfgProps): JSX.Elem
     const wejscia = gotoweDoBiegu
       .map((opis) => zbudujWejscieModulu(opis, operatorId))
       .filter((m): m is NonNullable<typeof m> => m !== null);
-    if (wejscia.length === 0) return;
-    setStatus('running');
-    setBladBiegu(null);
-    try {
-      const payload = await runNcRfgPtpireeTests({
-        modules: wejscia,
-        procedure_version: katalog?.procedure_version,
-      });
-      setWynik(payload);
-      setStatus('ready');
-    } catch (err) {
-      setBladBiegu(err instanceof Error ? err.message : MACIERZ_STRINGS.bladBiegu);
-      setStatus('error');
-    }
+    await przeprowadzTesty(wejscia, katalog?.procedure_version);
   };
 
   const komorkaSzczegolu: KomorkaMacierzy | null = wybranaKomorka
@@ -220,7 +193,7 @@ export function MacierzNcRfg({ trybZaawansowania }: MacierzNcRfgProps): JSX.Elem
               <span>{MACIERZ_STRINGS.operator}</span>
               <select
                 value={operatorId}
-                onChange={(event) => setOperatorId(event.target.value)}
+                onChange={(event) => ustawOperator(event.target.value)}
                 data-testid="mvd-oze-operator"
               >
                 {(katalog?.operators ?? [{ operator_id: 'enea', operator_name_pl: 'Enea Operator', last_revision: '' }]).map(

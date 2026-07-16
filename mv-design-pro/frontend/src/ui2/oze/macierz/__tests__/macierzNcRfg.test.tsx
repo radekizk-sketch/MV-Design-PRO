@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 
 import { useStationDerStore } from '../../../../ui/network-build/station-der';
+import { useNcRfgStore } from '../../ncRfgStore';
 import { MacierzNcRfg } from '../MacierzNcRfg';
 import { MACIERZ_STRINGS } from '../strings';
 import { derFixture, katalogFixture, wynikFixture } from './fixtures';
@@ -32,9 +33,15 @@ function ustawModuly(): void {
   });
 }
 
-beforeEach(() => ustawModuly());
+beforeEach(() => {
+  // Seed: stan biegu NC RfG przeniesiony do wspólnego store'a — reset przed
+  // każdym testem gwarantuje izolację (macierz i pulpit współdzielą jeden stan).
+  useNcRfgStore.getState().reset();
+  ustawModuly();
+});
 afterEach(() => {
   useStationDerStore.setState({ ders: {} });
+  useNcRfgStore.getState().reset();
   vi.clearAllMocks();
 });
 
