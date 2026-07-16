@@ -5,3 +5,4 @@
 .mvd-wyniki-zakladka:hover { color: var(--mvd-ink); }
 .mvd-wyniki-zakladka.mvd-on { color: var(--mvd-accent); border-bottom-color: var(--mvd-accent); font-weight: 600; }
 .mvd-wyniki-tresc { flex: 1; min-height: 0; overflow: auto; }
+.mvd-wyniki-pusty { color: var(--mvd-muted); padding: 24px; text-align: center; }

@@ -29,7 +29,7 @@ beforeEach(() => {
     loadExtendedTrace: vi.fn(async () => {}),
   });
   useExecutionRunsStore.setState({ runs: [], activeRunId: null });
-  useAppStateStore.setState({ activeRunId: null });
+  useAppStateStore.setState({ activeRunId: null, activeProjectId: null });
 });
 
 /** Wynik zwarciowy 1:1 z kontraktem `ShortCircuitResults` (types.ts:172-176). */
@@ -61,14 +61,25 @@ function props(over: Partial<Parameters<typeof WynikiWarsztat>[0]> = {}) {
 }
 
 describe('WynikiWarsztat — zakładki', () => {
-  it('renderuje pięć zakładek z etykietami PL', () => {
+  it('renderuje sześć zakładek z etykietami PL', () => {
     render(<WynikiWarsztat {...props()} />);
     expect(screen.getByTestId('mvd-wyniki-zakladka-rozplyw')).toHaveTextContent(T.zakladkaRozplyw);
     expect(screen.getByTestId('mvd-wyniki-zakladka-zwarcia')).toHaveTextContent(T.zakladkaZwarcia);
     expect(screen.getByTestId('mvd-wyniki-zakladka-dowod')).toHaveTextContent(T.zakladkaDowod);
+    expect(screen.getByTestId('mvd-wyniki-zakladka-porownanie')).toHaveTextContent(
+      T.zakladkaPorownanie,
+    );
     expect(screen.getByTestId('mvd-wyniki-zakladka-ncrfg')).toHaveTextContent(T.zakladkaNcRfg);
     expect(screen.getByTestId('mvd-wyniki-zakladka-pozostale')).toHaveTextContent(
       T.zakladkaPozostale,
+    );
+  });
+
+  it('zakładka „Porównanie A/B": bez aktywnego projektu — uczciwy stan pusty', () => {
+    render(<WynikiWarsztat {...props()} />);
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-porownanie'));
+    expect(screen.getByTestId('mvd-wyniki-porownanie-bez-projektu')).toHaveTextContent(
+      T.porownanieBezProjektu,
     );
   });
 

@@ -238,7 +238,13 @@ Progress:
         warsztatu wyników (W-614/N6) + ślad WHITE BOX testu INLINE w szczególe
         werdyktu (wzory ASCII solvera — świadomie bez KaTeX; zero martwych
         klików; `d1910d7`). Pełny bieg na spokojnym drzewie: 8082 pass, exit 0.
-        E12.1 (porównanie A/B rozpływu) delegowana do wykonawcy.
+        E12.1 porównanie A/B rozpływu W-609 (Opus; 35 testów; pełny vitest
+        u wykonawcy 8115 pass ZERO failed; zintegrowane `f1b219d`; źródło listy
+        przebiegów: /projects/{id}/power-flow-runs — id zgodne z endpointem
+        porównań; TODO-KARTA: porównanie zwarć, nakładka delta na SLD przez
+        kartę koordynacyjną, nazwa przypadku w etykiecie przebiegu, eksport).
+        Scalenie #6 (zarządca): zakładka „Porównanie A/B" w warsztacie wyników
+        (bez projektu — uczciwy stan pusty); ui2 829 pass.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —

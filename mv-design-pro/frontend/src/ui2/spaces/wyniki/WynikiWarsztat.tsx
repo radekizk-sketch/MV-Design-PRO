@@ -23,6 +23,7 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useStudyCasesStore } from '../../../ui/study-cases/store';
 import { MacierzNcRfg } from '../../oze';
+import { EkranPorownania } from '../../wyniki/porownanie';
 import { DowodPrzebiegu } from './DowodPrzebiegu';
 import { useWpiecieWynikow } from './useWpiecieWynikow';
 import { WYNIKI_WARSZTAT_STRINGS as T } from './strings';
@@ -32,6 +33,7 @@ const ZAKLADKI = [
   { id: 'rozplyw', etykieta: T.zakladkaRozplyw },
   { id: 'zwarcia', etykieta: T.zakladkaZwarcia },
   { id: 'dowod', etykieta: T.zakladkaDowod },
+  { id: 'porownanie', etykieta: T.zakladkaPorownanie },
   { id: 'ncrfg', etykieta: T.zakladkaNcRfg },
   { id: 'pozostale', etykieta: T.zakladkaPozostale },
 ] as const;
@@ -59,6 +61,19 @@ function useZalozeniaZwarcioweAktywnegoPrzypadku(): {
     wspolczynnikC: activeCase.config?.c_factor_max ?? undefined,
     czasCieplnyS: activeCase.config?.thermal_time_seconds ?? undefined,
   };
+}
+
+/** Porównanie A/B (E12.1) dla aktywnego projektu — bez projektu uczciwy stan pusty. */
+function PorownanieAktywnegoProjektu({ trybZaawansowania }: { trybZaawansowania: AdvancementMode }) {
+  const projektId = useAppStateStore((s) => s.activeProjectId);
+  if (!projektId) {
+    return (
+      <p className="mvd-wyniki-pusty" data-testid="mvd-wyniki-porownanie-bez-projektu">
+        {T.porownanieBezProjektu}
+      </p>
+    );
+  }
+  return <EkranPorownania projektId={projektId} trybZaawansowania={trybZaawansowania} />;
 }
 
 export function WynikiWarsztat({ trybZaawansowania, pozostale }: WynikiWarsztatProps) {
@@ -112,6 +127,7 @@ export function WynikiWarsztat({ trybZaawansowania, pozostale }: WynikiWarsztatP
           />
         )}
         {zakladka === 'dowod' && <DowodPrzebiegu trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'porownanie' && <PorownanieAktywnegoProjektu trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'ncrfg' && <MacierzNcRfg trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'pozostale' && pozostale}
       </div>
