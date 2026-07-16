@@ -22,6 +22,7 @@ import { EkranZwarc } from '../../wyniki/zwarcia';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useStudyCasesStore } from '../../../ui/study-cases/store';
+import { MacierzNcRfg } from '../../oze';
 import { DowodPrzebiegu } from './DowodPrzebiegu';
 import { useWpiecieWynikow } from './useWpiecieWynikow';
 import { WYNIKI_WARSZTAT_STRINGS as T } from './strings';
@@ -31,6 +32,7 @@ const ZAKLADKI = [
   { id: 'rozplyw', etykieta: T.zakladkaRozplyw },
   { id: 'zwarcia', etykieta: T.zakladkaZwarcia },
   { id: 'dowod', etykieta: T.zakladkaDowod },
+  { id: 'ncrfg', etykieta: T.zakladkaNcRfg },
   { id: 'pozostale', etykieta: T.zakladkaPozostale },
 ] as const;
 
@@ -110,6 +112,7 @@ export function WynikiWarsztat({ trybZaawansowania, pozostale }: WynikiWarsztatP
           />
         )}
         {zakladka === 'dowod' && <DowodPrzebiegu trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'ncrfg' && <MacierzNcRfg trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'pozostale' && pozostale}
       </div>
     </div>

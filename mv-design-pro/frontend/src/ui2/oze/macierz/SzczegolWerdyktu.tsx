@@ -1,11 +1,16 @@
 /*
- * Panel szczegółu werdyktu (karta P39 §3). Prezentuje wybraną komórkę macierzy:
- * uzasadnienie PL, metryki, akcje naprawcze (lista) i odnośniki śladu WHITE BOX
- * przekazywane przez callback `onOtworzDowod`. Zero ocen własnych — wszystkie
- * dane pochodzą z `NcRfgRunResult` (warstwa tylko prezentuje).
+ * Panel szczegółu werdyktu (karta P39 §3 + scalenie #5). Prezentuje wybraną
+ * komórkę macierzy: uzasadnienie PL, metryki, akcje naprawcze (lista) i ślad
+ * WHITE BOX testu renderowany INLINE (`SladTestu` — wzory ASCII solvera, nie
+ * LaTeX, więc bez okna dowodu). Zero ocen własnych — wszystkie dane pochodzą
+ * z `NcRfgRunResult` (warstwa tylko prezentuje).
  */
 
+import { useState } from 'react';
+
+import type { NcRfgRunResult } from '../../../ui/ncrfg-tests/api';
 import type { KomorkaMacierzy } from './macierzModel';
+import { SladTestu } from './SladTestu';
 import {
   ETYKIETY_BLOKADY,
   ETYKIETY_WERDYKTU,
@@ -17,14 +22,16 @@ import {
 export interface SzczegolWerdyktuProps {
   readonly komorka: KomorkaMacierzy | null;
   readonly nazwaModulu: string | null;
-  readonly onOtworzDowod: (ref: string) => void;
+  /** Pełny ślad WHITE BOX biegu — kroki testu filtrowane po `test_id`. */
+  readonly slad: NcRfgRunResult['white_box_trace'];
 }
 
 export function SzczegolWerdyktu({
   komorka,
   nazwaModulu,
-  onOtworzDowod,
+  slad,
 }: SzczegolWerdyktuProps): JSX.Element {
+  const [sladWidoczny, setSladWidoczny] = useState(false);
   return (
     <section className="mvd-oze-panel" data-testid="mvd-oze-szczegol" aria-label={MACIERZ_STRINGS.szczegolTytul}>
       <h4>{MACIERZ_STRINGS.szczegolTytul}</h4>
@@ -102,18 +109,21 @@ export function SzczegolWerdyktu({
           {komorka.wynik.trace_refs.length > 0 ? (
             <div className="mvd-oze-panel-blok" data-testid="mvd-oze-szczegol-slad">
               <span className="mvd-oze-panel-etyk">{MACIERZ_STRINGS.slad}</span>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
-                {komorka.wynik.trace_refs.map((ref) => (
-                  <button
-                    key={ref}
-                    type="button"
-                    className="mvd-oze-slad-btn"
-                    onClick={() => onOtworzDowod(ref)}
-                    data-testid="mvd-oze-slad-otworz"
-                  >
-                    {MACIERZ_STRINGS.otworzSlad}
-                  </button>
-                ))}
+              <div style={{ marginTop: 4 }}>
+                <button
+                  type="button"
+                  className="mvd-oze-slad-btn"
+                  aria-expanded={sladWidoczny}
+                  onClick={() => setSladWidoczny((s) => !s)}
+                  data-testid="mvd-oze-slad-otworz"
+                >
+                  {sladWidoczny ? MACIERZ_STRINGS.ukryjSlad : MACIERZ_STRINGS.otworzSlad}
+                </button>
+                {sladWidoczny && (
+                  <SladTestu
+                    kroki={slad.filter((krok) => krok.test_id === komorka.testId)}
+                  />
+                )}
               </div>
             </div>
           ) : null}

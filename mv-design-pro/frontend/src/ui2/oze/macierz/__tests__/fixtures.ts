@@ -189,7 +189,19 @@ export function wynikFixture(): NcRfgRunResult {
       },
     ],
     test_catalog: katalogFixture().tests,
-    white_box_trace: [],
+    white_box_trace: [
+      {
+        step: 1,
+        test_id: 'FRT_LVRT',
+        key: 'lvrt_profile_check',
+        formula: 'U_sim(t) >= U_LVRT,profile(t)',
+        data: { u_sim_min_pu: 0.05, u_profile_min_pu: 0.15 },
+        substitution: '0,05 >= 0,15',
+        result: { spelnione: false },
+        unit_check: 'p.u. vs p.u. — zgodne',
+        proof_ref: 'proof://bess-1/FRT_LVRT',
+      },
+    ],
     report_pl: 'Raport zgodności NC RfG.',
   };
 }

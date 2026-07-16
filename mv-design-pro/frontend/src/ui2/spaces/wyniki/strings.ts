@@ -5,6 +5,7 @@ export const WYNIKI_WARSZTAT_STRINGS = {
   zakladkaRozplyw: 'Rozpływ mocy',
   zakladkaZwarcia: 'Zwarcia',
   zakladkaDowod: 'Dowód obliczeń',
+  zakladkaNcRfg: 'Zgodność NC RfG',
   zakladkaPozostale: 'Pozostałe analizy',
   dowodBezPrzebiegu: 'Analiza',
 } as const;

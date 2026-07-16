@@ -61,14 +61,21 @@ function props(over: Partial<Parameters<typeof WynikiWarsztat>[0]> = {}) {
 }
 
 describe('WynikiWarsztat — zakładki', () => {
-  it('renderuje cztery zakładki z etykietami PL', () => {
+  it('renderuje pięć zakładek z etykietami PL', () => {
     render(<WynikiWarsztat {...props()} />);
     expect(screen.getByTestId('mvd-wyniki-zakladka-rozplyw')).toHaveTextContent(T.zakladkaRozplyw);
     expect(screen.getByTestId('mvd-wyniki-zakladka-zwarcia')).toHaveTextContent(T.zakladkaZwarcia);
     expect(screen.getByTestId('mvd-wyniki-zakladka-dowod')).toHaveTextContent(T.zakladkaDowod);
+    expect(screen.getByTestId('mvd-wyniki-zakladka-ncrfg')).toHaveTextContent(T.zakladkaNcRfg);
     expect(screen.getByTestId('mvd-wyniki-zakladka-pozostale')).toHaveTextContent(
       T.zakladkaPozostale,
     );
+  });
+
+  it('zakładka „Zgodność NC RfG": bez modułów wytwórczych — uczciwy stan pusty macierzy', () => {
+    render(<WynikiWarsztat {...props()} />);
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-ncrfg'));
+    expect(screen.getByTestId('mvd-oze-pusty')).toBeInTheDocument();
   });
 
   it('bez aktywnego przebiegu: startuje na moście (pozostałe analizy)', () => {

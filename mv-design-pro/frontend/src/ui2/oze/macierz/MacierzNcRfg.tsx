@@ -62,14 +62,9 @@ const LEGENDA: readonly NcRfgVerdict[] = ['pass', 'fail', 'no_data', 'not_requir
 export interface MacierzNcRfgProps {
   /** Tryb zaawansowania — odcisk deterministyczny widoczny w trybie eksperckim. */
   readonly trybZaawansowania: AdvancementMode;
-  /** Otwarcie śladu WHITE BOX dla wybranego werdyktu (callback prezentacji). */
-  readonly onOtworzDowod: (ref: string) => void;
 }
 
-export function MacierzNcRfg({
-  trybZaawansowania,
-  onOtworzDowod,
-}: MacierzNcRfgProps): JSX.Element {
+export function MacierzNcRfg({ trybZaawansowania }: MacierzNcRfgProps): JSX.Element {
   const ders = useStationDerStore((state) => selectAllDers(state));
   const opisyBazowe = useMemo(() => zbudujModuly(ders), [ders]);
 
@@ -428,7 +423,7 @@ export function MacierzNcRfg({
             <SzczegolWerdyktu
               komorka={komorkaSzczegolu}
               nazwaModulu={nazwaModuluSzczegolu}
-              onOtworzDowod={onOtworzDowod}
+              slad={wynik?.white_box_trace ?? []}
             />
             {opisWybrany ? (
               <PanelModulu
