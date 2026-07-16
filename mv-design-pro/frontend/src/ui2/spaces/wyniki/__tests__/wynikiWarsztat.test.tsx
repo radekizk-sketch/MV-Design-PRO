@@ -91,6 +91,13 @@ describe('WynikiWarsztat — zakładki', () => {
     );
   });
 
+  it('zakładka „Jakość wyników": bez przebiegów — uczciwe instrukcje obu sekcji', () => {
+    render(<WynikiWarsztat {...props()} />);
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-jakosc'));
+    // Okno E8.4 renderuje się z jawnymi stanami braku przebiegów (bez wołań API).
+    expect(screen.getByTestId('mvd-jakosc-ekran')).toBeInTheDocument();
+  });
+
   it('zakładka „Zgodność NC RfG": bez modułów wytwórczych — uczciwy stan pusty macierzy', () => {
     render(<WynikiWarsztat {...props()} />);
     fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-ncrfg'));

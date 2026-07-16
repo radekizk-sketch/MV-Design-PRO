@@ -7,6 +7,7 @@ export const WYNIKI_WARSZTAT_STRINGS = {
   zakladkaDowod: 'Dowód obliczeń',
   zakladkaNcRfg: 'Zgodność NC RfG',
   zakladkaPulpitOze: 'Pulpit OZE',
+  zakladkaJakosc: 'Jakość wyników',
   zakladkaPorownanie: 'Porównanie A/B',
   porownanieBezProjektu: 'Otwórz projekt, aby porównywać przebiegi obliczeń.',
   zakladkaPozostale: 'Pozostałe analizy',

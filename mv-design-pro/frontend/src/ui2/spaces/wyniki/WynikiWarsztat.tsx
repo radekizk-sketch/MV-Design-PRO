@@ -23,6 +23,7 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useStudyCasesStore } from '../../../ui/study-cases/store';
 import { MacierzNcRfg, PulpitOze } from '../../oze';
+import { EkranJakosci } from '../../wyniki/jakosc';
 import { EkranPorownania } from '../../wyniki/porownanie';
 import { DowodPrzebiegu } from './DowodPrzebiegu';
 import { useWpiecieWynikow } from './useWpiecieWynikow';
@@ -33,6 +34,7 @@ const ZAKLADKI = [
   { id: 'rozplyw', etykieta: T.zakladkaRozplyw },
   { id: 'zwarcia', etykieta: T.zakladkaZwarcia },
   { id: 'dowod', etykieta: T.zakladkaDowod },
+  { id: 'jakosc', etykieta: T.zakladkaJakosc },
   { id: 'porownanie', etykieta: T.zakladkaPorownanie },
   { id: 'ncrfg', etykieta: T.zakladkaNcRfg },
   { id: 'pulpit-oze', etykieta: T.zakladkaPulpitOze },
@@ -134,6 +136,9 @@ export function WynikiWarsztat({
           />
         )}
         {zakladka === 'dowod' && <DowodPrzebiegu trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'jakosc' && (
+          <EkranJakosci trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+        )}
         {zakladka === 'porownanie' && <PorownanieAktywnegoProjektu trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'ncrfg' && <MacierzNcRfg trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'pulpit-oze' && (
