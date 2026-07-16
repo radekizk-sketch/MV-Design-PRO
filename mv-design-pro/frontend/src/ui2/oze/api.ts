@@ -580,3 +580,107 @@ export function pobierzObszarPQ(zapytanie: ZapytanieObszaruPQ): Promise<WidokObs
   }
   return getJsonZDetalem<WidokObszaruPQ>(`/api/oze-analysis/pq-area?${czesci.join('&')}`);
 }
+
+// =============================================================================
+// Trajektorie FRT/HVRT modułu DER vs obwiednia profilu operatora —
+// application/analyses/frt_trajektorie.py::build_frt_trajectories_view (D6)
+// =============================================================================
+
+/** Rodzaj testu ride-through: LVRT (zapad) lub HVRT (wzrost). */
+export type RodzajTestuFrt = 'lvrt' | 'hvrt';
+
+/**
+ * Punkt obwiedni profilu operatora (czas→napięcie) — łamana krzywej dozwolonego
+ * przebiegu LVRT/HVRT (1:1 z `obwiednia_profilu.punkty`, źródło:
+ * `NcRfgRideThroughPoint(time_s, voltage_pu)`).
+ */
+export interface PunktObwiedniFrt {
+  readonly czas_s: number;
+  readonly napiecie_pu: number;
+}
+
+/** Obwiednia profilu operatora dla wskazanego rodzaju testu. */
+export interface ObwiedniaProfiluFrt {
+  readonly rodzaj: RodzajTestuFrt;
+  readonly opis: string;
+  readonly punkty: readonly PunktObwiedniFrt[];
+}
+
+/**
+ * Punkt trajektorii modułu w czasie (1:1 z `FrtTrajectoryPoint` solvera FROZEN
+ * `network_model.solvers.frt_hvrt`): napięcie, prąd bierny Iq i moc czynna P.
+ */
+export interface PunktTrajektoriiFrt {
+  readonly czas_s: number;
+  readonly napiecie_pu: number;
+  readonly iq_bierny_pu: number;
+  readonly p_czynna_pu: number;
+}
+
+/** Status solvera FRT/HVRT (1:1 z `FrtHvrtStatus`). */
+export type StatusSolveraFrt = 'ok' | 'der_dropped' | 'no_module' | 'input_invalid';
+
+/**
+ * Wynik pojedynczego scenariusza FRT/HVRT (1:1 z `FrtScenarioResult` + werdykt PL
+ * zbudowany po stronie backendu WYŁĄCZNIE z pól solvera — `werdykt_pl` przyjmuje
+ * „w obwiedni" / „poza obwiednią" / „moduł wypadł"). Zero oceny po stronie UI.
+ */
+export interface ScenariuszFrt {
+  readonly scenario_id: string;
+  readonly status: StatusSolveraFrt;
+  readonly stayed_connected: boolean;
+  readonly margin_to_curve_s: number | null;
+  readonly margin_to_curve_pu: number | null;
+  readonly p_recovery_time_s: number | null;
+  readonly werdykt_pl: string;
+  readonly liczba_punktow_trajektorii: number;
+  readonly trajektoria: readonly PunktTrajektoriiFrt[];
+}
+
+/** Moduł DER (typ katalogowy przekształtnika) w widoku trajektorii. */
+export interface ModulDerFrt {
+  readonly id: string;
+  readonly nazwa: string;
+  readonly kind: string;
+  readonly pmax_mw: number;
+  readonly un_kv: number;
+}
+
+/** Operator OSD w widoku trajektorii (nazwa PL na pierwszym planie). */
+export interface OperatorFrt {
+  readonly id: string;
+  readonly nazwa: string;
+}
+
+/** Widok trajektorii FRT/HVRT (odpowiedź frt-trajectories, 1:1 z `build_frt_trajectories_view`). */
+export interface WidokTrajektoriiFrt {
+  readonly modul_der: ModulDerFrt;
+  readonly operator: OperatorFrt;
+  readonly test_kind: RodzajTestuFrt;
+  readonly status_solvera: StatusSolveraFrt;
+  readonly obwiednia_profilu: ObwiedniaProfiluFrt;
+  readonly scenariusze: readonly ScenariuszFrt[];
+}
+
+/** Parametry jawnego biegu trajektorii FRT (moduł DER + operator + rodzaj testu). */
+export interface ZapytanieTrajektoriiFrt {
+  /** Referencja typu katalogowego przekształtnika (`device_catalog_ref` modułu). */
+  readonly derRef: string;
+  readonly operatorId: string;
+  readonly testKind: RodzajTestuFrt;
+}
+
+/**
+ * Trajektorie FRT/HVRT modułu DER z obwiednią profilu operatora (jawny bieg).
+ * Zwraca uczciwy komunikat PL z końcówki (404 brak modułu/operatora, 422 zły
+ * rodzaj testu) — wykorzystuje wspólny czytnik `getJsonZDetalem`.
+ */
+export function pobierzTrajektorieFrt(
+  zapytanie: ZapytanieTrajektoriiFrt,
+): Promise<WidokTrajektoriiFrt> {
+  const url =
+    `/api/oze-analysis/frt-trajectories?der_ref=${encodeURIComponent(zapytanie.derRef)}`
+    + `&operator_id=${encodeURIComponent(zapytanie.operatorId)}`
+    + `&test_kind=${encodeURIComponent(zapytanie.testKind)}`;
+  return getJsonZDetalem<WidokTrajektoriiFrt>(url);
+}

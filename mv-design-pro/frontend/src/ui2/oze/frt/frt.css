@@ -1,0 +1,262 @@
+/*
+ * Style okna „Walidacja modelu falownika" (trajektorie FRT, karta U4 P38). Kolory
+ * WYŁĄCZNIE przez tokeny --mvd-* (theme/tokens.css) — brak literałów kolorów
+ * (zgodność z guardem tokenów i trybem jasny/ciemny). Warstwa prezentacji: bez
+ * wpływu na dane i obliczenia.
+ */
+
+.mvd-frt {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  color: var(--mvd-ink);
+}
+
+.mvd-frt-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mvd-frt-tytul {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.mvd-frt-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+
+/* Stany uczciwe (info / błąd) */
+.mvd-frt-stan {
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--mvd-panel-2);
+}
+
+.mvd-frt-stan--blad {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+
+.mvd-frt-stan-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.mvd-frt-stan-desc {
+  margin: 4px 0 0;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+
+/* Dobór modułu, operatora i rodzaju testu */
+.mvd-frt-dobor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--mvd-panel);
+}
+
+.mvd-frt-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 240px;
+}
+
+.mvd-frt-pole label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mvd-frt-pole select {
+  padding: 6px 8px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+}
+
+.mvd-frt-pole-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+.mvd-frt-oblicz {
+  padding: 8px 16px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mvd-frt-oblicz:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mvd-frt-oblicz:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+
+/* Werdykt całości */
+.mvd-frt-werdykt {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--mvd-line);
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.mvd-frt-werdykt--ok {
+  border-left-color: var(--mvd-ok);
+  background: var(--mvd-ok-bg);
+}
+
+.mvd-frt-werdykt--warn {
+  border-left-color: var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+}
+
+.mvd-frt-werdykt--err {
+  border-left-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+
+.mvd-frt-werdykt-tytul {
+  font-weight: 600;
+}
+
+.mvd-frt-werdykt-opis {
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+
+/* Założenia (część wyniku) */
+.mvd-frt-zalozenia {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  background: var(--mvd-panel-2);
+}
+
+.mvd-frt-zal-para {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mvd-frt-zal-para dt {
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+.mvd-frt-zal-para dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Wykres */
+.mvd-frt-wykres-blok {
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--mvd-panel);
+  overflow-x: auto;
+}
+
+.mvd-frt-wykres-tytul {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mvd-frt-serie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.mvd-frt-serie-tytul {
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+.mvd-frt-serie-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-chip);
+  color: var(--mvd-ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mvd-frt-serie-btn[aria-pressed='true'] {
+  border-color: var(--mvd-accent);
+  background: var(--mvd-sel);
+}
+
+.mvd-frt-serie-btn:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+
+.mvd-frt-wykres-dymek {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 4px 8px;
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  font-size: 12px;
+}
+
+/* Tryb ekspercki */
+.mvd-frt-eksp {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0;
+  padding: 8px 16px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 8px;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+.mvd-frt-eksp-para {
+  display: flex;
+  gap: 8px;
+}
+
+.mvd-frt-eksp-para dd {
+  margin: 0;
+  font-family: var(--mvd-font-mono);
+}
+
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
