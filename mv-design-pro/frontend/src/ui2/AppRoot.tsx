@@ -28,6 +28,8 @@ import { CommandPalette, zbudujIndeksWyszukiwania, type PozycjaWyszukiwania } fr
 import { PulpitProjektu } from './spaces/projekt';
 import { PanelGotowosci } from './spaces/gotowosc';
 import { ModelWarsztat } from './spaces/model';
+import { MenedzerPrzypadkow } from './spaces/obliczenia';
+import { MostHistoriiPrzebiegow } from './legacy/LegacySurface';
 import { LegacyWarsztat } from './legacy/LegacyWarsztat';
 import { LegacyInspektor } from './legacy/LegacyInspektor';
 import { LegacyChrome } from './legacy/LegacyChrome';
@@ -221,6 +223,12 @@ export function AppRoot() {
           route={route}
           space={activeSpace}
           model={<ModelWarsztat />}
+          obliczenia={
+            <div className="mvd-obliczenia-warsztat">
+              <MenedzerPrzypadkow />
+              <MostHistoriiPrzebiegow />
+            </div>
+          }
           gotowosc={
             <PanelGotowosci
               trybZaawansowania={advancementMode}

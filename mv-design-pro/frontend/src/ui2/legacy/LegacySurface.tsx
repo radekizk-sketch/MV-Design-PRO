@@ -18,7 +18,6 @@ import './legacy.css';
 
 import { SldWorkspaceContainer } from '../../ui/sld/v2/canvas/SldWorkspaceContainer';
 import { WorkspaceSurfaceRouter } from '../../ui/workspace';
-import { CaseConfigPage } from '../../ui/study-cases/CaseConfigPage';
 import { RunHistoryPanel } from '../../ui/study-cases/RunHistoryPanel';
 import { useAppStateStore } from '../../ui/app-state';
 import { useShellStore } from '../shell/useShellStore';
@@ -45,14 +44,18 @@ function LegacySld() {
 }
 
 /** Obliczenia: konfiguracja zakresu obliczeń + historia przebiegów (study-cases). */
-function LegacyObliczenia() {
+/**
+ * MOST historii przebiegów (scalenie U2 #3): konfiguracja przypadków przeszła do
+ * nowego okna E7.1 (MenedzerPrzypadkow); historia przebiegów zostaje mostem do
+ * czasu okna W-503 (kolejka przebiegów — karta E7.2). Eksport dla integratora.
+ */
+export function MostHistoriiPrzebiegow() {
   const activeRunId = useAppStateStore((s) => s.activeRunId);
   const setActiveRun = useAppStateStore((s) => s.setActiveRun);
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
 
   return (
     <div className="mvd-legacy-obliczenia">
-      <CaseConfigPage />
       <RunHistoryPanel
         selectedRunId={activeRunId}
         onSelectRun={(runId) => {
@@ -95,12 +98,6 @@ export function LegacySurface({ space }: LegacySurfaceProps) {
       return (
         <OprawaWarsztatu>
           <LegacySld />
-        </OprawaWarsztatu>
-      );
-    case 'obliczenia':
-      return (
-        <OprawaWarsztatu>
-          <LegacyObliczenia />
         </OprawaWarsztatu>
       );
     case 'wyniki':

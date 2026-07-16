@@ -58,9 +58,11 @@ export interface LegacyWarsztatProps {
   gotowosc: ReactNode;
   /** Zawartość przestrzeni „Model sieci" (warsztat z zakładkami — scalenie U2 #2). */
   model: ReactNode;
+  /** Zawartość przestrzeni „Obliczenia" (nowe okno E7.1 + most historii — scalenie U2 #3). */
+  obliczenia: ReactNode;
 }
 
-function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model }: LegacyWarsztatProps) {
+function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia }: LegacyWarsztatProps) {
   // Trasy dedykowane starego wejścia (przeniesiony przełącznik App.tsx).
   if (route === '#enm-inspector' && featureFlags.ENM_INSPECTOR_VISIBLE) {
     return <EnmInspectorPage />;
@@ -114,6 +116,9 @@ function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model }: LegacyWar
   }
   if (space === 'model') {
     return <div data-testid="workspace-surface-main">{model}</div>;
+  }
+  if (space === 'obliczenia') {
+    return <div data-testid="workspace-surface-main">{obliczenia}</div>;
   }
   return <LegacySurface space={space} />;
 }

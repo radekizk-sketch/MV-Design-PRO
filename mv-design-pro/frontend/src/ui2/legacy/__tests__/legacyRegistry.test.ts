@@ -21,8 +21,8 @@ describe('E1.7b — rejestr mostu legacy (lista wygaszania)', () => {
     }
   });
 
-  it('przestrzenie przejęte przez nową powłokę: projekt (U1) i gotowość (U2/E6.1); pozostałe mostem legacy', () => {
-    const przejete: readonly string[] = ['projekt', 'gotowosc'];
+  it('przestrzenie przejęte przez nową powłokę: projekt (U1), gotowość (E6.1), obliczenia (E7.1); pozostałe mostem legacy', () => {
+    const przejete: readonly string[] = ['projekt', 'gotowosc', 'obliczenia'];
     for (const space of SPACE_IDS) {
       const oczekiwane = przejete.includes(space) ? 'nowa-powloka' : 'legacy';
       expect(REJESTR_LEGACY[space].zrodlo, `przestrzeń "${space}"`).toBe(oczekiwane);

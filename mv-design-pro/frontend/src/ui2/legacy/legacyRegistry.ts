@@ -65,10 +65,11 @@ export const REJESTR_LEGACY: Readonly<Record<SpaceId, WpisRejestruLegacy>> = {
   },
   obliczenia: {
     przestrzen: 'obliczenia',
-    zrodlo: 'legacy',
+    zrodlo: 'nowa-powloka',
     obszaryLegacy: ['STUDIA_OBLICZENIOWE (konfiguracja + przebiegi)'],
-    montaz: 'CaseConfigPage + RunHistoryPanel (study-cases)',
-    wygaszenie: 'U2/E7: nowe okna przypadków i kolejki przebiegów',
+    montaz:
+      'MenedzerPrzypadkow (E7.1: lista, karta z założeniami, porównanie, nowy/klon) + most historii przebiegów (RunHistoryPanel do czasu okna W-503/E7.2)',
+    wygaszenie: 'konfiguracja zrealizowana w U2; historia przebiegów → E7.2 (W-503)',
   },
   wyniki: {
     przestrzen: 'wyniki',
