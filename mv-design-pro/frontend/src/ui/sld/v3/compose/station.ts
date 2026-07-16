@@ -80,7 +80,11 @@ import { ALL_FIELD_ROLES, FIELD_ROLE, type FieldRole } from '../../v2/domain/app
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
 import { bayApparatusDesignation, isLineLikeRole } from './directions';
 import {
+  LATERAL_APPARATUS_SYMBOLS,
+  LATERAL_BRANCH_GAP,
   apparatusSymbolsForRole,
+  bayApparatusPlanFootprint,
+  planBayApparatus,
   resolveBayApparatusSymbolIds,
   stackFootprint,
   symbolIdForPrimaryDeviceKind,
@@ -313,6 +317,14 @@ interface BayStack {
    *  ostatni symbol nie ma portu południowego (np. DER — liść bez dalszych
    *  połączeń), równy `topPort` (ten sam, jedyny port). */
   readonly bottomPort: RoutePort;
+  /** F10.1 (spec §18.1/§18.2): odcinki ODGAŁĘZIEŃ BOCZNYCH (poziomy jog od
+   *  węzła toru głównego do portu N aparatu bocznego ES/VT/SA). NIE należą
+   *  do toru głównego — tor główny jest ciągły bez nich (wyrocznia
+   *  `earth_switch_lateral_probe` (b)). */
+  readonly branchSegments: readonly ComposedSegment[];
+  /** F10.1: instancje aparatów BOCZNYCH (podzbiór `instances`) — wołający
+   *  kotwiczy na nich adnotację blokady ES (§18.1) bez ponownego filtrowania. */
+  readonly lateralInstances: readonly ComposedSymbolInstance[];
 }
 
 function portsInWorld(def: SymbolDef, x: number, y: number): Readonly<Record<string, RoutePort>> {
@@ -330,17 +342,38 @@ function buildBayStack(
   bay: MiniBlockBayDescriptor,
   apparatusSource: BayApparatusSource,
 ): BayStack {
+  // F10.1 (spec §18.1/§18.2, dyrektywa D2-5, V12K-033): podział na TOR
+  // GŁÓWNY (pionowy stos w osi) i APARATY BOCZNE (ES/VT/SA — odgałęzienie
+  // poziome od portu S poprzedzającego aparatu szeregowego, „po stronie
+  // kablowej"). TEN SAM podział co `planBayApparatus` (measure↔compose,
+  // wzór F6b-1) — items mapują się 1:1 na symbolIds planu. Przypadek
+  // zdegenerowany (sekwencja z samych aparatów bocznych) = jak w planie:
+  // rysowana starym stosem pionowym (brak osi, od której można odgałęzić).
+  const mainItems: StackItemSpec[] = [];
+  const lateralSpecs: { readonly item: StackItemSpec; readonly afterMainIndex: number }[] = [];
+  items.forEach((item) => {
+    if (LATERAL_APPARATUS_SYMBOLS.has(item.symbolId)) {
+      lateralSpecs.push({ item, afterMainIndex: mainItems.length - 1 });
+    } else {
+      mainItems.push(item);
+    }
+  });
+  const degenerate = mainItems.length === 0 && lateralSpecs.length > 0;
+  const stackItems = degenerate ? items : mainItems;
+  const laterals = degenerate ? [] : lateralSpecs;
+
   const instances: ComposedSymbolInstance[] = [];
+  const mainInstances: ComposedSymbolInstance[] = [];
   let y = topY;
   let topPort: RoutePort | null = null;
   let bottomPort: RoutePort | null = null;
 
-  items.forEach((item, index) => {
+  stackItems.forEach((item, index) => {
     const { symbolId } = item;
     const def = SYMBOL_DEFS[symbolId];
     const x = snapToGrid(centerX - def.width / 2);
     const ports = portsInWorld(def, x, y);
-    instances.push({
+    const instance: ComposedSymbolInstance = {
       symbolId,
       bayRef: bay.bayRef,
       deviceRef: item.deviceRef,
@@ -350,7 +383,9 @@ function buildBayStack(
       y,
       state: item.state,
       ports,
-    });
+    };
+    instances.push(instance);
+    mainInstances.push(instance);
 
     if (index === 0) {
       const north = def.ports.find((p) => p.dir === 'N');
@@ -359,13 +394,71 @@ function buildBayStack(
     const south = def.ports.find((p) => p.dir === 'S');
     bottomPort = south ? { x: x + south.x, y: y + south.y, dir: south.dir } : (topPort ?? Object.values(ports)[0] ?? null);
 
-    y += def.height + (index < items.length - 1 ? GRID : 0);
+    y += def.height + (index < stackItems.length - 1 ? GRID : 0);
   });
 
   if (!topPort || !bottomPort) {
     throw new Error(`composeStation: pole „${bay.bayRef}" nie ma żadnego symbolu z portem (pusty stos aparatów)`);
   }
-  return { instances, topPort, bottomPort };
+
+  // Odgałęzienia boczne (§18.1): kotwica = port S aparatu
+  // `mainInstances[afterMainIndex]` (dla -1: port N pierwszego — strona
+  // szyny); symbol wisi portem N na końcu poziomego jogu, na PRAWO od stosu
+  // (lewa strona przesuwałaby oś stosu — lekcja tapX z F9.4; prawa jest
+  // czysto addytywna jak sidecar oznacznika). Laterale współdzielące kotwicę
+  // siedzą obok siebie (kolejne `LATERAL_BRANCH_GAP + width` w prawo) —
+  // identyczna arytmetyka co `bayApparatusPlanFootprint`.
+  const branchSegments: ComposedSegment[] = [];
+  const lateralInstances: ComposedSymbolInstance[] = [];
+  if (laterals.length > 0) {
+    const mainRightX = Math.max(
+      ...mainInstances.map((inst) => inst.x + SYMBOL_DEFS[inst.symbolId].width),
+    );
+    const consumedAtAnchor = new Map<number, number>();
+    laterals.forEach(({ item, afterMainIndex }, lateralIndex) => {
+      const def = SYMBOL_DEFS[item.symbolId];
+      const anchorInstance =
+        afterMainIndex >= 0 ? mainInstances[afterMainIndex] : mainInstances[0];
+      const anchorDef = SYMBOL_DEFS[anchorInstance.symbolId];
+      const anchorPortDef =
+        afterMainIndex >= 0
+          ? anchorDef.ports.find((p) => p.dir === 'S') ?? anchorDef.ports[0]
+          : anchorDef.ports.find((p) => p.dir === 'N') ?? anchorDef.ports[0];
+      const anchor: RoutePort = {
+        x: anchorInstance.x + anchorPortDef.x,
+        y: anchorInstance.y + anchorPortDef.y,
+        dir: anchorPortDef.dir,
+      };
+      const used = consumedAtAnchor.get(afterMainIndex) ?? 0;
+      const x = mainRightX + LATERAL_BRANCH_GAP + used;
+      consumedAtAnchor.set(afterMainIndex, used + LATERAL_BRANCH_GAP + def.width);
+      const lateralY = anchor.y;
+      const ports = portsInWorld(def, x, lateralY);
+      const instance: ComposedSymbolInstance = {
+        symbolId: item.symbolId,
+        bayRef: bay.bayRef,
+        deviceRef: item.deviceRef,
+        linkedRef: item.linkedRef,
+        apparatusSource,
+        x,
+        y: lateralY,
+        state: item.state,
+        ports,
+      };
+      instances.push(instance);
+      lateralInstances.push(instance);
+      const north = def.ports.find((p) => p.dir === 'N') ?? def.ports[0];
+      branchSegments.push({
+        ownerRef: `${bay.bayRef}#lateral-${item.symbolId}-${lateralIndex}`,
+        points: [
+          { x: anchor.x, y: anchor.y },
+          { x: x + north.x, y: anchor.y },
+        ],
+      });
+    });
+  }
+
+  return { instances, topPort, bottomPort, branchSegments, lateralInstances };
 }
 
 // ---------------------------------------------------------------------------
@@ -454,7 +547,12 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     // `layout/measure.ts` (`bayColumnFootprint`/`bayColumnRequiredWidth`
     // wołają `resolveBayApparatusSymbolIds` przez tę samą funkcję).
     const { items, source } = stackItemsForBay(bay);
-    const symbolIds = items.map((item) => item.symbolId);
+    // F10.1 (spec §18.1): oś stosu = połowa szerokości TORU GŁÓWNEGO —
+    // aparaty boczne ES/VT/SA rozszerzają kolumnę w prawo bez przesuwania
+    // osi (`bayApparatusPlanFootprint().mainStack`, jedna prawda z
+    // `layout/measure.ts::bayColumnFootprint`).
+    const bayPlan = planBayApparatus(bay);
+    const planFootprint = bayApparatusPlanFootprint(bayPlan);
     // FIX-3 (recenzja F5a): `bayColumnRequiredWidth` (measure.ts) rezerwuje
     // `footprint.width + GRID + szerokość_oznacznika` — stos aparatów
     // FLUSH-LEFT (przy `bx`) + oznacznik sidecar PO PRAWEJ stosu. Centrowanie
@@ -462,12 +560,21 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     // połowę sidecara, więc oznacznik ≥2-znakowy wystawał poza rezerwację —
     // `centerX` liczony z `footprint.width` (nie `reservedWidth`) daje stosowi
     // lewą krawędź DOKŁADNIE na `bx`, zgodnie z modelem measure.
-    const footprint = stackFootprint(symbolIds);
+    const footprint = planFootprint.mainStack;
     const centerX = snapToGrid(bx + footprint.width / 2);
     busTapXs.push(centerX);
 
     const stack = buildBayStack(items, centerX, blockTopY, bay, source);
     symbols.push(...stack.instances);
+    // F10.1 (spec §18.1/§18.2): odcinki odgałęzień bocznych ES/VT/SA — NIE
+    // należą do toru głównego (wyrocznia earth_switch_lateral_probe (b)).
+    segments.push(...stack.branchSegments);
+    // F10.1 (spec §18.1, DEC-1): blokada logiczna uziemnika — adnotacja
+    // KONWENCYJNA realizowana w LEGENDZIE arkusza (`sheet/Frame.tsx`,
+    // wpis `earthSwitch`), NIE per-symbol: tekst przy każdym ES (120×)
+    // kolidował strukturalnie z korytarzami międzystacyjnymi i etykietami
+    // zakończeń §18.6 (26 kolizji na fixturze) i powtarzał konwencję jako
+    // szum — decyzja nadzorcy F10.1, spójna z DEC-1 („opis konwencyjny").
 
     // Zejście z osi magistrali (B2) do górnego portu pierwszego aparatu.
     segments.push({
@@ -680,7 +787,11 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         ownerKind: 'apparatus',
         text: designation,
         labelClass: 't3',
-        anchor: { x: snapToGrid(bx + footprint.width), y: stack.topPort.y },
+        // F10.1: prawa krawędź PEŁNEGO gabarytu planu (tor główny +
+        // rozszerzenie boczne ES/VT/SA) — sidecar NIE może wejść w strefę
+        // odgałęzień; dokładnie tam measure.ts kończy `footprint.width`
+        // (pełny) i zaczyna `GRID + oznacznik`.
+        anchor: { x: snapToGrid(bx + planFootprint.width), y: stack.topPort.y },
         placement: 'right',
       });
     }
@@ -961,7 +1072,12 @@ export function fieldStacksEndAtCableHead(
 ): boolean {
   return snBays.every((bay) => {
     if (!isLineLikeRole(bay.fieldRole)) return true;
-    const stackSymbols = composition.symbols.filter((s) => s.bayRef === bay.bayRef);
+    // F10.1 (spec §18.1, DEC-1): TOR GŁÓWNY kończy się głowicą — aparaty
+    // boczne ES/VT/SA nie należą do toru i nie liczą się jako „koniec pola"
+    // (buildBayStack dokleja je NA KOŃCU listy instancji).
+    const stackSymbols = composition.symbols.filter(
+      (s) => s.bayRef === bay.bayRef && !LATERAL_APPARATUS_SYMBOLS.has(s.symbolId),
+    );
     const last = stackSymbols[stackSymbols.length - 1];
     return last?.symbolId === 'cableHead';
   });

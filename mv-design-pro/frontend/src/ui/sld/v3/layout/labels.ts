@@ -123,8 +123,18 @@ function resolveSegmentSpanLabel(owner: SegmentSpanOwnerInput): OwnedLabel {
 
   if (fitsSpan) {
     // Etykieta mieści się CZYSTO na przęśle (docelowo: tap-do-tap z F5) —
-    // wyśrodkowana bez clampa do primaryRect (może wystawać poza kolumnę).
-    const x = snapToGrid(spanCenterX - labelWidth / 2);
+    // wyśrodkowana na przęśle, ale ZAWSZE dosunięta (clamp) do granic
+    // `primaryRect`. F10.1 (korekta nadzorcy): kolorowanie wierszy
+    // (`colorSegmentLabelRows`, columns.ts) dowodzi ROZŁĄCZNOŚCI wyłącznie
+    // rezerwacji `primaryRect` — etykieta wystająca poza swoją rezerwację
+    // unieważnia ten dowód (wykryte na fixturze po poszerzeniu kolumn §18.1:
+    // etykieta przęsła S01 wycentrowana na przęśle weszła w rezerwację S02,
+    // kolizja w overlap_probe). `columns.ts` GWARANTUJE
+    // `primaryRect.width >= labelWidth` (nagłówek pliku), więc clamp jest
+    // zawsze wykonalny i nie zmienia szerokości.
+    const rawX = snapToGrid(spanCenterX - labelWidth / 2);
+    const maxFitX = owner.primaryRect.x + owner.primaryRect.width - labelWidth;
+    const x = Math.min(Math.max(rawX, owner.primaryRect.x), Math.max(maxFitX, owner.primaryRect.x));
     return {
       ownerRef: owner.ownerRef,
       ownerKind: 'segment-span',

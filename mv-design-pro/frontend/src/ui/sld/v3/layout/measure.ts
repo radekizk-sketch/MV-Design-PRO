@@ -24,11 +24,7 @@ import {
   type StationOnRunRendererProps,
 } from '../../v2/renderer/StationOnRunRenderer';
 import { bayApparatusDesignation } from '../compose/directions';
-import {
-  apparatusSymbolsForRole,
-  resolveBayApparatusSymbolIds,
-  stackFootprint,
-} from '../compose/apparatusSequence';
+import { bayApparatusPlanFootprint, planBayApparatus } from '../compose/apparatusSequence';
 import { protectionAnnotationColumnWidth } from '../compose/protectionMarking';
 import { derLabelText, derSymbolSize, type StationDerSourceInput } from '../compose/sourceKind';
 import type { FieldRole } from '../../v2/domain/apparatusContracts';
@@ -107,7 +103,27 @@ export { formatTransformerRatedPower } from '../../v2/renderer/StationOnRunRende
 export function bayColumnFootprint(
   bay: Pick<MiniBlockBayDescriptor, 'fieldRole' | 'primaryDevices'>,
 ): { readonly width: number; readonly height: number } {
-  return stackFootprint(resolveBayApparatusSymbolIds(bay).symbolIds);
+  // F10.1 (spec §18.1/§18.2): gabaryt = tor główny + rozszerzenie boczne
+  // ES/VT/SA W PRAWO (`bayApparatusPlanFootprint`, jedna prawda
+  // measure↔compose). Oś stosu głównego pozostaje `mainStack.width/2` od
+  // lewej krawędzi kolumny — jak przed F10.1 (tapX/zejścia bez regresu;
+  // patrz „F9.4 KOREKTA NADZORCY" niżej): rozszerzenie boczne jest czysto
+  // addytywne w prawo, jak sidecar oznacznika.
+  const { width, height } = bayApparatusPlanFootprint(planBayApparatus(bay));
+  return { width, height };
+}
+
+/**
+ * F10.1 (spec §18.1): wysokość TORU GŁÓWNEGO pola (bez zwisu aparatów
+ * bocznych) — port połączenia kabla (dolny port głowicy) leży na
+ * `blockTopY + bayMainPathHeight(bay)`, NIE na dnie pełnego gabarytu
+ * (lateral może zwisać niżej niż głowica). Konsumenci:
+ * `scene/buildScene.ts` `portOfBay`/`branchPort`.
+ */
+export function bayMainPathHeight(
+  bay: Pick<MiniBlockBayDescriptor, 'fieldRole' | 'primaryDevices'>,
+): number {
+  return bayApparatusPlanFootprint(planBayApparatus(bay)).mainStack.height;
 }
 
 /**
@@ -178,7 +194,10 @@ export function bayColumnRequiredWidth(
  * zmiany przy przełączaniu dane↔konwencja tego samego pola.
  */
 export function entryDescentCaptionInset(role: FieldRole): number {
-  return snapUp(stackFootprint(apparatusSymbolsForRole(role)).width / 2) + GRID;
+  // F10.1: oś stosu = połowa szerokości TORU GŁÓWNEGO (aparaty boczne ES/VT/SA
+  // rozszerzają kolumnę w prawo i nie przesuwają osi — spec §18.1).
+  const plan = planBayApparatus({ fieldRole: role, primaryDevices: undefined });
+  return snapUp(bayApparatusPlanFootprint(plan).mainStack.width / 2) + GRID;
 }
 
 /** Margines stały bloku stacji: prześwit na szynę SN (nad kolumnami) i szynę

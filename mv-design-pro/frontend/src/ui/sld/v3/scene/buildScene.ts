@@ -107,7 +107,7 @@ import type { StationOnRunRendererProps } from '../../v2/renderer/StationOnRunRe
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
 
 import { GRID, snapToGrid, snapUp, rectsOverlap, type V3Rect } from '../core/grid';
-import { measureLabelWidth } from '../core/text';
+import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import {
   classifyRouteNodes,
@@ -115,8 +115,9 @@ import {
   type RouteNode,
   type RouteVertex,
 } from '../layout/route';
+import { LATERAL_APPARATUS_SYMBOLS } from '../compose/apparatusSequence';
 import {
-  bayColumnFootprint,
+  bayMainPathHeight,
   stationBlockHeight,
   stationNameBandHeight,
   stationPortCaptionHeight,
@@ -653,7 +654,9 @@ function composeRowStation(
     const bay = measureInput.snBays[index];
     const x = tapXOfBay(index);
     if (!bay || x == null) return null;
-    return { x, y: blockTopY + bayColumnFootprint(bay).height };
+    // F10.1 (spec §18.1): port kabla = dno TORU GŁÓWNEGO (dolny port
+    // głowicy), nie dno pełnego gabarytu — lateral ES może zwisać niżej.
+    return { x, y: blockTopY + bayMainPathHeight(bay) };
   };
   const entryPort = portOfBay(previousIndex) ?? { x: column.tapX, y: busAxisY };
   const exitPort = portOfBay(nextIndex) ?? { x: column.tapX, y: busAxisY };
@@ -728,7 +731,8 @@ function composeRowStation(
       if (idx == null) return null;
       const x = tapXOfBay(idx);
       if (x == null) return null;
-      const y = blockTopY + bayColumnFootprint(measureInput.snBays[idx]).height;
+      // F10.1: jak `portOfBay` wyżej — dno toru głównego, nie gabarytu.
+      const y = blockTopY + bayMainPathHeight(measureInput.snBays[idx]);
       return { x, y };
     },
   };
@@ -1047,7 +1051,14 @@ function findGpzTrunkBottomPort(
 ): { readonly x: number; readonly y: number } {
   const bayRef = findGpzTrunkBayRef(gpzData);
   if (bayRef) {
-    const bayInstances = gpz.symbols.filter((s) => s.meta.bayRef === bayRef);
+    // F10.1 (spec §18.1 b): wyjście magistrali = dno TORU GŁÓWNEGO pola —
+    // aparaty boczne ES/VT/SA (doklejane NA KOŃCU listy instancji przez
+    // buildFieldStack) NIE są zakończeniem toru; przed F10.1 „ostatnia
+    // instancja" była głowicą, po F10.1 bywała lateralem ES (błędny zaczep
+    // kabla wyjściowego wykryty sondą nadzorcy).
+    const bayInstances = gpz.symbols.filter(
+      (s) => s.meta.bayRef === bayRef && !LATERAL_APPARATUS_SYMBOLS.has(s.symbolId),
+    );
     const last = bayInstances[bayInstances.length - 1];
     if (last) {
       const def = SYMBOL_DEFS[last.symbolId];
@@ -1610,13 +1621,69 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   });
 
   // -- 7. Rozwiąż WSZYSTKIE etykiety JEDNYM globalnym resolveLabels. --------
-  const labels: readonly OwnedLabel[] = resolveLabels({
+  const resolvedLabels: readonly OwnedLabel[] = resolveLabels({
     segmentSpans,
     segmentLaterals,
     stationNameBands,
     portCaptions,
     simpleAnchored,
   });
+
+  // -- 7b. F10.1 (spec §18.6, dyrektywa D2-1): OPISANE zakończenia torów. ----
+  // Każda głowica kablowa NIE dotknięta żadną trasą (fizyczny koniec ciągu —
+  // dokładnie zbiór z `fieldEntryConnectionsReachCableHead`) dostaje JAWNĄ
+  // etykietę zakończenia na scenie (t4, na prawo od głowicy): tekst = podpis
+  // kierunku §9 tego pola („kier. Sxx"/„odg. Sxx"), a gdy pole nie niesie
+  // podpisu — uczciwe „koniec toru" (stwierdzenie faktu, zero zmyślonych
+  // numerów linii — numer/nazwa linii to zależność DOMAIN D2, F10.6).
+  // WYŁĄCZNIE na L2 (poziom pełnej szczegółowości §15.2 — spójnie z
+  // etykietami przęseł, które też są L2-only).
+  const terminationLabels: OwnedLabel[] = [];
+  if (lod === 2) {
+    const headDef = SYMBOL_DEFS.cableHead;
+    const south = headDef.ports.find((pt) => pt.dir === 'S');
+    const portDx = south?.x ?? headDef.width / 2;
+    const portDy = south?.y ?? headDef.height;
+    const endpointSet = new Set<string>();
+    allSegments.forEach((seg) => {
+      const first = seg.points[0];
+      const last = seg.points[seg.points.length - 1];
+      if (first) endpointSet.add(`${first.x},${first.y}`);
+      if (last) endpointSet.add(`${last.x},${last.y}`);
+    });
+    const captionByOwnerPrefix = new Map<string, string>();
+    for (const pc of portCaptions) {
+      const base = pc.ownerRef.includes('#') ? pc.ownerRef.slice(0, pc.ownerRef.indexOf('#')) : pc.ownerRef;
+      if (!captionByOwnerPrefix.has(base)) captionByOwnerPrefix.set(base, pc.text);
+    }
+    for (const head of allSymbols) {
+      if (head.symbolId !== 'cableHead') continue;
+      if (endpointSet.has(`${head.x + portDx},${head.y + portDy}`)) continue;
+      const ownerRef = head.meta?.ownerRef ?? 'nieznane-pole';
+      const text = captionByOwnerPrefix.get(ownerRef) ?? 'koniec toru';
+      const labelClass = 't4' as const;
+      const width = measureLabelWidth(text, labelClass);
+      const height = labelLineHeight(labelClass);
+      terminationLabels.push({
+        ownerRef: `${ownerRef}#termination`,
+        ownerKind: 'port-caption',
+        labelClass,
+        text,
+        slotIndex: 1,
+        // Wycentrowana POD głowicą (pas zejść, po F9.10 wysoki 6×GRID —
+        // miejsce jest z konstrukcji): na prawo od głowicy stoi stos
+        // SĄSIEDNIEGO pola (kolizje wykryte wyrocznią przy pierwszym
+        // wariancie umiejscowienia).
+        rect: {
+          x: head.x + Math.round(headDef.width / 2) - Math.round(width / 2),
+          y: head.y + headDef.height + 2,
+          width,
+          height,
+        },
+      });
+    }
+  }
+  const labels: readonly OwnedLabel[] = [...resolvedLabels, ...terminationLabels];
 
   // -- 8. Węzły routingu (junctions/crossings) — WYŁĄCZNIE trasy `route.ts` -
   const { junctions, crossings } = classifyRouteNodes(allRouteGeoms);
@@ -1749,6 +1816,30 @@ export function allFieldEntryConnectionsReachCableHead(scene: SceneV3): boolean 
 }
 
 /**
+ * F10.1 (spec §18.6, D2-1) — `path_termination_labeled_probe`: każda głowica
+ * będąca FIZYCZNYM końcem toru (nie dotknięta żadną trasą — ten sam zbiór co
+ * `fieldEntryConnectionsReachCableHead`) MUSI mieć na scenie etykietę
+ * zakończenia (`${ownerRef}#termination`). Dotyczy L2 (poziom pełnej
+ * szczegółowości; na L0/L1 etykiety zakończeń nie są emitowane — spójnie
+ * z etykietami przęseł) — dla innych LOD zwraca pustą listę.
+ */
+export function pathTerminationLabelGaps(scene: SceneV3): readonly PreviewSymbol[] {
+  if (scene.meta.lod !== 2) return [];
+  const unlabeled = new Set(
+    scene.labels
+      .filter((l) => l.ownerRef.endsWith('#termination'))
+      .map((l) => l.ownerRef.slice(0, -'#termination'.length)),
+  );
+  return fieldEntryConnectionsReachCableHead(scene).filter(
+    (head) => !unlabeled.has(head.meta?.ownerRef ?? ''),
+  );
+}
+
+export function allPathTerminationsLabeled(scene: SceneV3): boolean {
+  return pathTerminationLabelGaps(scene).length === 0;
+}
+
+/**
  * branch_accent_probe (spec §14.4): każdy punkt odejścia lateralu ma węzeł
  * (`branchJunction`) o gabarycie WIĘKSZYM niż `junction` bazowy. Sprawdzane
  * jako: liczba symboli `branchJunction` na scenie == liczba laterali
@@ -1756,6 +1847,105 @@ export function allFieldEntryConnectionsReachCableHead(scene: SceneV3): boolean 
  * są liczone, bo nie mają punktu odejścia na scenie) I gabaryt każdego
  * `branchJunction` > gabaryt `junction`.
  */
+// ---------------------------------------------------------------------------
+// F10.1 — wyrocznie §18.1/§18.2 (dyrektywa D2-5/D2-6): aparaty boczne
+// ES/VT/SA POZA osią toru głównego, połączone odgałęzieniem bocznym.
+// ---------------------------------------------------------------------------
+
+const LATERAL_ORACLE_KINDS: ReadonlySet<string> = new Set([
+  'earthSwitch',
+  'voltageTransformer',
+  'surgeArrester',
+]);
+
+export interface LateralApparatusGap {
+  readonly symbolId: string;
+  readonly ownerRef: string;
+  readonly reason: 'on-main-axis' | 'no-branch-segment';
+}
+
+/**
+ * Rdzeń wyroczni §18.1/§18.2 — wspólny dla `earthSwitchLateralGaps` (ES,
+ * spec §18.1 `earth_switch_lateral_probe`) i `vtParallelGaps` (VT/SA, spec
+ * §18.2 `vt_parallel_probe`). Sprawdza per symbol boczny:
+ *  (a) środek symbolu POZA osią pionową toru głównego jego pola (oś =
+ *      mediana środków X aparatów SZEREGOWYCH o tym samym `ownerRef`);
+ *  (c) istnieje POZIOMY odcinek odgałęzienia łączący oś z symbolem (dotyka
+ *      bboxa symbolu i sięga osi na wysokości symbolu).
+ * Punkt (b) spec („tor główny identyczny z ES i bez ES") jest dowodzony
+ * KONSTRUKCYJNIE: `buildBayStack`/`buildFieldStack` budują tor główny z
+ * `mainItems` PRZED doklejeniem laterali (odcinki toru nie zależą od nich) —
+ * plus test kompozycji w `compose/__tests__/station.test.ts`.
+ * Pola bez aparatów szeregowych (przypadek zdegenerowany planu) są
+ * pomijane — plan rysuje je starym stosem (patrz `planApparatusSymbolIds`).
+ */
+function lateralApparatusGapsForKinds(scene: SceneV3, kinds: ReadonlySet<string>): LateralApparatusGap[] {
+  const byOwner = new Map<string, { laterals: typeof scene.symbols[number][]; serialXs: number[] }>();
+  for (const sym of scene.symbols) {
+    const ownerRef = sym.meta?.ownerRef;
+    if (!ownerRef) continue;
+    if (!byOwner.has(ownerRef)) byOwner.set(ownerRef, { laterals: [], serialXs: [] });
+    const bucket = byOwner.get(ownerRef)!;
+    const def = SYMBOL_DEFS[sym.symbolId];
+    if (kinds.has(sym.symbolId)) {
+      bucket.laterals.push(sym);
+    } else if (LATERAL_ORACLE_KINDS.has(sym.symbolId)) {
+      // inny rodzaj lateralu — nie wlicza się do osi
+    } else if (sym.meta?.elementKind === 'apparatus') {
+      bucket.serialXs.push(sym.x + def.width / 2);
+    }
+  }
+  const gaps: LateralApparatusGap[] = [];
+  for (const [ownerRef, bucket] of byOwner) {
+    if (bucket.laterals.length === 0 || bucket.serialXs.length === 0) continue;
+    const xs = [...bucket.serialXs].sort((a, b) => a - b);
+    const axisX = xs[Math.floor(xs.length / 2)];
+    for (const lat of bucket.laterals) {
+      const def = SYMBOL_DEFS[lat.symbolId];
+      const cx = lat.x + def.width / 2;
+      if (Math.abs(cx - axisX) < 1) {
+        gaps.push({ symbolId: lat.symbolId, ownerRef, reason: 'on-main-axis' });
+        continue;
+      }
+      const touched = scene.segments.some((seg) => {
+        for (let i = 0; i + 1 < seg.points.length; i++) {
+          const a = seg.points[i];
+          const b = seg.points[i + 1];
+          if (a.y !== b.y) continue;
+          const y = a.y;
+          const minX = Math.min(a.x, b.x);
+          const maxX = Math.max(a.x, b.x);
+          const inYSpan = y >= lat.y && y <= lat.y + def.height;
+          const touchesSymbol = maxX >= lat.x && minX <= lat.x + def.width;
+          const reachesAxis = minX <= axisX + 0.5 && maxX >= axisX - 0.5;
+          if (inYSpan && touchesSymbol && reachesAxis) return true;
+        }
+        return false;
+      });
+      if (!touched) gaps.push({ symbolId: lat.symbolId, ownerRef, reason: 'no-branch-segment' });
+    }
+  }
+  return gaps.sort((g1, g2) => g1.ownerRef.localeCompare(g2.ownerRef));
+}
+
+/** Spec §18.1 `earth_switch_lateral_probe` — luki uziemników. */
+export function earthSwitchLateralGaps(scene: SceneV3): LateralApparatusGap[] {
+  return lateralApparatusGapsForKinds(scene, new Set(['earthSwitch']));
+}
+
+export function allEarthSwitchesLateral(scene: SceneV3): boolean {
+  return earthSwitchLateralGaps(scene).length === 0;
+}
+
+/** Spec §18.2 `vt_parallel_probe` — luki VT/SA. */
+export function vtParallelGaps(scene: SceneV3): LateralApparatusGap[] {
+  return lateralApparatusGapsForKinds(scene, new Set(['voltageTransformer', 'surgeArrester']));
+}
+
+export function allVtParallel(scene: SceneV3): boolean {
+  return vtParallelGaps(scene).length === 0;
+}
+
 export function noBranchWithoutAccent(scene: SceneV3): boolean {
   const junctionDef = SYMBOL_DEFS.junction;
   const accentDef = SYMBOL_DEFS.branchJunction;

@@ -149,3 +149,140 @@ export function resolveBayApparatusSymbolIds(
   }
   return { symbolIds: apparatusSymbolsForRole(bay.fieldRole), source: 'konwencja' };
 }
+
+// ---------------------------------------------------------------------------
+// F10.1 (spec §18.1/§18.2, dyrektywa D2-5, V12K-033) — podział sekwencji na
+// TOR GŁÓWNY i APARATY BOCZNE. ES/VT/SA nigdy nie leżą w osi toru
+// szeregowego: uziemnik/przekładnik napięciowy/ogranicznik odgałęziają się
+// bocznie od węzła toru (portu S poprzedzającego aparatu szeregowego — „po
+// stronie kablowej"), a tor główny pozostaje ciągły bez nich. Kolejność
+// `placement` (V12K-027) nadal rządzi: pozycja odgałęzienia wynika z miejsca
+// aparatu w sekwencji danych/konwencji — zmienia się WYŁĄCZNIE geometria
+// (bok zamiast osi), nie porządek.
+// ---------------------------------------------------------------------------
+
+/** Aparaty z definicji BOCZNE (spec §18.1: „ES, VT, SA są z definicji BOCZNE
+ *  i nigdy nie leżą w torze szeregowym"). */
+export const LATERAL_APPARATUS_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
+  'earthSwitch',
+  'voltageTransformer',
+  'surgeArrester',
+]);
+
+export interface LateralApparatusPlanEntry {
+  readonly symbolId: SymbolId;
+  /** Kotwica odgałęzienia: gałąź odchodzi od portu S aparatu
+   *  `mainPath[afterMainIndex]` (węzeł toru po stronie kablowej tego
+   *  aparatu). `-1` = przed pierwszym aparatem szeregowym (odgałęzienie od
+   *  strony szyny — port N `mainPath[0]`). */
+  readonly afterMainIndex: number;
+  /** Pozycja w ORYGINALNEJ sekwencji (`resolveBayApparatusSymbolIds`) —
+   *  zachowuje parowanie `deviceRef`/`switchState` ze ścieżki danych. */
+  readonly sequenceIndex: number;
+}
+
+export interface BayApparatusPlan {
+  /** Aparaty szeregowe toru głównego, w kolejności sekwencji. */
+  readonly mainPath: readonly SymbolId[];
+  /** `mainSequenceIndices[i]` = pozycja `mainPath[i]` w oryginalnej sekwencji. */
+  readonly mainSequenceIndices: readonly number[];
+  readonly laterals: readonly LateralApparatusPlanEntry[];
+  readonly source: BayApparatusSource;
+}
+
+/**
+ * Jedna prawda podziału tor główny / aparaty boczne (measure↔compose, wzór
+ * F6b-1). PRZYPADEK ZDEGENEROWANY: sekwencja złożona WYŁĄCZNIE z aparatów
+ * bocznych (brak toru głównego, np. syntetyczne pole samego ES) — plan
+ * zwraca je jako `mainPath` (uczciwy fallback: nie da się narysować
+ * odgałęzienia bez osi; wołający może to raportować przez `missingData`).
+ */
+export function planApparatusSymbolIds(
+  symbolIds: readonly SymbolId[],
+): Omit<BayApparatusPlan, 'source'> {
+  const mainPath: SymbolId[] = [];
+  const mainSequenceIndices: number[] = [];
+  const laterals: LateralApparatusPlanEntry[] = [];
+  symbolIds.forEach((symbolId, sequenceIndex) => {
+    if (LATERAL_APPARATUS_SYMBOLS.has(symbolId)) {
+      laterals.push({ symbolId, afterMainIndex: mainPath.length - 1, sequenceIndex });
+    } else {
+      mainPath.push(symbolId);
+      mainSequenceIndices.push(sequenceIndex);
+    }
+  });
+  if (mainPath.length === 0 && laterals.length > 0) {
+    return {
+      mainPath: symbolIds,
+      mainSequenceIndices: symbolIds.map((_, i) => i),
+      laterals: [],
+    };
+  }
+  return { mainPath, mainSequenceIndices, laterals };
+}
+
+export function planBayApparatus(
+  bay: Pick<MiniBlockBayDescriptor, 'fieldRole' | 'primaryDevices'>,
+): BayApparatusPlan {
+  const { symbolIds, source } = resolveBayApparatusSymbolIds(bay);
+  return { ...planApparatusSymbolIds(symbolIds), source };
+}
+
+/** Prześwit gałęzi bocznej od osi toru (poziomy jog) — 1×GRID (spec §2). */
+export const LATERAL_BRANCH_GAP = GRID;
+
+export interface BayApparatusPlanFootprint {
+  /** Pełna szerokość: stos toru głównego + (jeżeli są laterale) rozszerzenie
+   *  w prawo `lateralExtension`. */
+  readonly width: number;
+  readonly height: number;
+  /** Szerokość doliczona NA PRAWO od stosu głównego na aparaty boczne
+   *  (0 gdy pole ich nie ma) — measure i compose liczą z TEGO pola. */
+  readonly lateralExtension: number;
+  /** Gabaryt samego stosu toru głównego (oś = mainStack.width/2 od lewej —
+   *  NIEZMIENIONA względem stanu sprzed F10.1: tapX/zejścia bez regresu). */
+  readonly mainStack: { readonly width: number; readonly height: number };
+}
+
+/**
+ * Gabaryt pola wg planu §18.1: szerokość stosu głównego + rozszerzenie
+ * boczne; wysokość = max(tor główny, zwis lateralu: kotwica + wysokość
+ * symbolu). Laterale współdzielące kotwicę siedzą OBOK SIEBIE w prawo
+ * (kolejne `LATERAL_BRANCH_GAP + width`).
+ */
+export function bayApparatusPlanFootprint(
+  plan: Pick<BayApparatusPlan, 'mainPath' | 'laterals'>,
+): BayApparatusPlanFootprint {
+  const mainStack = stackFootprint(plan.mainPath);
+  if (plan.laterals.length === 0) {
+    return { width: mainStack.width, height: mainStack.height, lateralExtension: 0, mainStack };
+  }
+  // Y kotwicy względem szczytu stosu = suma wysokości mainPath[0..i] + GRID
+  // między nimi (port S aparatu `afterMainIndex`); dla -1 → 0 (port N).
+  const anchorRelY = (afterMainIndex: number): number => {
+    if (afterMainIndex < 0) return 0;
+    let y = 0;
+    for (let i = 0; i <= afterMainIndex; i++) {
+      y += SYMBOL_DEFS[plan.mainPath[i]].height + (i < afterMainIndex ? GRID : 0);
+    }
+    return y;
+  };
+  const byAnchor = new Map<number, LateralApparatusPlanEntry[]>();
+  for (const lat of plan.laterals) {
+    if (!byAnchor.has(lat.afterMainIndex)) byAnchor.set(lat.afterMainIndex, []);
+    byAnchor.get(lat.afterMainIndex)!.push(lat);
+  }
+  let lateralExtension = 0;
+  let height = mainStack.height;
+  for (const [afterMainIndex, group] of byAnchor) {
+    let ext = 0;
+    const aY = anchorRelY(afterMainIndex);
+    for (const lat of group) {
+      const def = SYMBOL_DEFS[lat.symbolId];
+      ext += LATERAL_BRANCH_GAP + def.width;
+      height = Math.max(height, aY + def.height);
+    }
+    lateralExtension = Math.max(lateralExtension, ext);
+  }
+  return { width: mainStack.width + lateralExtension, height, lateralExtension, mainStack };
+}

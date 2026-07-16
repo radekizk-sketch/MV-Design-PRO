@@ -387,3 +387,8 @@ bezkolizyjna pozycja). Brak zmiany kodu. Udokumentowane tu i w
   `accept:sld-v3` jako baseline LICZONY (nie zero-tolerancja); naprawa
   geometryczna (zmiana `DESCENT_STRIP_HEIGHT`) rekomendowana dla przyszłej
   fazy, poza budżetem F9.7.
+
+
+### 3.6 F10.1 — sondy §18 (2026-07-16)
+
+- `earth_switch_lateral_probe` (§18.1), `vt_parallel_probe` (§18.2), `path_termination_labeled_probe` (§18.6) — wpięte do accept:sld-v3 z negatywem; szczegóły w `SLD_CAD_REBUILD_PLAN_V3.md` §F10.1.

@@ -137,11 +137,14 @@ describe('V3 layout — measure (spec §5.1, FIX-3: rezerwacja etykiet WŁASNYCH
       designation: '',
       hasMissingRequiredDevice: false,
     };
-    const captions = ['kier. S09'];
+    // F10.1: footprint pola liniowego urósł o rozszerzenie boczne ES
+    // (§18.1) — żeby podpis kierunku nadal DOMINOWAŁ w max() po obu
+    // stronach porównania (to jest warunek testowanej tożsamości „delta ==
+    // inset"), podpis musi być szerszy niż footprint+sidecar (58px) — stąd
+    // dłuższy tekst niż pierwotne 'kier. S09' (51px).
+    const captions = ['kier. GPZ Południowy-Wschód'];
     const plain = bayColumnRequiredWidth([bay], 0, captions);
     const withDescent = bayColumnRequiredWidth([bay], 0, captions, 0);
-    // Podpis (51px) dominuje nad footprintem+sidecar dla RMU_LINE — rezerwacja
-    // rośnie o pełny inset (oś stosu + prześwit GRID, snapUp na siatkę).
     expect(withDescent - plain).toBe(entryDescentCaptionInset(FIELD_ROLE.RMU_LINE));
     // Inne pola tej samej stacji (index ≠ entryDescentBayIndex) — bez zmian.
     expect(bayColumnRequiredWidth([bay], 0, captions, 1)).toBe(plain);
@@ -173,7 +176,14 @@ describe('V3 layout — measure (spec §5.1, FIX-3: rezerwacja etykiet WŁASNYCH
       hasMissingRequiredDevice: false,
     };
     const station: StationMeasureInput = { ...baseFields, name: 'A', snBays: [bay] };
-    const expectedFootprintWidth = Math.max(SYMBOL_DEFS.disconnector.width, SYMBOL_DEFS.breaker.width);
+    // F10.1 (spec §18.1): footprint pola liniowego = stos toru głównego
+    // (najszerszy z aparatów szeregowych) + rozszerzenie boczne uziemnika
+    // (prześwit GRID + szerokość ES) — rachunek RĘCZNY, niezależny od
+    // implementacji planu (dowód formuły, nie tautologia).
+    const expectedFootprintWidth =
+      Math.max(SYMBOL_DEFS.disconnector.width, SYMBOL_DEFS.breaker.width) +
+      GRID +
+      SYMBOL_DEFS.earthSwitch.width;
     // F6b (spłata długu §9): `designation` puste ⇒ `bayApparatusDesignation`
     // wyprowadza "Q1" (jedyne pole nie-transformatorowe tej stacji) —
     // sidecar jest TERAZ ZAWSZE doliczany, bo spec §4 wymaga oznacznika

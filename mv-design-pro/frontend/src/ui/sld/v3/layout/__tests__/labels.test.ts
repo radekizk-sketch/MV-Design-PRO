@@ -99,7 +99,7 @@ const WIDE_CABLE_LABEL = 'YAKXS 3×120/16 · 90 m — bardzo długi opis odcinka
 // ---------------------------------------------------------------------------
 
 describe('V3 labels — segment przęsłowy (spec §4/§5.5, decyzja r8)', () => {
-  it('etykieta MIEŚCI SIĘ czysto na przęśle (spanStart..spanEnd) ⇒ slot 1, wyśrodkowana na przęśle BEZ clampa, bez leadera', () => {
+  it('etykieta MIEŚCI SIĘ czysto na przęśle, środek przęsła POZA rezerwacją ⇒ slot 1, dosunięta do krawędzi primaryRect (F10.1: kolorowanie wierszy dowodzi rozłączności TYLKO rezerwacji)', () => {
     const station = makeStation('s1', 4, 2);
     const { bandsResult, columnsResult } = buildPipeline([station], ['x']);
     const slot = columnsResult.segmentLabelSlots[0];
@@ -119,10 +119,35 @@ describe('V3 labels — segment przęsłowy (spec §4/§5.5, decyzja r8)', () =>
     expect(label.leader).toBeUndefined();
     expect(label.rect.y).toBe(slot.rect.y);
     expect(label.rect.height).toBe(slot.rect.height);
+    // F10.1 (korekta nadzorcy): środek przęsła (-100) leży NA LEWO od
+    // rezerwacji — etykieta jest dosunięta (clamp) do lewej krawędzi
+    // primaryRect; wystawanie poza rezerwację unieważniałoby dowód
+    // rozłączności wierszy (`colorSegmentLabelRows`).
+    expect(label.rect.x).toBe(slot.rect.x);
+    expect(Math.abs(label.rect.x % GRID)).toBe(0); // lewa krawędź slotu na siatce (spec §2)
+  });
+
+  it('F10.1: etykieta mieści się na przęśle, środek przęsła WEWNĄTRZ rezerwacji ⇒ wycentrowana na przęśle (clamp nieaktywny)', () => {
+    const station = makeStation('s1', 4, 2);
+    const { bandsResult, columnsResult } = buildPipeline([station], ['x']);
+    const slot = columnsResult.segmentLabelSlots[0];
+    // Przęsło w całości WEWNĄTRZ rezerwacji ⇒ centrowanie działa jak przed
+    // F10.1 (clamp jest no-opem, gdy wycentrowana etykieta mieści się w
+    // primaryRect).
+    const spanStart = slot.rect.x;
+    const spanEnd = slot.rect.x + slot.rect.width;
+    const owner: SegmentSpanOwnerInput = {
+      ownerRef: 'seg-centered',
+      text: 'x',
+      spanStart,
+      spanEnd,
+      busAxisY: bandsResult.bands.B2.y,
+      primaryRect: slot.rect,
+    };
+    const [label] = resolveLabels({ segmentSpans: [owner] });
     const spanCenter = (spanStart + spanEnd) / 2;
     const labelCenter = label.rect.x + label.rect.width / 2;
-    expect(Math.abs(labelCenter - spanCenter)).toBeLessThan(GRID); // wyśrodkowana (z tolerancją snap-to-grid)
-    expect(Math.abs(label.rect.x % GRID)).toBe(0); // lewa krawędź slotu na siatce (spec §2)
+    expect(Math.abs(labelCenter - spanCenter)).toBeLessThan(GRID);
   });
 
   it('przęsło WĄSKIE (norma dzisiejsza: krawędzie kolumn, GAP=24px << etykieta kabla) ⇒ slot 1 W primaryRect, x biasowany ku środkowi przęsła i dosunięty do kolumny, BEZ leadera', () => {
@@ -177,7 +202,7 @@ describe('V3 labels — segment przęsłowy (spec §4/§5.5, decyzja r8)', () =>
     expect(labelA.rect.y).not.toBe(labelB.rect.y);
   });
 
-  it('szerokie przęsło ⇒ etykieta wycentrowana NA PRZĘŚLE (slot 1, bez clampa do primaryRect, bez leadera)', () => {
+  it('szerokie przęsło ze środkiem poza rezerwacją ⇒ etykieta dosunięta do krawędzi primaryRect (F10.1 — rozłączność rezerwacji > centrowanie)', () => {
     const station = makeStation('s1', 1, 1);
     const { bandsResult, columnsResult } = buildPipeline([station], ['15 kV']);
     const slot = columnsResult.segmentLabelSlots[0];
@@ -197,12 +222,12 @@ describe('V3 labels — segment przęsłowy (spec §4/§5.5, decyzja r8)', () =>
 
     expect(label.slotIndex).toBe(1);
     expect(label.leader).toBeUndefined();
-    const spanCenter = (spanStart + spanEnd) / 2;
-    const labelCenter = label.rect.x + label.rect.width / 2;
-    expect(Math.abs(labelCenter - spanCenter)).toBeLessThan(GRID);
-    // Wycentrowana NA PRZĘŚLE — dozwolone wystawanie poza primaryRect (brak
-    // clampa, bo ten pod-przypadek to "fitsSpan", nie "fits w primaryRect").
-    expect(label.rect.x).toBeLessThan(slot.rect.x);
+    // F10.1 (korekta nadzorcy): środek przęsła (-500) daleko na lewo od
+    // rezerwacji — etykieta dosunięta do lewej krawędzi primaryRect (clamp),
+    // NIE wycentrowana; wystawanie poza rezerwację łamało dowód rozłączności
+    // wierszy (realna kolizja S01↔S02 na fixturze po poszerzeniu kolumn
+    // §18.1 — patrz `resolveSegmentSpanLabel`).
+    expect(label.rect.x).toBe(slot.rect.x);
   });
 
   it('SYNTETYCZNIE: primaryRect celowo za wąski dla etykiety, brak marginRect ⇒ rzuca (slot 2 wymaga dostarczonej rezerwacji)', () => {

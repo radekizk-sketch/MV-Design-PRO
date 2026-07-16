@@ -51,7 +51,16 @@ function buildDefaultLegend(): readonly SheetLegendEntry[] {
   const symbolEntries: SheetLegendEntry[] = DEFAULT_SYMBOL_LEGEND_IDS.map((id) => ({
     kind: 'symbol',
     id,
-    labelPl: SYMBOL_DEFS[id].labelPl,
+    // F10.1 (spec §18.1, DEC-1): blokada logiczna uziemnika (zakaz
+    // zamknięcia ES na tor pod napięciem) = adnotacja KONWENCYJNA —
+    // konwencja dotyczy każdego ES jednakowo, więc jej miejscem jest
+    // LEGENDA arkusza (powtarzanie 120× przy każdym symbolu to szum
+    // graficzny i źródło kolizji — zweryfikowane wyroczniami; decyzja
+    // nadzorcy F10.1).
+    labelPl:
+      id === 'earthSwitch'
+        ? `${SYMBOL_DEFS[id].labelPl} (blokada zamkn. na tor pod napięciem)`
+        : SYMBOL_DEFS[id].labelPl,
   }));
   return [
     ...symbolEntries,

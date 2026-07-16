@@ -566,7 +566,12 @@ jako WARSTWA ADNOTACJI schematu.
   `buildBayStack`, rysowane render-side jako gałąź boczna od węzła toru głównego; `placement`/
   `section_side` wystarczają, BEZ zmiany DOMAIN. Blokada logiczna = adnotacja tekstowa/ikonką,
   BEZ danych (opis konwencyjny); nowe pole DOMAIN interlock (ES↔odcinek toru, D6, tab. zależności)
-  jest kandydatem PRZYSZŁEJ rundy DOMAIN — poza zakresem tej fazy. `cell_sequence_probe` (§12.1)
+  jest kandydatem PRZYSZŁEJ rundy DOMAIN — poza zakresem tej fazy. **Doprecyzowanie realizacji
+  (nadzorca, F10.1):** adnotacja konwencyjna blokady żyje w LEGENDZIE arkusza (wpis symbolu ES:
+  „Uziemnik (blokada zamkn. na tor pod napięciem)") — konwencja dotyczy każdego ES jednakowo,
+  a tekst powtarzany przy każdym symbolu (120× na fixturze) kolidował strukturalnie z korytarzami
+  międzystacyjnymi i etykietami §18.6 (zweryfikowane wyroczniami) i powtarzał konwencję jako szum
+  graficzny. `cell_sequence_probe` (§12.1)
   **przedefiniowana**: sekwencja toru GŁÓWNEGO liczona z POMINIĘCIEM aparatów bocznych ES/VT/SA —
   laterale mają własne wyrocznie (`earth_switch_lateral_probe`, `vt_parallel_probe` §18.2). Konflikt
   z V12K-027 (kolejność aparatów pola z `placement` jako stos) rozstrzygnięty jako DOPRECYZOWANIE,

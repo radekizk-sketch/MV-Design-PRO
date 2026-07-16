@@ -25,7 +25,13 @@ import { dirname, resolve } from 'node:path';
 
 import {
   buildSceneV3,
+  allEarthSwitchesLateral,
   allFieldEntryConnectionsReachCableHead,
+  allPathTerminationsLabeled,
+  allVtParallel,
+  earthSwitchLateralGaps,
+  pathTerminationLabelGaps,
+  vtParallelGaps,
   allProtectionMarkingsValid,
   allSceneGeometryOnGrid,
   allSceneSegmentEndpointsAnchored,
@@ -101,7 +107,10 @@ const EXPECTED_STATION_COUNT = 53;
  * HEIGHT` jest doliczana JEDNOLICIE do KAŻDEGO wiersza sceny niezależnie od
  * LOD (patrz `bands.ts` `computeBands`/F6d).
  */
-const VERTICAL_LENGTH_BASELINE = { 0: 12152, 1: 41000, 2: 55800 };
+// F10.1 (spec §18.1): OBNIŻONY względem F9.10 (12152/41000/55800) — ES/VT
+// wyjęte z osi skracają tor główny pola o 32px; miara nie-rosnąca spełniona
+// z zapasem (spadek, nie wzrost).
+const VERTICAL_LENGTH_BASELINE = { 0: 12120, 1: 38504, 2: 53304 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —
@@ -335,6 +344,47 @@ for (const lod of LODS) {
   );
   if (lod === 0) {
     check('field_entry_probe (LOD 0): allFieldEntryConnectionsReachCableHead zielone (GPZ zawsze połączony z magistralą)', allFieldEntryConnectionsReachCableHead(scene));
+  }
+
+  // -- §18.1/§18.2/§18.6 (F10.1, dyrektywa D2-5/D2-6/D2-1) ------------------
+  const esGaps = earthSwitchLateralGaps(scene);
+  check(
+    'earth_switch_lateral_probe (§18.1): każdy uziemnik POZA osią toru głównego, połączony odgałęzieniem bocznym',
+    allEarthSwitchesLateral(scene),
+    `luki=${esGaps.length}${esGaps.length ? ' np. ' + JSON.stringify(esGaps[0]) : ''}`,
+  );
+  const vtGaps = vtParallelGaps(scene);
+  check(
+    'vt_parallel_probe (§18.2): zero VT/SA na osi toru szeregowego; każdy połączony gałęzią boczną',
+    allVtParallel(scene),
+    `luki=${vtGaps.length}${vtGaps.length ? ' np. ' + JSON.stringify(vtGaps[0]) : ''}`,
+  );
+  if (lod === 2) {
+    const termGaps = pathTerminationLabelGaps(scene);
+    check(
+      'path_termination_labeled_probe (§18.6): każde fizyczne zakończenie toru (głowica bez trasy) ma JAWNĄ etykietę na scenie',
+      allPathTerminationsLabeled(scene),
+      `nieopisane=${termGaps.length} (fizyczne końce=${expectedDeadEnds})`,
+    );
+    // Test negatywny — wyrocznia §18.1 MUSI gryźć: scena z podmienionym
+    // symbolem ES wstawionym NA oś toru (syntetyczna mutacja kopii sceny).
+    const axisApparatus = scene.symbols.find(
+      (sym) => sym.meta?.elementKind === 'apparatus' && sym.symbolId === 'breaker' && sym.meta?.ownerRef,
+    );
+    if (axisApparatus) {
+      const sabotaged = {
+        ...scene,
+        symbols: [
+          ...scene.symbols,
+          { ...axisApparatus, symbolId: 'earthSwitch' },
+        ],
+      };
+      check(
+        'earth_switch_lateral_probe (test negatywny — dowód, że wyrocznia gryzie): ES wstawiony NA oś toru ⇒ FAIL',
+        !allEarthSwitchesLateral(sabotaged),
+        'sabotowana scena przeszła — wyrocznia martwa',
+      );
+    }
   }
 
   // -- §13.1/§14.1 (F9.4, runda korekcyjna po recenzji Opusa): wyrocznie -----

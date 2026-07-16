@@ -58,6 +58,12 @@ import type {
 } from '../layout/labels';
 import { stackFootprint } from './station';
 import {
+  LATERAL_APPARATUS_SYMBOLS,
+  LATERAL_BRANCH_GAP,
+  bayApparatusPlanFootprint,
+  planApparatusSymbolIds,
+} from './apparatusSequence';
+import {
   PROTECTION_ANNOTATION_DIAMETER,
   PROTECTION_FULL_LIST_LABEL_CLASS,
   fullCodesListText,
@@ -329,6 +335,9 @@ interface FieldStack {
   readonly instances: readonly ComposedGpzSymbolInstance[];
   readonly topPort: RoutePort;
   readonly bottomPort: RoutePort;
+  /** F10.1 (spec §18.1/§18.2): odcinki odgałęzień bocznych ES/VT/SA — poziomy
+   *  jog od węzła toru głównego do portu N aparatu bocznego. */
+  readonly branchSegments: readonly { readonly points: readonly RouteVertex[] }[];
 }
 
 function portsInWorld(symbolId: SymbolId, x: number, y: number): Readonly<Record<string, RoutePort>> {
@@ -347,39 +356,106 @@ function buildFieldStack(
   stateFor: (index: number, symbolId: SymbolId) => SwitchState | undefined,
   metaExtra: Partial<GpzElementMeta>,
 ): FieldStack {
+  // F10.1 (spec §18.1/§18.2, V12K-033): podział na TOR GŁÓWNY (oś) i APARATY
+  // BOCZNE (ES/VT/SA — odgałęzienie poziome od portu S poprzedzającego
+  // aparatu szeregowego). TA SAMA reguła co `compose/station.ts::buildBayStack`
+  // i `planApparatusSymbolIds` (jedna prawda). `index` przekazywany do
+  // `testIdFor`/`stateFor` = pozycja w ORYGINALNEJ liście `specs` (parytet
+  // testId/stanów z danymi wejściowymi zachowany).
+  const mainSpecs: { readonly spec: FieldApparatusSpec; readonly index: number }[] = [];
+  const lateralSpecs: {
+    readonly spec: FieldApparatusSpec;
+    readonly index: number;
+    readonly afterMainIndex: number;
+  }[] = [];
+  specs.forEach((spec, index) => {
+    if (LATERAL_APPARATUS_SYMBOLS.has(spec.symbolId)) {
+      lateralSpecs.push({ spec, index, afterMainIndex: mainSpecs.length - 1 });
+    } else {
+      mainSpecs.push({ spec, index });
+    }
+  });
+  const degenerate = mainSpecs.length === 0 && lateralSpecs.length > 0;
+  const stackSpecs = degenerate ? specs.map((spec, index) => ({ spec, index })) : mainSpecs;
+  const laterals = degenerate ? [] : lateralSpecs;
+
   const instances: ComposedGpzSymbolInstance[] = [];
+  const mainInstances: ComposedGpzSymbolInstance[] = [];
   let y = topY;
   let topPort: RoutePort | null = null;
   let bottomPort: RoutePort | null = null;
 
-  specs.forEach((spec, index) => {
+  stackSpecs.forEach(({ spec, index }, stackIndex) => {
     const def = SYMBOL_DEFS[spec.symbolId];
     const x = snapToGrid(centerX - def.width / 2);
     const ports = portsInWorld(spec.symbolId, x, y);
-    instances.push({
+    const instance: ComposedGpzSymbolInstance = {
       symbolId: spec.symbolId,
       x,
       y,
       state: stateFor(index, spec.symbolId),
       ports,
       meta: { parityKeys: spec.parityKeys, testId: testIdFor(index, spec.symbolId), ...metaExtra },
-    });
+    };
+    instances.push(instance);
+    mainInstances.push(instance);
 
-    if (index === 0) {
+    if (stackIndex === 0) {
       const north = def.ports.find((p) => p.dir === 'N');
       topPort = north ? { x: x + north.x, y: y + north.y, dir: north.dir } : Object.values(ports)[0] ?? null;
     }
     // FIX-C: nadpisujemy `bottomPort` WYŁĄCZNIE gdy ten symbol ma port S —
-    // symbol bez portu S (np. ES na końcu) zostawia poprzednią wartość
-    // nietkniętą, więc po pętli `bottomPort` niesie port S NAJNIŻSZEGO
-    // symbolu, który go ma, nie `topPort`.
+    // po F10.1 stos zawiera już TYLKO aparaty szeregowe, ale reguła zostaje
+    // (np. przyszły aparat szeregowy bez portu S).
     const south = def.ports.find((p) => p.dir === 'S');
     if (south) {
       bottomPort = { x: x + south.x, y: y + south.y, dir: south.dir };
     }
 
-    y += def.height + (index < specs.length - 1 ? GRID : 0);
+    y += def.height + (stackIndex < stackSpecs.length - 1 ? GRID : 0);
   });
+
+  // Odgałęzienia boczne (§18.1) — identyczna arytmetyka co
+  // `compose/station.ts::buildBayStack` i `bayApparatusPlanFootprint`.
+  const branchSegments: { readonly points: readonly RouteVertex[] }[] = [];
+  if (laterals.length > 0 && mainInstances.length > 0) {
+    const mainRightX = Math.max(
+      ...mainInstances.map((inst) => inst.x + SYMBOL_DEFS[inst.symbolId].width),
+    );
+    const consumedAtAnchor = new Map<number, number>();
+    laterals.forEach(({ spec, index, afterMainIndex }) => {
+      const def = SYMBOL_DEFS[spec.symbolId];
+      const anchorInstance = afterMainIndex >= 0 ? mainInstances[afterMainIndex] : mainInstances[0];
+      const anchorDef = SYMBOL_DEFS[anchorInstance.symbolId];
+      const anchorPortDef =
+        afterMainIndex >= 0
+          ? anchorDef.ports.find((p) => p.dir === 'S') ?? anchorDef.ports[0]
+          : anchorDef.ports.find((p) => p.dir === 'N') ?? anchorDef.ports[0];
+      const anchor = {
+        x: anchorInstance.x + anchorPortDef.x,
+        y: anchorInstance.y + anchorPortDef.y,
+      };
+      const used = consumedAtAnchor.get(afterMainIndex) ?? 0;
+      const lx = mainRightX + LATERAL_BRANCH_GAP + used;
+      consumedAtAnchor.set(afterMainIndex, used + LATERAL_BRANCH_GAP + def.width);
+      const ports = portsInWorld(spec.symbolId, lx, anchor.y);
+      instances.push({
+        symbolId: spec.symbolId,
+        x: lx,
+        y: anchor.y,
+        state: stateFor(index, spec.symbolId),
+        ports,
+        meta: { parityKeys: spec.parityKeys, testId: testIdFor(index, spec.symbolId), ...metaExtra },
+      });
+      const north = def.ports.find((p) => p.dir === 'N') ?? def.ports[0];
+      branchSegments.push({
+        points: [
+          { x: anchor.x, y: anchor.y },
+          { x: lx + north.x, y: anchor.y },
+        ],
+      });
+    });
+  }
 
   if (!topPort) {
     throw new Error('composeGpz: pusty stos aparatów pola (brak symboli z portem)');
@@ -389,7 +465,7 @@ function buildFieldStack(
     // ES/VT) — fallback na topPort, zachowując poprzednie zabezpieczenie.
     bottomPort = topPort;
   }
-  return { instances, topPort, bottomPort };
+  return { instances, topPort, bottomPort, branchSegments };
 }
 
 // ---------------------------------------------------------------------------
@@ -429,6 +505,14 @@ function gpzBayAnnotationWidth(bay: CanonicalGpzBay): number {
   });
 }
 
+/** F10.1 (spec §18.1): gabaryt kolumny pola wg planu tor główny + aparaty
+ *  boczne (TA SAMA arytmetyka co `bayApparatusPlanFootprint` w measure/station
+ *  — jedna prawda). `mainStack.width` wyznacza OŚ stosu; pełna szerokość
+ *  zawiera rozszerzenie boczne w prawo. */
+function gpzFieldPlanFootprint(spec: readonly FieldApparatusSpec[]) {
+  return bayApparatusPlanFootprint(planApparatusSymbolIds(spec.map((s) => s.symbolId)));
+}
+
 /** Szerokość WYMAGANA kolumny pola: gabaryt stosu aparatów (`stackFootprint`,
  *  reużyte z `./station` — zero duplikacji geometrii) + sidecar oznacznika
  *  (bayNumber/feederName, t3), analogicznie do `bayColumnRequiredWidth`
@@ -437,7 +521,8 @@ function gpzBayAnnotationWidth(bay: CanonicalGpzBay): number {
  *  geometrii dla pól bez danych; fixtura referencyjna: 0 pól z kodami,
  *  zweryfikowane, baseline'y nietknięte). */
 function fieldColumnRequiredWidth(bay: CanonicalGpzBay, spec: readonly FieldApparatusSpec[]): number {
-  const footprint = stackFootprint(spec.map((s) => s.symbolId));
+  // F10.1: pełna szerokość planu (tor główny + rozszerzenie boczne ES/VT/SA).
+  const footprint = gpzFieldPlanFootprint(spec);
   const designation = (bay.bayNumber ?? bay.feederName ?? '').trim();
   const sidecar = designation ? GRID + measureLabelWidth(designation, 't3') : 0;
   return footprint.width + sidecar + gpzBayAnnotationWidth(bay);
@@ -448,7 +533,9 @@ function layoutSectionFields(section: CanonicalGpzSection, startX: number): { re
   let cursor = startX + SECTION_MARGIN;
   section.bays.forEach((bay, index) => {
     const spec = fieldApparatusSpecForBay(bay);
-    const footprint = stackFootprint(spec.map((s) => s.symbolId));
+    // F10.1: oś stosu = połowa szerokości TORU GŁÓWNEGO (aparaty boczne
+    // rozszerzają kolumnę w prawo, nie przesuwają osi).
+    const footprint = gpzFieldPlanFootprint(spec).mainStack;
     const reserved = snapUp(fieldColumnRequiredWidth(bay, spec));
     const centerX = snapToGrid(cursor + footprint.width / 2);
     fields.push({ bay, index, spec, centerX, rightX: cursor + reserved });
@@ -621,6 +708,14 @@ export function composeGpz(
         );
         symbols.push(...stack.instances);
         stack.instances.forEach((instance) => tag(instance.meta.parityKeys));
+        // F10.1 (spec §18.1): odcinki odgałęzień bocznych ES/VT/SA.
+        stack.branchSegments.forEach((branch, bi) => {
+          segments.push({
+            ownerRef: `${bay.bayRef}#lateral-${bi}`,
+            points: branch.points,
+            meta: { parityKeys: [], sectionId: hvSection.sectionId, bayRef: bay.bayRef },
+          });
+        });
         segments.push({
           ownerRef: `${bay.bayRef}#hv-bus-tap`,
           points: [{ x: centerX, y: stack.bottomPort.y }, { x: centerX, y: hvBusY }],
@@ -749,7 +844,9 @@ export function composeGpz(
 
     layout.fields.forEach((field) => {
       const spec = field.spec;
-      const footprint = stackFootprint(spec.map((s) => s.symbolId));
+      // F10.1: pełny gabaryt planu (tor główny + rozszerzenie boczne) —
+      // sidecar oznacznika NIE może wejść w strefę odgałęzień ES/VT/SA.
+      const footprint = gpzFieldPlanFootprint(spec);
       const topY = snBusY + GRID;
       const stack = buildFieldStack(
         spec,
@@ -766,6 +863,14 @@ export function composeGpz(
       );
       symbols.push(...stack.instances);
       stack.instances.forEach((instance) => tag([...instance.meta.parityKeys, 'gpz.bay']));
+      // F10.1 (spec §18.1): odcinki odgałęzień bocznych ES/VT/SA.
+      stack.branchSegments.forEach((branch, bi) => {
+        segments.push({
+          ownerRef: `${field.bay.bayRef}#lateral-${bi}`,
+          points: branch.points,
+          meta: { parityKeys: [], sectionId: layout.section.sectionId, bayRef: field.bay.bayRef },
+        });
+      });
 
       const powerPathMeta: GpzElementMeta = {
         parityKeys: ['gpz.bay.power_path'],
@@ -804,7 +909,7 @@ export function composeGpz(
           text: designation,
           labelClass: 't3',
           anchor: {
-            x: snapToGrid(field.centerX + footprint.width / 2),
+            x: snapToGrid(field.centerX - footprint.mainStack.width / 2 + footprint.width),
             y: stack.topPort.y + labelLineHeight('t3') / 2,
           },
           placement: 'right',
@@ -935,6 +1040,14 @@ export function composeGpz(
     );
     symbols.push(...hvStack.instances);
     hvStack.instances.forEach((instance) => tag(instance.meta.parityKeys));
+    // F10.1: odgałęzienia boczne (dziś brak w hvFieldSpec — defensywnie).
+    hvStack.branchSegments.forEach((branch, bi) => {
+      segments.push({
+        ownerRef: `${transformer.transformerRef}#hv-lateral-${bi}`,
+        points: branch.points,
+        meta: { parityKeys: [], transformerRef: transformer.transformerRef },
+      });
+    });
 
     const hvConnectorMeta: GpzElementMeta = {
       parityKeys: ['gpz.transformer.hv_connector'],
@@ -980,6 +1093,14 @@ export function composeGpz(
     );
     symbols.push(...trFieldStack.instances);
     trFieldStack.instances.forEach((instance) => tag(instance.meta.parityKeys));
+    // F10.1 (spec §18.1): ES pola TR jako odgałęzienie boczne.
+    trFieldStack.branchSegments.forEach((branch, bi) => {
+      segments.push({
+        ownerRef: `${transformer.transformerRef}#tr-field-lateral-${bi}`,
+        points: branch.points,
+        meta: { parityKeys: [], transformerRef: transformer.transformerRef },
+      });
+    });
 
     const fieldAnchorMeta: GpzElementMeta = {
       parityKeys: ['gpz.transformer.field_anchor_connector'],

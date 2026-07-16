@@ -26,6 +26,12 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import {
+  allEarthSwitchesLateral,
+  allPathTerminationsLabeled,
+  allVtParallel,
+  earthSwitchLateralGaps,
+  pathTerminationLabelGaps,
+
   buildSceneV3,
   allFieldEntryConnectionsReachCableHead,
   allProtectionMarkingsValid,
@@ -720,10 +726,68 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     expect(totalVerticalSegmentLength(synthetic)).toBe(70);
   });
 
-  it('fixtura referencyjna: baseline aktualny per LOD (F9.7 pierwsze wpięcie: 9656/38504/53304; F9.10 PODNIESIONY o +2496 na WSZYSTKICH LOD — koszt świadomy naprawy `DESCENT_STRIP_HEIGHT` 2×GRID→6×GRID dla zera kolizji symbol↔przewód, spec §15.1 „redukcja jest ograniczeniem miękkim", patrz `scripts/sld_v3_acceptance.mjs`) — patrz tamten plik dla porównania nie-rosnącego w CI', () => {
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(12152);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(41000);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(55800);
+  it('fixtura referencyjna: baseline aktualny per LOD (historia: F9.7 9656/38504/53304 → F9.10 +2496 za kolizje=0 → F10.1 OBNIŻONY: tor główny pola KRÓTSZY o ES wyjęty na bok §18.1 — blok stacji −32, co przez 78 przecięć pasm ODDAJE dokładnie koszt F9.10 na L1/L2; L0 −32 na zejściu GPZ)', () => {
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(12120);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(38504);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(53304);
+  });
+});
+
+describe('buildSceneV3 — F10.1: wyrocznie §18.1/§18.2/§18.6 (aparaty boczne + opisane zakończenia)', () => {
+  it('earth_switch_lateral_probe + vt_parallel_probe: zero luk na realnej fixturze, wszystkie LOD', () => {
+    for (const lod of LODS) {
+      const scene = buildSceneV3(enm, lod);
+      expect(allEarthSwitchesLateral(scene)).toBe(true);
+      expect(allVtParallel(scene)).toBe(true);
+    }
+  });
+
+  it('§18.1 (test negatywny): ES podstawiony NA oś toru ⇒ wyrocznia zgłasza on-main-axis', () => {
+    const scene = buildSceneV3(enm, 2);
+    const axisApparatus = scene.symbols.find(
+      (sym) => sym.meta?.elementKind === 'apparatus' && sym.symbolId === 'breaker' && sym.meta?.ownerRef,
+    )!;
+    const sabotaged = { ...scene, symbols: [...scene.symbols, { ...axisApparatus, symbolId: 'earthSwitch' as const }] };
+    const gaps = earthSwitchLateralGaps(sabotaged);
+    expect(gaps.length).toBeGreaterThan(0);
+    expect(gaps.some((g) => g.reason === 'on-main-axis')).toBe(true);
+  });
+
+  it('§18.1 (test negatywny 2): ES odsunięty od osi, ale BEZ odcinka odgałęzienia ⇒ no-branch-segment', () => {
+    const scene = buildSceneV3(enm, 2);
+    const axisApparatus = scene.symbols.find(
+      (sym) => sym.meta?.elementKind === 'apparatus' && sym.symbolId === 'breaker' && sym.meta?.ownerRef,
+    )!;
+    const sabotaged = {
+      ...scene,
+      symbols: [
+        ...scene.symbols,
+        // 10 000 px od wszystkiego — na pewno bez odcinka bocznego.
+        { ...axisApparatus, symbolId: 'earthSwitch' as const, x: axisApparatus.x + 10000 },
+      ],
+    };
+    const gaps = earthSwitchLateralGaps(sabotaged);
+    expect(gaps.some((g) => g.reason === 'no-branch-segment')).toBe(true);
+  });
+
+  it('path_termination_labeled_probe (§18.6): 13 fizycznych końców — wszystkie OPISANE na L2; wyrocznia gryzie po usunięciu etykiet #termination', () => {
+    const scene = buildSceneV3(enm, 2);
+    expect(allPathTerminationsLabeled(scene)).toBe(true);
+    const terminationLabels = scene.labels.filter((l) => l.ownerRef.endsWith('#termination'));
+    expect(terminationLabels.length).toBe(13);
+    // Teksty pochodzą z podpisów §9 (kier./odg.) — zero pustych.
+    expect(terminationLabels.every((l) => l.text.trim().length > 0)).toBe(true);
+    const stripped = { ...scene, labels: scene.labels.filter((l) => !l.ownerRef.endsWith('#termination')) };
+    expect(allPathTerminationsLabeled(stripped)).toBe(false);
+    expect(pathTerminationLabelGaps(stripped).length).toBe(13);
+  });
+
+  it('§18.6: L0/L1 bez etykiet zakończeń (poziom szczegółowości L2 — spójnie z etykietami przęseł)', () => {
+    for (const lod of [0, 1] as const) {
+      const scene = buildSceneV3(enm, lod);
+      expect(scene.labels.filter((l) => l.ownerRef.endsWith('#termination'))).toHaveLength(0);
+      expect(pathTerminationLabelGaps(scene)).toHaveLength(0);
+    }
   });
 });
 

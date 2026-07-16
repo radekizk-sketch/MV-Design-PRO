@@ -32,6 +32,19 @@ import {
   stackFootprint,
   type ComposeStationInput,
 } from '../station';
+import {
+  bayApparatusPlanFootprint,
+  planApparatusSymbolIds,
+  planBayApparatus,
+} from '../apparatusSequence';
+import type { FieldRole } from '../../../v2/domain/apparatusContracts';
+
+/** F10.1: oczekiwana KOLEJNOŚĆ instancji kompozycji = tor główny, potem
+ *  aparaty boczne (buildBayStack dokleja laterale na końcu). */
+function planOrderedSymbols(role: FieldRole): readonly string[] {
+  const plan = planApparatusSymbolIds([...apparatusSymbolsForRole(role)]);
+  return [...plan.mainPath, ...plan.laterals.map((l) => l.symbolId)];
+}
 import { PROTECTION_ANNOTATION_DIAMETER } from '../protectionMarking';
 
 // ---------------------------------------------------------------------------
@@ -111,10 +124,24 @@ function buildComposeInput(
 
 describe('V3 compose/station — spójność measure↔compose (wymóg zadania F5a, F9.3: bayColumnFootprint jest data-aware)', () => {
   for (const role of ALL_FIELD_ROLES) {
-    it(`rola ${role}, bez primary_devices (konwencja): stackFootprint(apparatusSymbolsForRole) === bayColumnFootprint`, () => {
-      const fromCompose = stackFootprint(apparatusSymbolsForRole(role));
+    it(`rola ${role}, bez primary_devices (konwencja): bayApparatusPlanFootprint(plan) === bayColumnFootprint`, () => {
+      // F10.1 (spec §18.1/§18.2): tożsamość parytetu ZREDEFINIOWANA — gabaryt
+      // kolumny = plan „tor główny + aparaty boczne" (ES/VT/SA odgałęziają
+      // się bocznie, nie stoją w osi), NIE płaski stos całej sekwencji.
+      // Dla ról BEZ aparatów bocznych obie definicje są tożsame (asercja
+      // niżej to dokumentuje).
+      const plan = planBayApparatus(makeBay(role, 0));
+      const fromPlan = bayApparatusPlanFootprint(plan);
       const fromMeasure = bayColumnFootprint(makeBay(role, 0));
-      expect(fromCompose).toEqual(fromMeasure);
+      expect({ width: fromPlan.width, height: fromPlan.height }).toEqual(fromMeasure);
+      if (plan.laterals.length === 0) {
+        expect(fromMeasure).toEqual(stackFootprint(apparatusSymbolsForRole(role)));
+      } else {
+        // Tor główny bez lateralu jest WĘŻSZY niż pełny gabaryt (rozszerzenie
+        // boczne > 0) — dowód, że podział realnie działa dla tej roli.
+        expect(fromPlan.lateralExtension).toBeGreaterThan(0);
+        expect(fromPlan.mainStack.width).toBeLessThan(fromPlan.width);
+      }
     });
   }
 });
@@ -143,11 +170,17 @@ describe('V3 compose/station — FIX-3: bbox(stos + oznacznik) ⊆ rezerwacja po
         const symbolMinX = Math.min(...composition.symbols.map((s) => s.x));
         const symbolMaxX = Math.max(...composition.symbols.map((s) => s.x + SYMBOL_DEFS[s.symbolId].width));
 
-        expect(composition.labels.apparatus).toHaveLength(1);
-        const [designationLabel] = resolveLabels({ simpleAnchored: composition.labels.apparatus });
+        // F10.1: filtr po `#designation` (adnotacja blokady ES trafiła
+        // finalnie do LEGENDY arkusza — patrz spec §18.1 „Doprecyzowanie
+        // realizacji"); bbox liczony po WSZYSTKICH etykietach aparatu.
+        const designationLabels = composition.labels.apparatus.filter((l) =>
+          l.ownerRef.endsWith('#designation'),
+        );
+        expect(designationLabels).toHaveLength(1);
+        const resolved = resolveLabels({ simpleAnchored: composition.labels.apparatus });
 
-        const bboxMinX = Math.min(symbolMinX, designationLabel.rect.x);
-        const bboxMaxX = Math.max(symbolMaxX, designationLabel.rect.x + designationLabel.rect.width);
+        const bboxMinX = Math.min(symbolMinX, ...resolved.map((l) => l.rect.x));
+        const bboxMaxX = Math.max(symbolMaxX, ...resolved.map((l) => l.rect.x + l.rect.width));
 
         expect(bboxMinX).toBeGreaterThanOrEqual(bx);
         expect(bboxMaxX).toBeLessThanOrEqual(bx + reservedWidth);
@@ -460,12 +493,15 @@ describe('V3 compose/station — F9.3 §12.1: gałąź „dane" (fixtura syntety
     const station = makeStation('data-path', [bay]);
     const composition = composeStation(buildComposeInput(station));
 
+    // F10.1 (spec §18.1, DEC-1): sekwencja TORU GŁÓWNEGO wg placement
+    // (ES odgałęzia się BOCZNIE — buildBayStack dokleja go NA KOŃCU listy
+    // instancji, poza osią); parowanie deviceRef/switchState zachowane.
     expect(composition.symbols.map((s) => s.symbolId)).toEqual([
-      'disconnector', 'breaker', 'currentTransformer', 'disconnector', 'earthSwitch', 'cableHead',
+      'disconnector', 'breaker', 'currentTransformer', 'disconnector', 'cableHead', 'earthSwitch',
     ]);
     expect(composition.symbols.every((s) => s.apparatusSource === 'dane')).toBe(true);
     expect(composition.symbols.map((s) => s.deviceRef)).toEqual([
-      'ds-bus', 'cb-1', 'ct-1', 'ds-line', 'es-1', 'head-1',
+      'ds-bus', 'cb-1', 'ct-1', 'ds-line', 'head-1', 'es-1',
     ]);
     // Stan łącznika PER APARAT (nie per-kind agregat konwencji) — dwa
     // `disconnector` w tym łańcuchu mają RÓŻNE stany (`ds-bus` zamknięty,
@@ -473,6 +509,16 @@ describe('V3 compose/station — F9.3 §12.1: gałąź „dane" (fixtura syntety
     // KAŻDEGO urządzenia, nie z jednego agregatu `bay.dsState`.
     expect(composition.symbols[0].state).toBe('closed');
     expect(composition.symbols[3].state).toBe('open');
+    // F10.1 (spec §18.1 a/c): ES POZA osią toru + odcinek odgałęzienia od
+    // węzła toru (port S DS_liniowego) do portu N uziemnika.
+    const es = composition.symbols.find((s) => s.symbolId === 'earthSwitch')!;
+    const axisSymbols = composition.symbols.filter((s) => s.symbolId !== 'earthSwitch');
+    const axisX = axisSymbols[0].x + SYMBOL_DEFS[axisSymbols[0].symbolId].width / 2;
+    expect(es.x + SYMBOL_DEFS.earthSwitch.width / 2).not.toBe(axisX);
+    const branch = composition.segments.find((seg) => seg.ownerRef.includes('#lateral-earthSwitch'));
+    expect(branch).toBeTruthy();
+    expect(branch!.points[0].x).toBe(axisX);
+    expect(branch!.points.every((pt) => pt.y === branch!.points[0].y)).toBe(true);
   });
 
   it('DER-kindy w primary_devices są odfiltrowane (nie są aparatem pola, §12.1) — fallback konwencji, gdy WSZYSTKIE odfiltrowane', () => {
@@ -484,9 +530,8 @@ describe('V3 compose/station — F9.3 §12.1: gałąź „dane" (fixtura syntety
 
     // Brak aparatów mapowalnych ⇒ fallback konwencji (§12.4) dla LINE_IN.
     expect(composition.symbols.every((s) => s.apparatusSource === 'konwencja')).toBe(true);
-    expect(composition.symbols.map((s) => s.symbolId)).toEqual(
-      [...apparatusSymbolsForRole(FIELD_ROLE.LINE_IN)],
-    );
+    // F10.1: kolejność instancji = tor główny, potem aparaty boczne.
+    expect(composition.symbols.map((s) => s.symbolId)).toEqual(planOrderedSymbols(FIELD_ROLE.LINE_IN));
   });
 
   it('LOAD_SWITCH mapuje się na disconnector (aproksymacja udokumentowana, brak dedykowanego glifu)', () => {
@@ -509,11 +554,21 @@ describe('V3 compose/station — F9.3 §12.1: gałąź „dane" (fixtura syntety
     const station = makeStation('data-path-sa', [bay]);
     const composition = composeStation(buildComposeInput(station));
 
+    // F10.1 (spec §18.2): ES i SA są aparatami BOCZNYMI — tor główny
+    // DS→CB→CT→DS→głowica, laterale doklejone na końcu w kolejności
+    // sekwencji (ES przed SA — oba kotwiczą za DS_liniowym, siedzą OBOK
+    // siebie na wspólnej kotwicy).
     expect(composition.symbols.map((s) => s.symbolId)).toEqual([
-      'disconnector', 'breaker', 'currentTransformer', 'disconnector', 'earthSwitch', 'surgeArrester', 'cableHead',
+      'disconnector', 'breaker', 'currentTransformer', 'disconnector', 'cableHead', 'earthSwitch', 'surgeArrester',
     ]);
     expect(composition.symbols.every((s) => s.apparatusSource === 'dane')).toBe(true);
     expect(composition.symbols.map((s) => s.deviceRef)).toContain('sa-1');
+    // Wspólna kotwica (§18.1): oba laterale na TEJ SAMEJ wysokości (port S
+    // DS_liniowego), SA na prawo od ES (kolejne `LATERAL_BRANCH_GAP+width`).
+    const es = composition.symbols.find((s) => s.symbolId === 'earthSwitch')!;
+    const sa = composition.symbols.find((s) => s.symbolId === 'surgeArrester')!;
+    expect(sa.y).toBe(es.y);
+    expect(sa.x).toBeGreaterThan(es.x);
   });
 });
 
@@ -527,7 +582,8 @@ describe('V3 compose/station — F9.3 §12.4: gałąź „konwencja" — znaczni
       expect(composition.symbols.length).toBeGreaterThan(0);
       expect(composition.symbols.every((s) => s.apparatusSource === 'konwencja')).toBe(true);
       expect(composition.symbols.every((s) => s.deviceRef === undefined)).toBe(true);
-      expect(composition.symbols.map((s) => s.symbolId)).toEqual([...apparatusSymbolsForRole(role)]);
+      // F10.1 (DEC-1): kolejność instancji = tor główny + aparaty boczne.
+      expect(composition.symbols.map((s) => s.symbolId)).toEqual(planOrderedSymbols(role));
     });
   }
 

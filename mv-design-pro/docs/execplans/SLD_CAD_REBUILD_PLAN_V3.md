@@ -1083,7 +1083,7 @@ główny + laterale ES/VT/SA) → F10.2 (nomenklatura pól + identyfikatory + ty
 nie liczy); determinizm; wyrocznie §11(+A1/A2) muszą pozostać zielone po KAŻDEJ fazie; brak
 lokalnych łatek i duplikacji elektryki adaptera.
 
-### F10.1. [KRYTYCZNA] ES/VT/SA jako gałęzie boczne + opisane zakończenia torów
+### F10.1. [DONE] ES/VT/SA jako gałęzie boczne + opisane zakończenia torów [KRYTYCZNA]
 - Zakres: `v3/compose/station.ts`/`buildBayStack` — wyjęcie ES/VT/SA z pionowego stosu szeregowego
   pola, rysowanie jako gałąź boczna od węzła toru głównego (§18.1/§18.2); `v3/symbols/defs.ts`/
   `glyphs.tsx` — port boczny/nowy wariant glifu ES/VT/SA (V12K-037, zmiana ADDYTYWNA); przedefiniowanie
@@ -1096,6 +1096,53 @@ lokalnych łatek i duplikacji elektryki adaptera.
   render 1:1 oceniony.
 - Autoryzacje: `v3/compose/station.ts`, `v3/compose/apparatusSequence.ts`, `v3/symbols/defs.ts`,
   `v3/symbols/glyphs.tsx`, `v3/scene/buildScene.ts`, testy v3.
+
+- **Wynik realizacji (2026-07-16, IMPLEMENTACJA OSOBISTA NADZORCY — tryb najwyższej jakości na
+  polecenie właściciela; agent delegowany padł bez dostawy po ~14h, 25 wywołań narzędzi, 0 edycji):**
+  - Jedna prawda podziału: `apparatusSequence.ts` — `LATERAL_APPARATUS_SYMBOLS` (ES/VT/SA),
+    `planApparatusSymbolIds`/`planBayApparatus` (tor główny + laterale z kotwicą `afterMainIndex`),
+    `bayApparatusPlanFootprint` (pełny gabaryt + `mainStack` + `lateralExtension`); przypadek
+    zdegenerowany (sekwencja z samych laterali) = stary stos + brak odgałęzień (bez osi nie ma od
+    czego odgałęzić).
+  - Geometria: odgałęzienie = poziomy jog od portu S poprzedzającego aparatu szeregowego („po
+    stronie kablowej") do portu N symbolu bocznego wiszącego pod jego końcem — istniejący
+    jednoportowy glif ES/VT/SA wystarcza (V12K-037 zrealizowane bez nowego wariantu glifu);
+    laterale PO PRAWEJ stosu (lewa przesuwałaby oś — lekcja tapX z F9.4), współdzielona kotwica =
+    obok siebie. Stacje: `station.ts::buildBayStack` (+`branchSegments`/`lateralInstances`);
+    GPZ: `gpz.ts::buildFieldStack` z TĄ SAMĄ arytmetyką + `gpzFieldPlanFootprint`.
+  - Naprawy odkryte moją sondą i wyroczniami W TRAKCIE (każda u źródła): (1) sidecar oznacznika
+    stacji i GPZ anchorowany do PEŁNEGO gabarytu planu (wchodził w strefę odgałęzień);
+    (2) `findGpzTrunkBottomPort` brał OSTATNIĄ instancję pola (po F10.1 = lateral ES) zamiast dna
+    toru głównego — kabel wyjściowy GPZ zaczepiony o uziemnik (wykryte sondą: x przesunięte
+    o dokładnie lateralExtension); (3) `portOfBay`/`branchPort` przełączone z pełnej wysokości
+    gabarytu na `bayMainPathHeight` (port kabla = dno toru głównego, nie dno zwisu lateralu);
+    (4) etykieta przęsła w gałęzi fitsSpan wystawała poza własną rezerwację — clamp do
+    `primaryRect` przywraca dowód rozłączności wierszy (`colorSegmentLabelRows`), realna kolizja
+    S01↔S02 po poszerzeniu kolumn.
+  - Wyrocznie: `earthSwitchLateralGaps`/`allEarthSwitchesLateral` (§18.1: (a) środek poza osią =
+    mediana środków aparatów szeregowych; (c) poziomy odcinek odgałęzienia sięgający osi; (b)
+    dowodzone konstrukcyjnie — tor główny budowany PRZED doklejeniem laterali — plus testy
+    kompozycji), `vtParallelGaps`/`allVtParallel` (§18.2), `pathTerminationLabelGaps`/
+    `allPathTerminationsLabeled` (§18.6, L2) — wszystkie wpięte do accept:sld-v3 z testem
+    negatywnym (sabotowana scena ⇒ FAIL potwierdzone w acceptance).
+  - §18.6: 13 fizycznych końców torów dostaje JAWNE etykiety na scenie (t4, wycentrowane pod
+    głowicą w pasie zejść); tekst = podpis §9 pola, a dla pól KOŃCOWYCH (które kierunku nie mają,
+    bo nic dalej nie biegnie) uczciwe „koniec toru" — numer/nazwa linii to zależność DOMAIN D2
+    (F10.6). L0/L1 bez etykiet zakończeń (poziom szczegółowości, spójnie z etykietami przęseł).
+  - Blokada logiczna ES (DEC-1): adnotacja konwencyjna w LEGENDZIE arkusza (wpis ES: „blokada
+    zamkn. na tor pod napięciem") — tekst per-symbol (120×) kolidował strukturalnie z korytarzami
+    (26 kolizji wykrytych wyrocznią) i powtarzał konwencję jako szum; spec §18.1 doprecyzowany.
+  - `cell_sequence`/parytet: tożsamość measure↔compose ZREDEFINIOWANA na plan (dla ról bez
+    laterali tożsama ze starą — asercja w teście); `fieldStacksEndAtCableHead` liczy tor główny.
+  - Piony §15.1: SPADEK — tor główny krótszy o ES (blok stacji −32) oddaje przez 78 przecięć pasm
+    dokładnie koszt F9.10 na L1/L2: baseline 12152/41000/55800 → **12120/38504/53304**.
+  - Sonda nadzorcy (scratchpad `probe-f101-supervisor.ts`, niezależna od wyroczni): PRZED 120/120
+    naruszeń (każdy ES na osi, w tym GPZ), PO 0/120. Wizualny DoD (rendery odświeżone + zbliżenia):
+    tor główny prosty i ciągły, ES z ziemią obok toru, „koniec toru" przy głowicach końcowych,
+    zero kolizji — POTWIERDZONE osobiście.
+  - Bramki: tsc czysty; eslint czysty; vitest sld 170 plików / 3290 pass; accept:sld-v3 ALL PASS
+    (w tym 3 nowe sondy §18 + negatyw); guardy sld-determinism/codenames/forbidden-ui-terms/
+    overlay-no-physics/mojibake/docs zielone; pełna regresja — patrz commit.
 
 ### F10.2. Nomenklatura pól + identyfikatory aparatów (fallback) + typ stacji z topologii
 - Zakres: rozdzielenie oznaczenia FUNKCYJNEGO pola od identyfikatora per-aparat (§19.1) —
