@@ -340,6 +340,13 @@ Progress:
         zakładka „Obszar pracy P–Q" w grupie OZE (`ad46c40`; ui2 1090 pass).
         NASTĘPNE FALI 2: P35 studium przyłączenia (kreator spinający analizy),
         P38 walidacja modelu falownika.
+        P30 potwierdzone pełnym biegiem 8379. P35 kreator studium przyłączenia
+        (Opus; 30 testów; 4 kroki wg SPEC_KREATORY z hintami PL i prefill;
+        sekwencja analiz odporna na błąd wariantu; przegląd zbiorczy reużyciem
+        rankingu/obszaru/zdolności; pełny vitest u wykonawcy 8409 pass ZERO
+        failed; zintegrowane `cedd170`). Scalenie #15: zakładka „Studium
+        przyłączenia" (`7f5511c`; ui2 1120 pass). TODO-KARTY: dokument studium
+        (E13), nawigacja między zakładkami warsztatu.
         PROCEDURA: wykonawcy backendowi zawieszają się po pełnym pytest (3
         przypadki) — zarządca przejmuje: weryfikacja w worktree + commit
         w imieniu wykonawcy (bez oczekiwania na raport).
