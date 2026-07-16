@@ -315,7 +315,16 @@ Progress:
         `91860d1`; klasa NC RfG WŁĄCZONA — progi klas A/B/C/D są w katalogu
         operatorów loader.py:17-25, mapowanie słownikowe 1:1 z classify_module;
         koszt przyłącza jawnie pominięty — strumień kosztorysanta).
-        Scalenie #11: zakładka „Ranking przyłączeń" (`3c2fcbd`; ui2 1029 pass).
+        Scalenie #11: zakładka „Ranking przyłączeń" (`3c2fcbd`; ui2 1029 pass;
+        pełny vitest 8318 potwierdzony).
+        D4 krzywe P–Q w katalogu (Opus; 26 testów; pole pq_curve addytywne +
+        serwis pq_coverage + końcówka; pełny pytest 5809 pass ZERO failed
+        potwierdzony; guardy katalogowe zielone; zintegrowane `5806855`).
+        P41 okno krzywych P–Q (Opus; 27 testów; pełny vitest u wykonawcy 8345
+        pass; zintegrowane `9537b68`). Scalenie #12: zakładka „Krzywe P–Q"
+        (`dac4c82`; ui2 1056 pass). STRUMIEŃ OZE — KOMPLET PIERWSZEJ FALI:
+        P39→P47→P47a→P2→P19→P41 zrealizowane end-to-end (backend+okna+powłoka).
+        Kolejne fale wg kolejności właściciela: P30→P35→P38→P40→P42→P43→P46→P37.
         PROCEDURA: wykonawcy backendowi zawieszają się po pełnym pytest (3
         przypadki) — zarządca przejmuje: weryfikacja w worktree + commit
         w imieniu wykonawcy (bez oczekiwania na raport).
