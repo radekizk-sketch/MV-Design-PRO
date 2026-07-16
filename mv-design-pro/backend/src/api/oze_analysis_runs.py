@@ -6,7 +6,9 @@
   na bazie przebiegu rozpływu (``PF``),
 - ``GET /api/oze-analysis/hosting-capacity?run_id=`` — zdolność przyłączeniowa
   sieci (ile jeszcze OZE zmieści węzeł) jako deterministyczny przegląd scenariuszy
-  rozpływu na modelu przebiegu (``PF``).
+  rozpływu na modelu przebiegu (``PF``),
+- ``GET /api/oze-analysis/pq-area?run_id=&bus_ref=`` — obszar bezpiecznej pracy
+  P–Q wskazanego węzła jako deterministyczna siatka scenariuszy rozpływu (``PF``).
 
 Warstwa PREZENTACJI/API: ładuje przebieg (404 gdy brak), deleguje mapowanie do
 serwisów aplikacyjnych (ZERO fizyki) i zwraca zserializowany widok 1:1 z buildera
@@ -23,6 +25,13 @@ from application.analyses.hosting_capacity import (
     DEFAULT_MAX_STEPS,
     DEFAULT_STEP_MW,
     build_hosting_capacity_view,
+)
+from application.analyses.pq_area import (
+    DEFAULT_MAX_STEPS_P,
+    DEFAULT_MAX_STEPS_Q,
+    DEFAULT_STEP_P_MW,
+    DEFAULT_STEP_Q_MVAR,
+    build_pq_area_view,
 )
 from application.analyses.pq_coverage import build_pq_coverage_view
 from application.analyses.reactive_adequacy import build_reactive_adequacy_view
@@ -83,6 +92,32 @@ def get_hosting_capacity(
             candidate_bus_refs=candidate_bus_refs,
             step_mw=step_mw,
             max_steps=max_steps,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get("/api/oze-analysis/pq-area")
+def get_pq_area(
+    run_id: UUID = Query(...),
+    bus_ref: str = Query(...),
+    step_p_mw: float = Query(default=DEFAULT_STEP_P_MW),
+    step_q_mvar: float = Query(default=DEFAULT_STEP_Q_MVAR),
+    max_steps_p: int = Query(default=DEFAULT_MAX_STEPS_P),
+    max_steps_q: int = Query(default=DEFAULT_MAX_STEPS_Q),
+) -> dict[str, Any]:
+    run = _require_run(run_id)
+    try:
+        return build_pq_area_view(
+            run,
+            bus_ref=bus_ref,
+            step_p_mw=step_p_mw,
+            step_q_mvar=step_q_mvar,
+            max_steps_p=max_steps_p,
+            max_steps_q=max_steps_q,
         )
     except ValueError as exc:
         raise HTTPException(
