@@ -1488,6 +1488,47 @@ sld_determinism/no_codenames/dead_click/arch/overlay_no_physics/forbidden_ui_ter
 PASS (ui_terminology: 2 naruszenia pre-existing w V126AcademicSurface, potwierdzone
 identyczne na HEAD przed zmianą); pełna regresja frontend exit 0.
 
+## F12. Rozstrzygnięcia architekta i cutover końcowy (2026-07-16, pełnomocnictwo właściciela)
+
+Właściciel przekazał pełnomocnictwo („Jesteś architektem podejmuj maksymalne decyzje nie
+skracaj i działaj"). Rozstrzygnięcia ARCH-1..ARCH-4 zapisane w spec §10.1 + REJESTR V12K-038:
+
+- **ARCH-1**: bramka F8c pkt 1b (geometria ręczna) UCHYLONA z dowodem — CadOverlay/RouteEditor/
+  Snap-edycja są w v2 martwym szkieletem bez produkcyjnego wołającego (zero referencji `cadOverlay`
+  poza definicją; addBend/dragBend/removeBend/lockRoute wołane tylko w testach). Ręczna edycja
+  geometrii = przyszła funkcja NOWA wg reguły nadpisań-jako-danych (spec §10.1).
+- **ARCH-2**: bramka F8c pkt 5 (Conscious Split) UCHYLONA z dowodem — orkiestratory konstruowane
+  tylko w testach, panel bez produkcyjnego `splitPreviewState`.
+- **ARCH-3**: wykonawca akcji domenowych na v3 = bramka REALNA — ekstrakcja `handleAction`
+  (zależności wyłącznie store-poziomowe) do `shared/sldActionExecutor.ts`; v2 reużywa, v3 podpina
+  menu + akcje drawera.
+- **ARCH-4**: usunięcie ŚCIEŻKI RENDERU v2 po domknięciu ARCH-3 + pełnej migracji budowniczych
+  drawera + przeniesieniu na v3 sześciu OSIĄGALNYCH funkcji kontenera bez odpowiednika
+  (inwentarz z mapy importów, 2026-07-16): SldExportFormatMenu (eksport SVG/PNG), LassoSelector
+  (selekcja obszarem), NetworkHierarchyTree, ProofPacksPanel, LayerTogglePanel (jako realny filtr
+  widoczności kategorii elementów sceny v3 — bez atrap), StationInternalView (dwuklik stacji;
+  `internalStationProps` jest adapter-only — ekstrakcja do shared wzorcem drawera).
+
+**Mapa importów (audyt osobisty, 2026-07-16) — zakres kasacji F12-C (domknięcie zbioru):**
+`SldWorkspaceContainer.tsx` (importer: tylko SldRenderHost), `SldCanvasV2.tsx` (importerzy:
+kontener + screenshot-harness-main — harness do przepięcia/kasacji), `CadOverlay.tsx`,
+`geometry/RouteEditor.ts`, `canvas/CableRunRenderer` (importer: tylko SldCanvasV2),
+`workflow/*` (4 pliki — martwe), `viewport/Snap.ts` (importerzy: tylko SldCanvasV2/CadOverlay),
+`sldRenderVersion.ts` + flaga `mvdp.sldRenderVersion` + decyzja w `SldRenderHost` (host = cienka
+nazwa na `SldCanvasV3Workspace` albo inline w punktach osadzenia App.tsx/WorkspaceSurfaceRouter).
+**ZOSTAJE (żywe importy spoza ścieżki renderu):** v2/canvas/enmToSldAdapter + enmToCanonicalGpz-
+Adapter + SupplyPathHighlighter + SldDetailDrawer + useDerDragDrop + derPersistenceApi +
+SldTitleBlock + StationInternalView, v2/command (context-menu, CommandPalette), v2/core/ports,
+v2/domain, v2/renderer (GpzCanonical/MiniBlockRmu/StationOnRun — typy i komponenty używane przez
+v3), v2/viewport/ViewportController (matematyka kamery v3), v2/geometry (layoutContract/routing —
+engine/sld-layout), v2/station-rozdzielnia, v2/builder, v2/lod, v2/export, v2/proof, v2/theme.
+`REQUIRED_V2_TESTS` guardu pokrywają WYŁĄCZNIE moduły przeżywające — guard bez zmian; testy
+kasowanych modułów (kontener/canvas2/CAD/workflow) idą do kasacji razem z kodem.
+
+Wykonanie: **F12-A** (wykonawca akcji + pełna migracja drawera), **F12-B** (sześć funkcji
+osiągalnych na v3), **F12-C** (kasacja ścieżki renderu + punkty osadzenia + pełna regresja +
+guardy import_graph/vulture/sld_determinism + rendery). Każdy krok: pełny cykl bramek + commit.
+
 ## Prompt kontynuacji (wklej świeżemu agentowi — DO WDROŻENIA 100%)
 
 ```

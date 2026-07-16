@@ -244,6 +244,45 @@ results browser → centrowanie elementu, ENM inspector.
 Mapowanie na fazy: interakcja+stany → F5/F6; nakładki → F6; arkusz → F4;
 kamera/LOD → F6 (reuse); eksport/determinizm → F7; checklista całości → F8.
 
+### 10.1 Rozstrzygnięcia architekta (2026-07-16, pełnomocnictwo właściciela — F12)
+
+Audyt osiągalności produkcyjnej (F11.4/F12) wykazał, że dwie pozycje inwentarza §10
+NIE ISTNIEJĄ w v2 jako funkcjonalność osiągalna — istnieją wyłącznie jako
+nieokablowany szkielet (czyste funkcje + komponenty bez produkcyjnego wołającego).
+Polityka Zero Regresji porównuje funkcjonalność OSIĄGALNĄ; parytetu nie mierzy się
+względem martwego kodu (analogicznie do zasady „parytet mierzy się względem SPEC,
+nie względem martwego kodu v2" z F8c pkt 6 — działa w OBIE strony).
+
+- **ARCH-1 — „edycja CAD (drag, bend handles, snap)": UCHYLONA jako bramka F8c.**
+  Dowód: `CadOverlay` renderowany wyłącznie gdy `SldCanvasV2` dostanie prop
+  `cadOverlay` — ŻADEN produkcyjny wołający go nie przekazuje (grep całego `src/`:
+  zero referencji poza definicją i testami); `RouteEditor.addBend/dragBend/
+  removeBend/lockRoute` i maszyneria `Snap.ts` wołane WYŁĄCZNIE w testach.
+  Jedyna OSIĄGALNA edycja v2 to akcje domenowe (menu/drawer → formularze →
+  `executeDomainOperation`) — te podlegają parytetowi (ARCH-3). Ręczna edycja
+  geometrii rysunku pozostaje KIERUNKIEM PRZYSZŁYM (funkcja nowa, nie parytet):
+  jeżeli powstanie, MUSI być kanałem jawnych nadpisań-jako-danych (deterministyczny
+  render dla pary (model, nadpisania); wyrocznie §11 obowiązują nadpisany rysunek;
+  nadpisanie zmienia wyłącznie layout_hash — filozofia inwariantu 7 CadOverlay).
+- **ARCH-2 — „workflow append/split (AppendOnEndpointController)": UCHYLONA jako
+  bramka F8c.** Dowód: `WorkflowOrchestrator`/`AppendOnEndpointController`/
+  `ConsciousSplitController` konstruowane WYŁĄCZNIE w testach; `SplitPreviewPanel`
+  renderowany tylko gdy `splitPreviewState` przekazany — żaden produkcyjny wołający
+  (`App.tsx:1431/1454`, `WorkspaceSurfaceRouter.tsx:3135`) go nie przekazuje.
+  Wartość domenowa (dobudowa/rozcięcie) jest OSIĄGALNA przez operacje domenowe
+  z menu kontekstowego (`buildSldOperationContext`) — i ta ścieżka podlega ARCH-3.
+- **ARCH-3 — wykonawca akcji domenowych na v3: BRAMKA REALNA, wdrażana.** Menu
+  kontekstowe i akcje drawera na v3 muszą wykonywać TE SAME akcje co v2
+  (nawigacja `ACTION_TO_SCREEN`, formularze operacji `buildSldOperationContext`,
+  usuwanie `delete_element` z potwierdzeniem, komunikaty PL) — przez ekstrakcję
+  wykonawcy do modułu współdzielonego (jedna prawda, zero duplikacji).
+- **ARCH-4 — usunięcie ścieżki renderu v2: OTWARTE po domknięciu ARCH-3 i pełnej
+  migracji budowniczych danych drawera** (jedyna pozostała OSIĄGALNA różnica
+  funkcjonalna). Zakres kasacji wyznacza mapa importów (współdzielone moduły —
+  adapter elektryczny, SupplyPathHighlighter, SldDetailDrawer, useDerDragDrop,
+  v2/command, matematyka ViewportController używana przez kamerę v3 — ZOSTAJĄ
+  lub są przenoszone, nie kasowane).
+
 ## 11. Wyrocznie odbioru (bramki CI — definicja „20× lepiej" mierzalna)
 
 1. `overlap_probe`: kolizje tekst↔tekst i tekst↔symbol = **0** na L0/L1/L2,
