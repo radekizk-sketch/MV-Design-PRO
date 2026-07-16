@@ -62,9 +62,11 @@ export default defineConfig({
   // Global timeout for each test (60s max per test)
   timeout: 60000,
 
-  // Expect timeout (for assertions)
+  // Expect timeout (for assertions). 20 s: zimny rozruch aplikacji w vite dev
+  // na wolniejszych kontenerach mierzy ~12 s (app-ready), a część speców
+  // asertuje bezpośrednio po goto bez czekania na app-ready.
   expect: {
-    timeout: 10000,
+    timeout: 20000,
     // Visual regression tolerance (V12K-013 SLD F5 — PLAN_SLD_REWORK § 7.4)
     // Threshold 0.5% per snapshot to allow minor antialiasing differences
     // across CI environments while catching real visual regressions.
