@@ -8,7 +8,10 @@
   sieci (ile jeszcze OZE zmieści węzeł) jako deterministyczny przegląd scenariuszy
   rozpływu na modelu przebiegu (``PF``),
 - ``GET /api/oze-analysis/pq-area?run_id=&bus_ref=`` — obszar bezpiecznej pracy
-  P–Q wskazanego węzła jako deterministyczna siatka scenariuszy rozpływu (``PF``).
+  P–Q wskazanego węzła jako deterministyczna siatka scenariuszy rozpływu (``PF``),
+- ``GET /api/oze-analysis/osd-response?run_id=&source_ref=&command=`` — symulacja
+  odpowiedzi źródła na polecenie OSD jako porównanie dwóch biegów rozpływu
+  (bazowy + z poleceniem) na modelu przebiegu (``PF``).
 
 Warstwa PREZENTACJI/API: ładuje przebieg (404 gdy brak), deleguje mapowanie do
 serwisów aplikacyjnych (ZERO fizyki) i zwraca zserializowany widok 1:1 z buildera
@@ -26,6 +29,11 @@ from application.analyses.hosting_capacity import (
     DEFAULT_MAX_STEPS,
     DEFAULT_STEP_MW,
     build_hosting_capacity_view,
+)
+from application.analyses.odpowiedz_osd import (
+    DEFAULT_DEADBAND_HZ,
+    DEFAULT_F0_HZ,
+    build_osd_response_view,
 )
 from application.analyses.pq_area import (
     DEFAULT_MAX_STEPS_P,
@@ -175,6 +183,42 @@ def get_pq_coverage(
         ) from exc
     try:
         return build_pq_coverage_view(converter, profile)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get("/api/oze-analysis/osd-response")
+def get_osd_response(
+    run_id: UUID = Query(...),
+    source_ref: str = Query(...),
+    command: str = Query(...),
+    p_limit_pct: float | None = Query(default=None),
+    q_mvar: float | None = Query(default=None),
+    cos_phi: float | None = Query(default=None),
+    q_charakter: str | None = Query(default=None),
+    frequency_hz: float | None = Query(default=None),
+    droop_pct: float | None = Query(default=None),
+    deadband_hz: float = Query(default=DEFAULT_DEADBAND_HZ),
+    f0_hz: float = Query(default=DEFAULT_F0_HZ),
+) -> dict[str, Any]:
+    run = _require_run(run_id)
+    try:
+        return build_osd_response_view(
+            run,
+            source_ref=source_ref,
+            command=command,
+            p_limit_pct=p_limit_pct,
+            q_mvar=q_mvar,
+            cos_phi=cos_phi,
+            q_charakter=q_charakter,
+            frequency_hz=frequency_hz,
+            droop_pct=droop_pct,
+            deadband_hz=deadband_hz,
+            f0_hz=f0_hz,
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
