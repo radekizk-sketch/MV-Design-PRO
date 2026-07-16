@@ -497,7 +497,19 @@ interface SectionLayout {
  *  `compose/protectionMarking.ts`, jedna prawda measure↔compose), zasilona
  *  adapterem kształtu (`CanonicalGpzBay.protectionCodes` →
  *  `protectionMarking.codes`; GPZ nie niesie miernika/`ct_ref` — patrz
- *  `ComposedGpzProtectionSymbol`). Zero, gdy pole bez kodów (§17.2). */
+ *  `ComposedGpzProtectionSymbol`). Zero, gdy pole bez kodów (§17.2).
+ *
+ *  F10.4 (spec §18.3): TA SAMA funkcja niesie parametr `ctRatingAnnotations`
+ *  (F10.4, `compose/protectionMarking.ts`) — świadomie NIE przekazywany
+ *  tutaj. `CanonicalGpzBay` (`v2/renderer/GpzCanonicalRenderer.tsx:93-123`)
+ *  nie niesie ŻADNEGO kanału `Measurement`/`linked_ref` per aparat (stosy GPZ
+ *  budowane z SZABLONÓW `FieldApparatusSpec`, nie z `Bay.primary_devices` —
+ *  patrz nagłówek `gpzFieldPlanFootprint` niżej); `CanonicalGpzBay.
+ *  measurements` to TELEMETRIA (`BayMeasurements`: `ia_a`/`ib_a`/…), NIE
+ *  tożsamość/rating aparatu CT (`Measurement.rating`) — zero wspólnego pola.
+ *  Rezultat: 0 adnotacji przekładni CT w GPZ w tej fazie — udokumentowana
+ *  luka kanału danych (nie DOMAIN — architektoniczna, adapter GPZ nie śledzi
+ *  `device_ref`/`Measurement` per aparat w ogóle), poza zakresem F10.4. */
 function gpzBayAnnotationWidth(bay: CanonicalGpzBay): number {
   const codes = bay.protectionCodes ?? [];
   return protectionAnnotationColumnWidth({

@@ -26,12 +26,23 @@
  *    aparat CT/VT stosu przez `BayPrimaryDevice.linked_ref` (wzorzec
  *    potwierdzony w `backend/src/application/field_read_model.py:488`:
  *    `linked_ref=measurement.ref_id` dla aparatów pomiarowych pola).
+ *
+ * F10.4 (SLD_CAD_SPEC_V3 §18.3, CT opisany — część BEZ-DOMAIN): okrąg CT
+ * (`symbolId==='currentTransformer'`) toru głównego dostaje etykietę
+ * identyfikator+przekładnia, WYŁĄCZNIE gdy `Measurement.rating` obecny dla
+ * TEGO aparatu (adapter projektuje `MiniBlockBayDescriptor.
+ * ctRatingAnnotations`, jedna pozycja per CT z ratingiem — `resolveBayCtRating
+ * Annotations`, `v2/canvas/enmToSldAdapter.ts`). Dopasowanie na aparat
+ * NARYSOWANEGO stosu — TA SAMA reguła co miernik: `measurementRef ===
+ * linked_ref`. Układ pomiarowy (3×CT fazowe / przekładnik sumujący
+ * Ferranti-I0) to NOWE pole DOMAIN (D3, F10.6) — poza zakresem tej fazy,
+ * dziś ZAWSZE rysowany jeden glif `currentTransformer` niezależnie od danych.
  */
 
 import { GRID, snapUp } from '../core/grid';
 import { measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
-import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
+import type { CtRatingAnnotationView, MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
 
 /** Średnica okręgu adnotacji (przekaźnik/miernik) — spec §17.3: 24px = 3×GRID. */
 export const PROTECTION_ANNOTATION_DIAMETER = 3 * GRID;
@@ -70,16 +81,57 @@ export function fullCodesListText(codes: readonly string[]): string | null {
  *  `core/text.ts`), ta sama co „52" (§17.3 „etykieta 8 px"). */
 export const PROTECTION_FULL_LIST_LABEL_CLASS = 't4' as const;
 
-type ProtectionAwareBay = Pick<MiniBlockBayDescriptor, 'protectionMarking' | 'meteringMeasurementRef'>;
+type ProtectionAwareBay = Pick<
+  MiniBlockBayDescriptor,
+  'protectionMarking' | 'meteringMeasurementRef' | 'ctRatingAnnotations'
+>;
 
 /**
  * Czy pole NIESIE dane adnotacji zabezpieczeń (§17.2/§17.3: „kolumna istnieje
- * TYLKO dla pól z danymi") — kody przekaźnika NIEPUSTE lub rozwiązany
- * miernik. Jedna prawda dla `layout/measure.ts` (rezerwacja) i `compose/
- * station.ts` (rysunek).
+ * TYLKO dla pól z danymi") — kody przekaźnika NIEPUSTE, rozwiązany miernik,
+ * LUB (F10.4, §18.3) co najmniej jedna adnotacja przekładni CT. Jedna prawda
+ * dla `layout/measure.ts` (rezerwacja) i `compose/station.ts` (rysunek).
  */
 export function bayHasProtectionAnnotation(bay: ProtectionAwareBay): boolean {
-  return (bay.protectionMarking?.codes.length ?? 0) > 0 || bay.meteringMeasurementRef != null;
+  return (
+    (bay.protectionMarking?.codes.length ?? 0) > 0
+    || bay.meteringMeasurementRef != null
+    || (bay.ctRatingAnnotations?.length ?? 0) > 0
+  );
+}
+
+/**
+ * Tekst etykiety adnotacji CT (§18.3: „identyfikator aparatu i przekładnię,
+ * np. «T1 · 300/5»") — separator „·" jak w pełnej liście kodów §17.3/podpisie
+ * linii §19.2 (spójna typografia adnotacji). JEDNA funkcja dla rezerwacji
+ * szerokości (`ctRatingAnnotationsWidth` niżej) i rysunku
+ * (`resolveCtRatingAnnotations` niżej) — zero rozjazdu tekst↔szerokość.
+ */
+export function ctRatingLabelText(entry: Pick<CtRatingAnnotationView, 'identifier' | 'ratioText'>): string {
+  return `${entry.identifier} · ${entry.ratioText}`;
+}
+
+/**
+ * Szerokość DODATKOWA na adnotacje przekładni CT (§18.3, F10.4) — 0, gdy
+ * pole nie niesie żadnego `ctRatingAnnotations` (zero zmian geometrii dla
+ * pól bez danych). Inaczej `GRID` (prześwit od toru głównego) + najszerszy
+ * pojedynczy tekst „identyfikator · przekładnia" spośród adnotacji pola
+ * (zwykle jedna pozycja — jeden CT toru głównego; wiele pozycji to defensywa
+ * na przyszłość, np. strefa 87T z 2×CT, F10.6). DODAWANA (nie max()owana) do
+ * `protectionAnnotationColumnWidth` niżej — adnotacja CT zajmuje WŁASNE pasmo
+ * tuż za torem głównym (`compose/station.ts`, zaczep
+ * `stackLeftX+planFootprint.width`, TA SAMA krawędź co sidecar oznaczenia
+ * funkcyjnego pola), podczas gdy okrąg przekaźnika/miernik/pełna lista kodów
+ * są PRAWO-wyrównane do końca CAŁEJ rezerwacji — dwa różne pasma tej samej
+ * kolumny, oba muszą się zmieścić jednocześnie (SUMA, nie MAX).
+ */
+export function ctRatingAnnotationsWidth(bay: ProtectionAwareBay): number {
+  const entries = bay.ctRatingAnnotations ?? [];
+  if (entries.length === 0) return 0;
+  const maxWidth = Math.max(
+    ...entries.map((entry) => measureLabelWidth(ctRatingLabelText(entry), PROTECTION_FULL_LIST_LABEL_CLASS)),
+  );
+  return GRID + maxWidth;
 }
 
 /**
@@ -87,9 +139,11 @@ export function bayHasProtectionAnnotation(bay: ProtectionAwareBay): boolean {
  * stosu/oznacznika) + max(gabaryt okręgu, szerokość pełnej listy kodów gdy
  * >2 funkcji — R-2: pełna lista MUSI być na rysunku, więc measure MUSI ją
  * zarezerwować; `snapUp + GRID` = zapas na `snapToGrid` pozycji etykiety,
- * żeby prostokąt nigdy nie wystawał poza rezerwację). TYLKO gdy pole niesie
- * dane (§17.2). Zero, gdy brak danych (zero zmian geometrii dla pól bez
- * zabezpieczeń — zgodne z „brak danych = brak oznaczenia").
+ * żeby prostokąt nigdy nie wystawał poza rezerwację) + (F10.4, §18.3)
+ * `ctRatingAnnotationsWidth` (pasmo ODRĘBNE, zsumowane — patrz docstring
+ * wyżej). TYLKO gdy pole niesie dane (§17.2/§18.3). Zero, gdy brak danych
+ * (zero zmian geometrii dla pól bez adnotacji — zgodne z „brak danych = brak
+ * oznaczenia"; fixtura referencyjna: 0 `measurements` ⇒ ta gałąź bez zmian).
  *
  * UWAGA (LOD): rezerwacja jest funkcją DANYCH, nie LOD — measure nie zna
  * LOD (kontrakt F2); na L1 (`'circle-only'`) kolumna jest zarezerwowana w
@@ -102,7 +156,9 @@ export function protectionAnnotationColumnWidth(bay: ProtectionAwareBay): number
   const fullListWidth = fullList
     ? snapUp(measureLabelWidth(fullList, PROTECTION_FULL_LIST_LABEL_CLASS)) + GRID
     : 0;
-  return GRID + Math.max(PROTECTION_ANNOTATION_DIAMETER, fullListWidth);
+  const hasRelayOrMeter = (bay.protectionMarking?.codes.length ?? 0) > 0 || bay.meteringMeasurementRef != null;
+  const relayMeterWidth = hasRelayOrMeter ? GRID + Math.max(PROTECTION_ANNOTATION_DIAMETER, fullListWidth) : 0;
+  return relayMeterWidth + ctRatingAnnotationsWidth(bay);
 }
 
 /**
@@ -190,6 +246,39 @@ export function resolveMeterAnchor(
         d.linkedRef === meteringMeasurementRef,
     ) ?? null
   );
+}
+
+/** Adnotacja CT rozstrzygnięta na aparat NARYSOWANEGO stosu (§18.3, F10.4). */
+export interface ResolvedCtRatingAnnotation {
+  /** Aparat CT toru głównego, do którego przypięta jest ta adnotacja. */
+  readonly device: PlacedStackDevice;
+  /** Gotowy tekst „identyfikator · przekładnia" (`ctRatingLabelText`). */
+  readonly text: string;
+}
+
+/**
+ * Rozstrzyga adnotacje przekładni CT (§18.3, F10.4) na już zbudowanym stosie —
+ * dopasowanie KAŻDEJ pozycji `ctRatingAnnotations` na aparat
+ * `symbolId==='currentTransformer'` przez `measurementRef === linked_ref`
+ * (TA SAMA reguła co `resolveMeterAnchor`). Pozycje bez dopasowania w stosie
+ * są POMIJANE (zero zgadywania — adnotacja NIE jest rysowana bez
+ * jednoznacznej kotwicy geometrycznej; symetryczne do `resolveMeterAnchor`
+ * zwracającego `null`, tu zbiorczo przez filtrację).
+ */
+export function resolveCtRatingAnnotations(
+  ctRatingAnnotations: readonly CtRatingAnnotationView[] | undefined,
+  stack: readonly PlacedStackDevice[],
+): readonly ResolvedCtRatingAnnotation[] {
+  if (!ctRatingAnnotations || ctRatingAnnotations.length === 0) return [];
+  const result: ResolvedCtRatingAnnotation[] = [];
+  for (const entry of ctRatingAnnotations) {
+    const device = stack.find(
+      (d) => d.symbolId === 'currentTransformer' && d.linkedRef === entry.measurementRef,
+    );
+    if (!device) continue;
+    result.push({ device, text: ctRatingLabelText(entry) });
+  }
+  return result;
 }
 
 export { centerOf as protectionDeviceCenter };

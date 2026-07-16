@@ -960,6 +960,108 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
 });
 
 // ---------------------------------------------------------------------------
+// F10.4 (spec §18.3, ct_annotation_probe) — adnotacja CT: identyfikator +
+// przekładnia, WYŁĄCZNIE z danych (BEZ-DOMAIN: `Measurement.rating`/`.name`
+// już istnieją w ENM; układ 3×CT/Ferranti-I0 — NOWE pole DOMAIN, F10.6, poza
+// zakresem). `makeLineBayPrimaryDevices()` (wyżej) niesie CT z
+// `deviceRef:'ct-1'`, `linkedRef:'meas-metering-1'`.
+// ---------------------------------------------------------------------------
+
+describe('V3 compose/station — F10.4 §18.3: adnotacja przekładni CT (ct_annotation_probe)', () => {
+  it('(b, negatyw obowiązkowy) brak danych = brak oznaczenia: pole BEZ ctRatingAnnotations ⇒ ZERO etykiet #ct-rating-', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, { primaryDevices: makeLineBayPrimaryDevices() });
+    const station = makeStation('ct-rating-none', [bay]);
+    const composition = composeStation(buildComposeInput(station));
+
+    expect(composition.labels.protection.filter((l) => l.ownerRef.includes('#ct-rating-'))).toHaveLength(0);
+    expect(composition.missingData).not.toContain('bay.protection.ct_rating_anchor_unresolved');
+  });
+
+  it('(a) dane obecne (measurementRef rozwiązywalny na CT stosu) ⇒ DOKŁADNIE 1 etykieta „identyfikator · przekładnia" w kolumnie adnotacji', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayPrimaryDevices(),
+      ctRatingAnnotations: [{ measurementRef: 'meas-metering-1', identifier: 'CT1', ratioText: '300/5' }],
+    });
+    const station = makeStation('ct-rating-ok', [bay]);
+    const composition = composeStation(buildComposeInput(station));
+
+    const ctLabels = composition.labels.protection.filter((l) => l.ownerRef.includes('#ct-rating-'));
+    expect(ctLabels).toHaveLength(1);
+    expect(ctLabels[0].text).toBe('CT1 · 300/5');
+    expect(ctLabels[0].labelClass).toBe('t4');
+    expect(ctLabels[0].ownerKind).toBe('protection');
+    expect(composition.missingData).not.toContain('bay.protection.ct_rating_anchor_unresolved');
+
+    // Zero zgadywania na WARTOŚĆ: tekst = DOKŁADNIE `identifier · ratioText`
+    // z danych, zero fabrykacji separatora/formatu spoza tego wzorca.
+    const resolved = resolveLabels({ simpleAnchored: ctLabels }).find((l) => l.ownerRef === ctLabels[0].ownerRef)!;
+    expect(resolved.rect.x % GRID).toBe(0);
+    expect(resolved.rect.y % GRID).toBe(0);
+  });
+
+  it('(§18.3 zero zgadywania) measurementRef NIEROZWIĄZYWALNY w stosie ⇒ ZERO etykiety + missingData `bay.protection.ct_rating_anchor_unresolved` (NIGDY etykieta bez kotwicy)', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayPrimaryDevices(),
+      ctRatingAnnotations: [{ measurementRef: 'meas-ct-nieistniejacy', identifier: 'CT9', ratioText: '150/5' }],
+    });
+    const station = makeStation('ct-rating-unresolved', [bay]);
+    const composition = composeStation(buildComposeInput(station));
+
+    expect(composition.labels.protection.filter((l) => l.ownerRef.includes('#ct-rating-'))).toHaveLength(0);
+    expect(composition.missingData).toContain('bay.protection.ct_rating_anchor_unresolved');
+  });
+
+  it('kolumna adnotacji rezerwowana TYLKO dla pól z danymi CT — pole z SAMYM ctRatingAnnotations (bez protectionMarking/meteringMeasurementRef) ma szerszą rezerwację niż pole bez danych', () => {
+    const bayWithout = makeBay(FIELD_ROLE.LINE_IN, 0, { primaryDevices: makeLineBayPrimaryDevices() });
+    const bayWithCt = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayPrimaryDevices(),
+      ctRatingAnnotations: [{ measurementRef: 'meas-metering-1', identifier: 'CT1', ratioText: '300/5' }],
+    });
+    const widthWithout = bayColumnRequiredWidth([bayWithout], 0, undefined);
+    const widthWithCt = bayColumnRequiredWidth([bayWithCt], 0, undefined);
+    expect(widthWithCt).toBeGreaterThan(widthWithout);
+
+    // Pole z SAMYM CT rating (bez kodów/miernika) NIE rysuje okręgu
+    // przekaźnika/miernika — rezerwacja szersza WYŁĄCZNIE o pasmo tekstu CT.
+    const composition = composeStation(buildComposeInput(makeStation('ct-rating-only', [bayWithCt])));
+    expect(composition.protectionSymbols).toHaveLength(0);
+    expect(composition.labels.protection.filter((l) => l.ownerRef.includes('#ct-rating-'))).toHaveLength(1);
+  });
+
+  it('koegzystencja z okręgiem przekaźnika + miernikiem na TYM SAMYM CT (§17.2 kotwica) — etykieta CT i oba okręgi bez wzajemnego nachodzenia (dwa różne pasma kolumny, §18.3 rozstrzygnięcie F10.4)', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayPrimaryDevices(),
+      protectionMarking: { codes: ['50/51'], breakerRef: 'cb-1', ctRef: 'ct-1' },
+      meteringMeasurementRef: 'meas-metering-1',
+      ctRatingAnnotations: [{ measurementRef: 'meas-metering-1', identifier: 'CT1', ratioText: '300/5' }],
+    });
+    const station = makeStation('ct-rating-coexist', [bay]);
+    const composition = composeStation(buildComposeInput(station));
+
+    const relay = composition.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!;
+    const meter = composition.protectionSymbols.find((s) => s.symbolId === 'meter')!;
+    const ctLabels = composition.labels.protection.filter((l) => l.ownerRef.includes('#ct-rating-'));
+    expect(ctLabels).toHaveLength(1);
+    const [ctLabelResolved] = resolveLabels({ simpleAnchored: ctLabels });
+
+    // Etykieta CT nie nachodzi na okrąg przekaźnika (rects rozłączne w X LUB Y).
+    const disjoint = (
+      rectA: { x: number; y: number; width: number; height: number },
+      rectB: { x: number; y: number; width: number; height: number },
+    ): boolean =>
+      rectA.x + rectA.width <= rectB.x ||
+      rectB.x + rectB.width <= rectA.x ||
+      rectA.y + rectA.height <= rectB.y ||
+      rectB.y + rectB.height <= rectA.y;
+
+    const relayRect = { x: relay.x, y: relay.y, width: PROTECTION_ANNOTATION_DIAMETER, height: PROTECTION_ANNOTATION_DIAMETER };
+    const meterRect = { x: meter.x, y: meter.y, width: PROTECTION_ANNOTATION_DIAMETER, height: PROTECTION_ANNOTATION_DIAMETER };
+    expect(disjoint(ctLabelResolved.rect, relayRect)).toBe(true);
+    expect(disjoint(ctLabelResolved.rect, meterRect)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // F10.3 (spec §18.4, D2-4) — etykieta szyny SN stacji (napięcie + oznaczenie
 // sekcji, parytet z GPZ) + sprzęgło (COUPLER) renderuje STAN z danych.
 // ---------------------------------------------------------------------------

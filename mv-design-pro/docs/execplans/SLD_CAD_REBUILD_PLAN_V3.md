@@ -1200,12 +1200,26 @@ lokalnych łatek i duplikacji elektryki adaptera.
   plików/3288, accept ALL PASS, pełna regresja exit 0, guardy zielone; wizualny DoD nadzorcy
   POTWIERDZONY („Sekcja 1 · 15 kV" nad szyną, zero kolizji).
 
-### F10.4. CT/VT adnotacje (część bez-DOMAIN)
+### F10.4. [DONE] Adnotacje CT (identyfikator + przekładnia) — część bez-DOMAIN §18.3
 - Zakres: etykieta CT (identyfikator + przekładnia) TYLKO gdy dane obecne (§18.3) — do czasu
   dostarczenia pól DOMAIN (D3, F10.6) rysowany sam okrąg CT bez przekładni, zero zgadywania.
 - DoD: `ct_annotation_probe` zielony (negatyw obowiązkowy: 0 przekładni „z domysłu"); wyrocznie
   §11(+A1/A2) zielone; determinizm.
 - Autoryzacje: `v3/compose/station.ts`, `v3/compose/gpz.ts`, testy v3.
+
+- **Wynik (2026-07-16, agent + odbiór osobisty nadzorcy):** identyfikator = Measurement.name,
+  przekładnia = rating.ratio_primary/secondary („300/5", czyste formatowanie); kanał addytywny
+  CtRatingAnnotationView/ctRatingAnnotations (adapter resolveBayCtRatingAnnotations, dopasowanie
+  po linked_ref — wzorzec resolveMeterAnchor); etykieta w kolumnie adnotacji §17 jako ODRĘBNE
+  pasmo addytywne (koegzystencja z okręgiem przekaźnika/miernika na tym samym CT bez kolizji —
+  test); ct_annotation_probe (a: kotwiczenie na realnym CT tego pola; b: fixtura 0 measurements ⇒
+  0 etykiet = negatyw wprost; c: I0/Ferranti jawnie poza zakresem) w accept. CT→zabezpieczenie:
+  istniejący mechanizm F9.9 (ct_ref kotwiczy okrąg) — udokumentowane, nie zdublowane. ZNALEZISKO
+  do F10.6: field_read_model.py:581 zawiera HEURYSTYKĘ zero_sequence_current_source="suma_ct"
+  (nigdy Ferranti) — rozróżnienie układu CT to niedostarczona dana DOMAIN + heurystyka read-modelu
+  do wyczyszczenia; GPZ bez kanału Measurement (architektura, F8c/F9.10). Baseline'y NIETKNIĘTE,
+  zero zmiany wizualnej fixtury. Bramki: tsc/eslint czyste, vitest sld 171/3293, accept ALL PASS,
+  pełna regresja exit 0, guardy zielone.
 
 ### F10.5. Dwie linie wtórne + walidacja 67N/87T + dyscyplina adnotacji
 - Zakres: linia sygnału pomiarowego CT→przekaźnik (`ct_ref`) osobna od linii trip

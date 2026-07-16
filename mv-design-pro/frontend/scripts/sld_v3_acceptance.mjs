@@ -41,6 +41,7 @@ import {
   stationTypeTopologyMismatches,
   switchSymbolUnambiguityGaps,
   vtParallelGaps,
+  allCtAnnotationsValid,
   allProtectionMarkingsValid,
   allSceneGeometryOnGrid,
   allSceneSegmentEndpointsAnchored,
@@ -54,6 +55,7 @@ import {
   noProtectionAnnotationAtLod0,
   noSceneSymbolOverlaps,
   noSymbolWireCollisions,
+  ctAnnotationGaps,
   protectionAnnotationAtLod1IsCircleOnly,
   protectionMarkingGaps,
   sceneSegmentEndpointGaps,
@@ -898,6 +900,30 @@ for (const lod of LODS) {
     protectionAnnotationAtLod1IsCircleOnly(scene),
   );
 
+  // -- §18.3 ct_annotation_probe (F10.4) -------------------------------------
+  // Fixtura referencyjna niesie 0 `measurements` (patrz raport F10.4,
+  // `resolveBayCtRatingAnnotations` w `enmToSldAdapter.ts`) — na TEJ fixturze
+  // ta sonda dowodzi „zero przekładni z domysłu" (b, §18.3) WPROST (0 etykiet
+  // `#ct-rating-` w ogóle, dowód vacuously true); dowód POZYTYWNY (a, etykieta
+  // z realnych danych) żyje w testach vitest syntetycznych
+  // (`compose/__tests__/protectionMarking.test.ts`/`station.test.ts`,
+  // `scene/__tests__/buildScene.test.ts`). (c) układ 3×CT/Ferranti-I0 poza
+  // zakresem (NOWE pole DOMAIN D3, F10.6) — patrz docstring `ctAnnotationGaps`.
+  const ctRatingLabelCount = scene.labels.filter(
+    (l) => l.ownerKind === 'protection' && l.ownerRef?.includes('#ct-rating-'),
+  ).length;
+  const ctGaps = ctAnnotationGaps(scene);
+  check(
+    'ct_annotation_probe (§18.3 a): każda etykieta przekładni CT zakotwiczona na REALNYM symbolu currentTransformer tego samego pola',
+    allCtAnnotationsValid(scene),
+    `etykiety=${ctRatingLabelCount} luki=${ctGaps.length}`,
+  );
+  check(
+    'ct_annotation_probe (§18.3 b, negatyw obowiązkowy): fixtura referencyjna (0 measurements) ⇒ zero etykiet przekładni CT „z domysłu"',
+    ctRatingLabelCount === 0,
+    `etykiety=${ctRatingLabelCount}`,
+  );
+
   // -- §16/§15.2 ciągłość elektryczna + lod_path_probe -----------------------
   // F9.7: rozszerzone z „WYŁĄCZNIE LOD 2" na WSZYSTKIE LOD (patrz docstring
   // `checkContinuity` — dowód empiryczny, spec §15.2 wymaga tego na L0/L1/L2).
@@ -924,6 +950,32 @@ for (const lod of LODS) {
   check(
     'protection_marking_probe (test negatywny — dowód, że wyrocznia gryzie): okrąg BEZ kodów fabrykowany na scenie MUSI dać FAIL',
     allProtectionMarkingsValid(fabricated) === false,
+  );
+}
+
+// -- ct_annotation_probe (negatyw obowiązkowy, §18.3b) ----------------------
+// Dowód, że wyrocznia GRYZIE: etykieta „#ct-rating-" fabrykowana BEZ
+// odpowiadającego symbolu `currentTransformer` na scenie MUSI failować
+// `allCtAnnotationsValid` (wzorzec `protection_marking_probe` wyżej).
+{
+  const scene = buildSceneV3(enm, 2);
+  const fabricated = {
+    ...scene,
+    labels: [
+      ...scene.labels,
+      {
+        ownerRef: 'accept-sld-v3-fabricated#ct-rating-ghost',
+        ownerKind: 'protection',
+        labelClass: 't4',
+        text: 'CT9 · 300/5',
+        slotIndex: 1,
+        rect: { x: 0, y: 0, width: 10, height: 10 },
+      },
+    ],
+  };
+  check(
+    'ct_annotation_probe (test negatywny — dowód, że wyrocznia gryzie): etykieta przekładni CT fabrykowana BEZ symbolu currentTransformer MUSI dać FAIL',
+    allCtAnnotationsValid(fabricated) === false,
   );
 }
 

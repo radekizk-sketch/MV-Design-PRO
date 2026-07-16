@@ -59,6 +59,7 @@ import {
   miniBlockStationPortOffsets,
   type BayPrimaryDeviceView,
   type BayProtectionMarkingView,
+  type CtRatingAnnotationView,
   type MiniBlockBayDescriptor,
   type MiniBlockDerBadge,
 } from '../renderer/MiniBlockRmuRenderer';
@@ -3615,6 +3616,9 @@ function buildExplicitStationMiniBays(
         // domknięcie osobnego kanału field-view).
         protectionMarking: resolveBayProtectionMarking(bay, snapshot),
         meteringMeasurementRef: resolveBayMeteringMeasurementRef(bay, snapshot),
+        // F10.4 (SLD_CAD_SPEC_V3 §18.3): adnotacja przekładni CT — patrz
+        // docstring `resolveBayCtRatingAnnotations` poniżej.
+        ctRatingAnnotations: resolveBayCtRatingAnnotations(bay, snapshot),
       };
     });
 
@@ -4095,6 +4099,39 @@ function resolveBayMeteringMeasurementRef(
     (m: Measurement) => m.purpose === 'metering' && m.bay_ref === bay.ref_id,
   );
   return measurement?.ref_id;
+}
+
+/**
+ * F10.4 (SLD_CAD_SPEC_V3 §18.3, CT opisany — część BEZ-DOMAIN): projekcja
+ * adnotacji przekładni CT tego pola — WSZYSTKIE `Measurement{measurement_type:
+ * 'CT', bay_ref}` pomiary tego pola, niezależnie od `purpose` (§18.3 dotyczy
+ * KAŻDEGO CT toru głównego, nie tylko rozliczeniowego — w przeciwieństwie do
+ * `resolveBayMeteringMeasurementRef` wyżej, który filtruje WYŁĄCZNIE
+ * `purpose==='metering'` dla miernika „M"). Identyfikator = `Measurement.name`
+ * (pole engineering-friendly — `ref_id` jest technicznym slugiem, wzorzec
+ * §19.2 „numer/nazwa linii" = `.name`, NIE `.ref_id`). Przekładnia = surowe
+ * `rating.ratio_primary`/`ratio_secondary` sformatowane jako „primary/
+ * secondary" (CZYSTE formatowanie — zero zaokrągleń/fizyki). Dopasowanie na
+ * KONKRETNY aparat NARYSOWANEGO stosu (`linked_ref` match) dzieje się w
+ * `compose/protectionMarking.ts` `resolveCtRatingAnnotations` (adapter nie
+ * zna geometrii — wzorzec `resolveBayProtectionMarking`). `undefined` gdy
+ * pole nie ma żadnego CT (brak danych = brak oznaczenia, §18.3 dosłownie).
+ * Układ pomiarowy (3×CT fazowe / Ferranti-I0) — NOWE pole DOMAIN (D3, F10.6),
+ * poza zakresem tej projekcji.
+ */
+function resolveBayCtRatingAnnotations(
+  bay: Bay,
+  snapshot: EnergyNetworkModel,
+): readonly CtRatingAnnotationView[] | undefined {
+  const measurements = (snapshot.measurements ?? []).filter(
+    (m: Measurement) => m.measurement_type === 'CT' && m.bay_ref === bay.ref_id,
+  );
+  if (measurements.length === 0) return undefined;
+  return measurements.map((m) => ({
+    measurementRef: m.ref_id,
+    identifier: m.name,
+    ratioText: `${m.rating.ratio_primary}/${m.rating.ratio_secondary}`,
+  }));
 }
 
 function mapStationBayRoleToMiniRole(fieldRole: MiniBlockBayDescriptor['fieldRole']): MiniBlockBayDescriptor['fieldRole'] {

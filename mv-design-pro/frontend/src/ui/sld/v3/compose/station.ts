@@ -101,6 +101,7 @@ import {
   bayHasProtectionAnnotation,
   fullCodesListText,
   protectionDeviceCenter,
+  resolveCtRatingAnnotations,
   resolveMeterAnchor,
   resolveStationProtectionMarking,
   type PlacedStackDevice,
@@ -837,6 +838,39 @@ export function composeStation(input: ComposeStationInput): StationComposition {
           // pomiar wskazany, ale ŻADEN aparat stosu nie niesie pasującego
           // `linked_ref` — luka danych zgłoszona zamiast cichego pominięcia.
           missingData.push('bay.protection.meter_anchor_unresolved');
+        }
+
+        // F10.4 (spec §18.3, TA SAMA reguła LOD co „52"/„M" — §17.4: pełna
+        // treść WYŁĄCZNIE na L2). Zaczep PO PRAWEJ toru głównego, na
+        // krawędzi `stackLeftX+planFootprint.width` (TA SAMA krawędź co
+        // sidecar oznaczenia funkcyjnego pola, PEŁNY gabaryt planu — main +
+        // laterale ES/VT/SA, §18.1/§18.2 — więc etykieta CT nigdy nie
+        // wchodzi w strefę odgałęzień bocznych). Rezerwacja WŁASNEGO pasma,
+        // ZSUMOWANA (nie max()owana) z okręgiem/miernikiem/pełną listą kodów
+        // (`ctRatingAnnotationsWidth`, `compose/protectionMarking.ts`) —
+        // etykieta CT (blisko toru głównego) i okrąg/miernik (prawo-wyrównane
+        // do końca rezerwacji) leżą w dwóch różnych pasmach TEJ SAMEJ
+        // kolumny, więc nie kolidują nawet gdy oba zakotwiczone na TYM
+        // SAMYM aparacie CT (§17.2 „kotwica przy CT").
+        const ctAnnotations = resolveCtRatingAnnotations(bay.ctRatingAnnotations, stackDevices);
+        const ctTextAnchorX = snapToGrid(stackLeftX + planFootprint.width);
+        ctAnnotations.forEach((ann, ctIndex) => {
+          const center = protectionDeviceCenter(ann.device);
+          protectionLabels.push({
+            ownerRef: `${bay.bayRef}#ct-rating-${ann.device.deviceRef ?? ctIndex}`,
+            ownerKind: 'protection',
+            text: ann.text,
+            labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
+            anchor: { x: ctTextAnchorX, y: center.y },
+            placement: 'right',
+          });
+        });
+        if ((bay.ctRatingAnnotations?.length ?? 0) > 0 && ctAnnotations.length === 0) {
+          // Wzorzec `bay.protection.meter_anchor_unresolved` wyżej: dane
+          // przekładni CT wskazane, ale ŻADEN aparat stosu nie niesie
+          // pasującego `linked_ref` — luka danych zgłoszona zamiast cichego
+          // pominięcia (zero adnotacji-widm, WHITE BOX).
+          missingData.push('bay.protection.ct_rating_anchor_unresolved');
         }
       }
     }

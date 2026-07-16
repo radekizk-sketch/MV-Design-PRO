@@ -3125,3 +3125,66 @@ export function protectionAnnotationAtLod1IsCircleOnly(scene: SceneV3): boolean 
   const noProtectionLabels = !scene.labels.some((l) => l.ownerKind === 'protection');
   return relaysHaveNoCodes && noTripLines && noMeters && noProtectionLabels;
 }
+
+// ---------------------------------------------------------------------------
+// F10.4 — ct_annotation_probe (spec §18.3).
+// ---------------------------------------------------------------------------
+
+export interface CtAnnotationGap {
+  readonly reason: 'label-without-ct-symbol';
+  readonly ownerRef?: string;
+}
+
+/**
+ * ct_annotation_probe (spec §18.3, F10.4 — CT opisany, część BEZ-DOMAIN):
+ * (a) gdy dane przekładni CT obecne (`Measurement.rating`), adnotacja
+ * identyfikator+przekładnia jest narysowana w kolumnie adnotacji §17 —
+ * DOWÓD POZYTYWNY żyje na SYNTETYKU (`compose/__tests__/station.test.ts`/
+ * `protectionMarking.test.ts`), bo scena sama nie niesie źródłowego
+ * `Measurement.rating`/`name` (TEN SAM wzorzec co `protectionMarkingGaps` —
+ * scena dowodzi STRUKTURY zbudowanego rysunku, nie źródła ENM). TU: każda
+ * etykieta `ownerKind==='protection'` z `ownerRef` niosącym sufiks
+ * `#ct-rating-` MUSI zakotwiczać się na REALNYM symbolu
+ * `symbolId==='currentTransformer'` TEGO SAMEGO pola (`meta.ownerRef`
+ * wspólny — WHITE BOX, zero etykiet-widm bez odpowiadającego aparatu na
+ * scenie).
+ *
+ * (b) „0 przekładni «z domysłu»" (negatyw obowiązkowy): brak danych
+ * (`MiniBlockBayDescriptor.ctRatingAnnotations` nieustawione/puste, LUB brak
+ * dopasowania `linked_ref`, `resolveCtRatingAnnotations`) ⇒ ZERO etykiet
+ * `#ct-rating-` dla tego pola — dowiedzione KONSTRUKCYJNIE (`compose/
+ * protectionMarking.ts` `resolveCtRatingAnnotations` filtruje pozycje bez
+ * dopasowania, `compose/station.ts` pushuje etykietę WYŁĄCZNIE dla
+ * rozwiązanych pozycji) oraz NA FIXTURZE REFERENCYJNEJ (`sldSubstrate52s`,
+ * 0 `measurements` w ENM ⇒ adapter zwraca `ctRatingAnnotations===undefined`
+ * dla KAŻDEGO pola ⇒ 0 etykiet `#ct-rating-` na CAŁEJ scenie, asercja
+ * acceptance — patrz raport F10.4). Ta sonda (scena, nie ENM) nie ma dostępu
+ * do źródła, więc dowodzi WYŁĄCZNIE strukturalnej spójności (a) — brak
+ * fabrykacji jest własnością KONSTRUKCJI (b), potwierdzoną testami
+ * jednostkowymi i acceptance, nie przez tę funkcję.
+ *
+ * (c) układ pomiarowy 3×CT fazowe vs przekładnik sumujący/Ferranti-I0 —
+ * POZA ZAKRESEM (NOWE pole DOMAIN D3, F10.6, rozstrzygnięcie architekta
+ * §18.3 Opcja B): w tej fazie ŻADEN kod nie generuje wariantu symbolu CT —
+ * `symbolId` jest zawsze `'currentTransformer'`, niezależnie od danych
+ * (brak ścieżki kodu do zaburzenia — dokumentacyjne, nie mechaniczne).
+ */
+export function ctAnnotationGaps(scene: SceneV3): readonly CtAnnotationGap[] {
+  const gaps: CtAnnotationGap[] = [];
+  const ctSymbolOwners = new Set(
+    scene.symbols.filter((s) => s.symbolId === 'currentTransformer').map((s) => s.meta?.ownerRef),
+  );
+  scene.labels
+    .filter((l) => l.ownerKind === 'protection' && l.ownerRef?.includes('#ct-rating-'))
+    .forEach((l) => {
+      const bayRef = l.ownerRef?.split('#ct-rating-')[0];
+      if (!bayRef || !ctSymbolOwners.has(bayRef)) {
+        gaps.push({ reason: 'label-without-ct-symbol', ownerRef: l.ownerRef });
+      }
+    });
+  return gaps;
+}
+
+export function allCtAnnotationsValid(scene: SceneV3): boolean {
+  return ctAnnotationGaps(scene).length === 0;
+}

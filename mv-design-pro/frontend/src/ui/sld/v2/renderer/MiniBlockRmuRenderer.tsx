@@ -115,6 +115,25 @@ export interface BayProtectionMarkingView {
   readonly ctRef?: string;
 }
 
+/**
+ * F10.4 (SLD_CAD_SPEC_V3 §18.3) — adnotacja JEDNEGO aparatu CT toru głównego:
+ * identyfikator (`Measurement.name` — pole engineering-friendly, ODRÓŻNIONE
+ * od `ref_id` technicznego, wzorzec identyczny z §19.2 „numer/nazwa linii" —
+ * `Cable`/`OverheadLine.name`) + przekładnia sformatowana z `Measurement.
+ * rating.ratio_primary`/`ratio_secondary` (np. „300/5" — CZYSTE formatowanie,
+ * zero fizyki/zaokrągleń). BEZ-DOMAIN: oba pola źródłowe (`name`, `rating`)
+ * JUŻ ISTNIEJĄ w ENM (`backend/src/enm/models.py:455-470`) — układ pomiarowy
+ * (3×CT fazowe / Ferranti-I0) to ODRĘBNE, NOWE pole DOMAIN (D3, F10.6), poza
+ * zakresem tej adnotacji. Dopasowanie na aparat CT NARYSOWANEGO stosu przez
+ * `measurementRef === BayPrimaryDevice.linked_ref` (wzorzec
+ * `meteringMeasurementRef`/`resolveMeterAnchor`, `compose/protectionMarking.ts`).
+ */
+export interface CtRatingAnnotationView {
+  readonly measurementRef: string;
+  readonly identifier: string;
+  readonly ratioText: string;
+}
+
 export interface MiniBlockBayDescriptor {
   readonly bayRef: string;
   readonly fieldRole: FieldRole;
@@ -141,6 +160,11 @@ export interface MiniBlockBayDescriptor {
    *  gdy brak takiego pomiaru. Dopasowanie na aparat stosu (miernik „M")
    *  przez `linkedRef` w `compose/protectionMarking.ts`. */
   readonly meteringMeasurementRef?: string;
+  /** F10.4 (SLD_CAD_SPEC_V3 §18.3): adnotacje przekładni CT tego pola —
+   *  JEDNA pozycja per aparat CT z `Measurement.rating` obecnym. `undefined`
+   *  gdy pole nie niesie żadnego CT z ratingiem (brak danych = brak
+   *  oznaczenia, §18.3 dosłownie — zero „z domysłu"). */
+  readonly ctRatingAnnotations?: readonly CtRatingAnnotationView[];
 }
 
 export interface MiniBlockDerBadge {
