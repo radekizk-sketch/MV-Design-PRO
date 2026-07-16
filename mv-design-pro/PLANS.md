@@ -307,6 +307,13 @@ Progress:
         (konsumuje D3 + NC RfG + straty), P41 krzywe P–Q (delta katalogowa).
         UWAGA IA: warsztat wyników ma 10 zakładek — do audytu rady (grupowanie
         OZE) przy najbliższym przeglądzie fazowym.
+        D3a straty/napięcia scenariuszy (Sonnet; +8 testów; PRZEJĘTE przez
+        zarządcę po zawieszeniu wykonawcy — weryfikacja i commit w worktree;
+        zintegrowane `d683d45`; pełny pytest 5783 pass ZERO failed potwierdzony).
+        Karty D3a/P19 `7cb7ae9`; wykonawca P19 (ranking przyłączeń) w toku.
+        PROCEDURA: wykonawcy backendowi zawieszają się po pełnym pytest (3
+        przypadki) — zarządca przejmuje: weryfikacja w worktree + commit
+        w imieniu wykonawcy (bez oczekiwania na raport).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
