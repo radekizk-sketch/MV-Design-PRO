@@ -362,8 +362,12 @@ Progress:
         bieg powtórzony). FALA 3: D7 symulacja odpowiedzi na polecenia OSD
         (Opus; 28 testów; dwa biegi bazowy-vs-polecenie; PRZEJĘTE po
         zatrzymaniu wykonawcy — bramki dokończone przez zarządcę; zintegrowane
-        `0c6c0ed`; pełny pytest 5884 pass ZERO failed potwierdzony). Karta P40
-        okno odpowiedzi OSD `48ee5e5` — wykonawca w toku.
+        `0c6c0ed`; pełny pytest 5884 pass ZERO failed potwierdzony). P40 okno
+        odpowiedzi OSD (Opus; 28 testów; PRZEJĘTE po braku odpowiedzi monitora
+        — bramki zweryfikowane w worktree przez zarządcę: ui2 1184 pass, guardy
+        zielone; zintegrowane `232c062`). Scalenie #17: zakładka „Polecenia OSD"
+        (`518802d`). PROCEDURA WZMOCNIONA: po każdym powiadomieniu wykonawcy
+        sprawdzać żywotność procesu (ps) i przejmować bez czekania na monitor.
         PROCEDURA: wykonawcy backendowi zawieszają się po pełnym pytest (3
         przypadki) — zarządca przejmuje: weryfikacja w worktree + commit
         w imieniu wykonawcy (bez oczekiwania na raport).
