@@ -18,9 +18,6 @@ import './legacy.css';
 
 import { SldWorkspaceContainer } from '../../ui/sld/v2/canvas/SldWorkspaceContainer';
 import { WorkspaceSurfaceRouter } from '../../ui/workspace';
-import { RunHistoryPanel } from '../../ui/study-cases/RunHistoryPanel';
-import { useAppStateStore } from '../../ui/app-state';
-import { useShellStore } from '../shell/useShellStore';
 import type { SpaceId } from '../shell/spaces';
 import { REJESTR_LEGACY } from './legacyRegistry';
 
@@ -44,29 +41,6 @@ function LegacySld() {
 }
 
 /** Obliczenia: konfiguracja zakresu obliczeń + historia przebiegów (study-cases). */
-/**
- * MOST historii przebiegów (scalenie U2 #3): konfiguracja przypadków przeszła do
- * nowego okna E7.1 (MenedzerPrzypadkow); historia przebiegów zostaje mostem do
- * czasu okna W-503 (kolejka przebiegów — karta E7.2). Eksport dla integratora.
- */
-export function MostHistoriiPrzebiegow() {
-  const activeRunId = useAppStateStore((s) => s.activeRunId);
-  const setActiveRun = useAppStateStore((s) => s.setActiveRun);
-  const setActiveSpace = useShellStore((s) => s.setActiveSpace);
-
-  return (
-    <div className="mvd-legacy-obliczenia">
-      <RunHistoryPanel
-        selectedRunId={activeRunId}
-        onSelectRun={(runId) => {
-          setActiveRun(runId);
-          setActiveSpace('wyniki');
-        }}
-      />
-    </div>
-  );
-}
-
 /**
  * Wyniki/dokumentacja: powierzchnie trasowe starego UI (E-24 analizy / E-25 raport).
  * Most ustawia hash (jedna prawda nawigacji), orkiestrator E1.7a otwiera

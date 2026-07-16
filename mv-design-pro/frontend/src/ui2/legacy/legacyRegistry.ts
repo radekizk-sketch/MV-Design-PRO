@@ -68,8 +68,8 @@ export const REJESTR_LEGACY: Readonly<Record<SpaceId, WpisRejestruLegacy>> = {
     zrodlo: 'nowa-powloka',
     obszaryLegacy: ['STUDIA_OBLICZENIOWE (konfiguracja + przebiegi)'],
     montaz:
-      'MenedzerPrzypadkow (E7.1: lista, karta z założeniami, porównanie, nowy/klon) + most historii przebiegów (RunHistoryPanel do czasu okna W-503/E7.2)',
-    wygaszenie: 'konfiguracja zrealizowana w U2; historia przebiegów → E7.2 (W-503)',
+      'MenedzerPrzypadkow (E7.1) + PrzebiegiPanel (E7.2: historia z parametrami, odcisk odtwarzalności, na żywo z magistrali)',
+    wygaszenie: 'zrealizowane w U2 w całości (most RunHistoryPanel usunięty)',
   },
   wyniki: {
     przestrzen: 'wyniki',

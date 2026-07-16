@@ -29,7 +29,7 @@ import { PulpitProjektu } from './spaces/projekt';
 import { PanelGotowosci } from './spaces/gotowosc';
 import { ModelWarsztat } from './spaces/model';
 import { MenedzerPrzypadkow } from './spaces/obliczenia';
-import { MostHistoriiPrzebiegow } from './legacy/LegacySurface';
+import { PrzebiegiPanel } from './spaces/obliczenia/przebiegi';
 import { LegacyWarsztat } from './legacy/LegacyWarsztat';
 import { LegacyInspektor } from './legacy/LegacyInspektor';
 import { LegacyChrome } from './legacy/LegacyChrome';
@@ -226,7 +226,14 @@ export function AppRoot() {
           obliczenia={
             <div className="mvd-obliczenia-warsztat">
               <MenedzerPrzypadkow />
-              <MostHistoriiPrzebiegow />
+              <PrzebiegiPanel
+                trybZaawansowania={advancementMode}
+                onPokazWyniki={(runId) => {
+                  // Parytet mostu: aktywacja przebiegu + przejście do Wyników.
+                  useAppStateStore.getState().setActiveRun(runId);
+                  wybierzPrzestrzen('wyniki');
+                }}
+              />
             </div>
           }
           gotowosc={
