@@ -269,8 +269,12 @@ Progress:
         `9c2d6d6`; NOTA: pre-existing naruszenia ruff/black w nietkniętych
         plikach repo — poza zakresem, CI ich nie egzekwuje; TODO-KARTA:
         n_parallel przy mocy IBG, q_actual z wyniku PF per źródło).
-        Karta D2 (API sanity_bounds + energy_validation → W-607) `fceb28b`;
-        wykonawcy w toku: P47a (pulpit na max), D2.
+        D2 API jakości wyników (Opus; 26 testów; końcówki /api/quality/
+        sanity-bounds i /energy-validation; pełny pytest 5750 pass ZERO failed —
+        potwierdzony przez zarządcę na scalonym drzewie; zintegrowane `dbd044f`;
+        serwis energy_validation jako pakiet service.py — kolizja nazw
+        rozstrzygnięta jawnie). Karta E8.4 okno jakości wyników W-607 `3c68d7d`;
+        wykonawcy w toku: P47a (pulpit na max), E8.4 (jakość wyników).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
