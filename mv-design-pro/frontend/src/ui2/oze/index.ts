@@ -10,6 +10,7 @@ export * from './zdolnosc';
 export * from './ranking';
 export * from './krzywe';
 export * from './obszar';
+export * from './studium';
 export * from './api';
 export { useNcRfgStore } from './ncRfgStore';
 export type { NcRfgStoreState, StatusBieguNcRfg } from './ncRfgStore';
