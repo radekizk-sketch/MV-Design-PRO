@@ -22,7 +22,14 @@ import { EkranZwarc } from '../../wyniki/zwarcia';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useStudyCasesStore } from '../../../ui/study-cases/store';
-import { EkranKrzywych, EkranRankingu, EkranZdolnosci, MacierzNcRfg, PulpitOze } from '../../oze';
+import {
+  EkranKrzywych,
+  EkranObszaruPQ,
+  EkranRankingu,
+  EkranZdolnosci,
+  MacierzNcRfg,
+  PulpitOze,
+} from '../../oze';
 import { EkranJakosci } from '../../wyniki/jakosc';
 import { EkranPorownania } from '../../wyniki/porownanie';
 import { DowodPrzebiegu } from './DowodPrzebiegu';
@@ -41,6 +48,7 @@ const ZAKLADKI = [
   { id: 'zdolnosc', etykieta: T.zakladkaZdolnosc },
   { id: 'ranking', etykieta: T.zakladkaRanking },
   { id: 'krzywe', etykieta: T.zakladkaKrzywe },
+  { id: 'obszar', etykieta: T.zakladkaObszar },
   { id: 'pozostale', etykieta: T.zakladkaPozostale },
 ] as const;
 
@@ -53,7 +61,7 @@ const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId
   },
   {
     etykieta: T.grupaOze,
-    zakladki: ['ncrfg', 'pulpit-oze', 'zdolnosc', 'ranking', 'krzywe'],
+    zakladki: ['ncrfg', 'pulpit-oze', 'zdolnosc', 'ranking', 'krzywe', 'obszar'],
   },
 ];
 
@@ -172,6 +180,7 @@ export function WynikiWarsztat({
         {zakladka === 'zdolnosc' && <EkranZdolnosci trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'ranking' && <EkranRankingu trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'krzywe' && <EkranKrzywych trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'obszar' && <EkranObszaruPQ trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'pulpit-oze' && (
           <PulpitOze
             trybZaawansowania={trybZaawansowania}
