@@ -234,6 +234,11 @@ Progress:
         moduły A/B/C/D sam (`engine.py:235`) — delta backendowa rdzenia zbędna;
         TODO-KARTA: certyfikat zgodności projektu E13/W-707, wpięcie do pulpitu
         OZE P47, wyświetlenie klasy modułu w podsumowaniu).
+        Scalenie #5 (zarządca): macierz NC RfG jako zakładka „Zgodność NC RfG"
+        warsztatu wyników (W-614/N6) + ślad WHITE BOX testu INLINE w szczególe
+        werdyktu (wzory ASCII solvera — świadomie bez KaTeX; zero martwych
+        klików; `d1910d7`). Pełny bieg na spokojnym drzewie: 8082 pass, exit 0.
+        E12.1 (porównanie A/B rozpływu) delegowana do wykonawcy.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
