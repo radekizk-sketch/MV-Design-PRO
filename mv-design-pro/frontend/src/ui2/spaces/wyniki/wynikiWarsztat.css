@@ -6,3 +6,6 @@
 .mvd-wyniki-zakladka.mvd-on { color: var(--mvd-accent); border-bottom-color: var(--mvd-accent); font-weight: 600; }
 .mvd-wyniki-tresc { flex: 1; min-height: 0; overflow: auto; }
 .mvd-wyniki-pusty { color: var(--mvd-muted); padding: 24px; text-align: center; }
+.mvd-wyniki-grupa { display: flex; align-items: center; gap: 2px; }
+.mvd-wyniki-grupa + .mvd-wyniki-grupa { border-left: 1px solid var(--mvd-line); margin-left: 8px; padding-left: 10px; }
+.mvd-wyniki-grupa-etykieta { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--mvd-muted); margin-right: 4px; white-space: nowrap; }

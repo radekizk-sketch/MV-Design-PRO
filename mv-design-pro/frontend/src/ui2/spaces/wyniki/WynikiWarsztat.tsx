@@ -44,6 +44,19 @@ const ZAKLADKI = [
   { id: 'pozostale', etykieta: T.zakladkaPozostale },
 ] as const;
 
+/** Grupowanie zakładek (przegląd IA po komplecie fali OZE) — czysta prezentacja:
+ * jeden tablist, dwa nazwane klastry; testidy i klawiatura bez zmian. */
+const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId[] }[] = [
+  {
+    etykieta: T.grupaAnalizy,
+    zakladki: ['rozplyw', 'zwarcia', 'dowod', 'jakosc', 'porownanie', 'pozostale'],
+  },
+  {
+    etykieta: T.grupaOze,
+    zakladki: ['ncrfg', 'pulpit-oze', 'zdolnosc', 'ranking', 'krzywe'],
+  },
+];
+
 type ZakladkaId = (typeof ZAKLADKI)[number]['id'];
 
 export interface WynikiWarsztatProps {
@@ -103,27 +116,39 @@ export function WynikiWarsztat({
   return (
     <div className="mvd-wyniki-warsztat" data-testid="mvd-wyniki-warsztat">
       <div role="tablist" aria-label={T.ariaZakladki} className="mvd-wyniki-zakladki">
-        {ZAKLADKI.map((z) => (
-          <button
-            key={z.id}
-            role="tab"
-            type="button"
-            aria-selected={zakladka === z.id}
-            tabIndex={zakladka === z.id ? 0 : -1}
-            className={zakladka === z.id ? 'mvd-wyniki-zakladka mvd-on' : 'mvd-wyniki-zakladka'}
-            data-testid={`mvd-wyniki-zakladka-${z.id}`}
-            onClick={() => setZakladka(z.id)}
-            onKeyDown={(e) => {
-              if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-                e.preventDefault();
-                const idx = ZAKLADKI.findIndex((x) => x.id === zakladka);
-                const krok = e.key === 'ArrowRight' ? 1 : ZAKLADKI.length - 1;
-                setZakladka(ZAKLADKI[(idx + krok) % ZAKLADKI.length].id);
-              }
-            }}
-          >
-            {z.etykieta}
-          </button>
+        {GRUPY_ZAKLADEK.map((grupa) => (
+          <div key={grupa.etykieta} className="mvd-wyniki-grupa" role="presentation">
+            <span className="mvd-wyniki-grupa-etykieta" aria-hidden="true">
+              {grupa.etykieta}
+            </span>
+            {grupa.zakladki.map((id) => {
+              const z = ZAKLADKI.find((x) => x.id === id)!;
+              return (
+                <button
+                  key={z.id}
+                  role="tab"
+                  type="button"
+                  aria-selected={zakladka === z.id}
+                  tabIndex={zakladka === z.id ? 0 : -1}
+                  className={zakladka === z.id ? 'mvd-wyniki-zakladka mvd-on' : 'mvd-wyniki-zakladka'}
+                  data-testid={`mvd-wyniki-zakladka-${z.id}`}
+                  onClick={() => setZakladka(z.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                      e.preventDefault();
+                      // Kolejność klawiatury = kolejność wizualna (spłaszczone grupy).
+                      const kolejnosc = GRUPY_ZAKLADEK.flatMap((g) => g.zakladki);
+                      const idx = kolejnosc.indexOf(zakladka);
+                      const krok = e.key === 'ArrowRight' ? 1 : kolejnosc.length - 1;
+                      setZakladka(kolejnosc[(idx + krok) % kolejnosc.length]);
+                    }
+                  }}
+                >
+                  {z.etykieta}
+                </button>
+              );
+            })}
+          </div>
         ))}
       </div>
       <div role="tabpanel" className="mvd-wyniki-tresc">

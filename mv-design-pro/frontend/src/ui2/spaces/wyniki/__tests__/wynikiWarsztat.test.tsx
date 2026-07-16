@@ -159,12 +159,14 @@ describe('WynikiWarsztat — zakładki', () => {
     render(<WynikiWarsztat {...props()} />);
     const pozostale = screen.getByTestId('mvd-wyniki-zakladka-pozostale');
     expect(pozostale).toHaveAttribute('aria-selected', 'true');
+    // Kolejność wizualna po grupowaniu: po „Pozostałych" (koniec grupy analiz)
+    // następuje pierwsza zakładka grupy OZE.
     fireEvent.keyDown(pozostale, { key: 'ArrowRight' });
-    expect(screen.getByTestId('mvd-wyniki-zakladka-rozplyw')).toHaveAttribute(
+    expect(screen.getByTestId('mvd-wyniki-zakladka-ncrfg')).toHaveAttribute(
       'aria-selected',
       'true',
     );
-    fireEvent.keyDown(screen.getByTestId('mvd-wyniki-zakladka-rozplyw'), { key: 'ArrowLeft' });
+    fireEvent.keyDown(screen.getByTestId('mvd-wyniki-zakladka-ncrfg'), { key: 'ArrowLeft' });
     expect(screen.getByTestId('mvd-wyniki-zakladka-pozostale')).toHaveAttribute(
       'aria-selected',
       'true',

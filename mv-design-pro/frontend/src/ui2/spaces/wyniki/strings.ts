@@ -2,6 +2,8 @@
 
 export const WYNIKI_WARSZTAT_STRINGS = {
   ariaZakladki: 'Widoki wyników',
+  grupaAnalizy: 'Analizy sieci',
+  grupaOze: 'OZE i przyłączenia',
   zakladkaRozplyw: 'Rozpływ mocy',
   zakladkaZwarcia: 'Zwarcia',
   zakladkaDowod: 'Dowód obliczeń',
