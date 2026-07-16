@@ -177,6 +177,12 @@ export interface RekordKonwertera {
   readonly cosphi_max: number | null;
   readonly e_kwh: number | null;
   readonly control_mode: string | null;
+  /**
+   * Krzywa zdolności P–Q producenta: punkty `[p_mw, q_min_mvar, q_max_mvar]`
+   * rosnące po `p_mw` (1:1 z `ConverterType.to_dict` — pole emitowane WYŁĄCZNIE gdy
+   * zadeklarowane). Brak pola ⇒ „brak krzywej producenta" (bieg P–Q zablokowany).
+   */
+  readonly pq_curve?: readonly (readonly [number, number, number])[];
 }
 
 // =============================================================================
@@ -360,4 +366,121 @@ export interface OdpowiedzKatalogNcRfg {
  */
 export function pobierzKatalogKlasNcRfg(): Promise<OdpowiedzKatalogNcRfg> {
   return getJson<OdpowiedzKatalogNcRfg>('/api/ncrfg-tests/catalog');
+}
+
+// =============================================================================
+// Pokrycie krzywej P–Q wymaganiem operatora — application/analyses/pq_coverage.py
+// =============================================================================
+
+/** Typ katalogowy przekształtnika w widoku pokrycia (podzbiór `converter.to_dict`). */
+export interface TypKatalogowyPQ {
+  readonly id: string;
+  readonly nazwa: string;
+  readonly kind: string;
+  readonly pmax_mw: number;
+  readonly sn_mva: number;
+}
+
+/** Operator OSD w widoku pokrycia (udziały Q jako ułamek Pn, np. -0,33…0,33). */
+export interface OperatorPQ {
+  readonly id: string;
+  readonly nazwa: string;
+  readonly udzial_q_min_pct_pn: number;
+  readonly udzial_q_max_pct_pn: number;
+}
+
+/** Prostokątne wymaganie zakresu Q operatora (Mvar) — stałe w każdym punkcie pracy. */
+export interface WymaganiePQ {
+  readonly pn_mw: number;
+  readonly q_wymagane_min_mvar: number;
+  readonly q_wymagane_max_mvar: number;
+  readonly opis: string;
+}
+
+/**
+ * Wynik pokrycia w pojedynczym punkcie krzywej. Pasmo producenta
+ * [`q_min_mvar`, `q_max_mvar`] musi obejmować pasmo wymagane; `pokryty`
+ * i `margines_mvar` pochodzą WYŁĄCZNIE z backendu (zero ocen lokalnych).
+ */
+export interface PunktPokryciaPQ {
+  readonly p_mw: number;
+  readonly q_min_mvar: number;
+  readonly q_max_mvar: number;
+  readonly q_wymagane_min_mvar: number;
+  readonly q_wymagane_max_mvar: number;
+  readonly zapas_dolny_mvar: number;
+  readonly zapas_gorny_mvar: number;
+  readonly margines_mvar: number;
+  readonly pokryty: boolean;
+  readonly uwaga: string;
+}
+
+/** Werdykt całości pokrycia (liczba punktów pokrytych + najmniejszy margines). */
+export interface WerdyktPQ {
+  readonly pokryty: boolean;
+  readonly liczba_punktow: number;
+  readonly liczba_pokrytych: number;
+  readonly min_margines_mvar: number;
+  readonly opis_pl: string;
+}
+
+/** Ślad WHITE BOX porównania (wzór ASCII → dane → podstawienie per punkt → wynik). */
+export interface SladPokryciaPQ {
+  readonly wzor: string;
+  readonly dane: {
+    readonly pn_mw: number;
+    readonly udzial_q_min_pct_pn: number;
+    readonly udzial_q_max_pct_pn: number;
+    readonly q_wymagane_min_mvar: number;
+    readonly q_wymagane_max_mvar: number;
+    readonly liczba_punktow_krzywej: number;
+  };
+  readonly podstawienie: readonly string[];
+  readonly wynik: string;
+}
+
+/** Widok pokrycia krzywej P–Q (odpowiedź pq-coverage, 1:1 z `build_pq_coverage_view`). */
+export interface WidokPokryciaPQ {
+  readonly typ_katalogowy: TypKatalogowyPQ;
+  readonly operator: OperatorPQ;
+  readonly wymaganie: WymaganiePQ;
+  readonly punkty: readonly PunktPokryciaPQ[];
+  readonly werdykt: WerdyktPQ;
+  readonly slad_whitebox: SladPokryciaPQ;
+}
+
+/** Parametry jawnego biegu pokrycia P–Q (typ katalogowy + operator). */
+export interface ZapytaniePokryciaPQ {
+  readonly catalogItemId: string;
+  readonly operatorId: string;
+}
+
+/**
+ * Pobierz odpowiedź w treści błędu (`detail`) z końcówki — dla uczciwych
+ * komunikatów PL (404 brak typu/operatora, 422 „typ nie ma krzywej producenta").
+ */
+async function getJsonZDetalem<T>(url: string): Promise<T> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    let komunikat = `Zapytanie ${url} nie powiodło się: ${response.status} ${response.statusText}`;
+    try {
+      const body = (await response.json()) as { detail?: unknown };
+      if (typeof body?.detail === 'string' && body.detail.trim()) komunikat = body.detail;
+    } catch {
+      // Brak treści JSON — pozostaje komunikat ze statusem HTTP.
+    }
+    throw new Error(komunikat);
+  }
+  return response.json() as Promise<T>;
+}
+
+/**
+ * Pokrycie krzywej P–Q producenta wymaganiem operatora NC RfG (jawny bieg).
+ * Zwraca uczciwy komunikat PL z końcówki, gdy typ nie ma krzywej producenta.
+ */
+export function pobierzPokryciePQ(zapytanie: ZapytaniePokryciaPQ): Promise<WidokPokryciaPQ> {
+  const url =
+    `/api/oze-analysis/pq-coverage?catalog_item_id=${encodeURIComponent(zapytanie.catalogItemId)}`
+    + `&operator_id=${encodeURIComponent(zapytanie.operatorId)}`;
+  return getJsonZDetalem<WidokPokryciaPQ>(url);
 }

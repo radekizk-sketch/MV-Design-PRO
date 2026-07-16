@@ -1,0 +1,252 @@
+/*
+ * Style okna „Krzywe zdolności P–Q" (karta P41). Kolory WYŁĄCZNIE przez tokeny
+ * --mvd-* (theme/tokens.css) — brak literałów kolorów (zgodność z guardem tokenów
+ * i trybem jasny/ciemny). Warstwa prezentacji: bez wpływu na dane i obliczenia.
+ */
+
+.mvd-krzywe {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  color: var(--mvd-ink);
+}
+
+.mvd-krzywe-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mvd-krzywe-tytul {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.mvd-krzywe-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+
+/* Stany uczciwe (info / błąd) */
+.mvd-krzywe-stan {
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--mvd-panel-2);
+}
+
+.mvd-krzywe-stan--blad {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+
+.mvd-krzywe-stan-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.mvd-krzywe-stan-desc {
+  margin: 4px 0 0;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+
+/* Dobór typu i operatora */
+.mvd-krzywe-dobor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--mvd-panel);
+}
+
+.mvd-krzywe-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 260px;
+}
+
+.mvd-krzywe-pole label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mvd-krzywe-pole select {
+  padding: 6px 8px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+}
+
+.mvd-krzywe-pole-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+.mvd-krzywe-oblicz {
+  padding: 8px 16px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mvd-krzywe-oblicz:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mvd-krzywe-oblicz:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+
+/* Werdykt całości */
+.mvd-krzywe-werdykt {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--mvd-line);
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.mvd-krzywe-werdykt--ok {
+  border-left-color: var(--mvd-ok);
+  background: var(--mvd-ok-bg);
+}
+
+.mvd-krzywe-werdykt--err {
+  border-left-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+
+.mvd-krzywe-werdykt-tytul {
+  font-weight: 600;
+}
+
+.mvd-krzywe-werdykt-opis {
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+
+/* Założenia (część wyniku) */
+.mvd-krzywe-zalozenia {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  background: var(--mvd-panel-2);
+}
+
+.mvd-krzywe-zal-para {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mvd-krzywe-zal-para dt {
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+.mvd-krzywe-zal-para dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Wykres */
+.mvd-krzywe-wykres-blok {
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--mvd-panel);
+  overflow-x: auto;
+}
+
+.mvd-krzywe-wykres-tytul {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mvd-krzywe-wykres-dymek {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 4px 8px;
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  font-size: 12px;
+}
+
+/* Ślad WHITE BOX */
+.mvd-krzywe-slad-blok {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mvd-krzywe-slad-btn {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-chip);
+  color: var(--mvd-ink);
+  cursor: pointer;
+}
+
+.mvd-krzywe-slad-btn:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+
+.mvd-krzywe-slad-tytul {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* Tryb ekspercki */
+.mvd-krzywe-eksp {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0;
+  padding: 8px 16px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 8px;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+.mvd-krzywe-eksp-para {
+  display: flex;
+  gap: 8px;
+}
+
+.mvd-krzywe-eksp-para dd {
+  margin: 0;
+  font-family: var(--mvd-font-mono);
+}
+
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
