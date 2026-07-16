@@ -484,3 +484,99 @@ export function pobierzPokryciePQ(zapytanie: ZapytaniePokryciaPQ): Promise<Widok
     + `&operator_id=${encodeURIComponent(zapytanie.operatorId)}`;
   return getJsonZDetalem<WidokPokryciaPQ>(url);
 }
+
+// =============================================================================
+// Obszar bezpiecznej pracy P–Q węzła — application/analyses/pq_area.py (P30, D5)
+// =============================================================================
+
+/**
+ * Wierzchołek obszaru bezpiecznej pracy dla ustalonej mocy czynnej P
+ * (1:1 z `pq_area.py::_vertex_for_p`). `feasible=false` ⇒ scenariusz środkowy
+ * (Q = 0) już niedopuszczalny — wiersz P bez pasma pracy (`q_min/q_max` null,
+ * kryterium w `binding_center`). Dla wierzchołka dopuszczalnego pasmo pracy Q to
+ * `[q_min_dop_mvar, q_max_dop_mvar]`, a `binding_low`/`binding_high` opisują
+ * kryterium pierwszego niedopuszczalnego scenariusza na każdym z krańców.
+ * Kryteria wiążące dzielą kontrakt z hosting-capacity (ten sam serwis walidacji
+ * D2), więc reużywają typu `KryteriumWiazaceZdolnosci`.
+ */
+export interface WierzcholekObszaruPQ {
+  readonly p_mw: number;
+  readonly feasible: boolean;
+  readonly q_min_dop_mvar: number | null;
+  readonly q_max_dop_mvar: number | null;
+  readonly binding_low: KryteriumWiazaceZdolnosci;
+  readonly binding_high: KryteriumWiazaceZdolnosci;
+  readonly binding_center: KryteriumWiazaceZdolnosci;
+  readonly runs: number;
+}
+
+/** Kontekst przebiegu rozpływu, na którym oparto siatkę P–Q. */
+export interface KontekstObszaruPQ {
+  readonly trace_id: string;
+  readonly snapshot_id: string | null;
+  readonly case_name: string | null;
+}
+
+/** Parametry siatki odesłane przez backend (echo wejścia + górne oszacowanie biegów). */
+export interface ParametryObszaruPQ {
+  readonly bus_ref: string;
+  readonly step_p_mw: number;
+  readonly step_q_mvar: number;
+  readonly max_steps_p: number;
+  readonly max_steps_q: number;
+  readonly max_total_runs: number;
+}
+
+/** Istniejąca generacja w węźle (suma źródeł na szynie) — [MW]/[Mvar]. */
+export interface GeneracjaIstniejacaPQ {
+  readonly p_mw: number;
+  readonly q_mvar: number;
+}
+
+/** Widok obszaru bezpiecznej pracy P–Q (odpowiedź pq-area, 1:1 z `build_pq_area_view`). */
+export interface WidokObszaruPQ {
+  readonly analysis: string;
+  readonly context: KontekstObszaruPQ;
+  readonly parameters: ParametryObszaruPQ;
+  readonly input_hash: string;
+  readonly bus_ref: string;
+  readonly bus_name: string | null;
+  readonly existing_generation: GeneracjaIstniejacaPQ;
+  readonly total_runs: number;
+  readonly vertices: readonly WierzcholekObszaruPQ[];
+}
+
+/** Parametry jawnego biegu obszaru P–Q (węzeł + przebieg + siatka). */
+export interface ZapytanieObszaruPQ {
+  readonly runId: string;
+  readonly busRef: string;
+  readonly stepPMw?: number;
+  readonly stepQMvar?: number;
+  readonly maxStepsP?: number;
+  readonly maxStepsQ?: number;
+}
+
+/**
+ * Obszar bezpiecznej pracy P–Q dla wskazanego węzła i przebiegu rozpływu.
+ * `run_id` i `bus_ref` obowiązkowe (kontrakt FastAPI); parametry siatki opcjonalne
+ * — backend dobiera wartości domyślne, odsyłane w `parameters`.
+ */
+export function pobierzObszarPQ(zapytanie: ZapytanieObszaruPQ): Promise<WidokObszaruPQ> {
+  const czesci = [
+    `run_id=${encodeURIComponent(zapytanie.runId)}`,
+    `bus_ref=${encodeURIComponent(zapytanie.busRef)}`,
+  ];
+  if (zapytanie.stepPMw !== undefined) {
+    czesci.push(`step_p_mw=${encodeURIComponent(String(zapytanie.stepPMw))}`);
+  }
+  if (zapytanie.stepQMvar !== undefined) {
+    czesci.push(`step_q_mvar=${encodeURIComponent(String(zapytanie.stepQMvar))}`);
+  }
+  if (zapytanie.maxStepsP !== undefined) {
+    czesci.push(`max_steps_p=${encodeURIComponent(String(zapytanie.maxStepsP))}`);
+  }
+  if (zapytanie.maxStepsQ !== undefined) {
+    czesci.push(`max_steps_q=${encodeURIComponent(String(zapytanie.maxStepsQ))}`);
+  }
+  return getJsonZDetalem<WidokObszaruPQ>(`/api/oze-analysis/pq-area?${czesci.join('&')}`);
+}
