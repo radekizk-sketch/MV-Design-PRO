@@ -386,12 +386,35 @@ kamera/LOD → F6 (reuse); eksport/determinizm → F7; checklista całości → 
 
 - **Wymaganie:** pięć stanów źródła wizualizowanych nakładką (kolor/obwódka/badge), bez zmiany geometrii:
   `energized`, `standby`, `disconnected`, `maintenance`, `fault`.
-- **Źródło danych:** **[CZĘŚCIOWE — wymaga danych]** `fault` i `disconnected`/`energized` wywodliwe ze
-  stanów łączników i telemetrii (`BaySwitchState.actual_state` m.in. `awaria`; `runtime_state`).
-  `standby`/`maintenance` NIE są modelowane na poziomie źródła — wymagają pola stanu operacyjnego źródła
-  w ENM (zmiana backend, F9.6) LUB białoskrzynkowej reguły wywodzenia zdefiniowanej tu (nie heurystyki).
+- **Źródło danych (F11.3 — kanał realny):** `Generator.meta['operating_mode']` — zapis przez operację
+  domenową `set_source_operating_mode` (backend `domain_operations_v2.py`), odczyt read-modelu przez
+  `field_read_model._generator_operating_mode` (F11.3 backend). Frontend czyta TEN SAM kanał w adapterze
+  (`enmToSldAdapter.buildSources` → `generatorOperationalState`).
+- **Reguła wywodzenia (BIAŁOSKRZYNKOWA, zdefiniowana TU — wymóg tej sekcji, nie heurystyka):**
+  tabela `OPERATING_MODE_TO_SOURCE_STATE` (adapter v2, jedyny pisarz `operationalState`):
+
+  | `operating_mode` (ENM) | stan §13.3 | uzasadnienie |
+  |---|---|---|
+  | `praca_sieciowa` / `ladowanie` / `rozladowanie` | `energized` | źródło czynnie wymienia moc z siecią (kierunek wymiany nie zmienia stanu „w pracy") |
+  | `gotowosc` | `standby` | przyłączone, nie wymienia mocy |
+  | `odstawione` | `disconnected` | odstawione z ruchu |
+  | brak pola / wartość spoza słownika | *(bez stanu)* | uczciwy brak danych ⇒ ZERO nakładki (zero fabrykacji) |
+
+  `maintenance`/`fault` **[NADAL WYMAGAJĄ DANYCH]** — nie są wywodliwe z `operating_mode` (ENM nie
+  modeluje serwisu/awarii na poziomie źródła; ustalenie 8 audytu `SLD_POWER_PATH_AUDIT_2026-07.md`
+  pozostaje w mocy dla tych dwóch stanów). Literały pozostają w kontrakcie, dziś nigdy nie nadawane.
+  `Source` (sieć zewnętrzna) nie niesie trybu pracy ⇒ zawsze bez nakładki.
+- **Realizacja nakładki (F11.3):** WYŁĄCZNIE kolor kreski glifu (tabela `SOURCE_STATE_OVERLAY_COLOR`,
+  `compose/sourceKind.ts`: `energized`=#2ECC71 i `disconnected`=#5B6B76 — TE SAME kolory co nakładka
+  energizacji `SldCanvasV3`; `standby`=#F1C40F, `maintenance`=#3498DB, `fault`=#E74C3C) + atrybut DOM
+  `data-source-state`. Geometria/bbox NIETKNIĘTE (dowód inwariancji: `sourceState.test.ts`). Stan WŁASNY
+  źródła ma pierwszeństwo przed nakładką energizacji toru dla symboli, które go niosą.
 - **Wyrocznia odbioru:** `source_state_probe` — mapowanie stan→nakładka deterministyczne; 0 stanów
   wywiedzionych bez udokumentowanej reguły; nakładka nie zmienia bboxu symbolu (spec §5/§6).
+  **[ZREALIZOWANA — F11.3]**: `sourceStateGaps`/`allSourceStatesLegal` (`scene/buildScene.ts`) — luka
+  dla stanu spoza słownika, stanu na elemencie nie-źródłowym ORAZ stanu zgubionego na scenie (obecny w
+  danych adaptera, nieobecny na narysowanym symbolu); wpięta w `accept:sld-v3` (§13.3a scena bazowa,
+  §13.3b wariant pozytywny z `operating_mode=odstawione`); testy negatywne w `sourceState.test.ts`.
 
 ---
 

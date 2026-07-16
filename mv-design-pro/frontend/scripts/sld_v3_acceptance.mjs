@@ -67,6 +67,8 @@ import {
   sceneSegmentEndpointGaps,
   sourceConnectivityGaps,
   sourceCoverageGaps,
+  allSourceStatesLegal,
+  sourceStateGaps,
   symbolWireCollisions,
   totalVerticalSegmentLength,
 } from '../src/ui/sld/v3/scene/buildScene.ts';
@@ -708,6 +710,40 @@ for (const lod of LODS) {
     allSourcesConnected(scene),
     `luki=${connectivityGaps.length}`,
   );
+
+  // -- §13.3 (F11.3): source_state_probe — stan źródła jako nakładka --------
+  // Fixtura referencyjna NIE niesie `operating_mode` dla żadnego DER
+  // (uczciwy brak ⇒ zero nakładek) — bramka (a) dowodzi „0 stanów
+  // wywiedzionych bez udokumentowanej reguły" na scenie bazowej; (b) dowodzi
+  // POZYTYWNIE przepływ adapter→scena na wariancie fixtury z wpisanym
+  // `Generator.meta['operating_mode']` (realny kanał operacji domenowej
+  // `set_source_operating_mode`): stan LĄDUJE na symbolu DER i wyrocznia
+  // pozostaje zielona (determinizm + geometria nietknięta pilnowane w
+  // `sourceState.test.ts`, dowód inwariancji bboxu).
+  const stateGaps = sourceStateGaps(scene);
+  check(
+    'source_state_probe (§13.3a): 0 stanów źródeł bez udokumentowanej reguły (scena bazowa bez operating_mode ⇒ zero nakładek)',
+    allSourceStatesLegal(scene) &&
+      scene.symbols.every((s) => s.meta?.operationalState === undefined),
+    `luki=${stateGaps.length}`,
+  );
+  if (lod >= 1) {
+    const withMode = JSON.parse(JSON.stringify(enm));
+    const targetGen = withMode.generators?.[0];
+    if (targetGen) {
+      targetGen.meta = { ...targetGen.meta, operating_mode: 'odstawione' };
+      const overlaidScene = buildSceneV3(withMode, lod);
+      const derSymbol = overlaidScene.symbols.find(
+        (s) => s.meta?.elementKind === 'der' && s.meta?.ownerRef === targetGen.ref_id,
+      );
+      const overlaidGaps = sourceStateGaps(overlaidScene);
+      check(
+        'source_state_probe (§13.3b): operating_mode=odstawione ⇒ symbol DER niesie operationalState=disconnected, wyrocznia zielona',
+        derSymbol?.meta?.operationalState === 'disconnected' && overlaidGaps.length === 0,
+        `stan=${String(derSymbol?.meta?.operationalState)} luki=${overlaidGaps.length}`,
+      );
+    }
+  }
 
   // -- §14.2 (F9.5): flow_overlay_probe — nakładka przepływu mocy -----------
   // UWAGA (WHITE BOX, nie fabrykacja): ten skrypt nie uruchamia solvera —

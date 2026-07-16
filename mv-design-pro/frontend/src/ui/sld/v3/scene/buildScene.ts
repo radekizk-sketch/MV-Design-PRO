@@ -153,7 +153,7 @@ import {
   classifyStationTopologicalType,
   FORBIDDEN_RAW_DIRECTION_TOKENS,
 } from '../compose/directions';
-import type { DerSourceKind, StationDerSourceInput } from '../compose/sourceKind';
+import { isSourceOperationalState, type DerSourceKind, type StationDerSourceInput } from '../compose/sourceKind';
 import {
   bayHasProtectionAnnotation,
   protectionAnnotationDetailForLod,
@@ -764,6 +764,10 @@ function composeRowStation(
       // F9.4 (spec §13.1, f92-2): przepisane 1:1 — adnotacja audytora dla
       // DER o rozpoznaniu niepełnym (`kind==='unknown'`).
       missingData: s.missingData,
+      // F11.3 (spec §13.3): przepisane 1:1 — nakładka stanu źródła (kolor +
+      // `data-source-state`), wyrocznia `sourceStateGaps` niżej pilnuje, że
+      // stan występuje WYŁĄCZNIE na symbolach źródeł i tylko ze słownika.
+      operationalState: s.operationalState,
     },
   }));
   const segments: PreviewSegment[] = composition.segments.map((s) => {
@@ -1255,7 +1259,15 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     .filter((s): s is SldSourceView & { kind: DerSourceKind } => s.kind !== 'external_grid')
     .forEach((s) => {
       const list = derSourcesByStationId.get(s.connectionRef) ?? [];
-      list.push({ id: s.id, kind: s.kind, ratedPower: s.ratedPower, missingData: s.missingData });
+      // F11.3 (spec §13.3): `operationalState` przepisany 1:1 z adaptera
+      // (jedyny pisarz — reguła `OPERATING_MODE_TO_SOURCE_STATE`).
+      list.push({
+        id: s.id,
+        kind: s.kind,
+        ratedPower: s.ratedPower,
+        missingData: s.missingData,
+        operationalState: s.operationalState,
+      });
       derSourcesByStationId.set(s.connectionRef, list);
     });
 
@@ -2875,6 +2887,100 @@ export function sourceCoverageGaps(scene: SceneV3): readonly SourceCoverageGap[]
 
 export function allSourcesVisible(scene: SceneV3): boolean {
   return sourceCoverageGaps(scene).length === 0;
+}
+
+// ---------------------------------------------------------------------------
+// F11.3 — wyrocznia §13.3 (source_state_probe): stan źródła jako nakładka.
+// ---------------------------------------------------------------------------
+
+export interface SourceStateGap {
+  /** `meta.ownerRef` symbolu (lub `meta.testId`, gdy ownerRef nieobecny). */
+  readonly ref: string | undefined;
+  readonly symbolId: string;
+  /** Surowa wartość stanu, która wywołała lukę. */
+  readonly state: unknown;
+  readonly reason:
+    | 'stan-poza-slownikiem'
+    | 'stan-na-elemencie-nie-zrodlowym'
+    | 'stan-zgubiony-na-scenie';
+}
+
+/**
+ * source_state_probe (spec §13.3, cytat: „mapowanie stan→nakładka
+ * deterministyczne; 0 stanów wywiedzionych bez udokumentowanej reguły;
+ * nakładka nie zmienia bboxu symbolu"). Trzy człony wymagania, trzy dowody:
+ *
+ * 1. DETERMINIZM mapowania — z konstrukcji: stan→kolor to czysty słownik
+ *    `SOURCE_STATE_OVERLAY_COLOR` (`compose/sourceKind.ts`, zero warunków),
+ *    a stan→wartość to czysty słownik `OPERATING_MODE_TO_SOURCE_STATE`
+ *    (adapter v2, jedyny pisarz `SldSourceView.operationalState`).
+ * 2. „0 STANÓW BEZ UDOKUMENTOWANEJ REGUŁY" — TA funkcja: luka dla KAŻDEGO
+ *    symbolu, którego `meta.operationalState` (a) niesie wartość spoza
+ *    zamkniętego słownika §13.3 (`isSourceOperationalState` — dane sceny
+ *    pochodzą z JSON, typ statyczny nie chroni przed korupcją), LUB (b)
+ *    występuje na elemencie NIE-źródłowym (`elementKind∉{'der','source'}` —
+ *    stan operacyjny źródła na aparacie/szynie/stacji = stan wywiedziony
+ *    poza regułą, bo reguła pisze go WYŁĄCZNIE do wpisów DER adaptera).
+ *    Uwaga: `'source'` (sieć zewnętrzna) jest w zbiorze dozwolonych NOSICIELI
+ *    (kontrakt §13.3 obejmuje każde źródło), choć dziś adapter nigdy nie
+ *    nadaje stanu `external_grid` (ENM nie niesie trybu pracy `Source` —
+ *    docstring `SldSourceView.operationalState`).
+ * 3. „NAKŁADKA NIE ZMIENIA BBOXU" — z konstrukcji (nakładka = kolor kreski +
+ *    atrybut DOM, `compose/preview.tsx`/`canvas/SldCanvasV3.tsx`) + dowód
+ *    inwariancji geometrii w `sourceState.test.ts` (ta sama scena z i bez
+ *    `operating_mode` ⇒ identyczne x/y/symbolId wszystkich symboli).
+ *
+ * Dodatkowo (odwrotna strona członu 2 — zakaz CICHEGO GUBIENIA, wzór
+ * `sourceCoverageGaps` §13.1): źródło, którego wpis adaptera
+ * (`scene.meta.sources`) NIESIE `operationalState`, a jego narysowany symbol
+ * (ownerRef===id) stanu NIE niesie / niesie INNY ⇒ luka
+ * `'stan-zgubiony-na-scenie'` (regresja przepływu compose→scene nie może
+ * przejść zielono). Widoczność per LOD jak w `sourceCoverageGaps` (DER
+ * nierysowane na L0 nie są luką — symbol nie istnieje, więc stan nie mógł
+ * zostać zgubiony NA SCENIE).
+ */
+export function sourceStateGaps(scene: SceneV3): readonly SourceStateGap[] {
+  const gaps: SourceStateGap[] = [];
+  const stateByOwnerRef = new Map<string, string>();
+  scene.symbols.forEach((s) => {
+    const state = s.meta?.operationalState;
+    if (state === undefined) return;
+    const ref = s.meta?.ownerRef ?? s.meta?.testId;
+    if (ref !== undefined && s.meta?.ownerRef !== undefined) {
+      stateByOwnerRef.set(s.meta.ownerRef, state);
+    }
+    if (!isSourceOperationalState(state)) {
+      gaps.push({ ref, symbolId: s.symbolId, state, reason: 'stan-poza-slownikiem' });
+      return;
+    }
+    const kind = s.meta?.elementKind;
+    if (kind !== 'der' && kind !== 'source') {
+      gaps.push({ ref, symbolId: s.symbolId, state, reason: 'stan-na-elemencie-nie-zrodlowym' });
+    }
+  });
+  const drawnSourceRefs = new Set<string>();
+  scene.symbols.forEach((s) => {
+    if ((s.meta?.elementKind === 'der' || s.meta?.elementKind === 'source') && s.meta?.ownerRef) {
+      drawnSourceRefs.add(s.meta.ownerRef);
+    }
+  });
+  scene.meta.sources.forEach((src) => {
+    if (src.operationalState === undefined) return;
+    if (!drawnSourceRefs.has(src.id)) return; // widoczność per LOD — patrz docstring
+    if (stateByOwnerRef.get(src.id) !== src.operationalState) {
+      gaps.push({
+        ref: src.id,
+        symbolId: 'brak-stanu-na-symbolu',
+        state: src.operationalState,
+        reason: 'stan-zgubiony-na-scenie',
+      });
+    }
+  });
+  return gaps;
+}
+
+export function allSourceStatesLegal(scene: SceneV3): boolean {
+  return sourceStateGaps(scene).length === 0;
 }
 
 /** Union-Find minimalny (bez rank/kompresji poza path-halving) — WYŁĄCZNIE

@@ -26,6 +26,7 @@ import type { EnergyNetworkModel } from '../../../../types/enm';
 import { buildSceneV3, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import { SYMBOL_DEFS } from '../symbols/defs';
 import { SYMBOL_GLYPHS, V3_STROKE_BASE } from '../symbols/glyphs';
+import { SOURCE_STATE_OVERLAY_COLOR } from '../compose/sourceKind';
 import { LABEL_TYPOGRAPHY, labelLineHeight, measureLabelWidth } from '../core/text';
 import { GRID } from '../core/grid';
 import type { OwnedLabel } from '../layout/labels';
@@ -150,7 +151,16 @@ function SceneSymbolNode(props: {
   const energizedSym = symbol.meta?.ownerRef != null
     ? overlay?.energizedByOwnerRef?.[symbol.meta.ownerRef] ?? overlay?.energizedByTestId[testId]
     : overlay?.energizedByTestId[testId];
-  const stroke = strokeForEnergization(energizedSym);
+  // F11.3 (spec §13.3): nakładka stanu źródła (kolor z
+  // `SOURCE_STATE_OVERLAY_COLOR`) ma PIERWSZEŃSTWO przed nakładką energizacji
+  // dla symboli niosących `operationalState` — stan WŁASNY źródła (realny
+  // kanał `Generator.meta['operating_mode']`) jest bardziej szczegółowy niż
+  // wywiedziona energizacja toru; oba `energized` dzielą zresztą TEN SAM
+  // kolor (#2ECC71, patrz `compose/sourceKind.ts`). Geometria NIETKNIĘTA.
+  const sourceState = symbol.meta?.operationalState;
+  const stroke = sourceState
+    ? SOURCE_STATE_OVERLAY_COLOR[sourceState]
+    : strokeForEnergization(energizedSym);
   const clickMeta: SldElementClickMeta = { ownerRef: symbol.meta?.ownerRef, elementKind: symbol.meta?.elementKind };
   return (
     <g
@@ -158,6 +168,7 @@ function SceneSymbolNode(props: {
       data-parity-key={parityKeysOf(symbol.meta)}
       data-apparatus-source={symbol.meta?.apparatusSource}
       data-designation-source={symbol.meta?.designationSource}
+      data-source-state={sourceState}
       onClick={onElementClick ? () => onElementClick(testId, clickMeta) : undefined}
       style={onElementClick ? { cursor: 'pointer' } : undefined}
     >

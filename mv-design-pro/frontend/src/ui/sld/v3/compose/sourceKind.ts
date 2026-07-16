@@ -31,6 +31,56 @@ export interface StationDerSourceInput {
    *  jego rodzaj jest honest-unknown (fallback glif `derGenerator`, ZERO
    *  fabrykacji realnego rodzaju). */
   readonly missingData?: boolean;
+  /** F11.3 (spec §13.3): stan operacyjny źródła — 1:1 z
+   *  `SldSourceView.operationalState` (adapter v2, jedyny pisarz; reguła
+   *  `OPERATING_MODE_TO_SOURCE_STATE` z `Generator.meta['operating_mode']`).
+   *  `undefined` = uczciwy brak danych ⇒ ZERO nakładki (spec §13.3: „0 stanów
+   *  wywiedzionych bez udokumentowanej reguły"). */
+  readonly operationalState?: SourceOperationalState;
+}
+
+/**
+ * F11.3 (spec §13.3) — pięć stanów źródła z kontraktu §13.3. Zamknięta unia,
+ * strukturalnie identyczna z `NonNullable<SldSourceView['operationalState']>`
+ * (adapter v2) — celowo BEZ importu adaptera (v3 compose nie zależy od v2;
+ * zgodność obu unii pilnuje test `sourceState.test.ts`).
+ */
+export type SourceOperationalState = 'energized' | 'standby' | 'disconnected' | 'maintenance' | 'fault';
+
+/**
+ * F11.3 (spec §13.3 „stan = kolor/nakładka, nie geometria", spec §6 P5) —
+ * JEDYNA tabela stan→kolor nakładki. Deterministyczna z konstrukcji (czysty
+ * słownik, zero warunków). Paleta spójna z nakładką energizacji
+ * (`canvas/SldCanvasV3.tsx`): `energized` = TEN SAM zielony co
+ * `OVERLAY_ENERGIZED_STROKE` (#2ECC71 — jedna semantyka „pod napięciem, w
+ * pracy"), `disconnected` = TEN SAM szary co `OVERLAY_DEENERGIZED_STROKE`
+ * (#5B6B76). Nakładka jest WYŁĄCZNIE kolorem kreski glifu + atrybutem DOM
+ * `data-source-state` — NIE zmienia geometrii ani bboxu symbolu (§13.3
+ * wyrocznia; dowód inwariancji: `sourceState.test.ts`).
+ */
+export const SOURCE_STATE_OVERLAY_COLOR: Readonly<Record<SourceOperationalState, string>> = {
+  energized: '#2ECC71',
+  standby: '#F1C40F',
+  disconnected: '#5B6B76',
+  maintenance: '#3498DB',
+  fault: '#E74C3C',
+};
+
+/** F11.3 (spec §9: zero enumów w UI) — polska etykieta stanu (inspektor/
+ *  legenda), NIE rysowana na scenie (§13.3: nakładka = kolor, nie tekst). */
+export const SOURCE_STATE_LABEL_PL: Readonly<Record<SourceOperationalState, string>> = {
+  energized: 'W pracy',
+  standby: 'Gotowość',
+  disconnected: 'Odstawione',
+  maintenance: 'W serwisie',
+  fault: 'Awaria',
+};
+
+/** F11.3: strażnik runtime dla wyroczni `sourceStateGaps` (`scene/
+ *  buildScene.ts`) — dane sceny pochodzą z JSON (fixtury/ENM), typ statyczny
+ *  nie chroni przed wartością skorumpowaną. */
+export function isSourceOperationalState(value: unknown): value is SourceOperationalState {
+  return typeof value === 'string' && value in SOURCE_STATE_OVERLAY_COLOR;
 }
 
 /**

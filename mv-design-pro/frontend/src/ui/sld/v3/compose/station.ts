@@ -74,7 +74,7 @@ import {
   stationPortCaptionHeight,
   type StationMeasureInput,
 } from '../layout/measure';
-import { derLabelText, symbolIdForSourceKind } from './sourceKind';
+import { derLabelText, symbolIdForSourceKind, type SourceOperationalState } from './sourceKind';
 import type {
   PortCaptionOwnerInput,
   SimpleAnchoredOwnerInput,
@@ -266,6 +266,14 @@ export interface ComposedSymbolInstance {
    *  niekompletne (`kind==='unknown'`) — adnotacja audytora, NIE fabrykacja
    *  rodzaju (`compose/sourceKind.ts`). */
   readonly missingData?: boolean;
+  /** F11.3 (spec §13.3): stan operacyjny — WYŁĄCZNIE dla symboli DER
+   *  (`sourceRef` obecny), przepisany 1:1 ze `StationDerSourceInput.
+   *  operationalState` (jedyny pisarz: adapter v2, reguła
+   *  `OPERATING_MODE_TO_SOURCE_STATE`). `undefined` = brak danych = brak
+   *  nakładki. Konsument: `scene/buildScene.ts` → `PreviewElementMeta.
+   *  operationalState` → kolor kreski + `data-source-state` (bez zmiany
+   *  geometrii — §13.3). */
+  readonly operationalState?: SourceOperationalState;
   readonly x: number;
   readonly y: number;
   readonly state?: SwitchState;
@@ -1202,6 +1210,8 @@ export function composeStation(input: ComposeStationInput): StationComposition {
           symbolId,
           sourceRef: source.id,
           missingData: source.missingData,
+          // F11.3 (spec §13.3): przepisane 1:1 — zero re-derywacji w compose.
+          operationalState: source.operationalState,
           x,
           y,
           ports,

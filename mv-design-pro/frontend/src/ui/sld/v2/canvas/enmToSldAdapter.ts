@@ -578,11 +578,18 @@ export interface SldSourceView {
    *  (Sk''/Ik''), co jest INNĄ wielkością fizyczną; dlatego zawsze `undefined`
    *  dla `kind='external_grid'` (żadna wartość SC nie jest tu podstawiana). */
   readonly ratedPower?: number | null;
-  /** Stan operacyjny źródła (§13.3). AUDYT `SLD_POWER_PATH_AUDIT_2026-07.md`
-   *  ustalenie 8: ENM NIE modeluje stanu operacyjnego źródła (standby/
-   *  maintenance nie istnieją; energized/disconnected/fault wymagałyby
-   *  jednoznacznego mapowania źródło→pole zasilające, którego ENM nie niesie
-   *  bez zgadywania). Zawsze `undefined` do czasu F9.6 (pole domenowe). */
+  /** Stan operacyjny źródła (§13.3). F11.3 (finał F9.6b): dla DER czytany z
+   *  REALNEGO kanału `Generator.meta['operating_mode']` (zapis: operacja
+   *  domenowa `set_source_operating_mode`, backend `domain_operations_v2.py`;
+   *  odczyt read-modelu: `field_read_model._generator_operating_mode`) przez
+   *  UDOKUMENTOWANĄ regułę `OPERATING_MODE_TO_SOURCE_STATE` (spec §13.3 —
+   *  reguła białoskrzynkowa, nie heurystyka). Brak/wartość spoza słownika ⇒
+   *  `undefined` (uczciwy brak — ZERO nakładki, zero zgadywania).
+   *  `maintenance`/`fault` NIE są wywodliwe z tego kanału (ENM nie niesie
+   *  serwisu/awarii na poziomie źródła — ustalenie 8 audytu
+   *  `SLD_POWER_PATH_AUDIT_2026-07.md` pozostaje w mocy dla tych dwóch) —
+   *  literały zostają w unii jako kontrakt §13.3, dziś nigdy nie nadawane.
+   *  `Source` (sieć zewnętrzna) nie ma trybu pracy w ENM ⇒ zawsze `undefined`. */
   readonly operationalState?: 'energized' | 'standby' | 'disconnected' | 'maintenance' | 'fault';
   /** F8b-1 (f92-2): `true`, gdy ten wpis reprezentuje dane niekompletne
    *  (dziś: `kind='unknown'` — `Generator.gen_type` nierozpoznany/`null`).
@@ -6061,6 +6068,43 @@ function mapGeneratorToSourceKind(gen: Generator): SldSourceView['kind'] {
 }
 
 /**
+ * F11.3 (spec §13.3, finał F9.6b) — UDOKUMENTOWANA reguła tryb pracy →
+ * stan operacyjny źródła (§13.3: „białoskrzynkowa reguła wywodzenia
+ * zdefiniowana tu (nie heurystyka)"). Klucze = pełny słownik operacji
+ * domenowej `set_source_operating_mode` (backend `enm/models.py`
+ * `BaySourceEndpoint.operating_mode`, kanał zapisu `Generator.meta
+ * ['operating_mode']`):
+ *  - `praca_sieciowa`/`ladowanie`/`rozladowanie` ⇒ `energized` (źródło
+ *    czynnie wymienia moc z siecią — kierunek wymiany nie zmienia stanu
+ *    „pod napięciem, w pracy");
+ *  - `gotowosc` ⇒ `standby` (przyłączone, nie wymienia mocy);
+ *  - `odstawione` ⇒ `disconnected` (odstawione z ruchu).
+ * `maintenance`/`fault` NIE mają klucza — nie są wywodliwe z tego kanału
+ * (patrz docstring `SldSourceView.operationalState`). Wartość spoza słownika
+ * (korupcja/literówka) NIE przecieka — `generatorOperationalState` zwraca
+ * `undefined` (ta sama semantyka co backendowy `_generator_operating_mode`,
+ * który odrzuca wartości spoza `_OPERATING_MODES`).
+ */
+const OPERATING_MODE_TO_SOURCE_STATE: Readonly<
+  Record<string, NonNullable<SldSourceView['operationalState']>>
+> = {
+  praca_sieciowa: 'energized',
+  ladowanie: 'energized',
+  rozladowanie: 'energized',
+  gotowosc: 'standby',
+  odstawione: 'disconnected',
+};
+
+/** F11.3 (spec §13.3): odczyt `Generator.meta['operating_mode']` przez regułę
+ *  `OPERATING_MODE_TO_SOURCE_STATE` — brak pola / nie-string / wartość spoza
+ *  słownika ⇒ `undefined` (uczciwy brak, zero fabrykacji stanu). */
+function generatorOperationalState(gen: Generator): SldSourceView['operationalState'] {
+  const raw = gen.meta?.['operating_mode'];
+  if (typeof raw !== 'string') return undefined;
+  return OPERATING_MODE_TO_SOURCE_STATE[raw];
+}
+
+/**
  * Projekcja `SldDataPayload.sources` — WYŁĄCZNIE z `snapshot.sources`
  * (`Source` ENM — sieć zewnętrzna, każdy `model` to inna reprezentacja tego
  * samego zjawiska: zastępcze zasilanie zewnętrzne) i `snapshot.generators`
@@ -6092,7 +6136,9 @@ function buildSources(snapshot: EnergyNetworkModel): SldSourceView[] {
       kind,
       connectionRef: gen.station_ref ?? gen.bus_ref,
       ratedPower: gen.limits?.p_max_mw ?? gen.p_mw ?? null,
-      operationalState: undefined,
+      // F11.3 (spec §13.3): realny kanał `Generator.meta['operating_mode']`
+      // przez udokumentowaną regułę (patrz `generatorOperationalState` wyżej).
+      operationalState: generatorOperationalState(gen),
       missingData: kind === 'unknown' ? true : undefined,
     };
   });

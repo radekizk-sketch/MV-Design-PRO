@@ -1397,7 +1397,7 @@ lokalnych łatek i duplikacji elektryki adaptera.
   właściciela/danych, nie dla kodu); schemat (F10.6) i konsumpcja frontendu (F10.2, dane >
   konwencja ze znacznikiem) są GOTOWE — dana zadziała w chwili pojawienia się.
 
-### F11.3. [DONE — backend; frontend §13.3 po F11.1] Tryb pracy źródła z realnego kanału
+### F11.3. [DONE — backend + frontend §13.3] Tryb pracy źródła z realnego kanału
 - ZNALEZISKO nadzorcy (osobiste, 2026-07-16): istnieje REALNY kanał danych — operacja domenowa
   `set_source_operating_mode` (domain_operations_v2.py:2641, akcja UI „Ustaw tryb pracy źródła")
   zapisuje `Generator.meta['operating_mode']`; read-model tę daną IGNOROWAŁ, wpisując stałą
@@ -1407,10 +1407,20 @@ lokalnych łatek i duplikacji elektryki adaptera.
   meta z walidacją słownika trybów; nieobecna/niepoprawna wartość → default MODELU "gotowosc"
   (semantyka Pydantic `BaySourceEndpoint`, nie zgadywanie read-modelu); 3 testy
   (test_f11_3_operating_mode.py: odczyt 5 trybów / fallback / odrzucenie korupcji).
-- POZOSTAJE (po dostawie F11.1 — ten sam plik adaptera): frontend §13.3 — mapowanie
-  operating_mode → SldSourceView.operationalState (praca_sieciowa/ladowanie/rozladowanie ⇒
-  energized; gotowosc ⇒ standby; odstawione ⇒ disconnected), wizualne rozróżnienie na scenie
-  + source_state_probe z negatywem.
+- FRONTEND §13.3 (implementacja osobista nadzorcy, 2026-07-16): adapter `buildSources` czyta
+  `Generator.meta['operating_mode']` przez udokumentowaną regułę `OPERATING_MODE_TO_SOURCE_STATE`
+  (praca_sieciowa/ladowanie/rozladowanie ⇒ energized; gotowosc ⇒ standby; odstawione ⇒
+  disconnected; brak/korupcja ⇒ undefined — uczciwy brak, ZERO nakładki; UWAGA: frontend celowo
+  NIE dziedziczy backendowego fallbacku "gotowosc" — default modelu to semantyka BaySourceEndpoint,
+  nakładka wizualna bez danych byłaby fabrykacją stanu). Nakładka = WYŁĄCZNIE kolor kreski glifu
+  (`SOURCE_STATE_OVERLAY_COLOR`, sourceKind.ts; energized/disconnected = kolory nakładki energizacji)
+  + `data-source-state` — geometria/bbox NIETKNIĘTE (dowód inwariancji w teście). Wyrocznia
+  `sourceStateGaps`/`allSourceStatesLegal` (buildScene.ts): stan-poza-slownikiem /
+  stan-na-elemencie-nie-zrodlowym / stan-zgubiony-na-scenie; wpięta w accept:sld-v3 (§13.3a bazowa +
+  §13.3b wariant pozytywny). Testy: sourceState.test.ts (12: adapter/scena/inwariancja geometrii/
+  3 negatywy gryzące/słownik). DoD wizualne: source_state_zoom_*.png (zielony energized, bursztynowy
+  standby, przygaszony szary disconnected; tor główny nieprzysłonięty). `maintenance`/`fault` NADAL
+  wymagają danych (ENM nie modeluje serwisu/awarii źródła) — udokumentowane w spec §13.3.
 
 ## Prompt kontynuacji (wklej świeżemu agentowi — DO WDROŻENIA 100%)
 

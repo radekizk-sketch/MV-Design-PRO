@@ -28,6 +28,7 @@
  */
 import type { SymbolId } from '../symbols/defs';
 import { SYMBOL_GLYPHS, type SwitchState } from '../symbols/glyphs';
+import { SOURCE_STATE_OVERLAY_COLOR, type SourceOperationalState } from './sourceKind';
 import { LABEL_TYPOGRAPHY } from '../core/text';
 import type { OwnedLabel } from '../layout/labels';
 import type { RouteVertex } from '../layout/route';
@@ -143,6 +144,15 @@ export interface PreviewElementMeta {
    *  Adnotacja audytora (`compose/sourceKind.ts`), NIE fabrykacja rodzaju —
    *  `undefined` dla WSZYSTKICH elementów rozpoznanych/nie-źródłowych. */
   readonly missingData?: boolean;
+  /** F11.3 (spec §13.3): stan operacyjny źródła — WYŁĄCZNIE dla symboli
+   *  `elementKind==='der'` (DER; `Source`/sieć zewnętrzna nie niesie trybu
+   *  pracy w ENM — zawsze `undefined`). Jedyny pisarz: adapter v2
+   *  (`OPERATING_MODE_TO_SOURCE_STATE` z `Generator.meta['operating_mode']`),
+   *  przepisywany 1:1 przez compose→scene. Nakładka = kolor kreski
+   *  (`SOURCE_STATE_OVERLAY_COLOR`, `compose/sourceKind.ts`) + atrybut DOM
+   *  `data-source-state` — ZERO zmiany geometrii/bboxu (§13.3 wyrocznia
+   *  `sourceStateGaps`, `scene/buildScene.ts`). */
+  readonly operationalState?: SourceOperationalState;
   /** F9.9 (spec §17.3): kody funkcji przekaźnika — WYŁĄCZNIE dla symboli
    *  `protectionRelay` (`elementKind==='protectionAnnotation'`), przekazane
    *  1:1 do `ProtectionRelayGlyph.labelLines` (`symbols/glyphs.tsx`). */
@@ -206,6 +216,11 @@ export function pointsToPath(points: readonly RouteVertex[]): string {
 function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly stroke: string }): JSX.Element {
   const { symbol, stroke } = props;
   const Glyph = SYMBOL_GLYPHS[symbol.symbolId];
+  // F11.3 (spec §13.3): nakładka stanu źródła = WYŁĄCZNIE kolor kreski glifu
+  // (tabela `SOURCE_STATE_OVERLAY_COLOR`) + atrybut `data-source-state` —
+  // geometria (x/y/glif/bbox) NIETKNIĘTA (§13.3 „nakładka nie zmienia bboxu").
+  const state: SourceOperationalState | undefined = symbol.meta?.operationalState;
+  const effectiveStroke = state ? SOURCE_STATE_OVERLAY_COLOR[state] : stroke;
   // Uwaga: `data-symbol-canon` jest już zapisywany PRZEZ SAM GLIF
   // (`glyphGroupProps`, `symbols/glyphs.tsx`, F1) — wrapper dopisuje
   // WYŁĄCZNIE meta, którego glif nie znałby (parityKey/testId z compose),
@@ -217,12 +232,13 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
       data-apparatus-source={symbol.meta?.apparatusSource}
       data-designation-source={symbol.meta?.designationSource}
       data-missing-data={symbol.meta?.missingData ? 'true' : undefined}
+      data-source-state={state}
     >
       <Glyph
         x={symbol.x}
         y={symbol.y}
         state={symbol.state}
-        stroke={stroke}
+        stroke={effectiveStroke}
         labelLines={symbol.meta?.protectionCodes}
         hasTopologyWarning={(symbol.meta?.topologyGaps?.length ?? 0) > 0}
       />
