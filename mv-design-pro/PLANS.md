@@ -222,6 +222,18 @@ Progress:
         179 pass / 2 znane środowiskowe / 15 skip + zaktualizowana migawka = parytet
         baseline E1.7c. Procedura: po każdym biegu e2e przywracać PNG w docs/audit
         (baseline'y win32 nadpisywane lokalnymi renderami).
+        Scalenie U3 #3: zakładka „Dowód obliczeń" w warsztacie wyników (E9.1 spięte
+        ze śladem przez inspektor wyników, leniwe ładowanie; 2×klik → dowód w nowej
+        powłoce; `42d7e79`; pełny bieg 8046 pass). Scalenie U3 #4: natywny wybór
+        wiersza we wzorcu (delta API; zamyka TODO E8.2 A; `b5ae89b`; ui2 758).
+        Karta E12.1 porównanie A/B rozpływu W-609 zarejestrowana (`115a225`).
+- [ ] U4 OTWARTE strumieniem OZE (2026-07-16): P39 macierz wymogów NC RfG (Opus;
+        33 testy; pełny vitest u wykonawcy 8079 pass ZERO failed; zintegrowane
+        `a626f90`; napięcie przyłączenia WYŁĄCZNIE z modelu/katalogu — stan
+        „brak danych" zamiast 15 kV z powietrza; USTALONE: backend klasyfikuje
+        moduły A/B/C/D sam (`engine.py:235`) — delta backendowa rdzenia zbędna;
+        TODO-KARTA: certyfikat zgodności projektu E13/W-707, wpięcie do pulpitu
+        OZE P47, wyświetlenie klasy modułu w podsumowaniu).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
