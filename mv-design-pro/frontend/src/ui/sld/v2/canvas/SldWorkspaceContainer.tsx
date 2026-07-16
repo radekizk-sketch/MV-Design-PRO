@@ -32,7 +32,7 @@ import {
 import { DerPersistenceApiError, postDerGeneratorConfig } from './derPersistenceApi';
 import { useDerDragDrop, DerPaletteButton, type DerDragKind } from './useDerDragDrop';
 import { SldExportFormatMenu } from '../export/SldExportFormatMenu';
-import { useRawResultOverlayStore, getMetric, formatMetric } from '../../../sld-overlay/rawResultOverlayStore';
+import { useRawResultOverlayStore } from '../../../sld-overlay/rawResultOverlayStore';
 import { computeLfDerivedMetrics } from './lfDerivedMetrics';
 import {
   createInitialLayerState,
@@ -53,7 +53,6 @@ import { useSelectionStore } from '../../../selection';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import type { Bay, Branch, EnergyNetworkModel, LogicalViewsV1, Substation } from '../../../../types/enm';
 import type { ElementType, SelectedElement } from '../../../types';
-import { formatStationSwitchgearDescriptionPl } from '../../../shared/stationTypeLabels';
 import { publicTechnicalLabel, segmentPublicIdentity, stationPublicIdentity } from '../../../shared/publicTechnicalLabels';
 import { buildOperationContext } from '../../../network-build/operationContext';
 import type { NetworkBuildOperationName } from '../../../network-build/internal/legacySurfaceTypes';
@@ -84,9 +83,19 @@ import {
 } from '../../../network-build/dragDropController';
 import { useStationDerStore as useStationDerStoreImport } from '../../../network-build/station-der';
 import { selectStationDistributionTransformers } from '../../../network-build/stationTransformerSelection';
+import { useMeasuredSize } from '../../shared/useMeasuredSize';
+import {
+  buildLiveMetrics,
+  buildStationDetailDrawerData,
+  findSubstationByRef,
+  selectStationBays,
+} from '../../shared/detailDrawerData';
 
 const MIN_CANVAS_WIDTH_PX = 360;
 const MIN_CANVAS_HEIGHT_PX = 240;
+// F8c pkt 7: `useMeasuredSize` wyciągnięty do `../shared/useMeasuredSize.ts`
+// (była tu funkcja modułowa duplikująca v3, patrz docstring modułu
+// współdzielonego dla pełnego porównania linia-po-linii).
 // E16: safe rect = element minus chrome nakładek (toolbar u góry, chipy kontroli
 // u dołu, marginesy boczne). Kamera startowa i „Dopasuj całą sieć" liczą fit/
 // centrowanie względem tego prostokąta, więc treść nie chowa się pod nakładkami.
@@ -207,17 +216,6 @@ function buildGpzApparatusOverlayTargets(
     sectionCursorX += sectionWidths[sectionIndex] + GPZ_LV_SECTION_COUPLER_GAP;
   });
   return targets;
-}
-
-function findSubstationByRef(
-  snapshot: EnergyNetworkModel | null,
-  substationRef: string,
-): Substation | null {
-  return (
-    (snapshot?.substations ?? []).find(
-      (substation) => substation.ref_id === substationRef || substation.id === substationRef,
-    ) ?? null
-  );
 }
 
 function findBusVoltage(snapshot: EnergyNetworkModel | null, busRef: string): number | null {
@@ -565,14 +563,6 @@ function inferStationTopologicalType(
   }
 }
 
-function selectStationBays(
-  snapshot: EnergyNetworkModel | null,
-  station: Substation | null,
-): Bay[] {
-  if (!snapshot || !station) return [];
-  return (snapshot.bays ?? []).filter((bay) => bay.substation_ref === station.ref_id);
-}
-
 function uniqueSortedVoltages(values: Array<number | null | undefined>): number[] {
   return Array.from(
     new Set(
@@ -706,51 +696,6 @@ const DRAWER_ACTION_LABEL_PL: Readonly<Record<string, string>> = {
   'delete-fw': 'Usuń FW',
 };
 
-/**
- * K30-84: Build live metrics chips (V/U_pu/P/Q/I) for selected element z
- * RawOverlayPayload (LF/SC). Returns empty array gdy brak payload lub brak
- * matching element ref. Element id mapping: station → '{id}/sn_bus' za snBusRef.
- */
-function buildLiveMetrics(
-  payload: import('../../../sld-overlay/rawResultOverlayStore').RawOverlayPayload | null,
-  drawerKind: SldDetailDrawerData['kind'],
-  elementId: string,
-  nominalKv: number | null,
-): SldDetailDrawerData['liveMetrics'] {
-  if (!payload) return undefined;
-  // Station → check SN bus metrics (U_kV, U_pu)
-  if (drawerKind === 'station') {
-    const snBusRef = elementId.endsWith('/station')
-      ? `${elementId.slice(0, -'/station'.length)}/sn_bus`
-      : `${elementId}/sn_bus`;
-    const uKv = getMetric(payload, snBusRef, 'U_kV');
-    const uPu = getMetric(payload, snBusRef, 'U_pu');
-    const chips: Array<{ label: string; value: string; color?: string }> = [];
-    if (uKv) chips.push({ label: 'U', value: formatMetric(uKv) });
-    if (uPu) {
-      const dev = uPu.value != null ? (uPu.value - 1) * 100 : null;
-      const color = dev == null ? undefined
-        : Math.abs(dev) <= 5 ? '#13C45A'
-        : Math.abs(dev) <= 10 ? '#FFD166'
-        : '#F25F5F';
-      chips.push({ label: 'U_pu', value: formatMetric(uPu), color });
-    }
-    if (chips.length === 0 && nominalKv != null) {
-      return undefined;
-    }
-    return chips.length > 0 ? chips : undefined;
-  }
-  // DER/Bay/Apparatus → check payload direct element ref
-  const el = payload.elements[elementId];
-  if (!el) return undefined;
-  const chips: Array<{ label: string; value: string }> = [];
-  for (const code of ['P_MW', 'Q_Mvar', 'I_A', 'U_kV']) {
-    const m = el.metrics?.[code];
-    if (m) chips.push({ label: code.split('_')[0], value: formatMetric(m) });
-  }
-  return chips.length > 0 ? chips : undefined;
-}
-
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
 const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   'show-readiness': 'E-04',
@@ -870,49 +815,6 @@ export interface SldWorkspaceContainerProps {
   readonly onSplitCancel?: () => void;
 }
 
-/**
- * Hook obliczający faktyczne wymiary kanwy z elementu DOM. Pozwala SLD
- * dopasować się do kontenera shellu V12.
- */
-function useMeasuredSize(
-  ref: React.RefObject<HTMLDivElement>,
-  fallbackWidth: number,
-  fallbackHeight: number,
-  override?: { width?: number; height?: number },
-): { width: number; height: number } {
-  const [size, setSize] = useState<{ width: number; height: number }>(() => ({
-    width: override?.width ?? fallbackWidth,
-    height: override?.height ?? fallbackHeight,
-  }));
-
-  useEffect(() => {
-    if (override?.width !== undefined && override?.height !== undefined) {
-      const next = { width: override.width, height: override.height };
-      setSize((current) =>
-        current.width === next.width && current.height === next.height ? current : next,
-      );
-      return;
-    }
-    const el = ref.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) return;
-      const next = {
-        width: Math.max(MIN_CANVAS_WIDTH_PX, entry.contentRect.width),
-        height: Math.max(MIN_CANVAS_HEIGHT_PX, entry.contentRect.height),
-      };
-      setSize((current) =>
-        current.width === next.width && current.height === next.height ? current : next,
-      );
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [override?.width, override?.height, ref]);
-
-  return size;
-}
-
 export function SldWorkspaceContainer(
   props: SldWorkspaceContainerProps = {},
 ): JSX.Element {
@@ -926,10 +828,14 @@ export function SldWorkspaceContainer(
   } = props;
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const measured = useMeasuredSize(containerRef, 1024, 640, {
-    width: widthOverride,
-    height: heightOverride,
-  });
+  const measured = useMeasuredSize(
+    containerRef,
+    1024,
+    640,
+    { width: widthOverride, height: heightOverride },
+    MIN_CANVAS_WIDTH_PX,
+    MIN_CANVAS_HEIGHT_PX,
+  );
 
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const snapshotLoading = useSnapshotStore((state) => state.loading);
@@ -1376,97 +1282,17 @@ export function SldWorkspaceContainer(
       let existingDers: SldDetailDrawerData['existingDers'] = undefined;
       // K30-83: bay apparatus list (from bay.equipment_refs + runtime_state)
       let apparatusSpec: SldDetailDrawerData['apparatusSpec'] = undefined;
-      if (drawerKind === 'station' && snapshot) {
-        const substation = findSubstationByRef(snapshot, id);
-        if (substation) {
-          stationLabelOverride = stationPublicIdentity(snapshot, substation).displayName;
-        }
-        switchgearDescription = formatStationSwitchgearDescriptionPl(substation?.station_type);
-        const transformers = selectStationDistributionTransformers(snapshot, substation ?? null);
-        const tr = transformers[0];
-        if (tr) {
-          const transformerBlockers: string[] = [];
-          if (!tr.catalog_ref) transformerBlockers.push('Brak pozycji katalogowej transformatora.');
-          if (typeof tr.uk_percent !== 'number') transformerBlockers.push('Brak napięcia zwarcia u_k%.');
-          if (!tr.vector_group) transformerBlockers.push('Brak grupy połączeń.');
-          if (typeof tr.pk_kw !== 'number') transformerBlockers.push('Brak strat obciążeniowych Pk.');
-          transformerSpec = {
-            ref: tr.ref_id ?? tr.id ?? null,
-            name: tr.name ?? null,
-            vectorGroup: tr.vector_group ?? null,
-            snMva: typeof tr.sn_mva === 'number' ? tr.sn_mva : null,
-            uhvKv: typeof tr.uhv_kv === 'number' ? tr.uhv_kv : null,
-            ulvKv: typeof tr.ulv_kv === 'number' ? tr.ulv_kv : null,
-            ukPercent: typeof tr.uk_percent === 'number' ? tr.uk_percent : null,
-            pkKw: typeof tr.pk_kw === 'number' ? tr.pk_kw : null,
-            catalogRef: tr.catalog_ref ?? null,
-            dataQuality: 'model',
-            blockers: transformerBlockers,
-          };
-        } else if (stationForDrawer?.transformerRatedKva != null || stationForDrawer?.transformerRefs?.length) {
-          const fallbackSnMva = stationForDrawer.transformerRatedKva != null
-            ? stationForDrawer.transformerRatedKva / 1000
-            : null;
-          transformerSpec = {
-            ref: stationForDrawer.transformerRefs?.[0] ?? null,
-            name: stationForDrawer.transformerRefs?.[0] ? 'Transformator SN/nN stacji' : null,
-            vectorGroup: stationForDrawer.transformerVectorGroup ?? null,
-            snMva: fallbackSnMva,
-            uhvKv: stationForDrawer.busVoltageKv ?? null,
-            ulvKv: 0.4,
-            ukPercent: null,
-            pkKw: null,
-            catalogRef: null,
-            dataQuality: 'sld_fallback',
-            blockers: [
-              'Widok SLD ma dane transformatora, ale rekord ENM/katalog nie został znaleziony dla tej stacji.',
-            ],
-          };
-        }
-        const bays = selectStationBays(snapshot, substation ?? null);
-        baysSpec = bays.map((b) => ({
-          id: b.ref_id ?? b.id,
-          name: b.name ?? null,
-          bayRole: b.bay_role ?? null,
-          bayNumber: b.bay_number ?? null,
-          feederShortName: b.feeder_short_name ?? null,
-        }));
-        // K30-81: find LV bus + loads na nim
-        const lvBusRef = tr?.lv_bus_ref ?? null;
-        const lvBus = lvBusRef
-          ? (snapshot.buses ?? []).find((b) => b.ref_id === lvBusRef || b.id === lvBusRef)
-          : null;
-        const loadsOnLv = lvBusRef
-          ? (snapshot.loads ?? []).filter((l) => l.bus_ref === lvBusRef)
-          : [];
-        nnSpec = {
-          busVoltageKv: lvBus?.voltage_kv ?? tr?.ulv_kv ?? null,
-          loads: loadsOnLv.map((l) => ({
-            id: l.ref_id ?? l.id,
-            name: l.name ?? null,
-            pKw: typeof l.p_mw === 'number' ? l.p_mw * 1000 : null,
-            qKvar: typeof l.q_mvar === 'number' ? l.q_mvar * 1000 : null,
-          })),
-        };
-        // K30-82: existing DERs — generators with station_ref == substation
-        const substationRef = substation?.ref_id ?? substation?.id ?? id;
-        const dersOnStation = (snapshot.generators ?? []).filter(
-          (g) => g.station_ref === substationRef,
-        );
-        const genTypeToKind = (t: string | null | undefined): 'PV' | 'BESS' | 'FW' | null => {
-          if (!t) return null;
-          if (t === 'pv_inverter') return 'PV';
-          if (t === 'bess') return 'BESS';
-          if (t === 'wind_inverter' || t === 'fw_pmsg' || t === 'fw_dfig' || t === 'fw_scig') return 'FW';
-          return null;
-        };
-        existingDers = dersOnStation.map((g) => ({
-          id: g.ref_id ?? g.id,
-          kind: genTypeToKind(g.gen_type ?? null),
-          name: g.name ?? null,
-          pMw: typeof g.p_mw === 'number' ? g.p_mw : null,
-        }));
-      }
+      // F8c pkt 2: gałąź 'station' wyciągnięta do WSPÓŁDZIELONEGO budowniczego
+      // `shared/detailDrawerData.ts::buildStationDetailDrawerData` (używanego
+      // TEŻ przez v3 `SldCanvasV3Workspace`) — zwraca KOMPLETNY obiekt
+      // `SldDetailDrawerData`, użyty niżej wprost zamiast generycznej
+      // asemblacji (patrz `setDetailDrawerData` na końcu funkcji). `null` gdy
+      // stacja nie istnieje w ŻADNYM źródle (ENM ani sldData) — fallback do
+      // generycznej asemblacji poniżej (te same, niezmienione, puste
+      // wartości `let` jak przed wyciągnięciem).
+      const stationDrawerData = drawerKind === 'station'
+        ? buildStationDetailDrawerData(snapshot, sldData, overlayPayload, id)
+        : null;
       if (drawerKind === 'transformer' && snapshot) {
         const directTransformer = (snapshot.transformers ?? []).find(
           (item) => item.ref_id === id || item.id === id,
@@ -1680,38 +1506,46 @@ export function SldWorkspaceContainer(
           if (parentBayLabel) break;
         }
       }
-      setDetailDrawerData({
-        kind: drawerKind,
-        menuKind: mapKindToMenuKind(kind),
-        elementId: id,
-        label: transformerLabelOverride
-          ?? stationLabelOverride
-          ?? (drawerKind === 'station'
-            ? stationForDrawer?.name ?? stationForDrawer?.stationCode
-            : stationForDrawer?.stationCode ?? stationForDrawer?.name)
-          ?? internalElementDescription?.name
-          ?? id.split('/').pop()
-          ?? id,
-        voltageKv: transformerSpec?.uhvKv
-          ?? stationForDrawer?.busVoltageKv
-          ?? stationForInternalElement?.busVoltageKv
-          ?? stationForTransformer?.busVoltageKv
-          ?? null,
-        stationCode: stationContext?.stationCode ?? null,
-        accentColor: '#7EC8FF',
-        transformerSpec,
-        baysSpec,
-        switchgearDescription,
-        nnSpec,
-        existingDers,
-        apparatusSpec,
-        cableRunSpec,
-        liveMetrics: buildLiveMetrics(overlayPayload, drawerKind, id, stationForDrawer?.busVoltageKv ?? null),
-        alarmSeverity: stationForDrawer?.alarmSeverity ?? null,
-        apparatusState,
-        parentStationLabel,
-        parentBayLabel,
-      });
+      // F8c pkt 2: gałąź 'station' ma KOMPLETNY obiekt z budowniczego
+      // współdzielonego (`stationDrawerData`) — użyty wprost. Pozostałe
+      // gałęzie (transformer/cable_run/bay/apparatus/node) NIETKNIĘTE,
+      // asemblacja generyczna jak przed wyciągnięciem.
+      setDetailDrawerData(
+        drawerKind === 'station' && stationDrawerData
+          ? stationDrawerData
+          : {
+              kind: drawerKind,
+              menuKind: mapKindToMenuKind(kind),
+              elementId: id,
+              label: transformerLabelOverride
+                ?? stationLabelOverride
+                ?? (drawerKind === 'station'
+                  ? stationForDrawer?.name ?? stationForDrawer?.stationCode
+                  : stationForDrawer?.stationCode ?? stationForDrawer?.name)
+                ?? internalElementDescription?.name
+                ?? id.split('/').pop()
+                ?? id,
+              voltageKv: transformerSpec?.uhvKv
+                ?? stationForDrawer?.busVoltageKv
+                ?? stationForInternalElement?.busVoltageKv
+                ?? stationForTransformer?.busVoltageKv
+                ?? null,
+              stationCode: stationContext?.stationCode ?? null,
+              accentColor: '#7EC8FF',
+              transformerSpec,
+              baysSpec,
+              switchgearDescription,
+              nnSpec,
+              existingDers,
+              apparatusSpec,
+              cableRunSpec,
+              liveMetrics: buildLiveMetrics(overlayPayload, drawerKind, id, stationForDrawer?.busVoltageKv ?? null),
+              alarmSeverity: stationForDrawer?.alarmSeverity ?? null,
+              apparatusState,
+              parentStationLabel,
+              parentBayLabel,
+            },
+      );
     }
 
     let selected: SelectedElement | null = null;

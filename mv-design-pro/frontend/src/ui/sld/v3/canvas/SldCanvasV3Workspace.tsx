@@ -73,14 +73,25 @@
  *    `energizedByTestId` → rysunek bazowy mono (spec §6 P5) — „Bez danych →
  *    mono" zachowane.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import type { ElementType } from '../../../types';
+import { useAppStateStore } from '../../../app-state';
 import { useSelectionStore } from '../../../selection';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { buildSupplyPathHighlight, isElementEnergized, type SupplyPathHighlight } from '../../v2/canvas/SupplyPathHighlighter';
 import { useRawResultOverlayStore, type RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
+import { buildSldDataFromSnapshot } from '../../v2/canvas/enmToSldAdapter';
+import { SldDetailDrawer, type SldDetailDrawerData } from '../../v2/canvas/SldDetailDrawer';
+import { useDerDragDrop, DerPaletteButton, type DerDragKind } from '../../v2/canvas/useDerDragDrop';
+import {
+  SldContextMenuController,
+  type SldContextMenuRequest,
+} from '../../../context-menu/SldContextMenuController';
+import type { SldElementKindForMenu } from '../../v2/command/SldCommandService';
+import { useMeasuredSize } from '../../shared/useMeasuredSize';
+import { buildStationDetailDrawerData } from '../../shared/detailDrawerData';
 import { buildSceneV3, type SceneLod } from '../scene/buildScene';
 import type { PreviewElementKind } from '../compose/preview';
 import { SldCanvasV3, type SldElementClickMeta } from './SldCanvasV3';
@@ -88,6 +99,9 @@ import { buildFlowOverlayFromScene, singleHopSegmentRefs, type SegmentFlowOverla
 
 const MIN_CANVAS_WIDTH_PX = 320;
 const MIN_CANVAS_HEIGHT_PX = 240;
+// F8c pkt 7: `useMeasuredSize` wyciągnięty do `../../shared/useMeasuredSize.ts`
+// (była tu funkcja modułowa duplikująca v2, patrz docstring modułu
+// współdzielonego dla pełnego porównania linia-po-linii).
 
 export interface SldCanvasV3WorkspaceProps {
   /** Tryb tylko-do-odczytu — v3 nie ma jeszcze CAD-edycji (spec §10, poza
@@ -99,48 +113,13 @@ export interface SldCanvasV3WorkspaceProps {
   readonly width?: number;
   /** Override wysokości kanwy — używane w testach/wbudowaniu. */
   readonly height?: number;
-}
-
-/** Pomiar rozmiaru kontenera — analogiczny do `useMeasuredSize` w
- *  `SldWorkspaceContainer.tsx` (nieeksportowane stamtąd — duplikat lokalny,
- *  bo zmiany w v2 mają być minimalne, patrz ograniczenia zadania F8a). */
-function useMeasuredSize(
-  ref: React.RefObject<HTMLDivElement>,
-  fallbackWidth: number,
-  fallbackHeight: number,
-  override?: { width?: number; height?: number },
-): { width: number; height: number } {
-  const [size, setSize] = useState<{ width: number; height: number }>(() => ({
-    width: override?.width ?? fallbackWidth,
-    height: override?.height ?? fallbackHeight,
-  }));
-
-  useEffect(() => {
-    if (override?.width !== undefined && override?.height !== undefined) {
-      const next = { width: override.width, height: override.height };
-      setSize((current) =>
-        current.width === next.width && current.height === next.height ? current : next,
-      );
-      return;
-    }
-    const el = ref.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) return;
-      const next = {
-        width: Math.max(MIN_CANVAS_WIDTH_PX, entry.contentRect.width),
-        height: Math.max(MIN_CANVAS_HEIGHT_PX, entry.contentRect.height),
-      };
-      setSize((current) =>
-        current.width === next.width && current.height === next.height ? current : next,
-      );
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [override?.width, override?.height, ref]);
-
-  return size;
+  /** Przelotowy prop do `SldCanvasV3.lodOverride` (escape hatch testowy/
+   *  embedding, patrz docstring tam) — Workspace go dotąd nie eksponował.
+   *  Dodany F8c pkt 3/4 wyłącznie żeby testy mogły deterministycznie
+   *  wymusić LOD z widocznymi DER/aparaturą bez symulowania zoomu kółkiem
+   *  (domyślny LOD Workspace to 0 — tylko topologia). Brak propa = brak
+   *  zmiany zachowania (LOD wynika z kamery jak dziś). */
+  readonly lodOverride?: SceneLod;
 }
 
 /** `testId` aparatury ma postać `${bayRef}#${symbolId}` (`buildScene.ts`);
@@ -189,6 +168,59 @@ export function elementTypeForKind(kind: PreviewElementKind | undefined): Elemen
       return 'LineBranch';
     case 'apparatus':
       return 'Switch';
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * F8c pkt 3 (checklista bramkująca §F8c, „Context-menu"): `PreviewElementKind`
+ * v3 → `SldElementKindForMenu` (`SldCommandService`/`SLD_MENU_REGISTRY`,
+ * WSPÓŁDZIELONY moduł `context-menu/`) — TA SAMA metoda co
+ * `elementTypeForKind` wyżej (jawna, zamknięta tabela, `undefined` = brak
+ * menu, NIE zgadywanie). Zweryfikowane względem `v2/canvas/
+ * SldWorkspaceContainer.tsx::mapKindToMenuKind` (vocabulary v2 jest
+ * SZERSZY — v2 rozróżnia więcej `kind` niż v3 `elementKind` — więc to NIE
+ * jest reużycie tamtej funkcji, tylko ANALOGICZNA, mniejsza tabela dla
+ * mniejszej unii v3):
+ *  - 'station' → 'station' (dopasowanie wprost);
+ *  - 'transformer' → 'apparatus' (jak w v2: kind='transformer' →
+ *    menuKind='apparatus' — transformator nie ma własnej kategorii menu);
+ *  - 'apparatus' → 'apparatus' (dopasowanie wprost);
+ *  - 'source' → 'gpz' (sieć zewnętrzna/GPZ, jak w v2 kind='gpz' →
+ *    menuKind='gpz' — v3 `elementKind='source'` to TA SAMA kategoria
+ *    domenowa, inna nazwa w unii v3, patrz nagłówek pliku F9.4);
+ *  - 'bus' → 'section' (szyna/sekcja rozdzielni SN — najbliższy odpowiednik
+ *    v2 'section'; v3 nie rozróżnia dziś szyny GPZ od sekcji, jak
+ *    `elementTypeForKind('bus') → 'Bus'` niżej nie rozróżnia ich też);
+ *  - 'segment' → 'cable_segment_sn' (DOMYŚLNIE — v3 `PreviewSegment.meta.kind`
+ *    niesie tylko poziom napięcia (bus/sn/lv/leader/protectionTrip/
+ *    measurementLink), NIE rozróżnia kabel-vs-napowietrzna; v2 ma tę samą
+ *    niepewność domyślnie na 'cable_segment_sn' gdy kind nie precyzuje
+ *    'overhead_line_sn' — UDOKUMENTOWANA LUKA, nie regresja);
+ *  - 'der' → `undefined` (BRAK MENU — UDOKUMENTOWANA LUKA: v2 rozróżnia
+ *    der_pv/der_bess/der_fw jako OSOBNE kategorie menu z różnymi akcjami
+ *    domenowymi; `elementKind='der'` v3 jest GENERYCZNE — scena nie niesie
+ *    `Generator.gen_type`, więc nie da się wybrać poprawnej kategorii bez
+ *    zgadywania (zakazane przez `domain_no_guessing_guard`). Test negatywny
+ *    (c) w `__tests__/contextMenu.test.tsx` pokrywa TEN przypadek);
+ *  - 'protectionAnnotation' → `undefined` (adnotacja graficzna, nie obiekt
+ *    domenowy — brak odpowiednika w v2/SLD_MENU_REGISTRY).
+ */
+function elementKindForMenu(kind: PreviewElementKind | undefined): SldElementKindForMenu | undefined {
+  switch (kind) {
+    case 'station':
+      return 'station';
+    case 'transformer':
+      return 'apparatus';
+    case 'apparatus':
+      return 'apparatus';
+    case 'source':
+      return 'gpz';
+    case 'bus':
+      return 'section';
+    case 'segment':
+      return 'cable_segment_sn';
     default:
       return undefined;
   }
@@ -295,14 +327,27 @@ function useFlowOverlay(
 }
 
 export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Element {
-  const { width: widthOverride, height: heightOverride } = props;
+  const { width: widthOverride, height: heightOverride, lodOverride } = props;
   const containerRef = useRef<HTMLDivElement>(null);
-  const size = useMeasuredSize(containerRef, 1024, 640, { width: widthOverride, height: heightOverride });
+  const size = useMeasuredSize(
+    containerRef,
+    1024,
+    640,
+    { width: widthOverride, height: heightOverride },
+    MIN_CANVAS_WIDTH_PX,
+    MIN_CANVAS_HEIGHT_PX,
+  );
 
   // Dane: TA SAMA instancja ENM co v2 (`SldWorkspaceContainer` czyta z tego
   // samego store'a) — zero shadow-modelu (Core Rule #3).
   const snapshot = useSnapshotStore((state) => state.snapshot);
+  // F8c pkt 2: `logicalViews` — TEN SAM pole store'a co v2 (`useSnapshotStore`
+  // WSPÓLNY), wymagany przez `buildSldDataFromSnapshot` (poniżej) dla
+  // `sldData.stations[].*` (fallbacki drawera stacji, patrz `shared/
+  // detailDrawerData.ts::buildStationDetailDrawerData`).
+  const logicalViews = useSnapshotStore((state) => state.logicalViews);
   const selectElement = useSelectionStore((state) => state.selectElement);
+  const activeMode = useAppStateStore((state) => state.activeMode);
   const energizationOverlay = useEnergizationOverlay(snapshot);
   // F9.5: `useRawResultOverlayStore` — TEN SAM globalny store, który `App.tsx`
   // zasila fetch'em wyniku aktywnego przebiegu, NIEZALEŻNIE od wersji kanwy
@@ -315,13 +360,112 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     [energizationOverlay, flowByOwnerRef],
   );
 
+  // F8c pkt 2: `SldDataPayload` — TEN SAM adapter co v2 (`enmToSldAdapter.ts`,
+  // jawnie WSPÓŁDZIELONY per REBUILD_PLAN_V3 §F8c), wołany z DWOMA
+  // argumentami (`snapshot`, `logicalViews`) — TA SAMA sygnatura co produkcyjne
+  // wywołanie w `SldWorkspaceContainer.tsx` (bez `powerFlow` companion, patrz
+  // nagłówek pliku — martwe w v2 dziś z tego samego powodu). Używany
+  // WYŁĄCZNIE jako źródło fallbacków drawera stacji (`buildStationDetailDrawerData`).
+  const sldData = useMemo(() => buildSldDataFromSnapshot(snapshot, logicalViews), [snapshot, logicalViews]);
+
+  // F8c pkt 2: drawer szczegółów — stan LOKALNY (DODATEK do selekcji
+  // globalnej, patrz `handleElementClick` niżej). Zamknięcie: przycisk/Escape
+  // WEWNĄTRZ `SldDetailDrawer` (K30-88, zachowanie reużyte bez zmian).
+  const [detailDrawerData, setDetailDrawerData] = useState<SldDetailDrawerData | null>(null);
+  const closeDetailDrawer = useCallback(() => setDetailDrawerData(null), []);
+
+  // F8c pkt 3: menu kontekstowe — stan LOKALNY, most do WSPÓŁDZIELONEGO
+  // `SldContextMenuController` (`context-menu/`, patrz mapowanie
+  // `elementKindForMenu` wyżej).
+  const [contextRequest, setContextRequest] = useState<SldContextMenuRequest | null>(null);
+  const closeContextMenu = useCallback(() => setContextRequest(null), []);
+  const handleElementContextMenu = useCallback(
+    (testId: string, meta: SldElementClickMeta | undefined, clientX: number, clientY: number) => {
+      // Tło (`sld-v3-background`, `SldCanvasV3` nagłówek onContextMenu) → menu
+      // tła; realny element → tabela `elementKindForMenu` (brak dopasowania,
+      // np. `elementKind='der'` — UDOKUMENTOWANA LUKA — NIE otwiera menu, bez
+      // crasha, bez zgadywania kategorii).
+      if (testId === 'sld-v3-background') {
+        setContextRequest({ kind: 'background', elementId: null, clientX, clientY });
+        return;
+      }
+      const menuKind = elementKindForMenu(meta?.elementKind);
+      if (!menuKind) return;
+      const id = meta?.ownerRef ?? elementIdFromTestId(testId);
+      setContextRequest({ kind: menuKind, elementId: id, clientX, clientY });
+    },
+    [],
+  );
+  // F8c pkt 3: `onAction` — v3 NIE ma dziś CAD-edycji/mutacji domenowej
+  // (F8c pkt 1, poza zakresem tego zadania — checklista bramkująca ma
+  // OSOBNĄ pozycję na to) — menu POKAZUJE te same akcje co v2
+  // (`SLD_MENU_REGISTRY`), ale kliknięcie akcji WYŁĄCZNIE zamyka menu
+  // (brak wykonawcy — `handleAction`/`NetworkBuildStore`, v2-specyficzne,
+  // ~600 linii, poza zakresem F11.4-A). UDOKUMENTOWANA LUKA — wymagane
+  // testy (a)/(b)/(c) pokrywają WYŁĄCZNIE otwieranie menu z poprawną
+  // zawartością, nie wykonanie akcji.
+  const handleContextMenuAction = useCallback(() => {
+    closeContextMenu();
+  }, [closeContextMenu]);
+
+  // F8c pkt 4: paleta DER — hook + przycisk RENDER-AGNOSTYCZNE (v2
+  // `useDerDragDrop`/`DerPaletteButton`, zero zmian), reużyte wprost.
+  // Mechanizm REALNY w v2 (zweryfikowany w `SldWorkspaceContainer.tsx`):
+  // klik przycisku uzbraja (`startDrag`), NASTĘPNY klik w stację „zrzuca"
+  // (`dropOnStation`) — NIE natywne HTML5 dragover/drop (`hoverStation` w
+  // hooku jest DEAD CODE w v2 — sprawdzone grepem, zero wywołań w
+  // `SldWorkspaceContainer.tsx`). v3 odtwarza REALNY mechanizm, nie
+  // hipotetyczny.
+  const derDrag = useDerDragDrop();
+
   const handleElementClick = useCallback(
     (testId: string, meta?: SldElementClickMeta) => {
       const id = meta?.ownerRef ?? elementIdFromTestId(testId);
+
+      // F8c pkt 4: drag DER uzbrojony — klik w STACJĘ „zrzuca" (jak v2
+      // K30-78: `if (kind === 'station' && derDrag.state)`); klik gdziekolwiek
+      // indziej podczas uzbrojenia = ANULUJ bez akcji (v2 nie ma tej reguły —
+      // tam jedyna droga anulowania to przycisk „Anuluj"/zmiana route surface,
+      // niedostępne w v3 bez route surface; „anuluj na klik gdzie indziej" to
+      // ŚWIADOMA, bezpieczna reguła v3, żeby użytkownik nie utknął uzbrojony —
+      // patrz test (b) `derPalette.test.tsx`).
+      if (derDrag.state) {
+        if (meta?.elementKind === 'station') {
+          const dropResult = derDrag.dropOnStation(id);
+          if (dropResult) {
+            const stationForDrop = sldData.stations.find((s) => s.id === id);
+            setDetailDrawerData({
+              kind: 'der',
+              elementId: id,
+              label: stationForDrop?.stationCode ?? stationForDrop?.name ?? id.split('/').pop() ?? id,
+              voltageKv: stationForDrop?.busVoltageKv ?? null,
+              stationCode: stationForDrop?.stationCode ?? null,
+              accentColor: dropResult.kind === 'PV' ? '#FFD166' : dropResult.kind === 'BESS' ? '#7DD3FC' : '#7EE0B5',
+              derKind: dropResult.kind,
+              derConnectionVariant: 'nn_side',
+            });
+          }
+        } else {
+          derDrag.cancel();
+        }
+        return;
+      }
+
       const type = elementTypeForKind(meta?.elementKind);
       selectElement(type ? { id, type, name: id } : { id, type: 'DescriptiveElement', name: id });
+
+      // F8c pkt 2: drawer — WYŁĄCZNIE dla elementKind='station' (patrz
+      // `shared/detailDrawerData.ts` nagłówek: pozostałe kind poza zakresem
+      // tego zadania). Inny elementKind → drawer NIETKNIĘTY (jeśli już
+      // otwarty dla innej stacji, zostaje — spójne z v2: klik w niezmapowany
+      // kind nie zamyka drawera, patrz `handleSelectElement` w
+      // `SldWorkspaceContainer.tsx`).
+      if (meta?.elementKind === 'station') {
+        const stationDrawerData = buildStationDetailDrawerData(snapshot, sldData, rawOverlayPayload, id);
+        if (stationDrawerData) setDetailDrawerData(stationDrawerData);
+      }
     },
-    [selectElement],
+    [derDrag, rawOverlayPayload, selectElement, sldData, snapshot],
   );
 
   return (
@@ -337,8 +481,56 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           height={size.height}
           overlay={overlay}
           onElementClick={handleElementClick}
+          onElementContextMenu={handleElementContextMenu}
+          lodOverride={lodOverride}
         />
       ) : null}
+
+      <SldDetailDrawer open={detailDrawerData !== null} data={detailDrawerData} onClose={closeDetailDrawer} />
+
+      <SldContextMenuController
+        request={contextRequest}
+        mode={activeMode}
+        onAction={handleContextMenuAction}
+        onClose={closeContextMenu}
+      />
+
+      {/* F8c pkt 4: paleta DER — TEN SAM wygląd/przyciski co v2 (`DerPaletteButton`
+          reużyty wprost, patrz v2 `sld-v2-der-palette`), zamontowana
+          bezwarunkowo (v3 nie ma dziś odpowiednika `canPlaceDerOnStation`/
+          wyboru stacji z v2 — poza zakresem tego zadania, DODATEK czysto
+          addytywny). */}
+      <div
+        className="pointer-events-auto absolute top-3 z-30 flex items-center gap-1 rounded border border-scada-border bg-scada-panel/95 px-2 py-1 shadow-lg"
+        data-testid="sld-v3-der-palette"
+        style={{ left: '50%', transform: 'translateX(-50%)' }}
+      >
+        <span style={{ fontSize: 9, color: '#7E8790', marginRight: 4, fontWeight: 700, letterSpacing: 0.5 }}>
+          UKŁADY PV/BESS/FW:
+        </span>
+        {(['PV', 'BESS', 'FW'] as DerDragKind[]).map((kind) => (
+          <DerPaletteButton
+            key={kind}
+            kind={kind}
+            onStart={derDrag.startDrag}
+            disabled={derDrag.state !== null && derDrag.state.kind !== kind}
+            active={derDrag.state?.kind === kind}
+          />
+        ))}
+        {derDrag.state && (
+          <span style={{ fontSize: 9, color: '#B9C2CC', marginLeft: 4 }}>
+            ▸ Wskaż stację dla {derDrag.state.kind}
+            <button
+              type="button"
+              data-testid="sld-v3-der-cancel"
+              onClick={derDrag.cancel}
+              style={{ marginLeft: 6, color: '#F25F5F', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              Anuluj
+            </button>
+          </span>
+        )}
+      </div>
     </div>
   );
 }

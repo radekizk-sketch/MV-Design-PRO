@@ -1422,6 +1422,72 @@ lokalnych łatek i duplikacji elektryki adaptera.
   standby, przygaszony szary disconnected; tor główny nieprzysłonięty). `maintenance`/`fault` NADAL
   wymagają danych (ENM nie modeluje serwisu/awarii źródła) — udokumentowane w spec §13.3.
 
+### F11.4. [DONE — audyt + pakiet A; USUNIĘCIE v2 POZOSTAJE BRAMKOWANE pkt 1b/5] Parytet F8c
+
+Audyt osobisty nadzorcy (2026-07-16) każdego z 10 punktów checklisty F8c + dostawa pakietu
+F11.4-A (agent, odbiór osobisty: przegląd diffów linia-po-linii, weryfikacja twierdzeń
+grepem — payload DER-drop potwierdzony IDENTYCZNY z v2, mechanizm palety potwierdzony
+click-to-arm nie HTML5-drag, `hoverStation` potwierdzony dead-code w v2).
+
+Status per punkt:
+1. CAD-edycja — ROZSZCZEPIONE audytem:
+   1a. AKCJE edycyjne (menu → formularze → executeDomainOperation → deterministyczny
+       re-render) — render-agnostyczne; menu na v3 dostarczone (pkt 3), WYKONAWCA akcji
+       (`handleAction`/NetworkBuildStore, ~600 linii v2-specyficznych) NIE podłączony —
+       kliknięcie akcji zamyka menu (LUKA UDOKUMENTOWANA w kodzie). OTWARTE (część).
+   1b. GEOMETRIA RĘCZNA (drag/bend/snap — CadOverlay/RouteEditor/Snap.ts) — SPRZECZNA
+       z deterministycznym auto-layoutem v3 bez kanału nadpisań geometrii w spec.
+       WYMAGA DECYZJI SPEC-FIRST WŁAŚCICIELA. OTWARTE.
+2. Drawer — [DONE] `SldDetailDrawer` (standalone) hostowany w v3; budowniczy danych
+   stacji wyciągnięty do `shared/detailDrawerData.ts` (czyta WYŁĄCZNIE adapter/ENM/
+   overlay-store; v2 przełączony na współdzieloną wersję, testy v2 zielone bez zmian
+   asercji). LUKA UDOKUMENTOWANA: pozostałe ~14 gałęzi `kind` drawera entangled ze
+   stanem v2 — v3 pokazuje drawer TYLKO dla stacji (uczciwy brak, nie pusty UI).
+3. Context-menu — [DONE] `onElementContextMenu` na SldCanvasV3 (wzorzec onElementClick,
+   preventDefault+stopPropagation, tło `sld-v3-background`); `SldContextMenuController`
+   (WSPÓŁDZIELONY) w Workspace; jawna tabela `elementKindForMenu` ('der'/'protection-
+   Annotation' → undefined — scena nie niesie gen_type, zero zgadywania). Testy 3/3
+   (stacja/tło/negatyw der).
+4. DER-paleta — [DONE] `useDerDragDrop`/`DerPaletteButton` reużyte 1:1; drop → drawer
+   DER z payloadem IDENTYCZNYM z v2 (K30-78); reguła v3 „klik gdzie indziej podczas
+   uzbrojenia = anuluj" (świadoma, udokumentowana — v2 nie ma odpowiednika drogi
+   anulowania w v3). Testy 2/2.
+5. Conscious Split — USTALENIE AUDYTU: NIEOSIĄGALNY PRODUKCYJNIE dziś. Żaden wołający
+   nie przekazuje `splitPreviewState` do SldRenderHost (App.tsx:1431/1454,
+   WorkspaceSurfaceRouter.tsx:3135 — bez propsów); WorkflowOrchestrator/AppendOn-
+   EndpointController/ConsciousSplitController konstruowane WYŁĄCZNIE w testach.
+   Parytet = decyzja produktowa właściciela: (a) workflow dostaje realny punkt wejścia
+   (wtedy v3 musi go umieć) albo (b) martwy kod nie bramkuje usunięcia v2. OTWARTE.
+6. Nakładka PF — [DONE od F9.5] (flow_overlay_probe w accept, rendery flow_lod*.png).
+7. useMeasuredSize — [DONE] jedna implementacja `shared/useMeasuredSize.ts`; różnica
+   semantyk (minWidth v2=360 vs v3=320) ZACHOWANA parametrami, nie uśredniona po cichu;
+   4 testy (w tym dowód parametryzacji).
+8. Migracja testów — [DOMKNIĘTE AUDYTEM] mapa pokrycia v2→v3: layoutEngine.substrate→
+   layout.test+buildScene-determinizm; ViewportController→camera.test+sldCanvasV3(F8a);
+   LodPolicy→camera.test (histereza); renderers→symbols+sldCanvasV3; portAnchored-
+   Geometry→sceneSegmentEndpointGaps; ports→symbols (SYMBOL_DEFS). WYJĄTEK:
+   SldCommandService jest WSPÓŁDZIELONY (importują go ui/context-menu i network-build/
+   CommandPalette) — przy F8c PRZENOSINY v2/command/ do lokalizacji współdzielonej
+   (test idzie z nim), nie kasacja. Usunięcie REQUIRED_V2_TESTS z guardu dopiero w
+   commicie usuwającym v2.
+9. k4 — [DONE od F8a] fit do bboxa WŁASNEGO LOD + pełny refit na zmianę snapshot +
+   zachowanie zoomu przy resize (sldCanvasV3.test.tsx sekcje F8a k4.1/k3).
+10. Rendery — realizacja w F11.5 (finalne rendery odbioru).
+
+UZUPEŁNIENIE listy „ZOSTAJE" przy usuwaniu v2 (poza enmToSldAdapter/SupplyPath-
+Highlighter): v2/command/ (SldCommandService — współdzielony), SldDetailDrawer +
+useDerDragDrop (po F11.4-A współdzielone przez v3), shared/detailDrawerData.ts.
+
+WERDYKT: usunięcie renderu v2 POZOSTAJE ZABLOKOWANE do rozstrzygnięcia 1a-wykonawcy,
+1b (spec-first) i 5 (decyzja produktowa) — pozycje dla właściciela w raporcie
+końcowym F11.5. Wszystkie pozostałe bramki zamknięte.
+
+Bramki pakietu A: vitest sld 177 plików/3382 testy PASS; nowe testy 102/102 (shared+
+canvas); type-check 0 błędów; accept:sld-v3 ALL PASS (baseline'y NIETKNIĘTE);
+sld_determinism/no_codenames/dead_click/arch/overlay_no_physics/forbidden_ui_terms —
+PASS (ui_terminology: 2 naruszenia pre-existing w V126AcademicSurface, potwierdzone
+identyczne na HEAD przed zmianą); pełna regresja frontend exit 0.
+
 ## Prompt kontynuacji (wklej świeżemu agentowi — DO WDROŻENIA 100%)
 
 ```

@@ -101,6 +101,21 @@ export interface SldCanvasV3Props {
    *  wołający ignorujący go (istniejące handlery `(testId) => ...`) działają
    *  bez zmian. */
   readonly onElementClick?: (testId: string, meta?: SldElementClickMeta) => void;
+  /** F8c pkt 3 (checklista bramkująca §F8c, „Context-menu"): prawy klik w
+   *  symbol/odcinek — TEN SAM wzorzec co `onElementClick` (`testId` +
+   *  opcjonalne `meta`), plus współrzędne klienta potrzebne przez
+   *  `SldContextMenuController`/`ContextMenu` do pozycjonowania menu.
+   *  `preventDefault()`/`stopPropagation()` wołane WEWNĄTRZ kanwy (na węźle
+   *  symbolu/odcinka), żeby domyślne menu przeglądarki nie nakładało się na
+   *  menu domenowe I żeby klik nie „przebijał" do tła (rozróżnienie
+   *  element-vs-tło, patrz obsługa na `<svg>` niżej). Brak propa = brak
+   *  nasłuchu (kanwa czysto-odczytowa, jak dziś). */
+  readonly onElementContextMenu?: (
+    testId: string,
+    meta: SldElementClickMeta | undefined,
+    clientX: number,
+    clientY: number,
+  ) => void;
   /** Escape hatch (test/harness/embedding, np. Results Browser centrujący na
    *  konkretnym LOD): nadpisuje LOD wynikające z kamery. Domyślnie (brak
    *  propa) LOD wynika z progów zoomu kamery (spec §7) — zachowanie
@@ -141,8 +156,11 @@ function SceneSymbolNode(props: {
   readonly index: number;
   readonly overlay: SldV3Overlay | undefined;
   readonly onElementClick: ((testId: string, meta?: SldElementClickMeta) => void) | undefined;
+  readonly onElementContextMenu:
+    | ((testId: string, meta: SldElementClickMeta | undefined, clientX: number, clientY: number) => void)
+    | undefined;
 }): JSX.Element {
-  const { symbol, index, overlay, onElementClick } = props;
+  const { symbol, index, overlay, onElementClick, onElementContextMenu } = props;
   const def = SYMBOL_DEFS[symbol.symbolId];
   const Glyph = SYMBOL_GLYPHS[symbol.symbolId];
   const testId = symbolTestId(symbol, index);
@@ -170,7 +188,19 @@ function SceneSymbolNode(props: {
       data-designation-source={symbol.meta?.designationSource}
       data-source-state={sourceState}
       onClick={onElementClick ? () => onElementClick(testId, clickMeta) : undefined}
-      style={onElementClick ? { cursor: 'pointer' } : undefined}
+      onContextMenu={
+        onElementContextMenu
+          ? (event) => {
+              // F8c pkt 3: `stopPropagation` — bez tego klik prawym w symbol
+              // bąbelkowałby do handlera tła na `<svg>` (patrz niżej), co
+              // otwierałoby DWA menu (element + tło) naraz.
+              event.preventDefault();
+              event.stopPropagation();
+              onElementContextMenu(testId, clickMeta, event.clientX, event.clientY);
+            }
+          : undefined
+      }
+      style={onElementClick || onElementContextMenu ? { cursor: 'pointer' } : undefined}
     >
       {/* Cel kliku powiększony do bboxa symbolu (ergonomia — glify IEC bywają
        *  wąskie, np. odłącznik 16×24 rysowany kreską). Zero widocznego stylu. */}
@@ -191,8 +221,11 @@ function SceneSegmentNode(props: {
   readonly segment: PreviewSegment;
   readonly index: number;
   readonly overlay: SldV3Overlay | undefined;
+  readonly onElementContextMenu:
+    | ((testId: string, meta: SldElementClickMeta | undefined, clientX: number, clientY: number) => void)
+    | undefined;
 }): JSX.Element | null {
-  const { segment, index, overlay } = props;
+  const { segment, index, overlay, onElementContextMenu } = props;
   if (segment.points.length < 2) return null;
   const testId = segmentTestId(segment, index);
   const kind = segment.meta?.kind ?? 'sn';
@@ -215,6 +248,7 @@ function SceneSegmentNode(props: {
     ? overlay?.energizedByOwnerRef?.[segment.meta.ownerRef] ?? overlay?.energizedByTestId[testId]
     : overlay?.energizedByTestId[testId];
   const stroke = strokeForEnergization(energizedSeg) ?? V3_STROKE_BASE;
+  const segmentClickMeta: SldElementClickMeta = { ownerRef: segment.meta?.ownerRef, elementKind: segment.meta?.elementKind };
   return (
     <path
       data-testid={testId}
@@ -224,6 +258,19 @@ function SceneSegmentNode(props: {
       stroke={stroke}
       strokeWidth={strokeWidth}
       strokeDasharray={strokeDasharray}
+      // F8c pkt 3: odcinki dziś NIE mają `onElementClick` (brak selekcji lewym
+      // przyciskiem — poza zakresem tego zadania, geometria/interakcja
+      // odcinków nietknięta). Menu kontekstowe jest DODATKIEM niezależnym od
+      // selekcji — `stopPropagation`, żeby nie bąbelkować do handlera tła.
+      onContextMenu={
+        onElementContextMenu
+          ? (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onElementContextMenu(testId, segmentClickMeta, event.clientX, event.clientY);
+            }
+          : undefined
+      }
     />
   );
 }
@@ -601,7 +648,7 @@ function toLocalPoint(svg: SVGSVGElement | null, clientX: number, clientY: numbe
  * `onElementClick`; brak własnej selekcji/CAD-edycji (poza zakresem F6b).
  */
 export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
-  const { snapshot, width, height, overlay, onElementClick, lodOverride } = props;
+  const { snapshot, width, height, overlay, onElementClick, onElementContextMenu, lodOverride } = props;
 
   // F8a — ROZSTRZYGNIĘCIE k4/k3 (REBUILD_PLAN_V3 §F8, SLD_V3_ACCEPTANCE.md §3):
   // scena liczona dla WSZYSTKICH trzech LOD naraz (nie tylko `effectiveLod`) —
@@ -757,16 +804,42 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
+      // F8c pkt 3: prawy klik NIEZŁAPANY przez symbol/odcinek (te wołają
+      // `stopPropagation`) bąbelkuje aż tu — „tło" kanwy. `testId` stały
+      // (`sld-v3-background`) odróżnia to od realnego elementu w wołającym
+      // (`SldCanvasV3Workspace`), `meta` zawsze `undefined` (tło nie ma
+      // ownerRef/elementKind).
+      onContextMenu={
+        onElementContextMenu
+          ? (event) => {
+              event.preventDefault();
+              onElementContextMenu('sld-v3-background', undefined, event.clientX, event.clientY);
+            }
+          : undefined
+      }
     >
       <SheetFrame width={sheetSize.width} height={sheetSize.height} scaleLabel="wg kamery">
         <g data-testid="sld-v3-segments">
           {scene.segments.map((segment, index) => (
-            <SceneSegmentNode key={`segment-${index}`} segment={segment} index={index} overlay={overlay} />
+            <SceneSegmentNode
+              key={`segment-${index}`}
+              segment={segment}
+              index={index}
+              overlay={overlay}
+              onElementContextMenu={onElementContextMenu}
+            />
           ))}
         </g>
         <g data-testid="sld-v3-symbols">
           {scene.symbols.map((symbol, index) => (
-            <SceneSymbolNode key={`symbol-${index}`} symbol={symbol} index={index} overlay={overlay} onElementClick={onElementClick} />
+            <SceneSymbolNode
+              key={`symbol-${index}`}
+              symbol={symbol}
+              index={index}
+              overlay={overlay}
+              onElementClick={onElementClick}
+              onElementContextMenu={onElementContextMenu}
+            />
           ))}
         </g>
         <g data-testid="sld-v3-labels">
