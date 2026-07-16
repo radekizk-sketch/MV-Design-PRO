@@ -295,6 +295,12 @@ Progress:
         rekonesansu kształtu dowodu i decyzji: ekspozycja per stacja vs delta
         analizy sieciowej. Potem P19 ranking punktów przyłączenia i P41 krzywe
         P–Q producenta (delta katalogowa).
+        ROZSTRZYGNIĘTE: D3 hosting capacity (Opus; 25 testów; końcówka
+        /api/oze-analysis/hosting-capacity — deterministyczny przegląd
+        scenariuszy na kanonicznej ścieżce _execute_power_flow, ocena
+        EnergyValidationBuilder; pełny pytest 5775 pass ZERO failed potwierdzony
+        przez zarządcę; zintegrowane `234777c`; guard load_flow_no_heuristics
+        zielony). Karta P2 okno zdolności `ac6f9cb` — wykonawca w toku.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
