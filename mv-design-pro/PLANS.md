@@ -328,7 +328,13 @@ Progress:
         Pełny vitest kompletu fali: 632 pliki / 8345 pass (exit 0).
         Scalenie #13 — przegląd IA: zakładki warsztatu wyników pogrupowane
         („Analizy sieci" / „OZE i przyłączenia"; jeden tablist, testidy bez
-        zmian, klawiatura = kolejność wizualna; `288d7a6`; ui2 1056 pass).
+        zmian, klawiatura = kolejność wizualna; `288d7a6`; ui2 1056 pass;
+        pełny vitest 8345 potwierdzony).
+        FALA 2 OZE: D5 obszar bezpiecznej pracy P–Q węzła (Opus; 30 testów;
+        końcówka /api/oze-analysis/pq-area — siatka P×Q anchored w Q=0 na
+        wzorcu D3; recon Q generatora rozstrzygnięty dowodowo mapping.py:201;
+        pełny pytest 5839 pass ZERO failed potwierdzony; zintegrowane
+        `5a7aac6`). Karta P30 okno obszaru `b928d52` — wykonawca w toku.
         PROCEDURA: wykonawcy backendowi zawieszają się po pełnym pytest (3
         przypadki) — zarządca przejmuje: weryfikacja w worktree + commit
         w imieniu wykonawcy (bez oczekiwania na raport).
