@@ -268,3 +268,9 @@
   white-space: nowrap;
   border: 0;
 }
+
+/* Natywny wybór wiersza (delta API — TODO-KARTA E8.2). */
+.mvd-wyn-wiersz-wybieralny { cursor: pointer; }
+.mvd-wyn-wiersz-wybieralny:hover { background: var(--mvd-panel-2); }
+.mvd-wyn-wiersz-wybieralny:focus-visible { outline: 2px solid var(--mvd-accent); outline-offset: -2px; }
+.mvd-wyn-wiersz-wybieralny.mvd-on { background: var(--mvd-accent-soft, var(--mvd-panel-2)); box-shadow: inset 3px 0 0 var(--mvd-accent); }

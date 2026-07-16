@@ -30,6 +30,8 @@ export function EkranAnalizy({
   onPrzelicz,
   trybZaawansowania,
   kluczWiersza,
+  onWybierzWiersz,
+  wybranyWiersz,
 }: EkranAnalizyProps) {
   const { analizaPL, runId, rewizjaModelu, rewizjaDanych } = naglowek;
   const maSwiezosc = rewizjaModelu !== undefined && rewizjaDanych !== undefined;
@@ -77,6 +79,8 @@ export function EkranAnalizy({
         onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={kluczWiersza}
+        onWybierzWiersz={onWybierzWiersz}
+        wybranyWiersz={wybranyWiersz}
       />
 
       {wykres && (

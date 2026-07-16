@@ -29,6 +29,10 @@ interface TabelaWynikowProps {
   trybZaawansowania: AdvancementMode;
   /** Klucz kolumny identyfikującej wiersz (domyślnie klucz pierwszej kolumny). */
   kluczWiersza?: string;
+  /** Natywny wybór wiersza (klik/Enter) — delta API, TODO-KARTA E8.2. */
+  onWybierzWiersz?: (klucz: string) => void;
+  /** Wartość klucza wybranego wiersza (podświetlenie + aria-selected). */
+  wybranyWiersz?: string | null;
 }
 
 /** Wyrównanie efektywne kolumny (mono → prawo, tekst → lewo — chyba że nadpisane). */
@@ -74,6 +78,8 @@ export function TabelaWynikow({
   onOtworzDowod,
   trybZaawansowania,
   kluczWiersza,
+  onWybierzWiersz,
+  wybranyWiersz,
 }: TabelaWynikowProps) {
   const [sort, setSort] = useState<StanSortowania | null>(null);
 
@@ -154,8 +160,33 @@ export function TabelaWynikow({
           {wierszePosortowane.map((wiersz, i) => {
             const idKom = kluczId ? wiersz[kluczId] : undefined;
             const rowKey = idKom ? String(idKom.wartosc) : `wiersz-${i}`;
+            const wybieralny = onWybierzWiersz != null;
+            const wybrany = wybieralny && wybranyWiersz != null && wybranyWiersz === rowKey;
             return (
-              <tr key={rowKey} data-testid="mvd-wyn-wiersz">
+              <tr
+                key={rowKey}
+                data-testid="mvd-wyn-wiersz"
+                className={
+                  wybieralny
+                    ? wybrany
+                      ? 'mvd-wyn-wiersz-wybieralny mvd-on'
+                      : 'mvd-wyn-wiersz-wybieralny'
+                    : undefined
+                }
+                aria-selected={wybieralny ? wybrany : undefined}
+                tabIndex={wybieralny ? 0 : undefined}
+                onClick={wybieralny ? () => onWybierzWiersz(rowKey) : undefined}
+                onKeyDown={
+                  wybieralny
+                    ? (e: KeyboardEvent<HTMLTableRowElement>) => {
+                        if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+                          e.preventDefault();
+                          onWybierzWiersz(rowKey);
+                        }
+                      }
+                    : undefined
+                }
+              >
                 {kolumnyWidoczne.map((kol) => (
                   <Komorka
                     key={kol.klucz}

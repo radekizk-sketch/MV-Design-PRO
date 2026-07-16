@@ -7,9 +7,9 @@
  * punktu zwarcia i sekcja WKŁADÓW dla wybranego punktu.
  *
  * Zero fizyki, zero mutacji; store czytany wyłącznie do odczytu
- * (`useWynikZwarciowy`). Wybór punktu realizowany kontrolką po naszej stronie —
- * wzorzec `TabelaWynikow` nie emituje zdarzenia wyboru wiersza (props-adapter,
- * bez zmian we wzorcu; natywny wybór wiersza = osobna delta API wzorca, TODO-KARTA).
+ * (`useWynikZwarciowy`). Wybór punktu zwarcia: NATYWNY wybór wiersza tabeli
+ * (delta API wzorca zrealizowana — scalenie U3 #4 zamyka TODO-KARTĘ E8.2 A);
+ * wiersz wybrany steruje sekcją wkładów.
  */
 
 import { useMemo, useState } from 'react';
@@ -91,25 +91,9 @@ export function EkranZwarc({
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_PUNKT}
+        onWybierzWiersz={setWybranyPunkt}
+        wybranyWiersz={aktywnyPunkt}
       />
-
-      <div className="mvd-zwarcia-wybor" data-testid="mvd-zwarcia-wybor">
-        <label className="mvd-zwarcia-wybor-etykieta" htmlFor="mvd-zwarcia-wybor-select">
-          {ZWARCIA_STRINGS.wkladyWybor}
-        </label>
-        <select
-          id="mvd-zwarcia-wybor-select"
-          className="mvd-zwarcia-wybor-select"
-          value={aktywnyPunkt ?? ''}
-          onChange={(e) => setWybranyPunkt(e.target.value)}
-        >
-          {rows.map((r) => (
-            <option key={r.target_id} value={r.target_id}>
-              {r.target_name ?? r.target_id}
-            </option>
-          ))}
-        </select>
-      </div>
 
       <WkladyZwarciowe
         punktNazwa={nazwaAktywnego}

@@ -34,7 +34,6 @@ export const ZWARCIA_STRINGS = {
 
   // Sekcja wkładów
   wkladyTytul: 'Wkłady do zwarcia',
-  wkladyWybor: 'Punkt zwarcia',
   wkladyKolZrodlo: 'Źródło',
   wkladyKolPrad: 'Prąd wkładu',
   wkladyKolUdzial: 'Udział',

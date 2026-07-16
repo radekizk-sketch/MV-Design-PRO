@@ -105,4 +105,11 @@ export interface EkranAnalizyProps {
    * Domyślnie: klucz pierwszej kolumny.
    */
   kluczWiersza?: string;
+  /**
+   * Natywny wybór wiersza (delta API — TODO-KARTA E8.2): klik/Enter na wierszu
+   * woła callback z wartością klucza wiersza. Brak = tabela bez wyboru.
+   */
+  onWybierzWiersz?: (klucz: string) => void;
+  /** Wartość klucza aktualnie wybranego wiersza (podświetlenie + aria-selected). */
+  wybranyWiersz?: string | null;
 }

@@ -134,14 +134,23 @@ describe('EkranZwarc — wybór punktu i sekcja wkładów', () => {
     expect(screen.getByText(ZWARCIA_STRINGS.wkladyNiedostepne)).toBeInTheDocument();
   });
 
-  it('zmiana wyboru punktu przełącza sekcję wkładów', () => {
+  it('natywny wybór wiersza tabeli przełącza sekcję wkładów (delta API wzorca)', () => {
     render(<EkranZwarc {...props({ wklady: { 'BUS-GPZ': wkladyFixture() } })} />);
-    // Start: BUS-GPZ ma wkłady.
+    // Start: BUS-GPZ (pierwszy wiersz) ma wkłady i jest wybrany.
+    const wiersze = screen.getAllByTestId('mvd-wyn-wiersz');
+    expect(wiersze[0]).toHaveAttribute('aria-selected', 'true');
     expect(screen.queryByTestId('mvd-zwarcia-wklady-brak')).not.toBeInTheDocument();
-    // Przełącz na BUS-ST1 (brak wkładów) → stan niedostępny.
-    fireEvent.change(screen.getByTestId('mvd-zwarcia-wybor').querySelector('select')!, {
-      target: { value: 'BUS-ST1' },
-    });
+    // Klik na wiersz BUS-ST1 (brak wkładów) → stan niedostępny + zaznaczenie.
+    fireEvent.click(wiersze[1]);
+    expect(wiersze[1]).toHaveAttribute('aria-selected', 'true');
+    expect(wiersze[0]).toHaveAttribute('aria-selected', 'false');
     expect(screen.getByTestId('mvd-zwarcia-wklady-brak')).toBeInTheDocument();
+  });
+
+  it('Enter na wierszu wybiera punkt (klawiatura)', () => {
+    render(<EkranZwarc {...props()} />);
+    const wiersze = screen.getAllByTestId('mvd-wyn-wiersz');
+    fireEvent.keyDown(wiersze[1], { key: 'Enter' });
+    expect(wiersze[1]).toHaveAttribute('aria-selected', 'true');
   });
 });

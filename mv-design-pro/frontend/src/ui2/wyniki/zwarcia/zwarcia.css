@@ -24,31 +24,6 @@
   font-size: 13px;
 }
 
-/* ---- wybór punktu zwarcia ---- */
-.mvd-zwarcia-wybor {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-top: 12px;
-  padding: 4px;
-}
-.mvd-zwarcia-wybor-etykieta {
-  font-weight: 600;
-  color: var(--mvd-muted);
-}
-.mvd-zwarcia-wybor-select {
-  border: 1px solid var(--mvd-line);
-  background: var(--mvd-panel);
-  color: var(--mvd-ink);
-  padding: 5px 10px;
-  border-radius: 4px;
-  font: inherit;
-  min-width: 220px;
-}
-.mvd-zwarcia-wybor-select:hover {
-  border-color: var(--mvd-accent);
-}
-
 /* ---- sekcja wkładów ---- */
 .mvd-zwarcia-wklady {
   display: flex;
