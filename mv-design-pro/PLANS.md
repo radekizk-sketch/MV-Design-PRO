@@ -244,7 +244,14 @@ Progress:
         porównań; TODO-KARTA: porównanie zwarć, nakładka delta na SLD przez
         kartę koordynacyjną, nazwa przypadku w etykiecie przebiegu, eksport).
         Scalenie #6 (zarządca): zakładka „Porównanie A/B" w warsztacie wyników
-        (bez projektu — uczciwy stan pusty); ui2 829 pass.
+        (bez projektu — uczciwy stan pusty); ui2 829 pass; pełny bieg 8118 pass.
+        P47 pulpit instalacji OZE (Opus; 26 testów; pełny vitest u wykonawcy
+        8144 pass ZERO failed; zintegrowane `7c551fb`; wspólny store biegu NC RfG
+        macierz↔pulpit; USTALONE: DER nie niesie pojemności magazynu [kWh] —
+        sekcja BESS tylko z realnych referencji katalogowych; TODO-KARTA:
+        wpięcie API grid_strength/reactive_adequacy = osobna karta delty).
+        Scalenie #7 (zarządca): zakładka „Pulpit OZE" w warsztacie wyników
+        (`8e74937`; ui2 856 pass).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
