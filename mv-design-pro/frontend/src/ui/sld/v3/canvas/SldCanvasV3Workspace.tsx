@@ -82,16 +82,29 @@ import { useSelectionStore } from '../../../selection';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { buildSupplyPathHighlight, isElementEnergized, type SupplyPathHighlight } from '../../v2/canvas/SupplyPathHighlighter';
 import { useRawResultOverlayStore, type RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
-import { buildSldDataFromSnapshot } from '../../v2/canvas/enmToSldAdapter';
-import { SldDetailDrawer, type SldDetailDrawerData } from '../../v2/canvas/SldDetailDrawer';
+import { buildSldDataFromSnapshot, type SldDataPayload } from '../../v2/canvas/enmToSldAdapter';
+import { SldDetailDrawer, type SldDetailDrawerAction, type SldDetailDrawerData } from '../../v2/canvas/SldDetailDrawer';
 import { useDerDragDrop, DerPaletteButton, type DerDragKind } from '../../v2/canvas/useDerDragDrop';
 import {
   SldContextMenuController,
   type SldContextMenuRequest,
 } from '../../../context-menu/SldContextMenuController';
-import type { SldElementKindForMenu } from '../../v2/command/SldCommandService';
+import { getMenuActions, type SldElementKindForMenu } from '../../v2/command/SldCommandService';
+import { selectStationDistributionTransformers } from '../../../network-build/stationTransformerSelection';
 import { useMeasuredSize } from '../../shared/useMeasuredSize';
-import { buildStationDetailDrawerData } from '../../shared/detailDrawerData';
+import {
+  buildDerDropDetailDrawerData,
+  buildDetailDrawerDataForKind,
+  buildStationDetailDrawerData,
+  findBayByRef,
+  findSubstationByRef,
+  mapKindToMenuKind,
+} from '../../shared/detailDrawerData';
+import {
+  DRAWER_ACTION_LABEL_PL,
+  parseGpzApparatusSelectionId,
+  useSldActionExecutor,
+} from '../../shared/sldActionExecutor';
 import { buildSceneV3, type SceneLod } from '../scene/buildScene';
 import type { PreviewElementKind } from '../compose/preview';
 import { SldCanvasV3, type SldElementClickMeta } from './SldCanvasV3';
@@ -226,6 +239,168 @@ function elementKindForMenu(kind: PreviewElementKind | undefined): SldElementKin
   }
 }
 
+/**
+ * F11.4-B / ARCH-4 (spec §10.1 „pełna migracja budowniczych danych drawera"):
+ * `elementKind` v3 → `kind` przyjmowany przez `buildDetailDrawerDataForKind`
+ * (`shared/detailDrawerData.ts` — TA SAMA wartość co v2 `onSelectElement`
+ * `kind`). JAWNA, zamknięta tabela; `undefined` = drawer się NIE otwiera dla
+ * tego `elementKind` (bez zgadywania).
+ *  - 'station' → 'station' (dopasowanie wprost, działa od F8c pkt 2).
+ *  - 'source' → 'gpz' (sieć zewnętrzna — v2 `kind==='gpz'` mapuje na TEN SAM
+ *    drawer 'station' przez `mapKindToDrawerKind`; `ownerRef` dla `source`
+ *    to `Source.id` ENM, INNY namespace niż `Substation.ref_id` — gdy
+ *    budowniczy nie znajdzie pasującej stacji, zwraca `null` (uczciwy brak,
+ *    NIE crash) zgodnie z regułą tej funkcji).
+ *  - 'segment' → 'cable_segment_sn' (realny drawer `cable_run` przez
+ *    `buildCableRunDetailDrawerData`; v3 nie rozróżnia dziś kabel/napowietrzna
+ *    — ta sama niepewność co domyślne zachowanie v2 opisane przy
+ *    `elementKindForMenu` wyżej).
+ *  - 'bus' → 'section' — `mapKindToDrawerKind('section')` nie rozpoznaje
+ *    tego `kind` (zwraca `null`), TAK SAMO jak w v2 (v2 nigdy nie miał
+ *    dedykowanego drawera sekcji/szyny) — jawna tabela zamiast pominięcia
+ *    kategorii, żeby przyszły drawer sekcji zadziałał tu bez zmian w v3.
+ *  - 'transformer'/'apparatus' → OBSŁUGIWANE OSOBNO w
+ *    `buildDetailDrawerDataForElementKind` (nie tą tabelą) — `meta.ownerRef`
+ *    dla tych `elementKind` w kompozycji stacji to BAY ref, NIE ref
+ *    konkretnego urządzenia/transformatora (`compose/station.ts`, linia
+ *    `ownerRef: s.bayRef ?? s.sourceRef` — scena v3 nie niesie osobnego
+ *    identyfikatora per symbol). Budowniczy `buildStationBranchDetailDrawerData`
+ *    przyjmuje `id` jako ref DOMENOWY; surowe przekazanie bayRef
+ *    prowadziłoby do arbitralnego doboru `stationContext`
+ *    (`sldData.stations[0]`, fallback ostatniego wyboru poprawny w v2 —
+ *    tam `id` zawsze rozwiązywalny — ale NIE w v3). Dlatego transformer/
+ *    apparatus mają DEDYKOWANĄ ścieżkę rozwiązywania stacji-właściciela
+ *    poniżej zamiast wpisu w tej tabeli.
+ *  - 'der' → `undefined` (poza przepływem drop-z-palety, gdzie `derKind`
+ *    jest ZNANY z akcji użytkownika — `buildDerDropDetailDrawerData`
+ *    wyżej): `SldDetailDrawer` domyśla `derKind` do `'PV'`, gdy
+ *    `data.derKind` nieustawione (`SldDetailDrawer.tsx` ok. linii 417) —
+ *    dla klika w ISTNIEJĄCY DER nieznanego rodzaju (scena v3 nie niesie
+ *    `Generator.gen_type`, patrz `elementTypeForKind` nagłówek pliku)
+ *    fabrykowałoby to fałszywe „PV" dla realnego BESS/FW. UDOKUMENTOWANA
+ *    LUKA, nie regresja — v3 przed tym zadaniem NIE miał drawera dla `der`
+ *    w ogóle.
+ *  - 'protectionAnnotation' → `undefined` (adnotacja graficzna, nie obiekt
+ *    domenowy).
+ */
+function elementKindForDrawer(kind: PreviewElementKind | undefined): string | undefined {
+  switch (kind) {
+    case 'station':
+      return 'station';
+    case 'source':
+      return 'gpz';
+    case 'segment':
+      return 'cable_segment_sn';
+    case 'bus':
+      return 'section';
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Rozwiązuje `Substation.ref_id` właściciela bay-a (`Bay.substation_ref`,
+ * ENM FK — realna relacja, NIE zgadywanie) z `bayRef`, którą `apparatus`
+ * niesie jako `meta.ownerRef` w kompozycji STACJI (`compose/station.ts`,
+ * `ownerRef: s.bayRef ?? s.sourceRef`).
+ *
+ * UDOKUMENTOWANA LUKA (zweryfikowana empirycznie, fixture
+ * `sldSubstrate52s.enm.json`): dla `apparatus` GPZ (`compose/gpz.ts`
+ * `gpzSymbolToPreview`, `ownerRef: sourceRef ?? bayRef ?? transformerRef ??
+ * sectionId` — TEN SAM priorytet `bayRef`) bay GPZ NIE JEST rekordem
+ * `snapshot.bays` (`findBayByRef` zwraca `null` — bay GPZ żyje w odrębnej
+ * substrukturze GPZ, nie w płaskiej liście `Bay` ENM) — funkcja zwraca wtedy
+ * `null`, KOREKTA `stationCode` w `buildDetailDrawerDataForElementKind`
+ * niżej cicho nie następuje (budowniczy współdzielony zostaje przy swoim
+ * fallbacku `sldData.stations[0]` — potencjalnie NIEPOPRAWNY breadcrumb dla
+ * aparatu GPZ, ale `label`/`kind`/`menuKind` drawera są poprawne; drawer się
+ * OTWIERA, nie crashuje). Dla aparatu STACJI (bay w `snapshot.bays`) korekta
+ * działa poprawnie.
+ */
+function stationRefForBayOwner(snapshot: EnergyNetworkModel | null, bayRef: string): string | null {
+  return findBayByRef(snapshot, bayRef)?.substation_ref ?? null;
+}
+
+/**
+ * Dla `elementKind==='transformer'`: `ownerRef` → REALNY ref transformatora.
+ * DWIE ścieżki (zweryfikowane empirycznie na `sldSubstrate52s.enm.json`):
+ *  1. GPZ (`compose/gpz.ts` `gpzSymbolToPreview`): `ownerRef` = `GpzElementMeta.
+ *     transformerRef` (fallback po `sourceRef`/`bayRef`, oba nieustawione dla
+ *     symbolu transformatora) — TO JUŻ jest realny ref transformatora w
+ *     `snapshot.transformers` (dopasowanie WPROST, bez rozwiązywania stacji).
+ *  2. Stacja (`compose/station.ts`: `ownerRef: s.bayRef ?? s.sourceRef`) —
+ *     `ownerRef` to BAY ref (scena nie niesie osobnego refu transformatora
+ *     per symbol) — rozwiązanie: bay→stacja (`stationRefForBayOwner`)
+ *     →pierwszy transformator dystrybucyjny stacji
+ *     (`selectStationDistributionTransformers`, TA SAMA funkcja, której
+ *     budowniczy współdzielony używa dla gałęzi 'station'/'transformer' —
+ *     jedna prawda o wyborze transformatora, zero nowej heurystyki).
+ * Próba (1) PRZED (2) — jeśli `ownerRef` już jest realnym refem
+ * transformatora, rozwiązywanie przez bay jest zbędne (i zawiodłoby, bo
+ * `ownerRef` GPZ nie jest bay-em). `null`, gdy ŻADNA ścieżka nie rozwiąże —
+ * wołający NIE otwiera wtedy drawera (uczciwy brak).
+ */
+function resolveTransformerRefForOwnerRef(snapshot: EnergyNetworkModel | null, ownerRef: string): string | null {
+  const directMatch = (snapshot?.transformers ?? []).find(
+    (t) => t.ref_id === ownerRef || t.id === ownerRef,
+  );
+  if (directMatch) return directMatch.ref_id ?? directMatch.id ?? ownerRef;
+
+  const stationRef = stationRefForBayOwner(snapshot, ownerRef);
+  if (!stationRef) return null;
+  const station = findSubstationByRef(snapshot, stationRef);
+  const tr = selectStationDistributionTransformers(snapshot, station)[0];
+  return tr?.ref_id ?? tr?.id ?? null;
+}
+
+/**
+ * Dyspozytor otwierania drawera dla `handleElementClick` — spina
+ * `elementKindForDrawer` (station/gpz/segment/bus) z DEDYKOWANYMI ścieżkami
+ * transformer/apparatus (rozwiązywanie refu/stacji-właściciela z `ownerRef`,
+ * patrz funkcje wyżej). `null` = drawer się NIE otwiera.
+ *
+ * `apparatus`: scena v3 nie niesie refu POJEDYNCZEGO urządzenia (tylko
+ * `bayRef`), więc `apparatusState`/`parentBayLabel` w zwróconym obiekcie
+ * ZOSTAJĄ `null` (budowniczy nie znajduje dopasowania w
+ * `primary_device_states`/`equipment_refs` po samym `bayRef`) —
+ * UDOKUMENTOWANA LUKA, NIE fabrykowany stan. `stationCode`/
+ * `parentStationLabel` w budowniczym współdzielonym spadłyby na arbitralny
+ * `sldData.stations[0]` (fallback v2, tam martwy, bo `id` tam zawsze
+ * rozwiązywalny — tu NIE) — KORYGOWANE tu dla aparatu STACJI, rozwiązanego
+ * z `Bay.substation_ref` (realna relacja ENM, nie zgadywanie); dla aparatu
+ * GPZ korekta nie następuje (bay GPZ poza `snapshot.bays`, patrz
+ * `stationRefForBayOwner` nagłówek) — UDOKUMENTOWANA LUKA, drawer się mimo
+ * to otwiera (nie crash, `label` poprawny).
+ */
+function buildDetailDrawerDataForElementKind(
+  snapshot: EnergyNetworkModel | null,
+  sldData: SldDataPayload,
+  overlayPayload: RawOverlayPayload | null,
+  elementKind: PreviewElementKind | undefined,
+  id: string,
+): SldDetailDrawerData | null {
+  if (elementKind === 'station') {
+    return buildStationDetailDrawerData(snapshot, sldData, overlayPayload, id);
+  }
+  if (elementKind === 'transformer') {
+    const transformerRef = resolveTransformerRefForOwnerRef(snapshot, id);
+    if (!transformerRef) return null;
+    return buildDetailDrawerDataForKind('transformer', transformerRef, { snapshot, sldData, overlayPayload });
+  }
+  if (elementKind === 'apparatus') {
+    const apparatusDrawerData = buildDetailDrawerDataForKind('apparatus', id, { snapshot, sldData, overlayPayload });
+    if (!apparatusDrawerData) return null;
+    const stationRef = stationRefForBayOwner(snapshot, id);
+    const correctedStationCode = stationRef
+      ? sldData.stations.find((s) => s.id === stationRef)?.stationCode ?? apparatusDrawerData.stationCode
+      : apparatusDrawerData.stationCode;
+    return { ...apparatusDrawerData, stationCode: correctedStationCode };
+  }
+  const drawerKind = elementKindForDrawer(elementKind);
+  if (!drawerKind) return null;
+  return buildDetailDrawerDataForKind(drawerKind, id, { snapshot, sldData, overlayPayload });
+}
+
 const ALL_SCENE_LODS: readonly SceneLod[] = [0, 1, 2];
 
 /**
@@ -348,6 +523,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   const logicalViews = useSnapshotStore((state) => state.logicalViews);
   const selectElement = useSelectionStore((state) => state.selectElement);
   const activeMode = useAppStateStore((state) => state.activeMode);
+  const activeCaseResultStatus = useAppStateStore((state) => state.activeCaseResultStatus);
   const energizationOverlay = useEnergizationOverlay(snapshot);
   // F9.5: `useRawResultOverlayStore` — TEN SAM globalny store, który `App.tsx`
   // zasila fetch'em wyniku aktywnego przebiegu, NIEZALEŻNIE od wersji kanwy
@@ -396,17 +572,43 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     },
     [],
   );
-  // F8c pkt 3: `onAction` — v3 NIE ma dziś CAD-edycji/mutacji domenowej
-  // (F8c pkt 1, poza zakresem tego zadania — checklista bramkująca ma
-  // OSOBNĄ pozycję na to) — menu POKAZUJE te same akcje co v2
-  // (`SLD_MENU_REGISTRY`), ale kliknięcie akcji WYŁĄCZNIE zamyka menu
-  // (brak wykonawcy — `handleAction`/`NetworkBuildStore`, v2-specyficzne,
-  // ~600 linii, poza zakresem F11.4-A). UDOKUMENTOWANA LUKA — wymagane
-  // testy (a)/(b)/(c) pokrywają WYŁĄCZNIE otwieranie menu z poprawną
-  // zawartością, nie wykonanie akcji.
-  const handleContextMenuAction = useCallback(() => {
-    closeContextMenu();
-  }, [closeContextMenu]);
+  // F11.4-B / ARCH-3 (spec §10.1: „wykonawca akcji domenowych na v3: BRAMKA
+  // REALNA, wdrażana"): `onAction` woła TEN SAM wykonawca co v2
+  // (`useSldActionExecutor`, `shared/sldActionExecutor.ts`) — nawigacja
+  // (`ACTION_TO_SCREEN`), formularze operacji domenowych
+  // (`buildSldOperationContext`), usuwanie z potwierdzeniem, komunikaty PL —
+  // zero duplikacji, jedna prawda z v2. Menu zamyka się PO wywołaniu akcji
+  // (dawniej: WYŁĄCZNIE zamykało menu, UDOKUMENTOWANA LUKA F8c — teraz
+  // domknięta).
+  const handleAction = useSldActionExecutor({ readOnly: props.readOnly ?? false });
+  const handleContextMenuAction = useCallback(
+    (actionId: string, kind: SldElementKindForMenu, elementId: string | null) => {
+      handleAction(actionId, kind, elementId);
+      closeContextMenu();
+    },
+    [handleAction, closeContextMenu],
+  );
+
+  // F11.4-B / ARCH-3: akcje drawera — TEN SAM wzorzec co v2
+  // (`SldWorkspaceContainer.detailDrawerActions`): `getMenuActions` +
+  // `DRAWER_ACTION_LABEL_PL` WSPÓŁDZIELONE (`shared/sldActionExecutor.ts`),
+  // wykonawca `handleAction` wyżej — obie strony czytają jedną prawdę.
+  const detailDrawerActions = useMemo<SldDetailDrawerAction[]>(() => {
+    if (!detailDrawerData?.elementId) return [];
+    const menuKind = mapKindToMenuKind(detailDrawerData.menuKind ?? detailDrawerData.kind ?? '');
+    if (!menuKind) return [];
+    const apparatusKind = parseGpzApparatusSelectionId(detailDrawerData.elementId)?.apparatusKind;
+    return getMenuActions(menuKind, {
+      hasResults: activeCaseResultStatus === 'FRESH',
+      apparatusKind,
+    }).map((action) => ({
+      id: action.id,
+      labelPl: DRAWER_ACTION_LABEL_PL[action.id] ?? action.labelPl,
+      group: action.group,
+      disabledReasonPl: action.disabled ? action.disabledReasonPl ?? 'Akcja niedostępna dla bieżącego obiektu.' : undefined,
+      onClick: () => handleAction(action.id, menuKind, detailDrawerData.elementId),
+    }));
+  }, [activeCaseResultStatus, detailDrawerData, handleAction]);
 
   // F8c pkt 4: paleta DER — hook + przycisk RENDER-AGNOSTYCZNE (v2
   // `useDerDragDrop`/`DerPaletteButton`, zero zmian), reużyte wprost.
@@ -433,17 +635,9 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         if (meta?.elementKind === 'station') {
           const dropResult = derDrag.dropOnStation(id);
           if (dropResult) {
-            const stationForDrop = sldData.stations.find((s) => s.id === id);
-            setDetailDrawerData({
-              kind: 'der',
-              elementId: id,
-              label: stationForDrop?.stationCode ?? stationForDrop?.name ?? id.split('/').pop() ?? id,
-              voltageKv: stationForDrop?.busVoltageKv ?? null,
-              stationCode: stationForDrop?.stationCode ?? null,
-              accentColor: dropResult.kind === 'PV' ? '#FFD166' : dropResult.kind === 'BESS' ? '#7DD3FC' : '#7EE0B5',
-              derKind: dropResult.kind,
-              derConnectionVariant: 'nn_side',
-            });
+            // F11.4-B: `buildDerDropDetailDrawerData` — WSPÓŁDZIELONA z v2
+            // (dawniej zduplikowana tu, patrz nagłówek modułu współdzielonego).
+            setDetailDrawerData(buildDerDropDetailDrawerData(sldData, id, dropResult.kind));
           }
         } else {
           derDrag.cancel();
@@ -454,16 +648,15 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       const type = elementTypeForKind(meta?.elementKind);
       selectElement(type ? { id, type, name: id } : { id, type: 'DescriptiveElement', name: id });
 
-      // F8c pkt 2: drawer — WYŁĄCZNIE dla elementKind='station' (patrz
-      // `shared/detailDrawerData.ts` nagłówek: pozostałe kind poza zakresem
-      // tego zadania). Inny elementKind → drawer NIETKNIĘTY (jeśli już
-      // otwarty dla innej stacji, zostaje — spójne z v2: klik w niezmapowany
-      // kind nie zamyka drawera, patrz `handleSelectElement` w
-      // `SldWorkspaceContainer.tsx`).
-      if (meta?.elementKind === 'station') {
-        const stationDrawerData = buildStationDetailDrawerData(snapshot, sldData, rawOverlayPayload, id);
-        if (stationDrawerData) setDetailDrawerData(stationDrawerData);
-      }
+      // F11.4-B / ARCH-4 (spec §10.1 „pełna migracja budowniczych danych
+      // drawera"): otwieranie drawera rozszerzone POZA stację —
+      // `elementKindForDrawer` niżej mapuje `elementKind` v3 na `kind`
+      // budowniczego współdzielonego. Brak dopasowania/`null` z budowniczego
+      // = drawer się NIE otwiera (uczciwy brak, bez crasha, bez zgadywania) —
+      // jeśli już otwarty dla innego elementu, zostaje (spójne z v2:
+      // `handleSelectElement` też nie zamyka drawera na niezmapowany `kind`).
+      const drawerData = buildDetailDrawerDataForElementKind(snapshot, sldData, rawOverlayPayload, meta?.elementKind, id);
+      if (drawerData) setDetailDrawerData(drawerData);
     },
     [derDrag, rawOverlayPayload, selectElement, sldData, snapshot],
   );
@@ -486,7 +679,12 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         />
       ) : null}
 
-      <SldDetailDrawer open={detailDrawerData !== null} data={detailDrawerData} onClose={closeDetailDrawer} />
+      <SldDetailDrawer
+        open={detailDrawerData !== null}
+        data={detailDrawerData}
+        onClose={closeDetailDrawer}
+        actions={detailDrawerActions}
+      />
 
       <SldContextMenuController
         request={contextRequest}

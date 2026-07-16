@@ -16,6 +16,7 @@ import { useAppStateStore } from '../../../../app-state';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../../../../network-build/networkBuildStore';
 import { useSelectionStore } from '../../../../selection';
+import { useNotificationStore } from '../../../../notifications/store';
 import { SldWorkspaceContainer } from '../SldWorkspaceContainer';
 import { SldCanvasV2, type SldCanvasContextMenuRequest } from '../SldCanvasV2';
 
@@ -1079,5 +1080,38 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
     expect(useSelectionStore.getState().selectedElement?.id).not.toBe('station-source');
     expect(screen.getByTestId('sld-v2-detail-drawer')).toHaveAttribute('data-element-kind', 'cable_run');
     expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
+  });
+
+  it('F11.4-B (ARCH-3, dowód zero-regresji wykonawcy akcji wyciągniętego do shared/sldActionExecutor.ts): menu kontekstowe stacji → "Usuń stację" pokazuje potwierdzenie (notify sticky), a po potwierdzeniu woła executeDomainOperation("delete_element", ...)', async () => {
+    seedDerTargetStationSnapshot();
+    useAppStateStore.setState({ activeCaseId: 'case-del-1' });
+    const executeDomainOperation = vi.fn().mockResolvedValue({});
+    useSnapshotStore.setState({ executeDomainOperation } as never);
+
+    render(<SldWorkspaceContainer width={800} height={600} />);
+
+    fireEvent.contextMenu(screen.getByTestId('sld-v2-station-hit-station_1'), {
+      clientX: 10,
+      clientY: 10,
+    });
+    fireEvent.click(screen.getByTestId('sld-menu-delete-station'));
+
+    const notification = useNotificationStore
+      .getState()
+      .notifications.find((n) => n.actions?.some((a) => a.label === 'Usuń'));
+    expect(notification).toBeTruthy();
+    expect(notification!.sticky).toBe(true);
+    expect(notification!.message).toContain('Potwierdź usunięcie: stację SN/nN');
+
+    const confirmAction = notification!.actions!.find((a) => a.label === 'Usuń')!;
+    confirmAction.onClick();
+
+    await waitFor(() => {
+      expect(executeDomainOperation).toHaveBeenCalledWith('case-del-1', 'delete_element', {
+        element_ref: 'station_1',
+        action_id: 'delete-station',
+        source: 'sld_context_menu',
+      });
+    });
   });
 });

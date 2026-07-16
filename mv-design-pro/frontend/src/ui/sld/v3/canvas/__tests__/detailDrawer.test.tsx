@@ -1,10 +1,11 @@
 /**
- * F8c pkt 2 — testy drawera szczegółów elementu na kanwie v3 (checklista
- * bramkująca §F8c, pozycja 2 „Drawer szczegółów elementu"). Wzorzec
- * fixture/setup identyczny jak `sldCanvasV3Workspace.test.tsx` (F8a) — TA
- * SAMA sieć testowa. Zakres v3 dziś: WYŁĄCZNIE `elementKind='station'`
- * (patrz `shared/detailDrawerData.ts` nagłówek dla udokumentowanej luki
- * pozostałych kind).
+ * F8c pkt 2 / F11.4-B (ARCH-4, spec §10.1 „pełna migracja budowniczych
+ * danych drawera") — testy drawera szczegółów elementu na kanwie v3.
+ * Wzorzec fixture/setup identyczny jak `sldCanvasV3Workspace.test.tsx`
+ * (F8a) — TA SAMA sieć testowa. Zakres v3 dziś: `station`/`transformer`/
+ * `apparatus` (patrz `shared/detailDrawerData.ts` i
+ * `SldCanvasV3Workspace.tsx::elementKindForDrawer` dla udokumentowanego
+ * zakresu i luk pozostałych `elementKind`).
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -45,7 +46,7 @@ beforeEach(() => {
   useSnapshotStore.setState({ snapshot: enm });
 });
 
-describe('SldCanvasV3Workspace — F8c pkt 2: drawer szczegółów (SldDetailDrawer)', () => {
+describe('SldCanvasV3Workspace — F8c pkt 2 / F11.4-B: drawer szczegółów (SldDetailDrawer)', () => {
   it('(a) klik w stację otwiera drawer z nazwą stacji (SldDetailDrawer label)', () => {
     const scene = buildSceneV3(enm, 0);
     const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
@@ -73,13 +74,45 @@ describe('SldCanvasV3Workspace — F8c pkt 2: drawer szczegółów (SldDetailDra
     expect(screen.queryByTestId('sld-v2-detail-drawer-label')).toBeNull();
   });
 
-  it('(c) klik w element bez danych drawera (np. odcinek "segment") NIE otwiera pustego drawera — uczciwy brak, nie crash', () => {
+  it('(c) klik w transformator otwiera drawer transformatora (F11.4-B: resolveTransformerRefForBayOwner)', () => {
     const scene = buildSceneV3(enm, 0);
-    const segmentIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'apparatus' || s.meta?.elementKind === 'transformer');
-    expect(segmentIndex).toBeGreaterThanOrEqual(0);
+    const transformerIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'transformer');
+    expect(transformerIndex).toBeGreaterThanOrEqual(0);
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    const group = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[segmentIndex];
+    const group = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[transformerIndex];
+    fireEvent.click(group!);
+
+    const label = screen.getByTestId('sld-v2-detail-drawer-label');
+    expect(label.textContent).toBeTruthy();
+    expect(label.textContent).not.toBe('');
+  });
+
+  it('(d) klik w aparat otwiera drawer aparatu (F11.4-B: buildDetailDrawerDataForKind(\'apparatus\', bayRef, ...))', () => {
+    const scene = buildSceneV3(enm, 0);
+    const apparatusIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'apparatus');
+    expect(apparatusIndex).toBeGreaterThanOrEqual(0);
+
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    const group = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[apparatusIndex];
+    fireEvent.click(group!);
+
+    const label = screen.getByTestId('sld-v2-detail-drawer-label');
+    expect(label.textContent).toBeTruthy();
+    expect(label.textContent).not.toBe('');
+  });
+
+  it('(e) budowniczy zwracający null nie otwiera drawera — klik w DER (elementKind=\'der\', UDOKUMENTOWANA LUKA) nie crashuje i nie otwiera pustego drawera', () => {
+    // LOD2 wymuszony przez `lodOverride` (escape hatch testowy, patrz
+    // `SldCanvasV3WorkspaceProps.lodOverride` docstring) — symbole `der` są
+    // widoczne dopiero na L1/L2 (rozwinięte pole stacji), LOD0 renderuje
+    // WYŁĄCZNIE skolapsowane stacje/GPZ.
+    const scene = buildSceneV3(enm, 2);
+    const derIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'der');
+    expect(derIndex).toBeGreaterThanOrEqual(0);
+
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const group = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[derIndex];
     expect(() => fireEvent.click(group!)).not.toThrow();
 
     expect(screen.queryByTestId('sld-v2-detail-drawer-label')).toBeNull();
