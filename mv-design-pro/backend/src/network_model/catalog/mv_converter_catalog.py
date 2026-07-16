@@ -78,6 +78,9 @@ def _converter_record(
     filter_l_pu: float | None = None,
     filter_r_pu: float | None = None,
     card_field_status: dict[str, dict[str, Any]] | None = None,
+    # Optional P-Q capability curve: ascending-by-p_mw points
+    # (p_mw, q_min_mvar, q_max_mvar). Added to params only when provided.
+    pq_curve: tuple[tuple[float, float, float], ...] | None = None,
 ) -> dict[str, Any]:
     params: dict[str, Any] = {
         "kind": kind,
@@ -119,6 +122,10 @@ def _converter_record(
             params[card_key] = card_value
     if card_field_status is not None:
         params["card_field_status"] = card_field_status
+    if pq_curve is not None:
+        params["pq_curve"] = [
+            [float(p), float(q_min), float(q_max)] for p, q_min, q_max in pq_curve
+        ]
     return {"id": item_id, "name": name, "params": params}
 
 
@@ -1126,6 +1133,14 @@ _REFERENCE_PV_STRING = _converter_record(
     control_delay_ms=0.5,
     filter_l_pu=0.08,  # string PV LCL: niska indukcyjnosc, wysoka f_sw (typowa)
     filter_r_pu=0.005,
+    # Krzywa P-Q: prostokat +/-0.6*Sn az do zwezenia przy p_max (limit S).
+    # Profil referencyjny do potwierdzenia karta producenta.
+    pq_curve=(
+        (0.0, -0.129, 0.129),
+        (0.108, -0.129, 0.129),
+        (0.172, -0.129, 0.129),
+        (0.215, -0.043, 0.043),
+    ),
     card_field_status=_reference_card_field_status(
         datasheet_ref="Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)",
         rating_fields=_REFERENCE_RATING_FIELDS,
@@ -1160,6 +1175,14 @@ _REFERENCE_PV_CENTRAL = _converter_record(
     control_delay_ms=0.6,
     filter_l_pu=0.10,  # central PV LCL: wyzsza indukcyjnosc, nizsza f_sw (typowa)
     filter_r_pu=0.004,
+    # Krzywa P-Q: prostokat +/-0.6*Sn az do zwezenia przy p_max (limit S).
+    # Profil referencyjny do potwierdzenia karta producenta.
+    pq_curve=(
+        (0.0, -1.89, 1.89),
+        (1.575, -1.89, 1.89),
+        (2.52, -1.89, 1.89),
+        (3.15, -0.63, 0.63),
+    ),
     card_field_status=_reference_card_field_status(
         datasheet_ref="Karta techniczna Sungrow SG3150U-MV (sungrowpower.com)",
         rating_fields=_REFERENCE_RATING_FIELDS,
@@ -1195,6 +1218,14 @@ _REFERENCE_BESS_PCS = _converter_record(
     control_delay_ms=0.5,
     filter_l_pu=0.10,  # BESS PCS LCL: typowa indukcyjnosc filtra magazynu
     filter_r_pu=0.003,
+    # Krzywa P-Q: prostokat +/-0.6*Sn az do zwezenia przy p_max (limit S).
+    # Profil referencyjny do potwierdzenia karta producenta.
+    pq_curve=(
+        (0.0, -1.2, 1.2),
+        (1.0, -1.2, 1.2),
+        (1.6, -1.2, 1.2),
+        (2.0, -0.4, 0.4),
+    ),
     card_field_status=_reference_card_field_status(
         datasheet_ref="Karta techniczna Sungrow SC2000UD-MV PCS (sungrowpower.com)",
         rating_fields=_REFERENCE_RATING_FIELDS,

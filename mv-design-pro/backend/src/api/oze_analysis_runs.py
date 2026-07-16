@@ -24,10 +24,13 @@ from application.analyses.hosting_capacity import (
     DEFAULT_STEP_MW,
     build_hosting_capacity_view,
 )
+from application.analyses.pq_coverage import build_pq_coverage_view
 from application.analyses.reactive_adequacy import build_reactive_adequacy_view
+from catalog.profiles.nc_rfg.loader import load_nc_rfg_profile
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import get_run as get_canonical_run
 from fastapi import APIRouter, HTTPException, Query, status
+from network_model.catalog.repository import get_default_mv_catalog
 
 router = APIRouter(tags=["oze-analysis"])
 
@@ -81,6 +84,33 @@ def get_hosting_capacity(
             step_mw=step_mw,
             max_steps=max_steps,
         )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get("/api/oze-analysis/pq-coverage")
+def get_pq_coverage(
+    catalog_item_id: str = Query(...),
+    operator_id: str = Query(...),
+) -> dict[str, Any]:
+    converter = get_default_mv_catalog().get_converter_type(catalog_item_id)
+    if converter is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Typ katalogowy '{catalog_item_id}' nie istnieje w katalogu przekształtników.",
+        )
+    try:
+        profile = load_nc_rfg_profile(operator_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    try:
+        return build_pq_coverage_view(converter, profile)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

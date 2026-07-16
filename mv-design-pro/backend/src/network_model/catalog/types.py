@@ -302,6 +302,69 @@ def _card_schema_kwargs(data: dict[str, Any]) -> dict[str, Any]:
 
 
 # =============================================================================
+# P-Q CAPABILITY CURVE ("krzywa zdolnosci P-Q falownika") — optional, additive.
+# A deterministic list of (p_mw, q_min_mvar, q_max_mvar) points, ascending by
+# p_mw, describing the manufacturer's reactive-power envelope at rated voltage.
+# Optional (None) so existing published converter types round-trip unchanged.
+# Consumed only by the coverage-verification service (application layer, zero
+# physics). NOT a solver field.
+# =============================================================================
+
+
+def _validate_pq_curve(pq_curve: tuple[tuple[float, float, float], ...]) -> None:
+    """Validate a P-Q capability curve; raise ValueError on malformed input.
+
+    Rules: at least one point; each point is (p_mw, q_min_mvar, q_max_mvar) with
+    p_mw >= 0 and q_min_mvar <= q_max_mvar; points strictly ascending by p_mw.
+    """
+    if not pq_curve:
+        raise ValueError("Krzywa P-Q falownika nie moze byc pusta.")
+    prev_p: float | None = None
+    for point in pq_curve:
+        if len(point) != 3:
+            raise ValueError(
+                "Punkt krzywej P-Q musi miec 3 wartosci (p_mw, q_min_mvar, q_max_mvar), "
+                f"otrzymano: {point!r}."
+            )
+        p_mw, q_min_mvar, q_max_mvar = point
+        if p_mw < 0:
+            raise ValueError(f"Moc czynna punktu krzywej P-Q musi byc >= 0, otrzymano p_mw={p_mw}.")
+        if q_min_mvar > q_max_mvar:
+            raise ValueError(
+                "Punkt krzywej P-Q wymaga q_min_mvar <= q_max_mvar, otrzymano "
+                f"q_min_mvar={q_min_mvar} > q_max_mvar={q_max_mvar} (p_mw={p_mw})."
+            )
+        if prev_p is not None and p_mw <= prev_p:
+            raise ValueError(
+                "Punkty krzywej P-Q musza byc uporzadkowane rosnaco po p_mw, "
+                f"otrzymano p_mw={p_mw} po p_mw={prev_p}."
+            )
+        prev_p = p_mw
+
+
+def _pq_curve_to_list(
+    pq_curve: tuple[tuple[float, float, float], ...] | None,
+) -> list[list[float]] | None:
+    """Serialize a P-Q curve to a JSON-stable list of [p, q_min, q_max] rows."""
+    if pq_curve is None:
+        return None
+    return [[float(p), float(q_min), float(q_max)] for p, q_min, q_max in pq_curve]
+
+
+def _pq_curve_from_raw(
+    raw: Any,
+) -> tuple[tuple[float, float, float], ...] | None:
+    """Parse a P-Q curve from a dict value (round-trips _pq_curve_to_list).
+
+    Arity is not enforced here so that malformed rows surface the explicit
+    Polish message from ``_validate_pq_curve`` (called in __post_init__).
+    """
+    if raw is None:
+        return None
+    return tuple(tuple(float(v) for v in point) for point in raw)  # type: ignore[misc]
+
+
+# =============================================================================
 # CATALOG BINDING — canonical binding contract
 # =============================================================================
 
@@ -1028,6 +1091,11 @@ class ConverterType:
     pn_ac_mw: float | None = None  # Pn,AC (moc znamionowa AC)
     p_connection_mw: float | None = None  # Pprzylacz (moc przylaczeniowa)
     p_achievable_mw: float | None = None  # Posiagl (moc osiagalna)
+    # Optional P-Q capability curve ("krzywa zdolnosci P-Q"): ascending-by-p_mw
+    # points (p_mw, q_min_mvar, q_max_mvar) at rated voltage. Validated in
+    # __post_init__. None => no curve declared (published types round-trip
+    # byte-identically). Consumed only by pq_coverage (application, zero physics).
+    pq_curve: tuple[tuple[float, float, float], ...] | None = None
     # Per-card data-quality override ("karta falownika" provenance). A serialized
     # {field_name -> CardFieldStatus.to_dict()} map declaring, per field, how
     # trustworthy each value is (DATASHEET / ESTIMATED / SYSTEM_DEFAULT). Stored as
@@ -1049,6 +1117,11 @@ class ConverterType:
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate the optional P-Q capability curve when present."""
+        if self.pq_curve is not None:
+            _validate_pq_curve(self.pq_curve)
 
     def validate_power_hierarchy(self) -> None:
         """Assert Pzainst >= Pn,AC >= Pprzylacz >= Posiagl for the fields present.
@@ -1096,6 +1169,9 @@ class ConverterType:
             # Per-card data-quality override: emitted only when set so published
             # converters (card_field_status=None) stay byte-identical.
             **({"card_field_status": self.card_field_status} if self.card_field_status else {}),
+            # P-Q capability curve: emitted only when declared so converters
+            # without a curve (pq_curve=None) stay byte-identical.
+            **({"pq_curve": _pq_curve_to_list(self.pq_curve)} if self.pq_curve else {}),
             "ptpiree_status": self.ptpiree_status,
             "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
             "ptpiree_document_number": self.ptpiree_document_number,
@@ -1151,6 +1227,7 @@ class ConverterType:
                 if data.get("card_field_status")
                 else None
             ),
+            pq_curve=_pq_curve_from_raw(data.get("pq_curve")),
             ptpiree_status=data.get("ptpiree_status"),
             ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
             ptpiree_document_number=data.get("ptpiree_document_number"),
