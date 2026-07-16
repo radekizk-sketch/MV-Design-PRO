@@ -80,3 +80,14 @@
   flex-direction: column;
   gap: 12px;
 }
+
+/* ---- listy wpisów analiz (węzły siły sieci / źródła adekwatności Q) ----
+   Reużywają kafelka `mvd-oze-slad-krok`, ale bez numeracji kroków wywodu. */
+.mvd-oze-analiza-lista {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}

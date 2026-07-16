@@ -9,8 +9,11 @@ import type { NcRfgRunResult } from '../../../ui/ncrfg-tests/api';
 import type { StationDerConnection } from '../../../ui/network-build/station-der';
 import { formatMoc, formatNapiecie } from '../macierz/strings';
 import type { OpisModulu } from '../macierz';
+import { SekcjaAdekwatnosciQ } from './SekcjaAdekwatnosciQ';
+import { SekcjaMagazynu } from './SekcjaMagazynu';
+import { SekcjaSilySieci } from './SekcjaSilySieci';
 import { SekcjaZgodnosci } from './SekcjaZgodnosci';
-import { daneModulu, pracaMagazynu, zgodnoscModulu } from './pulpitModel';
+import { daneModulu, zgodnoscModulu } from './pulpitModel';
 import { ETYKIETY_STRONY, PULPIT_STRINGS } from './strings';
 
 export interface KartaModuluProps {
@@ -32,7 +35,6 @@ export function KartaModulu({
 }: KartaModuluProps): JSX.Element {
   const dane = daneModulu(opis, der);
   const zgodnosc = zgodnoscModulu(opis, wynik);
-  const magazyn = pracaMagazynu(der);
 
   return (
     <div className="mvd-oze-pulpit-karta" data-testid="mvd-oze-pulpit-karta">
@@ -87,67 +89,14 @@ export function KartaModulu({
       {/* Sekcja 2 — zgodność NC RfG. */}
       <SekcjaZgodnosci zgodnosc={zgodnosc} />
 
-      {/* Sekcja 3 — praca magazynu (tylko BESS, tylko gdy dane istnieją). */}
-      {magazyn ? (
-        <section
-          className="mvd-oze-panel"
-          data-testid="mvd-oze-pulpit-magazyn"
-          aria-label={PULPIT_STRINGS.sekcjaMagazyn}
-        >
-          <h4>{PULPIT_STRINGS.sekcjaMagazyn}</h4>
-          {magazyn.bateriaRef ? (
-            <div className="mvd-oze-metryka">
-              <span>{PULPIT_STRINGS.magazynBateria}</span>
-              <span className="mvd-oze-num">
-                {trybEkspercki ? magazyn.bateriaRef : PULPIT_STRINGS.magazynEkspert}
-              </span>
-            </div>
-          ) : null}
-          {magazyn.trybyPracy.length > 0 ? (
-            <div className="mvd-oze-metryka">
-              <span>{PULPIT_STRINGS.magazynLiczbaTrybow}</span>
-              <span className="mvd-oze-num">{magazyn.trybyPracy.length}</span>
-            </div>
-          ) : null}
-          {trybEkspercki && magazyn.trybyPracy.length > 0 ? (
-            <div className="mvd-oze-panel-blok" data-testid="mvd-oze-pulpit-magazyn-tryby">
-              <span className="mvd-oze-panel-etyk">{PULPIT_STRINGS.magazynTryby}</span>
-              <ul className="mvd-oze-lista">
-                {magazyn.trybyPracy.map((tryb) => (
-                  <li key={tryb} className="mvd-oze-num">
-                    {tryb}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </section>
-      ) : null}
+      {/* Sekcja 3 — praca magazynu (BESS z katalogu konwerterów). */}
+      <SekcjaMagazynu der={der} trybEkspercki={trybEkspercki} />
 
-      {/* Sekcja 4 — zdolność punktu + jakość energii (analizy niewpięte). */}
-      <section
-        className="mvd-oze-panel"
-        data-testid="mvd-oze-pulpit-niewpiete"
-        aria-label={PULPIT_STRINGS.sekcjaZdolnosc}
-      >
-        <div className="mvd-oze-panel-blok">
-          <h4>{PULPIT_STRINGS.sekcjaZdolnosc}</h4>
-          <div className="mvd-oze-blokada" data-testid="mvd-oze-pulpit-zdolnosc-stan">
-            {PULPIT_STRINGS.analizaNiewpieta}
-          </div>
-          <p style={{ margin: '6px 0 0' }}>{PULPIT_STRINGS.zdolnoscOpis}</p>
-        </div>
-        <div className="mvd-oze-panel-blok">
-          <h4>{PULPIT_STRINGS.sekcjaJakosc}</h4>
-          <div className="mvd-oze-blokada" data-testid="mvd-oze-pulpit-jakosc-stan">
-            {PULPIT_STRINGS.analizaNiewpieta}
-          </div>
-          <p style={{ margin: '6px 0 0' }}>{PULPIT_STRINGS.jakoscOpis}</p>
-        </div>
-        <p className="mvd-oze-panel-etyk" data-testid="mvd-oze-pulpit-todo">
-          {PULPIT_STRINGS.todoKarta}
-        </p>
-      </section>
+      {/* Sekcja 4a — zdolność punktu przyłączenia (siła sieci, SCR/WSCR). */}
+      <SekcjaSilySieci trybEkspercki={trybEkspercki} />
+
+      {/* Sekcja 4b — adekwatność mocy biernej. */}
+      <SekcjaAdekwatnosciQ trybEkspercki={trybEkspercki} />
 
       {/* Sekcja 5 — dokumenty. */}
       <section

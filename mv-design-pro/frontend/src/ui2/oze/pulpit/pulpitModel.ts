@@ -23,6 +23,8 @@ import type {
   DerKindUnified,
   StationDerConnection,
 } from '../../../ui/network-build/station-der';
+import type { ExecutionRun } from '../../../ui/study-cases/types';
+import type { RekordKonwertera } from '../api';
 import { podsumowanieModulu, type OpisModulu } from '../macierz';
 
 // =============================================================================
@@ -80,6 +82,16 @@ export interface PracaMagazynu {
   readonly bateriaRef: string | null;
   /** Tryby pracy magazynu (`bess_operation_mode_refs`). */
   readonly trybyPracy: readonly string[];
+}
+
+/**
+ * Dopasowanie magazynu (BESS) do rekordu katalogu konwerterów. `dopasowanoPo`
+ * mówi, które pole referencji modułu (`battery_catalog_ref`/`device_catalog_ref`)
+ * dokładnie zgadza się z `id` rekordu — bez heurystyk, bez dopasowania częściowego.
+ */
+export interface DopasowanieMagazynu {
+  readonly rekord: RekordKonwertera;
+  readonly dopasowanoPo: 'battery_catalog_ref' | 'device_catalog_ref';
 }
 
 // =============================================================================
@@ -183,4 +195,69 @@ export function pracaMagazynu(der: StationDerConnection): PracaMagazynu | null {
   const trybyPracy = der.profiles.bess_operation_mode_refs;
   if (!bateriaRef && trybyPracy.length === 0) return null;
   return { bateriaRef, trybyPracy };
+}
+
+/**
+ * Sekcja 3 (P47a): dokładne dopasowanie magazynu (BESS) do rekordu katalogu
+ * konwerterów. Sprawdzamy kolejno `battery_catalog_ref`, potem
+ * `device_catalog_ref` — pierwszy, którego wartość jest identyczna z `id`
+ * rekordu, wygrywa. Zwraca `null` gdy DER nie jest magazynem albo żadna
+ * referencja nie ma odpowiednika (uczciwy stan „pozycja nieodnaleziona").
+ *
+ * Format referencji: `device_catalog_ref` magazynu przyjmuje identyfikatory
+ * konwerterów backendu (np. `conv-bess-nn-1mw-0p4kv`), zgodne z `item_id`
+ * rekordów katalogu — dlatego dopasowanie jest po pełnej równości, bez zgadywania.
+ */
+export function dopasujMagazyn(
+  der: StationDerConnection,
+  rekordy: readonly RekordKonwertera[],
+): DopasowanieMagazynu | null {
+  if (der.der_kind !== 'BESS') return null;
+  const kandydaci: readonly ('battery_catalog_ref' | 'device_catalog_ref')[] = [
+    'battery_catalog_ref',
+    'device_catalog_ref',
+  ];
+  for (const pole of kandydaci) {
+    const ref = der.catalogs[pole];
+    if (!ref) continue;
+    const rekord = rekordy.find((r) => r.id === ref);
+    if (rekord) return { rekord, dopasowanoPo: pole };
+  }
+  return null;
+}
+
+/**
+ * Wskazanie przebiegu zwarciowego dla siły sieci (SCR/WSCR): aktywny przebieg,
+ * jeśli jest zakończonym zwarciem (`SC_*`/`DONE`), w przeciwnym razie ostatni
+ * zakończony przebieg zwarciowy z listy. Brak → `null` (bez automatyzmu).
+ */
+export function wybierzPrzebiegZwarciowy(
+  runs: readonly ExecutionRun[],
+  activeRunId: string | null,
+): string | null {
+  return wybierzPrzebieg(runs, activeRunId, (r) => r.analysis_type.startsWith('SC_'));
+}
+
+/**
+ * Wskazanie przebiegu rozpływu mocy dla adekwatności Q: aktywny przebieg, jeśli
+ * jest zakończonym rozpływem (`LOAD_FLOW`/`DONE`), w przeciwnym razie ostatni
+ * zakończony rozpływ z listy. Brak → `null`.
+ */
+export function wybierzPrzebiegRozplywu(
+  runs: readonly ExecutionRun[],
+  activeRunId: string | null,
+): string | null {
+  return wybierzPrzebieg(runs, activeRunId, (r) => r.analysis_type === 'LOAD_FLOW');
+}
+
+function wybierzPrzebieg(
+  runs: readonly ExecutionRun[],
+  activeRunId: string | null,
+  pasuje: (run: ExecutionRun) => boolean,
+): string | null {
+  const zakonczone = runs.filter((r) => r.status === 'DONE' && pasuje(r));
+  if (zakonczone.length === 0) return null;
+  const aktywny = zakonczone.find((r) => r.id === activeRunId);
+  if (aktywny) return aktywny.id;
+  return zakonczone[zakonczone.length - 1].id;
 }

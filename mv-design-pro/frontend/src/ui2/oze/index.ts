@@ -6,5 +6,6 @@
 
 export * from './macierz';
 export * from './pulpit';
+export * from './api';
 export { useNcRfgStore } from './ncRfgStore';
 export type { NcRfgStoreState, StatusBieguNcRfg } from './ncRfgStore';

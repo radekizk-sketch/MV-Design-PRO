@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 
 import { useStationDerStore } from '../../../../ui/network-build/station-der';
+import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { MacierzNcRfg } from '../../macierz';
 import { useNcRfgStore } from '../../ncRfgStore';
 import { derFixture, katalogFixture, wynikFixture } from '../../macierz/__tests__/fixtures';
@@ -17,6 +18,14 @@ import { PULPIT_STRINGS } from '../strings';
 vi.mock('../../../../ui/ncrfg-tests/api', () => ({
   fetchNcRfgTestCatalog: vi.fn(() => Promise.resolve(katalogFixture())),
   runNcRfgPtpireeTests: vi.fn(() => Promise.resolve(wynikFixture())),
+}));
+
+// Sekcje analiz P47a — katalog konwerterów i końcówki D1 mockowane (bez przebiegów
+// w store'ie sekcje analiz pozostają w stanie „przeprowadź analizę …").
+vi.mock('../../api', () => ({
+  pobierzKonwertery: vi.fn(() => Promise.resolve([])),
+  pobierzSileSieci: vi.fn(() => Promise.resolve(null)),
+  pobierzAdekwatnoscQ: vi.fn(() => Promise.resolve(null)),
 }));
 
 function ustawModuly(): void {
@@ -38,11 +47,13 @@ const noop = (): void => {};
 
 beforeEach(() => {
   useNcRfgStore.getState().reset();
+  useExecutionRunsStore.getState().reset();
   ustawModuly();
 });
 afterEach(() => {
   useStationDerStore.setState({ ders: {} });
   useNcRfgStore.getState().reset();
+  useExecutionRunsStore.getState().reset();
   vi.clearAllMocks();
 });
 
@@ -91,14 +102,15 @@ describe('PulpitOze — praca magazynu (sekcja 3)', () => {
   });
 });
 
-describe('PulpitOze — analizy niewpięte (sekcja 4)', () => {
-  it('renderuje jawny stan „analiza niewpięta" i TODO-KARTĘ', async () => {
+describe('PulpitOze — analizy wpięte (sekcje 4a/4b)', () => {
+  it('bez przebiegów sekcje siły sieci i mocy biernej pokazują jawne instrukcje', async () => {
     render(<PulpitOze trybZaawansowania="basic" onNawiguj={noop} />);
-    expect(await screen.findByTestId('mvd-oze-pulpit-zdolnosc-stan')).toHaveTextContent(
-      PULPIT_STRINGS.analizaNiewpieta,
+    expect(await screen.findByTestId('mvd-oze-sila-brak-przebiegu')).toHaveTextContent(
+      PULPIT_STRINGS.silaBrakPrzebiegu,
     );
-    expect(screen.getByTestId('mvd-oze-pulpit-jakosc-stan')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-oze-pulpit-todo')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-oze-adekw-brak-przebiegu')).toHaveTextContent(
+      PULPIT_STRINGS.adekwBrakPrzebiegu,
+    );
   });
 });
 

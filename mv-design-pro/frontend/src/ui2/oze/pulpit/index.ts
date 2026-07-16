@@ -10,11 +10,22 @@ export { KartaModulu } from './KartaModulu';
 export type { KartaModuluProps } from './KartaModulu';
 export { SekcjaZgodnosci } from './SekcjaZgodnosci';
 export type { SekcjaZgodnosciProps } from './SekcjaZgodnosci';
+export { SekcjaMagazynu } from './SekcjaMagazynu';
+export type { SekcjaMagazynuProps } from './SekcjaMagazynu';
+export { SekcjaSilySieci } from './SekcjaSilySieci';
+export type { SekcjaSilySieciProps } from './SekcjaSilySieci';
+export { SekcjaAdekwatnosciQ } from './SekcjaAdekwatnosciQ';
+export type { SekcjaAdekwatnosciQProps } from './SekcjaAdekwatnosciQ';
+export { SladAnalizy } from './SladAnalizy';
+export type { SladAnalizyProps } from './SladAnalizy';
 export {
   zbudujPozycje,
   daneModulu,
   zgodnoscModulu,
   pracaMagazynu,
+  dopasujMagazyn,
+  wybierzPrzebiegZwarciowy,
+  wybierzPrzebiegRozplywu,
 } from './pulpitModel';
 export type {
   StatusPulpitu,
@@ -23,5 +34,6 @@ export type {
   DaneModulu,
   ZgodnoscModulu,
   PracaMagazynu,
+  DopasowanieMagazynu,
 } from './pulpitModel';
 export { PULPIT_STRINGS } from './strings';
