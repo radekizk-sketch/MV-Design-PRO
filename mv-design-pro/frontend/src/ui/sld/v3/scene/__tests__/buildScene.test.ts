@@ -26,11 +26,15 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import {
+  allBusbarLabelsValid,
   allEarthSwitchesLateral,
   allPathTerminationsLabeled,
+  allSwitchSymbolsUnambiguous,
   allVtParallel,
+  busbarLabelGaps,
   earthSwitchLateralGaps,
   pathTerminationLabelGaps,
+  switchSymbolUnambiguityGaps,
 
   buildSceneV3,
   allFieldEntryConnectionsReachCableHead,
@@ -726,10 +730,10 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     expect(totalVerticalSegmentLength(synthetic)).toBe(70);
   });
 
-  it('fixtura referencyjna: baseline aktualny per LOD (historia: F9.7 9656/38504/53304 → F9.10 +2496 za kolizje=0 → F10.1 OBNIŻONY: tor główny pola KRÓTSZY o ES wyjęty na bok §18.1 — blok stacji −32, co przez 78 przecięć pasm ODDAJE dokładnie koszt F9.10 na L1/L2; L0 −32 na zejściu GPZ → F10.2 OBNIŻONY na L2: podpisy kierunku pola z nazwą linii §19.2 (dłuższe teksty na fixturze referencyjnej, `LineRunV1.name` np. „Magistrala 01"/„Odgałęzienie SN kablowe") poszerzyły kolumny NIEKTÓRYCH pól — przez `colorSegmentLabelRows` (`layout/segments.ts`, r9, NIEZMIENIONE przez F10.2) zmiana szerokości kolumn przełożyła się na inne przydziały wierszy pasma B1, co ODDAJE 1072px pionów na L2 (spadek, nie wzrost — miara „nie-rosnąca" spec §15.1 spełniona z zapasem); L0/L1 BEZ zmian (L0 nie niesie `bayDirectionCaptions`, L1 ma je wyłączone — spec §7))', () => {
+  it('fixtura referencyjna: baseline aktualny per LOD (historia: F9.7 9656/38504/53304 → F9.10 +2496 za kolizje=0 → F10.1 OBNIŻONY: tor główny pola KRÓTSZY o ES wyjęty na bok §18.1 — blok stacji −32, co przez 78 przecięć pasm ODDAJE dokładnie koszt F9.10 na L1/L2; L0 −32 na zejściu GPZ → F10.2 OBNIŻONY na L2: podpisy kierunku pola z nazwą linii §19.2 (dłuższe teksty na fixturze referencyjnej, `LineRunV1.name` np. „Magistrala 01"/„Odgałęzienie SN kablowe") poszerzyły kolumny NIEKTÓRYCH pól — przez `colorSegmentLabelRows` (`layout/segments.ts`, r9, NIEZMIENIONE przez F10.2) zmiana szerokości kolumn przełożyła się na inne przydziały wierszy pasma B1, co ODDAJE 1072px pionów na L2 (spadek, nie wzrost — miara „nie-rosnąca" spec §15.1 spełniona z zapasem); L0/L1 BEZ zmian (L0 nie niesie `bayDirectionCaptions`, L1 ma je wyłączone — spec §7) → F10.3 PODNIESIONY na L1/L2 (spec §18.4 — etykieta szyny SN, `busbar_label_probe`): zakaz anonimowego odcinka szyny wymaga WŁASNEGO wiersza B2 (`stationBusbarLabelHeight`, `layout/measure.ts`) NAD podpisem kierunku pola — rezerwacja doliczana JEDNOLICIE do KAŻDEGO wiersza stacji z co najmniej jednym polem SN (`snBays.length>0`, zgodnie z `composeStation` — pomija tylko stacje bez pól), więc rośnie na L1/L2 (gdzie `snBays` jest niepuste), NIE na L0 (kolaps do `stationCollapsed`, `snBays: []` z konstrukcji `buildMeasureInput`). Świadome odstępstwo od reguły „nie-rosnąca" (jak F9.10: czytelność/zero-anonimowej-szyny ma pierwszeństwo przed minimalizacją pionów, spec §15.1 „redukcja jest ograniczeniem MIĘKKIM") — ZERO nowych kolizji symbol↔przewód/etykieta↔przewód/etykieta↔etykieta na fixturze referencyjnej (zweryfikowane `npm run accept:sld-v3`).', () => {
     expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(12120);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(38504);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(52232);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(41000);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(54104);
   });
 });
 
@@ -788,6 +792,96 @@ describe('buildSceneV3 — F10.1: wyrocznie §18.1/§18.2/§18.6 (aparaty boczne
       expect(scene.labels.filter((l) => l.ownerRef.endsWith('#termination'))).toHaveLength(0);
       expect(pathTerminationLabelGaps(scene)).toHaveLength(0);
     }
+  });
+});
+
+describe('buildSceneV3 — F10.3: busbar_label_probe (spec §18.4) na fixturze REALNEJ', () => {
+  it('każda szyna SN (stacji + sekcji GPZ) ma DOKŁADNIE JEDNĄ etykietę busbar-voltage, format poprawny, na lod>=1', () => {
+    for (const lod of [1, 2] as const) {
+      const scene = buildSceneV3(enm, lod);
+      expect(allBusbarLabelsValid(scene)).toBe(true);
+      expect(busbarLabelGaps(scene)).toHaveLength(0);
+      const busbarLabels = scene.labels.filter((l) => l.ownerKind === 'busbar-voltage');
+      // 53 stacje + N sekcji GPZ (fixtura: 1) — parytet z GPZ dosłownie.
+      expect(busbarLabels.length).toBeGreaterThanOrEqual(53);
+      expect(busbarLabels.every((l) => /^Sekcja \d+(?: · \d+(?:\.\d+)? kV)?$/.test(l.text))).toBe(true);
+    }
+  });
+
+  it('(test negatywny a): usunięcie etykiety JEDNEJ szyny SN ⇒ bus-without-label zgłoszony', () => {
+    const scene = buildSceneV3(enm, 2);
+    const victim = scene.labels.find((l) => l.ownerKind === 'busbar-voltage')!;
+    const sabotaged = { ...scene, labels: scene.labels.filter((l) => l !== victim) };
+    const gaps = busbarLabelGaps(sabotaged);
+    expect(gaps.some((g) => g.reason === 'bus-without-label')).toBe(true);
+    expect(allBusbarLabelsValid(sabotaged)).toBe(false);
+  });
+
+  it('(test negatywny b): tekst spoza formatu „Sekcja N"/„Sekcja N · V kV" ⇒ malformed-text zgłoszony', () => {
+    const scene = buildSceneV3(enm, 2);
+    const victim = scene.labels.find((l) => l.ownerKind === 'busbar-voltage')!;
+    const sabotaged = { ...scene, labels: scene.labels.map((l) => (l === victim ? { ...l, text: 'S1 15kV' } : l)) };
+    const gaps = busbarLabelGaps(sabotaged);
+    expect(gaps.some((g) => g.reason === 'malformed-text')).toBe(true);
+  });
+});
+
+describe('buildSceneV3 — F10.3: switch_symbol_unambiguity_probe (spec §18.5) na fixturze REALNEJ', () => {
+  it('mapowanie kind→symbol jednoznaczne (statyczne, niezależne od LOD) i zero stanów nielegalnych na scenie, na wszystkich LOD', () => {
+    for (const lod of LODS) {
+      const scene = buildSceneV3(enm, lod);
+      expect(allSwitchSymbolsUnambiguous(scene)).toBe(true);
+      expect(switchSymbolUnambiguityGaps(scene)).toHaveLength(0);
+    }
+  });
+
+  it('(test negatywny a): kind dopisany do udokumentowanej aproksymacji nie psuje sondy, ALE dowód działa na SYMULOWANYM mapowaniu — negatyw pokryty w scripts/sld_v3_acceptance.mjs (statyczna tabela, poza zasięgiem sabotażu na scenie)', () => {
+    // (a) jest STATYCZNE (niezależne od `scene`) — sabotaż wymaga podmiany
+    // `apparatusSequence.ts`, poza zasięgiem testu na scenie; dowód
+    // pozytywny (mapowanie DZIŚ jednoznaczne) wystarcza tu, negatyw (b/c)
+    // niżej i w acceptance script.
+    const scene = buildSceneV3(enm, 2);
+    expect(switchSymbolUnambiguityGaps(scene).some((g) => g.reason === 'kind-symbol-ambiguous')).toBe(false);
+  });
+
+  it('(test negatywny b): łącznik toru głównego ze stanem spoza {closed,open,unknown} ⇒ main-path-switch-invalid-state zgłoszony; `undefined` pozostaje LEGALNY (Invariant 9)', () => {
+    const scene = buildSceneV3(enm, 2);
+    const anySwitch = scene.symbols.find((s) => s.symbolId === 'breaker' || s.symbolId === 'disconnector' || s.symbolId === 'fuseSwitch')!;
+    const sabotaged = {
+      ...scene,
+      symbols: scene.symbols.map((s) => (s === anySwitch ? { ...s, state: 'energized' as never } : s)),
+    };
+    const gaps = switchSymbolUnambiguityGaps(sabotaged);
+    expect(gaps.some((g) => g.reason === 'main-path-switch-invalid-state')).toBe(true);
+    // `undefined` NIE jest sabotowany dalej — dowód, że NIE jest luką (56
+    // instancje na fixturze referencyjnej mają dziś `state===undefined`,
+    // patrz docstring `switchSymbolUnambiguityGaps` — konwencja fuseSwitch
+    // bez kanału stanu + syntetyzowane pola HV GPZ bez telemetrii, oba
+    // legalne per Invariant 9).
+    const undefinedStateGaps = switchSymbolUnambiguityGaps(scene).filter((g) => g.reason === 'main-path-switch-invalid-state');
+    expect(undefinedStateGaps).toHaveLength(0);
+  });
+
+  it('(test negatywny c): „52" w protectionCodes okręgu przekaźnika ⇒ device-number-52-in-protection-codes zgłoszony', () => {
+    const scene = buildSceneV3(enm, 2);
+    const sabotaged = {
+      ...scene,
+      symbols: [
+        ...scene.symbols,
+        { symbolId: 'protectionRelay' as const, x: 0, y: 0, meta: { ownerRef: 'sabotage-relay', protectionCodes: ['50/51', '52'] } },
+      ],
+    };
+    const gaps = switchSymbolUnambiguityGaps(sabotaged);
+    expect(gaps.some((g) => g.reason === 'device-number-52-in-protection-codes')).toBe(true);
+  });
+
+  it('(test negatywny c, ownerKind): etykieta „52" z ownerKind spoza protection ⇒ device-number-52-misplaced zgłoszony', () => {
+    const scene = buildSceneV3(enm, 2);
+    const victim = scene.labels.find((l) => l.text === '52');
+    if (!victim) return; // fixtura referencyjna: 0 torów wyzwalania (§17.2/GPZ) — patrz F9.9 opis niżej.
+    const sabotaged = { ...scene, labels: scene.labels.map((l) => (l === victim ? { ...l, ownerKind: 'apparatus' as const } : l)) };
+    const gaps = switchSymbolUnambiguityGaps(sabotaged);
+    expect(gaps.some((g) => g.reason === 'device-number-52-misplaced')).toBe(true);
   });
 });
 

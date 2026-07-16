@@ -69,6 +69,8 @@ import {
   entryDescentCaptionInset,
   formatTransformerRatedPower,
   PORT_CAPTION_BUS_CLEARANCE,
+  stationBusbarLabelText,
+  stationPortCaptionHeight,
   type StationMeasureInput,
 } from '../layout/measure';
 import { derLabelText, symbolIdForSourceKind } from './sourceKind';
@@ -251,6 +253,12 @@ export interface StationCompositionLabelInputs {
    *  `apparatus`, żeby nie mieszać semantyki Q/T-oznaczników z numerami
    *  urządzeń ANSI/IEEE C37.2 w testach filtrujących po `ownerKind`). */
   readonly protection: readonly SimpleAnchoredOwnerInput[];
+  /** F10.3 (spec §18.4): etykieta szyny SN stacji (napięcie + oznaczenie
+   *  sekcji, parytet z `GpzComposition.labels.sectionLabels`) — WŁASNA lista
+   *  (jedna pozycja per stacja z co najmniej jednym polem SN, `ownerKind:
+   *  'busbar-voltage'`, TA SAMA kategoria co GPZ). Pusta, gdy stacja bez
+   *  pól SN (`busTapXs.length===0` — zgodne z pominięciem `#sn-bus` niżej). */
+  readonly busbar: readonly SimpleAnchoredOwnerInput[];
 }
 
 export interface StationComposition {
@@ -604,6 +612,9 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   const protectionLabels: SimpleAnchoredOwnerInput[] = [];
   const protectionSymbols: ComposedSymbolInstance[] = [];
   const protectionSegments: ComposedSegment[] = [];
+  // F10.3 (spec §18.4): etykieta szyny SN — patrz docstring
+  // `StationCompositionLabelInputs.busbar`.
+  const busbarLabels: SimpleAnchoredOwnerInput[] = [];
   const lvPorts: RoutePort[] = [];
   const busTapXs: number[] = [];
   // F9.4 (runda korekcyjna, F-2): patrz docstring `StationComposition.missingData`.
@@ -902,6 +913,35 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         { x: busTapXs[busTapXs.length - 1], y: busAxisY },
       ],
     });
+
+    // F10.3 (spec §18.4, D2-4): etykieta szyny SN — zakaz anonimowego
+    // odcinka szyny (parytet z GPZ `sectionLabelText`/`sectionLabels`).
+    // Kotwica = ŚRODEK PEŁNEJ SZEROKOŚCI KOLUMNY (`column.x`..`column.x+
+    // column.width`, jak `nameSlot`/pasmo nazw), NIE `busTapXs[0]` (lewy
+    // koniec szyny) ani `column.tapX` (środek TYLKO bloku pól, bez rezerwacji
+    // rzędu DER/pasma nazw) — `requiredStationWidth` (measure.ts,
+    // `stationBusbarLabelWidth`) gwarantuje `column.width >= szerokość
+    // etykiety + 2×GRID`, więc centrowanie w PEŁNEJ kolumnie jest jedynym
+    // punktem zaczepienia z KONSTRUKCJI wolnym od kolizji z sąsiadem (`tapX`
+    // NIE ma tej gwarancji — `stationBlockWidth`, baza `tapX`, celowo NIE
+    // rośnie wraz z tą etykietą, „dwie szerokości", patrz measure.ts). Y:
+    // WŁASNY wiersz NAD podpisem kierunku pola (gdy obecny) — placement
+    // 'above' (`layout/labels.ts`) dolicza GRID+wysokość WŁASNE, więc kotwica
+    // to GÓRNA krawędź wiersza podpisu kierunku (`busAxisY -
+    // stationPortCaptionHeight(station)`, 0 gdy żadne pole nie ma podpisu) —
+    // JEDNA prawda z rezerwacją wysokości B2 (`stationBusbarLabelHeight`,
+    // wołana przez `scene/buildScene.ts` przy budowie `StationBandHeights`).
+    busbarLabels.push({
+      ownerRef: `${station.id}#busbar-voltage`,
+      ownerKind: 'busbar-voltage',
+      text: stationBusbarLabelText(station.busVoltageKv),
+      labelClass: 't2',
+      anchor: {
+        x: column.x + column.width / 2,
+        y: busAxisY - stationPortCaptionHeight(station),
+      },
+      placement: 'above',
+    });
   }
 
   // Szyna nN + odpływy (spec §3) — TYLKO gdy stacja ma sekcję nN, zaczepiona
@@ -1069,6 +1109,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
       der: derLabels,
       stationName,
       protection: protectionLabels,
+      busbar: busbarLabels,
     },
     bbox: computeBbox(symbols, segments),
     missingData,

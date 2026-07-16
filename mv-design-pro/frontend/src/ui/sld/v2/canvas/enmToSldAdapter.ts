@@ -3470,19 +3470,29 @@ function buildStationMiniBlockDetails(
 
   // K30-15.3: zsumuj load + DER generation po stronie transformatora stacji.
   // DER z transformatorem blokowym ma osobny tor i nie obciaza TR SN/nN stacji.
+  // F10.3 FIX (§18.4): `Bus` (ENM `backend/src/enm/models.py:131`) NIE MA pola
+  // `substation_ref` — to pole istnieje na Bay/Branch/innych elementach, nie
+  // na Bus. Poprzednia pętla filtrowała `snapshot.buses` po nieistniejącym
+  // polu (rzutowanie `as {substation_ref?}` maskowało to na etapie typów) —
+  // `stationBusRefs` był ZAWSZE pusty, więc `mainBusVoltageKv` był ZAWSZE
+  // `null` i `totalLoadKw` ZAWSZE `0` dla KAŻDEJ stacji SN/nN (potwierdzone na
+  // `sldSubstrate52s.enm.json`: 0/315 busów niesie `substation_ref`, mimo że
+  // `Substation.bus_refs` poprawnie wskazuje `sn_bus`/`nn_bus` z realnym
+  // `voltage_kv`). Poprawny klucz złączenia = `Substation.bus_refs[]` →
+  // `Bus.ref_id` (ten sam wzorzec co `stationBusRefMap` wyżej, linia ~1969).
   const stationBusRefs = new Set<string>();
+  const busByRef = new Map((snapshot.buses ?? []).map((bus) => [bus.ref_id, bus]));
   // K30-37: znajdź główną szynę SN stacji (najwyższe voltage_kv > 0.5 kV).
   // 0.4 kV LV-side wykluczamy z "main" — main = SN bus.
   let mainBusVoltageKv: number | null = null;
-  for (const bus of snapshot.buses ?? []) {
-    const scopedBus = bus as { substation_ref?: string; ref_id: string; voltage_kv?: number };
-    if (scopedBus.substation_ref === station.ref_id || scopedBus.substation_ref === station.id) {
-      stationBusRefs.add(scopedBus.ref_id);
-      const v = scopedBus.voltage_kv;
-      if (typeof v === 'number' && Number.isFinite(v) && v > 0.5) {
-        if (mainBusVoltageKv == null || v > mainBusVoltageKv) {
-          mainBusVoltageKv = v;
-        }
+  for (const busRef of station.bus_refs ?? []) {
+    const bus = busByRef.get(busRef);
+    if (!bus) continue;
+    stationBusRefs.add(bus.ref_id);
+    const v = bus.voltage_kv;
+    if (typeof v === 'number' && Number.isFinite(v) && v > 0.5) {
+      if (mainBusVoltageKv == null || v > mainBusVoltageKv) {
+        mainBusVoltageKv = v;
       }
     }
   }

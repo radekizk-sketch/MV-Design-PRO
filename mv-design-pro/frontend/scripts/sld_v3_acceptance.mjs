@@ -26,16 +26,20 @@ import { dirname, resolve } from 'node:path';
 import {
   buildSceneV3,
   allApparatusIdentifiersValid,
+  allBusbarLabelsValid,
   allEarthSwitchesLateral,
   allFieldEntryConnectionsReachCableHead,
   allLineBayCaptionsValid,
   allPathTerminationsLabeled,
+  allSwitchSymbolsUnambiguous,
   allVtParallel,
   apparatusIdentifierGaps,
+  busbarLabelGaps,
   earthSwitchLateralGaps,
   lineBayCaptionGaps,
   pathTerminationLabelGaps,
   stationTypeTopologyMismatches,
+  switchSymbolUnambiguityGaps,
   vtParallelGaps,
   allProtectionMarkingsValid,
   allSceneGeometryOnGrid,
@@ -123,7 +127,20 @@ const EXPECTED_STATION_COUNT = 53;
 // dał INNY przydział wierszy pasma B1, oddając 1072px pionów na L2 (spadek,
 // miara nie-rosnąca spełniona z zapasem). L0/L1 BEZ zmian (captions
 // nieobecne na tych LOD, spec §7).
-const VERTICAL_LENGTH_BASELINE = { 0: 12120, 1: 38504, 2: 52232 };
+//
+// F10.3 (spec §18.4, `busbar_label_probe`): L1 PODNIESIONY 38504→41000, L2
+// PODNIESIONY 52232→54104 — zakaz anonimowego odcinka szyny SN wymaga
+// WŁASNEGO wiersza pasma B2 (`stationBusbarLabelHeight`, `layout/measure.ts`)
+// nad podpisem kierunku pola, doliczanego JEDNOLICIE do KAŻDEGO wiersza
+// stacji z ≥1 polem SN (`composeStation` rysuje szynę/etykietę TYLKO gdy
+// `snBays` niepuste — L0 nie niesie `snBays` z konstrukcji, kolaps do
+// `stationCollapsed`, więc L0 BEZ zmian). Świadome odstępstwo od reguły
+// „nie-rosnąca" (jak F9.10 — czytelność/zero-anonimowej-treści ma
+// pierwszeństwo, spec §15.1 „redukcja jest ograniczeniem MIĘKKIM"): ZERO
+// nowych kolizji jakiegokolwiek rodzaju na fixturze referencyjnej po tej
+// zmianie (`symbol_wire_probe`/`overlapProbe`/`noLabelWireCollisions`
+// wszystkie PASS z tą samą — twardą — regułą co przed F10.3).
+const VERTICAL_LENGTH_BASELINE = { 0: 12120, 1: 41000, 2: 54104 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —
@@ -416,6 +433,159 @@ for (const lod of LODS) {
       check(
         'apparatus_identifier_probe (test negatywny (b/c) — dowód, że wyrocznia gryzie): aparat uprawniony BEZ znacznika/etykiety MUSI dać FAIL',
         !allApparatusIdentifiersValid(sabotagedMissingMarker),
+      );
+    }
+  }
+
+  // -- §18.4 (F10.3, D2-4) busbar_label_probe --------------------------------
+  // Szyna SN istnieje WYŁĄCZNIE na lod>=1 (L0 = stationCollapsed, zero pól/
+  // szyn — ta sama gałąź co apparatus_identifier_probe wyżej).
+  if (lod !== 0) {
+    const busGaps = busbarLabelGaps(scene);
+    check(
+      'busbar_label_probe (§18.4 a-b): każda szyna SN (stacji „#sn-bus", sekcji GPZ „#bus-primary") ma DOKŁADNIE JEDNĄ etykietę napięcie+sekcja o poprawnym formacie',
+      allBusbarLabelsValid(scene),
+      `luki=${busGaps.length}${busGaps.length ? ' np. ' + JSON.stringify(busGaps[0]) : ''}`,
+    );
+  }
+  if (lod === 2) {
+    // Dowód POZYTYWNY: fixtura referencyjna niesie realne napięcie SN (15 kV,
+    // `ENM Bus.voltage_kv` przez `Substation.bus_refs`) — co najmniej JEDNA
+    // etykieta stacji MUSI nieść „· 15 kV" (nie tylko degradację „Sekcja 1"),
+    // inaczej gałąź „dane obecne" nigdy nie jest ćwiczona na realnych danych
+    // (ten sam wzorzec dowodu co line_bay_caption_probe wyżej).
+    const stationBusbarLabels = scene.labels.filter(
+      (l) => l.ownerKind === 'busbar-voltage' && !l.ownerRef.startsWith('gpz/'),
+    );
+    const withVoltage = stationBusbarLabels.filter((l) => / · \d/.test(l.text));
+    check(
+      'busbar_label_probe (dowód pozytywny): co najmniej jedna etykieta szyny SN stacji niesie realne napięcie z danych',
+      stationBusbarLabels.length > 0 && withVoltage.length > 0,
+      `etykiety=${stationBusbarLabels.length} z_napięciem=${withVoltage.length}`,
+    );
+    // Dowód RZECZYWISTY „zero zgadywania" — WPROST porównanie wartości z
+    // etykiety sceny z `enm.buses[].voltage_kv` fixtury (przez
+    // `Substation.bus_refs`, TA SAMA ścieżka co poprawiony
+    // `v2/canvas/enmToSldAdapter.ts` `buildStationMiniBlockDetails`
+    // `mainBusVoltageKv`, F10.3) — scena NIE fabrykuje liczby, to REALNA
+    // wartość ENM tej konkretnej stacji.
+    const busByRef = new Map((enm.buses ?? []).map((b) => [b.ref_id, b]));
+    let voltageMismatch = 0;
+    let voltageChecked = 0;
+    for (const station of (enm.substations ?? []).filter((s) => s.station_type !== 'gpz')) {
+      const label = scene.labels.find((l) => l.ownerKind === 'busbar-voltage' && l.ownerRef === `${station.ref_id}#busbar-voltage`);
+      if (!label) continue;
+      const expectedKv = Math.max(
+        0,
+        ...(station.bus_refs ?? [])
+          .map((ref) => busByRef.get(ref)?.voltage_kv)
+          .filter((v) => typeof v === 'number' && v > 0.5),
+      );
+      const match = label.text.match(/· (\d+(?:\.\d+)?) kV$/);
+      voltageChecked += 1;
+      if (expectedKv > 0.5) {
+        if (!match || Number(match[1]) !== expectedKv) voltageMismatch += 1;
+      } else if (match) {
+        voltageMismatch += 1;
+      }
+    }
+    check(
+      'busbar_label_probe (zero zgadywania): napięcie w etykiecie == ENM Bus.voltage_kv REALNY tej stacji (przez Substation.bus_refs), dla WSZYSTKICH stacji sprawdzonych',
+      voltageChecked > 0 && voltageMismatch === 0,
+      `sprawdzone=${voltageChecked} niezgodne=${voltageMismatch}`,
+    );
+    // Test negatywny — dowód, że wyrocznia GRYZIE: usunięcie etykiety jednej
+    // szyny SN MUSI dać FAIL (a).
+    const anyBusbarLabel = scene.labels.find((l) => l.ownerKind === 'busbar-voltage' && !l.ownerRef.startsWith('gpz/'));
+    if (anyBusbarLabel) {
+      const sabotagedMissingLabel = { ...scene, labels: scene.labels.filter((l) => l !== anyBusbarLabel) };
+      check(
+        'busbar_label_probe (test negatywny (a) — dowód, że wyrocznia gryzie): usunięcie etykiety szyny SN MUSI dać FAIL',
+        !allBusbarLabelsValid(sabotagedMissingLabel),
+      );
+    }
+    // Test negatywny — dowód, że wyrocznia GRYZIE: tekst z wymyślonym
+    // napięciem spoza formatu MUSI dać FAIL (b).
+    if (anyBusbarLabel) {
+      const sabotagedFabricatedVoltage = {
+        ...scene,
+        labels: scene.labels.map((l) => (l === anyBusbarLabel ? { ...l, text: 'Sekcja 1 · 999 kV (zgadywane)' } : l)),
+      };
+      check(
+        'busbar_label_probe (test negatywny (b) — dowód, że wyrocznia gryzie): tekst niezgodny z formatem „Sekcja N · V kV" MUSI dać FAIL',
+        !allBusbarLabelsValid(sabotagedFabricatedVoltage),
+      );
+    }
+  }
+
+  // -- §18.5 (F10.3, D2-4) switch_symbol_unambiguity_probe -------------------
+  // Symbole łącznika istnieją WYŁĄCZNIE na lod>=1 (ta sama gałąź co wyżej).
+  if (lod !== 0) {
+    const switchGaps = switchSymbolUnambiguityGaps(scene);
+    check(
+      'switch_symbol_unambiguity_probe (§18.5 a-c): mapowanie kind→symbol jednoznaczne (poza LOAD_SWITCH→disconnector udokumentowanym), stan łącznika toru głównego zawsze legalny (closed/open/unknown/undefined), „52" wyłącznie przy wyłączniku',
+      allSwitchSymbolsUnambiguous(scene),
+      `luki=${switchGaps.length}${switchGaps.length ? ' np. ' + JSON.stringify(switchGaps[0]) : ''}`,
+    );
+    // Dowód POZYTYWNY (b): ścieżka „dane→stan renderowany" faktycznie
+    // działa na realnej fixturze — co najmniej JEDEN łącznik toru głównego
+    // ma stan DETERMINOWANY (nie tylko degradację do `undefined`/„unknown").
+    // `undefined` jest legalny (Invariant 9 — brak telemetrii, patrz
+    // docstring `switchSymbolUnambiguityGaps`), więc sam PRZEZ SIĘ nie
+    // dowodzi, że kanał kiedykolwiek faktycznie niesie dane — ta asercja to
+    // domyka.
+    const mainPathSwitches = scene.symbols.filter(
+      (s) => s.symbolId === 'breaker' || s.symbolId === 'disconnector' || s.symbolId === 'fuseSwitch',
+    );
+    const withDeterminateState = mainPathSwitches.filter((s) => s.state !== undefined);
+    check(
+      'switch_symbol_unambiguity_probe (dowód pozytywny (b)): co najmniej jeden łącznik toru głównego ma stan DETERMINOWANY z danych (nie sam fallback „unknown")',
+      mainPathSwitches.length > 0 && withDeterminateState.length > 0,
+      `łączniki=${mainPathSwitches.length} zdeterminowane=${withDeterminateState.length}`,
+    );
+  }
+  if (lod === 2) {
+    // Test negatywny — dowód, że wyrocznia GRYZIE: łącznik toru głównego z
+    // `state` PODMIENIONYM na string spoza {closed,open,unknown} MUSI dać
+    // FAIL (b) — `undefined` jest LEGALNY (Invariant 9), więc negatyw musi
+    // wstrzyknąć wartość faktycznie nielegalną, nie samo `undefined`.
+    const anyMainPathSwitch = scene.symbols.find((s) => s.symbolId === 'breaker' || s.symbolId === 'disconnector' || s.symbolId === 'fuseSwitch');
+    if (anyMainPathSwitch) {
+      const sabotagedInvalidState = {
+        ...scene,
+        symbols: scene.symbols.map((s) => (s === anyMainPathSwitch ? { ...s, state: 'energized-garbage' } : s)),
+      };
+      check(
+        'switch_symbol_unambiguity_probe (test negatywny (b) — dowód, że wyrocznia gryzie): łącznik toru głównego ze stanem spoza {closed,open,unknown} MUSI dać FAIL',
+        !allSwitchSymbolsUnambiguous(sabotagedInvalidState),
+      );
+    }
+    // Test negatywny — dowód, że wyrocznia GRYZIE: „52" wstrzyknięte do
+    // protectionCodes okręgu przekaźnika MUSI dać FAIL (c).
+    const anyRelay = scene.symbols.find((s) => s.symbolId === 'protectionRelay');
+    const relayBase = anyRelay ?? { symbolId: 'protectionRelay', x: 0, y: 0, meta: { ownerRef: 'accept-sld-v3-fabricated-relay' } };
+    const sabotagedRelayCode52 = {
+      ...scene,
+      symbols: [
+        ...scene.symbols.filter((s) => s !== anyRelay),
+        { ...relayBase, meta: { ...relayBase.meta, protectionCodes: ['50/51', '52'] } },
+      ],
+    };
+    check(
+      'switch_symbol_unambiguity_probe (test negatywny (c) — dowód, że wyrocznia gryzie): „52" w protectionCodes okręgu przekaźnika MUSI dać FAIL',
+      !allSwitchSymbolsUnambiguous(sabotagedRelayCode52),
+    );
+    // Test negatywny — dowód, że wyrocznia GRYZIE: etykieta „52" z ownerKind
+    // podmienionym (poza kontraktem protection/#device-number) MUSI dać FAIL (c).
+    const anyDeviceNumberLabel = scene.labels.find((l) => l.text === '52');
+    if (anyDeviceNumberLabel) {
+      const sabotagedDeviceNumberOwner = {
+        ...scene,
+        labels: scene.labels.map((l) => (l === anyDeviceNumberLabel ? { ...l, ownerKind: 'apparatus' } : l)),
+      };
+      check(
+        'switch_symbol_unambiguity_probe (test negatywny (c, ownerKind) — dowód, że wyrocznia gryzie): „52" spoza ownerKind:protection MUSI dać FAIL',
+        !allSwitchSymbolsUnambiguous(sabotagedDeviceNumberOwner),
       );
     }
   }

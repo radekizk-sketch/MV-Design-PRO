@@ -1178,13 +1178,27 @@ lokalnych łatek i duplikacji elektryki adaptera.
   accept ALL PASS, pełna regresja exit 0, guardy zielone; wizualny DoD nadzorcy: „Magistrala 01 ·
   kier. S04", pola funkcyjnie, Q1/Q2/Q3/QE1/T1 przy aparatach — POTWIERDZONE.
 
-### F10.3. Szyny + stany + jednoznaczność symboli
+### F10.3. [DONE] Szyny stacji (napięcie+sekcja) + stan sprzęgła + jednoznaczność symboli
 - Zakres: etykieta szyny stacji (napięcie znamionowe + oznaczenie sekcji), widoczny stan sprzęgła
   (§18.4, parytet z GPZ); jednoznaczność symboli łączników i „52" wyłącznie jako adnotacja przy
   wyłączniku, nigdy jako kod funkcji w okręgu przekaźnika (§18.5).
 - DoD: `busbar_label_probe` (§18.4), `switch_symbol_unambiguity_probe` (§18.5) zielone na
   `sldSubstrate52s` L0/L1/L2; wyrocznie §11(+A1/A2) zielone; render oceniony.
 - Autoryzacje: `v3/compose/station.ts`, `v3/layout/measure.ts` (rezerwacja etykiety szyny), testy v3.
+
+- **Wynik (2026-07-16, agent + odbiór osobisty nadzorcy):** §18.4: etykieta „Sekcja N · V kV"
+  nad szyną SN KAŻDEJ stacji (parytet gramatyki GPZ); kanał napięcia naprawiony w adapterze —
+  buildStationMiniBlockDetails filtrował po NIEISTNIEJĄCYM Bus.substation_ref (join poprawiony na
+  Substation.bus_refs; zasadność: bez tego §18.4 pusty dla 53/53 stacji; sonda acceptance:
+  napięcie etykiety == ENM Bus.voltage_kv 53/53, 0 niezgodnych; przy okazji naprawia totalLoadKw).
+  Sprzęgło: stan płynie z danych (dowód syntetyczny — fixtura ma 0 COUPLER). §18.5:
+  switch_symbol_unambiguity_probe (mapowanie 1:1 poza udokumentowanym LOAD_SWITCH→disconnector;
+  stan legalny z uczciwym undefined — 411/467 zdeterminowanych; „52" wyłącznie przy wyłączniku)
+  + negatywy. NOWA luka DOMAIN do F10.6: brak pola stanu bezpiecznika (fuseSwitch) w
+  MiniBlockBayDescriptor. Piony: L1 38504→41000, L2 52232→54104 (podwiersz etykiety szyny —
+  treść obowiązkowa §18.4 > minimalizacja, §15.1). Bramki: tsc/eslint czyste, vitest sld 171
+  plików/3288, accept ALL PASS, pełna regresja exit 0, guardy zielone; wizualny DoD nadzorcy
+  POTWIERDZONY („Sekcja 1 · 15 kV" nad szyną, zero kolizji).
 
 ### F10.4. CT/VT adnotacje (część bez-DOMAIN)
 - Zakres: etykieta CT (identyfikator + przekładnia) TYLKO gdy dane obecne (§18.3) — do czasu

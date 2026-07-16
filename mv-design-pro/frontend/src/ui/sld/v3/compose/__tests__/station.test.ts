@@ -13,6 +13,7 @@ import type { BayPrimaryDeviceView, MiniBlockBayDescriptor } from '../../../v2/r
 import {
   bayColumnFootprint,
   bayColumnRequiredWidth,
+  requiredStationWidth,
   stationBlockHeight,
   type StationMeasureInput,
 } from '../../layout/measure';
@@ -955,6 +956,130 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
     expect(meter.y).toBeGreaterThanOrEqual(resolved.rect.y + resolved.rect.height);
     // Etykieta zaczyna się PONIŻEJ dolnej krawędzi okręgu przekaźnika.
     expect(resolved.rect.y).toBeGreaterThanOrEqual(relay.y + PROTECTION_ANNOTATION_DIAMETER);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F10.3 (spec §18.4, D2-4) — etykieta szyny SN stacji (napięcie + oznaczenie
+// sekcji, parytet z GPZ) + sprzęgło (COUPLER) renderuje STAN z danych.
+// ---------------------------------------------------------------------------
+
+describe('V3 compose/station — F10.3 §18.4: etykieta szyny SN (busbar-voltage)', () => {
+  it('napięcie OBECNE w danych ⇒ tekst „Sekcja 1 · ⟨V⟩ kV" (parytet gramatyki z GPZ)', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0);
+    const station = makeStation('busbar-with-voltage', [bay], { busVoltageKv: 15 });
+    const composition = composeStation(buildComposeInput(station));
+
+    expect(composition.labels.busbar).toHaveLength(1);
+    expect(composition.labels.busbar[0].text).toBe('Sekcja 1 · 15 kV');
+    expect(composition.labels.busbar[0].ownerKind).toBe('busbar-voltage');
+    expect(composition.labels.busbar[0].ownerRef).toBe('busbar-with-voltage#busbar-voltage');
+  });
+
+  it('napięcie NIEOBECNE w danych ⇒ tekst „Sekcja 1" WYŁĄCZNIE (zero fabrykacji liczby, §12.1 zasada analogiczna)', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0);
+    const station = makeStation('busbar-no-voltage', [bay], { busVoltageKv: null });
+    const composition = composeStation(buildComposeInput(station));
+
+    expect(composition.labels.busbar).toHaveLength(1);
+    expect(composition.labels.busbar[0].text).toBe('Sekcja 1');
+    expect(composition.labels.busbar[0].text).not.toMatch(/kV/);
+  });
+
+  it('stacja bez pól SN (snBays=[]) ⇒ ZERO etykiety szyny (zgodne z pominięciem #sn-bus — zakaz „szyny znikąd")', () => {
+    const station = makeStation('busbar-no-bays', [], { busVoltageKv: 15 });
+    const composition = composeStation(buildComposeInput(station));
+
+    expect(composition.labels.busbar).toHaveLength(0);
+    expect(composition.segments.some((s) => s.ownerRef.endsWith('#sn-bus'))).toBe(false);
+  });
+
+  it('etykieta szyny mieści się W CAŁOŚCI w pełnej szerokości kolumny (column.x..column.x+column.width) — zero wystawania w sąsiada (rezerwacja "dwóch szerokości", measure.ts)', () => {
+    // Nazwa/oznaczniki celowo KRÓTKIE — jedyny szeroki kandydat to etykieta
+    // szyny, dowodzi że TA rezerwacja (nie nameBandWidth) poszerza kolumnę.
+    const bay = makeBay(FIELD_ROLE.COUPLER, 0);
+    const station = makeStation('busbar-width-guard', [bay], {
+      name: 'S1',
+      stationCode: undefined,
+      transformerRatedKva: undefined,
+      stationTypeLabel: undefined,
+      busVoltageKv: 20.5,
+    });
+    const input = buildComposeInput(station);
+    const composition = composeStation(input);
+
+    expect(composition.labels.busbar).toHaveLength(1);
+    const [resolved] = resolveLabels({ simpleAnchored: composition.labels.busbar });
+    expect(resolved.rect.x).toBeGreaterThanOrEqual(input.column.x);
+    expect(resolved.rect.x + resolved.rect.width).toBeLessThanOrEqual(input.column.x + input.column.width);
+  });
+
+  it('DOWÓD: rezerwacja szerokości kolumny (requiredStationWidth) rośnie gdy etykieta szyny jest szersza niż blok pól + pasmo nazw', () => {
+    const shortNameStation = makeStation('width-cmp-short', [makeBay(FIELD_ROLE.COUPLER, 0)], {
+      name: 'S',
+      stationCode: undefined,
+      transformerRatedKva: undefined,
+      stationTypeLabel: undefined,
+      busVoltageKv: null,
+    });
+    const withWideVoltage = { ...shortNameStation, id: 'width-cmp-wide', busVoltageKv: 123456 };
+    expect(requiredStationWidth(withWideVoltage)).toBeGreaterThan(requiredStationWidth(shortNameStation));
+  });
+});
+
+describe('V3 compose/station — F10.3 §18.4: sprzęgło (COUPLER) renderuje STAN z danych', () => {
+  it('pole COUPLER między dwoma polami liniowymi: aparat CB sprzęgła niesie stan z `bay.cbState` (dane), widoczny na scenie MIĘDZY sąsiadami', () => {
+    const left = makeBay(FIELD_ROLE.LINE_IN, 0, { bayRef: 'left-line' });
+    const coupler = makeBay(FIELD_ROLE.COUPLER, 1, { bayRef: 'coupler-1', cbState: 'open', dsState: 'closed' });
+    const right = makeBay(FIELD_ROLE.LINE_OUT, 2, { bayRef: 'right-line' });
+    const station = makeStation('coupler-open', [left, coupler, right]);
+    const composition = composeStation(buildComposeInput(station));
+
+    // Sprzęgło (§12.4 konwencja: DS→CB→CT) — CB niesie stan Z DANYCH pola
+    // (`bay.cbState`), TA SAMA ścieżka co każdy inny wyłącznik pola.
+    const couplerBreaker = composition.symbols.find((s) => s.bayRef === 'coupler-1' && s.symbolId === 'breaker')!;
+    expect(couplerBreaker).toBeDefined();
+    expect(couplerBreaker.state).toBe('open');
+    const couplerDisconnector = composition.symbols.find((s) => s.bayRef === 'coupler-1' && s.symbolId === 'disconnector')!;
+    expect(couplerDisconnector.state).toBe('closed');
+
+    // Widoczność MIĘDZY sekcjami: sprzęgło zajmuje pozycję X ściśle między
+    // sąsiadami (left < coupler < right), na TEJ SAMEJ szynie SN ciągłej
+    // (dowód rozłączności/ciągłości toru — `internalSegmentsEndAtPortsOrBus`
+    // niezależnie potwierdza spójność portów).
+    const leftX = composition.symbols.find((s) => s.bayRef === 'left-line')!.x;
+    const rightX = composition.symbols.find((s) => s.bayRef === 'right-line')!.x;
+    expect(couplerBreaker.x).toBeGreaterThan(leftX);
+    expect(couplerBreaker.x).toBeLessThan(rightX);
+    expect(internalSegmentsEndAtPortsOrBus(composition)).toBe(true);
+    expect(noCompositionSymbolOverlaps(composition)).toBe(true);
+  });
+
+  it('pole COUPLER: aparat CB sprzęgła niesie stan „closed" (dane) — dowód, że OBA stany widoczne (rozłącznik z open, ten z closed — brak stanu domyślnego stałego)', () => {
+    const coupler = makeBay(FIELD_ROLE.COUPLER, 0, { bayRef: 'coupler-closed', cbState: 'closed' });
+    const station = makeStation('coupler-closed', [coupler]);
+    const composition = composeStation(buildComposeInput(station));
+
+    const couplerBreaker = composition.symbols.find((s) => s.symbolId === 'breaker')!;
+    expect(couplerBreaker.state).toBe('closed');
+  });
+
+  it('pole COUPLER ze ścieżki DANYCH (`primary_devices` z `kind: "CB"`): stan PER APARAT wprost z `switch_state`, nie z agregatu konwencji', () => {
+    const coupler = makeBay(FIELD_ROLE.COUPLER, 0, {
+      bayRef: 'coupler-data',
+      primaryDevices: [
+        { deviceRef: 'ds-c1', kind: 'DS', placement: 'UPSTREAM', switchState: 'closed' },
+        { deviceRef: 'cb-c1', kind: 'CB', placement: 'MIDSTREAM', switchState: 'open' },
+        { deviceRef: 'ct-c1', kind: 'CT', placement: 'DOWNSTREAM' },
+      ],
+    });
+    const station = makeStation('coupler-data-path', [coupler]);
+    const composition = composeStation(buildComposeInput(station));
+
+    const breaker = composition.symbols.find((s) => s.symbolId === 'breaker')!;
+    expect(breaker.state).toBe('open');
+    expect(breaker.apparatusSource).toBe('dane');
+    expect(breaker.deviceRef).toBe('cb-c1');
   });
 });
 

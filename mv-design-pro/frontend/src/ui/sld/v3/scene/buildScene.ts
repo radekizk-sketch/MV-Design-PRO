@@ -94,7 +94,7 @@
  * etykieta↔przewód ZIELONA na LOD 0/1/2 (cała scena, wszystkie klasy).
  */
 
-import type { EnergyNetworkModel, LineRunV1 } from '../../../../types/enm';
+import type { BayPrimaryDeviceKind, EnergyNetworkModel, LineRunV1 } from '../../../../types/enm';
 import {
   buildSldDataFromSnapshot,
   type SegmentTerminalRef,
@@ -115,10 +115,11 @@ import {
   type RouteNode,
   type RouteVertex,
 } from '../layout/route';
-import { LATERAL_APPARATUS_SYMBOLS } from '../compose/apparatusSequence';
+import { LATERAL_APPARATUS_SYMBOLS, symbolIdForPrimaryDeviceKind } from '../compose/apparatusSequence';
 import {
   bayMainPathHeight,
   stationBlockHeight,
+  stationBusbarLabelHeight,
   stationNameBandHeight,
   stationPortCaptionHeight,
   type StationMeasureInput,
@@ -431,6 +432,13 @@ function buildMeasureInput(
     // F9.4 (spec §13.1 V12K-029, §7): DER widoczny od L1 — dostarczone
     // WYŁĄCZNIE dla lod>=1 (lod===0 zwraca wcześniej, powyżej).
     derSources: derSourcesByStationId.get(props.id) ?? undefined,
+    // F10.3 (spec §18.4, K30-37): napięcie znamionowe szyny SN — kanał
+    // REALNY (`StationOnRunRendererProps.busVoltageKv`, `enmToSldAdapter.ts`
+    // `mainBusVoltageKv`, ENM `Bus.voltage_kv` przez `Substation.bus_refs`);
+    // `null`/nieobecny = brak danych, `compose/station.ts`
+    // `stationBusbarLabelText` degraduje do samego oznaczenia sekcji (zero
+    // fabrykacji napięcia).
+    busVoltageKv: props.busVoltageKv ?? null,
   };
 }
 
@@ -482,7 +490,14 @@ function buildRowLayout(
   const rows = colorSegmentLabelRows(slotXs);
   const stationBandHeights: StationBandHeights[] = validInputs.map((m, i) => ({
     incomingSegmentLabelText: incomingTexts[i],
-    portCaptionHeight: stationPortCaptionHeight(m),
+    // F10.3 (spec §18.4): etykieta szyny SN — WŁASNY wiersz B2, NAD podpisem
+    // kierunku pola (`stationPortCaptionHeight`) — `bands.ts` (nietykalny,
+    // `computeBands` `B2 = BUS_AXIS_BAND_HEIGHT + max(portCaptionHeight)`)
+    // NIE rozróżnia źródła wysokości, więc sumujemy TU (jedna prawda
+    // measure↔compose: `compose/station.ts` odejmuje WŁASNY
+    // `stationPortCaptionHeight(station)` od `busAxisY`, żeby ulokować swój
+    // wiersz NAD nim, niezależnie od tego, ile inne stacje wiersza dokładają).
+    portCaptionHeight: stationPortCaptionHeight(m) + stationBusbarLabelHeight(m),
     stationBlockHeight: stationBlockHeight(m),
     nameBandHeight: stationNameBandHeight(m),
   }));
@@ -536,6 +551,8 @@ interface ComposedRowStation {
   readonly derOwners: readonly SimpleAnchoredOwnerInput[];
   /** F9.9 (spec §17.3): etykiety „52" — patrz `StationCompositionLabelInputs.protection`. */
   readonly protectionOwners: readonly SimpleAnchoredOwnerInput[];
+  /** F10.3 (spec §18.4): etykieta szyny SN — patrz `StationCompositionLabelInputs.busbar`. */
+  readonly busbarOwners: readonly SimpleAnchoredOwnerInput[];
   /**
    * F9.3 (FIX-1, korekta po recenzji Opusa, spec §12.3): port POŁĄCZENIA
    * kabla międzystacyjnego wchodzącego/wychodzącego z pola „poprzednik"/
@@ -600,6 +617,7 @@ function composeRowStation(
       portCaptionOwners: [],
       derOwners: [],
       protectionOwners: [],
+      busbarOwners: [],
       entryPort: { x: column.tapX, y: busAxisY },
       exitPort: { x: column.tapX, y: busAxisY },
       branchPort: () => ({ x: column.tapX, y: busAxisY }),
@@ -753,6 +771,7 @@ function composeRowStation(
     portCaptionOwners: composition.labels.portCaptions,
     derOwners: composition.labels.der,
     protectionOwners: composition.labels.protection,
+    busbarOwners: composition.labels.busbar,
     entryPort,
     exitPort,
     branchPort: (branchPos: number) => {
@@ -1317,7 +1336,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       allSegments.push(...composed.segments);
       stationNameBands.push(composed.stationNameOwner);
       portCaptions.push(...composed.portCaptionOwners);
-      simpleAnchored.push(...composed.apparatusOwners, ...composed.derOwners, ...composed.protectionOwners);
+      simpleAnchored.push(...composed.apparatusOwners, ...composed.derOwners, ...composed.protectionOwners, ...composed.busbarOwners);
       if (props.isNop) {
         simpleAnchored.push({
           ownerRef: `${measureInput.id}#no-point`,
@@ -1486,7 +1505,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       allSegments.push(...composed.segments);
       stationNameBands.push(composed.stationNameOwner);
       portCaptions.push(...composed.portCaptionOwners);
-      simpleAnchored.push(...composed.apparatusOwners, ...composed.derOwners, ...composed.protectionOwners);
+      simpleAnchored.push(...composed.apparatusOwners, ...composed.derOwners, ...composed.protectionOwners, ...composed.busbarOwners);
       if (props.isNop) {
         simpleAnchored.push({
           ownerRef: `${measureInput.id}#no-point`,
@@ -1985,6 +2004,265 @@ export function noBranchWithoutAccent(scene: SceneV3): boolean {
     const def = SYMBOL_DEFS[s.symbolId];
     return def.width > junctionDef.width && def.height > junctionDef.height;
   });
+}
+
+// ---------------------------------------------------------------------------
+// F10.3 (spec §18.4, D2-4) — busbar_label_probe: (a) KAŻDA szyna SN (stacji
+// `#sn-bus`, `compose/station.ts` — I sekcji GPZ `#bus-primary`,
+// `compose/gpz.ts`, parytet) ma DOKŁADNIE JEDNĄ etykietę
+// `ownerKind:'busbar-voltage'` odpowiadającą (zakaz anonimowego odcinka
+// szyny); (b) tekst etykiety jest ALBO samym oznaczeniem sekcji („Sekcja N")
+// ALBO oznaczeniem + napięciem Z DANYCH („Sekcja N · V kV") — ŻADEN inny
+// kształt (dowód formatu; dowód, że liczba napięcia jest REALNA z ENM, nie
+// zgadywana, żyje w `scripts/sld_v3_acceptance.mjs` — porównanie WPROST z
+// `snapshot.buses[].voltage_kv` fixtury referencyjnej, scena sama nie niesie
+// źródłowej wartości ENM do porównania).
+// ---------------------------------------------------------------------------
+
+const BUSBAR_LABEL_TEXT_PATTERN = /^Sekcja \d+(?: · \d+(?:\.\d+)? kV)?$/;
+
+export interface BusbarLabelGap {
+  readonly reason: 'bus-without-label' | 'label-without-bus' | 'malformed-text';
+  readonly ownerRef?: string;
+  readonly detail?: string;
+}
+
+/**
+ * busbar_label_probe (spec §18.4). Odcinki szyny objęte dowodem: `#sn-bus`
+ * (stacja, JEDNA na stację — `compose/station.ts`) i `#bus-primary` (sekcja
+ * GPZ — `compose/gpz.ts`, `#bus-reserve` CELOWO pominięty: to szyna
+ * REZERWOWA topologii double/ring, drugi fizyczny tor tej SAMEJ sekcji, nie
+ * osobna sekcja z własnym oznaczeniem — sekcja niesie JEDNĄ etykietę
+ * niezależnie od liczby torów szyny, zgodnie z `compose/gpz.ts`
+ * `sectionLabels`, który też emituje jedną etykietę per sekcja).
+ */
+export function busbarLabelGaps(scene: SceneV3): readonly BusbarLabelGap[] {
+  const gaps: BusbarLabelGap[] = [];
+  const busbarLabelsByOwnerRef = new Map(
+    scene.labels.filter((l) => l.ownerKind === 'busbar-voltage').map((l) => [l.ownerRef, l]),
+  );
+  const matchedLabelRefs = new Set<string>();
+
+  const busRefs = scene.segments
+    .map((s) => s.meta?.ownerRef)
+    .filter((ref): ref is string => ref != null && (ref.endsWith('#sn-bus') || ref.endsWith('#bus-primary')));
+  for (const busRef of busRefs) {
+    const labelRef = busRef.endsWith('#sn-bus')
+      ? busRef.replace(/#sn-bus$/, '#busbar-voltage')
+      : busRef.replace(/#bus-primary$/, '#label');
+    const label = busbarLabelsByOwnerRef.get(labelRef);
+    if (!label) {
+      gaps.push({ reason: 'bus-without-label', ownerRef: busRef, detail: `oczekiwana etykieta „${labelRef}" nieobecna` });
+      continue;
+    }
+    matchedLabelRefs.add(labelRef);
+    if (!BUSBAR_LABEL_TEXT_PATTERN.test(label.text)) {
+      gaps.push({ reason: 'malformed-text', ownerRef: labelRef, detail: `tekst „${label.text}" niezgodny z „Sekcja N"/„Sekcja N · V kV"` });
+    }
+  }
+
+  for (const [ownerRef] of busbarLabelsByOwnerRef) {
+    if (!matchedLabelRefs.has(ownerRef)) {
+      gaps.push({ reason: 'label-without-bus', ownerRef, detail: 'etykieta busbar-voltage bez odpowiadającego odcinka szyny na scenie' });
+    }
+  }
+
+  return gaps;
+}
+
+export function allBusbarLabelsValid(scene: SceneV3): boolean {
+  return busbarLabelGaps(scene).length === 0;
+}
+
+// ---------------------------------------------------------------------------
+// F10.3 (spec §18.5, D2-4) — switch_symbol_unambiguity_probe: (a) mapowanie
+// `BayPrimaryDeviceKind → SymbolId` (`compose/apparatusSequence.ts`
+// `symbolIdForPrimaryDeviceKind`) jest JEDNOZNACZNE dla symboli „łącznik"
+// (breaker/disconnector/earthSwitch/fuseSwitch, IEC 60617), z JEDNYM
+// udokumentowanym wyjątkiem (DS + LOAD_SWITCH → disconnector, DECYZJA
+// zapisana w nagłówku `apparatusSequence.ts`: brak dedykowanego glifu
+// „rozłącznik", najbliższy istniejący łącznik beznapięciowy) — KAŻDA INNA
+// wieloznaczność (nowy `kind` dopisany do mapowania bez nowego glifu) jest
+// luką zgłoszoną tu; (b) każdy łącznik TORU GŁÓWNEGO
+// (breaker/disconnector/fuseSwitch — NIE `earthSwitch`, który jest ZAWSZE
+// gałęzią BOCZNĄ od F10.1 §18.1, `LATERAL_APPARATUS_SYMBOLS`) na scenie ma
+// renderowany stan (`state !== undefined` — glify `glyphs.tsx:42-107`
+// renderują `closed`/`open`/`unknown` z tej wartości, F9.3); (c) „52" (numer
+// urządzenia ANSI/IEEE C37.2) występuje WYŁĄCZNIE jako etykieta
+// `ownerKind:'protection'` przy wyłączniku (`compose/station.ts`
+// `#device-number`, F9.9 §17.3), NIGDY jako kod w `protectionCodes` okręgu
+// przekaźnika (rozłączność z funkcjami zabezpieczeniowymi 50/51/67N/…, §17.1).
+// ---------------------------------------------------------------------------
+
+/** Symbole IEC 60617 „łącznik" wymienione WPROST w spec §18.5: wyłącznik
+ *  (kwadrat, wypełnienie=stan), rozłącznik z bezpiecznikiem (nóż+wkładka),
+ *  odłącznik (nóż), uziemnik (nóż+ziemia) — każdy glif STRUKTURALNIE
+ *  odrębny (`glyphs.tsx`), rozróżnialność WIZUALNA nie jest tu ponownie
+ *  dowodzona (dowiedziona konstrukcją modułu symboli, `symbols/__tests__/
+ *  symbols.test.tsx`); ta sonda dowodzi jednoznaczności MAPOWANIA (a) i
+ *  kompletności STANU (b), nie samej geometrii glifu. */
+const SWITCH_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
+  'breaker',
+  'disconnector',
+  'earthSwitch',
+  'fuseSwitch',
+]);
+
+/** Łączniki TORU GŁÓWNEGO (spec §18.5 b) — podzbiór `SWITCH_SYMBOLS` BEZ
+ *  `earthSwitch`: F10.1 (§18.1, `LATERAL_APPARATUS_SYMBOLS`) uziemnik jest Z
+ *  KONSTRUKCJI zawsze odgałęzieniem bocznym, nigdy elementem osi toru
+ *  głównego — „łącznik toru głównego" nie obejmuje więc uziemnika. */
+const MAIN_PATH_SWITCH_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
+  'breaker',
+  'disconnector',
+  'fuseSwitch',
+]);
+
+/** Wszystkie warianty `BayPrimaryDeviceKind` (ENM, `types/enm.ts`) —
+ *  powtórzone tu jako LITERALNA lista (bez importu wartości enum — ENM niesie
+ *  tylko TYP) do niezależnego audytu mapowania (a), zero zależności od tego,
+ *  czy fixtura referencyjna akurat niesie dany `kind` w danych. */
+const ALL_BAY_PRIMARY_DEVICE_KINDS: readonly BayPrimaryDeviceKind[] = [
+  'CB', 'LOAD_SWITCH', 'DS', 'ES', 'CT', 'VT', 'CABLE_HEAD', 'TRANSFORMER_DEVICE', 'FUSE',
+  'GENERATOR_PV', 'GENERATOR_BESS', 'GENERATOR_FW', 'PCS', 'BATTERY', 'SURGE_ARRESTER',
+];
+
+/** Wieloznaczności UDOKUMENTOWANE (DECYZJA architekta, `apparatusSequence.ts`
+ *  nagłówek) — jedyny dziś wpis: `disconnector` niesie DWA kindy (`DS`
+ *  dosłowny odłącznik, `LOAD_SWITCH` aproksymacja braku dedykowanego glifu
+ *  rozłącznika). Wyrocznia (a) AKCEPTUJE dokładnie ten zestaw per symbol —
+ *  każdy INNY (nowy kind dopisany, lub istniejący przeniesiony na inny
+ *  symbol) jest zgłaszany. */
+const DOCUMENTED_SWITCH_SYMBOL_AMBIGUITIES: ReadonlyMap<SymbolId, ReadonlySet<BayPrimaryDeviceKind>> = new Map([
+  ['disconnector', new Set<BayPrimaryDeviceKind>(['DS', 'LOAD_SWITCH'])],
+]);
+
+/** Wartości `SwitchState` dosłownie z §18.5 b („stan otwarty/zamknięty..."
+ *  + `glyphs.tsx` trzeci wariant „nieznany") — jedyne legalne renderowane
+ *  stany łącznika. */
+const VALID_RENDERED_SWITCH_STATES: ReadonlySet<string> = new Set(['closed', 'open', 'unknown']);
+
+export interface SwitchSymbolUnambiguityGap {
+  readonly reason:
+    | 'kind-symbol-ambiguous'
+    | 'main-path-switch-invalid-state'
+    | 'device-number-52-misplaced'
+    | 'device-number-52-in-protection-codes';
+  readonly symbolId?: SymbolId;
+  readonly ownerRef?: string;
+  readonly detail?: string;
+}
+
+/**
+ * switch_symbol_unambiguity_probe (spec §18.5) — dowodzi (a)-(c) na REALNEJ
+ * scenie (b/c) i na STATYCZNYM mapowaniu (a, niezależne od `scene`/LOD/
+ * fixtury — sama tabela `symbolIdForPrimaryDeviceKind` jest przedmiotem
+ * dowodu).
+ *
+ * (b) UWAGA (rozstrzygnięcie zakresu, F10.3): spec §18.5 b mówi o
+ * RENDEROWANYM stanie („closed/open/unknown") — glify `glyphs.tsx:42-107`
+ * (F9.3) GWARANTUJĄ to Z KONSTRUKCJI: każdy glif łącznika ma fallback
+ * `props.state ?? '<domyślny>'`, więc `state===undefined` na DANYCH renderuje
+ * się jako `'unknown'` (jeden z trzech legalnych stanów), NIE jest luką —
+ * to jest DOKŁADNIE Invariant 9 tego kodebase'u („brak telemetrii →
+ * `undefined`, renderer pokazuje neutral, NIGDY fabrykowany „closed"",
+ * `v2/canvas/enmToSldAdapter.ts` liczne komentarze). Empirycznie na fixturze
+ * referencyjnej: 56 łączników toru głównego ma `state===undefined` — 53
+ * `fuseSwitch` pola transformatorowego (ŚCIEŻKA KONWENCJI, §12.4:
+ * `MiniBlockBayDescriptor`, `v2/renderer/MiniBlockRmuRenderer.tsx`, NIE
+ * NIESIE ŻADNEGO pola stanu bezpiecznika — luka KANAŁU DANYCH, nie
+ * telemetrii pojedynczej instancji — zgłoszona w raporcie jako zależność
+ * DOMAIN, poza zakresem F10.3 frontend-only) + 3 na syntetyzowanych polach
+ * HV GPZ (`compose/gpz.ts`/`enmToSldAdapter.ts` `synthesizeHvSections`,
+ * udokumentowane WPROST w kodzie: „brak telemetrii w ENM"). Wymaganie
+ * „state !== undefined" ukarałoby więc UCZCIWE zgłoszenie braku danych —
+ * sprzeczne z §12.1/Invariant 9. Sonda (b) dowodzi więc czegoś SILNIEJSZEGO
+ * niż literalne „zawsze zdefiniowany": WHITE BOX strażnik przeciw
+ * uszkodzeniu/wstrzyknięciu (typy TS NIE chronią sceny zrekonstruowanej z
+ * JSON/testu sabotującego) — `state`, gdy OBECNY, jest zawsze jedną z
+ * TRZECH wartości legalnych; `undefined` jest legalny. Dowód POZYTYWNY, że
+ * ścieżka „dane→renderowany stan" faktycznie działa (nie tylko degraduje do
+ * `undefined` wszędzie) — w `scripts/sld_v3_acceptance.mjs` (liczność
+ * łączników z DETERMINOWANYM stanem na fixturze referencyjnej > 0).
+ *
+ * Negatywy pokryte testem (`buildScene.test.ts`): kind dopisany na
+ * istniejący symbol poza udokumentowanym zestawem ⇒ FAIL (a); symbol z
+ * `state` PODMIENIONYM na string spoza {closed,open,unknown} ⇒ FAIL (b);
+ * etykieta „52" z `ownerKind`/`ownerRef` podmienionym, lub „52" wstrzyknięte
+ * do `protectionCodes` syntetycznego okręgu ⇒ FAIL (c).
+ */
+export function switchSymbolUnambiguityGaps(scene: SceneV3): readonly SwitchSymbolUnambiguityGap[] {
+  const gaps: SwitchSymbolUnambiguityGap[] = [];
+
+  // (a) mapowanie kind→symbolId jednoznaczne (poza wyjątkiem udokumentowanym).
+  const kindsBySymbol = new Map<SymbolId, BayPrimaryDeviceKind[]>();
+  for (const kind of ALL_BAY_PRIMARY_DEVICE_KINDS) {
+    const symbolId = symbolIdForPrimaryDeviceKind(kind);
+    if (symbolId == null || !SWITCH_SYMBOLS.has(symbolId)) continue;
+    const list = kindsBySymbol.get(symbolId) ?? [];
+    list.push(kind);
+    kindsBySymbol.set(symbolId, list);
+  }
+  for (const [symbolId, kinds] of kindsBySymbol) {
+    if (kinds.length <= 1) continue;
+    const documented = DOCUMENTED_SWITCH_SYMBOL_AMBIGUITIES.get(symbolId);
+    const isDocumented =
+      documented != null && kinds.length === documented.size && kinds.every((k) => documented.has(k));
+    if (!isDocumented) {
+      gaps.push({
+        reason: 'kind-symbol-ambiguous',
+        symbolId,
+        detail: `„${symbolId}" mapuje z ${kinds.length} kindów (${kinds.join(', ')}) — poza udokumentowaną aproksymacją LOAD_SWITCH→disconnector`,
+      });
+    }
+  }
+
+  // (b) każdy łącznik toru głównego na scenie, GDY `state` obecny, niesie
+  // WYŁĄCZNIE jedną z trzech wartości legalnych (`undefined` legalny —
+  // patrz DECYZJA w docstringu wyżej).
+  for (const s of scene.symbols) {
+    if (!MAIN_PATH_SWITCH_SYMBOLS.has(s.symbolId)) continue;
+    if (s.state !== undefined && !VALID_RENDERED_SWITCH_STATES.has(s.state)) {
+      gaps.push({
+        reason: 'main-path-switch-invalid-state',
+        symbolId: s.symbolId,
+        ownerRef: s.meta?.ownerRef,
+        detail: `state="${s.state}" spoza {closed,open,unknown}`,
+      });
+    }
+  }
+
+  // (c) „52" wyłącznie jako etykieta ownerKind:'protection' przy wyłączniku
+  // (ownerRef `#device-number`, `compose/station.ts`), nigdy w
+  // protectionCodes okręgu przekaźnika.
+  for (const l of scene.labels) {
+    if (l.text !== '52') continue;
+    if (l.ownerKind !== 'protection' || !l.ownerRef.endsWith('#device-number')) {
+      gaps.push({
+        reason: 'device-number-52-misplaced',
+        ownerRef: l.ownerRef,
+        detail: `etykieta „52" poza kontraktem ownerKind:'protection'/#device-number (ownerKind=${l.ownerKind})`,
+      });
+    }
+  }
+  for (const s of scene.symbols) {
+    if (s.symbolId !== 'protectionRelay') continue;
+    const codes = s.meta?.protectionCodes ?? [];
+    if (codes.includes('52')) {
+      gaps.push({
+        reason: 'device-number-52-in-protection-codes',
+        symbolId: s.symbolId,
+        ownerRef: s.meta?.ownerRef,
+        detail: `„52" w protectionCodes (${codes.join(',')}) okręgu przekaźnika — 52 to numer urządzenia ANSI/IEEE C37.2, NIE kod funkcji (§17.1)`,
+      });
+    }
+  }
+
+  return gaps;
+}
+
+export function allSwitchSymbolsUnambiguous(scene: SceneV3): boolean {
+  return switchSymbolUnambiguityGaps(scene).length === 0;
 }
 
 // ---------------------------------------------------------------------------

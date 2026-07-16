@@ -51,7 +51,7 @@ export { snapUp } from '../core/grid';
  * slotowa PITCH, patrz UWAGA na górze pliku).
  */
 export interface StationMeasureInput
-  extends Pick<StationOnRunRendererProps, 'id' | 'name' | 'stationCode' | 'transformerRatedKva'> {
+  extends Pick<StationOnRunRendererProps, 'id' | 'name' | 'stationCode' | 'transformerRatedKva' | 'busVoltageKv'> {
   /** Typ stacji wg §9 nomenklatury (np. „stacja przelotowa") — slot t4.
    *  Pole WŁASNE v3: `StationOnRunRendererProps` (v2) NIE MA odpowiednika —
    *  to nie jest podzbiór v2, to rozszerzenie specyficzne dla pomiaru V3. */
@@ -86,6 +86,62 @@ export interface StationMeasureInput
  *  samej funkcji, którą renderer rysuje, inaczej rezerwacja miejsca i realny
  *  tekst mogłyby się rozjechać przy zmianie formatu w jednym miejscu. */
 export { formatTransformerRatedPower } from '../../v2/renderer/StationOnRunRenderer';
+
+/**
+ * F10.3 (spec §18.4, D2-4): tekst etykiety szyny SN stacji — PARYTET
+ * gramatyki z GPZ (`compose/gpz.ts` `sectionLabelText`: „Sekcja 1 · 15 kV").
+ * Kompozycja stacji V3 nie dzieli dziś szyny SN na sekcje numerowane —
+ * `compose/station.ts` rysuje JEDNĄ ciągłą szynę (`${station.id}#sn-bus`)
+ * niezależnie od liczby pól — więc oznaczenie sekcji jest dziś zawsze
+ * „Sekcja 1" (jedyna sekcja, ten sam domyślny numer, którego GPZ używa dla
+ * pojedynczej sekcji). Napięcie znamionowe DOPISANE wyłącznie gdy kanał
+ * danych je niesie (`busVoltageKv` — `StationOnRunRendererProps.busVoltageKv`,
+ * K30-37, `v2/canvas/enmToSldAdapter.ts` `mainBusVoltageKv`, realne ENM
+ * `Bus.voltage_kv` przez `Substation.bus_refs`) — brak danych = sam tekst
+ * sekcji (degradacja, NIE fabrykacja napięcia, spec §12.1 zasada analogiczna).
+ * JEDNA prawda measure↔compose: `compose/station.ts` woła TĘ SAMĄ funkcję —
+ * rezerwacja szerokości (`requiredStationWidth` niżej) i realny tekst nie
+ * mogą się rozjechać (wzór F6b-1).
+ */
+export function stationBusbarLabelText(busVoltageKv: number | null | undefined): string {
+  return busVoltageKv != null ? `Sekcja 1 · ${busVoltageKv} kV` : 'Sekcja 1';
+}
+
+/** F10.3 (spec §18.4): odstęp między wierszem etykiety szyny SN (nowy, ten
+ *  paragraf) a treścią POD nim (wiersz podpisu kierunku pola, gdy obecny —
+ *  `stationPortCaptionHeight` niżej — lub wprost oś magistrali `busAxisY`,
+ *  gdy nieobecny) — TA SAMA wartość co `PORT_CAPTION_BUS_CLEARANCE` (GRID),
+ *  nazwana osobno dla czytelności (§4 „prześwit" per para etykiet). */
+export const STATION_BUSBAR_LABEL_GAP = GRID;
+
+/** F10.3 (spec §18.4): wysokość DODATKOWA pasma B2 na wiersz etykiety szyny
+ *  SN (t2, `stationBusbarLabelText`) — jeden wiersz t2 + prześwit, NAD
+ *  istniejącym wierszem podpisu kierunku pola (`stationPortCaptionHeight`,
+ *  gdy obecny) lub NAD osią magistrali wprost (gdy nieobecny). Rysowana dla
+ *  KAŻDEJ stacji z co najmniej jednym polem SN (`snBays.length>0` — zgodnie
+ *  z gałęzią `composeStation`, która pomija szynę dla stacji bez pól,
+ *  `busTapXs.length===0`) — zero rozjazdu measure↔compose (§11: rezerwacja
+ *  bez rysunku LUB rysunek bez rezerwacji to oba błędy, wzór F6b-1). */
+export function stationBusbarLabelHeight(station: Pick<StationMeasureInput, 'snBays'>): number {
+  if (station.snBays.length === 0) return 0;
+  return LABEL_LINE_HEIGHT_T2 + STATION_BUSBAR_LABEL_GAP;
+}
+
+/** F10.3 (spec §18.4): szerokość WYMAGANA etykiety szyny SN — trzeci
+ *  kandydat w `Math.max` `requiredStationWidth` (niżej), ANALOGICZNY do
+ *  `nameBandWidth` (ten sam wzorzec: rośnie WYŁĄCZNIE rezerwacja PEŁNEJ
+ *  kolumny, `requiredStationWidth`/`column.width` — `stationBlockWidth`,
+ *  baza centrowania `tapX`, jest NIETKNIĘTA, „dwie szerokości", patrz
+ *  DECYZJA F9.4 przy `requiredStationWidth`). `compose/station.ts` centruje
+ *  etykietę w PEŁNEJ szerokości kolumny (`column.x`..`column.x+column.width`,
+ *  jak pasmo nazw `nameSlot`), więc ta rezerwacja gwarantuje brak wystawania
+ *  poza kolumnę (zero kolizji z sąsiadem, `overlap_probe`). Zero, gdy stacja
+ *  bez pól SN (zgodnie z `stationBusbarLabelHeight` wyżej).
+ */
+function stationBusbarLabelWidth(station: Pick<StationMeasureInput, 'snBays' | 'busVoltageKv'>): number {
+  if (station.snBays.length === 0) return 0;
+  return measureLabelWidth(stationBusbarLabelText(station.busVoltageKv), 't2');
+}
 
 /**
  * Gabaryt kolumny pola (jedna pionowa kolumna aparatów, spec §3 "Stacja
@@ -400,7 +456,13 @@ export function requiredStationWidth(station: StationMeasureInput): number {
   if (station.stationTypeLabel) nameWidths.push(measureLabelWidth(station.stationTypeLabel, 't4'));
   const nameBandWidth = Math.max(...nameWidths);
 
-  return snapUp(Math.max(blockWidth, nameBandWidth) + 2 * GRID);
+  // F10.3 (spec §18.4): trzeci kandydat — etykieta szyny SN, TA SAMA
+  // rezerwacja `max()` co `nameBandWidth` (patrz docstring
+  // `stationBusbarLabelWidth`) — „dwie szerokości": `blockWidth`
+  // (baza `tapX`, NIETKNIĘTA) vs pełna rezerwacja kolumny (TU, rośnie).
+  const busbarLabelWidth = stationBusbarLabelWidth(station);
+
+  return snapUp(Math.max(blockWidth, nameBandWidth, busbarLabelWidth) + 2 * GRID);
 }
 
 /**
