@@ -1,0 +1,446 @@
+/*
+ * Menedżer przypadków obliczeniowych (przestrzeń „Obliczenia", W-501, karta E7.1).
+ * Wyłącznie tokeny --mvd-* (parytet motywów jasny/ciemny). Współdzielone prymitywy
+ * (`.mvd-btn`, `.mvd-tag*`, `.mvd-num`, `.mvd-input`) powtórzone lokalnie zgodnie ze
+ * wzorcem pozostałych przestrzeni (pulpit.css / szablony.css).
+ */
+
+.mvd-przypadki {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+}
+.mvd-przypadki-pusto {
+  padding: 24px;
+  color: var(--mvd-muted);
+}
+
+/* ---- nagłówek + narzędzia ---- */
+.mvd-przypadki-naglowek {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--mvd-line);
+  background: var(--mvd-panel-2);
+}
+.mvd-przypadki-tytul {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.mvd-przypadki-podtytul {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-przypadki-narzedzia {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ---- treść: lista + szczegóły ---- */
+.mvd-przypadki-tresc {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(320px, 1.2fr);
+  gap: 0;
+}
+.mvd-przypadki-lista {
+  border-right: 1px solid var(--mvd-line);
+  overflow: auto;
+  padding: 12px;
+}
+.mvd-przypadki-szczegoly {
+  overflow: auto;
+  padding: 16px;
+}
+.mvd-przypadki-wroc {
+  margin-bottom: 12px;
+}
+
+/* ---- tabela listy (wzorzec pulpit.css) ---- */
+.mvd-cases-scroll {
+  overflow-x: auto;
+}
+.mvd-cases-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.mvd-cases-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-cases-row {
+  cursor: pointer;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-cases-row:hover {
+  background: var(--mvd-panel-2);
+}
+.mvd-cases-row.mvd-on {
+  background: var(--mvd-sel);
+}
+.mvd-cases-table td {
+  padding: 7px 8px;
+  vertical-align: middle;
+}
+.mvd-cases-check {
+  width: 28px;
+  text-align: center;
+}
+.mvd-cases-name {
+  font-weight: 600;
+}
+.mvd-cases-active {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+}
+.mvd-cases-time {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--mvd-muted);
+}
+.mvd-cases-empty {
+  padding: 16px;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+
+/* ---- prymitywy współdzielone ---- */
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.mvd-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--mvd-chip);
+  color: var(--mvd-ink);
+}
+.mvd-tag-ok {
+  background: var(--mvd-ok-bg);
+  color: var(--mvd-ok);
+}
+.mvd-tag-warn {
+  background: var(--mvd-warn-bg);
+  color: var(--mvd-warn);
+}
+.mvd-tag-mut {
+  background: var(--mvd-chip);
+  color: var(--mvd-muted);
+}
+.mvd-btn {
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.mvd-btn:hover {
+  background: var(--mvd-panel-2);
+}
+.mvd-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.mvd-btn-primary {
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  border-color: var(--mvd-accent);
+}
+.mvd-input {
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  width: 100%;
+}
+
+/* ---- karta przypadku ---- */
+.mvd-karta {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.mvd-karta-pusto {
+  padding: 24px;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+.mvd-karta-blad {
+  color: var(--mvd-err);
+}
+.mvd-karta-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-karta-tytul-wiersz {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mvd-karta-tytul {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.mvd-karta-aktywny {
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+}
+.mvd-karta-opis {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-karta-sekcja {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--mvd-panel);
+}
+.mvd-karta-zalozenia {
+  border-color: var(--mvd-accent);
+}
+.mvd-karta-sekcja-tytul {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mvd-karta-pary {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 16px;
+}
+.mvd-karta-para {
+  display: contents;
+}
+.mvd-karta-para dt {
+  font-size: 13px;
+}
+.mvd-karta-para dd {
+  margin: 0;
+  font-size: 13px;
+  text-align: right;
+}
+.mvd-karta-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.mvd-karta-tabela th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-karta-tabela td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-karta-pochodzenie {
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-wkrotce {
+  font-style: italic;
+}
+.mvd-wkrotce-wartosc {
+  color: var(--mvd-muted);
+}
+
+/* ---- porównanie konfiguracji ---- */
+.mvd-porownanie {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mvd-porownanie-naglowek {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.mvd-porownanie-filtr {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-porownanie-bez-roznic {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--mvd-ok-bg);
+  color: var(--mvd-ok);
+  font-size: 13px;
+}
+.mvd-porownanie-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.mvd-porownanie-tabela th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-porownanie-tabela td {
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-porownanie-wiersz.mvd-rozne {
+  background: var(--mvd-warn-bg);
+}
+.mvd-porownanie-znacznik {
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--mvd-warn-bg);
+  color: var(--mvd-warn);
+}
+
+/* ---- menu kontekstowe ---- */
+.mvd-menu-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+}
+.mvd-menu {
+  position: fixed;
+  z-index: 71;
+  min-width: 160px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  box-shadow: var(--mvd-shadow);
+}
+.mvd-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  color: var(--mvd-ink);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.mvd-menu-item:hover {
+  background: var(--mvd-panel-2);
+}
+
+/* ---- dialog „Nowy przypadek" ---- */
+.mvd-dialog-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mvd-dialog {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  box-shadow: var(--mvd-shadow);
+  width: 92%;
+  max-width: 480px;
+  max-height: 88vh;
+  overflow: auto;
+  padding: 20px;
+}
+.mvd-dialog-tytul {
+  margin: 0 0 16px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.mvd-dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.mvd-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mvd-pole-etykieta {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+}
+.mvd-pole-tryb {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 0;
+}
+.mvd-radio {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.mvd-dialog-blad {
+  margin: 0;
+  color: var(--mvd-err);
+  font-size: 12px;
+}
+.mvd-dialog-akcje {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
