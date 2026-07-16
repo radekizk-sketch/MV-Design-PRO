@@ -960,6 +960,162 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
 });
 
 // ---------------------------------------------------------------------------
+// F10.5 (spec §20.1/§20.2, secondary_link_duality_probe/
+// protection_function_topology_validation) — linia pomiarowa CT→przekaźnik
+// ODRĘBNA od toru wyzwalania + braki topologiczne funkcji zabezpieczeń.
+// `makeLineBayPrimaryDevices()` (wyżej) niesie CT z `deviceRef:'ct-1'`.
+// ---------------------------------------------------------------------------
+
+describe('V3 compose/station — F10.5 §20.1: linia pomiarowa CT→przekaźnik (secondary_link_duality_probe)', () => {
+  it('(a/c) ct_ref rozwiązywalny w stosie ⇒ DOKŁADNIE JEDNA linia measurementSegments, ODRĘBNA od protectionSegments (tor wyzwalania), zakotwiczona na REJESTROWANYCH portach CT+przekaźnika', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayPrimaryDevices(),
+      protectionMarking: { codes: ['50/51'], breakerRef: 'cb-1', ctRef: 'ct-1' },
+    });
+    const station = makeStation('measurement-link-ok', [bay]);
+    const composition = composeStation(buildComposeInput(station));
+
+    expect(composition.measurementSegments).toHaveLength(1);
+    expect(composition.protectionSegments).toHaveLength(1); // tor wyzwalania NADAL osobno.
+    expect(composition.measurementSegments[0].ownerRef).toBe(`${bay.bayRef}#measurement-link`);
+    expect(composition.protectionSegments[0].ownerRef).toBe(`${bay.bayRef}#trip-line`);
+    // Dwa RÓŻNE ownerRef (§20.1a dosłownie — zakaz jednej anonimowej linii).
+    expect(composition.measurementSegments[0].ownerRef).not.toBe(composition.protectionSegments[0].ownerRef);
+
+    const ctInstance = composition.symbols.find((s) => s.deviceRef === 'ct-1');
+    expect(ctInstance).toBeDefined();
+    const ctTopPort = { x: ctInstance!.x + 8, y: ctInstance!.y }; // 'top' port (dir N), offset (8,0)
+    expect(composition.measurementSegments[0].points[0]).toEqual(ctTopPort);
+    const relaySymbol = composition.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!;
+    const relayLinkPort = { x: relaySymbol.x, y: relaySymbol.y + 8 }; // 'link' port (dir W), offset (0,8)
+    const lastPoint = composition.measurementSegments[0].points.at(-1);
+    expect(lastPoint).toEqual(relayLinkPort);
+
+    expect(composition.missingData).not.toContain('bay.protection.measurement_link_unresolved');
+  });
+
+  it('(§20.1 zero zgadywania) ct_ref NIEROZWIĄZYWALNY w stosie ⇒ ZERO linii pomiarowej + missingData `bay.protection.measurement_link_unresolved` (NIGDY linia do domyślnego CT)', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayPrimaryDevices(),
+      protectionMarking: { codes: ['50/51'], breakerRef: 'cb-1', ctRef: 'ct-nieistniejacy' },
+    });
+    const station = makeStation('measurement-link-unresolved', [bay]);
+    const composition = composeStation(buildComposeInput(station));
+
+    expect(composition.measurementSegments).toHaveLength(0);
+    expect(composition.missingData).toContain('bay.protection.measurement_link_unresolved');
+  });
+
+  it('(§20.1) brak ct_ref w danych (WYŁĄCZNIE breaker_ref) ⇒ ZERO linii pomiarowej + missingData (okrąg kotwiczy na wyłączniku, §17.2 fallback)', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayPrimaryDevices(),
+      protectionMarking: { codes: ['50/51'], breakerRef: 'cb-1' },
+    });
+    const station = makeStation('measurement-link-no-ct-ref', [bay]);
+    const composition = composeStation(buildComposeInput(station));
+
+    expect(composition.measurementSegments).toHaveLength(0);
+    expect(composition.protectionSegments).toHaveLength(1); // tor wyzwalania NADAL rysowany (breaker_ref OK).
+    expect(composition.missingData).toContain('bay.protection.measurement_link_unresolved');
+  });
+
+  it('B-1 (§17.4/§20.1 L1, circle-only): linia pomiarowa UKRYTA na L1 (TA SAMA gałąź LOD co tor wyzwalania), zero missingData §20.1 na TYM poziomie', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayPrimaryDevices(),
+      protectionMarking: { codes: ['50/51'], breakerRef: 'cb-1', ctRef: 'ct-1' },
+    });
+    const station = makeStation('measurement-link-l1', [bay]);
+    const composition = composeStation({ ...buildComposeInput(station), annotationDetail: 'circle-only' });
+
+    expect(composition.measurementSegments).toHaveLength(0);
+    expect(composition.missingData).not.toContain('bay.protection.measurement_link_unresolved');
+  });
+});
+
+describe('V3 compose/station — F10.5 §20.2: walidacja topologiczna funkcji zabezpieczeń (protection_function_topology_validation)', () => {
+  it('87T BEZ transformatora w polu ⇒ ostrzeżenie na okręgu (protectionTopologyGaps) + missingData `protection.topology.87t_missing_transformer`', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayPrimaryDevices(), // CB/CT/DS/ES/CABLE_HEAD — ZERO TRANSFORMER_DEVICE.
+      protectionMarking: { codes: ['87T'], breakerRef: 'cb-1', ctRef: 'ct-1' },
+    });
+    const station = makeStation('topology-87t-missing-tr', [bay]);
+    const composition = composeStation(buildComposeInput(station));
+
+    const relay = composition.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!;
+    expect(relay.protectionTopologyGaps).toEqual([{ code: '87T', reason: 'missing_transformer' }]);
+    expect(composition.missingData).toContain('protection.topology.87t_missing_transformer');
+  });
+
+  it('87T Z transformatorem w polu (TRANSFORMER_DEVICE w primary_devices) ⇒ ZERO ostrzeżeń („z TR ⇒ zero", zadanie F10.5 pkt B)', () => {
+    const bay = makeBay(FIELD_ROLE.TRANSFORMER, 0, {
+      primaryDevices: [
+        ...makeLineBayPrimaryDevices(),
+        { kind: 'TRANSFORMER_DEVICE', placement: 'MIDSTREAM', deviceRef: 'tr-1' },
+      ],
+      protectionMarking: { codes: ['87T'], breakerRef: 'cb-1', ctRef: 'ct-1' },
+    });
+    const station = makeStation('topology-87t-with-tr', [bay]);
+    const composition = composeStation(buildComposeInput(station));
+
+    const relay = composition.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!;
+    expect(relay.protectionTopologyGaps).toBeUndefined();
+    expect(composition.missingData).not.toContain('protection.topology.87t_missing_transformer');
+  });
+
+  it('67N BEZ VT w polu ⇒ ostrzeżenie missing_vt; 67N Z VT ⇒ zero', () => {
+    const withoutVt = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayPrimaryDevices(),
+      protectionMarking: { codes: ['67N'], breakerRef: 'cb-1', ctRef: 'ct-1' },
+    });
+    const compositionWithout = composeStation(buildComposeInput(makeStation('topology-67n-missing-vt', [withoutVt])));
+    const relayWithout = compositionWithout.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!;
+    expect(relayWithout.protectionTopologyGaps).toEqual([{ code: '67N', reason: 'missing_vt' }]);
+
+    const withVt = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: [...makeLineBayPrimaryDevices(), { kind: 'VT', placement: 'MIDSTREAM', deviceRef: 'vt-1' }],
+      protectionMarking: { codes: ['67N'], breakerRef: 'cb-1', ctRef: 'ct-1' },
+    });
+    const compositionWith = composeStation(buildComposeInput(makeStation('topology-67n-with-vt', [withVt])));
+    const relayWith = compositionWith.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!;
+    expect(relayWith.protectionTopologyGaps).toBeUndefined();
+  });
+
+  it('51N Z CT w polu (fixtura standardowa niesie CT) ⇒ zero ostrzeżeń missing_i0 (uproszczenie F10.5: obecność CT wystarcza, pełny I0-sumujący to F10.6)', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayPrimaryDevices(),
+      protectionMarking: { codes: ['51N'], breakerRef: 'cb-1', ctRef: 'ct-1' },
+    });
+    const station = makeStation('topology-51n-with-ct', [bay]);
+    const composition = composeStation(buildComposeInput(station));
+    const relay = composition.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!;
+    expect(relay.protectionTopologyGaps).toBeUndefined();
+  });
+
+  it('(WHITE BOX zero zgadywania) pole KONWENCJI (§12.4, brak primary_devices) z kodem 87T ⇒ ZERO ostrzeżeń (brak danych o aparatach ≠ brak transformatora)', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      protectionMarking: { codes: ['87T'], breakerRef: 'cb-1' },
+    });
+    const station = makeStation('topology-convention-no-devices', [bay]);
+    const composition = composeStation(buildComposeInput(station));
+    const relay = composition.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!;
+    expect(relay.protectionTopologyGaps).toBeUndefined();
+    expect(composition.missingData).not.toContain('protection.topology.87t_missing_transformer');
+  });
+
+  it('B-1 (§17.4/§20.2 L1, circle-only): walidacja topologiczna NIE liczona na L1 (TA SAMA gałąź LOD co „52"/„M") — zero protectionTopologyGaps mimo braku transformatora', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayPrimaryDevices(),
+      protectionMarking: { codes: ['87T'], breakerRef: 'cb-1', ctRef: 'ct-1' },
+    });
+    const station = makeStation('topology-l1', [bay]);
+    const composition = composeStation({ ...buildComposeInput(station), annotationDetail: 'circle-only' });
+    const relay = composition.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!;
+    expect(relay.protectionTopologyGaps).toBeUndefined();
+    expect(composition.missingData).not.toContain('protection.topology.87t_missing_transformer');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // F10.4 (spec §18.3, ct_annotation_probe) — adnotacja CT: identyfikator +
 // przekładnia, WYŁĄCZNIE z danych (BEZ-DOMAIN: `Measurement.rating`/`.name`
 // już istnieją w ENM; układ 3×CT/Ferranti-I0 — NOWE pole DOMAIN, F10.6, poza

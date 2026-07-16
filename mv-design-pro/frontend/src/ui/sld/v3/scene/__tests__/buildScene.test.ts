@@ -58,6 +58,12 @@ import {
   sourceCoverageGaps,
   symbolWireCollisions,
   totalVerticalSegmentLength,
+  allSecondaryLinksValid,
+  secondaryLinkDualityGaps,
+  noAnnotationOverlapsPrimaryPath,
+  annotationOverlapsPrimaryPath,
+  allMeterSymbolsDisambiguated,
+  meterDisambiguationGaps,
   type SceneLod,
   type SceneV3,
 } from '../buildScene';
@@ -1092,3 +1098,230 @@ describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixtu
     expect(sourceConnectivityGaps(control).some((g) => g.sourceId === 'src-stranded')).toBe(false);
   });
 });
+
+describe(
+  'buildSceneV3 — F10.5: secondary_link_duality_probe / annotation_no_overlap_primary_probe / ' +
+    'meter_symbol_disambiguation (spec §20.1/§20.3/§20.4) na fixturze REALNEJ (0 protection_assignments)',
+  () => {
+    it('§20.1 „brak danych = brak linii pomiarowej" na REALNEJ fixturze: ZERO segmentów measurementLink na WSZYSTKICH LOD — dowód vacuously true (fixtura nie niesie ProtectionAssignment w ogóle)', () => {
+      for (const lod of LODS) {
+        const scene = buildSceneV3(enm, lod);
+        expect(scene.segments.filter((s) => s.meta?.kind === 'measurementLink')).toHaveLength(0);
+        expect(allSecondaryLinksValid(scene)).toBe(true);
+        expect(allMeterSymbolsDisambiguated(scene)).toBe(true);
+        expect(noAnnotationOverlapsPrimaryPath(scene)).toBe(true);
+      }
+    });
+
+    it('(pozytyw kontrolny, §20.1a/c) CT+przekaźnik+wyłącznik z DWIEMA liniami RÓŻNYMI (measurementLink CT→przekaźnik, protectionTrip przekaźnik→wyłącznik), oba zakotwiczone na REJESTROWANYCH portach TEGO SAMEGO pola ⇒ zero luk', () => {
+      const scene = buildSceneV3(enm, 2);
+      const fakeCt: SceneV3['symbols'][number] = {
+        symbolId: 'currentTransformer',
+        x: 700,
+        y: 900,
+        meta: { ownerRef: 'bay-z', elementKind: 'apparatus' },
+      };
+      const fakeBreaker: SceneV3['symbols'][number] = {
+        symbolId: 'breaker',
+        x: 700,
+        y: 950,
+        meta: { ownerRef: 'bay-z', elementKind: 'apparatus' },
+      };
+      const fakeRelay: SceneV3['symbols'][number] = {
+        symbolId: 'protectionRelay',
+        x: 780,
+        y: 900,
+        meta: { ownerRef: 'bay-z', elementKind: 'protectionAnnotation', protectionCodes: ['51'] },
+      };
+      const ctTop = { x: fakeCt.x + 8, y: fakeCt.y }; // 'top' port offset (8,0)
+      const breakerTop = { x: fakeBreaker.x + 8, y: fakeBreaker.y };
+      const relayLink = { x: fakeRelay.x, y: fakeRelay.y + 8 }; // 'link' port offset (0,8)
+      const synthetic: SceneV3 = {
+        ...scene,
+        symbols: [...scene.symbols, fakeCt, fakeBreaker, fakeRelay],
+        segments: [
+          ...scene.segments,
+          {
+            points: [ctTop, { x: relayLink.x, y: ctTop.y }, relayLink],
+            meta: { kind: 'measurementLink', ownerRef: 'bay-z#measurement-link', elementKind: 'protectionAnnotation' },
+          },
+          {
+            points: [breakerTop, { x: relayLink.x, y: breakerTop.y }, relayLink],
+            meta: { kind: 'protectionTrip', ownerRef: 'bay-z#trip-line', elementKind: 'protectionAnnotation' },
+          },
+        ],
+      };
+      expect(secondaryLinkDualityGaps(synthetic)).toEqual([]);
+      expect(allSecondaryLinksValid(synthetic)).toBe(true);
+      // Dwie linie o RÓŻNYCH ownerRef (§20.1a dosłownie) — kontrola jawna.
+      const secondary = synthetic.segments.filter(
+        (s) => s.meta?.kind === 'measurementLink' || s.meta?.kind === 'protectionTrip',
+      );
+      expect(secondary).toHaveLength(2);
+      expect(new Set(secondary.map((s) => s.meta?.ownerRef)).size).toBe(2);
+    });
+
+    it('(negatyw obowiązkowy, §20.1b) linia pomiarowa dotykająca PORTU WYŁĄCZNIKA (bezpośrednio „pomiar z wyłącznika") ⇒ secondaryLinkDualityGaps WYKRYWA', () => {
+      const scene = buildSceneV3(enm, 2);
+      const fakeBreaker: SceneV3['symbols'][number] = {
+        symbolId: 'breaker',
+        x: 700,
+        y: 950,
+        meta: { ownerRef: 'bay-w', elementKind: 'apparatus' },
+      };
+      const breakerTop = { x: fakeBreaker.x + 8, y: fakeBreaker.y };
+      const synthetic: SceneV3 = {
+        ...scene,
+        symbols: [...scene.symbols, fakeBreaker],
+        segments: [
+          ...scene.segments,
+          {
+            points: [breakerTop, { x: breakerTop.x, y: breakerTop.y - 20 }],
+            meta: { kind: 'measurementLink', ownerRef: 'bay-w#measurement-link', elementKind: 'protectionAnnotation' },
+          },
+        ],
+      };
+      const gaps = secondaryLinkDualityGaps(synthetic);
+      expect(gaps.some((g) => g.reason === 'direct-breaker-measurement-link')).toBe(true);
+      expect(allSecondaryLinksValid(synthetic)).toBe(false);
+    });
+
+    it('(negatyw obowiązkowy, §20.1c) linia pomiarowa BEZ zakotwiczenia na REJESTROWANYCH portach CT/przekaźnika TEGO SAMEGO pola ⇒ secondaryLinkDualityGaps WYKRYWA (endpoint-mismatch)', () => {
+      const scene = buildSceneV3(enm, 2);
+      const synthetic: SceneV3 = {
+        ...scene,
+        segments: [
+          ...scene.segments,
+          {
+            points: [{ x: 1200, y: 1200 }, { x: 1300, y: 1200 }],
+            meta: { kind: 'measurementLink', ownerRef: 'bay-v#measurement-link', elementKind: 'protectionAnnotation' },
+          },
+        ],
+      };
+      const gaps = secondaryLinkDualityGaps(synthetic);
+      expect(gaps.some((g) => g.reason === 'measurement-link-endpoint-mismatch')).toBe(true);
+      expect(allSecondaryLinksValid(synthetic)).toBe(false);
+    });
+
+    // -----------------------------------------------------------------------
+    // §20.1e: linia pomiarowa WYŁĄCZONA z continuity_probe toru mocy —
+    // TEN SAM wzorzec R-3 (F9.9) co protectionTrip, teraz dla measurementLink.
+    // -----------------------------------------------------------------------
+    it('§20.1e: segment measurementLink łączący ODCIĘTE źródło z szyną ⇒ źródło NADAL zgłaszane jako odcięte (linia pomiarowa wykluczona z unii ciągłości)', () => {
+      const scene = buildSceneV3(enm, 2);
+      const strandedSource: SceneV3['symbols'][number] = {
+        symbolId: 'gridSource',
+        x: 800,
+        y: 1100,
+        meta: { ownerRef: 'src-stranded-2', elementKind: 'source' },
+      };
+      const islandBus: SceneV3['segments'][number] = {
+        points: [{ x: 900, y: 1124 }, { x: 1000, y: 1124 }],
+        meta: { kind: 'bus', ownerRef: 'island2#sn-bus', elementKind: 'bus' },
+      };
+      const measurementBridge: SceneV3['segments'][number] = {
+        points: [{ x: 808, y: 1124 }, { x: 900, y: 1124 }],
+        meta: { kind: 'measurementLink', ownerRef: 'src-stranded-2#measurement-link', elementKind: 'protectionAnnotation' },
+      };
+      const synthetic: SceneV3 = {
+        ...scene,
+        symbols: [...scene.symbols, strandedSource],
+        segments: [...scene.segments, islandBus, measurementBridge],
+      };
+      const gaps = sourceConnectivityGaps(synthetic);
+      expect(gaps.some((g) => g.sourceId === 'src-stranded-2')).toBe(true);
+    });
+
+    // -----------------------------------------------------------------------
+    // §20.1/§17.4: obie linie wtórne ukryte na L0/L1 (rozszerzenie
+    // `noProtectionAnnotationAtLod0`/`protectionAnnotationAtLod1IsCircleOnly`
+    // o measurementLink, patrz `scene/buildScene.ts`).
+    // -----------------------------------------------------------------------
+    it('(negatyw obowiązkowy) segment measurementLink fabrykowany na L1 ⇒ protectionAnnotationAtLod1IsCircleOnly FAIL', () => {
+      const scene = buildSceneV3(enm, 1);
+      const synthetic: SceneV3 = {
+        ...scene,
+        segments: [
+          ...scene.segments,
+          {
+            points: [{ x: 800, y: 900 }, { x: 900, y: 900 }],
+            meta: { kind: 'measurementLink', ownerRef: 'bay-l1b#measurement-link', elementKind: 'protectionAnnotation' },
+          },
+        ],
+      };
+      expect(protectionAnnotationAtLod1IsCircleOnly(synthetic)).toBe(false);
+    });
+
+    it('(negatyw obowiązkowy) segment measurementLink fabrykowany na L0 ⇒ noProtectionAnnotationAtLod0 FAIL', () => {
+      const scene = buildSceneV3(enm, 0);
+      const synthetic: SceneV3 = {
+        ...scene,
+        segments: [
+          ...scene.segments,
+          {
+            points: [{ x: 800, y: 900 }, { x: 900, y: 900 }],
+            meta: { kind: 'measurementLink', ownerRef: 'bay-l0#measurement-link', elementKind: 'protectionAnnotation' },
+          },
+        ],
+      };
+      expect(noProtectionAnnotationAtLod0(synthetic)).toBe(false);
+    });
+
+    // -----------------------------------------------------------------------
+    // §20.4 meter_symbol_disambiguation.
+    // -----------------------------------------------------------------------
+    it('(negatyw obowiązkowy, §20.4a) okrąg „M" BEZ właściciela (pole) ⇒ meterDisambiguationGaps WYKRYWA', () => {
+      const scene = buildSceneV3(enm, 2);
+      const synthetic: SceneV3 = {
+        ...scene,
+        symbols: [...scene.symbols, { symbolId: 'meter', x: 800, y: 800, meta: {} }],
+      };
+      const gaps = meterDisambiguationGaps(synthetic);
+      expect(gaps.some((g) => g.reason === 'meter-without-owner')).toBe(true);
+      expect(allMeterSymbolsDisambiguated(synthetic)).toBe(false);
+    });
+
+    it('(pozytyw kontrolny, §20.4a) okrąg „M" Z właścicielem (pole) ⇒ zero luk', () => {
+      const scene = buildSceneV3(enm, 2);
+      const synthetic: SceneV3 = {
+        ...scene,
+        symbols: [
+          ...scene.symbols,
+          { symbolId: 'meter', x: 800, y: 800, meta: { ownerRef: 'bay-meter-ok', elementKind: 'protectionAnnotation' } },
+        ],
+      };
+      expect(meterDisambiguationGaps(synthetic)).toEqual([]);
+      expect(allMeterSymbolsDisambiguated(synthetic)).toBe(true);
+    });
+
+    // -----------------------------------------------------------------------
+    // §20.3 annotation_no_overlap_primary_probe — ALIAS udokumentowany
+    // `symbolWireCollisions` (patrz docstring `annotationOverlapsPrimaryPath`,
+    // `scene/buildScene.ts`): dowód, że FILTR sam działa (nie tylko „zero bo
+    // zero" na fixturze referencyjnej).
+    // -----------------------------------------------------------------------
+    it('(negatyw obowiązkowy, §20.3a) symbol warstwy adnotacji (protectionRelay) nachodzący na przewód toru pierwotnego (bez styku portem) ⇒ annotationOverlapsPrimaryPath WYKRYWA', () => {
+      const scene = buildSceneV3(enm, 2);
+      const primarySeg = scene.segments.find((s) => s.meta?.elementKind !== 'protectionAnnotation' && s.points.length >= 2);
+      expect(primarySeg).toBeTruthy();
+      const p0 = primarySeg!.points[0];
+      // Okrąg (24×24) wyśrodkowany DOKŁADNIE na pierwszym wierzchołku odcinka
+      // pierwotnego — nachodzi na przewód, BEZ dotyku WŁASNYM portem (fałszywy
+      // fabrykowany symbol nie ma zarejestrowanego portu w tym miejscu).
+      const fakeRelay: SceneV3['symbols'][number] = {
+        symbolId: 'protectionRelay',
+        x: p0.x - 12,
+        y: p0.y - 12,
+        meta: { ownerRef: 'bay-overlap', elementKind: 'protectionAnnotation', protectionCodes: ['51'] },
+      };
+      const synthetic: SceneV3 = { ...scene, symbols: [...scene.symbols, fakeRelay] };
+      const hits = annotationOverlapsPrimaryPath(synthetic);
+      expect(hits.some((h) => h.reason === 'annotation-symbol-touches-primary-wire')).toBe(true);
+      expect(noAnnotationOverlapsPrimaryPath(synthetic)).toBe(false);
+      // Kontrola: `symbolWireCollisions` GENERYCZNA łapie TĘ SAMĄ kolizję —
+      // dowód, że `annotationOverlapsPrimaryPath` jest ALIASEM/filtrem, nie
+      // niezależną (potencjalnie rozjeżdżającą się) implementacją.
+      expect(symbolWireCollisions(synthetic).length).toBeGreaterThan(0);
+    });
+  },
+);

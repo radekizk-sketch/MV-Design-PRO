@@ -1221,7 +1221,7 @@ lokalnych łatek i duplikacji elektryki adaptera.
   zero zmiany wizualnej fixtury. Bramki: tsc/eslint czyste, vitest sld 171/3293, accept ALL PASS,
   pełna regresja exit 0, guardy zielone.
 
-### F10.5. Dwie linie wtórne + walidacja 67N/87T + dyscyplina adnotacji
+### F10.5. [DONE] Dwie linie wtórne + walidacja topologiczna 67N/87T/51N + dyscyplina adnotacji (§20)
 - Zakres: linia sygnału pomiarowego CT→przekaźnik (`ct_ref`) osobna od linii trip
   przekaźnik→wyłącznik (`breaker_ref`) — §20.1; warstwa ANALYSIS/COMPLIANCE waliduje prerekwizyty
   topologiczne 67N⇒VT, 87T⇒TR+2×CT, 51N⇒I0 na ISTNIEJĄCYCH polach — §20.2 (NIE solver, NIE render);
@@ -1233,6 +1233,23 @@ lokalnych łatek i duplikacji elektryki adaptera.
 - Autoryzacje: `v3/compose/station.ts`, `v3/compose/gpz.ts`, nowy walidator topologiczny funkcji
   zabezpieczeń w warstwie `backend/src/analysis/` (lub `backend/src/compliance/` — decyzja
   umiejscowienia przy realizacji, zgodnie z CLAUDE.md „Analiza = interpretacja, NIE fizyka"), testy.
+
+- **Wynik (2026-07-16, agent + odbiór osobisty nadzorcy):** §20.1: linia pomiarowa CT→przekaźnik
+  (measurementLink, dash 2-2, 0.6) ODRĘBNA od TRIP przekaźnik→wyłącznik (4-2, 0.8); oba wykluczone
+  z unii spójności (R-3 rozszerzone); secondary_link_duality_probe z negatywami. §20.2: czysta
+  funkcja protectionFunctionTopologyGaps (67N⇒VT, 87T⇒Transformer, 51N⇒CT — uproszczenie
+  udokumentowane; zero ostrzeżeń przy braku danych = WHITE BOX) w compose; badge „!" w rogu okręgu
+  (wewnątrz bboxa 24×24 — zero nowej rezerwacji); stopNotes prefix protection.topology.*;
+  DOMYKA artefakt demo D2-7: „87T bez TR ⇒ ostrzeżenie; z TR ⇒ zero" dowiedzione testem
+  i wizualnie (badge obecny/nieobecny na syntetyku — PNG ocenione osobiście). §20.3:
+  annotation_no_overlap_primary_probe jako udokumentowany ALIAS filtrujący generyczne kolizje
+  (zero duplikacji logiki) + negatyw dowodzący że filtr gryzie. §20.4: „M" jednoznaczne
+  (meter z ownerRef; napęd silnikowy niemodelowany — z konstrukcji) + wpis legendy „Miernik
+  pomiarowy (nie napęd silnikowy)". GPZ poza zakresem (brak rejestru ct_ref/device_ref —
+  F8c/F9.10, spójne z torem wyzwalania). Baseline'y NIETKNIĘTE; fixtura bez zmiany wizualnej
+  (0 assignments — sondy „vacuously true" z jawną notatką + negatywy). Bramki: tsc/eslint czyste,
+  vitest sld 172 plików/3327, accept ALL PASS, pełna regresja exit 0, guardy (w tym
+  overlay_no_physics) zielone.
 
 ### F10.6. [DOMAIN] designation + przekładnie + strefa 87T + interlock ES (+ zaległe F9.6b)
 - Zakres: `BayPrimaryDevice.designation` (D1, identyfikator per-aparat, rozstrzyga V12K-035);

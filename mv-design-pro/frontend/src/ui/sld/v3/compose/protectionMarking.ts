@@ -191,6 +191,16 @@ export interface ResolvedProtectionMarking {
    *  stosu (§17.2: „nigdy linia do domyślnego aparatu") — wołający NIE rysuje
    *  linii i zgłasza `bay.protection.trip_link_unresolved`. */
   readonly tripTarget: PlacedStackDevice | null;
+  /** F10.5 (spec §20.1): aparat CT, do którego prowadzi linia POMIAROWA
+   *  (sygnał prądowy CT→przekaźnik) — ODDZIELNE od `anchor` (ten opisuje
+   *  WYŁĄCZNIE pozycjonowanie geometryczne okręgu, `anchor === ctAnchor`
+   *  gdy `ctAnchor` niepusty, ale `anchor` MOŻE spaść na `tripTarget`/
+   *  fallback gdy `ct_ref` nierozwiązywalny — patrz `fallbackAnchor` niżej).
+   *  `null` gdy `ProtectionAssignment.ct_ref` nierozwiązywalny na aparat
+   *  `currentTransformer` NARYSOWANEGO stosu — wołający NIE rysuje linii
+   *  pomiarowej i zgłasza `bay.protection.measurement_link_unresolved`
+   *  (wzorzec `tripTarget`/`bay.protection.trip_link_unresolved` wyżej). */
+  readonly ctAnchor: PlacedStackDevice | null;
 }
 
 /**
@@ -224,7 +234,7 @@ export function resolveStationProtectionMarking(
   const fallbackAnchor = stack.find((d) => d.symbolId === 'breaker') ?? stack[0];
   const anchor = ctAnchor ?? tripTarget ?? fallbackAnchor;
 
-  return { codes, anchor, tripTarget };
+  return { codes, anchor, tripTarget, ctAnchor };
 }
 
 /**

@@ -164,7 +164,14 @@ function SceneSymbolNode(props: {
       {/* Cel kliku powiększony do bboxa symbolu (ergonomia — glify IEC bywają
        *  wąskie, np. odłącznik 16×24 rysowany kreską). Zero widocznego stylu. */}
       <rect x={symbol.x} y={symbol.y} width={def.width} height={def.height} fill="transparent" />
-      <Glyph x={symbol.x} y={symbol.y} state={symbol.state} stroke={stroke} labelLines={symbol.meta?.protectionCodes} />
+      <Glyph
+        x={symbol.x}
+        y={symbol.y}
+        state={symbol.state}
+        stroke={stroke}
+        labelLines={symbol.meta?.protectionCodes}
+        hasTopologyWarning={(symbol.meta?.topologyGaps?.length ?? 0) > 0}
+      />
     </g>
   );
 }
@@ -179,10 +186,19 @@ function SceneSegmentNode(props: {
   const testId = segmentTestId(segment, index);
   const kind = segment.meta?.kind ?? 'sn';
   const strokeWidth = SEGMENT_STROKE_WIDTH[kind];
-  // F9.9 (spec §17.1 „dash 4-2") — patrz `compose/preview.tsx` `PreviewSegmentNode`,
-  // ta sama reguła (harness debug i kanwa docelowa zgodnie, zero duplikacji logiki poza kopią).
+  // F9.9 (spec §17.1 „dash 4-2") / F10.5 (spec §20.1 „linie rozróżnialne") —
+  // patrz `compose/preview.tsx` `PreviewSegmentNode`, ta sama reguła (harness
+  // debug i kanwa docelowa zgodnie, zero duplikacji logiki poza kopią).
   const strokeDasharray =
-    kind === 'protectionTrip' ? '4 2' : segment.meta?.dashed ? '4 3' : kind === 'leader' ? '3 2' : undefined;
+    kind === 'protectionTrip'
+      ? '4 2'
+      : kind === 'measurementLink'
+        ? '2 2'
+        : segment.meta?.dashed
+          ? '4 3'
+          : kind === 'leader'
+            ? '3 2'
+            : undefined;
   // F8b-1 FIX (recenzja): jak w SceneSymbolNode — ownerRef przed testId.
   const energizedSeg = segment.meta?.ownerRef != null
     ? overlay?.energizedByOwnerRef?.[segment.meta.ownerRef] ?? overlay?.energizedByTestId[testId]

@@ -45,6 +45,11 @@ const DEFAULT_SYMBOL_LEGEND_IDS: readonly SymbolId[] = [
   'transformer2W',
   'noPoint',
   'currentTransformer',
+  // F10.5 (spec §20.4, D2-7): „M" musi być jednoznacznie odróżnialne od
+  // (niemodelowanego) napędu silnikowego aparatu — legenda niesie
+  // rozstrzygający wpis (`meter_symbol_disambiguation` (c),
+  // `scene/buildScene.ts`), wzorzec adnotacji ES z F10.1 poniżej.
+  'meter',
 ];
 
 function buildDefaultLegend(): readonly SheetLegendEntry[] {
@@ -56,11 +61,14 @@ function buildDefaultLegend(): readonly SheetLegendEntry[] {
     // konwencja dotyczy każdego ES jednakowo, więc jej miejscem jest
     // LEGENDA arkusza (powtarzanie 120× przy każdym symbolu to szum
     // graficzny i źródło kolizji — zweryfikowane wyroczniami; decyzja
-    // nadzorcy F10.1).
+    // nadzorcy F10.1). F10.5 (spec §20.4): TEN SAM wzorzec dla miernika —
+    // legenda rozstrzyga jednoznaczność „M" (nie napęd silnikowy).
     labelPl:
       id === 'earthSwitch'
         ? `${SYMBOL_DEFS[id].labelPl} (blokada zamkn. na tor pod napięciem)`
-        : SYMBOL_DEFS[id].labelPl,
+        : id === 'meter'
+          ? `${SYMBOL_DEFS[id].labelPl} pomiarowy (nie napęd silnikowy)`
+          : SYMBOL_DEFS[id].labelPl,
   }));
   return [
     ...symbolEntries,

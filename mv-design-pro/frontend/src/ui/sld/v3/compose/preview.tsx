@@ -31,6 +31,7 @@ import { SYMBOL_GLYPHS, type SwitchState } from '../symbols/glyphs';
 import { LABEL_TYPOGRAPHY } from '../core/text';
 import type { OwnedLabel } from '../layout/labels';
 import type { RouteVertex } from '../layout/route';
+import type { ProtectionTopologyGap } from './protectionTopologyValidation';
 
 /** Rodzaj odcinka → grubość (spec §6). `'bus'` obejmuje WSZYSTKIE szyny
  *  (WN/SN, primary/reserve/ring-closure) — spec nie różnicuje grubości szyn
@@ -40,7 +41,14 @@ import type { RouteVertex } from '../layout/route';
  *  Element WARSTWY ADNOTACJI (§17.1: „nie uczestniczy w ciągłości elektrycznej
  *  ani w wyroczniach toru") — WYŁĄCZONY z wyroczni continuity/port_probe
  *  (`scene/buildScene.ts`), ale OBJĘTY wyroczniami kolizji/siatki (§17.5e). */
-export type PreviewSegmentKind = 'bus' | 'sn' | 'lv' | 'leader' | 'protectionTrip';
+/** F10.5 (spec §20.1): `'measurementLink'` — linia SYGNAŁU POMIAROWEGO
+ *  CT→przekaźnik, ODRĘBNA od `'protectionTrip'` (tor TRIP przekaźnik→
+ *  wyłącznik) — zakaz „jednej anonimowej linii" (§20.1 dosłownie).
+ *  Rozróżnialna: cieńsza (0.6 vs 0.8) + INNY dasharray (2-2 vs 4-2, patrz
+ *  `PreviewSegmentNode`/`SldCanvasV3`). Element WARSTWY ADNOTACJI (jak
+ *  `'protectionTrip'`) — WYŁĄCZONY z continuity/port_probe toru mocy
+ *  (§20.1e), OBJĘTY wyroczniami kolizji/siatki. */
+export type PreviewSegmentKind = 'bus' | 'sn' | 'lv' | 'leader' | 'protectionTrip' | 'measurementLink';
 
 /** Eksportowane (F6b): `SldCanvasV3` reużywa TĘ SAMĄ hierarchię grubości
  *  (spec §6), zero duplikacji stałych między harnessem debug i kanwą docelową. */
@@ -52,6 +60,9 @@ export const SEGMENT_STROKE_WIDTH: Readonly<Record<PreviewSegmentKind, number>> 
   // F9.9 (spec §17.1): tor wyzwalania — cienki jak leader (adnotacja, nie tor
   // mocy), odróżniony dasharray (4-2, patrz `PreviewSegmentNode`/`SldCanvasV3`).
   protectionTrip: 0.8,
+  // F10.5 (spec §20.1): linia pomiarowa — CIEŃSZA niż tor wyzwalania (§20.1
+  // „linia pomiarowa cienka od CT"), dodatkowo odróżniona dasharray (2-2).
+  measurementLink: 0.6,
 };
 
 /**
@@ -136,6 +147,13 @@ export interface PreviewElementMeta {
    *  `protectionRelay` (`elementKind==='protectionAnnotation'`), przekazane
    *  1:1 do `ProtectionRelayGlyph.labelLines` (`symbols/glyphs.tsx`). */
   readonly protectionCodes?: readonly string[];
+  /** F10.5 (spec §20.2): braki topologiczne funkcji zabezpieczeń
+   *  (`protectionFunctionTopologyGaps`, `./protectionTopologyValidation`) —
+   *  WYŁĄCZNIE dla symboli `protectionRelay`. Obecność (długość > 0) steruje
+   *  adnotacją „!" (`ProtectionRelayGlyph.hasTopologyWarning`) — treść żyje
+   *  w `missingData`/inspektorze (§20.3 „zwarta, nie zasłania toru"), NIE na
+   *  scenie jako osobna etykieta tekstowa. */
+  readonly topologyGaps?: readonly ProtectionTopologyGap[];
 }
 
 export interface PreviewSymbol {
@@ -200,7 +218,14 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
       data-designation-source={symbol.meta?.designationSource}
       data-missing-data={symbol.meta?.missingData ? 'true' : undefined}
     >
-      <Glyph x={symbol.x} y={symbol.y} state={symbol.state} stroke={stroke} labelLines={symbol.meta?.protectionCodes} />
+      <Glyph
+        x={symbol.x}
+        y={symbol.y}
+        state={symbol.state}
+        stroke={stroke}
+        labelLines={symbol.meta?.protectionCodes}
+        hasTopologyWarning={(symbol.meta?.topologyGaps?.length ?? 0) > 0}
+      />
     </g>
   );
 }
@@ -212,9 +237,19 @@ function PreviewSegmentNode(props: { readonly segment: PreviewSegment; readonly 
   const strokeWidth = SEGMENT_STROKE_WIDTH[kind];
   // F9.9 (spec §17.1: „linia wyzwalania: przerywana, dash 4-2") — dasharray
   // WŁASNY dla `protectionTrip`, odróżniony od `dashed` (4-3, szyna rezerwowa)
-  // i `leader` (3-2, leader etykiety).
+  // i `leader` (3-2, leader etykiety). F10.5 (spec §20.1): `measurementLink`
+  // dostaje WŁASNY, INNY dasharray (2-2) — dwie linie wtórne muszą być
+  // rozróżnialne wizualnie (§20.1 dosłownie), nie tylko przez `ownerRef`.
   const strokeDasharray =
-    kind === 'protectionTrip' ? '4 2' : segment.meta?.dashed ? '4 3' : kind === 'leader' ? '3 2' : undefined;
+    kind === 'protectionTrip'
+      ? '4 2'
+      : kind === 'measurementLink'
+        ? '2 2'
+        : segment.meta?.dashed
+          ? '4 3'
+          : kind === 'leader'
+            ? '3 2'
+            : undefined;
   return (
     <path
       d={pointsToPath(segment.points)}

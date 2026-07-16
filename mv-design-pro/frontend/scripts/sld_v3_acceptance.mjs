@@ -58,6 +58,12 @@ import {
   ctAnnotationGaps,
   protectionAnnotationAtLod1IsCircleOnly,
   protectionMarkingGaps,
+  allSecondaryLinksValid,
+  secondaryLinkDualityGaps,
+  noAnnotationOverlapsPrimaryPath,
+  annotationOverlapsPrimaryPath,
+  allMeterSymbolsDisambiguated,
+  meterDisambiguationGaps,
   sceneSegmentEndpointGaps,
   sourceConnectivityGaps,
   sourceCoverageGaps,
@@ -924,6 +930,43 @@ for (const lod of LODS) {
     `etykiety=${ctRatingLabelCount}`,
   );
 
+  // -- §20.1 secondary_link_duality_probe (F10.5) ----------------------------
+  // Fixtura referencyjna niesie 0 `protection_assignments`/`measurements`
+  // (patrz F9.9/F10.4) — na TEJ fixturze ta sonda dowodzi „zero linii
+  // wtórnych fabrykowanych" WPROST (0 linii `measurementLink`/`protectionTrip`
+  // w ogóle, dowód vacuously true — TA SAMA sytuacja co `ct_annotation_probe`
+  // wyżej). Dowód POZYTYWNY (dwie linie RÓŻNE, endpoint-y REJESTROWANE,
+  // negatyw „linia prosto do wyłącznika") żyje w testach vitest syntetycznych
+  // (`compose/__tests__/station.test.ts`, `scene/__tests__/buildScene.test.ts`).
+  const measurementLinkCount = scene.segments.filter((s) => s.meta?.kind === 'measurementLink').length;
+  const secondaryGaps = secondaryLinkDualityGaps(scene);
+  check(
+    'secondary_link_duality_probe (§20.1 a-e): linie pomiarowe CT→przekaźnik zakotwiczone na REALNYCH aparatach TEGO SAMEGO pola, nigdy bezpośrednio na wyłączniku',
+    allSecondaryLinksValid(scene),
+    `linie_pomiarowe=${measurementLinkCount} tory_wyzwalania=${tripLineCount} luki=${secondaryGaps.length}`,
+  );
+
+  // -- §20.3 annotation_no_overlap_primary_probe (F10.5) ---------------------
+  // ALIAS udokumentowany `symbolWireCollisions` (patrz docstring
+  // `annotationOverlapsPrimaryPath`) — na TEJ fixturze `symbol_wire_probe`
+  // (sekcja wyżej w tym skrypcie) jest już TWARDYM ZEREM na wszystkich LOD,
+  // więc ta sonda jest tu vacuously true; dowód, że FILTR sam działa (nie
+  // tylko „zero bo zero") żyje w testach syntetycznych.
+  const overlapHits = annotationOverlapsPrimaryPath(scene);
+  check(
+    'annotation_no_overlap_primary_probe (§20.3 a-b, alias `symbolWireCollisions`): zero kolizji warstwa-adnotacji↔tor-pierwotny',
+    noAnnotationOverlapsPrimaryPath(scene),
+    `kolizje=${overlapHits.length}`,
+  );
+
+  // -- §20.4 meter_symbol_disambiguation (F10.5) -----------------------------
+  const meterGaps = meterDisambiguationGaps(scene);
+  check(
+    'meter_symbol_disambiguation (§20.4 a): każdy okrąg „M" ma właściciela (pole) — miernik zawsze pochodzi z realnego Measurement.purpose="metering"',
+    allMeterSymbolsDisambiguated(scene),
+    `mierniki=${meterCount} luki=${meterGaps.length}`,
+  );
+
   // -- §16/§15.2 ciągłość elektryczna + lod_path_probe -----------------------
   // F9.7: rozszerzone z „WYŁĄCZNIE LOD 2" na WSZYSTKIE LOD (patrz docstring
   // `checkContinuity` — dowód empiryczny, spec §15.2 wymaga tego na L0/L1/L2).
@@ -977,6 +1020,42 @@ for (const lod of LODS) {
     'ct_annotation_probe (test negatywny — dowód, że wyrocznia gryzie): etykieta przekładni CT fabrykowana BEZ symbolu currentTransformer MUSI dać FAIL',
     allCtAnnotationsValid(fabricated) === false,
   );
+}
+
+// -- secondary_link_duality_probe (negatyw obowiązkowy, §20.1b) ------------
+// Dowód, że wyrocznia GRYZIE: linia pomiarowa fabrykowana WPROST na port
+// realnego `breaker` (symuluje „jedną anonimową linię do wyłącznika",
+// dokładnie to, czego §20.1 zakazuje) MUSI failować `allSecondaryLinksValid`
+// (wzorzec `protection_marking_probe` wyżej).
+{
+  const scene = buildSceneV3(enm, 2);
+  const breaker = scene.symbols.find((s) => s.symbolId === 'breaker');
+  if (breaker) {
+    const port = { x: breaker.x + SYMBOL_DEFS.breaker.width / 2, y: breaker.y };
+    const fabricated = {
+      ...scene,
+      segments: [
+        ...scene.segments,
+        {
+          points: [port, { x: port.x, y: port.y - 10 }],
+          meta: {
+            kind: 'measurementLink',
+            ownerRef: 'accept-sld-v3-fabricated#measurement-link',
+            elementKind: 'protectionAnnotation',
+          },
+        },
+      ],
+    };
+    check(
+      'secondary_link_duality_probe (test negatywny — dowód, że wyrocznia gryzie): linia pomiarowa fabrykowana WPROST na port wyłącznika MUSI dać FAIL',
+      allSecondaryLinksValid(fabricated) === false,
+    );
+  } else {
+    // Fixtura referencyjna (sieć MV 53-stacyjna) niesie dziesiątki `breaker` —
+    // gałąź defensywna, nie oczekiwana w praktyce (dowód POZYTYWNY negatywu
+    // żyje wtedy WYŁĄCZNIE w testach vitest syntetycznych).
+    line('  [SKIP] secondary_link_duality_probe (test negatywny): fixtura L2 bez symbolu breaker');
+  }
 }
 
 // -- §15.2 lod_path_probe: „pokrywa TE SAME połączenia topologiczne" -------

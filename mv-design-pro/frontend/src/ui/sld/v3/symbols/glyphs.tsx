@@ -25,6 +25,15 @@ export interface GlyphProps {
    *  glify je ignorują (wspólny `GlyphProps`, jak `state`, zero rozgałęzień
    *  sygnatury per symbol). */
   readonly labelLines?: readonly string[];
+  /** F10.5 (spec §20.2): `true` gdy przekaźnik ma nierozstrzygnięty
+   *  prerekwizyt topologiczny funkcji (67N⇒VT/87T⇒TR/51N⇒I0) —
+   *  WYŁĄCZNIE `ProtectionRelayGlyph` czyta to pole (jak `labelLines`).
+   *  Rysuje MAŁY badge „!" w rogu okręgu (geometria WEWNĄTRZ 24×24 bboxa,
+   *  zero nowej rezerwacji width/height w `layout/measure.ts` — §20.3
+   *  „warstwa zabezpieczeń zwarta, nie zasłania toru pierwotnego"). Treść
+   *  ostrzeżenia (np. „67N: brak VT") żyje w `missingData`/inspektorze, NIE
+   *  na scenie jako tekst — glif niesie WYŁĄCZNIE sygnał obecności. */
+  readonly hasTopologyWarning?: boolean;
 }
 
 function glyphGroupProps(id: SymbolId, props: GlyphProps) {
@@ -315,6 +324,22 @@ export function ProtectionRelayGlyph(props: GlyphProps): JSX.Element {
           {line}
         </text>
       ))}
+      {/* F10.5 (spec §20.2): badge „!" — nierozstrzygnięty prerekwizyt
+       *  topologiczny funkcji (67N⇒VT/87T⇒TR/51N⇒I0). Geometria WEWNĄTRZ
+       *  bboxa 24×24 (róg NE okręgu głównego, r=11 wokół (12,12) zostawia
+       *  narożniki wolne) — zero nowej rezerwacji miejsca, mono (jak reszta
+       *  glifu bazowego, P5 — kolor NIE koduje tu stanu fizycznego). */}
+      {props.hasTopologyWarning && (
+        <g data-topology-warning="true">
+          <circle cx={19.5} cy={4.5} r={3.6} fill="none" stroke={stroke(props)} strokeWidth={0.9} />
+          <text
+            x={19.5} y={6.7} textAnchor="middle"
+            fill={stroke(props)} fontFamily="sans-serif" fontSize={6} fontWeight={700}
+          >
+            !
+          </text>
+        </g>
+      )}
     </g>
   );
 }

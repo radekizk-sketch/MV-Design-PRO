@@ -107,6 +107,11 @@ import {
   type PlacedStackDevice,
   type ProtectionAnnotationDetail,
 } from './protectionMarking';
+import {
+  protectionFunctionTopologyGaps,
+  protectionTopologyGapCode,
+  type ProtectionTopologyGap,
+} from './protectionTopologyValidation';
 
 // F9.3: `apparatusSymbolsForRole`/`stackFootprint` przeniesione do
 // `./apparatusSequence` (jedna prawda z `layout/measure.ts`) — re-eksport
@@ -197,6 +202,14 @@ export interface ComposedSymbolInstance {
   /** F9.9 (spec §17.3): kody funkcji przekaźnika — WYŁĄCZNIE dla instancji
    *  `symbolId==='protectionRelay'` (dwa pierwsze wg kolejności danych). */
   readonly protectionCodes?: readonly string[];
+  /** F10.5 (spec §20.2): braki topologiczne funkcji zabezpieczeń
+   *  (`protectionFunctionTopologyGaps`, `./protectionTopologyValidation`) —
+   *  WYŁĄCZNIE dla instancji `symbolId==='protectionRelay'`. `undefined`/puste
+   *  gdy brak ostrzeżeń (konfiguracja spójna LUB brak danych o aparatach —
+   *  §20.2 „zero zgadywania"). Wołający (`scene/buildScene.ts`) projektuje na
+   *  `PreviewElementMeta.topologyGaps` → `GlyphProps.hasTopologyWarning`
+   *  (adnotacja „!" przy okręgu). */
+  readonly protectionTopologyGaps?: readonly ProtectionTopologyGap[];
   /** F9.3 (spec §12.1): pochodzenie stosu tego pola — `'dane'` gdy zbudowany
    *  z `Bay.primary_devices`, `'konwencja'` gdy z fallbacku §12.4. Audytor
    *  DOM czyta to jako `data-apparatus-source` (`scene/buildScene.ts`,
@@ -289,6 +302,14 @@ export interface StationComposition {
   /** F9.9 (spec §17.1): tor(y) wyzwalania (linia przerywana) — ODDZIELNE od
    *  `segments` z tego samego powodu co `protectionSymbols` wyżej. */
   readonly protectionSegments: readonly ComposedSegment[];
+  /** F10.5 (spec §20.1): linia(e) SYGNAŁU POMIAROWEGO CT→przekaźnik —
+   *  ODRĘBNA lista od `protectionSegments` (tor TRIP przekaźnik→wyłącznik),
+   *  żeby wołający (`scene/buildScene.ts`) mógł nadać jej WŁASNY `meta.kind`
+   *  (`'measurementLink'`, odróżnialny stylem od `'protectionTrip'`, §20.1
+   *  „obie linie rozróżnialne wizualnie") bez zgadywania po `ownerRef`. Ten
+   *  sam powód wykluczenia z ciągłości/portów toru mocy co `protectionSegments`
+   *  (§20.1e). */
+  readonly measurementSegments: readonly ComposedSegment[];
 }
 
 // ---------------------------------------------------------------------------
@@ -613,6 +634,9 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   const protectionLabels: SimpleAnchoredOwnerInput[] = [];
   const protectionSymbols: ComposedSymbolInstance[] = [];
   const protectionSegments: ComposedSegment[] = [];
+  // F10.5 (spec §20.1): linia(e) sygnału pomiarowego CT→przekaźnik — patrz
+  // docstring `StationComposition.measurementSegments`.
+  const measurementSegments: ComposedSegment[] = [];
   // F10.3 (spec §18.4): etykieta szyny SN — patrz docstring
   // `StationCompositionLabelInputs.busbar`.
   const busbarLabels: SimpleAnchoredOwnerInput[] = [];
@@ -719,6 +743,13 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         relayCircleTopY = circleTopY;
         const linkPortDef = SYMBOL_DEFS.protectionRelay.ports[0]; // 'link' (W)
         const linkPortWorld = { x: circleLeftX + linkPortDef.x, y: circleTopY + linkPortDef.y };
+        // F10.5 (spec §20.2): braki topologiczne (67N⇒VT, 87T⇒TR, 51N⇒I0) —
+        // na ISTNIEJĄCYCH danych pola (`bay.primaryDevices`, WHITE BOX „zero
+        // zgadywania" gdy dane nieobecne, patrz docstring funkcji). Liczone
+        // WYŁĄCZNIE na L2 (jak „52"/„M"/tor wyzwalania — §17.4 spójnie).
+        const topologyGaps =
+          annotationDetail === 'full' ? protectionFunctionTopologyGaps(marking.codes, bay.primaryDevices) : [];
+        topologyGaps.forEach((gap) => missingData.push(protectionTopologyGapCode(gap)));
         protectionSymbols.push({
           symbolId: 'protectionRelay',
           bayRef: bay.bayRef,
@@ -731,6 +762,11 @@ export function composeStation(input: ComposeStationInput): StationComposition {
           // §17.4 L1 (`'circle-only'`): okrąg BEZ kodów — `undefined`, glif
           // rysuje sam kontur.
           protectionCodes: annotationDetail === 'full' ? marking.codes.slice(0, 2) : undefined,
+          // F10.5 (spec §20.2): adnotacja „!" przy okręgu (glif czyta
+          // WYŁĄCZNIE obecność/pustkę — treść ostrzeżenia żyje w
+          // `missingData`/inspektorze, nie na scenie, spec §20.3 „zwarta,
+          // nie zasłania toru pierwotnego").
+          protectionTopologyGaps: topologyGaps.length > 0 ? topologyGaps : undefined,
         });
 
         if (fullList) {
@@ -803,6 +839,42 @@ export function composeStation(input: ComposeStationInput): StationComposition {
           // SPECYFIKACJI (§17.4), więc rozwiązywalność łącza nie jest tam
           // obserwowalna i nie jest raportowana (audyt luk danych = L2).
           missingData.push('bay.protection.trip_link_unresolved');
+        }
+
+        // F10.5 (spec §20.1): linia SYGNAŁU POMIAROWEGO CT→przekaźnik —
+        // ODRĘBNA od toru wyzwalania wyżej (zakaz „jednej anonimowej linii
+        // sugerującej pomiar z wyłącznika", §20.1 dosłownie). `marking.
+        // ctAnchor` (ODDZIELNE od `marking.anchor` — patrz docstring
+        // `ResolvedProtectionMarking.ctAnchor`, `./protectionMarking`) jest
+        // niepuste WYŁĄCZNIE gdy `ProtectionAssignment.ct_ref` rozwiązuje się
+        // na REALNY aparat `currentTransformer` TEGO pola — kiedy tak, okrąg
+        // jest już zakotwiczony na TYM CT (`anchor === ctAnchor` z
+        // konstrukcji resolvera), więc linia jest KRÓTKA (CT tuż obok
+        // kolumny adnotacji, zgodnie z uwagą nadzorcy). Zaczep CT: port N
+        // (`top`) — REJESTROWANY (jak port breakera dla toru wyzwalania
+        // wyżej), współdzielony z ciągłością toru głównego — legalne
+        // (§20.1e: linia wtórna WYŁĄCZONA z `continuity_probe`/`port_probe`
+        // toru mocy, patrz `isTripSegment`→ rozszerzone o `measurementLink`
+        // w `scene/buildScene.ts` `sourceConnectivityGaps`).
+        if (annotationDetail === 'full' && marking.ctAnchor) {
+          const ctDef = SYMBOL_DEFS[marking.ctAnchor.symbolId];
+          const ctNorth = ctDef.ports.find((p) => p.dir === 'N');
+          const ctPort = ctNorth
+            ? { x: marking.ctAnchor.x + ctNorth.x, y: marking.ctAnchor.y + ctNorth.y }
+            : { x: marking.ctAnchor.x + ctDef.width / 2, y: marking.ctAnchor.y };
+          measurementSegments.push({
+            ownerRef: `${bay.bayRef}#measurement-link`,
+            points: [
+              ctPort,
+              { x: linkPortWorld.x, y: ctPort.y },
+              { x: linkPortWorld.x, y: linkPortWorld.y },
+            ],
+          });
+        } else if (annotationDetail === 'full') {
+          // §20.1: „brak ct_ref = brak linii pomiarowej + missingData" —
+          // wzorzec `bay.protection.trip_link_unresolved` wyżej, WYŁĄCZNIE
+          // tryb `'full'` (L2, ta sama gałąź LOD co linia sama).
+          missingData.push('bay.protection.measurement_link_unresolved');
         }
       }
 
@@ -1149,6 +1221,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     missingData,
     protectionSymbols,
     protectionSegments,
+    measurementSegments,
   };
 }
 

@@ -158,6 +158,10 @@ import {
   bayHasProtectionAnnotation,
   protectionAnnotationDetailForLod,
 } from '../compose/protectionMarking';
+import {
+  protectionFunctionTopologyGaps,
+  protectionTopologyGapLabel,
+} from '../compose/protectionTopologyValidation';
 import type {
   PreviewComposition,
   PreviewElementKind,
@@ -671,6 +675,37 @@ function composeRowStation(
       `Stacja „${measureInput.id}": pomiar rozliczeniowy wskazany, ale nierozwiązywalny na aparat CT/VT stosu pola (spec §17.2) — miernik „M" pominięty na scenie.`,
     );
   }
+  // F10.5 (spec §20.1): wzorzec `bay.protection.trip_link_unresolved` wyżej —
+  // brak `ProtectionAssignment.ct_ref` rozwiązywalnego na aparat
+  // `currentTransformer` stosu pola = okrąg BEZ linii pomiarowej.
+  if (composition.missingData.includes('bay.protection.measurement_link_unresolved')) {
+    const affected = measureInput.snBays
+      .filter((bay) => bayHasProtectionAnnotation(bay) && (bay.protectionMarking?.codes.length ?? 0) > 0)
+      .map((bay) => bay.bayRef)
+      .join(', ') || 'brak id';
+    stopNotes.push(
+      `Stacja „${measureInput.id}": okrąg przekaźnika narysowany bez linii pomiarowej — ` +
+        `„ProtectionAssignment.ct_ref" nierozwiązywalny na aparat currentTransformer stosu pola (spec §20.1): ${affected}.`,
+    );
+  }
+  // F10.5 (spec §20.2): walidacja topologiczna funkcji zabezpieczeń — kody
+  // `protection.topology.*` niosą WYŁĄCZNIE „obecność ostrzeżenia" w
+  // `missingData` (jeden kod per gap, `protectionTopologyGapCode`); TEKST
+  // odtworzony tu przez PONOWNE wywołanie TEJ SAMEJ czystej funkcji
+  // (`protectionFunctionTopologyGaps`) na `measureInput.snBays` — wzorzec
+  // `bay.protection.trip_link_unresolved` wyżej (żaden per-bay szczegół nie
+  // jest przenoszony przez surowy string kod, WHITE BOX).
+  if (composition.missingData.some((code) => code.startsWith('protection.topology.'))) {
+    const affected: string[] = [];
+    measureInput.snBays.forEach((bay) => {
+      const gaps = protectionFunctionTopologyGaps(bay.protectionMarking?.codes ?? [], bay.primaryDevices);
+      gaps.forEach((gap) => affected.push(`${bay.bayRef} (${protectionTopologyGapLabel(gap)})`));
+    });
+    stopNotes.push(
+      `Stacja „${measureInput.id}": walidacja topologiczna funkcji zabezpieczeń (spec §20.2) — ` +
+        `ostrzeżenia (NIE błąd blokujący): ${affected.join(', ') || 'brak id'}.`,
+    );
+  }
 
   const { previousIndex, nextIndex, branchIndices } = findLineBayIndices(measureInput.snBays);
   const tapXOfBay = (index: number | null): number | null => {
@@ -756,16 +791,29 @@ function composeRowStation(
       ownerRef: s.bayRef,
       elementKind: 'protectionAnnotation',
       protectionCodes: s.protectionCodes,
+      // F10.5 (spec §20.2): braki topologiczne funkcji zabezpieczeń —
+      // przepisane 1:1, `ProtectionRelayGlyph` (`symbols/glyphs.tsx`) czyta
+      // WYŁĄCZNIE obecność/pustkę (adnotacja „!"), treść żyje w
+      // `missingData`/`stopNotes` (WHITE BOX, zero duplikacji tekstu na scenie).
+      topologyGaps: s.protectionTopologyGaps,
     },
   }));
   const protectionSegments: PreviewSegment[] = composition.protectionSegments.map((s) => ({
     points: s.points,
     meta: { kind: 'protectionTrip', ownerRef: s.ownerRef, elementKind: 'protectionAnnotation' },
   }));
+  // F10.5 (spec §20.1): linia SYGNAŁU POMIAROWEGO CT→przekaźnik — ODRĘBNY
+  // `meta.kind` (`'measurementLink'`) od toru wyzwalania wyżej (§20.1: „obie
+  // linie rozróżnialne wizualnie/semantycznie"), TA SAMA `elementKind:
+  // 'protectionAnnotation'` (wyłączenie z ciągłości/portów toru mocy, §20.1e).
+  const measurementSegments: PreviewSegment[] = composition.measurementSegments.map((s) => ({
+    points: s.points,
+    meta: { kind: 'measurementLink', ownerRef: s.ownerRef, elementKind: 'protectionAnnotation' },
+  }));
 
   return {
     symbols: [...symbols, ...protectionSymbols],
-    segments: [...segments, ...protectionSegments],
+    segments: [...segments, ...protectionSegments, ...measurementSegments],
     stationNameOwner: composition.labels.stationName,
     apparatusOwners: composition.labels.apparatus,
     portCaptionOwners: composition.labels.portCaptions,
@@ -2948,20 +2996,27 @@ export function sourceConnectivityGaps(scene: SceneV3): readonly SourceConnectiv
   // pętle), żeby nigdy nie mostkował komponentów spójności (przekaźnik→CB
   // fizycznie łączy obwód wtórny, nie tor pierwotny). Test negatywny w
   // `buildScene.test.ts` (syntetyczny tor łączący odcięte źródło z szyną ⇒
-  // źródło NADAL zgłaszane jako odcięte).
-  const isTripSegment = (si: number): boolean => scene.segments[si].meta?.kind === 'protectionTrip';
+  // źródło NADAL zgłaszane jako odcięte). F10.5 (spec §20.1e): linia
+  // pomiarowa (`kind==='measurementLink'`) TEN SAM status — DOPRECYZOWANIE
+  // §17.1 (V12K-036, `SLD_CAD_SPEC_V3.md` §20.1): okrąg CT sam POZOSTAJE w
+  // torze mocy (ciągłość niezmieniona), ale linia CT→przekaźnik jest
+  // warstwą wtórną adnotacji, nie przewodem.
+  const isAnnotationSegment = (si: number): boolean => {
+    const kind = scene.segments[si].meta?.kind;
+    return kind === 'protectionTrip' || kind === 'measurementLink';
+  };
 
   for (let i = 0; i < segCount; i++) {
-    if (isTripSegment(i)) continue;
+    if (isAnnotationSegment(i)) continue;
     for (let j = i + 1; j < segCount; j++) {
-      if (isTripSegment(j)) continue;
+      if (isAnnotationSegment(j)) continue;
       if (segmentsTouch(scene.segments[i], scene.segments[j])) dsu.union(segNode(i), segNode(j));
     }
   }
   scene.symbols.forEach((sym, mi) => {
     const ports = symbolPortsInWorld(sym);
     scene.segments.forEach((seg, si) => {
-      if (isTripSegment(si)) return;
+      if (isAnnotationSegment(si)) return;
       if (ports.some((p) => pointTouchesSegment(p, seg))) dsu.union(symNode(mi), segNode(si));
     });
   });
@@ -3091,14 +3146,19 @@ export function allProtectionMarkingsValid(scene: SceneV3): boolean {
 }
 
 /** (e) spec §17.4: L0 — „warstwa adnotacji NIEOBECNA" — zero symboli
- *  `protectionRelay`/`meter`, zero segmentów `protectionTrip`. Prawdziwe Z
- *  KONSTRUKCJI (L0 nie wywołuje `composeStation` na realnych polach —
- *  `composeRowStation` gałąź `lod===0` zwraca WCZEŚNIEJ; GPZ dostaje
- *  `annotationDetail='none'`), ta funkcja to dowód dla CI, nie mechanizm. */
+ *  `protectionRelay`/`meter`, zero segmentów `protectionTrip`/
+ *  `measurementLink` (F10.5, spec §20.1: linia pomiarowa jest TĄ SAMĄ
+ *  warstwą adnotacji co tor wyzwalania — patrz `isAnnotationSegment`,
+ *  `sourceConnectivityGaps`). Prawdziwe Z KONSTRUKCJI (L0 nie wywołuje
+ *  `composeStation` na realnych polach — `composeRowStation` gałąź
+ *  `lod===0` zwraca WCZEŚNIEJ; GPZ dostaje `annotationDetail='none'`), ta
+ *  funkcja to dowód dla CI, nie mechanizm. */
 export function noProtectionAnnotationAtLod0(scene: SceneV3): boolean {
   if (scene.meta.lod !== 0) return true;
   const hasSymbol = scene.symbols.some((s) => s.symbolId === 'protectionRelay' || s.symbolId === 'meter');
-  const hasSegment = scene.segments.some((s) => s.meta?.kind === 'protectionTrip');
+  const hasSegment = scene.segments.some(
+    (s) => s.meta?.kind === 'protectionTrip' || s.meta?.kind === 'measurementLink',
+  );
   return !hasSymbol && !hasSegment;
 }
 
@@ -3106,7 +3166,8 @@ export function noProtectionAnnotationAtLod0(scene: SceneV3): boolean {
  * F9.9 B-1 (spec §17.4 L1, wyrocznia wymagana recenzją): na L1 warstwa
  * adnotacji zabezpieczeń to WYŁĄCZNIE okrąg przekaźnika BEZ kodów —
  * (1) każdy `protectionRelay` ma puste/nieobecne `protectionCodes`;
- * (2) zero segmentów `protectionTrip` (linia wyzwalania ukryta);
+ * (2) zero segmentów `protectionTrip`/`measurementLink` (F10.5, §20.1: obie
+ *     linie wtórne ukryte na L1, TA SAMA gałąź LOD co tor wyzwalania);
  * (3) zero symboli `meter` („M" nieobecne);
  * (4) zero etykiet `ownerKind==='protection'` („52"/pełna lista nieobecne).
  * Dla scen L0/L2 zwraca `true` (nie dotyczy — tamte poziomy mają własne
@@ -3120,10 +3181,12 @@ export function protectionAnnotationAtLod1IsCircleOnly(scene: SceneV3): boolean 
   const relaysHaveNoCodes = scene.symbols
     .filter((s) => s.symbolId === 'protectionRelay')
     .every((s) => (s.meta?.protectionCodes ?? []).length === 0);
-  const noTripLines = !scene.segments.some((s) => s.meta?.kind === 'protectionTrip');
+  const noSecondaryLines = !scene.segments.some(
+    (s) => s.meta?.kind === 'protectionTrip' || s.meta?.kind === 'measurementLink',
+  );
   const noMeters = !scene.symbols.some((s) => s.symbolId === 'meter');
   const noProtectionLabels = !scene.labels.some((l) => l.ownerKind === 'protection');
-  return relaysHaveNoCodes && noTripLines && noMeters && noProtectionLabels;
+  return relaysHaveNoCodes && noSecondaryLines && noMeters && noProtectionLabels;
 }
 
 // ---------------------------------------------------------------------------
@@ -3187,4 +3250,188 @@ export function ctAnnotationGaps(scene: SceneV3): readonly CtAnnotationGap[] {
 
 export function allCtAnnotationsValid(scene: SceneV3): boolean {
   return ctAnnotationGaps(scene).length === 0;
+}
+
+// ---------------------------------------------------------------------------
+// F10.5 — secondary_link_duality_probe (spec §20.1 a-e).
+// ---------------------------------------------------------------------------
+
+export interface SecondaryLinkDualityGap {
+  readonly reason:
+    | 'measurement-link-endpoint-mismatch'
+    | 'direct-breaker-measurement-link'
+    | 'measurement-link-shares-owner-with-trip-line';
+  readonly ownerRef?: string;
+}
+
+/**
+ * secondary_link_duality_probe (spec §20.1 a-e, F10.5): DWIE różne linie
+ * wtórne (pomiar CT→przekaźnik, trip przekaźnik→wyłącznik) — zakaz „jednej
+ * anonimowej linii sugerującej pomiar z wyłącznika" (§20.1 dosłownie).
+ *
+ * (a) Gwarantowane KONSTRUKCYJNIE (`compose/station.ts`): gdy `ct_ref` I
+ * `breaker_ref` OBA rozwiązują się, kompozycja pushuje DWA odrębne odcinki
+ * (`#measurement-link`, `#trip-line`) z RÓŻNYMI `ownerRef` (sufiksy różne z
+ * konstrukcji stringa — nie mogą się zrównać) — `measurement-link-shares-
+ * owner-with-trip-line` jest strażnikiem regresji (dowód, że wyrocznia
+ * GRYZIE, gdyby ktoś kiedyś scalił sufiksy).
+ * (b) „0 linii wtórnych łączących bezpośrednio wyłącznik z pomiarem" —
+ * linia pomiarowa NIGDY nie dotyka REJESTROWANEGO portu `breaker` (kotwiczy
+ * WYŁĄCZNIE na CT i przekaźniku, `compose/station.ts` `measurementSegments`).
+ * (c) obie linie zaczepione w REJESTROWANYCH portach wskazanych aparatów —
+ * linia pomiarowa: port N `currentTransformer` (pierwszy punkt) + port
+ * `link` `protectionRelay` TEGO SAMEGO pola (ostatni punkt).
+ * (d) determinizm: `buildSceneV3` jest czystą funkcją (P7), dziedziczone.
+ * (e) linie wtórne WYŁĄCZONE z `continuity_probe`/`port_probe` toru mocy —
+ * `sourceConnectivityGaps` (`isAnnotationSegment`, wyżej w tym pliku);
+ * `sceneSegmentEndpointGaps`/`port_probe` NIE wymaga wyjątku (linia dotyka
+ * REJESTROWANYCH portów z konstrukcji, patrz (c) — spełnia `port_probe`
+ * bez potrzeby wykluczenia, w przeciwieństwie do `continuity_probe`, którego
+ * UNIA elektryczna linia wtórna by fałszywie mostkowała).
+ */
+export function secondaryLinkDualityGaps(scene: SceneV3): readonly SecondaryLinkDualityGap[] {
+  const gaps: SecondaryLinkDualityGap[] = [];
+  const relaySymbols = scene.symbols.filter((s) => s.symbolId === 'protectionRelay');
+  const ctSymbols = scene.symbols.filter((s) => s.symbolId === 'currentTransformer');
+  const breakerSymbols = scene.symbols.filter((s) => s.symbolId === 'breaker');
+  const measurementSegs = scene.segments.filter((s) => s.meta?.kind === 'measurementLink');
+  const tripSegs = scene.segments.filter((s) => s.meta?.kind === 'protectionTrip');
+
+  measurementSegs.forEach((seg) => {
+    const bayRef = seg.meta?.ownerRef?.replace(/#measurement-link$/, '');
+    const first = seg.points[0];
+    const last = seg.points[seg.points.length - 1];
+
+    const touchesOwnCt = ctSymbols.some(
+      (ct) => ct.meta?.ownerRef === bayRef && symbolPortsInWorld(ct).some((p) => p.x === first?.x && p.y === first?.y),
+    );
+    const touchesOwnRelay = relaySymbols.some(
+      (r) => r.meta?.ownerRef === bayRef && symbolPortsInWorld(r).some((p) => p.x === last?.x && p.y === last?.y),
+    );
+    if (!touchesOwnCt || !touchesOwnRelay) {
+      gaps.push({ reason: 'measurement-link-endpoint-mismatch', ownerRef: seg.meta?.ownerRef });
+    }
+
+    const touchesAnyBreaker = breakerSymbols.some((b) =>
+      symbolPortsInWorld(b).some(
+        (p) => (p.x === first?.x && p.y === first?.y) || (p.x === last?.x && p.y === last?.y),
+      ),
+    );
+    if (touchesAnyBreaker) {
+      gaps.push({ reason: 'direct-breaker-measurement-link', ownerRef: seg.meta?.ownerRef });
+    }
+
+    const tripSameOwner = tripSegs.find((t) => t.meta?.ownerRef?.replace(/#trip-line$/, '') === bayRef);
+    if (tripSameOwner && tripSameOwner.meta?.ownerRef === seg.meta?.ownerRef) {
+      gaps.push({ reason: 'measurement-link-shares-owner-with-trip-line', ownerRef: seg.meta?.ownerRef });
+    }
+  });
+
+  return gaps;
+}
+
+export function allSecondaryLinksValid(scene: SceneV3): boolean {
+  return secondaryLinkDualityGaps(scene).length === 0;
+}
+
+// ---------------------------------------------------------------------------
+// F10.5 — annotation_no_overlap_primary_probe (spec §20.3 a-c).
+// ---------------------------------------------------------------------------
+
+export interface AnnotationPrimaryOverlap {
+  readonly reason: 'annotation-symbol-touches-primary-wire' | 'primary-symbol-touches-annotation-wire';
+  readonly annotationRef?: string;
+  readonly primaryRef?: string;
+}
+
+/**
+ * annotation_no_overlap_primary_probe (spec §20.3 a-c, F10.5) — ALIAS
+ * UDOKUMENTOWANY, nie duplikat: (a)/(b) SĄ W CAŁOŚCI podzbiorem
+ * `symbolWireCollisions` (wyżej w tym pliku) — ta wyrocznia jest GENERYCZNA
+ * (KAŻDY symbol sceny vs KAŻDY odcinek sceny, bez wyjątku po `kind`/
+ * `elementKind`) i już biegnie w `sld_v3_acceptance.mjs` (`symbol_wire_probe`)
+ * — warstwa adnotacji zabezpieczeń jest w niej OBJĘTA z konstrukcji (§17.5e:
+ * „OBJĘTE wyroczniami kolizji/siatki"), więc `symbolWireCollisions(scene)
+ * .length===0` już dowodzi ZERA kolizji WARSTWA↔TOR w OBIE strony —
+ * silniejsze niż wymóg §20.3. Ta funkcja NIE liczy geometrii od nowa —
+ * filtruje WYNIK `symbolWireCollisions` do par WARSTWA ADNOTACJI × TOR
+ * PIERWOTNY, żeby dać JAWNY, nazwany dowód klasy „wtórna vs pierwotna"
+ * wymagany przez §20.3 (dokumentacja/nazewnictwo, nie nowa logika kolizji).
+ *
+ * (c) „usunięcie warstwy adnotacji nie zmienia zbioru odcinków toru mocy"
+ * jest PRAWDĄ Z KONSTRUKCJI, nie wymaga dowodu runtime: `composeRowStation`
+ * (ten plik, sekcja projekcji `StationComposition`→`SceneV3`) scala
+ * `protectionSymbols`/`protectionSegments`/`measurementSegments` ADDYTYWNIE
+ * NA WYJŚCIU (`[...symbols, ...protectionSymbols]` / `[...segments,
+ * ...protectionSegments, ...measurementSegments]`) obok `symbols`/`segments`
+ * NIEZMIENIONYCH — usunięcie trzech tablic adnotacji z tej konkatenacji
+ * pozostawia oryginalny tor mocy bit-identyczny, z definicji operatora
+ * spread (dowód strukturalny, nie behawioralny).
+ */
+export function annotationOverlapsPrimaryPath(scene: SceneV3): readonly AnnotationPrimaryOverlap[] {
+  const isAnnotation = (elementKind: PreviewElementKind | undefined): boolean =>
+    elementKind === 'protectionAnnotation';
+  const hits: AnnotationPrimaryOverlap[] = [];
+  symbolWireCollisions(scene).forEach((hit) => {
+    const sym = scene.symbols[hit.symbolIndex];
+    const seg = scene.segments[hit.segmentIndex];
+    const symIsAnnotation = isAnnotation(sym.meta?.elementKind);
+    const segIsAnnotation = isAnnotation(seg.meta?.elementKind);
+    if (symIsAnnotation && !segIsAnnotation) {
+      hits.push({
+        reason: 'annotation-symbol-touches-primary-wire',
+        annotationRef: sym.meta?.ownerRef,
+        primaryRef: seg.meta?.ownerRef,
+      });
+    } else if (!symIsAnnotation && segIsAnnotation) {
+      hits.push({
+        reason: 'primary-symbol-touches-annotation-wire',
+        annotationRef: seg.meta?.ownerRef,
+        primaryRef: sym.meta?.ownerRef,
+      });
+    }
+  });
+  return hits;
+}
+
+export function noAnnotationOverlapsPrimaryPath(scene: SceneV3): boolean {
+  return annotationOverlapsPrimaryPath(scene).length === 0;
+}
+
+// ---------------------------------------------------------------------------
+// F10.5 — meter_symbol_disambiguation (spec §20.4 a-c).
+// ---------------------------------------------------------------------------
+
+export interface MeterDisambiguationGap {
+  readonly reason: 'meter-without-owner';
+  readonly ownerRef?: string;
+}
+
+/**
+ * meter_symbol_disambiguation (spec §20.4 a-c, F10.5):
+ * (a) każdy `symbolId==='meter'` na scenie ma `meta.ownerRef` (pole)
+ * NIEPUSTY — `resolveMeterAnchor` (`compose/protectionMarking.ts`) jest
+ * JEDYNYM miejscem tworzącym instancję `symbolId==='meter'` w kompozycji, a
+ * WYMAGA rozwiązanego `Measurement.purpose==='metering'` z `bay_ref`
+ * (`meteringMeasurementRef`) ORAZ dopasowania na aparat CT/VT stosu (WHITE
+ * BOX z konstrukcji) — miernik BEZ `ownerRef` byłby dowodem regresji tej
+ * ścieżki, nie stanu normalnego.
+ * (b) „0 użyć glifu «M» dla napędu silnikowego" jest PRAWDĄ Z KONSTRUKCJI:
+ * `SYMBOL_GLYPHS.meter` (`symbols/glyphs.tsx` `MeterGlyph`) jest JEDYNYM
+ * konsumentem tekstu „M" w bibliotece symboli — nie istnieje `symbolId`/
+ * ścieżka kodu rysująca „M" dla napędu (§20.4: napęd silnikowy NIE jest
+ * modelowany, D8, poza zakresem F10.5) — nic do sprawdzenia runtime poza
+ * (a) (miernik zawsze ma właściciela = zawsze pochodzi z REALNEGO pomiaru).
+ * (c) „legenda opisuje «M = miernik pomiarowy» jednoznacznie" — dowód w
+ * `sheet/__tests__/frame.test.tsx` (`buildDefaultLegend` wpis `id:'meter'`),
+ * NIE tutaj (ta funkcja operuje na `SceneV3` sieci, nie na arkuszu/legendzie).
+ */
+export function meterDisambiguationGaps(scene: SceneV3): readonly MeterDisambiguationGap[] {
+  return scene.symbols
+    .filter((s) => s.symbolId === 'meter' && !s.meta?.ownerRef)
+    .map((s) => ({ reason: 'meter-without-owner' as const, ownerRef: s.meta?.ownerRef }));
+}
+
+export function allMeterSymbolsDisambiguated(scene: SceneV3): boolean {
+  return meterDisambiguationGaps(scene).length === 0;
 }
