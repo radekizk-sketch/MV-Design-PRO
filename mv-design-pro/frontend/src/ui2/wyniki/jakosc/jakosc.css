@@ -1,0 +1,186 @@
+/*
+ * Style okna „Jakość wyników" (karta E8.4 / W-607). Kolory WYŁĄCZNIE przez tokeny
+ * --mvd-* — zero literałów hex. Uzupełnia wzorzec (`wzorzec.css`) o: układ dwóch
+ * sekcji, panele stanu (brak przebiegu / ładowanie / błąd), chipy podsumowania,
+ * kolorowane tagi statusu oraz panel szczegółu wiersza (uzasadnienie why_pl).
+ */
+
+.mvd-jakosc {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ---- panele stanu (brak przebiegu / ładowanie / błąd) ---- */
+.mvd-jakosc-sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-jakosc-sekcja-tytul {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-jakosc-stan {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 16px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-stan--blad {
+  border-style: solid;
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-jakosc-stan-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-jakosc-stan-desc {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* ---- podsumowanie (chipy liczbowe) ---- */
+.mvd-jakosc-podsumowanie {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+.mvd-jakosc-chip {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 999px;
+  background: var(--mvd-panel);
+}
+.mvd-jakosc-chip-liczba {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--mvd-ink);
+}
+.mvd-jakosc-chip-etykieta {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-chip--ok {
+  border-color: var(--mvd-ok);
+  background: var(--mvd-ok-bg);
+}
+.mvd-jakosc-chip--warn {
+  border-color: var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+}
+.mvd-jakosc-chip--err {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-jakosc-chip--neutral {
+  border-color: var(--mvd-line);
+  background: var(--mvd-panel-2);
+}
+
+/* ---- tag statusu (kolorowany) ---- */
+.mvd-jakosc-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  border: 1px solid var(--mvd-line);
+  color: var(--mvd-ink);
+  background: var(--mvd-panel-2);
+}
+.mvd-jakosc-tag--ok {
+  border-color: var(--mvd-ok);
+  background: var(--mvd-ok-bg);
+}
+.mvd-jakosc-tag--warn {
+  border-color: var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+}
+.mvd-jakosc-tag--err {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-jakosc-tag--neutral {
+  border-color: var(--mvd-line);
+  background: var(--mvd-panel-2);
+}
+
+/* ---- panel szczegółu wiersza (uzasadnienie why_pl) ---- */
+.mvd-jakosc-szczegol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-jakosc-szczegol--pusty {
+  border-style: dashed;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-szczegol-brak {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-szczegol-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mvd-jakosc-szczegol-tytul {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-jakosc-szczegol-id {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-szczegol-dane {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+.mvd-jakosc-szczegol-para {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-jakosc-szczegol-para dt {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-szczegol-para dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mvd-ink);
+}
+.mvd-jakosc-szczegol-why {
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--mvd-line);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--mvd-ink);
+}
