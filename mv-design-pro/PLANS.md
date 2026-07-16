@@ -287,6 +287,14 @@ Progress:
         Scalenie #9: zakładka „Jakość wyników" w warsztacie (`121ea74`; ui2 962
         pass). ŁAŃCUCH „NA MAX" DOMKNIĘTY: luka → D1/D2 (backend) → P47a/E8.4
         (okna) — zero pozostawionego długu z dyrektywy 2026-07-16.
+        Łączny pełny vitest po #9: 624 pliki / 8251 pass, exit 0 (`688d0ce`).
+        BAZY: frontend 8251, backend 5750. NASTĘPNY KROK (strumień OZE wg
+        kolejności): P2 hosting capacity — rekonesans wykazał, że silnik istnieje
+        TYLKO jako dowód eksportowy per stacja (audit2_station_config.py:371-420,
+        Phase 23) + enum V126; okno sieciowe P2 wymaga najpierw głębokiego
+        rekonesansu kształtu dowodu i decyzji: ekspozycja per stacja vs delta
+        analizy sieciowej. Potem P19 ranking punktów przyłączenia i P41 krzywe
+        P–Q producenta (delta katalogowa).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
