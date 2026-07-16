@@ -98,6 +98,12 @@ describe('WynikiWarsztat — zakładki', () => {
     expect(screen.getByTestId('mvd-jakosc-ekran')).toBeInTheDocument();
   });
 
+  it('zakładka „Zdolność przyłączeniowa": bez przebiegu rozpływu — uczciwa instrukcja', () => {
+    render(<WynikiWarsztat {...props()} />);
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-zdolnosc'));
+    expect(screen.getByTestId('mvd-zdol-ekran')).toBeInTheDocument();
+  });
+
   it('zakładka „Zgodność NC RfG": bez modułów wytwórczych — uczciwy stan pusty macierzy', () => {
     render(<WynikiWarsztat {...props()} />);
     fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-ncrfg'));

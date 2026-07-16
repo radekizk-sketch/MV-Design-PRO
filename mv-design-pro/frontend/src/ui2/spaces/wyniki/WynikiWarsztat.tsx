@@ -22,7 +22,7 @@ import { EkranZwarc } from '../../wyniki/zwarcia';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useStudyCasesStore } from '../../../ui/study-cases/store';
-import { MacierzNcRfg, PulpitOze } from '../../oze';
+import { EkranZdolnosci, MacierzNcRfg, PulpitOze } from '../../oze';
 import { EkranJakosci } from '../../wyniki/jakosc';
 import { EkranPorownania } from '../../wyniki/porownanie';
 import { DowodPrzebiegu } from './DowodPrzebiegu';
@@ -38,6 +38,7 @@ const ZAKLADKI = [
   { id: 'porownanie', etykieta: T.zakladkaPorownanie },
   { id: 'ncrfg', etykieta: T.zakladkaNcRfg },
   { id: 'pulpit-oze', etykieta: T.zakladkaPulpitOze },
+  { id: 'zdolnosc', etykieta: T.zakladkaZdolnosc },
   { id: 'pozostale', etykieta: T.zakladkaPozostale },
 ] as const;
 
@@ -141,6 +142,7 @@ export function WynikiWarsztat({
         )}
         {zakladka === 'porownanie' && <PorownanieAktywnegoProjektu trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'ncrfg' && <MacierzNcRfg trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'zdolnosc' && <EkranZdolnosci trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'pulpit-oze' && (
           <PulpitOze
             trybZaawansowania={trybZaawansowania}
