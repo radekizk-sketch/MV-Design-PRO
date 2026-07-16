@@ -334,7 +334,12 @@ Progress:
         końcówka /api/oze-analysis/pq-area — siatka P×Q anchored w Q=0 na
         wzorcu D3; recon Q generatora rozstrzygnięty dowodowo mapping.py:201;
         pełny pytest 5839 pass ZERO failed potwierdzony; zintegrowane
-        `5a7aac6`). Karta P30 okno obszaru `b928d52` — wykonawca w toku.
+        `5a7aac6`). P30 okno obszaru P–Q (Opus; 34 testy; pełny vitest
+        u wykonawcy 8379 pass ZERO failed; zintegrowane `567317c`; nakładka
+        krzywej producenta na pasmo sieci — jeden wykres). Scalenie #14:
+        zakładka „Obszar pracy P–Q" w grupie OZE (`ad46c40`; ui2 1090 pass).
+        NASTĘPNE FALI 2: P35 studium przyłączenia (kreator spinający analizy),
+        P38 walidacja modelu falownika.
         PROCEDURA: wykonawcy backendowi zawieszają się po pełnym pytest (3
         przypadki) — zarządca przejmuje: weryfikacja w worktree + commit
         w imieniu wykonawcy (bez oczekiwania na raport).
