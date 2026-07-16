@@ -57,6 +57,11 @@ import {
   type GpzApparatusKind,
   type GpzApparatusSelection,
 } from './gpzApparatusSelection';
+import type {
+  BayPrimaryDeviceView,
+  BayProtectionMarkingView,
+  CtRatingAnnotationView,
+} from './MiniBlockRmuRenderer';
 
 /* =============================================================================
    Domain types (z ENM, projected to canonical SLD)
@@ -123,6 +128,31 @@ export interface CanonicalGpzBay {
   readonly measurements?: BayMeasurements | null;
   /** Flag: pole w stanie manipulacji. */
   readonly inManipulation?: boolean;
+  /** F11.1 (SLD_CAD_SPEC_V3 §17.2/§20.1, rejestr device-ref w GPZ — parytet ze
+   *  stacjami): uporządkowana lista aparatów pola z ENM `Bay.primary_devices`
+   *  (wzorzec `MiniBlockBayDescriptor.primaryDevices`/`projectBayPrimaryDevices`,
+   *  `v2/canvas/enmToSldAdapter.ts`) — `undefined` gdy ENM nie niesie tej danej
+   *  dla pola (dziś ZAWSZE `undefined` na fixturze referencyjnej, STOP-notatka
+   *  F9.2 — kontrakt gotowy pod przyszłą serializację backendu, identycznie jak
+   *  dla stacji). Kompozycja GPZ (`v3/compose/gpz.ts`) dopasowuje tę listę do
+   *  STAŁEGO szablonu aparatów pola WYŁĄCZNIE gdy sekwencja się DOKŁADNIE
+   *  zgadza (zero częściowego/domyślnego przypisania) — patrz
+   *  `primaryDeviceItemsForTemplate`. */
+  readonly primaryDevices?: readonly BayPrimaryDeviceView[];
+  /** F11.1 (spec §17.2): adnotacja zabezpieczeń tego pola — WYŁĄCZNIE
+   *  `Bay.protection_ref` rozwiązany na `ProtectionAssignment` (SUROWE refy
+   *  ENM, wzorzec `MiniBlockBayDescriptor.protectionMarking`/
+   *  `resolveBayProtectionMarking`). `undefined` gdy `Bay.protection_codes`
+   *  puste/nieobecne. Kody w tym polu MAJĄ PIERWSZEŃSTWO nad `protectionCodes`
+   *  (wyżej) w kompozycji v3 — oba pola niosą tę samą listę, gdy oba obecne
+   *  (jedno źródło ENM); `protectionCodes` zostaje NIETKNIĘTE (konsumenci v2/
+   *  legacy). */
+  readonly protectionMarking?: BayProtectionMarkingView;
+  /** F11.1 (spec §18.3): adnotacje przekładni CT tego pola — wzorzec
+   *  `MiniBlockBayDescriptor.ctRatingAnnotations`/`resolveBayCtRatingAnnotations`.
+   *  `undefined` gdy pole nie niesie żadnego CT z `Measurement.rating` obecnym
+   *  (brak danych = brak oznaczenia, §18.3 dosłownie). */
+  readonly ctRatingAnnotations?: readonly CtRatingAnnotationView[];
 }
 
 /**

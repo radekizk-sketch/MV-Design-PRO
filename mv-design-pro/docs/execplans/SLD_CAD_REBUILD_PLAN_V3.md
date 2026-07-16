@@ -1369,6 +1369,24 @@ lokalnych łatek i duplikacji elektryki adaptera.
 
 ---
 
+### F11.1. [DONE] Rejestr device-ref w GPZ — parytet zabezpieczeń GPZ↔stacje
+- **Wynik (2026-07-16, agent + odbiór osobisty nadzorcy):** CanonicalGpzBay addytywnie niesie
+  primaryDevices/protectionMarking/ctRatingAnnotations (typy i funkcje REUŻYTE wprost ze ścieżki
+  stacyjnej — projectBayPrimaryDevices/resolveBayProtectionMarking/resolveBayCtRatingAnnotations,
+  zero duplikacji); gpz.ts: deviceRef/linkedRef per instancja (dopasowanie danych do szablonu
+  WYŁĄCZNIE przy pełnej zgodności sekwencji — zero częściowego zgadywania), tor wyzwalania (4-2)
+  + linia pomiarowa (2-2) + „52" + adnotacja CT gdy refy rozwiązane, inaczej missingData;
+  WYJĄTEK §17.6 („okrąg bez toru w GPZ nie jest missingData") USUNIĘTY z kodu i spec — GPZ
+  podlega tej samej regule co stacje. Naprawa własna agenta: mergeBaysWithFieldSpecs gubił
+  protection_ref z field_spec. Sondy sekundarne/CT obejmują GPZ automatycznie (filtrują po
+  meta.kind, nie pochodzeniu). Fixtura: GPZ bez danych zabezpieczeń ⇒ dowody syntetyczne
+  (8 nowych testów gpz + 5 adaptera), realna scena = „brak danych = brak rysunku". Odłożone
+  jawnie: miernik „M" w GPZ (nigdy nie był rysowany), walidacja §20.2 dla GPZ (naturalny
+  następnik po rejestrze), pola WN/TR szablonowe (brak realnego Bay). Wizualny DoD nadzorcy
+  (PNG syntetyczny): pole z rejestrem = okrąg+2 linie+CT; bez rejestru = sam okrąg — POTWIERDZONE.
+  Bramki: tsc/eslint czyste, vitest sld 172 plików/3358, accept ALL PASS (baseline'y nietknięte),
+  pełna regresja exit 0, guardy zielone.
+
 ### F11.2. [ZAMKNIĘTE ROZSTRZYGNIĘCIEM] Źródło danych designation
 - Analiza nadzorcy (2026-07-16): jedyny kandydat w read-modelach to `ENMElement.name`
   (`_branch_to_primary_device` buduje z `Branch`, każdy niesie `name`), ale fixtura dowodzi,

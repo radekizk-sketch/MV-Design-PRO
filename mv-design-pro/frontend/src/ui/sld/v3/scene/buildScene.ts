@@ -1333,9 +1333,11 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // -- 4. Skomponuj GPZ → preview + etykiety + meta. -------------------------
   if (gpzComposition) {
     allSymbols.push(...gpzComposition.symbols.map(gpzSymbolToPreview));
-    // F9.9 R-1 (spec §17.1): okręgi przekaźników GPZ — warstwa adnotacji
-    // (BEZ toru wyzwalania, patrz `ComposedGpzProtectionSymbol`,
-    // `compose/gpz.ts`), ten sam kształt meta co stacje (`composeRowStation`).
+    // F9.9 R-1 (spec §17.1): okręgi przekaźników GPZ — warstwa adnotacji, ten
+    // sam kształt meta co stacje (`composeRowStation`). F11.1: tor wyzwalania
+    // TERAZ możliwy (patrz `protectionSegments`/`measurementSegments` niżej) —
+    // wyjątek „zawsze bez toru" ZNIESIONY, patrz docstring
+    // `ComposedGpzProtectionSymbol`, `compose/gpz.ts`.
     allSymbols.push(
       ...gpzComposition.protectionSymbols.map((s): PreviewSymbol => ({
         symbolId: s.symbolId,
@@ -1350,6 +1352,22 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       })),
     );
     allSegments.push(...gpzComposition.segments.map(gpzSegmentToPreview));
+    // F11.1 (spec §17.1/§20.1): tor wyzwalania (dash 4-2) + linia pomiarowa
+    // CT→przekaźnik (dash 2-2) — TA SAMA projekcja `meta.kind` co
+    // `composeRowStation` (stacje) niżej w tym pliku, żeby wyrocznie generyczne
+    // po `meta.kind`/`elementKind` (`isAnnotationSegment`, `protectionMarkingGaps`,
+    // `secondaryLinkDualityGaps`, `ctAnnotationGaps`) objęły GPZ automatycznie —
+    // zero specjalnego traktowania GPZ w warstwie wyroczni.
+    allSegments.push(
+      ...gpzComposition.protectionSegments.map((s): PreviewSegment => ({
+        points: s.points,
+        meta: { kind: 'protectionTrip', ownerRef: s.ownerRef, elementKind: 'protectionAnnotation' },
+      })),
+      ...gpzComposition.measurementSegments.map((s): PreviewSegment => ({
+        points: s.points,
+        meta: { kind: 'measurementLink', ownerRef: s.ownerRef, elementKind: 'protectionAnnotation' },
+      })),
+    );
     stationNameBands.push(gpzComposition.labels.stationName, ...gpzComposition.labels.transformerLabels);
     simpleAnchored.push(
       ...gpzComposition.labels.sectionLabels,
@@ -3084,15 +3102,25 @@ export interface ProtectionMarkingGap {
  * wspólny, odczytany z sufiksu `#trip-line` — WHITE BOX, zero zgadywania
  * którędy linia biegnie/do jakiego aparatu).
  *
- * WYJĄTEK JAWNY (R-1, rozstrzygnięcie architekta 2026-07-15): okrąg BEZ
- * ŻADNEJ linii wyzwalania jest LEGALNY — dwa udokumentowane przypadki:
- * (1) GPZ (kompozycja szablonowa bez rejestru device-ref — tor wyzwalania
- * GPZ odroczony do F8c/F9.10, patrz `ComposedGpzProtectionSymbol`,
- * `compose/gpz.ts`); (2) stacja z nierozwiązywalnym `breaker_ref`
- * (§17.2 — raportowane osobno przez `missingData`
- * `bay.protection.trip_link_unresolved`, nie przez tę sondę). Sonda (b)
- * sprawdza więc WYŁĄCZNIE zakotwiczenie linii ISTNIEJĄCYCH — nigdy nie
- * wymaga linii per okrąg.
+ * WYJĄTEK JAWNY (R-1, rozstrzygnięcie architekta 2026-07-15) — ZWĘŻONY w
+ * F11.1 (spec §17.6 doprecyzowanie, rejestr device-ref w GPZ): okrąg BEZ
+ * ŻADNEJ linii wyzwalania jest LEGALNY WYŁĄCZNIE gdy `breaker_ref`/`ct_ref`
+ * są nierozwiązywalne na aparat NARYSOWANEGO stosu (§17.2 — raportowane
+ * osobno przez `missingData`, `bay.protection.trip_link_unresolved`/
+ * `bay.protection.measurement_link_unresolved`, nie przez tę sondę). Do F11.1
+ * GPZ miała TU dodatkowy, blankietowy wyjątek („okrąg w GPZ zawsze bez toru,
+ * nigdy nie jest to missingData") — bo kompozycja GPZ nie śledziła
+ * `device_ref` per aparat (stosy z SZABLONÓW `FieldApparatusSpec`, nie z
+ * `primary_devices`). F11.1 dostarczyła rejestr device-ref (`compose/gpz.ts`
+ * `primaryDeviceItemsForTemplate`, `bay.primaryDevices` dopasowany DOKŁADNIE
+ * do szablonu pola) — GPZ TERAZ rozwiązuje tor wyzwalania/linię pomiarową
+ * DOKŁADNIE jak stacja (`resolveStationProtectionMarking` reużyta wprost,
+ * `./protectionMarking`) i, gdy refy się NIE rozwiążą, zgłasza TĘ SAMĄ
+ * missingData co stacja — wyjątek blankietowy dla GPZ ZNIESIONY, zero
+ * specjalnego traktowania GPZ w tej sondzie. Sonda (b) sprawdza więc
+ * WYŁĄCZNIE zakotwiczenie linii ISTNIEJĄCYCH — nigdy nie wymaga linii per
+ * okrąg (uczciwy brak danych/refów pozostaje legalny, dla stacji i GPZ
+ * jednakowo).
  *
  * (d) determinizm: `buildSceneV3` jest czystą funkcją (P7) — dziedziczony z
  * konstrukcji, bez odrębnej maszynerii (zero `Date`/`Math.random` w całej

@@ -21,6 +21,11 @@ import type {
   CanonicalGpzTransformer,
   GpzCanonicalRendererProps,
 } from '../../../v2/renderer/GpzCanonicalRenderer';
+import type {
+  BayPrimaryDeviceView,
+  BayProtectionMarkingView,
+  CtRatingAnnotationView,
+} from '../../../v2/renderer/MiniBlockRmuRenderer';
 import {
   allGpzSymbolsOnGrid,
   busbarTopologyOf,
@@ -685,11 +690,17 @@ describe('V3 compose/gpz — FIX-D: kontrprzykłady wyroczni noDirectTransformer
         transformerLabels: [],
         fieldDesignations: [],
         fieldCaptions: [],
+        protection: [],
       },
       sections: [],
       transformers: [{ transformerRef, designation: 'TRX', hvBayTestId, trFieldTestId }],
       parityKeys: new Set(),
       missingData: [],
+      protectionSymbols: [],
+      // F11.1: `GpzComposition` niesie TERAZ tor wyzwalania/linię pomiarową —
+      // puste tu (kontrprzykłady FIX-D dotyczą WYŁĄCZNIE toru mocy TR).
+      protectionSegments: [],
+      measurementSegments: [],
       bbox: { x: 0, y: 0, width: 0, height: 0 },
     };
   }
@@ -756,13 +767,16 @@ describe('V3 compose/gpz — determinizm', () => {
 });
 
 // ---------------------------------------------------------------------------
-// (f) F9.9 R-1 (spec §17.1-§17.4, rozstrzygnięcie architekta 2026-07-15):
-// okrąg przekaźnika pola SN GPZ — SAM OKRĄG z kodami, BEZ toru wyzwalania
-// (kompozycja szablonowa GPZ nie śledzi device_ref per aparat — tor =
-// F8c/F9.10; patrz docstring `ComposedGpzProtectionSymbol`).
+// (f) F9.9 R-1 (spec §17.1-§17.4, rozstrzygnięcie architekta 2026-07-15) —
+// wyjątek „okrąg bez toru w GPZ NIE jest missingData" ZNIESIONY w F11.1
+// (spec §17.6 doprecyzowanie, rejestr device-ref w GPZ, parytet ze
+// stacjami): GPZ dopasowuje TERAZ `bay.primaryDevices` do szablonu pola i,
+// gdy dane się zgadzają, rysuje tor wyzwalania + linię pomiarową DOKŁADNIE
+// jak stacja (`resolveStationProtectionMarking` reużyta wprost) — patrz
+// `describe` niżej „F11.1: rejestr device-ref".
 // ---------------------------------------------------------------------------
 
-describe('V3 compose/gpz — F9.9 R-1: okrąg przekaźnika (§17, bez toru wyzwalania)', () => {
+describe('V3 compose/gpz — F9.9 R-1 (ZNIESIONY F11.1): okrąg przekaźnika bez rejestru device-ref', () => {
   const propsWithCodes = (codes: readonly string[]): GpzCanonicalRendererProps =>
     baseProps({
       sections: [
@@ -782,15 +796,24 @@ describe('V3 compose/gpz — F9.9 R-1: okrąg przekaźnika (§17, bez toru wyzwa
     expect(composition.labels.protection).toHaveLength(0);
   });
 
-  it('full (L2): pole z kodami ⇒ DOKŁADNIE jeden okrąg z DWOMA pierwszymi kodami, ZERO segmentów toru wyzwalania, ZERO missingData §17', () => {
+  it('F11.1 (usunięcie wyjątku §17.6): pole z kodami, ale BEZ `primaryDevices`/`protectionMarking` refów (bare `protectionCodes`, wywołujący sprzed F11.1) ⇒ DOKŁADNIE jeden okrąg z DWOMA pierwszymi kodami, ZERO segmentów wtórnych, ale missingData JEST zgłaszana TERAZ (parytet ze stacjami — dawny wyjątek R-1 ZNIESIONY)', () => {
     const composition = composeGpz(propsWithCodes(['50/51', '51N']), ORIGIN);
     expect(composition.protectionSymbols).toHaveLength(1);
     expect(composition.protectionSymbols[0].bayRef).toBe('b-prot');
     expect(composition.protectionSymbols[0].protectionCodes).toEqual(['50/51', '51N']);
-    // BEZ toru wyzwalania (R-1) — i to NIE jest missingData (udokumentowany
-    // zakres F9.9, patrz docstring `ComposedGpzProtectionSymbol`).
-    expect(composition.segments.some((s) => s.ownerRef.endsWith('#trip-line'))).toBe(false);
-    expect(composition.missingData.some((m) => m.startsWith('bay.protection'))).toBe(false);
+    // BEZ danych refów (brak `protectionMarking.breakerRef`/`ctRef`) — brak
+    // linii wtórnych z KONSTRUKCJI, dokładnie jak stacja z `protection_ref==null`.
+    expect(composition.protectionSegments).toHaveLength(0);
+    expect(composition.measurementSegments).toHaveLength(0);
+    // F11.1: wyjątek §17.6 ZNIESIONY — okrąg bez toru JEST TERAZ missingData
+    // (dokładnie jak dla stacji, `bay.protection.trip_link_unresolved`/
+    // `measurement_link_unresolved`).
+    expect(composition.missingData).toEqual(
+      expect.arrayContaining([
+        'bay.protection.trip_link_unresolved',
+        'bay.protection.measurement_link_unresolved',
+      ]),
+    );
   });
 
   it('R-2 (§17.3 zd. 2): >2 kody ⇒ okrąg z dwoma pierwszymi + etykieta pełnej listy (kolejność źródłowa)', () => {
@@ -829,5 +852,142 @@ describe('V3 compose/gpz — F9.9 R-1: okrąg przekaźnika (§17, bez toru wyzwa
       .filter((s) => s.meta.bayRef === 'b-prot')
       .map((s) => s.x + SYMBOL_DEFS[s.symbolId].width);
     expect(relay.x).toBeGreaterThanOrEqual(Math.max(...stackXs));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (g) F11.1 (spec §17.2/§18.3/§20.1, rejestr device-ref w GPZ — parytet ze
+// stacjami): `bay.primaryDevices` dopasowany DOKŁADNIE do szablonu pola ⇒
+// tor wyzwalania + linia pomiarowa + adnotacja CT, TAK SAMO jak
+// `compose/station.ts`. Negatyw: dane nierozwiązane/niedopasowane ⇒ zero
+// zgadywania (missingData, nie linia „do domyślnego aparatu").
+// ---------------------------------------------------------------------------
+
+describe('V3 compose/gpz — F11.1: rejestr device-ref (tor wyzwalania + linia pomiarowa + adnotacja CT)', () => {
+  // Sekwencja DOKŁADNIE odpowiadająca `lineFieldSpec()` (gpz.ts):
+  // DS_BUS → CB_MAIN → CT → DS_LIN → ES_SIDE → CABLE_HEAD (esState!=='absent',
+  // domyślne `lineBay` niesie 'open' — ES obecny w szablonie).
+  const alignedLineDevices: readonly BayPrimaryDeviceView[] = [
+    { kind: 'DS', placement: 'UPSTREAM', deviceRef: 'ds-bus-1' },
+    { kind: 'CB', placement: 'MIDSTREAM', deviceRef: 'cb-1', switchState: 'closed' },
+    { kind: 'CT', placement: 'MIDSTREAM', deviceRef: 'ct-1', linkedRef: 'meas-ct-1' },
+    { kind: 'DS', placement: 'MIDSTREAM', deviceRef: 'ds-lin-1' },
+    { kind: 'ES', placement: 'DOWNSTREAM', deviceRef: 'es-1' },
+    { kind: 'CABLE_HEAD', placement: 'DOWNSTREAM', deviceRef: 'head-1' },
+  ];
+
+  const protMarking: BayProtectionMarkingView = {
+    codes: ['50/51', '51N'],
+    breakerRef: 'cb-1',
+    ctRef: 'ct-1',
+  };
+
+  const ctRatings: readonly CtRatingAnnotationView[] = [
+    { measurementRef: 'meas-ct-1', identifier: 'T1', ratioText: '300/5' },
+  ];
+
+  const propsWithRegistry = (overrides: Partial<CanonicalGpzBay> = {}): GpzCanonicalRendererProps =>
+    baseProps({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          label: 'S1',
+          busVoltageKv: 15,
+          bays: [
+            lineBay('b-prot', {
+              protectionCodes: protMarking.codes,
+              primaryDevices: alignedLineDevices,
+              protectionMarking: protMarking,
+              ctRatingAnnotations: ctRatings,
+              ...overrides,
+            }),
+          ],
+        },
+      ],
+    });
+
+  it('dane zgodne z szablonem ⇒ tor wyzwalania (#trip-line) do wyłącznika deviceRef="cb-1" + "52"', () => {
+    const composition = composeGpz(propsWithRegistry(), ORIGIN);
+    expect(composition.protectionSegments).toHaveLength(1);
+    expect(composition.protectionSegments[0].ownerRef).toBe('b-prot#trip-line');
+    const breaker = composition.symbols.find(
+      (s) => s.meta.bayRef === 'b-prot' && s.symbolId === 'breaker',
+    )!;
+    expect(breaker.deviceRef).toBe('cb-1');
+    const last = composition.protectionSegments[0].points[0];
+    const breakerNorthPort = breaker.ports.top ?? Object.values(breaker.ports)[0];
+    expect(last).toEqual({ x: breakerNorthPort.x, y: breakerNorthPort.y });
+    expect(composition.labels.protection.some((l) => l.ownerRef === 'b-prot#device-number' && l.text === '52')).toBe(true);
+    expect(composition.missingData).not.toContain('bay.protection.trip_link_unresolved');
+  });
+
+  it('dane zgodne z szablonem ⇒ linia pomiarowa (#measurement-link) od CT deviceRef="ct-1"', () => {
+    const composition = composeGpz(propsWithRegistry(), ORIGIN);
+    expect(composition.measurementSegments).toHaveLength(1);
+    expect(composition.measurementSegments[0].ownerRef).toBe('b-prot#measurement-link');
+    const ct = composition.symbols.find(
+      (s) => s.meta.bayRef === 'b-prot' && s.symbolId === 'currentTransformer',
+    )!;
+    expect(ct.deviceRef).toBe('ct-1');
+    expect(ct.linkedRef).toBe('meas-ct-1');
+    expect(composition.missingData).not.toContain('bay.protection.measurement_link_unresolved');
+  });
+
+  it('dane zgodne z szablonem ⇒ adnotacja CT „T1 · 300/5" zakotwiczona na aparacie CT', () => {
+    const composition = composeGpz(propsWithRegistry(), ORIGIN);
+    const ctLabel = composition.labels.protection.find((l) => l.ownerRef === 'b-prot#ct-rating-ct-1');
+    expect(ctLabel).toBeDefined();
+    expect(ctLabel!.text).toBe('T1 · 300/5');
+    expect(composition.missingData).not.toContain('bay.protection.ct_rating_anchor_unresolved');
+  });
+
+  it('dwie linie wtórne mają RÓŻNE ownerRef (§20.1 „zakaz jednej anonimowej linii")', () => {
+    const composition = composeGpz(propsWithRegistry(), ORIGIN);
+    expect(composition.protectionSegments[0].ownerRef).not.toBe(composition.measurementSegments[0].ownerRef);
+  });
+
+  it('negatyw — zero zgadywania (a): `primaryDevices` NIE odpowiada szablonowi (inna długość) ⇒ CAŁY stos BEZ rejestru, okrąg BEZ linii, missingData zgłoszona', () => {
+    const composition = composeGpz(
+      propsWithRegistry({ primaryDevices: alignedLineDevices.slice(0, 3) }),
+      ORIGIN,
+    );
+    const breaker = composition.symbols.find(
+      (s) => s.meta.bayRef === 'b-prot' && s.symbolId === 'breaker',
+    )!;
+    expect(breaker.deviceRef).toBeUndefined();
+    expect(composition.protectionSegments).toHaveLength(0);
+    expect(composition.measurementSegments).toHaveLength(0);
+    expect(composition.missingData).toEqual(
+      expect.arrayContaining([
+        'bay.protection.trip_link_unresolved',
+        'bay.protection.measurement_link_unresolved',
+        'bay.protection.ct_rating_anchor_unresolved',
+      ]),
+    );
+  });
+
+  it('negatyw — zero zgadywania (b): `breaker_ref`/`ct_ref` wskazują refy NIEOBECNE w stosie (dane niespójne) ⇒ okrąg pozycjonowany, ale BEZ linii + missingData', () => {
+    const composition = composeGpz(
+      propsWithRegistry({ protectionMarking: { ...protMarking, breakerRef: 'cb-inny', ctRef: 'ct-inny' } }),
+      ORIGIN,
+    );
+    expect(composition.protectionSymbols).toHaveLength(1);
+    expect(composition.protectionSegments).toHaveLength(0);
+    expect(composition.measurementSegments).toHaveLength(0);
+    expect(composition.missingData).toEqual(
+      expect.arrayContaining([
+        'bay.protection.trip_link_unresolved',
+        'bay.protection.measurement_link_unresolved',
+      ]),
+    );
+  });
+
+  it('istniejące wyrocznie GPZ pozostają zielone z pełnym rejestrem device-ref (tor+linia+adnotacja razem)', () => {
+    const composition = composeGpz(propsWithRegistry(), ORIGIN);
+    expect(allGpzSymbolsOnGrid(composition)).toBe(true);
+    expect(noGpzSymbolOverlaps(composition)).toBe(true);
+    expect(gpzInternalSegmentsEndAtPortsOrBus(composition)).toBe(true);
+    expect(noDirectTransformerBusTies(composition)).toBe(true);
   });
 });

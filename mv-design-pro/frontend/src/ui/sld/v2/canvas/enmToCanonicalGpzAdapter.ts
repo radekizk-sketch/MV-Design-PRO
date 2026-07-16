@@ -39,6 +39,15 @@ import type {
   StatusFlag,
   SwitchState,
 } from '../renderer/GpzCanonicalRenderer';
+// F11.1 (SLD_CAD_SPEC_V3 §17.2/§18.3/§20.1, rejestr device-ref w GPZ):
+// reużycie WPROST tych samych projekcji co stacje (`buildExplicitStationMiniBays`,
+// `enmToSldAdapter.ts`) — jedna prawda ENM Bay → aparat/adnotacja zabezpieczeń,
+// zero duplikacji logiki dopasowania `ProtectionAssignment`/`Measurement`.
+import {
+  projectBayPrimaryDevices,
+  resolveBayCtRatingAnnotations,
+  resolveBayProtectionMarking,
+} from './enmToSldAdapter';
 
 /* =============================================================================
    Public API
@@ -66,7 +75,21 @@ export interface BuildCanonicalGpzOptions {
 export function buildCanonicalGpzProps(
   enm: Pick<
     EnergyNetworkModel,
-    'substations' | 'bays' | 'transformers' | 'buses' | 'generators' | 'branches'
+    | 'substations'
+    | 'bays'
+    | 'transformers'
+    | 'buses'
+    | 'generators'
+    | 'branches'
+    // F11.1 (spec §17.2/§18.3): rejestr device-ref — `protectionMarking`
+    // (`Bay.protection_ref` → `ProtectionAssignment`) i `ctRatingAnnotations`
+    // (`Measurement`) potrzebują tych dwóch kolekcji, dokładnie jak stacje
+    // (`buildExplicitStationMiniBays`, `enmToSldAdapter.ts`). Addytywne —
+    // istniejący wywołujący (`buildScene.ts`/`SldWorkspaceContainer.tsx`)
+    // przekazuje PEŁNY `EnergyNetworkModel`, więc żaden callsite nie wymaga
+    // zmiany.
+    | 'protection_assignments'
+    | 'measurements'
   >,
   substationRef: string,
   options: BuildCanonicalGpzOptions,
@@ -88,8 +111,16 @@ export function buildCanonicalGpzProps(
     substation.transformer_refs?.includes(t.ref_id),
   );
 
+  // F11.1: kontekst rejestru device-ref przekazywany DALEJ do `buildBay` —
+  // WYŁĄCZNIE pola faktycznie czytane przez `resolveBayProtectionMarking`/
+  // `resolveBayCtRatingAnnotations` (`enmToSldAdapter.ts`).
+  const protectionCtx: Pick<EnergyNetworkModel, 'protection_assignments' | 'measurements'> = {
+    protection_assignments: enm.protection_assignments ?? [],
+    measurements: enm.measurements ?? [],
+  };
+
   const allBranches = enm.branches ?? [];
-  const lvSections = buildLvSections(substation, allBays, enm.buses ?? [], allBranches, overlay ?? null);
+  const lvSections = buildLvSections(substation, allBays, enm.buses ?? [], allBranches, overlay ?? null, protectionCtx);
   // Mapowanie sectionId po `bus_ref` z `substation.gpz_sections` — używane do
   // przypisania TR do sekcji wg `lv_bus_ref`.
   const sectionIdByLvBusRef = new Map<string, string>();
@@ -124,7 +155,7 @@ export function buildCanonicalGpzProps(
     transformers,
     sections: lvSections,
     couplers: buildCouplers(substation, allBays),
-    hvSections: buildHvSections(substation, allBays, enm.buses ?? [], allBranches, overlay ?? null),
+    hvSections: buildHvSections(substation, allBays, enm.buses ?? [], allBranches, overlay ?? null, protectionCtx),
   };
 }
 
@@ -197,6 +228,15 @@ function mergeBaysWithFieldSpecs(station: Substation, bays: readonly Bay[]): Bay
       gpz_section_id: readString(spec.gpz_section_id),
       equipment_refs: readStringArray(spec.equipment_refs),
       protection_codes: readStringArray(spec.protection_codes),
+      // F11.1 (spec §17.2, rejestr device-ref w GPZ): `protection_ref` NIE
+      // był kopiowany na syntetyzowany `Bay` (znalezisko własne — pole
+      // ISTNIEJE na `field_spec` źródłowym, ale ginęło tu cicho), więc
+      // `resolveBayProtectionMarking` nigdy nie mogła rozwiązać
+      // `ProtectionAssignment` dla pól GPZ budowanych z `field_specs` — nawet
+      // gdy dane realnie niosły przypisanie. Naprawa u źródła (addytywna,
+      // zero zmiany zachowania na fixturze referencyjnej: `protection_ref`
+      // tam `null`).
+      protection_ref: readString(spec.protection_ref),
       bay_number: readString(spec.bay_number),
       feeder_short_name: readString(spec.feeder_short_name),
       outgoing_destination_ref: readString(spec.outgoing_destination_ref),
@@ -250,12 +290,18 @@ function extractTransformerDesignation(name: string | null | undefined, idx: num
   return `T${idx + 1}`;
 }
 
+/** F11.1: kontekst rejestru device-ref (`ProtectionAssignment`/`Measurement`),
+ *  wyłącznie pola faktycznie czytane przez `resolveBayProtectionMarking`/
+ *  `resolveBayCtRatingAnnotations` — wzorzec `BuildCanonicalGpzOptions`. */
+type ProtectionCtx = Pick<EnergyNetworkModel, 'protection_assignments' | 'measurements'>;
+
 function buildLvSections(
   gpz: Substation,
   bays: readonly Bay[],
   buses: readonly Bus[],
   branches: readonly Branch[],
   overlay: RawOverlayPayload | null,
+  protectionCtx: ProtectionCtx,
 ): CanonicalGpzSection[] {
   const sectionDefs = gpz.gpz_sections ?? [];
   const lvBays = bays.filter((b) => isLvBay(b, buses));
@@ -273,7 +319,7 @@ function buildLvSections(
       order: 1,
       label: 'S1',
       busVoltageKv: defaultBus?.voltage_kv ?? 15,
-      bays: lvBays.map((b) => buildBay(b, buses, branches, overlay)),
+      bays: lvBays.map((b) => buildBay(b, buses, branches, overlay, protectionCtx)),
     }];
   }
 
@@ -290,7 +336,7 @@ function buildLvSections(
         order: sec.order,
         label: sec.name ?? `S${idx + 1}`,
         busVoltageKv: bus?.voltage_kv ?? 15,
-        bays: sectionBays.map((b) => buildBay(b, buses, branches, overlay)),
+        bays: sectionBays.map((b) => buildBay(b, buses, branches, overlay, protectionCtx)),
       };
     });
 }
@@ -332,6 +378,7 @@ function buildHvSections(
   buses: readonly Bus[],
   branches: readonly Branch[],
   overlay: RawOverlayPayload | null,
+  protectionCtx: ProtectionCtx,
 ): CanonicalGpzHvSection[] {
   const hvSectionDefs = gpz.gpz_hv_sections ?? [];
   if (hvSectionDefs.length === 0) {
@@ -350,7 +397,7 @@ function buildHvSections(
         order: sec.order,
         label: sec.name ?? `HV-${idx + 1}`,
         busVoltageKv: bus?.voltage_kv ?? 110,
-        bays: hvBays.map((b) => buildBay(b, buses, branches, overlay)),
+        bays: hvBays.map((b) => buildBay(b, buses, branches, overlay, protectionCtx)),
       };
     });
 }
@@ -360,6 +407,7 @@ function buildBay(
   _buses: readonly Bus[],
   branches: readonly Branch[],
   overlay: RawOverlayPayload | null,
+  protectionCtx: ProtectionCtx,
 ): CanonicalGpzBay {
   const fieldRole = mapBayRoleToFieldRole(bay.bay_role);
   const runtime = bay.runtime_state ?? null;
@@ -377,6 +425,16 @@ function buildBay(
     protectionCodes: bay.protection_codes ?? [],
     measurements: extractBayMeasurements(bay, fieldRole, branches, overlay),
     inManipulation: extractInManipulation(runtime),
+    // F11.1 (SLD_CAD_SPEC_V3 §17.2/§18.3/§20.1, rejestr device-ref w GPZ —
+    // parytet ze stacjami): TA SAMA projekcja co `buildExplicitStationMiniBays`
+    // (`enmToSldAdapter.ts`), reużyta wprost (zero duplikacji). Na fixturze
+    // referencyjnej `sldSubstrate52s` GPZ niesie 0 `Bay`/`primary_devices`/
+    // `protection_assignments`/`measurements` (pola syntetyzowane z
+    // `field_specs`, patrz `mergeBaysWithFieldSpecs`) — te trzy pola są tam
+    // WSZĘDZIE `undefined`, dowód „brak danych = brak rysunku" (spec §17.2).
+    primaryDevices: projectBayPrimaryDevices(bay),
+    protectionMarking: resolveBayProtectionMarking(bay, protectionCtx),
+    ctRatingAnnotations: resolveBayCtRatingAnnotations(bay, protectionCtx),
   };
 }
 

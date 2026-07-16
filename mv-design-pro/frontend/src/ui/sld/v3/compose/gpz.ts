@@ -62,12 +62,16 @@ import {
   LATERAL_BRANCH_GAP,
   bayApparatusPlanFootprint,
   planApparatusSymbolIds,
+  symbolIdForPrimaryDeviceKind,
 } from './apparatusSequence';
 import {
   PROTECTION_ANNOTATION_DIAMETER,
   PROTECTION_FULL_LIST_LABEL_CLASS,
   fullCodesListText,
   protectionAnnotationColumnWidth,
+  protectionDeviceCenter,
+  resolveCtRatingAnnotations,
+  resolveStationProtectionMarking,
   type ProtectionAnnotationDetail,
 } from './protectionMarking';
 import type {
@@ -77,6 +81,7 @@ import type {
   CanonicalGpzTransformer,
   GpzCanonicalRendererProps,
 } from '../../v2/renderer/GpzCanonicalRenderer';
+import type { BayPrimaryDeviceView } from '../../v2/renderer/MiniBlockRmuRenderer';
 
 // ---------------------------------------------------------------------------
 // Meta — atrybuty data-* potrzebne wyrocznaim migrowanym z v2 (§8).
@@ -120,6 +125,21 @@ export interface ComposedGpzSymbolInstance {
   readonly x: number;
   readonly y: number;
   readonly state?: SwitchState;
+  /** F11.1 (spec §17.2/§20.1, rejestr device-ref w GPZ): `BayPrimaryDevice.
+   *  device_ref` — WYŁĄCZNIE gdy `bay.primaryDevices` dostarcza sekwencję
+   *  DOKŁADNIE odpowiadającą (długość + kolejność symboli) szablonowi
+   *  `FieldApparatusSpec[]` użytemu do budowy TEGO stosu (patrz
+   *  `primaryDeviceItemsForTemplate` niżej) — WHITE BOX, zero częściowego
+   *  dopasowania. `undefined` gdy dane nieobecne/nie zgadzają się (jak przed
+   *  F11.1 — pozycjonowanie po `symbolId`). Ten sam kształt co
+   *  `compose/station.ts` `ComposedSymbolInstance.deviceRef`, więc
+   *  `ComposedGpzSymbolInstance` jest strukturalnie zgodny z `PlacedStackDevice`
+   *  (`./protectionMarking`) — `resolveStationProtectionMarking`/
+   *  `resolveCtRatingAnnotations` reużyte WPROST, bez duplikatu dla GPZ. */
+  readonly deviceRef?: string;
+  /** F11.1: `BayPrimaryDevice.linked_ref` — analogicznie do `deviceRef`,
+   *  fundament dopasowania kotwicy adnotacji przekładni CT (§18.3). */
+  readonly linkedRef?: string;
   readonly ports: Readonly<Record<string, RoutePort>>;
   readonly meta: GpzElementMeta;
 }
@@ -156,23 +176,36 @@ export interface GpzCompositionLabelInputs {
   readonly fieldCaptions: readonly PortCaptionOwnerInput[];
   /** F9.9 R-1/R-2 (spec §17.3): etykieta pełnej listy kodów (>2 funkcji) —
    *  lustro `StationCompositionLabelInputs.protection` (compose/station.ts).
-   *  GPZ NIE emituje „52" (tor wyzwalania odroczony — patrz
-   *  `GpzComposition.protectionSymbols` niżej), więc lista niesie dziś
-   *  WYŁĄCZNIE `#protection-codes-full`. */
+   *  F11.1: GPZ emituje TERAZ też „52" (tor wyzwalania) i adnotacje CT
+   *  (§18.3) w tej samej liście — patrz `GpzComposition.protectionSegments`/
+   *  `measurementSegments` niżej. */
   readonly protection: readonly SimpleAnchoredOwnerInput[];
 }
 
 /**
- * F9.9 R-1 (rozstrzygnięcie architekta, recenzja 2026-07-15): okrąg
- * przekaźnika w GPZ — SAM OKRĄG z kodami (dane: `CanonicalGpzBay.
- * protectionCodes`, adapter `enmToCanonicalGpzAdapter.ts:377`), BEZ toru
- * wyzwalania: kompozycja GPZ nie śledzi `device_ref` per aparat (stosy z
- * SZABLONÓW `FieldApparatusSpec`, nie z `primary_devices`), więc dopasowanie
- * `ProtectionAssignment.breaker_ref` na KONKRETNY narysowany aparat jest tu
- * niewykonalne bez rejestru device-ref — tor wyzwalania GPZ = F8c/F9.10.
- * Okrąg bez toru w GPZ NIE jest luką danych (`missingData`) — to
- * udokumentowany zakres F9.9 (patrz też wyjątek w `protectionMarkingGaps`,
+ * F9.9 R-1 (rozstrzygnięcie architekta, recenzja 2026-07-15) — ZNIESIONE
+ * przez F11.1 (spec §17.6 doprecyzowanie, rejestr device-ref w GPZ):
+ * pierwotnie okrąg przekaźnika w GPZ był rysowany BEZ toru wyzwalania, bo
+ * kompozycja GPZ nie śledziła `device_ref` per aparat (stosy z SZABLONÓW
+ * `FieldApparatusSpec`, nie z `primary_devices`) — dopasowanie
+ * `ProtectionAssignment.breaker_ref`/`ct_ref` na KONKRETNY narysowany aparat
+ * było wtedy niewykonalne, a „okrąg bez toru" był udokumentowanym,
+ * nie-luką-danych wyjątkiem (§17.6, `protectionMarkingGaps` w
  * `scene/buildScene.ts`).
+ *
+ * F11.1: `buildFieldStack` niżej dopasowuje TERAZ `bay.primaryDevices`
+ * (`CanonicalGpzBay.primaryDevices`, adapter `enmToCanonicalGpzAdapter.ts`,
+ * wzorzec stacyjne `stackItemsForBay`) do szablonu pola — WYŁĄCZNIE gdy
+ * sekwencja się DOKŁADNIE zgadza (`primaryDeviceItemsForTemplate`) — i niesie
+ * `deviceRef`/`linkedRef` na `ComposedGpzSymbolInstance`. Gdy dane się
+ * zgadzają, `resolveStationProtectionMarking` (`./protectionMarking`,
+ * REUŻYTA WPROST — zero duplikatu logiki stacja↔GPZ) rozwiązuje tor
+ * wyzwalania i linię pomiarową DOKŁADNIE jak dla stacji; gdy dane są
+ * nieobecne/niejednoznaczne, okrąg zostaje BEZ linii — ale TERAZ to JEST
+ * zgłaszane przez `missingData` (`bay.protection.trip_link_unresolved`/
+ * `bay.protection.measurement_link_unresolved`), tak jak dla stacji — WYJĄTEK
+ * §17.6 ZNIESIONY świadomie (parytet GPZ↔stacje, zero specjalnego
+ * traktowania GPZ w `protectionMarkingGaps`).
  */
 export interface ComposedGpzProtectionSymbol {
   readonly symbolId: 'protectionRelay';
@@ -214,6 +247,17 @@ export interface GpzComposition {
    *  — nie uczestniczy w wyroczniach toru/parity). Patrz docstring
    *  `ComposedGpzProtectionSymbol`. */
   readonly protectionSymbols: readonly ComposedGpzProtectionSymbol[];
+  /** F11.1 (spec §17.1/§20.1): tor(y) wyzwalania (linia przerywana 4-2)
+   *  przekaźnik→wyłącznik — ODDZIELNE od `segments` (jak `protectionSymbols`
+   *  wyżej), lustro `StationComposition.protectionSegments`
+   *  (`compose/station.ts`). */
+  readonly protectionSegments: readonly ComposedGpzSegment[];
+  /** F11.1 (spec §20.1): linia(e) SYGNAŁU POMIAROWEGO CT→przekaźnik —
+   *  ODRĘBNA lista od `protectionSegments` (TA SAMA reguła co stacje —
+   *  `scene/buildScene.ts` nadaje jej WŁASNY `meta.kind: 'measurementLink'`,
+   *  odróżnialny stylem od `'protectionTrip'`, §20.1 „obie linie
+   *  rozróżnialne wizualnie"). Lustro `StationComposition.measurementSegments`. */
+  readonly measurementSegments: readonly ComposedGpzSegment[];
   readonly bbox: V3Rect;
 }
 
@@ -348,6 +392,45 @@ function portsInWorld(symbolId: SymbolId, x: number, y: number): Readonly<Record
   return out;
 }
 
+/**
+ * F11.1 (spec §17.2/§20.1, rejestr device-ref w GPZ — usunięcie wyjątku
+ * §17.6): dopasowuje `bay.primaryDevices` (ENM `Bay.primary_devices`, GDY
+ * obecne — dziś ZAWSZE `undefined` na fixturze referencyjnej, STOP-notatka
+ * F9.2 `v2/canvas/enmToSldAdapter.ts`) do STAŁEGO szablonu
+ * `FieldApparatusSpec[]` użytego do budowy stosu tego pola.
+ *
+ * GPZ, w przeciwieństwie do stacji (`compose/station.ts` `stackItemsForBay`,
+ * gdzie sekwencja symboli PRZY DANYCH pochodzi WPROST z `primaryDevices`),
+ * ma gramatykę pola KONWENCYJNĄ i STAŁĄ (`fieldApparatusSpecForBay` — F11.1
+ * jej NIE zmienia, layout/bands/tapX GPZ pozostają nietykalne). Rejestr
+ * device-ref jest więc dopasowaniem WARUNKOWYM: dopiero gdy sekwencja
+ * `symbolId` wyprowadzona z `primaryDevices` (po odfiltrowaniu kindów
+ * niemapowalnych — `symbolIdForPrimaryDeviceKind`, TA SAMA funkcja co stacje)
+ * ma DOKŁADNIE tę samą długość I kolejność co `specs`, każda pozycja stosu
+ * dostaje `deviceRef`/`linkedRef`/stan z DANYCH — WHITE BOX, zero
+ * częściowego/domyślnego przypisania. Gdy sekwencje się NIE zgadzają (inna
+ * długość/kolejność, np. dane niosą inny zestaw aparatów niż zakłada
+ * konwencja GPZ) — `null`: CAŁY stos pozostaje BEZ rejestru (fallback
+ * pozycjonowania okręgu po `symbolId`, jak przed F11.1) — nigdy zgadywanie
+ * per-pozycja.
+ */
+function primaryDeviceItemsForTemplate(
+  bay: CanonicalGpzBay,
+  specs: readonly FieldApparatusSpec[],
+): readonly BayPrimaryDeviceView[] | null {
+  const devices = bay.primaryDevices;
+  if (!devices || devices.length === 0) return null;
+  const mapped: BayPrimaryDeviceView[] = [];
+  for (const device of devices) {
+    if (symbolIdForPrimaryDeviceKind(device.kind) != null) mapped.push(device);
+  }
+  if (mapped.length !== specs.length) return null;
+  const aligned = mapped.every(
+    (device, index) => symbolIdForPrimaryDeviceKind(device.kind) === specs[index].symbolId,
+  );
+  return aligned ? mapped : null;
+}
+
 function buildFieldStack(
   specs: readonly FieldApparatusSpec[],
   centerX: number,
@@ -355,6 +438,12 @@ function buildFieldStack(
   testIdFor: (index: number, symbolId: SymbolId) => string | undefined,
   stateFor: (index: number, symbolId: SymbolId) => SwitchState | undefined,
   metaExtra: Partial<GpzElementMeta>,
+  // F11.1: rejestr device-ref, index-aligned do `specs` (ten sam indeks co
+  // `testIdFor`/`stateFor`) — patrz docstring `primaryDeviceItemsForTemplate`.
+  // `null`/pominięty = brak rejestru (stosy szablonowe bez `Bay` za nimi —
+  // pole WN TR/pole TR dedykowane, patrz wywołania niżej — zostają BEZ
+  // rejestru z konstrukcji, uczciwie: nie ma `CanonicalGpzBay` źródłowego).
+  deviceItems: readonly BayPrimaryDeviceView[] | null = null,
 ): FieldStack {
   // F10.1 (spec §18.1/§18.2, V12K-033): podział na TOR GŁÓWNY (oś) i APARATY
   // BOCZNE (ES/VT/SA — odgałęzienie poziome od portu S poprzedzającego
@@ -389,11 +478,17 @@ function buildFieldStack(
     const def = SYMBOL_DEFS[spec.symbolId];
     const x = snapToGrid(centerX - def.width / 2);
     const ports = portsInWorld(spec.symbolId, x, y);
+    // F11.1: `deviceItems` jest index-aligned do `specs` ORYGINALNEJ listy —
+    // `index` tu jest DOKŁADNIE tym indeksem (patrz `specs.forEach((spec,
+    // index) => ...)` wyżej, budujący `mainSpecs`/`lateralSpecs`).
+    const deviceItem = deviceItems?.[index];
     const instance: ComposedGpzSymbolInstance = {
       symbolId: spec.symbolId,
       x,
       y,
-      state: stateFor(index, spec.symbolId),
+      state: deviceItem?.switchState ?? stateFor(index, spec.symbolId),
+      deviceRef: deviceItem?.deviceRef,
+      linkedRef: deviceItem?.linkedRef,
       ports,
       meta: { parityKeys: spec.parityKeys, testId: testIdFor(index, spec.symbolId), ...metaExtra },
     };
@@ -439,11 +534,14 @@ function buildFieldStack(
       const lx = mainRightX + LATERAL_BRANCH_GAP + used;
       consumedAtAnchor.set(afterMainIndex, used + LATERAL_BRANCH_GAP + def.width);
       const ports = portsInWorld(spec.symbolId, lx, anchor.y);
+      const deviceItem = deviceItems?.[index];
       instances.push({
         symbolId: spec.symbolId,
         x: lx,
         y: anchor.y,
-        state: stateFor(index, spec.symbolId),
+        state: deviceItem?.switchState ?? stateFor(index, spec.symbolId),
+        deviceRef: deviceItem?.deviceRef,
+        linkedRef: deviceItem?.linkedRef,
         ports,
         meta: { parityKeys: spec.parityKeys, testId: testIdFor(index, spec.symbolId), ...metaExtra },
       });
@@ -494,26 +592,22 @@ interface SectionLayout {
 
 /** F9.9 R-1: szerokość kolumny adnotacji zabezpieczeń pola GPZ — TA SAMA
  *  funkcja co stacje (`protectionAnnotationColumnWidth`,
- *  `compose/protectionMarking.ts`, jedna prawda measure↔compose), zasilona
- *  adapterem kształtu (`CanonicalGpzBay.protectionCodes` →
- *  `protectionMarking.codes`; GPZ nie niesie miernika/`ct_ref` — patrz
- *  `ComposedGpzProtectionSymbol`). Zero, gdy pole bez kodów (§17.2).
+ *  `compose/protectionMarking.ts`, jedna prawda measure↔compose). Zero, gdy
+ *  pole bez kodów I bez adnotacji CT (§17.2/§18.3).
  *
- *  F10.4 (spec §18.3): TA SAMA funkcja niesie parametr `ctRatingAnnotations`
- *  (F10.4, `compose/protectionMarking.ts`) — świadomie NIE przekazywany
- *  tutaj. `CanonicalGpzBay` (`v2/renderer/GpzCanonicalRenderer.tsx:93-123`)
- *  nie niesie ŻADNEGO kanału `Measurement`/`linked_ref` per aparat (stosy GPZ
- *  budowane z SZABLONÓW `FieldApparatusSpec`, nie z `Bay.primary_devices` —
- *  patrz nagłówek `gpzFieldPlanFootprint` niżej); `CanonicalGpzBay.
- *  measurements` to TELEMETRIA (`BayMeasurements`: `ia_a`/`ib_a`/…), NIE
- *  tożsamość/rating aparatu CT (`Measurement.rating`) — zero wspólnego pola.
- *  Rezultat: 0 adnotacji przekładni CT w GPZ w tej fazie — udokumentowana
- *  luka kanału danych (nie DOMAIN — architektoniczna, adapter GPZ nie śledzi
- *  `device_ref`/`Measurement` per aparat w ogóle), poza zakresem F10.4. */
+ *  F11.1 (spec §18.3): `CanonicalGpzBay` niesie TERAZ `ctRatingAnnotations`
+ *  (adapter `enmToCanonicalGpzAdapter.ts` `buildBay`, wzorzec
+ *  `resolveBayCtRatingAnnotations` — reużyty WPROST ze stacji) — przekazywany
+ *  tutaj, TA SAMA gałąź `ctRatingAnnotationsWidth` co `compose/station.ts`.
+ *  Kody preferują `protectionMarking.codes` (rejestr device-ref, F11.1) z
+ *  fallbackiem na legacy `protectionCodes` (kompatybilność wsteczna — testy/
+ *  wywołujący, którzy niosą WYŁĄCZNIE `protectionCodes` bez pełnego
+ *  `protectionMarking`, patrz `codesOf` w pętli pól SN niżej). */
 function gpzBayAnnotationWidth(bay: CanonicalGpzBay): number {
-  const codes = bay.protectionCodes ?? [];
+  const codes = bay.protectionMarking?.codes ?? bay.protectionCodes ?? [];
   return protectionAnnotationColumnWidth({
     protectionMarking: codes.length > 0 ? { codes } : undefined,
+    ctRatingAnnotations: bay.ctRatingAnnotations,
   });
 }
 
@@ -682,6 +776,10 @@ export function composeGpz(
   const fieldCaptions: PortCaptionOwnerInput[] = [];
   const protectionLabels: SimpleAnchoredOwnerInput[] = [];
   const protectionSymbols: ComposedGpzProtectionSymbol[] = [];
+  // F11.1 (spec §17.1/§20.1): tor wyzwalania + linia pomiarowa — patrz
+  // docstring `GpzComposition.protectionSegments`/`measurementSegments`.
+  const protectionSegments: ComposedGpzSegment[] = [];
+  const measurementSegments: ComposedGpzSegment[] = [];
   const sectionMetas: GpzSectionMeta[] = [];
   const transformerMetas: GpzTransformerMeta[] = [];
 
@@ -860,6 +958,10 @@ export function composeGpz(
       // sidecar oznacznika NIE może wejść w strefę odgałęzień ES/VT/SA.
       const footprint = gpzFieldPlanFootprint(spec);
       const topY = snBusY + GRID;
+      // F11.1 (spec §17.2/§20.1): rejestr device-ref — `null` gdy
+      // `field.bay.primaryDevices` nieobecne LUB nie odpowiadają DOKŁADNIE
+      // temu szablonowi (patrz docstring `primaryDeviceItemsForTemplate`).
+      const deviceItems = primaryDeviceItemsForTemplate(field.bay, spec);
       const stack = buildFieldStack(
         spec,
         field.centerX,
@@ -872,6 +974,7 @@ export function composeGpz(
           return undefined;
         },
         { sectionId: layout.section.sectionId, bayRef: field.bay.bayRef },
+        deviceItems,
       );
       symbols.push(...stack.instances);
       stack.instances.forEach((instance) => tag([...instance.meta.parityKeys, 'gpz.bay']));
@@ -940,53 +1043,168 @@ export function composeGpz(
         });
       }
 
-      // F9.9 R-1 (spec §17.1-§17.4): okrąg przekaźnika pola SN GPZ — SAM
-      // OKRĄG, bez toru wyzwalania (patrz docstring
-      // `ComposedGpzProtectionSymbol`: brak rejestru device-ref w stosach
-      // szablonowych GPZ; tor = F8c/F9.10; brak toru tu NIE jest
-      // `missingData`). Kotwica: geometryczny odpowiednik reguły §17.2 —
-      // CT stosu gdy narysowany, inaczej wyłącznik, inaczej pierwszy aparat
-      // (dopasowanie po `symbolId` NARYSOWANEGO stosu, nie po refach ENM —
-      // GPZ ich nie niesie; pozycjonowanie, nie asercja danych). Okrąg
-      // prawo-wyrównany do rezerwacji kolumny (`field.rightX`,
-      // `gpzBayAnnotationWidth` w `fieldColumnRequiredWidth` — jedna prawda
-      // rezerwacja↔rysunek). LOD §17.4: `'full'` kody (2 pierwsze) + pełna
-      // lista (>2, R-2); `'circle-only'` sam kontur; `'none'` nic.
-      const gpzCodes = field.bay.protectionCodes ?? [];
-      if (annotationDetail !== 'none' && gpzCodes.length > 0) {
-        const anchorInstance =
-          stack.instances.find((s) => s.symbolId === 'currentTransformer')
-          ?? stack.instances.find((s) => s.symbolId === 'breaker')
-          ?? stack.instances[0];
-        const anchorDef = SYMBOL_DEFS[anchorInstance.symbolId];
-        const anchorCenterY = anchorInstance.y + anchorDef.height / 2;
-        const circleLeftX = snapToGrid(field.rightX - PROTECTION_ANNOTATION_DIAMETER);
-        const circleTopY = snapToGrid(anchorCenterY - PROTECTION_ANNOTATION_DIAMETER / 2);
-        protectionSymbols.push({
-          symbolId: 'protectionRelay',
-          bayRef: field.bay.bayRef,
-          x: circleLeftX,
-          y: circleTopY,
-          protectionCodes: annotationDetail === 'full' ? gpzCodes.slice(0, 2) : undefined,
-        });
-        const fullList = annotationDetail === 'full' ? fullCodesListText(gpzCodes) : null;
-        if (fullList) {
-          // R-2 (§17.3 zd. 2) — ten sam model co `compose/station.ts`
-          // (`#protection-codes-full`): etykieta pod okręgiem, prawo-dosunięta
-          // do rezerwacji (measure zarezerwował `snapUp(szerokość)+GRID`).
-          const fullListWidth = measureLabelWidth(fullList, PROTECTION_FULL_LIST_LABEL_CLASS);
-          protectionLabels.push({
-            ownerRef: `${field.bay.bayRef}#protection-codes-full`,
-            ownerKind: 'protection',
-            text: fullList,
-            labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
-            anchor: {
-              x: field.rightX - Math.ceil(fullListWidth / 2),
-              y: circleTopY + PROTECTION_ANNOTATION_DIAMETER,
+      // F11.1 (spec §17.1-§17.4/§20.1, ZNIESIENIE wyjątku §17.6 — R-1):
+      // okrąg przekaźnika pola SN GPZ TERAZ dostaje tor wyzwalania + linię
+      // pomiarową, GDY dane się rozwiązują na NARYSOWANY stos (rejestr
+      // device-ref, `deviceItems` wyżej) — `resolveStationProtectionMarking`
+      // (`./protectionMarking`) REUŻYTA WPROST, TA SAMA funkcja co stacje
+      // (`compose/station.ts`), zero duplikatu logiki dopasowania
+      // `breaker_ref`/`ct_ref`. Kody: `protectionMarking.codes` (rejestr
+      // ENM, F11.1) z fallbackiem na legacy `protectionCodes` (kompatybilność
+      // wsteczna — wywołujący niosący WYŁĄCZNIE `protectionCodes`, bez pełnego
+      // `protectionMarking`, dostaje TYLKO okrąg — bez refów nie ma czego
+      // rozwiązywać, `resolveStationProtectionMarking` i tak zwraca
+      // `tripTarget`/`ctAnchor` puste). Okrąg prawo-wyrównany do rezerwacji
+      // kolumny (`field.rightX`, `gpzBayAnnotationWidth` — jedna prawda
+      // rezerwacja↔rysunek). LOD §17.4: `'full'` kody (2 pierwsze) + tor +
+      // linia pomiarowa + „52" + pełna lista (>2, R-2) + adnotacje CT;
+      // `'circle-only'` sam kontur; `'none'` nic.
+      const gpzCodes = field.bay.protectionMarking?.codes ?? field.bay.protectionCodes ?? [];
+      const hasCtRatings = (field.bay.ctRatingAnnotations?.length ?? 0) > 0;
+      if (annotationDetail !== 'none' && (gpzCodes.length > 0 || hasCtRatings)) {
+        if (gpzCodes.length > 0) {
+          // Wejście strukturalnie zgodne z `Pick<MiniBlockBayDescriptor,
+          // 'protectionMarking'>` — `resolveStationProtectionMarking` nie
+          // zna/potrzebuje GPZ, operuje WYŁĄCZNIE na kodach + refach + stosie
+          // (`PlacedStackDevice[]`, `ComposedGpzSymbolInstance` jest z
+          // konstrukcji zgodny — patrz docstring pola `deviceRef` wyżej).
+          const marking = resolveStationProtectionMarking(
+            {
+              protectionMarking: {
+                codes: gpzCodes,
+                breakerRef: field.bay.protectionMarking?.breakerRef,
+                ctRef: field.bay.protectionMarking?.ctRef,
+              },
             },
-            placement: 'below',
-          });
+            stack.instances,
+          );
+          if (marking) {
+            const anchorCenter = protectionDeviceCenter(marking.anchor);
+            const circleLeftX = snapToGrid(field.rightX - PROTECTION_ANNOTATION_DIAMETER);
+            const circleTopY = snapToGrid(anchorCenter.y - PROTECTION_ANNOTATION_DIAMETER / 2);
+            const linkPortDef = SYMBOL_DEFS.protectionRelay.ports[0]; // 'link' (W)
+            const linkPortWorld = { x: circleLeftX + linkPortDef.x, y: circleTopY + linkPortDef.y };
+            protectionSymbols.push({
+              symbolId: 'protectionRelay',
+              bayRef: field.bay.bayRef,
+              x: circleLeftX,
+              y: circleTopY,
+              protectionCodes: annotationDetail === 'full' ? marking.codes.slice(0, 2) : undefined,
+            });
+            const fullList = annotationDetail === 'full' ? fullCodesListText(marking.codes) : null;
+            if (fullList) {
+              // R-2 (§17.3 zd. 2) — ten sam model co `compose/station.ts`
+              // (`#protection-codes-full`): etykieta pod okręgiem, prawo-
+              // dosunięta do rezerwacji (measure zarezerwował
+              // `snapUp(szerokość)+GRID`).
+              const fullListWidth = measureLabelWidth(fullList, PROTECTION_FULL_LIST_LABEL_CLASS);
+              protectionLabels.push({
+                ownerRef: `${field.bay.bayRef}#protection-codes-full`,
+                ownerKind: 'protection',
+                text: fullList,
+                labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
+                anchor: {
+                  x: field.rightX - Math.ceil(fullListWidth / 2),
+                  y: circleTopY + PROTECTION_ANNOTATION_DIAMETER,
+                },
+                placement: 'below',
+              });
+            }
+
+            if (annotationDetail === 'full' && marking.tripTarget) {
+              // §17.2: „nigdy linia do domyślnego aparatu" — dochodzi
+              // WYŁĄCZNIE do aparatu rozwiązanego z `breaker_ref`, zaczepiona
+              // na jego REJESTROWANYM porcie N (wzorzec `compose/station.ts`).
+              const targetDef = SYMBOL_DEFS[marking.tripTarget.symbolId];
+              const targetNorth = targetDef.ports.find((p) => p.dir === 'N');
+              const targetPort = targetNorth
+                ? { x: marking.tripTarget.x + targetNorth.x, y: marking.tripTarget.y + targetNorth.y }
+                : { x: marking.tripTarget.x + targetDef.width / 2, y: marking.tripTarget.y };
+              protectionSegments.push({
+                ownerRef: `${field.bay.bayRef}#trip-line`,
+                points: [
+                  targetPort,
+                  { x: linkPortWorld.x, y: targetPort.y },
+                  { x: linkPortWorld.x, y: linkPortWorld.y },
+                ],
+                meta: { parityKeys: [], sectionId: layout.section.sectionId, bayRef: field.bay.bayRef },
+              });
+              protectionLabels.push({
+                ownerRef: `${field.bay.bayRef}#device-number`,
+                ownerKind: 'protection',
+                text: '52',
+                labelClass: 't4',
+                anchor: { x: marking.tripTarget.x + targetDef.width, y: targetPort.y },
+                placement: 'right',
+              });
+            } else if (annotationDetail === 'full') {
+              // §17.2/§17.6 (F11.1 — wyjątek ZNIESIONY): brak rozwiązywalnego
+              // `breaker_ref` w stosie pola — okrąg BEZ linii wyzwalania,
+              // luka danych zgłoszona TERAZ TAK SAMO jak dla stacji (dawniej
+              // dla GPZ ten przypadek był udokumentowanym wyjątkiem §17.6 —
+              // ZNIESIONY, parytet GPZ↔stacje).
+              missingData.push('bay.protection.trip_link_unresolved');
+            }
+
+            if (annotationDetail === 'full' && marking.ctAnchor) {
+              // F10.5/F11.1 (spec §20.1): linia SYGNAŁU POMIAROWEGO
+              // CT→przekaźnik — ODRĘBNA od toru wyzwalania (zakaz „jednej
+              // anonimowej linii", §20.1).
+              const ctDef = SYMBOL_DEFS[marking.ctAnchor.symbolId];
+              const ctNorth = ctDef.ports.find((p) => p.dir === 'N');
+              const ctPort = ctNorth
+                ? { x: marking.ctAnchor.x + ctNorth.x, y: marking.ctAnchor.y + ctNorth.y }
+                : { x: marking.ctAnchor.x + ctDef.width / 2, y: marking.ctAnchor.y };
+              measurementSegments.push({
+                ownerRef: `${field.bay.bayRef}#measurement-link`,
+                points: [
+                  ctPort,
+                  { x: linkPortWorld.x, y: ctPort.y },
+                  { x: linkPortWorld.x, y: linkPortWorld.y },
+                ],
+                meta: { parityKeys: [], sectionId: layout.section.sectionId, bayRef: field.bay.bayRef },
+              });
+            } else if (annotationDetail === 'full') {
+              missingData.push('bay.protection.measurement_link_unresolved');
+            }
+          }
         }
+
+        // F11.1 (spec §18.3): adnotacje przekładni CT — TA SAMA funkcja co
+        // stacje (`resolveCtRatingAnnotations`), dopasowanie na aparat
+        // `currentTransformer` NARYSOWANEGO stosu przez `linked_ref` (rejestr
+        // device-ref, `deviceItems` wyżej). Zaczep PO PRAWEJ toru głównego —
+        // ta sama krawędź co sidecar oznaczenia pola (`footprint.width`,
+        // wzorzec `compose/station.ts` `stackLeftX+planFootprint.width`).
+        if (annotationDetail === 'full' && hasCtRatings) {
+          const ctAnnotations = resolveCtRatingAnnotations(field.bay.ctRatingAnnotations, stack.instances);
+          const ctTextAnchorX = snapToGrid(field.centerX - footprint.mainStack.width / 2 + footprint.width);
+          ctAnnotations.forEach((ann, ctIndex) => {
+            const center = protectionDeviceCenter(ann.device);
+            protectionLabels.push({
+              ownerRef: `${field.bay.bayRef}#ct-rating-${ann.device.deviceRef ?? ctIndex}`,
+              ownerKind: 'protection',
+              text: ann.text,
+              labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
+              anchor: { x: ctTextAnchorX, y: center.y },
+              placement: 'right',
+            });
+          });
+          if (ctAnnotations.length === 0) {
+            // Wzorzec `bay.protection.trip_link_unresolved` wyżej: dane
+            // przekładni CT wskazane, ale ŻADEN aparat NARYSOWANEGO stosu nie
+            // niesie pasującego `linked_ref` (rejestr device-ref nierozwiązany
+            // /nieobecny) — luka danych zgłoszona zamiast cichego pominięcia.
+            missingData.push('bay.protection.ct_rating_anchor_unresolved');
+          }
+        }
+        // GPZ nie rysuje miernika „M" (poza zakresem F11.1 — brak
+        // `meteringMeasurementRef` na `CanonicalGpzBay`), więc kolizja
+        // okrąg/adnotacja CT analogiczna do stacyjnego `minGap`
+        // (`compose/station.ts`) nie występuje: `ctAnnotations` leżą we
+        // WŁASNYM pasmie tuż za torem głównym, `gpzBayAnnotationWidth`/
+        // `ctRatingAnnotationsWidth` (`./protectionMarking`) sumują
+        // rezerwacje (nie max()ują) — jedna prawda measure↔compose.
       }
     });
   });
@@ -1283,6 +1501,8 @@ export function composeGpz(
     parityKeys,
     missingData,
     protectionSymbols,
+    protectionSegments,
+    measurementSegments,
     bbox: computeBbox(symbols, segments),
   };
 }

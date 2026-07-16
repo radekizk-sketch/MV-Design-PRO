@@ -3994,7 +3994,7 @@ function bayRuntimeSwitchStates(bay: Bay): {
  * pola są tam reprezentowane przez `substation.meta.field_specs`, inną,
  * trzecią ścieżkę danych — patrz raport F9.2, sonda).
  */
-type BayWithOptionalPrimaryDevices = Bay & {
+export type BayWithOptionalPrimaryDevices = Bay & {
   readonly primary_devices?: readonly BayPrimaryDevice[];
 };
 
@@ -4028,8 +4028,12 @@ function simplifyPrimaryDeviceSwitchState(
  * `undefined` gdy ENM nie niesie `primary_devices` dla tego pola (patrz
  * STOP-notatka powyżej — dziś ZAWSZE `undefined`, kontrakt gotowy pod
  * przyszłą serializację backendu).
+ *
+ * F11.1 (SLD_CAD_SPEC_V3 §17.2/§20.1, rejestr device-ref w GPZ): eksportowana
+ * — `v2/canvas/enmToCanonicalGpzAdapter.ts` reużywa TĘ SAMĄ funkcję dla
+ * `CanonicalGpzBay.primaryDevices` (jedna prawda stacja↔GPZ, zero duplikacji).
  */
-function projectBayPrimaryDevices(
+export function projectBayPrimaryDevices(
   bay: BayWithOptionalPrimaryDevices,
 ): readonly BayPrimaryDeviceView[] | undefined {
   const devices = bay.primary_devices;
@@ -4073,10 +4077,17 @@ function projectBayPrimaryDevices(
  * w PRZECIWIEŃSTWIE do `primary_devices` (errata E1/V12K-030), `protection_codes`
  * i `protection_ref` żyją WPROST na snapshot `Bay`, nie na field-view — bez
  * defensywnego szwu (kanał danych już domknięty).
+ *
+ * F11.1 (SLD_CAD_SPEC_V3 §17.2/§20.1, rejestr device-ref w GPZ): eksportowana,
+ * `snapshot` zwężony do `Pick<..., 'protection_assignments'>` (jedyne pole
+ * faktycznie czytane) — `v2/canvas/enmToCanonicalGpzAdapter.ts` reużywa TĘ
+ * SAMĄ funkcję dla `CanonicalGpzBay.protectionMarking` bez potrzeby całego
+ * `EnergyNetworkModel` (adapter GPZ dostaje węższy `Pick`, patrz
+ * `BuildCanonicalGpzOptions`/`buildCanonicalGpzProps`).
  */
-function resolveBayProtectionMarking(
+export function resolveBayProtectionMarking(
   bay: Bay,
-  snapshot: EnergyNetworkModel,
+  snapshot: Pick<EnergyNetworkModel, 'protection_assignments'>,
 ): BayProtectionMarkingView | undefined {
   const codes = bay.protection_codes ?? [];
   if (codes.length === 0) return undefined;
@@ -4152,10 +4163,15 @@ function resolveBayMeteringMeasurementRef(
  * F10.6 (D3, V12K-036): układ pomiarowy (`Measurement.ct_arrangement`)
  * przekazywany 1:1 jako `arrangement` — `undefined` gdy dana niedostarczona
  * (adnotacja rysuje sam identyfikator+przekładnię, zero zgadywania).
+ *
+ * F11.1 (SLD_CAD_SPEC_V3 §18.3, rejestr device-ref w GPZ): eksportowana,
+ * `snapshot` zwężony do `Pick<..., 'measurements'>` — `v2/canvas/
+ * enmToCanonicalGpzAdapter.ts` reużywa TĘ SAMĄ funkcję dla
+ * `CanonicalGpzBay.ctRatingAnnotations` (jedna prawda stacja↔GPZ).
  */
-function resolveBayCtRatingAnnotations(
+export function resolveBayCtRatingAnnotations(
   bay: Bay,
-  snapshot: EnergyNetworkModel,
+  snapshot: Pick<EnergyNetworkModel, 'measurements'>,
 ): readonly CtRatingAnnotationView[] | undefined {
   const measurements = (snapshot.measurements ?? []).filter(
     (m: Measurement) => m.measurement_type === 'CT' && m.bay_ref === bay.ref_id,

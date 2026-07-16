@@ -537,11 +537,24 @@ jako WARSTWA ADNOTACJI schematu.
 
 - Konwencja obowiązuje render v3 (docelowy); v2 GPZ już rysuje `protection_codes`
   (`GpzSwitchgearRenderer`) — semantyka wspólna, parytet wymagany przy F8c (§10).
-- **Doprecyzowanie (rozstrzygnięcie architekta, runda korekcyjna F9.9):** w GPZ v3 rysowany jest
-  w F9.9 SAM OKRĄG przekaźnika z kodami (`CanonicalGpzBay.protectionCodes`), BEZ toru wyzwalania —
-  kompozycja GPZ nie śledzi `deviceRef` per aparat, więc tor bez rejestru urządzeń byłby zgadywany;
-  tor wyzwalania w GPZ = F8c/F9.10 (razem z rejestrem device-ref). Okrąg bez toru w GPZ NIE jest
-  `missingData` — to udokumentowany zakres etapu.
+- **Doprecyzowanie (rozstrzygnięcie architekta, runda korekcyjna F9.9) — ZNIESIONE w F11.1:** w GPZ
+  v3 rysowany był w F9.9 SAM OKRĄG przekaźnika z kodami (`CanonicalGpzBay.protectionCodes`), BEZ
+  toru wyzwalania — kompozycja GPZ nie śledziła `deviceRef` per aparat, więc tor bez rejestru
+  urządzeń byłby zgadywany; okrąg bez toru w GPZ NIE był `missingData` — to był udokumentowany
+  zakres etapu F9.9.
+- **F11.1 (rejestr device-ref w GPZ, parytet ze stacjami):** `CanonicalGpzBay` niesie TERAZ
+  `primaryDevices`/`protectionMarking`/`ctRatingAnnotations` (adapter `enmToCanonicalGpzAdapter.ts`
+  `buildBay`, projekcja REUŻYTA WPROST z `enmToSldAdapter.ts` — jedna prawda stacja↔GPZ). Kompozycja
+  GPZ (`v3/compose/gpz.ts`) dopasowuje `bay.primaryDevices` do STAŁEGO szablonu pola WYŁĄCZNIE gdy
+  sekwencja się DOKŁADNIE zgadza (`primaryDeviceItemsForTemplate`, zero częściowego dopasowania) i,
+  gdy tak, rozwiązuje tor wyzwalania (§17.2) + linię pomiarową (§20.1) + adnotację CT (§18.3)
+  DOKŁADNIE jak stacja (`resolveStationProtectionMarking`/`resolveCtRatingAnnotations` reużyte
+  wprost). **Doprecyzowanie powyżej ZNIESIONE**: okrąg przekaźnika w GPZ BEZ toru wyzwalania JEST
+  TERAZ `missingData` (`bay.protection.trip_link_unresolved`/`bay.protection.measurement_link_unresolved`),
+  dokładnie jak dla stacji z nierozwiązywalnym `breaker_ref`/`ct_ref` — zero specjalnego traktowania
+  GPZ. Na fixturze referencyjnej `sldSubstrate52s` (0 `Bay`/`primary_devices`/`protection_assignments`/
+  `measurements` dla GPZ) rejestr pozostaje pusty z konstrukcji — dowód pozytywny/negatywny na
+  danych syntetycznych (`compose/__tests__/gpz.test.ts`).
 - Wątek przebudowy interfejsu (`claude/power-network-design-ui-ir91mv`): słownik nowej IA
   przyjmuje terminy „przekaźnik zabezpieczeniowy", numery urządzeń C37.2 („52", „50/51"…);
   inspektor nowej powłoki prezentuje `ProtectionAssignment` + `settings`; stylowanie warstwy
