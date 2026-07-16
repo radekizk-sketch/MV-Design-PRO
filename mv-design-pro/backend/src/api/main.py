@@ -23,6 +23,7 @@ from api.middleware import RequestIdMiddleware
 from api.ncrfg_ptpiree_tests import router as ncrfg_ptpiree_tests_router
 from api.oze_analysis_runs import router as oze_analysis_runs_router
 from api.power_flow_comparisons import router as power_flow_comparisons_router
+from api.quality_analysis_runs import router as quality_analysis_runs_router
 from api.reference_networks import router as reference_networks_router
 from api.power_flow_runs import router as power_flow_runs_router
 from api.project_archive import router as project_archive_router
@@ -115,6 +116,7 @@ app.include_router(ncrfg_ptpiree_tests_router)
 app.include_router(oze_analysis_runs_router)
 app.include_router(power_flow_comparisons_router)
 app.include_router(power_flow_runs_router)
+app.include_router(quality_analysis_runs_router)
 app.include_router(reference_networks_router)
 app.include_router(project_archive_router)
 app.include_router(projects_router)
