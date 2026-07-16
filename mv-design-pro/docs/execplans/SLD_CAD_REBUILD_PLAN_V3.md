@@ -1578,6 +1578,22 @@ obszarem), wnętrze stacji z dwukliku (shared/stationInternalViewData). Dewiacja
   (workspace v3 + pusty stan), routerExtensionSurfaces (E-01 → v3 wprost),
   featureFlags.test (wpis flagi usunięty z definicją).
 
+## F13. Dyrektywa D3 — kanon energetyczny (ocena właściciela 7/10, 2026-07-16)
+
+Wejście: `docs/sld/SLD_ENGINEERING_CANON_AUDIT_D3_2026-07.md` (WIĄŻĄCY — 13 ustaleń
+z dowodami pomiarowymi) + spec §21/§22 (nowe, spec-first). Ustalenia właściciela
+potwierdzone pomiarem: 24 przecięcia toru mocy gołą kreską (P-1); strona 110 kV GPZ
+w ENM (TR 110/15 25 MVA Yd11, bus_110, Sk″=250 MVA/Ik3″=9,62 kA) NIERYSOWANA (P-3);
+korytarze tras przez pas szyn (odczyt „wejście z góry na szynę" mimo strukturalnie
+poprawnych zakończeń w głowicach — P-2).
+
+Fazy (kolejność wiążąca): F13.1 GPZ WN/SN + dominanta (§21, gpz_hv_column_probe/
+gpz_dominance_probe) [KRYTYCZNY]; F13.2 skrzyżowania: routing redukujący + mostki
++ crossing_probe/junction_dot_probe (§22.1) [KRYTYCZNY]; F13.3 pas ochronny szyn
+(§22.3, bus_band_clearance_probe) [WYSOKI]; F13.4 grubość magistrala>odgałęzienie
+[ŚREDNI]; F13.5 rendery+macierz+raport. Baseline'y §15.1 wolno podnieść WYŁĄCZNIE
+z uzasadnieniem liczbowym (koszt poprawności kanonicznej D3-1/D3-3).
+
 ## Prompt kontynuacji (wklej świeżemu agentowi — DO WDROŻENIA 100%)
 
 ```

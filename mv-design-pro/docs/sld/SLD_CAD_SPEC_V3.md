@@ -917,3 +917,45 @@ przyszłość, poza zakresem D2; D9 kategorie funkcjonalne pól (F10.2, §A3-DEC
 
 **Rozstrzygnięcia konfliktów** (`docs/v12xx/REJESTR_KONFLIKTOW.md`): K-D2-A → V12K-033;
 K-D2-B → V12K-034; K-D2-C → V12K-035; K-D2-D → V12K-036; K-D2-E → V12K-037.
+
+## 21. GPZ jako dominanta WN/SN (dyrektywa D3-1/D3-2/D3-8, audyt `SLD_ENGINEERING_CANON_AUDIT_D3_2026-07.md`, 2026-07-16)
+
+### 21.1 Kolumna WN (strona 110 kV)
+- **Wymaganie:** GPZ rysuje pełny tor systemowy: przyłącze systemowe WN (strzałka źródła
+  Z NAZWĄ z `Source.meta.source_id` i danymi zwarciowymi) → szyna WN (napięcie z `Bus.voltage_kv`)
+  → transformator WN/SN (`transformer2W`, grupa połączeń + moc + przekładnia przy symbolu,
+  np. „Yd11 · 25 MVA · 110/15 kV") → zejście na sekcje SN.
+- **Źródło danych (projekcja białoskrzynkowa, zero zgadywania):** `gpz_hv_sections` gdy niepuste
+  (grupowanie nadrzędne); gdy puste — wywiedzenie z relacji PIERWSZOKLASOWYCH:
+  `Substation.transformer_refs` × `Transformer.uhv_kv > 60`, szyna WN = `Transformer`-owy wpis
+  `bus_refs` o `voltage_kv > 60`, źródło = `Source` na szynie GPZ (`sk3_mva`/`ik3_ka`).
+  Brak KTÓREGOKOLWIEK rekordu ⇒ kolumna WN nierysowana + `missingData`/stopNote (uczciwy brak).
+- **Wyrocznia:** `gpz_hv_column_probe` — gdy ENM niesie TR WN/SN: na scenie istnieje symbol
+  transformatora WN/SN, szyna WN nad nim i przyłącze systemowe nad szyną WN, połączone torem;
+  0 GPZ z danymi WN bez kolumny WN. Test negatywny: usunięcie kolumny przy obecnych danych ⇒ FAIL.
+
+### 21.2 Dominanta kompozycyjna i dane systemowe
+- **Wymaganie:** strefa GPZ (rama + nagłówek z nazwą rozdzielni i poziomami napięć „110/15 kV");
+  szyny sekcji SN GPZ grubsze od szyn stacji (klasa `bus-gpz` > `bus`); tabliczka danych systemu
+  przy przyłączu (Sk″ [MVA], Ik3″ [kA], poziom napięcia) — WYŁĄCZNIE wartości z ENM.
+- **Wyrocznia:** `gpz_dominance_probe` — bbox strefy GPZ ≥ bbox największej stacji; grubość szyny
+  GPZ > grubość szyny stacji; tabliczka obecna, gdy `Source.sk3_mva` obecne.
+
+## 22. Fizyka obrazu: skrzyżowania, węzły, pas ochronny szyn (D3-3/D3-4/D3-5/D3-11/D3-13)
+
+### 22.1 Skrzyżowanie ≠ połączenie
+- **Wymaganie:** każde dotknięcie linii toru mocy na rysunku jest ALBO węzłem elektrycznym
+  (kropka węzłowa, wyłącznie na realnym węźle ENM), ALBO jawnie zaprzeczone mostkiem półłukowym
+  (linia PIONOWA przeskakuje poziomą; promień GRID/2; jednolita konwencja w całym rysunku;
+  mostek na szynie ZAKAZANY — przecięcia z szyną eliminuje §22.3). Pierwszeństwo ma ROUTING
+  redukujący (zejścia odgałęzień poza przęsłami), mostek jest środkiem ostatecznym.
+- **Wyrocznie:** `crossing_probe` — 0 przecięć wewnętrznych toru mocy bez mostka-lub-kropki;
+  `junction_dot_probe` — (a) każde realne rozgałęzienie ENM ma kropkę, (b) 0 kropek bez węzła
+  ENM. Obie z testami negatywnymi (fabrykowana kropka / zdjęty mostek ⇒ FAIL).
+
+### 22.3 Pas ochronny szyny
+- **Wymaganie:** żaden pion trasy OBCEJ nie przechodzi przez pas ±2×GRID od osi szyny; do pasa
+  szyny wchodzą wyłącznie zejścia PÓL tej szyny. Tor wejściowy pola czytany OD DOŁU
+  (głowica ▲ na dole → aparaty → szyna u góry) — korytarze tras zewnętrznych prowadzone poza
+  pasmami szyn.
+- **Wyrocznia:** `bus_band_clearance_probe` — 0 obcych pionów w pasie szyny; test negatywny.
