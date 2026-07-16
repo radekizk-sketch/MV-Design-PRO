@@ -11,7 +11,7 @@
  */
 
 import type { KeyboardEvent, MouseEvent } from 'react';
-import type { StationTemplateFull } from './api/szablonyClient';
+import type { StationTemplateFull } from './szablonyClient';
 import { SZABLONY_STRINGS } from './strings';
 
 const SZEROKOSC_POLA = 22;

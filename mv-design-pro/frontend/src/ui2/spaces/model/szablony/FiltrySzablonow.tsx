@@ -24,7 +24,7 @@
  * liczba całkowita) — filtrowana zakresem min/max bez żadnego parsowania tekstu.
  */
 
-import type { StationTemplateFull } from './api/szablonyClient';
+import type { StationTemplateFull } from './szablonyClient';
 import { SZABLONY_STRINGS } from './strings';
 
 /** Stan filtrów przeglądarki (kontrolowany przez rodzica). */

@@ -2,11 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { PrzegladarkaSzablonow } from '../PrzegladarkaSzablonow';
 import { SZABLONY_STRINGS } from '../strings';
-import { pobierzKategorieSzablonow, pobierzSzablon, pobierzSzablony } from '../api/szablonyClient';
-import type { StationTemplateFull, StationTemplateSummary } from '../api/szablonyClient';
+import { pobierzKategorieSzablonow, pobierzSzablon, pobierzSzablony } from '../szablonyClient';
+import type { StationTemplateFull, StationTemplateSummary } from '../szablonyClient';
 import { KATEGORIE_FIXTURE, szablonHybrydowy, szablonPelny, szablonSekcyjny } from './fixtures';
 
-vi.mock('../api/szablonyClient', () => ({
+vi.mock('../szablonyClient', () => ({
   pobierzKategorieSzablonow: vi.fn(),
   pobierzSzablony: vi.fn(),
   pobierzSzablon: vi.fn(),

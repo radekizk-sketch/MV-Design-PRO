@@ -12,7 +12,7 @@ import type {
   CategoryEntry,
   DerKindSpec,
   StationTemplateFull,
-} from '../api/szablonyClient';
+} from '../szablonyClient';
 
 export const KATEGORIE_FIXTURE: CategoryEntry[] = [
   { id: 'typowa_sn_nn', label_pl: 'Typowe stacje SN/nN', icon: 'station-distribution', description_pl: 'Standardowe stacje dystrybucyjne 100-2500 kVA', template_count: 10 },

@@ -52,4 +52,4 @@ export {
   type TemplateParamFloat,
   type TemplateParamInt,
   type TemplateSchema,
-} from './api/szablonyClient';
+} from './szablonyClient';

@@ -20,7 +20,7 @@
  * fallbacku.
  */
 
-import type { CategoryEntry } from './api/szablonyClient';
+import type { CategoryEntry } from './szablonyClient';
 
 /** Identyfikator roli sieciowej (poziom 1 taksonomii). */
 export type RolaId = 'A' | 'B' | 'C' | 'D' | 'E';

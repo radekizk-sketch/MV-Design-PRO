@@ -19,7 +19,7 @@ export {
   fetchStationTemplateCategories as pobierzKategorieSzablonow,
   fetchStationTemplate as pobierzSzablon,
   fetchStationTemplates as pobierzSzablony,
-} from '../../../../../ui/network-build/station-templates/api';
+} from '../../../../ui/network-build/station-templates/api';
 
 export type {
   BayRoleSpec,
@@ -34,4 +34,4 @@ export type {
   TemplateParamFloat,
   TemplateParamInt,
   TemplateSchema,
-} from '../../../../../ui/network-build/station-templates/api';
+} from '../../../../ui/network-build/station-templates/api';

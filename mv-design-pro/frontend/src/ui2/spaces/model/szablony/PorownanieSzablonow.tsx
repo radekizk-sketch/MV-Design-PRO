@@ -8,7 +8,7 @@
  * zależności między kartami epików).
  */
 
-import type { CatalogChoice, ProtectionRelaySpec, StationTemplateFull } from './api/szablonyClient';
+import type { CatalogChoice, ProtectionRelaySpec, StationTemplateFull } from './szablonyClient';
 import { SZABLONY_STRINGS } from './strings';
 
 function etykietyOpcji(opcje: readonly CatalogChoice[]): string {

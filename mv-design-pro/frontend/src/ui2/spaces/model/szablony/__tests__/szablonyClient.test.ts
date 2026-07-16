@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { pobierzKategorieSzablonow, pobierzSzablon, pobierzSzablony } from '../api/szablonyClient';
+import { pobierzKategorieSzablonow, pobierzSzablon, pobierzSzablony } from '../szablonyClient';
 
 describe('szablonyClient — cienki klient owijający ui/network-build/station-templates/api.ts', () => {
   const originalFetch = global.fetch;

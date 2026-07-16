@@ -15,7 +15,7 @@ import type {
   StationTemplateFull,
   TemplateParamFloat,
   TemplateParamInt,
-} from './api/szablonyClient';
+} from './szablonyClient';
 import { SZABLONY_STRINGS } from './strings';
 
 function Opcje({ opcje }: { opcje: readonly CatalogChoice[] }) {

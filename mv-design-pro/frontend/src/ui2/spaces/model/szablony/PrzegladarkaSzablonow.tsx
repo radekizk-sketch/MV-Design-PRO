@@ -3,7 +3,7 @@
  * W-203, karta E3.1) — fundament kreatora stacji. Układ: drzewko ról A–E
  * (poziom 1) → kategorie/typ konstrukcyjny (poziom 2, karta §2/§3) → kafle
  * wariantów → panel szczegółów / porównanie. Samodzielny widget: wczytuje
- * własne dane przez `api/szablonyClient.ts` (wzorzec `ui2/shell/backendHealth.ts`
+ * własne dane przez `szablonyClient.ts` (wzorzec `ui2/shell/backendHealth.ts`
  * — hook `use*` + `fetch` bezpośrednio w karcie ui2, bez pośredniego store'a).
  *
  * Gramatyka interakcji (MODEL_INTERAKCJI §2, karta §3):
@@ -48,8 +48,8 @@ import {
   pobierzKategorieSzablonow,
   pobierzSzablon,
   pobierzSzablony,
-} from './api/szablonyClient';
-import type { StationTemplateFull, StationTemplateSummary } from './api/szablonyClient';
+} from './szablonyClient';
+import type { StationTemplateFull, StationTemplateSummary } from './szablonyClient';
 import { SZABLONY_STRINGS } from './strings';
 
 type FazaDrzewka = 'ladowanie' | 'blad' | 'gotowy';
