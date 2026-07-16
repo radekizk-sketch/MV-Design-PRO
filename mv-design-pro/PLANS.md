@@ -310,7 +310,12 @@ Progress:
         D3a straty/napięcia scenariuszy (Sonnet; +8 testów; PRZEJĘTE przez
         zarządcę po zawieszeniu wykonawcy — weryfikacja i commit w worktree;
         zintegrowane `d683d45`; pełny pytest 5783 pass ZERO failed potwierdzony).
-        Karty D3a/P19 `7cb7ae9`; wykonawca P19 (ranking przyłączeń) w toku.
+        Karty D3a/P19 `7cb7ae9`. P19 ranking punktów przyłączenia (Opus;
+        33 testy; pełny vitest u wykonawcy 8318 pass ZERO failed; zintegrowane
+        `91860d1`; klasa NC RfG WŁĄCZONA — progi klas A/B/C/D są w katalogu
+        operatorów loader.py:17-25, mapowanie słownikowe 1:1 z classify_module;
+        koszt przyłącza jawnie pominięty — strumień kosztorysanta).
+        Scalenie #11: zakładka „Ranking przyłączeń" (`3c2fcbd`; ui2 1029 pass).
         PROCEDURA: wykonawcy backendowi zawieszają się po pełnym pytest (3
         przypadki) — zarządca przejmuje: weryfikacja w worktree + commit
         w imieniu wykonawcy (bez oczekiwania na raport).
