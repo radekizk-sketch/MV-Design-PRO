@@ -30,6 +30,8 @@ import { PanelGotowosci } from './spaces/gotowosc';
 import { ModelWarsztat } from './spaces/model';
 import { MenedzerPrzypadkow } from './spaces/obliczenia';
 import { PrzebiegiPanel } from './spaces/obliczenia/przebiegi';
+import { WynikiWarsztat } from './spaces/wyniki';
+import { LegacySurface } from './legacy/LegacySurface';
 import { LegacyWarsztat } from './legacy/LegacyWarsztat';
 import { LegacyInspektor } from './legacy/LegacyInspektor';
 import { LegacyChrome } from './legacy/LegacyChrome';
@@ -250,6 +252,17 @@ export function AppRoot() {
                 }
                 wybierzPrzestrzen('schemat');
               }}
+            />
+          }
+          wyniki={
+            <WynikiWarsztat
+              trybZaawansowania={advancementMode}
+              onOtworzDowod={() => {
+                // Ślad obliczeń żyje na powierzchni analiz (most) — deep-link
+                // do trasy #analysis dla aktywnego przebiegu (jedna prawda tras).
+                navigateToAnalysis({ runId: useAppStateStore.getState().activeRunId });
+              }}
+              pozostale={<LegacySurface space="wyniki" />}
             />
           }
           pulpit={

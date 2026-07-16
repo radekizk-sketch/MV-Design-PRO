@@ -196,6 +196,12 @@ Progress:
         z pipefail; ui2 655 pass u zarządcy; zintegrowane `fd630d8`; TODO-KARTA:
         wirtualizacja >500 wierszy, świeżość liczbowa w TabelaSzyn, dowód per-szyna,
         wpięcie store'u). Karta E8.2 (zwarcia W-604) zarejestrowana `0cbdbb1`.
+        Scalenie U3 #1 (zarządca): WynikiWarsztat — przestrzeń „Wyniki" z zakładkami
+        „Rozpływ mocy" (TabelaSzyn, nowa powłoka) + „Pozostałe analizy" (most #analysis
+        renderowany WEWNĄTRZ zakładki; powierzchnia rozwinięta nie przykrywa warsztatu
+        w tej przestrzeni); wpięcie store'u rozpływu (zamyka TODO-KARTA E8.1 #4:
+        selectRun+loadResults na `wyniki-gotowe` i przy montażu, tylko LOAD_FLOW/DONE);
+        14 testów; ui2 669 pass; potwierdzenie pełne 594/7944 na `db20fb2`.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —

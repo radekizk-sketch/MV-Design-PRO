@@ -60,9 +60,11 @@ export interface LegacyWarsztatProps {
   model: ReactNode;
   /** Zawartość przestrzeni „Obliczenia" (nowe okno E7.1 + most historii — scalenie U2 #3). */
   obliczenia: ReactNode;
+  /** Zawartość przestrzeni „Wyniki" (warsztat z zakładkami: rozpływ E8.1 + most — scalenie U3 #1). */
+  wyniki: ReactNode;
 }
 
-function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia }: LegacyWarsztatProps) {
+function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia, wyniki }: LegacyWarsztatProps) {
   // Trasy dedykowane starego wejścia (przeniesiony przełącznik App.tsx).
   if (route === '#enm-inspector' && featureFlags.ENM_INSPECTOR_VISIBLE) {
     return <EnmInspectorPage />;
@@ -120,6 +122,11 @@ function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia 
   if (space === 'obliczenia') {
     return <div data-testid="workspace-surface-main">{obliczenia}</div>;
   }
+  if (space === 'wyniki') {
+    // Testid kontraktu e2e nosi opakowanie mostu wewnątrz warsztatu
+    // (WorkspaceSurfaceRouter w zakładce „Pozostałe analizy").
+    return <>{wyniki}</>;
+  }
   return <LegacySurface space={space} />;
 }
 
@@ -127,7 +134,12 @@ export function LegacyWarsztat(props: LegacyWarsztatProps) {
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
   const semanticIssues = useSnapshotStore((state) => state.lastSemanticIssues);
   const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
-  const mainSurfaceExpanded = activeSurface?.openMode === 'expand_workspace';
+  // Scalenie U3 #1: w przestrzeni „Wyniki" powierzchnia rozwinięta (trasa
+  // #analysis/#proof) renderuje się WEWNĄTRZ zakładki „Pozostałe analizy"
+  // warsztatu wyników (slot `wyniki`), aby zakładka „Rozpływ mocy" (nowe okno
+  // E8.1) pozostała osiągalna. Pozostałe przestrzenie: zachowanie bez zmian.
+  const mainSurfaceExpanded =
+    activeSurface?.openMode === 'expand_workspace' && props.space !== 'wyniki';
 
   return (
     <div className="mvd-legacy-host">

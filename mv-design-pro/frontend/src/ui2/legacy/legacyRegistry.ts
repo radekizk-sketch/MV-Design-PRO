@@ -81,8 +81,9 @@ export const REJESTR_LEGACY: Readonly<Record<SpaceId, WpisRejestruLegacy>> = {
       'ZRODLA_PRZYLACZENIA',
       'V126Academic',
     ],
-    montaz: 'WorkspaceSurfaceRouter (powierzchnia analiz przez trasę #analysis)',
-    wygaszenie: 'U3/E9: nowe okna wyników i dowodów',
+    montaz:
+      'WynikiWarsztat (E8.1: rozpływ szyn na wzorcu ekranu analizy) + WorkspaceSurfaceRouter (pozostałe analizy przez trasę #analysis w zakładce mostu)',
+    wygaszenie: 'U3/E8–E9: kolejne okna wyników na wzorcu (zwarcia E8.2, dowody, zabezpieczenia, porównania)',
   },
   dokumentacja: {
     przestrzen: 'dokumentacja',
