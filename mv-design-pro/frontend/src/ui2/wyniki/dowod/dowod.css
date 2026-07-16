@@ -1,0 +1,245 @@
+/*
+ * Style okna „Dowód obliczeń" (karta E9.1 / W-608). Kolory WYŁĄCZNIE przez tokeny
+ * --mvd-* (theme/tokens.css) — zero literałów hex. Liczby: font mono + tabular-nums
+ * (spójne ze wzorcem E8.1). Moduł samowystarczalny (nie zależy od wzorzec.css):
+ * lokalnie definiuje współdzielone utilsy `.mvd-num` / `.mvd-btn`.
+ */
+
+.mvd-dowod {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  color: var(--mvd-ink);
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 4px;
+}
+.mvd-dowod :focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.mvd-btn {
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+.mvd-btn:hover {
+  border-color: var(--mvd-accent);
+}
+
+/* ---- nagłówek ---- */
+.mvd-dowod-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mvd-dowod-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+}
+.mvd-dowod-hash {
+  color: var(--mvd-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  word-break: break-all;
+}
+
+/* ---- układ dwukolumnowy ---- */
+.mvd-dowod-uklad {
+  display: grid;
+  grid-template-columns: minmax(200px, 280px) 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+/* ---- spis kroków (lewa kolumna) ---- */
+.mvd-dowod-spis-kol {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.mvd-dowod-spis-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-dowod-spis {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  box-shadow: var(--mvd-shadow);
+  background: var(--mvd-panel);
+  overflow: hidden;
+}
+.mvd-dowod-spis-poz {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--mvd-line);
+  cursor: pointer;
+}
+.mvd-dowod-spis-poz:last-child {
+  border-bottom: none;
+}
+.mvd-dowod-spis-poz:hover {
+  background: var(--mvd-sel);
+}
+.mvd-dowod-spis-poz-akt {
+  background: var(--mvd-sel);
+  box-shadow: inset 3px 0 0 var(--mvd-accent);
+}
+.mvd-dowod-spis-numer {
+  color: var(--mvd-muted);
+  font-size: 11px;
+  min-width: 1.5em;
+  text-align: right;
+}
+.mvd-dowod-spis-poz-tytul {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---- widok kroku (prawa kolumna) ---- */
+.mvd-dowod-krok-kol {
+  min-width: 0;
+}
+.mvd-dowod-krok {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  box-shadow: var(--mvd-shadow);
+  background: var(--mvd-panel);
+  padding: 14px;
+}
+.mvd-dowod-krok-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mvd-dowod-krok-numer {
+  color: var(--mvd-accent);
+  font-weight: 600;
+  font-size: 13px;
+}
+.mvd-dowod-krok-tytul {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---- pole kanonu ---- */
+.mvd-dowod-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-dowod-pole-tytul {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mvd-muted);
+}
+.mvd-dowod-latex {
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-panel-2);
+  padding: 8px 12px;
+  overflow-x: auto;
+}
+
+/* ---- wielkości (dane / wynik) ---- */
+.mvd-dowod-wielkosci {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.mvd-dowod-wielkosc {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-dowod-wielkosc:last-child {
+  border-bottom: none;
+}
+.mvd-dowod-wielkosc-etykieta {
+  flex: 1;
+  min-width: 0;
+  color: var(--mvd-muted);
+}
+.mvd-dowod-klucz {
+  font-family: var(--mvd-font-mono);
+  font-size: 12px;
+}
+.mvd-dowod-wielkosc-wartosc {
+  white-space: nowrap;
+}
+.mvd-dowod-unit {
+  color: var(--mvd-muted);
+  margin-left: 3px;
+}
+.mvd-dowod-uwagi {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- stany pusty / ładowanie ---- */
+.mvd-dowod-pusty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 32px 16px;
+  color: var(--mvd-muted);
+}
+.mvd-dowod-pusty-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-dowod-pusty-desc {
+  margin: 0;
+  font-size: 13px;
+}
+.mvd-dowod-ladowanie {
+  margin: 0;
+  padding: 24px 16px;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
