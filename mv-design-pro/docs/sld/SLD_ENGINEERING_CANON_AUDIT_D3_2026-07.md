@@ -118,6 +118,28 @@ bez dowodu.
   albo jest jawnie zaprzeczone mostkiem). To jest WARUNEK odczytu fizyki z
   rysunku; wyrocznie z D3-3/D3-5 są jego realizacją.
 
+## 6a. Uzupełnienie pomiarowe D3-4 (sonda nadzorcy F13.3, 2026-07-16 wieczór)
+
+- **P-5:** 12 pionów tras zewnętrznych przechodzi przez pas ±2×GRID osi szyny
+  stacji DOKŁADNIE na `x = początek szyny` (lewa krawędź) — wszystkie to
+  zejścia wejściowe ciągów do stacji docelowych.
+- **KOREKTA interpretacji P-2:** zakończenia tras faktycznie sięgają portu
+  głowicy pola wejściowego (struktura poprawna), ALE pion zejścia jest
+  **WSPÓŁLINIOWY z osią pola wejściowego** (`entryPort.x == oś pierwszego
+  pola == początek szyny`): kabel zewnętrzny i wewnętrzny tor pola
+  (szyna→Q1→…→głowica) rysują się jako JEDNA kreska, przecinająca poziom
+  szyny od góry. Kadr `d3_busentry.png`: odczyt jednoznacznie „kabel ląduje
+  na szynie z góry" — pole wejściowe jest wizualnie ominięte, głowica
+  martwa. To jest **D3-15 [KRYTYCZNE]** — doprecyzowanie D3-4.
+- **Naprawa (projekt F13.3):** zejście wejściowe prowadzone RYNNĄ poza
+  blokiem stacji (offset x poza gabarytem bloku), pion omija cały blok,
+  przejście POD stacją i wejście w głowicę pola wejściowego OD DOŁU
+  (czytanie toru: kabel → głowica ▲ → QE1/Q3/przekładnik/Q2/Q1 → szyna) —
+  zgodnie z §22.3 i kanonem „linia wchodzi do pola, nie na szynę".
+  Wyrocznie: `bus_band_clearance_probe` (P-5→0) + zakaz współliniowości
+  pionu trasy zewnętrznej z osią pola (`entry_collinearity_probe`, 0
+  pokrywających się odcinków zewnętrzny×wewnętrzny).
+
 ## 7. Plan naprawczy — fazy F13 (kolejność wiążąca)
 
 | Faza | Zakres | Ustalenia | Priorytet |
