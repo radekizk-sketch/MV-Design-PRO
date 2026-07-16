@@ -11,6 +11,8 @@ import { SYMBOL_DEFS } from '../../symbols/defs';
 import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
 import {
+  apparatusIdentifierLeftReserve,
+  bayColumnFootprint,
   bayColumnRequiredWidth,
   entryDescentCaptionInset,
   requiredSegmentLabelWidth,
@@ -21,6 +23,7 @@ import {
   stationPortCaptionHeight,
   type StationMeasureInput,
 } from '../measure';
+import { fieldFunctionalDesignation } from '../../compose/directions';
 import { BUS_AXIS_BAND_HEIGHT, DESCENT_STRIP_HEIGHT, computeBands, noBandsOverlap, type StationBandHeights } from '../bands';
 import { allColumnsOnGrid, computeColumns, type ComputeColumnsInput } from '../columns';
 import {
@@ -114,7 +117,7 @@ describe('V3 layout — measure (spec §5.1, FIX-3: rezerwacja etykiet WŁASNYCH
     stationTypeLabel: null,
   } as const;
 
-  it('dłuższy bay.designation (oznacznik aparatu) poszerza requiredStationWidth', () => {
+  it('F10.2 (spec §19.1): bay.designation NIE wpływa już na requiredStationWidth — sidecar jest CZYSTĄ funkcją fieldRole, nie danych pola (dawny test „dłuższy designation poszerza szerokość" ODWRÓCONY: przed F10.2 `bayApparatusDesignation` czytało `bay.designation` wprost, dziś `fieldFunctionalDesignation` go w ogóle nie przyjmuje)', () => {
     const shortDesignation: MiniBlockBayDescriptor = {
       bayRef: 'b1',
       fieldRole: FIELD_ROLE.RMU_LINE,
@@ -127,7 +130,7 @@ describe('V3 layout — measure (spec §5.1, FIX-3: rezerwacja etykiet WŁASNYCH
     };
     const withShort: StationMeasureInput = { ...baseFields, snBays: [shortDesignation] };
     const withLong: StationMeasureInput = { ...baseFields, snBays: [longDesignation] };
-    expect(requiredStationWidth(withLong)).toBeGreaterThan(requiredStationWidth(withShort));
+    expect(requiredStationWidth(withLong)).toBe(requiredStationWidth(withShort));
   });
 
   it('F6e: entryDescentBayIndex poszerza kolumnę pola-wejścia DOKŁADNIE o entryDescentCaptionInset (podpis kierunku mieści się w całości na prawo od osi pionu zejścia; kontrprzykład sprzed naprawy: wycinek B2 obejmował oś ⇒ pion przecinał „kier. Sxx" — 12 kolizji na fixturze)', () => {
@@ -168,7 +171,7 @@ describe('V3 layout — measure (spec §5.1, FIX-3: rezerwacja etykiet WŁASNYCH
     expect(requiredStationWidth(withCaption)).toBeGreaterThan(requiredStationWidth(withoutCaption));
   });
 
-  it('brak designation i brak bayDirectionCaptions ⇒ szerokość kolumny = footprint + oznacznik Q/T z konwencji (F6b, spec §4 wymaga oznacznika ZAWSZE)', () => {
+  it('brak designation i brak bayDirectionCaptions ⇒ szerokość kolumny = leftReserve + footprint + GRID + oznaczenie FUNKCYJNE pola (F10.2, spec §19.1 wymaga oznaczenia ZAWSZE)', () => {
     const bay: MiniBlockBayDescriptor = {
       bayRef: 'b1',
       fieldRole: FIELD_ROLE.RMU_LINE,
@@ -184,11 +187,15 @@ describe('V3 layout — measure (spec §5.1, FIX-3: rezerwacja etykiet WŁASNYCH
       Math.max(SYMBOL_DEFS.disconnector.width, SYMBOL_DEFS.breaker.width) +
       GRID +
       SYMBOL_DEFS.earthSwitch.width;
-    // F6b (spłata długu §9): `designation` puste ⇒ `bayApparatusDesignation`
-    // wyprowadza "Q1" (jedyne pole nie-transformatorowe tej stacji) —
-    // sidecar jest TERAZ ZAWSZE doliczany, bo spec §4 wymaga oznacznika
-    // aparatu w tym slocie (nigdy pustego) — patrz `compose/directions.ts`.
-    const expectedBlockWidth = expectedFootprintWidth + GRID + measureLabelWidth('Q1', 't3');
+    expect(bayColumnFootprint(bay).width).toBe(expectedFootprintWidth);
+    // F10.2 (spec §19.1, V12K-035): `designation` PRZESTAŁ być czytany —
+    // sidecar jest ZAWSZE `fieldFunctionalDesignation(fieldRole)` („pole
+    // liniowe" dla RMU_LINE, nigdy pusty); DODATKOWO rezerwacja PO LEWEJ
+    // stosu na identyfikatory per-aparat Q/QE/T (`apparatusIdentifierLeftReserve`).
+    const leftReserve = apparatusIdentifierLeftReserve(bay);
+    const fieldRoleLabel = fieldFunctionalDesignation(bay.fieldRole);
+    expect(fieldRoleLabel).toBe('pole liniowe');
+    const expectedBlockWidth = leftReserve + expectedFootprintWidth + GRID + measureLabelWidth(fieldRoleLabel, 't3');
     const expectedNameWidth = measureLabelWidth('A', 't1');
     expect(requiredStationWidth(station)).toBe(
       snapUp(Math.max(expectedBlockWidth, expectedNameWidth) + 2 * GRID),
@@ -514,25 +521,33 @@ describe('V3 layout — property FIX-2: ≥3 stacje × permutacje etykiet asymet
 // ---------------------------------------------------------------------------
 
 describe('V3 layout — regresje kontrprzykładów recenzji F5a (r7b REQUEST-CHANGES)', () => {
-  it('kontrprzykład 1: 3 stacje 1-polowe, teksty ["XXXXX","15 kV","X"×38] ⇒ stary kod: slot0/slot2 ten sam wiersz (parzystość) i FAKTYCZNIE się przecinają', () => {
-    // Zweryfikowane na kodzie PRZED tym fixem: slot0={x:0,w:24}, slot2={x:0,w:280},
-    // stagger.rowOf=[0,1,0] (stacje 0 i 2 dzielą wiersz 0) ⇒ rectsOverlap=true.
-    // F6b (spłata długu §9): `makeNarrowStation` ma dziś ZAWSZE mandatowy
-    // oznacznik aparatu (`bayApparatusDesignation`, np. "T1") w sidecarze —
-    // stacja „1-polowa" nie jest już tak wąska jak przed F6b, więc slot0 z
-    // tekstem 1-znakowym ("X") przestał faktycznie kolidować ze slot2 (gap
-    // 8px, brak nakładania w X) — podniesione do 5 znaków, żeby odtworzyć
-    // GENUINE kolizję X-przedziałów, którą ten test ma sprawdzać (bez tego
-    // podniesienia test nie jest już kontrprzykładem, tylko martwym kodem).
-    const stations = [makeNarrowStation('a'), makeNarrowStation('b'), makeNarrowStation('c')];
-    const texts = ['X'.repeat(5), '15 kV', 'X'.repeat(38)];
-    const { columnsResult } = buildColumnsForStations(stations, texts);
+  it('kontrprzykład 1 (algorytm, ZAADAPTOWANY F10.2): dwa nienachodzące się sąsiednio, ale kolidujące w X przedziały ⇒ colorSegmentLabelRows przydziela RÓŻNE wiersze', () => {
+    // F10.2 (spec §19.1): `makeNarrowStation` ma dziś MANDATOWE oznaczenie
+    // FUNKCYJNE pola (`fieldFunctionalDesignation`, np. „pole
+    // transformatorowe" — 22 znaki, DUŻO szersze niż dawne „T1") — baseline
+    // szerokość stacji urosła na tyle, że `computeStationTaps`
+    // (`width = snapUp(max(stationWidth, segmentWidth))`, `layout/
+    // segments.ts`) samo-poszerza kolumnę KAŻDEJ stacji o jej WŁASNY długi
+    // tekst segmentu (mechanizm r9, NIEZMIENIONY przez F10.2), więc scenariusz
+    // z historycznego kontrprzykładu (3 „wąskie" 1-polowe stacje, krótkie
+    // teksty) PRZESTAŁ reprodukować kolizję niezależnie od długości tekstu
+    // (zweryfikowane empirycznie do n=500 znaków — sonda jednorazowa, raport
+    // F10.2) — cały arkusz jest teraz wystarczająco szeroki, żeby odległe
+    // sloty nigdy się nie zetknęły. Test ZAADAPTOWANY: dowodzi TEGO SAMEGO
+    // niezmiennika („przedziały nachodzące się w X dostają RÓŻNE wiersze,
+    // niezależnie od parzystości indeksu stacji między nimi"), ale WPROST na
+    // `colorSegmentLabelRows` (funkcja czysta, `layout/segments.ts`) —
+    // odporne na przyszłe zmiany baseline geometrii stacji, bo nie zależy od
+    // `computeColumns`/`StationMeasureInput` w ogóle.
+    const slots = [
+      { stationIndex: 0, x: 0, width: 100 },
+      null,
+      { stationIndex: 2, x: 50, width: 100 }, // [50,150) nachodzi na [0,100) — INDEKSY 0 i 2 NIE sąsiadują
+    ];
+    const rows = colorSegmentLabelRows(slots);
 
-    expect(columnsResult.segmentLabelSlots).toHaveLength(3);
-    expect(columnsResult.segmentLabelRowCount).toBeGreaterThanOrEqual(2); // kolorowanie WYMUSZA ≥2 wiersze
-    const [slot0, , slot2] = columnsResult.segmentLabelSlots;
-    expect(rectsOverlap(slot0.rect, slot2.rect)).toBe(false);
-    expect(slot0.rowIndex).not.toBe(slot2.rowIndex); // różne wiersze — kolorowanie, nie parzystość
+    expect(rows.rowCount).toBeGreaterThanOrEqual(2); // kolorowanie WYMUSZA ≥2 wiersze
+    expect(rows.rowOf[0]).not.toBe(rows.rowOf[2]); // różne wiersze — kolorowanie, nie parzystość
   });
 
   it('kontrprzykład 2: 2 stacje 1-polowe, teksty ["X"×20,"X"×47] ⇒ stary kod: slot0.x=-64 (rezerwacja POZA arkuszem, ujemny x)', () => {
@@ -548,24 +563,25 @@ describe('V3 layout — regresje kontrprzykładów recenzji F5a (r7b REQUEST-CHA
     }
   });
 
-  it('kontrprzykład 3: 3 stacje 1-polowe, teksty ["XXXXX",null,"X"×38] (środkowa BEZ segmentu) ⇒ stary kod: warunek par sąsiednich w ogóle nie odpalał, mimo realnej kolizji 0↔2', () => {
-    // Zweryfikowane na kodzie PRZED tym fixem: stagger.twoRow=false (para
-    // (0,1) i (1,2) nie ma OBU segmentów ⇒ warunek nigdy TRUE), ale
-    // slot0={x:0,w:24} i slot2={x:-8,w:280} FAKTYCZNIE się przecinają
-    // (oba w tym samym, jedynym wierszu — zero alternacji).
-    // F6b (spłata długu §9): patrz komentarz w kontrprzykładzie 1 — "X"
-    // 1-znakowe przestało dawać genuine kolizję X-przedziałów po tym, jak
-    // `makeNarrowStation` zaczęła zawsze nosić oznacznik aparatu Q/T
-    // (sidecar), podniesione do 5 znaków.
-    const stations = [makeNarrowStation('a'), makeNarrowStation('b'), makeNarrowStation('c')];
-    const texts = ['X'.repeat(5), null, 'X'.repeat(38)];
-    const { columnsResult } = buildColumnsForStations(stations, texts);
+  it('kontrprzykład 3 (algorytm, ZAADAPTOWANY F10.2): kolizja NIE-SĄSIEDNICH przedziałów (środkowy brak) ⇒ colorSegmentLabelRows i tak przydziela RÓŻNE wiersze', () => {
+    // F10.2: patrz uzasadnienie adaptacji w kontrprzykładzie 1 wyżej (ten sam
+    // mechanizm r9 samo-poszerzania kolumny czyni historyczny scenariusz
+    // „3 wąskie stacje" niereprodukowalnym niezależnie od długości tekstu —
+    // zweryfikowane empirycznie do n=500). Test ZAADAPTOWANY: dowodzi
+    // WPROST na `colorSegmentLabelRows`, że kolizja DWÓCH NIE-SĄSIADUJĄCYCH
+    // indeksów (środkowy, index 1, bez slotu w ogóle — `null`) jest
+    // wykrywana mimo braku pary sąsiedniej z segmentem po obu stronach
+    // (historyczny bug: warunek liczony TYLKO dla par sąsiednich nigdy nie
+    // odpalał w tym układzie).
+    const slots = [
+      { stationIndex: 0, x: 0, width: 100 },
+      null, // stacja środkowa bez segmentu — historyczny bug pomijał tę parę
+      { stationIndex: 2, x: 50, width: 100 }, // [50,150) nachodzi na [0,100)
+    ];
+    const rows = colorSegmentLabelRows(slots);
 
-    expect(columnsResult.segmentLabelSlots).toHaveLength(2); // stacja środkowa bez segmentu
-    const [slot0, slot2] = columnsResult.segmentLabelSlots;
-    expect(slot2.stationIndex).toBe(2);
-    expect(rectsOverlap(slot0.rect, slot2.rect)).toBe(false);
-    expect(columnsResult.segmentLabelRowCount).toBeGreaterThanOrEqual(2); // kolorowanie WYKRYWA kolizję mimo brak segmentu w środku
+    expect(rows.rowCount).toBeGreaterThanOrEqual(2); // kolorowanie WYKRYWA kolizję mimo brak segmentu w środku
+    expect(rows.rowOf[0]).not.toBe(rows.rowOf[2]);
   });
 });
 

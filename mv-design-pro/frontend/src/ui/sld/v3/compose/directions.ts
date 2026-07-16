@@ -29,12 +29,22 @@
  * TR/SPR pierwszej sekcji — dawałoby błędne „ODG" zamiast „WE" tej sekcji;
  * v3 tej wady NIE dziedziczy, bo liczy pozycję tylko wśród pól LINIOWYCH).
  *
- *  3. `bayApparatusDesignation` (F6b, spłata długu §9 zapisanego w recenzji
- *     F6a) — osobna warstwa: oznacznik APARATU pola (spec §4: „Q0/Q1/T1"),
- *     NIE kierunek. Mieszka w tym pliku, bo współdzieli z (1)/(2) ten sam
- *     zakaz tokenów (`FORBIDDEN_RAW_DIRECTION_TOKENS`, teraz eksportowany) —
- *     `bay.designation` bywa surowym tokenem roli („WE"/„WY"/„ODG") w OBU
- *     kontekstach (kierunek pola vs. oznacznik aparatu).
+ *  3. F10.2 (spec §19.1, V12K-035, POPRAWKA A3): dawny punkt 3 tego nagłówka
+ *     (`bayApparatusDesignation`, F6b) opisywał JEDEN oznacznik „Q0/Q1/T1"
+ *     na CAŁE pole — to naruszało spec §19.1 („«Q» identyfikuje KONKRETNY
+ *     aparat, NIE pole"). Funkcja USUNIĘTA; zastąpiona DWOMA odrębnymi
+ *     warstwami: `fieldFunctionalDesignation` niżej (oznaczenie FUNKCYJNE
+ *     pola — liniowe/transformatorowe/sprzęgłowe/pomiarowe/generatorowe,
+ *     spec §19.1) i `apparatusIdentifiers` (`./apparatusSequence` —
+ *     identyfikator PER-APARAT Q/QE/T przy symbolu, fallback konwencji ze
+ *     znacznikiem `data-designation-source="konwencja"`, `BayPrimaryDevice.
+ *     designation` DOMAIN dopiero F10.6).
+ *  4. `classifyStationTopologicalType` (F10.2, spec §19.3, V12K-034) — rodzaj
+ *     stacji (końcowa/przelotowa/odgałęźna/sekcyjna) WYPROWADZONY z topologii
+ *     (liczba pól liniowych + obecność sprzęgła w `snBays`), NIE z ręcznej
+ *     danej `Substation.station_type`. Mieszka w tym pliku, bo używa TEJ
+ *     SAMEJ `isLineLikeRole` co (1)/(2) — jedna prawda „co jest polem
+ *     liniowym".
  */
 
 import { FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
@@ -50,58 +60,74 @@ import type { LineRunV1 } from '../../../../types/enm';
  *  plikach. */
 export const FORBIDDEN_RAW_DIRECTION_TOKENS = /\b(WE|WY|ODG)\b/;
 
-/** Rola pola transformatorowego (spec §3) — predykat WYŁĄCZNIE do numeracji
- *  oznacznika aparatu niżej (`bayApparatusDesignation`). Duplikat minimalnego
- *  jednolinijkowego predykatu z `compose/station.ts` (`isTransformerRole`,
- *  prywatny) — nie eksportujemy jednej wspólnej funkcji dla tak małej
- *  logiki, żeby nie tworzyć dodatkowej zależności w drugą stronę. */
-function isTransformerFieldRole(role: FieldRole): boolean {
-  return role === FIELD_ROLE.TRANSFORMER || role === FIELD_ROLE.RMU_TRANSFORMER;
+/**
+ * F10.2 (spec §19.1, V12K-035): oznaczenie FUNKCYJNE pola — CZYSTA funkcja
+ * roli, zero zależności od danych (`bay.designation` NIE jest już czytane
+ * tutaj — sidecar pola przestał nieść identyfikator aparatu, spec §19.1
+ * „«Q» identyfikuje aparat, NIE pole"). Słownik (spec §19.1: „liniowe /
+ * transformatorowe / sprzęgłowe / pomiarowe / potrzeb własnych / generatorowe
+ * / inne technologiczne") ograniczony do kategorii REALNIE reprezentowanych
+ * w `FieldRole` (§A3-DEC-5 — zero ról-atrap, zakaz rozszerzania `FieldRole`
+ * bez danych; inwentaryzacja w raporcie F10.2): „potrzeb własnych"/„inne
+ * technologiczne" NIE mają odpowiednika w obecnym enumie — nie są zwracane.
+ * DER (`DER_PV`/`DER_BESS`/`DER_FW`) mapowane na „pole generatorowe" (spec
+ * §19.1 dopuszcza tę kategorię wprost; rozróżnienie PV/BESS/farma wiatrowa
+ * niesie już SYMBOL źródła, nie etykieta funkcyjna pola).
+ *
+ * UŻYWANA w DWÓCH miejscach, które MUSZĄ się zgadzać (wzór F6b-1):
+ * `layout/measure.ts` (`bayColumnRequiredWidth` — rezerwacja szerokości
+ * sidecara) i `compose/station.ts` (`composeStation` — realny tekst
+ * etykiety `ownerKind:'field-role'`).
+ */
+export function fieldFunctionalDesignation(role: FieldRole): string {
+  switch (role) {
+    case FIELD_ROLE.LINE_IN:
+    case FIELD_ROLE.LINE_OUT:
+    case FIELD_ROLE.LINE_BRANCH:
+    case FIELD_ROLE.RMU_LINE:
+    case FIELD_ROLE.GPZ_LINE_BAY:
+      return 'pole liniowe';
+    case FIELD_ROLE.TRANSFORMER:
+    case FIELD_ROLE.RMU_TRANSFORMER:
+      return 'pole transformatorowe';
+    case FIELD_ROLE.COUPLER:
+      return 'pole sprzęgłowe';
+    case FIELD_ROLE.MEASUREMENT:
+      return 'pole pomiarowe';
+    case FIELD_ROLE.DER_PV:
+    case FIELD_ROLE.DER_BESS:
+    case FIELD_ROLE.DER_FW:
+      return 'pole generatorowe';
+    default:
+      return 'pole';
+  }
 }
 
 /**
- * Oznacznik aparatu pola (spec §4: „Q0/Q1/T1") — spłata długu §9 (F6b,
- * REBUILD_PLAN_V3): `bay.designation` z adaptera v2 bywa surowym tokenem
- * ROLI pola (`WE`/`WY`/`ODG`/`TR`/`SPR`/`POM`, patrz `stationFieldDesignation`
- * w `v2/canvas/enmToSldAdapter.ts`), NIE prawdziwym oznacznikiem aparatu —
- * spec §4 chce w tym slocie Q/T, spec §9 zakazuje `WE`/`WY`/`ODG` na
- * rysunku wprost.
+ * F10.2 (spec §19.3, V12K-034): rodzaj stacji WYPROWADZONY z topologii —
+ * zastępuje dawne 1:1 mapowanie ręcznej danej `Substation.station_type`
+ * (`classifyTopologicalType`, `v2/canvas/enmToSldAdapter.ts`, NIEZMIENIONE —
+ * pozostaje jako `props.topologicalType`, źródło WYŁĄCZNIE dla WALIDACJI
+ * niezgodności, `scene/buildScene.ts` `buildMeasureInput`, spec §19.3 „dana
+ * służy WYŁĄCZNIE walidacji, bez cichego nadpisania rysunku").
  *
- * Reguła:
- *  1. `bay.designation` niepuste i NIE jest zakazanym tokenem kierunku
- *     (`FORBIDDEN_RAW_DIRECTION_TOKENS`) — dane mają PIERWSZEŃSTWO (prawda
- *     danych > konwencja): zwracamy je bez zmian (prawdziwy oznacznik z
- *     danych, np. „Q1", albo inny tekst pola nieobjęty zakazem §9, np.
- *     „TR"/„PV"/„BESS" — te nie są tokenami kierunku, więc nie naruszają §9);
- *  2. inaczej (puste LUB zakazany token) — wyprowadzamy oznacznik
- *     DETERMINISTYCZNIE z roli i pozycji pola w `snBays` (konwencja
- *     energetyczna): pole transformatorowe → `T` + numer WŚRÓD pól
- *     transformatorowych tej stacji; wszystkie inne pola (liniowe/sprzęgło/
- *     pomiar) → `Q` + numer WŚRÓD pól NIE-transformatorowych tej stacji.
- *     Liczenie WYŁĄCZNIE po indeksie w `snBays` (bez `Map`, bez iteracji
- *     niedeterministycznej) — zero losowości, wynik z konstrukcji tablicy.
+ * Reguła (spec §19.3, wyrocznia `station_type_topology_probe`):
+ *  1. obecność pola sprzęgła (`FIELD_ROLE.COUPLER`) w `snBays` ⇒ „sekcyjna"
+ *     (sprzęgło = dzieli stację na sekcje niezależnie od liczby pól
+ *     liniowych — `mv_lv_sectional` ma 2 pola liniowe, ale JEST sekcyjna);
+ *  2. inaczej liczba pól liniowych (`isLineLikeRole`) w `snBays`:
+ *     0-1 ⇒ „końcowa", 2 (równorzędne) ⇒ „przelotowa", ≥3 ⇒ „odgałęźna".
  *
- * UŻYWANE w DWÓCH miejscach, które MUSZĄ się zgadzać (spec F5: „measure i
- * compose muszą być spójne", nagłówek `compose/station.ts`): `layout/measure.ts`
- * (`bayColumnRequiredWidth` — rezerwacja szerokości sidecara) i
- * `compose/station.ts` (`composeStation` — realny tekst etykiety
- * `ownerKind:'apparatus'`). Jedno źródło prawdy — inaczej rezerwacja miejsca
- * i realny tekst rozjechałyby się przy zmianie konwencji w jednym miejscu.
+ * Czysta funkcja `snBays` — zero zależności od `station_type`/ID/nazwy.
  */
-export function bayApparatusDesignation(
+export function classifyStationTopologicalType(
   snBays: readonly MiniBlockBayDescriptor[],
-  index: number,
-): string {
-  const bay = snBays[index];
-  const raw = bay.designation.trim();
-  if (raw && !FORBIDDEN_RAW_DIRECTION_TOKENS.test(raw)) return raw;
-
-  const wantsTransformer = isTransformerFieldRole(bay.fieldRole);
-  let ordinal = 0;
-  for (let i = 0; i <= index; i++) {
-    if (isTransformerFieldRole(snBays[i].fieldRole) === wantsTransformer) ordinal += 1;
-  }
-  return wantsTransformer ? `T${ordinal}` : `Q${ordinal}`;
+): 'końcowa' | 'przelotowa' | 'odgałęźna' | 'sekcyjna' {
+  if (snBays.some((bay) => bay.fieldRole === FIELD_ROLE.COUPLER)) return 'sekcyjna';
+  const lineCount = snBays.filter((bay) => isLineLikeRole(bay.fieldRole)).length;
+  if (lineCount >= 3) return 'odgałęźna';
+  if (lineCount === 2) return 'przelotowa';
+  return 'końcowa';
 }
 
 /** Kierunek pola liniowego wynikający z pozycji wśród pól liniowych tej
@@ -170,6 +196,15 @@ export interface StationDirectionContext {
    *  wejście już ma ustaloną kolejność). Index-aligned do KOLEJNYCH pól
    *  odgałęźnych tej stacji (patrz `stationBayCaptions`), NIE do `snBays`. */
   readonly branchNodeCodes: readonly string[];
+  /** F10.2 (spec §19.2, D2): `LineRunV1.name` ciągu niosącego poprzednika/
+   *  następnika TEJ stacji (ten sam ciąg dla obu — stacja jest NA nim) —
+   *  `null` gdy brak danych ciągu LUB `run.name` puste/nieustawione
+   *  (degradacja do samego kodu kierunku, wyrocznia `line_bay_caption_probe`
+   *  „brak danych linii = sam kier. ⟨kod⟩", NIE błąd). */
+  readonly runName: string | null;
+  /** F10.2 (spec §19.2): nazwy ciągów odgałęźnych, index-aligned do
+   *  `branchNodeCodes` (jak wyżej). */
+  readonly branchRunNames: readonly (string | null)[];
 }
 
 export interface ResolveStationDirectionContextInput {
@@ -219,18 +254,34 @@ export function resolveStationDirectionContext(
 
     const nextNodeCode = nextEntry ? stationCodeOf(nextEntry.substation_ref) : null;
 
-    const branchNodeCodes = lineRuns
+    // F10.2 (spec §19.2): nazwa TEGO ciągu (`run.name`) niesie oba końce
+    // (poprzednik/następnik) — stacja jest członkiem JEDNEGO ciągu.
+    const runName = run.name?.trim() || null;
+
+    // F10.2 (spec §19.2): pary {code,name} FILTROWANE łącznie po `code`, żeby
+    // `branchRunNames` pozostało index-aligned do `branchNodeCodes` (usunięcie
+    // wpisu z nierozwiązywalnym kodem NIE może rozjechać dwóch osobnych tablic).
+    const branchEntries = lineRuns
       .filter((r) => r.branch_origin_station_ref === stationId)
       .map((r) => {
         const first = [...r.stations].sort((a, b) => a.order - b.order)[0];
-        return first ? stationCodeOf(first.substation_ref) : null;
+        const code = first ? stationCodeOf(first.substation_ref) : null;
+        return { code, name: r.name?.trim() || null };
       })
-      .filter((code): code is string => code != null);
+      .filter((entry): entry is { code: string; name: string | null } => entry.code != null);
+    const branchNodeCodes = branchEntries.map((e) => e.code);
+    const branchRunNames = branchEntries.map((e) => e.name);
 
-    return { previousNodeCode, nextNodeCode, branchNodeCodes };
+    return { previousNodeCode, nextNodeCode, branchNodeCodes, runName, branchRunNames };
   }
 
-  return { previousNodeCode: null, nextNodeCode: null, branchNodeCodes: [] };
+  return {
+    previousNodeCode: null,
+    nextNodeCode: null,
+    branchNodeCodes: [],
+    runName: null,
+    branchRunNames: [],
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -249,26 +300,38 @@ export interface BayDirectionCaptionArgs {
   readonly designationFallback?: string | null;
 }
 
+/** F10.2 (spec §19.2, D2): łączy nazwę/numer linii z tekstem kierunku wg
+ *  formatu wyroczni `line_bay_caption_probe`: `⟨numer linii⟩ · kier. ⟨kod⟩`.
+ *  Brak nazwy (dane linii nieobecne) — DEGRADACJA do samego tekstu kierunku
+ *  (`kier. ⟨kod⟩`/`odg. ⟨kod⟩`), NIE błąd (spec §19.2 „brak danych linii =
+ *  sam kier. ⟨kod⟩"). */
+function combineLineCaption(lineName: string | null, directionText: string): string {
+  return lineName ? `${lineName} · ${directionText}` : directionText;
+}
+
 /**
- * Podpis kierunku JEDNEGO pola (spec §9): `kier. ⟨kod⟩` dla poprzednika/
- * następnika, `odg. ⟨kod⟩` dla odgałęzienia, `null` dla pól bez kierunku
- * liniowego (TR — etykieta osobno, spec: `TR1 · 630 kVA`). Fallback na
- * `bay.designation`, gdy dane ciągu niedostępne dla danego węzła — ale
- * NIGDY surowe 'WE'/'WY'/'ODG'.
+ * Podpis kierunku JEDNEGO pola (spec §9/§19.2): `⟨numer linii⟩ · kier. ⟨kod⟩`
+ * dla poprzednika/następnika (gdy nazwa ciągu dostępna — `context.runName`),
+ * `⟨numer linii⟩ · odg. ⟨kod⟩` dla odgałęzienia (`context.branchRunNames`),
+ * degradacja do samego `kier./odg. ⟨kod⟩` gdy nazwa linii nieobecna, `null`
+ * dla pól bez kierunku liniowego (TR — etykieta osobno, spec: `TR1 · 630
+ * kVA`). Fallback na `bay.designation`, gdy dane ciągu NIEDOSTĘPNE dla
+ * danego węzła (kod nierozwiązany) — ale NIGDY surowe 'WE'/'WY'/'ODG'.
  */
 export function bayDirectionCaption(args: BayDirectionCaptionArgs): string | null {
   switch (args.direction) {
     case 'previous':
       return args.context.previousNodeCode != null
-        ? `kier. ${args.context.previousNodeCode}`
+        ? combineLineCaption(args.context.runName, `kier. ${args.context.previousNodeCode}`)
         : fallbackCaption(args.designationFallback);
     case 'next':
       return args.context.nextNodeCode != null
-        ? `kier. ${args.context.nextNodeCode}`
+        ? combineLineCaption(args.context.runName, `kier. ${args.context.nextNodeCode}`)
         : fallbackCaption(args.designationFallback);
     case 'branch': {
       const code = args.context.branchNodeCodes[args.branchIndex];
-      return code != null ? `odg. ${code}` : fallbackCaption(args.designationFallback);
+      const name = args.context.branchRunNames[args.branchIndex] ?? null;
+      return code != null ? combineLineCaption(name, `odg. ${code}`) : fallbackCaption(args.designationFallback);
     }
     case null:
       return null;

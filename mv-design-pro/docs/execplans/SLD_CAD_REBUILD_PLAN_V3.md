@@ -1144,7 +1144,7 @@ lokalnych łatek i duplikacji elektryki adaptera.
     (w tym 3 nowe sondy §18 + negatyw); guardy sld-determinism/codenames/forbidden-ui-terms/
     overlay-no-physics/mojibake/docs zielone; pełna regresja — patrz commit.
 
-### F10.2. Nomenklatura pól + identyfikatory aparatów (fallback) + typ stacji z topologii
+### F10.2. [DONE] Nomenklatura pól + identyfikatory aparatów + typ stacji z topologii
 - Zakres: rozdzielenie oznaczenia FUNKCYJNEGO pola od identyfikatora per-aparat (§19.1) —
   `bayApparatusDesignation` przestaje etykietować całe pole; fallback konwencji Q/T ze znacznikiem
   `data-designation-source="konwencja"` (docelowe pole `BayPrimaryDevice.designation` odłożone do
@@ -1156,6 +1156,27 @@ lokalnych łatek i duplikacji elektryki adaptera.
   `FieldRole` udokumentowana (WHITE BOX, zero ról-atrap); wyrocznie §11(+A1/A2) zielone; determinizm.
 - Autoryzacje: `v3/compose/directions.ts`, `v3/compose/station.ts`, `v2/canvas/enmToSldAdapter.ts`
   (kanał numeru/nazwy linii, addytywnie), klasyfikator typu stacji (adapter/analysis), testy.
+
+- **Wynik realizacji (2026-07-16, agent + odbiór osobisty nadzorcy — sonda probe-f102 118→0
+  gołych „Q" na polach, 631 identyfikatorów per-aparat):** §19.1: `fieldFunctionalDesignation`
+  (pole liniowe/transformatorowe/sprzęgłowe/pomiarowe/generatorowe; „potrzeb własnych"/„inne"
+  nieosiągalne — zero kategorii-atrap) zastępuje gołe Q/T na sidecarze pola;
+  `apparatusIdentifiers` — liczniki per kategoria (Q dla CB/DS/rozłącznik, QE dla ES, T dla TR),
+  etykiety t4 po LEWEJ stosu z rezerwacją `apparatusIdentifierLeftReserve` (snapUp — naprawa 1px
+  overflow wykryta testem FIX-3), znacznik `data-designation-source="konwencja"`
+  (`designationSource` w instancji/meta — dane = F10.6). §19.2: podpis „⟨nazwa linii⟩ · kier./odg.
+  ⟨kod⟩" z NOWEGO addytywnego kanału `SldTopologyRun.lineName` (surowe `LineRun.name` bez
+  syntetycznego fallbacku — stare `label` fabrykowało „Ciąg SN 01"); fixtura: 105/118 podpisów
+  z realną nazwą. §19.3: `classifyStationTopologicalType` (COUPLER⇒sekcyjna; ≥3 liniowe⇒odgałęźna;
+  2⇒przelotowa; 1⇒końcowa), render pokazuje typ WYPROWADZONY, niezgodność z daną station_type ⇒
+  stopNote `station.type.mismatch` (fixtura: 53 stacje, 0 niezgodności). DEC-5: inwentaryzacja —
+  realne dane niosą tylko RMU_LINE/RMU_TRANSFORMER; FieldRole NIE rozszerzony. Wyrocznie
+  apparatus_identifier_probe/line_bay_caption_probe/station_type_topology_probe w accept
+  z negatywami (gryzą — potwierdzone). Piony L2 SPADŁY 53304→52232 (szersze kolumny → inne
+  przydziały wierszy B1). Bramki: tsc/eslint czyste, vitest sld 171 plików/3272 (spadek liczby
+  testów = konsolidacja parametryzacji FIX-3, 4 usunięte = 4 dodane it — zweryfikowane diffem),
+  accept ALL PASS, pełna regresja exit 0, guardy zielone; wizualny DoD nadzorcy: „Magistrala 01 ·
+  kier. S04", pola funkcyjnie, Q1/Q2/Q3/QE1/T1 przy aparatach — POTWIERDZONE.
 
 ### F10.3. Szyny + stany + jednoznaczność symboli
 - Zakres: etykieta szyny stacji (napięcie znamionowe + oznaczenie sekcji), widoczny stan sprzęgła

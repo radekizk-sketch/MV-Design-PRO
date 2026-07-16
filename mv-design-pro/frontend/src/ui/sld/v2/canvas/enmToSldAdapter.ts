@@ -1048,6 +1048,7 @@ function buildTopologyRuns(
         id: run.id,
         kind: run.run_kind,
         label: safeTopologyRunLabel(run, index),
+        lineName: rawTopologyRunLineName(run),
         corridorId: `corridor-${run.id}`,
         laneIndex,
         orderInRun: index,
@@ -1389,6 +1390,23 @@ function compactPublicLabel(text: string): string {
     .replace(/\s{2,}/g, ' ')
     .trim();
   return cleaned || 'układ SN';
+}
+
+/**
+ * F10.2 (SLD_CAD_SPEC_V3 §19.2, D2): `LineRun.name` SUROWY — ODDZIELNE od
+ * `safeTopologyRunLabel` niżej (ten ZAWSZE syntetyzuje bezpieczny fallback,
+ * np. „Ciąg SN 01", do UI ogólnego). Zwraca `null`, gdy dana nieobecna LUB
+ * wygląda na ref/hash programistyczny (nie czytelną nazwę) — ŻADNEJ
+ * syntezy fallbacku, bo podpis pola liniowego (§19.2) MUSI odróżnić „mam
+ * realną nazwę linii" od „nie mam" (degradacja do samego kierunku, zero
+ * fabrykacji numeru).
+ */
+function rawTopologyRunLineName(run: SldLineRunForLayout): string | null {
+  const raw = typeof run.name === 'string' ? run.name.trim() : '';
+  if (!raw) return null;
+  if (/^(seg|ref|hash)\//i.test(raw)) return null;
+  if (/[a-f0-9]{24,}/i.test(raw)) return null;
+  return raw;
 }
 
 function safeTopologyRunLabel(run: SldLineRunForLayout, index: number): string {

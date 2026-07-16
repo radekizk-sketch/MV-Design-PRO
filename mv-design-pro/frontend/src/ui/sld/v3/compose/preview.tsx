@@ -118,6 +118,14 @@ export interface PreviewElementMeta {
    *  są aparatem pola (szyny, stacje, DER, segmenty).
    */
   readonly apparatusSource?: 'dane' | 'konwencja';
+  /** F10.2 (spec §19.1, V12K-035): pochodzenie IDENTYFIKATORA PER-APARAT
+   *  (Q/QE/T) tego symbolu — `'konwencja'` gdy z fallbacku
+   *  `apparatusIdentifiers` (`compose/apparatusSequence.ts`, dziś ZAWSZE,
+   *  `BayPrimaryDevice.designation` DOMAIN dopiero F10.6); `undefined` dla
+   *  symboli BEZ identyfikatora w tej fazie. Audytor DOM
+   *  `data-designation-source` — ODDZIELNE od `apparatusSource` (patrz
+   *  `ComposedSymbolInstance.designationSource`, `compose/station.ts`). */
+  readonly designationSource?: 'dane' | 'konwencja';
   /** F9.4 (spec §13.1, f92-2): `true` dla symboli źródła (`elementKind`
    *  `'der'`/`'source'`) reprezentujących dane niekompletne (dziś: DER
    *  `kind==='unknown'` — `Generator.gen_type` nierozpoznany/`null`).
@@ -189,6 +197,7 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
       data-parity-key={parityKeysOf(symbol.meta)}
       data-test-id={symbol.meta?.testId}
       data-apparatus-source={symbol.meta?.apparatusSource}
+      data-designation-source={symbol.meta?.designationSource}
       data-missing-data={symbol.meta?.missingData ? 'true' : undefined}
     >
       <Glyph x={symbol.x} y={symbol.y} state={symbol.state} stroke={stroke} labelLines={symbol.meta?.protectionCodes} />

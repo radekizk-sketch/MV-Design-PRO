@@ -147,45 +147,47 @@ describe('V3 compose/station — spójność measure↔compose (wymóg zadania F
 });
 
 // ---------------------------------------------------------------------------
-// (a2) FIX-3 (recenzja F5a): stos aparatów FLUSH-LEFT + oznacznik sidecar PO
-// PRAWEJ — bbox(stos ∪ oznacznik) musi zostać WEWNĄTRZ `bayColumnRequiredWidth`
-// (measure.ts), dla każdej roli i oznaczników 1..4 znaki (poprzedni kod
-// centrował stos w CAŁEJ rezerwacji, więc oznacznik ≥2-znakowy wystawał poza
-// pole — patrz nagłówek `station.ts`).
+// (a2) FIX-3 (recenzja F5a, F10.2): stos aparatów FLUSH-LEFT WZGLĘDEM
+// `bx + leftReserve` + identyfikatory per-aparat (Q/QE/T) PO LEWEJ stosu +
+// oznaczenie FUNKCYJNE pola (sidecar) PO PRAWEJ — bbox(stos ∪ identyfikatory
+// ∪ oznaczenie) musi zostać WEWNĄTRZ `bayColumnRequiredWidth` (measure.ts),
+// dla KAŻDEJ roli (poprzedni kod centrował stos w CAŁEJ rezerwacji, więc
+// oznacznik ≥2-znakowy wystawał poza pole — patrz nagłówek `station.ts`).
+// F10.2: `bay.designation` PRZESTAŁ wpływać na sidecar (oznaczenie jest
+// czystą funkcją `fieldRole`) — parametryzacja po długości designation
+// usunięta (nie ma już czego testować tą osią), test sprawdza WSZYSTKIE
+// `ALL_FIELD_ROLES` raz.
 // ---------------------------------------------------------------------------
 
-describe('V3 compose/station — FIX-3: bbox(stos + oznacznik) ⊆ rezerwacja pola (bayColumnRequiredWidth)', () => {
+describe('V3 compose/station — FIX-3/F10.2: bbox(stos + identyfikatory + oznaczenie funkcyjne) ⊆ rezerwacja pola', () => {
   for (const role of ALL_FIELD_ROLES) {
-    for (const designationLength of [1, 2, 3, 4]) {
-      it(`rola ${role}, oznacznik ${designationLength}-znakowy: bbox w rezerwacji`, () => {
-        const designation = 'Q'.repeat(designationLength);
-        const bay = makeBay(role, 0, { designation });
-        const station = makeStation(`fix3-${role}-${designationLength}`, [bay]);
-        const composeInput = buildComposeInput(station);
-        const composition = composeStation(composeInput);
+    it(`rola ${role}: bbox w rezerwacji (bayColumnRequiredWidth)`, () => {
+      const bay = makeBay(role, 0);
+      const station = makeStation(`fix3-${role}`, [bay]);
+      const composeInput = buildComposeInput(station);
+      const composition = composeStation(composeInput);
 
-        const reservedWidth = bayColumnRequiredWidth(station.snBays, 0, station.bayDirectionCaptions);
-        const bx = composeInput.column.x + GRID; // blockLeftX (FIX-4): jedno pole = cały blok.
+      const reservedWidth = bayColumnRequiredWidth(station.snBays, 0, station.bayDirectionCaptions);
+      const bx = composeInput.column.x + GRID; // blockLeftX (FIX-4): jedno pole = cały blok.
 
-        const symbolMinX = Math.min(...composition.symbols.map((s) => s.x));
-        const symbolMaxX = Math.max(...composition.symbols.map((s) => s.x + SYMBOL_DEFS[s.symbolId].width));
+      const symbolMinX = Math.min(...composition.symbols.map((s) => s.x));
+      const symbolMaxX = Math.max(...composition.symbols.map((s) => s.x + SYMBOL_DEFS[s.symbolId].width));
 
-        // F10.1: filtr po `#designation` (adnotacja blokady ES trafiła
-        // finalnie do LEGENDY arkusza — patrz spec §18.1 „Doprecyzowanie
-        // realizacji"); bbox liczony po WSZYSTKICH etykietach aparatu.
-        const designationLabels = composition.labels.apparatus.filter((l) =>
-          l.ownerRef.endsWith('#designation'),
-        );
-        expect(designationLabels).toHaveLength(1);
-        const resolved = resolveLabels({ simpleAnchored: composition.labels.apparatus });
+      // F10.2: dokładnie JEDNA etykieta oznaczenia funkcyjnego pola
+      // (`ownerKind:'field-role'`) — ZAWSZE obecna (funkcja NIGDY nie zwraca
+      // pustego stringa).
+      const fieldRoleLabels = composition.labels.apparatus.filter((l) => l.ownerKind === 'field-role');
+      expect(fieldRoleLabels).toHaveLength(1);
+      expect(fieldRoleLabels[0].ownerRef).toBe(`${bay.bayRef}#field-role`);
 
-        const bboxMinX = Math.min(symbolMinX, ...resolved.map((l) => l.rect.x));
-        const bboxMaxX = Math.max(symbolMaxX, ...resolved.map((l) => l.rect.x + l.rect.width));
+      const resolved = resolveLabels({ simpleAnchored: composition.labels.apparatus });
 
-        expect(bboxMinX).toBeGreaterThanOrEqual(bx);
-        expect(bboxMaxX).toBeLessThanOrEqual(bx + reservedWidth);
-      });
-    }
+      const bboxMinX = Math.min(symbolMinX, ...resolved.map((l) => l.rect.x));
+      const bboxMaxX = Math.max(symbolMaxX, ...resolved.map((l) => l.rect.x + l.rect.width));
+
+      expect(bboxMinX).toBeGreaterThanOrEqual(bx);
+      expect(bboxMaxX).toBeLessThanOrEqual(bx + reservedWidth);
+    });
   }
 });
 

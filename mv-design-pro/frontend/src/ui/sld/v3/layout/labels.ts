@@ -58,8 +58,9 @@ export type OwnerKind =
   | 'segment-span'      // segment magistrali poziomy (slot podstawowy = primaryRect, poprawka F4)
   | 'segment-lateral'    // segment pionowy (lateral), etykieta rotowana 90°
   | 'station-name'       // wiersz pasma nazw stacji (B5)
-  | 'port-caption'       // podpis kierunku pola (t3, spec §9: „kier. Sxx"/„odg. Sxx")
-  | 'apparatus'          // oznacznik aparatu (Q0/Q1/T1, t3)
+  | 'port-caption'       // podpis kierunku pola (t3, spec §9/§19.2: „⟨nazwa linii⟩ · kier. Sxx"/„odg. Sxx")
+  | 'field-role'         // F10.2: oznaczenie FUNKCYJNE pola (spec §19.1: „pole liniowe"/…, t3)
+  | 'apparatus'          // F10.2: identyfikator PER-APARAT (Q1/QE1/T1, spec §19.1, t4) — NIE etykieta pola
   | 'der'                // rodzaj+moc DER (t2) pod symbolem
   | 'busbar-voltage'     // napięcie szyny (t2) nad lewym końcem
   | 'no-point'           // badge „NO" (t3) przy symbolu
@@ -380,7 +381,7 @@ export type SimpleAnchorPlacement = 'above' | 'below' | 'left' | 'right';
 
 export interface SimpleAnchoredOwnerInput {
   readonly ownerRef: string;
-  readonly ownerKind: 'apparatus' | 'der' | 'busbar-voltage' | 'no-point' | 'protection';
+  readonly ownerKind: 'apparatus' | 'field-role' | 'der' | 'busbar-voltage' | 'no-point' | 'protection';
   readonly text: string;
   readonly labelClass: LabelClass;
   readonly anchor: LabelPoint;

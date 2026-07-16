@@ -726,10 +726,10 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     expect(totalVerticalSegmentLength(synthetic)).toBe(70);
   });
 
-  it('fixtura referencyjna: baseline aktualny per LOD (historia: F9.7 9656/38504/53304 → F9.10 +2496 za kolizje=0 → F10.1 OBNIŻONY: tor główny pola KRÓTSZY o ES wyjęty na bok §18.1 — blok stacji −32, co przez 78 przecięć pasm ODDAJE dokładnie koszt F9.10 na L1/L2; L0 −32 na zejściu GPZ)', () => {
+  it('fixtura referencyjna: baseline aktualny per LOD (historia: F9.7 9656/38504/53304 → F9.10 +2496 za kolizje=0 → F10.1 OBNIŻONY: tor główny pola KRÓTSZY o ES wyjęty na bok §18.1 — blok stacji −32, co przez 78 przecięć pasm ODDAJE dokładnie koszt F9.10 na L1/L2; L0 −32 na zejściu GPZ → F10.2 OBNIŻONY na L2: podpisy kierunku pola z nazwą linii §19.2 (dłuższe teksty na fixturze referencyjnej, `LineRunV1.name` np. „Magistrala 01"/„Odgałęzienie SN kablowe") poszerzyły kolumny NIEKTÓRYCH pól — przez `colorSegmentLabelRows` (`layout/segments.ts`, r9, NIEZMIENIONE przez F10.2) zmiana szerokości kolumn przełożyła się na inne przydziały wierszy pasma B1, co ODDAJE 1072px pionów na L2 (spadek, nie wzrost — miara „nie-rosnąca" spec §15.1 spełniona z zapasem); L0/L1 BEZ zmian (L0 nie niesie `bayDirectionCaptions`, L1 ma je wyłączone — spec §7))', () => {
     expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(12120);
     expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(38504);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(53304);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(52232);
   });
 });
 

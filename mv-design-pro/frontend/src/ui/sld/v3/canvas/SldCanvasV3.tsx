@@ -157,6 +157,7 @@ function SceneSymbolNode(props: {
       data-testid={testId}
       data-parity-key={parityKeysOf(symbol.meta)}
       data-apparatus-source={symbol.meta?.apparatusSource}
+      data-designation-source={symbol.meta?.designationSource}
       onClick={onElementClick ? () => onElementClick(testId, clickMeta) : undefined}
       style={onElementClick ? { cursor: 'pointer' } : undefined}
     >

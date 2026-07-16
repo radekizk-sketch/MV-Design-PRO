@@ -10,8 +10,9 @@ import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContract
 import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
 import type { LineRunV1 } from '../../../../../types/enm';
 import {
-  bayApparatusDesignation,
   bayDirectionCaption,
+  classifyStationTopologicalType,
+  fieldFunctionalDesignation,
   resolveStationDirectionContext,
   stationBayCaptions,
   type StationDirectionContext,
@@ -78,27 +79,94 @@ function contextFor(stationId: string): StationDirectionContext {
 describe('V3 compose/directions — resolveStationDirectionContext (spec §9)', () => {
   it('pierwsza stacja głównego ciągu: poprzednik = GPZ, następnik = S02, brak gałęzi', () => {
     const ctx = contextFor('sub-01');
-    expect(ctx).toEqual({ previousNodeCode: 'GPZ', nextNodeCode: 'S02', branchNodeCodes: [] });
+    expect(ctx).toEqual({
+      previousNodeCode: 'GPZ',
+      nextNodeCode: 'S02',
+      branchNodeCodes: [],
+      runName: null,
+      branchRunNames: [],
+    });
   });
 
   it('stacja środkowa z odgałęzieniem: poprzednik = S01, następnik = S03, gałąź = [S15]', () => {
     const ctx = contextFor('sub-02');
-    expect(ctx).toEqual({ previousNodeCode: 'S01', nextNodeCode: 'S03', branchNodeCodes: ['S15'] });
+    expect(ctx).toEqual({
+      previousNodeCode: 'S01',
+      nextNodeCode: 'S03',
+      branchNodeCodes: ['S15'],
+      runName: null,
+      branchRunNames: [null],
+    });
   });
 
   it('ostatnia stacja głównego ciągu: poprzednik = S03, następnik = null', () => {
     const ctx = contextFor('sub-04');
-    expect(ctx).toEqual({ previousNodeCode: 'S03', nextNodeCode: null, branchNodeCodes: [] });
+    expect(ctx).toEqual({
+      previousNodeCode: 'S03',
+      nextNodeCode: null,
+      branchNodeCodes: [],
+      runName: null,
+      branchRunNames: [],
+    });
   });
 
   it('pierwsza (jedyna) stacja gałęzi: poprzednik = stacja macierzysta gałęzi (S02), NIE GPZ', () => {
     const ctx = contextFor('sub-15');
-    expect(ctx).toEqual({ previousNodeCode: 'S02', nextNodeCode: null, branchNodeCodes: [] });
+    expect(ctx).toEqual({
+      previousNodeCode: 'S02',
+      nextNodeCode: null,
+      branchNodeCodes: [],
+      runName: null,
+      branchRunNames: [],
+    });
   });
 
   it('stacja nieobecna w żadnym line_run: wszystko null/puste (brak danych ciągu)', () => {
     const ctx = contextFor('sub-nieznana');
-    expect(ctx).toEqual({ previousNodeCode: null, nextNodeCode: null, branchNodeCodes: [] });
+    expect(ctx).toEqual({
+      previousNodeCode: null,
+      nextNodeCode: null,
+      branchNodeCodes: [],
+      runName: null,
+      branchRunNames: [],
+    });
+  });
+
+  // F10.2 (spec §19.2, D2): `LineRunV1.name` niesiony do kontekstu —
+  // ciąg NAZWANY (dane obecne) vs ciąg BEZ nazwy (`MAIN_RUN`/`BRANCH_RUN`
+  // powyżej, `name` nieustawione ⇒ `runName: null`, sprawdzone wyżej).
+  it('ciąg NAZWANY: runName niesie LineRunV1.name, to samo dla obu końców (poprzednik/następnik)', () => {
+    const namedMain: LineRunV1 = { ...MAIN_RUN, name: 'L-01' };
+    const ctx = resolveStationDirectionContext({
+      lineRuns: [namedMain, BRANCH_RUN],
+      stationId: 'sub-02',
+      gpzNodeCode: 'GPZ',
+      stationCodeOf,
+    });
+    expect(ctx.runName).toBe('L-01');
+  });
+
+  it('gałąź NAZWANA: branchRunNames niesie LineRunV1.name ciągu odgałęźnego, index-aligned do branchNodeCodes', () => {
+    const namedBranch: LineRunV1 = { ...BRANCH_RUN, name: 'Odgałęzienie do S15' };
+    const ctx = resolveStationDirectionContext({
+      lineRuns: [MAIN_RUN, namedBranch],
+      stationId: 'sub-02',
+      gpzNodeCode: 'GPZ',
+      stationCodeOf,
+    });
+    expect(ctx.branchNodeCodes).toEqual(['S15']);
+    expect(ctx.branchRunNames).toEqual(['Odgałęzienie do S15']);
+  });
+
+  it('nazwa ciągu z samych białych znaków traktowana jak brak nazwy (trim ⇒ null)', () => {
+    const blankNamedMain: LineRunV1 = { ...MAIN_RUN, name: '   ' };
+    const ctx = resolveStationDirectionContext({
+      lineRuns: [blankNamedMain, BRANCH_RUN],
+      stationId: 'sub-01',
+      gpzNodeCode: 'GPZ',
+      stationCodeOf,
+    });
+    expect(ctx.runName).toBeNull();
   });
 });
 
@@ -167,6 +235,53 @@ describe('V3 compose/directions — stationBayCaptions (spec §3/§4/§9)', () =
   });
 });
 
+// ---------------------------------------------------------------------------
+// F10.2 (spec §19.2, D2, wyrocznia line_bay_caption_probe): podpis pola
+// liniowego = numer/nazwa linii + kierunek topologiczny, format
+// `⟨numer linii⟩ · kier. ⟨kod⟩` — degradacja do samego `kier./odg. ⟨kod⟩`
+// gdy nazwa ciągu nieobecna (już pokryte wyżej, ciągi MAIN_RUN/BRANCH_RUN
+// bez `name`).
+// ---------------------------------------------------------------------------
+
+describe('V3 compose/directions — bayDirectionCaption z nazwą linii (spec §19.2)', () => {
+  it('poprzednik/następnik: nazwa ciągu ⇒ "⟨nazwa⟩ · kier. ⟨kod⟩"', () => {
+    const ctx: StationDirectionContext = {
+      previousNodeCode: 'S01',
+      nextNodeCode: 'S03',
+      branchNodeCodes: [],
+      runName: 'L-01',
+      branchRunNames: [],
+    };
+    expect(bayDirectionCaption({ direction: 'previous', context: ctx, branchIndex: -1 })).toBe('L-01 · kier. S01');
+    expect(bayDirectionCaption({ direction: 'next', context: ctx, branchIndex: -1 })).toBe('L-01 · kier. S03');
+  });
+
+  it('odgałęzienie: nazwa ciągu odgałęźnego ⇒ "⟨nazwa⟩ · odg. ⟨kod⟩"', () => {
+    const ctx: StationDirectionContext = {
+      previousNodeCode: 'S01',
+      nextNodeCode: 'S03',
+      branchNodeCodes: ['S15'],
+      runName: 'L-01',
+      branchRunNames: ['Odgałęzienie do S15'],
+    };
+    expect(bayDirectionCaption({ direction: 'branch', context: ctx, branchIndex: 0 })).toBe(
+      'Odgałęzienie do S15 · odg. S15',
+    );
+  });
+
+  it('degradacja: brak nazwy ciągu ⇒ sam "kier./odg. ⟨kod⟩" (NIE błąd, spec §19.2)', () => {
+    const ctx: StationDirectionContext = {
+      previousNodeCode: 'S01',
+      nextNodeCode: 'S03',
+      branchNodeCodes: ['S15'],
+      runName: null,
+      branchRunNames: [null],
+    };
+    expect(bayDirectionCaption({ direction: 'previous', context: ctx, branchIndex: -1 })).toBe('kier. S01');
+    expect(bayDirectionCaption({ direction: 'branch', context: ctx, branchIndex: 0 })).toBe('odg. S15');
+  });
+});
+
 describe('V3 compose/directions — property: żaden podpis nie zawiera surowego WE/WY/ODG (spec §9)', () => {
   const scenarios: ReadonlyArray<{ readonly stationId: string; readonly snBays: readonly MiniBlockBayDescriptor[] }> = [
     {
@@ -213,88 +328,115 @@ describe('V3 compose/directions — property: żaden podpis nie zawiera surowego
   }
 
   it('bayDirectionCaption zwraca null dla direction=null niezależnie od kontekstu/fallbacku', () => {
-    const ctx: StationDirectionContext = { previousNodeCode: 'S99', nextNodeCode: 'S98', branchNodeCodes: ['S97'] };
+    const ctx: StationDirectionContext = {
+      previousNodeCode: 'S99',
+      nextNodeCode: 'S98',
+      branchNodeCodes: ['S97'],
+      runName: 'L-99',
+      branchRunNames: ['Odgałęzienie 97'],
+    };
     expect(bayDirectionCaption({ direction: null, context: ctx, branchIndex: 0, designationFallback: 'TR' })).toBeNull();
   });
 });
 
 // ---------------------------------------------------------------------------
-// bayApparatusDesignation (F6b, spłata długu §9): oznacznik APARATU pola
-// (spec §4: „Q0/Q1/T1"), NIE kierunek. `bay.designation` z adaptera v2 bywa
-// surowym tokenem roli pola ("WE"/"WY"/"ODG") — musi zostać zastąpiony
-// konwencją Q/T, ale prawdziwy oznacznik z danych (niebędący zakazanym
-// tokenem) ma pierwszeństwo.
+// F10.2 (spec §19.1, V12K-035): `fieldFunctionalDesignation` — oznaczenie
+// FUNKCYJNE pola (liniowe/transformatorowe/sprzęgłowe/pomiarowe/
+// generatorowe), zastępuje dawny `bayApparatusDesignation` (Q/T jako etykieta
+// CAŁEGO pola — USUNIĘTY, przeniesiony na identyfikator PER-APARAT,
+// `compose/apparatusSequence.ts` `apparatusIdentifiers`).
 // ---------------------------------------------------------------------------
 
-describe('bayApparatusDesignation (spec §4 — oznacznik aparatu, spłata długu §9)', () => {
-  it('designation prawdziwe (nie token kierunku) — dane mają pierwszeństwo nad konwencją', () => {
-    const snBays = [makeBay(FIELD_ROLE.LINE_IN, 0, 'Q1'), makeBay(FIELD_ROLE.TRANSFORMER, 1, 'T7')];
-    expect(bayApparatusDesignation(snBays, 0)).toBe('Q1');
-    expect(bayApparatusDesignation(snBays, 1)).toBe('T7');
+describe('fieldFunctionalDesignation (spec §19.1 — oznaczenie funkcyjne pola, NIE identyfikator aparatu)', () => {
+  it('role liniowe (LINE_IN/LINE_OUT/LINE_BRANCH/RMU_LINE/GPZ_LINE_BAY) ⇒ "pole liniowe"', () => {
+    for (const role of [
+      FIELD_ROLE.LINE_IN,
+      FIELD_ROLE.LINE_OUT,
+      FIELD_ROLE.LINE_BRANCH,
+      FIELD_ROLE.RMU_LINE,
+      FIELD_ROLE.GPZ_LINE_BAY,
+    ]) {
+      expect(fieldFunctionalDesignation(role)).toBe('pole liniowe');
+    }
   });
 
-  it('designation = token zakazany (WE/WY/ODG) — fallback na konwencję Q (pole nie-transformatorowe)', () => {
+  it('role transformatorowe (TRANSFORMER/RMU_TRANSFORMER) ⇒ "pole transformatorowe"', () => {
+    expect(fieldFunctionalDesignation(FIELD_ROLE.TRANSFORMER)).toBe('pole transformatorowe');
+    expect(fieldFunctionalDesignation(FIELD_ROLE.RMU_TRANSFORMER)).toBe('pole transformatorowe');
+  });
+
+  it('COUPLER ⇒ "pole sprzęgłowe"; MEASUREMENT ⇒ "pole pomiarowe"', () => {
+    expect(fieldFunctionalDesignation(FIELD_ROLE.COUPLER)).toBe('pole sprzęgłowe');
+    expect(fieldFunctionalDesignation(FIELD_ROLE.MEASUREMENT)).toBe('pole pomiarowe');
+  });
+
+  it('DER_PV/DER_BESS/DER_FW ⇒ "pole generatorowe"', () => {
+    expect(fieldFunctionalDesignation(FIELD_ROLE.DER_PV)).toBe('pole generatorowe');
+    expect(fieldFunctionalDesignation(FIELD_ROLE.DER_BESS)).toBe('pole generatorowe');
+    expect(fieldFunctionalDesignation(FIELD_ROLE.DER_FW)).toBe('pole generatorowe');
+  });
+
+  it('zero surowych "Q\\d+"/"T\\d+" (zakaz §19.1) — oznaczenie jest ZAWSZE tekstem funkcyjnym', () => {
+    const RAW_Q_OR_T = /^Q\d+$|^T\d+$/;
+    for (const role of Object.values(FIELD_ROLE)) {
+      expect(fieldFunctionalDesignation(role)).not.toMatch(RAW_Q_OR_T);
+    }
+  });
+
+  it('deterministyczne: czysta funkcja roli, zero zależności od danych pola', () => {
+    expect(fieldFunctionalDesignation(FIELD_ROLE.RMU_LINE)).toBe(fieldFunctionalDesignation(FIELD_ROLE.RMU_LINE));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F10.2 (spec §19.3, V12K-034, wyrocznia station_type_topology_probe):
+// `classifyStationTopologicalType` — typ stacji WYPROWADZONY z topologii
+// (`snBays`), NIE z ręcznej danej `station_type`.
+// ---------------------------------------------------------------------------
+
+describe('classifyStationTopologicalType (spec §19.3 — typ stacji z topologii)', () => {
+  it('1 pole liniowe (+ TR) ⇒ "końcowa"', () => {
+    const snBays = [makeBay(FIELD_ROLE.RMU_LINE, 0), makeBay(FIELD_ROLE.RMU_TRANSFORMER, 1)];
+    expect(classifyStationTopologicalType(snBays)).toBe('końcowa');
+  });
+
+  it('0 pól liniowych (samo TR) ⇒ "końcowa" (degradacja bezpieczna)', () => {
+    expect(classifyStationTopologicalType([makeBay(FIELD_ROLE.RMU_TRANSFORMER, 0)])).toBe('końcowa');
+  });
+
+  it('2 pola liniowe równorzędne ⇒ "przelotowa"', () => {
     const snBays = [
-      makeBay(FIELD_ROLE.LINE_IN, 0, 'WE'),
-      makeBay(FIELD_ROLE.LINE_OUT, 1, 'WY'),
-      makeBay(FIELD_ROLE.LINE_BRANCH, 2, 'ODG'),
+      makeBay(FIELD_ROLE.RMU_LINE, 0),
+      makeBay(FIELD_ROLE.RMU_LINE, 1),
+      makeBay(FIELD_ROLE.RMU_TRANSFORMER, 2),
     ];
-    expect(bayApparatusDesignation(snBays, 0)).toBe('Q1');
-    expect(bayApparatusDesignation(snBays, 1)).toBe('Q2');
-    expect(bayApparatusDesignation(snBays, 2)).toBe('Q3');
+    expect(classifyStationTopologicalType(snBays)).toBe('przelotowa');
   });
 
-  it('designation = token zakazany na polu transformatorowym — fallback na konwencję T, numeracja NIEZALEŻNA od pól Q', () => {
-    // Pole liniowe (Q) między dwoma polami transformatorowymi (T) — numeracja
-    // T liczona WYŁĄCZNIE wśród pól transformatorowych tej stacji, nie po
-    // ogólnym indeksie w `snBays` (spec: „T + numer WŚRÓD pól transformatorowych").
+  it('3 pola liniowe ⇒ "odgałęźna" (wyrocznia station_type_topology_probe (c))', () => {
     const snBays = [
-      makeBay(FIELD_ROLE.TRANSFORMER, 0, 'WE'),
-      makeBay(FIELD_ROLE.LINE_IN, 1, 'WE'),
-      makeBay(FIELD_ROLE.TRANSFORMER, 2, 'WY'),
+      makeBay(FIELD_ROLE.RMU_LINE, 0),
+      makeBay(FIELD_ROLE.RMU_LINE, 1),
+      makeBay(FIELD_ROLE.RMU_LINE, 2),
+      makeBay(FIELD_ROLE.RMU_TRANSFORMER, 3),
     ];
-    expect(bayApparatusDesignation(snBays, 0)).toBe('T1');
-    expect(bayApparatusDesignation(snBays, 1)).toBe('Q1');
-    expect(bayApparatusDesignation(snBays, 2)).toBe('T2');
+    expect(classifyStationTopologicalType(snBays)).toBe('odgałęźna');
   });
 
-  it('designation puste/whitespace — fallback na konwencję (brak danych = brak realnego oznacznika)', () => {
-    const snBays = [makeBay(FIELD_ROLE.MEASUREMENT, 0, '  '), makeBay(FIELD_ROLE.COUPLER, 1, '')];
-    expect(bayApparatusDesignation(snBays, 0)).toBe('Q1');
-    expect(bayApparatusDesignation(snBays, 1)).toBe('Q2');
-  });
-
-  it('RMU_TRANSFORMER liczy się jak TRANSFORMER (konwencja T), niezależnie od pól RMU_LINE', () => {
+  it('obecność sprzęgła (COUPLER) ⇒ "sekcyjna", NAWET z tylko 2 polami liniowymi (mv_lv_sectional)', () => {
     const snBays = [
-      makeBay(FIELD_ROLE.RMU_LINE, 0, 'WE'),
-      makeBay(FIELD_ROLE.RMU_TRANSFORMER, 1, 'WY'),
+      makeBay(FIELD_ROLE.RMU_LINE, 0),
+      makeBay(FIELD_ROLE.RMU_TRANSFORMER, 1),
+      makeBay(FIELD_ROLE.COUPLER, 2),
+      makeBay(FIELD_ROLE.RMU_LINE, 3),
+      makeBay(FIELD_ROLE.RMU_TRANSFORMER, 4),
     ];
-    expect(bayApparatusDesignation(snBays, 0)).toBe('Q1');
-    expect(bayApparatusDesignation(snBays, 1)).toBe('T1');
+    expect(classifyStationTopologicalType(snBays)).toBe('sekcyjna');
   });
 
-  it('deterministyczne: dwa wywołania na tych samych danych dają identyczny wynik', () => {
-    const snBays = [
-      makeBay(FIELD_ROLE.LINE_IN, 0, 'WE'),
-      makeBay(FIELD_ROLE.TRANSFORMER, 1, 'TR'),
-      makeBay(FIELD_ROLE.LINE_OUT, 2, 'WY'),
-    ];
-    const a = snBays.map((_, i) => bayApparatusDesignation(snBays, i));
-    const b = snBays.map((_, i) => bayApparatusDesignation(snBays, i));
-    expect(a).toEqual(b);
-    // 'TR' nie jest tokenem kierunku zakazanym przez §9 — dane zachowane.
-    expect(a[1]).toBe('TR');
-  });
-
-  it('wynik NIGDY nie zawiera surowego tokenu WE/WY/ODG', () => {
-    const snBays = [
-      makeBay(FIELD_ROLE.LINE_IN, 0, 'WE'),
-      makeBay(FIELD_ROLE.LINE_OUT, 1, 'WY'),
-      makeBay(FIELD_ROLE.LINE_BRANCH, 2, 'ODG'),
-      makeBay(FIELD_ROLE.TRANSFORMER, 3, 'WE'),
-    ];
-    snBays.forEach((_, i) => {
-      expect(bayApparatusDesignation(snBays, i)).not.toMatch(FORBIDDEN_TOKEN);
-    });
+  it('czysta funkcja `snBays` — kolejność pól nie wpływa na wynik (liczność, nie pozycja)', () => {
+    const a = [makeBay(FIELD_ROLE.RMU_TRANSFORMER, 0), makeBay(FIELD_ROLE.RMU_LINE, 1), makeBay(FIELD_ROLE.RMU_LINE, 2)];
+    const b = [makeBay(FIELD_ROLE.RMU_LINE, 0), makeBay(FIELD_ROLE.RMU_LINE, 1), makeBay(FIELD_ROLE.RMU_TRANSFORMER, 2)];
+    expect(classifyStationTopologicalType(a)).toBe(classifyStationTopologicalType(b));
   });
 });

@@ -231,6 +231,67 @@ export function planBayApparatus(
 /** Prześwit gałęzi bocznej od osi toru (poziomy jog) — 1×GRID (spec §2). */
 export const LATERAL_BRANCH_GAP = GRID;
 
+// ---------------------------------------------------------------------------
+// F10.2 (spec §19.1, dyrektywa D2-3, V12K-035) — identyfikator PER-APARAT
+// (Q/QE/T), zastępujący dawny `bayApparatusDesignation` (Q/T jako etykieta
+// CAŁEGO pola, usunięty z `compose/directions.ts`). „Q" identyfikuje
+// KONKRETNY aparat toru (wyłącznik/rozłącznik/odłącznik), NIE pole.
+// ---------------------------------------------------------------------------
+
+/** Aparaty toru, którym spec §19.1 przypisuje literę „Q" (wyłącznik/
+ *  rozłącznik/odłącznik — wszystkie łączniki BEZ własnej litery). `fuseSwitch`
+ *  („rozłącznik z bezpiecznikiem") mieści się w tej samej kategorii —
+ *  spec wymienia „wyłącznik/rozłącznik/odłącznik" jako JEDNĄ grupę „Q". */
+const Q_IDENTIFIER_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
+  'breaker',
+  'disconnector',
+  'fuseSwitch',
+]);
+
+/**
+ * Identyfikatory PER-APARAT (spec §19.1: „Q1" wyłącznik, „Q9" odłącznik
+ * szynowy, „QE1" uziemnik, „T1" transformator) — fallback KONWENCJI
+ * (`BayPrimaryDevice.designation`, DOMAIN, dopiero F10.6-DOMAIN, V12K-035),
+ * WYŁĄCZNIE dla aparatów wymienionych WPROST w spec §19.1: łączniki toru
+ * (breaker/disconnector/fuseSwitch → „Q"), uziemnik (earthSwitch → „QE"),
+ * transformator (transformer2W → „T"). CT/VT/SA/cableHead/protectionRelay/
+ * meter NIE dostają identyfikatora w tej fazie — CT ma WŁASNĄ adnotację
+ * (identyfikator+przekładnia, §18.3, F10.4, POZA torem mocy), VT/SA nie mają
+ * zdefiniowanej konwencji numeracji w spec §19.1 (zero zgadywania).
+ *
+ * Numeracja: JEDEN licznik na kategorię (Q/QE/T) per POLE, rosnąco wg
+ * pozycji w PEŁNEJ sekwencji aparatów pola (tor główny + laterale w
+ * kolejności `placement`/konwencji, V12K-027) — deterministyczne, licznik
+ * resetuje się na każdym polu. Zwraca tablicę index-aligned do `symbolIds`
+ * (`null` dla aparatów bez identyfikatora w tej fazie).
+ *
+ * JEDNA prawda dla `layout/measure.ts` (`apparatusIdentifierLeftReserve` —
+ * rezerwacja miejsca PO LEWEJ stosu) i `compose/station.ts`
+ * (`buildBayStack` — realne etykiety t4) — wzór F6b-1/F9.3.
+ */
+export function apparatusIdentifiers(
+  symbolIds: readonly SymbolId[],
+): readonly (string | null)[] {
+  let q = 0;
+  let qe = 0;
+  let t = 0;
+  return symbolIds.map((symbolId) => {
+    if (Q_IDENTIFIER_SYMBOLS.has(symbolId)) {
+      q += 1;
+      return `Q${q}`;
+    }
+    if (symbolId === 'earthSwitch') {
+      qe += 1;
+      return `QE${qe}`;
+    }
+    if (symbolId === 'transformer2W') {
+      t += 1;
+      return `T${t}`;
+    }
+    return null;
+  });
+}
+
 export interface BayApparatusPlanFootprint {
   /** Pełna szerokość: stos toru głównego + (jeżeli są laterale) rozszerzenie
    *  w prawo `lateralExtension`. */

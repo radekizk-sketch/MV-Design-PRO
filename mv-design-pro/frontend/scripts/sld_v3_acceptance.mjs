@@ -25,12 +25,17 @@ import { dirname, resolve } from 'node:path';
 
 import {
   buildSceneV3,
+  allApparatusIdentifiersValid,
   allEarthSwitchesLateral,
   allFieldEntryConnectionsReachCableHead,
+  allLineBayCaptionsValid,
   allPathTerminationsLabeled,
   allVtParallel,
+  apparatusIdentifierGaps,
   earthSwitchLateralGaps,
+  lineBayCaptionGaps,
   pathTerminationLabelGaps,
+  stationTypeTopologyMismatches,
   vtParallelGaps,
   allProtectionMarkingsValid,
   allSceneGeometryOnGrid,
@@ -110,7 +115,15 @@ const EXPECTED_STATION_COUNT = 53;
 // F10.1 (spec §18.1): OBNIŻONY względem F9.10 (12152/41000/55800) — ES/VT
 // wyjęte z osi skracają tor główny pola o 32px; miara nie-rosnąca spełniona
 // z zapasem (spadek, nie wzrost).
-const VERTICAL_LENGTH_BASELINE = { 0: 12120, 1: 38504, 2: 53304 };
+// F10.2 (spec §19.2): L2 OBNIŻONY 53304→52232 — podpisy kierunku pola z
+// nazwą linii (`⟨numer linii⟩ · kier./odg. ⟨kod⟩`, dane realne na fixturze
+// referencyjnej: `LineRunV1.name`) są DŁUŻSZE niż sam kod kierunku,
+// poszerzając kolumny NIEKTÓRYCH pól — przez `colorSegmentLabelRows`
+// (`layout/segments.ts`, r9, NIEZMIENIONE) inny rozkład szerokości kolumn
+// dał INNY przydział wierszy pasma B1, oddając 1072px pionów na L2 (spadek,
+// miara nie-rosnąca spełniona z zapasem). L0/L1 BEZ zmian (captions
+// nieobecne na tych LOD, spec §7).
+const VERTICAL_LENGTH_BASELINE = { 0: 12120, 1: 38504, 2: 52232 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —
@@ -253,6 +266,38 @@ check(
   sourceKindSymbolsAreInjective(),
 );
 
+// F10.2 (spec §19.3, V12K-034): station_type_topology_probe — NIEZALEŻNA od
+// buildSceneV3/lod (działa WPROST na snapshot ENM przez adapter v2) — (a)
+// typ stacji WYPROWADZONY z topologii == typ w danych na fixturze
+// referencyjnej (dowód pozytywny: 0 niezgodności na 53 realnych stacjach —
+// spójne dane, żaden false positive); (c) sprawdzone niezależnie w
+// `compose/__tests__/directions.test.ts` (3 pola liniowe ⇒ „odgałęźna").
+{
+  const mismatches = stationTypeTopologyMismatches(enm);
+  check(
+    'station_type_topology_probe (§19.3 a): 0 niezgodności typ-z-topologii vs station_type (dana) na fixturze referencyjnej',
+    mismatches.length === 0,
+    `niezgodności=${mismatches.length}${mismatches.length ? ' np. ' + JSON.stringify(mismatches[0]) : ''}`,
+  );
+  // Test negatywny (b) — dowód, że wyrocznia GRYZIE: snapshot z PODMIENIONYM
+  // station_type jednej stacji (branch→terminal, mimo 3 pól liniowych w
+  // danych) MUSI dać niezgodność zgłoszoną (nie cichą akceptację).
+  const sabotagedStation = enm.substations.find((s) => s.station_type === 'branch');
+  if (sabotagedStation) {
+    const sabotagedEnm = {
+      ...enm,
+      substations: enm.substations.map((s) =>
+        s === sabotagedStation ? { ...s, station_type: 'terminal' } : s,
+      ),
+    };
+    const sabotagedMismatches = stationTypeTopologyMismatches(sabotagedEnm);
+    check(
+      'station_type_topology_probe (test negatywny (b) — dowód, że wyrocznia gryzie): station_type podmieniony (branch→terminal) MUSI dać niezgodność zgłoszoną',
+      sabotagedMismatches.some((m) => m.stationId === sabotagedStation.ref_id),
+    );
+  }
+}
+
 // F9.7 (§15.2 lod_path_probe): sygnatury topologii ciągu głównego per LOD —
 // porównywane PO pętli (poniżej), żeby dowieść „ten sam zbiór połączeń
 // topologicznych" niezależnie od LOD (LOD zmienia TYLKO szczegółowość
@@ -329,6 +374,87 @@ for (const lod of LODS) {
     'branch_accent_probe (§14.4): każdy punkt odejścia lateralu ma węzeł branchJunction większy niż junction bazowy',
     noBranchWithoutAccent(scene),
   );
+
+  // -- §19.1 (F10.2, V12K-035) apparatus_identifier_probe --------------------
+  // Symbole pola istnieją WYŁĄCZNIE na lod>=1 (L0 = stationCollapsed, zero
+  // aparatów) — ta sama gałąź co §12.1 wyżej.
+  if (lod !== 0) {
+    const idGaps = apparatusIdentifierGaps(scene);
+    check(
+      'apparatus_identifier_probe (§19.1 a-d): oznaczenie pola FUNKCYJNE (nie surowe Q\\d+/T\\d+), każdy aparat uprawniony (CB/DS/rozłącznik/uziemnik/TR) niesie identyfikator Q/QE/T ze znacznikiem konwencji',
+      allApparatusIdentifiersValid(scene),
+      `luki=${idGaps.length}${idGaps.length ? ' np. ' + JSON.stringify(idGaps[0]) : ''}`,
+    );
+  }
+  if (lod === 2) {
+    // Test negatywny — dowód, że wyrocznia GRYZIE: etykieta oznaczenia pola
+    // fabrykowana jako surowe „Q1" MUSI dać FAIL (a).
+    const fabricatedFieldRole = {
+      ...scene,
+      labels: [
+        ...scene.labels,
+        { ownerRef: 'accept-sld-v3-fabricated#field-role', ownerKind: 'field-role', labelClass: 't3', text: 'Q1', slotIndex: 1, rect: { x: 0, y: 0, width: 10, height: 10 } },
+      ],
+    };
+    check(
+      'apparatus_identifier_probe (test negatywny (a) — dowód, że wyrocznia gryzie): oznaczenie pola „Q1" fabrykowane MUSI dać FAIL',
+      !allApparatusIdentifiersValid(fabricatedFieldRole),
+    );
+    // Test negatywny — aparat uprawniony BEZ znacznika `designationSource` i
+    // BEZ etykiety towarzyszącej MUSI dać FAIL (b/c).
+    const anyBreaker = scene.symbols.find(
+      (s) => s.symbolId === 'breaker' && s.meta?.elementKind === 'apparatus' && s.meta?.apparatusSource != null,
+    );
+    if (anyBreaker) {
+      const sabotagedMissingMarker = {
+        ...scene,
+        symbols: [
+          ...scene.symbols,
+          { ...anyBreaker, meta: { ...anyBreaker.meta, ownerRef: 'accept-sld-v3-fabricated-bay', designationSource: undefined } },
+        ],
+      };
+      check(
+        'apparatus_identifier_probe (test negatywny (b/c) — dowód, że wyrocznia gryzie): aparat uprawniony BEZ znacznika/etykiety MUSI dać FAIL',
+        !allApparatusIdentifiersValid(sabotagedMissingMarker),
+      );
+    }
+  }
+
+  // -- §19.2 (F10.2, D2) line_bay_caption_probe -------------------------------
+  // Podpisy kierunku pola (`bayDirectionCaptions`) istnieją WYŁĄCZNIE na L2
+  // (spec §7).
+  if (lod === 2) {
+    const captionGaps = lineBayCaptionGaps(scene);
+    check(
+      'line_bay_caption_probe (§19.2): każdy podpis pola liniowego ma format „⟨numer linii⟩ · kier./odg. ⟨kod⟩" lub degradację „kier./odg. ⟨kod⟩"',
+      allLineBayCaptionsValid(scene),
+      `luki=${captionGaps.length}${captionGaps.length ? ' np. ' + JSON.stringify(captionGaps[0]) : ''}`,
+    );
+    // Dowód POZYTYWNY (b): fixtura referencyjna niesie `LineRunV1.name`
+    // (`Magistrala 01`/`Odgałęzienie SN kablowe`) — co najmniej JEDEN
+    // podpis MUSI nieść prefiks nazwy linii (nie tylko degradację), inaczej
+    // ta gałąź formatu nigdy nie jest ćwiczona na realnych danych.
+    const portCaptions = scene.labels.filter((l) => l.ownerKind === 'port-caption');
+    const withLineName = portCaptions.filter((l) => l.text.includes(' · '));
+    check(
+      'line_bay_caption_probe (dowód pozytywny): co najmniej jeden podpis niesie prefiks nazwy linii („⟨nazwa⟩ · kier./odg.")',
+      portCaptions.length > 0 && withLineName.length > 0,
+      `podpisy=${portCaptions.length} z_nazwą=${withLineName.length}`,
+    );
+    // Test negatywny — dowód, że wyrocznia GRYZIE: podpis fabrykowany bez
+    // „kier."/„odg." MUSI dać FAIL.
+    const fabricatedCaption = {
+      ...scene,
+      labels: [
+        ...scene.labels,
+        { ownerRef: 'accept-sld-v3-fabricated#direction', ownerKind: 'port-caption', labelClass: 't3', text: 'L-01 GPZ Południe', slotIndex: 1, rect: { x: 0, y: 0, width: 10, height: 10 } },
+      ],
+    };
+    check(
+      'line_bay_caption_probe (test negatywny — dowód, że wyrocznia gryzie): podpis BEZ „kier./odg." fabrykowany MUSI dać FAIL',
+      !allLineBayCaptionsValid(fabricatedCaption),
+    );
+  }
 
   // -- §12.3 (FIX-1, po recenzji Opusa): kontrakt POŁĄCZENIA kabel↔głowica --
   // Głowice BEZ trasy dotykającej ich portu istnieją WYŁĄCZNIE na fizycznych

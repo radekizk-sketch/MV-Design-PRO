@@ -23,22 +23,23 @@
  * asercja per `FieldRole` z `ALL_FIELD_ROLES`; dwie niezależne implementacje
  * muszą się zgadzać, bo measure REZERWUJE miejsce, a compose je WYPEŁNIA).
  * FIX-3 (recenzja F5a): stos aparatów jest FLUSH-LEFT wewnątrz rezerwacji
- * pola (`bx`), oznacznik (spec §4: „Q0/Q1/T1", `bayApparatusDesignation`)
+ * pola (`bx + leftReserve`, F10.2), oznaczenie FUNKCYJNE pola (spec §19.1:
+ * „pole liniowe"/„pole transformatorowe"/…, `fieldFunctionalDesignation`)
  * sidecar PO PRAWEJ stosu — dokładnie model measure (`bayColumnRequiredWidth`:
- * `footprint.width + GRID + szerokość_oznacznika`), nie stos wycentrowany w
- * całej rezerwacji (dawny kod, przez co oznacznik ≥2-znakowy wystawał poza
- * pole).
+ * `leftReserve + footprint.width + GRID + szerokość_oznaczenia`), nie stos
+ * wycentrowany w całej rezerwacji (dawny kod, przez co oznacznik ≥2-znakowy
+ * wystawał poza pole).
  *
- * FIX-5 (F6b, spłata długu §9 zapisanego w recenzji F6a): ta wersja pliku
- * NIE kładzie już surowego `bay.designation` jako etykietę
- * `ownerKind:'apparatus'` — `bay.designation` z adaptera v2 bywa LITERALNIE
- * `WE`/`WY`/`ODG` (rola pola, `stationFieldDesignation` w
- * `v2/canvas/enmToSldAdapter.ts`), co naruszało spec §9 „na rysunku" (spec §4
- * chce w tym slocie oznacznik APARATU Q/T, nie token roli pola). Naprawa:
- * `bayApparatusDesignation` (`./directions`, współdzielona z
- * `layout/measure.ts` — jedno źródło prawdy szerokości sidecara I realnego
- * tekstu) zwraca dane WPROST, gdy nie są zakazanym tokenem (prawda danych >
- * konwencja), inaczej wyprowadza Q/T z roli+pozycji pola w `snBays`.
+ * F10.2 (spec §19.1, V12K-035, POPRAWKA A3): „«Q» identyfikuje KONKRETNY
+ * aparat, NIE pole" — dawny sidecar Q0/Q1/T1 (F6b `bayApparatusDesignation`,
+ * USUNIĘTY z `compose/directions.ts`) PRZESTAŁ etykietować CAŁE pole; pole
+ * dostaje oznaczenie FUNKCYJNE (`fieldFunctionalDesignation`, wyżej), a
+ * KAŻDY aparat toru (CB/DS/rozłącznik/uziemnik/transformator) dostaje WŁASNY
+ * identyfikator Q/QE/T przy swoim symbolu, PO LEWEJ stosu (`apparatusIdenti
+ * fiers`, `./apparatusSequence`, fallback konwencji ze znacznikiem
+ * `data-designation-source="konwencja"` — `BayPrimaryDevice.designation`
+ * DOMAIN dopiero F10.6). Rezerwacja miejsca na lewą kolumnę identyfikatorów:
+ * `layout/measure.ts` `apparatusIdentifierLeftReserve`.
  *
  * F9.3 (SLD_CAD_SPEC_V3 §12 „Kompozycja celki pola wg fizycznej ścieżki
  * mocy", §14.3 „Rozróżnialne sylwetki pól"): stos aparatów pola jest teraz
@@ -61,6 +62,7 @@ import { SYMBOL_DEFS, type SymbolDef, type SymbolId } from '../symbols/defs';
 import type { SwitchState } from '../symbols/glyphs';
 import type { RoutePort, RouteVertex } from '../layout/route';
 import {
+  apparatusIdentifierLeftReserve,
   bayColumnRequiredWidth,
   DER_ROW_TOP_CLEARANCE,
   derColumnRequiredWidth,
@@ -78,8 +80,9 @@ import type {
 } from '../layout/labels';
 import { ALL_FIELD_ROLES, FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
-import { bayApparatusDesignation, isLineLikeRole } from './directions';
+import { fieldFunctionalDesignation, isLineLikeRole } from './directions';
 import {
+  apparatusIdentifiers,
   LATERAL_APPARATUS_SYMBOLS,
   LATERAL_BRANCH_GAP,
   apparatusSymbolsForRole,
@@ -200,6 +203,19 @@ export interface ComposedSymbolInstance {
    *  wartością `'dane'` zanieczyściłoby filtr `apparatusSource!=null` używany
    *  przez testy F9.3 do wyodrębnienia WYŁĄCZNIE aparatów pola. */
   readonly apparatusSource?: BayApparatusSource;
+  /** F10.2 (spec §19.1, V12K-035): pochodzenie IDENTYFIKATORA PER-APARAT
+   *  (Q/QE/T) tego symbolu — `'konwencja'` gdy z fallbacku
+   *  `apparatusIdentifiers` (`compose/apparatusSequence.ts`, dziś ZAWSZE, bo
+   *  `BayPrimaryDevice.designation` DOMAIN dopiero F10.6); `undefined` dla
+   *  symboli BEZ identyfikatora w tej fazie (CT/VT/SA/cableHead/DER/…).
+   *  Audytor DOM `data-designation-source` (`compose/preview.tsx`/
+   *  `canvas/SldCanvasV3.tsx`) — ODDZIELNE od `apparatusSource` (ten opisuje
+   *  pochodzenie STOSU — kind/kolejność/stan; `designationSource` opisuje
+   *  WYŁĄCZNIE pochodzenie TEKSTU identyfikatora — dwie różne osie danych,
+   *  mogą się różnić: stos „dane" (realny `primary_devices`) może wciąż
+   *  nieść identyfikator „konwencja", bo pole `designation` per-aparat
+   *  jeszcze nie istnieje w ENM). */
+  readonly designationSource?: 'dane' | 'konwencja';
   /** F9.4 (spec §13.1 V12K-029): `SldSourceView.id` — WYŁĄCZNIE dla symboli
    *  DER (nie należą do żadnego `bay`, `bayRef` pozostaje `undefined` dla
    *  tych instancji). Fundament tożsamości/selekcji (wzór `bayRef` dla
@@ -325,6 +341,10 @@ interface BayStack {
   /** F10.1: instancje aparatów BOCZNYCH (podzbiór `instances`) — wołający
    *  kotwiczy na nich adnotację blokady ES (§18.1) bez ponownego filtrowania. */
   readonly lateralInstances: readonly ComposedSymbolInstance[];
+  /** F10.2 (spec §19.1, V12K-035): etykiety identyfikatorów PER-APARAT
+   *  (Q/QE/T, t4, `placement:'left'`) — jedna PER aparat z identyfikatorem
+   *  (tor główny + laterale), gotowe wejście dla `composition.labels.apparatus`. */
+  readonly identifierLabels: readonly SimpleAnchoredOwnerInput[];
 }
 
 function portsInWorld(def: SymbolDef, x: number, y: number): Readonly<Record<string, RoutePort>> {
@@ -341,6 +361,7 @@ function buildBayStack(
   topY: number,
   bay: MiniBlockBayDescriptor,
   apparatusSource: BayApparatusSource,
+  mainStackWidth: number,
 ): BayStack {
   // F10.1 (spec §18.1/§18.2, dyrektywa D2-5, V12K-033): podział na TOR
   // GŁÓWNY (pionowy stos w osi) i APARATY BOCZNE (ES/VT/SA — odgałęzienie
@@ -349,21 +370,47 @@ function buildBayStack(
   // wzór F6b-1) — items mapują się 1:1 na symbolIds planu. Przypadek
   // zdegenerowany (sekwencja z samych aparatów bocznych) = jak w planie:
   // rysowana starym stosem pionowym (brak osi, od której można odgałęzić).
+  //
+  // F10.2 (spec §19.1, V12K-035): identyfikatory PER-APARAT liczone na
+  // PEŁNEJ, oryginalnej sekwencji `items` (PRZED podziałem tor/laterale) —
+  // liczniki Q/QE/T muszą widzieć aparaty w kolejności fizycznej `placement`
+  // niezależnie od tego, czy dany aparat wyląduje w torze głównym czy jako
+  // odgałęzienie (jedyny aparat lateralny z identyfikatorem — uziemnik —
+  // MUSI dostać kolejny numer QE w tej samej sekwencji co reszta pola).
+  const identifierTexts = apparatusIdentifiers(items.map((item) => item.symbolId));
+
   const mainItems: StackItemSpec[] = [];
-  const lateralSpecs: { readonly item: StackItemSpec; readonly afterMainIndex: number }[] = [];
-  items.forEach((item) => {
+  const mainIdentifiers: (string | null)[] = [];
+  const lateralSpecs: {
+    readonly item: StackItemSpec;
+    readonly afterMainIndex: number;
+    readonly identifier: string | null;
+  }[] = [];
+  items.forEach((item, originalIndex) => {
     if (LATERAL_APPARATUS_SYMBOLS.has(item.symbolId)) {
-      lateralSpecs.push({ item, afterMainIndex: mainItems.length - 1 });
+      lateralSpecs.push({ item, afterMainIndex: mainItems.length - 1, identifier: identifierTexts[originalIndex] });
     } else {
       mainItems.push(item);
+      mainIdentifiers.push(identifierTexts[originalIndex]);
     }
   });
   const degenerate = mainItems.length === 0 && lateralSpecs.length > 0;
   const stackItems = degenerate ? items : mainItems;
+  const stackIdentifiers = degenerate ? identifierTexts : mainIdentifiers;
   const laterals = degenerate ? [] : lateralSpecs;
+
+  // F10.2 (spec §19.1): lewa krawędź TORU GŁÓWNEGO — punkt zaczepienia
+  // WSPÓLNY dla wszystkich etykiet identyfikatora tego pola (`placement:
+  // 'left'`, `layout/labels.ts` — prawa krawędź etykiety = `anchor.x - GRID`,
+  // różne szerokości tekstu Q1/QE1/T1 dają różne LEWE krawędzie, tę samą
+  // PRAWĄ). `mainStackWidth` = `bayApparatusPlanFootprint(plan).mainStack.
+  // width` (wołający, `composeStation`) — TA SAMA wartość, którą `layout/
+  // measure.ts` `apparatusIdentifierLeftReserve` rezerwuje PRZED tą krawędzią.
+  const stackLeftX = centerX - mainStackWidth / 2;
 
   const instances: ComposedSymbolInstance[] = [];
   const mainInstances: ComposedSymbolInstance[] = [];
+  const identifierLabels: SimpleAnchoredOwnerInput[] = [];
   let y = topY;
   let topPort: RoutePort | null = null;
   let bottomPort: RoutePort | null = null;
@@ -373,12 +420,17 @@ function buildBayStack(
     const def = SYMBOL_DEFS[symbolId];
     const x = snapToGrid(centerX - def.width / 2);
     const ports = portsInWorld(def, x, y);
+    const identifier = stackIdentifiers[index];
     const instance: ComposedSymbolInstance = {
       symbolId,
       bayRef: bay.bayRef,
       deviceRef: item.deviceRef,
       linkedRef: item.linkedRef,
       apparatusSource,
+      // F10.2 (V12K-035): identyfikator ZAWSZE z konwencji w tej fazie
+      // (`BayPrimaryDevice.designation` DOMAIN dopiero F10.6) — znacznik
+      // WYŁĄCZNIE na aparatach, które dostały identyfikator (Q/QE/T).
+      designationSource: identifier ? 'konwencja' : undefined,
       x,
       y,
       state: item.state,
@@ -386,6 +438,16 @@ function buildBayStack(
     };
     instances.push(instance);
     mainInstances.push(instance);
+    if (identifier) {
+      identifierLabels.push({
+        ownerRef: `${bay.bayRef}#apparatus-id-${symbolId}-${index}`,
+        ownerKind: 'apparatus',
+        text: identifier,
+        labelClass: 't4',
+        anchor: { x: stackLeftX, y: y + def.height / 2 },
+        placement: 'left',
+      });
+    }
 
     if (index === 0) {
       const north = def.ports.find((p) => p.dir === 'N');
@@ -415,7 +477,7 @@ function buildBayStack(
       ...mainInstances.map((inst) => inst.x + SYMBOL_DEFS[inst.symbolId].width),
     );
     const consumedAtAnchor = new Map<number, number>();
-    laterals.forEach(({ item, afterMainIndex }, lateralIndex) => {
+    laterals.forEach(({ item, afterMainIndex, identifier }, lateralIndex) => {
       const def = SYMBOL_DEFS[item.symbolId];
       const anchorInstance =
         afterMainIndex >= 0 ? mainInstances[afterMainIndex] : mainInstances[0];
@@ -440,6 +502,7 @@ function buildBayStack(
         deviceRef: item.deviceRef,
         linkedRef: item.linkedRef,
         apparatusSource,
+        designationSource: identifier ? 'konwencja' : undefined,
         x,
         y: lateralY,
         state: item.state,
@@ -447,6 +510,20 @@ function buildBayStack(
       };
       instances.push(instance);
       lateralInstances.push(instance);
+      if (identifier) {
+        // F10.2: lateral (uziemnik) — etykieta identyfikatora zaczepiona na
+        // TEJ SAMEJ lewej krawędzi toru głównego (`stackLeftX`), wysokość
+        // WŁASNEGO symbolu lateralu (zwisa niżej niż tor główny), spójnie z
+        // resztą kolumny identyfikatorów.
+        identifierLabels.push({
+          ownerRef: `${bay.bayRef}#apparatus-id-${item.symbolId}-lateral-${lateralIndex}`,
+          ownerKind: 'apparatus',
+          text: identifier,
+          labelClass: 't4',
+          anchor: { x: stackLeftX, y: lateralY + def.height / 2 },
+          placement: 'left',
+        });
+      }
       const north = def.ports.find((p) => p.dir === 'N') ?? def.ports[0];
       branchSegments.push({
         ownerRef: `${bay.bayRef}#lateral-${item.symbolId}-${lateralIndex}`,
@@ -458,7 +535,7 @@ function buildBayStack(
     });
   }
 
-  return { instances, topPort, bottomPort, branchSegments, lateralInstances };
+  return { instances, topPort, bottomPort, branchSegments, lateralInstances, identifierLabels };
 }
 
 // ---------------------------------------------------------------------------
@@ -553,19 +630,29 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     // `layout/measure.ts::bayColumnFootprint`).
     const bayPlan = planBayApparatus(bay);
     const planFootprint = bayApparatusPlanFootprint(bayPlan);
-    // FIX-3 (recenzja F5a): `bayColumnRequiredWidth` (measure.ts) rezerwuje
-    // `footprint.width + GRID + szerokość_oznacznika` — stos aparatów
-    // FLUSH-LEFT (przy `bx`) + oznacznik sidecar PO PRAWEJ stosu. Centrowanie
-    // stosu w CAŁEJ `reservedWidth` (poprzedni kod) przesuwało go w prawo o
-    // połowę sidecara, więc oznacznik ≥2-znakowy wystawał poza rezerwację —
-    // `centerX` liczony z `footprint.width` (nie `reservedWidth`) daje stosowi
-    // lewą krawędź DOKŁADNIE na `bx`, zgodnie z modelem measure.
+    // F10.2 (spec §19.1, V12K-035): rezerwacja PO LEWEJ stosu na
+    // identyfikatory per-aparat Q/QE/T (`layout/measure.ts`
+    // `apparatusIdentifierLeftReserve` — jedna prawda measure↔compose).
+    const leftReserve = apparatusIdentifierLeftReserve(bay);
+    // FIX-3 (recenzja F5a, F10.2): `bayColumnRequiredWidth` (measure.ts)
+    // rezerwuje `leftReserve + footprint.width + GRID + szerokość_oznaczenia`
+    // — stos aparatów FLUSH-LEFT WZGLĘDEM `bx + leftReserve` (NIE `bx` wprost
+    // od F10.2 — lewa krawędź stosu przesunięta o `leftReserve`, żeby
+    // zmieściły się etykiety identyfikatorów po jej lewej) + oznaczenie
+    // funkcyjne pola (sidecar) PO PRAWEJ stosu. `centerX` liczony z
+    // `footprint.width` (nie `reservedWidth`) daje stosowi lewą krawędź
+    // DOKŁADNIE na `bx + leftReserve`, zgodnie z modelem measure.
     const footprint = planFootprint.mainStack;
-    const centerX = snapToGrid(bx + footprint.width / 2);
+    const stackLeftX = bx + leftReserve;
+    const centerX = snapToGrid(stackLeftX + footprint.width / 2);
     busTapXs.push(centerX);
 
-    const stack = buildBayStack(items, centerX, blockTopY, bay, source);
+    const stack = buildBayStack(items, centerX, blockTopY, bay, source, footprint.width);
     symbols.push(...stack.instances);
+    // F10.2 (spec §19.1): etykiety identyfikatorów per-aparat (Q/QE/T, t4,
+    // PO LEWEJ stosu) — zbudowane WEWNĄTRZ `buildBayStack` (potrzebuje
+    // pozycji Y każdego aparatu), przekazane tu jako gotowe właścicielki.
+    apparatusLabels.push(...stack.identifierLabels);
     // F10.1 (spec §18.1/§18.2): odcinki odgałęzień bocznych ES/VT/SA — NIE
     // należą do toru głównego (wyrocznia earth_switch_lateral_probe (b)).
     segments.push(...stack.branchSegments);
@@ -759,8 +846,11 @@ export function composeStation(input: ComposeStationInput): StationComposition {
       // podpis kierunku nigdy nie leży pod wchodzącym przewodem.
       const captionInset =
         index === station.entryDescentBayIndex ? entryDescentCaptionInset(bay.fieldRole) : 0;
-      const captionRectX = bx + captionInset;
-      const captionRectWidth = reservedWidth - captionInset;
+      // F10.2 (spec §19.1): przesunięte o `leftReserve` w prawo (jak stos) —
+      // prawa krawędź wycinka NIEZMIENIONA (`bx + reservedWidth`), jedna
+      // prawda z `layout/measure.ts` `bayColumnRequiredWidth`.
+      const captionRectX = stackLeftX + captionInset;
+      const captionRectWidth = reservedWidth - leftReserve - captionInset;
       portCaptions.push({
         ownerRef: `${bay.bayRef}#direction`,
         text: captionText,
@@ -774,27 +864,28 @@ export function composeStation(input: ComposeStationInput): StationComposition {
       });
     }
 
-    // Oznacznik aparatu (spec §4: „Q0/Q1/T1", `bayApparatusDesignation` —
-    // FIX-5/§9, patrz nagłówek pliku) — PO PRAWEJ stosu (FIX-3), nie po
-    // prawej jego ŚRODKA: `resolveSimpleAnchoredLabel` (`layout/labels.ts`)
-    // stawia slot `placement: 'right'` zaczynając w `anchor.x + GRID`, więc
-    // zaczep musi być prawą krawędzią stosu (`bx + footprint.width`) — dokładnie
-    // tam, gdzie measure.ts kończy `footprint.width` i zaczyna `GRID + oznacznik`.
-    const designation = bayApparatusDesignation(station.snBays, index);
-    if (designation) {
-      apparatusLabels.push({
-        ownerRef: `${bay.bayRef}#designation`,
-        ownerKind: 'apparatus',
-        text: designation,
-        labelClass: 't3',
-        // F10.1: prawa krawędź PEŁNEGO gabarytu planu (tor główny +
-        // rozszerzenie boczne ES/VT/SA) — sidecar NIE może wejść w strefę
-        // odgałęzień; dokładnie tam measure.ts kończy `footprint.width`
-        // (pełny) i zaczyna `GRID + oznacznik`.
-        anchor: { x: snapToGrid(bx + planFootprint.width), y: stack.topPort.y },
-        placement: 'right',
-      });
-    }
+    // F10.2 (spec §19.1, V12K-035): oznaczenie FUNKCYJNE pola
+    // (`fieldFunctionalDesignation`, „pole liniowe"/„pole transformatorowe"/
+    // …) — PO PRAWEJ stosu (FIX-3), nie po prawej jego ŚRODKA:
+    // `resolveSimpleAnchoredLabel` (`layout/labels.ts`) stawia slot
+    // `placement: 'right'` zaczynając w `anchor.x + GRID`, więc zaczep musi
+    // być prawą krawędzią stosu (`stackLeftX + planFootprint.width`) —
+    // dokładnie tam, gdzie measure.ts kończy `footprint.width` i zaczyna
+    // `GRID + oznaczenie`. Dawny identyfikator aparatu Q/T (F6b) PRZENIESIONY
+    // na per-aparat etykiety (`stack.identifierLabels` wyżej) — zakaz §19.1
+    // „«Q» jako etykieta CAŁEGO pola".
+    apparatusLabels.push({
+      ownerRef: `${bay.bayRef}#field-role`,
+      ownerKind: 'field-role',
+      text: fieldFunctionalDesignation(bay.fieldRole),
+      labelClass: 't3',
+      // F10.1/F10.2: prawa krawędź PEŁNEGO gabarytu planu (tor główny +
+      // rozszerzenie boczne ES/VT/SA), przesunięta o `leftReserve` — sidecar
+      // NIE może wejść w strefę odgałęzień; dokładnie tam measure.ts kończy
+      // `footprint.width` (pełny) i zaczyna `GRID + oznaczenie`.
+      anchor: { x: snapToGrid(stackLeftX + planFootprint.width), y: stack.topPort.y },
+      placement: 'right',
+    });
 
     if (isTransformerRole(bay.fieldRole)) lvPorts.push(stack.bottomPort);
 

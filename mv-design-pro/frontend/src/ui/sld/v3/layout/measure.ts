@@ -23,8 +23,13 @@ import {
   formatTransformerRatedPower,
   type StationOnRunRendererProps,
 } from '../../v2/renderer/StationOnRunRenderer';
-import { bayApparatusDesignation } from '../compose/directions';
-import { bayApparatusPlanFootprint, planBayApparatus } from '../compose/apparatusSequence';
+import { fieldFunctionalDesignation } from '../compose/directions';
+import {
+  apparatusIdentifiers,
+  bayApparatusPlanFootprint,
+  planBayApparatus,
+  resolveBayApparatusSymbolIds,
+} from '../compose/apparatusSequence';
 import { protectionAnnotationColumnWidth } from '../compose/protectionMarking';
 import { derLabelText, derSymbolSize, type StationDerSourceInput } from '../compose/sourceKind';
 import type { FieldRole } from '../../v2/domain/apparatusContracts';
@@ -127,22 +132,58 @@ export function bayMainPathHeight(
 }
 
 /**
- * Szerokość wymagana kolumny pola `snBays[index]` (spec §5.1, FIX-3):
- * `max(footprint.width + GRID + szerokość_oznacznika, szerokość_podpisu_kierunku)`.
- *  - oznacznik aparatu (spec §4: „Q0/Q1/T1") = `bayApparatusDesignation`
- *    (`compose/directions.ts`, F6b — spłata długu §9: `bay.designation` bywa
- *    surowym tokenem roli „WE"/„WY"/„ODG", zastępowanym konwencją Q/T; ta
- *    funkcja NIGDY nie zwraca pustego stringa, więc sidecar jest ZAWSZE
- *    doliczany — patrz jej dokumentacja);
- *  - podpis kierunku = `bayDirectionCaptions?.[index]` (t3); gdy nieobecny
- *    lub pusty — wkład 0 (patrz nagłówek `bayColumnFootprint`).
+ * F10.2 (spec §19.1, V12K-035): rezerwacja PO LEWEJ stosu na identyfikatory
+ * PER-APARAT (Q/QE/T, klasa t4, `apparatusIdentifiers` — `compose/
+ * apparatusSequence.ts`) — prawa strona kolumny jest już zajęta (laterale
+ * ES/VT/SA F10.1 + sidecar oznaczenia funkcyjnego pola + kolumna adnotacji
+ * §17), więc etykiety per-aparat idą PO LEWEJ (jedna kolumna, prawa krawędź
+ * WSZYSTKICH etykiet = lewa krawędź stosu, `placement:'left'`
+ * `layout/labels.ts` — różne szerokości tekstu Q1/QE1/T1 dają różne lewe
+ * krawędzie, wspólną PRAWĄ). `0`, gdy pole nie ma ŻADNEGO aparatu z
+ * identyfikatorem (np. pole DER — sam symbol źródła).
+ *
+ * JEDNA prawda z `compose/station.ts` (`buildBayStack`) — rezerwacja i
+ * realne etykiety MUSZĄ się zgadzać (wzór F6b-1).
+ */
+export function apparatusIdentifierLeftReserve(
+  bay: Pick<MiniBlockBayDescriptor, 'fieldRole' | 'primaryDevices'>,
+): number {
+  const { symbolIds } = resolveBayApparatusSymbolIds(bay);
+  const identifiers = apparatusIdentifiers(symbolIds).filter((id): id is string => id != null);
+  if (identifiers.length === 0) return 0;
+  const maxWidth = Math.max(...identifiers.map((text) => measureLabelWidth(text, 't4')));
+  // `snapUp` (nie surowa suma): `bx + leftReserve` MUSI pozostać NA SIATCE —
+  // `bx` jest już zgrzytnięty do siatki (prefix-sum wielokrotności GRID),
+  // więc niezgrzytnięty `leftReserve` (np. 23px dla „QE1" t4) przesuwałby oś
+  // stosu (`compose/station.ts` `stackLeftX`) POZA siatkę, co przez kolejne
+  // `snapToGrid(centerX)`/`snapToGrid(symbol.x)` w łańcuchu geometrii dawało
+  // 1px rozjazd między TEORETYCZNĄ prawą krawędzią planu (`stackLeftX +
+  // planFootprint.width`, użytą do zaczepu sidecara) a REALNĄ (zgrzytniętą)
+  // krawędzią stosu/lateralu — wykryte testem `station.test.ts` FIX-3 (bbox
+  // sidecara o 1px szerszy niż rezerwacja). `snapUp` (nie `snapToGrid`)
+  // gwarantuje ZERO utraty miejsca (rezerwacja nigdy mniejsza niż potrzebna).
+  return snapUp(GRID + maxWidth);
+}
+
+/**
+ * Szerokość wymagana kolumny pola `snBays[index]` (spec §5.1, FIX-3, F10.2):
+ * `leftReserve + max(footprint.width + GRID + szerokość_oznaczenia_funkcyjnego,
+ * szerokość_podpisu_kierunku) + szerokość_adnotacji_zabezpieczeń`.
+ *  - `leftReserve` (spec §19.1) = `apparatusIdentifierLeftReserve` wyżej —
+ *    miejsce PO LEWEJ na identyfikatory per-aparat Q/QE/T;
+ *  - oznaczenie FUNKCYJNE pola (spec §19.1: „pole liniowe"/„pole
+ *    transformatorowe"/…) = `fieldFunctionalDesignation` (`compose/
+ *    directions.ts`, F10.2 — zastąpiło dawny `bayApparatusDesignation`,
+ *    które niosło Q/T jako etykietę CAŁEGO pola, zakazane §19.1); funkcja
+ *    NIGDY nie zwraca pustego stringa, więc sidecar jest ZAWSZE doliczany;
+ *  - podpis kierunku = `bayDirectionCaptions?.[index]` (t3, spec §19.2 może
+ *    nieść prefiks nazwy linii — szerokość mierzona z REALNEGO tekstu, zero
+ *    osobnej logiki tutaj); gdy nieobecny lub pusty — wkład 0 (patrz
+ *    nagłówek `bayColumnFootprint`).
  *
  * EKSPORT (F5, r7b): `compose/station.ts` używa TEJ SAMEJ funkcji do
  * rozmieszczania kolumn pól WEWNĄTRZ bloku stacji (prefix-sum identyczny z
  * `stationBlockWidth` niżej) — jedno źródło prawdy szerokości kolumny pola.
- * Przyjmuje CAŁE `snBays` (nie pojedynczy `bay`), bo `bayApparatusDesignation`
- * potrzebuje pozycji pola WŚRÓD pól tej samej kategorii (Q/T numeracja) —
- * zero cienia względem `compose/station.ts`, które renderuje ten sam tekst.
  */
 export function bayColumnRequiredWidth(
   snBays: readonly MiniBlockBayDescriptor[],
@@ -152,10 +193,11 @@ export function bayColumnRequiredWidth(
 ): number {
   const bay = snBays[index];
   const footprint = bayColumnFootprint(bay);
-  const designation = bayApparatusDesignation(snBays, index);
-  const widthWithSidecar = designation
-    ? footprint.width + GRID + measureLabelWidth(designation, 't3')
-    : footprint.width;
+  const fieldRoleLabel = fieldFunctionalDesignation(bay.fieldRole);
+  // Zmierzone OD LEWEJ KRAWĘDZI STOSU (nie kolumny) — `leftReserve` doliczany
+  // OSOBNO poniżej, jedna prawda z `compose/station.ts` (`stackLeftX = bx +
+  // leftReserve`).
+  const widthWithSidecar = footprint.width + GRID + measureLabelWidth(fieldRoleLabel, 't3');
 
   const caption = bayDirectionCaptions?.[index]?.trim();
   // F6e: pole z pionem zejścia z góry (patrz `StationMeasureInput.
@@ -173,7 +215,12 @@ export function bayColumnRequiredWidth(
   // geometrii dla pól bez §17 — `bayHasProtectionAnnotation`).
   const annotationWidth = protectionAnnotationColumnWidth(bay);
 
-  return Math.max(widthWithSidecar, captionWidth) + annotationWidth;
+  // F10.2 (spec §19.1): `leftReserve` doliczany PRZED max() — margines stały
+  // niezależny od tego, która gałąź max() (stos+sidecar vs podpis kierunku)
+  // zwyciężyła, bo stos ZAWSZE zaczyna się `leftReserve` od lewej krawędzi
+  // kolumny (`compose/station.ts` `stackLeftX`).
+  const leftReserve = apparatusIdentifierLeftReserve(bay);
+  return leftReserve + Math.max(widthWithSidecar, captionWidth) + annotationWidth;
 }
 
 /**

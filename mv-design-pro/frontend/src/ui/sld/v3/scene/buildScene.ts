@@ -149,6 +149,7 @@ import {
   stationBayCaptions,
   isLineLikeRole,
   classifyLineBayDirection,
+  classifyStationTopologicalType,
   FORBIDDEN_RAW_DIRECTION_TOKENS,
 } from '../compose/directions';
 import type { DerSourceKind, StationDerSourceInput } from '../compose/sourceKind';
@@ -327,6 +328,12 @@ function buildLineRunShims(
         : cableRun?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? run.branchOriginStationRef ?? null;
     return {
       id: run.id,
+      // F10.2 (spec §19.2, D2): `lineName` SUROWY z adaptera (`SldTopologyRun.
+      // lineName`, `v2/canvas/enmToSldAdapter.ts` `rawTopologyRunLineName`) —
+      // ODDZIELNE od `run.label` (ten ZAWSZE syntetyzuje fallback do UI
+      // ogólnego, np. „Ciąg SN 01" — pomieszanie z realną nazwą naruszałoby
+      // §19.2 „brak danych linii = sam kier. ⟨kod⟩", nie fabrykowany numer).
+      name: run.lineName,
       run_kind: run.kind,
       starting_bay_ref: run.startingBayRef ?? '',
       starting_port_ref: run.startingPortRef ?? '',
@@ -386,6 +393,7 @@ function buildMeasureInput(
   lod: SceneLod,
   bayDirectionCaptions: readonly (string | null)[],
   derSourcesByStationId: ReadonlyMap<string, readonly StationDerSourceInput[]>,
+  stopNotes: string[],
 ): StationMeasureInput {
   if (lod === 0) {
     // L0 (spec §7 „stacje jako ∎16 z kodem Sxx + NO"): stacja = symbol
@@ -393,17 +401,32 @@ function buildMeasureInput(
     // wprost dopisuje „DER" do L1, nie do L0 (kontrakt LOD, decyzja F9.4:
     // dokumentowana, nie domyślna). measure.ts nie ma trybu „tylko kod" —
     // reużywamy pole `name` (wiersz obligatoryjny pasma nazw) jako nośnik
-    // kodu, zero zmian w measure.ts.
+    // kodu, zero zmian w measure.ts. Typ stacji (§19.3) NIE jest tu
+    // walidowany — L0 nie niesie `snBays` (topologia nieznana na tym LOD),
+    // walidacja żyje w gałęzi lod>=1 niżej.
     return { id: props.id, name: props.stationCode ?? props.name, snBays: [] };
   }
   const includeCableAndPorts = lod === 2;
+  // F10.2 (spec §19.3, V12K-034): typ stacji WYPROWADZONY z topologii
+  // (liczba pól liniowych + obecność sprzęgła w `snBays`) — `props.
+  // topologicalType` (dana `Substation.station_type`, adapter v2,
+  // `classifyTopologicalType` NIEZMIENIONE) służy WYŁĄCZNIE walidacji
+  // niezgodności (ostrzeżenie w `stopNotes`, BEZ cichego nadpisania
+  // rysunku — spec §19.3 „dana degradowana do walidacji").
+  const snBays = props.snBays ?? [];
+  const derivedType = classifyStationTopologicalType(snBays);
+  if (derivedType !== props.topologicalType) {
+    stopNotes.push(
+      `station.type.mismatch: stacja „${props.name}" (${props.id}) — dana Substation.station_type ⇒ „${props.topologicalType}", topologia (pola liniowe/sprzęgło z snBays) ⇒ „${derivedType}"; rysunek pokazuje wyprowadzenie z topologii (spec §19.3).`,
+    );
+  }
   return {
     id: props.id,
     name: props.name,
     stationCode: props.stationCode ?? null,
     transformerRatedKva: props.transformerRatedKva ?? null,
-    stationTypeLabel: stationTypeLabelPl(props.topologicalType),
-    snBays: props.snBays ?? [],
+    stationTypeLabel: stationTypeLabelPl(derivedType),
+    snBays,
     bayDirectionCaptions: includeCableAndPorts ? bayDirectionCaptions : undefined,
     // F9.4 (spec §13.1 V12K-029, §7): DER widoczny od L1 — dostarczone
     // WYŁĄCZNIE dla lod>=1 (lod===0 zwraca wcześniej, powyżej).
@@ -434,7 +457,7 @@ function buildRowLayout(
     }
     const context = resolveStationDirectionContext({ lineRuns, stationId: id, gpzNodeCode, stationCodeOf });
     const captions = stationBayCaptions(props.snBays ?? [], context);
-    return buildMeasureInput(props, lod, captions, derSourcesByStationId);
+    return buildMeasureInput(props, lod, captions, derSourcesByStationId, stopNotes);
   });
   let validInputs = measureInputs.filter((m): m is StationMeasureInput => m != null);
 
@@ -679,6 +702,12 @@ function composeRowStation(
       // `deviceRef` (WHITE BOX §12.1) mieszka na `StationComposition`
       // (`compose/station.ts`), poza zakresem propagacji do sceny w F9.3.
       apparatusSource: s.apparatusSource,
+      // F10.2 (spec §19.1, V12K-035): przepisane 1:1 — audytor DOM
+      // (`data-designation-source`) dla identyfikatora PER-APARAT Q/QE/T
+      // (`compose/apparatusSequence.ts` `apparatusIdentifiers`) — ODDZIELNE
+      // od `apparatusSource` (patrz docstring `ComposedSymbolInstance.
+      // designationSource`, `compose/station.ts`).
+      designationSource: s.designationSource,
       // F9.4 (spec §13.1, f92-2): przepisane 1:1 — adnotacja audytora dla
       // DER o rozpoznaniu niepełnym (`kind==='unknown'`).
       missingData: s.missingData,
@@ -1956,6 +1985,186 @@ export function noBranchWithoutAccent(scene: SceneV3): boolean {
     const def = SYMBOL_DEFS[s.symbolId];
     return def.width > junctionDef.width && def.height > junctionDef.height;
   });
+}
+
+// ---------------------------------------------------------------------------
+// F10.2 (spec §19.1, V12K-035) — apparatus_identifier_probe: „«Q» identyfikuje
+// APARAT, nie pole" — (a) oznaczenie pola (`ownerKind:'field-role'`) NIGDY
+// nie jest surowym „Q\d+"/„T\d+"; (b) każdy aparat toru z identyfikatorem
+// (breaker/disconnector/fuseSwitch/earthSwitch/transformer2W) niesie
+// znacznik `designationSource` i ma dokładnie JEDNĄ etykietę
+// `ownerKind:'apparatus'` odpowiadającą; (c) aparaty z konwencji mają
+// znacznik źródła; (d) tekst identyfikatora zgodny z konwencją Q\d+/QE\d+/T\d+.
+// ---------------------------------------------------------------------------
+
+/** Symbole, które spec §19.1 wymienia WPROST jako nośniki identyfikatora
+ *  per-aparat (wyłącznik/rozłącznik/odłącznik → Q, uziemnik → QE,
+ *  transformator → T) — TA SAMA lista co `apparatusSequence.ts`
+ *  `Q_IDENTIFIER_SYMBOLS`+`earthSwitch`+`transformer2W`, powtórzona tu (bez
+ *  importu prywatnej stałej) do niezależnej weryfikacji sceny. */
+const IDENTIFIER_ELIGIBLE_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
+  'breaker',
+  'disconnector',
+  'fuseSwitch',
+  'earthSwitch',
+  'transformer2W',
+]);
+
+const RAW_FIELD_LABEL_PATTERN = /^Q\d+$|^T\d+$/;
+const APPARATUS_IDENTIFIER_PATTERN = /^(Q\d+|QE\d+|T\d+)$/;
+
+export interface ApparatusIdentifierGap {
+  readonly ownerRef: string | undefined;
+  readonly symbolId: SymbolId | 'field-role' | 'apparatus-label';
+  readonly reason: string;
+}
+
+/**
+ * Wyrocznia `apparatus_identifier_probe` (spec §19.1, wpięta do
+ * accept:sld-v3): dowodzi WSZYSTKICH czterech punktów (a)-(d) na REALNEJ
+ * scenie — patrz nagłówek sekcji.
+ */
+export function apparatusIdentifierGaps(scene: SceneV3): readonly ApparatusIdentifierGap[] {
+  const gaps: ApparatusIdentifierGap[] = [];
+
+  // (a): zero „Q\d+"/„T\d+" jako oznaczenie CAŁEGO pola.
+  for (const l of scene.labels) {
+    if (l.ownerKind === 'field-role' && RAW_FIELD_LABEL_PATTERN.test(l.text)) {
+      gaps.push({
+        ownerRef: l.ownerRef,
+        symbolId: 'field-role',
+        reason: `oznaczenie pola jest surowym „${l.text}" (zakaz §19.1 — «Q»/«T» identyfikuje aparat, nie pole)`,
+      });
+    }
+  }
+
+  // (b)/(c): każdy aparat uprawniony do identyfikatora niesie znacznik
+  // `designationSource` (dziś zawsze 'konwencja', F10.6 doda 'dane').
+  // ZAKRES F10.2 (Autoryzacje REBUILD_PLAN_V3 F10.2): WYŁĄCZNIE aparaty
+  // POLA STACJI (`compose/station.ts` `buildBayStack`) — TA SAMA filtracja
+  // po `apparatusSource != null` co §12.1 wyżej (znacznik ustawiany
+  // WYŁĄCZNIE przez `compose/station.ts`; GPZ, `compose/gpz.ts`, POZA
+  // autoryzacją F10.2 — własne oznaczniki `bayNumber`/`feederName` zostają
+  // niezmienione, patrz raport F10.2, „WIEDZA NADZORCY O TERENIE").
+  const eligible = scene.symbols.filter(
+    (s) => IDENTIFIER_ELIGIBLE_SYMBOLS.has(s.symbolId)
+      && (s.meta?.elementKind === 'apparatus' || s.meta?.elementKind === 'transformer')
+      && s.meta?.apparatusSource != null,
+  );
+  for (const s of eligible) {
+    if (s.meta?.designationSource !== 'konwencja' && s.meta?.designationSource !== 'dane') {
+      gaps.push({
+        ownerRef: s.meta?.ownerRef,
+        symbolId: s.symbolId,
+        reason: 'brak znacznika data-designation-source na aparacie uprawnionym do identyfikatora',
+      });
+    }
+  }
+
+  // (b): liczność aparatów uprawnionych == liczność etykiet identyfikatora
+  // (każdy dostaje DOKŁADNIE jedną, spec §19.1 „każdy aparat toru z danymi
+  // ma własny identyfikator"). Filtr WPROST po znaczniku `#apparatus-id-`
+  // (`compose/station.ts` `buildBayStack`, JEDYNY producent w tej fazie) —
+  // `ownerKind:'apparatus'` jest DZIELONY z PRE-ISTNIEJĄCYM znacznikiem GPZ
+  // (`compose/gpz.ts`, „Pole liniowe GPZ", `#designation`, F5b — sprzed
+  // F10.2, POZA autoryzacją tej fazy), więc surowe `ownerKind` samo nie
+  // wystarcza do identyfikacji „mój" label.
+  const idLabels = scene.labels.filter((l) => l.ownerKind === 'apparatus' && l.ownerRef.includes('#apparatus-id-'));
+  if (idLabels.length !== eligible.length) {
+    gaps.push({
+      ownerRef: undefined,
+      symbolId: 'apparatus-label',
+      reason: `liczba etykiet identyfikatora (${idLabels.length}) != liczba aparatów uprawnionych (${eligible.length})`,
+    });
+  }
+
+  // (d): tekst identyfikatora zgodny z konwencją Q\d+/QE\d+/T\d+.
+  for (const l of idLabels) {
+    if (!APPARATUS_IDENTIFIER_PATTERN.test(l.text)) {
+      gaps.push({
+        ownerRef: l.ownerRef,
+        symbolId: 'apparatus-label',
+        reason: `tekst identyfikatora „${l.text}" niezgodny z konwencją Q\\d+/QE\\d+/T\\d+`,
+      });
+    }
+  }
+
+  return gaps;
+}
+
+export function allApparatusIdentifiersValid(scene: SceneV3): boolean {
+  return apparatusIdentifierGaps(scene).length === 0;
+}
+
+// ---------------------------------------------------------------------------
+// F10.2 (spec §19.2, D2) — line_bay_caption_probe: podpis pola liniowego =
+// numer/nazwa linii + kierunek topologiczny, format
+// `⟨numer linii⟩ · kier./odg. ⟨kod⟩`, degradacja do samego `kier./odg. ⟨kod⟩`
+// gdy nazwa linii nieobecna (NIE błąd).
+// ---------------------------------------------------------------------------
+
+const LINE_BAY_CAPTION_PATTERN = /^(?:.+ · )?(?:kier\.|odg\.) [^\s]+$/u;
+
+export interface LineBayCaptionGap {
+  readonly ownerRef: string;
+  readonly text: string;
+}
+
+export function lineBayCaptionGaps(scene: SceneV3): readonly LineBayCaptionGap[] {
+  return scene.labels
+    .filter((l) => l.ownerKind === 'port-caption')
+    // F10.1 (§18.6 `path_termination_labeled_probe`): etykiety zakończenia
+    // toru (`#termination`) DZIELĄ `ownerKind:'port-caption'` z podpisami
+    // kierunku, ale niosą WŁASNĄ semantykę — albo powtarzają podpis
+    // kierunku tego pola (już zgodny z formatem §19.2, przechodzi regex
+    // niżej), albo, dla pól BEZ kierunku (fizyczny koniec toru), jawne
+    // „koniec toru" (spec §18.6 „uczciwe stwierdzenie faktu") — POZA
+        // zakresem formatu „kier./odg." §19.2, własna wyrocznia §18.6.
+    .filter((l) => !(l.ownerRef.endsWith('#termination') && l.text === 'koniec toru'))
+    .filter((l) => !LINE_BAY_CAPTION_PATTERN.test(l.text))
+    .map((l) => ({ ownerRef: l.ownerRef, text: l.text }));
+}
+
+export function allLineBayCaptionsValid(scene: SceneV3): boolean {
+  return lineBayCaptionGaps(scene).length === 0;
+}
+
+// ---------------------------------------------------------------------------
+// F10.2 (spec §19.3, V12K-034) — station_type_topology_probe: typ stacji
+// WYPROWADZONY z topologii; dana `station_type` służy WYŁĄCZNIE walidacji
+// (niezgodność ⇒ `missingData`/ostrzeżenie w `stopNotes`, NIE cichy
+// nadpisanie rysunku — dowiedzione już PRZEZ `buildMeasureInput` wyżej,
+// funkcja niżej to NIEZALEŻNA sonda na poziomie snapshotu ENM, do użycia
+// przez skrypt akceptacyjny/testy bez budowania pełnej sceny).
+// ---------------------------------------------------------------------------
+
+export interface StationTypeTopologyMismatch {
+  readonly stationId: string;
+  readonly dataType: StationOnRunRendererProps['topologicalType'];
+  readonly derivedType: StationOnRunRendererProps['topologicalType'];
+}
+
+/**
+ * Uruchamia adapter v2 (`buildSldDataFromSnapshot`) + klasyfikator
+ * topologiczny (`classifyStationTopologicalType`) na WSZYSTKICH stacjach
+ * snapshotu i zwraca te, gdzie wyprowadzenie z topologii NIE zgadza się z
+ * ręczną daną `Substation.station_type` (`props.topologicalType`).
+ * NIEZALEŻNA od `buildSceneV3`/`buildMeasureInput` (nie re-używa ich
+ * wewnętrznego stanu) — druga, osobna ścieżka dowodowa dla wyroczni
+ * `station_type_topology_probe`.
+ */
+export function stationTypeTopologyMismatches(
+  snapshot: EnergyNetworkModel,
+): readonly StationTypeTopologyMismatch[] {
+  const sldData = buildSldDataFromSnapshot(snapshot, snapshot.logical_views ?? null, null);
+  const mismatches: StationTypeTopologyMismatch[] = [];
+  for (const s of sldData.stations) {
+    const derivedType = classifyStationTopologicalType(s.snBays ?? []);
+    if (derivedType !== s.topologicalType) {
+      mismatches.push({ stationId: s.id, dataType: s.topologicalType, derivedType });
+    }
+  }
+  return mismatches;
 }
 
 // ---------------------------------------------------------------------------
