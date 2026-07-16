@@ -23,6 +23,7 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useStudyCasesStore } from '../../../ui/study-cases/store';
 import {
+  EkranFrt,
   EkranKrzywych,
   EkranObszaruPQ,
   EkranRankingu,
@@ -51,6 +52,7 @@ const ZAKLADKI = [
   { id: 'krzywe', etykieta: T.zakladkaKrzywe },
   { id: 'obszar', etykieta: T.zakladkaObszar },
   { id: 'studium', etykieta: T.zakladkaStudium },
+  { id: 'frt', etykieta: T.zakladkaFrt },
   { id: 'pozostale', etykieta: T.zakladkaPozostale },
 ] as const;
 
@@ -63,7 +65,7 @@ const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId
   },
   {
     etykieta: T.grupaOze,
-    zakladki: ['ncrfg', 'pulpit-oze', 'zdolnosc', 'ranking', 'krzywe', 'obszar', 'studium'],
+    zakladki: ['ncrfg', 'pulpit-oze', 'zdolnosc', 'ranking', 'krzywe', 'obszar', 'studium', 'frt'],
   },
 ];
 
@@ -184,6 +186,7 @@ export function WynikiWarsztat({
         {zakladka === 'krzywe' && <EkranKrzywych trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'obszar' && <EkranObszaruPQ trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'studium' && <KreatorStudium trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'frt' && <EkranFrt trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'pulpit-oze' && (
           <PulpitOze
             trybZaawansowania={trybZaawansowania}

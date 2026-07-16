@@ -15,6 +15,7 @@ export const WYNIKI_WARSZTAT_STRINGS = {
   zakladkaKrzywe: 'Krzywe P–Q',
   zakladkaObszar: 'Obszar pracy P–Q',
   zakladkaStudium: 'Studium przyłączenia',
+  zakladkaFrt: 'Walidacja falownika',
   zakladkaPorownanie: 'Porównanie A/B',
   porownanieBezProjektu: 'Otwórz projekt, aby porównywać przebiegi obliczeń.',
   zakladkaPozostale: 'Pozostałe analizy',
