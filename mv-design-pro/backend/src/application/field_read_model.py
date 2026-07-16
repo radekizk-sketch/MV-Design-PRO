@@ -888,6 +888,24 @@ def _resolve_integrity_status(
     return "po_migracji"
 
 
+_OPERATING_MODES = {"praca_sieciowa", "ladowanie", "rozladowanie", "gotowosc", "odstawione"}
+
+
+def _generator_operating_mode(generator: Generator) -> str:
+    """F11.3 (dyrektywa D2, finał F9.6b): tryb pracy źródła z REALNEGO kanału
+    danych — `Generator.meta['operating_mode']`, zapisywanego operacją
+    domenową `set_source_operating_mode` (domain_operations_v2.py). Poprzednio
+    ta funkcja wpisywała stałą "gotowosc" IGNORUJĄC istniejącą daną (fabrykacja
+    jednolitego stanu — znalezisko F10.6). Wartość spoza słownika/nieobecna →
+    default modelu "gotowosc" (deklarowany default Pydantic `BaySourceEndpoint.
+    operating_mode`, semantyka modelu — nie zgadywanie read-modelu)."""
+    meta = getattr(generator, "meta", None) or {}
+    mode = meta.get("operating_mode")
+    if isinstance(mode, str) and mode in _OPERATING_MODES:
+        return mode
+    return "gotowosc"
+
+
 def _build_source_endpoint(
     bay: Bay,
     generators_by_bus: dict[str, list[Generator]],
@@ -896,6 +914,7 @@ def _build_source_endpoint(
     if not generators:
         return None
     generator = generators[0]
+    operating_mode = _generator_operating_mode(generator)
     if generator.gen_type == "bess":
         return BaySourceEndpoint(
             source_kind="BESS",
@@ -904,7 +923,7 @@ def _build_source_endpoint(
             block_transformer_ref=generator.blocking_transformer_ref,
             requires_vt=True,
             requires_synchrocheck=False,
-            operating_mode="gotowosc",
+            operating_mode=operating_mode,
         )
     if generator.gen_type in {"wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig"}:
         return BaySourceEndpoint(
@@ -913,7 +932,7 @@ def _build_source_endpoint(
             block_transformer_ref=generator.blocking_transformer_ref,
             requires_vt=True,
             requires_synchrocheck=True,
-            operating_mode="gotowosc",
+            operating_mode=operating_mode,
         )
     return BaySourceEndpoint(
         source_kind="PV",
@@ -921,7 +940,7 @@ def _build_source_endpoint(
         block_transformer_ref=generator.blocking_transformer_ref,
         requires_vt=True,
         requires_synchrocheck=False,
-        operating_mode="gotowosc",
+        operating_mode=operating_mode,
     )
 
 

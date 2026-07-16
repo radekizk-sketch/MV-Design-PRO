@@ -1369,6 +1369,31 @@ lokalnych łatek i duplikacji elektryki adaptera.
 
 ---
 
+### F11.2. [ZAMKNIĘTE ROZSTRZYGNIĘCIEM] Źródło danych designation
+- Analiza nadzorcy (2026-07-16): jedyny kandydat w read-modelach to `ENMElement.name`
+  (`_branch_to_primary_device` buduje z `Branch`, każdy niesie `name`), ale fixtura dowodzi,
+  że `name` to nazwa OPISOWA („Lacznik sekcyjny NO (rezerwa)"), nie oznaczenie dyspozytorskie —
+  populacja `designation` z `name` = reinterpretacja semantyki (zgadywanie) + złamanie kontraktu
+  krótkiej kolumny identyfikatorów §19.1. DECYZJA: pole zostaje `None` do czasu dostarczenia
+  DANYCH PROJEKTOWYCH (kody dyspozytorskie z katalogu/projektu wykonawczego — pozycja dla
+  właściciela/danych, nie dla kodu); schemat (F10.6) i konsumpcja frontendu (F10.2, dane >
+  konwencja ze znacznikiem) są GOTOWE — dana zadziała w chwili pojawienia się.
+
+### F11.3. [DONE — backend; frontend §13.3 po F11.1] Tryb pracy źródła z realnego kanału
+- ZNALEZISKO nadzorcy (osobiste, 2026-07-16): istnieje REALNY kanał danych — operacja domenowa
+  `set_source_operating_mode` (domain_operations_v2.py:2641, akcja UI „Ustaw tryb pracy źródła")
+  zapisuje `Generator.meta['operating_mode']`; read-model tę daną IGNOROWAŁ, wpisując stałą
+  "gotowosc" (fabrykacja jednolitego stanu — luka 7 z F10.6 miała błędną diagnozę „brak
+  telemetrii": dane SĄ, nie były czytane).
+- Naprawa (implementacja osobista): `_generator_operating_mode` (field_read_model.py) czyta
+  meta z walidacją słownika trybów; nieobecna/niepoprawna wartość → default MODELU "gotowosc"
+  (semantyka Pydantic `BaySourceEndpoint`, nie zgadywanie read-modelu); 3 testy
+  (test_f11_3_operating_mode.py: odczyt 5 trybów / fallback / odrzucenie korupcji).
+- POZOSTAJE (po dostawie F11.1 — ten sam plik adaptera): frontend §13.3 — mapowanie
+  operating_mode → SldSourceView.operationalState (praca_sieciowa/ladowanie/rozladowanie ⇒
+  energized; gotowosc ⇒ standby; odstawione ⇒ disconnected), wizualne rozróżnienie na scenie
+  + source_state_probe z negatywem.
+
 ## Prompt kontynuacji (wklej świeżemu agentowi — DO WDROŻENIA 100%)
 
 ```
