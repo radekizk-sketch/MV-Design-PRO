@@ -1,0 +1,130 @@
+/*
+ * Tokeny i style przeglądarki katalogu (ui2 · Model sieci → Katalog).
+ * Konwencja ui2: zmienne projektowe z prefiksem --mvd-*.
+ * Wartości liczbowe renderowane mono (tabular-nums) dla czytelności inżynierskiej.
+ */
+
+.mvd-katalog {
+  --mvd-katalog-tlo: #ffffff;
+  --mvd-katalog-tlo-panel: #f7f8fa;
+  --mvd-katalog-obramowanie: #d8dde6;
+  --mvd-katalog-tekst: #1c2530;
+  --mvd-katalog-tekst-drugorzedny: #5a6675;
+  --mvd-katalog-akcent: #1f5fa8;
+  --mvd-katalog-akcent-tlo: #e8f0fb;
+  --mvd-katalog-mono: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+  --mvd-katalog-odstep: 12px;
+  --mvd-katalog-promien: 8px;
+
+  display: grid;
+  grid-template-columns: 200px 260px 1fr;
+  gap: var(--mvd-katalog-odstep);
+  color: var(--mvd-katalog-tekst);
+  background: var(--mvd-katalog-tlo);
+}
+
+.mvd-katalog__kategorie,
+.mvd-katalog__lista,
+.mvd-katalog__karta {
+  border: 1px solid var(--mvd-katalog-obramowanie);
+  border-radius: var(--mvd-katalog-promien);
+  padding: var(--mvd-katalog-odstep);
+  background: var(--mvd-katalog-tlo-panel);
+}
+
+.mvd-katalog__kategoria-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--mvd-katalog-tekst);
+  cursor: pointer;
+}
+
+.mvd-katalog__kategoria-btn[aria-pressed='true'] {
+  background: var(--mvd-katalog-akcent-tlo);
+  color: var(--mvd-katalog-akcent);
+  font-weight: 600;
+}
+
+.mvd-katalog__szukaj {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--mvd-katalog-obramowanie);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.mvd-katalog__typ-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-bottom: 1px solid var(--mvd-katalog-obramowanie);
+  background: transparent;
+  color: var(--mvd-katalog-tekst);
+  cursor: pointer;
+}
+
+.mvd-katalog__typ-btn[aria-pressed='true'] {
+  background: var(--mvd-katalog-akcent-tlo);
+  color: var(--mvd-katalog-akcent);
+}
+
+.mvd-katalog__typ-producent {
+  display: block;
+  font-size: 0.8em;
+  color: var(--mvd-katalog-tekst-drugorzedny);
+}
+
+.mvd-katalog__sekcja-tytul {
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mvd-katalog-tekst-drugorzedny);
+  margin: 12px 0 6px;
+}
+
+.mvd-katalog__param {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 4px 0;
+  border-bottom: 1px dotted var(--mvd-katalog-obramowanie);
+}
+
+.mvd-katalog__param-symbol {
+  font-family: var(--mvd-katalog-mono);
+  color: var(--mvd-katalog-akcent);
+  margin-right: 6px;
+}
+
+.mvd-katalog__param-def {
+  display: block;
+  font-size: 0.8em;
+  color: var(--mvd-katalog-tekst-drugorzedny);
+}
+
+.mvd-katalog__param-wartosc {
+  font-family: var(--mvd-katalog-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.mvd-katalog__uzycie-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  border: 1px solid var(--mvd-katalog-obramowanie);
+  border-radius: 6px;
+  background: var(--mvd-katalog-tlo);
+  color: var(--mvd-katalog-akcent);
+  cursor: pointer;
+  margin-bottom: 4px;
+}
