@@ -1,4 +1,4 @@
 export { WynikiWarsztat } from './WynikiWarsztat';
 export type { WynikiWarsztatProps } from './WynikiWarsztat';
-export { useWpiecieRozplywu } from './useWpiecieRozplywu';
+export { useWpiecieWynikow } from './useWpiecieWynikow';
 export { WYNIKI_WARSZTAT_STRINGS } from './strings';

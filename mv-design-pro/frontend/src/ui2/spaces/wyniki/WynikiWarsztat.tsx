@@ -1,26 +1,34 @@
 /**
- * Warsztat przestrzeni „Wyniki" (scalenie U3 #1, zarządca) — początek wygaszania
- * mostu wyników: zakładka „Rozpływ mocy" to PIERWSZE okno wyników w nowej
- * powłoce (TabelaSzyn na wspólnym wzorcu ekranu analizy, karta E8.1);
- * „Pozostałe analizy" to slot mostu (powierzchnia trasowa #analysis — zwarcia,
- * zabezpieczenia, porównania do przejęcia kartami E8.2+/E9).
+ * Warsztat przestrzeni „Wyniki" (scalenia U3 #1–#2, zarządca) — wygaszanie
+ * mostu wyników okno po oknie: „Rozpływ mocy" (TabelaSzyn, karta E8.1)
+ * i „Zwarcia" (EkranZwarc, karta E8.2) to okna nowej powłoki na wspólnym
+ * wzorcu ekranu analizy; „Pozostałe analizy" to slot mostu (powierzchnia
+ * trasowa #analysis — zabezpieczenia, porównania, dowody do przejęcia E9+).
  *
- * Zakładka startowa: „Rozpływ mocy", gdy aktywny przebieg jest zakończonym
- * rozpływem; inaczej „Pozostałe analizy". Wyliczana przy montażu (przestrzeń
- * montuje się na wejściu — bez zaskakującego przełączania w trakcie pracy).
+ * Zakładka startowa wg rodzaju aktywnego przebiegu (rozpływ/zwarcie/most);
+ * wyliczana przy montażu — bez zaskakującego przełączania w trakcie pracy.
  * 2×klik na wartości z dowodem przełącza na most i deleguje do `onOtworzDowod`
- * (ślad obliczeń żyje dziś na powierzchni analiz).
+ * (ślad obliczeń żyje dziś na powierzchni analiz; przejęcie — karta E9.1).
+ *
+ * Założenia przebiegu zwarciowego (współczynnik c, czas cieplny) pochodzą
+ * z konfiguracji AKTYWNEGO przypadku obliczeniowego — przekazywane tylko, gdy
+ * aktywny przebieg należy do aktywnego przypadku (inaczej „—", zero zgadywania).
  */
 import { useState, type ReactNode } from 'react';
 
 import type { AdvancementMode } from '../../shell/modeModel';
 import { TabelaSzyn } from '../../wyniki/rozplyw';
-import { useWpiecieRozplywu } from './useWpiecieRozplywu';
+import { EkranZwarc } from '../../wyniki/zwarcia';
+import { useAppStateStore } from '../../../ui/app-state';
+import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
+import { useStudyCasesStore } from '../../../ui/study-cases/store';
+import { useWpiecieWynikow } from './useWpiecieWynikow';
 import { WYNIKI_WARSZTAT_STRINGS as T } from './strings';
 import './wynikiWarsztat.css';
 
 const ZAKLADKI = [
   { id: 'rozplyw', etykieta: T.zakladkaRozplyw },
+  { id: 'zwarcia', etykieta: T.zakladkaZwarcia },
   { id: 'pozostale', etykieta: T.zakladkaPozostale },
 ] as const;
 
@@ -34,9 +42,34 @@ export interface WynikiWarsztatProps {
   pozostale: ReactNode;
 }
 
+/** Parametry zwarciowe konfiguracji aktywnego przypadku — tylko gdy aktywny
+ * przebieg należy do tego przypadku (uczciwość źródła danych). */
+function useZalozeniaZwarcioweAktywnegoPrzypadku(): {
+  wspolczynnikC?: number;
+  czasCieplnyS?: number;
+} {
+  const activeRunId = useAppStateStore((s) => s.activeRunId);
+  const przebiegi = useExecutionRunsStore((s) => s.runs);
+  const activeCase = useStudyCasesStore((s) => s.activeCase);
+  const przebieg = activeRunId ? przebiegi.find((r) => r.id === activeRunId) : undefined;
+  if (!przebieg || !activeCase || przebieg.study_case_id !== activeCase.id) return {};
+  return {
+    wspolczynnikC: activeCase.config?.c_factor_max ?? undefined,
+    czasCieplnyS: activeCase.config?.thermal_time_seconds ?? undefined,
+  };
+}
+
 export function WynikiWarsztat({ trybZaawansowania, onOtworzDowod, pozostale }: WynikiWarsztatProps) {
-  const { aktywnyRozplyw } = useWpiecieRozplywu();
-  const [zakladka, setZakladka] = useState<ZakladkaId>(aktywnyRozplyw ? 'rozplyw' : 'pozostale');
+  const { aktywnyRodzaj } = useWpiecieWynikow();
+  const [zakladka, setZakladka] = useState<ZakladkaId>(
+    aktywnyRodzaj === 'rozplyw' ? 'rozplyw' : aktywnyRodzaj === 'zwarcie' ? 'zwarcia' : 'pozostale',
+  );
+  const zalozeniaZwarciowe = useZalozeniaZwarcioweAktywnegoPrzypadku();
+
+  const otworzDowodPrzezMost = (ref: string) => {
+    setZakladka('pozostale');
+    onOtworzDowod(ref);
+  };
 
   return (
     <div className="mvd-wyniki-warsztat" data-testid="mvd-wyniki-warsztat">
@@ -66,12 +99,14 @@ export function WynikiWarsztat({ trybZaawansowania, onOtworzDowod, pozostale }: 
       </div>
       <div role="tabpanel" className="mvd-wyniki-tresc">
         {zakladka === 'rozplyw' && (
-          <TabelaSzyn
+          <TabelaSzyn trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowodPrzezMost} />
+        )}
+        {zakladka === 'zwarcia' && (
+          <EkranZwarc
             trybZaawansowania={trybZaawansowania}
-            onOtworzDowod={(ref) => {
-              setZakladka('pozostale');
-              onOtworzDowod(ref);
-            }}
+            onOtworzDowod={otworzDowodPrzezMost}
+            wspolczynnikC={zalozeniaZwarciowe.wspolczynnikC}
+            czasCieplnyS={zalozeniaZwarciowe.czasCieplnyS}
           />
         )}
         {zakladka === 'pozostale' && pozostale}

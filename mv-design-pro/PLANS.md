@@ -201,7 +201,15 @@ Progress:
         renderowany WEWNĄTRZ zakładki; powierzchnia rozwinięta nie przykrywa warsztatu
         w tej przestrzeni); wpięcie store'u rozpływu (zamyka TODO-KARTA E8.1 #4:
         selectRun+loadResults na `wyniki-gotowe` i przy montażu, tylko LOAD_FLOW/DONE);
-        14 testów; ui2 669 pass; potwierdzenie pełne 594/7944 na `db20fb2`.
+        14 testów; ui2 669 pass; potwierdzenie pełne 596/7958 na `0374eee`.
+        E8.2 okno wyników zwarciowych W-604 (Opus; 37 testów; pełny vitest u wykonawcy
+        7981 pass z pipefail; zintegrowane `9c0bf6a`; TODO-KARTA: wybór wiersza we wzorcu,
+        wkłady w kontrakcie wyników [delta backendowa], świeżość liczbowa, c/czas przez
+        props). Scalenie U3 #2 (zarządca): zakładka „Zwarcia" w WynikiWarsztat +
+        `useWpiecieWynikow` (rozpływ i zwarcia; SC_* → inspektor wyników), założenia
+        zwarciowe c/czas z konfiguracji aktywnego przypadku tylko przy zgodności
+        przebieg↔przypadek; 18 testów przestrzeni; ui2 710 pass. Karty zarejestrowane:
+        E9.1 dowód W-608 (`79e3f27`, delegowana), P39 macierz NC RfG (`0e9ef7f`, U4/OZE).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
