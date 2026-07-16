@@ -251,7 +251,17 @@ Progress:
         sekcja BESS tylko z realnych referencji katalogowych; TODO-KARTA:
         wpięcie API grid_strength/reactive_adequacy = osobna karta delty).
         Scalenie #7 (zarządca): zakładka „Pulpit OZE" w warsztacie wyników
-        (`8e74937`; ui2 856 pass).
+        (`8e74937`; ui2 856 pass). Pełny bieg: 8145 pass.
+        „NA MAX" (dyrektywa 2026-07-16): braki P47 w realizacji — karty D1 (delta
+        backendowa: API grid_strength/reactive_adequacy; wykonawca pracuje,
+        pliki gotowe, czeka na pełny pytest) i P47a (pulpit: magazyn z katalogu
+        e_kwh + sekcje analiz) zarejestrowane `0076882`. USTALONE: pojemność
+        magazynu JEST w katalogu konwerterów (mv_converter_catalog.py:232) +
+        końcówka /api/catalog/converter-types istnieje. Kolejna luka tego wzorca:
+        sanity_bounds i energy_validation też bez API (karta D2 po scaleniu D1).
+        E8.3 tabela gałęzi rozpływu (Sonnet; 28 testów; pełny vitest u wykonawcy
+        8173 pass ZERO failed; zintegrowane `6e70741`). Scalenie #8: EkranRozplywu
+        (podzakładki Szyny/Gałęzie) w zakładce Rozpływ (`e06d9ab`; ui2 884 pass).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
