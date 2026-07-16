@@ -19,8 +19,14 @@ vi.mock('../../../../ui/sld/v2/canvas/SldWorkspaceContainer', () => ({
 }));
 
 vi.mock('../../../../ui/network-build/station-templates', () => ({
-  StationTemplateWizard: ({ onCancel }: { onCancel?: () => void }) => (
-    <div data-testid="atrapa-kreator-szablonu">
+  StationTemplateWizard: ({
+    onCancel,
+    initialTemplateId,
+  }: {
+    onCancel?: () => void;
+    initialTemplateId?: string | null;
+  }) => (
+    <div data-testid="atrapa-kreator-szablonu" data-initial-template-id={initialTemplateId ?? ''}>
       <button type="button" onClick={onCancel}>Anuluj</button>
     </div>
   ),
@@ -52,6 +58,13 @@ describe('U2 #2 — warsztat przestrzeni Model', () => {
 
     fireEvent.click(screen.getByText('Anuluj'));
     expect(screen.queryByTestId('atrapa-kreator-szablonu')).toBeNull();
+  });
+
+  it('E3.2: przekazuje id szablonu z przeglądarki do kreatora jako initialTemplateId', () => {
+    render(<ModelWarsztat />);
+    fireEvent.click(screen.getByTestId('mvd-model-zakladka-szablony'));
+    fireEvent.click(screen.getByTestId('atrapa-przegladarka'));
+    expect(screen.getByTestId('atrapa-kreator-szablonu').dataset.initialTemplateId).toBe('tpl-1');
   });
 
   it('zakładki mają semantykę tablist/tab z aria-selected', () => {

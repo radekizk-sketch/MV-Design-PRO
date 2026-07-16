@@ -83,6 +83,12 @@ export interface StationTemplateWizardProps {
   readonly targetSegmentRef?: string | null;
   /** Case ID dla backend apply (POST /api/station-templates/{id}/apply). */
   readonly caseId?: string | null;
+  /**
+   * E3.2: gdy podany, kreator startuje z zaznaczonym szablonem (pobiera pełną
+   * definicję i przechodzi od razu do kroku lokalizacji/parametrów, z pominięciem
+   * kroków kategorii i wyboru szablonu). Bez propa zachowanie kreatora bez zmian.
+   */
+  readonly initialTemplateId?: string | null;
   /** Called when wizard completes with apply payload (legacy callback). */
   readonly onApply?: (payload: {
     templateId: string;
@@ -96,7 +102,15 @@ export interface StationTemplateWizardProps {
 }
 
 export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.Element {
-  const [state, setState] = useState<WizardState>(INITIAL_STATE);
+  const [state, setState] = useState<WizardState>(() =>
+    props.initialTemplateId != null
+      ? {
+          ...INITIAL_STATE,
+          step: 'location',
+          selectedTemplateId: props.initialTemplateId,
+        }
+      : INITIAL_STATE,
+  );
   const [categories, setCategories] = useState<readonly CategoryEntry[]>([]);
   const [templates, setTemplates] = useState<readonly StationTemplateSummary[]>([]);
   const [activeTemplate, setActiveTemplate] = useState<StationTemplateFull | null>(null);
@@ -549,6 +563,7 @@ function ParamsStep(props: {
             label="Producent rozdzielni SN"
             options={template.schema.sn_switchgear_manufacturers as string[]}
             value={(overrides.sn_manufacturer as string) ?? template.schema.sn_switchgear_default}
+            defaultValue={template.schema.sn_switchgear_default}
             onChange={(v) => onChange('sn_manufacturer', v)}
           />
           <ParamInt
@@ -673,6 +688,7 @@ function ProfileStep(props: {
         label="Producent"
         options={props.template.schema.sn_switchgear_manufacturers as string[]}
         value={props.value ?? props.template.schema.manufacturer_profile_default}
+        defaultValue={props.template.schema.manufacturer_profile_default}
         onChange={props.onChange}
       />
     </div>
@@ -848,6 +864,56 @@ function ApplyStep(props: {
 }
 
 // =============================================================================
+// Podpowiedzi Z2 (SPEC_KREATORY_2026-07.md) — dymek ⓘ per pole, wyłącznie z
+// danych dostępnych w editable schema (label_pl / zakres / domyślna / źródło).
+// Pole bez tych danych w odpowiedzi API NIE dostaje dymka (zakaz fabrykowania
+// treści — np. brak sekcji KONSEKWENCJA, bo schema jej nie dostarcza).
+// =============================================================================
+
+interface FieldHintData {
+  whatIsIt: string;
+  rangeText?: string;
+  sourceText?: string;
+}
+
+function FieldHint(props: { id: string } & FieldHintData): JSX.Element {
+  return (
+    <span className="relative inline-flex group ml-1" data-testid={`hint-${props.id}`}>
+      <button
+        type="button"
+        aria-label={`Podpowiedź: ${props.whatIsIt}`}
+        data-testid={`hint-icon-${props.id}`}
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-zinc-700 text-[10px] text-zinc-200 hover:bg-zinc-600 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+      >
+        ⓘ
+      </button>
+      <span
+        role="tooltip"
+        data-testid={`hint-content-${props.id}`}
+        className="pointer-events-none absolute left-0 top-5 z-20 hidden w-64 rounded border border-zinc-700 bg-zinc-950 p-2 text-xs text-zinc-200 shadow-xl group-hover:block group-focus-within:block"
+      >
+        <div>
+          <span className="text-zinc-500">CO TO JEST: </span>
+          {props.whatIsIt}
+        </div>
+        {props.rangeText != null && (
+          <div className="mt-1">
+            <span className="text-zinc-500">ZAKRES TYPOWY: </span>
+            {props.rangeText}
+          </div>
+        )}
+        {props.sourceText != null && (
+          <div className="mt-1">
+            <span className="text-zinc-500">SKĄD DOMYŚLNA: </span>
+            {props.sourceText}
+          </div>
+        )}
+      </span>
+    </span>
+  );
+}
+
+// =============================================================================
 // Reusable form components
 // =============================================================================
 
@@ -858,9 +924,18 @@ function ParamInt(props: {
   max: number;
   onChange: (v: number) => void;
 }): JSX.Element {
+  const hintId = `param-int-${props.label}`;
   return (
     <div data-testid={`param-int-${props.label}`}>
-      <label className="block text-xs text-zinc-400 mb-1">{props.label}</label>
+      <label className="flex items-center text-xs text-zinc-400 mb-1">
+        {props.label}
+        <FieldHint
+          id={hintId}
+          whatIsIt={props.label}
+          rangeText={`${props.min}–${props.max}`}
+          sourceText="szablon stacji (wartość domyślna z definicji szablonu)"
+        />
+      </label>
       <div className="flex items-center gap-2">
         <input
           type="range"
@@ -889,6 +964,7 @@ function ParamInt(props: {
 interface ChoiceLike {
   catalog_ref: string;
   label_pl: string;
+  namespace?: string;
   default?: boolean;
   badge_pl?: string | null;
 }
@@ -904,9 +980,25 @@ function ChoiceSelect(props: {
     props.options.find((o) => o.default)?.catalog_ref ??
     props.options[0]?.catalog_ref ??
     '';
+  const defaultOption = props.options.find((o) => o.default);
+  const hintId = `choice-${props.label}`;
   return (
     <div data-testid={`choice-${props.label}`}>
-      <label className="block text-xs text-zinc-400 mb-1">{props.label}</label>
+      <label className="flex items-center text-xs text-zinc-400 mb-1">
+        {props.label}
+        {props.options.length > 0 && (
+          <FieldHint
+            id={hintId}
+            whatIsIt={props.label}
+            rangeText={props.options.map((o) => o.label_pl).join(', ')}
+            sourceText={
+              defaultOption != null
+                ? `${defaultOption.namespace ?? 'katalog'}: ${defaultOption.label_pl}`
+                : undefined
+            }
+          />
+        )}
+      </label>
       <select
         value={effective}
         onChange={(e) => props.onChange(e.target.value)}
@@ -927,11 +1019,23 @@ function SelectStr(props: {
   label: string;
   options: readonly string[];
   value: string;
+  defaultValue?: string;
   onChange: (v: string) => void;
 }): JSX.Element {
+  const hintId = `select-${props.label}`;
   return (
     <div data-testid={`select-${props.label}`}>
-      <label className="block text-xs text-zinc-400 mb-1">{props.label}</label>
+      <label className="flex items-center text-xs text-zinc-400 mb-1">
+        {props.label}
+        {props.options.length > 0 && props.defaultValue != null && (
+          <FieldHint
+            id={hintId}
+            whatIsIt={props.label}
+            rangeText={props.options.join(', ')}
+            sourceText={`szablon stacji (domyślnie: ${props.defaultValue})`}
+          />
+        )}
+      </label>
       <select
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}

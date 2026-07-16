@@ -4,11 +4,9 @@
  * Dwa widoki przełączane zakładkami: „Sieć na schemacie" (most legacy — kanwa SLD,
  * własność wątku SLD) i „Szablony stacji" (nowe okno E3.1). „Zastosuj i edytuj"
  * otwiera ISTNIEJĄCY kreator zastosowania szablonu (StationTemplateWizard —
- * pełny przepływ: wybór wariantu → odcinek → parametry → apply na backendzie).
- *
- * MOST (rejestr wygaszania): preselekcja szablonu wybranego w przeglądarce wymaga
- * propa w StationTemplateWizard (modyfikacja ui/network-build) — karta E3.2;
- * do tego czasu kreator startuje od własnego wyboru (TODO-KARTA).
+ * pełny przepływ: wybór wariantu → odcinek → parametry → apply na backendzie),
+ * z preselekcją szablonu wskazanego w przeglądarce (E3.2 — prop
+ * `initialTemplateId`, kreator startuje z pominiętym krokiem wyboru).
  */
 import { useState } from 'react';
 
@@ -29,6 +27,7 @@ type ZakladkaId = (typeof ZAKLADKI)[number]['id'];
 export function ModelWarsztat() {
   const [zakladka, setZakladka] = useState<ZakladkaId>('schemat');
   const [kreatorOtwarty, setKreatorOtwarty] = useState(false);
+  const [wybranySzablonId, setWybranySzablonId] = useState<string | null>(null);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
 
   return (
@@ -59,7 +58,12 @@ export function ModelWarsztat() {
         {zakladka === 'schemat' ? (
           <SldWorkspaceContainer />
         ) : (
-          <PrzegladarkaSzablonow onZastosuj={() => setKreatorOtwarty(true)} />
+          <PrzegladarkaSzablonow
+            onZastosuj={(idSzablonu) => {
+              setWybranySzablonId(idSzablonu);
+              setKreatorOtwarty(true);
+            }}
+          />
         )}
       </div>
       {kreatorOtwarty && (
@@ -77,6 +81,7 @@ export function ModelWarsztat() {
           >
             <StationTemplateWizard
               caseId={activeCaseId}
+              initialTemplateId={wybranySzablonId}
               onCancel={() => setKreatorOtwarty(false)}
               onAppliedSuccess={() => setKreatorOtwarty(false)}
             />
