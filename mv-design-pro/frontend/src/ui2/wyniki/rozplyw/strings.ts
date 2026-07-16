@@ -1,0 +1,91 @@
+/*
+ * Teksty i deterministyczne formatery okna „Rozpływ mocy — napięcia szyn"
+ * (karta E8.1, pierwsza konkretyzacja wspólnego wzorca) — wyłącznie polski język
+ * techniczny (MODEL_INTERAKCJI §2.7). Zero literałów UI w JSX; identyfikatory
+ * (numery szyn) renderowane jako wyrażenia `{...}` z danych. Formatery są CZYSTE
+ * (wejście→wyjście), bez `Date.now`/losowości (Determinism Rule) — przecinek
+ * dziesiętny zgodnie z konwencją PL.
+ */
+
+/**
+ * Normatywny przedział napięcia SN ±5% Un (0,95–1,05 p.u.) — EN 50160 / IRiESD.
+ * To NIE jest heurystyka solvera: stała NORMATYWNA, jawnie ujawniana w sekcji
+ * ZAŁOŻENIA (WHITE BOX, W-602) i użyta wyłącznie do prezentacyjnego oznaczenia
+ * wartości poza zakresem (tag), bez korekty wyniku fizycznego.
+ */
+export const NAPIECIE_MIN_PU = 0.95;
+export const NAPIECIE_MAX_PU = 1.05;
+
+export const ROZPLYW_STRINGS = {
+  // Nagłówek analizy
+  analiza: 'Rozpływ mocy — napięcia szyn',
+
+  // Stan pusty
+  brakWyniku: 'Brak wyniku rozpływu do wyświetlenia',
+  brakWynikuOpis: 'Uruchom obliczenie rozpływu mocy, aby zobaczyć napięcia szyn.',
+
+  // Kolumny tabeli szyn
+  kolSzyna: 'Szyna',
+  kolNapiecie: 'Napięcie',
+  kolKat: 'Kąt',
+  kolMocCzynna: 'Moc czynna',
+  kolMocBierna: 'Moc bierna',
+
+  // Założenia (parametry przebiegu)
+  zalMocBazowa: 'Moc bazowa',
+  zalTolerancja: 'Tolerancja zbieżności',
+  zalSzynaBilansujaca: 'Szyna bilansująca',
+  zalLiczbaIteracji: 'Liczba iteracji',
+  zalZbieznosc: 'Zbieżność',
+  zalPrzedzialNapiecia: 'Dopuszczalny przedział napięcia',
+  zalPrzedzialNapieciaUwaga: 'Norma napięciowa ±5% Un (EN 50160) — służy oznaczeniu wartości poza zakresem.',
+  zbieznoscTak: 'Tak',
+  zbieznoscNie: 'Nie',
+
+  // Wykres
+  wykresTytul: 'Profil napięć szyn',
+  wykresOsX: 'Szyna',
+  wykresOsY: 'Napięcie',
+
+  // Jednostki
+  jednPU: 'p.u.',
+  jednStopnie: '°',
+  jednMW: 'MW',
+  jednMvar: 'Mvar',
+  jednMVA: 'MVA',
+} as const;
+
+/** Format liczby z przecinkiem dziesiętnym (deterministyczny). */
+export function fmtLiczba(n: number, miejsca: number): string {
+  return n.toFixed(miejsca).replace('.', ',');
+}
+
+/** Napięcie w p.u. — 4 miejsca po przecinku. */
+export function fmtPU(n: number): string {
+  return fmtLiczba(n, 4);
+}
+
+/** Kąt fazowy w stopniach — 2 miejsca. */
+export function fmtKat(n: number): string {
+  return fmtLiczba(n, 2);
+}
+
+/** Moc (MW/Mvar) — 3 miejsca. */
+export function fmtMoc(n: number): string {
+  return fmtLiczba(n, 3);
+}
+
+/** Moc bazowa (MVA) — 1 miejsce. */
+export function fmtBaza(n: number): string {
+  return fmtLiczba(n, 1);
+}
+
+/** Tolerancja zbieżności — notacja wykładnicza, przecinek dziesiętny. */
+export function fmtTolerancja(n: number): string {
+  return n.toExponential().replace('.', ',');
+}
+
+/** Czy napięcie [p.u.] jest poza normatywnym przedziałem ±5% Un. */
+export function napiecePozaZakresem(vPu: number): boolean {
+  return vPu < NAPIECIE_MIN_PU || vPu > NAPIECIE_MAX_PU;
+}

@@ -1,0 +1,270 @@
+/*
+ * Style WSPÓLNEGO WZORCA EKRANU ANALIZY (karta E8.1). Kolory WYŁĄCZNIE przez
+ * tokeny --mvd-* (theme/tokens.css) — zero literałów hex. Liczby: font mono +
+ * tabular-nums (spójne z `spaces/gotowosc/gotowosc.css`). Znacznik świeżości
+ * (FreshnessBadge) używa klas z `inspector/inspector.css` (JEDYNY, współdzielony).
+ */
+
+.mvd-wyn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  color: var(--mvd-ink);
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 4px;
+}
+
+.mvd-wyn :focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- nagłówek ---- */
+.mvd-wyn-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mvd-wyn-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+}
+.mvd-wyn-run {
+  color: var(--mvd-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.mvd-wyn-akcje {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mvd-btn {
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+.mvd-btn:hover {
+  border-color: var(--mvd-accent);
+}
+
+/* ---- sekcja założeń ---- */
+.mvd-wyn-zalozenia {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  box-shadow: var(--mvd-shadow);
+  overflow: hidden;
+}
+.mvd-wyn-zalozenia-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.mvd-wyn-zalozenia-head:hover {
+  background: var(--mvd-sel);
+}
+.mvd-wyn-zalozenia-tytul {
+  font-weight: 600;
+  flex: 1;
+}
+.mvd-wyn-zalozenia-zwijak {
+  color: var(--mvd-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mvd-wyn-zalozenia-opis {
+  margin: 0;
+  padding: 0 12px 8px;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-wyn-zalozenia-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border-top: 1px solid var(--mvd-line);
+}
+.mvd-wyn-zalozenie {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-wyn-zalozenie:last-child {
+  border-bottom: none;
+}
+.mvd-wyn-zalozenie-etykieta {
+  flex: 1;
+  min-width: 0;
+  color: var(--mvd-muted);
+}
+.mvd-wyn-zalozenie-wartosc {
+  white-space: nowrap;
+}
+.mvd-wyn-zalozenia-brak {
+  margin: 0;
+  padding: 12px;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-wyn-unit {
+  color: var(--mvd-muted);
+  margin-left: 3px;
+}
+
+/* ---- tabela wyników ---- */
+.mvd-wyn-tabela-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  box-shadow: var(--mvd-shadow);
+  background: var(--mvd-panel);
+}
+.mvd-wyn-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.mvd-wyn-tabela thead th {
+  position: sticky;
+  top: 0;
+  background: var(--mvd-panel-2);
+  color: var(--mvd-ink);
+  font-weight: 600;
+  text-align: left;
+  padding: 0;
+  border-bottom: 1px solid var(--mvd-line);
+  white-space: nowrap;
+}
+.mvd-wyn-th-btn {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: inherit;
+}
+.mvd-wyn-th-btn:hover {
+  background: var(--mvd-sel);
+}
+.mvd-wyn-th-static {
+  padding: 8px 12px;
+}
+.mvd-wyn-th-prawo,
+.mvd-wyn-td-prawo {
+  text-align: right;
+}
+.mvd-wyn-th-prawo .mvd-wyn-th-btn {
+  justify-content: flex-end;
+}
+.mvd-wyn-th-unit {
+  color: var(--mvd-muted);
+  font-weight: 400;
+  font-size: 11px;
+}
+.mvd-wyn-sort-ind {
+  color: var(--mvd-accent);
+  font-size: 10px;
+}
+.mvd-wyn-tabela tbody td {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--mvd-line);
+  white-space: nowrap;
+}
+.mvd-wyn-tabela tbody tr:last-child td {
+  border-bottom: none;
+}
+.mvd-wyn-tabela tbody tr:hover {
+  background: var(--mvd-sel);
+}
+.mvd-wyn-cell-val {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.mvd-wyn-value-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  border-bottom: 1px dotted var(--mvd-accent);
+}
+.mvd-wyn-tag {
+  display: inline-flex;
+  align-items: baseline;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  background: var(--mvd-warn-bg);
+  color: var(--mvd-warn);
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+/* ---- wykres (slot) ---- */
+.mvd-wyn-wykres {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  box-shadow: var(--mvd-shadow);
+  background: var(--mvd-panel);
+  padding: 12px;
+  overflow-x: auto;
+}
+
+/* ---- stan pusty ---- */
+.mvd-wyn-pusty {
+  padding: 24px 16px;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+
+.mvd-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
