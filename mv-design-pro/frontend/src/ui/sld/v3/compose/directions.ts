@@ -29,16 +29,17 @@
  * TR/SPR pierwszej sekcji — dawałoby błędne „ODG" zamiast „WE" tej sekcji;
  * v3 tej wady NIE dziedziczy, bo liczy pozycję tylko wśród pól LINIOWYCH).
  *
- *  3. F10.2 (spec §19.1, V12K-035, POPRAWKA A3): dawny punkt 3 tego nagłówka
- *     (`bayApparatusDesignation`, F6b) opisywał JEDEN oznacznik „Q0/Q1/T1"
- *     na CAŁE pole — to naruszało spec §19.1 („«Q» identyfikuje KONKRETNY
- *     aparat, NIE pole"). Funkcja USUNIĘTA; zastąpiona DWOMA odrębnymi
- *     warstwami: `fieldFunctionalDesignation` niżej (oznaczenie FUNKCYJNE
- *     pola — liniowe/transformatorowe/sprzęgłowe/pomiarowe/generatorowe,
- *     spec §19.1) i `apparatusIdentifiers` (`./apparatusSequence` —
- *     identyfikator PER-APARAT Q/QE/T przy symbolu, fallback konwencji ze
- *     znacznikiem `data-designation-source="konwencja"`, `BayPrimaryDevice.
- *     designation` DOMAIN dopiero F10.6).
+ *  3. F10.2/F10.6 (spec §19.1, V12K-035, POPRAWKA A3): dawny punkt 3 tego
+ *     nagłówka (`bayApparatusDesignation`, F6b) opisywał JEDEN oznacznik
+ *     „Q0/Q1/T1" na CAŁE pole — to naruszało spec §19.1 („«Q» identyfikuje
+ *     KONKRETNY aparat, NIE pole"). Funkcja USUNIĘTA; zastąpiona DWOMA
+ *     odrębnymi warstwami: `fieldFunctionalDesignation` niżej (oznaczenie
+ *     FUNKCYJNE pola — liniowe/transformatorowe/sprzęgłowe/pomiarowe/
+ *     generatorowe, spec §19.1) i `apparatusIdentifiers` (`./apparatusSequence`
+ *     — identyfikator PER-APARAT Q/QE/T przy symbolu; `BayPrimaryDevice.
+ *     designation` DOMAIN, F10.6, gdy obecny WYGRYWA nad tekstem konwencji
+ *     — `data-designation-source="dane"`; fallback konwencji ze znacznikiem
+ *     `"konwencja"` gdy dana niedostarczona).
  *  4. `classifyStationTopologicalType` (F10.2, spec §19.3, V12K-034) — rodzaj
  *     stacji (końcowa/przelotowa/odgałęźna/sekcyjna) WYPROWADZONY z topologii
  *     (liczba pól liniowych + obecność sprzęgła w `snBays`), NIE z ręcznej

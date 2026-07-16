@@ -80,6 +80,60 @@ describe('protectionFunctionTopologyGaps (spec §20.2 a-d)', () => {
   });
 });
 
+describe('F10.6 (DOMAIN, D4/D5, V12K-036) — domainContext: vtArrangements (67N) / ctZoneRefs (87T)', () => {
+  it('67N + VT + vtArrangements bez open_delta (np. gwiazda) ⇒ ostrzeżenie vt_not_open_delta DODATKOWO', () => {
+    const gaps = protectionFunctionTopologyGaps(['67N'], [{ kind: 'VT' }], { vtArrangements: ['star'] });
+    expect(gaps).toEqual([{ code: '67N', reason: 'vt_not_open_delta' }]);
+  });
+
+  it('67N + VT + vtArrangements Z open_delta ⇒ zero ostrzeżeń', () => {
+    const gaps = protectionFunctionTopologyGaps(['67N'], [{ kind: 'VT' }], { vtArrangements: ['open_delta'] });
+    expect(gaps).toEqual([]);
+  });
+
+  it('67N + VT + vtArrangements PUSTE/undefined (dana niedostarczona) ⇒ dotychczasowe uproszczenie F10.5, zero ostrzeżeń', () => {
+    expect(protectionFunctionTopologyGaps(['67N'], [{ kind: 'VT' }], { vtArrangements: [] })).toEqual([]);
+    expect(protectionFunctionTopologyGaps(['67N'], [{ kind: 'VT' }])).toEqual([]);
+  });
+
+  it('67N BEZ VT w polu ⇒ missing_vt niezależnie od domainContext (prerekwizyt nadrzędny)', () => {
+    const gaps = protectionFunctionTopologyGaps(['67N'], [{ kind: 'CB' }], { vtArrangements: ['open_delta'] });
+    expect(gaps).toEqual([{ code: '67N', reason: 'missing_vt' }]);
+  });
+
+  it('87T + TR + ctZoneRefs < 2 unikalnych ⇒ ostrzeżenie missing_second_ct DODATKOWO', () => {
+    const gaps = protectionFunctionTopologyGaps(['87T'], [{ kind: 'TRANSFORMER_DEVICE' }], {
+      ctZoneRefs: ['ct-1'],
+    });
+    expect(gaps).toEqual([{ code: '87T', reason: 'missing_second_ct' }]);
+  });
+
+  it('87T + TR + ctZoneRefs >= 2 unikalnych ⇒ zero ostrzeżeń', () => {
+    const gaps = protectionFunctionTopologyGaps(['87T'], [{ kind: 'TRANSFORMER_DEVICE' }], {
+      ctZoneRefs: ['ct-1', 'ct-2'],
+    });
+    expect(gaps).toEqual([]);
+  });
+
+  it('87T + TR + ctZoneRefs undefined (dana strefy niedostarczona) ⇒ dotychczasowe uproszczenie F10.5, zero ostrzeżeń', () => {
+    expect(protectionFunctionTopologyGaps(['87T'], [{ kind: 'TRANSFORMER_DEVICE' }])).toEqual([]);
+  });
+
+  it('87T BEZ transformatora ⇒ missing_transformer niezależnie od ctZoneRefs (prerekwizyt nadrzędny)', () => {
+    const gaps = protectionFunctionTopologyGaps(['87T'], [{ kind: 'CT' }], { ctZoneRefs: ['ct-1', 'ct-2'] });
+    expect(gaps).toEqual([{ code: '87T', reason: 'missing_transformer' }]);
+  });
+
+  it('etykieta PL nowych przyczyn (protectionTopologyGapLabel)', () => {
+    expect(protectionTopologyGapLabel({ code: '67N', reason: 'vt_not_open_delta' })).toBe(
+      '67N: VT nie w układzie otwartego trójkąta',
+    );
+    expect(protectionTopologyGapLabel({ code: '87T', reason: 'missing_second_ct' })).toBe(
+      '87T: brak drugiego CT strefy',
+    );
+  });
+});
+
 describe('protectionTopologyGapLabel / protectionTopologyGapCode (formatowanie adnotacji/missingData)', () => {
   it('label PL zwięzły „⟨kod⟩: ⟨przyczyna⟩" (przykład ze zlecenia: „67N: brak VT")', () => {
     expect(protectionTopologyGapLabel({ code: '67N', reason: 'missing_vt' })).toBe('67N: brak VT');

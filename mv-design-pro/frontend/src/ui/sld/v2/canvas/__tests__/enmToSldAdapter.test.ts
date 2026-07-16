@@ -3935,6 +3935,129 @@ describe('F9.2 — projekcja Bay.primary_devices (SLD_CAD_SPEC_V3 §12.1)', () =
   });
 });
 
+describe('F10.6 — designation per-aparat (SLD_CAD_SPEC_V3 §19.1, D1, V12K-035)', () => {
+  it('przenosi BayPrimaryDevice.designation 1:1 do BayPrimaryDeviceView.designation', () => {
+    const snap = makeStationOnlySnapshot('ST-1');
+    const primaryDevices: BayPrimaryDevice[] = [
+      makePrimaryDevice({ device_ref: 'cb-1', kind: 'CB', placement: 'MIDSTREAM', designation: 'Q7' }),
+      makePrimaryDevice({ device_ref: 'ds-1', kind: 'DS', placement: 'UPSTREAM' }),
+    ];
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'Pole', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
+        primary_devices: primaryDevices,
+      } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const devices = r.stations.find((s) => s.id === 'ST-1')?.snBays[0]?.primaryDevices ?? [];
+    const byRef = new Map(devices.map((d) => [d.deviceRef, d.designation]));
+    expect(byRef.get('cb-1')).toBe('Q7');
+    expect(byRef.get('ds-1')).toBeUndefined();
+  });
+});
+
+describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3/D4/D5, V12K-036)', () => {
+  it('ctRatingAnnotations niesie arrangement z Measurement.ct_arrangement, undefined gdy dana niedostarczona', () => {
+    const snap = makeStationOnlySnapshot('ST-1');
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'Pole', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
+      } as never,
+    ];
+    snap.measurements = [
+      {
+        id: 'm1', ref_id: 'ct-1', name: 'CT1', tags: [], meta: {},
+        measurement_type: 'CT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
+        rating: { ratio_primary: 300, ratio_secondary: 5 },
+        connection: 'star', purpose: 'protection', ct_arrangement: '3xCT',
+      },
+      {
+        id: 'm2', ref_id: 'ct-2', name: 'CT2', tags: [], meta: {},
+        measurement_type: 'CT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
+        rating: { ratio_primary: 150, ratio_secondary: 5 },
+        connection: 'star', purpose: 'protection',
+      },
+    ] as never;
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const annotations = r.stations.find((s) => s.id === 'ST-1')?.snBays[0]?.ctRatingAnnotations ?? [];
+    const byRef = new Map(annotations.map((a) => [a.measurementRef, a.arrangement]));
+    expect(byRef.get('ct-1')).toBe('3xCT');
+    expect(byRef.get('ct-2')).toBeUndefined();
+  });
+
+  it('vtArrangements agreguje Measurement.vt_arrangement niepuste VT tego pola, undefined gdy brak danych', () => {
+    const snap = makeStationOnlySnapshot('ST-1');
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'Pole z open-delta', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
+      } as never,
+      {
+        id: 'b2', ref_id: 'bay-2', name: 'Pole bez danych układu', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
+      } as never,
+    ];
+    snap.measurements = [
+      {
+        id: 'm1', ref_id: 'vt-1', name: 'VT1', tags: [], meta: {},
+        measurement_type: 'VT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
+        rating: { ratio_primary: 15000, ratio_secondary: 100 },
+        connection: 'delta', purpose: 'protection', vt_arrangement: 'open_delta',
+      },
+      {
+        id: 'm2', ref_id: 'vt-2', name: 'VT2', tags: [], meta: {},
+        measurement_type: 'VT', bus_ref: 'bus-sn', bay_ref: 'bay-2',
+        rating: { ratio_primary: 15000, ratio_secondary: 100 },
+        connection: 'star', purpose: 'protection',
+      },
+    ] as never;
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const bays = r.stations.find((s) => s.id === 'ST-1')?.snBays ?? [];
+    const byRef = new Map(bays.map((b) => [b.bayRef, b.vtArrangements]));
+    expect(byRef.get('bay-1')).toEqual(['open_delta']);
+    expect(byRef.get('bay-2')).toBeUndefined();
+  });
+
+  it('protectionMarking.ctRefsSecondary przenosi ProtectionAssignment.ct_refs_secondary, undefined gdy puste', () => {
+    const snap = makeStationOnlySnapshot('ST-1');
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'Pole 87T', tags: [], meta: {},
+        bay_role: 'TR', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
+        protection_codes: ['87T'], protection_ref: 'prot-1',
+      } as never,
+      {
+        id: 'b2', ref_id: 'bay-2', name: 'Pole zwykłe', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
+        protection_codes: ['51'], protection_ref: 'prot-2',
+      } as never,
+    ];
+    snap.protection_assignments = [
+      {
+        id: 'assign-diff', ref_id: 'prot-1', name: 'Diff', tags: [], meta: {},
+        breaker_ref: 'cb-1', ct_ref: 'ct-1', ct_refs_secondary: ['ct-2'],
+        device_type: 'differential', settings: [], is_enabled: true,
+      },
+      {
+        id: 'assign-oc', ref_id: 'prot-2', name: 'OC', tags: [], meta: {},
+        breaker_ref: 'cb-2', ct_ref: 'ct-3',
+        device_type: 'overcurrent', settings: [], is_enabled: true,
+      },
+    ] as never;
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const bays = r.stations.find((s) => s.id === 'ST-1')?.snBays ?? [];
+    const byRef = new Map(bays.map((b) => [b.bayRef, b.protectionMarking?.ctRefsSecondary]));
+    expect(byRef.get('bay-1')).toEqual(['ct-2']);
+    expect(byRef.get('bay-2')).toBeUndefined();
+  });
+});
+
 describe('F9.2 — projekcja źródeł SldDataPayload.sources (SLD_CAD_SPEC_V3 §13.1/§13.2)', () => {
   it('pusty snapshot → sources = []', () => {
     const r = buildSldDataFromSnapshot(buildEmptySnapshot(), null);

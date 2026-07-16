@@ -1155,6 +1155,30 @@ describe('V3 compose/station — F10.4 §18.3: adnotacja przekładni CT (ct_anno
     expect(resolved.rect.y % GRID).toBe(0);
   });
 
+  it('F10.6 (§18.3, D3, V12K-036): arrangement obecny dokleja trzeci człon „· 3×CT"/„· Ferranti-I0" do etykiety CT', () => {
+    const bay3xCt = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayPrimaryDevices(),
+      ctRatingAnnotations: [
+        { measurementRef: 'meas-metering-1', identifier: 'CT1', ratioText: '300/5', arrangement: '3xCT' },
+      ],
+    });
+    const composition3xCt = composeStation(buildComposeInput(makeStation('ct-rating-3xct', [bay3xCt])));
+    const labels3xCt = composition3xCt.labels.protection.filter((l) => l.ownerRef.includes('#ct-rating-'));
+    expect(labels3xCt).toHaveLength(1);
+    expect(labels3xCt[0].text).toBe('CT1 · 300/5 · 3×CT');
+
+    const bayFerranti = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayPrimaryDevices(),
+      ctRatingAnnotations: [
+        { measurementRef: 'meas-metering-1', identifier: 'CT1', ratioText: '300/5', arrangement: 'ferranti' },
+      ],
+    });
+    const compositionFerranti = composeStation(buildComposeInput(makeStation('ct-rating-ferranti', [bayFerranti])));
+    const labelsFerranti = compositionFerranti.labels.protection.filter((l) => l.ownerRef.includes('#ct-rating-'));
+    expect(labelsFerranti).toHaveLength(1);
+    expect(labelsFerranti[0].text).toBe('CT1 · 300/5 · Ferranti-I0');
+  });
+
   it('(§18.3 zero zgadywania) measurementRef NIEROZWIĄZYWALNY w stosie ⇒ ZERO etykiety + missingData `bay.protection.ct_rating_anchor_unresolved` (NIGDY etykieta bez kotwicy)', () => {
     const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
       primaryDevices: makeLineBayPrimaryDevices(),

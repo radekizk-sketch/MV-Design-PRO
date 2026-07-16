@@ -250,14 +250,23 @@ const Q_IDENTIFIER_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
 
 /**
  * Identyfikatory PER-APARAT (spec §19.1: „Q1" wyłącznik, „Q9" odłącznik
- * szynowy, „QE1" uziemnik, „T1" transformator) — fallback KONWENCJI
- * (`BayPrimaryDevice.designation`, DOMAIN, dopiero F10.6-DOMAIN, V12K-035),
- * WYŁĄCZNIE dla aparatów wymienionych WPROST w spec §19.1: łączniki toru
- * (breaker/disconnector/fuseSwitch → „Q"), uziemnik (earthSwitch → „QE"),
- * transformator (transformer2W → „T"). CT/VT/SA/cableHead/protectionRelay/
- * meter NIE dostają identyfikatora w tej fazie — CT ma WŁASNĄ adnotację
+ * szynowy, „QE1" uziemnik, „T1" transformator) — WYŁĄCZNIE dla aparatów
+ * wymienionych WPROST w spec §19.1: łączniki toru (breaker/disconnector/
+ * fuseSwitch → „Q"), uziemnik (earthSwitch → „QE"), transformator
+ * (transformer2W → „T"). CT/VT/SA/cableHead/protectionRelay/meter NIE
+ * dostają identyfikatora w tej fazie — CT ma WŁASNĄ adnotację
  * (identyfikator+przekładnia, §18.3, F10.4, POZA torem mocy), VT/SA nie mają
  * zdefiniowanej konwencji numeracji w spec §19.1 (zero zgadywania).
+ *
+ * F10.6 (DOMAIN, V12K-035, D1): `designations` (index-aligned do `symbolIds`)
+ * niesie `BayPrimaryDevice.designation` — DANA projektowa — gdy obecna
+ * (niepusty, przycięty string) dla danej pozycji, JEJ TEKST wygrywa nad
+ * wyliczonym Q/QE/T (prymat danych §12.1); licznik kategorii mimo to ROŚNIE
+ * (spójna numeracja pozostałych aparatów pola bez danych w tej samej
+ * kategorii). Parametr opcjonalny — wywołanie BEZ niego (dawne callsite'y,
+ * `layout/measure.ts`) zachowuje dokładnie poprzednie zachowanie (100%
+ * konwencja). Źródło `'dane'`/`'konwencja'` per pozycja —
+ * `apparatusIdentifierSources` niżej (JEDNA prawda, ta sama kategoryzacja).
  *
  * Numeracja: JEDEN licznik na kategorię (Q/QE/T) per POLE, rosnąco wg
  * pozycji w PEŁNEJ sekwencji aparatów pola (tor główny + laterale w
@@ -271,24 +280,48 @@ const Q_IDENTIFIER_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
  */
 export function apparatusIdentifiers(
   symbolIds: readonly SymbolId[],
+  designations?: readonly (string | null | undefined)[],
 ): readonly (string | null)[] {
   let q = 0;
   let qe = 0;
   let t = 0;
-  return symbolIds.map((symbolId) => {
+  return symbolIds.map((symbolId, index) => {
+    const dataDesignation = designations?.[index]?.trim() || null;
     if (Q_IDENTIFIER_SYMBOLS.has(symbolId)) {
       q += 1;
-      return `Q${q}`;
+      return dataDesignation ?? `Q${q}`;
     }
     if (symbolId === 'earthSwitch') {
       qe += 1;
-      return `QE${qe}`;
+      return dataDesignation ?? `QE${qe}`;
     }
     if (symbolId === 'transformer2W') {
       t += 1;
-      return `T${t}`;
+      return dataDesignation ?? `T${t}`;
     }
     return null;
+  });
+}
+
+/**
+ * Pochodzenie ('dane'/'konwencja') identyfikatora PER-APARAT na tej samej
+ * pozycji co `apparatusIdentifiers` zwraca (F10.6, DOMAIN, V12K-035) —
+ * `null` dla pozycji BEZ identyfikatora w tej fazie (symetryczne do `null` w
+ * `apparatusIdentifiers`). `'dane'` WYŁĄCZNIE gdy `designations[index]` jest
+ * niepustym (po przycięciu) stringiem — ta sama reguła co wyżej, bez
+ * duplikacji liczników (source nie zależy od numeracji, tylko od obecności
+ * danej).
+ */
+export function apparatusIdentifierSources(
+  symbolIds: readonly SymbolId[],
+  designations?: readonly (string | null | undefined)[],
+): readonly ('dane' | 'konwencja' | null)[] {
+  return symbolIds.map((symbolId, index) => {
+    const isIdentifiable =
+      Q_IDENTIFIER_SYMBOLS.has(symbolId) || symbolId === 'earthSwitch' || symbolId === 'transformer2W';
+    if (!isIdentifiable) return null;
+    const dataDesignation = designations?.[index]?.trim();
+    return dataDesignation ? 'dane' : 'konwencja';
   });
 }
 

@@ -36,9 +36,10 @@
  * dostaje oznaczenie FUNKCYJNE (`fieldFunctionalDesignation`, wyżej), a
  * KAŻDY aparat toru (CB/DS/rozłącznik/uziemnik/transformator) dostaje WŁASNY
  * identyfikator Q/QE/T przy swoim symbolu, PO LEWEJ stosu (`apparatusIdenti
- * fiers`, `./apparatusSequence`, fallback konwencji ze znacznikiem
- * `data-designation-source="konwencja"` — `BayPrimaryDevice.designation`
- * DOMAIN dopiero F10.6). Rezerwacja miejsca na lewą kolumnę identyfikatorów:
+ * fiers`, `./apparatusSequence` — `BayPrimaryDevice.designation` DOMAIN,
+ * F10.6, wygrywa gdy obecny, znacznik `data-designation-source="dane"`;
+ * fallback konwencji ze znacznikiem `"konwencja"` gdy dana niedostarczona).
+ * Rezerwacja miejsca na lewą kolumnę identyfikatorów:
  * `layout/measure.ts` `apparatusIdentifierLeftReserve`.
  *
  * F9.3 (SLD_CAD_SPEC_V3 §12 „Kompozycja celki pola wg fizycznej ścieżki
@@ -85,6 +86,7 @@ import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRende
 import { fieldFunctionalDesignation, isLineLikeRole } from './directions';
 import {
   apparatusIdentifiers,
+  apparatusIdentifierSources,
   LATERAL_APPARATUS_SYMBOLS,
   LATERAL_BRANCH_GAP,
   apparatusSymbolsForRole,
@@ -128,6 +130,20 @@ export { apparatusSymbolsForRole, stackFootprint };
  * kind, nie osobny stan per fizyczny aparat). Ścieżka DANYCH (§12.1) ma
  * stan PER APARAT wprost z `BayPrimaryDeviceView.switchState` —
  * `stackItemsForBay` niżej NIE woła tej funkcji w tej ścieżce.
+ *
+ * F10.6 (luka DOMAIN #6, F10.3 finding): `fuseSwitch` (rozłącznik z
+ * bezpiecznikiem, `apparatusSymbolsForRole('TRANSFORMATOROWE')`) celowo BRAK
+ * gałęzi tutaj — zbadane, NIE dodano pola. `BayPrimaryDevice.switch_state`
+ * JUŻ niesie stan per-aparat dla `kind='FUSE'` na ŚCIEŻCE DANYCH (identycznie
+ * jak CB/DS/ES powyżej — `stackItemsForBay` czyta go wprost z
+ * `BayPrimaryDeviceView.switchState`, bez udziału tej funkcji). Luka
+ * dotyczyła WYŁĄCZNIE ścieżki KONWENCJI (§12.4): `MiniBlockBayDescriptor` nie
+ * niesie osobnego agregatu `fuseState` (tylko cb/ds/es), więc `fuseSwitch`
+ * konwencyjny renderuje się bez per-kind stanu (`undefined` → domyślny stan
+ * glifu). Dodanie `fuseState` byłoby POLEM-ATRAPĄ: konwencja (§12.4) i tak
+ * jest fallbackiem BEZ `device_ref`/telemetrii — żaden realny sygnał SCADA
+ * nie zasiliłby takiego agregatu; gdy dane są dostępne, ścieżka DANYCH już
+ * je niesie poprawnie. Udokumentowane zamiast nowego pola.
  */
 function apparatusStateFor(symbolId: SymbolId, bay: MiniBlockBayDescriptor): SwitchState | undefined {
   if (symbolId === 'breaker') return bay.cbState;
@@ -146,6 +162,10 @@ interface StackItemSpec {
    *  danych (§12.1), fundament dopasowania kotwicy miernika „M"
    *  (`resolveMeterAnchor`, `./protectionMarking`). */
   readonly linkedRef?: string;
+  /** F10.6 (spec §19.1, DOMAIN, V12K-035): `BayPrimaryDevice.designation` —
+   *  WYŁĄCZNIE ścieżka danych (§12.1); `undefined` na ścieżce konwencji
+   *  (§12.4 nie ma `device_ref`, więc nie ma tej danej per definicji). */
+  readonly designation?: string;
 }
 
 /**
@@ -172,6 +192,7 @@ function stackItemsForBay(
       state: d.switchState,
       deviceRef: d.deviceRef,
       linkedRef: d.linkedRef,
+      designation: d.designation,
     }));
     return { items, source };
   }
@@ -219,11 +240,12 @@ export interface ComposedSymbolInstance {
    *  wartością `'dane'` zanieczyściłoby filtr `apparatusSource!=null` używany
    *  przez testy F9.3 do wyodrębnienia WYŁĄCZNIE aparatów pola. */
   readonly apparatusSource?: BayApparatusSource;
-  /** F10.2 (spec §19.1, V12K-035): pochodzenie IDENTYFIKATORA PER-APARAT
-   *  (Q/QE/T) tego symbolu — `'konwencja'` gdy z fallbacku
-   *  `apparatusIdentifiers` (`compose/apparatusSequence.ts`, dziś ZAWSZE, bo
-   *  `BayPrimaryDevice.designation` DOMAIN dopiero F10.6); `undefined` dla
-   *  symboli BEZ identyfikatora w tej fazie (CT/VT/SA/cableHead/DER/…).
+  /** F10.2/F10.6 (spec §19.1, V12K-035): pochodzenie IDENTYFIKATORA
+   *  PER-APARAT (Q/QE/T) tego symbolu — `'dane'` gdy `BayPrimaryDevice.
+   *  designation` obecny dla tego aparatu (DOMAIN, F10.6), `'konwencja'`
+   *  gdy z fallbacku `apparatusIdentifiers` (`compose/apparatusSequence.ts`);
+   *  `undefined` dla symboli BEZ identyfikatora w tej fazie (CT/VT/SA/
+   *  cableHead/DER/…).
    *  Audytor DOM `data-designation-source` (`compose/preview.tsx`/
    *  `canvas/SldCanvasV3.tsx`) — ODDZIELNE od `apparatusSource` (ten opisuje
    *  pochodzenie STOSU — kind/kolejność/stan; `designationSource` opisuje
@@ -407,26 +429,39 @@ function buildBayStack(
   // niezależnie od tego, czy dany aparat wyląduje w torze głównym czy jako
   // odgałęzienie (jedyny aparat lateralny z identyfikatorem — uziemnik —
   // MUSI dostać kolejny numer QE w tej samej sekwencji co reszta pola).
-  const identifierTexts = apparatusIdentifiers(items.map((item) => item.symbolId));
+  // F10.6 (DOMAIN, V12K-035, D1): `designation` per-aparat (ścieżka danych,
+  // `undefined` na ścieżce konwencji) przekazany 1:1 — prymat danych §12.1.
+  const itemDesignations = items.map((item) => item.designation);
+  const identifierTexts = apparatusIdentifiers(items.map((item) => item.symbolId), itemDesignations);
+  const identifierSources = apparatusIdentifierSources(items.map((item) => item.symbolId), itemDesignations);
 
   const mainItems: StackItemSpec[] = [];
   const mainIdentifiers: (string | null)[] = [];
+  const mainIdentifierSources: ('dane' | 'konwencja' | null)[] = [];
   const lateralSpecs: {
     readonly item: StackItemSpec;
     readonly afterMainIndex: number;
     readonly identifier: string | null;
+    readonly identifierSource: 'dane' | 'konwencja' | null;
   }[] = [];
   items.forEach((item, originalIndex) => {
     if (LATERAL_APPARATUS_SYMBOLS.has(item.symbolId)) {
-      lateralSpecs.push({ item, afterMainIndex: mainItems.length - 1, identifier: identifierTexts[originalIndex] });
+      lateralSpecs.push({
+        item,
+        afterMainIndex: mainItems.length - 1,
+        identifier: identifierTexts[originalIndex],
+        identifierSource: identifierSources[originalIndex],
+      });
     } else {
       mainItems.push(item);
       mainIdentifiers.push(identifierTexts[originalIndex]);
+      mainIdentifierSources.push(identifierSources[originalIndex]);
     }
   });
   const degenerate = mainItems.length === 0 && lateralSpecs.length > 0;
   const stackItems = degenerate ? items : mainItems;
   const stackIdentifiers = degenerate ? identifierTexts : mainIdentifiers;
+  const stackIdentifierSources = degenerate ? identifierSources : mainIdentifierSources;
   const laterals = degenerate ? [] : lateralSpecs;
 
   // F10.2 (spec §19.1): lewa krawędź TORU GŁÓWNEGO — punkt zaczepienia
@@ -457,10 +492,11 @@ function buildBayStack(
       deviceRef: item.deviceRef,
       linkedRef: item.linkedRef,
       apparatusSource,
-      // F10.2 (V12K-035): identyfikator ZAWSZE z konwencji w tej fazie
-      // (`BayPrimaryDevice.designation` DOMAIN dopiero F10.6) — znacznik
-      // WYŁĄCZNIE na aparatach, które dostały identyfikator (Q/QE/T).
-      designationSource: identifier ? 'konwencja' : undefined,
+      // F10.6 (DOMAIN, V12K-035): źródło identyfikatora — `'dane'` gdy
+      // `BayPrimaryDevice.designation` obecny dla tego aparatu, inaczej
+      // fallback konwencji `apparatusIdentifiers`. `undefined` dla aparatów
+      // BEZ identyfikatora w tej fazie (CT/VT/SA/cableHead/...).
+      designationSource: stackIdentifierSources[index] ?? undefined,
       x,
       y,
       state: item.state,
@@ -507,7 +543,7 @@ function buildBayStack(
       ...mainInstances.map((inst) => inst.x + SYMBOL_DEFS[inst.symbolId].width),
     );
     const consumedAtAnchor = new Map<number, number>();
-    laterals.forEach(({ item, afterMainIndex, identifier }, lateralIndex) => {
+    laterals.forEach(({ item, afterMainIndex, identifier, identifierSource }, lateralIndex) => {
       const def = SYMBOL_DEFS[item.symbolId];
       const anchorInstance =
         afterMainIndex >= 0 ? mainInstances[afterMainIndex] : mainInstances[0];
@@ -532,7 +568,7 @@ function buildBayStack(
         deviceRef: item.deviceRef,
         linkedRef: item.linkedRef,
         apparatusSource,
-        designationSource: identifier ? 'konwencja' : undefined,
+        designationSource: identifierSource ?? undefined,
         x,
         y: lateralY,
         state: item.state,
@@ -743,12 +779,31 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         relayCircleTopY = circleTopY;
         const linkPortDef = SYMBOL_DEFS.protectionRelay.ports[0]; // 'link' (W)
         const linkPortWorld = { x: circleLeftX + linkPortDef.x, y: circleTopY + linkPortDef.y };
-        // F10.5 (spec §20.2): braki topologiczne (67N⇒VT, 87T⇒TR, 51N⇒I0) —
-        // na ISTNIEJĄCYCH danych pola (`bay.primaryDevices`, WHITE BOX „zero
-        // zgadywania" gdy dane nieobecne, patrz docstring funkcji). Liczone
-        // WYŁĄCZNIE na L2 (jak „52"/„M"/tor wyzwalania — §17.4 spójnie).
+        // F10.5/F10.6 (spec §20.2): braki topologiczne (67N⇒VT[+open-delta],
+        // 87T⇒TR[+2×CT], 51N⇒I0) — na ISTNIEJĄCYCH danych pola
+        // (`bay.primaryDevices`, WHITE BOX „zero zgadywania" gdy dane
+        // nieobecne, patrz docstring funkcji). F10.6 (D4/D5): `domainContext`
+        // niesie `vtArrangements`/`ctZoneRefs` GDY dane obecne — brak =
+        // uproszczenie F10.5 (zero regresji). Liczone WYŁĄCZNIE na L2 (jak
+        // „52"/„M"/tor wyzwalania — §17.4 spójnie).
+        // `ctZoneRefs` WYŁĄCZNIE gdy `ctRefsSecondary` niesie realną daną
+        // strefy (`ct_ref` SAM, bez `ct_refs_secondary`, jest baseline F10.5
+        // istniejący na WIĘKSZOŚCI pól — traktowanie go jako „dana strefy
+        // obecna" fabrykowałoby `missing_second_ct` na KAŻDYM normalnym
+        // pojedynczym CT, fałszywy alarm zakazany §20.2(d)).
+        const ctZoneRefs = (bay.protectionMarking?.ctRefsSecondary?.length ?? 0) > 0
+          ? [...new Set([
+              ...(bay.protectionMarking?.ctRef != null ? [bay.protectionMarking.ctRef] : []),
+              ...(bay.protectionMarking?.ctRefsSecondary ?? []),
+            ])]
+          : undefined;
         const topologyGaps =
-          annotationDetail === 'full' ? protectionFunctionTopologyGaps(marking.codes, bay.primaryDevices) : [];
+          annotationDetail === 'full'
+            ? protectionFunctionTopologyGaps(marking.codes, bay.primaryDevices, {
+                vtArrangements: bay.vtArrangements,
+                ctZoneRefs,
+              })
+            : [];
         topologyGaps.forEach((gap) => missingData.push(protectionTopologyGapCode(gap)));
         protectionSymbols.push({
           symbolId: 'protectionRelay',

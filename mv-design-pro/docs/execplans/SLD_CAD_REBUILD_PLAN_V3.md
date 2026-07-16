@@ -1251,7 +1251,7 @@ lokalnych łatek i duplikacji elektryki adaptera.
   vitest sld 172 plików/3327, accept ALL PASS, pełna regresja exit 0, guardy (w tym
   overlay_no_physics) zielone.
 
-### F10.6. [DOMAIN] designation + przekładnie + strefa 87T + interlock ES (+ zaległe F9.6b)
+### F10.6. [DONE] designation + przekładnie + strefa 87T + interlock ES (+ zaległe F9.6b)
 - Zakres: `BayPrimaryDevice.designation` (D1, identyfikator per-aparat, rozstrzyga V12K-035);
   przekładnia + układ pomiarowy CT (D3), przekładnia + open-delta VT (D4); strefa różnicowa 87T +
   drugi CT (D5); interlock ES↔tor jako opcja (D6). Ta faza scala ODNOŚNIKIEM zaległą rundę
@@ -1269,6 +1269,103 @@ lokalnych łatek i duplikacji elektryki adaptera.
   `frontend/src/types/enm.ts`, `v2/domain/apparatusContracts.ts`, testy domeny — zakres finalny
   (liczba i kształt nowych pól) do potwierdzenia przy otwarciu fazy, zależny od wyniku oceny F9.6b
   (łącza pośrednie mogą zamknąć część zakresu bez nowych pól).
+
+- **Wynik realizacji (2026-07-16, agent, per-luka):**
+  - **Luka 1 (designation, D1/V12K-035): ZROBIONE.** `BayPrimaryDevice.designation: str | None = None`
+    (`backend/src/enm/models.py:769-802`) + lustro `frontend/src/types/enm.ts` (`BayPrimaryDevice.
+    designation`); adapter `projectBayPrimaryDevices` (`enmToSldAdapter.ts:4029-4053`) przenosi 1:1 do
+    `BayPrimaryDeviceView.designation`; konsumpcja: `apparatusIdentifiers`/`apparatusIdentifierSources`
+    (`compose/apparatusSequence.ts:251-321`, sygnatura rozszerzona o opcjonalny `designations` —
+    WSTECZNIE KOMPATYBILNA, wywołanie bez parametru = 100% stare zachowanie konwencji) — dana wygrywa
+    nad Q/QE/T wyliczonym, licznik kategorii mimo to rośnie; `compose/station.ts::buildBayStack`
+    (`identifierSources`/`designationSource`) niesie `'dane'`/`'konwencja'` per aparat. UCZCIWOŚĆ: żadna
+    ścieżka backendu (`_branch_to_primary_device`/`_measurement_to_primary_device`/generator/transformer
+    buildery w `field_read_model.py`) nie ma dziś SUROWEGO źródła krótkiego identyfikatora („Q1") na
+    `Branch`/`Measurement`/`Transformer` — pole pozostaje `None` dla WSZYSTKICH obecnych danych
+    (gotowość schematu + pełna ścieżka konsumpcji, zero backfillu danych = poza zakresem tej rundy).
+  - **Luka 2 (układ CT, D3/V12K-036): ZROBIONE.** `Measurement.ct_arrangement: Literal['3xCT','ferranti']
+    | None` + walidator zgodności z `measurement_type` (`models.py:457-489`). Heurystyka
+    `field_read_model.py:581` WYCZYSZCZONA: `zero_sequence_current_source` czyta teraz
+    `ct_arrangement` per-CT pola (ferranti → `przekladnik_ferrantiego`, 3xCT → `suma_ct`, brak danych →
+    uczciwe `brak` — PRZED zawsze `suma_ct` dla KAŻDEGO CT, niezależnie od realnego układu). Adnotacja
+    v3: `CtRatingAnnotationView.arrangement` (`MiniBlockRmuRenderer.tsx`) + `resolveBayCtRatingAnnotations`
+    (adapter) + `ctRatingLabelText`/`ctArrangementLabelText` (`protectionMarking.ts`) doklejają trzeci
+    człon „· 3×CT"/„· Ferranti-I0" WYŁĄCZNIE gdy dana obecna (spec §18.3 dopuszcza wariant symbolu LUB
+    adnotacji — wybrano adnotację, zero nowego glifu).
+  - **Luka 3 (open-delta VT, D4/V12K-036): ZROBIONE.** `Measurement.vt_arrangement: Literal['open_delta',
+    'star'] | None` + walidator (`models.py`). `MiniBlockBayDescriptor.vtArrangements` (nowy adapter
+    resolver `resolveBayVtArrangements`) agreguje układy VT pola. `protectionFunctionTopologyGaps`
+    (`protectionTopologyValidation.ts`) rozszerzona o opcjonalny `domainContext.vtArrangements`: 67N + VT
+    obecny + dana układu obecna i ŻADNA nie jest `open_delta` ⇒ nowy gap `vt_not_open_delta`; dana
+    nieobecna = dotychczasowe uproszczenie F10.5 (zero regresji, zero fałszywych alarmów).
+  - **Luka 4 (strefa 87T, D5/V12K-036): ZROBIONE.** `ProtectionAssignment.ct_refs_secondary: list[str] =
+    []` (`models.py:479-506`) + lustro `types/enm.ts` + `BayProtectionMarkingView.ctRefsSecondary`
+    (adapter `resolveBayProtectionMarking`). `protectionFunctionTopologyGaps` rozszerzona o
+    `domainContext.ctZoneRefs`: 87T + TR obecny + `ct_refs_secondary` NIEPUSTE (realna dana strefy) i
+    unikalnych CT < 2 ⇒ nowy gap `missing_second_ct`; `ct_refs_secondary` puste/nieobecne (sam `ct_ref`,
+    baseline F10.5 na większości pól) = dotychczasowe uproszczenie — ZAMIERZONA gałąź w `station.ts`
+    zapobiegająca fałszywemu alarmowi na KAŻDYM normalnym pojedynczym CT.
+  - **Luka 5 (interlock ES, D6): RAPORT — pole NIE dodane, uzasadnienie: generyczny mechanizm
+    `BayInterlockSet`/`InterlockEntry` (`models.py:950-958`) JUŻ ISTNIEJE z realnym konsumentem
+    (`field_read_model.py::_build_interlocks` wywodzi `BRAK_LACZNOSCI_WTORNEJ` z `runtime_state`/
+    `control_surface`) — dodanie WĄSKIEGO pola `BayPrimaryDevice.interlock_note`/podobnego byłoby
+    duplikacją tego mechanizmu. Legenda arkusza (F10.1, DEC-1) już spełnia wymóg adnotacji blokady ES.
+    Rekomendacja NA PRZYSZŁOŚĆ (nie zaimplementowana teraz — poza zleconym minimum): `_build_interlocks`
+    JUŻ liczy `energized_from_bus_side`/`energized_from_feeder_side`/`grounded` (linie 780-827 tego
+    samego pliku) — techniczna możliwość wywiedzenia wpisu `InterlockEntry` specyficznego dla ES
+    (`ES_BLOKADA_TOR_POD_NAPIECIEM`) z JUŻ POLICZONYCH sygnałów istnieje, ale wykracza poza „minimalnie
+    i uczciwie" tej rundy — do rozważenia jako osobna, świadomie zamówiona zmiana.
+  - **Luka 6 (stan bezpiecznika, F10.3 finding): RAPORT — pole NIE dodane, potwierdzone.**
+    `BayPrimaryDevice.switch_state` JUŻ niesie stan per-aparat dla `kind='FUSE'` na ŚCIEŻCE DANYCH
+    (identycznie jak CB/DS/ES — `stackItemsForBay` czyta `BayPrimaryDeviceView.switchState` wprost,
+    `compose/station.ts`). Luka dotyczyła WYŁĄCZNIE ścieżki KONWENCJI (§12.4): `MiniBlockBayDescriptor`
+    nie ma agregatu `fuseState` (tylko cb/ds/es) — udokumentowane wprost w kodzie
+    (`compose/station.ts::apparatusStateFor` docstring) zamiast dodania pola-atrapy: konwencja i tak
+    jest fallbackiem bez `device_ref`/telemetrii, więc żaden realny sygnał SCADA nie zasiliłby takiego
+    agregatu.
+  - **Luka 7 (F9.6b, source_state_probe §13.3): RAPORT — BEZ implementacji, analiza obu wskazanych
+    łączy pośrednich wykazała że ŻADNE nie domyka gapu uczciwie:**
+    (a) `BayBaseModel.source_endpoint.operating_mode` — zbadano `field_read_model.py::_build_source_
+    endpoint` (linie 891-925): `operating_mode` jest ZAKODOWANĄ NA SZTYWNO stałą `"gotowosc"` dla
+    KAŻDEGO DER niezależnie od realnych danych (żadna gałąź nie zwraca innej wartości) — konsumpcja
+    tego pola fabrykowałaby jednolity fałszywy „standby" dla 100% DER, dokładnie ten heurystyczny błąd,
+    którego dyrektywa zakazuje. (b) `GPZSection.incoming_source_ref` — zbadano `domain_operations.py:
+    2671`: ustawiane WYŁĄCZNIE dla sekcji `idx==0` (pierwszej), łączy `Source`→SEKCJĘ/SZYNĘ, nie do
+    żadnego łącznika/telemetrii rozróżniającej energized/fault/maintenance; a GPZ strukturalnie NIE ma
+    dziś kanału `Bay.runtime_state` w praktyce (pola GPZ idą przez `Substation.meta.field_specs`, trzecia
+    ścieżka danych, V12K-030) — nawet łańcuchowanie przez `Bay.runtime_state` byłoby w większości puste.
+    Sprawdzono TRZECIĄ, niewymienioną w zleceniu możliwość: istniejący `SupplyPathHighlight`
+    (`SupplyPathHighlighter.ts`, BFS przez zamknięte łączniki, już produkcyjny, zero fizyki) —
+    odrzucony jako podstawa `operationalState`: (i) dla `Source` (external_grid) każdy `Source.bus_ref`
+    jest BEZWARUNKOWO korzeniem BFS (linia 124-129), więc `external_grid` byłby ZAWSZE „energized" —
+    tautologia konstrukcyjna, nie realna derywacja; (ii) dla DER sygnał `energizedGeneratorRefs` JEST
+    realny, ale „nieosiągalny" jest niejednoznaczne między „realny otwarty łącznik na trasie" (dowód) a
+    „niekompletna topologia testowa" (brak dowodu) — BFS nie odróżnia dziś tych przypadków, więc pewne
+    twierdzenie „disconnected" byłoby przedwczesne. REKOMENDACJA: `SldSourceView.operationalState`
+    pozostaje `undefined` dla WSZYSTKICH pięciu stanów do czasu (a) realnego pola stanu operacyjnego
+    źródła zasilanego z telemetrii (nie stałej) z jednoznacznym łączem Source/Generator→Bay, LUB (b)
+    rozszerzenia `SupplyPathHighlight` o jawne rozróżnienie „dowiedziony otwarty łącznik" vs „brak
+    dowodu" zanim `disconnected` będzie można stwierdzać uczciwie. Kod BEZ zmian (F9.6(b) ruling
+    architekta pozostaje w mocy — `bay_ref` NIE dodany).
+  - **Decyzje modelowe:** wszystkie 4 nowe pola backendu ADDYTYWNE (`| None = None` / `= []`), zero
+    zmiany istniejących fixture/hash (testy determinizmu w `tests/enm/test_f10_6_domain_fields.py`);
+    walidatory `model_validator(mode="after")` na `Measurement` wymuszają zgodność
+    `ct_arrangement`/`vt_arrangement` z `measurement_type` (wzorzec `Generator._validate_connection_
+    variant_consistency`). Frontend: WSZYSTKIE nowe parametry funkcji (`apparatusIdentifiers`,
+    `protectionFunctionTopologyGaps`) OPCJONALNE — wywołania bez nich = identyczne zachowanie sprzed
+    F10.6 (zero regresji potwierdzone testami istniejącymi).
+  - **Bramki:** backend `pytest tests/enm tests/test_canonical_analysis_api.py -q` → 650 passed (622
+    baseline + nowy plik `test_f10_6_domain_fields.py`, 17 testów); ruff/black/mypy strict na
+    `models.py`/`field_read_model.py` czyste; guardy `resultset_v1_schema`/`arch`/`solver_boundary`/
+    `pcc_zero`/`domain_no_guessing`/`catalog_binding` PASS. Frontend: `tsc --noEmit` czysty, `eslint`
+    czysty (0 warnings), `vitest run src/ui/sld --no-file-parallelism` → 172 plików / 3346 passed / 14
+    todo (baseline 3327 + 19 nowych), `npm run accept:sld-v3` → ALL PASS na WSZYSTKICH L0/L1/L2 (baseline
+    pionów NIETKNIĘTY: 12120/41000/54104 — fixtura `sldSubstrate52s` idzie ścieżką `field_specs`, więc
+    nowe pola CT/VT/protection/designation są dziś wizualnie NIEĆWICZONE na niej, zero zmiany renderu;
+    pełne pokrycie w testach jednostkowych z syntetycznymi fixturami `Bay`/`Measurement`/
+    `ProtectionAssignment`, wzorzec F10.4/F10.5), `npm run guard:codenames`/`forbidden_ui_terms_guard`/
+    `overlay_no_physics_guard`/`utf8_mojibake_guard`/`sld_determinism_guards`/`dialog_completeness_guard`/
+    `local_truth_guard` PASS. Brak commitu (nadzorca odbiera osobiście).
 
 ---
 

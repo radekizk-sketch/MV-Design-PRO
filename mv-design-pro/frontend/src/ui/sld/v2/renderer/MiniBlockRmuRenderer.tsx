@@ -96,6 +96,13 @@ export interface BayPrimaryDeviceView {
    *  Fundament dopasowania kotwicy miernika „M" (`compose/protectionMarking.ts`
    *  `resolveMeterAnchor`) — `undefined` gdy ENM nie niesie `linked_ref`. */
   readonly linkedRef?: string;
+  /** F10.6 (SLD_CAD_SPEC_V3 §19.1, D1, V12K-035): identyfikator PER-APARAT
+   *  jako DANA projektowa (`BayPrimaryDevice.designation`) — ma pierwszeństwo
+   *  nad fallbackiem konwencji `apparatusIdentifiers` (`compose/
+   *  apparatusSequence.ts`). `undefined` gdy ENM nie niesie tej danej dla
+   *  aparatu (render pozostaje przy konwencji, znacznik
+   *  `data-designation-source="konwencja"`). */
+  readonly designation?: string;
 }
 
 /**
@@ -113,6 +120,12 @@ export interface BayProtectionMarkingView {
   readonly codes: readonly string[];
   readonly breakerRef?: string;
   readonly ctRef?: string;
+  /** F10.6 (SLD_CAD_SPEC_V3 §20.2, D5, V12K-036): `ProtectionAssignment.
+   *  ct_refs_secondary` — CT dodatkowe strefy różnicowej (87T). `undefined`/
+   *  puste = strefa 2×CT NIE jest modelowana (dotychczasowe uproszczenie
+   *  §20.2 „obecność transformatora" pozostaje w mocy, `compose/
+   *  protectionTopologyValidation.ts`). */
+  readonly ctRefsSecondary?: readonly string[];
 }
 
 /**
@@ -123,8 +136,8 @@ export interface BayProtectionMarkingView {
  * rating.ratio_primary`/`ratio_secondary` (np. „300/5" — CZYSTE formatowanie,
  * zero fizyki/zaokrągleń). BEZ-DOMAIN: oba pola źródłowe (`name`, `rating`)
  * JUŻ ISTNIEJĄ w ENM (`backend/src/enm/models.py:455-470`) — układ pomiarowy
- * (3×CT fazowe / Ferranti-I0) to ODRĘBNE, NOWE pole DOMAIN (D3, F10.6), poza
- * zakresem tej adnotacji. Dopasowanie na aparat CT NARYSOWANEGO stosu przez
+ * (3×CT fazowe / Ferranti-I0, `arrangement` niżej) to F10.6 (D3, DOMAIN,
+ * `Measurement.ct_arrangement`). Dopasowanie na aparat CT NARYSOWANEGO stosu przez
  * `measurementRef === BayPrimaryDevice.linked_ref` (wzorzec
  * `meteringMeasurementRef`/`resolveMeterAnchor`, `compose/protectionMarking.ts`).
  */
@@ -132,6 +145,11 @@ export interface CtRatingAnnotationView {
   readonly measurementRef: string;
   readonly identifier: string;
   readonly ratioText: string;
+  /** F10.6 (SLD_CAD_SPEC_V3 §18.3, D3, V12K-036): układ pomiarowy —
+   *  `Measurement.ct_arrangement`. `undefined` gdy dana niedostarczona (WHITE
+   *  BOX — adnotacja rysuje sam identyfikator+przekładnię bez członu układu,
+   *  §18.3 „zero zgadywania"). */
+  readonly arrangement?: '3xCT' | 'ferranti';
 }
 
 export interface MiniBlockBayDescriptor {
@@ -165,6 +183,12 @@ export interface MiniBlockBayDescriptor {
    *  gdy pole nie niesie żadnego CT z ratingiem (brak danych = brak
    *  oznaczenia, §18.3 dosłownie — zero „z domysłu"). */
   readonly ctRatingAnnotations?: readonly CtRatingAnnotationView[];
+  /** F10.6 (SLD_CAD_SPEC_V3 §20.2, D4, V12K-036): `Measurement.
+   *  vt_arrangement` WSZYSTKICH VT tego pola (wartości niepuste, deduplikowane).
+   *  `undefined`/puste = dana układu VT niedostarczona dla ŻADNEGO VT pola —
+   *  `protectionFunctionTopologyGaps` (`compose/protectionTopologyValidation.ts`)
+   *  degraduje 67N do dotychczasowego uproszczenia (sama obecność VT). */
+  readonly vtArrangements?: readonly ('open_delta' | 'star')[];
 }
 
 export interface MiniBlockDerBadge {

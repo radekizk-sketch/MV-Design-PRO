@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 from uuid import NAMESPACE_URL, uuid5
 
 from enm.canonical_analysis import list_runs_for_case
@@ -557,9 +557,10 @@ def _build_measurement_chain(
     measurements = measurements_by_bay.get(bay.ref_id, [])
     if not measurements:
         return None
-    ct_refs = [
-        measurement.ref_id for measurement in measurements if measurement.measurement_type == "CT"
+    ct_measurements = [
+        measurement for measurement in measurements if measurement.measurement_type == "CT"
     ]
+    ct_refs = [measurement.ref_id for measurement in ct_measurements]
     vt_refs = [
         measurement.ref_id for measurement in measurements if measurement.measurement_type == "VT"
     ]
@@ -572,13 +573,27 @@ def _build_measurement_chain(
     topology = "ct_vt" if ct_refs and vt_refs else "ct_only" if ct_refs else "vt_only"
     if uses_3u0 and topology == "ct_vt":
         topology = "ct_vt_3u0"
+    # F10.6 (SLD_CAD_SPEC_V3 §18.3, D3): wyczyszczenie heurystyki —
+    # dawniej `"suma_ct" if uses_3i0 else "brak"` ZAWSZE zgadywało 3×CT
+    # sumujące, nigdy przekładnik Ferrantiego, dla KAŻDEGO pola z jakimkolwiek
+    # CT. Teraz czytamy `Measurement.ct_arrangement` (dana projektowa); brak
+    # danych o układzie = uczciwe "brak", NIE zgadywanie (WHITE BOX,
+    # domain_no_guessing_guard).
+    if any(m.ct_arrangement == "ferranti" for m in ct_measurements):
+        zero_sequence_current_source: Literal[
+            "suma_ct", "przekladnik_ferrantiego", "zewnetrzne", "brak"
+        ] = "przekladnik_ferrantiego"
+    elif any(m.ct_arrangement == "3xCT" for m in ct_measurements):
+        zero_sequence_current_source = "suma_ct"
+    else:
+        zero_sequence_current_source = "brak"
     return BayMeasurementChain(
         chain_ref=f"measurement-chain:{bay.ref_id}",
         ct_refs=ct_refs,
         vt_refs=vt_refs,
         uses_3i0=uses_3i0,
         uses_3u0=uses_3u0,
-        zero_sequence_current_source="suma_ct" if uses_3i0 else "brak",
+        zero_sequence_current_source=zero_sequence_current_source,
         zero_sequence_voltage_source="otwarty_trojkat_vt" if uses_3u0 else "brak",
         topology=topology,
         measurement_sets=[

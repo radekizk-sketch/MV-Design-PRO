@@ -34,9 +34,12 @@
  * ctRatingAnnotations`, jedna pozycja per CT z ratingiem — `resolveBayCtRating
  * Annotations`, `v2/canvas/enmToSldAdapter.ts`). Dopasowanie na aparat
  * NARYSOWANEGO stosu — TA SAMA reguła co miernik: `measurementRef ===
- * linked_ref`. Układ pomiarowy (3×CT fazowe / przekładnik sumujący
- * Ferranti-I0) to NOWE pole DOMAIN (D3, F10.6) — poza zakresem tej fazy,
- * dziś ZAWSZE rysowany jeden glif `currentTransformer` niezależnie od danych.
+ * linked_ref`. F10.6 (D3, DOMAIN): układ pomiarowy (3×CT fazowe / przekładnik
+ * sumujący Ferranti-I0, `Measurement.ct_arrangement`) dokleja TRZECI człon do
+ * etykiety (`ctArrangementLabelText` niżej), GDY dane obecne — glif
+ * `currentTransformer` sam pozostaje jeden niezależnie od danych (spec §18.3
+ * dopuszcza „wariant symbolu LUB adnotacji"; wybrano adnotację — zero nowego
+ * glifu).
  */
 
 import { GRID, snapUp } from '../core/grid';
@@ -100,15 +103,32 @@ export function bayHasProtectionAnnotation(bay: ProtectionAwareBay): boolean {
   );
 }
 
+/** Etykieta PL układu pomiarowego CT (§18.3, F10.6, D3) — `null` gdy dana
+ *  niedostarczona (adnotacja pozostaje bez członu układu, zero zgadywania). */
+export function ctArrangementLabelText(
+  arrangement: CtRatingAnnotationView['arrangement'] | null | undefined,
+): string | null {
+  if (arrangement === '3xCT') return '3×CT';
+  if (arrangement === 'ferranti') return 'Ferranti-I0';
+  return null;
+}
+
 /**
  * Tekst etykiety adnotacji CT (§18.3: „identyfikator aparatu i przekładnię,
  * np. «T1 · 300/5»") — separator „·" jak w pełnej liście kodów §17.3/podpisie
- * linii §19.2 (spójna typografia adnotacji). JEDNA funkcja dla rezerwacji
- * szerokości (`ctRatingAnnotationsWidth` niżej) i rysunku
- * (`resolveCtRatingAnnotations` niżej) — zero rozjazdu tekst↔szerokość.
+ * linii §19.2 (spójna typografia adnotacji). F10.6 (D3): gdy `arrangement`
+ * obecny, doklejony jako trzeci człon („T1 · 300/5 · 3×CT") — brak danych
+ * pozostawia dwuczłonowy tekst F10.4 bez zmian (zero zgadywania). JEDNA
+ * funkcja dla rezerwacji szerokości (`ctRatingAnnotationsWidth` niżej) i
+ * rysunku (`resolveCtRatingAnnotations` niżej) — zero rozjazdu tekst↔szerokość.
  */
-export function ctRatingLabelText(entry: Pick<CtRatingAnnotationView, 'identifier' | 'ratioText'>): string {
-  return `${entry.identifier} · ${entry.ratioText}`;
+export function ctRatingLabelText(
+  entry: Pick<CtRatingAnnotationView, 'identifier' | 'ratioText' | 'arrangement'>,
+): string {
+  const arrangementLabel = ctArrangementLabelText(entry.arrangement);
+  return arrangementLabel
+    ? `${entry.identifier} · ${entry.ratioText} · ${arrangementLabel}`
+    : `${entry.identifier} · ${entry.ratioText}`;
 }
 
 /**

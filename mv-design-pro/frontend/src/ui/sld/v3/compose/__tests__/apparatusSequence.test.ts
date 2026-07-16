@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { apparatusIdentifiers } from '../apparatusSequence';
+import { apparatusIdentifiers, apparatusIdentifierSources } from '../apparatusSequence';
 import type { SymbolId } from '../../symbols/defs';
 
 describe('apparatusIdentifiers (spec §19.1 — identyfikator per-aparat, fallback konwencji)', () => {
@@ -57,5 +57,35 @@ describe('apparatusIdentifiers (spec §19.1 — identyfikator per-aparat, fallba
   it('deterministyczne: dwa wywołania na tych samych danych dają identyczny wynik', () => {
     const symbolIds: readonly SymbolId[] = ['disconnector', 'breaker', 'currentTransformer', 'earthSwitch'];
     expect(apparatusIdentifiers(symbolIds)).toEqual(apparatusIdentifiers(symbolIds));
+  });
+});
+
+describe('F10.6 (DOMAIN, V12K-035, D1) — apparatusIdentifiers/apparatusIdentifierSources z BayPrimaryDevice.designation', () => {
+  it('designation obecny wygrywa nad tekstem konwencji, licznik kategorii mimo to rośnie dla pozostałych aparatów', () => {
+    const symbolIds: readonly SymbolId[] = ['breaker', 'disconnector', 'earthSwitch'];
+    const designations = ['Q7', null, undefined];
+    expect(apparatusIdentifiers(symbolIds, designations)).toEqual(['Q7', 'Q2', 'QE1']);
+  });
+
+  it('designation pusty/samo-białe-znaki traktowany jak brak danej (fallback konwencji)', () => {
+    const symbolIds: readonly SymbolId[] = ['breaker'];
+    expect(apparatusIdentifiers(symbolIds, [''])).toEqual(['Q1']);
+    expect(apparatusIdentifiers(symbolIds, ['   '])).toEqual(['Q1']);
+  });
+
+  it('brak parametru designations zachowuje DOKŁADNIE zachowanie sprzed F10.6 (100% konwencja)', () => {
+    const symbolIds: readonly SymbolId[] = ['disconnector', 'breaker', 'earthSwitch', 'transformer2W'];
+    expect(apparatusIdentifiers(symbolIds)).toEqual(['Q1', 'Q2', 'QE1', 'T1']);
+  });
+
+  it('apparatusIdentifierSources: "dane" wyłącznie gdy designation obecny na pozycji identyfikowalnej, null dla CT/VT/SA', () => {
+    const symbolIds: readonly SymbolId[] = ['breaker', 'disconnector', 'currentTransformer', 'earthSwitch'];
+    const designations = ['Q7', undefined, 'ignorowane-CT-nie-ma-identyfikatora', undefined];
+    expect(apparatusIdentifierSources(symbolIds, designations)).toEqual(['dane', 'konwencja', null, 'konwencja']);
+  });
+
+  it('apparatusIdentifierSources bez designations ⇒ zawsze "konwencja" na pozycjach identyfikowalnych', () => {
+    const symbolIds: readonly SymbolId[] = ['breaker', 'earthSwitch', 'transformer2W', 'cableHead'];
+    expect(apparatusIdentifierSources(symbolIds)).toEqual(['konwencja', 'konwencja', 'konwencja', null]);
   });
 });

@@ -456,6 +456,11 @@ export interface BayPrimaryDevice {
   render_variant?: string | null;
   switch_state?: BaySwitchState | null;
   operating_state?: BayOperatingState | null;
+  /** F10.6 (SLD_CAD_SPEC_V3 §19.1, D1, V12K-035): identyfikator PER-APARAT
+   *  (np. "Q1", "QE1", "T1") jako dana projektowa — lustro
+   *  `backend/src/enm/models.py::BayPrimaryDevice.designation`. `null`/brak =
+   *  dana niedostarczona, render pozostaje przy fallbacku konwencji. */
+  designation?: string | null;
 }
 
 export interface BayMeasurements {
@@ -839,6 +844,15 @@ export interface Measurement extends ENMElement {
   source_mode?: CatalogSourceMode | null;
   materialized_params?: Record<string, unknown> | null;
   overrides?: ParameterOverride[] | null;
+  /** F10.6 (SLD_CAD_SPEC_V3 §18.3, D3, V12K-036): układ pomiarowy CT —
+   *  3×CT fazowe vs przekładnik sumujący/Ferranti dla składowej zerowej I0.
+   *  WYŁĄCZNIE dla measurement_type==='CT'; `null`/brak = dana
+   *  niedostarczona (WHITE BOX — zero domysłu). */
+  ct_arrangement?: '3xCT' | 'ferranti' | null;
+  /** F10.6 (SLD_CAD_SPEC_V3 §20.2, D4): układ VT — otwarty trójkąt (3U0,
+   *  warunek konieczny dla 67N kierunkowego) vs gwiazda. WYŁĄCZNIE dla
+   *  measurement_type==='VT'; `null`/brak = dotychczasowe uproszczenie. */
+  vt_arrangement?: 'open_delta' | 'star' | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -849,6 +863,12 @@ export interface ProtectionAssignment extends ENMElement {
   breaker_ref: string;
   ct_ref?: string | null;
   vt_ref?: string | null;
+  /** F10.6 (SLD_CAD_SPEC_V3 §20.2, D5, V12K-036): CT dodatkowe strefy
+   *  różnicowej (87T wymaga CT po OBU stronach transformatora — `ct_ref`
+   *  niesie JEDEN CT, ta lista niesie pozostałe CT granicy strefy). Puste/
+   *  brak = strefa 2×CT NIE jest modelowana (degradacja do dotychczasowego
+   *  uproszczenia „obecność transformatora"). */
+  ct_refs_secondary?: string[];
   device_type: 'overcurrent' | 'earth_fault' | 'directional_overcurrent'
     | 'distance' | 'differential' | 'custom';
   catalog_ref?: string | null;

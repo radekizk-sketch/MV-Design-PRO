@@ -3619,6 +3619,9 @@ function buildExplicitStationMiniBays(
         // F10.4 (SLD_CAD_SPEC_V3 §18.3): adnotacja przekładni CT — patrz
         // docstring `resolveBayCtRatingAnnotations` poniżej.
         ctRatingAnnotations: resolveBayCtRatingAnnotations(bay, snapshot),
+        // F10.6 (SLD_CAD_SPEC_V3 §20.2, D4): układ VT — patrz docstring
+        // `resolveBayVtArrangements` poniżej.
+        vtArrangements: resolveBayVtArrangements(bay, snapshot),
       };
     });
 
@@ -4049,6 +4052,9 @@ function projectBayPrimaryDevices(
       // F9.9 (SLD_CAD_SPEC_V3 §17.2): `linked_ref` — dla CT/VT wskazuje
       // `Measurement.ref_id` (patrz `BayProtectionMarkingView` docstring).
       linkedRef: device.linked_ref ?? undefined,
+      // F10.6 (SLD_CAD_SPEC_V3 §19.1, D1, V12K-035): identyfikator per-aparat
+      // jako dana projektowa — patrz `BayPrimaryDeviceView.designation`.
+      designation: device.designation ?? undefined,
     }));
 }
 
@@ -4083,7 +4089,34 @@ function resolveBayProtectionMarking(
     codes,
     breakerRef: assignment?.breaker_ref,
     ctRef: assignment?.ct_ref ?? undefined,
+    // F10.6 (SLD_CAD_SPEC_V3 §20.2, D5, V12K-036): CT dodatkowe strefy
+    // różnicowej (87T) — `undefined` gdy puste (dana strefy niedostarczona,
+    // patrz `BayProtectionMarkingView.ctRefsSecondary` docstring).
+    ctRefsSecondary:
+      assignment?.ct_refs_secondary && assignment.ct_refs_secondary.length > 0
+        ? assignment.ct_refs_secondary
+        : undefined,
   };
+}
+
+/**
+ * F10.6 (SLD_CAD_SPEC_V3 §20.2, D4, V12K-036): projekcja układu VT
+ * (`Measurement.vt_arrangement`) WSZYSTKICH pomiarów VT tego pola —
+ * `undefined` gdy ŻADEN VT pola nie niesie tej danej (67N degraduje do
+ * dotychczasowego uproszczenia F10.5, patrz `protectionTopologyValidation.ts`).
+ */
+function resolveBayVtArrangements(
+  bay: Bay,
+  snapshot: EnergyNetworkModel,
+): readonly ('open_delta' | 'star')[] | undefined {
+  const arrangements = new Set<'open_delta' | 'star'>();
+  for (const m of snapshot.measurements ?? []) {
+    if (m.measurement_type === 'VT' && m.bay_ref === bay.ref_id && m.vt_arrangement != null) {
+      arrangements.add(m.vt_arrangement);
+    }
+  }
+  if (arrangements.size === 0) return undefined;
+  return [...arrangements].sort();
 }
 
 /**
@@ -4116,8 +4149,9 @@ function resolveBayMeteringMeasurementRef(
  * `compose/protectionMarking.ts` `resolveCtRatingAnnotations` (adapter nie
  * zna geometrii — wzorzec `resolveBayProtectionMarking`). `undefined` gdy
  * pole nie ma żadnego CT (brak danych = brak oznaczenia, §18.3 dosłownie).
- * Układ pomiarowy (3×CT fazowe / Ferranti-I0) — NOWE pole DOMAIN (D3, F10.6),
- * poza zakresem tej projekcji.
+ * F10.6 (D3, V12K-036): układ pomiarowy (`Measurement.ct_arrangement`)
+ * przekazywany 1:1 jako `arrangement` — `undefined` gdy dana niedostarczona
+ * (adnotacja rysuje sam identyfikator+przekładnię, zero zgadywania).
  */
 function resolveBayCtRatingAnnotations(
   bay: Bay,
@@ -4131,6 +4165,7 @@ function resolveBayCtRatingAnnotations(
     measurementRef: m.ref_id,
     identifier: m.name,
     ratioText: `${m.rating.ratio_primary}/${m.rating.ratio_secondary}`,
+    arrangement: m.ct_arrangement ?? undefined,
   }));
 }
 
