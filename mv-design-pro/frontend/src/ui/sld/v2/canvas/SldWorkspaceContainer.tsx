@@ -43,14 +43,14 @@ import { inferLodFromScale, type LodLevel } from '../lod/LodPolicy';
 import { mapLayerStateToRenderVisibility } from '../lod/layerMapping';
 import { ProofPacksPanel } from '../proof/ProofPacksPanel';
 import { NetworkHierarchyTree } from '../domain/NetworkHierarchyTree';
-import { buildHierarchy, type EnmInputForHierarchy } from '../domain/HierarchyTree';
+import { buildNetworkHierarchyFromSnapshot } from '../../shared/networkHierarchyFromSnapshot';
 import { SldContextMenuController } from '../../../context-menu/SldContextMenuController';
 import type { SldContextMenuRequest } from '../../../context-menu/SldContextMenuController';
 import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
 import { notify } from '../../../notifications/store';
 import { useSelectionStore } from '../../../selection';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
-import type { EnergyNetworkModel, Substation } from '../../../../types/enm';
+import type { EnergyNetworkModel } from '../../../../types/enm';
 import type { ElementType, SelectedElement } from '../../../types';
 import { stationPublicIdentity } from '../../../shared/publicTechnicalLabels';
 import {
@@ -63,7 +63,7 @@ import { SldThemeProvider } from '../theme/themeContext';
 import { SplitPreviewPanel } from '../workflow/SplitPreviewPanel';
 import type { SplitStatePreviewReady } from '../workflow/ConsciousSplitController';
 import { SldCanvasV2, type SldCanvasContextMenuRequest } from './SldCanvasV2';
-import { StationInternalView, type InternalDerDescriptor, type StationInternalViewProps } from './StationInternalView';
+import { StationInternalView } from './StationInternalView';
 import { buildSldDataFromSnapshot } from './enmToSldAdapter';
 import { buildCanonicalGpzProps } from './enmToCanonicalGpzAdapter';
 import type {
@@ -79,7 +79,6 @@ import {
   type PaletteDragPayload,
 } from '../../../network-build/dragDropController';
 import { useStationDerStore as useStationDerStoreImport } from '../../../network-build/station-der';
-import { selectStationDistributionTransformers } from '../../../network-build/stationTransformerSelection';
 import { useMeasuredSize } from '../../shared/useMeasuredSize';
 import {
   buildCableRunDetailDrawerData,
@@ -88,13 +87,12 @@ import {
   buildNodeDetailDrawerData,
   describeStationInternalElement,
   findBayByRef,
-  findBusVoltage,
   findSubstationByRef,
   mapKindToMenuKind,
-  selectStationBays,
   stationRefForTransformerSelection,
   stationRefFromInternalElement,
 } from '../../shared/detailDrawerData';
+import { buildStationInternalViewData } from '../../shared/stationInternalViewData';
 import {
   DRAWER_ACTION_LABEL_PL,
   parseGpzApparatusSelectionId,
@@ -111,8 +109,9 @@ const MIN_CANVAS_HEIGHT_PX = 240;
 // centrowanie względem tego prostokąta, więc treść nie chowa się pod nakładkami.
 // Rezerwy chrome — NIE zmieniają geometrii świata, tylko obszar docelowy kamery.
 const SLD_CANVAS_SAFE_INSETS = { top: 52, right: 16, bottom: 44, left: 16 } as const;
-const STATION_INTERNAL_WIDTH_PX = 880;
-const STATION_INTERNAL_HEIGHT_PX = 560;
+// F12-B (spec §10.1 ARCH-4, plan §F12): STATION_INTERNAL_WIDTH_PX/HEIGHT_PX
+// przeniesione do `shared/stationInternalViewData.ts` (używane WYŁĄCZNIE
+// przez `internalStationProps`, patrz import poniżej).
 const GPZ_LV_SECTION_COUPLER_GAP = 72;
 const GPZ_LV_SECTION_MIN_WIDTH = 260;
 const GPZ_BAY_WIDTH = 74;
@@ -120,17 +119,9 @@ const GPZ_BAY_PITCH = 82;
 const GPZ_SECTION_LABEL_WIDTH = 30;
 const GPZ_PAGE_PADDING = 24;
 const GPZ_TR_AREA_Y = 280;
-const TECHNICAL_NUMBER_FORMAT_PL = new Intl.NumberFormat('pl-PL', {
-  maximumFractionDigits: 2,
-});
-
-function formatTechnicalNumberPl(value: number): string {
-  return TECHNICAL_NUMBER_FORMAT_PL.format(value);
-}
-
-function formatKvPl(value: number): string {
-  return `${formatTechnicalNumberPl(value)} kV`;
-}
+// F12-B: `formatTechnicalNumberPl`/`formatKvPl` przeniesione do
+// `shared/stationInternalViewData.ts` (jedyne użycie — `nnSwitchgears`
+// designation w `internalStationProps`).
 const GPZ_TR_HEIGHT = 80;
 const GPZ_LV_BUS_GAP = 16;
 const GPZ_LV_BAY_HEIGHT = 250;
@@ -265,33 +256,8 @@ function describeGpzApparatus(
   };
 }
 
-function inferStationTopologicalType(
-  station: Substation | null,
-  fallback?: StationInternalViewProps['topologicalType'],
-): StationInternalViewProps['topologicalType'] {
-  if (fallback) return fallback;
-  switch (station?.station_type) {
-    case 'inline':
-      return 'przelotowa';
-    case 'branch':
-      return 'odgałęźna';
-    case 'sectional':
-      return 'sekcyjna';
-    case 'terminal':
-    default:
-      return 'końcowa';
-  }
-}
-
-function uniqueSortedVoltages(values: Array<number | null | undefined>): number[] {
-  return Array.from(
-    new Set(
-      values
-        .filter((value): value is number => typeof value === 'number' && Number.isFinite(value))
-        .map((value) => Number(value.toFixed(3))),
-    ),
-  ).sort((a, b) => a - b);
-}
+// F12-B: `inferStationTopologicalType`/`uniqueSortedVoltages` przeniesione do
+// `shared/stationInternalViewData.ts` (jedyne użycie — `internalStationProps`).
 
 function mapDerKindToElementType(kind: 'PV' | 'BESS' | 'FW'): ElementType {
   switch (kind) {
@@ -448,72 +414,11 @@ export function SldWorkspaceContainer(
   // snapshot. Brak modelu = pusta hierarchia (empty state w komponencie).
   const [hierarchyPanelOpen, setHierarchyPanelOpen] = useState<boolean>(false);
   const [proofPanelOpen, setProofPanelOpen] = useState<boolean>(false);
-  const networkHierarchy = useMemo(() => {
-    if (!snapshot) {
-      return buildHierarchy({
-        substations: [],
-        bays: [],
-        buses: [],
-        sources: [],
-        line_runs: [],
-        generators: [],
-      });
-    }
-    // Mapowanie snapshot → EnmInputForHierarchy w trybie defensywnym.
-    // ENM snapshot types (z types/enm.ts) różnią się od HierarchyTree-input.
-    // Używamy strukturalnego match'u z fallbackami dla brakujących pól.
-    const enmInput = {
-      substations: ((snapshot.substations ?? []) as readonly unknown[]).map(
-        (raw): EnmInputForHierarchy['substations'][number] => {
-          const s = raw as Record<string, unknown>;
-          return {
-            ref_id: String(s.ref_id ?? ''),
-            name: String(s.name ?? s.ref_id ?? ''),
-            station_type: String(s.station_type ?? 'mv_lv'),
-            bus_refs: Array.isArray(s.bus_refs) ? (s.bus_refs as string[]) : [],
-            gpz_sections: Array.isArray(s.gpz_sections)
-              ? (s.gpz_sections as EnmInputForHierarchy['substations'][number]['gpz_sections'])
-              : undefined,
-          };
-        },
-      ),
-      bays: ((snapshot.bays ?? []) as readonly unknown[]).map(
-        (raw): EnmInputForHierarchy['bays'][number] => {
-          const b = raw as Record<string, unknown>;
-          return {
-            ref_id: String(b.ref_id ?? ''),
-            name: String(b.name ?? b.ref_id ?? ''),
-            bay_role: (b.bay_role as EnmInputForHierarchy['bays'][number]['bay_role']) ?? 'OUT',
-            substation_ref: String(b.substation_ref ?? ''),
-            bus_ref: String(b.bus_ref ?? ''),
-          };
-        },
-      ),
-      buses: ((snapshot.buses ?? []) as readonly unknown[]).map(
-        (raw): EnmInputForHierarchy['buses'][number] => {
-          const b = raw as Record<string, unknown>;
-          return {
-            ref_id: String(b.ref_id ?? ''),
-            voltage_kv: Number(b.voltage_kv ?? 15),
-            name: String(b.name ?? b.ref_id ?? ''),
-          };
-        },
-      ),
-      sources: ((snapshot.sources ?? []) as readonly unknown[]).map(
-        (raw): EnmInputForHierarchy['sources'][number] => {
-          const s = raw as Record<string, unknown>;
-          return {
-            ref_id: String(s.ref_id ?? ''),
-            bus_ref: String(s.bus_ref ?? ''),
-            sk3_mva: typeof s.sk3_mva === 'number' ? s.sk3_mva : null,
-          };
-        },
-      ),
-      line_runs: [],
-      generators: [],
-    } satisfies EnmInputForHierarchy;
-    return buildHierarchy(enmInput);
-  }, [snapshot]);
+  // F12-B (spec §10.1 ARCH-4, plan §F12): budowa hierarchii wyciągnięta do
+  // `shared/networkHierarchyFromSnapshot.ts` — v2 i v3 czytają JEDNĄ
+  // implementację (zero duplikacji, zero zmiany zachowania — funkcja
+  // przeniesiona 1:1, patrz docstring modułu współdzielonego).
+  const networkHierarchy = useMemo(() => buildNetworkHierarchyFromSnapshot(snapshot), [snapshot]);
 
   const handleResetLayers = useCallback(() => {
     setLayerState(createInitialLayerState());
@@ -1103,86 +1008,19 @@ export function SldWorkspaceContainer(
     };
   }, []);
 
+  // F12-B (spec §10.1 ARCH-4, plan §F12): budowa danych wyciągnięta do
+  // `shared/stationInternalViewData.ts` (czysta funkcja, zero callbacków —
+  // patrz DECYZJA w nagłówku modułu) — v2 i v3 czytają JEDNĄ implementację.
+  // Callbacki (`onClose`/`onSelectBay`/`onSelectTransformer`) ZOSTAJĄ tu,
+  // bo zależą od stanu/dyspozytora lokalnego kontenera (`handleSelectElement`).
+  const internalStationData = useMemo(
+    () => buildStationInternalViewData(snapshot, sldData, internalStationId, measured),
+    [internalStationId, measured, snapshot, sldData],
+  );
   const internalStationProps = useMemo(() => {
-    if (!internalStationId) return null;
-    const station = findSubstationByRef(snapshot, internalStationId);
-    const stationVisual = sldData.stations.find((item) => item.id === internalStationId);
-    const stationTransformers = selectStationDistributionTransformers(snapshot, station);
-    const stationBays = selectStationBays(snapshot, station);
-    const stationBusRefs = new Set(station?.bus_refs ?? []);
-
-    const snVoltageKv =
-      uniqueSortedVoltages([
-        ...Array.from(stationBusRefs).map((busRef) => findBusVoltage(snapshot, busRef)),
-        ...stationTransformers.map((transformer) => transformer.uhv_kv),
-      ].filter((voltage): voltage is number => typeof voltage === 'number' && voltage >= 1))[0]
-      ?? 15;
-
-    const nnVoltageLevels = uniqueSortedVoltages([
-      ...Array.from(stationBusRefs)
-        .map((busRef) => findBusVoltage(snapshot, busRef))
-        .filter((voltage): voltage is number => typeof voltage === 'number' && voltage < 1),
-      ...stationTransformers
-        .map((transformer) => transformer.ulv_kv)
-        .filter((voltage) => voltage < 1),
-    ]);
-
-    const overlayWidth = Math.min(
-      STATION_INTERNAL_WIDTH_PX,
-      Math.max(360, measured.width - 24),
-    );
-    const overlayHeight = Math.min(
-      STATION_INTERNAL_HEIGHT_PX,
-      Math.max(300, measured.height - 24),
-    );
-
+    if (!internalStationData) return null;
     return {
-      substationId: internalStationId,
-      name: station && snapshot ? stationPublicIdentity(snapshot, station).displayName : stationVisual?.name || internalStationId,
-      topologicalType: inferStationTopologicalType(station, stationVisual?.topologicalType),
-      snVoltageKv,
-      nnVoltageLevels,
-      bays: stationBays.map((bay) => ({
-        bayId: bay.ref_id,
-        designation: bay.name || bay.ref_id,
-        bayRole: bay.bay_role,
-        devices: [],
-      })),
-      transformers: stationTransformers.map((transformer) => ({
-        transformerId: transformer.ref_id,
-        designation: transformer.name || transformer.ref_id,
-        snMva: transformer.sn_mva,
-        uhvKv: transformer.uhv_kv,
-        ulvKv: transformer.ulv_kv,
-      })),
-      nnSwitchgears: nnVoltageLevels.map((voltage) => ({
-        designation: `Rozdzielnica nN ${formatKvPl(voltage)}`,
-        nnVoltageKv: voltage,
-        feedersCount: (snapshot?.loads ?? []).filter((load) => {
-          const loadVoltage = findBusVoltage(snapshot, load.bus_ref);
-          return loadVoltage !== null && Math.abs(loadVoltage - voltage) < 0.001;
-        }).length,
-      })),
-      ders: (snapshot?.generators ?? [])
-        .filter((generator) => generator.station_ref === internalStationId
-          || generator.meta?.station_ref === internalStationId)
-        .map<InternalDerDescriptor>((generator) => ({
-          derId: generator.ref_id,
-          kind: generator.gen_type === 'bess'
-            ? 'BESS'
-            : generator.gen_type === 'wind_inverter' || generator.gen_type === 'fw_pmsg' || generator.gen_type === 'fw_dfig' || generator.gen_type === 'fw_scig'
-              ? 'FW'
-              : 'PV',
-          connectionSide:
-            generator.connection_variant === 'nn_side' || generator.connection_variant === 'LV_BEHIND_STATION_TRANSFORMER'
-              ? 'nn'
-              : generator.connection_variant === 'block_transformer' || generator.connection_variant === 'DEDICATED_MV_CONNECTION'
-                ? 'dedicated'
-                : 'sn',
-          count: 1,
-        })),
-      width: overlayWidth,
-      height: overlayHeight,
+      ...internalStationData,
       onClose: closeInternalStation,
       onSelectBay: (elementId: string) => {
         if (elementId.includes('/pv/protection/')) {
@@ -1199,7 +1037,7 @@ export function SldWorkspaceContainer(
       },
       onSelectTransformer: (elementId: string) => handleSelectElement(elementId, 'transformer'),
     };
-  }, [internalStationId, closeInternalStation, handleSelectElement, measured.height, measured.width, snapshot, sldData.stations]);
+  }, [internalStationData, closeInternalStation, handleSelectElement]);
 
   const contextApparatus = contextRequest?.kind === 'apparatus' && contextRequest.elementId
     ? parseGpzApparatusSelectionId(contextRequest.elementId)

@@ -73,7 +73,7 @@
  *    `energizedByTestId` → rysunek bazowy mono (spec §6 P5) — „Bez danych →
  *    mono" zachowane.
  */
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import type { ElementType } from '../../../types';
@@ -105,7 +105,26 @@ import {
   parseGpzApparatusSelectionId,
   useSldActionExecutor,
 } from '../../shared/sldActionExecutor';
-import { buildSceneV3, type SceneLod } from '../scene/buildScene';
+// F12-B (spec §10.1 ARCH-4, plan §F12): sześć ostatnich osiągalnych funkcji
+// kontenera v2 bez odpowiednika v3 — patrz sekcja montażu na dole pliku dla
+// szczegółowego mapowania na punkty F12-B 1-6.
+import { SldExportFormatMenu } from '../../v2/export/SldExportFormatMenu';
+import { NetworkHierarchyTree } from '../../v2/domain/NetworkHierarchyTree';
+import { buildNetworkHierarchyFromSnapshot } from '../../shared/networkHierarchyFromSnapshot';
+import { ProofPacksPanel } from '../../v2/proof/ProofPacksPanel';
+import { StationInternalView } from '../../v2/canvas/StationInternalView';
+import { buildStationInternalViewData } from '../../shared/stationInternalViewData';
+import { LassoSelector, pointInLasso, rectFromPoints, type LassoRect } from '../../v2/canvas/LassoSelector';
+import { worldToScreen } from '../../v2/viewport/ViewportController';
+import { SYMBOL_DEFS } from '../symbols/defs';
+import {
+  CANVAS_LAYER_IDS,
+  CANVAS_LAYER_LABELS_PL,
+  type CanvasLayerId,
+  type CanvasLayerVisibility,
+} from './layers';
+import type { ViewportTransform } from './camera';
+import { buildSceneV3, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import type { PreviewElementKind } from '../compose/preview';
 import { SldCanvasV3, type SldElementClickMeta } from './SldCanvasV3';
 import { buildFlowOverlayFromScene, singleHopSegmentRefs, type SegmentFlowOverlay, type SldV3Overlay } from './overlay';
@@ -501,6 +520,119 @@ function useFlowOverlay(
   );
 }
 
+// ---------------------------------------------------------------------------
+// F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector — selekcja obszarem"):
+// hit-test PURE funkcja — v2 `LassoSelector.pointInLasso` jest wołany
+// WYŁĄCZNIE w testach (grep całego `src/`: zero produkcyjnych wywołań poza
+// `v2/canvas/LassoSelector.test.tsx`) — v2 renderuje prostokąt lasso wyłącznie
+// WIZUALNIE, nigdy nie liczy trafień. v3 dostarcza REALNY hit-test (nie
+// odtworzenie martwego kodu v2, tylko dokończenie funkcji zgodnie ze spec
+// §10.1 F12-B pkt 5: „symbole sceny efektywnego LOD, których środek bboxa
+// (przez SYMBOL_DEFS) po transformacji kamery (worldToScreen) wpada w rect").
+// ---------------------------------------------------------------------------
+
+export interface LassoSelectionCandidate {
+  readonly ownerRef: string;
+  readonly elementKind: PreviewElementKind;
+}
+
+/**
+ * Symbole sceny (LOD efektywny wołającego), których środek bboxa (world,
+ * `SYMBOL_DEFS[symbolId].width/height`) po `worldToScreen(point, transform)`
+ * wpada w `rect` (screen-space, ten sam układ co `LassoRect` z pointer
+ * eventów kanwy — `transform` mapuje 1:1 world→CSS-px kanwy, bo
+ * `SldCanvasV3`'s `viewBox` jest skonstruowany z DOKŁADNIE tego samego
+ * `ViewportTransform`, patrz `canvas/camera.ts` `cameraViewBox`). Elementy
+ * bez `ownerRef`/`elementKind` (adnotacje bez identyfikatora domenowego) są
+ * pomijane — zero zgadywania. Deduplikacja po `ownerRef` (ten sam element
+ * logiczny nie powinien trafić selekcji dwa razy). Czysta funkcja (zero
+ * DOM) — testowalna bez renderu/PointerEvent (patrz nagłówek pliku F8a k3
+ * dla precedensu ograniczeń jsdom).
+ */
+export function symbolsInLassoRect(
+  scene: SceneV3,
+  rect: LassoRect,
+  transform: ViewportTransform,
+): readonly LassoSelectionCandidate[] {
+  const hits: LassoSelectionCandidate[] = [];
+  const seen = new Set<string>();
+  for (const symbol of scene.symbols) {
+    const ownerRef = symbol.meta?.ownerRef;
+    const elementKind = symbol.meta?.elementKind;
+    if (!ownerRef || !elementKind || seen.has(ownerRef)) continue;
+    const def = SYMBOL_DEFS[symbol.symbolId];
+    const worldCenter = { x: symbol.x + def.width / 2, y: symbol.y + def.height / 2 };
+    const screenCenter = worldToScreen(worldCenter, transform);
+    if (pointInLasso(screenCenter, rect)) {
+      seen.add(ownerRef);
+      hits.push({ ownerRef, elementKind });
+    }
+  }
+  return hits;
+}
+
+// ---------------------------------------------------------------------------
+// F12-B pkt 4 (spec §10.1 ARCH-4, „LayerTogglePanel jako realny filtr"):
+// panel warstw v3 — WŁASNY lekki komponent (NIE `v2/lod/LayerTogglePanel`,
+// który jest sprzężony z `LodPolicy`/13-warstwowym słownikiem v2 —
+// niekompatybilny, patrz `v3/canvas/layers.ts` nagłówek). Wizualnie wzorowany
+// na `LayerTogglePanel` (checkboxy, PL, reset) — inny stan/inny zestaw
+// warstw.
+// ---------------------------------------------------------------------------
+
+function SldV3LayerTogglePanel(props: {
+  readonly visibility: CanvasLayerVisibility;
+  readonly onToggleLayer: (layerId: CanvasLayerId) => void;
+  readonly onResetAll: () => void;
+  readonly className?: string;
+}): JSX.Element {
+  const { visibility, onToggleLayer, onResetAll, className } = props;
+  return (
+    <section
+      className={[
+        'flex flex-col gap-1 rounded border border-scada-border bg-scada-panel/95 p-2 text-[11px] text-scada-text shadow-lg',
+        className ?? '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      aria-label="Panel warstw schematu jednokreskowego (v3)"
+      data-testid="sld-v3-layer-toggle-panel"
+    >
+      <header className="flex items-center justify-between gap-2 border-b border-scada-border pb-1">
+        <span className="font-semibold uppercase tracking-wider text-scada-muted">
+          Warstwy ({CANVAS_LAYER_IDS.length})
+        </span>
+        <button
+          type="button"
+          onClick={onResetAll}
+          data-testid="sld-v3-layer-panel-reset"
+          className="text-scada-muted hover:text-scada-text"
+        >
+          Reset
+        </button>
+      </header>
+      <ul className="flex flex-col gap-0.5">
+        {CANVAS_LAYER_IDS.map((layerId) => {
+          const checked = visibility[layerId] !== false;
+          return (
+            <li key={layerId}>
+              <label className="flex cursor-pointer items-center gap-2 py-0.5">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => onToggleLayer(layerId)}
+                  data-testid={`sld-v3-layer-toggle-${layerId}`}
+                />
+                <span>{CANVAS_LAYER_LABELS_PL[layerId]}</span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Element {
   const { width: widthOverride, height: heightOverride, lodOverride } = props;
   const containerRef = useRef<HTMLDivElement>(null);
@@ -620,6 +752,186 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // hipotetyczny.
   const derDrag = useDerDragDrop();
 
+  // F12-B pkt 2 (spec §10.1 ARCH-4, „NetworkHierarchyTree"): hierarchia
+  // GPZ→Sekcja→Pole — budowa WSPÓŁDZIELONA z v2 (`shared/
+  // networkHierarchyFromSnapshot.ts`, zero zmiany zachowania).
+  const networkHierarchy = useMemo(() => buildNetworkHierarchyFromSnapshot(snapshot), [snapshot]);
+  const [hierarchyPanelOpen, setHierarchyPanelOpen] = useState(false);
+
+  // F12-B pkt 3 (spec §10.1 ARCH-4, „ProofPacksPanel"): `hasNetworkModel` —
+  // TA SAMA definicja co v2 `!isEmpty` (`SldWorkspaceContainer.tsx`:
+  // `sldData.gpzs/stations/cableRuns/ders` wszystkie puste ⇒ `isEmpty`).
+  const [proofPanelOpen, setProofPanelOpen] = useState(false);
+  const hasNetworkModel = useMemo(
+    () =>
+      sldData.gpzs.length > 0
+      || sldData.stations.length > 0
+      || sldData.cableRuns.length > 0
+      || sldData.ders.length > 0,
+    [sldData],
+  );
+
+  // F12-B pkt 4 (spec §10.1 ARCH-4, „LayerTogglePanel jako realny filtr"):
+  // stan LOKALNY warstw v3 (`v3/canvas/layers.ts`) — brak wpisu = widoczna
+  // (spec „brak propa = wszystko widoczne", przekazywane 1:1 do `SldCanvasV3.
+  // layerVisibility`, filtr WYŁĄCZNIE renderu — patrz `SldCanvasV3.tsx`).
+  const [layerVisibility, setLayerVisibility] = useState<CanvasLayerVisibility>({});
+  const [layerPanelOpen, setLayerPanelOpen] = useState(false);
+  const handleToggleLayer = useCallback((layerId: CanvasLayerId) => {
+    setLayerVisibility((prev) => ({ ...prev, [layerId]: prev[layerId] === false ? true : false }));
+  }, []);
+  const handleResetLayers = useCallback(() => setLayerVisibility({}), []);
+
+  // F12-B pkt 1 (spec §10.1 ARCH-4, „SldExportFormatMenu — eksport SVG/PNG"):
+  // TEN SAM wzorzec co v2 `handleExportSvg` (`SldWorkspaceContainer.tsx`),
+  // selektor kanwy v3 (`sld-canvas-v3` zamiast `sld-canvas-v2`).
+  const handleExportSvg = useCallback(() => {
+    const svgEl = containerRef.current?.querySelector<SVGSVGElement>('svg[data-testid="sld-canvas-v3"]');
+    if (!svgEl) return;
+    const serializer = new XMLSerializer();
+    const svgStr = serializer.serializeToString(svgEl);
+    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'schemat_sld.svg';
+    link.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): stan kamery (transform+
+  // LOD) zgłaszany przez `SldCanvasV3.onCameraChange` — jedyny sposób, w jaki
+  // ten workspace może poznać AKTUALNY `ViewportTransform` (kamera jest
+  // stanem WEWNĘTRZNYM kanwy od F6b), potrzebny do `worldToScreen` w
+  // `symbolsInLassoRect` (hit-test wyżej).
+  const [cameraState, setCameraState] = useState<{ readonly transform: ViewportTransform; readonly lod: SceneLod } | null>(null);
+  const handleCameraChange = useCallback((transform: ViewportTransform, lod: SceneLod) => {
+    setCameraState((prev) => (prev && prev.transform === transform && prev.lod === lod ? prev : { transform, lod }));
+  }, []);
+
+  // F12-B pkt 5: lasso — nakładka screen-space AKTYWNA (pointer-events: auto)
+  // WYŁĄCZNIE gdy Shift wciśnięty (albo trwa przeciągnięcie rozpoczęte pod
+  // Shift) — zwykły drag BEZ Shift przechodzi NIEZMIENIONY do `SldCanvasV3`
+  // (pan/zoom kamery nietknięte, spec §10.1 F12-B pkt 5 wymóg wprost).
+  const [shiftHeld, setShiftHeld] = useState(false);
+  const [lassoRect, setLassoRect] = useState<LassoRect | null>(null);
+  const lassoStartRef = useRef<{ x: number; y: number } | null>(null);
+  const selectElements = useSelectionStore((state) => state.selectElements);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Shift') setShiftHeld(true);
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key === 'Shift') setShiftHeld(false);
+    };
+    // Bezpiecznik: utrata fokusu okna z wciśniętym Shift (np. alt-tab) nie
+    // może zostawić lasso trwale uzbrojonego (brak `keyup` poza oknem).
+    const onBlur = () => setShiftHeld(false);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, []);
+
+  const handleLassoPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!event.shiftKey || event.button !== 0) return;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const start = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+    lassoStartRef.current = start;
+    setLassoRect({ x: start.x, y: start.y, width: 0, height: 0 });
+  }, []);
+
+  const handleLassoPointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!lassoStartRef.current) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const end = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+    setLassoRect(rectFromPoints(lassoStartRef.current, end));
+  }, []);
+
+  const handleLassoPointerUp = useCallback(() => {
+    const activeRect = lassoStartRef.current ? lassoRect : null;
+    lassoStartRef.current = null;
+    if (activeRect && snapshot && cameraState) {
+      const lod = lodOverride ?? cameraState.lod;
+      const scene = buildSceneV3(snapshot, lod);
+      const hits = symbolsInLassoRect(scene, activeRect, cameraState.transform);
+      // Zaznaczenie WIELOKROTNE (spec §10.1 F12-B pkt 5: „jeżeli store ma API
+      // multi-select, użyj go") — `useSelectionStore.selectElements` istnieje
+      // (Iteracja 12, `ui/selection/store.ts`), więc lasso ustawia CAŁY zbiór
+      // trafień naraz. Brak trafień = zero akcji (selekcja bieżąca zostaje).
+      if (hits.length > 0) {
+        selectElements(
+          hits.map((hit) => ({
+            id: hit.ownerRef,
+            type: elementTypeForKind(hit.elementKind) ?? 'DescriptiveElement',
+            name: hit.ownerRef,
+          })),
+        );
+      }
+    }
+    setLassoRect(null);
+  }, [snapshot, cameraState, lodOverride, lassoRect, selectElements]);
+
+  // F12-B pkt 6 (spec §10.1 ARCH-4, „StationInternalView — dwuklik stacji"):
+  // budowa danych WSPÓŁDZIELONA z v2 (`shared/stationInternalViewData.ts`).
+  const [internalStationId, setInternalStationId] = useState<string | null>(null);
+  const closeInternalStation = useCallback(() => setInternalStationId(null), []);
+  const internalStationData = useMemo(
+    () => buildStationInternalViewData(snapshot, sldData, internalStationId, size),
+    [snapshot, sldData, internalStationId, size],
+  );
+  // Wybór pola/transformatora WEWNĄTRZ wnętrza stacji otwiera drawer
+  // szczegółów — TEN SAM budowniczy współdzielony co selekcja na scenie
+  // głównej (`buildDetailDrawerDataForKind`, już importowany wyżej). v2 ma
+  // tu dodatkowo rozgałęzienia po syntetycznych id (`/pv/protection/…`) dla
+  // wnętrza DER na nN — v3 `buildStationInternalViewData` (jak v2) niesie
+  // `bayId`/`transformerId` jako PROSTE refy ENM (`bay.ref_id`/
+  // `transformer.ref_id`, patrz moduł współdzielony), więc te syntetyczne
+  // gałęzie v2 nie mają tu odpowiednika danych — UDOKUMENTOWANA LUKA (nie
+  // uproszczenie): drill-down PV/BESS/FW wewnątrz wnętrza stacji (v2
+  // `onSelectBay` rozpoznaje `/pv/…` sub-ścieżki z `describeStationInternalElement`)
+  // nie jest dziś odtworzony w v3 — `StationInternalView` (współdzielony
+  // komponent) sam nie generuje takich sub-id z danych `buildStationInternalViewData`
+  // (`bays: stationBays.map(...)`, brak `ders` per-bay w tej strukturze), więc
+  // gałąź `elementId.includes('/pv/...')` byłaby dziś martwa niezależnie.
+  const handleSelectInternalBay = useCallback(
+    (bayId: string) => {
+      const drawerData = buildDetailDrawerDataForKind('bay', bayId, {
+        snapshot,
+        sldData,
+        overlayPayload: rawOverlayPayload,
+      });
+      if (drawerData) setDetailDrawerData(drawerData);
+    },
+    [snapshot, sldData, rawOverlayPayload],
+  );
+  const handleSelectInternalTransformer = useCallback(
+    (transformerId: string) => {
+      const drawerData = buildDetailDrawerDataForKind('transformer', transformerId, {
+        snapshot,
+        sldData,
+        overlayPayload: rawOverlayPayload,
+      });
+      if (drawerData) setDetailDrawerData(drawerData);
+    },
+    [snapshot, sldData, rawOverlayPayload],
+  );
+  const handleElementDoubleClick = useCallback((testId: string, meta?: SldElementClickMeta) => {
+    // Wzorzec v2 `onDoubleClickStation` (`SldCanvasV2.tsx`): dwuklik OTWIERA
+    // drill-down WYŁĄCZNIE dla stacji — inne elementKind ignorowane (spójne z
+    // v2, gdzie `onDoubleClickDer` jest osobnym, dedykowanym callbackiem, a
+    // reszta elementów nie ma zachowania na dwuklik).
+    if (meta?.elementKind !== 'station') return;
+    const id = meta?.ownerRef ?? elementIdFromTestId(testId);
+    setInternalStationId(id);
+  }, []);
+
   const handleElementClick = useCallback(
     (testId: string, meta?: SldElementClickMeta) => {
       const id = meta?.ownerRef ?? elementIdFromTestId(testId);
@@ -674,10 +986,35 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           height={size.height}
           overlay={overlay}
           onElementClick={handleElementClick}
+          onElementDoubleClick={handleElementDoubleClick}
           onElementContextMenu={handleElementContextMenu}
           lodOverride={lodOverride}
+          layerVisibility={layerVisibility}
+          onCameraChange={handleCameraChange}
         />
       ) : null}
+
+      {/* F12-B pkt 5: nakładka lasso screen-space. `pointer-events` AUTO
+          WYŁĄCZNIE gdy Shift wciśnięty (albo trwa przeciągnięcie rozpoczęte
+          pod Shift) — w przeciwnym razie przezroczysta dla zdarzeń, więc
+          zwykły drag/klik trafia NIEZMIENIONY do `SldCanvasV3` poniżej
+          (pan/zoom/selekcja nietknięte). z-index NIŻSZY niż doki (10 < 20/30),
+          żeby przyciski dokowane pozostały klikalne nawet z wciśniętym Shift. */}
+      <div
+        data-testid="sld-v3-lasso-capture"
+        className="absolute inset-0 z-10"
+        style={{ pointerEvents: shiftHeld || lassoRect ? 'auto' : 'none', cursor: shiftHeld ? 'crosshair' : undefined }}
+        onPointerDown={handleLassoPointerDown}
+        onPointerMove={handleLassoPointerMove}
+        onPointerUp={handleLassoPointerUp}
+        onPointerCancel={handleLassoPointerUp}
+      >
+        {lassoRect && (
+          <svg className="pointer-events-none absolute inset-0" width="100%" height="100%">
+            <LassoSelector visible rect={lassoRect} />
+          </svg>
+        )}
+      </div>
 
       <SldDetailDrawer
         open={detailDrawerData !== null}
@@ -729,6 +1066,126 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           </span>
         )}
       </div>
+
+      {/* F12-B pkt 1 (spec §10.1 ARCH-4, „SldExportFormatMenu — eksport
+          SVG/PNG"): dok prawy-górny — paleta DER zajmuje górny-środek, zero
+          kolizji. */}
+      <div
+        className="pointer-events-auto absolute right-3 top-3 z-30 flex items-center gap-1"
+        data-testid="sld-v3-export-dock"
+      >
+        <button
+          type="button"
+          onClick={handleExportSvg}
+          data-testid="sld-v3-export-svg"
+          title="Eksportuj schemat SLD jako plik SVG"
+          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+        >
+          ↓ SVG
+        </button>
+        <SldExportFormatMenu
+          svgSelector='svg[data-testid="sld-canvas-v3"]'
+          projectName={undefined}
+          caseLabel={undefined}
+        />
+      </div>
+
+      {/* F12-B pkt 2 (spec §10.1 ARCH-4, „NetworkHierarchyTree"): dok
+          lewy-górny. */}
+      <div
+        className="pointer-events-auto absolute left-3 top-3 z-20 flex flex-col items-start gap-1"
+        data-testid="sld-v3-hierarchy-tree-dock"
+      >
+        <button
+          type="button"
+          onClick={() => setHierarchyPanelOpen((prev) => !prev)}
+          data-testid="sld-v3-hierarchy-tree-toggle"
+          aria-label={hierarchyPanelOpen ? 'Zamknij drzewo układu' : 'Otwórz drzewo układu'}
+          title={hierarchyPanelOpen ? 'Zamknij drzewo układu' : 'Drzewo układu sieci'}
+          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+        >
+          {hierarchyPanelOpen ? '◂ Drzewo układu' : '▸ Drzewo układu'}
+        </button>
+        {hierarchyPanelOpen && (
+          <NetworkHierarchyTree hierarchy={networkHierarchy} className="w-[240px]" />
+        )}
+      </div>
+
+      {/* F12-B pkt 3 (spec §10.1 ARCH-4, „ProofPacksPanel"): dok lewy-dolny. */}
+      <div
+        className="pointer-events-auto absolute bottom-3 left-3 z-20 flex flex-col items-start gap-1"
+        data-testid="sld-v3-proof-packs-dock"
+      >
+        <button
+          type="button"
+          onClick={() => setProofPanelOpen((prev) => !prev)}
+          data-testid="sld-v3-proof-packs-toggle"
+          aria-expanded={proofPanelOpen}
+          aria-label={proofPanelOpen ? 'Zamknij panel dowodów inżynierskich' : 'Otwórz panel dowodów inżynierskich'}
+          title={proofPanelOpen ? 'Zamknij panel dowodów' : 'Dowody inżynierskie (8)'}
+          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+        >
+          {proofPanelOpen ? '▾ Dowody (8)' : '▸ Dowody (8)'}
+        </button>
+        {proofPanelOpen && (
+          <ProofPacksPanel hasNetworkModel={hasNetworkModel} className="max-h-[150px] w-[216px] overflow-y-auto" />
+        )}
+      </div>
+
+      {/* F12-B pkt 4 (spec §10.1 ARCH-4, „LayerTogglePanel jako realny
+          filtr"): dok prawy-dolny. */}
+      <div className="pointer-events-auto absolute bottom-3 right-3 z-20 flex flex-col items-end gap-1">
+        <button
+          type="button"
+          onClick={() => setLayerPanelOpen((prev) => !prev)}
+          data-testid="sld-v3-layer-panel-toggle"
+          aria-label={layerPanelOpen ? 'Zamknij panel warstw' : `Otwórz panel warstw (${CANVAS_LAYER_IDS.length})`}
+          title={layerPanelOpen ? 'Zamknij panel warstw' : `Warstwy (${CANVAS_LAYER_IDS.length})`}
+          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+        >
+          {layerPanelOpen ? '▾ Warstwy' : `▴ Warstwy (${CANVAS_LAYER_IDS.length})`}
+        </button>
+        {layerPanelOpen && (
+          <SldV3LayerTogglePanel
+            visibility={layerVisibility}
+            onToggleLayer={handleToggleLayer}
+            onResetAll={handleResetLayers}
+            className="w-[240px]"
+          />
+        )}
+      </div>
+
+      {/* F12-B pkt 6 (spec §10.1 ARCH-4, „StationInternalView"): drill-down
+          stacji — overlay z wewnętrznym SLD, wzorzec wrappera 1:1 z v2. */}
+      {internalStationData && (
+        <div
+          data-testid="station-internal-view"
+          data-view-mode="side-drawer"
+          className="pointer-events-none absolute bottom-3 right-3 top-3 z-40 flex max-w-[min(760px,calc(100%-1.5rem))] items-start justify-end"
+        >
+          <div
+            className="pointer-events-auto max-h-full overflow-auto rounded border border-scada-border bg-scada-panel shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <StationInternalView
+              {...internalStationData}
+              onClose={closeInternalStation}
+              onSelectBay={handleSelectInternalBay}
+              onSelectTransformer={handleSelectInternalTransformer}
+            />
+            <div className="flex justify-end gap-2 border-t border-scada-border bg-scada-surface px-4 py-2">
+              <button
+                type="button"
+                className="rounded border border-scada-border px-3 py-1 text-sm text-scada-text hover:bg-scada-hover-nav"
+                onClick={closeInternalStation}
+                data-testid="station-internal-close"
+              >
+                Zamknij
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

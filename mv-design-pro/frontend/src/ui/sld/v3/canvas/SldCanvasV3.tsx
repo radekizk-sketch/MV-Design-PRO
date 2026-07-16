@@ -48,8 +48,10 @@ import {
   pointerDistance,
   pointerMidpoint,
   type BoundingBox,
+  type ViewportTransform,
 } from './camera';
 import type { SegmentFlowOverlay, SldV3Overlay } from './overlay';
+import { isLayerVisible, layerIdForElementMeta, type CanvasLayerVisibility } from './layers';
 
 const SLD_V3_BACKGROUND = '#0B0F14';
 /** Nakładka energizacji (spec §6 P5): kolor akcentu, NIE geometria. */
@@ -101,6 +103,13 @@ export interface SldCanvasV3Props {
    *  wołający ignorujący go (istniejące handlery `(testId) => ...`) działają
    *  bez zmian. */
   readonly onElementClick?: (testId: string, meta?: SldElementClickMeta) => void;
+  /** F12-B pkt 6 (spec §10.1 ARCH-4, „StationInternalView"): podwójny klik w
+   *  symbol — TEN SAM wzorzec co `onElementClick` (`testId` + opcjonalne
+   *  `meta`). Wołający (`SldCanvasV3Workspace`) decyduje, dla jakiego
+   *  `meta.elementKind` reaguje (dziś: `'station'` → drill-down
+   *  `StationInternalView`, jak w v2 `onDoubleClickStation`) — kanwa sama
+   *  niczego nie filtruje, jak `onElementClick`. Brak propa = brak nasłuchu. */
+  readonly onElementDoubleClick?: (testId: string, meta?: SldElementClickMeta) => void;
   /** F8c pkt 3 (checklista bramkująca §F8c, „Context-menu"): prawy klik w
    *  symbol/odcinek — TEN SAM wzorzec co `onElementClick` (`testId` +
    *  opcjonalne `meta`), plus współrzędne klienta potrzebne przez
@@ -126,6 +135,24 @@ export interface SldCanvasV3Props {
    *  §3, znane ograniczenie k4 — ROZWIĄZANE). Zmiana propa PO mouncie
    *  wywołuje pełny refit (nowy cel fitu = nowy świat kamery, k3). */
   readonly lodOverride?: SceneLod;
+  /** F12-B pkt 4 (spec §10.1 ARCH-4, „LayerTogglePanel jako realny filtr"):
+   *  mapa warstwa→widoczność (`v3/canvas/layers.ts`) — filtruje WYŁĄCZNIE
+   *  RENDER (mapowanie symbols/segments/labels na węzły SVG), scena
+   *  (`buildSceneV3`/bbox/routing) NIETKNIĘTA. Brak propa = wszystko
+   *  widoczne (zero zmiany zachowania sprzed tej dostawy). */
+  readonly layerVisibility?: CanvasLayerVisibility;
+  /** F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): wywoływany przy KAŻDEJ
+   *  zmianie transformu/LOD kamery — jedyny sposób, w jaki wołający
+   *  (`SldCanvasV3Workspace`) może poznać AKTUALNY `ViewportTransform` do
+   *  mapowania świat→ekran (`worldToScreen`) na potrzeby hit-testu lasso
+   *  (kamera jest stanem WEWNĘTRZNYM tej kanwy od F6b, świadomie — brak
+   *  eksportowanego hooka, patrz `canvas/camera.ts` nagłówek). Wzorzec
+   *  IDENTYCZNY z `SldCanvasV2`'s `onViewportTransformChange`
+   *  (`v2/canvas/SldCanvasV2.tsx`: `useEffect` wołający callback przy zmianie
+   *  `transform`) — TA SAMA kategoria „przelotowego propu" co
+   *  `onElementClick`/`onElementDoubleClick`, zero zmiany geometrii/logiki
+   *  kamery. Brak propa = brak nasłuchu (kanwa działa jak dziś). */
+  readonly onCameraChange?: (transform: ViewportTransform, lod: SceneLod) => void;
 }
 
 function strokeForEnergization(energized: boolean | undefined): string | undefined {
@@ -156,11 +183,12 @@ function SceneSymbolNode(props: {
   readonly index: number;
   readonly overlay: SldV3Overlay | undefined;
   readonly onElementClick: ((testId: string, meta?: SldElementClickMeta) => void) | undefined;
+  readonly onElementDoubleClick: ((testId: string, meta?: SldElementClickMeta) => void) | undefined;
   readonly onElementContextMenu:
     | ((testId: string, meta: SldElementClickMeta | undefined, clientX: number, clientY: number) => void)
     | undefined;
 }): JSX.Element {
-  const { symbol, index, overlay, onElementClick, onElementContextMenu } = props;
+  const { symbol, index, overlay, onElementClick, onElementDoubleClick, onElementContextMenu } = props;
   const def = SYMBOL_DEFS[symbol.symbolId];
   const Glyph = SYMBOL_GLYPHS[symbol.symbolId];
   const testId = symbolTestId(symbol, index);
@@ -188,6 +216,7 @@ function SceneSymbolNode(props: {
       data-designation-source={symbol.meta?.designationSource}
       data-source-state={sourceState}
       onClick={onElementClick ? () => onElementClick(testId, clickMeta) : undefined}
+      onDoubleClick={onElementDoubleClick ? () => onElementDoubleClick(testId, clickMeta) : undefined}
       onContextMenu={
         onElementContextMenu
           ? (event) => {
@@ -200,7 +229,7 @@ function SceneSymbolNode(props: {
             }
           : undefined
       }
-      style={onElementClick || onElementContextMenu ? { cursor: 'pointer' } : undefined}
+      style={onElementClick || onElementDoubleClick || onElementContextMenu ? { cursor: 'pointer' } : undefined}
     >
       {/* Cel kliku powiększony do bboxa symbolu (ergonomia — glify IEC bywają
        *  wąskie, np. odłącznik 16×24 rysowany kreską). Zero widocznego stylu. */}
@@ -648,7 +677,10 @@ function toLocalPoint(svg: SVGSVGElement | null, clientX: number, clientY: numbe
  * `onElementClick`; brak własnej selekcji/CAD-edycji (poza zakresem F6b).
  */
 export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
-  const { snapshot, width, height, overlay, onElementClick, onElementContextMenu, lodOverride } = props;
+  const {
+    snapshot, width, height, overlay, onElementClick, onElementDoubleClick, onElementContextMenu, lodOverride,
+    layerVisibility, onCameraChange,
+  } = props;
 
   // F8a — ROZSTRZYGNIĘCIE k4/k3 (REBUILD_PLAN_V3 §F8, SLD_V3_ACCEPTANCE.md §3):
   // scena liczona dla WSZYSTKICH trzech LOD naraz (nie tylko `effectiveLod`) —
@@ -717,16 +749,32 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const effectiveLod: SceneLod = lodOverride ?? camera.lod;
   const scene = sceneByLod[effectiveLod];
   const sheetSize = useMemo(() => sheetSizeFor(scene), [scene]);
+  // F12-B pkt 4 (spec §10.1 ARCH-4): warstwa „nakładki wyników" (energizacja +
+  // przepływ) — `null`/brak `layerVisibility` = widoczna (zero zmiany
+  // zachowania). Filtr RENDERU: `computeFlowOverlayPlacements` niżej dostaje
+  // `flowByOwnerRef` WYŁĄCZNIE gdy warstwa widoczna; scena (`scene.labels`/
+  // `scene.symbols` obstacles wewnątrz tej funkcji) NIETKNIĘTA.
+  const resultOverlaysVisible = isLayerVisible('resultOverlays', layerVisibility);
+  const effectiveOverlay = resultOverlaysVisible ? overlay : undefined;
   // F9.5: rozmieszczenie nakładki przepływu — przeliczane przy zmianie
   // sceny (LOD/snapshot) lub wyniku; szczegółowość etykiet per LOD
   // (spec §15.2): L0 sam grot, L1 tylko P, L2 pełne P·Q·I.
-  const flowByOwnerRef = overlay?.flowByOwnerRef;
+  const flowByOwnerRef = effectiveOverlay?.flowByOwnerRef;
   const flowLabelDetail: FlowLabelDetail | null = effectiveLod === 0 ? null : effectiveLod === 1 ? 'p-only' : 'full';
   const flowPlacements = useMemo(
     () => computeFlowOverlayPlacements(scene, flowByOwnerRef, flowLabelDetail),
     [scene, flowByOwnerRef, flowLabelDetail],
   );
   const viewBox = cameraViewBox(camera.transform, viewportSize);
+
+  // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): informuje wołającego o
+  // AKTUALNYM transformie/LOD kamery — jedyny sposób uzyskania go z zewnątrz
+  // (kamera jest stanem wewnętrznym od F6b). Wzorzec identyczny z
+  // `SldCanvasV2`'s `onViewportTransformChange` (`useEffect` na zmianę
+  // `transform`, patrz docstring propa wyżej).
+  useEffect(() => {
+    onCameraChange?.(camera.transform, effectiveLod);
+  }, [onCameraChange, camera.transform, effectiveLod]);
 
   // Pointer tracking (pan 1 dotyk/mysz, pinch 2 dotyki) — Pointer Events
   // unifikują mysz/dotyk/pen, jeden kod ścieżki (patrz `canvas/camera.ts`
@@ -819,41 +867,60 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       }
     >
       <SheetFrame width={sheetSize.width} height={sheetSize.height} scaleLabel="wg kamery">
+        {/* F12-B pkt 4 (spec §10.1 ARCH-4): filtr WYŁĄCZNIE renderu —
+         * `scene.segments`/`scene.symbols`/`scene.labels` (`buildSceneV3`)
+         * NIETKNIĘTE (mapowane w PEŁNI, `index` zachowany dla każdego elementu
+         * niezależnie od widoczności — testId stabilne); elementy ukrytej
+         * warstwy zwracają `null` zamiast węzła DOM. Element bez przypisanej
+         * warstwy (`layerIdForElementMeta` → `null`, np. główny tor mocy) jest
+         * ZAWSZE renderowany. */}
         <g data-testid="sld-v3-segments">
-          {scene.segments.map((segment, index) => (
-            <SceneSegmentNode
-              key={`segment-${index}`}
-              segment={segment}
-              index={index}
-              overlay={overlay}
-              onElementContextMenu={onElementContextMenu}
-            />
-          ))}
+          {scene.segments.map((segment, index) => {
+            if (!isLayerVisible(layerIdForElementMeta(segment.meta), layerVisibility)) return null;
+            return (
+              <SceneSegmentNode
+                key={`segment-${index}`}
+                segment={segment}
+                index={index}
+                overlay={effectiveOverlay}
+                onElementContextMenu={onElementContextMenu}
+              />
+            );
+          })}
         </g>
         <g data-testid="sld-v3-symbols">
-          {scene.symbols.map((symbol, index) => (
-            <SceneSymbolNode
-              key={`symbol-${index}`}
-              symbol={symbol}
-              index={index}
-              overlay={overlay}
-              onElementClick={onElementClick}
-              onElementContextMenu={onElementContextMenu}
-            />
-          ))}
+          {scene.symbols.map((symbol, index) => {
+            if (!isLayerVisible(layerIdForElementMeta(symbol.meta), layerVisibility)) return null;
+            return (
+              <SceneSymbolNode
+                key={`symbol-${index}`}
+                symbol={symbol}
+                index={index}
+                overlay={effectiveOverlay}
+                onElementClick={onElementClick}
+                onElementDoubleClick={onElementDoubleClick}
+                onElementContextMenu={onElementContextMenu}
+              />
+            );
+          })}
         </g>
         <g data-testid="sld-v3-labels">
-          {scene.labels.map((label, index) => (
-            <SceneLabelNode key={`label-${index}`} label={label} index={index} />
-          ))}
+          {isLayerVisible('labels', layerVisibility)
+            ? scene.labels.map((label, index) => (
+                <SceneLabelNode key={`label-${index}`} label={label} index={index} />
+              ))
+            : null}
         </g>
         {/* F9.5 (spec §14.2): nakładka przepływu NAD warstwami bazowymi
          * (segmenty/symbole/etykiety) — grot i wartości nie mogą być
          * przykryte symbolami toru; warstwa pusta (zero węzłów DOM per
          * odcinek), gdy `flowByOwnerRef` nie niesie wpisu — „overlay
-         * wyłączony bez wyniku". Pozycje etykiet liczone scenowo z unikaniem
-         * kolizji (V-1/V-2 recenzji — `computeFlowOverlayPlacements`).
-         * Wartości od L1 (spec §15.2: LOD steruje etykietami, nie kierunkiem). */}
+         * wyłączony bez wyniku" (w tym: F12-B pkt 4, warstwa „nakładki
+         * wyników" ukryta przez `layerVisibility` — `flowByOwnerRef` wtedy
+         * `undefined`, patrz `effectiveOverlay` wyżej). Pozycje etykiet
+         * liczone scenowo z unikaniem kolizji (V-1/V-2 recenzji —
+         * `computeFlowOverlayPlacements`). Wartości od L1 (spec §15.2: LOD
+         * steruje etykietami, nie kierunkiem). */}
         <g data-testid="sld-v3-flow-overlay">
           {flowPlacements.map((placement) => (
             <SceneFlowPlacementNode key={`flow-${placement.segmentIndex}`} placement={placement} />

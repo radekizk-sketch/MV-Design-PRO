@@ -14,7 +14,10 @@ ENTRYPOINT_PATTERNS: dict[str, list[tuple[str, str]]] = {
         ("legacy layout import", r"PowerFactoryLayout"),
         ("legacy helper page import", r"TypeLibraryBrowser|CaseConfigPage"),
     ],
-    "frontend/src/ui/layout/CanonicalLayout.tsx": [
+    # F12 (2026-07-16): CanonicalLayout.tsx skasowany w a88c6960 (konsolidacja
+    # shellu) — nastepca CanonicalLayoutV3.tsx przejmuje TE SAME zakazy
+    # (intencja guarda bez zmian: brak importu legacy layoutu w aktywnym shellu).
+    "frontend/src/ui/layout/CanonicalLayoutV3.tsx": [
         ("legacy layout import", r"PowerFactoryLayout"),
     ],
     "frontend/src/ui/navigation/routes.ts": [
