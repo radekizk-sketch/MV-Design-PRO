@@ -33,7 +33,7 @@ import {
   useStationAudit2ConfigList,
   validateHostingCapacityExport,
 } from '../network-build/station-der';
-import { SldRenderHost } from '../sld/SldRenderHost';
+import { SldCanvasV3Workspace } from '../sld/v3/canvas/SldCanvasV3Workspace';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
 import { FrtHvrtCurves, type NcRfgProfileId } from '../protection-curves/FrtHvrtCurves';
 import { TimeCurrentChart } from '../protection-curves/TimeCurrentChart';
@@ -3126,13 +3126,10 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'E-01':
       // Etap 1 dostawy: E-01 (Główne środowisko pracy SLD) renderuje się
       // domyślnie jako children CanonicalLayout w App.tsx. Gdy ktoś otworzy
-      // E-01 jako rozszerzoną powierzchnię (openRouteSurface('E-01')), również
-      // renderujemy SldRenderHost dla spójności kontraktu shellu — F8b-2:
-      // drugi punkt osadzenia przełączony na hosta (v2/v3 cutover + fallback
-      // localStorage), zgodnie z App.tsx. Bez propsów — identycznie jak
-      // wcześniejsze `<SldWorkspaceContainer />` (wszystkie propsy hosta są
-      // opcjonalne, domyślne zachowanie tożsame).
-      return <SldRenderHost />;
+      // E-01 jako rozszerzoną powierzchnię (openRouteSurface('E-01')),
+      // renderujemy TEN SAM, jedyny render — F12-C (spec §10.1 ARCH-4):
+      // ścieżka renderu v2 i punkt decyzji hosta USUNIĘTE, zgodnie z App.tsx.
+      return <SldCanvasV3Workspace />;
     case 'E-00':
       // Etap 2 dostawy: Pulpit projektu (lista projektów + nowy projekt).
       return <ProjectDashboardSurface />;

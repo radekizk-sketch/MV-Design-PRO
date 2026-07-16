@@ -1,7 +1,7 @@
 /**
  * SLD Substrate Screenshot — B-02 feasibility + PNGs.
  *
- * Captures real renders of SldCanvasV2 on the ≥52-station substrate
+ * Captures real renders of SldCanvasV3 (F12-C: jedyny render po kasacji sciezki v2) on the ≥52-station substrate
  * (sldSubstrate52s.enm.json) without backend.
  *
  * The harness page is served by Vite at /screenshot-harness.html.
@@ -43,7 +43,7 @@ test.describe('sld:substrate:screenshot', () => {
     await expect(harnessRoot).toHaveAttribute('data-status', 'ready', { timeout: 20000 });
 
     // Wait for the SVG canvas to appear
-    const canvas = page.locator('[data-testid="sld-canvas-v2"]').first();
+    const canvas = page.locator('[data-testid="sld-canvas-v3"]').first();
     await expect(canvas).toBeVisible({ timeout: 15000 });
 
     // Wait for auto-fit to settle
@@ -53,11 +53,11 @@ test.describe('sld:substrate:screenshot', () => {
     const stationCount = await harnessRoot.getAttribute('data-stations');
     const cableRunCount = await harnessRoot.getAttribute('data-cable-runs');
     const gpzCount = await harnessRoot.getAttribute('data-gpzs');
-    const lodAttr = await canvas.getAttribute('data-lod');
-    const scaleAttr = await canvas.getAttribute('data-scale');
+    const lodAttr = await canvas.getAttribute('data-scene-lod');
+    const scaleAttr = await canvas.getAttribute('viewBox');
 
     console.log(`Harness ready: stations=${stationCount} cable_runs=${cableRunCount} gpzs=${gpzCount}`);
-    console.log(`Canvas: lod=${lodAttr} scale=${scaleAttr}`);
+    console.log(`Canvas: lod=${lodAttr} viewBox=${scaleAttr}`);
     if (consoleErrors.length > 0) {
       console.log(`Console errors: ${consoleErrors.join('\n')}`);
     }
@@ -87,7 +87,7 @@ test.describe('sld:substrate:screenshot', () => {
     const harnessRoot = page.locator('[data-testid="sld-harness-root"]').first();
     await expect(harnessRoot).toHaveAttribute('data-status', 'ready', { timeout: 20000 });
 
-    const canvas = page.locator('[data-testid="sld-canvas-v2"]').first();
+    const canvas = page.locator('[data-testid="sld-canvas-v3"]').first();
     await expect(canvas).toBeVisible({ timeout: 15000 });
     await page.waitForTimeout(800);
 
@@ -110,15 +110,15 @@ test.describe('sld:substrate:screenshot', () => {
     const harnessRoot = page.locator('[data-testid="sld-harness-root"]').first();
     await expect(harnessRoot).toHaveAttribute('data-status', 'ready', { timeout: 20000 });
 
-    const canvas = page.locator('[data-testid="sld-canvas-v2"]').first();
+    const canvas = page.locator('[data-testid="sld-canvas-v3"]').first();
     await expect(canvas).toBeVisible({ timeout: 15000 });
     await page.waitForTimeout(900);
 
     // Count readable blocks vs apparatus detail markers (proves the structural fix).
-    const blocks = await page.locator('[data-testid^="sld-v2-station-overview-block-"]').count();
-    const detail = await page.locator('[data-testid^="sld-v2-mini-rmu-"]').count();
-    const lodAttr = await canvas.getAttribute('data-lod');
-    console.log(`L0: blocks=${blocks} mini-rmu-detail=${detail} data-lod=${lodAttr}`);
+    const blocks = await page.locator('[data-symbol-canon="stationCollapsed"]').count();
+    const detail = await page.locator('[data-symbol-canon="breaker"], [data-symbol-canon="disconnector"]').count();
+    const lodAttr = await canvas.getAttribute('data-scene-lod');
+    console.log(`L0: blocks=${blocks} aparatura=${detail} data-scene-lod=${lodAttr}`);
 
     const l0Path = path.join(OUTPUT_DIR, 'sld_substrate_53_L0.png');
     await page.screenshot({ path: l0Path, fullPage: false });
@@ -132,21 +132,22 @@ test.describe('sld:substrate:screenshot', () => {
 
   test('substrate-53s L2 detail (zoomed apparatus) — save PNG', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
-    // ?lod=3 forces full-detail level; ?focus=auto centers+zooms on a station
-    // so the screenshot shows full apparatus detail (L2) rather than tiny blocks.
-    await page.goto(`${HARNESS_URL}?lod=3&focus=auto`);
+    // F12-C: ?lod=2 = pelny detal v3 (kontrakt LOD 0..2, spec par. 7);
+    // dawny ?focus=auto (v2 centerOnElementId) bez odpowiednika v3 - kadr
+    // szczegolu robi clip ponizej.
+    await page.goto(`${HARNESS_URL}?lod=2`);
 
     const harnessRoot = page.locator('[data-testid="sld-harness-root"]').first();
     await expect(harnessRoot).toHaveAttribute('data-status', 'ready', { timeout: 20000 });
 
-    const canvas = page.locator('[data-testid="sld-canvas-v2"]').first();
+    const canvas = page.locator('[data-testid="sld-canvas-v3"]').first();
     await expect(canvas).toBeVisible({ timeout: 15000 });
     await page.waitForTimeout(900);
 
-    const blocks = await page.locator('[data-testid^="sld-v2-station-overview-block-"]').count();
-    const detail = await page.locator('[data-testid^="sld-v2-mini-rmu-"]').count();
-    const lodAttr = await canvas.getAttribute('data-lod');
-    console.log(`L2: blocks=${blocks} mini-rmu-detail=${detail} data-lod=${lodAttr}`);
+    const blocks = await page.locator('[data-symbol-canon="stationCollapsed"]').count();
+    const detail = await page.locator('[data-symbol-canon="breaker"], [data-symbol-canon="disconnector"]').count();
+    const lodAttr = await canvas.getAttribute('data-scene-lod');
+    console.log(`L2: blocks=${blocks} aparatura=${detail} data-scene-lod=${lodAttr}`);
 
     const l2Path = path.join(OUTPUT_DIR, 'sld_substrate_53_L2.png');
     await page.screenshot({ path: l2Path, fullPage: false });

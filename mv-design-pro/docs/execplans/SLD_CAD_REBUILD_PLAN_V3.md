@@ -1529,6 +1529,55 @@ Wykonanie: **F12-A** (wykonawca akcji + pełna migracja drawera), **F12-B** (sze
 osiągalnych na v3), **F12-C** (kasacja ścieżki renderu + punkty osadzenia + pełna regresja +
 guardy import_graph/vulture/sld_determinism + rendery). Każdy krok: pełny cykl bramek + commit.
 
+### F12-A. [DONE — 24fdce16] Wykonawca akcji (ARCH-3) + pełna migracja budowniczych drawera
+Szczegóły w treści commitu. Kluczowe: `shared/sldActionExecutor.ts` (handleAction 1:1 +
+tabele routingu), pełne budownicze drawera w `shared/detailDrawerData.ts` (zero gałęzi
+pozostawionych w v2), naprawa dwuznaczności ownerRef (bayRef vs ref transformatora,
+`Bay.substation_ref`). UWAGA POWDROŻENIOWA: ekstrakcja wywróciła statyczną heurystykę
+`dead_click_guard` (tokeny przeniesione poza kontener) — wykryte przy odbiorze F12-B,
+naprawione w fdff1d88 (guard czyta shared + wymaga spięcia wykonawcy w workspace).
+
+### F12-B. [DONE — fdff1d88] Sześć osiągalnych funkcji kontenera na v3
+Eksport SVG/PNG, drzewo hierarchii (shared/networkHierarchyFromSnapshot), panel dowodów,
+panel warstw jako REALNY filtr renderu (v3/canvas/layers.ts — 5 jawnych warstw, liczności
+sceny niezmienne — dowód testowy), lasso (czysty hit-test + Shift+drag + realny multi-select
+`selectElements`; USTALENIE: lasso v2 też było martwe — v3 ma pierwszą żywą selekcję
+obszarem), wnętrze stacji z dwukliku (shared/stationInternalViewData). Dewiacja
+`onCameraChange` zaakceptowana (wzorzec onViewportTransformChange v2). Dodatkowo naprawa
+`import_graph_guard` (entrypoint CanonicalLayout→CanonicalLayoutV3 po a88c6960).
+
+### F12-C. [DONE] Kasacja ścieżki renderu v2 + kamera mobilna + pusty stan na v3
+- KAMERA MOBILNA (E15/E16, spec §10): port do v3 przez WSPÓŁDZIELONĄ
+  `initialCameraForNetwork` (ViewportController) — `computeInitialCameraState`/refit z
+  opcjonalnym `focusPoint` (środek bloku GPZ z konwencji testId `gpz-canonical-`),
+  próg czytelności 0.5 identyczny z v2; desktop/landscape bajt-w-bajt jak przed zmianą
+  (testy F8a k4.1 bez modyfikacji); testy mobileCamera.test.tsx 4/4.
+- ARCH-5 (wirtualizacja >24 stacji): NIE portowana — POMIAR: scena v3 L2 przy 53
+  stacjach = 914 symboli / 544 segmenty / 1260 etykiet ≈ 5,8k węzłów SVG, budowa
+  65-120 ms; wirtualizacja v2 była optymalizacją ciężkich rendererów komponentowych v2,
+  w lekkiej scenie SVG v3 zbędna w skali projektowej. Decyzja architekta z liczbami.
+- PUSTY STAN projektu (CTA „Wstaw GPZ"/„katalogi"/kreator stacji) przeniesiony 1:1 do
+  v3 Workspace (te same testid/etykiety; akcje przez współdzielony wykonawca).
+- SKASOWANE (30 plików + testy): SldRenderHost + sldRenderVersion + flaga
+  `mvdp.sldRenderVersion` + featureFlags.USE_SLD_CANVAS_V3; SldWorkspaceContainer;
+  SldCanvasV2 (+8 testów integracyjnych — pokrycie kamery przejęły testy v3 k4.1/k3/
+  mobileCamera); CadOverlay/RouteEditor/Snap (martwy szkielet CAD — ARCH-1);
+  workflow/* (ARCH-2); CableRunRenderer + ResultOverlayLayer (jedyny importer =
+  SldCanvasV2). Punkty osadzenia (App.tsx, WorkspaceSurfaceRouter) → bezpośrednio
+  `SldCanvasV3Workspace`.
+- ZOSTAJE świadomie: LabelDeclutter (wpleciony w WSPÓŁDZIELONY enmToSldAdapter —
+  pozycja „declutter-po-fakcie" z listy F8c NIE dotyczy adaptera), v2/renderer poza
+  CableRunRenderer, v2/command, v2/core, v2/domain, v2/geometry (bez RouteEditor),
+  v2/viewport/ViewportController, v2/lod, v2/export, v2/proof, v2/theme,
+  v2/station-rozdzielnia, v2/builder, SldDetailDrawer/useDerDragDrop/
+  LassoSelector/StationInternalView (importowane przez v3/shared).
+- Harness screenshotowy + e2e `sld-substrate-screenshot.spec.ts` przepięte na v3
+  (`?lod=` klampowany do kontraktu 0..2; `?focus=` bez odpowiednika — kadr clipem,
+  udokumentowane). Testy zaadaptowane bez osłabienia semantyki: renderers.test.tsx
+  (sekcje martwych komponentów usunięte, żywe renderery bez zmian), etap10-acceptance
+  (workspace v3 + pusty stan), routerExtensionSurfaces (E-01 → v3 wprost),
+  featureFlags.test (wpis flagi usunięty z definicją).
+
 ## Prompt kontynuacji (wklej świeżemu agentowi — DO WDROŻENIA 100%)
 
 ```

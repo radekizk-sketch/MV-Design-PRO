@@ -39,7 +39,7 @@ import { featureFlags } from './ui/config/featureFlags';
 // Feature flag: VITE_USE_LAYOUT_V3=1 włącza shell V3 (chrome -48% per
 // `docs/audit/DESIGN_IMPL_2026-05-19_KWranPTV.md` § 2). Domyślnie V12.
 const CanonicalLayout = featureFlags.USE_LAYOUT_V3 ? CanonicalLayoutV3 : CanonicalLayoutV12;
-import { SldRenderHost } from './ui/sld/SldRenderHost';
+import { SldCanvasV3Workspace } from './ui/sld/v3/canvas/SldCanvasV3Workspace';
 import { ProjectDashboardSurface } from './ui/workspace/surfaces/ProjectDashboardSurface';
 import { useAppStateStore } from './ui/app-state';
 import { useSnapshotStore } from './ui/topology/snapshotStore';
@@ -1428,7 +1428,7 @@ function App() {
   if (route === '#sld-view') {
     return wrapWithReadyIndicator(
       <CanonicalLayout {...layoutProps}>
-        <SldRenderHost readOnly />
+        <SldCanvasV3Workspace readOnly />
       </CanonicalLayout>
     );
   }
@@ -1443,15 +1443,14 @@ function App() {
     );
   }
   // CANONICAL_LAYOUT: domyślna trasa "" / "#sld" → środowisko SLD (E-01).
-  // F8a (SLD_CAD_REBUILD_PLAN_V3 §F8): `SldRenderHost` decyduje v2/v3 —
-  // domyślnie SldCanvasV3 (przebudowany rysunek CAD), v2 (SldCanvasV2, menu
-  // kontekstowe, drill-down stacji) fallbackiem za flagą (patrz
-  // `ui/sld/sldRenderVersion.ts`). Adapter danych snapshot → propsy
-  // rendererów v2 dostarcza Etap 3 roadmapy (v3 czyta ten sam snapshot
-  // bezpośrednio, patrz `SldCanvasV3Workspace`).
+  // F12-C (spec §10.1 ARCH-4): ścieżka renderu v2 USUNIĘTA — jeden render
+  // (`SldCanvasV3Workspace`), bez punktu decyzji hosta i flagi
+  // `mvdp.sldRenderVersion` (rollback do v2 odpada razem z v2; menu
+  // kontekstowe / drawer / drill-down stacji / paleta DER / eksport / lasso /
+  // warstwy żyją teraz w v3 — dostawy F11.4/F12-A/F12-B).
   return wrapWithReadyIndicator(
     <CanonicalLayout {...layoutProps}>
-      <SldRenderHost />
+      <SldCanvasV3Workspace />
     </CanonicalLayout>
   );
 }

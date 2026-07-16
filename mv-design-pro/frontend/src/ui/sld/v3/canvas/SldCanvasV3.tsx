@@ -710,10 +710,35 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const fitTargetLod: SceneLod = lodOverride ?? 2;
   const fitBbox = lodBboxes[fitTargetLod];
 
+  // F12-C (E15/E16 parytet z v2, spec §10 „kamera mobilna (portrait focus na
+  // GPZ)"): środek bloku GPZ jako punkt fokusu kamery mobilnej — liczony ze
+  // sceny CELU FITU po JAWNEJ konwencji `testId` prefiksu `gpz-canonical-`
+  // (`compose/gpz.ts`, ta sama konwencja, której używa skrypt akceptacyjny do
+  // kadrowania regionu GPZ). Brak symboli GPZ (sieć bez GPZ) ⇒ `null` ⇒
+  // kamera zawsze w trybie „fit" (zero zmiany zachowania).
+  const gpzFocusPoint = useMemo(() => {
+    const gpzSymbols = sceneByLod[fitTargetLod].symbols.filter((s) =>
+      s.meta?.testId?.startsWith('gpz-canonical-'),
+    );
+    if (gpzSymbols.length === 0) return null;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const s of gpzSymbols) {
+      const def = SYMBOL_DEFS[s.symbolId];
+      minX = Math.min(minX, s.x);
+      minY = Math.min(minY, s.y);
+      maxX = Math.max(maxX, s.x + def.width);
+      maxY = Math.max(maxY, s.y + def.height);
+    }
+    return { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+  }, [sceneByLod, fitTargetLod]);
+
   const [camera, dispatch] = useReducer(
     cameraReducer,
-    { bbox: fitBbox, viewportSize, lodBboxes },
-    (arg) => computeInitialCameraState(arg.bbox, arg.viewportSize, arg.lodBboxes),
+    { bbox: fitBbox, viewportSize, lodBboxes, focusPoint: gpzFocusPoint },
+    (arg) => computeInitialCameraState(arg.bbox, arg.viewportSize, arg.lodBboxes, arg.focusPoint),
   );
 
   // (k3) 'refit' PEŁNY gdy zmienia się `snapshot` (nowa sieć = nowy świat) lub
@@ -727,7 +752,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       skippedInitialRefit.current = true;
       return;
     }
-    dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize });
+    // F12-C (E15): refit z punktem fokusu GPZ — nowa sieć/nowy cel fitu
+    // przechodzi przez tę samą semantykę kamery startowej co mount.
+    dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint });
     // `viewportSize` w akcji to viewport AKTUALNY w chwili refitu (nie w
     // chwili montażu) — poprawne nawet gdy width/height zmieniły się w tym
     // samym renderze co snapshot/lodOverride.

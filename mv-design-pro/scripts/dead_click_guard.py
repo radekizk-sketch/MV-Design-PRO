@@ -246,8 +246,9 @@ def check_sld_v2_menu_path() -> list[str]:
         if token not in executor_content:
             errors.append(f"sldActionExecutor missing token: {token}")
 
+    # F12-C: kontener v2 USUNIETY (spec par. 10.1 ARCH-4) — jedyny workspace
+    # to SldCanvasV3Workspace; wymog spiecia z wykonawca zostaje.
     for workspace_rel, workspace_path in [
-        ("SldWorkspaceContainer (v2)", SLD_V2_DIR / "canvas" / "SldWorkspaceContainer.tsx"),
         (
             "SldCanvasV3Workspace (v3)",
             FRONTEND_SRC / "ui" / "sld" / "v3" / "canvas" / "SldCanvasV3Workspace.tsx",

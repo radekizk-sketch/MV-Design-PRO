@@ -154,8 +154,21 @@ describe('SCADA Compliance Contract — tor mocy + symbole + porty', () => {
       expect(fileExists('ui/sld/v2/geometry/routing.ts')).toBe(true);
     });
 
-    it('CadOverlay component istnieje (warstwa edycji)', () => {
-      expect(fileExists('ui/sld/v2/canvas/CadOverlay.tsx')).toBe(true);
+    it('mechanizmy siatki/portów żyją w wyroczniach v3 (F12-C: CadOverlay skasowany — ARCH-1)', () => {
+      // F12-C (spec §10.1 ARCH-1, rozstrzygnięcie architekta 2026-07-16):
+      // CadOverlay był martwym szkieletem edycji (zero produkcyjnych
+      // wołających — dowód w spec §10.1) i został SKASOWANY razem ze ścieżką
+      // renderu v2. Wymaganie #4 (ortogonalne + siatka + porty) jest
+      // egzekwowane na ŻYWEJ ścieżce renderu przez wyrocznie v3:
+      // grid_probe/port_probe (`allSceneGeometryOnGrid`/
+      // `sceneSegmentEndpointGaps`, accept:sld-v3 §11.1/§11.2).
+      expect(fileExists('ui/sld/v3/scene/buildScene.ts')).toBe(true);
+      const buildScene = readFileSync(
+        join(FRONTEND_SRC, 'ui/sld/v3/scene/buildScene.ts'),
+        'utf-8',
+      );
+      expect(buildScene).toContain('allSceneGeometryOnGrid');
+      expect(buildScene).toContain('sceneSegmentEndpointGaps');
     });
   });
 

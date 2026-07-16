@@ -51,7 +51,7 @@ pełnego parytetu §10):
 - `frontend/src/ui/sld/v3/canvas/__tests__/camera.test.ts`
 - `frontend/src/ui/sld/v3/canvas/__tests__/sldCanvasV3.test.tsx` (F9.7: + r1, test ścieżki fallbacku placementu etykiet przepływu)
 - `frontend/src/ui/sld/v3/compose/__tests__/sourceKind.test.ts` (F9.7, NOWY — `source_symbol_probe`, spec §13.2)
-- `frontend/src/ui/sld/__tests__/SldRenderHost.test.tsx` (cutover v2/v3 + pomost split-preview)
+- `frontend/src/ui/sld/v3/canvas/__tests__/mobileCamera.test.tsx` (F12-C: kamera mobilna E15/E16 — dawny wpis `SldRenderHost.test.tsx` [cutover v2/v3 + pomost split-preview] usunięty razem ze skasowaną ścieżką renderu v2, spec §10.1 ARCH-4)
 - `frontend/src/ui/workspace/__tests__/routerExtensionSurfaces.test.tsx` (drugi punkt osadzenia — `WorkspaceSurfaceRouter` E-01)
 - `frontend/scripts/sld_v3_acceptance.mjs` (`npm run accept:sld-v3` — render-odbiór wyroczni §11/§9/§12-§15/§16 na `sldSubstrate52s`, AKTYWNY w `.github/workflows/sld-determinism.yml`; F9.7: domknięcie audytu kompletności §12-§15 — port_probe/symbol_wire_probe/vertical_length_probe/lod_path_probe/source_symbol_probe dopięte, patrz `docs/sld/SLD_V3_ACCEPTANCE.md`)
 - `scripts/sld_determinism_guards.py` (GUARD 6 — testy v3 obecne)

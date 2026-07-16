@@ -102,19 +102,6 @@ export interface FeatureFlags {
    */
   USE_LAYOUT_V3: boolean;
 
-  /**
-   * USE_SLD_CANVAS_V3
-   *
-   * Cutover renderu SLD (SLD_CAD_REBUILD_PLAN_V3 §F8): domyślnie renderuje
-   * nowy `SldCanvasV3` (przebudowany rysunek CAD) zamiast dotychczasowego
-   * `SldCanvasV2`. v2 pozostaje dostępny jako fallback — patrz
-   * `ui/sld/sldRenderVersion.ts` (nadpisanie per-sesję przez localStorage,
-   * dla wsparcia/QA, bez potrzeby rebuildu).
-   *
-   * Domyślnie: true (v3 aktywny — F8a cutover)
-   * Env override: VITE_FF_USE_SLD_CANVAS_V3
-   */
-  USE_SLD_CANVAS_V3: boolean;
 }
 
 /**
@@ -141,10 +128,6 @@ export const featureFlags: Readonly<FeatureFlags> = Object.freeze({
   USE_LAYOUT_V3: parseEnvBoolean(
     getViteEnv('VITE_USE_LAYOUT_V3'),
     false
-  ),
-  USE_SLD_CANVAS_V3: parseEnvBoolean(
-    getViteEnv('VITE_FF_USE_SLD_CANVAS_V3'),
-    true // domyślnie ON — F8a cutover (v2 fallback za flagą)
   ),
 });
 

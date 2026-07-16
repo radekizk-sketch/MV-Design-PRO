@@ -1016,6 +1016,69 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         )}
       </div>
 
+      {/* F12-C (spec §10.1 ARCH-4): pusty stan — pierwszy krok projektowy z
+          jawnym CTA GPZ i katalogami, przeniesiony 1:1 z kontenera v2
+          (te same testid/etykiety PL; akcje przez WSPÓŁDZIELONY wykonawca
+          `handleAction`, więc zachowanie identyczne — `insert-gpz` otwiera
+          formularz `add_grid_source_sn`, `open-catalogs` nawigację E-38). */}
+      {!hasNetworkModel && (
+        <div
+          data-testid="sld-empty-state"
+          className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center"
+        >
+          <div className="pointer-events-none max-w-md rounded border border-scada-border bg-scada-panel/95 p-6 text-center text-scada-text shadow-xl">
+            <div className="mb-2 text-sm font-bold uppercase tracking-widest text-scada-muted">
+              Schemat jednokreskowy
+            </div>
+            <h2 className="mb-3 text-lg font-semibold text-scada-text">
+              Wybierz wariant GPZ i rozpocznij ciąg SN
+            </h2>
+            <p className="text-sm leading-6 text-scada-muted">
+              Zacznij od kompletnego układu GPZ z rozdzielnią SN, sekcjami szyn
+              i polami liniowymi. Potem wyprowadź odcinek katalogowy i zakończ
+              go stacją, ZK SN, słupem rozgałęźnym albo kolejnym węzłem ciągu.
+            </p>
+            <div className="mt-4 flex flex-col items-stretch gap-2">
+              <button
+                type="button"
+                data-testid="sld-empty-state-insert-gpz"
+                className="pointer-events-auto rounded border border-blue-500 bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleAction('insert-gpz', 'background', null);
+                }}
+              >
+                Wstaw Główny Punkt Zasilający
+              </button>
+              <button
+                type="button"
+                data-testid="sld-empty-state-open-catalogs"
+                className="pointer-events-auto rounded border border-scada-border bg-scada-surface px-4 py-2 text-sm text-scada-text hover:bg-scada-hover-nav focus:outline-none focus:ring-2 focus:ring-scada-border"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleAction('open-catalogs', 'background', null);
+                }}
+              >
+                Przeglądaj katalogi techniczne
+              </button>
+              <a
+                href="#kreator-stacji-v2"
+                data-testid="sld-empty-state-open-station-wizard"
+                className="pointer-events-auto rounded border border-emerald-500/50 bg-emerald-500/10 px-4 py-2 text-center text-sm font-medium text-emerald-300 hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                Otwórz konfigurację stacji (17 kroków)
+              </a>
+            </div>
+            <p className="mt-3 text-xs text-scada-muted">
+              Po wstawieniu GPZ karta techniczna poprowadzi przez sekcje szyn,
+              pola liniowe, odcinki, stacje i układy PV/BESS/FW.
+            </p>
+          </div>
+        </div>
+      )}
+
       <SldDetailDrawer
         open={detailDrawerData !== null}
         data={detailDrawerData}

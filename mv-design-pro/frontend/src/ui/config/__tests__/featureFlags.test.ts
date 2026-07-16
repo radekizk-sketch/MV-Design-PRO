@@ -23,9 +23,6 @@ describe('featureFlags — Zadanie 11 UI/UX 100% (dev tools hidden default)', ()
     expect(featureFlags.USE_LAYOUT_V3).toBe(false);
   });
 
-  it('USE_SLD_CANVAS_V3 domyślnie ON (F8a cutover — v3 aktywny)', () => {
-    expect(featureFlags.USE_SLD_CANVAS_V3).toBe(true);
-  });
 
   it('isFeatureEnabled() zwraca prawidłową wartość', () => {
     expect(isFeatureEnabled('ENABLE_MATH_RENDERING')).toBe(true);

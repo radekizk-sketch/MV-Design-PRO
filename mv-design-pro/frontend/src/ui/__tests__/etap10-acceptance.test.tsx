@@ -14,7 +14,7 @@ import { useAppStateStore } from '../app-state';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { CommandPalette } from '../network-build/CommandPalette';
-import { SldWorkspaceContainer } from '../sld/v2/canvas/SldWorkspaceContainer';
+import { SldCanvasV3Workspace } from '../sld/v3/canvas/SldCanvasV3Workspace';
 import { ProjectDashboardSurface } from '../workspace/surfaces/ProjectDashboardSurface';
 import { GpzConfiguratorSurface } from '../workspace/surfaces/GpzConfiguratorSurface';
 import { BayConfiguratorSurface } from '../workspace/surfaces/BayConfiguratorSurface';
@@ -49,8 +49,8 @@ describe('Etap 10 — Testy akceptacyjne workflow inżyniera E2E', () => {
 
   // === Test A: Środowisko SLD (E-01) ===
   it('A. SLD canvas renderuje się z polskim empty state', () => {
-    render(<SldWorkspaceContainer width={800} height={600} />);
-    expect(screen.getByTestId('sld-canvas-v2')).toBeInTheDocument();
+    render(<SldCanvasV3Workspace width={800} height={600} />);
+    expect(screen.getByTestId('sld-canvas-v3-workspace')).toBeInTheDocument();
     expect(screen.getByTestId('sld-empty-state')).toBeInTheDocument();
   });
 
@@ -119,7 +119,7 @@ describe('Etap 10 — Testy akceptacyjne workflow inżyniera E2E', () => {
 
   // === Test J: Brak placeholderów / TODO produkcyjnych ===
   it('J. Brak fałszywych zer "0,00" w empty stanach', () => {
-    render(<SldWorkspaceContainer width={400} height={300} />);
+    render(<SldCanvasV3Workspace width={400} height={300} />);
     const empty = screen.getByTestId('sld-empty-state');
     expect(empty.textContent).not.toContain('0.00');
     expect(empty.textContent).not.toContain('0,00');
@@ -133,10 +133,10 @@ describe('Etap 10 — Testy akceptacyjne workflow inżyniera E2E', () => {
   });
 
   // === Test L: Determinizm — ten sam input → ten sam output ===
-  it('L. SldWorkspaceContainer renderuje się deterministycznie 10× pod rząd', () => {
+  it('L. SldCanvasV3Workspace renderuje się deterministycznie 10× pod rząd', () => {
     for (let i = 0; i < 10; i++) {
-      const { unmount } = render(<SldWorkspaceContainer width={400} height={300} />);
-      expect(screen.getByTestId('sld-canvas-v2')).toBeInTheDocument();
+      const { unmount } = render(<SldCanvasV3Workspace width={400} height={300} />);
+      expect(screen.getByTestId('sld-canvas-v3-workspace')).toBeInTheDocument();
       unmount();
     }
   });

@@ -49,7 +49,7 @@
  *      i skala ZACHOWANE, dostosowywany jest tylko punkt centrowania).
  */
 import {
-  fitToView,
+  initialCameraForNetwork,
   pan as panTransform,
   screenToWorld,
   zoomToCursor,
@@ -227,6 +227,9 @@ export type CameraAction =
       readonly bbox: BoundingBox;
       readonly lodBboxes: Readonly<Record<SceneLod, BoundingBox>>;
       readonly viewportSize: { readonly width: number; readonly height: number };
+      /** F12-C (E15): środek bloku GPZ dla trybu „focus" kamery mobilnej —
+       *  patrz `computeInitialCameraState`; brak/`null` = ścieżka „fit". */
+      readonly focusPoint?: { readonly x: number; readonly y: number } | null;
     };
 
 /**
@@ -296,7 +299,16 @@ export function cameraReducer(state: CameraState, action: CameraAction): CameraS
     return applyResize(state, action.viewportSize);
   }
   if (action.type === 'refit') {
-    const transform = fitToView(action.bbox, action.viewportSize);
+    // F12-C (E15): refit honoruje `focusPoint` tak samo jak stan początkowy
+    // (`computeInitialCameraState`) — refit to „nowy świat", więc semantyka
+    // kamery startowej obowiązuje; brak `focusPoint`/landscape ⇒ ścieżka
+    // „fit" identyczna z dawnym `fitToView(bbox, viewportSize)`.
+    const transform = initialCameraForNetwork({
+      bbox: action.bbox,
+      viewportSize: action.viewportSize,
+      focusPoint: action.focusPoint ?? null,
+      readableMinScale: MOBILE_PORTRAIT_READABLE_MIN_SCALE,
+    }).transform;
     return {
       transform,
       lod: lodFromScale(transform.scale),
@@ -327,18 +339,43 @@ export function cameraReducer(state: CameraState, action: CameraAction): CameraS
   return { ...state, transform: mappedTransform, lod: nextLod };
 }
 
+/** F12-C (E15 parytet, spec §10 „kamera mobilna (portrait focus na GPZ)"):
+ *  TEN SAM próg czytelności co v2 (`SldCanvasV2.tsx`
+ *  `MOBILE_PORTRAIT_READABLE_MIN_SCALE`) — pionowy (mobilny) viewport, na
+ *  którym fit szeroko-niskiej sieci spadłby poniżej tej skali, dostaje
+ *  zamiast mikroskopijnego paska skalę czytelną wycentrowaną na źródle
+ *  (GPZ); reszta magistrali przez pan. */
+export const MOBILE_PORTRAIT_READABLE_MIN_SCALE = 0.5;
+
 /** Stan początkowy kamery: dopasowany do `bbox` (cel fitu — patrz F8a k4.1 w
  *  `SldCanvasV3.tsx`: `lodOverride` ustawiony ⇒ wołający przekazuje bbox TEGO
  *  LOD, nie zawsze LOD2), LOD klasyfikowany bez histerezy (brak wcześniejszego
  *  stanu do zabezpieczenia). `lodBboxes` domyślnie = `bbox` dla wszystkich
  *  trzech poziomów (brak realnego mapowania skali, gdy wołający go nie
- *  dostarczy — zachowanie kompatybilne z wywołaniami sprzed F8a). */
+ *  dostarczy — zachowanie kompatybilne z wywołaniami sprzed F8a).
+ *
+ *  F12-C (E15/E16 parytet z v2): opcjonalny `focusPoint` (środek bloku GPZ,
+ *  wyliczany przez wołającego ze sceny — `SldCanvasV3.tsx`
+ *  `gpzFocusPointOfScene`) włącza tryb „focus" przez WSPÓŁDZIELONĄ
+ *  `initialCameraForNetwork` (`v2/viewport/ViewportController.ts` — ta sama
+ *  matematyka co kamera v2, zero duplikacji): na PIONOWYM viewportcie, gdy fit
+ *  spadłby poniżej `MOBILE_PORTRAIT_READABLE_MIN_SCALE`, kamera startuje
+ *  wycentrowana na źródle w skali czytelnej. Landscape/desktop i brak
+ *  `focusPoint` ⇒ zachowanie IDENTYCZNE jak przed F12-C (ścieżka „fit"
+ *  `initialCameraForNetwork` to dokładnie `fitToView(bbox, viewportSize)` z
+ *  tym samym domyślnym paddingiem 40 — testy F8a k4.1 bez zmian). */
 export function computeInitialCameraState(
   bbox: BoundingBox,
   viewportSize: { readonly width: number; readonly height: number },
   lodBboxes?: Readonly<Record<SceneLod, BoundingBox>>,
+  focusPoint?: { readonly x: number; readonly y: number } | null,
 ): CameraState {
-  const transform = fitToView(bbox, viewportSize);
+  const transform = initialCameraForNetwork({
+    bbox,
+    viewportSize,
+    focusPoint: focusPoint ?? null,
+    readableMinScale: MOBILE_PORTRAIT_READABLE_MIN_SCALE,
+  }).transform;
   return {
     transform,
     lod: lodFromScale(transform.scale),
