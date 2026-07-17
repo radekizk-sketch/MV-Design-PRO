@@ -12,7 +12,7 @@
  * BEZ zmiany kontraktu propsów — sortowanie i mapowanie pozostają czyste.
  */
 
-import { useMemo, useState, type KeyboardEvent } from 'react';
+import { useMemo, useState, type KeyboardEvent, type UIEvent } from 'react';
 import type { AdvancementMode } from '../../shell/modeModel';
 import type {
   DefinicjaKolumny,
@@ -21,6 +21,32 @@ import type {
   WierszTabeli,
 } from './wzorzecModel';
 import { WZORZEC_STRINGS } from './strings';
+
+/**
+ * Próg aktywacji wirtualizacji okienkowej (liczba wierszy). Powyżej — renderujemy
+ * wyłącznie okno widoczne + zapas; równo lub poniżej — dzisiejsze zachowanie 1:1
+ * (całe drzewo DOM bez zmian). Karta U4 §2.
+ */
+export const PROG_WIRTUALIZACJI = 500;
+
+/**
+ * Stała wysokość wiersza tabeli [px], zmierzona z `wzorzec.css`:
+ *   tbody td `padding: 6px 12px` (l.205) → 12px w pionie
+ * + `border-bottom: 1px` (l.206)        → 1px
+ * + treść: `font-size: 13px` (l.155) × `line-height: 1.5` (.mvd-wyn, l.15–16) → 19.5px
+ * = 32,5px → zaokrąglone w górę do 33px.
+ * Wartość MUSI odpowiadać realnej wysokości renderu, inaczej przekładki się rozjadą.
+ */
+export const WYSOKOSC_WIERSZA_PX = 33;
+
+/** Zapas wierszy renderowanych poza widocznym oknem (góra i dół) — płynny scroll. */
+export const ZAPAS_WIERSZY = 20;
+
+/**
+ * Wysokość widocznego okna przewijania [px]. Deterministyczna (niezależna od layoutu
+ * przeglądarki — kluczowe dla jsdom/testów). Liczba wierszy widocznych = ceil(okno / wiersz).
+ */
+export const WYSOKOSC_WIDOKU_PX = 480;
 
 interface TabelaWynikowProps {
   kolumny: DefinicjaKolumny[];
@@ -82,6 +108,7 @@ export function TabelaWynikow({
   wybranyWiersz,
 }: TabelaWynikowProps) {
   const [sort, setSort] = useState<StanSortowania | null>(null);
+  const [scrollTop, setScrollTop] = useState(0);
 
   const kolumnyWidoczne = useMemo(
     () => kolumny.filter((k) => !k.tylkoEkspercki || trybZaawansowania === 'expert'),
@@ -91,6 +118,32 @@ export function TabelaWynikow({
   const kluczId = kluczWiersza ?? kolumny[0]?.klucz;
 
   const wierszePosortowane = useMemo(() => posortuj(wiersze, sort), [wiersze, sort]);
+
+  // Wirtualizacja WYŁĄCZNIE powyżej progu; poniżej — pełny render 1:1 (bez zmian DOM).
+  const wirtualizacja = wierszePosortowane.length > PROG_WIRTUALIZACJI;
+
+  const okno = useMemo(() => {
+    if (!wirtualizacja) {
+      return { pierwszy: 0, ostatni: wierszePosortowane.length, wysGora: 0, wysDol: 0 };
+    }
+    const liczbaWidocznych = Math.ceil(WYSOKOSC_WIDOKU_PX / WYSOKOSC_WIERSZA_PX);
+    const indexStart = Math.floor(scrollTop / WYSOKOSC_WIERSZA_PX);
+    const pierwszy = Math.max(0, indexStart - ZAPAS_WIERSZY);
+    const ostatni = Math.min(
+      wierszePosortowane.length,
+      indexStart + liczbaWidocznych + ZAPAS_WIERSZY,
+    );
+    return {
+      pierwszy,
+      ostatni,
+      wysGora: pierwszy * WYSOKOSC_WIERSZA_PX,
+      wysDol: (wierszePosortowane.length - ostatni) * WYSOKOSC_WIERSZA_PX,
+    };
+  }, [wirtualizacja, scrollTop, wierszePosortowane.length]);
+
+  const onScroll = (e: UIEvent<HTMLDivElement>) => {
+    setScrollTop(e.currentTarget.scrollTop);
+  };
 
   const przelaczSort = (klucz: string) => {
     setSort((poprz) => {
@@ -108,8 +161,59 @@ export function TabelaWynikow({
     );
   }
 
+  const renderujWiersz = (wiersz: WierszTabeli, globalnyIndex: number) => {
+    const idKom = kluczId ? wiersz[kluczId] : undefined;
+    const rowKey = idKom ? String(idKom.wartosc) : `wiersz-${globalnyIndex}`;
+    const wybieralny = onWybierzWiersz != null;
+    const wybrany = wybieralny && wybranyWiersz != null && wybranyWiersz === rowKey;
+    return (
+      <tr
+        key={rowKey}
+        data-testid="mvd-wyn-wiersz"
+        className={
+          wybieralny
+            ? wybrany
+              ? 'mvd-wyn-wiersz-wybieralny mvd-on'
+              : 'mvd-wyn-wiersz-wybieralny'
+            : undefined
+        }
+        aria-selected={wybieralny ? wybrany : undefined}
+        tabIndex={wybieralny ? 0 : undefined}
+        onClick={wybieralny ? () => onWybierzWiersz(rowKey) : undefined}
+        onKeyDown={
+          wybieralny
+            ? (e: KeyboardEvent<HTMLTableRowElement>) => {
+                if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+                  e.preventDefault();
+                  onWybierzWiersz(rowKey);
+                }
+              }
+            : undefined
+        }
+      >
+        {kolumnyWidoczne.map((kol) => (
+          <Komorka
+            key={kol.klucz}
+            kolumna={kol}
+            komorka={wiersz[kol.klucz]}
+            onOtworzDowod={onOtworzDowod}
+          />
+        ))}
+      </tr>
+    );
+  };
+
   return (
-    <div className="mvd-wyn-tabela-wrap">
+    <div
+      className="mvd-wyn-tabela-wrap"
+      style={
+        wirtualizacja
+          ? { maxHeight: WYSOKOSC_WIDOKU_PX, overflowY: 'auto' }
+          : undefined
+      }
+      onScroll={wirtualizacja ? onScroll : undefined}
+      data-testid="mvd-wyn-tabela-wrap"
+    >
       <table className="mvd-wyn-tabela" data-testid="mvd-wyn-tabela">
         <thead>
           <tr>
@@ -157,47 +261,25 @@ export function TabelaWynikow({
           </tr>
         </thead>
         <tbody>
-          {wierszePosortowane.map((wiersz, i) => {
-            const idKom = kluczId ? wiersz[kluczId] : undefined;
-            const rowKey = idKom ? String(idKom.wartosc) : `wiersz-${i}`;
-            const wybieralny = onWybierzWiersz != null;
-            const wybrany = wybieralny && wybranyWiersz != null && wybranyWiersz === rowKey;
-            return (
-              <tr
-                key={rowKey}
-                data-testid="mvd-wyn-wiersz"
-                className={
-                  wybieralny
-                    ? wybrany
-                      ? 'mvd-wyn-wiersz-wybieralny mvd-on'
-                      : 'mvd-wyn-wiersz-wybieralny'
-                    : undefined
-                }
-                aria-selected={wybieralny ? wybrany : undefined}
-                tabIndex={wybieralny ? 0 : undefined}
-                onClick={wybieralny ? () => onWybierzWiersz(rowKey) : undefined}
-                onKeyDown={
-                  wybieralny
-                    ? (e: KeyboardEvent<HTMLTableRowElement>) => {
-                        if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
-                          e.preventDefault();
-                          onWybierzWiersz(rowKey);
-                        }
-                      }
-                    : undefined
-                }
-              >
-                {kolumnyWidoczne.map((kol) => (
-                  <Komorka
-                    key={kol.klucz}
-                    kolumna={kol}
-                    komorka={wiersz[kol.klucz]}
-                    onOtworzDowod={onOtworzDowod}
-                  />
-                ))}
-              </tr>
-            );
-          })}
+          {wirtualizacja && okno.wysGora > 0 && (
+            <tr aria-hidden="true" data-testid="mvd-wyn-spacer-gora">
+              <td
+                colSpan={kolumnyWidoczne.length}
+                style={{ height: okno.wysGora, padding: 0, border: 0 }}
+              />
+            </tr>
+          )}
+          {wierszePosortowane
+            .slice(okno.pierwszy, okno.ostatni)
+            .map((wiersz, i) => renderujWiersz(wiersz, okno.pierwszy + i))}
+          {wirtualizacja && okno.wysDol > 0 && (
+            <tr aria-hidden="true" data-testid="mvd-wyn-spacer-dol">
+              <td
+                colSpan={kolumnyWidoczne.length}
+                style={{ height: okno.wysDol, padding: 0, border: 0 }}
+              />
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
