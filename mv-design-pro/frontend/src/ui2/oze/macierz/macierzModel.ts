@@ -119,6 +119,8 @@ export interface PodsumowanieModulu {
   readonly derRef: string;
   readonly nazwa: string;
   readonly overallStatus: string;
+  /** Klasa modułu A/B/C/D z biegu (`module_type`); `null` bez wyniku biegu. */
+  readonly moduleType: string | null;
   readonly requiredCount: number;
   readonly passCount: number;
   readonly failCount: number;
@@ -396,6 +398,7 @@ export function podsumowanieModulu(
     derRef: opis.derRef,
     nazwa: opis.nazwa,
     overallStatus: zablokowany ? 'brak_danych' : (w?.overall_status ?? 'brak_danych'),
+    moduleType: w?.module_type ?? null,
     requiredCount: w?.required_count ?? 0,
     passCount: w?.pass_count ?? 0,
     failCount: w?.fail_count ?? 0,

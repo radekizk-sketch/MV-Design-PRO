@@ -9,9 +9,11 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 
 import { useStationDerStore } from '../../../../ui/network-build/station-der';
+import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
+import type { ExecutionAnalysisType, ExecutionRun, RunStatus } from '../../../../ui/study-cases/types';
 import { EkranFrt } from '../EkranFrt';
 import {
   katalogNcRfgFixture,
@@ -33,6 +35,20 @@ vi.mock('../../api', () => ({
 
 const DER_REF = 'conv-pv-1mw-15kv';
 
+function biegFixture(
+  over: Partial<ExecutionRun> & { analysis_type: ExecutionAnalysisType; status: RunStatus },
+): ExecutionRun {
+  return {
+    id: 'run-1',
+    study_case_id: 'case-1',
+    solver_input_hash: 'hash-1',
+    started_at: '2026-07-10T09:59:00Z',
+    finished_at: '2026-07-10T10:00:00Z',
+    error_message: null,
+    ...over,
+  };
+}
+
 function dodajModul(deviceRef: string | null, id = 'der-1', name = 'Farma PV 1 MW') {
   useStationDerStore.getState().attachDer({
     id,
@@ -47,9 +63,13 @@ function dodajModul(deviceRef: string | null, id = 'der-1', name = 'Farma PV 1 M
 
 beforeEach(() => {
   useStationDerStore.getState().reset();
+  useExecutionRunsStore.setState({ runs: [] });
   pobierzKatalog.mockResolvedValue(katalogNcRfgFixture());
 });
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  useExecutionRunsStore.setState({ runs: [] });
+  vi.clearAllMocks();
+});
 
 async function wczytajISkonfiguruj(tryb: 'basic' | 'expert' = 'basic') {
   dodajModul(DER_REF);
@@ -288,5 +308,63 @@ describe('EkranFrt — sekcja „Sekwencja zapadów"', () => {
     expect(await screen.findByTestId('mvd-frt-sekw-blad')).toHaveTextContent(
       'dozwolone maksimum',
     );
+  });
+});
+
+describe('EkranFrt — kontekst siły sieci sekwencji (run_id / bus_ref)', () => {
+  it('selektor kontekstu listuje wyłącznie zakończone przebiegi zwarciowe', async () => {
+    useExecutionRunsStore.setState({
+      runs: [
+        biegFixture({ id: 'sc-done', analysis_type: 'SC_3F', status: 'DONE' }),
+        biegFixture({ id: 'sc-run', analysis_type: 'SC_1F', status: 'RUNNING' }),
+        biegFixture({ id: 'lf-done', analysis_type: 'LOAD_FLOW', status: 'DONE' }),
+      ],
+    });
+    await wczytajISkonfiguruj();
+    const selektor = screen.getByTestId('mvd-frt-sekw-run');
+    expect(within(selektor).getByRole('option', { name: /Zwarcie trójfazowe/ })).toBeInTheDocument();
+    expect(
+      within(selektor).queryByRole('option', { name: /Zwarcie jednofazowe/ }),
+    ).not.toBeInTheDocument();
+    expect(within(selektor).queryByRole('option', { name: /Rozpływ mocy/ })).not.toBeInTheDocument();
+  });
+
+  it('brak zakończonych przebiegów zwarciowych → uczciwy komunikat PL', async () => {
+    await wczytajISkonfiguruj();
+    expect(screen.getByTestId('mvd-frt-sekw-run-brak')).toBeInTheDocument();
+  });
+
+  it('wybór przebiegu i węzła dołącza run_id oraz bus_ref do biegu', async () => {
+    useExecutionRunsStore.setState({
+      runs: [biegFixture({ id: 'sc-done', analysis_type: 'SC_3F', status: 'DONE' })],
+    });
+    pobierzSekwencja.mockResolvedValue(widokSekwencjiZaliczonaFixture());
+    await wczytajISkonfiguruj();
+    fireEvent.change(screen.getByTestId('mvd-frt-sekw-run'), { target: { value: 'sc-done' } });
+    fireEvent.change(screen.getByTestId('mvd-frt-sekw-bus'), { target: { value: 'SZYNA-GPZ' } });
+    fireEvent.click(screen.getByTestId('mvd-frt-sekw-oblicz'));
+    await screen.findByTestId('mvd-frt-sekw-wynik');
+    expect(pobierzSekwencja).toHaveBeenCalledWith({
+      derRef: DER_REF,
+      operatorId: 'pse',
+      zapady: [{ glebokoscPu: 0.05, czasS: 0.15 }],
+      runId: 'sc-done',
+      busRef: 'SZYNA-GPZ',
+    });
+  });
+
+  it('bez wyboru kontekstu → run_id i bus_ref pominięte (zachowanie dzisiejsze)', async () => {
+    useExecutionRunsStore.setState({
+      runs: [biegFixture({ id: 'sc-done', analysis_type: 'SC_3F', status: 'DONE' })],
+    });
+    pobierzSekwencja.mockResolvedValue(widokSekwencjiZaliczonaFixture());
+    await wczytajISkonfiguruj();
+    fireEvent.click(screen.getByTestId('mvd-frt-sekw-oblicz'));
+    await screen.findByTestId('mvd-frt-sekw-wynik');
+    expect(pobierzSekwencja).toHaveBeenCalledWith({
+      derRef: DER_REF,
+      operatorId: 'pse',
+      zapady: [{ glebokoscPu: 0.05, czasS: 0.15 }],
+    });
   });
 });

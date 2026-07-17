@@ -54,6 +54,7 @@ export const MACIERZ_STRINGS = {
   moduleBrakDanych: 'brak danych',
   wymogiSpelnione: 'Spełnione wymagane',
   perModul: 'Spełnione / wymagane',
+  klasaModulu: 'Klasa modułu',
 
   // Szczegół werdyktu
   szczegolTytul: 'Szczegół werdyktu',

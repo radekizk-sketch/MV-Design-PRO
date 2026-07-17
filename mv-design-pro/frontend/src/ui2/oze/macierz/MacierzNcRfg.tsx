@@ -382,6 +382,15 @@ export function MacierzNcRfg({ trybZaawansowania }: MacierzNcRfgProps): JSX.Elem
                   <div key={opis.derRef} className="mvd-oze-podsum-poz">
                     <span className="mvd-oze-podsum-etyk">
                       {opis.nazwa} · {ETYKIETY_STATUSU_MODULU[p.overallStatus] ?? p.overallStatus}
+                      {p.moduleType ? (
+                        <span
+                          className="mvd-oze-podsum-klasa"
+                          data-testid={`mvd-oze-podsum-modul-klasa-${opis.derRef}`}
+                        >
+                          {' · '}
+                          {MACIERZ_STRINGS.klasaModulu}: {p.moduleType}
+                        </span>
+                      ) : null}
                     </span>
                     <span className="mvd-oze-podsum-wart mvd-oze-num">
                       {p.passCount} / {p.requiredCount}

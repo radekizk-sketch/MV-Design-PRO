@@ -27,9 +27,10 @@
  *      tylko aktywnego przypadku (`runStore.ts:144-154`),
  *   3. klient sam filtruje status FINISHED i sortuje malejąco po dacie
  *      (`api.ts:131-138`) — komplet do etykiety PL (data + zbieżność).
- * Kontrakt read-only NIE niesie ludzkiej nazwy przypadku — „przypadek" pokazujemy
- * identyfikatorem wyłącznie w trybie eksperckim (TODO-KARTA: wzbogacić etykietę
- * o nazwę przypadku ze store'u study-cases przez kartę integracyjną).
+ * Kontrakt read-only NIE niesie ludzkiej nazwy przypadku — nazwę pobiera warstwa
+ * ekranu ze store'u study-cases po `study_case_id` i podaje do `etykietaPrzebiegu`
+ * (brak nazwy → dzisiejsza etykieta). Identyfikatory (id przebiegu/przypadku)
+ * pozostają wyłącznie w trybie eksperckim.
  */
 
 import type {
@@ -244,15 +245,24 @@ export function naZalozeniaPorownania(summary: PowerFlowComparisonSummary): Wier
 
 /**
  * Buduje polską etykietę przebiegu rozpływu dla selektora A/B. Pierwszy plan:
- * analiza (rozpływ) + data + zbieżność. Identyfikatory (id przebiegu, przypadek)
- * dopisywane WYŁĄCZNIE w trybie eksperckim (MODEL_INTERAKCJI §2.7).
+ * analiza (rozpływ) + data + (nazwa przypadku, gdy znana) + zbieżność.
+ * `nazwaPrzypadku` pochodzi ze store'u przypadków po `study_case_id`; jej brak
+ * (`null`/pominięta) daje dzisiejszą etykietę — zero zgadywania. Identyfikatory
+ * (id przebiegu, id przypadku) dopisywane WYŁĄCZNIE w trybie eksperckim.
  */
-export function etykietaPrzebiegu(run: PowerFlowRunItem, trybEkspercki: boolean): string {
+export function etykietaPrzebiegu(
+  run: PowerFlowRunItem,
+  trybEkspercki: boolean,
+  nazwaPrzypadku?: string | null,
+): string {
   const zbieznosc =
     run.converged === null
       ? POROWNANIE_STRINGS.kreska
       : zbieznoscPL(run.converged);
-  const podstawa = `${POROWNANIE_STRINGS.analizaRozplyw} · ${fmtData(run.created_at)} · ${zbieznosc}`;
+  const czlony = [POROWNANIE_STRINGS.analizaRozplyw, fmtData(run.created_at)];
+  if (nazwaPrzypadku) czlony.push(nazwaPrzypadku);
+  czlony.push(zbieznosc);
+  const podstawa = czlony.join(' · ');
   if (!trybEkspercki) return podstawa;
   return `${podstawa} · ${run.study_case_id} · ${run.id}`;
 }

@@ -132,6 +132,25 @@ describe('podsumowania per moduł i per projekt', () => {
     expect(podsumowanieModulu(moduly[2], wynik).zablokowany).toBe(true);
   });
 
+  it('per moduł: klasa (module_type) przenoszona z wyniku biegu; brak wyniku → null', () => {
+    const bazowy = wynikFixture();
+    // Klasa A/B/C/D pochodzi z odpowiedzi solvera (`module_type`) — tu nadpisana
+    // realistyczną klasą, aby zweryfikować przeniesienie wartości bez zmian logiki.
+    const wynik = {
+      ...bazowy,
+      modules: [
+        { ...bazowy.modules[0], module_type: 'B' },
+        { ...bazowy.modules[1], module_type: 'D' },
+      ],
+    };
+    expect(podsumowanieModulu(moduly[0], wynik).moduleType).toBe('B');
+    expect(podsumowanieModulu(moduly[1], wynik).moduleType).toBe('D');
+    // Moduł zablokowany (brak danych) nie ma wyniku biegu → klasa null.
+    expect(podsumowanieModulu(moduly[2], wynik).moduleType).toBeNull();
+    // Brak biegu w ogóle → klasa null.
+    expect(podsumowanieModulu(moduly[0], null).moduleType).toBeNull();
+  });
+
   it('per projekt: agreguje moduły i wymagane/spełnione', () => {
     const p = podsumowanieProjektu(moduly, wynikFixture());
     expect(p.liczbaModulow).toBe(3);

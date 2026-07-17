@@ -165,6 +165,23 @@ describe('etykietaPrzebiegu — data + zbieżność; id tylko w trybie ekspercki
     const label = etykietaPrzebiegu(runFixture({ converged: null }), false);
     expect(label).toContain(POROWNANIE_STRINGS.kreska);
   });
+
+  it('nazwa przypadku dopisana obok znacznika czasu (przed zbieżnością)', () => {
+    const label = etykietaPrzebiegu(runFixture(), false, 'Wariant letni');
+    expect(label).toBe('Rozpływ mocy · 2026-07-10 08:15 · Wariant letni · Zbieżny');
+  });
+
+  it('brak nazwy przypadku (null) → dzisiejsza etykieta, zero zgadywania', () => {
+    const label = etykietaPrzebiegu(runFixture(), false, null);
+    expect(label).toBe('Rozpływ mocy · 2026-07-10 08:15 · Zbieżny');
+  });
+
+  it('tryb ekspercki zachowuje identyfikatory obok nazwy przypadku', () => {
+    const label = etykietaPrzebiegu(runFixture(), true, 'Wariant letni');
+    expect(label).toContain('Wariant letni');
+    expect(label).toContain('case-1');
+    expect(label).toContain('run-a');
+  });
 });
 
 describe('kolumny — kontrakt deklaratywny', () => {

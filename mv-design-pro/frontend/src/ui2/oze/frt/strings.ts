@@ -144,6 +144,18 @@ export const FRT_STRINGS = {
   sekwKontekstWerdykt: 'Ocena siły sieci',
   sekwEkspHash: 'Odcisk wejścia (SHA-256)',
   jednMva: 'MVA',
+
+  // Opcjonalny dobór kontekstu siły sieci (przebieg zwarciowy + węzeł)
+  sekwKontekstDoborTytul: 'Kontekst siły sieci (opcjonalny)',
+  sekwKontekstDoborOpis:
+    'Wskaż zakończony przebieg zwarciowy i węzeł przyłączenia, aby dołączyć do wyniku '
+    + 'kontekst siły sieci (SCR / moc zwarciowa Sk″). Bez wyboru sekwencja liczona jest jak dotąd.',
+  sekwKontekstRunEtykieta: 'Przebieg zwarciowy',
+  sekwKontekstRunPusty: 'Bez kontekstu siły sieci',
+  sekwKontekstRunBrak: 'Brak zakończonych przebiegów zwarciowych w tym projekcie.',
+  sekwKontekstBusEtykieta: 'Węzeł przyłączenia',
+  sekwKontekstBusOpis: 'Referencja szyny przyłączenia z wybranego przebiegu zwarciowego.',
+  sekwKontekstBusPlaceholder: 'np. SZYNA-GPZ',
 } as const;
 
 /** Etykieta PL statusu solvera FRT/HVRT. */

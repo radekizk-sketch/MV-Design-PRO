@@ -7,7 +7,22 @@ import {
   createPowerFlowComparison,
   fetchPowerFlowRuns,
 } from '../../../../ui/power-flow-comparison/api';
+import { useStudyCasesStore } from '../../../../ui/study-cases/store';
+import type { StudyCaseListItem } from '../../../../ui/study-cases/types';
 import { comparisonFixture, runsFixture } from './fixtures';
+
+function przypadekFixture(over: Partial<StudyCaseListItem> = {}): StudyCaseListItem {
+  return {
+    id: 'case-1',
+    name: 'Wariant letni',
+    description: '',
+    result_status: 'FRESH',
+    results_valid: true,
+    is_active: false,
+    updated_at: '2026-07-10T08:00:00Z',
+    ...over,
+  };
+}
 
 vi.mock('../../../../ui/power-flow-comparison/api', () => ({
   fetchPowerFlowRuns: vi.fn(),
@@ -24,9 +39,12 @@ function props(over: Partial<Parameters<typeof EkranPorownania>[0]> = {}) {
 beforeEach(() => {
   mockFetch.mockResolvedValue(runsFixture());
   mockCompare.mockResolvedValue(comparisonFixture());
+  // Izolacja: store przypadków czytany read-only przez ekran — pusty domyślnie.
+  useStudyCasesStore.setState({ cases: [] });
 });
 
 afterEach(() => {
+  useStudyCasesStore.setState({ cases: [] });
   vi.clearAllMocks();
 });
 
@@ -60,6 +78,24 @@ describe('EkranPorownania — lista przebiegów i stany', () => {
     const selA = await screen.findByTestId('mvd-por-select-a');
     expect(within(selA).getByRole('option', { name: /Rozpływ mocy · 2026-07-10 08:15 · Zbieżny/ })).toBeInTheDocument();
     expect(within(selA).getByRole('option', { name: /Niezbieżny/ })).toBeInTheDocument();
+  });
+
+  it('etykieta przebiegu pokazuje nazwę przypadku ze store’u (gdy znana)', async () => {
+    useStudyCasesStore.setState({ cases: [przypadekFixture()] });
+    render(<EkranPorownania {...props()} />);
+    const selA = await screen.findByTestId('mvd-por-select-a');
+    expect(
+      within(selA).getByRole('option', { name: /2026-07-10 08:15 · Wariant letni · Zbieżny/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('brak przypadku w store’u → dzisiejsza etykieta (zero zgadywania)', async () => {
+    render(<EkranPorownania {...props()} />);
+    const selA = await screen.findByTestId('mvd-por-select-a');
+    expect(
+      within(selA).getByRole('option', { name: /Rozpływ mocy · 2026-07-10 08:15 · Zbieżny/ }),
+    ).toBeInTheDocument();
+    expect(within(selA).queryByRole('option', { name: /Wariant letni/ })).not.toBeInTheDocument();
   });
 
   it('etykieta przebiegu ujawnia identyfikatory tylko w trybie eksperckim', async () => {

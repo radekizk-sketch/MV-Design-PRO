@@ -21,6 +21,7 @@ import {
   createPowerFlowComparison,
   fetchPowerFlowRuns,
 } from '../../../ui/power-flow-comparison/api';
+import { useStudyCasesStore } from '../../../ui/study-cases/store';
 import type {
   PowerFlowComparisonResult,
   PowerFlowRunItem,
@@ -64,6 +65,14 @@ export function EkranPorownania({ projektId, trybZaawansowania }: EkranPorownani
   const [przebiegi, setPrzebiegi] = useState<PowerFlowRunItem[]>([]);
   const [stanListy, setStanListy] = useState<StanListy>('ladowanie');
   const [bladListy, setBladListy] = useState<string | null>(null);
+
+  // Nazwa przypadku po `study_case_id` — read-only ze store'u przypadków
+  // (brak wpisu → dzisiejsza etykieta, zero zgadywania). Nie inicjuje ładowania.
+  const przypadki = useStudyCasesStore((s) => s.cases);
+  const nazwyPrzypadkow = useMemo(
+    () => new Map(przypadki.map((c) => [c.id, c.name])),
+    [przypadki],
+  );
 
   const [runA, setRunA] = useState('');
   const [runB, setRunB] = useState('');
@@ -182,6 +191,7 @@ export function EkranPorownania({ projektId, trybZaawansowania }: EkranPorownani
                 przebiegi={przebiegi}
                 wybrany={runA}
                 trybEkspercki={trybEkspercki}
+                nazwyPrzypadkow={nazwyPrzypadkow}
                 onZmiana={setRunA}
               />
               <SelektorPrzebiegu
@@ -190,6 +200,7 @@ export function EkranPorownania({ projektId, trybZaawansowania }: EkranPorownani
                 przebiegi={przebiegi}
                 wybrany={runB}
                 trybEkspercki={trybEkspercki}
+                nazwyPrzypadkow={nazwyPrzypadkow}
                 onZmiana={setRunB}
               />
             </div>
@@ -324,6 +335,7 @@ interface SelektorPrzebieguProps {
   przebiegi: PowerFlowRunItem[];
   wybrany: string;
   trybEkspercki: boolean;
+  nazwyPrzypadkow: Map<string, string>;
   onZmiana: (id: string) => void;
 }
 
@@ -333,6 +345,7 @@ function SelektorPrzebiegu({
   przebiegi,
   wybrany,
   trybEkspercki,
+  nazwyPrzypadkow,
   onZmiana,
 }: SelektorPrzebieguProps) {
   return (
@@ -347,7 +360,7 @@ function SelektorPrzebiegu({
         <option value="">{POROWNANIE_STRINGS.wyborPusty}</option>
         {przebiegi.map((run) => (
           <option key={run.id} value={run.id}>
-            {etykietaPrzebiegu(run, trybEkspercki)}
+            {etykietaPrzebiegu(run, trybEkspercki, nazwyPrzypadkow.get(run.study_case_id) ?? null)}
           </option>
         ))}
       </select>

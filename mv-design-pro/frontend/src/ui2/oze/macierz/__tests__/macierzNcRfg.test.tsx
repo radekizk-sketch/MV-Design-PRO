@@ -74,6 +74,22 @@ describe('MacierzNcRfg — bieg i werdykty (kryterium 1)', () => {
   });
 });
 
+describe('MacierzNcRfg — klasa modułu w podsumowaniu', () => {
+  it('po biegu eksponuje klasę modułu z odpowiedzi solvera (etykieta PL)', async () => {
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    fireEvent.click(await screen.findByTestId('mvd-oze-przeprowadz'));
+    const klasa = await screen.findByTestId('mvd-oze-podsum-modul-klasa-pv-1');
+    expect(klasa).toHaveTextContent(MACIERZ_STRINGS.klasaModulu);
+    expect(klasa).toHaveTextContent('PV');
+  });
+
+  it('przed biegiem nie pokazuje klasy modułu (brak wyniku → brak chipu)', async () => {
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    await screen.findByTestId('mvd-oze-podsum-moduly');
+    expect(screen.queryByTestId('mvd-oze-podsum-modul-klasa-pv-1')).not.toBeInTheDocument();
+  });
+});
+
 describe('MacierzNcRfg — komórka → szczegół (kryterium 2)', () => {
   it('kliknięcie komórki niespełnionej pokazuje uzasadnienie i akcję naprawczą', async () => {
     render(<MacierzNcRfg trybZaawansowania="basic" />);
