@@ -735,6 +735,18 @@ Progress:
         czerwony na `[dark-scada-missing-file] App.tsx` — motyw dark-SCADA
         (markery nie istnieją nigdzie; migracja main.tsx→AppRoot) — osobna
         karta.
+        SCALENIE #42 / dark-SCADA (78d12a9 → cherry-pick, „nic nie
+        wstrzymuj"): diagnoza = regresja migracji ui2 (motyw zdefiniowany
+        w całości: index.css/exportTheme/BaySvgRenderer, ale klasa
+        mv-dark-scada nieaktywna — App.tsx skasowany). Naprawa: nowy cienki
+        App.tsx (korzeń motywu mv-dark-scada + data-ui-theme=dark-scada)
+        opakowuje AppRoot; main.tsx renderuje App. `v12xx_canon_guard`
+        exit 0 (CAŁY dług kanonu tej rundy USUNIĘTY). Wykonawca: pełny
+        vitest 8690 pass, 0 failed. Zarządca: canon guard zielony +
+        celowany + type-check + lint, push. Konfirmacja #42 w tle.
+        E-26 pełne wygaszenie = TODO wątku SLD (U5_E14_SLD_KOORD_E26).
+        POZOSTAJE (D6): W5b-2 AnalysisSurface (Opcja 1, sprawdzić wejścia
+        SLD przed usunięciem trasy).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
