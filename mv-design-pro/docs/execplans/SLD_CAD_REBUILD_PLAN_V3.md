@@ -1764,9 +1764,28 @@ POZOSTAJE (2 specy, przyczyny NIE-testowe — realne luki v3):
 2. `sld-pa-powerflow-tor` (5) — wymaga PRZYWRÓCENIA deklaracji pochodzenia
    nakładki w v3 (badge case_ref/converged — spec §14.2 „overlay wyłącznie
    z wyniku"; do dziś nakładka nie deklaruje NA KANWIE, z którego przypadku
-   pochodzi). PROJEKT: `SldV3Overlay.provenance {caseRef, converged}` →
-   badge `sld-v3-overlay-provenance` w rogu arkusza + adaptacja speca na
-   `sld-v3-flow-*`/`data-owner-ref` (energizacja per ownerRef już jest).
+   pochodzi). PROJEKT DOPRECYZOWANY (2026-07-17, runda 2 — gotowy do
+   wykonania):
+   (a) `SldV3Overlay.provenance?: { caseRef: string; converged: boolean }`
+       → kanwa renderuje badge `data-testid="sld-v3-overlay-provenance"`
+       z `data-case-ref`/`data-converged` w rogu arkusza (obok legendy);
+   (b) atrybuty solverowe NA ODCINKU (diagnostyka, jak `data-owner-ref` —
+       dopisane w commicie 320453aa): `data-energized` z
+       `energizedByOwnerRef[ownerRef]`, `data-flow-direction`/
+       `data-flow-source` z `flowByOwnerRef[ownerRef]` — czysty odczyt
+       nakładki, zero fizyki w kanwie;
+   (c) harness (`screenshot-harness-main.tsx`): fetch
+       `/test-fixtures/sldSubstrate52s.powerflow.json` (companion — JEDNA
+       PRAWDA solvera) → builder nakładki per LOD: klucze = ownerRef-y
+       KAWAŁKÓW sceny (sufiksy `_L`/`_R_…`), wartość z companion po refie
+       bazowym (normalizacja jak w kliku workspace); provenance z
+       case_ref/converged;
+   (d) spec: czytnik segmentów na `path[data-owner-ref^="seg/"]` +
+       normalizacja bazowa; N-1 (wolne końce) i N-7 (hash geometrii) już
+       niezależne od atrybutów v2 — wymaga tylko czytnika; N-2/N-3
+       (równość zbiorów energizacji, kierunek = sign(P)) na atrybutach (b).
+   Rozmiar: jedna sesja robocza z pełnym cyklem (unit na atrybuty +
+   determinizm buildera + 6 testów speca + regresja).
 
 ## Prompt kontynuacji (wklej świeżemu agentowi — DO WDROŻENIA 100%)
 
