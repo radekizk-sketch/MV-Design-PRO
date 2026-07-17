@@ -376,6 +376,13 @@ Progress:
         K1 (read-only, przypadek minimalny z rachunkiem ręcznym WHITE BOX)
         delegowana. Zmiana solvera/enm — jeśli potwierdzona — poza programem
         UI/UX (decyzja właściciela/wątku 10x).
+        K1 ROZSTRZYGNIĘTE (2026-07-17): znak susceptancji shunt POPRAWNY
+        (zgodny z ładownością linii; dowód liczbowy); defekt = interpretacja
+        cosφ z przepływów gałęzi w D8 + niespójność konwencji znaku Q wyników
+        (slack_q/q_from/q_to) — zarejestrowane jako V12K-027 (wysoki; FROZEN
+        API — decyzja właścicieli solvera). Testy diagnostyczne scalone
+        `7b3ce58` (pełny pytest u wykonawcy 5915 pass). P42 okno pozostaje
+        WSTRZYMANE do rozstrzygnięcia V12K-027.
         PROCEDURA: wykonawcy backendowi zawieszają się po pełnym pytest (3
         przypadki) — zarządca przejmuje: weryfikacja w worktree + commit
         w imieniu wykonawcy (bez oczekiwania na raport).
