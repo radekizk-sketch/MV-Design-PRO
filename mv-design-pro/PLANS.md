@@ -714,6 +714,9 @@ Progress:
         Wykonawca: pełny vitest 8690 pass, 0 failed (+16). Zarządca:
         48 celowanych + 7 guardów OK, push. STRUMIEŃ V12K-027 DOMKNIĘTY
         end-to-end (K2 backend + P42 okno). Konfirmacja #40 w tle.
+        POTWIERDZENIE #40 (2026-07-17): pełny vitest 8690 passed, 0 failed
+        — BAZY: backend 6126, frontend 8690. Karta W5b-1 (wygaszenie E-26,
+        Opcja 1, za Bramką Parytetu + STOP-guard kanonu) delegowana.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
