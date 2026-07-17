@@ -54,6 +54,39 @@ wzorzec z K1 — slack + odbiór + gałąź o znanej impedancji, rachunek w kome
 7. zgodność z bilansem mocy biernej całego układu (suma Q netto punktów vs
    `slack_q` + generacja, w granicach strat — tolerancja jawna).
 
+## 2a. WIĄŻĄCE UZUPEŁNIENIA WŁAŚCICIELA (2026-07-17, po dowodzie liczbowym)
+Dowód liczbowy zarządcy (rzeczywisty solver, `enm.canonical_analysis.execute_run`)
+POTWIERDZIŁ opcję B. Wartości odniesienia (odbiór 1,0 MW + j0,5 Mvar, linia 5 km):
+- BEZ kompensacji: v_load=1,010460; Q_to=+0,500000; Slack_Q=−0,490750; cosφ_D8=0,894427.
+- cap 0,5 Mvar: v_load=1,014260; Q_to=+1,014362; Slack_Q=−0,999461; cosφ_D8=0,702047.
+- Przegląd Q_netto=Q_load−rated·V² → cosφ_kanon: 0,00→0,89443 · 0,10→0,92920 ·
+  0,20→0,95909 · 0,30→0,98201 · 0,40→0,99605 · 0,50→0,99990 · 0,60→0,99309.
+- Spójność solvera: Slack_Q ≡ Q_from (6 miejsc); Q_from+Q_to = strata bierna I²X.
+Defekt: `dobor_kompensacji.py:246` (`q_sum += q_to_mvar`) i 250 (`q_from_mvar`),
+konsumowane przez cosφ w linii 257.
+
+**Wymóg 1 — trwały test diagnostyczny** `tests/application/analyses/
+test_dowod_v12k027.py` (produkcyjna ścieżka `execute_run`), weryfikujący:
+brak kompensacji · częściowa · bliska pełnej · przekompensowanie · BRAK zmian
+wyników solvera przed/po adapterze (te same bus_results/branch_results/summary) ·
+wzrost cosφ kanonicznego z kompensacją + spadek po przekompensowaniu · poprawność
+`Q_cap_eff = rated_mvar · V²` · zgodność `Q_netto = Q_load − Q_cap_eff`.
+Asercje MUSZĄ trafiać w wartości odniesienia powyżej (są cechą rzeczywistego solvera).
+
+**Wymóg 2 — jednoznaczny rozdział DWÓCH wielkości** (kod + DTO; UI w karcie P42):
+1. **cosφ przepływu w przekroju sieciowym** — z przepływów gałęzi (dzisiejsza
+   wielkość, opisuje przekrój sieci, NIE stopień skompensowania odbioru),
+2. **cosφ punktu kompensowanego** — z lokalnego bilansu odbioru i baterii
+   (`Q_netto = Q_load − Q_cap_eff`; to wielkość STEROWNIKA doboru).
+NIE wolno ich mylić ani prezentować pod jedną nazwą. W DTO D8: osobne pola
+z jednoznacznymi nazwami PL i docstringiem różnicy. Dobór kompensacji opiera się
+na (2); (1) pozostaje dostępne jako wielkość przekrojowa z etykietą.
+
+**Wymóg 3 — potwierdzenie nienaruszalności** `PowerFlowResult`: adapter i D8
+NIE modyfikują żadnych pól wyniku solvera — wyłącznie je INTERPRETUJĄ. Test
+diagnostyczny dowodzi tego wprost (porównanie bus/branch/summary przed i po
+przejściu przez adapter = identyczne).
+
 ## 3. Bramki
 KROK 0: `git fetch origin claude/power-network-design-ui-ir91mv && git reset
 --hard FETCH_HEAD`. Baza pełnego pytest: 6112, ZERO failed. Środowisko: venv
