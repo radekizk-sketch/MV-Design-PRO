@@ -41,3 +41,39 @@ def build_frt_hvrt_input(
         target_der_ref=der_ref,
     )
     return FrtHvrtSolverInput(enm_ref=enm_ref, scenarios=[scenario])
+
+
+def build_frt_sekwencja_input(
+    der_ref: str,
+    zapady: list[tuple[float, float]],
+    *,
+    enm_ref: str = NCRFG_ENM_REF,
+) -> FrtHvrtSolverInput:
+    """Zbuduj wejście solvera FRT dla SEKWENCJI wielokrotnych zapadów LVRT.
+
+    Sekwencja = N scenariuszy LVRT w JEDNYM wejściu solvera (``scenarios`` to lista,
+    ``network_model.solvers.frt_hvrt.contracts.FrtHvrtSolverInput.scenarios:25``);
+    solver liczy każdy zapad od stanu ustalonego. Kolejność wywołującego zachowana
+    (determinizm), identyfikatory scenariuszy nadawane deterministycznie ``zapad_{i}``.
+
+    Args:
+        der_ref: referencja modułu DER (``FrtScenario.target_der_ref:17``).
+        zapady: lista par ``(głębokość_pu, czas_s)`` — parametry kolejnych zapadów;
+            głębokość → ``voltage_dip_depth_pu`` (zakres LVRT 0..1 waliduje
+            ``FrtHvrtSolverAdapter.validate_input`` w ``contracts.py:89-94``),
+            czas → ``fault_duration_s``.
+
+    W odróżnieniu od ``build_frt_hvrt_input:23`` (stałe testbenchu, używana przez
+    checker) parametry pochodzą od wywołującego — bez zmiany zachowania checkera.
+    """
+    scenarios = [
+        FrtScenario(
+            scenario_id=f"zapad_{index}",
+            test_kind="lvrt",
+            voltage_dip_depth_pu=float(depth_pu),
+            fault_duration_s=float(czas_s),
+            target_der_ref=der_ref,
+        )
+        for index, (depth_pu, czas_s) in enumerate(zapady, start=1)
+    ]
+    return FrtHvrtSolverInput(enm_ref=enm_ref, scenarios=scenarios)

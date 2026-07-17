@@ -28,6 +28,7 @@ from typing import Any
 from uuid import UUID
 
 from application.analyses.dobor_kompensacji import build_compensation_sizing_view
+from application.analyses.frt_sekwencja import build_frt_sekwencja_view
 from application.analyses.frt_trajektorie import build_frt_trajectories_view
 from application.analyses.grid_strength import build_grid_strength_view
 from application.analyses.hosting_capacity import (
@@ -183,6 +184,105 @@ def get_frt_trajectories(
         ) from exc
     try:
         return build_frt_trajectories_view(converter, profile, test_kind)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+def _parse_sekwencja(raw: str) -> list[tuple[float, float]]:
+    """Sparsuj parametr ``sekwencja`` (``głębokość:czas`` rozdzielone przecinkami).
+
+    Format API: kropka dziesiętna, np. ``0.05:0.15,0.30:0.20``. Pusty łańcuch daje
+    pustą sekwencję (pustość rozstrzyga serwis). Błąd formatu → ``ValueError`` PL.
+    """
+    if not raw.strip():
+        return []
+    zapady: list[tuple[float, float]] = []
+    for segment in raw.split(","):
+        segment = segment.strip()
+        parts = segment.split(":")
+        if len(parts) != 2:
+            raise ValueError(
+                f"Zły format sekwencji: segment '{segment}' — oczekiwano pary "
+                "'głębokość:czas' (np. 0.05:0.15)."
+            )
+        try:
+            depth = float(parts[0])
+            czas = float(parts[1])
+        except ValueError as exc:
+            raise ValueError(
+                f"Zły format sekwencji: segment '{segment}' zawiera niepoprawną liczbę "
+                "(oczekiwano wartości dziesiętnych z kropką, np. 0.30:0.20)."
+            ) from exc
+        zapady.append((depth, czas))
+    return zapady
+
+
+def _resolve_grid_strength_row(run_id: UUID | None, bus_ref: str | None) -> dict[str, Any] | None:
+    """Wiersz SCR/WSCR węzła ``bus_ref`` z widoku siły sieci przebiegu ``run_id`` (D1).
+
+    Bez parametrów → ``None`` (uczciwy brak kontekstu). Podanie tylko jednego z pary
+    lub węzła spoza wyników → 422 PL. Nieznany przebieg → 404 (``_require_run``).
+    """
+    if run_id is None and bus_ref is None:
+        return None
+    if run_id is None or bus_ref is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Kontekst siły sieci wymaga obu parametrów: run_id oraz bus_ref.",
+        )
+    run = _require_run(run_id)
+    try:
+        view = build_grid_strength_view(run)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    for entry in view["entries"]:
+        if entry.get("bus_ref") == bus_ref:
+            return entry
+    raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail=f"Węzeł '{bus_ref}' nie występuje w wynikach siły sieci przebiegu {run_id}.",
+    )
+
+
+@router.get("/api/oze-analysis/frt-sequence")
+def get_frt_sequence(
+    der_ref: str = Query(...),
+    operator_id: str = Query(...),
+    sekwencja: str = Query(...),
+    run_id: UUID | None = Query(default=None),
+    bus_ref: str | None = Query(default=None),
+) -> dict[str, Any]:
+    converter = get_default_mv_catalog().get_converter_type(der_ref)
+    if converter is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Moduł DER '{der_ref}' nie istnieje w katalogu przekształtników.",
+        )
+    try:
+        profile = load_nc_rfg_profile(operator_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    try:
+        zapady = _parse_sekwencja(sekwencja)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    grid_strength_row = _resolve_grid_strength_row(run_id, bus_ref)
+    try:
+        return build_frt_sekwencja_view(
+            converter, profile, zapady, grid_strength_row=grid_strength_row
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
