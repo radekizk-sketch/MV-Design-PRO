@@ -36,28 +36,31 @@ async function waitForAppReady(page: Page): Promise<void> {
 }
 
 test.describe('Tor mocy — SupplyPathHighlighter w UI', () => {
-  test('aplikacja na #sld renderuje SldCanvasV2 (smoke)', async ({ page }) => {
+  test('aplikacja na #sld renderuje workspace v3 (smoke)', async ({ page }) => {
     await page.goto('/#sld');
     await waitForAppReady(page);
 
-    await expect(page.getByTestId('sld-canvas-v2')).toBeVisible();
+    // Pusty model ⇒ kanwa SVG celowo nie istnieje (kontrakt v3, F12-C) —
+    // smoke potwierdza workspace + pusty stan.
+    await expect(page.getByTestId('sld-canvas-v3-workspace')).toBeVisible();
+    await expect(page.getByTestId('sld-empty-state')).toBeVisible();
   });
 
   test('SLD render bez ENM nie wybucha — empty state aktywny', async ({ page }) => {
     await page.goto('/#sld');
     await waitForAppReady(page);
 
-    // SLD V2 renderuje empty state gdy brak ENM (np. operator nie wybrał
-    // projektu). Tor mocy w takim stanie nie jest pokazany (brak źródeł).
-    const canvas = page.getByTestId('sld-canvas-v2');
-    await expect(canvas).toBeVisible();
+    // v3 renderuje pusty stan gdy brak ENM (np. operator nie wybrał
+    // projektu). Tor mocy w takim stanie nie jest pokazany (brak źródeł),
+    // a kanwa SVG nie istnieje (kontrakt v3).
+    await expect(page.getByTestId('sld-empty-state')).toBeVisible();
+    await expect(page.getByTestId('sld-canvas-v3')).toHaveCount(0);
   });
 
   test('screenshot SLD pustego widoku — dowód browser pass', async ({ page }) => {
     await page.goto('/#sld');
     await waitForAppReady(page);
-    const canvas = page.getByTestId('sld-canvas-v2');
-    await expect(canvas).toBeVisible();
+    await expect(page.getByTestId('sld-empty-state')).toBeVisible();
     await page.screenshot({
       path: join(SCREENSHOT_DIR, 'sld-empty-state.png'),
       fullPage: true,

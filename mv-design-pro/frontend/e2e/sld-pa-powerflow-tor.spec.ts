@@ -88,7 +88,7 @@ async function gotoL0(page: import('@playwright/test').Page): Promise<void> {
   await page.goto(`${HARNESS_URL}?lod=0`);
   const root = page.locator('[data-testid="sld-harness-root"]').first();
   await expect(root).toHaveAttribute('data-status', 'ready', { timeout: 20000 });
-  const canvas = page.locator('[data-testid="sld-canvas-v2"]').first();
+  const canvas = page.locator('[data-testid="sld-canvas-v3"]').first();
   await expect(canvas).toBeVisible({ timeout: 15000 });
   await page.waitForTimeout(900);
 }

@@ -167,7 +167,7 @@ async function reloadEditorPage(page: Page): Promise<void> {
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
   await expect(page.getByTestId('active-case-bar')).toContainText(/Zakres|Bieżący zestaw/);
   await refreshResponsePromise;
-  await expect(page.getByTestId('sld-connections-layer')).toBeAttached();
+  await expect(page.getByTestId('sld-canvas-v3')).toBeAttached();
 }
 
 async function capture(page: Page, testInfo: TestInfo, name: string): Promise<void> {

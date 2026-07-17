@@ -169,7 +169,7 @@ test.describe('Designer naturalny flow — multi-step coverage (audit 2026-05-19
     await page.getByTestId('project-metadata-save').click();
 
     // Empty state widoczny.
-    await expect(page.getByTestId('sld-workspace-container')).toBeVisible();
+    await expect(page.getByTestId('sld-canvas-v3-workspace')).toBeVisible();
     const emptyState = page.getByTestId('sld-empty-state');
     await expect(emptyState).toBeVisible();
 
@@ -177,7 +177,7 @@ test.describe('Designer naturalny flow — multi-step coverage (audit 2026-05-19
     await expect(page.getByTestId('sld-empty-state-insert-gpz')).toBeVisible();
 
     // Prawy klik na empty state → menu kontekstowe background z akcją insert-gpz.
-    const canvas = page.getByTestId('sld-canvas-v2');
+    const canvas = page.getByTestId('sld-canvas-v3');
     const box = await canvas.boundingBox();
     expect(box).not.toBeNull();
     await canvas.click({
@@ -202,7 +202,7 @@ test.describe('Designer naturalny flow — multi-step coverage (audit 2026-05-19
     await expect(page.getByTestId('sld-empty-state')).toBeVisible();
 
     // Right-click → background menu zawiera Otwórz katalogi (z SldCommandService).
-    const canvas = page.getByTestId('sld-canvas-v2');
+    const canvas = page.getByTestId('sld-canvas-v3');
     const box = await canvas.boundingBox();
     expect(box).not.toBeNull();
     await canvas.click({

@@ -138,7 +138,7 @@ async function reloadEditorPage(page: Page): Promise<void> {
   await page.reload({ waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
   await refreshResponsePromise;
-  await expect(page.getByTestId('sld-connections-layer')).toBeAttached();
+  await expect(page.getByTestId('sld-canvas-v3')).toBeAttached();
 }
 
 test('krytyczny DER flow: paleta PV -> stacja -> drawer -> zapis -> generator w ENM', async ({ page, request }) => {

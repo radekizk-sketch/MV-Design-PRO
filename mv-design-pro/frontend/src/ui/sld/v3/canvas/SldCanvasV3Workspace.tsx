@@ -977,6 +977,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     <div
       ref={containerRef}
       data-testid="sld-canvas-v3-workspace"
+      data-readonly={props.readOnly ? 'true' : 'false'}
       className="relative flex h-full w-full overflow-hidden"
     >
       {snapshot ? (

@@ -159,14 +159,23 @@ test('utworzenie pierwszego projektu przechodzi deterministycznie do E-01 bez fr
 
   await page.goto('/#dashboard', { waitUntil: 'commit' });
 
-  await expect(page.getByTestId('project-dashboard-surface')).toBeVisible();
-  await page.getByTestId('dashboard-new-project').click();
+  // Adaptacja 2026-07-17: przy braku aktywnego projektu shell renderuje
+  // bramkę startu projektu (`mo-project-start`, panel MO „Wymagany projekt
+  // SN") ZAMIAST pulpitu — pierwszy projekt tworzy się przez
+  // „Utwórz projekt i przejdź do GPZ", nie przez dialog „Metadane projektu"
+  // (stary przepływ pulpitu). Intencja testu BEZ ZMIAN: pierwszy projekt →
+  // deterministyczne przejście do E-01 (SLD, pusty stan) bez freeze i bez
+  // błędów konsoli.
+  await expect(page.getByTestId('mo-project-start')).toBeVisible();
+  await page.getByTestId('mo-project-name').fill('Projekt 1');
+  await page.getByTestId('mo-create-project').click();
 
-  await expect(page.getByRole('dialog', { name: 'Metadane projektu' })).toBeVisible();
-  await page.getByTestId('project-metadata-name').fill('Projekt 1');
-  await page.getByTestId('project-metadata-save').click();
+  // Utworzenie ustawia aktywny projekt/zakres w stanie aplikacji (panel MO
+  // nie nawiguję samo z siebie) — przejście do E-01 jak użytkownik: nawigacja
+  // na #sld.
+  await page.goto('/#sld', { waitUntil: 'commit' });
 
-  await expect(page.getByTestId('sld-workspace-container')).toBeVisible();
+  await expect(page.getByTestId('sld-canvas-v3-workspace')).toBeVisible();
   await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Projekt 1');
   await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('nie wybrano');
   await expect(page.getByTestId('sld-empty-state')).toBeVisible();

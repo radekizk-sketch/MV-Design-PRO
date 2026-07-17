@@ -207,7 +207,7 @@ async function createProjectAndOpenSld(page: Page): Promise<void> {
   await expect(page.getByRole('dialog', { name: 'Metadane projektu' })).toBeVisible();
   await page.getByTestId('project-metadata-name').fill('UX 10/10 demo');
   await page.getByTestId('project-metadata-save').click();
-  await expect(page.getByTestId('sld-workspace-container')).toBeVisible();
+  await expect(page.getByTestId('sld-canvas-v3-workspace')).toBeVisible();
   await expect(page.getByTestId('sld-empty-state')).toBeVisible();
 }
 

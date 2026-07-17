@@ -1703,6 +1703,37 @@ BESS 5 MW = 2×2,5 MW); test_no_todo_fixme naprawiony (granice słów — łapa�
 wspomina „znany 1 pre-existing fail test_no_todo_fixme" — NIEAKTUALNE,
 backend pytest w całości zielony (5719 passed).
 
+### Dług otwarty: adaptacja mock-e2e do świata v3 (pomiar 2026-07-17)
+
+Warstwa mock-e2e (`npm run test:e2e`; w CI biega WYŁĄCZNIE
+`critical-run-flow` real-backend) nie została zaadaptowana przy F12-C.
+Pomiar pełnego przebiegu: 148/179 zielone, 29 czerwone w 12 specach —
+wszystkie przyczyny to kontrakty świata v2 (testidy `sld-canvas-v2`,
+`sld-workspace-container`, `sld-connections-layer`; atrybuty
+`data-element-kind`/`data-connection-ref`; badge `sld-v2-powerflow-*`;
+oraz kontrakt v3 „pusty model ⇒ kanwa SVG nie istnieje, pusty stan z CTA").
+NAPRAWIONE w tej sesji (zielone standalone): migracja testidów we
+wszystkich specach; `sld-substrate-screenshot` (licznik aparatury L0 z
+wyłączeniem GPZ — pełny blok na L0 z §21 — i legendy arkusza);
+`sld-l0-overlap-m02` (blok L0 = glif `stationCollapsed`);
+`sld-canvas-routing` (przepisany do kontraktu pustego stanu v3; workspace
+dostał `data-readonly` — atrybut kontraktu #sld-view przywrócony);
+`sld-supply-path-visibility` (7/7); `ux-feedback-loop`,
+`designer-flow-empty-state-cta`, `sld-gpz-rendered` (odzyskane samą migracją
+testidów). POZOSTAJE CZERWONE (do adaptacji, ~15 testów):
+`create-first-case` (przepływ pierwszego projektu przeniesiony na bramkę
+panelu MO `mo-project-start`/`mo-create-project`; adaptacja w toku ujawnia
+NIEDETERMINIZM renderu bramki vs powierzchni powitalnej — wyścig stanu,
+wymaga rozstrzygnięcia w shellu, nie w teście); `designer-flow-multistep`
+(2 testy right-click na kanwie przy pustym modelu → do przepisania na CTA
+pustego stanu jak canvas-routing); `critical-der-config` (lokator stacji po
+`data-element-kind`/`data-element-id` — v3 identyfikuje po `data-testid`
+symbolu); `sld-editor-real-backend-flex` (2: `data-connection-ref`+polyline
+→ v3 `sld-v3-segment-*`+path); `sld-pa-powerflow-tor` (5: kontrakt nakładki
+rozpływu v2 — badge case_ref/converged nie istnieje w v3; semantykę
+solver=jedna-prawda pokrywa dziś `flow_overlay_probe` w accept:sld-v3;
+adaptacja = przepisanie na `sld-v3-flow-*`).
+
 ## Prompt kontynuacji (wklej świeżemu agentowi — DO WDROŻENIA 100%)
 
 ```

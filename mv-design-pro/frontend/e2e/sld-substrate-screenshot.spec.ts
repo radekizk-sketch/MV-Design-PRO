@@ -115,8 +115,25 @@ test.describe('sld:substrate:screenshot', () => {
     await page.waitForTimeout(900);
 
     // Count readable blocks vs apparatus detail markers (proves the structural fix).
+    // GPZ jest WYŁĄCZONY z licznika aparatury: gramatyka L0 (spec §21/F13.1)
+    // renderuje GPZ jako PEŁNY blok rozdzielni (kolumna WN DS/CB/CT + pole
+    // liniowe SN) także w widoku planu — intencja M-08 („zero mikro-aparatury")
+    // dotyczy STACJI ciągów, nie dominanty GPZ.
     const blocks = await page.locator('[data-symbol-canon="stationCollapsed"]').count();
-    const detail = await page.locator('[data-symbol-canon="breaker"], [data-symbol-canon="disconnector"]').count();
+    // `data-symbol-canon` żyje na glifie, `data-testid` na wrapperze symbolu
+    // — wykluczenie GPZ liczone arytmetycznie (total − potomkowie wrapperów
+    // gpz-canonical-*), bo CSS :not() nie sięga przodka.
+    const APPARATUS = '[data-symbol-canon="breaker"], [data-symbol-canon="disconnector"]';
+    const apparatusTotal = await page.locator(APPARATUS).count();
+    // Poza licznikiem także LEGENDA arkusza (glify wzorcowe „Wyłącznik"/
+    // „Odłącznik" w ramce IEC — nie są aparaturą sieci).
+    const apparatusGpz = await page
+      .locator(`[data-testid^="gpz-canonical-"] :is(${APPARATUS})`)
+      .count();
+    const apparatusLegend = await page
+      .locator(`[data-testid="sld-sheet-legend"] :is(${APPARATUS})`)
+      .count();
+    const detail = apparatusTotal - apparatusGpz - apparatusLegend;
     const lodAttr = await canvas.getAttribute('data-scene-lod');
     console.log(`L0: blocks=${blocks} aparatura=${detail} data-scene-lod=${lodAttr}`);
 

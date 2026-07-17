@@ -63,7 +63,7 @@ test.describe('SLD z aktywnym GPZ (real-backend)', () => {
     // Daj czas na fetch ENM + renderer.
     await page.waitForTimeout(1_500);
 
-    const canvas = page.getByTestId('sld-canvas-v2');
+    const canvas = page.getByTestId('sld-canvas-v3');
     await expect(canvas).toBeVisible();
 
     await page.screenshot({
