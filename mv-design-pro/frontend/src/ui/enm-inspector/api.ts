@@ -8,6 +8,7 @@ import type {
   DiagnosticReport,
   PreflightReport,
   EnmDiffReport,
+  ReferenceComplianceReport,
 } from './types';
 import type { EnergyNetworkModelV2Projection } from '../../types/enm';
 
@@ -65,6 +66,20 @@ export async function fetchEnmV2Projection(
   const response = await fetch(`${API_BASE}/cases/${caseId}/enm/v2-projection`);
   if (!response.ok) {
     throw new Error(`Blad pobierania projekcji ENM v2: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
+ * Pobierz raport zgodności referencyjnej + Reference Score (Reference
+ * Engine V1, spec §9).
+ */
+export async function fetchReferenceCompliance(
+  caseId: string,
+): Promise<ReferenceComplianceReport> {
+  const response = await fetch(`${API_BASE}/cases/${caseId}/reference/compliance`);
+  if (!response.ok) {
+    throw new Error(`Błąd pobierania zgodności referencyjnej: ${response.statusText}`);
   }
   return response.json();
 }
