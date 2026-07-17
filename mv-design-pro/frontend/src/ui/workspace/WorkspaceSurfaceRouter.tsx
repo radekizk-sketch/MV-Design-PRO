@@ -971,14 +971,6 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             }
           />
           <SurfaceActionButton
-            label="Charakterystyki FRT/LVRT/HVRT"
-            onClick={() =>
-              openChildSurface('analysis', {
-                screenCode: 'E-26',
-              })
-            }
-          />
-          <SurfaceActionButton
             label="Rozpływ mocy NR/GS/FD"
             onClick={() =>
               openChildSurface('analysis', {

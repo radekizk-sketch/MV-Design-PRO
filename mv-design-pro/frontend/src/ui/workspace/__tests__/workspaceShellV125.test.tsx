@@ -530,7 +530,6 @@ I_{k}'' = \frac{c \cdot U_n}{\left|Z_k\right|}
 
   it.each([
     ['Koordynacja zabezpieczeń', 'E-28'],
-    ['Charakterystyki FRT/LVRT/HVRT', 'E-26'],
     ['Rozpływ mocy NR/GS/FD', 'E-30'],
     ['Stan fazowy SN', 'E-31'],
     ['Stabilność dynamiczna', 'E-32'],

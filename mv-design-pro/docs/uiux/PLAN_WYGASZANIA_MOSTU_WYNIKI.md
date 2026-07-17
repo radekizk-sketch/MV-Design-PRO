@@ -186,3 +186,30 @@ generuje dług i ryzyko regresji kanonu.
   migracja do przestrzeni „Dokumentacja"/„Obliczenia" albo trwałe zostawienie
   w moście (jak V12.6); **W5b-K1** (drobna) — uzupełnić „Kontrakt analizy" ui2
   o wiersze `ibg_assumptions_ref`, `variantRef`, `reproducibility.catalogSnapshotRef`.
+- **W5b-1** (2026-07-17, commit lokalny `feat(ui2): wygaszenie trasy legacy E-26,
+  dostawca FRT = EkranFrt (W5b-1)`): Opcja 1, decyzja właściciela D1=A. **Bramka
+  Parytetu PRZESZŁA** — `EkranFrt` (`ui2/oze/frt/EkranFrt.tsx`) = SUPERSET
+  `ComplianceSurface` (E-26, `WorkspaceSurfaceRouter.tsx:1862`): krzywe/obwiednia
+  LVRT/HVRT (`obwiednia_profilu` z `/api/oze-analysis/frt-trajectories`), selektor
+  profilu OSD (katalog `/api/ncrfg-tests/catalog`, dynamiczny ≥ 5 OSD legacy),
+  werdykt pozostania przyłączonym (`werdykt_pl` + `werdyktCalosciFrt`), plus realny
+  bieg trajektorii, tabela scenariuszy z marginesami i sekwencja zapadów; kontrakt
+  zgodności (Wariant, Model IBG/OZE, wersja katalogu) domknięty w W5b-K1
+  (`SzczegolyPrzebiegu.tsx`). **Usunięto:** przycisk nawigacyjny „Charakterystyki
+  FRT/LVRT/HVRT" z AnalysisSurface (`WorkspaceSurfaceRouter.tsx`, dawne :973-980) —
+  legacy punkt wejścia do E-26 z mostu; oraz odpowiadający wiersz launchera E-26
+  w `workspaceShellV125.test.tsx` (it.each — bezpośrednia konsekwencja usunięcia
+  przycisku, NIE asercja kanonu). **STOP-GUARD (§2.2) — trasa/komponent ZOSTAJĄ:**
+  `case 'E-26' → <ComplianceSurface>` (`:3110`) i komponent `ComplianceSurface`
+  NIE są martwe — E-26 pozostaje osiągalne z akcji kontekstowych **SLD**
+  (`sld/v2/canvas/SldWorkspaceContainer.tsx:774-775` `show-frt-hvrt`/`show-ncrfg`
+  → `'E-26'`, etykieta `:800`). SLD to osobny wątek (granica — nie dotykać).
+  Usunięcie ComplianceSurface dałoby pustą powierzchnię dla przepływu SLD
+  (regresja). **ESKALACJA:** retirement trasy E-26 wymaga zmiany w wątku SLD
+  (wygaszenie `show-frt-hvrt`/`show-ncrfg`). Ekran kanoniczny E-26 = ZAMROŻONY,
+  bez zmian w rejestrze/macierzy/transitions. Macierz pokrycia (`coverageMatrix.ts:36`,
+  wiersz E-26) jest neutralna względem dostawcy (opis funkcjonalny, bez nazwy
+  komponentu legacy) → BEZ zmian. Bramki: type-check, lint (0 ostrzeżeń), pełny
+  vitest ZERO failed (wszystkie testy kanonu zielone), guard:codenames,
+  forbidden_ui_terms, ui_terminology, utf8_mojibake, dead_click_guard,
+  v12xx_canon_guard. E2E: patrz raport wykonawcy (infra Playwright w worktree).
