@@ -622,6 +622,17 @@ Progress:
         Zksn/V126Academic/Fw/Bess/Der żyją w osobnych plikach surfaces/
         (potencjalnie pełne) — karta W3: parytet cienkich + klasyfikacja
         pełnych do decyzji W4.
+        SCALENIE #36 / FALA W3 (2026-07-17): parytet ostatnich cienkich
+        paneli (74d1055 → cherry-pick) — grupa „Stany i warianty"
+        (caseRef, qualityGate, completenessLegacy, fault_scenario_ref);
+        KLASYFIKACJA: Zksn → Grupa C (konfigurator modelu, opis planu
+        był błędny), V126Academic → pełna powierzchnia (DECYZJA
+        WŁAŚCICIELA w W4: migrować/zostawić/osobna przestrzeń),
+        Fw/Bess/Der → konfiguratory OZE Grupa C (wyniki pokryte pulpitem).
+        WSZYSTKIE cienkie panele Grupy B pokryte (W1+W2+W3). Wykonawca:
+        pełny vitest 8663 pass, 0 failed (+6). Zarządca: 97 celowanych +
+        bramki OK, push. Konfirmacja w tle. Pozostaje W5 (wygaszenie tras
+        dublujących po weryfikacji Grupy A) i decyzja właściciela W4.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
