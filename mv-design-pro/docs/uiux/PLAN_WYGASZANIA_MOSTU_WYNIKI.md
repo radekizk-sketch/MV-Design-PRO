@@ -74,6 +74,33 @@ podlegają parytetowi kontraktowemu.
 Zasada: żadna trasa nie znika, dopóki okno ui2 nie pokrywa funkcji 1:1
 (zero utraty funkcji; inwentarz funkcji INWENTARZ_FUNKCJI_2026-07.md wiąże).
 
+## 3a. BRAMKA PARYTETU (WIĄŻĄCA — dyrektywa właściciela 2026-07-17)
+Przed USUNIĘCIEM jakiejkolwiek trasy legacy z mostu OBOWIĄZKOWO przejść bramkę
+„Parity Gate"; usunięcie wpisu dopiero po JEJ pozytywnym wyniku:
+1. **100% pokrycia kontraktu** — każda funkcja/kolumna/akcja trasy ma odpowiednik
+   ui2 (tabela funkcja→odpowiednik plik:linia, zero „BRAK"),
+2. **Identyczny payload API** — ui2 woła te same końcówki i konsumuje ten sam
+   kształt odpowiedzi co trasa mostu,
+3. **Identyczne wyniki obliczeń** — te same wartości dla tego samego wejścia,
+4. **Brak utraty akcji użytkownika** — każda akcja mostu osiągalna w ui2,
+5. **Brak regresji UI** — pełny vitest ZERO failed,
+6. **Testy E2E i regresyjne zakończone sukcesem** — właściwe scenariusze E2E
+   (Playwright) + regresja przechodzą.
+Dopiero po komplecie 1–6 usunąć wpis trasy z routera/mostu. Zero utraty funkcji.
+
+## 3b. DECYZJE WŁAŚCICIELA (2026-07-17) — zamknięcie epiki
+- **D1 = A**: E-26 „Compliance" — WYGASIĆ (za Bramką Parytetu). → karta W5b-1.
+- **D2 = A**: AnalysisSurface — stub „wrażliwości" uznany za niedostarczony;
+  WYGASIĆ trasę (za Bramką Parytetu). → karta W5b-2.
+- **D3 = A**: ProofSurface (akcje audit2) — POZOSTAJE w moście (osobna epika
+  migracji później; bez akcji teraz).
+- **D4 = A**: V126Academic — POZOSTAJE w moście trwale (narzędzie eksperckie).
+- **D5 = B**: P27/P44 — ODŁOŻONE; planowanie P27 (profile roczne) dopiero PO
+  pełnym zamknięciu epiki wygaszania (nie mieszać refaktoryzacji architektury
+  z nowym modelem obliczeniowym).
+Kolejność (D6=A): 1) E-26 → 2) AnalysisSurface → (3) audit2 zostaje →
+(4) V126Academic zostaje → (5) potem dopiero P27/P44.
+
 ## 4. Rejestr wykonania
 - **W1** (2026-07-17, commit lokalny `feat(ui2): sekcja kontraktu analizy w panelu
   przebiegów (W1)`): sekcja „Kontrakt analizy" w `ui2/spaces/obliczenia/przebiegi/

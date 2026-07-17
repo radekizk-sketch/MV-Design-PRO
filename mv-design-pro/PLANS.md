@@ -689,6 +689,20 @@ Progress:
         POTWIERDZENIE #39 (2026-07-17): pełny pytest 6126 passed, 0 failed
         (685 s) — BAZY: backend 6126, frontend 8674. Okno P42 (dobór
         kompensacji, rozdział cosφ przekroju/punktu w UI) delegowane.
+        DECYZJE WŁAŚCICIELA — ZAMKNIĘCIE EPIKI WYGASZANIA (2026-07-17):
+        D1=A wygasić E-26 · D2=A wygasić AnalysisSurface (stub wrażliwości
+        niedostarczony) · D3=A audit2 zostaje w moście · D4=A V126Academic
+        zostaje · D5=B P27/P44 odłożone (planować PO wygaszaniu). WIĄŻĄCA
+        BRAMKA PARYTETU przed usunięciem KAŻDEJ trasy (6 warunków:
+        100% kontraktu, identyczny payload API, identyczne wyniki, brak
+        utraty akcji, brak regresji UI, E2E+regresja OK) —
+        docs/uiux/PLAN_WYGASZANIA_MOSTU_WYNIKI.md §3a-3b. RECON: E-26 to
+        DZIECKO AnalysisSurface (przycisk FRT/LVRT/HVRT, kanon ekranów
+        screenCanonRegistry.ts:658, macierz pokrycia) — wygaszenie dotyka
+        typu ScreenCode i kanonu → refaktor za Bramką Parytetu z E2E.
+        Kolejność: W5b-1 (E-26) → W5b-2 (AnalysisSurface); delegacja PO
+        scaleniu P42 (jeden ciężki strumień frontendu naraz — zakaz dwóch
+        pełnych suit/E2E równolegle).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
