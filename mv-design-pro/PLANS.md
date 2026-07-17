@@ -567,6 +567,11 @@ Progress:
         vitest w worktree 8634 pass, 0 failed, bramki, commit w imieniu
         wykonawcy. Zarządca po scaleniu: 19+74 celowanych + type-check +
         7 guardów OK, push. Konfirmacje sekwencyjne w tle.
+        POTWIERDZENIE #31 (2026-07-17): pełny vitest 8634 passed, 0 failed
+        + pełny pytest 6089 passed, 0 failed (675 s) — BAZY: backend 6089,
+        frontend 8634. Rejestr TODO-KART strumienia OZE domknięty poza
+        pozycjami dużymi (wygaszanie zakładek mostu, property grid E5.x,
+        dokument studium — osobne karty).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
