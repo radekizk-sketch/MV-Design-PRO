@@ -26,6 +26,17 @@ export interface KrokSladuSily {
   readonly result_pl: string;
 }
 
+/**
+ * Moduł źródłowy (generator IBG) przyłączony do węzła — metadana opisowa (P47b).
+ * Umożliwia odwzorowanie modułu z pulpitu na węzeł przyłączenia (`ref` → `bus_ref`).
+ * 1:1 z `analysis/grid_strength/serializer.py::module_to_dict`.
+ */
+export interface ModulZrodlaSily {
+  readonly ref: string;
+  readonly name: string | null;
+  readonly sn_mva: number | null;
+}
+
 /** Wpis siły sieci per węzeł przyłączenia (szyna). */
 export interface WpisSilyWezla {
   readonly bus_ref: string;
@@ -38,6 +49,8 @@ export interface WpisSilyWezla {
   readonly why_pl: string;
   readonly missing_data: readonly string[];
   readonly white_box: readonly KrokSladuSily[];
+  /** Moduły źródłowe IBG węzła (mapowanie moduł→węzeł, P47b). */
+  readonly modules: readonly ModulZrodlaSily[];
 }
 
 /** Kontekst przebiegu (projekt/scenariusz/znacznik czasu). */

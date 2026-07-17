@@ -11,7 +11,7 @@ import { useState } from 'react';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { pobierzSileSieci, type WpisSilyWezla } from '../api';
 import { SladAnalizy } from './SladAnalizy';
-import { wybierzPrzebiegZwarciowy } from './pulpitModel';
+import { busRefModuluSily, wybierzPrzebiegZwarciowy } from './pulpitModel';
 import { useAnaliza } from './useAnaliza';
 import {
   formatKv,
@@ -24,12 +24,24 @@ import {
 export interface SekcjaSilySieciProps {
   /** Tryb ekspercki odsłania identyfikatory katalogowe/śladu. */
   readonly trybEkspercki: boolean;
+  /** Referencja wyróżnionego modułu (klik w pulpicie); `null` → brak wyróżnienia. */
+  readonly wyroznionyModul?: string | null;
 }
 
-function WpisWezla({ wpis }: { readonly wpis: WpisSilyWezla }): JSX.Element {
+function WpisWezla({
+  wpis,
+  wyrozniony,
+}: {
+  readonly wpis: WpisSilyWezla;
+  readonly wyrozniony: boolean;
+}): JSX.Element {
   const [sladWidoczny, setSladWidoczny] = useState(false);
   return (
-    <li className="mvd-oze-slad-krok" data-testid={`mvd-oze-sila-wezel-${wpis.bus_ref}`}>
+    <li
+      className={`mvd-oze-slad-krok${wyrozniony ? ' mvd-oze-wyrozniony' : ''}`}
+      data-testid={`mvd-oze-sila-wezel-${wpis.bus_ref}`}
+      data-wyrozniony={wyrozniony ? 'true' : undefined}
+    >
       <div className="mvd-oze-metryka">
         <span>{wpis.bus_ref}</span>
         <span
@@ -80,12 +92,20 @@ function WpisWezla({ wpis }: { readonly wpis: WpisSilyWezla }): JSX.Element {
   );
 }
 
-export function SekcjaSilySieci({ trybEkspercki }: SekcjaSilySieciProps): JSX.Element {
+export function SekcjaSilySieci({
+  trybEkspercki,
+  wyroznionyModul = null,
+}: SekcjaSilySieciProps): JSX.Element {
   const runs = useExecutionRunsStore((s) => s.runs);
   const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
   const runId = wybierzPrzebiegZwarciowy(runs, activeRunId);
   const stan = useAnaliza(runId, pobierzSileSieci);
   const [wscrSlad, setWscrSlad] = useState(false);
+
+  const wyroznionyWezel =
+    stan.rodzaj === 'gotowe' && wyroznionyModul
+      ? busRefModuluSily(stan.dane, wyroznionyModul)
+      : null;
 
   return (
     <section
@@ -166,6 +186,22 @@ export function SekcjaSilySieci({ trybEkspercki }: SekcjaSilySieciProps): JSX.El
 
           <div className="mvd-oze-panel-blok">
             <span className="mvd-oze-panel-etyk">{PULPIT_STRINGS.silaWezly}</span>
+            {wyroznionyModul && wyroznionyWezel ? (
+              <p
+                className="mvd-oze-wyroznienie-wezel"
+                data-testid="mvd-oze-sila-wyroznienie-wezel"
+              >
+                {PULPIT_STRINGS.silaWyroznionyWezel}: {wyroznionyWezel}
+              </p>
+            ) : null}
+            {wyroznionyModul && !wyroznionyWezel ? (
+              <p
+                className="mvd-oze-wyroznienie-brak"
+                data-testid="mvd-oze-sila-wyroznienie-brak"
+              >
+                {PULPIT_STRINGS.silaWyroznienieBrak}
+              </p>
+            ) : null}
             {stan.dane.entries.length === 0 ? (
               <p style={{ margin: '4px 0 0' }} className="mvd-oze-panel-etyk">
                 {PULPIT_STRINGS.silaBrakWezlow}
@@ -173,7 +209,11 @@ export function SekcjaSilySieci({ trybEkspercki }: SekcjaSilySieciProps): JSX.El
             ) : (
               <ul className="mvd-oze-analiza-lista" data-testid="mvd-oze-sila-wezly">
                 {stan.dane.entries.map((wpis) => (
-                  <WpisWezla key={wpis.bus_ref} wpis={wpis} />
+                  <WpisWezla
+                    key={wpis.bus_ref}
+                    wpis={wpis}
+                    wyrozniony={wyroznionyWezel === wpis.bus_ref}
+                  />
                 ))}
               </ul>
             )}

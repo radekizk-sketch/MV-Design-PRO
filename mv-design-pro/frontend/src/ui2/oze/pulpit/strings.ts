@@ -103,6 +103,8 @@ export const PULPIT_STRINGS = {
   silaWerdykt: 'Werdykt',
   silaBrakDanych: 'Brakujące dane',
   silaBrakWezlow: 'Przebieg nie zawiera węzłów przyłączenia źródeł falownikowych.',
+  silaWyroznionyWezel: 'Wyróżniony węzeł modułu',
+  silaWyroznienieBrak: 'Węzeł wybranego modułu nieodnaleziony w wynikach analizy.',
 
   // Sekcja 4b — adekwatność mocy biernej
   sekcjaAdekwatnosc: 'Adekwatność mocy biernej',
@@ -128,6 +130,8 @@ export const PULPIT_STRINGS = {
   adekwNaruszenia: 'Naruszenia pasma napięciowego',
   adekwBrakNaruszen: 'Brak naruszeń pasma napięciowego.',
   adekwBrakDanych: 'Brakujące dane',
+  adekwWyroznionyWezel: 'Wyróżniony węzeł modułu',
+  adekwWyroznienieBrak: 'Węzeł wybranego modułu nieodnaleziony w wynikach analizy.',
 
   // Wspólny ślad WHITE BOX (wzory ASCII, bez KaTeX — spójnie ze śladem testu)
   sladPokaz: 'Pokaż wywód',

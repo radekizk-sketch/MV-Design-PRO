@@ -74,3 +74,39 @@ describe('SekcjaAdekwatnosciQ — wynik z rozpływu (kryterium 3)', () => {
     expect(await screen.findByTestId('mvd-oze-adekw-blad')).toHaveTextContent('422 brak rozpływu');
   });
 });
+
+describe('SekcjaAdekwatnosciQ — wyróżnienie moduł→węzeł (P47b)', () => {
+  beforeEach(() => {
+    useExecutionRunsStore.setState({
+      runs: [przebiegFixture({ id: 'lf-run', analysis_type: 'LOAD_FLOW', status: 'DONE' })],
+      activeRunId: 'lf-run',
+    });
+  });
+
+  it('wyróżniony moduł podświetla źródło i naruszenie swojego węzła', async () => {
+    pobierzAdekwatnoscQ.mockResolvedValue(adekwatnoscQFixture());
+    render(<SekcjaAdekwatnosciQ trybEkspercki={false} wyroznionyModul="src-2" />);
+    await screen.findByTestId('mvd-oze-adekw-wynik');
+    expect(screen.getByTestId('mvd-oze-adekw-zrodlo-src-2')).toHaveAttribute(
+      'data-wyrozniony',
+      'true',
+    );
+    expect(screen.getByTestId('mvd-oze-adekw-zrodlo-src-1')).not.toHaveAttribute('data-wyrozniony');
+    // Naruszenie napięciowe na tym samym węźle również podświetlone.
+    expect(screen.getByTestId('mvd-oze-adekw-naruszenie-bus-pcc-2')).toHaveAttribute(
+      'data-wyrozniony',
+      'true',
+    );
+    expect(screen.getByTestId('mvd-oze-adekw-wyroznienie-wezel')).toHaveTextContent('bus-pcc-2');
+  });
+
+  it('moduł bez węzła w wynikach → uczciwa adnotacja, brak podświetlenia', async () => {
+    pobierzAdekwatnoscQ.mockResolvedValue(adekwatnoscQFixture());
+    render(<SekcjaAdekwatnosciQ trybEkspercki={false} wyroznionyModul="modul-obcy" />);
+    await screen.findByTestId('mvd-oze-adekw-wynik');
+    expect(screen.getByTestId('mvd-oze-adekw-wyroznienie-brak')).toHaveTextContent(
+      'nieodnaleziony',
+    );
+    expect(screen.getByTestId('mvd-oze-adekw-zrodlo-src-1')).not.toHaveAttribute('data-wyrozniony');
+  });
+});

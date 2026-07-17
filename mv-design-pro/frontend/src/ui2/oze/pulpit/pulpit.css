@@ -91,3 +91,22 @@
   flex-direction: column;
   gap: 10px;
 }
+
+/* ---- wyróżnienie wiersza węzła powiązanego z wybranym modułem (P47b) ----
+   Obwódka tokenem --mvd-accent; zero literałów kolorów. */
+.mvd-oze-wyrozniony {
+  outline: 2px solid var(--mvd-accent);
+  outline-offset: 1px;
+  border-radius: 5px;
+  background: var(--mvd-sel);
+}
+.mvd-oze-wyroznienie-brak {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  color: var(--mvd-muted);
+}
+.mvd-oze-wyroznienie-wezel {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  color: var(--mvd-ink);
+}

@@ -55,6 +55,24 @@ class GridStrengthContext:
 
 
 @dataclass(frozen=True)
+class BusSourceModule:
+    """Moduł źródłowy (generator IBG) przyłączony do węzła — metadana opisowa.
+
+    ADDYTYWNE (P47b): pozwala warstwie prezentacji odwzorować moduł na węzeł
+    przyłączenia. NIE bierze udziału w fizyce ani w odcisku analizy — służy
+    wyłącznie mapowaniu moduł→węzeł w pulpicie OZE.
+
+    - ``ref`` ← ``Generator.ref_id`` ze snapshotu,
+    - ``name`` ← ``Generator.name`` (o ile obecne w snapshocie),
+    - ``sn_mva`` ← udział mocy zainstalowanej modułu [MVA] (``None`` gdy nieznana).
+    """
+
+    ref: str
+    name: str | None
+    sn_mva: float | None
+
+
+@dataclass(frozen=True)
 class BusStrengthInput:
     """Wejście per węzeł przyłączenia źródła.
 
@@ -67,6 +85,7 @@ class BusStrengthInput:
     nominal_kv: float | None
     s_sc_mva: float | None
     s_installed_mva: float | None
+    modules: tuple[BusSourceModule, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -91,6 +110,7 @@ class BusStrengthEntry:
     why_pl: str
     missing_data: tuple[str, ...]
     white_box: tuple[WhiteBoxStep, ...]
+    modules: tuple[BusSourceModule, ...] = ()
 
 
 @dataclass(frozen=True)

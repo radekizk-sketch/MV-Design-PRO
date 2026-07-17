@@ -24,7 +24,7 @@ import type {
   StationDerConnection,
 } from '../../../ui/network-build/station-der';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
-import type { RekordKonwertera } from '../api';
+import type { RekordKonwertera, WidokAdekwatnosciQ, WidokSilySieci } from '../api';
 import { podsumowanieModulu, type OpisModulu } from '../macierz';
 
 // =============================================================================
@@ -248,6 +248,30 @@ export function wybierzPrzebiegRozplywu(
   activeRunId: string | null,
 ): string | null {
   return wybierzPrzebieg(runs, activeRunId, (r) => r.analysis_type === 'LOAD_FLOW');
+}
+
+/**
+ * Węzeł przyłączenia modułu w widoku siły sieci (P47b). Skanuje wiersze węzłów
+ * i zwraca `bus_ref` wiersza, którego lista modułów (`modules[]`, dodana w §2.1)
+ * zawiera moduł o referencji `derRef`. Brak dopasowania → `null` (uczciwie —
+ * moduł bez węzła w wynikach analizy). Bez zgadywania: dopasowanie po pełnej
+ * równości referencji.
+ */
+export function busRefModuluSily(widok: WidokSilySieci, derRef: string): string | null {
+  for (const wpis of widok.entries) {
+    if (wpis.modules.some((modul) => modul.ref === derRef)) return wpis.bus_ref;
+  }
+  return null;
+}
+
+/**
+ * Węzeł przyłączenia modułu w widoku adekwatności Q (P47b). Reużywa ISTNIEJĄCEGO
+ * pola `bus_ref` źródeł (`source_q_actuals`, D13) — nie wymaga nowego pola. Zwraca
+ * `bus_ref` źródła o referencji `derRef`; brak źródła lub źródło bez węzła → `null`.
+ */
+export function busRefModuluQ(widok: WidokAdekwatnosciQ, derRef: string): string | null {
+  const zrodlo = widok.sources.find((s) => s.ref === derRef);
+  return zrodlo ? zrodlo.bus_ref : null;
 }
 
 function wybierzPrzebieg(

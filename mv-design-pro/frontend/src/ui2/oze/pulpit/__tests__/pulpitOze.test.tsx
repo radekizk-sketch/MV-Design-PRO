@@ -114,6 +114,34 @@ describe('PulpitOze — analizy wpięte (sekcje 4a/4b)', () => {
   });
 });
 
+describe('PulpitOze — wyróżnienie moduł→węzeł (P47b)', () => {
+  it('klik modułu włącza wyróżnienie, ponowny klik je wyłącza (bez martwego klika)', async () => {
+    render(<PulpitOze trybZaawansowania="basic" onNawiguj={noop} />);
+    const pozPv = await screen.findByTestId('mvd-oze-pulpit-poz-pv-1');
+    // Przed klikiem moduł nie jest wyróżniony.
+    expect(pozPv).not.toHaveAttribute('data-wyrozniony');
+    // Pierwszy klik: moduł wybrany i wyróżniony.
+    fireEvent.click(pozPv);
+    expect(pozPv).toHaveAttribute('data-wyrozniony', 'true');
+    expect(pozPv).toHaveAttribute('aria-pressed', 'true');
+    // Ponowny klik tego samego modułu: wyróżnienie zdjęte, moduł nadal wybrany.
+    fireEvent.click(pozPv);
+    expect(pozPv).not.toHaveAttribute('data-wyrozniony');
+    expect(pozPv).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('wyróżnienie przenosi się na inny moduł po jego kliknięciu', async () => {
+    render(<PulpitOze trybZaawansowania="basic" onNawiguj={noop} />);
+    const pozPv = await screen.findByTestId('mvd-oze-pulpit-poz-pv-1');
+    const pozBess = screen.getByTestId('mvd-oze-pulpit-poz-bess-1');
+    fireEvent.click(pozPv);
+    expect(pozPv).toHaveAttribute('data-wyrozniony', 'true');
+    fireEvent.click(pozBess);
+    expect(pozBess).toHaveAttribute('data-wyrozniony', 'true');
+    expect(pozPv).not.toHaveAttribute('data-wyrozniony');
+  });
+});
+
 describe('PulpitOze — dokumenty (sekcja 5)', () => {
   it('przycisk dokumentów woła callback nawigacji z propsów', async () => {
     const onNawiguj = vi.fn();

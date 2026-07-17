@@ -11,7 +11,7 @@ import { useState } from 'react';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { pobierzAdekwatnoscQ, type WpisZrodlaQ } from '../api';
 import { SladAnalizy } from './SladAnalizy';
-import { wybierzPrzebiegRozplywu } from './pulpitModel';
+import { busRefModuluQ, wybierzPrzebiegRozplywu } from './pulpitModel';
 import { useAnaliza } from './useAnaliza';
 import {
   formatMvar,
@@ -23,12 +23,24 @@ import {
 export interface SekcjaAdekwatnosciQProps {
   /** Tryb ekspercki odsłania identyfikatory katalogowe/śladu. */
   readonly trybEkspercki: boolean;
+  /** Referencja wyróżnionego modułu (klik w pulpicie); `null` → brak wyróżnienia. */
+  readonly wyroznionyModul?: string | null;
 }
 
-function WpisZrodla({ wpis }: { readonly wpis: WpisZrodlaQ }): JSX.Element {
+function WpisZrodla({
+  wpis,
+  wyrozniony,
+}: {
+  readonly wpis: WpisZrodlaQ;
+  readonly wyrozniony: boolean;
+}): JSX.Element {
   const [sladWidoczny, setSladWidoczny] = useState(false);
   return (
-    <li className="mvd-oze-slad-krok" data-testid={`mvd-oze-adekw-zrodlo-${wpis.ref}`}>
+    <li
+      className={`mvd-oze-slad-krok${wyrozniony ? ' mvd-oze-wyrozniony' : ''}`}
+      data-testid={`mvd-oze-adekw-zrodlo-${wpis.ref}`}
+      data-wyrozniony={wyrozniony ? 'true' : undefined}
+    >
       <div className="mvd-oze-metryka">
         <span>{wpis.ref}</span>
         <span
@@ -89,11 +101,19 @@ function WpisZrodla({ wpis }: { readonly wpis: WpisZrodlaQ }): JSX.Element {
   );
 }
 
-export function SekcjaAdekwatnosciQ({ trybEkspercki }: SekcjaAdekwatnosciQProps): JSX.Element {
+export function SekcjaAdekwatnosciQ({
+  trybEkspercki,
+  wyroznionyModul = null,
+}: SekcjaAdekwatnosciQProps): JSX.Element {
   const runs = useExecutionRunsStore((s) => s.runs);
   const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
   const runId = wybierzPrzebiegRozplywu(runs, activeRunId);
   const stan = useAnaliza(runId, pobierzAdekwatnoscQ);
+
+  const wyroznionyWezel =
+    stan.rodzaj === 'gotowe' && wyroznionyModul
+      ? busRefModuluQ(stan.dane, wyroznionyModul)
+      : null;
 
   return (
     <section
@@ -155,6 +175,22 @@ export function SekcjaAdekwatnosciQ({ trybEkspercki }: SekcjaAdekwatnosciQProps)
 
           <div className="mvd-oze-panel-blok">
             <span className="mvd-oze-panel-etyk">{PULPIT_STRINGS.adekwZrodla}</span>
+            {wyroznionyModul && wyroznionyWezel ? (
+              <p
+                className="mvd-oze-wyroznienie-wezel"
+                data-testid="mvd-oze-adekw-wyroznienie-wezel"
+              >
+                {PULPIT_STRINGS.adekwWyroznionyWezel}: {wyroznionyWezel}
+              </p>
+            ) : null}
+            {wyroznionyModul && !wyroznionyWezel ? (
+              <p
+                className="mvd-oze-wyroznienie-brak"
+                data-testid="mvd-oze-adekw-wyroznienie-brak"
+              >
+                {PULPIT_STRINGS.adekwWyroznienieBrak}
+              </p>
+            ) : null}
             {stan.dane.sources.length === 0 ? (
               <p style={{ margin: '4px 0 0' }} className="mvd-oze-panel-etyk">
                 {PULPIT_STRINGS.adekwBrakZrodel}
@@ -162,7 +198,11 @@ export function SekcjaAdekwatnosciQ({ trybEkspercki }: SekcjaAdekwatnosciQProps)
             ) : (
               <ul className="mvd-oze-analiza-lista" data-testid="mvd-oze-adekw-zrodla">
                 {stan.dane.sources.map((wpis) => (
-                  <WpisZrodla key={wpis.ref} wpis={wpis} />
+                  <WpisZrodla
+                    key={wpis.ref}
+                    wpis={wpis}
+                    wyrozniony={wyroznionyWezel !== null && wpis.bus_ref === wyroznionyWezel}
+                  />
                 ))}
               </ul>
             )}
@@ -177,7 +217,12 @@ export function SekcjaAdekwatnosciQ({ trybEkspercki }: SekcjaAdekwatnosciQProps)
             ) : (
               <ul className="mvd-oze-lista" data-testid="mvd-oze-adekw-naruszenia">
                 {stan.dane.voltage_violations.map((n) => (
-                  <li key={n.bus_ref} data-testid={`mvd-oze-adekw-naruszenie-${n.bus_ref}`}>
+                  <li
+                    key={n.bus_ref}
+                    className={wyroznionyWezel === n.bus_ref ? 'mvd-oze-wyrozniony' : undefined}
+                    data-wyrozniony={wyroznionyWezel === n.bus_ref ? 'true' : undefined}
+                    data-testid={`mvd-oze-adekw-naruszenie-${n.bus_ref}`}
+                  >
                     <div style={{ fontWeight: 600 }}>
                       {n.bus_ref} · {n.kind_pl}
                     </div>

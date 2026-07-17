@@ -8,6 +8,7 @@ from analysis.grid_strength.builder import GridStrengthBuilder
 from analysis.grid_strength.models import (
     DEFAULT_VERY_WEAK_THRESHOLD,
     DEFAULT_WEAK_THRESHOLD,
+    BusSourceModule,
     BusStrengthEntry,
     BusStrengthInput,
     GridStrengthContext,
@@ -20,6 +21,7 @@ from analysis.grid_strength.models import (
 __all__ = [
     "DEFAULT_VERY_WEAK_THRESHOLD",
     "DEFAULT_WEAK_THRESHOLD",
+    "BusSourceModule",
     "BusStrengthEntry",
     "BusStrengthInput",
     "GridStrengthBuilder",

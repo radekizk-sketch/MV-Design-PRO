@@ -64,11 +64,18 @@ def _bus(ref_id: str, kv: float = 15.0) -> dict:
 
 
 def _ibg(
-    ref_id: str, bus_ref: str, *, sn_mva: float | None = None, gen_type: str = "pv_inverter"
+    ref_id: str,
+    bus_ref: str,
+    *,
+    sn_mva: float | None = None,
+    gen_type: str = "pv_inverter",
+    name: str | None = None,
 ) -> dict:
     gen: dict = {"ref_id": ref_id, "bus_ref": bus_ref, "gen_type": gen_type, "q_mvar": 0.0}
     if sn_mva is not None:
         gen["materialized_params"] = {"sn_mva": sn_mva}
+    if name is not None:
+        gen["name"] = name
     return gen
 
 
@@ -194,6 +201,102 @@ def test_ibg_bus_without_installed_power_is_no_data() -> None:
     assert entry["s_installed_mva"] is None
     assert entry["verdict"] == "brak danych"
     assert "s_installed_mva" in entry["missing_data"]
+
+
+# --------------------------------------------------------------------------
+# Moduły źródłowe per węzeł (P47b — mapowanie moduł→węzeł, ADDYTYWNE)
+# --------------------------------------------------------------------------
+
+
+def test_node_exposes_source_modules_list() -> None:
+    run = _sc_run(
+        generators=[_ibg("g1", "b1", sn_mva=2.0, name="Blok PV A")],
+        buses=[_bus("b1")],
+        sc_rows=[{"fault_node_id": "n1", "sk_mva": 100.0}],
+        graph_nodes={"n1": {"element_id": "b1"}},
+    )
+    entry = build_grid_strength_view(run)["entries"][0]
+    assert entry["modules"] == [{"ref": "g1", "name": "Blok PV A", "sn_mva": 2.0}]
+
+
+def test_module_name_absent_yields_none() -> None:
+    run = _sc_run(
+        generators=[_ibg("g1", "b1", sn_mva=2.0)],
+        buses=[_bus("b1")],
+        sc_rows=[{"fault_node_id": "n1", "sk_mva": 100.0}],
+        graph_nodes={"n1": {"element_id": "b1"}},
+    )
+    entry = build_grid_strength_view(run)["entries"][0]
+    assert entry["modules"] == [{"ref": "g1", "name": None, "sn_mva": 2.0}]
+
+
+def test_modules_deterministic_order_by_ref() -> None:
+    # Kolejność wejściowa g2, g1 → moduły posortowane po ref (g1, g2).
+    run = _sc_run(
+        generators=[
+            _ibg("g2", "b1", sn_mva=3.0, gen_type="bess"),
+            _ibg("g1", "b1", sn_mva=2.0),
+        ],
+        buses=[_bus("b1")],
+        sc_rows=[{"fault_node_id": "n1", "sk_mva": 100.0}],
+        graph_nodes={"n1": {"element_id": "b1"}},
+    )
+    entry = build_grid_strength_view(run)["entries"][0]
+    assert [m["ref"] for m in entry["modules"]] == ["g1", "g2"]
+    # Istniejące pola nietknięte: suma mocy dalej agreguje oba źródła.
+    assert entry["s_installed_mva"] == 5.0
+
+
+def test_module_sn_mva_reflects_n_parallel_contribution() -> None:
+    gen = _ibg("g1", "b1", sn_mva=2.0)
+    gen["n_parallel"] = 3
+    run = _sc_run(
+        generators=[gen],
+        buses=[_bus("b1")],
+        sc_rows=[{"fault_node_id": "n1", "sk_mva": 100.0}],
+        graph_nodes={"n1": {"element_id": "b1"}},
+    )
+    entry = build_grid_strength_view(run)["entries"][0]
+    assert entry["modules"][0]["sn_mva"] == 6.0  # 2.0 × 3
+
+
+def test_module_without_installed_power_lists_null_sn() -> None:
+    # Węzeł hostuje IBG bez znanej mocy → moduł nadal wymieniony, sn_mva = None.
+    run = _sc_run(
+        generators=[_ibg("g1", "b1", name="Blok bez karty")],
+        buses=[_bus("b1")],
+        sc_rows=[{"fault_node_id": "n1", "sk_mva": 100.0}],
+        graph_nodes={"n1": {"element_id": "b1"}},
+    )
+    entry = build_grid_strength_view(run)["entries"][0]
+    assert entry["modules"] == [{"ref": "g1", "name": "Blok bez karty", "sn_mva": None}]
+
+
+def test_synchronous_generator_excluded_from_modules() -> None:
+    run = _sc_run(
+        generators=[
+            _ibg("g1", "b1", sn_mva=2.0),
+            _ibg("g_sync", "b1", sn_mva=5.0, gen_type="synchronous"),
+        ],
+        buses=[_bus("b1")],
+        sc_rows=[{"fault_node_id": "n1", "sk_mva": 100.0}],
+        graph_nodes={"n1": {"element_id": "b1"}},
+    )
+    entry = build_grid_strength_view(run)["entries"][0]
+    assert [m["ref"] for m in entry["modules"]] == ["g1"]
+
+
+def test_modules_present_on_no_data_entry() -> None:
+    # Brak S_sc (brak danych) — wiersz nadal niesie listę modułów węzła.
+    run = _sc_run(
+        generators=[_ibg("g1", "b1", sn_mva=2.0, name="Blok PV A")],
+        buses=[_bus("b1")],
+        sc_rows=[{"fault_node_id": "n1", "sk_mva": 100.0}],
+        graph_nodes={"n1": {"element_id": "b-other"}},
+    )
+    entry = build_grid_strength_view(run)["entries"][0]
+    assert entry["verdict"] == "brak danych"
+    assert entry["modules"] == [{"ref": "g1", "name": "Blok PV A", "sn_mva": 2.0}]
 
 
 # --------------------------------------------------------------------------

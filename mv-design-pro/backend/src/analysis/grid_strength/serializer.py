@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from analysis.grid_strength.models import (
+    BusSourceModule,
     BusStrengthEntry,
     GridStrengthContext,
     GridStrengthSummary,
@@ -28,6 +29,14 @@ def white_box_to_dict(step: WhiteBoxStep) -> dict[str, Any]:
     }
 
 
+def module_to_dict(module: BusSourceModule) -> dict[str, Any]:
+    return {
+        "ref": module.ref,
+        "name": module.name,
+        "sn_mva": (float(module.sn_mva) if module.sn_mva is not None else None),
+    }
+
+
 def entry_to_dict(entry: BusStrengthEntry) -> dict[str, Any]:
     return {
         "bus_ref": entry.bus_ref,
@@ -42,6 +51,7 @@ def entry_to_dict(entry: BusStrengthEntry) -> dict[str, Any]:
         "why_pl": entry.why_pl,
         "missing_data": list(entry.missing_data),
         "white_box": [white_box_to_dict(step) for step in entry.white_box],
+        "modules": [module_to_dict(module) for module in entry.modules],
     }
 
 

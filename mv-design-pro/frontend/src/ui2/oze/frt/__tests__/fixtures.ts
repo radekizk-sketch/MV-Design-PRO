@@ -342,6 +342,7 @@ export function widokSekwencjiNiezaliczonaFixture(): WidokSekwencjiFrt {
       why_pl: 'SCR = 2,25 poniżej progu sieci słabej (3,0).',
       missing_data: [],
       white_box: [],
+      modules: [{ ref: 'gen-oze-1', name: 'Farma wiatrowa 1', sn_mva: 20.0 }],
     },
     kontekst_sily_sieci_powod_pl: null,
     input_hash: 'seq-hash-niezaliczona',

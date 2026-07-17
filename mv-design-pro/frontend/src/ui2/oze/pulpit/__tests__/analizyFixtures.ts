@@ -45,6 +45,7 @@ export function silaSieciFixture(): WidokSilySieci {
             result_pl: 'SCR = 6,0',
           },
         ],
+        modules: [{ ref: 'src-1', name: 'Blok PV A', sn_mva: 20.0 }],
       },
       {
         bus_ref: 'bus-pcc-2',
@@ -64,6 +65,7 @@ export function silaSieciFixture(): WidokSilySieci {
             result_pl: 'SCR = 2,0',
           },
         ],
+        modules: [{ ref: 'src-2', name: 'Magazyn energii 1', sn_mva: 20.0 }],
       },
       {
         bus_ref: 'bus-pcc-3',
@@ -76,6 +78,7 @@ export function silaSieciFixture(): WidokSilySieci {
         why_pl: 'Brak mocy zwarciowej — SCR nieobliczony.',
         missing_data: ['s_sc_mva'],
         white_box: [],
+        modules: [{ ref: 'src-3', name: null, sn_mva: 20.0 }],
       },
     ],
     summary: {

@@ -18,7 +18,11 @@ from __future__ import annotations
 from typing import Any
 
 from analysis.grid_strength.builder import GridStrengthBuilder
-from analysis.grid_strength.models import BusStrengthInput, GridStrengthContext
+from analysis.grid_strength.models import (
+    BusSourceModule,
+    BusStrengthInput,
+    GridStrengthContext,
+)
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 
 # Typy źródeł falownikowych (Inverter-Based Generation) — SCR dotyczy punktu
@@ -116,6 +120,40 @@ def _installed_mva_by_bus(snapshot: dict[str, Any]) -> dict[str, float]:
     return by_bus
 
 
+def _modules_by_bus(snapshot: dict[str, Any]) -> dict[str, tuple[BusSourceModule, ...]]:
+    """Moduły źródłowe IBG per węzeł (ref_id szyny) — metadana opisowa (P47b).
+
+    ADDYTYWNE: nie zmienia pól istniejących ani odcisku analizy. Iteruje te same
+    źródła co ``_installed_mva_by_bus`` (typy IBG z ``bus_ref``), lecz wymaga
+    identyfikatora modułu (``ref_id``) — bez niego moduł nie jest mapowalny na
+    węzeł, więc jest pomijany (uczciwie, bez fabrykowania referencji). Udział mocy
+    modułu = ``_installed_mva_for_generator`` (``None`` gdy nieznana). Kolejność
+    modułów w węźle deterministyczna (sort po ``ref``).
+    """
+    grouped: dict[str, list[BusSourceModule]] = {}
+    for gen in snapshot.get("generators") or []:
+        if not isinstance(gen, dict):
+            continue
+        if str(gen.get("gen_type") or "") not in IBG_GEN_TYPES:
+            continue
+        bus_ref = gen.get("bus_ref")
+        if not isinstance(bus_ref, str):
+            continue
+        ref = gen.get("ref_id")
+        if not isinstance(ref, str):
+            continue
+        name = gen.get("name")
+        module = BusSourceModule(
+            ref=ref,
+            name=str(name) if isinstance(name, str) and name else None,
+            sn_mva=_installed_mva_for_generator(gen),
+        )
+        grouped.setdefault(bus_ref, []).append(module)
+    return {
+        bus_ref: tuple(sorted(modules, key=lambda m: m.ref)) for bus_ref, modules in grouped.items()
+    }
+
+
 def _sk_mva_by_bus(run: CanonicalRun) -> dict[str, float | None]:
     """Moc zwarciowa S_sc'' [MVA] per węzeł (ref_id szyny) z wyniku IEC 60909."""
     out: dict[str, float | None] = {}
@@ -174,6 +212,7 @@ def build_grid_strength_view(run: CanonicalRun) -> dict[str, Any]:
     installed_by_bus = _installed_mva_by_bus(snapshot)
     sk_by_bus = _sk_mva_by_bus(run)
     kv_by_bus = _nominal_kv_by_bus(snapshot)
+    modules_by_bus = _modules_by_bus(snapshot)
 
     inputs = [
         BusStrengthInput(
@@ -181,6 +220,7 @@ def build_grid_strength_view(run: CanonicalRun) -> dict[str, Any]:
             nominal_kv=kv_by_bus.get(bus_ref),
             s_sc_mva=sk_by_bus.get(bus_ref),
             s_installed_mva=(installed if installed > 0.0 else None),
+            modules=modules_by_bus.get(bus_ref, ()),
         )
         for bus_ref, installed in installed_by_bus.items()
     ]

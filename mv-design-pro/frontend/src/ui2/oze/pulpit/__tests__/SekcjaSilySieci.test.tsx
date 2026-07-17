@@ -67,3 +67,46 @@ describe('SekcjaSilySieci — wynik z przebiegu SC (kryterium 2)', () => {
     expect(await screen.findByTestId('mvd-oze-sila-blad')).toHaveTextContent('422 brak zwarcia');
   });
 });
+
+describe('SekcjaSilySieci — wyróżnienie moduł→węzeł (P47b)', () => {
+  beforeEach(() => {
+    useExecutionRunsStore.setState({
+      runs: [przebiegFixture({ id: 'sc-run', analysis_type: 'SC_3F', status: 'DONE' })],
+      activeRunId: 'sc-run',
+    });
+  });
+
+  it('wyróżniony moduł podświetla wiersz swojego węzła (i tylko jego)', async () => {
+    pobierzSileSieci.mockResolvedValue(silaSieciFixture());
+    render(<SekcjaSilySieci trybEkspercki={false} wyroznionyModul="src-2" />);
+    await screen.findByTestId('mvd-oze-sila-wynik');
+    expect(screen.getByTestId('mvd-oze-sila-wezel-bus-pcc-2')).toHaveAttribute(
+      'data-wyrozniony',
+      'true',
+    );
+    expect(screen.getByTestId('mvd-oze-sila-wezel-bus-pcc-1')).not.toHaveAttribute(
+      'data-wyrozniony',
+    );
+    expect(screen.getByTestId('mvd-oze-sila-wyroznienie-wezel')).toHaveTextContent('bus-pcc-2');
+  });
+
+  it('moduł bez węzła w wynikach → uczciwa adnotacja, brak podświetlenia', async () => {
+    pobierzSileSieci.mockResolvedValue(silaSieciFixture());
+    render(<SekcjaSilySieci trybEkspercki={false} wyroznionyModul="modul-obcy" />);
+    await screen.findByTestId('mvd-oze-sila-wynik');
+    expect(screen.getByTestId('mvd-oze-sila-wyroznienie-brak')).toHaveTextContent(
+      'nieodnaleziony',
+    );
+    expect(screen.getByTestId('mvd-oze-sila-wezel-bus-pcc-1')).not.toHaveAttribute(
+      'data-wyrozniony',
+    );
+  });
+
+  it('bez wyróżnionego modułu nie pokazuje adnotacji ani podświetlenia', async () => {
+    pobierzSileSieci.mockResolvedValue(silaSieciFixture());
+    render(<SekcjaSilySieci trybEkspercki={false} />);
+    await screen.findByTestId('mvd-oze-sila-wynik');
+    expect(screen.queryByTestId('mvd-oze-sila-wyroznienie-wezel')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-oze-sila-wyroznienie-brak')).not.toBeInTheDocument();
+  });
+});

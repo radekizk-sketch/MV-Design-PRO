@@ -24,6 +24,8 @@ export interface KartaModuluProps {
   readonly trybEkspercki: boolean;
   /** Nawigacja do dokumentacji modułu (implementacja poza tą kartą). */
   readonly onNawiguj: (cel: 'dokumentacja') => void;
+  /** Referencja wyróżnionego modułu (klik w pulpicie) — podświetla wiersze węzła. */
+  readonly wyroznionyModul?: string | null;
 }
 
 export function KartaModulu({
@@ -32,6 +34,7 @@ export function KartaModulu({
   wynik,
   trybEkspercki,
   onNawiguj,
+  wyroznionyModul = null,
 }: KartaModuluProps): JSX.Element {
   const dane = daneModulu(opis, der);
   const zgodnosc = zgodnoscModulu(opis, wynik);
@@ -93,10 +96,10 @@ export function KartaModulu({
       <SekcjaMagazynu der={der} trybEkspercki={trybEkspercki} />
 
       {/* Sekcja 4a — zdolność punktu przyłączenia (siła sieci, SCR/WSCR). */}
-      <SekcjaSilySieci trybEkspercki={trybEkspercki} />
+      <SekcjaSilySieci trybEkspercki={trybEkspercki} wyroznionyModul={wyroznionyModul} />
 
       {/* Sekcja 4b — adekwatność mocy biernej. */}
-      <SekcjaAdekwatnosciQ trybEkspercki={trybEkspercki} />
+      <SekcjaAdekwatnosciQ trybEkspercki={trybEkspercki} wyroznionyModul={wyroznionyModul} />
 
       {/* Sekcja 5 — dokumenty. */}
       <section

@@ -49,6 +49,15 @@ export function PulpitOze({ trybZaawansowania, onNawiguj }: PulpitOzeProps): JSX
   const przeprowadzTesty = useNcRfgStore((s) => s.przeprowadzTesty);
 
   const [wybranyModul, setWybranyModul] = useState<string>('');
+  // Wyróżnienie moduł→węzeł (P47b): klik modułu podświetla wiersze jego węzła
+  // w sekcjach siły sieci i adekwatności Q; ponowny klik tego samego modułu
+  // wyłącza wyróżnienie. `null` → brak wyróżnienia.
+  const [wyroznionyModul, setWyroznionyModul] = useState<string | null>(null);
+
+  const wybierzModul = (derRef: string): void => {
+    setWybranyModul(derRef);
+    setWyroznionyModul((poprzedni) => (poprzedni === derRef ? null : derRef));
+  };
 
   useEffect(() => {
     void zaladujKatalog();
@@ -160,8 +169,9 @@ export function PulpitOze({ trybZaawansowania, onNawiguj }: PulpitOzeProps): JSX
                 key={poz.derRef}
                 type="button"
                 className="mvd-oze-pulpit-poz"
-                onClick={() => setWybranyModul(poz.derRef)}
+                onClick={() => wybierzModul(poz.derRef)}
                 aria-pressed={opisWybrany?.derRef === poz.derRef}
+                data-wyrozniony={wyroznionyModul === poz.derRef ? 'true' : undefined}
                 data-testid={`mvd-oze-pulpit-poz-${poz.derRef}`}
               >
                 <span className="mvd-oze-pulpit-poz-nazwa">
@@ -197,6 +207,7 @@ export function PulpitOze({ trybZaawansowania, onNawiguj }: PulpitOzeProps): JSX
                 wynik={wynik}
                 trybEkspercki={trybEkspercki}
                 onNawiguj={onNawiguj}
+                wyroznionyModul={wyroznionyModul}
               />
             ) : null}
           </div>
