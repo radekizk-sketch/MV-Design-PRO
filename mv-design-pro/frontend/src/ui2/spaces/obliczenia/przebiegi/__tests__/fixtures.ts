@@ -60,7 +60,7 @@ export function kontraktFixture(over: Partial<AnalysisRunContract> = {}): Analys
         load_assumptions_ref: 'nominal',
         source_assumptions_ref: 'sc_source_max',
       },
-      lineage: {},
+      lineage: { project_ref: 'projekt-1' },
       reproducibility: null,
     },
     ...over,

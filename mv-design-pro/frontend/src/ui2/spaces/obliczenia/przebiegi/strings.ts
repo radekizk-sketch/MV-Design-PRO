@@ -69,6 +69,8 @@ export const PRZEBIEGI_STRINGS = {
   etykietaWersjaUkladu: 'Wersja układu',
   etykietaKompletnosc: 'Kompletność',
   etykietaZakresStosowalnosci: 'Zakres stosowalności',
+  etykietaRodzajPrzypadku: 'Rodzaj przypadku',
+  etykietaProjekt: 'Projekt',
   etykietaZalozeniaOltc: 'Założenia OLTC',
   etykietaUziemienie: 'Uziemienie',
   etykietaStanLacznikow: 'Stan łączników',

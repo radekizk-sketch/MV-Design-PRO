@@ -3,7 +3,10 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { SzczegolyPrzebiegu } from '../SzczegolyPrzebiegu';
 import { mapujWiersze } from '../adapters/przebiegiAdapter';
 import { PRZEBIEGI_STRINGS as T, formatOdcisk } from '../strings';
-import { useAnalysisRunContract } from '../../../../../ui/workspace/analysisRunContract';
+import {
+  formatContractValue,
+  useAnalysisRunContract,
+} from '../../../../../ui/workspace/analysisRunContract';
 import { runFixture, kontraktFixture } from './fixtures';
 
 // Hook kontraktu reużyty BEZ ZMIAN — w teście podmieniamy wyłącznie jego wynik
@@ -128,6 +131,16 @@ describe('SzczegolyPrzebiegu — sekcja „Kontrakt analizy" (migracja W1 paneli
     expect(within(grupa).getByText('Tak')).toBeInTheDocument();
     expect(within(grupa).getByText('Kompletny')).toBeInTheDocument();
     expect(within(grupa).getByText('cała sieć')).toBeInTheDocument();
+  });
+
+  it('grupa „Kontekst ogólny": rodzaj przypadku i projekt (fala W2 — parytet z panelem wkładów źródeł)', () => {
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    const grupa = screen.getByTestId('mvd-przebieg-kontrakt-ogolne');
+    expect(within(grupa).getByText(T.etykietaRodzajPrzypadku)).toBeInTheDocument();
+    // Wartości przez realny formater mostu (parytet 1:1 — semantyka, nie surowy tekst).
+    expect(within(grupa).getByText(formatContractValue('auto'))).toBeInTheDocument();
+    expect(within(grupa).getByText(T.etykietaProjekt)).toBeInTheDocument();
+    expect(within(grupa).getByText(formatContractValue('projekt-1'))).toBeInTheDocument();
   });
 
   it('grupa „Założenia rozpływu i zbieżności": OLTC z kontraktu (parytet z panelem zbieżności)', () => {

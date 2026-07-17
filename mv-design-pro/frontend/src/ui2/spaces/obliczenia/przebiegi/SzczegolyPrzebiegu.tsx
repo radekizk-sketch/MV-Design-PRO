@@ -161,6 +161,16 @@ function SekcjaKontraktAnalizy({
                 etykieta: T.etykietaZakresStosowalnosci,
                 wartosc: formatContractValue(kontekst?.applicabilityScope),
               },
+              // Fala W2: wiersze panelu „Wkłady źródeł rozszerzone" mostu
+              // nieobecne w W1 (rodzaj przypadku, projekt z rodowodu).
+              {
+                etykieta: T.etykietaRodzajPrzypadku,
+                wartosc: formatContractValue(kontekst?.caseKind),
+              },
+              {
+                etykieta: T.etykietaProjekt,
+                wartosc: formatContractValue(kontekst?.lineage['project_ref']),
+              },
             ]}
           />
           <GrupaKontraktu

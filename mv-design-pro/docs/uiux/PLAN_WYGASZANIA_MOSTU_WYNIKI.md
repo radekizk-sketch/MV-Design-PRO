@@ -60,3 +60,11 @@ Zasada: żadna trasa nie znika, dopóki okno ui2 nie pokrywa funkcji 1:1
   8656 passed / 0 failed. **MiniSldCard pozostaje w wątku SLD (poza zakresem
   tej karty).** Pokrycie treści kontraktowych paneli mostu: 1:1; trasy legacy
   paneli mostu zostają do fali W5 (zasada pokrycia 1:1).
+- **W2** (2026-07-17, zarządca — mikro-delta): rekonesans wykazał, że
+  ConvergenceSurface i SourceContributionsSurface to te same cienkie panele
+  `AnalysisContractPanel` co fala W1 (dane wkładów zwarciowych od dawna
+  w `EkranZwarc.tsx:45-100`). Wiersze zbieżności pokryła już sekcja W1;
+  do pełnego parytetu panelu „Wkłady źródeł rozszerzone"
+  (`WorkspaceSurfaceRouter.tsx:2513-2531`) dodano dwa wiersze grupy
+  ogólnej: „Rodzaj przypadku" (caseKind) i „Projekt" (lineage.project_ref)
+  + test. Pokrycie W2: 1:1; trasy legacy zostają do W5.
