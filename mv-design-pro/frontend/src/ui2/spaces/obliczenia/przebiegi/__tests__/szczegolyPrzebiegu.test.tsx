@@ -143,6 +143,17 @@ describe('SzczegolyPrzebiegu — sekcja „Kontrakt analizy" (migracja W1 paneli
     expect(within(grupa).getByText(formatContractValue('projekt-1'))).toBeInTheDocument();
   });
 
+  it('grupa „Kontekst ogólny": wariant, model IBG/OZE, wersja katalogu (W5b-K1 — domknięcie audytu W5a)', () => {
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    const grupa = screen.getByTestId('mvd-przebieg-kontrakt-ogolne');
+    expect(within(grupa).getByText(T.etykietaWariant)).toBeInTheDocument();
+    expect(within(grupa).getByText(T.etykietaModelIbg)).toBeInTheDocument();
+    expect(within(grupa).getByText(T.etykietaWersjaKatalogu)).toBeInTheDocument();
+    // Fixture nie niesie tych wartości (variantRef/reproducibility null,
+    // brak ibg_assumptions_ref) → uczciwe „Do konfiguracji" formatera mostu.
+    expect(within(grupa).getAllByText(formatContractValue(null)).length).toBeGreaterThanOrEqual(3);
+  });
+
   it('grupa „Założenia rozpływu i zbieżności": OLTC z kontraktu (parytet z panelem zbieżności)', () => {
     render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
     const grupa = screen.getByTestId('mvd-przebieg-kontrakt-rozplyw');

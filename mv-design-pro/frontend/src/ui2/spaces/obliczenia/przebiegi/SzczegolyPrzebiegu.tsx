@@ -172,6 +172,21 @@ function SekcjaKontraktAnalizy({
                 etykieta: T.etykietaProjekt,
                 wartosc: formatContractValue(kontekst?.lineage['project_ref']),
               },
+              // W5b-K1: domknięcie luk audytu W5a (kontrakt zgodności E-26
+              // i ślad obliczeń ProofSurface) — wariant, model IBG/OZE,
+              // wersja katalogu z odtwarzalności.
+              {
+                etykieta: T.etykietaWariant,
+                wartosc: formatContractValue(kontekst?.variantRef),
+              },
+              {
+                etykieta: T.etykietaModelIbg,
+                wartosc: formatContractValue(kontekst?.assumptions['ibg_assumptions_ref']),
+              },
+              {
+                etykieta: T.etykietaWersjaKatalogu,
+                wartosc: formatContractValue(kontekst?.reproducibility?.catalogSnapshotRef),
+              },
             ]}
           />
           <GrupaKontraktu
