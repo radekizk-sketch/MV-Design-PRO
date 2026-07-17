@@ -92,7 +92,12 @@ def apply_template_to_case(
             "name_pl": template.name_pl,
             "station_type": _resolve_station_type(template),
             "sn_voltage_kv": 15,
-            "nn_voltage_kv": 0.4,
+            # Strona nN PODĄŻA za katalogową stroną dolną WYBRANEGO
+            # transformatora (nie stała 0.4): blok falownikowy turbiny pracuje
+            # na napięciu generatora (np. 0.69 kV) — sztywne 0.4 wywalało
+            # `station.insert.transformer_voltage_mismatch` dla poprawnie
+            # dobranego TR 3.15 MVA (tpl_wiatr_3mw).
+            "nn_voltage_kv": _transformer_lv_voltage_kv(transformer_ref) or 0.4,
         },
         "transformer": {
             "transformer_catalog_ref": transformer_ref,
@@ -423,10 +428,41 @@ def _resolve_transformer_ref_for_template(
     return manufacturer_match or _first_default_choice(template.schema.transformer_options)
 
 
+def _transformer_lv_voltage_kv(transformer_ref: str | None) -> float | None:
+    """Katalogowa strona dolna wybranego transformatora [kV] — z REALNEGO
+    rekordu katalogu (nie z tokenu id): jedna prawda napięć, ta sama, którą
+    waliduje `station.insert` (`_validate_transformer_voltage_compatibility`).
+    `None` gdy brak referencji/rekordu — wołający stosuje dotychczasowy
+    domyślny poziom sieci nN."""
+    if not isinstance(transformer_ref, str) or not transformer_ref.strip():
+        return None
+    try:
+        from network_model.catalog import get_default_mv_catalog
+    except ImportError:
+        return None
+    catalog = get_default_mv_catalog()
+    item = catalog.get_transformer_type(transformer_ref)
+    if item is None:
+        return None
+    value = getattr(item, "voltage_lv_kv", None) or getattr(item, "ulv_kv", None)
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
 def _catalog_choice_rating_kva(option: Any) -> tuple[int | None, str | None]:
     ref = getattr(option, "catalog_ref", None)
     if not isinstance(ref, str):
         return None, None
+    # Typoszereg blokowy falowników koduje moc tokenem MVA (`-3p15mva-`,
+    # `p` = separator dziesiętny `_catalog_token`) — bez tej gałęzi selektor
+    # DER-aware nie widział ratingu tych pozycji i spadał do pierwszej opcji
+    # listy (dobór TR ignorował moc szablonu).
+    mva_match = re.search(r"-(\d+(?:p\d+)?)mva-", ref.lower())
+    if mva_match is not None:
+        return int(round(float(mva_match.group(1).replace("p", ".")) * 1000)), ref
     match = re.search(r"-(\d+)kva-", ref.lower())
     if match is None:
         return None, ref

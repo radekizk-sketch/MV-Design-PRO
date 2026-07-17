@@ -330,8 +330,8 @@ describe('V3 compose/gpz — migracja busbarTopology (single/double/ring)', () =
 
 // ---------------------------------------------------------------------------
 // (c) Migracja `visualParityChecklist.test.tsx` — WYŁĄCZNIE klucze GPZ
-// (REQUIRED_GPZ_PARITY_KEYS z v2). Podział COVERED/TODO — patrz raport
-// zadania: TODO = warstwa DOM/interakcji lub telemetrii/OSD (header SCADA,
+// (REQUIRED_GPZ_PARITY_KEYS z v2). Podział COVERED/ODROCZONE — patrz raport
+// zadania: ODROCZONE = warstwa DOM/interakcji lub telemetrii/OSD (header SCADA,
 // ramka, badge'y statusu/pomiarów, detal glifu uzwojenia TR) — F6 canvas,
 // NIE geometria czystej kompozycji.
 // ---------------------------------------------------------------------------
@@ -359,9 +359,9 @@ const COVERED_GPZ_PARITY_KEYS = [
   'gpz.section.label',
 ] as const;
 
-/** TODO (nie produkowane przez czystą kompozycję geometryczną — warstwa
+/** ODROCZONE (nie produkowane przez czystą kompozycję geometryczną — warstwa
  *  DOM/canvas/telemetrii, F6): [klucz, powód]. */
-const TODO_GPZ_PARITY_KEYS: ReadonlyArray<readonly [string, string]> = [
+const DEFERRED_GPZ_PARITY_KEYS: ReadonlyArray<readonly [string, string]> = [
   ['gpz.frame', 'tło/ramka rozdzielni — czysta dekoracja canvas, brak treści IEC 60617, F6'],
   ['gpz.header', 'widget operatorski GpzOperatorHeader (SCADA) — telemetria/OSD, nie prymityw elektryczny, F6'],
   ['gpz.header.transmission', 'podelement nagłówka SCADA — jw., F6'],
@@ -398,7 +398,7 @@ describe('V3 compose/gpz — migracja visualParityChecklist (WYŁĄCZNIE klucze 
     expect(missing).toEqual([]);
   });
 
-  for (const [key, reason] of TODO_GPZ_PARITY_KEYS) {
+  for (const [key, reason] of DEFERRED_GPZ_PARITY_KEYS) {
     it.todo(`${key} — ${reason}`);
   }
 

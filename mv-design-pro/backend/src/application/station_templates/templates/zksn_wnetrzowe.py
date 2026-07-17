@@ -10,7 +10,6 @@ from application.station_templates._choices import (
     CT_OPTIONS,
     NN_CB_OPTIONS,
     PROT_FEEDER_OPTIONS,
-    PROT_TRANSFORMER_OPTIONS,
     TR_OPTIONS_LARGE,
     TR_OPTIONS_MEDIUM,
     VT_OPTIONS,
