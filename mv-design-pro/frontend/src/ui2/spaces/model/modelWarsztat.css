@@ -7,3 +7,5 @@
 .mvd-model-tresc { flex: 1; min-height: 0; overflow: auto; }
 .mvd-model-kreator-scrim { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, 0.45); display: flex; align-items: center; justify-content: center; }
 .mvd-model-kreator-okno { background: var(--mvd-panel); border: 1px solid var(--mvd-line); border-radius: 8px; max-width: 920px; width: 92%; max-height: 88vh; overflow: auto; }
+.mvd-model-wlasciwosci { padding: 12px; }
+.mvd-model-wlasciwosci-pusto { padding: 24px; color: var(--mvd-muted); font-size: 13px; text-align: center; }

@@ -14,6 +14,7 @@ import { StationTemplateWizard } from '../../../ui/network-build/station-templat
 import { SldWorkspaceContainer } from '../../../ui/sld/v2/canvas/SldWorkspaceContainer';
 import { useAppStateStore } from '../../../ui/app-state';
 import { PrzegladarkaSzablonow } from './szablony';
+import { WlasciwosciModelu } from './WlasciwosciModelu';
 import { KatalogPanel } from './katalog';
 import type { ElementUzycia } from './katalog';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
@@ -23,6 +24,7 @@ import './modelWarsztat.css';
 
 const ZAKLADKI = [
   { id: 'schemat', etykieta: T.zakladkaSchemat },
+  { id: 'wlasciwosci', etykieta: T.zakladkaWlasciwosci },
   { id: 'szablony', etykieta: T.zakladkaSzablony },
   { id: 'katalog', etykieta: T.zakladkaKatalog },
 ] as const;
@@ -88,6 +90,7 @@ export function ModelWarsztat() {
       </div>
       <div role="tabpanel" className="mvd-model-tresc">
         {zakladka === 'schemat' && <SldWorkspaceContainer />}
+        {zakladka === 'wlasciwosci' && <WlasciwosciModelu />}
         {zakladka === 'szablony' && (
           <PrzegladarkaSzablonow
             onZastosuj={(idSzablonu) => {

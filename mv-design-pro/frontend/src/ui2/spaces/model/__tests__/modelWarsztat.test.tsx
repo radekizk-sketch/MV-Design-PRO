@@ -46,7 +46,10 @@ describe('U2 #2 — warsztat przestrzeni Model', () => {
     expect(screen.getByTestId('atrapa-przegladarka')).toBeTruthy();
     expect(screen.queryByTestId('atrapa-schemat')).toBeNull();
 
+    // E5.x: „Właściwości" wstawione za „Schemat", więc powrót do schematu to dwa kroki w lewo.
     fireEvent.keyDown(screen.getByTestId('mvd-model-zakladka-szablony'), { key: 'ArrowLeft' });
+    expect(screen.getByTestId('mvd-model-wlasciwosci-pusto')).toBeTruthy();
+    fireEvent.keyDown(screen.getByTestId('mvd-model-zakladka-wlasciwosci'), { key: 'ArrowLeft' });
     expect(screen.getByTestId('atrapa-schemat')).toBeTruthy();
   });
 
@@ -65,6 +68,19 @@ describe('U2 #2 — warsztat przestrzeni Model', () => {
     fireEvent.click(screen.getByTestId('mvd-model-zakladka-szablony'));
     fireEvent.click(screen.getByTestId('atrapa-przegladarka'));
     expect(screen.getByTestId('atrapa-kreator-szablonu').dataset.initialTemplateId).toBe('tpl-1');
+  });
+
+  it('E5.x: zakładka „Właściwości" (testid) przełącza na okno właściwości; bez selekcji stan pusty', () => {
+    render(<ModelWarsztat />);
+    fireEvent.click(screen.getByTestId('mvd-model-zakladka-wlasciwosci'));
+    expect(screen.getByTestId('mvd-model-wlasciwosci-pusto')).toBeTruthy();
+    expect(screen.queryByTestId('atrapa-schemat')).toBeNull();
+  });
+
+  it('E5.x: „Właściwości" osiągalne strzałką w prawo ze „Schemat"', () => {
+    render(<ModelWarsztat />);
+    fireEvent.keyDown(screen.getByTestId('mvd-model-zakladka-schemat'), { key: 'ArrowRight' });
+    expect(screen.getByTestId('mvd-model-wlasciwosci-pusto')).toBeTruthy();
   });
 
   it('zakładki mają semantykę tablist/tab z aria-selected', () => {
