@@ -702,7 +702,18 @@ Progress:
         typu ScreenCode i kanonu → refaktor za Bramką Parytetu z E2E.
         Kolejność: W5b-1 (E-26) → W5b-2 (AnalysisSurface); delegacja PO
         scaleniu P42 (jeden ciężki strumień frontendu naraz — zakaz dwóch
-        pełnych suit/E2E równolegle).
+        pełnych suit/E2E równolegle). METODA = OPCJA 1 (właściciel „rób
+        lepiej niż teraz"): wygasić tylko implementację/trasę legacy,
+        ekran kanoniczny zostaje z nowym dostawcą UI (E-26→EkranFrt),
+        ZERO zmian zamrożonego kanonu.
+        SCALENIE #40 / P42 (c521103 → cherry-pick): okno „Dobór
+        kompensacji" — rozdział DWÓCH cosφ w UI (kolumna DECYZYJNA =
+        cosφ punktu kompensowanego; cosφ przekroju = informacyjna;
+        test dowodowy: kandydat cosφ_przekroju 0,55 ale cosφ_punktu 0,97
+        → „spełnia", dobór sterowany punktem = Wymóg 2 właściciela).
+        Wykonawca: pełny vitest 8690 pass, 0 failed (+16). Zarządca:
+        48 celowanych + 7 guardów OK, push. STRUMIEŃ V12K-027 DOMKNIĘTY
+        end-to-end (K2 backend + P42 okno). Konfirmacja #40 w tle.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
