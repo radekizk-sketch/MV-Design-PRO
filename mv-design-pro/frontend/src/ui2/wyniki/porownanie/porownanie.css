@@ -154,6 +154,18 @@
   font-size: 13px;
 }
 
+/* ---- przełącznik trybu (Rozpływ / Zwarcia) ---- */
+.mvd-por-tryb-host {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mvd-por-tryb {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+
 /* ---- zakładki ---- */
 .mvd-por-zakladki {
   display: flex;

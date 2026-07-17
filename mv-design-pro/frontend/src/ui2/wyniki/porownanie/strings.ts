@@ -196,3 +196,96 @@ export function fmtData(iso: string | null | undefined): string {
   if (!iso || iso.length < 16) return POROWNANIE_STRINGS.kreska;
   return iso.slice(0, 16).replace('T', ' ');
 }
+
+// ===========================================================================
+// TRYB ZWARCIOWY (karta E12.2) — teksty i formatery
+// ===========================================================================
+
+export const ZWARCIA_POROWNANIE_STRINGS = {
+  // Przełącznik trybu porównania
+  trybLegenda: 'Tryb porównania',
+  trybRozplyw: 'Rozpływ mocy',
+  trybZwarcia: 'Zwarcia',
+
+  // Nagłówek analizy (tryb zwarciowy)
+  podtytul:
+    'Porównanie A/B wyników zwarciowych — wielkości Ik", ip, Ith, Sk pochodzą z backendu (tylko do odczytu).',
+
+  // Wybór A/B
+  wyborTytul: 'Wybór przebiegów zwarciowych do porównania',
+  wyborA: 'Przebieg A (odniesienie)',
+  wyborB: 'Przebieg B (porównywany)',
+  wyborPusty: '— wybierz przebieg —',
+  porownaj: 'Porównaj przebiegi',
+  porownajWTrakcie: 'Porównywanie…',
+  analizaZwarcie: 'Zwarcie',
+
+  // Stany listy przebiegów (zwarciowych)
+  brakPrzebiegow: 'Brak zakończonych przebiegów zwarciowych do porównania',
+  brakPrzebiegowOpis:
+    'Aby porównać dwa warianty, uruchom co najmniej dwa przebiegi zwarciowe (IEC 60909) i poczekaj na ich zakończenie.',
+
+  // Stany porównania
+  wTrakcie: 'Trwa porównywanie przebiegów zwarciowych…',
+  bladPorownania: 'Nie udało się wykonać porównania zwarciowego',
+  walidacjaBrakAB: 'Wskaż oba przebiegi (A oraz B), aby wykonać porównanie.',
+  walidacjaTeSame: 'Przebieg A i przebieg B muszą być różne.',
+
+  // Kolumny tabeli punktów (A · B · Δ dla każdej wielkości)
+  kolPunkt: 'Punkt zwarcia',
+  kolIkssA: 'Ik" A',
+  kolIkssB: 'Ik" B',
+  kolIkssD: 'Δ Ik"',
+  kolIpA: 'ip A',
+  kolIpB: 'ip B',
+  kolIpD: 'Δ ip',
+  kolIthA: 'Ith A',
+  kolIthB: 'Ith B',
+  kolIthD: 'Δ Ith',
+  kolSkA: 'Sk A',
+  kolSkB: 'Sk B',
+  kolSkD: 'Δ Sk',
+
+  // Stan pusty tabeli
+  brakPunktow: 'Brak punktów zwarcia w wybranych przebiegach.',
+
+  // Oznaczenie punktu bez odpowiednika w drugim przebiegu (uczciwie)
+  tylkoA: ' (tylko A)',
+  tylkoB: ' (tylko B)',
+
+  // Jednostki
+  jednKA: 'kA',
+  jednMVA: 'MVA',
+
+  // Wartość pusta
+  kreska: '—',
+} as const;
+
+/** Prąd [kA] — 3 miejsca po przecinku (spójnie z oknem „Wyniki zwarciowe"). */
+export function fmtKA(n: number): string {
+  return fmtLiczba(n, 3);
+}
+
+/** Delta prądu [kA] — 3 miejsca po przecinku, ze znakiem. */
+export function fmtDeltaKA(n: number): string {
+  return fmtDelta(n, 3);
+}
+
+/** Moc zwarciowa [MVA] — 1 miejsce po przecinku. */
+export function fmtMVA(n: number): string {
+  return fmtLiczba(n, 1);
+}
+
+/** Delta mocy zwarciowej [MVA] — 1 miejsce po przecinku, ze znakiem. */
+export function fmtDeltaMVA(n: number): string {
+  return fmtDelta(n, 1);
+}
+
+/**
+ * Względna zmiana [%] w nawiasie, ze znakiem — dopisek do delty bezwzględnej.
+ * `null` (brak odniesienia, A = 0) → pusty łańcuch (bez zgadywania procentu).
+ */
+export function fmtDeltaProcent(pct: number | null): string {
+  if (pct === null) return '';
+  return ` (${fmtDelta(pct, 1)}%)`;
+}

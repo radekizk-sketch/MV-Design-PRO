@@ -26,7 +26,8 @@ import type {
   PowerFlowComparisonResult,
   PowerFlowRunItem,
 } from '../../../ui/power-flow-comparison/types';
-import { POROWNANIE_STRINGS, rodzajProblemuPL, wagaPL } from './strings';
+import { POROWNANIE_STRINGS, ZWARCIA_POROWNANIE_STRINGS, rodzajProblemuPL, wagaPL } from './strings';
+import { TrybZwarciowy } from './TrybZwarciowy';
 import {
   KLUCZ_PROBLEM,
   KOLUMNY_GALEZI,
@@ -59,7 +60,56 @@ export interface EkranPorownaniaProps {
   trybZaawansowania: AdvancementMode;
 }
 
+/** Tryb porównania: rozpływ mocy (E12.1) lub zwarcia (E12.2). */
+type TrybPorownania = 'rozplyw' | 'zwarcia';
+
+/**
+ * Okno „Porównanie przebiegów" — przełącznik trybu „Rozpływ / Zwarcia" nad
+ * właściwym ekranem (karta E12.2 §2.2). Domyślnie tryb rozpływu (dzisiejsze
+ * zachowanie, bez regresji). Każdy tryb ma własny stan i własne źródło danych.
+ */
 export function EkranPorownania({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
+  const [tryb, setTryb] = useState<TrybPorownania>('rozplyw');
+
+  return (
+    <div className="mvd-por-tryb-host" data-testid="mvd-por-host">
+      <div
+        className="mvd-por-tryb"
+        role="tablist"
+        aria-label={ZWARCIA_POROWNANIE_STRINGS.trybLegenda}
+        data-testid="mvd-por-tryb"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tryb === 'rozplyw'}
+          className={tryb === 'rozplyw' ? 'mvd-por-tab mvd-on' : 'mvd-por-tab'}
+          onClick={() => setTryb('rozplyw')}
+          data-testid="mvd-por-tryb-rozplyw"
+        >
+          {ZWARCIA_POROWNANIE_STRINGS.trybRozplyw}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tryb === 'zwarcia'}
+          className={tryb === 'zwarcia' ? 'mvd-por-tab mvd-on' : 'mvd-por-tab'}
+          onClick={() => setTryb('zwarcia')}
+          data-testid="mvd-por-tryb-zwarcia"
+        >
+          {ZWARCIA_POROWNANIE_STRINGS.trybZwarcia}
+        </button>
+      </div>
+      {tryb === 'rozplyw' ? (
+        <TrybRozplywu projektId={projektId} trybZaawansowania={trybZaawansowania} />
+      ) : (
+        <TrybZwarciowy trybZaawansowania={trybZaawansowania} />
+      )}
+    </div>
+  );
+}
+
+function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
   const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
 
   const [przebiegi, setPrzebiegi] = useState<PowerFlowRunItem[]>([]);

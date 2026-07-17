@@ -6,6 +6,8 @@
 
 export { EkranPorownania } from './EkranPorownania';
 export type { EkranPorownaniaProps } from './EkranPorownania';
+export { TrybZwarciowy } from './TrybZwarciowy';
+export type { TrybZwarciowyProps } from './TrybZwarciowy';
 export {
   KOLUMNY_SZYN_DIFF,
   KOLUMNY_GALEZI,
@@ -18,6 +20,13 @@ export {
   naZalozeniaPorownania,
   etykietaPrzebiegu,
 } from './porownanieModel';
+export {
+  KOLUMNY_PUNKTOW_ZWARCIOWYCH,
+  czyPrzebiegZwarciowy,
+  przebiegiZwarciowe,
+  etykietaPrzebieguZwarciowego,
+  naWierszePunktowZwarciowych,
+} from './zwarciePorownanieModel';
 export {
   POROWNANIE_STRINGS,
   WAGA_PL,
