@@ -55,6 +55,27 @@ TR_BLOCK_BESS_OPTIONS = (
 
 TR_BLOCK_FW_OPTIONS = (
     CatalogChoice("tr-sn-nn-15-04-2500kva-dyn11", "Block TR Wiatr 2.5 MVA", "TRAFO_SN_NN"),
+    # 2026-07-17 (spójność elektryczna szablonów): turbina 3 MW (tpl_wiatr_3mw)
+    # wymaga TR blokowego ≥ 3000 kVA — typoszereg dystrybucyjny 15/0.4 kończy
+    # się na 2500 kVA; 3.15 MVA istnieje w REFERENCYJNYM typoszeregu
+    # transformatorów blokowych falowników (0.69 kV — standardowe napięcie
+    # generatora turbiny). Przed tą zmianą walidacja domenowa
+    # `converter.transformer_capacity_exceeded` blokowała uczciwie
+    # spropagowaną moc 3 MW (wcześniej moc szablonu była gubiona — patrz
+    # templates/wiatrowe.py).
+    CatalogChoice(
+        "tr-sn-nn-15-0p69-3p15mva-dyn11-inverter",
+        "Block TR Wiatr 3.15 MVA (0.69 kV)",
+        "TRAFO_SN_NN",
+    ),
+    # Turbina 3 MW ma moc POZORNĄ 3.3 MVA (katalog conv-wind-3mw: sn_mva=3.3)
+    # — blok 3.15 MVA za mały; 4.0 MVA to następny krok typoszeregu
+    # referencyjnego falowników.
+    CatalogChoice(
+        "tr-sn-nn-15-0p69-4mva-dyn11-inverter",
+        "Block TR Wiatr 4.0 MVA (0.69 kV)",
+        "TRAFO_SN_NN",
+    ),
 )
 
 

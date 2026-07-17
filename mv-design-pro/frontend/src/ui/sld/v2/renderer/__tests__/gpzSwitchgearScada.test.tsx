@@ -140,7 +140,7 @@ describe('GpzSwitchgearRenderer — etykieta sekcji', () => {
     expect(container.querySelector('[data-testid="sld-v2-gpz-section-label-sec-1"]')?.textContent).toBe('S1');
   });
 
-  it('domyślna etykieta to S{order} jeśli sectionLabel nie podany', () => {
+  it('domyślna etykieta jest 1-based (E11: nigdy surowy indeks 0-based)', () => {
     const { container } = r({
       sections: [
         {
@@ -152,7 +152,9 @@ describe('GpzSwitchgearRenderer — etykieta sekcji', () => {
         },
       ],
     });
-    expect(container.querySelector('[data-testid="sld-v2-gpz-section-label-sec-99"]')?.textContent).toBe('S3');
+    // order jest 0-based (por. fixture: sekcja 1 → order 0); label użytkowy jest
+    // 1-based → order 3 daje "S4". Zakaz wycieku "S0"/surowego indeksu (E11).
+    expect(container.querySelector('[data-testid="sld-v2-gpz-section-label-sec-99"]')?.textContent).toBe('S4');
   });
 });
 
@@ -1956,14 +1958,20 @@ describe('GpzSwitchgearRenderer — Tier 1 fixes (BLOCKER konsensusowe)', () => 
   });
 });
 
-describe('GpzSwitchgearRenderer — commit 10: per-role tła kolumn pól (audyt SLD §D.3)', () => {
-  it('Pole liniowe (GPZ_LINE_BAY) → tło COLOR_BAY_LINE (#171B20)', () => {
+describe('GpzSwitchgearRenderer — język rysunku CAD: pola bez teł-paneli (redesign 2026-07)', () => {
+  /* Intencja pierwotna (audyt SLD §D.3): operator szybko odróżnia klasę pola.
+   * Po przebudowie języka rysunku klasę pola niesie data-field-role + symbole
+   * i etykiety osi pola, a NIE tło-panel (SLD_SCHEMAT_REDESIGN_2026-07 §2).
+   * Wypełnienie zostaje wyłącznie jako sygnał stanu bezpieczeństwa
+   * (manipulacja / niekompletne pole). */
+  it('Pole liniowe (GPZ_LINE_BAY) → bez tła-panelu, rola w data-field-role', () => {
     const { container } = r();
     const body = container.querySelector('[data-testid="sld-v2-gpz-bay-body"]');
-    expect(body?.getAttribute('fill')).toBe('#171B20');
+    expect(body?.getAttribute('fill')).toBe('none');
+    expect(container.querySelector('[data-field-role="GPZ_LINE_BAY"]')).not.toBeNull();
   });
 
-  it('Pole TR (TRANSFORMER) → tło COLOR_BAY_TR (#1A2438) — niebieski', () => {
+  it('Pole TR (TRANSFORMER) → bez tła-panelu, rola w data-field-role', () => {
     const { container } = r({
       sections: [
         {
@@ -1977,10 +1985,11 @@ describe('GpzSwitchgearRenderer — commit 10: per-role tła kolumn pól (audyt 
       ],
     });
     const body = container.querySelector('[data-testid="sld-v2-gpz-bay-body"]');
-    expect(body?.getAttribute('fill')).toBe('#1A2438');
+    expect(body?.getAttribute('fill')).toBe('none');
+    expect(container.querySelector('[data-field-role="TRANSFORMER"]')).not.toBeNull();
   });
 
-  it('Pole pomiarowe (MEASUREMENT) → tło COLOR_BAY_MEASUREMENT (#2A2616) — żółtawe', () => {
+  it('Pole pomiarowe (MEASUREMENT) → bez tła-panelu, rola w data-field-role', () => {
     const { container } = r({
       sections: [
         {
@@ -1994,10 +2003,11 @@ describe('GpzSwitchgearRenderer — commit 10: per-role tła kolumn pól (audyt 
       ],
     });
     const body = container.querySelector('[data-testid="sld-v2-gpz-bay-body"]');
-    expect(body?.getAttribute('fill')).toBe('#2A2616');
+    expect(body?.getAttribute('fill')).toBe('none');
+    expect(container.querySelector('[data-field-role="MEASUREMENT"]')).not.toBeNull();
   });
 
-  it('Pole RMU_LINE → tło COLOR_BAY_LINE (jak inne liniowe)', () => {
+  it('Pole RMU_LINE → bez tła-panelu (jak inne liniowe)', () => {
     const { container } = r({
       sections: [
         {
@@ -2011,10 +2021,10 @@ describe('GpzSwitchgearRenderer — commit 10: per-role tła kolumn pól (audyt 
       ],
     });
     const body = container.querySelector('[data-testid="sld-v2-gpz-bay-body"]');
-    expect(body?.getAttribute('fill')).toBe('#171B20');
+    expect(body?.getAttribute('fill')).toBe('none');
   });
 
-  it('Manipulation override: COLOR_MANIPULATION_BG ma pierwszeństwo nad per-role', () => {
+  it('Manipulation override: COLOR_MANIPULATION_BG ma pierwszeństwo (sygnał stanu zostaje)', () => {
     const { container } = r({
       sections: [
         {

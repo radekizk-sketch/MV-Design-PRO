@@ -167,7 +167,7 @@ async function reloadEditorPage(page: Page): Promise<void> {
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
   await expect(page.getByTestId('active-case-bar')).toContainText(/Zakres|Bieżący zestaw/);
   await refreshResponsePromise;
-  await expect(page.getByTestId('sld-connections-layer')).toBeAttached();
+  await expect(page.getByTestId('sld-canvas-v3')).toBeAttached();
 }
 
 async function capture(page: Page, testInfo: TestInfo, name: string): Promise<void> {
@@ -183,12 +183,33 @@ async function capture(page: Page, testInfo: TestInfo, name: string): Promise<vo
 }
 
 async function openSegmentInspector(page: Page, segmentRef: string): Promise<void> {
-  const exactConnection = page.locator(`[data-connection-ref="${segmentRef}"]`).first();
-  const hitbox = exactConnection.locator('polyline').first();
+  // Adaptacja v3 (F12-C, 2026-07-17): odcinek to <path data-owner-ref=…>
+  // (dawne data-connection-ref+polyline były kontraktem v2); ścieżka
+  // użytkownika: klik w odcinek → drawer odcinka → „Otwórz konfigurację" →
+  // powierzchnia E-12 (`sld-segment-inspector`). Klikalność odcinka i CTA
+  // konfiguracji przywrócone w tej adaptacji (parytet F8c/K30-91).
+  // Prefix-match: kawałki przęsła niosą sufiksy tras (`_L`, `_R_L`) —
+  // klik dowolnego kawałka normalizuje się do refu kanonicznego w workspace.
+  const hitbox = page.locator(`path[data-owner-ref^="${segmentRef}"]`).first();
   await expect(hitbox).toHaveCount(1, { timeout: 15000 });
-  await hitbox.evaluate((node: SVGPolylineElement) => {
-    node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true }));
+  // REALNY klik Playwright — NIE syntetyczny `dispatchEvent` (maskował defekt
+  // martwego klika, patrz `openElementInspector` niżej). Cel = punkt NA
+  // torze (`getPointAtLength(len/2)`): środek bboxa polilinii z zagięciem
+  // leży POZA kreską, a realny użytkownik klika w kreskę.
+  const clickPos = await hitbox.evaluate((node: SVGPathElement) => {
+    const len = node.getTotalLength();
+    const pt = node.getPointAtLength(len / 2);
+    const ctm = node.getScreenCTM();
+    const screen = ctm
+      ? { x: ctm.a * pt.x + ctm.c * pt.y + ctm.e, y: ctm.b * pt.x + ctm.d * pt.y + ctm.f }
+      : { x: pt.x, y: pt.y };
+    const rect = node.getBoundingClientRect();
+    return { x: screen.x - rect.left, y: screen.y - rect.top };
   });
+  await hitbox.click({ position: clickPos, force: true });
+
+  await expect(page.getByTestId('sld-v2-detail-drawer')).toBeVisible();
+  await page.getByTestId('sld-v2-detail-drawer-open-configuration').click();
 
   await expect(page.getByTestId('sld-segment-inspector')).toBeVisible();
   await expect(page.getByTestId('sld-segment-inspector')).toHaveAttribute(
@@ -211,12 +232,24 @@ function findBranchCapableFieldPort(snapshot: DomainOpResponse['snapshot']): str
 }
 
 async function openElementInspector(page: Page, elementRef: string): Promise<void> {
-  const symbol = page.locator(`[data-testid^="sld-symbol-"][data-element-id="${elementRef}"]`).first();
+  // Adaptacja v3 (2026-07-17): kanwa v3 nie niesie `sld-symbol-*`/
+  // `data-element-id` — symbol ma `data-element-kind` + `data-owner-ref`
+  // (dla transformatora STACJI ownerRef = bay-ref, realny ref transformatora
+  // rozwiązuje workspace kliku — `resolveTransformerRefForOwnerRef`).
+  // Selektor: transformator w obrębie stacji (`stn/`), odróżniony od
+  // transformatora GPZ (`gpz/`).
+  const isStationTransformer = /\/transformer$/.test(elementRef) && elementRef.startsWith('stn/');
+  const symbol = isStationTransformer
+    ? page.locator('g[data-element-kind="transformer"][data-owner-ref^="stn/"]').first()
+    : page.locator(`g[data-owner-ref="${elementRef}"]`).first();
   await expect(symbol).toHaveCount(1, { timeout: 15000 });
 
-  await symbol.evaluate((node: SVGElement) => {
-    node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true }));
-  });
+  // REALNY klik Playwright (pełna sekwencja pointer/mouse) — celowo NIE
+  // syntetyczny `dispatchEvent`: dowodzi, że lewy klik użytkownika w symbol
+  // działa (naprawa capture-on-pointerdown w `SldCanvasV3.handlePointerDown`,
+  // 2026-07-17 — wcześniej capture przekierowywał click na <svg> i klik w
+  // element kanwy był martwy, co testy maskowały syntetycznym dispatch).
+  await symbol.click({ force: true });
 
   await expect(page.getByTestId('sld-engineering-inspector-wrapper')).toBeVisible();
 }
@@ -225,13 +258,11 @@ async function activateEngineeringFieldEditor(page: Page, fieldKey: string): Pro
   const fieldRow = page.getByTestId(`engineering-field-${fieldKey}`);
   await expect(fieldRow).toHaveCount(1);
 
-  await fieldRow.evaluate((node: HTMLElement, key: string) => {
-    const clickable = node.querySelector('div.cursor-pointer');
-    if (!(clickable instanceof HTMLElement)) {
-      throw new Error(`Missing editable value cell for engineering-field-${key}`);
-    }
-    clickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true }));
-  }, fieldKey);
+  // REALNY klik Playwright w komórkę wartości (ta sama zasada co klik w
+  // elementy kanwy: test ćwiczy ścieżkę użytkownika, nie syntetyczny event).
+  const clickable = fieldRow.locator('div.cursor-pointer').first();
+  await expect(clickable, `Missing editable value cell for engineering-field-${fieldKey}`).toBeVisible();
+  await clickable.click();
 
   await expect(fieldRow.locator('input')).toBeVisible();
 }

@@ -29,15 +29,32 @@ Frontend katalog-first i workflow:
 - `frontend/src/ui/network-build/__tests__/catalogFirstRules.test.ts`
 - `frontend/src/ui/network-build/__tests__/workflowIntegration.test.ts`
 
-Frontend SLD v2 (po wygaszeniu starego SLD — PR-5c):
-- `frontend/src/ui/sld/v2/__tests__/HierarchicalLayout.test.ts`
-- `frontend/src/ui/sld/v2/__tests__/visualFixtures.test.ts`
+Frontend SLD v2 (po wygaszeniu starego SLD — PR-5c; konsolidacja martwego
+silnika layoutu builder/{Hierarchical,Corridor,...} — 2026-07):
+- `frontend/src/ui/sld/v2/geometry/__tests__/layoutEngine.substrate.test.ts`
+- `frontend/src/ui/sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts`
 - `frontend/src/ui/sld/v2/__tests__/renderers.test.tsx`
 - `frontend/src/ui/sld/v2/__tests__/ViewportController.test.ts`
 - `frontend/src/ui/sld/v2/__tests__/LodPolicy.test.ts`
 - `frontend/src/ui/sld/v2/__tests__/StationInternalView.test.tsx`
 - `frontend/src/ui/sld/v2/command/__tests__/SldCommandService.test.ts`
 - `frontend/src/ui/sld/v2/core/__tests__/ports.test.ts`
+
+Frontend SLD v3 (SLD_CAD_REBUILD_PLAN_V3 F1-F8 — domyślna ścieżka renderu od
+F8a; v2 pozostaje fallbackiem, patrz §F8c w planie — usunięcie ZABLOKOWANE do
+pełnego parytetu §10):
+- `frontend/src/ui/sld/v3/symbols/__tests__/symbols.test.tsx`
+- `frontend/src/ui/sld/v3/layout/__tests__/layout.test.ts`
+- `frontend/src/ui/sld/v3/layout/__tests__/route.test.ts`
+- `frontend/src/ui/sld/v3/layout/__tests__/labels.test.ts`
+- `frontend/src/ui/sld/v3/scene/__tests__/buildScene.test.ts` (F9.7: + port_probe/symbol_wire_probe/vertical_length_probe, §11.3/§11.4/§15.1)
+- `frontend/src/ui/sld/v3/canvas/__tests__/camera.test.ts`
+- `frontend/src/ui/sld/v3/canvas/__tests__/sldCanvasV3.test.tsx` (F9.7: + r1, test ścieżki fallbacku placementu etykiet przepływu)
+- `frontend/src/ui/sld/v3/compose/__tests__/sourceKind.test.ts` (F9.7, NOWY — `source_symbol_probe`, spec §13.2)
+- `frontend/src/ui/sld/v3/canvas/__tests__/mobileCamera.test.tsx` (F12-C: kamera mobilna E15/E16 — dawny wpis `SldRenderHost.test.tsx` [cutover v2/v3 + pomost split-preview] usunięty razem ze skasowaną ścieżką renderu v2, spec §10.1 ARCH-4)
+- `frontend/src/ui/workspace/__tests__/routerExtensionSurfaces.test.tsx` (drugi punkt osadzenia — `WorkspaceSurfaceRouter` E-01)
+- `frontend/scripts/sld_v3_acceptance.mjs` (`npm run accept:sld-v3` — render-odbiór wyroczni §11/§9/§12-§15/§16 na `sldSubstrate52s`, AKTYWNY w `.github/workflows/sld-determinism.yml`; F9.7: domknięcie audytu kompletności §12-§15 — port_probe/symbol_wire_probe/vertical_length_probe/lod_path_probe/source_symbol_probe dopięte, patrz `docs/sld/SLD_V3_ACCEPTANCE.md`)
+- `scripts/sld_determinism_guards.py` (GUARD 6 — testy v3 obecne)
 
 Frontend White Box i eksport sladu:
 - `frontend/src/ui/proof/__tests__/TraceViewer.test.tsx`

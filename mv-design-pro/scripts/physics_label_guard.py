@@ -115,6 +115,22 @@ COMMENT_LINE_PATTERNS = [
 # Inline ignore pattern
 IGNORE_PATTERN = re.compile(r"//\s*physics-guard-ignore")
 
+# Jawne, punktowe wyjątki (plik, pole) → UZASADNIENIE OBOWIĄZKOWE.
+# Wyłącznie dla pól, które są nastawą OPERACYJNĄ instalacji, a nie parametrem
+# fizycznym typu katalogowego (PR-10 nienaruszone — parametry typu idą z
+# katalogu; nastawa trybu regulacji jest per instalacja). Mechanizm celowo
+# NIE osłabia reguły: każdy inny plik/pole (w tym cos_phi w LoadDERModal,
+# gdzie jest fizyką modelu odbioru) nadal blokuje CI. Marker inline
+# `// physics-guard-ignore` jest niemożliwy w pozycji atrybutu JSX (składnia),
+# stąd allowlist po stronie guardu.
+ALLOWED_OPERATIONAL_SETPOINTS: dict[tuple[str, str], str] = {
+    ("PVInverterModal.tsx", "cos_phi"): (
+        "Nastawa trybu regulacji STALY_COS_PHI falownika (DER_PV_BESS_FW_CONFIGURATOR "
+        "§3.3 'Tryb regulacji: stały cos φ'), walidowana (0,1]; model falownika "
+        "wiązany z katalogu przez catalog_item_id."
+    ),
+}
+
 
 class Violation(NamedTuple):
     file_path: str
@@ -181,6 +197,8 @@ def scan_file(file_path: Path, patterns: list[tuple[re.Pattern, str]]) -> list[V
         # Check all patterns
         for pattern, field_name in patterns:
             if pattern.search(line):
+                if (file_path.name, field_name) in ALLOWED_OPERATIONAL_SETPOINTS:
+                    continue
                 violations.append(
                     Violation(
                         file_path=str(file_path.relative_to(REPO_ROOT)),

@@ -23,6 +23,7 @@ describe('featureFlags — Zadanie 11 UI/UX 100% (dev tools hidden default)', ()
     expect(featureFlags.USE_LAYOUT_V3).toBe(false);
   });
 
+
   it('isFeatureEnabled() zwraca prawidłową wartość', () => {
     expect(isFeatureEnabled('ENABLE_MATH_RENDERING')).toBe(true);
     expect(isFeatureEnabled('ENM_INSPECTOR_VISIBLE')).toBe(false);

@@ -59,7 +59,7 @@
           "id": 9,
           "name": "error na SLD",
           "passed": true,
-          "detail": "SpineRenderer issue-aware"
+          "detail": "StationOnRunRenderer issue-aware"
         },
         {
           "id": 10,
@@ -128,7 +128,7 @@
           "id": 9,
           "name": "error na SLD",
           "passed": true,
-          "detail": "SpineRenderer issue-aware"
+          "detail": "StationOnRunRenderer issue-aware"
         },
         {
           "id": 10,
@@ -197,7 +197,7 @@
           "id": 9,
           "name": "error na SLD",
           "passed": true,
-          "detail": "SpineRenderer issue-aware"
+          "detail": "StationOnRunRenderer issue-aware"
         },
         {
           "id": 10,
@@ -266,7 +266,7 @@
           "id": 9,
           "name": "error na SLD",
           "passed": true,
-          "detail": "SpineRenderer issue-aware"
+          "detail": "StationOnRunRenderer issue-aware"
         },
         {
           "id": 10,
@@ -335,7 +335,7 @@
           "id": 9,
           "name": "error na SLD",
           "passed": true,
-          "detail": "SpineRenderer issue-aware"
+          "detail": "StationOnRunRenderer issue-aware"
         },
         {
           "id": 10,

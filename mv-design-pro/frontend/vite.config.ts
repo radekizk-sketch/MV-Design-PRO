@@ -34,16 +34,17 @@ export default defineConfig(({ mode }) => {
       globals: true,
       setupFiles: ['./src/test/setup.ts'],
       include: ['src/**/*.{test,spec}.{ts,tsx}'],
-      exclude: [
-        ...configDefaults.exclude,
-        'src/__tests__/App.routes.test.tsx',
-        'src/ui/network-build/__tests__/BayCard.test.tsx',
-        'src/ui/network-build/__tests__/InspectorEngineeringView.test.tsx',
-        'src/ui/sld/__tests__/enmSnapshotToSldSymbols.test.ts',
-        'src/ui/sld/__tests__/sld-gpz-bay-render.test.tsx',
-        'src/ui/sld/__tests__/sldIndustrialHierarchy.test.ts',
-        'src/ui/sld/core/__tests__/canonicalSld.test.ts',
-      ],
+      // 2026-07-17 (likwidacja długów): lista wykluczeń WYZEROWANA — 7 wpisów
+      // maskowało długi zamiast je naprawiać: 6 testów martwych (cele
+      // skasowane: klaster legacy ui/sld sprzed v2/v3, App.routes ze stubami
+      // nieistniejących modułów, canonicalSld importujący skasowany
+      // topologyAdapter) USUNIĘTE razem z celami; BayCard.test PRZECHODZIŁ —
+      // przywrócony bez zmian; InspectorEngineeringView.test ODBUDOWANY do
+      // obecnego kanonu (przy okazji złapał i naprawił 2 realne regresje
+      // komponentu: hardkod podtytułu źródła przekształtnikowego i gubienie
+      // kluczy semantycznych w akcjach TechCard). Nowe wykluczenie wymaga
+      // uzasadnienia w commicie — wykluczenie NIE jest naprawą.
+      exclude: [...configDefaults.exclude],
     },
   };
 });

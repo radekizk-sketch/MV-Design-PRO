@@ -32,12 +32,12 @@ CHECKS: tuple[tuple[Path, tuple[str, ...]], ...] = (
             "buildVisibleTopologyLabels",
         ),
     ),
+    # (readabilityMetrics.test.ts usunięty w konsolidacji 2026-07 — testował
+    #  martwy CorridorLayout; anti-collision żywej ścieżki pokrywa LabelDeclutter.)
     (
-        REPO_ROOT / "frontend/src/ui/sld/v2/__tests__/readabilityMetrics.test.ts",
+        REPO_ROOT / "frontend/src/ui/sld/v2/canvas/__tests__/LabelDeclutter.test.ts",
         (
-            "Priority labels overlap = 0",
-            "Critical object overlap = 0",
-            "network_30",
+            "declutter",
         ),
     ),
     (

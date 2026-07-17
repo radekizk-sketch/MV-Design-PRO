@@ -1182,8 +1182,18 @@ def _execute_power_flow(run: CanonicalRun) -> None:
     pq_specs = [
         PQSpec(
             node_id=node_id,
-            p_mw=float(node.active_power or 0.0),
-            q_mvar=float(node.reactive_power or 0.0),
+            # F9.8 WHITE BOX: `node.active_power`/`node.reactive_power` (built by
+            # `enm.mapping`) use the GENERATION convention (positive = injection
+            # into the bus; a pure load is negative — see mapping.py, pinned by
+            # test_enm_mapping.py and consumed by analysis/boundary/identifier.py).
+            # `PQSpec.p_mw`/`q_mvar` are consumed by
+            # `power_flow_newton_internal.build_power_spec_v2`, which negates them
+            # again expecting the LOAD convention (positive = consumption). This is
+            # the single conversion point gen->load at the PQSpec construction
+            # boundary; do NOT change the sign convention in mapping.py or in the
+            # solver (both are correct/frozen on their own terms).
+            p_mw=-float(node.active_power or 0.0),
+            q_mvar=-float(node.reactive_power or 0.0),
             # ADR-011 (Z-ZIP-04): aggregated ZIP coefficients for the bus (None
             # => constant power). Solver reduces to classic PQ when None.
             zip_coeffs=node.zip_coeffs,
@@ -2161,6 +2171,33 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
                     "element_type": "Bus",
                     "solver_ref": row.get("bus_id"),
                     "values": row,
+                    "proof_ref": raw_result.get("proof_ref"),
+                    "proof_status": raw_result.get("proof_status"),
+                    "reporting_status": raw_result.get("reporting_status"),
+                }
+            )
+        # F9.6 (c): resultset v1 nie niosla elementow galeziowych dla
+        # LOAD_FLOW (luka wykryta w F9.5) - flow_overlay_probe (spec Sec14.2)
+        # czyta P_MW/Q_Mvar/I_A z overlay.elements[ref].metrics, ktore
+        # domain/result_builder_v1.py::_extract_element_metrics wyprowadza
+        # z kluczy "p_from_mw"/"q_from_mvar"/"i_a" w `values`. build_branch_
+        # results() (WHITE BOX, uzywana identycznie przez inny endpoint,
+        # api/canonical_run_views.py::build_branch_results_response) zwraca
+        # "p_mw"/"q_mvar" - aliasujemy do kluczy rozpoznawanych przez mape
+        # metryk (juz istniejacych tam dla p_injected_mw/p_from_mw), bez
+        # zmiany build_branch_results ani PowerFlowResult (Frozen Result API,
+        # rule 6 - to jest wylacznie interpretacja istniejacego wyniku).
+        for branch_row in build_branch_results(run).get("rows", []):
+            element_results.append(
+                {
+                    "element_ref": branch_row.get("element_id") or branch_row.get("branch_id"),
+                    "element_type": "Branch",
+                    "solver_ref": branch_row.get("branch_id"),
+                    "values": {
+                        **branch_row,
+                        "p_from_mw": branch_row.get("p_mw"),
+                        "q_from_mvar": branch_row.get("q_mvar"),
+                    },
                     "proof_ref": raw_result.get("proof_ref"),
                     "proof_status": raw_result.get("proof_status"),
                     "reporting_status": raw_result.get("reporting_status"),

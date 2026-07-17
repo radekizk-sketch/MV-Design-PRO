@@ -39,9 +39,8 @@ import {
   COLOR_TR_FLOW_UP,
   COLOR_LINE_PRIMARY,
   COLOR_MANIPULATION_BG,
+  COLOR_BG,
   COLOR_MEASUREMENT_VALUE,
-  COLOR_PANEL,
-  COLOR_PANEL_RAISED,
   COLOR_SELECTION,
   COLOR_TEXT_PRIMARY,
   COLOR_TEXT_SECONDARY,
@@ -127,7 +126,6 @@ import {
   energizationColor,
   normalizeCouplerState,
   describeCouplerStatePl,
-  bayRoleFillColor,
   describeEnergizationPl,
   hasAnyMeasurement,
   formatInteger,
@@ -291,17 +289,21 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
       }
       style={{ cursor: props.onClick ? 'pointer' : 'default' }}
     >
-      {/* Korpus rozdzielni */}
+      {/* Granica stacji GPZ: rysunek, nie karta — tło w kolorze kanwy
+          (occlusion linii pod spodem, wizualnie brak panelu), obrys jako
+          cienka linia PRZERYWANA z ostrymi rogami (konwencja CAD granicy
+          obiektu). Selekcja: obrys ciągły w kolorze zaznaczenia. */}
       <rect
         x={0}
         y={0}
         width={totalWidth}
         height={totalHeight}
-        fill={COLOR_PANEL_RAISED}
-        stroke={stroke}
-        strokeWidth={strokeWidth}
-        rx={4}
-        ry={4}
+        fill={COLOR_BG}
+        stroke={props.selected ? stroke : COLOR_TEXT_MUTED}
+        strokeWidth={props.selected ? strokeWidth : 0.9}
+        strokeDasharray={props.selected ? undefined : '8 5'}
+        opacity={props.selected ? 1 : undefined}
+        data-cad-role="station_boundary_dashed"
       />
 
       {/* Tytuł */}
@@ -722,7 +724,7 @@ function HvTowerColumn(props: HvTowerColumnProps): JSX.Element {
             cx={trX}
             cy={trTopCenterY}
             r={TR_RADIUS}
-            fill={COLOR_PANEL_RAISED}
+            fill={COLOR_BG}
             stroke={COLOR_LINE_PRIMARY}
             strokeWidth={1.4}
           />
@@ -730,7 +732,7 @@ function HvTowerColumn(props: HvTowerColumnProps): JSX.Element {
             cx={trX}
             cy={trBottomCenterY}
             r={TR_RADIUS}
-            fill={COLOR_PANEL_RAISED}
+            fill={COLOR_BG}
             stroke={COLOR_LINE_PRIMARY}
             strokeWidth={1.4}
           />
@@ -922,7 +924,7 @@ function FieldTrunkZone(props: FieldTrunkZoneProps): JSX.Element {
               y={laneY - OUTGOING_CORRIDOR_ENDPOINT_SIZE_PX / 2}
               width={OUTGOING_CORRIDOR_ENDPOINT_SIZE_PX}
               height={OUTGOING_CORRIDOR_ENDPOINT_SIZE_PX}
-              fill={COLOR_PANEL}
+              fill={COLOR_BG}
               stroke={stroke}
               strokeWidth={2}
               data-testid={`sld-v2-gpz-outgoing-feeder-endpoint-${col.bay.bayRef}`}
@@ -1080,7 +1082,7 @@ function TwoBusTrColumn(props: TwoBusTrColumnProps): JSX.Element {
             cx={trX}
             cy={trTopCenterY}
             r={TR_RADIUS}
-            fill={COLOR_PANEL_RAISED}
+            fill={COLOR_BG}
             stroke={COLOR_LINE_PRIMARY}
             strokeWidth={1.4}
           />
@@ -1088,7 +1090,7 @@ function TwoBusTrColumn(props: TwoBusTrColumnProps): JSX.Element {
             cx={trX}
             cy={trBottomCenterY}
             r={TR_RADIUS}
-            fill={COLOR_PANEL_RAISED}
+            fill={COLOR_BG}
             stroke={COLOR_LINE_PRIMARY}
             strokeWidth={1.4}
           />
@@ -1543,11 +1545,14 @@ function BayColumn(props: BayColumnProps): JSX.Element {
    * (audyt SLD §D.3 fix 10/12: operator szybko odróżnia klasę pola). */
   /* K30-112: hasMissingRequiredDevice MUSI mieć distinct background — audyt #4 HIGH.
    * Operator nie może pomylić niekompletnego pola z gotowym (safety-critical). */
+  /* Język rysunku (CAD): pole NIE ma tła-panelu. Wypełnienie zostaje
+   * WYŁĄCZNIE jako sygnał stanu bezpieczeństwa (niekompletne pole /
+   * manipulacja) — konwencja SCADA, nie dekoracja. */
   const columnFill = bay.hasMissingRequiredDevice
     ? '#3A2A2A' // dark red tint dla niekompletnego pola
     : bay.inManipulation
     ? COLOR_MANIPULATION_BG
-    : bayRoleFillColor(bay.fieldRole);
+    : 'none';
   /* K30-112: missing device → czerwona obwódka dashed (visual cue dla operatora).
    * K30-123 audyt fix: brighter red #FF1744 (contrast ~3.5:1 na #3A2A2A bg
    * vs 1.2:1 dla #FF4D4D — WCAG AA compliance). */
@@ -1555,8 +1560,8 @@ function BayColumn(props: BayColumnProps): JSX.Element {
     ? '#FF1744'
     : bay.inManipulation
     ? COLOR_BADGE_BG_YELLOW
-    : COLOR_TEXT_MUTED;
-  const columnStrokeOpacity = bay.hasMissingRequiredDevice || bay.inManipulation ? 0.95 : 0.3;
+    : 'none';
+  const columnStrokeOpacity = bay.hasMissingRequiredDevice || bay.inManipulation ? 0.95 : 0;
   const columnStrokeDasharray = bay.hasMissingRequiredDevice ? '4 2' : undefined;
 
   /* Footer (numer pola + KAS + pomiary). */
@@ -1964,7 +1969,7 @@ function CouplerBay(props: CouplerBayProps): JSX.Element {
       ? COLOR_DEVICE_CLOSED
       : couplerState === 'unknown'
       ? COLOR_TEXT_MUTED
-      : COLOR_PANEL_RAISED;
+      : COLOR_BG;
   const cbStroke =
     couplerState === 'closed'
       ? COLOR_DEVICE_CLOSED_BORDER
@@ -1994,9 +1999,10 @@ function CouplerBay(props: CouplerBayProps): JSX.Element {
   const kasSzrY = badgeStackY + 18;
 
   /* Yellow manipulation highlight (oliwkowe tło). */
-  const bodyFill = coupler.inManipulation ? COLOR_MANIPULATION_BG : COLOR_PANEL_RAISED;
-  const bodyStroke = coupler.inManipulation ? COLOR_BADGE_BG_YELLOW : COLOR_TEXT_MUTED;
-  const bodyStrokeOpacity = coupler.inManipulation ? 0.9 : 0.45;
+  /* CAD: sprzęgło bez tła-panelu; wypełnienie tylko jako sygnał manipulacji. */
+  const bodyFill = coupler.inManipulation ? COLOR_MANIPULATION_BG : 'none';
+  const bodyStroke = coupler.inManipulation ? COLOR_BADGE_BG_YELLOW : 'none';
+  const bodyStrokeOpacity = coupler.inManipulation ? 0.9 : 0;
   const bodyStrokeWidth = coupler.inManipulation ? 1.2 : 0.8;
 
   const useFallbackLabel = !coupler.bayNumberLeft && !coupler.bayNumberRight;
@@ -2096,7 +2102,7 @@ function CouplerBay(props: CouplerBayProps): JSX.Element {
         cx={leftLegX}
         cy={dsY}
         r={DS_RADIUS}
-        fill={COLOR_PANEL_RAISED}
+        fill={COLOR_BG}
         stroke={couplerState === 'closed' ? COLOR_DEVICE_CLOSED_BORDER : couplerState === 'unknown' ? COLOR_TEXT_MUTED : COLOR_LINE_PRIMARY}
         strokeWidth={1.2}
         data-testid="sld-v2-gpz-coupler-ds-left"
@@ -2105,7 +2111,7 @@ function CouplerBay(props: CouplerBayProps): JSX.Element {
         cx={rightLegX}
         cy={dsY}
         r={DS_RADIUS}
-        fill={COLOR_PANEL_RAISED}
+        fill={COLOR_BG}
         stroke={couplerState === 'closed' ? COLOR_DEVICE_CLOSED_BORDER : couplerState === 'unknown' ? COLOR_TEXT_MUTED : COLOR_LINE_PRIMARY}
         strokeWidth={1.2}
         data-testid="sld-v2-gpz-coupler-ds-right"
@@ -2206,17 +2212,6 @@ function CouplerCurrentDisplay(props: { cx: number; cy: number; value: number })
   const { cx, cy, value } = props;
   return (
     <g data-testid="sld-v2-gpz-coupler-current">
-      <rect
-        x={cx - 16}
-        y={cy - 5}
-        width={32}
-        height={10}
-        fill={COLOR_PANEL}
-        stroke={COLOR_TEXT_MUTED}
-        strokeOpacity={0.5}
-        strokeWidth={0.5}
-        rx={1}
-      />
       <text
         x={cx - 12}
         y={cy + 3}

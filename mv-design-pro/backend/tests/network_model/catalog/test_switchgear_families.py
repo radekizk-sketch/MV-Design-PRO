@@ -28,8 +28,12 @@ from network_model.catalog.switchgear import (
 
 
 class TestSwitchgearFamilyRegistry:
-    def test_registry_has_six_starting_families(self):
-        assert len(SWITCHGEAR_FAMILY_REGISTRY) == 6
+    def test_registry_has_seven_starting_families(self):
+        # 7. rodzina SCHNEIDER__SM6_24 dodana w programie Reference Engine V1
+        # (REFERENCE_ENGINE_SPEC_V1.md — pakiet schneider_sm6, repo_verified,
+        # publiczna strona produktowa se.com). Intencja testu bez zmian:
+        # rejestr zawiera DOKŁADNIE znane rodziny ze źródłami.
+        assert len(SWITCHGEAR_FAMILY_REGISTRY) == 7
         refs = set(SWITCHGEAR_FAMILY_REGISTRY.keys())
         assert refs == {
             "ZPUE_WLOSZCZOWA__ROTOBLOK",
@@ -38,6 +42,7 @@ class TestSwitchgearFamilyRegistry:
             "ABB__SAFERING",
             "SIEMENS__NXAIR",
             "SIEMENS__8DJH",
+            "SCHNEIDER__SM6_24",
         }
 
     def test_all_families_repo_verified_not_official(self):
@@ -179,9 +184,7 @@ class TestSourceTraceability:
         assert any("zpue.pl" in ref for ref in ZPUE_WLOSZCZOWA__ROTOBLOK.source_refs)
 
     def test_elektrometal_source_is_official_page(self):
-        assert any(
-            "elektrometal" in ref.lower() for ref in ELEKTROMETAL__E2ALPHA.source_refs
-        )
+        assert any("elektrometal" in ref.lower() for ref in ELEKTROMETAL__E2ALPHA.source_refs)
 
     def test_abb_unigear_source_is_official_page(self):
         assert any("abb.com" in ref for ref in ABB__UNIGEAR_ZS1.source_refs)

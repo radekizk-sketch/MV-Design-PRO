@@ -1,0 +1,22 @@
+name: Physics Label Guard (Catalog-First)
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  physics-label-guard:
+    name: Blokada pól fizycznych w modalach
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Uruchom physics-label-guard
+        # Ścieżka względem korzenia repo — workflow przeniesiony z martwego
+        # katalogu mv-design-pro/.github/workflows (GitHub czyta wyłącznie
+        # .github/workflows w korzeniu; tam nigdy nie działał).
+        run: python mv-design-pro/scripts/physics_label_guard.py

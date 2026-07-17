@@ -23,14 +23,15 @@
  */
 
 import {
+  COLOR_BG,
   COLOR_LINE_PRIMARY,
-  COLOR_PANEL_RAISED,
   COLOR_TEXT_PRIMARY,
   COLOR_TEXT_SECONDARY,
   FONT_MONO,
   FONT_SANS,
   FONT_SIZES,
 } from '../theme/tokens';
+import { DerSourceSymbol } from './DerRenderer';
 
 export type DerConnectionVariant =
   | 'nn_side'
@@ -140,7 +141,7 @@ export function DerConnectionTreeRenderer(props: DerConnectionTreeProps): JSX.El
         cy={anchor.y}
         r={3}
         fill={COLOR_LINE_PRIMARY}
-        stroke={COLOR_PANEL_RAISED}
+        stroke={COLOR_BG}
         strokeWidth={1}
       >
         <title>{`PCC: ${pccLabel ?? '?'}`}</title>
@@ -194,28 +195,28 @@ export function DerConnectionTreeRenderer(props: DerConnectionTreeProps): JSX.El
         </g>
       )}
 
-      {/* Falownik (PV/BESS/FW) — romb. */}
+      {/* Źródło (PV/BESS/FW) — symbol IEC 60617 zamiast rombu-kafla. */}
       <g data-testid={`sld-v2-der-tree-${id}-inverter`}>
-        <polygon
-          points={
-            `${inverterX},${inverterY - INVERTER_HALF} ` +
-            `${inverterX + INVERTER_HALF},${inverterY} ` +
-            `${inverterX},${inverterY + INVERTER_HALF} ` +
-            `${inverterX - INVERTER_HALF},${inverterY}`
-          }
-          fill={KIND_FILL_COLOR[kind]}
-          fillOpacity={missingPcc ? 0.15 : 0.3}
-          stroke={selected ? '#35C7FF' : COLOR_LINE_PRIMARY}
+        <DerSourceSymbol
+          cx={inverterX}
+          cy={inverterY}
+          half={INVERTER_HALF}
+          kind={kind}
+          stroke={selected ? '#35C7FF' : KIND_FILL_COLOR[kind]}
           strokeWidth={selected ? 2 : 1.5}
+          interiorFill={missingPcc ? COLOR_BG : undefined}
         />
         <text
-          x={inverterX}
-          y={inverterY + 4}
-          textAnchor="middle"
-          fill={COLOR_TEXT_PRIMARY}
+          x={inverterX + INVERTER_HALF + 4}
+          y={inverterY - INVERTER_HALF + 6}
+          textAnchor="start"
+          fill={KIND_FILL_COLOR[kind]}
           fontFamily={FONT_SANS}
           fontSize={FONT_SIZES.bayLabel}
           fontWeight={700}
+          paintOrder="stroke"
+          stroke="#05070A"
+          strokeWidth={2}
         >
           {KIND_LABEL_PL[kind]}
         </text>

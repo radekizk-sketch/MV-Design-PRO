@@ -209,34 +209,79 @@ export function buildTopologyTree(snapshot: TopologyInputV1): TopologyTree {
     }
   }
 
-  // Magistrala = najdłuższa ścieżka od korzenia (deepest leaf, tie-break leksykalny).
-  let deepest = rootRef;
-  let deepestRank = -1;
-  for (const [ref, r] of [...rank.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
-    if (r > deepestRank) {
-      deepestRank = r;
-      deepest = ref;
+  // Magistrala (R2, przebudowa 2026-07): OŚ Z DEKLARACJI MODELU.
+  // ENM deklaruje magistralę główną (line_run main_trunk / korytarz radialny)
+  // w kolejności elektrycznej — schemat MUSI ją odwzorować. Heurystyka
+  // „najdłuższa ścieżka od korzenia" zostaje wyłącznie jako uczciwy fallback
+  // dla modeli bez deklaracji.
+  const declared = (snapshot.declaredTrunkStationIds ?? [])
+    .filter((ref) => parent.has(ref));
+  let trunkOrdered: string[] = [];
+  if (declared.length >= 2) {
+    // Oś zaczyna się w korzeniu (stacja źródłowa); jeśli deklaracja nie
+    // zawiera korzenia, a korzeń jest w drzewie — prefiksujemy go.
+    trunkOrdered = declared[0] === rootRef ? [...declared] : [rootRef, ...declared.filter((r) => r !== rootRef)];
+    // PRZEPNIJ drzewo wzdłuż deklarowanej osi: kolejna stacja osi ma być
+    // dzieckiem poprzedniej (o ile graf ma taką krawędź) — bez tego BFS może
+    // ustawić stację magistrali jako dziecko odgałęzienia (fałszywa oś).
+    for (let i = 1; i < trunkOrdered.length; i += 1) {
+      const prev = trunkOrdered[i - 1];
+      const cur = trunkOrdered[i];
+      if (parent.get(cur) === prev) continue;
+      if (adj.get(prev)?.has(cur)) {
+        const oldParent = parent.get(cur);
+        if (oldParent) {
+          const siblings = childrenMap.get(oldParent);
+          if (siblings) {
+            const at = siblings.indexOf(cur);
+            if (at >= 0) siblings.splice(at, 1);
+          }
+        }
+        parent.set(cur, prev);
+        if (!childrenMap.has(prev)) childrenMap.set(prev, []);
+        childrenMap.get(prev)!.push(cur);
+        if (edgeBranch.has(pairKey(prev, cur))) parentBranch.set(cur, edgeBranch.get(pairKey(prev, cur))!);
+      } else {
+        // brak krawędzi prev—cur w grafie (luka danych): oś urywa się tutaj —
+        // reszta deklaracji nie może być narysowana jako ciągła magistrala.
+        trunkOrdered = trunkOrdered.slice(0, i);
+        break;
+      }
+    }
+    // Przelicz rangi od nowa (przepięcia mogły zmienić głębokości poddrzew).
+    rank.clear();
+    rank.set(rootRef, 0);
+    const rq: string[] = [rootRef];
+    while (rq.length > 0) {
+      const u = rq.shift()!;
+      for (const v of childrenMap.get(u) ?? []) {
+        rank.set(v, (rank.get(u) ?? 0) + 1);
+        rq.push(v);
+      }
     }
   }
-  const trunkSet = new Set<string>();
-  {
-    let n: string | null = deepest;
-    while (n !== null) {
-      trunkSet.add(n);
-      n = parent.get(n) ?? null;
+  if (trunkOrdered.length < 2) {
+    // Fallback: najdłuższa ścieżka od korzenia (deepest leaf, tie-break leksykalny).
+    let deepest = rootRef;
+    let deepestRank = -1;
+    for (const [ref, r] of [...rank.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+      if (r > deepestRank) {
+        deepestRank = r;
+        deepest = ref;
+      }
+    }
+    trunkOrdered = [];
+    {
+      let n: string | null = deepest;
+      const stack: string[] = [];
+      while (n !== null) {
+        stack.push(n);
+        n = parent.get(n) ?? null;
+      }
+      while (stack.length) trunkOrdered.push(stack.pop()!);
     }
   }
-  // trunkRefs w kolejności od korzenia
-  const trunkOrdered: string[] = [];
-  {
-    let n: string | null = deepest;
-    const stack: string[] = [];
-    while (n !== null) {
-      stack.push(n);
-      n = parent.get(n) ?? null;
-    }
-    while (stack.length) trunkOrdered.push(stack.pop()!);
-  }
+  const trunkSet = new Set<string>(trunkOrdered);
 
   // Order index: trunk = pozycja na osi; lateral = ranga w obrębie gałęzi (porządek dzieci).
   const trunkOrderIndex = new Map<string, number>();

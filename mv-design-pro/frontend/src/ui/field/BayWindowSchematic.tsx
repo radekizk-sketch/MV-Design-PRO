@@ -20,6 +20,7 @@ const DEVICE_LABELS: Record<BayPrimaryDeviceKind, string> = {
   GENERATOR_FW: 'FW',
   PCS: 'PCS',
   BATTERY: 'Bateria',
+  SURGE_ARRESTER: 'Ogranicznik przepięć',
 };
 
 function deviceLabel(device: BayPrimaryDevice): string {

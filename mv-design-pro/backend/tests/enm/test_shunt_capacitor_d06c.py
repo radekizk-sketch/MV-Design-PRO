@@ -265,6 +265,12 @@ def test_power_flow_capacitor_raises_bus_voltage():
     v_small = _voltage_pu_at(run_small, "b2")
     v_large = _voltage_pu_at(run_large, "b2")
 
+    # F9.8: absolute assertion — the uncompensated bus MUST sit below 1.0 pu
+    # (the inductive load depresses |V|, per the docstring/fixture intent).
+    # Before F9.8 this held only relatively (monotonicity below), which passed
+    # even with the reversed-sign bug (v_no_cap was ~1.0703, ABOVE 1.0, because
+    # the load entered the solver as generation and RAISED the bus voltage).
+    assert v_no_cap < 1.0, f"expected inductive load to depress |V| below 1.0, got {v_no_cap}"
     # Capacitor raises |V|, and a larger bank raises it more (monotonic in Q).
     assert v_small > v_no_cap
     assert v_large > v_small

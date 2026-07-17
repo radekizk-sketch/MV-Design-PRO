@@ -49,7 +49,7 @@ def test_v1_pattern_skips_v2_imports() -> None:
     lines = [
         "import { x } from '../../sld/v2/canvas/SldCanvasV2';",
         "import { y } from '../../sld/v2/renderer/GpzRenderer';",
-        "import { z } from '../../sld/v2/builder/CorridorLayout';",
+        "import { z } from '../../sld/v2/builder/BuildSequence';",
     ]
     for line in lines:
         matched = any(p.search(line) for p in V1_PATH_PATTERNS)

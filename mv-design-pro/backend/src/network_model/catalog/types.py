@@ -1513,22 +1513,6 @@ def normalize_ptpiree_key(value: Any) -> str:
         text = text.replace(separator, " ")
     return " ".join(text.upper().split())
 
-    text = str(value or "").strip().upper()
-    replacements = {
-        "Ą": "A",
-        "Ć": "C",
-        "Ę": "E",
-        "Ł": "L",
-        "Ń": "N",
-        "Ó": "O",
-        "Ś": "S",
-        "Ź": "Z",
-        "Ż": "Z",
-    }
-    for src, dst in replacements.items():
-        text = text.replace(src, dst)
-    return " ".join(text.replace("-", " ").replace("_", " ").split())
-
 
 @dataclass(frozen=True)
 class PtpireeGeneratorCertificate:

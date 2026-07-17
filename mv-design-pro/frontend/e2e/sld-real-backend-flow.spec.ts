@@ -50,9 +50,13 @@ test.describe('Real-backend: utworzenie projektu i przejście do SLD', () => {
     await expect(page.getByText(/Środowisko inżynierskie/i)).toBeVisible({ timeout: 5_000 });
   });
 
-  test('API /api/catalog/manufacturers zwraca 4 producentów requires_catalog', async ({
+  test('API /api/catalog/manufacturers zwraca 5 producentów requires_catalog', async ({
     page,
   }) => {
+    // 5. producent SCHNEIDER_ELECTRIC dodany w programie Reference Engine V1
+    // (REFERENCE_ENGINE_SPEC_V1.md, rodzina SM6-24). Intencja testu bez
+    // zmian: rejestr zawiera DOKŁADNIE znanych producentów, wszyscy
+    // requires_catalog (nie fabrykuj danych producenta).
     const response = await page.request.get('/api/catalog/manufacturers');
     expect(response.ok()).toBe(true);
     const body = (await response.json()) as Array<{
@@ -60,9 +64,9 @@ test.describe('Real-backend: utworzenie projektu i przejście do SLD', () => {
       status: string;
       source_refs: string[];
     }>;
-    expect(body.length).toBe(4);
+    expect(body.length).toBe(5);
     const refs = body.map((m) => m.manufacturer_ref).sort();
-    expect(refs).toEqual(['ABB', 'ELEKTROMETAL', 'SIEMENS', 'ZPUE_WLOSZCZOWA']);
+    expect(refs).toEqual(['ABB', 'ELEKTROMETAL', 'SCHNEIDER_ELECTRIC', 'SIEMENS', 'ZPUE_WLOSZCZOWA']);
     // NIE fabrykuj — wszyscy startowi requires_catalog.
     for (const m of body) {
       expect(m.status).toBe('requires_catalog');
@@ -121,9 +125,11 @@ test.describe('Real-backend: utworzenie projektu i przejście do SLD', () => {
     }
   });
 
-  test('API /api/catalog/switchgear-families zwraca 6 zweryfikowanych rodzin', async ({
+  test('API /api/catalog/switchgear-families zwraca 7 zweryfikowanych rodzin', async ({
     page,
   }) => {
+    // 7. rodzina SCHNEIDER__SM6_24 dodana w programie Reference Engine V1
+    // (pakiet schneider_sm6, repo_verified, publiczna strona se.com).
     const response = await page.request.get('/api/catalog/switchgear-families');
     expect(response.ok()).toBe(true);
     const body = (await response.json()) as Array<{
@@ -131,12 +137,13 @@ test.describe('Real-backend: utworzenie projektu i przejście do SLD', () => {
       status: string;
       source_refs: string[];
     }>;
-    expect(body.length).toBe(6);
+    expect(body.length).toBe(7);
     const refs = body.map((f) => f.switchgear_family_ref).sort();
     expect(refs).toEqual([
       'ABB__SAFERING',
       'ABB__UNIGEAR_ZS1',
       'ELEKTROMETAL__E2ALPHA',
+      'SCHNEIDER__SM6_24',
       'SIEMENS__8DJH',
       'SIEMENS__NXAIR',
       'ZPUE_WLOSZCZOWA__ROTOBLOK',

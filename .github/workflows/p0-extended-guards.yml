@@ -1,0 +1,91 @@
+name: P0 Extended Guards (V12K invariants)
+
+# GAP-1 zaadresowany per test architect audit (background agent):
+# 48 z 67 guardów nie było w CI. Ten workflow uruchamia top 12 brakujących
+# guardów po P0 sprint, egzekwujących V12.xx invariants (NO_HEURISTICS,
+# overlay no_physics, solver_boundary, port_binding strict, etc.).
+#
+# Aktywne na push + PR (każda zmiana kodu = enforcement).
+#
+# Reference:
+# - Test architect audyt 2026-05-14 (background agent)
+# - CLAUDE.md § Core Rules: NO HEURISTICS, WHITE BOX, Determinism, etc.
+# - mv-design-pro/scripts/ (67 guard scripts total)
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  p0-extended-guards:
+    name: V12K Extended Invariant Guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    defaults:
+      run:
+        working-directory: mv-design-pro
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # === Physics / Solver boundary guards (V12K rule §9) ===
+      # CLAUDE.md § Core Rules: solvers MUST NOT contain heuristics
+      - name: Load Flow — no heuristics
+        run: python scripts/load_flow_no_heuristics_guard.py
+
+      - name: Protection — no heuristics
+        run: python scripts/protection_no_heuristics_guard.py
+
+      - name: Solver boundary (frozen API)
+        run: python scripts/solver_boundary_guard.py
+
+      - name: Overlay — no physics (presentation layer)
+        run: python scripts/overlay_no_physics_guard.py
+
+      # === Determinism / trace guards ===
+      # CLAUDE.md § Core Rules: Same input MUST produce identical output
+      # 2026-07-17: warn-only ZDJĘTE — wszystkie guardy tego workflowu zielone
+      # na czystym HEAD (weryfikacja lokalna przy przenosinach z martwego
+      # katalogu mv-design-pro/.github/workflows); trace_determinism wymaga
+      # wyłącznie pydantic (import modeli domeny, bez cięższych zależności).
+      - name: Zależności trace guard (pydantic)
+        run: pip install pydantic
+
+      - name: Trace determinism
+        run: python scripts/trace_determinism_guard.py
+
+      - name: Fault scenarios determinism
+        run: python scripts/fault_scenarios_determinism_guard.py
+
+      # === UI / terminology guards (V12K polski UI 100%) ===
+      - name: UI terminology
+        run: python scripts/ui_terminology_guard.py
+
+      - name: Forbidden UI terms
+        run: python scripts/forbidden_ui_terms_guard.py
+
+      - name: UTF-8 mojibake (UI/docs encoding)
+        run: python scripts/utf8_mojibake_guard.py
+
+      # === V12.xx canon guards ===
+      - name: V12.xx canon (hierarchy + paths)
+        run: python scripts/v12xx_canon_guard.py
+
+      - name: Severity contract
+        run: python scripts/severity_contract_guard.py
+
+      - name: Result Set v1 schema
+        run: python scripts/resultset_v1_schema_guard.py
+
+      # === Port binding (P0.3 F2 foundation) ===
+      # Strict mode: zero tolerance for missing endpoint ports per port_binding_guard.py
+      # Currently 0 violations (100% sync ports.json ↔ SVGs in P0.1).
+      - name: Port binding (STRICT mode — ports.json schema)
+        run: python scripts/port_binding_guard.py --strict

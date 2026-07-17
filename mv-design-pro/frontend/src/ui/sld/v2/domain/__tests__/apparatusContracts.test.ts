@@ -49,6 +49,10 @@ describe('apparatusContracts — kanon', () => {
     expect(BAY_PRIMARY_DEVICE_TO_APPARATUS.TRANSFORMER_DEVICE).toBe(APPARATUS_KIND.TRANSFORMER);
   });
 
+  it('F9.6 (V12K-028): SURGE_ARRESTER mapuje się na surge_arrester (SA wyłącznie z danych)', () => {
+    expect(BAY_PRIMARY_DEVICE_TO_APPARATUS.SURGE_ARRESTER).toBe(APPARATUS_KIND.SURGE_ARRESTER);
+  });
+
   it('DER ENM kindy mapują się na null (renderowane przez DerRenderer)', () => {
     expect(BAY_PRIMARY_DEVICE_TO_APPARATUS.GENERATOR_PV).toBeNull();
     expect(BAY_PRIMARY_DEVICE_TO_APPARATUS.GENERATOR_BESS).toBeNull();

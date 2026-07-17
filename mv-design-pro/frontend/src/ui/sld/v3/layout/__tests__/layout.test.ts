@@ -1,0 +1,794 @@
+/**
+ * SLD V3 F2 — wyrocznie potoku measure → bands → columns (SLD_CAD_SPEC_V3
+ * §5.1–§5.3, §11). Wszystkie testy na SYNTETYKACH enumerowanych (pętle po
+ * siatce parametrów) — zero losowości, zgodnie z P7 (determinizm).
+ */
+import { describe, expect, it } from 'vitest';
+
+import { GRID, rectsOverlap, snapUp as snapUpFromGrid, type V3Rect } from '../../core/grid';
+import { measureLabelWidth } from '../../core/text';
+import { SYMBOL_DEFS } from '../../symbols/defs';
+import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
+import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
+import {
+  apparatusIdentifierLeftReserve,
+  bayColumnFootprint,
+  bayColumnRequiredWidth,
+  entryDescentCaptionInset,
+  requiredSegmentLabelWidth,
+  requiredStationWidth,
+  snapUp,
+  stationBlockHeight,
+  stationNameBandHeight,
+  stationPortCaptionHeight,
+  type StationMeasureInput,
+} from '../measure';
+import { fieldFunctionalDesignation } from '../../compose/directions';
+import { BUS_AXIS_BAND_HEIGHT, DESCENT_STRIP_HEIGHT, computeBands, noBandsOverlap, type StationBandHeights } from '../bands';
+import { allColumnsOnGrid, computeColumns, type ComputeColumnsInput } from '../columns';
+import {
+  colorSegmentLabelRows,
+  computeSegmentLabelSlotX,
+  normalizeSegmentText,
+  SEGMENT_LABEL_ROW_HEIGHT,
+} from '../segments';
+
+function makeBay(fieldRole: FieldRole, index: number): MiniBlockBayDescriptor {
+  return {
+    bayRef: `bay-${index}`,
+    fieldRole,
+    designation: `Pole ${index}`,
+    hasMissingRequiredDevice: false,
+  };
+}
+
+/** Stacja syntetyczna: `bayCount - 1` pól liniowych + 1 pole transformatorowe. */
+function makeStation(id: string, nameLength: number, bayCount: number): StationMeasureInput {
+  const bays: MiniBlockBayDescriptor[] = [];
+  for (let i = 0; i < bayCount - 1; i++) bays.push(makeBay(FIELD_ROLE.RMU_LINE, i));
+  bays.push(makeBay(FIELD_ROLE.RMU_TRANSFORMER, bayCount - 1));
+  return {
+    id,
+    name: 'A'.repeat(Math.max(nameLength, 1)),
+    stationCode: `S${String(1).padStart(2, '0')}`,
+    transformerRatedKva: 630,
+    stationTypeLabel: 'stacja przelotowa',
+    snBays: bays,
+  };
+}
+
+// F3 fix r3: przekazujemy SUROWY tekst (nie gotową wysokość) — normalizacja
+// pustości/whitespace dzieje się WEWNĄTRZ `computeBands` (przez
+// `normalizeSegmentText`, `../segments`), tą samą funkcją co w
+// `computeColumns`. Wcześniej ten helper liczył `!= null` (bez trim), co
+// dawało wysokość w bands dla `''`, a `columns.ts` (FIX-4) poprawnie
+// pomijał slot — rozjazd, który r3 usuwa u ŹRÓDŁA.
+function bandHeightsFor(station: StationMeasureInput, incomingSegmentLabelText: string | null): StationBandHeights {
+  return {
+    incomingSegmentLabelText,
+    portCaptionHeight: stationPortCaptionHeight(station),
+    stationBlockHeight: stationBlockHeight(station),
+    nameBandHeight: stationNameBandHeight(station),
+  };
+}
+
+function buildColumnsForStations(
+  stations: readonly StationMeasureInput[],
+  incomingSegmentLabelTexts: readonly (string | null)[],
+) {
+  // r9 (F5a fix): kolorowanie grafu przedziałów liczone RAZ z tych samych
+  // wejść, współdzielone przez bands (liczba `segmentLabelRowCount`) i
+  // columns (liczy sam, bo ma pełne `StationMeasureInput`).
+  const rows = colorSegmentLabelRows(computeSegmentLabelSlotX(stations, incomingSegmentLabelTexts));
+  const bandsResult = computeBands(
+    stations.map((s, i) => bandHeightsFor(s, incomingSegmentLabelTexts[i])),
+    rows.rowCount,
+  );
+  const input: ComputeColumnsInput = {
+    stations,
+    incomingSegmentLabelTexts,
+    nameSlotBand: bandsResult.bands.B5,
+    segmentSlotBand: bandsResult.bands.B1,
+  };
+  const columnsResult = computeColumns(input);
+  return { bandsResult, columnsResult };
+}
+
+describe('V3 layout — measure (spec §5.1)', () => {
+  it('requiredStationWidth i requiredSegmentLabelWidth są na siatce po snapUp', () => {
+    const station = makeStation('s1', 10, 3);
+    expect(requiredStationWidth(station) % GRID).toBe(0);
+    expect(snapUp(requiredSegmentLabelWidth('YAKXS 3×120/16 · 90 m')) % GRID).toBe(0);
+  });
+
+  it('requiredStationWidth rośnie z liczbą pól', () => {
+    const small = makeStation('s1', 4, 2);
+    const big = makeStation('s1', 4, 5);
+    expect(requiredStationWidth(big)).toBeGreaterThan(requiredStationWidth(small));
+  });
+});
+
+describe('V3 layout — measure (spec §5.1, FIX-3: rezerwacja etykiet WŁASNYCH aparatów/portów)', () => {
+  const baseFields = {
+    id: 's1',
+    name: 'St',
+    stationCode: null,
+    transformerRatedKva: null,
+    stationTypeLabel: null,
+  } as const;
+
+  it('F10.2 (spec §19.1): bay.designation NIE wpływa już na requiredStationWidth — sidecar jest CZYSTĄ funkcją fieldRole, nie danych pola (dawny test „dłuższy designation poszerza szerokość" ODWRÓCONY: przed F10.2 `bayApparatusDesignation` czytało `bay.designation` wprost, dziś `fieldFunctionalDesignation` go w ogóle nie przyjmuje)', () => {
+    const shortDesignation: MiniBlockBayDescriptor = {
+      bayRef: 'b1',
+      fieldRole: FIELD_ROLE.RMU_LINE,
+      designation: 'A',
+      hasMissingRequiredDevice: false,
+    };
+    const longDesignation: MiniBlockBayDescriptor = {
+      ...shortDesignation,
+      designation: 'kier. GPZ Południowy-Wschód (odcinek magistralny)',
+    };
+    const withShort: StationMeasureInput = { ...baseFields, snBays: [shortDesignation] };
+    const withLong: StationMeasureInput = { ...baseFields, snBays: [longDesignation] };
+    expect(requiredStationWidth(withLong)).toBe(requiredStationWidth(withShort));
+  });
+
+  it('F6e: entryDescentBayIndex poszerza kolumnę pola-wejścia DOKŁADNIE o entryDescentCaptionInset (podpis kierunku mieści się w całości na prawo od osi pionu zejścia; kontrprzykład sprzed naprawy: wycinek B2 obejmował oś ⇒ pion przecinał „kier. Sxx" — 12 kolizji na fixturze)', () => {
+    const bay: MiniBlockBayDescriptor = {
+      bayRef: 'b1',
+      fieldRole: FIELD_ROLE.RMU_LINE,
+      designation: '',
+      hasMissingRequiredDevice: false,
+    };
+    // F10.1: footprint pola liniowego urósł o rozszerzenie boczne ES
+    // (§18.1) — żeby podpis kierunku nadal DOMINOWAŁ w max() po obu
+    // stronach porównania (to jest warunek testowanej tożsamości „delta ==
+    // inset"), podpis musi być szerszy niż footprint+sidecar (58px) — stąd
+    // dłuższy tekst niż pierwotne 'kier. S09' (51px).
+    const captions = ['kier. GPZ Południowy-Wschód'];
+    const plain = bayColumnRequiredWidth([bay], 0, captions);
+    const withDescent = bayColumnRequiredWidth([bay], 0, captions, 0);
+    expect(withDescent - plain).toBe(entryDescentCaptionInset(FIELD_ROLE.RMU_LINE));
+    // Inne pola tej samej stacji (index ≠ entryDescentBayIndex) — bez zmian.
+    expect(bayColumnRequiredWidth([bay], 0, captions, 1)).toBe(plain);
+    // Bez podpisu kierunku inset nie ma czego odsuwać — bez zmian.
+    expect(bayColumnRequiredWidth([bay], 0, undefined, 0)).toBe(bayColumnRequiredWidth([bay], 0, undefined));
+  });
+
+  it('bayDirectionCaptions z długim podpisem kierunku poszerza requiredStationWidth', () => {
+    const bay: MiniBlockBayDescriptor = {
+      bayRef: 'b1',
+      fieldRole: FIELD_ROLE.RMU_LINE,
+      designation: '',
+      hasMissingRequiredDevice: false,
+    };
+    const withoutCaption: StationMeasureInput = { ...baseFields, snBays: [bay] };
+    const withCaption: StationMeasureInput = {
+      ...baseFields,
+      snBays: [bay],
+      bayDirectionCaptions: ['kier. GPZ Południe (bardzo długi opis kierunku zasilania)'],
+    };
+    expect(requiredStationWidth(withCaption)).toBeGreaterThan(requiredStationWidth(withoutCaption));
+  });
+
+  it('brak designation i brak bayDirectionCaptions ⇒ szerokość kolumny = leftReserve + footprint + GRID + oznaczenie FUNKCYJNE pola (F10.2, spec §19.1 wymaga oznaczenia ZAWSZE)', () => {
+    const bay: MiniBlockBayDescriptor = {
+      bayRef: 'b1',
+      fieldRole: FIELD_ROLE.RMU_LINE,
+      designation: '',
+      hasMissingRequiredDevice: false,
+    };
+    const station: StationMeasureInput = { ...baseFields, name: 'A', snBays: [bay] };
+    // F10.1 (spec §18.1): footprint pola liniowego = stos toru głównego
+    // (najszerszy z aparatów szeregowych) + rozszerzenie boczne uziemnika
+    // (prześwit GRID + szerokość ES) — rachunek RĘCZNY, niezależny od
+    // implementacji planu (dowód formuły, nie tautologia).
+    const expectedFootprintWidth =
+      Math.max(SYMBOL_DEFS.disconnector.width, SYMBOL_DEFS.breaker.width) +
+      GRID +
+      SYMBOL_DEFS.earthSwitch.width;
+    expect(bayColumnFootprint(bay).width).toBe(expectedFootprintWidth);
+    // F10.2 (spec §19.1, V12K-035): `designation` PRZESTAŁ być czytany —
+    // sidecar jest ZAWSZE `fieldFunctionalDesignation(fieldRole)` („pole
+    // liniowe" dla RMU_LINE, nigdy pusty); DODATKOWO rezerwacja PO LEWEJ
+    // stosu na identyfikatory per-aparat Q/QE/T (`apparatusIdentifierLeftReserve`).
+    const leftReserve = apparatusIdentifierLeftReserve(bay);
+    const fieldRoleLabel = fieldFunctionalDesignation(bay.fieldRole);
+    expect(fieldRoleLabel).toBe('pole liniowe');
+    const expectedBlockWidth = leftReserve + expectedFootprintWidth + GRID + measureLabelWidth(fieldRoleLabel, 't3');
+    const expectedNameWidth = measureLabelWidth('A', 't1');
+    expect(requiredStationWidth(station)).toBe(
+      snapUp(Math.max(expectedBlockWidth, expectedNameWidth) + 2 * GRID),
+    );
+  });
+
+  it('designation złożony wyłącznie z białych znaków traktowany jak brak (spójnie z FIX-4)', () => {
+    const emptyDesignation: MiniBlockBayDescriptor = {
+      bayRef: 'b1',
+      fieldRole: FIELD_ROLE.RMU_LINE,
+      designation: '',
+      hasMissingRequiredDevice: false,
+    };
+    const whitespaceDesignation: MiniBlockBayDescriptor = { ...emptyDesignation, designation: '   ' };
+    const withEmpty: StationMeasureInput = { ...baseFields, snBays: [emptyDesignation] };
+    const withWhitespace: StationMeasureInput = { ...baseFields, snBays: [whitespaceDesignation] };
+    expect(requiredStationWidth(withWhitespace)).toBe(requiredStationWidth(withEmpty));
+  });
+});
+
+describe('V3 core/grid — snapUp (FIX-5: przeniesione z measure.ts, re-eksport zachowany)', () => {
+  it('zaokrągla W GÓRĘ do wielokrotności GRID (ceil)', () => {
+    expect(snapUpFromGrid(1)).toBe(8);
+    expect(snapUpFromGrid(8)).toBe(8);
+    expect(snapUpFromGrid(9)).toBe(16);
+  });
+
+  it('re-eksport z measure.ts jest tą samą funkcją co core/grid.ts', () => {
+    expect(snapUp).toBe(snapUpFromGrid);
+  });
+});
+
+describe('V3 layout — columns (spec §5.3): kolumna szersza przy dłuższej etykiecie segmentu', () => {
+  it('krótka nazwa stacji + długa etykieta segmentu wejściowego → szerokość zdominowana przez etykietę', () => {
+    const station = makeStation('s1', 3, 1);
+    const shortLabel = 'a';
+    const longLabel = 'YAKXS 3×120/16 · 90 m — bardzo długi opis odcinka SN';
+
+    const short = buildColumnsForStations([station], [shortLabel]);
+    const long = buildColumnsForStations([station], [longLabel]);
+
+    expect(long.columnsResult.columns[0].width).toBeGreaterThan(short.columnsResult.columns[0].width);
+  });
+
+  it('etykieta segmentu krótsza niż wymagania stacji NIE zwęża kolumny poniżej requiredStationWidth', () => {
+    const station = makeStation('s1', 20, 4);
+    const tiny = buildColumnsForStations([station], ['x']);
+    expect(tiny.columnsResult.columns[0].width).toBeGreaterThanOrEqual(requiredStationWidth(station));
+  });
+});
+
+describe('V3 layout — columns (spec §5.3, FIX-4): pusty/whitespace segmentText ≠ slot', () => {
+  it('"" nie tworzy wpisu w segmentLabelSlots ani nie poszerza kolumny', () => {
+    const station = makeStation('s1', 20, 4);
+    const withNull = buildColumnsForStations([station], [null]);
+    const withEmpty = buildColumnsForStations([station], ['']);
+    expect(withEmpty.columnsResult.segmentLabelSlots).toHaveLength(0);
+    expect(withEmpty.columnsResult.columns[0].width).toBe(withNull.columnsResult.columns[0].width);
+  });
+
+  it('"   " (same białe znaki) nie tworzy wpisu w segmentLabelSlots ani nie poszerza kolumny', () => {
+    const station = makeStation('s1', 20, 4);
+    const withNull = buildColumnsForStations([station], [null]);
+    const withWhitespace = buildColumnsForStations([station], ['   ']);
+    expect(withWhitespace.columnsResult.segmentLabelSlots).toHaveLength(0);
+    expect(withWhitespace.columnsResult.columns[0].width).toBe(withNull.columnsResult.columns[0].width);
+  });
+});
+
+describe('V3 layout — bands (spec §5.2): pasma stykają się, nigdy nie nachodzą', () => {
+  const stations = [makeStation('s1', 5, 2), makeStation('s2', 25, 5), makeStation('s3', 2, 3)];
+  const bandsResult = computeBands(stations.map((s) => bandHeightsFor(s, 'seg')));
+
+  it('suma wysokości pasm = pozycja końca (totalHeight)', () => {
+    const order: Array<keyof typeof bandsResult.bands> = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6'];
+    const sum = order.reduce((acc, id) => acc + bandsResult.bands[id].height, 0);
+    expect(sum).toBe(bandsResult.totalHeight);
+  });
+
+  it('żadna para pasm się nie przecina (rectsOverlap)', () => {
+    expect(noBandsOverlap(bandsResult, 0, 800)).toBe(true);
+  });
+
+  it('wszystkie y pasm są na siatce', () => {
+    for (const id of ['B1', 'B2', 'B3', 'B4', 'B5', 'B6'] as const) {
+      expect(bandsResult.bands[id].y % GRID).toBe(0);
+      expect(bandsResult.bands[id].height % GRID).toBe(0);
+    }
+  });
+
+  it('wysokość pasma = max po wszystkich stacjach wiersza (nie suma)', () => {
+    // B4 (blok stacji) największy dla s2 (5 pól) — pasmo B4 = dokładnie ta
+    // wartość + DESCENT_STRIP_HEIGHT (F6d: strefa rozdzielająca B4/B5 dla
+    // jogu zejścia lateralu, patrz nagłówek `DESCENT_STRIP_HEIGHT` w `bands.ts`
+    // — doliczona JEDNOLICIE do KAŻDEGO wiersza, nie tylko origin).
+    const b4Heights = stations.map((s) => stationBlockHeight(s));
+    expect(bandsResult.bands.B4.height).toBe(snapUpForTest(Math.max(...b4Heights) + DESCENT_STRIP_HEIGHT));
+  });
+});
+
+function snapUpForTest(value: number): number {
+  return Math.ceil(value / GRID) * GRID;
+}
+
+describe('V3 layout — columns (spec §5.3, determinizm): prefix-sum deterministyczny', () => {
+  const stations = [makeStation('s1', 5, 2), makeStation('s2', 12, 4), makeStation('s3', 30, 3)];
+  const labels = ['15 kV', null, 'YAKXS 3×120/16 · 40 m'];
+
+  it('to samo wejście ⇒ identyczny wynik (dwukrotne wywołanie, głęboka równość)', () => {
+    const first = buildColumnsForStations(stations, labels);
+    const second = buildColumnsForStations(stations, labels);
+    expect(second.columnsResult).toEqual(first.columnsResult);
+    expect(second.bandsResult).toEqual(first.bandsResult);
+  });
+
+  it('kolejność stacji jest zachowana (kolumna j ↔ stations[j])', () => {
+    const { columnsResult } = buildColumnsForStations(stations, labels);
+    expect(columnsResult.columns.map((c) => c.stationId)).toEqual(['s1', 's2', 's3']);
+  });
+
+  it('x rośnie monotonicznie (prefix-sum) i x_0 = 0', () => {
+    const { columnsResult } = buildColumnsForStations(stations, labels);
+    expect(columnsResult.columns[0].x).toBe(0);
+    for (let i = 1; i < columnsResult.columns.length; i++) {
+      expect(columnsResult.columns[i].x).toBeGreaterThan(columnsResult.columns[i - 1].x);
+    }
+  });
+
+  it('wszystkie x kolumn i szerokości są na siatce (grid_probe)', () => {
+    const { columnsResult } = buildColumnsForStations(stations, labels);
+    expect(allColumnsOnGrid(columnsResult)).toBe(true);
+    for (const c of columnsResult.columns) {
+      expect(c.x % GRID).toBe(0);
+      expect(c.width % GRID).toBe(0);
+    }
+  });
+});
+
+describe('V3 layout — property: żadne dwa zarezerwowane sloty się nie przecinają (spec §11.1 z konstrukcji)', () => {
+  // Enumeracja syntetyczna (bez losowości): 3 długości nazw × 3 długości
+  // etykiet segmentu × 4 liczby pól (2..5) — dwie stacje sąsiadujące per
+  // kombinacja, sprawdzamy WSZYSTKIE pary zarezerwowanych prostokątów
+  // (sloty nazw, sloty etykiet segmentów, bboxy bloków stacji B4).
+  //
+  // r9 (F5a, poprawka po recenzji REQUEST-CHANGES): ta enumeracja z DWÓCH
+  // stacji o IDENTYCZNEJ etykiecie na obu jest STRUKTURALNIE ślepa na klasę
+  // defektów r7b (parzystość indeksu ≠ realne nachodzenie w X) — parzystość
+  // 2 stacji zawsze daje różne wiersze (0, 1), więc kolizja i↔i+2 (wymaga
+  // ≥3 stacji) nigdy nie mogła wystąpić tutaj. Zachowana jako regresja
+  // węższego przypadku (dominacja szerokości etykiety segmentu vs. nazwy
+  // stacji); pokrycie klasy „i↔i+2" i „stacja i+1 bez segmentu" — patrz
+  // dwa kolejne describe niżej.
+  const nameLengths = [2, 12, 30];
+  const labelLengths = [0, 8, 45];
+  const bayCounts = [2, 3, 4, 5];
+
+  for (const nameLen of nameLengths) {
+    for (const labelLen of labelLengths) {
+      for (const bayCount of bayCounts) {
+        it(`nazwa=${nameLen}zn, etykieta=${labelLen}zn, pola=${bayCount}: zero kolizji slotów`, () => {
+          const stationA = makeStation('a', nameLen, bayCount);
+          // Stacja B ma odwrotne parametry, żeby wymusić różne szerokości kolumn.
+          const stationB = makeStation('b', nameLengths[nameLengths.length - 1 - nameLengths.indexOf(nameLen)], bayCounts[bayCounts.length - 1 - bayCounts.indexOf(bayCount)]);
+          const labelText = labelLen > 0 ? 'X'.repeat(labelLen) : null;
+          const { bandsResult, columnsResult } = buildColumnsForStations(
+            [stationA, stationB],
+            [labelText, labelText],
+          );
+
+          const reservedRects: V3Rect[] = [];
+          for (const col of columnsResult.columns) {
+            reservedRects.push(col.nameSlot);
+            reservedRects.push({ x: col.x, y: bandsResult.bands.B4.y, width: col.width, height: bandsResult.bands.B4.height });
+          }
+          for (const slot of columnsResult.segmentLabelSlots) {
+            reservedRects.push(slot.rect);
+          }
+
+          for (let i = 0; i < reservedRects.length; i++) {
+            for (let j = i + 1; j < reservedRects.length; j++) {
+              expect(
+                rectsOverlap(reservedRects[i], reservedRects[j]),
+                `rect[${i}]=${JSON.stringify(reservedRects[i])} vs rect[${j}]=${JSON.stringify(reservedRects[j])}`,
+              ).toBe(false);
+            }
+          }
+        });
+      }
+    }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// FIX-2 (recenzja F5a, po REQUEST-CHANGES na r7b): property-test odporny na
+// klasę defektów, którą powyższa 2-stacyjna enumeracja strukturalnie nie
+// mogła złapać — ≥3 stacje NARROW (1-polowe, maksymalizują ryzyko wystawania
+// slotu poza własne przęsło), permutacje etykiet ASYMETRYCZNYCH
+// (krótka/średnia/bardzo długa) na pozycjach, + wariant ze ŚRODKOWĄ stacją
+// BEZ segmentu (klasa defektu: warunek liczony TYLKO dla par sąsiednich nie
+// widzi kolizji i↔i+2, gdy i+1 nie ma segmentu w ogóle).
+// ---------------------------------------------------------------------------
+
+/** Stacja NARROW MINIMALNA (1-polowa, nazwa 1-znakowa, BEZ kodu/kVA/typu) —
+ *  maksymalizuje ryzyko, że slot etykiety segmentu (wyśrodkowany na
+ *  przęśle tap-do-tap) wystaje poza własne przęsło i koliduje z sąsiadem
+ *  (patrz kontrprzykłady recenzji: dowolny dodatkowy gabaryt — kod stacji,
+ *  dłuższy oznacznik aparatu — poszerza kolumnę i zaciera efekt; ta funkcja
+ *  reprodukuje DOKŁADNIE geometrię zweryfikowaną w recenzji na realnym
+ *  kodzie, w przeciwieństwie do `makeStation` z górnej części pliku, która
+ *  ZAWSZE dokłada kod/kVA/typ/oznacznik „Pole N"). `designation: ''` NIE
+ *  daje już zerowego sidecara (F6b, spłata długu §9): `bayApparatusDesignation`
+ *  wyprowadza z pustego designation oznacznik Q/T z konwencji (tu: „T1",
+ *  jedyne pole tej stacji jest transformatorowe) — kolumna jest więc
+ *  minimalna DLA DANYCH DOSTĘPNYCH DZIŚ, nie zerowa; kontrprzykłady niżej
+ *  mają to uwzględnione w wyborze długości tekstów. */
+function makeNarrowStation(id: string): StationMeasureInput {
+  const bay: MiniBlockBayDescriptor = {
+    bayRef: `${id}-bay-0`,
+    fieldRole: FIELD_ROLE.RMU_TRANSFORMER,
+    designation: '',
+    hasMissingRequiredDevice: false,
+  };
+  return {
+    id,
+    name: 'A',
+    stationCode: null,
+    transformerRatedKva: null,
+    stationTypeLabel: null,
+    snBays: [bay],
+  };
+}
+
+const LABEL_CLASSES = {
+  short: 'X',
+  medium: '15 kV',
+  long: 'YAKXS 3×120/16 · 90 m — bardzo długi opis odcinka magistrali SN',
+} as const;
+type LabelClassKey = keyof typeof LABEL_CLASSES;
+const LABEL_CLASS_KEYS: readonly LabelClassKey[] = ['short', 'medium', 'long'];
+
+/** Permutacje bez powtórzeń (deterministyczne, bez losowości — P7). */
+function permutationsOf<T>(items: readonly T[]): T[][] {
+  if (items.length <= 1) return [items.slice()];
+  const out: T[][] = [];
+  items.forEach((item, i) => {
+    const rest = [...items.slice(0, i), ...items.slice(i + 1)];
+    for (const perm of permutationsOf(rest)) out.push([item, ...perm]);
+  });
+  return out;
+}
+
+/** Asercje wspólne dla każdego przypadku property-testu FIX-2: zero
+ *  nachodzeń PARAMI wszystkich slotów zarezerwowanych (nazwa/B4/segment),
+ *  każdy slot etykiety segmentu W ARKUSZU (x >= 0, x+width <= totalWidth),
+ *  x/width na siatce, determinizm (to samo wejście ⇒ identyczny wynik). */
+function assertNoCollisionsAndInSheet(
+  stations: readonly StationMeasureInput[],
+  texts: readonly (string | null)[],
+): void {
+  const first = buildColumnsForStations(stations, texts);
+  const second = buildColumnsForStations(stations, texts);
+  expect(second.columnsResult).toEqual(first.columnsResult); // determinizm (P7)
+  expect(second.bandsResult).toEqual(first.bandsResult);
+
+  const { bandsResult, columnsResult } = first;
+  const reservedRects: V3Rect[] = [];
+  for (const col of columnsResult.columns) {
+    reservedRects.push(col.nameSlot);
+    reservedRects.push({ x: col.x, y: bandsResult.bands.B4.y, width: col.width, height: bandsResult.bands.B4.height });
+  }
+  for (const slot of columnsResult.segmentLabelSlots) reservedRects.push(slot.rect);
+
+  for (let i = 0; i < reservedRects.length; i++) {
+    for (let j = i + 1; j < reservedRects.length; j++) {
+      expect(
+        rectsOverlap(reservedRects[i], reservedRects[j]),
+        `rect[${i}]=${JSON.stringify(reservedRects[i])} vs rect[${j}]=${JSON.stringify(reservedRects[j])}`,
+      ).toBe(false);
+    }
+  }
+
+  for (const slot of columnsResult.segmentLabelSlots) {
+    expect(slot.rect.x).toBeGreaterThanOrEqual(0); // w arkuszu — nie POZA nim (kontrprzykład 2)
+    expect(slot.rect.x + slot.rect.width).toBeLessThanOrEqual(columnsResult.totalWidth);
+    expect(slot.rect.x % GRID).toBe(0);
+    expect(slot.rect.width % GRID).toBe(0);
+  }
+}
+
+describe('V3 layout — property FIX-2: ≥3 stacje × permutacje etykiet asymetrycznych, wszystkie sloty w arkuszu, zero kolizji', () => {
+  for (const stationCount of [3, 4, 5]) {
+    for (const perm of permutationsOf(LABEL_CLASS_KEYS)) {
+      // Dla stationCount > 3 klasy etykiet cyklicznie powtórzone (round-robin)
+      // po permutacji bazowej — bez eksplozji kombinatorycznej (4!/5! byłoby
+      // nadmiarowe), a nadal asymetrycznie i deterministycznie.
+      const classesForCount: readonly LabelClassKey[] = Array.from(
+        { length: stationCount },
+        (_, i) => perm[i % perm.length],
+      );
+      const label = classesForCount.join('>');
+
+      it(`${stationCount} stacji NARROW, etykiety [${label}]: zero kolizji, wszystkie sloty w arkuszu`, () => {
+        const stations = classesForCount.map((_, i) => makeNarrowStation(`s${i}`));
+        const texts = classesForCount.map((key) => LABEL_CLASSES[key]);
+        assertNoCollisionsAndInSheet(stations, texts);
+      });
+
+      it(`${stationCount} stacji NARROW, etykiety [${label}], środkowa BEZ segmentu: zero kolizji, wszystkie sloty w arkuszu`, () => {
+        const stations = classesForCount.map((_, i) => makeNarrowStation(`s${i}`));
+        const midIndex = Math.floor(stationCount / 2);
+        const texts = classesForCount.map((key, i) => (i === midIndex ? null : LABEL_CLASSES[key]));
+        assertNoCollisionsAndInSheet(stations, texts);
+      });
+    }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// FIX-2: regresje NAZWANE dla oba kontrprzykłady liczbowe z recenzji (dokładne
+// teksty jak w opisie defektu) + trzeci wariant (środkowa stacja bez
+// segmentu) opisany w tym samym akapicie recenzji. Zweryfikowane na realnym
+// (przed-fixowym) kodzie — patrz komentarze przy każdym teście.
+// ---------------------------------------------------------------------------
+
+describe('V3 layout — regresje kontrprzykładów recenzji F5a (r7b REQUEST-CHANGES)', () => {
+  it('kontrprzykład 1 (algorytm, ZAADAPTOWANY F10.2): dwa nienachodzące się sąsiednio, ale kolidujące w X przedziały ⇒ colorSegmentLabelRows przydziela RÓŻNE wiersze', () => {
+    // F10.2 (spec §19.1): `makeNarrowStation` ma dziś MANDATOWE oznaczenie
+    // FUNKCYJNE pola (`fieldFunctionalDesignation`, np. „pole
+    // transformatorowe" — 22 znaki, DUŻO szersze niż dawne „T1") — baseline
+    // szerokość stacji urosła na tyle, że `computeStationTaps`
+    // (`width = snapUp(max(stationWidth, segmentWidth))`, `layout/
+    // segments.ts`) samo-poszerza kolumnę KAŻDEJ stacji o jej WŁASNY długi
+    // tekst segmentu (mechanizm r9, NIEZMIENIONY przez F10.2), więc scenariusz
+    // z historycznego kontrprzykładu (3 „wąskie" 1-polowe stacje, krótkie
+    // teksty) PRZESTAŁ reprodukować kolizję niezależnie od długości tekstu
+    // (zweryfikowane empirycznie do n=500 znaków — sonda jednorazowa, raport
+    // F10.2) — cały arkusz jest teraz wystarczająco szeroki, żeby odległe
+    // sloty nigdy się nie zetknęły. Test ZAADAPTOWANY: dowodzi TEGO SAMEGO
+    // niezmiennika („przedziały nachodzące się w X dostają RÓŻNE wiersze,
+    // niezależnie od parzystości indeksu stacji między nimi"), ale WPROST na
+    // `colorSegmentLabelRows` (funkcja czysta, `layout/segments.ts`) —
+    // odporne na przyszłe zmiany baseline geometrii stacji, bo nie zależy od
+    // `computeColumns`/`StationMeasureInput` w ogóle.
+    const slots = [
+      { stationIndex: 0, x: 0, width: 100 },
+      null,
+      { stationIndex: 2, x: 50, width: 100 }, // [50,150) nachodzi na [0,100) — INDEKSY 0 i 2 NIE sąsiadują
+    ];
+    const rows = colorSegmentLabelRows(slots);
+
+    expect(rows.rowCount).toBeGreaterThanOrEqual(2); // kolorowanie WYMUSZA ≥2 wiersze
+    expect(rows.rowOf[0]).not.toBe(rows.rowOf[2]); // różne wiersze — kolorowanie, nie parzystość
+  });
+
+  it('kontrprzykład 2: 2 stacje 1-polowe, teksty ["X"×20,"X"×47] ⇒ stary kod: slot0.x=-64 (rezerwacja POZA arkuszem, ujemny x)', () => {
+    // Zweryfikowane na kodzie PRZED tym fixem: slot0={x:-64,w:160} — środek
+    // przęsła wyśrodkowywał slot, ale NIC nie przycinało go do arkusza.
+    const stations = [makeNarrowStation('a'), makeNarrowStation('b')];
+    const texts = ['X'.repeat(20), 'X'.repeat(47)];
+    const { columnsResult } = buildColumnsForStations(stations, texts);
+
+    for (const slot of columnsResult.segmentLabelSlots) {
+      expect(slot.rect.x).toBeGreaterThanOrEqual(0); // NIE poza arkuszem
+      expect(slot.rect.x + slot.rect.width).toBeLessThanOrEqual(columnsResult.totalWidth);
+    }
+  });
+
+  it('kontrprzykład 3 (algorytm, ZAADAPTOWANY F10.2): kolizja NIE-SĄSIEDNICH przedziałów (środkowy brak) ⇒ colorSegmentLabelRows i tak przydziela RÓŻNE wiersze', () => {
+    // F10.2: patrz uzasadnienie adaptacji w kontrprzykładzie 1 wyżej (ten sam
+    // mechanizm r9 samo-poszerzania kolumny czyni historyczny scenariusz
+    // „3 wąskie stacje" niereprodukowalnym niezależnie od długości tekstu —
+    // zweryfikowane empirycznie do n=500). Test ZAADAPTOWANY: dowodzi
+    // WPROST na `colorSegmentLabelRows`, że kolizja DWÓCH NIE-SĄSIADUJĄCYCH
+    // indeksów (środkowy, index 1, bez slotu w ogóle — `null`) jest
+    // wykrywana mimo braku pary sąsiedniej z segmentem po obu stronach
+    // (historyczny bug: warunek liczony TYLKO dla par sąsiednich nigdy nie
+    // odpalał w tym układzie).
+    const slots = [
+      { stationIndex: 0, x: 0, width: 100 },
+      null, // stacja środkowa bez segmentu — historyczny bug pomijał tę parę
+      { stationIndex: 2, x: 50, width: 100 }, // [50,150) nachodzi na [0,100)
+    ];
+    const rows = colorSegmentLabelRows(slots);
+
+    expect(rows.rowCount).toBeGreaterThanOrEqual(2); // kolorowanie WYKRYWA kolizję mimo brak segmentu w środku
+    expect(rows.rowOf[0]).not.toBe(rows.rowOf[2]);
+  });
+});
+
+describe('V3 layout — bands (spec §5.2, F3 fix r1): B2 rośnie z treści (podpis kierunku pola)', () => {
+  it('B2 = BUS_AXIS_BAND_HEIGHT + wiersz t3 gdy stacja ma podpis kierunku; bez podpisu — stała geometryczna (bez regresji)', () => {
+    const station = makeStation('s1', 5, 2);
+    const withoutCaption = bandHeightsFor(station, null);
+    const stationWithCaption: StationMeasureInput = {
+      ...station,
+      bayDirectionCaptions: ['kier. GPZ Południe', null],
+    };
+    const withCaption = bandHeightsFor(stationWithCaption, null);
+
+    const bandsWithout = computeBands([withoutCaption]);
+    const bandsWith = computeBands([withCaption]);
+
+    expect(bandsWithout.bands.B2.height).toBe(BUS_AXIS_BAND_HEIGHT);
+    expect(bandsWith.bands.B2.height).toBeGreaterThan(bandsWithout.bands.B2.height);
+  });
+
+  it('dłuższy podpis kierunku vs krótszy: wysokość B2 zależy od OBECNOŚCI podpisu (jeden wiersz t3), nie od jego długości znakowej (bez zawijania linii — spec nie definiuje wielowierszowych podpisów t3)', () => {
+    const station = makeStation('s1', 5, 2);
+    const shortCaption: StationMeasureInput = { ...station, bayDirectionCaptions: ['kier. S03'] };
+    const longCaption: StationMeasureInput = {
+      ...station,
+      bayDirectionCaptions: ['kier. GPZ Południowy-Wschód (bardzo długi opis kierunku)'],
+    };
+    const bandsShort = computeBands([bandHeightsFor(shortCaption, null)]);
+    const bandsLong = computeBands([bandHeightsFor(longCaption, null)]);
+    // Rośnie względem BRAKU podpisu (test powyżej); dla obu obecnych podpisów
+    // wysokość identyczna — długość znakowa wpływa na SZEROKOŚĆ (measure.ts),
+    // nie na wysokość wiersza t3 (bez zawijania, jedna prawda typografii).
+    expect(bandsShort.bands.B2.height).toBe(bandsLong.bands.B2.height);
+    expect(bandsShort.bands.B2.height).toBeGreaterThan(BUS_AXIS_BAND_HEIGHT);
+  });
+});
+
+describe('V3 layout — bands/columns (spec §5.2, F3 fix r2, r9: kolorowanie zamiast parzystości): wielowierszowość B1', () => {
+  it('dwie sąsiednie WĄSKIE stacje z etykietą segmentu szerszą niż ich naturalny gabaryt → B1 dwuwierszowe, sloty w różnych wierszach, zero nakładania', () => {
+    // Stacje maksymalnie wąskie (1-znakowa nazwa, 1 pole transformatorowe) —
+    // naturalny gabaryt mały; etykieta bardzo długa ⇒ z konstrukcji sloty
+    // nachodzą się w X ⇒ kolorowanie WYMUSZA ≥2 wiersze (`colorSegmentLabelRows`).
+    const stationA = makeStation('a', 1, 1);
+    const stationB = makeStation('b', 1, 1);
+    const wideLabel = 'YAKXS 3×120/16 · 90 m — bardzo długi opis odcinka magistrali SN';
+
+    const { bandsResult, columnsResult } = buildColumnsForStations([stationA, stationB], [wideLabel, wideLabel]);
+    expect(columnsResult.segmentLabelRowCount).toBeGreaterThanOrEqual(2);
+    expect(bandsResult.bands.B1.height).toBe(snapUp(columnsResult.segmentLabelRowCount * SEGMENT_LABEL_ROW_HEIGHT));
+    expect(columnsResult.segmentLabelSlots).toHaveLength(2);
+
+    const [slotA, slotB] = columnsResult.segmentLabelSlots;
+    expect(slotA.rect.y).not.toBe(slotB.rect.y); // różne wiersze (kolorowanie)
+    expect(slotA.rect.height).toBe(SEGMENT_LABEL_ROW_HEIGHT); // jeden wiersz per slot, nie całe podwojone B1
+    expect(slotB.rect.height).toBe(SEGMENT_LABEL_ROW_HEIGHT);
+    expect(rectsOverlap(slotA.rect, slotB.rect)).toBe(false);
+    // oba sloty mieszczą się WEWNĄTRZ pasma B1 (spójność geometrii pasmo↔slot)
+    for (const slot of [slotA, slotB]) {
+      expect(slot.rect.y).toBeGreaterThanOrEqual(bandsResult.bands.B1.y);
+      expect(slot.rect.y + slot.rect.height).toBeLessThanOrEqual(bandsResult.bands.B1.y + bandsResult.bands.B1.height);
+    }
+  });
+
+  it('gdy TYLKO JEDNA sąsiadująca stacja ma zbyt szeroką etykietę (druga bez segmentu) i sloty NIE nachodzą się w X → B1 pozostaje jednowierszowe', () => {
+    const stationA = makeStation('a', 1, 1);
+    const stationB = makeStation('b', 30, 5);
+    const wideLabel = 'YAKXS 3×120/16 · 90 m — bardzo długi opis odcinka magistrali SN';
+
+    const { bandsResult, columnsResult } = buildColumnsForStations([stationA, stationB], [wideLabel, null]);
+    expect(columnsResult.segmentLabelRowCount).toBe(1);
+    expect(bandsResult.bands.B1.height).toBe(snapUp(SEGMENT_LABEL_ROW_HEIGHT));
+  });
+});
+
+describe('V3 layout — bands/columns (F3 fix r3): "" nie rezerwuje NIGDZIE (jedno wejście, spójna normalizacja)', () => {
+  it('normalizeSegmentText: pusty/whitespace/null ⇒ null; realny tekst ⇒ niezmieniony (jedna prawda dla bands I columns)', () => {
+    expect(normalizeSegmentText(null)).toBeNull();
+    expect(normalizeSegmentText(undefined)).toBeNull();
+    expect(normalizeSegmentText('')).toBeNull();
+    expect(normalizeSegmentText('   ')).toBeNull();
+    expect(normalizeSegmentText('15 kV')).toBe('15 kV');
+  });
+
+  it('"" i "   " dają IDENTYCZNY wynik co null zarówno w bands (B1) jak i w columns (segmentLabelSlots) — przed r3 "" dawał wysokość w bands bez slotu w columns', () => {
+    const station = makeStation('s1', 10, 3);
+    const withNull = buildColumnsForStations([station], [null]);
+    const withEmpty = buildColumnsForStations([station], ['']);
+    const withWhitespace = buildColumnsForStations([station], ['   ']);
+
+    for (const variant of [withEmpty, withWhitespace]) {
+      expect(variant.bandsResult.bands.B1.height).toBe(withNull.bandsResult.bands.B1.height);
+      expect(variant.bandsResult.bands.B1.height).toBe(0); // brak segmentu ⇒ zero rezerwacji, nigdzie
+      expect(variant.columnsResult.segmentLabelSlots).toHaveLength(0);
+      expect(variant.columnsResult.columns[0].width).toBe(withNull.columnsResult.columns[0].width);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// r7b (F5a): ColumnResult.tapX + rezerwacja SegmentLabelSlotResult.rect
+// wyśrodkowana na przęśle TAP-DO-TAP (nie na krawędziach kolumny).
+// ---------------------------------------------------------------------------
+
+describe('V3 layout — columns (r7b): tapX = zaczep magistrali (środek BLOKU, nie kolumny)', () => {
+  it('tapX jest na siatce dla każdej kolumny', () => {
+    const stations = [makeStation('s1', 5, 2), makeStation('s2', 25, 5), makeStation('s3', 2, 3)];
+    const { columnsResult } = buildColumnsForStations(stations, [null, '15 kV', null]);
+    for (const c of columnsResult.columns) {
+      expect(c.tapX % GRID).toBe(0);
+    }
+  });
+
+  it('tapX ≠ środek kolumny, gdy kolumna jest poszerzona przez etykietę segmentu (blok jest węższy niż kolumna)', () => {
+    // Stacja z 1 polem TR (blok wąski) + bardzo długa etykieta segmentu
+    // wejściowego (poszerza KOLUMNĘ znacznie ponad blok).
+    const station = makeStation('s1', 1, 1);
+    const wideLabel = 'YAKXS 3×120/16 · 90 m — bardzo długi opis odcinka magistrali SN';
+    const { columnsResult } = buildColumnsForStations([station], [wideLabel]);
+    const column = columnsResult.columns[0];
+    const columnCenter = column.x + column.width / 2;
+    expect(column.tapX).not.toBe(columnCenter);
+    // tapX leży w LEWEJ części (bliżej x=0+GRID) kolumny poszerzonej w prawo
+    // przez etykietę segmentu (blok zakotwiczony lewym marginesem GRID).
+    expect(column.tapX).toBeLessThan(columnCenter);
+  });
+
+  it('pierwsza kolumna: tapX = GRID + blockWidth/2 (lewa krawędź świata = 0)', () => {
+    const station = makeStation('s1', 3, 2);
+    const { columnsResult } = buildColumnsForStations([station], [null]);
+    expect(columnsResult.columns[0].x).toBe(0);
+    expect(columnsResult.columns[0].tapX).toBeGreaterThan(0);
+    expect(columnsResult.columns[0].tapX).toBeLessThan(columnsResult.columns[0].width);
+  });
+});
+
+describe('V3 layout — columns (r7b): rezerwacja etykiety segmentu wyśrodkowana na przęśle tap-do-tap', () => {
+  it('segmentLabelSlots[j].rect jest wyśrodkowany na [tapX_{j-1} lub 0, tapX_j], nie na krawędziach kolumny', () => {
+    const stations = [makeStation('s1', 5, 2), makeStation('s2', 12, 4)];
+    const labels = ['15 kV', 'YAKXS 3×70/16 · 45 m'];
+    const { columnsResult } = buildColumnsForStations(stations, labels);
+
+    columnsResult.segmentLabelSlots.forEach((slot) => {
+      const spanStart = slot.stationIndex > 0 ? columnsResult.columns[slot.stationIndex - 1].tapX : 0;
+      const spanEnd = columnsResult.columns[slot.stationIndex].tapX;
+      const spanCenter = (spanStart + spanEnd) / 2;
+      const rectCenter = slot.rect.x + slot.rect.width / 2;
+      expect(Math.abs(rectCenter - spanCenter)).toBeLessThan(GRID);
+      expect(slot.rect.width % GRID).toBe(0);
+      expect(slot.rect.x % GRID).toBe(0);
+    });
+  });
+
+  it('szerokość rezerwacji = snapUp(requiredSegmentLabelWidth(text)) — NIEZALEŻNA od szerokości kolumny (r7b)', () => {
+    const station = makeStation('s1', 30, 5); // kolumna szeroka (duża stacja)
+    const shortLabel = '15 kV';
+    const { columnsResult } = buildColumnsForStations([station], [shortLabel]);
+    const slot = columnsResult.segmentLabelSlots[0];
+    expect(slot.rect.width).toBe(snapUp(requiredSegmentLabelWidth(shortLabel)));
+    // Rezerwacja jest WĘŻSZA niż cała (szeroka) kolumna — dowód, że rect już
+    // nie jest przypięty do krawędzi/szerokości kolumny (przed r7b: rect.width
+    // === column.width zawsze).
+    expect(slot.rect.width).toBeLessThan(columnsResult.columns[0].width);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// r9 (F5a fix): kolorowanie grafu przedziałów (`colorSegmentLabelRows`) na
+// RZECZYWISTYCH rectach x/width subsumuje dowód r7b „span > przybliżenie
+// kolumnowe" — nie ma już osobnego warunku geometrycznego do udowodnienia,
+// tylko sprawdzenie realnych rectów, więc te same scenariusze (etykieta zbyt
+// szeroka na wąskie przęsło blisko krawędzi świata) są tu zachowane jako
+// regresja mechanizmu.
+// ---------------------------------------------------------------------------
+
+describe('V3 layout — kolorowanie wierszy (r9): przęsło WĄSKIE blisko krawędzi świata wykrywane poprawnie', () => {
+  it('etykieta zbyt szeroka na WĄSKIE przęsło (blisko krawędzi świata) pierwszej stacji, ale WĘŻSZA niż requiredStationWidth ⇒ zero kolizji z konstrukcji (clamp do arkusza + kolorowanie, niezależnie od liczby wierszy faktycznie potrzebnych)', () => {
+    // Stacja bardzo wąska (1-polowa, TR-only) blisko x=0 ⇒ jej WŁASNY tap-span
+    // (0..tapX_0) jest z natury mały (~połowa wąskiego bloku). Etykieta
+    // umiarkowanej długości mieści się w `requiredStationWidth` (dawne
+    // przybliżenie kolumnowe: "OK"), ale NIE mieści się w realnym, wąskim
+    // przęśle 0..tapX_0 — r9 liczy na RZECZYWISTYCH, przyciętych do arkusza
+    // rectach, więc to rozróżnienie jest teraz nieistotne: liczy się tylko
+    // czy finalne rects się nachodzą (tu: clamp do arkusza już rozdziela je
+    // wystarczająco — 1 wiersz starcza; dawny mechanizm r7b musiałby wymusić
+    // 2 wiersze TYLKO bo nie przycinał rectu do arkusza).
+    const stationA = makeStation('a', 1, 1);
+    const stationB = makeStation('b', 1, 1);
+    const moderateLabel = '15 kV AB'; // umyślnie krótsza niż WIDE_CABLE_LABEL
+
+    const requiredStationWidthA = requiredStationWidth(stationA);
+    const requiredLabelWidth = requiredSegmentLabelWidth(moderateLabel);
+    // Sanity wejścia scenariusza: dawne przybliżenie kolumnowe NIE oznaczyłoby
+    // tej etykiety jako "zbyt szerokiej" (mieści się w całej kolumnie stacji).
+    expect(requiredLabelWidth).toBeLessThan(requiredStationWidthA);
+
+    const { columnsResult } = buildColumnsForStations([stationA, stationB], [moderateLabel, moderateLabel]);
+    const [slotA, slotB] = columnsResult.segmentLabelSlots;
+    expect(rectsOverlap(slotA.rect, slotB.rect)).toBe(false);
+  });
+
+  it('gdy OBIE stacje mieszczą etykietę na WŁASNYM przęśle (spanWidth) ⇒ jeden wiersz wystarcza, zero kolizji', () => {
+    const stations = [makeStation('a', 20, 4), makeStation('b', 20, 4)];
+    const shortLabel = '15 kV';
+    const { columnsResult } = buildColumnsForStations(stations, [shortLabel, shortLabel]);
+    expect(columnsResult.segmentLabelRowCount).toBe(1);
+
+    const [slotA, slotB] = columnsResult.segmentLabelSlots;
+    expect(rectsOverlap(slotA.rect, slotB.rect)).toBe(false);
+  });
+});

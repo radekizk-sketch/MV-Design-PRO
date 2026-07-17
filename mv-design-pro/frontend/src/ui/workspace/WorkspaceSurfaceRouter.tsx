@@ -33,7 +33,7 @@ import {
   useStationAudit2ConfigList,
   validateHostingCapacityExport,
 } from '../network-build/station-der';
-import { SldWorkspaceContainer } from '../sld/v2/canvas/SldWorkspaceContainer';
+import { SldCanvasV3Workspace } from '../sld/v3/canvas/SldCanvasV3Workspace';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
 import { FrtHvrtCurves, type NcRfgProfileId } from '../protection-curves/FrtHvrtCurves';
 import { TimeCurrentChart } from '../protection-curves/TimeCurrentChart';
@@ -3104,9 +3104,10 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'E-01':
       // Etap 1 dostawy: E-01 (Główne środowisko pracy SLD) renderuje się
       // domyślnie jako children CanonicalLayout w App.tsx. Gdy ktoś otworzy
-      // E-01 jako rozszerzoną powierzchnię (openRouteSurface('E-01')), również
-      // renderujemy SldWorkspaceContainer dla spójności kontraktu shellu.
-      return <SldWorkspaceContainer />;
+      // E-01 jako rozszerzoną powierzchnię (openRouteSurface('E-01')),
+      // renderujemy TEN SAM, jedyny render — F12-C (spec §10.1 ARCH-4):
+      // ścieżka renderu v2 i punkt decyzji hosta USUNIĘTE, zgodnie z App.tsx.
+      return <SldCanvasV3Workspace />;
     case 'E-00':
       // Etap 2 dostawy: Pulpit projektu (lista projektów + nowy projekt).
       return <ProjectDashboardSurface />;

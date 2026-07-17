@@ -119,14 +119,17 @@ describe('SCADA Compliance Contract — tor mocy + symbole + porty', () => {
   });
 
   describe('Determinizm renderu — FNV-1a hash + golden snapshots', () => {
-    it('Visual fixtures test istnieje (regression baseline)', () => {
-      expect(fileExists('ui/sld/v2/__tests__/visualFixtures.test.ts')).toBe(true);
+    it('Layout substrate regression baseline istnieje (żywy silnik topologiczny)', () => {
+      // Poprzedni baseline (visualFixtures na martwym HierarchicalLayout) usunięto
+      // w konsolidacji 2026-07; regresję determinizmu pokrywa żywy substrate test.
+      expect(fileExists('ui/sld/v2/geometry/__tests__/layoutEngine.substrate.test.ts')).toBe(true);
     });
 
     it('Determinism guard w skryptach repo', () => {
       // sld_determinism_guards.py — sprawdzane oddzielnie przez CI guard.
-      // Tutaj tylko upewniamy, że SLD V2 ma stable test foundation.
-      expect(fileExists('ui/sld/v2/builder/HierarchicalLayout.ts')).toBe(true);
+      // Tutaj tylko upewniamy, że SLD V2 ma stable test foundation (żywa geometria
+      // port-anchored, nie martwy builder/ HierarchicalLayout).
+      expect(fileExists('ui/sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts')).toBe(true);
     });
   });
 
@@ -136,7 +139,9 @@ describe('SCADA Compliance Contract — tor mocy + symbole + porty', () => {
     });
 
     it('Readability metrics test foundation', () => {
-      expect(fileExists('ui/sld/v2/__tests__/readabilityMetrics.test.ts')).toBe(true);
+      // Poprzedni readabilityMetrics (na martwym CorridorLayout) usunięto w
+      // konsolidacji 2026-07; anti-collision pokrywa żywy LabelDeclutter test.
+      expect(fileExists('ui/sld/v2/canvas/__tests__/LabelDeclutter.test.ts')).toBe(true);
     });
   });
 
@@ -149,8 +154,21 @@ describe('SCADA Compliance Contract — tor mocy + symbole + porty', () => {
       expect(fileExists('ui/sld/v2/geometry/routing.ts')).toBe(true);
     });
 
-    it('CadOverlay component istnieje (warstwa edycji)', () => {
-      expect(fileExists('ui/sld/v2/canvas/CadOverlay.tsx')).toBe(true);
+    it('mechanizmy siatki/portów żyją w wyroczniach v3 (F12-C: CadOverlay skasowany — ARCH-1)', () => {
+      // F12-C (spec §10.1 ARCH-1, rozstrzygnięcie architekta 2026-07-16):
+      // CadOverlay był martwym szkieletem edycji (zero produkcyjnych
+      // wołających — dowód w spec §10.1) i został SKASOWANY razem ze ścieżką
+      // renderu v2. Wymaganie #4 (ortogonalne + siatka + porty) jest
+      // egzekwowane na ŻYWEJ ścieżce renderu przez wyrocznie v3:
+      // grid_probe/port_probe (`allSceneGeometryOnGrid`/
+      // `sceneSegmentEndpointGaps`, accept:sld-v3 §11.1/§11.2).
+      expect(fileExists('ui/sld/v3/scene/buildScene.ts')).toBe(true);
+      const buildScene = readFileSync(
+        join(FRONTEND_SRC, 'ui/sld/v3/scene/buildScene.ts'),
+        'utf-8',
+      );
+      expect(buildScene).toContain('allSceneGeometryOnGrid');
+      expect(buildScene).toContain('sceneSegmentEndpointGaps');
     });
   });
 

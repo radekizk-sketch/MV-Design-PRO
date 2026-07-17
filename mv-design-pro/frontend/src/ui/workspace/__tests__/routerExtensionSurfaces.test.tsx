@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithQueryClient as render } from '../../../test/queryClientTestUtils';
 
 import { useAppStateStore } from '../../app-state';
@@ -44,6 +44,19 @@ describe('routerExtensionSurfaces', () => {
       render(<WorkspaceSurfaceRouter region="main" />);
       // AuditTrailPanel zawsze renderuje stan (pusty lub z danymi)
       expect(document.body.textContent).toMatch(/historia|operac/i);
+    });
+  });
+
+  // F12-C (spec par. 10.1 ARCH-4): sciezka renderu v2 i host USUNIETE —
+  // E-01 jako rozszerzona powierzchnia renderuje bezposrednio JEDYNY render
+  // (SldCanvasV3Workspace), spojnie z App.tsx.
+  describe('SldCanvasV3Workspace jako E-01 (WorkspaceSurfaceRouter drugi punkt osadzenia)', () => {
+    it('renderuje SldCanvasV3Workspace dla rozszerzonej powierzchni E-01', () => {
+      useNetworkBuildStore.setState({
+        activeSurface: buildSurface('E-01', 'Środowisko pracy SLD'),
+      });
+      const { container } = render(<WorkspaceSurfaceRouter region="main" />);
+      expect(container.querySelector('[data-testid="sld-canvas-v3-workspace"]')).toBeTruthy();
     });
   });
 });

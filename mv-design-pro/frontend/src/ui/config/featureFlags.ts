@@ -101,6 +101,7 @@ export interface FeatureFlags {
    * Env override: VITE_USE_LAYOUT_V3
    */
   USE_LAYOUT_V3: boolean;
+
 }
 
 /**

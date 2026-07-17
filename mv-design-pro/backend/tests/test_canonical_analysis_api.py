@@ -463,6 +463,122 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert "xl/worksheets/sheet1.xml" in names
 
 
+def test_resultset_v1_includes_branch_elements_for_load_flow(client: TestClient) -> None:
+    """F9.6 (c): `build_execution_result_set` musi wolac `build_branch_results`
+    dla PF, inaczej `/api/execution/runs/{id}/results/v1` nie niesie elementow
+    galeziowych i nakladka przeplywu mocy (F9.5, spec Sec14.2) buduje sie pusta
+    na kazdym realnym przebiegu. Sieć referencyjna: `bus-main` (zrodlo) ->
+    `branch-load` (kabel, from_bus_ref=bus-main) -> `bus-load` (odbior)."""
+    case_id = str(uuid4())
+    _seed_power_flow_enm(client, case_id)
+
+    run_response = client.post(f"/api/cases/{case_id}/runs/power-flow")
+    assert run_response.status_code == 200
+    run_id = run_response.json()["run_id"]
+
+    # Wartosc referencyjna: ten sam run, inny (juz istniejacy, przetestowany
+    # gdzie indziej) endpoint galeziowy — `build_branch_results_response`.
+    reference_response = client.get(f"/api/analysis-runs/{run_id}/results/branches")
+    assert reference_response.status_code == 200
+    reference_row = next(
+        row for row in reference_response.json()["rows"] if row["element_id"] == "branch-load"
+    )
+
+    resultset_response = client.get(f"/api/execution/runs/{run_id}/results/v1")
+    assert resultset_response.status_code == 200
+    resultset_payload = resultset_response.json()
+
+    branch_elements = [
+        er for er in resultset_payload["element_results"] if er["element_type"] == "Branch"
+    ]
+    assert branch_elements, "resultset v1 musi niesc elementy galeziowe dla LOAD_FLOW"
+    branch_refs = {er["element_ref"] for er in branch_elements}
+    assert "branch-load" in branch_refs
+
+    # F9.6 (f) — dowod PRZEPUSZCZENIA (nie fabrykacji) na realnych danych:
+    # `values` w resultset v1 MUSZA byc DOKLADNIE tym, co juz zwraca
+    # `build_branch_results` (ten sam run, inny endpoint) — zero podmiany
+    # znaku/wartosci przy dolozeniu petli w `build_execution_result_set`.
+    # NAPRAWIONE w F9.8 (2026-07-15): znalezisko powyzej (znak `p_from_mw`
+    # ujemny dla zrodlo->odbior, sprzeczny z fizyka) bylo objawem podwojnej
+    # negacji w `canonical_analysis.py::_execute_power_flow` (PQSpec budowany
+    # wprost z `Node.active_power`, ktory jest w konwencji generacyjnej, a
+    # solver oczekuje konwencji obciazeniowej). Naprawiono konwersja gen->load
+    # NA GRANICY budowy PQSpec (`p_mw=-float(node.active_power or 0.0)`,
+    # analogicznie q). Dowod fizyczny na realnych danych ponizej w
+    # `test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correct`.
+    branch_load_values = next(
+        er["values"] for er in branch_elements if er["element_ref"] == "branch-load"
+    )
+    assert branch_load_values["p_mw"] == pytest.approx(reference_row["p_mw"])
+    assert branch_load_values["q_mvar"] == pytest.approx(reference_row["q_mvar"])
+    assert branch_load_values["i_a"] == pytest.approx(reference_row["i_a"])
+    assert branch_load_values["p_mw"] != 0.0
+    assert branch_load_values["i_a"] > 0.0
+
+    overlay_elements = resultset_payload["overlay_payload"]["elements"]
+    assert "branch-load" in overlay_elements
+    branch_metrics = overlay_elements["branch-load"]["metrics"]
+    assert branch_metrics["P_MW"]["value"] == pytest.approx(branch_load_values["p_mw"])
+    assert branch_metrics["Q_Mvar"]["value"] == pytest.approx(branch_load_values["q_mvar"])
+    assert branch_metrics["I_A"]["value"] == pytest.approx(branch_load_values["i_a"])
+
+
+def test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correct(
+    client: TestClient,
+) -> None:
+    """F9.8: independent physical proof of the correct sign convention on real
+    resultset v1 data (closes F9.6 (f) / F9.5 arrow-direction finding).
+
+    Network: `bus-main` (slack, source) -[branch-load, from=bus-main,
+    to=bus-load]-> `bus-load` (pure PQ load, p_mw=1.2, q_mvar=0.35). Basic
+    circuit theory (independent of any internal solver sign convention):
+    active power flowing INTO a bus that only consumes power (no local
+    generation) must have `p_from_mw > 0` in the branch's own from->to
+    orientation, and the source-side bus (held at the slack setpoint) must sit
+    at a strictly higher |V| than the loaded bus downstream of a resistive/
+    inductive cable (voltage drop in the direction of flow). This does not
+    depend on re-deriving the PQSpec sign convention — it only uses the
+    physical fact that a load sink cannot be a net source.
+    """
+    case_id = str(uuid4())
+    _seed_power_flow_enm(client, case_id)
+
+    run_response = client.post(f"/api/cases/{case_id}/runs/power-flow")
+    assert run_response.status_code == 200
+    run_id = run_response.json()["run_id"]
+
+    resultset_response = client.get(f"/api/execution/runs/{run_id}/results/v1")
+    assert resultset_response.status_code == 200
+    resultset_payload = resultset_response.json()
+
+    branch_elements = {
+        er["element_ref"]: er
+        for er in resultset_payload["element_results"]
+        if er["element_type"] == "Branch"
+    }
+    bus_elements = {
+        er["element_ref"]: er
+        for er in resultset_payload["element_results"]
+        if er["element_type"] == "Bus"
+    }
+
+    branch_values = branch_elements["branch-load"]["values"]
+    # Power must flow FROM the source TOWARDS the load (from_bus_ref=bus-main,
+    # to_bus_ref=bus-load) — a pure sink cannot backfeed its only supply.
+    assert branch_values["p_from_mw"] > 0.0, (
+        "expected p_from_mw > 0 (source -> load); got "
+        f"{branch_values['p_from_mw']} — sign convention regression"
+    )
+
+    v_main = bus_elements["bus-main"]["values"]["u_pu"]
+    v_load = bus_elements["bus-load"]["values"]["u_pu"]
+    assert v_load < v_main, (
+        f"expected voltage drop towards the load (v_pu(bus-load)={v_load} < "
+        f"v_pu(bus-main)={v_main})"
+    )
+
+
 def test_canonical_run_persists_outside_process_memory(client: TestClient) -> None:
     case_id = str(uuid4())
     _seed_power_flow_enm(client, case_id)

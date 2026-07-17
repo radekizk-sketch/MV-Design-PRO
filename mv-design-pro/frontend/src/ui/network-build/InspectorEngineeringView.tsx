@@ -2596,6 +2596,13 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
             elementType: selectedElement.type,
             snapshot,
             logicalViews,
+            // Klucze semantyczne selekcji (semantic_hash/kind/role) — ta
+            // ścieżka (akcje TechCard) je GUBIŁA, w odróżnieniu od
+            // `handleAction` (QuickAction.context → extraContext): operacja
+            // wywołana z karty traciła tożsamość semantyczną elementu, którą
+            // pilnował test „wybiera akcje segmentu po semantyce selekcji…"
+            // (wykluczony w vite.config zamiast naprawiony; dług 2026-07-17).
+            extraContext: semanticActionContext(selectedElement, {}),
           }));
         },
       };
@@ -2624,8 +2631,15 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       || snapshot?.generators?.some((generator) => generator.ref_id === elementId),
   );
   const publicElementId = publicTechnicalLabel(elementId, elementName);
+  // Podtytuł źródła przekształtnikowego: REALNY wariant przyłączenia z ENM
+  // (`connection_variant` generatora → `connectionVariantLabel`), nie stała.
+  // Poprzedni hardkod „PV za transformatorem SN/nN" kłamał podwójnie: rola
+  // (farma wiatrowa/BESS dostawały „PV") i wariant (nn_side ≠ blokowo przez
+  // transformator) — dokładnie ta regresja, której pilnował test
+  // InspectorEngineeringView „pokazuje kanoniczne etykiety…", wykluczony
+  // w vite.config zamiast naprawiony (dług zlikwidowany 2026-07-17).
   const headerSubtitle = headerIsConverterSource
-    ? `${formatElementTypeLabel(elementType)} - PV za transformatorem SN/nN`
+    ? `${formatElementTypeLabel(elementType)} - ${connectionVariantLabel(selectedConverterGenerator?.connection_variant)}`
     : `${formatElementTypeLabel(elementType)} - Oznaczenie: ${publicElementId}`;
 
   return (

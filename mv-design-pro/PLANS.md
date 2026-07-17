@@ -2,7 +2,7 @@
 
 **Version:** 5.1
 **Status:** LIVING DOCUMENT
-**Last updated:** 2026-05-24 (V12.6 academic end-to-end closure)
+**Last updated:** 2026-07-17 (Reference Engine V1 — globalna integracja referencji SLD, V12K-060)
 **Reference (canon):** [`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md) (binding), [`docs/system/`](docs/system/) (binding specs), [`SYSTEM_SPEC.md`](SYSTEM_SPEC.md) (executive overview).
 **Reference (archive):** [`docs/spec/`](docs/spec/) — historical V11 reference; not source of truth.
 **Active work:** see § 3 and [`docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md`](docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md).
@@ -778,6 +778,133 @@ Progress:
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
 program UI/UX nie modyfikuje plików SLD (granica w Programie §2.3).
 
+### 3.-2 SLD v3 CAD/SCADA — program ZAMKNIĘTY + likwidacja długów repo (2026-07-17)
+
+Gałąź `claude/sld-schema-cad-scada-rqvz73`. Przebudowa SLD do jakości CAD/SCADA
+zakończona w całości: fazy F1–F11 (spec `docs/sld/SLD_CAD_SPEC_V3.md`,
+wykonanie `docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md`), F12 (rozstrzygnięcia
+ARCH + kasacja ścieżki renderu v2, −16,5k linii), D3/F13 (kanon energetyczny:
+GPZ WN/SN jako dominanta §21, mostki skrzyżowań i kropka węzłowa §22.1, pas
+ochronny szyn + wejście przez głowicę od dołu §22.3, grubość magistrali §22.4
+— audyt `docs/sld/SLD_ENGINEERING_CANON_AUDIT_D3_2026-07.md`, macierz wyroczni
+`docs/sld/SLD_V3_ACCEPTANCE.md` §5, `npm run accept:sld-v3` ALL PASS L0/L1/L2).
+
+Dyrektywa stała właściciela (2026-07-17): każdy defekt/dług/bug naprawiany
+end-to-end bez pytania. Wykonana likwidacja długów (szczegóły: execplan,
+sekcja „Po programie"): martwe workflowy CI aktywowane, klaster legacy ui/sld
+skasowany (−11,7k linii), lista wykluczeń vitest wyzerowana (odbudowa testu
+inspektora złapała 2 realne regresje komponentu), spójność elektryczna
+szablonów DER (zgubiona moc, TR 3.15 MVA, strona nN za katalogiem),
+test_no_todo_fixme i docs_count trwale zielone.
+
+Runda 8 (2026-07-17, dyrektywa właściciela „Globalna integracja referencji
+SLD" — 12 punktów): REFERENCE ENGINE V1 (spec WIĄŻĄCA
+`docs/sld/REFERENCE_ENGINE_SPEC_V1.md`, ruling V12K-060). Backend
+`src/reference_engine/` z 8 wersjonowanymi pakietami JSON (iec60617 —
+słownik symboli, iec62271 — 10 profili pól required/one_of/forbidden/
+kolejność/aparaty boczne + blokada uziemnika wspólnym predykatem z W034,
+elektrometal_e2alpha, siemens_8djh, schneider_sm6, abb_unigear,
+abb_safering — ref do katalogu rodzin bez kopii danych, osd_enea);
+walidacja NA ŻYWO w walidatorze ENM (kody `reference.bays.*`, ścieżka
+danych, FixAction BayModal); kreator filtrowany słownikiem rodziny
+(SafeRing/8DJH bez CT); silnik zgodności ✓/✗ + Reference Score per pakiet
+(API `/api/reference/*`); frontend: mirror pakietów z parytetem BAJTOWYM,
+parytet słownika §12.4 z profilami (testy z sabotażami), zakładka
+„Referencje" Inspektora ENM. Katalog +Schneider Electric/SM6-24
+(repo_verified). Korekta faktograficzna: e²TANGO = sterowniki polowe (nie
+rozdzielnica) — pakiet Elektrometal oparty na e²ALPHA. Runda 8b (dyrektywa
+„zlec podwykonawca, zarządzaj, weryfikuj"): 2 podwykonawców research +
+integracja — pakiet osd_enea@2026-02 z pełnej lektury 4 dokumentów Enea
+Operator (5 reguł implemented: stacja kompaktowa podstawą, zakaz słupowej
+z kablowym podejściem SN, granice mocy TR 630/400 kVA, skład 1×TR+1–4
+liniowe, pomiar U/I pól zdalnie sterowanych TELE §6.4.1; kwalifikacja do
+telemechaniki NIEUREGULOWANA w standardzie — ustalenie z lektury); 40
+konfiguracji celek z oficjalnych katalogów (SafeRing/8DJH/SM6/UniGear) +
+family.cell_match + test kreator↔celki; e²ALPHA uczciwie bez celek
+(producent nie publikuje składu per typ pola). Dług pozostały: wzorniki
+GRAFICZNE producentów (zlokalizowane legendy symboli w katalogach — punkt
+startu). Szczegóły: execplan runda 8/8b. PRZEKAZANIE do wątku UI/UX
+(zlecenie właściciela 2026-07-17): kontrakt koordynacyjny
+`docs/sld/REFERENCE_ENGINE_UI_HANDOFF_2026-07.md` — prezentacja Reference
+Score/ostrzeżeń/✓✗ per element/pickera rodzin w nowej powłoce; kontrakty
+API + reguły twarde + potwierdzenia (wzorzec kontraktu 2026-07-15).
+
+Runda 7 (2026-07-17, „zaprojektuj i wykonaj end-to-end" — 7 pozycji PLAN
+recenzji NO-GO): szablony technologiczne pól (RMU-liniowe rozłącznik+ES+
+głowica, RMU-trafo z uziemnikiem; nowy glif rozłącznika IEC 60617; wyrocznia
+bay_template_probe z negatywem; korekta klas sylwetek V12K-031-A); tor za TR
+domknięty (wiersze „Szyna nN · 0.4 kV" + odbiór ΣP/ΣQ z rekordów Load albo
+jawna granica modelu; strzałka odbioru na szynie nN); identyfikatory globalne
+S01.F01.Q2 w inspektorze + serializacja Bay.primary_devices na snapshotcie
+(domknięcie V12K-030); walidator blokady uziemnika W034 + pole domeny
+earthing_role; VT/3U0 szyn GPZ z danych Measurement; etykiety kabli z parą
+końców „GPZ ↔ S01 — typ · długość"; pkt 16 (skala) — pomiar próby kompakcji
+wykazał potrzebę lustrzanej kompozycji wiersza (plan). Szczegóły + statusy:
+`docs/sld/SLD_REVIEW_NO_GO_2026-07-17.md`, execplan runda 7.
+
+Runda 6 (2026-07-17, recenzja NO-GO właściciela — 16 punktów, rejestr WIĄŻĄCY
+`docs/sld/SLD_REVIEW_NO_GO_2026-07-17.md`): naprawy GLOBALNE (spec/generator/
+domena/walidator): objazd magistrali poza granicą strefy GPZ (+3×GRID, warunek
+z pasem ±2×GRID); strona zaczepu źródła za `Source.bus_ref` — ekwiwalent SN na
+szynie SN z tabliczką w napięciu WŁASNEJ szyny + wiersz „Ekwiwalent sieci
+zasilającej" (koniec fałszu „Sk″ 250/Ik″ 9,62 przy 110 kV"), walidator domeny
+`sources.sk_ik_voltage_inconsistent` (Ik″=Sk″/(√3·U) ±5%); tabliczka TR z
+uk%/Pk z ENM; typ stacji terminalnej z topologii („stacja końcowa" gdy drugi
+koniec wisi, stopNote); numeracja pól GPZ F01/FT1 jako ostatni fallback;
+kotwica QE przy WŁASNYM uziemniku; legenda + głowica/źródło/koniec otwarty,
+miernik z literą wielkości (A/V z danych pomiaru); unikatowe domyślne nazwy
+stacji z kodem Sxx u źródła (backend). Regres złapany renderem: „Szyna WN ·
+15 kV" → osobny kanał `hvBusVoltageKv`. Pozycje PLAN (szablony technologiczne
+pól RMU, odbiory 0,4 kV, globalne ID aparatów, typologia uziemień, pomiary
+U/3U0, etykiety przy trasie, skala kompozycji) — projekt w rejestrze recenzji.
+
+Runda 4-5 (2026-07-17, odbiór „100% klasy przemysłowej" + korekta kanonu):
+FEEDERY Z PÓL GPZ wykonane end-to-end — wiersz feederu ze stacjami / bieg
+otwarty, `meta.stationCount` liczy stacje faktycznie narysowane, render DoD
+`docs/audit/visual/sld_gpz_feeder_L2.png`. KOREKTA KANONU (dyrektywa
+właściciela: „z jednego pola liniowego nigdy nie wychodzą dwa kable — każde
+wyprowadzenie ma dedykowane pole"): pierwotny T-zaczep przy wspólnym polu był
+herezją inżynierską i został usunięty; naprawa u ŹRÓDŁA w domenie —
+`start_branch_segment_sn` z GPZ przydziela DEDYKOWANE pole liniowe (wolne albo
+nowe; limit sekcji; relacja dwustronna pole↔korytarz — spec §21.3), scena
+rysuje feeder wyłącznie z jego pola (brak pola ⇒ stopNote), a korytarz
+magistrali omija pas portów innych pól. Świadomie poza zakresem (F6b): wiele
+GPZ i odgałęzienia zagnieżdżone (jawne stopNotes). Wcześniej w tej rundzie:
+odmaskowanie klików e2e (Zero-Debt pkt 5) ujawniło i naprawiło nieklikalną
+kreskę toru (hitbox 12 px) i martwy lewy klik (pointer-capture).
+
+Runda 3 (2026-07-17, „Wykonaj"): OBIE ostatnie luki v3 zamknięte end-to-end
+(szczegóły + pomiary: execplan, sekcja „Dług otwarty… ZAMKNIĘTE"):
+(1) §16-v3 biegi OTWARTE + tożsamość łańcucha — realne segmenty ENM bez
+następnika (13 ogonów na fixturze referencyjnej, dotąd niewidocznych) rysowane
+do słupka terminalnego z etykietą „koniec otwarty"; przęsła wieloczłonowe
+niosą kawałek per segment ENM (klik/nakładka per człon); wyrocznia
+`open_terminal_probe` + 21 testów na fixturach z realnego backendu;
+(2) program P-A — nakładka rozpływu deklaruje pochodzenie na kanwie
+(badge case_ref/zbieżność) i niesie atrybuty solverowe na odcinkach/symbolach;
+`sld-pa-powerflow-tor` 6/6, `sld-editor-real-backend-flex` 2/2. Przy okazji
+naprawione DWA defekty produktu: martwy lewy klik w elementy kanwy
+(pointer-capture przekierowywał click na tło) i selekcja transformatora
+(bay-ref zamiast realnego refu + odporność na modele z pustym `bays`).
+
+### 3.-1 ESKALACJA (2026-07-15): odwrócony znak mocy w canonical PF pipeline — NAPRAWIONE (F9.8, tego samego dnia)
+
+Podczas F9.6 przebudowy SLD v3 (`docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md` § F9.8) wykryto i
+NIEZALEŻNIE POTWIERDZONO (reprodukcja z dwóch ścieżek) pre-istniejącą podwójną negację znaku mocy:
+`mapping.py` buduje `Node.active_power` w konwencji generacyjnej, `canonical_analysis.py:1185`
+przekazuje ją wprost do `PQSpec.p_mw`, a solver (`build_power_spec_v2`) neguje ponownie, oczekując
+konwencji obciążeniowej. Skutek: obciążenia wchodzą do rozpływu jako generacja — odwrócone znaki
+`p_from_mw`/`q_from_mvar` i błędny profil napięcia (rośnie za obciążeniem) w KAŻDYM realnym
+przebiegu LOAD_FLOW przez canonical pipeline. Istniejące testy nie łapią błędu (asercje wyłącznie
+względne/samo-spójne). Solver niskopoziomowy jest POPRAWNY — błąd leży w warstwie przygotowania
+wejścia (`canonical_analysis.py`, `sld_substrate_power_flow.py`). Plan naprawy (wiążący kształt,
+zalecony przez recenzję): § F9.8 w `docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md`.
+**STATUS: NAPRAWIONE w rundzie F9.8 (2026-07-15, recenzja APPROVE z niezależną reprodukcją):**
+konwersja gen→load na granicy budowy PQSpec (`canonical_analysis.py`, `sld_substrate_power_flow.py`),
+solver i mapping nietknięte; dowód topologiczny w
+`test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correct`; asercje bezwzględne
+dodane tam, gdzie testy były samo-spójne z błędem. Szczegóły i liczby przed/po: § F9.8 execplanu.
+
 ### 3.0.0 V12.6 academic end-to-end closure (completed)
 
 Status:
@@ -1066,6 +1193,41 @@ PR-0..PR-4 stanowią **fundament merge-ready** rebuild-u: wszystkie inwarianty k
 - Type-check + lint: green.
 
 Następne PR-y (PR-5..PR-16) — patrz pełen plan `/root/.claude/plans/jeste-uruchomionym-jednocze-nie-zespo-em-peaceful-snowglobe.md`.
+
+---
+
+### 3.4 SLD v3 — przebudowa CAD/SCADA wg SLD_CAD_SPEC_V3 (2026-07, dyrektywy D1+D2 WDROŻONE)
+
+**Branch:** `claude/sld-schema-cad-scada-rqvz73` · **Plan:** `docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md` · **Spec (wiążąca):** `docs/sld/SLD_CAD_SPEC_V3.md`
+
+Program F1–F11 zamknięty (2026-07-16). Zakres wdrożony:
+- **Pipeline v3** (measure→bands→columns→route→label, GRID=8, LOD 0/1/2, determinizm) + kanwa
+  `SldCanvasV3` z kamerą (pan/zoom/pinch, histereza LOD, fit per LOD — k4 rozwiązane F8a).
+- **Dyrektywa D1** (oznaczenie zabezpieczeń jak na schemacie referencyjnym ABB): przekaźnik-okrąg
+  z kodami funkcji, wyłącznik „52"-kwadrat, tor wyzwalania (dash 4-2), linia pomiarowa CT→przekaźnik
+  (dash 2-2), miernik „M" z legendą dyskryminującą — spec §17/§20, GPZ objęty od F11.1.
+- **Dyrektywa D2** (9 ustaleń inżynierskich): ciągły tor z opisanymi zakończeniami (§18.6), pola
+  funkcjonalnie bez WE/WY (§19.4), Q per aparat (§19.1), typ stacji z topologii (§19.5), symbole
+  IEC ze stanem + szyny „Sekcja N · V kV" (§19.2/§19.3), uziemnik LATERALNIE z blokadą w legendzie
+  (§18.1), CT opisane/powiązane + VT równolegle (§18.2/§18.3), rozdzielone linie pomiar/TRIP +
+  walidacja topologiczna 67N/87T/51N (§20.1/§20.2), adnotacje nie zasłaniają toru (§20.3).
+- **Uczciwość danych**: naprawy fabrykacji u źródła (podwójna negacja znaku mocy w canonical PF —
+  §3.-1 wyżej; heurystyka zero_sequence; stała operating_mode → realny kanał `Generator.meta`,
+  F11.3 backend+frontend §13.3); brak danych = brak rysunku + stopNote/missingData.
+- **Wyrocznie jako bramki CI**: `npm run accept:sld-v3` — 30+ sond per LOD, każda z testem
+  negatywnym; macierz finalna: `docs/sld/SLD_V3_ACCEPTANCE.md` §5. Baseline'y §15.1:
+  12120/41000/54104 (nie-rosnące), symbolWire=0 (twardy).
+- **Parytet F8c (F11.4)**: drawer szczegółów, menu kontekstowe, paleta DER, konsolidacja
+  useMeasuredSize — dostarczone na v3; **usunięcie renderu v2 POZOSTAJE BRAMKOWANE** trzema
+  pozycjami dla właściciela (wykonawca akcji menu; geometria ręczna CAD — decyzja spec-first;
+  Conscious Split — produkcyjnie nieosiągalny, decyzja produktowa) — szczegóły: wpis F11.4 planu.
+- **Koordynacja z wątkiem UI**: kontrakt `docs/sld/SLD_PROTECTION_MARKING_COORDINATION_2026-07.md`;
+  kolizja identyfikatorów V12K-026 zarejestrowana (V12K-032, propozycja renumeracji przy scaleniu).
+
+Bramki końcowe: frontend 551 plików / 7790 testów PASS; backend 5720 PASS (1 pre-existing fail
+`test_no_todo_fixme_in_catalog_first_critical_paths`, poza zakresem); accept ALL PASS; guardy
+(sld_determinism/arch/no_codenames/dead_click/overlay_no_physics/forbidden_ui_terms/docs) PASS.
+Rendery odbioru: `docs/sld/renders/v3/` (odświeżone 2026-07-16).
 
 ---
 

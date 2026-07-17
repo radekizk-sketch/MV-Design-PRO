@@ -120,6 +120,10 @@ export interface SldDetailDrawerData {
   readonly alarmSeverity?: 'warning' | 'important' | 'critical' | null;
   /** K30-98: breadcrumb context — parent station label (Stacja › Pole). */
   readonly parentStationLabel?: string | null;
+  /** Recenzja NO-GO 2026-07-17 pkt 9: identyfikator GLOBALNY
+   *  ⟨stacja⟩.⟨pole⟩.⟨aparat⟩ (np. „S01.F01.Q2") — `null` gdy dane nie
+   *  pozwalają go złożyć (brak kodu stacji/rekordu pola). */
+  readonly globalId?: string | null;
   /** K30-98: breadcrumb context — parent bay label dla apparatus kind. */
   readonly parentBayLabel?: string | null;
   /** K30-97: real apparatus state z snapshot.equipmentStates (gdy
@@ -636,6 +640,14 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           {data.stationCode && data.kind !== 'station' && (
             <div data-testid="sld-v2-detail-drawer-breadcrumb" style={{ fontSize: 10, color: '#88BBDD', marginTop: 2 }}>
               ↑ Stacja {data.stationCode}
+            </div>
+          )}
+          {data.globalId && (
+            <div
+              data-testid="sld-v2-detail-drawer-global-id"
+              style={{ fontSize: 10, color: '#FFD166', marginTop: 2, fontFamily: 'monospace', fontWeight: 700 }}
+            >
+              Identyfikator: {data.globalId}
             </div>
           )}
           {data.liveMetrics && data.liveMetrics.length > 0 && (

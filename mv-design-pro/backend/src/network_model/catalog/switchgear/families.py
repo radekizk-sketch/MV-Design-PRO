@@ -12,6 +12,7 @@ producenta z weryfikacją wersji katalogu.
 - ABB SafeRing: https://electrification.us.abb.com/products/switchgear/safering-gas-insulated-ring-main-unit
 - Siemens NXAIR: https://www.siemens.com/en-us/products/energy-systems/nxair/
 - Siemens 8DJH: https://www.siemens.com/en-us/products/energy/medium-voltage/medium-voltage-switchgear/8djh-36.html
+- Schneider SM6-24 (deep search 2026-07, Reference Engine V1): https://www.se.com/ww/en/product-range/933-sm6-24/
 
 Aby promować rodzinę do `verified` (status="verified" + `verified_at`), wymaga
 zatwierdzenia w PR przez catalog admin z linkiem do oficjalnej karty produktu
@@ -395,6 +396,69 @@ SIEMENS__8DJH = SwitchgearFamily(
 )
 
 # =============================================================================
+# Schneider Electric — SM6-24
+# =============================================================================
+
+SCHNEIDER__SM6_24 = SwitchgearFamily(
+    switchgear_family_ref="SCHNEIDER__SM6_24",
+    manufacturer_ref="SCHNEIDER_ELECTRIC",
+    family_name="SM6-24",
+    series_name="SM6",
+    product_line_code="SM6_24",
+    voltage_levels=[12.0, 17.5, 24.0],
+    rated_current_options=[400, 630, 1250],
+    short_time_current_options=[16, 20, 25],  # kA / 1s (zależnie od celki)
+    insulation_type="mixed",  # szyny w powietrzu, aparaty łączeniowe w SF6/próżni
+    construction_type="wnetrzowa",
+    busbar_system="single",
+    compartment_models=[
+        "busbar_compartment",
+        "cable_compartment",
+        "apparatus_compartment",
+        "lv_control_compartment",
+    ],
+    allowed_bay_kinds=[
+        "liniowe_doplywowe",
+        "liniowe_odplywowe",
+        "transformatorowe",
+        "pomiarowe",
+        "sprzeglowe_poprzeczne",
+        "potrzeb_wlasnych",
+    ],
+    allowed_apparatus_kinds=[
+        "circuit_breaker",
+        "switch_disconnector",
+        "earthing_switch",
+        "fuse_set",
+        "current_transformer",
+        "voltage_transformer",
+        "surge_arrester",
+        "cable_head",
+        "voltage_indicator",
+    ],
+    allowed_interlocks=[
+        "earthing_only_when_open",
+    ],
+    supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3"],
+    cad_footprint_ref=None,
+    source_document_refs=["https://www.se.com/ww/en/product-range/933-sm6-24/"],
+    source_version="public-product-page-2026-07",
+    verified_at=None,
+    lifecycle_status="current",
+    status="repo_verified",
+    source_refs=["https://www.se.com/ww/en/product-range/933-sm6-24/"],
+    notes_pl=(
+        "SM6-24 — modułowa rozdzielnica wnętrzowa SN Schneider Electric do "
+        "24 kV: celki rozłącznikowe (typ IM), rozłącznik z bezpiecznikami "
+        "(QM), wyłącznikowe (DM), pomiarowe (CM/GBC). Szyny w izolacji "
+        "powietrznej, aparaty łączeniowe SF6/próżnia. Prąd znamionowy "
+        "400–1250 A, krótkotrwały do 25 kA/1s. Dodana w programie Reference "
+        "Engine V1. Status repo_verified — dane z publicznej strony "
+        "produktowej; pełne parametry wymagają oficjalnej karty katalogowej."
+    ),
+)
+
+# =============================================================================
 # Registry
 # =============================================================================
 
@@ -405,6 +469,7 @@ _FAMILIES: tuple[SwitchgearFamily, ...] = (
     ABB__SAFERING,
     SIEMENS__NXAIR,
     SIEMENS__8DJH,
+    SCHNEIDER__SM6_24,
 )
 
 SWITCHGEAR_FAMILY_REGISTRY: dict[str, SwitchgearFamily] = {
@@ -433,7 +498,6 @@ def get_switchgear_family(switchgear_family_ref: str) -> SwitchgearFamily:
     if switchgear_family_ref not in SWITCHGEAR_FAMILY_REGISTRY:
         available = ", ".join(sorted(SWITCHGEAR_FAMILY_REGISTRY.keys()))
         raise KeyError(
-            f"Unknown switchgear_family_ref: {switchgear_family_ref}. "
-            f"Available: {available}"
+            f"Unknown switchgear_family_ref: {switchgear_family_ref}. " f"Available: {available}"
         )
     return SWITCHGEAR_FAMILY_REGISTRY[switchgear_family_ref]

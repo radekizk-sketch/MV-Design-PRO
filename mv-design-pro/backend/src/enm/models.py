@@ -484,6 +484,32 @@ class Measurement(ENMElement):
     source_mode: Literal["KATALOG", "MIGRACJA", "EKSPERCKI_RECZNY"] | None = None
     materialized_params: dict | None = None
     overrides: list[ParameterOverride] = []
+    # F10.6 (SLD_CAD_SPEC_V3 §18.3, D3, V12K-036): układ pomiarowy CT —
+    # 3×CT fazowe vs przekładnik sumujący/Ferranti dla składowej zerowej I0.
+    # WYŁĄCZNIE dla measurement_type=='CT'; None = dana niedostarczona (WHITE
+    # BOX — konsument NIE zgaduje, patrz `application/field_read_model.py`
+    # `_build_measurement_chain`, wyczyszczenie heurystyki F10.4/F10.6).
+    ct_arrangement: Literal["3xCT", "ferranti"] | None = None
+    # F10.6 (SLD_CAD_SPEC_V3 §20.2, D4): układ VT — otwarty trójkąt (do
+    # pomiaru 3U0, warunek konieczny dla 67N kierunkowego ziemnozwarciowego)
+    # vs gwiazda. WYŁĄCZNIE dla measurement_type=='VT'; None = dana
+    # niedostarczona (dotychczasowe uproszczenie §20.2 pozostaje w mocy).
+    vt_arrangement: Literal["open_delta", "star"] | None = None
+
+    @model_validator(mode="after")
+    def _validate_arrangement_matches_measurement_type(self) -> Measurement:
+        """F10.6: `ct_arrangement`/`vt_arrangement` to dane WYŁĄCZNIE dla
+        odpowiadającego `measurement_type` — zero niejednoznaczności (WHITE
+        BOX, `domain_no_guessing_guard`)."""
+        if self.ct_arrangement is not None and self.measurement_type != "CT":
+            raise ValueError(
+                f"Measurement '{self.ref_id}': ct_arrangement wymaga measurement_type='CT'."
+            )
+        if self.vt_arrangement is not None and self.measurement_type != "VT":
+            raise ValueError(
+                f"Measurement '{self.ref_id}': vt_arrangement wymaga measurement_type='VT'."
+            )
+        return self
 
 
 # ---------------------------------------------------------------------------
@@ -497,6 +523,13 @@ class ProtectionAssignment(ENMElement):
     breaker_ref: str
     ct_ref: str | None = None
     vt_ref: str | None = None
+    # F10.6 (SLD_CAD_SPEC_V3 §20.2, D5, V12K-036): CT dodatkowe strefy
+    # różnicowej (87T wymaga CT po OBU stronach transformatora — `ct_ref`
+    # niesie JEDEN CT, ta lista niesie pozostałe CT granicy strefy). Pusta
+    # lista = strefa różnicowa 2×CT NIE jest modelowana (dana niedostarczona,
+    # nie błąd — `protectionFunctionTopologyGaps` degraduje do dotychczasowego
+    # uproszczenia „obecność transformatora" gdy lista pusta).
+    ct_refs_secondary: list[str] = []
     device_type: Literal[
         "overcurrent",
         "earth_fault",
@@ -748,6 +781,16 @@ class Bay(ENMElement):
     # (Invariant 9). Field forward-deklarowany — typ BayRuntimeState w
     # późniejszej sekcji modułu.
     runtime_state: BayRuntimeState | None = None
+    # Recenzja NO-GO 2026-07-17 pkt 9/10 (spec §12.5): aparaty PIERWOTNE pola
+    # NA SNAPSHOTCIE ENM — domknięcie STOP-notatki F9.2 (frontend
+    # `enmToSldAdapter.ts::BayWithOptionalPrimaryDevices` czyta to pole
+    # DEFENSYWNIE od F9.2 — „projekcja aktywuje się automatycznie, gdy backend
+    # zacznie serializować"). Dotąd `primary_devices` istniało wyłącznie na
+    # `BayBaseModel`/`BayCanonicalModel` (kanał field-view) — walidator blokad
+    # uziemnika (W034, validator.py) i identyfikatory globalne aparatów
+    # wymagają tych danych na snapshotcie. Puste = dana niedostarczona
+    # (ścieżka konwencji rysunku, zero domysłu).
+    primary_devices: list[BayPrimaryDevice] = []
 
 
 # ---------------------------------------------------------------------------
@@ -801,6 +844,9 @@ class BayPrimaryDevice(BaseModel):
         "GENERATOR_FW",
         "PCS",
         "BATTERY",
+        # F9.6 (SLD_CAD_SPEC_V3 §12.5, V12K-028): ogranicznik przepięć — rysowany
+        # WYŁĄCZNIE gdy pochodzi z danych (zero konwencji/zgadywania, §12.4).
+        "SURGE_ARRESTER",
     ]
     placement: Literal["UPSTREAM", "MIDSTREAM", "DOWNSTREAM", "OFF_PATH", "GROUND_BRANCH"]
     section_side: Literal["LEFT", "CENTER", "RIGHT"] | None = None
@@ -808,6 +854,27 @@ class BayPrimaryDevice(BaseModel):
     render_variant: str | None = None
     switch_state: BaySwitchState | None = None
     operating_state: BayOperatingState | None = None
+    # F10.6 (SLD_CAD_SPEC_V3 §19.1, D1, V12K-035): identyfikator PER-APARAT
+    # (np. "Q1", "QE1", "T1") jako DANA projektowa — gdy obecny, ma pierwszeństwo
+    # nad fallbackiem konwencji (`compose/apparatusSequence.ts::apparatusIdentifiers`,
+    # `data-designation-source="konwencja"`). None = dana niedostarczona,
+    # render pozostaje przy konwencji ze znacznikiem źródła.
+    designation: str | None = None
+    # Recenzja NO-GO 2026-07-17 pkt 10 (spec §12.5): TYPOLOGIA uziemienia —
+    # WYŁĄCZNIE dla kind="ES" (albo gałęzi uziemiającej SA): uziemnik pola /
+    # uziemienie ekranów kabla / konstrukcji / punktu neutralnego / gałąź
+    # ogranicznika. None = dana niedostarczona (rysunek: generyczny uziemnik,
+    # zero domysłu).
+    earthing_role: (
+        Literal[
+            "field_earth",
+            "cable_screen",
+            "structure",
+            "neutral_point",
+            "surge_ground",
+        ]
+        | None
+    ) = None
 
 
 class BayMeasurements(BaseModel):

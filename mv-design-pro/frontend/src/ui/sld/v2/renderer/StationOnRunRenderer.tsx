@@ -35,7 +35,7 @@ const TRUNK_Y = -STATION_RUN_TRUNK_OFFSET_Y;
 const LABEL_Y = 36;
 const CODE_Y = 58;
 
-function formatTransformerRatedPower(kva: number): string {
+export function formatTransformerRatedPower(kva: number): string {
   return kva >= 1000
     ? `${(kva / 1000).toFixed(1).replace('.', ',')} MVA`
     : `${kva} kVA`;
@@ -103,6 +103,14 @@ export interface StationOnRunRendererProps {
    *  zgodnie z konwencją dyspozytorską (110kV → czerwień WN, 15kV → zieleń SN,
    *  0.4kV → błękit nN). Brak → fallback do COLOR_FIELD_TRUNK_ENERGIZED. */
   readonly busVoltageKv?: number | null;
+  /** Recenzja NO-GO 2026-07-17 pkt 6 (spec §12.5): napięcie szyny nN stacji
+   *  [kV] — z rekordu szyny nN (`Bus.voltage_kv < 1` w `Substation.bus_refs`).
+   *  `null`/brak = dana niedostarczona (etykieta szyny nN bez napięcia). */
+  readonly nnVoltageKv?: number | null;
+  /** Recenzja NO-GO 2026-07-17 pkt 6: ZAGREGOWANY odbiór nN stacji — suma
+   *  `Load.p_mw`/`q_mvar` (× `quantity`) rekordów na szynach nN tej stacji.
+   *  `null` = ZERO rekordów `Load` (jawna granica modelu, nie zero mocy). */
+  readonly aggregatedLvLoad?: { readonly pMw: number; readonly qMvar: number; readonly count: number } | null;
   /** K30-62: vector group transformatora (Dyn5, Yd11, Yzn11) per IEC 60076-1.
    *  Industrial SLD pokazuje vector group obok TR symbol. */
   readonly transformerVectorGroup?: string | null;

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from application.station_templates._choices import (
     CT_OPTIONS,
     DER_BESS_SN,
@@ -48,7 +50,7 @@ def _bess(
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
             nn_feeders_count=TemplateParamInt(default=0, min_value=0, max_value=2, label_pl="Liczba odpływów nN"),
             nn_feeder_cb_options=NN_CB_OPTIONS,
-            der_options=(DER_BESS_SN,),
+            der_options=(replace(DER_BESS_SN, default_p_mw_each=bess_p_mw_each, default_count=bess_count),),
             der_total_count=TemplateParamInt(
                 default=bess_count, min_value=1, max_value=10, label_pl="Liczba kontenerów BESS"
             ),
@@ -59,6 +61,11 @@ def _bess(
     )
 
 
+# 2026-07-17 (spójność elektryczna): moc jednostkowa i liczba kontenerów są
+# PROPAGOWANE do DerKindSpec (wcześniej gubione — każdy szablon wychodził z
+# domyślnym 1.0 MW). Warianty 5 MW modelowane jako 2 kontenery po 2,5 MW
+# (standard przemysłowy; pojedynczy blok 5 MW przez TR SN/nN 0.4 kV nie
+# istnieje w typoszeregu i byłby fizycznie wątpliwy).
 BESS_TEMPLATES = (
     _bess(
         "tpl_bess_500kw_1mwh",
@@ -85,16 +92,16 @@ BESS_TEMPLATES = (
     _bess(
         "tpl_bess_5mw_10mwh_fcr_n",
         "BESS 5 MW / 10 MWh (FCR_N services)",
-        "Duży magazyn 5 MW/10 MWh do usług FCR_N (rezerwa pierwotna).",
-        bess_count=1, bess_p_mw_each=5.0,
+        "Duży magazyn 5 MW/10 MWh do usług FCR_N (rezerwa pierwotna) — 2 kontenery po 2,5 MW.",
+        bess_count=2, bess_p_mw_each=2.5,
         use_case="FCR_N — automatyczna rezerwa pierwotna częstotliwości.",
         nc_rfg_type="D",
     ),
     _bess(
         "tpl_bess_5mw_5mwh_afrr",
         "BESS 5 MW / 5 MWh (C-rate 1.0, aFRR services)",
-        "Magazyn 5 MW/5 MWh (C=1) do aFRR (rezerwa wtórna automatyczna).",
-        bess_count=1, bess_p_mw_each=5.0,
+        "Magazyn 5 MW/5 MWh (C=1) do aFRR (rezerwa wtórna automatyczna) — 2 kontenery po 2,5 MW.",
+        bess_count=2, bess_p_mw_each=2.5,
         use_case="aFRR — automatyczna rezerwa wtórna częstotliwości (PSE).",
         nc_rfg_type="D",
     ),

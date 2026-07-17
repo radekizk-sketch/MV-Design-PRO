@@ -14,6 +14,7 @@ import copy
 import hashlib
 import json
 import math
+import re
 from typing import Any
 
 from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
@@ -794,6 +795,178 @@ def _is_line_continuation_field(enm: dict[str, Any], field_ref: str | None) -> b
         return False
     role = str(spec.get("bay_role") or "").upper()
     return role in {"OUT", "FEEDER"}
+
+
+def _gpz_substation_for_field_ref(
+    enm: dict[str, Any], field_ref: str | None
+) -> dict[str, Any] | None:
+    """Substation GPZ, której `meta.field_specs` zawiera `field_ref` (None gdy
+    pole nie należy do GPZ)."""
+    if not isinstance(field_ref, str) or not field_ref.strip():
+        return None
+    for substation in enm.get("substations", []):
+        if not isinstance(substation, dict):
+            continue
+        if not str(substation.get("ref_id") or "").startswith("gpz/"):
+            continue
+        for spec in _substation_meta(substation).get("field_specs", []) or []:
+            if isinstance(spec, dict) and spec.get("field_ref") == field_ref:
+                return substation
+    return None
+
+
+def _gpz_field_spec_occupied(enm: dict[str, Any], spec: dict[str, Any]) -> bool:
+    """Pole liniowe GPZ jest ZAJĘTE, gdy zasila istniejący, niepusty ciąg.
+
+    Kanon (dyrektywa właściciela, 2026-07-17): z jednego pola liniowego NIGDY
+    nie wychodzą dwa kable — każde wyprowadzenie na sieć ma dedykowane pole.
+    Zajętość:
+      (a) jawna: `spec.meta.assigned_corridor_ref` wskazuje ISTNIEJĄCY korytarz
+          z niepustym `ordered_segment_refs` (przydział z tej operacji;
+          korytarz skasowany/opróżniony ⇒ pole samoczynnie wolne);
+      (b) dziedziczona (snapshoty sprzed przydziałów): pole o indeksie 0
+          zasila magistralę — zajęte, gdy JAKIKOLWIEK korytarz magistrali GPZ
+          (`gpz/⟨id⟩/corridor_*`) ma segmenty.
+    """
+    meta_raw = spec.get("meta")
+    meta = meta_raw if isinstance(meta_raw, dict) else {}
+    assigned = meta.get("assigned_corridor_ref")
+    if isinstance(assigned, str) and assigned.strip():
+        corridor = _find_corridor_by_ref(enm, assigned)
+        if corridor and corridor.get("ordered_segment_refs"):
+            return True
+    field_index = meta.get("gpz_line_field_index")
+    if field_index == 0:
+        field_ref = str(spec.get("field_ref") or "")
+        gpz_prefix = "/".join(field_ref.split("/")[:2])
+        for corridor in enm.get("corridors", []):
+            if not isinstance(corridor, dict):
+                continue
+            ref = str(corridor.get("ref_id") or "")
+            if ref.startswith(f"{gpz_prefix}/corridor_") and corridor.get("ordered_segment_refs"):
+                return True
+    return False
+
+
+def _allocate_gpz_line_field_for_branch(
+    enm: dict[str, Any],
+    origin_field_ref: str,
+    branch_corridor_ref: str,
+) -> tuple[str | None, dict[str, Any] | None, dict[str, Any] | None]:
+    """Przydziel DEDYKOWANE pole liniowe GPZ nowemu odgałęzieniu (feederowi).
+
+    Zwraca `(field_ref, created_field_spec | None, error | None)`:
+      1. pole wskazane w `from_ref`, jeśli WOLNE;
+      2. inaczej pierwsze WOLNE pole liniowe tej samej sekcji;
+      3. inaczej NOWE pole liniowe (ta sama konwencja co przy tworzeniu
+         źródła: rola FEEDER, bez aparatury — konfiguracja aparatów to
+         osobna decyzja inżynierska w produkcie), z poszanowaniem
+         `MAX_GPZ_LINE_FIELDS_PER_SECTION`;
+      4. limit wyczerpany ⇒ błąd (bez rysowania dwóch kabli z jednego pola).
+    Przydział jest zapisywany DWUSTRONNIE: `spec.meta.assigned_corridor_ref`
+    oraz (po stronie wołającego) `corridor.meta.gpz_field_ref` — relacja
+    pierwszoklasowa dla widoków (SLD rysuje feeder z JEGO pola, bez
+    zgadywania po kolejności).
+    """
+    substation = _gpz_substation_for_field_ref(enm, origin_field_ref)
+    if substation is None:
+        return None, None, None  # nie-GPZ — przydział pól nie dotyczy
+    meta = _substation_meta(substation)
+    field_specs = meta.setdefault("field_specs", [])
+    origin_spec = next(
+        (s for s in field_specs if isinstance(s, dict) and s.get("field_ref") == origin_field_ref),
+        None,
+    )
+    if origin_spec is None:
+        return None, None, None
+    section_id = origin_spec.get("gpz_section_id") or (origin_spec.get("meta") or {}).get(
+        "gpz_section_id"
+    )
+
+    def _is_line_field_of_section(spec: dict[str, Any]) -> bool:
+        if "gpz_line_field" not in (spec.get("tags") or []):
+            return False
+        spec_section = spec.get("gpz_section_id") or (spec.get("meta") or {}).get("gpz_section_id")
+        return spec_section == section_id
+
+    section_specs = [s for s in field_specs if isinstance(s, dict) and _is_line_field_of_section(s)]
+
+    # Samonaprawa zajętości dziedziczonej: pole 0 zasilające niepustą
+    # magistralę dostaje JAWNY przydział (dalej liczy się już relacją).
+    for spec in section_specs:
+        spec_meta = spec.setdefault("meta", {})
+        if spec_meta.get("gpz_line_field_index") == 0 and not spec_meta.get(
+            "assigned_corridor_ref"
+        ):
+            field_ref = str(spec.get("field_ref") or "")
+            gpz_prefix = "/".join(field_ref.split("/")[:2])
+            trunk = next(
+                (
+                    c
+                    for c in enm.get("corridors", [])
+                    if isinstance(c, dict)
+                    and str(c.get("ref_id") or "").startswith(f"{gpz_prefix}/corridor_")
+                    and c.get("ordered_segment_refs")
+                ),
+                None,
+            )
+            if trunk:
+                spec_meta["assigned_corridor_ref"] = trunk.get("ref_id")
+
+    candidates = [origin_spec] + [s for s in section_specs if s is not origin_spec]
+    chosen = next((s for s in candidates if not _gpz_field_spec_occupied(enm, s)), None)
+    created_spec: dict[str, Any] | None = None
+    if chosen is None:
+        if len(section_specs) >= MAX_GPZ_LINE_FIELDS_PER_SECTION:
+            return (
+                None,
+                None,
+                _error_response(
+                    "Brak wolnego pola liniowego GPZ dla nowego wyprowadzenia i osiągnięto "
+                    f"limit {MAX_GPZ_LINE_FIELDS_PER_SECTION} pól na sekcję. Z jednego pola "
+                    "liniowego nie wolno wyprowadzić dwóch kabli.",
+                    "branch_connection.gpz_line_fields_exhausted",
+                ),
+            )
+        new_index = (
+            max(
+                (
+                    int((s.get("meta") or {}).get("gpz_line_field_index") or 0)
+                    for s in section_specs
+                ),
+                default=-1,
+            )
+            + 1
+        )
+        base_ref = origin_field_ref.rsplit("/", 1)[0]
+        new_field_ref = f"{base_ref}/{new_index + 1:03d}"
+        while any(s.get("field_ref") == new_field_ref for s in field_specs):
+            new_index += 1
+            new_field_ref = f"{base_ref}/{new_index + 1:03d}"
+        section_order = int((origin_spec.get("meta") or {}).get("gpz_section_order") or 0)
+        created_spec = _build_field_spec(
+            field_ref=new_field_ref,
+            name=f"Pole liniowe GPZ {section_order + 1}.{new_index + 1}",
+            bay_role="FEEDER",
+            bus_ref=str(origin_spec.get("bus_ref") or ""),
+            gpz_section_id=section_id if isinstance(section_id, str) else None,
+            tags=["gpz_line_field"],
+            meta={
+                "gpz_section_id": section_id,
+                "gpz_section_order": section_order,
+                "gpz_line_field_index": new_index,
+                "gpz_line_fields_count": len(section_specs) + 1,
+                "source_field_kind": "FEEDER",
+                "field_status": "READY_FOR_TRUNK",
+            },
+        )
+        field_specs.append(created_spec)
+        for spec in section_specs:
+            spec.setdefault("meta", {})["gpz_line_fields_count"] = len(section_specs) + 1
+        chosen = created_spec
+
+    chosen.setdefault("meta", {})["assigned_corridor_ref"] = branch_corridor_ref
+    return str(chosen.get("field_ref")), created_spec, None
 
 
 def _is_station_main_bus_ref(enm: dict[str, Any], bus_ref: str | None) -> bool:
@@ -3404,6 +3577,19 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
 # ---------------------------------------------------------------------------
 
 
+def _unique_default_station_name(enm: dict[str, Any], station_type_label: str) -> str:
+    """Domyślna nazwa stacji z UNIKATOWYM kodem Sxx (recenzja NO-GO 2026-07-17
+    pkt 14): kolejny wolny numer ponad najwyższy kod ``S\\d{2,3}`` już użyty w
+    nazwach substations (deterministycznie, bez kolizji z nazwami ręcznymi).
+    Frontend (`stationCodeFromName`, enmToSldAdapter.ts) czyta kod z nazwy —
+    unikatowa nazwa ⇒ unikatowy kod na rysunku."""
+    highest = 0
+    for sub in enm.get("substations", []):
+        for match in re.finditer(r"\bS(\d{2,3})\b", str(sub.get("name") or "")):
+            highest = max(highest, int(match.group(1)))
+    return f"Stacja S{highest + 1:02d} (typ {station_type_label})"
+
+
 def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Wstaw stację SN/nN w odcinek — operacja krytyczna.
 
@@ -3516,7 +3702,11 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         or payload.get("station_name")
         or payload.get("name")
         or payload.get("name_pl")
-        or f"Stacja {station_type_raw or station_type}"
+        # Recenzja NO-GO 2026-07-17 pkt 14: nazwa domyślna z UNIKATOWYM kodem
+        # stacji (Sxx) u ŹRÓDŁA — dawny fallback "Stacja {typ}" produkował
+        # duplikaty ("Stacja B" ×N), a kod na rysunku (frontend
+        # `stationCodeFromName`) wywodzi się z nazwy.
+        or _unique_default_station_name(enm, station_type_raw or station_type)
     )
 
     # Validate insert_at
@@ -4851,18 +5041,39 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     branch_corridor_ref = _make_id("corridor", branch_run_seed, "branch")
     branch_type_label = "kablowe" if branch_type == "cable" else "napowietrzne"
     if not any(c.get("ref_id") == branch_corridor_ref for c in new_enm.setdefault("corridors", [])):
-        new_enm["corridors"].append(
-            {
-                "ref_id": branch_corridor_ref,
-                "name": f"Odgałęzienie SN {branch_type_label}",
-                "corridor_type": "radial",
-                "ordered_segment_refs": [branch_ref],
-                "parent_run_ref": parent_run_ref,
-                "branch_origin_station_ref": origin_element_ref,
-                "branch_origin_port_ref": from_ref,
-                "starting_port_ref": from_ref,
-            }
+        new_corridor: dict[str, Any] = {
+            "ref_id": branch_corridor_ref,
+            "name": f"Odgałęzienie SN {branch_type_label}",
+            "corridor_type": "radial",
+            "ordered_segment_refs": [branch_ref],
+            "parent_run_ref": parent_run_ref,
+            "branch_origin_station_ref": origin_element_ref,
+            "branch_origin_port_ref": from_ref,
+            "starting_port_ref": from_ref,
+            "meta": {},
+        }
+        # Kanon dedykowanych pól (dyrektywa właściciela, 2026-07-17): feeder
+        # wyprowadzany z GPZ dostaje WŁASNE pole liniowe — wskazane w
+        # `from_ref` jeśli wolne, inaczej pierwsze wolne, inaczej NOWE pole
+        # (limit sekcji pilnowany). Z jednego pola nigdy dwa kable.
+        gpz_field_ref, created_gpz_field, alloc_error = _allocate_gpz_line_field_for_branch(
+            new_enm, origin_element_ref, branch_corridor_ref
         )
+        if alloc_error is not None:
+            return alloc_error
+        if gpz_field_ref:
+            new_corridor["meta"]["gpz_field_ref"] = gpz_field_ref
+            if created_gpz_field is not None:
+                created.append(str(created_gpz_field.get("field_ref")))
+                ev_seq += 1
+                events.append(
+                    {
+                        "event_seq": ev_seq,
+                        "event_type": "GPZ_LINE_FIELD_CREATED_SN",
+                        "element_id": str(created_gpz_field.get("field_ref")),
+                    }
+                )
+        new_enm["corridors"].append(new_corridor)
         created.append(branch_corridor_ref)
     branch_line_run = _ensure_line_run_for_corridor(
         new_enm,

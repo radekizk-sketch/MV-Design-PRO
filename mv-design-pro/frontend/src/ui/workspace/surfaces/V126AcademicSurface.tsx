@@ -250,7 +250,7 @@ export function V126AcademicSurface({ surface }: { surface: WorkspaceSurfaceDesc
         <section className="rounded border border-slate-700 bg-slate-950 p-4 text-slate-100">
           <div className="grid gap-3 md:grid-cols-3">
             <div>
-              <div className="text-[11px] uppercase text-slate-400">Przebieg</div>
+              <div className="text-[11px] uppercase text-slate-400">Identyfikator przebiegu</div>
               <div className="break-all text-xs">{run.run_id}</div>
             </div>
             <div>

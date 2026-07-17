@@ -317,7 +317,7 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
   await expect(page.getByTestId('canonical-layout')).toBeVisible();
   await expect(page.getByTestId('workspace-surface-main')).toBeVisible();
   // PR-5c: stary embedded SLD wygaszony — nowy SLD v2 jest osobnym surface'em
-  // (testowane oddzielnie w v2/__tests__/visualFixtures.test.ts).
+  // (testowane oddzielnie w v2/geometry/__tests__/layoutEngine.substrate.test.ts).
 
   await page.evaluate((targetRunId) => {
     window.location.hash = `#proof?run=${targetRunId}`;

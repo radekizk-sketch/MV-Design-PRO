@@ -17,13 +17,14 @@
  */
 
 import {
+  COLOR_BG,
   COLOR_BUS_LV,
   COLOR_LINE_PRIMARY,
   COLOR_LINE_SECONDARY,
-  COLOR_PANEL_RAISED,
   COLOR_PARTIAL,
   COLOR_REPORT_BLOCKED,
   COLOR_SELECTION,
+  COLOR_TEXT_MUTED,
   COLOR_TEXT_PRIMARY,
   COLOR_TEXT_SECONDARY,
   COLOR_WARN,
@@ -247,17 +248,18 @@ function GpzCompactBlock(props: GpzRendererProps): JSX.Element {
       }
       style={{ cursor: props.onClick ? 'pointer' : 'default' }}
     >
-      {/* Korpus stacji */}
+      {/* Granica stacji GPZ (język rysunku): tło kanwy jako occlusion +
+          cienki obrys przerywany o ostrych rogach — nie panel-karta. */}
       <rect
         x={0}
         y={0}
         width={totalWidth}
         height={totalHeight}
-        fill={COLOR_PANEL_RAISED}
-        stroke={stroke}
-        strokeWidth={strokeWidth}
-        rx={4}
-        ry={4}
+        fill={COLOR_BG}
+        stroke={props.selected ? stroke : COLOR_TEXT_MUTED}
+        strokeWidth={props.selected ? strokeWidth : 0.9}
+        strokeDasharray={props.selected ? undefined : '8 5'}
+        data-cad-role="station_boundary_dashed"
       />
 
       {/* Nazwa GPZ (góra-lewa) */}
@@ -509,7 +511,7 @@ function TransformerSymbol(props: TransformerSymbolProps): JSX.Element {
         cx={cx}
         cy={topCenterY}
         r={TR_RADIUS}
-        fill={COLOR_PANEL_RAISED}
+        fill={COLOR_BG}
         stroke={COLOR_LINE_PRIMARY}
         strokeWidth={1.4}
       />
@@ -517,7 +519,7 @@ function TransformerSymbol(props: TransformerSymbolProps): JSX.Element {
         cx={cx}
         cy={bottomCenterY}
         r={TR_RADIUS}
-        fill={COLOR_PANEL_RAISED}
+        fill={COLOR_BG}
         stroke={COLOR_LINE_PRIMARY}
         strokeWidth={1.4}
       />
