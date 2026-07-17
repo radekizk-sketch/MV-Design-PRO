@@ -5,7 +5,9 @@
  * + okno „Dowód obliczeń" (`dowod`, karta E9.1 / W-608 — ślad WHITE BOX)
  * + porównanie przebiegów A/B rozpływu (`porownanie`, karta E12.1 / W-609)
  * + okno „Jakość wyników" (`jakosc`, karta E8.4 / W-607 — wiarygodność zwarciowa
- *   + walidacja energetyczna).
+ *   + walidacja energetyczna)
+ * + okno „Zgodność powykonawcza" (`odbior`, karta U4 P45 — porównanie pomiarów
+ *   z obiektu z wynikiem rozpływu i jawnymi tolerancjami).
  */
 
 export * from './wzorzec';
@@ -14,3 +16,4 @@ export * from './zwarcia';
 export * from './dowod';
 export * from './porownanie';
 export * from './jakosc';
+export * from './odbior';

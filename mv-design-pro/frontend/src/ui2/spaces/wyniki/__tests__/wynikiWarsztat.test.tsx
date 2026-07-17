@@ -98,6 +98,13 @@ describe('WynikiWarsztat — zakładki', () => {
     expect(screen.getByTestId('mvd-jakosc-ekran')).toBeInTheDocument();
   });
 
+  it('zakładka „Zgodność powykonawcza": bez przebiegu rozpływu — uczciwy stan pusty', () => {
+    render(<WynikiWarsztat {...props()} />);
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-odbior'));
+    expect(screen.getByTestId('mvd-odbior-ekran')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-odbior-brak-przebiegu')).toBeInTheDocument();
+  });
+
   it('zakładka „Zdolność przyłączeniowa": bez przebiegu rozpływu — uczciwa instrukcja', () => {
     render(<WynikiWarsztat {...props()} />);
     fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-zdolnosc'));

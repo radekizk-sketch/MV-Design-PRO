@@ -1,0 +1,457 @@
+/*
+ * Style okna „Zgodność powykonawcza" (karta U4 P45). Kolory WYŁĄCZNIE przez
+ * tokeny --mvd-* — zero literałów hex (zgodność z guardem tokenów i trybem
+ * jasny/ciemny). Uzupełnia wzorzec (`wzorzec.css`) o: formularz wejścia pomiarów
+ * (przełącznik trybu, pole CSV, edytor wierszy), pola tolerancji, listę błędów
+ * walidacji, panele stanu, chipy podsumowania, kolorowane tagi werdyktu, panel
+ * szczegółu wiersza i ślad WHITE BOX. Warstwa prezentacji — bez wpływu na dane.
+ */
+
+.mvd-odbior {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  color: var(--mvd-ink);
+}
+
+.mvd-odbior-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mvd-odbior-tytul {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.mvd-odbior-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+.mvd-odbior-run {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+/* ---- formularz wejścia ---- */
+.mvd-odbior-formularz {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.mvd-odbior-sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-odbior-sekcja-tytul {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.mvd-odbior-pole-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.mvd-odbior-pole-opis {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+/* ---- przełącznik trybu ---- */
+.mvd-odbior-tryb {
+  display: inline-flex;
+  gap: 6px;
+}
+.mvd-odbior-tryb-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+  color: var(--mvd-ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+.mvd-odbior-tryb-btn.mvd-on {
+  border-color: var(--mvd-accent);
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+}
+.mvd-odbior-tryb-btn:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+
+/* ---- pole CSV ---- */
+.mvd-odbior-csv-blok {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-odbior-csv {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+  color: var(--mvd-ink);
+  font-family: var(--mvd-font-mono);
+  font-size: 12px;
+  resize: vertical;
+}
+.mvd-odbior-csv:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+/* ---- edytor wierszy ---- */
+.mvd-odbior-edytor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-odbior-edytor-tytul {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+}
+.mvd-odbior-wiersz {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+}
+.mvd-odbior-tolerancje {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.mvd-odbior-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mvd-odbior-pole label,
+.mvd-odbior-jednostka-label {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-odbior-pole input,
+.mvd-odbior-pole select {
+  padding: 5px 8px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  font-size: 13px;
+}
+.mvd-odbior-pole input:focus-visible,
+.mvd-odbior-pole select:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+.mvd-odbior-pole--jednostka {
+  min-width: 60px;
+}
+.mvd-odbior-jednostka {
+  padding: 5px 0;
+  font-size: 13px;
+  color: var(--mvd-ink);
+}
+.mvd-odbior-usun,
+.mvd-odbior-dodaj {
+  align-self: flex-end;
+  padding: 6px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+.mvd-odbior-dodaj {
+  align-self: flex-start;
+}
+.mvd-odbior-usun:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.mvd-odbior-usun:focus-visible,
+.mvd-odbior-dodaj:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+
+/* ---- akcja ---- */
+.mvd-odbior-akcje {
+  display: flex;
+}
+.mvd-odbior-oblicz {
+  padding: 8px 16px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mvd-odbior-oblicz:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+
+/* ---- błędy walidacji ---- */
+.mvd-odbior-bledy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  border: 1px solid var(--mvd-err);
+  border-radius: 6px;
+  background: var(--mvd-err-bg);
+}
+.mvd-odbior-bledy-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-odbior-bledy-lista {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--mvd-ink);
+}
+
+/* ---- panele stanu ---- */
+.mvd-odbior-stan {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 16px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  color: var(--mvd-muted);
+}
+.mvd-odbior-stan--blad {
+  border-style: solid;
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-odbior-stan-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-odbior-stan-desc {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* ---- podsumowanie (chipy) ---- */
+.mvd-odbior-podsumowanie {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+.mvd-odbior-chip {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 999px;
+  background: var(--mvd-panel);
+}
+.mvd-odbior-chip-liczba {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--mvd-ink);
+}
+.mvd-odbior-chip-etykieta {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-odbior-chip--ok {
+  border-color: var(--mvd-ok);
+  background: var(--mvd-ok-bg);
+}
+.mvd-odbior-chip--warn {
+  border-color: var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+}
+.mvd-odbior-chip--err {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-odbior-chip--neutral {
+  border-color: var(--mvd-line);
+  background: var(--mvd-panel-2);
+}
+.mvd-odbior-najwieksza {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--mvd-ink);
+}
+.mvd-odbior-najwieksza-etyk {
+  color: var(--mvd-muted);
+}
+
+/* ---- tag werdyktu ---- */
+.mvd-odbior-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  border: 1px solid var(--mvd-line);
+  color: var(--mvd-ink);
+  background: var(--mvd-panel-2);
+}
+.mvd-odbior-tag--ok {
+  border-color: var(--mvd-ok);
+  background: var(--mvd-ok-bg);
+}
+.mvd-odbior-tag--warn {
+  border-color: var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+}
+.mvd-odbior-tag--err {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-odbior-tag--neutral {
+  border-color: var(--mvd-line);
+  background: var(--mvd-panel-2);
+}
+
+/* ---- panel szczegółu wiersza ---- */
+.mvd-odbior-szczegol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-odbior-szczegol--pusty {
+  border-style: dashed;
+  color: var(--mvd-muted);
+}
+.mvd-odbior-szczegol-brak {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mvd-muted);
+}
+.mvd-odbior-szczegol-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mvd-odbior-szczegol-tytul {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-odbior-szczegol-dane {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px 16px;
+  margin: 0;
+}
+.mvd-odbior-szczegol-para {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-odbior-szczegol-para dt {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-odbior-szczegol-para dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mvd-ink);
+}
+
+/* ---- ślad WHITE BOX ---- */
+.mvd-odbior-slad-blok {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-odbior-slad-btn {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+  color: var(--mvd-ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+.mvd-odbior-slad-btn:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+.mvd-odbior-slad-tytul {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+}
+.mvd-odbior-slad {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--mvd-ink);
+}
+.mvd-odbior-slad-krok {
+  margin-bottom: 2px;
+}
+
+/* ---- tryb ekspercki ---- */
+.mvd-odbior-eksp {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 12px 0 0;
+  padding: 8px 16px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 8px;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-odbior-eksp-para {
+  display: flex;
+  gap: 8px;
+}
+.mvd-odbior-eksp-para dd {
+  margin: 0;
+  font-family: var(--mvd-font-mono);
+}
+
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}

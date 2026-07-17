@@ -19,6 +19,7 @@ export const WYNIKI_WARSZTAT_STRINGS = {
   zakladkaOsd: 'Polecenia OSD',
   zakladkaLom: 'Praca wyspowa',
   zakladkaPorownanie: 'Porównanie A/B',
+  zakladkaOdbior: 'Zgodność powykonawcza',
   porownanieBezProjektu: 'Otwórz projekt, aby porównywać przebiegi obliczeń.',
   zakladkaPozostale: 'Pozostałe analizy',
   dowodBezPrzebiegu: 'Analiza',

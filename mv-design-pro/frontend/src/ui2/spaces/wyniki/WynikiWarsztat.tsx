@@ -35,6 +35,7 @@ import {
   PulpitOze,
 } from '../../oze';
 import { EkranJakosci } from '../../wyniki/jakosc';
+import { EkranOdbioru } from '../../wyniki/odbior';
 import { EkranPorownania } from '../../wyniki/porownanie';
 import { DowodPrzebiegu } from './DowodPrzebiegu';
 import { useWpiecieWynikow } from './useWpiecieWynikow';
@@ -47,6 +48,7 @@ const ZAKLADKI = [
   { id: 'dowod', etykieta: T.zakladkaDowod },
   { id: 'jakosc', etykieta: T.zakladkaJakosc },
   { id: 'porownanie', etykieta: T.zakladkaPorownanie },
+  { id: 'odbior', etykieta: T.zakladkaOdbior },
   { id: 'ncrfg', etykieta: T.zakladkaNcRfg },
   { id: 'pulpit-oze', etykieta: T.zakladkaPulpitOze },
   { id: 'zdolnosc', etykieta: T.zakladkaZdolnosc },
@@ -65,7 +67,7 @@ const ZAKLADKI = [
 const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId[] }[] = [
   {
     etykieta: T.grupaAnalizy,
-    zakladki: ['rozplyw', 'zwarcia', 'dowod', 'jakosc', 'porownanie', 'pozostale'],
+    zakladki: ['rozplyw', 'zwarcia', 'dowod', 'jakosc', 'porownanie', 'odbior', 'pozostale'],
   },
   {
     etykieta: T.grupaOze,
@@ -195,6 +197,7 @@ export function WynikiWarsztat({
           <EkranJakosci trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
         )}
         {zakladka === 'porownanie' && <PorownanieAktywnegoProjektu trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'odbior' && <EkranOdbioru trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'ncrfg' && <MacierzNcRfg trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'zdolnosc' && <EkranZdolnosci trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'ranking' && <EkranRankingu trybZaawansowania={trybZaawansowania} />}
