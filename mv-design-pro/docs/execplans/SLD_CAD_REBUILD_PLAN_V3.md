@@ -1639,6 +1639,40 @@ fałszywa kropka, SABOTAŻ pion×szyna). Bramki §22.1 w acceptance:
 `crossing_probe` (24 przecięcia sn×sn na L2 — wszystkie mostkowane, 0 z szyną),
 `junction_dot_probe` (0 luk). Baseline'y §15.1: L1 40952 / L2 54056 (−48 netto).
 
+### F13.3 [DONE] Pas ochronny szyn + wejście przez głowicę OD DOŁU (§22.3, D3-4/D3-15)
+
+Pomiar przed zmianą (sonda nadzorcy, wyrocznie gryzą): `busBandClearanceGaps`
+12/12 na L1/L2 (wszystkie = `branch_segment_L`, pion zejścia wejściowego
+lateralu DOKŁADNIE na `x = początek szyny` stacji docelowej — P-5),
+`entryCollinearityGaps` 12/12 (pokrycie pionu zewnętrznego z `sn_field/000#descent`
+pola wejściowego — „jedna kreska", D3-15). Przyczyna: wyrównanie dx wiersza
+lateralu (`entryPort.x == channelX`) czyniło finalny pion współliniowym z osią
+pola. Naprawa (projekt audyt §6a): pion `channelX` zatrzymuje się na stropie
+wiersza docelowego (kanały wierszy POŚREDNICH nietknięte), jog rynną za lewą
+krawędzią kolumny stacji 0 (`col0.x − 2×GRID`), pion omija cały blok, przejście
+POD stacją (3. sub-poziom strefy B4/B5: `trunkCorridorYOf + GRID`) i wejście w
+głowicę OD DOŁU. L0 bez zmian (stacja zbiorcza — brak szyny). Wyrocznie w
+`crossings.ts` (`busBandClearanceGaps` — pas ±2×GRID, krawędzie włącznie,
+własność po `stn/⟨id⟩`-prefiksie; `entryCollinearityGaps` — pokrycie interiorów
+pionów seg/×stn|gpz), bramki `bus_band_clearance_probe` + `entry_collinearity_probe`
+w acceptance, 5 testów z negatywami (fabrykowany pion w pasie ⇒ FAIL; pion
+własnego pola ⇒ legalny; styk portowy ⇒ zero). Baseline'y §15.1: L1 41880 /
+L2 54984 (+928 — 12 wejść × objazd bloku; uzasadnienie liczbowe w acceptance).
+
+### F13.4 [DONE] Hierarchia grubości tras: magistrala > odgałęzienie (§22.4, D3-6)
+
+Nowa klasa `snTrunk` w `PreviewSegmentKind` (scena niesie KLASĘ, render
+GRUBOŚĆ — zero heurystyk po nazwach w renderze): `SEGMENT_STROKE_WIDTH.snTrunk
+= 2.4` (hierarchia §6: busGpz 6 > bus 4 > snTrunk 2.4 > sn 1.6 > lv 1.2 >
+adnotacje ≤0.8). Nadawana przez `connectRowStations(…, 'snTrunk')` dla ciągu
+głównego + jawnie na odcinku GPZ→S0; laterale zostają na `sn`. Wyrocznia
+`trunkThicknessGaps` (buildScene): (a) ciąg główny ma ≥1 `snTrunk`, (b)
+`snTrunk` wyłącznie na trasie ciągu głównego (nie `branch_segment`), (c)
+odgałęzienia na `sn`; bramka `trunk_thickness_probe` w acceptance + 3 testy
+(pin fixtury, relacja stałych, negatyw: odgałęzienie z `snTrunk` ⇒ luka).
+Weryfikacja DOM (histogram stroke-width na L2): 12×2.4 (11 międzystacyjnych +
+GPZ→S0), 371×1.6, 53×4, 106×1.2. Wpływ na piony §15.1: zero (klasa ≠ geometria).
+
 ## Prompt kontynuacji (wklej świeżemu agentowi — DO WDROŻENIA 100%)
 
 ```

@@ -14,7 +14,9 @@ import { buildSceneV3 } from '../buildScene';
 import {
   BRIDGE_RADIUS,
   bridgePointsForPolyline,
+  busBandClearanceGaps,
   crossingBusGaps,
+  entryCollinearityGaps,
   interiorCrossings,
   polylinePathWithBridges,
   verticalPathWithBridges,
@@ -184,5 +186,55 @@ describe('F13.2 C — testy negatywne (kontrakt gryzie)', () => {
     const gaps = crossingBusGaps(corrupted);
     expect(gaps.length).toBeGreaterThan(0);
     expect(gaps.some((g) => g.vOwnerRef === 'SABOTAZ')).toBe(true);
+  });
+});
+
+describe('F13.3 — bus_band_clearance_probe (§22.3, D3-4/P-5)', () => {
+  it('fixtura L0/L1/L2: 0 obcych pionów w pasie ±2×GRID żadnej szyny (przed F13.3 było 12 na L1/L2 — pomiar P-5)', () => {
+    for (const lod of [0, 1, 2] as const) {
+      expect(busBandClearanceGaps(buildSceneV3(enm, lod).segments)).toEqual([]);
+    }
+  });
+
+  it('NEGATYW (wyrocznia gryzie): pion trasy seg/ przez pas szyny stacji ⇒ luka z właścicielami', () => {
+    const scene = buildSceneV3(enm, 2);
+    const bus = scene.segments.find((s) => (s.meta?.kind ?? '') === 'bus' && (s.meta?.ownerRef ?? '').startsWith('stn/'))!;
+    const p = bus.points[0];
+    const q = bus.points[bus.points.length - 1];
+    const midX = Math.round((p.x + q.x) / 2);
+    // pion NIE przecina szyny (kończy się GRID nad osią) — ale WCHODZI w pas ±2×GRID
+    const corrupted = [...scene.segments, seg([{ x: midX, y: p.y - 400 }, { x: midX, y: p.y - 8 }], 'sn', 'seg/SABOTAZ/branch')];
+    const gaps = busBandClearanceGaps(corrupted);
+    expect(gaps.some((g) => g.vOwnerRef === 'seg/SABOTAZ/branch' && g.busOwnerRef === bus.meta?.ownerRef)).toBe(true);
+  });
+
+  it('pion WŁASNEGO pola tej szyny w pasie jest LEGALNY (zejścia pól — spec §22.3)', () => {
+    const scene = buildSceneV3(enm, 2);
+    const bus = scene.segments.find((s) => (s.meta?.kind ?? '') === 'bus' && (s.meta?.ownerRef ?? '').startsWith('stn/'))!;
+    const scope = (bus.meta?.ownerRef ?? '').split('/').slice(0, 2).join('/');
+    const p = bus.points[0];
+    const q = bus.points[bus.points.length - 1];
+    const midX = Math.round((p.x + q.x) / 2);
+    const own = [...scene.segments, seg([{ x: midX, y: p.y }, { x: midX, y: p.y + 24 }], 'sn', `${scope}/sn_field/999#descent`)];
+    expect(busBandClearanceGaps(own).some((g) => g.vOwnerRef === `${scope}/sn_field/999#descent`)).toBe(false);
+  });
+});
+
+describe('F13.3 — entry_collinearity_probe (D3-15, audyt §6a)', () => {
+  it('fixtura L0/L1/L2: 0 pokryć pion-zewnętrzny×pion-wewnętrzny (przed F13.3 było 12 na L1/L2)', () => {
+    for (const lod of [0, 1, 2] as const) {
+      expect(entryCollinearityGaps(buildSceneV3(enm, lod).segments)).toEqual([]);
+    }
+  });
+
+  it('NEGATYW (wyrocznia gryzie): pion seg/ współliniowy z pionem pola stn/ ⇒ luka; styk samym końcem ⇒ zero', () => {
+    const internal = seg([{ x: 100, y: 200 }, { x: 100, y: 260 }], 'sn', 'stn/X/sn_field/000#descent');
+    const overlapping = seg([{ x: 100, y: 120 }, { x: 100, y: 230 }], 'sn', 'seg/Y/branch_segment_L');
+    expect(entryCollinearityGaps([internal, overlapping])).toEqual([
+      { x: 100, y0: 200, y1: 230, externalOwnerRef: 'seg/Y/branch_segment_L', internalOwnerRef: 'stn/X/sn_field/000#descent' },
+    ]);
+    // styk portowy (koniec-w-koniec) — NIE jest pokryciem interiorów
+    const touching = seg([{ x: 100, y: 120 }, { x: 100, y: 200 }], 'sn', 'seg/Y/branch_segment_L');
+    expect(entryCollinearityGaps([internal, touching])).toEqual([]);
   });
 });

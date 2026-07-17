@@ -68,6 +68,8 @@ import {
   type SceneV3,
 } from '../buildScene';
 import { overlapProbe } from '../../layout/labels';
+import { trunkThicknessGaps } from '../buildScene';
+import { SEGMENT_STROKE_WIDTH } from '../../compose/preview';
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { GRID, type V3Rect } from '../../core/grid';
@@ -749,9 +751,15 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // L1 OBNIŻONY 41000→40952 i L2 54104→54056 (−48: kolumna WN dodaje piony
     // GPZ, ale kasacja fałszywego akcentu-kropki V12K-039 i przebudowa strefy
     // GPZ na dekorację zdejmują więcej — netto spadek).
+    // → F13.3 (spec §22.3, D3-4/D3-15): L1 PODNIESIONY 40952→41880, L2
+    // 54056→54984 (+928 — 12 wejść lateralnych rynną ZA blokiem stacji
+    // docelowej i POD stacją do głowicy OD DOŁU, zamiast pionu
+    // współliniowego z osią pola wejściowego przez pas szyny; zysk twardy:
+    // bus_band_clearance 12→0, entry_collinearity 12→0). L0 BEZ zmian
+    // (stacja zbiorcza — brak szyny/pól, zejście proste zostaje).
     expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(12280);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(40952);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(54056);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(41880);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(54984);
   });
 });
 
@@ -1339,3 +1347,29 @@ describe(
     });
   },
 );
+
+describe('buildSceneV3 — F13.4: trunk_thickness_probe (spec §22.4, D3-6)', () => {
+  it('fixtura L0/L1/L2: trasa ciągu głównego klasą snTrunk, odgałęzienia klasą sn — 0 luk', () => {
+    for (const lod of [0, 1, 2] as const) {
+      const scene = buildSceneV3(enm, lod);
+      expect(trunkThicknessGaps(scene)).toEqual([]);
+      expect(scene.segments.some((s) => s.meta?.kind === 'snTrunk')).toBe(true);
+    }
+  });
+
+  it('relacja stałych renderu: snTrunk > sn (hierarchia §6/§22.4: szyny > magistrala > odgałęzienie > nN)', () => {
+    expect(SEGMENT_STROKE_WIDTH.snTrunk).toBeGreaterThan(SEGMENT_STROKE_WIDTH.sn);
+    expect(SEGMENT_STROKE_WIDTH.bus).toBeGreaterThan(SEGMENT_STROKE_WIDTH.snTrunk);
+    expect(SEGMENT_STROKE_WIDTH.sn).toBeGreaterThan(SEGMENT_STROKE_WIDTH.lv);
+  });
+
+  it('NEGATYW (wyrocznia gryzie): trasa odgałęźna z klasą snTrunk ⇒ luka', () => {
+    const scene = buildSceneV3(enm, 2);
+    const branch = scene.segments.find((s) => (s.meta?.ownerRef ?? '').includes('branch_segment'))!;
+    const corrupted = {
+      ...scene,
+      segments: scene.segments.map((s) => (s === branch ? { ...s, meta: { ...s.meta, kind: 'snTrunk' as const } } : s)),
+    };
+    expect(trunkThicknessGaps(corrupted).length).toBeGreaterThan(0);
+  });
+});

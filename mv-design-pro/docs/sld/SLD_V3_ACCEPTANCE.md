@@ -407,7 +407,7 @@ Sondy nazwane wpięte do `accept:sld-v3`, per LOD 0/1/2 na fixturze `sldSubstrat
 | port_probe | §11.2 | PASS |
 | symbol_wire_probe | §11.4 | PASS (twardy zero) |
 | label_wire_probe | §11.4 | PASS (baseline liczony, sekcja 3.4) |
-| vertical_length_probe | §15.1 | PASS (baseline 12120/41000/54104, nie-rosnący) |
+| vertical_length_probe | §15.1 | PASS (baseline 12280/41880/54984 po F13.1/F13.3 — uzasadnienia liczbowe w `sld_v3_acceptance.mjs`) |
 | lod_path_probe | §15.2 | PASS |
 | field_entry_probe | §12.3 | PASS |
 | cell_sequence (testy pinowe) | §12.1/§12.2 | PASS (vitest, compose) |
@@ -417,7 +417,7 @@ Sondy nazwane wpięte do `accept:sld-v3`, per LOD 0/1/2 na fixturze `sldSubstrat
 | line_bay_caption_probe | §19.4 | PASS |
 | station_type_topology_probe | §19.5 | PASS |
 | field_silhouette_probe | §14.3 | PASS |
-| branch_accent_probe | §14.4 | PASS |
+| branch_accent_probe | §14.4 | ZASTĄPIONA (V12K-039): kropka-akcent czytała się jako fałszywy węzeł (D3-14) — semantykę przejęła `junction_dot_probe` §22.1 (silniejsza, obustronna) |
 | sources_visible_probe | §13.1 | PASS |
 | source_symbol_probe | §13.2 | PASS |
 | source_state_probe | §13.3 | PASS (F11.3: a-bazowa + b-wariant pozytywny) |
@@ -434,6 +434,13 @@ Sondy nazwane wpięte do `accept:sld-v3`, per LOD 0/1/2 na fixturze `sldSubstrat
 | meter disambiguation | §19/§20 | PASS (F10.5) |
 | endpoint anchoring (sceneSegmentEndpointGaps) | §16 | PASS |
 | continuity/układ (§16 asercje E) | §16 | PASS (vitest buildScene) |
+| gpz_hv_column_probe | §21.1 (D3-1) | PASS (F13.1 — kolumna WN: przyłącze→Szyna WN→TR→sekcje SN; `gpzCanonProbes.ts`) |
+| gpz_dominance_probe | §21.2 (D3-2) | PASS (F13.1 — strefa GPZ ≥ największa stacja, busGpz>bus, tabliczka Sk″/Ik″) |
+| crossing_probe | §22.1 (D3-3) | PASS (F13.2 — 24 przecięcia sn×sn na L2 mostkowane z konstrukcji, 0 z szyną; `crossings.ts`) |
+| junction_dot_probe | §22.1 (D3-5/D3-14) | PASS (F13.2 — kropka ⇔ realny węzeł, obustronnie) |
+| bus_band_clearance_probe | §22.3 (D3-4) | PASS (F13.3 — pomiar P-5: 12→0 obcych pionów w pasie ±2×GRID) |
+| entry_collinearity_probe | §22.3 (D3-15) | PASS (F13.3 — 12→0 pokryć; wejście lateralne rynną do głowicy OD DOŁU) |
+| trunk_thickness_probe | §22.4 (D3-6) | PASS (F13.4 — `snTrunk` 2.4 > `sn` 1.6; histogram DOM: 12×2.4 na L2) |
 
 Rendery finalne (odświeżone 2026-07-16, `docs/sld/renders/v3/` — 5 szt.): każda klasa pola
 OBECNA w danych fixtury ma zoom — `projektant_L2_zoom_gpz.png` (Pole liniowe GPZ),

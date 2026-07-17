@@ -53,7 +53,7 @@ import type { ProtectionTopologyGap } from './protectionTopologyValidation';
  *  SN GPZ, grubsza niż szyna stacji (`'bus'`, 4) — dominanta kompozycyjna GPZ
  *  jako WN/SN. Szyna WN (`#hv-bus`) i szyny stacji ZOSTAJĄ `'bus'` (spec
  *  §21.2 różnicuje WYŁĄCZNIE szynę sekcji SN GPZ, nie szynę WN ani stacje). */
-export type PreviewSegmentKind = 'bus' | 'busGpz' | 'sn' | 'lv' | 'leader' | 'protectionTrip' | 'measurementLink';
+export type PreviewSegmentKind = 'bus' | 'busGpz' | 'sn' | 'snTrunk' | 'lv' | 'leader' | 'protectionTrip' | 'measurementLink';
 
 /** Eksportowane (F6b): `SldCanvasV3` reużywa TĘ SAMĄ hierarchię grubości
  *  (spec §6), zero duplikacji stałych między harnessem debug i kanwą docelową. */
@@ -63,6 +63,12 @@ export const SEGMENT_STROKE_WIDTH: Readonly<Record<PreviewSegmentKind, number>> 
   // dominanta kompozycyjna). Szyna stacji ZOSTAJE `bus`=4 (nietknięta).
   busGpz: 6,
   sn: 1.6,
+  // F13.4 (spec §22.4, D3-6): tor MAGISTRALI (trasa ciągu głównego GPZ→S0→…)
+  // grubszy niż odgałęźny (`sn`) — kanon SCADA: pierwszeństwo czytania
+  // kierunku zasilania jednym rzutem oka przy dziesiątkach pól liniowych.
+  // Hierarchia §6 zachowana: szyny (4/6) > magistrala (2.4) > odgałęzienie
+  // (1.6) > nN (1.2) > adnotacje (≤0.8).
+  snTrunk: 2.4,
   lv: 1.2,
   leader: 0.8,
   // F9.9 (spec §17.1): tor wyzwalania — cienki jak leader (adnotacja, nie tor

@@ -71,13 +71,17 @@ import {
   sourceStateGaps,
   symbolWireCollisions,
   totalVerticalSegmentLength,
+  trunkThicknessGaps,
 } from '../src/ui/sld/v3/scene/buildScene.ts';
 import { overlapProbe } from '../src/ui/sld/v3/layout/labels.ts';
+import { SEGMENT_STROKE_WIDTH } from '../src/ui/sld/v3/compose/preview.tsx';
 import { fieldSilhouettesAreInjective } from '../src/ui/sld/v3/compose/station.ts';
 import { sourceKindSymbolsAreInjective } from '../src/ui/sld/v3/compose/sourceKind.ts';
 import { SYMBOL_DEFS } from '../src/ui/sld/v3/symbols/defs.ts';
 import {
+  busBandClearanceGaps,
   crossingBusGaps,
+  entryCollinearityGaps,
   interiorCrossings,
   junctionDotGaps,
 } from '../src/ui/sld/v3/scene/crossings.ts';
@@ -165,7 +169,13 @@ const EXPECTED_STATION_COUNT = 53;
 // rynna objazdu wyjścia GPZ, eliminacja przebicia własnej szyny §22.3);
 // L1 41000→40952, L2 54104→54056 (−48 netto: kolumna WN GPZ + kasacja
 // fałszywego akcentu-kropki V12K-039 + strefa GPZ jako dekoracja).
-const VERTICAL_LENGTH_BASELINE = { 0: 12280, 1: 40952, 2: 54056 };
+// F13.3 (spec §22.3, D3-4/D3-15): L1 40952→41880, L2 54056→54984 (+928 —
+// 12 wejść lateralnych prowadzonych rynną ZA blokiem stacji docelowej i POD
+// stacją do głowicy OD DOŁU zamiast pionu współliniowego z osią pola przez
+// pas szyny; koszt = 2×(dystans strop-wiersza→sub-poziom pod głowicami) na
+// wejście. Zysk twardy: bus_band_clearance_probe 12→0, entry_collinearity
+// 12→0 na L1/L2. L0 bez zmian (stacja zbiorcza — pas szyny nie istnieje).
+const VERTICAL_LENGTH_BASELINE = { 0: 12280, 1: 41880, 2: 54984 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —
@@ -753,6 +763,28 @@ for (const lod of LODS) {
     'junction_dot_probe (§22.1, V12K-039): kropka węzłowa ⇔ realny węzeł rozgałęzienia tras (obustronnie); 0 luk',
     dotGaps.length === 0,
     `luki=${dotGaps.length}${dotGaps.length ? ' np. ' + JSON.stringify(dotGaps[0]) : ''}`,
+  );
+
+  // -- §22.3 (F13.3, D3-4/D3-15): pas ochronny szyny + wejście przez głowicę -
+  const bandGaps = busBandClearanceGaps(scene.segments);
+  check(
+    'bus_band_clearance_probe (§22.3): 0 obcych pionów w pasie ±2×GRID osi jakiejkolwiek szyny (przed F13.3: 12 na L1/L2 — pomiar P-5); do pasa wchodzą wyłącznie zejścia pól tej szyny',
+    bandGaps.length === 0,
+    `luki=${bandGaps.length}${bandGaps.length ? ' np. ' + JSON.stringify(bandGaps[0]) : ''}`,
+  );
+  const collinearGaps = entryCollinearityGaps(scene.segments);
+  check(
+    'entry_collinearity_probe (D3-15, audyt §6a): 0 pokryć pionu trasy zewnętrznej z pionem wewnętrznym pola (kabel wchodzi w głowicę OD DOŁU, nie jedną kreską przez pas szyny)',
+    collinearGaps.length === 0,
+    `luki=${collinearGaps.length}${collinearGaps.length ? ' np. ' + JSON.stringify(collinearGaps[0]) : ''}`,
+  );
+
+  // -- §22.4 (F13.4, D3-6): hierarchia grubości tras -------------------------
+  const thicknessGaps = trunkThicknessGaps(scene);
+  check(
+    'trunk_thickness_probe (§22.4): trasa ciągu głównego klasą snTrunk (grubsza), odgałęzienia klasą sn; relacja stałych snTrunk>sn',
+    thicknessGaps.length === 0 && SEGMENT_STROKE_WIDTH.snTrunk > SEGMENT_STROKE_WIDTH.sn,
+    `luki=${thicknessGaps.length}${thicknessGaps.length ? ' np. ' + thicknessGaps[0] : ''} snTrunk=${SEGMENT_STROKE_WIDTH.snTrunk} sn=${SEGMENT_STROKE_WIDTH.sn}`,
   );
 
   // -- §13.3 (F11.3): source_state_probe — stan źródła jako nakładka --------

@@ -303,3 +303,105 @@ export function junctionDotGaps(
   }
   return gaps;
 }
+
+// ---------------------------------------------------------------------------
+// §22.3 bus_band_clearance_probe + entry_collinearity_probe (F13.3, D3-4/D3-15).
+// ---------------------------------------------------------------------------
+
+/** Pas ochronny szyny: ±2×GRID od osi (spec §22.3 — „żaden pion trasy OBCEJ
+ *  nie przechodzi przez pas; do pasa wchodzą wyłącznie zejścia PÓL tej szyny"). */
+export const BUS_BAND_HALF = 2 * GRID;
+
+/** Zakres własności stacji/GPZ: dwa pierwsze człony ścieżki `ownerRef`
+ *  (`stn/⟨id⟩`, `gpz/⟨id⟩`) — pola (`stn/⟨id⟩/sn_field/…`) i szyna
+ *  (`stn/⟨id⟩/station#sn-bus`) tej samej stacji dzielą prefiks; trasy
+ *  zewnętrzne (`seg/⟨id⟩/…`) nigdy. */
+function ownerScope(ownerRef: string | undefined): string {
+  return (ownerRef ?? '').split('/').slice(0, 2).join('/');
+}
+
+export interface BusBandGap {
+  /** Właściciel szyny, której pas naruszono. */
+  readonly busOwnerRef?: string;
+  /** Oś Y szyny. */
+  readonly busY: number;
+  /** Naruszający pion: x i właściciel (WHITE BOX — do raportu). */
+  readonly x: number;
+  readonly vOwnerRef?: string;
+}
+
+/**
+ * bus_band_clearance_probe (spec §22.3, D3-4/P-5): pion OBCEJ trasy (inny
+ * zakres własności niż stacja szyny) przechodzący przez pas ±2×GRID osi szyny
+ * w jej rozpiętości X (krawędzie WŁĄCZNIE — pomiar P-5: naruszenia leżą
+ * DOKŁADNIE na `x = początek szyny`). 0 = zielono.
+ */
+export function busBandClearanceGaps(segments: readonly PreviewSegment[]): readonly BusBandGap[] {
+  const { v } = flatten(segments);
+  const gaps: BusBandGap[] = [];
+  for (const s of segments) {
+    const kind = s.meta?.kind ?? 'sn';
+    if (!BUS_KINDS.has(kind)) continue;
+    const scope = ownerScope(s.meta?.ownerRef);
+    for (let i = 0; i + 1 < s.points.length; i++) {
+      const a = s.points[i];
+      const b = s.points[i + 1];
+      if (a.y !== b.y || a.x === b.x) continue; // pas dotyczy szyn POZIOMYCH
+      const busY = a.y;
+      const x0 = Math.min(a.x, b.x);
+      const x1 = Math.max(a.x, b.x);
+      for (const vs of v) {
+        if (vs.isBus) continue;
+        if (ownerScope(vs.ownerRef) === scope) continue; // zejścia PÓL tej szyny — legalne
+        const vy0 = Math.min(vs.a.y, vs.b.y);
+        const vy1 = Math.max(vs.a.y, vs.b.y);
+        if (vs.a.x >= x0 && vs.a.x <= x1 && vy0 < busY + BUS_BAND_HALF && vy1 > busY - BUS_BAND_HALF) {
+          gaps.push({ busOwnerRef: s.meta?.ownerRef, busY, x: vs.a.x, vOwnerRef: vs.ownerRef });
+        }
+      }
+    }
+  }
+  return gaps.sort((p, q) => (p.busY - q.busY) || (p.x - q.x));
+}
+
+export interface EntryCollinearityGap {
+  readonly x: number;
+  /** Zakres Y pokrycia (interior obu pionów). */
+  readonly y0: number;
+  readonly y1: number;
+  readonly externalOwnerRef?: string;
+  readonly internalOwnerRef?: string;
+}
+
+/**
+ * entry_collinearity_probe (D3-15, audyt §6a): pion trasy ZEWNĘTRZNEJ
+ * (`seg/…`) WSPÓŁLINIOWY (to samo X, pokrycie interiorów w Y) z pionem
+ * WEWNĘTRZNYM stacji/GPZ (`stn/…`, `gpz/…`) — kabel zewnętrzny i tor pola
+ * rysują się jako JEDNA kreska („kabel ląduje na szynie z góry", pole
+ * wizualnie ominięte). Dotknięcie samym końcem (styk portowy) NIE jest
+ * pokryciem. 0 = zielono.
+ */
+export function entryCollinearityGaps(segments: readonly PreviewSegment[]): readonly EntryCollinearityGap[] {
+  const { v } = flatten(segments);
+  const ext = v.filter((s) => (s.ownerRef ?? '').startsWith('seg/'));
+  const internal = v.filter((s) => {
+    const o = s.ownerRef ?? '';
+    return o.startsWith('stn/') || o.startsWith('gpz/');
+  });
+  const gaps: EntryCollinearityGap[] = [];
+  for (const e of ext) {
+    const ey0 = Math.min(e.a.y, e.b.y);
+    const ey1 = Math.max(e.a.y, e.b.y);
+    for (const it of internal) {
+      if (it.a.x !== e.a.x) continue;
+      const iy0 = Math.min(it.a.y, it.b.y);
+      const iy1 = Math.max(it.a.y, it.b.y);
+      const o0 = Math.max(ey0, iy0);
+      const o1 = Math.min(ey1, iy1);
+      if (o1 > o0) {
+        gaps.push({ x: e.a.x, y0: o0, y1: o1, externalOwnerRef: e.ownerRef, internalOwnerRef: it.ownerRef });
+      }
+    }
+  }
+  return gaps.sort((p, q) => (p.y0 - q.y0) || (p.x - q.x));
+}

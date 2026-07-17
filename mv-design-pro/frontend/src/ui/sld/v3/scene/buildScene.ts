@@ -1050,6 +1050,9 @@ function connectRowStations(
   cableRun: SldCableRun | undefined,
   lod: SceneLod,
   channelPointsX: readonly number[] = [],
+  // F13.4 (spec §22.4, D3-6): klasa grubości trasy — ciąg GŁÓWNY woła z
+  // 'snTrunk' (magistrala grubsza), laterale zostają na domyślnym 'sn'.
+  kind: PreviewSegmentKind = 'sn',
 ): RowConnectResult {
   const connectors: PreviewSegment[] = [];
   const routeGeoms: RouteGeometry[] = [];
@@ -1075,7 +1078,7 @@ function connectRowStations(
     const route = connectViaCorridor(fromPort, toPort, corridorY, fromTerminal, toTerminal);
     connectors.push({
       points: route.points,
-      meta: { kind: 'sn', ownerRef: incomingSegmentRef(cableRun, cur.id), elementKind: 'segment' },
+      meta: { kind, ownerRef: incomingSegmentRef(cableRun, cur.id), elementKind: 'segment' },
     });
     routeGeoms.push({ points: route.points });
     if (lod === 2) {
@@ -1520,7 +1523,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           : connectViaCorridor(gpzPort, first.composed.entryPort, corridorY, fromTerminal, toTerminal);
         allSegments.push({
           points: route.points,
-          meta: { kind: 'sn', ownerRef: incomingSegmentRef(mainCableRun, first.id), elementKind: 'segment' },
+          // F13.4 (spec §22.4, D3-6): odcinek GPZ→S0 to trasa CIĄGU GŁÓWNEGO.
+          meta: { kind: 'snTrunk', ownerRef: incomingSegmentRef(mainCableRun, first.id), elementKind: 'segment' },
         });
         allRouteGeoms.push({ points: route.points });
         if (lod === 2) {
@@ -1549,7 +1553,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       }
     }
 
-    const internal = connectRowStations(mainRow, mainLayout, mainCableRun, lod);
+    const internal = connectRowStations(mainRow, mainLayout, mainCableRun, lod, [], 'snTrunk');
     allSegments.push(...internal.connectors);
     allRouteGeoms.push(...internal.routeGeoms);
     segmentSpans.push(...internal.spanLabels);
@@ -1744,21 +1748,52 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       // przelotach. Zmienna `branchJunctionTopY` i push symbolu skasowane —
       // pełne uzasadnienie w REJESTR_KONFLIKTOW V12K-039.
 
-      // F9.3 (FIX-1, spec §12.3): ostatni odcinek jogu schodzi do
-      // `first.composed.entryPort` (DOLNY PORT GŁOWICY pola „poprzednik"
-      // stacji 0 tego lateralu), NIE do `layout.blockTopY` (góra stosu, czyli
-      // — jak przy głównym bugu FIX-1 — koniec trasy na osi/górze pola, z
-      // dala od głowicy). `entryPort.x === channelX` z konstrukcji (wyrównanie
-      // dx wyżej), więc ostatnie dwa punkty są identyczne i redukują się
-      // filtrem duplikatów niżej — jog kończy się PROSTYM pionem z `channelX`
-      // w dół, dokładnie w porcie głowicy.
-      const rawJogPoints: RouteVertex[] = [
-        { x: originPort.x, y: originPort.y },
-        { x: originPort.x, y: stripTopY },
-        { x: channelX, y: stripTopY },
-        { x: channelX, y: first.composed.entryPort.y },
-        { x: first.composed.entryPort.x, y: first.composed.entryPort.y },
-      ];
+      // F9.3 (FIX-1, spec §12.3): jog kończy się w `first.composed.entryPort`
+      // (DOLNY PORT GŁOWICY pola „poprzednik" stacji 0 tego lateralu), NIE na
+      // `layout.blockTopY`.
+      //
+      // F13.3 (spec §22.3, D3-15/P-5, audyt §6a): na L1/L2 finalne podejście
+      // NIE schodzi już pionem `channelX` PRZEZ blok stacji docelowej —
+      // `entryPort.x === channelX` (wyrównanie dx wyżej) czyniło pion
+      // WSPÓŁLINIOWYM z osią pola wejściowego: kabel zewnętrzny i wewnętrzny
+      // tor pola (szyna→Q1→…→głowica) rysowały się jako JEDNA kreska
+      // przecinająca pas szyny od góry („kabel ląduje na szynie",
+      // `bus_band_clearance_probe`: 12 naruszeń, `entry_collinearity_probe`:
+      // 12 pokryć — pomiar 2026-07-16). TERAZ: pion `channelX` zatrzymuje się
+      // na stropie wiersza (`dy` — kanały pośrednich wierszy wyżej NIETKNIĘTE,
+      // rezerwacje `insertColumnChannels` bez zmian), jog RYNNĄ za lewą
+      // krawędzią kolumny stacji 0 (`gutterX`, poza gabarytem bloku), pion
+      // omija CAŁY blok, przejście POD stacją (sub-poziom GRID pod korytarzem
+      // międzystacyjnym tego wiersza — trzeci sub-poziom strefy B4/B5, patrz
+      // `trunkCorridorYOf`) i wejście w głowicę OD DOŁU (czytanie toru:
+      // kabel → głowica ▲ → aparaty → szyna, kanon „linia wchodzi do pola,
+      // nie na szynę"). L0 (stacja = symbol zbiorczy, port na osi, brak
+      // szyny/pól) zachowuje zejście proste — pas szyny nie istnieje.
+      const entry = first.composed.entryPort;
+      const rawJogPoints: RouteVertex[] = (() => {
+        if (lod === 0) {
+          return [
+            { x: originPort.x, y: originPort.y },
+            { x: originPort.x, y: stripTopY },
+            { x: channelX, y: stripTopY },
+            { x: channelX, y: entry.y },
+            { x: entry.x, y: entry.y },
+          ];
+        }
+        const col0 = layout.columnsResult.columns[0];
+        const gutterX = snapToGrid(col0.x - 2 * GRID);
+        const underY = trunkCorridorYOf(layout) + GRID;
+        return [
+          { x: originPort.x, y: originPort.y },
+          { x: originPort.x, y: stripTopY },
+          { x: channelX, y: stripTopY },
+          { x: channelX, y: dy },
+          { x: gutterX, y: dy },
+          { x: gutterX, y: underY },
+          { x: entry.x, y: underY },
+          { x: entry.x, y: entry.y },
+        ];
+      })();
       const jogPoints = rawJogPoints.filter(
         (p, idx) => idx === 0 || p.x !== rawJogPoints[idx - 1].x || p.y !== rawJogPoints[idx - 1].y,
       );
@@ -3667,3 +3702,34 @@ export function allMeterSymbolsDisambiguated(scene: SceneV3): boolean {
 
 // F13.1 (SLD_CAD_SPEC_V3 §21, D3-1/D3-2/D3-2bis): wyrocznie kanonu GPZ WN/SN — plik odrębny, patrz `./gpzCanonProbes.ts`.
 export { gpzHvColumnGaps, allGpzHvColumnsComplete, gpzDominanceGaps, gpzIsDominant } from './gpzCanonProbes';
+
+/**
+ * trunk_thickness_probe (spec §22.4, F13.4, D3-6): klasa grubości trasy —
+ * (a) scena z ciągiem głównym ma ≥1 odcinek `snTrunk` (magistrala FAKTYCZNIE
+ * wyróżniona, nie tylko stała w mapie); (b) `snTrunk` nosi WYŁĄCZNIE trasa
+ * ciągu głównego (`seg/…` bez członu `branch_segment`); (c) każda trasa
+ * odgałęźna (`branch_segment`) zostaje na klasie `sn`. Relację liczbową
+ * grubości (snTrunk > sn) pilnuje osobno test stałych `SEGMENT_STROKE_WIDTH`
+ * (preview) — wyrocznia sceny nie czyta stałych renderu (białoskrzynkowo:
+ * scena niesie KLASĘ, render niesie GRUBOŚĆ).
+ */
+export function trunkThicknessGaps(scene: SceneV3): readonly string[] {
+  const gaps: string[] = [];
+  const trunkSegs = scene.segments.filter((s) => s.meta?.kind === 'snTrunk');
+  if (scene.meta.mainTrunkStationIds.length > 0 && trunkSegs.length === 0) {
+    gaps.push('Ciąg główny narysowany, ale ŻADEN odcinek trasy nie niesie klasy snTrunk.');
+  }
+  for (const s of trunkSegs) {
+    const owner = s.meta?.ownerRef ?? '';
+    if (!owner.startsWith('seg/') || owner.includes('branch_segment')) {
+      gaps.push(`Odcinek klasy snTrunk poza trasą ciągu głównego: ownerRef=${owner}`);
+    }
+  }
+  for (const s of scene.segments) {
+    const owner = s.meta?.ownerRef ?? '';
+    if (owner.includes('branch_segment') && s.meta?.kind !== 'sn') {
+      gaps.push(`Trasa odgałęźna z klasą inną niż sn: ownerRef=${owner} kind=${String(s.meta?.kind)}`);
+    }
+  }
+  return gaps;
+}

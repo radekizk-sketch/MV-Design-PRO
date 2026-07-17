@@ -959,3 +959,22 @@ K-D2-B → V12K-034; K-D2-C → V12K-035; K-D2-D → V12K-036; K-D2-E → V12K-0
   (głowica ▲ na dole → aparaty → szyna u góry) — korytarze tras zewnętrznych prowadzone poza
   pasmami szyn.
 - **Wyrocznia:** `bus_band_clearance_probe` — 0 obcych pionów w pasie szyny; test negatywny.
+- **Doprecyzowanie D3-15 (F13.3, audyt §6a):** pion trasy zewnętrznej NIE może być WSPÓŁLINIOWY
+  z osią pola wejściowego (pokrycie interiorów pionu `seg/…` z pionem wewnętrznym `stn/…`/
+  `gpz/…` = kabel i tor pola jako jedna kreska — pole wizualnie ominięte). Wejście lateralne
+  prowadzone rynną ZA gabarytem bloku stacji docelowej, przejściem POD stacją i wejściem w
+  głowicę OD DOŁU. Wyjątek: L0 (stacja zbiorcza — brak szyny/pól, zejście proste legalne).
+- **Wyrocznia:** `entry_collinearity_probe` — 0 pokryć pion-zewnętrzny×pion-wewnętrzny;
+  test negatywny (fabrykowane pokrycie ⇒ FAIL, styk portowy końcem ⇒ zero).
+
+### 22.4 Hierarchia grubości tras (D3-6, F13.4)
+- **Wymaganie:** trasa CIĄGU GŁÓWNEGO (magistrali, w tym odcinek GPZ→pierwsza stacja) nosi
+  klasę grubości `snTrunk`, WYRAŹNIE grubszą niż trasa odgałęźna (`sn`) — kanon SCADA:
+  kierunek zasilania czytany jednym rzutem oka. Hierarchia §6 po rozszerzeniu:
+  szyna GPZ (6) > szyna stacji (4) > magistrala (`snTrunk` 2.4) > odgałęzienie (`sn` 1.6)
+  > nN (`lv` 1.2) > adnotacje (≤0.8). Scena niesie KLASĘ (`meta.kind`), render niesie
+  GRUBOŚĆ (`SEGMENT_STROKE_WIDTH`) — biała skrzynka, zero heurystyk po nazwach w renderze.
+- **Wyrocznie:** `trunk_thickness_probe` — (a) scena z ciągiem głównym ma ≥1 odcinek
+  `snTrunk`; (b) `snTrunk` wyłącznie na trasie ciągu głównego; (c) trasy odgałęźne zostają
+  na `sn`; relacja stałych `snTrunk > sn` pilnowana testem stałych. Test negatywny
+  (odgałęzienie z klasą `snTrunk` ⇒ FAIL).
