@@ -661,6 +661,12 @@ Progress:
         z InspectorEngineeringView), multi-edit, stan pusty PL.
         Wykonawca: pełny vitest 8674 pass, 0 failed (+10). Zarządca:
         203 celowane + 5 guardów UI OK, push. Konfirmacja w tle.
+        POTWIERDZENIE #38 (2026-07-17): pełny vitest 8674 passed, 0 failed
+        — BAZY: backend 6112, frontend 8674. REJESTR DUŻYCH POZYCJI
+        WYKONYWALNYCH BEZ DECYZJI WŁAŚCICIELA — PUSTY. Otwarte wyłącznie
+        punkty decyzyjne: V12K-027 (→P42), W5b/W4 (trasy mostu:
+        E-26 gotowe, stub wrażliwości, akcje audit2, V126Academic),
+        P44 (po P27).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
