@@ -588,6 +588,14 @@ Progress:
         POTWIERDZENIE #32 (2026-07-17): pełny pytest 6112 passed, 0 failed
         (673 s) — BAZY: backend 6112, frontend 8634. Karta P35b (okno
         dokumentu studium w kreatorze) delegowana.
+        SCALENIE #33 (2026-07-17): P35b dokument studium w kreatorze
+        (205ad3b → cherry-pick) — akcja z podglądem, sekcjami błędów
+        wariantów, brakami 422 i pobraniami DOCX/PDF; parametry żądania
+        snapshotowane ze stanu zakończonego biegu (nie z formularza).
+        Wykonawca: pełny vitest 8647 pass, 0 failed (+13). Zarządca:
+        43 celowane + type-check + lint + 4 guardy OK, push. Konfirmacja
+        w tle. DOKUMENTY E13 KOMPLETNE end-to-end: certyfikat + wniosek
+        OSD + dokument studium (backend JSON/DOCX/PDF + okna).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
