@@ -1673,6 +1673,36 @@ odgałęzienia na `sn`; bramka `trunk_thickness_probe` w acceptance + 3 testy
 Weryfikacja DOM (histogram stroke-width na L2): 12×2.4 (11 międzystacyjnych +
 GPZ→S0), 371×1.6, 53×4, 106×1.2. Wpływ na piony §15.1: zero (klasa ≠ geometria).
 
+### F13.5 [DONE] Odbiór programu D3
+
+Rendery odbioru per rola ODŚWIEŻONE po F13.1-F13.4 (`docs/sld/renders/v3/`,
+`sld_v3_render_roles.mjs` — kolumna WN GPZ, mostki §22.1, wejścia od dołu
+§22.3, grubość magistrali §22.4 widoczne). Macierz wyroczni
+`SLD_V3_ACCEPTANCE.md` §5: +7 sond D3 (gpz_hv_column/gpz_dominance/crossing/
+junction_dot/bus_band_clearance/entry_collinearity/trunk_thickness),
+branch_accent oznaczona ZASTĄPIONA (V12K-039), baseline'y §15.1
+12280/41880/54984 z uzasadnieniami. Raport końcowy właścicielowi w wątku
+sesji. PROGRAM D3 ZAMKNIĘTY (commity: eb43da0f F13.1+F13.2, 65815bb0
+F13.3-F13.5).
+
+### Po programie: likwidacja długów repo (dyrektywa stała właściciela 2026-07-17)
+
+Zasada przyjęta NA STAŁE: każdy defekt/dług/bug naprawiany end-to-end bez
+pytania. Wykonane (commity 8e687b2a, 05a63d68): martwy katalog workflowów CI
+aktywowany (physics-label + p0-extended do korzenia, wszystkie kroki
+egzekwowane); terminologia PL (V126); allowlist nastaw operacyjnych w
+physics_label_guard (cos_phi falownika); kasacja klastra legacy ui/sld
+(16 plików + testy, −11,7k linii); lista wykluczeń vitest WYZEROWANA
+(odbudowa InspectorEngineeringView.test złapała 2 realne regresje komponentu:
+hardkod podtytułu wariantu przyłączenia + gubienie kluczy semantycznych w
+akcjach TechCard; rozstrzygnięcie ENM-first dla ról semantycznych);
+spójność elektryczna szablonów DER (propagacja mocy — „nieużywana zmienna"
+vulture była zgubioną mocą; TR blokowy 3.15 MVA; strona nN za katalogiem;
+BESS 5 MW = 2×2,5 MW); test_no_todo_fixme naprawiony (granice słów — łapał
+„meTODOlogia"), docs_count zielony. UWAGA dla kontynuacji: prompt niżej
+wspomina „znany 1 pre-existing fail test_no_todo_fixme" — NIEAKTUALNE,
+backend pytest w całości zielony (5719 passed).
+
 ## Prompt kontynuacji (wklej świeżemu agentowi — DO WDROŻENIA 100%)
 
 ```

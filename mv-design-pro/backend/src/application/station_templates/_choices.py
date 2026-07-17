@@ -68,6 +68,14 @@ TR_BLOCK_FW_OPTIONS = (
         "Block TR Wiatr 3.15 MVA (0.69 kV)",
         "TRAFO_SN_NN",
     ),
+    # Turbina 3 MW ma moc POZORNĄ 3.3 MVA (katalog conv-wind-3mw: sn_mva=3.3)
+    # — blok 3.15 MVA za mały; 4.0 MVA to następny krok typoszeregu
+    # referencyjnego falowników.
+    CatalogChoice(
+        "tr-sn-nn-15-0p69-4mva-dyn11-inverter",
+        "Block TR Wiatr 4.0 MVA (0.69 kV)",
+        "TRAFO_SN_NN",
+    ),
 )
 
 

@@ -217,8 +217,13 @@ def apply_template_to_case(
     if station_ref and der_total > 0 and template.schema.der_options:
         for i in range(der_total):
             der_spec = template.schema.der_options[i % len(template.schema.der_options)]
-            der_catalog = overrides.get(f"der_{der_spec.kind}_ref") or _first_default_choice(
-                der_spec.catalog_options
+            der_p_mw_each = float(
+                overrides.get(f"der_{der_spec.kind}_p_mw_each", der_spec.default_p_mw_each)
+            )
+            der_catalog = (
+                overrides.get(f"der_{der_spec.kind}_ref")
+                or _der_catalog_for_power(der_spec, der_p_mw_each)
+                or _first_default_choice(der_spec.catalog_options)
             )
             if not der_catalog:
                 raise TemplateApplyError(
@@ -428,6 +433,34 @@ def _resolve_transformer_ref_for_template(
     return manufacturer_match or _first_default_choice(template.schema.transformer_options)
 
 
+def _der_catalog_for_power(der_spec: Any, p_mw_each: float) -> str | None:
+    """Domyślna pozycja katalogowa DER dobrana do mocy JEDNOSTKOWEJ szablonu.
+
+    Opcje katalogowe kodują moc w identyfikatorze (`conv-wind-3mw-…`,
+    `conv-bess-0.5mw-…`) — dotychczasowe „pierwsza z listy" dawało np.
+    szablonowi turbiny 3 MW jednostkę 2 MW (niespójność nazwa↔model).
+    Deterministyczny selektor (jak dobór transformatora): dopasowanie DOKŁADNE
+    mocy, w braku — najbliższe; brak parsowalnych tokenów ⇒ None (wołający
+    stosuje dotychczasowy fallback pierwszej opcji). Zero fizyki — wyłącznie
+    wybór pozycji; parametry i tak materializuje katalog.
+    """
+    options = getattr(der_spec, "catalog_options", ()) or ()
+    parsed: list[tuple[float, str]] = []
+    for option in options:
+        ref = getattr(option, "catalog_ref", None)
+        if not isinstance(ref, str):
+            continue
+        match = re.search(r"-(\d+(?:\.\d+)?)mw", ref.lower())
+        if match is not None:
+            parsed.append((float(match.group(1)), ref))
+    if not parsed:
+        return None
+    exact = [ref for power, ref in parsed if abs(power - p_mw_each) < 1e-9]
+    if exact:
+        return exact[0]
+    return min(parsed, key=lambda item: (abs(item[0] - p_mw_each), item[0]))[1]
+
+
 def _transformer_lv_voltage_kv(transformer_ref: str | None) -> float | None:
     """Katalogowa strona dolna wybranego transformatora [kV] — z REALNEGO
     rekordu katalogu (nie z tokenu id): jedna prawda napięć, ta sama, którą
@@ -490,11 +523,37 @@ def _template_der_required_kva(
     for i in range(der_total):
         spec = der_specs[i % len(der_specs)]
         override_key = f"der_{spec.kind}_p_mw_each"
-        total_mw += float(overrides.get(override_key, spec.default_p_mw_each))
+        p_mw_each = float(overrides.get(override_key, spec.default_p_mw_each))
+        # Jedna prawda mocy: walidacja domenowa
+        # (`converter.transformer_capacity_exceeded`) porównuje z KATALOGOWĄ
+        # mocą POZORNĄ jednostki (`sn_mva`, np. Vestas 3 MW = 3.3 MVA) —
+        # selektor transformatora musi liczyć tę samą wielkość, inaczej
+        # dobiera TR po mocy czynnej i walidacja odrzuca (3300 > 3150 kVA).
+        catalog_ref = overrides.get(f"der_{spec.kind}_ref") or _der_catalog_for_power(spec, p_mw_each)
+        apparent_mva = _converter_apparent_power_mva(catalog_ref)
+        total_mw += apparent_mva if apparent_mva is not None else p_mw_each
 
     if total_mw <= 0:
         return None
     return int(round(total_mw * 1000))
+
+
+def _converter_apparent_power_mva(catalog_ref: object) -> float | None:
+    """Katalogowa moc pozorna jednostki przekształtnikowej [MVA] — z REALNEGO
+    rekordu katalogu (`ConverterType.sn_mva`); None gdy brak refu/rekordu."""
+    if not isinstance(catalog_ref, str) or not catalog_ref.strip():
+        return None
+    try:
+        from network_model.catalog import get_default_mv_catalog
+    except ImportError:
+        return None
+    item = get_default_mv_catalog().get_converter_type(catalog_ref)
+    value = getattr(item, "sn_mva", None) if item is not None else None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
 
 
 def _resolve_sn_bay_roles(template: StationTemplate, count: int) -> list[str]:

@@ -2,7 +2,7 @@
 
 **Version:** 5.1
 **Status:** LIVING DOCUMENT
-**Last updated:** 2026-05-24 (V12.6 academic end-to-end closure)
+**Last updated:** 2026-07-17 (SLD v3 CAD/SCADA — program zamknięty + likwidacja długów repo)
 **Reference (canon):** [`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md) (binding), [`docs/system/`](docs/system/) (binding specs), [`SYSTEM_SPEC.md`](SYSTEM_SPEC.md) (executive overview).
 **Reference (archive):** [`docs/spec/`](docs/spec/) — historical V11 reference; not source of truth.
 **Active work:** see § 3 and [`docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md`](docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md).
@@ -77,6 +77,26 @@ MV-DESIGN-PRO is a functional Medium Voltage network design and analysis system 
 ---
 
 ## 3. Active Work
+
+### 3.-2 SLD v3 CAD/SCADA — program ZAMKNIĘTY + likwidacja długów repo (2026-07-17)
+
+Gałąź `claude/sld-schema-cad-scada-rqvz73`. Przebudowa SLD do jakości CAD/SCADA
+zakończona w całości: fazy F1–F11 (spec `docs/sld/SLD_CAD_SPEC_V3.md`,
+wykonanie `docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md`), F12 (rozstrzygnięcia
+ARCH + kasacja ścieżki renderu v2, −16,5k linii), D3/F13 (kanon energetyczny:
+GPZ WN/SN jako dominanta §21, mostki skrzyżowań i kropka węzłowa §22.1, pas
+ochronny szyn + wejście przez głowicę od dołu §22.3, grubość magistrali §22.4
+— audyt `docs/sld/SLD_ENGINEERING_CANON_AUDIT_D3_2026-07.md`, macierz wyroczni
+`docs/sld/SLD_V3_ACCEPTANCE.md` §5, `npm run accept:sld-v3` ALL PASS L0/L1/L2).
+
+Dyrektywa stała właściciela (2026-07-17): każdy defekt/dług/bug naprawiany
+end-to-end bez pytania. Wykonana likwidacja długów (szczegóły: execplan,
+sekcja „Po programie"): martwe workflowy CI aktywowane, klaster legacy ui/sld
+skasowany (−11,7k linii), lista wykluczeń vitest wyzerowana (odbudowa testu
+inspektora złapała 2 realne regresje komponentu), spójność elektryczna
+szablonów DER (zgubiona moc, TR 3.15 MVA, strona nN za katalogiem),
+test_no_todo_fixme i docs_count trwale zielone. Frontend 7481 testów / backend
+5719 testów — komplet zielony.
 
 ### 3.-1 ESKALACJA (2026-07-15): odwrócony znak mocy w canonical PF pipeline — NAPRAWIONE (F9.8, tego samego dnia)
 
