@@ -505,6 +505,11 @@ Progress:
         podsumowania — najpewniej ubity przy równoległym pełnym pytest
         D15); restart sekwencyjny (vitest → pytest) w tle. PROCEDURA:
         nie puszczać dwóch pełnych suit RÓWNOLEGLE.
+        POTWIERDZENIE #25r (2026-07-17): pełny vitest 8564 passed, 0 failed
+        — nowa baza frontendu 8564. Okno W-707 (zakładka „Wniosek OSD")
+        delegowane. PROCEDURA: worktree wykonawcy sprzątać dopiero po
+        wygaśnięciu agenta (późny raport D15 zastał usunięty worktree —
+        bez utraty danych, commit zarządcy wcześniejszy).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
