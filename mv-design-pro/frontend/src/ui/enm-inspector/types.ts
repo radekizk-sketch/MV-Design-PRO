@@ -152,3 +152,42 @@ export const ANALYSIS_LABELS_PL: Record<AnalysisType, string> = {
   LF: 'Rozpływ mocy (Load Flow)',
   PROTECTION: 'Koordynacja zabezpieczeń',
 };
+
+// ---------------------------------------------------------------------------
+// Reference Engine V1 (REFERENCE_ENGINE_SPEC_V1.md §9, V12K-060) — raport
+// zgodności referencyjnej + Reference Score (kontrakt
+// GET /api/cases/{case_id}/reference/compliance).
+// ---------------------------------------------------------------------------
+
+export type ReferencePackKind = 'norm' | 'manufacturer' | 'osd';
+
+export interface ReferenceComplianceCheck {
+  element_ref: string;
+  pack_id: string;
+  rule_code: string;
+  status: 'pass' | 'fail';
+  message_pl: string;
+}
+
+export interface ReferencePackComplianceReport {
+  pack_id: string;
+  name_pl: string;
+  kind: ReferencePackKind;
+  version: string;
+  applicable: number;
+  passed: number;
+  failed: number;
+  /** null = „nie dotyczy" (zero sprawdzeń stosowalnych — uczciwy raport). */
+  score_percent: number | null;
+  checks: ReferenceComplianceCheck[];
+}
+
+export interface ReferenceComplianceReport {
+  packs: ReferencePackComplianceReport[];
+}
+
+export const REFERENCE_PACK_KIND_LABELS_PL: Record<ReferencePackKind, string> = {
+  norm: 'Norma',
+  manufacturer: 'Producent',
+  osd: 'OSD',
+};

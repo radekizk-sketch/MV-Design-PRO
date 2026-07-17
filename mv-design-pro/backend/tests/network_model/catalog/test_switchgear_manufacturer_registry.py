@@ -29,10 +29,19 @@ from network_model.catalog.switchgear import (
 
 
 class TestManufacturerRegistry:
-    def test_registry_has_four_starting_manufacturers(self):
-        assert len(MANUFACTURER_REGISTRY) == 4
+    def test_registry_has_five_starting_manufacturers(self):
+        # 5. producent SCHNEIDER_ELECTRIC dodany w programie Reference Engine
+        # V1 (rodzina SM6-24). Intencja testu bez zmian: rejestr zawiera
+        # DOKŁADNIE znanych producentów.
+        assert len(MANUFACTURER_REGISTRY) == 5
         refs = set(MANUFACTURER_REGISTRY.keys())
-        assert refs == {"ZPUE_WLOSZCZOWA", "ELEKTROMETAL", "ABB", "SIEMENS"}
+        assert refs == {
+            "ZPUE_WLOSZCZOWA",
+            "ELEKTROMETAL",
+            "ABB",
+            "SIEMENS",
+            "SCHNEIDER_ELECTRIC",
+        }
 
     def test_all_starters_require_catalog(self):
         """NIE fabrykuj — wszyscy producenci na start mają status requires_catalog."""
@@ -64,8 +73,10 @@ class TestManufacturerRegistry:
             get_manufacturer("NIEZNANY_PRODUCENT")
 
     def test_manufacturers_requiring_catalog_lists_all_starters(self):
+        # 5 producentów (Reference Engine V1) — wszyscy requires_catalog
+        # do czasu zatwierdzenia oficjalnych kart PDF.
         requiring = manufacturers_requiring_catalog()
-        assert len(requiring) == 4
+        assert len(requiring) == 5
 
     def test_verified_manufacturers_empty_on_start(self):
         assert verified_manufacturers() == []

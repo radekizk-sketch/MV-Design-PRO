@@ -33,6 +33,7 @@ from ..bay_templates import (
     BAY_TEMPLATE_TRANSFORMER,
     BayTemplate,
 )
+from .apparatus_vocabulary import FAMILY_APPARATUS_FOR_TEMPLATE_KIND
 from .complete_mv_bay_template import BayKind, CompleteMvBayTemplate
 from .families import list_families_for_manufacturer, list_switchgear_families
 from .switchgear_family import SwitchgearFamily
@@ -74,6 +75,30 @@ def _build_canonical_template(
     return template.model_copy(update={"hash": template.compute_hash()})
 
 
+def _family_filtered_base(base: BayTemplate, family: SwitchgearFamily) -> BayTemplate:
+    """Bazowy szablon przefiltrowany do słownika aparatów rodziny.
+
+    Reference Engine V1 (spec §7, pkt 2/4 dyrektywy): kreator nie może
+    wygenerować pola z aparatem SPOZA `allowed_apparatus_kinds` rodziny —
+    np. rodziny RMU (SafeRing/8DJH) nie mają w słowniku przekładników CT/VT,
+    więc szablon rodziny NIE zawiera CT z kanonicznego szablonu
+    wyłącznikowego. Aparat bez wpisu w słowniku mapowań (transformator pola)
+    leży poza celką — zawsze zachowany. Pusta lista rodziny = brak filtra.
+    """
+    if not family.allowed_apparatus_kinds:
+        return base
+    allowed = set(family.allowed_apparatus_kinds)
+    devices = [
+        device
+        for device in base.devices
+        if FAMILY_APPARATUS_FOR_TEMPLATE_KIND.get(device.kind) is None
+        or FAMILY_APPARATUS_FOR_TEMPLATE_KIND[device.kind] in allowed
+    ]
+    if len(devices) == len(base.devices):
+        return base
+    return base.model_copy(update={"devices": devices})
+
+
 def _build_family_template(
     base: BayTemplate,
     bay_kind: BayKind,
@@ -82,7 +107,7 @@ def _build_family_template(
 ) -> CompleteMvBayTemplate:
     template = CompleteMvBayTemplate(
         template_ref=f"{family.switchgear_family_ref}__{suffix.upper()}",
-        base_template=base,
+        base_template=_family_filtered_base(base, family),
         manufacturer_ref=family.manufacturer_ref,
         switchgear_family_ref=family.switchgear_family_ref,
         bay_kind=bay_kind,
@@ -147,8 +172,7 @@ def list_canonical_fallback_for_manufacturer(
     if manufacturer_ref is None:
         return fallbacks
     return [
-        template.model_copy(update={"manufacturer_ref": manufacturer_ref})
-        for template in fallbacks
+        template.model_copy(update={"manufacturer_ref": manufacturer_ref}) for template in fallbacks
     ]
 
 

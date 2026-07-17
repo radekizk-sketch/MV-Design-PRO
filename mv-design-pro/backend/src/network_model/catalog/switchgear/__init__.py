@@ -4,8 +4,8 @@ Eksport publiczny:
 - Manufacturer / ManufacturerStatus
 - SwitchgearFamily / SwitchgearFamilyStatus
 - CompleteMvBayTemplate / BayKind / SourceStatus
-- ManufacturerRegistry (4 startowych: ZPUE_WLOSZCZOWA, ELEKTROMETAL, ABB,
-  SIEMENS — wszyscy `requires_catalog`)
+- ManufacturerRegistry (5 startowych: ZPUE_WLOSZCZOWA, ELEKTROMETAL, ABB,
+  SIEMENS, SCHNEIDER_ELECTRIC — wszyscy `requires_catalog`)
 """
 
 from .canonical_fallback import (
@@ -20,10 +20,16 @@ from .complete_mv_bay_template import (
     CompleteMvBayTemplate,
     SourceStatus,
 )
+from .device_instance import (
+    ApparatusKind,
+    BayDeviceInstanceTemplate,
+    ElectricalSide,
+)
 from .families import (
     ABB__SAFERING,
     ABB__UNIGEAR_ZS1,
     ELEKTROMETAL__E2ALPHA,
+    SCHNEIDER__SM6_24,
     SIEMENS__8DJH,
     SIEMENS__NXAIR,
     SWITCHGEAR_FAMILY_REGISTRY,
@@ -31,11 +37,6 @@ from .families import (
     get_switchgear_family,
     list_families_for_manufacturer,
     list_switchgear_families,
-)
-from .device_instance import (
-    ApparatusKind,
-    BayDeviceInstanceTemplate,
-    ElectricalSide,
 )
 from .manufacturer import Manufacturer, ManufacturerStatus
 from .port_definition import (
@@ -47,6 +48,7 @@ from .registry import (
     ABB,
     ELEKTROMETAL,
     MANUFACTURER_REGISTRY,
+    SCHNEIDER_ELECTRIC,
     SIEMENS,
     ZPUE_WLOSZCZOWA,
     get_manufacturer,
@@ -83,6 +85,8 @@ __all__ = [
     "ManufacturerStatus",
     "PortDefinitionTemplate",
     "PortKind",
+    "SCHNEIDER_ELECTRIC",
+    "SCHNEIDER__SM6_24",
     "SIEMENS",
     "SIEMENS__8DJH",
     "SIEMENS__NXAIR",

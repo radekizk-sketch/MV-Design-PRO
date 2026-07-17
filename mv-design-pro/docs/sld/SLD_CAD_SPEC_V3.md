@@ -389,6 +389,12 @@ nie względem martwego kodu v2" z F8c pkt 6 — działa w OBIE strony).
   Każdy stos rysowany z konwencji nosi `data-apparatus-source="konwencja"`.
   CB+CT w polu liniowym stacji kompaktowej są legalne WYŁĄCZNIE ze ścieżki danych
   (`primary_devices` — świadomy wybór rozdzielnicy), nigdy z konwencji.
+- **Reference Engine V1 (2026-07-17, V12K-060):** słownik §12.4 jest IMPLEMENTACJĄ
+  profili referencyjnych pakietu `iec62271` (`REFERENCE_ENGINE_SPEC_V1.md` §4/§8) —
+  semantyka walidacyjna (required/one_of/forbidden/kolejność/aparaty boczne) żyje
+  w wersjonowanych pakietach `backend/src/reference_engine/packs/`; parytet egzekwują
+  testy `apparatusSequence.referenceParity.test.ts` (z negatywem-sabotażem) i
+  `tests/reference_engine/` (mirror bajtowy, szablony kreatora). Rozjazd = czerwone CI.
 - **Źródło danych:** rola pola (`bay_role`/`fieldRole`; adapter mapuje pola stacji SN/nN na
   `RMU_LINE`/`RMU_TRANSFORMER` — `mapStationBayRoleToMiniRole`).
 - **Wyrocznia odbioru:** `bay_template_probe` (`bayTemplateGaps`, scene/buildScene.ts) — pole

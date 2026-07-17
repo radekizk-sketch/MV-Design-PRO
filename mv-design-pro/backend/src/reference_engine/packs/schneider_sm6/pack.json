@@ -1,0 +1,12 @@
+{
+  "pack_id": "schneider_sm6",
+  "kind": "manufacturer",
+  "name_pl": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa)",
+  "version": "2026-07",
+  "status": "repo_verified",
+  "switchgear_family_ref": "SCHNEIDER__SM6_24",
+  "source_document_refs": [
+    "https://www.se.com/ww/en/product-range/933-sm6-24/"
+  ],
+  "notes_pl": "Rozdzielnica modułowa SN do 24 kV (celki rozłącznikowe, rozłącznik z bezpiecznikami, wyłącznikowe, pomiarowe). Dane rodziny: SWITCHGEAR_FAMILY_REGISTRY (jedno źródło, wpis SCHNEIDER__SM6_24, status repo_verified — publiczna strona produktu; pełne parametry wymagają oficjalnej karty katalogowej)."
+}

@@ -14,9 +14,8 @@ import networkx as nx
 from pydantic import BaseModel
 
 from .fix_actions import FixAction
+from .interlock_rules import earthing_interlock_violation
 from .models import (
-    Bay,
-    BayPrimaryDevice,
     Cable,
     EnergyNetworkModel,
     OverheadLine,
@@ -588,26 +587,12 @@ class ENMValidator:
         # główny. Uziemnik ZAMKNIĘTY przy JEDNOCZEŚNIE zamkniętym łączniku
         # toru głównego TEGO SAMEGO pola (CB/DS/LOAD_SWITCH) = niedozwolona
         # kombinacja stanów (uziemienie toru pod napięciem) — klasyczna
-        # blokada mechaniczna/logiczna rozdzielnicy. Stan per aparat:
-        # `BayPrimaryDevice.switch_state.actual_state` z fallbackiem na
-        # `Bay.runtime_state.primary_device_states[device_ref]`.
-        _MAIN_SWITCH_KINDS = {"CB", "DS", "LOAD_SWITCH", "FUSE"}
-
-        def _device_closed(bay: Bay, device: BayPrimaryDevice) -> bool:
-            state = device.switch_state
-            if state is None and bay.runtime_state is not None:
-                state = bay.runtime_state.primary_device_states.get(device.device_ref)
-            return state is not None and state.actual_state.startswith("zamkniety")
-
+        # blokada mechaniczna/logiczna rozdzielnicy. Predykat wspólny z
+        # silnikiem zgodności referencyjnej: `enm/interlock_rules.py`
+        # (REFERENCE_ENGINE_SPEC_V1 §7 — jedna prawda logiki stanów).
         for bay in enm.bays:
-            devices = bay.primary_devices or []
-            closed_es = [d for d in devices if d.kind == "ES" and _device_closed(bay, d)]
-            if not closed_es:
-                continue
-            closed_main = [
-                d for d in devices if d.kind in _MAIN_SWITCH_KINDS and _device_closed(bay, d)
-            ]
-            if not closed_main:
+            closed_es, closed_main = earthing_interlock_violation(bay)
+            if not closed_es or not closed_main:
                 continue
             issues.append(
                 ValidationIssue(
@@ -632,6 +617,34 @@ class ENMValidator:
                         element_ref=bay.ref_id,
                         modal_type="BayModal",
                         payload_hint={"required": "earthing_interlock"},
+                    ),
+                )
+            )
+
+        # W035 (Reference Engine V1, spec §6, V12K-060): walidacja referencyjna
+        # NA ŻYWO — profile pól IEC 62271 (required/one_of/forbidden/kolejność/
+        # aparat boczny w osi) + rodziny producentów dla pól związanych przez
+        # bay_template_ref. Tylko ścieżka danych (primary_devices niepuste);
+        # konwencja rysunkowa jest z definicji zgodna (parytet spec §8).
+        # Import LENIWY: reference_engine importuje enm.models — import
+        # modułowy tutaj tworzyłby cykl przy imporcie reference_engine przed
+        # pakietem enm (enm/__init__ importuje ten walidator).
+        from reference_engine.validation import reference_validation_issues
+
+        for finding in reference_validation_issues(enm):
+            issues.append(
+                ValidationIssue(
+                    code=finding.code,
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=finding.message_pl,
+                    element_refs=[finding.element_ref],
+                    wizard_step_hint="K5",
+                    suggested_fix=finding.suggested_fix,
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=finding.element_ref,
+                        modal_type="BayModal",
+                        payload_hint={"required": "reference_profile_compliance"},
                     ),
                 )
             )

@@ -1,0 +1,25 @@
+{
+  "pack_id": "osd_enea",
+  "kind": "osd",
+  "name_pl": "Enea Operator — standardy w sieci dystrybucyjnej (stacje SN/nN)",
+  "version": "2025-01",
+  "status": "repo_verified",
+  "source_document_refs": [
+    "https://www.operator.enea.pl/uslugi-dystrybucyjne/instrukcje-i-standardy/standardy-w-sieci-dystrybucji",
+    "https://www.operator.enea.pl/uploads-ev2/Operator/us%C5%82ugidystrybucyjne/instrukcjeistandardysieci/standardywsieci/19.12.2024/Stacje%20elektroenergetyczne%20%C5%9Bredniego%20napi%C4%99cia.%20Zeszyt%202.%20Stacje%20transformatorowe%20kompaktowe%20prefabrykowane%20SNnn%20do%20400%20kVA%20uproszczone%20%20obowi%C4%85zuje%20od%2001.01..pdf",
+    "https://www.operator.enea.pl/uploads-ev2/Operator/us%C5%82ugidystrybucyjne/instrukcjeistandardysieci/standardywsieci/21.03.2024_1/STACJE~2.PDF"
+  ],
+  "station_rules": [
+    {
+      "rule_id": "osd_enea.station.prefabricated_compact_preferred",
+      "description_pl": "Standard sieci Enea Operator (Stacje elektroenergetyczne SN, Zeszyt 1/2): dla nowych stacji transformatorowych SN/nN rozwiązaniem podstawowym jest stacja kompaktowa prefabrykowana. Stacja SN/nN o znanym innym typie konstrukcji = ostrzeżenie zgodności.",
+      "implemented": true
+    },
+    {
+      "rule_id": "osd_enea.station.telemechanika_sn",
+      "description_pl": "Wymagania telemechaniki dla stacji SN (standard „Linie i stacje elektroenergetyczne SN — telemechanika”). Sprawdzenie wymaga modelu łączności/telemechaniki — poza zakresem V1 (PLAN, wpis w execplanie).",
+      "implemented": false
+    }
+  ],
+  "notes_pl": "Interpretacja repo-level publicznych standardów Enea Operator (URL-e w źródłach). Pełne wymagania OSD (schematy pól, układy pomiarowe rozliczeniowe, granice własności) wymagają przeniesienia kompletnych Zeszytów do danych pakietu — status verified dopiero po zatwierdzeniu w PR z oficjalnymi dokumentami (kanon SLD_MV_BAY_TEMPLATE_SOURCE_POLICY)."
+}

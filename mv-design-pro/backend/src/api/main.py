@@ -22,13 +22,14 @@ from api.health import router as health_router
 from api.middleware import RequestIdMiddleware
 from api.ncrfg_ptpiree_tests import router as ncrfg_ptpiree_tests_router
 from api.power_flow_comparisons import router as power_flow_comparisons_router
-from api.reference_networks import router as reference_networks_router
 from api.power_flow_runs import router as power_flow_runs_router
 from api.project_archive import router as project_archive_router
 from api.projects import router as projects_router
 from api.proof_pack import router as proof_pack_router
 from api.protection_analysis_runs import router as protection_analysis_runs_router
 from api.protection_comparisons import router as protection_comparisons_router
+from api.reference_engine import router as reference_engine_router
+from api.reference_networks import router as reference_networks_router
 from api.reference_patterns import router as reference_patterns_router
 from api.result_contract_v1 import router as result_contract_v1_router
 from api.sld import router as sld_router
@@ -113,6 +114,7 @@ app.include_router(health_router)
 app.include_router(ncrfg_ptpiree_tests_router)
 app.include_router(power_flow_comparisons_router)
 app.include_router(power_flow_runs_router)
+app.include_router(reference_engine_router)
 app.include_router(reference_networks_router)
 app.include_router(project_archive_router)
 app.include_router(projects_router)

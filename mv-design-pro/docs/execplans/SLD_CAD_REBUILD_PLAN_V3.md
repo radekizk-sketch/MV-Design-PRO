@@ -1917,6 +1917,59 @@ ZAMKNIĘTE 2026-07-17 (runda 3, „Wykonaj") — OBIE luki wykonane end-to-end:
    `docs/audit/visual/sld_substrate_53_PA_tor.png` (86 kawałków pod
    napięciem, 8 wstecznych OZE, 1 stacja wygaszona za NO).
 
+3. [DONE 2026-07-17, runda 8 — REFERENCE ENGINE V1 (dyrektywa właściciela
+   „Globalna integracja referencji SLD", 12 punktów; spec:
+   `docs/sld/REFERENCE_ENGINE_SPEC_V1.md`, ruling V12K-060)]:
+   - backend `src/reference_engine/` (models/registry/compliance/validation)
+     + 8 wersjonowanych pakietów JSON: iec60617 (słownik symboli — lustro
+     `symbolIdForPrimaryDeviceKind`), iec62271 (10 profili pól: required/
+     one_of/forbidden/kolejność/aparaty boczne + blokada uziemnika przez
+     WSPÓLNY predykat `enm/interlock_rules.py` z W034), elektrometal_e2alpha,
+     siemens_8djh, schneider_sm6, abb_unigear, abb_safering (ref do
+     SWITCHGEAR_FAMILY_REGISTRY — zero kopii danych rodzin), osd_enea
+     (reguła stacji kompaktowej prefabrykowanej z publicznych Zeszytów);
+   - walidacja NA ŻYWO (pkt 3): walidator ENM emituje `reference.bays.*`
+     (missing_required_apparatus / missing_switching_function /
+     forbidden_apparatus / apparatus_order_mismatch /
+     earth_switch_in_main_path / family_mismatch dla pól związanych
+     `bay_template_ref`) — severity IMPORTANT + FixAction BayModal;
+     WYŁĄCZNIE ścieżka danych (konwencja = zgodna z definicji przez parytet);
+   - kreator (pkt 2/4): `canonical_fallback._build_family_template` filtruje
+     aparaty do słownika rodziny (wspólne mapowanie
+     `catalog/switchgear/apparatus_vocabulary.py`) — szablony rodzin RMU
+     (SafeRing/8DJH) nie niosą już CT z kanonu wyłącznikowego; profil FEEDER
+     wybierany z danych (FUSE ⇒ aux, inaczej reserve);
+   - silnik zgodności + Reference Score (pkt 7/8): `evaluate_enm` —
+     sprawdzenia ✓/✗ z powodem PL per element per pakiet, score
+     round(100·passed/applicable), applicable=0 ⇒ null („nie dotyczy");
+     API `GET /api/reference/packs[/{id}]` +
+     `GET /api/cases/{id}/reference/compliance[?packs=]`;
+   - frontend: mirror pakietów `src/ui/sld/reference/*.pack.json` (parytet
+     BAJTOWY egzekwowany testem backendu `test_pack_parity.py`),
+     `referenceProfiles.ts` (profil per FieldRole + checker), zakładka
+     „Referencje" Inspektora ENM (`ReferencePanel` — tabela score +
+     sprawdzenia ✓/✗);
+   - katalog: +SCHNEIDER_ELECTRIC (requires_catalog) + rodzina
+     SCHNEIDER__SM6_24 (repo_verified, publiczna strona se.com);
+   - KOREKTA FAKTOGRAFICZNA (spec §11): e²TANGO = sterowniki polowe
+     Elektrometal (karta K-3.2.8), NIE rodzina rozdzielnic — pakiet oparty
+     na realnej rodzinie e²ALPHA, sterowniki ujęte jako
+     `protection_control_refs`;
+   - testy: `tests/reference_engine/` (rejestr, zgodność szablonów kreatora
+     z profilami + sabotaż, silnik z negatywami, walidacja na żywo z
+     negatywami, parytet mirrora), `tests/api/test_reference_engine_api.py`,
+     `apparatusSequence.referenceParity.test.ts` (2 sabotaże),
+     `referencePanel.test.tsx`;
+   - DŁUGI JAWNE (Zero-Debt pkt 4 — wymagają danych zewnętrznych):
+     (a) style renderowania producenckie (pkt 6 dyrektywy) — wymagają
+     ZWERYFIKOWANYCH wzorników graficznych producentów (reguła „nie fabrykuj
+     danych producenta"); model niezależny od stylu już dziś (styl = czysta
+     funkcja od SymbolId); (b) pełne wymagania OSD (układy pomiarowe
+     rozliczeniowe, granice własności) — wymagają przeniesienia kompletnych
+     Zeszytów Enea Operator do danych pakietu; (c) reguła telemechaniki
+     `osd_enea.station.telemechanika_sn` zarejestrowana `implemented=false`
+     (wymaga modelu łączności).
+
 ## Prompt kontynuacji (wklej świeżemu agentowi — DO WDROŻENIA 100%)
 
 ```

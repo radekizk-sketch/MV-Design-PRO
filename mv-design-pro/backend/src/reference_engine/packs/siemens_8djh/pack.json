@@ -1,0 +1,13 @@
+{
+  "pack_id": "siemens_8djh",
+  "kind": "manufacturer",
+  "name_pl": "Siemens — rozdzielnica SN 8DJH (RMU, SF6)",
+  "version": "2026-05",
+  "status": "repo_verified",
+  "switchgear_family_ref": "SIEMENS__8DJH",
+  "source_document_refs": [
+    "https://www.siemens.com/en-us/products/energy/medium-voltage/medium-voltage-switchgear/8djh-36.html",
+    "https://assets.new.siemens.com/siemens/assets/api/uuid:40fab88c-6711-4fad-9e26-7d54849af7e7/500-83849.pdf"
+  ],
+  "notes_pl": "Ring Main Unit SF6, sealed-for-life, 12–24 kV, 630 A, pola liniowe/transformatorowe (rozłącznik / rozłącznik z bezpiecznikami / wyłącznik). Dane rodziny: SWITCHGEAR_FAMILY_REGISTRY (jedno źródło). Słownik aparatów rodziny NIE zawiera przekładników CT/VT — aparat spoza słownika w polu związanym z rodziną = ✗ w raporcie zgodności."
+}

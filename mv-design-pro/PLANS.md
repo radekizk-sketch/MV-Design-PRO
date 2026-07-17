@@ -2,7 +2,7 @@
 
 **Version:** 5.1
 **Status:** LIVING DOCUMENT
-**Last updated:** 2026-07-17 (SLD v3 CAD/SCADA — program zamknięty + likwidacja długów repo)
+**Last updated:** 2026-07-17 (Reference Engine V1 — globalna integracja referencji SLD, V12K-060)
 **Reference (canon):** [`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md) (binding), [`docs/system/`](docs/system/) (binding specs), [`SYSTEM_SPEC.md`](SYSTEM_SPEC.md) (executive overview).
 **Reference (archive):** [`docs/spec/`](docs/spec/) — historical V11 reference; not source of truth.
 **Active work:** see § 3 and [`docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md`](docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md).
@@ -96,6 +96,25 @@ skasowany (−11,7k linii), lista wykluczeń vitest wyzerowana (odbudowa testu
 inspektora złapała 2 realne regresje komponentu), spójność elektryczna
 szablonów DER (zgubiona moc, TR 3.15 MVA, strona nN za katalogiem),
 test_no_todo_fixme i docs_count trwale zielone.
+
+Runda 8 (2026-07-17, dyrektywa właściciela „Globalna integracja referencji
+SLD" — 12 punktów): REFERENCE ENGINE V1 (spec WIĄŻĄCA
+`docs/sld/REFERENCE_ENGINE_SPEC_V1.md`, ruling V12K-060). Backend
+`src/reference_engine/` z 8 wersjonowanymi pakietami JSON (iec60617 —
+słownik symboli, iec62271 — 10 profili pól required/one_of/forbidden/
+kolejność/aparaty boczne + blokada uziemnika wspólnym predykatem z W034,
+elektrometal_e2alpha, siemens_8djh, schneider_sm6, abb_unigear,
+abb_safering — ref do katalogu rodzin bez kopii danych, osd_enea);
+walidacja NA ŻYWO w walidatorze ENM (kody `reference.bays.*`, ścieżka
+danych, FixAction BayModal); kreator filtrowany słownikiem rodziny
+(SafeRing/8DJH bez CT); silnik zgodności ✓/✗ + Reference Score per pakiet
+(API `/api/reference/*`); frontend: mirror pakietów z parytetem BAJTOWYM,
+parytet słownika §12.4 z profilami (testy z sabotażami), zakładka
+„Referencje" Inspektora ENM. Katalog +Schneider Electric/SM6-24
+(repo_verified). Korekta faktograficzna: e²TANGO = sterowniki polowe (nie
+rozdzielnica) — pakiet Elektrometal oparty na e²ALPHA. Długi jawne
+(wymagają danych): style renderowania producenckie, pełne Zeszyty OSD,
+telemechanika. Szczegóły: execplan runda 8.
 
 Runda 7 (2026-07-17, „zaprojektuj i wykonaj end-to-end" — 7 pozycji PLAN
 recenzji NO-GO): szablony technologiczne pól (RMU-liniowe rozłącznik+ES+

@@ -1,0 +1,12 @@
+{
+  "pack_id": "abb_safering",
+  "kind": "manufacturer",
+  "name_pl": "ABB — rozdzielnica SN SafeRing (RMU, SF6)",
+  "version": "2026-05",
+  "status": "repo_verified",
+  "switchgear_family_ref": "ABB__SAFERING",
+  "source_document_refs": [
+    "https://electrification.us.abb.com/products/switchgear/safering-gas-insulated-ring-main-unit"
+  ],
+  "notes_pl": "Ring Main Unit SF6 sealed-for-life, 12–24 kV, 630 A, konfiguracje modułowe (pola liniowe rozłącznikowe, transformatorowe bezpiecznikowe, wyłącznikowe). Dane rodziny: SWITCHGEAR_FAMILY_REGISTRY (jedno źródło). Słownik aparatów rodziny NIE zawiera przekładników CT/VT."
+}

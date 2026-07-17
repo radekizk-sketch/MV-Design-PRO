@@ -1,0 +1,29 @@
+{
+  "pack_id": "iec60617",
+  "kind": "norm",
+  "name_pl": "IEC 60617 — symbole graficzne schematów elektrycznych (słownik aparatów)",
+  "version": "1.0.0",
+  "status": "repo_verified",
+  "source_document_refs": [
+    "IEC 60617 (baza symboli graficznych do schematów — łączniki, przekładniki, transformatory)",
+    "SLD_CAD_SPEC_V3.md §12.5 (biblioteka symboli v3, symbols/defs.ts + glyphs.tsx)"
+  ],
+  "symbol_map": [
+    { "kind": "CB", "symbol_name_pl": "Wyłącznik", "frontend_symbol_id": "breaker" },
+    { "kind": "LOAD_SWITCH", "symbol_name_pl": "Rozłącznik", "frontend_symbol_id": "loadBreakSwitch" },
+    { "kind": "DS", "symbol_name_pl": "Odłącznik", "frontend_symbol_id": "disconnector" },
+    { "kind": "ES", "symbol_name_pl": "Uziemnik", "frontend_symbol_id": "earthSwitch" },
+    { "kind": "CT", "symbol_name_pl": "Przekładnik prądowy", "frontend_symbol_id": "currentTransformer" },
+    { "kind": "VT", "symbol_name_pl": "Przekładnik napięciowy", "frontend_symbol_id": "voltageTransformer" },
+    { "kind": "CABLE_HEAD", "symbol_name_pl": "Głowica kablowa", "frontend_symbol_id": "cableHead" },
+    { "kind": "TRANSFORMER_DEVICE", "symbol_name_pl": "Transformator dwuuzwojeniowy", "frontend_symbol_id": "transformer2W" },
+    { "kind": "FUSE", "symbol_name_pl": "Rozłącznik z bezpiecznikami", "frontend_symbol_id": "fuseSwitch" },
+    { "kind": "SURGE_ARRESTER", "symbol_name_pl": "Ogranicznik przepięć", "frontend_symbol_id": "surgeArrester" },
+    { "kind": "GENERATOR_PV", "symbol_name_pl": "Źródło fotowoltaiczne (rysowane jako źródło, nie aparat pola)", "frontend_symbol_id": null },
+    { "kind": "GENERATOR_BESS", "symbol_name_pl": "Magazyn energii (rysowany jako źródło, nie aparat pola)", "frontend_symbol_id": null },
+    { "kind": "GENERATOR_FW", "symbol_name_pl": "Generator wiatrowy (rysowany jako źródło, nie aparat pola)", "frontend_symbol_id": null },
+    { "kind": "PCS", "symbol_name_pl": "Przekształtnik PCS (rysowany po stronie źródła)", "frontend_symbol_id": null },
+    { "kind": "BATTERY", "symbol_name_pl": "Bateria (rysowana po stronie źródła)", "frontend_symbol_id": null }
+  ],
+  "notes_pl": "Słownik kind→symbol jest lustrem `symbolIdForPrimaryDeviceKind` (apparatusSequence.ts) — parytet egzekwowany testem po obu stronach (spec Reference Engine §8 pkt 4). Kindy DER mapują się na null: nie są aparatem pola (DECYZJA w nagłówku apparatusSequence.ts)."
+}
