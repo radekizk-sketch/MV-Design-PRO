@@ -616,6 +616,12 @@ Progress:
         „Projekt") + test przez realny formater mostu; rejestr W2
         w planie wygaszania wypełniony. 91 celowanych + bramki OK, push.
         Konfirmacja w tle.
+        POTWIERDZENIE #35 (2026-07-17): pełny vitest 8657 passed, 0 failed
+        — BAZY: backend 6112, frontend 8657. REKONESANS W3: PhaseState
+        i DynamicStability to też cienkie panele kontraktu (router);
+        Zksn/V126Academic/Fw/Bess/Der żyją w osobnych plikach surfaces/
+        (potencjalnie pełne) — karta W3: parytet cienkich + klasyfikacja
+        pełnych do decyzji W4.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
