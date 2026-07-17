@@ -451,6 +451,13 @@ Progress:
         P45 (backend + okna); P42 wstrzymane (V12K-027), P44 czeka na P27.
         Następny krok: konsolidacja rejestru TODO-KART (drobne delty
         backend + frontend dwiema kartami).
+        SCALENIE #22 (2026-07-17): D13 konsolidacja TODO backendu (17d49ae →
+        cherry-pick) — n_parallel w mocy IBG (grid_strength + migotanie,
+        `resolve_n_parallel`), q_actual per źródło w adekwatności Q
+        (addytywnie, fingerprint nietknięty), echo parametrów scenariusza
+        FRT. Wykonawca: pełny pytest 6027 pass, 0 failed (log do pliku —
+        procedura działa). Zarządca: 73 celowane + 4 guardy OK, push.
+        Konfirmacja w tle. Karta TODO-front OZE w realizacji.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
