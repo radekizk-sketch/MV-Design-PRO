@@ -178,6 +178,12 @@ export interface MiniBlockBayDescriptor {
    *  gdy brak takiego pomiaru. Dopasowanie na aparat stosu (miernik „M")
    *  przez `linkedRef` w `compose/protectionMarking.ts`. */
   readonly meteringMeasurementRef?: string;
+  /** Recenzja NO-GO 2026-07-17 pkt 11: mierzona WIELKOŚĆ miernika — z
+   *  `Measurement.measurement_type` pomiaru rozliczeniowego (CT⇒prąd „A",
+   *  VT⇒napięcie „V"). Glif miernika pokazuje literę wielkości zamiast
+   *  mylącego „M" (odczytywanego jako napęd silnikowy). `undefined` = dana
+   *  nieznana, glif zostaje przy „M" + rozstrzygnięcie w legendzie. */
+  readonly meteringQuantity?: 'A' | 'V';
   /** F10.4 (SLD_CAD_SPEC_V3 §18.3): adnotacje przekładni CT tego pola —
    *  JEDNA pozycja per aparat CT z `Measurement.rating` obecnym. `undefined`
    *  gdy pole nie niesie żadnego CT z ratingiem (brak danych = brak

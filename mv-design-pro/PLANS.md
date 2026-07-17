@@ -97,16 +97,36 @@ inspektora złapała 2 realne regresje komponentu), spójność elektryczna
 szablonów DER (zgubiona moc, TR 3.15 MVA, strona nN za katalogiem),
 test_no_todo_fixme i docs_count trwale zielone.
 
-Runda 4 (2026-07-17, odbiór „100% klasy przemysłowej"): FEEDERY Z PÓL GPZ
-(dawna granica pre-F6a — sieć wielofeederowa z GPZ była częściowo niewidoczna
-na kanwie) wykonane end-to-end: wiersz feederu ze stacjami / bieg otwarty,
-przydział kolejnych pól liniowych GPZ, a przy wspólnym polu (model realnego
-backendu: `gpz_line_fields_count: 1`) T-zaczep na trasie magistrali z kropką
-węzłową §22.1; `meta.stationCount` liczy stacje faktycznie narysowane; render
-DoD `docs/audit/visual/sld_gpz_feeder_L2.png`. Świadomie poza zakresem (F6b):
-wiele GPZ i odgałęzienia zagnieżdżone (jawne stopNotes). Wcześniej w tej
-rundzie: odmaskowanie klików e2e (Zero-Debt pkt 5) ujawniło i naprawiło
-nieklikalną kreskę toru (hitbox 12 px) i martwy lewy klik (pointer-capture).
+Runda 6 (2026-07-17, recenzja NO-GO właściciela — 16 punktów, rejestr WIĄŻĄCY
+`docs/sld/SLD_REVIEW_NO_GO_2026-07-17.md`): naprawy GLOBALNE (spec/generator/
+domena/walidator): objazd magistrali poza granicą strefy GPZ (+3×GRID, warunek
+z pasem ±2×GRID); strona zaczepu źródła za `Source.bus_ref` — ekwiwalent SN na
+szynie SN z tabliczką w napięciu WŁASNEJ szyny + wiersz „Ekwiwalent sieci
+zasilającej" (koniec fałszu „Sk″ 250/Ik″ 9,62 przy 110 kV"), walidator domeny
+`sources.sk_ik_voltage_inconsistent` (Ik″=Sk″/(√3·U) ±5%); tabliczka TR z
+uk%/Pk z ENM; typ stacji terminalnej z topologii („stacja końcowa" gdy drugi
+koniec wisi, stopNote); numeracja pól GPZ F01/FT1 jako ostatni fallback;
+kotwica QE przy WŁASNYM uziemniku; legenda + głowica/źródło/koniec otwarty,
+miernik z literą wielkości (A/V z danych pomiaru); unikatowe domyślne nazwy
+stacji z kodem Sxx u źródła (backend). Regres złapany renderem: „Szyna WN ·
+15 kV" → osobny kanał `hvBusVoltageKv`. Pozycje PLAN (szablony technologiczne
+pól RMU, odbiory 0,4 kV, globalne ID aparatów, typologia uziemień, pomiary
+U/3U0, etykiety przy trasie, skala kompozycji) — projekt w rejestrze recenzji.
+
+Runda 4-5 (2026-07-17, odbiór „100% klasy przemysłowej" + korekta kanonu):
+FEEDERY Z PÓL GPZ wykonane end-to-end — wiersz feederu ze stacjami / bieg
+otwarty, `meta.stationCount` liczy stacje faktycznie narysowane, render DoD
+`docs/audit/visual/sld_gpz_feeder_L2.png`. KOREKTA KANONU (dyrektywa
+właściciela: „z jednego pola liniowego nigdy nie wychodzą dwa kable — każde
+wyprowadzenie ma dedykowane pole"): pierwotny T-zaczep przy wspólnym polu był
+herezją inżynierską i został usunięty; naprawa u ŹRÓDŁA w domenie —
+`start_branch_segment_sn` z GPZ przydziela DEDYKOWANE pole liniowe (wolne albo
+nowe; limit sekcji; relacja dwustronna pole↔korytarz — spec §21.3), scena
+rysuje feeder wyłącznie z jego pola (brak pola ⇒ stopNote), a korytarz
+magistrali omija pas portów innych pól. Świadomie poza zakresem (F6b): wiele
+GPZ i odgałęzienia zagnieżdżone (jawne stopNotes). Wcześniej w tej rundzie:
+odmaskowanie klików e2e (Zero-Debt pkt 5) ujawniło i naprawiło nieklikalną
+kreskę toru (hitbox 12 px) i martwy lewy klik (pointer-capture).
 
 Runda 3 (2026-07-17, „Wykonaj"): OBIE ostatnie luki v3 zamknięte end-to-end
 (szczegóły + pomiary: execplan, sekcja „Dług otwarty… ZAMKNIĘTE"):

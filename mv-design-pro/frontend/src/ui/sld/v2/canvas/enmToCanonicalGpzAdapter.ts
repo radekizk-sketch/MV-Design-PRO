@@ -204,12 +204,18 @@ function deriveHvSystemSource(
   const name = readString(asRecord(source.meta)?.source_id) ?? readString(source.name);
   if (!name) return null;
 
+  // Recenzja NO-GO 2026-07-17 pkt 2/3: napięcie tabliczki = szyna ŹRÓDŁA
+  // (spójność Sk″/Ik″/U), a strona zaczepu podąża za `Source.bus_ref` —
+  // ekwiwalent na szynach SN NIE jest rysowany jako przyłącze WN.
+  const sourceBus = buses.find((b) => b.ref_id === source.bus_ref) ?? null;
   return {
     sourceRef: source.ref_id,
     name,
     sk3Mva: source.sk3_mva ?? null,
     ik3Ka: source.ik3_ka ?? null,
-    voltageKv: hvBus.voltage_kv,
+    voltageKv: sourceBus?.voltage_kv ?? null,
+    sourceOnHvBus: source.bus_ref === hvBus.ref_id,
+    hvBusVoltageKv: hvBus.voltage_kv ?? null,
   };
 }
 
@@ -331,6 +337,11 @@ function buildTransformers(
       uhvKv: tr.uhv_kv,
       ulvKv: tr.ulv_kv,
       vectorGroup: tr.vector_group ?? null,
+      // Recenzja NO-GO 2026-07-17 pkt 4: uk%/Pk WPROST z ENM (materializacja
+      // katalogowa) — tabliczka TR na rysunku bez tych danych była modelowo
+      // niekompletna, mimo że model je NIÓSŁ.
+      ukPercent: tr.uk_percent ?? null,
+      pkKw: tr.pk_kw ?? null,
       lvSectionId: sectionIdByLvBusRef.get(tr.lv_bus_ref) ?? null,
       hvBusRef: tr.hv_bus_ref ?? null,
     }));

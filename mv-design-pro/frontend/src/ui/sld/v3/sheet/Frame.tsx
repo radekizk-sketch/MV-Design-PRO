@@ -45,10 +45,16 @@ const DEFAULT_SYMBOL_LEGEND_IDS: readonly SymbolId[] = [
   'transformer2W',
   'noPoint',
   'currentTransformer',
+  // Recenzja NO-GO 2026-07-17 pkt 11: głowica kablowa (▲) i symbol źródła/
+  // ekwiwalentu sieci były NA rysunku, ale NIE w legendzie — czytelnik bez
+  // klucza. Dopisane wprost.
+  'cableHead',
+  'gridSource',
   // F10.5 (spec §20.4, D2-7): „M" musi być jednoznacznie odróżnialne od
   // (niemodelowanego) napędu silnikowego aparatu — legenda niesie
   // rozstrzygający wpis (`meter_symbol_disambiguation` (c),
   // `scene/buildScene.ts`), wzorzec adnotacji ES z F10.1 poniżej.
+  // Recenzja NO-GO pkt 11: glif niesie literę WIELKOŚCI (A/V) gdy dane są.
   'meter',
 ];
 
@@ -67,13 +73,21 @@ function buildDefaultLegend(): readonly SheetLegendEntry[] {
       id === 'earthSwitch'
         ? `${SYMBOL_DEFS[id].labelPl} (blokada zamkn. na tor pod napięciem)`
         : id === 'meter'
-          ? `${SYMBOL_DEFS[id].labelPl} pomiarowy (nie napęd silnikowy)`
+          // Recenzja NO-GO 2026-07-17 pkt 11: „M" mylące — glif niesie literę
+          // mierzonej wielkości (A prąd z CT / V napięcie z VT), legenda to
+          // rozstrzyga (nie napęd silnikowy — F10.5 §20.4 zostaje w mocy).
+          ? 'Miernik — litera = wielkość (A prąd / V napięcie); nie napęd silnikowy'
           : SYMBOL_DEFS[id].labelPl,
   }));
   return [
     ...symbolEntries,
     { kind: 'line', id: 'cable', labelPl: 'Kabel' },
     { kind: 'line', id: 'overhead', labelPl: 'Linia napowietrzna' },
+    // Recenzja NO-GO 2026-07-17 pkt 11: słupek końca otwartego (§16-v3,
+    // `kind:'openTerminal'`) musi być ODRÓŻNIONY od NO w kluczu rysunku —
+    // NO = łącznik otwarty na ISTNIEJĄCYM torze, koniec otwarty = tor się
+    // fizycznie kończy (rezerwa/etap budowy).
+    { kind: 'line', id: 'openTerminal', labelPl: 'Koniec otwarty (słupek — tor bez kontynuacji; to nie NO)' },
   ];
 }
 
@@ -154,6 +168,18 @@ export function computeLegendRowLayout(entries: readonly SheetLegendEntry[]): re
 
 function LegendLineSample(props: { readonly id: string; readonly centerY: number }): JSX.Element {
   const dash = props.id === 'overhead' ? '6 3 1 3' : undefined;
+  if (props.id === 'openTerminal') {
+    // Recenzja NO-GO 2026-07-17 pkt 11: próbka „koniec otwarty" = odcinek
+    // toru zakończony PROSTOPADŁYM słupkiem (ta sama geometria co
+    // `emitOpenTerminalTick`, scene/buildScene.ts §16-v3) — bez niej wpis
+    // legendy nie odpowiadałby glifowi na rysunku.
+    return (
+      <g data-testid={`sld-sheet-legend-line-${props.id}`} data-parity-key={`legend-line-${props.id}`}>
+        <line x1={0} y1={props.centerY} x2={22} y2={props.centerY} stroke={SHEET_STROKE} strokeWidth={1.6} />
+        <line x1={22} y1={props.centerY - 6} x2={22} y2={props.centerY + 6} stroke={SHEET_STROKE} strokeWidth={1.6} />
+      </g>
+    );
+  }
   return (
     <line
       data-testid={`sld-sheet-legend-line-${props.id}`}

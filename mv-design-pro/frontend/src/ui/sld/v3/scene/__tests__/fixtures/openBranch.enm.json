@@ -2,12 +2,12 @@
   "enm": {
     "header": {
       "enm_version": "1.0",
-      "name": "Model sieci - 555c677e",
+      "name": "Model sieci - 4e4c3196",
       "description": null,
-      "created_at": "2026-07-17T11:01:59.332873Z",
-      "updated_at": "2026-07-17T11:01:59.842583Z",
+      "created_at": "2026-07-17T15:46:27.237463Z",
+      "updated_at": "2026-07-17T15:46:27.762750Z",
       "revision": 5,
-      "hash_sha256": "42ca34d924d324fff28407e5d6d91d4d85497e7a6f27b80614139b981bf401a6",
+      "hash_sha256": "a48323912f80eeaf6e224665263165732f720848415c4d60de198e63ea659252",
       "defaults": {
         "frequency_hz": 50,
         "unit_system": "SI",
@@ -21,7 +21,7 @@
     },
     "buses": [
       {
-        "id": "7d1217e0-cb4e-42ef-a3dc-88b6c3122188",
+        "id": "9cd9df04-33fb-4bbe-b50c-bb517312af5e",
         "ref_id": "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
         "name": "Szyna GPZ S1 15 kV",
         "tags": [],
@@ -38,7 +38,7 @@
         "nominal_limits": null
       },
       {
-        "id": "02c0c210-d27e-4950-9cbc-7b8503bc2895",
+        "id": "82356b71-d341-406c-a4b8-ea19fa1a73d1",
         "ref_id": "gpz/860003b4514aa388b39561d5005ce584/transformer/001/bus_110",
         "name": "Szyna 110 kV TR1",
         "tags": [
@@ -60,7 +60,7 @@
         "nominal_limits": null
       },
       {
-        "id": "ffc07cbf-beaf-4e9d-aa66-45dfb2e992f1",
+        "id": "0e639a8f-abe8-40ad-b9c1-497bd38a709f",
         "ref_id": "bus/611a510aae4e8f8e74f01b30d250f55a/downstream",
         "name": "Zacisk końcowy F1",
         "tags": [
@@ -80,7 +80,7 @@
         "nominal_limits": null
       },
       {
-        "id": "97f122a4-945f-4496-a737-4a637e6da32c",
+        "id": "775a226a-c576-480b-8501-73349e16f00c",
         "ref_id": "stn/ed91b18ec60d43a0fb4cb92e778fa53e/sn_bus",
         "name": "Stacja B",
         "tags": [],
@@ -93,7 +93,7 @@
         "nominal_limits": null
       },
       {
-        "id": "8112eb83-a29b-49b7-8968-45deb85ceb01",
+        "id": "f0f0e0d7-482f-47d9-a918-38d42330b564",
         "ref_id": "stn/ed91b18ec60d43a0fb4cb92e778fa53e/sn_field_terminal/000",
         "name": "Zacisk techniczny pola SN 1",
         "tags": [
@@ -115,7 +115,7 @@
         "nominal_limits": null
       },
       {
-        "id": "5207b46d-3b34-443d-8583-755f13e1b036",
+        "id": "b98ff4bc-6886-40b3-afe3-99cdbec6a562",
         "ref_id": "stn/ed91b18ec60d43a0fb4cb92e778fa53e/sn_field_terminal/001",
         "name": "Zacisk techniczny pola SN 2",
         "tags": [
@@ -137,7 +137,7 @@
         "nominal_limits": null
       },
       {
-        "id": "18977638-be59-4b2b-9baf-eab2d36ffbaf",
+        "id": "952f3123-28d7-4244-876e-090d44aa5da4",
         "ref_id": "stn/ed91b18ec60d43a0fb4cb92e778fa53e/sn_field_terminal/002",
         "name": "Zacisk techniczny pola SN 3",
         "tags": [
@@ -159,7 +159,7 @@
         "nominal_limits": null
       },
       {
-        "id": "aaf4ace6-5259-4faa-89d4-f9f7a065eb91",
+        "id": "b16fc689-9cc3-4723-aff3-4e644e4519b9",
         "ref_id": "stn/ed91b18ec60d43a0fb4cb92e778fa53e/nn_bus",
         "name": "Szyna nN stacji",
         "tags": [],
@@ -172,7 +172,7 @@
         "nominal_limits": null
       },
       {
-        "id": "a35b6bd0-2ced-4b8e-9bb8-aebd575ca207",
+        "id": "39bb0b1f-716d-4c77-965a-17a178cc7eb9",
         "ref_id": "bus/7d0a7811ff7b455d548eec942c61572f/branch_end",
         "name": "Szyna odgałęzienia",
         "tags": [
@@ -194,7 +194,7 @@
     ],
     "branches": [
       {
-        "id": "6dc1b319-1830-4103-bfb3-575c4432197a",
+        "id": "8091034e-68a2-4288-91f1-1ffc5430b36b",
         "ref_id": "seg/611a510aae4e8f8e74f01b30d250f55a/segment_L",
         "name": "Odcinek seg/611a510aae4e8f8e74f01b30d250f55a/segment_L",
         "tags": [],
@@ -260,7 +260,7 @@
         "cable_joints": []
       },
       {
-        "id": "cd577df3-1c85-4dc4-b9f9-db691e99ef05",
+        "id": "775056c7-20ed-4ace-af03-84dfbc7be2f9",
         "ref_id": "seg/611a510aae4e8f8e74f01b30d250f55a/segment_R",
         "name": "Odcinek seg/611a510aae4e8f8e74f01b30d250f55a/segment_R",
         "tags": [],
@@ -326,7 +326,7 @@
         "cable_joints": []
       },
       {
-        "id": "fd428732-fe0b-498a-a1f6-a22db12c8421",
+        "id": "29936c8a-4af9-4789-97a4-a5abffb931bc",
         "ref_id": "stn/ed91b18ec60d43a0fb4cb92e778fa53e/sn_field_breaker/000",
         "name": "Wyłącznik pola SN 1",
         "tags": [
@@ -356,7 +356,7 @@
         "x_ohm": 0
       },
       {
-        "id": "e475da20-839a-4fc6-9ea9-6f94ada1f14f",
+        "id": "2331d399-8423-4ef5-9383-64542cf05174",
         "ref_id": "stn/ed91b18ec60d43a0fb4cb92e778fa53e/sn_field_breaker/001",
         "name": "Wyłącznik pola SN 2",
         "tags": [
@@ -386,7 +386,7 @@
         "x_ohm": 0
       },
       {
-        "id": "3350ec38-7e18-408b-b01b-b47b29b806dc",
+        "id": "91497f21-1c29-41d3-b2e7-c19732575004",
         "ref_id": "stn/ed91b18ec60d43a0fb4cb92e778fa53e/sn_field_breaker/002",
         "name": "Wyłącznik pola SN 3",
         "tags": [
@@ -416,7 +416,7 @@
         "x_ohm": 0
       },
       {
-        "id": "9b9793bf-e347-40e4-8d06-a156b2d1a1e0",
+        "id": "ad73097c-beb3-4187-aa24-06bd4d752395",
         "ref_id": "seg/7d0a7811ff7b455d548eec942c61572f/branch_segment",
         "name": "Odgałęzienie",
         "tags": [],
@@ -481,7 +481,7 @@
     ],
     "transformers": [
       {
-        "id": "54dc9e20-b800-441b-8a92-57aac3340ae3",
+        "id": "f8c4e4dd-fe74-4f4d-8859-9fac54266cf4",
         "ref_id": "gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn",
         "name": "TR1 110/15 kV",
         "tags": [
@@ -529,7 +529,7 @@
         "overrides": []
       },
       {
-        "id": "b1cc9881-a088-442c-9d71-1181d8b9f8b5",
+        "id": "19106519-65d6-4085-b3e1-9d949142b58f",
         "ref_id": "stn/ed91b18ec60d43a0fb4cb92e778fa53e/transformer",
         "name": "Transformator SN/nN",
         "tags": [],
@@ -572,7 +572,7 @@
     ],
     "sources": [
       {
-        "id": "7d1de983-6c5e-420c-8da0-43199d0ae8a4",
+        "id": "0de72b75-ce83-4c4e-bd95-b6266a3a81ed",
         "ref_id": "gpz/860003b4514aa388b39561d5005ce584/source/main",
         "name": "Źródło GPZ 15 kV",
         "tags": [],
@@ -619,7 +619,7 @@
     ],
     "loads": [
       {
-        "id": "0f2a17a6-1776-45d3-9f53-6d80e33029b7",
+        "id": "f606ade1-c8d8-46d5-924c-2df5cb0686b0",
         "ref_id": "load/8859ad713fde0bfb3ae1436f5f4ce391/nn",
         "name": "Odbiór nN 1 - Stacja B",
         "tags": [],
@@ -658,7 +658,7 @@
     "shunt_capacitors": [],
     "substations": [
       {
-        "id": "a06cfa46-056f-4379-af7f-54b8c49bcff4",
+        "id": "dc1f7382-b566-4921-87ea-4b381afbe3a4",
         "ref_id": "gpz/860003b4514aa388b39561d5005ce584/substation",
         "name": "GPZ 15 kV",
         "tags": [],
@@ -687,9 +687,31 @@
                 "gpz_section_id": "gpz/860003b4514aa388b39561d5005ce584/section/001",
                 "gpz_section_order": 0,
                 "gpz_line_field_index": 0,
-                "gpz_line_fields_count": 1,
+                "gpz_line_fields_count": 2,
                 "source_field_kind": "FEEDER",
-                "field_status": "READY_FOR_TRUNK"
+                "field_status": "READY_FOR_TRUNK",
+                "assigned_corridor_ref": "gpz/860003b4514aa388b39561d5005ce584/corridor_01"
+              },
+              "gpz_section_id": "gpz/860003b4514aa388b39561d5005ce584/section/001"
+            },
+            {
+              "field_ref": "gpz/860003b4514aa388b39561d5005ce584/bay/001/002",
+              "name": "Pole liniowe GPZ 1.2",
+              "bay_role": "FEEDER",
+              "bus_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
+              "equipment_refs": [],
+              "protection_ref": null,
+              "tags": [
+                "gpz_line_field"
+              ],
+              "meta": {
+                "gpz_section_id": "gpz/860003b4514aa388b39561d5005ce584/section/001",
+                "gpz_section_order": 0,
+                "gpz_line_field_index": 1,
+                "gpz_line_fields_count": 2,
+                "source_field_kind": "FEEDER",
+                "field_status": "READY_FOR_TRUNK",
+                "assigned_corridor_ref": "corridor/442313438a99ff9ca0e0504a601e672b/branch"
               },
               "gpz_section_id": "gpz/860003b4514aa388b39561d5005ce584/section/001"
             }
@@ -722,7 +744,7 @@
         "construction_type": null
       },
       {
-        "id": "70a442cd-e919-496f-bc3f-47f045f29586",
+        "id": "d04fa92d-00a5-459a-9514-c90f11e78179",
         "ref_id": "stn/ed91b18ec60d43a0fb4cb92e778fa53e/station",
         "name": "Stacja B",
         "tags": [],
@@ -836,7 +858,7 @@
     "junctions": [],
     "corridors": [
       {
-        "id": "bae1e249-1228-4745-a41d-c87ba89e2775",
+        "id": "2b26e451-ef56-4fba-a443-82a66911d738",
         "ref_id": "gpz/860003b4514aa388b39561d5005ce584/corridor_01",
         "name": "Magistrala 01",
         "tags": [],
@@ -849,11 +871,13 @@
         "no_point_ref": null
       },
       {
-        "id": "255f09e1-d3dd-4006-bd39-627908a1c923",
+        "id": "3e4fbf9d-f8fa-4bc6-aa4f-317191492a88",
         "ref_id": "corridor/442313438a99ff9ca0e0504a601e672b/branch",
         "name": "Odgałęzienie SN kablowe",
         "tags": [],
-        "meta": {},
+        "meta": {
+          "gpz_field_ref": "gpz/860003b4514aa388b39561d5005ce584/bay/001/002"
+        },
         "corridor_type": "radial",
         "ordered_segment_refs": [
           "seg/7d0a7811ff7b455d548eec942c61572f/branch_segment"

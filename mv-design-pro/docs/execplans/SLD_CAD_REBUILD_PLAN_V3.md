@@ -1801,14 +1801,20 @@ ZAMKNIĘTE 2026-07-17 (runda 3, „Wykonaj") — OBIE luki wykonane end-to-end:
      connectRowStations) pod dotychczasową treścią, wyrównany do
      `mainRowDx`; feeder OTWARTY = bieg §16-v3 do słupka terminalnego;
      tożsamość łańcucha + ogony przez TE SAME helpery co magistrala;
-   - przydział pól: KOLEJNE wolne pole liniowe GPZ (`findGpzLineBayRefs`,
-     pierwsze zajmuje magistrala); gdy model niesie JEDNO pole
-     (`gpz_line_fields_count: 1` — pomiar na realnym backendzie: magistrala
-     i feeder dzielą pole/szynę) — T-ZACZEP na trasie magistrali
-     (`tapPointOnPolyline`: punkt NA polilinii, bieg poziomy → zejście
-     wprost, pion → jog 2×GRID) z KROPKĄ węzłową §22.1 (realny węzeł ENM —
-     wspólna `from_bus_ref`; junction_dot_probe gryzie bez kropki, pomiar:
-     1 luka przed dodaniem); kabel NIE ląduje na szynie (kanon §22.3);
+   - przydział pól — KOREKTA KANONU (runda 5, dyrektywa właściciela
+     „z jednego pola liniowego nigdy dwa kable"): pierwotny T-zaczep na
+     trasie magistrali przy wspólnym polu był HEREZJĄ inżynierską i został
+     USUNIĘTY (razem z `tapPointOnPolyline` i kropką zaczepu). Naprawa u
+     źródła w DOMENIE: `start_branch_segment_sn` z pola GPZ przydziela
+     DEDYKOWANE pole (wolne albo NOWE; limit sekcji; relacja dwustronna
+     `field_spec.meta.assigned_corridor_ref` ↔ `corridor.meta.gpz_field_ref`
+     — spec §21.3, backend `_allocate_gpz_line_field_for_branch` +
+     `test_gpz_feeder_field_allocation.py` 5 testów z negatywem limitu).
+     Scena rysuje feeder WYŁĄCZNIE z jego pola (fallback dla starych
+     snapshotów: kolejne WOLNE pole; brak pola ⇒ stopNote, nigdy cudze
+     pole). Poziomy bieg korytarza magistrali omija pas portów innych pól
+     (objazd rynną — pomiar: port pola 002 leżał DOKŁADNIE na biegu
+     korytarza i czytał się jak fałszywy T-węzeł);
    - `meta.stationCount` = stacje FAKTYCZNIE narysowane (`drawnStationIds`;
      dawna formuła nie widziała wierszy feederów — pomiar: 1 zamiast 2);
    - fixtury z realnego backendu: `gpzFeeder.enm.json` (2 korytarze × 2
@@ -1818,6 +1824,47 @@ ZAMKNIĘTE 2026-07-17 (runda 3, „Wykonaj") — OBIE luki wykonane end-to-end:
      `docs/audit/visual/sld_gpz_feeder_L2.png`.
    POZA ZAKRESEM (świadomie, F6b): wiele GPZ (adapter komponuje pierwszy,
    stopNote) i odgałęzienia zagnieżdżone (lateral z lateralu, stopNote).
+
+   [DONE 2026-07-17, runda 6 — recenzja NO-GO właściciela, 16 punktów]:
+   rejestr ustaleń + statusy w `docs/sld/SLD_REVIEW_NO_GO_2026-07-17.md`
+   (WIĄŻĄCY). Wykonane w rundzie 6 (wszystko GLOBALNIE — spec/generator/
+   domena/walidator, pkt 10 recenzji):
+   - pkt 1: objazd magistrali głębiej pod strefą GPZ (+3×GRID — kabel
+     schodzi z przerywanej granicy obiektu) + warunek objazdu z pasem
+     ±2×GRID (korytarz DOKŁADNIE na poziomie szyny GPZ też objeżdża;
+     pomiar: współliniowość pionu wyjścia z własnym zejściem pola na L0);
+   - pkt 2/3: strona zaczepu źródła podąża za `Source.bus_ref`
+     (`sourceOnHvBus` w adapterze; ekwiwalent SN → `#source-bus-extension`,
+     tabliczka w napięciu WŁASNEJ szyny + jawny wiersz „Ekwiwalent sieci
+     zasilającej"; probe `gpzHvColumnGaps` śledzi stronę źródła; spec
+     §21.1 rozszerzone); walidator domeny
+     `sources.sk_ik_voltage_inconsistent` (W033, Ik″=Sk″/(√3·U) ±5%);
+     nagłówek strefy bez duplikacji „GPZ GPZ"; REGRES WYKRYTY RENDEREM:
+     etykieta „Szyna WN" czytała napięcie źródła → osobny kanał
+     `hvBusVoltageKv` (napięcie z rekordu szyny WN);
+   - pkt 4: tabliczka TR1 z uk%/Pk z ENM (`ukPercent`/`pkKw` przez
+     adapter; zaczepy/punkt neutralny/Z0 → plan, dane null);
+   - pkt 7: stacja terminalna ciągu (wiszący drugi koniec, nie NO)
+     prezentuje „stacja końcowa" zamiast bay-count „przelotowa"
+     (`terminalInRun` w `buildMeasureInput` + jawny stopNote
+     `station.type.terminal`);
+   - pkt 8 (częściowo): numeracja pól GPZ — fallback deterministyczny
+     F01/FT1/FS1/FP1 po danych (`gpzFieldOrdinalDesignation`);
+   - pkt 9 (kotwica): identyfikator lateralu (QE uziemnika) POD WŁASNYM
+     symbolem ES zamiast w kolumnie toru głównego;
+   - pkt 11: legenda arkusza + głowica kablowa, źródło/ekwiwalent, słupek
+     „koniec otwarty" (próbka ze słupkiem, odróżniona od NO); glif
+     miernika z literą WIELKOŚCI (A/V z `Measurement.measurement_type`,
+     kanał `meteringQuantity`→`meterQuantity`), „M" tylko bez danych;
+   - pkt 14: backend `insert_station_on_segment_sn` nadaje DOMYŚLNĄ nazwę
+     z unikatowym kodem `Stacja Sxx (typ ⟨T⟩)`
+     (`_unique_default_station_name` — najwyższy użyty `S\d{2,3}`+1);
+     fixtura `gpzFeeder.enm.json` zregenerowana z realnego backendu
+     (S01/S02 unikatowe).
+   Baseline'y pionów po rundzie 6: L0 12472 (−16), L1 42608/L2 55712
+   (+48 — dwa nowe wiersze tabliczek strefy GPZ; uzasadnienie w
+   `buildScene.test.ts`). Pozycje PLAN recenzji (5, 6, 9-global, 10, 12,
+   13, 16) — projekt w `SLD_REVIEW_NO_GO_2026-07-17.md` §Projekt.
 
 2. [DONE] Program P-A (nakładka rozpływu = jedna prawda solvera):
    provenance badge `sld-v3-overlay-provenance` (data-case-ref/

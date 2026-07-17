@@ -3623,6 +3623,7 @@ function buildExplicitStationMiniBays(
         // domknięcie osobnego kanału field-view).
         protectionMarking: resolveBayProtectionMarking(bay, snapshot),
         meteringMeasurementRef: resolveBayMeteringMeasurementRef(bay, snapshot),
+        meteringQuantity: resolveBayMeteringQuantity(bay, snapshot),
         // F10.4 (SLD_CAD_SPEC_V3 §18.3): adnotacja przekładni CT — patrz
         // docstring `resolveBayCtRatingAnnotations` poniżej.
         ctRatingAnnotations: resolveBayCtRatingAnnotations(bay, snapshot),
@@ -4150,6 +4151,22 @@ function resolveBayMeteringMeasurementRef(
     (m: Measurement) => m.purpose === 'metering' && m.bay_ref === bay.ref_id,
   );
   return measurement?.ref_id;
+}
+
+/**
+ * Recenzja NO-GO 2026-07-17 pkt 11: mierzona wielkość miernika — z
+ * `measurement_type` TEGO SAMEGO pomiaru co `resolveBayMeteringMeasurementRef`
+ * (CT⇒„A", VT⇒„V"). Zero domysłu: brak pomiaru ⇒ `undefined`.
+ */
+function resolveBayMeteringQuantity(
+  bay: Bay,
+  snapshot: EnergyNetworkModel,
+): 'A' | 'V' | undefined {
+  const measurement = (snapshot.measurements ?? []).find(
+    (m: Measurement) => m.purpose === 'metering' && m.bay_ref === bay.ref_id,
+  );
+  if (!measurement) return undefined;
+  return measurement.measurement_type === 'VT' ? 'V' : 'A';
 }
 
 /**

@@ -489,6 +489,34 @@ describe('V3 compose/gpz — FIX-A: dedup oznacznika i podpisu pola (bez podwój
     expect(designationTexts.some((t) => captionTexts.includes(t))).toBe(false);
   });
 
+  it('bay BEZ bayNumber i BEZ feederName ⇒ oznacznik = deterministyczna numeracja F01 (recenzja NO-GO 2026-07-17 pkt 8)', () => {
+    // INTENCJA pkt 8: pole bez ŻADNEGO oznacznika w danych przestaje być
+    // anonimowe — dostaje numer rysunkowy per kolejność kompozycji sekcji
+    // (F01… liniowe, FT1… transformatorowe). Dane zawsze wygrywają (testy
+    // wyżej), numeracja jest OSTATNIM fallbackiem.
+    const composition = composeGpz(
+      baseProps({
+        sections: [
+          {
+            sectionId: 'sec-1',
+            order: 1,
+            label: 'S1',
+            busVoltageKv: 15,
+            bays: [
+              lineBay('b-1', { bayNumber: null, destinationLabel: null, feederName: null }),
+              lineBay('b-2', { bayNumber: null, destinationLabel: null, feederName: null }),
+            ],
+          },
+        ],
+      }),
+      ORIGIN,
+    );
+    const d1 = composition.labels.fieldDesignations.find((d) => d.ownerRef === 'b-1#designation');
+    const d2 = composition.labels.fieldDesignations.find((d) => d.ownerRef === 'b-2#designation');
+    expect(d1?.text).toBe('F01');
+    expect(d2?.text).toBe('F02');
+  });
+
   it('bay Z bayNumber ("05") i feederName, BEZ destinationLabel ⇒ caption = feederName (różni się od oznacznika "05")', () => {
     const composition = composeGpz(
       baseProps({

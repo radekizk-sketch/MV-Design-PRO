@@ -200,6 +200,13 @@ export interface CanonicalGpzTransformer {
   readonly uhvKv: number;
   readonly ulvKv: number;
   readonly vectorGroup: string | null; // "Dyn11" itp.
+  /** Recenzja NO-GO 2026-07-17 pkt 4: napięcie zwarcia uk% i straty
+   *  obciążeniowe Pk [kW] z ENM (`Transformer.uk_percent`/`pk_kw`,
+   *  materializowane z katalogu) — tabliczka TR bez nich jest modelowo
+   *  niekompletna. Nullable: starzy wołający (testy jednostkowe v2) mogą
+   *  ich nie nieść — wtedy wiersz tabliczki po prostu nie powstaje. */
+  readonly ukPercent?: number | null;
+  readonly pkKw?: number | null;
   /** Sekcja SN do której podłączony jest dolny zacisk TR. null gdy mapowanie
    *  nie istnieje — renderer ustawia TR na środku kanwy (legacy). */
   readonly lvSectionId?: string | null;
@@ -232,10 +239,24 @@ export interface CanonicalGpzHvSystemSource {
   readonly name: string;
   readonly sk3Mva: number | null;
   readonly ik3Ka: number | null;
-  /** Napięcie kolumny WN (`Bus.voltage_kv` szyny WN, NIE napięcie szyny, do
-   *  której faktycznie podłączony jest `Source` w modelu solvera — GPZ Sk''/Ik''
-   *  jest zawsze odniesione do strony WN, spec §21.1). */
+  /** Napięcie SZYNY ŹRÓDŁA (`Bus.voltage_kv` szyny z `Source.bus_ref`) —
+   *  recenzja NO-GO właściciela 2026-07-17 pkt 2: dawna semantyka („zawsze
+   *  strona WN") sklejała Sk″/Ik″ ekwiwalentu 15 kV z napięciem 110 kV w
+   *  jawnie sprzeczną trójkę (Ik″=Sk″/(√3·U) nie zachodziło). Tabliczka
+   *  danych zwarciowych MUSI być spójna wewnętrznie — napięcie zawsze z
+   *  szyny, na której źródło faktycznie siedzi w modelu. */
   readonly voltageKv: number | null;
+  /** `true` ⇔ `Source.bus_ref` to szyna WN GPZ — wtedy przyłącze systemowe
+   *  wieńczy kolumnę WN (§21.1). `false` = EKWIWALENT na szynach SN —
+   *  symbol źródła i tabliczka przy szynie SN (mieszanie wariantów pełnego
+   *  i uproszczonego w jednym rysunku ZAKAZANE — recenzja pkt 3). */
+  readonly sourceOnHvBus: boolean;
+  /** Napięcie SZYNY WN GPZ (`Bus.voltage_kv` szyny `voltage_kv > 60`) —
+   *  osobne od `voltageKv` (szyna ŹRÓDŁA), bo etykieta „Szyna WN · V kV"
+   *  musi czytać napięcie SZYNY WN także gdy źródło to ekwiwalent SN
+   *  (regres wykryty renderem: „Szyna WN · 15 kV" po zmianie semantyki
+   *  `voltageKv` — recenzja NO-GO 2026-07-17 pkt 2/3). */
+  readonly hvBusVoltageKv: number | null;
 }
 
 export interface GpzCanonicalRendererProps {

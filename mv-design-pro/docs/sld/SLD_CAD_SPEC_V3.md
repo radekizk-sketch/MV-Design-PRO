@@ -930,8 +930,18 @@ K-D2-B → V12K-034; K-D2-C → V12K-035; K-D2-D → V12K-036; K-D2-E → V12K-0
   `Substation.transformer_refs` × `Transformer.uhv_kv > 60`, szyna WN = `Transformer`-owy wpis
   `bus_refs` o `voltage_kv > 60`, źródło = `Source` na szynie GPZ (`sk3_mva`/`ik3_ka`).
   Brak KTÓREGOKOLWIEK rekordu ⇒ kolumna WN nierysowana + `missingData`/stopNote (uczciwy brak).
+- **Strona zaczepu źródła (recenzja NO-GO właściciela 2026-07-17, pkt 2/3 — WIĄŻĄCE):**
+  symbol źródła zaczepia się nad SZYNĄ WŁASNĄ (`Source.bus_ref`): przyłącze systemowe WN
+  (źródło na szynie 110 kV) wieńczy kolumnę WN; EKWIWALENT SIECI zdefiniowany na szynach SN
+  (typowy model danych: `Sk″`/`Ik″` wyznaczone dla 15 kV) zaczepia się nad szyną SN, z
+  tabliczką w napięciu WŁASNEJ szyny i jawnym wierszem „Ekwiwalent sieci zasilającej".
+  Rysowanie danych zwarciowych ekwiwalentu przy szynie WN (dawna reguła „zawsze nad WN")
+  jest FAŁSZEM PREZENTACJI: trójka Sk″/Ik″/U przestaje być spójna (Ik″=Sk″/(√3·U)).
+  Spójność pilnowana także w domenie: walidator ENM `sources.sk_ik_voltage_inconsistent`
+  (IMPORTANT) przy rozjeździe > 5%.
 - **Wyrocznia:** `gpz_hv_column_probe` — gdy ENM niesie TR WN/SN: na scenie istnieje symbol
-  transformatora WN/SN, szyna WN nad nim i przyłącze systemowe nad szyną WN, połączone torem;
+  transformatora WN/SN, szyna WN nad nim i przyłącze systemowe zaczepione na szynie ŹRÓDŁA
+  (WN ⇒ `#hv-bus-source-extension`, SN ⇒ `#source-bus-extension`), połączone torem;
   0 GPZ z danymi WN bez kolumny WN. Test negatywny: usunięcie kolumny przy obecnych danych ⇒ FAIL.
 
 ### 21.2 Dominanta kompozycyjna i dane systemowe
@@ -940,6 +950,27 @@ K-D2-B → V12K-034; K-D2-C → V12K-035; K-D2-D → V12K-036; K-D2-E → V12K-0
   przy przyłączu (Sk″ [MVA], Ik3″ [kA], poziom napięcia) — WYŁĄCZNIE wartości z ENM.
 - **Wyrocznia:** `gpz_dominance_probe` — bbox strefy GPZ ≥ bbox największej stacji; grubość szyny
   GPZ > grubość szyny stacji; tabliczka obecna, gdy `Source.sk3_mva` obecne.
+
+### 21.3 Dedykowane pole liniowe per wyprowadzenie (dyrektywa właściciela, 2026-07-17 — WIĄŻĄCE)
+- **Wymaganie (kanon elektroenergetyczny):** z jednego pola liniowego GPZ NIGDY nie wychodzą
+  dwa kable — KAŻDE wyprowadzenie na sieć terenową (magistrala i każdy feeder) ma WŁASNE,
+  dedykowane pole liniowe. Zakaz obejmuje wszelkie formy współdzielenia zaczepu (T-zaczep na
+  trasie innego ciągu, wspólny port głowicy, odpływ wprost z szyny zamiast z pola).
+- **Domena (naprawa u źródła):** `start_branch_segment_sn` z pola GPZ przydziela polu ciąg
+  DWUSTRONNIE (`field_spec.meta.assigned_corridor_ref` ↔ `corridor.meta.gpz_field_ref`):
+  pole wskazane w `from_ref` jeśli WOLNE, inaczej pierwsze wolne pole sekcji, inaczej NOWE
+  pole liniowe (rola FEEDER, bez fabrykacji aparatury; limit
+  `MAX_GPZ_LINE_FIELDS_PER_SECTION`), a po wyczerpaniu limitu operacja ODMAWIA
+  (`branch_connection.gpz_line_fields_exhausted`).
+- **Scena:** feeder rysowany WYŁĄCZNIE z jego dedykowanego pola (relacja
+  `corridor.meta.gpz_field_ref`; fallback dla starych snapshotów: kolejne WOLNE pole);
+  brak dedykowanego pola ⇒ ciąg pominięty ze stopNote (uczciwy brak zamiast rysowania
+  elektrycznie błędnego układu). Poziomy bieg korytarza magistrali omija pas portów innych
+  pól liniowych (objazd rynną jak §22.3).
+- **Wyrocznie/testy:** `buildScene.gpzFeeder.test.ts` (feeder z WŁASNEGO pola — inna kolumna
+  X niż magistrala; negatyw: snapshot bez przydziału i bez wolnego pola ⇒ ciąg pominięty ze
+  stopNote); backend `test_gpz_feeder_field_allocation.py` (przydział wolnego pola, tworzenie
+  nowego, dwa feedery ⇒ dwa różne pola, negatyw limitu).
 
 ## 22. Fizyka obrazu: skrzyżowania, węzły, pas ochronny szyn (D3-3/D3-4/D3-5/D3-11/D3-13)
 

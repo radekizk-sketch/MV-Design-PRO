@@ -184,7 +184,14 @@ const EXPECTED_STATION_COUNT = 53;
 // terminalny 2×GRID na ogonie magistrali). Zysk twardy: 13 realnych
 // segmentów ENM w DOM (klik/nakładka), field_entry_probe 13→0 głowic
 // dyndających, `buildScene.openTerminal.test.ts` pilnuje 1 słupka/ogon.
-const VERTICAL_LENGTH_BASELINE = { 0: 12488, 1: 42560, 2: 55664 };
+// Recenzja NO-GO 2026-07-17 (pkt 1/2/3/4): L0 12488→12472 (−16 netto), L1
+// 42560→42608 i L2 55664→55712 (+48) — objazd magistrali głębiej pod strefą
+// (+3×GRID) + pas ±2×GRID w warunku objazdu, źródło-ekwiwalent zaczepione
+// nad szyną SN (L0: krótsze zejście), DWA nowe wiersze tabliczek strefy GPZ
+// (TR uk%/Pk + „Ekwiwalent sieci zasilającej") pogłębiają nawis → dłuższy
+// pion wyjścia magistrali na L1/L2. Uzasadnienie liczbowe:
+// `buildScene.test.ts` vertical_length_probe (ta sama historia baseline).
+const VERTICAL_LENGTH_BASELINE = { 0: 12472, 1: 42608, 2: 55712 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —

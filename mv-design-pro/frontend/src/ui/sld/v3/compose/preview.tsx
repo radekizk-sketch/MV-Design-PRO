@@ -181,6 +181,10 @@ export interface PreviewElementMeta {
    *  w `missingData`/inspektorze (§20.3 „zwarta, nie zasłania toru"), NIE na
    *  scenie jako osobna etykieta tekstowa. */
   readonly topologyGaps?: readonly ProtectionTopologyGap[];
+  /** Recenzja NO-GO 2026-07-17 pkt 11: litera mierzonej wielkości miernika
+   *  (A/V z `Measurement.measurement_type`) — WYŁĄCZNIE dla symboli
+   *  `meter`; `MeterGlyph` pokazuje ją zamiast mylącego „M". */
+  readonly meterQuantity?: 'A' | 'V';
   /** §16-v3: `true` WYŁĄCZNIE dla ostatniego kawałka biegu OTWARTEGO (ciąg
    *  bez stacji na końcu — segment ENM istnieje, następnika brak). Ostatni
    *  wierzchołek takiego kawałka MUSI dotykać słupka terminalnego
@@ -264,6 +268,7 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
         stroke={effectiveStroke}
         labelLines={symbol.meta?.protectionCodes}
         hasTopologyWarning={(symbol.meta?.topologyGaps?.length ?? 0) > 0}
+        meterQuantity={symbol.meta?.meterQuantity}
       />
     </g>
   );

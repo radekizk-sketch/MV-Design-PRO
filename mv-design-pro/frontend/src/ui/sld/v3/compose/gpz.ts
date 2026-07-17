@@ -75,6 +75,7 @@ import {
   type ProtectionAnnotationDetail,
 } from './protectionMarking';
 import type {
+  BayFieldRole,
   CanonicalGpzBay,
   CanonicalGpzBusbarTopology,
   CanonicalGpzHvSystemSource,
@@ -586,6 +587,11 @@ interface FieldColumnLayout {
   readonly bay: CanonicalGpzBay;
   readonly index: number;
   readonly spec: readonly FieldApparatusSpec[];
+  /** Recenzja NO-GO 2026-07-17 pkt 8: oznacznik NAGŁÓWKA pola — dane
+   *  (`bay_number`) mają pierwszeństwo; bez nich deterministyczna numeracja
+   *  rysunkowa per sekcja: pola liniowe F01/F02…, TR FT1…, sprzęgło FS1…
+   *  (konwencja rysunkowa jak litery stref arkusza — NIE dana ENM). */
+  readonly designation: string;
   /** Środek kolumny aparatów, WORLD X (sekcja jest już umieszczona w świecie
    *  w momencie budowy tej struktury — patrz `layoutSections`). */
   readonly centerX: number;
@@ -638,25 +644,42 @@ function gpzFieldPlanFootprint(spec: readonly FieldApparatusSpec[]) {
  *  zabezpieczeń, TYLKO dla pól z `protectionCodes` (§17.3 — zero zmian
  *  geometrii dla pól bez danych; fixtura referencyjna: 0 pól z kodami,
  *  zweryfikowane, baseline'y nietknięte). */
-function fieldColumnRequiredWidth(bay: CanonicalGpzBay, spec: readonly FieldApparatusSpec[]): number {
+function fieldColumnRequiredWidth(bay: CanonicalGpzBay, spec: readonly FieldApparatusSpec[], designation: string): number {
   // F10.1: pełna szerokość planu (tor główny + rozszerzenie boczne ES/VT/SA).
   const footprint = gpzFieldPlanFootprint(spec);
-  const designation = (bay.bayNumber ?? bay.feederName ?? '').trim();
   const sidecar = designation ? GRID + measureLabelWidth(designation, 't3') : 0;
   return footprint.width + sidecar + gpzBayAnnotationWidth(bay);
+}
+
+/** Recenzja NO-GO 2026-07-17 pkt 8: numeracja pól w nagłówku — dane
+ *  (`Bay.bay_number`, potem `feeder_short_name`) zawsze wygrywają; OSTATNI
+ *  fallback = deterministyczny licznik per klasa roli w kolejności
+ *  kompozycji sekcji (F01… liniowe, FT1… TR, FS1… sprzęgła, FP1…
+ *  pomiarowe) — pole bez ŻADNEGO oznacznika w danych przestaje być
+ *  anonimowe. Kolejność fallbacków zachowuje FIX-A (dedup feederName)
+ *  i geometrię fixtury referencyjnej 1:1. */
+function gpzFieldOrdinalDesignation(role: BayFieldRole, counters: Map<string, number>): string {
+  const cls = role === 'TRANSFORMER' ? 'FT' : role === 'COUPLER' ? 'FS' : role === 'MEASUREMENT' ? 'FP' : 'F';
+  const next = (counters.get(cls) ?? 0) + 1;
+  counters.set(cls, next);
+  return cls === 'F' ? `F${String(next).padStart(2, '0')}` : `${cls}${next}`;
 }
 
 function layoutSectionFields(section: CanonicalGpzSection, startX: number): { readonly fields: readonly FieldColumnLayout[]; readonly width: number } {
   const fields: FieldColumnLayout[] = [];
   let cursor = startX + SECTION_MARGIN;
+  const ordinalCounters = new Map<string, number>();
   section.bays.forEach((bay, index) => {
     const spec = fieldApparatusSpecForBay(bay);
     // F10.1: oś stosu = połowa szerokości TORU GŁÓWNEGO (aparaty boczne
     // rozszerzają kolumnę w prawo, nie przesuwają osi).
     const footprint = gpzFieldPlanFootprint(spec).mainStack;
-    const reserved = snapUp(fieldColumnRequiredWidth(bay, spec));
+    const designation =
+      (bay.bayNumber ?? bay.feederName ?? '').trim() ||
+      gpzFieldOrdinalDesignation(bay.fieldRole, ordinalCounters);
+    const reserved = snapUp(fieldColumnRequiredWidth(bay, spec, designation));
     const centerX = snapToGrid(cursor + footprint.width / 2);
-    fields.push({ bay, index, spec, centerX, rightX: cursor + reserved });
+    fields.push({ bay, index, spec, designation, centerX, rightX: cursor + reserved });
     cursor += reserved + FIELD_GAP;
   });
   const contentRight = fields.length > 0 ? cursor - FIELD_GAP + SECTION_MARGIN : startX + SECTION_MARGIN * 2;
@@ -975,7 +998,10 @@ export function composeGpz(
     // `feederName` TYLKO gdy różni się od tekstu oznacznika (`designationText`,
     // ta sama formuła co przy budowie `fieldDesignations` niżej).
     const captionCandidates = layout.fields.map((field) => {
-      const designationText = (field.bay.bayNumber ?? field.bay.feederName ?? '').trim();
+      // pkt 8 (recenzja NO-GO 2026-07-17): oznacznik pola = `field.designation`
+      // (bay_number albo numeracja F01/FT1…) — `feederName` wraca do roli
+      // podpisu kierunkowego (dedup wobec oznacznika zachowany).
+      const designationText = field.designation;
       const raw = field.bay.destinationLabel
         ? `→ ${field.bay.destinationLabel}`
         : (field.bay.feederName && field.bay.feederName.trim() !== designationText ? field.bay.feederName : null);
@@ -1035,7 +1061,9 @@ export function composeGpz(
         meta: powerPathMeta,
       });
 
-      const designation = (field.bay.bayNumber ?? field.bay.feederName ?? '').trim();
+      // pkt 8 (recenzja NO-GO 2026-07-17): oznacznik z layoutu (bay_number
+      // albo deterministyczne F01/FT1… — patrz `gpzFieldOrdinalDesignation`).
+      const designation = field.designation;
       if (designation) {
         // FIX (F6e, REBUILD_PLAN_V3 — residuum §11.1 `apparatus`): `stack.topPort.y`
         // leży PRAKTYCZNIE NA szynie SN (`topY = snBusY + GRID` z konstrukcji
@@ -1396,23 +1424,29 @@ export function composeGpz(
     const ratingRowText = transformer.vectorGroup
       ? `${transformer.vectorGroup} · ${transformer.snMva} MVA`
       : `${transformer.snMva} MVA`;
+    // Recenzja NO-GO 2026-07-17 pkt 4: uk%/Pk z ENM (materializacja
+    // katalogowa) na tabliczce TR — WYŁĄCZNIE gdy dane są (uczciwy brak,
+    // zero literałów zastępczych). Zaczepy/punkt neutralny → plan (dane null).
+    const shortCircuitParts: string[] = [];
+    if (transformer.ukPercent != null) shortCircuitParts.push(`uk ${formatGpzSystemNumberPl(transformer.ukPercent)}%`);
+    if (transformer.pkKw != null) shortCircuitParts.push(`Pk ${formatGpzSystemNumberPl(transformer.pkKw)} kW`);
+    const trRows: StationNameBandRow[] = [
+      { text: transformer.designation, labelClass: 't1' },
+      { text: ratingRowText, labelClass: 't2' },
+      { text: `${transformer.uhvKv}/${transformer.ulvKv} kV`, labelClass: 't2' },
+      ...(shortCircuitParts.length > 0
+        ? [{ text: shortCircuitParts.join(' · '), labelClass: 't3' } as StationNameBandRow]
+        : []),
+    ];
     transformerLabels.push({
       ownerRef: `${transformer.transformerRef}#label`,
       nameSlot: {
         x: snapToGrid(trCenterX + trDef.width / 2 + GRID),
         y: trTopY,
-        width: snapUp(Math.max(
-          measureLabelWidth(transformer.designation, 't1'),
-          measureLabelWidth(ratingRowText, 't2'),
-          measureLabelWidth(`${transformer.uhvKv}/${transformer.ulvKv} kV`, 't2'),
-        )),
-        height: labelLineHeight('t1') + 2 * labelLineHeight('t2'),
+        width: snapUp(Math.max(...trRows.map((row) => measureLabelWidth(row.text, row.labelClass)))),
+        height: trRows.reduce((sum, row) => sum + labelLineHeight(row.labelClass), 0),
       },
-      rows: [
-        { text: transformer.designation, labelClass: 't1' },
-        { text: ratingRowText, labelClass: 't2' },
-        { text: `${transformer.uhvKv}/${transformer.ulvKv} kV`, labelClass: 't2' },
-      ],
+      rows: trRows,
     });
 
     transformerMetas.push({
@@ -1451,10 +1485,12 @@ export function composeGpz(
     segments.push({ ownerRef: `${props.id}#hv-bus`, points: [{ x: busLeft, y: hvBusY }, { x: busRight, y: hvBusY }], meta: hvBusMeta });
     // F13.1 (spec §21.1): napięcie szyny WN — etykieta „110 kV" nad lewym
     // końcem, TA SAMA konwencja co etykieta sekcji SN (`sectionLabels`).
-    // Wartość WYŁĄCZNIE z danych: `hvSystemSource.voltageKv` (ścieżka
-    // derywacji) albo `hvSections[0].busVoltageKv` (ścieżka `gpz_hv_sections`
-    // niepuste) — gdy żadne z dwóch nieobecne, brak etykiety (uczciwy brak).
-    const hvBusVoltageKv = props.hvSystemSource?.voltageKv ?? hvSections[0]?.busVoltageKv ?? null;
+    // Wartość WYŁĄCZNIE z danych: `hvSystemSource.hvBusVoltageKv` (rekord
+    // SZYNY WN — NIE `voltageKv`, które od recenzji NO-GO 2026-07-17 pkt 2
+    // jest napięciem szyny ŹRÓDŁA i dla ekwiwalentu SN niosłoby 15 kV na
+    // etykiecie szyny WN) albo `hvSections[0].busVoltageKv` (ścieżka
+    // `gpz_hv_sections` niepuste) — gdy żadne nieobecne, brak etykiety.
+    const hvBusVoltageKv = props.hvSystemSource?.hvBusVoltageKv ?? hvSections[0]?.busVoltageKv ?? null;
     if (hvBusVoltageKv != null) {
       sectionLabels.push({
         ownerRef: `${props.id}#hv-bus-label`,
@@ -1488,7 +1524,12 @@ export function composeGpz(
   // wpis `gridSources`, rozstawione poziomo gdy >1 (dual-feed, rzadkie).
   if (gridSources.length > 0) {
     const firstSection = sectionLayouts[0] ?? null;
-    const attachAboveHv = hasHvContent && hvBusRightEdge != null;
+    // Recenzja NO-GO 2026-07-17 pkt 2/3: strona zaczepu podąża za SZYNĄ
+    // ŹRÓDŁA (`hvSystemSource.sourceOnHvBus`) — EKWIWALENT na szynach SN
+    // zaczepia się nad szyną SN (nie wieńczy kolumny WN cudzym napięciem);
+    // brak informacji (adapter bez `hvSystemSource`) = zachowanie dotychczasowe.
+    const sourceOnHv = props.hvSystemSource?.sourceOnHvBus ?? true;
+    const attachAboveHv = hasHvContent && hvBusRightEdge != null && sourceOnHv;
     if (!attachAboveHv && !firstSection) {
       missingData.push('gpz.source.unattached');
     } else {
@@ -1541,6 +1582,11 @@ export function composeGpz(
         if (props.hvSystemSource && props.hvSystemSource.sourceRef === source.id) {
           const dataplate = gpzSystemSourceDataplateText(props.hvSystemSource);
           const rows: StationNameBandRow[] = [{ text: props.hvSystemSource.name, labelClass: 't2' }];
+          // Recenzja NO-GO 2026-07-17 pkt 3: gdy źródło to EKWIWALENT na
+          // szynach SN (`!sourceOnHv`), tabliczka mówi to WPROST — inaczej
+          // czytelnik bierze dane zwarciowe ekwiwalentu za parametry
+          // przyłącza systemowego WN (fałsz prezentacji pkt 2).
+          if (!sourceOnHv) rows.push({ text: 'Ekwiwalent sieci zasilającej', labelClass: 't3' });
           if (dataplate) rows.push({ text: dataplate, labelClass: 't3' });
           transformerLabels.push({
             ownerRef: `${source.id}#system-source-label`,
@@ -1548,10 +1594,9 @@ export function composeGpz(
               x: snapToGrid(x + def.width + GRID),
               y,
               width: snapUp(Math.max(
-                measureLabelWidth(props.hvSystemSource.name, 't2'),
-                dataplate ? measureLabelWidth(dataplate, 't3') : 0,
+                ...rows.map((row) => measureLabelWidth(row.text, row.labelClass)),
               )),
-              height: labelLineHeight('t2') + (dataplate ? labelLineHeight('t3') : 0),
+              height: rows.reduce((sum, row) => sum + labelLineHeight(row.labelClass), 0),
             },
             rows,
           });
@@ -1608,9 +1653,13 @@ export function composeGpz(
   })();
   let zone: GpzZoneDecoration | null = null;
   const firstTransformer = props.transformers[0];
+  // Recenzja NO-GO 2026-07-17 pkt 3: nazwa GPZ z ENM często JUŻ zaczyna się
+  // od „GPZ …" — sklejanie stałego prefiksu dawało duplikację „GPZ GPZ 15 kV"
+  // w nagłówku strefy. Prefiks dokładamy TYLKO gdy nazwa go nie niesie.
+  const headerName = /^GPZ\b/i.test(props.name.trim()) ? props.name.trim() : `GPZ ${props.name}`;
   const headerText = firstTransformer
-    ? `GPZ ${props.name} · ${firstTransformer.uhvKv}/${firstTransformer.ulvKv} kV`
-    : `GPZ ${props.name}`;
+    ? `${headerName} · ${firstTransformer.uhvKv}/${firstTransformer.ulvKv} kV`
+    : headerName;
   const headerHeight = labelLineHeight('t1') + GRID;
   let headerSlot = {
     x: originX,

@@ -223,6 +223,11 @@ export interface ComposedSymbolInstance {
   /** F9.9 (spec §17.3): kody funkcji przekaźnika — WYŁĄCZNIE dla instancji
    *  `symbolId==='protectionRelay'` (dwa pierwsze wg kolejności danych). */
   readonly protectionCodes?: readonly string[];
+  /** Recenzja NO-GO 2026-07-17 pkt 11: mierzona wielkość miernika (A/V z
+   *  `Measurement.measurement_type`) — WYŁĄCZNIE dla `symbolId==='meter'`;
+   *  glif pokazuje literę wielkości zamiast „M". `undefined` = dana
+   *  nieznana (glif zostaje przy „M", rozstrzygnięcie w legendzie). */
+  readonly meterQuantity?: 'A' | 'V';
   /** F10.5 (spec §20.2): braki topologiczne funkcji zabezpieczeń
    *  (`protectionFunctionTopologyGaps`, `./protectionTopologyValidation`) —
    *  WYŁĄCZNIE dla instancji `symbolId==='protectionRelay'`. `undefined`/puste
@@ -585,17 +590,21 @@ function buildBayStack(
       instances.push(instance);
       lateralInstances.push(instance);
       if (identifier) {
-        // F10.2: lateral (uziemnik) — etykieta identyfikatora zaczepiona na
-        // TEJ SAMEJ lewej krawędzi toru głównego (`stackLeftX`), wysokość
-        // WŁASNEGO symbolu lateralu (zwisa niżej niż tor główny), spójnie z
-        // resztą kolumny identyfikatorów.
+        // Recenzja NO-GO 2026-07-17 pkt 9: identyfikator lateralu (QE
+        // uziemnika) MUSI wisieć PRZY SWOIM symbolu — dawna kotwica
+        // `stackLeftX` (lewa krawędź toru głównego) kładła „QE1" na
+        // wysokości ES, ale w kolumnie identyfikatorów toru głównego, obok
+        // aparatu głównego tej wysokości (pomiar recenzji: przy głowicy
+        // kablowej). Teraz: POD własnym symbolem ES, wyśrodkowana — jog
+        // biegnie NAD symbolem (port N), więc pas pod nim jest wolny, a
+        // szerokość „QE1" (t4) mieści się w gabarycie kolumny lateralu.
         identifierLabels.push({
           ownerRef: `${bay.bayRef}#apparatus-id-${item.symbolId}-lateral-${lateralIndex}`,
           ownerKind: 'apparatus',
           text: identifier,
           labelClass: 't4',
-          anchor: { x: stackLeftX, y: lateralY + def.height / 2 },
-          placement: 'left',
+          anchor: { x: x + def.width / 2, y: lateralY + def.height },
+          placement: 'below',
         });
       }
       const north = def.ports.find((p) => p.dir === 'N') ?? def.ports[0];
@@ -967,6 +976,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
             x: circleLeftX,
             y: meterTopY,
             ports: portsInWorld(SYMBOL_DEFS.meter, circleLeftX, meterTopY),
+            meterQuantity: bay.meteringQuantity,
           });
         } else if (bay.meteringMeasurementRef) {
           // Rozszerzenie WŁASNE (poza literą §17.5, wzorzec `station.der.unattached`):

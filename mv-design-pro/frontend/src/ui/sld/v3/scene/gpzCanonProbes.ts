@@ -23,7 +23,7 @@
 import { SYMBOL_DEFS } from '../symbols/defs';
 import type { V3Rect } from '../core/grid';
 import type { SceneV3 } from './buildScene';
-import type { EnergyNetworkModel, Substation, Transformer } from '../../../../types/enm';
+import type { Bus, EnergyNetworkModel, Source, Substation, Transformer } from '../../../../types/enm';
 
 /* =============================================================================
    gpzHvColumnGaps (D3-1, spec §21.1)
@@ -35,7 +35,27 @@ export interface GpzHvColumnGap {
   readonly reason: string;
 }
 
-type GpzHvColumnSnapshot = Pick<EnergyNetworkModel, 'substations' | 'transformers'>;
+type GpzHvColumnSnapshot = Pick<EnergyNetworkModel, 'substations' | 'transformers'> &
+  // Recenzja NO-GO 2026-07-17 pkt 2/3: strona zaczepu źródła podąża za
+  // `Source.bus_ref` — wyrocznia potrzebuje `sources`/`buses`, żeby odróżnić
+  // przyłącze systemowe WN od EKWIWALENTU na szynach SN. Pola opcjonalne
+  // (Partial) — starzy wołający bez tych rekordów dostają regułę WN 1:1.
+  Partial<Pick<EnergyNetworkModel, 'sources' | 'buses'>>;
+
+/** Lustro reguły adaptera (`enmToCanonicalGpzAdapter.ts` `deriveHvSystemSource`):
+ *  źródło GPZ = pierwszy `Source` z `bus_ref` na którejś szynie GPZ; strona =
+ *  napięcie TEJ szyny (WN ⇔ `voltage_kv > 60`). `null` gdy snapshot nie niesie
+ *  `sources`/`buses` albo źródła nie da się dopasować (wyrocznia wraca wtedy
+ *  do reguły WN — zachowanie sprzed recenzji NO-GO 2026-07-17). */
+function gpzSourceOnHvBus(gpz: Substation, sources: readonly Source[] | undefined, buses: readonly Bus[] | undefined): boolean | null {
+  if (!sources || !buses) return null;
+  const gpzBusRefs = new Set(gpz.bus_refs ?? []);
+  const source = sources.find((s) => s.bus_ref != null && gpzBusRefs.has(s.bus_ref));
+  if (!source) return null;
+  const sourceBus = buses.find((b) => b.ref_id === source.bus_ref);
+  if (!sourceBus) return null;
+  return sourceBus.voltage_kv > 60;
+}
 
 /** TR WN/SN wg tej samej regułY co adapter (`enmToCanonicalGpzAdapter.ts`
  *  `deriveHvSystemSource`): `Substation.transformer_refs` → transformator z
@@ -55,9 +75,11 @@ function hvTransformersOfGpz(gpz: Substation, transformers: readonly Transformer
  *   3. połączenie szyna WN→TR (`ownerRef==='<TR>#hv-connector'`),
  *   4. połączenie TR→szyna SN (`ownerRef==='<TR>#tr-field-to-bus'`).
  * Dodatkowo (przyłącze systemowe, gdy obecne na scenie): jeżeli scena niesie
- * JAKIKOLWIEK symbol `gridSource`, jego zejście musi kończyć się na szynie WN
- * tego GPZ (`ownerRef==='<gpz>#hv-bus-source-extension'`), NIE na szynie SN —
- * inaczej „przyłącze→…→szyna SN" (spec §21.1) nie jest ciągłe przez WN.
+ * JAKIKOLWIEK symbol `gridSource`, jego zejście musi kończyć się na szynie
+ * ŹRÓDŁA (recenzja NO-GO 2026-07-17 pkt 2/3): źródło z `bus_ref` na szynie WN
+ * → `ownerRef==='<gpz>#hv-bus-source-extension'` („przyłącze→…→szyna SN" spec
+ * §21.1 ciągłe przez WN); EKWIWALENT na szynach SN → `'<gpz>#source-bus-
+ * extension'` (rysowanie go na WN = fałsz prezentacji danych zwarciowych).
  * Zero GPZ z danymi WN bez KOMPLETNEJ kolumny — każdy brakujący element
  * dopisuje osobny gap (WHITE BOX, audytowalne pojedynczo).
  */
@@ -96,16 +118,27 @@ export function gpzHvColumnGaps(scene: SceneV3, snapshot: GpzHvColumnSnapshot): 
     }
 
     // Przyłącze systemowe (gdy scena niesie symbol źródła) musi kończyć się
-    // NA SZYNIE WN tego GPZ — nie na SN (kolumna WN musi być torem ciągłym
-    // przyłącze→szyna WN→TR→szyna SN, spec §21.1 dosłownie).
+    // na szynie ŹRÓDŁA (recenzja NO-GO 2026-07-17 pkt 2/3): przyłącze WN →
+    // `#hv-bus-source-extension` (kolumna WN torem ciągłym przyłącze→szyna
+    // WN→TR→szyna SN, spec §21.1); EKWIWALENT na szynach SN (`Source.bus_ref`
+    // = szyna SN) → `#source-bus-extension` — rysowanie go na szynie WN
+    // fałszowałoby prezentację (dane zwarciowe 15 kV przy 110 kV). Gdy strony
+    // nie da się ustalić (snapshot bez `sources`/`buses`), reguła WN jak
+    // dotychczas.
     const gridSourcePresent = scene.symbols.some((s) => s.symbolId === 'gridSource');
     if (gridSourcePresent) {
-      const attachedToHvBus = scene.segments.some((seg) => seg.meta?.ownerRef === `${gpz.ref_id}#hv-bus-source-extension`);
-      if (!attachedToHvBus) {
+      const onHvBus = gpzSourceOnHvBus(gpz, snapshot.sources, snapshot.buses);
+      const expectedExtensionRef = onHvBus === false
+        ? `${gpz.ref_id}#source-bus-extension`
+        : `${gpz.ref_id}#hv-bus-source-extension`;
+      const attachedToOwnBus = scene.segments.some((seg) => seg.meta?.ownerRef === expectedExtensionRef);
+      if (!attachedToOwnBus) {
         gaps.push({
           gpzRef: gpz.ref_id,
           transformerRef: hvTransformers[0]?.ref_id ?? '',
-          reason: 'Przyłącze systemowe (gridSource) obecne na scenie, ale nie zaczepione na szynie WN (#hv-bus-source-extension) — tor WN nieciągły.',
+          reason: onHvBus === false
+            ? 'Źródło-ekwiwalent na szynie SN obecne na scenie, ale nie zaczepione na szynie SN (#source-bus-extension) — strona zaczepu niezgodna z Source.bus_ref.'
+            : 'Przyłącze systemowe (gridSource) obecne na scenie, ale nie zaczepione na szynie WN (#hv-bus-source-extension) — tor WN nieciągły.',
         });
       }
     }

@@ -7,6 +7,7 @@ Komunikaty po polsku.
 
 from __future__ import annotations
 
+import math
 import os
 
 import networkx as nx
@@ -540,6 +541,47 @@ class ENMValidator:
     # ------------------------------------------------------------------
 
     def _check_warnings(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
+        # W033 (recenzja NO-GO 2026-07-17 pkt 2): spójność Sk''/Ik''/U źródła.
+        # Gdy źródło niesie JEDNOCZEŚNIE Sk'' i Ik'' oraz stoi na szynie ze
+        # znanym napięciem, musi zachodzić Ik'' = Sk''/(√3·U) — rozjazd > 5%
+        # oznacza, że dane pochodzą z RÓŻNYCH stron transformatora (podwójne
+        # liczenie impedancji TR) albo napięcie odniesienia jest błędne.
+        # IMPORTANT (nie blocker): model policzalny, ale prezentacja/dobór
+        # aparatury na takich danych byłyby fałszywe.
+        buses_by_ref = {bus.ref_id: bus for bus in enm.buses}
+        for source in enm.sources:
+            if not (source.sk3_mva and source.sk3_mva > 0 and source.ik3_ka and source.ik3_ka > 0):
+                continue
+            bus = buses_by_ref.get(source.bus_ref) if source.bus_ref else None
+            if bus is None or not bus.voltage_kv or bus.voltage_kv <= 0:
+                continue
+            expected_ik_ka = source.sk3_mva / (math.sqrt(3.0) * bus.voltage_kv)
+            if abs(source.ik3_ka - expected_ik_ka) / expected_ik_ka > 0.05:
+                issues.append(
+                    ValidationIssue(
+                        code="sources.sk_ik_voltage_inconsistent",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"Źródło '{source.ref_id}': Ik''={source.ik3_ka:.2f} kA nie zgadza się "
+                            f"z Sk''={source.sk3_mva:.0f} MVA przy U={bus.voltage_kv:g} kV "
+                            f"(oczekiwane Ik''=Sk''/(√3·U)={expected_ik_ka:.2f} kA). "
+                            f"Dane zwarciowe i napięcie odniesienia muszą dotyczyć TEJ SAMEJ szyny."
+                        ),
+                        element_refs=[source.ref_id],
+                        wizard_step_hint="K2",
+                        suggested_fix=(
+                            "Podaj Sk'' i Ik'' wyznaczone dla szyny, na której stoi źródło "
+                            "(bez podwójnego liczenia impedancji transformatora)."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=source.ref_id,
+                            modal_type="SourceModal",
+                            payload_hint={"required": "short_circuit_params_consistent"},
+                        ),
+                    )
+                )
+
         # W001: Brak Z₀ na linii
         for branch in enm.branches:
             if isinstance(branch, OverheadLine | Cable):

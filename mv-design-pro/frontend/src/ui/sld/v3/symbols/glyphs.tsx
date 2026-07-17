@@ -34,6 +34,11 @@ export interface GlyphProps {
    *  ostrzeżenia (np. „67N: brak VT") żyje w `missingData`/inspektorze, NIE
    *  na scenie jako tekst — glif niesie WYŁĄCZNIE sygnał obecności. */
   readonly hasTopologyWarning?: boolean;
+  /** Recenzja NO-GO 2026-07-17 pkt 11: litera mierzonej WIELKOŚCI miernika
+   *  (A = prąd z CT, V = napięcie z VT) — WYŁĄCZNIE `MeterGlyph` czyta to
+   *  pole (wzorzec `labelLines`). Brak danych ⇒ fallback „M" (rozstrzygany
+   *  wpisem legendy arkusza). */
+  readonly meterQuantity?: 'A' | 'V';
 }
 
 function glyphGroupProps(id: SymbolId, props: GlyphProps) {
@@ -358,7 +363,9 @@ export function MeterGlyph(props: GlyphProps): JSX.Element {
         x={12} y={16} textAnchor="middle"
         fill={stroke(props)} fontFamily="sans-serif" fontSize={12} fontWeight={700}
       >
-        M
+        {/* Recenzja NO-GO 2026-07-17 pkt 11: litera mierzonej wielkości
+            (A/V) z danych pomiaru; „M" tylko gdy wielkość nieznana. */}
+        {props.meterQuantity ?? 'M'}
       </text>
     </g>
   );

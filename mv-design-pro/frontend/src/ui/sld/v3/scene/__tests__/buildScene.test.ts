@@ -779,9 +779,21 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // (zejście głowica→korytarz per ogon + pionowy słupek terminalny na
     // ogonie magistrali). Zysk twardy: field_entry 13→0 dyndających głowic,
     // 13 realnych refów ENM w DOM — `buildScene.openTerminal.test.ts`.
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(12488);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(42560);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(55664);
+    // → Recenzja NO-GO 2026-07-17 (pkt 1/2/3/4): L0 12488→12472 (−16 netto),
+    // L1 42560→42608 i L2 55664→55712 (+48) — złożenie: (a) objazd magistrali
+    // głębiej pod strefą GPZ (+3×GRID zamiast +1, kabel schodzi z przerywanej
+    // granicy obiektu, pkt 1) i pas ±2×GRID w warunku objazdu (korytarz
+    // DOKŁADNIE na poziomie szyny GPZ też objeżdża — kasuje współliniowość
+    // pionu z własnym zejściem pola na L0), (b) źródło-EKWIWALENT
+    // (Source.bus_ref = szyna SN) zaczepia się nad szyną SN zamiast wieńczyć
+    // kolumnę WN cudzym napięciem (pkt 2/3 — na L0 krótsze zejście źródła),
+    // (c) DWA nowe wiersze tabliczek w strefie GPZ (TR uk%/Pk pkt 4 +
+    // „Ekwiwalent sieci zasilającej" pkt 3) pogłębiają nawis strefy → dłuższy
+    // pion wyjścia magistrali na L1/L2 (świadome odstępstwo od „nie-rosnącej"
+    // jak F9.10/F10.3 — uczciwa tabliczka ma pierwszeństwo, §15.1 miękka).
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(12472);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(42608);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(55712);
   });
 });
 

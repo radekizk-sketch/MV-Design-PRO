@@ -125,12 +125,21 @@ function fullFixture(): EnmFragment {
 describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', () => {
   it('gpz_hv_sections puste + TR/szyna WN/źródło pełne ⇒ hvSystemSource wywiedzione Z DANYCH', () => {
     const props = buildCanonicalGpzProps(fullFixture(), 'gpz-1', { x: 0, y: 0 });
+    // INTENCJA (recenzja NO-GO 2026-07-17 pkt 2): napięcie tabliczki = szyna
+    // ŹRÓDŁA (`Source.bus_ref` = bus-sn, 15 kV) — dawna semantyka „zawsze
+    // napięcie szyny WN" (110) parowała dane zwarciowe 15 kV z cudzym
+    // napięciem (Ik″=Sk″/(√3·U) przestawało się zgadzać). `sourceOnHvBus`
+    // mówi kompozycji, po której stronie zaczepić symbol.
     expect(props.hvSystemSource).toEqual({
       sourceRef: 'src-1',
       name: 'GPZ Referencyjny 15 kV',
       sk3Mva: 250,
       ik3Ka: 9.62,
-      voltageKv: 110,
+      voltageKv: 15,
+      sourceOnHvBus: false,
+      // Napięcie SZYNY WN — osobny kanał dla etykiety „Szyna WN · 110 kV"
+      // (regres „Szyna WN · 15 kV" wykryty renderem gpzFeeder).
+      hvBusVoltageKv: 110,
     });
   });
 
@@ -222,8 +231,29 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     return buildCanonicalGpzProps(fullFixture(), 'gpz-1', { x: 0, y: 0 });
   }
 
-  it('gridSource zaczepiony NAD szyną WN (nie nad SN) — segment #hv-bus-source-extension obecny', () => {
+  // INTENCJA (recenzja NO-GO 2026-07-17 pkt 2/3): strona zaczepu podąża za
+  // SZYNĄ ŹRÓDŁA. Fixtura niesie EKWIWALENT na szynie SN (`bus_ref: bus-sn`)
+  // ⇒ zaczep nad szyną SN (`#source-bus-extension`); przyłącze WN zaczepia
+  // się nad WN tylko gdy `Source.bus_ref` = szyna WN (test niżej).
+  it('źródło-ekwiwalent na szynie SN ⇒ zaczep nad szyną SN (#source-bus-extension), NIE nad WN', () => {
     const props = propsWithHvColumn();
+    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1' }]);
+    const snExtension = composition.segments.find((s) => s.ownerRef === 'gpz-1#source-bus-extension');
+    const sourceDrop = composition.segments.find((s) => s.ownerRef === 'src-1#grid-source-drop');
+    expect(sourceDrop).toBeDefined();
+    expect(snExtension).toBeDefined();
+    // Zejście źródła kończy się NA WYSOKOŚCI szyny SN (napięcie danych = 15 kV).
+    expect(sourceDrop!.points[sourceDrop!.points.length - 1].y).toBe(snExtension!.points[0].y);
+    expect(composition.segments.some((s) => s.ownerRef === 'gpz-1#hv-bus-source-extension')).toBe(false);
+  });
+
+  it('źródło z bus_ref na szynie WN ⇒ zaczep nad szyną WN (#hv-bus-source-extension), ciągłość toru §21.1', () => {
+    const enm = fullFixture();
+    const props = buildCanonicalGpzProps(
+      { ...enm, sources: [systemSource('src-1', { bus_ref: 'bus-110' })] },
+      'gpz-1',
+      { x: 0, y: 0 },
+    );
     const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1' }]);
     const hvBus = composition.segments.find((s) => s.meta.testId === 'gpz-canonical-hv-bus');
     const sourceDrop = composition.segments.find((s) => s.ownerRef === 'src-1#grid-source-drop');
@@ -231,9 +261,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     expect(hvBus).toBeDefined();
     expect(sourceDrop).toBeDefined();
     expect(hvExtension).toBeDefined();
-    // Zejście źródła kończy się NA WYSOKOŚCI szyny WN (ciągłość toru §21.1).
     expect(sourceDrop!.points[sourceDrop!.points.length - 1].y).toBe(hvBus!.points[0].y);
-    // ZERO segmentu do szyny SN (stary mechanizm, spec §21.1 „przenosisz go na szczyt kolumny WN").
     expect(composition.segments.some((s) => s.ownerRef === 'gpz-1#source-bus-extension')).toBe(false);
   });
 
@@ -243,7 +271,10 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'src-1#system-source-label');
     expect(label).toBeDefined();
     expect(label!.rows[0].text).toBe('GPZ Referencyjny 15 kV');
-    expect(label!.rows[1].text).toBe('Sk″ 250 MVA · Ik″ 9,62 kA · 110 kV');
+    // pkt 3: ekwiwalent na szynach SN mówi to WPROST, a napięcie tabliczki
+    // jest napięciem szyny źródła (15 kV) — spójne z Sk″/Ik″.
+    expect(label!.rows[1].text).toBe('Ekwiwalent sieci zasilającej');
+    expect(label!.rows[2].text).toBe('Sk″ 250 MVA · Ik″ 9,62 kA · 15 kV');
   });
 
   it('brak dopasowania hvSystemSource.sourceRef do wpisu gridSources ⇒ ZERO etykiety (glif źródła zostaje)', () => {
@@ -257,7 +288,8 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     const props = propsWithHvColumn();
     const composition = composeGpz(props, { x: 0, y: 0 });
     const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'tr-1#label');
-    expect(label!.rows.map((r) => r.text)).toEqual(['TR1', 'Yd11 · 25 MVA', '110/15 kV']);
+    // pkt 4 (recenzja NO-GO 2026-07-17): uk%/Pk z danych ENM na tabliczce TR.
+    expect(label!.rows.map((r) => r.text)).toEqual(['TR1', 'Yd11 · 25 MVA', '110/15 kV', 'uk 11% · Pk 120 kW']);
   });
 
   it('transformator BEZ vector_group (null) ⇒ etykieta pomija grupę połączeń (uczciwy brak, nie fabrykuje)', () => {
@@ -269,7 +301,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     );
     const composition = composeGpz(props, { x: 0, y: 0 });
     const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'tr-1#label');
-    expect(label!.rows.map((r) => r.text)).toEqual(['TR1', '25 MVA', '110/15 kV']);
+    expect(label!.rows.map((r) => r.text)).toEqual(['TR1', '25 MVA', '110/15 kV', 'uk 11% · Pk 120 kW']);
   });
 
   it('brak TR w ENM ⇒ adapter nie niesie transformatora, kompozycja bez kolumny WN (missingData)', () => {
@@ -312,7 +344,9 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     // Nieujemność po translacji końcowej (kontrakt arkusza k5b/D2):
     expect(zone!.x).toBeGreaterThanOrEqual(0);
     expect(zone!.y).toBeGreaterThanOrEqual(0);
-    expect(composition.labels.stationName.rows[0]?.text).toBe('GPZ GPZ Testowy · 110/15 kV');
+    // pkt 3 (recenzja NO-GO 2026-07-17): nazwa „GPZ Testowy" JUŻ niesie
+    // prefiks — nagłówek NIE dubluje „GPZ GPZ …".
+    expect(composition.labels.stationName.rows[0]?.text).toBe('GPZ Testowy · 110/15 kV');
   });
 });
 

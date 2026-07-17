@@ -257,6 +257,7 @@ function SceneSymbolNode(props: {
         stroke={stroke}
         labelLines={symbol.meta?.protectionCodes}
         hasTopologyWarning={(symbol.meta?.topologyGaps?.length ?? 0) > 0}
+        meterQuantity={symbol.meta?.meterQuantity}
       />
     </g>
   );
