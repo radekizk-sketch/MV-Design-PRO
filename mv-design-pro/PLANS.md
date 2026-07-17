@@ -458,6 +458,13 @@ Progress:
         FRT. Wykonawca: pełny pytest 6027 pass, 0 failed (log do pliku —
         procedura działa). Zarządca: 73 celowane + 4 guardy OK, push.
         Konfirmacja w tle. Karta TODO-front OZE w realizacji.
+        SCALENIE #23 (2026-07-17): TODO-front OZE (f617f76 → cherry-pick) —
+        selektory run_id/bus_ref kontekstu SCR w sekwencji zapadów FRT,
+        klasa modułu A/B/C/D w macierzy NC RfG, nazwa przypadku w etykietach
+        porównania A/B, testy graniczne formatera energii (formater sam
+        istniał z P47a — bez duplikacji). Wykonawca: pełny vitest 8553 pass,
+        0 failed. Zarządca: 393 celowane + type-check + lint + 4 guardy OK,
+        push. Konfirmacje #22 (pytest) i #23 (vitest) w tle.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
