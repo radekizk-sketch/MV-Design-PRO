@@ -101,6 +101,23 @@ Dopiero po komplecie 1–6 usunąć wpis trasy z routera/mostu. Zero utraty funk
 Kolejność (D6=A): 1) E-26 → 2) AnalysisSurface → (3) audit2 zostaje →
 (4) V126Academic zostaje → (5) potem dopiero P27/P44.
 
+## 3c. METODA WYGASZANIA — OPCJA 1 (2026-07-17, „rób lepiej niż teraz")
+RECON wykazał, że E-26 (i ekrany AnalysisSurface: E-30 itd.) to EKRANY
+KANONICZNE (`screenCanonRegistry.ts` — typ `ScreenCode`, `coverageMatrix.ts`,
+guard `v12xx_canon_guard`, testy screen-canon/coverage). Kanon V12.xx to
+źródło prawdy (priorytet 1, ZAMROŻONE). Właściciel wybrał metodę „lepiej niż
+teraz" = **OPCJA 1**:
+- wygasić WYŁĄCZNIE implementację/trasę legacy (przycisk nawigacyjny +
+  `case '<E-…>' → <LegacySurface>` w routerze) — legacy powierzchnia znika
+  z mostu,
+- ekran kanoniczny POZOSTAJE w rejestrze i macierzy pokrycia (to wymagana
+  ZDOLNOŚĆ), jego realizacja wskazuje teraz na okno ui2 (E-26 → `EkranFrt`),
+- Bramka Parytetu (§3a) dowodzi pokrycia 1:1 przed usunięciem trasy,
+- ZERO zmian w zamrożonym kanonie V12.xx; ZERO wpisu do rejestru konfliktów
+  (nie usuwamy zdolności, zmieniamy dostawcę UI).
+Opcja 2 (usunięcie ekranu z kanonu) ODRZUCONA — zmieniałaby źródło prawdy,
+generuje dług i ryzyko regresji kanonu.
+
 ## 4. Rejestr wykonania
 - **W1** (2026-07-17, commit lokalny `feat(ui2): sekcja kontraktu analizy w panelu
   przebiegów (W1)`): sekcja „Kontrakt analizy" w `ui2/spaces/obliczenia/przebiegi/
