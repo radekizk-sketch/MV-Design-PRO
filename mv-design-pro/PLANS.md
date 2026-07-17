@@ -633,6 +633,8 @@ Progress:
         pełny vitest 8663 pass, 0 failed (+6). Zarządca: 97 celowanych +
         bramki OK, push. Konfirmacja w tle. Pozostaje W5 (wygaszenie tras
         dublujących po weryfikacji Grupy A) i decyzja właściciela W4.
+        POTWIERDZENIE #36 (2026-07-17): pełny vitest 8663 passed, 0 failed
+        — BAZY: backend 6112, frontend 8663.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
