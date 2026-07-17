@@ -523,6 +523,18 @@ Progress:
         + wniosek OSD (D15/W-707) — backend i okna.
         POTWIERDZENIE #27 (2026-07-17): pełny vitest 8588 passed, 0 failed
         (652 plików) — BAZY: backend 6066, frontend 8588.
+        SCALENIE #28 (2026-07-17): E12.2 porównanie A/B zwarć (05aa2c0 →
+        cherry-pick) — tryb zwarciowy w zakładce porównań (selektory SC,
+        tabela A/B/Δ per punkt Ik''/ip/Ith/Sk, osierocone punkty „tylko
+        A/B"). RECON: obie ścieżki backendu niepełne (comparison/service
+        _compare_short_circuit:136-176 agreguje do jednej delty;
+        domain/sc_comparison build_comparison:224-227 cicho pomija punkty
+        bez odpowiednika) → zastosowano dopuszczoną klauzulą STOP
+        prezentacyjną różnicę wartości backendu (trio(), komentarz).
+        Wykonawca: pełny vitest 8610 pass, 0 failed (+22). Zarządca:
+        62 celowane + type-check + lint + 4 guardy OK, push. Konfirmacja
+        w tle. TODO-KARTA (delta backendowa, opcjonalna): delty zwarciowe
+        per punkt z jawnym znacznikiem osieroconych w ScComparisonService.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
