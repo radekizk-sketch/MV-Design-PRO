@@ -467,6 +467,10 @@ Progress:
         push. Konfirmacje #22 (pytest) i #23 (vitest) w tle.
         POTWIERDZENIE #22 (2026-07-17): pełny pytest 6027 passed, 0 failed
         (620 s) — nowa baza backendu 6027.
+        POTWIERDZENIE #23 (2026-07-17): pełny vitest 8553 passed, 0 failed
+        (649 plików) — nowa baza frontendu 8553. BAZY: backend 6027,
+        frontend 8553. Karta D14 (certyfikat zgodności NC RfG, E13)
+        delegowana.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
