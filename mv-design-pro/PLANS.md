@@ -651,6 +651,9 @@ Progress:
         W5b (wygaszenie trasy E-26 Compliance — gotowe do wykonania;
         AnalysisSurface — uznanie stubu wrażliwości; ProofSurface — los
         akcji audit2) i W4 (V126Academic).
+        POTWIERDZENIE #37 (2026-07-17): pełny vitest 8664 passed, 0 failed
+        — BAZY: backend 6112, frontend 8664. Wszystkie wykonywalne bez
+        decyzji właściciela fale epiki wygaszania domknięte.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
