@@ -1,25 +1,57 @@
 {
   "pack_id": "osd_enea",
   "kind": "osd",
-  "name_pl": "Enea Operator — standardy w sieci dystrybucyjnej (stacje SN/nN)",
-  "version": "2025-01",
+  "name_pl": "Enea Operator — standardy w sieci dystrybucyjnej (stacje SN/nN + telemechanika)",
+  "version": "2026-02",
   "status": "repo_verified",
   "source_document_refs": [
-    "https://www.operator.enea.pl/uslugi-dystrybucyjne/instrukcje-i-standardy/standardy-w-sieci-dystrybucji",
-    "https://www.operator.enea.pl/uploads-ev2/Operator/us%C5%82ugidystrybucyjne/instrukcjeistandardysieci/standardywsieci/19.12.2024/Stacje%20elektroenergetyczne%20%C5%9Bredniego%20napi%C4%99cia.%20Zeszyt%202.%20Stacje%20transformatorowe%20kompaktowe%20prefabrykowane%20SNnn%20do%20400%20kVA%20uproszczone%20%20obowi%C4%85zuje%20od%2001.01..pdf",
-    "https://www.operator.enea.pl/uploads-ev2/Operator/us%C5%82ugidystrybucyjne/instrukcjeistandardysieci/standardywsieci/21.03.2024_1/STACJE~2.PDF"
+    "Stacje elektroenergetyczne średniego napięcia. Zeszyt 1. Stacje transformatorowe kompaktowe prefabrykowane SN/nn do 630 kVA oraz złącza/szafy kablowe SN — wersja 09.2021-2, obowiązuje od 02.04.2024: https://www.operator.enea.pl/uploads-ev2/Operator/us%C5%82ugidystrybucyjne/instrukcjeistandardysieci/standardywsieci/21.03.2024_1/STACJE~2.PDF",
+    "Stacje elektroenergetyczne średniego napięcia. Zeszyt 2. Stacje transformatorowe kompaktowe prefabrykowane SN/nn do 400 kVA uproszczone — wersja 06.2024, obowiązuje od 01.01.2025: https://www.operator.enea.pl/uploads-ev2/Operator/us%C5%82ugidystrybucyjne/instrukcjeistandardysieci/standardywsieci/19.12.2024/Stacje%20elektroenergetyczne%20%C5%9Bredniego%20napi%C4%99cia.%20Zeszyt%202.%20Stacje%20transformatorowe%20kompaktowe%20prefabrykowane%20SNnn%20do%20400%20kVA%20uproszczone%20%20obowi%C4%85zuje%20od%2001.01..pdf",
+    "Stacje elektroenergetyczne średniego napięcia. Zeszyt 3. Stacje transformatorowe słupowe SN/nn — wersja 06.2021-2, obowiązuje od 02.04.2024: https://www.operator.enea.pl/uploads-ev2/Operator/us%C5%82ugidystrybucyjne/instrukcjeistandardysieci/standardywsieci/21.03.2024_1/Stacje%20elektroenergetyczne%20%C5%9Bredniego%20napi%C4%99cia.%20Zeszyt%203.%20Stacje%20transformatorowe%20s%C5%82upowe%20SNnn%20-%20obowi%C4%85zuje%20od%2002.04.2024.pdf",
+    "Linie i stacje elektroenergetyczne średniego napięcia. Telemechanika — wersja 12.2025, obowiązuje od 01.02.2026 (zastępuje Zeszyt 5): https://www.operator.enea.pl/media/3463/uslugi-dystrybucyjne/linie-i-stacje-elektroenergetyczne-sredniego-napiecia-telemechanika",
+    "Strona indeksowa standardów: https://www.operator.enea.pl/uslugi-dystrybucyjne/instrukcje-i-standardy/standardy-w-sieci-dystrybucji"
   ],
   "station_rules": [
     {
       "rule_id": "osd_enea.station.prefabricated_compact_preferred",
-      "description_pl": "Standard sieci Enea Operator (Stacje elektroenergetyczne SN, Zeszyt 1/2): dla nowych stacji transformatorowych SN/nN rozwiązaniem podstawowym jest stacja kompaktowa prefabrykowana. Stacja SN/nN o znanym innym typie konstrukcji = ostrzeżenie zgodności.",
+      "description_pl": "Zeszyt 1 rozdz. 2 s. 3: „W przypadku budowy nowego układu pracy sieci lub przebudowy istniejącego, obejmującego stację transformatorową SN/nn, należy jako podstawowe rozwiązanie stosować stację transformatorową kompaktową prefabrykowaną SN/nn do 630 kVA.” Zeszyt 3 rozdz. 2 s. 3: „Nie zaleca się budowy nowych stacji słupowych SN/nn.” Stacja SN/nN o znanym innym typie konstrukcji = ostrzeżenie (odstępstwo wymaga decyzji Dyrektora OD — Z3 rozdz. 5 s. 14). Uwaga: standard dotyczy stacji nowych/przebudowywanych; model nie niesie cyklu życia stacji — sprawdzenie obejmuje wszystkie stacje SN/nN ze znaną konstrukcją.",
       "implemented": true
     },
     {
-      "rule_id": "osd_enea.station.telemechanika_sn",
-      "description_pl": "Wymagania telemechaniki dla stacji SN (standard „Linie i stacje elektroenergetyczne SN — telemechanika”). Sprawdzenie wymaga modelu łączności/telemechaniki — poza zakresem V1 (PLAN, wpis w execplanie).",
+      "rule_id": "osd_enea.station.pole_station_cable_entry_forbidden",
+      "description_pl": "Zeszyt 3 rozdz. 2 s. 3: „Nie należy stosować nowych stacji słupowych SN/nn z kablowym podejściem SN.” Stacja słupowa z kablem SN dochodzącym do jej szyny SN = naruszenie (twarde „nie należy” = „nie wolno”, semantyka wymagań Z3 s. 7).",
+      "implemented": true
+    },
+    {
+      "rule_id": "osd_enea.station.transformer_power_limit",
+      "description_pl": "Granice mocy transformatora per typ stacji: kompaktowa prefabrykowana — do 630 kVA (Zeszyt 1: tytuł + rys. 1 s. 10 + §4.7.1.k s. 16); słupowa — do 400 kVA (Zeszyt 3 §4.1 s. 7). Wariant „uproszczony” 400 kVA (Zeszyt 2) nie jest rozróżnialny w modelu (brak podtypu konstrukcji) — stosowana granica 630 kVA dla stacji prefabrykowanych/kontenerowych.",
+      "implemented": true
+    },
+    {
+      "rule_id": "osd_enea.station.bay_composition",
+      "description_pl": "Skład rozdzielnicy SN stacji kompaktowej: dokładnie 1 pole transformatorowe + pola liniowe (Zeszyt 1 §4.3.1 s. 11: 2–4 pola liniowe, max 5 pól — §4.1.2 s. 8; Zeszyt 2 §4.3.1 s. 5: do 2 pól liniowych). Model nie rozróżnia wariantu uproszczonego — sprawdzana UNIA zakresów: 1 pole TR, 1–4 pola liniowe, ≤5 pól SN łącznie. Bramka danych: stacja bez pól w modelu = nie dotyczy.",
+      "implemented": true
+    },
+    {
+      "rule_id": "osd_enea.telemechanika.line_bay_u_i_measurement",
+      "description_pl": "Telemechanika §6.4.1 s. 14: „Pomiar napięcia wymagany jest dla każdego pola liniowego / łącznika napowietrznego. […] Pomiar prądu wymagany jest dla każdego pola liniowego / łącznika napowietrznego.” Sprawdzenie dla pól liniowych stacji ZDALNIE STEROWANYCH (dowód w danych: control_availability pola albo control_mode=zdalne aparatu): wymagany rekord Measurement VT ORAZ CT związany z polem (bay_ref). Bramka danych: brak dowodu zdalnego sterowania = nie dotyczy.",
+      "implemented": true
+    },
+    {
+      "rule_id": "osd_enea.telemechanika.qualification_not_regulated",
+      "description_pl": "USTALENIE Z LEKTURY (Telemechanika 12.2025, całość): standard NIE określa kryteriów kwalifikacji, które stacje/łączniki muszą być objęte telemechaniką — definiuje wyłącznie wymagania techniczne systemu (TETRA podstawowa + GSM rezerwowa §6.1.3.1 s. 6, napędy 24 V DC §6.4.2 s. 14, przekładnik ≥1200 VA dla ZKSN §6.7.2 s. 15). Kwalifikacja obiektów = decyzja planistyczna OSD/projektowa — poza zakresem walidacji referencyjnej.",
+      "implemented": false
+    },
+    {
+      "rule_id": "osd_enea.station.sn_switchgear_min_params",
+      "description_pl": "Parametry minimalne rozdzielnicy SN stacji/złącza (Zeszyt 1 §4.3.2 s. 11, §5.4 s. 26): 24 kV, szyny 630 A, prąd krótkotrwały 16 kA, szczytowy 40 kA, łuk wewnętrzny 16 kA/1 s; aparaty klasy M1/E2. Sprawdzenie wymaga katalogowych parametrów rozdzielnicy stacji w modelu (dziś stacja nie niesie referencji rozdzielnicy z parametrami znamionowymi) — PLAN.",
+      "implemented": false
+    },
+    {
+      "rule_id": "osd_enea.metering.delegated_standard",
+      "description_pl": "Pomiar rozliczeniowy: Zeszyt 1 §5.5.9 s. 27 deleguje do odrębnego standardu „Układy pomiarowe energii elektrycznej” (obowiązuje od 02.04.2024, nieprzeniesiony do danych pakietu). Granica własności/eksploatacji: ŻADEN z 4 przeczytanych dokumentów nie reguluje tego tematu.",
       "implemented": false
     }
   ],
-  "notes_pl": "Interpretacja repo-level publicznych standardów Enea Operator (URL-e w źródłach). Pełne wymagania OSD (schematy pól, układy pomiarowe rozliczeniowe, granice własności) wymagają przeniesienia kompletnych Zeszytów do danych pakietu — status verified dopiero po zatwierdzeniu w PR z oficjalnymi dokumentami (kanon SLD_MV_BAY_TEMPLATE_SOURCE_POLICY)."
+  "notes_pl": "Dane z PEŁNEJ lektury 4 publicznych dokumentów standardu Enea Operator (research 2026-07-17, cytowania ze stronami wg stopki dokumentu; raport researchu z propozycjami reguł ENEA-ST-001..021: docs/audit/REFERENCE_ENGINE_RESEARCH_OSD_ENEA_2026-07-17.md). Semantyka wymagań standardu: „powinien/należy” = „musi/wymaga się” (Z1 rozdz. 3 s. 8). Status repo_verified — publiczne dokumenty OSD; status verified wymaga zatwierdzenia w PR (kanon SLD_MV_BAY_TEMPLATE_SOURCE_POLICY)."
 }

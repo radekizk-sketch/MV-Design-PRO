@@ -2,12 +2,101 @@
   "pack_id": "abb_unigear",
   "kind": "manufacturer",
   "name_pl": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna)",
-  "version": "2026-05",
+  "version": "2026-07",
   "status": "repo_verified",
   "switchgear_family_ref": "ABB__UNIGEAR_ZS1",
   "source_document_refs": [
     "https://new.abb.com/medium-voltage/switchgear/air-insulated/iec-and-other-standards/unigear-zs1-portfolio",
-    "https://library.e.abb.com/public/4d24e323305341eac1256acc002f63f0/M23724E-.pdf"
+    "UniGear ZS1 — Medium-voltage air-insulated switchgear up to 24 kV (katalog ABB Distribution Solutions, 108 s.; kopia serwisu electrika.com): https://storage.electrika.com/manu/man-9031/pdftech/9031-unigr-zs1-17.pdf"
   ],
-  "notes_pl": "Rozdzielnica wnętrzowa wysuwna 12/17.5/24 kV do 4000 A / 63 kA, pełny zakres pól (liniowe, transformatorowe, pomiarowe, sprzęgłowe, sekcyjne). Dane rodziny: SWITCHGEAR_FAMILY_REGISTRY (jedno źródło)."
+  "cell_configurations": [
+    {
+      "cell_code": "IF",
+      "name_pl": "Pole dopływowe/odpływowe z wyłącznikiem wysuwnym",
+      "apparatus": [
+        { "kind": "CB", "requirement": "standard" },
+        { "kind": "CT", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "DS", "requirement": "optional" },
+        { "kind": "ES", "requirement": "optional" },
+        { "kind": "VT", "requirement": "optional" },
+        { "kind": "FUSE", "requirement": "optional" },
+        { "kind": "SURGE_ARRESTER", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog UniGear ZS1 s. 82 „Typical units” + legenda „Standard components / Accessories / Alternative solutions” (CB wysuwny + CT + przyłącze kablowe standard; ES/VT/wysuwny VT z bezpiecznikami — akcesoria/alternatywy; DS jako opcja zapisu = funkcja odłączania członu wysuwnego, notes_pl)"
+    },
+    {
+      "cell_code": "OFM",
+      "name_pl": "Pole odpływowe z pomiarem na szynach",
+      "apparatus": [
+        { "kind": "CB", "requirement": "standard" },
+        { "kind": "CT", "requirement": "standard" },
+        { "kind": "VT", "requirement": "standard" },
+        { "kind": "FUSE", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "DS", "requirement": "optional" },
+        { "kind": "ES", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog UniGear ZS1 s. 81–82 (IF + VT z bezpiecznikami na szynach)"
+    },
+    {
+      "cell_code": "BT",
+      "name_pl": "Sprzęgło wyłącznikowe (para z polem wzniosu R)",
+      "apparatus": [
+        { "kind": "CB", "requirement": "standard" },
+        { "kind": "CT", "requirement": "standard" },
+        { "kind": "DS", "requirement": "optional" },
+        { "kind": "ES", "requirement": "optional" },
+        { "kind": "VT", "requirement": "optional" },
+        { "kind": "FUSE", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog UniGear ZS1 s. 82"
+    },
+    {
+      "cell_code": "M",
+      "name_pl": "Pole pomiarowe (wysuwny VT z bezpiecznikami)",
+      "apparatus": [
+        { "kind": "VT", "requirement": "standard" },
+        { "kind": "FUSE", "requirement": "standard" },
+        { "kind": "ES", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog UniGear ZS1 s. 82"
+    },
+    {
+      "cell_code": "RM",
+      "name_pl": "Wznios szynowy z pomiarem",
+      "apparatus": [
+        { "kind": "VT", "requirement": "standard" },
+        { "kind": "FUSE", "requirement": "standard" },
+        { "kind": "ES", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog UniGear ZS1 s. 82"
+    },
+    {
+      "cell_code": "IFD",
+      "name_pl": "Pole dopływowe/odpływowe bezpośrednie (bez wyłącznika)",
+      "apparatus": [
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "CT", "requirement": "optional" },
+        { "kind": "VT", "requirement": "optional" },
+        { "kind": "FUSE", "requirement": "optional" },
+        { "kind": "ES", "requirement": "optional" },
+        { "kind": "DS", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog UniGear ZS1 s. 82 (IFD; IFDM: +CT/VT pomiarowe)"
+    },
+    {
+      "cell_code": "DF",
+      "name_pl": "Pole rozłącznikowe z bezpiecznikami",
+      "apparatus": [
+        { "kind": "LOAD_SWITCH", "requirement": "standard" },
+        { "kind": "FUSE", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "DS", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog UniGear ZS1 s. 82 (DF: switch-disconnector + bezpieczniki + ES + przyłącze; 630 A — s. 84–85)"
+    }
+  ],
+  "notes_pl": "Rozdzielnica wnętrzowa wysuwna 12/17.5/24 kV do 4000 A / 63 kA. Dane rodziny: SWITCHGEAR_FAMILY_REGISTRY (jedno źródło). Skład wg schematów „Typical units” s. 82 z legendą trzech klas (standard / akcesoria / alternatywy; research 2026-07-17 — rozróżnienie dwóch klas szarości miejscami niepewne na skanie, połączone w „opcja”; raport: docs/audit/REFERENCE_ENGINE_RESEARCH_MANUFACTURER_CELLS_2026-07-17.md). KONWENCJA ZAPISU: człon WYSUWNY wyłącznika pełni funkcję odłączania (styki wtykowe) — odłącznik DS zapisany jako opcja zapisu, żeby szablony z jawnym DS nie generowały fałszywego niedopasowania. Jednostka IFC (stycznikowa, 400 A) istnieje w katalogu (s. 84–85) — nieprzeniesiona (stycznik poza słownikiem aparatów ENM)."
 }

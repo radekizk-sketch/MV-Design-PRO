@@ -11,7 +11,7 @@ druga, rozjeżdżająca się kopia logiki stanów aparatów.
 
 from __future__ import annotations
 
-from .models import Bay, BayPrimaryDevice
+from .models import Bay, BayPrimaryDevice, BaySwitchState
 
 # Łączniki toru głównego pola (recenzja NO-GO pkt 10): zamknięty uziemnik
 # przy JEDNOCZEŚNIE zamkniętym którymkolwiek z nich = uziemienie toru pod
@@ -19,15 +19,23 @@ from .models import Bay, BayPrimaryDevice
 MAIN_SWITCH_KINDS: frozenset[str] = frozenset({"CB", "DS", "LOAD_SWITCH", "FUSE"})
 
 
-def device_state(bay: Bay, device: BayPrimaryDevice) -> str | None:
-    """Znany `actual_state` aparatu albo None (brak danych — zero domysłu).
+def device_state_record(bay: Bay, device: BayPrimaryDevice) -> BaySwitchState | None:
+    """Znany rekord stanu aparatu albo None (brak danych — zero domysłu).
 
-    Kolejność źródeł: `BayPrimaryDevice.switch_state.actual_state`, a gdy brak —
-    `Bay.runtime_state.primary_device_states[device_ref]`.
+    Kolejność źródeł: `BayPrimaryDevice.switch_state`, a gdy brak —
+    `Bay.runtime_state.primary_device_states[device_ref]`. Jedna prawda dla
+    walidatora (W034), silnika zgodności referencyjnej i reguł telemechaniki
+    (control_mode).
     """
     state = device.switch_state
     if state is None and bay.runtime_state is not None:
         state = bay.runtime_state.primary_device_states.get(device.device_ref)
+    return state
+
+
+def device_state(bay: Bay, device: BayPrimaryDevice) -> str | None:
+    """Znany `actual_state` aparatu albo None (patrz `device_state_record`)."""
+    state = device_state_record(bay, device)
     return state.actual_state if state is not None else None
 
 

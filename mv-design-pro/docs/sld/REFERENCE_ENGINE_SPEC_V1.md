@@ -158,11 +158,39 @@ i przy `GET /enm/validate`. Zasady:
   `cell_configurations` (dane z publicznego katalogu producenta, z cytowaniem
   strona/tabela) — dopasowanie składu pola do KTÓREJKOLWIEK konfiguracji celki
   (`family.cell_match`: aparaty standardowe celki ⊆ pole ⊆ standard+opcje; brak
-  danych celek = sprawdzenie nie istnieje — bramka danych).
-- Sprawdzenia OSD (`station_rules`): V1 implementuje
-  `osd.station.prefabricated_compact_preferred` (Zeszyt 1/2 standardu Enea Operator:
-  stacja kompaktowa prefabrykowana jako rozwiązanie podstawowe dla nowych stacji SN/nN —
-  ostrzeżenie, gdy `construction_type` stacji SN/nN jest znany i inny).
+  danych celek = sprawdzenie nie istnieje — bramka danych). KONWENCJE ZAPISU
+  celek (research katalogowy 2026-07-17, cytowania per celka w pack.json):
+  głowica kablowa = interfejs przyłączeniowy celki, sprawdzana tylko w kierunku
+  pole ⊆ dozwolone (kanoniczne szablony kończą tor na transformatorze);
+  kombinacja rozłącznik-bezpieczniki modelowana jako FUSE albo LOAD_SWITCH+FUSE
+  (LOAD_SWITCH jako opcja zapisu); trójpołożeniowy odłącznik/uziemnik jako
+  DS+ES. V1 niesie 40 konfiguracji celek: SafeRing (10: C/F/V/Sl/Sv/D/De/Be/
+  CB/M), 8DJH (11: K/K(E)/R/T/L/S/H/V/E/M(430)/M(840)), SM6 (12: IM/IMM/QM/PM/
+  DM1-A/CM/GBC-A/GAM/GAM2/SM/TM/EMB), UniGear ZS1 (7: IF/OFM/BT/M/RM/IFD/DF);
+  e²ALPHA ŚWIADOMIE bez celek (producent nie publikuje składu per typ pola —
+  zakaz uzupełniania przez analogię). Test kreator↔celki: pola liniowe i TR
+  wszystkich szablonów rodzin z celkami MUSZĄ pasować do którejś celki.
+- Sprawdzenia OSD (`station_rules` — dane z PEŁNEJ lektury standardów Enea Operator,
+  research 2026-07-17, cytowania w `packs/osd_enea/pack.json`), wszystkie z bramką danych:
+  - `osd_enea.station.prefabricated_compact_preferred` — stacja kompaktowa
+    prefabrykowana jako rozwiązanie podstawowe (Zeszyt 1 rozdz. 2 s. 3);
+  - `osd_enea.station.pole_station_cable_entry_forbidden` — zakaz stacji słupowej
+    z kablowym podejściem SN (Zeszyt 3 rozdz. 2 s. 3; kabel SN incydentny do szyny
+    stacji słupowej);
+  - `osd_enea.station.transformer_power_limit` — granice mocy TR per konstrukcja
+    (prefabrykowana/kontenerowa ≤ 630 kVA, słupowa ≤ 400 kVA; wariant „uproszczony"
+    400 kVA nierozróżnialny w modelu — udokumentowana aproksymacja);
+  - `osd_enea.station.bay_composition` — 1 pole TR + 1–4 liniowe, ≤5 pól SN
+    (UNIA zakresów Zeszytu 1 i 2 — udokumentowana);
+  - `osd_enea.telemechanika.line_bay_u_i_measurement` — pole liniowe ZDALNIE
+    STEROWANE (dowód w danych: `control_availability` / `control_mode='zdalne'`
+    przez wspólny predykat `device_state_record`) wymaga rekordów `Measurement`
+    VT ORAZ CT z `bay_ref` (Telemechanika §6.4.1 s. 14).
+  Zarejestrowane `implemented=false` (uczciwie, z powodem w pakiecie): kwalifikacja
+  obiektów do telemechaniki (standard jej NIE reguluje — ustalenie z lektury),
+  parametry minimalne rozdzielnicy 24 kV/630 A/16 kA/40 kA (model nie niesie
+  referencji rozdzielnicy stacji), pomiar rozliczeniowy (delegowany do odrębnego
+  standardu układów pomiarowych; granica własności nieuregulowana w Zeszytach).
 - **Reference Score** per pakiet: `round(100 · passed / applicable)`;
   `applicable == 0` → score `null` + status „nie dotyczy" (uczciwe, zero sztucznych 100%).
 - Determinizm: findings sortowane (element_ref → rule_code), raport stabilny dla tego

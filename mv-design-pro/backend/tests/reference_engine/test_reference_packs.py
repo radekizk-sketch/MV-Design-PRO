@@ -179,3 +179,64 @@ class TestCreatorTemplatesComplyWithProfiles:
         report = evaluate_enm(enm, pack_ids=[FIELD_PROFILE_PACK_ID])
         fails = [c.rule_code for c in report.packs[0].checks if c.status == "fail"]
         assert "profile.forbidden" in fails
+
+
+class TestFamilyTemplatesMatchCells:
+    """Kreator ↔ celki katalogowe (pkt 2/4 dyrektywy): pola liniowe i
+    transformatorowe szablonów rodzin MUSZĄ odpowiadać którejś konfiguracji
+    celki z katalogu producenta (family.cell_match). Dane celek: research
+    2026-07-17 z oficjalnych katalogów (cytowania w pack.json)."""
+
+    _TEMPLATE_KIND = {"DS_BUS": "DS", "DS_LINE": "DS"}
+    _CHECKED_BAY_KINDS = ("liniowe_doplywowe", "liniowe_odplywowe", "transformatorowe")
+
+    def test_line_and_transformer_family_templates_match_a_cell(self) -> None:
+        from reference_engine.compliance import _cell_match_check_for_bay
+        from reference_engine.registry import family_for_pack
+
+        packs_by_family = {
+            p.switchgear_family_ref: p for p in list_reference_packs() if p.kind == "manufacturer"
+        }
+        checked = 0
+        for template in list_switchgear_solution_templates_for_manufacturer(None):
+            pack = packs_by_family.get(template.switchgear_family_ref)
+            if pack is None or not pack.cell_configurations:
+                continue
+            if template.bay_kind not in self._CHECKED_BAY_KINDS:
+                continue
+            family = family_for_pack(pack)
+            assert family is not None
+            bay = Bay(
+                ref_id=f"bay/{template.template_ref}",
+                name=template.template_ref,
+                bay_role=template.base_template.bay_role,
+                substation_ref="st/x",
+                bus_ref="bus/sn",
+                primary_devices=[
+                    BayPrimaryDevice(
+                        device_ref=f"d{i}",
+                        symbol_ref=device.designation_q,
+                        kind=self._TEMPLATE_KIND.get(device.kind, device.kind),
+                        placement=device.placement,
+                    )
+                    for i, device in enumerate(template.base_template.devices)
+                ],
+            )
+            checks = _cell_match_check_for_bay(bay, pack, family)
+            assert len(checks) == 1
+            assert checks[0].status == "pass", f"{template.template_ref}: {checks[0].message_pl}"
+            checked += 1
+        # 4 rodziny z celkami × 3 typy pól = 12 szablonów.
+        assert checked == 12
+
+    def test_manufacturer_packs_with_cells_have_citations(self) -> None:
+        for pack in list_reference_packs():
+            for cell in pack.cell_configurations:
+                assert cell.source_pl.strip(), f"{pack.pack_id}/{cell.cell_code}"
+
+    def test_e2alpha_honestly_carries_no_cells(self) -> None:
+        # Producent nie publikuje składu per typ pola (research 2026-07-17,
+        # karty K-1.2.2/K-11.1.1/K-0.2.11) — pakiet ŚWIADOMIE bez celek.
+        pack = get_reference_pack("elektrometal_e2alpha")
+        assert pack.cell_configurations == []
+        assert "NIE publikuje składu aparatowego" in (pack.notes_pl or "")

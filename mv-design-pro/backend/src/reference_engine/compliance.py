@@ -13,7 +13,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from enm.interlock_rules import device_state, earthing_interlock_violation
+from enm.interlock_rules import (
+    device_state,
+    device_state_record,
+    earthing_interlock_violation,
+)
 from enm.models import Bay, BayPrimaryDevice, EnergyNetworkModel, Substation
 from network_model.catalog.switchgear import SwitchgearFamily
 from network_model.catalog.switchgear.apparatus_vocabulary import (
@@ -254,7 +258,14 @@ def _cell_match_check_for_bay(
         return []
     matched = None
     for cell in candidates:
-        standard = {a.kind for a in cell.apparatus if a.requirement == "standard"}
+        # KONWENCJA (spec §7): głowica kablowa = INTERFEJS PRZYŁĄCZENIOWY
+        # celki — fizycznie zawsze obecna w celce katalogowej, ale często
+        # niemodelowana jako aparat pola (kanoniczne szablony kończą tor na
+        # transformatorze). Sprawdzana tylko w kierunku pole ⊆ dozwolone,
+        # NIE wymagana od danych pola.
+        standard = {
+            a.kind for a in cell.apparatus if a.requirement == "standard" and a.kind != "CABLE_HEAD"
+        }
         allowed = {a.kind for a in cell.apparatus}
         if standard.issubset(bay_kinds) and bay_kinds.issubset(allowed):
             matched = cell
@@ -353,40 +364,198 @@ def _family_checks_for_bay(
 
 
 # ---------------------------------------------------------------------------
-# Sprawdzenia OSD (station_rules)
+# Sprawdzenia OSD (station_rules — dane z pełnej lektury standardów Enea
+# Operator, research 2026-07-17; cytowania w packs/osd_enea/pack.json)
 # ---------------------------------------------------------------------------
 
-# Typy stacji SN/nN objęte regułą stacji kompaktowej prefabrykowanej.
+# Typy stacji SN/nN objęte standardem stacyjnym OSD.
 _OSD_STATION_TYPES = frozenset({"mv_lv", "customer"})
 _OSD_PREFERRED_CONSTRUCTION = frozenset({"kontenerowa", "prefabrykowana"})
+# Granice mocy transformatora per typ konstrukcji (Zeszyt 1: do 630 kVA;
+# Zeszyt 3 §4.1: słupowa do 400 kVA). Wariant „uproszczony" 400 kVA (Zeszyt 2)
+# nierozróżnialny w modelu — stosowana granica 630 kVA (opis w pakiecie).
+_OSD_TRANSFORMER_LIMIT_MVA: dict[str, float] = {
+    "kontenerowa": 0.63,
+    "prefabrykowana": 0.63,
+    "slupowa": 0.4,
+}
+_OSD_LINE_BAY_ROLES = frozenset({"IN", "OUT"})
 
 
-def _osd_checks_for_station(station: Substation, pack: ReferencePack) -> list[ComplianceCheck]:
-    checks: list[ComplianceCheck] = []
-    implemented_rules = {r.rule_id for r in pack.station_rules if r.implemented}
-    if (
-        "osd_enea.station.prefabricated_compact_preferred" in implemented_rules
-        and station.station_type in _OSD_STATION_TYPES
-        and station.construction_type is not None
+def _bay_remote_control_evidence(bay: Bay) -> bool:
+    """Dowód zdalnego sterowania pola W DANYCH (bramka reguły telemechaniki).
+
+    Dowodem jest `runtime_state.control_availability` ∈ {dostepne,
+    czesciowo_dostepne} albo `control_mode == 'zdalne'` któregokolwiek
+    aparatu (rekord stanu przez wspólny predykat `device_state_record`).
+    Brak danych = brak dowodu (zero domysłu).
+    """
+    runtime = bay.runtime_state
+    if runtime is not None and runtime.control_availability in (
+        "dostepne",
+        "czesciowo_dostepne",
     ):
-        ok = station.construction_type in _OSD_PREFERRED_CONSTRUCTION
+        return True
+    for device in bay.primary_devices or []:
+        state = device_state_record(bay, device)
+        if state is not None and state.control_mode == "zdalne":
+            return True
+    return False
+
+
+def _osd_checks(pack: ReferencePack, enm: EnergyNetworkModel) -> list[ComplianceCheck]:
+    implemented = {rule.rule_id for rule in pack.station_rules if rule.implemented}
+    checks: list[ComplianceCheck] = []
+
+    def add(element_ref: str, rule_code: str, ok: bool, message_pl: str) -> None:
         checks.append(
             ComplianceCheck(
-                element_ref=station.ref_id,
+                element_ref=element_ref,
                 pack_id=pack.pack_id,
-                rule_code="osd_enea.station.prefabricated_compact_preferred",
+                rule_code=rule_code,
                 status="pass" if ok else "fail",
-                message_pl=(
-                    f"Stacja SN/nN o konstrukcji „{station.construction_type}” — "
-                    "zgodna z rozwiązaniem podstawowym standardu (stacja "
-                    "kompaktowa prefabrykowana)."
-                    if ok
-                    else f"Stacja SN/nN o konstrukcji „{station.construction_type}” — "
-                    "standard Enea Operator (Zeszyt 1/2) wskazuje stację kompaktową "
-                    "prefabrykowaną jako rozwiązanie podstawowe dla nowych stacji."
-                ),
+                message_pl=message_pl,
             )
         )
+
+    transformers_by_ref = {t.ref_id: t for t in enm.transformers}
+    bays_by_station: dict[str, list[Bay]] = {}
+    for bay in _sorted_bays(enm):
+        bays_by_station.setdefault(bay.substation_ref, []).append(bay)
+    # Szyny, do których dochodzi kabel SN (reguła zakazu kablowego podejścia
+    # do stacji słupowej — Zeszyt 3 rozdz. 2 s. 3).
+    from enm.models import Cable  # lokalny import: unika poszerzania nagłówka
+
+    cable_bus_refs: set[str] = set()
+    for branch in enm.branches:
+        if isinstance(branch, Cable):
+            cable_bus_refs.add(branch.from_bus_ref)
+            cable_bus_refs.add(branch.to_bus_ref)
+
+    for station in sorted(enm.substations, key=lambda s: s.ref_id):
+        if station.station_type not in _OSD_STATION_TYPES:
+            continue
+        construction = station.construction_type
+
+        if (
+            "osd_enea.station.prefabricated_compact_preferred" in implemented
+            and construction is not None
+        ):
+            ok = construction in _OSD_PREFERRED_CONSTRUCTION
+            add(
+                station.ref_id,
+                "osd_enea.station.prefabricated_compact_preferred",
+                ok,
+                (
+                    f"Stacja SN/nN o konstrukcji „{construction}” — zgodna z "
+                    "rozwiązaniem podstawowym standardu (stacja kompaktowa "
+                    "prefabrykowana, Zeszyt 1 rozdz. 2 s. 3)."
+                    if ok
+                    else f"Stacja SN/nN o konstrukcji „{construction}” — Zeszyt 1 "
+                    "rozdz. 2 s. 3 wskazuje stację kompaktową prefabrykowaną jako "
+                    "rozwiązanie podstawowe (odstępstwo wymaga decyzji Dyrektora OD)."
+                ),
+            )
+
+        if (
+            "osd_enea.station.pole_station_cable_entry_forbidden" in implemented
+            and construction == "slupowa"
+        ):
+            cable_entry = any(bus_ref in cable_bus_refs for bus_ref in station.bus_refs)
+            add(
+                station.ref_id,
+                "osd_enea.station.pole_station_cable_entry_forbidden",
+                not cable_entry,
+                (
+                    "Stacja słupowa bez kablowego podejścia SN (Zeszyt 3 rozdz. 2 s. 3)."
+                    if not cable_entry
+                    else "Stacja słupowa z kablowym podejściem SN — Zeszyt 3 rozdz. 2 "
+                    "s. 3: „Nie należy stosować nowych stacji słupowych SN/nn "
+                    "z kablowym podejściem SN”."
+                ),
+            )
+
+        limit_mva = (
+            _OSD_TRANSFORMER_LIMIT_MVA.get(construction) if construction is not None else None
+        )
+        if "osd_enea.station.transformer_power_limit" in implemented and limit_mva is not None:
+            for transformer_ref in sorted(station.transformer_refs):
+                transformer = transformers_by_ref.get(transformer_ref)
+                if transformer is None or transformer.sn_mva <= 0:
+                    continue
+                ok = transformer.sn_mva <= limit_mva + 1e-9
+                add(
+                    station.ref_id,
+                    "osd_enea.station.transformer_power_limit",
+                    ok,
+                    (
+                        f"Transformator '{transformer_ref}' {transformer.sn_mva * 1000:g} kVA "
+                        f"≤ granicy {limit_mva * 1000:g} kVA dla konstrukcji „{construction}”."
+                        if ok
+                        else f"Transformator '{transformer_ref}' {transformer.sn_mva * 1000:g} kVA "
+                        f"przekracza granicę {limit_mva * 1000:g} kVA dla stacji "
+                        f"„{construction}” (Zeszyt 1 rys. 1 s. 10 / Zeszyt 3 §4.1 s. 7)."
+                    ),
+                )
+
+        station_bays = bays_by_station.get(station.ref_id, [])
+        if (
+            "osd_enea.station.bay_composition" in implemented
+            and construction in _OSD_PREFERRED_CONSTRUCTION
+            and station_bays
+        ):
+            tr_count = sum(1 for b in station_bays if b.bay_role == "TR")
+            line_count = sum(1 for b in station_bays if b.bay_role in _OSD_LINE_BAY_ROLES)
+            total = len(station_bays)
+            ok = tr_count == 1 and 1 <= line_count <= 4 and total <= 5
+            add(
+                station.ref_id,
+                "osd_enea.station.bay_composition",
+                ok,
+                (
+                    f"Skład rozdzielnicy SN: {tr_count} pole TR, {line_count} pól "
+                    f"liniowych, {total} pól łącznie — w zakresie standardu "
+                    "(Zeszyt 1 §4.3.1 s. 11 / Zeszyt 2 §4.3.1 s. 5)."
+                    if ok
+                    else f"Skład rozdzielnicy SN poza standardem: {tr_count} pól TR "
+                    f"(wymagane 1), {line_count} pól liniowych (zakres 1–4), "
+                    f"{total} pól łącznie (max 5) — Zeszyt 1 §4.1.2/§4.3.1, "
+                    "Zeszyt 2 §4.3.1."
+                ),
+            )
+
+        if "osd_enea.telemechanika.line_bay_u_i_measurement" in implemented:
+            for bay in station_bays:
+                if bay.bay_role not in _OSD_LINE_BAY_ROLES:
+                    continue
+                if not _bay_remote_control_evidence(bay):
+                    continue  # bramka danych: brak dowodu zdalnego sterowania
+                bay_measurements = {
+                    m.measurement_type for m in enm.measurements if m.bay_ref == bay.ref_id
+                }
+                has_u = "VT" in bay_measurements
+                has_i = "CT" in bay_measurements
+                ok = has_u and has_i
+                missing = [
+                    name
+                    for name, present in (("napięcia (VT)", has_u), ("prądu (CT)", has_i))
+                    if not present
+                ]
+                add(
+                    bay.ref_id,
+                    "osd_enea.telemechanika.line_bay_u_i_measurement",
+                    ok,
+                    (
+                        "Pole liniowe zdalnie sterowane ma pomiar napięcia i prądu "
+                        "(Telemechanika §6.4.1 s. 14)."
+                        if ok
+                        else "Pole liniowe zdalnie sterowane bez pomiaru "
+                        + " i ".join(missing)
+                        + " — Telemechanika §6.4.1 s. 14: pomiar U oraz I wymagany "
+                        "dla każdego pola liniowego."
+                    ),
+                )
+
     return checks
 
 
@@ -446,8 +615,7 @@ def _checks_for_pack(
                 checks.extend(_cell_match_check_for_bay(bay, pack, family))
 
     elif pack.kind == "osd":
-        for station in sorted(enm.substations, key=lambda s: s.ref_id):
-            checks.extend(_osd_checks_for_station(station, pack))
+        checks.extend(_osd_checks(pack, enm))
 
     return sorted(checks, key=lambda c: (c.element_ref, c.rule_code, c.message_pl))
 

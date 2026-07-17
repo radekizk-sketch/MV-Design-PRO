@@ -175,7 +175,25 @@ class TestManufacturerCompliance:
         assert any(c.rule_code == "family.voltage" and c.status == "pass" for c in pack.checks)
 
 
+def _rmu_tr_bay(ref_id: str = "bay/tr") -> Bay:
+    return Bay(
+        ref_id=ref_id,
+        name="Pole transformatorowe RMU",
+        bay_role="TR",
+        substation_ref="st/01",
+        bus_ref="bus/sn",
+        primary_devices=[
+            _device(f"{ref_id}/f1", "FUSE"),
+            _device(f"{ref_id}/qe1", "ES", "GROUND_BRANCH"),
+            _device(f"{ref_id}/t1", "TRANSFORMER_DEVICE", "DOWNSTREAM"),
+        ],
+    )
+
+
 class TestOsdCompliance:
+    """Reguły z pełnej lektury standardów Enea Operator (research 2026-07-17,
+    cytowania w packs/osd_enea/pack.json). Pozytyw + negatywy + bramki danych."""
+
     def test_pole_mounted_station_bites(self) -> None:
         station = _station(construction="slupowa")
         pack = _pack_report(_enm([_rmu_line_bay()], station), "osd_enea")
@@ -184,9 +202,10 @@ class TestOsdCompliance:
             for c in pack.checks
         )
 
-    def test_prefabricated_station_passes(self) -> None:
+    def test_prefabricated_station_with_tr_and_line_bay_passes(self) -> None:
+        # Skład wg Zeszytu 1 §4.3.1: 1 pole TR + pola liniowe.
         station = _station(construction="prefabrykowana")
-        pack = _pack_report(_enm([_rmu_line_bay()], station), "osd_enea")
+        pack = _pack_report(_enm([_rmu_line_bay(), _rmu_tr_bay()], station), "osd_enea")
         assert pack.failed == 0
         assert pack.score_percent == 100
 
@@ -194,6 +213,143 @@ class TestOsdCompliance:
         pack = _pack_report(_enm([_rmu_line_bay()], _station()), "osd_enea")
         assert pack.applicable == 0
         assert pack.score_percent is None
+
+    def test_bay_composition_without_tr_bay_bites(self) -> None:
+        # NEGATYW: stacja kompaktowa bez pola transformatorowego (Zeszyt 1
+        # §4.3.1.a: „posiadać jedno pole transformatorowe").
+        station = _station(construction="prefabrykowana")
+        pack = _pack_report(_enm([_rmu_line_bay()], station), "osd_enea")
+        assert any(
+            c.rule_code == "osd_enea.station.bay_composition" and c.status == "fail"
+            for c in pack.checks
+        )
+
+    def test_pole_station_cable_entry_bites(self) -> None:
+        # NEGATYW: Zeszyt 3 rozdz. 2 s. 3 — zakaz stacji słupowej z kablowym
+        # podejściem SN.
+        from enm.models import Cable
+
+        station = _station(construction="slupowa")
+        enm = _enm([_rmu_line_bay()], station)
+        enm.buses.append(Bus(ref_id="bus/zrodlo", name="Szyna zasilająca", voltage_kv=15.0))
+        enm.branches.append(
+            Cable(
+                ref_id="kabel/1",
+                name="Kabel SN do stacji",
+                from_bus_ref="bus/zrodlo",
+                to_bus_ref="bus/sn",
+                length_km=0.5,
+                r_ohm_per_km=0.2,
+                x_ohm_per_km=0.1,
+            )
+        )
+        pack = _pack_report(enm, "osd_enea")
+        assert any(
+            c.rule_code == "osd_enea.station.pole_station_cable_entry_forbidden"
+            and c.status == "fail"
+            for c in pack.checks
+        )
+        # Pozytyw: ta sama stacja słupowa bez kabla — sprawdzenie pass.
+        pack_ok = _pack_report(
+            _enm([_rmu_line_bay()], _station(construction="slupowa")), "osd_enea"
+        )
+        assert any(
+            c.rule_code == "osd_enea.station.pole_station_cable_entry_forbidden"
+            and c.status == "pass"
+            for c in pack_ok.checks
+        )
+
+    def test_transformer_power_limit_bites(self) -> None:
+        # NEGATYW: 800 kVA > 630 kVA (Zeszyt 1); pozytyw: 400 kVA ≤ 630 kVA.
+        from enm.models import Transformer
+
+        def enm_with_trafo(sn_mva: float):
+            station = _station(construction="prefabrykowana")
+            station.transformer_refs = ["tr/1"]
+            enm = _enm([_rmu_line_bay(), _rmu_tr_bay()], station)
+            enm.buses.append(Bus(ref_id="bus/nn", name="Szyna nN", voltage_kv=0.4))
+            enm.transformers.append(
+                Transformer(
+                    ref_id="tr/1",
+                    name="Transformator stacji",
+                    hv_bus_ref="bus/sn",
+                    lv_bus_ref="bus/nn",
+                    sn_mva=sn_mva,
+                    uhv_kv=15.0,
+                    ulv_kv=0.42,
+                    uk_percent=4.5,
+                    pk_kw=6.0,
+                )
+            )
+            return enm
+
+        pack = _pack_report(enm_with_trafo(0.8), "osd_enea")
+        assert any(
+            c.rule_code == "osd_enea.station.transformer_power_limit" and c.status == "fail"
+            for c in pack.checks
+        )
+        pack_ok = _pack_report(enm_with_trafo(0.4), "osd_enea")
+        assert any(
+            c.rule_code == "osd_enea.station.transformer_power_limit" and c.status == "pass"
+            for c in pack_ok.checks
+        )
+
+    def test_telemechanika_u_i_measurement_gated_and_bites(self) -> None:
+        # Telemechanika §6.4.1 s. 14: pole liniowe ZDALNIE STEROWANE wymaga
+        # pomiaru U i I. Bramka danych: bez dowodu zdalnego sterowania —
+        # sprawdzenie nie istnieje.
+        from enm.models import BayRuntimeState, Measurement, MeasurementRating
+
+        def remote_bay(ref_id: str = "bay/zdalne") -> Bay:
+            bay = _rmu_line_bay(ref_id)
+            bay.runtime_state = BayRuntimeState(control_availability="dostepne")
+            return bay
+
+        # Bramka: pole bez telemetrii — zero sprawdzeń telemechaniki.
+        pack_gated = _pack_report(
+            _enm([_rmu_line_bay()], _station(construction="prefabrykowana")), "osd_enea"
+        )
+        assert not any(
+            c.rule_code == "osd_enea.telemechanika.line_bay_u_i_measurement"
+            for c in pack_gated.checks
+        )
+
+        # NEGATYW: pole zdalnie sterowane bez pomiarów U/I.
+        enm_fail = _enm([remote_bay(), _rmu_tr_bay()], _station(construction="prefabrykowana"))
+        pack_fail = _pack_report(enm_fail, "osd_enea")
+        assert any(
+            c.rule_code == "osd_enea.telemechanika.line_bay_u_i_measurement" and c.status == "fail"
+            for c in pack_fail.checks
+        )
+
+        # POZYTYW: to samo pole z rekordami Measurement VT + CT (bay_ref).
+        enm_ok = _enm([remote_bay(), _rmu_tr_bay()], _station(construction="prefabrykowana"))
+        rating = MeasurementRating(ratio_primary=100.0, ratio_secondary=5.0)
+        enm_ok.measurements.extend(
+            [
+                Measurement(
+                    ref_id="vt/1",
+                    name="Sensor napięciowy pola",
+                    measurement_type="VT",
+                    bus_ref="bus/sn",
+                    bay_ref="bay/zdalne",
+                    rating=rating,
+                ),
+                Measurement(
+                    ref_id="ct/1",
+                    name="Przetwornik prądowy pola",
+                    measurement_type="CT",
+                    bus_ref="bus/sn",
+                    bay_ref="bay/zdalne",
+                    rating=rating,
+                ),
+            ]
+        )
+        pack_ok = _pack_report(enm_ok, "osd_enea")
+        assert any(
+            c.rule_code == "osd_enea.telemechanika.line_bay_u_i_measurement" and c.status == "pass"
+            for c in pack_ok.checks
+        )
 
 
 class TestDeterminism:
@@ -264,12 +420,14 @@ class TestCellMatchCompliance:
         assert checks[0].status == "fail"
 
     def test_pack_without_cells_is_data_gated(self) -> None:
-        # Bramka danych: realny pakiet (bez konfiguracji celek) = zero sprawdzeń.
+        # Bramka danych: pakiet bez konfiguracji celek = zero sprawdzeń.
+        # e²ALPHA ŚWIADOMIE nie niesie celek (producent nie publikuje składu
+        # per typ pola — research 2026-07-17).
         from reference_engine import get_reference_pack
         from reference_engine.compliance import _cell_match_check_for_bay
         from reference_engine.registry import family_for_pack
 
-        pack = get_reference_pack("abb_safering")
+        pack = get_reference_pack("elektrometal_e2alpha")
         family = family_for_pack(pack)
         assert family is not None
         assert _cell_match_check_for_bay(_rmu_line_bay(), pack, family) == []

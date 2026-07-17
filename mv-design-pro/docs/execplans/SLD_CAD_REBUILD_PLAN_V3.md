@@ -1970,6 +1970,40 @@ ZAMKNIĘTE 2026-07-17 (runda 3, „Wykonaj") — OBIE luki wykonane end-to-end:
      `osd_enea.station.telemechanika_sn` zarejestrowana `implemented=false`
      (wymaga modelu łączności).
 
+4. [DONE 2026-07-17, runda 8b — DOMKNIĘCIE DŁUGÓW (b)/(c) + dane celek
+   producentów; dyrektywa właściciela: „zlec podwykonawca, zarządzaj,
+   weryfikuj, poprawiaj" — 2 podwykonawców research + integracja i
+   weryfikacja osobista (cytowania sprawdzone na pobranych źródłach)]:
+   - DŁUG (b) OSD — WYKONANE w zakresie stacyjnym: pełna lektura 4 publicznych
+     dokumentów Enea Operator (Zeszyt 1 [09.2021-2], Zeszyt 2 [06.2024],
+     Zeszyt 3 [06.2021-2], Telemechanika [12.2025, obowiązuje 01.02.2026 —
+     zastąpiła Zeszyt 5]); pakiet osd_enea@2026-02 z 5 regułami
+     IMPLEMENTED (stacja kompaktowa podstawą Z1 r.2 s.3; ZAKAZ słupowej z
+     kablowym podejściem SN Z3 r.2 s.3; granice mocy TR 630/400 kVA;
+     skład rozdzielnicy 1×TR + 1–4 liniowe ≤5 pól — unia Z1/Z2; pomiar U i I
+     pól liniowych zdalnie sterowanych TELE §6.4.1 s.14) + 3 zarejestrowanymi
+     implemented=false z powodem (kwalifikacja do telemechaniki — STANDARD
+     JEJ NIE REGULUJE, ustalenie z lektury; parametry min. rozdzielnicy —
+     model bez ref rozdzielnicy stacji; pomiar rozliczeniowy — odrębny
+     standard, granica własności nieuregulowana w Zeszytach). Raport +
+     propozycje ENEA-ST-001..021 w scratchpadzie sesji.
+   - DŁUG (c) TELEMECHANIKA — WYKONANE technicznie: reguła
+     osd_enea.telemechanika.line_bay_u_i_measurement na sygnałach modelu
+     (control_availability / control_mode='zdalne' przez WSPÓLNY predykat
+     device_state_record w enm/interlock_rules.py) + rekordy Measurement
+     VT/CT z bay_ref; bramka danych (bez dowodu zdalnego sterowania —
+     nie dotyczy).
+   - DŁUG (a) CZĘŚCIOWO (dane): 40 KONFIGURACJI CELEK z oficjalnych
+     katalogów (SafeRing 9AKK107492A6537: C/F/V/Sl/Sv/D/De/Be/CB/M; 8DJH
+     HA 40.2: K/K(E)/R/T/L/S/H/V/E/M(430)/M(840); SM6 2017: IM/IMM/QM/PM/
+     DM1-A/CM/GBC-A/GAM/GAM2/SM/TM/EMB; UniGear ZS1: IF/OFM/BT/M/RM/IFD/DF)
+     — sprawdzenie family.cell_match + test kreator↔celki (12 szablonów
+     rodzin liniowe/TR pasuje do realnych celek); e²ALPHA UCZCIWIE bez
+     celek (producent nie publikuje składu per typ pola — karty K-1.2.2/
+     K-11.1.1/K-0.2.11). Wzorniki GRAFICZNE nadal PLAN — zlokalizowane
+     legendy symboli producentów (8DJH s.10–13 marginesy, UniGear s.83
+     „Graphical symbols") jako punkt startu przyszłej fazy.
+
 ## Prompt kontynuacji (wklej świeżemu agentowi — DO WDROŻENIA 100%)
 
 ```

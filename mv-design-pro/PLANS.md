@@ -112,9 +112,18 @@ danych, FixAction BayModal); kreator filtrowany słownikiem rodziny
 parytet słownika §12.4 z profilami (testy z sabotażami), zakładka
 „Referencje" Inspektora ENM. Katalog +Schneider Electric/SM6-24
 (repo_verified). Korekta faktograficzna: e²TANGO = sterowniki polowe (nie
-rozdzielnica) — pakiet Elektrometal oparty na e²ALPHA. Długi jawne
-(wymagają danych): style renderowania producenckie, pełne Zeszyty OSD,
-telemechanika. Szczegóły: execplan runda 8.
+rozdzielnica) — pakiet Elektrometal oparty na e²ALPHA. Runda 8b (dyrektywa
+„zlec podwykonawca, zarządzaj, weryfikuj"): 2 podwykonawców research +
+integracja — pakiet osd_enea@2026-02 z pełnej lektury 4 dokumentów Enea
+Operator (5 reguł implemented: stacja kompaktowa podstawą, zakaz słupowej
+z kablowym podejściem SN, granice mocy TR 630/400 kVA, skład 1×TR+1–4
+liniowe, pomiar U/I pól zdalnie sterowanych TELE §6.4.1; kwalifikacja do
+telemechaniki NIEUREGULOWANA w standardzie — ustalenie z lektury); 40
+konfiguracji celek z oficjalnych katalogów (SafeRing/8DJH/SM6/UniGear) +
+family.cell_match + test kreator↔celki; e²ALPHA uczciwie bez celek
+(producent nie publikuje składu per typ pola). Dług pozostały: wzorniki
+GRAFICZNE producentów (zlokalizowane legendy symboli w katalogach — punkt
+startu). Szczegóły: execplan runda 8/8b.
 
 Runda 7 (2026-07-17, „zaprojektuj i wykonaj end-to-end" — 7 pozycji PLAN
 recenzji NO-GO): szablony technologiczne pól (RMU-liniowe rozłącznik+ES+
