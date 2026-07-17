@@ -183,12 +183,21 @@ async function capture(page: Page, testInfo: TestInfo, name: string): Promise<vo
 }
 
 async function openSegmentInspector(page: Page, segmentRef: string): Promise<void> {
-  const exactConnection = page.locator(`[data-connection-ref="${segmentRef}"]`).first();
-  const hitbox = exactConnection.locator('polyline').first();
+  // Adaptacja v3 (F12-C, 2026-07-17): odcinek to <path data-owner-ref=…>
+  // (dawne data-connection-ref+polyline były kontraktem v2); ścieżka
+  // użytkownika: klik w odcinek → drawer odcinka → „Otwórz konfigurację" →
+  // powierzchnia E-12 (`sld-segment-inspector`). Klikalność odcinka i CTA
+  // konfiguracji przywrócone w tej adaptacji (parytet F8c/K30-91).
+  // Prefix-match: kawałki przęsła niosą sufiksy tras (`_L`, `_R_L`) —
+  // klik dowolnego kawałka normalizuje się do refu kanonicznego w workspace.
+  const hitbox = page.locator(`path[data-owner-ref^="${segmentRef}"]`).first();
   await expect(hitbox).toHaveCount(1, { timeout: 15000 });
-  await hitbox.evaluate((node: SVGPolylineElement) => {
+  await hitbox.evaluate((node: SVGPathElement) => {
     node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true }));
   });
+
+  await expect(page.getByTestId('sld-v2-detail-drawer')).toBeVisible();
+  await page.getByTestId('sld-v2-detail-drawer-open-configuration').click();
 
   await expect(page.getByTestId('sld-segment-inspector')).toBeVisible();
   await expect(page.getByTestId('sld-segment-inspector')).toHaveAttribute(

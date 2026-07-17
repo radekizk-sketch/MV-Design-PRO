@@ -179,11 +179,24 @@ test('krytyczny DER flow: paleta PV -> stacja -> drawer -> zapis -> generator w 
   expect(stationRef).toBeTruthy();
 
   await reloadEditorPage(page);
-  await page.getByTestId('der-palette-btn-PV').click();
 
-  const stationHit = page.locator(`[data-element-kind="station"][data-element-id="${stationRef!}"]`).first();
-  await expect(stationHit).toHaveCount(1, { timeout: 15000 });
-  await stationHit.evaluate((node: SVGElement) => {
+  // Adaptacja v3 (F12-C): drop DER na stację przyjmuje klik w element o
+  // elementKind 'station' — w v3 to WYŁĄCZNIE symbol zbiorczy L0
+  // (`sld-v3-l0-<stationRef>`, plan sieci); na L1/L2 stacja jest rozwinięta
+  // w pola bez pojedynczego elementu-stacji. Ścieżka użytkownika: oddal
+  // widok do planu (zoom kółkiem), uzbrój paletę, kliknij blok stacji —
+  // dawne data-element-kind/data-element-id były kontraktem kanwy v2.
+  const canvas = page.getByTestId('sld-canvas-v3');
+  await expect(canvas).toBeVisible();
+  const stationL0 = page.locator(`[data-testid="sld-v3-l0-${stationRef!}"]`);
+  for (let i = 0; i < 24 && (await stationL0.count()) === 0; i += 1) {
+    await canvas.dispatchEvent('wheel', { deltaY: 240, clientX: 400, clientY: 300, bubbles: true });
+    await page.waitForTimeout(120);
+  }
+  await expect(stationL0).toBeAttached({ timeout: 5000 });
+
+  await page.getByTestId('der-palette-btn-PV').click();
+  await stationL0.evaluate((node: SVGElement) => {
     node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true }));
   });
 

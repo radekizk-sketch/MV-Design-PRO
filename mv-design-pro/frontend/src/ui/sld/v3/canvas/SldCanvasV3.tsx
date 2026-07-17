@@ -262,11 +262,12 @@ function SceneSegmentNode(props: {
    *  identyczna jak dotąd (`polylinePathWithBridges` bez mostków ==
    *  `pointsToPath`, dowód w teście). */
   readonly sceneCrossings: readonly PowerPathCrossing[] | undefined;
+  readonly onElementClick: ((testId: string, meta?: SldElementClickMeta) => void) | undefined;
   readonly onElementContextMenu:
     | ((testId: string, meta: SldElementClickMeta | undefined, clientX: number, clientY: number) => void)
     | undefined;
 }): JSX.Element | null {
-  const { segment, index, overlay, sceneCrossings, onElementContextMenu } = props;
+  const { segment, index, overlay, sceneCrossings, onElementClick, onElementContextMenu } = props;
   if (segment.points.length < 2) return null;
   const testId = segmentTestId(segment, index);
   const kind = segment.meta?.kind ?? 'sn';
@@ -302,6 +303,12 @@ function SceneSegmentNode(props: {
   return (
     <path
       data-testid={testId}
+      // Tożsamość elementu w DOM (diagnostyka/E2E): ownerRef segmentu — ten
+      // sam kanał co etykiety (`data-owner-ref`); bez tego segment jest
+      // adresowalny wyłącznie indeksem (`sld-v3-segment-N`), co uniemożliwia
+      // deterministyczne wskazanie przęsła po refie ENM (luka wykryta
+      // adaptacją e2e sld-editor-real-backend-flex, 2026-07-17).
+      data-owner-ref={segment.meta?.ownerRef}
       data-parity-key={parityKeysOf(segment.meta)}
       data-bridge-count={bridges && bridges.size > 0 ? [...bridges.values()].reduce((n, ys) => n + ys.length, 0) : undefined}
       d={pathD}
@@ -313,6 +320,19 @@ function SceneSegmentNode(props: {
       // przyciskiem — poza zakresem tego zadania, geometria/interakcja
       // odcinków nietknięta). Menu kontekstowe jest DODATKIEM niezależnym od
       // selekcji — `stopPropagation`, żeby nie bąbelkować do handlera tła.
+      // Parytet klikalności odcinka (odroczone w F8c pkt 3, wymagalne po
+      // wykryciu ślepej uliczki e2e sld-editor-real-backend-flex 2026-07-17):
+      // klik lewym = selekcja odcinka, ta sama trasa co symbole
+      // (`onElementClick` → workspace: drawer odcinka → E-12).
+      onClick={
+        onElementClick
+          ? (event) => {
+              event.stopPropagation();
+              onElementClick(testId, segmentClickMeta);
+            }
+          : undefined
+      }
+      style={onElementClick ? { cursor: 'pointer' } : undefined}
       onContextMenu={
         onElementContextMenu
           ? (event) => {
@@ -954,7 +974,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                 index={index}
                 overlay={effectiveOverlay}
                 sceneCrossings={sceneCrossings}
-                onElementContextMenu={onElementContextMenu}
+                onElementClick={onElementClick}
+            onElementContextMenu={onElementContextMenu}
               />
             );
           })}

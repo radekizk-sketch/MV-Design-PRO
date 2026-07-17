@@ -1734,6 +1734,40 @@ rozpływu v2 — badge case_ref/converged nie istnieje w v3; semantykę
 solver=jedna-prawda pokrywa dziś `flow_overlay_probe` w accept:sld-v3;
 adaptacja = przepisanie na `sld-v3-flow-*`).
 
+AKTUALIZACJA 2026-07-17 (runda 2, Zero-Debt): odzyskane dalej —
+`create-first-case` (fałszywy „niedeterminizm" = brak bramki `app-ready`
+przy zimnym starcie; przepływ pulpitu istnieje w całości),
+`designer-flow-multistep` 3/3 (CTA pustego stanu zamiast right-click na
+nieistniejącej kanwie), `critical-der-config` 1/1 — adaptacja WYKRYŁA I
+NAPRAWIŁA lukę parytetu K30-87: workspace v3 montował drawer BEZ handlera
+zapisu (CTA „Zapisz" nie istniało — konfiguracja DER była ślepą uliczką);
+handler przeniesiony 1:1 z historycznego SldWorkspaceContainer
+(`postDerGeneratorConfig` → snapshot ze store'a). Przy okazji przywrócone:
+klikalność ODCINKA lewym przyciskiem (odroczenie F8c pkt 3 wygasłe),
+`data-owner-ref` na ścieżce segmentu (tożsamość elementu w DOM),
+CTA „Otwórz konfigurację" drawera (K30-91: cable_run→E-12, węzeł→E-14/15),
+normalizacja refu kawałka przęsła (`…segment_L`→`…/segment`) w kliku.
+
+POZOSTAJE (2 specy, przyczyny NIE-testowe — realne luki v3):
+1. `sld-editor-real-backend-flex` (2) — ZABLOKOWANE przez lukę sceny §16-v3:
+   `buildSceneV3` NIE RENDERUJE ciągu do OTWARTEGO terminala (źródło→T1 bez
+   stacji na końcu ⇒ w DOM wyłącznie kompozycja GPZ, segment ENM niewidoczny;
+   dowód sondą: BRANCHES=[seg/…/segment], DOM PATH REFS = tylko gpz/…).
+   W v2 pokrywał to slot-fallback kotwic terminali (§16, zamknięty task 18).
+   PROJEKT NAPRAWY: w sekcji 5 buildSceneV3, gdy `mainTrunkRun.stationRefs`
+   puste a `mainCableRun.segmentPaths` niepuste — narysuj bieg otwarty od
+   portu GPZ do kotwicy slotowej (§16: słupek terminalny + etykieta „koniec
+   otwarty"), ownerRef = segmentRef; wyrocznia §11.3 dostaje jawną klasę
+   `openTerminal` (kotwica slotowa = legalne zakończenie, test negatywny:
+   zwykły wolny koniec dalej FAIL); analogicznie laterale. Rozmiar: sesja
+   robocza z pełnym cyklem wyroczni — NIE łata.
+2. `sld-pa-powerflow-tor` (5) — wymaga PRZYWRÓCENIA deklaracji pochodzenia
+   nakładki w v3 (badge case_ref/converged — spec §14.2 „overlay wyłącznie
+   z wyniku"; do dziś nakładka nie deklaruje NA KANWIE, z którego przypadku
+   pochodzi). PROJEKT: `SldV3Overlay.provenance {caseRef, converged}` →
+   badge `sld-v3-overlay-provenance` w rogu arkusza + adaptacja speca na
+   `sld-v3-flow-*`/`data-owner-ref` (energizacja per ownerRef już jest).
+
 ## Prompt kontynuacji (wklej świeżemu agentowi — DO WDROŻENIA 100%)
 
 ```

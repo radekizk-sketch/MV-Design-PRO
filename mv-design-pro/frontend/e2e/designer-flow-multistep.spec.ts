@@ -176,15 +176,11 @@ test.describe('Designer naturalny flow — multi-step coverage (audit 2026-05-19
     // CTA primary widoczny — pierwszy krok flow (Wymaganie #1).
     await expect(page.getByTestId('sld-empty-state-insert-gpz')).toBeVisible();
 
-    // Prawy klik na empty state → menu kontekstowe background z akcją insert-gpz.
-    const canvas = page.getByTestId('sld-canvas-v3');
-    const box = await canvas.boundingBox();
-    expect(box).not.toBeNull();
-    await canvas.click({
-      button: 'right',
-      position: { x: box!.width / 2, y: box!.height / 2 },
-    });
-    await expect(page.getByText('Wstaw główny punkt zasilania')).toBeVisible();
+    // Adaptacja v3 (F12-C): pusty model ⇒ kanwa SVG nie istnieje, więc menu
+    // kontekstowe tła nie ma nośnika — akcje tła są wystawione WPROST jako
+    // CTA pustego stanu (ten sam wykonawca akcji, ARCH-4). Intencja bez
+    // zmian: akcja wstawienia GPZ osiągalna z tła pierwszego kroku.
+    await expect(page.getByTestId('sld-empty-state-insert-gpz')).toContainText('Wstaw Główny Punkt Zasilający');
 
     // Brak crashy.
     expect(guards.pageErrors, `pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);
@@ -201,15 +197,10 @@ test.describe('Designer naturalny flow — multi-step coverage (audit 2026-05-19
     await page.getByTestId('project-metadata-save').click();
     await expect(page.getByTestId('sld-empty-state')).toBeVisible();
 
-    // Right-click → background menu zawiera Otwórz katalogi (z SldCommandService).
-    const canvas = page.getByTestId('sld-canvas-v3');
-    const box = await canvas.boundingBox();
-    expect(box).not.toBeNull();
-    await canvas.click({
-      button: 'right',
-      position: { x: box!.width / 2, y: box!.height / 2 },
-    });
-    await expect(page.getByText('Otwórz katalogi techniczne')).toBeVisible();
+    // Adaptacja v3 (F12-C): akcja katalogów z tła = CTA pustego stanu
+    // (kanwa SVG nie istnieje na pustym modelu — patrz sld-canvas-routing).
+    await expect(page.getByTestId('sld-empty-state-open-catalogs')).toBeVisible();
+    await expect(page.getByTestId('sld-empty-state-open-catalogs')).toContainText('Przeglądaj katalogi techniczne');
   });
 
   test('Empty state CTA secondary „Przeglądaj katalogi" jest klikalny', async ({ page }) => {

@@ -83,7 +83,10 @@ import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { buildSupplyPathHighlight, isElementEnergized, type SupplyPathHighlight } from '../../v2/canvas/SupplyPathHighlighter';
 import { useRawResultOverlayStore, type RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { buildSldDataFromSnapshot, type SldDataPayload } from '../../v2/canvas/enmToSldAdapter';
-import { SldDetailDrawer, type SldDetailDrawerAction, type SldDetailDrawerData } from '../../v2/canvas/SldDetailDrawer';
+import { SldDetailDrawer, type SldDetailDrawerAction, type SldDetailDrawerData, type SldDetailDrawerSavePayload } from '../../v2/canvas/SldDetailDrawer';
+import { DerPersistenceApiError, postDerGeneratorConfig } from '../../v2/canvas/derPersistenceApi';
+import { notify } from '../../../notifications/store';
+import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
 import { useDerDragDrop, DerPaletteButton, type DerDragKind } from '../../v2/canvas/useDerDragDrop';
 import {
   SldContextMenuController,
@@ -681,6 +684,85 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // WEWNĄTRZ `SldDetailDrawer` (K30-88, zachowanie reużyte bez zmian).
   const [detailDrawerData, setDetailDrawerData] = useState<SldDetailDrawerData | null>(null);
   const closeDetailDrawer = useCallback(() => setDetailDrawerData(null), []);
+  const activeProjectId = useAppStateStore((state) => state.activeProjectId);
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
+  const setSnapshot = useSnapshotStore((state) => state.setSnapshot);
+
+  // Parytet K30-87/F12-C (luka wykryta adaptacją e2e critical-der-config,
+  // 2026-07-17): v3 montował drawer BEZ handlera zapisu — CTA „Zapisz" w
+  // ogóle się nie renderowało, więc konfiguracja DER z palety była ślepą
+  // uliczką. Handler przeniesiony 1:1 z historycznego SldWorkspaceContainer
+  // (v2, skasowany w F12-C): POST generatora przez WSPÓŁDZIELONE
+  // `derPersistenceApi`, snapshot z odpowiedzi wprost do store'a (jedna
+  // prawda modelu), zamknięcie drawera po sukcesie, błędy przez `notify`.
+  const handleDetailDrawerSave = useCallback(async (payload: SldDetailDrawerSavePayload) => {
+    const label = detailDrawerData?.label ?? payload.elementId ?? '—';
+
+    if (payload.kind !== 'der') {
+      closeDetailDrawer();
+      return;
+    }
+    if (!activeProjectId || !activeCaseId) {
+      notify('Nie można zapisać DER: wybierz aktywny projekt i przypadek.', 'error');
+      return;
+    }
+    if (!payload.elementId || !payload.derConfig) {
+      notify('Nie można zapisać DER: wskaż stację i dane formularza.', 'error');
+      return;
+    }
+
+    try {
+      const response = await postDerGeneratorConfig(activeProjectId, activeCaseId, {
+        station_ref: payload.elementId,
+        der_kind: payload.derConfig.derKind,
+        power_mw: payload.derConfig.powerMw,
+        connection_variant: payload.derConfig.connectionVariant,
+        catalog_ref: payload.derConfig.inverterCatalogRef,
+        source_name: `${payload.derConfig.derKind} ${label}`,
+        quantity: 1,
+        nc_rfg_module: payload.derConfig.ncRfgModule,
+      });
+      setSnapshot(response);
+      notify(`Zapisano konfigurację DER: ${label}.`, 'success');
+      closeDetailDrawer();
+    } catch (error) {
+      const message = error instanceof DerPersistenceApiError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : 'Nie udało się zapisać konfiguracji DER.';
+      notify(message, 'error');
+    }
+  }, [activeCaseId, activeProjectId, closeDetailDrawer, detailDrawerData, setSnapshot]);
+
+  // Parytet K30-91/F12-C (ta sama luka co onSave — drawer montowany bez CTA
+  // „Otwórz konfigurację"): przejście z drawera do pełnej powierzchni
+  // konfiguracyjnej, przeniesione 1:1 z historycznego SldWorkspaceContainer
+  // (cable_run → E-12 konfigurator odcinka SN; węzeł → E-14/E-15).
+  const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
+  const openDetailConfiguration = useCallback(() => {
+    if (!detailDrawerData?.elementId) return;
+    if (detailDrawerData.kind === 'cable_run') {
+      openRouteSurface('E-12', {
+        entityRef: detailDrawerData.elementId,
+        entityType: 'segment',
+        subjectKind: 'helper_context',
+        payload: { defaultCard: 'trasa' },
+      });
+      setDetailDrawerData(null);
+      return;
+    }
+    if (detailDrawerData.kind === 'node') {
+      const screenCode = detailDrawerData.nodeSpec?.nodeKind === 'branch_pole' ? 'E-15' : 'E-14';
+      openRouteSurface(screenCode, {
+        entityRef: detailDrawerData.elementId,
+        entityType: detailDrawerData.nodeSpec?.nodeKind === 'branch_pole' ? 'branch_pole' : 'zksn',
+        subjectKind: 'helper_context',
+      });
+      setDetailDrawerData(null);
+    }
+  }, [detailDrawerData, openRouteSurface]);
+  const canOpenDetailConfiguration = detailDrawerData?.kind === 'cable_run' || detailDrawerData?.kind === 'node';
 
   // F8c pkt 3: menu kontekstowe — stan LOKALNY, most do WSPÓŁDZIELONEGO
   // `SldContextMenuController` (`context-menu/`, patrz mapowanie
@@ -934,7 +1016,16 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
 
   const handleElementClick = useCallback(
     (testId: string, meta?: SldElementClickMeta) => {
-      const id = meta?.ownerRef ?? elementIdFromTestId(testId);
+      // Normalizacja tożsamości ODCINKA: scena adresuje KAWAŁKI przęsła
+      // sufiksami tras (`seg/⟨id⟩/segment_L`, `…/branch_segment_R_L` —
+      // `incomingSegmentRef`), ale kontrakty domenowe (drawer, E-12,
+      // wyniki) operują refem kanonicznym `seg/⟨id⟩/segment`. Bez tej
+      // normalizacji klik w kawałek otwierał drawer z refem, którego API
+      // nie zna (luka wykryta adaptacją e2e sld-editor-real-backend-flex).
+      const rawId = meta?.ownerRef ?? elementIdFromTestId(testId);
+      const id = meta?.elementKind === 'segment'
+        ? rawId.replace(/_(?:[LR]_)*[LR]$/, '')
+        : rawId;
 
       // F8c pkt 4: drag DER uzbrojony — klik w STACJĘ „zrzuca" (jak v2
       // K30-78: `if (kind === 'station' && derDrag.state)`); klik gdziekolwiek
@@ -1084,6 +1175,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         open={detailDrawerData !== null}
         data={detailDrawerData}
         onClose={closeDetailDrawer}
+        onSave={handleDetailDrawerSave}
+        onOpenConfiguration={canOpenDetailConfiguration ? openDetailConfiguration : undefined}
         actions={detailDrawerActions}
       />
 

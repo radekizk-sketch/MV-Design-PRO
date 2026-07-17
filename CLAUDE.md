@@ -761,6 +761,29 @@ python scripts/vulture_guard.py
 12. **ALWAYS** run relevant guards before pushing changes
 13. **ALWAYS** consult `POWERFACTORY_COMPLIANCE.md` when adding/modifying network model elements
 
+## Zero-Debt Rule (BINDING — dyrektywa właściciela, 2026-07-17)
+
+Każdy wykryty defekt, dług techniczny, bug lub brak naprawiasz **end-to-end,
+od razu, bez pytania o pozwolenie** — dotyczy to również znalezisk ubocznych
+(guard czerwony na HEAD, wykluczony test, martwy kod, nieaktualny dokument,
+workflow CI, który nigdy się nie wykonał, niespójność danych szablonu).
+
+Zasady wykonania:
+1. **Wykluczenie ≠ naprawa.** Nie wolno maskować długu (exclude w konfigu
+   testów, `continue-on-error`, skip, komentarz „do naprawy później").
+   Nowe wykluczenie wymaga uzasadnienia w commicie i wpisu długu w execplanie.
+2. **Naprawa u źródła.** Test czerwony z powodu regresji komponentu ⇒ napraw
+   komponent, nie asercję. Test czerwony z powodu zmiany kanonu ⇒ przepisz
+   test do obecnego kanonu z zachowaniem intencji (i zapisz intencję w
+   komentarzu).
+3. **Weryfikacja end-to-end przed commitem**: pełna regresja właściwego
+   stosu, kody wyjścia łapane BEZPOŚREDNIO (nigdy `cmd | tail; echo $?` —
+   pipe zwraca kod ostatniego członu); pętle oczekiwania bez samodopasowania
+   `pgrep -f` (sentinel w pliku wyników zamiast wzorca tekstowego procesu).
+4. **Dług nienaprawialny w bieżącej sesji** (wymaga decyzji produktowej,
+   danych, których nie ma, albo przekracza sesję) — wpis do execplanu z
+   pomiarem, przyczyną i planem, nigdy cicho.
+
 ## Escalation
 
 If any rule conflict is detected:
