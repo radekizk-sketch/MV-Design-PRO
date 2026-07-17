@@ -654,6 +654,13 @@ Progress:
         POTWIERDZENIE #37 (2026-07-17): pełny vitest 8664 passed, 0 failed
         — BAZY: backend 6112, frontend 8664. Wszystkie wykonywalne bez
         decyzji właściciela fale epiki wygaszania domknięte.
+        SCALENIE #38 / E5.x (2026-07-17): zakładka „Właściwości" modelu
+        (077ef75 → cherry-pick) — PropertyGridContainer mostu reużyty
+        (chirurgiczny export), selekcja z ui/selection, zapis WYŁĄCZNIE
+        istniejącą operacją domenową update_element_parameters (parytet
+        z InspectorEngineeringView), multi-edit, stan pusty PL.
+        Wykonawca: pełny vitest 8674 pass, 0 failed (+10). Zarządca:
+        203 celowane + 5 guardów UI OK, push. Konfirmacja w tle.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
