@@ -1325,21 +1325,83 @@ function findGpzTrunkBottomPort(
 ): { readonly x: number; readonly y: number } {
   const bayRef = findGpzTrunkBayRef(gpzData);
   if (bayRef) {
-    // F10.1 (spec §18.1 b): wyjście magistrali = dno TORU GŁÓWNEGO pola —
-    // aparaty boczne ES/VT/SA (doklejane NA KOŃCU listy instancji przez
-    // buildFieldStack) NIE są zakończeniem toru; przed F10.1 „ostatnia
-    // instancja" była głowicą, po F10.1 bywała lateralem ES (błędny zaczep
-    // kabla wyjściowego wykryty sondą nadzorcy).
-    const bayInstances = gpz.symbols.filter(
-      (s) => s.meta.bayRef === bayRef && !LATERAL_APPARATUS_SYMBOLS.has(s.symbolId),
-    );
-    const last = bayInstances[bayInstances.length - 1];
-    if (last) {
-      const def = SYMBOL_DEFS[last.symbolId];
-      return { x: last.x + def.width / 2, y: last.y + def.height };
-    }
+    const port = gpzBayBottomPort(gpz, bayRef);
+    if (port) return port;
   }
   return findGpzTrunkPort(gpz, gpzData, stopNotes);
+}
+
+/** Feedery z pól GPZ (2026-07-17): WSZYSTKIE pola liniowe GPZ w kolejności
+ *  kompozycji — pierwsze zajmuje magistrala (`findGpzTrunkBayRef` zwraca
+ *  dokładnie `[0]` tej listy), kolejne przydzielane feederom z pól GPZ
+ *  (`start_branch_segment_sn` z `field_ref` GPZ) w kolejności ciągów. */
+function findGpzLineBayRefs(gpzData: GpzCanonicalRendererProps): readonly string[] {
+  const refs: string[] = [];
+  for (const section of gpzData.sections) {
+    for (const bay of section.bays) {
+      if (bay.fieldRole === 'LINE_IN' || bay.fieldRole === 'LINE_OUT' || bay.fieldRole === 'LINE_BRANCH') {
+        refs.push(bay.bayRef);
+      }
+    }
+  }
+  return refs;
+}
+
+/** Feedery z pól GPZ — punkt T-ZACZEPU na polilinii trasy magistrali w
+ *  odległości `dist` (arclength) od jej początku, przyciągnięty do siatki na
+ *  osi biegu i ściśle WEWNĄTRZ biegu (nie na wierzchołku; bieg za krótki →
+ *  środek biegu; wszystkie biegi za krótkie → `null`). `horizontalRun`
+ *  decyduje o kształcie odejścia feederu (bieg poziomy → zejście wprost w
+ *  dół; pion → jog w bok, żeby piony nie nakładały się współliniowo). */
+function tapPointOnPolyline(
+  points: readonly RouteVertex[],
+  dist: number,
+): { readonly x: number; readonly y: number; readonly horizontalRun: boolean } | null {
+  let acc = 0;
+  for (let i = 0; i + 1 < points.length; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    const len = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+    if (len === 0) continue;
+    if (dist <= acc + len) {
+      const off = dist - acc;
+      const dirX = Math.sign(b.x - a.x);
+      const dirY = Math.sign(b.y - a.y);
+      let x = dirX !== 0 ? snapToGrid(a.x + dirX * off) : a.x;
+      let y = dirY !== 0 ? snapToGrid(a.y + dirY * off) : a.y;
+      if (dirX !== 0 && !((x - a.x) * dirX > 0 && (b.x - x) * dirX > 0)) x = snapToGrid((a.x + b.x) / 2);
+      if (dirY !== 0 && !((y - a.y) * dirY > 0 && (b.y - y) * dirY > 0)) y = snapToGrid((a.y + b.y) / 2);
+      const inside =
+        (dirX !== 0 && (x - a.x) * dirX > 0 && (b.x - x) * dirX > 0) ||
+        (dirY !== 0 && (y - a.y) * dirY > 0 && (b.y - y) * dirY > 0);
+      if (!inside) {
+        acc += len;
+        continue;
+      }
+      return { x, y, horizontalRun: dirY === 0 };
+    }
+    acc += len;
+  }
+  return null;
+}
+
+/** Dolny port stosu WSKAZANEGO pola GPZ — wyciągnięte z dawnego wnętrza
+ *  `findGpzTrunkBottomPort` (F10.1: dno TORU GŁÓWNEGO pola — aparaty boczne
+ *  ES/VT/SA, doklejane NA KOŃCU listy instancji przez `buildFieldStack`,
+ *  NIE są zakończeniem toru; przed F10.1 „ostatnia instancja" była głowicą,
+ *  po F10.1 bywała lateralem ES — błędny zaczep wykryty sondą nadzorcy).
+ *  `null` gdy pole nie ma instancji (wołający decyduje o fallbacku). */
+function gpzBayBottomPort(
+  gpz: GpzComposition,
+  bayRef: string,
+): { readonly x: number; readonly y: number } | null {
+  const bayInstances = gpz.symbols.filter(
+    (s) => s.meta.bayRef === bayRef && !LATERAL_APPARATUS_SYMBOLS.has(s.symbolId),
+  );
+  const last = bayInstances[bayInstances.length - 1];
+  if (!last) return null;
+  const def = SYMBOL_DEFS[last.symbolId];
+  return { x: last.x + def.width / 2, y: last.y + def.height };
 }
 
 function gpzSegmentToPreview(seg: ComposedGpzSegment): PreviewSegment {
@@ -1921,8 +1983,242 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     ? computeLateralChannelXById(branchRuns, cableRunById, mainRowById, mainLayout.columnsResult.columns)
     : new Map<string, number>();
 
+  // Feedery z pól GPZ (2026-07-17, po odbiorze „100% klasy przemysłowej"):
+  // licznik przydziału KOLEJNYCH pól liniowych GPZ (pierwsze = magistrala).
+  let gpzFeederCount = 0;
+
   for (let li = 0; li < branchRuns.length; li++) {
     const run = branchRuns[li];
+    const cableRun = cableRunById.get(run.id);
+
+    // -- Feeder z POLA GPZ (start_branch_segment_sn z field_ref GPZ) --------
+    // Dotąd „odgałęzienie zagnieżdżone POZA zakresem F6a" ⇒ ciąg (stacje +
+    // segmenty ENM) był NIEWIDOCZNY, mimo że to STANDARDOWA topologia sieci
+    // SN (GPZ z N feederami). Rysunek: wiersz feederu POD dotychczasową
+    // treścią, wyrównany do lewej krawędzi wiersza magistrali (`mainRowDx`),
+    // zasilony z KOLEJNEGO wolnego pola liniowego GPZ (własny pion od portu
+    // głowicy tego pola — na lewo od wszystkich wierszy, więc bez kolizji;
+    // przecięcia z korytarzem magistrali dostają mostki §22.1 automatycznie).
+    const isGpzFeeder =
+      gpzComposition != null &&
+      gpzData != null &&
+      (cableRun?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null) === gpzData.id;
+    if (isGpzFeeder) {
+      const lineBayRefs = findGpzLineBayRefs(gpzData!);
+      const freeBayRef = lineBayRefs[1 + gpzFeederCount];
+      let feederPort = freeBayRef ? gpzBayBottomPort(gpzComposition!, freeBayRef) : null;
+      // Wariant WSPÓLNEGO pola (pomiar na modelu realnego backendu:
+      // `gpz_line_fields_count: 1` — magistrala i feeder wychodzą z TEGO
+      // SAMEGO pola/szyny): T-zaczep na pionie pola magistrali, POD portem
+      // głowicy, z KROPKĄ węzłową §22.1 (realny węzeł ENM — wspólna szyna
+      // `from_bus_ref` obu ciągów) i natychmiastowym jogiem w lewo (pion
+      // feederu równoległy do pionu magistrali, bez współliniowego
+      // nakładania). Kabel NIE ląduje na szynie (kanon §22.3 zachowany —
+      // zaczep na TORZE pola, nie na pasie szyny).
+      let tapJogX: number | null = null;
+      if (!feederPort) {
+        const trunkPort = findGpzTrunkBottomPort(gpzComposition!, gpzData!, stopNotes);
+        // Zaczep NA realnie narysowanej trasie magistrali — kawałek
+        // startujący DOKŁADNIE w porcie pola (piece 0 trasy GPZ→S0 albo
+        // biegu otwartego, oba zaczynają się w `gpzPort`).
+        const anchorSeg = allSegments.find(
+          (s) =>
+            (s.meta?.ownerRef ?? '').startsWith('seg/') &&
+            s.points[0]?.x === trunkPort.x &&
+            s.points[0]?.y === trunkPort.y,
+        );
+        const tap = anchorSeg
+          ? tapPointOnPolyline(anchorSeg.points, 2 * GRID * (1 + gpzFeederCount))
+          : null;
+        if (!tap) {
+          stopNotes.push(
+            `Feeder z pola GPZ „${run.id}": brak wolnego pola liniowego GPZ (pól=${lineBayRefs.length}) i brak trasy magistrali do T-zaczepu — ciąg pominięty.`,
+          );
+          continue;
+        }
+        feederPort = { x: tap.x, y: tap.y };
+        // Bieg poziomy → feeder schodzi WPROST w dół z punktu T (zero
+        // współliniowości); pion → jog w lewo o 2×GRID.
+        tapJogX = tap.horizontalRun ? null : snapToGrid(tap.x - 2 * GRID);
+        allSymbols.push({
+          symbolId: 'junction',
+          x: snapToGrid(tap.x - SYMBOL_DEFS.junction.width / 2),
+          y: snapToGrid(tap.y - SYMBOL_DEFS.junction.height / 2),
+          meta: { testId: `sld-v3-gpz-feeder-tap-${li}`, ownerRef: gpzData!.id, elementKind: 'apparatus' },
+        });
+      }
+      gpzFeederCount += 1;
+      const gpzBottom = snapUp(gpzComposition!.bbox.y + gpzComposition!.bbox.height);
+      let feederLayout = buildRowLayout(
+        run.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, cableRun, lod, stopNotes, derSourcesByStationId, true,
+      );
+
+      if (feederLayout.measureInputs.length === 0) {
+        // Feeder OTWARTY (bez stacji) — bieg §16-v3 od portu pola GPZ.
+        const openPaths = cableRun?.segmentPaths ?? [];
+        if (openPaths.length > 0) {
+          const riserX = tapJogX ?? feederPort.x;
+          const yRow = Math.max(snapUp(nextRowTopY) + 2 * GRID, gpzBottom + 2 * GRID);
+          const xEnd = Math.max(mainRowDx, snapUp(riserX) + openPaths.length * OPEN_RUN_PIECE_SPAN);
+          openPaths.forEach((sp, i) => {
+            const to = xEnd - (openPaths.length - 1 - i) * OPEN_RUN_PIECE_SPAN;
+            const raw: RouteVertex[] =
+              i === 0
+                ? [
+                    { x: feederPort.x, y: feederPort.y },
+                    ...(tapJogX != null ? [{ x: tapJogX, y: feederPort.y }] : []),
+                    { x: riserX, y: yRow },
+                    { x: to, y: yRow },
+                  ]
+                : [
+                    { x: xEnd - (openPaths.length - i) * OPEN_RUN_PIECE_SPAN, y: yRow },
+                    { x: to, y: yRow },
+                  ];
+            const points = raw.filter((p, pi) => pi === 0 || p.x !== raw[pi - 1].x || p.y !== raw[pi - 1].y);
+            const isLast = i === openPaths.length - 1;
+            allSegments.push({
+              points,
+              meta: {
+                kind: 'sn',
+                ownerRef: sp.segmentRef,
+                elementKind: 'segment',
+                ...(isLast ? { openTerminal: true } : {}),
+              },
+            });
+            allRouteGeoms.push({ points });
+          });
+          emitOpenTerminalTick(xEnd, yRow, true, openPaths[openPaths.length - 1].segmentRef, lod === 2);
+          nextRowTopY = yRow + 4 * GRID;
+          lateralRunIds.push(run.id);
+        }
+        continue;
+      }
+
+      // Feeder ZE STACJAMI — pełny wiersz jak magistrala/lateral.
+      const feederDy = Math.max(snapUp(nextRowTopY), gpzBottom + 4 * GRID);
+      feederLayout = shiftRowLayout(feederLayout, mainRowDx, feederDy);
+      nextRowTopY = feederDy + feederLayout.bandsResult.totalHeight + ROW_VERTICAL_GAP;
+      lateralRunIds.push(run.id);
+
+      const feederRow: RowStation[] = [];
+      feederLayout.columnsResult.columns.forEach((col, i) => {
+        const measureInput = feederLayout.measureInputs[i];
+        const props = stationById.get(measureInput.id)!;
+        const composed = composeRowStation(measureInput, props, col, feederLayout.busAxisY, feederLayout.blockTopY, lod, stopNotes);
+        feederRow.push({ id: measureInput.id, composed });
+        drawnStationIds.add(measureInput.id);
+        allSymbols.push(...composed.symbols);
+        allSegments.push(...composed.segments);
+        stationNameBands.push(composed.stationNameOwner);
+        portCaptions.push(...composed.portCaptionOwners);
+        simpleAnchored.push(...composed.apparatusOwners, ...composed.derOwners, ...composed.protectionOwners, ...composed.busbarOwners);
+        if (props.isNop) {
+          simpleAnchored.push({
+            ownerRef: `${measureInput.id}#no-point`,
+            ownerKind: 'no-point',
+            text: 'NO',
+            labelClass: 't3',
+            anchor: { x: col.tapX, y: feederLayout.busAxisY },
+            placement: 'below',
+          });
+          allSymbols.push({
+            symbolId: 'noPoint',
+            x: snapToGrid(col.tapX - NO_POINT_SIZE / 2),
+            y: snapToGrid(feederLayout.busAxisY - NO_POINT_SIZE / 2),
+            meta: { testId: `sld-v3-nop-${measureInput.id}`, ownerRef: measureInput.id, elementKind: 'apparatus' },
+          });
+        }
+      });
+
+      // Trasa pole GPZ → stacja 0 feederu — TEN SAM kształt co GPZ→S0
+      // (port → korytarz wiersza → wejście), tożsamość łańcucha jak wszędzie.
+      const first = feederRow[0];
+      const feederCorridorY = interStationCorridorY(feederLayout, lod);
+      const feederRiserX = tapJogX ?? feederPort.x;
+      const rawIn: RouteVertex[] = [
+        { x: feederPort.x, y: feederPort.y },
+        ...(tapJogX != null ? [{ x: tapJogX, y: feederPort.y }] : []),
+        { x: feederRiserX, y: feederCorridorY },
+        { x: first.composed.entryPort.x, y: feederCorridorY },
+        { x: first.composed.entryPort.x, y: first.composed.entryPort.y },
+      ];
+      const inPoints = rawIn.filter((p, pi) => pi === 0 || p.x !== rawIn[pi - 1].x || p.y !== rawIn[pi - 1].y);
+      const feederChain = chainSegmentRefs(cableRun, gpzData!.id, first.id);
+      const feederPieces =
+        feederChain.length > 1 ? splitPolylineIntoPieces(inPoints, feederChain.length) : [inPoints];
+      if (feederChain.length > 0 && feederPieces.length === feederChain.length) {
+        feederPieces.forEach((piecePoints, pi) => {
+          allSegments.push({
+            points: piecePoints,
+            meta: { kind: 'sn', ownerRef: feederChain[pi], elementKind: 'segment' },
+          });
+        });
+      } else {
+        allSegments.push({
+          points: inPoints,
+          meta: { kind: 'sn', ownerRef: incomingSegmentRef(cableRun, first.id), elementKind: 'segment' },
+        });
+      }
+      allRouteGeoms.push({ points: inPoints });
+      if (lod === 2) {
+        const slot = feederLayout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === 0);
+        const text = incomingLabelText(cableRun, first.id);
+        if (slot && text) {
+          segmentSpans.push({
+            ownerRef: `${first.id}#segment-label`,
+            text,
+            spanStart: Math.max(feederPort.x, gpzRightEdgeX),
+            spanEnd: first.composed.entryPort.x,
+            busAxisY: feederLayout.busAxisY,
+            primaryRect: slot.rect,
+          });
+        }
+      }
+
+      const feederInternal = connectRowStations(feederRow, feederLayout, cableRun, lod, [], 'sn');
+      allSegments.push(...feederInternal.connectors);
+      allRouteGeoms.push(...feederInternal.routeGeoms);
+      segmentSpans.push(...feederInternal.spanLabels);
+
+      // Otwarty ogon feederu — jak ogon magistrali/lateralu.
+      const feederLast = feederRow[feederRow.length - 1];
+      const feederTail = openTailSegmentRefs(cableRun, feederLast.id);
+      if (feederTail.length > 0) {
+        const exit = feederLast.composed.exitPort;
+        const xEnd = snapUp(exit.x) + feederTail.length * OPEN_RUN_PIECE_SPAN;
+        const rawTail: RouteVertex[] = [
+          { x: exit.x, y: exit.y },
+          { x: exit.x, y: feederCorridorY },
+          { x: xEnd, y: feederCorridorY },
+        ];
+        const tailPoints = rawTail.filter(
+          (p, pi) => pi === 0 || p.x !== rawTail[pi - 1].x || p.y !== rawTail[pi - 1].y,
+        );
+        const tailPieces = feederTail.length > 1 ? splitPolylineIntoPieces(tailPoints, feederTail.length) : [tailPoints];
+        if (tailPieces.length === feederTail.length) {
+          tailPieces.forEach((piecePoints, pi) => {
+            allSegments.push({
+              points: piecePoints,
+              meta: {
+                kind: 'sn',
+                ownerRef: feederTail[pi],
+                elementKind: 'segment',
+                ...(pi === feederTail.length - 1 ? { openTerminal: true } : {}),
+              },
+            });
+          });
+        } else {
+          allSegments.push({
+            points: tailPoints,
+            meta: { kind: 'sn', ownerRef: feederTail[feederTail.length - 1], elementKind: 'segment', openTerminal: true },
+          });
+        }
+        allRouteGeoms.push({ points: tailPoints });
+        emitOpenTerminalTick(xEnd, feederCorridorY, true, feederTail[feederTail.length - 1], lod === 2);
+      }
+      continue;
+    }
+
     const origin = resolveBranchOrigin(run, cableRunById, mainRowById, branchOriginUsage);
     if (!origin) {
       stopNotes.push(
@@ -1939,7 +2235,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       continue;
     }
 
-    const cableRun = cableRunById.get(run.id);
     let layout = buildRowLayout(run.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, cableRun, lod, stopNotes, derSourcesByStationId, true);
     if (layout.measureInputs.length === 0) {
       // §16-v3 (REBUILD_PLAN_V3 „Dług otwarty" pkt 1, „analogicznie
@@ -2385,12 +2680,12 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     ...(gpzComposition?.zone ? [gpzComposition.zone] : []),
   ]);
 
-  const stationCount = mainRow.length + branchRuns.reduce((acc, run) => {
-    const cr = cableRunById.get(run.id);
-    const origin = cr?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null;
-    if (!origin || !mainRowById.has(origin)) return acc; // pominięty (zagnieżdżony) lateral — nie liczony
-    return acc + run.stationRefs.length;
-  }, 0);
+  // Feedery z pól GPZ (2026-07-17): licznik = stacje FAKTYCZNIE narysowane
+  // (`drawnStationIds`, zasilany przy każdej kompozycji wiersza — magistrala,
+  // laterale, feedery GPZ). Dawna formuła (mainRow + laterale o originie na
+  // magistrali) nie widziała wierszy feederów GPZ i po ich dorysowaniu
+  // raportowała zaniżoną liczbę (pomiar: 1 zamiast 2 na `gpzFeeder.enm.json`).
+  const stationCount = drawnStationIds.size;
 
   return {
     symbols: allSymbols,

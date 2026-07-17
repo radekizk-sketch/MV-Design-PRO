@@ -110,9 +110,17 @@ function overlayFromCompanion(companion: PowerFlowCompanion, enm: EnergyNetworkM
   };
 }
 
+/** Wybór fixtury ENM z `?fixture=` (nazwa pliku w `public/test-fixtures/`,
+ *  bez rozszerzenia; wyłącznie [A-Za-z0-9_-] — zero traversal). Domyślnie
+ *  substrate (dotychczasowy kontrakt wszystkich spec bez parametru). */
+function fixtureNameFromQuery(): string {
+  const raw = new URLSearchParams(window.location.search).get('fixture');
+  return raw && /^[A-Za-z0-9_-]+$/.test(raw) ? raw : 'sldSubstrate52s';
+}
+
 // Fetch fixture at runtime from Vite's static file serving (public/)
 async function loadSubstrateEnm(): Promise<EnergyNetworkModel> {
-  const resp = await fetch('/test-fixtures/sldSubstrate52s.enm.json');
+  const resp = await fetch(`/test-fixtures/${fixtureNameFromQuery()}.enm.json`);
   if (!resp.ok) {
     throw new Error(`Failed to load fixture: ${resp.status} ${resp.statusText}`);
   }

@@ -1793,11 +1793,31 @@ ZAMKNIĘTE 2026-07-17 (runda 3, „Wykonaj") — OBIE luki wykonane end-to-end:
    niewidzialny HITBOX odcinka (drugi path, transparent, 12 px świata,
    WYŁĄCZNIE na kanwie interaktywnej — rendery bazowe harnessu bez zmian,
    `data-owner-ref` zostaje na dokładnie jednym path-u).
-   POZA ZAKRESEM (pre-F6a, udokumentowana granica ze stopNote): odgałęzienie
-   startujące z pola GPZ (`start_branch_segment_sn` z `gpz/…` — fixtura
-   `openBranch.enm.json` niesie taki przypadek) — `resolveBranchOrigin`
-   wymaga stacji-origin na magistrali; bieg NIE jest rysowany, stopNote
-   jawny. Plan: przy podjęciu wielo-GPZ/odgałęzień zagnieżdżonych (F6b).
+   [DONE 2026-07-17, runda 4 — odbiór „100% klasy przemysłowej"]: FEEDERY
+   Z PÓL GPZ (dawna granica pre-F6a) WYKONANE — odgałęzienie startujące z
+   pola GPZ (`start_branch_segment_sn` z `field_ref` GPZ; run `branch` z
+   `segmentPaths[0].fromTerminal.ownerRef == gpz`) jest rysowane:
+   - feeder ZE STACJAMI = pełny wiersz (buildRowLayout/composeRowStation/
+     connectRowStations) pod dotychczasową treścią, wyrównany do
+     `mainRowDx`; feeder OTWARTY = bieg §16-v3 do słupka terminalnego;
+     tożsamość łańcucha + ogony przez TE SAME helpery co magistrala;
+   - przydział pól: KOLEJNE wolne pole liniowe GPZ (`findGpzLineBayRefs`,
+     pierwsze zajmuje magistrala); gdy model niesie JEDNO pole
+     (`gpz_line_fields_count: 1` — pomiar na realnym backendzie: magistrala
+     i feeder dzielą pole/szynę) — T-ZACZEP na trasie magistrali
+     (`tapPointOnPolyline`: punkt NA polilinii, bieg poziomy → zejście
+     wprost, pion → jog 2×GRID) z KROPKĄ węzłową §22.1 (realny węzeł ENM —
+     wspólna `from_bus_ref`; junction_dot_probe gryzie bez kropki, pomiar:
+     1 luka przed dodaniem); kabel NIE ląduje na szynie (kanon §22.3);
+   - `meta.stationCount` = stacje FAKTYCZNIE narysowane (`drawnStationIds`;
+     dawna formuła nie widziała wierszy feederów — pomiar: 1 zamiast 2);
+   - fixtury z realnego backendu: `gpzFeeder.enm.json` (2 korytarze × 2
+     segmenty, 2 stacje) + `openBranch.enm.json` (feeder otwarty); testy
+     `buildScene.gpzFeeder.test.ts` (9, w tym negatyw kropki); harness
+     przyjmuje `?fixture=` (allowlist nazwy) — render wizualny DoD:
+     `docs/audit/visual/sld_gpz_feeder_L2.png`.
+   POZA ZAKRESEM (świadomie, F6b): wiele GPZ (adapter komponuje pierwszy,
+   stopNote) i odgałęzienia zagnieżdżone (lateral z lateralu, stopNote).
 
 2. [DONE] Program P-A (nakładka rozpływu = jedna prawda solvera):
    provenance badge `sld-v3-overlay-provenance` (data-case-ref/

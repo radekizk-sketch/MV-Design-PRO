@@ -97,6 +97,17 @@ inspektora złapała 2 realne regresje komponentu), spójność elektryczna
 szablonów DER (zgubiona moc, TR 3.15 MVA, strona nN za katalogiem),
 test_no_todo_fixme i docs_count trwale zielone.
 
+Runda 4 (2026-07-17, odbiór „100% klasy przemysłowej"): FEEDERY Z PÓL GPZ
+(dawna granica pre-F6a — sieć wielofeederowa z GPZ była częściowo niewidoczna
+na kanwie) wykonane end-to-end: wiersz feederu ze stacjami / bieg otwarty,
+przydział kolejnych pól liniowych GPZ, a przy wspólnym polu (model realnego
+backendu: `gpz_line_fields_count: 1`) T-zaczep na trasie magistrali z kropką
+węzłową §22.1; `meta.stationCount` liczy stacje faktycznie narysowane; render
+DoD `docs/audit/visual/sld_gpz_feeder_L2.png`. Świadomie poza zakresem (F6b):
+wiele GPZ i odgałęzienia zagnieżdżone (jawne stopNotes). Wcześniej w tej
+rundzie: odmaskowanie klików e2e (Zero-Debt pkt 5) ujawniło i naprawiło
+nieklikalną kreskę toru (hitbox 12 px) i martwy lewy klik (pointer-capture).
+
 Runda 3 (2026-07-17, „Wykonaj"): OBIE ostatnie luki v3 zamknięte end-to-end
 (szczegóły + pomiary: execplan, sekcja „Dług otwarty… ZAMKNIĘTE"):
 (1) §16-v3 biegi OTWARTE + tożsamość łańcucha — realne segmenty ENM bez
