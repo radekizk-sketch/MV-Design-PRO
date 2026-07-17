@@ -227,6 +227,58 @@ def _interlock_checks_for_bay(bay: Bay, pack_id: str) -> list[ComplianceCheck]:
 # ---------------------------------------------------------------------------
 
 
+def _cell_match_check_for_bay(
+    bay: Bay, pack: ReferencePack, family: SwitchgearFamily
+) -> list[ComplianceCheck]:
+    """Dopasowanie pola do konfiguracji celki z katalogu producenta (spec §7).
+
+    Bramka danych: brak `cell_configurations` w pakiecie ALBO brak
+    `primary_devices` pola = sprawdzenie nie istnieje. Celka pasuje, gdy jej
+    aparaty STANDARDOWE ⊆ aparaty pola ORAZ aparaty pola ⊆ standard+opcje
+    (porównanie na aparatach objętych słownikiem rodziny — transformator
+    pola i kindy DER leżą poza celką). Kandydatami są celki o zgodnym
+    `bay_kind` (albo bez przypisanej funkcji).
+    """
+    if not pack.cell_configurations or not bay.primary_devices:
+        return []
+    bay_kinds = {d.kind for d in bay.primary_devices if d.kind in _KIND_TO_FAMILY_APPARATUS}
+    if not bay_kinds:
+        return []
+    mapped_bay_kind = _BAY_ROLE_TO_FAMILY_BAY_KIND.get(bay.bay_role)
+    candidates = [
+        cell
+        for cell in pack.cell_configurations
+        if cell.bay_kind is None or cell.bay_kind == mapped_bay_kind
+    ]
+    if not candidates:
+        return []
+    matched = None
+    for cell in candidates:
+        standard = {a.kind for a in cell.apparatus if a.requirement == "standard"}
+        allowed = {a.kind for a in cell.apparatus}
+        if standard.issubset(bay_kinds) and bay_kinds.issubset(allowed):
+            matched = cell
+            break
+    message = (
+        f"Skład pola odpowiada celce {matched.cell_code} "
+        f"({matched.name_pl}) rodziny {family.family_name}."
+        if matched
+        else "Skład pola ("
+        + ", ".join(_kind_pl(k) for k in sorted(bay_kinds))
+        + f") nie odpowiada żadnej konfiguracji celki rodziny "
+        f"{family.family_name} (kandydaci: " + ", ".join(c.cell_code for c in candidates) + ")."
+    )
+    return [
+        ComplianceCheck(
+            element_ref=bay.ref_id,
+            pack_id=pack.pack_id,
+            rule_code="family.cell_match",
+            status="pass" if matched else "fail",
+            message_pl=message,
+        )
+    ]
+
+
 def _family_checks_for_bay(
     bay: Bay,
     family: SwitchgearFamily,
@@ -391,6 +443,7 @@ def _checks_for_pack(
         if family is not None:
             for bay in bays:
                 checks.extend(_family_checks_for_bay(bay, family, pack.pack_id, buses_voltage_kv))
+                checks.extend(_cell_match_check_for_bay(bay, pack, family))
 
     elif pack.kind == "osd":
         for station in sorted(enm.substations, key=lambda s: s.ref_id):

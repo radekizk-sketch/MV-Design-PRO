@@ -60,6 +60,17 @@ def _load_packs() -> dict[str, ReferencePack]:
             raise ValueError(
                 f"Pakiet '{pack.pack_id}' (kind={pack.kind}) nie może wskazywać rodziny."
             )
+        if pack.cell_configurations and pack.kind != "manufacturer":
+            raise ValueError(
+                f"Pakiet '{pack.pack_id}' (kind={pack.kind}) nie może nieść "
+                "konfiguracji celek — to dane katalogu producenta."
+            )
+        for cell in pack.cell_configurations:
+            if not cell.source_pl.strip():
+                raise ValueError(
+                    f"Pakiet '{pack.pack_id}', celka '{cell.cell_code}': brak "
+                    "cytowania źródła (reguła „nie fabrykuj danych producenta”)."
+                )
 
     # Jedna definicja profili pól (pkt 10/12 dyrektywy).
     packs_with_profiles = [p.pack_id for p in packs.values() if p.field_profiles]

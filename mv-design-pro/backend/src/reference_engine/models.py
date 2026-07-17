@@ -84,6 +84,35 @@ class ReferenceSymbolMapEntry(BaseModel):
     frontend_symbol_id: str | None = None
 
 
+class ReferenceCellApparatus(BaseModel):
+    """Aparat w konfiguracji celki producenta (standard albo opcja katalogowa)."""
+
+    kind: ApparatusKind
+    requirement: Literal["standard", "optional"] = "standard"
+
+
+class ReferenceCellConfiguration(BaseModel):
+    """Konfiguracja celki (modułu/pola) rodziny rozdzielnicy z katalogu producenta.
+
+    Dane WYŁĄCZNIE z publicznych katalogów (reguła „nie fabrykuj danych
+    producenta") — każda konfiguracja niesie cytowanie źródła
+    (`source_pl` = tytuł + strona/tabela, `source_url`). Silnik zgodności
+    sprawdza dopasowanie pola związanego z rodziną do KTÓREJKOLWIEK
+    konfiguracji celki (reguła `family.cell_match`, spec §7) — brak
+    konfiguracji w pakiecie = sprawdzenie nie istnieje (bramka danych).
+    """
+
+    cell_code: str
+    name_pl: str
+    # Mapowanie na typ pola rodziny (`SwitchgearFamily.allowed_bay_kinds`),
+    # None gdy katalog nie przypisuje funkcji jednoznacznie.
+    bay_kind: str | None = None
+    apparatus: list[ReferenceCellApparatus] = Field(default_factory=list)
+    source_pl: str
+    source_url: str | None = None
+    notes_pl: str | None = None
+
+
 class ReferenceRule(BaseModel):
     """Reguła referencyjna (połączeniowa/stacyjna) jako DANA.
 
@@ -115,6 +144,9 @@ class ReferencePack(BaseModel):
     # sterowników polowych e²TANGO — spec §11).
     protection_control_refs: list[str] = Field(default_factory=list)
     field_profiles: list[ReferenceFieldProfile] = Field(default_factory=list)
+    # WYŁĄCZNIE pakiety `manufacturer` (egzekwuje registry): konfiguracje
+    # celek rodziny z publicznego katalogu producenta.
+    cell_configurations: list[ReferenceCellConfiguration] = Field(default_factory=list)
     symbol_map: list[ReferenceSymbolMapEntry] = Field(default_factory=list)
     station_rules: list[ReferenceRule] = Field(default_factory=list)
     connection_rules: list[ReferenceRule] = Field(default_factory=list)

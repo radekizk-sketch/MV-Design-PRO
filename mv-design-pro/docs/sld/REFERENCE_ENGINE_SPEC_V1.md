@@ -153,8 +153,12 @@ i przy `GET /enm/validate`. Zasady:
   blokada uziemnika (wspólny predykat z W034 — `enm/interlock_rules.py`, jedna prawda).
 - Sprawdzenia producenckie (dane rodziny Z KATALOGU): typ pola ∈ `allowed_bay_kinds`,
   aparaty ∈ `allowed_apparatus_kinds` (mapowanie kind→słownik rodziny udokumentowane w
-  `compliance.py`; TRANSFORMER_DEVICE poza celką — pomijany), napięcie szyny stacji ∈
-  `voltage_levels` rodziny (tolerancja: dokładna wartość z listy).
+  `compliance.py`; TRANSFORMER_DEVICE poza celką — pomijany), napięcie znamionowe
+  rodziny ≥ napięcie sieci (dobór rozdzielnicy), oraz — gdy pakiet niesie
+  `cell_configurations` (dane z publicznego katalogu producenta, z cytowaniem
+  strona/tabela) — dopasowanie składu pola do KTÓREJKOLWIEK konfiguracji celki
+  (`family.cell_match`: aparaty standardowe celki ⊆ pole ⊆ standard+opcje; brak
+  danych celek = sprawdzenie nie istnieje — bramka danych).
 - Sprawdzenia OSD (`station_rules`): V1 implementuje
   `osd.station.prefabricated_compact_preferred` (Zeszyt 1/2 standardu Enea Operator:
   stacja kompaktowa prefabrykowana jako rozwiązanie podstawowe dla nowych stacji SN/nN —

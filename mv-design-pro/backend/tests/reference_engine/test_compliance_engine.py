@@ -202,3 +202,74 @@ class TestDeterminism:
         first = json.dumps(evaluate_enm(enm).model_dump(mode="json"), sort_keys=True)
         second = json.dumps(evaluate_enm(enm).model_dump(mode="json"), sort_keys=True)
         assert first == second
+
+
+class TestCellMatchCompliance:
+    """`family.cell_match` (spec §7): dopasowanie pola do konfiguracji celki
+    z katalogu producenta. Dane celek są bramkowane (pusty pakiet = zero
+    sprawdzeń); test używa syntetycznego pakietu, bo realne dane celek
+    wchodzą wyłącznie po weryfikacji źródłowej (research podwykonawcy)."""
+
+    def _pack_with_cells(self):
+        from reference_engine import get_reference_pack
+        from reference_engine.models import (
+            ReferenceCellApparatus,
+            ReferenceCellConfiguration,
+        )
+
+        base = get_reference_pack("abb_safering")
+        return base.model_copy(
+            update={
+                "cell_configurations": [
+                    ReferenceCellConfiguration(
+                        cell_code="C",
+                        name_pl="Celka liniowa rozłącznikowa",
+                        bay_kind="liniowe_odplywowe",
+                        apparatus=[
+                            ReferenceCellApparatus(kind="LOAD_SWITCH"),
+                            ReferenceCellApparatus(kind="ES"),
+                            ReferenceCellApparatus(kind="CABLE_HEAD"),
+                            ReferenceCellApparatus(kind="VT", requirement="optional"),
+                        ],
+                        source_pl="test syntetyczny (dane realne po researchu)",
+                    )
+                ]
+            }
+        )
+
+    def test_matching_bay_passes_and_names_cell(self) -> None:
+        from reference_engine.compliance import _cell_match_check_for_bay
+        from reference_engine.registry import family_for_pack
+
+        pack = self._pack_with_cells()
+        family = family_for_pack(pack)
+        assert family is not None
+        checks = _cell_match_check_for_bay(_rmu_line_bay(), pack, family)
+        assert len(checks) == 1
+        assert checks[0].status == "pass"
+        assert "C" in checks[0].message_pl
+
+    def test_bay_with_apparatus_outside_cell_bites(self) -> None:
+        # NEGATYW: CB w polu, którego żadna celka kandydująca nie przewiduje.
+        from reference_engine.compliance import _cell_match_check_for_bay
+        from reference_engine.registry import family_for_pack
+
+        pack = self._pack_with_cells()
+        family = family_for_pack(pack)
+        assert family is not None
+        bay = _rmu_line_bay("bay/cb")
+        bay.primary_devices.insert(0, _device("bay/cb/q0", "CB"))
+        checks = _cell_match_check_for_bay(bay, pack, family)
+        assert len(checks) == 1
+        assert checks[0].status == "fail"
+
+    def test_pack_without_cells_is_data_gated(self) -> None:
+        # Bramka danych: realny pakiet (bez konfiguracji celek) = zero sprawdzeń.
+        from reference_engine import get_reference_pack
+        from reference_engine.compliance import _cell_match_check_for_bay
+        from reference_engine.registry import family_for_pack
+
+        pack = get_reference_pack("abb_safering")
+        family = family_for_pack(pack)
+        assert family is not None
+        assert _cell_match_check_for_bay(_rmu_line_bay(), pack, family) == []
