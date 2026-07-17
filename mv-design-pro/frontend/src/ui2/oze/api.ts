@@ -12,6 +12,8 @@
  * Warstwa PREZENTACJI: klient tylko pobiera dane, niczego nie liczy.
  */
 
+import type { NcRfgRunRequest } from '../../ui/ncrfg-tests/api';
+
 // =============================================================================
 // Siła sieci (SCR/WSCR) — analysis/grid_strength/serializer.py
 // =============================================================================
@@ -1031,4 +1033,143 @@ export function pobierzOchronaLom(caseId: string): Promise<WidokOchronyLom> {
   return getJsonZDetalem<WidokOchronyLom>(
     `/api/oze-analysis/lom-protection?case_id=${encodeURIComponent(caseId)}`,
   );
+}
+
+// =============================================================================
+// Certyfikat zgodności NC RfG — application/analyses/certyfikat_zgodnosci.py
+// =============================================================================
+
+/** Wejście końcówki certyfikatu (1:1 z `CertyfikatZgodnosciRequest`). */
+export interface ZadanieCertyfikatu {
+  readonly run_request: NcRfgRunRequest;
+  readonly nazwa_projektu: string;
+  readonly nazwa_przypadku?: string | null;
+}
+
+/** Identyfikacja projektu w certyfikacie (blok `identyfikacja`). */
+export interface IdentyfikacjaCertyfikatu {
+  readonly projekt: string;
+  readonly przypadek: string | null;
+  readonly procedura: string;
+  readonly wersja_narzedzia: string;
+}
+
+/** Werdykt zbiorczy certyfikatu (blok `werdykt_zbiorczy`). */
+export interface WerdyktZbiorczyCertyfikatu {
+  readonly status: 'zgodny' | 'niezgodny';
+  readonly etykieta_pl: string;
+  readonly liczba_modulow: number;
+  readonly modulow_zgodnych: number;
+  readonly modulow_niezgodnych: number;
+}
+
+/** Wiersz testu w certyfikacie (pozycja `moduly[].testy[]`). */
+export interface TestCertyfikatu {
+  readonly test_id: string;
+  readonly nazwa_pl: string;
+  readonly wymagany: boolean;
+  readonly werdykt: string;
+  readonly werdykt_pl: string;
+  readonly wartosci_pl: string;
+}
+
+/** Moduł wytwórczy w certyfikacie (pozycja `moduly[]`). */
+export interface ModulCertyfikatu {
+  readonly der_ref: string;
+  readonly der_name: string | null;
+  readonly operator_pl: string;
+  readonly klasa: string;
+  readonly rodzina: string;
+  readonly p_max_kw: number;
+  readonly voltage_kv: number;
+  readonly status: string;
+  readonly status_pl: string;
+  readonly podsumowanie: {
+    readonly wymagane: number;
+    readonly spelnia: number;
+    readonly nie_spelnia: number;
+  };
+  readonly testy: readonly TestCertyfikatu[];
+}
+
+/** Widok JSON certyfikatu zgodności (1:1 z `build_certyfikat_view`). */
+export interface WidokCertyfikatu {
+  readonly kontrakt: string;
+  readonly tytul: string;
+  readonly identyfikacja: IdentyfikacjaCertyfikatu;
+  readonly werdykt_zbiorczy: WerdyktZbiorczyCertyfikatu;
+  readonly moduly: readonly ModulCertyfikatu[];
+  readonly zalozenia_i_zrodla: readonly string[];
+  readonly odcisk_wejscia_sha256: string;
+  readonly odcisk_wyniku_sha256: string;
+}
+
+/**
+ * Błąd bramki kompletności (HTTP 422): certyfikat NIE powstaje, backend zwraca
+ * `detail = { komunikat, braki }` — uczciwa lista braków po polsku.
+ */
+export class CertyfikatBrakiError extends Error {
+  readonly braki: readonly string[];
+
+  constructor(komunikat: string, braki: readonly string[]) {
+    super(komunikat);
+    this.name = 'CertyfikatBrakiError';
+    this.braki = braki;
+  }
+}
+
+/**
+ * Zamień odpowiedź błędu certyfikatu na wyjątek z komunikatem PL. Rozróżnia
+ * bramkę kompletności (`detail` obiekt z listą `braki` → `CertyfikatBrakiError`)
+ * od pozostałych błędów (`detail` łańcuch → zwykły `Error`).
+ */
+async function bladCertyfikatu(response: Response): Promise<Error> {
+  let komunikat = `Zapytanie certyfikatu nie powiodło się: ${response.status} ${response.statusText}`;
+  try {
+    const body = (await response.json()) as { detail?: unknown };
+    const detail = body?.detail;
+    if (detail && typeof detail === 'object') {
+      const obiekt = detail as { komunikat?: unknown; braki?: unknown };
+      const braki = Array.isArray(obiekt.braki)
+        ? obiekt.braki.filter((p): p is string => typeof p === 'string')
+        : [];
+      const tekst = typeof obiekt.komunikat === 'string' && obiekt.komunikat.trim() ? obiekt.komunikat : komunikat;
+      if (braki.length > 0) return new CertyfikatBrakiError(tekst, braki);
+      komunikat = tekst;
+    } else if (typeof detail === 'string' && detail.trim()) {
+      komunikat = detail;
+    }
+  } catch {
+    // Brak treści JSON — pozostaje komunikat ze statusem HTTP.
+  }
+  return new Error(komunikat);
+}
+
+/**
+ * Pobierz widok JSON certyfikatu zgodności NC RfG (jawny bieg tym samym solverem
+ * co macierz). Rzuca `CertyfikatBrakiError` przy 422 (braki kompletności),
+ * zwykły `Error` z komunikatem PL przy pozostałych błędach.
+ */
+export async function pobierzCertyfikat(zadanie: ZadanieCertyfikatu): Promise<WidokCertyfikatu> {
+  const response = await fetch('/api/oze-analysis/compliance-certificate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(zadanie),
+  });
+  if (!response.ok) throw await bladCertyfikatu(response);
+  return response.json() as Promise<WidokCertyfikatu>;
+}
+
+/**
+ * Pobierz deterministyczny plik DOCX certyfikatu (blob). Obsługa błędów PL jak
+ * dla widoku JSON — w tym `CertyfikatBrakiError` przy 422 z listą braków.
+ */
+export async function pobierzCertyfikatDocx(zadanie: ZadanieCertyfikatu): Promise<Blob> {
+  const response = await fetch('/api/oze-analysis/compliance-certificate.docx', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(zadanie),
+  });
+  if (!response.ok) throw await bladCertyfikatu(response);
+  return response.blob();
 }

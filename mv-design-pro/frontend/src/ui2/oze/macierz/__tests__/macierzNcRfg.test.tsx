@@ -1,16 +1,33 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 
+import { useAppStateStore } from '../../../../ui/app-state';
 import { useStationDerStore } from '../../../../ui/network-build/station-der';
+import {
+  CertyfikatBrakiError,
+  pobierzCertyfikat,
+  pobierzCertyfikatDocx,
+} from '../../api';
 import { useNcRfgStore } from '../../ncRfgStore';
 import { MacierzNcRfg } from '../MacierzNcRfg';
 import { MACIERZ_STRINGS } from '../strings';
-import { derFixture, katalogFixture, wynikFixture } from './fixtures';
+import { certyfikatFixture, derFixture, katalogFixture, wynikFixture } from './fixtures';
 
 vi.mock('../../../../ui/ncrfg-tests/api', () => ({
   fetchNcRfgTestCatalog: vi.fn(() => Promise.resolve(katalogFixture())),
   runNcRfgPtpireeTests: vi.fn(() => Promise.resolve(wynikFixture())),
 }));
+
+// Klient certyfikatu mockowany częściowo — zachowujemy realną klasę błędu
+// `CertyfikatBrakiError` (komponent używa `instanceof`).
+vi.mock('../../api', async () => {
+  const actual = await vi.importActual<typeof import('../../api')>('../../api');
+  return {
+    ...actual,
+    pobierzCertyfikat: vi.fn(),
+    pobierzCertyfikatDocx: vi.fn(),
+  };
+});
 
 function ustawModuly(): void {
   useStationDerStore.setState({
@@ -161,5 +178,129 @@ describe('MacierzNcRfg — stan pusty', () => {
     render(<MacierzNcRfg trybZaawansowania="basic" />);
     expect(screen.getByTestId('mvd-oze-pusty')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-oze-macierz-tabela')).not.toBeInTheDocument();
+  });
+});
+
+describe('MacierzNcRfg — certyfikat zgodności (karta P39c)', () => {
+  beforeEach(() => {
+    useAppStateStore.setState({ activeProjectName: 'Sieć testowa', activeCaseName: 'Wariant bazowy' });
+  });
+  afterEach(() => {
+    useAppStateStore.setState({ activeProjectName: null, activeCaseName: null });
+  });
+
+  async function przeprowadzBieg(): Promise<void> {
+    fireEvent.click(await screen.findByTestId('mvd-oze-przeprowadz'));
+    await screen.findAllByTestId('mvd-oze-komorka-wynik');
+  }
+
+  it('przycisk certyfikatu nieaktywny przed biegiem, z tytułem wyjaśniającym PL', async () => {
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    const przycisk = await screen.findByTestId('mvd-oze-certyfikat-przycisk');
+    expect(przycisk).toBeDisabled();
+    expect(przycisk).toHaveAttribute('title', MACIERZ_STRINGS.certyfikatTytulNieaktywny);
+  });
+
+  it('po zakończonym biegu przycisk aktywny → podgląd z werdyktem zbiorczym i liczbami (fixture 1:1)', async () => {
+    vi.mocked(pobierzCertyfikat).mockResolvedValue(certyfikatFixture());
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    await przeprowadzBieg();
+
+    const przycisk = screen.getByTestId('mvd-oze-certyfikat-przycisk');
+    await waitFor(() => expect(przycisk).toBeEnabled());
+    fireEvent.click(przycisk);
+
+    const werdykt = await screen.findByTestId('mvd-oze-cert-werdykt');
+    expect(werdykt).toHaveTextContent('Projekt niezgodny z wymaganiami NC RfG');
+    const widok = screen.getByTestId('mvd-oze-cert-widok');
+    expect(within(widok).getByText('Sieć testowa')).toBeInTheDocument();
+    expect(within(widok).getByText(MACIERZ_STRINGS.certyfikatModuly)).toBeInTheDocument();
+    // 2 moduły, 4 testy razem (2 na moduł).
+    expect(within(widok).getByText('4')).toBeInTheDocument();
+  });
+
+  it('żądanie certyfikatu niesie identyfikację i wejścia z zakończonego biegu', async () => {
+    vi.mocked(pobierzCertyfikat).mockResolvedValue(certyfikatFixture());
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    await przeprowadzBieg();
+    fireEvent.click(screen.getByTestId('mvd-oze-certyfikat-przycisk'));
+
+    await screen.findByTestId('mvd-oze-cert-widok');
+    const zadanie = vi.mocked(pobierzCertyfikat).mock.calls[0][0];
+    expect(zadanie.nazwa_projektu).toBe('Sieć testowa');
+    expect(zadanie.nazwa_przypadku).toBe('Wariant bazowy');
+    expect(zadanie.run_request.modules.length).toBeGreaterThan(0);
+    expect(zadanie.run_request.procedure_version).toBe('PTPiREE Procedura testowania v3.0');
+  });
+
+  it('422 braki → uczciwy podgląd „certyfikat nie może powstać" z listą braków PL', async () => {
+    vi.mocked(pobierzCertyfikat).mockRejectedValue(
+      new CertyfikatBrakiError('Certyfikat nie może powstać — dane zgodności niekompletne.', [
+        'Moduł „Magazyn energii 1”: test FRT_LVRT — brak danych do oceny.',
+      ]),
+    );
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    await przeprowadzBieg();
+    fireEvent.click(screen.getByTestId('mvd-oze-certyfikat-przycisk'));
+
+    const braki = await screen.findByTestId('mvd-oze-cert-braki');
+    expect(within(braki).getByText(MACIERZ_STRINGS.certyfikatBrakiTytul)).toBeInTheDocument();
+    expect(
+      within(braki).getByText('Moduł „Magazyn energii 1”: test FRT_LVRT — brak danych do oceny.'),
+    ).toBeInTheDocument();
+    // Bramka kompletności — brak widoku certyfikatu.
+    expect(screen.queryByTestId('mvd-oze-cert-widok')).not.toBeInTheDocument();
+  });
+
+  it('błąd API → komunikat błędu po polsku, bez widoku certyfikatu', async () => {
+    vi.mocked(pobierzCertyfikat).mockRejectedValue(new Error('Nieznany profil operatora sieci.'));
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    await przeprowadzBieg();
+    fireEvent.click(screen.getByTestId('mvd-oze-certyfikat-przycisk'));
+
+    const blad = await screen.findByTestId('mvd-oze-cert-blad');
+    expect(blad).toHaveTextContent(MACIERZ_STRINGS.certyfikatBlad);
+    expect(blad).toHaveTextContent('Nieznany profil operatora sieci.');
+    expect(screen.queryByTestId('mvd-oze-cert-widok')).not.toBeInTheDocument();
+  });
+
+  it('pobranie DOCX → blob zapisany przez URL.createObjectURL, nazwa pliku z datą', async () => {
+    vi.mocked(pobierzCertyfikat).mockResolvedValue(certyfikatFixture());
+    const blob = new Blob(['docx'], {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+    vi.mocked(pobierzCertyfikatDocx).mockResolvedValue(blob);
+
+    // jsdom nie implementuje URL.createObjectURL — shim + spy.
+    // @ts-expect-error shim jsdom
+    if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
+    // @ts-expect-error shim jsdom
+    if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    const originalCreate = document.createElement.bind(document);
+    let nazwaPobrania = '';
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      const el = originalCreate(tag);
+      if (tag === 'a') {
+        const anchor = el as HTMLAnchorElement;
+        vi.spyOn(anchor, 'click').mockImplementation(() => {
+          nazwaPobrania = anchor.download;
+        });
+      }
+      return el;
+    });
+
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    await przeprowadzBieg();
+    fireEvent.click(screen.getByTestId('mvd-oze-certyfikat-przycisk'));
+    fireEvent.click(await screen.findByTestId('mvd-oze-cert-pobierz-docx'));
+
+    await waitFor(() => expect(pobierzCertyfikatDocx).toHaveBeenCalledTimes(1));
+    expect(createObjectURL).toHaveBeenCalledWith(blob);
+    expect(nazwaPobrania).toMatch(/^certyfikat-zgodnosci-\d{4}-\d{2}-\d{2}\.docx$/);
+
+    vi.restoreAllMocks();
   });
 });

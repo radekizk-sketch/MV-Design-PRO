@@ -75,6 +75,27 @@ export const MACIERZ_STRINGS = {
   brakMetryk: 'Brak metryk dla tego wymogu.',
   brakAkcji: 'Brak akcji naprawczych — wymóg spełniony lub niewymagany.',
 
+  // Certyfikat zgodności
+  certyfikatPrzycisk: 'Certyfikat zgodności',
+  certyfikatTytulNieaktywny:
+    'Najpierw przeprowadź testy zgodności — certyfikat powstaje wyłącznie z zakończonego biegu.',
+  certyfikatTytulAktywny: 'Zbuduj certyfikat zgodności z zakończonego biegu',
+  certyfikatNaglowek: 'Certyfikat zgodności NC RfG',
+  certyfikatProjekt: 'Projekt',
+  certyfikatPrzypadek: 'Przypadek',
+  certyfikatProcedura: 'Procedura',
+  certyfikatNarzedzie: 'Narzędzie',
+  certyfikatModuly: 'Liczba modułów',
+  certyfikatModulyZgodne: 'Modułów zgodnych',
+  certyfikatModulyNiezgodne: 'Modułów niezgodnych',
+  certyfikatTesty: 'Liczba testów w certyfikacie',
+  certyfikatPobierzDocx: 'Pobierz DOCX',
+  certyfikatBrakiTytul: 'Certyfikat nie może powstać',
+  certyfikatLadowanie: 'Buduję certyfikat…',
+  certyfikatBlad: 'Nie udało się zbudować certyfikatu zgodności',
+  certyfikatZamknij: 'Zamknij podgląd certyfikatu',
+  projektBezNazwy: 'Projekt bez nazwy',
+
   // Panel modułu
   panelTytul: 'Dane wejściowe modułu',
   panelOpis:
@@ -124,6 +145,17 @@ export const ETYKIETY_BLOKADY: Record<PowodBlokady, string> = {
   brak_napiecia: 'brak danych: napięcie przyłączenia',
   brak_mocy: 'brak danych: moc znamionowa',
 };
+
+/**
+ * Nazwa pliku DOCX certyfikatu: `certyfikat-zgodnosci-RRRR-MM-DD.docx`.
+ * Czysta (data przekazywana jako argument — bez `Date.now`).
+ */
+export function nazwaPlikuCertyfikatu(data: Date): string {
+  const rrrr = data.getFullYear().toString().padStart(4, '0');
+  const mm = (data.getMonth() + 1).toString().padStart(2, '0');
+  const dd = data.getDate().toString().padStart(2, '0');
+  return `certyfikat-zgodnosci-${rrrr}-${mm}-${dd}.docx`;
+}
 
 /** Deterministyczny format liczby z przecinkiem dziesiętnym (PL). */
 export function formatLiczba(value: number, miejsca = 2): string {

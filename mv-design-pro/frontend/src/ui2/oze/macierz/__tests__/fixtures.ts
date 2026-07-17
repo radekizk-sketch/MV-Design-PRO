@@ -4,6 +4,7 @@
  * oraz budowniczy DER (StationDerConnection) do testów adaptera i komponentu.
  */
 
+import type { WidokCertyfikatu } from '../../api';
 import type {
   NcRfgRunResult,
   NcRfgTestCatalogResponse,
@@ -203,5 +204,98 @@ export function wynikFixture(): NcRfgRunResult {
       },
     ],
     report_pl: 'Raport zgodności NC RfG.',
+  };
+}
+
+/**
+ * Widok certyfikatu zgodności — 1:1 z `build_certyfikat_view`
+ * (backend/src/application/analyses/certyfikat_zgodnosci.py). Projekt niezgodny
+ * (jeden moduł niespełniony), 2 moduły, 4 testy razem.
+ */
+export function certyfikatFixture(): WidokCertyfikatu {
+  return {
+    kontrakt: 'CertyfikatZgodnosciNcRfgV1',
+    tytul: 'Certyfikat zgodności projektu z wymaganiami NC RfG',
+    identyfikacja: {
+      projekt: 'Sieć testowa',
+      przypadek: 'Wariant bazowy',
+      procedura: 'PTPiREE Procedura testowania v3.0',
+      wersja_narzedzia: 'ncrfg-1.0.0',
+    },
+    werdykt_zbiorczy: {
+      status: 'niezgodny',
+      etykieta_pl: 'Projekt niezgodny z wymaganiami NC RfG',
+      liczba_modulow: 2,
+      modulow_zgodnych: 1,
+      modulow_niezgodnych: 1,
+    },
+    moduly: [
+      {
+        der_ref: 'pv-1',
+        der_name: 'PV Dach A',
+        operator_pl: 'Enea Operator',
+        klasa: 'PV',
+        rodzina: 'PPM',
+        p_max_kw: 500,
+        voltage_kv: 0.4,
+        status: 'zgodny',
+        status_pl: 'Zgodny',
+        podsumowanie: { wymagane: 2, spelnia: 2, nie_spelnia: 0 },
+        testy: [
+          {
+            test_id: 'FREQ_P_F',
+            nazwa_pl: 'Regulacja mocy czynnej od częstotliwości P(f)',
+            wymagany: true,
+            werdykt: 'pass',
+            werdykt_pl: 'spełnia',
+            wartosci_pl: 'Droop 5% i martwa strefa 0,2 Hz spełniają wymóg.',
+          },
+          {
+            test_id: 'FRT_LVRT',
+            nazwa_pl: 'Zdolność przetrwania zapadu napięcia (LVRT)',
+            wymagany: true,
+            werdykt: 'pass',
+            werdykt_pl: 'spełnia',
+            wartosci_pl: 'Krzywa LVRT obecna i zgodna z obwiednią operatora.',
+          },
+        ],
+      },
+      {
+        der_ref: 'bess-1',
+        der_name: 'Magazyn energii 1',
+        operator_pl: 'Enea Operator',
+        klasa: 'BESS',
+        rodzina: 'PPM',
+        p_max_kw: 800,
+        voltage_kv: 0.4,
+        status: 'niezgodny',
+        status_pl: 'Niezgodny',
+        podsumowanie: { wymagane: 2, spelnia: 1, nie_spelnia: 1 },
+        testy: [
+          {
+            test_id: 'FREQ_P_F',
+            nazwa_pl: 'Regulacja mocy czynnej od częstotliwości P(f)',
+            wymagany: true,
+            werdykt: 'pass',
+            werdykt_pl: 'spełnia',
+            wartosci_pl: 'Regulacja P(f) skonfigurowana poprawnie.',
+          },
+          {
+            test_id: 'FRT_LVRT',
+            nazwa_pl: 'Zdolność przetrwania zapadu napięcia (LVRT)',
+            wymagany: true,
+            werdykt: 'fail',
+            werdykt_pl: 'nie spełnia',
+            wartosci_pl: 'Brak krzywej LVRT — moduł nie spełnia wymogu.',
+          },
+        ],
+      },
+    ],
+    zalozenia_i_zrodla: [
+      'Certyfikat zestawia gotowe werdykty z macierzy zgodności NC RfG — nie przelicza testów.',
+      'Procedura testowania: PTPiREE Procedura testowania v3.0.',
+    ],
+    odcisk_wejscia_sha256: 'in-abc',
+    odcisk_wyniku_sha256: 'det-9f8e7d6c',
   };
 }

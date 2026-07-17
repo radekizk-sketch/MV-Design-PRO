@@ -15,9 +15,17 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
+import { useAppStateStore } from '../../../ui/app-state';
 import { type NcRfgVerdict } from '../../../ui/ncrfg-tests/api';
 import { selectAllDers, useStationDerStore } from '../../../ui/network-build/station-der';
 import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
+import {
+  CertyfikatBrakiError,
+  pobierzCertyfikat,
+  pobierzCertyfikatDocx,
+  type WidokCertyfikatu,
+  type ZadanieCertyfikatu,
+} from '../api';
 import { useNcRfgStore } from '../ncRfgStore';
 import { PanelModulu } from './PanelModulu';
 import { SzczegolWerdyktu } from './SzczegolWerdyktu';
@@ -42,6 +50,7 @@ import {
   MACIERZ_STRINGS,
   formatMoc,
   formatNapiecie,
+  nazwaPlikuCertyfikatu,
 } from './strings';
 
 import './macierz.css';
@@ -53,6 +62,24 @@ interface EdycjaModulu {
 }
 
 const LEGENDA: readonly NcRfgVerdict[] = ['pass', 'fail', 'no_data', 'not_required'];
+
+/** Braki kompletności certyfikatu (bramka 422 — uczciwa lista po polsku). */
+interface BrakiCertyfikatu {
+  readonly komunikat: string;
+  readonly braki: readonly string[];
+}
+
+/** Zapisz blob jako plik do pobrania (mechanika przeglądarkowa). */
+function zapiszBlob(blob: Blob, nazwa: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nazwa;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 export interface MacierzNcRfgProps {
   /** Tryb zaawansowania — odcisk deterministyczny widoczny w trybie eksperckim. */
@@ -70,11 +97,22 @@ export function MacierzNcRfg({ trybZaawansowania }: MacierzNcRfgProps): JSX.Elem
   const status = useNcRfgStore((s) => s.status);
   const wynik = useNcRfgStore((s) => s.wynik);
   const bladBiegu = useNcRfgStore((s) => s.bladBiegu);
+  const ostatnieWejscia = useNcRfgStore((s) => s.ostatnieWejscia);
   const zaladujKatalog = useNcRfgStore((s) => s.zaladujKatalog);
   const ustawOperator = useNcRfgStore((s) => s.ustawOperator);
   const przeprowadzTesty = useNcRfgStore((s) => s.przeprowadzTesty);
 
+  // Identyfikacja projektu/przypadku do certyfikatu (read-only ze store'u aplikacji).
+  const nazwaProjektu = useAppStateStore((s) => s.activeProjectName);
+  const nazwaPrzypadku = useAppStateStore((s) => s.activeCaseName);
+
   const [edycje, setEdycje] = useState<Record<string, EdycjaModulu>>({});
+  // Stan podglądu certyfikatu zgodności (widok, braki 422 lub błąd — rozłącznie).
+  const [certyfikat, setCertyfikat] = useState<WidokCertyfikatu | null>(null);
+  const [certBraki, setCertBraki] = useState<BrakiCertyfikatu | null>(null);
+  const [certBlad, setCertBlad] = useState<string | null>(null);
+  const [certLadowanie, setCertLadowanie] = useState(false);
+  const [docxLadowanie, setDocxLadowanie] = useState(false);
   const [wybranaKomorka, setWybranaKomorka] = useState<{ derRef: string; testId: string } | null>(
     null,
   );
@@ -170,6 +208,71 @@ export function MacierzNcRfg({ trybZaawansowania }: MacierzNcRfgProps): JSX.Elem
     await przeprowadzTesty(wejscia, katalog?.procedure_version);
   };
 
+  // Certyfikat dostępny wyłącznie z zakończonego biegu (zero martwych klików).
+  const certyfikatDostepny =
+    status === 'ready' && wynik !== null && ostatnieWejscia !== null && ostatnieWejscia.length > 0;
+
+  const liczbaTestowCertyfikatu = certyfikat
+    ? certyfikat.moduly.reduce((suma, modul) => suma + modul.testy.length, 0)
+    : 0;
+
+  // Żądanie 1:1 z danymi, które wyprodukowały wynik (`ostatnieWejscia`).
+  const zbudujZadanieCertyfikatu = (): ZadanieCertyfikatu | null => {
+    if (!wynik || !ostatnieWejscia || ostatnieWejscia.length === 0) return null;
+    return {
+      run_request: { modules: ostatnieWejscia, procedure_version: wynik.procedure_version },
+      nazwa_projektu: nazwaProjektu?.trim() ? nazwaProjektu : MACIERZ_STRINGS.projektBezNazwy,
+      nazwa_przypadku: nazwaPrzypadku ?? null,
+    };
+  };
+
+  const obsluzBladCertyfikatu = (err: unknown): void => {
+    if (err instanceof CertyfikatBrakiError) {
+      setCertyfikat(null);
+      setCertBlad(null);
+      setCertBraki({ komunikat: err.message, braki: err.braki });
+    } else {
+      setCertBraki(null);
+      setCertBlad(err instanceof Error ? err.message : MACIERZ_STRINGS.certyfikatBlad);
+    }
+  };
+
+  const generujCertyfikat = async (): Promise<void> => {
+    const zadanie = zbudujZadanieCertyfikatu();
+    if (!zadanie) return;
+    setCertLadowanie(true);
+    setCertBlad(null);
+    setCertBraki(null);
+    try {
+      setCertyfikat(await pobierzCertyfikat(zadanie));
+    } catch (err) {
+      obsluzBladCertyfikatu(err);
+    } finally {
+      setCertLadowanie(false);
+    }
+  };
+
+  const pobierzDocx = async (): Promise<void> => {
+    const zadanie = zbudujZadanieCertyfikatu();
+    if (!zadanie) return;
+    setDocxLadowanie(true);
+    setCertBlad(null);
+    try {
+      const blob = await pobierzCertyfikatDocx(zadanie);
+      zapiszBlob(blob, nazwaPlikuCertyfikatu(new Date()));
+    } catch (err) {
+      obsluzBladCertyfikatu(err);
+    } finally {
+      setDocxLadowanie(false);
+    }
+  };
+
+  const zamknijCertyfikat = (): void => {
+    setCertyfikat(null);
+    setCertBraki(null);
+    setCertBlad(null);
+  };
+
   const komorkaSzczegolu: KomorkaMacierzy | null = wybranaKomorka
     ? (wiersze
         .find((w) => w.test.test_id === wybranaKomorka.testId)
@@ -222,6 +325,20 @@ export function MacierzNcRfg({ trybZaawansowania }: MacierzNcRfgProps): JSX.Elem
           >
             {status === 'running' ? MACIERZ_STRINGS.wTrakcie : MACIERZ_STRINGS.przeprowadz}
           </button>
+          <button
+            type="button"
+            className="mvd-btn"
+            onClick={() => void generujCertyfikat()}
+            disabled={!certyfikatDostepny || certLadowanie}
+            title={
+              certyfikatDostepny
+                ? MACIERZ_STRINGS.certyfikatTytulAktywny
+                : MACIERZ_STRINGS.certyfikatTytulNieaktywny
+            }
+            data-testid="mvd-oze-certyfikat-przycisk"
+          >
+            {MACIERZ_STRINGS.certyfikatPrzycisk}
+          </button>
           {trybEkspercki && wynik ? (
             <div className="mvd-oze-odcisk" data-testid="mvd-oze-odcisk">
               {MACIERZ_STRINGS.odcisk}: {wynik.deterministic_hash}
@@ -239,6 +356,104 @@ export function MacierzNcRfg({ trybZaawansowania }: MacierzNcRfgProps): JSX.Elem
         <div className="mvd-oze-blad" data-testid="mvd-oze-blad-biegu">
           {MACIERZ_STRINGS.bladBiegu}: {bladBiegu}
         </div>
+      ) : null}
+
+      {certyfikat || certBraki || certBlad || certLadowanie ? (
+        <section className="mvd-oze-cert" data-testid="mvd-oze-certyfikat">
+          <div className="mvd-oze-cert-head">
+            <h4 className="mvd-oze-cert-tytul">{MACIERZ_STRINGS.certyfikatNaglowek}</h4>
+            <button
+              type="button"
+              className="mvd-btn"
+              onClick={zamknijCertyfikat}
+              data-testid="mvd-oze-cert-zamknij"
+            >
+              {MACIERZ_STRINGS.certyfikatZamknij}
+            </button>
+          </div>
+
+          {certLadowanie ? (
+            <p data-testid="mvd-oze-cert-ladowanie">{MACIERZ_STRINGS.certyfikatLadowanie}</p>
+          ) : null}
+
+          {certBlad ? (
+            <div className="mvd-oze-blad" data-testid="mvd-oze-cert-blad">
+              {MACIERZ_STRINGS.certyfikatBlad}: {certBlad}
+            </div>
+          ) : null}
+
+          {certBraki ? (
+            <div className="mvd-oze-cert-braki" data-testid="mvd-oze-cert-braki">
+              <h5>{MACIERZ_STRINGS.certyfikatBrakiTytul}</h5>
+              <p>{certBraki.komunikat}</p>
+              <ul>
+                {certBraki.braki.map((brak, indeks) => (
+                  <li key={indeks}>{brak}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {certyfikat ? (
+            <div className="mvd-oze-cert-widok" data-testid="mvd-oze-cert-widok">
+              <div
+                className={`mvd-oze-cert-werdykt ${
+                  certyfikat.werdykt_zbiorczy.status === 'zgodny'
+                    ? 'mvd-oze-werdykt-ok'
+                    : 'mvd-oze-werdykt-err'
+                }`}
+                data-testid="mvd-oze-cert-werdykt"
+              >
+                {certyfikat.werdykt_zbiorczy.etykieta_pl}
+              </div>
+              <dl className="mvd-oze-cert-meta">
+                <div>
+                  <dt>{MACIERZ_STRINGS.certyfikatProjekt}</dt>
+                  <dd>{certyfikat.identyfikacja.projekt}</dd>
+                </div>
+                {certyfikat.identyfikacja.przypadek ? (
+                  <div>
+                    <dt>{MACIERZ_STRINGS.certyfikatPrzypadek}</dt>
+                    <dd>{certyfikat.identyfikacja.przypadek}</dd>
+                  </div>
+                ) : null}
+                <div>
+                  <dt>{MACIERZ_STRINGS.certyfikatProcedura}</dt>
+                  <dd>{certyfikat.identyfikacja.procedura}</dd>
+                </div>
+                <div>
+                  <dt>{MACIERZ_STRINGS.certyfikatNarzedzie}</dt>
+                  <dd>{certyfikat.identyfikacja.wersja_narzedzia}</dd>
+                </div>
+                <div>
+                  <dt>{MACIERZ_STRINGS.certyfikatModuly}</dt>
+                  <dd className="mvd-oze-num">{certyfikat.werdykt_zbiorczy.liczba_modulow}</dd>
+                </div>
+                <div>
+                  <dt>{MACIERZ_STRINGS.certyfikatModulyZgodne}</dt>
+                  <dd className="mvd-oze-num">{certyfikat.werdykt_zbiorczy.modulow_zgodnych}</dd>
+                </div>
+                <div>
+                  <dt>{MACIERZ_STRINGS.certyfikatModulyNiezgodne}</dt>
+                  <dd className="mvd-oze-num">{certyfikat.werdykt_zbiorczy.modulow_niezgodnych}</dd>
+                </div>
+                <div>
+                  <dt>{MACIERZ_STRINGS.certyfikatTesty}</dt>
+                  <dd className="mvd-oze-num">{liczbaTestowCertyfikatu}</dd>
+                </div>
+              </dl>
+              <button
+                type="button"
+                className="mvd-btn mvd-btn-glowny"
+                onClick={() => void pobierzDocx()}
+                disabled={docxLadowanie}
+                data-testid="mvd-oze-cert-pobierz-docx"
+              >
+                {MACIERZ_STRINGS.certyfikatPobierzDocx}
+              </button>
+            </div>
+          ) : null}
+        </section>
       ) : null}
 
       {opisy.length === 0 ? (

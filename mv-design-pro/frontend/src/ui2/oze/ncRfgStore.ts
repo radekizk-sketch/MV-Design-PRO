@@ -36,6 +36,11 @@ export interface NcRfgStoreState {
   /** Wynik ostatniego biegu (źródło werdyktów). */
   readonly wynik: NcRfgRunResult | null;
   readonly bladBiegu: string | null;
+  /**
+   * Wejścia modułów użyte do ostatniego zakończonego biegu — źródło żądania
+   * certyfikatu zgodności (1:1 z danymi, które wyprodukowały `wynik`).
+   */
+  readonly ostatnieWejscia: readonly NcRfgModuleInput[] | null;
 
   /** Pobiera katalog wymogów (idempotentnie — pomija, gdy już wczytany). */
   zaladujKatalog: () => Promise<void>;
@@ -57,6 +62,7 @@ const STAN_POCZATKOWY = {
   status: 'idle' as StatusBieguNcRfg,
   wynik: null,
   bladBiegu: null,
+  ostatnieWejscia: null,
 };
 
 export const useNcRfgStore = create<NcRfgStoreState>((set, get) => ({
@@ -86,7 +92,7 @@ export const useNcRfgStore = create<NcRfgStoreState>((set, get) => ({
         modules,
         procedure_version: procedureVersion,
       });
-      set({ wynik: payload, status: 'ready' });
+      set({ wynik: payload, status: 'ready', ostatnieWejscia: modules });
     } catch (err) {
       set({
         bladBiegu: err instanceof Error ? err.message : MACIERZ_STRINGS.bladBiegu,
