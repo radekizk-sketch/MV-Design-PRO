@@ -405,6 +405,13 @@ Progress:
         python bez networkx to fałszywy FAIL). Konfirmacja pełnym pytest
         w tle. UWAGA: worktree wykonawców mogą mieć świeży pusty venv
         poetry — bramki uruchamiać venv drzewa głównego (D2vgvUMQ).
+        POTWIERDZENIE #18 (2026-07-17): pełny pytest 5986 passed, 0 failed
+        (605 s) — nowa baza backendu 5986. Pierwsza próba konfirmacji padła
+        na PEŁNYM DYSKU (100%) — sprzątnięto ~28 GB (worktree poprzednich
+        fal + osierocone venv poetry); procedura: przy niepowodzeniu tła
+        najpierw `df -h`. Okna frontendowe P43/P46/P37 delegowane (karta
+        U4_P43_P46_P37_OKNA); monitoring żywotności wykonawcy co 10 min
+        (dyspozycja właściciela).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
