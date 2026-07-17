@@ -30,6 +30,36 @@ ProjectDashboard (projekt), CatalogHelper (katalog), OperationForm (model),
 AuditTrail (dokumentacja), NopSurface/BranchSurface/BranchPoleSurface (model),
 SLD-zależne (wątek SLD).
 
+**Aktualizacja klasyfikacji Grupy B (W3, 2026-07-17 — rekonesans kodu):**
+Rozdzielenie cienkich paneli kontraktu (`AnalysisContractPanel`) od pełnych
+powierzchni z własnymi danymi/akcjami wykazało:
+- **PhaseStateSurface** (E-… `WorkspaceSurfaceRouter.tsx:1924`) i
+  **DynamicStabilitySurface** (:1950) — CIENKIE panele kontraktu (jedyne dane:
+  `useAnalysisRunContract`; brak własnych akcji). POKRYTE 1:1 w oknie „Kontrakt
+  analizy" ui2 (grupa „Stany i warianty", fala W3). Trasy legacy do fali W5.
+- **ZksnSurface** — RE-KLASYFIKACJA do **Grupy C** (model, NIE wyniki). Opis
+  „ziemnozwarciowe SN" był błędny: E-14 to konfigurator „Złącze kablowe SN"
+  (`InfrastructureSurfaces.tsx:165`) mutujący model przez `openOperationForm`
+  (`continue_trunk_segment_sn`, `start_branch_segment_sn`) — jak SnSegment/
+  BranchPole/Branch. Poza epiką wyników.
+- **V126AcademicSurface** (E-40…E-50) — PEŁNA powierzchnia (własne `fetch`
+  `/api/cases/{id}/runs/v126/{analysis}`: run/result/proof/report, akcja
+  „Uruchom analizę", 12 typów akademickich). Brak odpowiednika ui2; NIE cienki
+  panel — parytet kontraktowy niemożliwy. Decyzja W4: zostawić w moście
+  (ekspert/akademicki) do decyzji właściciela lub osobna przestrzeń akademicka.
+- **FwSurface/BessSurface/PvSourceSurface (DerSurface)** (E-23/E-22/E-21) —
+  PEŁNE konfiguratory instalacji OZE (`DerSurfaces.tsx`): dane z
+  `useStationDerStore`+katalog, akcje `attachDer`/`updateDerCatalogs`/
+  `updateDerReadiness` (mutacja modelu). Konfiguracja = Grupa C (model/OZE).
+  Prezentacja wynikowa/zgodności modułów pokryta pulpitem OZE ui2
+  (`ui2/oze/pulpit/PulpitOze.tsx`, read-only klasa+status NC RfG). Rekomendacja:
+  zostawić most jako konfigurator; nie migrować w tej epice wyników.
+Wniosek: po W3 wszystkie CIENKIE panele kontraktu Grupy B są pokryte oknem
+„Kontrakt analizy" ui2 (W1: Symmetrical/ThermalDynamic/Convergence; W2:
+SourceContributions; W3: PhaseState/DynamicStability). Pozostałe pozycje
+Grupy B to powierzchnie PEŁNE (V126Academic) albo model (Zksn/OZE) — nie
+podlegają parytetowi kontraktowemu.
+
 ## 3. Fale wygaszania (każda = karta z bramkami; kolejność wg wartości)
 - **W1**: ThermalDynamicSurface + SymmetricalComponentsSurface → okna ui2
   (wzorzec EkranAnalizy/TabelaWynikow; dane z istniejących końcówek wyników).
@@ -68,3 +98,21 @@ Zasada: żadna trasa nie znika, dopóki okno ui2 nie pokrywa funkcji 1:1
   (`WorkspaceSurfaceRouter.tsx:2513-2531`) dodano dwa wiersze grupy
   ogólnej: „Rodzaj przypadku" (caseKind) i „Projekt" (lineage.project_ref)
   + test. Pokrycie W2: 1:1; trasy legacy zostają do W5.
+- **W3** (2026-07-17, commit lokalny `feat(ui2): parytet pozostałych paneli
+  kontraktu analizy (W3)`): (1) parytet ostatnich cienkich paneli mostu —
+  PhaseStateSurface (`WorkspaceSurfaceRouter.tsx:1924`) i DynamicStabilitySurface
+  (:1950). Nowa grupa „Stany i warianty" w sekcji „Kontrakt analizy"
+  (`ui2/spaces/obliczenia/przebiegi/SzczegolyPrzebiegu.tsx`) z czterema wierszami
+  nieobecnymi w W1/W2: „Identyfikator przypadku" (caseRef), „Brama jakości"
+  (qualityGate), „Kompletność zgodności przejściowej" (completenessLegacy),
+  „Scenariusz zakłócenia" (assumptions.fault_scenario_ref). Pozostałe pola tych
+  paneli (rodzaj przypadku, wersja układu, stan łączników, założenia źródeł,
+  zakres stosowalności) już pokryte grupami ogólną/zwarciową — bez duplikatów.
+  Hook `useAnalysisRunContract` i `formatContractValue` reużyte BEZ ZMIAN (zero
+  importu komponentów mostu, zero fizyki, etykiety PL 1:1 z mostem, brak →
+  „Do konfiguracji"). Testy Vitest przez realny `formatContractValue`: +6
+  (łącznie 24 w pliku panelu); pełny bieg 8663 passed / 0 failed (baza 8657).
+  (2) Klasyfikacja pełnych powierzchni — patrz §2 „Aktualizacja klasyfikacji
+  Grupy B (W3)": ZksnSurface → Grupa C (model, re-klasyfikacja), V126Academic →
+  pełna (decyzja W4), Fw/Bess/Der → konfiguratory OZE (Grupa C; wyniki w pulpicie
+  OZE). Pokrycie cienkich paneli W3: 1:1; trasy legacy zostają do W5.

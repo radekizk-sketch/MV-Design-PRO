@@ -64,6 +64,9 @@ export const PRZEBIEGI_STRINGS = {
   grupaOgolne: 'Kontekst ogólny',
   grupaRozplyw: 'Założenia rozpływu i zbieżności',
   grupaZwarcie: 'Założenia zwarciowo-sieciowe',
+  // Fala W3: grupa dla cienkich paneli stanu fazowego SN i stabilności
+  // dynamicznej (most: PhaseStateSurface, DynamicStabilitySurface).
+  grupaStanyWarianty: 'Stany i warianty',
   etykietaTypAnalizy: 'Typ analizy',
   etykietaWaznoscWyniku: 'Ważność wyniku',
   etykietaWersjaUkladu: 'Wersja układu',
@@ -77,6 +80,11 @@ export const PRZEBIEGI_STRINGS = {
   etykietaTemperatura: 'Temperatura',
   etykietaZalozeniaObciazen: 'Założenia obciążeń',
   etykietaZalozeniaZrodel: 'Założenia źródeł',
+  // Fala W3: wiersze paneli stanu fazowego SN i stabilności dynamicznej.
+  etykietaIdentyfikatorPrzypadku: 'Identyfikator przypadku',
+  etykietaBramaJakosci: 'Brama jakości',
+  etykietaKompletnoscPrzejsciowa: 'Kompletność zgodności przejściowej',
+  etykietaScenariuszZaklocenia: 'Scenariusz zakłócenia',
 
   // Akcja „Pokaż wyniki"
   przyciskPokazWyniki: 'Pokaż wyniki',

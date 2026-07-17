@@ -95,7 +95,8 @@ function GrupaKontraktu({
 /*
  * Sekcja „Kontrakt analizy" — odwzorowanie treści cienkich paneli mostu
  * (`AnalysisContractPanel`: SymmetricalComponents/ThermalDynamic/Convergence,
- * `ui/workspace/WorkspaceSurfaceRouter.tsx:2396-2575`) w powłoce ui2. Reużywa
+ * `ui/workspace/WorkspaceSurfaceRouter.tsx:2396-2575`; fala W3: PhaseState
+ * `:1924` i DynamicStability `:1950` → grupa „Stany i warianty") w powłoce ui2. Reużywa
  * BEZ ZMIAN hook read-only `useAnalysisRunContract` i formatery kontraktu
  * (`ui/workspace/analysisRunContract.ts`) — zero importu komponentów mostu, zero
  * fizyki. Wartości brakujące → „Do konfiguracji" (semantyka `formatContractValue`
@@ -206,6 +207,34 @@ function SekcjaKontraktAnalizy({
               {
                 etykieta: T.etykietaZalozeniaZrodel,
                 wartosc: formatContractValue(zalozenia['source_assumptions_ref']),
+              },
+            ]}
+          />
+          {/* Fala W3: parytet cienkich paneli mostu PhaseStateSurface
+              (`WorkspaceSurfaceRouter.tsx:1924`) i DynamicStabilitySurface
+              (:1950). Wiersze specyficzne dla stanu fazowego SN i stabilności
+              dynamicznej — pozostałe pola tych paneli (rodzaj przypadku, wersja
+              układu, stan łączników, założenia źródeł, zakres stosowalności) już
+              pokryte grupami ogólną/zwarciową. */}
+          <GrupaKontraktu
+            tytul={T.grupaStanyWarianty}
+            testid="mvd-przebieg-kontrakt-stany"
+            wiersze={[
+              {
+                etykieta: T.etykietaIdentyfikatorPrzypadku,
+                wartosc: formatContractValue(kontekst?.caseRef),
+              },
+              {
+                etykieta: T.etykietaBramaJakosci,
+                wartosc: formatContractValue(kontekst?.qualityGate),
+              },
+              {
+                etykieta: T.etykietaKompletnoscPrzejsciowa,
+                wartosc: formatContractValue(kontekst?.completenessLegacy),
+              },
+              {
+                etykieta: T.etykietaScenariuszZaklocenia,
+                wartosc: formatContractValue(zalozenia['fault_scenario_ref']),
               },
             ]}
           />

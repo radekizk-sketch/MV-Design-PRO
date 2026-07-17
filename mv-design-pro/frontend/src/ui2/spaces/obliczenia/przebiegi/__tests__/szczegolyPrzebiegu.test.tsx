@@ -203,3 +203,50 @@ describe('SzczegolyPrzebiegu — sekcja „Kontrakt analizy" (migracja W1 paneli
     expect(screen.getByTestId('mvd-przebieg-kontrakt')).toHaveAttribute('open');
   });
 });
+
+describe('SzczegolyPrzebiegu — grupa „Stany i warianty" (parytet paneli stanu fazowego i stabilności, W3)', () => {
+  it('renderuje grupę „Stany i warianty" z etykietami stanu fazowego i stabilności', () => {
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    const grupa = screen.getByTestId('mvd-przebieg-kontrakt-stany');
+    expect(within(grupa).getByText(T.grupaStanyWarianty)).toBeInTheDocument();
+    expect(within(grupa).getByText(T.etykietaIdentyfikatorPrzypadku)).toBeInTheDocument();
+    expect(within(grupa).getByText(T.etykietaBramaJakosci)).toBeInTheDocument();
+    expect(within(grupa).getByText(T.etykietaKompletnoscPrzejsciowa)).toBeInTheDocument();
+    expect(within(grupa).getByText(T.etykietaScenariuszZaklocenia)).toBeInTheDocument();
+  });
+
+  it('Identyfikator przypadku: wartość przez realny formater mostu (caseRef, parytet z panelem stanu fazowego)', () => {
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    const grupa = screen.getByTestId('mvd-przebieg-kontrakt-stany');
+    expect(within(grupa).getByText(formatContractValue('case-1'))).toBeInTheDocument();
+  });
+
+  it('Brama jakości: wartość przez realny formater mostu (qualityGate)', () => {
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    const grupa = screen.getByTestId('mvd-przebieg-kontrakt-stany');
+    expect(within(grupa).getByText(formatContractValue('passed'))).toBeInTheDocument();
+  });
+
+  it('Kompletność zgodności przejściowej: wartość przez realny formater mostu (completenessLegacy)', () => {
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    const grupa = screen.getByTestId('mvd-przebieg-kontrakt-stany');
+    expect(within(grupa).getByText(formatContractValue('ok'))).toBeInTheDocument();
+  });
+
+  it('Scenariusz zakłócenia: wartość przez realny formater mostu (parytet z panelem stabilności dynamicznej)', () => {
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    const grupa = screen.getByTestId('mvd-przebieg-kontrakt-stany');
+    expect(within(grupa).getByText(formatContractValue('sc_3f'))).toBeInTheDocument();
+  });
+
+  it('brak kontekstu kontraktu → wszystkie wiersze grupy „Stany i warianty" → „Do konfiguracji"', () => {
+    mockKontrakt.mockReturnValue({
+      data: kontraktFixture({ analysisCaseContext: null }),
+      isLoading: false,
+      error: null,
+    });
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    const grupa = screen.getByTestId('mvd-przebieg-kontrakt-stany');
+    expect(within(grupa).getAllByText('Do konfiguracji')).toHaveLength(4);
+  });
+});
