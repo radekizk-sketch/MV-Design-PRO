@@ -446,6 +446,11 @@ Progress:
         Konfirmacja pełnym vitest w tle. WNIOSEK PROCEDURALNY: wykonawcy
         mają uruchamiać pełne suity Z PRZEKIEROWANIEM DO PLIKU (np.
         `npm test > pelny_vitest.log 2>&1`), nie na goły potok.
+        POTWIERDZENIE #21 (2026-07-17): pełny vitest 8536 passed, 0 failed
+        (530 s) — nowa baza frontendu 8536. FALA 3 KOMPLETNA: P43/P46/P37/
+        P45 (backend + okna); P42 wstrzymane (V12K-027), P44 czeka na P27.
+        Następny krok: konsolidacja rejestru TODO-KART (drobne delty
+        backend + frontend dwiema kartami).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
