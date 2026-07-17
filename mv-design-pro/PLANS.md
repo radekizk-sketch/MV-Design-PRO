@@ -599,6 +599,14 @@ Progress:
         POTWIERDZENIE #33 (2026-07-17): pełny vitest 8647 passed, 0 failed
         — BAZY: backend 6112, frontend 8647. Karta W1 (kontrakt analizy
         w panelu przebiegów — fala W1 wygaszania mostu) delegowana.
+        SCALENIE #34 (2026-07-17): W1 kontrakt analizy w panelu przebiegów
+        (aa33b73 → cherry-pick) — trzy grupy kontraktu (parytet 1:1
+        z panelami mostu E-29/E-34/zbieżność przez REUŻYCIE hooka
+        i formaterów analysisRunContract.ts, zero importu komponentów
+        mostu); rejestr W1 w PLAN_WYGASZANIA_MOSTU_WYNIKI.md wypełniony.
+        Wykonawca: pełny vitest 8656 pass, 0 failed (+9). Zarządca:
+        90 celowanych + type-check + lint + 4 guardy OK, push.
+        Konfirmacja w tle.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
