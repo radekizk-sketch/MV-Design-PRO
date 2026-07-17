@@ -38,6 +38,7 @@ import {
 import { FILTRY_PUSTE, czyFiltrPusty, filtrujProblemy, type FiltryGotowosci } from './filtry';
 import { useProblemyGotowosci, useStanGotowosci } from './adapters/gotowoscAdapter';
 import { SekcjaCelu } from './SekcjaCelu';
+import { SekcjaZgodnosciReferencyjnej } from './SekcjaZgodnosciReferencyjnej';
 import { GOTOWOSC_STRINGS } from './strings';
 import { ETYKIETA_CELU } from './grupowanieCelow';
 
@@ -164,6 +165,8 @@ export function PanelGotowosci({
           </div>
         </>
       )}
+
+      <SekcjaZgodnosciReferencyjnej />
     </div>
   );
 }

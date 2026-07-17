@@ -261,3 +261,115 @@
   margin: 0;
   font-size: 13px;
 }
+
+/* ---- sekcja „Ocena zgodności referencyjnej" (Reference Engine V1) ---- */
+.mvd-ref-sekcja {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  overflow: hidden;
+}
+.mvd-ref-tresc {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px 10px;
+}
+.mvd-ref-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-ref-stan {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12.5px;
+}
+.mvd-ref-stan-blad {
+  color: var(--mvd-err);
+}
+.mvd-ref-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.mvd-ref-tabela th {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--mvd-line);
+  color: var(--mvd-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.mvd-ref-tabela td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--mvd-line);
+  vertical-align: top;
+}
+.mvd-ref-num {
+  text-align: right;
+}
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.mvd-muted {
+  color: var(--mvd-muted);
+}
+.mvd-ref-rozwin {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--mvd-ink);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.mvd-ref-score {
+  font-weight: 600;
+}
+.mvd-ref-score-ok {
+  color: var(--mvd-ok);
+}
+.mvd-ref-score-warn {
+  color: var(--mvd-warn);
+}
+.mvd-ref-score-err {
+  color: var(--mvd-err);
+}
+.mvd-ref-score-nd {
+  color: var(--mvd-muted);
+}
+.mvd-ref-checks-cell {
+  background: var(--mvd-panel-2);
+}
+.mvd-ref-checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mvd-ref-check {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+}
+.mvd-ref-check-ok {
+  color: var(--mvd-ok);
+}
+.mvd-ref-check-err {
+  color: var(--mvd-err);
+}
+.mvd-ref-check-el {
+  color: var(--mvd-muted);
+}
+.mvd-ref-check-msg {
+  color: var(--mvd-ink);
+}

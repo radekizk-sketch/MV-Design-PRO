@@ -111,6 +111,7 @@ export type WagaProblemu = 'BLOKADA' | 'OSTRZEZENIE';
 /** Cel inżyniera, do którego dany brak jest przypisany (patrz mapowanie wyżej). */
 export type CelGotowosci =
   | 'stacje'
+  | 'zgodnoscReferencyjna'
   | 'wspolne'
   | 'zwarcia'
   | 'rozplyw'
@@ -121,6 +122,7 @@ export type CelGotowosci =
 /** Kolejność wyświetlania sekcji celów — kolejność pracy inżyniera (N2→N7). */
 export const KOLEJNOSC_CELOW: readonly CelGotowosci[] = [
   'stacje',
+  'zgodnoscReferencyjna',
   'wspolne',
   'zwarcia',
   'rozplyw',
@@ -132,6 +134,7 @@ export const KOLEJNOSC_CELOW: readonly CelGotowosci[] = [
 /** Etykieta PL celu (strings.ts — jedno źródło tekstu). */
 export const ETYKIETA_CELU: Record<CelGotowosci, string> = {
   stacje: GOTOWOSC_STRINGS.celStacje,
+  zgodnoscReferencyjna: GOTOWOSC_STRINGS.celZgodnoscReferencyjna,
   wspolne: GOTOWOSC_STRINGS.celWspolne,
   zwarcia: GOTOWOSC_STRINGS.celZwarcia,
   rozplyw: GOTOWOSC_STRINGS.celRozplyw,
@@ -228,6 +231,23 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'analysis.blocked_by_readiness': 'wspolne',
 };
 
+/**
+ * Kody zgodności referencyjnej (Reference Engine V1). Źródło kontraktu:
+ * `docs/sld/REFERENCE_ENGINE_UI_HANDOFF_2026-07.md` §1.2 — walidator ENM emituje
+ * te kody severity IMPORTANT z `fix_action.modal_type="BayModal"`. Warstwa UI
+ * NIE liczy tych reguł (HANDOFF §4) — wyłącznie grupuje istniejący wynik
+ * walidatora w odrębny cel „Zgodność referencyjna" (HANDOFF pkt 2.2). Prefiks
+ * `reference` (niżej) obejmuje ewentualne nowe kody tej samej rodziny.
+ */
+const KOD_REFERENCJI_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
+  'reference.bays.missing_required_apparatus': 'zgodnoscReferencyjna',
+  'reference.bays.missing_switching_function': 'zgodnoscReferencyjna',
+  'reference.bays.forbidden_apparatus': 'zgodnoscReferencyjna',
+  'reference.bays.apparatus_order_mismatch': 'zgodnoscReferencyjna',
+  'reference.bays.earth_switch_in_main_path': 'zgodnoscReferencyjna',
+  'reference.bays.family_mismatch': 'zgodnoscReferencyjna',
+};
+
 /** Kody dokładne spoza rejestru, potwierdzone w miejscu wywołania (patrz nagłówek). */
 const KOD_DOMENOWY_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'sources.no_short_circuit_params': 'zwarcia',
@@ -251,6 +271,7 @@ const KOD_DOMENOWY_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
  * pominięte — mapowane tylko kodem dokładnym wyżej.
  */
 const PREFIKS_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
+  reference: 'zgodnoscReferencyjna',
   source: 'zwarcia',
   sources: 'zwarcia',
   generator: 'rozplyw',
@@ -279,6 +300,7 @@ const PREFIKS_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
 export function celDlaKodu(code: string): CelGotowosci {
   if (code in KOD_DOKLADNY_DO_CELU) return KOD_DOKLADNY_DO_CELU[code];
   if (code in KOD_Z_REJESTRU_DO_CELU) return KOD_Z_REJESTRU_DO_CELU[code];
+  if (code in KOD_REFERENCJI_DO_CELU) return KOD_REFERENCJI_DO_CELU[code];
   if (code in KOD_DOMENOWY_DO_CELU) return KOD_DOMENOWY_DO_CELU[code];
 
   const idxKropki = code.indexOf('.');

@@ -41,12 +41,33 @@ export const GOTOWOSC_STRINGS = {
 
   // Etykiety celów gotowości (grupowanieCelow.ts)
   celStacje: 'Do przygotowania schematu (stacje i pola)',
+  celZgodnoscReferencyjna: 'Zgodność referencyjna',
   celWspolne: 'Do uruchomienia obliczeń (model i katalog)',
   celZwarcia: 'Do obliczeń zwarciowych',
   celRozplyw: 'Do rozpływu mocy',
   celZabezpieczenia: 'Do koordynacji zabezpieczeń',
   celWniosekOsd: 'Do wniosku OSD',
   celPozostale: 'Pozostałe',
+
+  // Sekcja „Ocena zgodności referencyjnej" (Reference Engine V1, HANDOFF pkt 2.1)
+  refSekcjaTytul: 'Ocena zgodności referencyjnej',
+  refSekcjaOpis:
+    'Zgodność projektu z referencjami (normy IEC, rodziny rozdzielnic, standardy OSD). ' +
+    'Ocena obejmuje wyłącznie pola z danymi aparatów — „nie dotyczy" oznacza brak ' +
+    'sprawdzeń stosowalnych.',
+  refBrakPrzypadku: 'Wybierz zakres obliczeń, aby zobaczyć ocenę zgodności referencyjnej.',
+  refLadowanie: 'Wczytywanie oceny zgodności referencyjnej…',
+  refBlad: 'Błąd wczytywania oceny zgodności referencyjnej',
+  refBrakPakietow: 'Brak pakietów referencyjnych do oceny.',
+  refKolPakiet: 'Referencja',
+  refKolRodzaj: 'Rodzaj',
+  refKolWersja: 'Wersja',
+  refKolSprawdzenia: 'Zaliczone / oblane',
+  refKolWynik: 'Wynik',
+  refNieDotyczy: 'nie dotyczy',
+  refCheckZgodne: 'zgodne',
+  refCheckNiezgodne: 'niezgodne',
+  refBrakSprawdzen: 'Brak sprawdzeń w tym pakiecie.',
 
   // Filtry (waga / cel / gałąź)
   filtrTytul: 'Filtry',

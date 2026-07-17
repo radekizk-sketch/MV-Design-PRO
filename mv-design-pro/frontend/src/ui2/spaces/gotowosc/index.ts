@@ -7,6 +7,7 @@ export type { PanelGotowosciProps } from './PanelGotowosci';
 
 export { SekcjaCelu } from './SekcjaCelu';
 export { WierszProblemu } from './WierszProblemu';
+export { SekcjaZgodnosciReferencyjnej } from './SekcjaZgodnosciReferencyjnej';
 
 export {
   grupujProblemyWgCelu,
